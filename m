@@ -1,170 +1,228 @@
-From: Rich Johnston <rjohnston@sgi.com>
-Subject: Re: [PATCH 00/10] xfstests: Stress tests improments v5
-Date: Fri, 1 Mar 2013 14:23:28 -0600
-Message-ID: <51310E40.7070008@sgi.com>
-References: <1361356935-29153-1-git-send-email-dmonakhov@openvz.org>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH 09/10] xfstest: add defragmentation stress tests for ext4
+Date: Sat, 02 Mar 2013 05:30:43 +0400
+Message-ID: <878v66h9ks.fsf@openvz.org>
+References: <1361356935-29153-1-git-send-email-dmonakhov@openvz.org> <1361356935-29153-10-git-send-email-dmonakhov@openvz.org> <51310046.5090306@sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"; Format="flowed"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	dchinner@redhat.com, xfs@oss.sgi.com
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <1361356935-29153-1-git-send-email-dmonakhov@openvz.org>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, dchinner@redhat.com
+To: Rich Johnston <rjohnston@sgi.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-lb0-f170.google.com ([209.85.217.170]:51906 "EHLO
+	mail-lb0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751442Ab3CBBat (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Mar 2013 20:30:49 -0500
+In-Reply-To: <51310046.5090306@sgi.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Committed patches 1-3 and 5-8.
-
-Waiting for responses back on patches 4, 9, and 10.
-
-Thanks
---Rich
-
-On 02/20/2013 04:42 AM, Dmitry Monakhov wrote:
-> 1   add fio requirement V2
-> 2   add configurable load factors
-> 3   hardcode fops for determinable fsstests runs
-> 4   fsstress add replace file operation
-> 5   allow fsstress to use load factor where appropriate
-> 6   move run_check to common.rc
-> 7   add  fallocate/truncate vs AIO/DIO stress test
-> 8   add  fallocate/punch_hole vs AIO/DIO stress test
-> 9   add defragmentation stress tests for ext4
-> 10  add disk failure simulation test
->
-
-
-commit 892125a53aac8e82dec99fe4e824c39513d4a17a
-Author: Dmitry Monakhov <dmonakhov@openvz.org>
-Date:   Wed Feb 20 10:42:13 2013 +0000
-
-     xfstest: add fallocate/punch_hole vs AIO/DIO stress test
-
-     Run random AIO/DIO activity (fio's job:direct_aio_raicer)
-     random fallocate activity(fio's job:falloc_raicer)
-     and random punch_hole activity(punch_hole_raicer) on a common
-     file in parallel. If a race exists, old dio request may rewrite
-     punched block after it was allocated to another file, we will
-     catch that by verifier fio's job: "aio-dio-verifier".
-
-     Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-     Reviewed-by: Rich Johnston <rjohnston@sgi.com>
-     Signed-off-by: Rich Johnston <rjohnston@sgi.com>
-
-commit 0f88dc26abf55cee39ede490da08ed0d2960cdb2
-Author: Dmitry Monakhov <dmonakhov@openvz.org>
-Date:   Wed Feb 20 10:42:12 2013 +0000
-
-     xfstest: add fallocate/truncate vs AIO/DIO stress test
-
-     Run DIO, fallocate and truncate threads on a common file in parallel.
-     If a race exists, the old dio request may rewrite blocks after it was
-     allocated to another file, we will catch that by verifying blocks 
-content.
-
-     this patch known to catch deadlock for ext4
-     http://lists.openwall.net/linux-ext4/2012/09/06/3
-
-     Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-     Reviewed-by: Rich Johnston <rjohnston@sgi.com>
-     Signed-off-by: Rich Johnston <rjohnston@sgi.com>
-
-commit bb949015a8d3fcf4a5c105b1edd74f27b848a806
-Author: Dmitry Monakhov <dmonakhov@openvz.org>
-Date:   Wed Feb 20 10:42:11 2013 +0000
-
-     xfstest: move run_check to common.rc
-
-     Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-     Reviewed-by: Rich Johnston <rjohnston@sgi.com>
-     Signed-off-by: Rich Johnston <rjohnston@sgi.com>
-
-     Move run_check to common.rc.
-commit b84aade2f49f309c44e6c0b029586c9dcb7b1c22
-Author: Dmitry Monakhov <dmonakhov@openvz.org>
-Date:   Wed Feb 20 10:42:10 2013 +0000
-
-     xfstest: allow fsstress to use load factor where appropriate
-
-     1) Add _scale_fsstress_args function which transform arguments 
-according
-        to load factors
-     2) Let all non deterministic fsstress tests to use scaled arguments
-
-     Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-     Reviewed-by: Rich Johnston <rjohnston@sgi.com>
-     Signed-off-by: Rich Johnston <rjohnston@sgi.com>
-
-commit d14981fa536ac0106dbe9b3d5088a5a50be49f55
-Author: Dmitry Monakhov <dmonakhov@openvz.org>
-Date:   Wed Feb 20 10:42:08 2013 +0000
-
-     xfstests: hardcode fops for determinable fsstests runs
-
-     106,107 and 117 are frozen tests which use known seed, it is
-     reasonable to explicitly hardcode file operations in order to avoid
-     implicit changes caused by future changes in fsstress.
-
-     NOTE: options generated like follows: fsstress -S c $ORIG_ARGS
-
-     Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-     Reviewed-by: Rich Johnston <rjohnston@sgi.com>
-     Signed-off-by: Rich Johnston <rjohnston@sgi.com>
-
-commit 66a98478e3cffecfbd62d3a124b626ddda447c57
-Author: Dmitry Monakhov <dmonakhov@openvz.org>
-Date:   Wed Feb 20 10:42:07 2013 +0000
-
-     xfstest: add configurable load factors
-
-     Most stress test has probable behavior, the longer test run the
-     larger corner cases will be cover. It is reasonable to allow
-     user to provide some sort of system load factor.
-     This patch introduce two global variables
-     LOAD_FACTOR: Usually means factor number of running tasks
-     TIME_FACTOR: Usually means factor of run time, or number of operations
-     If not specified both variables defined to 1, so original behavior
-     preserved.
-     TODO: Change all stress tests to use this variables
-
-     Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-     Reviewed-by: Rich Johnston <rjohnston@sgi.com>
-     Signed-off-by: Rich Johnston <rjohnston@sgi.com>
-
-commit b3db6021fc2df4e99c9e098612446f4c86e70766
-Author: Dmitry Monakhov <dmonakhov@openvz.org>
-Date:   Wed Feb 20 10:42:06 2013 +0000
-
-     xfstests: add fio requirement V2
-
-     FIO is very flexible io generator, I would call it IO swiss knife.
-     Currently we have tons of hardcoded application which reproduces
-     some predefined scenario. This approach has obvious disadvantages
-     1) Lack of flexibility: one written it is hard to modify it in future
-     2) Code base is large, many routines written again and again
-
-     At the same time add new fio based test, just add simple INI file.
-     This greatly simplifies code review. I do believe that some day we will
-     replace most of hardcoded io binaries with fio.
-
-     One who is planning to run $FIO_PROG should first check that system
-     contains appropriate version which is able to handle jobfile
-     for example:  _require_fio 286-job.fio
-
-     Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-     Reviewed-by: Rich Johnston <rjohnston@sgi.com>
-     Signed-off-by: Rich Johnston <rjohnston@sgi.com>
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+On Fri, 1 Mar 2013 13:23:50 -0600, Rich Johnston <rjohnston@sgi.com> wrote:
+> On 02/20/2013 04:42 AM, Dmitry Monakhov wrote:
+> > Perform various regression tests for ext4defrag  subsystem
+> >
+> >   299'th Test1: Defragment file while other task does direct AIO
+> >   300'th Test2: Perform defragmentation on file under buffered AIO
+> >   	while third task does direct AIO to donor file
+> >   301'th Test3: Two defrag tasks use common donor file.
+> >   302'th Test4: Stress defragmentation. Several threads pefrorm
+> typo 	                                                  perform
+> 
+> >   	fragmentation at random position use inplace=1 will
+> > 	allocate and free blocks inside defrag event improve
+> > 	load pressure.
+> >
+> > This tests are considered dengerous because 300'th and 301'th are known
+> typo                        dangerous
+> 
+> > to trigger OOPS on recent kernels see:https://gist.github.com/dmonakhov/4770294
+> >
+> > Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> > ---
+> >   299           |  126 +++++++++++++++++++++++++++++++++++++++++++++++
+> >   299.out       |    4 ++
+> >   300           |  143 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+> >   300.out       |    4 ++
+> >   301           |  153 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+> >   301.out       |    4 ++
+> >   302           |  130 ++++++++++++++++++++++++++++++++++++++++++++++++
+> >   302.out       |    4 ++
+> >   common.defrag |    4 +-
+> >   group         |    6 ++-
+> >   10 files changed, 575 insertions(+), 3 deletions(-)
+> >   create mode 100755 299
+> >   create mode 100644 299.out
+> >   create mode 100755 300
+> >   create mode 100644 300.out
+> >   create mode 100755 301
+> >   create mode 100644 301.out
+> >   create mode 100755 302
+> >   create mode 100644 302.out
+> >
+> > diff --git a/299 b/299
+> > new file mode 100755
+> > index 0000000..4a7a98c
+> > --- /dev/null
+> > +++ b/299
+> > @@ -0,0 +1,126 @@
+> > +#! /bin/bash
+> > +# FSQA Test No. 299
+> > +#
+> > +# Ext4 defragmentation stress test
+> > +# Defragment file while other task does direct io
+> > +#-----------------------------------------------------------------------
+> > +# (c) 2013 Dmitry Monakhov
+> > +#
+> > +# This program is free software; you can redistribute it and/or
+> > +# modify it under the terms of the GNU General Public License as
+> > +# published by the Free Software Foundation.
+> > +#
+> > +# This program is distributed in the hope that it would be useful,
+> > +# but WITHOUT ANY WARRANTY; without even the implied warranty of
+> > +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> > +# GNU General Public License for more details.
+> > +#
+> > +# You should have received a copy of the GNU General Public License
+> > +# along with this program; if not, write the Free Software Foundation,
+> > +# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+> > +#
+> > +#-----------------------------------------------------------------------
+> > +#
+> > +# creator
+> > +owner=dmonakhov@openvz.org
+> > +
+> > +seq=`basename $0`
+> > +echo "QA output created by $seq"
+> > +
+> > +here=`pwd`
+> > +tmp=/tmp/$$
+> > +status=1	# failure is the default!
+> > +trap "rm -f $tmp.*; exit \$status" 0 1 2 3 15
+> > +
+> > +# get standard environment, filters and checks
+> > +. ./common.rc
+> > +. ./common.filter
+> > +. ./common.defrag
+> > +
+> > +# real QA test starts here
+> > +_supported_os Linux
+> > +_supported_fs ext4
+> > +_need_to_be_root
+> > +_require_scratch
+> > +_require_defrag
+> > +
+> I think you meant to set NUM_JOBS here like you did in [Patch 08/10], 
+> something like:
+> 
+> +NUM_JOBS=$((4*LOAD_FACTOR))
+Indeed. I've forget to update patch.
+> 
+> otherwise you get
+> 
+> ###	 [not run] /usr/local/bin/fio too old
+> 
+> > +BLK_DEV_SIZE=`blockdev --getsz $SCRATCH_DEV`
+> > +# We need space for 2 files (test file, and donor one)
+> > +# reserve 30% in order to avoid ENOSPC
+> > +FILE_SIZE=$((BLK_DEV_SIZE * (512 / (2 + 1))))
+> > +
+> > +cat >$tmp-$seq.fio <<EOF
+> > +# Common e4defrag regression tests
+> > +[global]
+> > +ioengine=ioe_e4defrag
+> > +iodepth=1
+> > +directory=${SCRATCH_MNT}
+> > +filesize=${FILE_SIZE}
+> > +size=999G
+> > +buffered=0
+> > +fadvise_hint=0
+> > +group_reporting
+> > +
+> > +#################################
+> > +# Test1
+> > +# Defragment file while other task does direct io
+> > +
+> > +# Continious sequential defrag activity
+> > +[defrag-4k]
+> > +ioengine=e4defrag
+> > +iodepth=1
+> > +bs=128k
+> > +donorname=test1.def
+> > +filename=test1
+> > +inplace=0
+> > +rw=write
+> > +numjobs=${NUM_JOBS}
+> > +runtime=30*${TIME_FACTOR}
+> > +time_based
+> > +
+> > +# Verifier
+> > +[aio-dio-verifier]
+> > +ioengine=libaio
+> > +iodepth=128*${LOAD_FACTOR}
+> > +numjobs=1
+> > +verify=crc32c-intel
+> > +verify_fatal=1
+> > +verify_dump=1
+> > +verify_backlog=1024
+> > +verify_async=1
+> > +verifysort=1
+> > +direct=1
+> > +bs=64k
+> > +rw=randwrite
+> > +filename=test1
+> > +runtime=30*${TIME_FACTOR}
+> > +time_based
+> > +EOF
+> > +
+> > +_workout()
+> > +{
+> > +	echo ""
+> > +	echo " Start defragment activity "
+> git does not like trailing whitespace   ^
+> (same for the other 3 tests)
+> > +	echo ""
+> > +	cat $tmp-$seq.fio >>  $seq.full
+> > +	run_check $FIO_PROG $tmp-$seq.fio
+> > +}
+> > +
+> > +_require_fio $tmp-$seq.fio
+> > +
+> > +_scratch_mkfs  >> $seq.full 2>&1
+> > +_scratch_mount
+> > +
+> > +if ! _workout; then
+> > +	umount $SCRATCH_DEV 2>/dev/null
+> > +	exit
+> > +fi
+> > +
+> > +if ! _scratch_unmount; then
+> > +	echo "failed to umount"
+> > +	status=1
+> > +	exit
+> > +fi
+> > +_check_scratch_fs
+> > +status=$?
+> > +exit diff --git a/299.out b/299.out new file mode 100644 index 0000000..b215a3f
+> > diff --git a/299.out b/299.out
+> > new file mode 100644
+> > index 0000000..c2b0b4c
+> > --- /dev/null
+> > +++ b/299.out
+> > @@ -0,0 +1,4 @@
+> > +QA output created by 299
+> > +
+> > + Start defragment activity
+> remove trailing whitespace   ^
+> (same for the other 3 tests)
+> 
+> Let me know if you agree with these changes and I will make them at 
+> commit time.
+Yes, please do.
+> 
+> Thanks
+> --Rich
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
