@@ -1,30 +1,34 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix a warning from sparse check for ext4_dir_llseek
-Date: Sat, 2 Mar 2013 17:25:01 -0500
-Message-ID: <20130302222501.GE22941@thunk.org>
-References: <1361264926-8908-1-git-send-email-wenqing.lz@taobao.com>
+Subject: Re: [PATCH 1/2] ext4: Don't allow quota mount options when quota
+ feature enabled
+Date: Sat, 2 Mar 2013 18:04:06 -0500
+Message-ID: <20130302230406.GF22941@thunk.org>
+References: <1361835369-19850-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:50963 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:50966 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751320Ab3CBWZG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 2 Mar 2013 17:25:06 -0500
+	id S1750970Ab3CBXEK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 2 Mar 2013 18:04:10 -0500
 Content-Disposition: inline
-In-Reply-To: <1361264926-8908-1-git-send-email-wenqing.lz@taobao.com>
+In-Reply-To: <1361835369-19850-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Feb 19, 2013 at 05:08:46PM +0800, Zheng Liu wrote:
-> From: Zheng Liu <wenqing.lz@taobao.com>
+On Tue, Feb 26, 2013 at 12:36:08AM +0100, Jan Kara wrote:
+> So far we silently ignored when quota mount options were set while quota
+> feature was enabled. But this can create confusion in userspace when
+> mount options are set but silently ignored and also creates opportunities
+> for bugs when we don't properly test all quota types. Actually
+> ext4_mark_dquot_dirty() forgets to test for quota feature so it was
+> dependent on journaled quota options being set. OTOH ext4_orphan_cleanup()
+> tries to enable journaled quota when quota options are specified which is
+> wrong when quota feature is enabled.
 > 
-> ext4_dir_llseek is only used as a callback function, and no one calls
-> it directly.  So make it as a static function in order to remove a
-> warning message from sparse check.
-> 
-> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
 Thanks, applied.
 
