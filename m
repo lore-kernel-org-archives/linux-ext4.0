@@ -1,33 +1,32 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] jbd2: Fix ERR_PTR dereference in jbd2__journal_start
-Date: Sat, 2 Mar 2013 17:10:18 -0500
-Message-ID: <20130302221017.GB22941@thunk.org>
-References: <87obfcs1x6.fsf@openvz.org>
- <20130222180325.GB21264@thunk.org>
- <87mwuqmzoe.fsf@openvz.org>
+Subject: Re: [PATCH] ext4: fix possible memory leak in ext4_remount()
+Date: Sat, 2 Mar 2013 17:13:39 -0500
+Message-ID: <20130302221339.GC22941@thunk.org>
+References: <CAPgLHd-J=j=aVCpjutq2B1+NMqxz=v50xNcEQA_57Ni_7v9HKA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <gnehzuil.liu@gmail.com>
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Cc: adilger.kernel@dilger.ca, yongjun_wei@trendmicro.com.cn,
+	linux-ext4@vger.kernel.org
+To: Wei Yongjun <weiyj.lk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:50951 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:50956 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751156Ab3CBWKX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 2 Mar 2013 17:10:23 -0500
+	id S1751156Ab3CBWNq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 2 Mar 2013 17:13:46 -0500
 Content-Disposition: inline
-In-Reply-To: <87mwuqmzoe.fsf@openvz.org>
+In-Reply-To: <CAPgLHd-J=j=aVCpjutq2B1+NMqxz=v50xNcEQA_57Ni_7v9HKA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Feb 27, 2013 at 03:18:57AM +0400, Dmitry Monakhov wrote:
-> From 65344ff34ebbe6dc45c193c3d88e7a74668edfd5 Mon Sep 17 00:00:00 2001
-> From: Dmitry Monakhov <dmonakhov@openvz.org>
-> Date: Wed, 27 Feb 2013 02:59:37 +0400
-> Subject: [PATCH] jbd2: Fix ERR_PTR dereference in jbd2__journal_start
+On Wed, Feb 27, 2013 at 01:18:53PM +0800, Wei Yongjun wrote:
+> From: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
 > 
-> If start_this_handle() failed handle will be initialized
-> to ERR_PTR() and can not be dereferenced.
+> 'orig_data' is malloced in ext4_remount() and should be freed
+> before leaving from the error handling cases, otherwise it will
+> cause memory leak.
+> 
+> Signed-off-by: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
 
-Applied, thanks.
+Thanks, applied.
 
 					- Ted
