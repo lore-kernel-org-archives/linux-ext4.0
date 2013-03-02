@@ -1,94 +1,80 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 10/10] xfstests: add disk failure simulation test
-Date: Sat, 02 Mar 2013 05:49:07 +0400
-Message-ID: <87621ah8q4.fsf@openvz.org>
-References: <1361356935-29153-1-git-send-email-dmonakhov@openvz.org>
-	<1361356935-29153-11-git-send-email-dmonakhov@openvz.org>
-	<51310B63.4070105@sgi.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: use percpu counter for extent cache count
+Date: Sat, 2 Mar 2013 10:26:44 -0500
+Message-ID: <20130302152644.GA22941@thunk.org>
+References: <20130227185625.GA224@x4>
+ <20130227191923.GA1121@redhat.com>
+ <20130227192907.GB14253@thunk.org>
+ <20130227201217.GD14253@thunk.org>
+ <20130301033005.GA7081@redhat.com>
+ <20130301040039.GA4452@thunk.org>
+ <20130301050029.GB4452@thunk.org>
+ <5130DA71.4040808@redhat.com>
+ <20130301180035.GB17920@thunk.org>
+ <5130ED3A.30003@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	dchinner@redhat.com, xfs@oss.sgi.com
-To: Rich Johnston <rjohnston@sgi.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <51310B63.4070105@sgi.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Dave Jones <davej@redhat.com>,
+	"gnehzuil.liu" <gnehzuil.liu@gmail.com>,
+	Zheng Liu <wenqing.lz@taobao.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:50928 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750835Ab3CBP0v (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 2 Mar 2013 10:26:51 -0500
+Content-Disposition: inline
+In-Reply-To: <5130ED3A.30003@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 1 Mar 2013 14:11:15 -0600, Rich Johnston <rjohnston@sgi.com> wrote:
-> On 02/20/2013 04:42 AM, Dmitry Monakhov wrote:
-> > There are many situations where disk may fail for example
-> > 1) brutal usb dongle unplug
-> > 2) iscsi (or any other netbdev) failure due to network issues
-> > In this situation filesystem which use this blockdevice is
-> > expected to fail(force RO remount, abort, etc) but whole system
-> > should still be operational. In other words:
-> > 1) Kernel should not panic
-> > 2) Memory should not leak
-> > 3) Data integrity operations (sync,fsync,fdatasync, directio) should fail
-> >     for affected filesystem
-> > 4) It should be possible to umount broken filesystem
-> >
-> > Later when disk becomes available again we expect(only for journaled filesystems):
-> > 5) It will be possible to mount filesystem w/o explicit fsck (in order to caught
+On Fri, Mar 01, 2013 at 12:02:34PM -0600, Eric Sandeen wrote:
 > 
-> typo                                     s/caught/catch/g
-> 
-> >     issues like https://patchwork.kernel.org/patch/1983981/)
-> > 6) Filesystem should be operational
-> > 7) After mount/umount has being done all errors should be fixed so fsck should
-> >     not spot any issues.
-> >
-> > This test use fault enjection (CONFIG_FAIL_MAKE_REQUEST=y config option )
->    May want to mention all the kernel config options required.
-> i.e. CONFIG_FAULT_INJECTION=y ... are there others?
-> CONFIG_FAULT_INJECTION_DEBUG_FS=y ???
-Yes, all three options are required. 
-> 
-> > which force all new IO requests to fail for a given device. Xfs already has
->    to force
-> 
-> > XFS_IOC_GOINGDOWN ioctl which provides similar behaviour, but it is fs speciffic
-> 
-> typos s/behaviour/behavior/g  s/speciffic/specific
->                                          > and it does it in an easy way 
-> because it perform freeze_bdev() before actual
-> > shotdown.
-> typo s/shotdown/shutdown/g
-Agree with your diagnosis. My gramma is bad and I've forget to call spell check
-before submission. Should I resend this one or you fix it manually
-on commit time?
-> 
-> >
-> > Test run fsstress in background and then force disk failure.
-> > Once disk failed it check that (1)-(4) is true.
->    Once the disk fails, check that (1)-(4) are true.
-> 
-> > Then makes disk available again and check that (5)-(7) is also true
->         make the disk ...                                 are
-> >
-> > BE CAREFUL!! test known to cause memory corruption for XFS
-> > see: https://gist.github.com/dmonakhov/4953045
-> >
-> 
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> I was mostly keying off what quota felt was best, I guess.
+> I'm not wedded to either approach, it was just a thought.
+> So you can take it or leave it. :)
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+I'll take it, but for the record, there's a reason why I label patches
+with "I haven't tested this yet" disclaimers.
+
+For future reference, calling percpu_counter_init() and
+percpu_counter_destroy() is not optional --- without them, in your
+original patch, the kernel will crash them the first time an ext4 file
+system mount is attempted.
+
+No worries though, no harm done --- but it's better if people don't
+rely on me to catch bugs before they go into the tree.  :-)
+
+						- Ted
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 373d46c..1ae5860 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -783,6 +783,7 @@ static void ext4_put_super(struct super_block *sb)
+ 	percpu_counter_destroy(&sbi->s_freeinodes_counter);
+ 	percpu_counter_destroy(&sbi->s_dirs_counter);
+ 	percpu_counter_destroy(&sbi->s_dirtyclusters_counter);
++	percpu_counter_destroy(&sbi->s_extent_cache_cnt);
+ 	brelse(sbi->s_sbh);
+ #ifdef CONFIG_QUOTA
+ 	for (i = 0; i < MAXQUOTAS; i++)
+@@ -3688,6 +3689,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	if (!err) {
+ 		err = percpu_counter_init(&sbi->s_dirtyclusters_counter, 0);
+ 	}
++	if (!err) {
++		err = percpu_counter_init(&sbi->s_extent_cache_cnt, 0);
++	}
+ 	if (err) {
+ 		ext4_msg(sb, KERN_ERR, "insufficient memory");
+ 		goto failed_mount3;
+@@ -3993,6 +3997,7 @@ failed_mount3:
+ 	percpu_counter_destroy(&sbi->s_freeinodes_counter);
+ 	percpu_counter_destroy(&sbi->s_dirs_counter);
+ 	percpu_counter_destroy(&sbi->s_dirtyclusters_counter);
++	percpu_counter_destroy(&sbi->s_extent_cache_cnt);
+ 	if (sbi->s_mmp_tsk)
+ 		kthread_stop(sbi->s_mmp_tsk);
+ failed_mount2:
