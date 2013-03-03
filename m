@@ -1,61 +1,45 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH] ext4: use percpu counter for extent cache count
-Date: Mon, 4 Mar 2013 00:39:41 +0800
-Message-ID: <20130303163940.GA30459@gmail.com>
-References: <20130227191923.GA1121@redhat.com>
- <20130227192907.GB14253@thunk.org>
- <20130227201217.GD14253@thunk.org>
- <20130301033005.GA7081@redhat.com>
- <20130301040039.GA4452@thunk.org>
- <20130301050029.GB4452@thunk.org>
- <5130DA71.4040808@redhat.com>
- <20130301180035.GB17920@thunk.org>
- <5130ED3A.30003@redhat.com>
- <20130302152644.GA22941@thunk.org>
+Subject: Re: [PATCH 09/10] xfstest: add defragmentation stress tests for ext4
+Date: Mon, 4 Mar 2013 00:43:42 +0800
+Message-ID: <20130303164342.GB30459@gmail.com>
+References: <1361356935-29153-1-git-send-email-dmonakhov@openvz.org>
+ <1361356935-29153-10-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>, Dave Jones <davej@redhat.com>,
-	Zheng Liu <wenqing.lz@taobao.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, dchinner@redhat.com
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f49.google.com ([209.85.210.49]:39674 "EHLO
-	mail-da0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753606Ab3CCQYk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 3 Mar 2013 11:24:40 -0500
-Received: by mail-da0-f49.google.com with SMTP id t11so2149916daj.36
-        for <linux-ext4@vger.kernel.org>; Sun, 03 Mar 2013 08:24:40 -0800 (PST)
+Received: from mail-pb0-f45.google.com ([209.85.160.45]:62050 "EHLO
+	mail-pb0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753693Ab3CCQ2i (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 3 Mar 2013 11:28:38 -0500
 Content-Disposition: inline
-In-Reply-To: <20130302152644.GA22941@thunk.org>
+In-Reply-To: <1361356935-29153-10-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Mar 02, 2013 at 10:26:44AM -0500, Theodore Ts'o wrote:
-> On Fri, Mar 01, 2013 at 12:02:34PM -0600, Eric Sandeen wrote:
-> > 
-> > I was mostly keying off what quota felt was best, I guess.
-> > I'm not wedded to either approach, it was just a thought.
-> > So you can take it or leave it. :)
+On Wed, Feb 20, 2013 at 02:42:14PM +0400, Dmitry Monakhov wrote:
+> Perform various regression tests for ext4defrag  subsystem
 > 
-> I'll take it, but for the record, there's a reason why I label patches
-> with "I haven't tested this yet" disclaimers.
-> 
-> For future reference, calling percpu_counter_init() and
-> percpu_counter_destroy() is not optional --- without them, in your
-> original patch, the kernel will crash them the first time an ext4 file
-> system mount is attempted.
-> 
-> No worries though, no harm done --- but it's better if people don't
-> rely on me to catch bugs before they go into the tree.  :-)
+>  299'th Test1: Defragment file while other task does direct AIO
 
-Really sorry for the delay reply.
+Hi Dmitry,
 
-Dave, thank you very much for your test and reporting this regression.
+I couldn't run this testcase in my sandbox.  I got the following error
+message.
 
-Ted, Eric, thank you very much for fixing it.  
+FSTYP         -- ext4
+PLATFORM      -- Linux/x86_64 lz-desktop 3.8.0
+MKFS_OPTIONS  -- /dev/sda2
+MOUNT_OPTIONS -- -o acl,user_xattr /dev/sda2 /mnt/sda2
 
-I really think I need to be responsible for reviewing and testing this
-patch because I screw it up.  My apology.
+299      [not run] /usr/local/bin/fio too old
+Not run: 299
+Passed all 0 tests
 
-Thanks,
+My fio version is fio-2.0.14-23-g9c63.  It seems that there are some
+errors in fio config file.
+
+Regards,
                                                 - Zheng
