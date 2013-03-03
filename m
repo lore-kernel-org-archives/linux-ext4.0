@@ -1,65 +1,124 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [GIT PULL] ext4 bug fixes for 3.9
-Date: Sat, 02 Mar 2013 22:17:02 -0500
-Message-ID: <nsx1ubxw4sx.fsf@closure.thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: [PATCH 0/2] fixup bugs in e2fsprogs that is reported by xfstests #218
+Date: Mon,  4 Mar 2013 00:26:16 +0800
+Message-ID: <1362327978-30423-1-git-send-email-wenqing.lz@taobao.com>
+Cc: Zheng Liu <wenqing.lz@taobao.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:50990 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752472Ab3CCDRH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 2 Mar 2013 22:17:07 -0500
+Received: from mail-da0-f43.google.com ([209.85.210.43]:64553 "EHLO
+	mail-da0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753532Ab3CCQLQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 3 Mar 2013 11:11:16 -0500
+Received: by mail-da0-f43.google.com with SMTP id u36so2156262dak.30
+        for <linux-ext4@vger.kernel.org>; Sun, 03 Mar 2013 08:11:15 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Hi all,
 
-The following changes since commit 8e919d13048cd5acaadb2b15b48acbfb8832d3c2:
+This patch series tries to fixup bugs in e2fsprogs that is reported by
+xfstests #218 (This patch [1] need to be applied to fix a bug for #218).
+The first commit tries to fix a e4defrag bug, which makes e4defrag to
+defrag a ext4 file when orig_physcial_cnt == donor_physical_cnt.  The
+second one fixes a bug in filefrag that miss calculates contiguous
+extents.
 
-  ext4: fix extent status tree regression for file systems > 512GB (2013-02-27 14:54:37 -0500)
+After applied this patch series, #218 can pass in the following cass:
 
-are available in the git repository at:
+ 4k Block
+ 4K Block w/ dioread_nolock
 
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
+The following cases will fail because in #218 it use 'dd' command to
+create a contiguous file.  But it could be failed.  After using 'xfs_io'
+command, this failure disappears.
 
-for you to fetch changes up to 9b2ff35753c0512bc8c6adae9e9c87cbeee86f82:
+ 4K Block w/ ^flex_bg, nodelalloc
+ 4K Block w/ ^has_journal
 
-  ext4: enable quotas before orphan cleanup (2013-03-02 18:22:38 -0500)
+The following cases fail because of other reasons.
 
-----------------------------------------------------------------
-Various bug fixes for ext4.  The most important is a fix for the new
-extent cache's slab shrinker which can cause significant, user-visible
-pauses when the system is under memory pressure.
+ * 4K Block w/ data=journal
+218 3s ... - output mismatch (see 218.out.bad)
+    --- 218.out	2013-02-07 22:56:14.000000000 +0800
+    +++ 218.out.bad	2013-03-04 00:15:43.000000000 +0800
+    @@ -10,7 +10,7 @@
+     After: 1
+     Write backwards sync, but contiguous - should defrag to 1 extent
+     Before: 10
+    -After: 1
+    +After: 10
+     Write backwards sync leaving holes - defrag should do nothing
+     Before: 16
+     ...
+     (Run 'diff -u 218.out 218.out.bad' to see the entire diff)
+Ran: 218
+Failures: 218
+Failed 1 of 1 tests
 
-----------------------------------------------------------------
-Dmitry Monakhov (1):
-      jbd2: fix ERR_PTR dereference in jbd2__journal_start
+ * 4k Block w/ metadata_csum
+FSTYP         -- ext4
+PLATFORM      -- Linux/x86_64 lz-desktop 3.8.0
+MKFS_OPTIONS  -- -O metadata_csum /dev/sda2
+MOUNT_OPTIONS -- -o acl,user_xattr /dev/sda2 /mnt/sda2
 
-Jan Kara (2):
-      ext4: don't allow quota mount options when quota feature enabled
-      ext4: enable quotas before orphan cleanup
+218 2s ... [failed, exit status 1] - output mismatch (see 218.out.bad)
+    --- 218.out	2013-02-07 22:56:14.000000000 +0800
+    +++ 218.out.bad	2013-03-03 22:37:37.000000000 +0800
+    @@ -10,10 +10,7 @@
+     After: 1
+     Write backwards sync, but contiguous - should defrag to 1 extent
+     Before: 10
+    -After: 1
+    -Write backwards sync leaving holes - defrag should do nothing
+    -Before: 16
+    -After: 16
+     ...
+     (Run 'diff -u 218.out 218.out.bad' to see the entire diff)
+Ran: 218
+Failures: 218
+Failed 1 of 1 tests 
 
-Lukas Czerner (1):
-      ext4: convert number of blocks to clusters properly
+kernel: EXT4-fs error (device sda2): __ext4_ext_check_block:480: inode #12: comm
+filefrag: bad header/extent: extent tree corrupted - magic f30a, entries 1, max
+340(340), depth 0(0)
 
-Theodore Ts'o (2):
-      ext4: optimize ext4_es_shrink()
-      ext4: use percpu counter for extent cache count
+ * 1k Block
+FSTYP         -- ext4
+PLATFORM      -- Linux/x86_64 lz-desktop 3.8.0
+MKFS_OPTIONS  -- -b 1024 /dev/sda2
+MOUNT_OPTIONS -- -o acl,user_xattr /dev/sda2 /mnt/sda2
 
-Wei Yongjun (1):
-      ext4: fix possible memory leak in ext4_remount()
+218 2s ... - output mismatch (see 218.out.bad)
+    --- 218.out	2013-02-07 22:56:14.000000000 +0800
+    +++ 218.out.bad	2013-03-03 22:41:58.000000000 +0800
+    @@ -9,7 +9,7 @@
+     Before: 1
+     After: 1
+     Write backwards sync, but contiguous - should defrag to 1 extent
+    -Before: 10
+    +Before: 7
+     After: 1
+     Write backwards sync leaving holes - defrag should do nothing
+     ...
+     (Run 'diff -u 218.out 218.out.bad' to see the entire diff)
+Ran: 218
+Failures: 218
+Failed 1 of 1 tests
 
-Zheng Liu (1):
-      ext4: fix a warning from sparse check for ext4_dir_llseek
+1. http://permalink.gmane.org/gmane.comp.file-systems.ext4/37366
 
- fs/ext4/balloc.c            |  2 +-
- fs/ext4/dir.c               |  2 +-
- fs/ext4/ext4.h              |  1 +
- fs/ext4/extents_status.c    | 39 +++++++++++++--------------------------
- fs/ext4/mballoc.c           |  8 ++++----
- fs/ext4/resize.c            |  6 +++---
- fs/ext4/super.c             | 61 +++++++++++++++++++++++++++++++++++++++++++------------------
- fs/jbd2/transaction.c       |  2 +-
- include/trace/events/ext4.h | 40 ++++++++++++----------------------------
- 9 files changed, 79 insertions(+), 82 deletions(-)
+Regards,
+						- Zheng
+
+Zheng Liu (2):
+  e4defrag: defrag a file when orig_physical_cnt == donor_physical_cnt
+  filefrag: count a contiguous extent when both logical and physical
+    blocks are contiguous
+
+ misc/e4defrag.c |  2 +-
+ misc/filefrag.c | 49 ++++++++++++++++++++++++++++++++-----------------
+ 2 files changed, 33 insertions(+), 18 deletions(-)
+
+-- 
+1.7.12.rc2.18.g61b472e
+
