@@ -1,163 +1,61 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 2/2] filefrag: count a contiguous extent when both logical and physical blocks are contiguous
-Date: Mon,  4 Mar 2013 00:26:18 +0800
-Message-ID: <1362327978-30423-3-git-send-email-wenqing.lz@taobao.com>
-References: <1362327978-30423-1-git-send-email-wenqing.lz@taobao.com>
-Cc: Zheng Liu <wenqing.lz@taobao.com>
-To: linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] ext4: use percpu counter for extent cache count
+Date: Mon, 4 Mar 2013 00:39:41 +0800
+Message-ID: <20130303163940.GA30459@gmail.com>
+References: <20130227191923.GA1121@redhat.com>
+ <20130227192907.GB14253@thunk.org>
+ <20130227201217.GD14253@thunk.org>
+ <20130301033005.GA7081@redhat.com>
+ <20130301040039.GA4452@thunk.org>
+ <20130301050029.GB4452@thunk.org>
+ <5130DA71.4040808@redhat.com>
+ <20130301180035.GB17920@thunk.org>
+ <5130ED3A.30003@redhat.com>
+ <20130302152644.GA22941@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>, Dave Jones <davej@redhat.com>,
+	Zheng Liu <wenqing.lz@taobao.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f50.google.com ([209.85.160.50]:61263 "EHLO
-	mail-pb0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753589Ab3CCQLY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 3 Mar 2013 11:11:24 -0500
-Received: by mail-pb0-f50.google.com with SMTP id up1so2615905pbc.37
-        for <linux-ext4@vger.kernel.org>; Sun, 03 Mar 2013 08:11:24 -0800 (PST)
-In-Reply-To: <1362327978-30423-1-git-send-email-wenqing.lz@taobao.com>
+Received: from mail-da0-f49.google.com ([209.85.210.49]:39674 "EHLO
+	mail-da0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753606Ab3CCQYk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 3 Mar 2013 11:24:40 -0500
+Received: by mail-da0-f49.google.com with SMTP id t11so2149916daj.36
+        for <linux-ext4@vger.kernel.org>; Sun, 03 Mar 2013 08:24:40 -0800 (PST)
+Content-Disposition: inline
+In-Reply-To: <20130302152644.GA22941@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+On Sat, Mar 02, 2013 at 10:26:44AM -0500, Theodore Ts'o wrote:
+> On Fri, Mar 01, 2013 at 12:02:34PM -0600, Eric Sandeen wrote:
+> > 
+> > I was mostly keying off what quota felt was best, I guess.
+> > I'm not wedded to either approach, it was just a thought.
+> > So you can take it or leave it. :)
+> 
+> I'll take it, but for the record, there's a reason why I label patches
+> with "I haven't tested this yet" disclaimers.
+> 
+> For future reference, calling percpu_counter_init() and
+> percpu_counter_destroy() is not optional --- without them, in your
+> original patch, the kernel will crash them the first time an ext4 file
+> system mount is attempted.
+> 
+> No worries though, no harm done --- but it's better if people don't
+> rely on me to catch bugs before they go into the tree.  :-)
 
-This commit fixes a bug in filefrag that filefrag miss calculates
-contiguous extent when physical blocks are contiguous but logical blocks
-aren't.  This case can be created by xfstests #218 or the following
-script.
+Really sorry for the delay reply.
 
-	for I in `seq 0 2 31`; do
-		dd if=/dev/zero of=$testfile bs=4k count=1 conv=notrunc \
-			seek=$I oflag=sync &>/dev/null
-	done
+Dave, thank you very much for your test and reporting this regression.
 
-Meanwhile this commit prints expected logical block.
+Ted, Eric, thank you very much for fixing it.  
 
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
----
- misc/filefrag.c | 49 ++++++++++++++++++++++++++++++++-----------------
- 1 file changed, 32 insertions(+), 17 deletions(-)
+I really think I need to be responsible for reviewing and testing this
+patch because I screw it up.  My apology.
 
-diff --git a/misc/filefrag.c b/misc/filefrag.c
-index ee03a07..3af938f 100644
---- a/misc/filefrag.c
-+++ b/misc/filefrag.c
-@@ -116,16 +116,17 @@ static int get_bmap(int fd, unsigned long block, unsigned long *phy_blk)
- 
- static void print_extent_header(void)
- {
--	printf(" ext: %*s %*s length: %*s flags:\n",
-+	printf(" ext: %*s %*s length: %*s %*s flags:\n",
- 	       logical_width * 2 + 3,
- 	       "logical_offset:",
- 	       physical_width * 2 + 3, "physical_offset:",
--	       physical_width + 1,
--	       "expected:");
-+	       physical_width + 1, "log_expected:",
-+	       physical_width + 1, "phy_expected:");
- }
- 
- static void print_extent_info(struct fiemap_extent *fm_extent, int cur_ex,
--			      unsigned long long expected, int blk_shift,
-+			      unsigned long long lexpected,
-+			      unsigned long long pexpected, int blk_shift,
- 			      ext2fs_struct_stat *st)
- {
- 	unsigned long long physical_blk;
-@@ -133,6 +134,8 @@ static void print_extent_info(struct fiemap_extent *fm_extent, int cur_ex,
- 	unsigned long long ext_len;
- 	unsigned long long ext_blks;
- 	char flags[256] = "";
-+	char logex_flags[32] = "";
-+	char phyex_flags[32] = "";
- 
- 	/* For inline data all offsets should be in bytes, not blocks */
- 	if (fm_extent->fe_flags & FIEMAP_EXTENT_DATA_INLINE)
-@@ -143,11 +146,20 @@ static void print_extent_info(struct fiemap_extent *fm_extent, int cur_ex,
- 	logical_blk = fm_extent->fe_logical >> blk_shift;
- 	physical_blk = fm_extent->fe_physical >> blk_shift;
- 
--	if (expected)
--		sprintf(flags, ext_fmt == hex_fmt ? "%*llx: " : "%*llu: ",
--			physical_width, expected >> blk_shift);
-+	if (lexpected)
-+		sprintf(logex_flags, ext_fmt == hex_fmt ? "%*llx: " : "%*llu: ",
-+			physical_width, lexpected >> blk_shift);
- 	else
--		sprintf(flags, "%.*s  ", physical_width, "                   ");
-+		sprintf(logex_flags, "%.*s  ", physical_width, "                   ");
-+
-+	if (pexpected)
-+		sprintf(phyex_flags, ext_fmt == hex_fmt ? "%*llx: " : "%*llu: ",
-+			physical_width, pexpected >> blk_shift);
-+	else
-+		sprintf(phyex_flags, "%.*s  ", physical_width, "                   ");
-+
-+	strcat(flags, logex_flags);
-+	strcat(flags, phyex_flags);
- 
- 	if (fm_extent->fe_flags & FIEMAP_EXTENT_UNKNOWN)
- 		strcat(flags, "unknown,");
-@@ -188,7 +200,7 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents,
- 	struct fiemap_extent *fm_ext = &fiemap->fm_extents[0];
- 	int count = (sizeof(buf) - sizeof(*fiemap)) /
- 			sizeof(struct fiemap_extent);
--	unsigned long long expected = 0;
-+	unsigned long long lexpected = 0, pexpected = 0;
- 	unsigned long flags = 0;
- 	unsigned int i;
- 	static int fiemap_incompat_printed;
-@@ -230,18 +242,21 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents,
- 
- 		for (i = 0; i < fiemap->fm_mapped_extents; i++) {
- 			if (fm_ext[i].fe_logical != 0 &&
--			    fm_ext[i].fe_physical != expected) {
-+			    (fm_ext[i].fe_logical != lexpected ||
-+			     fm_ext[i].fe_physical != pexpected)) {
- 				tot_extents++;
- 			} else {
--				expected = 0;
-+				lexpected = 0;
-+				pexpected = 0;
- 				if (!tot_extents)
- 					tot_extents = 1;
- 			}
- 			if (verbose)
--				print_extent_info(&fm_ext[i], n, expected,
--						  blk_shift, st);
-+				print_extent_info(&fm_ext[i], n, lexpected,
-+						  pexpected, blk_shift, st);
- 
--			expected = fm_ext[i].fe_physical + fm_ext[i].fe_length;
-+			lexpected = fm_ext[i].fe_logical + fm_ext[i].fe_length;
-+			pexpected = fm_ext[i].fe_physical + fm_ext[i].fe_length;
- 			if (fm_ext[i].fe_flags & FIEMAP_EXTENT_LAST)
- 				last = 1;
- 			n++;
-@@ -308,7 +323,7 @@ static int filefrag_fibmap(int fd, int blk_shift, int *num_extents,
- 		if (force_extent && last_block != 0 &&
- 		    (block != last_block + 1 ||
- 		     fm_ext.fe_logical + fm_ext.fe_length != logical)) {
--			print_extent_info(&fm_ext, *num_extents - 1,
-+			print_extent_info(&fm_ext, *num_extents - 1, logical,
- 					  (last_block + 1) * st->st_blksize,
- 					  blk_shift, st);
- 			fm_ext.fe_logical = logical;
-@@ -325,7 +340,7 @@ static int filefrag_fibmap(int fd, int blk_shift, int *num_extents,
- 	}
- 
- 	if (force_extent)
--		print_extent_info(&fm_ext, *num_extents - 1,
-+		print_extent_info(&fm_ext, *num_extents - 1, logical,
- 				  last_block * st->st_blksize, blk_shift, st);
- 
- 	return count;
-@@ -339,7 +354,7 @@ static void frag_report(const char *filename)
- 	long		fd;
- 	unsigned long	numblocks;
- 	int		data_blocks_per_cyl = 1;
--	int		num_extents = 1, expected = ~0;
-+	int		num_extents = 1, expected = 0;
- 	int		is_ext2 = 0;
- 	static dev_t	last_device;
- 	unsigned int	flags;
--- 
-1.7.12.rc2.18.g61b472e
-
+Thanks,
+                                                - Zheng
