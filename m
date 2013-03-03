@@ -1,114 +1,163 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 1/2] e4defrag: defrag a file when orig_physical_cnt == donor_physical_cnt
-Date: Mon,  4 Mar 2013 00:26:17 +0800
-Message-ID: <1362327978-30423-2-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH 2/2] filefrag: count a contiguous extent when both logical and physical blocks are contiguous
+Date: Mon,  4 Mar 2013 00:26:18 +0800
+Message-ID: <1362327978-30423-3-git-send-email-wenqing.lz@taobao.com>
 References: <1362327978-30423-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f45.google.com ([209.85.210.45]:40174 "EHLO
-	mail-da0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753589Ab3CCQLU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 3 Mar 2013 11:11:20 -0500
-Received: by mail-da0-f45.google.com with SMTP id v40so2139209dad.18
-        for <linux-ext4@vger.kernel.org>; Sun, 03 Mar 2013 08:11:20 -0800 (PST)
+Received: from mail-pb0-f50.google.com ([209.85.160.50]:61263 "EHLO
+	mail-pb0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753589Ab3CCQLY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 3 Mar 2013 11:11:24 -0500
+Received: by mail-pb0-f50.google.com with SMTP id up1so2615905pbc.37
+        for <linux-ext4@vger.kernel.org>; Sun, 03 Mar 2013 08:11:24 -0800 (PST)
 In-Reply-To: <1362327978-30423-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-When orig_physical_cnt == donor_physical_cnt, we need to defrag a file
-because a file could be written backwards.  So that will make it look
-like a contiguous extent but actually the physical blocks are reversed.
+This commit fixes a bug in filefrag that filefrag miss calculates
+contiguous extent when physical blocks are contiguous but logical blocks
+aren't.  This case can be created by xfstests #218 or the following
+script.
 
-This case can be created artificially just like xfstests #218 does.  The
-following script can create it.
-
-	for I in `seq 9 -1 0`; do
+	for I in `seq 0 2 31`; do
 		dd if=/dev/zero of=$testfile bs=4k count=1 conv=notrunc \
 			seek=$I oflag=sync &>/dev/null
 	done
-	sudo filefrag -v $testfile
-	sudo e4defrag -v $testfile
-	sudo filefrag -v $testfile
 
-Before applied this patch, the result of running script is like:
-
-Filesystem type is: ef53
-File size of /mnt/sda3/testfile is 40960 (10 blocks of 4096 bytes)
- ext:     logical_offset:        physical_offset: length:   expected: flags:
-   0:        0..       0:      34825..     34825:      1:
-   1:        1..       1:      34824..     34824:      1:      34826:
-   2:        2..       2:      34823..     34823:      1:      34825:
-   3:        3..       3:      34822..     34822:      1:      34824:
-   4:        4..       4:      34821..     34821:      1:      34823:
-   5:        5..       5:      34820..     34820:      1:      34822:
-   6:        6..       6:      34819..     34819:      1:      34821:
-   7:        7..       7:      34818..     34818:      1:      34820:
-   8:        8..       8:      34817..     34817:      1:      34819:
-   9:        9..       9:      34816..     34816:      1:      34818: eof
-/mnt/sda3/testfile: 10 extents found
-ext4 defragmentation for /mnt/sda3/testfile
-[1/1]/mnt/sda3/testfile:	100%  extents: 10 -> 10	[ OK ]
- Success:			[1/1]
-Filesystem type is: ef53
-File size of /mnt/sda3/testfile is 40960 (10 blocks of 4096 bytes)
- ext:     logical_offset:        physical_offset: length:   expected: flags:
-   0:        0..       0:      34825..     34825:      1:
-   1:        1..       1:      34824..     34824:      1:      34826:
-   2:        2..       2:      34823..     34823:      1:      34825:
-   3:        3..       3:      34822..     34822:      1:      34824:
-   4:        4..       4:      34821..     34821:      1:      34823:
-   5:        5..       5:      34820..     34820:      1:      34822:
-   6:        6..       6:      34819..     34819:      1:      34821:
-   7:        7..       7:      34818..     34818:      1:      34820:
-   8:        8..       8:      34817..     34817:      1:      34819:
-   9:        9..       9:      34816..     34816:      1:      34818: eof
-/mnt/sda3/testfile: 10 extents found
-
-After applied it, the result of running script looks like:
-Filesystem type is: ef53
-File size of /mnt/sda3/testfile is 40960 (10 blocks of 4096 bytes)
- ext:     logical_offset:        physical_offset: length:   expected: flags:
-   0:        0..       0:      34313..     34313:      1:
-   1:        1..       1:      34312..     34312:      1:      34314:
-   2:        2..       2:      34311..     34311:      1:      34313:
-   3:        3..       3:      34310..     34310:      1:      34312:
-   4:        4..       4:      34309..     34309:      1:      34311:
-   5:        5..       5:      34308..     34308:      1:      34310:
-   6:        6..       6:      34307..     34307:      1:      34309:
-   7:        7..       7:      34306..     34306:      1:      34308:
-   8:        8..       8:      34305..     34305:      1:      34307:
-   9:        9..       9:      34304..     34304:      1:      34306: eof
-/mnt/sda3/testfile: 10 extents found
-ext4 defragmentation for /mnt/sda3/testfile
-[1/1]/mnt/sda3/testfile:	100%  extents: 10 -> 1	[ OK ]
- Success:			[1/1]
-Filesystem type is: ef53
-File size of /mnt/sda3/testfile is 40960 (10 blocks of 4096 bytes)
- ext:     logical_offset:        physical_offset: length:   expected: flags:
-   0:        0..       9:      33794..     33803:     10:             eof
-/mnt/sda3/testfile: 1 extent found
+Meanwhile this commit prints expected logical block.
 
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- misc/e4defrag.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ misc/filefrag.c | 49 ++++++++++++++++++++++++++++++++-----------------
+ 1 file changed, 32 insertions(+), 17 deletions(-)
 
-diff --git a/misc/e4defrag.c b/misc/e4defrag.c
-index 4b31d03..ae4e8d8 100644
---- a/misc/e4defrag.c
-+++ b/misc/e4defrag.c
-@@ -1649,7 +1649,7 @@ check_improvement:
+diff --git a/misc/filefrag.c b/misc/filefrag.c
+index ee03a07..3af938f 100644
+--- a/misc/filefrag.c
++++ b/misc/filefrag.c
+@@ -116,16 +116,17 @@ static int get_bmap(int fd, unsigned long block, unsigned long *phy_blk)
+ 
+ static void print_extent_header(void)
+ {
+-	printf(" ext: %*s %*s length: %*s flags:\n",
++	printf(" ext: %*s %*s length: %*s %*s flags:\n",
+ 	       logical_width * 2 + 3,
+ 	       "logical_offset:",
+ 	       physical_width * 2 + 3, "physical_offset:",
+-	       physical_width + 1,
+-	       "expected:");
++	       physical_width + 1, "log_expected:",
++	       physical_width + 1, "phy_expected:");
+ }
+ 
+ static void print_extent_info(struct fiemap_extent *fm_extent, int cur_ex,
+-			      unsigned long long expected, int blk_shift,
++			      unsigned long long lexpected,
++			      unsigned long long pexpected, int blk_shift,
+ 			      ext2fs_struct_stat *st)
+ {
+ 	unsigned long long physical_blk;
+@@ -133,6 +134,8 @@ static void print_extent_info(struct fiemap_extent *fm_extent, int cur_ex,
+ 	unsigned long long ext_len;
+ 	unsigned long long ext_blks;
+ 	char flags[256] = "";
++	char logex_flags[32] = "";
++	char phyex_flags[32] = "";
+ 
+ 	/* For inline data all offsets should be in bytes, not blocks */
+ 	if (fm_extent->fe_flags & FIEMAP_EXTENT_DATA_INLINE)
+@@ -143,11 +146,20 @@ static void print_extent_info(struct fiemap_extent *fm_extent, int cur_ex,
+ 	logical_blk = fm_extent->fe_logical >> blk_shift;
+ 	physical_blk = fm_extent->fe_physical >> blk_shift;
+ 
+-	if (expected)
+-		sprintf(flags, ext_fmt == hex_fmt ? "%*llx: " : "%*llu: ",
+-			physical_width, expected >> blk_shift);
++	if (lexpected)
++		sprintf(logex_flags, ext_fmt == hex_fmt ? "%*llx: " : "%*llu: ",
++			physical_width, lexpected >> blk_shift);
+ 	else
+-		sprintf(flags, "%.*s  ", physical_width, "                   ");
++		sprintf(logex_flags, "%.*s  ", physical_width, "                   ");
++
++	if (pexpected)
++		sprintf(phyex_flags, ext_fmt == hex_fmt ? "%*llx: " : "%*llu: ",
++			physical_width, pexpected >> blk_shift);
++	else
++		sprintf(phyex_flags, "%.*s  ", physical_width, "                   ");
++
++	strcat(flags, logex_flags);
++	strcat(flags, phyex_flags);
+ 
+ 	if (fm_extent->fe_flags & FIEMAP_EXTENT_UNKNOWN)
+ 		strcat(flags, "unknown,");
+@@ -188,7 +200,7 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents,
+ 	struct fiemap_extent *fm_ext = &fiemap->fm_extents[0];
+ 	int count = (sizeof(buf) - sizeof(*fiemap)) /
+ 			sizeof(struct fiemap_extent);
+-	unsigned long long expected = 0;
++	unsigned long long lexpected = 0, pexpected = 0;
+ 	unsigned long flags = 0;
+ 	unsigned int i;
+ 	static int fiemap_incompat_printed;
+@@ -230,18 +242,21 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents,
+ 
+ 		for (i = 0; i < fiemap->fm_mapped_extents; i++) {
+ 			if (fm_ext[i].fe_logical != 0 &&
+-			    fm_ext[i].fe_physical != expected) {
++			    (fm_ext[i].fe_logical != lexpected ||
++			     fm_ext[i].fe_physical != pexpected)) {
+ 				tot_extents++;
+ 			} else {
+-				expected = 0;
++				lexpected = 0;
++				pexpected = 0;
+ 				if (!tot_extents)
+ 					tot_extents = 1;
+ 			}
+ 			if (verbose)
+-				print_extent_info(&fm_ext[i], n, expected,
+-						  blk_shift, st);
++				print_extent_info(&fm_ext[i], n, lexpected,
++						  pexpected, blk_shift, st);
+ 
+-			expected = fm_ext[i].fe_physical + fm_ext[i].fe_length;
++			lexpected = fm_ext[i].fe_logical + fm_ext[i].fe_length;
++			pexpected = fm_ext[i].fe_physical + fm_ext[i].fe_length;
+ 			if (fm_ext[i].fe_flags & FIEMAP_EXTENT_LAST)
+ 				last = 1;
+ 			n++;
+@@ -308,7 +323,7 @@ static int filefrag_fibmap(int fd, int blk_shift, int *num_extents,
+ 		if (force_extent && last_block != 0 &&
+ 		    (block != last_block + 1 ||
+ 		     fm_ext.fe_logical + fm_ext.fe_length != logical)) {
+-			print_extent_info(&fm_ext, *num_extents - 1,
++			print_extent_info(&fm_ext, *num_extents - 1, logical,
+ 					  (last_block + 1) * st->st_blksize,
+ 					  blk_shift, st);
+ 			fm_ext.fe_logical = logical;
+@@ -325,7 +340,7 @@ static int filefrag_fibmap(int fd, int blk_shift, int *num_extents,
  	}
  
- 	if (file_frags_start <= best ||
--			orig_physical_cnt <= donor_physical_cnt) {
-+			orig_physical_cnt < donor_physical_cnt) {
- 		printf("\033[79;0H\033[K[%u/%u]%s:\t%3d%%",
- 			defraged_file_count, total_count, file, 100);
- 		if (mode_flag & DETAIL)
+ 	if (force_extent)
+-		print_extent_info(&fm_ext, *num_extents - 1,
++		print_extent_info(&fm_ext, *num_extents - 1, logical,
+ 				  last_block * st->st_blksize, blk_shift, st);
+ 
+ 	return count;
+@@ -339,7 +354,7 @@ static void frag_report(const char *filename)
+ 	long		fd;
+ 	unsigned long	numblocks;
+ 	int		data_blocks_per_cyl = 1;
+-	int		num_extents = 1, expected = ~0;
++	int		num_extents = 1, expected = 0;
+ 	int		is_ext2 = 0;
+ 	static dev_t	last_device;
+ 	unsigned int	flags;
 -- 
 1.7.12.rc2.18.g61b472e
 
