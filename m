@@ -1,84 +1,64 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: use percpu counter for extent cache count
-Date: Mon, 04 Mar 2013 10:11:09 -0600
-Message-ID: <5134C79D.6020901@redhat.com>
-References: <20130227185625.GA224@x4> <20130227191923.GA1121@redhat.com> <20130227192907.GB14253@thunk.org> <20130227201217.GD14253@thunk.org> <20130301033005.GA7081@redhat.com> <20130301040039.GA4452@thunk.org> <20130301050029.GB4452@thunk.org> <5130DA71.4040808@redhat.com> <20130301180035.GB17920@thunk.org> <5130ED3A.30003@redhat.com> <20130302152644.GA22941@thunk.org>
+From: Rich Johnston <rjohnston@sgi.com>
+Subject: Re: [PATCH 09/10] xfstest: add defragmentation stress tests for ext4
+Date: Mon, 4 Mar 2013 17:19:56 -0600
+Message-ID: <51352C1C.40409@sgi.com>
+References: <1361356935-29153-1-git-send-email-dmonakhov@openvz.org>
+	<1361356935-29153-10-git-send-email-dmonakhov@openvz.org>
+	<51310046.5090306@sgi.com> <878v66h9ks.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="us-ascii"; Format="flowed"
 Content-Transfer-Encoding: 7bit
-Cc: Dave Jones <davej@redhat.com>,
-	"gnehzuil.liu" <gnehzuil.liu@gmail.com>,
-	Zheng Liu <wenqing.lz@taobao.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34476 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932133Ab3CDQL1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 4 Mar 2013 11:11:27 -0500
-In-Reply-To: <20130302152644.GA22941@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	dchinner@redhat.com, xfs@oss.sgi.com
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <878v66h9ks.fsf@openvz.org>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On 3/2/13 9:26 AM, Theodore Ts'o wrote:
-> On Fri, Mar 01, 2013 at 12:02:34PM -0600, Eric Sandeen wrote:
+On 03/01/2013 07:30 PM, Dmitry Monakhov wrote:
+> On Fri, 1 Mar 2013 13:23:50 -0600, Rich Johnston <rjohnston@sgi.com> wrote:
+>> On 02/20/2013 04:42 AM, Dmitry Monakhov wrote:
+
 >>
->> I was mostly keying off what quota felt was best, I guess.
->> I'm not wedded to either approach, it was just a thought.
->> So you can take it or leave it. :)
-> 
-> I'll take it, but for the record, there's a reason why I label patches
-> with "I haven't tested this yet" disclaimers.
-> 
-> For future reference, calling percpu_counter_init() and
-> percpu_counter_destroy() is not optional --- without them, in your
-> original patch, the kernel will crash them the first time an ext4 file
-> system mount is attempted.
-> 
-> No worries though, no harm done --- but it's better if people don't
-> rely on me to catch bugs before they go into the tree.  :-)
+>> Let me know if you agree with these changes and I will make them at
+>> commit time.
+> Yes, please do.
+>>
+>> Thanks
+>> --Rich
 
-Oh crud, I'm really sorry.  I originally had the patch embedded
-in a reply, and it did say "not tested" and was more of a "what do
-you think about this" - then I elevated it to its own mail in the
-thread and I lost the disclaimer.  Entirely my fault.  :(
+commit a3d92a6cbdf9e98d8e256974b50b025d1d4575ec
+Author: Dmitry Monakhov <dmonakhov@openvz.org>
+Date:   Wed Feb 20 10:42:14 2013 +0000
 
-That's two stupid-patch-demerits for me from Friday.  Only one
-one ext4.  ;)
+     xfstest: add defragmentation stress tests for ext4
 
--Eric
+     Perform various regression tests for ext4defrag subsystem
 
-> 						- Ted
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 373d46c..1ae5860 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -783,6 +783,7 @@ static void ext4_put_super(struct super_block *sb)
->  	percpu_counter_destroy(&sbi->s_freeinodes_counter);
->  	percpu_counter_destroy(&sbi->s_dirs_counter);
->  	percpu_counter_destroy(&sbi->s_dirtyclusters_counter);
-> +	percpu_counter_destroy(&sbi->s_extent_cache_cnt);
->  	brelse(sbi->s_sbh);
->  #ifdef CONFIG_QUOTA
->  	for (i = 0; i < MAXQUOTAS; i++)
-> @@ -3688,6 +3689,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  	if (!err) {
->  		err = percpu_counter_init(&sbi->s_dirtyclusters_counter, 0);
->  	}
-> +	if (!err) {
-> +		err = percpu_counter_init(&sbi->s_extent_cache_cnt, 0);
-> +	}
->  	if (err) {
->  		ext4_msg(sb, KERN_ERR, "insufficient memory");
->  		goto failed_mount3;
-> @@ -3993,6 +3997,7 @@ failed_mount3:
->  	percpu_counter_destroy(&sbi->s_freeinodes_counter);
->  	percpu_counter_destroy(&sbi->s_dirs_counter);
->  	percpu_counter_destroy(&sbi->s_dirtyclusters_counter);
-> +	percpu_counter_destroy(&sbi->s_extent_cache_cnt);
->  	if (sbi->s_mmp_tsk)
->  		kthread_stop(sbi->s_mmp_tsk);
->  failed_mount2:
-> 
+      301'th Test1: Defragment file while other task does direct AIO
+      302'th Test2: Perform defragmentation on file under buffered AIO
+         while third task does direct AIO to donor file
+      303'th Test3: Two defrag tasks use common donor file.
+      304'th Test4: Stress defragmentation. Several threads perform
+         fragmentation at random position use inplace=1 will
+         allocate and free blocks inside defrag event improve
+         load pressure.
 
+     This tests are considered dangerous because 302'th and 303'th are known
+     to trigger OOPS on recent kernels 
+see:https://gist.github.com/dmonakhov/4770
+294
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
