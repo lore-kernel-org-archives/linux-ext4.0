@@ -1,50 +1,33 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 09/10] xfstest: add defragmentation stress tests for ext4
-Date: Mon, 4 Mar 2013 01:23:21 +0800
-Message-ID: <20130303172321.GA5608@gmail.com>
-References: <1361356935-29153-1-git-send-email-dmonakhov@openvz.org>
- <1361356935-29153-10-git-send-email-dmonakhov@openvz.org>
- <20130303164342.GB30459@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/5] ext4: ext4_split_extent shoult take care about
+ extent zeroout v3
+Date: Mon, 4 Mar 2013 00:58:13 -0500
+Message-ID: <20130304055813.GA18360@thunk.org>
+References: <1361808463-25471-1-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Dmitry Monakhov <dmonakhov@openvz.org>, xfs@oss.sgi.com,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	dchinner@redhat.com
+Cc: linux-ext4@vger.kernel.org, jack@suse.cz, wenqing.lz@taobao.com,
+	Zheng Liu <gnehzuil.liu@gmail.com>
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f50.google.com ([209.85.210.50]:56586 "EHLO
-	mail-da0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753761Ab3CCRIQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 3 Mar 2013 12:08:16 -0500
+Received: from li9-11.members.linode.com ([67.18.176.11]:51152 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750990Ab3CDF60 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 4 Mar 2013 00:58:26 -0500
 Content-Disposition: inline
-In-Reply-To: <20130303164342.GB30459@gmail.com>
+In-Reply-To: <1361808463-25471-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 04, 2013 at 12:43:42AM +0800, Zheng Liu wrote:
-> On Wed, Feb 20, 2013 at 02:42:14PM +0400, Dmitry Monakhov wrote:
-> > Perform various regression tests for ext4defrag  subsystem
-> > 
-> >  299'th Test1: Defragment file while other task does direct AIO
-> 
-> Hi Dmitry,
-> 
-> I couldn't run this testcase in my sandbox.  I got the following error
-> message.
-> 
-> FSTYP         -- ext4
-> PLATFORM      -- Linux/x86_64 lz-desktop 3.8.0
-> MKFS_OPTIONS  -- /dev/sda2
-> MOUNT_OPTIONS -- -o acl,user_xattr /dev/sda2 /mnt/sda2
-> 
-> 299      [not run] /usr/local/bin/fio too old
-> Not run: 299
-> Passed all 0 tests
-> 
-> My fio version is fio-2.0.14-23-g9c63.  It seems that there are some
-> errors in fio config file.
+Dmitry,
 
-I just notice Rich's reply.  After adding 'NUM_JOBS=$((4*LOAD_FACTOR))',
-the testcase can run.  Sorry for the noisy.
+Thanks for working on these patches.  They look good!  I've dropped
+them into the ext4 tree in the dev branch, and am starting to run
+tests on them.
 
-Regards,
-                                                - Zheng
+Zheng, since some of your fix up patches look like they touch some of
+the code modified by Dmitry's patches, could you rebase your patch set
+on top of the dev branch (which is what we've pushed to Linus plus
+Dmitry's patches)?   Thanks!!
+
+						- Ted
