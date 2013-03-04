@@ -1,53 +1,84 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 2/5] ext4: disable merging of uninitialized extents
-Date: Mon, 4 Mar 2013 22:26:02 +0800
-Message-ID: <20130304142602.GA13843@gmail.com>
-References: <1361808463-25471-1-git-send-email-dmonakhov@openvz.org>
- <1361808463-25471-2-git-send-email-dmonakhov@openvz.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] ext4: use percpu counter for extent cache count
+Date: Mon, 04 Mar 2013 10:11:09 -0600
+Message-ID: <5134C79D.6020901@redhat.com>
+References: <20130227185625.GA224@x4> <20130227191923.GA1121@redhat.com> <20130227192907.GB14253@thunk.org> <20130227201217.GD14253@thunk.org> <20130301033005.GA7081@redhat.com> <20130301040039.GA4452@thunk.org> <20130301050029.GB4452@thunk.org> <5130DA71.4040808@redhat.com> <20130301180035.GB17920@thunk.org> <5130ED3A.30003@redhat.com> <20130302152644.GA22941@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.cz,
-	wenqing.lz@taobao.com
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Dave Jones <davej@redhat.com>,
+	"gnehzuil.liu" <gnehzuil.liu@gmail.com>,
+	Zheng Liu <wenqing.lz@taobao.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f41.google.com ([209.85.220.41]:55289 "EHLO
-	mail-pa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756683Ab3CDOK4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Mar 2013 09:10:56 -0500
-Received: by mail-pa0-f41.google.com with SMTP id fb11so3205939pad.0
-        for <linux-ext4@vger.kernel.org>; Mon, 04 Mar 2013 06:10:56 -0800 (PST)
-Content-Disposition: inline
-In-Reply-To: <1361808463-25471-2-git-send-email-dmonakhov@openvz.org>
+Received: from mx1.redhat.com ([209.132.183.28]:34476 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932133Ab3CDQL1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 4 Mar 2013 11:11:27 -0500
+In-Reply-To: <20130302152644.GA22941@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 25, 2013 at 08:07:40PM +0400, Dmitry Monakhov wrote:
-> Derived from Jan's patch:http://permalink.gmane.org/gmane.comp.file-systems.ext4/36470
+On 3/2/13 9:26 AM, Theodore Ts'o wrote:
+> On Fri, Mar 01, 2013 at 12:02:34PM -0600, Eric Sandeen wrote:
+>>
+>> I was mostly keying off what quota felt was best, I guess.
+>> I'm not wedded to either approach, it was just a thought.
+>> So you can take it or leave it. :)
 > 
-> Merging of uninitialized extents creates all sorts of interesting race
-> possibilities when writeback / DIO races with fallocate. Thus
-> ext4_convert_unwritten_extents_endio() has to deal with a case where
-> extent to be converted needs to be split out first. That isn't nice
-> for two reasons:
+> I'll take it, but for the record, there's a reason why I label patches
+> with "I haven't tested this yet" disclaimers.
 > 
-> 1) It may need allocation of extent tree block so ENOSPC is possible.
-> 2) It complicates end_io handling code
+> For future reference, calling percpu_counter_init() and
+> percpu_counter_destroy() is not optional --- without them, in your
+> original patch, the kernel will crash them the first time an ext4 file
+> system mount is attempted.
 > 
-> So we disable merging of uninitialized extents which allows us to simplify
-> the code. Extents will get merged after they are converted to initialized
-> ones.
+> No worries though, no harm done --- but it's better if people don't
+> rely on me to catch bugs before they go into the tree.  :-)
+
+Oh crud, I'm really sorry.  I originally had the patch embedded
+in a reply, and it did say "not tested" and was more of a "what do
+you think about this" - then I elevated it to its own mail in the
+thread and I lost the disclaimer.  Entirely my fault.  :(
+
+That's two stupid-patch-demerits for me from Friday.  Only one
+one ext4.  ;)
+
+-Eric
+
+> 						- Ted
 > 
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 373d46c..1ae5860 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -783,6 +783,7 @@ static void ext4_put_super(struct super_block *sb)
+>  	percpu_counter_destroy(&sbi->s_freeinodes_counter);
+>  	percpu_counter_destroy(&sbi->s_dirs_counter);
+>  	percpu_counter_destroy(&sbi->s_dirtyclusters_counter);
+> +	percpu_counter_destroy(&sbi->s_extent_cache_cnt);
+>  	brelse(sbi->s_sbh);
+>  #ifdef CONFIG_QUOTA
+>  	for (i = 0; i < MAXQUOTAS; i++)
+> @@ -3688,6 +3689,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>  	if (!err) {
+>  		err = percpu_counter_init(&sbi->s_dirtyclusters_counter, 0);
+>  	}
+> +	if (!err) {
+> +		err = percpu_counter_init(&sbi->s_extent_cache_cnt, 0);
+> +	}
+>  	if (err) {
+>  		ext4_msg(sb, KERN_ERR, "insufficient memory");
+>  		goto failed_mount3;
+> @@ -3993,6 +3997,7 @@ failed_mount3:
+>  	percpu_counter_destroy(&sbi->s_freeinodes_counter);
+>  	percpu_counter_destroy(&sbi->s_dirs_counter);
+>  	percpu_counter_destroy(&sbi->s_dirtyclusters_counter);
+> +	percpu_counter_destroy(&sbi->s_extent_cache_cnt);
+>  	if (sbi->s_mmp_tsk)
+>  		kthread_stop(sbi->s_mmp_tsk);
+>  failed_mount2:
+> 
 
-After applied this patch, xfstests #275 will print a warning message.
-
-kernel:EXT4-fs (sda2): failed to convert unwritten extents to written
-extents -- potential data loss!  (inode 13, offset 1537212416, size 524288,
-error -28)
-
-But IMHO we don't need to worry about it because it is hard to be
-trigger.  I hit it because I run xfstests #275 several times.  So just a
-note here.
-
-Regards,
-                                                - Zheng
