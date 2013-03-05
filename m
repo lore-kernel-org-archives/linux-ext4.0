@@ -1,46 +1,40 @@
 From: Rich Johnston <rjohnston@sgi.com>
-Subject: Re: [PATCH] xfstests: don't assume that falloc_punch implies falloc
-	in test 255
-Date: Tue, 5 Mar 2013 13:07:56 -0600
-Message-ID: <5136428C.3020604@sgi.com>
-References: <1362506382-26974-1-git-send-email-tytso@mit.edu>
+Subject: Re: [PATCH] xfstests: use native definition of O_DIRECT flag
+Date: Tue, 5 Mar 2013 14:09:22 -0600
+Message-ID: <513650F2.8060406@sgi.com>
+References: <20130226210322.GB5275@wallace>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"; Format="flowed"
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <1362506382-26974-1-git-send-email-tytso@mit.edu>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Cc: <xfs@oss.sgi.com>, <linux-ext4@vger.kernel.org>
+To: Eric Whitney <enwlinux@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from relay3.sgi.com ([192.48.152.1]:56342 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1753309Ab3CEUJe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 5 Mar 2013 15:09:34 -0500
+In-Reply-To: <20130226210322.GB5275@wallace>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 This patch has been committed.
 
 Thanks
 --Rich
 
-commit 864688d368d6781c3f6d60bc55b5e3591953e462
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Tue Mar 5 17:59:42 2013 +0000
+commit 5825ecd3b99ed8c177895d5e6a830133fed384ea
+Author: Eric Whitney <enwlinux@gmail.com>
+Date:   Tue Feb 26 21:03:22 2013 +0000
 
-     xfstests: don't assume that falloc_punch implies falloc in test 255
+     xfstests: use native definition of O_DIRECT flag
 
-     As of Linux 3.9-rc1, ext4 will support the punch operation on file
-     systems using indirect blocks, but it can not support the fallocate
-     operation (since there is no way to mark a block as uninitialized
-     using indirect block scheme).  This caused test 255 to fail, since it
-     only used _require_xfS_io_falloc_punch assuming that all file systems
-     which supported punch can also support fallocate.  Fix this.
+     The definition of O_DIRECT in src/trunc.c causes xfstest 125 to fail
+     when run on a Pandaboard.  On ARM, the value used (0x040000) is
+     O_DIRECTORY rather than O_DIRECT as it is on x86.  Prefer the 
+platform's
+     native definition of O_DIRECT supplied by fcntl.h if available.  Also,
+     fix a couple of error messages to properly reflect their context.
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+     Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+     Reviewed-by: Dave Chinner <dchinner@redhat.com>
+     Signed-off-by: Rich Johnston <rjohnston@sgi.com>
