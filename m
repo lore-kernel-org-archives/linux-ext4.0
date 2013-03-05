@@ -1,39 +1,39 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 42723] EXT4-fs error: ext4_mb_generate_buddy
-Date: Tue,  5 Mar 2013 00:18:41 +0000 (UTC)
-Message-ID: <20130305001841.0E88711FDD3@bugzilla.kernel.org>
-References: <bug-42723-13602@https.bugzilla.kernel.org/>
+From: Phillip Susi <psusi@ubuntu.com>
+Subject: Battery backed ramdisk for fs journal
+Date: Mon, 04 Mar 2013 23:23:46 -0500
+Message-ID: <51357352.70804@ubuntu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:57916 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758900Ab3CEASr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 4 Mar 2013 19:18:47 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 17B182032D
-	for <linux-ext4@vger.kernel.org>; Tue,  5 Mar 2013 00:18:45 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id D183C20335
-	for <linux-ext4@vger.kernel.org>; Tue,  5 Mar 2013 00:18:42 +0000 (UTC)
-In-Reply-To: <bug-42723-13602@https.bugzilla.kernel.org/>
+Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:42026 "EHLO
+	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758759Ab3CEEXs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Mar 2013 23:23:48 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=42723
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
+It seems to me that the ideal device to hold an external journal is a
+battery backed RAM based MTD device.  Does such a beast exist?
 
+As an alternative, has anyone considered or implemented a more
+conventional ramdisk that would be preserved across a kexec crash, in
+conjunction with an oversized UPS and NUT configured to suspend the
+system with plenty of battery power left?
 
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.12 (GNU/Linux)
+Comment: Using GnuPG with undefined - http://www.enigmail.net/
 
-
---- Comment #15 from Birger Harzenetter <wimpy@yeti.dk>  2013-03-05 00:18:40 ---
-I haven't done extensive testing due to other issues, but at lest 3.7.0 and
-3.8.0 seem to be ok.
-
-However immediately thereafter (git linux-stable) I got random contents.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+iQEcBAEBAgAGBQJRNXNSAAoJEJrBOlT6nu75oAAH/1KgYC4jOb78+Oe2DKA5vrAv
+Lnq/x5Y8RhNRKjFsBIGgqfQzWjxFw3emGccTiGysQh8cleBpyMSVGzKU1PDbnIbq
+vm0nxu05uhWsbqAcfVdO/BwuJHbckJ0HKOv+xKXg6YkGtmJm9S3RFX/tSbBquJpx
+DgDtMZLKN2oZCvuhLThYJGcNxlAS1oxfCEGPHaJXiNPfyO2ikU0suyPB9FbC8RNM
+gm/VwwS/FO7561HRUqUIjM46DKcpZnN8b2Hgtd3eCy3R3Vjaf988PWsM6Nz8GR86
+KWXzNAci0LIz/5KaQeDj4unlXJ4jf4rhx3m9WR6vNU4HG3Pd+GuEN3xiNmznfa0=
+=HGFK
+-----END PGP SIGNATURE-----
