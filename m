@@ -1,54 +1,38 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] xfstests: don't assume that falloc_punch implies falloc in
-	test 255
-Date: Tue,  5 Mar 2013 12:59:42 -0500
-Message-ID: <1362506382-26974-1-git-send-email-tytso@mit.edu>
+Subject: Re: Mixup with name_len & file_type in e2fsprogs
+Date: Tue, 5 Mar 2013 13:29:46 -0500
+Message-ID: <20130305182946.GB26122@thunk.org>
+References: <20130305121856.GA11824@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>
-To: xfs@oss.sgi.com
-Return-path: <xfs-bounces@oss.sgi.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:51434 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758236Ab3CESaA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 5 Mar 2013 13:30:00 -0500
+Content-Disposition: inline
+In-Reply-To: <20130305121856.GA11824@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-As of Linux 3.9-rc1, ext4 will support the punch operation on file
-systems using indirect blocks, but it can not support the fallocate
-operation (since there is no way to mark a block as uninitialized
-using indirect block scheme).  This caused test 255 to fail, since it
-only used _require_xfS_io_falloc_punch assuming that all file systems
-which supported punch can also support fallocate.  Fix this.
+On Tue, Mar 05, 2013 at 01:18:56PM +0100, Jan Kara wrote:
+>   Hello,
+> 
+>   I was looking into a bug where application using e2fslib was complaining
+> about file_type > 7. Now the problem is that this is on big endian system
+> and ext2fs_dir_iterate() ends up calling ext2fs_dirent_swab_in() without
+> EXT2_DIRBLOCK_V2_STRUCT flag set so name_len is treated as 2 byte and
+> swapped.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- 255 | 1 +
- 1 file changed, 1 insertion(+)
+Well, the application most be passing a pointer to treating a pointer
+to a struct ext2_dir_entry as a struct dir_entry_2, right?  So it's
+technically doing something wrong it sounds like.
 
-diff --git a/255 b/255
-index 0083963..ae1d8e0 100755
---- a/255
-+++ b/255
-@@ -48,6 +48,7 @@ _supported_fs generic
- _supported_os Linux
- 
- _require_xfs_io_falloc_punch
-+_require_xfs_io_falloc
- _require_xfs_io_fiemap
- 
- testfile=$TEST_DIR/255.$$
--- 
-1.7.12.rc0.22.gcdd159b
+The ext2_dir_entry_2 was probably a mistake, and it's hardly used at
+all in e2fsprogs.  I wonder if we would be better off not trying to
+support it at all, and perhaps adding better accessor functions for
+struct ext2_dir_entry instead.
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+						- Ted
