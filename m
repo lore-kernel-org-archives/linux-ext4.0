@@ -1,40 +1,67 @@
-From: Rich Johnston <rjohnston@sgi.com>
-Subject: Re: [PATCH] xfstests: use native definition of O_DIRECT flag
-Date: Tue, 5 Mar 2013 14:09:22 -0600
-Message-ID: <513650F2.8060406@sgi.com>
-References: <20130226210322.GB5275@wallace>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: <xfs@oss.sgi.com>, <linux-ext4@vger.kernel.org>
-To: Eric Whitney <enwlinux@gmail.com>
+From: Stephen Warren <swarren@wwwdotorg.org>
+Subject: [PATCH] mke2fs: restore verbose message for BLKDISCARD
+Date: Tue,  5 Mar 2013 13:25:18 -0700
+Message-ID: <1362515118-30344-1-git-send-email-swarren@wwwdotorg.org>
+Cc: Chris Ball <cjb@laptop.org>, linux-ext4@vger.kernel.org,
+	Stephen Warren <swarren@nvidia.com>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from relay3.sgi.com ([192.48.152.1]:56342 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753309Ab3CEUJe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 5 Mar 2013 15:09:34 -0500
-In-Reply-To: <20130226210322.GB5275@wallace>
+Received: from avon.wwwdotorg.org ([70.85.31.133]:51551 "EHLO
+	avon.wwwdotorg.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753867Ab3CEUZ2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Mar 2013 15:25:28 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch has been committed.
+From: Stephen Warren <swarren@nvidia.com>
 
-Thanks
---Rich
+mke2fs on a large slow eMMC device may appear to hang while executing
+ioctl(BLKDISCARD). CTRL-C and CTRL-\ don't appear to respond, or respond
+extremely slowly. -v doesn't give any hints what's happening. Only strace
+is a clue. Make -v print some clues to make it easier to track down the
+apparent hang.
 
-commit 5825ecd3b99ed8c177895d5e6a830133fed384ea
-Author: Eric Whitney <enwlinux@gmail.com>
-Date:   Tue Feb 26 21:03:22 2013 +0000
+This change re-uses the original messages that were implemented as part
+of 5827d24 "mke2fs support for BLKDISCARD" in order to easily re-use the
+translations of that message. Note that this patch prints the first
+message before executing the IOCTL, so the user is told what's going on
+before the long wait.
 
-     xfstests: use native definition of O_DIRECT flag
+Signed-off-by: Stephen Warren <swarren@nvidia.com>
+---
+Note: I've left mke2fs running for a while now (tens of minutes on a 16GiB
+eMMC), and this IOCTL still hasn't completed. I'm not sure how long it's
+meant to take. Perhaps the long execution time is actually a kernel bug in
+the MMC core or our SDHCI driver.
+---
+ misc/mke2fs.c |   13 +++++++++++++
+ 1 file changed, 13 insertions(+)
 
-     The definition of O_DIRECT in src/trunc.c causes xfstest 125 to fail
-     when run on a Pandaboard.  On ARM, the value used (0x040000) is
-     O_DIRECTORY rather than O_DIRECT as it is on x86.  Prefer the 
-platform's
-     native definition of O_DIRECT supplied by fcntl.h if available.  Also,
-     fix a couple of error messages to properly reflect their context.
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index bbf477a..defb932 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -2272,7 +2272,20 @@ static int mke2fs_discard_device(ext2_filsys fs)
+ 	 * we do not print numeric progress resulting in failure
+ 	 * afterwards.
+ 	 */
++	if (verbose) {
++		printf(_("Calling BLKDISCARD from %llu to %llu "),
++			(unsigned long long)0,
++			(unsigned long long)fs->blocksize);
++		fflush(stdout);
++	}
+ 	retval = io_channel_discard(fs->io, 0, fs->blocksize);
++	if (verbose) {
++		if (retval)
++			printf(_("failed.\n"));
++		else
++			printf(_("succeeded.\n"));
++	}
++
+ 	if (retval)
+ 		return retval;
+ 	cur = fs->blocksize;
+-- 
+1.7.10.4
 
-     Signed-off-by: Eric Whitney <enwlinux@gmail.com>
-     Reviewed-by: Dave Chinner <dchinner@redhat.com>
-     Signed-off-by: Rich Johnston <rjohnston@sgi.com>
