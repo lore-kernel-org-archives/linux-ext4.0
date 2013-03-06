@@ -1,89 +1,56 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH v2 5/5] ext4: fix wrong the number of the allocted blocks in ext4_split_extent
-Date: Wed,  6 Mar 2013 22:17:15 +0800
-Message-ID: <1362579435-6333-6-git-send-email-wenqing.lz@taobao.com>
-References: <1362579435-6333-1-git-send-email-wenqing.lz@taobao.com>
-Cc: Zheng Liu <wenqing.lz@taobao.com>, "Theodore Ts'o" <tytso@mit.edu>,
-	Dmitry Monakhov <dmonakhov@openvz.org>
-To: linux-ext4@vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] xfstests: don't assume that falloc_punch implies falloc
+ in test 255
+Date: Wed, 06 Mar 2013 10:10:09 -0600
+Message-ID: <51376A61.6060807@redhat.com>
+References: <1362506382-26974-1-git-send-email-tytso@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: xfs@oss.sgi.com, Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f44.google.com ([209.85.160.44]:62033 "EHLO
-	mail-pb0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757212Ab3CFOCg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Mar 2013 09:02:36 -0500
-Received: by mail-pb0-f44.google.com with SMTP id wz12so6041967pbc.31
-        for <linux-ext4@vger.kernel.org>; Wed, 06 Mar 2013 06:02:35 -0800 (PST)
-In-Reply-To: <1362579435-6333-1-git-send-email-wenqing.lz@taobao.com>
+Received: from mx1.redhat.com ([209.132.183.28]:58041 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750716Ab3CFQX5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 6 Mar 2013 11:23:57 -0500
+In-Reply-To: <1362506382-26974-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+On 3/5/13 11:59 AM, Theodore Ts'o wrote:
+> As of Linux 3.9-rc1, ext4 will support the punch operation on file
+> systems using indirect blocks, but it can not support the fallocate
+> operation (since there is no way to mark a block as uninitialized
+> using indirect block scheme).  This caused test 255 to fail, since it
+> only used _require_xfS_io_falloc_punch assuming that all file systems
+> which supported punch can also support fallocate.  Fix this.
 
-This commit fixes a wrong return value of the number of the allocated
-blocks in ext4_split_extent.  When the length of blocks we want to
-allocated is greater than the length of the current extent, we return a
-wrong number.  Let's see what happens in the following case when we call
-ext4_split_extent().
+Seems fine to avoid the incorrect failure, so as far as that goes:
 
-  map: [48, 72]
-  ex:  [32, 64, u]
+Reviewed-by: Eric Sandeen <sandeen@redhat.com>
 
-'ex' will be splitted in to two parts:
-  ex1: [32, 47, u]
-  ex2: [48, 64, w]
+But we probably can & should still test punch in this situation,
+so we need a new test to exercise that I guess.
 
-'map->m_len' is returned from this function, and the value is 24.  But
-the real length is 16.  So it should be fixed.
+-Eric
 
-Meanwhile in this commit we use right length of the allocated blocks
-when get_reserved_cluster_alloc in ext4_ext_handle_uninitialized_extents
-is called.
-
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ext4/extents.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 7e37018..69df02f 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3067,6 +3067,7 @@ static int ext4_split_extent(handle_t *handle,
- 	int err = 0;
- 	int uninitialized;
- 	int split_flag1, flags1;
-+	int allocated = map->m_len;
- 
- 	depth = ext_depth(inode);
- 	ex = path[depth].p_ext;
-@@ -3086,6 +3087,8 @@ static int ext4_split_extent(handle_t *handle,
- 				map->m_lblk + map->m_len, split_flag1, flags1);
- 		if (err)
- 			goto out;
-+	} else {
-+		allocated = ee_len - (map->m_lblk - ee_block);
- 	}
- 	/*
- 	 * Update path is required because previous ext4_split_extent_at() may
-@@ -3115,7 +3118,7 @@ static int ext4_split_extent(handle_t *handle,
- 
- 	ext4_ext_show_leaf(inode, path);
- out:
--	return err ? err : map->m_len;
-+	return err ? err : allocated;
- }
- 
- /*
-@@ -3730,6 +3733,7 @@ out:
- 					allocated - map->m_len);
- 		allocated = map->m_len;
- 	}
-+	map->m_len = allocated;
- 
- 	/*
- 	 * If we have done fallocate with the offset that is already
--- 
-1.7.12.rc2.18.g61b472e
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> ---
+>  255 | 1 +
+>  1 file changed, 1 insertion(+)
+> 
+> diff --git a/255 b/255
+> index 0083963..ae1d8e0 100755
+> --- a/255
+> +++ b/255
+> @@ -48,6 +48,7 @@ _supported_fs generic
+>  _supported_os Linux
+>  
+>  _require_xfs_io_falloc_punch
+> +_require_xfs_io_falloc
+>  _require_xfs_io_fiemap
+>  
+>  testfile=$TEST_DIR/255.$$
+> 
 
