@@ -1,204 +1,89 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH v2 4/5] ext4: update extent status tree after an extent is zeroed out
-Date: Wed,  6 Mar 2013 22:17:14 +0800
-Message-ID: <1362579435-6333-5-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH v2 5/5] ext4: fix wrong the number of the allocted blocks in ext4_split_extent
+Date: Wed,  6 Mar 2013 22:17:15 +0800
+Message-ID: <1362579435-6333-6-git-send-email-wenqing.lz@taobao.com>
 References: <1362579435-6333-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>, "Theodore Ts'o" <tytso@mit.edu>,
 	Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f41.google.com ([209.85.160.41]:56464 "EHLO
-	mail-pb0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756802Ab3CFOCb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Mar 2013 09:02:31 -0500
-Received: by mail-pb0-f41.google.com with SMTP id um15so6070620pbc.0
-        for <linux-ext4@vger.kernel.org>; Wed, 06 Mar 2013 06:02:30 -0800 (PST)
+Received: from mail-pb0-f44.google.com ([209.85.160.44]:62033 "EHLO
+	mail-pb0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757212Ab3CFOCg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Mar 2013 09:02:36 -0500
+Received: by mail-pb0-f44.google.com with SMTP id wz12so6041967pbc.31
+        for <linux-ext4@vger.kernel.org>; Wed, 06 Mar 2013 06:02:35 -0800 (PST)
 In-Reply-To: <1362579435-6333-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-When we try to split an extent, this extent could be zeroed out and mark
-as initialized.  But we don't know this in ext4_map_blocks because it
-only returns a length of allocated extent.  Meanwhile we will mark this
-extent as uninitialized because we only check m_flags.
+This commit fixes a wrong return value of the number of the allocated
+blocks in ext4_split_extent.  When the length of blocks we want to
+allocated is greater than the length of the current extent, we return a
+wrong number.  Let's see what happens in the following case when we call
+ext4_split_extent().
 
-This commit update extent status tree when we try to split an unwritten
-extent.  We don't need to worry about the status of this extent because
-we always mark it as initialized.
+  map: [48, 72]
+  ex:  [32, 64, u]
+
+'ex' will be splitted in to two parts:
+  ex1: [32, 47, u]
+  ex2: [48, 64, w]
+
+'map->m_len' is returned from this function, and the value is 24.  But
+the real length is 16.  So it should be fixed.
+
+Meanwhile in this commit we use right length of the allocated blocks
+when get_reserved_cluster_alloc in ext4_ext_handle_uninitialized_extents
+is called.
 
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 Cc: "Theodore Ts'o" <tytso@mit.edu>
 Cc: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- fs/ext4/extents.c        | 35 +++++++++++++++++++++++++++++++----
- fs/ext4/extents_status.c | 17 +++++++++++++++++
- fs/ext4/extents_status.h |  3 +++
- fs/ext4/inode.c          | 10 ++++++++++
- 4 files changed, 61 insertions(+), 4 deletions(-)
+ fs/ext4/extents.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 110e85a..7e37018 100644
+index 7e37018..69df02f 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -2925,7 +2925,7 @@ static int ext4_split_extent_at(handle_t *handle,
- {
- 	ext4_fsblk_t newblock;
- 	ext4_lblk_t ee_block;
--	struct ext4_extent *ex, newex, orig_ex;
-+	struct ext4_extent *ex, newex, orig_ex, zero_ex;
- 	struct ext4_extent *ex2 = NULL;
- 	unsigned int ee_len, depth;
+@@ -3067,6 +3067,7 @@ static int ext4_split_extent(handle_t *handle,
  	int err = 0;
-@@ -2996,12 +2996,26 @@ static int ext4_split_extent_at(handle_t *handle,
- 	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
- 	if (err == -ENOSPC && (EXT4_EXT_MAY_ZEROOUT & split_flag)) {
- 		if (split_flag & (EXT4_EXT_DATA_VALID1|EXT4_EXT_DATA_VALID2)) {
--			if (split_flag & EXT4_EXT_DATA_VALID1)
-+			if (split_flag & EXT4_EXT_DATA_VALID1) {
- 				err = ext4_ext_zeroout(inode, ex2);
--			else
-+				zero_ex.ee_block = ex2->ee_block;
-+				zero_ex.ee_len = ext4_ext_get_actual_len(ex2);
-+				ext4_ext_store_pblock(&zero_ex,
-+						      ext4_ext_pblock(ex2));
-+			} else {
- 				err = ext4_ext_zeroout(inode, ex);
--		} else
-+				zero_ex.ee_block = ex->ee_block;
-+				zero_ex.ee_len = ext4_ext_get_actual_len(ex);
-+				ext4_ext_store_pblock(&zero_ex,
-+						      ext4_ext_pblock(ex));
-+			}
-+		} else {
- 			err = ext4_ext_zeroout(inode, &orig_ex);
-+			zero_ex.ee_block = orig_ex.ee_block;
-+			zero_ex.ee_len = ext4_ext_get_actual_len(&orig_ex);
-+			ext4_ext_store_pblock(&zero_ex,
-+					      ext4_ext_pblock(&orig_ex));
-+		}
+ 	int uninitialized;
+ 	int split_flag1, flags1;
++	int allocated = map->m_len;
  
- 		if (err)
- 			goto fix_extent_len;
-@@ -3009,6 +3023,12 @@ static int ext4_split_extent_at(handle_t *handle,
- 		ex->ee_len = cpu_to_le16(ee_len);
- 		ext4_ext_try_to_merge(handle, inode, path, ex);
- 		err = ext4_ext_dirty(handle, inode, path + path->p_depth);
-+		if (err)
-+			goto fix_extent_len;
-+
-+		/* update extent status tree */
-+		err = ext4_es_zeroout(inode, &zero_ex);
-+
- 		goto out;
- 	} else if (err)
- 		goto fix_extent_len;
-@@ -3150,6 +3170,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 	ee_block = le32_to_cpu(ex->ee_block);
- 	ee_len = ext4_ext_get_actual_len(ex);
- 	allocated = ee_len - (map->m_lblk - ee_block);
-+	zero_ex.ee_len = 0;
- 
- 	trace_ext4_ext_convert_to_initialized_enter(inode, map, ex);
- 
-@@ -3247,6 +3268,9 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 		err = ext4_ext_zeroout(inode, ex);
+ 	depth = ext_depth(inode);
+ 	ex = path[depth].p_ext;
+@@ -3086,6 +3087,8 @@ static int ext4_split_extent(handle_t *handle,
+ 				map->m_lblk + map->m_len, split_flag1, flags1);
  		if (err)
  			goto out;
-+		zero_ex.ee_block = ex->ee_block;
-+		zero_ex.ee_len = ext4_ext_get_actual_len(ex);
-+		ext4_ext_store_pblock(&zero_ex, ext4_ext_pblock(ex));
- 
- 		err = ext4_ext_get_access(handle, inode, path + depth);
- 		if (err)
-@@ -3305,6 +3329,9 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 		err = allocated;
- 
- out:
-+	/* If we have gotten a failure, don't zero out status tree */
-+	if (!err)
-+		err = ext4_es_zeroout(inode, &zero_ex);
- 	return err ? err : allocated;
- }
- 
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index a434f81..e7bebbc 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -854,6 +854,23 @@ int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
- 	return err;
- }
- 
-+int ext4_es_zeroout(struct inode *inode, struct ext4_extent *ex)
-+{
-+	ext4_lblk_t  ee_block;
-+	ext4_fsblk_t ee_pblock;
-+	unsigned int ee_len;
-+
-+	ee_block  = le32_to_cpu(ex->ee_block);
-+	ee_len    = ext4_ext_get_actual_len(ex);
-+	ee_pblock = ext4_ext_pblock(ex);
-+
-+	if (ee_len == 0)
-+		return 0;
-+
-+	return ext4_es_insert_extent(inode, ee_block, ee_len, ee_pblock,
-+				     EXTENT_STATUS_WRITTEN);
-+}
-+
- static int ext4_es_shrink(struct shrinker *shrink, struct shrink_control *sc)
- {
- 	struct ext4_sb_info *sbi = container_of(shrink,
-diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-index 56140ad..d8e2d4d 100644
---- a/fs/ext4/extents_status.h
-+++ b/fs/ext4/extents_status.h
-@@ -39,6 +39,8 @@
- 				 EXTENT_STATUS_DELAYED | \
- 				 EXTENT_STATUS_HOLE)
- 
-+struct ext4_extent;
-+
- struct extent_status {
- 	struct rb_node rb_node;
- 	ext4_lblk_t es_lblk;	/* first logical block extent covers */
-@@ -64,6 +66,7 @@ extern void ext4_es_find_delayed_extent(struct inode *inode, ext4_lblk_t lblk,
- 					struct extent_status *es);
- extern int ext4_es_lookup_extent(struct inode *inode, ext4_lblk_t lblk,
- 				 struct extent_status *es);
-+extern int ext4_es_zeroout(struct inode *inode, struct ext4_extent *ex);
- 
- static inline int ext4_es_is_written(struct extent_status *es)
- {
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 3186a43..4f1d54a 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -722,6 +722,15 @@ found:
- 		}
- #endif
- 
-+		/*
-+		 * If the extent has been zeroed out, we don't need to update
-+		 * extent status tree.
-+		 */
-+		if ((flags & EXT4_GET_BLOCKS_PRE_IO) &&
-+		    ext4_es_lookup_extent(inode, map->m_lblk, &es)) {
-+			if (ext4_es_is_written(&es))
-+				goto has_zeroout;
-+		}
- 		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
- 				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
- 		if (!(flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) &&
-@@ -734,6 +743,7 @@ found:
- 			retval = ret;
++	} else {
++		allocated = ee_len - (map->m_lblk - ee_block);
  	}
+ 	/*
+ 	 * Update path is required because previous ext4_split_extent_at() may
+@@ -3115,7 +3118,7 @@ static int ext4_split_extent(handle_t *handle,
  
-+has_zeroout:
- 	up_write((&EXT4_I(inode)->i_data_sem));
- 	if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
- 		int ret = check_block_validity(inode, map);
+ 	ext4_ext_show_leaf(inode, path);
+ out:
+-	return err ? err : map->m_len;
++	return err ? err : allocated;
+ }
+ 
+ /*
+@@ -3730,6 +3733,7 @@ out:
+ 					allocated - map->m_len);
+ 		allocated = map->m_len;
+ 	}
++	map->m_len = allocated;
+ 
+ 	/*
+ 	 * If we have done fallocate with the offset that is already
 -- 
 1.7.12.rc2.18.g61b472e
 
