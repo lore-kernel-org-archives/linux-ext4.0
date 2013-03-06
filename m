@@ -1,105 +1,94 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] mke2fs: restore verbose message for BLKDISCARD
-Date: Wed, 6 Mar 2013 08:13:55 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1303060753500.24359@localhost>
-References: <1362515118-30344-1-git-send-email-swarren@wwwdotorg.org>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Chris Ball <cjb@laptop.org>,
-	linux-ext4@vger.kernel.org, Stephen Warren <swarren@nvidia.com>
-To: Stephen Warren <swarren@wwwdotorg.org>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: [PATCH v2 0/5] ext4: try to fix up es regressions
+Date: Wed,  6 Mar 2013 22:17:10 +0800
+Message-ID: <1362579435-6333-1-git-send-email-wenqing.lz@taobao.com>
+Cc: Zheng Liu <wenqing.lz@taobao.com>, "Theodore Ts'o" <tytso@mit.edu>,
+	Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:62657 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753829Ab3CFHOF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 6 Mar 2013 02:14:05 -0500
-In-Reply-To: <1362515118-30344-1-git-send-email-swarren@wwwdotorg.org>
+Received: from mail-pb0-f49.google.com ([209.85.160.49]:49450 "EHLO
+	mail-pb0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756240Ab3CFOCL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Mar 2013 09:02:11 -0500
+Received: by mail-pb0-f49.google.com with SMTP id xa12so6076043pbc.36
+        for <linux-ext4@vger.kernel.org>; Wed, 06 Mar 2013 06:02:10 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 5 Mar 2013, Stephen Warren wrote:
+Hi all,
 
-> Date: Tue,  5 Mar 2013 13:25:18 -0700
-> From: Stephen Warren <swarren@wwwdotorg.org>
-> To: Theodore Ts'o <tytso@mit.edu>
-> Cc: Chris Ball <cjb@laptop.org>, linux-ext4@vger.kernel.org,
->     Stephen Warren <swarren@nvidia.com>
-> Subject: [PATCH] mke2fs: restore verbose message for BLKDISCARD
-> 
-> From: Stephen Warren <swarren@nvidia.com>
-> 
-> mke2fs on a large slow eMMC device may appear to hang while executing
-> ioctl(BLKDISCARD). CTRL-C and CTRL-\ don't appear to respond, or respond
-> extremely slowly. -v doesn't give any hints what's happening. Only strace
-> is a clue. Make -v print some clues to make it easier to track down the
-> apparent hang.
-> 
-> This change re-uses the original messages that were implemented as part
-> of 5827d24 "mke2fs support for BLKDISCARD" in order to easily re-use the
-> translations of that message. Note that this patch prints the first
-> message before executing the IOCTL, so the user is told what's going on
-> before the long wait.
-> 
-> Signed-off-by: Stephen Warren <swarren@nvidia.com>
+The patch series tries to fixup some regressions after applied the extent
+status tree.  These patches have rebased against the latest dev branch of
+ext4 and have been tested by xfstests.
 
-Note that you've added the message only around the first 4k discard
-which is only used to test whether the device actually support the
-discard... which is not very useful and it can not even know whether
-the whole device discard will succeed/fail so it is misleading.
+After rebased the latest dev branch, two patches have been dropped because
+they have been applied into the branch.  A new patch is added, which tries
+to fix up a wrong return value in ext4_split_extent().  Otherwise, there
+are two major changes in this version.  The first one is to improve the
+self-testing-infrastructure according to Dmitry's comment.  The second one
+is to improve the zero out code.
 
-Moreover there actually is a message saying that we're "Discarding
-device blocks" and it even shows the progress. The step in which
-we're doing the discard (and update the progress) is given by
-DISCARD_STEP_MB = 2048MB. And all that in non verbose mode as well.
+After applied this patch series, I havn't seen the warning messages from
+self-testing infrastructure except the following cases.
 
-So what's happening in your case is that your message will not be
-written to the output stream (no newline) for some reason even though
-that we call fflush() after fputs(). I am not sure how to fix it
-though since I always find this stream buffering and fflush quite
-confusing and it never worked properly for me...
+ - xfstests #13 with bigalloc or with no journal
+ - xfstests #223 with dioread_nolock
+The reason is that when we lookup a block mapping from status tree
+i_data_sem locking won't be taken.  So there is a race window that an 
+unwritten extent could be converted by end_io when we compare the result
+between extent tree and status tree.
 
--Lukas
+Dmitry, Ted, could you please confirm that this patch series can fix the
+defrag regression?  Thank you so much.  Until now I run #300 and #301 a
+lot times but I failed to hit this regression. :-(
 
-> ---
-> Note: I've left mke2fs running for a while now (tens of minutes on a 16GiB
-> eMMC), and this IOCTL still hasn't completed. I'm not sure how long it's
-> meant to take. Perhaps the long execution time is actually a kernel bug in
-> the MMC core or our SDHCI driver.
+*Big Note*
+When I am testing this patch series, I found some regressions in dev branch.
+Here is a note.  These regressions could be hitted by running test case
+serveral times.  So If we just run xfstests one time, they could be missed.
 
-As mentioned we're doing 2GB discard steps so the problem really
-should not be on mkfs side. It is very much possible that the
-discard implementation on the eMMC is terribly slow (which does not
-surprise me). What is says about itself ?
+ - xfstests #74 with data=journal
+ - xfstests #83 with bigalloc
+Some threads could be blocked for 120s.
 
-grep . /sys/block/sda/queue/discard_*
+ - xfstests #247 with data=journal
+Some warning messages are printed by ext4_releasepage.  We hit
+WARN_ON(PageChecked(page)) in this function.  But the test case itself can
+pass.
 
-> ---
->  misc/mke2fs.c |   13 +++++++++++++
->  1 file changed, 13 insertions(+)
-> 
-> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> index bbf477a..defb932 100644
-> --- a/misc/mke2fs.c
-> +++ b/misc/mke2fs.c
-> @@ -2272,7 +2272,20 @@ static int mke2fs_discard_device(ext2_filsys fs)
->  	 * we do not print numeric progress resulting in failure
->  	 * afterwards.
->  	 */
-> +	if (verbose) {
-> +		printf(_("Calling BLKDISCARD from %llu to %llu "),
-> +			(unsigned long long)0,
-> +			(unsigned long long)fs->blocksize);
-> +		fflush(stdout);
-> +	}
->  	retval = io_channel_discard(fs->io, 0, fs->blocksize);
-> +	if (verbose) {
-> +		if (retval)
-> +			printf(_("failed.\n"));
-> +		else
-> +			printf(_("succeeded.\n"));
-> +	}
-> +
->  	if (retval)
->  		return retval;
->  	cur = fs->blocksize;
-> 
+ - xfstests #269 with dioread_nolock
+The system will hang
+
+I don't paste full details here to make description clearly.  I will go on
+tracing these problems.  I am happy to provide full details if some one
+want to take a close look at these problems.
+
+v2 <- v1:
+ * Improve self-testing infrastructure
+ * Improve zero out code
+ * Fix a wrong return value in ext4_split_extent
+
+v1: http://permalink.gmane.org/gmane.comp.file-systems.ext4/37338
+
+Thanks,
+						- Zheng
+
+Dmitry Monakhov (1):
+  ext4: add self-testing infrastructure to do a sanity check
+
+Zheng Liu (4):
+  ext4: improve ext4_es_can_be_merged() to avoid a potential overflow
+  ext4: fix wrong m_len value after unwritten extent conversion
+  ext4: update extent status tree after an extent is zeroed out
+  ext4: fix wrong the number of the allocted blocks in
+    ext4_split_extent
+
+ fs/ext4/extents.c        |  45 ++++++++--
+ fs/ext4/extents_status.c | 212 +++++++++++++++++++++++++++++++++++++++++++++--
+ fs/ext4/extents_status.h |   9 ++
+ fs/ext4/inode.c          | 106 ++++++++++++++++++++++++
+ 4 files changed, 362 insertions(+), 10 deletions(-)
+
+-- 
+1.7.12.rc2.18.g61b472e
+
