@@ -1,106 +1,83 @@
-From: Shuge <shuge@allwinnertech.com>
-Subject: [jbd2 or mm BUG]:   crash while flush JBD2's the pages, that owned
- Slab flag.
-Date: Thu, 7 Mar 2013 16:19:16 +0800
-Message-ID: <51384D84.8090803@allwinnertech.com>
+From: Kazuya Mio <k-mio@sx.jp.nec.com>
+Subject: bio splits unnecessarily due to BH_Boundary in ext3 direct I/O
+Date: Thu, 07 Mar 2013 17:36:07 +0900
+Message-ID: <51385177.9030904@sx.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"; format=flowed
-Content-Transfer-Encoding: 8BIT
-To: <linux-fsdevel@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-	<linux-ext4@vger.kernel.org>, <linux-mm@vger.kernel.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: jack@suse.cz, akpm@linux-foundation.org, adilger.kernel@dilger.ca
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from TYO200.gate.nec.co.jp ([210.143.35.50]:42766 "EHLO
+	tyo200.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754380Ab3CGIqh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Mar 2013 03:46:37 -0500
+Received: from tyo201.gate.nec.co.jp ([10.7.69.201])
+	by tyo200.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id r278kZ6c001028
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 7 Mar 2013 17:46:35 +0900 (JST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+I found the performance problem that ext3 direct I/O sends large number of bio
+unnecessarily when buffer_head is set BH_Boundary flag.
 
+When we read/write a file sequentially, we will read/write not only
+the data blocks but also the indirect blocks that may not be physically
+adjacent to the data blocks. So ext3 sets BG_Boundary flag to submit
+the previous I/O before reading/writing an indirect block.
 
-Hi all,
+However, in the case of direct I/O, the size of buffer_head
+could be more than the blocksize. dio_send_cur_page() checks BH_Boundary flag
+and then calls submit_bio() without calling dio_bio_add_page().
+As a result, submit_bio() is called every one page and cause of high CPU usage.
 
-When I debug the file system, I get a problem as follows:
+The following patch fixes this problem only for ext3. At least ext2/3/4
+don't need BH_Boundary flag for direct I/O because submit_bio() will be called
+when the offset of buffer_head is discontinuous about the previous one.
 
-Arch: arm (4 processors)
-Kernel version: 3.3.0
+---
+@@ -926,7 +926,8 @@ int ext3_get_blocks_handle(handle_t *handle, struct inode *inode,
+    set_buffer_new(bh_result);
+ got_it:
+    map_bh(bh_result, inode->i_sb, le32_to_cpu(chain[depth-1].key));
+-   if (count > blocks_to_boundary)
++   /* set bourdary flag for buffered I/O */
++   if (maxblocks == 1 && count > blocks_to_boundary)
+        set_buffer_boundary(bh_result);
+    err = count;
+    /* Clean up and exit */
+---
 
-   The "b_frozen_data" which is defined as a member of "struct
-journal_head" (linux/fs/jbd2/transaction.c Line 785),
-it's memory is allocated by "jbd2_alloc". When the memory size is
-larger than a PAGE SIZE, the memory is got by "
-__get_free_pages", otherwise, is got by "kmem_cache_alloc". The
-memory will be used by the "__blk_queue_bounce"(linux/mm/bounce.c).
+My simple performance test with/without the above patch shows us reducing
+CPU usage.
 
-In this function, the program flow is:
-__blk_queue_bounce() -> flush_dcache_page() -> page_mapping() ->
-VM_BUG_ON(PageSlab(page))
-If the memory is got by "kmem_cache_alloc", it will trigger on a bug.
+-------------------------------------------------
+|        | I/O time(s)| CPU used(%)| mem used(%)|
+-------------------------------------------------
+|default |     41.304 |     74.658 |     21.528 |
+|patched |     40.948 |     58.325 |     21.857 |
+-------------------------------------------------
 
-Kernel panic:
-[   34.683049] ------------[ cut here ]------------
-[   34.687686] kernel BUG at include/linux/mm.h:791!
-[   34.692388] Internal error: Oops - BUG: 0 [#1] PREEMPT SMP
-[   34.697869] Modules linked in: screen_print(O) nand(O)
-[   34.703049] CPU: 1    Tainted: G           O  (3.3.0 #6)
-[   34.708370] PC is at flush_dcache_page+0x34/0xb0
-[   34.712992] LR is at blk_queue_bounce+0x16c/0x300
-[   34.717697] pc : [<c001677c>]    lr : [<c00bf0b0>]    psr: 20000013
-[   34.717703] sp : ee7a7d48  ip : ee7a7d60  fp : ee7a7d5c
-[   34.729176] r10: ee228804  r9 : ee228804  r8 : eea979c8
-[   34.734397] r7 : 00000000  r6 : ee228890  r5 : d5333840  r4 : 00000000
-[   34.740920] r3 : 00000001  r2 : fffffff5  r1 : 00000011  r0 : d5333840
-[   34.747446] Flags: nzCv  IRQs on  FIQs on  Mon  SVC_32  ISA ARM
-Segment kernel
-[   34.754749] Control: 10c53c7d  Table: 6e05806a  DAC: 00000015
-......
-[   35.726529] Backtrace:
-[   35.729000] [<c0016748>] (flush_dcache_page+0x0/0xb0) from
-[<c00bf0b0>] (blk_queue_bounce+0x16c/0x300)
-[   35.738297]  r5:ee7a7dac r4:ee2287c0
-[   35.741905] [<c00bef44>] (blk_queue_bounce+0x0/0x300) from
-[<c01fcc58>] (blk_queue_bio+0x28/0x2c0)
-[   35.750862] [<c01fcc30>] (blk_queue_bio+0x0/0x2c0) from [<c01fb1b8>]
-(generic_make_request+0x94/0xcc)
-[   35.760078] [<c01fb124>] (generic_make_request+0x0/0xcc) from
-[<c01fb2f0>] (submit_bio+0x100/0x124)
-[   35.769114]  r6:00000002 r5:eecb8f08 r4:ee228840
-[   35.773774] [<c01fb1f0>] (submit_bio+0x0/0x124) from [<c00e8e68>]
-(submit_bh+0x130/0x150)
-[   35.781942]  r8:00000009 r7:d60f6c5c r6:00000211 r5:eecb8f08 r4:ee228840
-[   35.788713] [<c00e8d38>] (submit_bh+0x0/0x150) from [<c014b024>]
-(jbd2_journal_commit_transaction+0x7d0/0x11cc)
-[   35.798790]  r6:ef253380 r5:eecb8f08 r4:eeac5800 r3:00000001
-[   35.804505] [<c014a854>] (jbd2_journal_commit_transaction+0x0/0x11cc)
-from [<c014e2a8>] (kjournald2+0xb4/0x248)
-[   35.814591] [<c014e1f4>] (kjournald2+0x0/0x248) from [<c006aa90>]
-(kthread+0x94/0xa0)
-[   35.822422] [<c006a9fc>] (kthread+0x0/0xa0) from [<c005472c>]
-(do_exit+0x0/0x6a4)
-[   35.829897]  r6:c005472c r5:c006a9fc r4:eea9bce0
-[   35.834556] Code: e5904004 e7e033d3 e3530000 0a000000 (e7f001f2)
-[   35.840733] ---[ end trace c2a29bf063d3670f ]---
+environment:
+  kernel: 3.8.0-rc7
+  CPU:    Xeon E3-1220
+  Memory: 8GB
 
-So, I modify the mm/bounce.c. Details are as follows:
+Test detail:
+  (1) create 48KB file
+  (2) write 4096KB with O_DIRECT from the file offset 48KB (write only
+      indirect blocks)
+  (3) loop (2) at 1000 times
 
-diff --git a/mm/bounce.c b/mm/bounce.c
-index 4e9ae72..e3f6b53 100644
---- a/mm/bounce.c
-+++ b/mm/bounce.c
-@@ -214,7 +214,8 @@ static void __blk_queue_bounce(struct request_queue
-*q, struct bio **bio_orig,
-                  if (rw == WRITE) {
-                          char *vto, *vfrom;
+  I/O time means the time between (1) and (3), and CPU/memory usage is
+  monitored by sar command.
 
--                       flush_dcache_page(from->bv_page);
-+                       if (!PageSlab(from->bv_page))
-+ flush_dcache_page(from->bv_page);
-                          vto = page_address(to->bv_page) + to->bv_offset;
-                          vfrom = kmap(from->bv_page) + from->bv_offset;
-                          memcpy(vto, vfrom, to->bv_len);
+When BH_Boundary flag is sets to buffer_head, we should call submit_bio()
+once per the size of buffer_head. But I don't see the impact of
+other filesystems that is used BH_Boundary.
 
-Who can give some suggestions to me.
+Does anyone have any ideas about this problem?
 
-Thanks
-
-Shuge
-
-
-
-NOTICE: This e-mail and any included attachments are intended only for the sole use of named and intended recipient (s) only. If you are the named and intended recipient, please note that the information contained in this email and its embedded files are confidential and privileged. If you are neither the intended nor named recipient, you are hereby notified that any unauthorized review, use, disclosure, dissemination, distribution, or copying of this communication, or any of its contents, is strictly prohibited. Please reply to the sender and destroy the original message and all your records of this message (whether electronic or otherwise). Furthermore, you should not disclose to any other person, use, copy or disseminate the contents of this e-mail and/or the documents accompanying it.
+Regards,
+Kazuya Mio
