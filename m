@@ -1,66 +1,428 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [BUG][dioread_nolock] blocked for more than 120s when we run
- xfstests #269
-Date: Thu, 7 Mar 2013 16:11:40 +0100
-Message-ID: <20130307151140.GF6723@quack.suse.cz>
-References: <20130307124054.GE2800@gmail.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH v2 2/5] ext4: add self-testing infrastructure to do a sanity check
+Date: Thu, 07 Mar 2013 19:41:05 +0400
+Message-ID: <87y5dzgqum.fsf@openvz.org>
+References: <1362579435-6333-1-git-send-email-wenqing.lz@taobao.com> <1362579435-6333-3-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Zheng Liu <gnehzuil.liu@gmail.com>
+Cc: Zheng Liu <wenqing.lz@taobao.com>, Theodore Ts'o <tytso@mit.edu>
+To: Zheng Liu <gnehzuil.liu@gmail.com>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:40636 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754942Ab3CGPLm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 7 Mar 2013 10:11:42 -0500
-Content-Disposition: inline
-In-Reply-To: <20130307124054.GE2800@gmail.com>
+Received: from mail-la0-f51.google.com ([209.85.215.51]:59491 "EHLO
+	mail-la0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752720Ab3CGPlL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Mar 2013 10:41:11 -0500
+Received: by mail-la0-f51.google.com with SMTP id fo13so638407lab.10
+        for <linux-ext4@vger.kernel.org>; Thu, 07 Mar 2013 07:41:09 -0800 (PST)
+In-Reply-To: <1362579435-6333-3-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 07-03-13 20:40:54, Zheng Liu wrote:
-> Hi all,
+On Wed,  6 Mar 2013 22:17:12 +0800, Zheng Liu <gnehzuil.liu@gmail.com> wrote:
+> From: Dmitry Monakhov <dmonakhov@openvz.org>
+Looks good with small comments (see below)
 > 
-> This bug will be triggered when dioread_nolock enables.  In 3.8 kernel,
-> the test will be blocked for more than 120s, and we get the following
-> messages.  *But* in dev branch the system will hang silently without any
-> messages.  I need to run test 7 times to hit it.
+> This commit adds a self-testing infrastructure like extent tree does to
+> do a sanity check for extent status tree.  After status tree is as a
+> extent cache, we'd better to make sure that it caches right result.
 > 
-> wenqing: run xfstest 269
-> kernel: EXT4-fs (sda2): mounted filesystem with ordered data mode. Opts:
-> acl,user_xattr,dioread_nolock
-> kernel: INFO: task umount:3376 blocked for more than 120 seconds.
-> kernel: "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this
-> message.
-> kernel: umount          D 0000000000000001     0  3376   3003 0x00000000
-> kernel: ffff880117417cd8 0000000000000082 ffff880117417bd8 ffff880117416010
-> kernel: ffff880112d12110 0000000000012080 ffff880117417fd8 0000000000004000
-> kernel: ffff880117417fd8 0000000000012080 ffff88011331d950 ffff880112d12110
-> kernel: Call Trace:
-> kernel: [<ffffffff820ba03c>] ? pagevec_lookup+0x22/0x2b
-> kernel: [<ffffffff820bb526>] ? truncate_inode_pages_range+0x273/0x3a2
-> kernel: [<ffffffff8237ef2f>] schedule+0x64/0x66
-> kernel: [<ffffffffa0203d7c>] ext4_ioend_wait+0x87/0x9f [ext4]
-> kernel: [<ffffffff8204f0be>] ? wake_up_bit+0x2a/0x2a
-> kernel: [<ffffffffa0201396>] ext4_evict_inode+0x4a/0x41d [ext4]
-> kernel: [<ffffffff82102c8c>] evict+0xa2/0x15b
-> kernel: [<ffffffff821ba2b8>] ? __list_del_entry+0x51/0x98
-> kernel: [<ffffffff821031b7>] dispose_list+0x3e/0x50
-> kernel: [<ffffffff8210365b>] evict_inodes+0xdb/0xe7
-> kernel: [<ffffffff820ef954>] generic_shutdown_super+0x4c/0xd3
-> kernel: [<ffffffff820efa02>] kill_block_super+0x27/0x69
-> kernel: [<ffffffff820efe56>] deactivate_locked_super+0x26/0x52
-> kernel: [<ffffffff820f0ad2>] deactivate_super+0x45/0x4a
-> kernel: [<ffffffff821074b9>] mntput_no_expire+0x110/0x118
-> kernel: [<ffffffff82108331>] sys_umount+0x306/0x331
-> kernel: [<ffffffff82041bf6>] ? sigprocmask+0x63/0x67
-> kernel: [<ffffffff82386942>] system_call_fastpath+0x16/0x1b
-  I think I see the problem
-  Hum, either we missed a wakeup or ioend gets stuck for some reason and is
-never processed. Can you maybe post sysrq-w output once the kernel gets
-stuck? Thanks.
+> After applied this commit, we will get a lot of messages when we run
+> xfstests as below.
+> 
+> ...
+> kernel: ES len assertation failed for inode: 230 retval 1 != map->m_len
+> 3 in ext4_map_blocks (allocation)
+> ...
+> kernel: ES cache assertation failed for inode: 230 es_cached ex
+> [974/2/4781/20] != found ex [974/1/4781/1000]
+> ...
+> kernel: ES insert assertation failed for inode: 635 ex_status
+> [0/45/21388/w] != es_status [44/1/21432/u]
+> ...
+> 
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+> Cc: "Theodore Ts'o" <tytso@mit.edu>
+> ---
+>  fs/ext4/extents_status.c | 169 +++++++++++++++++++++++++++++++++++++++++++++++
+>  fs/ext4/extents_status.h |   6 ++
+>  fs/ext4/inode.c          |  96 +++++++++++++++++++++++++++
+>  3 files changed, 271 insertions(+)
+> 
+> diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+> index dc4e4c5..a434f81 100644
+> --- a/fs/ext4/extents_status.c
+> +++ b/fs/ext4/extents_status.c
+> @@ -405,6 +405,171 @@ ext4_es_try_to_merge_right(struct inode *inode, struct extent_status *es)
+>  	return es;
+>  }
+>  
+> +#ifdef ES_AGGRESSIVE_TEST
+> +static void ext4_es_insert_extent_ext_check(struct inode *inode,
+> +					    struct extent_status *es)
+> +{
+> +	struct ext4_ext_path *path = NULL;
+> +	struct ext4_extent *ex;
+> +	ext4_lblk_t ee_block;
+> +	ext4_fsblk_t ee_start;
+> +	unsigned short ee_len;
+> +	int depth, ee_status, es_status;
+> +
+> +	path = ext4_ext_find_extent(inode, es->es_lblk, NULL);
+> +	if (IS_ERR(path))
+> +		return;
+> +
+> +	depth = ext_depth(inode);
+> +	ex = path[depth].p_ext;
+> +
+> +	if (ex) {
+> +
+> +		ee_block = le32_to_cpu(ex->ee_block);
+> +		ee_start = ext4_ext_pblock(ex);
+> +		ee_len = ext4_ext_get_actual_len(ex);
+> +
+> +		ee_status = ext4_ext_is_uninitialized(ex) ? 1 : 0;
+> +		es_status = ext4_es_is_unwritten(es) ? 1 : 0;
+> +
+> +		/*
+> +		 * Make sure ex and es are not overlap when we try to insert
+> +		 * a delayed/hole extent.
+> +		 */
+> +		if (!ext4_es_is_written(es) && !ext4_es_is_unwritten(es)) {
+> +			if (in_range(es->es_lblk, ee_block, ee_len)) {
+> +				printk("ES insert assertation failed for inode: %lu "
+> +				       "we can find an extent at block "
+> +				       "[%d/%d/%llu/%c], but we want to add an "
+> +				       "delayed/hole extent [%d/%d/%llu/%llx]\n",
+> +				       inode->i_ino, ee_block, ee_len, ee_start,
+> +				       ee_status ? 'u' : 'w', es->es_lblk, es->es_len,
+> +				       ext4_es_pblock(es), ext4_es_status(es));
+> +			}
+> +			goto out;
+> +		}
+> +
+> +		/*
+> +		 * We don't check ee_block == es->es_lblk, etc. because es
+> +		 * might be a part of whole extent, vice versa.
+> +		 */
+> +		if (es->es_lblk < ee_block ||
+> +		    ext4_es_pblock(es) != ee_start + es->es_lblk - ee_block) {
+> +			printk("ES insert assertation failed for inode: %lu "
+> +			       "ex_status [%d/%d/%llu/%c] != "
+> +			       "es_status [%d/%d/%llu/%c]\n", inode->i_ino,
+> +			       ee_block, ee_len, ee_start, ee_status ? 'u' : 'w',
+> +			       es->es_lblk, es->es_len, ext4_es_pblock(es),
+> +			       es_status ? 'u' : 'w');
+> +			goto out;
+> +		}
+> +
+> +		if (ee_status ^ es_status) {
+> +			printk("ES insert assertation failed for inode: %lu "
+> +			       "ex_status [%d/%d/%llu/%c] != "
+> +			       "es_status [%d/%d/%llu/%c]\n", inode->i_ino,
+> +			       ee_block, ee_len, ee_start, ee_status ? 'u' : 'w',
+> +			       es->es_lblk, es->es_len, ext4_es_pblock(es),
+> +			       es_status ? 'u' : 'w');
+> +		}
+> +	} else {
+> +		/*
+> +		 * We can't find an extent on disk.  So we need to make sure
+> +		 * that we don't want to add an written/unwritten extent.
+> +		 */
+> +		if (!ext4_es_is_delayed(es) && !ext4_es_is_hole(es)) {
+> +			printk("ES insert assertation failed for inode: %lu "
+> +			       "can't find an extent at block %d but we want "
+> +			       "to add an written/unwritten extent "
+> +			       "[%d/%d/%llu/%llx]\n", inode->i_ino,
+> +			       es->es_lblk, es->es_lblk, es->es_len,
+> +			       ext4_es_pblock(es), ext4_es_status(es));
+> +		}
+> +	}
+> +out:
+> +	if (path) {
+> +		ext4_ext_drop_refs(path);
+> +		kfree(path);
+> +	}
+> +}
+> +
+> +static void ext4_es_insert_extent_ind_check(struct inode *inode,
+> +					    struct extent_status *es)
+> +{
+> +	struct ext4_map_blocks map;
+> +	int retval;
+> +
+> +	/*
+> +	 * Here we call ext4_ind_map_blocks to lookup a block mapping because
+> +	 * 'Indirect' structure is defined in indirect.c.  So we couldn't
+> +	 * access direct/indirect tree from outside.  It is too dirty to define
+> +	 * this function in indirect.c file.
+> +	 */
+> +
+> +	map.m_lblk = es->es_lblk;
+> +	map.m_len = es->es_len;
+> +
+> +	retval = ext4_ind_map_blocks(NULL, inode, &map, 0);
+> +	if (retval > 0) {
+> +		if (ext4_es_is_delayed(es) || ext4_es_is_hole(es)) {
+> +			/*
+> +			 * We want to add a delayed/hole extent but this
+> +			 * block has been allocated.
+> +			 */
+> +			printk("ES insert assertation failed for inode: %lu "
+> +			       "We can find blocks but we want to add a "
+> +			       "delayed/hole extent [%d/%d/%llu/%llx]\n",
+> +			       inode->i_ino, es->es_lblk, es->es_len,
+> +			       ext4_es_pblock(es), ext4_es_status(es));
+> +			return;
+> +		} else if (ext4_es_is_written(es)) {
+> +			if (retval != es->es_len) {
+> +				printk("ES insert assertation failed for inode: "
+> +				       "%lu retval %d != es_len %d\n",
+> +				       inode->i_ino, retval, es->es_len);
+> +				return;
+> +			}
+> +			if (map.m_pblk != ext4_es_pblock(es)) {
+> +				printk("ES insert assertation failed for inode: "
+> +				       "%lu m_pblk %llu != es_pblk %llu\n",
+> +				       inode->i_ino, map.m_pblk,
+> +				       ext4_es_pblock(es));
+> +				return;
+> +			}
+> +		} else {
+> +			/*
+> +			 * We don't need to check unwritten extent because
+> +			 * indirect-based file doesn't have it.
+> +			 */
+> +			BUG_ON(1);
+> +		}
+> +	} else if (retval == 0) {
+> +		if (ext4_es_is_written(es)) {
+> +			printk("ES insert assertation failed for inode: %lu "
+> +			       "We can't find the block but we want to add "
+> +			       "an written extent [%d/%d/%llu/%llx]\n",
+> +			       inode->i_ino, es->es_lblk, es->es_len,
+> +			       ext4_es_pblock(es), ext4_es_status(es));
+> +			return;
+> +		}
+> +	}
+> +}
+> +
+> +static inline void ext4_es_insert_extent_check(struct inode *inode,
+> +					       struct extent_status *es)
+> +{
+> +	/*
+> +	 * We don't need to worry about the race condition because
+> +	 * caller takes i_data_sem locking.
+> +	 */
+> +	BUG_ON(!rwsem_is_locked(&EXT4_I(inode)->i_data_sem));
+> +	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+> +		ext4_es_insert_extent_ext_check(inode, es);
+> +	else
+> +		ext4_es_insert_extent_ind_check(inode, es);
+> +}
+> +#endif
+> +
+>  static int __es_insert_extent(struct inode *inode, struct extent_status *newes)
+>  {
+>  	struct ext4_es_tree *tree = &EXT4_I(inode)->i_es_tree;
+> @@ -487,6 +652,10 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+>  	ext4_es_store_status(&newes, status);
+>  	trace_ext4_es_insert_extent(inode, &newes);
+>  
+> +#ifdef ES_AGGRESSIVE_TEST
+> +	ext4_es_insert_extent_check(inode, &newes);
+> +#endif
+We can avoid #ifdef here simply by defining ext4_es_insert_extent_check
+like follows:
+#ifdef ES_AGGRESSIVE_TEST
+void  ext4_es_insert_extent_check(inode, &newes) {
+... our stuff here
+}
+#elseif
+#define ext4_es_insert_extent_check(a, b) do {} while(0)
+#endif
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> +#endif
+> +
+>  	write_lock(&EXT4_I(inode)->i_es_lock);
+>  	err = __es_remove_extent(inode, lblk, end);
+>  	if (err != 0)
+> diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
+> index f190dfe..56140ad 100644
+> --- a/fs/ext4/extents_status.h
+> +++ b/fs/ext4/extents_status.h
+> @@ -21,6 +21,12 @@
+>  #endif
+>  
+>  /*
+> + * With ES_AGGRESSIVE_TEST defined, the result of es caching will be
+> + * checked with old map_block's result.
+> + */
+> +#define ES_AGGRESSIVE_TEST__
+> +
+> +/*
+>   * These flags live in the high bits of extent_status.es_pblk
+>   */
+>  #define EXTENT_STATUS_WRITTEN	(1ULL << 63)
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 95a0c62..3186a43 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -482,6 +482,58 @@ static pgoff_t ext4_num_dirty_pages(struct inode *inode, pgoff_t idx,
+>  	return num;
+>  }
+>  
+> +#ifdef ES_AGGRESSIVE_TEST
+> +static void ext4_map_blocks_es_recheck(handle_t *handle,
+> +				       struct inode *inode,
+> +				       struct ext4_map_blocks *es_map,
+> +				       struct ext4_map_blocks *map,
+> +				       int flags)
+> +{
+> +	int retval;
+> +
+> +	map->m_flags = 0;
+> +	/*
+> +	 * There is a race window that the result is not the same.
+> +	 * e.g. xfstests #223 when dioread_nolock enables.  The reason
+> +	 * is that we lookup a block mapping in extent status tree with
+> +	 * out taking i_data_sem.  So at the time the unwritten extent
+> +	 * could be converted.
+> +	 */
+> +	if (!(flags & EXT4_GET_BLOCKS_NO_LOCK))
+> +		down_read((&EXT4_I(inode)->i_data_sem));
+> +	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
+> +		retval = ext4_ext_map_blocks(handle, inode, map, flags &
+> +					     EXT4_GET_BLOCKS_KEEP_SIZE);
+> +	} else {
+> +		retval = ext4_ind_map_blocks(handle, inode, map, flags &
+> +					     EXT4_GET_BLOCKS_KEEP_SIZE);
+> +	}
+> +	if (!(flags & EXT4_GET_BLOCKS_NO_LOCK))
+> +		up_read((&EXT4_I(inode)->i_data_sem));
+> +	/*
+> +	 * Clear EXT4_MAP_FROM_CLUSTER and EXT4_MAP_BOUNDARY flag
+> +	 * because it shouldn't be marked in es_map->m_flags.
+> +	 */
+> +	map->m_flags &= ~(EXT4_MAP_FROM_CLUSTER | EXT4_MAP_BOUNDARY);
+> +
+> +	/*
+> +	 * We don't check m_len because extent will be collpased in status
+> +	 * tree.  So the m_len might not equal.
+> +	 */
+> +	if (es_map->m_lblk != map->m_lblk ||
+> +	    es_map->m_flags != map->m_flags ||
+> +	    es_map->m_pblk != map->m_pblk) {
+> +		printk("ES cache assertation failed for inode: %lu "
+> +		       "es_cached ex [%d/%d/%llu/%x] != "
+> +		       "found ex [%d/%d/%llu/%x] retval %d flags %x\n",
+> +		       inode->i_ino, es_map->m_lblk, es_map->m_len,
+> +		       es_map->m_pblk, es_map->m_flags, map->m_lblk,
+> +		       map->m_len, map->m_pblk, map->m_flags,
+> +		       retval, flags);
+> +	}
+> +}
+> +#endif /* ES_AGGRESSIVE_TEST */
+> +
+>  /*
+>   * The ext4_map_blocks() function tries to look up the requested blocks,
+>   * and returns if the blocks are already mapped.
+> @@ -509,6 +561,11 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+>  {
+>  	struct extent_status es;
+>  	int retval;
+> +#ifdef ES_AGGRESSIVE_TEST
+> +	struct ext4_map_blocks orig_map;
+> +
+> +	memcpy(&orig_map, map, sizeof(*map));
+> +#endif
+>  
+>  	map->m_flags = 0;
+>  	ext_debug("ext4_map_blocks(): inode %lu, flag %d, max_blocks %u,"
+> @@ -531,6 +588,10 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+>  		} else {
+>  			BUG_ON(1);
+>  		}
+> +#ifdef ES_AGGRESSIVE_TEST
+> +		ext4_map_blocks_es_recheck(handle, inode, map,
+> +					   &orig_map, flags);
+> +#endif
+>  		goto found;
+>  	}
+>  
+> @@ -551,6 +612,15 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+>  		int ret;
+>  		unsigned long long status;
+>  
+> +#ifdef ES_AGGRESSIVE_TEST
+> +		if (retval != map->m_len) {
+> +			printk("ES len assertation failed for inode: %lu "
+> +			       "retval %d != map->m_len %d "
+> +			       "in %s (lookup)\n", inode->i_ino, retval,
+> +			       map->m_len, __func__);
+> +		}
+> +#endif
+It is reasonable to replace this by one-line check
+                BUG_ON(retval != map->m_len)
+> +
+>  		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
+>  				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
+>  		if (!(flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) &&
+> @@ -643,6 +713,15 @@ found:
+>  		int ret;
+>  		unsigned long long status;
+>  
+> +#ifdef ES_AGGRESSIVE_TEST
+> +		if (retval != map->m_len) {
+> +			printk("ES len assertation failed for inode: %lu "
+> +			       "retval %d != map->m_len %d "
+> +			       "in %s (allocation)\n", inode->i_ino, retval,
+> +			       map->m_len, __func__);
+> +		}
+> +#endif
+Also one line check BUG_ON(retval != map->m_len)
+> +
+>  		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
+>  				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
+>  		if (!(flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) &&
+> @@ -1768,6 +1847,11 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+>  	struct extent_status es;
+>  	int retval;
+>  	sector_t invalid_block = ~((sector_t) 0xffff);
+> +#ifdef ES_AGGRESSIVE_TEST
+> +	struct ext4_map_blocks orig_map;
+> +
+> +	memcpy(&orig_map, map, sizeof(*map));
+> +#endif
+>  
+>  	if (invalid_block < ext4_blocks_count(EXT4_SB(inode->i_sb)->s_es))
+>  		invalid_block = ~0;
+> @@ -1809,6 +1893,9 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+>  		else
+>  			BUG_ON(1);
+>  
+> +#ifdef ES_AGGRESSIVE_TEST
+> +		ext4_map_blocks_es_recheck(NULL, inode, map, &orig_map, 0);
+> +#endif
+>  		return retval;
+>  	}
+>  
+> @@ -1873,6 +1960,15 @@ add_delayed:
+>  		int ret;
+>  		unsigned long long status;
+>  
+> +#ifdef ES_AGGRESSIVE_TEST
+> +		if (retval != map->m_len) {
+> +			printk("ES len assertation failed for inode: %lu "
+> +			       "retval %d != map->m_len %d "
+> +			       "in %s (lookup)\n", inode->i_ino, retval,
+> +			       map->m_len, __func__);
+> +		}
+> +#endif
+> +
+>  		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
+>  				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
+>  		ret = ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
+> -- 
+> 1.7.12.rc2.18.g61b472e
+> 
