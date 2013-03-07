@@ -1,60 +1,93 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Mixup with name_len & file_type in e2fsprogs
-Date: Thu, 7 Mar 2013 19:24:44 +0100
-Message-ID: <20130307182444.GA21237@quack.suse.cz>
-References: <20130305121856.GA11824@quack.suse.cz>
- <20130305182946.GB26122@thunk.org>
- <20130305184138.GA19601@quack.suse.cz>
+From: Stephen Warren <swarren@wwwdotorg.org>
+Subject: Re: [PATCH] mke2fs: restore verbose message for BLKDISCARD
+Date: Thu, 07 Mar 2013 12:47:09 -0700
+Message-ID: <5138EEBD.5000705@wwwdotorg.org>
+References: <1362515118-30344-1-git-send-email-swarren@wwwdotorg.org> <alpine.LFD.2.00.1303060753500.24359@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Theodore Ts'o <tytso@mit.edu>, Chris Ball <cjb@laptop.org>,
+	linux-ext4@vger.kernel.org, Stephen Warren <swarren@nvidia.com>
+To: =?windows-1252?Q?Luk=E1=9A_Czerner?= <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:48250 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756243Ab3CGSYs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 7 Mar 2013 13:24:48 -0500
-Content-Disposition: inline
-In-Reply-To: <20130305184138.GA19601@quack.suse.cz>
+Received: from avon.wwwdotorg.org ([70.85.31.133]:48081 "EHLO
+	avon.wwwdotorg.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756453Ab3CGTrN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Mar 2013 14:47:13 -0500
+In-Reply-To: <alpine.LFD.2.00.1303060753500.24359@localhost>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 05-03-13 19:41:38, Jan Kara wrote:
-> On Tue 05-03-13 13:29:46, Ted Tso wrote:
-> > On Tue, Mar 05, 2013 at 01:18:56PM +0100, Jan Kara wrote:
-> > >   Hello,
-> > > 
-> > >   I was looking into a bug where application using e2fslib was complaining
-> > > about file_type > 7. Now the problem is that this is on big endian system
-> > > and ext2fs_dir_iterate() ends up calling ext2fs_dirent_swab_in() without
-> > > EXT2_DIRBLOCK_V2_STRUCT flag set so name_len is treated as 2 byte and
-> > > swapped.
-> > 
-> > Well, the application most be passing a pointer to treating a pointer
-> > to a struct ext2_dir_entry as a struct dir_entry_2, right?  So it's
-> > technically doing something wrong it sounds like.
->   Yes, that is correct. Although it is easy to think along the lines of
-> "I know the dirents are in v2 format but there's no way to iterate over a
-> directory and get v2 dirent so I will just cast the v1 argument." And
-> although that is wrong as you point out I did that myself a few times
-> because I didn't know a better way.
->  
-> > The ext2_dir_entry_2 was probably a mistake, and it's hardly used at
-> > all in e2fsprogs.  I wonder if we would be better off not trying to
-> > support it at all, and perhaps adding better accessor functions for
-> > struct ext2_dir_entry instead.
->   Yeah, that sounds like an easier solution. I'll write a patch for that.
-> Thanks for the idea.
-  I was thinking some more about it. Won't it be cleaner (and not much
-harder) if we always used ext2_dir_entry_2 in e2fsprogs and properly did
-byte swapping of name_len only if FILETYPE feature isn't enabled? I've
-checked and it would mean changing prototypes of like 8 functions in
-ext2fs.h (or better provide new functions with struct ext2_dir_entry_2
-argument) which doesn't seem too bad... This solution seems to be the least
-surprising to the users of libext2fs (esp. if they do some scanning of
-directory blocks themselves or so).
+On 03/06/2013 12:13 AM, Luk=E1=9A Czerner wrote:
+> On Tue, 5 Mar 2013, Stephen Warren wrote:
+>=20
+>> Date: Tue,  5 Mar 2013 13:25:18 -0700
+>> From: Stephen Warren <swarren@wwwdotorg.org>
+>> To: Theodore Ts'o <tytso@mit.edu>
+>> Cc: Chris Ball <cjb@laptop.org>, linux-ext4@vger.kernel.org,
+>>     Stephen Warren <swarren@nvidia.com>
+>> Subject: [PATCH] mke2fs: restore verbose message for BLKDISCARD
+>>
+>> From: Stephen Warren <swarren@nvidia.com>
+>>
+>> mke2fs on a large slow eMMC device may appear to hang while executin=
+g
+>> ioctl(BLKDISCARD). CTRL-C and CTRL-\ don't appear to respond, or res=
+pond
+>> extremely slowly. -v doesn't give any hints what's happening. Only s=
+trace
+>> is a clue. Make -v print some clues to make it easier to track down =
+the
+>> apparent hang.
+>>
+>> This change re-uses the original messages that were implemented as p=
+art
+>> of 5827d24 "mke2fs support for BLKDISCARD" in order to easily re-use=
+ the
+>> translations of that message. Note that this patch prints the first
+>> message before executing the IOCTL, so the user is told what's going=
+ on
+>> before the long wait.
+>>
+>> Signed-off-by: Stephen Warren <swarren@nvidia.com>
+>=20
+> Note that you've added the message only around the first 4k discard
+> which is only used to test whether the device actually support the
+> discard... which is not very useful and it can not even know whether
+> the whole device discard will succeed/fail so it is misleading.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Oops. I certainly should looked at the code better.
+
+> Moreover there actually is a message saying that we're "Discarding
+> device blocks" and it even shows the progress. The step in which
+> we're doing the discard (and update the progress) is given by
+> DISCARD_STEP_MB =3D 2048MB. And all that in non verbose mode as well.
+
+That said, it's that very first call to io_channel_discard() that is
+hanging then; I don't see the existing message at all. With my change, =
+I
+do see the new message that I added. (So, no stdio flushing issue here)=
+=2E
+
+I will go investigate why this API is hanging. Sorry for the noise.
+
+=2E..
+> As mentioned we're doing 2GB discard steps so the problem really
+> should not be on mkfs side. It is very much possible that the
+> discard implementation on the eMMC is terribly slow (which does not
+> surprise me). What is says about itself ?
+>=20
+> grep . /sys/block/sda/queue/discard_*
+
+/sys/block/mmcblk1/queue/discard_granularity
+0
+/sys/block/mmcblk1/queue/discard_max_bytes
+512
+/sys/block/mmcblk1/queue/discard_zeroes_data
+1
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
