@@ -1,105 +1,289 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: Dev branch regressions
-Date: Thu, 7 Mar 2013 19:54:58 +0800
-Message-ID: <20130307115458.GA2800@gmail.com>
-References: <1362579435-6333-1-git-send-email-wenqing.lz@taobao.com>
- <20130306225818.GA13277@thunk.org>
- <alpine.LFD.2.00.1303070746040.24359@localhost>
+Subject: [BUG][Bigalloc] applictions will be blocked for more than 120s when
+ we run xfstests #083
+Date: Thu, 7 Mar 2013 20:11:49 +0800
+Message-ID: <20130307121149.GB2800@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Zheng Liu <wenqing.lz@taobao.com>,
-	Dmitry Monakhov <dmonakhov@openvz.org>
-To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f44.google.com ([209.85.220.44]:33647 "EHLO
-	mail-pa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756737Ab3CGLjs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Mar 2013 06:39:48 -0500
-Received: by mail-pa0-f44.google.com with SMTP id kp1so412937pab.3
-        for <linux-ext4@vger.kernel.org>; Thu, 07 Mar 2013 03:39:48 -0800 (PST)
+Received: from mail-pa0-f54.google.com ([209.85.220.54]:54373 "EHLO
+	mail-pa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750843Ab3CGL4h (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Mar 2013 06:56:37 -0500
+Received: by mail-pa0-f54.google.com with SMTP id fa10so418220pad.27
+        for <linux-ext4@vger.kernel.org>; Thu, 07 Mar 2013 03:56:37 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1303070746040.24359@localhost>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 07, 2013 at 07:47:31AM +0100, Luk=C3=A1=C5=A1 Czerner wrote=
-:
-> On Wed, 6 Mar 2013, Theodore Ts'o wrote:
->=20
-> > Date: Wed, 6 Mar 2013 17:58:18 -0500
-> > From: Theodore Ts'o <tytso@mit.edu>
-> > To: Zheng Liu <gnehzuil.liu@gmail.com>
-> > Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
-> >     Dmitry Monakhov <dmonakhov@openvz.org>
-> > Subject: Dev branch regressions
-> >=20
-> > On Wed, Mar 06, 2013 at 10:17:10PM +0800, Zheng Liu wrote:
-> > >=20
-> > > *Big Note*
-> > > When I am testing this patch series, I found some regressions in =
-dev branch.
-> > > Here is a note.  These regressions could be hitted by running tes=
-t case
-> > > serveral times.  So If we just run xfstests one time, they could =
-be missed.
-> > >=20
-> > >  - xfstests #74 with data=3Djournal
-> > >=20
-> > >  - xfstests #247 with data=3Djournal
-> > > Some warning messages are printed by ext4_releasepage.  We hit
-> > > WARN_ON(PageChecked(page)) in this function.  But the test case i=
-tself can
-> > > pass.
-> > >=20
-> > >  - xfstests #269 with dioread_nolock
-> > > The system will hang
-> >=20
-> > I'm going to guess that you were running this using your SSD test
-> > setup?  I just ran:
-> >=20
-> > kvm-xfstests -c data_journal 74,74,74,74,74,247,247,247,247,247
-> >=20
-> > using my standard hdd setup, and didn't see any failures or warning=
-s.
-> >=20
-> > How frequently are you seeing these failures?  When I have a chance
-> > I'll try running these tests with a tmpfs image and see if I have a=
-ny
-> > better luck reproducing the problem there.
-> >=20
-> > I did manage to get a hang (preceded with a soft lockup for the
-> > dioread_nolock with test 269).
-> >=20
-> > >  - xfstests #83 with bigalloc
-> > > Some threads could be blocked for 120s.
-> >=20
-> > I've seen this test blocked for hours (but without managing to trig=
-ger
-> > the 120s soft lockup warning), but I'm not entirely sure this was a
-> > regression.  I believe I've seen a similar hang with 3.8.0-rc3 if I
-> > recall correctly.  I had been hoping the changes with the extent
-> > status tree would fix it, but apparently no such luck.  :-(
->=20
-> You're right this is not a regression the problem has always been
-> there, however now with some bigalloc fixes it becomes more obvious.
-> I have some patches to address this issue, though it's not ready
-> yet.
+Hi all,
 
-Hi Ted, Lukas,
+This bug has been confirmed by Ted and Lukas.  When we run xfstests #083
+in a ext4 file system with bigalloc feature, it will be blocked for more
+than 120s.  I hit this bug in 3.8 kernel, and I can confirm that it
+doesn't be fixed in dev branch until now.  This bug is very hard to be
+hitted in my sand box.  I need to run the following commands to trigger
+it.
 
-I take a close look at these problems, and I can confirm that they are
-not regression because in 3.8 kernel they have been there.  Honestly
-they are hard to be hitted because I need to run several times to
-trigger them.  IMHO most users don't use this features (data=3Djournal,
-bigalloc, dioread_nolock).  So let us fix them one by one.  I will file
-these bugs in mailing list to let folks know.
+  for i in {0..9}
+  do
+    ./check 083
+  done
+
+My sand box is a Dell Desktop with a Intel(R) Core(TM)2 Duo CPU E8400
+@ 3.00GHz, 4G memory, a 160G HDD and a Intel SSD.  The test runs against
+SSD.
+
+In 3.8 kernel, we will get the follwing messages from dmesg, and will
+be blocked for more than 120s:
+
+Mar  7 15:15:17 lz-desktop wenqing: run xfstest 083 
+Mar  7 15:15:17 lz-desktop kernel: EXT4-fs (sda2): mounted filesystem
+with ordered data mode. Opts: acl,user_xattr
+Mar  7 15:15:18 lz-desktop kernel: EXT4-fs (sda2): delayed block
+allocation failed for inode 32 at logical offset 631 with max blocks 29
+ with error -28 
+Mar  7 15:15:18 lz-desktop kernel: EXT4-fs (sda2): This should not
+happen!! Data will be lost
+Mar  7 15:15:18 lz-desktop kernel:
+Mar  7 15:15:18 lz-desktop kernel: EXT4-fs (sda2): Total free blocks count 288
+Mar  7 15:15:18 lz-desktop kernel: EXT4-fs (sda2): Free/Dirty block details
+Mar  7 15:15:18 lz-desktop kernel: EXT4-fs (sda2): free_blocks=288
+Mar  7 15:15:18 lz-desktop kernel: EXT4-fs (sda2): dirty_blocks=96
+Mar  7 15:15:18 lz-desktop kernel: EXT4-fs (sda2): Block reservation details
+Mar  7 15:15:18 lz-desktop kernel: EXT4-fs (sda2): i_reserved_data_blocks=3
+Mar  7 15:15:18 lz-desktop kernel: EXT4-fs (sda2): i_reserved_meta_blocks=3
+
+These messages *disappears* in dev branch because Lukas's patches.
+
+But we still are blocked for more than 120s as below (after running 9
+times):
+
+wenqing: run xfstest 083
+kernel: EXT4-fs (sda2): mounted filesystem with ordered data mode. Opts: acl,
+user_xattr
+kernel: INFO: task fsstress:9190 blocked for more than 120 seconds.
+kernel: "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+kernel: fsstress        D 0000000000000000     0  9190   9189 0x00000000
+kernel: ffff88010878dd58 0000000000000086 ffff880102928230 ffff88010878c010
+kernel: ffff880110d526f0 0000000000012080 ffff88010878dfd8 0000000000004000
+kernel: ffff88010878dfd8 0000000000012080 ffffffff82613410 ffff880110d526f0
+kernel: Call Trace:
+kernel: [<ffffffff8205c88d>] ? sched_clock_local+0x1c/0x82
+kernel: [<ffffffff8205e797>] ? enqueue_task_fair+0x14a/0x16c
+kernel: [<ffffffff8237ef2f>] schedule+0x64/0x66
+kernel: [<ffffffff8237d4cc>] schedule_timeout+0x2b/0x178
+kernel: [<ffffffff8205c547>] ? ttwu_do_activate.clone.0+0x3f/0x44
+kernel: [<ffffffff8237edbc>] wait_for_common+0xbd/0x112
+kernel: [<ffffffff8205c76a>] ? try_to_wake_up+0x21e/0x21e
+kernel: [<ffffffff82114559>] ? fdatawrite_one_bdev+0x18/0x18
+kernel: [<ffffffff8237eec9>] wait_for_completion+0x1d/0x1f
+kernel: [<ffffffff821105c8>] sync_inodes_sb+0xb3/0x198
+kernel: [<ffffffff82114559>] ? fdatawrite_one_bdev+0x18/0x18
+kernel: [<ffffffff8211456d>] sync_inodes_one_sb+0x14/0x16
+kernel: [<ffffffff820f0f0a>] iterate_supers+0x6d/0xbf
+kernel: [<ffffffff821145a4>] sys_sync+0x35/0x83
+kernel: [<ffffffff82386942>] system_call_fastpath+0x16/0x1b
+kernel: INFO: task fsstress:9191 blocked for more than 120 seconds.
+kernel: "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+kernel: fsstress        D 0000000000000001     0  9191   9189 0x00000000
+kernel: ffff880102db3d58 0000000000000086 ffff88011238ad18 ffff880102db2010
+kernel: ffff880112d3a6f0 0000000000012080 ffff880102db3fd8 0000000000004000
+kernel: ffff880102db3fd8 0000000000012080 ffff880112c84670 ffff880112d3a6f0
+kernel: Call Trace:
+kernel: [<ffffffff8205c88d>] ? sched_clock_local+0x1c/0x82
+kernel: [<ffffffff8205da55>] ? check_preempt_wakeup+0x11a/0x1b6
+kernel: [<ffffffff8237ef2f>] schedule+0x64/0x66
+kernel: [<ffffffff8237d4cc>] schedule_timeout+0x2b/0x178
+kernel: [<ffffffff8205c547>] ? ttwu_do_activate.clone.0+0x3f/0x44
+kernel: [<ffffffff8237edbc>] wait_for_common+0xbd/0x112
+kernel: [<ffffffff8205c76a>] ? try_to_wake_up+0x21e/0x21e
+kernel: [<ffffffff82114559>] ? fdatawrite_one_bdev+0x18/0x18
+kernel: [<ffffffff8237eec9>] wait_for_completion+0x1d/0x1f
+kernel: [<ffffffff821105c8>] sync_inodes_sb+0xb3/0x198
+kernel: [<ffffffff82114559>] ? fdatawrite_one_bdev+0x18/0x18
+kernel: [<ffffffff8211456d>] sync_inodes_one_sb+0x14/0x16
+kernel: [<ffffffff820f0f0a>] iterate_supers+0x6d/0xbf
+kernel: [<ffffffff821145a4>] sys_sync+0x35/0x83
+kernel: [<ffffffff82386942>] system_call_fastpath+0x16/0x1b
+kernel: INFO: task fsstress:9192 blocked for more than 120 seconds.
+kernel: "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+kernel: fsstress        D 0000000000000000     0  9192   9189 0x00000000
+kernel: ffff880112317d58 0000000000000086 0000000000000000 ffff880112316010
+kernel: ffff880112c1b950 0000000000012080 ffff880112317fd8 0000000000004000
+kernel: ffff880112317fd8 0000000000012080 ffff880112c5ad50 ffff880112c1b950
+kernel: Call Trace:
+kernel: [<ffffffff820b02c3>] ? find_get_pages_tag+0xfb/0x130
+kernel: [<ffffffff8237ebe7>] ? __schedule+0x740/0x7d2
+kernel: [<ffffffff8237ef2f>] schedule+0x64/0x66
+kernel: [<ffffffff8237d4cc>] schedule_timeout+0x2b/0x178
+kernel: [<ffffffff8237edbc>] wait_for_common+0xbd/0x112
+kernel: [<ffffffff8205c76a>] ? try_to_wake_up+0x21e/0x21e
+kernel: [<ffffffff82114559>] ? fdatawrite_one_bdev+0x18/0x18
+kernel: [<ffffffff8237eec9>] wait_for_completion+0x1d/0x1f
+kernel: [<ffffffff821105c8>] sync_inodes_sb+0xb3/0x198
+kernel: [<ffffffff82114559>] ? fdatawrite_one_bdev+0x18/0x18
+kernel: [<ffffffff8211456d>] sync_inodes_one_sb+0x14/0x16
+kernel: [<ffffffff820f0f0a>] iterate_supers+0x6d/0xbf
+kernel: [<ffffffff821145a4>] sys_sync+0x35/0x83
+kernel: [<ffffffff82386942>] system_call_fastpath+0x16/0x1b
+kernel: INFO: task fsstress:9193 blocked for more than 120 seconds.
+kernel: "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+kernel: fsstress        D 0000000000000000     0  9193   9189 0x00000000
+kernel: ffff8801122f7d58 0000000000000082 ffffffffa01f5eea ffff8801122f6010
+kernel: ffff8801128492b0 0000000000012080 ffff8801122f7fd8 0000000000004000
+kernel: ffff8801122f7fd8 0000000000012080 ffffffff82613410 ffff8801128492b0
+kernel: Call Trace:
+kernel: [<ffffffffa01f5eea>] ? ext4_release_file+0xb2/0xb2 [ext4]
+kernel: [<ffffffff821074eb>] ? mntput+0x2a/0x2c
+kernel: [<ffffffff8205c88d>] ? sched_clock_local+0x1c/0x82
+kernel: [<ffffffff8205e797>] ? enqueue_task_fair+0x14a/0x16c
+kernel: [<ffffffff8237ef2f>] schedule+0x64/0x66
+kernel: [<ffffffff8237d4cc>] schedule_timeout+0x2b/0x178
+kernel: [<ffffffff8205c547>] ? ttwu_do_activate.clone.0+0x3f/0x44
+kernel: [<ffffffff8237edbc>] wait_for_common+0xbd/0x112
+kernel: [<ffffffff8205c76a>] ? try_to_wake_up+0x21e/0x21e
+kernel: [<ffffffff82114559>] ? fdatawrite_one_bdev+0x18/0x18
+kernel: [<ffffffff8237eec9>] wait_for_completion+0x1d/0x1f
+kernel: [<ffffffff821105c8>] sync_inodes_sb+0xb3/0x198
+kernel: [<ffffffff82114559>] ? fdatawrite_one_bdev+0x18/0x18
+kernel: [<ffffffff8211456d>] sync_inodes_one_sb+0x14/0x16
+kernel: [<ffffffff820f0f0a>] iterate_supers+0x6d/0xbf
+kernel: [<ffffffff821145a4>] sys_sync+0x35/0x83
+kernel: [<ffffffff82386942>] system_call_fastpath+0x16/0x1b
+kernel: INFO: task fsstress:9194 blocked for more than 120 seconds.
+kernel: "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+kernel: fsstress        D 0000000000000000     0  9194   9189 0x00000000
+kernel: ffff88010371bd58 0000000000000086 ffff88011238ad18 ffff88010371a010
+kernel: ffff880112c5ad50 0000000000012080 ffff88010371bfd8 0000000000004000
+kernel: ffff88010371bfd8 0000000000012080 ffffffff82613410 ffff880112c5ad50
+kernel: Call Trace:
+kernel: [<ffffffff8205c88d>] ? sched_clock_local+0x1c/0x82
+kernel: [<ffffffff8205e797>] ? enqueue_task_fair+0x14a/0x16c
+kernel: [<ffffffff8237ef2f>] schedule+0x64/0x66
+kernel: [<ffffffff8237d4cc>] schedule_timeout+0x2b/0x178
+kernel: [<ffffffff8205c547>] ? ttwu_do_activate.clone.0+0x3f/0x44
+kernel: [<ffffffff8237edbc>] wait_for_common+0xbd/0x112
+kernel: [<ffffffff8205c76a>] ? try_to_wake_up+0x21e/0x21e
+kernel: [<ffffffff82114559>] ? fdatawrite_one_bdev+0x18/0x18
+kernel: [<ffffffff8237eec9>] wait_for_completion+0x1d/0x1f
+kernel: [<ffffffff821105c8>] sync_inodes_sb+0xb3/0x198
+kernel: [<ffffffff82114559>] ? fdatawrite_one_bdev+0x18/0x18
+kernel: [<ffffffff8211456d>] sync_inodes_one_sb+0x14/0x16
+kernel: [<ffffffff820f0f0a>] iterate_supers+0x6d/0xbf
+kernel: [<ffffffff821145a4>] sys_sync+0x35/0x83
+kernel: [<ffffffff82386942>] system_call_fastpath+0x16/0x1b
+kernel: INFO: task fsstress:9195 blocked for more than 120 seconds.
+kernel: "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+kernel: fsstress        D 0000000000000001     0  9195   9189 0x00000000
+kernel: ffff8801036f3d58 0000000000000086 ffff88011238ad18 ffff8801036f2010
+kernel: ffff880112c912f0 0000000000012080 ffff8801036f3fd8 0000000000004000
+kernel: ffff8801036f3fd8 0000000000012080 ffff88011331d950 ffff880112c912f0
+kernel: Call Trace:
+kernel: [<ffffffff8201e533>] ? native_smp_send_reschedule+0x5c/0x5e
+kernel: [<ffffffff82055b9e>] ? resched_task+0x61/0x63
+kernel: [<ffffffff8205da8f>] ? check_preempt_wakeup+0x154/0x1b6
+kernel: [<ffffffff8237ef2f>] schedule+0x64/0x66
+kernel: [<ffffffff8237d4cc>] schedule_timeout+0x2b/0x178
+kernel: [<ffffffff8205c547>] ? ttwu_do_activate.clone.0+0x3f/0x44
+kernel: [<ffffffff8237edbc>] wait_for_common+0xbd/0x112
+kernel: [<ffffffff8205c76a>] ? try_to_wake_up+0x21e/0x21e
+kernel: [<ffffffff82114559>] ? fdatawrite_one_bdev+0x18/0x18
+kernel: [<ffffffff8237eec9>] wait_for_completion+0x1d/0x1f
+kernel: [<ffffffff821105c8>] sync_inodes_sb+0xb3/0x198
+kernel: [<ffffffff82114559>] ? fdatawrite_one_bdev+0x18/0x18
+kernel: [<ffffffff8211456d>] sync_inodes_one_sb+0x14/0x16
+kernel: [<ffffffff820f0f0a>] iterate_supers+0x6d/0xbf
+kernel: [<ffffffff821145a4>] sys_sync+0x35/0x83
+kernel: [<ffffffff82386942>] system_call_fastpath+0x16/0x1b
+kernel: INFO: task fsstress:9196 blocked for more than 120 seconds.
+kernel: "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+kernel: fsstress        D 0000000000000000     0  9196   9189 0x00000000
+kernel: ffff8801081d9d58 0000000000000082 ffff88011238ad18 ffff8801081d8010
+kernel: ffff88011238a6b0 0000000000012080 ffff8801081d9fd8 0000000000004000
+kernel: ffff8801081d9fd8 0000000000012080 ffff880112d0a0d0 ffff88011238a6b0
+kernel: Call Trace:
+kernel: [<ffffffff8205c88d>] ? sched_clock_local+0x1c/0x82
+kernel: [<ffffffff8205da55>] ? check_preempt_wakeup+0x11a/0x1b6
+kernel: [<ffffffff8237ef2f>] schedule+0x64/0x66
+kernel: [<ffffffff8237d4cc>] schedule_timeout+0x2b/0x178
+kernel: [<ffffffff8205c547>] ? ttwu_do_activate.clone.0+0x3f/0x44
+kernel: [<ffffffff8237edbc>] wait_for_common+0xbd/0x112
+kernel: [<ffffffff8205c76a>] ? try_to_wake_up+0x21e/0x21e
+kernel: [<ffffffff82114559>] ? fdatawrite_one_bdev+0x18/0x18
+kernel: [<ffffffff8237eec9>] wait_for_completion+0x1d/0x1f
+kernel: [<ffffffff821105c8>] sync_inodes_sb+0xb3/0x198
+kernel: [<ffffffff82114559>] ? fdatawrite_one_bdev+0x18/0x18
+kernel: [<ffffffff8211456d>] sync_inodes_one_sb+0x14/0x16
+kernel: [<ffffffff820f0f0a>] iterate_supers+0x6d/0xbf
+kernel: [<ffffffff821145a4>] sys_sync+0x35/0x83
+kernel: [<ffffffff82386942>] system_call_fastpath+0x16/0x1b
+kernel: INFO: task fsstress:9197 blocked for more than 120 seconds.
+kernel: "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+kernel: fsstress        D 0000000000000001     0  9197   9189 0x00000000
+kernel: ffff88011087bd58 0000000000000086 ffff8801110c0800 ffff88011087a010
+kernel: ffff880112c84670 0000000000012080 ffff88011087bfd8 0000000000004000
+kernel: ffff88011087bfd8 0000000000012080 ffff880112cd4c90 ffff880112c84670
+kernel: Call Trace:
+kernel: [<ffffffff8205c88d>] ? sched_clock_local+0x1c/0x82
+kernel: [<ffffffff8205e797>] ? enqueue_task_fair+0x14a/0x16c
+kernel: [<ffffffff8237ef2f>] schedule+0x64/0x66
+kernel: [<ffffffff8237d4cc>] schedule_timeout+0x2b/0x178
+kernel: [<ffffffff8205c547>] ? ttwu_do_activate.clone.0+0x3f/0x44
+kernel: [<ffffffff8237edbc>] wait_for_common+0xbd/0x112
+kernel: [<ffffffff8205c76a>] ? try_to_wake_up+0x21e/0x21e
+kernel: [<ffffffff82114559>] ? fdatawrite_one_bdev+0x18/0x18
+kernel: [<ffffffff8237eec9>] wait_for_completion+0x1d/0x1f
+kernel: [<ffffffff821105c8>] sync_inodes_sb+0xb3/0x198
+kernel: [<ffffffff82114559>] ? fdatawrite_one_bdev+0x18/0x18
+kernel: [<ffffffff8211456d>] sync_inodes_one_sb+0x14/0x16
+kernel: [<ffffffff820f0f0a>] iterate_supers+0x6d/0xbf
+kernel: [<ffffffff821145a4>] sys_sync+0x35/0x83
+kernel: [<ffffffff82386942>] system_call_fastpath+0x16/0x1b
+kernel: INFO: task fsstress:9198 blocked for more than 120 seconds.
+kernel: "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+kernel: fsstress        D 0000000000000000     0  9198   9189 0x00000000
+kernel: ffff880110993d58 0000000000000082 ffff88011238ad18 ffff880110992010
+kernel: ffff880112c1a0d0 0000000000012080 ffff880110993fd8 0000000000004000
+kernel: ffff880110993fd8 0000000000012080 ffff88011238a6b0 ffff880112c1a0d0
+kernel: Call Trace:
+kernel: [<ffffffff820b02c3>] ? find_get_pages_tag+0xfb/0x130
+kernel: [<ffffffff8205da8f>] ? check_preempt_wakeup+0x154/0x1b6
+kernel: [<ffffffff8237ef2f>] schedule+0x64/0x66
+kernel: [<ffffffff8237d4cc>] schedule_timeout+0x2b/0x178
+kernel: [<ffffffff8237edbc>] wait_for_common+0xbd/0x112
+kernel: [<ffffffff8205c76a>] ? try_to_wake_up+0x21e/0x21e
+kernel: [<ffffffff82114559>] ? fdatawrite_one_bdev+0x18/0x18
+kernel: [<ffffffff8237eec9>] wait_for_completion+0x1d/0x1f
+kernel: [<ffffffff821105c8>] sync_inodes_sb+0xb3/0x198
+kernel: [<ffffffff82114559>] ? fdatawrite_one_bdev+0x18/0x18
+kernel: [<ffffffff8211456d>] sync_inodes_one_sb+0x14/0x16
+kernel: [<ffffffff820f0f0a>] iterate_supers+0x6d/0xbf
+kernel: [<ffffffff821145a4>] sys_sync+0x35/0x83
+kernel: [<ffffffff82386942>] system_call_fastpath+0x16/0x1b
+kernel: INFO: task fsstress:9199 blocked for more than 120 seconds.
+kernel: "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+kernel: fsstress        D 0000000000000001     0  9199   9189 0x00000000
+kernel: ffff88010365dd58 0000000000000082 ffff880101128170 ffff88010365c010
+kernel: ffff880112cec0d0 0000000000012080 ffff88010365dfd8 0000000000004000
+kernel: ffff88010365dfd8 0000000000012080 ffff88011331d950 ffff880112cec0d0
+kernel: Call Trace:
+kernel: [<ffffffff8205c88d>] ? sched_clock_local+0x1c/0x82
+kernel: [<ffffffff8205e797>] ? enqueue_task_fair+0x14a/0x16c
+kernel: [<ffffffff8237ef2f>] schedule+0x64/0x66
+kernel: [<ffffffff8237d4cc>] schedule_timeout+0x2b/0x178
+kernel: [<ffffffff8205c547>] ? ttwu_do_activate.clone.0+0x3f/0x44
+kernel: [<ffffffff8237edbc>] wait_for_common+0xbd/0x112
+kernel: [<ffffffff8205c76a>] ? try_to_wake_up+0x21e/0x21e
+kernel: [<ffffffff82114559>] ? fdatawrite_one_bdev+0x18/0x18
+kernel: [<ffffffff8237eec9>] wait_for_completion+0x1d/0x1f
+kernel: [<ffffffff821105c8>] sync_inodes_sb+0xb3/0x198
+kernel: [<ffffffff82114559>] ? fdatawrite_one_bdev+0x18/0x18
+kernel: [<ffffffff8211456d>] sync_inodes_one_sb+0x14/0x16
+kernel: [<ffffffff820f0f0a>] iterate_supers+0x6d/0xbf
+kernel: [<ffffffff821145a4>] sys_sync+0x35/0x83
+kernel: [<ffffffff82386942>] system_call_fastpath+0x16/0x1b
 
 Regards,
                                                 - Zheng
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
