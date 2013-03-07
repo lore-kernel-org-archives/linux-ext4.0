@@ -1,128 +1,105 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: bio splits unnecessarily due to BH_Boundary in ext3 direct I/O
-Date: Thu, 7 Mar 2013 11:48:54 +0100
-Message-ID: <20130307104854.GB6723@quack.suse.cz>
-References: <51385177.9030904@sx.jp.nec.com>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: Dev branch regressions
+Date: Thu, 7 Mar 2013 19:54:58 +0800
+Message-ID: <20130307115458.GA2800@gmail.com>
+References: <1362579435-6333-1-git-send-email-wenqing.lz@taobao.com>
+ <20130306225818.GA13277@thunk.org>
+ <alpine.LFD.2.00.1303070746040.24359@localhost>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="mYCpIKhGyMATD0i+"
-Cc: jack@suse.cz, akpm@linux-foundation.org, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org
-To: Kazuya Mio <k-mio@sx.jp.nec.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	Zheng Liu <wenqing.lz@taobao.com>,
+	Dmitry Monakhov <dmonakhov@openvz.org>
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:55221 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756083Ab3CGKs5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 7 Mar 2013 05:48:57 -0500
+Received: from mail-pa0-f44.google.com ([209.85.220.44]:33647 "EHLO
+	mail-pa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756737Ab3CGLjs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Mar 2013 06:39:48 -0500
+Received: by mail-pa0-f44.google.com with SMTP id kp1so412937pab.3
+        for <linux-ext4@vger.kernel.org>; Thu, 07 Mar 2013 03:39:48 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <51385177.9030904@sx.jp.nec.com>
+In-Reply-To: <alpine.LFD.2.00.1303070746040.24359@localhost>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Thu, Mar 07, 2013 at 07:47:31AM +0100, Luk=C3=A1=C5=A1 Czerner wrote=
+:
+> On Wed, 6 Mar 2013, Theodore Ts'o wrote:
+>=20
+> > Date: Wed, 6 Mar 2013 17:58:18 -0500
+> > From: Theodore Ts'o <tytso@mit.edu>
+> > To: Zheng Liu <gnehzuil.liu@gmail.com>
+> > Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
+> >     Dmitry Monakhov <dmonakhov@openvz.org>
+> > Subject: Dev branch regressions
+> >=20
+> > On Wed, Mar 06, 2013 at 10:17:10PM +0800, Zheng Liu wrote:
+> > >=20
+> > > *Big Note*
+> > > When I am testing this patch series, I found some regressions in =
+dev branch.
+> > > Here is a note.  These regressions could be hitted by running tes=
+t case
+> > > serveral times.  So If we just run xfstests one time, they could =
+be missed.
+> > >=20
+> > >  - xfstests #74 with data=3Djournal
+> > >=20
+> > >  - xfstests #247 with data=3Djournal
+> > > Some warning messages are printed by ext4_releasepage.  We hit
+> > > WARN_ON(PageChecked(page)) in this function.  But the test case i=
+tself can
+> > > pass.
+> > >=20
+> > >  - xfstests #269 with dioread_nolock
+> > > The system will hang
+> >=20
+> > I'm going to guess that you were running this using your SSD test
+> > setup?  I just ran:
+> >=20
+> > kvm-xfstests -c data_journal 74,74,74,74,74,247,247,247,247,247
+> >=20
+> > using my standard hdd setup, and didn't see any failures or warning=
+s.
+> >=20
+> > How frequently are you seeing these failures?  When I have a chance
+> > I'll try running these tests with a tmpfs image and see if I have a=
+ny
+> > better luck reproducing the problem there.
+> >=20
+> > I did manage to get a hang (preceded with a soft lockup for the
+> > dioread_nolock with test 269).
+> >=20
+> > >  - xfstests #83 with bigalloc
+> > > Some threads could be blocked for 120s.
+> >=20
+> > I've seen this test blocked for hours (but without managing to trig=
+ger
+> > the 120s soft lockup warning), but I'm not entirely sure this was a
+> > regression.  I believe I've seen a similar hang with 3.8.0-rc3 if I
+> > recall correctly.  I had been hoping the changes with the extent
+> > status tree would fix it, but apparently no such luck.  :-(
+>=20
+> You're right this is not a regression the problem has always been
+> there, however now with some bigalloc fixes it becomes more obvious.
+> I have some patches to address this issue, though it's not ready
+> yet.
 
---mYCpIKhGyMATD0i+
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+Hi Ted, Lukas,
 
-  Hello,
+I take a close look at these problems, and I can confirm that they are
+not regression because in 3.8 kernel they have been there.  Honestly
+they are hard to be hitted because I need to run several times to
+trigger them.  IMHO most users don't use this features (data=3Djournal,
+bigalloc, dioread_nolock).  So let us fix them one by one.  I will file
+these bugs in mailing list to let folks know.
 
-On Thu 07-03-13 17:36:07, Kazuya Mio wrote:
-> I found the performance problem that ext3 direct I/O sends large number of bio
-> unnecessarily when buffer_head is set BH_Boundary flag.
-> 
-> When we read/write a file sequentially, we will read/write not only
-> the data blocks but also the indirect blocks that may not be physically
-> adjacent to the data blocks. So ext3 sets BG_Boundary flag to submit
-> the previous I/O before reading/writing an indirect block.
-> 
-> However, in the case of direct I/O, the size of buffer_head
-> could be more than the blocksize. dio_send_cur_page() checks BH_Boundary flag
-> and then calls submit_bio() without calling dio_bio_add_page().
-> As a result, submit_bio() is called every one page and cause of high CPU usage.
-  Yes, you are right that this is a bug. Thank you for reporting it!
-
-> The following patch fixes this problem only for ext3. At least ext2/3/4
-> don't need BH_Boundary flag for direct I/O because submit_bio() will be called
-> when the offset of buffer_head is discontinuous about the previous one.
-> 
-> ---
-> @@ -926,7 +926,8 @@ int ext3_get_blocks_handle(handle_t *handle, struct inode *inode,
->     set_buffer_new(bh_result);
->  got_it:
->     map_bh(bh_result, inode->i_sb, le32_to_cpu(chain[depth-1].key));
-> -   if (count > blocks_to_boundary)
-> +   /* set bourdary flag for buffered I/O */
-> +   if (maxblocks == 1 && count > blocks_to_boundary)
->         set_buffer_boundary(bh_result);
->     err = count;
->     /* Clean up and exit */
-> ---
-  But I'm afraid your fix isn't quite correct. Because as I read the code
-we will accumulate the bio, then read indirect block from get_more_blocks()
-and only after that we find out bio won't be contiguous so we would submit
-that. But the desired sequence is like:
-  * accumulate the bio
-  * find out it will not be contiguous so submit it
-  * get_more_blocks() - submits read
-
-I think the proper fix should be in fs/direct-io.c:
-...
--		sdio->boundary = buffer_boundary(map_bh);
-+		if (sdio->blocks_available == this_chunk_blocks)
-+			sdio->boundary = buffer_boundary(map_bh);
-...
-
-Then we properly mark bio should be submitted only if we are mapping last
-part of the mapped extent from the filesystem. Can you give this change a
-try (full patch with changelog attached)?
-
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
-
---mYCpIKhGyMATD0i+
-Content-Type: text/x-patch; charset=us-ascii
-Content-Disposition: attachment; filename="0001-direct-io-Fix-boundary-block-handling.patch"
-
->From c45bc949f7b42ed25f40869ff79664a47bd0979f Mon Sep 17 00:00:00 2001
-From: Jan Kara <jack@suse.cz>
-Date: Thu, 7 Mar 2013 11:41:58 +0100
-Subject: [PATCH] direct-io: Fix boundary block handling
-
-When we read/write a file sequentially, we will read/write not only the
-data blocks but also the indirect blocks that may not be physically
-adjacent to the data blocks. So filesystems sets BG_Boundary flag to
-submit the previous I/O before reading/writing an indirect block.
-
-However generic direct IO code mishandles buffer_boundary() flag, sets
-sdio->boundary before each submit_page_section() call which results in
-sending only one page bios as underlying code thinks this page is the
-last in the contiguous extent. So fix the problem by setting
-sdio->boundary only if the current page is really the last one in the
-mapped extent.
-
-Reported-by: Kazuya Mio <k-mio@sx.jp.nec.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/direct-io.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
-
-diff --git a/fs/direct-io.c b/fs/direct-io.c
-index f853263..e666854 100644
---- a/fs/direct-io.c
-+++ b/fs/direct-io.c
-@@ -969,7 +969,8 @@ do_holes:
- 			this_chunk_bytes = this_chunk_blocks << blkbits;
- 			BUG_ON(this_chunk_bytes == 0);
- 
--			sdio->boundary = buffer_boundary(map_bh);
-+			if (sdio->blocks_available == this_chunk_blocks)
-+				sdio->boundary = buffer_boundary(map_bh);
- 			ret = submit_page_section(dio, sdio, page,
- 						  offset_in_page,
- 						  this_chunk_bytes,
--- 
-1.7.1
-
-
---mYCpIKhGyMATD0i+--
+Regards,
+                                                - Zheng
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
