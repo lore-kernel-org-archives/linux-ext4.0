@@ -1,104 +1,121 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [BUG][data=journal] general protection fault is hitted when we run
- xfstests #074
-Date: Thu, 7 Mar 2013 20:20:19 +0800
-Message-ID: <20130307122019.GC2800@gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [jbd2 or mm BUG]:   crash while flush JBD2's the pages, that
+ owned Slab flag.
+Date: Thu, 7 Mar 2013 13:17:39 +0100
+Message-ID: <20130307121739.GC6723@quack.suse.cz>
+References: <51384D84.8090803@allwinnertech.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f48.google.com ([209.85.160.48]:47114 "EHLO
-	mail-pb0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757133Ab3CGMFH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Mar 2013 07:05:07 -0500
-Received: by mail-pb0-f48.google.com with SMTP id wy12so331970pbc.21
-        for <linux-ext4@vger.kernel.org>; Thu, 07 Mar 2013 04:05:06 -0800 (PST)
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-mm@kvack.org
+To: Shuge <shuge@allwinnertech.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <51384D84.8090803@allwinnertech.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi all,
+  Hi,
 
-This bug can be hitted in 3.8 kernel, and it doesn't be fixed in dev
-branch.  When #074 runs in a ext4 file system with '-o data=journal', I
-will get a general protection fault in my sand box.  I need to run
-several times to hit this bug.
+  I've fixed linux-mm mailing list address...
 
-My sand box is a Dell Desktop with a Intel(R) Core(TM)2 Duo CPU E8400
-@ 3.00GHz, 4G memory, a 160G HDD and a Intel SSD.  The test runs against
-SSD.
+On Thu 07-03-13 16:19:16, Shuge wrote:
+> When I debug the file system, I get a problem as follows:
+> 
+> Arch: arm (4 processors)
+> Kernel version: 3.3.0
+> 
+>   The "b_frozen_data" which is defined as a member of "struct
+> journal_head" (linux/fs/jbd2/transaction.c Line 785),
+> it's memory is allocated by "jbd2_alloc". When the memory size is
+> larger than a PAGE SIZE, the memory is got by "
+> __get_free_pages", otherwise, is got by "kmem_cache_alloc". The
+> memory will be used by the "__blk_queue_bounce"(linux/mm/bounce.c).
+> 
+> In this function, the program flow is:
+> __blk_queue_bounce() -> flush_dcache_page() -> page_mapping() ->
+> VM_BUG_ON(PageSlab(page))
+> If the memory is got by "kmem_cache_alloc", it will trigger on a bug.
+> 
+> Kernel panic:
+> [   34.683049] ------------[ cut here ]------------
+> [   34.687686] kernel BUG at include/linux/mm.h:791!
+> [   34.692388] Internal error: Oops - BUG: 0 [#1] PREEMPT SMP
+> [   34.697869] Modules linked in: screen_print(O) nand(O)
+> [   34.703049] CPU: 1    Tainted: G           O  (3.3.0 #6)
+> [   34.708370] PC is at flush_dcache_page+0x34/0xb0
+> [   34.712992] LR is at blk_queue_bounce+0x16c/0x300
+> [   34.717697] pc : [<c001677c>]    lr : [<c00bf0b0>]    psr: 20000013
+> [   34.717703] sp : ee7a7d48  ip : ee7a7d60  fp : ee7a7d5c
+> [   34.729176] r10: ee228804  r9 : ee228804  r8 : eea979c8
+> [   34.734397] r7 : 00000000  r6 : ee228890  r5 : d5333840  r4 : 00000000
+> [   34.740920] r3 : 00000001  r2 : fffffff5  r1 : 00000011  r0 : d5333840
+> [   34.747446] Flags: nzCv  IRQs on  FIQs on  Mon  SVC_32  ISA ARM
+> Segment kernel
+> [   34.754749] Control: 10c53c7d  Table: 6e05806a  DAC: 00000015
+> ......
+> [   35.726529] Backtrace:
+> [   35.729000] [<c0016748>] (flush_dcache_page+0x0/0xb0) from
+> [<c00bf0b0>] (blk_queue_bounce+0x16c/0x300)
+> [   35.738297]  r5:ee7a7dac r4:ee2287c0
+> [   35.741905] [<c00bef44>] (blk_queue_bounce+0x0/0x300) from
+> [<c01fcc58>] (blk_queue_bio+0x28/0x2c0)
+> [   35.750862] [<c01fcc30>] (blk_queue_bio+0x0/0x2c0) from [<c01fb1b8>]
+> (generic_make_request+0x94/0xcc)
+> [   35.760078] [<c01fb124>] (generic_make_request+0x0/0xcc) from
+> [<c01fb2f0>] (submit_bio+0x100/0x124)
+> [   35.769114]  r6:00000002 r5:eecb8f08 r4:ee228840
+> [   35.773774] [<c01fb1f0>] (submit_bio+0x0/0x124) from [<c00e8e68>]
+> (submit_bh+0x130/0x150)
+> [   35.781942]  r8:00000009 r7:d60f6c5c r6:00000211 r5:eecb8f08 r4:ee228840
+> [   35.788713] [<c00e8d38>] (submit_bh+0x0/0x150) from [<c014b024>]
+> (jbd2_journal_commit_transaction+0x7d0/0x11cc)
+> [   35.798790]  r6:ef253380 r5:eecb8f08 r4:eeac5800 r3:00000001
+> [   35.804505] [<c014a854>] (jbd2_journal_commit_transaction+0x0/0x11cc)
+> from [<c014e2a8>] (kjournald2+0xb4/0x248)
+> [   35.814591] [<c014e1f4>] (kjournald2+0x0/0x248) from [<c006aa90>]
+> (kthread+0x94/0xa0)
+> [   35.822422] [<c006a9fc>] (kthread+0x0/0xa0) from [<c005472c>]
+> (do_exit+0x0/0x6a4)
+> [   35.829897]  r6:c005472c r5:c006a9fc r4:eea9bce0
+> [   35.834556] Code: e5904004 e7e033d3 e3530000 0a000000 (e7f001f2)
+> [   35.840733] ---[ end trace c2a29bf063d3670f ]---
+> 
+> So, I modify the mm/bounce.c. Details are as follows:
+> 
+> diff --git a/mm/bounce.c b/mm/bounce.c
+> index 4e9ae72..e3f6b53 100644
+> --- a/mm/bounce.c
+> +++ b/mm/bounce.c
+> @@ -214,7 +214,8 @@ static void __blk_queue_bounce(struct request_queue
+> *q, struct bio **bio_orig,
+>                  if (rw == WRITE) {
+>                          char *vto, *vfrom;
+> 
+> -                       flush_dcache_page(from->bv_page);
+> +                       if (!PageSlab(from->bv_page))
+> + flush_dcache_page(from->bv_page);
+>                          vto = page_address(to->bv_page) + to->bv_offset;
+>                          vfrom = kmap(from->bv_page) + from->bv_offset;
+>                          memcpy(vto, vfrom, to->bv_len);
+> 
+> Who can give some suggestions to me.
+  This looks sensible to me since userspace won't ever see the contents of
+b_frozen_data and generally slab allocation cannot be visible from
+userspace. But I'll leave the final word to mm people.
 
-The messages from dmesg:
+  BTW, if you want to get your patch accepted, please read
+Documentation/SubmittingPatches and follow the guidelines there.
 
-wenqing: run xfstest 074
-kernel: EXT4-fs (sda1): mounted filesystem with journalled data mode.
-Opts: acl,user_xattr,data=journal
-kernel: EXT4-fs (sda1): mounted filesystem with journalled data mode.
-Opts: acl,user_xattr,data=journal
-kernel: EXT4-fs (sda1): mounted filesystem with journalled data mode.
-Opts: acl,user_xattr,data=journal
-kernel: EXT4-fs (sda1): mounted filesystem with journalled data mode.
-Opts: acl,user_xattr,data=journal
-kernel: general protection fault: 0000 [#1] SMP 
-kernel: Modules linked in: ext4 jbd2 crc16 cpufreq_ondemand ipv6
-dm_mirror dm_region_hash dm_log dm_mod parport_pc parport dcdbas
-acpi_cpufreq mperf sg button pcspkr serio_raw i2c_i801 i2c_core ehci_pci
-ehci_hcd e1000e ext3 jbd sd_mod ahci libahci libata scsi_mod uhci_hcd
-kernel: CPU 1 
-kernel: Pid: 2786, comm: flush-8:0 Not tainted 3.8.0 #1 Dell Inc.
-OptiPlex 780                 /0V4W66
-kernel: RIP: 0010:[<ffffffffa01da0a0>]  [<ffffffffa01da0a0>]
-jbd2_journal_dirty_metadata+0x147/0x211 [jbd2]
-kernel: RSP: 0000:ffff880107a93868  EFLAGS: 00010206
-kernel: RAX: 0000000000000000 RBX: ffff88010a674540 RCX: 5c5c5c5c5c5c5c5c
-kernel: RDX: 000000000034402d RSI: ffff88010a674540 RDI: ffff880105bd6ca0
-kernel: RBP: ffff880107a938b8 R08: 0000000000000000 R09: 0000000000000000
-kernel: R10: ffff880105bd6ca0 R11: 000000000000000c R12: ffff88008e4ee518
-kernel: R13: ffff8801114fb800 R14: ffff880105bd6ca0 R15: ffff88010a658c80
-kernel: FS:  0000000000000000(0000) GS:ffff880117c40000(0000)
-knlGS:0000000000000000
-kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-kernel: CR2: 00007f60256a5000 CR3: 0000000117834000 CR4: 00000000000407e0
-kernel: DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-kernel: DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-kernel: Process flush-8:0 (pid: 2786, threadinfo ffff880107a92000, task
-ffff880112cde6b0)
-kernel: Stack:
-kernel: ffff880105bd6ca0 0000000000001000 ffff880107a938a8 ffffffffa01da6de
-kernel: ffff8801114fb868 0000000000000000 00000000000003bf ffffffffa023f0e0
-kernel: ffff88010a674540 0000000000001000 ffff880107a938f8 ffffffffa022bb07
-kernel: Call Trace:
-kernel: [<ffffffffa01da6de>] ? jbd2_journal_get_write_access+0x36/0x40 [jbd2]
-kernel: [<ffffffffa022bb07>] __ext4_handle_dirty_metadata+0xd7/0xe6 [ext4]
-kernel: [<ffffffffa01ff4a5>] write_end_fn+0x37/0x3d [ext4]
-kernel: [<ffffffffa01ff167>] ext4_walk_page_buffers+0x65/0x9b [ext4]
-kernel: [<ffffffffa01ff46e>] ? ext4_nonda_switch+0xbd/0xbd [ext4]
-kernel: [<ffffffffa0203367>] __ext4_journalled_writepage+0x156/0x1ee [ext4]
-kernel: [<ffffffffa0203c10>] ext4_writepage+0x1b8/0x20d [ext4]
-kernel: [<ffffffff820b7ab4>] __writepage+0x17/0x30
-kernel: [<ffffffff820b8554>] write_cache_pages+0x276/0x37f
-kernel: [<ffffffff820b7a9d>] ? set_page_dirty+0x64/0x64
-kernel: [<ffffffff820b86a2>] generic_writepages+0x45/0x5c
-kernel: [<ffffffff820b86e0>] do_writepages+0x27/0x29
-kernel: [<ffffffff8210fc93>] __writeback_single_inode+0x48/0x119
-kernel: [<ffffffff82110e7c>] writeback_sb_inodes+0x1ec/0x2fd
-kernel: [<ffffffff82110fff>] __writeback_inodes_wb+0x72/0xb0
-kernel: [<ffffffff821111ee>] wb_writeback+0x13e/0x230
-kernel: [<ffffffff820b8dae>] ? global_dirty_limits+0x36/0x134
-kernel: [<ffffffff821114aa>] wb_do_writeback+0x1ca/0x1ea
-kernel: [<ffffffff8211158c>] bdi_writeback_thread+0xc2/0x1e2
-kernel: [<ffffffff821114ca>] ? wb_do_writeback+0x1ea/0x1ea
-kernel: [<ffffffff821114ca>] ? wb_do_writeback+0x1ea/0x1ea
-kernel: [<ffffffff8204eadf>] kthread+0xb5/0xbd
-kernel: [<ffffffff8204ea2a>] ? kthread_freezable_should_stop+0x65/0x65
-kernel: [<ffffffff8238689c>] ret_from_fork+0x7c/0xb0
-kernel: [<ffffffff8204ea2a>] ? kthread_freezable_should_stop+0x65/0x65
-kernel: Code: 08 49 8b 4c 24 28 4c 39 f9 0f 84 81 00 00 00 4d 8b 4d 58 31 c0
-4c 39 c9 74 36 4d 85 c9 74 04 41 8b 41 08 45 31 c0 48 85 c9 74 04 <44> 8b 41
-08 48 8b 53 18 49 8d b5 58 03 00 00 89 04 24 48 c7 c7 
-kernel: RIP  [<ffffffffa01da0a0>] jbd2_journal_dirty_metadata+0x147/0x211 [jbd2]
-kernel: RSP <ffff880107a93868>
-kernel: ---[ end trace d8e02cf12f9b2b79 ]---
+Thanks for reporting this!
 
-Regards,
-                                                - Zheng
+								Honza 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
