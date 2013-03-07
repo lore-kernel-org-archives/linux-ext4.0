@@ -1,58 +1,112 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [BUG][dioread_nolock] blocked for more than 120s when we run
- xfstests #269
-Date: Thu, 7 Mar 2013 20:40:54 +0800
-Message-ID: <20130307124054.GE2800@gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [BUG][data=journal] general protection fault is hitted when we
+ run xfstests #074
+Date: Thu, 7 Mar 2013 13:26:38 +0100
+Message-ID: <20130307122638.GD6723@quack.suse.cz>
+References: <20130307122019.GC2800@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f49.google.com ([209.85.210.49]:62382 "EHLO
-	mail-da0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751285Ab3CGMZm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Mar 2013 07:25:42 -0500
-Received: by mail-da0-f49.google.com with SMTP id t11so49607daj.22
-        for <linux-ext4@vger.kernel.org>; Thu, 07 Mar 2013 04:25:41 -0800 (PST)
+Received: from cantor2.suse.de ([195.135.220.15]:59683 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751229Ab3CGM0j (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 7 Mar 2013 07:26:39 -0500
 Content-Disposition: inline
+In-Reply-To: <20130307122019.GC2800@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi all,
+On Thu 07-03-13 20:20:19, Zheng Liu wrote:
+> Hi all,
+> 
+> This bug can be hitted in 3.8 kernel, and it doesn't be fixed in dev
+> branch.  When #074 runs in a ext4 file system with '-o data=journal', I
+> will get a general protection fault in my sand box.  I need to run
+> several times to hit this bug.
+> 
+> My sand box is a Dell Desktop with a Intel(R) Core(TM)2 Duo CPU E8400
+> @ 3.00GHz, 4G memory, a 160G HDD and a Intel SSD.  The test runs against
+> SSD.
+> 
+> The messages from dmesg:
+> 
+> wenqing: run xfstest 074
+> kernel: EXT4-fs (sda1): mounted filesystem with journalled data mode.
+> Opts: acl,user_xattr,data=journal
+> kernel: EXT4-fs (sda1): mounted filesystem with journalled data mode.
+> Opts: acl,user_xattr,data=journal
+> kernel: EXT4-fs (sda1): mounted filesystem with journalled data mode.
+> Opts: acl,user_xattr,data=journal
+> kernel: EXT4-fs (sda1): mounted filesystem with journalled data mode.
+> Opts: acl,user_xattr,data=journal
+> kernel: general protection fault: 0000 [#1] SMP 
+> kernel: Modules linked in: ext4 jbd2 crc16 cpufreq_ondemand ipv6
+> dm_mirror dm_region_hash dm_log dm_mod parport_pc parport dcdbas
+> acpi_cpufreq mperf sg button pcspkr serio_raw i2c_i801 i2c_core ehci_pci
+> ehci_hcd e1000e ext3 jbd sd_mod ahci libahci libata scsi_mod uhci_hcd
+> kernel: CPU 1 
+> kernel: Pid: 2786, comm: flush-8:0 Not tainted 3.8.0 #1 Dell Inc.
+> OptiPlex 780                 /0V4W66
+> kernel: RIP: 0010:[<ffffffffa01da0a0>]  [<ffffffffa01da0a0>]
+> jbd2_journal_dirty_metadata+0x147/0x211 [jbd2]
+> kernel: RSP: 0000:ffff880107a93868  EFLAGS: 00010206
+> kernel: RAX: 0000000000000000 RBX: ffff88010a674540 RCX: 5c5c5c5c5c5c5c5c
+> kernel: RDX: 000000000034402d RSI: ffff88010a674540 RDI: ffff880105bd6ca0
+> kernel: RBP: ffff880107a938b8 R08: 0000000000000000 R09: 0000000000000000
+> kernel: R10: ffff880105bd6ca0 R11: 000000000000000c R12: ffff88008e4ee518
+> kernel: R13: ffff8801114fb800 R14: ffff880105bd6ca0 R15: ffff88010a658c80
+> kernel: FS:  0000000000000000(0000) GS:ffff880117c40000(0000)
+> knlGS:0000000000000000
+> kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+> kernel: CR2: 00007f60256a5000 CR3: 0000000117834000 CR4: 00000000000407e0
+> kernel: DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> kernel: DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> kernel: Process flush-8:0 (pid: 2786, threadinfo ffff880107a92000, task
+> ffff880112cde6b0)
+> kernel: Stack:
+> kernel: ffff880105bd6ca0 0000000000001000 ffff880107a938a8 ffffffffa01da6de
+> kernel: ffff8801114fb868 0000000000000000 00000000000003bf ffffffffa023f0e0
+> kernel: ffff88010a674540 0000000000001000 ffff880107a938f8 ffffffffa022bb07
+> kernel: Call Trace:
+> kernel: [<ffffffffa01da6de>] ? jbd2_journal_get_write_access+0x36/0x40 [jbd2]
+> kernel: [<ffffffffa022bb07>] __ext4_handle_dirty_metadata+0xd7/0xe6 [ext4]
+> kernel: [<ffffffffa01ff4a5>] write_end_fn+0x37/0x3d [ext4]
+> kernel: [<ffffffffa01ff167>] ext4_walk_page_buffers+0x65/0x9b [ext4]
+> kernel: [<ffffffffa01ff46e>] ? ext4_nonda_switch+0xbd/0xbd [ext4]
+> kernel: [<ffffffffa0203367>] __ext4_journalled_writepage+0x156/0x1ee [ext4]
+> kernel: [<ffffffffa0203c10>] ext4_writepage+0x1b8/0x20d [ext4]
+> kernel: [<ffffffff820b7ab4>] __writepage+0x17/0x30
+> kernel: [<ffffffff820b8554>] write_cache_pages+0x276/0x37f
+> kernel: [<ffffffff820b7a9d>] ? set_page_dirty+0x64/0x64
+> kernel: [<ffffffff820b86a2>] generic_writepages+0x45/0x5c
+> kernel: [<ffffffff820b86e0>] do_writepages+0x27/0x29
+> kernel: [<ffffffff8210fc93>] __writeback_single_inode+0x48/0x119
+> kernel: [<ffffffff82110e7c>] writeback_sb_inodes+0x1ec/0x2fd
+> kernel: [<ffffffff82110fff>] __writeback_inodes_wb+0x72/0xb0
+> kernel: [<ffffffff821111ee>] wb_writeback+0x13e/0x230
+> kernel: [<ffffffff820b8dae>] ? global_dirty_limits+0x36/0x134
+> kernel: [<ffffffff821114aa>] wb_do_writeback+0x1ca/0x1ea
+> kernel: [<ffffffff8211158c>] bdi_writeback_thread+0xc2/0x1e2
+> kernel: [<ffffffff821114ca>] ? wb_do_writeback+0x1ea/0x1ea
+> kernel: [<ffffffff821114ca>] ? wb_do_writeback+0x1ea/0x1ea
+> kernel: [<ffffffff8204eadf>] kthread+0xb5/0xbd
+> kernel: [<ffffffff8204ea2a>] ? kthread_freezable_should_stop+0x65/0x65
+> kernel: [<ffffffff8238689c>] ret_from_fork+0x7c/0xb0
+> kernel: [<ffffffff8204ea2a>] ? kthread_freezable_should_stop+0x65/0x65
+> kernel: Code: 08 49 8b 4c 24 28 4c 39 f9 0f 84 81 00 00 00 4d 8b 4d 58 31 c0
+> 4c 39 c9 74 36 4d 85 c9 74 04 41 8b 41 08 45 31 c0 48 85 c9 74 04 <44> 8b 41
+> 08 48 8b 53 18 49 8d b5 58 03 00 00 89 04 24 48 c7 c7 
+> kernel: RIP  [<ffffffffa01da0a0>] jbd2_journal_dirty_metadata+0x147/0x211 [jbd2]
+> kernel: RSP <ffff880107a93868>
+> kernel: ---[ end trace d8e02cf12f9b2b79 ]---
+  Hum, clearly we hit some poison value (RCX which was dereferenced was
+0x5c5c5c5c5c5c5c5c). Can you post full disassembly of
+jbd2_journal_dirty_metadata()? I was trying to match decoded 'Code' section
+with the C code but I failed...
 
-This bug will be triggered when dioread_nolock enables.  In 3.8 kernel,
-the test will be blocked for more than 120s, and we get the following
-messages.  *But* in dev branch the system will hang silently without any
-messages.  I need to run test 7 times to hit it.
-
-wenqing: run xfstest 269
-kernel: EXT4-fs (sda2): mounted filesystem with ordered data mode. Opts:
-acl,user_xattr,dioread_nolock
-kernel: INFO: task umount:3376 blocked for more than 120 seconds.
-kernel: "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this
-message.
-kernel: umount          D 0000000000000001     0  3376   3003 0x00000000
-kernel: ffff880117417cd8 0000000000000082 ffff880117417bd8 ffff880117416010
-kernel: ffff880112d12110 0000000000012080 ffff880117417fd8 0000000000004000
-kernel: ffff880117417fd8 0000000000012080 ffff88011331d950 ffff880112d12110
-kernel: Call Trace:
-kernel: [<ffffffff820ba03c>] ? pagevec_lookup+0x22/0x2b
-kernel: [<ffffffff820bb526>] ? truncate_inode_pages_range+0x273/0x3a2
-kernel: [<ffffffff8237ef2f>] schedule+0x64/0x66
-kernel: [<ffffffffa0203d7c>] ext4_ioend_wait+0x87/0x9f [ext4]
-kernel: [<ffffffff8204f0be>] ? wake_up_bit+0x2a/0x2a
-kernel: [<ffffffffa0201396>] ext4_evict_inode+0x4a/0x41d [ext4]
-kernel: [<ffffffff82102c8c>] evict+0xa2/0x15b
-kernel: [<ffffffff821ba2b8>] ? __list_del_entry+0x51/0x98
-kernel: [<ffffffff821031b7>] dispose_list+0x3e/0x50
-kernel: [<ffffffff8210365b>] evict_inodes+0xdb/0xe7
-kernel: [<ffffffff820ef954>] generic_shutdown_super+0x4c/0xd3
-kernel: [<ffffffff820efa02>] kill_block_super+0x27/0x69
-kernel: [<ffffffff820efe56>] deactivate_locked_super+0x26/0x52
-kernel: [<ffffffff820f0ad2>] deactivate_super+0x45/0x4a
-kernel: [<ffffffff821074b9>] mntput_no_expire+0x110/0x118
-kernel: [<ffffffff82108331>] sys_umount+0x306/0x331
-kernel: [<ffffffff82041bf6>] ? sigprocmask+0x63/0x67
-kernel: [<ffffffff82386942>] system_call_fastpath+0x16/0x1b
-
-Regards,
-                                                - Zheng
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
