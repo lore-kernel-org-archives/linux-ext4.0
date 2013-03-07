@@ -1,27 +1,32 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
 Subject: Re: Dev branch regressions
-Date: Thu, 7 Mar 2013 10:40:50 +0800
-Message-ID: <20130307024050.GA4095@gmail.com>
-References: <1362579435-6333-1-git-send-email-wenqing.lz@taobao.com>
- <20130306225818.GA13277@thunk.org>
+Date: Thu, 7 Mar 2013 07:47:31 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1303070746040.24359@localhost>
+References: <1362579435-6333-1-git-send-email-wenqing.lz@taobao.com> <20130306225818.GA13277@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Zheng Liu <gnehzuil.liu@gmail.com>, linux-ext4@vger.kernel.org,
+	Zheng Liu <wenqing.lz@taobao.com>,
 	Dmitry Monakhov <dmonakhov@openvz.org>
-To: Theodore Ts'o <tytso@mit.edu>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f43.google.com ([209.85.160.43]:40555 "EHLO
-	mail-pb0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752350Ab3CGCZk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Mar 2013 21:25:40 -0500
-Received: by mail-pb0-f43.google.com with SMTP id md12so6928408pbc.30
-        for <linux-ext4@vger.kernel.org>; Wed, 06 Mar 2013 18:25:40 -0800 (PST)
-Content-Disposition: inline
+Received: from mx1.redhat.com ([209.132.183.28]:1040 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752732Ab3CGGrq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 7 Mar 2013 01:47:46 -0500
 In-Reply-To: <20130306225818.GA13277@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Mar 06, 2013 at 05:58:18PM -0500, Theodore Ts'o wrote:
+On Wed, 6 Mar 2013, Theodore Ts'o wrote:
+
+> Date: Wed, 6 Mar 2013 17:58:18 -0500
+> From: Theodore Ts'o <tytso@mit.edu>
+> To: Zheng Liu <gnehzuil.liu@gmail.com>
+> Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
+>     Dmitry Monakhov <dmonakhov@openvz.org>
+> Subject: Dev branch regressions
+> 
 > On Wed, Mar 06, 2013 at 10:17:10PM +0800, Zheng Liu wrote:
 > > 
 > > *Big Note*
@@ -41,21 +46,10 @@ On Wed, Mar 06, 2013 at 05:58:18PM -0500, Theodore Ts'o wrote:
 > 
 > I'm going to guess that you were running this using your SSD test
 > setup?  I just ran:
-
-Yes, I run these tests in my SSD setup.
-
 > 
 > kvm-xfstests -c data_journal 74,74,74,74,74,247,247,247,247,247
 > 
 > using my standard hdd setup, and didn't see any failures or warnings.
-
-I use the following commands to hit thses warnings.
-
-  for i in {0..9}
-  do
-    ./chech 74
-  done
-
 > 
 > How frequently are you seeing these failures?  When I have a chance
 > I'll try running these tests with a tmpfs image and see if I have any
@@ -72,6 +66,14 @@ I use the following commands to hit thses warnings.
 > regression.  I believe I've seen a similar hang with 3.8.0-rc3 if I
 > recall correctly.  I had been hoping the changes with the extent
 > status tree would fix it, but apparently no such luck.  :-(
+
+You're right this is not a regression the problem has always been
+there, however now with some bigalloc fixes it becomes more obvious.
+I have some patches to address this issue, though it's not ready
+yet.
+
+-Lukas
+
 > 
 > > I don't paste full details here to make description clearly.  I will go on
 > > tracing these problems.  I am happy to provide full details if some one
@@ -80,11 +82,12 @@ I use the following commands to hit thses warnings.
 > If you have a chance, please do send e-mails with each failure
 > separated out in a separate e-mail with different subject line so it's
 > easier for others to follow along.
-
-I will run the test case in 3.8 kernel to understand which one is a
-regression, and which one is a bug that has been there for a long time.
-Later I will send the report to the mailing list.  Thanks for sharing
-the result with me.
-
-Regards,
-                                                - Zheng
+> 
+> Thanks!!
+> 
+> 						- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
