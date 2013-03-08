@@ -1,67 +1,106 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH v2 0/5] ext4: try to fix up es regressions
-Date: Fri, 8 Mar 2013 21:18:41 +0800
-Message-ID: <20130308131841.GD18986@gmail.com>
-References: <1362579435-6333-1-git-send-email-wenqing.lz@taobao.com>
- <87ppzbgpkg.fsf@openvz.org>
+From: Stephen Warren <swarren@wwwdotorg.org>
+Subject: Re: [PATCH] mke2fs: restore verbose message for BLKDISCARD
+Date: Fri, 08 Mar 2013 10:18:14 -0700
+Message-ID: <513A1D56.1010402@wwwdotorg.org>
+References: <1362515118-30344-1-git-send-email-swarren@wwwdotorg.org> <alpine.LFD.2.00.1303060753500.24359@localhost> <5138EEBD.5000705@wwwdotorg.org> <alpine.LFD.2.00.1303080818510.24359@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
-	Theodore Ts'o <tytso@mit.edu>
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Theodore Ts'o <tytso@mit.edu>, Chris Ball <cjb@laptop.org>,
+	linux-ext4@vger.kernel.org, Stephen Warren <swarren@nvidia.com>
+To: =?windows-1252?Q?Luk=E1=9A_Czerner?= <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f51.google.com ([209.85.160.51]:55467 "EHLO
-	mail-pb0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757186Ab3CHNDb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Mar 2013 08:03:31 -0500
-Received: by mail-pb0-f51.google.com with SMTP id un15so1176012pbc.10
-        for <linux-ext4@vger.kernel.org>; Fri, 08 Mar 2013 05:03:31 -0800 (PST)
-Content-Disposition: inline
-In-Reply-To: <87ppzbgpkg.fsf@openvz.org>
+Received: from avon.wwwdotorg.org ([70.85.31.133]:55733 "EHLO
+	avon.wwwdotorg.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933088Ab3CHRSR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Mar 2013 12:18:17 -0500
+In-Reply-To: <alpine.LFD.2.00.1303080818510.24359@localhost>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 07, 2013 at 08:08:47PM +0400, Dmitry Monakhov wrote:
-> On Wed,  6 Mar 2013 22:17:10 +0800, Zheng Liu <gnehzuil.liu@gmail.com> wrote:
-> > Hi all,
-> > 
-> > The patch series tries to fixup some regressions after applied the extent
-> > status tree.  These patches have rebased against the latest dev branch of
-> > ext4 and have been tested by xfstests.
-> > 
-> > After rebased the latest dev branch, two patches have been dropped because
-> > they have been applied into the branch.  A new patch is added, which tries
-> > to fix up a wrong return value in ext4_split_extent().  Otherwise, there
-> > are two major changes in this version.  The first one is to improve the
-> > self-testing-infrastructure according to Dmitry's comment.  The second one
-> > is to improve the zero out code.
-> > 
-> > After applied this patch series, I havn't seen the warning messages from
-> > self-testing infrastructure except the following cases.
-> > 
-> >  - xfstests #13 with bigalloc or with no journal
-> >  - xfstests #223 with dioread_nolock
-> > The reason is that when we lookup a block mapping from status tree
-> > i_data_sem locking won't be taken.  So there is a race window that an 
-> > unwritten extent could be converted by end_io when we compare the result
-> > between extent tree and status tree.
-> > 
-> > Dmitry, Ted, could you please confirm that this patch series can fix the
-> > defrag regression?  Thank you so much.  Until now I run #300 and #301 a
-> > lot times but I failed to hit this regression. :-(
-> Good work. All my tests now succeed (no error, no warning, no bugons), 
+On 03/08/2013 12:23 AM, Luk=E1=9A Czerner wrote:
+> On Thu, 7 Mar 2013, Stephen Warren wrote:
+>=20
+>> Date: Thu, 07 Mar 2013 12:47:09 -0700
+>> From: Stephen Warren <swarren@wwwdotorg.org>
+>> To: Luk=E1=9A Czerner <lczerner@redhat.com>
+>> Cc: Theodore Ts'o <tytso@mit.edu>, Chris Ball <cjb@laptop.org>,
+>>     linux-ext4@vger.kernel.org, Stephen Warren <swarren@nvidia.com>
+>> Subject: Re: [PATCH] mke2fs: restore verbose message for BLKDISCARD
+>>
+>> On 03/06/2013 12:13 AM, Luk=E1=9A Czerner wrote:
+>>> On Tue, 5 Mar 2013, Stephen Warren wrote:
+>>>
+>>>> Date: Tue,  5 Mar 2013 13:25:18 -0700
+>>>> From: Stephen Warren <swarren@wwwdotorg.org>
+>>>> To: Theodore Ts'o <tytso@mit.edu>
+>>>> Cc: Chris Ball <cjb@laptop.org>, linux-ext4@vger.kernel.org,
+>>>>     Stephen Warren <swarren@nvidia.com>
+>>>> Subject: [PATCH] mke2fs: restore verbose message for BLKDISCARD
+>>>>
+>>>> From: Stephen Warren <swarren@nvidia.com>
+>>>>
+>>>> mke2fs on a large slow eMMC device may appear to hang while execut=
+ing
+>>>> ioctl(BLKDISCARD). CTRL-C and CTRL-\ don't appear to respond, or r=
+espond
+>>>> extremely slowly. -v doesn't give any hints what's happening. Only=
+ strace
+>>>> is a clue. Make -v print some clues to make it easier to track dow=
+n the
+>>>> apparent hang.
+>>>>
+>>>> This change re-uses the original messages that were implemented as=
+ part
+>>>> of 5827d24 "mke2fs support for BLKDISCARD" in order to easily re-u=
+se the
+>>>> translations of that message. Note that this patch prints the firs=
+t
+>>>> message before executing the IOCTL, so the user is told what's goi=
+ng on
+>>>> before the long wait.
+>>>>
+>>>> Signed-off-by: Stephen Warren <swarren@nvidia.com>
+>>>
+>>> Note that you've added the message only around the first 4k discard
+>>> which is only used to test whether the device actually support the
+>>> discard... which is not very useful and it can not even know whethe=
+r
+>>> the whole device discard will succeed/fail so it is misleading.
+>>
+>> Oops. I certainly should looked at the code better.
+>>
+>>> Moreover there actually is a message saying that we're "Discarding
+>>> device blocks" and it even shows the progress. The step in which
+>>> we're doing the discard (and update the progress) is given by
+>>> DISCARD_STEP_MB =3D 2048MB. And all that in non verbose mode as wel=
+l.
+>>
+>> That said, it's that very first call to io_channel_discard() that is
+>> hanging then; I don't see the existing message at all. With my chang=
+e, I
+>> do see the new message that I added. (So, no stdio flushing issue he=
+re).
+>=20
+> It's just one fs block discard, are you sure about that ?
 
-Great!  Thanks for your confirmation.
+Yes:
 
-> BUT 301'th (in terms of git://oss.sgi.com/xfs/cmds/xfstests.git)
-> result in massive memory leakage
-> about 8gb in an hour
-> #while true; do ./check 301  ;done
-> I suspect that 'struct ext4_ext_path' is leaked somewhere, I'm not
-> even sure that it is new one. 
+root@localhost:~# strace -e ioctl ./e2fsprogs/misc/mke2fs -v /dev/mmcbl=
+k1p1
+mke2fs 1.43-WIP (21-Jan-2013)
+ioctl(3, BLKGETSIZE64, 0xbe940110)      =3D 0
+fs_types for mke2fs.conf resolution: 'ext2'
+ioctl(3, BLKSSZGET, 0xbe940360)         =3D 0
+ioctl(3, BLKPBSZGET, 0xbe940364)        =3D 0
+ioctl(3, BLKDISCARDZEROES, 0xbe940324)  =3D 0
+ioctl(3, BLKROGET, 0xbe940324)          =3D 0
+Calling BLKDISCARD from 0 to 4096 ioctl(3, BLKDISCARD
 
-Thanks for the reminder.  Maybe there still has some bugs in extent
-tree.  I will look at it.
+>> I will go investigate why this API is hanging. Sorry for the noise.
 
-Regards,
-                                                - Zheng
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
