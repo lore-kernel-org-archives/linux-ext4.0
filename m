@@ -1,46 +1,57 @@
-From: Ric Wheeler <ricwheeler@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: Ext4 developer's get-together at Collaboration Summit/LSFMM
-Date: Fri, 08 Mar 2013 13:06:29 -0500
-Message-ID: <513A28A5.8080301@gmail.com>
+Date: Fri, 8 Mar 2013 13:53:54 -0500
+Message-ID: <20130308185354.GA12008@thunk.org>
 References: <nsxd2v9iz43.fsf@closure.thunk.org>
+ <513A28A5.8080301@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+To: Ric Wheeler <ricwheeler@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yh0-f53.google.com ([209.85.213.53]:60843 "EHLO
-	mail-yh0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759889Ab3CHSGc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Mar 2013 13:06:32 -0500
-Received: by mail-yh0-f53.google.com with SMTP id q3so303457yhf.26
-        for <linux-ext4@vger.kernel.org>; Fri, 08 Mar 2013 10:06:32 -0800 (PST)
-In-Reply-To: <nsxd2v9iz43.fsf@closure.thunk.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:52012 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751169Ab3CHSx6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 8 Mar 2013 13:53:58 -0500
+Content-Disposition: inline
+In-Reply-To: <513A28A5.8080301@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 03/08/2013 12:24 PM, Theodore Ts'o wrote:
-> I've confirmed with Angela that we will have a room at Collaboration
-> Summit on Wednesday, April 17th.  We'll have the room starting at
-> 11:30am to 4:30pm.  If you plan to come, please let know so I can have
-> an accurate count.
->
-> Since Andreas won't be able to make it, I'm also planning to schedule a
-> short time for us to chat on Friday.  Since the schedule for the LSF
-> hasn't been finalized yet, stay tuned.  If there is a BOF time on Friday
-> afternoon, that's probably when I'll try to schedule something.
-> Otherwise, we'll try for either during lunch or dinner on Friday.
->
-> Cheers,
->
->
+On Fri, Mar 08, 2013 at 01:06:29PM -0500, Ric Wheeler wrote:
+> 
+> Any chance to move this time slot to the morning or, even better, an
+> earlier day in the week?
+> 
+> We have a track on IO & file systems that this overlaps with on
+> Wednesday. Updates from FusionIO on their new, byte addressable
+> parts and an open source file system and a panel at the end of the
+> day for LSF people who are at both....
 
-Any chance to move this time slot to the morning or, even better, an earlier day 
-in the week?
+I got a request for people to hold it on Wednesday so that people
+didn't have to fly out early before LSF, which I'm sure is the same
+reason why you're having the track on I/O and filesystems on
+Wednesday.  :-)
 
-We have a track on IO & file systems that this overlaps with on Wednesday. 
-Updates from FusionIO on their new, byte addressable parts and an open source 
-file system and a panel at the end of the day for LSF people who are at both....
+I did look at the schedule, and I deliberately scheduled things so we
+would end before the panel at the end of the day, since I assumed
+people would want to listen to that.
 
-ric
+As for the rest of the day, I had taken a quick look at the schedule
+for Collab Summit, and I didn't see any obvious conflicts; I had
+assumed the NVM talk would be another "phase change memory (or some
+other resistive memory) that has the random write speed of DRAM, the
+random read speeed of Flash, the cost per megabyte of HDD's, and the
+with infinite write endurance is coming around the corner, and will
+only be two years out so we should start redesigning and rewriting the
+kernel and file systems now" --- i.e., the same thing we've been
+hearing for the past decade, if not longer.  :-)
 
+But if people need to speak at some of these slots, or are very much
+interested in attending we can certainly talk about trying to move
+things around to accomodate people's schedule and desire to attend
+Collab Summit talks.
+
+What do people think?
+
+					- Ted
