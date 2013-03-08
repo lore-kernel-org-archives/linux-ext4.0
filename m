@@ -1,178 +1,64 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 1/3] ext4: Reserve metadata if writing into uninitialized
-Date: Fri,  8 Mar 2013 09:24:17 +0100
-Message-ID: <1362731059-3508-1-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 3/3] ext4: reserve metadata block for every delayed write
+Date: Fri,  8 Mar 2013 09:24:19 +0100
+Message-ID: <1362731059-3508-3-git-send-email-lczerner@redhat.com>
+References: <1362731059-3508-1-git-send-email-lczerner@redhat.com>
 Cc: gnehzuil.liu@gmail.com, Lukas Czerner <lczerner@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:13938 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:12761 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752283Ab3CHIYY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 8 Mar 2013 03:24:24 -0500
+	id S1752283Ab3CHIY1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 8 Mar 2013 03:24:27 -0500
+In-Reply-To: <1362731059-3508-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently in delalloc write we do not reserve any space if we're
-writing into the uninitialized extent. This is ok for data, because
-the space has already been allocated so we do not have to do data
-reservation, however we have to reserve metadata for uninitialized
-extent conversion on writeback.
+Currently we only reserve space (data+metadata) in delayed allocation if
+we're allocating from new cluster (which is always in non-bigalloc file
+system) which is ok for data blocks, because we reserve whole cluster.
 
-Add new ext4_da_reserve_metadata() function to only reserve metadata
-blocks for delayed allocation an use it if we're writing delayed blocks
-into unwritten extent to reserve metadata for extent conversion.
-
-The problem can be reproduced with xfstest 083 on bigalloc file system.
-With this patch I can not reproduce the problem anymore.
+However we have to reserve metadata for every delayed block we're going
+to write because every block could potentially require metedata block
+when we need to grow the extent tree.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
- fs/ext4/ext4.h  |    1 +
- fs/ext4/inode.c |   76 +++++++++++++++++++++++++++++++++++++++++++++++++-----
- 2 files changed, 70 insertions(+), 7 deletions(-)
+ fs/ext4/inode.c |   14 ++++++++++++--
+ 1 files changed, 12 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 6e16c18..c20efe2 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -581,6 +581,7 @@ enum {
- #define EXT4_GET_BLOCKS_NO_LOCK			0x0100
- 	/* Do not put hole in extent cache */
- #define EXT4_GET_BLOCKS_NO_PUT_HOLE		0x0200
-+#define EXT4_GET_BLOCKS_METADATA_RESERVED	0x0400
- 
- /*
-  * Flags used by ext4_free_blocks
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 9ea0cde..c3b88ec 100644
+index c3b88ec..e0d5bc6 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -606,7 +606,8 @@ found:
- 	 * let the underlying get_block() function know to
- 	 * avoid double accounting
- 	 */
--	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
-+	if ((flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) ||
-+	    (flags & EXT4_GET_BLOCKS_METADATA_RESERVED))
- 		ext4_set_inode_state(inode, EXT4_STATE_DELALLOC_RESERVED);
- 	/*
- 	 * We need to check for EXT4 here because migrate
-@@ -636,7 +637,8 @@ found:
- 			(flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE))
- 			ext4_da_update_reserve_space(inode, retval, 1);
- 	}
--	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
-+	if ((flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) ||
-+	    (flags & EXT4_GET_BLOCKS_METADATA_RESERVED))
- 		ext4_clear_inode_state(inode, EXT4_STATE_DELALLOC_RESERVED);
- 
- 	if (retval > 0) {
-@@ -1215,6 +1217,56 @@ static int ext4_journalled_write_end(struct file *file,
- 	return ret ? ret : copied;
- }
- 
-+
-+/*
-+ * Reserve a metadata for a single block located at lblock
-+ */
-+static int ext4_da_reserve_metadata(struct inode *inode, ext4_lblk_t lblock)
-+{
-+	int retries = 0;
-+	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	unsigned int md_needed;
-+	ext4_lblk_t save_last_lblock;
-+	int save_len;
-+
-+	/*
-+	 * recalculate the amount of metadata blocks to reserve
-+	 * in order to allocate nrblocks
-+	 * worse case is one extent per block
-+	 */
-+repeat:
-+	spin_lock(&ei->i_block_reservation_lock);
-+	/*
-+	 * ext4_calc_metadata_amount() has side effects, which we have
-+	 * to be prepared undo if we fail to claim space.
-+	 */
-+	save_len = ei->i_da_metadata_calc_len;
-+	save_last_lblock = ei->i_da_metadata_calc_last_lblock;
-+	md_needed = EXT4_NUM_B2C(sbi,
-+				 ext4_calc_metadata_amount(inode, lblock));
-+	trace_ext4_da_reserve_space(inode, md_needed);
-+
-+	/*
-+	 * We do still charge estimated metadata to the sb though;
-+	 * we cannot afford to run out of free blocks.
-+	 */
-+	if (ext4_claim_free_clusters(sbi, md_needed, 0)) {
-+		ei->i_da_metadata_calc_len = save_len;
-+		ei->i_da_metadata_calc_last_lblock = save_last_lblock;
-+		spin_unlock(&ei->i_block_reservation_lock);
-+		if (ext4_should_retry_alloc(inode->i_sb, &retries)) {
-+			cond_resched();
-+			goto repeat;
-+		}
-+		return -ENOSPC;
-+	}
-+	ei->i_reserved_meta_blocks += md_needed;
-+	spin_unlock(&ei->i_block_reservation_lock);
-+
-+	return 0;       /* success */
-+}
-+
- /*
-  * Reserve a single cluster located at lblock
-  */
-@@ -1601,7 +1653,8 @@ static void mpage_da_map_and_submit(struct mpage_da_data *mpd)
- 	 */
- 	map.m_lblk = next;
- 	map.m_len = max_blocks;
--	get_blocks_flags = EXT4_GET_BLOCKS_CREATE;
-+	get_blocks_flags = EXT4_GET_BLOCKS_CREATE |
-+			   EXT4_GET_BLOCKS_METADATA_RESERVED;
- 	if (ext4_should_dioread_nolock(mpd->inode))
- 		get_blocks_flags |= EXT4_GET_BLOCKS_IO_CREATE_EXT;
- 	if (mpd->b_state & (1 << BH_Delay))
-@@ -1766,7 +1819,7 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
- 			      struct buffer_head *bh)
- {
- 	struct extent_status es;
--	int retval;
-+	int retval, ret;
- 	sector_t invalid_block = ~((sector_t) 0xffff);
- 
- 	if (invalid_block < ext4_blocks_count(EXT4_SB(inode->i_sb)->s_es))
-@@ -1804,9 +1857,19 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
- 		map->m_len = retval;
- 		if (ext4_es_is_written(&es))
- 			map->m_flags |= EXT4_MAP_MAPPED;
--		else if (ext4_es_is_unwritten(&es))
-+		else if (ext4_es_is_unwritten(&es)) {
-+			/*
-+			 * We have delalloc write into the unwritten extent
-+			 * which means that we have to reserve metadata
-+			 * potentially required for converting unwritten
-+			 * extent.
-+			 */
-+			ret = ext4_da_reserve_metadata(inode, iblock);
-+			if (ret)
-+				/* not enough space to reserve */
-+				retval = ret;
- 			map->m_flags |= EXT4_MAP_UNWRITTEN;
--		else
-+		} else
- 			BUG_ON(1);
- 
- 		return retval;
-@@ -1838,7 +1901,6 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
- 
- add_delayed:
- 	if (retval == 0) {
--		int ret;
- 		/*
+@@ -1905,8 +1905,11 @@ add_delayed:
  		 * XXX: __block_prepare_write() unmaps passed block,
  		 * is it OK?
+ 		 */
+-		/* If the block was allocated from previously allocated cluster,
+-		 * then we dont need to reserve it again. */
++		/*
++		 * If the block was allocated from previously allocated cluster,
++		 * then we don't need to reserve it again. However we still need
++		 * to reserve metadata for every block we're going to write.
++		 */
+ 		if (!(map->m_flags & EXT4_MAP_FROM_CLUSTER)) {
+ 			ret = ext4_da_reserve_space(inode, iblock);
+ 			if (ret) {
+@@ -1914,6 +1917,13 @@ add_delayed:
+ 				retval = ret;
+ 				goto out_unlock;
+ 			}
++		} else {
++			ret = ext4_da_reserve_metadata(inode, iblock);
++			if (ret) {
++				/* not enough space to reserve */
++				retval = ret;
++				goto out_unlock;
++			}
+ 		}
+ 
+ 		ret = ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
 -- 
 1.7.7.6
 
