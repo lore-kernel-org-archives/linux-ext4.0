@@ -1,35 +1,39 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Possible bug with extent status tree
-Date: Mon, 11 Mar 2013 21:38:34 +0100
-Message-ID: <20130311203834.GA22229@quack.suse.cz>
+From: Dave Jones <davej@redhat.com>
+Subject: Re: torrent hash failures since 3.9.0-rc1
+Date: Mon, 11 Mar 2013 16:44:23 -0400
+Message-ID: <20130311204423.GA25307@redhat.com>
+References: <20130311171824.GA434@x4>
+ <20130311191753.GA439@x4>
+ <20130311194159.GB3579@redhat.com>
+ <20130311201334.GA444@x4>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Zheng Liu <gnehzuil.liu@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:40070 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752738Ab3CKUig (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 11 Mar 2013 16:38:36 -0400
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Markus Trippelsdorf <markus@trippelsdorf.de>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20130311201334.GA444@x4>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-  Hello,
+On Mon, Mar 11, 2013 at 09:13:34PM +0100, Markus Trippelsdorf wrote:
 
-  while looking into the ext4 code I spotted one thing which I think is a
-bug introduced by extent status tree code. The problem is that
-ext4_map_blocks() checks extent status tree and if the extent is found, it
-doesn't call into ext4_ext_map_blocks(). However ext4_ext_direct_IO() expects
-that if the extent DIO is done to is unwritten, EXT4_IO_END_UNWRITTEN flag
-gets set in the io_end (or inode) flags and that happens only in
-ext4_ext_map_blocks().
+ > > Worked fine for me on two separate machines.  Could it be a network problem
+ > > perhaps ? If something is mangling the packet before it hits the disk,
+ > > that would explain it.  What NIC do you use ?
+ > 
+ > I normally use ATL1E, but I've dusted off my E100 and the issue is also
+ > reproducible on the Intel card.
+ 
+ok, good to rule that out at least.
 
-The easiest fix seems to be to move setting of flags from
-ext4_ext_map_blocks() up into ext4_map_blocks() (or maybe even
-_ext4_get_block()). What do you think?
+ > > Or maybe you could isolate it to a filesystem problem using something
+ > > like fsx ?
+ > 
+ > I've found fsx on your homepage, but I've no idea on how to use this
+ > tool. Any pointers?
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+cd to the mount point you want to test, and then 'fsx test' will create
+a couple files there, and stress them.
+
+	Dave
