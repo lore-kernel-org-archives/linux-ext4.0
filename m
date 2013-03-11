@@ -1,45 +1,47 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH v2 0/5] ext4: try to fix up es regressions
-Date: Mon, 11 Mar 2013 14:23:06 +0800
-Message-ID: <20130311062306.GA3948@gmail.com>
-References: <1362579435-6333-1-git-send-email-wenqing.lz@taobao.com>
- <20130311021108.GD10090@thunk.org>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH 2/3] ext4: Use kstrtoul() instead of deprecated
+ simple_strtoul()
+Date: Mon, 11 Mar 2013 08:36:16 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1303110830260.24359@localhost>
+References: <1362730998-3263-1-git-send-email-lczerner@redhat.com> <1362730998-3263-2-git-send-email-lczerner@redhat.com> <20130311022635.GG10090@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
-	Dmitry Monakhov <dmonakhov@openvz.org>
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f42.google.com ([209.85.160.42]:39211 "EHLO
-	mail-pb0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751695Ab3CKGHy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Mar 2013 02:07:54 -0400
-Received: by mail-pb0-f42.google.com with SMTP id xb4so3330504pbc.29
-        for <linux-ext4@vger.kernel.org>; Sun, 10 Mar 2013 23:07:53 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <20130311021108.GD10090@thunk.org>
+Received: from mx1.redhat.com ([209.132.183.28]:28632 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752041Ab3CKHgU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 Mar 2013 03:36:20 -0400
+In-Reply-To: <20130311022635.GG10090@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Mar 10, 2013 at 10:11:08PM -0400, Theodore Ts'o wrote:
-> I've placed these patches (with a few minor fixups) on the dev branch,
-> and will start running a test/verification run on them).  Thanks for
-> working on these patches!
+On Sun, 10 Mar 2013, Theodore Ts'o wrote:
 
-Thanks.
+> Date: Sun, 10 Mar 2013 22:26:35 -0400
+> From: Theodore Ts'o <tytso@mit.edu>
+> To: Lukas Czerner <lczerner@redhat.com>
+> Cc: linux-ext4@vger.kernel.org
+> Subject: Re: [PATCH 2/3] ext4: Use kstrtoul() instead of deprecated
+>     simple_strtoul()
+> 
+> On Fri, Mar 08, 2013 at 09:23:17AM +0100, Lukas Czerner wrote:
+> > In parse_strtoul() we're still using deprecated simple_strtoul(). Change
+> > that in favour of kstrtoul().
+> > 
+> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> 
+> Once you make this change, wouldn't it be better and even more
+> simplifying to replace the two places where we call parse_strtoul()
+> with kstrtoul()?
+> 
+> 					- Ted
 
-As Dmitry's comment, I have updated my patches.
+I think that parse_strtoul() is still useful to have because we
+check the "max" value as well and return -EINVAL if it is exceeded.
+Removing it we would have to add the check to the callers
+where we're using is now, which seems unnecessary, especially since
+we might expect more users of the helper.
 
-In patch 2 (ext4: add self-testing infrastructure to do a sanity check)
-Dmitry suggests that we'd better replace 'retval != map->m_len' condition
-with a BUG_ON().  But now I don't think we need to touch it because we
-are still discussing this assumption.
-
-In patch 4 (ext4: update extent status tree after an extent is zeroed
-out) I have moved ext4_es_zeroout() into extents.c file and remove some
-local variables that are only used once.  Do I need to send it out?  I
-know the test has started.  Maybe I should wait a moment, and let the
-tree stable before -rc2.
-
-Regards,
-                                                - Zheng
+-Lukas
