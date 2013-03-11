@@ -1,45 +1,51 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Mixup with name_len & file_type in e2fsprogs
-Date: Mon, 11 Mar 2013 15:18:56 +0100
-Message-ID: <20130311141856.GJ29799@quack.suse.cz>
-References: <20130305121856.GA11824@quack.suse.cz>
- <20130305182946.GB26122@thunk.org>
- <20130305184138.GA19601@quack.suse.cz>
- <20130307182444.GA21237@quack.suse.cz>
- <20130308004620.GB29720@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 2/3] ext4: Use kstrtoul() instead of deprecated
+ simple_strtoul()
+Date: Mon, 11 Mar 2013 11:38:01 -0400
+Message-ID: <20130311153801.GB4646@thunk.org>
+References: <1362730998-3263-1-git-send-email-lczerner@redhat.com>
+ <1362730998-3263-2-git-send-email-lczerner@redhat.com>
+ <20130311022635.GG10090@thunk.org>
+ <alpine.LFD.2.00.1303110830260.24359@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:54133 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753149Ab3CKOS6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 11 Mar 2013 10:18:58 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:52539 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752041Ab3CKPiF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 Mar 2013 11:38:05 -0400
 Content-Disposition: inline
-In-Reply-To: <20130308004620.GB29720@thunk.org>
+In-Reply-To: <alpine.LFD.2.00.1303110830260.24359@localhost>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 07-03-13 19:46:20, Ted Tso wrote:
-> By the way, why was the application trying to access the directory
-> entries directly, as opposed to using some of the higher level
-> functions in libext2fs?  What was it trying to do?
-  It was btrfs-convert (I could have told that in my original email as well
-but it didn't seem important) - i.e. inplace convertor from ext4 to btrfs.
-So it really needed to get the file type from the directory block to fill
-in appropriate btrfs structures.
+On Mon, Mar 11, 2013 at 08:36:16AM +0100, Luk=C3=A1=C5=A1 Czerner wrote=
+:
+> I think that parse_strtoul() is still useful to have because we
+> check the "max" value as well and return -EINVAL if it is exceeded.
+> Removing it we would have to add the check to the callers
+> where we're using is now, which seems unnecessary, especially since
+> we might expect more users of the helper.
 
-> Is there some new higher-level functionality we should be providing?
-> Or was this just an application that didn't know about some better
-> interface that it could have used?  Is this an open source
-> application?  Can you send me a pointer to it?
-  btrfs-convert is part of btrfsprogs so feel free to have a look. I don't
-think we can actually provide some high level functionality to serve its
-needs. It really just needs to do readdir(2) on fs image which is what is
-already implemented in libext2fs.
+Well, at the moment only one of the two users of parse_strtoul() is
+using the "max" value check feature.  I see one other potential user
+of parse_strtoul (there's one use of simple_strtoul in get_sb_block()
+which wasn't converted in your patch), but it wouldn't need the max
+value check feature either.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+So I don't have a super strong feeling about this, since this isn't
+performance critical code, and it's probably not going to cost a large
+amount of object code or stack space, but sometimes extra levels of
+abstraction end up hurting more than they help.
+
+Regards,
+
+					- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
