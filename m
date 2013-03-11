@@ -1,37 +1,55 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [REGRESSION] allocated N with only M reserved metadata blocks
-Date: Mon, 11 Mar 2013 17:22:39 -0400
-Message-ID: <20130311212239.GD15478@thunk.org>
-References: <20130311185423.GA15478@thunk.org>
- <20130311210201.GA940@wallace>
+From: Markus Trippelsdorf <markus@trippelsdorf.de>
+Subject: Re: torrent hash failures since 3.9.0-rc1
+Date: Mon, 11 Mar 2013 22:38:37 +0100
+Message-ID: <20130311213837.GA438@x4>
+References: <20130311171824.GA434@x4>
+ <20130311191753.GA439@x4>
+ <20130311194159.GB3579@redhat.com>
+ <20130311201334.GA444@x4>
+ <20130311203738.GB15478@thunk.org>
+ <20130311204625.GA433@x4>
+ <20130311211833.GC15478@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Eric Whitney <enwlinux@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:52647 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754636Ab3CKVWl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 11 Mar 2013 17:22:41 -0400
+To: Theodore Ts'o <tytso@mit.edu>, Dave Jones <davej@redhat.com>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20130311210201.GA940@wallace>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20130311211833.GC15478@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Mar 11, 2013 at 05:02:01PM -0400, Eric Whitney wrote:
+On 2013.03.11 at 17:18 -0400, Theodore Ts'o wrote:
+> On Mon, Mar 11, 2013 at 09:46:25PM +0100, Markus Trippelsdorf wrote:
+> > > BTW, I'm currently running 3.9-rc2 with some additional fixes from the
+> > > ext4 dev branch, and I'm not able to reproduce the problem using
+> > > rtorrent on my laptop.  How reliably is it reproducing for you?  Are
+> > > you seeing the problem every time you try this?
+> > 
+> > Yes, it's 100% reproducible for me. If I boot a 3.8 kernel the issue
+> > vanishes.
 > 
-> FWIW, this might not be a regression.  I believe I've got this warning in my
-> testing logs from both 3.8 and 3.8-rc7 (commit 01a523eb51 in 3.9-rc1 affects
-> message format and line numbering) on both x86 and ARM.  I didn't run xfstest
-> 127 prior to 3.8-rc7, so I don't know how far back the warning may have
-> occurred for that particular test.
+> Would you be willing to try an experiment? 
 > 
-> The 3.8-rc7 results are a little different with respect to number of warnings
-> and test cases, so I'm thinking this one isn't completely deterministic,
-> testing-wise.  Multiple test runs may be required to see it.
+> Try pulling down the master branch from the ext4 git tree here:
+> 
+> git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
+> 
+> This contains all of the ext4 changes which are in 3.9-rc1, based on
+> top of 3.8-rc3.  See if it reproduces there.  If it does, then it
+> would tend to confirm the hypothesis that the issue was introduced by
+> one of the ext4 patches that we merged during the 3.9-rc1 merge
+> window... and then, since if you can reproduce the problem, if you
+> could do a git bisect to find the guilty commit, that would really
+> greatly appreciated.
+> 
+> If you can't reproduce it from the ext4.git tree, then the problem is
+> probably caused by some other change that was introduced between 3.8
+> and 3.9-rc1.
 
-Thanks for the extra data; this saved be a whole bunch of time, since
-I probably would have started doing a series git bisects tonight.   :-)
+I've started a full bisection from v3.8 to todays git tree. It will take
+~13 steps. However it's already late here in Germany. I will continue
+the bisection tomorrow and report back.
 
-  	   	      	      	      - Ted
-
+-- 
+Markus
