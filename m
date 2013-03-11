@@ -1,26 +1,44 @@
-From: Markus Trippelsdorf <markus@trippelsdorf.de>
-Subject: torrent hash failures since 3.9.0-rc1
-Date: Mon, 11 Mar 2013 18:18:24 +0100
-Message-ID: <20130311171824.GA434@x4>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [BUG][data=journal] general protection fault is hitted when we
+ run xfstests #074
+Date: Mon, 11 Mar 2013 13:33:23 -0400
+Message-ID: <20130311173323.GB6481@thunk.org>
+References: <20130307122019.GC2800@gmail.com>
+ <20130307122638.GD6723@quack.suse.cz>
+ <20130308125545.GA18986@gmail.com>
+ <20130311132717.GD29799@quack.suse.cz>
+ <20130311140646.GA5266@gmail.com>
+ <20130311163338.GM29799@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Zheng Liu <gnehzuil.liu@gmail.com>, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:52577 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751868Ab3CKRd1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 Mar 2013 13:33:27 -0400
 Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20130311163338.GM29799@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-I get hash failures on "completed" torrents since 3.9.0-rc1 (Linux 3.8
-seems to be fine). What happens is that the torrents apparently complete
-successfully. After reboot however the hash check fails and there are
-missing (or corrupted) chunks. I've tested this with two different
-clients (rtorrent and aria2c) and both are affected. So I think this
-might be a filesystem issue.
+On Mon, Mar 11, 2013 at 05:33:38PM +0100, Jan Kara wrote:
 
-/dev/sda       ext4      1.4T  666G  640G  51% /var
-/dev/sda on /var type ext4 (rw,noatime,data=ordered)
+> > 
+> > Yup, but I don't think it is a very urgent bug because I need to run a
+> > stress test case a lot of times to hit it, and in practice we don't
+> > receive any report yet.  Certainly we need to keep it in mind.
+>   Actually, it wasn't that hard. Attached patch should fix the issue.
 
-I use ECC memory (and there is nothing in the logs).
+Looks good.  Jan, Zheng, thank you very much for debugging this issue!
 
--- 
-Markus
+I've added a cc:stable@vger.kernel.org to this commit since this looks
+like it would be a good one to backport.
+
+(Let me know if there are other bugs currently on the dev branch which
+you think should be backported; the general criteria is that it should
+be a bug which is serious enough, as well as sufficiently low risk,
+that distro kernels would want it.)
+
+					- Ted
