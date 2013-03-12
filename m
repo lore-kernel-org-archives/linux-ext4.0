@@ -1,111 +1,58 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] Ext2: do not mark_inode_dirty to avoid BUG_ON
-Date: Tue, 12 Mar 2013 11:13:33 +0100
-Message-ID: <20130312101333.GB13152@quack.suse.cz>
-References: <513EB7DD.3020103@cn.fujitsu.com>
- <alpine.LFD.2.00.1303120904030.7128@dhcp-1-104.brq.redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: fanchaoting <fanchaoting@cn.fujitsu.com>, jack@suse.cz,
-	tyhicks@canonical.com, linux-ext4@vger.kernel.org,
-	wangshilong1991@gmail.com
-To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+From: "George Spelvin" <linux@horizon.com>
+Subject: Re: Sign, more experimentation and broken features...
+Date: 12 Mar 2013 08:04:25 -0400
+Message-ID: <20130312120425.4665.qmail@science.horizon.com>
+References: <20130312040649.GD18595@thunk.org>
+Cc: linux-ext4@vger.kernel.org
+To: linux@horizon.com, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:34199 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932166Ab3CLKNf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Mar 2013 06:13:35 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1303120904030.7128@dhcp-1-104.brq.redhat.com>
+Received: from science.horizon.com ([71.41.210.146]:56034 "HELO
+	science.horizon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1754991Ab3CLME0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Mar 2013 08:04:26 -0400
+In-Reply-To: <20130312040649.GD18595@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 12-03-13 09:14:21, Luk=C3=A1=C5=A1 Czerner wrote:
-> On Tue, 12 Mar 2013, fanchaoting wrote:
->=20
-> > Date: Tue, 12 Mar 2013 13:06:37 +0800
-> > From: fanchaoting <fanchaoting@cn.fujitsu.com>
-> > To: jack@suse.cz
-> > Cc: tyhicks@canonical.com, linux-ext4@vger.kernel.org,
-> >     wangshilong1991@gmail.com
-> > Subject: [PATCH] Ext2: do not mark_inode_dirty to avoid BUG_ON
-> >=20
-> > From: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
-> >=20
-> > commit 8e3dffc651cb668e1ff4d8b89cc1c3dde7540d3b leads into
-> > a regression that casue BUG_ON when unlinking inode.
->=20
-> Hi,
->=20
-> it seems to be that we do need to mark the inode dirty, because
-> we're changing inode->i_blocks from within
-> dquot_free_block_nodirty().
->=20
-> However looking at the code we usually call mark_inode_dirty(inode)
-> after we call ext2_free_blocks() except when we're about to remove
-> the inode so it seems that having that call within ext2_free_blocks()
-> is not necessary.
-  Yeah. Actually the problem is specifically with ext2_xattr_delete_ino=
-de()
-marking inode dirty because that is called after clear_inode(). Everyth=
-ing
-before clear_inode() call is free to dirty the inode because clear_inod=
-e()
-clears the dirty flag. I wonder if we shouldn't move that call into
-ext2_evict_inode() before clear_inode() and be done with it. Because th=
-e
-fact that ext2_free_blocks() cannot dirty the inode looks more surprisi=
-ng
-than the fact that ext2_free_inode() doesn't automatically free extende=
-d
-attributes.
+> I'm going to guess there may be problems with using the e2fsck -D
+> option with bigalloc.  I could imagine potential problems with that,
+> and it's probably not something we've explicitly tested. 
 
-> However I am not sure about the error path in ext2_alloc_branch()
-> which does not dirty the inode after calling ext2_free_blocks().
-> However presumably since we're just undoing the changes we might
-> have done and not actually allocating, or freeing any space for
-> real, dirtying the inode might not be necessary. Can you confirm
-> that ?
-  I think that needs to dirty the inode. It may be written out in some
-intermediate state...
+Ah.  I'll see if I can re-create and test that.
 
-								Honza
+> Also, just to check.... all of this was done with the file system
+> unmounted, right?
 
-> > Reported-by: tyhicks@canonical.com
-> > Signed-off-by: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
-> > ---
-> >  fs/ext2/balloc.c |    1 -
-> >  1 files changed, 0 insertions(+), 1 deletions(-)
-> >=20
-> > diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
-> > index 9f9992b..06d82fc 100644
-> > --- a/fs/ext2/balloc.c
-> > +++ b/fs/ext2/balloc.c
-> > @@ -562,7 +562,6 @@ error_return:
-> >  	if (freed) {
-> >  		percpu_counter_add(&sbi->s_freeblocks_counter, freed);
-> >  		dquot_free_block_nodirty(inode, freed);
-> > -		mark_inode_dirty(inode);
-> >  	}
-> >  }
-> > =20
-> > -- 1.7.7.6=20
-> >=20
-> >=20
-> >=20
-> >=20
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext=
-4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >=20
---=20
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Definitely.  I would hope the lack of error message from e2fsck
+made that clear, but I suppose it could have been mounted RO.
+
+> The good news is that this appears to be a newly added group, so
+> hopefully there was no data lost.
+
+I noticed that, too.  I also have the ability to leave this FS alone for
+a while, so I haven't touched it yet.  Is there some more useful debug
+information to be gathered before I start contaminating the scene?
+
+> It may be worth mounting the file system read-only and copying all of
+> your data off before you do anything else....
+
+Yeah, I'll have to borrow some additional drives to do that with...
+
+> Also, it looks like there may be some problems with the metadata_csum
+> option when resizing, either alone or in combination with bigalloc.
+> Please note that I have ___not___ really done a lot of exhaustive
+> testing with metadata_csum, since it's not in a released final state
+> in e2fsprogs, and I've had lots of other things I've been busy trying
+> to make sure is stablized.  For example, we are still working on
+> fixing various test failures with bigalloc.  It's probably good enough
+> for fairly simple workloads (mostly using fallocate and direct I/O),
+> but there are corner cases which we are still working on fixing.
+
+I've jyst been running it successfully on a few machines since my last round
+of complaints, so I figured I'd try a *new* feature as well.  :-)
+
+(I would have turned on INLINE_DATA too if I could figure out how to
+enable it.  Ah, -O inline_data seems to be it.)
+
+Unfortunately, I was stupid and didn't grab the latest e2fsprogs that
+includes the bigalloc warnings.
