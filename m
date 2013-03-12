@@ -1,83 +1,79 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] Ext2: do not mark_inode_dirty to avoid BUG_ON
-Date: Tue, 12 Mar 2013 09:14:21 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1303120904030.7128@dhcp-1-104.brq.redhat.com>
-References: <513EB7DD.3020103@cn.fujitsu.com>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: Inactive memory keep growing and how to release it?
+Date: Tue, 12 Mar 2013 16:37:11 +0800
+Message-ID: <20130312083711.GA1943@gmail.com>
+References: <CAAO_Xo5g2LR54ry=SU7UhGbv-chdkdd6foq+-LjnuE8yAj8ikg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: jack@suse.cz, tyhicks@canonical.com, linux-ext4@vger.kernel.org,
-	wangshilong1991@gmail.com
-To: fanchaoting <fanchaoting@cn.fujitsu.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Lenky Gao <lenky.gao@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32049 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754019Ab3CLIPN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Mar 2013 04:15:13 -0400
-In-Reply-To: <513EB7DD.3020103@cn.fujitsu.com>
+Received: from mail-pb0-f48.google.com ([209.85.160.48]:46235 "EHLO
+	mail-pb0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754882Ab3CLIVw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Mar 2013 04:21:52 -0400
+Received: by mail-pb0-f48.google.com with SMTP id wy12so4696916pbc.21
+        for <linux-ext4@vger.kernel.org>; Tue, 12 Mar 2013 01:21:52 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <CAAO_Xo5g2LR54ry=SU7UhGbv-chdkdd6foq+-LjnuE8yAj8ikg@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 12 Mar 2013, fanchaoting wrote:
+Hi Gao,
 
-> Date: Tue, 12 Mar 2013 13:06:37 +0800
-> From: fanchaoting <fanchaoting@cn.fujitsu.com>
-> To: jack@suse.cz
-> Cc: tyhicks@canonical.com, linux-ext4@vger.kernel.org,
->     wangshilong1991@gmail.com
-> Subject: [PATCH] Ext2: do not mark_inode_dirty to avoid BUG_ON
+On Tue, Mar 12, 2013 at 02:58:24PM +0800, Lenky Gao wrote:
+> Hi,
 > 
-> From: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
+> When i just run a test on Centos 6.2 as follows:
+> ################################
+> #!/bin/bash
 > 
-> commit 8e3dffc651cb668e1ff4d8b89cc1c3dde7540d3b leads into
-> a regression that casue BUG_ON when unlinking inode.
+> while true
+> do
+> 
+>         file="/tmp/filetest"
+> 
+>         echo $file
+> 
+>         dd if=/dev/zero of=${file} bs=512 count=204800 &> /dev/null
+> 
+>         sleep 5
+> done
+> ################################
+> 
+> the inactive memory keep growing:
+> 
+> #cat /proc/meminfo | grep Inactive\(fi
+> Inactive(file):   420144 kB
+> ...
+> #cat /proc/meminfo | grep Inactive\(fi
+> Inactive(file):   554662 kB
+> ...
+> #cat /proc/meminfo | grep Inactive\(fi
+> Inactive(file):   882824 kB
+> 
+> and i cannot reclaim it:
+> 
+> # cat /proc/meminfo | grep Inactive\(file\);
+> Inactive(file):   882824 kB
+> # sync;
+> # echo 3 > /proc/sys/vm/drop_caches
+> # cat /proc/meminfo | grep Inactive\(file\);
+> Inactive(file):   777664 kB
+> 
+> My file system type is ext3, mounted with the option data=journal and
+> it is easy to reproduce. If the mount option is data=ordered,
+> reproducing this problom need more time. Because of the problom, when
+> in the final situation, i cannot kmalloc a larger contiguous memory,
+> especially in interrupt context. I have tested on other version
+> kernel, such as 2.6.30 and 3.6.11, the problom also exists.
+> 
+> Is this a bug?
 
-Hi,
+I don't think it is a bug.  If I understand correctly, when you try to
+reclaim memory (sync and drop caches), the test script is still running,
+right?  If so, that means that some memory will be re-dirtied again.  So
+the number of inactive pages could not reduce as you expected.
 
-it seems to be that we do need to mark the inode dirty, because
-we're changing inode->i_blocks from within
-dquot_free_block_nodirty().
-
-However looking at the code we usually call mark_inode_dirty(inode)
-after we call ext2_free_blocks() except when we're about to remove
-the inode so it seems that having that call within ext2_free_blocks()
-is not necessary.
-
-However I am not sure about the error path in ext2_alloc_branch()
-which does not dirty the inode after calling ext2_free_blocks().
-However presumably since we're just undoing the changes we might
-have done and not actually allocating, or freeing any space for
-real, dirtying the inode might not be necessary. Can you confirm
-that ?
-
-Thanks!
--Lukas
-
-> 
-> Reported-by: tyhicks@canonical.com
-> Signed-off-by: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
-> ---
->  fs/ext2/balloc.c |    1 -
->  1 files changed, 0 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
-> index 9f9992b..06d82fc 100644
-> --- a/fs/ext2/balloc.c
-> +++ b/fs/ext2/balloc.c
-> @@ -562,7 +562,6 @@ error_return:
->  	if (freed) {
->  		percpu_counter_add(&sbi->s_freeblocks_counter, freed);
->  		dquot_free_block_nodirty(inode, freed);
-> -		mark_inode_dirty(inode);
->  	}
->  }
->  
-> -- 1.7.7.6 
-> 
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Regards,
+                                                - Zheng
