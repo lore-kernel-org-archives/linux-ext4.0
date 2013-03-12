@@ -1,43 +1,49 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: torrent hash failures since 3.9.0-rc1
-Date: Tue, 12 Mar 2013 09:28:11 -0400
-Message-ID: <20130312132811.GI18595@thunk.org>
-References: <20130311204625.GA433@x4>
- <20130311211833.GC15478@thunk.org>
- <20130311213837.GA438@x4>
- <20130311231227.GA319@x4>
- <20130312030057.GA6142@gmail.com>
- <20130312033054.GB18595@thunk.org>
- <20130312061624.GA436@x4>
- <20130312064449.GA8806@gmail.com>
- <20130312064810.GA426@x4>
- <20130312071606.GA8900@gmail.com>
+Subject: Re: a problem about ext4.
+Date: Tue, 12 Mar 2013 09:42:29 -0400
+Message-ID: <20130312134229.GJ18595@thunk.org>
+References: <CAAO_Xo5g2LR54ry=SU7UhGbv-chdkdd6foq+-LjnuE8yAj8ikg@mail.gmail.com>
+ <513EDC2B.9020604@gmail.xom>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Markus Trippelsdorf <markus@trippelsdorf.de>,
-	Dave Jones <davej@redhat.com>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
+Cc: zhuyj <zyjzyj2000@gmail.xom>, linux-ext4@vger.kernel.org
+To: zhuyj <zyjzyj2000@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:52839 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:52843 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751868Ab3CLN2S (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Mar 2013 09:28:18 -0400
+	id S1753694Ab3CLNmc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Mar 2013 09:42:32 -0400
 Content-Disposition: inline
-In-Reply-To: <20130312071606.GA8900@gmail.com>
+In-Reply-To: <513EDC2B.9020604@gmail.xom>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 12, 2013 at 03:16:06PM +0800, Zheng Liu wrote:
-> 
-> Ted, I am wandering if we need to Cc this patch to stable kernel.  We
-> don't receive any report to complaint it, though, but it is worth
-> backporting it I think.
+On Tue, Mar 12, 2013 at 03:41:31PM +0800, zhuyj wrote:
+> If I use kernel>=3.0, this will not occur.
 
-I'll check, bu I suspect it will require an explicit backport; it's
-not going to apply cleanly automatically, will it?  
+Sounds like this is a problem in 2.6.39 that has since been fixed in
+newer kernels.
 
-(i.e., if we include cc: stable@vger.kernel.org, are there some
-prerequisite patches that will also have to be backported, and/or we
-will need manually fix up patch conflicts, right?)
+> So is this is a bug?
 
-						- Ted
+Sure looks like it's a bug.  :-)
+
+There are so many distributions and other old embedded systems, etc.,
+using older kernels that there's just no way that upstream developers
+can try to debug every single older kernel --- and 2.6.39 isn't even a
+kernel that is being supported by a volunteer as a long-term supported
+kernel.
+
+See http://www.kernel.org for a list of kernels which are supported as
+long-term kernels, and even then, please remember that unless fixes
+are automatically backported, or someone manually backports a fix that
+doesn't automatically apply to an older kernel, it's not going to
+happen.....
+
+Regards,
+
+					- Ted
+
+P.S.  Your problem appears to be completely unrelated to the thread
+which you replied to.  This makes it hard for us to keep track of
+questions/bug reports which users submit.
