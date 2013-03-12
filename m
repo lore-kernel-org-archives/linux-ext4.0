@@ -1,85 +1,93 @@
-From: Lenky Gao <lenky.gao@gmail.com>
-Subject: Re: Inactive memory keep growing and how to release it?
-Date: Tue, 12 Mar 2013 16:48:02 +0800
-Message-ID: <CAAO_Xo5iK=mnLzxeRCWq_qMkm2NLotDfYZEQZrwyKurNGnOeZw@mail.gmail.com>
-References: <CAAO_Xo5g2LR54ry=SU7UhGbv-chdkdd6foq+-LjnuE8yAj8ikg@mail.gmail.com>
-	<20130312083711.GA1943@gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: Possible bug with extent status tree
+Date: Tue, 12 Mar 2013 10:32:11 +0100
+Message-ID: <20130312093211.GA13152@quack.suse.cz>
+References: <20130311203834.GA22229@quack.suse.cz>
+ <20130312035319.GB6142@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: Lenky Gao <lenky.gao@gmail.com>, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-we0-f170.google.com ([74.125.82.170]:57539 "EHLO
-	mail-we0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753910Ab3CLIsE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Mar 2013 04:48:04 -0400
-Received: by mail-we0-f170.google.com with SMTP id z53so4423479wey.15
-        for <linux-ext4@vger.kernel.org>; Tue, 12 Mar 2013 01:48:02 -0700 (PDT)
-In-Reply-To: <20130312083711.GA1943@gmail.com>
+Received: from cantor2.suse.de ([195.135.220.15]:60414 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754027Ab3CLJcO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Mar 2013 05:32:14 -0400
+Content-Disposition: inline
+In-Reply-To: <20130312035319.GB6142@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 12, 2013 at 4:37 PM, Zheng Liu <gnehzuil.liu@gmail.com> wrote:
-> Hi Gao,
-> I don't think it is a bug.  If I understand correctly, when you try to
-> reclaim memory (sync and drop caches), the test script is still running,
-> right?  If so, that means that some memory will be re-dirtied again.  So
-> the number of inactive pages could not reduce as you expected.
+  Hello,
 
-The test script has stopped.
+On Tue 12-03-13 11:53:19, Zheng Liu wrote:
+> On Mon, Mar 11, 2013 at 09:38:34PM +0100, Jan Kara wrote:
+> >   Hello,
+> > 
+> >   while looking into the ext4 code I spotted one thing which I think is a
+> > bug introduced by extent status tree code. The problem is that
+> > ext4_map_blocks() checks extent status tree and if the extent is found, it
+> > doesn't call into ext4_ext_map_blocks(). However ext4_ext_direct_IO() expects
+> > that if the extent DIO is done to is unwritten, EXT4_IO_END_UNWRITTEN flag
+> > gets set in the io_end (or inode) flags and that happens only in
+> > ext4_ext_map_blocks().
+> > 
+> > The easiest fix seems to be to move setting of flags from
+> > ext4_ext_map_blocks() up into ext4_map_blocks() (or maybe even
+> > _ext4_get_block()). What do you think?
+> 
+> Hi Jan,
+> 
+> Thanks for reviewing the code.  But I don't think it is a potential bug.
+> Let's see what happens after adding extent status tree.  There are three
+> cases that we need to take care, a) no block has been allocated, b)
+> unwritten extent has been allocated, and c) written extent has been
+> allocated.
+> 
+> a) no block has been allocated.
+> In this case, both extent tree on disk and status tree in memory haven't
+> this extent.  When we do a extent-based dio write, ext4_get_block_write
+> will be called with EXT4_GET_BLOCKS_IO_CREATE_EXT flag.  In
+> ext4_map_blocks(), the codepath looks like:
+> 
+> ext4_map_blocks()
+>   ->ext4_es_lookup_extent()
+>     [no extent found in status tree]
+>   ->ext4_ext_map_blocks() without flags
+>     [no extent found in extent tree]
+>   ->ext4_ext_map_blocks() with EXT4_GET_BLOCKS_IO_CREATE_EXT
+>     ->ext4_mb_new_blocks()
+>       [allocate an unwritten extent]
+>     ->ext4_set_io_unwritten_flag()
+>       [set EXT4_IO_END_UNWRITTEN flag because _PRE_IO flag is set and an
+>        unwritten extent has been allocated]
+> 
+> In this case, we are safe.
+  Agreed.
 
-Some log messages came from my UML Linux as follows:
+> b) unwritten extent has been allocated
+> In this case, both extent tree on disk and status tree in memory have an
+> unwritten extent, and codepath looks like:
+> 
+> ext4_map_blocks()
+>   ->ext4_es_lookup_extent()
+>     [unwritten extent found in status tree, EXT4_MAP_UNWRITTEN flag is
+>      marked in map->m_flags.  In the mean time, ext4_ext_map_blocks()
+>      isn't called]
+>   [But we don't return from ext4_map_blocks because EXT4_GET_BLOCKS_CREATE
+>    flag is set and EXT4_MAP_MAPPED flag is not set]
+>   ->ext4_ext_map_blocks() with EXT4_GET_BLOCKS_IO_CREATE_EXT
+>     ->ext4_ext_handle_uninitialized_extents()
+>       ->ext4_set_io_unwritten_flag()
+>         [set EXT4_IO_END_UNWRITTEN flag because _PRE_IO flag is set]
+> 
+> So it seems that there is no bug.
+  Ah, right. This is what I was missing. I didn't realize that we won't
+set EXT4_MAP_MAPPED when the extent is unwritten so we will end up calling
+ext4_ext_map_blocks() later. Sorry for the noise.
 
-...
-/sdb/file_test
-             total       used       free     shared    buffers     cached
-Mem:           182        179          2          0         10         13
--/+ buffers/cache:        155         27
-Swap:            0          0          0
-/sdb/file_test
-^C
-[root@localhost ~]#
-[root@localhost ~]# sync;
-[root@localhost ~]# echo 3 > /proc/sys/vm/drop_caches
-[root@localhost ~]#
-[root@localhost ~]# echo 3 > /proc/sys/vm/drop_caches
-[root@localhost ~]# sync;
-[root@localhost ~]# echo 3 > /proc/sys/vm/drop_caches
-[root@localhost ~]# free -m
-             total       used       free     shared    buffers     cached
-Mem:           182        157         25          0          0          3
--/+ buffers/cache:        153         28
-Swap:            0          0          0
-
-[root@localhost ~]# cat /proc/meminfo | grep Inac
-Inactive:         124756 kB
-Inactive(anon):     1408 kB
-Inactive(file):   123348 kB
-[root@localhost ~]# uname -a
-Linux localhost.localdomain 2.6.30.8 #20 Mon Mar 11 07:04:06 EDT 2013
-x86_64 x86_64 x86_64 GNU/Linux
-[root@localhost ~]# mount | grep sdb
-/dev/ubdb1 on /sdb type ext3 (rw,data=journal)
-[root@localhost ~]# cat ./test_write_disk.sh
-#!/bin/bash
-
-while true
-do
-
-#       file="/sdb/file_`date +%y%m%d%k%m%s`"
-        file="/sdb/file_test"
-
-        echo $file
-
-        dd if=/dev/zero of=${file} bs=512 count=20480 &> /dev/null
-
-#	sync
-#	cat /proc/meminfo | grep Inactive\(file\)
-	free -m
-
-#        rm -fr ${file}
-done
-
+								Honza
 -- 
-Regards,
-
-Lenky
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
