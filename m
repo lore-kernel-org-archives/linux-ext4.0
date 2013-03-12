@@ -1,50 +1,46 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: torrent hash failures since 3.9.0-rc1
-Date: Wed, 13 Mar 2013 09:04:52 +1100
-Message-ID: <20130312220452.GR21651@dastard>
-References: <20130311171824.GA434@x4>
- <20130311191753.GA439@x4>
- <20130311194159.GB3579@redhat.com>
- <20130311201334.GA444@x4>
- <20130311203738.GB15478@thunk.org>
- <20130311204625.GA433@x4>
- <20130312082854.GA1515@panda>
+From: Margaret Jones <info@loan.com>
+Subject: Info
+Date: Tue, 12 Mar 2013 23:19:44 +0200
+Message-ID: <20130312231944.25475vnpeumfxe04@email.damt.gov.gr>
+Reply-To: incitipprimfina@citiprimeloan.co.uk
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Markus Trippelsdorf <markus@trippelsdorf.de>,
-	Theodore Ts'o <tytso@mit.edu>, Dave Jones <davej@redhat.com>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Sander <sander@humilis.net>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Type: text/plain;
+ charset=UTF-8;
+ DelSp="Yes";
+ format="flowed"
+Content-Transfer-Encoding: 7bit
+To: undisclosed-recipients:;
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp.damt.gov.gr ([84.205.252.71]:57849 "EHLO mail.damt.gov.gr"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S932065Ab3CLWJI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Mar 2013 18:09:08 -0400
 Content-Disposition: inline
-In-Reply-To: <20130312082854.GA1515@panda>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 12, 2013 at 09:28:54AM +0100, Sander wrote:
-> Markus Trippelsdorf wrote (ao):
-> > On 2013.03.11 at 16:37 -0400, Theodore Ts'o wrote:
-> > > We actually run fsx in a number of different configruations as part of
-> > > our regression testing before we send Linus a pull request, and
-> > > haven't found any issues.  So unless it's a hardware problem, it seems
-> > > unlikely to me that your running fsx would turn up anything.
-> > 
-> > Yes, I let it run for a while anyway and it didn't report any failure.
-> 
-> > Please note that my local rtorrent version was configured with
-> > "--with-posix-fallocate".
-> 
-> Would it be possible to enhance fsx to detect such an issue?
+This is a general notification to the public. We are a reputable and  
+legitimate loan lender company in United Kingdom,Malaysia and Ghana.We  
+give out all kinds of loans, such as personal loans,commercial loans,  
+business loans, investment loans, etc. We offer long and short terms  
+loan services with an affordable interest rate of 3% only. We offer  
+the best loan services on the internet,because our loan services are  
+very genuine and efficient.
 
-fsx in xfstests already uses fallocate() for preallocation and hole
-punching, so such problems related to these operations can be found
-using fsx. The issue here, however, involves memory reclaim
-interactions and so is not something fsx can reproduce in isolation.  :/
+We have also been awarded by the general loan lending commission as  
+the best loan company on the internet. For details about our loan  
+services, contact us via email for more informations.email:  
+incitipprimfina@citiprimeloan.co.uk
 
+1. Names in full :
+2. Country of Residence/Address :
+3. Amount :
+4. Duration Of Loan :
+5. Age:
+6.Phone Number:
+7.Applicant Address:
+We look forward to your patronage.
+Regards
+Margaret Jones
+Secretary
 
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
