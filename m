@@ -1,36 +1,50 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: use s_extent_max_zeroout_kb value as number of kb
-Date: Tue, 12 Mar 2013 12:45:11 -0400
-Message-ID: <20130312164511.GC4959@thunk.org>
-References: <1363106209-1883-1-git-send-email-lczerner@redhat.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: torrent hash failures since 3.9.0-rc1
+Date: Wed, 13 Mar 2013 09:04:52 +1100
+Message-ID: <20130312220452.GR21651@dastard>
+References: <20130311171824.GA434@x4>
+ <20130311191753.GA439@x4>
+ <20130311194159.GB3579@redhat.com>
+ <20130311201334.GA444@x4>
+ <20130311203738.GB15478@thunk.org>
+ <20130311204625.GA433@x4>
+ <20130312082854.GA1515@panda>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, wenqing.lz@taobao.com
-To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:52892 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932065Ab3CLQpQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Mar 2013 12:45:16 -0400
+Cc: Markus Trippelsdorf <markus@trippelsdorf.de>,
+	Theodore Ts'o <tytso@mit.edu>, Dave Jones <davej@redhat.com>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Sander <sander@humilis.net>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1363106209-1883-1-git-send-email-lczerner@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20130312082854.GA1515@panda>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Thanks, applied.
+On Tue, Mar 12, 2013 at 09:28:54AM +0100, Sander wrote:
+> Markus Trippelsdorf wrote (ao):
+> > On 2013.03.11 at 16:37 -0400, Theodore Ts'o wrote:
+> > > We actually run fsx in a number of different configruations as part of
+> > > our regression testing before we send Linus a pull request, and
+> > > haven't found any issues.  So unless it's a hardware problem, it seems
+> > > unlikely to me that your running fsx would turn up anything.
+> > 
+> > Yes, I let it run for a while anyway and it didn't report any failure.
+> 
+> > Please note that my local rtorrent version was configured with
+> > "--with-posix-fallocate".
+> 
+> Would it be possible to enhance fsx to detect such an issue?
 
-I'm on the fence about whether to submit this after -rc2 or not.
-This appears to make potential bug much rarer, and it's a trivial
-patch to backport, but it does make rather large changes in how we
-handle fragmented filesystem.  (For the better, but it's a large
-change, and it is getting rather late in the season.)
+fsx in xfstests already uses fallocate() for preallocation and hole
+punching, so such problems related to these operations can be found
+using fsx. The issue here, however, involves memory reclaim
+interactions and so is not something fsx can reproduce in isolation.  :/
 
-I'm going to include in the dev branch for now, and give it all a good
-instensive testing, but there may be some patches in dev that may get
-deferred to the next merge window before I send a pull request to
-Linus (probably during the coming weekend).
 
-Folks should feel free to propose patches they think should wait for
-the next merge window.
+Cheers,
 
-					- Ted
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
