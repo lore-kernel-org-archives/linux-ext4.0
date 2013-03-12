@@ -1,122 +1,63 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [REGRESSION] allocated N with only M reserved metadata blocks
-Date: Tue, 12 Mar 2013 15:11:23 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1303121502240.7128@dhcp-1-104.brq.redhat.com>
-References: <20130311185423.GA15478@thunk.org> <20130311210201.GA940@wallace> <20130311212239.GD15478@thunk.org> <alpine.LFD.2.00.1303120838170.7128@dhcp-1-104.brq.redhat.com> <alpine.LFD.2.00.1303121020590.7128@dhcp-1-104.brq.redhat.com>
-Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="571107329-715946414-1363097487=:7128"
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Eric Whitney <enwlinux@gmail.com>,
-	linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
-To: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH] ext4: print more info in ext4_print_free_blocks()
+Date: Tue, 12 Mar 2013 15:14:36 +0100
+Message-ID: <1363097676-19587-1-git-send-email-lczerner@redhat.com>
+Cc: Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:14974 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:19033 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754180Ab3CLOLd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Mar 2013 10:11:33 -0400
-In-Reply-To: <alpine.LFD.2.00.1303121020590.7128@dhcp-1-104.brq.redhat.com>
+	id S1753694Ab3CLOOk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Mar 2013 10:14:40 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r2CEEeUO015427
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Tue, 12 Mar 2013 10:14:40 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+Additionally print i_allocated_meta_blocks information as well.
 
---571107329-715946414-1363097487=:7128
-Content-Type: TEXT/PLAIN; charset=ISO-8859-15
-Content-Transfer-Encoding: 8BIT
-
-On Tue, 12 Mar 2013, Luká¨ Czerner wrote:
-
-> Date: Tue, 12 Mar 2013 10:48:27 +0100 (CET)
-> From: Luká¨ Czerner <lczerner@redhat.com>
-> To: Luká¨ Czerner <lczerner@redhat.com>
-> Cc: Theodore Ts'o <tytso@mit.edu>, Eric Whitney <enwlinux@gmail.com>,
->     linux-ext4@vger.kernel.org
-> Subject: Re: [REGRESSION] allocated N with only M reserved metadata blocks
-> 
-> On Tue, 12 Mar 2013, Luká¨ Czerner wrote:
-> 
-> > Date: Tue, 12 Mar 2013 08:58:53 +0100 (CET)
-> > From: Luká¨ Czerner <lczerner@redhat.com>
-> > To: Theodore Ts'o <tytso@mit.edu>
-> > Cc: Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org
-> > Subject: Re: [REGRESSION] allocated N with only M reserved metadata blocks
-> > 
-> > On Mon, 11 Mar 2013, Theodore Ts'o wrote:
-> > 
-> > > Date: Mon, 11 Mar 2013 17:22:39 -0400
-> > > From: Theodore Ts'o <tytso@mit.edu>
-> > > To: Eric Whitney <enwlinux@gmail.com>
-> > > Cc: linux-ext4@vger.kernel.org
-> > > Subject: Re: [REGRESSION] allocated N with only M reserved metadata blocks
-> > > 
-> > > On Mon, Mar 11, 2013 at 05:02:01PM -0400, Eric Whitney wrote:
-> > > > 
-> > > > FWIW, this might not be a regression.  I believe I've got this warning in my
-> > > > testing logs from both 3.8 and 3.8-rc7 (commit 01a523eb51 in 3.9-rc1 affects
-> > > > message format and line numbering) on both x86 and ARM.  I didn't run xfstest
-> > > > 127 prior to 3.8-rc7, so I don't know how far back the warning may have
-> > > > occurred for that particular test.
-> > > > 
-> > > > The 3.8-rc7 results are a little different with respect to number of warnings
-> > > > and test cases, so I'm thinking this one isn't completely deterministic,
-> > > > testing-wise.  Multiple test runs may be required to see it.
-> > > 
-> > > Thanks for the extra data; this saved be a whole bunch of time, since
-> > > I probably would have started doing a series git bisects tonight.   :-)
-> > > 
-> > >   	   	      	      	      - Ted
-> > 
-> > I found that the problem is present even in 3.7.0, however it is not
-> > present in 3.6.0. I guess we need to bisect now :)
-> > 
-> > -Lukas
-> 
-> Apparently the problem is caused by the commit:
-> 
-> 67a5da564f97f31c4054d358e00b34d7ee570da5 ext4: make the zero-out
-> chunk size tunable
-> 
-> Reverting that commit on 3.7 makes the warning disappear. I'll try
-> to see what's going on there, however from the nature of the change
-> it seems to me that the problem might have always been there but the
-> change just makes it easier/possible to hit. We'll see...
-> 
-> -Lukas
-
-So there is indeed a problem with the mentioned commit
-
-67a5da564f97f31c4054d358e00b34d7ee570da5
-
-Due to the bug in that code is has exactly the opposite result -
-with this commit we will _never_ zero out blocks instead of creating
-uninitialized extents. In other words, we will always create
-uninitialized extent.
-
-This can be easily fixed by the following patch (which makes the
-warning go away), but it brings up a question whether this "optimization"
-was worth it in the first place since noone noticed that it had exactly
-the opposite effect than it should have had :)
-
-However it still does not resolve the issue completely, because even
-without the zeroout we should have had reserved enough metadata
-blocks to cover the extent split. I still need to investigate
-a little bit further.
-
--Lukas
-
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
+ fs/ext4/inode.c |   13 ++++++++-----
+ 1 files changed, 8 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index cac80120..aeb80bc 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3227,7 +3227,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index e0d5bc6..93763d9 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1583,22 +1583,25 @@ static void ext4_print_free_blocks(struct inode *inode)
+ {
+ 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+ 	struct super_block *sb = inode->i_sb;
++	struct ext4_inode_info *ei = EXT4_I(inode);
  
- 	if (EXT4_EXT_MAY_ZEROOUT & split_flag)
- 		max_zeroout = sbi->s_extent_max_zeroout_kb >>
--			inode->i_sb->s_blocksize_bits;
-+			(inode->i_sb->s_blocksize_bits - 10);
+ 	ext4_msg(sb, KERN_CRIT, "Total free blocks count %lld",
+ 	       EXT4_C2B(EXT4_SB(inode->i_sb),
+-			ext4_count_free_clusters(inode->i_sb)));
++			ext4_count_free_clusters(sb)));
+ 	ext4_msg(sb, KERN_CRIT, "Free/Dirty block details");
+ 	ext4_msg(sb, KERN_CRIT, "free_blocks=%lld",
+-	       (long long) EXT4_C2B(EXT4_SB(inode->i_sb),
++	       (long long) EXT4_C2B(EXT4_SB(sb),
+ 		percpu_counter_sum(&sbi->s_freeclusters_counter)));
+ 	ext4_msg(sb, KERN_CRIT, "dirty_blocks=%lld",
+-	       (long long) EXT4_C2B(EXT4_SB(inode->i_sb),
++	       (long long) EXT4_C2B(EXT4_SB(sb),
+ 		percpu_counter_sum(&sbi->s_dirtyclusters_counter)));
+ 	ext4_msg(sb, KERN_CRIT, "Block reservation details");
+ 	ext4_msg(sb, KERN_CRIT, "i_reserved_data_blocks=%u",
+-		 EXT4_I(inode)->i_reserved_data_blocks);
++		 ei->i_reserved_data_blocks);
+ 	ext4_msg(sb, KERN_CRIT, "i_reserved_meta_blocks=%u",
+-	       EXT4_I(inode)->i_reserved_meta_blocks);
++	       ei->i_reserved_meta_blocks);
++	ext4_msg(sb, KERN_CRIT, "i_allocated_meta_blocks=%u",
++	       ei->i_allocated_meta_blocks);
+ 	return;
+ }
  
- 	/* If extent is less than s_max_zeroout_kb, zeroout directly */
- 	if (max_zeroout && (ee_len <= max_zeroout)) {
---571107329-715946414-1363097487=:7128--
+-- 
+1.7.7.6
+
