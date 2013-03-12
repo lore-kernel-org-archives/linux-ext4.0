@@ -1,46 +1,19 @@
-From: fanchaoting <fanchaoting@cn.fujitsu.com>
-Subject: [PATCH] Ext2: do not mark_inode_dirty to avoid BUG_ON
-Date: Tue, 12 Mar 2013 13:06:37 +0800
-Message-ID: <513EB7DD.3020103@cn.fujitsu.com>
+From: zhuyj <zyjzyj2000@gmail.com>
+Subject: hi
+Date: Tue, 12 Mar 2013 13:20:33 +0800
+Message-ID: <513EBB21.8010005@gmail.xom>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: tyhicks@canonical.com, linux-ext4@vger.kernel.org,
-	wangshilong1991@gmail.com
-To: jack@suse.cz
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:20551 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751825Ab3CLFGe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Mar 2013 01:06:34 -0400
+Received: from mail-pb0-f43.google.com ([209.85.160.43]:35824 "EHLO
+	mail-pb0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753910Ab3CLFUe (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Mar 2013 01:20:34 -0400
+Received: by mail-pb0-f43.google.com with SMTP id md12so4630968pbc.16
+        for <linux-ext4@vger.kernel.org>; Mon, 11 Mar 2013 22:20:34 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
-
-commit 8e3dffc651cb668e1ff4d8b89cc1c3dde7540d3b leads into
-a regression that casue BUG_ON when unlinking inode.
-
-Reported-by: tyhicks@canonical.com
-Signed-off-by: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
----
- fs/ext2/balloc.c |    1 -
- 1 files changed, 0 insertions(+), 1 deletions(-)
-
-diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
-index 9f9992b..06d82fc 100644
---- a/fs/ext2/balloc.c
-+++ b/fs/ext2/balloc.c
-@@ -562,7 +562,6 @@ error_return:
- 	if (freed) {
- 		percpu_counter_add(&sbi->s_freeblocks_counter, freed);
- 		dquot_free_block_nodirty(inode, freed);
--		mark_inode_dirty(inode);
- 	}
- }
- 
--- 1.7.7.6 
-
-
-
-
+Can I ask a question?
