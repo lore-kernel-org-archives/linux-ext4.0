@@ -1,46 +1,19 @@
-From: Markus Trippelsdorf <markus@trippelsdorf.de>
-Subject: Re: torrent hash failures since 3.9.0-rc1
-Date: Tue, 12 Mar 2013 07:16:24 +0100
-Message-ID: <20130312061624.GA436@x4>
-References: <20130311191753.GA439@x4>
- <20130311194159.GB3579@redhat.com>
- <20130311201334.GA444@x4>
- <20130311203738.GB15478@thunk.org>
- <20130311204625.GA433@x4>
- <20130311211833.GC15478@thunk.org>
- <20130311213837.GA438@x4>
- <20130311231227.GA319@x4>
- <20130312030057.GA6142@gmail.com>
- <20130312033054.GB18595@thunk.org>
+From: zhuyj <zyjzyj2000@gmail.com>
+Subject: hi, can I ask a question?
+Date: Tue, 12 Mar 2013 14:26:40 +0800
+Message-ID: <513ECAA0.9060300@gmail.xom>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Theodore Ts'o <tytso@mit.edu>, Dave Jones <davej@redhat.com>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Zheng Liu <wenqing.lz@taobao.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20130312033054.GB18595@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-ia0-f171.google.com ([209.85.210.171]:60965 "EHLO
+	mail-ia0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752285Ab3CLG0l (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Mar 2013 02:26:41 -0400
+Received: by mail-ia0-f171.google.com with SMTP id z13so4547702iaz.30
+        for <linux-ext4@vger.kernel.org>; Mon, 11 Mar 2013 23:26:40 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 2013.03.11 at 23:30 -0400, Theodore Ts'o wrote:
-> On Tue, Mar 12, 2013 at 11:00:58AM +0800, Zheng Liu wrote:
-> > 
-> > Thanks for reporting this problem.  My deepest apologies.
-> > 
-> > As Ted suggested, could you please try to use ext4 git tree?  I want to
-> > make sure whether this bug has been fixed by my lastest patch series or
-> > not.
-> 
-> It's definitely worth a try to compile the master branch of the ext4
-> tree and see if it reproduces or not.
 
-I cannot reproduce the issue on top of "ext4.git dev", so fortunately
-the problem seems to be already fixed there.
-Thanks.
-
-Do you guys have a hunch which commit is the actual fix? 
-(Maybe I will "bisect" it later today.)
-
--- 
-Markus
