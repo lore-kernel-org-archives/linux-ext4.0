@@ -1,58 +1,46 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Sign, more experimentation and broken features...
-Date: Tue, 12 Mar 2013 00:06:49 -0400
-Message-ID: <20130312040649.GD18595@thunk.org>
-References: <20130312032843.29393.qmail@science.horizon.com>
+From: fanchaoting <fanchaoting@cn.fujitsu.com>
+Subject: [PATCH] Ext2: do not mark_inode_dirty to avoid BUG_ON
+Date: Tue, 12 Mar 2013 13:06:37 +0800
+Message-ID: <513EB7DD.3020103@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: George Spelvin <linux@horizon.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: tyhicks@canonical.com, linux-ext4@vger.kernel.org,
+	wangshilong1991@gmail.com
+To: jack@suse.cz
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:52732 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750714Ab3CLEGx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Mar 2013 00:06:53 -0400
-Content-Disposition: inline
-In-Reply-To: <20130312032843.29393.qmail@science.horizon.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:20551 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751825Ab3CLFGe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Mar 2013 01:06:34 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 11, 2013 at 11:28:43PM -0400, George Spelvin wrote:
-> 	Okay, I'll do ask you ask.  First odd thing: errors!
-> 	Minor ones, but all I've done is mke2fs and copy some files
-> 	to it:
-> # e2fsck -f -v -C0 -D /dev/md3
+From: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
 
-I'm going to guess there may be problems with using the e2fsck -D
-option with bigalloc.  I could imagine potential problems with that,
-and it's probably not something we've explicitly tested. 
+commit 8e3dffc651cb668e1ff4d8b89cc1c3dde7540d3b leads into
+a regression that casue BUG_ON when unlinking inode.
 
-Also, just to check.... all of this was done with the file system
-unmounted, right?
+Reported-by: tyhicks@canonical.com
+Signed-off-by: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
+---
+ fs/ext2/balloc.c |    1 -
+ 1 files changed, 0 insertions(+), 1 deletions(-)
 
-> [514]# e2fsck -f -v -C0 /dev/md3
-> e2fsck 1.43-WIP (22-Sep-2012)
-> ext2fs_check_desc: Corrupt group descriptor: bad block for inode table
-> e2fsck: Group descriptors look bad... trying backup blocks...
-> Pass 1: Checking inodes, blocks, and sizes
-> Group 7461's block bitmap at 973079840 conflicts with some other fs block.
-> Relocate<y>? 
-> data: e2fsck canceled.
+diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
+index 9f9992b..06d82fc 100644
+--- a/fs/ext2/balloc.c
++++ b/fs/ext2/balloc.c
+@@ -562,7 +562,6 @@ error_return:
+ 	if (freed) {
+ 		percpu_counter_add(&sbi->s_freeblocks_counter, freed);
+ 		dquot_free_block_nodirty(inode, freed);
+-		mark_inode_dirty(inode);
+ 	}
+ }
+ 
+-- 1.7.7.6 
 
-The good news is that this appears to be a newly added group, so
-hopefully there was no data lost.
 
-It may be worth mounting the file system read-only and copying all of
-your data off before you do anything else....
 
-Also, it looks like there may be some problems with the metadata_csum
-option when resizing, either alone or in combination with bigalloc.
-Please note that I have ___not___ really done a lot of exhaustive
-testing with metadata_csum, since it's not in a released final state
-in e2fsprogs, and I've had lots of other things I've been busy trying
-to make sure is stablized.  For example, we are still working on
-fixing various test failures with bigalloc.  It's probably good enough
-for fairly simple workloads (mostly using fallocate and direct I/O),
-but there are corner cases which we are still working on fixing.
 
-	    	      	     	   	    - Ted
