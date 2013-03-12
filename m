@@ -1,76 +1,111 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [REGRESSION] allocated N with only M reserved metadata blocks
-Date: Tue, 12 Mar 2013 10:48:27 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1303121020590.7128@dhcp-1-104.brq.redhat.com>
-References: <20130311185423.GA15478@thunk.org> <20130311210201.GA940@wallace> <20130311212239.GD15478@thunk.org> <alpine.LFD.2.00.1303120838170.7128@dhcp-1-104.brq.redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] Ext2: do not mark_inode_dirty to avoid BUG_ON
+Date: Tue, 12 Mar 2013 11:13:33 +0100
+Message-ID: <20130312101333.GB13152@quack.suse.cz>
+References: <513EB7DD.3020103@cn.fujitsu.com>
+ <alpine.LFD.2.00.1303120904030.7128@dhcp-1-104.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="571107329-122334140-1363081710=:7128"
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Eric Whitney <enwlinux@gmail.com>,
-	linux-ext4@vger.kernel.org
-To: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: fanchaoting <fanchaoting@cn.fujitsu.com>, jack@suse.cz,
+	tyhicks@canonical.com, linux-ext4@vger.kernel.org,
+	wangshilong1991@gmail.com
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:22946 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:34199 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755055Ab3CLJsd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Mar 2013 05:48:33 -0400
-In-Reply-To: <alpine.LFD.2.00.1303120838170.7128@dhcp-1-104.brq.redhat.com>
+	id S932166Ab3CLKNf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Mar 2013 06:13:35 -0400
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1303120904030.7128@dhcp-1-104.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+On Tue 12-03-13 09:14:21, Luk=C3=A1=C5=A1 Czerner wrote:
+> On Tue, 12 Mar 2013, fanchaoting wrote:
+>=20
+> > Date: Tue, 12 Mar 2013 13:06:37 +0800
+> > From: fanchaoting <fanchaoting@cn.fujitsu.com>
+> > To: jack@suse.cz
+> > Cc: tyhicks@canonical.com, linux-ext4@vger.kernel.org,
+> >     wangshilong1991@gmail.com
+> > Subject: [PATCH] Ext2: do not mark_inode_dirty to avoid BUG_ON
+> >=20
+> > From: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
+> >=20
+> > commit 8e3dffc651cb668e1ff4d8b89cc1c3dde7540d3b leads into
+> > a regression that casue BUG_ON when unlinking inode.
+>=20
+> Hi,
+>=20
+> it seems to be that we do need to mark the inode dirty, because
+> we're changing inode->i_blocks from within
+> dquot_free_block_nodirty().
+>=20
+> However looking at the code we usually call mark_inode_dirty(inode)
+> after we call ext2_free_blocks() except when we're about to remove
+> the inode so it seems that having that call within ext2_free_blocks()
+> is not necessary.
+  Yeah. Actually the problem is specifically with ext2_xattr_delete_ino=
+de()
+marking inode dirty because that is called after clear_inode(). Everyth=
+ing
+before clear_inode() call is free to dirty the inode because clear_inod=
+e()
+clears the dirty flag. I wonder if we shouldn't move that call into
+ext2_evict_inode() before clear_inode() and be done with it. Because th=
+e
+fact that ext2_free_blocks() cannot dirty the inode looks more surprisi=
+ng
+than the fact that ext2_free_inode() doesn't automatically free extende=
+d
+attributes.
 
---571107329-122334140-1363081710=:7128
-Content-Type: TEXT/PLAIN; charset=ISO-8859-15
-Content-Transfer-Encoding: 8BIT
+> However I am not sure about the error path in ext2_alloc_branch()
+> which does not dirty the inode after calling ext2_free_blocks().
+> However presumably since we're just undoing the changes we might
+> have done and not actually allocating, or freeing any space for
+> real, dirtying the inode might not be necessary. Can you confirm
+> that ?
+  I think that needs to dirty the inode. It may be written out in some
+intermediate state...
 
-On Tue, 12 Mar 2013, Luká¨ Czerner wrote:
+								Honza
 
-> Date: Tue, 12 Mar 2013 08:58:53 +0100 (CET)
-> From: Luká¨ Czerner <lczerner@redhat.com>
-> To: Theodore Ts'o <tytso@mit.edu>
-> Cc: Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org
-> Subject: Re: [REGRESSION] allocated N with only M reserved metadata blocks
-> 
-> On Mon, 11 Mar 2013, Theodore Ts'o wrote:
-> 
-> > Date: Mon, 11 Mar 2013 17:22:39 -0400
-> > From: Theodore Ts'o <tytso@mit.edu>
-> > To: Eric Whitney <enwlinux@gmail.com>
-> > Cc: linux-ext4@vger.kernel.org
-> > Subject: Re: [REGRESSION] allocated N with only M reserved metadata blocks
-> > 
-> > On Mon, Mar 11, 2013 at 05:02:01PM -0400, Eric Whitney wrote:
-> > > 
-> > > FWIW, this might not be a regression.  I believe I've got this warning in my
-> > > testing logs from both 3.8 and 3.8-rc7 (commit 01a523eb51 in 3.9-rc1 affects
-> > > message format and line numbering) on both x86 and ARM.  I didn't run xfstest
-> > > 127 prior to 3.8-rc7, so I don't know how far back the warning may have
-> > > occurred for that particular test.
-> > > 
-> > > The 3.8-rc7 results are a little different with respect to number of warnings
-> > > and test cases, so I'm thinking this one isn't completely deterministic,
-> > > testing-wise.  Multiple test runs may be required to see it.
-> > 
-> > Thanks for the extra data; this saved be a whole bunch of time, since
-> > I probably would have started doing a series git bisects tonight.   :-)
-> > 
-> >   	   	      	      	      - Ted
-> 
-> I found that the problem is present even in 3.7.0, however it is not
-> present in 3.6.0. I guess we need to bisect now :)
-> 
-> -Lukas
-
-Apparently the problem is caused by the commit:
-
-67a5da564f97f31c4054d358e00b34d7ee570da5 ext4: make the zero-out
-chunk size tunable
-
-Reverting that commit on 3.7 makes the warning disappear. I'll try
-to see what's going on there, however from the nature of the change
-it seems to me that the problem might have always been there but the
-change just makes it easier/possible to hit. We'll see...
-
--Lukas
---571107329-122334140-1363081710=:7128--
+> > Reported-by: tyhicks@canonical.com
+> > Signed-off-by: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
+> > ---
+> >  fs/ext2/balloc.c |    1 -
+> >  1 files changed, 0 insertions(+), 1 deletions(-)
+> >=20
+> > diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
+> > index 9f9992b..06d82fc 100644
+> > --- a/fs/ext2/balloc.c
+> > +++ b/fs/ext2/balloc.c
+> > @@ -562,7 +562,6 @@ error_return:
+> >  	if (freed) {
+> >  		percpu_counter_add(&sbi->s_freeblocks_counter, freed);
+> >  		dquot_free_block_nodirty(inode, freed);
+> > -		mark_inode_dirty(inode);
+> >  	}
+> >  }
+> > =20
+> > -- 1.7.7.6=20
+> >=20
+> >=20
+> >=20
+> >=20
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext=
+4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >=20
+--=20
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
