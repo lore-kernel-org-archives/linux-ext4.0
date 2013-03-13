@@ -1,69 +1,47 @@
-From: Andrey Sidorov <qrxd43@motorola.com>
-Subject: mke2fs with bigalloc is too slow
-Date: Wed, 13 Mar 2013 20:04:57 +0400
-Message-ID: <CAA0+VHz9+LpS9jGbTEE_OE9kvgdXDqj3qMQQV5kTTJ12WDxMPg@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Ext4 developer's get-together at Collaboration Summit/LSFMM
+Date: Wed, 13 Mar 2013 11:04:40 -0500
+Message-ID: <5140A398.8060702@redhat.com>
+References: <nsxd2v9iz43.fsf@closure.thunk.org> <20130313120003.GE29730@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-To: linux-ext4@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from exprod5og107.obsmtp.com ([64.18.0.184]:38246 "EHLO
-	exprod5og107.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932656Ab3CMQE7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Mar 2013 12:04:59 -0400
-Received: from DE01MGRG01.AM.MOT-MOBILITY.COM ([10.176.130.20])
-	by DE01MGRG01.AM.MOT-MOBILITY.COM (8.14.3/8.14.3) with ESMTP id r2DG7qHR009757
-	for <linux-ext4@vger.kernel.org>; Wed, 13 Mar 2013 12:07:52 -0400 (EDT)
-Received: from mail-ie0-f179.google.com (mail-ie0-f179.google.com [209.85.223.179])
-	by DE01MGRG01.AM.MOT-MOBILITY.COM (8.14.3/8.14.3) with ESMTP id r2DG7TTI009346
-	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Wed, 13 Mar 2013 12:07:52 -0400 (EDT)
-Received: by mail-ie0-f179.google.com with SMTP id k11so1645801iea.38
-        for <linux-ext4@vger.kernel.org>; Wed, 13 Mar 2013 09:04:57 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:58187 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932145Ab3CMQF2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 13 Mar 2013 12:05:28 -0400
+In-Reply-To: <20130313120003.GE29730@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On 3/13/13 7:00 AM, Jan Kara wrote:
+> On Fri 08-03-13 12:24:12, Ted Tso wrote:
+>>
+>> I've confirmed with Angela that we will have a room at Collaboration
+>> Summit on Wednesday, April 17th.  We'll have the room starting at
+>> 11:30am to 4:30pm.  If you plan to come, please let know so I can have
+>> an accurate count.
+>   I plan to come. BTW, I arrive to SF on Monday afternoon so I can manage
+> shifting the meeting to Tuesday as well. Regarding conflict with Collab
+> summit meetings - the schedule seems to be inaccessible for last two days
+> so I cannot really check that.
 
-It takes 29 seconds to format 1TB partition as ext4 with 256k cluster
-size on MIPS. e2fsprogs version is 1.42.7.
-The most time consumer is ext2fs_convert_subcluster_bitmap which folds
-30M into 500K walking through block bitmap bit by bit. Afair, it takes
-less time on x86 since there are asm bit ops for x86, but mips uses
-generic ones.
-Of course this folding can be optimized so that it tests series of
-bits by byte, short or int and does less shifts and other address
-arithmetic in between, but I don't expect that to improve time
-dramatically.
+I get in 9am Tuesday, FWIW.  So as long as its' after 10:30am Tues or so,
+I can make it.
 
-First thing I did is allocated per-cluster bitmap instead of per-block
-bitmap in ext2fs_initialize so that conversion doesn't occur. That
-dropped mke2fs time from 29s to 2.5s. e2fsck -f found this fresh fs as
-a good one and mounting/writing/reading/unmounting also went good. Of
-course groups are allocated at different offsets and about 60M of
-usable space are lost if compared to 'slow' formatting. That's fine,
-we can live with that.
-Are there any long-term consequences that I've missed? Are there any
-reasons for using block bitmap instead of cluster bitmap except for
-meta-data space efficiency?
+-Eric
 
-As a long term solution I see following options:
+>> Since Andreas won't be able to make it, I'm also planning to schedule a
+>> short time for us to chat on Friday.  Since the schedule for the LSF
+>> hasn't been finalized yet, stay tuned.  If there is a BOF time on Friday
+>> afternoon, that's probably when I'll try to schedule something.
+>> Otherwise, we'll try for either during lunch or dinner on Friday.
+>   I leave on Friday evening so dinner would be too late for me. But I don't
+> have to be there if that time is ok for others.
+> 
+> 								Honza
+> 
 
-1) Continue using block bitmap as base but allocate mirror cluster
-bitmap and replay all base block bitmap allocations to it as soon as
-they happen. This will increase memory usage by block/cluster ratio,
-e.g. 1.6% in case of 4k blocks / 256k clusters.
-
-2) Use cluster bitmap as base and use small sub-cluster bitmaps for
-tracking blocks inside allocated clusters (some sort of search tree).
-This will reduce allocated memory significantly in case of high
-cluster/block ratio .
-
-3) Variation of (2). Allocate cluster bitmap as base. Allocate block
-bitmap via mmap as a mirror, but don't commit all the memory by
-memset. This is simpler than (2) since there is no search structure
-and at the same time memory is not over-allocated.
-
-Please let me know your thoughts. Thanks!
-
-Regards,
-Andrey.
