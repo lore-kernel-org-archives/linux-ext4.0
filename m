@@ -1,63 +1,58 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH] bounce:fix bug, avoid to flush dcache on slab page from
- jbd2.
-Date: Tue, 12 Mar 2013 21:11:38 -0700
-Message-ID: <20130312211138.a2824b7e.akpm@linux-foundation.org>
-References: <5139DB90.5090302@gmail.com>
-	<20130312153221.0d26fe5599d4885e51bb0c7c@linux-foundation.org>
-	<20130313011020.GA5313@blackbox.djwong.org>
-	<513FF3F3.2000509@gmail.com>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: use s_extent_max_zeroout_kb value as number of
+ kb
+Date: Wed, 13 Mar 2013 07:53:42 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1303130750530.7128@dhcp-1-104.brq.redhat.com>
+References: <1363106209-1883-1-git-send-email-lczerner@redhat.com> <20130312164511.GC4959@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
- linux-kernel@vger.kernel.org, linux-mm@kvack.org,
- linux-ext4@vger.kernel.org, Kevin <kevin@allwinnertech.com>, Jan Kara
- <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>, Jens Axboe
- <axboe@kernel.dk>, Catalin Marinas <catalin.marinas@arm.com>, Will Deacon
- <will.deacon@arm.com>, linux-arm-kernel@lists.infradead.org
-To: Shuge <shugelinux@gmail.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <513FF3F3.2000509@gmail.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	wenqing.lz@taobao.com
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:7756 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754836Ab3CMGxu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 13 Mar 2013 02:53:50 -0400
+In-Reply-To: <20130312164511.GC4959@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 13 Mar 2013 11:35:15 +0800 Shuge <shugelinux@gmail.com> wrote:
+On Tue, 12 Mar 2013, Theodore Ts'o wrote:
 
-> Hi all
-> >>> The bounce accept slab pages from jbd2, and flush dcache on them.
-> >>> When enabling VM_DEBUG, it will tigger VM_BUG_ON in page_mapping().
-> >>> So, check PageSlab to avoid it in __blk_queue_bounce().
-> >>>
-> >>> Bug URL: http://lkml.org/lkml/2013/3/7/56
-> >>>
-> >>> ...
-> >>>
-> >> ......
-> >>
-> > That sure is strange.  I didn't see any obvious reasons why we'd end up with a
-> >
-> ......
+> Date: Tue, 12 Mar 2013 12:45:11 -0400
+> From: Theodore Ts'o <tytso@mit.edu>
+> To: Lukas Czerner <lczerner@redhat.com>
+> Cc: linux-ext4@vger.kernel.org, wenqing.lz@taobao.com
+> Subject: Re: [PATCH] ext4: use s_extent_max_zeroout_kb value as number of kb
 > 
->      Well, this problem not only appear in arm64, but also arm32. And my 
-> kernel version is 3.3.0, arch is arm32.
-> Following the newest kernel, the problem shoulde be exist.
->      I agree with Darrick's modification. Hum, if 
-> CONFIG_NEED_BOUNCE_POOL is not set, it also flush dcahce on
-> the pages of b_frozen_data, some of them are allocated by kmem_cache_alloc.
->      As we know, jbd2_alloc allocate a buffer from jbd2_xk slab pool, 
-> when the size is smaller than PAGE_SIZE.
-> The b_frozen_data  is not mapped to usrspace, not aliasing cache. It cat 
-> be lazy flush or other. Is it right?
+> Thanks, applied.
+> 
+> I'm on the fence about whether to submit this after -rc2 or not.
+> This appears to make potential bug much rarer, and it's a trivial
+> patch to backport, but it does make rather large changes in how we
+> handle fragmented filesystem.  (For the better, but it's a large
+> change, and it is getting rather late in the season.)
+> 
+> I'm going to include in the dev branch for now, and give it all a good
+> instensive testing, but there may be some patches in dev that may get
+> deferred to the next merge window before I send a pull request to
+> Linus (probably during the coming weekend).
+> 
+> Folks should feel free to propose patches they think should wait for
+> the next merge window.
+> 
+> 					- Ted
 
-Please reread my email.  The page at b_frozen_data was allocated with
-GFP_NOFS.  Hence it should not need bounce treatment (if arm is
-anything like x86).
+Hi Ted,
 
-And yet it *did* receive bounce treatment.  Why?
+in my opinion this should go in sooner rather than later, because
+even though it changes the behaviour quite significantly, it also
+brings back the old (expected) behaviour which has been changed by
+accident with that bug.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Anyway, I am going to run couple of more tests with that patch as
+well.
+
+Thanks!
+-Lukas
