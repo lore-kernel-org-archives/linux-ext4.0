@@ -1,58 +1,126 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: Unwritten extent zeroing beyond i_size
-Date: Wed, 13 Mar 2013 22:14:06 +0100
-Message-ID: <20130313211406.GB7754@quack.suse.cz>
-References: <20130313095640.GC29730@quack.suse.cz>
- <CAF5pi0EYU84mVffFx5qUfK7n-T2sAJDj4JLf26ZhvDWozOCxBA@mail.gmail.com>
+Subject: Re: [PATCH] Ext2: do not mark_inode_dirty to avoid BUG_ON
+Date: Thu, 14 Mar 2013 00:09:28 +0100
+Message-ID: <20130313230928.GA11068@quack.suse.cz>
+References: <513EB7DD.3020103@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Ted Tso <tytso@mit.edu>
-To: Dmitry Monakhov <dmonakhovopenvz@gmail.com>
+Content-Type: multipart/mixed; boundary="AqsLC8rIMeq19msA"
+Cc: jack@suse.cz, tyhicks@canonical.com, linux-ext4@vger.kernel.org,
+	wangshilong1991@gmail.com
+To: fanchaoting <fanchaoting@cn.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:32866 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:36564 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755231Ab3CMVOK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 Mar 2013 17:14:10 -0400
+	id S934352Ab3CMXJc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 13 Mar 2013 19:09:32 -0400
 Content-Disposition: inline
-In-Reply-To: <CAF5pi0EYU84mVffFx5qUfK7n-T2sAJDj4JLf26ZhvDWozOCxBA@mail.gmail.com>
+In-Reply-To: <513EB7DD.3020103@cn.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 13-03-13 23:04:40, Dmitry Monakhov wrote:
-> On Mar 13, 2013 11:57 AM, "Jan Kara" <jack@suse.cz> wrote:
-> >
-> >   Hello Dmitry,
-> >
-> >   I'm tracking down failure in xfstests test 274 (fallocate + ENOSPC
-> > testing). The problem I found (and that's really unrelated to the question
-> > I want to ask) is that if write beyond i_size fails, we truncate the file
-> > to i_size to remove any blocks that may have been allocated under the page
-> > by the write before it failed (think of blocksize < pagesize config).
-> >
-> > Now in this test the write fails because it needs to split unwritten
-> extent
-> > and there's no space for that and zeroing out is impossible because we are
-> > beyond i_size. And here comes my question: You disallowed zeroing of
-> > extents beyond i_size because fsck complains about those. Won't it be
-> > better to just add inode flag saying "this inode has blocks preallocated
-> > beyond i_size" and make fsck not complain about such blocks? IMHO that
-> > would catch 99% of corruptions as well and would let us solve the problem
-> > with ENOSPC on writes to preallocated space (plus it would simplify the
-> > kernel code).
-> Looks reasonable, but it will make kernel incompatible with old fsck. How
-> long does it takes to force customers to move to new version of fsck?
-  First we'd have to add the support into fsck and once that is released,
-distros pick that up pretty quickly so after a month or two we can release
-it in the kernel. After all the fsck complaint isn't anything serious and
-it will happen only if we hit ENOSPC while splitting extents beyond i_size
-which is pretty rare. In those cases we would have to say to the complaining
-people to update e2fsprogs.
 
-> (Sorry for inconvenient email address , I'm on vacation till the end of the
-> week)
-  No problem...
+--AqsLC8rIMeq19msA
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-								Honza
+On Tue 12-03-13 13:06:37, fanchaoting wrote:
+> From: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
+> 
+> commit 8e3dffc651cb668e1ff4d8b89cc1c3dde7540d3b leads into
+> a regression that casue BUG_ON when unlinking inode.
+> 
+> Reported-by: tyhicks@canonical.com
+> Signed-off-by: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
+  I ended up fixing the problem by the attached patch. It looks cleaner to
+me that way... Thanks for your fix anyway.
+
+							Honza
+> ---
+>  fs/ext2/balloc.c |    1 -
+>  1 files changed, 0 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
+> index 9f9992b..06d82fc 100644
+> --- a/fs/ext2/balloc.c
+> +++ b/fs/ext2/balloc.c
+> @@ -562,7 +562,6 @@ error_return:
+>  	if (freed) {
+>  		percpu_counter_add(&sbi->s_freeblocks_counter, freed);
+>  		dquot_free_block_nodirty(inode, freed);
+> -		mark_inode_dirty(inode);
+>  	}
+>  }
+>  
+> -- 1.7.7.6 
+> 
+> 
+> 
+> 
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
+
+--AqsLC8rIMeq19msA
+Content-Type: text/x-patch; charset=us-ascii
+Content-Disposition: attachment; filename="0001-ext2-Fix-BUG_ON-in-evict-on-inode-deletion.patch"
+
+>From c288d2969627be7ffc90904ac8c6aae0295fbf9f Mon Sep 17 00:00:00 2001
+From: Jan Kara <jack@suse.cz>
+Date: Wed, 13 Mar 2013 12:57:08 +0100
+Subject: [PATCH] ext2: Fix BUG_ON in evict() on inode deletion
+
+Commit 8e3dffc6 introduced a regression where deleting inode with
+large extended attributes leads to triggering
+  BUG_ON(inode->i_state != (I_FREEING | I_CLEAR))
+in fs/inode.c:evict(). That happens because freeing of xattr block
+dirtied the inode and it happened after clear_inode() has been called.
+
+Fix the issue by moving removal of xattr block into ext2_evict_inode()
+before clear_inode() call close to a place where data blocks are
+truncated. That is also more logical place and removes surprising
+requirement that ext2_free_blocks() mustn't dirty the inode.
+
+Reported-by: Tyler Hicks <tyhicks@canonical.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext2/ialloc.c |    1 -
+ fs/ext2/inode.c  |    2 ++
+ 2 files changed, 2 insertions(+), 1 deletions(-)
+
+diff --git a/fs/ext2/ialloc.c b/fs/ext2/ialloc.c
+index 8f370e0..7cadd82 100644
+--- a/fs/ext2/ialloc.c
++++ b/fs/ext2/ialloc.c
+@@ -118,7 +118,6 @@ void ext2_free_inode (struct inode * inode)
+ 	 * as writing the quota to disk may need the lock as well.
+ 	 */
+ 	/* Quota is already initialized in iput() */
+-	ext2_xattr_delete_inode(inode);
+ 	dquot_free_inode(inode);
+ 	dquot_drop(inode);
+ 
+diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+index c3881e5..fe60cc1 100644
+--- a/fs/ext2/inode.c
++++ b/fs/ext2/inode.c
+@@ -34,6 +34,7 @@
+ #include "ext2.h"
+ #include "acl.h"
+ #include "xip.h"
++#include "xattr.h"
+ 
+ static int __ext2_write_inode(struct inode *inode, int do_sync);
+ 
+@@ -88,6 +89,7 @@ void ext2_evict_inode(struct inode * inode)
+ 		inode->i_size = 0;
+ 		if (inode->i_blocks)
+ 			ext2_truncate_blocks(inode, 0);
++		ext2_xattr_delete_inode(inode);
+ 	}
+ 
+ 	invalidate_inode_buffers(inode);
+-- 
+1.7.1
+
+
+--AqsLC8rIMeq19msA--
