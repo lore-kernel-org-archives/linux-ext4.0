@@ -1,120 +1,114 @@
-From: Jan Kara <jack@suse.cz>
+From: Russell King - ARM Linux <linux@arm.linux.org.uk>
 Subject: Re: [PATCH] bounce:fix bug, avoid to flush dcache on slab page
- from jbd2.
-Date: Wed, 13 Mar 2013 09:50:21 +0100
-Message-ID: <20130313085021.GA29730@quack.suse.cz>
-References: <5139DB90.5090302@gmail.com>
- <20130312153221.0d26fe5599d4885e51bb0c7c@linux-foundation.org>
- <20130313011020.GA5313@blackbox.djwong.org>
+	from jbd2.
+Date: Wed, 13 Mar 2013 09:42:28 +0000
+Message-ID: <20130313094228.GZ4977@n2100.arm.linux.org.uk>
+References: <5139DB90.5090302@gmail.com> <20130312153221.0d26fe5599d4885e51bb0c7c@linux-foundation.org> <20130313011020.GA5313@blackbox.djwong.org> <513FF3F3.2000509@gmail.com> <20130312211138.a2824b7e.akpm@linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Shuge <shugelinux@gmail.com>, linux-kernel@vger.kernel.org,
-	linux-mm@kvack.org, linux-ext4@vger.kernel.org,
-	Kevin <kevin@allwinneretch.com>, Jan Kara <jack@suse.cz>,
-	Theodore Ts'o <tytso@mit.edu>, Jens Axboe <axboe@kernel.dk>,
+Cc: Shuge <shugelinux@gmail.com>, Jens Axboe <axboe@kernel.dk>,
+	Jan Kara <jack@suse.cz>,
+	"Darrick J. Wong" <darrick.wong@oracle.com>,
 	Catalin Marinas <catalin.marinas@arm.com>,
-	Will Deacon <will.deacon@arm.com>,
+	Will Deacon <will.deacon@arm.com>, linux-kernel@vger.kernel.org,
+	linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org, Kevin <kevin@allwinnertech.com>,
 	linux-arm-kernel@lists.infradead.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20130313011020.GA5313@blackbox.djwong.org>
+In-Reply-To: <20130312211138.a2824b7e.akpm@linux-foundation.org>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue 12-03-13 18:10:20, Darrick J. Wong wrote:
-> On Tue, Mar 12, 2013 at 03:32:21PM -0700, Andrew Morton wrote:
-> > On Fri, 08 Mar 2013 20:37:36 +0800 Shuge <shugelinux@gmail.com> wrote:
-> > 
-> > > The bounce accept slab pages from jbd2, and flush dcache on them.
-> > > When enabling VM_DEBUG, it will tigger VM_BUG_ON in page_mapping().
-> > > So, check PageSlab to avoid it in __blk_queue_bounce().
-> > > 
-> > > Bug URL: http://lkml.org/lkml/2013/3/7/56
-> > > 
-> > > ...
-> > >
-> > > --- a/mm/bounce.c
-> > > +++ b/mm/bounce.c
-> > > @@ -214,7 +214,8 @@ static void __blk_queue_bounce(struct request_queue 
-> > > *q, struct bio **bio_orig,
-> > >   		if (rw == WRITE) {
-> > >   			char *vto, *vfrom;
-> > >   -			flush_dcache_page(from->bv_page);
-> > > +			if (unlikely(!PageSlab(from->bv_page)))
-> > > +				flush_dcache_page(from->bv_page);
-> > >   			vto = page_address(to->bv_page) + to->bv_offset;
-> > >   			vfrom = kmap(from->bv_page) + from->bv_offset;
-> > >   			memcpy(vto, vfrom, to->bv_len);
-> > 
-> > I guess this is triggered by Catalin's f1a0c4aa0937975b ("arm64: Cache
-> > maintenance routines"), which added a page_mapping() call to arm64's
-> > arch/arm64/mm/flush.c:flush_dcache_page().
-> > 
-> > What's happening is that jbd2 is using kmalloc() to allocate buffer_head
-> > data.  That gets submitted down the BIO layer and __blk_queue_bounce()
-> > calls flush_dcache_page() which in the arm64 case calls page_mapping()
-> > and page_mapping() does VM_BUG_ON(PageSlab) and splat.
-> > 
-> > The unusual thing about all of this is that the payload for some disk
-> > IO is coming from kmalloc, rather than being a user page.  It's oddball
-> > but we've done this for ages and should continue to support it.
-> > 
-> > 
-> > Now, the page from kmalloc() cannot be in highmem, so why did the
-> > bounce code decide to bounce it?
-> > 
-> > __blk_queue_bounce() does
-> > 
-> > 		/*
-> > 		 * is destination page below bounce pfn?
-> > 		 */
-> > 		if (page_to_pfn(page) <= queue_bounce_pfn(q) && !force)
-> > 			continue;
-> > 
-> > and `force' comes from must_snapshot_stable_pages().  But
-> > must_snapshot_stable_pages() must have returned false, because if it
-> > had returned true then it would have been must_snapshot_stable_pages()
-> > which went BUG, because must_snapshot_stable_pages() calls page_mapping().
-> > 
-> > So my tentative diagosis is that arm64 is fishy.  A page which was
-> > allocated via jbd2_alloc(GFP_NOFS)->kmem_cache_alloc() ended up being
-> > above arm64's queue_bounce_pfn().  Can you please do a bit of
-> > investigation to work out if this is what is happening?  Find out why
-> > __blk_queue_bounce() decided to bounce a page which shouldn't have been
-> > bounced?
+On Tue, Mar 12, 2013 at 09:11:38PM -0700, Andrew Morton wrote:
+> Please reread my email.  The page at b_frozen_data was allocated with
+> GFP_NOFS.  Hence it should not need bounce treatment (if arm is
+> anything like x86).
 > 
-> That sure is strange.  I didn't see any obvious reasons why we'd end up with a
-> kmalloc above queue_bounce_pfn().  But then I don't have any arm64s either.
-> 
-> > This is all terribly fragile :( afaict if someone sets
-> > bdi_cap_stable_pages_required() against that jbd2 queue, we're going to
-> > hit that BUG_ON() again, via must_snapshot_stable_pages()'s
-> > page_mapping() call.  (Darrick, this means you ;))
-> 
-> Wheeee.  You're right, we shouldn't be calling page_mapping on slab pages.
-> We can keep walking the bio segments to find a non-slab page that can tell us
-> MS_SNAP_STABLE is set, since we probably won't need the bounce buffer anyway.
-> 
-> How does something like this look?  (+ the patch above)
-  Umm, this won't quite work. We can have a bio which has just PageSlab
-page attached and so you won't be able to get to the superblock. Heh, isn't
-the whole page_mapping() thing in must_snapshot_stable_pages() wrong? When we
-do direct IO, these pages come directly from userspace and hell knows where
-they come from. Definitely their page_mapping() doesn't give us anything
-useful... Sorry for not realizing this earlier when reviewing the patch.
+> And yet it *did* receive bounce treatment.  Why?
 
-... remembering why we need to get to sb and why ext3 needs this ... So
-maybe a better solution would be to have a bio flag meaning that pages need
-bouncing? And we would set it from filesystems that need it - in case of
-ext3 only writeback of data from kjournald actually needs to bounce the
-pages. Thoughts?
+If I had to guess, it's because you've uncovered a bug in the utter crap
+that we call a "dma mask".
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+When is a mask not a mask?  When it is used as a numerical limit.  When
+is a mask really a mask?  When it indicates which bits are significant in
+a DMA address.
+
+The problem here is that there's a duality in the way the mask is used,
+and that is caused by memory on x86 always starting at physical address
+zero.  The problem is this:
+
+On ARM, we have some platforms which offset the start of physical memory.
+This offset can be significant - maybe 3GB.  However, only a limited
+amount of that memory may be DMA-able.  So, we may end up with the
+maximum physical address of DMA-able memory being 3GB + 64MB for example,
+or 0xc4000000, because the DMA controller only has 26 address lines.  So,
+this brings up the problem of whether we set the DMA mask to 0xc3ffffff
+or 0x03ffffff.
+
+There's places in the kernel which assume that DMA masks are a set of
+zero bits followed by a set of one bits, and nothing else does...
+
+Now, max_low_pfn is initialized this way:
+
+/**
+ * init_bootmem - register boot memory
+ * @start: pfn where the bitmap is to be placed
+ * @pages: number of available physical pages
+ *
+ * Returns the number of bytes needed to hold the bitmap.
+ */
+unsigned long __init init_bootmem(unsigned long start, unsigned long pages)
+{
+        max_low_pfn = pages;
+        min_low_pfn = start;
+        return init_bootmem_core(NODE_DATA(0)->bdata, start, 0, pages);
+}
+
+So, min_low_pfn is the PFN offset of the start of physical memory (so
+3GB >> PAGE_SHIFT) and max_low_pfn ends up being the number of pages,
+_not_ the maximum PFN value - if it were to be the maximum PFN value,
+then we end up with a _huge_ bootmem bitmap which may not even fit in
+the available memory we have.
+
+However, other places in the kernel treat max_low_pfn entirely
+differently:
+
+        blk_max_low_pfn = max_low_pfn - 1;
+
+void blk_queue_bounce_limit(struct request_queue *q, u64 dma_mask)
+{
+        unsigned long b_pfn = dma_mask >> PAGE_SHIFT;
+
+        if (b_pfn < blk_max_low_pfn)
+                dma = 1;
+        q->limits.bounce_pfn = b_pfn;
+
+And then we have stuff doing this:
+
+	page_to_pfn(bv->bv_page) > queue_bounce_pfn(q);
+                if (page_to_pfn(page) <= queue_bounce_pfn(q) && !force)
+                if (queue_bounce_pfn(q) >= blk_max_pfn && !must_bounce)
+
+So, "max_low_pfn" is totally and utterly confused in the kernel as to
+what it is, and it only really works on x86 (and other architectures)
+that start their memory at physical address 0 (because then it doesn't
+matter how you interpret it.)
+
+So the whole thing about "is a DMA mask a mask or a maximum address"
+is totally confused in the kernel in such a way that platforms like ARM
+get a very hard time, and what we now have in place has worked 100%
+fine for all the platforms we've had for the last 10+ years.
+
+It's a very longstanding bug in the kernel, going all the way back to
+2.2 days or so.
+
+What to do about it, I have no idea - changing to satisfy the "DMA mask
+is a maximum address" is likely to break things.  What we need is a
+proper fix, and a consistent way to interpret DMA masks which works not
+only on x86, but also on platforms which have limited DMA to memory
+which has huge physical offsets.
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
