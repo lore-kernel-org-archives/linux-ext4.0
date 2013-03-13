@@ -1,67 +1,57 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: Ext4 developer's get-together at Collaboration Summit/LSFMM
-Date: Wed, 13 Mar 2013 17:13:48 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1303131710250.18319@dhcp-1-104.brq.redhat.com>
-References: <nsxd2v9iz43.fsf@closure.thunk.org> <20130313120003.GE29730@quack.suse.cz> <5140A398.8060702@redhat.com>
+Date: Wed, 13 Mar 2013 13:11:30 -0400
+Message-ID: <20130313171130.GA5604@thunk.org>
+References: <nsxd2v9iz43.fsf@closure.thunk.org>
+ <20130313120003.GE29730@quack.suse.cz>
+ <5140A398.8060702@redhat.com>
+ <alpine.LFD.2.00.1303131710250.18319@dhcp-1-104.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Jan Kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>, Jan Kara <jack@suse.cz>,
 	linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50337 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933188Ab3CMQOe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 Mar 2013 12:14:34 -0400
-In-Reply-To: <5140A398.8060702@redhat.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:53155 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932322Ab3CMRLh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 13 Mar 2013 13:11:37 -0400
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1303131710250.18319@dhcp-1-104.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 13 Mar 2013, Eric Sandeen wrote:
+OK, can those people who are coming send a note answering the following questions:
 
-> Date: Wed, 13 Mar 2013 11:04:40 -0500
-> From: Eric Sandeen <sandeen@redhat.com>
-> To: Jan Kara <jack@suse.cz>
-> Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
-> Subject: Re: Ext4 developer's get-together at Collaboration Summit/LSFMM
-> 
-> On 3/13/13 7:00 AM, Jan Kara wrote:
-> > On Fri 08-03-13 12:24:12, Ted Tso wrote:
-> >>
-> >> I've confirmed with Angela that we will have a room at Collaboration
-> >> Summit on Wednesday, April 17th.  We'll have the room starting at
-> >> 11:30am to 4:30pm.  If you plan to come, please let know so I can have
-> >> an accurate count.
-> >   I plan to come. BTW, I arrive to SF on Monday afternoon so I can manage
-> > shifting the meeting to Tuesday as well. Regarding conflict with Collab
-> > summit meetings - the schedule seems to be inaccessible for last two days
-> > so I cannot really check that.
-> 
-> I get in 9am Tuesday, FWIW.  So as long as its' after 10:30am Tues or so,
-> I can make it.
-> 
-> -Eric
+1) What time do you arrive / would you be available to attend the ext4
+workshop on Tueday?
 
-I get in on Saturday 13 and I do not have any strong preference over
-the date/time except what was mentioned by Ric already, that topic seems
-interesting.
+2) What sessions (please give the time slots) on Wednesday are you
+interested in attending?
 
--Lukas
+For reference, the schedule is available here:
 
-> 
-> >> Since Andreas won't be able to make it, I'm also planning to schedule a
-> >> short time for us to chat on Friday.  Since the schedule for the LSF
-> >> hasn't been finalized yet, stay tuned.  If there is a BOF time on Friday
-> >> afternoon, that's probably when I'll try to schedule something.
-> >> Otherwise, we'll try for either during lunch or dinner on Friday.
-> >   I leave on Friday evening so dinner would be too late for me. But I don't
-> > have to be there if that time is ok for others.
-> > 
-> > 								Honza
-> > 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+http://events.linuxfoundation.org/events/collaboration-summit/schedule
+
+And here are the sessions on the FS/MM track:
+
+9-10am	 Host-Based Disk-Mirroring with MD on Mainframe
+10-11am	 Persistent Memory and Linux: New Storage Technologies and Interfaces
+11:30-12:30  Using OpenLMI to Manage Storage
+2-3pm	 The Receiving End of printk - netconsole, blockconsole, cancd
+3-4pm    NVM Software Interfaces: New Directions
+
+My assumption had always been that most of the Collab Summit talks
+were pretty technically lightweight[1], so other than the 4:30pm
+panel, there would be a huge amount of conflict.  But Ric assures me
+that at least some of these talks might actually have good stuff.  :-)
+
+Thanks!!
+
+      	      	    	  		 - Ted
+
+[1] Which is not a criticism; there are lots of users and system
+administrators and I/T managers who need to hear stuff that we've
+heard 100 times before, so it was just an assumption that most of the
+ext4 developers wouldn't be interested.
+
