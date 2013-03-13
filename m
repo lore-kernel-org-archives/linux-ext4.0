@@ -1,51 +1,74 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/2] e4defrag: defrag a file when orig_physical_cnt ==
- donor_physical_cnt
-Date: Wed, 13 Mar 2013 15:54:22 -0400
-Message-ID: <20130313195422.GG5604@thunk.org>
+Subject: Re: [PATCH 2/2] filefrag: count a contiguous extent when both
+ logical and physical blocks are contiguous
+Date: Wed, 13 Mar 2013 16:16:11 -0400
+Message-ID: <20130313201611.GH5604@thunk.org>
 References: <1362327978-30423-1-git-send-email-wenqing.lz@taobao.com>
- <1362327978-30423-2-git-send-email-wenqing.lz@taobao.com>
+ <1362327978-30423-3-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
 To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:53209 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:53215 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932236Ab3CMTy0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 Mar 2013 15:54:26 -0400
+	id S932456Ab3CMUQQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 13 Mar 2013 16:16:16 -0400
 Content-Disposition: inline
-In-Reply-To: <1362327978-30423-2-git-send-email-wenqing.lz@taobao.com>
+In-Reply-To: <1362327978-30423-3-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 04, 2013 at 12:26:17AM +0800, Zheng Liu wrote:
+On Mon, Mar 04, 2013 at 12:26:18AM +0800, Zheng Liu wrote:
 > From: Zheng Liu <wenqing.lz@taobao.com>
 > 
-> When orig_physical_cnt == donor_physical_cnt, we need to defrag a file
-> because a file could be written backwards.  So that will make it look
-> like a contiguous extent but actually the physical blocks are reversed.
+> This commit fixes a bug in filefrag that filefrag miss calculates
+> contiguous extent when physical blocks are contiguous but logical blocks
+> aren't.  This case can be created by xfstests #218 or the following
+> script.
+> 
+> 	for I in `seq 0 2 31`; do
+> 		dd if=/dev/zero of=$testfile bs=4k count=1 conv=notrunc \
+> 			seek=$I oflag=sync &>/dev/null
+> 	done
+> 
+> Meanwhile this commit prints expected logical block.
 
-The problem with your change is in the case where orig_physical_cnt
-and donor_physical_cnt are 1 (i.e., the file is perfectly defragged),
-we will still try to swap the extents.
+Hmm, this (and your previous patch) fundamentally raises the question
+of what do we call an "extent", doesn't it?
 
-The fundamental problem is that we are using a metric which is flawed;
-in the case of the following file:
+Ignoring for now the question of what xfstests #218 is expecting (if
+we disagree with what's "best", we should have a discussion with the
+other fs maintainers, and in the worst case, make our own version of
+the test), the question is how should defragmentation handle sparse
+files?  In general, sparse files imply that random access workload, so
+whether or not the file is contiguous doesn't really matter much.
 
-> File size of /mnt/sda3/testfile is 40960 (10 blocks of 4096 bytes)
->  ext:     logical_offset:        physical_offset: length:   expected: flags:
->    0:        0..       0:      34825..     34825:      1:
->    1:        1..       1:      34824..     34824:      1:      34826:
->    2:        2..       2:      34823..     34823:      1:      34825:
->    3:        3..       3:      34822..     34822:      1:      34824:
->    4:        4..       4:      34821..     34821:      1:      34823:
->    5:        5..       5:      34820..     34820:      1:      34822:
->    6:        6..       6:      34819..     34819:      1:      34821:
->    7:        7..       7:      34818..     34818:      1:      34820:
->    8:        8..       8:      34817..     34817:      1:      34819:
->    9:        9..       9:      34816..     34816:      1:      34818: eof
+If we want to optimize the time to copy said sparse file, and if we
+assume that by the time we are defragging said sparse file, we are
+done doing writes which will allocate new blocks, then having defrag
+optimize the file so that when the extents are sorted by logical block
+number, the physical block numbers are contiguous, then that's
+probably the best "figure of merit" to use.  And I'll note that right
+now that's what filefrag is reporting, and what I think e4defrag
+should be changed to use when deciding whether the donor file is
+"better" than the original file.
 
-We should be counting this as having 10 extents, not 1.
+But that's not necessarily the only way to measure extents, and the
+current e4defrag code is clearly of the opinion that if the file is
+using a contiguous region of blocks, even if the blocks were allocated
+"backwards", that there's no point defragging the file, since after
+all, if the file was written in such a random order with respect to
+logical block numbers, it will probably be read in a random order, so
+keeping the file blocks used contiguous to minimize free block
+fragmentation is the best thing to shoot for.
 
-   	     	      	      	     		     - Ted
+It's not clear that there's one right answer, but things will be a lot
+less confusing if we can agree amongst ourselves what answer we want
+to use --- and then if we need to either change the xfstests, or maybe
+create an option to filefrag to calculate the number of fragments that
+the xfstest is expecting.  But we should first decide what is the
+right thing, and then we can see whether or not what it matches what
+the test is demanding.
+
+					- Ted
