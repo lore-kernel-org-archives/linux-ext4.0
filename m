@@ -1,56 +1,54 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [BUG][dioread_nolock] blocked for more than 120s when we run
- xfstests #269
-Date: Wed, 13 Mar 2013 12:04:26 +0100
-Message-ID: <20130313110426.GD29730@quack.suse.cz>
-References: <20130307124054.GE2800@gmail.com>
- <20130307151140.GF6723@quack.suse.cz>
- <20130308135222.GA2768@gmail.com>
- <20130311163041.GL29799@quack.suse.cz>
- <20130313091511.GB29730@quack.suse.cz>
- <20130313105233.GB12012@gmail.com>
+From: Andrey Sidorov <qrxd43@motorola.com>
+Subject: Re: [qrxd43@motorola.com: [PATCH V2] ext4: speed-up releasing blocks
+ on commit]
+Date: Wed, 13 Mar 2013 14:38:55 +0400
+Message-ID: <CAA0+VHyOqK-yQqWZPjkwfTDzfFj_Bvy=cAtUdZXx1vOS6B7OcA@mail.gmail.com>
+References: <20130203031122.GC1359@thunk.org>
+	<88575CD0-1CF4-4C12-83ED-845C87FFFDA4@dilger.ca>
+	<94F448E5-429B-4740-BF87-CE82F477DE93@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Zheng Liu <gnehzuil.liu@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org
+To: Alex Tomas <bzzz.tomas@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:59016 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754623Ab3CMLEa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 Mar 2013 07:04:30 -0400
-Content-Disposition: inline
-In-Reply-To: <20130313105233.GB12012@gmail.com>
+Received: from exprod5og108.obsmtp.com ([64.18.0.186]:40247 "EHLO
+	exprod5og108.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932074Ab3CMLVU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Mar 2013 07:21:20 -0400
+Received: from DE01MGRG01.AM.MOT-MOBILITY.COM ([10.22.94.167])
+	by DE01MGRG01.AM.MOT-MOBILITY.COM (8.14.3/8.14.3) with ESMTP id r2DAfpHO028596
+	for <linux-ext4@vger.kernel.org>; Wed, 13 Mar 2013 06:41:51 -0400 (EDT)
+Received: from mail-ob0-f178.google.com (mail-ob0-f178.google.com [209.85.214.178])
+	by DE01MGRG01.AM.MOT-MOBILITY.COM (8.14.3/8.14.3) with ESMTP id r2DAfoXP028589
+	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Wed, 13 Mar 2013 06:41:51 -0400 (EDT)
+Received: by mail-ob0-f178.google.com with SMTP id wd20so860933obb.9
+        for <linux-ext4@vger.kernel.org>; Wed, 13 Mar 2013 03:38:55 -0700 (PDT)
+In-Reply-To: <94F448E5-429B-4740-BF87-CE82F477DE93@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 13-03-13 18:52:33, Zheng Liu wrote:
-> On Wed, Mar 13, 2013 at 10:15:11AM +0100, Jan Kara wrote:
-> [snip]
-> > > > I post the sysrq-w output here.  But IMHO it is not very useful.  So I
-> > > > also post the sysrq-t output.
-> > >   Heh, curious. Thanks for the data. So worker thinks there's nothing to do
-> > > but inode has elevated i_ioend_count... Maybe we leaked ioend somewhere.
-> > > I'll check the code when I have time.
-> >   Ah, I think I see what's going on.
-> > a) Code in ext4_ext_direct_IO() is racy wrt iocb->private handling (that
-> >    can get cleared concurrently from ext4_end_io_dio()).
-> 
-> Thanks for tracing this problem.  But I am still confused that iocb is
-> allocated on stack in do_sync_write(), and is allocated from slab in
-> ioctx_alloc().  You mean iocb in ext4_ext_direct_IO and ext4_end_io_dio
-> is the same one?
-  Yes, it is.
+Hi Alex,
 
-> Then this iocb could be changed concurrently, and we are blocked for more
-> than 120s.  I must miss something.
-  Well, the hang results from direct IO code forgetting to call
-ext4_free_io_end() in some (likely error recovery) path. So
-inode->i_ioend_count remains elevated and we never finish waiting in
-ext4_evict_inode(). How that forgotten ext4_free_io_end() really happens
-isn't 100% clear to me but I really suspect something with concurrent iocb
-modification goes wrong...
+Thanks for review! I'll post rebased patch with comments and some
+ascii art this weekend.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> the patch looks fine, the only suggestion is to move the following logic
+> into mb_buddy_mark_free():
+>
+> + if (first & 1) {
+> + first += !left_is_free;
+> + e4b->bd_info->bb_counters[0] += left_is_free ? -1 : 1;
+> + }
+> + if (!(last & 1)) {
+> + last -= !right_is_free;
+> + e4b->bd_info->bb_counters[0] += right_is_free ? -1 : 1;
+> + }
+
+I didn't do that since buddy[0] is a special case since it is in fact
+bd_bitmap itself. Moving that into mb_buddy_mark_free will make code
+look worse because of this special handling. I think unrolling first
+iteration that handles bd_bitmap looks much better.
+
+Regards,
+Andrey.
