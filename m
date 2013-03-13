@@ -1,43 +1,50 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: torrent hash failures since 3.9.0-rc1
-Date: Wed, 13 Mar 2013 18:15:29 +0800
-Message-ID: <20130313101529.GA12012@gmail.com>
-References: <20130311211833.GC15478@thunk.org>
- <20130311213837.GA438@x4>
- <20130311231227.GA319@x4>
- <20130312030057.GA6142@gmail.com>
- <20130312033054.GB18595@thunk.org>
- <20130312061624.GA436@x4>
- <20130312064449.GA8806@gmail.com>
- <20130312064810.GA426@x4>
- <20130312071606.GA8900@gmail.com>
- <20130312132811.GI18595@thunk.org>
+Subject: Re: [BUG][dioread_nolock] blocked for more than 120s when we run
+ xfstests #269
+Date: Wed, 13 Mar 2013 18:52:33 +0800
+Message-ID: <20130313105233.GB12012@gmail.com>
+References: <20130307124054.GE2800@gmail.com>
+ <20130307151140.GF6723@quack.suse.cz>
+ <20130308135222.GA2768@gmail.com>
+ <20130311163041.GL29799@quack.suse.cz>
+ <20130313091511.GB29730@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Theodore Ts'o <tytso@mit.edu>,
-	Markus Trippelsdorf <markus@trippelsdorf.de>,
-	Dave Jones <davej@redhat.com>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pb0-f45.google.com ([209.85.160.45]:63692 "EHLO
+	mail-pb0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932967Ab3CMKhM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Mar 2013 06:37:12 -0400
+Received: by mail-pb0-f45.google.com with SMTP id ro8so883748pbb.32
+        for <linux-ext4@vger.kernel.org>; Wed, 13 Mar 2013 03:37:12 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <20130312132811.GI18595@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20130313091511.GB29730@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 12, 2013 at 09:28:11AM -0400, Theodore Ts'o wrote:
-> On Tue, Mar 12, 2013 at 03:16:06PM +0800, Zheng Liu wrote:
-> > 
-> > Ted, I am wandering if we need to Cc this patch to stable kernel.  We
-> > don't receive any report to complaint it, though, but it is worth
-> > backporting it I think.
-> 
-> I'll check, bu I suspect it will require an explicit backport; it's
-> not going to apply cleanly automatically, will it?  
+On Wed, Mar 13, 2013 at 10:15:11AM +0100, Jan Kara wrote:
+[snip]
+> > > I post the sysrq-w output here.  But IMHO it is not very useful.  So I
+> > > also post the sysrq-t output.
+> >   Heh, curious. Thanks for the data. So worker thinks there's nothing to do
+> > but inode has elevated i_ioend_count... Maybe we leaked ioend somewhere.
+> > I'll check the code when I have time.
+>   Ah, I think I see what's going on.
+> a) Code in ext4_ext_direct_IO() is racy wrt iocb->private handling (that
+>    can get cleared concurrently from ext4_end_io_dio()).
 
-I check the linux-stable tree and I think it can be applied cleanly from
-3.0.y. because ext4_split_extent is introduced from 3.0 kernel.  So
-maybe we can cc to stable@vger.kernel.org.  That would be great if you
-could double check it.
+Thanks for tracing this problem.  But I am still confused that iocb is
+allocated on stack in do_sync_write(), and is allocated from slab in
+ioctx_alloc().  You mean iocb in ext4_ext_direct_IO and ext4_end_io_dio
+is the same one?  Then this iocb could be changed concurrently, and we
+are blocked for more than 120s.  I must miss something.
 
-Thanks,
+> b) ext4_end_io_dio() forgets to free the io_end if size == 0 (but this
+>    shouldn't really happen looking into fs/direct_io.c).
+
+Yes, we will return directly from do_blockdev_direct_IO().
+
+Regards,
                                                 - Zheng
