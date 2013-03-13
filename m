@@ -1,34 +1,57 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v2 3/5] ext4: fix wrong m_len value after unwritten
- extent conversion
-Date: Tue, 12 Mar 2013 22:14:20 -0400
-Message-ID: <20130313021420.GB16919@thunk.org>
-References: <1362579435-6333-1-git-send-email-wenqing.lz@taobao.com>
- <1362579435-6333-4-git-send-email-wenqing.lz@taobao.com>
- <20130311010718.GC10090@thunk.org>
- <20130311054707.GA3867@gmail.com>
- <20130313015741.GA16919@thunk.org>
+From: zhuyj <zyjzyj2000@gmail.com>
+Subject: Ext4:can not rm directories on 2.6.3x
+Date: Wed, 13 Mar 2013 11:24:19 +0800
+Message-ID: <513FF163.7080606@gmail.xom>
+References: <CAAO_Xo5g2LR54ry=SU7UhGbv-chdkdd6foq+-LjnuE8yAj8ikg@mail.gmail.com> <513EDC2B.9020604@gmail.xom> <20130312134229.GJ18595@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
-	Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: zhuyj <zyjzyj2000@gmail.com>, linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:53000 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755285Ab3CMCO0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Mar 2013 22:14:26 -0400
-Content-Disposition: inline
-In-Reply-To: <20130313015741.GA16919@thunk.org>
+Received: from mail-ob0-f176.google.com ([209.85.214.176]:46425 "EHLO
+	mail-ob0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755857Ab3CMDYX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Mar 2013 23:24:23 -0400
+Received: by mail-ob0-f176.google.com with SMTP id v19so579899obq.21
+        for <linux-ext4@vger.kernel.org>; Tue, 12 Mar 2013 20:24:22 -0700 (PDT)
+In-Reply-To: <20130312134229.GJ18595@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Oh, now I see my confusion.  You're talking about retval being
-different from the output of map->m_len.  I was talking about retval
-being often different from the *input* value of map->m_len.
+OK. Thanks a lot.
+This bug can happen on Ubuntu 11.04,10.10 with kernel 2.6.3x.
+Follow the above steps, this bug can be reproduced.
 
-I agree that the output of ext4_ext_map_blocks() and
-ext4_ind_map_blocks() should be the same as map->m_len, and having a
-BUG_ON there would make sense.  But we can save those changes for
-after -rc3 as a cleanup....
+Anyone has the same experience?
 
-					- Ted
+On 03/12/2013 09:42 PM, Theodore Ts'o wrote:
+> On Tue, Mar 12, 2013 at 03:41:31PM +0800, zhuyj wrote:
+>> If I use kernel>=3.0, this will not occur.
+> Sounds like this is a problem in 2.6.39 that has since been fixed in
+> newer kernels.
+>
+>> So is this is a bug?
+> Sure looks like it's a bug.  :-)
+>
+> There are so many distributions and other old embedded systems, etc.,
+> using older kernels that there's just no way that upstream developers
+> can try to debug every single older kernel --- and 2.6.39 isn't even a
+> kernel that is being supported by a volunteer as a long-term supported
+> kernel.
+>
+> See http://www.kernel.org for a list of kernels which are supported as
+> long-term kernels, and even then, please remember that unless fixes
+> are automatically backported, or someone manually backports a fix that
+> doesn't automatically apply to an older kernel, it's not going to
+> happen.....
+>
+> Regards,
+>
+> 					- Ted
+>
+> P.S.  Your problem appears to be completely unrelated to the thread
+> which you replied to.  This makes it hard for us to keep track of
+> questions/bug reports which users submit.
+>
+
