@@ -1,47 +1,122 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Ext4 developer's get-together at Collaboration Summit/LSFMM
-Date: Wed, 13 Mar 2013 11:04:40 -0500
-Message-ID: <5140A398.8060702@redhat.com>
-References: <nsxd2v9iz43.fsf@closure.thunk.org> <20130313120003.GE29730@quack.suse.cz>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: Metadata reservation for unwritten extent conversion
+Date: Wed, 13 Mar 2013 17:09:51 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1303131706180.18319@dhcp-1-104.brq.redhat.com>
+References: <alpine.LFD.2.00.1303131629350.7128@dhcp-1-104.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1399936448-1363190995=:18319"
+Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
+To: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58187 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:6575 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932145Ab3CMQF2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 Mar 2013 12:05:28 -0400
-In-Reply-To: <20130313120003.GE29730@quack.suse.cz>
+	id S932392Ab3CMQJ4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 13 Mar 2013 12:09:56 -0400
+In-Reply-To: <alpine.LFD.2.00.1303131629350.7128@dhcp-1-104.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 3/13/13 7:00 AM, Jan Kara wrote:
-> On Fri 08-03-13 12:24:12, Ted Tso wrote:
->>
->> I've confirmed with Angela that we will have a room at Collaboration
->> Summit on Wednesday, April 17th.  We'll have the room starting at
->> 11:30am to 4:30pm.  If you plan to come, please let know so I can have
->> an accurate count.
->   I plan to come. BTW, I arrive to SF on Monday afternoon so I can manage
-> shifting the meeting to Tuesday as well. Regarding conflict with Collab
-> summit meetings - the schedule seems to be inaccessible for last two days
-> so I cannot really check that.
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-I get in 9am Tuesday, FWIW.  So as long as its' after 10:30am Tues or so,
-I can make it.
+--8323328-1399936448-1363190995=:18319
+Content-Type: TEXT/PLAIN; charset=ISO-8859-15
+Content-Transfer-Encoding: 8BIT
 
--Eric
+On Wed, 13 Mar 2013, Luká¨ Czerner wrote:
 
->> Since Andreas won't be able to make it, I'm also planning to schedule a
->> short time for us to chat on Friday.  Since the schedule for the LSF
->> hasn't been finalized yet, stay tuned.  If there is a BOF time on Friday
->> afternoon, that's probably when I'll try to schedule something.
->> Otherwise, we'll try for either during lunch or dinner on Friday.
->   I leave on Friday evening so dinner would be too late for me. But I don't
-> have to be there if that time is ok for others.
+> Date: Wed, 13 Mar 2013 16:48:49 +0100 (CET)
+> From: Luká¨ Czerner <lczerner@redhat.com>
+> To: linux-ext4@vger.kernel.org
+> Cc: Theodore Ts'o <tytso@mit.edu>
+> Subject: Metadata reservation for unwritten extent conversion
 > 
-> 								Honza
+> Hi Ted,
 > 
+> turns out that I've been wrong with my assumption that we can count
+> with metadata reservations for the unwritten extent conversion. So
+> the patch I've proposed:
+> 
+>  ext4: Reserve metadata if writing into uninitialized
+> 
+> which I think you've already merged into the devel branch is not
+> particularly useful and it should be reverted. Reverting this will
+> not cause any problem to reappear and in fact it should get rid of
+> some of the warnings about more metadata blocks being allocated than
+> reserved.
 
+Well, we can not actually revert that patch because it introduces
+da_reserve_metadata() which is used elsewhere in the commit:
+
+ext4: reserve metadata block for every delayed write
+
+
+I can resend the patch which uses da_reserve_metadata() so you can use
+it instead the old version and just drop the
+
+ext4: Reserve metadata if writing into uninitialized
+
+
+or I can fix it in separate patch. Which would you prefer ?
+
+-Lukas
+
+> 
+> The problem is that even though we're able to reserve the metadata
+> for the possible conversion, we can never know when to free the
+> metadata reservation. Currently we're freeing the metadata
+> reservation (which is usually overestimated because we never know
+> for sure how much metadata will actually be needed) when the number
+> of reserved data blocks drop to zero. However since we only need to
+> reserve metadata (and not data) blocks when writing into unwritten
+> extent, this approach does not work and we would free reserved
+> metadata even if we might still need it - there is no way to tell
+> whether we're going to need it or not in writeback path.
+> 
+> However even after the revert we're still left with the problem
+> with unwrittent extent conversion in dealloc path. I've attempted
+> to solved it with similar mechanism which xfs has - block reserve pool.
+> 
+> Blocks from this reserve pool should be removed from the global pool
+> and no one would be able to allocate from it, unless:
+> 
+> 1. we're in delalloc path and we need space for metadata allocation
+>    in unwritten extent conversion,
+> 
+>    This should solve the problem with not having enough metadata in
+>    ENOSPC condition in delayed allocation writeback path.
+> 
+> 2. we're in punch hole path and we need space for metadata
+>    allocation when splitting extents
+> 
+>    This should solve the problem when we do not have _any_ space at
+>    all and we attempt to punch a hole into the file resulting in the
+>    need for new extent tree block. Punch hole should succeed even in
+>    ENOSPC conditions since we're actually freeing space.
+> 
+> 3. we're writing into unwritten (preallocated) extent and we're in
+>    ENOSPC condition - not having any blocks to allocated metadata
+>    for unwritten extent conversion.
+> 
+>    This should solve the problem when we can return ENOSPC even when
+>    writing into preallocated space which is certainly unexpected
+>    (xfstest 274).
+> 
+> 
+> I already have a patch which implements that, but it need some
+> tweaks and some more testing, so I'll send it probably later this
+> week, as well as more metadata reservation fixes (not related to
+> unwritten extent conversion).
+> 
+> 
+> 
+> Let me know what do you think.
+> 
+> Thanks!
+> -Lukas
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+--8323328-1399936448-1363190995=:18319--
