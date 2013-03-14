@@ -1,79 +1,70 @@
-From: Wang Shilong <wangshilong1991@gmail.com>
-Subject: Re: [PATCH] Ext2: do not mark_inode_dirty to avoid BUG_ON
-Date: Thu, 14 Mar 2013 08:43:10 +0800
-Message-ID: <5BFF32A2-A02E-4D1D-94F7-DA0E84F1E6F3@gmail.com>
-References: <513EB7DD.3020103@cn.fujitsu.com> <20130313230928.GA11068@quack.suse.cz>
-Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
-Content-Type: text/plain; charset=GB2312
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: tyhicks@canonical.com, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>, fanchaoting <fanchaoting@cn.fujitsu.com>
+From: Tao Ma <tm@tao.ma>
+Subject: Re: Ext4 developer's get-together at Collaboration Summit/LSFMM
+Date: Thu, 14 Mar 2013 11:09:32 +0800
+Message-ID: <51413F6C.6000308@tao.ma>
+References: <nsxd2v9iz43.fsf@closure.thunk.org> <20130313120003.GE29730@quack.suse.cz> <5140A398.8060702@redhat.com> <alpine.LFD.2.00.1303131710250.18319@dhcp-1-104.brq.redhat.com> <20130313171130.GA5604@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
+Cc: =?windows-1252?Q?Luk=E1=9A_Czerner?= <lczerner@redhat.com>,
+	Eric Sandeen <sandeen@redhat.com>, Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f43.google.com ([209.85.210.43]:48899 "EHLO
-	mail-da0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755697Ab3CNAnc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Mar 2013 20:43:32 -0400
-Received: by mail-da0-f43.google.com with SMTP id u36so657709dak.16
-        for <linux-ext4@vger.kernel.org>; Wed, 13 Mar 2013 17:43:32 -0700 (PDT)
-In-Reply-To: <20130313230928.GA11068@quack.suse.cz>
+Received: from oproxy14-pub.unifiedlayer.com ([67.222.51.224]:58880 "HELO
+	oproxy14-pub.unifiedlayer.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S932743Ab3CNDJj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 13 Mar 2013 23:09:39 -0400
+In-Reply-To: <20130313171130.GA5604@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
-=D4=DA 2013-3-14=A3=AC=C9=CF=CE=E77:09=A3=ACJan Kara <jack@suse.cz> =D0=
-=B4=B5=C0=A3=BA
-
-> On Tue 12-03-13 13:06:37, fanchaoting wrote:
->> From: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
->>=20
->> commit 8e3dffc651cb668e1ff4d8b89cc1c3dde7540d3b leads into
->> a regression that casue BUG_ON when unlinking inode.
->>=20
->> Reported-by: tyhicks@canonical.com
->> Signed-off-by: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
->  I ended up fixing the problem by the attached patch. It looks cleane=
-r to
-> me that way... Thanks for your fix anyway.
-
-Sorry for delay reply, I am busy with my graduation project these two d=
-ays.
-However, your patch looks more reasonable than mine.=20
-
-Thanks very much to fanchaoting sending my patch out anyway.
+On 03/14/2013 01:11 AM, Theodore Ts'o wrote:
+> OK, can those people who are coming send a note answering the following questions:
+> 
+> 1) What time do you arrive / would you be available to attend the ext4
+> workshop on Tueday?
+We(Zheng and I) will arrive on Saturday, so all the time during
+collaboration summit should be fine for us.
+> 
+> 2) What sessions (please give the time slots) on Wednesday are you
+> interested in attending?
+> 
+> For reference, the schedule is available here:
+> 
+> http://events.linuxfoundation.org/events/collaboration-summit/schedule
+> 
+> And here are the sessions on the FS/MM track:
+> 
+> 9-10am	 Host-Based Disk-Mirroring with MD on Mainframe
+> 10-11am	 Persistent Memory and Linux: New Storage Technologies and Interfaces
+> 11:30-12:30  Using OpenLMI to Manage Storage
+> 2-3pm	 The Receiving End of printk - netconsole, blockconsole, cancd
+> 3-4pm    NVM Software Interfaces: New Directions
+> 
+> My assumption had always been that most of the Collab Summit talks
+> were pretty technically lightweight[1], so other than the 4:30pm
+> panel, there would be a huge amount of conflict.  But Ric assures me
+> that at least some of these talks might actually have good stuff.  :-)
+Top 1,2 and 5 seems to be interesting if it really cover something that
+we should know about. ;)
 
 Thanks,
-Wang
+Tao
+> 
+> Thanks!!
+> 
+>       	      	    	  		 - Ted
+> 
+> [1] Which is not a criticism; there are lots of users and system
+> administrators and I/T managers who need to hear stuff that we've
+> heard 100 times before, so it was just an assumption that most of the
+> ext4 developers wouldn't be interested.
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
->=20
-> 							Honza
->> ---
->> fs/ext2/balloc.c |    1 -
->> 1 files changed, 0 insertions(+), 1 deletions(-)
->>=20
->> diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
->> index 9f9992b..06d82fc 100644
->> --- a/fs/ext2/balloc.c
->> +++ b/fs/ext2/balloc.c
->> @@ -562,7 +562,6 @@ error_return:
->> 	if (freed) {
->> 		percpu_counter_add(&sbi->s_freeblocks_counter, freed);
->> 		dquot_free_block_nodirty(inode, freed);
->> -		mark_inode_dirty(inode);
->> 	}
->> }
->>=20
->> -- 1.7.7.6=20
->>=20
->>=20
->>=20
->>=20
-> --=20
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
-> <0001-ext2-Fix-BUG_ON-in-evict-on-inode-deletion.patch>
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
