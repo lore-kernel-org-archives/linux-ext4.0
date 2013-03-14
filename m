@@ -1,126 +1,79 @@
-From: Jan Kara <jack@suse.cz>
+From: Wang Shilong <wangshilong1991@gmail.com>
 Subject: Re: [PATCH] Ext2: do not mark_inode_dirty to avoid BUG_ON
-Date: Thu, 14 Mar 2013 00:09:28 +0100
-Message-ID: <20130313230928.GA11068@quack.suse.cz>
-References: <513EB7DD.3020103@cn.fujitsu.com>
-Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="AqsLC8rIMeq19msA"
-Cc: jack@suse.cz, tyhicks@canonical.com, linux-ext4@vger.kernel.org,
-	wangshilong1991@gmail.com
-To: fanchaoting <fanchaoting@cn.fujitsu.com>
+Date: Thu, 14 Mar 2013 08:43:10 +0800
+Message-ID: <5BFF32A2-A02E-4D1D-94F7-DA0E84F1E6F3@gmail.com>
+References: <513EB7DD.3020103@cn.fujitsu.com> <20130313230928.GA11068@quack.suse.cz>
+Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
+Content-Type: text/plain; charset=GB2312
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: tyhicks@canonical.com, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>, fanchaoting <fanchaoting@cn.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:36564 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934352Ab3CMXJc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 Mar 2013 19:09:32 -0400
-Content-Disposition: inline
-In-Reply-To: <513EB7DD.3020103@cn.fujitsu.com>
+Received: from mail-da0-f43.google.com ([209.85.210.43]:48899 "EHLO
+	mail-da0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755697Ab3CNAnc convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Mar 2013 20:43:32 -0400
+Received: by mail-da0-f43.google.com with SMTP id u36so657709dak.16
+        for <linux-ext4@vger.kernel.org>; Wed, 13 Mar 2013 17:43:32 -0700 (PDT)
+In-Reply-To: <20130313230928.GA11068@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
---AqsLC8rIMeq19msA
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+=D4=DA 2013-3-14=A3=AC=C9=CF=CE=E77:09=A3=ACJan Kara <jack@suse.cz> =D0=
+=B4=B5=C0=A3=BA
 
-On Tue 12-03-13 13:06:37, fanchaoting wrote:
-> From: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
-> 
-> commit 8e3dffc651cb668e1ff4d8b89cc1c3dde7540d3b leads into
-> a regression that casue BUG_ON when unlinking inode.
-> 
-> Reported-by: tyhicks@canonical.com
-> Signed-off-by: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
-  I ended up fixing the problem by the attached patch. It looks cleaner to
-me that way... Thanks for your fix anyway.
+> On Tue 12-03-13 13:06:37, fanchaoting wrote:
+>> From: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
+>>=20
+>> commit 8e3dffc651cb668e1ff4d8b89cc1c3dde7540d3b leads into
+>> a regression that casue BUG_ON when unlinking inode.
+>>=20
+>> Reported-by: tyhicks@canonical.com
+>> Signed-off-by: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
+>  I ended up fixing the problem by the attached patch. It looks cleane=
+r to
+> me that way... Thanks for your fix anyway.
 
-							Honza
-> ---
->  fs/ext2/balloc.c |    1 -
->  1 files changed, 0 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
-> index 9f9992b..06d82fc 100644
-> --- a/fs/ext2/balloc.c
-> +++ b/fs/ext2/balloc.c
-> @@ -562,7 +562,6 @@ error_return:
->  	if (freed) {
->  		percpu_counter_add(&sbi->s_freeblocks_counter, freed);
->  		dquot_free_block_nodirty(inode, freed);
-> -		mark_inode_dirty(inode);
->  	}
->  }
->  
-> -- 1.7.7.6 
-> 
-> 
-> 
-> 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Sorry for delay reply, I am busy with my graduation project these two d=
+ays.
+However, your patch looks more reasonable than mine.=20
 
---AqsLC8rIMeq19msA
-Content-Type: text/x-patch; charset=us-ascii
-Content-Disposition: attachment; filename="0001-ext2-Fix-BUG_ON-in-evict-on-inode-deletion.patch"
+Thanks very much to fanchaoting sending my patch out anyway.
 
->From c288d2969627be7ffc90904ac8c6aae0295fbf9f Mon Sep 17 00:00:00 2001
-From: Jan Kara <jack@suse.cz>
-Date: Wed, 13 Mar 2013 12:57:08 +0100
-Subject: [PATCH] ext2: Fix BUG_ON in evict() on inode deletion
+Thanks,
+Wang
 
-Commit 8e3dffc6 introduced a regression where deleting inode with
-large extended attributes leads to triggering
-  BUG_ON(inode->i_state != (I_FREEING | I_CLEAR))
-in fs/inode.c:evict(). That happens because freeing of xattr block
-dirtied the inode and it happened after clear_inode() has been called.
+>=20
+> 							Honza
+>> ---
+>> fs/ext2/balloc.c |    1 -
+>> 1 files changed, 0 insertions(+), 1 deletions(-)
+>>=20
+>> diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
+>> index 9f9992b..06d82fc 100644
+>> --- a/fs/ext2/balloc.c
+>> +++ b/fs/ext2/balloc.c
+>> @@ -562,7 +562,6 @@ error_return:
+>> 	if (freed) {
+>> 		percpu_counter_add(&sbi->s_freeblocks_counter, freed);
+>> 		dquot_free_block_nodirty(inode, freed);
+>> -		mark_inode_dirty(inode);
+>> 	}
+>> }
+>>=20
+>> -- 1.7.7.6=20
+>>=20
+>>=20
+>>=20
+>>=20
+> --=20
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
+> <0001-ext2-Fix-BUG_ON-in-evict-on-inode-deletion.patch>
 
-Fix the issue by moving removal of xattr block into ext2_evict_inode()
-before clear_inode() call close to a place where data blocks are
-truncated. That is also more logical place and removes surprising
-requirement that ext2_free_blocks() mustn't dirty the inode.
-
-Reported-by: Tyler Hicks <tyhicks@canonical.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext2/ialloc.c |    1 -
- fs/ext2/inode.c  |    2 ++
- 2 files changed, 2 insertions(+), 1 deletions(-)
-
-diff --git a/fs/ext2/ialloc.c b/fs/ext2/ialloc.c
-index 8f370e0..7cadd82 100644
---- a/fs/ext2/ialloc.c
-+++ b/fs/ext2/ialloc.c
-@@ -118,7 +118,6 @@ void ext2_free_inode (struct inode * inode)
- 	 * as writing the quota to disk may need the lock as well.
- 	 */
- 	/* Quota is already initialized in iput() */
--	ext2_xattr_delete_inode(inode);
- 	dquot_free_inode(inode);
- 	dquot_drop(inode);
- 
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index c3881e5..fe60cc1 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -34,6 +34,7 @@
- #include "ext2.h"
- #include "acl.h"
- #include "xip.h"
-+#include "xattr.h"
- 
- static int __ext2_write_inode(struct inode *inode, int do_sync);
- 
-@@ -88,6 +89,7 @@ void ext2_evict_inode(struct inode * inode)
- 		inode->i_size = 0;
- 		if (inode->i_blocks)
- 			ext2_truncate_blocks(inode, 0);
-+		ext2_xattr_delete_inode(inode);
- 	}
- 
- 	invalidate_inode_buffers(inode);
--- 
-1.7.1
-
-
---AqsLC8rIMeq19msA--
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
