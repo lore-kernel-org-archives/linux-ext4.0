@@ -1,97 +1,118 @@
-From: Andrew Morton <akpm@linux-foundation.org>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
 Subject: Re: [PATCH] bounce:fix bug, avoid to flush dcache on slab page from
  jbd2.
-Date: Thu, 14 Mar 2013 16:01:10 -0700
-Message-ID: <20130314160110.a0fe092cb103bfe6720d3009@linux-foundation.org>
+Date: Thu, 14 Mar 2013 16:27:03 -0700
+Message-ID: <20130314232703.GJ5313@blackbox.djwong.org>
 References: <5139DB90.5090302@gmail.com>
-	<20130312153221.0d26fe5599d4885e51bb0c7c@linux-foundation.org>
-	<20130313011020.GA5313@blackbox.djwong.org>
-	<20130313085021.GA29730@quack.suse.cz>
-	<20130313194429.GE5313@blackbox.djwong.org>
-	<20130313210216.GA7754@quack.suse.cz>
-	<20130314224243.GI5313@blackbox.djwong.org>
+ <20130312153221.0d26fe5599d4885e51bb0c7c@linux-foundation.org>
+ <20130313011020.GA5313@blackbox.djwong.org>
+ <20130313085021.GA29730@quack.suse.cz>
+ <20130313194429.GE5313@blackbox.djwong.org>
+ <20130313210216.GA7754@quack.suse.cz>
+ <20130314154651.b454fc7c6de6222c6c3a1a4a@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: Jan Kara <jack@suse.cz>, Shuge <shugelinux@gmail.com>,
- linux-kernel@vger.kernel.org, linux-mm@kvack.org,
- linux-ext4@vger.kernel.org, Kevin <kevin@allwinneretch.com>,
- "Theodore Ts'o" <tytso@mit.edu>, Jens Axboe <axboe@kernel.dk>, Catalin
- Marinas <catalin.marinas@arm.com>, Will Deacon <will.deacon@arm.com>,
- linux-arm-kernel@lists.infradead.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        linux-ext4@vger.kernel.org, Kevin <kevin@allwinneretch.com>,
+        "Theodore Ts'o" <tytso@mit.edu>, Jens Axboe <axboe@kernel.dk>,
+        Catalin Marinas <catalin.marinas@arm.com>,
+        Will Deacon <will.deacon@arm.com>,
+        linux-arm-kernel@lists.infradead.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20130314224243.GI5313@blackbox.djwong.org>
+Content-Disposition: inline
+In-Reply-To: <20130314154651.b454fc7c6de6222c6c3a1a4a@linux-foundation.org>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 14 Mar 2013 15:42:43 -0700 "Darrick J. Wong" <darrick.wong@oracle.com> wrote:
-
-> Subject: [PATCH] mm: Make snapshotting pages for stable writes a per-bio operation
+On Thu, Mar 14, 2013 at 03:46:51PM -0700, Andrew Morton wrote:
+> On Wed, 13 Mar 2013 22:02:16 +0100 Jan Kara <jack@suse.cz> wrote:
 > 
-> Walking a bio's page mappings has proved problematic, so create a new bio flag
-> to indicate that a bio's data needs to be snapshotted in order to guarantee
-> stable pages during writeback.  Next, for the one user (ext3/jbd) of
-> snapshotting, hook all the places where writes can be initiated without
-> PG_writeback set, and set BIO_SNAP_STABLE there.  Finally, the MS_SNAP_STABLE
-> mount flag (only used by ext3) is now superfluous, so get rid of it.
+> > > > ... remembering why we need to get to sb and why ext3 needs this ... So
+> > > > maybe a better solution would be to have a bio flag meaning that pages need
+> > > > bouncing? And we would set it from filesystems that need it - in case of
+> > > > ext3 only writeback of data from kjournald actually needs to bounce the
+> > > > pages. Thoughts?
+> > > 
+> > > What about dirty pages that don't result in journal transactions?  I think
+> > > ext3_sync_file() eventually calls ext3_ordered_writepage, which then calls
+> > > __block_write_full_page, which in turn calls submit_bh().
+> >   So here we have two options:
+> > Either we let ext3 wait the same way as other filesystems when stable pages
+> > are required. Then only data IO from kjournald needs to be bounced (all
+> > other IO is properly protected by PageWriteback bit).
+> > 
+> > Or we won't let ext3 wait (as it is now), keep the superblock flag that fs
+> > needs bouncing, and set the bio flag in __block_write_full_page() and
+> > kjournald based on the sb flag.
+> > 
+> > I think the first option is slightly better but I don't feel strongly
+> > about that.
+> 
+> It seems Just Wrong that we're dicking around with filesystem
+> superblocks at this level.  It's the bounce code, for heavens sake!
+> 
+> 
+> What the heck's going on here and why wasn't I able to work that out
+> from reading the code :( The need to stabilise these pages is driven by
+> the characteristics of the underlying device and driver stack, isn't
+> it?  Things like checksumming?  What else drives this requirement? 
+> </rant>
 
-whoa, that looks way better.
+Right now, checksumming for weird DIF/DIX devices is the only requirement for
+this behavior.  In theory we can also hook checksumming iscsi and other things
+up to this, but for now they have their own solutions for keeping writeback
+page contents stable.
 
-Must do this though:
+> Because I *think* it should be sufficient to maintain this boolean in
+> the backing_dev.  My *guess* is that this is all here because we want
+> to enable stable-snapshotting on a per-fs basis rather than on a
+> per-device basis?  If so, why?  If not, what?
 
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: mm-make-snapshotting-pages-for-stable-writes-a-per-bio-operation-fix
+Yes, we do want to enable stable-snapshotting on a per-fs basis.  Here's why:
 
-rename _submit_bh()'s `flags' to `bio_flags', delobotomize the _submit_bh declaration
+The first time I tried to solve this problem, I simply had everything use the
+bounce buffer.  That was shot down because bounce buffers add memory pressure,
+there might not be free pages available when we're doing writeback, etc.
 
-Cc: Adrian Hunter <adrian.hunter@intel.com>
-Cc: Andy Lutomirski <luto@amacapital.net>
-Cc: Artem Bityutskiy <dedekind1@gmail.com>
-Cc: Darrick J. Wong <darrick.wong@oracle.com>
-Cc: Jan Kara <jack@suse.cz>
-Cc: Jens Axboe <axboe@kernel.dk>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
+The second attempt was to simply make everything wait for writeback to finish
+before dirtying pages.  That's what everything (except ext3) does now.  jbd
+initiates writeback on pages without setting PG_writeback, which means that our
+convenient wait_on_stable_pages is broken in this case.  Hence ext3/jbd need to
+be able to stable-snapshot.  However, it's the /only/ filesystem in the kernel
+that needs this.  Everything else is either ok with waiting (ext4, xfs) or
+implements their own tricks (tux3, btrfs) to make stable pages work correctly.
 
- fs/buffer.c                 |    4 ++--
- include/linux/buffer_head.h |    2 +-
- 2 files changed, 3 insertions(+), 3 deletions(-)
+Fixing jbd to set PG_writeback has been discussed and rejected, because it's a
+lot of work and you'd end up with something rather jbd2-like.  However,
+bouncing the outgoing buffers is a fairly small change to jbd.  Jan (at least a
+few months ago) was ok with band-aiding ext3.
 
-diff -puN fs/buffer.c~mm-make-snapshotting-pages-for-stable-writes-a-per-bio-operation-fix fs/buffer.c
---- a/fs/buffer.c~mm-make-snapshotting-pages-for-stable-writes-a-per-bio-operation-fix
-+++ a/fs/buffer.c
-@@ -2949,7 +2949,7 @@ static void guard_bh_eod(int rw, struct
- 	}
- }
- 
--int _submit_bh(int rw, struct buffer_head * bh, unsigned long flags)
-+int _submit_bh(int rw, struct buffer_head * bh, unsigned long bio_flags)
- {
- 	struct bio *bio;
- 	int ret = 0;
-@@ -2984,7 +2984,7 @@ int _submit_bh(int rw, struct buffer_hea
- 
- 	bio->bi_end_io = end_bio_bh_io_sync;
- 	bio->bi_private = bh;
--	bio->bi_flags |= flags;
-+	bio->bi_flags |= bio_flags;
- 
- 	/* Take care of bh's that straddle the end of the device */
- 	guard_bh_eod(rw, bio, bh);
-diff -puN include/linux/buffer_head.h~mm-make-snapshotting-pages-for-stable-writes-a-per-bio-operation-fix include/linux/buffer_head.h
---- a/include/linux/buffer_head.h~mm-make-snapshotting-pages-for-stable-writes-a-per-bio-operation-fix
-+++ a/include/linux/buffer_head.h
-@@ -181,7 +181,7 @@ void ll_rw_block(int, int, struct buffer
- int sync_dirty_buffer(struct buffer_head *bh);
- int __sync_dirty_buffer(struct buffer_head *bh, int rw);
- void write_dirty_buffer(struct buffer_head *bh, int rw);
--int _submit_bh(int, struct buffer_head *, unsigned long);
-+int _submit_bh(int rw, struct buffer_head *bh, unsigned long bio_flags);
- int submit_bh(int, struct buffer_head *);
- void write_boundary_block(struct block_device *bdev,
- 			sector_t bblock, unsigned blocksize);
-_
+I could rip out ext3 entirely, but people seem uncomfortable with that, and it
+hasn't (yet) been proven that ext4 can provide a perfect imitation of ext3.
+
+I could also just fix up Kconfig so that you can't use a BLK_DEV_INTEGRITY
+device with JBD, but that was also shot down as ridiculous.
+
+Given that a backing_dev covers a whole disk, which could contain several
+different filesystems and an ext3, I don't want to make /all/ of them use
+bounce buffering just because jbd is broken.  We've already established that
+bounce pages should be used only when necessary, and (as it turns out), ext3
+can initiate writeout of certain dirty user data pages without needing to go
+through jbd, which means that those pages don't need to be bounced either.
+
+Therefore, this really is a per-fs thing.
+
+> btw, local variable `bdi' in must_snapshot_stable_pages() doesn't do
+> anything.
+>
+> None of this will stop Shuge's kernel from going splat either.
+
+I'm not trying to fix that in this patch; his splat resulted from stuff going
+on in ext4/jbd2.
+
+--D
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
