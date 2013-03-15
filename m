@@ -1,121 +1,70 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] bounce:fix bug, avoid to flush dcache on slab page from
- jbd2.
-Date: Thu, 14 Mar 2013 16:27:03 -0700
-Message-ID: <20130314232703.GJ5313@blackbox.djwong.org>
-References: <5139DB90.5090302@gmail.com>
- <20130312153221.0d26fe5599d4885e51bb0c7c@linux-foundation.org>
- <20130313011020.GA5313@blackbox.djwong.org>
- <20130313085021.GA29730@quack.suse.cz>
- <20130313194429.GE5313@blackbox.djwong.org>
- <20130313210216.GA7754@quack.suse.cz>
- <20130314154651.b454fc7c6de6222c6c3a1a4a@linux-foundation.org>
+From: zhuyj <zyjzyj2000@gmail.com>
+Subject: Re: Ext4:can not rm directories on 2.6.3x
+Date: Fri, 15 Mar 2013 15:16:52 +0800
+Message-ID: <5142CAE4.3070400@gmail.xom>
+References: <CAAO_Xo5g2LR54ry=SU7UhGbv-chdkdd6foq+-LjnuE8yAj8ikg@mail.gmail.com> <513EDC2B.9020604@gmail.xom> <20130312134229.GJ18595@thunk.org> <513FF163.7080606@gmail.xom>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Shuge <shugelinux@gmail.com>,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        linux-ext4@vger.kernel.org, Kevin <kevin@allwinneretch.com>,
-        "Theodore Ts'o" <tytso@mit.edu>, Jens Axboe <axboe@kernel.dk>,
-        Catalin Marinas <catalin.marinas@arm.com>,
-        Will Deacon <will.deacon@arm.com>,
-        linux-arm-kernel@lists.infradead.org
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20130314154651.b454fc7c6de6222c6c3a1a4a@linux-foundation.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: zhuyj <zyjzyj2000@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-gh0-f170.google.com ([209.85.160.170]:60544 "EHLO
+	mail-gh0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750903Ab3COHYK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Mar 2013 03:24:10 -0400
+Received: by mail-gh0-f170.google.com with SMTP id g14so555548ghb.29
+        for <linux-ext4@vger.kernel.org>; Fri, 15 Mar 2013 00:24:09 -0700 (PDT)
+In-Reply-To: <513FF163.7080606@gmail.xom>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 14, 2013 at 03:46:51PM -0700, Andrew Morton wrote:
-> On Wed, 13 Mar 2013 22:02:16 +0100 Jan Kara <jack@suse.cz> wrote:
-> 
-> > > > ... remembering why we need to get to sb and why ext3 needs this ... So
-> > > > maybe a better solution would be to have a bio flag meaning that pages need
-> > > > bouncing? And we would set it from filesystems that need it - in case of
-> > > > ext3 only writeback of data from kjournald actually needs to bounce the
-> > > > pages. Thoughts?
-> > > 
-> > > What about dirty pages that don't result in journal transactions?  I think
-> > > ext3_sync_file() eventually calls ext3_ordered_writepage, which then calls
-> > > __block_write_full_page, which in turn calls submit_bh().
-> >   So here we have two options:
-> > Either we let ext3 wait the same way as other filesystems when stable pages
-> > are required. Then only data IO from kjournald needs to be bounced (all
-> > other IO is properly protected by PageWriteback bit).
-> > 
-> > Or we won't let ext3 wait (as it is now), keep the superblock flag that fs
-> > needs bouncing, and set the bio flag in __block_write_full_page() and
-> > kjournald based on the sb flag.
-> > 
-> > I think the first option is slightly better but I don't feel strongly
-> > about that.
-> 
-> It seems Just Wrong that we're dicking around with filesystem
-> superblocks at this level.  It's the bounce code, for heavens sake!
-> 
-> 
-> What the heck's going on here and why wasn't I able to work that out
-> from reading the code :( The need to stabilise these pages is driven by
-> the characteristics of the underlying device and driver stack, isn't
-> it?  Things like checksumming?  What else drives this requirement? 
-> </rant>
+Hi, all
 
-Right now, checksumming for weird DIF/DIX devices is the only requirement for
-this behavior.  In theory we can also hook checksumming iscsi and other things
-up to this, but for now they have their own solutions for keeping writeback
-page contents stable.
+The two patches can fix this problem.
+ext4: Fix fs corruption when make_indexed_dir() fails
+ext4: don't dereference null pointer when make_indexed_dir() fails
 
-> Because I *think* it should be sufficient to maintain this boolean in
-> the backing_dev.  My *guess* is that this is all here because we want
-> to enable stable-snapshotting on a per-fs basis rather than on a
-> per-device basis?  If so, why?  If not, what?
+If any one comes across this problem, he can apply the above two patches.
 
-Yes, we do want to enable stable-snapshotting on a per-fs basis.  Here's why:
+Zhuyj
 
-The first time I tried to solve this problem, I simply had everything use the
-bounce buffer.  That was shot down because bounce buffers add memory pressure,
-there might not be free pages available when we're doing writeback, etc.
-
-The second attempt was to simply make everything wait for writeback to finish
-before dirtying pages.  That's what everything (except ext3) does now.  jbd
-initiates writeback on pages without setting PG_writeback, which means that our
-convenient wait_on_stable_pages is broken in this case.  Hence ext3/jbd need to
-be able to stable-snapshot.  However, it's the /only/ filesystem in the kernel
-that needs this.  Everything else is either ok with waiting (ext4, xfs) or
-implements their own tricks (tux3, btrfs) to make stable pages work correctly.
-
-Fixing jbd to set PG_writeback has been discussed and rejected, because it's a
-lot of work and you'd end up with something rather jbd2-like.  However,
-bouncing the outgoing buffers is a fairly small change to jbd.  Jan (at least a
-few months ago) was ok with band-aiding ext3.
-
-I could rip out ext3 entirely, but people seem uncomfortable with that, and it
-hasn't (yet) been proven that ext4 can provide a perfect imitation of ext3.
-
-I could also just fix up Kconfig so that you can't use a BLK_DEV_INTEGRITY
-device with JBD, but that was also shot down as ridiculous.
-
-Given that a backing_dev covers a whole disk, which could contain several
-different filesystems and an ext3, I don't want to make /all/ of them use
-bounce buffering just because jbd is broken.  We've already established that
-bounce pages should be used only when necessary, and (as it turns out), ext3
-can initiate writeout of certain dirty user data pages without needing to go
-through jbd, which means that those pages don't need to be bounced either.
-
-Therefore, this really is a per-fs thing.
-
-> btw, local variable `bdi' in must_snapshot_stable_pages() doesn't do
-> anything.
+On 03/13/2013 11:24 AM, zhuyj wrote:
+> OK. Thanks a lot.
+> This bug can happen on Ubuntu 11.04,10.10 with kernel 2.6.3x.
+> Follow the above steps, this bug can be reproduced.
 >
-> None of this will stop Shuge's kernel from going splat either.
+> Anyone has the same experience?
+>
+> On 03/12/2013 09:42 PM, Theodore Ts'o wrote:
+>> On Tue, Mar 12, 2013 at 03:41:31PM +0800, zhuyj wrote:
+>>> If I use kernel>=3.0, this will not occur.
+>> Sounds like this is a problem in 2.6.39 that has since been fixed in
+>> newer kernels.
+>>
+>>> So is this is a bug?
+>> Sure looks like it's a bug.  :-)
+>>
+>> There are so many distributions and other old embedded systems, etc.,
+>> using older kernels that there's just no way that upstream developers
+>> can try to debug every single older kernel --- and 2.6.39 isn't even a
+>> kernel that is being supported by a volunteer as a long-term supported
+>> kernel.
+>>
+>> See http://www.kernel.org for a list of kernels which are supported as
+>> long-term kernels, and even then, please remember that unless fixes
+>> are automatically backported, or someone manually backports a fix that
+>> doesn't automatically apply to an older kernel, it's not going to
+>> happen.....
+>>
+>> Regards,
+>>
+>>                     - Ted
+>>
+>> P.S.  Your problem appears to be completely unrelated to the thread
+>> which you replied to.  This makes it hard for us to keep track of
+>> questions/bug reports which users submit.
+>>
+>
+>
 
-I'm not trying to fix that in this patch; his splat resulted from stuff going
-on in ext4/jbd2.
-
---D
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
