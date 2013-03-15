@@ -1,50 +1,45 @@
-From: Paul Gortmaker <paul.gortmaker@windriver.com>
-Subject: Re: Ext4:can not rm directories on 2.6.3x
-Date: Fri, 15 Mar 2013 11:12:02 -0400
-Message-ID: <51433A42.2090400@windriver.com>
-References: <CAAO_Xo5g2LR54ry=SU7UhGbv-chdkdd6foq+-LjnuE8yAj8ikg@mail.gmail.com> <513EDC2B.9020604@gmail.xom> <20130312134229.GJ18595@thunk.org> <513FF163.7080606@gmail.xom> <5142CAE4.3070400@gmail.xom> <20130315145314.GB7403@thunk.org>
+From: Rich Johnston <rjohnston@sgi.com>
+Subject: Re: [PATCH] xfstests: make defrag test 222 generic
+Date: Fri, 15 Mar 2013 11:03:31 -0500
+Message-ID: <51434653.40808@sgi.com>
+References: <513F5B0A.4030405@redhat.com> <20130315145540.GG7229@twin.jikos.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: zhuyj <zyjzyj2000@gmail.com>, <linux-ext4@vger.kernel.org>,
-	<stable@kernel.org>, Willy Tarreau <w@1wt.eu>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.windriver.com ([147.11.1.11]:60390 "EHLO
-	mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755513Ab3COPNF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Mar 2013 11:13:05 -0400
-In-Reply-To: <20130315145314.GB7403@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+To: <dsterba@suse.cz>, Eric Sandeen <sandeen@redhat.com>,
+	xfs-oss <xfs@oss.sgi.com>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	linux-btrfs <linux-btrfs@vger.kernel.org>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
+In-Reply-To: <20130315145540.GG7229@twin.jikos.cz>
+Sender: linux-btrfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 13-03-15 10:53 AM, Theodore Ts'o wrote:
-> On Fri, Mar 15, 2013 at 03:16:52PM +0800, zhuyj wrote:
->> Hi, all
->>
->> The two patches can fix this problem.
->> ext4: Fix fs corruption when make_indexed_dir() fails
->> ext4: don't dereference null pointer when make_indexed_dir() fails
-> 
-> Thanks, Zhujh for figuring this out.  Those two patches weren't
-> taggled with cc: stable@vger.kernel.org, but they probably should have
-> been.  Since they first appeared in v3.0, the two long-term stable
-> kernels that would benefit with these patches are v3.0.x and v3.2.x.
-> 
-> Willy, Paul, would you consider cherry-picking the following commits
-> for your respective stable kernels?
+On 03/15/2013 09:55 AM, David Sterba wrote:
+> On Tue, Mar 12, 2013 at 11:42:50AM -0500, Eric Sandeen wrote:
+>> Define a new _defrag_dir() helper which just runs noisy/debug
+>> dir defrag for ext4 and/or btrfs as well, and use that in 222
+>> instead of hardcoded xfs_fsr.
+>
+> Dir defrag on btrfs does not recurse in the given directory to defrag
+> all files, but defragments the tree of the containing subvolume and the
+> whole extent tree (thus needs CAP_SYS_ADMIN).
+>
+> This is known (and not very intuitive) behaviour, it would be better to
+> add a special parameter to defrag the root and/or the extent root and
+> pass it down to the ioctl via flags.
+>
+> Until this is implemented I suggest to use a workaround via 'find':
+>
+>   find $dir -print -execdir $DEFRAG_PROG '{}' +
+>
+> Otherwise the test looks ok.
+>
+> david
 
-Both queued for 2.6.34.15
+Eric, I will make this change at commit time if you agree?
 
-Thanks,
-Paul.
---
+David, can I put your name as the reviewer when I do?
 
-> 
-> git cherry-pick 7ad8e4e6ae2a7c95445ee1715b1714106fb95037
-> git cherry-pick 6976a6f2acde2b0443cd64f1d08af90630e4ce81
-> 
-> Thanks!!
-> 
-> 				- Ted
-> 
+Thanks
+--Rich
