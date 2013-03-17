@@ -1,23 +1,45 @@
-From: Theodore Ts'o <tytso@mit.edu>
+From: Eric Whitney <enwlinux@gmail.com>
 Subject: Re: possible dev branch regression - xfstest 285/1k
-Date: Sat, 16 Mar 2013 23:06:48 -0400
-Message-ID: <20130317030648.GA14225@thunk.org>
+Date: Sat, 16 Mar 2013 23:36:08 -0400
+Message-ID: <20130317033608.GA2757@rocky>
 References: <20130315222818.GA16100@wallace>
  <20130316150923.GA18589@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org
+To: Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:53846 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753934Ab3CQDGw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 16 Mar 2013 23:06:52 -0400
+Received: from mail-vc0-f172.google.com ([209.85.220.172]:56090 "EHLO
+	mail-vc0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754731Ab3CQDgO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 16 Mar 2013 23:36:14 -0400
+Received: by mail-vc0-f172.google.com with SMTP id hr11so2242080vcb.3
+        for <linux-ext4@vger.kernel.org>; Sat, 16 Mar 2013 20:36:14 -0700 (PDT)
 Content-Disposition: inline
 In-Reply-To: <20130316150923.GA18589@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Mar 16, 2013 at 11:09:23PM +0800, Zheng Liu wrote:
+* Zheng Liu <gnehzuil.liu@gmail.com>:
+> On Fri, Mar 15, 2013 at 06:28:18PM -0400, Eric Whitney wrote:
+> > I'm seeing Xfstest 285 consistently fail for the 1k test case using the
+> > latest dev branch while running on both x86 and ARM.  Subtest 08 is
+> > the problem. From the test output:
+> > 
+> > 08. Test file with unwritten extents, only have unwritten pages
+> > 08.01 SEEK_HOLE expected 0 or 4194304, got 11264.                 FAIL
+> > 08.02 SEEK_HOLE expected 1 or 4194304, got 11264.                 FAIL
+> > 08.03 SEEK_DATA expected 10240 or 10240, got 0.                   FAIL
+> > 08.04 SEEK_DATA expected 10240 or 10240, got 1.                   FAIL
+> > 
+> > From previous discussions, we expect 285 to fail in the ext3 (nodelalloc,
+> > no flex_bg, and no extents) test case, but in subtest 07.  It still does
+> > that.
+> > 
+> > In the dev branch, reverting 4f42f80a8f - "ext4: use s_extent_max_zeroout_kb
+> > value as number of kb" - results in success for 285 in the 1k test case.
+> 
+> Hi Eric,
 > 
 > I see what's going on.  First of all it isn't a bug. :-)  Please let me
 > describe why it happens.
@@ -27,52 +49,59 @@ On Sat, Mar 16, 2013 at 11:09:23PM +0800, Zheng Liu wrote:
 > is converted, it could be zeroed out.  In xfstests #285 subtest 08 it
 > preallocates an unwritten extent which is 4MB.  Then it writes some data
 > at offset 10 * blocksize, which the length is one blocksize, and calles
-> sync_file_range(2) to flush it.
+> sync_file_range(2) to flush it.  So the call trace looks like:
+> 
+> ext4_fallocate()
+>   ->ext4_map_blocks()
+>     [one unwritten extent is allocated]
+> ext4_file_write()
+> ext4_da_writepages()
+>   ->ext4_map_blocks() with EXT4_GET_BLOCKS_CREATE flag
+>     ->ext4_ext_handle_uninitialized_extents()
+>       ->ext4_ext_convert_to_initialized()
+> 
+> In ext4_ext_convert_to_initialized() it tries to zero out unwritten
+> extent if condition is matched.  Let's see what happens.
+> 
+> case a) 1k block size
+>   max_zeroout: 32
+>   ee_len: 4096
+>   allocated: 4086
+>   m_len: 1
+> 
+> In this case, the following condition is matched.
+> 
+> fs/ext4/extents.c:3310
+> 
+>         else if (map->m_lblk - ee_block + map-m_len < max_zeroout)
+>                  10          - 0        + 1         < 32
+> 
+> So unwritten extent [0,11] will be converted to written.  That is why
+> 11264 (11 * 1k) is returned when we seek a hole from offset 0 and 1,
+> and 0 and 1 are returned when we seek a data from offset 0 and 1.
+> 
+> case b) 4k block size
+>   max_zeroout: 8
+>   ee_len: 1024
+>   allocated: 1014
+>   m_len: 1
+> 
+> In this case, the above condition won't be matched.
+> 
+>         else if (map->m_lblk - ee_block + map-m_len < max_zeroout)
+>                  10          - 0        + 1         < 8
+> 
+> So only one unwritten extent [10, 1] is converted, and the test can
+> pass.
+> 
 
-Specifically, we are now honoring the default setting which sets the
-max_zeroout_kb value to be 32.  With a 4k block file system, if we
-were to zeroout the extent, we would have to zero out 40k, which is
-greater than 32k, so resulting file after pwrite(fd, 4096, 40960)
-looks like this:
+Hi Zheng:
 
-% filefrag -v /u1/foo08 
-Filesystem type is: ef53
-File size of /u1/foo08 is 4194304 (1024 blocks of 4096 bytes)
- ext:     logical_offset:        physical_offset: length:   expected: flags:
-   0:        0..       9:    1852416..   1852425:     10:             unwritten
-   1:       10..      10:    1852426..   1852426:      1:            
-   2:       11..    1023:    1852427..   1853439:   1013:             unwritten,eof
-/u1/foo08: 1 extent found
+Thanks very much for taking the time to look at this and for your clear
+explanation - much appreciated.  I'm happy to hear there's no reason to be
+concerned about a regression, and that 4f42f80a8f simply exposed another
+problem in xfstest 285 when applied to ext4.
 
-With a 1k block file system, we only need to zero out 10k, which is
-less than 32k, and so after pwrite(fd, 1024, 10240), the file looks
-like this:
+Thanks,
+Eric
 
-% filefrag -v /mnt/foo08
-Filesystem type is: ef53
-File size of /mnt/foo08 is 4194304 (4096 blocks of 1024 bytes)
- ext:     logical_offset:        physical_offset: length:   expected: flags:
-   0:        0..      10:      81921..     81931:     11:            
-   1:       11..    4095:      81932..     86016:   4085:             unwritten,eof
-/mnt/foo08: 1 extent found
-
-If we run src/seek_sanity_test by hand, we can make it happy by
-setting the following configuration option before we run it:
-
-echo 0 > /sys/fs/ext4/<dev>/extent_max_zeroout_kb 
-
-I'm not sure what's the best way to make xfstest #285 happy, though.
-
-One way might be to change the test so that instead of writing the
-data at offset bufsize*10, we change it so it writes the data at
-offset bufsize*40, and change the expected values accordingly.  The
-other would be to add some kind of ext4-specific hack to test #285
-which manually sets the extent_max_zeroout_kb tuning parameter after
-the file system is mounted.
-
-I'm not sure which is more likely to be accepted by the xfstests
-maintainers.  I suspect the former, but they may not like either
-solution, in which case we might have to disable 285 for ext4 and
-create an ext4-specific test.
-
-	      		    	    	    - Ted
