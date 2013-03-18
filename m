@@ -1,127 +1,177 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 2/2] filefrag: count a contiguous extent when both
- logical and physical blocks are contiguous
-Date: Mon, 18 Mar 2013 10:11:15 +1100
-Message-ID: <20130317231115.GJ6369@dastard>
-References: <1362327978-30423-1-git-send-email-wenqing.lz@taobao.com>
- <1362327978-30423-3-git-send-email-wenqing.lz@taobao.com>
- <20130313201611.GH5604@thunk.org>
- <20130314125441.GA16350@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4/jbd2: don't wait (forever) for stale tid caused by
+ wraparound
+Date: Sun, 17 Mar 2013 22:54:01 -0400
+Message-ID: <20130318025401.GA12611@thunk.org>
+References: <B2EC601CDDA242189A46599B31EA6AD3@atlassian.com>
+ <1363412062.3937.196.camel@deadeye.wl.decadent.org.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Zheng Liu <wenqing.lz@taobao.com>
+Cc: George Barnett <gbarnett@atlassian.com>,
+	linux-ext4@vger.kernel.org,
+	Debian kernel maintainers <debian-kernel@lists.debian.org>
+To: Ben Hutchings <ben@decadent.org.uk>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:10881 "EHLO
-	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755698Ab3CQXLS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 17 Mar 2013 19:11:18 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:53965 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750936Ab3CRCyO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 17 Mar 2013 22:54:14 -0400
 Content-Disposition: inline
-In-Reply-To: <20130314125441.GA16350@gmail.com>
+In-Reply-To: <1363412062.3937.196.camel@deadeye.wl.decadent.org.uk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 14, 2013 at 08:54:42PM +0800, Zheng Liu wrote:
-> On Wed, Mar 13, 2013 at 04:16:11PM -0400, Theodore Ts'o wrote:
-> > On Mon, Mar 04, 2013 at 12:26:18AM +0800, Zheng Liu wrote:
-> > > From: Zheng Liu <wenqing.lz@taobao.com>
-> > > 
-> > > This commit fixes a bug in filefrag that filefrag miss calculates
-> > > contiguous extent when physical blocks are contiguous but logical blocks
-> > > aren't.  This case can be created by xfstests #218 or the following
-> > > script.
-> > > 
-> > > 	for I in `seq 0 2 31`; do
-> > > 		dd if=/dev/zero of=$testfile bs=4k count=1 conv=notrunc \
-> > > 			seek=$I oflag=sync &>/dev/null
-> > > 	done
-> > > 
-> > > Meanwhile this commit prints expected logical block.
-> > 
-> > Hmm, this (and your previous patch) fundamentally raises the question
-> > of what do we call an "extent", doesn't it?
-> > 
-> > Ignoring for now the question of what xfstests #218 is expecting (if
-> > we disagree with what's "best", we should have a discussion with the
-> > other fs maintainers, and in the worst case, make our own version of
-> > the test), the question is how should defragmentation handle sparse
-> > files?  In general, sparse files imply that random access workload, so
-> > whether or not the file is contiguous doesn't really matter much.
-> > 
-> > If we want to optimize the time to copy said sparse file, and if we
-> > assume that by the time we are defragging said sparse file, we are
-> > done doing writes which will allocate new blocks, then having defrag
-> > optimize the file so that when the extents are sorted by logical block
-> > number, the physical block numbers are contiguous, then that's
-> > probably the best "figure of merit" to use.  And I'll note that right
-> > now that's what filefrag is reporting, and what I think e4defrag
-> > should be changed to use when deciding whether the donor file is
-> > "better" than the original file.
-> > 
-> > But that's not necessarily the only way to measure extents, and the
-> > current e4defrag code is clearly of the opinion that if the file is
-> > using a contiguous region of blocks, even if the blocks were allocated
-> > "backwards", that there's no point defragging the file, since after
-> > all, if the file was written in such a random order with respect to
-> > logical block numbers, it will probably be read in a random order, so
-> > keeping the file blocks used contiguous to minimize free block
-> > fragmentation is the best thing to shoot for.
-> > 
-> > It's not clear that there's one right answer, but things will be a lot
-> > less confusing if we can agree amongst ourselves what answer we want
-> > to use --- and then if we need to either change the xfstests, or maybe
-> > create an option to filefrag to calculate the number of fragments that
-> > the xfstest is expecting.  But we should first decide what is the
-> > right thing, and then we can see whether or not what it matches what
-> > the test is demanding.
-> 
-> Thanks for the explanation.  Indeed the key problem is how to define an
-> extent.  I agree with you that we shouldn't only match what the test
-> expects, and just let test case pass.
+On Sat, Mar 16, 2013 at 05:34:22AM +0000, Ben Hutchings wrote:
+> > We use debian for a number of machines in our storage infrastructure
+> > and we have recently been seeing a number of "hangs". We primary
+> > notice this by seeing nfsd processes locking up and then a hung task
+> > killer going wild. We finally managed to get a trace last night - its
+> > pasted below: 
 
-AFAIC, there is no ambiguity into what defines an extent. An extent
-defines a single logical offset to physical block relationship. As
-soon as either logical offset or physical block are no longer able
-to be described by the relationship, you need to define a new
-relationship. That's the definition every filesystem uses for
-recording extents on disk, and that gives a pretty solid basis for
-what everyone expects filefrag to report to users as an extent.
+Thanks for reporting this.  I thought we had fixed this in 3.0.
+Before then, when we had a tid wrap, it would result in kjournald
+spinning forever.  I suspect this was your "spontaneous reboots" that
+you mentioned you mentioned when you were using 2.6.39 --- did you
+have a hardware or softward watchdog timer enabled by any chance?
 
-IOWs, a sparse file is simply a bunch of extent records that have
-discontiguous logical offsets.  Similarly, a fragmented file is
-simply a bunch of extent records that are physically discontiguous.
+Since we didn't have a good way of reproducing the problem at the
+time, I didn't realize that the problem had not been fully fixed;
+since while jbd2_log_start_commit() would no longer cause kjournald to
+spin forwever, a subsequent call to jbd2_log_wait_commit() with a
+stale transaction id would wait for a very long time (possibly until
+the heat death of the universe :-)
 
-Therefore, the definition of "sparse" and "fragmented" is not
-dependent on the definition of "extent", rather it is dependent on
-the relationship between extents and how the filesystem itself
-defines that relationship.
+I think a patch like this should fix things; I've run a stress test
+with a hack to increment the transaction id by 1 << 24 after each
+commit, to more quickly cause an tid wrap, and the regression tests
+seem to be passing without complaint.
 
-So, back to test 218. If you have 10 extents that are logically
-contiguous, but physically discontiguous, is that a fragmented file?
+						- Ted
 
-The question 218 is asking is not whether those 10 extents were
-allocated backwards (that's just an underhanded trick to make the
-XFS allocator create a fragmented file), but rather whether the
-defragmenter can recognise files that match the above definition
-of a fragmented file and hence defragment them down to a single
-extent.
+>From 76b05344fef573701b22ced444223188f054f94d Mon Sep 17 00:00:00 2001
+From: Theodore Ts'o <tytso@mit.edu>
+Date: Sun, 17 Mar 2013 22:24:46 -0400
+Subject: [PATCH] ext4/jbd2: don't wait (forever) for stale tid caused by
+ wraparound
 
-Similarly, 218 then creates sparse files and determines whether the
-defragmenter behaves as expected for a sparse file. That is, you
-cannot physically merge the extents because they are discontiguous,
-and hence the file should not be touched by the defragmenter.
+In the case where an inode has a very stale transaction id (tid) in
+i_datasync_tid or i_sync_tid, it's possible that after a very large
+(2**31) number of transactions, that the tid number space might wrap,
+causing tid_geq()'s calculations to fail.
 
-Hence I think you are reading way too much into the test case. It's
-testing a basic premise of defragmenter behaviour - recognising
-sparse and/or fragmented files and dealing with them appropriately.
-If you want to change how e2defrag defines "fragmented" and "sparse"
-to be something more complex and different to what 218 expects, then
-you'll need a new e2defrag specific test.
+Commit deeeaf13 "jbd2: fix fsync() tid wraparound bug", later modified
+by commit e7b04ac0 "jbd2: don't wake kjournald unnecessarily",
+attempted to fix this problem, but it only avoided kjournald spinning
+forever by fixing the logic in jbd2_log_start_commit().
 
-Cheers,
+Unfortunately, in the codepaths in fs/ext4/fsync.c and fs/ext4/inode.c
+that might call jbd2_log_start_commit() with a stale tid, those
+functions will subsequently call jbd2_log_wait_commit() with the same
+stale tid, and then wait for a very long time.  To fix this, we
+replace the calls to jbd2_log_start_commit() and
+jbd2_log_wait_commit() with a call to a new function,
+jbd2_complete_transaction(), which will correctly handle stale tid's.
 
-Dave.
+As a bonus, jbd2_complete_transaction() will avoid locking
+j_state_lock for writing unless a commit needs to be started.  This
+should have a small (but probably not measurable) improvement for
+ext4's scalability.
+
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Reported-by: Ben Hutchings <ben@decadent.org.uk>
+Reported-by: George Barnett <gbarnett@atlassian.com>
+Cc: stable@vger.kernel.org
+---
+ fs/ext4/fsync.c      |  3 +--
+ fs/ext4/inode.c      |  3 +--
+ fs/jbd2/journal.c    | 31 +++++++++++++++++++++++++++++++
+ include/linux/jbd2.h |  1 +
+ 4 files changed, 34 insertions(+), 4 deletions(-)
+
+diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+index 3278e64..e0ba8a4 100644
+--- a/fs/ext4/fsync.c
++++ b/fs/ext4/fsync.c
+@@ -166,8 +166,7 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+ 	if (journal->j_flags & JBD2_BARRIER &&
+ 	    !jbd2_trans_will_send_data_barrier(journal, commit_tid))
+ 		needs_barrier = true;
+-	jbd2_log_start_commit(journal, commit_tid);
+-	ret = jbd2_log_wait_commit(journal, commit_tid);
++	ret = jbd2_complete_transaction(journal, commit_tid);
+ 	if (needs_barrier) {
+ 		err = blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL, NULL);
+ 		if (!ret)
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index b6fab7c..de4b58d 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -211,8 +211,7 @@ void ext4_evict_inode(struct inode *inode)
+ 			journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
+ 			tid_t commit_tid = EXT4_I(inode)->i_datasync_tid;
+ 
+-			jbd2_log_start_commit(journal, commit_tid);
+-			jbd2_log_wait_commit(journal, commit_tid);
++			jbd2_complete_transaction(journal, commit_tid);
+ 			filemap_write_and_wait(&inode->i_data);
+ 		}
+ 		truncate_inode_pages(&inode->i_data, 0);
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index ed10991..886ec2f 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -710,6 +710,37 @@ int jbd2_log_wait_commit(journal_t *journal, tid_t tid)
+ }
+ 
+ /*
++ * When this function returns the transaction corresponding to tid
++ * will be completed.  If the transaction has currently running, start
++ * committing that transaction before waiting for it to complete.  If
++ * the transaction id is stale, it is by definition already completed,
++ * so just return SUCCESS.
++ */
++int jbd2_complete_transaction(journal_t *journal, tid_t tid)
++{
++	int	need_to_wait = 1;
++
++	read_lock(&journal->j_state_lock);
++	if (journal->j_running_transaction &&
++	    journal->j_running_transaction->t_tid == tid) {
++		if (journal->j_commit_request != tid) {
++			/* transaction not yet started, so request it */
++			read_unlock(&journal->j_state_lock);
++			jbd2_log_start_commit(journal, tid);
++			goto wait_commit;
++		}
++	} else if (!(journal->j_committing_transaction &&
++		     journal->j_committing_transaction->t_tid == tid))
++		need_to_wait = 0;
++	read_unlock(&journal->j_state_lock);
++	if (!need_to_wait)
++		return 0;
++wait_commit:
++	return jbd2_log_wait_commit(journal, tid);
++}
++EXPORT_SYMBOL(jbd2_complete_transaction);
++
++/*
+  * Log buffer allocation routines:
+  */
+ 
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 50e5a5e..f028975 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1200,6 +1200,7 @@ int __jbd2_log_start_commit(journal_t *journal, tid_t tid);
+ int jbd2_journal_start_commit(journal_t *journal, tid_t *tid);
+ int jbd2_journal_force_commit_nested(journal_t *journal);
+ int jbd2_log_wait_commit(journal_t *journal, tid_t tid);
++int jbd2_complete_transaction(journal_t *journal, tid_t tid);
+ int jbd2_log_do_checkpoint(journal_t *journal);
+ int jbd2_trans_will_send_data_barrier(journal_t *journal, tid_t tid);
+ 
 -- 
-Dave Chinner
-david@fromorbit.com
+1.7.12.rc0.22.gcdd159b
+
+
+
