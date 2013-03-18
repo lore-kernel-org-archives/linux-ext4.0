@@ -1,177 +1,117 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4/jbd2: don't wait (forever) for stale tid caused by
- wraparound
-Date: Sun, 17 Mar 2013 22:54:01 -0400
-Message-ID: <20130318025401.GA12611@thunk.org>
+From: George Barnett <gbarnett@atlassian.com>
+Subject: Re: [PATCH] ext4/jbd2: don't wait (forever) for stale tid
+ caused by wraparound
+Date: Mon, 18 Mar 2013 15:24:49 +1100
+Message-ID: <91B5F5AF93734BAA86939ED896DDEF63@atlassian.com>
 References: <B2EC601CDDA242189A46599B31EA6AD3@atlassian.com>
  <1363412062.3937.196.camel@deadeye.wl.decadent.org.uk>
+ <20130318025401.GA12611@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: George Barnett <gbarnett@atlassian.com>,
-	linux-ext4@vger.kernel.org,
-	Debian kernel maintainers <debian-kernel@lists.debian.org>
-To: Ben Hutchings <ben@decadent.org.uk>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:53965 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750936Ab3CRCyO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 17 Mar 2013 22:54:14 -0400
+Content-Type: multipart/alternative; boundary="51469711_47195e5_153bc"
+Cc: Ben Hutchings <ben@decadent.org.uk>, linux-ext4@vger.kernel.org,
+ Debian kernel maintainers <debian-kernel@lists.debian.org>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <bounce-debian-kernel=glddk-debian-kernel=m.gmane.org@lists.debian.org>
+In-Reply-To: <20130318025401.GA12611@thunk.org>
+Resent-Message-ID: <S0CgDKpSzTJ.A.jIH.tcpRRB@bendel>
+List-URL: <http://lists.debian.org/debian-kernel/>
+List-Post: <mailto:debian-kernel@lists.debian.org>
+List-Help: <mailto:debian-kernel-request@lists.debian.org?subject=help>
+List-Subscribe: <mailto:debian-kernel-request@lists.debian.org?subject=subscribe>
+List-Unsubscribe: <mailto:debian-kernel-request@lists.debian.org?subject=unsubscribe>
+List-Id: linux-ext4.vger.kernel.org
+
+--51469711_47195e5_153bc
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Content-Disposition: inline
-In-Reply-To: <1363412062.3937.196.camel@deadeye.wl.decadent.org.uk>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Mar 16, 2013 at 05:34:22AM +0000, Ben Hutchings wrote:
-> > We use debian for a number of machines in our storage infrastructure
-> > and we have recently been seeing a number of "hangs". We primary
-> > notice this by seeing nfsd processes locking up and then a hung task
-> > killer going wild. We finally managed to get a trace last night - its
-> > pasted below: 
+On Monday, 18 March 2013 at 1:54 PM, Theodore Ts'o wrote:
+> Thanks for reporting this. I thought we had fixed this in 3.0.
+> Before then, when we had a tid wrap, it would result in kjournald
+> spinning forever. I suspect this was your "spontaneous reboots" that
+> you mentioned you mentioned when you were using 2.6.39 --- did you
+> have a hardware or softward watchdog timer enabled by any chance?
+> 
+> 
 
-Thanks for reporting this.  I thought we had fixed this in 3.0.
-Before then, when we had a tid wrap, it would result in kjournald
-spinning forever.  I suspect this was your "spontaneous reboots" that
-you mentioned you mentioned when you were using 2.6.39 --- did you
-have a hardware or softward watchdog timer enabled by any chance?
+Thank you for your prompt attention on this.  It's greatly appreciated!
 
-Since we didn't have a good way of reproducing the problem at the
-time, I didn't realize that the problem had not been fully fixed;
-since while jbd2_log_start_commit() would no longer cause kjournald to
-spin forwever, a subsequent call to jbd2_log_wait_commit() with a
-stale transaction id would wait for a very long time (possibly until
-the heat death of the universe :-)
+We believe our previous spontaneous reboots were caused by https://bugzilla.kernel.org/show_bug.cgi?id=16991 which was resolved by our move to a 3.2 kernel (we were on a 2.6.38-bpo kernel ^1).  We do not presently use any watchdogs.
+> Since we didn't have a good way of reproducing the problem at the
+> time, I didn't realize that the problem had not been fully fixed;
+> since while jbd2_log_start_commit() would no longer cause kjournald to
+> spin forwever, a subsequent call to jbd2_log_wait_commit() with a
+> stale transaction id would wait for a very long time (possibly until
+> the heat death of the universe :-)
+> 
+> 
 
-I think a patch like this should fix things; I've run a stress test
-with a hack to increment the transaction id by 1 << 24 after each
-commit, to more quickly cause an tid wrap, and the regression tests
-seem to be passing without complaint.
+This would mirror what we've seen, although our ops guys haven't been waiting around for any universes to die :)
+> I think a patch like this should fix things; I've run a stress test
+> with a hack to increment the transaction id by 1 << 24 after each
+> commit, to more quickly cause an tid wrap, and the regression tests
+> seem to be passing without complaint.
+> 
+> 
 
-						- Ted
+Excellent news.  Again, thank you for your help in this regard.
 
->From 76b05344fef573701b22ced444223188f054f94d Mon Sep 17 00:00:00 2001
-From: Theodore Ts'o <tytso@mit.edu>
-Date: Sun, 17 Mar 2013 22:24:46 -0400
-Subject: [PATCH] ext4/jbd2: don't wait (forever) for stale tid caused by
- wraparound
+@Ben - could you let me know what your preferred course of action would be here?  As I'm sure you can understand, I do not wish to maintain a forked kernel from Debian upstream.  Is this something you would be prepared to integrate into the 3.2 BPO kernels?
 
-In the case where an inode has a very stale transaction id (tid) in
-i_datasync_tid or i_sync_tid, it's possible that after a very large
-(2**31) number of transactions, that the tid number space might wrap,
-causing tid_geq()'s calculations to fail.
+Best regards,
 
-Commit deeeaf13 "jbd2: fix fsync() tid wraparound bug", later modified
-by commit e7b04ac0 "jbd2: don't wake kjournald unnecessarily",
-attempted to fix this problem, but it only avoided kjournald spinning
-forever by fixing the logic in jbd2_log_start_commit().
+George
 
-Unfortunately, in the codepaths in fs/ext4/fsync.c and fs/ext4/inode.c
-that might call jbd2_log_start_commit() with a stale tid, those
-functions will subsequently call jbd2_log_wait_commit() with the same
-stale tid, and then wait for a very long time.  To fix this, we
-replace the calls to jbd2_log_start_commit() and
-jbd2_log_wait_commit() with a call to a new function,
-jbd2_complete_transaction(), which will correctly handle stale tid's.
-
-As a bonus, jbd2_complete_transaction() will avoid locking
-j_state_lock for writing unless a commit needs to be started.  This
-should have a small (but probably not measurable) improvement for
-ext4's scalability.
-
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Reported-by: Ben Hutchings <ben@decadent.org.uk>
-Reported-by: George Barnett <gbarnett@atlassian.com>
-Cc: stable@vger.kernel.org
----
- fs/ext4/fsync.c      |  3 +--
- fs/ext4/inode.c      |  3 +--
- fs/jbd2/journal.c    | 31 +++++++++++++++++++++++++++++++
- include/linux/jbd2.h |  1 +
- 4 files changed, 34 insertions(+), 4 deletions(-)
-
-diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-index 3278e64..e0ba8a4 100644
---- a/fs/ext4/fsync.c
-+++ b/fs/ext4/fsync.c
-@@ -166,8 +166,7 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
- 	if (journal->j_flags & JBD2_BARRIER &&
- 	    !jbd2_trans_will_send_data_barrier(journal, commit_tid))
- 		needs_barrier = true;
--	jbd2_log_start_commit(journal, commit_tid);
--	ret = jbd2_log_wait_commit(journal, commit_tid);
-+	ret = jbd2_complete_transaction(journal, commit_tid);
- 	if (needs_barrier) {
- 		err = blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL, NULL);
- 		if (!ret)
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index b6fab7c..de4b58d 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -211,8 +211,7 @@ void ext4_evict_inode(struct inode *inode)
- 			journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
- 			tid_t commit_tid = EXT4_I(inode)->i_datasync_tid;
- 
--			jbd2_log_start_commit(journal, commit_tid);
--			jbd2_log_wait_commit(journal, commit_tid);
-+			jbd2_complete_transaction(journal, commit_tid);
- 			filemap_write_and_wait(&inode->i_data);
- 		}
- 		truncate_inode_pages(&inode->i_data, 0);
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index ed10991..886ec2f 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -710,6 +710,37 @@ int jbd2_log_wait_commit(journal_t *journal, tid_t tid)
- }
- 
- /*
-+ * When this function returns the transaction corresponding to tid
-+ * will be completed.  If the transaction has currently running, start
-+ * committing that transaction before waiting for it to complete.  If
-+ * the transaction id is stale, it is by definition already completed,
-+ * so just return SUCCESS.
-+ */
-+int jbd2_complete_transaction(journal_t *journal, tid_t tid)
-+{
-+	int	need_to_wait = 1;
-+
-+	read_lock(&journal->j_state_lock);
-+	if (journal->j_running_transaction &&
-+	    journal->j_running_transaction->t_tid == tid) {
-+		if (journal->j_commit_request != tid) {
-+			/* transaction not yet started, so request it */
-+			read_unlock(&journal->j_state_lock);
-+			jbd2_log_start_commit(journal, tid);
-+			goto wait_commit;
-+		}
-+	} else if (!(journal->j_committing_transaction &&
-+		     journal->j_committing_transaction->t_tid == tid))
-+		need_to_wait = 0;
-+	read_unlock(&journal->j_state_lock);
-+	if (!need_to_wait)
-+		return 0;
-+wait_commit:
-+	return jbd2_log_wait_commit(journal, tid);
-+}
-+EXPORT_SYMBOL(jbd2_complete_transaction);
-+
-+/*
-  * Log buffer allocation routines:
-  */
- 
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 50e5a5e..f028975 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -1200,6 +1200,7 @@ int __jbd2_log_start_commit(journal_t *journal, tid_t tid);
- int jbd2_journal_start_commit(journal_t *journal, tid_t *tid);
- int jbd2_journal_force_commit_nested(journal_t *journal);
- int jbd2_log_wait_commit(journal_t *journal, tid_t tid);
-+int jbd2_complete_transaction(journal_t *journal, tid_t tid);
- int jbd2_log_do_checkpoint(journal_t *journal);
- int jbd2_trans_will_send_data_barrier(journal_t *journal, tid_t tid);
- 
--- 
-1.7.12.rc0.22.gcdd159b
+1. We moved to 2.6.38 in order to get access to the packet steering patches which were put into the kernel in ~.33 or .34 from memory.  This gave us quite a nice performance bump to our storage speed and hence we didn't want to lose it by going back to .32 to get the 200d uptime bug fix.
+--51469711_47195e5_153bc
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
 
 
-
+                <div><span style=3D=22color: rgb(160, 160, 168); =22>On M=
+onday, 18 March 2013 at 1:54 PM, Theodore Ts'o wrote:</span></div><blockq=
+uote type=3D=22cite=22 style=3D=22border-left-style:solid;border-width:1p=
+x;margin-left:0px;padding-left:10px;=22>
+                    <span><div><div><div>Thanks for reporting this.  I th=
+ought we had fixed this in 3.0.</div><div>Before then, when we had a tid =
+wrap, it would result in kjournald</div><div>spinning forever.  I suspect=
+ this was your =22spontaneous reboots=22 that</div><div>you mentioned you=
+ mentioned when you were using 2.6.39 --- did you</div><div>have a hardwa=
+re or softward watchdog timer enabled by any chance=3F</div></div></div><=
+/span></blockquote><div>Thank you for your prompt attention on this. &nbs=
+p;It's greatly appreciated=21</div><div><br></div><div>We believe our pre=
+vious spontaneous reboots were caused by&nbsp;https://bugzilla.kernel.org=
+/show=5Fbug.cgi=3Fid=3D16991 which was resolved by our move to a 3.2 kern=
+el (we were on a 2.6.38-bpo kernel =5E1). &nbsp;We do not presently use a=
+ny watchdogs.</div><blockquote type=3D=22cite=22 style=3D=22border-left-s=
+tyle:solid;border-width:1px;margin-left:0px;padding-left:10px;=22><span><=
+div><div><div>Since we didn't have a good way of reproducing the problem =
+at the</div><div>time, I didn't realize that the problem had not been ful=
+ly fixed;</div><div>since while jbd2=5Flog=5Fstart=5Fcommit() would no lo=
+nger cause kjournald to</div><div>spin forwever, a subsequent call to jbd=
+2=5Flog=5Fwait=5Fcommit() with a</div><div>stale transaction id would wai=
+t for a very long time (possibly until</div><div>the heat death of the un=
+iverse :-)</div></div></div></span></blockquote><div>This would mirror wh=
+at we've seen, although our ops guys haven't been waiting around for any =
+universes to die :)</div><blockquote type=3D=22cite=22 style=3D=22border-=
+left-style:solid;border-width:1px;margin-left:0px;padding-left:10px;=22><=
+span><div><div><div>I think a patch like this should fix things; I've run=
+ a stress test</div><div>with a hack to increment the transaction id by 1=
+ &lt;&lt; 24 after each</div><div>commit, to more quickly cause an tid wr=
+ap, and the regression tests</div><div>seem to be passing without complai=
+nt.</div></div></div></span></blockquote><div>Excellent news. &nbsp;Again=
+, thank you for your help in this regard.</div><div><br></div><div>=40Ben=
+ - could you let me know what your preferred course of action would be he=
+re=3F &nbsp;As I'm sure you can understand, I do not wish to maintain a f=
+orked kernel from Debian upstream. &nbsp;Is this something you would be p=
+repared to integrate into the 3.2 BPO kernels=3F</div><div><br></div><div=
+>Best regards,</div><div><br></div><div>George</div><div><br></div><div>1=
+. We moved to 2.6.38 in order to get access to the packet steering patche=
+s which were put into the kernel in =7E.33 or .34 from memory. &nbsp;This=
+ gave us quite a nice performance bump to our storage speed and hence we =
+didn't want to lose it by going back to .32 to get the 200d uptime bug fi=
+x.</div>
+            
+--51469711_47195e5_153bc--
