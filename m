@@ -1,108 +1,122 @@
-From: Ben Myers <bpm@sgi.com>
-Subject: Re: possible dev branch regression - xfstest 285/1k
-Date: Mon, 18 Mar 2013 15:41:33 -0500
-Message-ID: <20130318204133.GE22182@sgi.com>
-References: <20130315222818.GA16100@wallace> <20130316150923.GA18589@gmail.com>
-	<20130317030648.GA14225@thunk.org> <51473C8B.5070509@redhat.com>
-	<20130318170927.GA5639@thunk.org> <51475043.4010505@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] mm: Make snapshotting pages for stable writes a
+ per-bio operation
+Date: Mon, 18 Mar 2013 18:41:34 +0100
+Message-ID: <20130318174134.GB7852@quack.suse.cz>
+References: <5139DB90.5090302@gmail.com>
+ <20130312153221.0d26fe5599d4885e51bb0c7c@linux-foundation.org>
+ <20130313011020.GA5313@blackbox.djwong.org>
+ <20130313085021.GA29730@quack.suse.cz>
+ <20130313194429.GE5313@blackbox.djwong.org>
+ <20130313210216.GA7754@quack.suse.cz>
+ <20130314224243.GI5313@blackbox.djwong.org>
+ <20130315100105.GA4889@quack.suse.cz>
+ <20130315232816.GN5313@blackbox.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org,
-	Theodore Ts'o <tytso@mit.edu>, xfs-oss <xfs@oss.sgi.com>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <xfs-bounces@oss.sgi.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Shuge <shugelinux@gmail.com>, linux-kernel@vger.kernel.org,
+	linux-mm@kvack.org, linux-ext4@vger.kernel.org,
+	Kevin <kevin@allwinnertech.com>, Theodore Ts'o <tytso@mit.edu>,
+	Jens Axboe <axboe@kernel.dk>,
+	Catalin Marinas <catalin.marinas@arm.com>,
+	Will Deacon <will.deacon@arm.com>,
+	linux-arm-kernel@lists.infradead.org, Jan Kara <jack@suse.cz>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <51475043.4010505@redhat.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+In-Reply-To: <20130315232816.GN5313@blackbox.djwong.org>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi Eric,
-
-On Mon, Mar 18, 2013 at 12:34:59PM -0500, Eric Sandeen wrote:
-> On 3/18/13 12:09 PM, Theodore Ts'o wrote:
-> > On Mon, Mar 18, 2013 at 11:10:51AM -0500, Eric Sandeen wrote:
+On Fri 15-03-13 16:28:16, Darrick J. Wong wrote:
+> Walking a bio's page mappings has proved problematic, so create a new bio flag
+> to indicate that a bio's data needs to be snapshotted in order to guarantee
+> stable pages during writeback.  Next, for the one user (ext3/jbd) of
+> snapshotting, hook all the places where writes can be initiated without
+> PG_writeback set, and set BIO_SNAP_STABLE there.  We must also flag journal
+> "metadata" bios for stable writeout if data=journal, since file data is written
+> through the journal.  Finally, the MS_SNAP_STABLE mount flag (only used by
+> ext3) is now superfluous, so get rid of it.
 > 
-> <previous discussion thread about test 285 SEEK_HOLE test
-> breaking on ext4 due to change in opportunistic hole-filling
-> behavior and how to make it work again on ext4, and mention
-> of sysctl which makes it pass>
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 > 
-> >> The test could do this too, right?
-> >>
-> >> _need_to_be_root
-> >>
-> >> and:
-> >>
-> >> if [ "$FSTYP" == "ext4" ]; then
-> >> 	ORIG_ZEROOUT_KB=`cat /sys/fs/ext4/$TEST_DEV/extent_max_zeroout_kb`
-> >> 	echo 0 > /sys/fs/ext4/$TEST_DEV/extent_max_zeroout_kb
-> >> fi
-> >>
-> >> and put it back to default in _cleanup:
-> >>
-> >> 	echo $ORIG_ZEROOUT_KB > /sys/fs/ext4/$TEST_DEV/extent_max_zeroout_kb
-> >>
-> >> That way we'd be testing seek hole correctness w/o being subject to
-> >> the vagaries in allocator behavior.
-> > 
-> > Yeah, the question is whether it would be more acceptable to put
-> > ext4-specific hacks like this into the test, or to modify
-> > src/seek_sanity_test.c so that it writes the test block-size block
-> > using pwrite at offset blocksize*42 instead of offset blocksize*10.
+> [darrick.wong@oracle.com: Fold in a couple of small cleanups from akpm]
+> Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+> ---
+>  fs/buffer.c                 |    9 ++++++++-
+>  fs/ext3/super.c             |    3 ++-
+>  fs/jbd/commit.c             |   28 +++++++++++++++++++++++++---
+>  include/linux/blk_types.h   |    3 ++-
+>  include/linux/buffer_head.h |    1 +
+>  include/linux/jbd.h         |    1 +
+>  include/uapi/linux/fs.h     |    1 -
+>  mm/bounce.c                 |   21 +--------------------
+>  mm/page-writeback.c         |    4 ----
+>  9 files changed, 40 insertions(+), 31 deletions(-)
 > 
-> That seems like more of an obtuse hack, since it depends on current
-> default behavior, right?
-> 
-> Explicitly setting the zeroout to 0, with a comment as to why, should
-> make it clear to the reader of the test I think.
-> 
-> I'll have to look, xfs speculative preallocation fills in holes in
-> some cases as well, I'm not certain how it behaves on this test.
+> diff --git a/fs/buffer.c b/fs/buffer.c
+> index b4dcb34..71578d6 100644
+> --- a/fs/buffer.c
+> +++ b/fs/buffer.c
+> @@ -2949,7 +2949,7 @@ static void guard_bh_eod(int rw, struct bio *bio, struct buffer_head *bh)
+>  	}
+>  }
+>  
+> -int submit_bh(int rw, struct buffer_head * bh)
+> +int _submit_bh(int rw, struct buffer_head *bh, unsigned long bio_flags)
+>  {
+>  	struct bio *bio;
+>  	int ret = 0;
+> @@ -2984,6 +2984,7 @@ int submit_bh(int rw, struct buffer_head * bh)
+>  
+>  	bio->bi_end_io = end_bio_bh_io_sync;
+>  	bio->bi_private = bh;
+> +	bio->bi_flags |= bio_flags;
+>  
+>  	/* Take care of bh's that straddle the end of the device */
+>  	guard_bh_eod(rw, bio, bh);
+> @@ -2997,6 +2998,12 @@ int submit_bh(int rw, struct buffer_head * bh)
+>  	bio_put(bio);
+>  	return ret;
+>  }
+> +EXPORT_SYMBOL_GPL(_submit_bh);
+> +
+> +int submit_bh(int rw, struct buffer_head *bh)
+> +{
+> +	return _submit_bh(rw, bh, 0);
+> +}
+>  EXPORT_SYMBOL(submit_bh);
+>  
+>  /**
+> diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+> index 1d6e2ed..e845b6de 100644
+> --- a/fs/ext3/super.c
+> +++ b/fs/ext3/super.c
+> @@ -2063,11 +2063,12 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
+>  		ext3_mark_recovery_complete(sb, es);
+>  		ext3_msg(sb, KERN_INFO, "recovery complete");
+>  	}
+> +	if (test_opt(sb, DATA_FLAGS) == EXT3_MOUNT_JOURNAL_DATA)
+> +		EXT3_SB(sb)->s_journal->j_flags |= JFS_JOURNALS_DATA;
+  Sadly this isn't enough. You can have inodes which journal data (there's
+an inode flag for this) in data=ordered mode. So what you have to do is to
+flag journal_heads (or buffer_heads) as containing journalled data. Or you
+can actually use PageChecked flag for this (it is going to be set on all
+write-enabled pages with journalled data). But it definitely requires also
+some playing with ->page_mkwrite() (calling ext3_journal_get_write_access()
+from there) and generally I'd rather postpone that to a separate commit. So
+just keep it simple and always set the bio flag as you did in the previous
+version. I'll write an optimization (mostly because ext4 needs it as well)
+and send it to you for testing.
 
-My impression was that we are not zeroing holes, but I'd also have to look to
-be sure.  ;)
- 
-> But we could put in a specific tuning for xfs as well if needed.
-> 
-> If it becomes clear that every fs requires tuning to not opportunistically
-> fill in holes, then maybe we should make it non-generic, and only support
-> filesystems we've tested or tuned to work with the testcase.
-> 
-> > I had assumed putting hacks which tweaked sysfs tunables into the xfstest
-> > script itself would be frowned upon, but if that's considered OK, that
-> > would be great.
-> 
-> I don't see any real problem with it, myself.
-> 
-> cc: xfs list to see if there are any objections...
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
 
-Seems like the options being discussed so far are:
-
-1) make the test fs specific
-2) filesystem specific hacks to disable opportunistic zeroing of holes
-3) modify the test output to work with current ext4 default behavior
-
-It might be hard to find a tuning to produce identical output for xfs and ext4
-(option 3), and option 1 and 2 are a also bit clunky.
-
-How about option 4) fs-specific test output?
-
-We wouldn't have multiple copies of the same test laying around, and ext4 could
-still run with default settings.
-
-Regards,
-	Ben
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
