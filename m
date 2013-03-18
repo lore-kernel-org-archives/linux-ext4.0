@@ -1,117 +1,185 @@
-From: George Barnett <gbarnett@atlassian.com>
-Subject: Re: [PATCH] ext4/jbd2: don't wait (forever) for stale tid
- caused by wraparound
-Date: Mon, 18 Mar 2013 15:24:49 +1100
-Message-ID: <91B5F5AF93734BAA86939ED896DDEF63@atlassian.com>
+From: Ben Hutchings <ben@decadent.org.uk>
+Subject: Re: [PATCH] ext4/jbd2: don't wait (forever) for stale tid caused by
+ wraparound
+Date: Mon, 18 Mar 2013 04:53:15 +0000
+Message-ID: <1363582395.3937.319.camel@deadeye.wl.decadent.org.uk>
 References: <B2EC601CDDA242189A46599B31EA6AD3@atlassian.com>
- <1363412062.3937.196.camel@deadeye.wl.decadent.org.uk>
- <20130318025401.GA12611@thunk.org>
+	 <1363412062.3937.196.camel@deadeye.wl.decadent.org.uk>
+	 <20130318025401.GA12611@thunk.org>
+	 <91B5F5AF93734BAA86939ED896DDEF63@atlassian.com>
 Mime-Version: 1.0
-Content-Type: multipart/alternative; boundary="51469711_47195e5_153bc"
-Cc: Ben Hutchings <ben@decadent.org.uk>, linux-ext4@vger.kernel.org,
- Debian kernel maintainers <debian-kernel@lists.debian.org>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <bounce-debian-kernel=glddk-debian-kernel=m.gmane.org@lists.debian.org>
-In-Reply-To: <20130318025401.GA12611@thunk.org>
-Resent-Message-ID: <S0CgDKpSzTJ.A.jIH.tcpRRB@bendel>
-List-URL: <http://lists.debian.org/debian-kernel/>
-List-Post: <mailto:debian-kernel@lists.debian.org>
-List-Help: <mailto:debian-kernel-request@lists.debian.org?subject=help>
-List-Subscribe: <mailto:debian-kernel-request@lists.debian.org?subject=subscribe>
-List-Unsubscribe: <mailto:debian-kernel-request@lists.debian.org?subject=unsubscribe>
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: multipart/signed; micalg="pgp-sha512";
+	protocol="application/pgp-signature"; boundary="=-gtFvo7pRY4/GBA2gRWeZ"
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	Debian kernel maintainers <debian-kernel@lists.debian.org>
+To: George Barnett <gbarnett@atlassian.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from shadbolt.e.decadent.org.uk ([88.96.1.126]:33932 "EHLO
+	shadbolt.e.decadent.org.uk" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750985Ab3CREx1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 18 Mar 2013 00:53:27 -0400
+In-Reply-To: <91B5F5AF93734BAA86939ED896DDEF63@atlassian.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
---51469711_47195e5_153bc
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
-On Monday, 18 March 2013 at 1:54 PM, Theodore Ts'o wrote:
-> Thanks for reporting this. I thought we had fixed this in 3.0.
-> Before then, when we had a tid wrap, it would result in kjournald
-> spinning forever. I suspect this was your "spontaneous reboots" that
-> you mentioned you mentioned when you were using 2.6.39 --- did you
-> have a hardware or softward watchdog timer enabled by any chance?
-> 
-> 
+--=-gtFvo7pRY4/GBA2gRWeZ
+Content-Type: multipart/mixed; boundary="=-y/TmGQMxHdtelIe/WYLV"
 
-Thank you for your prompt attention on this.  It's greatly appreciated!
 
-We believe our previous spontaneous reboots were caused by https://bugzilla.kernel.org/show_bug.cgi?id=16991 which was resolved by our move to a 3.2 kernel (we were on a 2.6.38-bpo kernel ^1).  We do not presently use any watchdogs.
-> Since we didn't have a good way of reproducing the problem at the
-> time, I didn't realize that the problem had not been fully fixed;
-> since while jbd2_log_start_commit() would no longer cause kjournald to
-> spin forwever, a subsequent call to jbd2_log_wait_commit() with a
-> stale transaction id would wait for a very long time (possibly until
-> the heat death of the universe :-)
-> 
-> 
-
-This would mirror what we've seen, although our ops guys haven't been waiting around for any universes to die :)
-> I think a patch like this should fix things; I've run a stress test
-> with a hack to increment the transaction id by 1 << 24 after each
-> commit, to more quickly cause an tid wrap, and the regression tests
-> seem to be passing without complaint.
-> 
-> 
-
-Excellent news.  Again, thank you for your help in this regard.
-
-@Ben - could you let me know what your preferred course of action would be here?  As I'm sure you can understand, I do not wish to maintain a forked kernel from Debian upstream.  Is this something you would be prepared to integrate into the 3.2 BPO kernels?
-
-Best regards,
-
-George
-
-1. We moved to 2.6.38 in order to get access to the packet steering patches which were put into the kernel in ~.33 or .34 from memory.  This gave us quite a nice performance bump to our storage speed and hence we didn't want to lose it by going back to .32 to get the 200d uptime bug fix.
---51469711_47195e5_153bc
-Content-Type: text/html; charset="utf-8"
+--=-y/TmGQMxHdtelIe/WYLV
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
-Content-Disposition: inline
+
+On Mon, 2013-03-18 at 15:24 +1100, George Barnett wrote:
+> On Monday, 18 March 2013 at 1:54 PM, Theodore Ts'o wrote:
+[...]
+
+> > I think a patch like this should fix things; I've run a stress test
+> > with a hack to increment the transaction id by 1 << 24 after each
+> > commit, to more quickly cause an tid wrap, and the regression tests
+> > seem to be passing without complaint.
+> Excellent news.  Again, thank you for your help in this regard.
+>=20
+>=20
+> @Ben - could you let me know what your preferred course of action
+> would be here?  As I'm sure you can understand, I do not wish to
+> maintain a forked kernel from Debian upstream.  Is this something you
+> would be prepared to integrate into the 3.2 BPO kernels?
+[...]
+
+We need you to verify that this fix works first.  If it does, it should
+get included in the various 3.x.y stable branches and in Debian kernel
+packages.
+
+Ted might prefer you to test this against current mainline (3.9-rc3),
+though you may find it easier to test against the version you already
+have.  In the latter case you'll need a slightly modified version of the
+patch (attached) and instructions at
+<http://kernel-handbook.alioth.debian.org/ch-common-tasks.html#s-common-off=
+icial>.
+
+Ben.
+
+--=20
+Ben Hutchings
+Never attribute to conspiracy what can adequately be explained by stupidity=
+.
+
+--=-y/TmGQMxHdtelIe/WYLV
+Content-Disposition: attachment;
+	filename*0=ext4-jbd2-don-t-wait-forever-for-stale-tid-caused-by-wraparou;
+	filename*1=nd.patch
+Content-Type: text/x-patch;
+	name*0=ext4-jbd2-don-t-wait-forever-for-stale-tid-caused-by-wraparound.p;
+	name*1=atch; charset="UTF-8"
+Content-Transfer-Encoding: base64
+
+RnJvbTogVGhlb2RvcmUgVHMnbyA8dHl0c29AbWl0LmVkdT4NCkRhdGU6IFN1biwgMTcgTWFyIDIw
+MTMgMjI6MjQ6NDYgLTA0MDANClN1YmplY3Q6IFtQQVRDSF0gZXh0NC9qYmQyOiBkb24ndCB3YWl0
+IChmb3JldmVyKSBmb3Igc3RhbGUgdGlkIGNhdXNlZCBieQ0KIHdyYXBhcm91bmQNCg0KSW4gdGhl
+IGNhc2Ugd2hlcmUgYW4gaW5vZGUgaGFzIGEgdmVyeSBzdGFsZSB0cmFuc2FjdGlvbiBpZCAodGlk
+KSBpbg0KaV9kYXRhc3luY190aWQgb3IgaV9zeW5jX3RpZCwgaXQncyBwb3NzaWJsZSB0aGF0IGFm
+dGVyIGEgdmVyeSBsYXJnZQ0KKDIqKjMxKSBudW1iZXIgb2YgdHJhbnNhY3Rpb25zLCB0aGF0IHRo
+ZSB0aWQgbnVtYmVyIHNwYWNlIG1pZ2h0IHdyYXAsDQpjYXVzaW5nIHRpZF9nZXEoKSdzIGNhbGN1
+bGF0aW9ucyB0byBmYWlsLg0KDQpDb21taXQgZGVlZWFmMTMgImpiZDI6IGZpeCBmc3luYygpIHRp
+ZCB3cmFwYXJvdW5kIGJ1ZyIsIGxhdGVyIG1vZGlmaWVkDQpieSBjb21taXQgZTdiMDRhYzAgImpi
+ZDI6IGRvbid0IHdha2Uga2pvdXJuYWxkIHVubmVjZXNzYXJpbHkiLA0KYXR0ZW1wdGVkIHRvIGZp
+eCB0aGlzIHByb2JsZW0sIGJ1dCBpdCBvbmx5IGF2b2lkZWQga2pvdXJuYWxkIHNwaW5uaW5nDQpm
+b3JldmVyIGJ5IGZpeGluZyB0aGUgbG9naWMgaW4gamJkMl9sb2dfc3RhcnRfY29tbWl0KCkuDQoN
+ClVuZm9ydHVuYXRlbHksIGluIHRoZSBjb2RlcGF0aHMgaW4gZnMvZXh0NC9mc3luYy5jIGFuZCBm
+cy9leHQ0L2lub2RlLmMNCnRoYXQgbWlnaHQgY2FsbCBqYmQyX2xvZ19zdGFydF9jb21taXQoKSB3
+aXRoIGEgc3RhbGUgdGlkLCB0aG9zZQ0KZnVuY3Rpb25zIHdpbGwgc3Vic2VxdWVudGx5IGNhbGwg
+amJkMl9sb2dfd2FpdF9jb21taXQoKSB3aXRoIHRoZSBzYW1lDQpzdGFsZSB0aWQsIGFuZCB0aGVu
+IHdhaXQgZm9yIGEgdmVyeSBsb25nIHRpbWUuICBUbyBmaXggdGhpcywgd2UNCnJlcGxhY2UgdGhl
+IGNhbGxzIHRvIGpiZDJfbG9nX3N0YXJ0X2NvbW1pdCgpIGFuZA0KamJkMl9sb2dfd2FpdF9jb21t
+aXQoKSB3aXRoIGEgY2FsbCB0byBhIG5ldyBmdW5jdGlvbiwNCmpiZDJfY29tcGxldGVfdHJhbnNh
+Y3Rpb24oKSwgd2hpY2ggd2lsbCBjb3JyZWN0bHkgaGFuZGxlIHN0YWxlIHRpZCdzLg0KDQpBcyBh
+IGJvbnVzLCBqYmQyX2NvbXBsZXRlX3RyYW5zYWN0aW9uKCkgd2lsbCBhdm9pZCBsb2NraW5nDQpq
+X3N0YXRlX2xvY2sgZm9yIHdyaXRpbmcgdW5sZXNzIGEgY29tbWl0IG5lZWRzIHRvIGJlIHN0YXJ0
+ZWQuICBUaGlzDQpzaG91bGQgaGF2ZSBhIHNtYWxsIChidXQgcHJvYmFibHkgbm90IG1lYXN1cmFi
+bGUpIGltcHJvdmVtZW50IGZvcg0KZXh0NCdzIHNjYWxhYmlsaXR5Lg0KDQpTaWduZWQtb2ZmLWJ5
+OiAiVGhlb2RvcmUgVHMnbyIgPHR5dHNvQG1pdC5lZHU+DQpSZXBvcnRlZC1ieTogQmVuIEh1dGNo
+aW5ncyA8YmVuQGRlY2FkZW50Lm9yZy51az4NClJlcG9ydGVkLWJ5OiBHZW9yZ2UgQmFybmV0dCA8
+Z2Jhcm5ldHRAYXRsYXNzaWFuLmNvbT4NCltid2g6IEJhY2twb3J0ZWQgdG8gMy4yOiBhZGp1c3Qg
+Y29udGV4dF0NClNpZ25lZC1vZmYtYnk6IEJlbiBIdXRjaGluZ3MgPGJlbkBkZWNhZGVudC5vcmcu
+dWs+DQotLS0NCiBmcy9leHQ0L2ZzeW5jLmMgICAgICB8ICAzICstLQ0KIGZzL2V4dDQvaW5vZGUu
+YyAgICAgIHwgIDMgKy0tDQogZnMvamJkMi9qb3VybmFsLmMgICAgfCAzMSArKysrKysrKysrKysr
+KysrKysrKysrKysrKysrKysrDQogaW5jbHVkZS9saW51eC9qYmQyLmggfCAgMSArDQogNCBmaWxl
+cyBjaGFuZ2VkLCAzNCBpbnNlcnRpb25zKCspLCA0IGRlbGV0aW9ucygtKQ0KDQotLS0gYS9mcy9l
+eHQ0L2ZzeW5jLmMNCisrKyBiL2ZzL2V4dDQvZnN5bmMuYw0KQEAgLTI2MCw4ICsyNjAsNyBAQCBp
+bnQgZXh0NF9zeW5jX2ZpbGUoc3RydWN0IGZpbGUgKmZpbGUsIGxvDQogCWlmIChqb3VybmFsLT5q
+X2ZsYWdzICYgSkJEMl9CQVJSSUVSICYmDQogCSAgICAhamJkMl90cmFuc193aWxsX3NlbmRfZGF0
+YV9iYXJyaWVyKGpvdXJuYWwsIGNvbW1pdF90aWQpKQ0KIAkJbmVlZHNfYmFycmllciA9IHRydWU7
+DQotCWpiZDJfbG9nX3N0YXJ0X2NvbW1pdChqb3VybmFsLCBjb21taXRfdGlkKTsNCi0JcmV0ID0g
+amJkMl9sb2dfd2FpdF9jb21taXQoam91cm5hbCwgY29tbWl0X3RpZCk7DQorCXJldCA9IGpiZDJf
+Y29tcGxldGVfdHJhbnNhY3Rpb24oam91cm5hbCwgY29tbWl0X3RpZCk7DQogCWlmIChuZWVkc19i
+YXJyaWVyKQ0KIAkJYmxrZGV2X2lzc3VlX2ZsdXNoKGlub2RlLT5pX3NiLT5zX2JkZXYsIEdGUF9L
+RVJORUwsIE5VTEwpOw0KICBvdXQ6DQotLS0gYS9mcy9leHQ0L2lub2RlLmMNCisrKyBiL2ZzL2V4
+dDQvaW5vZGUuYw0KQEAgLTE0Niw4ICsxNDYsNyBAQCB2b2lkIGV4dDRfZXZpY3RfaW5vZGUoc3Ry
+dWN0IGlub2RlICppbm9kDQogCQkJam91cm5hbF90ICpqb3VybmFsID0gRVhUNF9TQihpbm9kZS0+
+aV9zYiktPnNfam91cm5hbDsNCiAJCQl0aWRfdCBjb21taXRfdGlkID0gRVhUNF9JKGlub2RlKS0+
+aV9kYXRhc3luY190aWQ7DQogDQotCQkJamJkMl9sb2dfc3RhcnRfY29tbWl0KGpvdXJuYWwsIGNv
+bW1pdF90aWQpOw0KLQkJCWpiZDJfbG9nX3dhaXRfY29tbWl0KGpvdXJuYWwsIGNvbW1pdF90aWQp
+Ow0KKwkJCWpiZDJfY29tcGxldGVfdHJhbnNhY3Rpb24oam91cm5hbCwgY29tbWl0X3RpZCk7DQog
+CQkJZmlsZW1hcF93cml0ZV9hbmRfd2FpdCgmaW5vZGUtPmlfZGF0YSk7DQogCQl9DQogCQl0cnVu
+Y2F0ZV9pbm9kZV9wYWdlcygmaW5vZGUtPmlfZGF0YSwgMCk7DQotLS0gYS9mcy9qYmQyL2pvdXJu
+YWwuYw0KKysrIGIvZnMvamJkMi9qb3VybmFsLmMNCkBAIC02NjMsNiArNjYzLDM3IEBAIGludCBq
+YmQyX2xvZ193YWl0X2NvbW1pdChqb3VybmFsX3QgKmpvdXINCiB9DQogDQogLyoNCisgKiBXaGVu
+IHRoaXMgZnVuY3Rpb24gcmV0dXJucyB0aGUgdHJhbnNhY3Rpb24gY29ycmVzcG9uZGluZyB0byB0
+aWQNCisgKiB3aWxsIGJlIGNvbXBsZXRlZC4gIElmIHRoZSB0cmFuc2FjdGlvbiBoYXMgY3VycmVu
+dGx5IHJ1bm5pbmcsIHN0YXJ0DQorICogY29tbWl0dGluZyB0aGF0IHRyYW5zYWN0aW9uIGJlZm9y
+ZSB3YWl0aW5nIGZvciBpdCB0byBjb21wbGV0ZS4gIElmDQorICogdGhlIHRyYW5zYWN0aW9uIGlk
+IGlzIHN0YWxlLCBpdCBpcyBieSBkZWZpbml0aW9uIGFscmVhZHkgY29tcGxldGVkLA0KKyAqIHNv
+IGp1c3QgcmV0dXJuIFNVQ0NFU1MuDQorICovDQoraW50IGpiZDJfY29tcGxldGVfdHJhbnNhY3Rp
+b24oam91cm5hbF90ICpqb3VybmFsLCB0aWRfdCB0aWQpDQorew0KKwlpbnQJbmVlZF90b193YWl0
+ID0gMTsNCisNCisJcmVhZF9sb2NrKCZqb3VybmFsLT5qX3N0YXRlX2xvY2spOw0KKwlpZiAoam91
+cm5hbC0+al9ydW5uaW5nX3RyYW5zYWN0aW9uICYmDQorCSAgICBqb3VybmFsLT5qX3J1bm5pbmdf
+dHJhbnNhY3Rpb24tPnRfdGlkID09IHRpZCkgew0KKwkJaWYgKGpvdXJuYWwtPmpfY29tbWl0X3Jl
+cXVlc3QgIT0gdGlkKSB7DQorCQkJLyogdHJhbnNhY3Rpb24gbm90IHlldCBzdGFydGVkLCBzbyBy
+ZXF1ZXN0IGl0ICovDQorCQkJcmVhZF91bmxvY2soJmpvdXJuYWwtPmpfc3RhdGVfbG9jayk7DQor
+CQkJamJkMl9sb2dfc3RhcnRfY29tbWl0KGpvdXJuYWwsIHRpZCk7DQorCQkJZ290byB3YWl0X2Nv
+bW1pdDsNCisJCX0NCisJfSBlbHNlIGlmICghKGpvdXJuYWwtPmpfY29tbWl0dGluZ190cmFuc2Fj
+dGlvbiAmJg0KKwkJICAgICBqb3VybmFsLT5qX2NvbW1pdHRpbmdfdHJhbnNhY3Rpb24tPnRfdGlk
+ID09IHRpZCkpDQorCQluZWVkX3RvX3dhaXQgPSAwOw0KKwlyZWFkX3VubG9jaygmam91cm5hbC0+
+al9zdGF0ZV9sb2NrKTsNCisJaWYgKCFuZWVkX3RvX3dhaXQpDQorCQlyZXR1cm4gMDsNCit3YWl0
+X2NvbW1pdDoNCisJcmV0dXJuIGpiZDJfbG9nX3dhaXRfY29tbWl0KGpvdXJuYWwsIHRpZCk7DQor
+fQ0KK0VYUE9SVF9TWU1CT0woamJkMl9jb21wbGV0ZV90cmFuc2FjdGlvbik7DQorDQorLyoNCiAg
+KiBMb2cgYnVmZmVyIGFsbG9jYXRpb24gcm91dGluZXM6DQogICovDQogDQotLS0gYS9pbmNsdWRl
+L2xpbnV4L2piZDIuaA0KKysrIGIvaW5jbHVkZS9saW51eC9qYmQyLmgNCkBAIC0xMTY1LDYgKzEx
+NjUsNyBAQCBpbnQgX19qYmQyX2xvZ19zdGFydF9jb21taXQoam91cm5hbF90ICpqDQogaW50IGpi
+ZDJfam91cm5hbF9zdGFydF9jb21taXQoam91cm5hbF90ICpqb3VybmFsLCB0aWRfdCAqdGlkKTsN
+CiBpbnQgamJkMl9qb3VybmFsX2ZvcmNlX2NvbW1pdF9uZXN0ZWQoam91cm5hbF90ICpqb3VybmFs
+KTsNCiBpbnQgamJkMl9sb2dfd2FpdF9jb21taXQoam91cm5hbF90ICpqb3VybmFsLCB0aWRfdCB0
+aWQpOw0KK2ludCBqYmQyX2NvbXBsZXRlX3RyYW5zYWN0aW9uKGpvdXJuYWxfdCAqam91cm5hbCwg
+dGlkX3QgdGlkKTsNCiBpbnQgamJkMl9sb2dfZG9fY2hlY2twb2ludChqb3VybmFsX3QgKmpvdXJu
+YWwpOw0KIGludCBqYmQyX3RyYW5zX3dpbGxfc2VuZF9kYXRhX2JhcnJpZXIoam91cm5hbF90ICpq
+b3VybmFsLCB0aWRfdCB0aWQpOw0KIA0K
 
 
-                <div><span style=3D=22color: rgb(160, 160, 168); =22>On M=
-onday, 18 March 2013 at 1:54 PM, Theodore Ts'o wrote:</span></div><blockq=
-uote type=3D=22cite=22 style=3D=22border-left-style:solid;border-width:1p=
-x;margin-left:0px;padding-left:10px;=22>
-                    <span><div><div><div>Thanks for reporting this.  I th=
-ought we had fixed this in 3.0.</div><div>Before then, when we had a tid =
-wrap, it would result in kjournald</div><div>spinning forever.  I suspect=
- this was your =22spontaneous reboots=22 that</div><div>you mentioned you=
- mentioned when you were using 2.6.39 --- did you</div><div>have a hardwa=
-re or softward watchdog timer enabled by any chance=3F</div></div></div><=
-/span></blockquote><div>Thank you for your prompt attention on this. &nbs=
-p;It's greatly appreciated=21</div><div><br></div><div>We believe our pre=
-vious spontaneous reboots were caused by&nbsp;https://bugzilla.kernel.org=
-/show=5Fbug.cgi=3Fid=3D16991 which was resolved by our move to a 3.2 kern=
-el (we were on a 2.6.38-bpo kernel =5E1). &nbsp;We do not presently use a=
-ny watchdogs.</div><blockquote type=3D=22cite=22 style=3D=22border-left-s=
-tyle:solid;border-width:1px;margin-left:0px;padding-left:10px;=22><span><=
-div><div><div>Since we didn't have a good way of reproducing the problem =
-at the</div><div>time, I didn't realize that the problem had not been ful=
-ly fixed;</div><div>since while jbd2=5Flog=5Fstart=5Fcommit() would no lo=
-nger cause kjournald to</div><div>spin forwever, a subsequent call to jbd=
-2=5Flog=5Fwait=5Fcommit() with a</div><div>stale transaction id would wai=
-t for a very long time (possibly until</div><div>the heat death of the un=
-iverse :-)</div></div></div></span></blockquote><div>This would mirror wh=
-at we've seen, although our ops guys haven't been waiting around for any =
-universes to die :)</div><blockquote type=3D=22cite=22 style=3D=22border-=
-left-style:solid;border-width:1px;margin-left:0px;padding-left:10px;=22><=
-span><div><div><div>I think a patch like this should fix things; I've run=
- a stress test</div><div>with a hack to increment the transaction id by 1=
- &lt;&lt; 24 after each</div><div>commit, to more quickly cause an tid wr=
-ap, and the regression tests</div><div>seem to be passing without complai=
-nt.</div></div></div></span></blockquote><div>Excellent news. &nbsp;Again=
-, thank you for your help in this regard.</div><div><br></div><div>=40Ben=
- - could you let me know what your preferred course of action would be he=
-re=3F &nbsp;As I'm sure you can understand, I do not wish to maintain a f=
-orked kernel from Debian upstream. &nbsp;Is this something you would be p=
-repared to integrate into the 3.2 BPO kernels=3F</div><div><br></div><div=
->Best regards,</div><div><br></div><div>George</div><div><br></div><div>1=
-. We moved to 2.6.38 in order to get access to the packet steering patche=
-s which were put into the kernel in =7E.33 or .34 from memory. &nbsp;This=
- gave us quite a nice performance bump to our storage speed and hence we =
-didn't want to lose it by going back to .32 to get the 200d uptime bug fi=
-x.</div>
-            
---51469711_47195e5_153bc--
+--=-y/TmGQMxHdtelIe/WYLV--
+
+--=-gtFvo7pRY4/GBA2gRWeZ
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.12 (GNU/Linux)
+
+iQIVAwUAUUadu+e/yOyVhhEJAQpIpxAAg1VhbbKLOEsIqLEPY0BSkW747Q1EVaS2
+424RguJ66uxNVxGr2RMlHDYGbaaODVz39ZVClZRVkC8CzqY3qkOrKJIKh98x+EBj
+6TRBZfm7CeSjGjDFSzy7W7WhgmkWzlZvPwZ+AWw4oScVD8/j3fdk+ASt4l+SoPQJ
+DeTgvzbriP8+NMMqBHyEMdJHkl4nhQqUml87/mebbQPrQmfCeMzIhwLDT0gHWRs5
+TPy9BUGezmSQOCxWjUEDkFsIfysGHdJsuq94SL1gP58hjxNL5wS38lDifRrWVg/V
+6yrI9HuwRfdmDRLobDPEy16JFVn6Vk9qDGsrudUk14tAa7xf4cqy9//Zp89qXbx1
+1lis1juuEf5Zj2i1jgoP9RBkRRF13XP9k7ZFOoaK7WCe3kMJaiIPo7mhyl+eQ7Mh
+4eGHSIqrkg2dKbJ+dhBr3EAoTYyJNwQ+Nk8+yErAVZRMfqpCG0/aM8i+Xvjxdmeb
+KIGn6HNvmOfslHjkI3BTHaIC/GanyxsZqeQOyHQOz7ppxyY3FOARaPmF1MKN7weZ
+1HL2CD+mwlPsDN2SGJF0UNDgnM5A86DonGESnfFeUza3kYGQyfd99JSpyOZU/GLD
+Cs/+WMvdiWbGeghMz82a0ZjYPqW8WFRz3x9Hb+QHB/NzZ6+wq2UrMQ1iRG6bLUqu
+hVyMSHOyPio=
+=gvVL
+-----END PGP SIGNATURE-----
+
+--=-gtFvo7pRY4/GBA2gRWeZ--
