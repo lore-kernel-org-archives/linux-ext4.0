@@ -1,246 +1,184 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH v3] mm: Make snapshotting pages for stable writes a per-bio
- operation
-Date: Mon, 18 Mar 2013 16:02:59 -0700
-Message-ID: <20130318230259.GP5313@blackbox.djwong.org>
-References: <5139DB90.5090302@gmail.com>
- <20130312153221.0d26fe5599d4885e51bb0c7c@linux-foundation.org>
- <20130313011020.GA5313@blackbox.djwong.org>
- <20130313085021.GA29730@quack.suse.cz>
- <20130313194429.GE5313@blackbox.djwong.org>
- <20130313210216.GA7754@quack.suse.cz>
- <20130314224243.GI5313@blackbox.djwong.org>
- <20130315100105.GA4889@quack.suse.cz>
- <20130315232816.GN5313@blackbox.djwong.org>
- <20130318174134.GB7852@quack.suse.cz>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: possible dev branch regression - xfstest 285/1k
+Date: Tue, 19 Mar 2013 10:12:33 +1100
+Message-ID: <20130318231233.GQ6369@dastard>
+References: <20130315222818.GA16100@wallace>
+ <20130316150923.GA18589@gmail.com>
+ <20130317030648.GA14225@thunk.org>
+ <51473C8B.5070509@redhat.com>
+ <20130318170927.GA5639@thunk.org>
+ <51475043.4010505@redhat.com>
+ <20130318204133.GE22182@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>, Shuge <shugelinux@gmail.com>,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        linux-ext4@vger.kernel.org, Kevin <kevin@allwinnertech.com>,
-        "Theodore Ts'o" <tytso@mit.edu>, Jens Axboe <axboe@kernel.dk>,
-        Catalin Marinas <catalin.marinas@arm.com>,
-        Will Deacon <will.deacon@arm.com>,
-        linux-arm-kernel@lists.infradead.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: Eric Sandeen <sandeen@redhat.com>, Theodore Ts'o <tytso@mit.edu>,
+	xfs-oss <xfs@oss.sgi.com>, linux-ext4@vger.kernel.org,
+	Eric Whitney <enwlinux@gmail.com>
+To: Ben Myers <bpm@sgi.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:49438 "EHLO
+	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751735Ab3CRXMh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 18 Mar 2013 19:12:37 -0400
 Content-Disposition: inline
-In-Reply-To: <20130318174134.GB7852@quack.suse.cz>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20130318204133.GE22182@sgi.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Walking a bio's page mappings has proved problematic, so create a new bio flag
-to indicate that a bio's data needs to be snapshotted in order to guarantee
-stable pages during writeback.  Next, for the one user (ext3/jbd) of
-snapshotting, hook all the places where writes can be initiated without
-PG_writeback set, and set BIO_SNAP_STABLE there.  We must also flag journal
-"metadata" bios for stable writeout, since file data can be written through the
-journal.  Finally, the MS_SNAP_STABLE mount flag (only used by ext3) is now
-superfluous, so get rid of it.
+On Mon, Mar 18, 2013 at 03:41:33PM -0500, Ben Myers wrote:
+> Hi Eric,
+> 
+> On Mon, Mar 18, 2013 at 12:34:59PM -0500, Eric Sandeen wrote:
+> > On 3/18/13 12:09 PM, Theodore Ts'o wrote:
+> > > On Mon, Mar 18, 2013 at 11:10:51AM -0500, Eric Sandeen wrote:
+> > 
+> > <previous discussion thread about test 285 SEEK_HOLE test
+> > breaking on ext4 due to change in opportunistic hole-filling
+> > behavior and how to make it work again on ext4, and mention
+> > of sysctl which makes it pass>
+> > 
+> > >> The test could do this too, right?
+> > >>
+> > >> _need_to_be_root
+> > >>
+> > >> and:
+> > >>
+> > >> if [ "$FSTYP" == "ext4" ]; then
+> > >> 	ORIG_ZEROOUT_KB=`cat /sys/fs/ext4/$TEST_DEV/extent_max_zeroout_kb`
+> > >> 	echo 0 > /sys/fs/ext4/$TEST_DEV/extent_max_zeroout_kb
+> > >> fi
+> > >>
+> > >> and put it back to default in _cleanup:
+> > >>
+> > >> 	echo $ORIG_ZEROOUT_KB > /sys/fs/ext4/$TEST_DEV/extent_max_zeroout_kb
+> > >>
+> > >> That way we'd be testing seek hole correctness w/o being subject to
+> > >> the vagaries in allocator behavior.
+> > > 
+> > > Yeah, the question is whether it would be more acceptable to put
+> > > ext4-specific hacks like this into the test, or to modify
+> > > src/seek_sanity_test.c so that it writes the test block-size block
+> > > using pwrite at offset blocksize*42 instead of offset blocksize*10.
+> > 
+> > That seems like more of an obtuse hack, since it depends on current
+> > default behavior, right?
+> > 
+> > Explicitly setting the zeroout to 0, with a comment as to why, should
+> > make it clear to the reader of the test I think.
+> > 
+> > I'll have to look, xfs speculative preallocation fills in holes in
+> > some cases as well, I'm not certain how it behaves on this test.
+> 
+> My impression was that we are not zeroing holes, but I'd also have to look to
+> be sure.  ;)
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Depends if the holes fall at EOF and there's a specualtive delalloc
+over them. There isn't for this test, and the recent changes will
+prevent it altogether, so there isn't a worry for XFS here.
 
-[darrick.wong@oracle.com: Fold in a couple of small cleanups from akpm]
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
- fs/buffer.c                 |    9 ++++++++-
- fs/ext3/super.c             |    1 -
- fs/jbd/commit.c             |   25 ++++++++++++++++++++++---
- include/linux/blk_types.h   |    3 ++-
- include/linux/buffer_head.h |    1 +
- include/uapi/linux/fs.h     |    1 -
- mm/bounce.c                 |   21 +--------------------
- mm/page-writeback.c         |    4 ----
- 8 files changed, 34 insertions(+), 31 deletions(-)
+> > But we could put in a specific tuning for xfs as well if needed.
+> > 
+> > If it becomes clear that every fs requires tuning to not opportunistically
+> > fill in holes, then maybe we should make it non-generic, and only support
+> > filesystems we've tested or tuned to work with the testcase.
+> > 
+> > > I had assumed putting hacks which tweaked sysfs tunables into the xfstest
+> > > script itself would be frowned upon, but if that's considered OK, that
+> > > would be great.
+> > 
+> > I don't see any real problem with it, myself.
+> > 
+> > cc: xfs list to see if there are any objections...
+> 
+> Seems like the options being discussed so far are:
+> 
+> 1) make the test fs specific
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index b4dcb34..71578d6 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -2949,7 +2949,7 @@ static void guard_bh_eod(int rw, struct bio *bio, struct buffer_head *bh)
- 	}
- }
- 
--int submit_bh(int rw, struct buffer_head * bh)
-+int _submit_bh(int rw, struct buffer_head *bh, unsigned long bio_flags)
- {
- 	struct bio *bio;
- 	int ret = 0;
-@@ -2984,6 +2984,7 @@ int submit_bh(int rw, struct buffer_head * bh)
- 
- 	bio->bi_end_io = end_bio_bh_io_sync;
- 	bio->bi_private = bh;
-+	bio->bi_flags |= bio_flags;
- 
- 	/* Take care of bh's that straddle the end of the device */
- 	guard_bh_eod(rw, bio, bh);
-@@ -2997,6 +2998,12 @@ int submit_bh(int rw, struct buffer_head * bh)
- 	bio_put(bio);
- 	return ret;
- }
-+EXPORT_SYMBOL_GPL(_submit_bh);
-+
-+int submit_bh(int rw, struct buffer_head *bh)
-+{
-+	return _submit_bh(rw, bh, 0);
-+}
- EXPORT_SYMBOL(submit_bh);
- 
- /**
-diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-index fb5120a..3dc48cc 100644
---- a/fs/ext3/super.c
-+++ b/fs/ext3/super.c
-@@ -2067,7 +2067,6 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
- 		test_opt(sb,DATA_FLAGS) == EXT3_MOUNT_JOURNAL_DATA ? "journal":
- 		test_opt(sb,DATA_FLAGS) == EXT3_MOUNT_ORDERED_DATA ? "ordered":
- 		"writeback");
--	sb->s_flags |= MS_SNAP_STABLE;
- 
- 	return 0;
- 
-diff --git a/fs/jbd/commit.c b/fs/jbd/commit.c
-index 86b39b1..11bb11f 100644
---- a/fs/jbd/commit.c
-+++ b/fs/jbd/commit.c
-@@ -162,8 +162,17 @@ static void journal_do_submit_data(struct buffer_head **wbuf, int bufs,
- 
- 	for (i = 0; i < bufs; i++) {
- 		wbuf[i]->b_end_io = end_buffer_write_sync;
--		/* We use-up our safety reference in submit_bh() */
--		submit_bh(write_op, wbuf[i]);
-+		/*
-+		 * Here we write back pagecache data that may be mmaped. Since
-+		 * we cannot afford to clean the page and set PageWriteback
-+		 * here due to lock ordering (page lock ranks above transaction
-+		 * start), the data can change while IO is in flight. Tell the
-+		 * block layer it should bounce the bio pages if stable data
-+		 * during write is required.
-+		 *
-+		 * We use up our safety reference in submit_bh().
-+		 */
-+		_submit_bh(write_op, wbuf[i], 1 << BIO_SNAP_STABLE);
- 	}
- }
- 
-@@ -667,7 +676,17 @@ start_journal_io:
- 				clear_buffer_dirty(bh);
- 				set_buffer_uptodate(bh);
- 				bh->b_end_io = journal_end_buffer_io_sync;
--				submit_bh(write_op, bh);
-+				/*
-+				 * In data=journal mode, here we can end up
-+				 * writing pagecache data that might be
-+				 * mmapped. Since we can't afford to clean the
-+				 * page and set PageWriteback (see the comment
-+				 * near the other use of _submit_bh()), the
-+				 * data can change while the write is in
-+				 * flight.  Tell the block layer to bounce the
-+				 * bio pages if stable pages are required.
-+				 */
-+				_submit_bh(write_op, bh, 1 << BIO_SNAP_STABLE);
- 			}
- 			cond_resched();
- 
-diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
-index cdf1119..22990cf 100644
---- a/include/linux/blk_types.h
-+++ b/include/linux/blk_types.h
-@@ -111,12 +111,13 @@ struct bio {
- #define BIO_FS_INTEGRITY 9	/* fs owns integrity data, not block layer */
- #define BIO_QUIET	10	/* Make BIO Quiet */
- #define BIO_MAPPED_INTEGRITY 11/* integrity metadata has been remapped */
-+#define BIO_SNAP_STABLE	12	/* bio data must be snapshotted during write */
- 
- /*
-  * Flags starting here get preserved by bio_reset() - this includes
-  * BIO_POOL_IDX()
-  */
--#define BIO_RESET_BITS	12
-+#define BIO_RESET_BITS	13
- 
- #define bio_flagged(bio, flag)	((bio)->bi_flags & (1 << (flag)))
- 
-diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
-index 5afc4f9..4c16c4a 100644
---- a/include/linux/buffer_head.h
-+++ b/include/linux/buffer_head.h
-@@ -181,6 +181,7 @@ void ll_rw_block(int, int, struct buffer_head * bh[]);
- int sync_dirty_buffer(struct buffer_head *bh);
- int __sync_dirty_buffer(struct buffer_head *bh, int rw);
- void write_dirty_buffer(struct buffer_head *bh, int rw);
-+int _submit_bh(int rw, struct buffer_head *bh, unsigned long bio_flags);
- int submit_bh(int, struct buffer_head *);
- void write_boundary_block(struct block_device *bdev,
- 			sector_t bblock, unsigned blocksize);
-diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
-index c7fc1e6..a4ed56c 100644
---- a/include/uapi/linux/fs.h
-+++ b/include/uapi/linux/fs.h
-@@ -88,7 +88,6 @@ struct inodes_stat_t {
- #define MS_STRICTATIME	(1<<24) /* Always perform atime updates */
- 
- /* These sb flags are internal to the kernel */
--#define MS_SNAP_STABLE	(1<<27) /* Snapshot pages during writeback, if needed */
- #define MS_NOSEC	(1<<28)
- #define MS_BORN		(1<<29)
- #define MS_ACTIVE	(1<<30)
-diff --git a/mm/bounce.c b/mm/bounce.c
-index 5f89017..a5c2ec3 100644
---- a/mm/bounce.c
-+++ b/mm/bounce.c
-@@ -181,32 +181,13 @@ static void bounce_end_io_read_isa(struct bio *bio, int err)
- #ifdef CONFIG_NEED_BOUNCE_POOL
- static int must_snapshot_stable_pages(struct request_queue *q, struct bio *bio)
- {
--	struct page *page;
--	struct backing_dev_info *bdi;
--	struct address_space *mapping;
--	struct bio_vec *from;
--	int i;
--
- 	if (bio_data_dir(bio) != WRITE)
- 		return 0;
- 
- 	if (!bdi_cap_stable_pages_required(&q->backing_dev_info))
- 		return 0;
- 
--	/*
--	 * Based on the first page that has a valid mapping, decide whether or
--	 * not we have to employ bounce buffering to guarantee stable pages.
--	 */
--	bio_for_each_segment(from, bio, i) {
--		page = from->bv_page;
--		mapping = page_mapping(page);
--		if (!mapping)
--			continue;
--		bdi = mapping->backing_dev_info;
--		return mapping->host->i_sb->s_flags & MS_SNAP_STABLE;
--	}
--
--	return 0;
-+	return test_bit(BIO_SNAP_STABLE, &bio->bi_flags);
- }
- #else
- static int must_snapshot_stable_pages(struct request_queue *q, struct bio *bio)
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index efe6814..4514ad7 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -2311,10 +2311,6 @@ void wait_for_stable_page(struct page *page)
- 
- 	if (!bdi_cap_stable_pages_required(bdi))
- 		return;
--#ifdef CONFIG_NEED_BOUNCE_POOL
--	if (mapping->host->i_sb->s_flags & MS_SNAP_STABLE)
--		return;
--#endif /* CONFIG_NEED_BOUNCE_POOL */
- 
- 	wait_on_page_writeback(page);
- }
+It was, originally.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+> 2) filesystem specific hacks to disable opportunistic zeroing of holes
+
+Not scalable.
+
+> 3) modify the test output to work with current ext4 default behavior
+
+And then we need hacks for each filesystem as the change behaviour.
+
+> It might be hard to find a tuning to produce identical output for xfs and ext4
+> (option 3), and option 1 and 2 are a also bit clunky.
+> 
+> How about option 4) fs-specific test output?
+
+No, that's even worse. If we have filesystem specific output, then
+write a set of filesystem specific tests that use a common piece of
+code to run the test. the only difference between the tests will
+then be the _supported_fs line. No need to hack in special output
+file handling, etc.
+
+> We wouldn't have multiple copies of the same test laying around, and ext4 could
+> still run with default settings.
+
+And when the default settings change, or some other bug fix comes
+along?
+
+So, let's step back a moment and ask ourselves what the test is
+actaully trying to test. zero-out is not what it is trying to test,
+nor is it trying to test specific file layouts. This is a basic
+*defragmenter* sanity test. SO, we're testing 2 things:
+
+	1. the defragmenter can recognise a fragmented file and fix
+	it; and
+	2. the defragmenter can recognise a sparse file and not
+	modify it.
+
+I know that Ted has already asked "what is an extent", but that's
+also missing the point. An extent is defined, just like for on-disk
+extent records, as a region of a file that is both logically and
+physically contiguous. From that, a fragmented file is a file that
+is logically contiguous but physically disjointed, and a sparse file
+is one that is logically disjointed. i.e. it is the relationship
+between extents that defines "sparse" and "fragmented", not the
+definition of an extent itself.
+
+Looking at the test itself, then.  The backwards synchronous write
+trick that is used by 218?  That's an underhanded trick to make XFS
+create a fragmented file. We are not testing that the defragmenter
+knows that it's a backwards written file - we are testing that it
+sees the file as logically contiguous and physically disjointed, and
+then defragments it successfully.
+
+Similarly, the remaining two tests are checking that a sparse file
+with a couple of different layouts are detected and left alone. The
+first sparse file will be both logically and physically disjointed,
+the second one is logically disjointed but often ends up physically
+contiguous.
+
+That's what we are actually testing here. We are not testing that
+exact, specific file layouts are handled correctly, we are checking
+that the defragmenter recognises the different extent relationships
+to determine which it shoul defragment and those it should leave
+alone.
+
+IOWs, we can change this test to create files in any way we want, as
+long as the files fit the same 3 categories:
+
+	1. logically contiguous, physically disjointed
+		- successful defragmentation
+	2. logically disjointed, physically disjointed
+		- unchanged
+	3. logically disjointed, physically contiguous
+		- unchanged.
+
+If that means we need to create the files differently to ensure we
+end up with the layouts we need for different filesystems, then so
+be it. If we can't do that generically for all the supported
+filesystems, then lets split the test apart again into filesystem
+specific tests and make 218 an XFS only test again.
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
