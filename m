@@ -1,65 +1,76 @@
 From: Andrey Sidorov <qrxd43@motorola.com>
-Subject: [PATCH 0/5] mke2fs/e2fsck optimizations
-Date: Tue, 19 Mar 2013 20:05:59 +0400
-Message-ID: <1363709164-3210-1-git-send-email-qrxd43@motorola.com>
+Subject: [PATCH 1/5] libext2fs: Optimize ext2fs_allocate_group_table()
+Date: Tue, 19 Mar 2013 20:06:00 +0400
+Message-ID: <1363709164-3210-2-git-send-email-qrxd43@motorola.com>
+References: <1363709164-3210-1-git-send-email-qrxd43@motorola.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from exprod5og116.obsmtp.com ([64.18.0.147]:35592 "EHLO
-	exprod5og116.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754448Ab3CSQG0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Mar 2013 12:06:26 -0400
-Received: from DE01MGRG01.AM.MOT-MOBILITY.COM ([10.22.94.168])
-	by DE01MGRG01.AM.MOT-MOBILITY.COM (8.14.3/8.14.3) with ESMTP id r2JG9Hqs027456
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Mar 2013 12:09:17 -0400 (EDT)
-Received: from mail-ee0-f53.google.com (mail-ee0-f53.google.com [74.125.83.53])
-	by DE01MGRG01.AM.MOT-MOBILITY.COM (8.14.3/8.14.3) with ESMTP id r2JG8w0X027270
+Received: from exprod5og117.obsmtp.com ([64.18.0.149]:41388 "EHLO
+	exprod5og117.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754448Ab3CSQGX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Mar 2013 12:06:23 -0400
+Received: from il93mgrg01.am.mot-mobility.com ([10.22.94.168])
+	by il93mgrg01.am.mot-mobility.com (8.14.3/8.14.3) with ESMTP id r2JFsu1b021374
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Mar 2013 11:54:56 -0400 (EDT)
+Received: from mail-ee0-f54.google.com (mail-ee0-f54.google.com [74.125.83.54])
+	by il93mgrg01.am.mot-mobility.com (8.14.3/8.14.3) with ESMTP id r2JFstcq021330
 	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Mar 2013 12:09:16 -0400 (EDT)
-Received: by mail-ee0-f53.google.com with SMTP id e53so337619eek.40
-        for <linux-ext4@vger.kernel.org>; Tue, 19 Mar 2013 09:06:18 -0700 (PDT)
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Mar 2013 11:54:56 -0400 (EDT)
+Received: by mail-ee0-f54.google.com with SMTP id c41so326368eek.27
+        for <linux-ext4@vger.kernel.org>; Tue, 19 Mar 2013 09:06:20 -0700 (PDT)
+In-Reply-To: <1363709164-3210-1-git-send-email-qrxd43@motorola.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Various optimizations for mke2fs / e2fsck.
-First patch makes no big change for x86, but saves a
-couple of seconds on embedded systems. Mostly effective
-for large non-bigalloc volumes.
-The rest of the series is to improve mke2fs time on
-bigalloc volumes.
+Iterate over groups instead of blocks.
 
-Times for mke2fs of 1TB volume
-x86, plain: 7.5s -> 7.0s
-x86, bigalloc256: 6.5s -> 1.9s
-mips, plain: 9.9s -> 5.7s
-mips, bigalloc256: 29.0s -> 1.9s
+Signed-off-by: Andrey Sidorov <qrxd43@motorola.com>
+---
+ lib/ext2fs/alloc_tables.c |   31 +++++++++++++++++++++----------
+ 1 file changed, 21 insertions(+), 10 deletions(-)
 
-Testing done:
-patched mke2fs, unpatched e2fsck, patched e2fsck,
-mount, basic write operations, unmount,
-unpatched e2fsck, patched e2fsck.
-ffs/ffz were tested with tst_bitmaps commands which
-cover all exit paths for rb_tree implementation.
-Output of tst_bitmaps is same for ba and rb bitmaps.
-
-Andrey Sidorov (5):
-  libext2fs: Optimize ext2fs_allocate_group_table()
-  libext2fs: find_first_set() for bitmaps.
-  libext2fs: find_first_set() for bitarray bitmap
-  libext2fs: ffz/ffs for rb_tree bitmap
-  libext2fs: Optimize ext2fs_convert_subcluster_bitmap()
-
- lib/ext2fs/alloc_tables.c     |   31 +++++---
- lib/ext2fs/bitops.h           |   41 +++++++++++
- lib/ext2fs/blkmap64_ba.c      |   83 +++++++++++++++++++--
- lib/ext2fs/blkmap64_rb.c      |  164 +++++++++++++++++++++++++++++++++++++++--
- lib/ext2fs/bmap64.h           |    4 +-
- lib/ext2fs/ext2fs.h           |    3 +
- lib/ext2fs/gen_bitmap.c       |   23 ++++++
- lib/ext2fs/gen_bitmap64.c     |  118 +++++++++++++++++++++++------
- lib/ext2fs/tst_bitmaps.c      |   66 +++++++++++++++++
- lib/ext2fs/tst_bitmaps_cmd.ct |    6 ++
- 10 files changed, 492 insertions(+), 47 deletions(-)
-
+diff --git a/lib/ext2fs/alloc_tables.c b/lib/ext2fs/alloc_tables.c
+index 5e6e556..e51dcee 100644
+--- a/lib/ext2fs/alloc_tables.c
++++ b/lib/ext2fs/alloc_tables.c
+@@ -205,16 +205,27 @@ errcode_t ext2fs_allocate_group_table(ext2_filsys fs, dgrp_t group,
+ 						bmap, &new_blk);
+ 		if (retval)
+ 			return retval;
+-		for (j=0, blk = new_blk;
+-		     j < fs->inode_blocks_per_group;
+-		     j++, blk++) {
+-			ext2fs_mark_block_bitmap2(bmap, blk);
+-			if (flexbg_size) {
+-				dgrp_t gr = ext2fs_group_of_blk2(fs, blk);
+-				ext2fs_bg_free_blocks_count_set(fs, gr, ext2fs_bg_free_blocks_count(fs, gr) - 1);
+-				ext2fs_free_blocks_count_add(fs->super, -1);
+-				ext2fs_bg_flags_clear(fs, gr,
+-						     EXT2_BG_BLOCK_UNINIT);
++
++		ext2fs_mark_block_bitmap_range2(bmap, new_blk, fs->inode_blocks_per_group);
++		if (flexbg_size) {
++			blk64_t last_blk = new_blk + fs->inode_blocks_per_group - 1;
++			dgrp_t gr = ext2fs_group_of_blk2(fs, new_blk);
++			dgrp_t last_gr = ext2fs_group_of_blk2(fs, last_blk);
++
++			ext2fs_free_blocks_count_add(fs->super, -(blk64_t)(fs->inode_blocks_per_group));
++			for (; gr <= last_gr; ++gr) {
++				blk64_t gr_first_blk = ext2fs_group_first_block2(fs, gr);
++				blk64_t gr_last_blk = ext2fs_group_last_block2(fs, gr);
++				__u32 free_blocks = ext2fs_bg_free_blocks_count(fs, gr);
++				if (gr_first_blk < new_blk)
++					gr_first_blk = new_blk;
++				if (gr_last_blk > last_blk)
++					gr_last_blk = last_blk;
++
++				free_blocks -= (__u32)(gr_last_blk - gr_first_blk + 1);
++
++				ext2fs_bg_free_blocks_count_set(fs, gr, free_blocks);
++				ext2fs_bg_flags_clear(fs, gr, EXT2_BG_BLOCK_UNINIT);
+ 				ext2fs_group_desc_csum_set(fs, gr);
+ 			}
+ 		}
 -- 
 1.7.10.4
 
