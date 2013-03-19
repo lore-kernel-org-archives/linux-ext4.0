@@ -1,65 +1,253 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: ext4_block_to_path block > max warning.
-Date: Tue, 19 Mar 2013 08:22:44 -0400
-Message-ID: <20130319122244.GA32310@thunk.org>
-References: <20130319033555.GA1582@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Dave Jones <davej@redhat.com>,
-	Linux Kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20130319033555.GA1582@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH] ext4: Transfer initialized block to right neighbor if possible
+Date: Tue, 19 Mar 2013 14:13:08 +0100
+Message-ID: <1363698788-15665-1-git-send-email-lczerner@redhat.com>
+Cc: Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:25782 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755110Ab3CSNNM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 19 Mar 2013 09:13:12 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r2JDDCRj017722
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Mar 2013 09:13:12 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 18, 2013 at 11:35:55PM -0400, Dave Jones wrote:
-> Not sure what I did to trigger this, but it's happened a few times while fuzzing syscalls.
-> Rebooted and fscked, didn't find anything wrong.
-> 
-> 	Dave
-> 
-> [ 5084.436288] EXT4-fs warning (device sda1): ext4_block_to_path:105: block 1874853625 > max in inode 34
-> [ 5167.723925] EXT4-fs warning (device sda1): ext4_block_to_path:105: block 2507988634 > max in inode 34
+Currently when converting extent to initialized we attempt to transfer
+initialized block to the left neighbour if possible when certain criteria
+are met. However we do not attempt to do the same for the right
+neighbor.
 
-Yes, this wouldn't be a problem that would be be reflected in an fsck
-problem.  What warning indicates is that there was an attempt to write
-to file offset which is larger than what is supported by using
-indirect blocks.  (Presumably this was probably a ext3 file system
-mounted using ext4?)
+This commit adds the possibility to transfer initialized block to the
+left neighbour if:
 
-This should have been caught by checks earlier, but because we didn't,
-instead of returning EFBIG to userspace, the userspace application
-received an EIO instead, and it triggered the above warning
-message.
+1. We're not converting the whole extent
+2. Both extents are stored in the same extent tree node
+3. Right neighbor is initialized
+4. Right neighbor is logically abutting the current one
+5. Right neighbor is physically abutting the current one
+6. Right neighbor would not overflow the length limit
 
-.... and I think I see the problem.  We do have checks ext4_llseek()
-and ext4_file_write(), but we use iov_length to do the checks.  And
-documentation for iov_length states:
+This is basically the same logic as with transferring to the left. This
+will gain us some performance benefits since it is faster than inserting
+extent and then merging it.
 
-/*
- * Total number of bytes covered by an iovec.
- *
- * NOTE that it is not safe to use this function until all the iovec's
- * segment lengths have been validated.  Because the individual lengths can
- * overflow a size_t when added together.
- */
+It would also prevent some situation in delalloc patch when we might run
+out of metadata reservation. This is due to the fact that we would
+attempt to split the extent first (possibly allocating new metadata
+block) even though we did not counted for that because it can (and will)
+be merged again. This commit fix that scenario, because we no longer
+need to split the extent in such case.
 
-Basically, iov_length() doesn't check for overflow, and the individual
-lengths of the iovec don't get verified until later in the call stack,
-by generic_file_aio_write().
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/extents.c |  135 +++++++++++++++++++++++++++++++++++------------------
+ 1 files changed, 89 insertions(+), 46 deletions(-)
 
-So we either need to create a version of iov_length() which does check
-for overflow, or we need to add an extra call to
-generic_segment_checks() in ext4_file_write().  It will be more
-slightly more CPU-efficient to have an overflow-cognizant
-iov_length(), though.
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index d6600f9..c45bc9c 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3176,29 +3176,28 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 	struct ext4_extent_header *eh;
+ 	struct ext4_map_blocks split_map;
+ 	struct ext4_extent zero_ex;
+-	struct ext4_extent *ex;
++	struct ext4_extent *ex, *abut_ex;
+ 	ext4_lblk_t ee_block, eof_block;
+-	unsigned int ee_len, depth;
+-	int allocated, max_zeroout = 0;
++	unsigned int ee_len, depth, map_len = map->m_len;
++	int allocated = 0, max_zeroout = 0;
+ 	int err = 0;
+ 	int split_flag = 0;
+ 
+ 	ext_debug("ext4_ext_convert_to_initialized: inode %lu, logical"
+ 		"block %llu, max_blocks %u\n", inode->i_ino,
+-		(unsigned long long)map->m_lblk, map->m_len);
++		(unsigned long long)map->m_lblk, map_len);
+ 
+ 	sbi = EXT4_SB(inode->i_sb);
+ 	eof_block = (inode->i_size + inode->i_sb->s_blocksize - 1) >>
+ 		inode->i_sb->s_blocksize_bits;
+-	if (eof_block < map->m_lblk + map->m_len)
+-		eof_block = map->m_lblk + map->m_len;
++	if (eof_block < map->m_lblk + map_len)
++		eof_block = map->m_lblk + map_len;
+ 
+ 	depth = ext_depth(inode);
+ 	eh = path[depth].p_hdr;
+ 	ex = path[depth].p_ext;
+ 	ee_block = le32_to_cpu(ex->ee_block);
+ 	ee_len = ext4_ext_get_actual_len(ex);
+-	allocated = ee_len - (map->m_lblk - ee_block);
+ 
+ 	trace_ext4_ext_convert_to_initialized_enter(inode, map, ex);
+ 
+@@ -3208,77 +3207,121 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 
+ 	/*
+ 	 * Attempt to transfer newly initialized blocks from the currently
+-	 * uninitialized extent to its left neighbor. This is much cheaper
++	 * uninitialized extent to its neighbor. This is much cheaper
+ 	 * than an insertion followed by a merge as those involve costly
+-	 * memmove() calls. This is the common case in steady state for
+-	 * workloads doing fallocate(FALLOC_FL_KEEP_SIZE) followed by append
+-	 * writes.
++	 * memmove() calls. Transferring to the left is the common case in
++	 * steady state for workloads doing fallocate(FALLOC_FL_KEEP_SIZE)
++	 * followed by append writes.
+ 	 *
+ 	 * Limitations of the current logic:
+-	 *  - L1: we only deal with writes at the start of the extent.
+-	 *    The approach could be extended to writes at the end
+-	 *    of the extent but this scenario was deemed less common.
+-	 *  - L2: we do not deal with writes covering the whole extent.
++	 *  - L1: we do not deal with writes covering the whole extent.
+ 	 *    This would require removing the extent if the transfer
+ 	 *    is possible.
+-	 *  - L3: we only attempt to merge with an extent stored in the
++	 *  - L2: we only attempt to merge with an extent stored in the
+ 	 *    same extent tree node.
+ 	 */
+-	if ((map->m_lblk == ee_block) &&	/*L1*/
+-		(map->m_len < ee_len) &&	/*L2*/
+-		(ex > EXT_FIRST_EXTENT(eh))) {	/*L3*/
+-		struct ext4_extent *prev_ex;
++	if ((map->m_lblk == ee_block) &&
++		/* See if we can merge left */
++		(map_len < ee_len) &&		/*L1*/
++		(ex > EXT_FIRST_EXTENT(eh))) {	/*L2*/
+ 		ext4_lblk_t prev_lblk;
+ 		ext4_fsblk_t prev_pblk, ee_pblk;
+-		unsigned int prev_len, write_len;
++		unsigned int prev_len;
+ 
+-		prev_ex = ex - 1;
+-		prev_lblk = le32_to_cpu(prev_ex->ee_block);
+-		prev_len = ext4_ext_get_actual_len(prev_ex);
+-		prev_pblk = ext4_ext_pblock(prev_ex);
++		abut_ex = ex - 1;
++		prev_lblk = le32_to_cpu(abut_ex->ee_block);
++		prev_len = ext4_ext_get_actual_len(abut_ex);
++		prev_pblk = ext4_ext_pblock(abut_ex);
+ 		ee_pblk = ext4_ext_pblock(ex);
+-		write_len = map->m_len;
+ 
+ 		/*
+-		 * A transfer of blocks from 'ex' to 'prev_ex' is allowed
++		 * A transfer of blocks from 'ex' to 'abut_ex' is allowed
+ 		 * upon those conditions:
+-		 * - C1: prev_ex is initialized,
+-		 * - C2: prev_ex is logically abutting ex,
+-		 * - C3: prev_ex is physically abutting ex,
+-		 * - C4: prev_ex can receive the additional blocks without
++		 * - C1: abut_ex is initialized,
++		 * - C2: abut_ex is logically abutting ex,
++		 * - C3: abut_ex is physically abutting ex,
++		 * - C4: abut_ex can receive the additional blocks without
+ 		 *   overflowing the (initialized) length limit.
+ 		 */
+-		if ((!ext4_ext_is_uninitialized(prev_ex)) &&		/*C1*/
++		if ((!ext4_ext_is_uninitialized(abut_ex)) &&		/*C1*/
+ 			((prev_lblk + prev_len) == ee_block) &&		/*C2*/
+ 			((prev_pblk + prev_len) == ee_pblk) &&		/*C3*/
+-			(prev_len < (EXT_INIT_MAX_LEN - write_len))) {	/*C4*/
++			(prev_len < (EXT_INIT_MAX_LEN - map_len))) {	/*C4*/
+ 			err = ext4_ext_get_access(handle, inode, path + depth);
+ 			if (err)
+ 				goto out;
+ 
+ 			trace_ext4_ext_convert_to_initialized_fastpath(inode,
+-				map, ex, prev_ex);
++				map, ex, abut_ex);
+ 
+-			/* Shift the start of ex by 'write_len' blocks */
+-			ex->ee_block = cpu_to_le32(ee_block + write_len);
+-			ext4_ext_store_pblock(ex, ee_pblk + write_len);
+-			ex->ee_len = cpu_to_le16(ee_len - write_len);
++			/* Shift the start of ex by 'map_len' blocks */
++			ex->ee_block = cpu_to_le32(ee_block + map_len);
++			ext4_ext_store_pblock(ex, ee_pblk + map_len);
++			ex->ee_len = cpu_to_le16(ee_len - map_len);
+ 			ext4_ext_mark_uninitialized(ex); /* Restore the flag */
+ 
+-			/* Extend prev_ex by 'write_len' blocks */
+-			prev_ex->ee_len = cpu_to_le16(prev_len + write_len);
++			/* Extend abut_ex by 'map_len' blocks */
++			abut_ex->ee_len = cpu_to_le16(prev_len + map_len);
++
++			/* Result: number of initialized blocks past m_lblk */
++			allocated = map_len;
++		}
++	} else if (((map->m_lblk + map_len) == (ee_block + ee_len)) &&
++		   (map_len < ee_len) &&	/*L1*/
++		   ex < EXT_LAST_EXTENT(eh)) {	/*L2*/
++		/* See if we can merge right */
++		ext4_lblk_t next_lblk;
++		ext4_fsblk_t next_pblk, ee_pblk;
++		unsigned int next_len;
++
++		abut_ex = ex + 1;
++		next_lblk = le32_to_cpu(abut_ex->ee_block);
++		next_len = ext4_ext_get_actual_len(abut_ex);
++		next_pblk = ext4_ext_pblock(abut_ex);
++		ee_pblk = ext4_ext_pblock(ex);
++
++		/*
++		 * A transfer of blocks from 'ex' to 'abut_ex' is allowed
++		 * upon those conditions:
++		 * - C1: abut_ex is initialized,
++		 * - C2: abut_ex is logically abutting ex,
++		 * - C3: abut_ex is physically abutting ex,
++		 * - C4: abut_ex can receive the additional blocks without
++		 *   overflowing the (initialized) length limit.
++		 */
++		if ((!ext4_ext_is_uninitialized(abut_ex)) &&		/*C1*/
++		    ((map->m_lblk + map_len) == next_lblk) &&	/*C2*/
++		    ((ee_pblk + ee_len) == next_pblk) &&		/*C3*/
++		    (next_len < (EXT_INIT_MAX_LEN - map_len))) {	/*C4*/
++			err = ext4_ext_get_access(handle, inode, path + depth);
++			if (err)
++				goto out;
++
++			trace_ext4_ext_convert_to_initialized_fastpath(inode,
++				map, ex, abut_ex);
+ 
+-			/* Mark the block containing both extents as dirty */
+-			ext4_ext_dirty(handle, inode, path + depth);
++			/* Shift the start of abut_ex by 'map_len' blocks */
++			abut_ex->ee_block = cpu_to_le32(next_lblk - map_len);
++			ext4_ext_store_pblock(abut_ex, next_pblk - map_len);
++			ex->ee_len = cpu_to_le16(ee_len - map_len);
++			ext4_ext_mark_uninitialized(ex); /* Restore the flag */
+ 
+-			/* Update path to point to the right extent */
+-			path[depth].p_ext = prev_ex;
++			/* Extend abut_ex by 'map_len' blocks */
++			abut_ex->ee_len = cpu_to_le16(next_len + map_len);
+ 
+ 			/* Result: number of initialized blocks past m_lblk */
+-			allocated = write_len;
+-			goto out;
++			allocated = map_len;
+ 		}
+ 	}
++	if (allocated) {
++		/* Mark the block containing both extents as dirty */
++		ext4_ext_dirty(handle, inode, path + depth);
++
++		/* Update path to point to the right extent */
++		path[depth].p_ext = abut_ex;
++		goto out;
++	} else
++		allocated = ee_len - (map->m_lblk - ee_block);
+ 
+ 	WARN_ON(map->m_lblk < ee_block);
+ 	/*
+-- 
+1.7.7.6
 
-The alternative would be to simply remove the ext4_warning() and
-change the error return in the case where ext4_block_to_path() returns
-0, but I think it's good add the extra upfront checks, and reserve the
-ext4_block_to_path() check as a last-ditch sanity check.  I'm a big
-believer in having belt-and-suspender safety checks.
-
-							- Ted
