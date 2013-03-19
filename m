@@ -1,40 +1,96 @@
-From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: Re: bio splits unnecessarily due to BH_Boundary in ext3 direct I/O
-Date: Tue, 19 Mar 2013 17:36:17 +0900
-Message-ID: <51482381.7010508@sx.jp.nec.com>
-References: <51385177.9030904@sx.jp.nec.com> <20130307104854.GB6723@quack.suse.cz>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: possible dev branch regression - xfstest 285/1k
+Date: Tue, 19 Mar 2013 09:50:21 +0100 (CET)
+Message-ID: <37757.8251915567$1363683079@news.gmane.org>
+References: <20130315222818.GA16100@wallace> <20130316150923.GA18589@gmail.com>
+	<20130317030648.GA14225@thunk.org>
+	<51473C8B.5070509@redhat.com> <20130318170927.GA5639@thunk.org>
+	<51475043.4010505@redhat.com> <20130318204133.GE22182@sgi.com>
+	<20130318231233.GQ6369@dastard> <20130319014718.GV6369@dastard>
+	<20130319020056.GC4660@thunk.org> <5147CD46.1090205@sandeen.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: akpm@linux-foundation.org, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO200.gate.nec.co.jp ([210.143.35.50]:47316 "EHLO
-	tyo200.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756083Ab3CSIpP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Mar 2013 04:45:15 -0400
-Received: from tyo202.gate.nec.co.jp ([10.7.69.202])
-	by tyo200.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id r2J8jEhC029597
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Mar 2013 17:45:14 +0900 (JST)
-In-Reply-To: <20130307104854.GB6723@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Eric Sandeen <sandeen@redhat.com>, xfs-oss <xfs@oss.sgi.com>,
+	Theodore Ts'o <tytso@mit.edu>, Eric Whitney <enwlinux@gmail.com>,
+	Ben Myers <bpm@sgi.com>, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@sandeen.net>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <5147CD46.1090205@sandeen.net>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-2013/03/07 19:48, Jan Kara wrote:
-> Then we properly mark bio should be submitted only if we are mapping last
-> part of the mapped extent from the filesystem. Can you give this change a
-> try (full patch with changelog attached)?
+On Mon, 18 Mar 2013, Eric Sandeen wrote:
 
-Sorry for the late response.
-After applying your patch, the problem I reported was fixed.
+> Date: Mon, 18 Mar 2013 21:28:22 -0500
+> From: Eric Sandeen <sandeen@sandeen.net>
+> To: Theodore Ts'o <tytso@mit.edu>
+> Cc: Dave Chinner <david@fromorbit.com>, Eric Whitney <enwlinux@gmail.com>,
+>     Eric Sandeen <sandeen@redhat.com>, Ben Myers <bpm@sgi.com>,
+>     linux-ext4@vger.kernel.org, xfs-oss <xfs@oss.sgi.com>
+> Subject: Re: possible dev branch regression - xfstest 285/1k
+> 
+> On 3/18/13 9:00 PM, Theodore Ts'o wrote:
+> > On Tue, Mar 19, 2013 at 12:47:18PM +1100, Dave Chinner wrote:
+> >> Sorry about this - I've mixed up my threads about ext4 having
+> >> problems with zero-out being re-enabled. I thought this was a
+> >> cross-post of the 218 issue....
+> >>
+> >> However, the same reasoning can be applied to 285 - the file sizes,
+> >> the size of the holes and the size of the data is all completely
+> >> arbitrary. If we make the holes in the files larger, then the
+> >> zero-out problem simply goes away.
+> > 
+> > Right.  That was my observation.  We can either make the holes larger,
+> > by changing:
+> > 
+> >    pwrite(fd, buf, bufsize, bufsize*10);
+> > 
+> > to
+> > 
+> >    pwrite(fd, buf, bufsize, bufsize*42);
+> >    
+> > ... and then changing the expected values returned by
+> > SEEK_HOLE/SEEK_DATA.  (By the way; this only matters when we are
+> > testing 1k blocks; if we are using a 4k block size in ext4, the test
+> > currently passes.)
+> > 
+> > Or we could set some ext4-specific tuning parameters into the #218
+> 
+> 285! :)
+> 
+> > shell script, if the file system in question was ext4.
+> > 
+> > I had assumed that folks would prefer making the holes larger, but
+> > Eric seemed to prefer the second choice as a better one.
+> 
+> Ok, after the discussion I'm convinced too.  Stretching out the allocation
+> to avoid fill-in probably makes sense.  But maybe not "42" -
+> how about something much larger, so that any "reasonable" filesystem
+> wouldn't even consider zeroing the range in between?
 
-One matter for concern is that submit_bio() is called twice per one buffer_head.
-Because submit_page_section() calls dio_bio_submit() before adding
-the old page (sdio->cur_page) and the current page to struct dio_submit.
-Does it work as required?
+I am actually in favour of 42. 42 is "The answer" here :)
 
-Regards,
-Kazuya Mio
+-Lukas
 
+> 
+> -Eric
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
