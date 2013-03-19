@@ -1,184 +1,96 @@
-From: Dave Chinner <david@fromorbit.com>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: possible dev branch regression - xfstest 285/1k
-Date: Tue, 19 Mar 2013 10:12:33 +1100
-Message-ID: <20130318231233.GQ6369@dastard>
-References: <20130315222818.GA16100@wallace>
- <20130316150923.GA18589@gmail.com>
- <20130317030648.GA14225@thunk.org>
- <51473C8B.5070509@redhat.com>
- <20130318170927.GA5639@thunk.org>
- <51475043.4010505@redhat.com>
- <20130318204133.GE22182@sgi.com>
+Date: Mon, 18 Mar 2013 21:40:14 -0400
+Message-ID: <20130319014014.GA4660@thunk.org>
+References: <20130315222818.GA16100@wallace> <20130316150923.GA18589@gmail.com>
+	<20130317030648.GA14225@thunk.org> <51473C8B.5070509@redhat.com>
+	<20130318170927.GA5639@thunk.org> <51475043.4010505@redhat.com>
+	<20130318204133.GE22182@sgi.com> <20130318231233.GQ6369@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>, Theodore Ts'o <tytso@mit.edu>,
-	xfs-oss <xfs@oss.sgi.com>, linux-ext4@vger.kernel.org,
-	Eric Whitney <enwlinux@gmail.com>
-To: Ben Myers <bpm@sgi.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:49438 "EHLO
-	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751735Ab3CRXMh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 Mar 2013 19:12:37 -0400
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Eric Whitney <enwlinux@gmail.com>, Eric Sandeen <sandeen@redhat.com>,
+	Ben Myers <bpm@sgi.com>, linux-ext4@vger.kernel.org,
+	xfs-oss <xfs@oss.sgi.com>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <20130318204133.GE22182@sgi.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20130318231233.GQ6369@dastard>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Mar 18, 2013 at 03:41:33PM -0500, Ben Myers wrote:
-> Hi Eric,
-> 
-> On Mon, Mar 18, 2013 at 12:34:59PM -0500, Eric Sandeen wrote:
-> > On 3/18/13 12:09 PM, Theodore Ts'o wrote:
-> > > On Mon, Mar 18, 2013 at 11:10:51AM -0500, Eric Sandeen wrote:
-> > 
-> > <previous discussion thread about test 285 SEEK_HOLE test
-> > breaking on ext4 due to change in opportunistic hole-filling
-> > behavior and how to make it work again on ext4, and mention
-> > of sysctl which makes it pass>
-> > 
-> > >> The test could do this too, right?
-> > >>
-> > >> _need_to_be_root
-> > >>
-> > >> and:
-> > >>
-> > >> if [ "$FSTYP" == "ext4" ]; then
-> > >> 	ORIG_ZEROOUT_KB=`cat /sys/fs/ext4/$TEST_DEV/extent_max_zeroout_kb`
-> > >> 	echo 0 > /sys/fs/ext4/$TEST_DEV/extent_max_zeroout_kb
-> > >> fi
-> > >>
-> > >> and put it back to default in _cleanup:
-> > >>
-> > >> 	echo $ORIG_ZEROOUT_KB > /sys/fs/ext4/$TEST_DEV/extent_max_zeroout_kb
-> > >>
-> > >> That way we'd be testing seek hole correctness w/o being subject to
-> > >> the vagaries in allocator behavior.
-> > > 
-> > > Yeah, the question is whether it would be more acceptable to put
-> > > ext4-specific hacks like this into the test, or to modify
-> > > src/seek_sanity_test.c so that it writes the test block-size block
-> > > using pwrite at offset blocksize*42 instead of offset blocksize*10.
-> > 
-> > That seems like more of an obtuse hack, since it depends on current
-> > default behavior, right?
-> > 
-> > Explicitly setting the zeroout to 0, with a comment as to why, should
-> > make it clear to the reader of the test I think.
-> > 
-> > I'll have to look, xfs speculative preallocation fills in holes in
-> > some cases as well, I'm not certain how it behaves on this test.
-> 
-> My impression was that we are not zeroing holes, but I'd also have to look to
-> be sure.  ;)
+On Tue, Mar 19, 2013 at 10:12:33AM +1100, Dave Chinner wrote:
+> I know that Ted has already asked "what is an extent", but that's
+> also missing the point. An extent is defined, just like for on-disk
+> extent records, as a region of a file that is both logically and
+> physically contiguous. From that, a fragmented file is a file that
+> is logically contiguous but physically disjointed, and a sparse file
+> is one that is logically disjointed. i.e. it is the relationship
+> between extents that defines "sparse" and "fragmented", not the
+> definition of an extent itself.
 
-Depends if the holes fall at EOF and there's a specualtive delalloc
-over them. There isn't for this test, and the recent changes will
-prevent it altogether, so there isn't a worry for XFS here.
+Dave --- I think we're talking about two different tests.  This
+particular test is xfstest #285.
 
-> > But we could put in a specific tuning for xfs as well if needed.
-> > 
-> > If it becomes clear that every fs requires tuning to not opportunistically
-> > fill in holes, then maybe we should make it non-generic, and only support
-> > filesystems we've tested or tuned to work with the testcase.
-> > 
-> > > I had assumed putting hacks which tweaked sysfs tunables into the xfstest
-> > > script itself would be frowned upon, but if that's considered OK, that
-> > > would be great.
-> > 
-> > I don't see any real problem with it, myself.
-> > 
-> > cc: xfs list to see if there are any objections...
-> 
-> Seems like the options being discussed so far are:
-> 
-> 1) make the test fs specific
+The test in question is subtest #8, which preallocates a 4MB file, and
+then writes a block filled with 'a' which is sized to the file system
+block size, at offset 10*fs_block_size.  It then checks to make sure
+SEEK_HOLE and SEEK_DATA is what it expects.
 
-It was, originally.
+This is why opportunistic hole filling (to avoid unnecessary expansion
+of the extent tree) is making a difference here.
 
-> 2) filesystem specific hacks to disable opportunistic zeroing of holes
+The problem with filesystem specific output is that the output is
+different depending on the blocksize.  The test is also determining
+what's considered good or not as hard-coded logic in
+src/seek_sanity_test.c.  So there's no fs-specific output at all in
+xfstest #285.
 
-Not scalable.
+> Looking at the test itself, then.  The backwards synchronous write
+> trick that is used by 218?  That's an underhanded trick to make XFS
+> create a fragmented file. We are not testing that the defragmenter
+> knows that it's a backwards written file - we are testing that it
+> sees the file as logically contiguous and physically disjointed, and
+> then defragments it successfully.
 
-> 3) modify the test output to work with current ext4 default behavior
+What I was saying --- in the other mail thread --- is that it's open
+to question whether a file which is being written via a random-write
+pattern, resulting in a physically contiguous, but not contiguous from
+a logical block number point of view, is worth defragging or not.  It
+all depends on whether the file is likely to be read sequentially in
+the future, or whether it will continue to be accessed via a random
+access pattern.  In the latter case, it might not be worth defragging
+the file.
 
-And then we need hacks for each filesystem as the change behaviour.
+In fact, I tend to agree with the argument we might as well attempt to
+make the file logically contiguous so that it's efficient to read the
+file sequentially.  But the people at Fujitsu who wrote the algorithms
+in e2defrag had gone out of their way to detect this case and avoid
+defragging the file so long as the physical blocks in use were
+contiguous --- and I believe that's also a valid design decision.
 
-> It might be hard to find a tuning to produce identical output for xfs and ext4
-> (option 3), and option 1 and 2 are a also bit clunky.
-> 
-> How about option 4) fs-specific test output?
+Depending on how we resolve this particular design question, we can
+then decide whether we need to make test #218 fs specific or not.
+There was no thought design choics made by ext4 should drive changes
+in how the defragger works in xfs or btrfs, or vice versa.
 
-No, that's even worse. If we have filesystem specific output, then
-write a set of filesystem specific tests that use a common piece of
-code to run the test. the only difference between the tests will
-then be the _supported_fs line. No need to hack in special output
-file handling, etc.
+So I was looking for discussion by the ext4 developers; I was not
+requesting any changes from the XFS developers with respect to test
+#218.  (Not yet; and perhaps not ever.)
 
-> We wouldn't have multiple copies of the same test laying around, and ext4 could
-> still run with default settings.
+Regards,
 
-And when the default settings change, or some other bug fix comes
-along?
+						- Ted
 
-So, let's step back a moment and ask ourselves what the test is
-actaully trying to test. zero-out is not what it is trying to test,
-nor is it trying to test specific file layouts. This is a basic
-*defragmenter* sanity test. SO, we're testing 2 things:
-
-	1. the defragmenter can recognise a fragmented file and fix
-	it; and
-	2. the defragmenter can recognise a sparse file and not
-	modify it.
-
-I know that Ted has already asked "what is an extent", but that's
-also missing the point. An extent is defined, just like for on-disk
-extent records, as a region of a file that is both logically and
-physically contiguous. From that, a fragmented file is a file that
-is logically contiguous but physically disjointed, and a sparse file
-is one that is logically disjointed. i.e. it is the relationship
-between extents that defines "sparse" and "fragmented", not the
-definition of an extent itself.
-
-Looking at the test itself, then.  The backwards synchronous write
-trick that is used by 218?  That's an underhanded trick to make XFS
-create a fragmented file. We are not testing that the defragmenter
-knows that it's a backwards written file - we are testing that it
-sees the file as logically contiguous and physically disjointed, and
-then defragments it successfully.
-
-Similarly, the remaining two tests are checking that a sparse file
-with a couple of different layouts are detected and left alone. The
-first sparse file will be both logically and physically disjointed,
-the second one is logically disjointed but often ends up physically
-contiguous.
-
-That's what we are actually testing here. We are not testing that
-exact, specific file layouts are handled correctly, we are checking
-that the defragmenter recognises the different extent relationships
-to determine which it shoul defragment and those it should leave
-alone.
-
-IOWs, we can change this test to create files in any way we want, as
-long as the files fit the same 3 categories:
-
-	1. logically contiguous, physically disjointed
-		- successful defragmentation
-	2. logically disjointed, physically disjointed
-		- unchanged
-	3. logically disjointed, physically contiguous
-		- unchanged.
-
-If that means we need to create the files differently to ensure we
-end up with the layouts we need for different filesystems, then so
-be it. If we can't do that generically for all the supported
-filesystems, then lets split the test apart again into filesystem
-specific tests and make 218 an XFS only test again.
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
