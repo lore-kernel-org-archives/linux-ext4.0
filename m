@@ -1,65 +1,263 @@
-From: Phillip Susi <psusi@ubuntu.com>
-Subject: Re: [PATCH 2/2] filefrag: count a contiguous extent when both logical
- and physical blocks are contiguous
-Date: Tue, 19 Mar 2013 14:44:46 -0400
-Message-ID: <5148B21E.1050708@ubuntu.com>
-References: <1362327978-30423-1-git-send-email-wenqing.lz@taobao.com> <1362327978-30423-3-git-send-email-wenqing.lz@taobao.com> <20130313201611.GH5604@thunk.org>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH] ext4: Transfer initialized block to right neighbor if
+ possible
+Date: Tue, 19 Mar 2013 11:48:36 -0700
+Message-ID: <20130319184836.GC5306@blackbox.djwong.org>
+References: <1363698788-15665-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Zheng Liu <gnehzuil.liu@gmail.com>, linux-ext4@vger.kernel.org,
-	Zheng Liu <wenqing.lz@taobao.com>
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:42921 "EHLO
-	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753080Ab3CSSos (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Mar 2013 14:44:48 -0400
-In-Reply-To: <20130313201611.GH5604@thunk.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:43977 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753640Ab3CSSso (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Mar 2013 14:48:44 -0400
+Content-Disposition: inline
+In-Reply-To: <1363698788-15665-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
------BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA1
+On Tue, Mar 19, 2013 at 02:13:08PM +0100, Lukas Czerner wrote:
+> Currently when converting extent to initialized we attempt to transfer
+> initialized block to the left neighbour if possible when certain criteria
+> are met. However we do not attempt to do the same for the right
+> neighbor.
+> 
+> This commit adds the possibility to transfer initialized block to the
+> left neighbour if:
 
-On 3/13/2013 4:16 PM, Theodore Ts'o wrote:
-> If we want to optimize the time to copy said sparse file, and if
-> we assume that by the time we are defragging said sparse file, we
-> are done doing writes which will allocate new blocks, then having
-> defrag optimize the file so that when the extents are sorted by
-> logical block number, the physical block numbers are contiguous,
-> then that's probably the best "figure of merit" to use.  And I'll
-> note that right now that's what filefrag is reporting, and what I
-> think e4defrag should be changed to use when deciding whether the
-> donor file is "better" than the original file.
+  ^^^^ right neighbour?
 
-That's certainly exactly what I expect to get after defragging a file.
-
-> But that's not necessarily the only way to measure extents, and
-> the current e4defrag code is clearly of the opinion that if the
-> file is using a contiguous region of blocks, even if the blocks
-> were allocated "backwards", that there's no point defragging the
-> file, since after all, if the file was written in such a random
-> order with respect to logical block numbers, it will probably be
-> read in a random order, so keeping the file blocks used contiguous
-> to minimize free block fragmentation is the best thing to shoot
-> for.
-
-That seems wrong to me.  It shouldn't matter what condition the file
-starts in; the end should always be a file with blocks allocated in
-the proper order.  If there's no point in defragging a randomly
-accessed file, then the user shouldn't bother running defrag on it,
-and conversely, if they do, it should perform the task they requested.
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.17 (MingW32)
-Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
-
-iQEcBAEBAgAGBQJRSLIeAAoJEJrBOlT6nu7526UH/RTFmZWDXgrzGUwbbBJ1IN6t
-aylOR1Wg3SWKEp5Cs717iHCNPMosF31bHkHG+MbpoSvJpAfRPZ7svTDTbzfBZ17F
-dLKLOAYx3KRBeX8TSYIC7e5E/qTg1C6wmiS1Rlab5boeRkmUL/kP7WPpCgKHpydZ
-tgUtzO7npCWVxP3eG9NnOR9y9U0PHuS3B9Q5S2vhbeqpxQnEi4cphoSw1bOJVcCj
-RkddmEUuj+usDl8kHwxlyoiRhcwMUY59UuTqEWqgDkntQL5DTdX//AfrUdW3PBmB
-DKIC4dCaoivXoKarKRuLaHM04rldOvZdxNFFNnoKlnQMhh4i82RnEYSio26778c=
-=0Iea
------END PGP SIGNATURE-----
+--D
+> 1. We're not converting the whole extent
+> 2. Both extents are stored in the same extent tree node
+> 3. Right neighbor is initialized
+> 4. Right neighbor is logically abutting the current one
+> 5. Right neighbor is physically abutting the current one
+> 6. Right neighbor would not overflow the length limit
+> 
+> This is basically the same logic as with transferring to the left. This
+> will gain us some performance benefits since it is faster than inserting
+> extent and then merging it.
+> 
+> It would also prevent some situation in delalloc patch when we might run
+> out of metadata reservation. This is due to the fact that we would
+> attempt to split the extent first (possibly allocating new metadata
+> block) even though we did not counted for that because it can (and will)
+> be merged again. This commit fix that scenario, because we no longer
+> need to split the extent in such case.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> ---
+>  fs/ext4/extents.c |  135 +++++++++++++++++++++++++++++++++++------------------
+>  1 files changed, 89 insertions(+), 46 deletions(-)
+> 
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index d6600f9..c45bc9c 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -3176,29 +3176,28 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  	struct ext4_extent_header *eh;
+>  	struct ext4_map_blocks split_map;
+>  	struct ext4_extent zero_ex;
+> -	struct ext4_extent *ex;
+> +	struct ext4_extent *ex, *abut_ex;
+>  	ext4_lblk_t ee_block, eof_block;
+> -	unsigned int ee_len, depth;
+> -	int allocated, max_zeroout = 0;
+> +	unsigned int ee_len, depth, map_len = map->m_len;
+> +	int allocated = 0, max_zeroout = 0;
+>  	int err = 0;
+>  	int split_flag = 0;
+>  
+>  	ext_debug("ext4_ext_convert_to_initialized: inode %lu, logical"
+>  		"block %llu, max_blocks %u\n", inode->i_ino,
+> -		(unsigned long long)map->m_lblk, map->m_len);
+> +		(unsigned long long)map->m_lblk, map_len);
+>  
+>  	sbi = EXT4_SB(inode->i_sb);
+>  	eof_block = (inode->i_size + inode->i_sb->s_blocksize - 1) >>
+>  		inode->i_sb->s_blocksize_bits;
+> -	if (eof_block < map->m_lblk + map->m_len)
+> -		eof_block = map->m_lblk + map->m_len;
+> +	if (eof_block < map->m_lblk + map_len)
+> +		eof_block = map->m_lblk + map_len;
+>  
+>  	depth = ext_depth(inode);
+>  	eh = path[depth].p_hdr;
+>  	ex = path[depth].p_ext;
+>  	ee_block = le32_to_cpu(ex->ee_block);
+>  	ee_len = ext4_ext_get_actual_len(ex);
+> -	allocated = ee_len - (map->m_lblk - ee_block);
+>  
+>  	trace_ext4_ext_convert_to_initialized_enter(inode, map, ex);
+>  
+> @@ -3208,77 +3207,121 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  
+>  	/*
+>  	 * Attempt to transfer newly initialized blocks from the currently
+> -	 * uninitialized extent to its left neighbor. This is much cheaper
+> +	 * uninitialized extent to its neighbor. This is much cheaper
+>  	 * than an insertion followed by a merge as those involve costly
+> -	 * memmove() calls. This is the common case in steady state for
+> -	 * workloads doing fallocate(FALLOC_FL_KEEP_SIZE) followed by append
+> -	 * writes.
+> +	 * memmove() calls. Transferring to the left is the common case in
+> +	 * steady state for workloads doing fallocate(FALLOC_FL_KEEP_SIZE)
+> +	 * followed by append writes.
+>  	 *
+>  	 * Limitations of the current logic:
+> -	 *  - L1: we only deal with writes at the start of the extent.
+> -	 *    The approach could be extended to writes at the end
+> -	 *    of the extent but this scenario was deemed less common.
+> -	 *  - L2: we do not deal with writes covering the whole extent.
+> +	 *  - L1: we do not deal with writes covering the whole extent.
+>  	 *    This would require removing the extent if the transfer
+>  	 *    is possible.
+> -	 *  - L3: we only attempt to merge with an extent stored in the
+> +	 *  - L2: we only attempt to merge with an extent stored in the
+>  	 *    same extent tree node.
+>  	 */
+> -	if ((map->m_lblk == ee_block) &&	/*L1*/
+> -		(map->m_len < ee_len) &&	/*L2*/
+> -		(ex > EXT_FIRST_EXTENT(eh))) {	/*L3*/
+> -		struct ext4_extent *prev_ex;
+> +	if ((map->m_lblk == ee_block) &&
+> +		/* See if we can merge left */
+> +		(map_len < ee_len) &&		/*L1*/
+> +		(ex > EXT_FIRST_EXTENT(eh))) {	/*L2*/
+>  		ext4_lblk_t prev_lblk;
+>  		ext4_fsblk_t prev_pblk, ee_pblk;
+> -		unsigned int prev_len, write_len;
+> +		unsigned int prev_len;
+>  
+> -		prev_ex = ex - 1;
+> -		prev_lblk = le32_to_cpu(prev_ex->ee_block);
+> -		prev_len = ext4_ext_get_actual_len(prev_ex);
+> -		prev_pblk = ext4_ext_pblock(prev_ex);
+> +		abut_ex = ex - 1;
+> +		prev_lblk = le32_to_cpu(abut_ex->ee_block);
+> +		prev_len = ext4_ext_get_actual_len(abut_ex);
+> +		prev_pblk = ext4_ext_pblock(abut_ex);
+>  		ee_pblk = ext4_ext_pblock(ex);
+> -		write_len = map->m_len;
+>  
+>  		/*
+> -		 * A transfer of blocks from 'ex' to 'prev_ex' is allowed
+> +		 * A transfer of blocks from 'ex' to 'abut_ex' is allowed
+>  		 * upon those conditions:
+> -		 * - C1: prev_ex is initialized,
+> -		 * - C2: prev_ex is logically abutting ex,
+> -		 * - C3: prev_ex is physically abutting ex,
+> -		 * - C4: prev_ex can receive the additional blocks without
+> +		 * - C1: abut_ex is initialized,
+> +		 * - C2: abut_ex is logically abutting ex,
+> +		 * - C3: abut_ex is physically abutting ex,
+> +		 * - C4: abut_ex can receive the additional blocks without
+>  		 *   overflowing the (initialized) length limit.
+>  		 */
+> -		if ((!ext4_ext_is_uninitialized(prev_ex)) &&		/*C1*/
+> +		if ((!ext4_ext_is_uninitialized(abut_ex)) &&		/*C1*/
+>  			((prev_lblk + prev_len) == ee_block) &&		/*C2*/
+>  			((prev_pblk + prev_len) == ee_pblk) &&		/*C3*/
+> -			(prev_len < (EXT_INIT_MAX_LEN - write_len))) {	/*C4*/
+> +			(prev_len < (EXT_INIT_MAX_LEN - map_len))) {	/*C4*/
+>  			err = ext4_ext_get_access(handle, inode, path + depth);
+>  			if (err)
+>  				goto out;
+>  
+>  			trace_ext4_ext_convert_to_initialized_fastpath(inode,
+> -				map, ex, prev_ex);
+> +				map, ex, abut_ex);
+>  
+> -			/* Shift the start of ex by 'write_len' blocks */
+> -			ex->ee_block = cpu_to_le32(ee_block + write_len);
+> -			ext4_ext_store_pblock(ex, ee_pblk + write_len);
+> -			ex->ee_len = cpu_to_le16(ee_len - write_len);
+> +			/* Shift the start of ex by 'map_len' blocks */
+> +			ex->ee_block = cpu_to_le32(ee_block + map_len);
+> +			ext4_ext_store_pblock(ex, ee_pblk + map_len);
+> +			ex->ee_len = cpu_to_le16(ee_len - map_len);
+>  			ext4_ext_mark_uninitialized(ex); /* Restore the flag */
+>  
+> -			/* Extend prev_ex by 'write_len' blocks */
+> -			prev_ex->ee_len = cpu_to_le16(prev_len + write_len);
+> +			/* Extend abut_ex by 'map_len' blocks */
+> +			abut_ex->ee_len = cpu_to_le16(prev_len + map_len);
+> +
+> +			/* Result: number of initialized blocks past m_lblk */
+> +			allocated = map_len;
+> +		}
+> +	} else if (((map->m_lblk + map_len) == (ee_block + ee_len)) &&
+> +		   (map_len < ee_len) &&	/*L1*/
+> +		   ex < EXT_LAST_EXTENT(eh)) {	/*L2*/
+> +		/* See if we can merge right */
+> +		ext4_lblk_t next_lblk;
+> +		ext4_fsblk_t next_pblk, ee_pblk;
+> +		unsigned int next_len;
+> +
+> +		abut_ex = ex + 1;
+> +		next_lblk = le32_to_cpu(abut_ex->ee_block);
+> +		next_len = ext4_ext_get_actual_len(abut_ex);
+> +		next_pblk = ext4_ext_pblock(abut_ex);
+> +		ee_pblk = ext4_ext_pblock(ex);
+> +
+> +		/*
+> +		 * A transfer of blocks from 'ex' to 'abut_ex' is allowed
+> +		 * upon those conditions:
+> +		 * - C1: abut_ex is initialized,
+> +		 * - C2: abut_ex is logically abutting ex,
+> +		 * - C3: abut_ex is physically abutting ex,
+> +		 * - C4: abut_ex can receive the additional blocks without
+> +		 *   overflowing the (initialized) length limit.
+> +		 */
+> +		if ((!ext4_ext_is_uninitialized(abut_ex)) &&		/*C1*/
+> +		    ((map->m_lblk + map_len) == next_lblk) &&	/*C2*/
+> +		    ((ee_pblk + ee_len) == next_pblk) &&		/*C3*/
+> +		    (next_len < (EXT_INIT_MAX_LEN - map_len))) {	/*C4*/
+> +			err = ext4_ext_get_access(handle, inode, path + depth);
+> +			if (err)
+> +				goto out;
+> +
+> +			trace_ext4_ext_convert_to_initialized_fastpath(inode,
+> +				map, ex, abut_ex);
+>  
+> -			/* Mark the block containing both extents as dirty */
+> -			ext4_ext_dirty(handle, inode, path + depth);
+> +			/* Shift the start of abut_ex by 'map_len' blocks */
+> +			abut_ex->ee_block = cpu_to_le32(next_lblk - map_len);
+> +			ext4_ext_store_pblock(abut_ex, next_pblk - map_len);
+> +			ex->ee_len = cpu_to_le16(ee_len - map_len);
+> +			ext4_ext_mark_uninitialized(ex); /* Restore the flag */
+>  
+> -			/* Update path to point to the right extent */
+> -			path[depth].p_ext = prev_ex;
+> +			/* Extend abut_ex by 'map_len' blocks */
+> +			abut_ex->ee_len = cpu_to_le16(next_len + map_len);
+>  
+>  			/* Result: number of initialized blocks past m_lblk */
+> -			allocated = write_len;
+> -			goto out;
+> +			allocated = map_len;
+>  		}
+>  	}
+> +	if (allocated) {
+> +		/* Mark the block containing both extents as dirty */
+> +		ext4_ext_dirty(handle, inode, path + depth);
+> +
+> +		/* Update path to point to the right extent */
+> +		path[depth].p_ext = abut_ex;
+> +		goto out;
+> +	} else
+> +		allocated = ee_len - (map->m_lblk - ee_block);
+>  
+>  	WARN_ON(map->m_lblk < ee_block);
+>  	/*
+> -- 
+> 1.7.7.6
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
