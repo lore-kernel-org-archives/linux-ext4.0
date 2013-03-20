@@ -1,22 +1,111 @@
-From: Al Viro <viro@ZenIV.linux.org.uk>
-Subject: Re: [PATCH 1/2] ext4: grab write access inside ext4_file_dio_write
-Date: Wed, 20 Mar 2013 12:54:40 +0000
-Message-ID: <20130320125440.GN21522@ZenIV.linux.org.uk>
-References: <1363783698-28092-1-git-send-email-dmonakhov@openvz.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: fix ext4_evict_inode() racing against workqueue
+ processing code
+Date: Wed, 20 Mar 2013 14:22:23 +0100
+Message-ID: <20130320132223.GD13294@quack.suse.cz>
+References: <1363742959-12815-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	jack@suse.cz
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:35113 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753730Ab3CTNWZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 20 Mar 2013 09:22:25 -0400
 Content-Disposition: inline
-In-Reply-To: <1363783698-28092-1-git-send-email-dmonakhov@openvz.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1363742959-12815-1-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Mar 20, 2013 at 04:48:17PM +0400, Dmitry Monakhov wrote:
-> We are responsible hold write count before any fs-speciffic modifications
-> This patch should fix following warning:
+On Tue 19-03-13 21:29:19, Ted Tso wrote:
+> Commit 84c17543ab56 (ext4: move work from io_end to inode) triggered a
+> regression when running xfstest #270 when the file system is mounted
+> with dioread_nolock.
+> 
+> The problem is that after ext4_evict_inode() calls ext4_ioend_wait(),
+> this guarantees that last io_end structure has been freed, but it does
+> not guarantee that the workqueue structure, which was moved into the
+> inode by commit 84c17543ab56, is actually finished.  Once
+> ext4_flush_completed_IO() calls ext4_free_io_end() on CPU #1, this
+> will allow ext4_ioend_wait() to return on CPU #2, at which point the
+> evict_inode() codepath can race against the workqueue code on CPU #1
+> accessing EXT4_I(inode)->i_unwritten_work to find the next item of
+> work to do.
+> 
+> Fix this by calling flush_work() if the work structure is still
+> pending in ext$_ioend_wait().  Also, move the call to
+> ext4_ioend_wait() until after truncate_inode_pages() and
+> filemap_write_and_wait() are called, to make sure all dirty pages have
+> been written back and flushed from the page cache first.
+> 
+> BUG: unable to handle kernel NULL pointer dereference at   (null)
+> IP: [<c01dda6a>] cwq_activate_delayed_work+0x3b/0x7e
+> *pdpt = 0000000030bc3001 *pde = 0000000000000000
+> Oops: 0000 [#1] SMP DEBUG_PAGEALLOC
+> Modules linked in:
+> Pid: 6, comm: kworker/u:0 Not tainted 3.8.0-rc3-00013-g84c1754-dirty #91 Bochs Bochs
+> EIP: 0060:[<c01dda6a>] EFLAGS: 00010046 CPU: 0
+> EIP is at cwq_activate_delayed_work+0x3b/0x7e
+> EAX: 00000000 EBX: 00000000 ECX: f505fe54 EDX: 00000000
+> ESI: ed5b697c EDI: 00000006 EBP: f64b7e8c ESP: f64b7e84
+>  DS: 007b ES: 007b FS: 00d8 GS: 0000 SS: 0068
+> CR0: 8005003b CR2: 00000000 CR3: 30bc2000 CR4: 000006f0
+> DR0: 00000000 DR1: 00000000 DR2: 00000000 DR3: 00000000
+> DR6: ffff0ff0 DR7: 00000400
+> Process kworker/u:0 (pid: 6, ti=f64b6000 task=f64b4160 task.ti=f64b6000)
+> Stack:
+>  f505fe00 00000006 f64b7e9c c01de3d7 f6435540 00000003 f64b7efc c01def1d
+>  f6435540 00000002 00000000 0000008a c16d0808 c040a10b c16d07d8 c16d08b0
+>  f505fe00 c16d0780 00000000 00000000 ee153df4 c1ce4a30 c17d0e30 00000000
+> Call Trace:
+>  [<c01de3d7>] cwq_dec_nr_in_flight+0x71/0xfb
+>  [<c01def1d>] process_one_work+0x5d8/0x637
+>  [<c040a10b>] ? ext4_end_bio+0x300/0x300
+>  [<c01e3105>] worker_thread+0x249/0x3ef
+>  [<c01ea317>] kthread+0xd8/0xeb
+>  [<c01e2ebc>] ? manage_workers+0x4bb/0x4bb
+>  [<c023a370>] ? trace_hardirqs_on+0x27/0x37
+>  [<c0f1b4b7>] ret_from_kernel_thread+0x1b/0x28
+>  [<c01ea23f>] ? __init_kthread_worker+0x71/0x71
+> Code: 01 83 15 ac ff 6c c1 00 31 db 89 c6 8b 00 a8 04 74 12 89 c3 30 db 83 05 b0 ff 6c c1 01 83 15 b4 ff 6c c1 00 89 f0 e8 42 ff ff ff <8b> 13 89 f0 83 05 b8 ff 6c c1
+>  6c c1 00 31 c9 83
+> EIP: [<c01dda6a>] cwq_activate_delayed_work+0x3b/0x7e SS:ESP 0068:f64b7e84
+> CR2: 0000000000000000
+> ---[ end trace a1923229da53d8a4 ]---
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: Jan Kara <jack@suse.cz>
+  Good catch. Thanks for fixing this. Just one question below:
 
-NAK.  The right way to do it is to lift the damn thing out of ->aio_write()
-completely.  See the last 3 commits in vfs.git#experimental...
+> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+> index 809b310..8a004a4 100644
+> --- a/fs/ext4/page-io.c
+> +++ b/fs/ext4/page-io.c
+> @@ -50,11 +50,21 @@ void ext4_exit_pageio(void)
+>  	kmem_cache_destroy(io_page_cachep);
+>  }
+>  
+> +/*
+> + * Called by ext4_evict_inode() to make sure there are no pending I/O
+> + * completion work left to do.
+> + */
+>  void ext4_ioend_wait(struct inode *inode)
+>  {
+>  	wait_queue_head_t *wq = ext4_ioend_wq(inode);
+>  
+>  	wait_event(*wq, (atomic_read(&EXT4_I(inode)->i_ioend_count) == 0));
+> +	/*
+> +	 * We need to make sure the work structure is finished before
+> +	 * we let the inode get destroyed by ext4_evict_inode()
+> +	 */
+> +	if (work_pending(&EXT4_I(inode)->i_unwritten_work))
+> +		flush_work(&EXT4_I(inode)->i_unwritten_work);
+>  }
+  Won't it be more logical to use cancel_work_sync() here?
+
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
