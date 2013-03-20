@@ -1,39 +1,81 @@
-From: Eric Sandeen <sandeen@sandeen.net>
-Subject: Re: [PATCH v2] xfstests: add a new test case for ext4 indirect-based
- file
-Date: Wed, 20 Mar 2013 00:37:42 -0500
-Message-ID: <51494B26.6020204@sandeen.net>
-References: <1363683183-7392-1-git-send-email-wenqing.lz@taobao.com> <51489267.7080202@sandeen.net> <20130320054555.GB4017@gmail.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: FYI: one more way to run xfstest
+Date: Wed, 20 Mar 2013 14:06:05 +0400
+Message-ID: <87txo6xu5u.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
-	Zheng Liu <wenqing.lz@taobao.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sandeen.net ([63.231.237.45]:37585 "EHLO sandeen.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752020Ab3CTFhp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 20 Mar 2013 01:37:45 -0400
-In-Reply-To: <20130320054555.GB4017@gmail.com>
+Received: from mail-bk0-f48.google.com ([209.85.214.48]:58823 "EHLO
+	mail-bk0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750991Ab3CTKGJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Mar 2013 06:06:09 -0400
+Received: by mail-bk0-f48.google.com with SMTP id jf20so644640bkc.7
+        for <linux-ext4@vger.kernel.org>; Wed, 20 Mar 2013 03:06:07 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 3/20/13 12:45 AM, Zheng Liu wrote:
->>> +f6aeca13ec49e5b266cd1c913cd726e3
->>> > > +	12. unwritten -> data -> unwritten
->> > 
->> > It's a little odd that the output contains "unwritten" when this test
->> > is explicitly for testing *without* unwritten extents.  Should this be
->> > cleaned up a little in common.punch, maybe?
-> I will try to define a new function called _test_indirect_punch() to
-> test punching hole without unwritten extent.
 
-It's just the helper which prints "unwritten" regardless of what
-is passed as "$alloc_cmd" to _test_generic_punch, right... so there's
-nothing wrong with the test, really - it's just odd output.
+Today I've run xfstest in parallel with fsfreze/fsthaw like follows
+# I use dmsetup {suspend,resume} which does fsfreeze/fsthaw and other
+# dm's speciffic stuff (which is not related in that case)
+(while true ;do dmsetup suspend $TEST_DEV ;dmsetup resume $TEST_DEV;done)&
+(while true ;do dmsetup suspend $SCRATCH_DEV ;dmsetup resume $SCRATCH_DEV;done)&
+# And later as usual
+./check -g auto
+I use origin/dev (current dev HEAD): c902ed2d06a
 
-I'm not sure it's worth a big copy & paste just to change
-the output text, but if you can think of something simple to clean
-it up, it might be worth it.
+Quickly it spots a lot of traces from incorrect freeze-api state:
+------------[ cut here ]------------
+WARNING: at fs/ext4/ext4_jbd2.c:50 __ext4_journal_start_sb+0x132/0x240()
+Hardware name:         
+Modules linked in: cpufreq_ondemand acpi_cpufreq freq_table mperf coretemp kvm_intel kvm crc32c_intel ghash_clmulni_intel microcode sg xhci_hcd button sd_mod crc_t10dif aesni_intel ablk_helper cryptd lrw aes_x86_64 xts gf128mul ahci libahci pata_acpi ata_generic dm_mirror dm_region_hash dm_log dm_mod
+Pid: 29760, comm: fsx Not tainted 3.8.0-rc3+ #98
+Call Trace:
+[<ffffffff8106fb0d>] warn_slowpath_common+0xad/0xf0
+[<ffffffff81344f97>] ? ext4_da_write_begin+0x277/0x4f0
+[<ffffffff8106fb6a>] warn_slowpath_null+0x1a/0x20
+[<ffffffff8138a122>] __ext4_journal_start_sb+0x132/0x240
+[<ffffffff81344f97>] ext4_da_write_begin+0x277/0x4f0
+[<ffffffff811a0668>] generic_perform_write+0x148/0x3c0
+[<ffffffff811a0944>] generic_file_buffered_write+0x64/0xd0
+[<ffffffff811a5c90>] __generic_file_aio_write+0x4d0/0x750
+[<ffffffff81335da3>] ext4_file_dio_write+0x253/0x4e0
+[<ffffffff81336101>] ext4_file_write+0xd1/0x190
+[<ffffffff81243072>] do_sync_write+0xb2/0x120
+[<ffffffff8124332c>] ? rw_verify_area+0x12c/0x270
+[<ffffffff812435f2>] vfs_write+0x182/0x1f0
+[<ffffffff818ff605>] ? sysret_check+0x22/0x5d
+[<ffffffff812445f4>] sys_write+0x94/0xd0
+[<ffffffff818ff5d9>] system_call_fastpath+0x16/0x1b
+---[ end trace be4bc73619d3477b ]---
+------------[ cut here ]------------
 
--Eric
+Also it find destroyed object in the list:
+------------[ cut here ]------------
+WARNING: at lib/list_debug.c:62 __list_del_entry+0x1c0/0x250()
+Hardware name:         
+list_del corruption. prev->next should be ffff8801fbb747c8, but was 6b6b6b6b6b6b6b6b
+Modules linked in: cpufreq_ondemand acpi_cpufreq freq_table mperf coretemp kvm_intel kvm crc32c_intel ghash_clmulni_intel microcode sg xhci_hcd button sd_mod crc_t10dif aesni_intel ablk_helper cryptd lrw aes_x86_64 xts gf128mul ahci libahci pata_acpi ata_generic dm_mirror dm_region_hash dm_log dm_mod
+Pid: 13297, comm: jbd2/dm-3-8 Tainted: G        W    3.8.0-rc3+ #98
+Call Trace:
+[<ffffffff8106fb0d>] warn_slowpath_common+0xad/0xf0
+[<ffffffff8106fc06>] warn_slowpath_fmt+0x46/0x50
+[<ffffffff81363689>] ? ext4_journal_commit_callback+0x99/0xc0
+[<ffffffff8148c980>] __list_del_entry+0x1c0/0x250
+[<ffffffff8136365f>] ext4_journal_commit_callback+0x6f/0xc0
+[<ffffffff813ca1d6>] jbd2_journal_commit_transaction+0x23a6/0x2570
+[<ffffffff8108aa42>] ? try_to_del_timer_sync+0x82/0xa0
+[<ffffffff8108b491>] ? del_timer_sync+0x91/0x1e0
+[<ffffffff813d3d6f>] kjournald2+0x19f/0x6a0
+[<ffffffff810ad630>] ? wake_up_bit+0x40/0x40
+[<ffffffff813d3bd0>] ? bit_spin_lock+0x80/0x80
+[<ffffffff810ac6be>] kthread+0x10e/0x120
+[<ffffffff810ac5b0>] ? __init_kthread_worker+0x70/0x70
+[<ffffffff818ff52c>] ret_from_fork+0x7c/0xb0
+[<ffffffff810ac5b0>] ? __init_kthread_worker+0x70/0x70
+---[ end trace be4bc73619d357f9 ]---
+
+Right now I work on this issues. But I just want to let you know about
+this.
