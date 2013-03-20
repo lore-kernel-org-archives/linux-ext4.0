@@ -1,92 +1,45 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix ext4_evict_inode() racing against workqueue
- processing code
-Date: Tue, 19 Mar 2013 21:38:41 -0400
-Message-ID: <20130320013841.GA12865@thunk.org>
-References: <1363742959-12815-1-git-send-email-tytso@mit.edu>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH] xfstests 299-305: remove fio config files after finished
+ test
+Date: Wed, 20 Mar 2013 13:37:44 +0800
+Message-ID: <20130320053744.GA4017@gmail.com>
+References: <1363685450-27452-1-git-send-email-wenqing.lz@taobao.com>
+ <51489024.20301@sandeen.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc: xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Eric Sandeen <sandeen@sandeen.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:54452 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754416Ab3CTBin (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 19 Mar 2013 21:38:43 -0400
+Received: from mail-da0-f46.google.com ([209.85.210.46]:46192 "EHLO
+	mail-da0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751436Ab3CTFWO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Mar 2013 01:22:14 -0400
+Received: by mail-da0-f46.google.com with SMTP id y19so751952dan.5
+        for <linux-ext4@vger.kernel.org>; Tue, 19 Mar 2013 22:22:14 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <1363742959-12815-1-git-send-email-tytso@mit.edu>
+In-Reply-To: <51489024.20301@sandeen.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I found one more regression failure while running tests on the dev
-branch.  It doesn't fail every single time you run xfstests #270; in
-my test setup, the test failure happens approximatrely one in three
-times.  Fortunately, "kvm-xfstests -c dioread_nolock
-270,270,270,270,270,270,270,270,270" made it easy to bisect the
-failure to commit 84c17543ab56 (ext4: move work from io_end to inode).
+On Tue, Mar 19, 2013 at 11:19:48AM -0500, Eric Sandeen wrote:
+> On 3/19/13 4:30 AM, Zheng Liu wrote:
+> > From: Zheng Liu <wenqing.lz@taobao.com>
+> > 
+> > After finished test, temporarily fio config file should be removed.
+> 
+> Looks fine, except that in test 300 you don't do rm -f; in every
+> other test -f is used.  Was that intentional?
 
-I've added this commit to fix it, and restarted running the regression
-tests.  Hopefully this will be the last fix up required before I send
-a pull request to Linus....
+Thanks for pointing it out.  It's a typo.  I will submit a newer patch
+to fix it.
 
-						- Ted
+> 
+> Also, while looking at this, in 305 cleanup uses "poweron_scratch_dev"
+> - is that defined anywhere?  I can't find it.
 
-On Tue, Mar 19, 2013 at 09:29:19PM -0400, Theodore Ts'o wrote:
-> Commit 84c17543ab56 (ext4: move work from io_end to inode) triggered a
-> regression when running xfstest #270 when the file system is mounted
-> with dioread_nolock.
-> 
-> The problem is that after ext4_evict_inode() calls ext4_ioend_wait(),
-> this guarantees that last io_end structure has been freed, but it does
-> not guarantee that the workqueue structure, which was moved into the
-> inode by commit 84c17543ab56, is actually finished.  Once
-> ext4_flush_completed_IO() calls ext4_free_io_end() on CPU #1, this
-> will allow ext4_ioend_wait() to return on CPU #2, at which point the
-> evict_inode() codepath can race against the workqueue code on CPU #1
-> accessing EXT4_I(inode)->i_unwritten_work to find the next item of
-> work to do.
-> 
-> Fix this by calling flush_work() if the work structure is still
-> pending in ext$_ioend_wait().  Also, move the call to
-> ext4_ioend_wait() until after truncate_inode_pages() and
-> filemap_write_and_wait() are called, to make sure all dirty pages have
-> been written back and flushed from the page cache first.
-> 
-> BUG: unable to handle kernel NULL pointer dereference at   (null)
-> IP: [<c01dda6a>] cwq_activate_delayed_work+0x3b/0x7e
-> *pdpt = 0000000030bc3001 *pde = 0000000000000000
-> Oops: 0000 [#1] SMP DEBUG_PAGEALLOC
-> Modules linked in:
-> Pid: 6, comm: kworker/u:0 Not tainted 3.8.0-rc3-00013-g84c1754-dirty #91 Bochs Bochs
-> EIP: 0060:[<c01dda6a>] EFLAGS: 00010046 CPU: 0
-> EIP is at cwq_activate_delayed_work+0x3b/0x7e
-> EAX: 00000000 EBX: 00000000 ECX: f505fe54 EDX: 00000000
-> ESI: ed5b697c EDI: 00000006 EBP: f64b7e8c ESP: f64b7e84
->  DS: 007b ES: 007b FS: 00d8 GS: 0000 SS: 0068
-> CR0: 8005003b CR2: 00000000 CR3: 30bc2000 CR4: 000006f0
-> DR0: 00000000 DR1: 00000000 DR2: 00000000 DR3: 00000000
-> DR6: ffff0ff0 DR7: 00000400
-> Process kworker/u:0 (pid: 6, ti=f64b6000 task=f64b4160 task.ti=f64b6000)
-> Stack:
->  f505fe00 00000006 f64b7e9c c01de3d7 f6435540 00000003 f64b7efc c01def1d
->  f6435540 00000002 00000000 0000008a c16d0808 c040a10b c16d07d8 c16d08b0
->  f505fe00 c16d0780 00000000 00000000 ee153df4 c1ce4a30 c17d0e30 00000000
-> Call Trace:
->  [<c01de3d7>] cwq_dec_nr_in_flight+0x71/0xfb
->  [<c01def1d>] process_one_work+0x5d8/0x637
->  [<c040a10b>] ? ext4_end_bio+0x300/0x300
->  [<c01e3105>] worker_thread+0x249/0x3ef
->  [<c01ea317>] kthread+0xd8/0xeb
->  [<c01e2ebc>] ? manage_workers+0x4bb/0x4bb
->  [<c023a370>] ? trace_hardirqs_on+0x27/0x37
->  [<c0f1b4b7>] ret_from_kernel_thread+0x1b/0x28
->  [<c01ea23f>] ? __init_kthread_worker+0x71/0x71
-> Code: 01 83 15 ac ff 6c c1 00 31 db 89 c6 8b 00 a8 04 74 12 89 c3 30 db 83 05 b0 ff 6c c1 01 83 15 b4 ff 6c c1 00 89 f0 e8 42 ff ff ff <8b> 13 89 f0 83 05 b8 ff 6c c1
->  6c c1 00 31 c9 83
-> EIP: [<c01dda6a>] cwq_activate_delayed_work+0x3b/0x7e SS:ESP 0068:f64b7e84
-> CR2: 0000000000000000
-> ---[ end trace a1923229da53d8a4 ]---
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Jan Kara <jack@suse.cz>
-...
+Yeah, I also cannot find it.  I am not sure why it is called here.  I
+will take a look at it and make sure that we can remove it.
+
+Regards,
+                                                - Zheng
