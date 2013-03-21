@@ -1,47 +1,132 @@
-From: Sander <sander@humilis.net>
-Subject: [PATCH][TRIVIAL] Documentation/filesystems/ext4.txt  barriers ->
- barrier
-Date: Thu, 21 Mar 2013 16:31:21 +0100
-Message-ID: <20130321153121.GA17388@panda>
-Reply-To: sander@humilis.net
-Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="ZPt4rx8FFjLCG7dd"
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH] ext4: fix journal callback list traversal
+Date: Thu, 21 Mar 2013 19:49:12 +0400
+Message-ID: <1363880952-28758-1-git-send-email-dmonakhov@openvz.org>
+Cc: bobijam@whamcloud.com, Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.humilis.net ([82.95.169.224]:58531 "EHLO panda.humilis.net"
+Received: from mailhub.sw.ru ([195.214.232.25]:41962 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932210Ab3CUPbX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Mar 2013 11:31:23 -0400
-Content-Disposition: inline
+	id S932751Ab3CUPtV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 21 Mar 2013 11:49:21 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+It is incorrect to use list_for_each_entry_safe() for journal callback
+traversial because ->next may be removed by other task:
+->ext4_mb_free_metadata()
+  ->ext4_mb_free_metadata()
+    ->ext4_journal_callback_del()
 
---ZPt4rx8FFjLCG7dd
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+This result in following issue:
 
-Hello list,
+WARNING: at lib/list_debug.c:62 __list_del_entry+0x1c0/0x250()
+Hardware name:
+list_del corruption. prev->next should be ffff88019a4ec198, but was 6b6b6b6b6b6b6b6b
+Modules linked in: cpufreq_ondemand acpi_cpufreq freq_table mperf coretemp kvm_intel kvm crc32c_intel ghash_clmulni_intel microcode sg xhci_hcd button sd_mod crc_t10dif aesni_intel ablk_helper cryptd lrw aes_x86_64 xts gf128mul ahci libahci pata_acpi ata_generic dm_mirror dm_region_hash dm_log dm_mod
+Pid: 16400, comm: jbd2/dm-1-8 Tainted: G        W    3.8.0-rc3+ #107
+Call Trace:
+ [<ffffffff8106fb0d>] warn_slowpath_common+0xad/0xf0
+ [<ffffffff8106fc06>] warn_slowpath_fmt+0x46/0x50
+ [<ffffffff813637e9>] ? ext4_journal_commit_callback+0x99/0xc0
+ [<ffffffff8148cae0>] __list_del_entry+0x1c0/0x250
+ [<ffffffff813637bf>] ext4_journal_commit_callback+0x6f/0xc0
+ [<ffffffff813ca336>] jbd2_journal_commit_transaction+0x23a6/0x2570
+ [<ffffffff8108aa42>] ? try_to_del_timer_sync+0x82/0xa0
+ [<ffffffff8108b491>] ? del_timer_sync+0x91/0x1e0
+ [<ffffffff813d3ecf>] kjournald2+0x19f/0x6a0
+ [<ffffffff810ad630>] ? wake_up_bit+0x40/0x40
+ [<ffffffff813d3d30>] ? bit_spin_lock+0x80/0x80
+ [<ffffffff810ac6be>] kthread+0x10e/0x120
+ [<ffffffff810ac5b0>] ? __init_kthread_worker+0x70/0x70
+ [<ffffffff818ff6ac>] ret_from_fork+0x7c/0xb0
+ [<ffffffff810ac5b0>] ? __init_kthread_worker+0x70/0x70
 
-I've found a small typo in Documentation/filesystems/ext4.txt
+This patch fix the issue like follows:
+- ext4_journal_commit_callback() make list truly traversial safe
+  simply by always starting from the list head
+- fix race between ext4_journal_callback_del() and
+  ext4_journal_callback_try_del()
 
-	Sander
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ fs/ext4/ext4_jbd2.h |    6 +++++-
+ fs/ext4/mballoc.c   |    8 ++++----
+ fs/ext4/super.c     |    4 +++-
+ 3 files changed, 12 insertions(+), 6 deletions(-)
 
---ZPt4rx8FFjLCG7dd
-Content-Type: text/x-diff; charset=us-ascii
-Content-Disposition: attachment; filename="ext4-doc.patch"
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index 4c216b1..aeed0ba 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -194,16 +194,20 @@ static inline void ext4_journal_callback_add(handle_t *handle,
+  * ext4_journal_callback_del: delete a registered callback
+  * @handle: active journal transaction handle on which callback was registered
+  * @jce: registered journal callback entry to unregister
++ * Return true if object was sucessfully removed
+  */
+-static inline void ext4_journal_callback_del(handle_t *handle,
++static inline bool ext4_journal_callback_try_del(handle_t *handle,
+ 					     struct ext4_journal_cb_entry *jce)
+ {
++	bool deleted;
+ 	struct ext4_sb_info *sbi =
+ 			EXT4_SB(handle->h_transaction->t_journal->j_private);
+ 
+ 	spin_lock(&sbi->s_md_lock);
++	deleted = !list_empty(&jce->jce_list);
+ 	list_del_init(&jce->jce_list);
+ 	spin_unlock(&sbi->s_md_lock);
++	return deleted;
+ }
+ 
+ int
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index ee6614b..2815f46 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4420,11 +4420,11 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+ 	node = rb_prev(new_node);
+ 	if (node) {
+ 		entry = rb_entry(node, struct ext4_free_data, efd_node);
+-		if (can_merge(entry, new_entry)) {
++		if (can_merge(entry, new_entry) &&
++			ext4_journal_callback_try_del(handle, &entry->efd_jce)) {
+ 			new_entry->efd_start_cluster = entry->efd_start_cluster;
+ 			new_entry->efd_count += entry->efd_count;
+ 			rb_erase(node, &(db->bb_free_root));
+-			ext4_journal_callback_del(handle, &entry->efd_jce);
+ 			kmem_cache_free(ext4_free_data_cachep, entry);
+ 		}
+ 	}
+@@ -4432,10 +4432,10 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+ 	node = rb_next(new_node);
+ 	if (node) {
+ 		entry = rb_entry(node, struct ext4_free_data, efd_node);
+-		if (can_merge(new_entry, entry)) {
++		if (can_merge(new_entry, entry) &&
++			ext4_journal_callback_del(handle, &entry->efd_jce)) {
+ 			new_entry->efd_count += entry->efd_count;
+ 			rb_erase(node, &(db->bb_free_root));
+-			ext4_journal_callback_del(handle, &entry->efd_jce);
+ 			kmem_cache_free(ext4_free_data_cachep, entry);
+ 		}
+ 	}
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index d1ee6a8..c7e1509 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -352,7 +352,9 @@ static void ext4_journal_commit_callback(journal_t *journal, transaction_t *txn)
+ 	struct ext4_journal_cb_entry	*jce, *tmp;
+ 
+ 	spin_lock(&sbi->s_md_lock);
+-	list_for_each_entry_safe(jce, tmp, &txn->t_private_list, jce_list) {
++	while (!list_empty(&txn->t_private_list)) {
++		jce = list_entry(txn->t_private_list.next,
++				 struct ext4_journal_cb_entry, jce_list);
+ 		list_del_init(&jce->jce_list);
+ 		spin_unlock(&sbi->s_md_lock);
+ 		jce->jce_func(sb, jce, error);
+-- 
+1.7.1
 
-diff -ruN linux-3.9-rc3-orig/Documentation/filesystems/ext4.txt linux-3.9-rc3/Documentation/filesystems/ext4.txt
---- linux-3.9-rc3-orig/Documentation/filesystems/ext4.txt	2013-03-17 23:59:32.000000000 +0100
-+++ linux-3.9-rc3/Documentation/filesystems/ext4.txt	2013-03-21 18:27:19.246017488 +0100
-@@ -65,7 +65,7 @@
-     note that ext4 enables write barriers by default, while ext3 does
-     not enable write barriers by default.  So it is useful to use
-     explicitly specify whether barriers are enabled or not when via the
--    '-o barriers=[0|1]' mount option for both ext3 and ext4 filesystems
-+    '-o barrier=[0|1]' mount option for both ext3 and ext4 filesystems
-     for a fair comparison.  When tuning ext3 for best benchmark numbers,
-     it is often worthwhile to try changing the data journaling mode; '-o
-     data=writeback' can be faster for some workloads.  (Note however that
-
---ZPt4rx8FFjLCG7dd--
