@@ -1,43 +1,47 @@
-From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: Re: bio splits unnecessarily due to BH_Boundary in ext3 direct I/O
-Date: Thu, 21 Mar 2013 17:43:52 +0900
-Message-ID: <514AC848.6020104@sx.jp.nec.com>
-References: <51385177.9030904@sx.jp.nec.com> <20130307104854.GB6723@quack.suse.cz> <51482381.7010508@sx.jp.nec.com> <20130319193132.GE5222@quack.suse.cz>
+From: Sander <sander@humilis.net>
+Subject: [PATCH][TRIVIAL] Documentation/filesystems/ext4.txt  barriers ->
+ barrier
+Date: Thu, 21 Mar 2013 16:31:21 +0100
+Message-ID: <20130321153121.GA17388@panda>
+Reply-To: sander@humilis.net
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: akpm@linux-foundation.org, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: multipart/mixed; boundary="ZPt4rx8FFjLCG7dd"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO200.gate.nec.co.jp ([210.143.35.50]:62314 "EHLO
-	tyo200.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932538Ab3CUIwb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Mar 2013 04:52:31 -0400
-Received: from tyo202.gate.nec.co.jp ([10.7.69.202])
-	by tyo200.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id r2L8qUqU006368
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 21 Mar 2013 17:52:30 +0900 (JST)
-In-Reply-To: <20130319193132.GE5222@quack.suse.cz>
+Received: from www.humilis.net ([82.95.169.224]:58531 "EHLO panda.humilis.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932210Ab3CUPbX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 21 Mar 2013 11:31:23 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2013/03/20 4:31, Jan Kara wrote:
->   I'm not sure I understand. Looking into dio_send_cur_page() it seems may
-> prematurely submit the bio if sdio->boundary is set - in that case we
-> should probably first try to add the page to the bio and submit the bio
-> only after that. Is that what you mean?
 
-I think the direct I/O works for each page into buffer_head by the following
-three steps:
-1. submit sdio->bio if sdio->boudary is set
-2. add sdio->cur_page to sdio->bio by dio_new_bio() or dio_bio_add_page()
-3. set the curret page to sdio->cur_page in submit_page_section()
+--ZPt4rx8FFjLCG7dd
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-It is true that dio_send_cur_page() submits the bio if sdio->boudary is set.
-However, at this time, this bio does not contain sdio->cur_page and
-the current page do_direct_IO() passed.
+Hello list,
 
-Regards,
-Kazuya Mio
+I've found a small typo in Documentation/filesystems/ext4.txt
 
+	Sander
+
+--ZPt4rx8FFjLCG7dd
+Content-Type: text/x-diff; charset=us-ascii
+Content-Disposition: attachment; filename="ext4-doc.patch"
+
+diff -ruN linux-3.9-rc3-orig/Documentation/filesystems/ext4.txt linux-3.9-rc3/Documentation/filesystems/ext4.txt
+--- linux-3.9-rc3-orig/Documentation/filesystems/ext4.txt	2013-03-17 23:59:32.000000000 +0100
++++ linux-3.9-rc3/Documentation/filesystems/ext4.txt	2013-03-21 18:27:19.246017488 +0100
+@@ -65,7 +65,7 @@
+     note that ext4 enables write barriers by default, while ext3 does
+     not enable write barriers by default.  So it is useful to use
+     explicitly specify whether barriers are enabled or not when via the
+-    '-o barriers=[0|1]' mount option for both ext3 and ext4 filesystems
++    '-o barrier=[0|1]' mount option for both ext3 and ext4 filesystems
+     for a fair comparison.  When tuning ext3 for best benchmark numbers,
+     it is often worthwhile to try changing the data journaling mode; '-o
+     data=writeback' can be faster for some workloads.  (Note however that
+
+--ZPt4rx8FFjLCG7dd--
