@@ -1,75 +1,51 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [GIT PULL] ext4 updates for 3.9-rc4
-Date: Thu, 21 Mar 2013 16:58:13 -0400
-Message-ID: <nsxehf8ii6y.fsf@closure.thunk.org>
+Subject: Re: [PATCH] ext4/jbd2: don't wait (forever) for stale tid caused by
+ wraparound
+Date: Thu, 21 Mar 2013 17:09:40 -0400
+Message-ID: <20130321210940.GD21877@thunk.org>
+References: <B2EC601CDDA242189A46599B31EA6AD3@atlassian.com>
+ <1363412062.3937.196.camel@deadeye.wl.decadent.org.uk>
+ <20130318025401.GA12611@thunk.org>
+ <20130321204638.GA6116@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Ben Hutchings <ben@decadent.org.uk>,
+	George Barnett <gbarnett@atlassian.com>,
+	linux-ext4@vger.kernel.org,
+	Debian kernel maintainers <debian-kernel@lists.debian.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:54949 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751902Ab3CUVJt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 21 Mar 2013 17:09:49 -0400
+Content-Disposition: inline
+In-Reply-To: <20130321204638.GA6116@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On Thu, Mar 21, 2013 at 09:46:38PM +0100, Jan Kara wrote:
+>   Good catch! But shouldn't we rather fix jbd2_log_wait_commit() instead of
+> inventing new function?
 
-The following changes since commit 9b2ff35753c0512bc8c6adae9e9c87cbeee86f82:
+In most of the places where we call jbd2_log_start_commit(), we're
+actually starting the current running transaction.  So the fact that
+we pass in a tid, and we're having to validate that the tid is
+actually a valid one, is a bit of a waste.  So in the long run I think
+it's worth rethinking whether or not jbd2_log_{start,wait}_commit()
+should exist in their current form, or whether we should reorganize
+their functionality (i.e., by having a jbd2_start_running_commit(),
+for example.).  Piling on fixes to jbd2_log_wait_commit() would make
+it get even more complicated, and I think if we separate out the
+various ways in which we use these functions, we can make the code
+simpler and easier to read.
 
-  ext4: enable quotas before orphan cleanup (2013-03-02 18:22:38 -0500)
+In fact, I had started making this rather large set of changes when I
+decided it would be better to save that kind of wholesale refactoring
+for the next merge window.  So the reason why I ended up fixing the
+patch the way I did was to keep things simple.
 
-are available in the git repository at:
+Also as I mentioned in the commit description, by using a single
+function I was also able to optimize the locking the locking somewhat.
 
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linue
-
-for you to fetch changes up to 2b405bfa84063bfa35621d2d6879f52693c614b0:
-
-  ext4: fix data=journal fast mount/umount hang (2013-03-20 09:42:11 -0400)
-
-----------------------------------------------------------------
-Fix a number of regression and other bugs in ext4, most of which were
-relatively obscure cornercases or races that were found using
-regression tests.
-
-----------------------------------------------------------------
-Dmitry Monakhov (6):
-      ext4: ext4_split_extent should take care of extent zeroout
-      ext4: disable merging of uninitialized extents
-      ext4: add warning to ext4_convert_unwritten_extents_endio
-      ext4: invalidate extent status tree during extent migration
-      ext4: add self-testing infrastructure to do a sanity check
-      ext4: fix memory leakage in mext_check_coverage
-
-Jan Kara (3):
-      ext4: remove unnecessary wait for extent conversion in ext4_fallocate()
-      ext4: fix WARN_ON from ext4_releasepage()
-      jbd2: fix use after free in jbd2_journal_dirty_metadata()
-
-Lukas Czerner (5):
-      ext4: remove unused variable in ext4_free_blocks()
-      ext4: do not use yield()
-      ext4: update reserved space after the 'correction'
-      ext4: reserve metadata block for every delayed write
-      ext4: use s_extent_max_zeroout_kb value as number of kb
-
-Theodore Ts'o (3):
-      ext4: use atomic64_t for the per-flexbg free_clusters count
-      ext4: fix ext4_evict_inode() racing against workqueue processing code
-      ext4: fix data=journal fast mount/umount hang
-
-Zheng Liu (4):
-      ext4: avoid a potential overflow in ext4_es_can_be_merged()
-      ext4: fix wrong m_len value after unwritten extent conversion
-      ext4: update extent status tree after an extent is zeroed out
-      ext4: fix the wrong number of the allocated blocks in ext4_split_extent()
-
- fs/ext4/ext4.h           |   8 +++---
- fs/ext4/extents.c        | 105 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------
- fs/ext4/extents_status.c | 212 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----
- fs/ext4/extents_status.h |   9 +++++++
- fs/ext4/ialloc.c         |   4 +--
- fs/ext4/inode.c          | 182 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
- fs/ext4/mballoc.c        |  23 ++++++----------
- fs/ext4/move_extent.c    |  43 +++++++++++++++++++-----------
- fs/ext4/page-io.c        |  12 ++++++++-
- fs/ext4/resize.c         |   4 +--
- fs/ext4/super.c          |   4 +--
- fs/jbd2/transaction.c    |  15 +++++++----
- 12 files changed, 540 insertions(+), 81 deletions(-)
+						- Ted
