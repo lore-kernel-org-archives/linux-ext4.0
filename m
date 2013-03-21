@@ -1,132 +1,92 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH] ext4: fix journal callback list traversal
-Date: Thu, 21 Mar 2013 19:49:12 +0400
-Message-ID: <1363880952-28758-1-git-send-email-dmonakhov@openvz.org>
-Cc: bobijam@whamcloud.com, Dmitry Monakhov <dmonakhov@openvz.org>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH] ext4: Do not normalize request from fallocate
+Date: Thu, 21 Mar 2013 16:50:45 +0100
+Message-ID: <1363881045-21673-1-git-send-email-lczerner@redhat.com>
+Cc: gharm@google.com, Lukas Czerner <lczerner@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:41962 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:48407 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932751Ab3CUPtV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Mar 2013 11:49:21 -0400
+	id S1755886Ab3CUPu7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 21 Mar 2013 11:50:59 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-It is incorrect to use list_for_each_entry_safe() for journal callback
-traversial because ->next may be removed by other task:
-->ext4_mb_free_metadata()
-  ->ext4_mb_free_metadata()
-    ->ext4_journal_callback_del()
+Block requests from fallocate has been normalized originally. Then it was
+changed by 556b27abf73833923d5cd4be80006292e1b31662 not to normalize it.
+And then it was changed by 3c6fe77017bc6ce489f231c35fed3220b6691836
+again to normalize the request.
 
-This result in following issue:
+The fact is that we _never_ want to normalize the request from
+fallocate. We know exactly how much space we're going to use and we do
+not want anyone to mess with the request and there is no point in doing
+so.
 
-WARNING: at lib/list_debug.c:62 __list_del_entry+0x1c0/0x250()
-Hardware name:
-list_del corruption. prev->next should be ffff88019a4ec198, but was 6b6b6b6b6b6b6b6b
-Modules linked in: cpufreq_ondemand acpi_cpufreq freq_table mperf coretemp kvm_intel kvm crc32c_intel ghash_clmulni_intel microcode sg xhci_hcd button sd_mod crc_t10dif aesni_intel ablk_helper cryptd lrw aes_x86_64 xts gf128mul ahci libahci pata_acpi ata_generic dm_mirror dm_region_hash dm_log dm_mod
-Pid: 16400, comm: jbd2/dm-1-8 Tainted: G        W    3.8.0-rc3+ #107
-Call Trace:
- [<ffffffff8106fb0d>] warn_slowpath_common+0xad/0xf0
- [<ffffffff8106fc06>] warn_slowpath_fmt+0x46/0x50
- [<ffffffff813637e9>] ? ext4_journal_commit_callback+0x99/0xc0
- [<ffffffff8148cae0>] __list_del_entry+0x1c0/0x250
- [<ffffffff813637bf>] ext4_journal_commit_callback+0x6f/0xc0
- [<ffffffff813ca336>] jbd2_journal_commit_transaction+0x23a6/0x2570
- [<ffffffff8108aa42>] ? try_to_del_timer_sync+0x82/0xa0
- [<ffffffff8108b491>] ? del_timer_sync+0x91/0x1e0
- [<ffffffff813d3ecf>] kjournald2+0x19f/0x6a0
- [<ffffffff810ad630>] ? wake_up_bit+0x40/0x40
- [<ffffffff813d3d30>] ? bit_spin_lock+0x80/0x80
- [<ffffffff810ac6be>] kthread+0x10e/0x120
- [<ffffffff810ac5b0>] ? __init_kthread_worker+0x70/0x70
- [<ffffffff818ff6ac>] ret_from_fork+0x7c/0xb0
- [<ffffffff810ac5b0>] ? __init_kthread_worker+0x70/0x70
+Commit 3c6fe77017bc6ce489f231c35fed3220b6691836 mentioned that
+large fallocate requests were not physically contiguous. However it is
+important to see why that is the case. Because the request is so big the
+allocator will try to find free group to allocate from skipping block
+groups which are used, which is fine. However it will only allocate
+extents of 2^15-1 block (limitation of uninitialized extent size)
+which will leave one block in each block group free which will make the
+extent tree physically non-contiguous, however _only_ by one block which
+is perfectly fine.
 
-This patch fix the issue like follows:
-- ext4_journal_commit_callback() make list truly traversial safe
-  simply by always starting from the list head
-- fix race between ext4_journal_callback_del() and
-  ext4_journal_callback_try_del()
+This will never happen when we normalize the request because for some
+reason (maybe bug) it will be normalized to much smaller request (2048
+blocks) and those extents will then be merged together not leaving any
+free block in between - hence physically contiguous. However the fact
+that we're splitting huge requests into ton of smaller ones and then
+merging extents together is very _very_ bad for fallocate performance.
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+The situation is even worst since with commit
+ec22ba8edb507395c95fbc617eea26a6b2d98797 we no longer merge
+uninitialized extents so we end up with absolutely _huge_ extent tree
+for bigger fallocate requests which is also bad for performance but not
+only when fallocate itself, but even when working with the file
+later on.
+
+Fix this by disabling normalization for fallocate. From my simple testing
+with this commit fallocate is much faster on non fragmented file
+system. On my system fallocate 15T is almost 3x faster with this patch
+and removing this file is almost 2x faster - tested on real hardware.
+
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
- fs/ext4/ext4_jbd2.h |    6 +++++-
- fs/ext4/mballoc.c   |    8 ++++----
- fs/ext4/super.c     |    4 +++-
- 3 files changed, 12 insertions(+), 6 deletions(-)
+ fs/ext4/extents.c |   18 ++++++++++--------
+ 1 files changed, 10 insertions(+), 8 deletions(-)
 
-diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-index 4c216b1..aeed0ba 100644
---- a/fs/ext4/ext4_jbd2.h
-+++ b/fs/ext4/ext4_jbd2.h
-@@ -194,16 +194,20 @@ static inline void ext4_journal_callback_add(handle_t *handle,
-  * ext4_journal_callback_del: delete a registered callback
-  * @handle: active journal transaction handle on which callback was registered
-  * @jce: registered journal callback entry to unregister
-+ * Return true if object was sucessfully removed
-  */
--static inline void ext4_journal_callback_del(handle_t *handle,
-+static inline bool ext4_journal_callback_try_del(handle_t *handle,
- 					     struct ext4_journal_cb_entry *jce)
- {
-+	bool deleted;
- 	struct ext4_sb_info *sbi =
- 			EXT4_SB(handle->h_transaction->t_journal->j_private);
- 
- 	spin_lock(&sbi->s_md_lock);
-+	deleted = !list_empty(&jce->jce_list);
- 	list_del_init(&jce->jce_list);
- 	spin_unlock(&sbi->s_md_lock);
-+	return deleted;
- }
- 
- int
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index ee6614b..2815f46 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4420,11 +4420,11 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
- 	node = rb_prev(new_node);
- 	if (node) {
- 		entry = rb_entry(node, struct ext4_free_data, efd_node);
--		if (can_merge(entry, new_entry)) {
-+		if (can_merge(entry, new_entry) &&
-+			ext4_journal_callback_try_del(handle, &entry->efd_jce)) {
- 			new_entry->efd_start_cluster = entry->efd_start_cluster;
- 			new_entry->efd_count += entry->efd_count;
- 			rb_erase(node, &(db->bb_free_root));
--			ext4_journal_callback_del(handle, &entry->efd_jce);
- 			kmem_cache_free(ext4_free_data_cachep, entry);
- 		}
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index e2bb929..a40a602 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4422,16 +4422,18 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+ 		trace_ext4_fallocate_exit(inode, offset, max_blocks, ret);
+ 		return ret;
  	}
-@@ -4432,10 +4432,10 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
- 	node = rb_next(new_node);
- 	if (node) {
- 		entry = rb_entry(node, struct ext4_free_data, efd_node);
--		if (can_merge(new_entry, entry)) {
-+		if (can_merge(new_entry, entry) &&
-+			ext4_journal_callback_del(handle, &entry->efd_jce)) {
- 			new_entry->efd_count += entry->efd_count;
- 			rb_erase(node, &(db->bb_free_root));
--			ext4_journal_callback_del(handle, &entry->efd_jce);
- 			kmem_cache_free(ext4_free_data_cachep, entry);
- 		}
- 	}
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index d1ee6a8..c7e1509 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -352,7 +352,9 @@ static void ext4_journal_commit_callback(journal_t *journal, transaction_t *txn)
- 	struct ext4_journal_cb_entry	*jce, *tmp;
+-	flags = EXT4_GET_BLOCKS_CREATE_UNINIT_EXT;
+-	if (mode & FALLOC_FL_KEEP_SIZE)
+-		flags |= EXT4_GET_BLOCKS_KEEP_SIZE;
++
+ 	/*
+-	 * Don't normalize the request if it can fit in one extent so
+-	 * that it doesn't get unnecessarily split into multiple
+-	 * extents.
++	 * We do NOT want the requests from fallocate to be normalized
++	 * ever!. We know exactly how much we want to allocate and
++	 * we do not need to do any mumbo-jumbo with it. Requests bigger
++	 * than uninit extent size, will be divided automatically into
++	 * biggest possible extents.
+ 	 */
+-	if (len <= EXT_UNINIT_MAX_LEN << blkbits)
+-		flags |= EXT4_GET_BLOCKS_NO_NORMALIZE;
++	flags = EXT4_GET_BLOCKS_CREATE_UNINIT_EXT |
++		EXT4_GET_BLOCKS_NO_NORMALIZE;
++	if (mode & FALLOC_FL_KEEP_SIZE)
++		flags |= EXT4_GET_BLOCKS_KEEP_SIZE;
  
- 	spin_lock(&sbi->s_md_lock);
--	list_for_each_entry_safe(jce, tmp, &txn->t_private_list, jce_list) {
-+	while (!list_empty(&txn->t_private_list)) {
-+		jce = list_entry(txn->t_private_list.next,
-+				 struct ext4_journal_cb_entry, jce_list);
- 		list_del_init(&jce->jce_list);
- 		spin_unlock(&sbi->s_md_lock);
- 		jce->jce_func(sb, jce, error);
+ retry:
+ 	while (ret >= 0 && ret < max_blocks) {
 -- 
-1.7.1
+1.7.7.6
 
