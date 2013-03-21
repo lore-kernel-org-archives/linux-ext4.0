@@ -1,207 +1,75 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4/jbd2: don't wait (forever) for stale tid caused
- by wraparound
-Date: Thu, 21 Mar 2013 21:46:38 +0100
-Message-ID: <20130321204638.GA6116@quack.suse.cz>
-References: <B2EC601CDDA242189A46599B31EA6AD3@atlassian.com>
- <1363412062.3937.196.camel@deadeye.wl.decadent.org.uk>
- <20130318025401.GA12611@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [GIT PULL] ext4 updates for 3.9-rc4
+Date: Thu, 21 Mar 2013 16:58:13 -0400
+Message-ID: <nsxehf8ii6y.fsf@closure.thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ben Hutchings <ben@decadent.org.uk>,
-	George Barnett <gbarnett@atlassian.com>,
-	linux-ext4@vger.kernel.org,
-	Debian kernel maintainers <debian-kernel@lists.debian.org>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:50538 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752895Ab3CUUqm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Mar 2013 16:46:42 -0400
-Content-Disposition: inline
-In-Reply-To: <20130318025401.GA12611@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sun 17-03-13 22:54:01, Ted Tso wrote:
-> On Sat, Mar 16, 2013 at 05:34:22AM +0000, Ben Hutchings wrote:
-> > > We use debian for a number of machines in our storage infrastructure
-> > > and we have recently been seeing a number of "hangs". We primary
-> > > notice this by seeing nfsd processes locking up and then a hung task
-> > > killer going wild. We finally managed to get a trace last night - its
-> > > pasted below: 
-> 
-> Thanks for reporting this.  I thought we had fixed this in 3.0.
-> Before then, when we had a tid wrap, it would result in kjournald
-> spinning forever.  I suspect this was your "spontaneous reboots" that
-> you mentioned you mentioned when you were using 2.6.39 --- did you
-> have a hardware or softward watchdog timer enabled by any chance?
-> 
-> Since we didn't have a good way of reproducing the problem at the
-> time, I didn't realize that the problem had not been fully fixed;
-> since while jbd2_log_start_commit() would no longer cause kjournald to
-> spin forwever, a subsequent call to jbd2_log_wait_commit() with a
-> stale transaction id would wait for a very long time (possibly until
-> the heat death of the universe :-)
-> 
-> I think a patch like this should fix things; I've run a stress test
-> with a hack to increment the transaction id by 1 << 24 after each
-> commit, to more quickly cause an tid wrap, and the regression tests
-> seem to be passing without complaint.
-> 
-> 						- Ted
-> 
-> From 76b05344fef573701b22ced444223188f054f94d Mon Sep 17 00:00:00 2001
-> From: Theodore Ts'o <tytso@mit.edu>
-> Date: Sun, 17 Mar 2013 22:24:46 -0400
-> Subject: [PATCH] ext4/jbd2: don't wait (forever) for stale tid caused by
->  wraparound
-> 
-> In the case where an inode has a very stale transaction id (tid) in
-> i_datasync_tid or i_sync_tid, it's possible that after a very large
-> (2**31) number of transactions, that the tid number space might wrap,
-> causing tid_geq()'s calculations to fail.
-> 
-> Commit deeeaf13 "jbd2: fix fsync() tid wraparound bug", later modified
-> by commit e7b04ac0 "jbd2: don't wake kjournald unnecessarily",
-> attempted to fix this problem, but it only avoided kjournald spinning
-> forever by fixing the logic in jbd2_log_start_commit().
-> 
-> Unfortunately, in the codepaths in fs/ext4/fsync.c and fs/ext4/inode.c
-> that might call jbd2_log_start_commit() with a stale tid, those
-> functions will subsequently call jbd2_log_wait_commit() with the same
-> stale tid, and then wait for a very long time.  To fix this, we
-> replace the calls to jbd2_log_start_commit() and
-> jbd2_log_wait_commit() with a call to a new function,
-> jbd2_complete_transaction(), which will correctly handle stale tid's.
-> 
-> As a bonus, jbd2_complete_transaction() will avoid locking
-> j_state_lock for writing unless a commit needs to be started.  This
-> should have a small (but probably not measurable) improvement for
-> ext4's scalability.
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> Reported-by: Ben Hutchings <ben@decadent.org.uk>
-> Reported-by: George Barnett <gbarnett@atlassian.com>
-> Cc: stable@vger.kernel.org
-  Good catch! But shouldn't we rather fix jbd2_log_wait_commit() instead of
-inventing new function? So jbd2_log_wait_commit() would do something like:
 
-			__func__, journal->j_commit_request, tid);
-	}
-#endif
-+	/* Not running or committing trans => must be already committed. */
-+	if (!((journal->j_running_transaction &&
-+	     journal->j_running_transaction->t_tid == tid) ||
-+	    (journal->j_committing_transaction &&
-+	     journal->j_committing_transaction->t_tid == tid))) {
-+		read_unlock(&journal->j_state_lock);
-+		return 0;
-+	}
-	while (tid_gt(tid, journal->j_commit_sequence)) {
-		jbd_debug(1, "JBD2: want %d, j_commit_sequence=%d\n",
-				  tid, journal->j_commit_sequence);
- 
-								Honza
+The following changes since commit 9b2ff35753c0512bc8c6adae9e9c87cbeee86f82:
 
-> ---
->  fs/ext4/fsync.c      |  3 +--
->  fs/ext4/inode.c      |  3 +--
->  fs/jbd2/journal.c    | 31 +++++++++++++++++++++++++++++++
->  include/linux/jbd2.h |  1 +
->  4 files changed, 34 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-> index 3278e64..e0ba8a4 100644
-> --- a/fs/ext4/fsync.c
-> +++ b/fs/ext4/fsync.c
-> @@ -166,8 +166,7 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
->  	if (journal->j_flags & JBD2_BARRIER &&
->  	    !jbd2_trans_will_send_data_barrier(journal, commit_tid))
->  		needs_barrier = true;
-> -	jbd2_log_start_commit(journal, commit_tid);
-> -	ret = jbd2_log_wait_commit(journal, commit_tid);
-> +	ret = jbd2_complete_transaction(journal, commit_tid);
->  	if (needs_barrier) {
->  		err = blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL, NULL);
->  		if (!ret)
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index b6fab7c..de4b58d 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -211,8 +211,7 @@ void ext4_evict_inode(struct inode *inode)
->  			journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
->  			tid_t commit_tid = EXT4_I(inode)->i_datasync_tid;
->  
-> -			jbd2_log_start_commit(journal, commit_tid);
-> -			jbd2_log_wait_commit(journal, commit_tid);
-> +			jbd2_complete_transaction(journal, commit_tid);
->  			filemap_write_and_wait(&inode->i_data);
->  		}
->  		truncate_inode_pages(&inode->i_data, 0);
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index ed10991..886ec2f 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -710,6 +710,37 @@ int jbd2_log_wait_commit(journal_t *journal, tid_t tid)
->  }
->  
->  /*
-> + * When this function returns the transaction corresponding to tid
-> + * will be completed.  If the transaction has currently running, start
-> + * committing that transaction before waiting for it to complete.  If
-> + * the transaction id is stale, it is by definition already completed,
-> + * so just return SUCCESS.
-> + */
-> +int jbd2_complete_transaction(journal_t *journal, tid_t tid)
-> +{
-> +	int	need_to_wait = 1;
-> +
-> +	read_lock(&journal->j_state_lock);
-> +	if (journal->j_running_transaction &&
-> +	    journal->j_running_transaction->t_tid == tid) {
-> +		if (journal->j_commit_request != tid) {
-> +			/* transaction not yet started, so request it */
-> +			read_unlock(&journal->j_state_lock);
-> +			jbd2_log_start_commit(journal, tid);
-> +			goto wait_commit;
-> +		}
-> +	} else if (!(journal->j_committing_transaction &&
-> +		     journal->j_committing_transaction->t_tid == tid))
-> +		need_to_wait = 0;
-> +	read_unlock(&journal->j_state_lock);
-> +	if (!need_to_wait)
-> +		return 0;
-> +wait_commit:
-> +	return jbd2_log_wait_commit(journal, tid);
-> +}
-> +EXPORT_SYMBOL(jbd2_complete_transaction);
-> +
-> +/*
->   * Log buffer allocation routines:
->   */
->  
-> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-> index 50e5a5e..f028975 100644
-> --- a/include/linux/jbd2.h
-> +++ b/include/linux/jbd2.h
-> @@ -1200,6 +1200,7 @@ int __jbd2_log_start_commit(journal_t *journal, tid_t tid);
->  int jbd2_journal_start_commit(journal_t *journal, tid_t *tid);
->  int jbd2_journal_force_commit_nested(journal_t *journal);
->  int jbd2_log_wait_commit(journal_t *journal, tid_t tid);
-> +int jbd2_complete_transaction(journal_t *journal, tid_t tid);
->  int jbd2_log_do_checkpoint(journal_t *journal);
->  int jbd2_trans_will_send_data_barrier(journal_t *journal, tid_t tid);
->  
-> -- 
-> 1.7.12.rc0.22.gcdd159b
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+  ext4: enable quotas before orphan cleanup (2013-03-02 18:22:38 -0500)
+
+are available in the git repository at:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linue
+
+for you to fetch changes up to 2b405bfa84063bfa35621d2d6879f52693c614b0:
+
+  ext4: fix data=journal fast mount/umount hang (2013-03-20 09:42:11 -0400)
+
+----------------------------------------------------------------
+Fix a number of regression and other bugs in ext4, most of which were
+relatively obscure cornercases or races that were found using
+regression tests.
+
+----------------------------------------------------------------
+Dmitry Monakhov (6):
+      ext4: ext4_split_extent should take care of extent zeroout
+      ext4: disable merging of uninitialized extents
+      ext4: add warning to ext4_convert_unwritten_extents_endio
+      ext4: invalidate extent status tree during extent migration
+      ext4: add self-testing infrastructure to do a sanity check
+      ext4: fix memory leakage in mext_check_coverage
+
+Jan Kara (3):
+      ext4: remove unnecessary wait for extent conversion in ext4_fallocate()
+      ext4: fix WARN_ON from ext4_releasepage()
+      jbd2: fix use after free in jbd2_journal_dirty_metadata()
+
+Lukas Czerner (5):
+      ext4: remove unused variable in ext4_free_blocks()
+      ext4: do not use yield()
+      ext4: update reserved space after the 'correction'
+      ext4: reserve metadata block for every delayed write
+      ext4: use s_extent_max_zeroout_kb value as number of kb
+
+Theodore Ts'o (3):
+      ext4: use atomic64_t for the per-flexbg free_clusters count
+      ext4: fix ext4_evict_inode() racing against workqueue processing code
+      ext4: fix data=journal fast mount/umount hang
+
+Zheng Liu (4):
+      ext4: avoid a potential overflow in ext4_es_can_be_merged()
+      ext4: fix wrong m_len value after unwritten extent conversion
+      ext4: update extent status tree after an extent is zeroed out
+      ext4: fix the wrong number of the allocated blocks in ext4_split_extent()
+
+ fs/ext4/ext4.h           |   8 +++---
+ fs/ext4/extents.c        | 105 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------
+ fs/ext4/extents_status.c | 212 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----
+ fs/ext4/extents_status.h |   9 +++++++
+ fs/ext4/ialloc.c         |   4 +--
+ fs/ext4/inode.c          | 182 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------
+ fs/ext4/mballoc.c        |  23 ++++++----------
+ fs/ext4/move_extent.c    |  43 +++++++++++++++++++-----------
+ fs/ext4/page-io.c        |  12 ++++++++-
+ fs/ext4/resize.c         |   4 +--
+ fs/ext4/super.c          |   4 +--
+ fs/jbd2/transaction.c    |  15 +++++++----
+ 12 files changed, 540 insertions(+), 81 deletions(-)
