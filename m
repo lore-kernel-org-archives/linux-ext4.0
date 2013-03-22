@@ -1,78 +1,44 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 3/3] ext4: undegister es_shrinker if mount failed
-Date: Fri, 22 Mar 2013 20:18:43 +0400
-Message-ID: <1363969123-16852-3-git-send-email-dmonakhov@openvz.org>
-References: <1363969123-16852-1-git-send-email-dmonakhov@openvz.org>
-Cc: tytso@mit.edu, jack@suse.cz, wenqing.lz@taobao.com,
-	Dmitry Monakhov <dmonakhov@openvz.org>
-To: linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] ext4: fix journal callback list traversal
+Date: Fri, 22 Mar 2013 20:32:28 +0400
+Message-ID: <87y5dfwg2r.fsf@openvz.org>
+References: <1363880952-28758-1-git-send-email-dmonakhov@openvz.org> <874ng4ybpv.fsf@openvz.org> <20130321161653.GB21877@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, bobijam@whamcloud.com
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:31694 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933747Ab3CVQTr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 22 Mar 2013 12:19:47 -0400
-In-Reply-To: <1363969123-16852-1-git-send-email-dmonakhov@openvz.org>
+Received: from mail-la0-f42.google.com ([209.85.215.42]:41587 "EHLO
+	mail-la0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1160999Ab3CVQcd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Mar 2013 12:32:33 -0400
+Received: by mail-la0-f42.google.com with SMTP id fe20so7696998lab.29
+        for <linux-ext4@vger.kernel.org>; Fri, 22 Mar 2013 09:32:32 -0700 (PDT)
+In-Reply-To: <20130321161653.GB21877@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Otherwise destroyed ext_sb_info will be part of global shinker list and result in
-following OOPS:
-
-JBD2: corrupted journal superblock
-JBD2: recovery failed
-EXT4-fs (dm-2): error loading journal
-general protection fault: 0000 [#1] SMP
-Modules linked in: fuse acpi_cpufreq freq_table mperf coretemp kvm_intel kvm crc32c_intel microcode sg button sd_mod crc_t10dif ahci libahci pata_acpi ata_generic dm_mirror dm_region_hash dm_log dm_\
-mod
-CPU 1
-Pid: 2758, comm: mount Not tainted 3.8.0-rc3+ #136                  /DH55TC
-RIP: 0010:[<ffffffff811bfb2d>]  [<ffffffff811bfb2d>] unregister_shrinker+0xad/0xe0
-RSP: 0000:ffff88011d5cbcd8  EFLAGS: 00010207
-RAX: 6b6b6b6b6b6b6b6b RBX: 6b6b6b6b6b6b6b53 RCX: 0000000000000006
-RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000000000246
-RBP: ffff88011d5cbce8 R08: 0000000000000002 R09: 0000000000000001
-R10: 0000000000000001 R11: 0000000000000000 R12: ffff88011cd3f848
-R13: ffff88011cd3f830 R14: ffff88011cd3f000 R15: 0000000000000000
-FS:  00007f7b721dd7e0(0000) GS:ffff880121a00000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-CR2: 00007fffa6f75038 CR3: 000000011bc1c000 CR4: 00000000000007e0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Process mount (pid: 2758, threadinfo ffff88011d5ca000, task ffff880116aacb80)
-Stack:
-ffff88011cd3f000 ffffffff8209b6c0 ffff88011d5cbd18 ffffffff812482f1
-00000000000003f3 00000000ffffffea ffff880115f4c200 0000000000000000
-ffff88011d5cbda8 ffffffff81249381 ffff8801219d8bf8 ffffffff00000000
-Call Trace:
-[<ffffffff812482f1>] deactivate_locked_super+0x91/0xb0
-[<ffffffff81249381>] mount_bdev+0x331/0x340
-[<ffffffff81376730>] ? ext4_alloc_flex_bg_array+0x180/0x180
-[<ffffffff81362035>] ext4_mount+0x15/0x20
-[<ffffffff8124869a>] mount_fs+0x9a/0x2e0
-[<ffffffff81277e25>] vfs_kern_mount+0xc5/0x170
-[<ffffffff81279c02>] do_new_mount+0x172/0x2e0
-[<ffffffff8127aa56>] do_mount+0x376/0x380
-[<ffffffff8127ab98>] sys_mount+0x138/0x150
-[<ffffffff818ffed9>] system_call_fastpath+0x16/0x1b
-
-
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ext4/super.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index c7e1509..8196ca2 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4008,6 +4008,7 @@ failed_mount_wq:
- 		sbi->s_journal = NULL;
- 	}
- failed_mount3:
-+	ext4_es_unregister_shrinker(sb);
- 	del_timer(&sbi->s_err_report);
- 	if (sbi->s_flex_groups)
- 		ext4_kvfree(sbi->s_flex_groups);
--- 
-1.7.1
-
+On Thu, 21 Mar 2013 12:16:53 -0400, Theodore Ts'o <tytso@mit.edu> wrote:
+> On Thu, Mar 21, 2013 at 08:11:24PM +0400, Dmitry Monakhov wrote:
+> > OOps. Sorry. I've sent wrong patch. Please ignore it. I'll send correct
+> > version in a minute.
+> 
+> Yeah, I just noticed that it doesn't compile.  Also, it looks like the
+> patch you sent wasn't actually checking the return value of
+> ext4_journal_callback_try_del()?
+Sorry for a long replay.... It takes me longer that a minute to fix all
+that crap i've found. It is appeared that running xfstests plus freeze/unfrees
+in a background opened an Pandora's box. First it is apeared that JBD2
+has a bug since "Nov 6 2008". After that I've prepared incorrect patch
+for jbd2 which corrupted journal and it is appeared that error handling
+in ext4_fill_super is also broken. Nor than less patches are already available here:
+http://patchwork.ozlabs.org/patch/230111/
+http://patchwork.ozlabs.org/patch/230112/
+http://patchwork.ozlabs.org/patch/230113/
+And patched kernel survived with all my tests.
+> 
+> 						- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
