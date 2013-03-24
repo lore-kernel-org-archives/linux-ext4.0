@@ -1,78 +1,92 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: buggy readdir with inline dirs
-Date: Sat, 23 Mar 2013 10:28:05 -0700
-Message-ID: <587B312D-DED3-4251-B6C9-46DB40E27D60@dilger.ca>
-References: <20130322182608.GT10038@lenny.home.zabbo.net> <514DAD11.1010709@tao.ma>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Zach Brown <zab@redhat.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Eric Sandeen <sandeen@redhat.com>
-To: Tao Ma <tm@tao.ma>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Do not normalize request from fallocate
+Date: Sat, 23 Mar 2013 20:11:43 -0400
+Message-ID: <20130324001143.GB4000@thunk.org>
+References: <1363881045-21673-1-git-send-email-lczerner@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, gharm@google.com
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f42.google.com ([209.85.210.42]:54423 "EHLO
-	mail-da0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751755Ab3CWRfL convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 23 Mar 2013 13:35:11 -0400
-Received: by mail-da0-f42.google.com with SMTP id n15so2666674dad.15
-        for <linux-ext4@vger.kernel.org>; Sat, 23 Mar 2013 10:35:10 -0700 (PDT)
-In-Reply-To: <514DAD11.1010709@tao.ma>
+Received: from li9-11.members.linode.com ([67.18.176.11]:55348 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752329Ab3CXALt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 23 Mar 2013 20:11:49 -0400
+Content-Disposition: inline
+In-Reply-To: <1363881045-21673-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2013-03-23, at 6:24, Tao Ma <tm@tao.ma> wrote:
-> On 03/23/2013 02:26 AM, Zach Brown wrote:
->> I don't remember quite how, but I found myself flipping through the
->> inline dir code that's in mainline now.  It looked pretty fishy so Eric
->> and I played around with it.  It's very buggy in its current form.
-> Sorry about any inconvenience brought to you.
->> 
->> ext4_read_inline_dir() doesn't seem to undertand the filldir arguments.
->> It suggests that offset 0 is the next offset after both the "." and ".."
->> entries.  It needs to have specific offsets for "." and ".." and return them
->> accordingly.  It looks like fixing this will trickle down into the
->> revalidation loop.
-> yes, it is my fault, I guess at the very first beginning,  I just can't
-> figured out how to return a proper 'offset' to the user to indicate
-> '..'. Now we don't save anything about '.', so offset 0 is OK for it,
-> but maybe we should return some offset like '2' to the user about it.
-> Anyway it should be fixed.
-
-FYI, ZFS (which generates "." and ".." entries on-the-fly also) uses "0" for start of readdir, "1" for ".", and "2" for "..".
-
-Cheers, Andreas 
-
->> It doesn't understand that it's possible to only return a single "."
->> entry in getdents and have a subsequent call have f_pos pointing at the
->> fake ".." entry.  With the current code if your getdents buffer only has
->> room for "." it just spins returning that entry leaving f_pos at 0.
-> Sorry.
->> 
->> Those are all relatively simple bugs that just need to be fixed.
->> 
->> But the big bug is that it changes the d_off values for entries as it
->> converts from byte offsets in the inline dir xattr to hashed offsets in
->> indexed dir leaves.  A concurrent readdir could be unlucky enough to get
->> a bunch of duplicate entries as it reads past the nice low inline byte
->> offsets into the huge hashed offsets.
->> 
->> I'm not sure how to easily fix that.  It feels like it'd want to
->> maintain the dir entries in the xattr blob with the offsets that they'll
->> have once converted to full dir blocks.  So instead of being a magical
->> readdir path maybe it wants to be in the path of looking up dir blocks
->> so existing unindexed and indexed code would operate on the data in the
->> xattr blob as though it were a block?
->> 
->> Dunno, just wanted to share what we found.  Are these all known problems
->> in prototype code that isn't intended to be used?
-> I will check what xfs does in this case as Dave mentioned in another
-> reply and come back with a fix about it.
+On Thu, Mar 21, 2013 at 04:50:45PM +0100, Lukas Czerner wrote:
 > 
-> Thanks,
-> Tao
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Commit 3c6fe77017bc6ce489f231c35fed3220b6691836 mentioned that
+> large fallocate requests were not physically contiguous. However it is
+> important to see why that is the case. Because the request is so big the
+> allocator will try to find free group to allocate from skipping block
+> groups which are used, which is fine. However it will only allocate
+> extents of 2^15-1 block (limitation of uninitialized extent size)
+> which will leave one block in each block group free which will make the
+> extent tree physically non-contiguous, however _only_ by one block which
+> is perfectly fine.
+
+Well, it's actually really unfortunate.  The file ends up being more
+fragmented, and from an alignment point of view it's really horrid.
+For a RAID array with a power of 2 stripe size, or a flash device with
+a power of 2 erase block size, the result is actually quite
+spectacularly bad:
+
+File size of 1 is 1073741824 (262144 blocks of 4096 bytes)
+ ext:     logical_offset:        physical_offset: length:   expected: flags:
+   0:        0..   32766:     458752..    491518:  32767:             unwritten
+   1:    32767..   65533:     491520..    524286:  32767:     491519: unwritten
+   2:    65534..   98300:     589824..    622590:  32767:     524287: unwritten
+   3:    98301..  131067:     622592..    655358:  32767:     622591: unwritten
+   4:   131068..  163834:     655360..    688126:  32767:     655359: unwritten
+   5:   163835..  196601:     688128..    720894:  32767:     688127: unwritten
+   6:   196602..  229368:     720896..    753662:  32767:     720895: unwritten
+   7:   229369..  262135:     753664..    786430:  32767:     753663: unwritten
+   8:   262136..  262143:     786432..    786439:      8:     786431: unwritten,eof
+1: 9 extents found
+
+That being said, what we were doing before was quite bad, and you're
+quite right about your analysis here:
+
+> This will never happen when we normalize the request because for some
+> reason (maybe bug) it will be normalized to much smaller request (2048
+> blocks) and those extents will then be merged together not leaving any
+> free block in between - hence physically contiguous. However the fact
+> that we're splitting huge requests into ton of smaller ones and then
+> merging extents together is very _very_ bad for fallocate performance.
+> 
+> The situation is even worst since with commit
+> ec22ba8edb507395c95fbc617eea26a6b2d98797 we no longer merge
+> uninitialized extents so we end up with absolutely _huge_ extent tree
+> for bigger fallocate requests which is also bad for performance but not
+> only when fallocate itself, but even when working with the file
+> later on.
+
+Without this patch, we currently do this for the same 1g file:
+
+Filesystem type is: ef53
+File size of 2 is 1073741824 (262144 blocks of 4096 bytes)
+ ext:     logical_offset:        physical_offset: length:   expected: flags:
+   0:        0..    2047:     305152..    307199:   2048:             unwritten
+   1:     2048..    4095:     307200..    309247:   2048:             unwritten
+   	  	       .....
+ 106:   217088..  219135:     522240..    524287:   2048:             unwritten
+ 107:   219136..  221183:     591872..    593919:   2048:     524288: unwritten
+ 108:   221184..  223231:     593920..    595967:   2048:             unwritten
+ 		       .....
+ 127:   260096..  262143:     632832..    634879:   2048:             unwritten,eof
+2: 2 extents found
+
+So I agree that what we're doing is poor, but the question is, can we
+do something which is better that either of these two results?
+
+That is, can we improve mballoc so that we keep an fallocated gigabyte
+file as physically contiguous as possible, while using an optimal
+number of on-disk extents?   i.e., 9 extents of length 32767.
+
+Failing that, can we create 20 extents of length 16384 or so?
+
+	      	     	       	       	  	 - Ted
