@@ -1,72 +1,121 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH] ext4: add WARN_ON to check the length of allocated blocks
-Date: Mon, 25 Mar 2013 10:50:23 +0800
-Message-ID: <20130325025023.GA14550@gmail.com>
-References: <1364118173-12354-1-git-send-email-wenqing.lz@taobao.com>
- <20130324182318.GA26792@thunk.org>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: Do not normalize request from fallocate
+Date: Mon, 25 Mar 2013 11:09:35 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1303251051460.23176@localhost>
+References: <1363881045-21673-1-git-send-email-lczerner@redhat.com> <20130324001143.GB4000@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	gharm@google.com
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f51.google.com ([209.85.210.51]:62741 "EHLO
-	mail-da0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755674Ab3CYCep (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 24 Mar 2013 22:34:45 -0400
-Received: by mail-da0-f51.google.com with SMTP id g27so2907532dan.10
-        for <linux-ext4@vger.kernel.org>; Sun, 24 Mar 2013 19:34:45 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <20130324182318.GA26792@thunk.org>
+Received: from mx1.redhat.com ([209.132.183.28]:13774 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752029Ab3CYKJm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 Mar 2013 06:09:42 -0400
+In-Reply-To: <20130324001143.GB4000@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Mar 24, 2013 at 02:23:18PM -0400, Theodore Ts'o wrote:
-> On Sun, Mar 24, 2013 at 05:42:53PM +0800, Zheng Liu wrote:
-> > From: Zheng Liu <wenqing.lz@taobao.com>
+On Sat, 23 Mar 2013, Theodore Ts'o wrote:
+
+> Date: Sat, 23 Mar 2013 20:11:43 -0400
+> From: Theodore Ts'o <tytso@mit.edu>
+> To: Lukas Czerner <lczerner@redhat.com>
+> Cc: linux-ext4@vger.kernel.org, gharm@google.com
+> Subject: Re: [PATCH] ext4: Do not normalize request from fallocate
+> 
+> On Thu, Mar 21, 2013 at 04:50:45PM +0100, Lukas Czerner wrote:
 > > 
-> > In this commit (921f266b) a sanity check is added in map_blocks to make
-> > sure 'retval == map->m_len'.  But we need to define a macro to enable
-> > it.  This commit uses a WARN_ON to do the same thing.
+> > Commit 3c6fe77017bc6ce489f231c35fed3220b6691836 mentioned that
+> > large fallocate requests were not physically contiguous. However it is
+> > important to see why that is the case. Because the request is so big the
+> > allocator will try to find free group to allocate from skipping block
+> > groups which are used, which is fine. However it will only allocate
+> > extents of 2^15-1 block (limitation of uninitialized extent size)
+> > which will leave one block in each block group free which will make the
+> > extent tree physically non-contiguous, however _only_ by one block which
+> > is perfectly fine.
+> 
+> Well, it's actually really unfortunate.  The file ends up being more
+> fragmented, and from an alignment point of view it's really horrid.
+> For a RAID array with a power of 2 stripe size, or a flash device with
+> a power of 2 erase block size, the result is actually quite
+> spectacularly bad:
+
+Sorry for being dense, but I am trying to understand why this is so
+bad and what is the "expected" column there.
+
+The physical offset of each extent bellow starts on the start of the
+block group and it seems to me that it's perfectly aligned for every
+power of two up to the block group size.
+
+If the extent would start at the physical offset from the "expected"
+column, than it would be misaligned.
+
+Maybe I am missing something, or maybe I misunderstood the concept ?
+But the only problem I see is that when we would like to use that
+remaining one block, but that's expected and the only way to avoid
+that is to allocate smaller extents instead as you suggested below
+(16384 blocks).
+
+Thanks!
+-Lukas
+
+> 
+> File size of 1 is 1073741824 (262144 blocks of 4096 bytes)
+>  ext:     logical_offset:        physical_offset: length:   expected: flags:
+>    0:        0..   32766:     458752..    491518:  32767:             unwritten
+>    1:    32767..   65533:     491520..    524286:  32767:     491519: unwritten
+>    2:    65534..   98300:     589824..    622590:  32767:     524287: unwritten
+>    3:    98301..  131067:     622592..    655358:  32767:     622591: unwritten
+>    4:   131068..  163834:     655360..    688126:  32767:     655359: unwritten
+>    5:   163835..  196601:     688128..    720894:  32767:     688127: unwritten
+>    6:   196602..  229368:     720896..    753662:  32767:     720895: unwritten
+>    7:   229369..  262135:     753664..    786430:  32767:     753663: unwritten
+>    8:   262136..  262143:     786432..    786439:      8:     786431: unwritten,eof
+> 1: 9 extents found
+> 
+> That being said, what we were doing before was quite bad, and you're
+> quite right about your analysis here:
+> 
+> > This will never happen when we normalize the request because for some
+> > reason (maybe bug) it will be normalized to much smaller request (2048
+> > blocks) and those extents will then be merged together not leaving any
+> > free block in between - hence physically contiguous. However the fact
+> > that we're splitting huge requests into ton of smaller ones and then
+> > merging extents together is very _very_ bad for fallocate performance.
 > > 
-> > Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+> > The situation is even worst since with commit
+> > ec22ba8edb507395c95fbc617eea26a6b2d98797 we no longer merge
+> > uninitialized extents so we end up with absolutely _huge_ extent tree
+> > for bigger fallocate requests which is also bad for performance but not
+> > only when fallocate itself, but even when working with the file
+> > later on.
 > 
-> You and Dmitry were the ones who using originally these these checks
-> to fix the bugs here;
-
-Yes, I use this check to fix bug.
-
-> if we think the code is clean enough that we
-> don't need the debugging information with the inode number, length,
-> etc., then sure, we could use the unconditionally defined WARN_ON().
+> Without this patch, we currently do this for the same 1g file:
 > 
-> If we wanted to be really paranoid and give ourselves the maximal
-> amount of debugging information, we could of course do something like
-> this:
+> Filesystem type is: ef53
+> File size of 2 is 1073741824 (262144 blocks of 4096 bytes)
+>  ext:     logical_offset:        physical_offset: length:   expected: flags:
+>    0:        0..    2047:     305152..    307199:   2048:             unwritten
+>    1:     2048..    4095:     307200..    309247:   2048:             unwritten
+>    	  	       .....
+>  106:   217088..  219135:     522240..    524287:   2048:             unwritten
+>  107:   219136..  221183:     591872..    593919:   2048:     524288: unwritten
+>  108:   221184..  223231:     593920..    595967:   2048:             unwritten
+>  		       .....
+>  127:   260096..  262143:     632832..    634879:   2048:             unwritten,eof
+> 2: 2 extents found
 > 
-> 		if (retval != map->m_len) {
-> 			ext4_warning(inode->i_sb, "ES len assertation failed for inode: %lu retval %d != map->m_len %d\n", inode->i_ino, retval,
-> 			       map->m_len);
-> 			 WARN_ON(1);
-> 		}
-
-I think this is better.
-
+> So I agree that what we're doing is poor, but the question is, can we
+> do something which is better that either of these two results?
 > 
-> This way, we get the stack dump, the file system device, and all of
-> the debugging information.  The tradeoff is we're bloating the code
-> size a bit.
+> That is, can we improve mballoc so that we keep an fallocated gigabyte
+> file as physically contiguous as possible, while using an optimal
+> number of on-disk extents?   i.e., 9 extents of length 32767.
 > 
-> The question is really how confident are we that we've found all of
-> the potential bugs here.  If we think that there's a chance we might
-> trip this check in the future, sometimes it's good to print as much
-> information as possible, especially if it's hard to create a
-> reproduction on demand.
+> Failing that, can we create 20 extents of length 16384 or so?
 > 
-> What do you think?
-
-In my sand box, after fixed the bug, I never see this warning again.
-But I do believe we'd better leave it here to give us an opportunity to
-fix some potential bugs.
-
-Thanks,
-                                                - Zheng
+> 	      	     	       	       	  	 - Ted
+> 
