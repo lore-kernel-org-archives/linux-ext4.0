@@ -1,292 +1,639 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/7] ext4: fold ext4_alloc_blocks() in ext4_alloc_branch()
-Date: Sun, 24 Mar 2013 20:06:50 -0400
-Message-ID: <1364170014-10295-4-git-send-email-tytso@mit.edu>
+Subject: [PATCH 4/7] ext4: refactor punch hole code
+Date: Sun, 24 Mar 2013 20:06:51 -0400
+Message-ID: <1364170014-10295-5-git-send-email-tytso@mit.edu>
 References: <1364170014-10295-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:55514 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:55512 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755201Ab3CYAHB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1755200Ab3CYAHB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sun, 24 Mar 2013 20:07:01 -0400
 In-Reply-To: <1364170014-10295-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The older code was far more complicated than it needed to be because
-of how we spliced in the ext4's new multiblock allocator into ext3's
-indirect block code.  By folding ext4_alloc_blocks() into
-ext4_alloc_branch(), we make the code far more understable, shave off
-over 130 lines of code and half a kilobyte of compiled object code.
+Move common code in ext4_ind_punch_hole() and ext4_ext_punch_hole()
+into ext4_punch_hole().  This saves over 150 lines of code.
+
+This also fixes a potential bug when the punch_hole() code is racing
+against indirect-to-extents or extents-to-indirect migation.  We are
+currently using i_mutex to protect against changes to the inode flag;
+specifically, the append-only, immutable, and extents inode flags.  So
+we need to take i_mutex before deciding whether to use the
+extents-specific or indirect-specific punch_hole code.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/indirect.c | 227 +++++++++++------------------------------------------
- 1 file changed, 46 insertions(+), 181 deletions(-)
+ fs/ext4/ext4.h     |   7 +-
+ fs/ext4/extents.c  | 185 +----------------------------------------------------
+ fs/ext4/indirect.c | 158 +--------------------------------------------
+ fs/ext4/inode.c    | 181 +++++++++++++++++++++++++++++++++++++++++++++++++--
+ 4 files changed, 184 insertions(+), 347 deletions(-)
 
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index b505a14..b780c4a 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -292,131 +292,6 @@ static int ext4_blks_to_allocate(Indirect *branch, int k, unsigned int blks,
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index f91e11b..0649253 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2110,7 +2110,8 @@ extern ssize_t ext4_ind_direct_IO(int rw, struct kiocb *iocb,
+ extern int ext4_ind_calc_metadata_amount(struct inode *inode, sector_t lblock);
+ extern int ext4_ind_trans_blocks(struct inode *inode, int nrblocks, int chunk);
+ extern void ext4_ind_truncate(struct inode *inode);
+-extern int ext4_ind_punch_hole(struct file *file, loff_t offset, loff_t length);
++extern int ext4_free_hole_blocks(handle_t *handle, struct inode *inode,
++				 ext4_lblk_t first, ext4_lblk_t stop);
+ 
+ /* ioctl.c */
+ extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
+@@ -2575,8 +2576,8 @@ extern int ext4_ext_index_trans_blocks(struct inode *inode, int nrblocks,
+ extern int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+ 			       struct ext4_map_blocks *map, int flags);
+ extern void ext4_ext_truncate(struct inode *);
+-extern int ext4_ext_punch_hole(struct file *file, loff_t offset,
+-				loff_t length);
++extern int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
++				 ext4_lblk_t end);
+ extern void ext4_ext_init(struct super_block *);
+ extern void ext4_ext_release(struct super_block *);
+ extern long ext4_fallocate(struct file *file, int mode, loff_t offset,
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 56efcaa..8f6b3de 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2599,8 +2599,8 @@ ext4_ext_more_to_rm(struct ext4_ext_path *path)
+ 	return 1;
  }
  
- /**
-- *	ext4_alloc_blocks: multiple allocate blocks needed for a branch
-- *	@handle: handle for this transaction
-- *	@inode: inode which needs allocated blocks
-- *	@iblock: the logical block to start allocated at
-- *	@goal: preferred physical block of allocation
-- *	@indirect_blks: the number of blocks need to allocate for indirect
-- *			blocks
-- *	@blks: number of desired blocks
-- *	@new_blocks: on return it will store the new block numbers for
-- *	the indirect blocks(if needed) and the first direct block,
-- *	@err: on return it will store the error code
+-static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
+-				 ext4_lblk_t end)
++int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
++			  ext4_lblk_t end)
+ {
+ 	struct super_block *sb = inode->i_sb;
+ 	int depth = ext_depth(inode);
+@@ -4620,187 +4620,6 @@ static int ext4_xattr_fiemap(struct inode *inode,
+ 	return (error < 0 ? error : 0);
+ }
+ 
+-/*
+- * ext4_ext_punch_hole
 - *
-- *	This function will return the number of blocks allocated as
-- *	requested by the passed-in parameters.
+- * Punches a hole of "length" bytes in a file starting
+- * at byte "offset"
+- *
+- * @inode:  The inode of the file to punch a hole in
+- * @offset: The starting byte offset of the hole
+- * @length: The length of the hole
+- *
+- * Returns the number of blocks removed or negative on err
 - */
--static int ext4_alloc_blocks(handle_t *handle, struct inode *inode,
--			     ext4_lblk_t iblock, ext4_fsblk_t goal,
--			     int indirect_blks, int blks,
--			     ext4_fsblk_t new_blocks[4], int *err)
+-int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
 -{
--	struct ext4_allocation_request ar;
--	int target, i;
--	unsigned long count = 0, blk_allocated = 0;
--	int index = 0;
--	ext4_fsblk_t current_block = 0;
--	int ret = 0;
+-	struct inode *inode = file_inode(file);
+-	struct super_block *sb = inode->i_sb;
+-	ext4_lblk_t first_block, stop_block;
+-	struct address_space *mapping = inode->i_mapping;
+-	handle_t *handle;
+-	loff_t first_page, last_page, page_len;
+-	loff_t first_page_offset, last_page_offset;
+-	int credits, err = 0;
 -
 -	/*
--	 * Here we try to allocate the requested multiple blocks at once,
--	 * on a best-effort basis.
--	 * To build a branch, we should allocate blocks for
--	 * the indirect blocks(if not allocated yet), and at least
--	 * the first direct block of this branch.  That's the
--	 * minimum number of blocks need to allocate(required)
+-	 * Write out all dirty pages to avoid race conditions
+-	 * Then release them.
 -	 */
--	/* first we try to allocate the indirect blocks */
--	target = indirect_blks;
--	while (target > 0) {
--		count = target;
--		/* allocating blocks for indirect blocks and direct blocks */
--		current_block = ext4_new_meta_blocks(handle, inode, goal,
--						     0, &count, err);
--		if (*err)
--			goto failed_out;
+-	if (mapping->nrpages && mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
+-		err = filemap_write_and_wait_range(mapping,
+-			offset, offset + length - 1);
 -
--		if (unlikely(current_block + count > EXT4_MAX_BLOCK_FILE_PHYS)) {
--			EXT4_ERROR_INODE(inode,
--					 "current_block %llu + count %lu > %d!",
--					 current_block, count,
--					 EXT4_MAX_BLOCK_FILE_PHYS);
--			*err = -EIO;
--			goto failed_out;
--		}
--
--		target -= count;
--		/* allocate blocks for indirect blocks */
--		while (index < indirect_blks && count) {
--			new_blocks[index++] = current_block++;
--			count--;
--		}
--		if (count > 0) {
--			/*
--			 * save the new block number
--			 * for the first direct block
--			 */
--			new_blocks[index] = current_block;
--			WARN(1, KERN_INFO "%s returned more blocks than "
--						"requested\n", __func__);
--			break;
--		}
+-		if (err)
+-			return err;
 -	}
 -
--	target = blks - count ;
--	blk_allocated = count;
--	if (!target)
--		goto allocated;
--	/* Now allocate data blocks */
--	memset(&ar, 0, sizeof(ar));
--	ar.inode = inode;
--	ar.goal = goal;
--	ar.len = target;
--	ar.logical = iblock;
--	if (S_ISREG(inode->i_mode))
--		/* enable in-core preallocation only for regular files */
--		ar.flags = EXT4_MB_HINT_DATA;
--
--	current_block = ext4_mb_new_blocks(handle, &ar, err);
--	if (unlikely(current_block + ar.len > EXT4_MAX_BLOCK_FILE_PHYS)) {
--		EXT4_ERROR_INODE(inode,
--				 "current_block %llu + ar.len %d > %d!",
--				 current_block, ar.len,
--				 EXT4_MAX_BLOCK_FILE_PHYS);
--		*err = -EIO;
--		goto failed_out;
+-	mutex_lock(&inode->i_mutex);
+-	/* It's not possible punch hole on append only file */
+-	if (IS_APPEND(inode) || IS_IMMUTABLE(inode)) {
+-		err = -EPERM;
+-		goto out_mutex;
+-	}
+-	if (IS_SWAPFILE(inode)) {
+-		err = -ETXTBSY;
+-		goto out_mutex;
 -	}
 -
--	if (*err && (target == blks)) {
+-	/* No need to punch hole beyond i_size */
+-	if (offset >= inode->i_size)
+-		goto out_mutex;
+-
+-	/*
+-	 * If the hole extends beyond i_size, set the hole
+-	 * to end after the page that contains i_size
+-	 */
+-	if (offset + length > inode->i_size) {
+-		length = inode->i_size +
+-		   PAGE_CACHE_SIZE - (inode->i_size & (PAGE_CACHE_SIZE - 1)) -
+-		   offset;
+-	}
+-
+-	first_page = (offset + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
+-	last_page = (offset + length) >> PAGE_CACHE_SHIFT;
+-
+-	first_page_offset = first_page << PAGE_CACHE_SHIFT;
+-	last_page_offset = last_page << PAGE_CACHE_SHIFT;
+-
+-	/* Now release the pages */
+-	if (last_page_offset > first_page_offset) {
+-		truncate_pagecache_range(inode, first_page_offset,
+-					 last_page_offset - 1);
+-	}
+-
+-	/* Wait all existing dio workers, newcomers will block on i_mutex */
+-	ext4_inode_block_unlocked_dio(inode);
+-	err = ext4_flush_unwritten_io(inode);
+-	if (err)
+-		goto out_dio;
+-	inode_dio_wait(inode);
+-
+-	credits = ext4_writepage_trans_blocks(inode);
+-	handle = ext4_journal_start(inode, EXT4_HT_TRUNCATE, credits);
+-	if (IS_ERR(handle)) {
+-		err = PTR_ERR(handle);
+-		goto out_dio;
+-	}
+-
+-
+-	/*
+-	 * Now we need to zero out the non-page-aligned data in the
+-	 * pages at the start and tail of the hole, and unmap the buffer
+-	 * heads for the block aligned regions of the page that were
+-	 * completely zeroed.
+-	 */
+-	if (first_page > last_page) {
 -		/*
--		 * if the allocation failed and we didn't allocate
--		 * any blocks before
+-		 * If the file space being truncated is contained within a page
+-		 * just zero out and unmap the middle of that page
 -		 */
--		goto failed_out;
--	}
--	if (!*err) {
--		if (target == blks) {
--			/*
--			 * save the new block number
--			 * for the first direct block
--			 */
--			new_blocks[index] = current_block;
+-		err = ext4_discard_partial_page_buffers(handle,
+-			mapping, offset, length, 0);
+-
+-		if (err)
+-			goto out;
+-	} else {
+-		/*
+-		 * zero out and unmap the partial page that contains
+-		 * the start of the hole
+-		 */
+-		page_len  = first_page_offset - offset;
+-		if (page_len > 0) {
+-			err = ext4_discard_partial_page_buffers(handle, mapping,
+-						   offset, page_len, 0);
+-			if (err)
+-				goto out;
 -		}
--		blk_allocated += ar.len;
+-
+-		/*
+-		 * zero out and unmap the partial page that contains
+-		 * the end of the hole
+-		 */
+-		page_len = offset + length - last_page_offset;
+-		if (page_len > 0) {
+-			err = ext4_discard_partial_page_buffers(handle, mapping,
+-					last_page_offset, page_len, 0);
+-			if (err)
+-				goto out;
+-		}
 -	}
--allocated:
--	/* total number of blocks allocated for direct blocks */
--	ret = blk_allocated;
--	*err = 0;
--	return ret;
--failed_out:
--	for (i = 0; i < index; i++)
--		ext4_free_blocks(handle, inode, NULL, new_blocks[i], 1, 0);
--	return ret;
+-
+-	/*
+-	 * If i_size is contained in the last page, we need to
+-	 * unmap and zero the partial page after i_size
+-	 */
+-	if (inode->i_size >> PAGE_CACHE_SHIFT == last_page &&
+-	   inode->i_size % PAGE_CACHE_SIZE != 0) {
+-
+-		page_len = PAGE_CACHE_SIZE -
+-			(inode->i_size & (PAGE_CACHE_SIZE - 1));
+-
+-		if (page_len > 0) {
+-			err = ext4_discard_partial_page_buffers(handle,
+-			  mapping, inode->i_size, page_len, 0);
+-
+-			if (err)
+-				goto out;
+-		}
+-	}
+-
+-	first_block = (offset + sb->s_blocksize - 1) >>
+-		EXT4_BLOCK_SIZE_BITS(sb);
+-	stop_block = (offset + length) >> EXT4_BLOCK_SIZE_BITS(sb);
+-
+-	/* If there are no blocks to remove, return now */
+-	if (first_block >= stop_block)
+-		goto out;
+-
+-	down_write(&EXT4_I(inode)->i_data_sem);
+-	ext4_discard_preallocations(inode);
+-
+-	err = ext4_es_remove_extent(inode, first_block,
+-				    stop_block - first_block);
+-	err = ext4_ext_remove_space(inode, first_block, stop_block - 1);
+-
+-	ext4_discard_preallocations(inode);
+-
+-	if (IS_SYNC(inode))
+-		ext4_handle_sync(handle);
+-
+-	up_write(&EXT4_I(inode)->i_data_sem);
+-
+-out:
+-	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
+-	ext4_mark_inode_dirty(handle, inode);
+-	ext4_journal_stop(handle);
+-out_dio:
+-	ext4_inode_resume_unlocked_dio(inode);
+-out_mutex:
+-	mutex_unlock(&inode->i_mutex);
+-	return err;
 -}
 -
--/**
-  *	ext4_alloc_branch - allocate and set up a chain of blocks.
-  *	@handle: handle for this transaction
-  *	@inode: owner
-@@ -448,60 +323,59 @@ static int ext4_alloc_branch(handle_t *handle, struct inode *inode,
- 			     int *blks, ext4_fsblk_t goal,
- 			     ext4_lblk_t *offsets, Indirect *branch)
+ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+ 		__u64 start, __u64 len)
  {
--	int blocksize = inode->i_sb->s_blocksize;
--	int i, n = 0;
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index b780c4a..926028c 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -1434,8 +1434,8 @@ err:
+ 	return ret;
+ }
+ 
+-static int ext4_free_hole_blocks(handle_t *handle, struct inode *inode,
+-				 ext4_lblk_t first, ext4_lblk_t stop)
++int ext4_free_hole_blocks(handle_t *handle, struct inode *inode,
++			  ext4_lblk_t first, ext4_lblk_t stop)
+ {
+ 	int addr_per_block = EXT4_ADDR_PER_BLOCK(inode->i_sb);
+ 	int level, ret = 0;
+@@ -1469,157 +1469,3 @@ err:
+ 	return ret;
+ }
+ 
+-int ext4_ind_punch_hole(struct file *file, loff_t offset, loff_t length)
+-{
+-	struct inode *inode = file_inode(file);
+-	struct super_block *sb = inode->i_sb;
+-	ext4_lblk_t first_block, stop_block;
+-	struct address_space *mapping = inode->i_mapping;
+-	handle_t *handle = NULL;
+-	loff_t first_page, last_page, page_len;
+-	loff_t first_page_offset, last_page_offset;
 -	int err = 0;
--	struct buffer_head *bh;
--	int num;
--	ext4_fsblk_t new_blocks[4];
--	ext4_fsblk_t current_block;
-+	struct ext4_allocation_request	ar;
-+	struct buffer_head *		bh;
-+	ext4_fsblk_t			b, new_blocks[4];
-+	__le32				*p;
-+	int				i, j, err, len = 1;
- 
--	num = ext4_alloc_blocks(handle, inode, iblock, goal, indirect_blks,
--				*blks, new_blocks, &err);
--	if (err)
--		return err;
 -
--	branch[0].key = cpu_to_le32(new_blocks[0]);
- 	/*
--	 * metadata blocks and data blocks are allocated.
-+	 * Set up for the direct block allocation
- 	 */
--	for (n = 1; n <= indirect_blks;  n++) {
+-	/*
+-	 * Write out all dirty pages to avoid race conditions
+-	 * Then release them.
+-	 */
+-	if (mapping->nrpages && mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
+-		err = filemap_write_and_wait_range(mapping,
+-			offset, offset + length - 1);
+-		if (err)
+-			return err;
+-	}
+-
+-	mutex_lock(&inode->i_mutex);
+-	/* It's not possible punch hole on append only file */
+-	if (IS_APPEND(inode) || IS_IMMUTABLE(inode)) {
+-		err = -EPERM;
+-		goto out_mutex;
+-	}
+-	if (IS_SWAPFILE(inode)) {
+-		err = -ETXTBSY;
+-		goto out_mutex;
+-	}
+-
+-	/* No need to punch hole beyond i_size */
+-	if (offset >= inode->i_size)
+-		goto out_mutex;
+-
+-	/*
+-	 * If the hole extents beyond i_size, set the hole
+-	 * to end after the page that contains i_size
+-	 */
+-	if (offset + length > inode->i_size) {
+-		length = inode->i_size +
+-		    PAGE_CACHE_SIZE - (inode->i_size & (PAGE_CACHE_SIZE - 1)) -
+-		    offset;
+-	}
+-
+-	first_page = (offset + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
+-	last_page = (offset + length) >> PAGE_CACHE_SHIFT;
+-
+-	first_page_offset = first_page << PAGE_CACHE_SHIFT;
+-	last_page_offset = last_page << PAGE_CACHE_SHIFT;
+-
+-	/* Now release the pages */
+-	if (last_page_offset > first_page_offset) {
+-		truncate_pagecache_range(inode, first_page_offset,
+-					 last_page_offset - 1);
+-	}
+-
+-	/* Wait all existing dio works, newcomers will block on i_mutex */
+-	inode_dio_wait(inode);
+-
+-	handle = start_transaction(inode);
+-	if (IS_ERR(handle))
+-		goto out_mutex;
+-
+-	/*
+-	 * Now we need to zero out the non-page-aligned data in the
+-	 * pages at the start and tail of the hole, and unmap the buffer
+-	 * heads for the block aligned regions of the page that were
+-	 * completely zerod.
+-	 */
+-	if (first_page > last_page) {
 -		/*
--		 * Get buffer_head for parent block, zero it out
--		 * and set the pointer to new one, then send
--		 * parent to disk.
+-		 * If the file space being truncated is contained within a page
+-		 * just zero out and unmap the middle of that page
 -		 */
--		bh = sb_getblk(inode->i_sb, new_blocks[n-1]);
-+	memset(&ar, 0, sizeof(ar));
-+	ar.inode = inode;
-+	ar.len = *blks;
-+	ar.logical = iblock;
-+	if (S_ISREG(inode->i_mode))
-+		ar.flags = EXT4_MB_HINT_DATA;
-+
-+	for (i = 0; i <= indirect_blks; i++) {
-+		if (i == indirect_blks) {
-+			ar.goal = goal;
-+			new_blocks[i] = ext4_mb_new_blocks(handle, &ar, &err);
-+		} else
-+			goal = new_blocks[i] = ext4_new_meta_blocks(handle, inode,
-+							goal, 0, NULL, &err);
-+		if (err) {
-+			i--;
-+			goto failed;
-+		}
-+		branch[i].key = cpu_to_le32(new_blocks[i]);
-+		if (i == 0)
-+			continue;
-+
-+		bh = branch[i].bh = sb_getblk(inode->i_sb, new_blocks[i-1]);
- 		if (unlikely(!bh)) {
- 			err = -ENOMEM;
- 			goto failed;
- 		}
--
--		branch[n].bh = bh;
- 		lock_buffer(bh);
- 		BUFFER_TRACE(bh, "call get_create_access");
- 		err = ext4_journal_get_create_access(handle, bh);
- 		if (err) {
--			/* Don't brelse(bh) here; it's done in
--			 * ext4_journal_forget() below */
- 			unlock_buffer(bh);
- 			goto failed;
- 		}
- 
--		memset(bh->b_data, 0, blocksize);
--		branch[n].p = (__le32 *) bh->b_data + offsets[n];
--		branch[n].key = cpu_to_le32(new_blocks[n]);
--		*branch[n].p = branch[n].key;
--		if (n == indirect_blks) {
--			current_block = new_blocks[n];
--			/*
--			 * End of chain, update the last new metablock of
--			 * the chain to point to the new allocated
--			 * data blocks numbers
--			 */
--			for (i = 1; i < num; i++)
--				*(branch[n].p + i) = cpu_to_le32(++current_block);
+-		err = ext4_discard_partial_page_buffers(handle,
+-			mapping, offset, length, 0);
+-		if (err)
+-			goto out;
+-	} else {
+-		/*
+-		 * Zero out and unmap the paritial page that contains
+-		 * the start of the hole
+-		 */
+-		page_len = first_page_offset - offset;
+-		if (page_len > 0) {
+-			err = ext4_discard_partial_page_buffers(handle, mapping,
+-							offset, page_len, 0);
+-			if (err)
+-				goto out;
 -		}
-+		memset(bh->b_data, 0, bh->b_size);
-+		p = branch[i].p = (__le32 *) bh->b_data + offsets[i];
-+		b = new_blocks[i];
-+
-+		if (i == indirect_blks)
-+			len = ar.len;
-+		for (j = 0; j < len; j++)
-+			*p++ = cpu_to_le32(b++);
-+
- 		BUFFER_TRACE(bh, "marking uptodate");
- 		set_buffer_uptodate(bh);
- 		unlock_buffer(bh);
-@@ -511,25 +385,16 @@ static int ext4_alloc_branch(handle_t *handle, struct inode *inode,
- 		if (err)
- 			goto failed;
- 	}
--	*blks = num;
--	return err;
-+	*blks = ar.len;
-+	return 0;
- failed:
--	/* Allocation failed, free what we already allocated */
--	ext4_free_blocks(handle, inode, NULL, new_blocks[0], 1, 0);
--	for (i = 1; i <= n ; i++) {
--		/*
--		 * branch[i].bh is newly allocated, so there is no
--		 * need to revoke the block, which is why we don't
--		 * need to set EXT4_FREE_BLOCKS_METADATA.
--		 */
--		ext4_free_blocks(handle, inode, NULL, new_blocks[i], 1,
--				 EXT4_FREE_BLOCKS_FORGET);
-+	for (; i >= 0; i--) {
-+		if (i != indirect_blks && branch[i].bh)
-+			ext4_forget(handle, 1, inode, branch[i].bh,
-+				    branch[i].bh->b_blocknr);
-+		ext4_free_blocks(handle, inode, NULL, new_blocks[i],
-+				 (i == indirect_blks) ? ar.len : 1, 0);
- 	}
--	for (i = n+1; i < indirect_blks; i++)
--		ext4_free_blocks(handle, inode, NULL, new_blocks[i], 1, 0);
 -
--	ext4_free_blocks(handle, inode, NULL, new_blocks[i], num, 0);
+-		/*
+-		 * Zero out and unmap the partial page that contains
+-		 * the end of the hole
+-		 */
+-		page_len = offset + length - last_page_offset;
+-		if (page_len > 0) {
+-			err = ext4_discard_partial_page_buffers(handle, mapping,
+-						last_page_offset, page_len, 0);
+-			if (err)
+-				goto out;
+-		}
+-	}
+-
+-	/*
+-	 * If i_size contained in the last page, we need to
+-	 * unmap and zero the paritial page after i_size
+-	 */
+-	if (inode->i_size >> PAGE_CACHE_SHIFT == last_page &&
+-	    inode->i_size % PAGE_CACHE_SIZE != 0) {
+-		page_len = PAGE_CACHE_SIZE -
+-			(inode->i_size & (PAGE_CACHE_SIZE - 1));
+-		if (page_len > 0) {
+-			err = ext4_discard_partial_page_buffers(handle,
+-				mapping, inode->i_size, page_len, 0);
+-			if (err)
+-				goto out;
+-		}
+-	}
+-
+-	first_block = (offset + sb->s_blocksize - 1) >>
+-		EXT4_BLOCK_SIZE_BITS(sb);
+-	stop_block = (offset + length) >> EXT4_BLOCK_SIZE_BITS(sb);
+-
+-	if (first_block >= stop_block)
+-		goto out;
+-
+-	down_write(&EXT4_I(inode)->i_data_sem);
+-	ext4_discard_preallocations(inode);
+-
+-	err = ext4_es_remove_extent(inode, first_block,
+-				    stop_block - first_block);
+-	err = ext4_free_hole_blocks(handle, inode, first_block, stop_block);
+-
+-	ext4_discard_preallocations(inode);
+-
+-	if (IS_SYNC(inode))
+-		ext4_handle_sync(handle);
+-
+-	up_write(&EXT4_I(inode)->i_data_sem);
+-
+-out:
+-	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
+-	ext4_mark_inode_dirty(handle, inode);
+-	ext4_journal_stop(handle);
+-
+-out_mutex:
+-	mutex_unlock(&inode->i_mutex);
+-
+-	return err;
+-}
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index a4ffb47..11cf505 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3566,20 +3566,191 @@ int ext4_can_truncate(struct inode *inode)
+ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
+ {
+ 	struct inode *inode = file_inode(file);
++	struct super_block *sb = inode->i_sb;
++	ext4_lblk_t first_block, stop_block;
++	struct address_space *mapping = inode->i_mapping;
++	loff_t first_page, last_page, page_len;
++	loff_t first_page_offset, last_page_offset;
++	handle_t *handle;
++	unsigned int credits;
++	int ret = 0;
++
+ 	if (!S_ISREG(inode->i_mode))
+ 		return -EOPNOTSUPP;
+ 
+-	if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+-		return ext4_ind_punch_hole(file, offset, length);
+-
+-	if (EXT4_SB(inode->i_sb)->s_cluster_ratio > 1) {
++	if (EXT4_SB(sb)->s_cluster_ratio > 1) {
+ 		/* TODO: Add support for bigalloc file systems */
+ 		return -EOPNOTSUPP;
+ 	}
+ 
+ 	trace_ext4_punch_hole(inode, offset, length);
+ 
+-	return ext4_ext_punch_hole(file, offset, length);
++	/*
++	 * Write out all dirty pages to avoid race conditions
++	 * Then release them.
++	 */
++	if (mapping->nrpages && mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
++		ret = filemap_write_and_wait_range(mapping, offset,
++						   offset + length - 1);
++		if (ret)
++			return ret;
++	}
++
++	mutex_lock(&inode->i_mutex);
++	/* It's not possible punch hole on append only file */
++	if (IS_APPEND(inode) || IS_IMMUTABLE(inode)) {
++		ret = -EPERM;
++		goto out_mutex;
++	}
++	if (IS_SWAPFILE(inode)) {
++		ret = -ETXTBSY;
++		goto out_mutex;
++	}
++
++	/* No need to punch hole beyond i_size */
++	if (offset >= inode->i_size)
++		goto out_mutex;
++
++	/*
++	 * If the hole extends beyond i_size, set the hole
++	 * to end after the page that contains i_size
++	 */
++	if (offset + length > inode->i_size) {
++		length = inode->i_size +
++		   PAGE_CACHE_SIZE - (inode->i_size & (PAGE_CACHE_SIZE - 1)) -
++		   offset;
++	}
++
++	first_page = (offset + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
++	last_page = (offset + length) >> PAGE_CACHE_SHIFT;
++
++	first_page_offset = first_page << PAGE_CACHE_SHIFT;
++	last_page_offset = last_page << PAGE_CACHE_SHIFT;
++
++	/* Now release the pages */
++	if (last_page_offset > first_page_offset) {
++		truncate_pagecache_range(inode, first_page_offset,
++					 last_page_offset - 1);
++	}
++
++	/* Wait all existing dio workers, newcomers will block on i_mutex */
++	ext4_inode_block_unlocked_dio(inode);
++	ret = ext4_flush_unwritten_io(inode);
++	if (ret)
++		goto out_dio;
++	inode_dio_wait(inode);
++
++	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
++		credits = ext4_writepage_trans_blocks(inode);
++	else
++		credits = ext4_blocks_for_truncate(inode);
++	handle = ext4_journal_start(inode, EXT4_HT_TRUNCATE,
++				    ext4_blocks_for_truncate(inode));
++	if (IS_ERR(handle)) {
++		ret = PTR_ERR(handle);
++		ext4_std_error(sb, ret);
++		goto out_dio;
++	}
++
++	/*
++	 * Now we need to zero out the non-page-aligned data in the
++	 * pages at the start and tail of the hole, and unmap the
++	 * buffer heads for the block aligned regions of the page that
++	 * were completely zeroed.
++	 */
++	if (first_page > last_page) {
++		/*
++		 * If the file space being truncated is contained
++		 * within a page just zero out and unmap the middle of
++		 * that page
++		 */
++		ret = ext4_discard_partial_page_buffers(handle,
++			mapping, offset, length, 0);
++
++		if (ret)
++			goto out_stop;
++	} else {
++		/*
++		 * zero out and unmap the partial page that contains
++		 * the start of the hole
++		 */
++		page_len = first_page_offset - offset;
++		if (page_len > 0) {
++			ret = ext4_discard_partial_page_buffers(handle, mapping,
++						offset, page_len, 0);
++			if (ret)
++				goto out_stop;
++		}
++
++		/*
++		 * zero out and unmap the partial page that contains
++		 * the end of the hole
++		 */
++		page_len = offset + length - last_page_offset;
++		if (page_len > 0) {
++			ret = ext4_discard_partial_page_buffers(handle, mapping,
++					last_page_offset, page_len, 0);
++			if (ret)
++				goto out_stop;
++		}
++	}
++
++	/*
++	 * If i_size is contained in the last page, we need to
++	 * unmap and zero the partial page after i_size
++	 */
++	if (inode->i_size >> PAGE_CACHE_SHIFT == last_page &&
++	   inode->i_size % PAGE_CACHE_SIZE != 0) {
++		page_len = PAGE_CACHE_SIZE -
++			(inode->i_size & (PAGE_CACHE_SIZE - 1));
++
++		if (page_len > 0) {
++			ret = ext4_discard_partial_page_buffers(handle,
++					mapping, inode->i_size, page_len, 0);
++
++			if (ret)
++				goto out_stop;
++		}
++	}
++
++	first_block = (offset + sb->s_blocksize - 1) >>
++		EXT4_BLOCK_SIZE_BITS(sb);
++	stop_block = (offset + length) >> EXT4_BLOCK_SIZE_BITS(sb);
++
++	/* If there are no blocks to remove, return now */
++	if (first_block >= stop_block)
++		goto out_stop;
++
++	down_write(&EXT4_I(inode)->i_data_sem);
++	ext4_discard_preallocations(inode);
++
++	ret = ext4_es_remove_extent(inode, first_block,
++				    stop_block - first_block);
++	if (ret) {
++		up_write(&EXT4_I(inode)->i_data_sem);
++		goto out_stop;
++	}
++
++	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
++		ret = ext4_ext_remove_space(inode, first_block,
++					    stop_block - 1);
++	else
++		ret = ext4_free_hole_blocks(handle, inode, first_block,
++					    stop_block);
++
++	ext4_discard_preallocations(inode);
++	if (IS_SYNC(inode))
++		ext4_handle_sync(handle);
++	up_write(&EXT4_I(inode)->i_data_sem);
++	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
++	ext4_mark_inode_dirty(handle, inode);
++out_stop:
++	ext4_journal_stop(handle);
++out_dio:
++	ext4_inode_resume_unlocked_dio(inode);
++out_mutex:
++	mutex_unlock(&inode->i_mutex);
++	return ret;
+ }
+ 
+ /*
+-- 
+1.7.12.rc0.22.gcdd159b
+
