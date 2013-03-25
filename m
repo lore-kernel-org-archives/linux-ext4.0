@@ -1,125 +1,92 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/7] ext4: fold ext4_generic_write_end() into ext4_write_end()
-Date: Sun, 24 Mar 2013 20:06:49 -0400
-Message-ID: <1364170014-10295-3-git-send-email-tytso@mit.edu>
+Subject: [PATCH 7/7] ext4: add might_sleep() annotations
+Date: Sun, 24 Mar 2013 20:06:54 -0400
+Message-ID: <1364170014-10295-8-git-send-email-tytso@mit.edu>
 References: <1364170014-10295-1-git-send-email-tytso@mit.edu>
-Cc: Zheng Liu <wenqing.lz@taobao.com>, "Theodore Ts'o" <tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:55517 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:55508 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755202Ab3CYAHC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 24 Mar 2013 20:07:02 -0400
+	id S1755180Ab3CYAG5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 24 Mar 2013 20:06:57 -0400
 In-Reply-To: <1364170014-10295-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zheng Liu <wenqing.lz@taobao.com>
-
-After collpasing the handling of data ordered and data writeback
-codepath, ext4_generic_write_end() has only one caller,
-ext4_write_end().  So we fold it into ext4_write_end().
-
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/inode.c | 67 +++++++++++++++++++++++----------------------------------
- 1 file changed, 27 insertions(+), 40 deletions(-)
+ fs/ext4/ext4_jbd2.c | 6 ++++++
+ fs/ext4/mballoc.c   | 4 ++++
+ 2 files changed, 10 insertions(+)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 4ee6927..a4ffb47 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1087,14 +1087,32 @@ static int write_end_fn(handle_t *handle, struct buffer_head *bh)
- 	return ext4_handle_dirty_metadata(handle, NULL, bh);
- }
- 
--static int ext4_generic_write_end(struct file *file,
--				  struct address_space *mapping,
--				  loff_t pos, unsigned len, unsigned copied,
--				  struct page *page, void *fsdata)
-+/*
-+ * We need to pick up the new inode size which generic_commit_write gave us
-+ * `file' can be NULL - eg, when called from page_symlink().
-+ *
-+ * ext4 never places buffers on inode->i_mapping->private_list.  metadata
-+ * buffers are managed internally.
-+ */
-+static int ext4_write_end(struct file *file,
-+			  struct address_space *mapping,
-+			  loff_t pos, unsigned len, unsigned copied,
-+			  struct page *page, void *fsdata)
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index 7058975..0e1dc9e 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -43,6 +43,8 @@ handle_t *__ext4_journal_start_sb(struct super_block *sb, unsigned int line,
  {
--	int i_size_changed = 0;
--	struct inode *inode = mapping->host;
- 	handle_t *handle = ext4_journal_current_handle();
-+	struct inode *inode = mapping->host;
-+	int ret = 0, ret2;
-+	int i_size_changed = 0;
+ 	journal_t *journal;
+ 
++	might_sleep();
 +
-+	trace_ext4_write_end(inode, pos, len, copied);
-+	if (ext4_test_inode_state(inode, EXT4_STATE_ORDERED_MODE)) {
-+		ret = ext4_jbd2_file_inode(handle, inode);
-+		if (ret) {
-+			unlock_page(page);
-+			page_cache_release(page);
-+			goto errout;
-+		}
-+	}
+ 	trace_ext4_journal_start(sb, nblocks, _RET_IP_);
+ 	if (sb->s_flags & MS_RDONLY)
+ 		return ERR_PTR(-EROFS);
+@@ -113,6 +115,8 @@ int __ext4_journal_get_write_access(const char *where, unsigned int line,
+ {
+ 	int err = 0;
  
- 	if (ext4_has_inline_data(inode))
- 		copied = ext4_write_inline_data_end(inode, pos, len,
-@@ -1105,7 +1123,7 @@ static int ext4_generic_write_end(struct file *file,
++	might_sleep();
++
+ 	if (ext4_handle_valid(handle)) {
+ 		err = jbd2_journal_get_write_access(handle, bh);
+ 		if (err)
+@@ -209,6 +213,8 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
+ {
+ 	int err = 0;
  
++	might_sleep();
++
+ 	if (ext4_handle_valid(handle)) {
+ 		err = jbd2_journal_dirty_metadata(handle, bh);
+ 		if (err) {
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index ee6614b..36c82a3 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1011,6 +1011,7 @@ int ext4_mb_init_group(struct super_block *sb, ext4_group_t group)
+ 	struct page *page;
+ 	int ret = 0;
+ 
++	might_sleep();
+ 	mb_debug(1, "init group %u\n", group);
+ 	this_grp = ext4_get_group_info(sb, group);
  	/*
- 	 * No need to use i_size_read() here, the i_size
--	 * cannot change under us because we hold i_mutex.
-+	 * cannot change under us because we hole i_mutex.
- 	 *
- 	 * But it's important to update i_size while still holding page lock:
- 	 * page writeout could otherwise come in and zero beyond i_size.
-@@ -1115,10 +1133,10 @@ static int ext4_generic_write_end(struct file *file,
- 		i_size_changed = 1;
- 	}
+@@ -1082,6 +1083,7 @@ ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct inode *inode = sbi->s_buddy_cache;
  
--	if (pos + copied >  EXT4_I(inode)->i_disksize) {
-+	if (pos + copied > EXT4_I(inode)->i_disksize) {
- 		/* We need to mark inode dirty even if
- 		 * new_i_size is less that inode->i_size
--		 * bu greater than i_disksize.(hint delalloc)
-+		 * but greater than i_disksize. (hint delalloc)
- 		 */
- 		ext4_update_i_disksize(inode, (pos + copied));
- 		i_size_changed = 1;
-@@ -1135,37 +1153,6 @@ static int ext4_generic_write_end(struct file *file,
- 	if (i_size_changed)
- 		ext4_mark_inode_dirty(handle, inode);
++	might_sleep();
+ 	mb_debug(1, "load group %u\n", group);
  
--	return copied;
--}
--
--/*
-- * We need to pick up the new inode size which generic_commit_write gave us
-- * `file' can be NULL - eg, when called from page_symlink().
-- *
-- * ext4 never places buffers on inode->i_mapping->private_list.  metadata
-- * buffers are managed internally.
-- */
--static int ext4_write_end(struct file *file,
--			  struct address_space *mapping,
--			  loff_t pos, unsigned len, unsigned copied,
--			  struct page *page, void *fsdata)
--{
--	handle_t *handle = ext4_journal_current_handle();
--	struct inode *inode = mapping->host;
--	int ret = 0, ret2;
--
--	trace_ext4_write_end(inode, pos, len, copied);
--	if (ext4_test_inode_state(inode, EXT4_STATE_ORDERED_MODE)) {
--		ret = ext4_jbd2_file_inode(handle, inode);
--		if (ret) {
--			unlock_page(page);
--			page_cache_release(page);
--			goto errout;
--		}
--	}
+ 	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
+@@ -4217,6 +4219,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 	unsigned int inquota = 0;
+ 	unsigned int reserv_clstrs = 0;
+ 
++	might_sleep();
+ 	sb = ar->inode->i_sb;
+ 	sbi = EXT4_SB(sb);
+ 
+@@ -4470,6 +4473,7 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
+ 	int err = 0;
+ 	int ret;
+ 
++	might_sleep();
+ 	if (bh) {
+ 		if (block)
+ 			BUG_ON(block != bh->b_blocknr);
+-- 
+1.7.12.rc0.22.gcdd159b
+
