@@ -1,92 +1,292 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 7/7] ext4: add might_sleep() annotations
-Date: Sun, 24 Mar 2013 20:06:54 -0400
-Message-ID: <1364170014-10295-8-git-send-email-tytso@mit.edu>
+Subject: [PATCH 3/7] ext4: fold ext4_alloc_blocks() in ext4_alloc_branch()
+Date: Sun, 24 Mar 2013 20:06:50 -0400
+Message-ID: <1364170014-10295-4-git-send-email-tytso@mit.edu>
 References: <1364170014-10295-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:55508 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:55514 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755180Ab3CYAG5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 24 Mar 2013 20:06:57 -0400
+	id S1755201Ab3CYAHB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 24 Mar 2013 20:07:01 -0400
 In-Reply-To: <1364170014-10295-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+The older code was far more complicated than it needed to be because
+of how we spliced in the ext4's new multiblock allocator into ext3's
+indirect block code.  By folding ext4_alloc_blocks() into
+ext4_alloc_branch(), we make the code far more understable, shave off
+over 130 lines of code and half a kilobyte of compiled object code.
+
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4_jbd2.c | 6 ++++++
- fs/ext4/mballoc.c   | 4 ++++
- 2 files changed, 10 insertions(+)
+ fs/ext4/indirect.c | 227 +++++++++++------------------------------------------
+ 1 file changed, 46 insertions(+), 181 deletions(-)
 
-diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index 7058975..0e1dc9e 100644
---- a/fs/ext4/ext4_jbd2.c
-+++ b/fs/ext4/ext4_jbd2.c
-@@ -43,6 +43,8 @@ handle_t *__ext4_journal_start_sb(struct super_block *sb, unsigned int line,
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index b505a14..b780c4a 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -292,131 +292,6 @@ static int ext4_blks_to_allocate(Indirect *branch, int k, unsigned int blks,
+ }
+ 
+ /**
+- *	ext4_alloc_blocks: multiple allocate blocks needed for a branch
+- *	@handle: handle for this transaction
+- *	@inode: inode which needs allocated blocks
+- *	@iblock: the logical block to start allocated at
+- *	@goal: preferred physical block of allocation
+- *	@indirect_blks: the number of blocks need to allocate for indirect
+- *			blocks
+- *	@blks: number of desired blocks
+- *	@new_blocks: on return it will store the new block numbers for
+- *	the indirect blocks(if needed) and the first direct block,
+- *	@err: on return it will store the error code
+- *
+- *	This function will return the number of blocks allocated as
+- *	requested by the passed-in parameters.
+- */
+-static int ext4_alloc_blocks(handle_t *handle, struct inode *inode,
+-			     ext4_lblk_t iblock, ext4_fsblk_t goal,
+-			     int indirect_blks, int blks,
+-			     ext4_fsblk_t new_blocks[4], int *err)
+-{
+-	struct ext4_allocation_request ar;
+-	int target, i;
+-	unsigned long count = 0, blk_allocated = 0;
+-	int index = 0;
+-	ext4_fsblk_t current_block = 0;
+-	int ret = 0;
+-
+-	/*
+-	 * Here we try to allocate the requested multiple blocks at once,
+-	 * on a best-effort basis.
+-	 * To build a branch, we should allocate blocks for
+-	 * the indirect blocks(if not allocated yet), and at least
+-	 * the first direct block of this branch.  That's the
+-	 * minimum number of blocks need to allocate(required)
+-	 */
+-	/* first we try to allocate the indirect blocks */
+-	target = indirect_blks;
+-	while (target > 0) {
+-		count = target;
+-		/* allocating blocks for indirect blocks and direct blocks */
+-		current_block = ext4_new_meta_blocks(handle, inode, goal,
+-						     0, &count, err);
+-		if (*err)
+-			goto failed_out;
+-
+-		if (unlikely(current_block + count > EXT4_MAX_BLOCK_FILE_PHYS)) {
+-			EXT4_ERROR_INODE(inode,
+-					 "current_block %llu + count %lu > %d!",
+-					 current_block, count,
+-					 EXT4_MAX_BLOCK_FILE_PHYS);
+-			*err = -EIO;
+-			goto failed_out;
+-		}
+-
+-		target -= count;
+-		/* allocate blocks for indirect blocks */
+-		while (index < indirect_blks && count) {
+-			new_blocks[index++] = current_block++;
+-			count--;
+-		}
+-		if (count > 0) {
+-			/*
+-			 * save the new block number
+-			 * for the first direct block
+-			 */
+-			new_blocks[index] = current_block;
+-			WARN(1, KERN_INFO "%s returned more blocks than "
+-						"requested\n", __func__);
+-			break;
+-		}
+-	}
+-
+-	target = blks - count ;
+-	blk_allocated = count;
+-	if (!target)
+-		goto allocated;
+-	/* Now allocate data blocks */
+-	memset(&ar, 0, sizeof(ar));
+-	ar.inode = inode;
+-	ar.goal = goal;
+-	ar.len = target;
+-	ar.logical = iblock;
+-	if (S_ISREG(inode->i_mode))
+-		/* enable in-core preallocation only for regular files */
+-		ar.flags = EXT4_MB_HINT_DATA;
+-
+-	current_block = ext4_mb_new_blocks(handle, &ar, err);
+-	if (unlikely(current_block + ar.len > EXT4_MAX_BLOCK_FILE_PHYS)) {
+-		EXT4_ERROR_INODE(inode,
+-				 "current_block %llu + ar.len %d > %d!",
+-				 current_block, ar.len,
+-				 EXT4_MAX_BLOCK_FILE_PHYS);
+-		*err = -EIO;
+-		goto failed_out;
+-	}
+-
+-	if (*err && (target == blks)) {
+-		/*
+-		 * if the allocation failed and we didn't allocate
+-		 * any blocks before
+-		 */
+-		goto failed_out;
+-	}
+-	if (!*err) {
+-		if (target == blks) {
+-			/*
+-			 * save the new block number
+-			 * for the first direct block
+-			 */
+-			new_blocks[index] = current_block;
+-		}
+-		blk_allocated += ar.len;
+-	}
+-allocated:
+-	/* total number of blocks allocated for direct blocks */
+-	ret = blk_allocated;
+-	*err = 0;
+-	return ret;
+-failed_out:
+-	for (i = 0; i < index; i++)
+-		ext4_free_blocks(handle, inode, NULL, new_blocks[i], 1, 0);
+-	return ret;
+-}
+-
+-/**
+  *	ext4_alloc_branch - allocate and set up a chain of blocks.
+  *	@handle: handle for this transaction
+  *	@inode: owner
+@@ -448,60 +323,59 @@ static int ext4_alloc_branch(handle_t *handle, struct inode *inode,
+ 			     int *blks, ext4_fsblk_t goal,
+ 			     ext4_lblk_t *offsets, Indirect *branch)
  {
- 	journal_t *journal;
+-	int blocksize = inode->i_sb->s_blocksize;
+-	int i, n = 0;
+-	int err = 0;
+-	struct buffer_head *bh;
+-	int num;
+-	ext4_fsblk_t new_blocks[4];
+-	ext4_fsblk_t current_block;
++	struct ext4_allocation_request	ar;
++	struct buffer_head *		bh;
++	ext4_fsblk_t			b, new_blocks[4];
++	__le32				*p;
++	int				i, j, err, len = 1;
  
-+	might_sleep();
-+
- 	trace_ext4_journal_start(sb, nblocks, _RET_IP_);
- 	if (sb->s_flags & MS_RDONLY)
- 		return ERR_PTR(-EROFS);
-@@ -113,6 +115,8 @@ int __ext4_journal_get_write_access(const char *where, unsigned int line,
- {
- 	int err = 0;
- 
-+	might_sleep();
-+
- 	if (ext4_handle_valid(handle)) {
- 		err = jbd2_journal_get_write_access(handle, bh);
- 		if (err)
-@@ -209,6 +213,8 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
- {
- 	int err = 0;
- 
-+	might_sleep();
-+
- 	if (ext4_handle_valid(handle)) {
- 		err = jbd2_journal_dirty_metadata(handle, bh);
- 		if (err) {
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index ee6614b..36c82a3 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -1011,6 +1011,7 @@ int ext4_mb_init_group(struct super_block *sb, ext4_group_t group)
- 	struct page *page;
- 	int ret = 0;
- 
-+	might_sleep();
- 	mb_debug(1, "init group %u\n", group);
- 	this_grp = ext4_get_group_info(sb, group);
+-	num = ext4_alloc_blocks(handle, inode, iblock, goal, indirect_blks,
+-				*blks, new_blocks, &err);
+-	if (err)
+-		return err;
+-
+-	branch[0].key = cpu_to_le32(new_blocks[0]);
  	/*
-@@ -1082,6 +1083,7 @@ ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	struct inode *inode = sbi->s_buddy_cache;
+-	 * metadata blocks and data blocks are allocated.
++	 * Set up for the direct block allocation
+ 	 */
+-	for (n = 1; n <= indirect_blks;  n++) {
+-		/*
+-		 * Get buffer_head for parent block, zero it out
+-		 * and set the pointer to new one, then send
+-		 * parent to disk.
+-		 */
+-		bh = sb_getblk(inode->i_sb, new_blocks[n-1]);
++	memset(&ar, 0, sizeof(ar));
++	ar.inode = inode;
++	ar.len = *blks;
++	ar.logical = iblock;
++	if (S_ISREG(inode->i_mode))
++		ar.flags = EXT4_MB_HINT_DATA;
++
++	for (i = 0; i <= indirect_blks; i++) {
++		if (i == indirect_blks) {
++			ar.goal = goal;
++			new_blocks[i] = ext4_mb_new_blocks(handle, &ar, &err);
++		} else
++			goal = new_blocks[i] = ext4_new_meta_blocks(handle, inode,
++							goal, 0, NULL, &err);
++		if (err) {
++			i--;
++			goto failed;
++		}
++		branch[i].key = cpu_to_le32(new_blocks[i]);
++		if (i == 0)
++			continue;
++
++		bh = branch[i].bh = sb_getblk(inode->i_sb, new_blocks[i-1]);
+ 		if (unlikely(!bh)) {
+ 			err = -ENOMEM;
+ 			goto failed;
+ 		}
+-
+-		branch[n].bh = bh;
+ 		lock_buffer(bh);
+ 		BUFFER_TRACE(bh, "call get_create_access");
+ 		err = ext4_journal_get_create_access(handle, bh);
+ 		if (err) {
+-			/* Don't brelse(bh) here; it's done in
+-			 * ext4_journal_forget() below */
+ 			unlock_buffer(bh);
+ 			goto failed;
+ 		}
  
-+	might_sleep();
- 	mb_debug(1, "load group %u\n", group);
- 
- 	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
-@@ -4217,6 +4219,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
- 	unsigned int inquota = 0;
- 	unsigned int reserv_clstrs = 0;
- 
-+	might_sleep();
- 	sb = ar->inode->i_sb;
- 	sbi = EXT4_SB(sb);
- 
-@@ -4470,6 +4473,7 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 	int err = 0;
- 	int ret;
- 
-+	might_sleep();
- 	if (bh) {
- 		if (block)
- 			BUG_ON(block != bh->b_blocknr);
--- 
-1.7.12.rc0.22.gcdd159b
-
+-		memset(bh->b_data, 0, blocksize);
+-		branch[n].p = (__le32 *) bh->b_data + offsets[n];
+-		branch[n].key = cpu_to_le32(new_blocks[n]);
+-		*branch[n].p = branch[n].key;
+-		if (n == indirect_blks) {
+-			current_block = new_blocks[n];
+-			/*
+-			 * End of chain, update the last new metablock of
+-			 * the chain to point to the new allocated
+-			 * data blocks numbers
+-			 */
+-			for (i = 1; i < num; i++)
+-				*(branch[n].p + i) = cpu_to_le32(++current_block);
+-		}
++		memset(bh->b_data, 0, bh->b_size);
++		p = branch[i].p = (__le32 *) bh->b_data + offsets[i];
++		b = new_blocks[i];
++
++		if (i == indirect_blks)
++			len = ar.len;
++		for (j = 0; j < len; j++)
++			*p++ = cpu_to_le32(b++);
++
+ 		BUFFER_TRACE(bh, "marking uptodate");
+ 		set_buffer_uptodate(bh);
+ 		unlock_buffer(bh);
+@@ -511,25 +385,16 @@ static int ext4_alloc_branch(handle_t *handle, struct inode *inode,
+ 		if (err)
+ 			goto failed;
+ 	}
+-	*blks = num;
+-	return err;
++	*blks = ar.len;
++	return 0;
+ failed:
+-	/* Allocation failed, free what we already allocated */
+-	ext4_free_blocks(handle, inode, NULL, new_blocks[0], 1, 0);
+-	for (i = 1; i <= n ; i++) {
+-		/*
+-		 * branch[i].bh is newly allocated, so there is no
+-		 * need to revoke the block, which is why we don't
+-		 * need to set EXT4_FREE_BLOCKS_METADATA.
+-		 */
+-		ext4_free_blocks(handle, inode, NULL, new_blocks[i], 1,
+-				 EXT4_FREE_BLOCKS_FORGET);
++	for (; i >= 0; i--) {
++		if (i != indirect_blks && branch[i].bh)
++			ext4_forget(handle, 1, inode, branch[i].bh,
++				    branch[i].bh->b_blocknr);
++		ext4_free_blocks(handle, inode, NULL, new_blocks[i],
++				 (i == indirect_blks) ? ar.len : 1, 0);
+ 	}
+-	for (i = n+1; i < indirect_blks; i++)
+-		ext4_free_blocks(handle, inode, NULL, new_blocks[i], 1, 0);
+-
+-	ext4_free_blocks(handle, inode, NULL, new_blocks[i], num, 0);
