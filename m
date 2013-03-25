@@ -1,121 +1,167 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: Do not normalize request from fallocate
-Date: Mon, 25 Mar 2013 11:09:35 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1303251051460.23176@localhost>
-References: <1363881045-21673-1-git-send-email-lczerner@redhat.com> <20130324001143.GB4000@thunk.org>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	gharm@google.com
-To: "Theodore Ts'o" <tytso@mit.edu>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH 2/2] ext4: introduce ext4_get_group_number()
+Date: Mon, 25 Mar 2013 11:24:11 +0100
+Message-ID: <1364207051-27037-2-git-send-email-lczerner@redhat.com>
+References: <1364207051-27037-1-git-send-email-lczerner@redhat.com>
+Cc: Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:13774 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:10856 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752029Ab3CYKJm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 25 Mar 2013 06:09:42 -0400
-In-Reply-To: <20130324001143.GB4000@thunk.org>
+	id S1756628Ab3CYKYR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 Mar 2013 06:24:17 -0400
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r2PAOHRR006744
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Mon, 25 Mar 2013 06:24:17 -0400
+In-Reply-To: <1364207051-27037-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, 23 Mar 2013, Theodore Ts'o wrote:
+Currently on many places in ext4 we're using
+ext4_get_group_no_and_offset() even though we're only interested in
+knowing the block group of the particular block, not the offset within
+the block group so we can use more efficient way to compute block group.
 
-> Date: Sat, 23 Mar 2013 20:11:43 -0400
-> From: Theodore Ts'o <tytso@mit.edu>
-> To: Lukas Czerner <lczerner@redhat.com>
-> Cc: linux-ext4@vger.kernel.org, gharm@google.com
-> Subject: Re: [PATCH] ext4: Do not normalize request from fallocate
-> 
-> On Thu, Mar 21, 2013 at 04:50:45PM +0100, Lukas Czerner wrote:
-> > 
-> > Commit 3c6fe77017bc6ce489f231c35fed3220b6691836 mentioned that
-> > large fallocate requests were not physically contiguous. However it is
-> > important to see why that is the case. Because the request is so big the
-> > allocator will try to find free group to allocate from skipping block
-> > groups which are used, which is fine. However it will only allocate
-> > extents of 2^15-1 block (limitation of uninitialized extent size)
-> > which will leave one block in each block group free which will make the
-> > extent tree physically non-contiguous, however _only_ by one block which
-> > is perfectly fine.
-> 
-> Well, it's actually really unfortunate.  The file ends up being more
-> fragmented, and from an alignment point of view it's really horrid.
-> For a RAID array with a power of 2 stripe size, or a flash device with
-> a power of 2 erase block size, the result is actually quite
-> spectacularly bad:
+This patch introduces ext4_get_group_number() which computes block group
+for a givem block much more efficiently. Use this function instead of
+ext4_get_group_no_and_offset() everywhere where we're only interested in
+knowing the block group.
 
-Sorry for being dense, but I am trying to understand why this is so
-bad and what is the "expected" column there.
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/balloc.c  |   14 +++++++++++---
+ fs/ext4/ext4.h    |    3 +++
+ fs/ext4/mballoc.c |    6 +++---
+ fs/ext4/resize.c  |   10 +++++-----
+ 4 files changed, 22 insertions(+), 11 deletions(-)
 
-The physical offset of each extent bellow starts on the start of the
-block group and it seems to me that it's perfectly aligned for every
-power of two up to the block group size.
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 68368c2..21b43ca 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -30,6 +30,16 @@ static unsigned ext4_num_base_meta_clusters(struct super_block *sb,
+  */
+ 
+ /*
++ * Calculate block group number for a given block number
++ */
++inline ext4_group_t ext4_get_group_number(struct super_block *sb,
++					  ext4_fsblk_t block)
++{
++	return (le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block) + block) >>
++	       (EXT4_BLOCK_SIZE_BITS(sb) + EXT4_CLUSTER_BITS(sb) + 3);
++}
++
++/*
+  * Calculate the block group number and offset into the block/cluster
+  * allocation bitmap, given a block number
+  */
+@@ -58,9 +68,7 @@ static inline int ext4_block_in_group(struct super_block *sb,
+ 				      ext4_group_t block_group)
+ {
+ 	ext4_group_t actual_group;
+-	actual_group = (le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block) +
+-			block) >>
+-		       (EXT4_BLOCK_SIZE_BITS(sb) + EXT4_CLUSTER_BITS(sb) + 3);
++	actual_group = ext4_get_group_number(sb, block);
+ 	return (actual_group == block_group) ? 1 : 0;
+ }
+ 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 167ff56..4df299b 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1787,6 +1787,9 @@ ext4_group_first_block_no(struct super_block *sb, ext4_group_t group_no)
+ void ext4_get_group_no_and_offset(struct super_block *sb, ext4_fsblk_t blocknr,
+ 			ext4_group_t *blockgrpp, ext4_grpblk_t *offsetp);
+ 
++inline ext4_group_t ext4_get_group_number(struct super_block *sb,
++					  ext4_fsblk_t block);
++
+ /*
+  * Timeout and state flag for lazy initialization inode thread.
+  */
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index ee6614b..dca7f06 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -3342,7 +3342,7 @@ static void ext4_mb_put_pa(struct ext4_allocation_context *ac,
+ 	if (pa->pa_type == MB_GROUP_PA)
+ 		grp_blk--;
+ 
+-	ext4_get_group_no_and_offset(sb, grp_blk, &grp, NULL);
++	grp = ext4_get_group_number(sb, grp_blk);
+ 
+ 	/*
+ 	 * possible race:
+@@ -3807,7 +3807,7 @@ repeat:
+ 
+ 	list_for_each_entry_safe(pa, tmp, &list, u.pa_tmp_list) {
+ 		BUG_ON(pa->pa_type != MB_INODE_PA);
+-		ext4_get_group_no_and_offset(sb, pa->pa_pstart, &group, NULL);
++		group = ext4_get_group_number(sb, pa->pa_pstart);
+ 
+ 		err = ext4_mb_load_buddy(sb, group, &e4b);
+ 		if (err) {
+@@ -4069,7 +4069,7 @@ ext4_mb_discard_lg_preallocations(struct super_block *sb,
+ 
+ 	list_for_each_entry_safe(pa, tmp, &discard_list, u.pa_tmp_list) {
+ 
+-		ext4_get_group_no_and_offset(sb, pa->pa_pstart, &group, NULL);
++		group = ext4_get_group_number(sb, pa->pa_pstart);
+ 		if (ext4_mb_load_buddy(sb, group, &e4b)) {
+ 			ext4_error(sb, "Error loading buddy information for %u",
+ 					group);
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index c169477..e349853 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -272,7 +272,7 @@ next_group:
+ 		if (start_blk >= last_blk)
+ 			goto next_group;
+ 		group_data[bb_index].block_bitmap = start_blk++;
+-		ext4_get_group_no_and_offset(sb, start_blk - 1, &group, NULL);
++		group = ext4_get_group_number(sb, start_blk - 1);
+ 		group -= group_data[0].group;
+ 		group_data[group].free_blocks_count--;
+ 		if (flexbg_size > 1)
+@@ -284,7 +284,7 @@ next_group:
+ 		if (start_blk >= last_blk)
+ 			goto next_group;
+ 		group_data[ib_index].inode_bitmap = start_blk++;
+-		ext4_get_group_no_and_offset(sb, start_blk - 1, &group, NULL);
++		group = ext4_get_group_number(sb, start_blk - 1);
+ 		group -= group_data[0].group;
+ 		group_data[group].free_blocks_count--;
+ 		if (flexbg_size > 1)
+@@ -296,7 +296,7 @@ next_group:
+ 		if (start_blk + EXT4_SB(sb)->s_itb_per_group > last_blk)
+ 			goto next_group;
+ 		group_data[it_index].inode_table = start_blk;
+-		ext4_get_group_no_and_offset(sb, start_blk, &group, NULL);
++		group = ext4_get_group_number(sb, start_blk - 1);
+ 		group -= group_data[0].group;
+ 		group_data[group].free_blocks_count -=
+ 					EXT4_SB(sb)->s_itb_per_group;
+@@ -392,7 +392,7 @@ static int set_flexbg_block_bitmap(struct super_block *sb, handle_t *handle,
+ 		ext4_group_t group;
+ 		int err;
+ 
+-		ext4_get_group_no_and_offset(sb, block, &group, NULL);
++		group = ext4_get_group_number(sb, block);
+ 		start = ext4_group_first_block_no(sb, group);
+ 		group -= flex_gd->groups[0].group;
+ 
+@@ -1879,7 +1879,7 @@ retry:
+ 		/* Nothing need to do */
+ 		return 0;
+ 
+-	ext4_get_group_no_and_offset(sb, n_blocks_count - 1, &n_group, &offset);
++	n_group = ext4_get_group_number(sb, n_blocks_count - 1);
+ 	ext4_get_group_no_and_offset(sb, o_blocks_count - 1, &o_group, &offset);
+ 
+ 	n_desc_blocks = num_desc_blocks(sb, n_group + 1);
+-- 
+1.7.7.6
 
-If the extent would start at the physical offset from the "expected"
-column, than it would be misaligned.
-
-Maybe I am missing something, or maybe I misunderstood the concept ?
-But the only problem I see is that when we would like to use that
-remaining one block, but that's expected and the only way to avoid
-that is to allocate smaller extents instead as you suggested below
-(16384 blocks).
-
-Thanks!
--Lukas
-
-> 
-> File size of 1 is 1073741824 (262144 blocks of 4096 bytes)
->  ext:     logical_offset:        physical_offset: length:   expected: flags:
->    0:        0..   32766:     458752..    491518:  32767:             unwritten
->    1:    32767..   65533:     491520..    524286:  32767:     491519: unwritten
->    2:    65534..   98300:     589824..    622590:  32767:     524287: unwritten
->    3:    98301..  131067:     622592..    655358:  32767:     622591: unwritten
->    4:   131068..  163834:     655360..    688126:  32767:     655359: unwritten
->    5:   163835..  196601:     688128..    720894:  32767:     688127: unwritten
->    6:   196602..  229368:     720896..    753662:  32767:     720895: unwritten
->    7:   229369..  262135:     753664..    786430:  32767:     753663: unwritten
->    8:   262136..  262143:     786432..    786439:      8:     786431: unwritten,eof
-> 1: 9 extents found
-> 
-> That being said, what we were doing before was quite bad, and you're
-> quite right about your analysis here:
-> 
-> > This will never happen when we normalize the request because for some
-> > reason (maybe bug) it will be normalized to much smaller request (2048
-> > blocks) and those extents will then be merged together not leaving any
-> > free block in between - hence physically contiguous. However the fact
-> > that we're splitting huge requests into ton of smaller ones and then
-> > merging extents together is very _very_ bad for fallocate performance.
-> > 
-> > The situation is even worst since with commit
-> > ec22ba8edb507395c95fbc617eea26a6b2d98797 we no longer merge
-> > uninitialized extents so we end up with absolutely _huge_ extent tree
-> > for bigger fallocate requests which is also bad for performance but not
-> > only when fallocate itself, but even when working with the file
-> > later on.
-> 
-> Without this patch, we currently do this for the same 1g file:
-> 
-> Filesystem type is: ef53
-> File size of 2 is 1073741824 (262144 blocks of 4096 bytes)
->  ext:     logical_offset:        physical_offset: length:   expected: flags:
->    0:        0..    2047:     305152..    307199:   2048:             unwritten
->    1:     2048..    4095:     307200..    309247:   2048:             unwritten
->    	  	       .....
->  106:   217088..  219135:     522240..    524287:   2048:             unwritten
->  107:   219136..  221183:     591872..    593919:   2048:     524288: unwritten
->  108:   221184..  223231:     593920..    595967:   2048:             unwritten
->  		       .....
->  127:   260096..  262143:     632832..    634879:   2048:             unwritten,eof
-> 2: 2 extents found
-> 
-> So I agree that what we're doing is poor, but the question is, can we
-> do something which is better that either of these two results?
-> 
-> That is, can we improve mballoc so that we keep an fallocated gigabyte
-> file as physically contiguous as possible, while using an optimal
-> number of on-disk extents?   i.e., 9 extents of length 32767.
-> 
-> Failing that, can we create 20 extents of length 16384 or so?
-> 
-> 	      	     	       	       	  	 - Ted
-> 
