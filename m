@@ -1,44 +1,46 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Type of filesystem block
-Date: Sun, 24 Mar 2013 15:00:55 -0400
-Message-ID: <20130324190055.GB26792@thunk.org>
-References: <CAEUQcegWM0d3tmpNXVmeOSKAJUPzthk8uH96XMN+Ax_5ex5H5Q@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: Subranshu Patel <spatel.ml@gmail.com>
+Subject: [PATCH 0/7] ext4 code simplification and clean ups
+Date: Sun, 24 Mar 2013 20:06:47 -0400
+Message-ID: <1364170014-10295-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:55458 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:55502 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754327Ab3CXTA6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 24 Mar 2013 15:00:58 -0400
-Content-Disposition: inline
-In-Reply-To: <CAEUQcegWM0d3tmpNXVmeOSKAJUPzthk8uH96XMN+Ax_5ex5H5Q@mail.gmail.com>
+	id S1755000Ab3CYAG5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 24 Mar 2013 20:06:57 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Mar 24, 2013 at 10:05:12PM +0530, Subranshu Patel wrote:
-> But I don=E2=80=99t find any  debugfs command which can show similar =
-block
-> usage information about metadata blocks, whether it is a superblock,
-> or inode bitmap block or block group descriptor, etc.
-> Is there any way to extract the usage information of metadata blocks
-> in ext4 filesystem ?
+I posted an earlier version of the first couple of patches while we were
+stablizing ext4 during the last merge window.  I've since done some
+further cleanup and rebased these patches v3.9-rc4.
 
-There isn't one today.  Normally I'll just look it up using the output
-of dumpe2fs.
+I've also added Zheng's recent patch to clean up ext4_write_end()'s.
 
-What's the use case where you need to get that information?  We could
-add that as a new feature into debugfs, but it might be helpful to
-understand the circumstances where you're needing that feature to
-understand how best to add it into debugfs (or maybe some other
-e2fsprogs command, such as e2fsck --- although in many cases e2fsck
-has some of this already).
+Finally, I've added some debugging annotations to make it easier to find
+bugs when doing future development work.
 
-						- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Theodore Ts'o (6):
+  ext4: collapse handling of data=ordered and data=writeback codepaths
+  ext4: fold ext4_alloc_blocks() in ext4_alloc_branch()
+  ext4: refactor punch hole code
+  ext4: refactor truncate code
+  ext4: add mutex_is_locked() assertion to ext4_truncate()
+  ext4: add might_sleep() annotations
+
+Zheng Liu (1):
+  ext4: fold ext4_generic_write_end() into ext4_write_end()
+
+ fs/ext4/ext4.h              |  12 +-
+ fs/ext4/ext4_jbd2.c         |   6 +
+ fs/ext4/extents.c           | 245 +----------------------
+ fs/ext4/indirect.c          | 473 +++++---------------------------------------
+ fs/ext4/inode.c             | 433 ++++++++++++++++++++++++++++------------
+ fs/ext4/mballoc.c           |   4 +
+ include/trace/events/ext4.h |  10 +-
+ 7 files changed, 376 insertions(+), 807 deletions(-)
+
+-- 
+1.7.12.rc0.22.gcdd159b
+
