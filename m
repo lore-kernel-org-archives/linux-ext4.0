@@ -1,134 +1,75 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 7/7] ext4: add might_sleep() annotations
-Date: Tue, 26 Mar 2013 10:49:50 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1303261048490.23176@localhost>
-References: <1364170014-10295-1-git-send-email-tytso@mit.edu> <1364170014-10295-8-git-send-email-tytso@mit.edu> <alpine.LFD.2.00.1303261047210.23176@localhost>
+From: Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>
+Subject: Re: regressions due to 64-bit ext4 directory cookies
+Date: Tue, 26 Mar 2013 16:23:11 +0100
+Message-ID: <5151BD5F.30607@itwm.fraunhofer.de>
+References: <20130213151455.GB17431@thunk.org>
+	<20130213151953.GJ14195@fieldses.org>
+	<20130213153654.GC17431@thunk.org>
+	<20130213162059.GL14195@fieldses.org>
+	<CAFboF2wXvP+vttiff8iRE9rAgvV8UWGbFprgVp8p7kE43TU=PA@mail.gmail.com>
+	<20130213222052.GD5938@thunk.org>
+	<20130213224141.GU14195@fieldses.org>
+	<20130213224720.GE5938@thunk.org>
+	<CAFboF2z1akN_edrY_fT915xfehfHGioA2M=PSHv0Fp3rD-5v5A@mail.gmail.com>
+	<20130213230511.GW14195@fieldses.org>
+	<20130213234430.GF5938@thunk.org>
+	<CAFboF2zS+YAa0uUxMFUAbqgPh3Kb4xZu40WUjLyGn8qPoP+Oyw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-525880541-1364291393=:23176"
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:19532 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932795Ab3CZJtz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Mar 2013 05:49:55 -0400
-In-Reply-To: <alpine.LFD.2.00.1303261047210.23176@localhost>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"; Format="flowed"
+Content-Transfer-Encoding: 7bit
+Cc: sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	gluster-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org
+To: Anand Avati <anand.avati-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Return-path: <gluster-devel-bounces+gcfgd-gluster-devel=m.gmane.org-qX2TKyscuCcdnm+yROfE0A@public.gmane.org>
+In-Reply-To: <CAFboF2zS+YAa0uUxMFUAbqgPh3Kb4xZu40WUjLyGn8qPoP+Oyw-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+List-Unsubscribe: <https://lists.nongnu.org/mailman/options/gluster-devel>,
+	<mailto:gluster-devel-request-qX2TKyscuCcdnm+yROfE0A@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.nongnu.org/archive/html/gluster-devel>
+List-Post: <mailto:gluster-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org>
+List-Help: <mailto:gluster-devel-request-qX2TKyscuCcdnm+yROfE0A@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.nongnu.org/mailman/listinfo/gluster-devel>,
+	<mailto:gluster-devel-request-qX2TKyscuCcdnm+yROfE0A@public.gmane.org?subject=subscribe>
+Errors-To: gluster-devel-bounces+gcfgd-gluster-devel=m.gmane.org-qX2TKyscuCcdnm+yROfE0A@public.gmane.org
+Sender: gluster-devel-bounces+gcfgd-gluster-devel=m.gmane.org-qX2TKyscuCcdnm+yROfE0A@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+Sorry for my late reply, I had been rather busy.
 
---8323328-525880541-1364291393=:23176
-Content-Type: TEXT/PLAIN; charset=ISO-8859-15
-Content-Transfer-Encoding: 8BIT
+On 02/14/2013 01:05 AM, Anand Avati wrote:
+> On Wed, Feb 13, 2013 at 3:44 PM, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org> wrote:
+>>
+>> I suspect this would seriously screw over Gluster, though, and this
+>> wouldn't be a solution for NFSv3, since NFS needs long-lived directory
+>> cookies, and not the short-lived cookies which is all POSIX/SuSv3
+>> guarantees.
+>>
+>
+> Actually this would work just fine with Gluster. Except in the case of
 
-On Tue, 26 Mar 2013, Luká¨ Czerner wrote:
+Would it really work perfectly? What about a server reboot in the middle 
+of a readdir of a client?
 
-> Date: Tue, 26 Mar 2013 10:48:00 +0100 (CET)
-> From: Luká¨ Czerner <lczerner@redhat.com>
-> To: Theodore Ts'o <tytso@mit.edu>
-> Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-> Subject: Re: [PATCH 7/7] ext4: add might_sleep() annotations
-> 
-> On Sun, 24 Mar 2013, Theodore Ts'o wrote:
-> 
-> > Date: Sun, 24 Mar 2013 20:06:54 -0400
-> > From: Theodore Ts'o <tytso@mit.edu>
-> > To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-> > Cc: Theodore Ts'o <tytso@mit.edu>
-> > Subject: [PATCH 7/7] ext4: add might_sleep() annotations
-> 
-> Looks good and useful.
-> 
-> Thanks!
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> gluster-NFS, the native client is only acting like a router/proxy of
+> syscalls to the backend system. A directory opened by an application will
+> have a matching directory fd opened on ext4, and readdir from an app will
+> be translated into readdir on the matching fd on ext4. So the
+> app-on-glusterfs and glusterfsd-on-ext4 are essentially "moving in tandem".
+> As long as the offs^H^H^H^H cookies do not overflow in the transformation,
+> Gluster would not have a problem.
+>
+> However Gluster-NFS (and NFS in general, too) will break, as we
+> opendir/closedir potentially on every request.
 
-oops, wrong tag sorry :) I meant to say
+We don't have reached a conclusion so far, do we? What about the ioctl 
+approach, but a bit differently? Would it work to specify the allowed 
+upper bits for ext4 (for example 16 additional bit) and the remaining 
+part for gluster? One of the mails had the calculation formula:
 
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+final_d_off = (ext4_d_off * MAX_SERVERS) + server_idx
 
-> 
-> 
-> > 
-> > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> > ---
-> >  fs/ext4/ext4_jbd2.c | 6 ++++++
-> >  fs/ext4/mballoc.c   | 4 ++++
-> >  2 files changed, 10 insertions(+)
-> > 
-> > diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-> > index 7058975..0e1dc9e 100644
-> > --- a/fs/ext4/ext4_jbd2.c
-> > +++ b/fs/ext4/ext4_jbd2.c
-> > @@ -43,6 +43,8 @@ handle_t *__ext4_journal_start_sb(struct super_block *sb, unsigned int line,
-> >  {
-> >  	journal_t *journal;
-> >  
-> > +	might_sleep();
-> > +
-> >  	trace_ext4_journal_start(sb, nblocks, _RET_IP_);
-> >  	if (sb->s_flags & MS_RDONLY)
-> >  		return ERR_PTR(-EROFS);
-> > @@ -113,6 +115,8 @@ int __ext4_journal_get_write_access(const char *where, unsigned int line,
-> >  {
-> >  	int err = 0;
-> >  
-> > +	might_sleep();
-> > +
-> >  	if (ext4_handle_valid(handle)) {
-> >  		err = jbd2_journal_get_write_access(handle, bh);
-> >  		if (err)
-> > @@ -209,6 +213,8 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
-> >  {
-> >  	int err = 0;
-> >  
-> > +	might_sleep();
-> > +
-> >  	if (ext4_handle_valid(handle)) {
-> >  		err = jbd2_journal_dirty_metadata(handle, bh);
-> >  		if (err) {
-> > diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> > index ee6614b..36c82a3 100644
-> > --- a/fs/ext4/mballoc.c
-> > +++ b/fs/ext4/mballoc.c
-> > @@ -1011,6 +1011,7 @@ int ext4_mb_init_group(struct super_block *sb, ext4_group_t group)
-> >  	struct page *page;
-> >  	int ret = 0;
-> >  
-> > +	might_sleep();
-> >  	mb_debug(1, "init group %u\n", group);
-> >  	this_grp = ext4_get_group_info(sb, group);
-> >  	/*
-> > @@ -1082,6 +1083,7 @@ ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
-> >  	struct ext4_sb_info *sbi = EXT4_SB(sb);
-> >  	struct inode *inode = sbi->s_buddy_cache;
-> >  
-> > +	might_sleep();
-> >  	mb_debug(1, "load group %u\n", group);
-> >  
-> >  	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
-> > @@ -4217,6 +4219,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
-> >  	unsigned int inquota = 0;
-> >  	unsigned int reserv_clstrs = 0;
-> >  
-> > +	might_sleep();
-> >  	sb = ar->inode->i_sb;
-> >  	sbi = EXT4_SB(sb);
-> >  
-> > @@ -4470,6 +4473,7 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
-> >  	int err = 0;
-> >  	int ret;
-> >  
-> > +	might_sleep();
-> >  	if (bh) {
-> >  		if (block)
-> >  			BUG_ON(block != bh->b_blocknr);
-> > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
---8323328-525880541-1364291393=:23176--
+But what is the value of MAX_SERVERS?
+
+
+Cheers,
+Bernd
