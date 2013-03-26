@@ -1,43 +1,52 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 55651] Non-atomic short write problem with O_APPEND
-Date: Mon, 25 Mar 2013 20:59:31 +0000 (UTC)
-Message-ID: <20130325205931.D140F11FB35@bugzilla.kernel.org>
-References: <bug-55651-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Updated version of xfstests-bld pushed to git.kernel.org
+Date: Mon, 25 Mar 2013 23:17:59 -0400
+Message-ID: <nsxk3ouzw60.fsf@closure.thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Cc: akshaylal@google.com
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:51709 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754418Ab3CYU7j (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 25 Mar 2013 16:59:39 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id ABA71202EB
-	for <linux-ext4@vger.kernel.org>; Mon, 25 Mar 2013 20:59:34 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id 36980202E7
-	for <linux-ext4@vger.kernel.org>; Mon, 25 Mar 2013 20:59:33 +0000 (UTC)
-In-Reply-To: <bug-55651-13602@https.bugzilla.kernel.org/>
+Received: from li9-11.members.linode.com ([67.18.176.11]:55874 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759336Ab3CZDSE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 Mar 2013 23:18:04 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=55651
 
+I've pushed an updated version of my xfstests-bld framework to:
 
+     git://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git
+     http://git.kernel.org/cgit/fs/ext2/xfstests-bld.git
 
+Notable new features include:
 
+*) Build quota-tools and fio in the hermetic environment and install
+   them in the xfstest/bin directory, so that running the tests is not
+   dependent on the system versions of fio and the quota userspace
+   utilities
 
---- Comment #1 from Quentin Barnes <qbarnes@gmail.com>  2013-03-25 20:59:31 ---
-I have a small mistake in the above report.  The problem does not reproduce on
-RHEL6.2 (or earlier RHEL6 releases).  Only on RHEL6.3 and later.
+*) Update the runtests.sh script to fix a compatibility problem with the
+   latest version of xfstests
 
-So it looks like the bug came in between: v3.1 and v3.2, RHEL5.7 and RHEL5.8,
-and RHEL6.2 and RHEL6.3.
+*) Make it possible to build the installed executables to use the system
+   C libraries in order to save disk space
 
-I'm still poking about to see if I can figure out which patch that is so I can
-better have a guess at which subsystem.
+Short version on how to use:
 
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+1.  "make tarball" to generate the xfstests.tar.gz file.  This should be
+    unpacked in the directory /root of your KVM guest OS image
+2.  Copy the files in kvm-autorun to the /root directory on the guest OS
+    image
+3.  Move /root/rc.local to /etc/rc.local
+4.  Move /root/S06mkvdevs.sh to /etc/init.d and create a symlink from
+    /etc/init.d/S06mkvdevs.sh to /etc/rc.d/rcS.d
+5.  Add entries to /etc/fstab for /dev/vdb, /dev/vdc, and /dev/vdb as
+    ext4 file systems mounted on /vdb, /vdc, /vdd respectively.  Make
+    sure empty direcotires exist for the /vdb, /vdc, vdd mount points.
+6.  The host OS scripts are in kvm-xfststs directory.  You'll need to
+    edit the DIR= line in kvm-xfstests, and adjust some of the
+    parameters in the kvm-xfstests/config file
+
+                                                - Ted
