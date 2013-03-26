@@ -1,52 +1,54 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Updated version of xfstests-bld pushed to git.kernel.org
-Date: Mon, 25 Mar 2013 23:17:59 -0400
-Message-ID: <nsxk3ouzw60.fsf@closure.thunk.org>
+Subject: Eric Whitney's ext4 scaling data
+Date: Tue, 26 Mar 2013 00:00:48 -0400
+Message-ID: <nsxhajyzu6n.fsf@closure.thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: akshaylal@google.com
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:55874 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:55885 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759336Ab3CZDSE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 25 Mar 2013 23:18:04 -0400
+	id S1750757Ab3CZEAu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 26 Mar 2013 00:00:50 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
-I've pushed an updated version of my xfstests-bld framework to:
+Eric Whitney has very thoughtfully provided an updated set of ext4
+scalability data (with comparisons against ext3, xfs, and btrfs)
+comparing performance between 3.1 and 3.2, and comparing performance
+between 3.2 and 3.6-rc3.
 
-     git://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git
-     http://git.kernel.org/cgit/fs/ext2/xfstests-bld.git
+I've made his compressed tar file available at:
 
-Notable new features include:
+https://www.kernel.org/pub/linux/kernel/people/tytso/ext4_scaling_data.tar.xz
+https://www.kernel.org/pub/linux/kernel/people/tytso/ext4_scaling_data.tar.gz
 
-*) Build quota-tools and fio in the hermetic environment and install
-   them in the xfstest/bin directory, so that running the tests is not
-   dependent on the system versions of fio and the quota userspace
-   utilities
+His comments on this data are:
 
-*) Update the runtests.sh script to fix a compatibility problem with the
-   latest version of xfstests
+   It contains two sets of data - one comparing 3.2 and 3.1 (this was
+   the last data set I posted publicly) and another comparing 3.6-rc3
+   and 3.2.  3.6-rc3 was the last data set I collected, and until now, I
+   hadn't prepared graphs for it.  The graphical results are consistent
+   with what I'd reported verbally over the first 2/3 of last year - not
+   much change between 3.2 and 3.6-rc3.  The last large change I could
+   see occurred in 3.2, as mentioned in the notes.
 
-*) Make it possible to build the installed executables to use the system
-   C libraries in order to save disk space
+   The tarball unpacks into a directory named ext4_scaling_data and
+   contains a few subdirectories.  The directories named 3.2 and 3.6-rc3
+   map to the data sets described above.  Each contains a file named
+   index.html which you can open with a web browser to see the graphs,
+   browse the raw data, ffsb profiles and lockstats, etc.
 
-Short version on how to use:
+   Hopefully you'll find the lockstats and other information useful,
+   even though stale (3.6-rc3 became available the last week in August
+   2012).
 
-1.  "make tarball" to generate the xfstests.tar.gz file.  This should be
-    unpacked in the directory /root of your KVM guest OS image
-2.  Copy the files in kvm-autorun to the /root directory on the guest OS
-    image
-3.  Move /root/rc.local to /etc/rc.local
-4.  Move /root/S06mkvdevs.sh to /etc/init.d and create a symlink from
-    /etc/init.d/S06mkvdevs.sh to /etc/rc.d/rcS.d
-5.  Add entries to /etc/fstab for /dev/vdb, /dev/vdc, and /dev/vdb as
-    ext4 file systems mounted on /vdb, /vdc, /vdd respectively.  Make
-    sure empty direcotires exist for the /vdb, /vdc, vdd mount points.
-6.  The host OS scripts are in kvm-xfststs directory.  You'll need to
-    edit the DIR= line in kvm-xfstests, and adjust some of the
-    parameters in the kvm-xfstests/config file
+Thanks, Eric for making this data available!
 
                                                 - Ted
+
+P.S.  The btrfs numbers were shockingly bad, even for the random write
+workload, which was unexpected for me.  I wonder if checksumming was
+enabled by default, or some such, and this was hampering their
+performance...
