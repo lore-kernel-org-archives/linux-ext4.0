@@ -1,62 +1,87 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH] ext4: fix ext4_evict_inode() racing against workqueue
- processing code
-Date: Tue, 26 Mar 2013 13:55:30 +0800
-Message-ID: <20130326055530.GB17165@gmail.com>
-References: <1363742959-12815-1-git-send-email-tytso@mit.edu>
- <5149C452.3070206@redhat.com>
- <20130320144523.GF12865@thunk.org>
- <20130326055251.GA17165@gmail.com>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH 6/7] ext4: add mutex_is_locked() assertion to
+ ext4_truncate()
+Date: Tue, 26 Mar 2013 10:31:29 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1303261021290.23176@localhost>
+References: <1364170014-10295-1-git-send-email-tytso@mit.edu> <1364170014-10295-7-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Theodore Ts'o <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f43.google.com ([209.85.220.43]:36938 "EHLO
-	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752172Ab3CZFqY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Mar 2013 01:46:24 -0400
-Received: by mail-pa0-f43.google.com with SMTP id hz11so257237pad.16
-        for <linux-ext4@vger.kernel.org>; Mon, 25 Mar 2013 22:46:23 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <20130326055251.GA17165@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:21474 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S934174Ab3CZJbe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 26 Mar 2013 05:31:34 -0400
+In-Reply-To: <1364170014-10295-7-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 26, 2013 at 01:52:51PM +0800, Zheng Liu wrote:
-> Sorry for the late reply.
-> 
-> On Wed, Mar 20, 2013 at 10:45:23AM -0400, Theodore Ts'o wrote:
-> > On Wed, Mar 20, 2013 at 09:14:42AM -0500, Eric Sandeen wrote:
-> > > 
-> > > As an aside, is there any reason to have "dioread_nolock" as an option
-> > > at this point?  If it works now, would you ever *not* want it?
-> > > 
-> > > (granted it doesn't work with some journaling options etc, but that
-> > > behavior could be automatic, w/o the need for special mount options).
-> > 
-> > The primary restriction is that diread_nolock doesn't work when fs
-> > block size != page size.  If your proposal is that we automatically
-> > enable diread_nolock when we can use it safely, that's definitely
-> > something to consider for the next merge window.
-> 
-> Yes, I also think we can automatically enable dioread_nolock because it
-> brings us some benefits.
-> 
-> BTW, I think there is an minor improvement for dio overwrite codepath
-> with indirect-based file.  We don't need to take i_mutex in this
-> condition just as we have done for extent-based file.  If a user mounts
-> a ext2/3 file system with a ext4 kernel modules, he/she could get a
-> lower latency.  But it seems that it would break dio semantic in ext2/3.
-> Currently in ext2/3 if we issue a overwrite dio and then issue a read
-> dio.  We will always read the latest data because we wait on i_mutex
-> lock.  But after parallelizing overwite dio, this semantic might breaks.
-> I re-read this doc but it seems that it doesn't describe this case.
-                 ^^^
+On Sun, 24 Mar 2013, Theodore Ts'o wrote:
 
-Ah, sorry, I forgot to paste the link here.
-https://ext4.wiki.kernel.org/index.php/Clarifying_Direct_IO%27s_Semantics
+> Date: Sun, 24 Mar 2013 20:06:53 -0400
+> From: Theodore Ts'o <tytso@mit.edu>
+> To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+> Cc: Theodore Ts'o <tytso@mit.edu>
+> Subject: [PATCH 6/7] ext4: add mutex_is_locked() assertion to ext4_truncate()
+> 
 
-Regards,
-                                                - Zheng
+Hi Ted,
+
+I have to admit I do not necessarily understand the reason for this.
+Have you seen any specific problem with mutex not being locked in
+the truncation path ? I understand that it should be locked, but
+there are lot of places where thing should be locked and we do not
+usually check them, especially since we need special hook to "fool"
+the check. Also there are not a lot of places we call truncate from.
+
+I am not necessarily against the check, defensive programming is
+proven to be very useful, but I would like to know why this one ?
+Also, having mutex not locked in the truncation path is a bug so I
+am not sure why we only do WARN_ON_ONCE() which can be easily missed
+? Can we do WARN_ON(), or WARN_ON_ONCE() + ext4_warning() ?
+
+Thanks!
+-Lukas
+
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> ---
+>  fs/ext4/inode.c | 16 +++++++++++++++-
+>  1 file changed, 15 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index ab20015..eb9a5a9 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -258,8 +258,21 @@ void ext4_evict_inode(struct inode *inode)
+>  			     "couldn't mark inode dirty (err %d)", err);
+>  		goto stop_handle;
+>  	}
+> -	if (inode->i_blocks)
+> +	if (inode->i_blocks) {
+> +		/*
+> +		 * Since we are evicting the inode, it shouldn't be
+> +		 * locked.  We've added a warning which triggers if
+> +		 * the mutex is not locked, so take the lock even
+> +		 * though it's not strictly necessary.  However,
+> +		 * taking the lock using a simple mutex_lock() will
+> +		 * trigger a (false positive) lockdep warning, so take
+> +		 * it using a trylock.
+> +		 */
+> +		int locked = mutex_trylock(&inode->i_mutex);
+>  		ext4_truncate(inode);
+> +		if (likely(locked))
+> +			mutex_unlock(&inode->i_mutex);
+> +	}
+>  
+>  	/*
+>  	 * ext4_ext_truncate() doesn't reserve any slop when it
+> @@ -3789,6 +3802,7 @@ void ext4_truncate(struct inode *inode)
+>  	struct address_space *mapping = inode->i_mapping;
+>  	loff_t page_len;
+>  
+> +	WARN_ON_ONCE(!mutex_is_locked(&inode->i_mutex));
+>  	trace_ext4_truncate_enter(inode);
+>  
+>  	if (!ext4_can_truncate(inode))
+> 
