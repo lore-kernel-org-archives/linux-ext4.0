@@ -1,54 +1,75 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Eric Whitney's ext4 scaling data
-Date: Tue, 26 Mar 2013 00:00:48 -0400
-Message-ID: <nsxhajyzu6n.fsf@closure.thunk.org>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH] ext4: fix ext4_evict_inode() racing against workqueue
+ processing code
+Date: Tue, 26 Mar 2013 13:52:51 +0800
+Message-ID: <20130326055251.GA17165@gmail.com>
+References: <1363742959-12815-1-git-send-email-tytso@mit.edu>
+ <5149C452.3070206@redhat.com>
+ <20130320144523.GF12865@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:55885 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750757Ab3CZEAu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Mar 2013 00:00:50 -0400
+Received: from mail-pa0-f44.google.com ([209.85.220.44]:33279 "EHLO
+	mail-pa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757627Ab3CZFhL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Mar 2013 01:37:11 -0400
+Received: by mail-pa0-f44.google.com with SMTP id bi5so1421722pad.17
+        for <linux-ext4@vger.kernel.org>; Mon, 25 Mar 2013 22:37:11 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <20130320144523.GF12865@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Sorry for the late reply.
 
-Eric Whitney has very thoughtfully provided an updated set of ext4
-scalability data (with comparisons against ext3, xfs, and btrfs)
-comparing performance between 3.1 and 3.2, and comparing performance
-between 3.2 and 3.6-rc3.
+On Wed, Mar 20, 2013 at 10:45:23AM -0400, Theodore Ts'o wrote:
+> On Wed, Mar 20, 2013 at 09:14:42AM -0500, Eric Sandeen wrote:
+> > 
+> > As an aside, is there any reason to have "dioread_nolock" as an option
+> > at this point?  If it works now, would you ever *not* want it?
+> > 
+> > (granted it doesn't work with some journaling options etc, but that
+> > behavior could be automatic, w/o the need for special mount options).
+> 
+> The primary restriction is that diread_nolock doesn't work when fs
+> block size != page size.  If your proposal is that we automatically
+> enable diread_nolock when we can use it safely, that's definitely
+> something to consider for the next merge window.
 
-I've made his compressed tar file available at:
+Yes, I also think we can automatically enable dioread_nolock because it
+brings us some benefits.
 
-https://www.kernel.org/pub/linux/kernel/people/tytso/ext4_scaling_data.tar.xz
-https://www.kernel.org/pub/linux/kernel/people/tytso/ext4_scaling_data.tar.gz
+BTW, I think there is an minor improvement for dio overwrite codepath
+with indirect-based file.  We don't need to take i_mutex in this
+condition just as we have done for extent-based file.  If a user mounts
+a ext2/3 file system with a ext4 kernel modules, he/she could get a
+lower latency.  But it seems that it would break dio semantic in ext2/3.
+Currently in ext2/3 if we issue a overwrite dio and then issue a read
+dio.  We will always read the latest data because we wait on i_mutex
+lock.  But after parallelizing overwite dio, this semantic might breaks.
+I re-read this doc but it seems that it doesn't describe this case.  Do
+we need to keep this semantic?
 
-His comments on this data are:
+> 
+> My long range plan/hope is that we eventually be able to use the
+> extent status tree so that we do allocating writes, we first (a)
+> allocate the blocks, and mark them as in use as far as the mballoc
+> data structures are concerned, but we do _not_ mark them as in use in
+> the on-disk allocation bitmaps, then (b) we write the data blocks, and
+> then triggered by the block I/O completion, (c) in a single journal
+> trnasaction, we update the allocation bitmaps, update the inode's
+> extent tree, and update the inode's i_size field.
+> 
+> This is different from the dioread_nolock approach in that we're not
+> initially inserting the blocks in the extent tree as uninitialized,
+> and then convert the extent tree entries from uninit to init after the
+> I/O completion.
 
-   It contains two sets of data - one comparing 3.2 and 3.1 (this was
-   the last data set I posted publicly) and another comparing 3.6-rc3
-   and 3.2.  3.6-rc3 was the last data set I collected, and until now, I
-   hadn't prepared graphs for it.  The graphical results are consistent
-   with what I'd reported verbally over the first 2/3 of last year - not
-   much change between 3.2 and 3.6-rc3.  The last large change I could
-   see occurred in 3.2, as mentioned in the notes.
+Yes, this approach is better.  I am happy to work on this.
 
-   The tarball unpacks into a directory named ext4_scaling_data and
-   contains a few subdirectories.  The directories named 3.2 and 3.6-rc3
-   map to the data sets described above.  Each contains a file named
-   index.html which you can open with a web browser to see the graphs,
-   browse the raw data, ffsb profiles and lockstats, etc.
-
-   Hopefully you'll find the lockstats and other information useful,
-   even though stale (3.6-rc3 became available the last week in August
-   2012).
-
-Thanks, Eric for making this data available!
-
-                                                - Ted
-
-P.S.  The btrfs numbers were shockingly bad, even for the random write
-workload, which was unexpected for me.  I wonder if checksumming was
-enabled by default, or some such, and this was hampering their
-performance...
+Regards,
+                                                - Zheng
