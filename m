@@ -1,66 +1,155 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: fix ext4_evict_inode() racing against workqueue
- processing code
-Date: Tue, 26 Mar 2013 21:34:03 +0100
-Message-ID: <20130326203403.GE2082@quack.suse.cz>
-References: <1363742959-12815-1-git-send-email-tytso@mit.edu>
- <5149C452.3070206@redhat.com>
- <20130320144523.GF12865@thunk.org>
- <20130326055251.GA17165@gmail.com>
+Subject: Re: [PATCH 1/3] jbd2: fix race between
+ jbd2_journal_remove_checkpoint and ->j_commit_callback
+Date: Tue, 26 Mar 2013 22:34:01 +0100
+Message-ID: <20130326213401.GG2082@quack.suse.cz>
+References: <1363969123-16852-1-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.cz,
+	wenqing.lz@taobao.com
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:43604 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:45924 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751753Ab3CZUeI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Mar 2013 16:34:08 -0400
+	id S1752529Ab3CZVeG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 26 Mar 2013 17:34:06 -0400
 Content-Disposition: inline
-In-Reply-To: <20130326055251.GA17165@gmail.com>
+In-Reply-To: <1363969123-16852-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 26-03-13 13:52:51, Zheng Liu wrote:
-> Sorry for the late reply.
+On Fri 22-03-13 20:18:41, Dmitry Monakhov wrote:
+> Following race is possible
+> [kjournald2]                              other_task
+> jbd2_journal_commit_transaction()
+>   j_state = T_FINISHED;
+>   spin_unlock(&journal->j_list_lock);
+>                                          ->jbd2_journal_remove_checkpoint()
+> 					   ->jbd2_journal_free_transaction();
+> 					     ->kmem_cache_free(transaction)
+>   ->j_commit_callback(journal, transaction);
+>     -> USE_AFTER_FREE
 > 
-> On Wed, Mar 20, 2013 at 10:45:23AM -0400, Theodore Ts'o wrote:
-> > On Wed, Mar 20, 2013 at 09:14:42AM -0500, Eric Sandeen wrote:
-> > > 
-> > > As an aside, is there any reason to have "dioread_nolock" as an option
-> > > at this point?  If it works now, would you ever *not* want it?
-> > > 
-> > > (granted it doesn't work with some journaling options etc, but that
-> > > behavior could be automatic, w/o the need for special mount options).
-> > 
-> > The primary restriction is that diread_nolock doesn't work when fs
-> > block size != page size.  If your proposal is that we automatically
-> > enable diread_nolock when we can use it safely, that's definitely
-> > something to consider for the next merge window.
+> WARNING: at lib/list_debug.c:62 __list_del_entry+0x1c0/0x250()
+> Hardware name:
+> list_del corruption. prev->next should be ffff88019a4ec198, but was 6b6b6b6b6b6b6b6b
+> Modules linked in: cpufreq_ondemand acpi_cpufreq freq_table mperf coretemp kvm_intel kvm crc32c_intel ghash_clmulni_intel microcode sg xhci_hcd button sd_mod crc_t10dif aesni_intel ablk_helper cryptd lrw aes_x86_64 xts gf128mul ahci libahci pata_acpi ata_generic dm_mirror dm_region_hash dm_log dm_mod
+> Pid: 16400, comm: jbd2/dm-1-8 Tainted: G        W    3.8.0-rc3+ #107
+> Call Trace:
+>  [<ffffffff8106fb0d>] warn_slowpath_common+0xad/0xf0
+>  [<ffffffff8106fc06>] warn_slowpath_fmt+0x46/0x50
+>  [<ffffffff813637e9>] ? ext4_journal_commit_callback+0x99/0xc0
+>  [<ffffffff8148cae0>] __list_del_entry+0x1c0/0x250
+>  [<ffffffff813637bf>] ext4_journal_commit_callback+0x6f/0xc0
+>  [<ffffffff813ca336>] jbd2_journal_commit_transaction+0x23a6/0x2570
+>  [<ffffffff8108aa42>] ? try_to_del_timer_sync+0x82/0xa0
+>  [<ffffffff8108b491>] ? del_timer_sync+0x91/0x1e0
+>  [<ffffffff813d3ecf>] kjournald2+0x19f/0x6a0
+>  [<ffffffff810ad630>] ? wake_up_bit+0x40/0x40
+>  [<ffffffff813d3d30>] ? bit_spin_lock+0x80/0x80
+>  [<ffffffff810ac6be>] kthread+0x10e/0x120
+>  [<ffffffff810ac5b0>] ? __init_kthread_worker+0x70/0x70
+>  [<ffffffff818ff6ac>] ret_from_fork+0x7c/0xb0
+>  [<ffffffff810ac5b0>] ? __init_kthread_worker+0x70/0x70
 > 
-> Yes, I also think we can automatically enable dioread_nolock because it
-> brings us some benefits.
-  But isn't there also some overhead due to buffered writes having to go
-through uninit->init conversion? Plus there's this potential deadlock in
-dioread_nolock code (http://www.spinics.net/lists/linux-ext4/msg36569.html)
-which I'm not sure how to fix yet...
+> In order to demonstrace this issue one should mount ext4 with -odiscard option
+> on SSD disk. This makes callback longer and race window becomes wider.
+> 
+> In order to fix this we should mark transaction as finished only after
+> one of contidions are true:
+> 1) Checkpoint lists are empty so we are shure what jbd2_journal_remove_checkpoint()
+>    can not be called under our feets.
+> 2) All callbacks have completed
+  Nice catch! One minor comment below:
 
-> BTW, I think there is an minor improvement for dio overwrite codepath
-> with indirect-based file.  We don't need to take i_mutex in this
-> condition just as we have done for extent-based file.  If a user mounts
-> a ext2/3 file system with a ext4 kernel modules, he/she could get a
-> lower latency.  But it seems that it would break dio semantic in ext2/3.
-> Currently in ext2/3 if we issue a overwrite dio and then issue a read
-> dio.  We will always read the latest data because we wait on i_mutex
-> lock.  But after parallelizing overwite dio, this semantic might breaks.
-> I re-read this doc but it seems that it doesn't describe this case.  Do
-> we need to keep this semantic?
-  I'm not sure but also I don't think it's important to optimize that
-special case.
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> ---
+>  fs/jbd2/commit.c     |   28 +++++++++++++++++++++++-----
+>  include/linux/jbd2.h |    1 +
+>  2 files changed, 24 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+> index 750c701..31541f7 100644
+> --- a/fs/jbd2/commit.c
+> +++ b/fs/jbd2/commit.c
+> @@ -1134,7 +1134,7 @@ restart_loop:
+>  	journal->j_stats.run.rs_blocks_logged += stats.run.rs_blocks_logged;
+>  	spin_unlock(&journal->j_history_lock);
+>  
+> -	commit_transaction->t_state = T_FINISHED;
+> +	commit_transaction->t_state = T_COMMIT_CALLBACK;
+>  	J_ASSERT(commit_transaction == journal->j_committing_transaction);
+>  	journal->j_commit_sequence = commit_transaction->t_tid;
+>  	journal->j_committing_transaction = NULL;
+> @@ -1149,12 +1149,20 @@ restart_loop:
+>  				journal->j_average_commit_time*3) / 4;
+>  	else
+>  		journal->j_average_commit_time = commit_time;
+> -	write_unlock(&journal->j_state_lock);
+>  
+> +	/*
+> +	 * If checkpoint lists are empty it is safe to mark transaction as
+> +	 * finished because no one will destroy it in under our feets.
+> +	 */
+>  	if (commit_transaction->t_checkpoint_list == NULL &&
+>  	    commit_transaction->t_checkpoint_io_list == NULL) {
+> -		__jbd2_journal_drop_transaction(journal, commit_transaction);
+>  		to_free = 1;
+> +		commit_transaction->t_state = T_FINISHED;
+> +	}
+> +	write_unlock(&journal->j_state_lock);
+> +
+> +	if (to_free) {
+> +		__jbd2_journal_drop_transaction(journal, commit_transaction);
+>  	} else {
+>  		if (journal->j_checkpoint_transactions == NULL) {
+>  			journal->j_checkpoint_transactions = commit_transaction;
+> @@ -1179,8 +1187,18 @@ restart_loop:
+>  	trace_jbd2_end_commit(journal, commit_transaction);
+>  	jbd_debug(1, "JBD2: commit %d complete, head %d\n",
+>  		  journal->j_commit_sequence, journal->j_tail_sequence);
+> -	if (to_free)
+> -		jbd2_journal_free_transaction(commit_transaction);
+>  
+> +	write_lock(&journal->j_state_lock);
+> +	spin_lock(&journal->j_list_lock);
+> +	commit_transaction->t_state = T_FINISHED;
+> +	/* Recheck checkpoint lists after j_list_lock was dropped */
+> +	if (commit_transaction->t_checkpoint_list == NULL &&
+> +	    commit_transaction->t_checkpoint_io_list == NULL) {
+> +		if (!to_free)
+> +			__jbd2_journal_drop_transaction(journal, commit_transaction);
+> +		jbd2_journal_free_transaction(commit_transaction);
+> +	}
+> +	spin_unlock(&journal->j_list_lock);
+> +	write_unlock(&journal->j_state_lock);
+>  	wake_up(&journal->j_wait_done_commit);
+>  }
+  Hm, I'd just link the transaction into checkpoint lists when changing
+state to T_COMMIT_CALLBACK and then handle all the dropping / freeing in
+one place after setting state to T_FINISHED. It should be slightly easier
+to read. Also please add a comment before the call of callback that we have
+to call it there because once transaction is in T_FINISHED state,
+checkpointing code can free it.
 
 								Honza
+
+> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+> index 50e5a5e..608ea13 100644
+> --- a/include/linux/jbd2.h
+> +++ b/include/linux/jbd2.h
+> @@ -480,6 +480,7 @@ struct transaction_s
+>  		T_COMMIT,
+>  		T_COMMIT_DFLUSH,
+>  		T_COMMIT_JFLUSH,
+> +		T_COMMIT_CALLBACK,
+>  		T_FINISHED
+>  	}			t_state;
+>  
+> -- 
+> 1.7.1
+> 
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
