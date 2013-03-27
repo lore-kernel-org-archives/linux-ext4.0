@@ -1,52 +1,263 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 5/7] ext4: refactor truncate code
-Date: Wed, 27 Mar 2013 08:36:51 -0400
-Message-ID: <20130327123651.GG5861@thunk.org>
-References: <1364170014-10295-1-git-send-email-tytso@mit.edu>
- <1364170014-10295-6-git-send-email-tytso@mit.edu>
- <alpine.LFD.2.00.1303271128480.2455@(none)>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH 1/7] ext4: collapse handling of data=ordered and
+ data=writeback codepaths
+Date: Wed, 27 Mar 2013 13:57:32 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1303271357080.23176@localhost>
+References: <1364170014-10295-1-git-send-email-tytso@mit.edu> <1364170014-10295-2-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:56304 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751094Ab3C0Mgz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Mar 2013 08:36:55 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1303271128480.2455@(none)>
+Received: from mx1.redhat.com ([209.132.183.28]:6331 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750878Ab3C0M5h (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Mar 2013 08:57:37 -0400
+In-Reply-To: <1364170014-10295-2-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Mar 27, 2013 at 11:53:42AM +0100, Luk=C3=A1=C5=A1 Czerner wrote=
-:
-> > +	up_write(&ei->i_data_sem);
->=20
-> In ext_truncate we used to unlock it after the ext4_handle_sync(),
-> however in ind_truncate we used to unlock it before the
-> ext4_handle_sync(). Which one is correct ? I guess it does not have
-> to be done under the i_data_sem, so maybe we can move it outside the
-> semaphore in the punch_hole code as well ?
+On Sun, 24 Mar 2013, Theodore Ts'o wrote:
 
-Yes, we can move this outside of the semaphore protected code.  Given
-that ext4_handle_sync() an inline function which sets a single memory
-location, my guess is that it didn't make a huge amount of difference,
-but it's better to keep the critical section as small as possible.
-I'll make that change.
+> Date: Sun, 24 Mar 2013 20:06:48 -0400
+> From: Theodore Ts'o <tytso@mit.edu>
+> To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+> Cc: Theodore Ts'o <tytso@mit.edu>
+> Subject: [PATCH 1/7] ext4: collapse handling of data=ordered and
+>     data=writeback codepaths
+> 
+> The only difference between how we handle data=ordered and
+> data=writeback is a single call to ext4_jbd2_file_inode().  Eliminate
+> code duplication by factoring out redundant the code paths.
 
+Looks good.
 
-Hmm.... one thing I'm not sure about, now that I'm looking at this
-code.  We call ext4_discard_preallocations() twice; once before we
-remove the extent, and once afterwards.  I'm not sure why we're doing
-that.  It doesn't look to me like ext4_free_blocks() ever releases
-blocks back to the preallocation space.  Am I missing something, or
-could we eliminate one of the calls to ext4_discard_preallocations()?
+Reviewed-by: Lukas Czerner <lczerner@redhat.com>
 
-      	 	       	      	       - Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Thanks!
+-Lukas
+
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> ---
+>  fs/ext4/ext4.h              |   1 +
+>  fs/ext4/inode.c             | 125 ++++++++++----------------------------------
+>  include/trace/events/ext4.h |  10 +---
+>  3 files changed, 31 insertions(+), 105 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 3b83cd6..f91e11b 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1374,6 +1374,7 @@ enum {
+>  	EXT4_STATE_DIOREAD_LOCK,	/* Disable support for dio read
+>  					   nolocking */
+>  	EXT4_STATE_MAY_INLINE_DATA,	/* may have in-inode data */
+> +	EXT4_STATE_ORDERED_MODE,	/* data=ordered mode */
+>  };
+>  
+>  #define EXT4_INODE_BIT_FNS(name, field, offset)				\
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index b3a5213..4ee6927 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -1145,77 +1145,36 @@ static int ext4_generic_write_end(struct file *file,
+>   * ext4 never places buffers on inode->i_mapping->private_list.  metadata
+>   * buffers are managed internally.
+>   */
+> -static int ext4_ordered_write_end(struct file *file,
+> -				  struct address_space *mapping,
+> -				  loff_t pos, unsigned len, unsigned copied,
+> -				  struct page *page, void *fsdata)
+> +static int ext4_write_end(struct file *file,
+> +			  struct address_space *mapping,
+> +			  loff_t pos, unsigned len, unsigned copied,
+> +			  struct page *page, void *fsdata)
+>  {
+>  	handle_t *handle = ext4_journal_current_handle();
+>  	struct inode *inode = mapping->host;
+>  	int ret = 0, ret2;
+>  
+> -	trace_ext4_ordered_write_end(inode, pos, len, copied);
+> -	ret = ext4_jbd2_file_inode(handle, inode);
+> -
+> -	if (ret == 0) {
+> -		ret2 = ext4_generic_write_end(file, mapping, pos, len, copied,
+> -							page, fsdata);
+> -		copied = ret2;
+> -		if (pos + len > inode->i_size && ext4_can_truncate(inode))
+> -			/* if we have allocated more blocks and copied
+> -			 * less. We will have blocks allocated outside
+> -			 * inode->i_size. So truncate them
+> -			 */
+> -			ext4_orphan_add(handle, inode);
+> -		if (ret2 < 0)
+> -			ret = ret2;
+> -	} else {
+> -		unlock_page(page);
+> -		page_cache_release(page);
+> -	}
+> -
+> -	ret2 = ext4_journal_stop(handle);
+> -	if (!ret)
+> -		ret = ret2;
+> -
+> -	if (pos + len > inode->i_size) {
+> -		ext4_truncate_failed_write(inode);
+> -		/*
+> -		 * If truncate failed early the inode might still be
+> -		 * on the orphan list; we need to make sure the inode
+> -		 * is removed from the orphan list in that case.
+> -		 */
+> -		if (inode->i_nlink)
+> -			ext4_orphan_del(NULL, inode);
+> +	trace_ext4_write_end(inode, pos, len, copied);
+> +	if (ext4_test_inode_state(inode, EXT4_STATE_ORDERED_MODE)) {
+> +		ret = ext4_jbd2_file_inode(handle, inode);
+> +		if (ret) {
+> +			unlock_page(page);
+> +			page_cache_release(page);
+> +			goto errout;
+> +		}
+>  	}
+>  
+> -
+> -	return ret ? ret : copied;
+> -}
+> -
+> -static int ext4_writeback_write_end(struct file *file,
+> -				    struct address_space *mapping,
+> -				    loff_t pos, unsigned len, unsigned copied,
+> -				    struct page *page, void *fsdata)
+> -{
+> -	handle_t *handle = ext4_journal_current_handle();
+> -	struct inode *inode = mapping->host;
+> -	int ret = 0, ret2;
+> -
+> -	trace_ext4_writeback_write_end(inode, pos, len, copied);
+> -	ret2 = ext4_generic_write_end(file, mapping, pos, len, copied,
+> -							page, fsdata);
+> -	copied = ret2;
+> +	copied = ext4_generic_write_end(file, mapping, pos, len, copied,
+> +					page, fsdata);
+> +	if (copied < 0)
+> +		ret = copied;
+>  	if (pos + len > inode->i_size && ext4_can_truncate(inode))
+>  		/* if we have allocated more blocks and copied
+>  		 * less. We will have blocks allocated outside
+>  		 * inode->i_size. So truncate them
+>  		 */
+>  		ext4_orphan_add(handle, inode);
+> -
+> -	if (ret2 < 0)
+> -		ret = ret2;
+> -
+> +errout:
+>  	ret2 = ext4_journal_stop(handle);
+>  	if (!ret)
+>  		ret = ret2;
+> @@ -2818,18 +2777,9 @@ static int ext4_da_write_end(struct file *file,
+>  	unsigned long start, end;
+>  	int write_mode = (int)(unsigned long)fsdata;
+>  
+> -	if (write_mode == FALL_BACK_TO_NONDELALLOC) {
+> -		switch (ext4_inode_journal_mode(inode)) {
+> -		case EXT4_INODE_ORDERED_DATA_MODE:
+> -			return ext4_ordered_write_end(file, mapping, pos,
+> -					len, copied, page, fsdata);
+> -		case EXT4_INODE_WRITEBACK_DATA_MODE:
+> -			return ext4_writeback_write_end(file, mapping, pos,
+> -					len, copied, page, fsdata);
+> -		default:
+> -			BUG();
+> -		}
+> -	}
+> +	if (write_mode == FALL_BACK_TO_NONDELALLOC)
+> +		return ext4_write_end(file, mapping, pos,
+> +				      len, copied, page, fsdata);
+>  
+>  	trace_ext4_da_write_end(inode, pos, len, copied);
+>  	start = pos & (PAGE_CACHE_SIZE - 1);
+> @@ -3334,27 +3284,12 @@ static int ext4_journalled_set_page_dirty(struct page *page)
+>  	return __set_page_dirty_nobuffers(page);
+>  }
+>  
+> -static const struct address_space_operations ext4_ordered_aops = {
+> +static const struct address_space_operations ext4_aops = {
+>  	.readpage		= ext4_readpage,
+>  	.readpages		= ext4_readpages,
+>  	.writepage		= ext4_writepage,
+>  	.write_begin		= ext4_write_begin,
+> -	.write_end		= ext4_ordered_write_end,
+> -	.bmap			= ext4_bmap,
+> -	.invalidatepage		= ext4_invalidatepage,
+> -	.releasepage		= ext4_releasepage,
+> -	.direct_IO		= ext4_direct_IO,
+> -	.migratepage		= buffer_migrate_page,
+> -	.is_partially_uptodate  = block_is_partially_uptodate,
+> -	.error_remove_page	= generic_error_remove_page,
+> -};
+> -
+> -static const struct address_space_operations ext4_writeback_aops = {
+> -	.readpage		= ext4_readpage,
+> -	.readpages		= ext4_readpages,
+> -	.writepage		= ext4_writepage,
+> -	.write_begin		= ext4_write_begin,
+> -	.write_end		= ext4_writeback_write_end,
+> +	.write_end		= ext4_write_end,
+>  	.bmap			= ext4_bmap,
+>  	.invalidatepage		= ext4_invalidatepage,
+>  	.releasepage		= ext4_releasepage,
+> @@ -3399,23 +3334,21 @@ void ext4_set_aops(struct inode *inode)
+>  {
+>  	switch (ext4_inode_journal_mode(inode)) {
+>  	case EXT4_INODE_ORDERED_DATA_MODE:
+> -		if (test_opt(inode->i_sb, DELALLOC))
+> -			inode->i_mapping->a_ops = &ext4_da_aops;
+> -		else
+> -			inode->i_mapping->a_ops = &ext4_ordered_aops;
+> +		ext4_set_inode_state(inode, EXT4_STATE_ORDERED_MODE);
+>  		break;
+>  	case EXT4_INODE_WRITEBACK_DATA_MODE:
+> -		if (test_opt(inode->i_sb, DELALLOC))
+> -			inode->i_mapping->a_ops = &ext4_da_aops;
+> -		else
+> -			inode->i_mapping->a_ops = &ext4_writeback_aops;
+> +		ext4_clear_inode_state(inode, EXT4_STATE_ORDERED_MODE);
+>  		break;
+>  	case EXT4_INODE_JOURNAL_DATA_MODE:
+>  		inode->i_mapping->a_ops = &ext4_journalled_aops;
+> -		break;
+> +		return;
+>  	default:
+>  		BUG();
+>  	}
+> +	if (test_opt(inode->i_sb, DELALLOC))
+> +		inode->i_mapping->a_ops = &ext4_da_aops;
+> +	else
+> +		inode->i_mapping->a_ops = &ext4_aops;
+>  }
+>  
+>  
+> diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+> index 4ee4710..58459b7 100644
+> --- a/include/trace/events/ext4.h
+> +++ b/include/trace/events/ext4.h
+> @@ -257,15 +257,7 @@ DECLARE_EVENT_CLASS(ext4__write_end,
+>  		  __entry->pos, __entry->len, __entry->copied)
+>  );
+>  
+> -DEFINE_EVENT(ext4__write_end, ext4_ordered_write_end,
+> -
+> -	TP_PROTO(struct inode *inode, loff_t pos, unsigned int len,
+> -		 unsigned int copied),
+> -
+> -	TP_ARGS(inode, pos, len, copied)
+> -);
+> -
+> -DEFINE_EVENT(ext4__write_end, ext4_writeback_write_end,
+> +DEFINE_EVENT(ext4__write_end, ext4_write_end,
+>  
+>  	TP_PROTO(struct inode *inode, loff_t pos, unsigned int len,
+>  		 unsigned int copied),
+> 
