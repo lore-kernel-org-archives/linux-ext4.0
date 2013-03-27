@@ -1,46 +1,70 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH] ext4: take i_mutex in ext4_symlink to eliminate a
- warning from ext4_truncate
-Date: Wed, 27 Mar 2013 23:19:22 +0800
-Message-ID: <20130327151922.GA4487@gmail.com>
-References: <1364390347-4360-1-git-send-email-wenqing.lz@taobao.com>
- <20130327134110.GI5861@thunk.org>
- <20130327140250.GA4316@gmail.com>
- <20130327135155.GK5861@thunk.org>
- <20130327150735.GA4395@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: page eviction from the buddy cache
+Date: Wed, 27 Mar 2013 11:07:43 -0400
+Message-ID: <20130327150743.GC14900@thunk.org>
+References: <51504A40.6020604@ya.ru>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Zheng Liu <wenqing.lz@taobao.com>
+Cc: linux-ext4@vger.kernel.org, alexey.lyashkov@gmail.com,
+	akpm@linux-foundation.org, hughd@google.com
+To: Andrew Perepechko <anserper@ya.ru>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f45.google.com ([209.85.160.45]:50959 "EHLO
-	mail-pb0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750787Ab3C0PDj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Mar 2013 11:03:39 -0400
-Received: by mail-pb0-f45.google.com with SMTP id ro8so5301731pbb.32
-        for <linux-ext4@vger.kernel.org>; Wed, 27 Mar 2013 08:03:39 -0700 (PDT)
+Received: from li9-11.members.linode.com ([67.18.176.11]:56397 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752172Ab3C0PHq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Mar 2013 11:07:46 -0400
 Content-Disposition: inline
-In-Reply-To: <20130327150735.GA4395@gmail.com>
+In-Reply-To: <51504A40.6020604@ya.ru>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Mar 27, 2013 at 11:07:35PM +0800, Zheng Liu wrote:
-> On Wed, Mar 27, 2013 at 09:51:55AM -0400, Theodore Ts'o wrote:
-> > Ah, now I see.  Thanks for sending the stack trace.  On the failure
-> > path, we're calling the inline function ext4_truncate_filaed_write()
-> > and this is calling ext4_truncate().
-> > 
-> > But I'm now wondering if we need to take the i_data_sem mutex in
-                                                 ^^^
-Sigh, I misread i_data_sem and i_mutex.  Really sorry about that. :-/
+Hi Andrew,
 
-> > ext4_truncate_failed_write().
-> > 
-> > Otherwise, couldn't we end up with problems where a failed write calls
-> > ext4_truncate() without i_data_sem(), and that races with something
-> > else --- say, a punch or truncate call to that same inode?
+Thanks for your analysis!  Since I'm not a mm developer, I'm not sure
+what's the best way to more aggressively mark a page as one that we'd
+really like to keep in the page cache --- whether it's calling
+lru_add_drain(), or calling activate_page(page), etc.
 
-Let me think about it.  I need to take a close look at it.
+So I've added Andrew Morton and Hugh Dickens to the cc list as mm
+experts in the hopes they could give us some advice about the best way
+to achieve this goal.  Andrew, Hugh, could you give us some quick
+words of wisdom?
 
-Regards,
-                                                - Zheng
+Thanks,
+
+					- Ted
+On Mon, Mar 25, 2013 at 04:59:44PM +0400, Andrew Perepechko wrote:
+> Hello!
+> 
+> Our recent investigation has found that pages from
+> the buddy cache are evicted too often as compared
+> to the expectation from their usage pattern. This
+> introduces additional reads during large writes under
+> our workload and really hurts overall performance.
+> 
+> ext4 uses find_get_page() and find_or_create_page()
+> to look for buddy cache pages, but these pages don't
+> get a chance to become activated until the following
+> lru_add_drain() call, because mark_page_accessed()
+> does not activate pages which are not PageLRU().
+> 
+> As can be found from a kprobe-based test, these pages
+> are often moved on the inactive LRU as a result of
+> shrink_inactive_list()->lru_add_drain() and immediately
+> evicted.
+> 
+> From a quick look into linux-2.6.git, the issue seems
+> to exist in the current code as well.
+> 
+> A possible and, perhaps, non-optimal solution would be
+> to call lru_add_drain() each time a buddy cache page
+> is used.
+> 
+> Any other suggestions?
+> 
+> Thank you,
+> Andrew
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
