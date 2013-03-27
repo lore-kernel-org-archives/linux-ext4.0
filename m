@@ -1,63 +1,40 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Eric Whitney's ext4 scaling data
-Date: Wed, 27 Mar 2013 11:10:11 -0400
-Message-ID: <20130327151011.GD14900@thunk.org>
-References: <nsxhajyzu6n.fsf@closure.thunk.org>
- <20130327033322.GB9887@gmail.com>
- <20130327033554.GE5861@thunk.org>
- <20130327072101.GA10346@gmail.com>
+Subject: Re: [PATCH] ext4: take i_mutex in ext4_symlink to eliminate a
+ warning from ext4_truncate
+Date: Wed, 27 Mar 2013 11:12:48 -0400
+Message-ID: <20130327151248.GE14900@thunk.org>
+References: <1364390347-4360-1-git-send-email-wenqing.lz@taobao.com>
+ <20130327134110.GI5861@thunk.org>
+ <20130327140250.GA4316@gmail.com>
+ <20130327135155.GK5861@thunk.org>
+ <20130327150735.GA4395@gmail.com>
+ <20130327151922.GA4487@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+To: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:56401 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:56404 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752240Ab3C0PKM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Mar 2013 11:10:12 -0400
+	id S1751950Ab3C0PMt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Mar 2013 11:12:49 -0400
 Content-Disposition: inline
-In-Reply-To: <20130327072101.GA10346@gmail.com>
+In-Reply-To: <20130327151922.GA4487@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Mar 27, 2013 at 03:21:02PM +0800, Zheng Liu wrote:
+On Wed, Mar 27, 2013 at 11:19:22PM +0800, Zheng Liu wrote:
+> > > Otherwise, couldn't we end up with problems where a failed write calls
+> > > ext4_truncate() without i_data_sem(), and that races with something
+> > > else --- say, a punch or truncate call to that same inode?
 > 
-> The key issue that we add test case into xfstests is that we need to
-> handle some filesystem-specific feature.  Just like we had discussed
-> with Dave, what is an extent?  IMHO now xfstests gets more compliated
-> because it needs to handle this problem. e.g. punch hole for
-> indirect-based file in ext4.
+> Let me think about it.  I need to take a close look at it.
 
-Yes, that means among other things the test framework needs to keep
-track of which file system features was being used when we run a
-particular test, as well as the hardware configuration.
+Note that I'm not so concerned when we are creating symlink --- you
+are quite right in pointing out in that case the inode isn't in the
+namespace yet, so that prevents races --- but also what might happen
+in an ENOSPC write(2) failure racing against a punch/truncate call.
 
-I suspect that what this means is that we're better off trying to
-create a new test framework that does what we want, and automates as
-much of this as possible.
+But again, this is why I added the warning --- it was to find these
+edge cases that we might not have considered.  :-)
 
-It would probably be a good idea to bring in Eric Whitney into this
-discussion, since he has a huge amount of expertise about what sort of
-things need to be done in order to get good results.  He was doing a
-number of things by hand, including re-running the tests multiple
-times to make sure the results were stable.  I could imagine that if
-the framework could keep track of what the standard deviation was for
-a particular test, it could try to do this automatically, and then we
-could also throw up a flag if the average result hadn't changed, but
-the standard deviation had increased, since that might be an
-indication that some change had caused a lot more variability.
-
-(Note by the way that one of the things that is going to be critically
-important for companies using ext4 for web backends is not just the
-average throughput, which is what FFSB mostly tests, but also 99.99%
-percentile latency.  And sometimes the best workloads which show this
-will only be mixed workloads, when under memory pressure.  For
-example, consider the recent "page eviction from the buddy cache"
-e-mail.  That's something which might result in only a slight increase
-for average throughput numbers, but could have a much more profound
-impact on 99.9% latency numbers, especially if while we are reading in
-a bitmap block, we are holding some lock or preventing a journal
-commit from closing.)
-
-Cheers,
-
-						- Ted
+     	   	   	     	  	       - Ted
