@@ -1,43 +1,37 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/2 v2] ext4: Make ext4_block_in_group() much more
- efficient
-Date: Wed, 27 Mar 2013 09:34:44 -0400
-Message-ID: <20130327133444.GH5861@thunk.org>
-References: <1364382245-32510-1-git-send-email-lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: take i_mutex in ext4_symlink to eliminate a
+ warning from ext4_truncate
+Date: Wed, 27 Mar 2013 09:41:10 -0400
+Message-ID: <20130327134110.GI5861@thunk.org>
+References: <1364390347-4360-1-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
+Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:56319 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:56324 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750968Ab3C0Nes (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Mar 2013 09:34:48 -0400
+	id S1750977Ab3C0NlO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Mar 2013 09:41:14 -0400
 Content-Disposition: inline
-In-Reply-To: <1364382245-32510-1-git-send-email-lczerner@redhat.com>
+In-Reply-To: <1364390347-4360-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Mar 27, 2013 at 12:04:04PM +0100, Lukas Czerner wrote:
->  #define EXT4_MOUNT2_EXPLICIT_DELALLOC	0x00000001 /* User explicitly
->  						      specified delalloc */
-> +#define EXT4_MOUNT_STD_GROUP_SIZE	0x00000002 /* We have standard group
-> +						      size of blocksize * 8
-> +						      blocks */
+On Wed, Mar 27, 2013 at 09:19:07PM +0800, Zheng Liu wrote:
+> From: Zheng Liu <wenqing.lz@taobao.com>
+> 
+> After applied this commit (8e4061cb), we will get a warning from
+> ext4_truncate when i_mutex isn't taken.  Here the assumption is that
+> i_mutex should be taken when we do a truncation.  In ext4_symlink we
+> could need to call ext4_truncate to trim some blocks beyond i_size, but
+> the i_mutex isn't taken.
 
-This should be EXT4_MOUNT2_STD_GROUP_SIZE, and then all calls to
-set_opt, test_opt, etc. should be set_opt2, test_opt2, etc.  As it
-turns out bit 0x0002 isn't used for flags in s_mount_opt family, so
-the other fix would be to move this definition to before
-EXT4_MOUNT_GRPID in ext4.
+Hmm, and this is why I added the warning.  Even after looking your
+patch, I'm having trouble finding the codepath that results in
+ext4_truncate() getting called from __page_symlink().  Can you send
+the stack trace from the WARN_ON, just so I can see what I missed?
 
-However, the EXT4_MOUNT_* options should be reserved for options that
-are set via mount options, since we have support for setting bits in
-s_mount_opt via a table-driven approach (see how the mount_opt field
-in the struct mount_opts in fs/ext4/super.c is used).  So for things
-that are set automatically, such as in this case, we should use a bit
-assignment for s_mount_opt2.
+Thanks,
 
-Cheers,
-
-					- Ted
+						- Ted
