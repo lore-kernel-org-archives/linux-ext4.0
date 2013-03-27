@@ -1,114 +1,122 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 1/2 v2] ext4: Make ext4_block_in_group() much more efficient
-Date: Wed, 27 Mar 2013 12:04:04 +0100
-Message-ID: <1364382245-32510-1-git-send-email-lczerner@redhat.com>
-Cc: tytso@mit.edu, Lukas Czerner <lczerner@redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 55821] New: kernel oops when unmounting ext3 fs
+Date: Wed, 27 Mar 2013 11:38:15 +0000 (UTC)
+Message-ID: <bug-55821-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:24154 "EHLO mx1.redhat.com"
+Received: from mail.kernel.org ([198.145.19.201]:57601 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751774Ab3C0LEM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Mar 2013 07:04:12 -0400
+	id S1751139Ab3C0LiV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Mar 2013 07:38:21 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 7321720349
+	for <linux-ext4@vger.kernel.org>; Wed, 27 Mar 2013 11:38:19 +0000 (UTC)
+Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
+	by mail.kernel.org (Postfix) with ESMTP id C4C2C20345
+	for <linux-ext4@vger.kernel.org>; Wed, 27 Mar 2013 11:38:15 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently in when getting the block group number for a particular block
-in ext4_block_in_group() we're using ext4_get_group_no_and_offset()
-which uses do_div() to get the block group and the remainer which is
-offset within the group.
+https://bugzilla.kernel.org/show_bug.cgi?id=55821
 
-We don't need all of that in ext4_block_in_group() as we only need to
-figure out the group number.
+           Summary: kernel oops when unmounting ext3 fs
+           Product: File System
+           Version: 2.5
+    Kernel Version: 3.8.4
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext3
+        AssignedTo: fs_ext3@kernel-bugs.osdl.org
+        ReportedBy: dmaciejak@fortinet.com
+        Regression: No
 
-This commit changes ext4_block_in_group() to calculate group number
-directly. This shows as a big improvement with regards to cpu
-utilization. Measuring fallocate -l 15T on fresh file system with perf
-showed that 23% of cpu time was spend in the
-ext4_get_group_no_and_offset(). With this change it completely
-disappears from the list only bumping the occurrence of
-ext4_init_block_bitmap() which is the biggest user of
-ext4_block_in_group() by 4%. As the result of this change on my system
-the fallocate call was approx. 10% faster.
 
-However since there is '-g' option in mkfs which allow us setting
-different groups size (mostly for developers) I've introduced new per
-file system flag whether we have a standard block group size or not. The
-flag is used to determine whether we can use the bit shift optimization
-or not.
+Hi,
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
-v2: Add sbi flag if there is standard group size
+i am doing some filesystems testing (aka fuzzing), got this issue on vanilla
+3.8.4:
 
- fs/ext4/balloc.c |   22 ++++++++++++++++------
- fs/ext4/ext4.h   |    3 +++
- fs/ext4/super.c  |    4 ++++
- 3 files changed, 23 insertions(+), 6 deletions(-)
+Mar 27 12:23:47 linux kernel: [  373.018889] WARNING: at fs/jbd/journal.c:470
+__log_start_commit+0x94/0xb0()
+Mar 27 12:23:47 linux kernel: [  373.018891] Hardware name: PowerEdge T420
+Mar 27 12:23:47 linux kernel: [  373.018894] jbd: bad log_start_commit:
+2801795176 2801795176 0 0
+Mar 27 12:23:47 linux kernel: [  373.018895] Modules linked in: ipmi_devintf
+ipmi_si ipmi_msghandler nls_iso8859_1 coretemp kvm_intel kvm
+ghash_clmulni_intel aesni_intel ablk_helper cryptd lrw aes_x86_64 sb_edac xts
+edac_core gf128mul lp joydev mei gpio_ich microcode dcdbas lpc_ich parport
+shpchp acpi_power_meter wmi mac_hid raid10 raid456 async_pq async_xor xor
+async_memcpy async_raid6_recov hid_generic ahci libahci usbhid tg3 ptp hid
+raid6_pq pps_core async_tx raid1 raid0 multipath linear
+Mar 27 12:23:47 linux kernel: [  373.018935] Pid: 1924, comm: umount Tainted: G
+       W    3.8.4 #1
+Mar 27 12:23:47 linux kernel: [  373.018937] Call Trace:
+Mar 27 12:23:47 linux kernel: [  373.018943]  [<ffffffff810589ef>]
+warn_slowpath_common+0x7f/0xc0
+Mar 27 12:23:47 linux kernel: [  373.018947]  [<ffffffff81058ae6>]
+warn_slowpath_fmt+0x46/0x50
+Mar 27 12:23:47 linux kernel: [  373.018950]  [<ffffffff8127c044>]
+__log_start_commit+0x94/0xb0
+Mar 27 12:23:47 linux kernel: [  373.018955]  [<ffffffff816b5a0e>] ?
+_raw_spin_lock+0xe/0x20
+Mar 27 12:23:47 linux kernel: [  373.018959]  [<ffffffff8127c496>]
+log_start_commit+0x36/0x60
+Mar 27 12:23:47 linux kernel: [  373.018964]  [<ffffffff8120e53f>]
+ext3_evict_inode+0x26f/0x2c0
+Mar 27 12:23:47 linux kernel: [  373.018968]  [<ffffffff811a5e36>]
+evict+0xb6/0x1b0
+Mar 27 12:23:47 linux kernel: [  373.018971]  [<ffffffff811a6649>]
+iput+0x109/0x190
+Mar 27 12:23:47 linux kernel: [  373.018975]  [<ffffffff8127bef7>]
+journal_destroy+0x1a7/0x220
+Mar 27 12:23:47 linux kernel: [  373.018978]  [<ffffffff8107e080>] ?
+finish_wait+0x80/0x80
+Mar 27 12:23:47 linux kernel: [  373.018983]  [<ffffffff8121c317>]
+ext3_put_super+0x47/0x2a0
+Mar 27 12:23:47 linux kernel: [  373.018988]  [<ffffffff8118dd91>]
+generic_shutdown_super+0x61/0xf0
+Mar 27 12:23:47 linux kernel: [  373.018992]  [<ffffffff8118de50>]
+kill_block_super+0x30/0x80
+Mar 27 12:23:47 linux kernel: [  373.018995]  [<ffffffff8118e247>]
+deactivate_locked_super+0x57/0x80
+Mar 27 12:23:47 linux kernel: [  373.018999]  [<ffffffff8118ee0e>]
+deactivate_super+0x4e/0x70
+Mar 27 12:23:47 linux kernel: [  373.019003]  [<ffffffff811aa881>]
+mntput_no_expire+0x101/0x160
+Mar 27 12:23:47 linux kernel: [  373.019007]  [<ffffffff811ab7dc>]
+sys_umount+0x9c/0x3c0
+Mar 27 12:23:47 linux kernel: [  373.019012]  [<ffffffff8106ed92>] ?
+__set_current_blocked+0x52/0x70
+Mar 27 12:23:47 linux kernel: [  373.019017]  [<ffffffff816be399>]
+system_call_fastpath+0x16/0x1b
+Mar 27 12:23:47 linux kernel: [  373.019019] ---[ end trace 7a9e3bafae5e7653
+]---
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 92e68b3..a4d2e73 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -49,14 +49,24 @@ void ext4_get_group_no_and_offset(struct super_block *sb, ext4_fsblk_t blocknr,
- 
- }
- 
--static int ext4_block_in_group(struct super_block *sb, ext4_fsblk_t block,
--			ext4_group_t block_group)
-+/*
-+ * Check whether the 'block' lives within the 'block_group'. Returns 1 if so
-+ * and 0 otherwise.
-+ */
-+static inline int ext4_block_in_group(struct super_block *sb,
-+				      ext4_fsblk_t block,
-+				      ext4_group_t block_group)
- {
- 	ext4_group_t actual_group;
--	ext4_get_group_no_and_offset(sb, block, &actual_group, NULL);
--	if (actual_group == block_group)
--		return 1;
--	return 0;
-+
-+	if (test_opt(sb, STD_GROUP_SIZE))
-+		actual_group =
-+			(le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block) +
-+			block) >>
-+			(EXT4_BLOCK_SIZE_BITS(sb) + EXT4_CLUSTER_BITS(sb) + 3);
-+	else
-+		ext4_get_group_no_and_offset(sb, block, &actual_group, NULL);
-+	return (actual_group == block_group) ? 1 : 0;
- }
- 
- /* Return the number of clusters used for file system metadata; this
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 167ff56..2ee8d76 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -983,6 +983,9 @@ struct ext4_inode_info {
- 
- #define EXT4_MOUNT2_EXPLICIT_DELALLOC	0x00000001 /* User explicitly
- 						      specified delalloc */
-+#define EXT4_MOUNT_STD_GROUP_SIZE	0x00000002 /* We have standard group
-+						      size of blocksize * 8
-+						      blocks */
- 
- #define clear_opt(sb, opt)		EXT4_SB(sb)->s_mount_opt &= \
- 						~EXT4_MOUNT_##opt
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index d1ee6a8..28ea887 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3522,6 +3522,10 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	sbi->s_addr_per_block_bits = ilog2(EXT4_ADDR_PER_BLOCK(sb));
- 	sbi->s_desc_per_block_bits = ilog2(EXT4_DESC_PER_BLOCK(sb));
- 
-+	/* Do we have standard group size of blocksize * 8 blocks ? */
-+	if (sbi->s_blocks_per_group == blocksize << 8)
-+		set_opt(sb, STD_GROUP_SIZE);
-+
- 	for (i = 0; i < 4; i++)
- 		sbi->s_hash_seed[i] = le32_to_cpu(es->s_hash_seed[i]);
- 	sbi->s_def_hash_version = es->s_def_hash_version;
+
+how to reproduce:
+
+*you need* to be root then issue the cmds below
+
+mkdir /media/test
+gunzip ext3.poc.img.gz
+mount -t ext3 -o loop ext3.poc.img /media/test/
+unmount /media/test
+
+the unmount would never return, check the logs to see the backtrace.
+
+
+best regards,
+
+David Maciejak
+Fortinet's FortiGuard Labs
+
 -- 
-1.7.7.6
-
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
