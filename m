@@ -1,30 +1,28 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 1/3] jbd2: fix race between jbd2_journal_remove_checkpoint and ->j_commit_callback V2
-Date: Wed, 27 Mar 2013 13:22:42 +0400
-Message-ID: <1364376164-31701-1-git-send-email-dmonakhov@openvz.org>
+Subject: [PATCH 2/3] ext4: fix journal callback list traversal V2
+Date: Wed, 27 Mar 2013 13:22:43 +0400
+Message-ID: <1364376164-31701-2-git-send-email-dmonakhov@openvz.org>
 References: <20130327025624.GA5861@thunk.org>
+ <1364376164-31701-1-git-send-email-dmonakhov@openvz.org>
 Cc: tytso@mit.edu, jack@suse.cz, wenqing.lz@taobao.com,
 	Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:27040 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:17803 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751153Ab3C0JX4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1750992Ab3C0JX4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 27 Mar 2013 05:23:56 -0400
-In-Reply-To: <20130327025624.GA5861@thunk.org>
+In-Reply-To: <1364376164-31701-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Following race is possible
-[kjournald2]                              other_task
-jbd2_journal_commit_transaction()
-  j_state = T_FINISHED;
-  spin_unlock(&journal->j_list_lock);
-                                         ->jbd2_journal_remove_checkpoint()
-					   ->jbd2_journal_free_transaction();
-					     ->kmem_cache_free(transaction)
-  ->j_commit_callback(journal, transaction);
-    -> USE_AFTER_FREE
+It is incorrect to use list_for_each_entry_safe() for journal callback
+traversial because ->next may be removed by other task:
+->ext4_mb_free_metadata()
+  ->ext4_mb_free_metadata()
+    ->ext4_journal_callback_del()
+
+This result in following issue:
 
 WARNING: at lib/list_debug.c:62 __list_del_entry+0x1c0/0x250()
 Hardware name:
@@ -48,120 +46,100 @@ Call Trace:
  [<ffffffff818ff6ac>] ret_from_fork+0x7c/0xb0
  [<ffffffff810ac5b0>] ? __init_kthread_worker+0x70/0x70
 
-In order to demonstrace this issue one should mount ext4 with -odiscard option
-on SSD disk. This makes callback longer and race window becomes wider.
-
-In order to fix this we should mark transaction as finished only after
-callbacks have completed
+This patch fix the issue like follows:
+- ext4_journal_commit_callback() make list truly traversial safe
+  simply by always starting from list_head
+- fix race between two ext4_journal_callback_del() and
+  ext4_journal_callback_try_del()
 
 Changes since V1:
- - Simplify code-flow and add comments according to Jan's request
+ Indention fixes accordion to Jan's request
 
+Reviewed-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- fs/jbd2/commit.c     |   50 ++++++++++++++++++++++++++++----------------------
- include/linux/jbd2.h |    1 +
- 2 files changed, 29 insertions(+), 22 deletions(-)
+ fs/ext4/ext4_jbd2.h |    6 +++++-
+ fs/ext4/mballoc.c   |    8 ++++----
+ fs/ext4/super.c     |    7 +++++--
+ 3 files changed, 14 insertions(+), 7 deletions(-)
 
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 750c701..1f1fd9c 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -382,7 +382,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
- 	int space_left = 0;
- 	int first_tag = 0;
- 	int tag_flag;
--	int i, to_free = 0;
-+	int i;
- 	int tag_bytes = journal_tag_bytes(journal);
- 	struct buffer_head *cbh = NULL; /* For transactional checksums */
- 	__u32 crc32_sum = ~0;
-@@ -1134,7 +1134,7 @@ restart_loop:
- 	journal->j_stats.run.rs_blocks_logged += stats.run.rs_blocks_logged;
- 	spin_unlock(&journal->j_history_lock);
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index 4c216b1..aeed0ba 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -194,16 +194,20 @@ static inline void ext4_journal_callback_add(handle_t *handle,
+  * ext4_journal_callback_del: delete a registered callback
+  * @handle: active journal transaction handle on which callback was registered
+  * @jce: registered journal callback entry to unregister
++ * Return true if object was sucessfully removed
+  */
+-static inline void ext4_journal_callback_del(handle_t *handle,
++static inline bool ext4_journal_callback_try_del(handle_t *handle,
+ 					     struct ext4_journal_cb_entry *jce)
+ {
++	bool deleted;
+ 	struct ext4_sb_info *sbi =
+ 			EXT4_SB(handle->h_transaction->t_journal->j_private);
  
--	commit_transaction->t_state = T_FINISHED;
-+	commit_transaction->t_state = T_COMMIT_CALLBACK;
- 	J_ASSERT(commit_transaction == journal->j_committing_transaction);
- 	journal->j_commit_sequence = commit_transaction->t_tid;
- 	journal->j_committing_transaction = NULL;
-@@ -1149,38 +1149,44 @@ restart_loop:
- 				journal->j_average_commit_time*3) / 4;
- 	else
- 		journal->j_average_commit_time = commit_time;
-+
- 	write_unlock(&journal->j_state_lock);
- 
--	if (commit_transaction->t_checkpoint_list == NULL &&
--	    commit_transaction->t_checkpoint_io_list == NULL) {
--		__jbd2_journal_drop_transaction(journal, commit_transaction);
--		to_free = 1;
-+	if (journal->j_checkpoint_transactions == NULL) {
-+		journal->j_checkpoint_transactions = commit_transaction;
-+		commit_transaction->t_cpnext = commit_transaction;
-+		commit_transaction->t_cpprev = commit_transaction;
- 	} else {
--		if (journal->j_checkpoint_transactions == NULL) {
--			journal->j_checkpoint_transactions = commit_transaction;
--			commit_transaction->t_cpnext = commit_transaction;
--			commit_transaction->t_cpprev = commit_transaction;
--		} else {
--			commit_transaction->t_cpnext =
--				journal->j_checkpoint_transactions;
--			commit_transaction->t_cpprev =
--				commit_transaction->t_cpnext->t_cpprev;
--			commit_transaction->t_cpnext->t_cpprev =
--				commit_transaction;
--			commit_transaction->t_cpprev->t_cpnext =
-+		commit_transaction->t_cpnext =
-+			journal->j_checkpoint_transactions;
-+		commit_transaction->t_cpprev =
-+			commit_transaction->t_cpnext->t_cpprev;
-+		commit_transaction->t_cpnext->t_cpprev =
-+			commit_transaction;
-+		commit_transaction->t_cpprev->t_cpnext =
- 				commit_transaction;
--		}
- 	}
- 	spin_unlock(&journal->j_list_lock);
--
-+	/* Drop all spin_locks because commit_callback may be block.
-+	 * __journal_remove_checkpoint() can not destroy transaction
-+	 * under us because it is marked as T_FINISHED yet */
- 	if (journal->j_commit_callback)
- 		journal->j_commit_callback(journal, commit_transaction);
- 
- 	trace_jbd2_end_commit(journal, commit_transaction);
- 	jbd_debug(1, "JBD2: commit %d complete, head %d\n",
- 		  journal->j_commit_sequence, journal->j_tail_sequence);
--	if (to_free)
--		jbd2_journal_free_transaction(commit_transaction);
- 
-+	write_lock(&journal->j_state_lock);
-+	spin_lock(&journal->j_list_lock);
-+	commit_transaction->t_state = T_FINISHED;
-+	/* Recheck checkpoint lists after j_list_lock was dropped */
-+	if (commit_transaction->t_checkpoint_list == NULL &&
-+	    commit_transaction->t_checkpoint_io_list == NULL) {
-+		__jbd2_journal_drop_transaction(journal, commit_transaction);
-+		jbd2_journal_free_transaction(commit_transaction);
-+	}
-+	spin_unlock(&journal->j_list_lock);
-+	write_unlock(&journal->j_state_lock);
- 	wake_up(&journal->j_wait_done_commit);
+ 	spin_lock(&sbi->s_md_lock);
++	deleted = !list_empty(&jce->jce_list);
+ 	list_del_init(&jce->jce_list);
+ 	spin_unlock(&sbi->s_md_lock);
++	return deleted;
  }
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 50e5a5e..608ea13 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -480,6 +480,7 @@ struct transaction_s
- 		T_COMMIT,
- 		T_COMMIT_DFLUSH,
- 		T_COMMIT_JFLUSH,
-+		T_COMMIT_CALLBACK,
- 		T_FINISHED
- 	}			t_state;
  
+ int
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index ee6614b..cf3025c 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4420,11 +4420,11 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+ 	node = rb_prev(new_node);
+ 	if (node) {
+ 		entry = rb_entry(node, struct ext4_free_data, efd_node);
+-		if (can_merge(entry, new_entry)) {
++		if (can_merge(entry, new_entry) &&
++		    ext4_journal_callback_try_del(handle, &entry->efd_jce)) {
+ 			new_entry->efd_start_cluster = entry->efd_start_cluster;
+ 			new_entry->efd_count += entry->efd_count;
+ 			rb_erase(node, &(db->bb_free_root));
+-			ext4_journal_callback_del(handle, &entry->efd_jce);
+ 			kmem_cache_free(ext4_free_data_cachep, entry);
+ 		}
+ 	}
+@@ -4432,10 +4432,10 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+ 	node = rb_next(new_node);
+ 	if (node) {
+ 		entry = rb_entry(node, struct ext4_free_data, efd_node);
+-		if (can_merge(new_entry, entry)) {
++		if (can_merge(new_entry, entry) &&
++		    ext4_journal_callback_try_del(handle, &entry->efd_jce)) {
+ 			new_entry->efd_count += entry->efd_count;
+ 			rb_erase(node, &(db->bb_free_root));
+-			ext4_journal_callback_del(handle, &entry->efd_jce);
+ 			kmem_cache_free(ext4_free_data_cachep, entry);
+ 		}
+ 	}
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index d1ee6a8..305aa18 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -349,10 +349,13 @@ static void ext4_journal_commit_callback(journal_t *journal, transaction_t *txn)
+ 	struct super_block		*sb = journal->j_private;
+ 	struct ext4_sb_info		*sbi = EXT4_SB(sb);
+ 	int				error = is_journal_aborted(journal);
+-	struct ext4_journal_cb_entry	*jce, *tmp;
++	struct ext4_journal_cb_entry	*jce;
+ 
++	BUG_ON(txn->t_state == T_FINISHED);
+ 	spin_lock(&sbi->s_md_lock);
+-	list_for_each_entry_safe(jce, tmp, &txn->t_private_list, jce_list) {
++	while (!list_empty(&txn->t_private_list)) {
++		jce = list_entry(txn->t_private_list.next,
++				 struct ext4_journal_cb_entry, jce_list);
+ 		list_del_init(&jce->jce_list);
+ 		spin_unlock(&sbi->s_md_lock);
+ 		jce->jce_func(sb, jce, error);
 -- 
 1.7.1
 
