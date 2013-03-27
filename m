@@ -1,152 +1,46 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 2/7] ext4: fold ext4_generic_write_end() into
- ext4_write_end()
-Date: Wed, 27 Mar 2013 13:58:32 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1303271357440.23176@localhost>
-References: <1364170014-10295-1-git-send-email-tytso@mit.edu> <1364170014-10295-3-git-send-email-tytso@mit.edu>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Zheng Liu <wenqing.lz@taobao.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: [PATCH] ext4: take i_mutex in ext4_symlink to eliminate a warning from ext4_truncate
+Date: Wed, 27 Mar 2013 21:19:07 +0800
+Message-ID: <1364390347-4360-1-git-send-email-wenqing.lz@taobao.com>
+Cc: Zheng Liu <wenqing.lz@taobao.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59593 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752803Ab3C0M6k (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Mar 2013 08:58:40 -0400
-In-Reply-To: <1364170014-10295-3-git-send-email-tytso@mit.edu>
+Received: from mail-pb0-f42.google.com ([209.85.160.42]:63320 "EHLO
+	mail-pb0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751643Ab3C0ND3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Mar 2013 09:03:29 -0400
+Received: by mail-pb0-f42.google.com with SMTP id xb4so5255775pbc.15
+        for <linux-ext4@vger.kernel.org>; Wed, 27 Mar 2013 06:03:28 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, 24 Mar 2013, Theodore Ts'o wrote:
+From: Zheng Liu <wenqing.lz@taobao.com>
 
-> Date: Sun, 24 Mar 2013 20:06:49 -0400
-> From: Theodore Ts'o <tytso@mit.edu>
-> To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-> Cc: Zheng Liu <wenqing.lz@taobao.com>, Theodore Ts'o <tytso@mit.edu>
-> Subject: [PATCH 2/7] ext4: fold ext4_generic_write_end() into ext4_write_end()
-> 
-> From: Zheng Liu <wenqing.lz@taobao.com>
-> 
-> After collpasing the handling of data ordered and data writeback
-> codepath, ext4_generic_write_end() has only one caller,
-> ext4_write_end().  So we fold it into ext4_write_end().
+After applied this commit (8e4061cb), we will get a warning from
+ext4_truncate when i_mutex isn't taken.  Here the assumption is that
+i_mutex should be taken when we do a truncation.  In ext4_symlink we
+could need to call ext4_truncate to trim some blocks beyond i_size, but
+the i_mutex isn't taken.
 
-Looks good.
+Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+---
+ fs/ext4/namei.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 3825d6a..d75f91a 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2856,7 +2856,9 @@ retry:
+ 		ext4_journal_stop(handle);
+ 		if (err)
+ 			goto err_drop_inode;
++		mutex_lock(&inode->i_mutex);
+ 		err = __page_symlink(inode, symname, l, 1);
++		mutex_unlock(&inode->i_mutex);
+ 		if (err)
+ 			goto err_drop_inode;
+ 		/*
+-- 
+1.7.12.rc2.18.g61b472e
 
-Thanks!
--Lukas
-
-> 
-> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  fs/ext4/inode.c | 67 +++++++++++++++++++++++----------------------------------
->  1 file changed, 27 insertions(+), 40 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 4ee6927..a4ffb47 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -1087,14 +1087,32 @@ static int write_end_fn(handle_t *handle, struct buffer_head *bh)
->  	return ext4_handle_dirty_metadata(handle, NULL, bh);
->  }
->  
-> -static int ext4_generic_write_end(struct file *file,
-> -				  struct address_space *mapping,
-> -				  loff_t pos, unsigned len, unsigned copied,
-> -				  struct page *page, void *fsdata)
-> +/*
-> + * We need to pick up the new inode size which generic_commit_write gave us
-> + * `file' can be NULL - eg, when called from page_symlink().
-> + *
-> + * ext4 never places buffers on inode->i_mapping->private_list.  metadata
-> + * buffers are managed internally.
-> + */
-> +static int ext4_write_end(struct file *file,
-> +			  struct address_space *mapping,
-> +			  loff_t pos, unsigned len, unsigned copied,
-> +			  struct page *page, void *fsdata)
->  {
-> -	int i_size_changed = 0;
-> -	struct inode *inode = mapping->host;
->  	handle_t *handle = ext4_journal_current_handle();
-> +	struct inode *inode = mapping->host;
-> +	int ret = 0, ret2;
-> +	int i_size_changed = 0;
-> +
-> +	trace_ext4_write_end(inode, pos, len, copied);
-> +	if (ext4_test_inode_state(inode, EXT4_STATE_ORDERED_MODE)) {
-> +		ret = ext4_jbd2_file_inode(handle, inode);
-> +		if (ret) {
-> +			unlock_page(page);
-> +			page_cache_release(page);
-> +			goto errout;
-> +		}
-> +	}
->  
->  	if (ext4_has_inline_data(inode))
->  		copied = ext4_write_inline_data_end(inode, pos, len,
-> @@ -1105,7 +1123,7 @@ static int ext4_generic_write_end(struct file *file,
->  
->  	/*
->  	 * No need to use i_size_read() here, the i_size
-> -	 * cannot change under us because we hold i_mutex.
-> +	 * cannot change under us because we hole i_mutex.
->  	 *
->  	 * But it's important to update i_size while still holding page lock:
->  	 * page writeout could otherwise come in and zero beyond i_size.
-> @@ -1115,10 +1133,10 @@ static int ext4_generic_write_end(struct file *file,
->  		i_size_changed = 1;
->  	}
->  
-> -	if (pos + copied >  EXT4_I(inode)->i_disksize) {
-> +	if (pos + copied > EXT4_I(inode)->i_disksize) {
->  		/* We need to mark inode dirty even if
->  		 * new_i_size is less that inode->i_size
-> -		 * bu greater than i_disksize.(hint delalloc)
-> +		 * but greater than i_disksize. (hint delalloc)
->  		 */
->  		ext4_update_i_disksize(inode, (pos + copied));
->  		i_size_changed = 1;
-> @@ -1135,37 +1153,6 @@ static int ext4_generic_write_end(struct file *file,
->  	if (i_size_changed)
->  		ext4_mark_inode_dirty(handle, inode);
->  
-> -	return copied;
-> -}
-> -
-> -/*
-> - * We need to pick up the new inode size which generic_commit_write gave us
-> - * `file' can be NULL - eg, when called from page_symlink().
-> - *
-> - * ext4 never places buffers on inode->i_mapping->private_list.  metadata
-> - * buffers are managed internally.
-> - */
-> -static int ext4_write_end(struct file *file,
-> -			  struct address_space *mapping,
-> -			  loff_t pos, unsigned len, unsigned copied,
-> -			  struct page *page, void *fsdata)
-> -{
-> -	handle_t *handle = ext4_journal_current_handle();
-> -	struct inode *inode = mapping->host;
-> -	int ret = 0, ret2;
-> -
-> -	trace_ext4_write_end(inode, pos, len, copied);
-> -	if (ext4_test_inode_state(inode, EXT4_STATE_ORDERED_MODE)) {
-> -		ret = ext4_jbd2_file_inode(handle, inode);
-> -		if (ret) {
-> -			unlock_page(page);
-> -			page_cache_release(page);
-> -			goto errout;
-> -		}
-> -	}
-> -
-> -	copied = ext4_generic_write_end(file, mapping, pos, len, copied,
-> -					page, fsdata);
->  	if (copied < 0)
->  		ret = copied;
->  	if (pos + len > inode->i_size && ext4_can_truncate(inode))
-> 
