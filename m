@@ -1,46 +1,35 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 55651] Non-atomic short write problem with O_APPEND
-Date: Wed, 27 Mar 2013 18:57:25 +0000 (UTC)
-Message-ID: <20130327185725.313AA11FB3C@bugzilla.kernel.org>
-References: <bug-55651-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Announce re-factor all current xfstests patches request
+Date: Wed, 27 Mar 2013 15:05:12 -0400
+Message-ID: <20130327190512.GA22889@thunk.org>
+References: <5152F2BB.4000709@sgi.com>
+ <20130327134606.GJ5861@thunk.org>
+ <5153217B.5070909@sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: xfs-oss <xfs@oss.sgi.com>, linux-ext4@vger.kernel.org,
+	linux-btrfs <linux-btrfs@vger.kernel.org>
+To: Rich Johnston <rjohnston@sgi.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:45989 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752966Ab3C0S53 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Mar 2013 14:57:29 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 254CC20419
-	for <linux-ext4@vger.kernel.org>; Wed, 27 Mar 2013 18:57:28 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id 3114B20431
-	for <linux-ext4@vger.kernel.org>; Wed, 27 Mar 2013 18:57:25 +0000 (UTC)
-In-Reply-To: <bug-55651-13602@https.bugzilla.kernel.org/>
+Received: from li9-11.members.linode.com ([67.18.176.11]:56473 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753752Ab3C0TFP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Mar 2013 15:05:15 -0400
+Content-Disposition: inline
+In-Reply-To: <5153217B.5070909@sgi.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=55651
+What do you think about renaming the existing tests from NNN to
+NNN-descriptive-name?  That way it will be easier for people who are
+trying to track regressions, since they can easily map from the new
+more descriptive name to the old test number for comparison purposes
+(i.e., to see whether a failure is a regression or not, etc.)
 
+Would you be open to changes which did this?  I'd suggest sending the
+changes as a shell script to minimize the chances of patch conflicts.
+It will cause people to need to regenerate their patches, but that
+means now would be the time to do this, when everyone will need to be
+fixing up their outstanding changes anyway.  :-)
 
-Theodore Tso <tytso@mit.edu> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|NEW                         |ASSIGNED
-                 CC|                            |tytso@mit.edu
-         AssignedTo|fs_ext4@kernel-bugs.osdl.or |jack@suse.cz
-                   |g                           |
-
-
-
-
---- Comment #4 from Theodore Tso <tytso@mit.edu>  2013-03-27 18:57:24 ---
-The commit in question (a50527b1) was authored by Jan Kara so I've changed the
-assignee of this bug to him.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+       	      	      		- Ted
