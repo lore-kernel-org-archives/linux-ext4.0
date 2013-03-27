@@ -1,45 +1,53 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 55821] kernel oops when unmounting ext3 fs
-Date: Wed, 27 Mar 2013 16:19:00 +0000 (UTC)
-Message-ID: <20130327161900.AC73D11FB3C@bugzilla.kernel.org>
-References: <bug-55821-13602@https.bugzilla.kernel.org/>
+From: Rich Johnston <rjohnston@sgi.com>
+Subject: Re: Announce re-factor all current xfstests patches request
+Date: Wed, 27 Mar 2013 11:42:35 -0500
+Message-ID: <5153217B.5070909@sgi.com>
+References: <5152F2BB.4000709@sgi.com> <20130327134606.GJ5861@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:39596 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752990Ab3C0QTI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Mar 2013 12:19:08 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 9A34D2043E
-	for <linux-ext4@vger.kernel.org>; Wed, 27 Mar 2013 16:19:03 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id 4D3D220418
-	for <linux-ext4@vger.kernel.org>; Wed, 27 Mar 2013 16:19:01 +0000 (UTC)
-In-Reply-To: <bug-55821-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: xfs-oss <xfs@oss.sgi.com>, <linux-ext4@vger.kernel.org>,
+	linux-btrfs <linux-btrfs@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
+In-Reply-To: <20130327134606.GJ5861@thunk.org>
+Sender: linux-btrfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=55821
+On 03/27/2013 08:46 AM, Theodore Ts'o wrote:
+> On Wed, Mar 27, 2013 at 08:23:07AM -0500, Rich Johnston wrote:
+>> All xfstest developers,
+>>
+>> Thanks again for all your time in submitting and reviewing patches
+>> for xfstests.  The latest patchset posted here:
+>>
+>> http://oss.sgi.com/archives/xfs/2013-03/msg00467.html
+>>
+>> requires all current patches to be re-factored.
+>
+> Given that we are now segregating patches into subdirectories, is it
+> correct in the future tests should be named descriptively, instead of
+> using 3 digit NNN numbers (which has been a major pain from a central
+> assignment perspective)?
+Yes
+>
+> If so, is there a suggested naming convention that is being recommended?
+>
+> Thanks for getting this change merged in!!
+>
+> 					- Ted
+>
+
+I suggest:
+
+1. They should also be descriptive of the test rather than a number.
+2. All lowercase letters separated by _
+
+i.e.
+something like
+tests/$FSTYP/break_my_filesystem
+
+Thanks
+--Rich
 
 
-Jan Kara <jack@suse.cz> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |jack@suse.cz
-         AssignedTo|fs_ext3@kernel-bugs.osdl.or |jack@suse.cz
-                   |g                           |
-
-
-
-
---- Comment #2 from Jan Kara <jack@suse.cz>  2013-03-27 16:19:00 ---
-Thanks for report. The fix for this problem is already in my tree (commit
-e643692138cfa33528f054b071ba2583509bb217).
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
