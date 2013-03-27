@@ -1,153 +1,68 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/3] ext4: fix journal callback list traversal
-Date: Tue, 26 Mar 2013 22:48:26 +0100
-Message-ID: <20130326214826.GH2082@quack.suse.cz>
-References: <1363969123-16852-1-git-send-email-dmonakhov@openvz.org>
- <1363969123-16852-2-git-send-email-dmonakhov@openvz.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH v2] xfstests 299-305: remove fio config files after
+	finished test
+Date: Wed, 27 Mar 2013 13:05:33 +1100
+Message-ID: <20130327020532.GP6369@dastard>
+References: <1364127266-13325-1-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.cz,
-	wenqing.lz@taobao.com
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:46592 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751613Ab3CZVsa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Mar 2013 17:48:30 -0400
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@sandeen.net>,
+	Zheng Liu <wenqing.lz@taobao.com>, xfs@oss.sgi.com
+To: Zheng Liu <gnehzuil.liu@gmail.com>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <1363969123-16852-2-git-send-email-dmonakhov@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1364127266-13325-1-git-send-email-wenqing.lz@taobao.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri 22-03-13 20:18:42, Dmitry Monakhov wrote:
-> It is incorrect to use list_for_each_entry_safe() for journal callback
-> traversial because ->next may be removed by other task:
-> ->ext4_mb_free_metadata()
->   ->ext4_mb_free_metadata()
->     ->ext4_journal_callback_del()
+On Sun, Mar 24, 2013 at 08:14:26PM +0800, Zheng Liu wrote:
+> From: Zheng Liu <wenqing.lz@taobao.com>
 > 
-> This result in following issue:
+> After finished test, temporarily fio config file should be removed.
+> Meanwhile in #305 poweron_scratch_dev is removed because no one uses
+> it.
 > 
-> WARNING: at lib/list_debug.c:62 __list_del_entry+0x1c0/0x250()
-> Hardware name:
-> list_del corruption. prev->next should be ffff88019a4ec198, but was 6b6b6b6b6b6b6b6b
-> Modules linked in: cpufreq_ondemand acpi_cpufreq freq_table mperf coretemp kvm_intel kvm crc32c_intel ghash_clmulni_intel microcode sg xhci_hcd button sd_mod crc_t10dif aesni_intel ablk_helper cryptd lrw aes_x86_64 xts gf128mul ahci libahci pata_acpi ata_generic dm_mirror dm_region_hash dm_log dm_mod
-> Pid: 16400, comm: jbd2/dm-1-8 Tainted: G        W    3.8.0-rc3+ #107
-> Call Trace:
->  [<ffffffff8106fb0d>] warn_slowpath_common+0xad/0xf0
->  [<ffffffff8106fc06>] warn_slowpath_fmt+0x46/0x50
->  [<ffffffff813637e9>] ? ext4_journal_commit_callback+0x99/0xc0
->  [<ffffffff8148cae0>] __list_del_entry+0x1c0/0x250
->  [<ffffffff813637bf>] ext4_journal_commit_callback+0x6f/0xc0
->  [<ffffffff813ca336>] jbd2_journal_commit_transaction+0x23a6/0x2570
->  [<ffffffff8108aa42>] ? try_to_del_timer_sync+0x82/0xa0
->  [<ffffffff8108b491>] ? del_timer_sync+0x91/0x1e0
->  [<ffffffff813d3ecf>] kjournald2+0x19f/0x6a0
->  [<ffffffff810ad630>] ? wake_up_bit+0x40/0x40
->  [<ffffffff813d3d30>] ? bit_spin_lock+0x80/0x80
->  [<ffffffff810ac6be>] kthread+0x10e/0x120
->  [<ffffffff810ac5b0>] ? __init_kthread_worker+0x70/0x70
->  [<ffffffff818ff6ac>] ret_from_fork+0x7c/0xb0
->  [<ffffffff810ac5b0>] ? __init_kthread_worker+0x70/0x70
-> 
-> This patch fix the issue like follows:
-> - ext4_journal_commit_callback() make list truly traversial safe
->   simply by always starting from list_head
-> - fix race between two ext4_journal_callback_del() and
->   ext4_journal_callback_try_del()
-  Nasty! The fix is correct just one style nit below. But feel free to add:
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+> Cc: Eric Sandeen <sandeen@sandeen.net>
+> Cc: Dave Chinner <david@fromorbit.com>
 > ---
->  fs/ext4/ext4_jbd2.h |    6 +++++-
->  fs/ext4/mballoc.c   |    8 ++++----
->  fs/ext4/super.c     |    4 +++-
->  3 files changed, 12 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-> index 4c216b1..aeed0ba 100644
-> --- a/fs/ext4/ext4_jbd2.h
-> +++ b/fs/ext4/ext4_jbd2.h
-> @@ -194,16 +194,20 @@ static inline void ext4_journal_callback_add(handle_t *handle,
->   * ext4_journal_callback_del: delete a registered callback
->   * @handle: active journal transaction handle on which callback was registered
->   * @jce: registered journal callback entry to unregister
-> + * Return true if object was sucessfully removed
->   */
-> -static inline void ext4_journal_callback_del(handle_t *handle,
-> +static inline bool ext4_journal_callback_try_del(handle_t *handle,
->  					     struct ext4_journal_cb_entry *jce)
->  {
-> +	bool deleted;
->  	struct ext4_sb_info *sbi =
->  			EXT4_SB(handle->h_transaction->t_journal->j_private);
->  
->  	spin_lock(&sbi->s_md_lock);
-> +	deleted = !list_empty(&jce->jce_list);
->  	list_del_init(&jce->jce_list);
->  	spin_unlock(&sbi->s_md_lock);
-> +	return deleted;
->  }
->  
->  int
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index ee6614b..2e5196a 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -4420,11 +4420,11 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
->  	node = rb_prev(new_node);
->  	if (node) {
->  		entry = rb_entry(node, struct ext4_free_data, efd_node);
-> -		if (can_merge(entry, new_entry)) {
-> +		if (can_merge(entry, new_entry) &&
-> +			ext4_journal_callback_try_del(handle, &entry->efd_jce)) {
->  			new_entry->efd_start_cluster = entry->efd_start_cluster;
->  			new_entry->efd_count += entry->efd_count;
->  			rb_erase(node, &(db->bb_free_root));
-> -			ext4_journal_callback_del(handle, &entry->efd_jce);
->  			kmem_cache_free(ext4_free_data_cachep, entry);
-  Ah, the indentation is evil here. It made me think you don't use the
-return value of ext4_journal_callback_try_del() for a while. Please indent
-it like:
-		if (can_merge(entry, new_entry) &&
-		    ext4_journal_callback_try_del(handle, > &entry->efd_jce)) {
-			fooo
+>  299 |  9 +++++----
+>  300 |  9 +++++----
+>  301 |  9 +++++----
+>  302 |  9 +++++----
+>  303 |  9 +++++----
+>  304 |  9 +++++----
+>  305 | 11 ++++++-----
+>  7 files changed, 36 insertions(+), 29 deletions(-)
+>  mode change 100644 => 100755 299
+>  mode change 100644 => 100755 300
+>  mode change 100644 => 100755 301
+>  mode change 100644 => 100755 302
+>  mode change 100644 => 100755 303
+>  mode change 100644 => 100755 304
+>  mode change 100644 => 100755 305
 
-								Honza
->  		}
->  	}
-> @@ -4432,10 +4432,10 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
->  	node = rb_next(new_node);
->  	if (node) {
->  		entry = rb_entry(node, struct ext4_free_data, efd_node);
-> -		if (can_merge(new_entry, entry)) {
-> +		if (can_merge(new_entry, entry) &&
-> +			ext4_journal_callback_try_del(handle, &entry->efd_jce)) {
->  			new_entry->efd_count += entry->efd_count;
->  			rb_erase(node, &(db->bb_free_root));
-> -			ext4_journal_callback_del(handle, &entry->efd_jce);
->  			kmem_cache_free(ext4_free_data_cachep, entry);
->  		}
->  	}
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index d1ee6a8..c7e1509 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -352,7 +352,9 @@ static void ext4_journal_commit_callback(journal_t *journal, transaction_t *txn)
->  	struct ext4_journal_cb_entry	*jce, *tmp;
->  
->  	spin_lock(&sbi->s_md_lock);
-> -	list_for_each_entry_safe(jce, tmp, &txn->t_private_list, jce_list) {
-> +	while (!list_empty(&txn->t_private_list)) {
-> +		jce = list_entry(txn->t_private_list.next,
-> +				 struct ext4_journal_cb_entry, jce_list);
->  		list_del_init(&jce->jce_list);
->  		spin_unlock(&sbi->s_md_lock);
->  		jce->jce_func(sb, jce, error);
-> -- 
-> 1.7.1
-> 
+Mode changes should be in a separate patch. And if you are going to
+do this, please change all the tests that need this to be done in
+one sweep.
+
+Cheers,
+
+Dave.
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Dave Chinner
+david@fromorbit.com
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
