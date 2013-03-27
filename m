@@ -1,145 +1,82 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 2/3] ext4: fix journal callback list traversal V2
-Date: Wed, 27 Mar 2013 13:22:43 +0400
-Message-ID: <1364376164-31701-2-git-send-email-dmonakhov@openvz.org>
+Subject: [PATCH 3/3] ext4: undegister es_shrinker if mount failed
+Date: Wed, 27 Mar 2013 13:22:44 +0400
+Message-ID: <1364376164-31701-3-git-send-email-dmonakhov@openvz.org>
 References: <20130327025624.GA5861@thunk.org>
  <1364376164-31701-1-git-send-email-dmonakhov@openvz.org>
 Cc: tytso@mit.edu, jack@suse.cz, wenqing.lz@taobao.com,
 	Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:17803 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:48218 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750992Ab3C0JX4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751271Ab3C0JX4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 27 Mar 2013 05:23:56 -0400
 In-Reply-To: <1364376164-31701-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-It is incorrect to use list_for_each_entry_safe() for journal callback
-traversial because ->next may be removed by other task:
-->ext4_mb_free_metadata()
-  ->ext4_mb_free_metadata()
-    ->ext4_journal_callback_del()
+Otherwise destroyed ext_sb_info will be part of global shinker list and result in
+following OOPS:
 
-This result in following issue:
-
-WARNING: at lib/list_debug.c:62 __list_del_entry+0x1c0/0x250()
-Hardware name:
-list_del corruption. prev->next should be ffff88019a4ec198, but was 6b6b6b6b6b6b6b6b
-Modules linked in: cpufreq_ondemand acpi_cpufreq freq_table mperf coretemp kvm_intel kvm crc32c_intel ghash_clmulni_intel microcode sg xhci_hcd button sd_mod crc_t10dif aesni_intel ablk_helper cryptd lrw aes_x86_64 xts gf128mul ahci libahci pata_acpi ata_generic dm_mirror dm_region_hash dm_log dm_mod
-Pid: 16400, comm: jbd2/dm-1-8 Tainted: G        W    3.8.0-rc3+ #107
+JBD2: corrupted journal superblock
+JBD2: recovery failed
+EXT4-fs (dm-2): error loading journal
+general protection fault: 0000 [#1] SMP
+Modules linked in: fuse acpi_cpufreq freq_table mperf coretemp kvm_intel kvm crc32c_intel microcode sg button sd_mod crc_t10dif ahci libahci pata_acpi ata_generic dm_mirror dm_region_hash dm_log dm_\
+mod
+CPU 1
+Pid: 2758, comm: mount Not tainted 3.8.0-rc3+ #136                  /DH55TC
+RIP: 0010:[<ffffffff811bfb2d>]  [<ffffffff811bfb2d>] unregister_shrinker+0xad/0xe0
+RSP: 0000:ffff88011d5cbcd8  EFLAGS: 00010207
+RAX: 6b6b6b6b6b6b6b6b RBX: 6b6b6b6b6b6b6b53 RCX: 0000000000000006
+RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000000000246
+RBP: ffff88011d5cbce8 R08: 0000000000000002 R09: 0000000000000001
+R10: 0000000000000001 R11: 0000000000000000 R12: ffff88011cd3f848
+R13: ffff88011cd3f830 R14: ffff88011cd3f000 R15: 0000000000000000
+FS:  00007f7b721dd7e0(0000) GS:ffff880121a00000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+CR2: 00007fffa6f75038 CR3: 000000011bc1c000 CR4: 00000000000007e0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+Process mount (pid: 2758, threadinfo ffff88011d5ca000, task ffff880116aacb80)
+Stack:
+ffff88011cd3f000 ffffffff8209b6c0 ffff88011d5cbd18 ffffffff812482f1
+00000000000003f3 00000000ffffffea ffff880115f4c200 0000000000000000
+ffff88011d5cbda8 ffffffff81249381 ffff8801219d8bf8 ffffffff00000000
 Call Trace:
- [<ffffffff8106fb0d>] warn_slowpath_common+0xad/0xf0
- [<ffffffff8106fc06>] warn_slowpath_fmt+0x46/0x50
- [<ffffffff813637e9>] ? ext4_journal_commit_callback+0x99/0xc0
- [<ffffffff8148cae0>] __list_del_entry+0x1c0/0x250
- [<ffffffff813637bf>] ext4_journal_commit_callback+0x6f/0xc0
- [<ffffffff813ca336>] jbd2_journal_commit_transaction+0x23a6/0x2570
- [<ffffffff8108aa42>] ? try_to_del_timer_sync+0x82/0xa0
- [<ffffffff8108b491>] ? del_timer_sync+0x91/0x1e0
- [<ffffffff813d3ecf>] kjournald2+0x19f/0x6a0
- [<ffffffff810ad630>] ? wake_up_bit+0x40/0x40
- [<ffffffff813d3d30>] ? bit_spin_lock+0x80/0x80
- [<ffffffff810ac6be>] kthread+0x10e/0x120
- [<ffffffff810ac5b0>] ? __init_kthread_worker+0x70/0x70
- [<ffffffff818ff6ac>] ret_from_fork+0x7c/0xb0
- [<ffffffff810ac5b0>] ? __init_kthread_worker+0x70/0x70
+[<ffffffff812482f1>] deactivate_locked_super+0x91/0xb0
+[<ffffffff81249381>] mount_bdev+0x331/0x340
+[<ffffffff81376730>] ? ext4_alloc_flex_bg_array+0x180/0x180
+[<ffffffff81362035>] ext4_mount+0x15/0x20
+[<ffffffff8124869a>] mount_fs+0x9a/0x2e0
+[<ffffffff81277e25>] vfs_kern_mount+0xc5/0x170
+[<ffffffff81279c02>] do_new_mount+0x172/0x2e0
+[<ffffffff8127aa56>] do_mount+0x376/0x380
+[<ffffffff8127ab98>] sys_mount+0x138/0x150
+[<ffffffff818ffed9>] system_call_fastpath+0x16/0x1b
+Code: 8b 05 88 04 eb 00 48 3d 90 ff 06 82 48 8d 58 e8 75 19 4c 89 e7 e8 e4 d7 2c 00 48 c7 c7 00 ff 06 82 e8 58 5f ef ff 5b 41 5c c9 c3 <48> 8b 4b 18 48 8b 73 20 48 89 da 31 c0 48 c7 c7 c5 a0 e4 81 e\
+8
+RIP  [<ffffffff811bfb2d>] unregister_shrinker+0xad/0xe0
+RSP <ffff88011d5cbcd8>
 
-This patch fix the issue like follows:
-- ext4_journal_commit_callback() make list truly traversial safe
-  simply by always starting from list_head
-- fix race between two ext4_journal_callback_del() and
-  ext4_journal_callback_try_del()
-
-Changes since V1:
- Indention fixes accordion to Jan's request
-
-Reviewed-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- fs/ext4/ext4_jbd2.h |    6 +++++-
- fs/ext4/mballoc.c   |    8 ++++----
- fs/ext4/super.c     |    7 +++++--
- 3 files changed, 14 insertions(+), 7 deletions(-)
+ fs/ext4/super.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-index 4c216b1..aeed0ba 100644
---- a/fs/ext4/ext4_jbd2.h
-+++ b/fs/ext4/ext4_jbd2.h
-@@ -194,16 +194,20 @@ static inline void ext4_journal_callback_add(handle_t *handle,
-  * ext4_journal_callback_del: delete a registered callback
-  * @handle: active journal transaction handle on which callback was registered
-  * @jce: registered journal callback entry to unregister
-+ * Return true if object was sucessfully removed
-  */
--static inline void ext4_journal_callback_del(handle_t *handle,
-+static inline bool ext4_journal_callback_try_del(handle_t *handle,
- 					     struct ext4_journal_cb_entry *jce)
- {
-+	bool deleted;
- 	struct ext4_sb_info *sbi =
- 			EXT4_SB(handle->h_transaction->t_journal->j_private);
- 
- 	spin_lock(&sbi->s_md_lock);
-+	deleted = !list_empty(&jce->jce_list);
- 	list_del_init(&jce->jce_list);
- 	spin_unlock(&sbi->s_md_lock);
-+	return deleted;
- }
- 
- int
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index ee6614b..cf3025c 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4420,11 +4420,11 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
- 	node = rb_prev(new_node);
- 	if (node) {
- 		entry = rb_entry(node, struct ext4_free_data, efd_node);
--		if (can_merge(entry, new_entry)) {
-+		if (can_merge(entry, new_entry) &&
-+		    ext4_journal_callback_try_del(handle, &entry->efd_jce)) {
- 			new_entry->efd_start_cluster = entry->efd_start_cluster;
- 			new_entry->efd_count += entry->efd_count;
- 			rb_erase(node, &(db->bb_free_root));
--			ext4_journal_callback_del(handle, &entry->efd_jce);
- 			kmem_cache_free(ext4_free_data_cachep, entry);
- 		}
- 	}
-@@ -4432,10 +4432,10 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
- 	node = rb_next(new_node);
- 	if (node) {
- 		entry = rb_entry(node, struct ext4_free_data, efd_node);
--		if (can_merge(new_entry, entry)) {
-+		if (can_merge(new_entry, entry) &&
-+		    ext4_journal_callback_try_del(handle, &entry->efd_jce)) {
- 			new_entry->efd_count += entry->efd_count;
- 			rb_erase(node, &(db->bb_free_root));
--			ext4_journal_callback_del(handle, &entry->efd_jce);
- 			kmem_cache_free(ext4_free_data_cachep, entry);
- 		}
- 	}
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index d1ee6a8..305aa18 100644
+index 305aa18..b66afdc 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -349,10 +349,13 @@ static void ext4_journal_commit_callback(journal_t *journal, transaction_t *txn)
- 	struct super_block		*sb = journal->j_private;
- 	struct ext4_sb_info		*sbi = EXT4_SB(sb);
- 	int				error = is_journal_aborted(journal);
--	struct ext4_journal_cb_entry	*jce, *tmp;
-+	struct ext4_journal_cb_entry	*jce;
- 
-+	BUG_ON(txn->t_state == T_FINISHED);
- 	spin_lock(&sbi->s_md_lock);
--	list_for_each_entry_safe(jce, tmp, &txn->t_private_list, jce_list) {
-+	while (!list_empty(&txn->t_private_list)) {
-+		jce = list_entry(txn->t_private_list.next,
-+				 struct ext4_journal_cb_entry, jce_list);
- 		list_del_init(&jce->jce_list);
- 		spin_unlock(&sbi->s_md_lock);
- 		jce->jce_func(sb, jce, error);
+@@ -4009,6 +4009,7 @@ failed_mount_wq:
+ 		sbi->s_journal = NULL;
+ 	}
+ failed_mount3:
++	ext4_es_unregister_shrinker(sb);
+ 	del_timer(&sbi->s_err_report);
+ 	if (sbi->s_flex_groups)
+ 		ext4_kvfree(sbi->s_flex_groups);
 -- 
 1.7.1
 
