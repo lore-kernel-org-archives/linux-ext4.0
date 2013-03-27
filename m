@@ -1,72 +1,52 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH v2] xfstests 299-305: remove fio config files after
-	finished test
-Date: Wed, 27 Mar 2013 19:55:02 +0800
-Message-ID: <20130327115502.GA23236@gmail.com>
-References: <1364127266-13325-1-git-send-email-wenqing.lz@taobao.com>
-	<20130327020532.GP6369@dastard>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 5/7] ext4: refactor truncate code
+Date: Wed, 27 Mar 2013 08:36:51 -0400
+Message-ID: <20130327123651.GG5861@thunk.org>
+References: <1364170014-10295-1-git-send-email-tytso@mit.edu>
+ <1364170014-10295-6-git-send-email-tytso@mit.edu>
+ <alpine.LFD.2.00.1303271128480.2455@(none)>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@sandeen.net>,
-	Zheng Liu <wenqing.lz@taobao.com>, xfs@oss.sgi.com
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <xfs-bounces@oss.sgi.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:56304 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751094Ab3C0Mgz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Mar 2013 08:36:55 -0400
 Content-Disposition: inline
-In-Reply-To: <20130327020532.GP6369@dastard>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <alpine.LFD.2.00.1303271128480.2455@(none)>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Mar 27, 2013 at 01:05:33PM +1100, Dave Chinner wrote:
-> On Sun, Mar 24, 2013 at 08:14:26PM +0800, Zheng Liu wrote:
-> > From: Zheng Liu <wenqing.lz@taobao.com>
-> > 
-> > After finished test, temporarily fio config file should be removed.
-> > Meanwhile in #305 poweron_scratch_dev is removed because no one uses
-> > it.
-> > 
-> > Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-> > Cc: Eric Sandeen <sandeen@sandeen.net>
-> > Cc: Dave Chinner <david@fromorbit.com>
-> > ---
-> >  299 |  9 +++++----
-> >  300 |  9 +++++----
-> >  301 |  9 +++++----
-> >  302 |  9 +++++----
-> >  303 |  9 +++++----
-> >  304 |  9 +++++----
-> >  305 | 11 ++++++-----
-> >  7 files changed, 36 insertions(+), 29 deletions(-)
-> >  mode change 100644 => 100755 299
-> >  mode change 100644 => 100755 300
-> >  mode change 100644 => 100755 301
-> >  mode change 100644 => 100755 302
-> >  mode change 100644 => 100755 303
-> >  mode change 100644 => 100755 304
-> >  mode change 100644 => 100755 305
-> 
-> Mode changes should be in a separate patch. And if you are going to
-> do this, please change all the tests that need this to be done in
-> one sweep.
+On Wed, Mar 27, 2013 at 11:53:42AM +0100, Luk=C3=A1=C5=A1 Czerner wrote=
+:
+> > +	up_write(&ei->i_data_sem);
+>=20
+> In ext_truncate we used to unlock it after the ext4_handle_sync(),
+> however in ind_truncate we used to unlock it before the
+> ext4_handle_sync(). Which one is correct ? I guess it does not have
+> to be done under the i_data_sem, so maybe we can move it outside the
+> semaphore in the punch_hole code as well ?
 
-Hi Dave,
+Yes, we can move this outside of the semaphore protected code.  Given
+that ext4_handle_sync() an inline function which sets a single memory
+location, my guess is that it didn't make a huge amount of difference,
+but it's better to keep the critical section as small as possible.
+I'll make that change.
 
-Thanks for pointing it out.  I will send a latest version.  Meanwhile I
-notice that now test cases have been moved into tests dir and splitted
-into different parts.  So I will rebase my patch aginst latest xfstests.
 
-Thanks,
-                                                - Zheng
+Hmm.... one thing I'm not sure about, now that I'm looking at this
+code.  We call ext4_discard_preallocations() twice; once before we
+remove the extent, and once afterwards.  I'm not sure why we're doing
+that.  It doesn't look to me like ext4_free_blocks() ever releases
+blocks back to the preallocation space.  Am I missing something, or
+could we eliminate one of the calls to ext4_discard_preallocations()?
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+      	 	       	      	       - Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
