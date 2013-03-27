@@ -1,30 +1,38 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/2] ext4: Make ext4_block_in_group() much more efficient
-Date: Tue, 26 Mar 2013 23:05:55 -0400
-Message-ID: <20130327030555.GB5861@thunk.org>
+Subject: Re: [PATCH 2/2] ext4: introduce ext4_get_group_number()
+Date: Tue, 26 Mar 2013 23:12:07 -0400
+Message-ID: <20130327031207.GC5861@thunk.org>
 References: <1364207051-27037-1-git-send-email-lczerner@redhat.com>
+ <1364207051-27037-2-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
 To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:56180 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:56183 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752772Ab3C0DF5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Mar 2013 23:05:57 -0400
+	id S1752772Ab3C0DMK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 26 Mar 2013 23:12:10 -0400
 Content-Disposition: inline
-In-Reply-To: <1364207051-27037-1-git-send-email-lczerner@redhat.com>
+In-Reply-To: <1364207051-27037-2-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 25, 2013 at 11:24:10AM +0100, Lukas Czerner wrote:
-> +	actual_group = (le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block) +
-> +			block) >>
-> +		       (EXT4_BLOCK_SIZE_BITS(sb) + EXT4_CLUSTER_BITS(sb) + 3);
+On Mon, Mar 25, 2013 at 11:24:11AM +0100, Lukas Czerner wrote:
+> Currently on many places in ext4 we're using
+> ext4_get_group_no_and_offset() even though we're only interested in
+> knowing the block group of the particular block, not the offset within
+> the block group so we can use more efficient way to compute block group.
+> 
+> This patch introduces ext4_get_group_number() which computes block group
+> for a givem block much more efficiently. Use this function instead of
+> ext4_get_group_no_and_offset() everywhere where we're only interested in
+> knowing the block group.
 
-The problem with this change is that you are assuming that the number
-of blocks per group is equal to block_size * 8.  This is not always
-the case; a nonstandard number of blocks per group can be set using
-mke2fs's -g option.
+Again, we have the same problem as the previous patch.  I could
+imagine setting a flag which uses the shift-instead-of-div
+optimization, but that will reduce the optimization somewhat.  OTOH,
+an 64-bit division is pretty expensive, especially on older/simpler
+CPU's, so perhaps it's worth it.
 
-						- Ted
+   	  	      		    	    - Ted
