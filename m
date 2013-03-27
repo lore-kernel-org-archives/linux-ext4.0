@@ -1,81 +1,176 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 4/7] ext4: refactor punch hole code
-Date: Wed, 27 Mar 2013 11:49:22 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1303271147320.23176@localhost>
-References: <1364170014-10295-1-git-send-email-tytso@mit.edu> <1364170014-10295-5-git-send-email-tytso@mit.edu> <alpine.LFD.2.00.1303261334060.2455@(none)> <20130327023816.GC2697@thunk.org>
-Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-183794955-1364381365=:23176"
-Cc: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH 2/2 v2] ext4: introduce ext4_get_group_number()
+Date: Wed, 27 Mar 2013 12:04:05 +0100
+Message-ID: <1364382245-32510-2-git-send-email-lczerner@redhat.com>
+References: <1364382245-32510-1-git-send-email-lczerner@redhat.com>
+Cc: tytso@mit.edu, Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:63313 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:19390 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753948Ab3C0Kt1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Mar 2013 06:49:27 -0400
-In-Reply-To: <20130327023816.GC2697@thunk.org>
+	id S1751774Ab3C0LEN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Mar 2013 07:04:13 -0400
+In-Reply-To: <1364382245-32510-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+Currently on many places in ext4 we're using
+ext4_get_group_no_and_offset() even though we're only interested in
+knowing the block group of the particular block, not the offset within
+the block group so we can use more efficient way to compute block group.
 
---8323328-183794955-1364381365=:23176
-Content-Type: TEXT/PLAIN; charset=utf-8
-Content-Transfer-Encoding: 8BIT
+This patch introduces ext4_get_group_number() which computes block group
+for a given block much more efficiently. Use this function instead of
+ext4_get_group_no_and_offset() everywhere where we're only interested in
+knowing the block group.
 
-On Tue, 26 Mar 2013, Theodore Ts'o wrote:
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+v2: Update after patch 0001 changed
 
-> Date: Tue, 26 Mar 2013 22:38:16 -0400
-> From: Theodore Ts'o <tytso@mit.edu>
-> To: Lukáš Czerner <lczerner@redhat.com>
-> Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-> Subject: Re: [PATCH 4/7] ext4: refactor punch hole code
-> 
-> On Tue, Mar 26, 2013 at 01:54:19PM +0100, Lukáš Czerner wrote:
-> > > +	/* Wait all existing dio workers, newcomers will block on i_mutex */
-> > > +	ext4_inode_block_unlocked_dio(inode);
-> > 
-> > This was not present in the indirect punch hole code, does it means
-> > that there was a bug ? If so maybe it's worth mentioning in the
-> > description? 
-> 
-> Yes, I'm pretty sure it was a bug.  The
-> ext4_inode_block_unlocked_dio() call was added in the extents code
-> path by commit 02d262dffcf4c.  The problem is that i_mutex will not
-> block DIO readers in dioread_nolock mode.  One of the problems with
-> not having done the code refactorization earlier was that a bug fixed
-> in one code path doesn't necessarily get fixed in another.
-> 
-> I'll add a comment to this effect in the commit description.
+ fs/ext4/balloc.c  |   25 ++++++++++++++++++-------
+ fs/ext4/ext4.h    |    3 +++
+ fs/ext4/mballoc.c |    6 +++---
+ fs/ext4/resize.c  |   10 +++++-----
+ 4 files changed, 29 insertions(+), 15 deletions(-)
 
-Great, thanks.
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index a4d2e73..062a31dc 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -30,6 +30,23 @@ static unsigned ext4_num_base_meta_clusters(struct super_block *sb,
+  */
+ 
+ /*
++ * Calculate block group number for a given block number
++ */
++inline ext4_group_t ext4_get_group_number(struct super_block *sb,
++					  ext4_fsblk_t block)
++{
++	ext4_group_t group;
++
++	if (test_opt(sb, STD_GROUP_SIZE))
++		group = (le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block) +
++			 block) >>
++			(EXT4_BLOCK_SIZE_BITS(sb) + EXT4_CLUSTER_BITS(sb) + 3);
++	else
++		ext4_get_group_no_and_offset(sb, block, &group, NULL);
++	return group;
++}
++
++/*
+  * Calculate the block group number and offset into the block/cluster
+  * allocation bitmap, given a block number
+  */
+@@ -59,13 +76,7 @@ static inline int ext4_block_in_group(struct super_block *sb,
+ {
+ 	ext4_group_t actual_group;
+ 
+-	if (test_opt(sb, STD_GROUP_SIZE))
+-		actual_group =
+-			(le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block) +
+-			block) >>
+-			(EXT4_BLOCK_SIZE_BITS(sb) + EXT4_CLUSTER_BITS(sb) + 3);
+-	else
+-		ext4_get_group_no_and_offset(sb, block, &actual_group, NULL);
++	actual_group = ext4_get_group_number(sb, block);
+ 	return (actual_group == block_group) ? 1 : 0;
+ }
+ 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 2ee8d76..0d7d7749 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1790,6 +1790,9 @@ ext4_group_first_block_no(struct super_block *sb, ext4_group_t group_no)
+ void ext4_get_group_no_and_offset(struct super_block *sb, ext4_fsblk_t blocknr,
+ 			ext4_group_t *blockgrpp, ext4_grpblk_t *offsetp);
+ 
++inline ext4_group_t ext4_get_group_number(struct super_block *sb,
++					  ext4_fsblk_t block);
++
+ /*
+  * Timeout and state flag for lazy initialization inode thread.
+  */
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index ee6614b..dca7f06 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -3342,7 +3342,7 @@ static void ext4_mb_put_pa(struct ext4_allocation_context *ac,
+ 	if (pa->pa_type == MB_GROUP_PA)
+ 		grp_blk--;
+ 
+-	ext4_get_group_no_and_offset(sb, grp_blk, &grp, NULL);
++	grp = ext4_get_group_number(sb, grp_blk);
+ 
+ 	/*
+ 	 * possible race:
+@@ -3807,7 +3807,7 @@ repeat:
+ 
+ 	list_for_each_entry_safe(pa, tmp, &list, u.pa_tmp_list) {
+ 		BUG_ON(pa->pa_type != MB_INODE_PA);
+-		ext4_get_group_no_and_offset(sb, pa->pa_pstart, &group, NULL);
++		group = ext4_get_group_number(sb, pa->pa_pstart);
+ 
+ 		err = ext4_mb_load_buddy(sb, group, &e4b);
+ 		if (err) {
+@@ -4069,7 +4069,7 @@ ext4_mb_discard_lg_preallocations(struct super_block *sb,
+ 
+ 	list_for_each_entry_safe(pa, tmp, &discard_list, u.pa_tmp_list) {
+ 
+-		ext4_get_group_no_and_offset(sb, pa->pa_pstart, &group, NULL);
++		group = ext4_get_group_number(sb, pa->pa_pstart);
+ 		if (ext4_mb_load_buddy(sb, group, &e4b)) {
+ 			ext4_error(sb, "Error loading buddy information for %u",
+ 					group);
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index c169477..e349853 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -272,7 +272,7 @@ next_group:
+ 		if (start_blk >= last_blk)
+ 			goto next_group;
+ 		group_data[bb_index].block_bitmap = start_blk++;
+-		ext4_get_group_no_and_offset(sb, start_blk - 1, &group, NULL);
++		group = ext4_get_group_number(sb, start_blk - 1);
+ 		group -= group_data[0].group;
+ 		group_data[group].free_blocks_count--;
+ 		if (flexbg_size > 1)
+@@ -284,7 +284,7 @@ next_group:
+ 		if (start_blk >= last_blk)
+ 			goto next_group;
+ 		group_data[ib_index].inode_bitmap = start_blk++;
+-		ext4_get_group_no_and_offset(sb, start_blk - 1, &group, NULL);
++		group = ext4_get_group_number(sb, start_blk - 1);
+ 		group -= group_data[0].group;
+ 		group_data[group].free_blocks_count--;
+ 		if (flexbg_size > 1)
+@@ -296,7 +296,7 @@ next_group:
+ 		if (start_blk + EXT4_SB(sb)->s_itb_per_group > last_blk)
+ 			goto next_group;
+ 		group_data[it_index].inode_table = start_blk;
+-		ext4_get_group_no_and_offset(sb, start_blk, &group, NULL);
++		group = ext4_get_group_number(sb, start_blk - 1);
+ 		group -= group_data[0].group;
+ 		group_data[group].free_blocks_count -=
+ 					EXT4_SB(sb)->s_itb_per_group;
+@@ -392,7 +392,7 @@ static int set_flexbg_block_bitmap(struct super_block *sb, handle_t *handle,
+ 		ext4_group_t group;
+ 		int err;
+ 
+-		ext4_get_group_no_and_offset(sb, block, &group, NULL);
++		group = ext4_get_group_number(sb, block);
+ 		start = ext4_group_first_block_no(sb, group);
+ 		group -= flex_gd->groups[0].group;
+ 
+@@ -1879,7 +1879,7 @@ retry:
+ 		/* Nothing need to do */
+ 		return 0;
+ 
+-	ext4_get_group_no_and_offset(sb, n_blocks_count - 1, &n_group, &offset);
++	n_group = ext4_get_group_number(sb, n_blocks_count - 1);
+ 	ext4_get_group_no_and_offset(sb, o_blocks_count - 1, &o_group, &offset);
+ 
+ 	n_desc_blocks = num_desc_blocks(sb, n_group + 1);
+-- 
+1.7.7.6
 
-> 
-> > > +	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
-> > > +		credits = ext4_writepage_trans_blocks(inode);
-> > > +	else
-> > > +		credits = ext4_blocks_for_truncate(inode);
-> > > +	handle = ext4_journal_start(inode, EXT4_HT_TRUNCATE,
-> > > +				    ext4_blocks_for_truncate(inode));
-> > 
-> > Hmm, shouldn't we be using 'credits' instead of
-> > ext4_blocks_for_truncate(inode) here ?
-> 
-> Yes, good catch!
-> 
-> Thanks,
-> 
-
-I am not sure why I do not see my mail on the ext4 list.. But
-anyway, you've missed my last comment bellow this one.
-
--Lukas
-
-> 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
---8323328-183794955-1364381365=:23176--
