@@ -1,38 +1,72 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 55821] kernel oops when unmounting ext3 fs
-Date: Wed, 27 Mar 2013 11:38:46 +0000 (UTC)
-Message-ID: <20130327113846.141B611FB3C@bugzilla.kernel.org>
-References: <bug-55821-13602@https.bugzilla.kernel.org/>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH v2] xfstests 299-305: remove fio config files after
+	finished test
+Date: Wed, 27 Mar 2013 19:55:02 +0800
+Message-ID: <20130327115502.GA23236@gmail.com>
+References: <1364127266-13325-1-git-send-email-wenqing.lz@taobao.com>
+	<20130327020532.GP6369@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:57614 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751307Ab3C0Lis (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Mar 2013 07:38:48 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 1F86D2034F
-	for <linux-ext4@vger.kernel.org>; Wed, 27 Mar 2013 11:38:47 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id 1609120349
-	for <linux-ext4@vger.kernel.org>; Wed, 27 Mar 2013 11:38:46 +0000 (UTC)
-In-Reply-To: <bug-55821-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@sandeen.net>,
+	Zheng Liu <wenqing.lz@taobao.com>, xfs@oss.sgi.com
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+Content-Disposition: inline
+In-Reply-To: <20130327020532.GP6369@dastard>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=55821
+On Wed, Mar 27, 2013 at 01:05:33PM +1100, Dave Chinner wrote:
+> On Sun, Mar 24, 2013 at 08:14:26PM +0800, Zheng Liu wrote:
+> > From: Zheng Liu <wenqing.lz@taobao.com>
+> > 
+> > After finished test, temporarily fio config file should be removed.
+> > Meanwhile in #305 poweron_scratch_dev is removed because no one uses
+> > it.
+> > 
+> > Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+> > Cc: Eric Sandeen <sandeen@sandeen.net>
+> > Cc: Dave Chinner <david@fromorbit.com>
+> > ---
+> >  299 |  9 +++++----
+> >  300 |  9 +++++----
+> >  301 |  9 +++++----
+> >  302 |  9 +++++----
+> >  303 |  9 +++++----
+> >  304 |  9 +++++----
+> >  305 | 11 ++++++-----
+> >  7 files changed, 36 insertions(+), 29 deletions(-)
+> >  mode change 100644 => 100755 299
+> >  mode change 100644 => 100755 300
+> >  mode change 100644 => 100755 301
+> >  mode change 100644 => 100755 302
+> >  mode change 100644 => 100755 303
+> >  mode change 100644 => 100755 304
+> >  mode change 100644 => 100755 305
+> 
+> Mode changes should be in a separate patch. And if you are going to
+> do this, please change all the tests that need this to be done in
+> one sweep.
 
+Hi Dave,
 
+Thanks for pointing it out.  I will send a latest version.  Meanwhile I
+notice that now test cases have been moved into tests dir and splitted
+into different parts.  So I will rebase my patch aginst latest xfstests.
 
+Thanks,
+                                                - Zheng
 
-
---- Comment #1 from David Maciejak <dmaciejak@fortinet.com>  2013-03-27 11:38:45 ---
-Created an attachment (id=96361)
- --> (https://bugzilla.kernel.org/attachment.cgi?id=96361)
-ext3 poc file
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
