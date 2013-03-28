@@ -1,49 +1,102 @@
 From: Zach Brown <zab@redhat.com>
-Subject: Re: [PATCH 1/2] ext4: Return proper offset for '..' if inline_data
- enabled.
-Date: Thu, 28 Mar 2013 11:33:32 -0700
-Message-ID: <20130328183332.GE16651@lenny.home.zabbo.net>
+Subject: Re: [PATCH 2/2] ext4: Handle readdir when a file is converted from
+ inline to block based.
+Date: Thu, 28 Mar 2013 11:44:12 -0700
+Message-ID: <20130328184412.GF16651@lenny.home.zabbo.net>
 References: <1364466899-5599-1-git-send-email-tm@tao.ma>
+ <1364466899-5599-2-git-send-email-tm@tao.ma>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
 To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50736 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:64534 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753381Ab3C1Sdf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 Mar 2013 14:33:35 -0400
+	id S1752768Ab3C1SoO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 28 Mar 2013 14:44:14 -0400
 Content-Disposition: inline
-In-Reply-To: <1364466899-5599-1-git-send-email-tm@tao.ma>
+In-Reply-To: <1364466899-5599-2-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 28, 2013 at 06:34:58PM +0800, Tao Ma wrote:
-> From: Tao Ma <boyu.mt@taobao.com>
-> 
-> Zach reported a problem that if inline data is enabled, we don't
-> tell the difference between the offset of '.' and '..'. And a
-> getdents will fail if the user only want to get '.'.
-> 
-> This patch adds a new offset EXT4_INLINE_DOTDOT_OFFSET which
-> indicates the offset of inline "..", and now 0 is for the "."
-> and EXT4_INLINE_DOTDOT_OFFSET is for "..".
+> Zach reported that if a dir is inlined, the offset is within the inode, while
+> if we have done the conversion, the dir now will have a block offset or even
+> a hashed pos. The good thing is that ext4 is also prepared to handle some
+> situation that the dir is changed during many calls of getdents.
 
-Yeah, this fixes the problem.  I confirmed that my little test that got
-a single dirent from getdents() now properly sees . and .. and exits
-rather than spinning.
+This doesn't fix the problem.  The problem isn't using the right code
+path within ext4 for either inline or normal block directories.
 
-Tested-by: Zach Brown <zab@redhat.com>
+The problem is that offsets for existing files change.  Yeah, ext4 also
+has this problem when it converts from classic linear dirents to hashed
+dirents, but I bet that basically doesn't happen any more.  Inline dirs
+are making the problem happen for every single directory as it grows.
 
->  
-> +			if (filp->f_pos == EXT4_INLINE_DOTDOT_OFFSET) {
->  				error = filldir(dirent, "..", 2, 0, parent_ino,
->  						DT_DIR);
->  				if (error)
-> -- 
-> 1.7.0.4
+There's two ways to experience the bug:
 
-Though I think you should change the fourth argument (offset) of the
-second flildir() from 0 to EXT4_INLINE_DOTDOT_OFFSET.
+1) nfs clients getting the wrong entry because the offset has changed
+from the time that they got it from the server
 
-- z
+2) more worryingly: a concurrent readdir() can see duplicate entries
+from simply advancing f_pos as it does normally
+
+Here's a quick little demonstration of the second case:
+
+d_off: 2 d_name: ., f_pos 2
+d_off: 4 d_name: .., f_pos 4
+d_off: 16 d_name: a, f_pos 16
+d_off: 28 d_name: b, f_pos 28
+d_off: 40 d_name: c, f_pos 40
+d_off: 371778706554281332 d_name: .., f_pos 18446744071750344052
+d_off: 1068979911240654558 d_name: b, f_pos 18446744072795659998
+d_off: 6187216788877381273 d_name: c, f_pos 1633586841
+d_off: 6280769109141524706 d_name: e, f_pos 1386254562
+
+Run the following in a newly created empty dir with inline_data:
+
+#include <stdlib.h>
+#include <dirent.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <string.h>
+#include <sys/syscall.h>
+
+struct linux_dirent {
+	long           d_ino;
+	off_t          d_off;
+	unsigned short d_reclen;
+	char           d_name[];
+};
+
+int main(int argc, char **argv)
+{
+	struct linux_dirent dent;
+	char name[2] = {0,};
+	int i;
+	int ret;
+	int fd;
+
+	fd = open(".", O_RDONLY | O_DIRECTORY);
+	if (fd < 0) {
+		printf("open(\".\", O_RDONLY|O_DIRECTORY) failed: %u (%s)\n",
+		       errno, strerror(errno));
+		exit(1);
+	}
+	
+	for (i = 0; i < 26; i++) {
+		name[0] = 'a' + i;
+		mknod(name, S_IFREG|0755, 0);
+		ret = syscall(SYS_getdents, fd, &dent, sizeof(dent));
+		if (ret < 1)
+			break;
+		printf("d_off: %llu d_name: %s, f_pos %llu\n",
+		       (unsigned long long)dent.d_off,
+		       dent.d_name,
+		       (unsigned long long)lseek(fd, 0, SEEK_CUR));
+	}
+
+	return 0;
+}
