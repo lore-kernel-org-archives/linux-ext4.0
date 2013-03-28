@@ -1,55 +1,37 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [Gluster-devel] regressions due to 64-bit ext4 directory cookies
-Date: Thu, 28 Mar 2013 11:26:26 -0500
-Message-ID: <51546F32.7000609@redhat.com>
-References: <CAFboF2wXvP+vttiff8iRE9rAgvV8UWGbFprgVp8p7kE43TU=PA@mail.gmail.com> <20130213222052.GD5938@thunk.org> <20130213224141.GU14195@fieldses.org> <20130213224720.GE5938@thunk.org> <CAFboF2z1akN_edrY_fT915xfehfHGioA2M=PSHv0Fp3rD-5v5A@mail.gmail.com> <20130213230511.GW14195@fieldses.org> <20130213234430.GF5938@thunk.org> <CAFboF2zS+YAa0uUxMFUAbqgPh3Kb4xZu40WUjLyGn8qPoP+Oyw@mail.gmail.com> <5151BD5F.30607@itwm.fraunhofer.de> <5151C33E.2070008@redhat.com> <20130328140744.GA4989@thunk.org>
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Subject: Re: [PATCH, RFC] ext4: add ioctl to force 32-bit hashes from indexed
+ dirs
+Date: Thu, 28 Mar 2013 18:37:49 +0100
+Message-ID: <51547FED.6010508@itwm.fraunhofer.de>
+References: <51546C4E.9010903@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-	Anand Avati <anand.avati@gmail.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	gluster-devel@nongnu.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Anand Avati <avati@redhat.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28314 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753268Ab3C1Q0k (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 Mar 2013 12:26:40 -0400
-In-Reply-To: <20130328140744.GA4989@thunk.org>
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:56276 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751533Ab3C1Rhy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Mar 2013 13:37:54 -0400
+Received: from itwm2.itwm.fhg.de (itwm2.itwm.fhg.de [131.246.191.3])
+	by mailgw1.uni-kl.de (8.14.3/8.14.3/Debian-9.4) with ESMTP id r2SHbp2m008928
+	(version=TLSv1/SSLv3 cipher=EDH-RSA-DES-CBC3-SHA bits=168 verify=NOT)
+	for <linux-ext4@vger.kernel.org>; Thu, 28 Mar 2013 18:37:52 +0100
+In-Reply-To: <51546C4E.9010903@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 3/28/13 9:07 AM, Theodore Ts'o wrote:
-> On Tue, Mar 26, 2013 at 10:48:14AM -0500, Eric Sandeen wrote:
->>> We don't have reached a conclusion so far, do we? What about the
->>> ioctl approach, but a bit differently? Would it work to specify the
->>> allowed upper bits for ext4 (for example 16 additional bit) and the
->>> remaining part for gluster? One of the mails had the calculation
->>> formula:
->>
->> I did throw together an ioctl patch last week, but I think Anand has a new
->> approach he's trying out which won't require ext4 code changes.  I'll let
->> him reply when he has a moment.  :)
-> 
-> Any update about whether Gluster can address this without needing the
-> ioctl patch?  Or should we push the ioctl patch into ext4 for the next
-> merge window?
+Hello Eric,
 
-I went ahead & sent the ioctl patches to the ext4 list; they are lightly
-tested, and not tested at all w/ gluster AFAIK.  Wanted to get them
-out just in case we decide we want them.
+thanks, I'm going to review it thouroughly tomorrow again. Just noticed 
+a small typo in a comment.
 
-Thanks,
--Eric
+On 03/28/2013 05:14 PM, Eric Sandeen wrote:
+> +		/* Have we already started readir on this dx dir? */
+                                            ^^^^^^
 
-> Thanks,
-> 
-> 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
 
+Cheers,
+Bernd
