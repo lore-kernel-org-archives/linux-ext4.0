@@ -1,102 +1,102 @@
-From: Zach Brown <zab@redhat.com>
-Subject: Re: [PATCH 2/2] ext4: Handle readdir when a file is converted from
- inline to block based.
-Date: Thu, 28 Mar 2013 11:44:12 -0700
-Message-ID: <20130328184412.GF16651@lenny.home.zabbo.net>
-References: <1364466899-5599-1-git-send-email-tm@tao.ma>
- <1364466899-5599-2-git-send-email-tm@tao.ma>
+From: Anand Avati <anand.avati-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Subject: Re: regressions due to 64-bit ext4 directory cookies
+Date: Thu, 28 Mar 2013 11:49:36 -0700
+Message-ID: <CAFboF2w49Lc0vM0SerbJfL9_RuSHgEU+y_Yk7F4pLxeiqu+KRg@mail.gmail.com>
+References: <20130213224720.GE5938@thunk.org>
+	<CAFboF2z1akN_edrY_fT915xfehfHGioA2M=PSHv0Fp3rD-5v5A@mail.gmail.com>
+	<20130213230511.GW14195@fieldses.org>
+	<20130213234430.GF5938@thunk.org>
+	<CAFboF2zS+YAa0uUxMFUAbqgPh3Kb4xZu40WUjLyGn8qPoP+Oyw@mail.gmail.com>
+	<5151BD5F.30607@itwm.fraunhofer.de> <5151C33E.2070008@redhat.com>
+	<20130328140744.GA4989@thunk.org>
+	<20130328175205.GD16651@lenny.home.zabbo.net>
+	<CAFboF2ztc06G00z8ga35NrxgnT2YgBiDECgU_9kvVA_Go1_Bww@mail.gmail.com>
+	<20130328183153.GG7080@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Tao Ma <tm@tao.ma>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:64534 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752768Ab3C1SoO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 Mar 2013 14:44:14 -0400
+Content-Type: multipart/mixed; boundary="===============1773639004856893358=="
+Cc: Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Zach Brown <zab-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+	Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, gluster-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org
+To: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
+Return-path: <gluster-devel-bounces+gcfgd-gluster-devel=m.gmane.org-qX2TKyscuCcdnm+yROfE0A@public.gmane.org>
+In-Reply-To: <20130328183153.GG7080-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
+List-Unsubscribe: <https://lists.nongnu.org/mailman/options/gluster-devel>,
+	<mailto:gluster-devel-request-qX2TKyscuCcdnm+yROfE0A@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.nongnu.org/archive/html/gluster-devel>
+List-Post: <mailto:gluster-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org>
+List-Help: <mailto:gluster-devel-request-qX2TKyscuCcdnm+yROfE0A@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.nongnu.org/mailman/listinfo/gluster-devel>,
+	<mailto:gluster-devel-request-qX2TKyscuCcdnm+yROfE0A@public.gmane.org?subject=subscribe>
+Errors-To: gluster-devel-bounces+gcfgd-gluster-devel=m.gmane.org-qX2TKyscuCcdnm+yROfE0A@public.gmane.org
+Sender: gluster-devel-bounces+gcfgd-gluster-devel=m.gmane.org-qX2TKyscuCcdnm+yROfE0A@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
+
+--===============1773639004856893358==
+Content-Type: multipart/alternative; boundary=001a11c1d64cbe531304d9009db5
+
+--001a11c1d64cbe531304d9009db5
+Content-Type: text/plain; charset=ISO-8859-1
+
+On Thu, Mar 28, 2013 at 11:31 AM, J. Bruce Fields <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>wrote:
+>
+> > Jeff reported that the approach did not work in his testing. I haven't
+> had
+> > a chance to look into the failure yet. Independent of the fix, it would
+> > certainly be good have the ioctl() support
+>
+> The one advantage of your scheme is that it keeps more of the hash bits;
+> the chance of 31-bit cookie collisions is much higher.
+
+
+Yes, it should, based on the theory of how ext4 was generating the 63bits.
+But Jeff's test finds that the experiment is not matching the theory. I
+intend to debug this, but currently drowned in a different issue. It would
+be good if the ext developers can have a look at
+http://review.gluster.org/4711 and see if there are obvious holes in the
+approach or code.
+
+Avati
+
+--001a11c1d64cbe531304d9009db5
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
+
+<br><br><div class=3D"gmail_quote">On Thu, Mar 28, 2013 at 11:31 AM, J. Bru=
+ce Fields <span dir=3D"ltr">&lt;<a href=3D"mailto:bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org" tar=
+get=3D"_blank">bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org</a>&gt;</span> wrote:<blockquote class=
+=3D"gmail_quote" style=3D"margin:0 0 0 .8ex;border-left:1px #ccc solid;padd=
+ing-left:1ex">
+<div class=3D"HOEnZb"><div class=3D"h5">
+&gt; Jeff reported that the approach did not work in his testing. I haven&#=
+39;t had<br>
+&gt; a chance to look into the failure yet. Independent of the fix, it woul=
+d<br>
+&gt; certainly be good have the ioctl() support<br>
+<br>
+</div></div>The one advantage of your scheme is that it keeps more of the h=
+ash bits;<br>
+the chance of 31-bit cookie collisions is much higher.</blockquote><div><br=
+></div><div>Yes, it should, based on the theory of how ext4 was generating =
+the 63bits. But Jeff&#39;s test finds that the experiment is not matching t=
+he theory. I intend to debug this, but currently drowned in a different iss=
+ue. It would be good if the ext developers can have a look at <a href=3D"ht=
+tp://review.gluster.org/4711">http://review.gluster.org/4711</a> and see if=
+ there are obvious holes in the approach or code.</div>
+<div><br></div><div>Avati</div><div><br></div></div>
+
+--001a11c1d64cbe531304d9009db5--
+
+
+--===============1773639004856893358==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Content-Disposition: inline
-In-Reply-To: <1364466899-5599-2-git-send-email-tm@tao.ma>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
 
-> Zach reported that if a dir is inlined, the offset is within the inode, while
-> if we have done the conversion, the dir now will have a block offset or even
-> a hashed pos. The good thing is that ext4 is also prepared to handle some
-> situation that the dir is changed during many calls of getdents.
+_______________________________________________
+Gluster-devel mailing list
+Gluster-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org
+https://lists.nongnu.org/mailman/listinfo/gluster-devel
 
-This doesn't fix the problem.  The problem isn't using the right code
-path within ext4 for either inline or normal block directories.
-
-The problem is that offsets for existing files change.  Yeah, ext4 also
-has this problem when it converts from classic linear dirents to hashed
-dirents, but I bet that basically doesn't happen any more.  Inline dirs
-are making the problem happen for every single directory as it grows.
-
-There's two ways to experience the bug:
-
-1) nfs clients getting the wrong entry because the offset has changed
-from the time that they got it from the server
-
-2) more worryingly: a concurrent readdir() can see duplicate entries
-from simply advancing f_pos as it does normally
-
-Here's a quick little demonstration of the second case:
-
-d_off: 2 d_name: ., f_pos 2
-d_off: 4 d_name: .., f_pos 4
-d_off: 16 d_name: a, f_pos 16
-d_off: 28 d_name: b, f_pos 28
-d_off: 40 d_name: c, f_pos 40
-d_off: 371778706554281332 d_name: .., f_pos 18446744071750344052
-d_off: 1068979911240654558 d_name: b, f_pos 18446744072795659998
-d_off: 6187216788877381273 d_name: c, f_pos 1633586841
-d_off: 6280769109141524706 d_name: e, f_pos 1386254562
-
-Run the following in a newly created empty dir with inline_data:
-
-#include <stdlib.h>
-#include <dirent.h>
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <string.h>
-#include <sys/syscall.h>
-
-struct linux_dirent {
-	long           d_ino;
-	off_t          d_off;
-	unsigned short d_reclen;
-	char           d_name[];
-};
-
-int main(int argc, char **argv)
-{
-	struct linux_dirent dent;
-	char name[2] = {0,};
-	int i;
-	int ret;
-	int fd;
-
-	fd = open(".", O_RDONLY | O_DIRECTORY);
-	if (fd < 0) {
-		printf("open(\".\", O_RDONLY|O_DIRECTORY) failed: %u (%s)\n",
-		       errno, strerror(errno));
-		exit(1);
-	}
-	
-	for (i = 0; i < 26; i++) {
-		name[0] = 'a' + i;
-		mknod(name, S_IFREG|0755, 0);
-		ret = syscall(SYS_getdents, fd, &dent, sizeof(dent));
-		if (ret < 1)
-			break;
-		printf("d_off: %llu d_name: %s, f_pos %llu\n",
-		       (unsigned long long)dent.d_off,
-		       dent.d_name,
-		       (unsigned long long)lseek(fd, 0, SEEK_CUR));
-	}
-
-	return 0;
-}
+--===============1773639004856893358==--
