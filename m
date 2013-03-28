@@ -1,38 +1,56 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: s390x: kernel BUG at fs/ext4/inode.c:1591!
-Date: Thu, 28 Mar 2013 08:05:17 -0400
-Message-ID: <20130328120517.GB5737@thunk.org>
-References: <863434221.7624846.1364452822093.JavaMail.root@redhat.com>
- <356372233.7624880.1364452833412.JavaMail.root@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: LKML <linux-kernel@vger.kernel.org>,
-	linux-s390 <linux-s390@vger.kernel.org>,
-	Steve Best <sbest@redhat.com>, linux-ext4@vger.kernel.org
-To: CAI Qian <caiqian@redhat.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <356372233.7624880.1364452833412.JavaMail.root@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: [PATCH] ext4: register extent status shrinker before init percpu counter
+Date: Thu, 28 Mar 2013 22:03:59 +0800
+Message-ID: <1364479439-20277-1-git-send-email-wenqing.lz@taobao.com>
+Cc: Zheng Liu <wenqing.lz@taobao.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pb0-f44.google.com ([209.85.160.44]:34078 "EHLO
+	mail-pb0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755692Ab3C1NsV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Mar 2013 09:48:21 -0400
+Received: by mail-pb0-f44.google.com with SMTP id wz17so2339509pbc.17
+        for <linux-ext4@vger.kernel.org>; Thu, 28 Mar 2013 06:48:21 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 28, 2013 at 02:40:33AM -0400, CAI Qian wrote:
-> System hung when running xfstests-dev 013 test case on an s390x guest=
-=2E Never saw
-> this on 3.9-rc3 before but need to double-check. Any idea?
->=20
-> =DD 1113.795759=A8 ------------=DD cut here =A8------------
-> =DD 1113.795771=A8 kernel BUG at fs/ext4/inode.c:1591!
+From: Zheng Liu <wenqing.lz@taobao.com>
 
-thanks for the report.  What kernel version did this come from?  Was
-it 3.9-rc4?  (line 1591 for 3.9-rc3 doesn't contain a BUG_ON).
+After applied this commit (621bcca5), when we get an error we will
+unregsiter extent status shrinker.  We might run out of memory when we
+initialize percpu counters.  If so, we will go to 'failed_mount3', and
+unregister extent status shinker.  At that time extent status shrinker
+has not yet been registered.
 
-If it is indeed 3.9-rc4, it would be helpful, since you can reproduce
-the problem, to insert a debugging printk which fires when
-bh->b_blocknr !=3D pblock before the BUG_ON, and have it print the
-b_blocknr and pblock values.
+Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+---
+Hi Ted,
+
+Please fold this patch into the commit (621bcca5).
 
 Thanks,
+						- Zheng
 
-						- Ted
+ fs/ext4/super.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index e3e6a06..febbe0e 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3701,6 +3701,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	sbi->s_err_report.function = print_daily_error_info;
+ 	sbi->s_err_report.data = (unsigned long) sb;
+ 
++	/* Register extent status tree shrinker */
++	ext4_es_register_shrinker(sb);
++
+ 	err = percpu_counter_init(&sbi->s_freeclusters_counter,
+ 			ext4_count_free_clusters(sb));
+ 	if (!err) {
+@@ -3726,9 +3729,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	sbi->s_max_writeback_mb_bump = 128;
+ 	sbi->s_extent_max_zeroout_kb = 32;
+ 
+-	/* Register extent status tree shrinker */
+-	ext4_es_register_shrinker(sb);
