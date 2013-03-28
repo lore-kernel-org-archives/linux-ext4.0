@@ -1,165 +1,205 @@
-From: Alexey Lyahkov <alexey.lyashkov@gmail.com>
-Subject: Re: page eviction from the buddy cache
-Date: Thu, 28 Mar 2013 07:34:03 +0200
-Message-ID: <3C8EEEF8-C1EB-4E3D-8DE6-198AB1BEA8C0@gmail.com>
-References: <51504A40.6020604@ya.ru> <20130327150743.GC14900@thunk.org> <alpine.LNX.2.00.1303271135420.29687@eggly.anvils>
-Mime-Version: 1.0 (Apple Message framework v1283)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: quoted-printable
-Cc: Theodore Ts'o <tytso@mit.edu>,
- Andrew Perepechko <anserper@ya.ru>,
- linux-ext4@vger.kernel.org,
- akpm@linux-foundation.org,
- linux-mm@kvack.org
-To: Hugh Dickins <hughd@google.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <alpine.LNX.2.00.1303271135420.29687@eggly.anvils>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+From: CAI Qian <caiqian@redhat.com>
+Subject: s390x: kernel BUG at fs/ext4/inode.c:1591!
+Date: Thu, 28 Mar 2013 02:40:33 -0400 (EDT)
+Message-ID: <356372233.7624880.1364452833412.JavaMail.root@redhat.com>
+References: <863434221.7624846.1364452822093.JavaMail.root@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: "linux-s390 " <linux-s390@vger.kernel.org>,
+	Steve Best <sbest@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org
+To: LKML <linux-kernel@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx4-phx2.redhat.com ([209.132.183.25]:49255 "EHLO
+	mx4-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752691Ab3C1Gkg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Mar 2013 02:40:36 -0400
+In-Reply-To: <863434221.7624846.1364452822093.JavaMail.root@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Hugh,
+System hung when running xfstests-dev 013 test case on an s390x guest. =
+Never saw
+this on 3.9-rc3 before but need to double-check. Any idea?
 
-"immediately" say in ~1s after allocation /via krobes/ftrace logs/,=20
-and you are correct - that is in case large streaming io in Lustre - =
-like 3-4GB/s in read.
-ftrace logs (with additional trace points) say page allocated, mark page =
-accessed..
-and nothing until that page will found in isolate_lru_page in =
-shrink_inactive_list=20
-/that point to set kprobe/
-if someone need a logs i may provide it's as it's easy to collect.=20
+CAI Qian
 
-But may be that is more generic question when ext4 code, some important =
-metadata exist=20
-in block device page cache in that case calling lru_page_drain() here =
-move these pages
-in active LRU so will accessible easy.
+=C3=9D 1113.795759=C2=A8 ------------=C3=9D cut here =C2=A8------------
+=C3=9D 1113.795771=C2=A8 kernel BUG at fs/ext4/inode.c:1591!
+=C3=9D 1113.795845=C2=A8 illegal operation: 0001 =C3=9D#1=C2=A8 SMP
+=C3=9D 1113.795848=C2=A8 Modules linked in: nf_conntrack_netbios_ns nf_=
+conntrack_broadcast
+ ipt_MASQUERADE ip6table_mangle ip6t_REJECT nf_conntrack_ipv6 nf_defrag=
+_ipv6 ipt
+able_nat nf_nat_ipv4 nf_nat iptable_mangle ipt_REJECT nf_conntrack_ipv4=
+ nf_defra
+g_ipv4 xt_conntrack nf_conntrack ebtable_filter ebtables ip6table_filte=
+r ip6_tab
+les iptable_filter ip_tables sg qeth_l2 vmur xfs libcrc32c dasd_fba_mod=
+ dasd_eck
+d_mod dasd_mod lcs ctcm qeth fsm qdio ccwgroup dm_mirror dm_region_hash=
+ dm_log d
+m_mod
+=C3=9D 1113.795880=C2=A8 CPU: 1 Not tainted 3.9.0-rc4+ #2
+=C3=9D 1113.795882=C2=A8 Process flush-253:1 (pid: 12418, task: 0000000=
+003f04890, ksp: 000
+0000032eab3b8)
+=C3=9D 1113.795885=C2=A8 Krnl PSW : 0704e00180000000 000000000030bc62 (=
+mpage_da_submit_io+
+0x38e/0x3c0)
+=C3=9D 1113.795895=C2=A8            R:0 T:1 IO:1 EX:1 Key:0 M:1 W:0 P:0=
+ AS:3 CC:2 PM:0 EA:
+3
+Krnl GPRS: 0000000001000000 000000001b5823a8 0000000000000010 000000001=
+b5823a8
+=C3=9D 1113.795900=C2=A8            0000000000000000 00000000000000af 0=
+000000000001000 000
+0000032eab9c8
+=C3=9D 1113.795902=C2=A8            000003d10053bb40 0000000032eaba30 0=
+0000000000000a1 000
+0000032eaba98
+=C3=9D 1113.795905=C2=A8            00000000000100b0 00000000000000a1 0=
+00000000030b9a8 000
+0000032eab8a0
+=C3=9D 1113.795921=C2=A8 Krnl Code: 000000000030bc54: f0dca7f4fecf     =
+   srp     2036(14,
+%r10),3791(%r15),12
 
+                                                            MORE...   Z=
+VM-RHTS
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D
+           000000000030bc5a: a7f40001           brc     15,30bc5c
+          #000000000030bc5e: a7f40001           brc     15,30bc60
+          >000000000030bc62: a7f40001           brc     15,30bc64
+           000000000030bc66: a7f40001           brc     15,30bc68
+           000000000030bc6a: 4120f0e8           la      %r2,232(%r15)
+           000000000030bc6e: a7180000           lhi     %r1,0
+=C3=9D 1113.796303=C2=A8 Call Trace:
+=C3=9D 1113.796306=C2=A8 (=C3=9D<000000000030b9a8>=C2=A8 mpage_da_submi=
+t_io+0xd4/0x3c0)
+=C3=9D 1113.796311=C2=A8  =C3=9D<000000000031204c>=C2=A8 mpage_da_map_a=
+nd_submit+0x150/0x41c
+=C3=9D 1113.796314=C2=A8  =C3=9D<0000000000312bac>=C2=A8 ext4_da_writep=
+ages+0x364/0x628
+=C3=9D 1113.796317=C2=A8  =C3=9D<00000000002a08c8>=C2=A8 __writeback_si=
+ngle_inode+0x54/0x27c
+=C3=9D 1113.796322=C2=A8  =C3=9D<00000000002a2c6c>=C2=A8 writeback_sb_i=
+nodes+0x284/0x4d8
+=C3=9D 1113.796325=C2=A8  =C3=9D<00000000002a30b6>=C2=A8 wb_writeback+0=
+x10e/0x374
+=C3=9D 1113.796327=C2=A8  =C3=9D<00000000002a3d22>=C2=A8 wb_do_writebac=
+k+0x102/0x2e0
+=C3=9D 1113.796330=C2=A8  =C3=9D<00000000002a3fa2>=C2=A8 bdi_writeback_=
+thread+0xa2/0x270
+=C3=9D 1113.796333=C2=A8  =C3=9D<00000000001581b2>=C2=A8 kthread+0xda/0=
+xe4
+=C3=9D 1113.796338=C2=A8  =C3=9D<0000000000629836>=C2=A8 kernel_thread_=
+starter+0x6/0xc
+=C3=9D 1113.796342=C2=A8  =C3=9D<0000000000629830>=C2=A8 kernel_thread_=
+starter+0x0/0xc
+=C3=9D 1113.796345=C2=A8 Last Breaking-Event-Address:
+=C3=9D 1113.796346=C2=A8  =C3=9D<000000000030bc5e>=C2=A8 mpage_da_submi=
+t_io+0x38a/0x3c0
+=C3=9D 1113.796349=C2=A8
+=C3=9D 1113.796351=C2=A8 ---=C3=9D end trace 45df5089b835470e =C2=A8---
+=C3=9D 1113.796365=C2=A8 ------------=C3=9D cut here =C2=A8------------
+=C3=9D 1113.796367=C2=A8 WARNING: at kernel/exit.c:715
+=C3=9D 1113.796369=C2=A8 Modules linked in: nf_conntrack_netbios_ns nf_=
+conntrack_broadcast
+ ipt_MASQUERADE ip6table_mangle ip6t_REJECT nf_conntrack_ipv6 nf_defrag=
+_ipv6 ipt
+able_nat nf_nat_ipv4 nf_nat iptable_mangle ipt_REJECT nf_conntrack_ipv4=
+ nf_defra
+g_ipv4 xt_conntrack nf_conntrack ebtable_filter ebtables ip6table_filte=
+r ip6_tab
+les iptable_filter ip_tables sg qeth_l2 vmur xfs libcrc32c dasd_fba_mod=
+ dasd_eck
+d_mod dasd_mod lcs ctcm qeth fsm qdio ccwgroup dm_mirror dm_region_hash=
+ dm_log d
+m_mod
+=C3=9D 1113.796393=C2=A8 CPU: 1 Tainted: G      D      3.9.0-rc4+ #2
+=C3=9D 1113.796396=C2=A8 Process flush-253:1 (pid: 12418, task: 0000000=
+003f04890, ksp: 000
+0000032eab3b8)
+=C3=9D 1113.796398=C2=A8 Krnl PSW : 0704e00180000000 0000000000133074 (=
+do_exit+0x54/0xab8)
 
-On Mar 27, 2013, at 21:24, Hugh Dickins wrote:
+=C3=9D 1113.796404=C2=A8            R:0 T:1 IO:1 EX:1 Key:0 M:1 W:0 P:0=
+ AS:3 CC:2 PM:0 EA:
+3
+Krnl GPRS: 0000000000000015 0000000032eabb60 0000000032eabb68 000000000=
+0000000
+=C3=9D 1113.796408=C2=A8            0000000000133058 ffffffffffffffff 0=
+000000000000001 00
 
-> [Cc'ing linux-mm: "buddy cache" here is cache of some ext4 metadata]
->=20
-> On Wed, 27 Mar 2013, Theodore Ts'o wrote:
->> Hi Andrew,
->>=20
->> Thanks for your analysis!  Since I'm not a mm developer, I'm not sure
->> what's the best way to more aggressively mark a page as one that we'd
->> really like to keep in the page cache --- whether it's calling
->> lru_add_drain(), or calling activate_page(page), etc.
->>=20
->> So I've added Andrew Morton and Hugh Dickens to the cc list as mm
->> experts in the hopes they could give us some advice about the best =
-way
->> to achieve this goal.  Andrew, Hugh, could you give us some quick
->> words of wisdom?
->=20
-> Hardly from me: I'm dissatisfied with answer below, Cc'ed linux-mm.
->=20
->>=20
->> Thanks,
->>=20
->> 					- Ted
->> On Mon, Mar 25, 2013 at 04:59:44PM +0400, Andrew Perepechko wrote:
->>> Hello!
->>>=20
->>> Our recent investigation has found that pages from
->>> the buddy cache are evicted too often as compared
->>> to the expectation from their usage pattern. This
->>> introduces additional reads during large writes under
->>> our workload and really hurts overall performance.
->>>=20
->>> ext4 uses find_get_page() and find_or_create_page()
->>> to look for buddy cache pages, but these pages don't
->>> get a chance to become activated until the following
->>> lru_add_drain() call, because mark_page_accessed()
->>> does not activate pages which are not PageLRU().
->>>=20
->>> As can be found from a kprobe-based test, these pages
->>> are often moved on the inactive LRU as a result of
->>> shrink_inactive_list()->lru_add_drain() and immediately
->>> evicted.
->=20
-> Not quite like that, I think.
->=20
-> Cache pages are intentionally put on the inactive list initially,
-> so that streaming I/O does not push out more useful pages: it is
-> intentional that the first call to mark_page_accessed() merely
-> marks the page referenced, but does not move it to active LRU.
->=20
-> You're right that the pagevec confuses things here, but I'm
-> surprised if these pages are "immediately evicted": they won't
-> be evicted while they remain on a pagevec, and can only be evicted
-> after reaching the LRU.  And they should be put on the hot end of
-> the inactive LRU, and only evicted once they reach the cold end.
->=20
-> But maybe you have lots of dirty or otherwise-un-immediately-evictable
-> data pages in between, so that page reclaim reaches these ones too =
-soon.
->=20
-> IIUC the pages you are discussing here are important metadata pages,
-> which you would much prefer to retain longer than streaming data.
->=20
-> While I question "immediately evicted", I don't doubt that they
-> get evicted sooner than you wish: one way or another, they arrive
-> at the cold end of the inactive LRU too soon.
->=20
-> You would like a way to mark these as more important to retain than
-> data pages: you would like to put them directly on the active list,
-> but are frustrated by the pagevec.
->=20
->>>=20
->>> =46rom a quick look into linux-2.6.git, the issue seems
->>> to exist in the current code as well.
->>>=20
->>> A possible and, perhaps, non-optimal solution would be
->>> to call lru_add_drain() each time a buddy cache page
->>> is used.
->=20
-> mark_page_accessed() should be enough each time one is actually used,
-> but yes, it looks like you need more than that when first added to =
-cache.
->=20
-> It appears that at the moment you need to do:
->=20
-> 	mark_page_accessed(page);	/* to SetPageReferenced */
-> 	lru_add_drain();		/* to SetPageLRU */
-> 	mark_page_accessed(page);	/* to SetPageActive */
->=20
-> but I agree that we would really prefer a filesystem not to have to
-> call lru_add_drain().
->=20
-> I quite like the idea of
-> 	mark_page_accessed(page);
-> 	mark_page_accessed(page);
-> as a sequence to use on important metadata (nicely reminiscent of
-> "sync; sync;"), but maybe not everybody will agree with me on that!
->=20
-> As currently implemented, a page is put on to a pagevec specific to
-> the LRU it is destined for, and we cannot change that destination
-> before it is flushed to that LRU.  But at this moment I cannot see
-> a fundamental reason why we should not allow PageActive to be set
-> while in the pagevec, and destination LRU adjusted accordingly.
->=20
-> However, I could easily be missing something (probably some VM_BUG_ONs
-> at the least); and changing this might uncover unwanted side-effects -
-> perhaps some code paths which already call mark_page_accessed() twice
-> in quick succession unintentionally, and would now be given an Active
-> page when Inactive has actually been more appropriate.
->=20
-> Though I'd like to come back to this, I am very unlikely to find time
-> for it in the near future: perhaps someone else might take it further.
->=20
-> Hugh
->=20
->>>=20
->>> Any other suggestions?
->>>=20
->>> Thank you,
->>> Andrew
-
+                                                            MORE...   Z=
+VM-RHTS
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D
+0000032eab9c8
+=C3=9D 1113.796411=C2=A8            0704e00180000000 000000000030bc62 0=
+000000003f04890 000
+0000000778d38
+=C3=9D 1113.796413=C2=A8            000000000000000b 0000000000634140 0=
+000000000133058 000
+0000032eab4a0
+=C3=9D 1113.796423=C2=A8 Krnl Code: 0000000000133066: e32010080020     =
+   cg      %r2,8(%r
+1)
+           000000000013306c: a78403fa           brc     8,133860
+          #0000000000133070: a7f40001           brc     15,133072
+          >0000000000133074: e31003180004       lg      %r1,792
+           000000000013307a: 5810101c           l       %r1,28(%r1)
+           000000000013307e: c01b01ffff00       nilf    %r1,33554176
+           0000000000133084: a7740481           brc     7,133986
+           0000000000133088: e310a2bc0012       lt      %r1,700(%r10)
+=C3=9D 1113.796447=C2=A8 Call Trace:
+=C3=9D 1113.796449=C2=A8 (=C3=9D<0000000000133058>=C2=A8 do_exit+0x38/0=
+xab8)
+=C3=9D 1113.796451=C2=A8  =C3=9D<0000000000100ea4>=C2=A8 die+0x158/0x18=
+0
+=C3=9D 1113.796455=C2=A8  =C3=9D<00000000006291fa>=C2=A8 do_trap+0x1a2/=
+0x1a4
+=C3=9D 1113.796459=C2=A8  =C3=9D<00000000006293ac>=C2=A8 illegal_op+0xf=
+c/0x144
+=C3=9D 1113.796462=C2=A8  =C3=9D<0000000000629974>=C2=A8 pgm_check_hand=
+ler+0x138/0x13c
+=C3=9D 1113.796464=C2=A8  =C3=9D<000000000030bc62>=C2=A8 mpage_da_submi=
+t_io+0x38e/0x3c0
+=C3=9D 1113.796467=C2=A8 (=C3=9D<000000000030b9a8>=C2=A8 mpage_da_submi=
+t_io+0xd4/0x3c0)
+=C3=9D 1113.796470=C2=A8  =C3=9D<000000000031204c>=C2=A8 mpage_da_map_a=
+nd_submit+0x150/0x41c
+=C3=9D 1113.796472=C2=A8  =C3=9D<0000000000312bac>=C2=A8 ext4_da_writep=
+ages+0x364/0x628
+=C3=9D 1113.829664=C2=A8  =C3=9D<00000000002a08c8>=C2=A8 __writeback_si=
+ngle_inode+0x54/0x27c
+=C3=9D 1113.829674=C2=A8  =C3=9D<00000000002a2c6c>=C2=A8 writeback_sb_i=
+nodes+0x284/0x4d8
+=C3=9D 1113.829681=C2=A8  =C3=9D<00000000002a30b6>=C2=A8 wb_writeback+0=
+x10e/0x374
+=C3=9D 1113.829691=C2=A8  =C3=9D<00000000002a3d22>=C2=A8 wb_do_writebac=
+k+0x102/0x2e0
+=C3=9D 1113.829706=C2=A8  =C3=9D<00000000002a3fa2>=C2=A8 bdi_writeback_=
+thread+0xa2/0x270
+=C3=9D 1113.829715=C2=A8  =C3=9D<00000000001581b2>=C2=A8 kthread+0xda/0=
+xe4
+=C3=9D 1113.829725=C2=A8  =C3=9D<0000000000629836>=C2=A8 kernel_thread_=
+starter+0x6/0xc
+=C3=9D 1113.829736=C2=A8  =C3=9D<0000000000629830>=C2=A8 kernel_thread_=
+starter+0x0/0xc
+=C3=9D 1113.829753=C2=A8 Last Breaking-Event-Address:
+=C3=9D 1113.829759=C2=A8  =C3=9D<0000000000133070>=C2=A8 do_exit+0x50/0=
+xab8
+=C3=9D 1113.829771=C2=A8 ---=C3=9D end trace 45df5089b835470f =C2=A8---
 --
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
