@@ -1,55 +1,122 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: s390x: kernel BUG at fs/ext4/inode.c:1591!
-Date: Thu, 28 Mar 2013 18:56:37 +0400
-Message-ID: <87ppyjd13u.fsf@openvz.org>
-References: <863434221.7624846.1364452822093.JavaMail.root@redhat.com> <356372233.7624880.1364452833412.JavaMail.root@redhat.com> <20130328120517.GB5737@thunk.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH, RFC] ext4: add ioctl to force 32-bit hashes from indexed
+ dirs
+Date: Thu, 28 Mar 2013 11:14:06 -0500
+Message-ID: <51546C4E.9010903@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: LKML <linux-kernel@vger.kernel.org>,
-	linux-s390 <linux-s390@vger.kernel.org>,
-	Steve Best <sbest@redhat.com>, linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>, CAI Qian <caiqian@redhat.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20130328120517.GB5737@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Anand Avati <avati@redhat.com>
+To: ext4 development <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:62806 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756213Ab3C1QOH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 28 Mar 2013 12:14:07 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r2SGE7XU013631
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Thu, 28 Mar 2013 12:14:07 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 28 Mar 2013 08:05:17 -0400, Theodore Ts'o <tytso@mit.edu> wrote=
-:
-> On Thu, Mar 28, 2013 at 02:40:33AM -0400, CAI Qian wrote:
-> > System hung when running xfstests-dev 013 test case on an s390x gue=
-st. Never saw
-> > this on 3.9-rc3 before but need to double-check. Any idea?
-> >=20
-> > =C3=9D 1113.795759=C2=A8 ------------=C3=9D cut here =C2=A8--------=
-----
-> > =C3=9D 1113.795771=C2=A8 kernel BUG at fs/ext4/inode.c:1591!
->=20
-> thanks for the report.  What kernel version did this come from?  Was
-> it 3.9-rc4?  (line 1591 for 3.9-rc3 doesn't contain a BUG_ON).
->=20
-> If it is indeed 3.9-rc4, it would be helpful, since you can reproduce
-> the problem, to insert a debugging printk which fires when
-> bh->b_blocknr !=3D pblock before the BUG_ON, and have it print the
-> b_blocknr and pblock values.
-I've triggered this bug on before at the time i've worked on
-e4defrag functionality, but AFAIK all related issues was aready fixed
-and 013 has nothing with e4defrag.
-But still bh->b_blocknr under us. So other obvious place I suspect is
-puch_hole but this also not true because 013 use fsstress
-test in vegetarian mode: "-f rmdir=3D10 -f link=3D10 -f creat=3D10 -f m=
-kdir=3D10
--f rename=3D30 -f stat=3D30 -f unlink=3D30 -f truncate=3D20"
-So the only place I suspect is some unknown bug in extent status tree
-Can you please enable ES_AGGRESSIVE_TEST and rerun xfstest.
->=20
-> Thanks,
->=20
-> 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kerne=
-l" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
+This adds a new ioctl, EXT4_IOC_32BITHASH, which allows a
+userspace application to request 32-bit rather than 64-bit
+hashes from readdir on an indexed / dx / htree directory.
+
+Gluster had been relying on the top bits of the d_off being
+free; there are some reports that filling all 64 bits breaks
+Samba as well.  The infrastructure to return 32-bit hashes
+already exists; NFS can turn it on, and it's turned on for
+32-bit processes as well.  So it's just a matter of flipping
+on the f_mode flag before readdir starts.
+
+Care needs to be taken that we don't change the FMODE flag
+after readdir has been started, so we make sure that
+filp->private_data has not yet been set before we set the flag
+(Thanks Zach!).
+
+Pre-submission-fixes-by: Zach Brown <zab@redhat.com>
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index d8cd1f0..5e3a316 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -39,7 +39,7 @@ static int ext4_dx_readdir(struct file *filp,
+  *
+  * Return 1 if it is a dx dir, 0 if not
+  */
+-static int is_dx_dir(struct inode *inode)
++int is_dx_dir(struct inode *inode)
+ {
+ 	struct super_block *sb = inode->i_sb;
+ 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 3b83cd6..63e922e 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -614,6 +614,7 @@ enum {
+  /* note ioctl 10 reserved for an early version of the FIEMAP ioctl */
+  /* note ioctl 11 reserved for filesystem-independent FIEMAP ioctl */
+ #define EXT4_IOC_ALLOC_DA_BLKS		_IO('f', 12)
++#define EXT4_IOC_32BITHASH		_IOW('f', 13, long)
+ #define EXT4_IOC_MOVE_EXT		_IOWR('f', 15, struct move_extent)
+ #define EXT4_IOC_RESIZE_FS		_IOW('f', 16, __u64)
+ 
+@@ -1953,6 +1954,7 @@ extern unsigned ext4_num_overhead_clusters(struct super_block *sb,
+ ext4_fsblk_t ext4_inode_to_goal_block(struct inode *);
+ 
+ /* dir.c */
++extern int is_dx_dir(struct inode *inode);
+ extern int __ext4_check_dir_entry(const char *, unsigned int, struct inode *,
+ 				  struct file *,
+ 				  struct ext4_dir_entry_2 *,
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 721f4d3..f226373 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -356,7 +356,41 @@ group_add_out:
+ 		mnt_drop_write_file(filp);
+ 		return err;
+ 	}
++	case EXT4_IOC_32BITHASH: {
++		__u32 hash32bits;
++		int err = 0;
+ 
++		if (get_user(hash32bits, (int __user *) arg))
++			return -EFAULT;
++
++		/* Serialize with readdir */
++		if ((err = mutex_lock_killable(&inode->i_mutex)))
++			return err;
++
++		/* protect f_mode */
++		spin_lock(&filp->f_lock);
++
++		/* Only valid for htree directories */
++		if (!S_ISDIR(inode->i_mode) || !is_dx_dir(inode)) {
++			err = -EINVAL;
++			goto out_32bithash;
++		}
++
++		/* Have we already started readir on this dx dir? */
++		if (filp->private_data) {
++			err = -EINVAL;
++			goto out_32bithash;
++		}
++
++		if (hash32bits)
++			filp->f_mode |= FMODE_32BITHASH;
++		else
++			filp->f_mode &= ~FMODE_32BITHASH;
++out_32bithash:
++		spin_unlock(&filp->f_lock);
++		mutex_unlock(&inode->i_mutex);
++		return err;
++	}
+ 	case EXT4_IOC_RESIZE_FS: {
+ 		ext4_fsblk_t n_blocks_count;
+ 		struct super_block *sb = inode->i_sb;
+
