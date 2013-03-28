@@ -1,44 +1,50 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: take i_mutex in ext4_symlink to eliminate a
- warning from ext4_truncate
-Date: Thu, 28 Mar 2013 10:06:35 -0400
-Message-ID: <20130328140635.GA32635@thunk.org>
-References: <1364390347-4360-1-git-send-email-wenqing.lz@taobao.com>
- <20130327134110.GI5861@thunk.org>
- <20130327140250.GA4316@gmail.com>
- <20130327135155.GK5861@thunk.org>
- <20130327150735.GA4395@gmail.com>
- <20130327151922.GA4487@gmail.com>
- <20130327151248.GE14900@thunk.org>
- <20130327153506.GA4565@gmail.com>
+Subject: Re: [Gluster-devel] regressions due to 64-bit ext4 directory cookies
+Date: Thu, 28 Mar 2013 10:07:44 -0400
+Message-ID: <20130328140744.GA4989@thunk.org>
+References: <CAFboF2wXvP+vttiff8iRE9rAgvV8UWGbFprgVp8p7kE43TU=PA@mail.gmail.com>
+ <20130213222052.GD5938@thunk.org>
+ <20130213224141.GU14195@fieldses.org>
+ <20130213224720.GE5938@thunk.org>
+ <CAFboF2z1akN_edrY_fT915xfehfHGioA2M=PSHv0Fp3rD-5v5A@mail.gmail.com>
+ <20130213230511.GW14195@fieldses.org>
+ <20130213234430.GF5938@thunk.org>
+ <CAFboF2zS+YAa0uUxMFUAbqgPh3Kb4xZu40WUjLyGn8qPoP+Oyw@mail.gmail.com>
+ <5151BD5F.30607@itwm.fraunhofer.de>
+ <5151C33E.2070008@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Zheng Liu <wenqing.lz@taobao.com>,
-	Al Viro <viro@ZenIV.linux.org.uk>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+	Anand Avati <anand.avati@gmail.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	gluster-devel@nongnu.org
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:56773 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756495Ab3C1Ozq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 28 Mar 2013 10:55:46 -0400
 Content-Disposition: inline
-In-Reply-To: <20130327153506.GA4565@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <5151C33E.2070008@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-I looked more closely at the assumption that ext4_write_begin() holds
-i_mutex.  This is guaranteed by Documentation/filesystems/Locking,
-which notes that write_begin() and write_end() functions hold i_mutex:
+On Tue, Mar 26, 2013 at 10:48:14AM -0500, Eric Sandeen wrote:
+> > We don't have reached a conclusion so far, do we? What about the
+> > ioctl approach, but a bit differently? Would it work to specify the
+> > allowed upper bits for ext4 (for example 16 additional bit) and the
+> > remaining part for gluster? One of the mails had the calculation
+> > formula:
+> 
+> I did throw together an ioctl patch last week, but I think Anand has a new
+> approach he's trying out which won't require ext4 code changes.  I'll let
+> him reply when he has a moment.  :)
 
-			PageLocked(page)	i_mutex
-write_begin:		locks the page		yes
-write_end:		yes, unlocks		yes
+Any update about whether Gluster can address this without needing the
+ioctl patch?  Or should we push the ioctl patch into ext4 for the next
+merge window?
 
-So the bug is that ext4_symlink() calls __page_symlink();
-__page_symlink() calls pagecache_write_begin() which calls
-write_begin(), without taking i_mutex.
+Thanks,
 
-So we can fix this by taking i_mutex in ext4_symlink(), but I think it
-would be better to take the i_mutex in __page_symlink(), since it
-would then address a violation of the locking rules for all file
-systems.
-
-Al, do you agree?
-
-					- Ted
+						- Ted
