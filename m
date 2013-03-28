@@ -1,44 +1,38 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Failure of resize2fs past 4TB
-Date: Thu, 28 Mar 2013 07:55:54 -0400
-Message-ID: <20130328115554.GA5737@thunk.org>
-References: <CAN=xW0bhw41-NNqWnDfqk0SbM6xymrhuL9WONQKefC=PsHg5GQ@mail.gmail.com>
- <5153BFA5.9090404@redhat.com>
+Subject: Re: s390x: kernel BUG at fs/ext4/inode.c:1591!
+Date: Thu, 28 Mar 2013 08:05:17 -0400
+Message-ID: <20130328120517.GB5737@thunk.org>
+References: <863434221.7624846.1364452822093.JavaMail.root@redhat.com>
+ <356372233.7624880.1364452833412.JavaMail.root@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: John Jolly <john.jolly@gmail.com>, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:56698 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752818Ab3C1MEV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 Mar 2013 08:04:21 -0400
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: LKML <linux-kernel@vger.kernel.org>,
+	linux-s390 <linux-s390@vger.kernel.org>,
+	Steve Best <sbest@redhat.com>, linux-ext4@vger.kernel.org
+To: CAI Qian <caiqian@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <5153BFA5.9090404@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <356372233.7624880.1364452833412.JavaMail.root@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Mar 27, 2013 at 10:57:25PM -0500, Eric Sandeen wrote:
-> > I know it is unusual to start so small and expand like this, but I
-> > doubt I am the only one to have experienced this. How could I have
-> > prepared my small 1GB file system so that it would be able to handle
-> > an expansion past 2TB? Any help would be appreciated.
-> 
-> not sure; you haven't done anything wrong, this simply looks like
-> a resize bug, of which there have been a few lately I'm afraid.
+On Thu, Mar 28, 2013 at 02:40:33AM -0400, CAI Qian wrote:
+> System hung when running xfstests-dev 013 test case on an s390x guest=
+=2E Never saw
+> this on 3.9-rc3 before but need to double-check. Any idea?
+>=20
+> =DD 1113.795759=A8 ------------=DD cut here =A8------------
+> =DD 1113.795771=A8 kernel BUG at fs/ext4/inode.c:1591!
 
-Note that what might have corrupted your file system may be different
-from the reproduction case which you've sent (which I've also
-confirmed).  There was a number of off-line resize bugs fixed between
-1.42.6 and 1.42.7.  In general, off-line resize has been a bit more
-problematic recently than on-line resize.  (Although if you're using
-an older kernel, online resize didn't work when starting with a
-super-small file system and then grow it to something large.)
+thanks for the report.  What kernel version did this come from?  Was
+it 3.9-rc4?  (line 1591 for 3.9-rc3 doesn't contain a BUG_ON).
 
-Thanks for sending this bug report; we'll get right on it.
+If it is indeed 3.9-rc4, it would be helpful, since you can reproduce
+the problem, to insert a debugging printk which fires when
+bh->b_blocknr !=3D pblock before the BUG_ON, and have it print the
+b_blocknr and pblock values.
 
-Can you say a bit more about the resize2fs failure you had with your
-production file system?  Was it a similar "start really small and grow
-very big" pattern?  Or something else?
+Thanks,
 
 						- Ted
