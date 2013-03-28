@@ -1,73 +1,49 @@
-From: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
-Subject: Re: [Gluster-devel] regressions due to 64-bit ext4 directory cookies
-Date: Thu, 28 Mar 2013 14:31:53 -0400
-Message-ID: <20130328183153.GG7080@fieldses.org>
-References: <20130213224720.GE5938@thunk.org>
- <CAFboF2z1akN_edrY_fT915xfehfHGioA2M=PSHv0Fp3rD-5v5A@mail.gmail.com>
- <20130213230511.GW14195@fieldses.org>
- <20130213234430.GF5938@thunk.org>
- <CAFboF2zS+YAa0uUxMFUAbqgPh3Kb4xZu40WUjLyGn8qPoP+Oyw@mail.gmail.com>
- <5151BD5F.30607@itwm.fraunhofer.de>
- <5151C33E.2070008@redhat.com>
- <20130328140744.GA4989@thunk.org>
- <20130328175205.GD16651@lenny.home.zabbo.net>
- <CAFboF2ztc06G00z8ga35NrxgnT2YgBiDECgU_9kvVA_Go1_Bww@mail.gmail.com>
+From: Zach Brown <zab@redhat.com>
+Subject: Re: [PATCH 1/2] ext4: Return proper offset for '..' if inline_data
+ enabled.
+Date: Thu, 28 Mar 2013 11:33:32 -0700
+Message-ID: <20130328183332.GE16651@lenny.home.zabbo.net>
+References: <1364466899-5599-1-git-send-email-tm@tao.ma>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Zach Brown <zab-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
-	Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
-	Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	gluster-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org
-To: Anand Avati <anand.avati-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Cc: linux-ext4@vger.kernel.org
+To: Tao Ma <tm@tao.ma>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:50736 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753381Ab3C1Sdf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 28 Mar 2013 14:33:35 -0400
 Content-Disposition: inline
-In-Reply-To: <CAFboF2ztc06G00z8ga35NrxgnT2YgBiDECgU_9kvVA_Go1_Bww-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1364466899-5599-1-git-send-email-tm@tao.ma>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 28, 2013 at 11:05:41AM -0700, Anand Avati wrote:
-> On Thu, Mar 28, 2013 at 10:52 AM, Zach Brown <zab-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org> wrote:
+On Thu, Mar 28, 2013 at 06:34:58PM +0800, Tao Ma wrote:
+> From: Tao Ma <boyu.mt@taobao.com>
 > 
-> > On Thu, Mar 28, 2013 at 10:07:44AM -0400, Theodore Ts'o wrote:
-> > > On Tue, Mar 26, 2013 at 10:48:14AM -0500, Eric Sandeen wrote:
-> > > > > We don't have reached a conclusion so far, do we? What about the
-> > > > > ioctl approach, but a bit differently? Would it work to specify the
-> > > > > allowed upper bits for ext4 (for example 16 additional bit) and the
-> > > > > remaining part for gluster? One of the mails had the calculation
-> > > > > formula:
-> > > >
-> > > > I did throw together an ioctl patch last week, but I think Anand has a
-> > new
-> > > > approach he's trying out which won't require ext4 code changes.  I'll
-> > let
-> > > > him reply when he has a moment.  :)
-> > >
-> > > Any update about whether Gluster can address this without needing the
-> > > ioctl patch?  Or should we push the ioctl patch into ext4 for the next
-> > > merge window?
-> >
-> > They're testing a work-around:
-> >
-> >   http://review.gluster.org/#change,4711
-> >
-> > I'm not sure if they've decided that they're going to go with it, or
-> > not.
-> >
+> Zach reported a problem that if inline data is enabled, we don't
+> tell the difference between the offset of '.' and '..'. And a
+> getdents will fail if the user only want to get '.'.
 > 
-> Jeff reported that the approach did not work in his testing. I haven't had
-> a chance to look into the failure yet. Independent of the fix, it would
-> certainly be good have the ioctl() support
+> This patch adds a new offset EXT4_INLINE_DOTDOT_OFFSET which
+> indicates the offset of inline "..", and now 0 is for the "."
+> and EXT4_INLINE_DOTDOT_OFFSET is for "..".
 
-The one advantage of your scheme is that it keeps more of the hash bits;
-the chance of 31-bit cookie collisions is much higher.
+Yeah, this fixes the problem.  I confirmed that my little test that got
+a single dirent from getdents() now properly sees . and .. and exits
+rather than spinning.
 
-> Samba could use it too, if it wanted.
+Tested-by: Zach Brown <zab@redhat.com>
 
-It'd be useful to understand their situation.
+>  
+> +			if (filp->f_pos == EXT4_INLINE_DOTDOT_OFFSET) {
+>  				error = filldir(dirent, "..", 2, 0, parent_ino,
+>  						DT_DIR);
+>  				if (error)
+> -- 
+> 1.7.0.4
 
---b.
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Though I think you should change the fourth argument (offset) of the
+second flildir() from 0 to EXT4_INLINE_DOTDOT_OFFSET.
+
+- z
