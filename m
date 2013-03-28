@@ -1,102 +1,321 @@
-From: Anand Avati <anand.avati-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Subject: Re: regressions due to 64-bit ext4 directory cookies
-Date: Thu, 28 Mar 2013 11:49:36 -0700
-Message-ID: <CAFboF2w49Lc0vM0SerbJfL9_RuSHgEU+y_Yk7F4pLxeiqu+KRg@mail.gmail.com>
-References: <20130213224720.GE5938@thunk.org>
-	<CAFboF2z1akN_edrY_fT915xfehfHGioA2M=PSHv0Fp3rD-5v5A@mail.gmail.com>
-	<20130213230511.GW14195@fieldses.org>
-	<20130213234430.GF5938@thunk.org>
-	<CAFboF2zS+YAa0uUxMFUAbqgPh3Kb4xZu40WUjLyGn8qPoP+Oyw@mail.gmail.com>
-	<5151BD5F.30607@itwm.fraunhofer.de> <5151C33E.2070008@redhat.com>
-	<20130328140744.GA4989@thunk.org>
-	<20130328175205.GD16651@lenny.home.zabbo.net>
-	<CAFboF2ztc06G00z8ga35NrxgnT2YgBiDECgU_9kvVA_Go1_Bww@mail.gmail.com>
-	<20130328183153.GG7080@fieldses.org>
-Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1773639004856893358=="
-Cc: Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Zach Brown <zab-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
-	Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, gluster-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org
-To: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
-Return-path: <gluster-devel-bounces+gcfgd-gluster-devel=m.gmane.org-qX2TKyscuCcdnm+yROfE0A@public.gmane.org>
-In-Reply-To: <20130328183153.GG7080-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
-List-Unsubscribe: <https://lists.nongnu.org/mailman/options/gluster-devel>,
-	<mailto:gluster-devel-request-qX2TKyscuCcdnm+yROfE0A@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.nongnu.org/archive/html/gluster-devel>
-List-Post: <mailto:gluster-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org>
-List-Help: <mailto:gluster-devel-request-qX2TKyscuCcdnm+yROfE0A@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.nongnu.org/mailman/listinfo/gluster-devel>,
-	<mailto:gluster-devel-request-qX2TKyscuCcdnm+yROfE0A@public.gmane.org?subject=subscribe>
-Errors-To: gluster-devel-bounces+gcfgd-gluster-devel=m.gmane.org-qX2TKyscuCcdnm+yROfE0A@public.gmane.org
-Sender: gluster-devel-bounces+gcfgd-gluster-devel=m.gmane.org-qX2TKyscuCcdnm+yROfE0A@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andrey Sidorov <qrxd43@motorola.com>
+Subject: [PATCH V3] ext4: speed-up releasing blocks on commit
+Date: Thu, 28 Mar 2013 23:26:58 +0400
+Message-ID: <1364498818-17909-1-git-send-email-qrxd43@motorola.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from exprod5og114.obsmtp.com ([64.18.0.28]:33582 "EHLO
+	exprod5og114.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751279Ab3C1T1I (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Mar 2013 15:27:08 -0400
+Received: from il93mgrg01.am.mot-mobility.com ([10.176.130.20])
+	by il93mgrg01.am.mot-mobility.com (8.14.3/8.14.3) with ESMTP id r2SJFXg1026431
+	for <linux-ext4@vger.kernel.org>; Thu, 28 Mar 2013 15:15:34 -0400 (EDT)
+Received: from mail-la0-f43.google.com (mail-la0-f43.google.com [209.85.215.43])
+	by il93mgrg01.am.mot-mobility.com (8.14.3/8.14.3) with ESMTP id r2SJFKbx026318
+	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Thu, 28 Mar 2013 15:15:32 -0400 (EDT)
+Received: by mail-la0-f43.google.com with SMTP id ek20so18445141lab.30
+        for <linux-ext4@vger.kernel.org>; Thu, 28 Mar 2013 12:27:05 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
---===============1773639004856893358==
-Content-Type: multipart/alternative; boundary=001a11c1d64cbe531304d9009db5
+Improve mb_free_blocks speed by clearing entire range at once instead of
+iterating over each bit. Freeing block-by-block also makes buddy bitmap
+subtree flip twice making most of the work a no-op. Very few bits in buddy
+bitmap require change, e.g. freeing entire group is a 1 bit flip only.
+As a result, releasing blocks of 60G file now takes 5ms instead of 2.7s.
+This is especially good for non-preemptive kernels as there is no
+rescheduling during release.
 
---001a11c1d64cbe531304d9009db5
-Content-Type: text/plain; charset=ISO-8859-1
+Signed-off-by: Andrey Sidorov <qrxd43@motorola.com>
+---
+ fs/ext4/mballoc.c |  233 +++++++++++++++++++++++++++++++++++++++--------------
+ 1 file changed, 172 insertions(+), 61 deletions(-)
 
-On Thu, Mar 28, 2013 at 11:31 AM, J. Bruce Fields <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>wrote:
->
-> > Jeff reported that the approach did not work in his testing. I haven't
-> had
-> > a chance to look into the failure yet. Independent of the fix, it would
-> > certainly be good have the ioctl() support
->
-> The one advantage of your scheme is that it keeps more of the hash bits;
-> the chance of 31-bit cookie collisions is much higher.
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 580aada..f92e05a 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -405,6 +405,12 @@ static inline void mb_clear_bit(int bit, void *addr)
+ 	ext4_clear_bit(bit, addr);
+ }
+ 
++static inline int mb_test_and_clear_bit(int bit, void *addr)
++{
++	addr = mb_correct_addr_and_bit(&bit, addr);
++	return ext4_test_and_clear_bit(bit, addr);
++}
++
+ static inline int mb_find_next_zero_bit(void *addr, int max, int start)
+ {
+ 	int fix = 0, ret, tmpmax;
+@@ -764,6 +770,24 @@ void ext4_mb_generate_buddy(struct super_block *sb,
+ 	spin_unlock(&EXT4_SB(sb)->s_bal_lock);
+ }
+ 
++static void mb_regenerate_buddy(struct ext4_buddy *e4b)
++{
++	int count;
++	int order = 1;
++	void *buddy;
++
++	while ((buddy = mb_find_buddy(e4b, order++, &count))) {
++		ext4_set_bits(buddy, 0, count);
++	}
++	e4b->bd_info->bb_fragments = 0;
++	memset(e4b->bd_info->bb_counters, 0,
++		sizeof(*e4b->bd_info->bb_counters) *
++		(e4b->bd_sb->s_blocksize_bits + 2));
++
++	ext4_mb_generate_buddy(e4b->bd_sb, e4b->bd_buddy,
++		e4b->bd_bitmap, e4b->bd_group);
++}
++
+ /* The buddy information is attached the buddy cache inode
+  * for convenience. The information regarding each group
+  * is loaded via ext4_mb_load_buddy. The information involve
+@@ -1246,6 +1270,33 @@ static void mb_clear_bits(void *bm, int cur, int len)
+ 	}
+ }
+ 
++/* clear bits in given range
++ * will return first found zero bit if any, -1 otherwise
++ */
++static int mb_test_and_clear_bits(void *bm, int cur, int len)
++{
++	__u32 *addr;
++	int zero_bit = -1;
++
++	len = cur + len;
++	while (cur < len) {
++		if ((cur & 31) == 0 && (len - cur) >= 32) {
++			/* fast path: clear whole word at once */
++			addr = bm + (cur >> 3);
++			if (*addr != (__u32)(-1) && zero_bit == -1)
++				zero_bit = cur + mb_find_next_zero_bit(addr, 32, 0);
++			*addr = 0;
++			cur += 32;
++			continue;
++		}
++		if (!mb_test_and_clear_bit(cur, bm) && zero_bit == -1)
++			zero_bit = cur;
++		cur++;
++	}
++
++	return zero_bit;
++}
++
+ void ext4_set_bits(void *bm, int cur, int len)
+ {
+ 	__u32 *addr;
+@@ -1264,17 +1315,90 @@ void ext4_set_bits(void *bm, int cur, int len)
+ 	}
+ }
+ 
++/*
++ * _________________________________________________________________ */
++
++static inline int mb_buddy_adjust_border(int* bit, void* bitmap, int side)
++{
++	if (mb_test_bit(*bit + side, bitmap)) {
++		mb_clear_bit(*bit, bitmap);
++		(*bit) -= side;
++		return 1;
++	}
++	else {
++		(*bit) += side;
++		mb_set_bit(*bit, bitmap);
++		return -1;
++	}
++}
++
++static void mb_buddy_mark_free(struct ext4_buddy *e4b, int first, int last)
++{
++	int max;
++	int order = 1;
++	void *buddy = mb_find_buddy(e4b, order, &max);
++
++	while (buddy) {
++		void *buddy2;
++
++		/* Bits in range [first; last] are known to be set since
++		 * corresponding blocks were allocated. Bits in range
++		 * (first; last) will stay set because they form buddies on
++		 * upper layer. We just deal with borders if they don't
++		 * align with upper layer and then go up.
++		 * Releasing entire group is all about clearing
++		 * single bit of highest order buddy.
++		 */
++
++		/* Example:
++		 * ---------------------------------
++		 * |   1   |   1   |   1   |   1   |
++		 * ---------------------------------
++		 * | 0 | 1 | 1 | 1 | 1 | 1 | 1 | 1 |
++		 * ---------------------------------
++		 *   0   1   2   3   4   5   6   7
++		 *      \_____________________/
++		 *
++		 * Neither [1] nor [6] is aligned to above layer.
++		 * Left neighbour [0] is free, so mark it busy,
++		 * decrease bb_counters and extend range to
++		 * [0; 6]
++		 * Right neighbour [7] is busy. It can't be coaleasced with [6], so
++		 * mark [6] free, increase bb_counters and shrink range to
++		 * [0; 5].
++		 * Then shift range to [0; 2], go up and do the same.
++		 */
++
++
++		if (first & 1)
++			e4b->bd_info->bb_counters[order] += mb_buddy_adjust_border(&first, buddy, -1);
++		if (!(last & 1))
++			e4b->bd_info->bb_counters[order] += mb_buddy_adjust_border(&last, buddy, 1);
++		if (first > last)
++			break;
++		order++;
++
++		if (first == last || !(buddy2 = mb_find_buddy(e4b, order, &max))) {
++			mb_clear_bits(buddy, first, last - first + 1);
++			e4b->bd_info->bb_counters[order - 1] += last - first + 1;
++			break;
++		}
++		first >>= 1;
++		last >>= 1;
++		buddy = buddy2;
++	}
++}
++
+ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
+-			  int first, int count)
++			   int first, int count)
+ {
+-	int block = 0;
+-	int max = 0;
+-	int order;
+-	void *buddy;
+-	void *buddy2;
++	int left_is_free = 0;
++	int right_is_free = 0;
++	int block;
++	int last = first + count - 1;
+ 	struct super_block *sb = e4b->bd_sb;
+ 
+-	BUG_ON(first + count > (sb->s_blocksize << 3));
++	BUG_ON(last >= (sb->s_blocksize << 3));
+ 	assert_spin_locked(ext4_group_lock_ptr(sb, e4b->bd_group));
+ 	mb_check_buddy(e4b);
+ 	mb_free_blocks_double(inode, e4b, first, count);
+@@ -1283,67 +1407,54 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
+ 	if (first < e4b->bd_info->bb_first_free)
+ 		e4b->bd_info->bb_first_free = first;
+ 
+-	/* let's maintain fragments counter */
++	/* access memory sequentially: check left neighbour,
++	 * clear range and then check right neighbour
++	 */
+ 	if (first != 0)
+-		block = !mb_test_bit(first - 1, e4b->bd_bitmap);
+-	if (first + count < EXT4_SB(sb)->s_mb_maxs[0])
+-		max = !mb_test_bit(first + count, e4b->bd_bitmap);
+-	if (block && max)
+-		e4b->bd_info->bb_fragments--;
+-	else if (!block && !max)
+-		e4b->bd_info->bb_fragments++;
+-
+-	/* let's maintain buddy itself */
+-	while (count-- > 0) {
+-		block = first++;
+-		order = 0;
+-
+-		if (!mb_test_bit(block, e4b->bd_bitmap)) {
+-			ext4_fsblk_t blocknr;
+-
+-			blocknr = ext4_group_first_block_no(sb, e4b->bd_group);
+-			blocknr += EXT4_C2B(EXT4_SB(sb), block);
+-			ext4_grp_locked_error(sb, e4b->bd_group,
+-					      inode ? inode->i_ino : 0,
+-					      blocknr,
+-					      "freeing already freed block "
+-					      "(bit %u)", block);
+-		}
+-		mb_clear_bit(block, e4b->bd_bitmap);
+-		e4b->bd_info->bb_counters[order]++;
+-
+-		/* start of the buddy */
+-		buddy = mb_find_buddy(e4b, order, &max);
++		left_is_free = !mb_test_bit(first - 1, e4b->bd_bitmap);
++	block = mb_test_and_clear_bits(e4b->bd_bitmap, first, count);
++	if (last + 1 < EXT4_SB(sb)->s_mb_maxs[0])
++		right_is_free = !mb_test_bit(last + 1, e4b->bd_bitmap);
+ 
+-		do {
+-			block &= ~1UL;
+-			if (mb_test_bit(block, buddy) ||
+-					mb_test_bit(block + 1, buddy))
+-				break;
++	if (unlikely(block != -1)) {
++		ext4_fsblk_t blocknr;
+ 
+-			/* both the buddies are free, try to coalesce them */
+-			buddy2 = mb_find_buddy(e4b, order + 1, &max);
++		blocknr = ext4_group_first_block_no(sb, e4b->bd_group);
++		blocknr += EXT4_C2B(EXT4_SB(sb), block);
++		ext4_grp_locked_error(sb, e4b->bd_group,
++				      inode ? inode->i_ino : 0,
++				      blocknr,
++				      "freeing already freed block "
++				      "(bit %u)", block);
++		mb_regenerate_buddy(e4b);
++		goto done;
++	}
+ 
+-			if (!buddy2)
+-				break;
++	/* let's maintain fragments counter */
++	if (left_is_free && right_is_free)
++		e4b->bd_info->bb_fragments--;
++	else if (!left_is_free && !right_is_free)
++		e4b->bd_info->bb_fragments++;
+ 
+-			if (order > 0) {
+-				/* for special purposes, we don't set
+-				 * free bits in bitmap */
+-				mb_set_bit(block, buddy);
+-				mb_set_bit(block + 1, buddy);
+-			}
+-			e4b->bd_info->bb_counters[order]--;
+-			e4b->bd_info->bb_counters[order]--;
++	/* buddy[0] == bd_bitmap is a special case, so handle
++	 * it right away and let mb_buddy_mark_free stay free of
++	 * zero order checks.
++	 * Check if neighbours are to be coaleasced,
++	 * adjust bitmap bb_counters and borders appropriately.
++	 */
++	if (first & 1) {
++		first += !left_is_free;
++		e4b->bd_info->bb_counters[0] += left_is_free ? -1 : 1;
++	}
++	if (!(last & 1)) {
++		last -= !right_is_free;
++		e4b->bd_info->bb_counters[0] += right_is_free ? -1 : 1;
++	}
+ 
+-			block = block >> 1;
+-			order++;
+-			e4b->bd_info->bb_counters[order]++;
++	if (first <= last)
++		mb_buddy_mark_free(e4b, first >> 1, last >> 1);
+ 
+-			mb_clear_bit(block, buddy2);
+-			buddy = buddy2;
+-		} while (1);
+-	}
++done:
+ 	mb_set_largest_free_order(sb, e4b->bd_info);
+ 	mb_check_buddy(e4b);
+ }
+-- 
+1.7.10.4
 
-
-Yes, it should, based on the theory of how ext4 was generating the 63bits.
-But Jeff's test finds that the experiment is not matching the theory. I
-intend to debug this, but currently drowned in a different issue. It would
-be good if the ext developers can have a look at
-http://review.gluster.org/4711 and see if there are obvious holes in the
-approach or code.
-
-Avati
-
---001a11c1d64cbe531304d9009db5
-Content-Type: text/html; charset=ISO-8859-1
-Content-Transfer-Encoding: quoted-printable
-
-<br><br><div class=3D"gmail_quote">On Thu, Mar 28, 2013 at 11:31 AM, J. Bru=
-ce Fields <span dir=3D"ltr">&lt;<a href=3D"mailto:bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org" tar=
-get=3D"_blank">bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org</a>&gt;</span> wrote:<blockquote class=
-=3D"gmail_quote" style=3D"margin:0 0 0 .8ex;border-left:1px #ccc solid;padd=
-ing-left:1ex">
-<div class=3D"HOEnZb"><div class=3D"h5">
-&gt; Jeff reported that the approach did not work in his testing. I haven&#=
-39;t had<br>
-&gt; a chance to look into the failure yet. Independent of the fix, it woul=
-d<br>
-&gt; certainly be good have the ioctl() support<br>
-<br>
-</div></div>The one advantage of your scheme is that it keeps more of the h=
-ash bits;<br>
-the chance of 31-bit cookie collisions is much higher.</blockquote><div><br=
-></div><div>Yes, it should, based on the theory of how ext4 was generating =
-the 63bits. But Jeff&#39;s test finds that the experiment is not matching t=
-he theory. I intend to debug this, but currently drowned in a different iss=
-ue. It would be good if the ext developers can have a look at <a href=3D"ht=
-tp://review.gluster.org/4711">http://review.gluster.org/4711</a> and see if=
- there are obvious holes in the approach or code.</div>
-<div><br></div><div>Avati</div><div><br></div></div>
-
---001a11c1d64cbe531304d9009db5--
-
-
---===============1773639004856893358==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-_______________________________________________
-Gluster-devel mailing list
-Gluster-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org
-https://lists.nongnu.org/mailman/listinfo/gluster-devel
-
---===============1773639004856893358==--
