@@ -1,119 +1,55 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH, RFC] ext3: add ioctl to force 32-bit hashes from indexed
- dirs
-Date: Thu, 28 Mar 2013 11:25:17 -0500
-Message-ID: <51546EED.8030507@redhat.com>
+Subject: Re: [Gluster-devel] regressions due to 64-bit ext4 directory cookies
+Date: Thu, 28 Mar 2013 11:26:26 -0500
+Message-ID: <51546F32.7000609@redhat.com>
+References: <CAFboF2wXvP+vttiff8iRE9rAgvV8UWGbFprgVp8p7kE43TU=PA@mail.gmail.com> <20130213222052.GD5938@thunk.org> <20130213224141.GU14195@fieldses.org> <20130213224720.GE5938@thunk.org> <CAFboF2z1akN_edrY_fT915xfehfHGioA2M=PSHv0Fp3rD-5v5A@mail.gmail.com> <20130213230511.GW14195@fieldses.org> <20130213234430.GF5938@thunk.org> <CAFboF2zS+YAa0uUxMFUAbqgPh3Kb4xZu40WUjLyGn8qPoP+Oyw@mail.gmail.com> <5151BD5F.30607@itwm.fraunhofer.de> <5151C33E.2070008@redhat.com> <20130328140744.GA4989@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Anand Avati <avati@redhat.com>, Jan Kara <jack@suse.cz>
-To: ext4 development <linux-ext4@vger.kernel.org>
+Cc: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+	Anand Avati <anand.avati@gmail.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	gluster-devel@nongnu.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33548 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:28314 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753268Ab3C1Q0C (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 Mar 2013 12:26:02 -0400
+	id S1753268Ab3C1Q0k (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 28 Mar 2013 12:26:40 -0400
+In-Reply-To: <20130328140744.GA4989@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This adds a new ioctl, EXT3_IOC_32BITHASH, which allows a
-userspace application to request 32-bit rather than 64-bit
-hashes from readdir on an indexed / dx / htree directory.
+On 3/28/13 9:07 AM, Theodore Ts'o wrote:
+> On Tue, Mar 26, 2013 at 10:48:14AM -0500, Eric Sandeen wrote:
+>>> We don't have reached a conclusion so far, do we? What about the
+>>> ioctl approach, but a bit differently? Would it work to specify the
+>>> allowed upper bits for ext4 (for example 16 additional bit) and the
+>>> remaining part for gluster? One of the mails had the calculation
+>>> formula:
+>>
+>> I did throw together an ioctl patch last week, but I think Anand has a new
+>> approach he's trying out which won't require ext4 code changes.  I'll let
+>> him reply when he has a moment.  :)
+> 
+> Any update about whether Gluster can address this without needing the
+> ioctl patch?  Or should we push the ioctl patch into ext4 for the next
+> merge window?
 
-Gluster had been relying on the top bits of the d_off being
-free; there are some reports that filling all 64 bits breaks
-Samba as well.  The infrastructure to return 32-bit hashes
-already exists; NFS can turn it on, and it's turned on for
-32-bit processes as well.  So it's just a matter of flipping
-on the f_mode flag before readdir starts.
+I went ahead & sent the ioctl patches to the ext4 list; they are lightly
+tested, and not tested at all w/ gluster AFAIK.  Wanted to get them
+out just in case we decide we want them.
 
-Care needs to be taken that we don't change the FMODE flag
-after readdir has been started, so we make sure that
-filp->private_data has not yet been set before we set the flag
-(Thanks Zach!).
+Thanks,
+-Eric
 
-Pre-submission-fixes-by: Zach Brown <zab@redhat.com>
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
-
-
-diff --git a/fs/ext3/dir.c b/fs/ext3/dir.c
-index 87eccbb..83df29f 100644
---- a/fs/ext3/dir.c
-+++ b/fs/ext3/dir.c
-@@ -47,7 +47,7 @@ static unsigned char get_dtype(struct super_block *sb, int filetype)
-  *
-  * Return 1 if it is a dx dir, 0 if not
-  */
--static int is_dx_dir(struct inode *inode)
-+int is_dx_dir(struct inode *inode)
- {
- 	struct super_block *sb = inode->i_sb;
- 
-diff --git a/fs/ext3/ext3.h b/fs/ext3/ext3.h
-index e85ff15..b88cf19 100644
---- a/fs/ext3/ext3.h
-+++ b/fs/ext3/ext3.h
-@@ -220,6 +220,7 @@ struct ext3_new_group_data {
- #endif
- #define EXT3_IOC_GETRSVSZ		_IOR('f', 5, long)
- #define EXT3_IOC_SETRSVSZ		_IOW('f', 6, long)
-+#define EXT3_IOC_32BITHASH		_IOW('f', 13, long)
- 
- /*
-  * ioctl commands in 32 bit emulation
-@@ -1010,6 +1011,7 @@ extern void ext3_rsv_window_add(struct super_block *sb, struct ext3_reserve_wind
- extern int ext3_trim_fs(struct super_block *sb, struct fstrim_range *range);
- 
- /* dir.c */
-+extern int is_dx_dir(struct inode *inode);
- extern int ext3_check_dir_entry(const char *, struct inode *,
- 				struct ext3_dir_entry_2 *,
- 				struct buffer_head *, unsigned long);
-diff --git a/fs/ext3/ioctl.c b/fs/ext3/ioctl.c
-index 4d96e9a..aab217d 100644
---- a/fs/ext3/ioctl.c
-+++ b/fs/ext3/ioctl.c
-@@ -251,6 +251,41 @@ group_add_out:
- 		mnt_drop_write_file(filp);
- 		return err;
- 	}
-+	case EXT3_IOC_32BITHASH: {
-+		__u32 hash32bits;
-+		int err = 0;
-+
-+		if (get_user(hash32bits, (int __user *) arg))
-+			return -EFAULT;
-+
-+		/* Serialize with readdir */
-+		if ((err = mutex_lock_killable(&inode->i_mutex)))
-+			return err;
-+
-+		/* protect f_mode */
-+		spin_lock(&filp->f_lock);
-+
-+		/* Only valid for htree directories */
-+		if (!S_ISDIR(inode->i_mode) || !is_dx_dir(inode)) {
-+			err = -EINVAL;
-+			goto out_32bithash;
-+		}
-+
-+		/* Have we already started readir on this dx dir? */
-+		if (filp->private_data) {
-+			err = -EINVAL;
-+			goto out_32bithash;
-+		}
-+
-+		if (hash32bits)
-+			filp->f_mode |= FMODE_32BITHASH;
-+		else
-+			filp->f_mode &= ~FMODE_32BITHASH;
-+out_32bithash:
-+		spin_unlock(&filp->f_lock);
-+		mutex_unlock(&inode->i_mutex);
-+		return err;
-+	}
- 	case FITRIM: {
- 
- 		struct super_block *sb = inode->i_sb;
+> Thanks,
+> 
+> 						- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
