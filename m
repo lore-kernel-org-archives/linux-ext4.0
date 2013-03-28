@@ -1,26 +1,22 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH, RFC] ext4: add ioctl to force 32-bit hashes from indexed
+Subject: [PATCH, RFC] ext3: add ioctl to force 32-bit hashes from indexed
  dirs
-Date: Thu, 28 Mar 2013 11:14:06 -0500
-Message-ID: <51546C4E.9010903@redhat.com>
+Date: Thu, 28 Mar 2013 11:25:17 -0500
+Message-ID: <51546EED.8030507@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Anand Avati <avati@redhat.com>
+Cc: Anand Avati <avati@redhat.com>, Jan Kara <jack@suse.cz>
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:62806 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:33548 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756213Ab3C1QOH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 Mar 2013 12:14:07 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r2SGE7XU013631
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Thu, 28 Mar 2013 12:14:07 -0400
+	id S1753268Ab3C1Q0C (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 28 Mar 2013 12:26:02 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This adds a new ioctl, EXT4_IOC_32BITHASH, which allows a
+This adds a new ioctl, EXT3_IOC_32BITHASH, which allows a
 userspace application to request 32-bit rather than 64-bit
 hashes from readdir on an indexed / dx / htree directory.
 
@@ -40,11 +36,12 @@ Pre-submission-fixes-by: Zach Brown <zab@redhat.com>
 Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index d8cd1f0..5e3a316 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -39,7 +39,7 @@ static int ext4_dx_readdir(struct file *filp,
+
+diff --git a/fs/ext3/dir.c b/fs/ext3/dir.c
+index 87eccbb..83df29f 100644
+--- a/fs/ext3/dir.c
++++ b/fs/ext3/dir.c
+@@ -47,7 +47,7 @@ static unsigned char get_dtype(struct super_block *sb, int filetype)
   *
   * Return 1 if it is a dx dir, 0 if not
   */
@@ -53,38 +50,38 @@ index d8cd1f0..5e3a316 100644
  {
  	struct super_block *sb = inode->i_sb;
  
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 3b83cd6..63e922e 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -614,6 +614,7 @@ enum {
-  /* note ioctl 10 reserved for an early version of the FIEMAP ioctl */
-  /* note ioctl 11 reserved for filesystem-independent FIEMAP ioctl */
- #define EXT4_IOC_ALLOC_DA_BLKS		_IO('f', 12)
-+#define EXT4_IOC_32BITHASH		_IOW('f', 13, long)
- #define EXT4_IOC_MOVE_EXT		_IOWR('f', 15, struct move_extent)
- #define EXT4_IOC_RESIZE_FS		_IOW('f', 16, __u64)
+diff --git a/fs/ext3/ext3.h b/fs/ext3/ext3.h
+index e85ff15..b88cf19 100644
+--- a/fs/ext3/ext3.h
++++ b/fs/ext3/ext3.h
+@@ -220,6 +220,7 @@ struct ext3_new_group_data {
+ #endif
+ #define EXT3_IOC_GETRSVSZ		_IOR('f', 5, long)
+ #define EXT3_IOC_SETRSVSZ		_IOW('f', 6, long)
++#define EXT3_IOC_32BITHASH		_IOW('f', 13, long)
  
-@@ -1953,6 +1954,7 @@ extern unsigned ext4_num_overhead_clusters(struct super_block *sb,
- ext4_fsblk_t ext4_inode_to_goal_block(struct inode *);
+ /*
+  * ioctl commands in 32 bit emulation
+@@ -1010,6 +1011,7 @@ extern void ext3_rsv_window_add(struct super_block *sb, struct ext3_reserve_wind
+ extern int ext3_trim_fs(struct super_block *sb, struct fstrim_range *range);
  
  /* dir.c */
 +extern int is_dx_dir(struct inode *inode);
- extern int __ext4_check_dir_entry(const char *, unsigned int, struct inode *,
- 				  struct file *,
- 				  struct ext4_dir_entry_2 *,
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 721f4d3..f226373 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -356,7 +356,41 @@ group_add_out:
+ extern int ext3_check_dir_entry(const char *, struct inode *,
+ 				struct ext3_dir_entry_2 *,
+ 				struct buffer_head *, unsigned long);
+diff --git a/fs/ext3/ioctl.c b/fs/ext3/ioctl.c
+index 4d96e9a..aab217d 100644
+--- a/fs/ext3/ioctl.c
++++ b/fs/ext3/ioctl.c
+@@ -251,6 +251,41 @@ group_add_out:
  		mnt_drop_write_file(filp);
  		return err;
  	}
-+	case EXT4_IOC_32BITHASH: {
++	case EXT3_IOC_32BITHASH: {
 +		__u32 hash32bits;
 +		int err = 0;
- 
++
 +		if (get_user(hash32bits, (int __user *) arg))
 +			return -EFAULT;
 +
@@ -116,7 +113,7 @@ index 721f4d3..f226373 100644
 +		mutex_unlock(&inode->i_mutex);
 +		return err;
 +	}
- 	case EXT4_IOC_RESIZE_FS: {
- 		ext4_fsblk_t n_blocks_count;
+ 	case FITRIM: {
+ 
  		struct super_block *sb = inode->i_sb;
 
