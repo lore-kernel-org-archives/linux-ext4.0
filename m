@@ -1,120 +1,123 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH, RFC V2] ext3: add ioctl to force 32-bit hashes from indexed
- dirs
-Date: Thu, 28 Mar 2013 15:40:20 -0500
-Message-ID: <5154AAB4.2000701@redhat.com>
-References: <51546EED.8030507@redhat.com>
+From: Anand Avati <anand.avati-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Subject: Re: regressions due to 64-bit ext4 directory cookies
+Date: Thu, 28 Mar 2013 15:14:50 -0700
+Message-ID: <CAFboF2xkvXx9YFYxBXupwg=s=3MaeQYm2KK2m8MFtEBPsxwQ7Q@mail.gmail.com>
+References: <20130213224720.GE5938@thunk.org>
+	<CAFboF2z1akN_edrY_fT915xfehfHGioA2M=PSHv0Fp3rD-5v5A@mail.gmail.com>
+	<20130213230511.GW14195@fieldses.org>
+	<20130213234430.GF5938@thunk.org>
+	<CAFboF2zS+YAa0uUxMFUAbqgPh3Kb4xZu40WUjLyGn8qPoP+Oyw@mail.gmail.com>
+	<5151BD5F.30607@itwm.fraunhofer.de> <5151C33E.2070008@redhat.com>
+	<20130328140744.GA4989@thunk.org>
+	<20130328175205.GD16651@lenny.home.zabbo.net>
+	<CAFboF2ztc06G00z8ga35NrxgnT2YgBiDECgU_9kvVA_Go1_Bww@mail.gmail.com>
+	<20130328183153.GG7080@fieldses.org>
+	<CAFboF2w49Lc0vM0SerbJfL9_RuSHgEU+y_Yk7F4pLxeiqu+KRg@mail.gmail.com>
+	<51549D74.1060703@redhat.com>
 Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="===============1707669704838522986=="
+Cc: Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Zach Brown <zab-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+	Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, gluster-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org
+To: Jeff Darcy <jdarcy-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Return-path: <gluster-devel-bounces+gcfgd-gluster-devel=m.gmane.org-qX2TKyscuCcdnm+yROfE0A@public.gmane.org>
+In-Reply-To: <51549D74.1060703-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+List-Unsubscribe: <https://lists.nongnu.org/mailman/options/gluster-devel>,
+	<mailto:gluster-devel-request-qX2TKyscuCcdnm+yROfE0A@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.nongnu.org/archive/html/gluster-devel>
+List-Post: <mailto:gluster-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org>
+List-Help: <mailto:gluster-devel-request-qX2TKyscuCcdnm+yROfE0A@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.nongnu.org/mailman/listinfo/gluster-devel>,
+	<mailto:gluster-devel-request-qX2TKyscuCcdnm+yROfE0A@public.gmane.org?subject=subscribe>
+Errors-To: gluster-devel-bounces+gcfgd-gluster-devel=m.gmane.org-qX2TKyscuCcdnm+yROfE0A@public.gmane.org
+Sender: gluster-devel-bounces+gcfgd-gluster-devel=m.gmane.org-qX2TKyscuCcdnm+yROfE0A@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
+
+--===============1707669704838522986==
+Content-Type: multipart/alternative; boundary=001a11c1d64cba986a04d9037b05
+
+--001a11c1d64cba986a04d9037b05
 Content-Type: text/plain; charset=ISO-8859-1
+
+On Thu, Mar 28, 2013 at 12:43 PM, Jeff Darcy <jdarcy-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org> wrote:
+
+> On 03/28/2013 02:49 PM, Anand Avati wrote:
+> > Yes, it should, based on the theory of how ext4 was generating the
+> > 63bits. But Jeff's test finds that the experiment is not matching the
+> > theory.
+>
+> FWIW, I was able to re-run my test in between stuff related to That
+> Other Problem.  What seems to be happening is that we read correctly
+> until just after d_off 0x4000000000000000, then we suddenly wrap around
+> - not to the very first d_off we saw, but to a pretty early one (e.g.
+> 0x0041b6340689a32e).  This is all on a single brick, BTW, so it's pretty
+> easy to line up the back-end and front-end d_off values which match
+> perfectly up to this point.
+>
+> I haven't had a chance to ponder what this all means and debug it
+> further.  Hopefully I'll be able to do so soon, but I figured I'd
+> mention it in case something about those numbers rang a bell.
+>
+
+Of course, the unit tests (with artificial offsets) were done with brick
+count >= 2. You have tested with DHT subvol count=1, which was not tested,
+and sure enough, the code isn't handling it well. Just verified with the
+unit tests that brick count = 1 condition fails to return the same d_off.
+
+Posting a fixed version. Thanks for the catch!
+
+Avati
+
+--001a11c1d64cba986a04d9037b05
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
+
+<br><br><div class=3D"gmail_quote">On Thu, Mar 28, 2013 at 12:43 PM, Jeff D=
+arcy <span dir=3D"ltr">&lt;<a href=3D"mailto:jdarcy-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org" target=3D"_=
+blank">jdarcy-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org</a>&gt;</span> wrote:<br><blockquote class=3D"gmai=
+l_quote" style=3D"margin:0 0 0 .8ex;border-left:1px #ccc solid;padding-left=
+:1ex">
+<div class=3D"im">On 03/28/2013 02:49 PM, Anand Avati wrote:<br>
+&gt; Yes, it should, based on the theory of how ext4 was generating the<br>
+&gt; 63bits. But Jeff&#39;s test finds that the experiment is not matching =
+the<br>
+&gt; theory.<br>
+<br>
+</div>FWIW, I was able to re-run my test in between stuff related to That<b=
+r>
+Other Problem. =A0What seems to be happening is that we read correctly<br>
+until just after d_off 0x4000000000000000, then we suddenly wrap around<br>
+- not to the very first d_off we saw, but to a pretty early one (e.g.<br>
+0x0041b6340689a32e). =A0This is all on a single brick, BTW, so it&#39;s pre=
+tty<br>
+easy to line up the back-end and front-end d_off values which match<br>
+perfectly up to this point.<br>
+<br>
+I haven&#39;t had a chance to ponder what this all means and debug it<br>
+further. =A0Hopefully I&#39;ll be able to do so soon, but I figured I&#39;d=
+<br>
+mention it in case something about those numbers rang a bell.<br></blockquo=
+te><div><br></div><div>Of course, the unit tests (with artificial offsets) =
+were done with brick count &gt;=3D 2. You have tested with DHT subvol count=
+=3D1, which was not tested, and sure enough, the code isn&#39;t handling it=
+ well. Just verified with the unit tests that brick count =3D 1 condition f=
+ails to return the same d_off.</div>
+<div><br></div><div>Posting a fixed version. Thanks for the catch!</div><di=
+v><br></div><div>Avati</div><div><br></div></div>
+
+--001a11c1d64cba986a04d9037b05--
+
+
+--===============1707669704838522986==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
-Cc: Anand Avati <avati@redhat.com>, Jan Kara <jack@suse.cz>
-To: ext4 development <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:23728 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751279Ab3C1UlE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 Mar 2013 16:41:04 -0400
-In-Reply-To: <51546EED.8030507@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Disposition: inline
 
-This adds a new ioctl, EXT3_IOC_32BITHASH, which allows a
-userspace application to request 32-bit rather than 64-bit
-hashes from readdir on an indexed / dx / htree directory.
+_______________________________________________
+Gluster-devel mailing list
+Gluster-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org
+https://lists.nongnu.org/mailman/listinfo/gluster-devel
 
-Gluster had been relying on the top bits of the d_off being
-free; there are some reports that filling all 64 bits breaks
-Samba as well.  The infrastructure to return 32-bit hashes
-already exists; NFS can turn it on, and it's turned on for
-32-bit processes as well.  So it's just a matter of flipping
-on the f_mode flag before readdir starts.
-
-Care needs to be taken that we don't change the FMODE flag
-after readdir has been started, so we make sure that
-filp->private_data has not yet been set before we set the flag.
-(Thanks Zach!).
-
-Pre-submission-fixes-by: Zach Brown <zab@redhat.com>
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
-
-V2:
-fix "readir" typo
-rename goto target to *_out like others
-remove parameter; we can't really ever turn this back off once it's used.
-closing and reopening is the only way to get back to 64 bit hashes.
-
-
-diff --git a/fs/ext3/dir.c b/fs/ext3/dir.c
-index 87eccbb..83df29f 100644
---- a/fs/ext3/dir.c
-+++ b/fs/ext3/dir.c
-@@ -47,7 +47,7 @@ static unsigned char get_dtype(struct super_block *sb, int filetype)
-  *
-  * Return 1 if it is a dx dir, 0 if not
-  */
--static int is_dx_dir(struct inode *inode)
-+int is_dx_dir(struct inode *inode)
- {
- 	struct super_block *sb = inode->i_sb;
- 
-diff --git a/fs/ext3/ext3.h b/fs/ext3/ext3.h
-index e85ff15..f3018f4 100644
---- a/fs/ext3/ext3.h
-+++ b/fs/ext3/ext3.h
-@@ -220,6 +220,7 @@ struct ext3_new_group_data {
- #endif
- #define EXT3_IOC_GETRSVSZ		_IOR('f', 5, long)
- #define EXT3_IOC_SETRSVSZ		_IOW('f', 6, long)
-+#define EXT3_IOC_32BITHASH		_IO('f', 13)
- 
- /*
-  * ioctl commands in 32 bit emulation
-@@ -1010,6 +1011,7 @@ extern void ext3_rsv_window_add(struct super_block *sb, struct ext3_reserve_wind
- extern int ext3_trim_fs(struct super_block *sb, struct fstrim_range *range);
- 
- /* dir.c */
-+extern int is_dx_dir(struct inode *inode);
- extern int ext3_check_dir_entry(const char *, struct inode *,
- 				struct ext3_dir_entry_2 *,
- 				struct buffer_head *, unsigned long);
-diff --git a/fs/ext3/ioctl.c b/fs/ext3/ioctl.c
-index 4d96e9a..3811664 100644
---- a/fs/ext3/ioctl.c
-+++ b/fs/ext3/ioctl.c
-@@ -251,6 +251,34 @@ group_add_out:
- 		mnt_drop_write_file(filp);
- 		return err;
- 	}
-+	case EXT3_IOC_32BITHASH: {
-+		int err = 0;
-+
-+		/* Serialize with readdir */
-+		if ((err = mutex_lock_killable(&inode->i_mutex)))
-+			return err;
-+
-+		/* protect f_mode */
-+		spin_lock(&filp->f_lock);
-+
-+		/* Only valid for htree directories */
-+		if (!S_ISDIR(inode->i_mode) || !is_dx_dir(inode)) {
-+			err = -EINVAL;
-+			goto hash32bits_out;
-+		}
-+
-+		/* Have we already started readdir on this dx dir? */
-+		if (filp->private_data) {
-+			err = -EINVAL;
-+			goto hash32bits_out;
-+		}
-+
-+		filp->f_mode |= FMODE_32BITHASH;
-+hash32bits_out:
-+		spin_unlock(&filp->f_lock);
-+		mutex_unlock(&inode->i_mutex);
-+		return err;
-+	}
- 	case FITRIM: {
- 
- 		struct super_block *sb = inode->i_sb;
-
+--===============1707669704838522986==--
