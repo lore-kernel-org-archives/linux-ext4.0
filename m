@@ -1,54 +1,41 @@
-From: Andrey Sidorov <qrxd43@motorola.com>
-Subject: Re: [qrxd43@motorola.com: [PATCH V2] ext4: speed-up releasing blocks
- on commit]
-Date: Thu, 28 Mar 2013 23:30:22 +0400
-Message-ID: <CAA0+VHzvr+0VH4d-t2q3LkZwEWP4NEoE8hqQ2U6iK3np9rcoJA@mail.gmail.com>
-References: <20130203031122.GC1359@thunk.org>
-	<88575CD0-1CF4-4C12-83ED-845C87FFFDA4@dilger.ca>
-	<94F448E5-429B-4740-BF87-CE82F477DE93@gmail.com>
-	<CAA0+VHyOqK-yQqWZPjkwfTDzfFj_Bvy=cAtUdZXx1vOS6B7OcA@mail.gmail.com>
-	<20130327145720.GB14900@thunk.org>
+From: Jeff Darcy <jdarcy-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [Gluster-devel] regressions due to 64-bit ext4 directory cookies
+Date: Thu, 28 Mar 2013 15:43:48 -0400
+Message-ID: <51549D74.1060703@redhat.com>
+References: <20130213224720.GE5938@thunk.org> <CAFboF2z1akN_edrY_fT915xfehfHGioA2M=PSHv0Fp3rD-5v5A@mail.gmail.com> <20130213230511.GW14195@fieldses.org> <20130213234430.GF5938@thunk.org> <CAFboF2zS+YAa0uUxMFUAbqgPh3Kb4xZu40WUjLyGn8qPoP+Oyw@mail.gmail.com> <5151BD5F.30607@itwm.fraunhofer.de> <5151C33E.2070008@redhat.com> <20130328140744.GA4989@thunk.org> <20130328175205.GD16651@lenny.home.zabbo.net> <CAFboF2ztc06G00z8ga35NrxgnT2YgBiDECgU_9kvVA_Go1_Bww@mail.gmail.com> <20130328183153.GG7080@fieldses.org> <CAFboF2w49Lc0vM0SerbJfL9_RuSHgEU+y_Yk7F4pLxeiqu+KRg@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: Alex Tomas <bzzz.tomas@gmail.com>,
-	Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from exprod5og113.obsmtp.com ([64.18.0.26]:45133 "EHLO
-	exprod5og113.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751944Ab3C1TaZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Mar 2013 15:30:25 -0400
-Received: from DE01MGRG01.AM.MOT-MOBILITY.COM ([10.176.130.20])
-	by DE01MGRG01.AM.MOT-MOBILITY.COM (8.14.3/8.14.3) with ESMTP id r2SJXMfR019082
-	for <linux-ext4@vger.kernel.org>; Thu, 28 Mar 2013 15:33:22 -0400 (EDT)
-Received: from mail-ie0-f180.google.com (mail-ie0-f180.google.com [209.85.223.180])
-	by DE01MGRG01.AM.MOT-MOBILITY.COM (8.14.3/8.14.3) with ESMTP id r2SJXMDr019063
-	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Thu, 28 Mar 2013 15:33:22 -0400 (EDT)
-Received: by mail-ie0-f180.google.com with SMTP id a11so12030763iee.11
-        for <linux-ext4@vger.kernel.org>; Thu, 28 Mar 2013 12:30:23 -0700 (PDT)
-In-Reply-To: <20130327145720.GB14900@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Transfer-Encoding: 7bit
+Cc: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+	Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	"Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>, Zach Brown <zab-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+	Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, gluster-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org
+To: Anand Avati <anand.avati-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <CAFboF2w49Lc0vM0SerbJfL9_RuSHgEU+y_Yk7F4pLxeiqu+KRg-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Ted,
+On 03/28/2013 02:49 PM, Anand Avati wrote:
+> Yes, it should, based on the theory of how ext4 was generating the
+> 63bits. But Jeff's test finds that the experiment is not matching the
+> theory.
 
-I've just posted version rebased to yesterday's ext4 dev.
-Regards,
-Andrey.
+FWIW, I was able to re-run my test in between stuff related to That
+Other Problem.  What seems to be happening is that we read correctly
+until just after d_off 0x4000000000000000, then we suddenly wrap around
+- not to the very first d_off we saw, but to a pretty early one (e.g.
+0x0041b6340689a32e).  This is all on a single brick, BTW, so it's pretty
+easy to line up the back-end and front-end d_off values which match
+perfectly up to this point.
+
+I haven't had a chance to ponder what this all means and debug it
+further.  Hopefully I'll be able to do so soon, but I figured I'd
+mention it in case something about those numbers rang a bell.
 
 
-On Wed, Mar 27, 2013 at 6:57 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Wed, Mar 13, 2013 at 02:38:55PM +0400, Andrey Sidorov wrote:
->>
->> Thanks for review! I'll post rebased patch with comments and some
->> ascii art this weekend.
->
-> Hi Andrey, have you had a chance to post a rebased patch for your
-> proposed change?  If not, it would be great if you could look at doing
-> this against either 3.9-rc4 or the ext4 dev branch, since we're not
-> actively looking at patches for the next merge window.
->
-> Thanks!!
->
->                                         - Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
