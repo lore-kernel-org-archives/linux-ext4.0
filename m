@@ -1,117 +1,195 @@
-From: Tao Ma <tm@tao.ma>
-Subject: Re: [PATCH 2/2] ext4: Handle readdir when a file is converted from
- inline to block based.
-Date: Fri, 29 Mar 2013 10:03:38 +0800
-Message-ID: <5154F67A.8020401@tao.ma>
-References: <1364466899-5599-1-git-send-email-tm@tao.ma> <1364466899-5599-2-git-send-email-tm@tao.ma> <20130328184412.GF16651@lenny.home.zabbo.net>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH] ext4: fix ext4_evict_inode() racing against workqueue
+ processing code
+Date: Fri, 29 Mar 2013 15:32:53 +0800
+Message-ID: <20130329073253.GA3578@gmail.com>
+References: <1363742959-12815-1-git-send-email-tytso@mit.edu>
+ <5149C452.3070206@redhat.com>
+ <20130320144523.GF12865@thunk.org>
+ <20130326055251.GA17165@gmail.com>
+ <20130326203403.GE2082@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Zach Brown <zab@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy6-pub.bluehost.com ([67.222.54.6]:56506 "HELO
-	oproxy6-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1754546Ab3C2CDp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Mar 2013 22:03:45 -0400
-In-Reply-To: <20130328184412.GF16651@lenny.home.zabbo.net>
+Received: from mail-da0-f47.google.com ([209.85.210.47]:49074 "EHLO
+	mail-da0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755696Ab3C2HRM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Mar 2013 03:17:12 -0400
+Received: by mail-da0-f47.google.com with SMTP id s35so131502dak.34
+        for <linux-ext4@vger.kernel.org>; Fri, 29 Mar 2013 00:17:11 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <20130326203403.GE2082@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 03/29/2013 02:44 AM, Zach Brown wrote:
->> Zach reported that if a dir is inlined, the offset is within the inode, while
->> if we have done the conversion, the dir now will have a block offset or even
->> a hashed pos. The good thing is that ext4 is also prepared to handle some
->> situation that the dir is changed during many calls of getdents.
-> 
-> This doesn't fix the problem.  The problem isn't using the right code
-> path within ext4 for either inline or normal block directories.
-> 
-> The problem is that offsets for existing files change.  Yeah, ext4 also
-> has this problem when it converts from classic linear dirents to hashed
-> dirents, but I bet that basically doesn't happen any more.  Inline dirs
-> are making the problem happen for every single directory as it grows.
-Thanks for the explanation. I just looked deep into the problem and yes,
-the code is really tricky for an old linear dir. Now it also uses the
-ext4_dx_readdir, so the situation you described doesn't happen...
+On Tue, Mar 26, 2013 at 09:34:03PM +0100, Jan Kara wrote:
+> On Tue 26-03-13 13:52:51, Zheng Liu wrote:
+> > Sorry for the late reply.
+> > 
+> > On Wed, Mar 20, 2013 at 10:45:23AM -0400, Theodore Ts'o wrote:
+> > > On Wed, Mar 20, 2013 at 09:14:42AM -0500, Eric Sandeen wrote:
+> > > > 
+> > > > As an aside, is there any reason to have "dioread_nolock" as an option
+> > > > at this point?  If it works now, would you ever *not* want it?
+> > > > 
+> > > > (granted it doesn't work with some journaling options etc, but that
+> > > > behavior could be automatic, w/o the need for special mount options).
+> > > 
+> > > The primary restriction is that diread_nolock doesn't work when fs
+> > > block size != page size.  If your proposal is that we automatically
+> > > enable diread_nolock when we can use it safely, that's definitely
+> > > something to consider for the next merge window.
+> > 
+> > Yes, I also think we can automatically enable dioread_nolock because it
+> > brings us some benefits.
+>   But isn't there also some overhead due to buffered writes having to go
+> through uninit->init conversion?
 
-Maybe I will also need to pretend as if inline dir is hashed like the
-normal linear dir and return the hash value as the pos.
+Hi Jan,
+
+Here is my test result.  I use fio to do some performance tests.  The
+test environment is a Dell desktop with a Intel(R) Core(TM)2 Duo CPU
+E8400  @ 3.00GHz, 4G memory, 1 Intel 320 SSD.  I test three cases that
+are sync dio read/write, aio dio read/write, and sync buffered io.
+The result is as below.  Due to too many number we post some key data
+here.
+
+>From the result we can see that after dioread_nolock enables the max
+latency can be reduced dramatically for sync dio and sync bio, and other
+value doesn't be affected too much.  If I miss some important test case,
+please let me know.
 
 Thanks,
-Tao
-> 
-> There's two ways to experience the bug:
-> 
-> 1) nfs clients getting the wrong entry because the offset has changed
-> from the time that they got it from the server
-> 
-> 2) more worryingly: a concurrent readdir() can see duplicate entries
-> from simply advancing f_pos as it does normally
-> 
-> Here's a quick little demonstration of the second case:
-> 
-> d_off: 2 d_name: ., f_pos 2
-> d_off: 4 d_name: .., f_pos 4
-> d_off: 16 d_name: a, f_pos 16
-> d_off: 28 d_name: b, f_pos 28
-> d_off: 40 d_name: c, f_pos 40
-> d_off: 371778706554281332 d_name: .., f_pos 18446744071750344052
-> d_off: 1068979911240654558 d_name: b, f_pos 18446744072795659998
-> d_off: 6187216788877381273 d_name: c, f_pos 1633586841
-> d_off: 6280769109141524706 d_name: e, f_pos 1386254562
-> 
-> Run the following in a newly created empty dir with inline_data:
-> 
-> #include <stdlib.h>
-> #include <dirent.h>
-> #include <stdio.h>
-> #include <sys/types.h>
-> #include <sys/stat.h>
-> #include <fcntl.h>
-> #include <errno.h>
-> #include <string.h>
-> #include <sys/syscall.h>
-> 
-> struct linux_dirent {
-> 	long           d_ino;
-> 	off_t          d_off;
-> 	unsigned short d_reclen;
-> 	char           d_name[];
-> };
-> 
-> int main(int argc, char **argv)
-> {
-> 	struct linux_dirent dent;
-> 	char name[2] = {0,};
-> 	int i;
-> 	int ret;
-> 	int fd;
-> 
-> 	fd = open(".", O_RDONLY | O_DIRECTORY);
-> 	if (fd < 0) {
-> 		printf("open(\".\", O_RDONLY|O_DIRECTORY) failed: %u (%s)\n",
-> 		       errno, strerror(errno));
-> 		exit(1);
-> 	}
-> 	
-> 	for (i = 0; i < 26; i++) {
-> 		name[0] = 'a' + i;
-> 		mknod(name, S_IFREG|0755, 0);
-> 		ret = syscall(SYS_getdents, fd, &dent, sizeof(dent));
-> 		if (ret < 1)
-> 			break;
-> 		printf("d_off: %llu d_name: %s, f_pos %llu\n",
-> 		       (unsigned long long)dent.d_off,
-> 		       dent.d_name,
-> 		       (unsigned long long)lseek(fd, 0, SEEK_CUR));
-> 	}
-> 
-> 	return 0;
-> }
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+                                                - Zheng
 
+The kernel version is 3.9.0-rc4+.
+
+= sync dio =
+== fio config file ==
+  [global]
+  ioengine=psync
+  direct=1
+  bs=4k
+  thread
+  group_reporting
+  directory=/mnt/sda1/
+  filename=testfile
+  filesize=10g
+  size=10g
+  runtime=120
+  iodepth=16
+  fallocate=0
+  
+  [reader]
+  rw=randread
+  numjobs=8
+  
+  [writer]
+  rw=randwrite
+  numjobs=2
+
+== result ==
+=== w/o dioread_nolock ===
+  read : io=5142.1MB, bw=43885KB/s, iops=10971 , runt=120002msec
+    clat (usec): min=123 , max=679911 , avg=727.21, stdev=3986.35
+     lat (usec): min=123 , max=679911 , avg=727.40, stdev=3986.35
+  write: io=542548KB, bw=4521.2KB/s, iops=1130 , runt=120003msec
+    clat (usec): min=136 , max=2743.3K, avg=1766.78, stdev=14844.10
+     lat (usec): min=137 , max=2743.3K, avg=1767.14, stdev=14844.10
+
+=== w/ dioread_nolock ===
+  read : io=5072.2MB, bw=43282KB/s, iops=10820 , runt=120002msec
+    clat (usec): min=158 , max=291847 , avg=737.38, stdev=3944.14
+     lat (usec): min=158 , max=291848 , avg=737.56, stdev=3944.14
+  write: io=589752KB, bw=4914.6KB/s, iops=1228 , runt=120001msec
+    clat (usec): min=138 , max=2048.3K, avg=1625.15, stdev=11344.36
+     lat (usec): min=139 , max=2048.3K, avg=1625.50, stdev=11344.35
+
+= aio dio =
+== fio config file ==
+  [global]
+  ioengine=libaio
+  direct=1
+  bs=4k
+  thread
+  group_reporting
+  directory=/mnt/sda1/
+  filename=testfile
+  filesize=10g
+  size=10g
+  runtime=120
+  iodepth=64
+  fallocate=0
+  
+  [reader]
+  rw=randread
+  numjobs=8
+  
+  [writer]
+  rw=randwrite
+  numjobs=2
+
+== result ==
+=== w/o dioread_nolock ===
+  read : io=4865.4MB, bw=41510KB/s, iops=10377 , runt=120014msec
+    slat (usec): min=3 , max=320273 , avg=700.79, stdev=6070.93
+    clat (usec): min=232 , max=958452 , avg=48627.21, stdev=53296.33
+     lat (usec): min=248 , max=958471 , avg=49328.36, stdev=53905.27
+  write: io=684100KB, bw=5700.3KB/s, iops=1425 , runt=120013msec
+    slat (usec): min=5 , max=349019 , avg=1339.75, stdev=9538.63
+    clat (usec): min=140 , max=1060.1K, avg=88459.40, stdev=95903.63
+     lat (usec): min=211 , max=1060.1K, avg=89799.48, stdev=97025.95
+
+=== w/ dioread_nolock ===
+  read : io=4869.1MB, bw=41544KB/s, iops=10385 , runt=120037msec
+    slat (usec): min=4 , max=322951 , avg=700.33, stdev=5987.29
+    clat (usec): min=229 , max=703241 , avg=48584.27, stdev=52570.02
+     lat (usec): min=248 , max=703247 , avg=49284.94, stdev=53185.97
+  write: io=698856KB, bw=5821.1KB/s, iops=1455 , runt=120038msec
+    slat (usec): min=7 , max=367042 , avg=1297.87, stdev=9316.21
+    clat (usec): min=178 , max=968434 , avg=86625.80, stdev=92500.21
+     lat (usec): min=284 , max=1020.8K, avg=87924.01, stdev=93554.86
+
+= sync buffered io =
+== fio config file ==
+  [global]
+  ioengine=psync
+  direct=0
+  bs=4k
+  thread
+  group_reporting
+  directory=/mnt/sda1/
+  filename=testfile
+  filesize=10g
+  size=10g
+  runtime=120
+  iodepth=16
+  fallocate=0
+  
+  [reader]
+  rw=randread
+  numjobs=8
+  
+  [writer]
+  rw=randwrite
+  numjobs=2
+  
+== result ==
+=== w/o dioread_nolock ===
+  read : io=7577.6MB, bw=64661KB/s, iops=16165 , runt=120001msec
+    clat (usec): min=1 , max=3107.8K, avg=493.15, stdev=5368.87
+     lat (usec): min=1 , max=3107.8K, avg=493.31, stdev=5368.87
+  write: io=764256KB, bw=6350.2KB/s, iops=1587 , runt=120353msec
+    clat (usec): min=2 , max=42443K, avg=1257.41, stdev=138832.28
+     lat (usec): min=2 , max=42443K, avg=1257.57, stdev=138832.29
+
+=== w/ dioread_nolock ===
+  read : io=7613.1MB, bw=64972KB/s, iops=16243 , runt=120001msec
+    clat (usec): min=1 , max=1126.4K, avg=490.79, stdev=3742.64
+     lat (usec): min=1 , max=1126.4K, avg=490.95, stdev=3742.64
+  write: io=763428KB, bw=6351.1KB/s, iops=1587 , runt=120189msec
+    clat (usec): min=2 , max=45783K, avg=1258.23, stdev=163258.23
+     lat (usec): min=2 , max=45783K, avg=1258.37, stdev=163258.23
