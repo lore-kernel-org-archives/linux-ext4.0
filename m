@@ -1,134 +1,47 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: s390x: kernel BUG at fs/ext4/inode.c:1591!
-Date: Mon, 01 Apr 2013 10:56:27 +0400
-Message-ID: <87fvzaspr8.fsf@openvz.org>
-References: <2133129347.8273339.1364549222854.JavaMail.root@redhat.com> <87ip46ss0o.fsf@openvz.org> <1211053180.322948.1364797847717.JavaMail.root@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Theodore Ts'o <tytso@mit.edu>, LKML <linux-kernel@vger.kernel.org>,
-	linux-s390 <linux-s390@vger.kernel.org>,
-	Steve Best <sbest@redhat.com>, linux-ext4@vger.kernel.org
-To: CAI Qian <caiqian@redhat.com>
+Subject: [PATCH] ext4: fix incorrect lock ordering for ext4_ext_migrate
+Date: Mon,  1 Apr 2013 11:31:02 +0400
+Message-ID: <1364801462-13120-1-git-send-email-dmonakhov@openvz.org>
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f177.google.com ([209.85.217.177]:37467 "EHLO
-	mail-lb0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757369Ab3DAG4d convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Apr 2013 02:56:33 -0400
-In-Reply-To: <1211053180.322948.1364797847717.JavaMail.root@redhat.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:10916 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758168Ab3DAHbO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 1 Apr 2013 03:31:14 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 1 Apr 2013 02:30:47 -0400 (EDT), CAI Qian <caiqian@redhat.com> =
-wrote:
->=20
->=20
-> ----- Original Message -----
-> > From: "Dmitry Monakhov" <dmonakhov@openvz.org>
-> > To: "CAI Qian" <caiqian@redhat.com>, "Theodore Ts'o" <tytso@mit.edu=
->
-> > Cc: "LKML" <linux-kernel@vger.kernel.org>, "linux-s390" <linux-s390=
-@vger.kernel.org>, "Steve Best"
-> > <sbest@redhat.com>, linux-ext4@vger.kernel.org
-> > Sent: Monday, April 1, 2013 2:07:35 PM
-> > Subject: Re: s390x: kernel BUG at fs/ext4/inode.c:1591!
-> >=20
-> > On Fri, 29 Mar 2013 05:27:02 -0400 (EDT), CAI Qian <caiqian@redhat.=
-com>
-> > wrote:
-> > >=20
-> > I've spent a half of weekend by trying to create s390x guest image,
-> > without any success. Can you please share it.
-> Well, do you have something like IBM system-Z?
-> http://en.wikipedia.org/wiki/IBM_System_z10
->=20
-> Also can be reproduced on system-p,
-> http://en.wikipedia.org/wiki/IBM_System_p
->=20
-Ohh... So you are lucky user of this black rocks and you
-are the only person who can help to reproduce the issue.
-BTW: Have you run kernel with the patch i've sent you?
-> Never seen it on x86 so far though.
-> CAI Qian
-> > >=20
-> > > ----- Original Message -----
-> > > > From: "Theodore Ts'o" <tytso@mit.edu>
-> > > > To: "CAI Qian" <caiqian@redhat.com>
-> > > > Cc: "LKML" <linux-kernel@vger.kernel.org>, "linux-s390"
-> > > > <linux-s390@vger.kernel.org>, "Steve Best"
-> > > > <sbest@redhat.com>, linux-ext4@vger.kernel.org
-> > > > Sent: Thursday, March 28, 2013 8:05:17 PM
-> > > > Subject: Re: s390x: kernel BUG at fs/ext4/inode.c:1591!
-> > > >=20
-> > > > On Thu, Mar 28, 2013 at 02:40:33AM -0400, CAI Qian wrote:
-> > > > > System hung when running xfstests-dev 013 test case on an s39=
-0x
-> > > > > guest. Never saw
-> > > > > this on 3.9-rc3 before but need to double-check. Any idea?
-> > > > >=20
-> > > > > =C3=9D 1113.795759=C2=A8 ------------=C3=9D cut here =C2=A8--=
-----------
-> > > > > =C3=9D 1113.795771=C2=A8 kernel BUG at fs/ext4/inode.c:1591!
-> > > >=20
-> > > > thanks for the report.  What kernel version did this come from?=
-  Was
-> > > > it 3.9-rc4?  (line 1591 for 3.9-rc3 doesn't contain a BUG_ON).
-> > > Yes, the lastest mainline.
-> > > >=20
-> > > > If it is indeed 3.9-rc4, it would be helpful, since you can rep=
-roduce
-> > > > the problem, to insert a debugging printk which fires when
-> > > > bh->b_blocknr !=3D pblock before the BUG_ON, and have it print =
-the
-> > > > b_blocknr and pblock values.
-> > > bh->b_blocknr=3D100346
-> > > pblock=3D66797
-> > >=20
-> > > Bisecting results so far,
-> > > git bisect start
-> > > # good: [a937536b868b8369b98967929045f1df54234323] Linux 3.9-rc3
-> > > git bisect good a937536b868b8369b98967929045f1df54234323
-> > > # bad: [9064171268d838b8f283fe111ef086b9479d059a] Merge tag 'for-=
-linus' of
-> > > git://git.kernel.org/pub/scm/linux/kernel/git/sfr/next-fixes
-> > > git bisect bad 9064171268d838b8f283fe111ef086b9479d059a
-> > > # bad: [38d78e587d4960d0db94add518d27ee74bad2301] mqueue: sys_mq_=
-open: do
-> > > not call mnt_drop_write() if read-only
-> > > git bisect bad 38d78e587d4960d0db94add518d27ee74bad2301
-> > > # good: [e7489622d3603b7d161b484dcd340d9f678b0c7a] Merge tag 'arm=
-64-fixes'
-> > > of git://git.kernel.org/pub/scm/linux/kernel/git/cmarinas/linux-a=
-arch64
-> > > git bisect good e7489622d3603b7d161b484dcd340d9f678b0c7a
-> > > # good: [172a271b5e090da7468c66b9ccbcdb3d929eed75] Merge branch '=
-drm-fixes'
-> > > of git://people.freedesktop.org/~airlied/linux
-> > > git bisect good 172a271b5e090da7468c66b9ccbcdb3d929eed75
-> > > # good: [0a7e453103b9718d357688b83bb968ee108cc874] Merge branch '=
-next' of
-> > > git://git.kernel.org/pub/scm/linux/kernel/git/rzhang/linux
-> > > git bisect good 0a7e453103b9718d357688b83bb968ee108cc874
-> > > # bad: [0e401101db49959f5783f6ee9e676124b5a183ac] ext4: fix memor=
-y leakage
-> > > in mext_check_coverage
-> > > git bisect bad 0e401101db49959f5783f6ee9e676124b5a183ac
-> > > CAI Qian
-> > > >=20
-> > > > Thanks,
-> > > >=20
-> > > > 						- Ted
-> > > >=20
-> > > --
-> > > To unsubscribe from this list: send the line "unsubscribe linux-k=
-ernel" in
-> > > the body of a message to majordomo@vger.kernel.org
-> > > More majordomo info at  http://vger.kernel.org/majordomo-info.htm=
-l
-> > > Please read the FAQ at  http://www.tux.org/lkml/
-> >=20
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+existing locking ordering: journal-> i_data_sem, but
+ext4_ext_migrate() grab locks in opposite order which may result
+in deacklock.
+
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ fs/ext4/extents.c |   12 +++++-------
+ 1 files changed, 5 insertions(+), 7 deletions(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index e4a6844..1530cf4 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4627,6 +4627,10 @@ int ext4_ind_migrate(struct inode *inode)
+ 	    (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
+ 		return -EINVAL;
+ 
++	handle = ext4_journal_start(inode, EXT4_HT_MIGRATE, 1);
++	if (IS_ERR(handle))
++		return PTR_ERR(handle);
++
+ 	down_write(&EXT4_I(inode)->i_data_sem);
+ 	ret = ext4_ext_check_inode(inode);
+ 	if (ret)
+@@ -4650,19 +4654,13 @@ int ext4_ind_migrate(struct inode *inode)
+ 		}
+ 	}
+ 
+-	handle = ext4_journal_start(inode, EXT4_HT_MIGRATE, 1);
+-	if (IS_ERR(handle)) {
+-		ret = PTR_ERR(handle);
+-		goto errout;
+-	}
