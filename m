@@ -1,47 +1,36 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/4] mke2fs: don't display bigalloc/quota fs feature warnings in quiet mode
-Date: Sun, 31 Mar 2013 20:44:01 -0400
-Message-ID: <1364777043-20610-3-git-send-email-tytso@mit.edu>
-References: <CAN=xW0bhw41-NNqWnDfqk0SbM6xymrhuL9WONQKefC=PsHg5GQ@mail.gmail.com>
- <1364777043-20610-1-git-send-email-tytso@mit.edu>
-Cc: john.jolly@gmail.com, Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH 2/2 v3] ext4: introduce ext4_get_group_number()
+Date: Sun, 31 Mar 2013 21:24:17 -0400
+Message-ID: <20130401012417.GB3494@thunk.org>
+References: <1364398541-4114-1-git-send-email-lczerner@redhat.com>
+ <1364398541-4114-2-git-send-email-lczerner@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:57589 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:57601 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756227Ab3DAAoP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 31 Mar 2013 20:44:15 -0400
-In-Reply-To: <1364777043-20610-1-git-send-email-tytso@mit.edu>
+	id S1754570Ab3DABYT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 31 Mar 2013 21:24:19 -0400
+Content-Disposition: inline
+In-Reply-To: <1364398541-4114-2-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- misc/mke2fs.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+On Wed, Mar 27, 2013 at 04:35:41PM +0100, Lukas Czerner wrote:
+> Currently on many places in ext4 we're using
+> ext4_get_group_no_and_offset() even though we're only interested in
+> knowing the block group of the particular block, not the offset within
+> the block group so we can use more efficient way to compute block group.
+> 
+> This patch introduces ext4_get_group_number() which computes block group
+> for a given block much more efficiently. Use this function instead of
+> ext4_get_group_no_and_offset() everywhere where we're only interested in
+> knowing the block group.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index fe5ce7d..7448255 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -1942,13 +1942,15 @@ profile_error:
- 		exit(1);
- 	}
- 
--	if (fs_param.s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_BIGALLOC)
-+	if (!quiet &&
-+	    (fs_param.s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_BIGALLOC))
- 		fprintf(stderr, _("\nWarning: the bigalloc feature is still "
- 				  "under development\n"
- 				  "See https://ext4.wiki.kernel.org/"
- 				  "index.php/Bigalloc for more information\n\n"));
- 
--	if (fs_param.s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_QUOTA)
-+	if (!quiet &&
-+	    (fs_param.s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_QUOTA))
- 		fprintf(stderr, _("\nWarning: the quota feature is still "
- 				  "under development\n"
- 				  "See https://ext4.wiki.kernel.org/"
--- 
-1.7.12.rc0.22.gcdd159b
+Thanks, applied.
 
+					- Ted
