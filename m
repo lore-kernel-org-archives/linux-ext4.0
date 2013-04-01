@@ -1,63 +1,66 @@
-From: Chris Mason <chris.mason@fusionio.com>
+From: Eric Sandeen <sandeen@redhat.com>
 Subject: Re: EXT4 nodelalloc => back to stone age.
-Date: Mon, 1 Apr 2013 11:57:05 -0400
-Message-ID: <20130401155705.16754.31446@localhost.localdomain>
-References: <87d2uese6t.fsf@openvz.org> <5159A55B.1090302@redhat.com>
- <20130401154541.16754.22860@localhost.localdomain>
+Date: Mon, 01 Apr 2013 11:00:33 -0500
+Message-ID: <5159AF21.1050805@redhat.com>
+References: <87d2uese6t.fsf@openvz.org> <5159A55B.1090302@redhat.com> <20130401153952.GE4731@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8BIT
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"axboe@kernel.dk" <axboe@kernel.dk>, Jan Kara <jack@suse.cz>
-To: Chris Mason <chris.mason@fusionio.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from dkim1.fusionio.com ([66.114.96.53]:48741 "EHLO
-	dkim1.fusionio.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758527Ab3DAP5K convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Apr 2013 11:57:10 -0400
-Received: from mx1.fusionio.com (unknown [10.101.1.160])
-	by dkim1.fusionio.com (Postfix) with ESMTP id ADB037C0682
-	for <linux-ext4@vger.kernel.org>; Mon,  1 Apr 2013 09:57:09 -0600 (MDT)
-In-Reply-To: <20130401154541.16754.22860@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org, axboe@kernel.dk,
+	Jan Kara <jack@suse.cz>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20130401153952.GE4731@thunk.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Quoting Chris Mason (2013-04-01 11:45:41)
-> Quoting Eric Sandeen (2013-04-01 11:18:51)
-> > On 4/1/13 6:06 AM, Dmitry Monakhov wrote:
-> > 
-> > > 1)Do we really have to use WRITE_SYNC in case of WB_SYNC_ALL ?
+On 4/1/13 10:39 AM, Theodore Ts'o wrote:
+> On Mon, Apr 01, 2013 at 10:18:51AM -0500, Eric Sandeen wrote:
+>> I'd add:
+>>
+>> 3) Why do we have a "nodelalloc" mount option at all?
+>>
+>> but then I thought:
+>>
+>> Is it also this bad when using the ext4 driver to run an ext3 fs?
 > 
-> Yes?  The stuff we wait on should be WRITE_SYNC.
+> Yes, and I there would be a similar performance problem if you are
+> using the ext3 file system driver, since ext3_*_writepage() also ends
+> up calling block_write_full_page() which will also result in the
+> writes happening with WRITE_SYNC.
+
+> The main reason why we keep nodelalloc at this point is bug-for-bug
+> compatibility with ext3 file systems --- basically, for users who are
+> using this as a workaround for the O_PONIES issue instead of fixing
+> their applications to use fsync() appropriately.
+
+Sorry for getting off the original thread here, but IMHO these are
+2 different things:
+
+nondelalloc behavior makes sense for ext3, but:
+-o nodelalloc mount options don't make sense for ext4.
+
+> So another question is how much do we care about exact emulation of
+> ext3's behaviour for those distributions who wish to use ext4 file
+> system driver for ext2 and ext3 file systems?
+>
+> One of the reasons for keeping nodealloc mode was the argument was
+> that it removing it wouldn't really allow us to remove that much
+> complexity from ext4.
+
+IMHO we should keep the mode for ext2/3, but lose the ext4 option.
+It'd just be one less row in the ext4 test matrix.
+
+-Eric
+
+>  But adding a nodealloc specific ext4_writepages
+> pages would result in adding a huge amount of complexity, and my first
+> reaction is that it's really not worth the code maintenance headache.
+> Dmitry, is there a reason why you are especially worried about the
+> performace of nodelalloc mode?
 > 
-> > 
-> > ...
-> > 
-> > > 2) Why don't we have writepages for non delalloc case ?
-> > 
-> > ...
-> > 
-> > I'd add:
-> > 
-> > 3) Why do we have a "nodelalloc" mount option at all?
-> > 
-> > but then I thought:
-> > 
-> > Is it also this bad when using the ext4 driver to run an ext3 fs?
+> 	       	      	       	   	- Ted
 > 
-> Quick comparison on a single iodrive:
 
-On the theory that writepages is the problem try echo 1 >
-/sys/block/xxx/queue/rotational.  With request merging on here in
-nodelalloc mode:
-
-dd if=/dev/zero of=foo bs=1M count=1024 conv=fsync,notrunc
-1073741824 bytes (1.1 GB) copied, 2.53741 s, 423 MB/s
-
-dd if=/dev/zero of=foo bs=1M count=1024 conv=fsync,notrunc
-1073741824 bytes (1.1 GB) copied, 1.37795 s, 779 MB/s
-
--chris
