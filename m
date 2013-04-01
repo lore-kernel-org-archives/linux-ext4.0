@@ -1,63 +1,55 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH, RFC V3] ext3: add ioctl to force 32-bit hashes from indexed
- dirs
-Date: Mon, 01 Apr 2013 13:21:51 -0500
-Message-ID: <5159D03F.5000606@redhat.com>
-References: <51546EED.8030507@redhat.com> <5154AAB4.2000701@redhat.com> <5159A8D5.1000204@redhat.com> <20130401181718.GB22443@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 2/2] ext4: optimize ext4_force_commit
+Date: Mon, 1 Apr 2013 14:58:38 -0400
+Message-ID: <20130401185838.GC22443@thunk.org>
+References: <1364807037-21664-1-git-send-email-dmonakhov@openvz.org>
+ <1364807037-21664-2-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Anand Avati <avati@redhat.com>, Jan Kara <jack@suse.cz>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, jack@suse.cz
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:3239 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757257Ab3DASWf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 1 Apr 2013 14:22:35 -0400
-In-Reply-To: <20130401181718.GB22443@thunk.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:57885 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757278Ab3DAS6o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 1 Apr 2013 14:58:44 -0400
+Content-Disposition: inline
+In-Reply-To: <1364807037-21664-2-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 4/1/13 1:17 PM, Theodore Ts'o wrote:
-> On Mon, Apr 01, 2013 at 10:33:41AM -0500, Eric Sandeen wrote:
->> +		/* Have we already started readdir on this dx dir? */
->> +		if (filp->private_data) {
->> +			err = -EINVAL;
->> +			goto hash32bits_out;
->> +		}
-> 
-> I'm not sure how much we care, but if filp->private_data is non-NULL
-> and filp->f_pos == 0, then the application must have called
-> rewinddir(), and at that point it would be fair game for us to free
-> the rb_tree (see the code in ext4_dx_readdir() just after the comment
-> "Some one has messed with f_pos; reset the world".)
+On Mon, Apr 01, 2013 at 01:03:57PM +0400, Dmitry Monakhov wrote:
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index e3e6a06..280a918 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -4436,13 +4436,14 @@ static void ext4_clear_journal_err(struct super_block *sb,
+>   */
+>  int ext4_force_commit(struct super_block *sb)
+>  {
+> -	journal_t *journal;
+> +	tid_t target;
+>  
+>  	if (sb->s_flags & MS_RDONLY)
+>  		return 0;
+>  
+> -	journal = EXT4_SB(sb)->s_journal;
+> -	return ext4_journal_force_commit(journal);
+> +	if (jbd2_journal_start_commit(EXT4_SB(sb)->s_journal, &target))
+> +		return jbd2_log_wait_commit(EXT4_SB(sb)->s_journal, target);
 
-Hm, I originally tested f_pos == 0, and Zach thought that wasn't the right
-test, suggested f_private, and that seemed right to me, but yeah, I suppose
-!f_pos && f_private means it got rewound.
+EXT4_SB(sb)->s_journal is NULL in no-journal mode.  So you need to
+check for this --- this is something which is done in
+ext4_journal_force_commit().
 
-> This would allow a bit more flexibility than just requiring that the
-> ioctl be issued just after the opendir(), and allow it just after a
-> call to rewinddir().
+Since this is the only user of ext4_journal_force_commit(), you might
+as well get rid of ext4_journal_force_commit() as part of making this
+change.
 
-I guess I do wonder what real-world use that might have, though.
+The other possibility is we perhaps we should just change
+jbd2_journal_force_commit() to call jbd2_journal_start_commit() and
+jbd2_log_wait_commit(); the only other caller of
+jbd2_journal_force_commit() is ocfs2_sync_file(), and it would benefit
+from this change as well.
 
-> This this would invalidate any previously issued telldir() cookies,
-> but according to SuSv3, telldir() cookies are not guaranteed to be
-> consistent after a rewinddir() or a closedir(), so it would be
-> standards compliant to do this.
-
-Well, could do.  Think it's worth it?
-
-If so, then we could also allow flipping the flag on and off.
-I suppose it's good to get the interface right to start with;
-if we really want to be able to flip it on and off after a rewinddir,
-then . . . ok, V4?  It's more flexible, but I don't know what the
-usecase might be.
-
--Eric
-
-> 						- Ted
-> 
-
+					- Ted
