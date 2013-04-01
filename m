@@ -1,147 +1,161 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/4] tests: create crcsum progam to support resizing tests
-Date: Sun, 31 Mar 2013 20:44:02 -0400
-Message-ID: <1364777043-20610-4-git-send-email-tytso@mit.edu>
+Subject: [PATCH 1/4] resize2fs: fix off-line resize of file systems with flex_bg && !resize_inode
+Date: Sun, 31 Mar 2013 20:44:00 -0400
+Message-ID: <1364777043-20610-2-git-send-email-tytso@mit.edu>
 References: <CAN=xW0bhw41-NNqWnDfqk0SbM6xymrhuL9WONQKefC=PsHg5GQ@mail.gmail.com>
  <1364777043-20610-1-git-send-email-tytso@mit.edu>
 Cc: john.jolly@gmail.com, Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:57586 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:57577 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756227Ab3DAAoL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 31 Mar 2013 20:44:11 -0400
+	id S1756227Ab3DAAoI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 31 Mar 2013 20:44:08 -0400
 In-Reply-To: <1364777043-20610-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The only checksum program which we can reliably count upon being
-installed on all systems is "sum", which is not a particular robust
-checksum.  The problem with using md5sum or sha1sum is it hat it may
-not be installed on all systems.  So create a crcsum program which is
-used so we can validate that a data file on a resized file system has
-not been corrupted.
+When doing an off-line resize2fs of an initially very small file
+system, it's possible to run out of reserved gdt blocks (which are
+reserved via the resize inode).  Once we run out, we need to move the
+allocation bitmaps and inode table out of the way to grow the gdt
+blocks.  Unfortunately, when moving these metadata blocks, it was
+possible that a block that had been just been newly allocated for a
+new block group could also get allocated for a metadata block for an
+existing block group that was being moved.
+
+To prevent this, after we grow the gdt blocks and allocate the
+metadata blocks for the new block groups, make sure all of these
+blocks are marked as reserved.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Reported-by: John Jolly <john.jolly@gmail.com>
 ---
- tests/progs/Makefile.in |  6 ++++-
- tests/progs/crcsum.c    | 70 +++++++++++++++++++++++++++++++++++++++++++++++++
- tests/test_config       |  1 +
- 3 files changed, 76 insertions(+), 1 deletion(-)
- create mode 100644 tests/progs/crcsum.c
+ resize/resize2fs.c | 58 ++++++++++++++++++++++++++++++++++++++++++------------
+ 1 file changed, 45 insertions(+), 13 deletions(-)
 
-diff --git a/tests/progs/Makefile.in b/tests/progs/Makefile.in
-index 0e28192..e3c1ef4 100644
---- a/tests/progs/Makefile.in
-+++ b/tests/progs/Makefile.in
-@@ -13,7 +13,7 @@ INSTALL = @INSTALL@
+diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+index c9458ea..7c4f86a 100644
+--- a/resize/resize2fs.c
++++ b/resize/resize2fs.c
+@@ -51,6 +51,8 @@ static errcode_t move_itables(ext2_resize_t rfs);
+ static errcode_t fix_resize_inode(ext2_filsys fs);
+ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs);
+ static errcode_t fix_sb_journal_backup(ext2_filsys fs);
++static errcode_t mark_table_blocks(ext2_filsys fs,
++				   ext2fs_block_bitmap bmap);
  
- MK_CMDS=	_SS_DIR_OVERRIDE=../../lib/ss ../../lib/ss/mk_cmds
+ /*
+  * Some helper CPP macros
+@@ -306,9 +308,6 @@ static void free_gdp_blocks(ext2_filsys fs,
+ /*
+  * This routine is shared by the online and offline resize routines.
+  * All of the information which is adjusted in memory is done here.
+- *
+- * The reserve_blocks parameter is only needed when shrinking the
+- * filesystem.
+  */
+ errcode_t adjust_fs_info(ext2_filsys fs, ext2_filsys old_fs,
+ 			 ext2fs_block_bitmap reserve_blocks, blk64_t new_size)
+@@ -407,12 +406,21 @@ retry:
+ 	real_end = (((blk64_t) EXT2_BLOCKS_PER_GROUP(fs->super) *
+ 		     fs->group_desc_count)) - 1 +
+ 		fs->super->s_first_data_block;
+-	retval = ext2fs_resize_block_bitmap2(ext2fs_blocks_count(fs->super)-1,
+-					    real_end, fs->block_map);
+-
++	retval = ext2fs_resize_block_bitmap2(new_size - 1,
++					     real_end, fs->block_map);
+ 	if (retval) goto errout;
  
--PROGS=		test_icount
-+PROGS=		test_icount crcsum
- 
- TEST_REL_OBJS=	test_rel.o test_rel_cmds.o
- 
-@@ -34,6 +34,10 @@ test_rel: $(TEST_REL_OBJS) $(DEPLIBS)
- 	$(E) "	LD $@"
- 	$(Q) $(LD) $(ALL_LDFLAGS) -o test_rel $(TEST_REL_OBJS) $(LIBS)
- 
-+crcsum: crcsum.o $(DEPLIBS)
-+	$(E) "	LD $@"
-+	$(Q) $(LD) $(ALL_LDFLAGS) -o crcsum crcsum.o $(LIBS)
-+
- test_rel_cmds.c: test_rel_cmds.ct
- 	$(E) "	MK_CMDS $@"
- 	$(Q) $(MK_CMDS) $(srcdir)/test_rel_cmds.ct
-diff --git a/tests/progs/crcsum.c b/tests/progs/crcsum.c
-new file mode 100644
-index 0000000..bee979b
---- /dev/null
-+++ b/tests/progs/crcsum.c
-@@ -0,0 +1,70 @@
-+/*
-+ * crcsum.c
-+ *
-+ * Copyright (C) 2013 Theodore Ts'o.
-+ *
-+ * %Begin-Header%
-+ * This file may be redistributed under the terms of the GNU Public
-+ * License.
-+ * %End-Header%
-+ */
-+
-+#include "config.h"
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <stdint.h>
-+#include <string.h>
-+#include <unistd.h>
-+#ifdef HAVE_GETOPT_H
-+#include <getopt.h>
-+#endif
-+#include <fcntl.h>
-+
-+#include "et/com_err.h"
-+#include "ss/ss.h"
-+#include "ext2fs/ext2fs.h"
-+
-+
-+int main(int argc, char **argv)
-+{
-+	int		c;
-+	uint32_t	crc = ~0;
-+	uint32_t	(*csum_func)(uint32_t crc, unsigned char const *p,
-+				     size_t len);
-+	FILE		*f;
-+
-+	csum_func = ext2fs_crc32c_le;
-+
-+	while ((c = getopt (argc, argv, "B")) != EOF) {
-+		switch (c) {
-+		case 'B':
-+			csum_func = ext2fs_crc32c_be;
-+			break;
-+		default:
-+			com_err(argv[0], 0, "Usage: crcsum [-b] [file]\n");
-+			return 1;
-+		}
+ 	/*
++	 * If we are growing the file system, also grow the size of
++	 * the reserve_blocks bitmap
++	 */
++	if (reserve_blocks && new_size > ext2fs_blocks_count(old_fs->super)) {
++		retval = ext2fs_resize_block_bitmap2(new_size - 1,
++						     real_end, reserve_blocks);
++		if (retval) goto errout;
 +	}
 +
-+	if (optind == argc)
-+		f = stdin;
-+	else {
-+		f = fopen(argv[optind], "r");
-+		if (!f) {
-+			com_err(argv[0], errno, "while trying to open %s\n",
-+				argv[optind]);
-+			exit(1);
-+		}
-+	}
++	/*
+ 	 * Reallocate the group descriptors as necessary.
+ 	 */
+ 	if (old_fs->desc_blocks != fs->desc_blocks) {
+@@ -512,6 +520,15 @@ retry:
+ 	else
+ 		old_desc_blocks = fs->desc_blocks +
+ 			fs->super->s_reserved_gdt_blocks;
 +
-+	while (!feof(f)) {
-+		unsigned char buf[4096];
++	/*
++	 * If we changed the number of block_group descriptor blocks,
++	 * we need to make sure they are all marked as reserved in the
++	 * file systems's block allocation map.
++	 */
++	for (i = 0; i < old_fs->group_desc_count; i++)
++		ext2fs_reserve_super_and_bgd(fs, i, fs->block_map);
 +
-+		int c = fread(buf, 1, sizeof(buf), f);
+ 	for (i = old_fs->group_desc_count;
+ 	     i < fs->group_desc_count; i++) {
+ 		memset(ext2fs_group_desc(fs, fs->group_desc, i), 0,
+@@ -578,6 +595,17 @@ retry:
+ 	}
+ 	retval = 0;
+ 
++	/*
++	 * Mark all of the metadata blocks as reserved so they won't
++	 * get allocated by the call to ext2fs_allocate_group_table()
++	 * in blocks_to_move(), where we allocate new blocks to
++	 * replace those allocation bitmap and inode table blocks
++	 * which have to get relocated to make space for an increased
++	 * number of the block group descriptors.
++	 */
++	if (reserve_blocks)
++		mark_table_blocks(fs, reserve_blocks);
 +
-+		if (c)
-+			crc = csum_func(crc, buf, c);
-+	}
-+	printf("%u\n", crc);
-+	return 0;
-+}
-diff --git a/tests/test_config b/tests/test_config
-index 0ba8b5e..36b53b7 100644
---- a/tests/test_config
-+++ b/tests/test_config
-@@ -19,6 +19,7 @@ RESIZE2FS="$USE_VALGRIND $RESIZE2FS_EXE"
- E2UNDO_EXE="../misc/e2undo"
- TEST_REL=../tests/progs/test_rel
- TEST_ICOUNT=../tests/progs/test_icount
-+CRCSUM=../tests/progs/crcsum
- LD_LIBRARY_PATH=../lib:../lib/ext2fs:../lib/e2p:../lib/et:../lib/ss
- DYLD_LIBRARY_PATH=../lib:../lib/ext2fs:../lib/e2p:../lib/et:../lib/ss
- export LD_LIBRARY_PATH
+ errout:
+ 	return (retval);
+ }
+@@ -716,6 +744,7 @@ static errcode_t mark_table_blocks(ext2_filsys fs,
+ 				   ext2fs_block_bitmap bmap)
+ {
+ 	dgrp_t			i;
++	blk64_t			blk;
+ 
+ 	for (i = 0; i < fs->group_desc_count; i++) {
+ 		ext2fs_reserve_super_and_bgd(fs, i, bmap);
+@@ -723,21 +752,24 @@ static errcode_t mark_table_blocks(ext2_filsys fs,
+ 		/*
+ 		 * Mark the blocks used for the inode table
+ 		 */
+-		ext2fs_mark_block_bitmap_range2(bmap,
+-					  ext2fs_inode_table_loc(fs, i),
+-					  fs->inode_blocks_per_group);
++		blk = ext2fs_inode_table_loc(fs, i);
++		if (blk)
++			ext2fs_mark_block_bitmap_range2(bmap, blk,
++						fs->inode_blocks_per_group);
+ 
+ 		/*
+ 		 * Mark block used for the block bitmap
+ 		 */
+-		ext2fs_mark_block_bitmap2(bmap,
+-					 ext2fs_block_bitmap_loc(fs, i));
++		blk = ext2fs_block_bitmap_loc(fs, i);
++		if (blk)
++			ext2fs_mark_block_bitmap2(bmap, blk);
+ 
+ 		/*
+ 		 * Mark block used for the inode bitmap
+ 		 */
+-		ext2fs_mark_block_bitmap2(bmap,
+-					 ext2fs_inode_bitmap_loc(fs, i));
++		blk = ext2fs_inode_bitmap_loc(fs, i);
++		if (blk)
++			ext2fs_mark_block_bitmap2(bmap, blk);
+ 	}
+ 	return 0;
+ }
 -- 
 1.7.12.rc0.22.gcdd159b
 
