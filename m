@@ -1,27 +1,35 @@
-From: Theodore Ts'o <tytso@mit.edu>
+From: Chris Mason <chris.mason@fusionio.com>
 Subject: Re: EXT4 nodelalloc => back to stone age.
-Date: Mon, 1 Apr 2013 11:39:52 -0400
-Message-ID: <20130401153952.GE4731@thunk.org>
-References: <87d2uese6t.fsf@openvz.org>
- <5159A55B.1090302@redhat.com>
+Date: Mon, 1 Apr 2013 11:45:41 -0400
+Message-ID: <20130401154541.16754.22860@localhost.localdomain>
+References: <87d2uese6t.fsf@openvz.org> <5159A55B.1090302@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	linux-fsdevel@vger.kernel.org, axboe@kernel.dk,
-	Jan Kara <jack@suse.cz>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:57825 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758730Ab3DAPj7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 1 Apr 2013 11:39:59 -0400
-Content-Disposition: inline
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8BIT
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"axboe@kernel.dk" <axboe@kernel.dk>, Jan Kara <jack@suse.cz>
+To: Eric Sandeen <sandeen@redhat.com>,
+	Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <5159A55B.1090302@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Apr 01, 2013 at 10:18:51AM -0500, Eric Sandeen wrote:
+Quoting Eric Sandeen (2013-04-01 11:18:51)
+> On 4/1/13 6:06 AM, Dmitry Monakhov wrote:
+> 
+> > 1)Do we really have to use WRITE_SYNC in case of WB_SYNC_ALL ?
+
+Yes?  The stuff we wait on should be WRITE_SYNC.
+
+> 
+> ...
+> 
+> > 2) Why don't we have writepages for non delalloc case ?
+> 
+> ...
+> 
 > I'd add:
 > 
 > 3) Why do we have a "nodelalloc" mount option at all?
@@ -30,26 +38,27 @@ On Mon, Apr 01, 2013 at 10:18:51AM -0500, Eric Sandeen wrote:
 > 
 > Is it also this bad when using the ext4 driver to run an ext3 fs?
 
-Yes, and I there would be a similar performance problem if you are
-using the ext3 file system driver, since ext3_*_writepage() also ends
-up calling block_write_full_page() which will also result in the
-writes happening with WRITE_SYNC.
+Quick comparison on a single iodrive:
 
-The main reason why we keep nodelalloc at this point is bug-for-bug
-compatibility with ext3 file systems --- basically, for users who are
-using this as a workaround for the O_PONIES issue instead of fixing
-their applications to use fsync() appropriately.
+Ext4 (defaults):
+# dd if=/dev/zero of=foo bs=1M count=1024 conv=fsync,notrunc
+1073741824 bytes (1.1 GB) copied, 1.95442 s, 549 MB/s
+# dd if=/dev/zero of=foo bs=1M count=1024 conv=fsync,notrunc
+1073741824 bytes (1.1 GB) copied, 1.45012 s, 740 MB/s
 
-So another question is how much do we care about exact emulation of
-ext3's behaviour for those distributions who wish to use ext4 file
-system driver for ext2 and ext3 file systems?
+Ext4 (nodelalloc):
+dd if=/dev/zero of=foo bs=1M count=1024 conv=fsync,notrunc
+1073741824 bytes (1.1 GB) copied, 2.97308 s, 361 MB/s
+# dd if=/dev/zero of=foo bs=1M count=1024 conv=fsync,notrunc
+1073741824 bytes (1.1 GB) copied, 1.76617 s, 608 MB/s
+# dd if=/dev/zero of=foo bs=1M count=1024 conv=fsync,notrunc
 
-One of the reasons for keeping nodealloc mode was the argument was
-that it removing it wouldn't really allow us to remove that much
-complexity from ext4.  But adding a nodealloc specific ext4_writepages
-pages would result in adding a huge amount of complexity, and my first
-reaction is that it's really not worth the code maintenance headache.
-Dmitry, is there a reason why you are especially worried about the
-performace of nodelalloc mode?
+XFS   gives 628, 733MB/s
 
-	       	      	       	   	- Ted
+Btrfs gives 659, 635MB/s -- since we're doing fsync, this includes all
+the crcs for the data.
+
+Ext3 mounted by ext4.ko: 291, 467MB/s
+
+-chris
+
