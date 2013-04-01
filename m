@@ -1,50 +1,140 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/2 v3] ext4: Make ext4_block_in_group() much more
- efficient
-Date: Sun, 31 Mar 2013 21:24:03 -0400
-Message-ID: <20130401012403.GA3494@thunk.org>
-References: <1364398541-4114-1-git-send-email-lczerner@redhat.com>
+From: Eric Whitney <enwlinux@gmail.com>
+Subject: Re: Eric Whitney's ext4 scaling data
+Date: Sun, 31 Mar 2013 23:43:52 -0400
+Message-ID: <20130401034352.GA3672@rocky>
+References: <nsxhajyzu6n.fsf@closure.thunk.org>
+ <20130327033322.GB9887@gmail.com>
+ <20130327033554.GE5861@thunk.org>
+ <20130327072101.GA10346@gmail.com>
+ <20130327151011.GD14900@thunk.org>
+ <20130328051427.GE6369@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:57598 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754039Ab3DABYG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 31 Mar 2013 21:24:06 -0400
+Received: from mail-ve0-f170.google.com ([209.85.128.170]:62667 "EHLO
+	mail-ve0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756553Ab3DADn5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 31 Mar 2013 23:43:57 -0400
+Received: by mail-ve0-f170.google.com with SMTP id 15so2170190vea.29
+        for <linux-ext4@vger.kernel.org>; Sun, 31 Mar 2013 20:43:57 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <1364398541-4114-1-git-send-email-lczerner@redhat.com>
+In-Reply-To: <20130328051427.GE6369@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Mar 27, 2013 at 04:35:40PM +0100, Lukas Czerner wrote:
-> Currently in when getting the block group number for a particular block
-> in ext4_block_in_group() we're using ext4_get_group_no_and_offset()
-> which uses do_div() to get the block group and the remainer which is
-> offset within the group.
+* Dave Chinner <david@fromorbit.com>:
+> On Wed, Mar 27, 2013 at 11:10:11AM -0400, Theodore Ts'o wrote:
+> > On Wed, Mar 27, 2013 at 03:21:02PM +0800, Zheng Liu wrote:
+> > > 
+> > > The key issue that we add test case into xfstests is that we need to
+> > > handle some filesystem-specific feature.  Just like we had discussed
+> > > with Dave, what is an extent?  IMHO now xfstests gets more compliated
+> > > because it needs to handle this problem. e.g. punch hole for
+> > > indirect-based file in ext4.
+> > 
+> > Yes, that means among other things the test framework needs to keep
+> > track of which file system features was being used when we run a
+> > particular test, as well as the hardware configuration.
+> > 
+> > I suspect that what this means is that we're better off trying to
+> > create a new test framework that does what we want, and automates as
+> > much of this as possible.
 > 
-> We don't need all of that in ext4_block_in_group() as we only need to
-> figure out the group number.
+> Well, tracking the hardware, configuration, results over time, etc
+> is really orthogonal to the benchmarking harness. We're already
+> modifying xfstests to make it easier to do this sort of thing (like
+> user specified results directories, configurable expunged files,
+> etc) so that you can control and archive individual xfstests from a
+> higher level automated harness.
 > 
-> This commit changes ext4_block_in_group() to calculate group number
-> directly. This shows as a big improvement with regards to cpu
-> utilization. Measuring fallocate -l 15T on fresh file system with perf
-> showed that 23% of cpu time was spend in the
-> ext4_get_group_no_and_offset(). With this change it completely
-> disappears from the list only bumping the occurrence of
-> ext4_init_block_bitmap() which is the biggest user of
-> ext4_block_in_group() by 4%. As the result of this change on my system
-> the fallocate call was approx. 10% faster.
+> So I don't see this a problem that a low level benchmarking
+> framework needs to concern itself directly with - what you seem to
+> be wanting is a better automation and archiving framework on top of
+> the low level harness that runs the specific tests/benchmarks....
 > 
-> However since there is '-g' option in mkfs which allow us setting
-> different groups size (mostly for developers) I've introduced new per
-> file system flag whether we have a standard block group size or not. The
-> flag is used to determine whether we can use the bit shift optimization
-> or not.
+> > It would probably be a good idea to bring in Eric Whitney into this
+> > discussion, since he has a huge amount of expertise about what sort of
+> > things need to be done in order to get good results.  He was doing a
+> > number of things by hand, including re-running the tests multiple
+> > times to make sure the results were stable.  I could imagine that if
+> > the framework could keep track of what the standard deviation was for
+> > a particular test, it could try to do this automatically, and then we
+> > could also throw up a flag if the average result hadn't changed, but
+> > the standard deviation had increased, since that might be an
+> > indication that some change had caused a lot more variability.
 > 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> Yup, you need to have result archives and post-process them to do
+> this sort of thing, which is why I think it's a separate problem to
+> that of actually defining and running the benchmarks...
+> 
 
-Thanks, applied.
 
-						- Ted
+I think it's important to also consider building good tools to explore
+and visualize the data.  The web pages in the tar archive I sent Ted are a
+poor approximation, since their content was generated by hand rather than
+automatically.  Instead, you might have a tool whose user interface is a
+web page with links to all collected data sets in an archive, and filters
+which could be used to select specific test systems, individual benchmarks,
+and metrics of interest (including configuration info).  Once you select a
+group of data sets, test systems, a benchmark, and a metric, the page
+produces graphs or tables of data for comparison.
+
+We built something like this at my previous employer, and it was invaluable 
+(I'm sure similar things must have been done elsewhere).  It made it very
+easy to quickly review a new incoming data set and compare it with older
+data, to look for progressive changes over time, or to examine behavioral
+differences across system configurations.  When you collect enough benchmark
+data over time, fully exploiting all that information leaves you with a 
+significant data mining problem.
+
+It's helpful if benchmark and workload design supports analysis as well as
+measurement.  I tend to like a layered approach where, for example, a base
+layer might consist of a set of block layer microbenchmarks that help
+characterize storage system performance.  A second layer would consist of
+simple file system microbenchmarks - the usual sequential/random read/write
+plus selected metadata operations, etc.  More elaborate workloads
+representative of important use cases would sit on top of that.  Ideally,
+it should be possible to relate changes in higher level workloads/benchmarks
+to those below and vice versa.  For example, the block layer microbenchmarks
+ought to help determine the maximum performance bounds for the file system
+microbenchmarks, etc.  (fio ought to be suitable for the two lower levels in
+this scheme;  more elaborate workloads might require some scripting around
+fio or some new code.)
+
+When working with benchmarks on a test system that can yield significant
+variation, I do tend to like to take multiple sets and compare them.  This
+could certainly be handled statistically;  my usual practice is to do this
+manually so as to get a better feel for how the benchmark and the hardware
+run together.  Ideally, more experience with the test configuration leads
+to hardware reconfiguration or kernel tweaks that can yield more consistent
+results (common on NUMA systems, for example).  Strong variation is sometimes
+indication of a problem somewhere (in my experience, at least), so trying
+to understand and reduce the variation sometimes leads to a useful fix.
+
+FWIW, I used the Autotest client code for my ext4 work to run the benchmarks
+and collect the data, system configuration particulars, run logs, etc.  Most
+of what I had to do involved scripting test scenarios that would run selected
+sets of benchmarks in predefined test environments (mkfs and mount options,
+etc.).  Hooks to run code before and after tests in the standard test
+framework made it easy to add lockstat and other instrumentation.
+
+It worked well enough, though Autotest contained a number of test environment
+assumptions that conflicted with what I wanted to do from time to time, and
+required custom workarounds to its framework.  A number of new versions have
+been released since then, and a quick look suggests that there have been some
+substantial changes (contains some test scenarios for fio, ffsb, xfstests).
+Using Autotest means working in Python, though, and some prefer a simpler
+approach using shell scripts.
+
+Autotest's server code can be used to control client code on test systems,
+scheduling and operating tests, archiving results in data bases, and
+postprocessing data.  That was more complexity than I wanted, so I simply
+archived my results in my own filesystem directory structure.
+
+Eric
+
+
+
+
