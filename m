@@ -1,132 +1,55 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH, RFC V3] ext4: add ioctl to force 32-bit hashes from indexed
- dirs
-Date: Mon, 01 Apr 2013 10:35:33 -0500
-Message-ID: <5159A945.9000309@redhat.com>
-References: <51546C4E.9010903@redhat.com> <5154AA74.90501@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: EXT4 nodelalloc => back to stone age.
+Date: Mon, 1 Apr 2013 11:39:52 -0400
+Message-ID: <20130401153952.GE4731@thunk.org>
+References: <87d2uese6t.fsf@openvz.org>
+ <5159A55B.1090302@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Anand Avati <avati@redhat.com>
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org, axboe@kernel.dk,
+	Jan Kara <jack@suse.cz>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59871 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758700Ab3DAPfc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 1 Apr 2013 11:35:32 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r31FZWZU025900
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Mon, 1 Apr 2013 11:35:32 -0400
-In-Reply-To: <5154AA74.90501@redhat.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:57825 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758730Ab3DAPj7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 1 Apr 2013 11:39:59 -0400
+Content-Disposition: inline
+In-Reply-To: <5159A55B.1090302@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This adds a new ioctl, EXT4_IOC_32BITHASH, which allows a
-userspace application to request 32-bit rather than 64-bit
-hashes from readdir on an indexed / dx / htree directory.
+On Mon, Apr 01, 2013 at 10:18:51AM -0500, Eric Sandeen wrote:
+> I'd add:
+> 
+> 3) Why do we have a "nodelalloc" mount option at all?
+> 
+> but then I thought:
+> 
+> Is it also this bad when using the ext4 driver to run an ext3 fs?
 
-Gluster had been relying on the top bits of the d_off being
-free; there are some reports that filling all 64 bits breaks
-Samba as well.  The infrastructure to return 32-bit hashes
-already exists; NFS can turn it on, and it's turned on for
-32-bit processes as well.  So it's just a matter of flipping
-on the f_mode flag before readdir starts.
+Yes, and I there would be a similar performance problem if you are
+using the ext3 file system driver, since ext3_*_writepage() also ends
+up calling block_write_full_page() which will also result in the
+writes happening with WRITE_SYNC.
 
-Care needs to be taken that we don't change the FMODE flag
-after readdir has been started, so we make sure that
-filp->private_data has not yet been set before we set the flag.
-(Thanks Zach!).
+The main reason why we keep nodelalloc at this point is bug-for-bug
+compatibility with ext3 file systems --- basically, for users who are
+using this as a workaround for the O_PONIES issue instead of fixing
+their applications to use fsync() appropriately.
 
-Pre-submission-fixes-by: Zach Brown <zab@redhat.com>
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+So another question is how much do we care about exact emulation of
+ext3's behaviour for those distributions who wish to use ext4 file
+system driver for ext2 and ext3 file systems?
 
-V2:
-fix "readir" typo
-rename goto target to *_out like others
-remove parameter; we can't really ever turn this back off once it's used.
-closing and reopening is the only way to get back to 64 bit hashes.
+One of the reasons for keeping nodealloc mode was the argument was
+that it removing it wouldn't really allow us to remove that much
+complexity from ext4.  But adding a nodealloc specific ext4_writepages
+pages would result in adding a huge amount of complexity, and my first
+reaction is that it's really not worth the code maintenance headache.
+Dmitry, is there a reason why you are especially worried about the
+performace of nodelalloc mode?
 
-V3:
-return -ENOTDIR if the target is not a directory
-
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index d8cd1f0..5e3a316 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -39,7 +39,7 @@ static int ext4_dx_readdir(struct file *filp,
-  *
-  * Return 1 if it is a dx dir, 0 if not
-  */
--static int is_dx_dir(struct inode *inode)
-+int is_dx_dir(struct inode *inode)
- {
- 	struct super_block *sb = inode->i_sb;
- 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 3b83cd6..44a9b52 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -614,6 +614,7 @@ enum {
-  /* note ioctl 10 reserved for an early version of the FIEMAP ioctl */
-  /* note ioctl 11 reserved for filesystem-independent FIEMAP ioctl */
- #define EXT4_IOC_ALLOC_DA_BLKS		_IO('f', 12)
-+#define EXT4_IOC_32BITHASH		_IO('f', 13)
- #define EXT4_IOC_MOVE_EXT		_IOWR('f', 15, struct move_extent)
- #define EXT4_IOC_RESIZE_FS		_IOW('f', 16, __u64)
- 
-@@ -1953,6 +1954,7 @@ extern unsigned ext4_num_overhead_clusters(struct super_block *sb,
- ext4_fsblk_t ext4_inode_to_goal_block(struct inode *);
- 
- /* dir.c */
-+extern int is_dx_dir(struct inode *inode);
- extern int __ext4_check_dir_entry(const char *, unsigned int, struct inode *,
- 				  struct file *,
- 				  struct ext4_dir_entry_2 *,
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 721f4d3..4b1183a 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -356,7 +356,39 @@ group_add_out:
- 		mnt_drop_write_file(filp);
- 		return err;
- 	}
-+	case EXT4_IOC_32BITHASH: {
-+		int err = 0;
- 
-+		/* Serialize with readdir */
-+		if ((err = mutex_lock_killable(&inode->i_mutex)))
-+			return err;
-+
-+		/* protect f_mode */
-+		spin_lock(&filp->f_lock);
-+
-+		/* Only valid for htree directories */
-+		if (!S_ISDIR(inode->i_mode)) {
-+			err = -ENOTDIR;
-+			goto hash32bits_out;
-+		}
-+
-+		if (!is_dx_dir(inode)) {
-+			err = -EINVAL;
-+			goto hash32bits_out;
-+		}
-+
-+		/* Have we already started readdir on this dx dir? */
-+		if (filp->private_data) {
-+			err = -EINVAL;
-+			goto hash32bits_out;
-+		}
-+
-+		filp->f_mode |= FMODE_32BITHASH;
-+hash32bits_out:
-+		spin_unlock(&filp->f_lock);
-+		mutex_unlock(&inode->i_mutex);
-+		return err;
-+	}
- 	case EXT4_IOC_RESIZE_FS: {
- 		ext4_fsblk_t n_blocks_count;
- 		struct super_block *sb = inode->i_sb;
-
-
+	       	      	       	   	- Ted
