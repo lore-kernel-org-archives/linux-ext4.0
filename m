@@ -1,19 +1,25 @@
-From: Jiri Slaby <jslaby@suse.cz>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
 Subject: Re: Excessive stall times on ext4 in 3.9-rc2
-Date: Tue, 02 Apr 2013 17:00:12 +0200
-Message-ID: <515AF27C.2060206@suse.cz>
+Date: Tue, 02 Apr 2013 23:03:36 +0800
+Message-ID: <515AF348.7060209@gmail.com>
 References: <20130402142717.GH32241@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-15
 Content-Transfer-Encoding: 7bit
-Cc: LKML <linux-kernel@vger.kernel.org>, Linux-MM <linux-mm@kvack.org>
-To: Mel Gorman <mgorman@suse.de>, linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+ Linux-MM <linux-mm@kvack.org>,
+ Jiri Slaby <jslaby@suse.cz>
+To: Mel Gorman <mgorman@suse.de>
 Return-path: <owner-linux-mm@kvack.org>
 In-Reply-To: <20130402142717.GH32241@suse.de>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 04/02/2013 04:27 PM, Mel Gorman wrote:
+Hi Mel,
+
+Thanks for reporting it.
+
+On 04/02/2013 10:27 PM, Mel Gorman wrote:
 > I'm testing a page-reclaim-related series on my laptop that is partially
 > aimed at fixing long stalls when doing metadata-intensive operations on
 > low memory such as a git checkout. I've been running 3.9-rc2 with the
@@ -26,12 +32,15 @@ On 04/02/2013 04:27 PM, Mel Gorman wrote:
 > 6498 seconds on IO which seems like a lot. Here is a breakdown of the
 > recorded events.
 
-Just a note that I am indeed using ext4 on the affected machine for all
-filesystems I have except for an efi partition...
+In this merge window, we add a status tree as a extent cache.  Meanwhile
+a es_cache shrinker is registered to try to reclaim from this cache when
+we are under a high memory pressure.  So I suspect that the root cause
+is this shrinker.  Could you please tell me how to reproduce this
+problem?  If I understand correctly, I can run mmtest to reproduce this
+problem, right?
 
--- 
-js
-suse labs
+Thanks,
+						- Zheng
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
