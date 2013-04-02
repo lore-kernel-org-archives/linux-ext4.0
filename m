@@ -1,124 +1,105 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: s390x: kernel BUG at fs/ext4/inode.c:1591! (powerpc too!)
-Date: Wed, 03 Apr 2013 12:52:06 +0400
-Message-ID: <87li90q9mx.fsf@openvz.org>
-References: <2133129347.8273339.1364549222854.JavaMail.root@redhat.com> <87ip46ss0o.fsf@openvz.org> <1211053180.322948.1364797847717.JavaMail.root@redhat.com> <87fvzaspr8.fsf@openvz.org> <874841142.414482.1364875584266.JavaMail.root@redhat.com> <alpine.DEB.2.10.1304012249440.5874@trent.utfs.org> <877gkls1q7.fsf@openvz.org> <alpine.DEB.2.10.1304021430480.13746@trent.utfs.org> <87r4isd1vn.fsf@openvz.org> <alpine.DEB.2.10.1304021611020.13746@trent.utfs.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: EXT4 nodelalloc => back to stone age.
+Date: Tue, 2 Apr 2013 15:46:34 +0200
+Message-ID: <20130402134634.GB7999@quack.suse.cz>
+References: <87d2uese6t.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-=-="
-Cc: CAI Qian <caiqian@redhat.com>, Theodore Ts'o <tytso@mit.edu>,
-	LKML <linux-kernel@vger.kernel.org>,
-	linux-s390 <linux-s390@vger.kernel.org>,
-	Steve Best <sbest@redhat.com>, linux-ext4@vger.kernel.org,
-	Zheng Liu <gnehzuil.liu@gmail.com>
-To: Christian Kujau <lists@nerdbynature.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-la0-f42.google.com ([209.85.215.42]:36702 "EHLO
-	mail-la0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759778Ab3DCIwM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Apr 2013 04:52:12 -0400
-In-Reply-To: <alpine.DEB.2.10.1304021611020.13746@trent.utfs.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org, axboe@kernel.dk,
+	Jan Kara <jack@suse.cz>
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <87d2uese6t.fsf@openvz.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
---=-=-=
+On Mon 01-04-13 15:06:18, Dmitry Monakhov wrote:
+> 
+> I've mounted ext4 with -onodelalloc on my SSD (INTEL SSDSA2CW120G3,4PC10362)
+> It shows numbers which are slower than HDD which was produced 15 years ago
+> #mount  $SCRATCH_DEV $SCRATCH_MNT -onodelalloc
+> # dd if=/dev/zero of=/mnt_scratch/file bs=1M count=1024 conv=fsync,notrunc
+>   1073741824 bytes (1.1 GB) copied, 46.7948 s, 22.9 MB/s
+> # dd if=/dev/zero of=/mnt_scratch/file bs=1M count=1024 conv=fsync,notrunc
+>   1073741824 bytes (1.1 GB) copied, 41.2717 s, 26.0 MB/s
+> blktrace shows horrible traces:
 
-On Tue, 2 Apr 2013 16:22:41 -0700 (PDT), Christian Kujau <lists@nerdbynature.de> wrote:
-> On Wed, 3 Apr 2013 at 02:05, Dmitry Monakhov wrote:
-> > Please drop that patch and collect logs with a kernel which 
-> > has only 0001-enable-ES_AGGRESSIVE_TEST-V2.patch patch applied
-Ok I have found at least one issue.
-Please give a try to this patch
+> 253,1    0       11     0.004965203 13618  Q  WS 1219360 + 8 [jbd2/dm-1-8]
+> 253,1    0       11     0.004965203 13618  Q  WS 1219360 + 8 [jbd2/dm-1-8]
+> 253,1    0       11     0.004965203 13618  Q  WS 1219360 + 8 [jbd2/dm-1-8]
+> 253,1    0       11     0.004965203 13618  Q  WS 1219360 + 8 [jbd2/dm-1-8]
+> 253,1    1       39     0.004983642     0  C  WS 1219344 + 8 [0]
+> 253,1    1       39     0.004983642     0  C  WS 1219344 + 8 [0]
+> 253,1    1       39     0.004983642     0  C  WS 1219344 + 8 [0]
+> 253,1    1       39     0.004983642     0  C  WS 1219344 + 8 [0]
+> 253,1    1       40     0.005082898     0  C  WS 1219352 + 8 [0]
+> 253,1    1       40     0.005082898     0  C  WS 1219352 + 8 [0]
+> 253,1    1       40     0.005082898     0  C  WS 1219352 + 8 [0]
+> 253,1    1       40     0.005082898     0  C  WS 1219352 + 8 [0]
+> 253,1    3       12     0.005106049  2580  Q   W 1219368 + 8 [flush-253:1]
+> 253,1    3       12     0.005106049  2580  Q   W 1219368 + 8 [flush-253:1]
+> 253,1    3       12     0.005106049  2580  Q   W 1219368 + 8 [flush-253:1]
+> 253,1    3       12     0.005106049  2580  Q   W 1219368 + 8 [flush-253:1]
+> 253,1    2       17     0.005197143 13750  Q  WS 1219376 + 8 [dd]
+> 253,1    2       17     0.005197143 13750  Q  WS 1219376 + 8 [dd]
+> 253,1    2       17     0.005197143 13750  Q  WS 1219376 + 8 [dd]
+> 253,1    2       17     0.005197143 13750  Q  WS 1219376 + 8 [dd]
+> 253,1    1       41     0.005199871     0  C  WS 1219360 + 8 [0]
+> 253,1    1       41     0.005199871     0  C  WS 1219360 + 8 [0]
+> 253,1    1       41     0.005199871     0  C  WS 1219360 + 8 [0]
+> 253,1    1       41     0.005199871     0  C  WS 1219360 + 8 [0]
+  Hum, not sure why you see all the events 4x. But that's not important I
+guess.
 
---=-=-=
-Content-Type: text/x-patch
-Content-Disposition: inline; filename=ext4_zeroout_cpu2disk_fix.patch
+> As one can see data written from two threads dd and jbd2 on per-page basis and
+> jbd2 submit pages with WRITE_SYNC  i.e. we write page-by-page
+> synchronously :)
+>
+> Exact calltrace:
+> journal_submit_inode_data_buffers
+>  wbc.sync_mode =  WB_SYNC_ALL
+>  ->generic_writepages
+>    ->write_cache_pages
+>      ->ext4_writepage
+>        ->ext4_bio_write_page
+>          ->io_submit_add_bh
+>            ->io_submit_init
+>              io->io_op = (wbc->sync_mode == WB_SYNC_ALL ?  WRITE_SYNC :
+>              WRITE);
+>        ->ext4_io_submit(io);
+> 
+> 1)Do we really have to use WRITE_SYNC in case of WB_SYNC_ALL ?
+  Actually WRITE_SYNC doesn't mean we write sychronously. We just tell the
+IO scheduler that we are going to wait for the IO to complete soon. So it
+prioritizes these writes against other async writes. We don't have to use
+WRITE_SYNC but really in this case we do pretty much what IO scheduler
+people want - flag IO that's going to be waited upon.
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 1530cf4..e8460f6 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3272,7 +3272,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 		if (err)
- 			goto out;
- 		zero_ex.ee_block = ex->ee_block;
--		zero_ex.ee_len = ext4_ext_get_actual_len(ex);
-+		zero_ex.ee_len = cpu_to_le16(ext4_ext_get_actual_len(ext));
- 		ext4_ext_store_pblock(&zero_ex, ext4_ext_pblock(ex));
- 
- 		err = ext4_ext_get_access(handle, inode, path + depth);
+>   Why blk_finish_plug(&plug) which is called from generic_writepages() is
+>   not enough? As far as I can see this code was copy-pasted from XFS,
+>   also DIO also tag bio-s with WRITE_SYNC, but what happen if file
+>   is highly fragmented (or block device is RAID0) we will endup doing
+>   synchronous io.
+  I see you are tracing the DM device. That may be actually somewhat
+confusing since you are missing some actions like merges of requests and
+dispatches to underlying device. 
 
---=-=-=
+> 2) Why don't we have writepages for non delalloc case ?
+> 
+> I want to fix (2) by implementing writepages() for non delalloc case
+> Once this will be done we may add new flag WB_SYNC_NOALLOC so
+> journal_submit_inode_data_buffers will use
+> __filemap_fdatawrite_range(, , , WB_SYNC_ALL| WB_SYNC_NOALLC)
+> which will call optimized ->ext4_writepages() 
+  So what would you expect from ->writepages() implementation?
 
+Anyway the throughput you see looks bad. What kernel version are you using?
+There's possibility my recent changes to ext4_writepage() could have slowed
+down something...
 
-> 
-> I've applied (only) 0001-enable-ES_AGGRESSIVE_TEST-V2.patch to 3.9-rc4:
-> 
->   patching file fs/ext4/extents_status.h
->   patching file fs/ext4/inode.c
->   Hunk #1 succeeded at 1588 (offset 42 lines).
->   Hunk #2 succeeded at 1609 (offset 42 lines).
-> 
-> And tried to download some images via bittorrent. As expected, lots of 
-> "ES cache assertation failed" were being logged:
-> 
->  http://nerdbynature.de/bits/3.9.0-rc4/ext4/
->  => messages_0001-enable-ES_AGGRESSIVE_TEST-V2.txt.xz
-> 
-> I've tried to download 3 files, all via bittorrent (so, fallocate & heavy 
-> mmap)
-> 
-> 1) 8GB Fedora iso, there are also WARNINGs bring triggered, see below.
->    I decided to cancel the download after some gigabyes.
-> 
-> 2) A 50 MB Debian iso, this produced just one "ES cache assertation" 
->    message. Download went OK, checksum was correct too.
-> 
-> 3) A 221 MB Fedora iso, produced a couple of "ES cache assertation" 
->    messages, but no WARNINGs. Download went OK, checksum was correct too.
-> 
-> It's all in that messages_0001-enable-ES_AGGRESSIVE_TEST-V2.txt.xz file 
-> above. I just e2fsck'ed the ext4 filesystem again (and did so last night), 
-> but no errors were found.
-> 
-> HTH,
-> Christian.
-> 
-> One of the WARNINGs during that 8GB download:
-> 
->     ino:39190654 lbkl:0, b_state=0x0004b988, b_size=4131
->  ------------[ cut here ]------------
->  WARNING: at /opt/linux-git/fs/ext4/inode.c:1600
->  Modules linked in: md5 ecb nfs i2c_powermac therm_adt746x ecryptfs firewire_sbp2 arc4 b43 usb_storage mac80211 cfg80211
->  NIP: c013745c LR: c013745c CTR: c000df9c
->  REGS: edc479a0 TRAP: 0700   Tainted: G        W     (3.9.0-rc4-dirty)
->  MSR: 00029032 <EE,ME,IR,DR,RI>  CR: 44028644  XER: 20000000
->  TASK = edca9740[4379] 'flush-254:1' THREAD: edc46000
->  GPR00: c013745c edc47a50 edca9740 00000034 edca9db0 00000006 00000000 00008000
->  GPR08: 00003fb0 00218f23 00000000 c000006e 00000dc9 00000000 00000009 ee18cca0
->  GPR16: edc47c78 0000000e 0004b9bf 0004b988 00000000 edc47a84 00001000 e6357540
->  GPR24: edc47b78 e6357540 00000000 0004b97f 00000000 0051d188 00000000 0004b988
->  NIP [c013745c] mpage_da_submit_io+0x3dc/0x3f0
->  LR [c013745c] mpage_da_submit_io+0x3dc/0x3f0
->  Call Trace:
->  [edc47a50] [c013745c] mpage_da_submit_io+0x3dc/0x3f0 (unreliable)
->  [edc47b30] [c013c9f0] mpage_da_map_and_submit+0x16c/0x5f0
->  [edc47bc0] [c013d2e4] write_cache_pages_da+0x470/0x480
->  [edc47c70] [c013d554] ext4_da_writepages+0x260/0x49c
->  [edc47d20] [c00eeea0] __writeback_single_inode+0x34/0x120
->  [edc47d40] [c00ef508] writeback_sb_inodes+0x1fc/0x34c
->  [edc47db0] [c00ef6e4] __writeback_inodes_wb+0x8c/0xd0
->  [edc47de0] [c00efa90] wb_writeback+0x1b4/0x1bc
->  [edc47e20] [c00f06d0] wb_do_writeback+0x1ec/0x1f4
->  [edc47e80] [c00f0748] bdi_writeback_thread+0x70/0x140
->  [edc47eb0] [c0051c18] kthread+0xa8/0xac
->  [edc47f40] [c00106cc] ret_from_kernel_thread+0x64/0x6c
->  --- Exception: 0 at   (null)
->      LR =   (null)
->  Instruction dump:
-> 
-> -- 
-> BOFH excuse #61:
-> 
-> not approved by the FCC
-
---=-=-=--
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
