@@ -1,98 +1,125 @@
-From: Dan Carpenter <dan.carpenter@oracle.com>
-Subject: re: ext4: fold ext4_generic_write_end() into ext4_write_end()
-Date: Tue, 2 Apr 2013 11:11:44 +0300
-Message-ID: <20130402081144.GA11441@longonot.mountain>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH] fs: take i_mutex in __page_symlink()
+Date: Tue, 02 Apr 2013 12:19:42 +0400
+Message-ID: <87a9phs5sx.fsf@openvz.org>
+References: <20130328140635.GA32635@thunk.org> <1364829822-18989-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, kbuild@01.org
-To: wenqing.lz@taobao.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:48881 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754754Ab3DBINm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Apr 2013 04:13:42 -0400
-Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: multipart/mixed; boundary="=-=-="
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
+	Al Viro <viro@ZenIV.linux.org.uk>
+To: Theodore Ts'o <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1364829822-18989-1-git-send-email-tytso@mit.edu>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hello Zheng Liu,
+--=-=-=
 
-The patch 31e4045fda81: "ext4: fold ext4_generic_write_end() into 
-ext4_write_end()" from Mar 26, 2013, leads to the following warning:
-"fs/ext4/inode.c:1169 ext4_write_end()
-	 warn: unsigned 'copied' is never less than zero."
+On Mon,  1 Apr 2013 11:23:42 -0400, Theodore Ts'o <tytso@mit.edu> wrote:
+> In Documentation/filesystems/Locking, it's documented that
+> write_begin() is guaranteed to be called with i_mutex locked.  The
+> function __page_symlink() was not taking i_mutex before calling
+> pagecache_write_begin(), which will eventually result in the file
+> system's write_begin()'s function getting called.
+> 
+> Other callers of pagecache_write_begin such as in fs/splice.c, call
+> pagecache_write_begin() with i_mutex locked, so fix __page_symlink()
+> to be consistent.
+> 
+> This was discovered by the addition of a new ext4 debugging assertion
+> which checked to make sure i_mutex was locked before calling
+> ext4_truncate().
+> 
+> Reported-by: Zheng Liu <gnehzuil.liu@gmail.com>
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: linux-fsdevel@vger.kernel.org
+> Cc: Al Viro <viro@ZenIV.linux.org.uk>
+> ---
+> 
+> Note: I plan to carry the following patch in the ext4 tree, unless
+> someone objects or Al insists on carrying this in the vfs git tree.
+> 
+>  fs/namei.c | 2 ++
+>  1 file changed, 2 insertions(+)
+> 
+> diff --git a/fs/namei.c b/fs/namei.c
+> index 57ae9c8..548e57b 100644
+> --- a/fs/namei.c
+> +++ b/fs/namei.c
+> @@ -4035,8 +4035,10 @@ int __page_symlink(struct inode *inode, const char *symname, int len, int nofs)
+>  		flags |= AOP_FLAG_NOFS;
+>  
+>  retry:
+> +	mutex_lock(&inode->i_mutex);
+>  	err = pagecache_write_begin(NULL, mapping, 0, len-1,
+>  				flags, &page, &fsdata);
+> +	mutex_unlock(&inode->i_mutex);
+Noo. Please do no do that. i_mutex should being hold from write_begin() to
+write_end() because:
+1) both functions contains one logical block (critical section)
+2) write_end() may update i_size
+3) write_end() may call truncate
+
+And since we know that we want to lock i_mutex here only for
+convention purposes (no one can access this inode yet) let's do that
+correct. Original Zheng's patch was much better.
+I have following patch in my queue:
+
+--=-=-=
+Content-Type: text/x-patch
+Content-Disposition: inline; filename=0001-patch-ext4_symlink.patch.patch
+
+>From c147d9ae5f9511f722a97179cd9f661e7e10417e Mon Sep 17 00:00:00 2001
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Date: Sun, 31 Mar 2013 17:35:38 +0400
+Subject: [PATCH] patch ext4_symlink.patch
 
 
-  1110  static int ext4_write_end(struct file *file,
-  1111                            struct address_space *mapping,
-  1112                            loff_t pos, unsigned len, unsigned copied,
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ fs/namei.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
 
-copied is unsigned.
+diff --git a/fs/namei.c b/fs/namei.c
+index 57ae9c8..9dcdb27 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -4034,6 +4034,7 @@ int __page_symlink(struct inode *inode, const char *symname, int len, int nofs)
+ 	if (nofs)
+ 		flags |= AOP_FLAG_NOFS;
+ 
++	mutex_lock(&inode->i_mutex);
+ retry:
+ 	err = pagecache_write_begin(NULL, mapping, 0, len-1,
+ 				flags, &page, &fsdata);
+@@ -4052,8 +4053,10 @@ retry:
+ 		goto retry;
+ 
+ 	mark_inode_dirty(inode);
++	mutex_unlock(&inode->i_mutex);
+ 	return 0;
+ fail:
++	mutex_unlock(&inode->i_mutex);
+ 	return err;
+ }
+ 
+-- 
+1.7.1
 
-  1113                            struct page *page, void *fsdata)
-  1114  {
-  1115          handle_t *handle = ext4_journal_current_handle();
-  1116          struct inode *inode = mapping->host;
-  1117          int ret = 0, ret2;
-  1118          int i_size_changed = 0;
-  1119  
-  1120          trace_ext4_write_end(inode, pos, len, copied);
-  1121          if (ext4_test_inode_state(inode, EXT4_STATE_ORDERED_MODE)) {
-  1122                  ret = ext4_jbd2_file_inode(handle, inode);
-  1123                  if (ret) {
-  1124                          unlock_page(page);
-  1125                          page_cache_release(page);
-  1126                          goto errout;
-  1127                  }
-  1128          }
-  1129  
-  1130          if (ext4_has_inline_data(inode))
-  1131                  copied = ext4_write_inline_data_end(inode, pos, len,
-  1132                                                      copied, page);
-  1133          else
-  1134                  copied = block_write_end(file, mapping, pos,
-  1135                                           len, copied, page, fsdata);
 
-I don't think these functions return negative error codes.
+--=-=-=
 
-  1136  
-  1137          /*
-  1138           * No need to use i_size_read() here, the i_size
-  1139           * cannot change under us because we hole i_mutex.
-  1140           *
-  1141           * But it's important to update i_size while still holding page lock:
-  1142           * page writeout could otherwise come in and zero beyond i_size.
-  1143           */
-  1144          if (pos + copied > inode->i_size) {
-  1145                  i_size_write(inode, pos + copied);
-  1146                  i_size_changed = 1;
-  1147          }
-  1148  
-  1149          if (pos + copied > EXT4_I(inode)->i_disksize) {
-  1150                  /* We need to mark inode dirty even if
-  1151                   * new_i_size is less that inode->i_size
-  1152                   * but greater than i_disksize. (hint delalloc)
-  1153                   */
-  1154                  ext4_update_i_disksize(inode, (pos + copied));
-  1155                  i_size_changed = 1;
-  1156          }
-  1157          unlock_page(page);
-  1158          page_cache_release(page);
-  1159  
-  1160          /*
-  1161           * Don't mark the inode dirty under page lock. First, it unnecessarily
-  1162           * makes the holding time of page lock longer. Second, it forces lock
-  1163           * ordering of page lock and transaction start for journaling
-  1164           * filesystems.
-  1165           */
-  1166          if (i_size_changed)
-  1167                  ext4_mark_inode_dirty(handle, inode);
-  1168  
-  1169          if (copied < 0)
-  1170                  ret = copied;
 
-copied is never less than zero because it's unsigned.
+>  	if (err)
+>  		goto fail;
+>  
+> -- 
+> 1.7.12.rc0.22.gcdd159b
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-regards,
-dan carpenter
-
+--=-=-=--
