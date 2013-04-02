@@ -1,117 +1,62 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: ext4: fold ext4_generic_write_end() into ext4_write_end()
-Date: Tue, 2 Apr 2013 19:09:18 +0800
-Message-ID: <20130402110918.GA10495@gmail.com>
-References: <20130402081144.GA11441@longonot.mountain>
+Subject: Re: s390x: kernel BUG at fs/ext4/inode.c:1591! (powerpc too!)
+Date: Tue, 2 Apr 2013 20:33:56 +0800
+Message-ID: <20130402123356.GA10703@gmail.com>
+References: <2133129347.8273339.1364549222854.JavaMail.root@redhat.com>
+ <87ip46ss0o.fsf@openvz.org>
+ <1211053180.322948.1364797847717.JavaMail.root@redhat.com>
+ <87fvzaspr8.fsf@openvz.org>
+ <874841142.414482.1364875584266.JavaMail.root@redhat.com>
+ <alpine.DEB.2.10.1304012249440.5874@trent.utfs.org>
+ <877gkls1q7.fsf@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: wenqing.lz@taobao.com, linux-ext4@vger.kernel.org, kbuild@01.org,
-	Theodore Ts'o <tytso@mit.edu>
-To: Dan Carpenter <dan.carpenter@oracle.com>
+Cc: Christian Kujau <lists@nerdbynature.de>,
+	CAI Qian <caiqian@redhat.com>, Theodore Ts'o <tytso@mit.edu>,
+	LKML <linux-kernel@vger.kernel.org>,
+	linux-s390 <linux-s390@vger.kernel.org>,
+	Steve Best <sbest@redhat.com>, linux-ext4@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f50.google.com ([209.85.210.50]:42717 "EHLO
-	mail-da0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759967Ab3DBKxI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Apr 2013 06:53:08 -0400
-Received: by mail-da0-f50.google.com with SMTP id t1so140865dae.37
-        for <linux-ext4@vger.kernel.org>; Tue, 02 Apr 2013 03:53:08 -0700 (PDT)
+Received: from mail-da0-f54.google.com ([209.85.210.54]:61561 "EHLO
+	mail-da0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754329Ab3DBMRy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Apr 2013 08:17:54 -0400
 Content-Disposition: inline
-In-Reply-To: <20130402081144.GA11441@longonot.mountain>
+In-Reply-To: <877gkls1q7.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-[Add Ted into cc list]
+On Tue, Apr 02, 2013 at 01:47:44PM +0400, Dmitry Monakhov wrote:
+> On Mon, 1 Apr 2013 23:15:07 -0700 (PDT), Christian Kujau <lists@nerdbynature.de> wrote:
+> > Hi,
+> > 
+> > my machine (PowerBook G4) just crashed and the only thing netconsole was 
+> > able to transmit was:
+> > 
+> >   ------------[ cut here ]------------
+> >   kernel BUG at /usr/local/src/linux-git/fs/ext4/inode.c:1591!
+> > 
+> > But (unfortunately) nothing more. I have no clear way to reproduce this, 
+> > but I have some kind of a (longish) backstory to this, see below. The 
+> > system is running 3.9-rc4, its .config and dmesg:
+> > 
+> >   http://nerdbynature.de/bits/3.9.0-rc1/config.gz (oldconfig'ed to -rc4)
+> >   http://nerdbynature.de/bits/3.9.0-rc1/dmesg.txt (w/o the calltrace at the end)
+> > 
+> > 
+> > I was having trouble all day downloading a file via bittorrent to an 
+> > ext4 filesystem.
 
-Hi Dan,
+It looks like the same problem [1].  But it should have been fixed in
+3.9-rc4.  Frankly, I think the root cause is es_cache.  Sorry, it hasn't
+been well tested.
 
-Thanks for pointing it out.
+1. http://www.serverphorums.com/read.php?12,667656
 
-On Tue, Apr 02, 2013 at 11:11:44AM +0300, Dan Carpenter wrote:
-> Hello Zheng Liu,
-> 
-> The patch 31e4045fda81: "ext4: fold ext4_generic_write_end() into 
-> ext4_write_end()" from Mar 26, 2013, leads to the following warning:
-> "fs/ext4/inode.c:1169 ext4_write_end()
-> 	 warn: unsigned 'copied' is never less than zero."
-> 
-> 
->   1110  static int ext4_write_end(struct file *file,
->   1111                            struct address_space *mapping,
->   1112                            loff_t pos, unsigned len, unsigned copied,
-> 
-> copied is unsigned.
-> 
->   1113                            struct page *page, void *fsdata)
->   1114  {
->   1115          handle_t *handle = ext4_journal_current_handle();
->   1116          struct inode *inode = mapping->host;
->   1117          int ret = 0, ret2;
->   1118          int i_size_changed = 0;
->   1119  
->   1120          trace_ext4_write_end(inode, pos, len, copied);
->   1121          if (ext4_test_inode_state(inode, EXT4_STATE_ORDERED_MODE)) {
->   1122                  ret = ext4_jbd2_file_inode(handle, inode);
->   1123                  if (ret) {
->   1124                          unlock_page(page);
->   1125                          page_cache_release(page);
->   1126                          goto errout;
->   1127                  }
->   1128          }
->   1129  
->   1130          if (ext4_has_inline_data(inode))
->   1131                  copied = ext4_write_inline_data_end(inode, pos, len,
->   1132                                                      copied, page);
->   1133          else
->   1134                  copied = block_write_end(file, mapping, pos,
->   1135                                           len, copied, page, fsdata);
-> 
-> I don't think these functions return negative error codes.
+Could you please revert your tree to this commit (3a225670), and try
+again. I want to make sure that the regression won't be fixed until now
+or it is introduced after this commit.
 
-Yes, I check these two functions and they don't return a negative error
-code.
-
-> 
->   1136  
->   1137          /*
->   1138           * No need to use i_size_read() here, the i_size
->   1139           * cannot change under us because we hole i_mutex.
->   1140           *
->   1141           * But it's important to update i_size while still holding page lock:
->   1142           * page writeout could otherwise come in and zero beyond i_size.
->   1143           */
->   1144          if (pos + copied > inode->i_size) {
->   1145                  i_size_write(inode, pos + copied);
->   1146                  i_size_changed = 1;
->   1147          }
->   1148  
->   1149          if (pos + copied > EXT4_I(inode)->i_disksize) {
->   1150                  /* We need to mark inode dirty even if
->   1151                   * new_i_size is less that inode->i_size
->   1152                   * but greater than i_disksize. (hint delalloc)
->   1153                   */
->   1154                  ext4_update_i_disksize(inode, (pos + copied));
->   1155                  i_size_changed = 1;
->   1156          }
->   1157          unlock_page(page);
->   1158          page_cache_release(page);
->   1159  
->   1160          /*
->   1161           * Don't mark the inode dirty under page lock. First, it unnecessarily
->   1162           * makes the holding time of page lock longer. Second, it forces lock
->   1163           * ordering of page lock and transaction start for journaling
->   1164           * filesystems.
->   1165           */
->   1166          if (i_size_changed)
->   1167                  ext4_mark_inode_dirty(handle, inode);
->   1168  
->   1169          if (copied < 0)
->   1170                  ret = copied;
-> 
-> copied is never less than zero because it's unsigned.
-
-Yes, it should be removed.
-
-Ted, please remove this check.
-
-Thanks,
+Thanks in advance,
                                                 - Zheng
