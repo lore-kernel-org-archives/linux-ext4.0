@@ -1,60 +1,37 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: ext4 dev branch: mutex not locked in ext4_truncate()
-Date: Wed, 3 Apr 2013 13:58:18 -0400
-Message-ID: <20130403175818.GA18661@thunk.org>
-References: <alpine.LFD.2.00.1304031503470.10110@localhost>
+Subject: [GIT PULL] ext4 updates for 3.9-rc6
+Date: Wed, 03 Apr 2013 14:19:20 -0400
+Message-ID: <nsxd2ub79zr.fsf@closure.thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:58994 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760080Ab3DCR6W (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Apr 2013 13:58:22 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1304031503470.10110@localhost>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Apr 03, 2013 at 04:41:01PM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
-:
-> Hi Ted,
->=20
-> there is a problem with your patch:
->=20
-> 32d90a241a44d22ebc5289d2a2561691fc2d1351
->=20
-> because there is one more case where we might call ext4_truncate()
-> without i_mutex locked - from ext4_symlink(). Because we might be
-> calling __page_symlink() and it will call ext4_write_begin(). In
-> possible error case (ENOSPC for example) we might want to truncate
-> everything which might have been instantiated past i_size, however
-> at that point we're not holding i_mutex because there is no point in
-> doing so - the inode can not be possibly held by anyone else.
->=20
-> My proposal is to only check whether the mutex is locked if the
-> inode is _not_ new or is _not_ being freed.
->=20
-> There is a quick&dirty patch and it seems to be working well so
-> far. Let me know if you prefer standalone patch, or if you'll
-> include it into your commit.
 
-I really like your approach.  We've been trying a number of other
-approaches, including
+The following changes since commit 07961ac7c0ee8b546658717034fe692fd12eefa9:
 
-      http://patchwork.ozlabs.org/patch/232914/
-and
-      http://patchwork.ozlabs.org/patch/231679/
+  Linux 3.9-rc5 (2013-03-31 15:12:43 -0700)
 
-but I think your suggestion is the best.
+are available in the git repository at:
 
-Thanks!!
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus_stable
 
-						- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+for you to fetch changes up to 8cde7ad17e4f4ff8d12ff60dd09c0a291cb0b61c:
+
+  ext4: fix big-endian bugs which could cause fs corruptions (2013-04-03 12:37:17 -0400)
+
+----------------------------------------------------------------
+Unfortunately, we introduced some big-endian bugs during the last
+merge window.  Fortunately, Cai and Christian noticed before 3.9
+shipped.
+
+----------------------------------------------------------------
+Zheng Liu (1):
+      ext4: fix big-endian bugs which could cause fs corruptions
+
+ fs/ext4/extents.c  | 11 +++++++----
+ fs/ext4/indirect.c |  4 ++--
+ 2 files changed, 9 insertions(+), 6 deletions(-)
