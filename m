@@ -1,269 +1,28 @@
-From: Zhao Hongjiang <zhaohongjiang37@gmail.com>
-Subject: [PATCH] xfstests: Check concurrently of readdir and read on the same
- directory fd
-Date: Wed, 03 Apr 2013 14:09:10 +0800
-Message-ID: <515BC786.3070102@gmail.com>
+From: CAI Qian <caiqian@redhat.com>
+Subject: Re: bisected! (WAS Re: s390x: kernel BUG at fs/ext4/inode.c:1591!)
+Date: Wed, 3 Apr 2013 03:14:44 -0400 (EDT)
+Message-ID: <1158933859.1177381.1364973284305.JavaMail.root@redhat.com>
+References: <2133129347.8273339.1364549222854.JavaMail.root@redhat.com> <87ip46ss0o.fsf@openvz.org> <1211053180.322948.1364797847717.JavaMail.root@redhat.com> <87fvzaspr8.fsf@openvz.org> <874841142.414482.1364875584266.JavaMail.root@redhat.com> <874nfps133.fsf@openvz.org> <876098945.1097253.1364961617725.JavaMail.root@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: 7bit
-Cc: xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: david@fromorbit.com
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	LKML <linux-kernel@vger.kernel.org>,
+	linux-s390 <linux-s390@vger.kernel.org>,
+	Steve Best <sbest@redhat.com>, linux-ext4@vger.kernel.org,
+	Lukas Czerner <lczerner@redhat.com>, stable@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f52.google.com ([209.85.160.52]:40142 "EHLO
-	mail-pb0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758889Ab3DCGJh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Apr 2013 02:09:37 -0400
+Received: from mx3-phx2.redhat.com ([209.132.183.24]:38530 "EHLO
+	mx3-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1762945Ab3DCHOt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Apr 2013 03:14:49 -0400
+In-Reply-To: <876098945.1097253.1364961617725.JavaMail.root@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zhao Hongjiang <zhaohongjiang@huawei.com>
 
-Check if there are two threads,one keeps calling read() or lseek(), and
-the other calling readdir(), both on the same directory fd.
+> > [Text Documents:disable-es_lookup_extent.patch]
+With this patch, I cannot reproduce it any more.
 
-Based on a testcase from Li Zefan <lizefan@huawei.com>.
-http://marc.info/?l=linux-kernel&m=136123703211869&w=2
-
-Signed-off-by: Zhao Hongjiang <zhaohongjiang@huawei.com>
----
- src/Makefile          |    2 +-
- src/t_readdir_1.c     |   46 +++++++++++++++++++++++++++++
- src/t_readdir_2.c     |   57 ++++++++++++++++++++++++++++++++++++
- tests/generic/308     |   76 +++++++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/308.out |    2 +
- tests/generic/group   |    1 +
- 6 files changed, 183 insertions(+), 1 deletions(-)
- create mode 100644 src/t_readdir_1.c
- create mode 100644 src/t_readdir_2.c
- create mode 100755 tests/generic/308
- create mode 100644 tests/generic/308.out
-
-diff --git a/src/Makefile b/src/Makefile
-index f7362a2..8d8e97f 100644
---- a/src/Makefile
-+++ b/src/Makefile
-@@ -18,7 +18,7 @@ LINUX_TARGETS = xfsctl bstat t_mtab getdevicesize preallo_rw_pattern_reader \
- 	locktest unwritten_mmap bulkstat_unlink_test t_stripealign \
- 	bulkstat_unlink_test_modified t_dir_offset t_futimens t_immutable \
- 	stale_handle pwrite_mmap_blocked t_dir_offset2 seek_sanity_test \
--	seek_copy_test
-+	seek_copy_test t_readdir_1 t_readdir_2
-
- SUBDIRS =
-
-diff --git a/src/t_readdir_1.c b/src/t_readdir_1.c
-new file mode 100644
-index 0000000..2d46b29
---- /dev/null
-+++ b/src/t_readdir_1.c
-@@ -0,0 +1,46 @@
-+#include <unistd.h>
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <string.h>
-+#include <dirent.h>
-+#include <fcntl.h>
-+#include <sys/stat.h>
-+#include <sys/types.h>
-+
-+int main(int argc, char *argv[])
-+{
-+	int fd;
-+	int ret;
-+	DIR *dir;
-+	struct dirent *ptr;
-+
-+	dir = opendir(argv[1]);
-+	
-+	fd = dirfd(dir);
-+	if (fd < 0) {
-+		perror("Failed to get dirfd!");
-+		exit(EXIT_FAILURE);
-+	}
-+	ret = fork();
-+
-+	if (ret == 0) {
-+		char buf[100];
-+		
-+		while(1)
-+                        read(fd, buf, 100);
-+
-+	} else {
-+		while (1) {
-+			int ret2 = lseek(fd, 0, SEEK_SET);
-+			if (ret2 == -1) {
-+				perror("Seek failed!");
-+				exit(EXIT_FAILURE);
-+			}
-+			while ((ptr = readdir(dir)))
-+					;
-+		}
-+	}
-+
-+	closedir(dir);
-+	exit(EXIT_SUCCESS);
-+}
-diff --git a/src/t_readdir_2.c b/src/t_readdir_2.c
-new file mode 100644
-index 0000000..7ec3a50
---- /dev/null
-+++ b/src/t_readdir_2.c
-@@ -0,0 +1,57 @@
-+#include <unistd.h>
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <string.h>
-+#include <dirent.h>
-+#include <fcntl.h>
-+#include <sys/stat.h>
-+#include <sys/types.h>
-+
-+int main(int argc, char *argv[])
-+{
-+	int fd;
-+	int ret;
-+	DIR *dir;
-+	struct dirent *ptr;
-+
-+	dir = opendir(argv[1]);
-+	
-+	fd = dirfd(dir);
-+	if (fd < 0) {
-+		perror("Failed to get dirfd!");
-+		exit(EXIT_FAILURE);
-+	}
-+	ret = fork();
-+
-+	if (ret == 0) {
-+		int ret1, i;
-+		static int array[11] = {0, 1, 2, 3, 1023, 1024, 1025, 4095,
-+					4096, 4097, 0x7fffffff};
-+
-+		while(1) {
-+			for(i = 0; i < 11; i++) {
-+				ret1 = lseek(fd, array[i++], SEEK_SET);
-+				if (ret1 == -1) {
-+                                	perror("Seek failed!");
-+					exit(EXIT_FAILURE);
-+				}
-+			}
-+
-+			off_t pos = lseek(fd, 0, SEEK_CUR);
-+			lseek(fd, pos, SEEK_SET);
-+		}
-+	} else {
-+		while (1) {
-+			int ret2 = lseek(fd, 0, SEEK_SET);
-+			if (ret2 == -1) {
-+				perror("Seek failed!");
-+				exit(EXIT_FAILURE);
-+			}
-+			while ((ptr = readdir(dir)))
-+					;
-+		}
-+	}
-+
-+	closedir(dir);
-+	exit(EXIT_SUCCESS);
-+}
-diff --git a/tests/generic/308 b/tests/generic/308
-new file mode 100755
-index 0000000..38d4903
---- /dev/null
-+++ b/tests/generic/308
-@@ -0,0 +1,76 @@
-+#! /bin/bash
-+# FS QA Test No. 308
-+#
-+#Check if there are two threads,one keeps calling read() or lseek(), and
-+#the other calling readdir(), both on the same directory fd.
-+#
-+# Based on a testcase from Li Zefan <lizefan@huawei.com>.
-+#
-+# http://marc.info/?l=linux-kernel&m=136123703211869&w=2
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2013 HuaWei. All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#-----------------------------------------------------------------------
-+#
-+# creator
-+owner=zhaohongjiang@huawei.com
-+
-+seq=`basename $0`
-+echo "QA output created by $seq"
-+
-+status=1	# failure is the default!
-+
-+_cleanup()
-+{
-+	rm -rf $TEST_DIR/tmp
-+}
-+trap "_cleanup; exit \$status" 0 1 2 3 15
-+
-+# get standard environment, filters and checks
-+. ./common.rc
-+. ./common.filter
-+
-+# real QA test starts here
-+_supported_fs generic
-+_supported_os Linux
-+
-+mkdir $TEST_DIR/tmp
-+for n in {1..4096}; do
-+	touch $TEST_DIR/tmp/$n
-+done
-+
-+_test_read()
-+{
-+	src/t_readdir_1 $TEST_DIR/tmp &
-+	sleep 100
-+	killall src/t_readdir_1
-+}
-+
-+_test_lseek()
-+{
-+	src/t_readdir_2 $TEST_DIR/tmp &
-+	sleep 100
-+	killall src/t_readdir_2
-+}
-+
-+_test_read
-+_test_lseek
-+
-+# success, all done
-+echo "*** done"
-+rm -f $seq.full
-+status=0
-+exit
-diff --git a/tests/generic/308.out b/tests/generic/308.out
-new file mode 100644
-index 0000000..904ad4d
---- /dev/null
-+++ b/tests/generic/308.out
-@@ -0,0 +1,2 @@
-+QA output created by 308
-+*** done
-diff --git a/tests/generic/group b/tests/generic/group
-index 450e942..a924086 100644
---- a/tests/generic/group
-+++ b/tests/generic/group
-@@ -109,3 +109,4 @@
- 299 auto aio enospc rw stress
- 300 auto aio enospc preallocrw stress
- 306 auto quick rw
-+308 auto
--- 1.7.1
+CAI Qian
