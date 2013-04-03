@@ -1,64 +1,58 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v3] mm: Make snapshotting pages for stable writes a
- per-bio operation
-Date: Wed, 3 Apr 2013 16:42:44 +0200
-Message-ID: <20130403144244.GC14667@quack.suse.cz>
-References: <20130313085021.GA29730@quack.suse.cz>
- <20130313194429.GE5313@blackbox.djwong.org>
- <20130313210216.GA7754@quack.suse.cz>
- <20130314224243.GI5313@blackbox.djwong.org>
- <20130315100105.GA4889@quack.suse.cz>
- <20130315232816.GN5313@blackbox.djwong.org>
- <20130318174134.GB7852@quack.suse.cz>
- <20130318230259.GP5313@blackbox.djwong.org>
- <20130402170143.GA8910@blackbox.djwong.org>
- <20130403142019.GC5811@suse.de>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH] mke2fs: Disallow bigalloc with with bs < 4096
+Date: Wed, 3 Apr 2013 16:47:55 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1304031645010.10110@localhost>
+References: <1364997099-22590-1-git-send-email-lczerner@redhat.com> <20130403143554.GA13668@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Jan Kara <jack@suse.cz>, Shuge <shugelinux@gmail.com>,
-	linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-	linux-ext4@vger.kernel.org, Kevin <kevin@allwinnertech.com>,
-	Theodore Ts'o <tytso@mit.edu>, Jens Axboe <axboe@kernel.dk>,
-	Catalin Marinas <catalin.marinas@arm.com>,
-	Will Deacon <will.deacon@arm.com>,
-	linux-arm-kernel@lists.infradead.org
-To: Mel Gorman <mgorman@suse.de>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:46488 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:54546 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760335Ab3DCOmt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Apr 2013 10:42:49 -0400
-Content-Disposition: inline
-In-Reply-To: <20130403142019.GC5811@suse.de>
+	id S932111Ab3DCOsA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 3 Apr 2013 10:48:00 -0400
+In-Reply-To: <20130403143554.GA13668@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 03-04-13 15:20:19, Mel Gorman wrote:
-> On Tue, Apr 02, 2013 at 10:01:43AM -0700, Darrick J. Wong wrote:
-> > Hi,
-> > 
-> > A couple of weeks have gone by without further comments about this patch.
-> > 
-> > Are you interested in the minor cleanups and added comments, or is the v2 patch
-> > in -next good enough?
-> > 
-> > Apparently Mel Gorman's interested in this patchset too.  Mel: Most of stable
-> > pages part 2 are already in upstream for 3.9... except this piece.  Are you
-> > interested in having this piece in 3.9 also?  Or is 3.10 good enough for
-> > everyone?
-> > 
-> 
-> My understanding is that it only affects ARM and DEBUG_VM so there is a
-> relatively small chance of this generating spurious bug reports.  However,
-> 3.9 is still far enough away that I see no good reason to delay this patch
-> until 3.10 either.
-  No, actually with direct IO, anything that needs stable pages is going to
-blow up quickly because pages attached to bio needn't be from page cache. So
-I think it should better make it into 3.9.
+On Wed, 3 Apr 2013, Theodore Ts'o wrote:
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> Date: Wed, 3 Apr 2013 10:35:54 -0400
+> From: Theodore Ts'o <tytso@mit.edu>
+> To: Lukas Czerner <lczerner@redhat.com>
+> Cc: linux-ext4@vger.kernel.org
+> Subject: Re: [PATCH] mke2fs: Disallow bigalloc with with bs < 4096
+> 
+> On Wed, Apr 03, 2013 at 03:51:39PM +0200, Lukas Czerner wrote:
+> > Currently there is nothing preventing user to create file system with
+> > bigalloc feature enabled and block size smaller than 4096 Bytes. However
+> > such combination does not make much sense at all because the whole point
+> > of bigalloc is to have bigger allocation units.
+> > 
+> > This patch disallow such combination.
+> 
+> This makes sense by default but I do see a point in allowing it for
+> testing purposes --- specifically, it allows us to verify that
+> bigalloc works on architectures such as PowerPC and Itanium where page
+> size is greater than the 4k block size.  So maybe a developer mode set
+> via mke2fs.conf?
+
+Yes, I though about that and I wanted to know what the general
+opinion is. I'll prepare the patch which makes this tunable,
+but restricted by default.
+
+> 
+> Another option would be to enforce that we only support bigalloc file
+> systems where the blocksize == pagesize, but that means we wouldn't be
+> able to mount 4k bigalloc file systems on architectures with a 8k or
+> 16k page size.
+
+Unfortunately we can't do that for the reasons you mentioned.
+
+Thanks!
+-Lukas
+
+> 
+> 						- Ted
+> 
