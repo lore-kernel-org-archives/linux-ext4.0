@@ -1,51 +1,58 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] mke2fs: Disallow bigalloc with with bs < 4096
-Date: Wed,  3 Apr 2013 15:51:39 +0200
-Message-ID: <1364997099-22590-1-git-send-email-lczerner@redhat.com>
-Cc: Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: Mel Gorman <mgorman@suse.de>
+Subject: Re: [PATCH v3] mm: Make snapshotting pages for stable writes a
+ per-bio operation
+Date: Wed, 3 Apr 2013 15:20:19 +0100
+Message-ID: <20130403142019.GC5811@suse.de>
+References: <20130313011020.GA5313@blackbox.djwong.org>
+ <20130313085021.GA29730@quack.suse.cz>
+ <20130313194429.GE5313@blackbox.djwong.org>
+ <20130313210216.GA7754@quack.suse.cz>
+ <20130314224243.GI5313@blackbox.djwong.org>
+ <20130315100105.GA4889@quack.suse.cz>
+ <20130315232816.GN5313@blackbox.djwong.org>
+ <20130318174134.GB7852@quack.suse.cz>
+ <20130318230259.GP5313@blackbox.djwong.org>
+ <20130402170143.GA8910@blackbox.djwong.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-15
+Cc: Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
+	Shuge <shugelinux@gmail.com>, linux-kernel@vger.kernel.org,
+	linux-mm@kvack.org, linux-ext4@vger.kernel.org,
+	Kevin <kevin@allwinnertech.com>, Theodore Ts'o <tytso@mit.edu>,
+	Jens Axboe <axboe@kernel.dk>,
+	Catalin Marinas <catalin.marinas@arm.com>,
+	Will Deacon <will.deacon@arm.com>,
+	linux-arm-kernel@lists.infradead.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54880 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:45099 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756992Ab3DCNvo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Apr 2013 09:51:44 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r33Dph4s023925
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Wed, 3 Apr 2013 09:51:43 -0400
+	id S1758431Ab3DCOUY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 3 Apr 2013 10:20:24 -0400
+Content-Disposition: inline
+In-Reply-To: <20130402170143.GA8910@blackbox.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently there is nothing preventing user to create file system with
-bigalloc feature enabled and block size smaller than 4096 Bytes. However
-such combination does not make much sense at all because the whole point
-of bigalloc is to have bigger allocation units.
+On Tue, Apr 02, 2013 at 10:01:43AM -0700, Darrick J. Wong wrote:
+> Hi,
+> 
+> A couple of weeks have gone by without further comments about this patch.
+> 
+> Are you interested in the minor cleanups and added comments, or is the v2 patch
+> in -next good enough?
+> 
+> Apparently Mel Gorman's interested in this patchset too.  Mel: Most of stable
+> pages part 2 are already in upstream for 3.9... except this piece.  Are you
+> interested in having this piece in 3.9 also?  Or is 3.10 good enough for
+> everyone?
+> 
 
-This patch disallow such combination.
+My understanding is that it only affects ARM and DEBUG_VM so there is a
+relatively small chance of this generating spurious bug reports.  However,
+3.9 is still far enough away that I see no good reason to delay this patch
+until 3.10 either.
 
-Thanks!
--Lukas
----
- misc/mke2fs.c |    6 ++++++
- 1 files changed, 6 insertions(+), 0 deletions(-)
-
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index bbf477a..1f33a20 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -1924,6 +1924,12 @@ profile_error:
- 				  "smaller than the block size.\n"));
- 			exit(1);
- 		}
-+		if (EXT2_BLOCK_SIZE(&fs_param) < 4096) {
-+			com_err(program_name, 0,
-+				_("Bigalloc feature is not supported with "
-+				  "block size smaller than 4096 B"));
-+			exit(1);
-+		}
- 	} else if (cluster_size) {
- 		com_err(program_name, 0,
- 			_("specifying a cluster size requires the "
 -- 
-1.7.7.6
-
+Mel Gorman
+SUSE Labs
