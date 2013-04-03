@@ -1,64 +1,51 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 2/2] ext4: fix cpu_vs_disk conversions
-Date: Wed, 03 Apr 2013 16:58:52 +0400
-Message-ID: <876203rcs3.fsf@openvz.org>
-References: <1364986711-3630-1-git-send-email-dmonakhov@openvz.org> <1364986711-3630-2-git-send-email-dmonakhov@openvz.org> <20130403123317.GD7741@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, wenqing.lz@taobao.com
-To: Theodore Ts'o <tytso@mit.edu>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH] mke2fs: Disallow bigalloc with with bs < 4096
+Date: Wed,  3 Apr 2013 15:51:39 +0200
+Message-ID: <1364997099-22590-1-git-send-email-lczerner@redhat.com>
+Cc: Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-la0-f48.google.com ([209.85.215.48]:42713 "EHLO
-	mail-la0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758810Ab3DCM67 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Apr 2013 08:58:59 -0400
-Received: by mail-la0-f48.google.com with SMTP id fq13so1389931lab.21
-        for <linux-ext4@vger.kernel.org>; Wed, 03 Apr 2013 05:58:56 -0700 (PDT)
-In-Reply-To: <20130403123317.GD7741@thunk.org>
+Received: from mx1.redhat.com ([209.132.183.28]:54880 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756992Ab3DCNvo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 3 Apr 2013 09:51:44 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r33Dph4s023925
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Wed, 3 Apr 2013 09:51:43 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 3 Apr 2013 08:33:17 -0400, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Wed, Apr 03, 2013 at 02:58:31PM +0400, Dmitry Monakhov wrote:
-> > All new features are broken on bigendian hosts due to lack of conversion:
-> > es_cache: https://lkml.org/lkml/2013/3/28/64
-> > inode's csum and ext_to_ind_migrate are also broken.
-> > 
-> > Testcase: make C=2 CF="-D__CHECK_ENDIAN__
-> > 
-> > Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> 
-> Thanks for this comprehensive patch.  I'm currently trying to decide
-> how much of this I should try to push in before the next 3.9-rcX
-> window, and how much can wait until the next merge window.
-> 
-> We definitely want to fix the fs corruption bug for big-endian
-> systems.  For the rest, I'm on the fence, since they are less likely
-> to bite people hard --- metadata checksum is still pretty new and not
-> fully supported, and the punch hole bug is again also pretty new
-> functionality.
-> 
-> Also, pushing something to Linus now could potentially disrupt the
-> patches in the ext4 dev tree for the next merge window.  For the zero
-But how? the patch is simple as potato.
-It does not conflict with any other patches in dev branch (actually i've
-prepared it against ext4/dev branch)
-Personally I'll vote for rebase ext4/dev to 3.9-rc5 (or rc6) 
-because rc4 has a bug which prevent two of my boxes from boot.
-So I can't see any difficulties with it.
-But off course if we think in terms of ultra-conservative terms it is reasonable
-to just push es_cache fixes to linus and leave others for devel branch.
-IMHO we already have done too many mistakes during that release so it is too
-late to pretend to being too cautious.
-> extents problem, there's no question what are priorities should be;
-> user dataloss trumps developer convenience any day.  For the rest,
-> what do you all think?  Are they likely to hit people hard enough that
-> it's worth trying to get this to Linus sooner, as opposed to having
-> the fixes for the rest of the big endian issues land in 3.10 and
-> 3.9.1?
-> 
-> 					- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Currently there is nothing preventing user to create file system with
+bigalloc feature enabled and block size smaller than 4096 Bytes. However
+such combination does not make much sense at all because the whole point
+of bigalloc is to have bigger allocation units.
+
+This patch disallow such combination.
+
+Thanks!
+-Lukas
+---
+ misc/mke2fs.c |    6 ++++++
+ 1 files changed, 6 insertions(+), 0 deletions(-)
+
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index bbf477a..1f33a20 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -1924,6 +1924,12 @@ profile_error:
+ 				  "smaller than the block size.\n"));
+ 			exit(1);
+ 		}
++		if (EXT2_BLOCK_SIZE(&fs_param) < 4096) {
++			com_err(program_name, 0,
++				_("Bigalloc feature is not supported with "
++				  "block size smaller than 4096 B"));
++			exit(1);
++		}
+ 	} else if (cluster_size) {
+ 		com_err(program_name, 0,
+ 			_("specifying a cluster size requires the "
+-- 
+1.7.7.6
+
