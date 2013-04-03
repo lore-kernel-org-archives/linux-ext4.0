@@ -1,91 +1,74 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: s390x: kernel BUG at fs/ext4/inode.c:1591! (powerpc too!)
-Date: Thu, 04 Apr 2013 00:52:29 +0800
-Message-ID: <515C5E4D.3090403@gmail.com>
-References: <2133129347.8273339.1364549222854.JavaMail.root@redhat.com> <87ip46ss0o.fsf@openvz.org> <1211053180.322948.1364797847717.JavaMail.root@redhat.com> <87fvzaspr8.fsf@openvz.org> <874841142.414482.1364875584266.JavaMail.root@redhat.com> <alpine.DEB.2.10.1304012249440.5874@trent.utfs.org> <877gkls1q7.fsf@openvz.org> <alpine.DEB.2.10.1304021430480.13746@trent.utfs.org> <87r4isd1vn.fsf@openvz.org> <alpine.DEB.2.10.1304021611020.13746@trent.utfs.org> <87li90q9mx.fsf@openvz.org> <87hajoq6s2.fsf@openvz.org> <87eherri5i.fsf@openvz.org> <alpine.DEB.2.10.1304030935230.13746@trent.utfs.org>
+From: Eric Whitney <enwlinux@gmail.com>
+Subject: [PATCH] ext4: fix free space estimate in ext4_nonda_switch()
+Date: Wed, 3 Apr 2013 13:19:31 -0400
+Message-ID: <20130403171931.GC3006@wallace>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
-	CAI Qian <caiqian@redhat.com>, Theodore Ts'o <tytso@mit.edu>,
-	LKML <linux-kernel@vger.kernel.org>,
-	linux-s390 <linux-s390@vger.kernel.org>,
-	Steve Best <sbest@redhat.com>, linux-ext4@vger.kernel.org
-To: Christian Kujau <lists@nerdbynature.de>
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f45.google.com ([209.85.160.45]:43241 "EHLO
-	mail-pb0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760213Ab3DCQwg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Apr 2013 12:52:36 -0400
-In-Reply-To: <alpine.DEB.2.10.1304030935230.13746@trent.utfs.org>
+Received: from mail-ve0-f181.google.com ([209.85.128.181]:50063 "EHLO
+	mail-ve0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761722Ab3DCRTh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Apr 2013 13:19:37 -0400
+Received: by mail-ve0-f181.google.com with SMTP id pa12so1903928veb.12
+        for <linux-ext4@vger.kernel.org>; Wed, 03 Apr 2013 10:19:36 -0700 (PDT)
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 04/04/2013 12:46 AM, Christian Kujau wrote:
-> On Wed, 3 Apr 2013 at 15:02, Dmitry Monakhov wrote:
->> Good news big endian cpu owners
->> Please try following patches(second is most important):
->> http://patchwork.ozlabs.org/patch/233396/
->> http://patchwork.ozlabs.org/patch/233397/
->> I hope this should fix all known issues
-> 
-> Zheng Liu also sent a patch:
-> 
->   [PATCH] ext4: fix a big-endian bug when an extent is zeroed out
-> 
-> When I try to apply all three of those to 3.9-4c4, the 2nd one from Dmitry 
-> fails:
-> 
-> $ cat ~/dev/002-ext4_fix-cpu_vs_disk-conversions.diff | patch --dry-run -p1
-> patching file fs/ext4/extents.c
-> Hunk #2 FAILED at 2999.
-> Hunk #3 FAILED at 3272.
-> Hunk #4 FAILED at 4639.
-> 3 out of 4 hunks FAILED -- saving rejects to file fs/ext4/extents.c.rej
-> patching file fs/ext4/indirect.c
-> Hunk #1 succeeded at 1539 (offset 215 lines).
-> patching file fs/ext4/inode.c
-> patching file fs/ext4/mmp.c
-> patching file fs/ext4/namei.c
-> patching file fs/ext4/super.c
-> Hunk #1 succeeded at 1951 (offset -3 lines).
-> patching file fs/ext4/xattr.c
-> patching file include/trace/events/ext4.h
-> Hunk #1 succeeded at 1956 (offset 8 lines).
-> Hunk #2 succeeded at 2060 (offset 8 lines).
-> Hunk #3 succeeded at 2079 (offset 8 lines).
-> 
-> With only Dimitry's patchesm this happens, to -rc4:
-> 
-> $ cat ~/dev/001-ext4_fix-usless-declarations.diff | patch -p1
-> patching file fs/ext4/ialloc.c
-> patching file fs/ext4/ioctl.c
-> Hunk #1 succeeded at 359 (offset 4 lines).
-> patching file fs/ext4/mballoc.c
-> patching file fs/ext4/move_extent.c
-> 
-> $ cat ~/dev/002-ext4_fix-cpu_vs_disk-conversions.diff | patch --dry-run -p1
-> patching file fs/ext4/extents.c
-> Hunk #4 FAILED at 4639.
-> 1 out of 4 hunks FAILED -- saving rejects to file fs/ext4/extents.c.rej
-> patching file fs/ext4/indirect.c
-> Hunk #1 succeeded at 1539 (offset 215 lines).
-> patching file fs/ext4/inode.c
-> patching file fs/ext4/mmp.c
-> patching file fs/ext4/namei.c
-> patching file fs/ext4/super.c
-> Hunk #1 succeeded at 1951 (offset -3 lines).
-> patching file fs/ext4/xattr.c
-> patching file include/trace/events/ext4.h
-> Hunk #1 succeeded at 1956 (offset 8 lines).
-> Hunk #2 succeeded at 2060 (offset 8 lines).
-> Hunk #3 succeeded at 2079 (offset 8 lines).
+Values stored in s_freeclusters_counter and s_dirtyclusters_counter
+are both in cluster units.  Remove the cluster to block conversion
+applied to s_freeclusters_counter causing an inflated estimate of
+free space because s_dirtyclusters_counter is not similarly
+converted.  Rename free_blocks and dirty_blocks to better reflect
+the units these variables contain to avoid future confusion.  This
+fix corrects ENOSPC failures for xfstests 127 and 231 on bigalloc
+file systems.
 
-I guess that is because Dmitry's patch is against dev branch of ext4
-tree.  Please applied my patch.  I think it could fix the bug.  That
-would be great if you could give this patch a try [1].
+Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+---
+ fs/ext4/inode.c |   15 ++++++++-------
+ 1 file changed, 8 insertions(+), 7 deletions(-)
 
-1. http://patchwork.ozlabs.org/patch/233555/
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index b3a5213..5f5cc40 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2661,7 +2661,7 @@ out_writepages:
+ 
+ static int ext4_nonda_switch(struct super_block *sb)
+ {
+-	s64 free_blocks, dirty_blocks;
++	s64 free_clusters, dirty_clusters;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 
+ 	/*
+@@ -2672,17 +2672,18 @@ static int ext4_nonda_switch(struct super_block *sb)
+ 	 * Delalloc need an accurate free block accounting. So switch
+ 	 * to non delalloc when we are near to error range.
+ 	 */
+-	free_blocks  = EXT4_C2B(sbi,
+-		percpu_counter_read_positive(&sbi->s_freeclusters_counter));
+-	dirty_blocks = percpu_counter_read_positive(&sbi->s_dirtyclusters_counter);
++	free_clusters =
++		percpu_counter_read_positive(&sbi->s_freeclusters_counter);
++	dirty_clusters =
++		percpu_counter_read_positive(&sbi->s_dirtyclusters_counter);
+ 	/*
+ 	 * Start pushing delalloc when 1/2 of free blocks are dirty.
+ 	 */
+-	if (dirty_blocks && (free_blocks < 2 * dirty_blocks))
++	if (dirty_clusters && (free_clusters < 2 * dirty_clusters))
+ 		try_to_writeback_inodes_sb(sb, WB_REASON_FS_FREE_SPACE);
+ 
+-	if (2 * free_blocks < 3 * dirty_blocks ||
+-		free_blocks < (dirty_blocks + EXT4_FREECLUSTERS_WATERMARK)) {
++	if (2 * free_clusters < 3 * dirty_clusters ||
++	    free_clusters < (dirty_clusters + EXT4_FREECLUSTERS_WATERMARK)) {
+ 		/*
+ 		 * free block count is less than 150% of dirty blocks
+ 		 * or free blocks is less than watermark
+-- 
+1.7.10.4
 
-Thanks,
-						- Zheng
