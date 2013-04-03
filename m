@@ -1,247 +1,248 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 2/2] ext4: fix cpu_vs_disk conversions
-Date: Wed,  3 Apr 2013 14:58:31 +0400
-Message-ID: <1364986711-3630-2-git-send-email-dmonakhov@openvz.org>
-References: <1364986711-3630-1-git-send-email-dmonakhov@openvz.org>
-Cc: tytso@mit.edu, wenqing.lz@taobao.com,
-	Dmitry Monakhov <dmonakhov@openvz.org>
-To: linux-ext4@vger.kernel.org
+Subject: Re: s390x: kernel BUG at fs/ext4/inode.c:1591! (powerpc too!)
+Date: Wed, 03 Apr 2013 15:02:49 +0400
+Message-ID: <87eherri5i.fsf@openvz.org>
+References: <2133129347.8273339.1364549222854.JavaMail.root@redhat.com> <87ip46ss0o.fsf@openvz.org> <1211053180.322948.1364797847717.JavaMail.root@redhat.com> <87fvzaspr8.fsf@openvz.org> <874841142.414482.1364875584266.JavaMail.root@redhat.com> <alpine.DEB.2.10.1304012249440.5874@trent.utfs.org> <877gkls1q7.fsf@openvz.org> <alpine.DEB.2.10.1304021430480.13746@trent.utfs.org> <87r4isd1vn.fsf@openvz.org> <alpine.DEB.2.10.1304021611020.13746@trent.utfs.org> <87li90q9mx.fsf@openvz.org> <87hajoq6s2.fsf@openvz.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: CAI Qian <caiqian@redhat.com>, Theodore Ts'o <tytso@mit.edu>,
+	LKML <linux-kernel@vger.kernel.org>,
+	linux-s390 <linux-s390@vger.kernel.org>,
+	Steve Best <sbest@redhat.com>, linux-ext4@vger.kernel.org,
+	Zheng Liu <gnehzuil.liu@gmail.com>
+To: Christian Kujau <lists@nerdbynature.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:12387 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756895Ab3DCK67 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Apr 2013 06:58:59 -0400
-In-Reply-To: <1364986711-3630-1-git-send-email-dmonakhov@openvz.org>
+Received: from mail-lb0-f180.google.com ([209.85.217.180]:34575 "EHLO
+	mail-lb0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754998Ab3DCLCz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Apr 2013 07:02:55 -0400
+In-Reply-To: <87hajoq6s2.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-All new features are broken on bigendian hosts due to lack of conversion:
-es_cache: https://lkml.org/lkml/2013/3/28/64
-inode's csum and ext_to_ind_migrate are also broken.
-
-Testcase: make C=2 CF="-D__CHECK_ENDIAN__
-
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ext4/extents.c           |   12 ++++++------
- fs/ext4/indirect.c          |    4 ++--
- fs/ext4/inode.c             |    8 ++++----
- fs/ext4/mmp.c               |    2 +-
- fs/ext4/namei.c             |    4 ++--
- fs/ext4/super.c             |    4 ++--
- fs/ext4/xattr.c             |   11 +++++------
- include/trace/events/ext4.h |    6 +++---
- 8 files changed, 25 insertions(+), 26 deletions(-)
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 1530cf4..3c3410e 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2784,7 +2784,7 @@ again:
- 	}
- 
- 	trace_ext4_ext_remove_space_done(inode, start, depth, partial_cluster,
--			path->p_hdr->eh_entries);
-+					 path->p_hdr->eh_entries);
- 
- 	/* If we still have something in the partial cluster and we have removed
- 	 * even the first extent, then we should free the blocks in the partial
-@@ -2999,20 +2999,20 @@ static int ext4_split_extent_at(handle_t *handle,
- 			if (split_flag & EXT4_EXT_DATA_VALID1) {
- 				err = ext4_ext_zeroout(inode, ex2);
- 				zero_ex.ee_block = ex2->ee_block;
--				zero_ex.ee_len = ext4_ext_get_actual_len(ex2);
-+				zero_ex.ee_len = cpu_to_le16(ext4_ext_get_actual_len(ex2));
- 				ext4_ext_store_pblock(&zero_ex,
- 						      ext4_ext_pblock(ex2));
- 			} else {
- 				err = ext4_ext_zeroout(inode, ex);
- 				zero_ex.ee_block = ex->ee_block;
--				zero_ex.ee_len = ext4_ext_get_actual_len(ex);
-+				zero_ex.ee_len = cpu_to_le16(ext4_ext_get_actual_len(ex));
- 				ext4_ext_store_pblock(&zero_ex,
- 						      ext4_ext_pblock(ex));
- 			}
- 		} else {
- 			err = ext4_ext_zeroout(inode, &orig_ex);
- 			zero_ex.ee_block = orig_ex.ee_block;
--			zero_ex.ee_len = ext4_ext_get_actual_len(&orig_ex);
-+			zero_ex.ee_len = cpu_to_le16(ext4_ext_get_actual_len(&orig_ex));
- 			ext4_ext_store_pblock(&zero_ex,
- 					      ext4_ext_pblock(&orig_ex));
- 		}
-@@ -3272,7 +3272,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 		if (err)
- 			goto out;
- 		zero_ex.ee_block = ex->ee_block;
--		zero_ex.ee_len = ext4_ext_get_actual_len(ex);
-+		zero_ex.ee_len = cpu_to_le16(ext4_ext_get_actual_len(ex));
- 		ext4_ext_store_pblock(&zero_ex, ext4_ext_pblock(ex));
- 
- 		err = ext4_ext_get_access(handle, inode, path + depth);
-@@ -4639,7 +4639,7 @@ int ext4_ind_migrate(struct inode *inode)
- 	eh = ext_inode_hdr(inode);
- 	ex  = EXT_FIRST_EXTENT(eh);
- 	if (ext4_blocks_count(es) > EXT4_MAX_BLOCK_FILE_PHYS ||
--	    eh->eh_depth != 0 || eh->eh_entries > 1) {
-+	    eh->eh_depth != 0 || le16_to_cpu(eh->eh_entries) > 1) {
- 		ret = -EOPNOTSUPP;
- 		goto errout;
- 	}
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index 80a798b..98be6f6 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -1324,9 +1324,9 @@ static int free_hole_blocks(handle_t *handle, struct inode *inode,
- 		blk = *i_data;
- 		if (level > 0) {
- 			ext4_lblk_t first2;
--			bh = sb_bread(inode->i_sb, blk);
-+			bh = sb_bread(inode->i_sb, le32_to_cpu(blk));
- 			if (!bh) {
--				EXT4_ERROR_INODE_BLOCK(inode, blk,
-+				EXT4_ERROR_INODE_BLOCK(inode, le32_to_cpu(blk),
- 						       "Read failure");
- 				return -EIO;
- 			}
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 7712aff..a2c4f14 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -55,21 +55,21 @@ static __u32 ext4_inode_csum(struct inode *inode, struct ext4_inode *raw,
- 	__u16 csum_hi = 0;
- 	__u32 csum;
- 
--	csum_lo = raw->i_checksum_lo;
-+	csum_lo = le16_to_cpu(raw->i_checksum_lo);
- 	raw->i_checksum_lo = 0;
- 	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
- 	    EXT4_FITS_IN_INODE(raw, ei, i_checksum_hi)) {
--		csum_hi = raw->i_checksum_hi;
-+		csum_hi = le16_to_cpu(raw->i_checksum_hi);
- 		raw->i_checksum_hi = 0;
- 	}
- 
- 	csum = ext4_chksum(sbi, ei->i_csum_seed, (__u8 *)raw,
- 			   EXT4_INODE_SIZE(inode->i_sb));
- 
--	raw->i_checksum_lo = csum_lo;
-+	raw->i_checksum_lo = cpu_to_le16(csum_lo);
- 	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
- 	    EXT4_FITS_IN_INODE(raw, ei, i_checksum_hi))
--		raw->i_checksum_hi = csum_hi;
-+		raw->i_checksum_hi = cpu_to_le16(csum_hi);
- 
- 	return csum;
- }
-diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
-index f9b5515..b3b1f7d 100644
---- a/fs/ext4/mmp.c
-+++ b/fs/ext4/mmp.c
-@@ -7,7 +7,7 @@
- #include "ext4.h"
- 
- /* Checksumming functions */
--static __u32 ext4_mmp_csum(struct super_block *sb, struct mmp_struct *mmp)
-+static __le32 ext4_mmp_csum(struct super_block *sb, struct mmp_struct *mmp)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	int offset = offsetof(struct mmp_struct, mmp_checksum);
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 3825d6a..5a29ea6 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -420,11 +420,11 @@ static __le32 ext4_dx_csum(struct inode *inode, struct ext4_dir_entry *dirent,
- 	int size;
- 
- 	size = count_offset + (count * sizeof(struct dx_entry));
--	old_csum = t->dt_checksum;
-+	old_csum = le32_to_cpu(t->dt_checksum);
- 	t->dt_checksum = 0;
- 	csum = ext4_chksum(sbi, ei->i_csum_seed, (__u8 *)dirent, size);
- 	csum = ext4_chksum(sbi, csum, (__u8 *)t, sizeof(struct dx_tail));
--	t->dt_checksum = old_csum;
-+	t->dt_checksum = cpu_to_le32(old_csum);
- 
- 	return cpu_to_le32(csum);
- }
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 280a918..c712c8f 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1954,13 +1954,13 @@ static __le16 ext4_group_desc_csum(struct ext4_sb_info *sbi, __u32 block_group,
- 		__u16 old_csum;
- 		__u32 csum32;
- 
--		old_csum = gdp->bg_checksum;
-+		old_csum = le16_to_cpu(gdp->bg_checksum);
- 		gdp->bg_checksum = 0;
- 		csum32 = ext4_chksum(sbi, sbi->s_csum_seed, (__u8 *)&le_group,
- 				     sizeof(le_group));
- 		csum32 = ext4_chksum(sbi, csum32, (__u8 *)gdp,
- 				     sbi->s_desc_size);
--		gdp->bg_checksum = old_csum;
-+		gdp->bg_checksum = cpu_to_le16(old_csum);
- 
- 		crc = csum32 & 0xFFFF;
- 		goto out;
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 3a120b2..34da740 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -123,16 +123,15 @@ static __le32 ext4_xattr_block_csum(struct inode *inode,
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	__u32 csum, old;
--
--	old = hdr->h_checksum;
-+	__le64 dsk_block_nr = cpu_to_le64(block_nr);
-+	old = le32_to_cpu(hdr->h_checksum);
- 	hdr->h_checksum = 0;
--	block_nr = cpu_to_le64(block_nr);
--	csum = ext4_chksum(sbi, sbi->s_csum_seed, (__u8 *)&block_nr,
--			   sizeof(block_nr));
-+	csum = ext4_chksum(sbi, sbi->s_csum_seed, (__u8 *)&dsk_block_nr,
-+			   sizeof(dsk_block_nr));
- 	csum = ext4_chksum(sbi, csum, (__u8 *)hdr,
- 			   EXT4_BLOCK_SIZE(inode->i_sb));
- 
--	hdr->h_checksum = old;
-+	hdr->h_checksum = cpu_to_le32(old);
- 	return cpu_to_le32(csum);
- }
- 
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index 58459b7..d0e6864 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -1948,7 +1948,7 @@ TRACE_EVENT(ext4_remove_blocks,
- 		__entry->to		= to;
- 		__entry->partial	= partial_cluster;
- 		__entry->ee_pblk	= ext4_ext_pblock(ex);
--		__entry->ee_lblk	= cpu_to_le32(ex->ee_block);
-+		__entry->ee_lblk	= le32_to_cpu(ex->ee_block);
- 		__entry->ee_len		= ext4_ext_get_actual_len(ex);
- 	),
- 
-@@ -2052,7 +2052,7 @@ TRACE_EVENT(ext4_ext_remove_space,
- 
- TRACE_EVENT(ext4_ext_remove_space_done,
- 	TP_PROTO(struct inode *inode, ext4_lblk_t start, int depth,
--		ext4_lblk_t partial, unsigned short eh_entries),
-+		ext4_lblk_t partial, __le16 eh_entries),
- 
- 	TP_ARGS(inode, start, depth, partial, eh_entries),
- 
-@@ -2071,7 +2071,7 @@ TRACE_EVENT(ext4_ext_remove_space_done,
- 		__entry->start		= start;
- 		__entry->depth		= depth;
- 		__entry->partial	= partial;
--		__entry->eh_entries	= eh_entries;
-+		__entry->eh_entries	= le16_to_cpu(eh_entries);
- 	),
- 
- 	TP_printk("dev %d,%d ino %lu since %u depth %d partial %u "
--- 
-1.7.1
-
+On Wed, 03 Apr 2013 13:53:49 +0400, Dmitry Monakhov <dmonakhov@openvz.org> wrote:
+Non-text part: multipart/mixed
+> On Wed, 03 Apr 2013 12:52:06 +0400, Dmitry Monakhov <dmonakhov@openvz.org> wrote:
+> Non-text part: multipart/mixed
+> > On Tue, 2 Apr 2013 16:22:41 -0700 (PDT), Christian Kujau <lists@nerdbynature.de> wrote:
+> > > On Wed, 3 Apr 2013 at 02:05, Dmitry Monakhov wrote:
+> > > > Please drop that patch and collect logs with a kernel which 
+> > > > has only 0001-enable-ES_AGGRESSIVE_TEST-V2.patch patch applied
+Good news big endian cpu owners
+Please try following patches(second is most important):
+http://patchwork.ozlabs.org/patch/233396/
+http://patchwork.ozlabs.org/patch/233397/
+I hope this should fix all known issues
+> > Ok I have found at least one issue.
+> Yeah.. My college advise me to use sparse in order to spot all
+> cpu_to_ondisk format conversion
+> make C=2 CF="-D__CHECK_ENDIAN__" fs/ext4/ 
+> And it spotted a huge amount of issues. Which tell us that we are deeply
+> in shit.
+> <stdin>:1220:2: warning: #warning syscall kcmp not implemented
+> <stdin>:1223:2: warning: #warning syscall finit_module not implemented
+> fs/ext4/ialloc.c:902:37: warning: symbol 'sbi' shadows an earlier one
+> fs/ext4/ialloc.c:650:29: originally declared here
+> fs/ext4/inode.c:58:17: warning: incorrect type in assignment (different base types)
+> fs/ext4/inode.c:58:17:    expected unsigned short [unsigned] [usertype] csum_lo
+> fs/ext4/inode.c:58:17:    got restricted __le16 [usertype] l_i_checksum_lo
+> fs/ext4/inode.c:62:25: warning: incorrect type in assignment (different base types)
+> fs/ext4/inode.c:62:25:    expected unsigned short [unsigned] [usertype] csum_hi
+> fs/ext4/inode.c:62:25:    got restricted __le16 [usertype] i_checksum_hi
+> fs/ext4/inode.c:69:28: warning: incorrect type in assignment (different base types)
+> fs/ext4/inode.c:69:28:    expected restricted __le16 [usertype] l_i_checksum_lo
+> fs/ext4/inode.c:69:28:    got unsigned short [unsigned] [usertype] csum_lo
+> fs/ext4/inode.c:72:36: warning: incorrect type in assignment (different base types)
+> fs/ext4/inode.c:72:36:    expected restricted __le16 [usertype] i_checksum_hi
+> fs/ext4/inode.c:72:36:    got unsigned short [unsigned] [usertype] csum_hi
+> include/linux/mm.h:759:16: warning: potentially expensive pointer subtraction
+> include/linux/mm.h:759:16: warning: potentially expensive pointer subtraction
+> include/linux/mm.h:759:16: warning: potentially expensive pointer subtraction
+> fs/ext4/ioctl.c:358:36: warning: symbol 'sb' shadows an earlier one
+> fs/ext4/ioctl.c:26:28: originally declared here
+> fs/ext4/namei.c:2008:36: warning: potentially expensive pointer subtraction
+> fs/ext4/namei.c:423:18: warning: incorrect type in assignment (different base types)
+> fs/ext4/namei.c:423:18:    expected unsigned int [unsigned] [usertype] old_csum
+> fs/ext4/namei.c:423:18:    got restricted __le32 [usertype] dt_checksum
+> fs/ext4/namei.c:427:24: warning: incorrect type in assignment (different base types)
+> fs/ext4/namei.c:427:24:    expected restricted __le32 [usertype] dt_checksum
+> fs/ext4/namei.c:427:24:    got unsigned int [unsigned] [usertype] old_csum
+> include/trace/events/ext4.h:1926:1: warning: cast from restricted __le32
+> include/trace/events/ext4.h:1926:1: warning: incorrect type in assignment (different base types)
+> include/trace/events/ext4.h:1926:1:    expected unsigned int [unsigned] [usertype] ee_lblk
+> include/trace/events/ext4.h:1926:1:    got restricted __le32 [usertype] <noident>
+> include/trace/events/ext4.h:1926:1: warning: cast from restricted __le32
+> include/trace/events/ext4.h:1926:1: warning: incorrect type in assignment (different base types)
+> include/trace/events/ext4.h:1926:1:    expected unsigned int [unsigned] [usertype] ee_lblk
+> include/trace/events/ext4.h:1926:1:    got restricted __le32 [usertype] <noident>
+> fs/ext4/super.c:1957:26: warning: incorrect type in assignment (different base types)
+> fs/ext4/super.c:1957:26:    expected unsigned short [unsigned] [usertype] old_csum
+> fs/ext4/super.c:1957:26:    got restricted __le16 [usertype] bg_checksum
+> fs/ext4/super.c:1963:34: warning: incorrect type in assignment (different base types)
+> fs/ext4/super.c:1963:34:    expected restricted __le16 [usertype] bg_checksum
+> fs/ext4/super.c:1963:34:    got unsigned short [unsigned] [usertype] old_csum
+> include/uapi/linux/swab.h:60:16: error: undefined identifier '__builtin_bswap32'
+> include/uapi/linux/swab.h:60:33: error: not a function <noident>
+> fs/ext4/extents.c:3002:48: warning: incorrect type in assignment (different base types)
+> fs/ext4/extents.c:3002:48:    expected restricted __le16 [assigned] [usertype] ee_len
+> fs/ext4/extents.c:3002:48:    got restricted __be16 [usertype] <noident>
+> fs/ext4/extents.c:3008:48: warning: incorrect type in assignment (different base types)
+> fs/ext4/extents.c:3008:48:    expected restricted __le16 [addressable] [assigned] [usertype] ee_len
+> fs/ext4/extents.c:3008:48:    got restricted __be16 [usertype] <noident>
+> fs/ext4/extents.c:3015:40: warning: incorrect type in assignment (different base types)
+> fs/ext4/extents.c:3015:40:    expected restricted __le16 [addressable] [assigned] [usertype] ee_len
+> fs/ext4/extents.c:3015:40:    got restricted __be16 [usertype] <noident>
+> fs/ext4/extents.c:603:28: warning: potentially expensive pointer subtraction
+> fs/ext4/extents.c:671:28: warning: potentially expensive pointer subtraction
+> fs/ext4/extents.c:849:43: warning: potentially expensive pointer subtraction
+> fs/ext4/extents.c:984:47: warning: potentially expensive pointer subtraction
+> fs/ext4/extents.c:1063:50: warning: potentially expensive pointer subtraction
+> fs/ext4/extents.c:1656:52: warning: potentially expensive pointer subtraction
+> fs/ext4/extents.c:1706:32: warning: potentially expensive pointer subtraction
+> fs/ext4/extents.c:1929:43: warning: potentially expensive pointer subtraction
+> fs/ext4/extents.c:2206:55: warning: potentially expensive pointer subtraction
+> fs/ext4/extents.c:2528:72: warning: potentially expensive pointer subtraction
+> fs/ext4/extents.c:2787:36: warning: incorrect type in argument 5 (different base types)
+> fs/ext4/extents.c:2787:36:    expected unsigned short [unsigned] eh_entries
+> fs/ext4/extents.c:2787:36:    got restricted __le16 [usertype] eh_entries
+> fs/ext4/extents.c:3275:32: warning: incorrect type in assignment (different base types)
+> fs/ext4/extents.c:3275:32:    expected restricted __le16 [assigned] [usertype] ee_len
+> fs/ext4/extents.c:3275:32:    got restricted __be16 [usertype] <noident>
+> fs/ext4/extents.c:4642:34: warning: cast from restricted __le16
+> fs/ext4/extents.c:4642:34: warning: incorrect type in argument 1 (different base types)
+> fs/ext4/extents.c:4642:34:    expected unsigned short [unsigned] [usertype] val
+> fs/ext4/extents.c:4642:34:    got restricted __le16 [usertype] eh_entries
+> fs/ext4/extents.c:4642:34: warning: cast from restricted __le16
+> fs/ext4/extents.c:4642:34: warning: cast from restricted __le16
+> fs/ext4/extents.c:4642:34: warning: restricted __be16 degrades to integer
+> fs/ext4/mballoc.c:863:21: warning: symbol 'group' shadows an earlier one
+> fs/ext4/mballoc.c:795:35: originally declared here
+> include/linux/mm.h:759:16: warning: potentially expensive pointer subtraction
+> include/linux/mm.h:759:16: warning: potentially expensive pointer subtraction
+> include/linux/mm.h:759:16: warning: potentially expensive pointer subtraction
+> include/linux/mm.h:759:16: warning: potentially expensive pointer subtraction
+> include/linux/mm.h:759:16: warning: potentially expensive pointer subtraction
+> fs/ext4/mballoc.c:4855:9: warning: context imbalance in 'ext4_trim_extent' - unexpected unlock
+> fs/ext4/move_extent.c:859:29: warning: symbol 'err' shadows an earlier one
+> fs/ext4/move_extent.c:835:16: originally declared here
+> include/linux/mm.h:759:16: warning: potentially expensive pointer subtraction
+> fs/ext4/mmp.c:18:16: warning: incorrect type in return expression (different base types)
+> fs/ext4/mmp.c:18:16:    expected unsigned int
+> fs/ext4/mmp.c:18:16:    got restricted __le32 [usertype] <noident>
+> fs/ext4/mmp.c:27:19: warning: restricted __le32 degrades to integer
+> fs/ext4/mmp.c:36:27: warning: incorrect type in assignment (different base types)
+> fs/ext4/mmp.c:36:27:    expected restricted __le32 [usertype] mmp_checksum
+> fs/ext4/mmp.c:36:27:    got unsigned int
+> fs/ext4/indirect.c:579:41: warning: potentially expensive pointer subtraction
+> fs/ext4/indirect.c:592:52: warning: potentially expensive pointer subtraction
+> fs/ext4/indirect.c:1257:68: warning: potentially expensive pointer subtraction
+> fs/ext4/indirect.c:1268:67: warning: potentially expensive pointer subtraction
+> fs/ext4/indirect.c:1275:48: warning: potentially expensive pointer subtraction
+> fs/ext4/indirect.c:1327:52: warning: incorrect type in argument 2 (different base types)
+> fs/ext4/indirect.c:1327:52:    expected unsigned long [unsigned] [usertype] block
+> fs/ext4/indirect.c:1327:52:    got restricted __le32 [assigned] [usertype] blk
+> fs/ext4/indirect.c:1329:33: warning: incorrect type in argument 4 (different base types)
+> fs/ext4/indirect.c:1329:33:    expected unsigned long long [unsigned] [usertype] <noident>
+> fs/ext4/indirect.c:1329:33:    got restricted __le32 [assigned] [usertype] blk
+> fs/ext4/xattr.c:127:13: warning: incorrect type in assignment (different base types)
+> fs/ext4/xattr.c:127:13:    expected unsigned int [unsigned] [usertype] old
+> fs/ext4/xattr.c:127:13:    got restricted __le32 [usertype] h_checksum
+> fs/ext4/xattr.c:129:18: warning: incorrect type in assignment (different base types)
+> fs/ext4/xattr.c:129:18:    expected unsigned long [unsigned] [usertype] block_nr
+> fs/ext4/xattr.c:129:18:    got restricted __le64 [usertype] <noident>
+> fs/ext4/xattr.c:135:25: warning: incorrect type in assignment (different base types)
+> fs/ext4/xattr.c:135:25:    expected restricted __le32 [usertype] h_checksum
+> fs/ext4/xattr.c:135:25:    got unsigned int [unsigned] [usertype] old
+> include/linux/mm.h:759:16: warning: potentially expensive pointer subtraction
+> include/linux/mm.h:759:16: warning: potentially expensive pointer subtraction
+> include/linux/mm.h:759:16: warning: potentially expensive pointer subtraction
+> include/linux/mm.h:759:16: warning: potentially expensive pointer subtraction
+> include/linux/mm.h:759:16: warning: potentially expensive pointer subtraction
+> So please give me couple of hours and I'll send you a complete patch.
+> 
+> 
+> > Please give a try to this patch
+> > diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> > index 1530cf4..e8460f6 100644
+> > --- a/fs/ext4/extents.c
+> > +++ b/fs/ext4/extents.c
+> > @@ -3272,7 +3272,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+> >  		if (err)
+> >  			goto out;
+> >  		zero_ex.ee_block = ex->ee_block;
+> > -		zero_ex.ee_len = ext4_ext_get_actual_len(ex);
+> > +		zero_ex.ee_len = cpu_to_le16(ext4_ext_get_actual_len(ext));
+> >  		ext4_ext_store_pblock(&zero_ex, ext4_ext_pblock(ex));
+> >  
+> >  		err = ext4_ext_get_access(handle, inode, path + depth);
+> > 
+> > > 
+> > > I've applied (only) 0001-enable-ES_AGGRESSIVE_TEST-V2.patch to 3.9-rc4:
+> > > 
+> > >   patching file fs/ext4/extents_status.h
+> > >   patching file fs/ext4/inode.c
+> > >   Hunk #1 succeeded at 1588 (offset 42 lines).
+> > >   Hunk #2 succeeded at 1609 (offset 42 lines).
+> > > 
+> > > And tried to download some images via bittorrent. As expected, lots of 
+> > > "ES cache assertation failed" were being logged:
+> > > 
+> > >  http://nerdbynature.de/bits/3.9.0-rc4/ext4/
+> > >  => messages_0001-enable-ES_AGGRESSIVE_TEST-V2.txt.xz
+> > > 
+> > > I've tried to download 3 files, all via bittorrent (so, fallocate & heavy 
+> > > mmap)
+> > > 
+> > > 1) 8GB Fedora iso, there are also WARNINGs bring triggered, see below.
+> > >    I decided to cancel the download after some gigabyes.
+> > > 
+> > > 2) A 50 MB Debian iso, this produced just one "ES cache assertation" 
+> > >    message. Download went OK, checksum was correct too.
+> > > 
+> > > 3) A 221 MB Fedora iso, produced a couple of "ES cache assertation" 
+> > >    messages, but no WARNINGs. Download went OK, checksum was correct too.
+> > > 
+> > > It's all in that messages_0001-enable-ES_AGGRESSIVE_TEST-V2.txt.xz file 
+> > > above. I just e2fsck'ed the ext4 filesystem again (and did so last night), 
+> > > but no errors were found.
+> > > 
+> > > HTH,
+> > > Christian.
+> > > 
+> > > One of the WARNINGs during that 8GB download:
+> > > 
+> > >     ino:39190654 lbkl:0, b_state=0x0004b988, b_size=4131
+> > >  ------------[ cut here ]------------
+> > >  WARNING: at /opt/linux-git/fs/ext4/inode.c:1600
+> > >  Modules linked in: md5 ecb nfs i2c_powermac therm_adt746x ecryptfs firewire_sbp2 arc4 b43 usb_storage mac80211 cfg80211
+> > >  NIP: c013745c LR: c013745c CTR: c000df9c
+> > >  REGS: edc479a0 TRAP: 0700   Tainted: G        W     (3.9.0-rc4-dirty)
+> > >  MSR: 00029032 <EE,ME,IR,DR,RI>  CR: 44028644  XER: 20000000
+> > >  TASK = edca9740[4379] 'flush-254:1' THREAD: edc46000
+> > >  GPR00: c013745c edc47a50 edca9740 00000034 edca9db0 00000006 00000000 00008000
+> > >  GPR08: 00003fb0 00218f23 00000000 c000006e 00000dc9 00000000 00000009 ee18cca0
+> > >  GPR16: edc47c78 0000000e 0004b9bf 0004b988 00000000 edc47a84 00001000 e6357540
+> > >  GPR24: edc47b78 e6357540 00000000 0004b97f 00000000 0051d188 00000000 0004b988
+> > >  NIP [c013745c] mpage_da_submit_io+0x3dc/0x3f0
+> > >  LR [c013745c] mpage_da_submit_io+0x3dc/0x3f0
+> > >  Call Trace:
+> > >  [edc47a50] [c013745c] mpage_da_submit_io+0x3dc/0x3f0 (unreliable)
+> > >  [edc47b30] [c013c9f0] mpage_da_map_and_submit+0x16c/0x5f0
+> > >  [edc47bc0] [c013d2e4] write_cache_pages_da+0x470/0x480
+> > >  [edc47c70] [c013d554] ext4_da_writepages+0x260/0x49c
+> > >  [edc47d20] [c00eeea0] __writeback_single_inode+0x34/0x120
+> > >  [edc47d40] [c00ef508] writeback_sb_inodes+0x1fc/0x34c
+> > >  [edc47db0] [c00ef6e4] __writeback_inodes_wb+0x8c/0xd0
+> > >  [edc47de0] [c00efa90] wb_writeback+0x1b4/0x1bc
+> > >  [edc47e20] [c00f06d0] wb_do_writeback+0x1ec/0x1f4
+> > >  [edc47e80] [c00f0748] bdi_writeback_thread+0x70/0x140
+> > >  [edc47eb0] [c0051c18] kthread+0xa8/0xac
+> > >  [edc47f40] [c00106cc] ret_from_kernel_thread+0x64/0x6c
+> > >  --- Exception: 0 at   (null)
+> > >      LR =   (null)
+> > >  Instruction dump:
+> > > 
+> > > -- 
+> > > BOFH excuse #61:
+> > > 
+> > > not approved by the FCC
