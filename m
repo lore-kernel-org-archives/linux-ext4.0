@@ -1,80 +1,110 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: per inode fsync optimization question
-Date: Wed, 3 Apr 2013 18:03:53 +0200
-Message-ID: <20130403160353.GB17415@quack.suse.cz>
-References: <8738v7r8xx.fsf@openvz.org>
- <20130403145055.GD14667@quack.suse.cz>
- <87zjxfps5u.fsf@openvz.org>
- <20130403151522.GE14667@quack.suse.cz>
- <87wqsjpqod.fsf@openvz.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: fix big-endian bugs which could cause fs corruptions
+Date: Wed,  3 Apr 2013 12:36:42 -0400
+Message-ID: <1365007002-17528-1-git-send-email-tytso@mit.edu>
+Cc: linux-s390@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Christian Kujau <lists@nerdbynature.de>,
+	CAI Qian <caiqian@redhat.com>, sbest@redhat.com,
+	Zheng Liu <wenqing.lz@taobao.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Dmitry Monakhov <dmonakhov@openvz.org>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:51690 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761098Ab3DCQD6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Apr 2013 12:03:58 -0400
-Content-Disposition: inline
-In-Reply-To: <87wqsjpqod.fsf@openvz.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:58978 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1761132Ab3DCQg6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 3 Apr 2013 12:36:58 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 03-04-13 19:41:38, Dmitry Monakhov wrote:
-> On Wed, 3 Apr 2013 17:15:22 +0200, Jan Kara <jack@suse.cz> wrote:
-> > On Wed 03-04-13 19:09:33, Dmitry Monakhov wrote:
-> > > On Wed, 3 Apr 2013 16:50:55 +0200, Jan Kara <jack@suse.cz> wrote:
-> > > > On Wed 03-04-13 18:21:46, Dmitry Monakhov wrote:
-> > > > > inode store i_sync_tid and i_datasync_tid  in order to optimize journal
-> > > > > flushes and wait for commits only when necessary, but
-> > > > > fields are declared as tid_t(not atomic_t as it done in ext3) so we
-> > > > > have not synchronization between readers and writers, so gcc and cpu
-> > > > > is allowed to perform prefetch, cache and other stuff.
-> > > > > Looks like a bug, right?
-> > > >   Reads and writes to atomic_t aren't guaranteed to be any kind of a
-> > > > barrier (if fact they are compiled as simple stores and loads on x86). Only
-> > > > arithmetic operations on atomic types are special. So using tid_t is just
-> > > > fine.
-> > > Ok but what about prefetching?
-> > > Compiler is allowed to prefetch on early stage ?
-> > > should we use ACCESS_ONCE() or wmb() and rmb() here?
-> >   Yes, but prefetch can hardly happen before the syscall is started and
-> > value from that time is enough. We just have to be sure that if user can
-> > prove write(2) happened before fsync(2), then data written by write(2) are
-> > on disk. So I don't think we need any barriers there.
-> Sorry for be annoying but what prevents us from following situation?:
-> DD:
-> fallocate(2)
-> write(2)
-> 
-> fsync(2)                       
->  {prefetch}commit_tid = ie->i_sync_tid (T1)
->                                                [flushd]
->                                                 ->convert_extents
->                                                   -> ei->i_sync_tid = current_tid (T2)
->  
->  Observe that commit_tid == T1 (too old)
->  issue a barrier and exit but
->  data still in transaction which is not yet committed
-  Heh, ok, you are careful :). So I have to be as well. Races with extent
-conversion specifically are prevented by the call to
-ext4_flush_unwritten_io(). That call effectively establishes a full barrier
-by taking and dropping a spinlock. So if that call saw empty list of
-conversions, we must later see fresh value of i_sync_tid.
+From: Zheng Liu <wenqing.lz@taobao.com>
 
-Now ext4_flush_unwritten_io() is going away in my cleanup patches but then
-the synchronization of writeback (and extent conversion) from flusher
-thread and fsync() happens in filemap_write_and_wait_range() which
-establishes similar barrier by looking at PageWriteback bit - i.e. if it
-sees PageWriteback cleared, we must also see new value of i_sync_tid.
+From: Zheng Liu <wenqing.lz@taobao.com>
 
-Thanks for poking into this because it made me realize things aren't as
-trivial as I thought they are.
+When an extent was zeroed out, we forgot to do convert from cpu to le16.
+It could make us hit a BUG_ON when we try to write dirty pages out.  So
+fix it.
 
-									Honza
+[ Also fix a bug found by Dmitry Monakhov where we were missing
+  le32_to_cpu() calls in the new indirect punch hole code.
 
+  There are a number of other big endian warnings found by static code
+  analyzers, but we'll wait for the next merge window to fix them all
+  up.  These fixes are designed to be Obviously Correct by code
+  inspection, and easy to demonstrate that it won't make any
+  difference (and hence, won't introduce any bugs) on little endian
+  architectures such as x86.  --tytso ]
+
+Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Reported-by: CAI Qian <caiqian@redhat.com>
+Reported-by: Christian Kujau <lists@nerdbynature.de>
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+
+This is what I plan to be sending to Linus very shortly.  If anyone
+could  test / review this patch ASAP, I'd really appreciate it, thanks!!
+
+ fs/ext4/extents.c  | 11 +++++++----
+ fs/ext4/indirect.c |  4 ++--
+ 2 files changed, 9 insertions(+), 6 deletions(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 56efcaa..9c6d06d 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2999,20 +2999,23 @@ static int ext4_split_extent_at(handle_t *handle,
+ 			if (split_flag & EXT4_EXT_DATA_VALID1) {
+ 				err = ext4_ext_zeroout(inode, ex2);
+ 				zero_ex.ee_block = ex2->ee_block;
+-				zero_ex.ee_len = ext4_ext_get_actual_len(ex2);
++				zero_ex.ee_len = cpu_to_le16(
++						ext4_ext_get_actual_len(ex2));
+ 				ext4_ext_store_pblock(&zero_ex,
+ 						      ext4_ext_pblock(ex2));
+ 			} else {
+ 				err = ext4_ext_zeroout(inode, ex);
+ 				zero_ex.ee_block = ex->ee_block;
+-				zero_ex.ee_len = ext4_ext_get_actual_len(ex);
++				zero_ex.ee_len = cpu_to_le16(
++						ext4_ext_get_actual_len(ex));
+ 				ext4_ext_store_pblock(&zero_ex,
+ 						      ext4_ext_pblock(ex));
+ 			}
+ 		} else {
+ 			err = ext4_ext_zeroout(inode, &orig_ex);
+ 			zero_ex.ee_block = orig_ex.ee_block;
+-			zero_ex.ee_len = ext4_ext_get_actual_len(&orig_ex);
++			zero_ex.ee_len = cpu_to_le16(
++						ext4_ext_get_actual_len(&orig_ex));
+ 			ext4_ext_store_pblock(&zero_ex,
+ 					      ext4_ext_pblock(&orig_ex));
+ 		}
+@@ -3272,7 +3275,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 		if (err)
+ 			goto out;
+ 		zero_ex.ee_block = ex->ee_block;
+-		zero_ex.ee_len = ext4_ext_get_actual_len(ex);
++		zero_ex.ee_len = cpu_to_le16(ext4_ext_get_actual_len(ex));
+ 		ext4_ext_store_pblock(&zero_ex, ext4_ext_pblock(ex));
+ 
+ 		err = ext4_ext_get_access(handle, inode, path + depth);
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index b505a14..a041831 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -1539,9 +1539,9 @@ static int free_hole_blocks(handle_t *handle, struct inode *inode,
+ 		blk = *i_data;
+ 		if (level > 0) {
+ 			ext4_lblk_t first2;
+-			bh = sb_bread(inode->i_sb, blk);
++			bh = sb_bread(inode->i_sb, le32_to_cpu(blk));
+ 			if (!bh) {
+-				EXT4_ERROR_INODE_BLOCK(inode, blk,
++				EXT4_ERROR_INODE_BLOCK(inode, le32_to_cpu(blk),
+ 						       "Read failure");
+ 				return -EIO;
+ 			}
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.7.12.rc0.22.gcdd159b
+
