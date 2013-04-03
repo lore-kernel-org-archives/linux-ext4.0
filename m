@@ -1,176 +1,76 @@
-From: Mel Gorman <mgorman@suse.de>
-Subject: Re: Excessive stall times on ext4 in 3.9-rc2
-Date: Wed, 3 Apr 2013 11:19:25 +0100
-Message-ID: <20130403101925.GA7341@suse.de>
-References: <20130402142717.GH32241@suse.de>
- <20130402150651.GB31577@thunk.org>
- <20130402151436.GC31577@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Cc: linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	Linux-MM <linux-mm@kvack.org>, Jiri Slaby <jslaby@suse.cz>
-To: Theodore Ts'o <tytso@mit.edu>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH 1/2] ext4: fix usless declarations
+Date: Wed,  3 Apr 2013 14:58:30 +0400
+Message-ID: <1364986711-3630-1-git-send-email-dmonakhov@openvz.org>
+Cc: tytso@mit.edu, wenqing.lz@taobao.com,
+	Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:60750 "EHLO mx2.suse.de"
+Received: from mailhub.sw.ru ([195.214.232.25]:45323 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758996Ab3DCKT3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Apr 2013 06:19:29 -0400
-Content-Disposition: inline
-In-Reply-To: <20130402151436.GC31577@thunk.org>
+	id S1759004Ab3DCK66 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 3 Apr 2013 06:58:58 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Apr 02, 2013 at 11:14:36AM -0400, Theodore Ts'o wrote:
-> On Tue, Apr 02, 2013 at 11:06:51AM -0400, Theodore Ts'o wrote:
-> > 
-> > Can you try 3.9-rc4 or later and see if the problem still persists?
-> > There were a number of ext4 issues especially around low memory
-> > performance which weren't resolved until -rc4.
-> 
-> Actually, sorry, I took a closer look and I'm not as sure going to
-> -rc4 is going to help (although we did have some ext4 patches to fix a
-> number of bugs that flowed in as late as -rc4).
-> 
+This patch should fix sparse complains about shadow declatations.
 
-I'm running with -rc5 now. I have not noticed much interactivity problems
-as such but the stall detection script reported that mutt stalled for
-20 seconds opening an inbox and imapd blocked for 59 seconds doing path
-lookups, imaps blocked again for 12 seconds doing an atime update, an RSS
-reader blocked for 3.5 seconds writing a file. etc.
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ fs/ext4/ialloc.c      |    1 -
+ fs/ext4/ioctl.c       |    1 -
+ fs/ext4/mballoc.c     |    1 -
+ fs/ext4/move_extent.c |    1 -
+ 4 files changed, 0 insertions(+), 4 deletions(-)
 
-There has been no reclaim activity in the system yet and 2G is still free
-so it's very unlikely to be a page or slab reclaim problem.
-
-> Can you send us the patch that you used to get record these long stall
-> times? 
-
-No patch but it depends on systemtap which you are already aware is a wreck
-to work with and frequently breaks between kernel versions for a variety of
-reasons. Minimally, it is necessary to revert commit ba6fdda4 (profiling:
-Remove unused timer hook) to get systemtap working.  I've reported this
-problem to the patch author and the systemtap mailing list.
-
-Other workarounds are necessary so I updated mmtests in git and at
-http://www.csn.ul.ie/~mel/projects/mmtests/mmtests-0.10-mmtests-0.01.tar.gz
-. Download and untar it
-
-1. stap can be "fixed" by running bin/stap-fix.sh . It will try and run
-   a one-liner stap script and if that fails it'll try very crude workarounds.
-   Your milage may vary considerably
-
-2. If you want to run the monitor script yourself, it's
-   sudo monitors/watch-dstate.pl | tee /tmp/foo.log
-
-   but be aware the log may be truncated due to buffeering.  Optionally you
-   can avoid the buffered write problem by running mmtests as
-
-   sudo ./run-mmtests.sh --config configs/config-monitor-interactive stall-debug
-
-   and the log will be in work/log/dstate-stall-debug-monitor.gz
-
-3. Summarise the report with
-
-   cat /tmp/foo.log | subreport/stap-dstate-frequency
-
-I'll be digging through other mmtests results shortly to see if I already
-have a better reproduction case that is eligible for bisection but those
-results are based on different machines so no guarantees of success.
-
-> And I assume you're using a laptop drive?  5400RPM or 7200RPM?
-> 
-
-Yes, laptop drive, 7200RPM. CFQ scheduler. Drive queue depth is 32. 
-
-/dev/sda:
-
-ATA device, with non-removable media
-	Model Number:       ST9320423AS                             
-	Serial Number:      5VH5M0LY
-	Firmware Revision:  0003LVM1
-	Transport:          Serial
-Standards:
-	Used: unknown (minor revision code 0x0029) 
-	Supported: 8 7 6 5 
-	Likely used: 8
-Configuration:
-	Logical		max	current
-	cylinders	16383	16383
-	heads		16	16
-	sectors/track	63	63
-	--
-	CHS current addressable sectors:   16514064
-	LBA    user addressable sectors:  268435455
-	LBA48  user addressable sectors:  625142448
-	Logical  Sector size:                   512 bytes
-	Physical Sector size:                   512 bytes
-	device size with M = 1024*1024:      305245 MBytes
-	device size with M = 1000*1000:      320072 MBytes (320 GB)
-	cache/buffer size  = 16384 KBytes
-	Nominal Media Rotation Rate: 7200
-Capabilities:
-	LBA, IORDY(can be disabled)
-	Queue depth: 32
-	Standby timer values: spec'd by Standard, no device specific minimum
-	R/W multiple sector transfer: Max = 16	Current = 16
-	Advanced power management level: 128
-	Recommended acoustic management value: 254, current value: 0
-	DMA: mdma0 mdma1 mdma2 udma0 udma1 udma2 udma3 udma4 *udma5 
-	     Cycle time: min=120ns recommended=120ns
-	PIO: pio0 pio1 pio2 pio3 pio4 
-	     Cycle time: no flow control=120ns  IORDY flow control=120ns
-Commands/features:
-	Enabled	Supported:
-	   *	SMART feature set
-	    	Security Mode feature set
-	   *	Power Management feature set
-	   *	Write cache
-	   *	Look-ahead
-	   *	Host Protected Area feature set
-	   *	WRITE_BUFFER command
-	   *	READ_BUFFER command
-	   *	DOWNLOAD_MICROCODE
-	   *	Advanced Power Management feature set
-	    	SET_MAX security extension
-	   *	48-bit Address feature set
-	   *	Device Configuration Overlay feature set
-	   *	Mandatory FLUSH_CACHE
-	   *	FLUSH_CACHE_EXT
-	   *	SMART error logging
-	   *	SMART self-test
-	   *	General Purpose Logging feature set
-	   *	64-bit World wide name
-	   *	IDLE_IMMEDIATE with UNLOAD
-	   *	Write-Read-Verify feature set
-	   *	WRITE_UNCORRECTABLE_EXT command
-	   *	{READ,WRITE}_DMA_EXT_GPL commands
-	   *	Segmented DOWNLOAD_MICROCODE
-	   *	Gen1 signaling speed (1.5Gb/s)
-	   *	Gen2 signaling speed (3.0Gb/s)
-	   *	Native Command Queueing (NCQ)
-	   *	Phy event counters
-	    	Device-initiated interface power management
-	   *	Software settings preservation
-	   *	SMART Command Transport (SCT) feature set
-	   *	SCT Read/Write Long (AC1), obsolete
-	   *	SCT Error Recovery Control (AC3)
-	   *	SCT Features Control (AC4)
-	   *	SCT Data Tables (AC5)
-	    	unknown 206[12] (vendor specific)
-Security: 
-	Master password revision code = 65534
-		supported
-	not	enabled
-	not	locked
-		frozen
-	not	expired: security count
-		supported: enhanced erase
-	70min for SECURITY ERASE UNIT. 70min for ENHANCED SECURITY ERASE UNIT. 
-Logical Unit WWN Device Identifier: 5000c5002f2d395d
-	NAA		: 5
-	IEEE OUI	: 000c50
-	Unique ID	: 02f2d395d
-Checksum: correct
-
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 6c5bb8d..4c358f7 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -899,7 +899,6 @@ got:
+ 	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+ 			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
+ 		__u32 csum;
+-		struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+ 		__le32 inum = cpu_to_le32(inode->i_ino);
+ 		__le32 gen = cpu_to_le32(inode->i_generation);
+ 		csum = ext4_chksum(sbi, sbi->s_csum_seed, (__u8 *)&inum,
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index a07b7bc..fb4e77f 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -355,7 +355,6 @@ group_add_out:
+ 
+ 	case EXT4_IOC_RESIZE_FS: {
+ 		ext4_fsblk_t n_blocks_count;
+-		struct super_block *sb = inode->i_sb;
+ 		int err = 0, err2 = 0;
+ 		ext4_group_t o_group = EXT4_SB(sb)->s_groups_count;
+ 
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 580aada..5bf8056 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -860,7 +860,6 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
+ 
+ 	first_block = page->index * blocks_per_page;
+ 	for (i = 0; i < blocks_per_page; i++) {
+-		int group;
+ 
+ 		group = (first_block + i) >> 1;
+ 		if (group >= ngroups)
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index 33e1c08..7f3ed63 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -856,7 +856,6 @@ mext_page_mkuptodate(struct page *page, unsigned from, unsigned to)
+ 		if (buffer_uptodate(bh))
+ 			continue;
+ 		if (!buffer_mapped(bh)) {
+-			int err = 0;
+ 			err = ext4_get_block(inode, block, bh, 0);
+ 			if (err) {
+ 				SetPageError(page);
 -- 
-Mel Gorman
-SUSE Labs
+1.7.1
+
