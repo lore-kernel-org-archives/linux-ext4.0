@@ -1,72 +1,55 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Excessive stall times on ext4 in 3.9-rc2
-Date: Wed, 3 Apr 2013 08:05:30 -0400
-Message-ID: <20130403120529.GA7741@thunk.org>
-References: <20130402142717.GH32241@suse.de>
- <20130402150651.GB31577@thunk.org>
- <20130402151436.GC31577@thunk.org>
- <20130403101925.GA7341@suse.de>
+Subject: Re: [PATCH] ext4: fix a big-endian bug when an extent is zeroed out
+Date: Wed, 3 Apr 2013 08:20:58 -0400
+Message-ID: <20130403122058.GB7741@thunk.org>
+References: <87fvzaspr8.fsf@openvz.org>
+ <874841142.414482.1364875584266.JavaMail.root@redhat.com>
+ <alpine.DEB.2.10.1304012249440.5874@trent.utfs.org>
+ <877gkls1q7.fsf@openvz.org>
+ <alpine.DEB.2.10.1304021430480.13746@trent.utfs.org>
+ <87r4isd1vn.fsf@openvz.org>
+ <alpine.DEB.2.10.1304021611020.13746@trent.utfs.org>
+ <87li90q9mx.fsf@openvz.org>
+ <87hajoq6s2.fsf@openvz.org>
+ <20130403102204.GA15383@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	Linux-MM <linux-mm@kvack.org>, Jiri Slaby <jslaby@suse.cz>
-To: Mel Gorman <mgorman@suse.de>
-Return-path: <owner-linux-mm@kvack.org>
+To: Dmitry Monakhov <dmonakhov@openvz.org>,
+	Christian Kujau <lists@nerdbynature.de>,
+	CAI Qian <caiqian@redhat.com>,
+	LKML <linux-kernel@vger.kernel.org>,
+	linux-s390 <linux-s390@vger.kernel.org>,
+	Steve Best <sbest@redhat.com>, linux-ext4@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20130403101925.GA7341@suse.de>
-Sender: owner-linux-mm@kvack.org
+In-Reply-To: <20130403102204.GA15383@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Apr 03, 2013 at 11:19:25AM +0100, Mel Gorman wrote:
+On Wed, Apr 03, 2013 at 06:22:04PM +0800, Zheng Liu wrote:
+> Subject: [PATCH] ext4: fix a big-endian bug when an extent is zeroed out
 > 
-> I'm running with -rc5 now. I have not noticed much interactivity problems
-> as such but the stall detection script reported that mutt stalled for
-> 20 seconds opening an inbox and imapd blocked for 59 seconds doing path
-> lookups, imaps blocked again for 12 seconds doing an atime update, an RSS
-> reader blocked for 3.5 seconds writing a file. etc.
+> From: Zheng Liu <wenqing.lz@taobao.com>
+> 
+> When an extent was zeroed out, we forgot to do convert from cpu to le16.
+> It could make us hit a BUG_ON when we try to write dirty pages out.  So
+> fix it.
+> 
+> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 
-If imaps blocked for 12 seconds during an atime update, combined with
-everything else, at a guess it got caught by something holding up a
-journal commit.  Could you try enabling the jbd2_run_stats tracepoint
-and grabbing the trace log?  This will give you statistics on how long
-(in milliseconds) each of the various phases of a jbd2 commit is
-taking, i.e.:
+Thanks for finding this!  I think we should push this to Linus right
+away, and not wait for the next merge window.  The bug has been here
+for a long time, but it was unmasked by the fact that we unbroke
+extent zeroing in 3.9-rcX.
 
-    jbd2/sdb1-8-327   [002] .... 39681.874661: jbd2_run_stats: dev 8,17 tid 7163786 wait 0 request_delay 0 running 3530 locked 0 flushing 0 logging 0 handle_count 75 blocks 8 blocks_logged 9
-     jbd2/sdb1-8-327   [003] .... 39682.514153: jbd2_run_stats: dev 8,17 tid 7163787 wait 0 request_delay 0 running 640 locked 0 flushing 0 logging 0 handle_count 39 blocks 12 blocks_logged 13
-     jbd2/sdb1-8-327   [000] .... 39687.665609: jbd2_run_stats: dev 8,17 tid 7163788 wait 0 request_delay 0 running 5150 locked 0 flushing 0 logging 0 handle_count 60 blocks 13 blocks_logged 14
-     jbd2/sdb1-8-327   [000] .... 39693.200453: jbd2_run_stats: dev 8,17 tid 7163789 wait 0 request_delay 0 running 4840 locked 0 flushing 0 logging 0 handle_count 53 blocks 10 blocks_logged 11
-     jbd2/sdb1-8-327   [001] .... 39695.061657: jbd2_run_stats: dev 8,17 tid 7163790 wait 0 request_delay 0 running 1860 locked 0 flushing 0 logging 0 handle_count 124 blocks 19 blocks_logged 20
+I have two big questions.  (1) Shouldn't Eric Whitney have picked this
+up with his ARM pandaboard testing, since IIRC it's big-endian as
+well?  If not, is there something we can do to improve our testing wrt
+to big-endian systems?
 
-In the above sample each journal commit is running for no more than 5
-seconds or so (since that's the default jbd2 commit timeout; if a
-transaction is running for less than 5 seconds, then either we ran out
-of room in the journal, and the blocks_logged number will be high, or
-a commit was forced by something such as an fsync call).  
+And (2) does it make sense to have an inline function
+ext4_ext_set_len(len)?  It might save some lines of code, but more
+importantly, it might make it less likely that we will overlook this
+sort of bug in the future.
 
-If an atime update is getting blocked by 12 seconds, then it would be
-interesting to see if a journal commit is running for significantly
-longer than 5 seconds, or if one of the other commit phases is taking
-significant amounts of time.  (On the example above they are all
-taking no time, since I ran this on a relatively uncontended system;
-only a single git operation taking place.)
-
-Something else that might be worth trying is grabbing a lock_stat
-report and see if something is sitting on an ext4 or jbd2 mutex for a
-long time.
-
-Finally, as I mentioned I tried some rather simplistic tests and I
-didn't notice any difference between a 3.2 kernel and a 3.8/3.9-rc5
-kernel.  Assuming you can get a version of systemtap that
-simultaneously works on 3.2 and 3.9-rc5 :-P, and chance you could do a
-quick experiment and see if you're seeing a difference on your setup?
-
-Thanks!!
-
-					 - Ted
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+					- Ted
