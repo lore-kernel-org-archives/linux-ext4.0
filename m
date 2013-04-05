@@ -1,445 +1,181 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [RFC][PATCH] ext4: introduce reserved space
-Date: Fri, 5 Apr 2013 13:31:08 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1304051330310.10110@localhost>
-References: <1363776287-6115-1-git-send-email-lczerner@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: optimize ext4_end_io memory usage
+Date: Fri, 5 Apr 2013 11:35:14 +0200
+Message-ID: <20130405093514.GA3848@quack.suse.cz>
+References: <1364793468-1302-1-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:42477 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:48561 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750813Ab3DELbL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 5 Apr 2013 07:31:11 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r35BVB4C015452
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Fri, 5 Apr 2013 07:31:11 -0400
-In-Reply-To: <1363776287-6115-1-git-send-email-lczerner@redhat.com>
+	id S1752360Ab3DEJfS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 5 Apr 2013 05:35:18 -0400
+Content-Disposition: inline
+In-Reply-To: <1364793468-1302-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 20 Mar 2013, Lukas Czerner wrote:
+On Mon 01-04-13 09:17:48, Dmitry Monakhov wrote:
+> ext4_end_io->pages array has is used only for buffered writes and usless
+> in case of DIO. This patch allow us to save 1K for each DIO request.
+  I have actually a more complete solution to this in my patch queue -
+there isn't any need to reference pages from io_end after my patches.
+Hopefully I'll be able to send things out later today...
 
-> Date: Wed, 20 Mar 2013 11:44:47 +0100
-> From: Lukas Czerner <lczerner@redhat.com>
-> To: linux-ext4@vger.kernel.org
-> Cc: Lukas Czerner <lczerner@redhat.com>
-> Subject: [RFC][PATCH] ext4: introduce reserved space
-> 
-> Currently in ENOSPC condition when writing into unwritten space, or
-> punching a hole, we might need to split the extent and grow extent tree.
-> However since we can not allocate any new metadata blocks we'll have to
-> zero out unwritten part of extent or punched out part of extent, or in
-> the worst case return ENOSPC even though use actually does not allocate
-> any space.
-> 
-> Also in delalloc path we do reserve metadata and data blocks for the
-> time we're going to write out, however metadata block reservation is
-> very tricky especially since we expect that logical connectivity implies
-> physical connectivity, however that might not be the case and hence we
-> might end up allocating more metadata blocks than previously reserved.
-> So in future, metadata reservation checks should be removed since we can
-> not assure that we do not under reserve.
-> 
-> And this is where reserved space comes into the picture. When mounting
-> the file system we slice off a little bit of the file system space (2%
-> or 4096 clusters, whichever is smaller) which can be then used for the
-> cases mentioned above to prevent costly zeroout, or unexpected ENOSPC.
-> 
-> The number of reserved clusters can be set via sysfs, however it can
-> never be bigger than number of free clusters in the file system.
-> 
-> Note that this patch fixes the failure of xfstest 274 as expected.
+								Honza
 
-Any comments on the idea or the code itself ?
-
-Thanks!
--Lukas
-
-> 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 > ---
->  Documentation/filesystems/ext4.txt |    8 +++
->  fs/ext4/balloc.c                   |   18 ++++++--
->  fs/ext4/ext4.h                     |   13 +++--
->  fs/ext4/extents.c                  |   27 ++++++++----
->  fs/ext4/inode.c                    |   11 ++++-
->  fs/ext4/super.c                    |   84 ++++++++++++++++++++++++++++++++++-
->  6 files changed, 138 insertions(+), 23 deletions(-)
+>  fs/ext4/ext4.h    |    4 ++--
+>  fs/ext4/inode.c   |    3 +--
+>  fs/ext4/page-io.c |   39 ++++++++++++++++++++++++++++++++-------
+>  3 files changed, 35 insertions(+), 11 deletions(-)
 > 
-> diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
-> index 34ea4f1..0f04b16 100644
-> --- a/Documentation/filesystems/ext4.txt
-> +++ b/Documentation/filesystems/ext4.txt
-> @@ -494,6 +494,14 @@ Files in /sys/fs/ext4/<devname>
->   session_write_kbytes         This file is read-only and shows the number of
->                                kilobytes of data that have been written to this
->                                filesystem since it was mounted.
-> +
-> + reserved_clusters            This is RW file and contains number of reserved
-> +                              clusters in the file system which will be used
-> +                              in the specific situations to avoid costly
-> +                              zeroout, unexpected ENOSPC, or possible data
-> +                              loss. The default is 4096 and this can be changed
-> +                              however it can never exceed number of free
-> +                              clusters in the file system.
->  ..............................................................................
->  
->  Ioctls
-> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-> index 92e68b3..3e53020 100644
-> --- a/fs/ext4/balloc.c
-> +++ b/fs/ext4/balloc.c
-> @@ -478,20 +478,22 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
->  static int ext4_has_free_clusters(struct ext4_sb_info *sbi,
->  				  s64 nclusters, unsigned int flags)
->  {
-> -	s64 free_clusters, dirty_clusters, root_clusters;
-> +	s64 free_clusters, dirty_clusters, rsv, resv_clusters;
->  	struct percpu_counter *fcc = &sbi->s_freeclusters_counter;
->  	struct percpu_counter *dcc = &sbi->s_dirtyclusters_counter;
->  
->  	free_clusters  = percpu_counter_read_positive(fcc);
->  	dirty_clusters = percpu_counter_read_positive(dcc);
-> +	resv_clusters = atomic64_read(&sbi->s_resv_clusters);
->  
->  	/*
->  	 * r_blocks_count should always be multiple of the cluster ratio so
->  	 * we are safe to do a plane bit shift only.
->  	 */
-> -	root_clusters = ext4_r_blocks_count(sbi->s_es) >> sbi->s_cluster_bits;
-> +	rsv = (ext4_r_blocks_count(sbi->s_es) >> sbi->s_cluster_bits) +
-> +	      resv_clusters;
->  
-> -	if (free_clusters - (nclusters + root_clusters + dirty_clusters) <
-> +	if (free_clusters - (nclusters + rsv + dirty_clusters) <
->  					EXT4_FREECLUSTERS_WATERMARK) {
->  		free_clusters  = percpu_counter_sum_positive(fcc);
->  		dirty_clusters = percpu_counter_sum_positive(dcc);
-> @@ -499,15 +501,21 @@ static int ext4_has_free_clusters(struct ext4_sb_info *sbi,
->  	/* Check whether we have space after accounting for current
->  	 * dirty clusters & root reserved clusters.
->  	 */
-> -	if (free_clusters >= ((root_clusters + nclusters) + dirty_clusters))
-> +	if (free_clusters >= (rsv + nclusters + dirty_clusters))
->  		return 1;
->  
->  	/* Hm, nope.  Are (enough) root reserved clusters available? */
->  	if (uid_eq(sbi->s_resuid, current_fsuid()) ||
->  	    (!gid_eq(sbi->s_resgid, GLOBAL_ROOT_GID) && in_group_p(sbi->s_resgid)) ||
->  	    capable(CAP_SYS_RESOURCE) ||
-> -		(flags & EXT4_MB_USE_ROOT_BLOCKS)) {
-> +	    (flags & EXT4_MB_USE_ROOT_BLOCKS)) {
->  
-> +		if (free_clusters >= (nclusters + dirty_clusters +
-> +				      resv_clusters))
-> +			return 1;
-> +	}
-> +	/* No free blocks. Let's see if we can dip into reserved pool */
-> +	if (flags & EXT4_MB_USE_RESERVED) {
->  		if (free_clusters >= (nclusters + dirty_clusters))
->  			return 1;
->  	}
 > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 4a01ba3..5dd240f 100644
+> index 73f3e60..4c803af 100644
 > --- a/fs/ext4/ext4.h
 > +++ b/fs/ext4/ext4.h
-> @@ -121,6 +121,8 @@ typedef unsigned int ext4_group_t;
->  #define EXT4_MB_STREAM_ALLOC		0x0800
->  /* Use reserved root blocks if needed */
->  #define EXT4_MB_USE_ROOT_BLOCKS		0x1000
-> +/* Use blocks from reserved pool */
-> +#define EXT4_MB_USE_RESERVED		0x2000
+> @@ -219,7 +219,7 @@ typedef struct ext4_io_end {
+>  	struct kiocb		*iocb;		/* iocb struct for AIO */
+>  	int			result;		/* error value for AIO */
+>  	int			num_io_pages;   /* for writepages() */
+> -	struct ext4_io_page	*pages[MAX_IO_PAGES]; /* for writepages() */
+> +	struct ext4_io_page	**pages; 	/* for writepages() */
+>  } ext4_io_end_t;
 >  
->  struct ext4_allocation_request {
->  	/* target inode for block we're allocating */
-> @@ -557,9 +559,8 @@ enum {
->  #define EXT4_GET_BLOCKS_UNINIT_EXT		0x0002
->  #define EXT4_GET_BLOCKS_CREATE_UNINIT_EXT	(EXT4_GET_BLOCKS_UNINIT_EXT|\
->  						 EXT4_GET_BLOCKS_CREATE)
-> -	/* Caller is from the delayed allocation writeout path,
-> -	   so set the magic i_delalloc_reserve_flag after taking the
-> -	   inode allocation semaphore for */
-> +	/* Caller is from the delayed allocation writeout path
-> +	 * finally doing the actual allocation of delayed blocks */
->  #define EXT4_GET_BLOCKS_DELALLOC_RESERVE	0x0004
->  	/* caller is from the direct IO path, request to creation of an
->  	unitialized extents if not allocated, split the uninitialized
-> @@ -571,8 +572,9 @@ enum {
->  	/* Convert extent to initialized after IO complete */
->  #define EXT4_GET_BLOCKS_IO_CONVERT_EXT		(EXT4_GET_BLOCKS_CONVERT|\
->  					 EXT4_GET_BLOCKS_CREATE_UNINIT_EXT)
-> -	/* Punch out blocks of an extent */
-> -#define EXT4_GET_BLOCKS_PUNCH_OUT_EXT		0x0020
-> +	/* Eventual metadata allocation (due to growing extent tree)
-> +	 * should not fail, so try to use reserved blocks for that.*/
-> +#define EXT4_GET_BLOCKS_METADATA_NOFAIL		0x0020
->  	/* Don't normalize allocation size (used for fallocate) */
->  #define EXT4_GET_BLOCKS_NO_NORMALIZE		0x0040
->  	/* Request will not result in inode size update (user for fallocate) */
-> @@ -1179,6 +1181,7 @@ struct ext4_sb_info {
->  	unsigned int s_mount_flags;
->  	unsigned int s_def_mount_opt;
->  	ext4_fsblk_t s_sb_block;
-> +	atomic64_t s_resv_clusters;
->  	kuid_t s_resuid;
->  	kgid_t s_resgid;
->  	unsigned short s_mount_state;
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 372b2cb..e61a676 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -1878,8 +1878,8 @@ int ext4_ext_insert_extent(handle_t *handle, struct inode *inode,
->  	 * There is no free space in the found leaf.
->  	 * We're gonna add a new leaf in the tree.
->  	 */
-> -	if (flag & EXT4_GET_BLOCKS_PUNCH_OUT_EXT)
-> -		flags = EXT4_MB_USE_ROOT_BLOCKS;
-> +	if (flag & EXT4_GET_BLOCKS_METADATA_NOFAIL)
-> +		flags = EXT4_MB_USE_RESERVED;
->  	err = ext4_ext_create_new_leaf(handle, inode, flags, path, newext);
->  	if (err)
->  		goto cleanup;
-> @@ -2665,12 +2665,14 @@ again:
->  
->  			/*
->  			 * Split the extent in two so that 'end' is the last
-> -			 * block in the first new extent
-> +			 * block in the first new extent. Also we should not
-> +			 * fail removing space due to ENOSPC so try to use
-> +			 * reserved block if that happens.
->  			 */
->  			err = ext4_split_extent_at(handle, inode, path,
-> -						end + 1, split_flag,
-> -						EXT4_GET_BLOCKS_PRE_IO |
-> -						EXT4_GET_BLOCKS_PUNCH_OUT_EXT);
-> +					end + 1, split_flag,
-> +					EXT4_GET_BLOCKS_PRE_IO |
-> +					EXT4_GET_BLOCKS_METADATA_NOFAIL);
->  
->  			if (err < 0)
->  				goto out;
-> @@ -3108,7 +3110,8 @@ out:
->  static int ext4_ext_convert_to_initialized(handle_t *handle,
->  					   struct inode *inode,
->  					   struct ext4_map_blocks *map,
-> -					   struct ext4_ext_path *path)
-> +					   struct ext4_ext_path *path,
-> +					   int flags)
->  {
->  	struct ext4_sb_info *sbi;
->  	struct ext4_extent_header *eh;
-> @@ -3287,7 +3290,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
->  	}
->  
->  	allocated = ext4_split_extent(handle, inode, path,
-> -				      &split_map, split_flag, 0);
-> +				      &split_map, split_flag, flags);
->  	if (allocated < 0)
->  		err = allocated;
->  
-> @@ -3593,6 +3596,12 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
->  		  flags, allocated);
->  	ext4_ext_show_leaf(inode, path);
->  
-> +	/*
-> +	 * When writing into uninitialized space, we should not fail to
-> +	 * allocate metadata blocks for the new extent block if needed.
-> +	 */
-> +	flags |= EXT4_GET_BLOCKS_METADATA_NOFAIL;
-> +
->  	trace_ext4_ext_handle_uninitialized_extents(inode, map, flags,
->  						    allocated, newblock);
->  
-> @@ -3652,7 +3661,7 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
->  	}
->  
->  	/* buffered write, writepage time, convert*/
-> -	ret = ext4_ext_convert_to_initialized(handle, inode, map, path);
-> +	ret = ext4_ext_convert_to_initialized(handle, inode, map, path, flags);
->  	if (ret >= 0)
->  		ext4_update_inode_fsync_trans(handle, inode, 1);
->  out:
+>  struct ext4_io_submit {
+> @@ -2622,7 +2622,7 @@ extern void ext4_add_complete_io(ext4_io_end_t *io_end);
+>  extern void ext4_exit_pageio(void);
+>  extern void ext4_ioend_shutdown(struct inode *);
+>  extern void ext4_free_io_end(ext4_io_end_t *io);
+> -extern ext4_io_end_t *ext4_init_io_end(struct inode *inode, gfp_t flags);
+> +extern ext4_io_end_t *ext4_init_io_end(struct inode *inode, int directio, gfp_t flags);
+>  extern void ext4_end_io_work(struct work_struct *work);
+>  extern void ext4_io_submit(struct ext4_io_submit *io);
+>  extern int ext4_bio_write_page(struct ext4_io_submit *io,
 > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 95a0c62..3450829 100644
+> index f455ac0..840a23e 100644
 > --- a/fs/ext4/inode.c
 > +++ b/fs/ext4/inode.c
-> @@ -1601,12 +1601,21 @@ static void mpage_da_map_and_submit(struct mpage_da_data *mpd)
->  	 */
->  	map.m_lblk = next;
->  	map.m_len = max_blocks;
-> -	get_blocks_flags = EXT4_GET_BLOCKS_CREATE;
-> +	/*
-> +	 * We're in delalloc path and it is possible that we're going to
-> +	 * need more metadata blocks than previously reserved. However
-> +	 * we must not fail because we're in writeback and there is
-> +	 * nothing we can do about it so it might result in data loss.
-> +	 * So use reserved blocks to allocate metadata if possible.
-> +	 */
-> +	get_blocks_flags = EXT4_GET_BLOCKS_CREATE |
-> +			   EXT4_GET_BLOCKS_METADATA_NOFAIL;
->  	if (ext4_should_dioread_nolock(mpd->inode))
->  		get_blocks_flags |= EXT4_GET_BLOCKS_IO_CREATE_EXT;
->  	if (mpd->b_state & (1 << BH_Delay))
->  		get_blocks_flags |= EXT4_GET_BLOCKS_DELALLOC_RESERVE;
+> @@ -3162,12 +3162,11 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+>  	iocb->private = NULL;
+>  	ext4_inode_aio_set(inode, NULL);
+>  	if (!is_sync_kiocb(iocb)) {
+> -		ext4_io_end_t *io_end = ext4_init_io_end(inode, GFP_NOFS);
+> +		ext4_io_end_t *io_end = ext4_init_io_end(inode, 1, GFP_NOFS);
+>  		if (!io_end) {
+>  			ret = -ENOMEM;
+>  			goto retake_lock;
+>  		}
+> -		io_end->flag |= EXT4_IO_END_DIRECT;
+>  		iocb->private = io_end;
+>  		/*
+>  		 * we save the io structure for current async direct
+> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+> index 047a6de..1b8ec50 100644
+> --- a/fs/ext4/page-io.c
+> +++ b/fs/ext4/page-io.c
+> @@ -29,16 +29,26 @@
+>  #include "xattr.h"
+>  #include "acl.h"
 >  
-> +
->  	blks = ext4_map_blocks(handle, mpd->inode, &map, get_blocks_flags);
->  	if (blks < 0) {
->  		struct super_block *sb = mpd->inode->i_sb;
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 9379b7f..6ef160ae 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -81,6 +81,7 @@ static int ext4_feature_set_ok(struct super_block *sb, int readonly);
->  static void ext4_destroy_lazyinit_thread(void);
->  static void ext4_unregister_li_request(struct super_block *sb);
->  static void ext4_clear_request_list(void);
-> +static int ext4_reserve_clusters(struct ext4_sb_info *, ext4_fsblk_t);
+> -static struct kmem_cache *io_page_cachep, *io_end_cachep;
+> +static struct kmem_cache *io_page_cachep, *io_pgvec_cachep, *io_end_cachep;
 >  
->  #if !defined(CONFIG_EXT2_FS) && !defined(CONFIG_EXT2_FS_MODULE) && defined(CONFIG_EXT4_USE_FOR_EXT23)
->  static struct file_system_type ext2_fs_type = {
-> @@ -2375,6 +2376,17 @@ struct ext4_attr {
->  	int offset;
->  };
->  
-> +static int parse_strtoull(const char *buf,
-> +		unsigned long long max, unsigned long long *value)
-> +{
-> +	int ret;
-> +
-> +	ret = kstrtoull(skip_spaces(buf), 0, value);
-> +	if (!ret && *value > max)
-> +		ret = -EINVAL;
-> +	return ret;
-> +}
-> +
->  static int parse_strtoul(const char *buf,
->  		unsigned long max, unsigned long *value)
+>  int __init ext4_init_pageio(void)
 >  {
-> @@ -2459,6 +2471,27 @@ static ssize_t sbi_ui_store(struct ext4_attr *a,
->  	return count;
->  }
->  
-> +static ssize_t reserved_clusters_show(struct ext4_attr *a,
-> +				  struct ext4_sb_info *sbi, char *buf)
-> +{
-> +	return snprintf(buf, PAGE_SIZE, "%lu\n",
-> +			atomic64_read(&sbi->s_resv_clusters));
-> +}
+>  	io_page_cachep = KMEM_CACHE(ext4_io_page, SLAB_RECLAIM_ACCOUNT);
+>  	if (io_page_cachep == NULL)
+>  		return -ENOMEM;
 > +
-> +static ssize_t reserved_clusters_store(struct ext4_attr *a,
-> +				   struct ext4_sb_info *sbi,
-> +				   const char *buf, size_t count)
-> +{
-> +	unsigned long long val;
-> +	int ret;
-> +
-> +	if (parse_strtoull(buf, -1ULL, &val))
-> +		return -EINVAL;
-> +	ret = ext4_reserve_clusters(sbi, val);
-> +
-> +	return ret ? ret : count;
-> +}
-> +
->  static ssize_t trigger_test_error(struct ext4_attr *a,
->  				  struct ext4_sb_info *sbi,
->  				  const char *buf, size_t count)
-> @@ -2496,6 +2529,7 @@ static struct ext4_attr ext4_attr_##name = __ATTR(name, mode, show, store)
->  EXT4_RO_ATTR(delayed_allocation_blocks);
->  EXT4_RO_ATTR(session_write_kbytes);
->  EXT4_RO_ATTR(lifetime_write_kbytes);
-> +EXT4_RW_ATTR(reserved_clusters);
->  EXT4_ATTR_OFFSET(inode_readahead_blks, 0644, sbi_ui_show,
->  		 inode_readahead_blks_store, s_inode_readahead_blks);
->  EXT4_RW_ATTR_SBI_UI(inode_goal, s_inode_goal);
-> @@ -2513,6 +2547,7 @@ static struct attribute *ext4_attrs[] = {
->  	ATTR_LIST(delayed_allocation_blocks),
->  	ATTR_LIST(session_write_kbytes),
->  	ATTR_LIST(lifetime_write_kbytes),
-> +	ATTR_LIST(reserved_clusters),
->  	ATTR_LIST(inode_readahead_blks),
->  	ATTR_LIST(inode_goal),
->  	ATTR_LIST(mb_stats),
-> @@ -3188,6 +3223,40 @@ int ext4_calculate_overhead(struct super_block *sb)
->  	return 0;
->  }
->  
-> +
-> +static ext4_fsblk_t ext4_calculate_resv_clusters(struct ext4_sb_info *sbi)
-> +{
-> +	ext4_fsblk_t resv_clusters;
-> +
-> +	/*
-> +	 * By default we reserve 2% or 4096 clusters, whichever is smaller.
-> +	 * This should cover the situations where we can not afford to run
-> +	 * out of space like for example punch hole, or converting
-> +	 * uninitialized extents in delalloc path. In most cases such
-> +	 * allocation would require 1, or 2 blocks, higher numbers are
-> +	 * very rare.
-> +	 */
-> +	resv_clusters = ext4_blocks_count(sbi->s_es) >> sbi->s_cluster_bits;
-> +
-> +	do_div(resv_clusters, 50);
-> +	resv_clusters = min_t(ext4_fsblk_t, resv_clusters, 4096);
-> +
-> +	return resv_clusters;
-> +}
-> +
-> +
-> +static int ext4_reserve_clusters(struct ext4_sb_info *sbi, ext4_fsblk_t count)
-> +{
-> +	s64 free_clusters = percpu_counter_sum_positive(
-> +				&sbi->s_freeclusters_counter);
-> +
-> +	if (count >= free_clusters)
-> +		return -EINVAL;
-> +
-> +	atomic64_set(&sbi->s_resv_clusters, count);
-> +	return 0;
-> +}
-> +
->  static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  {
->  	char *orig_data = kstrdup(data, GFP_KERNEL);
-> @@ -3907,6 +3976,13 @@ no_journal:
->  			 "available");
->  	}
->  
-> +	err = ext4_reserve_clusters(sbi, ext4_calculate_resv_clusters(sbi));
-> +	if (err) {
-> +		ext4_msg(sb, KERN_ERR, "failed to reserve %llu clusters for "
-> +			 "reserved pool", ext4_calculate_resv_clusters(sbi));
-> +		goto failed_mount4a;
+> +	io_pgvec_cachep = kmem_cache_create("ext4_io_pgvec",
+> +					    sizeof(struct ext4_io_page*)
+> +					    * MAX_IO_PAGES,
+> +					    0, (SLAB_RECLAIM_ACCOUNT), NULL);
+> +	if (io_pgvec_cachep == NULL) {
+> +		kmem_cache_destroy(io_page_cachep);
+> +		return -ENOMEM;
 > +	}
-> +
->  	err = ext4_setup_system_zone(sb);
->  	if (err) {
->  		ext4_msg(sb, KERN_ERR, "failed to initialize system "
-> @@ -4738,9 +4814,10 @@ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
->  	struct super_block *sb = dentry->d_sb;
->  	struct ext4_sb_info *sbi = EXT4_SB(sb);
->  	struct ext4_super_block *es = sbi->s_es;
-> -	ext4_fsblk_t overhead = 0;
-> +	ext4_fsblk_t overhead = 0, resv_blocks;
->  	u64 fsid;
->  	s64 bfree;
-> +	resv_blocks = EXT4_C2B(sbi, atomic64_read(&sbi->s_resv_clusters));
+>  	io_end_cachep = KMEM_CACHE(ext4_io_end, SLAB_RECLAIM_ACCOUNT);
+>  	if (io_end_cachep == NULL) {
+>  		kmem_cache_destroy(io_page_cachep);
+> +		kmem_cache_destroy(io_pgvec_cachep);
+>  		return -ENOMEM;
+>  	}
+>  	return 0;
+> @@ -47,6 +57,7 @@ int __init ext4_init_pageio(void)
+>  void ext4_exit_pageio(void)
+>  {
+>  	kmem_cache_destroy(io_end_cachep);
+> +	kmem_cache_destroy(io_pgvec_cachep);
+>  	kmem_cache_destroy(io_page_cachep);
+>  }
 >  
->  	if (!test_opt(sb, MINIX_DF))
->  		overhead = sbi->s_overhead;
-> @@ -4752,8 +4829,9 @@ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
->  		percpu_counter_sum_positive(&sbi->s_dirtyclusters_counter);
->  	/* prevent underflow in case that few free space is available */
->  	buf->f_bfree = EXT4_C2B(sbi, max_t(s64, bfree, 0));
-> -	buf->f_bavail = buf->f_bfree - ext4_r_blocks_count(es);
-> -	if (buf->f_bfree < ext4_r_blocks_count(es))
-> +	buf->f_bavail = buf->f_bfree -
-> +			(ext4_r_blocks_count(es) + resv_blocks);
-> +	if (buf->f_bfree < (ext4_r_blocks_count(es) + resv_blocks))
->  		buf->f_bavail = 0;
->  	buf->f_files = le32_to_cpu(es->s_inodes_count);
->  	buf->f_ffree = percpu_counter_sum_positive(&sbi->s_freeinodes_counter);
+> @@ -83,12 +94,15 @@ void ext4_free_io_end(ext4_io_end_t *io)
+>  	BUG_ON(!io);
+>  	BUG_ON(!list_empty(&io->list));
+>  	BUG_ON(io->flag & EXT4_IO_END_UNWRITTEN);
+> +	BUG_ON(io->num_io_pages && !io->pages);
+>  
+>  	for (i = 0; i < io->num_io_pages; i++)
+>  		put_io_page(io->pages[i]);
+>  	io->num_io_pages = 0;
+>  	if (atomic_dec_and_test(&EXT4_I(io->inode)->i_ioend_count))
+>  		wake_up_all(ext4_ioend_wq(io->inode));
+> +	if (io->pages)
+> +		kmem_cache_free(io_pgvec_cachep, io->pages);
+>  	kmem_cache_free(io_end_cachep, io);
+>  }
+>  
+> @@ -212,14 +226,25 @@ int ext4_flush_unwritten_io(struct inode *inode)
+>  	return ret;
+>  }
+>  
+> -ext4_io_end_t *ext4_init_io_end(struct inode *inode, gfp_t flags)
+> +ext4_io_end_t *ext4_init_io_end(struct inode *inode, int directio, gfp_t flags)
+>  {
+>  	ext4_io_end_t *io = kmem_cache_zalloc(io_end_cachep, flags);
+> -	if (io) {
+> -		atomic_inc(&EXT4_I(inode)->i_ioend_count);
+> -		io->inode = inode;
+> -		INIT_LIST_HEAD(&io->list);
+> +
+> +	if (!io)
+> +		return NULL;
+> +
+> +	if (directio) {
+> +		io->flag = EXT4_IO_END_DIRECT;
+> +	} else {
+> +		io->pages = kmem_cache_zalloc(io_pgvec_cachep, flags);
+> +		if (!io->pages) {
+> +			kmem_cache_free(io_end_cachep, io);
+> +			return NULL;
+> +		}
+>  	}
+> +	atomic_inc(&EXT4_I(inode)->i_ioend_count);
+> +	io->inode = inode;
+> +	INIT_LIST_HEAD(&io->list);
+>  	return io;
+>  }
+>  
+> @@ -327,7 +352,7 @@ static int io_submit_init(struct ext4_io_submit *io,
+>  	int nvecs = bio_get_nr_vecs(bh->b_bdev);
+>  	struct bio *bio;
+>  
+> -	io_end = ext4_init_io_end(inode, GFP_NOFS);
+> +	io_end = ext4_init_io_end(inode, 0, GFP_NOFS);
+>  	if (!io_end)
+>  		return -ENOMEM;
+>  	bio = bio_alloc(GFP_NOIO, min(nvecs, BIO_MAX_PAGES));
+> -- 
+> 1.7.1
 > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
