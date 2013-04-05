@@ -1,59 +1,58 @@
-From: Matthew Wilcox <matthew@wil.cx>
-Subject: Re: [PATCH 3/4] fsfreeze: manage kill signal when
-	sb_start_pagefault is called
-Date: Sat, 6 Apr 2013 07:20:29 -0600
-Message-ID: <20130406132028.GD28744@parisc-linux.org>
-References: <515FF380.5020406@gmail.com>
+From: Todd Poynor <toddpoynor@google.com>
+Subject: Re: [PATCH] ext4: fixup 64-bit divides in linux-3.0 stable backport
+ of upstream fix
+Date: Fri, 5 Apr 2013 16:18:15 -0700
+Message-ID: <CAAW3YpbM7Vk_=qXv2NCgRsCkashsTpYC_6osA_udm2oDsiz5qA@mail.gmail.com>
+References: <1365202463-25872-1-git-send-email-toddpoynor@google.com>
+	<20130405230107.GA8412@kroah.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org,
-	Chris Mason <chris.mason@fusionio.com>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jaegeuk Kim <jaegeuk.kim@samsung.com>,
-	Steven Whitehouse <swhiteho@redhat.com>,
-	KONISHI Ryusuke <konishi.ryusuke@lab.ntt.co.jp>,
-	Mark Fasheh <mfasheh@suse.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	Mike Snitzer <snitzer@redhat.com>,
-	Alasdair G Kergon <agk@redhat.com>,
-	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-	cluster-devel@redhat.com, linux-nilfs@vger.kernel.org,
-	ocfs2-devel@oss.oracle.com, linux-mm@kvack.org,
-	Jan Kara <jack@suse.cz>
-To: Marco Stornelli <marco.stornelli@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <515FF380.5020406@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: stable@vger.kernel.org, Lingzhu Xiang <lxiang@redhat.com>,
+	linux-ext4@vger.kernel.org
+To: Greg KH <gregkh@linuxfoundation.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-la0-f44.google.com ([209.85.215.44]:55098 "EHLO
+	mail-la0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759737Ab3DEXSR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Apr 2013 19:18:17 -0400
+Received: by mail-la0-f44.google.com with SMTP id fr10so823922lab.3
+        for <linux-ext4@vger.kernel.org>; Fri, 05 Apr 2013 16:18:16 -0700 (PDT)
+In-Reply-To: <20130405230107.GA8412@kroah.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Apr 06, 2013 at 12:05:52PM +0200, Marco Stornelli wrote:
-> In every place where sb_start_pagefault was called now we must manage
-> the error code and return VM_FAULT_RETRY.
+On Fri, Apr 5, 2013 at 4:01 PM, Greg KH <gregkh@linuxfoundation.org> wrote:
+>
+> On Fri, Apr 05, 2013 at 03:54:23PM -0700, Todd Poynor wrote:
+> > Replace C division operators with div64_u64 for divides introduced in:
+> > commit 503f4bdcc078e7abee273a85ce322de81b18a224
+> > ext4: use atomic64_t for the per-flexbg free_clusters count
+> >
+> > Specific to the linux-3.0 backport of the upstream patch.
+>
+> Why is this specific?  Why is this working differently in 3.0 from 3.4
+> and newer?
 
-Erm ... in patch 1/4:
+Looks like 3.1 doesn't have this patch.  The 3.2-stable backport of
+this patch, for example, does not make some additional changes made in
+the 3.0-stable backport, in addition to the upstream patch being
+backported.  These additional changes include converting
+blocks_per_flex and flexbg_free_blocks from int to ext4_fsblk_t (a
+64-bit type), probably as a part of these additional changes mentioned
+in the commit message:
 
- static inline void sb_start_pagefault(struct super_block *sb)
- {
--       __sb_start_write(sb, SB_FREEZE_PAGEFAULT, true);
-+       __sb_start_write_wait(sb, SB_FREEZE_PAGEFAULT, false);
- }
+   [Backported for 3.0-stable. Renamed free_clusters back to free_blocks;
+    fixed a few more atomic_read's of free_blocks left in 3.0.]
 
->  
-> -	sb_start_pagefault(inode->i_sb);
-> +	ret = sb_start_pagefault(inode->i_sb);
-> +	if (ret)
-> +		return VM_FAULT_RETRY;
->  	ret  = btrfs_delalloc_reserve_space(inode, PAGE_CACHE_SIZE);
+Perhaps the better fix is to revert those additional changes and let
+the ext4 folks figure out what to do about the remaining atomic_reads.
 
-Does the compiler not warn that you're assigning void to 'ret'?  Or was
-there some other SNAFU sending these patches?
+> And care to cc: the ext4 developers/maintainers when sending ext4
+> patches?
 
--- 
-Matthew Wilcox				Intel Open Source Technology Centre
-"Bill, look, we understand that you're interested in selling us this
-operating system, but compare it to ours.  We can't possibly take such
-a retrograde step."
+cc'ed now, apologies.
+
+>
+> thanks,
+>
+> greg k-h
