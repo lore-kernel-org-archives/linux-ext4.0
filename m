@@ -1,82 +1,86 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Excessive stall times on ext4 in 3.9-rc2
-Date: Sat, 6 Apr 2013 09:15:14 -0400
-Message-ID: <20130406131514.GB7816@thunk.org>
-References: <20130402142717.GH32241@suse.de>
- <20130402150651.GB31577@thunk.org>
- <20130402151436.GC31577@thunk.org>
- <20130403101925.GA7341@suse.de>
- <515F4DA3.2000000@suse.cz>
- <20130405231635.GA6521@thunk.org>
- <515FCEEC.9070504@suse.cz>
+From: "J. Bruce Fields" <bfields@redhat.com>
+Subject: Re: [PATCH, RFC V3] ext3: add ioctl to force 32-bit hashes from
+ indexed dirs
+Date: Fri, 5 Apr 2013 19:28:21 -0400
+Message-ID: <20130405232821.GA15810@pad.fieldses.org>
+References: <5154AAB4.2000701@redhat.com>
+ <5159A8D5.1000204@redhat.com>
+ <20130401181718.GB22443@thunk.org>
+ <5159D03F.5000606@redhat.com>
+ <20130401190804.GD22443@thunk.org>
+ <5159E4AC.7050307@redhat.com>
+ <20130401200052.GA24097@thunk.org>
+ <5159E88F.8030704@redhat.com>
+ <307C00EE-45DE-48A4-9FB7-3F164B51A524@redhat.com>
+ <1365203125.15177.33.camel@jesse>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Mel Gorman <mgorman@suse.de>, linux-ext4@vger.kernel.org,
-	LKML <linux-kernel@vger.kernel.org>,
-	Linux-MM <linux-mm@kvack.org>
-To: Jiri Slaby <jslaby@suse.cz>
+Cc: Anand Avati <avati@redhat.com>, Eric Sandeen <sandeen@redhat.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>, gluster-devel@nongnu.org,
+	jra@samba.org
+To: Andrew Bartlett <abartlet@samba.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:59791 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1422801Ab3DFNQA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 6 Apr 2013 09:16:00 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:13128 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759881Ab3DEX3N (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 5 Apr 2013 19:29:13 -0400
 Content-Disposition: inline
-In-Reply-To: <515FCEEC.9070504@suse.cz>
+In-Reply-To: <1365203125.15177.33.camel@jesse>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Apr 06, 2013 at 09:29:48AM +0200, Jiri Slaby wrote:
+On Sat, Apr 06, 2013 at 10:05:25AM +1100, Andrew Bartlett wrote:
+> On Mon, 2013-04-01 at 13:34 -0700, Anand Avati wrote:
+> > On Apr 1, 2013, at 1:05 PM, Eric Sandeen <sandeen@redhat.com> wrote:
+> > > 
+> > > Meh, let's just keep it simple then.  And I'd really like to know if
+> > > gluster still even needs this, or if their new scheme will work instead,
+> > 
+> > As of this morning the new d_off transformation (Zach's idea) is merged in gluster. We had to put in some kind of ext4 awareness, and the "more complex" d_off transformation (which is finally working properly after fixing some minor issues) seemed better than calling ioctls by detecting the backend is ext4.
+> > 
+> > > in  which case we should drop it - but Samba made noise about needing it too,
+> > > though I've not seen specifics, so I hate to merge it "just in case."
+> > 
+> > Yes, I too saw comments from Andrew Bartlett of the Samba team. It
+> > appeared to be the case that Samba could only present 32bit cookies
+> > while ext4 was now returning larger cookies (somewhat like the old
+> > NFSv2 clients problem?). This ioctl would be useful there I guess,
+> > bring it "in par" with knfsd's abilities of expressing desire for
+> > 32bit cookies? However, for knfsd legacy requirements, FMODE_32BITHASH
+> > is in generic VFS. But for a userspace file server, it would need to
+> > first gain the knowledge of which filesystems in the world actually
+> > present large cookies, and for the subset which support smaller
+> > cookies, issue filesystem specific ioctls() in their own specific
+> > ways.
+> > 
+> > Wouldn't it be "fair" to treat userspace file servers as equals, and
+> > provide a generic FS independent ioctl to set the common
+> > FMODE_32BITHASH flag on any dir fd? Think of it as a way of extending
+> > the "pointer access" to file->f_mode which NFS exercises, up to
+> > userspace?
 > 
-> I'm not sure, as I am using -next like for ever. But sure, there was a
-> kernel which didn't ahve this problem.
+> If 32-bit cookies are baked into current-generation NFS, even if Samba
+> doesn't take this up, wouldn't
+> http://sourceforge.net/apps/trac/nfs-ganesha/ need it just the same?
 
-Any chance you could try rolling back to 3.2 or 3.5 to see if you can
-get a starting point?  Even a high-level bisection search would be
-helpful to give us a hint.
+I guess ganesha could use tricks similar to gluster's and throw out the
+low bits of 64-bit cookies.
 
->Ok,
->  dd if=/dev/zero of=xxx
->is enough instead of "kernel update".
+For knfsd I've been telling people they should either
 
-Was the dd running in the VM or in the host OS?  Basically, is running
-the VM required?
+	- fix their clients (the protocol *does* define cookies to be 64
+	  bits, and the Linux client has shown it's practical to remap
+	  64-bit cookies to 32-bit cookies if necessary for applications
+	  using 32-bit interfaces), or
+	- fix applications to use 64-bit interfaces, or
+	- just turn off dir_index: hopefully the fact that they've been
+	  happily using ext4 without seeing hash collisions means they
+	  aren't using very large directories, hence can live without
+	  dir_index.
 
-> Nothing, just VM (kernel update from console) and mplayer2 on the host.
-> This is more-or-less reproducible with these two.
+knfsd is still returning 32-bit cookies to v2 clients (that's the
+protocol), but I doubt v2 support is very critical for Ganesha.
 
-No browser or anything else running that might be introducing a stream
-of fsync()'s?
-
->     jbd2/sda5-8-10969 [000] ....   403.679552: jbd2_run_stats: dev
->259,655360 tid 348895 wait 0 request_delay 0 running 5000 locked 1040
->flushing 0 logging 112 handle_count 148224 blocks 1 blocks_logged 2
-
->      jbd2/md2-8-959   [000] ....   408.111339: jbd2_run_stats: dev 9,2
->tid 382991 wait 0 request_delay 0 running 5156 locked 2268 flushing 0
->logging 124 handle_count 5 blocks 1 blocks_logged 2
-
-OK, so this is interesting.  The commit is stalling for 1 second in
-the the transaction commit on sda5, and then very shortly thereafter
-for 2.2 seconds on md2, while we are trying to lock down the
-transaction.  What that means is that we are waiting for all of the
-transaction handles opened against that particular commit to complete
-before we can let the transaction commit proceed.
-
-Is md2 sharing the same disk spindle as sda5?  And to which disk were
-you doing the "dd if=/dev/zero of=/dev/XXX" command?
-
-If I had to guess what's going on, the disk is accepting a huge amount
-of writes to its track buffer, and then occasionally it is going out
-to lunch trying to write all of this data to the disk platter.  This
-is not (always) happening when we do the commit (with its attended
-cache flush command), but in a few cases, we are doing a read command
-which is getting stalled.  There are a few cases where we start a
-transaction handle, and then discover that we need to read in a disk
-block, and if that read stalls for a long period of time, it will hold
-the transaction handle open, and this will in turn stall the commit.
-
-If you were to grab a blocktrace, I suspect that is what you will
-find; that it's actually a read command which is stalling at some
-point, correlated with when we are trying to start transaction commit.
-
-       		       	       	   	     - Ted
+--b.
