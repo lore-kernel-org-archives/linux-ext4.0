@@ -1,68 +1,62 @@
-From: Todd Poynor <toddpoynor@google.com>
-Subject: [PATCH RESEND] ext4: fixup 64-bit divides in 3.0-stable backport of upstream fix
-Date: Fri,  5 Apr 2013 16:38:53 -0700
-Message-ID: <1365205133-28456-1-git-send-email-toddpoynor@google.com>
-Cc: Lingzhu Xiang <lxiang@redhat.com>, linux-ext4@vger.kernel.org,
-	Todd Poynor <toddpoynor@google.com>
-To: <tytso@mit.edu>, stable@vger.kernel.org
-Return-path: <stable-owner@vger.kernel.org>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Greg KH <gregkh@linuxfoundation.org>
+Subject: Re: [PATCH] ext4: fixup 64-bit divides in linux-3.0 stable backport
+ of upstream fix
+Date: Fri, 5 Apr 2013 16:55:09 -0700
+Message-ID: <20130405235509.GA13306@kroah.com>
+References: <1365202463-25872-1-git-send-email-toddpoynor@google.com>
+ <20130405230107.GA8412@kroah.com>
+ <CAAW3YpbM7Vk_=qXv2NCgRsCkashsTpYC_6osA_udm2oDsiz5qA@mail.gmail.com>
+ <20130405235018.GC6597@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Todd Poynor <toddpoynor@google.com>, stable@vger.kernel.org,
+	Lingzhu Xiang <lxiang@redhat.com>, linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pd0-f174.google.com ([209.85.192.174]:44871 "EHLO
+	mail-pd0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756071Ab3DEXzM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Apr 2013 19:55:12 -0400
+Received: by mail-pd0-f174.google.com with SMTP id p12so2245938pdj.5
+        for <linux-ext4@vger.kernel.org>; Fri, 05 Apr 2013 16:55:11 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <20130405235018.GC6597@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Replace C division operators with div64_u64 for divides introduced in:
-commit 503f4bdcc078e7abee273a85ce322de81b18a224
-ext4: use atomic64_t for the per-flexbg free_clusters count
+On Fri, Apr 05, 2013 at 07:50:18PM -0400, Theodore Ts'o wrote:
+> Greg,
+> 
+> The reason why Todd's patch is needed in 3.0 is because the code in
+> question was nuked as of 3.2 by commit 4113c4caa4f355:
+> 
+> commit 4113c4caa4f355b8ff8b7ff0510c29c9d00d30b3
+> Author: Lukas Czerner <lczerner@redhat.com>
+> Date:   Sat Oct 8 14:34:47 2011 -0400
+> 
+>     ext4: remove deprecated oldalloc
+>     
+>     For a long time now orlov is the default block allocator in the
+>     ext4. It performs better than the old one and no one seems to claim
+>     otherwise so we can safely drop it and make oldalloc and orlov mount
+>     option deprecated.
+>     
+>     This is a part of the effort to reduce number of ext4 options hence the
+>     test matrix.
+>     
+>     Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+>     Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> 
+> So the 64-bit divides aren't in the upstream kernel because the code
+> in question is long gone in the mainline ext4 code.  It looks like Cai
+> (who did the 3.0 backport) never tested the patch on a 32-bit build.
+> 
+> Thanks Todd, for providing the patch.  You can add my:
+> 
+> Reviewed-by: "Theodore Ts'o" <tytso@mit.edu>
+> 
+> to it.  Greg, could you apply it to the stable tree?   Thanks!!
 
-Specific to the 3.0-stable backport of the upstream patch.
+Thanks for the review, will apply it for the next release, thanks.
 
-Signed-off-by: Todd Poynor <toddpoynor@google.com>
----
-Re-send with linux-ext4 list cc'ed
-
-3.0-stable backport has additional changes, including converting
-blocks_per_flex and flexbg_free_blocks from int to ext4_fsblk_t (a
-64-bit type), probably as a part of these additional changes mentioned
-in the commit message:
-
-   [Backported for 3.0-stable. Renamed free_clusters back to free_blocks;
-    fixed a few more atomic_read's of free_blocks left in 3.0.]
-
-Perhaps the better fix is to revert those additional changes and let
-the ext4 folks figure out what to do about the remaining atomic_reads.
-
-
- fs/ext4/ialloc.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
-
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index dd732c7..443ffb8 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -22,6 +22,7 @@
- #include <linux/random.h>
- #include <linux/bitops.h>
- #include <linux/blkdev.h>
-+#include <linux/math64.h>
- #include <asm/byteorder.h>
- 
- #include "ext4.h"
-@@ -356,7 +357,7 @@ static int find_group_flex(struct super_block *sb, struct inode *parent,
- 
- find_close_to_parent:
- 	flexbg_free_blocks = atomic64_read(&flex_group[best_flex].free_blocks);
--	flex_freeb_ratio = flexbg_free_blocks * 100 / blocks_per_flex;
-+	flex_freeb_ratio = div64_u64(flexbg_free_blocks * 100, blocks_per_flex);
- 	if (atomic_read(&flex_group[best_flex].free_inodes) &&
- 	    flex_freeb_ratio > free_block_ratio)
- 		goto found_flexbg;
-@@ -371,7 +372,7 @@ find_close_to_parent:
- 			continue;
- 
- 		flexbg_free_blocks = atomic64_read(&flex_group[i].free_blocks);
--		flex_freeb_ratio = flexbg_free_blocks * 100 / blocks_per_flex;
-+		flex_freeb_ratio = div64_u64(flexbg_free_blocks * 100, blocks_per_flex);
- 
- 		if (flex_freeb_ratio > free_block_ratio &&
- 		    (atomic_read(&flex_group[i].free_inodes))) {
--- 
-1.8.1.3
+greg k-h
