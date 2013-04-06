@@ -1,62 +1,45 @@
-From: Greg KH <gregkh@linuxfoundation.org>
-Subject: Re: [PATCH] ext4: fixup 64-bit divides in linux-3.0 stable backport
- of upstream fix
-Date: Fri, 5 Apr 2013 16:55:09 -0700
-Message-ID: <20130405235509.GA13306@kroah.com>
-References: <1365202463-25872-1-git-send-email-toddpoynor@google.com>
- <20130405230107.GA8412@kroah.com>
- <CAAW3YpbM7Vk_=qXv2NCgRsCkashsTpYC_6osA_udm2oDsiz5qA@mail.gmail.com>
- <20130405235018.GC6597@thunk.org>
+From: Matthew Wilcox <matthew@wil.cx>
+Subject: Re: [PATCH 2/4] fsfreeze: manage kill signal when sb_start_write
+	is called
+Date: Sat, 6 Apr 2013 07:17:03 -0600
+Message-ID: <20130406131703.GC28744@parisc-linux.org>
+References: <515FF344.8040705@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Todd Poynor <toddpoynor@google.com>, stable@vger.kernel.org,
-	Lingzhu Xiang <lxiang@redhat.com>, linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f174.google.com ([209.85.192.174]:44871 "EHLO
-	mail-pd0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756071Ab3DEXzM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Apr 2013 19:55:12 -0400
-Received: by mail-pd0-f174.google.com with SMTP id p12so2245938pdj.5
-        for <linux-ext4@vger.kernel.org>; Fri, 05 Apr 2013 16:55:11 -0700 (PDT)
+Cc: Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+	Chris Mason <chris.mason@fusionio.com>,
+	Steve French <sfrench@samba.org>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Miklos Szeredi <miklos@szeredi.hu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Anton Altaparmakov <anton@tuxera.com>,
+	Mark Fasheh <mfasheh@suse.com>,
+	Joel Becker <jlbec@evilplan.org>, Ben Myers <bpm@sgi.com>,
+	Alex Elder <elder@kernel.org>, xfs@oss.sgi.com,
+	Mike Snitzer <snitzer@redhat.com>,
+	Alasdair G Kergon <agk@redhat.com>,
+	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+	linux-ext4@vger.kernel.org, fuse-devel@lists.sourceforge.net,
+	linux-ntfs-dev@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
+	linux-mm@kvack.org, Jan Kara <jack@suse.cz>
+To: Marco Stornelli <marco.stornelli@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20130405235018.GC6597@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <515FF344.8040705@gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Apr 05, 2013 at 07:50:18PM -0400, Theodore Ts'o wrote:
-> Greg,
-> 
-> The reason why Todd's patch is needed in 3.0 is because the code in
-> question was nuked as of 3.2 by commit 4113c4caa4f355:
-> 
-> commit 4113c4caa4f355b8ff8b7ff0510c29c9d00d30b3
-> Author: Lukas Czerner <lczerner@redhat.com>
-> Date:   Sat Oct 8 14:34:47 2011 -0400
-> 
->     ext4: remove deprecated oldalloc
->     
->     For a long time now orlov is the default block allocator in the
->     ext4. It performs better than the old one and no one seems to claim
->     otherwise so we can safely drop it and make oldalloc and orlov mount
->     option deprecated.
->     
->     This is a part of the effort to reduce number of ext4 options hence the
->     test matrix.
->     
->     Signed-off-by: Lukas Czerner <lczerner@redhat.com>
->     Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> 
-> So the 64-bit divides aren't in the upstream kernel because the code
-> in question is long gone in the mainline ext4 code.  It looks like Cai
-> (who did the 3.0 backport) never tested the patch on a 32-bit build.
-> 
-> Thanks Todd, for providing the patch.  You can add my:
-> 
-> Reviewed-by: "Theodore Ts'o" <tytso@mit.edu>
-> 
-> to it.  Greg, could you apply it to the stable tree?   Thanks!!
+On Sat, Apr 06, 2013 at 12:04:52PM +0200, Marco Stornelli wrote:
+> In every place where sb_start_write was called now we must manage
+> the error code and return -EINTR.
 
-Thanks for the review, will apply it for the next release, thanks.
+If we must manage the error code, then these functions should be marked
+__must_check.
 
-greg k-h
+-- 
+Matthew Wilcox				Intel Open Source Technology Centre
+"Bill, look, we understand that you're interested in selling us this
+operating system, but compare it to ours.  We can't possibly take such
+a retrograde step."
