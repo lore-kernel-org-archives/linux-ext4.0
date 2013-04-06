@@ -1,56 +1,63 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fixup 64-bit divides in linux-3.0 stable backport
- of upstream fix
-Date: Fri, 5 Apr 2013 19:50:18 -0400
-Message-ID: <20130405235018.GC6597@thunk.org>
-References: <1365202463-25872-1-git-send-email-toddpoynor@google.com>
- <20130405230107.GA8412@kroah.com>
- <CAAW3YpbM7Vk_=qXv2NCgRsCkashsTpYC_6osA_udm2oDsiz5qA@mail.gmail.com>
+From: Marco Stornelli <marco.stornelli@gmail.com>
+Subject: Re: [PATCH 3/4] fsfreeze: manage kill signal when sb_start_pagefault
+ is called
+Date: Sat, 06 Apr 2013 17:00:07 +0200
+Message-ID: <51603877.7070904@gmail.com>
+References: <515FF380.5020406@gmail.com> <20130406132028.GD28744@parisc-linux.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Greg KH <gregkh@linuxfoundation.org>, stable@vger.kernel.org,
-	Lingzhu Xiang <lxiang@redhat.com>, linux-ext4@vger.kernel.org
-To: Todd Poynor <toddpoynor@google.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:59702 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1163063Ab3DEXuY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 5 Apr 2013 19:50:24 -0400
-Content-Disposition: inline
-In-Reply-To: <CAAW3YpbM7Vk_=qXv2NCgRsCkashsTpYC_6osA_udm2oDsiz5qA@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org,
+	Chris Mason <chris.mason@fusionio.com>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Jaegeuk Kim <jaegeuk.kim@samsung.com>,
+	Steven Whitehouse <swhiteho@redhat.com>,
+	KONISHI Ryusuke <konishi.ryusuke@lab.ntt.co.jp>,
+	Mark Fasheh <mfasheh@suse.com>,
+	Joel Becker <jlbec@evilplan.org>,
+	Mike Snitzer <snitzer@redhat.com>,
+	Alasdair G Kergon <agk@redhat.com>,
+	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+	cluster-devel@redhat.com, linux-nilfs@vger.kernel.org,
+	ocfs2-devel@oss.oracle.com, linux-mm@kvack.org,
+	Jan Kara <jack@suse.cz>
+To: Matthew Wilcox <matthew@wil.cx>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20130406132028.GD28744@parisc-linux.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Greg,
+Il 06/04/2013 15:20, Matthew Wilcox ha scritto:
+> On Sat, Apr 06, 2013 at 12:05:52PM +0200, Marco Stornelli wrote:
+>> In every place where sb_start_pagefault was called now we must manage
+>> the error code and return VM_FAULT_RETRY.
+>
+> Erm ... in patch 1/4:
+>
+>   static inline void sb_start_pagefault(struct super_block *sb)
+>   {
+> -       __sb_start_write(sb, SB_FREEZE_PAGEFAULT, true);
+> +       __sb_start_write_wait(sb, SB_FREEZE_PAGEFAULT, false);
+>   }
+>
+>>
+>> -	sb_start_pagefault(inode->i_sb);
+>> +	ret = sb_start_pagefault(inode->i_sb);
+>> +	if (ret)
+>> +		return VM_FAULT_RETRY;
+>>   	ret  = btrfs_delalloc_reserve_space(inode, PAGE_CACHE_SIZE);
+>
+> Does the compiler not warn that you're assigning void to 'ret'?  Or was
+> there some other SNAFU sending these patches?
+>
 
-The reason why Todd's patch is needed in 3.0 is because the code in
-question was nuked as of 3.2 by commit 4113c4caa4f355:
+I'm sorry, my fault :) As I said in 00 these patches are completely 
+*not* tested, it was only a "quick coding & review" to understand if 
+someone can see any problem to this kind of implementation, since I 
+touched several points in the kernel. So there is still on-going work 
+and I need to do several tests. Maybe I had to add the RFC tag, sorry again.
 
-commit 4113c4caa4f355b8ff8b7ff0510c29c9d00d30b3
-Author: Lukas Czerner <lczerner@redhat.com>
-Date:   Sat Oct 8 14:34:47 2011 -0400
-
-    ext4: remove deprecated oldalloc
-    
-    For a long time now orlov is the default block allocator in the
-    ext4. It performs better than the old one and no one seems to claim
-    otherwise so we can safely drop it and make oldalloc and orlov mount
-    option deprecated.
-    
-    This is a part of the effort to reduce number of ext4 options hence the
-    test matrix.
-    
-    Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-
-So the 64-bit divides aren't in the upstream kernel because the code
-in question is long gone in the mainline ext4 code.  It looks like Cai
-(who did the 3.0 backport) never tested the patch on a 32-bit build.
-
-Thanks Todd, for providing the patch.  You can add my:
-
-Reviewed-by: "Theodore Ts'o" <tytso@mit.edu>
-
-to it.  Greg, could you apply it to the stable tree?   Thanks!!
-
-				- Ted
+Marco
