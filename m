@@ -1,63 +1,36 @@
-From: Marco Stornelli <marco.stornelli@gmail.com>
-Subject: Re: [PATCH 3/4] fsfreeze: manage kill signal when sb_start_pagefault
- is called
-Date: Sat, 06 Apr 2013 17:00:07 +0200
-Message-ID: <51603877.7070904@gmail.com>
-References: <515FF380.5020406@gmail.com> <20130406132028.GD28744@parisc-linux.org>
+From: Borislav Petkov <bp@alien8.de>
+Subject: Re: Error in linux-3.0.72 build.
+Date: Sat, 6 Apr 2013 13:26:57 +0200
+Message-ID: <20130406112657.GA3625@pd.tnic>
+References: <515FF835.28644.1FF1E@msetzerii.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org,
-	Chris Mason <chris.mason@fusionio.com>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jaegeuk Kim <jaegeuk.kim@samsung.com>,
-	Steven Whitehouse <swhiteho@redhat.com>,
-	KONISHI Ryusuke <konishi.ryusuke@lab.ntt.co.jp>,
-	Mark Fasheh <mfasheh@suse.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	Mike Snitzer <snitzer@redhat.com>,
-	Alasdair G Kergon <agk@redhat.com>,
-	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-	cluster-devel@redhat.com, linux-nilfs@vger.kernel.org,
-	ocfs2-devel@oss.oracle.com, linux-mm@kvack.org,
-	Jan Kara <jack@suse.cz>
-To: Matthew Wilcox <matthew@wil.cx>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20130406132028.GD28744@parisc-linux.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: "Michael D. Setzer II" <msetzerii@gmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <515FF835.28644.1FF1E@msetzerii.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Il 06/04/2013 15:20, Matthew Wilcox ha scritto:
-> On Sat, Apr 06, 2013 at 12:05:52PM +0200, Marco Stornelli wrote:
->> In every place where sb_start_pagefault was called now we must manage
->> the error code and return VM_FAULT_RETRY.
->
-> Erm ... in patch 1/4:
->
->   static inline void sb_start_pagefault(struct super_block *sb)
->   {
-> -       __sb_start_write(sb, SB_FREEZE_PAGEFAULT, true);
-> +       __sb_start_write_wait(sb, SB_FREEZE_PAGEFAULT, false);
->   }
->
->>
->> -	sb_start_pagefault(inode->i_sb);
->> +	ret = sb_start_pagefault(inode->i_sb);
->> +	if (ret)
->> +		return VM_FAULT_RETRY;
->>   	ret  = btrfs_delalloc_reserve_space(inode, PAGE_CACHE_SIZE);
->
-> Does the compiler not warn that you're assigning void to 'ret'?  Or was
-> there some other SNAFU sending these patches?
->
+On Sat, Apr 06, 2013 at 08:25:57PM +1000, Michael D. Setzer II wrote:
+> Just downloaded new kernels, and find this error in build.
+> 
+> fs/built-in.o: In function `find_group_flex':
+> /home/msetzerii/data/linux-3.0.72/fs/ext4/ialloc.c:359: undefined 
+> reference to `__udivdi3'
+> /home/msetzerii/data/linux-3.0.72/fs/ext4/ialloc.c:374: undefined 
+> reference to `__udivdi3'
+> make: *** [.tmp_vmlinux1] Error 1
 
-I'm sorry, my fault :) As I said in 00 these patches are completely 
-*not* tested, it was only a "quick coding & review" to understand if 
-someone can see any problem to this kind of implementation, since I 
-touched several points in the kernel. So there is still on-going work 
-and I need to do several tests. Maybe I had to add the RFC tag, sorry again.
+Looks like your compiler is generating 64-bit division which is a call
+into libgcc. Which gcc version are you using?
 
-Marco
++ext4 folks.
+
+-- 
+Regards/Gruss,
+    Boris.
+
+Sent from a fat crate under my desk. Formatting is fine.
+--
