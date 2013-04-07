@@ -1,73 +1,55 @@
-From: fche@redhat.com (Frank Ch. Eigler)
-Subject: Re: Excessive stall times on ext4 in 3.9-rc2
-Date: Sun, 07 Apr 2013 17:59:06 -0400
-Message-ID: <y0mwqsehuj9.fsf@fche.csb>
-References: <20130402142717.GH32241@suse.de>
-	<20130402150651.GB31577@thunk.org> <20130402151436.GC31577@thunk.org>
-	<20130402181940.GA4936@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Mel Gorman <mgorman@suse.de>, linux-ext4@vger.kernel.org,
-	LKML <linux-kernel@vger.kernel.org>,
-	Linux-MM <linux-mm@kvack.org>, Jiri Slaby <jslaby@suse.cz>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20130402181940.GA4936@thunk.org> (Theodore Ts'o's message of "Tue, 2 Apr 2013 14:19:40 -0400")
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH -v3] ext4: implementation of a new ioctl called EXT4_IOC_SWAP_BOOT
+Date: Sun, 7 Apr 2013 15:29:03 -0600
+Message-ID: <9E765F01-4954-4182-91F5-8E1F476720CC@dilger.ca>
+References: <51023FEA.7000802@reinform.de> <20130126184927.GB20005@thunk.org> <op.wt48ybxow201t7@cnd0370px4.ent.rt.verigy.net> <20130407024701.GC7816@thunk.org> <45E0D5C6-50E8-4F2E-83DC-3E24A31D7573@dilger.ca> <20130407194855.GA5292@thunk.org>
+Mime-Version: 1.0 (1.0)
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: "Dr. Tilmann Bubeck" <t.bubeck@reinform.de>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-da0-f53.google.com ([209.85.210.53]:61897 "EHLO
+	mail-da0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759587Ab3DGV3H convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Apr 2013 17:29:07 -0400
+Received: by mail-da0-f53.google.com with SMTP id n34so2314352dal.40
+        for <linux-ext4@vger.kernel.org>; Sun, 07 Apr 2013 14:29:05 -0700 (PDT)
+In-Reply-To: <20130407194855.GA5292@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On 2013-04-07, at 13:48, Theodore Ts'o <tytso@mit.edu> wrote:
+> On Sun, Apr 07, 2013 at 11:09:58AM -0600, Andreas Dilger wrote:
+>>> +    if (inode_bl->i_nlink == 0) {
+>>> +        /* this inode has never been used as a BOOT_LOADER */
+>>> +        set_nlink(inode_bl, 1);
+>>> +        i_uid_write(inode_bl, 0);
+>>> +        i_gid_write(inode_bl, 0);
+>>> +        inode_bl->i_flags = 0;
+>>> +        ei_bl->i_flags = 0;
+>>> +        inode_bl->i_version = 1;
+>>> +        i_size_write(inode_bl, 0);
+>>> +        inode_bl->i_mode = S_IFREG;
+>>> +        if (EXT4_HAS_INCOMPAT_FEATURE(sb,
+>>> +                          EXT4_FEATURE_INCOMPAT_EXTENTS)) {
+>>> +            ext4_set_inode_flag(inode_bl, EXT4_INODE_EXTENTS);
+>>> +            ext4_ext_tree_init(handle, inode_bl);
+>>> +        } else
+>>> +            memset(ei_bl->i_data, 0, sizeof(ei_bl->i_data));
+>> 
+>> I don't understand this. Wouldn't this clobber the block pointers if 
+>> an existing boot inode and cause them to leak?  This seems broken to me. 
+> 
+> If i_nlink is zero, then there is no existing boot loader inode.  In
+> theory the rest of the inode is zero, but this is to make sure the
+> inode is initialized to something sane before we swap it into the
+> user-visible inode.
 
-Hi -
+Oh, my bad. I thought the else was for the nlink != 0 case, not the !extent case (the danger of reading email on my phone, I guess). Looks fine. 
 
+> 
 
-tytso wrote:
-
-> So I tried to reproduce the problem, and so I installed systemtap
-> (bleeding edge, since otherwise it won't work with development
-> kernel), and then rebuilt a kernel with all of the necessary CONFIG
-> options enabled:
->
-> 	CONFIG_DEBUG_INFO, CONFIG_KPROBES, CONFIG_RELAY, CONFIG_DEBUG_FS,
-> 	CONFIG_MODULES, CONFIG_MODULE_UNLOAD
-> [...]
-
-That sounds about right.
-
-
-> I then pulled down mmtests, and tried running watch-dstate.pl, which
-> is what I assume you were using [...]
-
-I just took a look at the mmtests, particularly the stap-fix.sh stuff.
-The heroics therein are really not called for.  git kernel developers
-should use git systemtap, as has always been the case.  All
-compatibility hacks in stap-fix.sh have already been merged, in many
-cases for months.
-
-
-> [...]
-> semantic error: while resolving probe point: identifier 'kprobe' at /tmp/stapdjN4_l:18:7
->         source: probe kprobe.function("get_request_wait")
->                       ^
-> Pass 2: analysis failed.  [man error::pass2]
-> Unexpected exit of STAP script at ./watch-dstate.pl line 296.
-> I have no clue what to do next.  Can you give me a hint?
-
-You should see the error::pass2 man page, which refers to
-error::reporting, which refers to involving stap folks and running
-stap-report to gather needed info.
-
-But in this case, that's unnecessary: the problem is most likely that
-the get_request_wait function does not actually exist any longer, since
-
-commit a06e05e6afab70b4b23c0a7975aaeae24b195cd6
-Author: Tejun Heo <tj@kernel.org>
-Date:   Mon Jun 4 20:40:55 2012 -0700
-
-    block: refactor get_request[_wait]()
-
-
-Systemtap could endavour to list roughly-matching functions that do
-exist, if you think that's be helpful.
-
-
-- FChE
+Cheers, Andreas
