@@ -1,97 +1,99 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 19/29] ext4: Remove buffer_uninit handling
-Date: Mon,  8 Apr 2013 23:32:24 +0200
-Message-ID: <1365456754-29373-20-git-send-email-jack@suse.cz>
+Subject: [PATCH 16/29] ext4: Improve writepage credit estimate for files with indirect blocks
+Date: Mon,  8 Apr 2013 23:32:21 +0200
+Message-ID: <1365456754-29373-17-git-send-email-jack@suse.cz>
 References: <1365456754-29373-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:53394 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:53388 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S936331Ab3DHVdF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Apr 2013 17:33:05 -0400
+	id S936302Ab3DHVdE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 8 Apr 2013 17:33:04 -0400
 In-Reply-To: <1365456754-29373-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-There isn't any need for setting BH_Uninit on buffers anymore. It was
-only used to signal we need to mark io_end as needing extent conversion
-in add_bh_to_extent() but now we can mark the io_end directly when
-mapping extent.
+ext4_ind_trans_blocks() wrongly used 'chunk' argument to decide whether
+blocks mapped are logically continguous. That is wrong since the argument
+informs whether the blocks are physically continguous. As the blocks
+mapped are always logically continguous and that's all
+ext4_ind_trans_blocks() cares about, just remove the 'chunk' argument.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ext4.h    |   15 ++++++---------
- fs/ext4/inode.c   |    4 ++--
- fs/ext4/page-io.c |    2 --
- 3 files changed, 8 insertions(+), 13 deletions(-)
+ fs/ext4/ext4.h     |    2 +-
+ fs/ext4/indirect.c |   27 +++++++++------------------
+ fs/ext4/inode.c    |    2 +-
+ 3 files changed, 11 insertions(+), 20 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index cb1ba1c..3c3827a 100644
+index 3575fdb..d3a54f2 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -2606,20 +2606,17 @@ extern void ext4_mmp_csum_set(struct super_block *sb, struct mmp_struct *mmp);
- extern int ext4_mmp_csum_verify(struct super_block *sb,
- 				struct mmp_struct *mmp);
+@@ -2093,7 +2093,7 @@ extern ssize_t ext4_ind_direct_IO(int rw, struct kiocb *iocb,
+ 				const struct iovec *iov, loff_t offset,
+ 				unsigned long nr_segs);
+ extern int ext4_ind_calc_metadata_amount(struct inode *inode, sector_t lblock);
+-extern int ext4_ind_trans_blocks(struct inode *inode, int nrblocks, int chunk);
++extern int ext4_ind_trans_blocks(struct inode *inode, int nrblocks);
+ extern void ext4_ind_truncate(struct inode *inode);
+ extern int ext4_ind_punch_hole(struct file *file, loff_t offset, loff_t length);
  
--/* BH_Uninit flag: blocks are allocated but uninitialized on disk */
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index b505a14..197b202 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -913,27 +913,18 @@ int ext4_ind_calc_metadata_amount(struct inode *inode, sector_t lblock)
+ 	return (blk_bits / EXT4_ADDR_PER_BLOCK_BITS(inode->i_sb)) + 1;
+ }
+ 
+-int ext4_ind_trans_blocks(struct inode *inode, int nrblocks, int chunk)
 +/*
-+ * Note that these flags will never ever appear in a buffer_head's state flag.
-+ * See EXT4_MAP_... to see where this is used.
++ * Calculate number of indirect blocks touched by mapping @nrblocks logically
++ * continguous blocks
 + */
- enum ext4_state_bits {
- 	BH_Uninit	/* blocks are allocated but uninitialized on disk */
--	  = BH_JBDPrivateStart,
-+	 = BH_JBDPrivateStart,
- 	BH_AllocFromCluster,	/* allocated blocks were part of already
--				 * allocated cluster. Note that this flag will
--				 * never, ever appear in a buffer_head's state
--				 * flag. See EXT4_MAP_FROM_CLUSTER to see where
--				 * this is used. */
-+				 * allocated cluster. */
- };
- 
--BUFFER_FNS(Uninit, uninit)
--TAS_BUFFER_FNS(Uninit, uninit)
++int ext4_ind_trans_blocks(struct inode *inode, int nrblocks)
+ {
+-	int indirects;
 -
+-	/* if nrblocks are contiguous */
+-	if (chunk) {
+-		/*
+-		 * With N contiguous data blocks, we need at most
+-		 * N/EXT4_ADDR_PER_BLOCK(inode->i_sb) + 1 indirect blocks,
+-		 * 2 dindirect blocks, and 1 tindirect block
+-		 */
+-		return DIV_ROUND_UP(nrblocks,
+-				    EXT4_ADDR_PER_BLOCK(inode->i_sb)) + 4;
+-	}
+ 	/*
+-	 * if nrblocks are not contiguous, worse case, each block touch
+-	 * a indirect block, and each indirect block touch a double indirect
+-	 * block, plus a triple indirect block
++	 * With N contiguous data blocks, we need at most
++	 * N/EXT4_ADDR_PER_BLOCK(inode->i_sb) + 1 indirect blocks,
++	 * 2 dindirect blocks, and 1 tindirect block
+ 	 */
+-	indirects = nrblocks * 2 + 1;
+-	return indirects;
++	return DIV_ROUND_UP(nrblocks, EXT4_ADDR_PER_BLOCK(inode->i_sb)) + 4;
+ }
+ 
  /*
-  * Add new method to test whether block and inode bitmaps are properly
-  * initialized. With uninit_bg reading the block from disk is not enough
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 5c191a3..0602a09 100644
+index f4dc4a1..aa26f4c 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -1924,8 +1924,6 @@ static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
- 					clear_buffer_delay(bh);
- 					bh->b_blocknr = pblock++;
- 				}
--				if (mpd->map.m_flags & EXT4_MAP_UNINIT)
--					set_buffer_uninit(bh);
- 				clear_buffer_unwritten(bh);
- 			} while (lblk++, (bh = bh->b_this_page) != head);
+@@ -4399,7 +4399,7 @@ int ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
+ static int ext4_index_trans_blocks(struct inode *inode, int nrblocks, int chunk)
+ {
+ 	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
+-		return ext4_ind_trans_blocks(inode, nrblocks, chunk);
++		return ext4_ind_trans_blocks(inode, nrblocks);
+ 	return ext4_ext_index_trans_blocks(inode, nrblocks, chunk);
+ }
  
-@@ -1975,6 +1973,8 @@ static int mpage_map_one_extent(handle_t *handle, struct mpage_da_data *mpd)
- 	err = ext4_map_blocks(handle, inode, map, get_blocks_flags);
- 	if (err < 0)
- 		return err;
-+	if (map->m_flags & EXT4_MAP_UNINIT)
-+		ext4_set_io_unwritten_flag(inode, mpd->io_submit.io_end);
- 
- 	BUG_ON(map->m_len == 0);
- 	if (map->m_flags & EXT4_MAP_NEW) {
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index efdf0a5..cc59cd9 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -377,8 +377,6 @@ submit_and_retry:
- 	if (ret != bh->b_size)
- 		goto submit_and_retry;
- 	io_end = io->io_end;
--	if (test_clear_buffer_uninit(bh))
--		ext4_set_io_unwritten_flag(inode, io_end);
- 	io_end->size += bh->b_size;
- 	io->io_next_block++;
- 	return 0;
 -- 
 1.7.1
 
