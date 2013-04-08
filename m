@@ -1,99 +1,129 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 16/29] ext4: Improve writepage credit estimate for files with indirect blocks
-Date: Mon,  8 Apr 2013 23:32:21 +0200
-Message-ID: <1365456754-29373-17-git-send-email-jack@suse.cz>
+Subject: [PATCH 15/29] ext4: Deprecate max_writeback_mb_bump sysfs attribute
+Date: Mon,  8 Apr 2013 23:32:20 +0200
+Message-ID: <1365456754-29373-16-git-send-email-jack@suse.cz>
 References: <1365456754-29373-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:53388 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:53391 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S936302Ab3DHVdE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Apr 2013 17:33:04 -0400
+	id S936308Ab3DHVdF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 8 Apr 2013 17:33:05 -0400
 In-Reply-To: <1365456754-29373-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext4_ind_trans_blocks() wrongly used 'chunk' argument to decide whether
-blocks mapped are logically continguous. That is wrong since the argument
-informs whether the blocks are physically continguous. As the blocks
-mapped are always logically continguous and that's all
-ext4_ind_trans_blocks() cares about, just remove the 'chunk' argument.
+This attribute is now unused so deprecate it. We still show the old
+default value to keep some compatibility but we don't allow writing to
+that attribute anymore.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ext4.h     |    2 +-
- fs/ext4/indirect.c |   27 +++++++++------------------
- fs/ext4/inode.c    |    2 +-
- 3 files changed, 11 insertions(+), 20 deletions(-)
+ fs/ext4/ext4.h  |    1 -
+ fs/ext4/super.c |   30 ++++++++++++++++++++++++------
+ 2 files changed, 24 insertions(+), 7 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 3575fdb..d3a54f2 100644
+index edf9b9e..3575fdb 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -2093,7 +2093,7 @@ extern ssize_t ext4_ind_direct_IO(int rw, struct kiocb *iocb,
- 				const struct iovec *iov, loff_t offset,
- 				unsigned long nr_segs);
- extern int ext4_ind_calc_metadata_amount(struct inode *inode, sector_t lblock);
--extern int ext4_ind_trans_blocks(struct inode *inode, int nrblocks, int chunk);
-+extern int ext4_ind_trans_blocks(struct inode *inode, int nrblocks);
- extern void ext4_ind_truncate(struct inode *inode);
- extern int ext4_ind_punch_hole(struct file *file, loff_t offset, loff_t length);
+@@ -1234,7 +1234,6 @@ struct ext4_sb_info {
+ 	unsigned int s_mb_stats;
+ 	unsigned int s_mb_order2_reqs;
+ 	unsigned int s_mb_group_prealloc;
+-	unsigned int s_max_writeback_mb_bump;
+ 	unsigned int s_max_dir_size_kb;
+ 	/* where last allocation was done - for stream allocation */
+ 	unsigned long s_mb_last_group;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 34e8552..09ff724 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2374,7 +2374,10 @@ struct ext4_attr {
+ 	ssize_t (*show)(struct ext4_attr *, struct ext4_sb_info *, char *);
+ 	ssize_t (*store)(struct ext4_attr *, struct ext4_sb_info *,
+ 			 const char *, size_t);
+-	int offset;
++	union {
++		int offset;
++		int deprecated_val;
++	} u;
+ };
  
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index b505a14..197b202 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -913,27 +913,18 @@ int ext4_ind_calc_metadata_amount(struct inode *inode, sector_t lblock)
- 	return (blk_bits / EXT4_ADDR_PER_BLOCK_BITS(inode->i_sb)) + 1;
- }
- 
--int ext4_ind_trans_blocks(struct inode *inode, int nrblocks, int chunk)
-+/*
-+ * Calculate number of indirect blocks touched by mapping @nrblocks logically
-+ * continguous blocks
-+ */
-+int ext4_ind_trans_blocks(struct inode *inode, int nrblocks)
+ static int parse_strtoul(const char *buf,
+@@ -2443,7 +2446,7 @@ static ssize_t inode_readahead_blks_store(struct ext4_attr *a,
+ static ssize_t sbi_ui_show(struct ext4_attr *a,
+ 			   struct ext4_sb_info *sbi, char *buf)
  {
--	int indirects;
--
--	/* if nrblocks are contiguous */
--	if (chunk) {
--		/*
--		 * With N contiguous data blocks, we need at most
--		 * N/EXT4_ADDR_PER_BLOCK(inode->i_sb) + 1 indirect blocks,
--		 * 2 dindirect blocks, and 1 tindirect block
--		 */
--		return DIV_ROUND_UP(nrblocks,
--				    EXT4_ADDR_PER_BLOCK(inode->i_sb)) + 4;
--	}
- 	/*
--	 * if nrblocks are not contiguous, worse case, each block touch
--	 * a indirect block, and each indirect block touch a double indirect
--	 * block, plus a triple indirect block
-+	 * With N contiguous data blocks, we need at most
-+	 * N/EXT4_ADDR_PER_BLOCK(inode->i_sb) + 1 indirect blocks,
-+	 * 2 dindirect blocks, and 1 tindirect block
- 	 */
--	indirects = nrblocks * 2 + 1;
--	return indirects;
-+	return DIV_ROUND_UP(nrblocks, EXT4_ADDR_PER_BLOCK(inode->i_sb)) + 4;
- }
+-	unsigned int *ui = (unsigned int *) (((char *) sbi) + a->offset);
++	unsigned int *ui = (unsigned int *) (((char *) sbi) + a->u.offset);
  
- /*
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index f4dc4a1..aa26f4c 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4399,7 +4399,7 @@ int ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
- static int ext4_index_trans_blocks(struct inode *inode, int nrblocks, int chunk)
+ 	return snprintf(buf, PAGE_SIZE, "%u\n", *ui);
+ }
+@@ -2452,7 +2455,7 @@ static ssize_t sbi_ui_store(struct ext4_attr *a,
+ 			    struct ext4_sb_info *sbi,
+ 			    const char *buf, size_t count)
  {
- 	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
--		return ext4_ind_trans_blocks(inode, nrblocks, chunk);
-+		return ext4_ind_trans_blocks(inode, nrblocks);
- 	return ext4_ext_index_trans_blocks(inode, nrblocks, chunk);
+-	unsigned int *ui = (unsigned int *) (((char *) sbi) + a->offset);
++	unsigned int *ui = (unsigned int *) (((char *) sbi) + a->u.offset);
+ 	unsigned long t;
+ 
+ 	if (parse_strtoul(buf, 0xffffffff, &t))
+@@ -2478,12 +2481,20 @@ static ssize_t trigger_test_error(struct ext4_attr *a,
+ 	return count;
  }
  
++static ssize_t sbi_deprecated_show(struct ext4_attr *a,
++				   struct ext4_sb_info *sbi, char *buf)
++{
++	return snprintf(buf, PAGE_SIZE, "%d\n", a->u.deprecated_val);
++}
++
+ #define EXT4_ATTR_OFFSET(_name,_mode,_show,_store,_elname) \
+ static struct ext4_attr ext4_attr_##_name = {			\
+ 	.attr = {.name = __stringify(_name), .mode = _mode },	\
+ 	.show	= _show,					\
+ 	.store	= _store,					\
+-	.offset = offsetof(struct ext4_sb_info, _elname),	\
++	.u = {							\
++		.offset = offsetof(struct ext4_sb_info, _elname),\
++	},							\
+ }
+ #define EXT4_ATTR(name, mode, show, store) \
+ static struct ext4_attr ext4_attr_##name = __ATTR(name, mode, show, store)
+@@ -2494,6 +2505,14 @@ static struct ext4_attr ext4_attr_##name = __ATTR(name, mode, show, store)
+ #define EXT4_RW_ATTR_SBI_UI(name, elname)	\
+ 	EXT4_ATTR_OFFSET(name, 0644, sbi_ui_show, sbi_ui_store, elname)
+ #define ATTR_LIST(name) &ext4_attr_##name.attr
++#define EXT4_DEPRECATED_ATTR(_name, _val)	\
++static struct ext4_attr ext4_attr_##_name = {			\
++	.attr = {.name = __stringify(_name), .mode = 0444 },	\
++	.show	= sbi_deprecated_show,				\
++	.u = {							\
++		.deprecated_val = _val,				\
++	},							\
++}
+ 
+ EXT4_RO_ATTR(delayed_allocation_blocks);
+ EXT4_RO_ATTR(session_write_kbytes);
+@@ -2507,7 +2526,7 @@ EXT4_RW_ATTR_SBI_UI(mb_min_to_scan, s_mb_min_to_scan);
+ EXT4_RW_ATTR_SBI_UI(mb_order2_req, s_mb_order2_reqs);
+ EXT4_RW_ATTR_SBI_UI(mb_stream_req, s_mb_stream_request);
+ EXT4_RW_ATTR_SBI_UI(mb_group_prealloc, s_mb_group_prealloc);
+-EXT4_RW_ATTR_SBI_UI(max_writeback_mb_bump, s_max_writeback_mb_bump);
++EXT4_DEPRECATED_ATTR(max_writeback_mb_bump, 128);
+ EXT4_RW_ATTR_SBI_UI(extent_max_zeroout_kb, s_extent_max_zeroout_kb);
+ EXT4_ATTR(trigger_fs_error, 0200, NULL, trigger_test_error);
+ 
+@@ -3718,7 +3737,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	}
+ 
+ 	sbi->s_stripe = ext4_get_stripe_size(sbi);
+-	sbi->s_max_writeback_mb_bump = 128;
+ 	sbi->s_extent_max_zeroout_kb = 32;
+ 
+ 	/* Register extent status tree shrinker */
 -- 
 1.7.1
 
