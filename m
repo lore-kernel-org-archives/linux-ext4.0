@@ -1,80 +1,115 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 28/29] ext4: Don't wait for extent conversion in ext4_ext_punch_hole()
-Date: Mon,  8 Apr 2013 23:32:33 +0200
-Message-ID: <1365456754-29373-29-git-send-email-jack@suse.cz>
+Subject: [PATCH 25/29] ext4: Use generic_file_fsync() in ext4_file_fsync() in nojournal mode
+Date: Mon,  8 Apr 2013 23:32:30 +0200
+Message-ID: <1365456754-29373-26-git-send-email-jack@suse.cz>
 References: <1365456754-29373-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:53403 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:53398 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S936372Ab3DHVdJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Apr 2013 17:33:09 -0400
+	id S936350Ab3DHVdH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 8 Apr 2013 17:33:07 -0400
 In-Reply-To: <1365456754-29373-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We don't have to wait for extent conversion in ext4_ext_punch_hole() as
-buffered IO for the punched range has been flushed and waited upon (thus
-all extent conversions for that range have completed). Also we wait for
-all DIO to finish using inode_dio_wait() so there cannot be any extent
-conversions pending due to direct IO.
-
-Also remove ext4_flush_unwritten_io() since it's unused now.
+Just use the generic function instead of duplicating it. We only need
+to reshuffle the read-only check a bit (which is there to prevent
+writing to a filesystem which has been remounted read-only after error
+I assume).
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ext4.h    |    1 -
- fs/ext4/extents.c |    3 ---
- fs/ext4/page-io.c |   16 ----------------
- 3 files changed, 0 insertions(+), 20 deletions(-)
+ fs/ext4/fsync.c |   45 ++++++++++-----------------------------------
+ 1 files changed, 10 insertions(+), 35 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 2b0dd9a..859f235 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1986,7 +1986,6 @@ static inline  unsigned char get_dtype(struct super_block *sb, int filetype)
- 
- /* fsync.c */
- extern int ext4_sync_file(struct file *, loff_t, loff_t, int);
--extern int ext4_flush_unwritten_io(struct inode *);
- 
- /* hash.c */
- extern int ext4fs_dirhash(const char *name, int len, struct
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index ca4ff71..96c4855 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4697,9 +4697,6 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
- 
- 	/* Wait all existing dio workers, newcomers will block on i_mutex */
- 	ext4_inode_block_unlocked_dio(inode);
--	err = ext4_flush_unwritten_io(inode);
--	if (err)
--		goto out_dio;
- 	inode_dio_wait(inode);
- 
- 	credits = ext4_writepage_trans_blocks(inode);
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index 2f0b943..1156b9f 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -268,22 +268,6 @@ void ext4_end_io_unrsv_work(struct work_struct *work)
- 	ext4_do_flush_completed_IO(&ei->vfs_inode, &ei->i_unrsv_conversion_list);
+diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+index e02ba1b..1c08780 100644
+--- a/fs/ext4/fsync.c
++++ b/fs/ext4/fsync.c
+@@ -73,32 +73,6 @@ static int ext4_sync_parent(struct inode *inode)
+ 	return ret;
  }
  
--int ext4_flush_unwritten_io(struct inode *inode)
+-/**
+- * __sync_file - generic_file_fsync without the locking and filemap_write
+- * @inode:	inode to sync
+- * @datasync:	only sync essential metadata if true
+- *
+- * This is just generic_file_fsync without the locking.  This is needed for
+- * nojournal mode to make sure this inodes data/metadata makes it to disk
+- * properly.  The i_mutex should be held already.
+- */
+-static int __sync_inode(struct inode *inode, int datasync)
 -{
--	int ret, err;
+-	int err;
+-	int ret;
 -
--	WARN_ON_ONCE(!mutex_is_locked(&inode->i_mutex) &&
--		     !(inode->i_state & I_FREEING));
--	ret = ext4_do_flush_completed_IO(inode,
--					 &EXT4_I(inode)->i_rsv_conversion_list);
--	err = ext4_do_flush_completed_IO(inode,
--					 &EXT4_I(inode)->i_unrsv_conversion_list);
--	if (!ret)
+-	ret = sync_mapping_buffers(inode->i_mapping);
+-	if (!(inode->i_state & I_DIRTY))
+-		return ret;
+-	if (datasync && !(inode->i_state & I_DIRTY_DATASYNC))
+-		return ret;
+-
+-	err = sync_inode_metadata(inode, 1);
+-	if (ret == 0)
 -		ret = err;
--	ext4_unwritten_wait(inode);
 -	return ret;
 -}
+-
+ /*
+  * akpm: A new design for ext4_sync_file().
+  *
+@@ -116,7 +90,7 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+ 	struct inode *inode = file->f_mapping->host;
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+ 	journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
+-	int ret, err;
++	int ret = 0, err;
+ 	tid_t commit_tid;
+ 	bool needs_barrier = false;
+ 
+@@ -124,21 +98,21 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+ 
+ 	trace_ext4_sync_file_enter(file, datasync);
+ 
+-	ret = filemap_write_and_wait_range(inode->i_mapping, start, end);
+-	if (ret)
+-		return ret;
+-	mutex_lock(&inode->i_mutex);
+-
+ 	if (inode->i_sb->s_flags & MS_RDONLY)
+-		goto out;
++		goto out_trace;
+ 
+ 	if (!journal) {
+-		ret = __sync_inode(inode, datasync);
++		ret = generic_file_fsync(file, start, end, datasync);
+ 		if (!ret && !hlist_empty(&inode->i_dentry))
+ 			ret = ext4_sync_parent(inode);
+ 		goto out;
+ 	}
+ 
++	ret = filemap_write_and_wait_range(inode->i_mapping, start, end);
++	if (ret)
++		return ret;
++	mutex_lock(&inode->i_mutex);
++
+ 	/*
+ 	 * data=writeback,ordered:
+ 	 *  The caller's filemap_fdatawrite()/wait will sync the data.
+@@ -169,8 +143,9 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+ 		if (!ret)
+ 			ret = err;
+ 	}
+- out:
++out:
+ 	mutex_unlock(&inode->i_mutex);
++out_trace:
+ 	trace_ext4_sync_file_exit(inode, ret);
+ 	return ret;
+ }
+-- 
+1.7.1
+
