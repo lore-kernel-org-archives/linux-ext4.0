@@ -1,431 +1,130 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH v2] ext4: introduce reserved space
-Date: Mon,  8 Apr 2013 15:43:32 +0200
-Message-ID: <1365428612-7574-1-git-send-email-lczerner@redhat.com>
-Cc: cmaiolino@redhat.com, tytso@mit.edu,
-	Lukas Czerner <lczerner@redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 56241] running e4defrag provokes "kernel BUG at
+ fs/buffer.c:1833!"
+Date: Mon,  8 Apr 2013 16:07:40 +0000 (UTC)
+Message-ID: <20130408160740.17C5A11FB5C@bugzilla.kernel.org>
+References: <bug-56241-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39266 "EHLO mx1.redhat.com"
+Received: from mail.kernel.org ([198.145.19.201]:54266 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S935967Ab3DHNni (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Apr 2013 09:43:38 -0400
+	id S1751100Ab3DHQHu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 8 Apr 2013 12:07:50 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 13811201D0
+	for <linux-ext4@vger.kernel.org>; Mon,  8 Apr 2013 16:07:49 +0000 (UTC)
+Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
+	by mail.kernel.org (Postfix) with ESMTP id 1C3F9202F0
+	for <linux-ext4@vger.kernel.org>; Mon,  8 Apr 2013 16:07:40 +0000 (UTC)
+In-Reply-To: <bug-56241-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently in ENOSPC condition when writing into unwritten space, or
-punching a hole, we might need to split the extent and grow extent tree.
-However since we can not allocate any new metadata blocks we'll have to
-zero out unwritten part of extent or punched out part of extent, or in
-the worst case return ENOSPC even though use actually does not allocate
-any space.
+https://bugzilla.kernel.org/show_bug.cgi?id=56241
 
-Also in delalloc path we do reserve metadata and data blocks for the
-time we're going to write out, however metadata block reservation is
-very tricky especially since we expect that logical connectivity implies
-physical connectivity, however that might not be the case and hence we
-might end up allocating more metadata blocks than previously reserved.
-So in future, metadata reservation checks should be removed since we can
-not assure that we do not under reserve.
 
-And this is where reserved space comes into the picture. When mounting
-the file system we slice off a little bit of the file system space (2%
-or 4096 clusters, whichever is smaller) which can be then used for the
-cases mentioned above to prevent costly zeroout, or unexpected ENOSPC.
+Dmitry Monakhov <dmonakhov@openvz.org> changed:
 
-The number of reserved clusters can be set via sysfs, however it can
-never be bigger than number of free clusters in the file system.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |dmonakhov@openvz.org
 
-Note that this patch fixes the failure of xfstest 274 as expected.
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
-v2: Mount even if there is not enough free space to reserve
 
- Documentation/filesystems/ext4.txt |   11 +++++
- fs/ext4/balloc.c                   |   18 ++++++--
- fs/ext4/ext4.h                     |   13 +++--
- fs/ext4/extents.c                  |   27 ++++++++----
- fs/ext4/inode.c                    |   11 ++++-
- fs/ext4/super.c                    |   84 ++++++++++++++++++++++++++++++++++-
- 6 files changed, 141 insertions(+), 23 deletions(-)
 
-diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
-index 34ea4f1..1ce3b3e 100644
---- a/Documentation/filesystems/ext4.txt
-+++ b/Documentation/filesystems/ext4.txt
-@@ -494,6 +494,17 @@ Files in /sys/fs/ext4/<devname>
-  session_write_kbytes         This file is read-only and shows the number of
-                               kilobytes of data that have been written to this
-                               filesystem since it was mounted.
-+
-+ reserved_clusters            This is RW file and contains number of reserved
-+                              clusters in the file system which will be used
-+                              in the specific situations to avoid costly
-+                              zeroout, unexpected ENOSPC, or possible data
-+                              loss. The default is 2% or 4096 clusters,
-+                              whichever is smaller and this can be changed
-+                              however it can never exceed number of clusters
-+                              in the file system. If there is not enough space
-+                              for the reserved space when mounting the file
-+                              mount will _not_ fail.
- ..............................................................................
- 
- Ioctls
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 92e68b3..3e53020 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -478,20 +478,22 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
- static int ext4_has_free_clusters(struct ext4_sb_info *sbi,
- 				  s64 nclusters, unsigned int flags)
- {
--	s64 free_clusters, dirty_clusters, root_clusters;
-+	s64 free_clusters, dirty_clusters, rsv, resv_clusters;
- 	struct percpu_counter *fcc = &sbi->s_freeclusters_counter;
- 	struct percpu_counter *dcc = &sbi->s_dirtyclusters_counter;
- 
- 	free_clusters  = percpu_counter_read_positive(fcc);
- 	dirty_clusters = percpu_counter_read_positive(dcc);
-+	resv_clusters = atomic64_read(&sbi->s_resv_clusters);
- 
- 	/*
- 	 * r_blocks_count should always be multiple of the cluster ratio so
- 	 * we are safe to do a plane bit shift only.
- 	 */
--	root_clusters = ext4_r_blocks_count(sbi->s_es) >> sbi->s_cluster_bits;
-+	rsv = (ext4_r_blocks_count(sbi->s_es) >> sbi->s_cluster_bits) +
-+	      resv_clusters;
- 
--	if (free_clusters - (nclusters + root_clusters + dirty_clusters) <
-+	if (free_clusters - (nclusters + rsv + dirty_clusters) <
- 					EXT4_FREECLUSTERS_WATERMARK) {
- 		free_clusters  = percpu_counter_sum_positive(fcc);
- 		dirty_clusters = percpu_counter_sum_positive(dcc);
-@@ -499,15 +501,21 @@ static int ext4_has_free_clusters(struct ext4_sb_info *sbi,
- 	/* Check whether we have space after accounting for current
- 	 * dirty clusters & root reserved clusters.
- 	 */
--	if (free_clusters >= ((root_clusters + nclusters) + dirty_clusters))
-+	if (free_clusters >= (rsv + nclusters + dirty_clusters))
- 		return 1;
- 
- 	/* Hm, nope.  Are (enough) root reserved clusters available? */
- 	if (uid_eq(sbi->s_resuid, current_fsuid()) ||
- 	    (!gid_eq(sbi->s_resgid, GLOBAL_ROOT_GID) && in_group_p(sbi->s_resgid)) ||
- 	    capable(CAP_SYS_RESOURCE) ||
--		(flags & EXT4_MB_USE_ROOT_BLOCKS)) {
-+	    (flags & EXT4_MB_USE_ROOT_BLOCKS)) {
- 
-+		if (free_clusters >= (nclusters + dirty_clusters +
-+				      resv_clusters))
-+			return 1;
-+	}
-+	/* No free blocks. Let's see if we can dip into reserved pool */
-+	if (flags & EXT4_MB_USE_RESERVED) {
- 		if (free_clusters >= (nclusters + dirty_clusters))
- 			return 1;
- 	}
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 4a01ba3..5dd240f 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -121,6 +121,8 @@ typedef unsigned int ext4_group_t;
- #define EXT4_MB_STREAM_ALLOC		0x0800
- /* Use reserved root blocks if needed */
- #define EXT4_MB_USE_ROOT_BLOCKS		0x1000
-+/* Use blocks from reserved pool */
-+#define EXT4_MB_USE_RESERVED		0x2000
- 
- struct ext4_allocation_request {
- 	/* target inode for block we're allocating */
-@@ -557,9 +559,8 @@ enum {
- #define EXT4_GET_BLOCKS_UNINIT_EXT		0x0002
- #define EXT4_GET_BLOCKS_CREATE_UNINIT_EXT	(EXT4_GET_BLOCKS_UNINIT_EXT|\
- 						 EXT4_GET_BLOCKS_CREATE)
--	/* Caller is from the delayed allocation writeout path,
--	   so set the magic i_delalloc_reserve_flag after taking the
--	   inode allocation semaphore for */
-+	/* Caller is from the delayed allocation writeout path
-+	 * finally doing the actual allocation of delayed blocks */
- #define EXT4_GET_BLOCKS_DELALLOC_RESERVE	0x0004
- 	/* caller is from the direct IO path, request to creation of an
- 	unitialized extents if not allocated, split the uninitialized
-@@ -571,8 +572,9 @@ enum {
- 	/* Convert extent to initialized after IO complete */
- #define EXT4_GET_BLOCKS_IO_CONVERT_EXT		(EXT4_GET_BLOCKS_CONVERT|\
- 					 EXT4_GET_BLOCKS_CREATE_UNINIT_EXT)
--	/* Punch out blocks of an extent */
--#define EXT4_GET_BLOCKS_PUNCH_OUT_EXT		0x0020
-+	/* Eventual metadata allocation (due to growing extent tree)
-+	 * should not fail, so try to use reserved blocks for that.*/
-+#define EXT4_GET_BLOCKS_METADATA_NOFAIL		0x0020
- 	/* Don't normalize allocation size (used for fallocate) */
- #define EXT4_GET_BLOCKS_NO_NORMALIZE		0x0040
- 	/* Request will not result in inode size update (user for fallocate) */
-@@ -1179,6 +1181,7 @@ struct ext4_sb_info {
- 	unsigned int s_mount_flags;
- 	unsigned int s_def_mount_opt;
- 	ext4_fsblk_t s_sb_block;
-+	atomic64_t s_resv_clusters;
- 	kuid_t s_resuid;
- 	kgid_t s_resgid;
- 	unsigned short s_mount_state;
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 372b2cb..e61a676 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -1878,8 +1878,8 @@ int ext4_ext_insert_extent(handle_t *handle, struct inode *inode,
- 	 * There is no free space in the found leaf.
- 	 * We're gonna add a new leaf in the tree.
- 	 */
--	if (flag & EXT4_GET_BLOCKS_PUNCH_OUT_EXT)
--		flags = EXT4_MB_USE_ROOT_BLOCKS;
-+	if (flag & EXT4_GET_BLOCKS_METADATA_NOFAIL)
-+		flags = EXT4_MB_USE_RESERVED;
- 	err = ext4_ext_create_new_leaf(handle, inode, flags, path, newext);
- 	if (err)
- 		goto cleanup;
-@@ -2665,12 +2665,14 @@ again:
- 
- 			/*
- 			 * Split the extent in two so that 'end' is the last
--			 * block in the first new extent
-+			 * block in the first new extent. Also we should not
-+			 * fail removing space due to ENOSPC so try to use
-+			 * reserved block if that happens.
- 			 */
- 			err = ext4_split_extent_at(handle, inode, path,
--						end + 1, split_flag,
--						EXT4_GET_BLOCKS_PRE_IO |
--						EXT4_GET_BLOCKS_PUNCH_OUT_EXT);
-+					end + 1, split_flag,
-+					EXT4_GET_BLOCKS_PRE_IO |
-+					EXT4_GET_BLOCKS_METADATA_NOFAIL);
- 
- 			if (err < 0)
- 				goto out;
-@@ -3108,7 +3110,8 @@ out:
- static int ext4_ext_convert_to_initialized(handle_t *handle,
- 					   struct inode *inode,
- 					   struct ext4_map_blocks *map,
--					   struct ext4_ext_path *path)
-+					   struct ext4_ext_path *path,
-+					   int flags)
- {
- 	struct ext4_sb_info *sbi;
- 	struct ext4_extent_header *eh;
-@@ -3287,7 +3290,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 	}
- 
- 	allocated = ext4_split_extent(handle, inode, path,
--				      &split_map, split_flag, 0);
-+				      &split_map, split_flag, flags);
- 	if (allocated < 0)
- 		err = allocated;
- 
-@@ -3593,6 +3596,12 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
- 		  flags, allocated);
- 	ext4_ext_show_leaf(inode, path);
- 
-+	/*
-+	 * When writing into uninitialized space, we should not fail to
-+	 * allocate metadata blocks for the new extent block if needed.
-+	 */
-+	flags |= EXT4_GET_BLOCKS_METADATA_NOFAIL;
-+
- 	trace_ext4_ext_handle_uninitialized_extents(inode, map, flags,
- 						    allocated, newblock);
- 
-@@ -3652,7 +3661,7 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
- 	}
- 
- 	/* buffered write, writepage time, convert*/
--	ret = ext4_ext_convert_to_initialized(handle, inode, map, path);
-+	ret = ext4_ext_convert_to_initialized(handle, inode, map, path, flags);
- 	if (ret >= 0)
- 		ext4_update_inode_fsync_trans(handle, inode, 1);
- out:
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 95a0c62..3450829 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1601,12 +1601,21 @@ static void mpage_da_map_and_submit(struct mpage_da_data *mpd)
- 	 */
- 	map.m_lblk = next;
- 	map.m_len = max_blocks;
--	get_blocks_flags = EXT4_GET_BLOCKS_CREATE;
-+	/*
-+	 * We're in delalloc path and it is possible that we're going to
-+	 * need more metadata blocks than previously reserved. However
-+	 * we must not fail because we're in writeback and there is
-+	 * nothing we can do about it so it might result in data loss.
-+	 * So use reserved blocks to allocate metadata if possible.
-+	 */
-+	get_blocks_flags = EXT4_GET_BLOCKS_CREATE |
-+			   EXT4_GET_BLOCKS_METADATA_NOFAIL;
- 	if (ext4_should_dioread_nolock(mpd->inode))
- 		get_blocks_flags |= EXT4_GET_BLOCKS_IO_CREATE_EXT;
- 	if (mpd->b_state & (1 << BH_Delay))
- 		get_blocks_flags |= EXT4_GET_BLOCKS_DELALLOC_RESERVE;
- 
-+
- 	blks = ext4_map_blocks(handle, mpd->inode, &map, get_blocks_flags);
- 	if (blks < 0) {
- 		struct super_block *sb = mpd->inode->i_sb;
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 9379b7f..1b302fa 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -81,6 +81,7 @@ static int ext4_feature_set_ok(struct super_block *sb, int readonly);
- static void ext4_destroy_lazyinit_thread(void);
- static void ext4_unregister_li_request(struct super_block *sb);
- static void ext4_clear_request_list(void);
-+static int ext4_reserve_clusters(struct ext4_sb_info *, ext4_fsblk_t);
- 
- #if !defined(CONFIG_EXT2_FS) && !defined(CONFIG_EXT2_FS_MODULE) && defined(CONFIG_EXT4_USE_FOR_EXT23)
- static struct file_system_type ext2_fs_type = {
-@@ -2375,6 +2376,17 @@ struct ext4_attr {
- 	int offset;
- };
- 
-+static int parse_strtoull(const char *buf,
-+		unsigned long long max, unsigned long long *value)
-+{
-+	int ret;
-+
-+	ret = kstrtoull(skip_spaces(buf), 0, value);
-+	if (!ret && *value > max)
-+		ret = -EINVAL;
-+	return ret;
-+}
-+
- static int parse_strtoul(const char *buf,
- 		unsigned long max, unsigned long *value)
- {
-@@ -2459,6 +2471,27 @@ static ssize_t sbi_ui_store(struct ext4_attr *a,
- 	return count;
- }
- 
-+static ssize_t reserved_clusters_show(struct ext4_attr *a,
-+				  struct ext4_sb_info *sbi, char *buf)
-+{
-+	return snprintf(buf, PAGE_SIZE, "%lu\n",
-+			atomic64_read(&sbi->s_resv_clusters));
-+}
-+
-+static ssize_t reserved_clusters_store(struct ext4_attr *a,
-+				   struct ext4_sb_info *sbi,
-+				   const char *buf, size_t count)
-+{
-+	unsigned long long val;
-+	int ret;
-+
-+	if (parse_strtoull(buf, -1ULL, &val))
-+		return -EINVAL;
-+	ret = ext4_reserve_clusters(sbi, val);
-+
-+	return ret ? ret : count;
-+}
-+
- static ssize_t trigger_test_error(struct ext4_attr *a,
- 				  struct ext4_sb_info *sbi,
- 				  const char *buf, size_t count)
-@@ -2496,6 +2529,7 @@ static struct ext4_attr ext4_attr_##name = __ATTR(name, mode, show, store)
- EXT4_RO_ATTR(delayed_allocation_blocks);
- EXT4_RO_ATTR(session_write_kbytes);
- EXT4_RO_ATTR(lifetime_write_kbytes);
-+EXT4_RW_ATTR(reserved_clusters);
- EXT4_ATTR_OFFSET(inode_readahead_blks, 0644, sbi_ui_show,
- 		 inode_readahead_blks_store, s_inode_readahead_blks);
- EXT4_RW_ATTR_SBI_UI(inode_goal, s_inode_goal);
-@@ -2513,6 +2547,7 @@ static struct attribute *ext4_attrs[] = {
- 	ATTR_LIST(delayed_allocation_blocks),
- 	ATTR_LIST(session_write_kbytes),
- 	ATTR_LIST(lifetime_write_kbytes),
-+	ATTR_LIST(reserved_clusters),
- 	ATTR_LIST(inode_readahead_blks),
- 	ATTR_LIST(inode_goal),
- 	ATTR_LIST(mb_stats),
-@@ -3188,6 +3223,40 @@ int ext4_calculate_overhead(struct super_block *sb)
- 	return 0;
- }
- 
-+
-+static ext4_fsblk_t ext4_calculate_resv_clusters(struct ext4_sb_info *sbi)
-+{
-+	ext4_fsblk_t resv_clusters;
-+
-+	/*
-+	 * By default we reserve 2% or 4096 clusters, whichever is smaller.
-+	 * This should cover the situations where we can not afford to run
-+	 * out of space like for example punch hole, or converting
-+	 * uninitialized extents in delalloc path. In most cases such
-+	 * allocation would require 1, or 2 blocks, higher numbers are
-+	 * very rare.
-+	 */
-+	resv_clusters = ext4_blocks_count(sbi->s_es) >> sbi->s_cluster_bits;
-+
-+	do_div(resv_clusters, 50);
-+	resv_clusters = min_t(ext4_fsblk_t, resv_clusters, 4096);
-+
-+	return resv_clusters;
-+}
-+
-+
-+static int ext4_reserve_clusters(struct ext4_sb_info *sbi, ext4_fsblk_t count)
-+{
-+	ext4_fsblk_t clusters = ext4_blocks_count(sbi->s_es) >>
-+				sbi->s_cluster_bits;
-+
-+	if (count >= clusters)
-+		return -EINVAL;
-+
-+	atomic64_set(&sbi->s_resv_clusters, count);
-+	return 0;
-+}
-+
- static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- {
- 	char *orig_data = kstrdup(data, GFP_KERNEL);
-@@ -3907,6 +3976,13 @@ no_journal:
- 			 "available");
- 	}
- 
-+	err = ext4_reserve_clusters(sbi, ext4_calculate_resv_clusters(sbi));
-+	if (err) {
-+		ext4_msg(sb, KERN_ERR, "failed to reserve %llu clusters for "
-+			 "reserved pool", ext4_calculate_resv_clusters(sbi));
-+		goto failed_mount4a;
-+	}
-+
- 	err = ext4_setup_system_zone(sb);
- 	if (err) {
- 		ext4_msg(sb, KERN_ERR, "failed to initialize system "
-@@ -4738,9 +4814,10 @@ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
- 	struct super_block *sb = dentry->d_sb;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	struct ext4_super_block *es = sbi->s_es;
--	ext4_fsblk_t overhead = 0;
-+	ext4_fsblk_t overhead = 0, resv_blocks;
- 	u64 fsid;
- 	s64 bfree;
-+	resv_blocks = EXT4_C2B(sbi, atomic64_read(&sbi->s_resv_clusters));
- 
- 	if (!test_opt(sb, MINIX_DF))
- 		overhead = sbi->s_overhead;
-@@ -4752,8 +4829,9 @@ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
- 		percpu_counter_sum_positive(&sbi->s_dirtyclusters_counter);
- 	/* prevent underflow in case that few free space is available */
- 	buf->f_bfree = EXT4_C2B(sbi, max_t(s64, bfree, 0));
--	buf->f_bavail = buf->f_bfree - ext4_r_blocks_count(es);
--	if (buf->f_bfree < ext4_r_blocks_count(es))
-+	buf->f_bavail = buf->f_bfree -
-+			(ext4_r_blocks_count(es) + resv_blocks);
-+	if (buf->f_bfree < (ext4_r_blocks_count(es) + resv_blocks))
- 		buf->f_bavail = 0;
- 	buf->f_files = le32_to_cpu(es->s_inodes_count);
- 	buf->f_ffree = percpu_counter_sum_positive(&sbi->s_freeinodes_counter);
+--- Comment #1 from Dmitry Monakhov <dmonakhov@openvz.org>  2013-04-08 16:07:39 ---
+Ok I've able to reproduce this on 64k pages and 1k fsblock size
+Probably this is my bug
+
+10477.714752] EXT4-fs (dm-3): mounted filesystem with ordered data mode. Opts:
+acl,user_xattr
+[10480.693978] kernel BUG at fs/buffer.c:1833!
+[10480.698233] fio[10780]: bugcheck! 0 [1]
+[10480.702141] Modules linked in: ext4 jbd2 crc16 nls_iso8859_1 nls_cp437 vfat
+fat dm_mod sg loop sr_mod cdrom hid_generic ehci_pci ext3 jbd mbcache
+usb_storage usbhid hid hpsa cciss mptsas mptscsih mptbase scsi_transport_sas
+tg3 libphy ptp scsi_mod ohci_hcd ehci_hcd usbcore pps_core usb_common
+[10480.702223] 
+[10480.702223] Pid: 10780, CPU 2, comm:                  fio
+[10480.702223] psr : 00001010085a6018 ifs : 8000000000000ea1 ip  :
+[<a00000010026f500>]    Not tainted (3.8.0)
+[10480.702223] ip is at __block_write_begin+0xe0/0xa40
+[10480.702223] unat: 0000000000000000 pfs : 0000000000000ea1 rsc :
+0000000000000003
+[10480.702223] rnat: 0009804c8a70033f bsps: 0000000000004000 pr  :
+00000000a9a94955
+[10480.702223] ldrs: 0000000000000000 ccv : 000000000d220691 fpsr:
+0009804c8a70033f
+[10480.702223] csd : 0000000000000000 ssd : 0000000000000000
+[10480.702223] b0  : a00000010026f500 b6  : a00000010042f760 b7  :
+a000000100554f30
+[10480.702223] f6  : 1003e00000354df80f716 f7  : 1003e000000000000015e
+[10480.702223] f8  : 1003e00000354df80f5b8 f9  : 1003e0000000000000001
+[10480.702223] f10 : 1003e00000000052ba885 f11 : 1003e20c49ba5e353f7cf
+[10480.702223] r1  : a000000100e50e20 r2  : 0000000000006760 r3  :
+000000000000fffe
+[10480.702223] r8  : 000000000000001f r9  : 00000000000005f5 r10 :
+00000000000005f5
+[10480.702223] r11 : 000000000000675e r12 : e00000022ecafd20 r13 :
+e00000022eca0000
+[10480.702223] r14 : 0000000000006760 r15 : 0000000000004000 r16 :
+00000000000033af
+[10480.702223] r17 : 0000000000000001 r18 : 000000000000675e r19 :
+a000000100c5d138
+[10480.702223] r20 : 000000000000675c r21 : 0000000000000000 r22 :
+a000000100cf87a8
+[10480.702223] r23 : a0000001009feb48 r24 : a000000100553a70 r25 :
+0000000000000700
+[10480.702223] r26 : a000000100cf88e0 r27 : a0000001009feb38 r28 :
+0000000000000000
+[10480.702223] r29 : a000000100cf87a0 r30 : 0000000000000c34 r31 :
+a000000100cf878a
+[10480.702223] 
+[10480.702223] Call Trace:
+[10480.702223]  [<a000000100014d10>] show_stack+0x50/0xa0
+[10480.702223]                                 sp=e00000022ecaf8f0
+bsp=e00000022eca14c0
+[10480.702223]  [<a000000100015590>] show_regs+0x830/0x870
+[10480.702223]                                 sp=e00000022ecafac0
+bsp=e00000022eca1460
+[10480.702223]  [<a00000010003a900>] die+0x1a0/0x2f0
+[10480.702223]                                 sp=e00000022ecafad0
+bsp=e00000022eca1420
+[10480.702223]  [<a00000010003aaa0>] die_if_kernel+0x50/0x70
+[10480.702223]                                 sp=e00000022ecafad0
+bsp=e00000022eca13e8
+[10480.702223]  [<a00000010082d7e0>] ia64_bad_break+0x240/0x420
+[10480.702223]                                 sp=e00000022ecafad0
+bsp=e00000022eca13c0
+[10480.702223]  [<a00000010000bc40>] ia64_native_leave_kernel+0x0/0x270
+[10480.702223]                                 sp=e00000022ecafb50
+bsp=e00000022eca13c0
+[10480.702223]  [<a00000010026f500>] __block_write_begin+0xe0/0xa40
+[10480.702223]                                 sp=e00000022ecafd20
+bsp=e00000022eca12b8
+[10480.702223]  [<a000000203673df0>] ext4_move_extents+0x13b0/0x1c60 [ext4]
+[10480.702223]                                 sp=e00000022ecafd40
+bsp=e00000022eca10c8
+[10480.702223]  [<a000000203623100>] ext4_ioctl+0x1200/0x1b30 [ext4]
+[10480.702223]                                 sp=e00000022ecafd60
+bsp=e00000022eca1058
+[10480.702223]  [<a00000010022f690>] do_vfs_ioctl+0xf00/0x1010
+[10480.702223]                                 sp=e00000022ecafdd0
+bsp=e00000022eca1008
+[10480.702223]  [<a00000010022f840>] sys_ioctl+0xa0/0x120
+[10480.702223]                                 sp=e00000022ecafe10
+bsp=e00000022eca0f80
+[10480.702223]  [<a00000010000bac0>] ia64_ret_from_syscall+0x0/0x20
+[10480.702223]                                 sp=e00000022ecafe30
+bsp=e00000022eca0f80
+[10480.702223]  [<a000000000040720>] ia64_ivt+0xffffffff00040720/0x400
+[10480.702223]                                 sp=e00000022ecb0000
+bsp=e00000022eca0f80
+[10480.702223] Disabling lock debugging due to kernel taint
+
 -- 
-1.7.7.6
-
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
