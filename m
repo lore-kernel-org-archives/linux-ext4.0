@@ -1,42 +1,190 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 04/29] jbd2: Reduce journal_head size
-Date: Mon,  8 Apr 2013 23:32:09 +0200
-Message-ID: <1365456754-29373-5-git-send-email-jack@suse.cz>
+Subject: [PATCH 13/29] ext4: Provide wrappers for transaction reservation calls
+Date: Mon,  8 Apr 2013 23:32:18 +0200
+Message-ID: <1365456754-29373-14-git-send-email-jack@suse.cz>
 References: <1365456754-29373-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:53336 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:53386 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S936270Ab3DHVdB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Apr 2013 17:33:01 -0400
+	id S936299Ab3DHVdE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 8 Apr 2013 17:33:04 -0400
 In-Reply-To: <1365456754-29373-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Remove unused t_cow_tid field (ext4 copy-on-write support doesn't seem
-to be happening) and change b_modified and b_jlist to bitfields thus
-saving 8 bytes in the structure.
-
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- include/linux/journal-head.h |   11 ++---------
- 1 files changed, 2 insertions(+), 9 deletions(-)
+ fs/ext4/ext4_jbd2.c         |   71 +++++++++++++++++++++++++++++++++++++-----
+ fs/ext4/ext4_jbd2.h         |   13 ++++++++
+ include/trace/events/ext4.h |   20 +++++++++++-
+ 3 files changed, 94 insertions(+), 10 deletions(-)
 
-diff --git a/include/linux/journal-head.h b/include/linux/journal-head.h
-index c18b46f..13a3da2 100644
---- a/include/linux/journal-head.h
-+++ b/include/linux/journal-head.h
-@@ -31,21 +31,14 @@ struct journal_head {
- 	/*
- 	 * Journalling list for this buffer [jbd_lock_bh_state()]
- 	 */
--	unsigned b_jlist;
-+	unsigned b_jlist:4;
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index 7058975..b3e04bf 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -38,28 +38,40 @@ static void ext4_put_nojournal(handle_t *handle)
+ /*
+  * Wrappers for jbd2_journal_start/end.
+  */
+-handle_t *__ext4_journal_start_sb(struct super_block *sb, unsigned int line,
+-				  int type, int nblocks)
++static int ext4_journal_check_start(struct super_block *sb)
+ {
+ 	journal_t *journal;
  
+-	trace_ext4_journal_start(sb, nblocks, _RET_IP_);
+ 	if (sb->s_flags & MS_RDONLY)
+-		return ERR_PTR(-EROFS);
+-
++		return -EROFS;
+ 	WARN_ON(sb->s_writers.frozen == SB_FREEZE_COMPLETE);
+ 	journal = EXT4_SB(sb)->s_journal;
+-	if (!journal)
+-		return ext4_get_nojournal();
  	/*
- 	 * This flag signals the buffer has been modified by
- 	 * the currently running transaction
- 	 * [jbd_lock_bh_state()]
+ 	 * Special case here: if the journal has aborted behind our
+ 	 * backs (eg. EIO in the commit thread), then we still need to
+ 	 * take the FS itself readonly cleanly.
  	 */
--	unsigned b_modified;
+-	if (is_journal_aborted(journal)) {
++	if (journal && is_journal_aborted(journal)) {
+ 		ext4_abort(sb, "Detected aborted journal");
+-		return ERR_PTR(-EROFS);
++		return -EROFS;
+ 	}
++	return 0;
++}
++
++handle_t *__ext4_journal_start_sb(struct super_block *sb, unsigned int line,
++				  int type, int nblocks)
++{
++	journal_t *journal;
++	int err;
++
++	trace_ext4_journal_start(sb, nblocks, _RET_IP_);
++	err = ext4_journal_check_start(sb);
++	if (err < 0)
++		return ERR_PTR(err);
++
++	journal = EXT4_SB(sb)->s_journal;
++	if (!journal)
++		return ext4_get_nojournal();
+ 	return jbd2__journal_start(journal, nblocks, GFP_NOFS, type, line);
+ }
+ 
+@@ -84,6 +96,47 @@ int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle)
+ 	return err;
+ }
+ 
++handle_t *__ext4_journal_reserve(struct inode *inode, unsigned int line,
++				 int type, int nblocks)
++{
++	struct super_block *sb = inode->i_sb;
++	journal_t *journal;
++	int err;
++
++	trace_ext4_journal_reserve(sb, nblocks, _RET_IP_);
++	err = ext4_journal_check_start(sb);
++	if (err < 0)
++		return ERR_PTR(err);
++
++	journal = EXT4_SB(sb)->s_journal;
++	if (!journal)
++		return (handle_t *)1;	/* Hack to return !NULL */
++	return jbd2_journal_reserve(journal, nblocks, type, line);
++}
++
++handle_t *ext4_journal_start_reserved(handle_t *handle)
++{
++	struct super_block *sb;
++	int err;
++
++	if (!ext4_handle_valid(handle))
++		return ext4_get_nojournal();
++
++	sb = handle->h_journal->j_private;
++	trace_ext4_journal_start_reserved(sb, handle->h_buffer_credits,
++					  _RET_IP_);
++	err = ext4_journal_check_start(sb);
++	if (err < 0) {
++		jbd2_journal_free_reserved(handle);
++		return ERR_PTR(err);
++	}
++
++	err = jbd2_journal_start_reserved(handle);
++	if (err < 0)
++		return ERR_PTR(err);
++	return handle;
++}
++
+ void ext4_journal_abort_handle(const char *caller, unsigned int line,
+ 			       const char *err_fn, struct buffer_head *bh,
+ 			       handle_t *handle, int err)
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index 4c216b1..bb17931 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -309,6 +309,19 @@ static inline handle_t *__ext4_journal_start(struct inode *inode,
+ #define ext4_journal_stop(handle) \
+ 	__ext4_journal_stop(__func__, __LINE__, (handle))
+ 
++#define ext4_journal_reserve(inode, type, nblocks)			\
++	__ext4_journal_reserve((inode), __LINE__, (type), (nblocks))
++
++handle_t *__ext4_journal_reserve(struct inode *inode, unsigned int line,
++				 int type, int nblocks);
++handle_t *ext4_journal_start_reserved(handle_t *handle);
++
++static inline void ext4_journal_free_reserved(handle_t *handle)
++{
++	if (ext4_handle_valid(handle))
++		jbd2_journal_free_reserved(handle);
++}
++
+ static inline handle_t *ext4_journal_current_handle(void)
+ {
+ 	return journal_current_handle();
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index 4ee4710..a601bb3 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -1645,7 +1645,7 @@ TRACE_EVENT(ext4_load_inode,
+ 		  (unsigned long) __entry->ino)
+ );
+ 
+-TRACE_EVENT(ext4_journal_start,
++DECLARE_EVENT_CLASS(ext4_journal_start_class,
+ 	TP_PROTO(struct super_block *sb, int nblocks, unsigned long IP),
+ 
+ 	TP_ARGS(sb, nblocks, IP),
+@@ -1667,6 +1667,24 @@ TRACE_EVENT(ext4_journal_start,
+ 		  __entry->nblocks, (void *)__entry->ip)
+ );
+ 
++DEFINE_EVENT(ext4_journal_start_class, ext4_journal_start,
++	TP_PROTO(struct super_block *sb, int nblocks, unsigned long IP),
++
++	TP_ARGS(sb, nblocks, IP)
++);
++
++DEFINE_EVENT(ext4_journal_start_class, ext4_journal_reserve,
++	TP_PROTO(struct super_block *sb, int nblocks, unsigned long IP),
++
++	TP_ARGS(sb, nblocks, IP)
++);
++
++DEFINE_EVENT(ext4_journal_start_class, ext4_journal_start_reserved,
++	TP_PROTO(struct super_block *sb, int nblocks, unsigned long IP),
++
++	TP_ARGS(sb, nblocks, IP)
++);
++
+ DECLARE_EVENT_CLASS(ext4__trim,
+ 	TP_PROTO(struct super_block *sb,
+ 		 ext4_group_t group,
+-- 
+1.7.1
+
