@@ -1,440 +1,506 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 02/29] ext4: Use io_end for multiple bios
-Date: Mon,  8 Apr 2013 23:32:07 +0200
-Message-ID: <1365456754-29373-3-git-send-email-jack@suse.cz>
+Subject: [PATCH 06/29] jbd2: Remove journal_head from descriptor buffers
+Date: Mon,  8 Apr 2013 23:32:11 +0200
+Message-ID: <1365456754-29373-7-git-send-email-jack@suse.cz>
 References: <1365456754-29373-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:53338 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:53343 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S936274Ab3DHVdC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S936277Ab3DHVdC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Mon, 8 Apr 2013 17:33:02 -0400
 In-Reply-To: <1365456754-29373-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Change writeback path to create just one io_end structure for the extent
-to which we submit IO and share it among bios writing that extent. This
-prevents needless splitting and joining of unwritten extents when they
-cannot be submitted as a single bio.
+Similarly as for metadata buffers, also log descriptor buffers don't
+really need the journal head. So strip it and remove BJ_LogCtl list.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ext4.h    |    8 +++-
- fs/ext4/inode.c   |   85 ++++++++++++++++++++-----------------
- fs/ext4/page-io.c |  121 +++++++++++++++++++++++++++++++++--------------------
- 3 files changed, 128 insertions(+), 86 deletions(-)
+ fs/jbd2/checkpoint.c  |    1 -
+ fs/jbd2/commit.c      |   78 +++++++++++++++++++-----------------------------
+ fs/jbd2/journal.c     |    4 +-
+ fs/jbd2/revoke.c      |   49 +++++++++++++++---------------
+ fs/jbd2/transaction.c |    6 ----
+ include/linux/jbd2.h  |   19 ++++-------
+ 6 files changed, 64 insertions(+), 93 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 3c70547..edf9b9e 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -207,6 +207,7 @@ typedef struct ext4_io_end {
- 	ssize_t			size;		/* size of the extent */
- 	struct kiocb		*iocb;		/* iocb struct for AIO */
- 	int			result;		/* error value for AIO */
-+	atomic_t		count;		/* reference counter */
- } ext4_io_end_t;
+diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+index 2735fef..65ec076 100644
+--- a/fs/jbd2/checkpoint.c
++++ b/fs/jbd2/checkpoint.c
+@@ -691,7 +691,6 @@ void __jbd2_journal_drop_transaction(journal_t *journal, transaction_t *transact
+ 	J_ASSERT(transaction->t_buffers == NULL);
+ 	J_ASSERT(transaction->t_forget == NULL);
+ 	J_ASSERT(transaction->t_shadow_list == NULL);
+-	J_ASSERT(transaction->t_log_list == NULL);
+ 	J_ASSERT(transaction->t_checkpoint_list == NULL);
+ 	J_ASSERT(transaction->t_checkpoint_io_list == NULL);
+ 	J_ASSERT(atomic_read(&transaction->t_updates) == 0);
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index c503df6..1a03762 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -85,8 +85,7 @@ nope:
+ 	__brelse(bh);
+ }
  
- struct ext4_io_submit {
-@@ -2601,11 +2602,14 @@ extern int ext4_move_extents(struct file *o_filp, struct file *d_filp,
+-static void jbd2_commit_block_csum_set(journal_t *j,
+-				       struct journal_head *descriptor)
++static void jbd2_commit_block_csum_set(journal_t *j, struct buffer_head *bh)
+ {
+ 	struct commit_header *h;
+ 	__u32 csum;
+@@ -94,12 +93,11 @@ static void jbd2_commit_block_csum_set(journal_t *j,
+ 	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
+ 		return;
  
- /* page-io.c */
- extern int __init ext4_init_pageio(void);
--extern void ext4_add_complete_io(ext4_io_end_t *io_end);
- extern void ext4_exit_pageio(void);
- extern void ext4_ioend_wait(struct inode *);
--extern void ext4_free_io_end(ext4_io_end_t *io);
- extern ext4_io_end_t *ext4_init_io_end(struct inode *inode, gfp_t flags);
-+extern ext4_io_end_t *ext4_get_io_end(ext4_io_end_t *io_end);
-+extern int ext4_put_io_end(ext4_io_end_t *io_end);
-+extern void ext4_put_io_end_defer(ext4_io_end_t *io_end);
-+extern void ext4_io_submit_init(struct ext4_io_submit *io,
-+				struct writeback_control *wbc);
- extern void ext4_end_io_work(struct work_struct *work);
- extern void ext4_io_submit(struct ext4_io_submit *io);
- extern int ext4_bio_write_page(struct ext4_io_submit *io,
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 6b8ec2a..ba07412 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1409,7 +1409,10 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd,
- 	struct ext4_io_submit io_submit;
+-	h = (struct commit_header *)(jh2bh(descriptor)->b_data);
++	h = (struct commit_header *)(bh->b_data);
+ 	h->h_chksum_type = 0;
+ 	h->h_chksum_size = 0;
+ 	h->h_chksum[0] = 0;
+-	csum = jbd2_chksum(j, j->j_csum_seed, jh2bh(descriptor)->b_data,
+-			   j->j_blocksize);
++	csum = jbd2_chksum(j, j->j_csum_seed, bh->b_data, j->j_blocksize);
+ 	h->h_chksum[0] = cpu_to_be32(csum);
+ }
  
- 	BUG_ON(mpd->next_page <= mpd->first_page);
--	memset(&io_submit, 0, sizeof(io_submit));
-+	ext4_io_submit_init(&io_submit, mpd->wbc);
-+	io_submit.io_end = ext4_init_io_end(inode, GFP_NOFS);
-+	if (!io_submit.io_end)
-+		return -ENOMEM;
- 	/*
- 	 * We need to start from the first_page to the next_page - 1
- 	 * to make sure we also write the mapped dirty buffer_heads.
-@@ -1497,6 +1500,8 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd,
- 		pagevec_release(&pvec);
+@@ -116,7 +114,6 @@ static int journal_submit_commit_record(journal_t *journal,
+ 					struct buffer_head **cbh,
+ 					__u32 crc32_sum)
+ {
+-	struct journal_head *descriptor;
+ 	struct commit_header *tmp;
+ 	struct buffer_head *bh;
+ 	int ret;
+@@ -127,12 +124,10 @@ static int journal_submit_commit_record(journal_t *journal,
+ 	if (is_journal_aborted(journal))
+ 		return 0;
+ 
+-	descriptor = jbd2_journal_get_descriptor_buffer(journal);
+-	if (!descriptor)
++	bh = jbd2_journal_get_descriptor_buffer(journal);
++	if (!bh)
+ 		return 1;
+ 
+-	bh = jh2bh(descriptor);
+-
+ 	tmp = (struct commit_header *)bh->b_data;
+ 	tmp->h_magic = cpu_to_be32(JBD2_MAGIC_NUMBER);
+ 	tmp->h_blocktype = cpu_to_be32(JBD2_COMMIT_BLOCK);
+@@ -146,9 +141,9 @@ static int journal_submit_commit_record(journal_t *journal,
+ 		tmp->h_chksum_size 	= JBD2_CRC32_CHKSUM_SIZE;
+ 		tmp->h_chksum[0] 	= cpu_to_be32(crc32_sum);
  	}
- 	ext4_io_submit(&io_submit);
-+	/* Drop io_end reference we got from init */
-+	ext4_put_io_end_defer(io_submit.io_end);
+-	jbd2_commit_block_csum_set(journal, descriptor);
++	jbd2_commit_block_csum_set(journal, bh);
+ 
+-	JBUFFER_TRACE(descriptor, "submit commit block");
++	BUFFER_TRACE(bh, "submit commit block");
+ 	lock_buffer(bh);
+ 	clear_buffer_dirty(bh);
+ 	set_buffer_uptodate(bh);
+@@ -180,7 +175,6 @@ static int journal_wait_on_commit_record(journal_t *journal,
+ 	if (unlikely(!buffer_uptodate(bh)))
+ 		ret = -EIO;
+ 	put_bh(bh);            /* One for getblk() */
+-	jbd2_journal_put_journal_head(bh2jh(bh));
+ 
  	return ret;
  }
- 
-@@ -2116,9 +2121,16 @@ static int ext4_writepage(struct page *page,
- 		 */
- 		return __ext4_journalled_writepage(page, len);
- 
--	memset(&io_submit, 0, sizeof(io_submit));
-+	ext4_io_submit_init(&io_submit, wbc);
-+	io_submit.io_end = ext4_init_io_end(inode, GFP_NOFS);
-+	if (!io_submit.io_end) {
-+		redirty_page_for_writepage(wbc, page);
-+		return -ENOMEM;
-+	}
- 	ret = ext4_bio_write_page(&io_submit, page, len, wbc);
- 	ext4_io_submit(&io_submit);
-+	/* Drop io_end reference we got from init */
-+	ext4_put_io_end_defer(io_submit.io_end);
- 	return ret;
+@@ -321,7 +315,7 @@ static void write_tag_block(int tag_bytes, journal_block_tag_t *tag,
  }
  
-@@ -2957,9 +2969,13 @@ static void ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
- 	struct inode *inode = file_inode(iocb->ki_filp);
-         ext4_io_end_t *io_end = iocb->private;
+ static void jbd2_descr_block_csum_set(journal_t *j,
+-				      struct journal_head *descriptor)
++				      struct buffer_head *bh)
+ {
+ 	struct jbd2_journal_block_tail *tail;
+ 	__u32 csum;
+@@ -329,12 +323,10 @@ static void jbd2_descr_block_csum_set(journal_t *j,
+ 	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
+ 		return;
  
--	/* if not async direct IO or dio with 0 bytes write, just return */
--	if (!io_end || !size)
--		goto out;
-+	/* if not async direct IO just return */
-+	if (!io_end) {
-+		inode_dio_done(inode);
-+		if (is_async)
-+			aio_complete(iocb, ret, 0);
-+		return;
-+	}
- 
- 	ext_debug("ext4_end_io_dio(): io_end 0x%p "
- 		  "for inode %lu, iocb 0x%p, offset %llu, size %zd\n",
-@@ -2967,25 +2983,13 @@ static void ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
- 		  size);
- 
- 	iocb->private = NULL;
--
--	/* if not aio dio with unwritten extents, just free io and return */
--	if (!(io_end->flag & EXT4_IO_END_UNWRITTEN)) {
--		ext4_free_io_end(io_end);
--out:
--		inode_dio_done(inode);
--		if (is_async)
--			aio_complete(iocb, ret, 0);
--		return;
--	}
--
- 	io_end->offset = offset;
- 	io_end->size = size;
- 	if (is_async) {
- 		io_end->iocb = iocb;
- 		io_end->result = ret;
- 	}
--
--	ext4_add_complete_io(io_end);
-+	ext4_put_io_end_defer(io_end);
+-	tail = (struct jbd2_journal_block_tail *)
+-			(jh2bh(descriptor)->b_data + j->j_blocksize -
++	tail = (struct jbd2_journal_block_tail *)(bh->b_data + j->j_blocksize -
+ 			sizeof(struct jbd2_journal_block_tail));
+ 	tail->t_checksum = 0;
+-	csum = jbd2_chksum(j, j->j_csum_seed, jh2bh(descriptor)->b_data,
+-			   j->j_blocksize);
++	csum = jbd2_chksum(j, j->j_csum_seed, bh->b_data, j->j_blocksize);
+ 	tail->t_checksum = cpu_to_be32(csum);
  }
  
- /*
-@@ -3019,6 +3023,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
- 	get_block_t *get_block_func = NULL;
- 	int dio_flags = 0;
- 	loff_t final_size = offset + count;
-+	ext4_io_end_t *io_end = NULL;
+@@ -368,7 +360,8 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ {
+ 	struct transaction_stats_s stats;
+ 	transaction_t *commit_transaction;
+-	struct journal_head *jh, *descriptor;
++	struct journal_head *jh;
++	struct buffer_head *descriptor;
+ 	struct buffer_head **wbuf = journal->j_wbuf;
+ 	int bufs;
+ 	int flags;
+@@ -393,6 +386,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 	int update_tail;
+ 	int csum_size = 0;
+ 	LIST_HEAD(io_bufs);
++	LIST_HEAD(log_bufs);
  
- 	/* Use the old path for reads and writes beyond i_size. */
- 	if (rw != WRITE || final_size > inode->i_size)
-@@ -3057,13 +3062,16 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
- 	iocb->private = NULL;
- 	ext4_inode_aio_set(inode, NULL);
- 	if (!is_sync_kiocb(iocb)) {
--		ext4_io_end_t *io_end = ext4_init_io_end(inode, GFP_NOFS);
-+		io_end = ext4_init_io_end(inode, GFP_NOFS);
- 		if (!io_end) {
- 			ret = -ENOMEM;
- 			goto retake_lock;
+ 	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2))
+ 		csum_size = sizeof(struct jbd2_journal_block_tail);
+@@ -546,7 +540,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 
+ 	blk_start_plug(&plug);
+ 	jbd2_journal_write_revoke_records(journal, commit_transaction,
+-					  WRITE_SYNC);
++					  &log_bufs, WRITE_SYNC);
+ 	blk_finish_plug(&plug);
+ 
+ 	jbd_debug(3, "JBD2: commit phase 2\n");
+@@ -572,8 +566,8 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 		 atomic_read(&commit_transaction->t_outstanding_credits));
+ 
+ 	err = 0;
+-	descriptor = NULL;
+ 	bufs = 0;
++	descriptor = NULL;
+ 	blk_start_plug(&plug);
+ 	while (commit_transaction->t_buffers) {
+ 
+@@ -605,8 +599,6 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 		   record the metadata buffer. */
+ 
+ 		if (!descriptor) {
+-			struct buffer_head *bh;
+-
+ 			J_ASSERT (bufs == 0);
+ 
+ 			jbd_debug(4, "JBD2: get descriptor\n");
+@@ -617,26 +609,26 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 				continue;
+ 			}
+ 
+-			bh = jh2bh(descriptor);
+ 			jbd_debug(4, "JBD2: got buffer %llu (%p)\n",
+-				(unsigned long long)bh->b_blocknr, bh->b_data);
+-			header = (journal_header_t *)&bh->b_data[0];
++				(unsigned long long)descriptor->b_blocknr,
++				descriptor->b_data);
++			header = (journal_header_t *)descriptor->b_data;
+ 			header->h_magic     = cpu_to_be32(JBD2_MAGIC_NUMBER);
+ 			header->h_blocktype = cpu_to_be32(JBD2_DESCRIPTOR_BLOCK);
+ 			header->h_sequence  = cpu_to_be32(commit_transaction->t_tid);
+ 
+-			tagp = &bh->b_data[sizeof(journal_header_t)];
+-			space_left = bh->b_size - sizeof(journal_header_t);
++			tagp = &descriptor->b_data[sizeof(journal_header_t)];
++			space_left = descriptor->b_size -
++						sizeof(journal_header_t);
+ 			first_tag = 1;
+-			set_buffer_jwrite(bh);
+-			set_buffer_dirty(bh);
+-			wbuf[bufs++] = bh;
++			set_buffer_jwrite(descriptor);
++			set_buffer_dirty(descriptor);
++			wbuf[bufs++] = descriptor;
+ 
+ 			/* Record it so that we can wait for IO
+                            completion later */
+-			BUFFER_TRACE(bh, "ph3: file as descriptor");
+-			jbd2_journal_file_buffer(descriptor, commit_transaction,
+-					BJ_LogCtl);
++			BUFFER_TRACE(descriptor, "ph3: file as descriptor");
++			jbd2_file_log_bh(&log_bufs, descriptor);
  		}
- 		io_end->flag |= EXT4_IO_END_DIRECT;
--		iocb->private = io_end;
-+		/*
-+		 * Grab reference for DIO. Will be dropped in ext4_end_io_dio()
-+		 */
-+		iocb->private = ext4_get_io_end(io_end);
- 		/*
- 		 * we save the io structure for current async direct
- 		 * IO, so that later ext4_map_blocks() could flag the
-@@ -3087,26 +3095,27 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
- 				   NULL,
- 				   dio_flags);
  
--	if (iocb->private)
--		ext4_inode_aio_set(inode, NULL);
+ 		/* Where is the buffer to be written? */
+@@ -863,26 +855,19 @@ start_journal_io:
+ 	jbd_debug(3, "JBD2: commit phase 4\n");
+ 
+ 	/* Here we wait for the revoke record and descriptor record buffers */
+- wait_for_ctlbuf:
+-	while (commit_transaction->t_log_list != NULL) {
++	while (!list_empty(&log_bufs)) {
+ 		struct buffer_head *bh;
+ 
+-		jh = commit_transaction->t_log_list->b_tprev;
+-		bh = jh2bh(jh);
+-		if (buffer_locked(bh)) {
+-			wait_on_buffer(bh);
+-			goto wait_for_ctlbuf;
+-		}
+-		if (cond_resched())
+-			goto wait_for_ctlbuf;
++		bh = list_entry(log_bufs.prev, struct buffer_head, b_assoc_buffers);
++		wait_on_buffer(bh);
++		cond_resched();
+ 
+ 		if (unlikely(!buffer_uptodate(bh)))
+ 			err = -EIO;
+ 
+ 		BUFFER_TRACE(bh, "ph5: control buffer writeout done: unfile");
+ 		clear_buffer_jwrite(bh);
+-		jbd2_journal_unfile_buffer(journal, jh);
+-		jbd2_journal_put_journal_head(jh);
++		jbd2_unfile_log_bh(bh);
+ 		__brelse(bh);		/* One for getblk */
+ 		/* AKPM: bforget here */
+ 	}
+@@ -933,7 +918,6 @@ start_journal_io:
+ 	J_ASSERT(commit_transaction->t_buffers == NULL);
+ 	J_ASSERT(commit_transaction->t_checkpoint_list == NULL);
+ 	J_ASSERT(commit_transaction->t_shadow_list == NULL);
+-	J_ASSERT(commit_transaction->t_log_list == NULL);
+ 
+ restart_loop:
  	/*
--	 * The io_end structure takes a reference to the inode, that
--	 * structure needs to be destroyed and the reference to the
--	 * inode need to be dropped, when IO is complete, even with 0
--	 * byte write, or failed.
--	 *
--	 * In the successful AIO DIO case, the io_end structure will
--	 * be destroyed and the reference to the inode will be dropped
--	 * after the end_io call back function is called.
--	 *
--	 * In the case there is 0 byte write, or error case, since VFS
--	 * direct IO won't invoke the end_io call back function, we
--	 * need to free the end_io structure here.
-+	 * Put our reference to io_end. This can free the io_end structure e.g.
-+	 * in sync IO case or in case of error. It can even perform extent
-+	 * conversion if all bios we submitted finished before we got here.
-+	 * Note that in that case iocb->private can be already set to NULL
-+	 * here.
- 	 */
--	if (ret != -EIOCBQUEUED && ret <= 0 && iocb->private) {
--		ext4_free_io_end(iocb->private);
--		iocb->private = NULL;
--	} else if (ret > 0 && !overwrite && ext4_test_inode_state(inode,
-+	if (io_end) {
-+		ext4_inode_aio_set(inode, NULL);
-+		ext4_put_io_end(io_end);
-+		/*
-+		 * In case of error or no write ext4_end_io_dio() was not
-+		 * called so we have to put iocb's reference.
-+		 */
-+		if (ret <= 0 && ret != -EIOCBQUEUED) {
-+			WARN_ON(iocb->private != io_end);
-+			ext4_put_io_end(io_end);
-+			iocb->private = NULL;
-+		}
-+	}
-+	if (ret > 0 && !overwrite && ext4_test_inode_state(inode,
- 						EXT4_STATE_DIO_UNWRITTEN)) {
- 		int err;
- 		/*
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index 73bc011..da8bddf 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -51,17 +51,28 @@ void ext4_ioend_wait(struct inode *inode)
- 	wait_event(*wq, (atomic_read(&EXT4_I(inode)->i_ioend_count) == 0));
- }
- 
--void ext4_free_io_end(ext4_io_end_t *io)
-+static void ext4_release_io_end(ext4_io_end_t *io_end)
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index eb6272b..e03aae0 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -761,7 +761,7 @@ int jbd2_journal_bmap(journal_t *journal, unsigned long blocknr,
+  * But we don't bother doing that, so there will be coherency problems with
+  * mmaps of blockdevs which hold live JBD-controlled filesystems.
+  */
+-struct journal_head *jbd2_journal_get_descriptor_buffer(journal_t *journal)
++struct buffer_head *jbd2_journal_get_descriptor_buffer(journal_t *journal)
  {
--	int i;
-+	BUG_ON(!list_empty(&io_end->list));
-+	BUG_ON(io_end->flag & EXT4_IO_END_UNWRITTEN);
-+
-+	if (atomic_dec_and_test(&EXT4_I(io_end->inode)->i_ioend_count))
-+		wake_up_all(ext4_ioend_wq(io_end->inode));
-+	if (io_end->flag & EXT4_IO_END_DIRECT)
-+		inode_dio_done(io_end->inode);
-+	if (io_end->iocb)
-+		aio_complete(io_end->iocb, io_end->result, 0);
-+	kmem_cache_free(io_end_cachep, io_end);
-+}
- 
--	BUG_ON(!io);
--	BUG_ON(!list_empty(&io->list));
--	BUG_ON(io->flag & EXT4_IO_END_UNWRITTEN);
-+static void ext4_clear_io_unwritten_flag(ext4_io_end_t *io_end)
-+{
-+	struct inode *inode = io_end->inode;
- 
--	if (atomic_dec_and_test(&EXT4_I(io->inode)->i_ioend_count))
--		wake_up_all(ext4_ioend_wq(io->inode));
--	kmem_cache_free(io_end_cachep, io);
-+	io_end->flag &= ~EXT4_IO_END_UNWRITTEN;
-+	/* Wake up anyone waiting on unwritten extent conversion */
-+	if (atomic_dec_and_test(&EXT4_I(inode)->i_unwritten))
-+		wake_up_all(ext4_ioend_wq(inode));
+ 	struct buffer_head *bh;
+ 	unsigned long long blocknr;
+@@ -780,7 +780,7 @@ struct journal_head *jbd2_journal_get_descriptor_buffer(journal_t *journal)
+ 	set_buffer_uptodate(bh);
+ 	unlock_buffer(bh);
+ 	BUFFER_TRACE(bh, "return this buffer");
+-	return jbd2_journal_add_journal_head(bh);
++	return bh;
  }
  
- /* check a range of space and convert unwritten extents to written. */
-@@ -84,13 +95,8 @@ static int ext4_end_io(ext4_io_end_t *io)
- 			 "(inode %lu, offset %llu, size %zd, error %d)",
- 			 inode->i_ino, offset, size, ret);
- 	}
--	/* Wake up anyone waiting on unwritten extent conversion */
--	if (atomic_dec_and_test(&EXT4_I(inode)->i_unwritten))
--		wake_up_all(ext4_ioend_wq(inode));
--	if (io->flag & EXT4_IO_END_DIRECT)
--		inode_dio_done(inode);
--	if (io->iocb)
--		aio_complete(io->iocb, io->result, 0);
-+	ext4_clear_io_unwritten_flag(io);
-+	ext4_release_io_end(io);
- 	return ret;
- }
- 
-@@ -121,7 +127,7 @@ static void dump_completed_IO(struct inode *inode)
- }
- 
- /* Add the io_end to per-inode completed end_io list. */
--void ext4_add_complete_io(ext4_io_end_t *io_end)
-+static void ext4_add_complete_io(ext4_io_end_t *io_end)
- {
- 	struct ext4_inode_info *ei = EXT4_I(io_end->inode);
- 	struct workqueue_struct *wq;
-@@ -158,8 +164,6 @@ static int ext4_do_flush_completed_IO(struct inode *inode)
- 		err = ext4_end_io(io);
- 		if (unlikely(!ret && err))
- 			ret = err;
--		io->flag &= ~EXT4_IO_END_UNWRITTEN;
--		ext4_free_io_end(io);
- 	}
- 	return ret;
- }
-@@ -191,10 +195,43 @@ ext4_io_end_t *ext4_init_io_end(struct inode *inode, gfp_t flags)
- 		atomic_inc(&EXT4_I(inode)->i_ioend_count);
- 		io->inode = inode;
- 		INIT_LIST_HEAD(&io->list);
-+		atomic_set(&io->count, 1);
- 	}
- 	return io;
- }
- 
-+void ext4_put_io_end_defer(ext4_io_end_t *io_end)
-+{
-+	if (atomic_dec_and_test(&io_end->count)) {
-+		if (!(io_end->flag & EXT4_IO_END_UNWRITTEN) || !io_end->size) {
-+			ext4_release_io_end(io_end);
-+			return;
-+		}
-+		ext4_add_complete_io(io_end);
-+	}
-+}
-+
-+int ext4_put_io_end(ext4_io_end_t *io_end)
-+{
-+	int err = 0;
-+
-+	if (atomic_dec_and_test(&io_end->count)) {
-+		if (io_end->flag & EXT4_IO_END_UNWRITTEN) {
-+			err = ext4_convert_unwritten_extents(io_end->inode,
-+						io_end->offset, io_end->size);
-+			ext4_clear_io_unwritten_flag(io_end);
-+		}
-+		ext4_release_io_end(io_end);
-+	}
-+	return err;
-+}
-+
-+ext4_io_end_t *ext4_get_io_end(ext4_io_end_t *io_end)
-+{
-+	atomic_inc(&io_end->count);
-+	return io_end;
-+}
-+
  /*
-  * Print an buffer I/O error compatible with the fs/buffer.c.  This
-  * provides compatibility with dmesg scrapers that look for a specific
-@@ -277,12 +314,7 @@ static void ext4_end_bio(struct bio *bio, int error)
- 			     bi_sector >> (inode->i_blkbits - 9));
- 	}
+diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
+index f30b80b..198c9c1 100644
+--- a/fs/jbd2/revoke.c
++++ b/fs/jbd2/revoke.c
+@@ -122,9 +122,10 @@ struct jbd2_revoke_table_s
  
--	if (!(io_end->flag & EXT4_IO_END_UNWRITTEN)) {
--		ext4_free_io_end(io_end);
--		return;
--	}
--
--	ext4_add_complete_io(io_end);
-+	ext4_put_io_end_defer(io_end);
- }
+ #ifdef __KERNEL__
+ static void write_one_revoke_record(journal_t *, transaction_t *,
+-				    struct journal_head **, int *,
++				    struct list_head *,
++				    struct buffer_head **, int *,
+ 				    struct jbd2_revoke_record_s *, int);
+-static void flush_descriptor(journal_t *, struct journal_head *, int, int);
++static void flush_descriptor(journal_t *, struct buffer_head *, int, int);
+ #endif
  
- void ext4_io_submit(struct ext4_io_submit *io)
-@@ -296,40 +328,37 @@ void ext4_io_submit(struct ext4_io_submit *io)
- 		bio_put(io->io_bio);
- 	}
- 	io->io_bio = NULL;
--	io->io_op = 0;
-+}
-+
-+void ext4_io_submit_init(struct ext4_io_submit *io,
-+			 struct writeback_control *wbc)
-+{
-+	io->io_op = (wbc->sync_mode == WB_SYNC_ALL ?  WRITE_SYNC : WRITE);
-+	io->io_bio = NULL;
- 	io->io_end = NULL;
- }
- 
--static int io_submit_init(struct ext4_io_submit *io,
--			  struct inode *inode,
--			  struct writeback_control *wbc,
--			  struct buffer_head *bh)
-+static int io_submit_init_bio(struct ext4_io_submit *io,
-+			      struct buffer_head *bh)
+ /* Utility functions to maintain the revoke table */
+@@ -531,9 +532,10 @@ void jbd2_journal_switch_revoke_table(journal_t *journal)
+  */
+ void jbd2_journal_write_revoke_records(journal_t *journal,
+ 				       transaction_t *transaction,
++				       struct list_head *log_bufs,
+ 				       int write_op)
  {
--	ext4_io_end_t *io_end;
--	struct page *page = bh->b_page;
- 	int nvecs = bio_get_nr_vecs(bh->b_bdev);
- 	struct bio *bio;
+-	struct journal_head *descriptor;
++	struct buffer_head *descriptor;
+ 	struct jbd2_revoke_record_s *record;
+ 	struct jbd2_revoke_table_s *revoke;
+ 	struct list_head *hash_list;
+@@ -553,7 +555,7 @@ void jbd2_journal_write_revoke_records(journal_t *journal,
+ 		while (!list_empty(hash_list)) {
+ 			record = (struct jbd2_revoke_record_s *)
+ 				hash_list->next;
+-			write_one_revoke_record(journal, transaction,
++			write_one_revoke_record(journal, transaction, log_bufs,
+ 						&descriptor, &offset,
+ 						record, write_op);
+ 			count++;
+@@ -573,13 +575,14 @@ void jbd2_journal_write_revoke_records(journal_t *journal,
  
--	io_end = ext4_init_io_end(inode, GFP_NOFS);
--	if (!io_end)
--		return -ENOMEM;
- 	bio = bio_alloc(GFP_NOIO, min(nvecs, BIO_MAX_PAGES));
- 	bio->bi_sector = bh->b_blocknr * (bh->b_size >> 9);
- 	bio->bi_bdev = bh->b_bdev;
--	bio->bi_private = io->io_end = io_end;
- 	bio->bi_end_io = ext4_end_bio;
--
--	io_end->offset = (page->index << PAGE_CACHE_SHIFT) + bh_offset(bh);
--
-+	bio->bi_private = ext4_get_io_end(io->io_end);
-+	if (!io->io_end->size)
-+		io->io_end->offset = (bh->b_page->index << PAGE_CACHE_SHIFT)
-+				     + bh_offset(bh);
- 	io->io_bio = bio;
--	io->io_op = (wbc->sync_mode == WB_SYNC_ALL ?  WRITE_SYNC : WRITE);
- 	io->io_next_block = bh->b_blocknr;
- 	return 0;
- }
- 
- static int io_submit_add_bh(struct ext4_io_submit *io,
- 			    struct inode *inode,
--			    struct writeback_control *wbc,
- 			    struct buffer_head *bh)
+ static void write_one_revoke_record(journal_t *journal,
+ 				    transaction_t *transaction,
+-				    struct journal_head **descriptorp,
++				    struct list_head *log_bufs,
++				    struct buffer_head **descriptorp,
+ 				    int *offsetp,
+ 				    struct jbd2_revoke_record_s *record,
+ 				    int write_op)
  {
- 	ext4_io_end_t *io_end;
-@@ -340,18 +369,18 @@ submit_and_retry:
- 		ext4_io_submit(io);
+ 	int csum_size = 0;
+-	struct journal_head *descriptor;
++	struct buffer_head *descriptor;
+ 	int offset;
+ 	journal_header_t *header;
+ 
+@@ -609,26 +612,26 @@ static void write_one_revoke_record(journal_t *journal,
+ 		descriptor = jbd2_journal_get_descriptor_buffer(journal);
+ 		if (!descriptor)
+ 			return;
+-		header = (journal_header_t *) &jh2bh(descriptor)->b_data[0];
++		header = (journal_header_t *)descriptor->b_data;
+ 		header->h_magic     = cpu_to_be32(JBD2_MAGIC_NUMBER);
+ 		header->h_blocktype = cpu_to_be32(JBD2_REVOKE_BLOCK);
+ 		header->h_sequence  = cpu_to_be32(transaction->t_tid);
+ 
+ 		/* Record it so that we can wait for IO completion later */
+-		JBUFFER_TRACE(descriptor, "file as BJ_LogCtl");
+-		jbd2_journal_file_buffer(descriptor, transaction, BJ_LogCtl);
++		BUFFER_TRACE(descriptor, "file in log_bufs");
++		jbd2_file_log_bh(log_bufs, descriptor);
+ 
+ 		offset = sizeof(jbd2_journal_revoke_header_t);
+ 		*descriptorp = descriptor;
  	}
- 	if (io->io_bio == NULL) {
--		ret = io_submit_init(io, inode, wbc, bh);
-+		ret = io_submit_init_bio(io, bh);
- 		if (ret)
- 			return ret;
+ 
+ 	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_64BIT)) {
+-		* ((__be64 *)(&jh2bh(descriptor)->b_data[offset])) =
++		* ((__be64 *)(&descriptor->b_data[offset])) =
+ 			cpu_to_be64(record->blocknr);
+ 		offset += 8;
+ 
+ 	} else {
+-		* ((__be32 *)(&jh2bh(descriptor)->b_data[offset])) =
++		* ((__be32 *)(&descriptor->b_data[offset])) =
+ 			cpu_to_be32(record->blocknr);
+ 		offset += 4;
  	}
-+	ret = bio_add_page(io->io_bio, bh->b_page, bh->b_size, bh_offset(bh));
-+	if (ret != bh->b_size)
-+		goto submit_and_retry;
- 	io_end = io->io_end;
- 	if (buffer_uninit(bh))
- 		ext4_set_io_unwritten_flag(inode, io_end);
--	io->io_end->size += bh->b_size;
-+	io_end->size += bh->b_size;
- 	io->io_next_block++;
--	ret = bio_add_page(io->io_bio, bh->b_page, bh->b_size, bh_offset(bh));
--	if (ret != bh->b_size)
--		goto submit_and_retry;
- 	return 0;
+@@ -636,8 +639,7 @@ static void write_one_revoke_record(journal_t *journal,
+ 	*offsetp = offset;
  }
  
-@@ -423,7 +452,7 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
- 	do {
- 		if (!buffer_async_write(bh))
- 			continue;
--		ret = io_submit_add_bh(io, inode, wbc, bh);
-+		ret = io_submit_add_bh(io, inode, bh);
- 		if (ret) {
- 			/*
- 			 * We only get here on ENOMEM.  Not much else
+-static void jbd2_revoke_csum_set(journal_t *j,
+-				 struct journal_head *descriptor)
++static void jbd2_revoke_csum_set(journal_t *j, struct buffer_head *bh)
+ {
+ 	struct jbd2_journal_revoke_tail *tail;
+ 	__u32 csum;
+@@ -645,12 +647,10 @@ static void jbd2_revoke_csum_set(journal_t *j,
+ 	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
+ 		return;
+ 
+-	tail = (struct jbd2_journal_revoke_tail *)
+-			(jh2bh(descriptor)->b_data + j->j_blocksize -
++	tail = (struct jbd2_journal_revoke_tail *)(bh->b_data + j->j_blocksize -
+ 			sizeof(struct jbd2_journal_revoke_tail));
+ 	tail->r_checksum = 0;
+-	csum = jbd2_chksum(j, j->j_csum_seed, jh2bh(descriptor)->b_data,
+-			   j->j_blocksize);
++	csum = jbd2_chksum(j, j->j_csum_seed, bh->b_data, j->j_blocksize);
+ 	tail->r_checksum = cpu_to_be32(csum);
+ }
+ 
+@@ -662,25 +662,24 @@ static void jbd2_revoke_csum_set(journal_t *j,
+  */
+ 
+ static void flush_descriptor(journal_t *journal,
+-			     struct journal_head *descriptor,
++			     struct buffer_head *descriptor,
+ 			     int offset, int write_op)
+ {
+ 	jbd2_journal_revoke_header_t *header;
+-	struct buffer_head *bh = jh2bh(descriptor);
+ 
+ 	if (is_journal_aborted(journal)) {
+-		put_bh(bh);
++		put_bh(descriptor);
+ 		return;
+ 	}
+ 
+-	header = (jbd2_journal_revoke_header_t *) jh2bh(descriptor)->b_data;
++	header = (jbd2_journal_revoke_header_t *)descriptor->b_data;
+ 	header->r_count = cpu_to_be32(offset);
+ 	jbd2_revoke_csum_set(journal, descriptor);
+ 
+-	set_buffer_jwrite(bh);
+-	BUFFER_TRACE(bh, "write");
+-	set_buffer_dirty(bh);
+-	write_dirty_buffer(bh, write_op);
++	set_buffer_jwrite(descriptor);
++	BUFFER_TRACE(descriptor, "write");
++	set_buffer_dirty(descriptor);
++	write_dirty_buffer(descriptor, write_op);
+ }
+ #endif
+ 
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 3be34c7..bc35899 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -1625,9 +1625,6 @@ static void __jbd2_journal_temp_unlink_buffer(struct journal_head *jh)
+ 	case BJ_Shadow:
+ 		list = &transaction->t_shadow_list;
+ 		break;
+-	case BJ_LogCtl:
+-		list = &transaction->t_log_list;
+-		break;
+ 	case BJ_Reserved:
+ 		list = &transaction->t_reserved_list;
+ 		break;
+@@ -2126,9 +2123,6 @@ void __jbd2_journal_file_buffer(struct journal_head *jh,
+ 	case BJ_Shadow:
+ 		list = &transaction->t_shadow_list;
+ 		break;
+-	case BJ_LogCtl:
+-		list = &transaction->t_log_list;
+-		break;
+ 	case BJ_Reserved:
+ 		list = &transaction->t_reserved_list;
+ 		break;
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index a670595..4584518 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -530,12 +530,6 @@ struct transaction_s
+ 	struct journal_head	*t_shadow_list;
+ 
+ 	/*
+-	 * Doubly-linked circular list of control buffers being written to the
+-	 * log. [j_list_lock]
+-	 */
+-	struct journal_head	*t_log_list;
+-
+-	/*
+ 	 * List of inodes whose data we've modified in data=ordered mode.
+ 	 * [j_list_lock]
+ 	 */
+@@ -994,7 +988,7 @@ static inline void jbd2_unfile_log_bh(struct buffer_head *bh)
+ }
+ 
+ /* Log buffer allocation */
+-extern struct journal_head * jbd2_journal_get_descriptor_buffer(journal_t *);
++struct buffer_head *jbd2_journal_get_descriptor_buffer(journal_t *journal);
+ int jbd2_journal_next_log_block(journal_t *, unsigned long long *);
+ int jbd2_journal_get_log_tail(journal_t *journal, tid_t *tid,
+ 			      unsigned long *block);
+@@ -1178,8 +1172,10 @@ extern int	   jbd2_journal_init_revoke_caches(void);
+ extern void	   jbd2_journal_destroy_revoke(journal_t *);
+ extern int	   jbd2_journal_revoke (handle_t *, unsigned long long, struct buffer_head *);
+ extern int	   jbd2_journal_cancel_revoke(handle_t *, struct journal_head *);
+-extern void	   jbd2_journal_write_revoke_records(journal_t *,
+-						     transaction_t *, int);
++extern void	   jbd2_journal_write_revoke_records(journal_t *journal,
++						     transaction_t *transaction,
++						     struct list_head *log_bufs,
++						     int write_op);
+ 
+ /* Recovery revoke support */
+ extern int	jbd2_journal_set_revoke(journal_t *, unsigned long long, tid_t);
+@@ -1286,9 +1282,8 @@ static inline int jbd_space_needed(journal_t *journal)
+ #define BJ_Metadata	1	/* Normal journaled metadata */
+ #define BJ_Forget	2	/* Buffer superseded by this transaction */
+ #define BJ_Shadow	3	/* Buffer contents being shadowed to the log */
+-#define BJ_LogCtl	4	/* Buffer contains log descriptors */
+-#define BJ_Reserved	5	/* Buffer is reserved for access by journal */
+-#define BJ_Types	6
++#define BJ_Reserved	4	/* Buffer is reserved for access by journal */
++#define BJ_Types	5
+ 
+ extern int jbd_blocks_per_page(struct inode *inode);
+ 
 -- 
 1.7.1
 
