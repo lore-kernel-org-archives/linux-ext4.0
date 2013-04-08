@@ -1,402 +1,197 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 05/29] jbd2: Don't create journal_head for temporary journal buffers
-Date: Mon,  8 Apr 2013 23:32:10 +0200
-Message-ID: <1365456754-29373-6-git-send-email-jack@suse.cz>
+Subject: [PATCH 09/29] jbd2: Cleanup needed free block estimates when starting a transaction
+Date: Mon,  8 Apr 2013 23:32:14 +0200
+Message-ID: <1365456754-29373-10-git-send-email-jack@suse.cz>
 References: <1365456754-29373-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:53341 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:53382 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760614Ab3DHVdC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Apr 2013 17:33:02 -0400
+	id S936289Ab3DHVdD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 8 Apr 2013 17:33:03 -0400
 In-Reply-To: <1365456754-29373-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When writing metadata to the journal, we create temporary buffer heads
-for that task. We also attach journal heads to these buffer heads but
-the only purpose of the journal heads is to keep buffers linked in
-transaction's BJ_IO list. We remove the need for journal heads by
-reusing buffer_head's b_assoc_buffers list for that purpose. Also since
-BJ_IO list is just a temporary list for transaction commit, we use a
-private list in jbd2_journal_commit_transaction() for that thus removing
-BJ_IO list from transaction completely.
+__jbd2_log_space_left() and jbd_space_needed() were kind of odd.
+jbd_space_needed() accounted also credits needed for currently committing
+transaction while it didn't account for credits needed for control blocks.
+__jbd2_log_space_left() then accounted for control blocks as a fraction of free
+space. Since results of these two functions are always only compared against
+each other, this works correct but is somewhat strange. Move the estimates so
+that jbd_space_needed() returns number of blocks needed for a transaction
+including control blocks and __jbd2_log_space_left() returns free space in the
+journal (with the committing transaction already subtracted). Rename functions
+to jbd2_log_space_left() and jbd2_space_needed() while we are changing them.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/checkpoint.c  |    1 -
- fs/jbd2/commit.c      |   65 ++++++++++++++++--------------------------------
- fs/jbd2/journal.c     |   36 ++++++++++----------------
- fs/jbd2/transaction.c |   14 +++-------
- include/linux/jbd2.h  |   32 ++++++++++++------------
- 5 files changed, 56 insertions(+), 92 deletions(-)
+ fs/jbd2/checkpoint.c  |    8 ++++----
+ fs/jbd2/journal.c     |   29 -----------------------------
+ fs/jbd2/transaction.c |    9 +++++----
+ include/linux/jbd2.h  |   32 ++++++++++++++++++++++++++------
+ 4 files changed, 35 insertions(+), 43 deletions(-)
 
 diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-index c78841e..2735fef 100644
+index 65ec076..a572383 100644
 --- a/fs/jbd2/checkpoint.c
 +++ b/fs/jbd2/checkpoint.c
-@@ -690,7 +690,6 @@ void __jbd2_journal_drop_transaction(journal_t *journal, transaction_t *transact
- 	J_ASSERT(transaction->t_state == T_FINISHED);
- 	J_ASSERT(transaction->t_buffers == NULL);
- 	J_ASSERT(transaction->t_forget == NULL);
--	J_ASSERT(transaction->t_iobuf_list == NULL);
- 	J_ASSERT(transaction->t_shadow_list == NULL);
- 	J_ASSERT(transaction->t_log_list == NULL);
- 	J_ASSERT(transaction->t_checkpoint_list == NULL);
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 750c701..c503df6 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -368,7 +368,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
- {
- 	struct transaction_stats_s stats;
- 	transaction_t *commit_transaction;
--	struct journal_head *jh, *new_jh, *descriptor;
-+	struct journal_head *jh, *descriptor;
- 	struct buffer_head **wbuf = journal->j_wbuf;
- 	int bufs;
- 	int flags;
-@@ -392,6 +392,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
- 	tid_t first_tid;
- 	int update_tail;
- 	int csum_size = 0;
-+	LIST_HEAD(io_bufs);
+@@ -120,8 +120,8 @@ void __jbd2_log_wait_for_space(journal_t *journal)
+ 	int nblocks, space_left;
+ 	/* assert_spin_locked(&journal->j_state_lock); */
  
- 	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2))
- 		csum_size = sizeof(struct jbd2_journal_block_tail);
-@@ -658,29 +659,22 @@ void jbd2_journal_commit_transaction(journal_t *journal)
- 
- 		/* Bump b_count to prevent truncate from stumbling over
-                    the shadowed buffer!  @@@ This can go if we ever get
--                   rid of the BJ_IO/BJ_Shadow pairing of buffers. */
-+                   rid of the shadow pairing of buffers. */
- 		atomic_inc(&jh2bh(jh)->b_count);
- 
--		/* Make a temporary IO buffer with which to write it out
--                   (this will requeue both the metadata buffer and the
--                   temporary IO buffer). new_bh goes on BJ_IO*/
--
--		set_bit(BH_JWrite, &jh2bh(jh)->b_state);
- 		/*
--		 * akpm: jbd2_journal_write_metadata_buffer() sets
--		 * new_bh->b_transaction to commit_transaction.
--		 * We need to clean this up before we release new_bh
--		 * (which is of type BJ_IO)
-+		 * Make a temporary IO buffer with which to write it out
-+		 * (this will requeue the metadata buffer to BJ_Shadow).
+-	nblocks = jbd_space_needed(journal);
+-	while (__jbd2_log_space_left(journal) < nblocks) {
++	nblocks = jbd2_space_needed(journal);
++	while (jbd2_log_space_left(journal) < nblocks) {
+ 		if (journal->j_flags & JBD2_ABORT)
+ 			return;
+ 		write_unlock(&journal->j_state_lock);
+@@ -140,8 +140,8 @@ void __jbd2_log_wait_for_space(journal_t *journal)
  		 */
-+		set_bit(BH_JWrite, &jh2bh(jh)->b_state);
- 		JBUFFER_TRACE(jh, "ph3: write metadata");
- 		flags = jbd2_journal_write_metadata_buffer(commit_transaction,
--						      jh, &new_jh, blocknr);
-+						jh, &wbuf[bufs], blocknr);
- 		if (flags < 0) {
- 			jbd2_journal_abort(journal, flags);
- 			continue;
- 		}
--		set_bit(BH_JWrite, &jh2bh(new_jh)->b_state);
--		wbuf[bufs++] = jh2bh(new_jh);
-+		jbd2_file_log_bh(&io_bufs, wbuf[bufs]);
- 
- 		/* Record the new block's tag in the current descriptor
-                    buffer */
-@@ -694,10 +688,11 @@ void jbd2_journal_commit_transaction(journal_t *journal)
- 		tag = (journal_block_tag_t *) tagp;
- 		write_tag_block(tag_bytes, tag, jh2bh(jh)->b_blocknr);
- 		tag->t_flags = cpu_to_be16(tag_flag);
--		jbd2_block_tag_csum_set(journal, tag, jh2bh(new_jh),
-+		jbd2_block_tag_csum_set(journal, tag, wbuf[bufs],
- 					commit_transaction->t_tid);
- 		tagp += tag_bytes;
- 		space_left -= tag_bytes;
-+		bufs++;
- 
- 		if (first_tag) {
- 			memcpy (tagp, journal->j_uuid, 16);
-@@ -809,7 +804,7 @@ start_journal_io:
-            the log.  Before we can commit it, wait for the IO so far to
-            complete.  Control buffers being written are on the
-            transaction's t_log_list queue, and metadata buffers are on
--           the t_iobuf_list queue.
-+           the io_bufs list.
- 
- 	   Wait for the buffers in reverse order.  That way we are
- 	   less likely to be woken up until all IOs have completed, and
-@@ -818,46 +813,31 @@ start_journal_io:
- 
- 	jbd_debug(3, "JBD2: commit phase 3\n");
- 
--	/*
--	 * akpm: these are BJ_IO, and j_list_lock is not needed.
--	 * See __journal_try_to_free_buffer.
--	 */
--wait_for_iobuf:
--	while (commit_transaction->t_iobuf_list != NULL) {
--		struct buffer_head *bh;
-+	while (!list_empty(&io_bufs)) {
-+		struct buffer_head *bh = list_entry(io_bufs.prev,
-+						    struct buffer_head,
-+						    b_assoc_buffers);
- 
--		jh = commit_transaction->t_iobuf_list->b_tprev;
--		bh = jh2bh(jh);
--		if (buffer_locked(bh)) {
--			wait_on_buffer(bh);
--			goto wait_for_iobuf;
--		}
--		if (cond_resched())
--			goto wait_for_iobuf;
-+		wait_on_buffer(bh);
-+		cond_resched();
- 
- 		if (unlikely(!buffer_uptodate(bh)))
- 			err = -EIO;
--
--		clear_buffer_jwrite(bh);
--
--		JBUFFER_TRACE(jh, "ph4: unfile after journal write");
--		jbd2_journal_unfile_buffer(journal, jh);
-+		jbd2_unfile_log_bh(bh);
- 
- 		/*
--		 * ->t_iobuf_list should contain only dummy buffer_heads
--		 * which were created by jbd2_journal_write_metadata_buffer().
-+		 * The list contains temporary buffer heads created by
-+		 * jbd2_journal_write_metadata_buffer().
- 		 */
- 		BUFFER_TRACE(bh, "dumping temporary bh");
--		jbd2_journal_put_journal_head(jh);
- 		__brelse(bh);
- 		J_ASSERT_BH(bh, atomic_read(&bh->b_count) == 0);
- 		free_buffer_head(bh);
- 
--		/* We also have to unlock and free the corresponding
--                   shadowed buffer */
-+		/* We also have to refile the corresponding shadowed buffer */
- 		jh = commit_transaction->t_shadow_list->b_tprev;
- 		bh = jh2bh(jh);
--		clear_bit(BH_JWrite, &bh->b_state);
-+		clear_buffer_jwrite(bh);
- 		J_ASSERT_BH(bh, buffer_jbddirty(bh));
- 
- 		/* The metadata is now released for reuse, but we need
-@@ -952,7 +932,6 @@ wait_for_iobuf:
- 	J_ASSERT(list_empty(&commit_transaction->t_inode_list));
- 	J_ASSERT(commit_transaction->t_buffers == NULL);
- 	J_ASSERT(commit_transaction->t_checkpoint_list == NULL);
--	J_ASSERT(commit_transaction->t_iobuf_list == NULL);
- 	J_ASSERT(commit_transaction->t_shadow_list == NULL);
- 	J_ASSERT(commit_transaction->t_log_list == NULL);
- 
+ 		write_lock(&journal->j_state_lock);
+ 		spin_lock(&journal->j_list_lock);
+-		nblocks = jbd_space_needed(journal);
+-		space_left = __jbd2_log_space_left(journal);
++		nblocks = jbd2_space_needed(journal);
++		space_left = jbd2_log_space_left(journal);
+ 		if (space_left < nblocks) {
+ 			int chkpt = journal->j_checkpoint_transactions != NULL;
+ 			tid_t tid = 0;
 diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index ed10991..eb6272b 100644
+index e9a9cdb..e6f14e0 100644
 --- a/fs/jbd2/journal.c
 +++ b/fs/jbd2/journal.c
-@@ -310,14 +310,12 @@ static void journal_kill_thread(journal_t *journal)
-  *
-  * If the source buffer has already been modified by a new transaction
-  * since we took the last commit snapshot, we use the frozen copy of
-- * that data for IO.  If we end up using the existing buffer_head's data
-- * for the write, then we *have* to lock the buffer to prevent anyone
-- * else from using and possibly modifying it while the IO is in
-- * progress.
-+ * that data for IO. If we end up using the existing buffer_head's data
-+ * for the write, then we have to make sure nobody modifies it while the
-+ * IO is in progress. do_get_write_access() handles this.
-  *
-- * The function returns a pointer to the buffer_heads to be used for IO.
-- *
-- * We assume that the journal has already been locked in this function.
-+ * The function returns a pointer to the buffer_head to be used for IO.
-+ * 
-  *
-  * Return value:
-  *  <0: Error
-@@ -330,15 +328,14 @@ static void journal_kill_thread(journal_t *journal)
- 
- int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
- 				  struct journal_head  *jh_in,
--				  struct journal_head **jh_out,
--				  unsigned long long blocknr)
-+				  struct buffer_head **bh_out,
-+				  sector_t blocknr)
- {
- 	int need_copy_out = 0;
- 	int done_copy_out = 0;
- 	int do_escape = 0;
- 	char *mapped_data;
- 	struct buffer_head *new_bh;
--	struct journal_head *new_jh;
- 	struct page *new_page;
- 	unsigned int new_offset;
- 	struct buffer_head *bh_in = jh2bh(jh_in);
-@@ -370,14 +367,13 @@ retry_alloc:
- 	new_bh->b_state = 0;
- 	init_buffer(new_bh, NULL, NULL);
- 	atomic_set(&new_bh->b_count, 1);
--	new_jh = jbd2_journal_add_journal_head(new_bh);	/* This sleeps */
- 
-+	jbd_lock_bh_state(bh_in);
-+repeat:
- 	/*
- 	 * If a new transaction has already done a buffer copy-out, then
- 	 * we use that version of the data for the commit.
- 	 */
--	jbd_lock_bh_state(bh_in);
--repeat:
- 	if (jh_in->b_frozen_data) {
- 		done_copy_out = 1;
- 		new_page = virt_to_page(jh_in->b_frozen_data);
-@@ -417,7 +413,7 @@ repeat:
- 		jbd_unlock_bh_state(bh_in);
- 		tmp = jbd2_alloc(bh_in->b_size, GFP_NOFS);
- 		if (!tmp) {
--			jbd2_journal_put_journal_head(new_jh);
-+			brelse(new_bh);
- 			return -ENOMEM;
- 		}
- 		jbd_lock_bh_state(bh_in);
-@@ -428,7 +424,7 @@ repeat:
- 
- 		jh_in->b_frozen_data = tmp;
- 		mapped_data = kmap_atomic(new_page);
--		memcpy(tmp, mapped_data + new_offset, jh2bh(jh_in)->b_size);
-+		memcpy(tmp, mapped_data + new_offset, bh_in->b_size);
- 		kunmap_atomic(mapped_data);
- 
- 		new_page = virt_to_page(tmp);
-@@ -454,14 +450,13 @@ repeat:
- 	}
- 
- 	set_bh_page(new_bh, new_page, new_offset);
--	new_jh->b_transaction = NULL;
--	new_bh->b_size = jh2bh(jh_in)->b_size;
--	new_bh->b_bdev = transaction->t_journal->j_dev;
-+	new_bh->b_size = bh_in->b_size;
-+	new_bh->b_bdev = journal->j_dev;
- 	new_bh->b_blocknr = blocknr;
- 	set_buffer_mapped(new_bh);
- 	set_buffer_dirty(new_bh);
- 
--	*jh_out = new_jh;
-+	*bh_out = new_bh;
- 
- 	/*
- 	 * The to-be-written buffer needs to get moved to the io queue,
-@@ -474,9 +469,6 @@ repeat:
- 	spin_unlock(&journal->j_list_lock);
- 	jbd_unlock_bh_state(bh_in);
- 
--	JBUFFER_TRACE(new_jh, "file as BJ_IO");
--	jbd2_journal_file_buffer(new_jh, transaction, BJ_IO);
--
- 	return do_escape | (done_copy_out << 1);
- }
- 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index d6ee5ae..3be34c7 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -1589,10 +1589,10 @@ __blist_del_buffer(struct journal_head **list, struct journal_head *jh)
-  * Remove a buffer from the appropriate transaction list.
-  *
-  * Note that this function can *change* the value of
-- * bh->b_transaction->t_buffers, t_forget, t_iobuf_list, t_shadow_list,
-- * t_log_list or t_reserved_list.  If the caller is holding onto a copy of one
-- * of these pointers, it could go bad.  Generally the caller needs to re-read
-- * the pointer from the transaction_t.
-+ * bh->b_transaction->t_buffers, t_forget, t_shadow_list, t_log_list or
-+ * t_reserved_list.  If the caller is holding onto a copy of one of these
-+ * pointers, it could go bad.  Generally the caller needs to re-read the
-+ * pointer from the transaction_t.
-  *
-  * Called under j_list_lock.
+@@ -480,35 +480,6 @@ repeat:
   */
-@@ -1622,9 +1622,6 @@ static void __jbd2_journal_temp_unlink_buffer(struct journal_head *jh)
- 	case BJ_Forget:
- 		list = &transaction->t_forget;
- 		break;
--	case BJ_IO:
--		list = &transaction->t_iobuf_list;
--		break;
- 	case BJ_Shadow:
- 		list = &transaction->t_shadow_list;
- 		break;
-@@ -2126,9 +2123,6 @@ void __jbd2_journal_file_buffer(struct journal_head *jh,
- 	case BJ_Forget:
- 		list = &transaction->t_forget;
- 		break;
--	case BJ_IO:
--		list = &transaction->t_iobuf_list;
--		break;
- 	case BJ_Shadow:
- 		list = &transaction->t_shadow_list;
- 		break;
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 50e5a5e..a670595 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -523,12 +523,6 @@ struct transaction_s
- 	struct journal_head	*t_checkpoint_io_list;
  
- 	/*
--	 * Doubly-linked circular list of temporary buffers currently undergoing
--	 * IO in the log [j_list_lock]
--	 */
--	struct journal_head	*t_iobuf_list;
+ /*
+- * __jbd2_log_space_left: Return the number of free blocks left in the journal.
+- *
+- * Called with the journal already locked.
+- *
+- * Called under j_state_lock
+- */
+-
+-int __jbd2_log_space_left(journal_t *journal)
+-{
+-	int left = journal->j_free;
+-
+-	/* assert_spin_locked(&journal->j_state_lock); */
 -
 -	/*
- 	 * Doubly-linked circular list of metadata buffers being shadowed by log
- 	 * IO.  The IO buffers on the iobuf list and the shadow buffers on this
- 	 * list match each other one for one at all times. [j_list_lock]
-@@ -990,6 +984,14 @@ extern void __jbd2_journal_file_buffer(struct journal_head *, transaction_t *, i
- extern void __journal_free_buffer(struct journal_head *bh);
- extern void jbd2_journal_file_buffer(struct journal_head *, transaction_t *, int);
- extern void __journal_clean_data_list(transaction_t *transaction);
-+static inline void jbd2_file_log_bh(struct list_head *head, struct buffer_head *bh)
-+{
-+	list_add_tail(&bh->b_assoc_buffers, head);
+-	 * Be pessimistic here about the number of those free blocks which
+-	 * might be required for log descriptor control blocks.
+-	 */
+-
+-#define MIN_LOG_RESERVED_BLOCKS 32 /* Allow for rounding errors */
+-
+-	left -= MIN_LOG_RESERVED_BLOCKS;
+-
+-	if (left <= 0)
+-		return 0;
+-	left -= (left >> 3);
+-	return left;
+-}
+-
+-/*
+  * Called with j_state_lock locked for writing.
+  * Returns true if a transaction commit was started.
+  */
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 74cfbd3..aee40c9 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -283,12 +283,12 @@ repeat:
+ 	 * reduce the free space arbitrarily.  Be careful to account for
+ 	 * those buffers when checkpointing.
+ 	 */
+-	if (__jbd2_log_space_left(journal) < jbd_space_needed(journal)) {
++	if (jbd2_log_space_left(journal) < jbd2_space_needed(journal)) {
+ 		jbd_debug(2, "Handle %p waiting for checkpoint...\n", handle);
+ 		atomic_sub(nblocks, &transaction->t_outstanding_credits);
+ 		read_unlock(&journal->j_state_lock);
+ 		write_lock(&journal->j_state_lock);
+-		if (__jbd2_log_space_left(journal) < jbd_space_needed(journal))
++		if (jbd2_log_space_left(journal) < jbd2_space_needed(journal))
+ 			__jbd2_log_wait_for_space(journal);
+ 		write_unlock(&journal->j_state_lock);
+ 		goto repeat;
+@@ -306,7 +306,7 @@ repeat:
+ 	jbd_debug(4, "Handle %p given %d credits (total %d, free %d)\n",
+ 		  handle, nblocks,
+ 		  atomic_read(&transaction->t_outstanding_credits),
+-		  __jbd2_log_space_left(journal));
++		  jbd2_log_space_left(journal));
+ 	read_unlock(&journal->j_state_lock);
+ 
+ 	lock_map_acquire(&handle->h_lockdep_map);
+@@ -442,7 +442,8 @@ int jbd2_journal_extend(handle_t *handle, int nblocks)
+ 		goto unlock;
+ 	}
+ 
+-	if (wanted > __jbd2_log_space_left(journal)) {
++	if (wanted + (wanted >> JBD2_CONTROL_BLOCKS_SHIFT) >
++	    jbd2_log_space_left(journal)) {
+ 		jbd_debug(3, "denied handle %p %d blocks: "
+ 			  "insufficient log space\n", handle, nblocks);
+ 		goto unlock;
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index be5115f..9197d1b 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1219,7 +1219,6 @@ extern void	jbd2_clear_buffer_revoked_flags(journal_t *journal);
+  * transitions on demand.
+  */
+ 
+-int __jbd2_log_space_left(journal_t *); /* Called with journal locked */
+ int jbd2_log_start_commit(journal_t *journal, tid_t tid);
+ int __jbd2_log_start_commit(journal_t *journal, tid_t tid);
+ int jbd2_journal_start_commit(journal_t *journal, tid_t *tid);
+@@ -1289,16 +1288,37 @@ extern int jbd2_journal_blocks_per_page(struct inode *inode);
+ extern size_t journal_tag_bytes(journal_t *journal);
+ 
+ /*
++ * We reserve t_outstanding_credits >> JBD2_CONTROL_BLOCKS_SHIFT for
++ * transaction control blocks.
++ */
++#define JBD2_CONTROL_BLOCKS_SHIFT 5
++
++/*
+  * Return the minimum number of blocks which must be free in the journal
+  * before a new transaction may be started.  Must be called under j_state_lock.
+  */
+-static inline int jbd_space_needed(journal_t *journal)
++static inline int jbd2_space_needed(journal_t *journal)
+ {
+ 	int nblocks = journal->j_max_transaction_buffers;
+-	if (journal->j_committing_transaction)
+-		nblocks += atomic_read(&journal->j_committing_transaction->
+-				       t_outstanding_credits);
+-	return nblocks;
++	return nblocks + (nblocks >> JBD2_CONTROL_BLOCKS_SHIFT);
 +}
-+static inline void jbd2_unfile_log_bh(struct buffer_head *bh)
++
++/*
++ * Return number of free blocks in the log. Must be called under j_state_lock.
++ */
++static inline unsigned long jbd2_log_space_left(journal_t *journal)
 +{
-+	list_del_init(&bh->b_assoc_buffers);
-+}
++	/* Allow for rounding errors */
++	unsigned long free = journal->j_free - 32;
++
++	if (journal->j_committing_transaction) {
++		unsigned long committing = atomic_read(&journal->
++			j_committing_transaction->t_outstanding_credits);
++
++		/* Transaction + control blocks */
++		free -= committing + (committing >> JBD2_CONTROL_BLOCKS_SHIFT);
++	}
++	return free;
+ }
  
- /* Log buffer allocation */
- extern struct journal_head * jbd2_journal_get_descriptor_buffer(journal_t *);
-@@ -1038,11 +1040,10 @@ extern void jbd2_buffer_abort_trigger(struct journal_head *jh,
- 				      struct jbd2_buffer_trigger_type *triggers);
- 
- /* Buffer IO */
--extern int
--jbd2_journal_write_metadata_buffer(transaction_t	  *transaction,
--			      struct journal_head  *jh_in,
--			      struct journal_head **jh_out,
--			      unsigned long long   blocknr);
-+extern int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
-+					      struct journal_head *jh_in,
-+					      struct buffer_head **bh_out,
-+					      sector_t blocknr);
- 
- /* Transaction locking */
- extern void		__wait_on_journal (journal_t *);
-@@ -1284,11 +1285,10 @@ static inline int jbd_space_needed(journal_t *journal)
- #define BJ_None		0	/* Not journaled */
- #define BJ_Metadata	1	/* Normal journaled metadata */
- #define BJ_Forget	2	/* Buffer superseded by this transaction */
--#define BJ_IO		3	/* Buffer is for temporary IO use */
--#define BJ_Shadow	4	/* Buffer contents being shadowed to the log */
--#define BJ_LogCtl	5	/* Buffer contains log descriptors */
--#define BJ_Reserved	6	/* Buffer is reserved for access by journal */
--#define BJ_Types	7
-+#define BJ_Shadow	3	/* Buffer contents being shadowed to the log */
-+#define BJ_LogCtl	4	/* Buffer contains log descriptors */
-+#define BJ_Reserved	5	/* Buffer is reserved for access by journal */
-+#define BJ_Types	6
- 
- extern int jbd_blocks_per_page(struct inode *inode);
- 
+ /*
 -- 
 1.7.1
 
