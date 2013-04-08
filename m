@@ -1,35 +1,33 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: optimize ext4_end_io memory usage
-Date: Mon, 8 Apr 2013 13:10:52 -0400
-Message-ID: <20130408171052.GB4598@thunk.org>
-References: <1364793468-1302-1-git-send-email-dmonakhov@openvz.org>
- <20130405093514.GA3848@quack.suse.cz>
+Subject: Re: [PATCH 1/2] ext4: Return proper offset for '..' if inline_data
+ enabled.
+Date: Mon, 8 Apr 2013 13:11:52 -0400
+Message-ID: <20130408171152.GC4598@thunk.org>
+References: <1364466899-5599-1-git-send-email-tm@tao.ma>
+ <20130328183332.GE16651@lenny.home.zabbo.net>
+ <5154EFC2.4010800@tao.ma>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Cc: Zach Brown <zab@redhat.com>, linux-ext4@vger.kernel.org
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:60339 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:60343 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934523Ab3DHRKy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Apr 2013 13:10:54 -0400
+	id S1760040Ab3DHRL5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 8 Apr 2013 13:11:57 -0400
 Content-Disposition: inline
-In-Reply-To: <20130405093514.GA3848@quack.suse.cz>
+In-Reply-To: <5154EFC2.4010800@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Apr 05, 2013 at 11:35:14AM +0200, Jan Kara wrote:
-> On Mon 01-04-13 09:17:48, Dmitry Monakhov wrote:
-> > ext4_end_io->pages array has is used only for buffered writes and usless
-> > in case of DIO. This patch allow us to save 1K for each DIO request.
->   I have actually a more complete solution to this in my patch queue -
-> there isn't any need to reference pages from io_end after my patches.
-> Hopefully I'll be able to send things out later today...
+On Fri, Mar 29, 2013 at 09:34:58AM +0800, Tao Ma wrote:
+> My fault, will change it in the next version.
 
-Hi Jan,
+Hi Tao,
 
-Did you have a chance to send out your patches?
+Will you be able to send out a new version of this patch series in the
+next few days?  The next merge window will be coming fairly quickly.
 
 Thanks,
 
-						- Ted
+					- Ted
