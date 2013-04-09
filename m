@@ -1,84 +1,63 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: Fwd: block level cow operation
-Date: Tue, 09 Apr 2013 18:46:50 +0400
-Message-ID: <87txnfrcbp.fsf@openvz.org>
-References: <CAD6i1f+GsVZJwaz1R3NDjP_m8nOCUsmqHTQS3R=M+d+hq8f5vw@mail.gmail.com> <CAD6i1f+NLF6Vj8D84FFWAbDttqbBvcg-kWswf7Hez2o0-cXpMw@mail.gmail.com>
+Subject: Re: ext4 stable page writes question
+Date: Tue, 09 Apr 2013 19:01:32 +0400
+Message-ID: <87r4ijrbn7.fsf@openvz.org>
+References: <87txnf4yeq.fsf@openvz.org> <20130409142805.GF13672@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Prashant Shah <pshah.mumbai@gmail.com>, linux-ext4@vger.kernel.org
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-la0-f53.google.com ([209.85.215.53]:40626 "EHLO
-	mail-la0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1761532Ab3DIOqy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Apr 2013 10:46:54 -0400
-Received: by mail-la0-f53.google.com with SMTP id fp12so3685051lab.12
-        for <linux-ext4@vger.kernel.org>; Tue, 09 Apr 2013 07:46:53 -0700 (PDT)
-In-Reply-To: <CAD6i1f+NLF6Vj8D84FFWAbDttqbBvcg-kWswf7Hez2o0-cXpMw@mail.gmail.com>
+Received: from mail-lb0-f170.google.com ([209.85.217.170]:40886 "EHLO
+	mail-lb0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S964938Ab3DIPBh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Apr 2013 11:01:37 -0400
+Received: by mail-lb0-f170.google.com with SMTP id x11so6970765lbi.29
+        for <linux-ext4@vger.kernel.org>; Tue, 09 Apr 2013 08:01:35 -0700 (PDT)
+In-Reply-To: <20130409142805.GF13672@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 9 Apr 2013 14:35:56 +0530, Prashant Shah <pshah.mumbai@gmail.com> wrote:
-> Hi,
+On Tue, 9 Apr 2013 16:28:05 +0200, Jan Kara <jack@suse.cz> wrote:
+> On Tue 09-04-13 17:38:21, Dmitry Monakhov wrote:
+> > According to stable write assumptions (1d1d1a767206fb)
+> > grab_cache_page_write_begin() now calls relaxed method wait_for_stable_page()
+> > which will wait for writeback to finish only if bdi demand that.
+>   Yes.
 > 
-> I am trying to implement copy on write operation by reading the
-> original disk block and writing it to some other location and then
-> allowing the write to pass though (block the write operation till the
-> read or original block completes) I tried using submit_bio() /
-> sb_bread() to read the block and using the completion API to signal
-> the end of reading the block but the performance of this is very bad.
-> It takes around 12 times more time for any disk writes. Is there any
-> better way to improve the performance ?
+> > Commit message states that ext4 may not wait
+> > But there are a lot of write-paths where we expect that:
+> > BUG_ON(!PageLocked(page));
+> > BUG_ON(PageWriteback(page));
+>   Really? The only places I can find are in writeback path and there we
+> have wait_on_page_writeback() (either in write_cache_pages() or in
+> ext4_da_writepages()).
 > 
-Yes obviously instead of synchronous  block handling (block by block)
-which give about  ~1-3Mb/s 
-
-you should not block bio/requests handling, but simply deffer original
-bio. Some things like that:
-
-OUR_MAIN_ENTERING_POINT {
-  if (bio->bi_rw == WRITE) {
-     if (cow_required(bio))
-       cow_bio  = create_cow_copy(bio)
-       submit_bio(cow_bio);
-   }
-  /* Cow is not required */ 
-   submit_bio(bio);
-}
-create_cow_bio(struct *bio)
-{
-        /* Save original content, and once it will be done we will 
-         * issue original bio */
-         */
-        cow_bio = alloc_bio();
-        cow_bio.bi_sector = bio->bi_sector;
-        ....
-        cow_bio->bi_private = bio;
-        cow_bio->bi_end_io = cow_end_io
-}
-cow_end_io(struct bio *cow_bio, int error) ;
-{
-       /* Once we done with saving original content we may send original
-          bio, But end_io may be called from various contexts even from
-          interrupt context , so we are not allowed to call submit_bio()
-          So we will put original bio to the list and let our worker
-          thread submit it for us later
-        */
-       add_bio_to_the_list((struct bio*)cow_bio->bi_private);
-}
-
-This approach gives us reasonable performance ~3 times slower than disk
-throughput.
-For a reference implementation you may look at driver/dm/dm-snap or to
-Acronis snapapi module (AFAIR it is opensource)
-}
-> Not waiting for the completion of the read operation and letting the
-> disk write go through gives good performance but under 10% of the
-> cases the read happens after the write and ends up the the new data
-> and not the original data.
-Noooo never do that. Block layer will not guarantee you an order.
+> > And the only reason we avoid this bugon is because of commit 47564bfb95b
+> > which use following trick to avoid lock inversion over journal_start:
+> > page = grab_cache_page_write_begin()
+> > unlock_page(page);
+> > ext4_journal_start()
+> > lock_page(page);
+> > wait_on_page_writeback(page); <<<< unconditional wait
+>   No, I think this is really independent. ext4 should be fine when write &
+> writeback are running in parallel for a page.
 > 
-> Regards.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > So as far as I understand this was done just by occasion because
+> > ext4_page_mkwrite() use wait_for_stable_page().
+> > 
+> > So here is my question:  Do we have to wait for page's writeback to
+> > finish for all write paths in ext4 code or we may use
+> > wait_for_stable_page() and should cleanup all places where 
+> > we may trigger BUG_ON(PageWriteback(page));
+>   If there's any such place, please tell me how we could trigger it...
+move_extent.c:mext_page_mkuptodate() expect that.
+IMHO it is reasonable to force behavior here even if we may not do that
+on other places because defragmentation code should be 101% reliable
+and performance is not important here.
+> 
+> 								Honza
+> -- 
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
