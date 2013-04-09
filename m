@@ -1,204 +1,36 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/2] ext4: Move quota initialization out of inode allocation transaction
-Date: Tue,  9 Apr 2013 10:34:08 +0200
-Message-ID: <1365496448-9907-2-git-send-email-jack@suse.cz>
-References: <1365496448-9907-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
+From: Prashant Shah <pshah.mumbai@gmail.com>
+Subject: Fwd: block level cow operation
+Date: Tue, 9 Apr 2013 14:35:56 +0530
+Message-ID: <CAD6i1f+NLF6Vj8D84FFWAbDttqbBvcg-kWswf7Hez2o0-cXpMw@mail.gmail.com>
+References: <CAD6i1f+GsVZJwaz1R3NDjP_m8nOCUsmqHTQS3R=M+d+hq8f5vw@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:43445 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S935578Ab3DIIeN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Apr 2013 04:34:13 -0400
-In-Reply-To: <1365496448-9907-1-git-send-email-jack@suse.cz>
+Received: from mail-ee0-f47.google.com ([74.125.83.47]:60004 "EHLO
+	mail-ee0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S935971Ab3DIJGV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Apr 2013 05:06:21 -0400
+Received: by mail-ee0-f47.google.com with SMTP id t10so2733433eei.34
+        for <linux-ext4@vger.kernel.org>; Tue, 09 Apr 2013 02:06:19 -0700 (PDT)
+In-Reply-To: <CAD6i1f+GsVZJwaz1R3NDjP_m8nOCUsmqHTQS3R=M+d+hq8f5vw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Inode allocation transaction is pretty heavy (246 credits with quotas
-and extents before previous patch, still around 200 after it).  This is
-mostly due to credits required for allocation of quota structures
-(credits there are heavily overestimated but it's difficult to make
-better estimates if we don't want to wire non-trivial assumptions about
-quota format into filesystem).
+Hi,
 
-So move quota initialization out of allocation transaction. That way
-transaction for quota structure allocation will be started only if we
-need to look up quota structure on disk (rare) and furthermore it will
-be started for each quota type separately, not for all of them at once.
-This reduces maximum transaction size to 34 is most cases and to 73 in
-the worst case.
+I am trying to implement copy on write operation by reading the
+original disk block and writing it to some other location and then
+allowing the write to pass though (block the write operation till the
+read or original block completes) I tried using submit_bio() /
+sb_bread() to read the block and using the completion API to signal
+the end of reading the block but the performance of this is very bad.
+It takes around 12 times more time for any disk writes. Is there any
+better way to improve the performance ?
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/ialloc.c |   62 +++++++++++++++++++++++++++---------------------------
- fs/ext4/namei.c  |   12 +++-------
- 2 files changed, 35 insertions(+), 39 deletions(-)
+Not waiting for the completion of the read operation and letting the
+disk write go through gives good performance but under 10% of the
+cases the read happens after the write and ends up the the new data
+and not the original data.
 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 6c5bb8d..3f37297 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -652,6 +652,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 	struct inode *ret;
- 	ext4_group_t i;
- 	ext4_group_t flex_group;
-+	bool quota_allocated = false;
- 
- 	/* Cannot create files in a deleted directory */
- 	if (!dir || !dir->i_nlink)
-@@ -666,6 +667,23 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 	ei = EXT4_I(inode);
- 	sbi = EXT4_SB(sb);
- 
-+	/*
-+	 * Initalize owners and quota early so that we don't have to account
-+	 * for quota initialization worst case in standard inode creating
-+	 * transaction
-+	 */
-+	if (owner) {
-+		inode->i_mode = mode;
-+		i_uid_write(inode, owner[0]);
-+		i_gid_write(inode, owner[1]);
-+	} else if (test_opt(sb, GRPID)) {
-+		inode->i_mode = mode;
-+		inode->i_uid = current_fsuid();
-+		inode->i_gid = dir->i_gid;
-+	} else
-+		inode_init_owner(inode, dir, mode);
-+	dquot_initialize(inode);
-+
- 	if (!goal)
- 		goal = sbi->s_inode_goal;
- 
-@@ -851,17 +869,6 @@ got:
- 		flex_group = ext4_flex_group(sbi, group);
- 		atomic_dec(&sbi->s_flex_groups[flex_group].free_inodes);
- 	}
--	if (owner) {
--		inode->i_mode = mode;
--		i_uid_write(inode, owner[0]);
--		i_gid_write(inode, owner[1]);
--	} else if (test_opt(sb, GRPID)) {
--		inode->i_mode = mode;
--		inode->i_uid = current_fsuid();
--		inode->i_gid = dir->i_gid;
--	} else
--		inode_init_owner(inode, dir, mode);
--
- 	inode->i_ino = ino + group * EXT4_INODES_PER_GROUP(sb);
- 	/* This is the optimal IO size (for stat), not the fs block size */
- 	inode->i_blocks = 0;
-@@ -918,18 +925,18 @@ got:
- 		ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
- 
- 	ret = inode;
--	dquot_initialize(inode);
- 	err = dquot_alloc_inode(inode);
- 	if (err)
--		goto fail_drop;
-+		goto out;
-+	quota_allocated = true;
- 
- 	err = ext4_init_acl(handle, inode, dir);
- 	if (err)
--		goto fail_free_drop;
-+		goto out;
- 
- 	err = ext4_init_security(handle, inode, dir, qstr);
- 	if (err)
--		goto fail_free_drop;
-+		goto out;
- 
- 	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS)) {
- 		/* set extent flag only for directory, file and normal symlink*/
-@@ -945,10 +952,8 @@ got:
- 	}
- 
- 	err = ext4_mark_inode_dirty(handle, inode);
--	if (err) {
--		ext4_std_error(sb, err);
--		goto fail_free_drop;
--	}
-+	if (err)
-+		goto fail;
- 
- 	ext4_debug("allocating inode %lu\n", inode->i_ino);
- 	trace_ext4_allocate_inode(inode, dir, mode);
-@@ -956,23 +961,18 @@ got:
- fail:
- 	ext4_std_error(sb, err);
- out:
--	iput(inode);
--	ret = ERR_PTR(err);
--really_out:
--	brelse(inode_bitmap_bh);
--	return ret;
--
--fail_free_drop:
--	dquot_free_inode(inode);
--
--fail_drop:
-+	if (quota_allocated)
-+		dquot_free_inode(inode);
- 	dquot_drop(inode);
- 	inode->i_flags |= S_NOQUOTA;
- 	clear_nlink(inode);
--	unlock_new_inode(inode);
-+	if (inode->i_state & I_NEW)
-+		unlock_new_inode(inode);
- 	iput(inode);
-+	ret = ERR_PTR(err);
-+really_out:
- 	brelse(inode_bitmap_bh);
--	return ERR_PTR(err);
-+	return ret;
- }
- 
- /* Verify that we are loading a valid orphan from disk */
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 3825d6a..ede1337 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -2251,8 +2251,7 @@ static int ext4_create(struct inode *dir, struct dentry *dentry, umode_t mode,
- 	dquot_initialize(dir);
- 
- 	credits = (EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
--		   EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
--		   EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
-+		   EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3);
- retry:
- 	inode = ext4_new_inode_start_handle(dir, mode, &dentry->d_name, 0,
- 					    NULL, EXT4_HT_DIR, credits);
-@@ -2286,8 +2285,7 @@ static int ext4_mknod(struct inode *dir, struct dentry *dentry,
- 	dquot_initialize(dir);
- 
- 	credits = (EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
--		   EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
--		   EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
-+		   EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3);
- retry:
- 	inode = ext4_new_inode_start_handle(dir, mode, &dentry->d_name, 0,
- 					    NULL, EXT4_HT_DIR, credits);
-@@ -2396,8 +2394,7 @@ static int ext4_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
- 	dquot_initialize(dir);
- 
- 	credits = (EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
--		   EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
--		   EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
-+		   EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3);
- retry:
- 	inode = ext4_new_inode_start_handle(dir, S_IFDIR | mode,
- 					    &dentry->d_name,
-@@ -2826,8 +2823,7 @@ static int ext4_symlink(struct inode *dir,
- 		 * quota blocks, sb is already counted in previous macros).
- 		 */
- 		credits = EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
--			  EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
--			  EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb);
-+			  EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3;
- 	}
- retry:
- 	inode = ext4_new_inode_start_handle(dir, S_IFLNK|S_IRWXUGO,
--- 
-1.7.1
-
+Regards.
