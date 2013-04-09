@@ -1,81 +1,84 @@
-From: Bob Peterson <rpeterso@redhat.com>
-Subject: Re: [PATCH v3 08/18] gfs2: use ->invalidatepage() length argument
-Date: Tue, 9 Apr 2013 09:09:20 -0400 (EDT)
-Message-ID: <686810645.4576872.1365512960001.JavaMail.root@redhat.com>
-References: <1365498867-27782-1-git-send-email-lczerner@redhat.com> <1365498867-27782-9-git-send-email-lczerner@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        cluster-devel@redhat.com
-To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1365498867-27782-9-git-send-email-lczerner@redhat.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH] ext4: Use kstrtoul() instead of parse_strtoul()
+Date: Tue,  9 Apr 2013 15:12:28 +0200
+Message-ID: <1365513148-23358-1-git-send-email-lczerner@redhat.com>
+Cc: Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:48970 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759009Ab3DINMc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Apr 2013 09:12:32 -0400
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r39DCWU2020394
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Tue, 9 Apr 2013 09:12:32 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+In parse_strtoul() we're still using deprecated simple_strtoul(). Remove
+parse_strtoul() altogether and replace it with kstrtoul()
 
------ Original Message -----
-| ->invalidatepage() aop now accepts range to invalidate so we can make
-| use of it in gfs2_invalidatepage().
-| 
-| Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-| Cc: cluster-devel@redhat.com
-| ---
-|  fs/gfs2/aops.c |    9 +++++++--
-|  1 files changed, 7 insertions(+), 2 deletions(-)
-| 
-| diff --git a/fs/gfs2/aops.c b/fs/gfs2/aops.c
-| index 37093ba..ea920bf 100644
-| --- a/fs/gfs2/aops.c
-| +++ b/fs/gfs2/aops.c
-| @@ -947,24 +947,29 @@ static void gfs2_invalidatepage(struct page *page,
-| unsigned int offset,
-|  				unsigned int length)
-|  {
-|  	struct gfs2_sbd *sdp = GFS2_SB(page->mapping->host);
-| +	unsigned int stop = offset + length;
-| +	int partial_page = (offset || length < PAGE_CACHE_SIZE);
-|  	struct buffer_head *bh, *head;
-|  	unsigned long pos = 0;
-|  
-|  	BUG_ON(!PageLocked(page));
-| -	if (offset == 0)
-| +	if (!partial_page)
-|  		ClearPageChecked(page);
-|  	if (!page_has_buffers(page))
-|  		goto out;
-|  
-|  	bh = head = page_buffers(page);
-|  	do {
-| +		if (pos + bh->b_size > stop)
-| +			return;
-| +
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/super.c |   27 +++++++++------------------
+ 1 files changed, 9 insertions(+), 18 deletions(-)
 
-I always regret it when I review something this early in the morning,
-or post before the caffeine has taken full effect. But...
-Shouldn't the statement above be (1) ">= stop" and (2) goto out;?
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 525beb6..af76375 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2382,19 +2382,6 @@ struct ext4_attr {
+ 	int offset;
+ };
+ 
+-static int parse_strtoul(const char *buf,
+-		unsigned long max, unsigned long *value)
+-{
+-	char *endp;
+-
+-	*value = simple_strtoul(skip_spaces(buf), &endp, 0);
+-	endp = skip_spaces(endp);
+-	if (*endp || *value > max)
+-		return -EINVAL;
+-
+-	return 0;
+-}
+-
+ static ssize_t delayed_allocation_blocks_show(struct ext4_attr *a,
+ 					      struct ext4_sb_info *sbi,
+ 					      char *buf)
+@@ -2434,11 +2421,13 @@ static ssize_t inode_readahead_blks_store(struct ext4_attr *a,
+ 					  const char *buf, size_t count)
+ {
+ 	unsigned long t;
++	int ret;
+ 
+-	if (parse_strtoul(buf, 0x40000000, &t))
+-		return -EINVAL;
++	ret = kstrtoul(skip_spaces(buf), 0, &t);
++	if (ret)
++		return ret;
+ 
+-	if (t && !is_power_of_2(t))
++	if (t && (!is_power_of_2(t) || t > 0x40000000))
+ 		return -EINVAL;
+ 
+ 	sbi->s_inode_readahead_blks = t;
+@@ -2459,9 +2448,11 @@ static ssize_t sbi_ui_store(struct ext4_attr *a,
+ {
+ 	unsigned int *ui = (unsigned int *) (((char *) sbi) + a->offset);
+ 	unsigned long t;
++	int ret;
+ 
+-	if (parse_strtoul(buf, 0xffffffff, &t))
+-		return -EINVAL;
++	ret = kstrtoul(skip_spaces(buf), 0, &t);
++	if (ret)
++		return ret;
+ 	*ui = t;
+ 	return count;
+ }
+-- 
+1.7.7.6
 
-|  		if (offset <= pos)
-|  			gfs2_discard(sdp, bh);
-|  		pos += bh->b_size;
-|  		bh = bh->b_this_page;
-|  	} while (bh != head);
-|  out:
-| -	if (offset == 0)
-| +	if (!partial_page)
-|  		try_to_release_page(page, 0);
-|  }
-
-Regards,
-
-Bob Peterson
-Red Hat File Systems
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
