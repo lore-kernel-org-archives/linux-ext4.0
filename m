@@ -1,39 +1,42 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: Do not convert to indirect with bigalloc enabled
-Date: Tue, 9 Apr 2013 15:28:54 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1304091527440.22989@localhost>
-References: <1365070685-5088-1-git-send-email-lczerner@redhat.com> <20130408061011.GB328@gmail.com> <20130409132313.GC12050@thunk.org>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: ext4 stable page writes question
+Date: Tue, 09 Apr 2013 17:38:21 +0400
+Message-ID: <87txnf4yeq.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+To: ext4 development <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59123 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758427Ab3DIN27 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Apr 2013 09:28:59 -0400
-In-Reply-To: <20130409132313.GC12050@thunk.org>
+Received: from mail-lb0-f171.google.com ([209.85.217.171]:39674 "EHLO
+	mail-lb0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759223Ab3DINi0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Apr 2013 09:38:26 -0400
+Received: by mail-lb0-f171.google.com with SMTP id v10so6866142lbd.30
+        for <linux-ext4@vger.kernel.org>; Tue, 09 Apr 2013 06:38:25 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 9 Apr 2013, Theodore Ts'o wrote:
 
-> Date: Tue, 9 Apr 2013 09:23:13 -0400
-> From: Theodore Ts'o <tytso@mit.edu>
-> To: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
-> Subject: Re: [PATCH] ext4: Do not convert to indirect with bigalloc enabled
-> 
-> Thanks, applied.
+According to stable write assumptions (1d1d1a767206fb)
+grab_cache_page_write_begin() now calls relaxed method wait_for_stable_page()
+which will wait for writeback to finish only if bdi demand that.
+Commit message states that ext4 may not wait
+But there are a lot of write-paths where we expect that:
+BUG_ON(!PageLocked(page));
+BUG_ON(PageWriteback(page));
+And the only reason we avoid this bugon is because of commit 47564bfb95b
+which use following trick to avoid lock inversion over journal_start:
+page = grab_cache_page_write_begin()
+unlock_page(page);
+ext4_journal_start()
+lock_page(page);
+wait_on_page_writeback(page); <<<< unconditional wait
 
-Ted you probably want to apply the series I sent earlier today
-containing this patches.
+So as far as I understand this was done just by occasion because
+ext4_page_mkwrite() use wait_for_stable_page().
 
-[PATCH 1/2 v2] ext4: move ext4_ind_migrate() into migrate.c
-[PATCH 2/2 v2] ext4: Do not convert to indirect with bigalloc enabled
-
-Thanks!
--Lukas
-
-> 
-> 					- Ted
-> 
+So here is my question:  Do we have to wait for page's writeback to
+finish for all write paths in ext4 code or we may use
+wait_for_stable_page() and should cleanup all places where 
+we may trigger BUG_ON(PageWriteback(page));
+ 
