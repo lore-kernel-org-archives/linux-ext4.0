@@ -1,46 +1,193 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 2/2 v2] ext4: Do not convert to indirect with bigalloc enabled
-Date: Tue,  9 Apr 2013 13:24:47 +0200
-Message-ID: <1365506687-9216-2-git-send-email-lczerner@redhat.com>
-References: <1365506687-9216-1-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 1/2 v2] ext4: move ext4_ind_migrate() into migrate.c
+Date: Tue,  9 Apr 2013 13:24:46 +0200
+Message-ID: <1365506687-9216-1-git-send-email-lczerner@redhat.com>
 Cc: gnehzuil.liu@gmail.com, Lukas Czerner <lczerner@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54602 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:42104 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755153Ab3DILYx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Apr 2013 07:24:53 -0400
-In-Reply-To: <1365506687-9216-1-git-send-email-lczerner@redhat.com>
+	id S1755153Ab3DILYv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Apr 2013 07:24:51 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-With bigalloc feature enabled we do not support indirect addressing at all
-so we have to prevent extent addressing to indirect addressing
-conversion in this case. The problem has been introduced with the commit
-"ext4: support simple conversion of extent-mapped inodes to use i_blocks"
+Move ext4_ind_migrate() into migrate.c file since it makes much more
+sense and ext4_ext_migrate() is there as well.
+
+Also fix tiny style problem - add spaces around "=" in "i=0".
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
 v2: added to the series
 
- fs/ext4/migrate.c |    4 ++++
- 1 files changed, 4 insertions(+), 0 deletions(-)
+ fs/ext4/ext4.h    |    2 +-
+ fs/ext4/extents.c |   59 ----------------------------------------------------
+ fs/ext4/migrate.c |   60 ++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 60 insertions(+), 61 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index a0637e5..bb56920 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2131,6 +2131,7 @@ extern long ext4_compat_ioctl(struct file *, unsigned int, unsigned long);
+ 
+ /* migrate.c */
+ extern int ext4_ext_migrate(struct inode *);
++extern int ext4_ind_migrate(struct inode *inode);
+ 
+ /* namei.c */
+ extern int ext4_dirent_csum_verify(struct inode *inode,
+@@ -2620,7 +2621,6 @@ extern int ext4_find_delalloc_range(struct inode *inode,
+ extern int ext4_find_delalloc_cluster(struct inode *inode, ext4_lblk_t lblk);
+ extern int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+ 			__u64 start, __u64 len);
+-extern int ext4_ind_migrate(struct inode *inode);
+ 
+ 
+ /* move_extent.c */
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 6c5a70a..3645357 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4715,62 +4715,3 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+ 
+ 	return error;
+ }
+-
+-/*
+- * Migrate a simple extent-based inode to use the i_blocks[] array
+- */
+-int ext4_ind_migrate(struct inode *inode)
+-{
+-	struct ext4_extent_header	*eh;
+-	struct ext4_super_block		*es = EXT4_SB(inode->i_sb)->s_es;
+-	struct ext4_inode_info		*ei = EXT4_I(inode);
+-	struct ext4_extent		*ex;
+-	unsigned int			i, len;
+-	ext4_fsblk_t			blk;
+-	handle_t			*handle;
+-	int				ret;
+-
+-	if (!EXT4_HAS_INCOMPAT_FEATURE(inode->i_sb,
+-				       EXT4_FEATURE_INCOMPAT_EXTENTS) ||
+-	    (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
+-		return -EINVAL;
+-
+-	down_write(&EXT4_I(inode)->i_data_sem);
+-	ret = ext4_ext_check_inode(inode);
+-	if (ret)
+-		goto errout;
+-
+-	eh = ext_inode_hdr(inode);
+-	ex  = EXT_FIRST_EXTENT(eh);
+-	if (ext4_blocks_count(es) > EXT4_MAX_BLOCK_FILE_PHYS ||
+-	    eh->eh_depth != 0 || eh->eh_entries > 1) {
+-		ret = -EOPNOTSUPP;
+-		goto errout;
+-	}
+-	if (eh->eh_entries == 0)
+-		blk = len = 0;
+-	else {
+-		len = le16_to_cpu(ex->ee_len);
+-		blk = ext4_ext_pblock(ex);
+-		if (len > EXT4_NDIR_BLOCKS) {
+-			ret = -EOPNOTSUPP;
+-			goto errout;
+-		}
+-	}
+-
+-	handle = ext4_journal_start(inode, EXT4_HT_MIGRATE, 1);
+-	if (IS_ERR(handle)) {
+-		ret = PTR_ERR(handle);
+-		goto errout;
+-	}
+-
+-	ext4_clear_inode_flag(inode, EXT4_INODE_EXTENTS);
+-	memset(ei->i_data, 0, sizeof(ei->i_data));
+-	for (i=0; i < len; i++)
+-		ei->i_data[i] = cpu_to_le32(blk++);
+-	ext4_mark_inode_dirty(handle, inode);
+-	ext4_journal_stop(handle);
+-errout:
+-	up_write(&EXT4_I(inode)->i_data_sem);
+-	return ret;
+-}
 diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-index 3464604..f13a289 100644
+index 480acf4..3464604 100644
 --- a/fs/ext4/migrate.c
 +++ b/fs/ext4/migrate.c
-@@ -625,6 +625,10 @@ int ext4_ind_migrate(struct inode *inode)
- 	    (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
- 		return -EINVAL;
+@@ -426,7 +426,6 @@ static int free_ext_block(handle_t *handle, struct inode *inode)
+ 			return retval;
+ 	}
+ 	return retval;
+-
+ }
  
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-+				       EXT4_FEATURE_RO_COMPAT_BIGALLOC))
-+		return -EOPNOTSUPP;
+ int ext4_ext_migrate(struct inode *inode)
+@@ -606,3 +605,62 @@ out:
+ 
+ 	return retval;
+ }
 +
- 	down_write(&EXT4_I(inode)->i_data_sem);
- 	ret = ext4_ext_check_inode(inode);
- 	if (ret)
++/*
++ * Migrate a simple extent-based inode to use the i_blocks[] array
++ */
++int ext4_ind_migrate(struct inode *inode)
++{
++	struct ext4_extent_header	*eh;
++	struct ext4_super_block		*es = EXT4_SB(inode->i_sb)->s_es;
++	struct ext4_inode_info		*ei = EXT4_I(inode);
++	struct ext4_extent		*ex;
++	unsigned int			i, len;
++	ext4_fsblk_t			blk;
++	handle_t			*handle;
++	int				ret;
++
++	if (!EXT4_HAS_INCOMPAT_FEATURE(inode->i_sb,
++				       EXT4_FEATURE_INCOMPAT_EXTENTS) ||
++	    (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
++		return -EINVAL;
++
++	down_write(&EXT4_I(inode)->i_data_sem);
++	ret = ext4_ext_check_inode(inode);
++	if (ret)
++		goto errout;
++
++	eh = ext_inode_hdr(inode);
++	ex  = EXT_FIRST_EXTENT(eh);
++	if (ext4_blocks_count(es) > EXT4_MAX_BLOCK_FILE_PHYS ||
++	    eh->eh_depth != 0 || eh->eh_entries > 1) {
++		ret = -EOPNOTSUPP;
++		goto errout;
++	}
++	if (eh->eh_entries == 0)
++		blk = len = 0;
++	else {
++		len = le16_to_cpu(ex->ee_len);
++		blk = ext4_ext_pblock(ex);
++		if (len > EXT4_NDIR_BLOCKS) {
++			ret = -EOPNOTSUPP;
++			goto errout;
++		}
++	}
++
++	handle = ext4_journal_start(inode, EXT4_HT_MIGRATE, 1);
++	if (IS_ERR(handle)) {
++		ret = PTR_ERR(handle);
++		goto errout;
++	}
++
++	ext4_clear_inode_flag(inode, EXT4_INODE_EXTENTS);
++	memset(ei->i_data, 0, sizeof(ei->i_data));
++	for (i = 0; i < len; i++)
++		ei->i_data[i] = cpu_to_le32(blk++);
++	ext4_mark_inode_dirty(handle, inode);
++	ext4_journal_stop(handle);
++errout:
++	up_write(&EXT4_I(inode)->i_data_sem);
++	return ret;
++}
 -- 
 1.7.7.6
 
