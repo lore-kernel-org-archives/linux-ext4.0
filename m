@@ -1,70 +1,57 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 2/2] ext4: optimize ext4_force_commit
-Date: Tue, 09 Apr 2013 18:06:58 +0400
-Message-ID: <87wqsbre65.fsf@openvz.org>
-References: <1364807037-21664-1-git-send-email-dmonakhov@openvz.org> <1364807037-21664-2-git-send-email-dmonakhov@openvz.org> <20130401185838.GC22443@thunk.org> <CAF5pi0FZ4MUdBMH9A_Wav8V7TX39z1cOtGspJP9k8LN0KFja7g@mail.gmail.com> <20130409133123.GE12050@thunk.org> <CAF5pi0GhudB=BmBNGPAp4KLvfuAiw_2zo5bzYVWQ3jhthsj3Xw@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: ext4 stable page writes question
+Date: Tue, 9 Apr 2013 16:28:05 +0200
+Message-ID: <20130409142805.GF13672@quack.suse.cz>
+References: <87txnf4yeq.fsf@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: tytso@mit.edu
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-la0-f41.google.com ([209.85.215.41]:38898 "EHLO
-	mail-la0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751928Ab3DIOHE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Apr 2013 10:07:04 -0400
-Received: by mail-la0-f41.google.com with SMTP id er20so1378795lab.0
-        for <linux-ext4@vger.kernel.org>; Tue, 09 Apr 2013 07:07:01 -0700 (PDT)
-In-Reply-To: <CAF5pi0GhudB=BmBNGPAp4KLvfuAiw_2zo5bzYVWQ3jhthsj3Xw@mail.gmail.com>
+Received: from cantor2.suse.de ([195.135.220.15]:59086 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932929Ab3DIO2H (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Apr 2013 10:28:07 -0400
+Content-Disposition: inline
+In-Reply-To: <87txnf4yeq.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 9 Apr 2013 17:42:33 +0400, Dmitry Monakhov <dmonakhovopenvz@gmail.com> wrote:
-Non-text part: multipart/alternative
-> ---------- Forwarded message ----------
-> From: "Theodore Ts'o" <tytso@mit.edu>
-> Date: Apr 9, 2013 5:31 PM
-> Subject: Re: [PATCH 2/2] ext4: optimize ext4_force_commit
-> To: "Dmitry Monakhov" <dmonakhovopenvz@gmail.com>
-> Cc:
+On Tue 09-04-13 17:38:21, Dmitry Monakhov wrote:
+> According to stable write assumptions (1d1d1a767206fb)
+> grab_cache_page_write_begin() now calls relaxed method wait_for_stable_page()
+> which will wait for writeback to finish only if bdi demand that.
+  Yes.
+
+> Commit message states that ext4 may not wait
+> But there are a lot of write-paths where we expect that:
+> BUG_ON(!PageLocked(page));
+> BUG_ON(PageWriteback(page));
+  Really? The only places I can find are in writeback path and there we
+have wait_on_page_writeback() (either in write_cache_pages() or in
+ext4_da_writepages()).
+
+> And the only reason we avoid this bugon is because of commit 47564bfb95b
+> which use following trick to avoid lock inversion over journal_start:
+> page = grab_cache_page_write_begin()
+> unlock_page(page);
+> ext4_journal_start()
+> lock_page(page);
+> wait_on_page_writeback(page); <<<< unconditional wait
+  No, I think this is really independent. ext4 should be fine when write &
+writeback are running in parallel for a page.
+
+> So as far as I understand this was done just by occasion because
+> ext4_page_mkwrite() use wait_for_stable_page().
 > 
-> On Mon, Apr 01, 2013 at 11:10:59PM +0400, Dmitry Monakhov wrote:
-> > Yes. I think so too.  Even more jbd2_force_commit_nested already does what
-> > we want because we are not hold transaction. I'll send patch tomorrow
-> 
-> Hi Dmitry,
-> 
-> Did you send an update for this patch?  I can't seem to find it.  I'm
-> wondering if we perhaps got distracted by the big endian patch, and we
-> didn't get back to this commit.
-Ohh It is appeared that it requires more deep analysis.
-For example sync(2) is implicitly broken because ext4_sync_fs() may not
-send a flush barrier. So following case is possible:
+> So here is my question:  Do we have to wait for page's writeback to
+> finish for all write paths in ext4 code or we may use
+> wait_for_stable_page() and should cleanup all places where 
+> we may trigger BUG_ON(PageWriteback(page));
+  If there's any such place, please tell me how we could trigger it...
 
-dd if=/dev/zero of=file oflag=direct bs=1M count=1
-sync
-POWER_FAILURE-> result in data lost. Because:
-
-sys_write()
--> __generic_file_aio_write
-   ->file_update_time
-    ->update_time
-      -> touch metadata -> ext4_update_inode_fsync_trans
-
-  <# A lot of journal_start/journal_stop# >
- ->submit_bio  
-
- ->dio_complete
-
-sys_sync()
- -> flush_inodes (may not start a journal)
- -> ext4_sync_fs
-    if (jbd2_journal_start_commit(sbi->s_journal, &target)) {
-                if (wait)
-                        jbd2_log_wait_commit(sbi->s_journal, target);
-
-   But no one guarantee us that we start any transaction since dio was
-   completed so barrier will not be send. This means we may lose
-   our data on power failure.
-At this moment I try to figure up sane data integrity model for
-fsync/syncfs. Hope I'll send you patches at the end of the week.
-
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
