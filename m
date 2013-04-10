@@ -1,28 +1,29 @@
-From: "Barr Guillermo Chavez Esq" <guillermocha1@aol.com>
-Subject: Re:Just read your email and this is my response.
-Date: Tue, 9 Apr 2013 18:21:08 -0000
-Message-ID: <19719bbd0a5d100af86699f5572107d3.squirrel__21075.0168109827$1365542994$gmane$org@dzlnx02.cloudapp.net>
-Reply-To: guillermocha1@aol.com
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v2] ext4: introduce reserved space
+Date: Tue, 9 Apr 2013 22:36:30 -0400
+Message-ID: <20130410023630.GA4862@thunk.org>
+References: <1365428612-7574-1-git-send-email-lczerner@redhat.com>
+ <20130408162819.GA24008@andromeda.usersys.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-To: undisclosed-recipients:;
+Content-Type: text/plain; charset=us-ascii
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
+To: Carlos Maiolino <cmaiolino@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [168.63.98.182] ([168.63.98.182]:1296 "EHLO
-	mail.dzlnx02.cloudapp.net" rhost-flags-FAIL-FAIL-OK-FAIL)
-	by vger.kernel.org with ESMTP id S934470Ab3DIV3r (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Apr 2013 17:29:47 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:33009 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S934838Ab3DJCgf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Apr 2013 22:36:35 -0400
+Content-Disposition: inline
+In-Reply-To: <20130408162819.GA24008@andromeda.usersys.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Mon, Apr 08, 2013 at 01:28:20PM -0300, Carlos Maiolino wrote:
+> Looks Good,
+> Thanks Lukas.
+> 
+> Reviewed-by: Carlos Maiolino <cmaiolino@redhat.com>
 
+Thanks, applied to the dev branch for testing.
 
-
-Kindly bear with me for contacting you this way.Mr name is Mr Guillermo
-Chavez and am writing you to kindly reply me once you get this message it
-is about one of my late friend who died in the ongoing war in SYRIA he was
-in the engineering an oil legal dealer who was also my client and i his
-legal Lawyer to his business, i will explain further if you show your
-interest by responding to me through this my personal email
-(gchavez2013@aim.com)
-
+		       	   	  - Ted
