@@ -1,138 +1,69 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/3] ext4: fix miscellaneous big endian warnings
-Date: Wed, 10 Apr 2013 00:02:28 -0400
-Message-ID: <1365566549-23325-3-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2/3] ext4: fix big-endian bug in metadata checksum calculations
+Date: Wed, 10 Apr 2013 00:02:27 -0400
+Message-ID: <1365566549-23325-2-git-send-email-tytso@mit.edu>
 References: <20130410040151.GB4862@thunk.org>
  <1365566549-23325-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
+	"Theodore Ts'o" <tytso@mit.edu>, stable@vger.kernel.org
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:33040 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750708Ab3DJECa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Apr 2013 00:02:30 -0400
+Return-path: <stable-owner@vger.kernel.org>
 In-Reply-To: <1365566549-23325-1-git-send-email-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-None of these result in any bug, but they makes sparse complain.
+From: Dmitry Monakhov <dmonakhov@openvz.org>
 
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: stable@vger.kernel.org
 ---
- fs/ext4/namei.c             |  7 ++++---
- fs/ext4/super.c             |  6 +++---
- fs/ext4/xattr.c             | 13 +++++++------
- include/trace/events/ext4.h |  6 +++---
- 4 files changed, 17 insertions(+), 15 deletions(-)
+ fs/ext4/inode.c | 8 ++++----
+ fs/ext4/mmp.c   | 2 +-
+ 2 files changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index ede1337..955c907 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -416,15 +416,16 @@ static __le32 ext4_dx_csum(struct inode *inode, struct ext4_dir_entry *dirent,
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	struct ext4_inode_info *ei = EXT4_I(inode);
--	__u32 csum, old_csum;
-+	__u32 csum;
-+	__le32 save_csum;
- 	int size;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 629d67b..62189c8 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -55,21 +55,21 @@ static __u32 ext4_inode_csum(struct inode *inode, struct ext4_inode *raw,
+ 	__u16 csum_hi = 0;
+ 	__u32 csum;
  
- 	size = count_offset + (count * sizeof(struct dx_entry));
--	old_csum = t->dt_checksum;
-+	save_csum = t->dt_checksum;
- 	t->dt_checksum = 0;
- 	csum = ext4_chksum(sbi, ei->i_csum_seed, (__u8 *)dirent, size);
- 	csum = ext4_chksum(sbi, csum, (__u8 *)t, sizeof(struct dx_tail));
--	t->dt_checksum = old_csum;
-+	t->dt_checksum = save_csum;
+-	csum_lo = raw->i_checksum_lo;
++	csum_lo = le16_to_cpu(raw->i_checksum_lo);
+ 	raw->i_checksum_lo = 0;
+ 	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
+ 	    EXT4_FITS_IN_INODE(raw, ei, i_checksum_hi)) {
+-		csum_hi = raw->i_checksum_hi;
++		csum_hi = le16_to_cpu(raw->i_checksum_hi);
+ 		raw->i_checksum_hi = 0;
+ 	}
  
- 	return cpu_to_le32(csum);
+ 	csum = ext4_chksum(sbi, ei->i_csum_seed, (__u8 *)raw,
+ 			   EXT4_INODE_SIZE(inode->i_sb));
+ 
+-	raw->i_checksum_lo = csum_lo;
++	raw->i_checksum_lo = cpu_to_le16(csum_lo);
+ 	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
+ 	    EXT4_FITS_IN_INODE(raw, ei, i_checksum_hi))
+-		raw->i_checksum_hi = csum_hi;
++		raw->i_checksum_hi = cpu_to_le16(csum_hi);
+ 
+ 	return csum;
  }
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 6fea87d..f355c28 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1952,16 +1952,16 @@ static __le16 ext4_group_desc_csum(struct ext4_sb_info *sbi, __u32 block_group,
- 	if ((sbi->s_es->s_feature_ro_compat &
- 	     cpu_to_le32(EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))) {
- 		/* Use new metadata_csum algorithm */
--		__u16 old_csum;
-+		__le16 save_csum;
- 		__u32 csum32;
+diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
+index f9b5515..b3b1f7d 100644
+--- a/fs/ext4/mmp.c
++++ b/fs/ext4/mmp.c
+@@ -7,7 +7,7 @@
+ #include "ext4.h"
  
--		old_csum = gdp->bg_checksum;
-+		save_csum = gdp->bg_checksum;
- 		gdp->bg_checksum = 0;
- 		csum32 = ext4_chksum(sbi, sbi->s_csum_seed, (__u8 *)&le_group,
- 				     sizeof(le_group));
- 		csum32 = ext4_chksum(sbi, csum32, (__u8 *)gdp,
- 				     sbi->s_desc_size);
--		gdp->bg_checksum = old_csum;
-+		gdp->bg_checksum = save_csum;
- 
- 		crc = csum32 & 0xFFFF;
- 		goto out;
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 3a120b2..c081e34 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -122,17 +122,18 @@ static __le32 ext4_xattr_block_csum(struct inode *inode,
- 				    struct ext4_xattr_header *hdr)
+ /* Checksumming functions */
+-static __u32 ext4_mmp_csum(struct super_block *sb, struct mmp_struct *mmp)
++static __le32 ext4_mmp_csum(struct super_block *sb, struct mmp_struct *mmp)
  {
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
--	__u32 csum, old;
-+	__u32 csum;
-+	__le32 save_csum;
-+	__le64 dsk_block_nr = cpu_to_le64(block_nr);
- 
--	old = hdr->h_checksum;
-+	save_csum = hdr->h_checksum;
- 	hdr->h_checksum = 0;
--	block_nr = cpu_to_le64(block_nr);
--	csum = ext4_chksum(sbi, sbi->s_csum_seed, (__u8 *)&block_nr,
--			   sizeof(block_nr));
-+	csum = ext4_chksum(sbi, sbi->s_csum_seed, (__u8 *)&dsk_block_nr,
-+			   sizeof(dsk_block_nr));
- 	csum = ext4_chksum(sbi, csum, (__u8 *)hdr,
- 			   EXT4_BLOCK_SIZE(inode->i_sb));
- 
--	hdr->h_checksum = old;
-+	hdr->h_checksum = save_csum;
- 	return cpu_to_le32(csum);
- }
- 
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index 58459b7..d0e6864 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -1948,7 +1948,7 @@ TRACE_EVENT(ext4_remove_blocks,
- 		__entry->to		= to;
- 		__entry->partial	= partial_cluster;
- 		__entry->ee_pblk	= ext4_ext_pblock(ex);
--		__entry->ee_lblk	= cpu_to_le32(ex->ee_block);
-+		__entry->ee_lblk	= le32_to_cpu(ex->ee_block);
- 		__entry->ee_len		= ext4_ext_get_actual_len(ex);
- 	),
- 
-@@ -2052,7 +2052,7 @@ TRACE_EVENT(ext4_ext_remove_space,
- 
- TRACE_EVENT(ext4_ext_remove_space_done,
- 	TP_PROTO(struct inode *inode, ext4_lblk_t start, int depth,
--		ext4_lblk_t partial, unsigned short eh_entries),
-+		ext4_lblk_t partial, __le16 eh_entries),
- 
- 	TP_ARGS(inode, start, depth, partial, eh_entries),
- 
-@@ -2071,7 +2071,7 @@ TRACE_EVENT(ext4_ext_remove_space_done,
- 		__entry->start		= start;
- 		__entry->depth		= depth;
- 		__entry->partial	= partial;
--		__entry->eh_entries	= eh_entries;
-+		__entry->eh_entries	= le16_to_cpu(eh_entries);
- 	),
- 
- 	TP_printk("dev %d,%d ino %lu since %u depth %d partial %u "
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	int offset = offsetof(struct mmp_struct, mmp_checksum);
 -- 
 1.7.12.rc0.22.gcdd159b
-
