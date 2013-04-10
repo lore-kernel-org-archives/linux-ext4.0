@@ -1,106 +1,51 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH v3 09/18] reiserfs: use ->invalidatepage() length
- argument
-Date: Wed, 10 Apr 2013 11:51:54 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1304101151130.10609@dhcp-1-230.brq.redhat.com>
-References: <1365498867-27782-1-git-send-email-lczerner@redhat.com> <1365498867-27782-10-git-send-email-lczerner@redhat.com> <20130409132756.GE13672@quack.suse.cz>
+From: Tomasz Chmielewski <mangoo@wpkg.org>
+Subject: something's using space, can't figure out what - how to debug?
+Date: Wed, 10 Apr 2013 19:56:06 +0900
+Message-ID: <20130410195606.22a9eff3@wpkg.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-mm@kvack.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, reiserfs-devel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20130409132756.GE13672@quack.suse.cz>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.virtall.com ([178.63.195.102]:60927 "EHLO mail.virtall.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750795Ab3DJLGK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 10 Apr 2013 07:06:10 -0400
+Received: from mail.virtall.com (localhost [127.0.0.1])
+	by mail.virtall.com (Postfix) with ESMTP id 374A134BCE6
+	for <linux-ext4@vger.kernel.org>; Wed, 10 Apr 2013 12:56:17 +0200 (CEST)
+Received: from localhost (w0109-49-133-47-51.uqwimax.jp [49.133.47.51])
+	by mail.virtall.com (Postfix) with ESMTPSA id F30F034BCCF
+	for <linux-ext4@vger.kernel.org>; Wed, 10 Apr 2013 12:56:15 +0200 (CEST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 9 Apr 2013, Jan Kara wrote:
+Here is one of my ext4 filesystems, which uses 2x more space as it
+should:
 
-> Date: Tue, 9 Apr 2013 15:27:56 +0200
-> From: Jan Kara <jack@suse.cz>
-> To: Lukas Czerner <lczerner@redhat.com>
-> Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
->     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
->     reiserfs-devel@vger.kernel.org
-> Subject: Re: [PATCH v3 09/18] reiserfs: use ->invalidatepage() length argument
-> 
-> On Tue 09-04-13 11:14:18, Lukas Czerner wrote:
-> > ->invalidatepage() aop now accepts range to invalidate so we can make
-> > use of it in reiserfs_invalidatepage()
->   Hum, reiserfs is probably never going to support punch hole. So shouldn't
-> we rather WARN and return without doing anything if stop !=
-> PAGE_CACHE_SIZE?
-> 
-> 								Honza
+# df -h /srv
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/xvdf             194G  134G   51G  73% /srv
 
-Hi,
+# du -sh /srv/
+60G     /srv/
 
-I can not even think of the case when this would happen since it
-could not happen before either. However in the case it happens the
-code will do what's expected. So I do not have any strong preference
-about this one, but I do not think it's necessary to WARN here. If
-you still insist on the WARN, let me know and I'll resend the patch.
+# lsof -n|grep /srv
+# 
 
-Thanks for the reviews!
--Lukas
 
-> > 
-> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> > Cc: reiserfs-devel@vger.kernel.org
-> > ---
-> >  fs/reiserfs/inode.c |    9 +++++++--
-> >  1 files changed, 7 insertions(+), 2 deletions(-)
-> > 
-> > diff --git a/fs/reiserfs/inode.c b/fs/reiserfs/inode.c
-> > index 808e02e..e963164 100644
-> > --- a/fs/reiserfs/inode.c
-> > +++ b/fs/reiserfs/inode.c
-> > @@ -2975,11 +2975,13 @@ static void reiserfs_invalidatepage(struct page *page, unsigned int offset,
-> >  	struct buffer_head *head, *bh, *next;
-> >  	struct inode *inode = page->mapping->host;
-> >  	unsigned int curr_off = 0;
-> > +	unsigned int stop = offset + length;
-> > +	int partial_page = (offset || length < PAGE_CACHE_SIZE);
-> >  	int ret = 1;
-> >  
-> >  	BUG_ON(!PageLocked(page));
-> >  
-> > -	if (offset == 0)
-> > +	if (!partial_page)
-> >  		ClearPageChecked(page);
-> >  
-> >  	if (!page_has_buffers(page))
-> > @@ -2991,6 +2993,9 @@ static void reiserfs_invalidatepage(struct page *page, unsigned int offset,
-> >  		unsigned int next_off = curr_off + bh->b_size;
-> >  		next = bh->b_this_page;
-> >  
-> > +		if (next_off > stop)
-> > +			goto out;
-> > +
-> >  		/*
-> >  		 * is this block fully invalidated?
-> >  		 */
-> > @@ -3009,7 +3014,7 @@ static void reiserfs_invalidatepage(struct page *page, unsigned int offset,
-> >  	 * The get_block cached value has been unconditionally invalidated,
-> >  	 * so real IO is not possible anymore.
-> >  	 */
-> > -	if (!offset && ret) {
-> > +	if (!partial_page && ret) {
-> >  		ret = try_to_release_page(page, 0);
-> >  		/* maybe should BUG_ON(!ret); - neilb */
-> >  	}
-> > -- 
-> > 1.7.7.6
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+So df says 134 GB is used, while du says 60 GB is used.
+No removed but used files, according to lsof.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+How do I best debug what happened to ~70 GB?
+
+This is EC2 kernel, nothing interesting in dmesg:
+
+# uname -a
+Linux ec2.agenteimovel.com.br 3.0.0-12-virtual #20-Ubuntu SMP Fri Oct 7
+18:19:02 UTC 2011 x86_64 GNU/Linux
+
+
+-- 
+Tomasz Chmielewski
+http://www.ptraveler.com
