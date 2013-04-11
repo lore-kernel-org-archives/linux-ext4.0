@@ -1,54 +1,66 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 03/29] ext4: Clear buffer_uninit flag when submitting IO
-Date: Thu, 11 Apr 2013 22:08:50 +0800
-Message-ID: <20130411140850.GD3448@gmail.com>
+Subject: Re: [PATCH 04/29] jbd2: Reduce journal_head size
+Date: Thu, 11 Apr 2013 22:10:26 +0800
+Message-ID: <20130411141026.GE3448@gmail.com>
 References: <1365456754-29373-1-git-send-email-jack@suse.cz>
- <1365456754-29373-4-git-send-email-jack@suse.cz>
+ <1365456754-29373-5-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f52.google.com ([209.85.220.52]:44120 "EHLO
-	mail-pa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751633Ab3DKNvx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Apr 2013 09:51:53 -0400
-Received: by mail-pa0-f52.google.com with SMTP id fb10so917915pad.11
-        for <linux-ext4@vger.kernel.org>; Thu, 11 Apr 2013 06:51:53 -0700 (PDT)
+Received: from mail-pb0-f43.google.com ([209.85.160.43]:43963 "EHLO
+	mail-pb0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752764Ab3DKNx2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Apr 2013 09:53:28 -0400
+Received: by mail-pb0-f43.google.com with SMTP id md4so874358pbc.30
+        for <linux-ext4@vger.kernel.org>; Thu, 11 Apr 2013 06:53:28 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <1365456754-29373-4-git-send-email-jack@suse.cz>
+In-Reply-To: <1365456754-29373-5-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 08, 2013 at 11:32:08PM +0200, Jan Kara wrote:
-> Currently noone cleared buffer_uninit flag. This results in writeback
-> needlessly marking io_end as needing extent conversion scanning extent
-> tree for extents to convert. So clear the buffer_uninit flag once the
-> buffer is submitted for IO and the flag is transformed into
-> EXT4_IO_END_UNWRITTEN flag.
+On Mon, Apr 08, 2013 at 11:32:09PM +0200, Jan Kara wrote:
+> Remove unused t_cow_tid field (ext4 copy-on-write support doesn't seem
+> to be happening) and change b_modified and b_jlist to bitfields thus
+> saving 8 bytes in the structure.
 > 
 > Signed-off-by: Jan Kara <jack@suse.cz>
 Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
 Regards,
                                                 - Zheng
-
 > ---
->  fs/ext4/page-io.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
+>  include/linux/journal-head.h |   11 ++---------
+>  1 files changed, 2 insertions(+), 9 deletions(-)
 > 
-> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-> index da8bddf..efdf0a5 100644
-> --- a/fs/ext4/page-io.c
-> +++ b/fs/ext4/page-io.c
-> @@ -377,7 +377,7 @@ submit_and_retry:
->  	if (ret != bh->b_size)
->  		goto submit_and_retry;
->  	io_end = io->io_end;
-> -	if (buffer_uninit(bh))
-> +	if (test_clear_buffer_uninit(bh))
->  		ext4_set_io_unwritten_flag(inode, io_end);
->  	io_end->size += bh->b_size;
->  	io->io_next_block++;
+> diff --git a/include/linux/journal-head.h b/include/linux/journal-head.h
+> index c18b46f..13a3da2 100644
+> --- a/include/linux/journal-head.h
+> +++ b/include/linux/journal-head.h
+> @@ -31,21 +31,14 @@ struct journal_head {
+>  	/*
+>  	 * Journalling list for this buffer [jbd_lock_bh_state()]
+>  	 */
+> -	unsigned b_jlist;
+> +	unsigned b_jlist:4;
+>  
+>  	/*
+>  	 * This flag signals the buffer has been modified by
+>  	 * the currently running transaction
+>  	 * [jbd_lock_bh_state()]
+>  	 */
+> -	unsigned b_modified;
+> -
+> -	/*
+> -	 * This feild tracks the last transaction id in which this buffer
+> -	 * has been cowed
+> -	 * [jbd_lock_bh_state()]
+> -	 */
+> -	tid_t b_cow_tid;
+> +	unsigned b_modified:1;
+>  
+>  	/*
+>  	 * Copy of the buffer data frozen for writing to the log.
 > -- 
 > 1.7.1
 > 
