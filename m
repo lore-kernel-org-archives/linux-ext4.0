@@ -1,72 +1,51 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: FYI: journal corruption after 305'th xfstest
-Date: Thu, 11 Apr 2013 10:53:23 +0400
-Message-ID: <87hajd4kyk.fsf@openvz.org>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH 1/2 v2] ext4: move ext4_ind_migrate() into migrate.c
+Date: Thu, 11 Apr 2013 10:18:16 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1304111013191.10609@dhcp-1-230.brq.redhat.com>
+References: <1365506687-9216-1-git-send-email-lczerner@redhat.com> <20130411035826.GA18878@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	gnehzuil.liu@gmail.com
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f177.google.com ([209.85.217.177]:38649 "EHLO
-	mail-lb0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752958Ab3DKGx2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Apr 2013 02:53:28 -0400
-Received: by mail-lb0-f177.google.com with SMTP id r10so1254406lbi.22
-        for <linux-ext4@vger.kernel.org>; Wed, 10 Apr 2013 23:53:26 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:49893 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753237Ab3DKISX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 11 Apr 2013 04:18:23 -0400
+In-Reply-To: <20130411035826.GA18878@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Wed, 10 Apr 2013, Theodore Ts'o wrote:
 
-I use recent ext4.git/dev head (9d35f846aa9ea)
-Looks like this is a regression.
+> Date: Wed, 10 Apr 2013 23:58:26 -0400
+> From: Theodore Ts'o <tytso@mit.edu>
+> To: Lukas Czerner <lczerner@redhat.com>
+> Cc: linux-ext4@vger.kernel.org, gnehzuil.liu@gmail.com
+> Subject: Re: [PATCH 1/2 v2] ext4: move ext4_ind_migrate() into migrate.c
+> 
+> On Tue, Apr 09, 2013 at 01:24:46PM +0200, Lukas Czerner wrote:
+> > Move ext4_ind_migrate() into migrate.c file since it makes much more
+> > sense and ext4_ext_migrate() is there as well.
+> > 
+> > Also fix tiny style problem - add spaces around "=" in "i=0".
+> > 
+> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> 
+> I had to regenerate this patch since ext4_ind_migrate has been changed
+> by other patches in the ext4 patch queue, but it's applied now.
 
-FSTYP         -- ext4
-PLATFORM      -- Linux/x86_64 sandy 3.9.0-rc5+
-MKFS_OPTIONS  -- -b1024 -O ^extents /dev/mapper/vzvg-scratch_dev
-MOUNT_OPTIONS -- -o acl,user_xattr /dev/mapper/vzvg-scratch_dev
-/mnt_scratch
+Thanks, but Dmitry is right, the check should be before the
+journal_start() call.
 
-shared/305       [failed, exit status 1] - output mismatch (see
-/root/xfstests-dev.git/results/shared/305.out.bad)
-    --- tests/shared/305.out    2013-04-09 15:53:12.000000000 +0400
-    +++ /root/xfstests-dev.git/results/shared/305.out.bad     2013-04-11
-    10:42:20.000000000 +0400
-    @@ -6,4 +6,5 @@
-     Start fio..
-     Force SCRATCH_DEV device failure
-     Make SCRATCH_DEV device operable again
-    -Disallow global fail_make_request feature
-    +failed: '_scratch_mount'
-    +(see /root/xfstests-dev.git/results/shared/305.full for details)
-     ...
-     (Run 'diff -u tests/shared/305.out
-     /root/xfstests-dev.git/results/shared/305.out.bad' to see the
-     entire diff)
-Ran: shared/305
-Failures: shared/305
-Failed 1 of 1 tests
+I am not sure how much work will it be for you, but would it be
+possible to resend patch to the list when you change it ? Just to
+make sure we do not get unnecessary problems.
 
-Mount failed due to bad journal: EXT4-fs (dm-3): error loading journal
-last two commits in a journal:
-Found expected sequence 395, type 2 (commit block) at block 30358
-Found expected sequence 396, type 5 (revoke table) at block 30359
-Found expected sequence 396, type 1 (descriptor block) at block 30360
-Found expected sequence 396, type 1 (descriptor block) at block 30445
-Found expected sequence 396, type 1 (descriptor block) at block 30530
-Found expected sequence 396, type 1 (descriptor block) at block 30615
-Found expected sequence 396, type 1 (descriptor block) at block 30700
-Found expected sequence 396, type 1 (descriptor block) at block 30785
-Found expected sequence 396, type 1 (descriptor block) at block 30870
-Found expected sequence 396, type 2 (commit block) at block 30879
-Found expected sequence 397, type 5 (revoke table) at block 30880
-Found expected sequence 397, type 1 (descriptor block) at block 30881
-Found expected sequence 397, type 1 (descriptor block) at block 30966
-Found expected sequence 397, type 1 (descriptor block) at block 31051
-Found expected sequence 397, type 1 (descriptor block) at block 31136
-Found expected sequence 397, type 1 (descriptor block) at block 31221
-Found expected sequence 397, type 1 (descriptor block) at block 31306
-Found expected sequence 397, type 1 (descriptor block) at block 31391
-Found expected sequence 397, type 1 (descriptor block) at block 31476
-Found expected sequence 397, type 2 (commit block) at block 31500
-No magic number at block 31501: end of journal.
+Thanks!
+-Lukas
 
-
+> 
+>    	 	    	     	   - Ted
+> 
