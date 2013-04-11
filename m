@@ -1,78 +1,73 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Excessive stall times on ext4 in 3.9-rc2
-Date: Thu, 11 Apr 2013 14:35:12 -0400
-Message-ID: <20130411183512.GA12298@thunk.org>
-References: <20130402142717.GH32241@suse.de>
- <20130402150651.GB31577@thunk.org>
- <20130410105608.GC1910@suse.de>
- <20130410131245.GC4862@thunk.org>
- <20130411170402.GB11656@suse.de>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: Fix data corruption with direct IO read in
+ dioread_nolock mode
+Date: Thu, 11 Apr 2013 23:07:56 +0200
+Message-ID: <20130411210756.GC9379@quack.suse.cz>
+References: <1365438463-23025-1-git-send-email-jack@suse.cz>
+ <20130411132036.GA3448@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	Linux-MM <linux-mm@kvack.org>, Jiri Slaby <jslaby@suse.cz>
-To: Mel Gorman <mgorman@suse.de>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org
+To: Zheng Liu <gnehzuil.liu@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:40308 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756816Ab3DKVH6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 11 Apr 2013 17:07:58 -0400
 Content-Disposition: inline
-In-Reply-To: <20130411170402.GB11656@suse.de>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20130411132036.GA3448@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Apr 11, 2013 at 06:04:02PM +0100, Mel Gorman wrote:
-> > If we're stalling on lock_buffer(), that implies that buffer was being
-> > written, and for some reason it was taking a very long time to
-> > complete.
+On Thu 11-04-13 21:20:36, Zheng Liu wrote:
+> On Mon, Apr 08, 2013 at 06:27:43PM +0200, Jan Kara wrote:
+> > When ext4 is mounted in dioread_nolock mode, it calls
+> > __blockdev_direct_IO() without DIO_LOCKING flag which also means mapping
+> > is not synced before direct IO starts. As a result consistency between
+> > buffered writes and following direct IO reads is broken. More
+> > importantly, if the file is truncated, and extented back, zeroing of the
+> > tail page is not visible to the following direct IO read which will return
+> > stale data.
 > > 
-> 
-> Yes.
-> 
-> > It might be worthwhile to put a timestamp in struct dm_crypt_io, and
-> > record the time when a particular I/O encryption/decryption is getting
-> > queued to the kcryptd workqueues, and when they finally squirt out.
+> > Fix the problem by flushing dirty pages before issuing direct IO read.
 > > 
+> > Signed-off-by: Jan Kara <jack@suse.cz>
+> > ---
+> >  fs/ext4/indirect.c |    4 ++++
+> >  1 files changed, 4 insertions(+), 0 deletions(-)
+> > 
+> > diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+> > index b505a14..c18bf1c 100644
+> > --- a/fs/ext4/indirect.c
+> > +++ b/fs/ext4/indirect.c
+> > @@ -809,6 +809,10 @@ ssize_t ext4_ind_direct_IO(int rw, struct kiocb *iocb,
+> >  
+> >  retry:
+> >  	if (rw == READ && ext4_should_dioread_nolock(inode)) {
+> > +		ret = filemap_write_and_wait_range(inode->i_mapping, offset,
+> > +						   offset + count - 1);
+> > +		if (ret)
+> > +			goto out;
+> >  		if (unlikely(atomic_read(&EXT4_I(inode)->i_unwritten))) {
+> >  			mutex_lock(&inode->i_mutex);
+> >  			ext4_flush_unwritten_io(inode);
 > 
-> That somewhat assumes that dm_crypt was at fault which is not unreasonable
-> but I was skeptical as the workload on dm_crypt was opening a maildir
-> and mostly reads.
+> Hi Jan,
+> 
+> Sorry for the late reply.  I have a question about this patch.  In your
+> patch, we flush dirty pages befoer issuing a dio read.  But we have
+> flushed dirty pages in generic_file_aio_read().  So is it really
+> necessary to flush dirty pages again?
+  Doh, you are right. I didn't notice that. Thanks for correcting me. I was
+seeing a failure in xfstest 091 (fsx using direct IO) with dioread_nolock
+and I thought the missing flush was the culprit (as fsx saw non-zeros in
+the tail of the page that was truncated). After adding the flush I didn't
+see it anymore. But now I'm not able to trigger the failure again
+regardless whether the patch is applied or not. So Ted, please drop the
+patch and I'll watch out if I ever see the failure again.
 
-Hmm... well, I've reviewed all of the places in the ext4 and jbd2
-layer where we call lock_buffer(), and with one exception[1] we're not
-holding the the bh locked any longer than necessary.  There are a few
-places where we grab a spinlock or two before we can do what we need
-to do and then release the lock'ed buffer head, but the only time we
-hold the bh locked for long periods of time is when we submit metadata
-blocks for I/O.
-
-[1] There is one exception in ext4_xattr_release_block() where I
-believe we should move the call to unlock_buffer(bh) before the call
-to ext4_free_blocks(), since we've already elevanted the bh count and
-ext4_free_blocks() does not need to have the bh locked.  It's not
-related to any of the stalls you've repored, though, as near as I can
-tell (none of the stack traces include the ext4 xattr code, and this
-would only affect external extended attribute blocks).
-
-
-Could you code which checks the hold time of lock_buffer(), measuing
-from when the lock is successfully grabbed, to see if you can see if I
-missed some code path in ext4 or jbd2 where the bh is locked and then
-there is some call to some function which needs to block for some
-random reason?  What I'd suggest is putting a timestamp in buffer_head
-structure, which is set by lock_buffer once it is successfully grabbed
-the lock, and then in unlock_buffer(), if it is held for more than a
-second or some such, to dump out the stack trace.
-
-Because at this point, either I'm missing something or I'm beginning
-to suspect that your hard drive (or maybe something the block layer?)
-is simply taking a long time to service an I/O request.  Putting in
-this check should be able to very quickly determine what code path
-and/or which subsystem we should be focused upon.
-
-Thanks,
-
-					- Ted
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
