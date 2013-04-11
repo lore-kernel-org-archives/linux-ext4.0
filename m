@@ -1,65 +1,72 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 1/2 v2] ext4: move ext4_ind_migrate() into migrate.c
-Date: Thu, 11 Apr 2013 09:54:41 +0400
-Message-ID: <87k3o94noe.fsf@openvz.org>
-References: <1365506687-9216-1-git-send-email-lczerner@redhat.com> <20130411035826.GA18878@thunk.org>
+Subject: FYI: journal corruption after 305'th xfstest
+Date: Thu, 11 Apr 2013 10:53:23 +0400
+Message-ID: <87hajd4kyk.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-=-="
-Cc: linux-ext4@vger.kernel.org, gnehzuil.liu@gmail.com
-To: Theodore Ts'o <tytso@mit.edu>, Lukas Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-la0-f41.google.com ([209.85.215.41]:53764 "EHLO
-	mail-la0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752705Ab3DKFyr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Apr 2013 01:54:47 -0400
-Received: by mail-la0-f41.google.com with SMTP id er20so1134879lab.14
-        for <linux-ext4@vger.kernel.org>; Wed, 10 Apr 2013 22:54:45 -0700 (PDT)
-In-Reply-To: <20130411035826.GA18878@thunk.org>
+Received: from mail-lb0-f177.google.com ([209.85.217.177]:38649 "EHLO
+	mail-lb0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752958Ab3DKGx2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Apr 2013 02:53:28 -0400
+Received: by mail-lb0-f177.google.com with SMTP id r10so1254406lbi.22
+        for <linux-ext4@vger.kernel.org>; Wed, 10 Apr 2013 23:53:26 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---=-=-=
 
-On Wed, 10 Apr 2013 23:58:26 -0400, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Tue, Apr 09, 2013 at 01:24:46PM +0200, Lukas Czerner wrote:
-> > Move ext4_ind_migrate() into migrate.c file since it makes much more
-> > sense and ext4_ext_migrate() is there as well.
-> > 
-> > Also fix tiny style problem - add spaces around "=" in "i=0".
-> > 
-> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> 
-> I had to regenerate this patch since ext4_ind_migrate has been changed
-> by other patches in the ext4 patch queue, but it's applied now.
-You have placed it in to wrong position, Obviously check should be performed before
-journal_start()
+I use recent ext4.git/dev head (9d35f846aa9ea)
+Looks like this is a regression.
 
---=-=-=
-Content-Type: application/octet-stream
-Content-Disposition: inline; filename=fix
-Content-Transfer-Encoding: base64
+FSTYP         -- ext4
+PLATFORM      -- Linux/x86_64 sandy 3.9.0-rc5+
+MKFS_OPTIONS  -- -b1024 -O ^extents /dev/mapper/vzvg-scratch_dev
+MOUNT_OPTIONS -- -o acl,user_xattr /dev/mapper/vzvg-scratch_dev
+/mnt_scratch
 
-ZGlmZiAtLWdpdCBhL2ZzL2V4dDQvbWlncmF0ZS5jIGIvZnMvZXh0NC9taWdyYXRlLmMKaW5kZXgg
-OGQ2NDA2Ny4uODA1MjA3MCAxMDA2NDQKLS0tIGEvZnMvZXh0NC9taWdyYXRlLmMKKysrIGIvZnMv
-ZXh0NC9taWdyYXRlLmMKQEAgLTYyNSwxMyArNjI1LDE0IEBAIGludCBleHQ0X2luZF9taWdyYXRl
-KHN0cnVjdCBpbm9kZSAqaW5vZGUpCiAJICAgICghZXh0NF90ZXN0X2lub2RlX2ZsYWcoaW5vZGUs
-IEVYVDRfSU5PREVfRVhURU5UUykpKQogCQlyZXR1cm4gLUVJTlZBTDsKIAorCWlmIChFWFQ0X0hB
-U19ST19DT01QQVRfRkVBVFVSRShpbm9kZS0+aV9zYiwKKwkJCQkgICAgICAgRVhUNF9GRUFUVVJF
-X1JPX0NPTVBBVF9CSUdBTExPQykpCisJCXJldHVybiAtRU9QTk9UU1VQUDsKKwogCWhhbmRsZSA9
-IGV4dDRfam91cm5hbF9zdGFydChpbm9kZSwgRVhUNF9IVF9NSUdSQVRFLCAxKTsKIAlpZiAoSVNf
-RVJSKGhhbmRsZSkpCiAJCXJldHVybiBQVFJfRVJSKGhhbmRsZSk7CiAKLQlpZiAoRVhUNF9IQVNf
-Uk9fQ09NUEFUX0ZFQVRVUkUoaW5vZGUtPmlfc2IsCi0JCQkJICAgICAgIEVYVDRfRkVBVFVSRV9S
-T19DT01QQVRfQklHQUxMT0MpKQotCQlyZXR1cm4gLUVPUE5PVFNVUFA7CiAKIAlkb3duX3dyaXRl
-KCZFWFQ0X0koaW5vZGUpLT5pX2RhdGFfc2VtKTsKIAlyZXQgPSBleHQ0X2V4dF9jaGVja19pbm9k
-ZShpbm9kZSk7Cg==
---=-=-=
+shared/305       [failed, exit status 1] - output mismatch (see
+/root/xfstests-dev.git/results/shared/305.out.bad)
+    --- tests/shared/305.out    2013-04-09 15:53:12.000000000 +0400
+    +++ /root/xfstests-dev.git/results/shared/305.out.bad     2013-04-11
+    10:42:20.000000000 +0400
+    @@ -6,4 +6,5 @@
+     Start fio..
+     Force SCRATCH_DEV device failure
+     Make SCRATCH_DEV device operable again
+    -Disallow global fail_make_request feature
+    +failed: '_scratch_mount'
+    +(see /root/xfstests-dev.git/results/shared/305.full for details)
+     ...
+     (Run 'diff -u tests/shared/305.out
+     /root/xfstests-dev.git/results/shared/305.out.bad' to see the
+     entire diff)
+Ran: shared/305
+Failures: shared/305
+Failed 1 of 1 tests
+
+Mount failed due to bad journal: EXT4-fs (dm-3): error loading journal
+last two commits in a journal:
+Found expected sequence 395, type 2 (commit block) at block 30358
+Found expected sequence 396, type 5 (revoke table) at block 30359
+Found expected sequence 396, type 1 (descriptor block) at block 30360
+Found expected sequence 396, type 1 (descriptor block) at block 30445
+Found expected sequence 396, type 1 (descriptor block) at block 30530
+Found expected sequence 396, type 1 (descriptor block) at block 30615
+Found expected sequence 396, type 1 (descriptor block) at block 30700
+Found expected sequence 396, type 1 (descriptor block) at block 30785
+Found expected sequence 396, type 1 (descriptor block) at block 30870
+Found expected sequence 396, type 2 (commit block) at block 30879
+Found expected sequence 397, type 5 (revoke table) at block 30880
+Found expected sequence 397, type 1 (descriptor block) at block 30881
+Found expected sequence 397, type 1 (descriptor block) at block 30966
+Found expected sequence 397, type 1 (descriptor block) at block 31051
+Found expected sequence 397, type 1 (descriptor block) at block 31136
+Found expected sequence 397, type 1 (descriptor block) at block 31221
+Found expected sequence 397, type 1 (descriptor block) at block 31306
+Found expected sequence 397, type 1 (descriptor block) at block 31391
+Found expected sequence 397, type 1 (descriptor block) at block 31476
+Found expected sequence 397, type 2 (commit block) at block 31500
+No magic number at block 31501: end of journal.
 
 
-> 
->    	 	    	     	   - Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---=-=-=--
