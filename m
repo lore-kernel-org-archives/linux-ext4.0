@@ -1,63 +1,60 @@
-From: Tomasz Chmielewski <mangoo@wpkg.org>
-Subject: Re: something's using space, can't figure out what - how to debug?
-Date: Thu, 11 Apr 2013 11:31:21 +0900
-Message-ID: <20130411113121.3851279e@wpkg.org>
-References: <20130410195606.22a9eff3@wpkg.org>
-	<20130411002643.GA10594@thunk.org>
+From: Frank Zickler <seytekoffice@lavabit.com>
+Subject: Ext4 Prob and nation for a other commerce
+Date: Thu, 11 Apr 2013 04:37:10 +0200
+Message-ID: <516621D6.8030703@lavabit.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-15;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: ext3-users@redhat.com, linux-ext4@vger.kernel.org,
+	debian-l10n-german@lists.debian.org, info@kernelnewbies.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.virtall.com ([178.63.195.102]:38980 "EHLO mail.virtall.com"
+Received: from karen.lavabit.com ([72.249.41.33]:47512 "EHLO karen.lavabit.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762074Ab3DKCbf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Apr 2013 22:31:35 -0400
-In-Reply-To: <20130411002643.GA10594@thunk.org>
+	id S935674Ab3DKCro (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 10 Apr 2013 22:47:44 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 10 Apr 2013 20:26:43 -0400
-Theodore Ts'o <tytso@mit.edu> wrote:
+Um Probleme mit der Website zu melden, schreiben Sie bitte eine E-Mail=20
+auf Englisch an debian-www@lists.debian.org. Rechtschreibfehler in der=20
+deutschen =DCbersetzung senden Sie bitte an=20
+debian-l10n-german@lists.debian.org. Weitere Kontaktinformationen finde=
+n=20
+Sie auf Debians Kontaktseite. Der Quelltext der Website ist verf=FCgbar=
+=2E
 
-> On Wed, Apr 10, 2013 at 07:56:06PM +0900, Tomasz Chmielewski wrote:
-> > # lsof -n|grep /srv
-> > # 
-> > 
-> > 
-> > So df says 134 GB is used, while du says 60 GB is used.
-> > No removed but used files, according to lsof.
-> > 
-> > How do I best debug what happened to ~70 GB?
-> 
-> Well, nothing is using /srv, so why don't you unmount it and run
-> "e2fsck -f /dev/xvdf", and see e2fsck reports in terms of the number
-> of blocks in use, i.e:
-> 
-> /dev/lambda/backup: 581320/4915200 files (0.1% non-contiguous),
-> 6837767/19660800 blocks
+Hi nich Debian and Ext File Management
 
-If it was only so easy!
+Suspicion deleiberate act hadicap of Ext4 Systen,  for raund of NTFS an=
+d=20
+selling a Windows System or other
 
-# lsof -n|grep /srv
+Germany / deutsch
+Verdacht absichtliche Behinderung von Ext4 Systemen um NTFS und Windows=
+=20
+zu verkaufen
 
-# fuser /srv
+The Prob on USB, Ext4 and blocking a File, i can not copy new version o=
+f=20
+this file
+after format is this ok, up to next prob and format, format is no a=20
+sulution.
 
-# ls /sys/block/xvdf/holders/
+the prob is only on USB Baset Sticks
 
-# umount /srv
-umount: /srv: device is busy.
-        (In some cases useful info about processes that use
-         the device is found by lsof(8) or fuser(1))
+MfG
+=46rank Zickler
 
-Yet after reboot, back to normal:
-
-root@ec2:~# df -h /srv
-Filesystem            Size  Used Avail Use% Mounted on
-/dev/xvdf             194G   62G  123G  34% /srv
+seytek.blogspot.de, frankzicklerartpromo.blogspot.de,
+frabkzicklermyfav-fm.blogspot.de
+seytek.blogspot.com, frankzicklerartpromo.blogspot.com,
+frabkzicklermyfav-fm.blogspot.com
 
 
--- 
-Tomasz Chmielewski
-http://www.ptraveler.com
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
