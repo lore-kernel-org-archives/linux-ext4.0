@@ -1,51 +1,91 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 1/2 v2] ext4: move ext4_ind_migrate() into migrate.c
-Date: Thu, 11 Apr 2013 10:18:16 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1304111013191.10609@dhcp-1-230.brq.redhat.com>
-References: <1365506687-9216-1-git-send-email-lczerner@redhat.com> <20130411035826.GA18878@thunk.org>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: [regression][dev] IO failure is hitted by xfstest 083
+Date: Thu, 11 Apr 2013 20:17:40 +0800
+Message-ID: <20130411121740.GA3388@gmail.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	gnehzuil.liu@gmail.com
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49893 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753237Ab3DKISX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 11 Apr 2013 04:18:23 -0400
-In-Reply-To: <20130411035826.GA18878@thunk.org>
+Received: from mail-pd0-f177.google.com ([209.85.192.177]:58685 "EHLO
+	mail-pd0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933510Ab3DKMAl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Apr 2013 08:00:41 -0400
+Received: by mail-pd0-f177.google.com with SMTP id u11so813627pdi.22
+        for <linux-ext4@vger.kernel.org>; Thu, 11 Apr 2013 05:00:41 -0700 (PDT)
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 10 Apr 2013, Theodore Ts'o wrote:
+Hi all,
 
-> Date: Wed, 10 Apr 2013 23:58:26 -0400
-> From: Theodore Ts'o <tytso@mit.edu>
-> To: Lukas Czerner <lczerner@redhat.com>
-> Cc: linux-ext4@vger.kernel.org, gnehzuil.liu@gmail.com
-> Subject: Re: [PATCH 1/2 v2] ext4: move ext4_ind_migrate() into migrate.c
-> 
-> On Tue, Apr 09, 2013 at 01:24:46PM +0200, Lukas Czerner wrote:
-> > Move ext4_ind_migrate() into migrate.c file since it makes much more
-> > sense and ext4_ext_migrate() is there as well.
-> > 
-> > Also fix tiny style problem - add spaces around "=" in "i=0".
-> > 
-> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> 
-> I had to regenerate this patch since ext4_ind_migrate has been changed
-> by other patches in the ext4 patch queue, but it's applied now.
+I run xfstests #083 against dev branch of ext4 tree, and a regression is
+hitted.  This file system is with bigalloc feature.  The error msg looks
+like the following.  I found the regression is introduced by this
+commit: d7ddbabdf6e771b9793aaa7da9c3e9dc4cd376ab
+    ext4: move quota initialization out of inode allocation transaction
 
-Thanks, but Dmitry is right, the check should be before the
-journal_start() call.
+But I doubt this isn't the root cause.
 
-I am not sure how much work will it be for you, but would it be
-possible to resend patch to the list when you change it ? Just to
-make sure we do not get unnecessary problems.
+Regards,
+                                                - Zheng
 
-Thanks!
--Lukas
-
-> 
->    	 	    	     	   - Ted
-> 
+wenqing: run xfstest 083
+kernel: EXT4-fs (sda2): mounted filesystem with ordered data mode. Opts: acl,user_xattr
+kernel: EXT4-fs error (device sda2) in ext4_reserve_inode_write:4955: IO failure
+kernel: EXT4-fs error (device sda2) in ext4_reserve_inode_write:4955: IO failure
+kernel: EXT4-fs error (device sda2) in ext4_reserve_inode_write:4955: IO failure
+kernel: EXT4-fs warning (device sda2): ext4_evict_inode:257: couldn't mark inode dirty (err -5)
+kernel: EXT4-fs warning (device sda2): ext4_evict_inode:257: couldn't mark inode dirty (err -5)
+kernel: EXT4-fs warning (device sda2): ext4_evict_inode:257: couldn't mark inode dirty (err -5)
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: JBD2: Spotted dirty metadata buffer (dev = sda2, blocknr = 0). There's a risk of filesystem corruption in case of system crash.
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: EXT4-fs error (device sda2): ext4_free_inode:319: comm fsstress: bit already cleared for inode 1592
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: EXT4-fs error (device sda2): ext4_free_inode:319: comm fsstress: bit already cleared for inode 699
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: JBD2: Spotted dirty metadata buffer (dev = sda2, blocknr = 0). There's a risk of filesystem corruption in case of system crash.
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: EXT4-fs error (device sda2): ext4_free_inode:319: comm fsstress: bit already cleared for inode 1592
+kernel: EXT4-fs error (device sda2): ext4_free_inode:319: comm fsstress: bit already cleared for inode 1592
+kernel: JBD2: Spotted dirty metadata buffer (dev = sda2, blocknr = 0). There's a risk of filesystem corruption in case of system crash.
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: JBD2: Spotted dirty metadata buffer (dev = sda2, blocknr = 0). There's a risk of filesystem corruption in case of system crash.
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: EXT4-fs error (device sda2): ext4_free_inode:319: comm fsstress: bit already cleared for inode 1592
+kernel: EXT4-fs error (device sda2): ext4_free_inode:319: comm fsstress: bit already cleared for inode 1592
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: JBD2: Spotted dirty metadata buffer (dev = sda2, blocknr = 0). There's a risk of filesystem corruption in case of system crash.
+kernel: EXT4-fs error (device sda2): ext4_free_inode:319: comm fsstress: bit already cleared for inode 699
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: JBD2: Spotted dirty metadata buffer (dev = sda2, blocknr = 0). There's a risk of filesystem corruption in case of system crash.
+kernel: JBD2: Spotted dirty metadata buffer (dev = sda2, blocknr = 0). There's a risk of filesystem corruption in case of system crash.
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: JBD2: Spotted dirty metadata buffer (dev = sda2, blocknr = 0). There's a risk of filesystem corruption in case of system crash.
+kernel: EXT4-fs error (device sda2): ext4_free_inode:319: comm fsstress: bit already cleared for inode 699
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: JBD2: Spotted dirty metadata buffer (dev = sda2, blocknr = 0). There's a risk of filesystem corruption in case of system crash.
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: JBD2: Spotted dirty metadata buffer (dev = sda2, blocknr = 0). There's a risk of filesystem corruption in case of system crash.
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: JBD2: Spotted dirty metadata buffer (dev = sda2, blocknr = 0). There's a risk of filesystem corruption in case of system crash.
+kernel: EXT4-fs error (device sda2): ext4_free_inode:319: comm fsstress: bit already cleared for inode 1592
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
+kernel: EXT4-fs error (device sda2) in __ext4_new_inode:962: IO failure
