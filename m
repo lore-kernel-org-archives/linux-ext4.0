@@ -1,63 +1,90 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH] ext4: Fix data corruption with direct IO read in
- dioread_nolock mode
-Date: Thu, 11 Apr 2013 21:20:36 +0800
-Message-ID: <20130411132036.GA3448@gmail.com>
-References: <1365438463-23025-1-git-send-email-jack@suse.cz>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: FYI: journal corruption after 305'th xfstest
+Date: Thu, 11 Apr 2013 17:08:21 +0400
+Message-ID: <87d2u143lm.fsf@openvz.org>
+References: <87hajd4kyk.fsf@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f44.google.com ([209.85.220.44]:35428 "EHLO
-	mail-pa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751149Ab3DKNDj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Apr 2013 09:03:39 -0400
-Received: by mail-pa0-f44.google.com with SMTP id bi5so893566pad.31
-        for <linux-ext4@vger.kernel.org>; Thu, 11 Apr 2013 06:03:38 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <1365438463-23025-1-git-send-email-jack@suse.cz>
+Received: from mail-la0-f51.google.com ([209.85.215.51]:59278 "EHLO
+	mail-la0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751004Ab3DKNI1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Apr 2013 09:08:27 -0400
+Received: by mail-la0-f51.google.com with SMTP id fo12so1459471lab.10
+        for <linux-ext4@vger.kernel.org>; Thu, 11 Apr 2013 06:08:26 -0700 (PDT)
+In-Reply-To: <87hajd4kyk.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 08, 2013 at 06:27:43PM +0200, Jan Kara wrote:
-> When ext4 is mounted in dioread_nolock mode, it calls
-> __blockdev_direct_IO() without DIO_LOCKING flag which also means mapping
-> is not synced before direct IO starts. As a result consistency between
-> buffered writes and following direct IO reads is broken. More
-> importantly, if the file is truncated, and extented back, zeroing of the
-> tail page is not visible to the following direct IO read which will return
-> stale data.
+On Thu, 11 Apr 2013 10:53:23 +0400, Dmitry Monakhov <dmonakhov@openvz.org> wrote:
 > 
-> Fix the problem by flushing dirty pages before issuing direct IO read.
+> I use recent ext4.git/dev head (9d35f846aa9ea)
+> Looks like this is a regression.
+Ok, nothing serious, just one more weird corner-case.
+This is very old bug in generic error reporting.
+After explicit error was triggered by fault injection knob
+it mark blockdev with an error, but no one will clear it 
+even after umount because (mapping->npages == 0)
+which is true because kill_bdev() will cleanup a device mapping.
+
+Later when we try to replay a journal on next mount we will discover
+an error which happen long long time ago.
+
+Fix is trivial and available here:https://lkml.org/lkml/2013/4/11/186
 > 
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/ext4/indirect.c |    4 ++++
->  1 files changed, 4 insertions(+), 0 deletions(-)
+> FSTYP         -- ext4
+> PLATFORM      -- Linux/x86_64 sandy 3.9.0-rc5+
+> MKFS_OPTIONS  -- -b1024 -O ^extents /dev/mapper/vzvg-scratch_dev
+> MOUNT_OPTIONS -- -o acl,user_xattr /dev/mapper/vzvg-scratch_dev
+> /mnt_scratch
 > 
-> diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-> index b505a14..c18bf1c 100644
-> --- a/fs/ext4/indirect.c
-> +++ b/fs/ext4/indirect.c
-> @@ -809,6 +809,10 @@ ssize_t ext4_ind_direct_IO(int rw, struct kiocb *iocb,
->  
->  retry:
->  	if (rw == READ && ext4_should_dioread_nolock(inode)) {
-> +		ret = filemap_write_and_wait_range(inode->i_mapping, offset,
-> +						   offset + count - 1);
-> +		if (ret)
-> +			goto out;
->  		if (unlikely(atomic_read(&EXT4_I(inode)->i_unwritten))) {
->  			mutex_lock(&inode->i_mutex);
->  			ext4_flush_unwritten_io(inode);
-
-Hi Jan,
-
-Sorry for the late reply.  I have a question about this patch.  In your
-patch, we flush dirty pages befoer issuing a dio read.  But we have
-flushed dirty pages in generic_file_aio_read().  So is it really
-necessary to flush dirty pages again?
-
-Regards,
-                                                - Zheng
+> shared/305       [failed, exit status 1] - output mismatch (see
+> /root/xfstests-dev.git/results/shared/305.out.bad)
+>     --- tests/shared/305.out    2013-04-09 15:53:12.000000000 +0400
+>     +++ /root/xfstests-dev.git/results/shared/305.out.bad     2013-04-11
+>     10:42:20.000000000 +0400
+>     @@ -6,4 +6,5 @@
+>      Start fio..
+>      Force SCRATCH_DEV device failure
+>      Make SCRATCH_DEV device operable again
+>     -Disallow global fail_make_request feature
+>     +failed: '_scratch_mount'
+>     +(see /root/xfstests-dev.git/results/shared/305.full for details)
+>      ...
+>      (Run 'diff -u tests/shared/305.out
+>      /root/xfstests-dev.git/results/shared/305.out.bad' to see the
+>      entire diff)
+> Ran: shared/305
+> Failures: shared/305
+> Failed 1 of 1 tests
+> 
+> Mount failed due to bad journal: EXT4-fs (dm-3): error loading journal
+> last two commits in a journal:
+> Found expected sequence 395, type 2 (commit block) at block 30358
+> Found expected sequence 396, type 5 (revoke table) at block 30359
+> Found expected sequence 396, type 1 (descriptor block) at block 30360
+> Found expected sequence 396, type 1 (descriptor block) at block 30445
+> Found expected sequence 396, type 1 (descriptor block) at block 30530
+> Found expected sequence 396, type 1 (descriptor block) at block 30615
+> Found expected sequence 396, type 1 (descriptor block) at block 30700
+> Found expected sequence 396, type 1 (descriptor block) at block 30785
+> Found expected sequence 396, type 1 (descriptor block) at block 30870
+> Found expected sequence 396, type 2 (commit block) at block 30879
+> Found expected sequence 397, type 5 (revoke table) at block 30880
+> Found expected sequence 397, type 1 (descriptor block) at block 30881
+> Found expected sequence 397, type 1 (descriptor block) at block 30966
+> Found expected sequence 397, type 1 (descriptor block) at block 31051
+> Found expected sequence 397, type 1 (descriptor block) at block 31136
+> Found expected sequence 397, type 1 (descriptor block) at block 31221
+> Found expected sequence 397, type 1 (descriptor block) at block 31306
+> Found expected sequence 397, type 1 (descriptor block) at block 31391
+> Found expected sequence 397, type 1 (descriptor block) at block 31476
+> Found expected sequence 397, type 2 (commit block) at block 31500
+> No magic number at block 31501: end of journal.
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
