@@ -1,84 +1,72 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Excessive stall times on ext4 in 3.9-rc2
-Date: Thu, 11 Apr 2013 23:33:35 +0200
-Message-ID: <20130411213335.GE9379@quack.suse.cz>
-References: <20130402142717.GH32241@suse.de>
- <20130402150651.GB31577@thunk.org>
- <20130410105608.GC1910@suse.de>
- <20130410131245.GC4862@thunk.org>
- <20130411170402.GB11656@suse.de>
- <20130411183512.GA12298@thunk.org>
+From: Hugh Dickins <hughd@google.com>
+Subject: Re: [PATCH v3 10/18] mm: teach truncate_inode_pages_range() to handle
+ non page aligned ranges
+Date: Thu, 11 Apr 2013 15:40:21 -0700 (PDT)
+Message-ID: <alpine.LNX.2.00.1304111528400.820@eggly.anvils>
+References: <1365498867-27782-1-git-send-email-lczerner@redhat.com> <1365498867-27782-11-git-send-email-lczerner@redhat.com> <20130411211851.GD9379@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Mel Gorman <mgorman@suse.de>, linux-ext4@vger.kernel.org,
-	LKML <linux-kernel@vger.kernel.org>, Linux-MM <linux-mm@kvack.org>,
-	Jiri Slaby <jslaby@suse.cz>
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-mm@kvack.org,
+    linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+    linux-ext4@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20130411183512.GA12298@thunk.org>
+In-Reply-To: <20130411211851.GD9379@quack.suse.cz>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu 11-04-13 14:35:12, Ted Tso wrote:
-> On Thu, Apr 11, 2013 at 06:04:02PM +0100, Mel Gorman wrote:
-> > > If we're stalling on lock_buffer(), that implies that buffer was being
-> > > written, and for some reason it was taking a very long time to
-> > > complete.
-> > > 
+On Thu, 11 Apr 2013, Jan Kara wrote:
+> On Tue 09-04-13 11:14:19, Lukas Czerner wrote:
+> > This commit changes truncate_inode_pages_range() so it can handle non
+> > page aligned regions of the truncate. Currently we can hit BUG_ON when
+> > the end of the range is not page aligned, but we can handle unaligned
+> > start of the range.
 > > 
-> > Yes.
+> > Being able to handle non page aligned regions of the page can help file
+> > system punch_hole implementations and save some work, because once we're
+> > holding the page we might as well deal with it right away.
 > > 
-> > > It might be worthwhile to put a timestamp in struct dm_crypt_io, and
-> > > record the time when a particular I/O encryption/decryption is getting
-> > > queued to the kcryptd workqueues, and when they finally squirt out.
-> > > 
+> > In previous commits we've changed ->invalidatepage() prototype to accept
+> > 'length' argument to be able to specify range to invalidate. No we can
+> > use that new ability in truncate_inode_pages_range().
 > > 
-> > That somewhat assumes that dm_crypt was at fault which is not unreasonable
-> > but I was skeptical as the workload on dm_crypt was opening a maildir
-> > and mostly reads.
-> 
-> Hmm... well, I've reviewed all of the places in the ext4 and jbd2
-> layer where we call lock_buffer(), and with one exception[1] we're not
-> holding the the bh locked any longer than necessary.  There are a few
-> places where we grab a spinlock or two before we can do what we need
-> to do and then release the lock'ed buffer head, but the only time we
-> hold the bh locked for long periods of time is when we submit metadata
-> blocks for I/O.
-> 
-> [1] There is one exception in ext4_xattr_release_block() where I
-> believe we should move the call to unlock_buffer(bh) before the call
-> to ext4_free_blocks(), since we've already elevanted the bh count and
-> ext4_free_blocks() does not need to have the bh locked.  It's not
-> related to any of the stalls you've repored, though, as near as I can
-> tell (none of the stack traces include the ext4 xattr code, and this
-> would only affect external extended attribute blocks).
-> 
-> 
-> Could you code which checks the hold time of lock_buffer(), measuing
-> from when the lock is successfully grabbed, to see if you can see if I
-> missed some code path in ext4 or jbd2 where the bh is locked and then
-> there is some call to some function which needs to block for some
-> random reason?  What I'd suggest is putting a timestamp in buffer_head
-> structure, which is set by lock_buffer once it is successfully grabbed
-> the lock, and then in unlock_buffer(), if it is held for more than a
-> second or some such, to dump out the stack trace.
-> 
-> Because at this point, either I'm missing something or I'm beginning
-> to suspect that your hard drive (or maybe something the block layer?)
-> is simply taking a long time to service an I/O request.  Putting in
-> this check should be able to very quickly determine what code path
-> and/or which subsystem we should be focused upon.
-  I think it might be more enlightening if Mel traced which process in
-which funclion is holding the buffer lock. I suspect we'll find out that
-the flusher thread has submitted the buffer for IO as an async write and
-thus it takes a long time to complete in presence of reads which have
-higher priority.
+> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> > Cc: Andrew Morton <akpm@linux-foundation.org>
+> > Cc: Hugh Dickins <hughd@google.com>
+> > ---
+> >  mm/truncate.c |  104 ++++++++++++++++++++++++++++++++++++++++-----------------
+> >  1 files changed, 73 insertions(+), 31 deletions(-)
+> > 
+> > diff --git a/mm/truncate.c b/mm/truncate.c
+> > index fdba083..e2e8a8a 100644
+> > --- a/mm/truncate.c
+> > +++ b/mm/truncate.c
+...
+> >  
+> >  	pagevec_init(&pvec, 0);
+> >  	index = start;
+> > -	while (index <= end && pagevec_lookup(&pvec, mapping, index,
+> > -			min(end - index, (pgoff_t)PAGEVEC_SIZE - 1) + 1)) {
+> > +	while (index < end && pagevec_lookup(&pvec, mapping, index,
+> > +			min(end - index, (pgoff_t)PAGEVEC_SIZE))) {
+>   So does this really work when end == -1 and file has ULONG_MAX pages?
+> Previously it did but now you seem of skip the last page... Otherwise the
+> patch looks good to me.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Recalling earlier discussion of truncate.c (which is indeed schizophrenic
+about it), I believe that MAX_LFS_FILESIZE (and in particular that "-1")
+prevents a file from having more than LONG_MAX pages on any architecture:
+
+#if BITS_PER_LONG==32
+#define MAX_LFS_FILESIZE	(((loff_t)PAGE_CACHE_SIZE << (BITS_PER_LONG-1))-1) 
+#elif BITS_PER_LONG==64
+#define MAX_LFS_FILESIZE 	((loff_t)0x7fffffffffffffffLL)
+#endif
+
+(And if we ever extend that 32-bit range, I would recommend avoiding
+the final wrap-around page, which could easily cause trouble elsewhere.)
+
+Hugh
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
