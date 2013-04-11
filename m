@@ -1,36 +1,32 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: something's using space, can't figure out what - how to debug?
-Date: Wed, 10 Apr 2013 20:26:43 -0400
-Message-ID: <20130411002643.GA10594@thunk.org>
-References: <20130410195606.22a9eff3@wpkg.org>
+Subject: Re: [PATCH] ext4: Fix data corruption with direct IO read in
+ dioread_nolock mode
+Date: Wed, 10 Apr 2013 20:47:33 -0400
+Message-ID: <20130411004733.GB10594@thunk.org>
+References: <1365438463-23025-1-git-send-email-jack@suse.cz>
+ <20130410210821.GB31424@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Tomasz Chmielewski <mangoo@wpkg.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:33333 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:33338 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934997Ab3DKA0s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Apr 2013 20:26:48 -0400
+	id S934600Ab3DKArh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 10 Apr 2013 20:47:37 -0400
 Content-Disposition: inline
-In-Reply-To: <20130410195606.22a9eff3@wpkg.org>
+In-Reply-To: <20130410210821.GB31424@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Apr 10, 2013 at 07:56:06PM +0900, Tomasz Chmielewski wrote:
-> # lsof -n|grep /srv
-> # 
-> 
-> 
-> So df says 134 GB is used, while du says 60 GB is used.
-> No removed but used files, according to lsof.
-> 
-> How do I best debug what happened to ~70 GB?
+On Wed, Apr 10, 2013 at 11:08:21PM +0200, Jan Kara wrote:
+>   Ted, didn't you miss this patch?
 
-Well, nothing is using /srv, so why don't you unmount it and run
-"e2fsck -f /dev/xvdf", and see e2fsck reports in terms of the number
-of blocks in use, i.e:
+I didn't miss it, I was just dealing with the older patches first, and
+waiting to see if anyone would comment on it before I applied it into
+the tree.  (That way I'm not the only person reviewing all of the
+patches.  :-)
 
-/dev/lambda/backup: 581320/4915200 files (0.1% non-contiguous), 6837767/19660800 blocks
+But thanks, I've added it to the ext4 patch queue.
 
-		    		   	       - Ted
+    	    	       	     	 - Ted
