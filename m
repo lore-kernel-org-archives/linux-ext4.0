@@ -1,55 +1,58 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH] jbd2: use kmem_cache_zalloc instead of kmem_cache_alloc/memset
-Date: Fri, 12 Apr 2013 20:24:23 +0800
-Message-ID: <1365769463-22071-1-git-send-email-wenqing.lz@taobao.com>
-Cc: Zheng Liu <wenqing.lz@taobao.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f170.google.com ([209.85.192.170]:52235 "EHLO
-	mail-pd0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753539Ab3DLMHZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Apr 2013 08:07:25 -0400
-Received: by mail-pd0-f170.google.com with SMTP id 10so1387184pdi.1
-        for <linux-ext4@vger.kernel.org>; Fri, 12 Apr 2013 05:07:24 -0700 (PDT)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Excessive stall times on ext4 in 3.9-rc2
+Date: Fri, 12 Apr 2013 11:19:52 -0400
+Message-ID: <20130412151952.GA4944@thunk.org>
+References: <20130402142717.GH32241@suse.de>
+ <20130402150651.GB31577@thunk.org>
+ <20130410105608.GC1910@suse.de>
+ <20130410131245.GC4862@thunk.org>
+ <20130411170402.GB11656@suse.de>
+ <20130411183512.GA12298@thunk.org>
+ <20130411213335.GE9379@quack.suse.cz>
+ <20130412025708.GB7445@thunk.org>
+ <20130412045042.GA30622@dastard>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Mel Gorman <mgorman@suse.de>,
+	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+	Linux-MM <linux-mm@kvack.org>, Jiri Slaby <jslaby@suse.cz>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20130412045042.GA30622@dastard>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+On Fri, Apr 12, 2013 at 02:50:42PM +1000, Dave Chinner wrote:
+> > If that is the case, one possible solution that comes to mind would be
+> > to mark buffer_heads that contain metadata with a flag, so that the
+> > flusher thread can write them back at the same priority as reads.
+> 
+> Ext4 is already using REQ_META for this purpose.
 
-Now jbd2_alloc_handle is only called by new_handle.  So this commit
-uses kmem_cache_zalloc instead of kmem_cache_alloc/memset.
+We're using REQ_META | REQ_PRIO for reads, not writes.
 
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
----
- fs/jbd2/transaction.c | 1 -
- include/linux/jbd2.h  | 2 +-
- 2 files changed, 1 insertion(+), 2 deletions(-)
+> I'm surprised that no-one has suggested "change the IO elevator"
+> yet.....
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 63834eb..3abdad1 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -332,7 +332,6 @@ static handle_t *new_handle(int nblocks)
- 	handle_t *handle = jbd2_alloc_handle(GFP_NOFS);
- 	if (!handle)
- 		return NULL;
--	memset(handle, 0, sizeof(*handle));
- 	handle->h_buffer_credits = nblocks;
- 	handle->h_ref = 1;
- 
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 04c04dc..c9fc7df 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -1146,7 +1146,7 @@ extern struct kmem_cache *jbd2_handle_cache;
- 
- static inline handle_t *jbd2_alloc_handle(gfp_t gfp_flags)
- {
--	return kmem_cache_alloc(jbd2_handle_cache, gfp_flags);
-+	return kmem_cache_zalloc(jbd2_handle_cache, gfp_flags);
- }
- 
- static inline void jbd2_free_handle(handle_t *handle)
--- 
-1.7.12.rc2.18.g61b472e
+Well, testing to see if the stalls go away with the noop schedule is a
+good thing to try just to validate the theory.
 
+The thing is, we do want to make ext4 work well with cfq, and
+prioritizing non-readahead read requests ahead of data writeback does
+make sense.  The issue is with is that metadata writes going through
+the block device could in some cases effectively cause a priority
+inversion when what had previously been an asynchronous writeback
+starts blocking a foreground, user-visible process.
+
+At least, that's the theory; we should confirm that this is indeed
+what is causing the data stalls which Mel is reporting on HDD's before
+we start figuring out how to fix this problem.
+
+   	 	      	     	 - Ted
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
