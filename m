@@ -1,30 +1,58 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 04/29] jbd2: Reduce journal_head size
-Date: Fri, 12 Apr 2013 00:04:39 -0400
-Message-ID: <20130412040439.GE4865@thunk.org>
-References: <1365456754-29373-1-git-send-email-jack@suse.cz>
- <1365456754-29373-5-git-send-email-jack@suse.cz>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: Excessive stall times on ext4 in 3.9-rc2
+Date: Fri, 12 Apr 2013 14:50:42 +1000
+Message-ID: <20130412045042.GA30622@dastard>
+References: <20130402142717.GH32241@suse.de>
+ <20130402150651.GB31577@thunk.org>
+ <20130410105608.GC1910@suse.de>
+ <20130410131245.GC4862@thunk.org>
+ <20130411170402.GB11656@suse.de>
+ <20130411183512.GA12298@thunk.org>
+ <20130411213335.GE9379@quack.suse.cz>
+ <20130412025708.GB7445@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:33718 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750800Ab3DLEEn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 12 Apr 2013 00:04:43 -0400
+To: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	Mel Gorman <mgorman@suse.de>, linux-ext4@vger.kernel.org,
+	LKML <linux-kernel@vger.kernel.org>, Linux-MM <linux-mm@kvack.org>,
+	Jiri Slaby <jslaby@suse.cz>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <1365456754-29373-5-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20130412025708.GB7445@thunk.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Apr 08, 2013 at 11:32:09PM +0200, Jan Kara wrote:
-> Remove unused t_cow_tid field (ext4 copy-on-write support doesn't seem
-> to be happening) and change b_modified and b_jlist to bitfields thus
-> saving 8 bytes in the structure.
+On Thu, Apr 11, 2013 at 10:57:08PM -0400, Theodore Ts'o wrote:
+> On Thu, Apr 11, 2013 at 11:33:35PM +0200, Jan Kara wrote:
+> >   I think it might be more enlightening if Mel traced which process in
+> > which funclion is holding the buffer lock. I suspect we'll find out that
+> > the flusher thread has submitted the buffer for IO as an async write and
+> > thus it takes a long time to complete in presence of reads which have
+> > higher priority.
 > 
-> Signed-off-by: Jan Kara <jack@suse.cz>
+> That's an interesting theory.  If the workload is one which is very
+> heavy on reads and writes, that could explain the high latency.  That
+> would explain why those of us who are using primarily SSD's are seeing
+> the problems, because would be reads are nice and fast.
+> 
+> If that is the case, one possible solution that comes to mind would be
+> to mark buffer_heads that contain metadata with a flag, so that the
+> flusher thread can write them back at the same priority as reads.
 
-Applied for testing in the ext4 dev branch.
+Ext4 is already using REQ_META for this purpose.
 
-						- Ted
+I'm surprised that no-one has suggested "change the IO elevator"
+yet.....
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
