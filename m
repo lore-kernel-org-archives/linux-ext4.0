@@ -1,72 +1,50 @@
-From: Hugh Dickins <hughd@google.com>
-Subject: Re: [PATCH v3 10/18] mm: teach truncate_inode_pages_range() to handle
- non page aligned ranges
-Date: Thu, 11 Apr 2013 15:40:21 -0700 (PDT)
-Message-ID: <alpine.LNX.2.00.1304111528400.820@eggly.anvils>
-References: <1365498867-27782-1-git-send-email-lczerner@redhat.com> <1365498867-27782-11-git-send-email-lczerner@redhat.com> <20130411211851.GD9379@quack.suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Excessive stall times on ext4 in 3.9-rc2
+Date: Thu, 11 Apr 2013 22:57:08 -0400
+Message-ID: <20130412025708.GB7445@thunk.org>
+References: <20130402142717.GH32241@suse.de>
+ <20130402150651.GB31577@thunk.org>
+ <20130410105608.GC1910@suse.de>
+ <20130410131245.GC4862@thunk.org>
+ <20130411170402.GB11656@suse.de>
+ <20130411183512.GA12298@thunk.org>
+ <20130411213335.GE9379@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-mm@kvack.org,
-    linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-    linux-ext4@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Mel Gorman <mgorman@suse.de>, linux-ext4@vger.kernel.org,
+	LKML <linux-kernel@vger.kernel.org>, Linux-MM <linux-mm@kvack.org>,
+	Jiri Slaby <jslaby@suse.cz>
 To: Jan Kara <jack@suse.cz>
 Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20130411211851.GD9379@quack.suse.cz>
+Content-Disposition: inline
+In-Reply-To: <20130411213335.GE9379@quack.suse.cz>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 11 Apr 2013, Jan Kara wrote:
-> On Tue 09-04-13 11:14:19, Lukas Czerner wrote:
-> > This commit changes truncate_inode_pages_range() so it can handle non
-> > page aligned regions of the truncate. Currently we can hit BUG_ON when
-> > the end of the range is not page aligned, but we can handle unaligned
-> > start of the range.
-> > 
-> > Being able to handle non page aligned regions of the page can help file
-> > system punch_hole implementations and save some work, because once we're
-> > holding the page we might as well deal with it right away.
-> > 
-> > In previous commits we've changed ->invalidatepage() prototype to accept
-> > 'length' argument to be able to specify range to invalidate. No we can
-> > use that new ability in truncate_inode_pages_range().
-> > 
-> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> > Cc: Andrew Morton <akpm@linux-foundation.org>
-> > Cc: Hugh Dickins <hughd@google.com>
-> > ---
-> >  mm/truncate.c |  104 ++++++++++++++++++++++++++++++++++++++++-----------------
-> >  1 files changed, 73 insertions(+), 31 deletions(-)
-> > 
-> > diff --git a/mm/truncate.c b/mm/truncate.c
-> > index fdba083..e2e8a8a 100644
-> > --- a/mm/truncate.c
-> > +++ b/mm/truncate.c
-...
-> >  
-> >  	pagevec_init(&pvec, 0);
-> >  	index = start;
-> > -	while (index <= end && pagevec_lookup(&pvec, mapping, index,
-> > -			min(end - index, (pgoff_t)PAGEVEC_SIZE - 1) + 1)) {
-> > +	while (index < end && pagevec_lookup(&pvec, mapping, index,
-> > +			min(end - index, (pgoff_t)PAGEVEC_SIZE))) {
->   So does this really work when end == -1 and file has ULONG_MAX pages?
-> Previously it did but now you seem of skip the last page... Otherwise the
-> patch looks good to me.
+On Thu, Apr 11, 2013 at 11:33:35PM +0200, Jan Kara wrote:
+>   I think it might be more enlightening if Mel traced which process in
+> which funclion is holding the buffer lock. I suspect we'll find out that
+> the flusher thread has submitted the buffer for IO as an async write and
+> thus it takes a long time to complete in presence of reads which have
+> higher priority.
 
-Recalling earlier discussion of truncate.c (which is indeed schizophrenic
-about it), I believe that MAX_LFS_FILESIZE (and in particular that "-1")
-prevents a file from having more than LONG_MAX pages on any architecture:
+That's an interesting theory.  If the workload is one which is very
+heavy on reads and writes, that could explain the high latency.  That
+would explain why those of us who are using primarily SSD's are seeing
+the problems, because would be reads are nice and fast.
 
-#if BITS_PER_LONG==32
-#define MAX_LFS_FILESIZE	(((loff_t)PAGE_CACHE_SIZE << (BITS_PER_LONG-1))-1) 
-#elif BITS_PER_LONG==64
-#define MAX_LFS_FILESIZE 	((loff_t)0x7fffffffffffffffLL)
-#endif
+If that is the case, one possible solution that comes to mind would be
+to mark buffer_heads that contain metadata with a flag, so that the
+flusher thread can write them back at the same priority as reads.
 
-(And if we ever extend that 32-bit range, I would recommend avoiding
-the final wrap-around page, which could easily cause trouble elsewhere.)
+The only problem I can see with this hypothesis is that if this is the
+explanation for what Mel and Jiri are seeing, it's something that
+would have been around for a long time, and would affect ext3 as well
+as ext4.  That isn't quite consistent, however, with Mel's observation
+that this is a probablem which has gotten worse in relatively
+recently.
 
-Hugh
+	  	    	   	    	       - Ted
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
