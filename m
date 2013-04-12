@@ -1,73 +1,93 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] e2fsprogs: allow 0-length xattr values in e2fsck
-Date: Fri, 12 Apr 2013 12:02:37 -0500
-Message-ID: <51683E2D.90406@redhat.com>
-References: <5161BE0A.5070003@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: xfstests failure generic/299
+Date: Fri, 12 Apr 2013 17:03:12 -0400
+Message-ID: <nsxvc7ra2cv.fsf@closure.thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: David Shaw <dshaw@jabberwocky.com>,
-	Harald Reindl <h.reindl@thelounge.net>
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41116 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752866Ab3DLRCq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 12 Apr 2013 13:02:46 -0400
-In-Reply-To: <5161BE0A.5070003@redhat.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:33914 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754185Ab3DLVDR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 12 Apr 2013 17:03:17 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 4/7/13 1:42 PM, Eric Sandeen wrote:
-> e2fsck thinks that this:
-> 
-> # touch mnt/testfile1
-> # setfattr -n "user.test" mnt/testfile1
-> 
-> results in a filesystem with corruption:
-> 
-> Pass 1: Checking inodes, blocks, and sizes
-> Extended attribute in inode 12 has a value size (0) which is invalid
-> Clear? yes
-> 
-> but as far as I can tell, there is absolutely nothing wrong with
-> a 0-length value on an extended attribute.  Just remove the check.
-> 
-> Reported-by: David Shaw <dshaw@jabberwocky.com>
-> Reported-by: Harald Reindl <h.reindl@thelounge.net>
-> Addresses-Red-Hat-Bugzilla: #557959
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Hi Dmitry,
 
-Ted, just a ping on this.  I know there's been a lot going on,so
-wasn't sure if you missed it, or if it's just saved for later.
+I've been noticing that the relatively new test #299 (which I didn't use
+in the previous development cycle) is failing for me, both for the
+current ext4 dev branch, as well as v3.9-rc5-1-g8cde7ad (the
+origin/branch point from Linus's tree for the dev branch).
+
+Is this test passing for you, and is there some patch whic I'm missing
+which addresses this?
 
 Thanks,
--Eric
 
-> ---
-> 
-> Strange that this has been in e2fsck since 2005; apologies to 
-> David in particular for not addressing the bug he filed much sooner,
-> I had assumed that this was some strange corruption, not a simple
-> logic error / change.
-> 
-> diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-> index a20b57b..94df36d 100644
-> --- a/e2fsck/pass1.c
-> +++ b/e2fsck/pass1.c
-> @@ -307,7 +307,7 @@ static void check_ea_in_inode(e2fsck_t ctx, struct problem_context *pctx)
->  		remain -= EXT2_EXT_ATTR_SIZE(entry->e_name_len);
->  
->  		/* check value size */
-> -		if (entry->e_value_size == 0 || entry->e_value_size > remain) {
-> +		if (entry->e_value_size > remain) {
->  			pctx->num = entry->e_value_size;
->  			problem = PR_1_ATTR_VALUE_SIZE;
->  			goto fix;
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+                                        - Ted
 
+
+generic/299             [16:34:59][  155.348963] fio (3364) used
+greatest stack depth: 5280 bytes left
+[  156.195750] fio (3366) used greatest stack depth: 5184 bytes left
+[  156.243934] fio (3363) used greatest stack depth: 4960 bytes left
+^[[A[  361.330343] INFO: task umount:3426 blocked for more than 120
+seconds.
+[  361.331097] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs"
+disables this message.
+[  361.331823]  f4361d90 00000046 f043a000 c16a0ac0 c16a0ac0 75e421ae
+00000028 00000000
+[  361.332620]  00000000 f5ba02a0 c016c753 75e41aee 00000000 f6ad4080
+75e41739 00000028
+[  361.333479]  00000001 00000000 f6ad4080 f4361da4 c020882b 00000000
+f6ad4080 75e40f23
+[  361.334250] Call Trace:
+[  361.334728]  [<c016c753>] ? sched_clock+0x17/0x29
+[  361.335272]  [<c020882b>] ? sched_clock_cpu+0x1e2/0x20e
+[  361.335781]  [<c0f5a34e>] schedule+0xe3/0xf4
+[  361.336182]  [<c0f57361>] schedule_timeout+0x28/0x12b
+[  361.336681]  [<c023ce71>] ? mark_held_locks+0xc1/0xff
+[  361.337156]  [<c0f5d16d>] ? _raw_spin_unlock_irq+0x5f/0xa9
+[  361.337652]  [<c023d156>] ? trace_hardirqs_on_caller+0x2a7/0x332
+[  361.338188]  [<c023d208>] ? trace_hardirqs_on+0x27/0x37
+[  361.338631]  [<c0f5d180>] ? _raw_spin_unlock_irq+0x72/0xa9
+[  361.339095]  [<c0f59fd8>] __wait_for_common+0xfa/0x1a5
+[  361.339534]  [<c0f57339>] ? console_conditional_schedule+0x61/0x61
+[  361.340119]  [<c020628f>] ? try_to_wake_up+0x377/0x377
+[  361.340561]  [<c0f5a25a>] wait_for_completion+0x27/0x38
+[  361.341014]  [<c0372aa1>] writeback_inodes_sb_nr+0x122/0x13b
+[  361.341502]  [<c0f59f38>] ? __wait_for_common+0x5a/0x1a5
+[  361.341963]  [<c0372bee>] writeback_inodes_sb+0x3a/0x4c
+[  361.342413]  [<c037843a>] __sync_filesystem+0x3f/0xa8
+[  361.342848]  [<c037850e>] sync_filesystem+0x6b/0xa8
+[  361.343274]  [<c033782b>] generic_shutdown_super+0x56/0x18c
+[  361.343833]  [<c0337991>] kill_block_super+0x30/0xd2
+[  361.344418]  [<c0337b0f>] deactivate_locked_super+0x3e/0xb9
+[  361.344919]  [<c0338bf3>] deactivate_super+0x69/0x7a
+[  361.345350]  [<c0360827>] mntput_no_expire+0x23b/0x24e
+[  361.345795]  [<c036229c>] sys_umount+0x5f4/0x60c
+[  361.346199]  [<c03622d4>] sys_oldumount+0x20/0x30
+[  361.346607]  [<c0f5d668>] syscall_call+0x7/0xb
+[  361.347027] 1 lock held by umount/3426:
+[  361.347361]  #0:  (&type->s_umount_key#18){++++..}, at: [<c0338bde>]
+deactivate_super+0x54/0x7a
+ [16:40:14] [failed, exit status 1] - output mismatch (see
+ /root/xfstests/results/generic/299.out.bad)
+    --- tests/generic/299.out   2013-04-05 21:41:17.000000000 -0400
+    +++ /root/xfstests/results/generic/299.out.bad      2013-04-12
+    16:40:14.678565323 -0400
+    @@ -3,3 +3,6 @@
+     Run fio with random aio-dio pattern
+     
+     Start fallocate/truncate loop
+    +./common/rc: line 2055:  3353 Segmentation fault      "$@" >>
+    $seqres.full 2>&1
+    +failed: '/root/xfstests/bin/fio /tmp/3152-299.fio'
+    +(see /root/xfstests/results/generic/299.full for details)
+     ...
+     (Run 'diff -u tests/generic/299.out
+    /root/xfstests/results/generic/299.out.bad' to see the entire diff)
+Ran: generic/299
+Failures: generic/299
