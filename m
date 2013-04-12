@@ -1,72 +1,55 @@
-From: Tvrtko Ursulin <tvrtko.ursulin@onelan.co.uk>
-Subject: Re: Excessive stall times on ext4 in 3.9-rc2
-Date: Fri, 12 Apr 2013 11:18:13 +0100
-Message-ID: <7098047.RSyYY1KrfL@deuteros>
-References: <20130402142717.GH32241@suse.de> <20130411213335.GE9379@quack.suse.cz> <20130412025708.GB7445@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7Bit
-Cc: Jan Kara <jack@suse.cz>, Mel Gorman <mgorman@suse.de>, linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>, Linux-MM <linux-mm@kvack.org>, Jiri Slaby <jslaby@suse.cz>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20130412025708.GB7445@thunk.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: [PATCH] jbd: use kmem_cache_zalloc instead of kmem_cache_alloc/memset
+Date: Fri, 12 Apr 2013 20:24:06 +0800
+Message-ID: <1365769446-22034-1-git-send-email-wenqing.lz@taobao.com>
+Cc: Zheng Liu <wenqing.lz@taobao.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pd0-f181.google.com ([209.85.192.181]:35091 "EHLO
+	mail-pd0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753539Ab3DLMHJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Apr 2013 08:07:09 -0400
+Received: by mail-pd0-f181.google.com with SMTP id y10so1373987pdj.26
+        for <linux-ext4@vger.kernel.org>; Fri, 12 Apr 2013 05:07:08 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+From: Zheng Liu <wenqing.lz@taobao.com>
 
-Hi all,
+Now jbd_alloc_handle is only called by new_handle.  So this commit
+uses kmem_cache_zalloc instead of kmem_cache_alloc/memset.
 
-On Thursday 11 April 2013 22:57:08 Theodore Ts'o wrote:
-> That's an interesting theory.  If the workload is one which is very
-> heavy on reads and writes, that could explain the high latency.  That
-> would explain why those of us who are using primarily SSD's are seeing
-> the problems, because would be reads are nice and fast.
-> 
-> If that is the case, one possible solution that comes to mind would be
-> to mark buffer_heads that contain metadata with a flag, so that the
-> flusher thread can write them back at the same priority as reads.
-> 
-> The only problem I can see with this hypothesis is that if this is the
-> explanation for what Mel and Jiri are seeing, it's something that
-> would have been around for a long time, and would affect ext3 as well
-> as ext4.  That isn't quite consistent, however, with Mel's observation
-> that this is a probablem which has gotten worse in relatively
-> recently.
+Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+---
+ fs/jbd/transaction.c | 1 -
+ include/linux/jbd.h  | 2 +-
+ 2 files changed, 1 insertion(+), 2 deletions(-)
 
-Dropping in as a casual observer and having missed the start of the thread, 
-risking that I will just muddle the water for you.
+diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
+index 071d690..e3e255c 100644
+--- a/fs/jbd/transaction.c
++++ b/fs/jbd/transaction.c
+@@ -245,7 +245,6 @@ static handle_t *new_handle(int nblocks)
+ 	handle_t *handle = jbd_alloc_handle(GFP_NOFS);
+ 	if (!handle)
+ 		return NULL;
+-	memset(handle, 0, sizeof(*handle));
+ 	handle->h_buffer_credits = nblocks;
+ 	handle->h_ref = 1;
+ 
+diff --git a/include/linux/jbd.h b/include/linux/jbd.h
+index c8f3297..7e0b622 100644
+--- a/include/linux/jbd.h
++++ b/include/linux/jbd.h
+@@ -887,7 +887,7 @@ extern struct kmem_cache *jbd_handle_cache;
+ 
+ static inline handle_t *jbd_alloc_handle(gfp_t gfp_flags)
+ {
+-	return kmem_cache_alloc(jbd_handle_cache, gfp_flags);
++	return kmem_cache_zalloc(jbd_handle_cache, gfp_flags);
+ }
+ 
+ static inline void jbd_free_handle(handle_t *handle)
+-- 
+1.7.12.rc2.18.g61b472e
 
-I had a similar problem for quite a while with ext4, at least that was my 
-conclusion since the fix was to migrate one filesystem to xfs which fixed it 
-for me. Time period when I observed this was between 3.5 and 3.7 kernels.
-
-Situation was I had an ext4 filesystem (on top of LVM, which was on top of MD 
-RAID 1, which was on top of two mechanical hard drives) which was dedicated to 
-holding a large SVN check-out. Other filesystems were also ext4 on different 
-logical volumes (but same spindles).
-
-Symptoms were long stalls of everything (including window management!) on a 
-relatively heavily loaded desktop (which was KDE). Stalls would last anything 
-from five to maybe even 30 seconds. Not sure exactly but long enough that you 
-think the system has actually crashed. I couldn't even switch away to a 
-different virtual terminal during the stall, nothing.
-
-Eventually I traced it down to kdesvn (subversion client) periodically 
-refreshing (or something) it's metadata and hence generating some IO on that 
-dedicated filesystem. That combined with some other desktop activity had an 
-effect of stalling everything else. I thought it was very weird, but I suppose 
-KDE and all the rest nowadays do to much IO in everything they do.
-
-Following a hunch I reformatted that filesystem as XFS which fixed the 
-problem.
-
-I can't reproduce this now to run any tests so I know this is not very helpful 
-now. But perhaps some of the info will be useful to someone.
-
-Tvrtko
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
