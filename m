@@ -1,34 +1,38 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Fix data corruption with direct IO read in
- dioread_nolock mode
-Date: Thu, 11 Apr 2013 23:18:37 -0400
-Message-ID: <20130412031837.GA4865@thunk.org>
-References: <1365438463-23025-1-git-send-email-jack@suse.cz>
- <20130411132036.GA3448@gmail.com>
- <20130411210756.GC9379@quack.suse.cz>
+Subject: Re: [PATCH] ext4: defragmentation code cleanup
+Date: Thu, 11 Apr 2013 23:33:11 -0400
+Message-ID: <20130412033311.GB4865@thunk.org>
+References: <1365520559-6622-1-git-send-email-dmonakhov@openvz.org>
+ <516509FD.7060209@rs.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Zheng Liu <gnehzuil.liu@gmail.com>, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>, linux-ext4@vger.kernel.org
+To: Akira Fujita <a-fujita@rs.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:33700 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:33704 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751504Ab3DLDSn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 11 Apr 2013 23:18:43 -0400
+	id S1750731Ab3DLDdS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 11 Apr 2013 23:33:18 -0400
 Content-Disposition: inline
-In-Reply-To: <20130411210756.GC9379@quack.suse.cz>
+In-Reply-To: <516509FD.7060209@rs.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Apr 11, 2013 at 11:07:56PM +0200, Jan Kara wrote:
->   Doh, you are right. I didn't notice that. Thanks for correcting me. I was
-> seeing a failure in xfstest 091 (fsx using direct IO) with dioread_nolock
-> and I thought the missing flush was the culprit (as fsx saw non-zeros in
-> the tail of the page that was truncated). After adding the flush I didn't
-> see it anymore. But now I'm not able to trigger the failure again
-> regardless whether the patch is applied or not. So Ted, please drop the
-> patch and I'll watch out if I ever see the failure again.
+On Wed, Apr 10, 2013 at 03:43:09PM +0900, Akira Fujita wrote:
+> Hi,
+> 
+> (2013/04/10 0:15), Dmitry Monakhov wrote:
+> > - grab_cache_page_write_begin() may not wait on page's writeback since
+> >    (1d1d1a767206). But it is still reasonable to wait on page's writeback
+> >    here in order to be on the safe side.
+> > 
+> > - Fix miss typo: pass 'length' instead of 'end' to __block_write_begin()
+> >    https://bugzilla.kernel.org/show_bug.cgi?id=56241
+> 
+> Looks good to me, thanks.
+> 
+> Reviewed-by: Akira Fujita <a-fujita.rs.jp.nec.com>
 
-Dropped.
+Applied, thanks.
 
 					- Ted
