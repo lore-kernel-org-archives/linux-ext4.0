@@ -1,48 +1,79 @@
-From: Zach Brown <zab@redhat.com>
-Subject: Re: [PATCH 1/2] ext4: fix readdir error in case
- inline_data+dir_index.
-Date: Fri, 12 Apr 2013 14:55:27 -0700
-Message-ID: <20130412215527.GA29807@lenny.home.zabbo.net>
-References: <1365608030-3806-1-git-send-email-tm@tao.ma>
- <1365608228-3950-1-git-send-email-tm@tao.ma>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: Excessive stall times on ext4 in 3.9-rc2
+Date: Sat, 13 Apr 2013 11:23:41 +1000
+Message-ID: <20130413012341.GJ30622@dastard>
+References: <20130402142717.GH32241@suse.de>
+ <20130402150651.GB31577@thunk.org>
+ <20130410105608.GC1910@suse.de>
+ <20130410131245.GC4862@thunk.org>
+ <20130411170402.GB11656@suse.de>
+ <20130411183512.GA12298@thunk.org>
+ <20130411213335.GE9379@quack.suse.cz>
+ <20130412025708.GB7445@thunk.org>
+ <20130412045042.GA30622@dastard>
+ <20130412151952.GA4944@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Tao Ma <tm@tao.ma>
+To: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	Mel Gorman <mgorman@suse.de>, linux-ext4@vger.kernel.org,
+	LKML <linux-kernel@vger.kernel.org>,
+	Linux-MM <linux-mm@kvack.org>, Jiri Slaby <jslaby@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32203 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752784Ab3DLVza (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 12 Apr 2013 17:55:30 -0400
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:12077 "EHLO
+	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752851Ab3DMBXp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 12 Apr 2013 21:23:45 -0400
 Content-Disposition: inline
-In-Reply-To: <1365608228-3950-1-git-send-email-tm@tao.ma>
+In-Reply-To: <20130412151952.GA4944@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Apr 10, 2013 at 11:37:07PM +0800, Tao Ma wrote:
-> From: Tao Ma <boyu.mt@taobao.com>
+On Fri, Apr 12, 2013 at 11:19:52AM -0400, Theodore Ts'o wrote:
+> On Fri, Apr 12, 2013 at 02:50:42PM +1000, Dave Chinner wrote:
+> > > If that is the case, one possible solution that comes to mind would be
+> > > to mark buffer_heads that contain metadata with a flag, so that the
+> > > flusher thread can write them back at the same priority as reads.
+> > 
+> > Ext4 is already using REQ_META for this purpose.
 > 
-> Zach reported a problem that if inline data is enabled, we don't
-> tell the difference between the offset of '.' and '..'. And a
-> getdents will fail if the user only want to get '.' and what's worse,
-> if there is a conversion happens when the user calls getdents
-> many times, he/she may get the same entry twice.
+> We're using REQ_META | REQ_PRIO for reads, not writes.
 > 
-> In theroy, a dir block would also fail if it is converted to a
-> hashed-index based dir since f_pos will become a hash value, not the
-> real one, but it doesn't happen. And a deep investigation
-> shows that we uses a hash based solution even for a normal dir if
-> the dir_index feature is enabled.
+> > I'm surprised that no-one has suggested "change the IO elevator"
+> > yet.....
 > 
-> So this patch just adds a new htree_inlinedir_to_tree for inline dir,
-> and if we find that the hash index is supported, we will do like what
-> we do for a dir block.
+> Well, testing to see if the stalls go away with the noop schedule is a
+> good thing to try just to validate the theory.
 
-Mmm, I like the sound of that fix.  Nice and simple.
+Exactly.
 
-The little test app that was seeing duplicate entries now sees stable
-f_pos values and no dupes after the patch.  So I think this works.
+> The thing is, we do want to make ext4 work well with cfq, and
+> prioritizing non-readahead read requests ahead of data writeback does
+> make sense.  The issue is with is that metadata writes going through
+> the block device could in some cases effectively cause a priority
+> inversion when what had previously been an asynchronous writeback
+> starts blocking a foreground, user-visible process.
 
-Thanks for fixing this.
+Here's the historic problem with CFQ: it's scheduling algorithms
+change from release to release, and so what you tune the filesystem
+to for this release is likely to cause different behaviour
+in a few releases time.
 
-- z
+We've had this problem time and time again with CFQ+XFS, so we
+stopped trying to "tune" to a particular elevator long ago.  The
+best you can do it tag the Io as appropriately as possible (e.g.
+metadata with REQ_META, sync IO with ?_SYNC, etc), and then hope CFQ
+hasn't been broken since the last release....
+
+> At least, that's the theory; we should confirm that this is indeed
+> what is causing the data stalls which Mel is reporting on HDD's before
+> we start figuring out how to fix this problem.
+
+*nod*.
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
