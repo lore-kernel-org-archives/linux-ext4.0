@@ -1,90 +1,32 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 2/2] xfstests: fix fio's arguments
-Date: Mon, 15 Apr 2013 15:09:48 +0400
-Message-ID: <1366024188-21756-2-git-send-email-dmonakhov@openvz.org>
-References: <1366024188-21756-1-git-send-email-dmonakhov@openvz.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: xfstests failure generic/299
+Date: Mon, 15 Apr 2013 14:43:18 -0400
+Message-ID: <20130415184318.GA5602@thunk.org>
+References: <nsxvc7ra2cv.fsf@closure.thunk.org>
+ <87sj2uokzc.fsf@openvz.org>
+ <20130414224712.GC12542@thunk.org>
+ <87k3o4xih1.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, Dmitry Monakhov <dmonakhov@openvz.org>,
-	linux-ext4@vger.kernel.org, dchinner@redhat.com
-To: xfs@oss.sgi.com
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <1366024188-21756-1-git-send-email-dmonakhov@openvz.org>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:34398 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756677Ab3DOSnX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 15 Apr 2013 14:43:23 -0400
+Content-Disposition: inline
+In-Reply-To: <87k3o4xih1.fsf@openvz.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Option 'group_reporting' semantics was changes for recent fio versions
-In fact we do not need it here, let's just drop it.
+On Mon, Apr 15, 2013 at 01:15:38PM +0400, Dmitry Monakhov wrote:
+> > Unfortunately, I don't have the time to debug this, so at least for
+> > now I'm going to exclude generic/299 from my automated test runs.
+> Actually fix is quite simple, after this everything works fine.
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- tests/ext4/301 |    1 -
- tests/ext4/302 |    1 -
- tests/ext4/303 |    1 -
- tests/ext4/304 |    1 -
- 4 files changed, 0 insertions(+), 4 deletions(-)
+Thanks for the patch!  I take it fio isn't gcc -Wall clean?  
 
-diff --git a/tests/ext4/301 b/tests/ext4/301
-index b6c2f11..e1583d4 100755
---- a/tests/ext4/301
-+++ b/tests/ext4/301
-@@ -59,7 +59,6 @@ filesize=${FILE_SIZE}
- size=999G
- buffered=0
- fadvise_hint=0
--group_reporting
- 
- #################################
- # Test1
-diff --git a/tests/ext4/302 b/tests/ext4/302
-index 9307ab4..abca805 100644
---- a/tests/ext4/302
-+++ b/tests/ext4/302
-@@ -59,7 +59,6 @@ filesize=${FILE_SIZE}
- size=999G
- buffered=0
- fadvise_hint=0
--group_reporting
- 
- ##########################################
- # Test2
-diff --git a/tests/ext4/303 b/tests/ext4/303
-index 84d8f7b..7051576 100644
---- a/tests/ext4/303
-+++ b/tests/ext4/303
-@@ -59,7 +59,6 @@ filesize=${FILE_SIZE}
- size=999G
- buffered=0
- fadvise_hint=0
--group_reporting
- 
- #################################
- # Test3
-diff --git a/tests/ext4/304 b/tests/ext4/304
-index 7b90f1d..5d15ecb 100644
---- a/tests/ext4/304
-+++ b/tests/ext4/304
-@@ -60,7 +60,6 @@ filesize=${FILE_SIZE}
- size=999G
- buffered=0
- fadvise_hint=0
--group_reporting
- 
- #################################
- # Test4
--- 
-1.7.1
+Since otherwise this should have been caught much earlier....  :-(
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+       	       	       	      	     - Ted
