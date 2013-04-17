@@ -1,34 +1,89 @@
-From: Subranshu Patel <spatel.ml@gmail.com>
-Subject: fsck memory usage
-Date: Wed, 17 Apr 2013 20:40:08 +0530
-Message-ID: <CAEUQceh3Wm6LZpGQnXNjh0c9WbO8S70D5-KYjY8anup80WbLHQ@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] mke2fs: add discard to default mke2fs.conf and disable by
+ default
+Date: Wed, 17 Apr 2013 15:04:58 -0700
+Message-ID: <516F1C8A.9040702@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qa0-f53.google.com ([209.85.216.53]:60495 "EHLO
-	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S966605Ab3DQPKJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Apr 2013 11:10:09 -0400
-Received: by mail-qa0-f53.google.com with SMTP id p6so927444qad.12
-        for <linux-ext4@vger.kernel.org>; Wed, 17 Apr 2013 08:10:08 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:26411 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S965558Ab3DQWE6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 17 Apr 2013 18:04:58 -0400
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r3HM4wwO011520
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Wed, 17 Apr 2013 18:04:58 -0400
+Received: from Liberator-563.local (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id r3HM4wcA003000
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 17 Apr 2013 18:04:58 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I performed some recovery (fsck) tests with large EXT4 filesystem. The
-filesystem size was 500GB (3 million files, 5000 directories).
-Perfomed force recovery on the clean filesystem and measured the
-memory usage, which was around 2 GB.
+Discard is a very big hammer.  If it succeeds, there's no undo
+or going back; on the other hand, on some devices the giant discard
+issued at mkfs time makes them go offline.  :(
 
-Then I performed metadata corruption - 10% of the files, 10% of the
-directories and some superblock attributes using debugfs. Then I
-executed fsck to find a memory usage of around 8GB, a much larger
-value.
+Although I'm reluctant to waffle back and forth on default behavior,
+I think this disabling it by default the prudent thing to do.
 
-1. Is there a way to reduce the memory usage (apart from scratch_files
-option as it increases the recovery time time)
+This patch also adds the discard option into the default mke2fs.conf
+file; although it could be set, it was not in the template.
 
-2. This question is not related to this EXT4 mailing list. But in real
-scenario how this kind of situation (large memory usage) is handled in
-large scale filesystem deployment when actual filesystem corruption
-occurs (may be due to some fault in hardware/controller)
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+If disabling by default isn't desired, we should at least include
+the mke2fs.conf.in change (set to 1).
+
+Thanks,
+-Eric
+
+diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
+index 023ba49..a005eca 100644
+--- a/misc/mke2fs.8.in
++++ b/misc/mke2fs.8.in
+@@ -277,11 +277,11 @@ Attempt to discard blocks at mkfs time (discarding blocks initially is useful
+ on solid state devices and sparse / thin-provisioned storage). When the device
+ advertises that discard also zeroes data (any subsequent read after the discard
+ and before write returns zero), then mark all not-yet-zeroed inode tables as
+-zeroed. This significantly speeds up filesystem initialization. This is set
+-as default.
++zeroed. This significantly speeds up filesystem initialization. This is disabled
++by default.
+ .TP
+ .BI nodiscard
+-Do not attempt to discard blocks at mkfs time.
++Do not attempt to discard blocks at mkfs time.  This is the default.
+ .TP
+ .BI quotatype
+ Specify which quota type ('usr' or 'grp') is to be initialized. This
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index bbf477a..d723ee7 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -84,7 +84,7 @@ int	cflag;
+ int	verbose;
+ int	quiet;
+ int	super_only;
+-int	discard = 1;	/* attempt to discard device before fs creation */
++int	discard;	/* attempt to discard device before fs creation? */
+ int	direct_io;
+ int	force;
+ int	noaction;
+diff --git a/misc/mke2fs.conf.in b/misc/mke2fs.conf.in
+index 178733f..db6decb 100644
+--- a/misc/mke2fs.conf.in
++++ b/misc/mke2fs.conf.in
+@@ -2,6 +2,7 @@
+ 	base_features = sparse_super,filetype,resize_inode,dir_index,ext_attr
+ 	default_mntopts = acl,user_xattr
+ 	enable_periodic_fsck = 0
++	discard = 0
+ 	blocksize = 4096
+ 	inode_size = 256
+ 	inode_ratio = 16384
+
