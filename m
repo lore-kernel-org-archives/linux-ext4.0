@@ -1,129 +1,34 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 1/2] blkdev: add flush generation counter
-Date: Wed, 17 Apr 2013 12:46:43 +0400
-Message-ID: <87sj2psfws.fsf@openvz.org>
-References: <87wqs4kiyi.fsf@openvz.org> <1365968068-11766-1-git-send-email-dmonakhov@openvz.org> <20130415141439.GH2299@quack.suse.cz>
+From: Subranshu Patel <spatel.ml@gmail.com>
+Subject: fsck memory usage
+Date: Wed, 17 Apr 2013 20:40:08 +0530
+Message-ID: <CAEUQceh3Wm6LZpGQnXNjh0c9WbO8S70D5-KYjY8anup80WbLHQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	jack@suse.cz, axboe@kernel.dk
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=UTF-8
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-la0-f43.google.com ([209.85.215.43]:43216 "EHLO
-	mail-la0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965881Ab3DQIqt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Apr 2013 04:46:49 -0400
-In-Reply-To: <20130415141439.GH2299@quack.suse.cz>
+Received: from mail-qa0-f53.google.com ([209.85.216.53]:60495 "EHLO
+	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S966605Ab3DQPKJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Apr 2013 11:10:09 -0400
+Received: by mail-qa0-f53.google.com with SMTP id p6so927444qad.12
+        for <linux-ext4@vger.kernel.org>; Wed, 17 Apr 2013 08:10:08 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 15 Apr 2013 16:14:39 +0200, Jan Kara <jack@suse.cz> wrote:
-> On Sun 14-04-13 23:34:27, Dmitry Monakhov wrote:
-> > Callers may use this counter to optimize flushes
-> > 
-> > Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> > ---
-> >  block/blk-core.c       |    1 +
-> >  block/blk-flush.c      |    3 ++-
-> >  include/linux/blkdev.h |    1 +
-> >  3 files changed, 4 insertions(+), 1 deletions(-)
-> > 
-> > diff --git a/block/blk-core.c b/block/blk-core.c
-> > index 074b758..afb5a4b 100644
-> > --- a/block/blk-core.c
-> > +++ b/block/blk-core.c
-> > @@ -537,6 +537,7 @@ void blk_cleanup_queue(struct request_queue *q)
-> >  	spin_unlock_irq(lock);
-> >  	mutex_unlock(&q->sysfs_lock);
-> >  
-> > +	atomic_set(&q->flush_tag, 0);
-> >  	/*
-> >  	 * Drain all requests queued before DYING marking. Set DEAD flag to
-> >  	 * prevent that q->request_fn() gets invoked after draining finished.
-> > diff --git a/block/blk-flush.c b/block/blk-flush.c
-> > index cc2b827..b1adc75 100644
-> > --- a/block/blk-flush.c
-> > +++ b/block/blk-flush.c
-> > @@ -203,7 +203,7 @@ static void flush_end_io(struct request *flush_rq, int error)
-> >  	/* account completion of the flush request */
-> >  	q->flush_running_idx ^= 1;
-> >  	elv_completed_request(q, flush_rq);
-> > -
-> > +	atomic_inc(&q->flush_tag);
-> >  	/* and push the waiting requests to the next stage */
-> >  	list_for_each_entry_safe(rq, n, running, flush.list) {
-> >  		unsigned int seq = blk_flush_cur_seq(rq);
-> > @@ -268,6 +268,7 @@ static bool blk_kick_flush(struct request_queue *q)
-> >  	q->flush_rq.end_io = flush_end_io;
-> >  
-> >  	q->flush_pending_idx ^= 1;
-> > +	atomic_inc(&q->flush_tag);
-> >  	list_add_tail(&q->flush_rq.queuelist, &q->queue_head);
-> >  	return true;
-> >  }
->   But this doesn't quite work, does it? When fs reads flush_tag counter,
-> CACHE_FLUSH command can be already issued so you are not sure how the IO
-> you are issuing relates to the cache flush in flight. If you want to make
-> this work, you really need two counters - one for flush submissions and one
-> for flush completions. Fs would need to read the submission counter before
-> issuing the IO and the completion counter when it wants to make sure date is
-> on the stable storage. But it all gets somewhat complex and I'm not sure
-> it's worth it given the block layer tries to merge flush requests by
-> itself. But you can try for correct implementation and measure the
-> performance impact of course...
+I performed some recovery (fsck) tests with large EXT4 filesystem. The
+filesystem size was 500GB (3 million files, 5000 directories).
+Perfomed force recovery on the clean filesystem and measured the
+memory usage, which was around 2 GB.
 
-Probably I've missed good comments, but I've tried to make things correct
-Here are an flush implementation assumptions from block/blk-flush.c:
+Then I performed metadata corruption - 10% of the files, 10% of the
+directories and some superblock attributes using debugfs. Then I
+executed fsck to find a memory usage of around 8GB, a much larger
+value.
 
-Currently, the following conditions are used to determine when to e flush.
+1. Is there a way to reduce the memory usage (apart from scratch_files
+option as it increases the recovery time time)
 
-C1. At any given time, only one flush shall be in progress.  This is
-    double buffering sufficient.
-C2. Flush is deferred if any request is executing DATA of its ence.
-    This avoids issuing separate POSTFLUSHes for requests which ed
-    PREFLUSH.
-C3. The second condition is ignored if there is a request which has
-    waited longer than FLUSH_PENDING_TIMEOUT.  This is to avoid
-    starvation in the unlikely case where there are continuous am of
-    FUA (without FLUSH) requests.
-
-So if we will increment flush_tag counter in two places:
-blk_kick_flush: the place where flush request is issued
-flush_end_io : the place where flush is completed
-And by using rule (C1) we can guarantee that
-
-if (flush_tag & 0x1 == 1) then flush_tag  is in progress
-if (flush_tag & 0x1 == 0) then (flush_tag & ~(0x1)) completed
-In other words we can define it as:
-
-FLUSH_TAG_IDX    = (flush_tag +1) & ~0x1
-FLUSH_TAG_STATE  = flush_tag & 0x1 ? IN_PROGRESS : COMPLETED
-
-After that we can define rules for flush optimization:
-We can be sure that our data was flushed only if:
-1) data's bio was completed before flush request was QUEUED
-   and COMPLETED
-So in terms of formulas we can write it like follows:
-is_data_flushed = (blkdev->flush_tag & ~(0x1)) >
-                  ((data->flush_tag + 0x1) & (~0x1))
-
-> 
-> 								Honza
-> > diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
-> > index 78feda9..e079fbd 100644
-> > --- a/include/linux/blkdev.h
-> > +++ b/include/linux/blkdev.h
-> > @@ -416,6 +416,7 @@ struct request_queue {
-> >  	unsigned int		flush_queue_delayed:1;
-> >  	unsigned int		flush_pending_idx:1;
-> >  	unsigned int		flush_running_idx:1;
-> > +	atomic_t		flush_tag;
-> >  	unsigned long		flush_pending_since;
-> >  	struct list_head	flush_queue[2];
-> >  	struct list_head	flush_data_in_flight;
-> > -- 
-> > 1.7.1
-> > 
-> -- 
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
+2. This question is not related to this EXT4 mailing list. But in real
+scenario how this kind of situation (large memory usage) is handled in
+large scale filesystem deployment when actual filesystem corruption
+occurs (may be due to some fault in hardware/controller)
