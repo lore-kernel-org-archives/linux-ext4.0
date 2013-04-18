@@ -1,83 +1,305 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: fsck memory usage
-Date: Thu, 18 Apr 2013 12:34:55 -0600
-Message-ID: <968AF3AB-582F-4874-9689-FF5121DBB285@dilger.ca>
-References: <CAEUQceh3Wm6LZpGQnXNjh0c9WbO8S70D5-KYjY8anup80WbLHQ@mail.gmail.com> <20130417230745.GC5401@thunk.org>
-Mime-Version: 1.0 (Apple Message framework v1085)
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 2/2] ext4: Move quota initialization out of inode
+ allocation transaction
+Date: Thu, 18 Apr 2013 15:07:38 -0400
+Message-ID: <20130418190738.GB5588@thunk.org>
+References: <1365496448-9907-1-git-send-email-jack@suse.cz>
+ <1365496448-9907-2-git-send-email-jack@suse.cz>
+ <20130409164237.GC5980@thunk.org>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Subranshu Patel <spatel.ml@gmail.com>, linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f41.google.com ([209.85.220.41]:48500 "EHLO
-	mail-pa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751781Ab3DRSe5 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Apr 2013 14:34:57 -0400
-Received: by mail-pa0-f41.google.com with SMTP id kx1so1781422pab.0
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Apr 2013 11:34:57 -0700 (PDT)
-In-Reply-To: <20130417230745.GC5401@thunk.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:42660 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752359Ab3DRTH5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 18 Apr 2013 15:07:57 -0400
+Content-Disposition: inline
+In-Reply-To: <20130409164237.GC5980@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2013-04-17, at 5:07 PM, Theodore Ts'o wrote:
-> On Wed, Apr 17, 2013 at 08:40:08PM +0530, Subranshu Patel wrote:
->> I performed some recovery (fsck) tests with large EXT4 filesystem.
->> The filesystem size was 500GB (3 million files, 5000 directories).
->> Performed force recovery on the clean filesystem and measured the
->> memory usage, which was around 2 GB.
->> 
->> Then I performed metadata corruption - 10% of the files, 10% of the
->> directories and some superblock attributes using debugfs. Then I
->> executed fsck to find a memory usage of around 8GB, a much larger
->> value.
+On Tue, Apr 09, 2013 at 12:42:37PM -0400, Theodore Ts'o wrote:
 > 
-> It's going to depend on what sort of metadata corruption was
-> suffered.  If you need to do pass 1b/c/d fix ups, it will need more
-> memory.  That's pretty much unavoidable, but it's also not the
-> common case.  In most use cases, if those cases require using swap,
-> that's generally OK if it's the rare case, and not the common case.
-> That's why it's not something I've really been worried about.
-
-This is also where the "inode badness" patch would potentially help
-out to avoid even trying to fix inodes that are random garbage, and
-as a result the duplicate block processing would be skipped.
-
-http://git.whamcloud.com/?p=tools/e2fsprogs.git;a=commitdiff;h=c17983c570d4fd87e628dd4fdf12d232cfd00694
-
-I was just discussing this patch today, but unfortunately I don't
-think the rewrite of that patch will happen any time soon.  Is there
-any chance that the existing patch could be landed?  The original
-objection to this patch was that it should centralize all of the
-inode checks into a single location, but is there a chance to land
-it as is?  I don't think the current changes in the patch are so bad
-to mark the inode bad at the same locations that call fix_problem().
-
-Cheers, Andreas
-
-
->> 2. This question is not related to this EXT4 mailing list. But in
->> real scenario how this kind of situation (large memory usage) is
->> handled in large scale filesystem deployment when actual filesystem
->> corruption occurs (may be due to some fault in hardware/controller)
+> Thanks, added to the dev branch for testing.
 > 
-> What's your use case where you are memory constrained?  Is it a
-> bookshelf NAS configuration?  Are you hooking up large number of
-> disks to a memory-constrained server and then trying to run fsck
-> in parallel across a large number of 3TB or 4TB disks?  Depending
-> on what you are trying to do, there may be different solutions.
-> 
-> In general ext4 has always assumed at least a "reasonable" amount
-> of memory for a large amount of storage, but it's understood that
-> reasonable has changed over the years.  So there have been some
-> improvements that we've made more recently, but it may or may not
-> be good enough for your use case.  Can you give us more details
-> about what your requirements are?
 
+This patch was causing a reliable failure for xfstests generic/083
+using bigalloc.  I bisected down this patch, and then localized the
+failure down to the insert_inode_locked() call in __ext4_new_inode()
+failing (which means that there is an old inode in the inode hash
+lists with the same inode number)
 
+The error seems to be caused by the error handling code paths.  I
+believe the problem was caused by clear_nlink() and unlock_new_inode()
+getting called in some error cleanup paths when the inode that hadn't
+yet been inserted into inode hash lists.
 
-Cheers, Andreas
+Here is a revamped patch which has a cleaned up set of error paths.
+The only change is in the cleanup paths, and this causes the
+generic/083 test for bigalloc to pass where it was previously failing.
 
+	    	     	      	      	    - Ted
 
+commit 623df013725903824ac341a32e9c11c72752d8eb
+Author: Jan Kara <jack@suse.cz>
+Date:   Thu Apr 18 15:03:28 2013 -0400
 
+    ext4: move quota initialization out of inode allocation transaction
+    
+    Inode allocation transaction is pretty heavy (246 credits with quotas
+    and extents before previous patch, still around 200 after it).  This is
+    mostly due to credits required for allocation of quota structures
+    (credits there are heavily overestimated but it's difficult to make
+    better estimates if we don't want to wire non-trivial assumptions about
+    quota format into filesystem).
+    
+    So move quota initialization out of allocation transaction. That way
+    transaction for quota structure allocation will be started only if we
+    need to look up quota structure on disk (rare) and furthermore it will
+    be started for each quota type separately, not for all of them at once.
+    This reduces maximum transaction size to 34 is most cases and to 73 in
+    the worst case.
+    
+    [ Modified by tytso to clean up the cleanup paths for error handling.
+      Also use a separate call to ext4_std_error() for each failure so it
+      is easier for someone who is debugging a problem in this function to
+      determine which function call failed. ]
+    
+    Signed-off-by: Jan Kara <jack@suse.cz>
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 4c358f7..9081fef 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -666,6 +666,23 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+ 	ei = EXT4_I(inode);
+ 	sbi = EXT4_SB(sb);
+ 
++	/*
++	 * Initalize owners and quota early so that we don't have to account
++	 * for quota initialization worst case in standard inode creating
++	 * transaction
++	 */
++	if (owner) {
++		inode->i_mode = mode;
++		i_uid_write(inode, owner[0]);
++		i_gid_write(inode, owner[1]);
++	} else if (test_opt(sb, GRPID)) {
++		inode->i_mode = mode;
++		inode->i_uid = current_fsuid();
++		inode->i_gid = dir->i_gid;
++	} else
++		inode_init_owner(inode, dir, mode);
++	dquot_initialize(inode);
++
+ 	if (!goal)
+ 		goal = sbi->s_inode_goal;
+ 
+@@ -697,7 +714,7 @@ got_group:
+ 
+ 		gdp = ext4_get_group_desc(sb, group, &group_desc_bh);
+ 		if (!gdp)
+-			goto fail;
++			goto out;
+ 
+ 		/*
+ 		 * Check free inodes count before loading bitmap.
+@@ -711,7 +728,7 @@ got_group:
+ 		brelse(inode_bitmap_bh);
+ 		inode_bitmap_bh = ext4_read_inode_bitmap(sb, group);
+ 		if (!inode_bitmap_bh)
+-			goto fail;
++			goto out;
+ 
+ repeat_in_this_group:
+ 		ino = ext4_find_next_zero_bit((unsigned long *)
+@@ -733,13 +750,17 @@ repeat_in_this_group:
+ 							 handle_type, nblocks);
+ 			if (IS_ERR(handle)) {
+ 				err = PTR_ERR(handle);
+-				goto fail;
++				ext4_std_error(sb, err);
++				goto out;
+ 			}
++
+ 		}
+ 		BUFFER_TRACE(inode_bitmap_bh, "get_write_access");
+ 		err = ext4_journal_get_write_access(handle, inode_bitmap_bh);
+-		if (err)
+-			goto fail;
++		if (err) {
++			ext4_std_error(sb, err);
++			goto out;
++		}
+ 		ext4_lock_group(sb, group);
+ 		ret2 = ext4_test_and_set_bit(ino, inode_bitmap_bh->b_data);
+ 		ext4_unlock_group(sb, group);
+@@ -755,8 +776,10 @@ repeat_in_this_group:
+ got:
+ 	BUFFER_TRACE(inode_bitmap_bh, "call ext4_handle_dirty_metadata");
+ 	err = ext4_handle_dirty_metadata(handle, NULL, inode_bitmap_bh);
+-	if (err)
+-		goto fail;
++	if (err) {
++		ext4_std_error(sb, err);
++		goto out;
++	}
+ 
+ 	/* We may have to initialize the block bitmap if it isn't already */
+ 	if (ext4_has_group_desc_csum(sb) &&
+@@ -768,7 +791,8 @@ got:
+ 		err = ext4_journal_get_write_access(handle, block_bitmap_bh);
+ 		if (err) {
+ 			brelse(block_bitmap_bh);
+-			goto fail;
++			ext4_std_error(sb, err);
++			goto out;
+ 		}
+ 
+ 		BUFFER_TRACE(block_bitmap_bh, "dirty block bitmap");
+@@ -787,14 +811,18 @@ got:
+ 		ext4_unlock_group(sb, group);
+ 		brelse(block_bitmap_bh);
+ 
+-		if (err)
+-			goto fail;
++		if (err) {
++			ext4_std_error(sb, err);
++			goto out;
++		}
+ 	}
+ 
+ 	BUFFER_TRACE(group_desc_bh, "get_write_access");
+ 	err = ext4_journal_get_write_access(handle, group_desc_bh);
+-	if (err)
+-		goto fail;
++	if (err) {
++		ext4_std_error(sb, err);
++		goto out;
++	}
+ 
+ 	/* Update the relevant bg descriptor fields */
+ 	if (ext4_has_group_desc_csum(sb)) {
+@@ -840,8 +868,10 @@ got:
+ 
+ 	BUFFER_TRACE(group_desc_bh, "call ext4_handle_dirty_metadata");
+ 	err = ext4_handle_dirty_metadata(handle, NULL, group_desc_bh);
+-	if (err)
+-		goto fail;
++	if (err) {
++		ext4_std_error(sb, err);
++		goto out;
++	}
+ 
+ 	percpu_counter_dec(&sbi->s_freeinodes_counter);
+ 	if (S_ISDIR(mode))
+@@ -851,16 +881,6 @@ got:
+ 		flex_group = ext4_flex_group(sbi, group);
+ 		atomic_dec(&sbi->s_flex_groups[flex_group].free_inodes);
+ 	}
+-	if (owner) {
+-		inode->i_mode = mode;
+-		i_uid_write(inode, owner[0]);
+-		i_gid_write(inode, owner[1]);
+-	} else if (test_opt(sb, GRPID)) {
+-		inode->i_mode = mode;
+-		inode->i_uid = current_fsuid();
+-		inode->i_gid = dir->i_gid;
+-	} else
+-		inode_init_owner(inode, dir, mode);
+ 
+ 	inode->i_ino = ino + group * EXT4_INODES_PER_GROUP(sb);
+ 	/* This is the optimal IO size (for stat), not the fs block size */
+@@ -889,7 +909,9 @@ got:
+ 		 * twice.
+ 		 */
+ 		err = -EIO;
+-		goto fail;
++		ext4_error(sb, "failed to insert inode %lu: doubly allocated?",
++			   inode->i_ino);
++		goto out;
+ 	}
+ 	spin_lock(&sbi->s_next_gen_lock);
+ 	inode->i_generation = sbi->s_next_generation++;
+@@ -917,7 +939,6 @@ got:
+ 		ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
+ 
+ 	ret = inode;
+-	dquot_initialize(inode);
+ 	err = dquot_alloc_inode(inode);
+ 	if (err)
+ 		goto fail_drop;
+@@ -951,24 +972,17 @@ got:
+ 
+ 	ext4_debug("allocating inode %lu\n", inode->i_ino);
+ 	trace_ext4_allocate_inode(inode, dir, mode);
+-	goto really_out;
+-fail:
+-	ext4_std_error(sb, err);
+-out:
+-	iput(inode);
+-	ret = ERR_PTR(err);
+-really_out:
+ 	brelse(inode_bitmap_bh);
+ 	return ret;
+ 
+ fail_free_drop:
+ 	dquot_free_inode(inode);
+-
+ fail_drop:
+-	dquot_drop(inode);
+ 	inode->i_flags |= S_NOQUOTA;
+ 	clear_nlink(inode);
+ 	unlock_new_inode(inode);
++out:
++	dquot_drop(inode);
+ 	iput(inode);
+ 	brelse(inode_bitmap_bh);
+ 	return ERR_PTR(err);
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 45a5ca8..955c907 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2252,8 +2252,7 @@ static int ext4_create(struct inode *dir, struct dentry *dentry, umode_t mode,
+ 	dquot_initialize(dir);
+ 
+ 	credits = (EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
+-		   EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
+-		   EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
++		   EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3);
+ retry:
+ 	inode = ext4_new_inode_start_handle(dir, mode, &dentry->d_name, 0,
+ 					    NULL, EXT4_HT_DIR, credits);
+@@ -2287,8 +2286,7 @@ static int ext4_mknod(struct inode *dir, struct dentry *dentry,
+ 	dquot_initialize(dir);
+ 
+ 	credits = (EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
+-		   EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
+-		   EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
++		   EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3);
+ retry:
+ 	inode = ext4_new_inode_start_handle(dir, mode, &dentry->d_name, 0,
+ 					    NULL, EXT4_HT_DIR, credits);
+@@ -2397,8 +2395,7 @@ static int ext4_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
+ 	dquot_initialize(dir);
+ 
+ 	credits = (EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
+-		   EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
+-		   EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
++		   EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3);
+ retry:
+ 	inode = ext4_new_inode_start_handle(dir, S_IFDIR | mode,
+ 					    &dentry->d_name,
+@@ -2827,8 +2824,7 @@ static int ext4_symlink(struct inode *dir,
+ 		 * quota blocks, sb is already counted in previous macros).
+ 		 */
+ 		credits = EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
+-			  EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
+-			  EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb);
++			  EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3;
+ 	}
+ retry:
+ 	inode = ext4_new_inode_start_handle(dir, S_IFLNK|S_IRWXUGO,
