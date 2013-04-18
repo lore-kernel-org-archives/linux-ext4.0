@@ -1,121 +1,70 @@
-From: Eric Sandeen <esandeen@redhat.com>
-Subject: Re: [PATCH V2] mke2fs: add discard to default mke2fs.conf and disable by default
-Date: Thu, 18 Apr 2013 19:09:31 -0400 (EDT)
-Message-ID: <6E0552E9-CEDA-4209-BFC3-D517D821D69B@redhat.com>
-References: <516F1C8A.9040702@redhat.com> <516F2DF7.2020005@redhat.com>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH] ext4: disable defrag for metadata_csum file systems
+Date: Fri, 19 Apr 2013 07:13:10 +0800
+Message-ID: <51707E06.2050105@gmail.com>
+References: <1366322282-4673-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	"Darrick J. Wong" <darrick.wong@oracle.com>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx3-phx2.redhat.com ([209.132.183.24]:59131 "EHLO
-	mx3-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S966999Ab3DRXJd convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Apr 2013 19:09:33 -0400
-In-Reply-To: <516F2DF7.2020005@redhat.com>
+Received: from mail-pa0-f43.google.com ([209.85.220.43]:55663 "EHLO
+	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753871Ab3DRXNO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Apr 2013 19:13:14 -0400
+Received: by mail-pa0-f43.google.com with SMTP id hz11so1908539pad.16
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Apr 2013 16:13:13 -0700 (PDT)
+In-Reply-To: <1366322282-4673-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Apr 17, 2013, at 4:19 PM, Eric Sandeen <sandeen@redhat.com> wrote:
+[Sorry, it seems that I got a delivery error.  So send again]
 
-> Discard is a very big hammer.  If it succeeds, there's no undo
-> or going back; on the other hand, on some devices the giant discard
-> issued at mkfs time makes them go offline.  
+On 04/19/2013 05:58 AM, Theodore Ts'o wrote:
+> It looks like there is absolutely no support for metadata checksums in
+> fs/ext4/move_extent.c.  So if you try to defrag a file on a
+> metadata_csum, it leaves the file system corrupted.
 > 
-> Although I'm reluctant to waffle back and forth on default behavior,
-> I think this disabling it by default the prudent thing to do.
+> We really, really should get this fixed ASAP, but until we do, let's
+> disable e4defrag on metadata_csum file systems so we avoid corrupting
+> file systems.
 > 
+> Cc: "Darrick J. Wong" <darrick.wong@oracle.com>
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-Ok, self-nak on this one, the folks in the hallway track convinced me that it was wrong.  I'll send another to handle it properly in mke2fs.conf, though.
+Yes, I also notice this problem.  So currently it seems that the best
+choice is to disable defrag for metadata_csum.
+
+Reviewed-By: Zheng Liu <wenqing.lz@taobao.com>
 
 Thanks,
-Eric
+						- Zheng
 
-> This patch also adds the discard option into the default mke2fs.conf
-> file; although it could be set, it was not in the template.
-> 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 > ---
+>  fs/ext4/ioctl.c | 9 +++++++++
+>  1 file changed, 9 insertions(+)
 > 
-> V2: handle discard disable via "-K" since it's parsed *before* we get
-> the default.  The extended options are parsed later, and will override
-> the mke2fs.conf default without problems.
+> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+> index 9491ac0..2d043da 100644
+> --- a/fs/ext4/ioctl.c
+> +++ b/fs/ext4/ioctl.c
+> @@ -450,6 +450,15 @@ group_extend_out:
+>  			goto mext_out;
+>  		}
+>  
+> +		if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+> +			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
+> +			ext4_msg(sb, KERN_ERR,
+> +				 "Online defrag not supported with "
+> +				 "metadata_csum");
+> +			err = -EOPNOTSUPP;
+> +			goto mext_out;
+> +		}
+> +
+>  		err = mnt_want_write_file(filp);
+>  		if (err)
+>  			goto mext_out;
 > 
-> diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
-> index 023ba49..a005eca 100644
-> --- a/misc/mke2fs.8.in
-> +++ b/misc/mke2fs.8.in
-> @@ -277,11 +277,11 @@ Attempt to discard blocks at mkfs time (discarding blocks initially is useful
-> on solid state devices and sparse / thin-provisioned storage). When the device
-> advertises that discard also zeroes data (any subsequent read after the discard
-> and before write returns zero), then mark all not-yet-zeroed inode tables as
-> -zeroed. This significantly speeds up filesystem initialization. This is set
-> -as default.
-> +zeroed. This significantly speeds up filesystem initialization. This is disabled
-> +by default.
-> .TP
-> .BI nodiscard
-> -Do not attempt to discard blocks at mkfs time.
-> +Do not attempt to discard blocks at mkfs time.  This is the default.
-> .TP
-> .BI quotatype
-> Specify which quota type ('usr' or 'grp') is to be initialized. This
-> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> index bbf477a..fa11da6 100644
-> --- a/misc/mke2fs.c
-> +++ b/misc/mke2fs.c
-> @@ -84,7 +84,7 @@ int    cflag;
-> int    verbose;
-> int    quiet;
-> int    super_only;
-> -int    discard = 1;    /* attempt to discard device before fs creation */
-> +int    discard;    /* attempt to discard device before fs creation? */
-> int    direct_io;
-> int    force;
-> int    noaction;
-> @@ -1266,6 +1266,7 @@ static void PRS(int argc, char *argv[])
->    double        reserved_ratio = -1.0;
->    int        lsector_size = 0, psector_size = 0;
->    int        show_version_only = 0;
-> +    int        nodiscard = 0;
->    unsigned long long num_inodes = 0; /* unsigned long long to catch too-large input */
->    errcode_t    retval;
->    char *        oldpath = getenv("PATH");
-> @@ -1444,7 +1445,7 @@ profile_error:
->                      "should not be used anymore. Use "
->                      "\'-E nodiscard\' extended option "
->                      "instead!\n"));
-> -            discard = 0;
-> +            nodiscard = 1;
->            break;
->        case 'j':
->            if (!journal_size)
-> @@ -1985,7 +1986,8 @@ profile_error:
->    lazy_itable_init = get_bool_from_profile(fs_types,
->                         "lazy_itable_init",
->                         lazy_itable_init);
-> -    discard = get_bool_from_profile(fs_types, "discard" , discard);
-> +    /* nodiscard is set if -K was used, extended discard opts parsed later */
-> +    discard = nodiscard ? 0 : get_bool_from_profile(fs_types, "discard" , 0);
->    journal_flags |= get_bool_from_profile(fs_types,
->                           "lazy_journal_init", 0) ?
->                           EXT2_MKJOURNAL_LAZYINIT : 0;
-> diff --git a/misc/mke2fs.conf.in b/misc/mke2fs.conf.in
-> index 178733f..db6decb 100644
-> --- a/misc/mke2fs.conf.in
-> +++ b/misc/mke2fs.conf.in
-> @@ -2,6 +2,7 @@
->    base_features = sparse_super,filetype,resize_inode,dir_index,ext_attr
->    default_mntopts = acl,user_xattr
->    enable_periodic_fsck = 0
-> +    discard = 0
->    blocksize = 4096
->    inode_size = 256
->    inode_ratio = 16384
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
