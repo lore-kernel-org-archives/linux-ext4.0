@@ -1,98 +1,121 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v3 12/18] Revert "ext4: fix fsx truncate failure"
-Date: Fri, 19 Apr 2013 00:21:39 +0200
-Message-ID: <20130418222139.GC19244@quack.suse.cz>
-References: <1365498867-27782-1-git-send-email-lczerner@redhat.com>
- <1365498867-27782-13-git-send-email-lczerner@redhat.com>
+From: Eric Sandeen <esandeen@redhat.com>
+Subject: Re: [PATCH V2] mke2fs: add discard to default mke2fs.conf and disable by default
+Date: Thu, 18 Apr 2013 19:09:31 -0400 (EDT)
+Message-ID: <6E0552E9-CEDA-4209-BFC3-D517D821D69B@redhat.com>
+References: <516F1C8A.9040702@redhat.com> <516F2DF7.2020005@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:41972 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752689Ab3DRWXR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 18 Apr 2013 18:23:17 -0400
-Content-Disposition: inline
-In-Reply-To: <1365498867-27782-13-git-send-email-lczerner@redhat.com>
+Received: from mx3-phx2.redhat.com ([209.132.183.24]:59131 "EHLO
+	mx3-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S966999Ab3DRXJd convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Apr 2013 19:09:33 -0400
+In-Reply-To: <516F2DF7.2020005@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 09-04-13 11:14:21, Lukas Czerner wrote:
-> This reverts commit 189e868fa8fdca702eb9db9d8afc46b5cb9144c9.
-> 
-> This commit reintroduces the use of ext4_block_truncate_page() in ext4
-> truncate operation instead of ext4_discard_partial_page_buffers().
-> 
-> The statement in the commit description that the truncate operation only
-> zero block unaligned portion of the last page is not exactly right,
-> since truncate_pagecache_range() also zeroes and invalidate the unaligned
-> portion of the page. Then there is no need to zero and unmap it once more
-> and ext4_block_truncate_page() was doing the right job, although we
-> still need to update the buffer head containing the last block, which is
-> exactly what ext4_block_truncate_page() is doing.
-> 
-> Moreover the problem described in the commit is fixed more properly with
-> commit
-  Looks good. You can add
-Reviewed-by: Jan Kara <jack@suse.cz>
+On Apr 17, 2013, at 4:19 PM, Eric Sandeen <sandeen@redhat.com> wrote:
 
-  I'd just add one nit that you might fix. In case of truncate called from
-orphan cleanup code, we don't really call mm to zero the tail of the page.
-It shouldn't really matter because the page shouldn't be uptodate but it
-might be a trap we eventually fall into so calling truncate_inode_pages()
-there might be a reasonable precaution.
+> Discard is a very big hammer.  If it succeeds, there's no undo
+> or going back; on the other hand, on some devices the giant discard
+> issued at mkfs time makes them go offline.  
+> 
+> Although I'm reluctant to waffle back and forth on default behavior,
+> I think this disabling it by default the prudent thing to do.
+> 
 
-								Honza
+Ok, self-nak on this one, the folks in the hallway track convinced me that it was wrong.  I'll send another to handle it properly in mke2fs.conf, though.
+
+Thanks,
+Eric
+
+> This patch also adds the discard option into the default mke2fs.conf
+> file; although it could be set, it was not in the template.
 > 
-> 15291164b22a357cb211b618adfef4fa82fc0de3
-> 	jbd2: clear BH_Delay & BH_Unwritten in journal_unmap_buffer
-> 
-> This was tested on ppc64 machine with block size of 1024 bytes without
-> any problems.
-> 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 > ---
->  fs/ext4/inode.c |   11 ++---------
->  1 files changed, 2 insertions(+), 9 deletions(-)
 > 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 5729d21..d58e13c 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -3920,7 +3920,6 @@ void ext4_truncate(struct inode *inode)
->  	unsigned int credits;
->  	handle_t *handle;
->  	struct address_space *mapping = inode->i_mapping;
-> -	loff_t page_len;
->  
->  	/*
->  	 * There is a possibility that we're either freeing the inode
-> @@ -3964,14 +3963,8 @@ void ext4_truncate(struct inode *inode)
->  		return;
->  	}
->  
-> -	if (inode->i_size % PAGE_CACHE_SIZE != 0) {
-> -		page_len = PAGE_CACHE_SIZE -
-> -			(inode->i_size & (PAGE_CACHE_SIZE - 1));
-> -
-> -		if (ext4_discard_partial_page_buffers(handle,
-> -				mapping, inode->i_size, page_len, 0))
-> -			goto out_stop;
-> -	}
-> +	if (inode->i_size & (inode->i_sb->s_blocksize - 1))
-> +		ext4_block_truncate_page(handle, mapping, inode->i_size);
->  
->  	/*
->  	 * We add the inode to the orphan list, so that if this
-> -- 
-> 1.7.7.6
+> V2: handle discard disable via "-K" since it's parsed *before* we get
+> the default.  The extended options are parsed later, and will override
+> the mke2fs.conf default without problems.
+> 
+> diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
+> index 023ba49..a005eca 100644
+> --- a/misc/mke2fs.8.in
+> +++ b/misc/mke2fs.8.in
+> @@ -277,11 +277,11 @@ Attempt to discard blocks at mkfs time (discarding blocks initially is useful
+> on solid state devices and sparse / thin-provisioned storage). When the device
+> advertises that discard also zeroes data (any subsequent read after the discard
+> and before write returns zero), then mark all not-yet-zeroed inode tables as
+> -zeroed. This significantly speeds up filesystem initialization. This is set
+> -as default.
+> +zeroed. This significantly speeds up filesystem initialization. This is disabled
+> +by default.
+> .TP
+> .BI nodiscard
+> -Do not attempt to discard blocks at mkfs time.
+> +Do not attempt to discard blocks at mkfs time.  This is the default.
+> .TP
+> .BI quotatype
+> Specify which quota type ('usr' or 'grp') is to be initialized. This
+> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+> index bbf477a..fa11da6 100644
+> --- a/misc/mke2fs.c
+> +++ b/misc/mke2fs.c
+> @@ -84,7 +84,7 @@ int    cflag;
+> int    verbose;
+> int    quiet;
+> int    super_only;
+> -int    discard = 1;    /* attempt to discard device before fs creation */
+> +int    discard;    /* attempt to discard device before fs creation? */
+> int    direct_io;
+> int    force;
+> int    noaction;
+> @@ -1266,6 +1266,7 @@ static void PRS(int argc, char *argv[])
+>    double        reserved_ratio = -1.0;
+>    int        lsector_size = 0, psector_size = 0;
+>    int        show_version_only = 0;
+> +    int        nodiscard = 0;
+>    unsigned long long num_inodes = 0; /* unsigned long long to catch too-large input */
+>    errcode_t    retval;
+>    char *        oldpath = getenv("PATH");
+> @@ -1444,7 +1445,7 @@ profile_error:
+>                      "should not be used anymore. Use "
+>                      "\'-E nodiscard\' extended option "
+>                      "instead!\n"));
+> -            discard = 0;
+> +            nodiscard = 1;
+>            break;
+>        case 'j':
+>            if (!journal_size)
+> @@ -1985,7 +1986,8 @@ profile_error:
+>    lazy_itable_init = get_bool_from_profile(fs_types,
+>                         "lazy_itable_init",
+>                         lazy_itable_init);
+> -    discard = get_bool_from_profile(fs_types, "discard" , discard);
+> +    /* nodiscard is set if -K was used, extended discard opts parsed later */
+> +    discard = nodiscard ? 0 : get_bool_from_profile(fs_types, "discard" , 0);
+>    journal_flags |= get_bool_from_profile(fs_types,
+>                           "lazy_journal_init", 0) ?
+>                           EXT2_MKJOURNAL_LAZYINIT : 0;
+> diff --git a/misc/mke2fs.conf.in b/misc/mke2fs.conf.in
+> index 178733f..db6decb 100644
+> --- a/misc/mke2fs.conf.in
+> +++ b/misc/mke2fs.conf.in
+> @@ -2,6 +2,7 @@
+>    base_features = sparse_super,filetype,resize_inode,dir_index,ext_attr
+>    default_mntopts = acl,user_xattr
+>    enable_periodic_fsck = 0
+> +    discard = 0
+>    blocksize = 4096
+>    inode_size = 256
+>    inode_ratio = 16384
 > 
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
