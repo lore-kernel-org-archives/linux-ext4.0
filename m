@@ -1,57 +1,83 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/5] jbd2: optimize jbd2_journal_force_commit
-Date: Thu, 18 Apr 2013 20:07:27 +0200
-Message-ID: <20130418180727.GA14470@quack.suse.cz>
-References: <1365966097-8968-1-git-send-email-dmonakhov@openvz.org>
- <1365966097-8968-2-git-send-email-dmonakhov@openvz.org>
- <20130415122913.GF2299@quack.suse.cz>
- <87vc7lsj0w.fsf@openvz.org>
-Mime-Version: 1.0
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: fsck memory usage
+Date: Thu, 18 Apr 2013 12:34:55 -0600
+Message-ID: <968AF3AB-582F-4874-9689-FF5121DBB285@dilger.ca>
+References: <CAEUQceh3Wm6LZpGQnXNjh0c9WbO8S70D5-KYjY8anup80WbLHQ@mail.gmail.com> <20130417230745.GC5401@thunk.org>
+Mime-Version: 1.0 (Apple Message framework v1085)
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Transfer-Encoding: 8BIT
+Cc: Subranshu Patel <spatel.ml@gmail.com>, linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:35078 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752301Ab3DRSHb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 18 Apr 2013 14:07:31 -0400
-Content-Disposition: inline
-In-Reply-To: <87vc7lsj0w.fsf@openvz.org>
+Received: from mail-pa0-f41.google.com ([209.85.220.41]:48500 "EHLO
+	mail-pa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751781Ab3DRSe5 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Apr 2013 14:34:57 -0400
+Received: by mail-pa0-f41.google.com with SMTP id kx1so1781422pab.0
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Apr 2013 11:34:57 -0700 (PDT)
+In-Reply-To: <20130417230745.GC5401@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 17-04-13 11:39:27, Dmitry Monakhov wrote:
-> On Mon, 15 Apr 2013 14:29:13 +0200, Jan Kara <jack@suse.cz> wrote:
-> > On Sun 14-04-13 23:01:34, Dmitry Monakhov wrote:
-> > > Current implementation of jbd2_journal_force_commit() is suboptimal because
-> > > result in empty and useless commits. But callers just want to force and wait
-> > > any unfinished commits. We already has jbd2_journal_force_commit_nested()
-> > > which does exactly what we want, except we are guaranteed that we do not hold
-> > > journal transaction open.
-> >   Umm, I have a questions regarding this patch:
-> > Grep shows there are just two places in the code which use
-> > ext4_force_commit() (and thus jbd2_journal_force_commit()). These are
-> > ext4_write_inode() and ext4_sync_file() (in data=journal mode). The first
-> > callsite can use _nested() variant immediately as we even assert there's
-> > no handle started. The second call site can use the _nested variant as well
-> > because if we had the transaction started when entering ext4_sync_file() we
-> > would have serious problems (lock inversion, deadlocks in !data=journal
-> > modes) anyway. So IMO there's no need for !nested variant at all (at least
-> > in ext4, ocfs2 uses it as well, IMHO it can be converted as well but that's
-> > a different topic). Thoughts?
-> I'm not sure that I completely understand what you meant, but it seems
-> incorrect to use jbd2_journal_force_commit_nested() in 
-> ext4_write_inode() and ext4_sync_file(). Because nested variant has
-> probabilistic behavior, It may skip real transaction commit if we hold
-> a transaction running.  ext4_write_inode() and ext4_sync_file() 
-> are the functions where we demand deterministic behavior. If we silently
-> miss real transaction commit because current->journal_info != NULL (due
-> to some bugs) this breaks data integrity assumptions and it is better to
-> make it loud and trigger a BUGON.
-  I see. I was confused by the fact that 'nested' argument got used only in
-the assertion but now I see why that is.
+On 2013-04-17, at 5:07 PM, Theodore Ts'o wrote:
+> On Wed, Apr 17, 2013 at 08:40:08PM +0530, Subranshu Patel wrote:
+>> I performed some recovery (fsck) tests with large EXT4 filesystem.
+>> The filesystem size was 500GB (3 million files, 5000 directories).
+>> Performed force recovery on the clean filesystem and measured the
+>> memory usage, which was around 2 GB.
+>> 
+>> Then I performed metadata corruption - 10% of the files, 10% of the
+>> directories and some superblock attributes using debugfs. Then I
+>> executed fsck to find a memory usage of around 8GB, a much larger
+>> value.
+> 
+> It's going to depend on what sort of metadata corruption was
+> suffered.  If you need to do pass 1b/c/d fix ups, it will need more
+> memory.  That's pretty much unavoidable, but it's also not the
+> common case.  In most use cases, if those cases require using swap,
+> that's generally OK if it's the rare case, and not the common case.
+> That's why it's not something I've really been worried about.
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+This is also where the "inode badness" patch would potentially help
+out to avoid even trying to fix inodes that are random garbage, and
+as a result the duplicate block processing would be skipped.
+
+http://git.whamcloud.com/?p=tools/e2fsprogs.git;a=commitdiff;h=c17983c570d4fd87e628dd4fdf12d232cfd00694
+
+I was just discussing this patch today, but unfortunately I don't
+think the rewrite of that patch will happen any time soon.  Is there
+any chance that the existing patch could be landed?  The original
+objection to this patch was that it should centralize all of the
+inode checks into a single location, but is there a chance to land
+it as is?  I don't think the current changes in the patch are so bad
+to mark the inode bad at the same locations that call fix_problem().
+
+Cheers, Andreas
+
+
+>> 2. This question is not related to this EXT4 mailing list. But in
+>> real scenario how this kind of situation (large memory usage) is
+>> handled in large scale filesystem deployment when actual filesystem
+>> corruption occurs (may be due to some fault in hardware/controller)
+> 
+> What's your use case where you are memory constrained?  Is it a
+> bookshelf NAS configuration?  Are you hooking up large number of
+> disks to a memory-constrained server and then trying to run fsck
+> in parallel across a large number of 3TB or 4TB disks?  Depending
+> on what you are trying to do, there may be different solutions.
+> 
+> In general ext4 has always assumed at least a "reasonable" amount
+> of memory for a large amount of storage, but it's understood that
+> reasonable has changed over the years.  So there have been some
+> improvements that we've made more recently, but it may or may not
+> be good enough for your use case.  Can you give us more details
+> about what your requirements are?
+
+
+
+Cheers, Andreas
+
+
+
+
+
