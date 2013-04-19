@@ -1,38 +1,60 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 56831] RHEL Linux Data Corruption found with EXT4 system
-Date: Fri, 19 Apr 2013 13:42:28 +0000 (UTC)
-Message-ID: <20130419134228.0C03211FB51@bugzilla.kernel.org>
-References: <bug-56831-13602@https.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH -v3] ext4: move quota initialization out of inode
+ allocation transaction
+Date: Fri, 19 Apr 2013 16:30:28 +0200
+Message-ID: <20130419143028.GA26647@quack.suse.cz>
+References: <20130418214631.GA19244@quack.suse.cz>
+ <1366327444-6123-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:58718 "EHLO mail.kernel.org"
+Received: from cantor2.suse.de ([195.135.220.15]:43170 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030356Ab3DSNmb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 19 Apr 2013 09:42:31 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 23C1520674
-	for <linux-ext4@vger.kernel.org>; Fri, 19 Apr 2013 13:42:30 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id 0DF822067B
-	for <linux-ext4@vger.kernel.org>; Fri, 19 Apr 2013 13:42:28 +0000 (UTC)
-In-Reply-To: <bug-56831-13602@https.bugzilla.kernel.org/>
+	id S1030473Ab3DSOab (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 19 Apr 2013 10:30:31 -0400
+Content-Disposition: inline
+In-Reply-To: <1366327444-6123-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=56831
+  Still not quite...
 
+On Thu 18-04-13 19:24:04, Ted Tso wrote:
+> @@ -951,24 +971,17 @@ got:
+>  
+>  	ext4_debug("allocating inode %lu\n", inode->i_ino);
+>  	trace_ext4_allocate_inode(inode, dir, mode);
+> -	goto really_out;
+> -fail:
+> -	ext4_std_error(sb, err);
+> -out:
+> -	iput(inode);
+> -	ret = ERR_PTR(err);
+> -really_out:
+>  	brelse(inode_bitmap_bh);
+>  	return ret;
+>  
+>  fail_free_drop:
+>  	dquot_free_inode(inode);
+> -
+>  fail_drop:
+> -	dquot_drop(inode);
+> -	inode->i_flags |= S_NOQUOTA;
+>  	clear_nlink(inode);
+>  	unlock_new_inode(inode);
+> +out:
+> +	inode->i_flags |= S_NOQUOTA;
+> +	dquot_drop(inode);
+  The above two lines have to be swapped to preserve original ordering
+which is actually important. Thanks.
 
-
-
-
---- Comment #1 from searchfordave@gmail.com  2013-04-19 13:42:27 ---
-Created an attachment (id=99321)
- --> (https://bugzilla.kernel.org/attachment.cgi?id=99321)
-File "random_multi_write_read.c" gives data corruption on ext4
-
+									Honza
+>  	iput(inode);
+>  	brelse(inode_bitmap_bh);
+>  	return ERR_PTR(err);
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
