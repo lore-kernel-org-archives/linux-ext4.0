@@ -1,72 +1,37 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] fs/buffer.c: Remove the unnecessary init operation
- after allocating buffer_head.
-Date: Fri, 19 Apr 2013 16:48:19 +0200
-Message-ID: <20130419144819.GB26647@quack.suse.cz>
-References: <5170AC10.60504@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH -v3] ext4: move quota initialization out of inode
+ allocation transaction
+Date: Fri, 19 Apr 2013 12:24:53 -0400
+Message-ID: <20130419162453.GA20513@thunk.org>
+References: <20130418214631.GA19244@quack.suse.cz>
+ <1366327444-6123-1-git-send-email-tytso@mit.edu>
+ <20130419143028.GA26647@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Al Viro <viro@zeniv.linux.org.uk>, akpm@linux-foundation.org,
-	tytso@mit.edu, linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: majianpeng <majianpeng@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:42936 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756221Ab3DSQZM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 19 Apr 2013 12:25:12 -0400
 Content-Disposition: inline
-In-Reply-To: <5170AC10.60504@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20130419143028.GA26647@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 19-04-13 10:29:36, majianpeng wrote:
-> Because alloc struct buffer_head using kmem_cache_zalloc,so it's not need to
-> call 'init_buffer(bh, NULL, NULL)'.
+On Fri, Apr 19, 2013 at 04:30:28PM +0200, Jan Kara wrote:
+> > +	inode->i_flags |= S_NOQUOTA;
+> > +	dquot_drop(inode);
+>   The above two lines have to be swapped to preserve original ordering
+> which is actually important. Thanks.
 > 
-> Signed-off-by: Jianpeng Ma <majianpeng@gmail.com>
-> ---
->  fs/buffer.c       | 2 --
->  fs/jbd/journal.c  | 1 -
->  fs/jbd2/journal.c | 1 -
->  3 files changed, 4 deletions(-)
-> 
-> diff --git a/fs/buffer.c b/fs/buffer.c
-> index b4dcb34..52b7739 100644
-> --- a/fs/buffer.c
-> +++ b/fs/buffer.c
-> @@ -865,8 +865,6 @@ try_again:
->  
->          /* Link the buffer to its page */
->          set_bh_page(bh, page, offset);
-> -
-> -        init_buffer(bh, NULL, NULL);
->      }
->      return head;
->  /*
-> diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-> index 81cc7ea..0c3fe90 100644
-> --- a/fs/jbd/journal.c
-> +++ b/fs/jbd/journal.c
-> @@ -311,7 +311,6 @@ int journal_write_metadata_buffer(transaction_t *transaction,
->      new_bh = alloc_buffer_head(GFP_NOFS|__GFP_NOFAIL);
->      /* keep subsequent assertions sane */
->      new_bh->b_state = 0;
-> -    init_buffer(new_bh, NULL, NULL);
-  You can also remove b_state = 0 , can't you?
+> >  	iput(inode);
 
->      atomic_set(&new_bh->b_count, 1);
->      new_jh = journal_add_journal_head(new_bh);    /* This sleeps */
->  
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index ed10991..95120c6 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -368,7 +368,6 @@ retry_alloc:
->  
->      /* keep subsequent assertions sane */
->      new_bh->b_state = 0;
-> -    init_buffer(new_bh, NULL, NULL);
-  And the same here. Otherwise the patch looks OK.
+OK.  I'm confused --- what is the function of the S_NOQUOTA flag here?
+I thought it was dquot_drop() which needed this magic flag set.  I can
+swap these two lines, but maybe we should add a comment somewhere
+about why this flag is needed and what the heck it's doing?  At this
+point, the use of this flag seems like total magic to me.  :-(
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+					- Ted
