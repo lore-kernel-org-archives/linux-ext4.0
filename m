@@ -1,299 +1,83 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v3 14/18] ext4: remove unused
- discard_partial_page_buffers
-Date: Fri, 19 Apr 2013 07:04:37 +0200
-Message-ID: <20130419050437.GE19244@quack.suse.cz>
-References: <1365498867-27782-1-git-send-email-lczerner@redhat.com>
- <1365498867-27782-15-git-send-email-lczerner@redhat.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH] ext4: disable defrag for metadata_csum file systems
+Date: Thu, 18 Apr 2013 22:47:38 -0700
+Message-ID: <20130419054738.GA5617@blackbox.djwong.org>
+References: <1366322282-4673-1-git-send-email-tytso@mit.edu>
+ <51707E06.2050105@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:31814 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752597Ab3DSFrp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Apr 2013 01:47:45 -0400
 Content-Disposition: inline
-In-Reply-To: <1365498867-27782-15-git-send-email-lczerner@redhat.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <51707E06.2050105@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 09-04-13 11:14:23, Lukas Czerner wrote:
-> The discard_partial_page_buffers is no longer used anywhere so we can
-> simply remove it including the *_no_lock variant and
-> EXT4_DISCARD_PARTIAL_PG_ZERO_UNMAPPED define.
+On Fri, Apr 19, 2013 at 07:13:10AM +0800, Zheng Liu wrote:
+> [Sorry, it seems that I got a delivery error.  So send again]
 > 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-  Looks good, obviously ;) You can add:
-Reviewed-by: Jan Kara <jack@suse.cz>
+> On 04/19/2013 05:58 AM, Theodore Ts'o wrote:
+> > It looks like there is absolutely no support for metadata checksums in
+> > fs/ext4/move_extent.c.  So if you try to defrag a file on a
+> > metadata_csum, it leaves the file system corrupted.
+> > 
+> > We really, really should get this fixed ASAP, but until we do, let's
+> > disable e4defrag on metadata_csum file systems so we avoid corrupting
+> > file systems.
+> > 
+> > Cc: "Darrick J. Wong" <darrick.wong@oracle.com>
+> > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> 
+> Yes, I also notice this problem.  So currently it seems that the best
+> choice is to disable defrag for metadata_csum.
 
-								Honza
-> ---
->  fs/ext4/ext4.h  |    8 --
->  fs/ext4/inode.c |  206 -------------------------------------------------------
->  2 files changed, 0 insertions(+), 214 deletions(-)
+I think this happens because mext_insert_extents() open-codes the metadata
+dirtying and forgets to update the extent block header.  It should call
+ext4_ext_dirty() at the end, instead. :(
+
+I should see if there are any other sites that dirty metadata without making
+the proper csum_set calls.  Will send a fix shortly, so NAK.
+
+--D
 > 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 2428244..cc9020e 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -593,11 +593,6 @@ enum {
->  #define EXT4_FREE_BLOCKS_NOFREE_LAST_CLUSTER	0x0020
->  
->  /*
-> - * Flags used by ext4_discard_partial_page_buffers
-> - */
-> -#define EXT4_DISCARD_PARTIAL_PG_ZERO_UNMAPPED	0x0001
-> -
-> -/*
->   * ioctl commands
->   */
->  #define	EXT4_IOC_GETFLAGS		FS_IOC_GETFLAGS
-> @@ -2111,9 +2106,6 @@ extern int ext4_block_zero_page_range(handle_t *handle,
->  		struct address_space *mapping, loff_t from, loff_t length);
->  extern int ext4_zero_partial_blocks(handle_t *handle, struct inode *inode,
->  			     loff_t lstart, loff_t lend);
-> -extern int ext4_discard_partial_page_buffers(handle_t *handle,
-> -		struct address_space *mapping, loff_t from,
-> -		loff_t length, int flags);
->  extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf);
->  extern qsize_t *ext4_get_reserved_space(struct inode *inode);
->  extern void ext4_da_update_reserve_space(struct inode *inode,
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 6003fd1..0d452c1 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -135,9 +135,6 @@ static void ext4_invalidatepage(struct page *page, unsigned int offset,
->  				unsigned int length);
->  static int __ext4_journalled_writepage(struct page *page, unsigned int len);
->  static int ext4_bh_delay_or_unwritten(handle_t *handle, struct buffer_head *bh);
-> -static int ext4_discard_partial_page_buffers_no_lock(handle_t *handle,
-> -		struct inode *inode, struct page *page, loff_t from,
-> -		loff_t length, int flags);
->  
->  /*
->   * Test whether an inode is a fast symlink.
-> @@ -3352,209 +3349,6 @@ void ext4_set_aops(struct inode *inode)
->  		inode->i_mapping->a_ops = &ext4_aops;
->  }
->  
-> -
-> -/*
-> - * ext4_discard_partial_page_buffers()
-> - * Wrapper function for ext4_discard_partial_page_buffers_no_lock.
-> - * This function finds and locks the page containing the offset
-> - * "from" and passes it to ext4_discard_partial_page_buffers_no_lock.
-> - * Calling functions that already have the page locked should call
-> - * ext4_discard_partial_page_buffers_no_lock directly.
-> - */
-> -int ext4_discard_partial_page_buffers(handle_t *handle,
-> -		struct address_space *mapping, loff_t from,
-> -		loff_t length, int flags)
-> -{
-> -	struct inode *inode = mapping->host;
-> -	struct page *page;
-> -	int err = 0;
-> -
-> -	page = find_or_create_page(mapping, from >> PAGE_CACHE_SHIFT,
-> -				   mapping_gfp_mask(mapping) & ~__GFP_FS);
-> -	if (!page)
-> -		return -ENOMEM;
-> -
-> -	err = ext4_discard_partial_page_buffers_no_lock(handle, inode, page,
-> -		from, length, flags);
-> -
-> -	unlock_page(page);
-> -	page_cache_release(page);
-> -	return err;
-> -}
-> -
-> -/*
-> - * ext4_discard_partial_page_buffers_no_lock()
-> - * Zeros a page range of length 'length' starting from offset 'from'.
-> - * Buffer heads that correspond to the block aligned regions of the
-> - * zeroed range will be unmapped.  Unblock aligned regions
-> - * will have the corresponding buffer head mapped if needed so that
-> - * that region of the page can be updated with the partial zero out.
-> - *
-> - * This function assumes that the page has already been  locked.  The
-> - * The range to be discarded must be contained with in the given page.
-> - * If the specified range exceeds the end of the page it will be shortened
-> - * to the end of the page that corresponds to 'from'.  This function is
-> - * appropriate for updating a page and it buffer heads to be unmapped and
-> - * zeroed for blocks that have been either released, or are going to be
-> - * released.
-> - *
-> - * handle: The journal handle
-> - * inode:  The files inode
-> - * page:   A locked page that contains the offset "from"
-> - * from:   The starting byte offset (from the beginning of the file)
-> - *         to begin discarding
-> - * len:    The length of bytes to discard
-> - * flags:  Optional flags that may be used:
-> - *
-> - *         EXT4_DISCARD_PARTIAL_PG_ZERO_UNMAPPED
-> - *         Only zero the regions of the page whose buffer heads
-> - *         have already been unmapped.  This flag is appropriate
-> - *         for updating the contents of a page whose blocks may
-> - *         have already been released, and we only want to zero
-> - *         out the regions that correspond to those released blocks.
-> - *
-> - * Returns zero on success or negative on failure.
-> - */
-> -static int ext4_discard_partial_page_buffers_no_lock(handle_t *handle,
-> -		struct inode *inode, struct page *page, loff_t from,
-> -		loff_t length, int flags)
-> -{
-> -	ext4_fsblk_t index = from >> PAGE_CACHE_SHIFT;
-> -	unsigned int offset = from & (PAGE_CACHE_SIZE-1);
-> -	unsigned int blocksize, max, pos;
-> -	ext4_lblk_t iblock;
-> -	struct buffer_head *bh;
-> -	int err = 0;
-> -
-> -	blocksize = inode->i_sb->s_blocksize;
-> -	max = PAGE_CACHE_SIZE - offset;
-> -
-> -	if (index != page->index)
-> -		return -EINVAL;
-> -
-> -	/*
-> -	 * correct length if it does not fall between
-> -	 * 'from' and the end of the page
-> -	 */
-> -	if (length > max || length < 0)
-> -		length = max;
-> -
-> -	iblock = index << (PAGE_CACHE_SHIFT - inode->i_sb->s_blocksize_bits);
-> -
-> -	if (!page_has_buffers(page))
-> -		create_empty_buffers(page, blocksize, 0);
-> -
-> -	/* Find the buffer that contains "offset" */
-> -	bh = page_buffers(page);
-> -	pos = blocksize;
-> -	while (offset >= pos) {
-> -		bh = bh->b_this_page;
-> -		iblock++;
-> -		pos += blocksize;
-> -	}
-> -
-> -	pos = offset;
-> -	while (pos < offset + length) {
-> -		unsigned int end_of_block, range_to_discard;
-> -
-> -		err = 0;
-> -
-> -		/* The length of space left to zero and unmap */
-> -		range_to_discard = offset + length - pos;
-> -
-> -		/* The length of space until the end of the block */
-> -		end_of_block = blocksize - (pos & (blocksize-1));
-> -
-> -		/*
-> -		 * Do not unmap or zero past end of block
-> -		 * for this buffer head
-> -		 */
-> -		if (range_to_discard > end_of_block)
-> -			range_to_discard = end_of_block;
-> -
-> -
-> -		/*
-> -		 * Skip this buffer head if we are only zeroing unampped
-> -		 * regions of the page
-> -		 */
-> -		if (flags & EXT4_DISCARD_PARTIAL_PG_ZERO_UNMAPPED &&
-> -			buffer_mapped(bh))
-> -				goto next;
-> -
-> -		/* If the range is block aligned, unmap */
-> -		if (range_to_discard == blocksize) {
-> -			clear_buffer_dirty(bh);
-> -			bh->b_bdev = NULL;
-> -			clear_buffer_mapped(bh);
-> -			clear_buffer_req(bh);
-> -			clear_buffer_new(bh);
-> -			clear_buffer_delay(bh);
-> -			clear_buffer_unwritten(bh);
-> -			clear_buffer_uptodate(bh);
-> -			zero_user(page, pos, range_to_discard);
-> -			BUFFER_TRACE(bh, "Buffer discarded");
-> -			goto next;
-> -		}
-> -
-> -		/*
-> -		 * If this block is not completely contained in the range
-> -		 * to be discarded, then it is not going to be released. Because
-> -		 * we need to keep this block, we need to make sure this part
-> -		 * of the page is uptodate before we modify it by writeing
-> -		 * partial zeros on it.
-> -		 */
-> -		if (!buffer_mapped(bh)) {
-> -			/*
-> -			 * Buffer head must be mapped before we can read
-> -			 * from the block
-> -			 */
-> -			BUFFER_TRACE(bh, "unmapped");
-> -			ext4_get_block(inode, iblock, bh, 0);
-> -			/* unmapped? It's a hole - nothing to do */
-> -			if (!buffer_mapped(bh)) {
-> -				BUFFER_TRACE(bh, "still unmapped");
-> -				goto next;
-> -			}
-> -		}
-> -
-> -		/* Ok, it's mapped. Make sure it's up-to-date */
-> -		if (PageUptodate(page))
-> -			set_buffer_uptodate(bh);
-> -
-> -		if (!buffer_uptodate(bh)) {
-> -			err = -EIO;
-> -			ll_rw_block(READ, 1, &bh);
-> -			wait_on_buffer(bh);
-> -			/* Uhhuh. Read error. Complain and punt.*/
-> -			if (!buffer_uptodate(bh))
-> -				goto next;
-> -		}
-> -
-> -		if (ext4_should_journal_data(inode)) {
-> -			BUFFER_TRACE(bh, "get write access");
-> -			err = ext4_journal_get_write_access(handle, bh);
-> -			if (err)
-> -				goto next;
-> -		}
-> -
-> -		zero_user(page, pos, range_to_discard);
-> -
-> -		err = 0;
-> -		if (ext4_should_journal_data(inode)) {
-> -			err = ext4_handle_dirty_metadata(handle, inode, bh);
-> -		} else
-> -			mark_buffer_dirty(bh);
-> -
-> -		BUFFER_TRACE(bh, "Partial buffer zeroed");
-> -next:
-> -		bh = bh->b_this_page;
-> -		iblock++;
-> -		pos += range_to_discard;
-> -	}
-> -
-> -	return err;
-> -}
-> -
->  /*
->   * ext4_block_truncate_page() zeroes out a mapping from file offset `from'
->   * up to the end of the block which corresponds to `from'.
-> -- 
-> 1.7.7.6
+> Reviewed-By: Zheng Liu <wenqing.lz@taobao.com>
+> 
+> Thanks,
+> 						- Zheng
+> 
+> > ---
+> >  fs/ext4/ioctl.c | 9 +++++++++
+> >  1 file changed, 9 insertions(+)
+> > 
+> > diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+> > index 9491ac0..2d043da 100644
+> > --- a/fs/ext4/ioctl.c
+> > +++ b/fs/ext4/ioctl.c
+> > @@ -450,6 +450,15 @@ group_extend_out:
+> >  			goto mext_out;
+> >  		}
+> >  
+> > +		if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+> > +			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
+> > +			ext4_msg(sb, KERN_ERR,
+> > +				 "Online defrag not supported with "
+> > +				 "metadata_csum");
+> > +			err = -EOPNOTSUPP;
+> > +			goto mext_out;
+> > +		}
+> > +
+> >  		err = mnt_want_write_file(filp);
+> >  		if (err)
+> >  			goto mext_out;
+> > 
 > 
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
