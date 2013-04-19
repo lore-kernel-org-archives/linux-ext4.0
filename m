@@ -1,71 +1,84 @@
-From: majianpeng <majianpeng@gmail.com>
-Subject: [PATCH] fs/buffer.c: Remove the unnecessary init operation after
- allocating buffer_head.
-Date: Fri, 19 Apr 2013 10:29:36 +0800
-Message-ID: <5170AC10.60504@gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v3 15/18] ext4: remove unused code from
+ ext4_remove_blocks()
+Date: Fri, 19 Apr 2013 07:15:02 +0200
+Message-ID: <20130419051502.GF19244@quack.suse.cz>
+References: <1365498867-27782-1-git-send-email-lczerner@redhat.com>
+ <1365498867-27782-16-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Al Viro <viro@zeniv.linux.org.uk>, akpm@linux-foundation.org,
-	tytso@mit.edu
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f42.google.com ([209.85.220.42]:42307 "EHLO
-	mail-pa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S967782Ab3DSC3m (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Apr 2013 22:29:42 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <1365498867-27782-16-git-send-email-lczerner@redhat.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Because alloc struct buffer_head using kmem_cache_zalloc,so it's not need to
-call 'init_buffer(bh, NULL, NULL)'.
+On Tue 09-04-13 11:14:24, Lukas Czerner wrote:
+> The "head removal" branch in the condition is never used in any code
+> path in ext4 since the function only caller ext4_ext_rm_leaf() will make
+> sure that the extent is properly split before removing blocks. Note that
+> there is a bug in this branch anyway.
+> 
+> This commit removes the unused code completely and makes use of
+> ext4_error() instead of printk if dubious range is provided.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+  Looks good. You can add:
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-Signed-off-by: Jianpeng Ma <majianpeng@gmail.com>
----
- fs/buffer.c       | 2 --
- fs/jbd/journal.c  | 1 -
- fs/jbd2/journal.c | 1 -
- 3 files changed, 4 deletions(-)
-
-diff --git a/fs/buffer.c b/fs/buffer.c
-index b4dcb34..52b7739 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -865,8 +865,6 @@ try_again:
- 
-         /* Link the buffer to its page */
-         set_bh_page(bh, page, offset);
--
--        init_buffer(bh, NULL, NULL);
-     }
-     return head;
- /*
-diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-index 81cc7ea..0c3fe90 100644
---- a/fs/jbd/journal.c
-+++ b/fs/jbd/journal.c
-@@ -311,7 +311,6 @@ int journal_write_metadata_buffer(transaction_t *transaction,
-     new_bh = alloc_buffer_head(GFP_NOFS|__GFP_NOFAIL);
-     /* keep subsequent assertions sane */
-     new_bh->b_state = 0;
--    init_buffer(new_bh, NULL, NULL);
-     atomic_set(&new_bh->b_count, 1);
-     new_jh = journal_add_journal_head(new_bh);    /* This sleeps */
- 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index ed10991..95120c6 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -368,7 +368,6 @@ retry_alloc:
- 
-     /* keep subsequent assertions sane */
-     new_bh->b_state = 0;
--    init_buffer(new_bh, NULL, NULL);
-     atomic_set(&new_bh->b_count, 1);
-     new_jh = jbd2_journal_add_journal_head(new_bh);    /* This sleeps */
- 
+								Honza
+> ---
+>  fs/ext4/extents.c |   21 ++++-----------------
+>  1 files changed, 4 insertions(+), 17 deletions(-)
+> 
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 6c5a70a..4adaa8a 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -2435,23 +2435,10 @@ static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
+>  			*partial_cluster = EXT4_B2C(sbi, pblk);
+>  		else
+>  			*partial_cluster = 0;
+> -	} else if (from == le32_to_cpu(ex->ee_block)
+> -		   && to <= le32_to_cpu(ex->ee_block) + ee_len - 1) {
+> -		/* head removal */
+> -		ext4_lblk_t num;
+> -		ext4_fsblk_t start;
+> -
+> -		num = to - from;
+> -		start = ext4_ext_pblock(ex);
+> -
+> -		ext_debug("free first %u blocks starting %llu\n", num, start);
+> -		ext4_free_blocks(handle, inode, NULL, start, num, flags);
+> -
+> -	} else {
+> -		printk(KERN_INFO "strange request: removal(2) "
+> -				"%u-%u from %u:%u\n",
+> -				from, to, le32_to_cpu(ex->ee_block), ee_len);
+> -	}
+> +	} else
+> +		ext4_error(sbi->s_sb, "strange request: removal(2) "
+> +			   "%u-%u from %u:%u\n",
+> +			   from, to, le32_to_cpu(ex->ee_block), ee_len);
+>  	return 0;
+>  }
+>  
+> -- 
+> 1.7.7.6
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 -- 
-1.8.2.rc2.4.g7799588
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
 
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
