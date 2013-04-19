@@ -1,43 +1,58 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/2] ext4: fix readdir error in case
- inline_data+^dir_index.
-Date: Fri, 19 Apr 2013 18:00:18 -0400
-Message-ID: <20130419220018.GB13249@thunk.org>
-References: <1365608030-3806-1-git-send-email-tm@tao.ma>
- <1365608228-3950-1-git-send-email-tm@tao.ma>
- <1365608228-3950-2-git-send-email-tm@tao.ma>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, zab@redhat.com
-To: Tao Ma <tm@tao.ma>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:42987 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933335Ab3DSWBU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 19 Apr 2013 18:01:20 -0400
-Content-Disposition: inline
-In-Reply-To: <1365608228-3950-2-git-send-email-tm@tao.ma>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Alexey Khoroshilov <khoroshilov@ispras.ru>
+Subject: [PATCH] ext4: unregister extents status shrinker if mount failed
+Date: Fri, 19 Apr 2013 15:05:33 -0700
+Message-ID: <1366409133-27567-1-git-send-email-khoroshilov@ispras.ru>
+Cc: Alexey Khoroshilov <khoroshilov@ispras.ru>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	spruce-project@linuxtesting.org
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Apr 10, 2013 at 11:37:08PM +0800, Tao Ma wrote:
-> From: Tao Ma <boyu.mt@taobao.com>
-> 
-> Zach reported a problem that if inline data is enabled, we don't
-> tell the difference between the offset of '.' and '..'. And a
-> getdents will fail if the user only want to get '.'. And what's
-> worse, we may meet with duplicate dir entries as the offset
-> for inline dir and non-inline one is quite different.
-> 
-> This patch just try to resolve this problem if dir_index
-> is disabled. In this case, f_pos is the real offset with
-> the dir block, so for inline dir, we just pretend as if
-> we are a dir block and returns the offset like a norml
-> dir block does.
-> 
-> Reported-by: Zach Brown <zab@redhat.com>
-> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+If ext4_fill_super() failed after extents status shrinker
+has been registered, the shrinker is left in a global list
+while the memory, it sits in, is already freed.
+Oops is not so bad scenario after that.
 
-Thanks, applied.
+Found by Linux File System Verification project (linuxtesting.org).
 
-					- Ted
+Signed-off-by: Alexey Khoroshilov <khoroshilov@ispras.ru>
+---
+ fs/ext4/super.c |    6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 5d6d5357..5f9cb30 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3757,7 +3757,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_MMP) &&
+ 	    !(sb->s_flags & MS_RDONLY))
+ 		if (ext4_multi_mount_protect(sb, le64_to_cpu(es->s_mmp_block)))
+-			goto failed_mount3;
++			goto failed_mount_shr;
+ 
+ 	/*
+ 	 * The first inode we look at is the journal inode.  Don't try
+@@ -3766,7 +3766,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	if (!test_opt(sb, NOLOAD) &&
+ 	    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL)) {
+ 		if (ext4_load_journal(sb, es, journal_devnum))
+-			goto failed_mount3;
++			goto failed_mount_shr;
+ 	} else if (test_opt(sb, NOLOAD) && !(sb->s_flags & MS_RDONLY) &&
+ 	      EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER)) {
+ 		ext4_msg(sb, KERN_ERR, "required journal recovery "
+@@ -4009,6 +4009,8 @@ failed_mount_wq:
+ 		jbd2_journal_destroy(sbi->s_journal);
+ 		sbi->s_journal = NULL;
+ 	}
++failed_mount_shr:
++	ext4_es_unregister_shrinker(sb);
+ failed_mount3:
+ 	del_timer(&sbi->s_err_report);
+ 	if (sbi->s_flex_groups)
+-- 
+1.7.9.5
