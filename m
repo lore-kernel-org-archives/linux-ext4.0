@@ -1,34 +1,67 @@
-From: "H. Peter Anvin" <hpa@zytor.com>
-Subject: Re: Unsigned widening casts of binary "not" operations..
-Date: Mon, 22 Apr 2013 17:32:22 -0700
-Message-ID: <5175D696.8060603@zytor.com>
-References: <CA+55aFwpLu0qNms=hkQr43yqD0K9DgESNm91OEWKT1ZuT8MU6Q@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v3 18/18] ext4: Allow punch hole with bigalloc enabled
+Date: Sat, 20 Apr 2013 15:43:16 +0200
+Message-ID: <20130420134316.GB2461@quack.suse.cz>
+References: <1365498867-27782-1-git-send-email-lczerner@redhat.com>
+ <1365498867-27782-19-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: Ingo Molnar <mingo@kernel.org>,
-	Thomas Gleixner <tglx@linutronix.de>,
-	David Miller <davem@davemloft.net>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	the arch/x86 maintainers <x86@kernel.org>,
-	Network Development <netdev@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <CA+55aFwpLu0qNms=hkQr43yqD0K9DgESNm91OEWKT1ZuT8MU6Q@mail.gmail.com>
-Sender: netdev-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <1365498867-27782-19-git-send-email-lczerner@redhat.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 04/22/2013 05:15 PM, Linus Torvalds wrote:
+On Tue 09-04-13 11:14:27, Lukas Czerner wrote:
+> In commits 5f95d21fb6f2aaa52830e5b7fb405f6c71d3ab85 and
+> 30bc2ec9598a1b156ad75217f2e7d4560efdeeab we've reworked punch_hole
+> implementation and there is noting holding us back from using punch hole
+> on file system with bigalloc feature enabled.
 > 
-> (It turns out that any use of "UINT_MAX" for a "long" value also results in
-> this warning, because we define it as "~0ul", so there are other cases of
-> spurious things where we *intentionally* drop the high bits).
+> This has been tested with fsx and xfstests.
+  Looks good. You can add:
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+									Honza
+
 > 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> ---
+>  fs/ext4/inode.c |    5 -----
+>  1 files changed, 0 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 0d452c1..87d6171 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -3536,11 +3536,6 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
+>  	if (!S_ISREG(inode->i_mode))
+>  		return -EOPNOTSUPP;
+>  
+> -	if (EXT4_SB(sb)->s_cluster_ratio > 1) {
+> -		/* TODO: Add support for bigalloc file systems */
+> -		return -EOPNOTSUPP;
+> -	}
+> -
+>  	trace_ext4_punch_hole(inode, offset, length);
+>  
+>  	/*
+> -- 
+> 1.7.7.6
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
 
-I'm responsible for this particular piece of drain bramage... we should
-probably just open-code the correct types conditional on the sizes like
-userspace does.
-
-	-hpa
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
