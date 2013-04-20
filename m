@@ -1,71 +1,61 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH] ext4: unregister extents status shrinker if mount failed
-Date: Sat, 20 Apr 2013 06:26:53 +0800
-Message-ID: <5171C4AD.2070905@gmail.com>
-References: <1366409133-27567-1-git-send-email-khoroshilov@ispras.ru>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: fix a big-endian bug when an extent is zeroed out
+Date: Sat, 20 Apr 2013 11:19:45 -0400
+Message-ID: <20130420151945.GA8575@thunk.org>
+References: <alpine.DEB.2.10.1304012249440.5874@trent.utfs.org>
+ <alpine.DEB.2.10.1304021611020.13746@trent.utfs.org>
+ <87li90q9mx.fsf@openvz.org>
+ <87hajoq6s2.fsf@openvz.org>
+ <20130403102204.GA15383@gmail.com>
+ <20130403122058.GB7741@thunk.org>
+ <20130403143406.GA3006@wallace>
+ <20130403144114.GB13668@thunk.org>
+ <683906006.1314495.1365476711254.JavaMail.root@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	spruce-project@linuxtesting.org
-To: Alexey Khoroshilov <khoroshilov@ispras.ru>
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Whitney <enwlinux@gmail.com>,
+	Dmitry Monakhov <dmonakhov@openvz.org>,
+	Christian Kujau <lists@nerdbynature.de>,
+	LKML <linux-kernel@vger.kernel.org>,
+	linux-s390 <linux-s390@vger.kernel.org>,
+	Steve Best <sbest@redhat.com>, linux-ext4@vger.kernel.org
+To: CAI Qian <caiqian@redhat.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1366409133-27567-1-git-send-email-khoroshilov@ispras.ru>
+Content-Disposition: inline
+In-Reply-To: <683906006.1314495.1365476711254.JavaMail.root@redhat.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 04/20/2013 06:05 AM, Alexey Khoroshilov wrote:
-> If ext4_fill_super() failed after extents status shrinker
-> has been registered, the shrinker is left in a global list
-> while the memory, it sits in, is already freed.
-> Oops is not so bad scenario after that.
-> 
-> Found by Linux File System Verification project (linuxtesting.org).
-> 
-> Signed-off-by: Alexey Khoroshilov <khoroshilov@ispras.ru>
+On Mon, Apr 08, 2013 at 11:05:11PM -0400, CAI Qian wrote:
+> I can help run xfstests for ext4 dev tree on x64, Power7, Z10 and
+> KVM platforms with back-storage like SAN/multipath, iSCSI and FCoE.
+> I plan to run this weekly and setup a wiki page to update the testing
+> status by every Friday.
 
-Thanks for your patch.  This problem has been fixed in dev branch of
-ext4 tree, but has not push into mainline kernel yet.  Here is the
-commit id (a75ae78f087f933ab3432e98bb4dbbf2196cf6d5).
+Hi CAI,
 
-Thanks,
-						- Zheng
+Sorry for not getting back to you sooner; I was at Collaboration
+Summit and LSF/MM last week.
 
-> ---
->  fs/ext4/super.c |    6 ++++--
->  1 file changed, 4 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 5d6d5357..5f9cb30 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -3757,7 +3757,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_MMP) &&
->  	    !(sb->s_flags & MS_RDONLY))
->  		if (ext4_multi_mount_protect(sb, le64_to_cpu(es->s_mmp_block)))
-> -			goto failed_mount3;
-> +			goto failed_mount_shr;
->  
->  	/*
->  	 * The first inode we look at is the journal inode.  Don't try
-> @@ -3766,7 +3766,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  	if (!test_opt(sb, NOLOAD) &&
->  	    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL)) {
->  		if (ext4_load_journal(sb, es, journal_devnum))
-> -			goto failed_mount3;
-> +			goto failed_mount_shr;
->  	} else if (test_opt(sb, NOLOAD) && !(sb->s_flags & MS_RDONLY) &&
->  	      EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER)) {
->  		ext4_msg(sb, KERN_ERR, "required journal recovery "
-> @@ -4009,6 +4009,8 @@ failed_mount_wq:
->  		jbd2_journal_destroy(sbi->s_journal);
->  		sbi->s_journal = NULL;
->  	}
-> +failed_mount_shr:
-> +	ext4_es_unregister_shrinker(sb);
->  failed_mount3:
->  	del_timer(&sbi->s_err_report);
->  	if (sbi->s_flex_groups)
-> 
+It would be great if you could help run xfstests on the ext4 dev tree
+on various platforms.  We don't have any coverage on Power7 or
+s390/Z10 at the moment, so that would be especially welcome.  Coverage
+on alternate storage backends can be interesting in finding timing
+problems so they would be valuable as well.
+
+If you have any Itanium platforms, that would be great too, since we
+don't have that today.
+
+The various ext4 configurations which I test can be found in the
+kvm-autorun/conf directory in my xfstests-bld git repository:
+
+	git://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git
+
+(This repository is a convenient setup to do build xfstests in a
+hermetic environment, and convenience scripts to run xfstests under
+kvm, and scripts on the host OS kick off the kvm test run and parse
+the test output afterwards.)
+
+Thanks for offering to test the dev branch!
+
+					- Ted
