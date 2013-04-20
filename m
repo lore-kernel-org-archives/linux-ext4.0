@@ -1,48 +1,90 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 56821] an ext4 commit ee0906f causes weird disk hangs
-Date: Sat, 20 Apr 2013 17:59:25 +0000 (UTC)
-Message-ID: <20130420175925.DECF311FA4F@bugzilla.kernel.org>
-References: <bug-56821-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: mark all metadata I/O with REQ_META
+Date: Sat, 20 Apr 2013 15:46:58 -0400
+Message-ID: <1366487218-19605-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:35360 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752500Ab3DTR7a (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 20 Apr 2013 13:59:30 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 530452064A
-	for <linux-ext4@vger.kernel.org>; Sat, 20 Apr 2013 17:59:29 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id 1AA6320566
-	for <linux-ext4@vger.kernel.org>; Sat, 20 Apr 2013 17:59:27 +0000 (UTC)
-In-Reply-To: <bug-56821-13602@https.bugzilla.kernel.org/>
+Received: from li9-11.members.linode.com ([67.18.176.11]:43130 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753020Ab3DTTrB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 20 Apr 2013 15:47:01 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=56821
+As Dave Chinner pointed out at the 2013 LSF/MM workshop, it's
+important that metadata I/O requests are marked as such to avoid
+priority inversions caused by I/O bandwidth throttling.
 
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/balloc.c | 2 +-
+ fs/ext4/ialloc.c | 2 +-
+ fs/ext4/mmp.c    | 4 ++--
+ fs/ext4/super.c  | 2 +-
+ 4 files changed, 5 insertions(+), 5 deletions(-)
 
-
-
-
---- Comment #3 from Tommi Kyntola <kynde@ts.ray.fi>  2013-04-20 17:59:25 ---
-Yes to software raid, I thought I mentioned it there already, but evidently I
-skipped that bit, sorry.
-
-I can strace the thunderbird launch, which is still the only way I've managed
-to trigger it, but thankfully it triggers it every time, but we'll have to wait
-until Monday as it's my office box.
-
-You wouldn't happen to have ideas what I should/could try to cause that in a
-cleaner way? (i.e. should I be generating load with large files or lots of
-small ones, lots of concurrent action or will a single thread do, etc) 
-
-And what else should I be trying? Stipping down kernel config? Would ext4
-debugs help?
-
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 8dcaea6..d0f13ea 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -441,7 +441,7 @@ ext4_read_block_bitmap_nowait(struct super_block *sb, ext4_group_t block_group)
+ 	trace_ext4_read_block_bitmap_load(sb, block_group);
+ 	bh->b_end_io = ext4_end_bitmap_read;
+ 	get_bh(bh);
+-	submit_bh(READ, bh);
++	submit_bh(READ | REQ_META | REQ_PRIO, bh);
+ 	return bh;
+ verify:
+ 	ext4_validate_block_bitmap(sb, desc, block_group, bh);
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 18d36d8..00a818d 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -166,7 +166,7 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
+ 	trace_ext4_load_inode_bitmap(sb, block_group);
+ 	bh->b_end_io = ext4_end_bitmap_read;
+ 	get_bh(bh);
+-	submit_bh(READ, bh);
++	submit_bh(READ | REQ_META | REQ_PRIO, bh);
+ 	wait_on_buffer(bh);
+ 	if (!buffer_uptodate(bh)) {
+ 		put_bh(bh);
+diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
+index b3b1f7d..214461e 100644
+--- a/fs/ext4/mmp.c
++++ b/fs/ext4/mmp.c
+@@ -54,7 +54,7 @@ static int write_mmp_block(struct super_block *sb, struct buffer_head *bh)
+ 	lock_buffer(bh);
+ 	bh->b_end_io = end_buffer_write_sync;
+ 	get_bh(bh);
+-	submit_bh(WRITE_SYNC, bh);
++	submit_bh(WRITE_SYNC | REQ_META | REQ_PRIO, bh);
+ 	wait_on_buffer(bh);
+ 	sb_end_write(sb);
+ 	if (unlikely(!buffer_uptodate(bh)))
+@@ -86,7 +86,7 @@ static int read_mmp_block(struct super_block *sb, struct buffer_head **bh,
+ 		get_bh(*bh);
+ 		lock_buffer(*bh);
+ 		(*bh)->b_end_io = end_buffer_read_sync;
+-		submit_bh(READ_SYNC, *bh);
++		submit_bh(READ_SYNC | REQ_META | REQ_PRIO, *bh);
+ 		wait_on_buffer(*bh);
+ 		if (!buffer_uptodate(*bh)) {
+ 			brelse(*bh);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index bfa29ec..dbc7c09 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4252,7 +4252,7 @@ static journal_t *ext4_get_dev_journal(struct super_block *sb,
+ 		goto out_bdev;
+ 	}
+ 	journal->j_private = sb;
+-	ll_rw_block(READ, 1, &journal->j_sb_buffer);
++	ll_rw_block(READ | REQ_META | REQ_PRIO, 1, &journal->j_sb_buffer);
+ 	wait_on_buffer(journal->j_sb_buffer);
+ 	if (!buffer_uptodate(journal->j_sb_buffer)) {
+ 		ext4_msg(sb, KERN_ERR, "I/O error on journal device");
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+1.7.12.rc0.22.gcdd159b
+
