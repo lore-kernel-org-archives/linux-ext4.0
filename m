@@ -1,79 +1,68 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/3 -v2] ext4: mark metadata blocks using bh flags
-Date: Sun, 21 Apr 2013 16:48:48 -0400
-Message-ID: <20130421204848.GB13543@thunk.org>
-References: <20130421000522.GA5054@thunk.org>
- <1366502828-7793-1-git-send-email-tytso@mit.edu>
- <1366502828-7793-3-git-send-email-tytso@mit.edu>
- <5173828A.2030809@suse.cz>
- <20130421195534.GA13543@thunk.org>
+Subject: Re: Weird resize2fs failures when mounting ext3 as ext4
+Date: Sun, 21 Apr 2013 19:30:57 -0400
+Message-ID: <20130421233057.GA5625@thunk.org>
+References: <51229FF7.7090003@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Jiri Slaby <jslaby@suse.cz>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	linux-mm@kvack.org,
-	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
-	mgorman@suse.de
-Return-path: <owner-linux-mm@kvack.org>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:43306 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751819Ab3DUXbC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 21 Apr 2013 19:31:02 -0400
 Content-Disposition: inline
-In-Reply-To: <20130421195534.GA13543@thunk.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <51229FF7.7090003@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Whoops, here's the right version of the patch.
+On Mon, Feb 18, 2013 at 03:41:11PM -0600, Eric Sandeen wrote:
+> Can't remember how I stumbled on this testcase, but mounting
+> an ext3 filesystem with "-t ext4" and then resizing leads to trouble.
 
->From 13fca323e9a8b63c08de7a4e05d3c702516b535d Mon Sep 17 00:00:00 2001
-From: Theodore Ts'o <tytso@mit.edu>
-Date: Sun, 21 Apr 2013 16:45:54 -0400
-Subject: [PATCH 3/3] ext4: mark metadata blocks using bh flags
+Is there a bugzilla entry for this?  I found the problem and a fix;
+patch follows in a moment.
 
-This allows metadata writebacks which are issued via block device
-writeback to be sent with the current write request flags.
+Also, here's a simplified repro that doesn't require LVM.  The bug was
+introduced in commit fb0a387dcdc, so it goes back to 2.6.32.  It only
+affects block allocations for files that aren't extent mapped, and is
+caused by the fact that the online resizer wasn't updating
+s_blockfile_groups (which was introduced in commit fb0a387dcdc).
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/ext4_jbd2.c | 2 ++
- fs/ext4/inode.c     | 6 +++++-
- 2 files changed, 7 insertions(+), 1 deletion(-)
+						- Ted
 
-diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index 0e1dc9e..451eb40 100644
---- a/fs/ext4/ext4_jbd2.c
-+++ b/fs/ext4/ext4_jbd2.c
-@@ -215,6 +215,8 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
- 
- 	might_sleep();
- 
-+	set_buffer_meta(bh);
-+	set_buffer_prio(bh);
- 	if (ext4_handle_valid(handle)) {
- 		err = jbd2_journal_dirty_metadata(handle, bh);
- 		if (err) {
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 62492e9..d7518e2 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1080,10 +1080,14 @@ retry_journal:
- /* For write_end() in data=journal mode */
- static int write_end_fn(handle_t *handle, struct buffer_head *bh)
- {
-+	int ret;
- 	if (!buffer_mapped(bh) || buffer_freed(bh))
- 		return 0;
- 	set_buffer_uptodate(bh);
--	return ext4_handle_dirty_metadata(handle, NULL, bh);
-+	ret = ext4_handle_dirty_metadata(handle, NULL, bh);
-+	clear_buffer_meta(bh);
-+	clear_buffer_prio(bh);
-+	return ret;
- }
- 
- /*
--- 
-1.7.12.rc0.22.gcdd159b
+#!/bin/bash
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+COUNT=15
+SIZE_1=15G
+SIZE_2=16G
+DEVICE=/dev/vdc
+XFS_IO=/root/xfstests/bin/xfs_io
+
+mkdir -p mnt
+umount mnt &>/dev/null
+mkfs.ext3  $DEVICE $SIZE_1
+mount -t ext4 -o nodelalloc $DEVICE mnt/
+
+for I in `seq 1 $COUNT`; do mkdir mnt/dir$I; dd if=/dev/zero of=mnt/dir$I/file$I bs=1M count=1024; done
+echo "before growing:"
+df mnt/
+
+umount mnt
+mount -t ext4 -o nodelalloc $DEVICE mnt/
+
+echo "growing:"
+#export RESIZE2FS_KERNEL_VERSION=3.2.0
+strace -o /tmp/resize2fs.strace resize2fs $DEVICE $SIZE_2
+
+echo "done growing:"
+df mnt/
+
+# This gets ENOSPC for all of them
+echo "try extending files:"
+for I in `seq 1 $COUNT`; do $XFS_IO -f -F -c "pwrite -b 4m 1G 50m" mnt/dir$I/file$I; done 
+df mnt/
+
+umount mnt
+
