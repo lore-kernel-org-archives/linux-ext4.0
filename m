@@ -1,111 +1,51 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 1/3] ext4: mark all metadata I/O with REQ_META
-Date: Mon, 22 Apr 2013 20:06:11 +0800
-Message-ID: <20130422120611.GB2039@gmail.com>
-References: <20130421000522.GA5054@thunk.org>
- <1366502828-7793-1-git-send-email-tytso@mit.edu>
-Mime-Version: 1.0
+From: Alexey Lyahkov <alexey.lyashkov@gmail.com>
+Subject: Re: page eviction from the buddy cache
+Date: Mon, 22 Apr 2013 15:14:55 +0300
+Message-ID: <128E4C4E-555C-43B6-9BA4-7914CBAF5B62@gmail.com>
+References: <51504A40.6020604@ya.ru> <20130327150743.GC14900@thunk.org> <alpine.LNX.2.00.1303271135420.29687@eggly.anvils> <3C8EEEF8-C1EB-4E3D-8DE6-198AB1BEA8C0@gmail.com> <515CD665.9000300@gmail.com> <239AD30A-2A31-4346-A4C7-8A6EB8247990@gmail.com> <51730619.3030204@fastmail.fm> <20130420235718.GA28789@thunk.org>
+Mime-Version: 1.0 (Apple Message framework v1283)
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>, linux-mm@kvack.org,
-	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
-	mgorman@suse.de
+Content-Transfer-Encoding: 8BIT
+Cc: Bernd Schubert <bernd.schubert@fastmail.fm>,
+	Will Huck <will.huckk@gmail.com>,
+	Hugh Dickins <hughd@google.com>,
+	Andrew Perepechko <anserper@ya.ru>, linux-ext4@vger.kernel.org,
+	akpm@linux-foundation.org, linux-mm@kvack.org, mgorman@suse.de
 To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <1366502828-7793-1-git-send-email-tytso@mit.edu>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-wi0-f171.google.com ([209.85.212.171]:40041 "EHLO
+	mail-wi0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753099Ab3DVMPF convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Apr 2013 08:15:05 -0400
+Received: by mail-wi0-f171.google.com with SMTP id l13so4241420wie.16
+        for <linux-ext4@vger.kernel.org>; Mon, 22 Apr 2013 05:15:03 -0700 (PDT)
+In-Reply-To: <20130420235718.GA28789@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Apr 20, 2013 at 08:07:06PM -0400, Theodore Ts'o wrote:
-> As Dave Chinner pointed out at the 2013 LSF/MM workshop, it's
-> important that metadata I/O requests are marked as such to avoid
-> priority inversions caused by I/O bandwidth throttling.
+Theodore,
+
+May you provide more details about discussion and new interface?
+someone from mm think we need to implement mark_acccessed_force() with avoiding is in LRU checks?
+and move single page directly without waiting a LRU drain ?
+
+
+On Apr 21, 2013, at 02:57, Theodore Ts'o wrote:
+
+> On Sat, Apr 20, 2013 at 11:18:17PM +0200, Bernd Schubert wrote:
+>> Alex, Andrew,
+>> 
+>> did you notice the patch Ted just sent?
+>> ("ext4: mark all metadata I/O with REQ_META")
 > 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-
-Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
-
-Regards,
-                                                - Zheng
-> ---
->  fs/ext4/balloc.c | 2 +-
->  fs/ext4/ialloc.c | 2 +-
->  fs/ext4/mmp.c    | 4 ++--
->  fs/ext4/super.c  | 2 +-
->  4 files changed, 5 insertions(+), 5 deletions(-)
+> This patch was sent to fix another issue that was brought up at Linux
+> Storage, Filesystem, and MM workshop.  I did bring up this issue with
+> Mel Gorman while at LSF/MM, and as a result, tThe mm folks are going
+> to look into making mark_page_accessed() do the right thing, or
+> perhaps provide us with new interface.  The problem with forcing the
+> page to be marked as activated is this would cause a TLB flush, which
+> would be pointless since this these buddy bitmap pages aren't actually
+> mapped in anywhere.
 > 
-> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-> index 8dcaea6..d0f13ea 100644
-> --- a/fs/ext4/balloc.c
-> +++ b/fs/ext4/balloc.c
-> @@ -441,7 +441,7 @@ ext4_read_block_bitmap_nowait(struct super_block *sb, ext4_group_t block_group)
->  	trace_ext4_read_block_bitmap_load(sb, block_group);
->  	bh->b_end_io = ext4_end_bitmap_read;
->  	get_bh(bh);
-> -	submit_bh(READ, bh);
-> +	submit_bh(READ | REQ_META | REQ_PRIO, bh);
->  	return bh;
->  verify:
->  	ext4_validate_block_bitmap(sb, desc, block_group, bh);
-> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-> index 18d36d8..00a818d 100644
-> --- a/fs/ext4/ialloc.c
-> +++ b/fs/ext4/ialloc.c
-> @@ -166,7 +166,7 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
->  	trace_ext4_load_inode_bitmap(sb, block_group);
->  	bh->b_end_io = ext4_end_bitmap_read;
->  	get_bh(bh);
-> -	submit_bh(READ, bh);
-> +	submit_bh(READ | REQ_META | REQ_PRIO, bh);
->  	wait_on_buffer(bh);
->  	if (!buffer_uptodate(bh)) {
->  		put_bh(bh);
-> diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
-> index b3b1f7d..214461e 100644
-> --- a/fs/ext4/mmp.c
-> +++ b/fs/ext4/mmp.c
-> @@ -54,7 +54,7 @@ static int write_mmp_block(struct super_block *sb, struct buffer_head *bh)
->  	lock_buffer(bh);
->  	bh->b_end_io = end_buffer_write_sync;
->  	get_bh(bh);
-> -	submit_bh(WRITE_SYNC, bh);
-> +	submit_bh(WRITE_SYNC | REQ_META | REQ_PRIO, bh);
->  	wait_on_buffer(bh);
->  	sb_end_write(sb);
->  	if (unlikely(!buffer_uptodate(bh)))
-> @@ -86,7 +86,7 @@ static int read_mmp_block(struct super_block *sb, struct buffer_head **bh,
->  		get_bh(*bh);
->  		lock_buffer(*bh);
->  		(*bh)->b_end_io = end_buffer_read_sync;
-> -		submit_bh(READ_SYNC, *bh);
-> +		submit_bh(READ_SYNC | REQ_META | REQ_PRIO, *bh);
->  		wait_on_buffer(*bh);
->  		if (!buffer_uptodate(*bh)) {
->  			brelse(*bh);
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index bfa29ec..dbc7c09 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -4252,7 +4252,7 @@ static journal_t *ext4_get_dev_journal(struct super_block *sb,
->  		goto out_bdev;
->  	}
->  	journal->j_private = sb;
-> -	ll_rw_block(READ, 1, &journal->j_sb_buffer);
-> +	ll_rw_block(READ | REQ_META | REQ_PRIO, 1, &journal->j_sb_buffer);
->  	wait_on_buffer(journal->j_sb_buffer);
->  	if (!buffer_uptodate(journal->j_sb_buffer)) {
->  		ext4_msg(sb, KERN_ERR, "I/O error on journal device");
-> -- 
-> 1.7.12.rc0.22.gcdd159b
-> 
-> --
-> To unsubscribe, send a message with 'unsubscribe linux-mm' in
-> the body to majordomo@kvack.org.  For more info on Linux MM,
-> see: http://www.linux-mm.org/ .
-> Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+> 						- Ted
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
