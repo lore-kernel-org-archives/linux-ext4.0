@@ -1,36 +1,100 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: add check for inodes_count overflow in new resize ioctl
-Date: Sun, 21 Apr 2013 22:57:05 -0400
-Message-ID: <1366599425-11561-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <stable-owner@vger.kernel.org>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Subject: Re: [PATCH] tune2fs: Disallow tune2fs to set inode size larger than
+ block size
+Date: Sun, 21 Apr 2013 23:17:20 -0400
+Message-ID: <20130422031720.GA12221@thunk.org>
+References: <516FAA7E.3040604@rs.jp.nec.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Akira Fujita <a-fujita@rs.jp.nec.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:43347 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754137Ab3DVDRX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 21 Apr 2013 23:17:23 -0400
+Content-Disposition: inline
+In-Reply-To: <516FAA7E.3040604@rs.jp.nec.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Addresses-Red-Hat-Bugzilla: #913245
+On Thu, Apr 18, 2013 at 05:10:38PM +0900, Akira Fujita wrote:
+> Disallow tune2fs command to set inode size larger than
+> block size to ext3 and ext4 (^flex_bg).
+> Without this patch, tune2fs makes FS unmountable.
+> 
+> Steps to reproduce:
+> 
+> 1.Create ext4 without flex_bg (or just create ext3)
+>   # mke2fs -t ext4 -O ^flex_bg DEV
+> 
+> 2.Set inode size larger than block size
+>   # tune2fs -I 8192 DEV
+>   
+> 3. We failed to mount FS
+>   # mount DEV MP
+>     mount: wrong fs type, bad option, bad superblock on /dev/sda7,
+>            missing codepage or helper program, or other error
+>            In some cases useful info is found in syslog - try
+>            dmesg | tail  or so
+> 
+> Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
 
-Reported-by: Eric Sandeen <sandeen@redhat.com>
+Thanks for reporting this.  Although at the moment we don't support
+changing the inode size for flex_bg file systems, we may at some point
+in the future --- and the inode size can never be larger than the
+block size.  So I simplified your change by removing the ^flex_bg check.
+
+      	     	  	     	  	- Ted
+
+>From fab0d286ec8539988551271c5faa864ea38dc4d4 Mon Sep 17 00:00:00 2001
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Date: Sun, 21 Apr 2013 23:14:28 -0400
+Subject: [PATCH] tune2fs: disallow tune2fs to set inode size larger than
+ block size
+
+Disallow tune2fs command to set the inode size to be larger than the
+block size.  Without this patch, tune2fs makes the file system to be
+unmountable.
+
+Steps to reproduce:
+
+1.Create ext4 without flex_bg (or just create ext3)
+  # mke2fs -t ext4 -O ^flex_bg DEV
+
+2.Set inode size larger than block size
+  # tune2fs -I 8192 DEV
+
+3. We failed to mount FS
+  # mount DEV MP
+    mount: wrong fs type, bad option, bad superblock on /dev/sda7,
+           missing codepage or helper program, or other error
+           In some cases useful info is found in syslog - try
+           dmesg | tail  or so
+
+Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: stable@vger.kernel.org
 ---
- fs/ext4/resize.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ misc/tune2fs.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 08d2312..b27c96d 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -1882,6 +1882,10 @@ retry:
- 		return 0;
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 849f3a0..47a7711 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -1944,6 +1944,12 @@ retry_open:
+ 			rc = 1;
+ 			goto closefs;
+ 		}
++		if (new_inode_size > fs->blocksize) {
++			fprintf(stderr, _("Invalid inode size %lu (max %d)\n"),
++				new_inode_size, fs->blocksize);
++			rc = 1;
++			goto closefs;
++		}
  
- 	n_group = ext4_get_group_number(sb, n_blocks_count - 1);
-+	if (n_group > (0xFFFFFFFFUL / EXT4_INODES_PER_GROUP(sb))) {
-+		ext4_warning(sb, "resize would cause inodes_count overflow");
-+		return -EINVAL;
-+	}
- 	ext4_get_group_no_and_offset(sb, o_blocks_count - 1, &o_group, &offset);
- 
- 	n_desc_blocks = num_desc_blocks(sb, n_group + 1);
+ 		/*
+ 		 * If inode resize is requested use the
 -- 
 1.7.12.rc0.22.gcdd159b
+
