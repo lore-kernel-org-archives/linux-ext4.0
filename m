@@ -1,73 +1,83 @@
-From: majianpeng <majianpeng@gmail.com>
-Subject: [PATCH V1] fs/buffer.c: Remove unnecessary init operation after,
- allocating buffer_head.
-Date: Mon, 22 Apr 2013 09:11:33 +0800
-Message-ID: <51748E45.8060806@gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Weird resize2fs failures when mounting ext3 as ext4
+Date: Sun, 21 Apr 2013 20:38:14 -0500
+Message-ID: <51749486.20606@redhat.com>
+References: <51229FF7.7090003@redhat.com> <20130421233057.GA5625@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org,
-	linux-kernel <linux-kernel@vger.kernel.org>
-To: Al Viro <viro@zeniv.linux.org.uk>, akpm@linux-foundation.org,
-	tytso@mit.edu, Jan Kara <jack@suse.cz>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f53.google.com ([209.85.210.53]:42368 "EHLO
-	mail-da0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753510Ab3DVBLs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 21 Apr 2013 21:11:48 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:39040 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752946Ab3DVBiR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 21 Apr 2013 21:38:17 -0400
+In-Reply-To: <20130421233057.GA5625@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Because alloc 'struct buffer_head' using kmem_cache_zalloc,so it doesn't
-need to call 'init_buffer(bh, NULL, NULL)' and other set-zero-operation.
+On 4/21/13 6:30 PM, Theodore Ts'o wrote:
+> On Mon, Feb 18, 2013 at 03:41:11PM -0600, Eric Sandeen wrote:
+>> Can't remember how I stumbled on this testcase, but mounting
+>> an ext3 filesystem with "-t ext4" and then resizing leads to trouble.
+> 
+> Is there a bugzilla entry for this?  I found the problem and a fix;
+> patch follows in a moment.
 
-Signed-off-by: Jianpeng Ma <majianpeng@gmail.com>
----
- fs/buffer.c       | 2 --
- fs/jbd/journal.c  | 2 --
- fs/jbd2/journal.c | 2 --
- 3 files changed, 6 deletions(-)
+Sorry, I took a look and I think I failed to file a bug.
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index b4dcb34..52b7739 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -865,8 +865,6 @@ try_again:
- 
-         /* Link the buffer to its page */
-         set_bh_page(bh, page, offset);
--
--        init_buffer(bh, NULL, NULL);
-     }
-     return head;
- /*
-diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-index 81cc7ea..865c430 100644
---- a/fs/jbd/journal.c
-+++ b/fs/jbd/journal.c
-@@ -310,8 +310,6 @@ int journal_write_metadata_buffer(transaction_t *transaction,
- 
-     new_bh = alloc_buffer_head(GFP_NOFS|__GFP_NOFAIL);
-     /* keep subsequent assertions sane */
--    new_bh->b_state = 0;
--    init_buffer(new_bh, NULL, NULL);
-     atomic_set(&new_bh->b_count, 1);
-     new_jh = journal_add_journal_head(new_bh);    /* This sleeps */
- 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index ed10991..8b220f1 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -367,8 +367,6 @@ retry_alloc:
-     }
- 
-     /* keep subsequent assertions sane */
--    new_bh->b_state = 0;
--    init_buffer(new_bh, NULL, NULL);
-     atomic_set(&new_bh->b_count, 1);
-     new_jh = jbd2_journal_add_journal_head(new_bh);    /* This sleeps */
- 
--- 
-1.8.2.rc2.4.g7799588
+> Also, here's a simplified repro that doesn't require LVM.  The bug was
+> introduced in commit fb0a387dcdc, so it goes back to 2.6.32.
+
+Argh.  Karma!  Sorry about that, and thanks for taking a look.
+
+-Eric
+
+> It only
+> affects block allocations for files that aren't extent mapped, and is
+> caused by the fact that the online resizer wasn't updating
+> s_blockfile_groups (which was introduced in commit fb0a387dcdc).
+> 
+> 						- Ted
+> 
+> #!/bin/bash
+> 
+> COUNT=15
+> SIZE_1=15G
+> SIZE_2=16G
+> DEVICE=/dev/vdc
+> XFS_IO=/root/xfstests/bin/xfs_io
+> 
+> mkdir -p mnt
+> umount mnt &>/dev/null
+> mkfs.ext3  $DEVICE $SIZE_1
+> mount -t ext4 -o nodelalloc $DEVICE mnt/
+> 
+> for I in `seq 1 $COUNT`; do mkdir mnt/dir$I; dd if=/dev/zero of=mnt/dir$I/file$I bs=1M count=1024; done
+> echo "before growing:"
+> df mnt/
+> 
+> umount mnt
+> mount -t ext4 -o nodelalloc $DEVICE mnt/
+> 
+> echo "growing:"
+> #export RESIZE2FS_KERNEL_VERSION=3.2.0
+> strace -o /tmp/resize2fs.strace resize2fs $DEVICE $SIZE_2
+> 
+> echo "done growing:"
+> df mnt/
+> 
+> # This gets ENOSPC for all of them
+> echo "try extending files:"
+> for I in `seq 1 $COUNT`; do $XFS_IO -f -F -c "pwrite -b 4m 1G 50m" mnt/dir$I/file$I; done 
+> df mnt/
+> 
+> umount mnt
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
