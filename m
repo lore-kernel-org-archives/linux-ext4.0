@@ -1,63 +1,47 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 1/5] ext4: convert write_begin methods to
- stable_page_writes semantics
-Date: Mon, 22 Apr 2013 20:36:48 +0800
-Message-ID: <20130422123648.GC2039@gmail.com>
-References: <1365966097-8968-1-git-send-email-dmonakhov@openvz.org>
+From: Azat Khuzhin <dohardgopro@gmail.com>
+Subject: Re: ext4, jbd2: task blocked for more than 120 seconds.
+Date: Mon, 22 Apr 2013 12:58:09 +0000
+Message-ID: <CAAW1UO-W3W6+wioq+kYULxyMJphtRngSzvT5+qgqyvJsMOm+qA@mail.gmail.com>
+References: <CAAW1UO8bbhfuw-J=0cxLB0uTps6aecTJe4ro2SgExpcK-SDouw@mail.gmail.com>
+	<CAAW1UO_+_z8zyRhX-HZKWHsxiZ8fE54bZvxU_uuXTmMQ3=+qSA@mail.gmail.com>
+	<CAAW1UO_fwrryWFMdTh7v5wSKMTdfmDpWqU=bJ0j86AHAGYv77A@mail.gmail.com>
+	<20130422111759.GB9950@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, jack@suse.cz
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f51.google.com ([209.85.220.51]:46239 "EHLO
-	mail-pa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751304Ab3DVMTf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Apr 2013 08:19:35 -0400
-Received: by mail-pa0-f51.google.com with SMTP id jh10so3588074pab.10
-        for <linux-ext4@vger.kernel.org>; Mon, 22 Apr 2013 05:19:35 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <1365966097-8968-1-git-send-email-dmonakhov@openvz.org>
+Received: from mail-ia0-f182.google.com ([209.85.210.182]:59449 "EHLO
+	mail-ia0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751803Ab3DVM6K (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Apr 2013 08:58:10 -0400
+Received: by mail-ia0-f182.google.com with SMTP id a5so379416iah.41
+        for <linux-ext4@vger.kernel.org>; Mon, 22 Apr 2013 05:58:09 -0700 (PDT)
+In-Reply-To: <20130422111759.GB9950@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Apr 14, 2013 at 11:01:33PM +0400, Dmitry Monakhov wrote:
-> use wait_for_stable_page() instead of wait_on_page_writeback()
-> 
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
-Regards,
-                                                - Zheng
-> ---
->  fs/ext4/inode.c |    5 +++--
->  1 files changed, 3 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 62189c8..1be5827 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -1028,7 +1028,8 @@ retry_journal:
->  		ext4_journal_stop(handle);
->  		goto retry_grab;
->  	}
-> -	wait_on_page_writeback(page);
-> +	/* In case writeback began while the page was unlocked */
-> +	wait_for_stable_page(page);
->  
->  	if (ext4_should_dioread_nolock(inode))
->  		ret = __block_write_begin(page, pos, len, ext4_get_block_write);
-> @@ -2715,7 +2716,7 @@ retry_journal:
->  		goto retry_grab;
->  	}
->  	/* In case writeback began while the page was unlocked */
-> -	wait_on_page_writeback(page);
-> +	wait_for_stable_page(page);
->  
->  	ret = __block_write_begin(page, pos, len, ext4_da_get_block_prep);
->  	if (ret < 0) {
-> -- 
-> 1.7.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Hi Theodore,
+
+I will apply it to linux tree, and upgrade kernel.
+However this is not error, which occur frequently.
+So if I reproduce it, I let you know.
+
+On Mon, Apr 22, 2013 at 11:17 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+> Hi Azat,
+>
+> Could you try and see if the following patch (which is queued for the
+> next merge window) solves the problem which you are seeing?
+>
+>      http://patchwork.ozlabs.org/patch/234776/
+>
+> Thanks!!
+>
+>                                                 - Ted
+
+
+
+-- 
+Respectfully
+Azat Khuzhin
+Primary email a3at.mail@gmail.com
