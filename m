@@ -1,49 +1,55 @@
 From: Carlos Maiolino <cmaiolino@redhat.com>
-Subject: Re: [PATCH] ext4: add check for inodes_count overflow in new resize
- ioctl
-Date: Mon, 22 Apr 2013 11:55:45 -0300
-Message-ID: <20130422145539.GB519@andromeda.usersys.redhat.com>
-References: <1366599425-11561-1-git-send-email-tytso@mit.edu>
+Subject: Re: [PATCH] libext2fs: only use override function when reading an
+ 128 byte inode
+Date: Mon, 22 Apr 2013 12:11:46 -0300
+Message-ID: <20130422151145.GC519@andromeda.usersys.redhat.com>
+References: <1366602969-26187-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	stable@vger.kernel.org
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <stable-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:62253 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753028Ab3DVPLw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 22 Apr 2013 11:11:52 -0400
 Content-Disposition: inline
-In-Reply-To: <1366599425-11561-1-git-send-email-tytso@mit.edu>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1366602969-26187-1-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Looks good.
+Looks Good,
 
 Reviewed-by: Carlos Maiolino <cmaiolino@redhat.com>
 
-On Sun, Apr 21, 2013 at 10:57:05PM -0400, Theodore Ts'o wrote:
-> Addresses-Red-Hat-Bugzilla: #913245
+On Sun, Apr 21, 2013 at 11:56:09PM -0400, Theodore Ts'o wrote:
+> The ext2fs_read_inode_full() function should not use fs->read_inode()
+> if the caller has requested more than the base 128 byte inode
+> structure and the inode size is greater than 128 bytes.  Otherwise the
+> caller won't get all of the bytes that they were asking for, since
+> there's no way for the fs->read_inode override function can know what
+> the size of the buffer passed to ext2fs_read_inode_full().
 > 
-> Reported-by: Eric Sandeen <sandeen@redhat.com>
 > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: stable@vger.kernel.org
 > ---
->  fs/ext4/resize.c | 4 ++++
->  1 file changed, 4 insertions(+)
+>  lib/ext2fs/inode.c | 4 +++-
+>  1 file changed, 3 insertions(+), 1 deletion(-)
 > 
-> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-> index 08d2312..b27c96d 100644
-> --- a/fs/ext4/resize.c
-> +++ b/fs/ext4/resize.c
-> @@ -1882,6 +1882,10 @@ retry:
->  		return 0;
+> diff --git a/lib/ext2fs/inode.c b/lib/ext2fs/inode.c
+> index 77fc447..fd72d4c 100644
+> --- a/lib/ext2fs/inode.c
+> +++ b/lib/ext2fs/inode.c
+> @@ -533,7 +533,9 @@ errcode_t ext2fs_read_inode_full(ext2_filsys fs, ext2_ino_t ino,
+>  	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
 >  
->  	n_group = ext4_get_group_number(sb, n_blocks_count - 1);
-> +	if (n_group > (0xFFFFFFFFUL / EXT4_INODES_PER_GROUP(sb))) {
-> +		ext4_warning(sb, "resize would cause inodes_count overflow");
-> +		return -EINVAL;
-> +	}
->  	ext4_get_group_no_and_offset(sb, o_blocks_count - 1, &o_group, &offset);
->  
->  	n_desc_blocks = num_desc_blocks(sb, n_group + 1);
+>  	/* Check to see if user has an override function */
+> -	if (fs->read_inode) {
+> +	if (fs->read_inode &&
+> +	    ((bufsize == sizeof(struct ext2_inode)) ||
+> +	     (EXT2_INODE_SIZE(fs->super) == sizeof(struct ext2_inode)))) {
+>  		retval = (fs->read_inode)(fs, ino, inode);
+>  		if (retval != EXT2_ET_CALLBACK_NOTHANDLED)
+>  			return retval;
 > -- 
 > 1.7.12.rc0.22.gcdd159b
 > 
