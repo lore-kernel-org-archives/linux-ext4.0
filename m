@@ -1,8 +1,8 @@
 From: Jan Kara <jack@suse.cz>
 Subject: Re: [PATCH V1] fs/buffer.c: Remove unnecessary init operation
  after, allocating buffer_head.
-Date: Tue, 23 Apr 2013 10:54:52 +0200
-Message-ID: <20130423085452.GC4596@quack.suse.cz>
+Date: Tue, 23 Apr 2013 10:59:48 +0200
+Message-ID: <20130423085948.GD4596@quack.suse.cz>
 References: <51748E45.8060806@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -23,9 +23,11 @@ On Mon 22-04-13 09:11:33, majianpeng wrote:
 > need to call 'init_buffer(bh, NULL, NULL)' and other set-zero-operation.
 > 
 > Signed-off-by: Jianpeng Ma <majianpeng@gmail.com>
-  Looks good. If noone objects, I'll merge the patch through my tree.
+  I've just noticed the whitespace is still mangled. Gmail is known for
+destroying whitespace so please send the patch as an attachment. Thanks.
 
 								Honza
+
 > ---
 >  fs/buffer.c       | 2 --
 >  fs/jbd/journal.c  | 2 --
