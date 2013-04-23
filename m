@@ -1,157 +1,62 @@
-From: Ben Myers <bpm@sgi.com>
-Subject: Re: [PATCH v3 05/18] xfs: use ->invalidatepage() length argument
-Date: Tue, 23 Apr 2013 16:06:50 -0500
-Message-ID: <20130423210650.GA2408@sgi.com>
-References: <1365498867-27782-1-git-send-email-lczerner@redhat.com>
- <1365498867-27782-6-git-send-email-lczerner@redhat.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: page eviction from the buddy cache
+Date: Tue, 23 Apr 2013 15:00:08 -0700
+Message-ID: <20130423150008.046ee9351da4681128db0bf3@linux-foundation.org>
+References: <51504A40.6020604@ya.ru>
+	<20130327150743.GC14900@thunk.org>
+	<alpine.LNX.2.00.1303271135420.29687@eggly.anvils>
+	<3C8EEEF8-C1EB-4E3D-8DE6-198AB1BEA8C0@gmail.com>
+	<515CD665.9000300@gmail.com>
+	<239AD30A-2A31-4346-A4C7-8A6EB8247990@gmail.com>
+	<51730619.3030204@fastmail.fm>
+	<20130420235718.GA28789@thunk.org>
+	<5176785D.5030707@fastmail.fm>
+	<20130423122708.GA31170@thunk.org>
+	<alpine.LNX.2.00.1304231230340.12850@eggly.anvils>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Bernd Schubert
+ <bernd.schubert@fastmail.fm>, Alexey Lyahkov <alexey.lyashkov@gmail.com>,
+ Will Huck <will.huckk@gmail.com>, Andrew Perepechko <anserper@ya.ru>,
+ linux-ext4@vger.kernel.org, linux-mm@kvack.org, mgorman@suse.de
+To: Hugh Dickins <hughd@google.com>
 Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <1365498867-27782-6-git-send-email-lczerner@redhat.com>
+In-Reply-To: <alpine.LNX.2.00.1304231230340.12850@eggly.anvils>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hey Lukas,
+On Tue, 23 Apr 2013 12:57:45 -0700 (PDT) Hugh Dickins <hughd@google.com> wrote:
 
-On Tue, Apr 09, 2013 at 11:14:14AM +0200, Lukas Czerner wrote:
-> ->invalidatepage() aop now accepts range to invalidate so we can make
-> use of it in xfs_vm_invalidatepage()
+> For now I stand by what I said before (if you find it effective
+> in practice - I haven't heard back): at the moment you need to
 > 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> Cc: xfs@oss.sgi.com
-> ---
->  fs/xfs/xfs_aops.c  |    5 +++--
->  fs/xfs/xfs_trace.h |   41 ++++++++++++++++++++++++++++++++++++++++-
->  2 files changed, 43 insertions(+), 3 deletions(-)
+> 	mark_page_accessed(page);	/* to SetPageReferenced */
+> 	lru_add_drain();		/* to SetPageLRU */
+> 	mark_page_accessed(page);	/* to SetPageActive */
 > 
-> diff --git a/fs/xfs/xfs_aops.c b/fs/xfs/xfs_aops.c
-> index e426796..e8018d3 100644
-> --- a/fs/xfs/xfs_aops.c
-> +++ b/fs/xfs/xfs_aops.c
-> @@ -826,8 +826,9 @@ xfs_vm_invalidatepage(
->  	unsigned int		offset,
->  	unsigned int		length)
->  {
-> -	trace_xfs_invalidatepage(page->mapping->host, page, offset);
-> -	block_invalidatepage(page, offset, PAGE_CACHE_SIZE - offset);
-> +	trace_xfs_invalidatepage(page->mapping->host, page, offset,
-> +				 length);
-> +	block_invalidatepage(page, offset, length);
->  }
->  
->  /*
-> diff --git a/fs/xfs/xfs_trace.h b/fs/xfs/xfs_trace.h
-> index 16a8129..91d6434 100644
-> --- a/fs/xfs/xfs_trace.h
-> +++ b/fs/xfs/xfs_trace.h
-> @@ -991,7 +991,46 @@ DEFINE_EVENT(xfs_page_class, name,	\
->  	TP_ARGS(inode, page, off))
->  DEFINE_PAGE_EVENT(xfs_writepage);
->  DEFINE_PAGE_EVENT(xfs_releasepage);
-> -DEFINE_PAGE_EVENT(xfs_invalidatepage);
+> when such a metadata page is first brought in.
 
-I think it might be better if we continue using the xfs_invalidatepage trace
-point as part of the xfs_page_class rather than as a separate trace point, like below.
+That should fix things for now.  Although it might be better to just do
 
-Else this looks great.
-
-Reviewed-by: Ben Myers <bpm@sgi.com>
-
-Regards,
-Ben
+ 	mark_page_accessed(page);	/* to SetPageReferenced */
+ 	lru_add_drain();		/* to SetPageLRU */
 
 
+Because a) this was too early to decide that the page is
+super-important and b) the second touch of this page should have a
+mark_page_accessed() in it already.
 
-Index: xfs/fs/xfs/xfs_aops.c
-===================================================================
---- xfs.orig/fs/xfs/xfs_aops.c
-+++ xfs/fs/xfs/xfs_aops.c
-@@ -825,7 +825,7 @@ xfs_vm_invalidatepage(
- 	struct page		*page,
- 	unsigned long		offset)
- {
--	trace_xfs_invalidatepage(page->mapping->host, page, offset);
-+	trace_xfs_invalidatepage(page->mapping->host, page, offset, 0);
- 	block_invalidatepage(page, offset);
- }
- 
-@@ -920,7 +920,7 @@ xfs_vm_writepage(
- 	int			count = 0;
- 	int			nonblocking = 0;
- 
--	trace_xfs_writepage(inode, page, 0);
-+	trace_xfs_writepage(inode, page, 0, 0);
- 
- 	ASSERT(page_has_buffers(page));
- 
-@@ -1151,7 +1151,7 @@ xfs_vm_releasepage(
- {
- 	int			delalloc, unwritten;
- 
--	trace_xfs_releasepage(page->mapping->host, page, 0);
-+	trace_xfs_releasepage(page->mapping->host, page, 0, 0);
- 
- 	xfs_count_page_state(page, &delalloc, &unwritten);
- 
-Index: xfs/fs/xfs/xfs_trace.h
-===================================================================
---- xfs.orig/fs/xfs/xfs_trace.h
-+++ xfs/fs/xfs/xfs_trace.h
-@@ -974,14 +974,16 @@ DEFINE_RW_EVENT(xfs_file_splice_read);
- DEFINE_RW_EVENT(xfs_file_splice_write);
- 
- DECLARE_EVENT_CLASS(xfs_page_class,
--	TP_PROTO(struct inode *inode, struct page *page, unsigned long off),
--	TP_ARGS(inode, page, off),
-+	TP_PROTO(struct inode *inode, struct page *page, unsigned long off,
-+		 unsigned int len),
-+	TP_ARGS(inode, page, off, len),
- 	TP_STRUCT__entry(
- 		__field(dev_t, dev)
- 		__field(xfs_ino_t, ino)
- 		__field(pgoff_t, pgoff)
- 		__field(loff_t, size)
- 		__field(unsigned long, offset)
-+		__field(unsigned int, length)
- 		__field(int, delalloc)
- 		__field(int, unwritten)
- 	),
-@@ -995,24 +997,27 @@ DECLARE_EVENT_CLASS(xfs_page_class,
- 		__entry->pgoff = page_offset(page);
- 		__entry->size = i_size_read(inode);
- 		__entry->offset = off;
-+		__entry->length = len;
- 		__entry->delalloc = delalloc;
- 		__entry->unwritten = unwritten;
- 	),
- 	TP_printk("dev %d:%d ino 0x%llx pgoff 0x%lx size 0x%llx offset %lx "
--		  "delalloc %d unwritten %d",
-+		  "length %x delalloc %d unwritten %d",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  __entry->ino,
- 		  __entry->pgoff,
- 		  __entry->size,
- 		  __entry->offset,
-+		  __entry->length,
- 		  __entry->delalloc,
- 		  __entry->unwritten)
- )
- 
- #define DEFINE_PAGE_EVENT(name)		\
- DEFINE_EVENT(xfs_page_class, name,	\
--	TP_PROTO(struct inode *inode, struct page *page, unsigned long off),	\
--	TP_ARGS(inode, page, off))
-+	TP_PROTO(struct inode *inode, struct page *page, unsigned long off, \
-+		 unsigned int len),	\
-+	TP_ARGS(inode, page, off, len))
- DEFINE_PAGE_EVENT(xfs_writepage);
- DEFINE_PAGE_EVENT(xfs_releasepage);
- DEFINE_PAGE_EVENT(xfs_invalidatepage);
+I do agree that we should be able to set both PageReferenced and
+PageActive on a lru_add_pvecs page and have those hints honoured when
+lru_add_pvecs is spilled onto the LRU.
+
+At present the code decides up-front which LRU the lru_add_pvecs page
+will eventually be spilled onto.  That's a bit strange and I wonder why
+we did it that way.  Why not just have a single (per-cpu) magazine of
+pages which are to go onto the LRUs, and decide *which* LRU that will
+be at the last possible moment?
+
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
