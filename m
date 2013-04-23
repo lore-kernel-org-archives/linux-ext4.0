@@ -1,60 +1,59 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Excessive stall times on ext4 in 3.9-rc2
-Date: Tue, 23 Apr 2013 11:31:07 +0200
-Message-ID: <20130423093107.GF4596@quack.suse.cz>
-References: <20130410105608.GC1910@suse.de>
- <20130410131245.GC4862@thunk.org>
- <20130411170402.GB11656@suse.de>
- <20130411183512.GA12298@thunk.org>
- <20130411213335.GE9379@quack.suse.cz>
- <20130412025708.GB7445@thunk.org>
- <20130412045042.GA30622@dastard>
- <20130412151952.GA4944@thunk.org>
- <20130422143846.GA2675@suse.de>
- <x49a9oqmblc.fsf@segfault.boston.devel.redhat.com>
+From: Bernd Schubert <bernd.schubert@fastmail.fm>
+Subject: Re: page eviction from the buddy cache
+Date: Tue, 23 Apr 2013 14:02:37 +0200
+Message-ID: <5176785D.5030707@fastmail.fm>
+References: <51504A40.6020604@ya.ru> <20130327150743.GC14900@thunk.org> <alpine.LNX.2.00.1303271135420.29687@eggly.anvils> <3C8EEEF8-C1EB-4E3D-8DE6-198AB1BEA8C0@gmail.com> <515CD665.9000300@gmail.com> <239AD30A-2A31-4346-A4C7-8A6EB8247990@gmail.com> <51730619.3030204@fastmail.fm> <20130420235718.GA28789@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Mel Gorman <mgorman@suse.de>, Theodore Ts'o <tytso@mit.edu>,
-	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
-	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	Linux-MM <linux-mm@kvack.org>, Jiri Slaby <jslaby@suse.cz>
-To: Jeff Moyer <jmoyer@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Alexey Lyahkov <alexey.lyashkov@gmail.com>,
+	Will Huck <will.huckk@gmail.com>,
+	Hugh Dickins <hughd@google.com>,
+	Andrew Perepechko <anserper@ya.ru>, linux-ext4@vger.kernel.org,
+	akpm@linux-foundation.org, linux-mm@kvack.org, mgorman@suse.de
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:39117 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755512Ab3DWJbJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 23 Apr 2013 05:31:09 -0400
-Content-Disposition: inline
-In-Reply-To: <x49a9oqmblc.fsf@segfault.boston.devel.redhat.com>
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:54346 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755299Ab3DWMCq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Apr 2013 08:02:46 -0400
+Received: from itwm2.itwm.fhg.de (itwm2.itwm.fhg.de [131.246.191.3])
+	by mailgw1.uni-kl.de (8.14.3/8.14.3/Debian-9.4) with ESMTP id r3NC2fPY009376
+	(version=TLSv1/SSLv3 cipher=EDH-RSA-DES-CBC3-SHA bits=168 verify=NOT)
+	for <linux-ext4@vger.kernel.org>; Tue, 23 Apr 2013 14:02:42 +0200
+In-Reply-To: <20130420235718.GA28789@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 22-04-13 18:42:23, Jeff Moyer wrote:
-> Jan, if I were to come up with a way of promoting a particular async
-> queue to the front of the line, where would I put such a call in the
-> ext4/jbd2 code to be effective?
-  As Ted wrote the simplies might be to put his directly in
-__lock_buffer(). Something like:
+On 04/21/2013 01:57 AM, Theodore Ts'o wrote:
+> On Sat, Apr 20, 2013 at 11:18:17PM +0200, Bernd Schubert wrote:
+>> Alex, Andrew,
+>>
+>> did you notice the patch Ted just sent?
+>> ("ext4: mark all metadata I/O with REQ_META")
+>
+> This patch was sent to fix another issue that was brought up at Linux
+> Storage, Filesystem, and MM workshop.  I did bring up this issue with
+> Mel Gorman while at LSF/MM, and as a result, tThe mm folks are going
+> to look into making mark_page_accessed() do the right thing, or
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index b4dcb34..e026a3e 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -69,6 +69,12 @@ static int sleep_on_buffer(void *word)
- 
- void __lock_buffer(struct buffer_head *bh)
- {
-+       /*
-+        * Likely under async writeback? Tell io scheduler we are
-+        * now waiting for the IO...
-+        */
-+       if (PageWriteback(bh->b_page))
-+               io_now_sync(bh->b_bdev, bh->b_blocknr);
-        wait_on_bit_lock(&bh->b_state, BH_Lock, sleep_on_buffer,
-                                                        TASK_UNINTERRUPTIBLE);
-}
+Yeah, I know that REQ_META is a hint/flag for the IO scheduler.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> perhaps provide us with new interface.  The problem with forcing the
+> page to be marked as activated is this would cause a TLB flush, which
+> would be pointless since this these buddy bitmap pages aren't actually
+> mapped in anywhere.
+
+I just thought we can (mis)use that flag and and add another information 
+to the page that it holds meta data. The mm system then could use that 
+flag and evict those pages with a lower priority  compared to other pages.
+I'm curious about outcome of the mm folks. Please let me know if there 
+is anything I can help with.
+
+
+Thanks,
+Bernd
+
+
+
+
