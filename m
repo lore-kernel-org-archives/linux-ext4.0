@@ -1,81 +1,34 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH V1] fs/buffer.c: Remove unnecessary init operation
- after, allocating buffer_head.
-Date: Tue, 23 Apr 2013 10:59:48 +0200
-Message-ID: <20130423085948.GD4596@quack.suse.cz>
-References: <51748E45.8060806@gmail.com>
+From: "David Laight" <David.Laight@ACULAB.COM>
+Subject: RE: Unsigned widening casts of binary "not" operations..
+Date: Tue, 23 Apr 2013 09:59:05 +0100
+Message-ID: <AE90C24D6B3A694183C094C60CF0A2F6026B71EF@saturn3.aculab.com>
+References: <CA+55aFwpLu0qNms=hkQr43yqD0K9DgESNm91OEWKT1ZuT8MU6Q@mail.gmail.com> <CA+55aFy0jPr5udwJx8cZ-QFs-OgZzQ_NJm_VSj_cS7tsKUn3Kw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Al Viro <viro@zeniv.linux.org.uk>, akpm@linux-foundation.org,
-	tytso@mit.edu, Jan Kara <jack@suse.cz>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org,
-	linux-kernel <linux-kernel@vger.kernel.org>
-To: majianpeng <majianpeng@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <51748E45.8060806@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain;
+	charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: "Linux Kernel Mailing List" <linux-kernel@vger.kernel.org>,
+	"the arch/x86 maintainers" <x86@kernel.org>,
+	"Network Development" <netdev@vger.kernel.org>,
+	<linux-ext4@vger.kernel.org>
+To: "Linus Torvalds" <torvalds@linux-foundation.org>,
+	"Ingo Molnar" <mingo@kernel.org>, "H. Peter Anvin" <hpa@zytor.com>,
+	"Thomas Gleixner" <tglx@linutronix.de>,
+	"David Miller" <davem@davemloft.net>,
+	"Theodore Ts'o" <tytso@mit.edu>
+Return-path: <netdev-owner@vger.kernel.org>
+Content-class: urn:content-classes:message
+In-Reply-To: <CA+55aFy0jPr5udwJx8cZ-QFs-OgZzQ_NJm_VSj_cS7tsKUn3Kw@mail.gmail.com>
+Sender: netdev-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon 22-04-13 09:11:33, majianpeng wrote:
-> Because alloc 'struct buffer_head' using kmem_cache_zalloc,so it doesn't
-> need to call 'init_buffer(bh, NULL, NULL)' and other set-zero-operation.
-> 
-> Signed-off-by: Jianpeng Ma <majianpeng@gmail.com>
-  I've just noticed the whitespace is still mangled. Gmail is known for
-destroying whitespace so please send the patch as an attachment. Thanks.
-
-								Honza
-
-> ---
->  fs/buffer.c       | 2 --
->  fs/jbd/journal.c  | 2 --
->  fs/jbd2/journal.c | 2 --
->  3 files changed, 6 deletions(-)
-> 
-> diff --git a/fs/buffer.c b/fs/buffer.c
-> index b4dcb34..52b7739 100644
-> --- a/fs/buffer.c
-> +++ b/fs/buffer.c
-> @@ -865,8 +865,6 @@ try_again:
->  
->          /* Link the buffer to its page */
->          set_bh_page(bh, page, offset);
-> -
-> -        init_buffer(bh, NULL, NULL);
->      }
->      return head;
->  /*
-> diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-> index 81cc7ea..865c430 100644
-> --- a/fs/jbd/journal.c
-> +++ b/fs/jbd/journal.c
-> @@ -310,8 +310,6 @@ int journal_write_metadata_buffer(transaction_t *transaction,
->  
->      new_bh = alloc_buffer_head(GFP_NOFS|__GFP_NOFAIL);
->      /* keep subsequent assertions sane */
-> -    new_bh->b_state = 0;
-> -    init_buffer(new_bh, NULL, NULL);
->      atomic_set(&new_bh->b_count, 1);
->      new_jh = journal_add_journal_head(new_bh);    /* This sleeps */
->  
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index ed10991..8b220f1 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -367,8 +367,6 @@ retry_alloc:
->      }
->  
->      /* keep subsequent assertions sane */
-> -    new_bh->b_state = 0;
-> -    init_buffer(new_bh, NULL, NULL);
->      atomic_set(&new_bh->b_count, 1);
->      new_jh = jbd2_journal_add_journal_head(new_bh);    /* This sleeps */
->  
-> -- 
-> 1.8.2.rc2.4.g7799588
-> 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+PiBXaGF0IGhhcHBlbnMgaXMgdGhhdCB0aGUgIn5iaXRtYXNrIiBpcyBkb25lIGluIHRoZSAqbmFy
+cm93ZXIqIHR5cGUsDQo+IGFuZCB0aGVuIC0gYmVjYXVzZSB0aGUgbmFycm93ZXIgdHlwZSBpcyB1
+bnNpZ25lZCAtIHRoZSBjYXN0IHRvIHRoZQ0KPiB3aWRlciB0eXBlIGlzIGRvbmUgYXMgYW4gKnVu
+c2lnbmVkKiBjYXN0LCBzbyB3aGF0IHlvdSAqdGhpbmsqIGhhcHBlbnMNCj4gaXMgdGhhdCBpdCBj
+bGVhcnMgdGhlIGJpdHMgdGhhdCBhcmUgc2V0IGluICJiaXRtYXNrIiwgYnV0IHdoYXQNCj4gKmFj
+dHVhbGx5KiBoYXBwZW5zIGlzIHRoYXQgeWVzLCB5b3UgY2xlYXIgdGhlIGJpdHMgdGhhdCBhcmUg
+c2V0IGluDQo+IDpiaXRtYXNrIiwgYnV0IHlvdSAqYWxzbyogY2xlYXIgdGhlIHVwcGVyIGJpdHMg
+b2YgdmFsdWUuDQoNCklmIHRoZSBuYXJyb3dlciB0eXBlIGlzIHNpZ25lZCBpdCBpcyBwcm9iYWJs
+eSBldmVuIG1vcmUgY29uZnVzaW5nIQ0KVGhlIGhpZ2ggYml0cyB3aWxsIGJlIHByZXNlcnZlZCB1
+bmxlc3MgeW91IGFyZSBtYXNraW5nIG9mZiBiaXQgMzEuDQoNCglEYXZpZA0KDQo=
