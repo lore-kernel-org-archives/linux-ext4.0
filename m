@@ -1,83 +1,70 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: Unsigned widening casts of binary "not" operations..
-Date: Tue, 23 Apr 2013 11:21:14 -0700
-Message-ID: <CA+55aFz1mGf+XXQmXr+8GA2cEBRABzG1PSvPgLCJ-18hzViqZg@mail.gmail.com>
-References: <CA+55aFxvpcF7+dyy5d3+JP4Wfv90zPsRVtEhNG9Pky5gWTm_Pg@mail.gmail.com>
-	<20130423.133732.2222922370397287096.davem@davemloft.net>
-	<CA+55aFzVcptyMSDpFzE_-npbs-ycS+9z_nknoZm1+bQws1pWnA@mail.gmail.com>
-	<20130423.135657.824070337983596004.davem@davemloft.net>
+From: Hugh Dickins <hughd@google.com>
+Subject: Re: page eviction from the buddy cache
+Date: Tue, 23 Apr 2013 12:57:45 -0700 (PDT)
+Message-ID: <alpine.LNX.2.00.1304231230340.12850@eggly.anvils>
+References: <51504A40.6020604@ya.ru> <20130327150743.GC14900@thunk.org> <alpine.LNX.2.00.1303271135420.29687@eggly.anvils> <3C8EEEF8-C1EB-4E3D-8DE6-198AB1BEA8C0@gmail.com> <515CD665.9000300@gmail.com> <239AD30A-2A31-4346-A4C7-8A6EB8247990@gmail.com>
+ <51730619.3030204@fastmail.fm> <20130420235718.GA28789@thunk.org> <5176785D.5030707@fastmail.fm> <20130423122708.GA31170@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: David Laight <David.Laight@aculab.com>,
-	Ingo Molnar <mingo@kernel.org>,
-	"H. Peter Anvin" <hpa@zytor.com>,
-	Thomas Gleixner <tglx@linutronix.de>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	"the arch/x86 maintainers" <x86@kernel.org>,
-	Network Development <netdev@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: David Miller <davem@davemloft.net>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20130423.135657.824070337983596004.davem@davemloft.net>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Bernd Schubert <bernd.schubert@fastmail.fm>,
+    Alexey Lyahkov <alexey.lyashkov@gmail.com>,
+    Will Huck <will.huckk@gmail.com>, Andrew Perepechko <anserper@ya.ru>,
+    linux-ext4@vger.kernel.org, akpm@linux-foundation.org, linux-mm@kvack.org,
+    mgorman@suse.de
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20130423122708.GA31170@thunk.org>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Apr 23, 2013 at 10:56 AM, David Miller <davem@davemloft.net> wrote:
->
-> If you're not bored, and could add a check for that kind of narrowing
-> situation, I'd really appreciate it.
+On Tue, 23 Apr 2013, Theodore Ts'o wrote:
+> On Tue, Apr 23, 2013 at 02:02:37PM +0200, Bernd Schubert wrote:
+> > 
+> > I just thought we can (mis)use that flag and and add another
+> > information to the page that it holds meta data. The mm system then
+> > could use that flag and evict those pages with a lower priority
+> > compared to other pages.
+> 
+> Well, the flag I added was to the buffer_head, not to the page, and my
+> understanding is that the mm folks are very hesitant to add new page
+> flags, since they are bumping up against the 32 bit limit (on the i386
+> platform), and they are trying to keep the struct page structure trim
+> and svelte.  :-)
 
-It's pretty non-trivial.
+Yes indeed.  But luckily this issue seems not to need another page flag.
 
-For example, this is perfectly normal C:
+If metadata is useful, it gets used: so mark_page_accessed when it's used
+should generally do the job; perhaps it's already called on that path,
+perhaps calls need to be added.
 
-   char a,b;
-   ...
-   a &= ~b;
+Rarely used but nonetheless useful metadata might get pushed out by data.
+But I don't think we want another page flag, and yet more complicated
+reclaim policy in mm for that case.  If the filesystem knows of such
+cases, I hope it can find a way to use mark_page_accessed more often
+on such pages than they are actually accessed, to help retain them.
 
-and the arithmetic is technically done in "int" (because C really
-never does any arithmetic in a narrower type). So the value of 'b'
-will be widened to int before doing the binary not, and then the
-binary 'and' will be done in 'int', and then in the end it will be
-cast down to 'char' again and written back to 'a'.
+What this thread did bring up was the failure of mark_page_accessed
+to be fully effective until the page is flushed from pagevec to lru.
+That remains a good point: something that several would like to fix.
 
-And none of that matters. All the normal integer operations (both
-arithmetic and logical) are "stable" in the smaller size. The upper
-bits can be basically random uninteresting crap (ie do zero or sign
-extension depending on the smaller type), but they don't matter
-because they go away in the end. In fact, the compiler will usually
-then end up doing the actual arithmetic/logical op in the narrower
-type, even though *conceptually* there were lots of casts going on
-back and forth.
+For now I stand by what I said before (if you find it effective
+in practice - I haven't heard back): at the moment you need to
 
-The point being that at the actual time of the widening, it's hard to
-say whether "~(u8)0" is problematic or not - it will depend on how it
-ends up being used. At a much later point, sparse will have optimized
-away the casts and will indeed linearize it to a simple 8-bit
-operation, but by then sparse will *also* have simplified away the
-obviously constant arithmetic, so by the time the casts back and forth
-are gone, so is the logical "not", and all you have left of the
-"~(u8)0" is either a 8-bit value (255) or an "int" (-1) depending on
-how it was used.
+	mark_page_accessed(page);	/* to SetPageReferenced */
+	lru_add_drain();		/* to SetPageLRU */
+	mark_page_accessed(page);	/* to SetPageActive */
 
-Put another way: it's not possible to say that "~(u8)0" is wrong early
-on (because it may be part of something that ends up only doing byte
-arithmetic) and it is *also* not possible to say that it's invalid
-much later on, because by then we will have munged it into something
-totally different.
+when such a metadata page is first brought in.
 
-I'm not saying it's impossible to do. You could certainly do it with
-sparse, but it would involve a fair amount of effort. You'd have to
-add a whole new separate phase of "type narrowing": sparse *does* do
-that as part of the simplification, but right now it's done while it
-does all the *other* simplification too, so ..
+We all hate that lru_add_drain in the middle, which will exacerbate
+lru_lock contention.  We would love to eliminate the need for most
+lru_add_drains: I have some ideas which I'm pursuing in odd moments,
+but I promise nothing.
 
-Now, if you only wanted the warning when there is an *explicit* cast,
-that would be different. It would be easy enough to find the pattern
-where we do a "~" op on an explicit cast to something smaller than
-"int" (which means that there would be an implicit cast after the
-explicit one). But quite frankly, you could likely do that almost
-equally well with just a judicious use of "grep".
+Hugh
 
-                      Linus
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
