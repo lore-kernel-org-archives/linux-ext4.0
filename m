@@ -1,44 +1,76 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Unsigned widening casts of binary "not" operations..
-Date: Tue, 23 Apr 2013 11:52:12 -0400
-Message-ID: <20130423155212.GI31170@thunk.org>
-References: <CA+55aFwpLu0qNms=hkQr43yqD0K9DgESNm91OEWKT1ZuT8MU6Q@mail.gmail.com>
- <CA+55aFy0jPr5udwJx8cZ-QFs-OgZzQ_NJm_VSj_cS7tsKUn3Kw@mail.gmail.com>
- <AE90C24D6B3A694183C094C60CF0A2F6026B71EF@saturn3.aculab.com>
- <CA+55aFwogFL=nm=YHwARcz9OTRBdWEDPG0xcqM-H3k-VZTOZPQ@mail.gmail.com>
- <AE90C24D6B3A694183C094C60CF0A2F6026B71F2@saturn3.aculab.com>
- <CA+55aFxvpcF7+dyy5d3+JP4Wfv90zPsRVtEhNG9Pky5gWTm_Pg@mail.gmail.com>
+From: Sage Weil <sage@inktank.com>
+Subject: Re: [PATCH v3 07/18] ceph: use ->invalidatepage() length argument
+Date: Tue, 23 Apr 2013 09:04:31 -0700 (PDT)
+Message-ID: <alpine.DEB.2.00.1304230904060.19511@cobra.newdream.net>
+References: <1365498867-27782-1-git-send-email-lczerner@redhat.com> <1365498867-27782-8-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: David Laight <David.Laight@aculab.com>,
-	Ingo Molnar <mingo@kernel.org>,
-	"H. Peter Anvin" <hpa@zytor.com>,
-	Thomas Gleixner <tglx@linutronix.de>,
-	David Miller <davem@davemloft.net>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	the arch/x86 maintainers <x86@kernel.org>,
-	Network Development <netdev@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <CA+55aFxvpcF7+dyy5d3+JP4Wfv90zPsRVtEhNG9Pky5gWTm_Pg@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
+    linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+    ceph-devel@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1365498867-27782-8-git-send-email-lczerner@redhat.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Apr 23, 2013 at 08:42:49AM -0700, Linus Torvalds wrote:
-> The best case is for code that does bitmasking ops like this to avoid
-> any casts (implicit or explicit) by just avoiding mixed types. That
-> was, to a large degree, my hope for the sparse patch, but it's
-> nontrivial. Many types are rather "natural" (ie constants have a
-> natural "int" type, sizeof() is size_t, etc) and in other cases you
-> want to do the same ops for two different types (with the case that
-> caused me to start to look at it being the "align to page boundary"
-> for a virtual address vs a PAE phys_addr_t) so you can't really avoid
-> mixing things in some circumstances.
+On Tue, 9 Apr 2013, Lukas Czerner wrote:
+> ->invalidatepage() aop now accepts range to invalidate so we can make
+> use of it in ceph_invalidatepage().
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> Cc: ceph-devel@vger.kernel.org
 
-Maybe it's worth creating a magic helper function, called something
-like mask_out() that handles the casting automatically, and it makes
-it clear to a reader what you're trying to do?
+Acked-by: Sage Weil <sage@inktank.com>
 
-   	      	     	  	 	   - Ted
+
+> ---
+>  fs/ceph/addr.c |   12 ++++++------
+>  1 files changed, 6 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/ceph/addr.c b/fs/ceph/addr.c
+> index 168a35a..d953afd 100644
+> --- a/fs/ceph/addr.c
+> +++ b/fs/ceph/addr.c
+> @@ -164,20 +164,20 @@ static void ceph_invalidatepage(struct page *page, unsigned int offset,
+>  	if (!PageDirty(page))
+>  		pr_err("%p invalidatepage %p page not dirty\n", inode, page);
+>  
+> -	if (offset == 0)
+> +	if (offset == 0 && length == PAGE_CACHE_SIZE)
+>  		ClearPageChecked(page);
+>  
+>  	ci = ceph_inode(inode);
+> -	if (offset == 0) {
+> -		dout("%p invalidatepage %p idx %lu full dirty page %u\n",
+> -		     inode, page, page->index, offset);
+> +	if (offset == 0 && length == PAGE_CACHE_SIZE) {
+> +		dout("%p invalidatepage %p idx %lu full dirty page\n",
+> +		     inode, page, page->index);
+>  		ceph_put_wrbuffer_cap_refs(ci, 1, snapc);
+>  		ceph_put_snap_context(snapc);
+>  		page->private = 0;
+>  		ClearPagePrivate(page);
+>  	} else {
+> -		dout("%p invalidatepage %p idx %lu partial dirty page\n",
+> -		     inode, page, page->index);
+> +		dout("%p invalidatepage %p idx %lu partial dirty page %u(%u)\n",
+> +		     inode, page, page->index, offset, length);
+>  	}
+>  }
+>  
+> -- 
+> 1.7.7.6
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe ceph-devel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> 
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
