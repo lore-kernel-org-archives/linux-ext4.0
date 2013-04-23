@@ -1,76 +1,79 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/5] jbd2: optimize jbd2_journal_force_commit
-Date: Tue, 23 Apr 2013 10:51:40 +0200
-Message-ID: <20130423085140.GB4596@quack.suse.cz>
-References: <1365966097-8968-1-git-send-email-dmonakhov@openvz.org>
- <1365966097-8968-2-git-send-email-dmonakhov@openvz.org>
- <20130415122913.GF2299@quack.suse.cz>
- <87vc7lsj0w.fsf@openvz.org>
- <20130418180727.GA14470@quack.suse.cz>
- <87k3nvhtnk.fsf@openvz.org>
+Subject: Re: [PATCH V1] fs/buffer.c: Remove unnecessary init operation
+ after, allocating buffer_head.
+Date: Tue, 23 Apr 2013 10:54:52 +0200
+Message-ID: <20130423085452.GC4596@quack.suse.cz>
+References: <51748E45.8060806@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:37077 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755196Ab3DWIvm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 23 Apr 2013 04:51:42 -0400
+Cc: Al Viro <viro@zeniv.linux.org.uk>, akpm@linux-foundation.org,
+	tytso@mit.edu, Jan Kara <jack@suse.cz>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org,
+	linux-kernel <linux-kernel@vger.kernel.org>
+To: majianpeng <majianpeng@gmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <87k3nvhtnk.fsf@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <51748E45.8060806@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon 22-04-13 12:11:11, Dmitry Monakhov wrote:
-> On Thu, 18 Apr 2013 20:07:27 +0200, Jan Kara <jack@suse.cz> wrote:
-> > On Wed 17-04-13 11:39:27, Dmitry Monakhov wrote:
-> > > On Mon, 15 Apr 2013 14:29:13 +0200, Jan Kara <jack@suse.cz> wrote:
-> > > > On Sun 14-04-13 23:01:34, Dmitry Monakhov wrote:
-> > > > > Current implementation of jbd2_journal_force_commit() is suboptimal because
-> > > > > result in empty and useless commits. But callers just want to force and wait
-> > > > > any unfinished commits. We already has jbd2_journal_force_commit_nested()
-> > > > > which does exactly what we want, except we are guaranteed that we do not hold
-> > > > > journal transaction open.
-> > > >   Umm, I have a questions regarding this patch:
-> > > > Grep shows there are just two places in the code which use
-> > > > ext4_force_commit() (and thus jbd2_journal_force_commit()). These are
-> > > > ext4_write_inode() and ext4_sync_file() (in data=journal mode). The first
-> > > > callsite can use _nested() variant immediately as we even assert there's
-> > > > no handle started. The second call site can use the _nested variant as well
-> > > > because if we had the transaction started when entering ext4_sync_file() we
-> > > > would have serious problems (lock inversion, deadlocks in !data=journal
-> > > > modes) anyway. So IMO there's no need for !nested variant at all (at least
-> > > > in ext4, ocfs2 uses it as well, IMHO it can be converted as well but that's
-> > > > a different topic). Thoughts?
-> > > I'm not sure that I completely understand what you meant, but it seems
-> > > incorrect to use jbd2_journal_force_commit_nested() in 
-> > > ext4_write_inode() and ext4_sync_file(). Because nested variant has
-> > > probabilistic behavior, It may skip real transaction commit if we hold
-> > > a transaction running.  ext4_write_inode() and ext4_sync_file() 
-> > > are the functions where we demand deterministic behavior. If we silently
-> > > miss real transaction commit because current->journal_info != NULL (due
-> > > to some bugs) this breaks data integrity assumptions and it is better to
-> > > make it loud and trigger a BUGON.
-> >   I see. I was confused by the fact that 'nested' argument got used only in
-> > the assertion but now I see why that is.
-> Do you give me your ACK/Reviewed  signature?
-  Looking at it with a fresh mind I think there's still one bug:
- 	read_unlock(&journal->j_state_lock);
- 	if (need_to_start)
--		jbd2_log_start_commit(journal, tid);
--	jbd2_log_wait_commit(journal, tid);
--	return 1;
-+		ret = jbd2_log_start_commit(journal, tid);
-+	if (!ret)
-+		ret = jbd2_log_wait_commit(journal, tid);
-  jbd2_log_start_commit() will return 0 if it didn't wake jbd2 thread and 1
-if it did. In either case we should call jbd2_log_wait_commit()...
-
-+	if (!ret && progress)
-+		*progress = 1;
+On Mon 22-04-13 09:11:33, majianpeng wrote:
+> Because alloc 'struct buffer_head' using kmem_cache_zalloc,so it doesn't
+> need to call 'init_buffer(bh, NULL, NULL)' and other set-zero-operation.
+> 
+> Signed-off-by: Jianpeng Ma <majianpeng@gmail.com>
+  Looks good. If noone objects, I'll merge the patch through my tree.
 
 								Honza
+> ---
+>  fs/buffer.c       | 2 --
+>  fs/jbd/journal.c  | 2 --
+>  fs/jbd2/journal.c | 2 --
+>  3 files changed, 6 deletions(-)
+> 
+> diff --git a/fs/buffer.c b/fs/buffer.c
+> index b4dcb34..52b7739 100644
+> --- a/fs/buffer.c
+> +++ b/fs/buffer.c
+> @@ -865,8 +865,6 @@ try_again:
+>  
+>          /* Link the buffer to its page */
+>          set_bh_page(bh, page, offset);
+> -
+> -        init_buffer(bh, NULL, NULL);
+>      }
+>      return head;
+>  /*
+> diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+> index 81cc7ea..865c430 100644
+> --- a/fs/jbd/journal.c
+> +++ b/fs/jbd/journal.c
+> @@ -310,8 +310,6 @@ int journal_write_metadata_buffer(transaction_t *transaction,
+>  
+>      new_bh = alloc_buffer_head(GFP_NOFS|__GFP_NOFAIL);
+>      /* keep subsequent assertions sane */
+> -    new_bh->b_state = 0;
+> -    init_buffer(new_bh, NULL, NULL);
+>      atomic_set(&new_bh->b_count, 1);
+>      new_jh = journal_add_journal_head(new_bh);    /* This sleeps */
+>  
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index ed10991..8b220f1 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -367,8 +367,6 @@ retry_alloc:
+>      }
+>  
+>      /* keep subsequent assertions sane */
+> -    new_bh->b_state = 0;
+> -    init_buffer(new_bh, NULL, NULL);
+>      atomic_set(&new_bh->b_count, 1);
+>      new_jh = jbd2_journal_add_journal_head(new_bh);    /* This sleeps */
+>  
+> -- 
+> 1.8.2.rc2.4.g7799588
+> 
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
