@@ -1,32 +1,29 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v3 06/18] ocfs2: use ->invalidatepage() length argument
-Date: Tue, 23 Apr 2013 10:16:04 -0400
-Message-ID: <20130423141604.GE31170@thunk.org>
+Subject: Re: [PATCH v3 08/18] gfs2: use ->invalidatepage() length argument
+Date: Tue, 23 Apr 2013 10:16:31 -0400
+Message-ID: <20130423141631.GF31170@thunk.org>
 References: <1365498867-27782-1-git-send-email-lczerner@redhat.com>
- <1365498867-27782-7-git-send-email-lczerner@redhat.com>
+ <1365498867-27782-9-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Joel Becker <jlbec@evilplan.org>, Mark Fasheh <mfasheh@suse.com>,
-	ocfs2-devel@oss.oracle.com
+	cluster-devel@redhat.com
 To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <1365498867-27782-7-git-send-email-lczerner@redhat.com>
+In-Reply-To: <1365498867-27782-9-git-send-email-lczerner@redhat.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Apr 09, 2013 at 11:14:15AM +0200, Lukas Czerner wrote:
+On Tue, Apr 09, 2013 at 11:14:17AM +0200, Lukas Czerner wrote:
 > ->invalidatepage() aop now accepts range to invalidate so we can make
-> use of it in ocfs2_invalidatepage().
+> use of it in gfs2_invalidatepage().
 > 
 > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> Cc: Joel Becker <jlbec@evilplan.org>
+> Cc: cluster-devel@redhat.com
 
-+Mark Fasheh, ocfs2-devel
-
-To the ocfs2 development team,
+To the gfs2 development team, 
 
 Since half of this patch series modifies ext4 extensively, and changes
 to the other file systems are relatively small, I plan to carry the
