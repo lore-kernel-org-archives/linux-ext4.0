@@ -1,76 +1,58 @@
-From: Sage Weil <sage@inktank.com>
-Subject: Re: [PATCH v3 07/18] ceph: use ->invalidatepage() length argument
-Date: Tue, 23 Apr 2013 09:04:31 -0700 (PDT)
-Message-ID: <alpine.DEB.2.00.1304230904060.19511@cobra.newdream.net>
-References: <1365498867-27782-1-git-send-email-lczerner@redhat.com> <1365498867-27782-8-git-send-email-lczerner@redhat.com>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: Unsigned widening casts of binary "not" operations..
+Date: Tue, 23 Apr 2013 09:05:24 -0700
+Message-ID: <CA+55aFwmgotLczo56Xu1eSvLogR9hRwU4ts3B2oAkOUfYMkNuw@mail.gmail.com>
+References: <CA+55aFwpLu0qNms=hkQr43yqD0K9DgESNm91OEWKT1ZuT8MU6Q@mail.gmail.com>
+	<CA+55aFy0jPr5udwJx8cZ-QFs-OgZzQ_NJm_VSj_cS7tsKUn3Kw@mail.gmail.com>
+	<AE90C24D6B3A694183C094C60CF0A2F6026B71EF@saturn3.aculab.com>
+	<CA+55aFwogFL=nm=YHwARcz9OTRBdWEDPG0xcqM-H3k-VZTOZPQ@mail.gmail.com>
+	<AE90C24D6B3A694183C094C60CF0A2F6026B71F2@saturn3.aculab.com>
+	<CA+55aFxvpcF7+dyy5d3+JP4Wfv90zPsRVtEhNG9Pky5gWTm_Pg@mail.gmail.com>
+	<20130423155212.GI31170@thunk.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
-    linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-    ceph-devel@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1365498867-27782-8-git-send-email-lczerner@redhat.com>
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset=UTF-8
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	David Laight <David.Laight@aculab.com>,
+	Ingo Molnar <mingo@kernel.org>,
+	"H. Peter Anvin" <hpa@zytor.com>,
+	Thomas Gleixner <tglx@linutronix.de>,
+	David Miller <davem@davemloft.net>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	"the arch/x86 maintainers" <x86@kernel.org>,
+	Network Development <netdev@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20130423155212.GI31170@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 9 Apr 2013, Lukas Czerner wrote:
-> ->invalidatepage() aop now accepts range to invalidate so we can make
-> use of it in ceph_invalidatepage().
-> 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> Cc: ceph-devel@vger.kernel.org
+On Tue, Apr 23, 2013 at 8:52 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+>
+> Maybe it's worth creating a magic helper function, called something
+> like mask_out() that handles the casting automatically, and it makes
+> it clear to a reader what you're trying to do?
 
-Acked-by: Sage Weil <sage@inktank.com>
+We have that for some things. Like the aligning code (see
+include/{uapi/}linux/kernel.h). We have that whole ALIGN()
+infrastructure that casts the alignment to the result type, exactly
+because people got things wrong so often (and exactly the "& ~mask"
+thing in particular).
 
+But doing so becomes *less* readable when the types already match, and
+it's another extra complication in kernel programming to know all the
+"oh, don't use the standard C &~ constructs because it has some subtle
+type handling under *some* circumstances". So for aligning things up,
+we've been able to do it, because people hate doing that duplicated "
+(val + mask) & ~mask" thing anyway (especially since "mask" tends to
+be something like "size-1". IOW, having a helper function/macro ends
+up solving more than just the type issue. But if it's just the type,
+it ends up being very inconvenient.
 
-> ---
->  fs/ceph/addr.c |   12 ++++++------
->  1 files changed, 6 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/ceph/addr.c b/fs/ceph/addr.c
-> index 168a35a..d953afd 100644
-> --- a/fs/ceph/addr.c
-> +++ b/fs/ceph/addr.c
-> @@ -164,20 +164,20 @@ static void ceph_invalidatepage(struct page *page, unsigned int offset,
->  	if (!PageDirty(page))
->  		pr_err("%p invalidatepage %p page not dirty\n", inode, page);
->  
-> -	if (offset == 0)
-> +	if (offset == 0 && length == PAGE_CACHE_SIZE)
->  		ClearPageChecked(page);
->  
->  	ci = ceph_inode(inode);
-> -	if (offset == 0) {
-> -		dout("%p invalidatepage %p idx %lu full dirty page %u\n",
-> -		     inode, page, page->index, offset);
-> +	if (offset == 0 && length == PAGE_CACHE_SIZE) {
-> +		dout("%p invalidatepage %p idx %lu full dirty page\n",
-> +		     inode, page, page->index);
->  		ceph_put_wrbuffer_cap_refs(ci, 1, snapc);
->  		ceph_put_snap_context(snapc);
->  		page->private = 0;
->  		ClearPagePrivate(page);
->  	} else {
-> -		dout("%p invalidatepage %p idx %lu partial dirty page\n",
-> -		     inode, page, page->index);
-> +		dout("%p invalidatepage %p idx %lu partial dirty page %u(%u)\n",
-> +		     inode, page, page->index, offset, length);
->  	}
->  }
->  
-> -- 
-> 1.7.7.6
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe ceph-devel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
+We don't have the equivalent "align down" macro, for example, exactly
+because aligning things down is *just* the logical mask, and so in
+most cases it's actually just more pain to have a macro helper. So
+ALIGN() only aligns upwards, even though it doesn't even say so in the
+name. Inconsistent? Unclear? Yes, but there's a reason for it.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+                  Linus
