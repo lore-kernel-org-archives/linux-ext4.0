@@ -1,89 +1,79 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH v3 17/18] ext4: make punch hole code path work with
- bigalloc
-Date: Wed, 24 Apr 2013 19:29:04 +0800
-Message-ID: <20130424112904.GA3128@gmail.com>
-References: <1365498867-27782-1-git-send-email-lczerner@redhat.com>
- <1365498867-27782-18-git-send-email-lczerner@redhat.com>
- <20130420134241.GA2461@quack.suse.cz>
- <20130423091928.GA5321@gmail.com>
- <alpine.LFD.2.00.1304241303560.24669@localhost>
+From: Geert Uytterhoeven <geert@linux-m68k.org>
+Subject: Re: Unsigned widening casts of binary "not" operations..
+Date: Wed, 24 Apr 2013 14:36:15 +0200
+Message-ID: <CAMuHMdXzNMt63pOa3136Fmrs2tPQzh5SGe2YfCn+yGtzOyMqoQ@mail.gmail.com>
+References: <CA+55aFwogFL=nm=YHwARcz9OTRBdWEDPG0xcqM-H3k-VZTOZPQ@mail.gmail.com>
+	<AE90C24D6B3A694183C094C60CF0A2F6026B71F2@saturn3.aculab.com>
+	<CA+55aFxvpcF7+dyy5d3+JP4Wfv90zPsRVtEhNG9Pky5gWTm_Pg@mail.gmail.com>
+	<20130423.133732.2222922370397287096.davem@davemloft.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Cc: Jan Kara <jack@suse.cz>, linux-mm@kvack.org,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	David.Laight@aculab.com, Ingo Molnar <mingo@kernel.org>,
+	"H. Peter Anvin" <hpa@zytor.com>,
+	Thomas Gleixner <tglx@linutronix.de>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"the arch/x86 maintainers" <x86@kernel.org>,
+	"netdev@vger.kernel.org" <netdev@vger.kernel.org>,
 	linux-ext4@vger.kernel.org
-To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1304241303560.24669@localhost>
-Sender: owner-linux-mm@kvack.org
+To: David Miller <davem@davemloft.net>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20130423.133732.2222922370397287096.davem@davemloft.net>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Apr 24, 2013 at 01:08:17PM +0200, Luk=C3=A1=C5=A1 Czerner wrote:
-> On Tue, 23 Apr 2013, Zheng Liu wrote:
-[snip]
-> > > > Also update respective tracepoints to use signed long long type f=
-or
-> > > > partial_cluster.
-> > >   The patch looks OK. You can add:
-> > > Reviewed-by: Jan Kara <jack@suse.cz>
-> > >=20
-> > >   Just a minor nit - sometimes you use 'signed long long', sometime=
-s 'long
-> > > long int', sometimes just 'long long'. In kernel we tend to always =
-use just
-> > > 'long long' so it would be good to clean that up.
-> >=20
-> > Another question is that in patch 01/18 invalidatepage signature is
-> > changed from
-> >   int (*invalidatepage) (struct page *, unsigned long);
-> > to
-> >   void (*invalidatepage) (struct page *, unsigned int, unsigned int);
-> >=20
-> > The argument type is changed from 'unsigned long' to 'unsigned int'. =
- My
-> > question is why we need to change it.
-> >=20
-> > Thanks,
-> >                                                 - Zheng
-> >=20
->=20
-> Hi Zheng,
->=20
-> this was changed on Hugh Dickins request because it makes it clearer
-> that those args are indeed intended to be offsets within a page
-> (0..PAGE_CACHE_SIZE).
->=20
-> Even though PAGE_CACHE_SIZE can be defined as unsigned long, this is
-> only for convenience. Here is quote from Hugh:
->=20
->   "
->   They would be defined as unsigned long so that they can be used in
->   masks like ~(PAGE_SIZE - 1), and behave as expected on addresses,
->   without needing casts to be added all over.
->=20
->   We do not (currently!) expect PAGE_SIZE or PAGE_CACHE_SIZE to grow
->   beyond an unsigned int - but indeed they can be larger than what's
->   held in an unsigned short (look no further than ia64 or ppc64).
->=20
->   For more reassurance, see include/linux/highmem.h, which declares
->   zero_user_segments() and others: unsigned int (well, unsigned with
->   the int implicit) for offsets within a page.
->=20
->   Hugh
->   "
->=20
-> I should probably mention that in the description.
+On Tue, Apr 23, 2013 at 7:37 PM, David Miller <davem@davemloft.net> wro=
+te:
+> From: Linus Torvalds <torvalds@linux-foundation.org>
+> Date: Tue, 23 Apr 2013 08:42:49 -0700
+>
+>> An explicit cast fixes it, and shows that you were aware of the issu=
+e:
+>>
+>>    foo &=3D ~(foo_t)bar;
+>>
+>> and gcc will generate the right logic. Of course, casts then have
+>> their own problems, which your thing avoids (as would just having a
+>> "andn" operation in C)
+>
+> I just want to mention that this is dangerous in different ways, we
+> just recently got a patch in the networking that removed such a cast.
+> The problem is when the cast narrows, f.e.:
+>
+>         ~(u8)0
+>
+> doesn't do what you think it does.  That doesn't evaluate to 0xff.
 
-Ah, thanks for your explanation.  I must miss something. :-(
+This is the definition of MAC802154_CHAN_NONE?
 
-Regards,
-                                                - Zheng
+We _should_ have noticed this earlier, as old gcc (e.g. 4.1.2) emits a
+warning when comparing it to a u8:
+
+net/mac802154/monitor.c: In function =E2=80=98mac802154_monitor_xmit=E2=
+=80=99:
+net/mac802154/monitor.c:49: warning: comparison is always false due to
+limited range of data type
+net/mac802154/wpan.c: In function =E2=80=98mac802154_wpan_xmit=E2=80=99=
+:
+net/mac802154/wpan.c:323: warning: comparison is always false due to
+limited range of data type
+
+Interestingly, none of this is seen in the build logs of the linux-next=
+ build
+service, which uses gcc 4.2.3, 4.2.4, 4.5.1, and 4.6...
+
+Gr{oetje,eeting}s,
+
+                        Geert
 
 --
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=3Dmailto:"dont@kvack.org"> email@kvack.org </a>
+Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-=
+m68k.org
+
+In personal conversations with technical people, I call myself a hacker=
+=2E But
+when I'm talking to journalists I just say "programmer" or something li=
+ke that.
+                                -- Linus Torvalds
