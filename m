@@ -1,79 +1,64 @@
-From: Geert Uytterhoeven <geert@linux-m68k.org>
-Subject: Re: Unsigned widening casts of binary "not" operations..
-Date: Wed, 24 Apr 2013 14:36:15 +0200
-Message-ID: <CAMuHMdXzNMt63pOa3136Fmrs2tPQzh5SGe2YfCn+yGtzOyMqoQ@mail.gmail.com>
-References: <CA+55aFwogFL=nm=YHwARcz9OTRBdWEDPG0xcqM-H3k-VZTOZPQ@mail.gmail.com>
-	<AE90C24D6B3A694183C094C60CF0A2F6026B71F2@saturn3.aculab.com>
-	<CA+55aFxvpcF7+dyy5d3+JP4Wfv90zPsRVtEhNG9Pky5gWTm_Pg@mail.gmail.com>
-	<20130423.133732.2222922370397287096.davem@davemloft.net>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: page eviction from the buddy cache
+Date: Wed, 24 Apr 2013 10:26:50 -0400
+Message-ID: <20130424142650.GA29097@thunk.org>
+References: <alpine.LNX.2.00.1303271135420.29687@eggly.anvils>
+ <3C8EEEF8-C1EB-4E3D-8DE6-198AB1BEA8C0@gmail.com>
+ <515CD665.9000300@gmail.com>
+ <239AD30A-2A31-4346-A4C7-8A6EB8247990@gmail.com>
+ <51730619.3030204@fastmail.fm>
+ <20130420235718.GA28789@thunk.org>
+ <5176785D.5030707@fastmail.fm>
+ <20130423122708.GA31170@thunk.org>
+ <alpine.LNX.2.00.1304231230340.12850@eggly.anvils>
+ <20130423150008.046ee9351da4681128db0bf3@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	David.Laight@aculab.com, Ingo Molnar <mingo@kernel.org>,
-	"H. Peter Anvin" <hpa@zytor.com>,
-	Thomas Gleixner <tglx@linutronix.de>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"the arch/x86 maintainers" <x86@kernel.org>,
-	"netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: David Miller <davem@davemloft.net>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20130423.133732.2222922370397287096.davem@davemloft.net>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Hugh Dickins <hughd@google.com>,
+	Bernd Schubert <bernd.schubert@fastmail.fm>,
+	Alexey Lyahkov <alexey.lyashkov@gmail.com>,
+	Will Huck <will.huckk@gmail.com>,
+	Andrew Perepechko <anserper@ya.ru>, linux-ext4@vger.kernel.org,
+	linux-mm@kvack.org, mgorman@suse.de
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20130423150008.046ee9351da4681128db0bf3@linux-foundation.org>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Apr 23, 2013 at 7:37 PM, David Miller <davem@davemloft.net> wro=
-te:
-> From: Linus Torvalds <torvalds@linux-foundation.org>
-> Date: Tue, 23 Apr 2013 08:42:49 -0700
->
->> An explicit cast fixes it, and shows that you were aware of the issu=
-e:
->>
->>    foo &=3D ~(foo_t)bar;
->>
->> and gcc will generate the right logic. Of course, casts then have
->> their own problems, which your thing avoids (as would just having a
->> "andn" operation in C)
->
-> I just want to mention that this is dangerous in different ways, we
-> just recently got a patch in the networking that removed such a cast.
-> The problem is when the cast narrows, f.e.:
->
->         ~(u8)0
->
-> doesn't do what you think it does.  That doesn't evaluate to 0xff.
+On Tue, Apr 23, 2013 at 03:00:08PM -0700, Andrew Morton wrote:
+> That should fix things for now.  Although it might be better to just do
+> 
+>  	mark_page_accessed(page);	/* to SetPageReferenced */
+>  	lru_add_drain();		/* to SetPageLRU */
+> 
+> Because a) this was too early to decide that the page is
+> super-important and b) the second touch of this page should have a
+> mark_page_accessed() in it already.
 
-This is the definition of MAC802154_CHAN_NONE?
+The question is do we really want to put lru_add_drain() into the ext4
+file system code?  That seems to pushing some fairly mm-specific
+knowledge into file system code.  I'll do this if I have to do, but
+wouldn't be better if this was pushed into mark_page_accessed(), or
+some other new API was exported by the mm subsystem?
 
-We _should_ have noticed this earlier, as old gcc (e.g. 4.1.2) emits a
-warning when comparing it to a u8:
+> At present the code decides up-front which LRU the lru_add_pvecs page
+> will eventually be spilled onto.  That's a bit strange and I wonder why
+> we did it that way.  Why not just have a single (per-cpu) magazine of
+> pages which are to go onto the LRUs, and decide *which* LRU that will
+> be at the last possible moment?
 
-net/mac802154/monitor.c: In function =E2=80=98mac802154_monitor_xmit=E2=
-=80=99:
-net/mac802154/monitor.c:49: warning: comparison is always false due to
-limited range of data type
-net/mac802154/wpan.c: In function =E2=80=98mac802154_wpan_xmit=E2=80=99=
-:
-net/mac802154/wpan.c:323: warning: comparison is always false due to
-limited range of data type
+And this is why it seems strange that fs code should need or should
+want to put something as mm-implementation dependent into their code
+paths.  At minimum, if we do this, we'll want to put some explanatory
+comments so that later, people won't be asking, what the !@#@?!? are
+the ext4 people calling lru_add_drain() here?
 
-Interestingly, none of this is seen in the build logs of the linux-next=
- build
-service, which uses gcc 4.2.3, 4.2.4, 4.5.1, and 4.6...
-
-Gr{oetje,eeting}s,
-
-                        Geert
+							- Ted
 
 --
-Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-=
-m68k.org
-
-In personal conversations with technical people, I call myself a hacker=
-=2E But
-when I'm talking to journalists I just say "programmer" or something li=
-ke that.
-                                -- Linus Torvalds
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
