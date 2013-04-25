@@ -1,60 +1,70 @@
-From: Alexey Lyahkov <alexey.lyashkov@gmail.com>
-Subject: Re: page eviction from the buddy cache
-Date: Thu, 25 Apr 2013 11:18:17 +0300
-Message-ID: <8476E09F-D2DF-4685-A22F-0555475BD481@gmail.com>
-References: <alpine.LNX.2.00.1303271135420.29687@eggly.anvils> <3C8EEEF8-C1EB-4E3D-8DE6-198AB1BEA8C0@gmail.com> <515CD665.9000300@gmail.com> <239AD30A-2A31-4346-A4C7-8A6EB8247990@gmail.com> <51730619.3030204@fastmail.fm> <20130420235718.GA28789@thunk.org> <5176785D.5030707@fastmail.fm> <20130423122708.GA31170@thunk.org> <alpine.LNX.2.00.1304231230340.12850@eggly.anvils> <20130423150008.046ee9351da4681128db0bf3@linux-foundation.org> <20130424142650.GA29097@thunk.org> <20130424144130.0d28b94b229b915d7f9c7840@linux-foundation.org>
-Mime-Version: 1.0 (Apple Message framework v1283)
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH] jbd: use kmem_cache_zalloc instead of
+ kmem_cache_alloc/memset
+Date: Thu, 25 Apr 2013 18:12:49 +0800
+Message-ID: <20130425101249.GA16770@gmail.com>
+References: <1365769446-22034-1-git-send-email-wenqing.lz@taobao.com>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: quoted-printable
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
- Hugh Dickins <hughd@google.com>,
- Bernd Schubert <bernd.schubert@fastmail.fm>,
- Will Huck <will.huckk@gmail.com>,
- Andrew Perepechko <anserper@ya.ru>,
- linux-ext4@vger.kernel.org,
- linux-mm@kvack.org,
- mgorman@suse.de
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20130424144130.0d28b94b229b915d7f9c7840@linux-foundation.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Zheng Liu <wenqing.lz@taobao.com>
+To: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pa0-f41.google.com ([209.85.220.41]:55492 "EHLO
+	mail-pa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751436Ab3DYJza (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Apr 2013 05:55:30 -0400
+Received: by mail-pa0-f41.google.com with SMTP id kq12so1001329pab.14
+        for <linux-ext4@vger.kernel.org>; Thu, 25 Apr 2013 02:55:29 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <1365769446-22034-1-git-send-email-wenqing.lz@taobao.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-So, right direction add ability to mark a page as active in lru pagevec =
-array ?
-just a bypass a IS_IN_LRU(page) check and fix moving to LRU to ability =
-to put into active LRU list from pagevec ?
-I may prepare a patch for it.
+On Fri, Apr 12, 2013 at 08:24:06PM +0800, Zheng Liu wrote:
+> From: Zheng Liu <wenqing.lz@taobao.com>
+> 
+> Now jbd_alloc_handle is only called by new_handle.  So this commit
+> uses kmem_cache_zalloc instead of kmem_cache_alloc/memset.
+> 
+> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 
-On Apr 25, 2013, at 00:41, Andrew Morton wrote:
+Hi Jan,
 
-> On Wed, 24 Apr 2013 10:26:50 -0400 "Theodore Ts'o" <tytso@mit.edu> =
-wrote:
->=20
->> On Tue, Apr 23, 2013 at 03:00:08PM -0700, Andrew Morton wrote:
->>> That should fix things for now.  Although it might be better to just =
-do
->>>=20
->>> 	mark_page_accessed(page);	/* to SetPageReferenced */
->>> 	lru_add_drain();		/* to SetPageLRU */
->>>=20
->>> Because a) this was too early to decide that the page is
->>> super-important and b) the second touch of this page should have a
->>> mark_page_accessed() in it already.
->>=20
->> The question is do we really want to put lru_add_drain() into the =
-ext4
->> file system code?  That seems to pushing some fairly mm-specific
->> knowledge into file system code.  I'll do this if I have to do, but
->> wouldn't be better if this was pushed into mark_page_accessed(), or
->> some other new API was exported by the mm subsystem?
->=20
-> Sure, that would be daft.  We'd add a new
-> mark_page_accessed_right_now_dont_use_this() to mm/swap.c
->=20
+Sorry, I forgot to Cc you.  Could you please take a look at this patch?
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Thanks,
+                                                - Zheng
+
+> ---
+>  fs/jbd/transaction.c | 1 -
+>  include/linux/jbd.h  | 2 +-
+>  2 files changed, 1 insertion(+), 2 deletions(-)
+> 
+> diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
+> index 071d690..e3e255c 100644
+> --- a/fs/jbd/transaction.c
+> +++ b/fs/jbd/transaction.c
+> @@ -245,7 +245,6 @@ static handle_t *new_handle(int nblocks)
+>  	handle_t *handle = jbd_alloc_handle(GFP_NOFS);
+>  	if (!handle)
+>  		return NULL;
+> -	memset(handle, 0, sizeof(*handle));
+>  	handle->h_buffer_credits = nblocks;
+>  	handle->h_ref = 1;
+>  
+> diff --git a/include/linux/jbd.h b/include/linux/jbd.h
+> index c8f3297..7e0b622 100644
+> --- a/include/linux/jbd.h
+> +++ b/include/linux/jbd.h
+> @@ -887,7 +887,7 @@ extern struct kmem_cache *jbd_handle_cache;
+>  
+>  static inline handle_t *jbd_alloc_handle(gfp_t gfp_flags)
+>  {
+> -	return kmem_cache_alloc(jbd_handle_cache, gfp_flags);
+> +	return kmem_cache_zalloc(jbd_handle_cache, gfp_flags);
+>  }
+>  
+>  static inline void jbd_free_handle(handle_t *handle)
+> -- 
+> 1.7.12.rc2.18.g61b472e
+> 
