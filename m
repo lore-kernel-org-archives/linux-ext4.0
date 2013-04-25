@@ -1,59 +1,77 @@
-From: Frederic Weisbecker <fweisbec@gmail.com>
-Subject: Re: [PATCH] x86: make DR*_RESERVED unsigned long
-Date: Thu, 25 Apr 2013 01:31:03 +0200
-Message-ID: <CAFTL4hyCQ1DGg5JOmWgvZoC9kcrV6TmodCw=TCFcr+QXMwv9yQ@mail.gmail.com>
+From: Lin Ming <ming.m.lin@intel.com>
+Subject: Re: Unsigned widening casts of binary "not" operations..
+Date: Thu, 25 Apr 2013 09:13:38 +0800
+Message-ID: <CAF1ivSbO7RBB_CoS7wXWHQVkz2sw4kYKaz00dU2YziRxe0arVg@mail.gmail.com>
 References: <CA+55aFwpLu0qNms=hkQr43yqD0K9DgESNm91OEWKT1ZuT8MU6Q@mail.gmail.com>
 	<20130424072630.GB1780@gmail.com>
-	<20130424170702.GA1867@redhat.com>
-	<CAFTL4hzmW43o8dxW0_E7F00a+PT+T4=F4h=gdCxHvcZhMiH3-w@mail.gmail.com>
-	<5178657E.9020905@zytor.com>
+	<20130424074735.GB1751@moon>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: Oleg Nesterov <oleg@redhat.com>, Ingo Molnar <mingo@kernel.org>,
+Cc: Ingo Molnar <mingo@kernel.org>,
 	Linus Torvalds <torvalds@linux-foundation.org>,
-	Cyrill Gorcunov <gorcunov@gmail.com>,
 	Peter Zijlstra <a.p.zijlstra@chello.nl>,
+	"H. Peter Anvin" <hpa@zytor.com>,
 	Thomas Gleixner <tglx@linutronix.de>,
 	David Miller <davem@davemloft.net>,
 	"Theodore Ts'o" <tytso@mit.edu>,
 	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
 	"the arch/x86 maintainers" <x86@kernel.org>,
 	Network Development <netdev@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "H. Peter Anvin" <hpa@zytor.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <5178657E.9020905@zytor.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Oleg Nesterov <oleg@redhat.com>,
+	Frederic Weisbecker <fweisbec@gmail.com>
+To: Cyrill Gorcunov <gorcunov@openvz.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-lb0-f182.google.com ([209.85.217.182]:44533 "EHLO
+	mail-lb0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758658Ab3DYBNk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Apr 2013 21:13:40 -0400
+In-Reply-To: <20130424074735.GB1751@moon>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-2013/4/25 H. Peter Anvin <hpa@zytor.com>:
-> On 04/24/2013 03:48 PM, Frederic Weisbecker wrote:
->> You told in an earlier email that intel manual says upper 32 bits of
->> dr6 are reserved.
->> In this case don't we need to expand the mask in 64 bits like is done
->> for DR_CONTROL_RESERVED?
+On Wed, Apr 24, 2013 at 3:47 PM, Cyrill Gorcunov <gorcunov@openvz.org> wrote:
+> On Wed, Apr 24, 2013 at 09:26:30AM +0200, Ingo Molnar wrote:
 >>
+>> * Linus Torvalds <torvalds@linux-foundation.org> wrote:
+>>
+>> > And there's quite a lot of them. Even in my (fairly small) config I use on
+>> > my desktop. And the first warnings I see are in x86 code:
+>> >
+>> >     arch/x86/kernel/traps.c:405:16: warning: implicit unsigned widening
+>> > cast of a '~' expression
+>> >     arch/x86/kernel/cpu/perf_event_p4.c:912:15: warning: implicit unsigned
+>> > widening cast of a '~' expression
+>>
+>> Hm, the perf_event_p4.c code is indeed confused.
+>>
+>> I think the bug is real but probably benign in effect: we allow narrower
+>> values into the MSR register than probably intended. Only a couple of low
+>> bits are reserved AFAICS.
+>>
+>> Here's an (untested!) patch that tries to untangle it all: it just moves
+>> to clean 64-bit types everywhere - these MSRs are 64-bit wide regardless
+>> of whether we run on 32-bit or not.
+>>
+>> Would be nice if someone with a working P4 could test it - Cyrill? [It
+>> should also be double checked whether the high words are really not
+>> reserved and can be written to ...]
 >
-> Arguably this would be a *good* use for ~ ...
->
-> Instead of defining separate bitmasks for 32 and 64 bits have the
-> reciprocal (non-reserved bits):
->
-> #define DR6_RESERVED (~0x0000F00FUL)
->
-> That does have the right value on both 32 and 64 bits.  The leading
-> zeroes aren't even really needed.
+> Hi Ingo! Ufortunately I don't have access to real p4 hardware,
+> thus I'm CC'ing Ming who has been helping a lot in testing
+> this code pieces.
 
-Ah, looks better indeed.
+Hi,
+
+Sorry, but I don't have access to p4 hardware either.
+
+Lin Ming
 
 >
-> Now, DR6 is a bit special in that a bunch of the reserved bits are
-> hardwired to 1, not 0; I don't know offhand if that is true for bits
-> [63:32].
-
-Hmm, good point, could it be a problem given that we clear the
-reserved dr6 bits on do_trap() and write that 'cleaned up" value back
-to "tsk->thread.debugreg6"? Probably not if those hardwired reserved
-bits are set to "1" on dr6 physical write whether those bits are
-cleared or not in their storage in thread struct before resuming the
-task?
+> Still the patch itself is perfectly fine to me
+>
+> Reviewed-by: Cyrill Gorcunov <gorcunov@openvz.org>
+> --
+> To unsubscribe from this list: send the line "unsubscribe netdev" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
