@@ -1,145 +1,1420 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: metadata_csum + e4defrag seems to cause problems
-Date: Fri, 26 Apr 2013 10:57:53 +0800
-Message-ID: <20130426025753.GA21659@gmail.com>
-References: <20130425174836.20362.qmail@science.horizon.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: George Spelvin <linux@horizon.com>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: [PATCH] ext2fs, debugfs, e2fsck: fix s_desc_size handling
+Date: Thu, 25 Apr 2013 23:48:33 -0600
+Message-ID: <1366955313-13406-1-git-send-email-adilger@dilger.ca>
+Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f53.google.com ([209.85.220.53]:52059 "EHLO
-	mail-pa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758897Ab3DZCk3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Apr 2013 22:40:29 -0400
-Received: by mail-pa0-f53.google.com with SMTP id bh4so2211650pad.26
-        for <linux-ext4@vger.kernel.org>; Thu, 25 Apr 2013 19:40:29 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <20130425174836.20362.qmail@science.horizon.com>
+Received: from smtp-out-01.shaw.ca ([64.59.136.137]:6737 "EHLO
+	smtp-out-01.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752973Ab3DZF6Q (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Apr 2013 01:58:16 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi George,
+The s_desc_size in the superblock specifies the group descriptor
+size in bytes, but in various places the EXT4_FEATURE_INCOMPAT_64BIT
+flag implies that the descriptor size is EXT2_MIN_DESC_SIZE_64BIT
+(64 bytes) instead of checking the actual size.  In other places,
+the s_desc_size field is used without checking for INCOMPAT_64BIT.
 
-Thanks for reporting this.
+In the case of ext2fs_group_desc() the s_desc_size was being ignored,
+and assumed to be sizeof(struct ext4_group_desc), which would result
+in garbage for any but the first group descriptor.  Similarly, in
+ext2fs_group_desc_csum() and print_csum() they assumed that the
+maximum group descriptor size was sizeof(struct ext4_group_desc).
+Fix these functions to use the actual superblock s_desc_size if
+INCOMPAT_64BIT.
 
-Yes, metatdata_csum + e4defrag could corrupt ext4 file system.  We have
-found this bug and it has been fixed by this commit (2656497b, it is in
-dev branch of ext4 tree).  I am not sure whether you use dev branch.
-Could you please tell me your kernel version?  If you don't use dev
-branch, could you please try dev branch of ext4 tree?  Here is the git
-link:
-  https://git.kernel.org/cgit/linux/kernel/git/tytso/ext4.git/log/?h=dev
+Conversely, in ext2fs_swap_group_desc2() s_desc_size was used
+without checking for INCOMPAT_64BIT being set.
 
-Regards,
-                                                - Zheng
+The e2fsprogs behaviour is different than that of the kernel,
+which always checks INCOMPAT_64BIT, and only uses s_desc_size to
+determine the offset of group descriptors and what range of bytes
+to checksum.
 
-On Thu, Apr 25, 2013 at 01:48:36PM -0400, George Spelvin wrote:
-> I've been running metadata_csum on my SSE 4.2 machines (which I know
-> isn't considered stable, but I'm willing to be guinea pig), and I've
-> had some corruption problems with on-line e4defrag.
-> 
-> This is actually the second time something like this has happened,
-> but I wasn't sure the first wasn't pilot error, and it didn't
-> get recorded in detail.
-> 
-> Here's the file system info:
-> dumpe2fs 1.43-WIP (22-Sep-2012)
-> Filesystem volume name:   root
-> Last mounted on:          /
-> Filesystem UUID:          9bb69d2a-7357-4c8b-8177-48f00655c75a
-> Filesystem magic number:  0xEF53
-> Filesystem revision #:    1 (dynamic)
-> Filesystem features:      has_journal ext_attr dir_index filetype needs_recovery extent flex_bg sparse_super huge_file dir_nlink extra_isize metadata_csum
-> Filesystem flags:         signed_directory_hash 
-> Default mount options:    user_xattr acl
-> Filesystem state:         clean
-> Errors behavior:          Continue
-> Filesystem OS type:       Linux
-> Inode count:              980720
-> Block count:              9765511
-> Reserved block count:     488275
-> Free blocks:              6183452
-> Free inodes:              687143
-> First block:              0
-> Block size:               4096
-> Fragment size:            4096
-> Blocks per group:         32768
-> Fragments per group:      32768
-> Inodes per group:         3280
-> Inode blocks per group:   205
-> Flex block group size:    16
-> Filesystem created:       Fri Jun 29 03:35:27 2012
-> Last mount time:          Thu Apr 25 15:09:10 2013
-> Last write time:          Thu Apr 25 15:09:10 2013
-> Mount count:              3
-> Maximum mount count:      -1
-> Last checked:             Thu Apr 25 14:53:36 2013
-> Check interval:           0 (<none>)
-> Lifetime writes:          49 GB
-> Reserved blocks uid:      0 (user root)
-> Reserved blocks gid:      0 (group root)
-> First inode:              11
-> Inode size:               256
-> Required extra isize:     28
-> Desired extra isize:      28
-> Journal inode:            8
-> Default directory hash:   half_md4
-> Directory Hash Seed:      b57a282d-d8ac-4c16-863f-a81f1134a760
-> Journal backup:           inode blocks
-> Checksum type:            crc32c
-> Checksum:                 0xaac36e3f
-> Journal features:         journal_incompat_revoke
-> Journal size:             128M
-> Journal length:           32768
-> Journal sequence:         0x00065b54
-> Journal start:            8421
-> 
-> After running "e4defrag -v /" on the system, I get a bunch of nasty
-> kernel messages (unfortunately lost in the process), and on rebooting
-> I encountered:
-> 
-> e2fsck 1.43-WIP (22-Sep-2012)
-> Pass 1: Checking inodes, blocks, and sizes
-> Inode 57 has an invalid extent node (blk 33356, lblk 0)
-> Clear<y>? yes
-> Inode 57, i_blocks is 150408, should be 0.  Fix<y>? yes
-> Inode 52684 has an invalid extent node (blk 557295, lblk 0)
-> Clear<y>? yes
-> Inode 52684, i_blocks is 286832, should be 0.  Fix<y>? yes
-> Inode 109466 has an invalid extent node (blk 1089048, lblk 0)
-> Clear<y>? yes
-> Inode 109466, i_blocks is 96, should be 0.  Fix<y>? yes
-> Inode 110979 has an invalid extent node (blk 1082248, lblk 0)
-> Clear<y>? yes
-> Inode 110979, i_blocks is 88, should be 0.  Fix<y>? yes
-> Inode 113316 has an invalid extent node (blk 1085426, lblk 0)
-> Clear<y>? yes
-> 
-> etc.
-> 
-> Most of these were frequently-overwritten files that I expect the
-> defragmenter actually migrated.
-> 57      /usr/share/icons/HighContrast/icon-theme.cache
-> 52684   /usr/share/icons/oxygen/icon-theme.cache
-> 114026  /usr/src/linux/arch/powerpc/kvm/book3s_hv.c
-> 116259  /usr/src/linux/lib/swiotlb.c
-> 110979  /usr/src/linux/fs/.ioctl.o.cmd
-> 118681  /usr/src/linux/fs/.compat.o.cmd
-> 118828  /usr/src/linux/fs/.compat_ioctl.o.cmd
-> 109466  /usr/src/linux/fs/.exec.o.cmd
-> 113316  /usr/src/linux/fs/cifs/file.o
-> 
-> This also included a lot of /var/log and, unfortunately,
-> 944676  /usr/src/linux/.git/objects/pack/pack-db2414b587cfe1e06e3beafd81231137700ad6be.pack
-> (which i *know* the defragmenter worked on, because it took a while.)
-> 
-> Ouch, that hurt.  Fortunately, I hadn't done much since my last backup.
-> 
-> I'm a bit reluctant to volunteer my root FS for more testing of
-> this sort, but maybe some ext4 hacker can try to confirm my guess
-> that the in-kernel defragmenter is corrupting the metadata checksum?
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Allow specifying the s_desc_size field at mke2fs time with the
+"-E desc_size=NNN" option.  Allow a power-of-two s_desc_size
+value up to s_blocksize if INCOMPAT_64BIT is specified.  This
+is not expected to be used by regular users at this time, so it
+is not currently documented in the mke2fs usage or man page.
+
+Print out the s_desc_size field in debugfs "stats" and dumpe2fs
+superblock output, if it is non-zero.
+
+Add m_desc_size_128, f_desc_size_128, and f_desc_bad test cases to
+verify mke2fs and e2fsck handling of larger group descriptor sizes.
+
+e2fsck was not validating the s_desc_size in check_super_block().
+Add a new LOG2_CHECK flag to check_super_value() to allow it to check
+that s_desc_size is a power-of-two value, along with the MAX_CHECK
+flag.  This is also used to replace the open-coded power-of-two check
+for s_inode_size.
+
+It turns out that the s_desc_size validation in check_super_block()
+is not currently used by e2fsck, because the group descriptors are
+verified earlier by ext2fs_check_desc(), and even without an
+explicit check of s_desc_size the group descriptors fail to alig
+correctly on disk.  It makes sense to keep the check_super_block()
+regardless, in case the code changes at some point in the future.
+
+Signed-off-by: Andreas Dilger <adilger@dilger.ca>
+---
+ debugfs/set_fields.c           |   11 +-
+ e2fsck/iscan.c                 |    2 +-
+ e2fsck/super.c                 |   18 +-
+ lib/e2p/ls.c                   |    2 +
+ lib/ext2fs/blknum.c            |    7 +-
+ lib/ext2fs/check_desc.c        |    3 +
+ lib/ext2fs/closefs.c           |    2 +-
+ lib/ext2fs/csum.c              |   21 +-
+ lib/ext2fs/ext2_fs.h           |    2 +-
+ lib/ext2fs/initialize.c        |    5 +-
+ lib/ext2fs/swapfs.c            |    6 +-
+ misc/mke2fs.c                  |   33 ++-
+ tests/f_desc_size_128/expect.1 |    7 +
+ tests/f_desc_size_128/expect.2 |    7 +
+ tests/f_desc_size_128/image.gz |  Bin 0 -> 11508 bytes
+ tests/f_desc_size_128/name     |    1 +
+ tests/f_desc_size_bad/expect.1 |   11 +
+ tests/f_desc_size_bad/expect.2 |    7 +
+ tests/f_desc_size_bad/script   |   17 +
+ tests/m_desc_size_128/expect.1 |  851 ++++++++++++++++++++++++++++++++++++++++
+ tests/m_desc_size_128/script   |    4 +
+ 21 files changed, 972 insertions(+), 45 deletions(-)
+ create mode 100644 tests/f_desc_size_128/expect.1
+ create mode 100644 tests/f_desc_size_128/expect.2
+ create mode 100644 tests/f_desc_size_128/image.gz
+ create mode 100644 tests/f_desc_size_128/name
+ create mode 100644 tests/f_desc_size_bad/expect.1
+ create mode 100644 tests/f_desc_size_bad/expect.2
+ create mode 100644 tests/f_desc_size_bad/script
+ create mode 100644 tests/m_desc_size_128/expect.1
+ create mode 100644 tests/m_desc_size_128/script
+
+diff --git a/debugfs/set_fields.c b/debugfs/set_fields.c
+index 5c86d74..1f04e3f 100644
+--- a/debugfs/set_fields.c
++++ b/debugfs/set_fields.c
+@@ -704,11 +704,14 @@ void do_set_block_group_descriptor(int argc, char *argv[])
+ 	int			size;
+ 
+ 	/*
+-	 *Determine whether we are editing an ext2 or ext4 block
+-	 * group descriptor
++	 * Determine whether we are editing an ext2 or ext4 block group
++	 * descriptor.  Descriptors larger than ext4_group_desc cannot
++	 * have their fields edited yet, because they do not have any
++	 * names assigned.  When that happens, this function needs to
++	 * be updated for the new descriptor struct and fields.
+ 	 */
+-	if (current_fs && current_fs->super->s_feature_incompat &
+-	    EXT4_FEATURE_INCOMPAT_64BIT) {
++	if (current_fs &&
++	    EXT2_DESC_SIZE(current_fs->super) >= EXT2_MIN_DESC_SIZE_64BIT) {
+ 		table = ext4_bg_fields;
+ 		edit = &set_gd4;
+ 		size = sizeof(set_gd4);
+diff --git a/e2fsck/iscan.c b/e2fsck/iscan.c
+index e23d2ad..52cad11 100644
+--- a/e2fsck/iscan.c
++++ b/e2fsck/iscan.c
+@@ -107,7 +107,7 @@ int main (int argc, char *argv[])
+ 	retval = ext2fs_open(device_name, 0,
+ 			     0, 0, unix_io_manager, &fs);
+ 	if (retval) {
+-		com_err(program_name, retval, _("while trying to open %s"),
++		com_err(program_name, retval, _("while trying to open '%s'"),
+ 			device_name);
+ 		exit(1);
+ 	}
+diff --git a/e2fsck/super.c b/e2fsck/super.c
+index b9870f7..6d99948 100644
+--- a/e2fsck/super.c
++++ b/e2fsck/super.c
+@@ -22,6 +22,7 @@
+ 
+ #define MIN_CHECK 1
+ #define MAX_CHECK 2
++#define LOG2_CHECK 4
+ 
+ static void check_super_value(e2fsck_t ctx, const char *descr,
+ 			      unsigned long value, int flags,
+@@ -30,7 +31,8 @@ static void check_super_value(e2fsck_t ctx, const char *descr,
+ 	struct		problem_context pctx;
+ 
+ 	if (((flags & MIN_CHECK) && (value < min_val)) ||
+-	    ((flags & MAX_CHECK) && (value > max_val))) {
++	    ((flags & MAX_CHECK) && (value > max_val)) ||
++	    ((flags & LOG2_CHECK) && (value & (value - 1)))) {
+ 		clear_problem_context(&pctx);
+ 		pctx.num = value;
+ 		pctx.str = descr;
+@@ -527,14 +529,17 @@ void check_super_block(e2fsck_t ctx)
+ 			  MAX_CHECK, 0, ext2fs_blocks_count(sb) / 2);
+ 	check_super_value(ctx, "reserved_gdt_blocks",
+ 			  sb->s_reserved_gdt_blocks, MAX_CHECK, 0,
+-			  fs->blocksize/4);
++			  fs->blocksize / sizeof(__u32));
++	check_super_value(ctx, "desc_size",
++			  sb->s_desc_size, MAX_CHECK | LOG2_CHECK, 0,
++			  EXT2_MAX_DESC_SIZE);
+ 	if (sb->s_rev_level > EXT2_GOOD_OLD_REV)
+ 		check_super_value(ctx, "first_ino", sb->s_first_ino,
+ 				  MIN_CHECK | MAX_CHECK,
+ 				  EXT2_GOOD_OLD_FIRST_INO, sb->s_inodes_count);
+ 	inode_size = EXT2_INODE_SIZE(sb);
+ 	check_super_value(ctx, "inode_size",
+-			  inode_size, MIN_CHECK | MAX_CHECK,
++			  inode_size, MIN_CHECK | MAX_CHECK | LOG2_CHECK,
+ 			  EXT2_GOOD_OLD_INODE_SIZE, fs->blocksize);
+ 	if (sb->s_blocks_per_group != (sb->s_clusters_per_group *
+ 				       EXT2FS_CLUSTER_RATIO(fs))) {
+@@ -544,13 +549,6 @@ void check_super_block(e2fsck_t ctx)
+ 		ctx->flags |= E2F_FLAG_ABORT; /* never get here! */
+ 		return;
+ 	}
+-	if (inode_size & (inode_size - 1)) {
+-		pctx.num = inode_size;
+-		pctx.str = "inode_size";
+-		fix_problem(ctx, PR_0_MISC_CORRUPT_SUPER, &pctx);
+-		ctx->flags |= E2F_FLAG_ABORT; /* never get here! */
+-		return;
+-	}
+ 
+ 	if ((ctx->flags & E2F_FLAG_GOT_DEVSIZE) &&
+ 	    (ctx->num_blocks < ext2fs_blocks_count(sb))) {
+diff --git a/lib/e2p/ls.c b/lib/e2p/ls.c
+index f05e16d..5b3d3c8 100644
+--- a/lib/e2p/ls.c
++++ b/lib/e2p/ls.c
+@@ -259,6 +259,8 @@ void list_super2(struct ext2_super_block * sb, FILE *f)
+ 	else
+ 		fprintf(f, "Fragment size:            %u\n",
+ 			EXT2_CLUSTER_SIZE(sb));
++	if (sb->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT)
++		fprintf(f, "Group descriptor size:    %u\n", sb->s_desc_size);
+ 	if (sb->s_reserved_gdt_blocks)
+ 		fprintf(f, "Reserved GDT blocks:      %u\n",
+ 			sb->s_reserved_gdt_blocks);
+diff --git a/lib/ext2fs/blknum.c b/lib/ext2fs/blknum.c
+index 33da7d6..8ced1ee 100644
+--- a/lib/ext2fs/blknum.c
++++ b/lib/ext2fs/blknum.c
+@@ -187,11 +187,8 @@ struct ext2_group_desc *ext2fs_group_desc(ext2_filsys fs,
+ 					  struct opaque_ext2_group_desc *gdp,
+ 					  dgrp_t group)
+ {
+-	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT)
+-		return (struct ext2_group_desc *)
+-			((struct ext4_group_desc *) gdp + group);
+-	else
+-		return (struct ext2_group_desc *) gdp + group;
++	return (struct ext2_group_desc *)((char *)gdp +
++					  group * EXT2_DESC_SIZE(fs->super));
+ }
+ 
+ /* Do the same but as an ext4 group desc for internal use here */
+diff --git a/lib/ext2fs/check_desc.c b/lib/ext2fs/check_desc.c
+index a6fcc45..1a768f9 100644
+--- a/lib/ext2fs/check_desc.c
++++ b/lib/ext2fs/check_desc.c
+@@ -42,6 +42,9 @@ errcode_t ext2fs_check_desc(ext2_filsys fs)
+ 
+ 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
+ 
++	if (EXT2_DESC_SIZE(fs->super) & (EXT2_DESC_SIZE(fs->super) - 1))
++		return EXT2_ET_BAD_DESC_SIZE;
++
+ 	retval = ext2fs_allocate_subcluster_bitmap(fs, "check_desc map", &bmap);
+ 	if (retval)
+ 		return retval;
+diff --git a/lib/ext2fs/closefs.c b/lib/ext2fs/closefs.c
+index 973c2a2..836dbb9 100644
+--- a/lib/ext2fs/closefs.c
++++ b/lib/ext2fs/closefs.c
+@@ -301,7 +301,7 @@ errcode_t ext2fs_flush2(ext2_filsys fs, int flags)
+ 	       fs->desc_blocks);
+ 
+ 	/* swap the group descriptors */
+-	for (j=0; j < fs->group_desc_count; j++) {
++	for (j = 0; j < fs->group_desc_count; j++) {
+ 		gdp = ext2fs_group_desc(fs, group_shadow, j);
+ 		ext2fs_swap_group_desc2(fs, gdp);
+ 	}
+diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
+index 5ee3445..730ee5e 100644
+--- a/lib/ext2fs/csum.c
++++ b/lib/ext2fs/csum.c
+@@ -34,15 +34,6 @@ __u16 ext2fs_group_desc_csum(ext2_filsys fs, dgrp_t group)
+ {
+ 	__u16 crc = 0;
+ 	struct ext2_group_desc *desc;
+-	size_t size;
+-
+-	size = fs->super->s_desc_size;
+-	if (size < EXT2_MIN_DESC_SIZE)
+-		size = EXT2_MIN_DESC_SIZE;
+-	if (size > sizeof(struct ext4_group_desc)) {
+-		printf("%s: illegal s_desc_size(%zd)\n", __func__, size);
+-		size = sizeof(struct ext4_group_desc);
+-	}
+ 
+ 	desc = ext2fs_group_desc(fs, fs->group_desc, group);
+ 
+@@ -53,7 +44,7 @@ __u16 ext2fs_group_desc_csum(ext2_filsys fs, dgrp_t group)
+ 		struct ext4_group_desc swabdesc;
+ 
+ 		/* Have to swab back to little-endian to do the checksum */
+-		memcpy(&swabdesc, desc, size);
++		memcpy(&swabdesc, desc, EXT2_DESC_SIZE(fs->super));
+ 		ext2fs_swap_group_desc2(fs,
+ 					(struct ext2_group_desc *) &swabdesc);
+ 		desc = (struct ext2_group_desc *) &swabdesc;
+@@ -66,9 +57,9 @@ __u16 ext2fs_group_desc_csum(ext2_filsys fs, dgrp_t group)
+ 		crc = ext2fs_crc16(crc, desc, offset);
+ 		offset += sizeof(desc->bg_checksum); /* skip checksum */
+ 		/* for checksum of struct ext4_group_desc do the rest...*/
+-		if (offset < size) {
++		if (offset < EXT2_DESC_SIZE(fs->super)) {
+ 			crc = ext2fs_crc16(crc, (char *)desc + offset,
+-					   size - offset);
++					   EXT2_DESC_SIZE(fs->super) - offset);
+ 		}
+ 	}
+ 
+@@ -175,11 +166,7 @@ void print_csum(const char *msg, ext2_filsys fs, dgrp_t group)
+ #endif
+ 
+ 	desc = ext2fs_group_desc(fs, fs->group_desc, group);
+-	size = fs->super->s_desc_size;
+-	if (size < EXT2_MIN_DESC_SIZE)
+-		size = EXT2_MIN_DESC_SIZE;
+-	if (size > sizeof(struct ext4_group_desc))
+-		size = sizeof(struct ext4_group_desc);
++	size = EXT2_DESC_SIZE(fs->super);
+ #ifdef WORDS_BIGENDIAN
+ 	/* Have to swab back to little-endian to do the checksum */
+ 	memcpy(&swabdesc, desc, size);
+diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+index fb3f7cc..930c2a3 100644
+--- a/lib/ext2fs/ext2_fs.h
++++ b/lib/ext2fs/ext2_fs.h
+@@ -159,7 +159,7 @@ struct ext2_group_desc
+ 	__u16	bg_block_bitmap_csum_lo;/* crc32c(s_uuid+grp_num+bitmap) LSB */
+ 	__u16	bg_inode_bitmap_csum_lo;/* crc32c(s_uuid+grp_num+bitmap) LSB */
+ 	__u16	bg_itable_unused;	/* Unused inodes count */
+-	__u16	bg_checksum;		/* crc16(s_uuid+grouo_num+group_desc)*/
++	__u16	bg_checksum;		/* crc16(s_uuid+group_num+group_desc)*/
+ };
+ 
+ /*
+diff --git a/lib/ext2fs/initialize.c b/lib/ext2fs/initialize.c
+index 5afdc27..2db8b3c 100644
+--- a/lib/ext2fs/initialize.c
++++ b/lib/ext2fs/initialize.c
+@@ -272,8 +272,9 @@ retry:
+ 		goto cleanup;
+ 	}
+ 
+-	if (super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT)
+-		super->s_desc_size = EXT2_MIN_DESC_SIZE_64BIT;
++	set_field(s_desc_size,
++		  super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT ?
++		  EXT2_MIN_DESC_SIZE_64BIT : 0);
+ 
+ 	fs->desc_blocks = ext2fs_div_ceil(fs->group_desc_count,
+ 					  EXT2_DESC_PER_BLOCK(super));
+diff --git a/lib/ext2fs/swapfs.c b/lib/ext2fs/swapfs.c
+index 7c99373..9891dda 100644
+--- a/lib/ext2fs/swapfs.c
++++ b/lib/ext2fs/swapfs.c
+@@ -103,6 +103,8 @@ void ext2fs_swap_super(struct ext2_super_block * sb)
+ 
+ void ext2fs_swap_group_desc2(ext2_filsys fs, struct ext2_group_desc *gdp)
+ {
++	struct ext4_group_desc *gdp4 = (struct ext4_group_desc *)gdp;
++
+ 	/* Do the 32-bit parts first */
+ 	gdp->bg_block_bitmap = ext2fs_swab32(gdp->bg_block_bitmap);
+ 	gdp->bg_inode_bitmap = ext2fs_swab32(gdp->bg_inode_bitmap);
+@@ -119,12 +121,10 @@ void ext2fs_swap_group_desc2(ext2_filsys fs, struct ext2_group_desc *gdp)
+ 	gdp->bg_itable_unused = ext2fs_swab16(gdp->bg_itable_unused);
+ 	gdp->bg_checksum = ext2fs_swab16(gdp->bg_checksum);
+ 	/* If we're 32-bit, we're done */
+-	if (fs && (!fs->super->s_desc_size ||
+-		   (fs->super->s_desc_size < EXT2_MIN_DESC_SIZE_64BIT)))
++	if (fs == NULL || EXT4_DESC_SIZE(fs->super) < EXT2_MIN_DESC_SIZE_64BIT)
+ 		return;
+ 
+ 	/* Swap the 64-bit parts */
+-	struct ext4_group_desc *gdp4 = (struct ext4_group_desc *) gdp;
+ 	gdp4->bg_block_bitmap_hi = ext2fs_swab32(gdp4->bg_block_bitmap_hi);
+ 	gdp4->bg_inode_bitmap_hi = ext2fs_swab32(gdp4->bg_inode_bitmap_hi);
+ 	gdp4->bg_inode_table_hi = ext2fs_swab32(gdp4->bg_inode_table_hi);
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index fe5ce7d..591984e 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -677,7 +677,38 @@ static void parse_extended_opts(struct ext2_super_block *param,
+ 			*arg = 0;
+ 			arg++;
+ 		}
+-		if (strcmp(token, "mmp_update_interval") == 0) {
++		if (strcmp(token, "desc-size") == 0 ||
++		    strcmp(token, "desc_size") == 0) {
++			int desc_size;
++
++			if (!(fs_param.s_feature_incompat &
++			      EXT4_FEATURE_INCOMPAT_64BIT)) {
++				fprintf(stderr,
++					_("%s requires '-O 64bit'\n"), token);
++				r_usage++;
++				continue;
++			}
++			if (param->s_reserved_gdt_blocks != 0) {
++				fprintf(stderr,
++					_("'%s' must be before 'resize=%u'\n"),
++					token, param->s_reserved_gdt_blocks);
++				r_usage++;
++				continue;
++			}
++			if (!arg) {
++				r_usage++;
++				badopt = token;
++				continue;
++			}
++			desc_size = strtoul(arg, &p, 0);
++			if (*p || (desc_size & (desc_size - 1))) {
++				fprintf(stderr,
++					_("Invalid desc_size: '%s'\n"), arg);
++				r_usage++;
++				continue;
++			}
++			param->s_desc_size = desc_size;
++		} else if (strcmp(token, "mmp_update_interval") == 0) {
+ 			if (!arg) {
+ 				r_usage++;
+ 				badopt = token;
+diff --git a/tests/f_desc_size_128/expect.1 b/tests/f_desc_size_128/expect.1
+new file mode 100644
+index 0000000..a62f112
+--- /dev/null
++++ b/tests/f_desc_size_128/expect.1
+@@ -0,0 +1,7 @@
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 11/256 files (0.0% non-contiguous), 150/8192 blocks
++Exit status is 0
+diff --git a/tests/f_desc_size_128/expect.2 b/tests/f_desc_size_128/expect.2
+new file mode 100644
+index 0000000..a62f112
+--- /dev/null
++++ b/tests/f_desc_size_128/expect.2
+@@ -0,0 +1,7 @@
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 11/256 files (0.0% non-contiguous), 150/8192 blocks
++Exit status is 0
+diff --git a/tests/f_desc_size_128/image.gz b/tests/f_desc_size_128/image.gz
+new file mode 100644
+index 0000000000000000000000000000000000000000..8226b2741c53d76d34ee8c97bfe5248741a694fd
+GIT binary patch
+literal 11508
+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
+D8~zzb
+
+literal 0
+HcmV?d00001
+
+diff --git a/tests/f_desc_size_128/name b/tests/f_desc_size_128/name
+new file mode 100644
+index 0000000..f09e003
+--- /dev/null
++++ b/tests/f_desc_size_128/name
+@@ -0,0 +1 @@
++128-byte group descriptors
+diff --git a/tests/f_desc_size_bad/expect.1 b/tests/f_desc_size_bad/expect.1
+new file mode 100644
+index 0000000..009ee04
+--- /dev/null
++++ b/tests/f_desc_size_bad/expect.1
+@@ -0,0 +1,11 @@
++ext2fs_check_desc: Block group descriptor size incorrect
++../e2fsck/e2fsck: Group descriptors look bad... trying backup blocks...
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
++test_filesys: 11/32 files (0.0% non-contiguous), 801/2048 blocks
++Exit status is 1
+diff --git a/tests/f_desc_size_bad/expect.2 b/tests/f_desc_size_bad/expect.2
+new file mode 100644
+index 0000000..d1429fd
+--- /dev/null
++++ b/tests/f_desc_size_bad/expect.2
+@@ -0,0 +1,7 @@
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 11/32 files (0.0% non-contiguous), 801/2048 blocks
++Exit status is 0
+diff --git a/tests/f_desc_size_bad/script b/tests/f_desc_size_bad/script
+new file mode 100644
+index 0000000..eac5e54
+--- /dev/null
++++ b/tests/f_desc_size_bad/script
+@@ -0,0 +1,17 @@
++if ! test -x $DEBUGFS_EXE; then
++        echo "$test_name: $test_description: skipped"
++	return 0
++fi 
++
++DESCRIPTION="bad superblock s_desc_size"
++SKIP_GUNZIP=true
++touch $TMPFILE
++$MKE2FS -F -o Linux -O 64bit -N 32 -b 1024 -g 512 -E desc_size=128 $TMPFILE 2048 > /dev/null 2>&1 
++$DEBUGFS -R "ssv desc_size 129" -w $TMPFILE > /dev/null 2>&1
++
++E2FSCK_TIME=200704102100
++export E2FSCK_TIME
++
++. $cmd_dir/run_e2fsck
++
++unset E2FSCK_TIME
+diff --git a/tests/m_desc_size_128/expect.1 b/tests/m_desc_size_128/expect.1
+new file mode 100644
+index 0000000..bee018a
+--- /dev/null
++++ b/tests/m_desc_size_128/expect.1
+@@ -0,0 +1,851 @@
++Filesystem label=
++OS type: Linux
++Block size=1024 (log=0)
++Fragment size=1024 (log=0)
++Stride=0 blocks, Stripe width=0 blocks
++8192 inodes, 131072 blocks
++6553 blocks (5.00%) reserved for the super user
++First data block=1
++Maximum filesystem blocks=2228224
++128 block groups
++1024 blocks per group, 1024 fragments per group
++64 inodes per group
++Superblock backups stored on blocks: 
++	1025, 3073, 5121, 7169, 9217, 25601, 27649, 50177, 82945, 128001
++
++Allocating group tables:        done                            
++Writing inode tables:        done                            
++Writing superblocks and filesystem accounting information:        done
++
++Filesystem features: ext_attr resize_inode dir_index filetype 64bit sparse_super
++ 
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 11/8192 files (0.0% non-contiguous), 4298/131072 blocks
++Exit status is 0
++
++Filesystem volume name:   <none>
++Last mounted on:          <not available>
++Filesystem magic number:  0xEF53
++Filesystem revision #:    1 (dynamic)
++Filesystem features:      ext_attr resize_inode dir_index filetype 64bit sparse_super
++Default mount options:    (none)
++Filesystem state:         clean
++Errors behavior:          Continue
++Filesystem OS type:       Linux
++Inode count:              8192
++Block count:              131072
++Reserved block count:     6553
++Free blocks:              126774
++Free inodes:              8181
++First block:              1
++Block size:               1024
++Fragment size:            1024
++Group descriptor size:    128
++Reserved GDT blocks:      256
++Blocks per group:         1024
++Fragments per group:      1024
++Inodes per group:         64
++Inode blocks per group:   8
++Mount count:              0
++Check interval:           15552000 (6 months)
++Reserved blocks uid:      0
++Reserved blocks gid:      0
++First inode:              11
++Inode size:	          128
++Default directory hash:   half_md4
++
++
++Group 0: (Blocks 1-1024)
++  Primary superblock at 1, Group descriptors at 2-17
++  Reserved GDT blocks at 18-273
++  Block bitmap at 274 (+273), Inode bitmap at 275 (+274)
++  Inode table at 276-283 (+275)
++  727 free blocks, 53 free inodes, 2 directories
++  Free blocks: 298-1024
++  Free inodes: 12-64
++Group 1: (Blocks 1025-2048)
++  Backup superblock at 1025, Group descriptors at 1026-1041
++  Reserved GDT blocks at 1042-1297
++  Block bitmap at 1298 (+273), Inode bitmap at 1299 (+274)
++  Inode table at 1300-1307 (+275)
++  741 free blocks, 64 free inodes, 0 directories
++  Free blocks: 1308-2048
++  Free inodes: 65-128
++Group 2: (Blocks 2049-3072)
++  Block bitmap at 2049 (+0), Inode bitmap at 2050 (+1)
++  Inode table at 2051-2058 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 2059-3072
++  Free inodes: 129-192
++Group 3: (Blocks 3073-4096)
++  Backup superblock at 3073, Group descriptors at 3074-3089
++  Reserved GDT blocks at 3090-3345
++  Block bitmap at 3346 (+273), Inode bitmap at 3347 (+274)
++  Inode table at 3348-3355 (+275)
++  741 free blocks, 64 free inodes, 0 directories
++  Free blocks: 3356-4096
++  Free inodes: 193-256
++Group 4: (Blocks 4097-5120)
++  Block bitmap at 4097 (+0), Inode bitmap at 4098 (+1)
++  Inode table at 4099-4106 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 4107-5120
++  Free inodes: 257-320
++Group 5: (Blocks 5121-6144)
++  Backup superblock at 5121, Group descriptors at 5122-5137
++  Reserved GDT blocks at 5138-5393
++  Block bitmap at 5394 (+273), Inode bitmap at 5395 (+274)
++  Inode table at 5396-5403 (+275)
++  741 free blocks, 64 free inodes, 0 directories
++  Free blocks: 5404-6144
++  Free inodes: 321-384
++Group 6: (Blocks 6145-7168)
++  Block bitmap at 6145 (+0), Inode bitmap at 6146 (+1)
++  Inode table at 6147-6154 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 6155-7168
++  Free inodes: 385-448
++Group 7: (Blocks 7169-8192)
++  Backup superblock at 7169, Group descriptors at 7170-7185
++  Reserved GDT blocks at 7186-7441
++  Block bitmap at 7442 (+273), Inode bitmap at 7443 (+274)
++  Inode table at 7444-7451 (+275)
++  741 free blocks, 64 free inodes, 0 directories
++  Free blocks: 7452-8192
++  Free inodes: 449-512
++Group 8: (Blocks 8193-9216)
++  Block bitmap at 8193 (+0), Inode bitmap at 8194 (+1)
++  Inode table at 8195-8202 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 8203-9216
++  Free inodes: 513-576
++Group 9: (Blocks 9217-10240)
++  Backup superblock at 9217, Group descriptors at 9218-9233
++  Reserved GDT blocks at 9234-9489
++  Block bitmap at 9490 (+273), Inode bitmap at 9491 (+274)
++  Inode table at 9492-9499 (+275)
++  741 free blocks, 64 free inodes, 0 directories
++  Free blocks: 9500-10240
++  Free inodes: 577-640
++Group 10: (Blocks 10241-11264)
++  Block bitmap at 10241 (+0), Inode bitmap at 10242 (+1)
++  Inode table at 10243-10250 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 10251-11264
++  Free inodes: 641-704
++Group 11: (Blocks 11265-12288)
++  Block bitmap at 11265 (+0), Inode bitmap at 11266 (+1)
++  Inode table at 11267-11274 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 11275-12288
++  Free inodes: 705-768
++Group 12: (Blocks 12289-13312)
++  Block bitmap at 12289 (+0), Inode bitmap at 12290 (+1)
++  Inode table at 12291-12298 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 12299-13312
++  Free inodes: 769-832
++Group 13: (Blocks 13313-14336)
++  Block bitmap at 13313 (+0), Inode bitmap at 13314 (+1)
++  Inode table at 13315-13322 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 13323-14336
++  Free inodes: 833-896
++Group 14: (Blocks 14337-15360)
++  Block bitmap at 14337 (+0), Inode bitmap at 14338 (+1)
++  Inode table at 14339-14346 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 14347-15360
++  Free inodes: 897-960
++Group 15: (Blocks 15361-16384)
++  Block bitmap at 15361 (+0), Inode bitmap at 15362 (+1)
++  Inode table at 15363-15370 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 15371-16384
++  Free inodes: 961-1024
++Group 16: (Blocks 16385-17408)
++  Block bitmap at 16385 (+0), Inode bitmap at 16386 (+1)
++  Inode table at 16387-16394 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 16395-17408
++  Free inodes: 1025-1088
++Group 17: (Blocks 17409-18432)
++  Block bitmap at 17409 (+0), Inode bitmap at 17410 (+1)
++  Inode table at 17411-17418 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 17419-18432
++  Free inodes: 1089-1152
++Group 18: (Blocks 18433-19456)
++  Block bitmap at 18433 (+0), Inode bitmap at 18434 (+1)
++  Inode table at 18435-18442 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 18443-19456
++  Free inodes: 1153-1216
++Group 19: (Blocks 19457-20480)
++  Block bitmap at 19457 (+0), Inode bitmap at 19458 (+1)
++  Inode table at 19459-19466 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 19467-20480
++  Free inodes: 1217-1280
++Group 20: (Blocks 20481-21504)
++  Block bitmap at 20481 (+0), Inode bitmap at 20482 (+1)
++  Inode table at 20483-20490 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 20491-21504
++  Free inodes: 1281-1344
++Group 21: (Blocks 21505-22528)
++  Block bitmap at 21505 (+0), Inode bitmap at 21506 (+1)
++  Inode table at 21507-21514 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 21515-22528
++  Free inodes: 1345-1408
++Group 22: (Blocks 22529-23552)
++  Block bitmap at 22529 (+0), Inode bitmap at 22530 (+1)
++  Inode table at 22531-22538 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 22539-23552
++  Free inodes: 1409-1472
++Group 23: (Blocks 23553-24576)
++  Block bitmap at 23553 (+0), Inode bitmap at 23554 (+1)
++  Inode table at 23555-23562 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 23563-24576
++  Free inodes: 1473-1536
++Group 24: (Blocks 24577-25600)
++  Block bitmap at 24577 (+0), Inode bitmap at 24578 (+1)
++  Inode table at 24579-24586 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 24587-25600
++  Free inodes: 1537-1600
++Group 25: (Blocks 25601-26624)
++  Backup superblock at 25601, Group descriptors at 25602-25617
++  Reserved GDT blocks at 25618-25873
++  Block bitmap at 25874 (+273), Inode bitmap at 25875 (+274)
++  Inode table at 25876-25883 (+275)
++  741 free blocks, 64 free inodes, 0 directories
++  Free blocks: 25884-26624
++  Free inodes: 1601-1664
++Group 26: (Blocks 26625-27648)
++  Block bitmap at 26625 (+0), Inode bitmap at 26626 (+1)
++  Inode table at 26627-26634 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 26635-27648
++  Free inodes: 1665-1728
++Group 27: (Blocks 27649-28672)
++  Backup superblock at 27649, Group descriptors at 27650-27665
++  Reserved GDT blocks at 27666-27921
++  Block bitmap at 27922 (+273), Inode bitmap at 27923 (+274)
++  Inode table at 27924-27931 (+275)
++  741 free blocks, 64 free inodes, 0 directories
++  Free blocks: 27932-28672
++  Free inodes: 1729-1792
++Group 28: (Blocks 28673-29696)
++  Block bitmap at 28673 (+0), Inode bitmap at 28674 (+1)
++  Inode table at 28675-28682 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 28683-29696
++  Free inodes: 1793-1856
++Group 29: (Blocks 29697-30720)
++  Block bitmap at 29697 (+0), Inode bitmap at 29698 (+1)
++  Inode table at 29699-29706 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 29707-30720
++  Free inodes: 1857-1920
++Group 30: (Blocks 30721-31744)
++  Block bitmap at 30721 (+0), Inode bitmap at 30722 (+1)
++  Inode table at 30723-30730 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 30731-31744
++  Free inodes: 1921-1984
++Group 31: (Blocks 31745-32768)
++  Block bitmap at 31745 (+0), Inode bitmap at 31746 (+1)
++  Inode table at 31747-31754 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 31755-32768
++  Free inodes: 1985-2048
++Group 32: (Blocks 32769-33792)
++  Block bitmap at 32769 (+0), Inode bitmap at 32770 (+1)
++  Inode table at 32771-32778 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 32779-33792
++  Free inodes: 2049-2112
++Group 33: (Blocks 33793-34816)
++  Block bitmap at 33793 (+0), Inode bitmap at 33794 (+1)
++  Inode table at 33795-33802 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 33803-34816
++  Free inodes: 2113-2176
++Group 34: (Blocks 34817-35840)
++  Block bitmap at 34817 (+0), Inode bitmap at 34818 (+1)
++  Inode table at 34819-34826 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 34827-35840
++  Free inodes: 2177-2240
++Group 35: (Blocks 35841-36864)
++  Block bitmap at 35841 (+0), Inode bitmap at 35842 (+1)
++  Inode table at 35843-35850 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 35851-36864
++  Free inodes: 2241-2304
++Group 36: (Blocks 36865-37888)
++  Block bitmap at 36865 (+0), Inode bitmap at 36866 (+1)
++  Inode table at 36867-36874 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 36875-37888
++  Free inodes: 2305-2368
++Group 37: (Blocks 37889-38912)
++  Block bitmap at 37889 (+0), Inode bitmap at 37890 (+1)
++  Inode table at 37891-37898 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 37899-38912
++  Free inodes: 2369-2432
++Group 38: (Blocks 38913-39936)
++  Block bitmap at 38913 (+0), Inode bitmap at 38914 (+1)
++  Inode table at 38915-38922 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 38923-39936
++  Free inodes: 2433-2496
++Group 39: (Blocks 39937-40960)
++  Block bitmap at 39937 (+0), Inode bitmap at 39938 (+1)
++  Inode table at 39939-39946 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 39947-40960
++  Free inodes: 2497-2560
++Group 40: (Blocks 40961-41984)
++  Block bitmap at 40961 (+0), Inode bitmap at 40962 (+1)
++  Inode table at 40963-40970 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 40971-41984
++  Free inodes: 2561-2624
++Group 41: (Blocks 41985-43008)
++  Block bitmap at 41985 (+0), Inode bitmap at 41986 (+1)
++  Inode table at 41987-41994 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 41995-43008
++  Free inodes: 2625-2688
++Group 42: (Blocks 43009-44032)
++  Block bitmap at 43009 (+0), Inode bitmap at 43010 (+1)
++  Inode table at 43011-43018 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 43019-44032
++  Free inodes: 2689-2752
++Group 43: (Blocks 44033-45056)
++  Block bitmap at 44033 (+0), Inode bitmap at 44034 (+1)
++  Inode table at 44035-44042 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 44043-45056
++  Free inodes: 2753-2816
++Group 44: (Blocks 45057-46080)
++  Block bitmap at 45057 (+0), Inode bitmap at 45058 (+1)
++  Inode table at 45059-45066 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 45067-46080
++  Free inodes: 2817-2880
++Group 45: (Blocks 46081-47104)
++  Block bitmap at 46081 (+0), Inode bitmap at 46082 (+1)
++  Inode table at 46083-46090 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 46091-47104
++  Free inodes: 2881-2944
++Group 46: (Blocks 47105-48128)
++  Block bitmap at 47105 (+0), Inode bitmap at 47106 (+1)
++  Inode table at 47107-47114 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 47115-48128
++  Free inodes: 2945-3008
++Group 47: (Blocks 48129-49152)
++  Block bitmap at 48129 (+0), Inode bitmap at 48130 (+1)
++  Inode table at 48131-48138 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 48139-49152
++  Free inodes: 3009-3072
++Group 48: (Blocks 49153-50176)
++  Block bitmap at 49153 (+0), Inode bitmap at 49154 (+1)
++  Inode table at 49155-49162 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 49163-50176
++  Free inodes: 3073-3136
++Group 49: (Blocks 50177-51200)
++  Backup superblock at 50177, Group descriptors at 50178-50193
++  Reserved GDT blocks at 50194-50449
++  Block bitmap at 50450 (+273), Inode bitmap at 50451 (+274)
++  Inode table at 50452-50459 (+275)
++  741 free blocks, 64 free inodes, 0 directories
++  Free blocks: 50460-51200
++  Free inodes: 3137-3200
++Group 50: (Blocks 51201-52224)
++  Block bitmap at 51201 (+0), Inode bitmap at 51202 (+1)
++  Inode table at 51203-51210 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 51211-52224
++  Free inodes: 3201-3264
++Group 51: (Blocks 52225-53248)
++  Block bitmap at 52225 (+0), Inode bitmap at 52226 (+1)
++  Inode table at 52227-52234 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 52235-53248
++  Free inodes: 3265-3328
++Group 52: (Blocks 53249-54272)
++  Block bitmap at 53249 (+0), Inode bitmap at 53250 (+1)
++  Inode table at 53251-53258 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 53259-54272
++  Free inodes: 3329-3392
++Group 53: (Blocks 54273-55296)
++  Block bitmap at 54273 (+0), Inode bitmap at 54274 (+1)
++  Inode table at 54275-54282 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 54283-55296
++  Free inodes: 3393-3456
++Group 54: (Blocks 55297-56320)
++  Block bitmap at 55297 (+0), Inode bitmap at 55298 (+1)
++  Inode table at 55299-55306 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 55307-56320
++  Free inodes: 3457-3520
++Group 55: (Blocks 56321-57344)
++  Block bitmap at 56321 (+0), Inode bitmap at 56322 (+1)
++  Inode table at 56323-56330 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 56331-57344
++  Free inodes: 3521-3584
++Group 56: (Blocks 57345-58368)
++  Block bitmap at 57345 (+0), Inode bitmap at 57346 (+1)
++  Inode table at 57347-57354 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 57355-58368
++  Free inodes: 3585-3648
++Group 57: (Blocks 58369-59392)
++  Block bitmap at 58369 (+0), Inode bitmap at 58370 (+1)
++  Inode table at 58371-58378 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 58379-59392
++  Free inodes: 3649-3712
++Group 58: (Blocks 59393-60416)
++  Block bitmap at 59393 (+0), Inode bitmap at 59394 (+1)
++  Inode table at 59395-59402 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 59403-60416
++  Free inodes: 3713-3776
++Group 59: (Blocks 60417-61440)
++  Block bitmap at 60417 (+0), Inode bitmap at 60418 (+1)
++  Inode table at 60419-60426 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 60427-61440
++  Free inodes: 3777-3840
++Group 60: (Blocks 61441-62464)
++  Block bitmap at 61441 (+0), Inode bitmap at 61442 (+1)
++  Inode table at 61443-61450 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 61451-62464
++  Free inodes: 3841-3904
++Group 61: (Blocks 62465-63488)
++  Block bitmap at 62465 (+0), Inode bitmap at 62466 (+1)
++  Inode table at 62467-62474 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 62475-63488
++  Free inodes: 3905-3968
++Group 62: (Blocks 63489-64512)
++  Block bitmap at 63489 (+0), Inode bitmap at 63490 (+1)
++  Inode table at 63491-63498 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 63499-64512
++  Free inodes: 3969-4032
++Group 63: (Blocks 64513-65536)
++  Block bitmap at 64513 (+0), Inode bitmap at 64514 (+1)
++  Inode table at 64515-64522 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 64523-65536
++  Free inodes: 4033-4096
++Group 64: (Blocks 65537-66560)
++  Block bitmap at 65537 (+0), Inode bitmap at 65538 (+1)
++  Inode table at 65539-65546 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 65547-66560
++  Free inodes: 4097-4160
++Group 65: (Blocks 66561-67584)
++  Block bitmap at 66561 (+0), Inode bitmap at 66562 (+1)
++  Inode table at 66563-66570 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 66571-67584
++  Free inodes: 4161-4224
++Group 66: (Blocks 67585-68608)
++  Block bitmap at 67585 (+0), Inode bitmap at 67586 (+1)
++  Inode table at 67587-67594 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 67595-68608
++  Free inodes: 4225-4288
++Group 67: (Blocks 68609-69632)
++  Block bitmap at 68609 (+0), Inode bitmap at 68610 (+1)
++  Inode table at 68611-68618 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 68619-69632
++  Free inodes: 4289-4352
++Group 68: (Blocks 69633-70656)
++  Block bitmap at 69633 (+0), Inode bitmap at 69634 (+1)
++  Inode table at 69635-69642 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 69643-70656
++  Free inodes: 4353-4416
++Group 69: (Blocks 70657-71680)
++  Block bitmap at 70657 (+0), Inode bitmap at 70658 (+1)
++  Inode table at 70659-70666 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 70667-71680
++  Free inodes: 4417-4480
++Group 70: (Blocks 71681-72704)
++  Block bitmap at 71681 (+0), Inode bitmap at 71682 (+1)
++  Inode table at 71683-71690 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 71691-72704
++  Free inodes: 4481-4544
++Group 71: (Blocks 72705-73728)
++  Block bitmap at 72705 (+0), Inode bitmap at 72706 (+1)
++  Inode table at 72707-72714 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 72715-73728
++  Free inodes: 4545-4608
++Group 72: (Blocks 73729-74752)
++  Block bitmap at 73729 (+0), Inode bitmap at 73730 (+1)
++  Inode table at 73731-73738 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 73739-74752
++  Free inodes: 4609-4672
++Group 73: (Blocks 74753-75776)
++  Block bitmap at 74753 (+0), Inode bitmap at 74754 (+1)
++  Inode table at 74755-74762 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 74763-75776
++  Free inodes: 4673-4736
++Group 74: (Blocks 75777-76800)
++  Block bitmap at 75777 (+0), Inode bitmap at 75778 (+1)
++  Inode table at 75779-75786 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 75787-76800
++  Free inodes: 4737-4800
++Group 75: (Blocks 76801-77824)
++  Block bitmap at 76801 (+0), Inode bitmap at 76802 (+1)
++  Inode table at 76803-76810 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 76811-77824
++  Free inodes: 4801-4864
++Group 76: (Blocks 77825-78848)
++  Block bitmap at 77825 (+0), Inode bitmap at 77826 (+1)
++  Inode table at 77827-77834 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 77835-78848
++  Free inodes: 4865-4928
++Group 77: (Blocks 78849-79872)
++  Block bitmap at 78849 (+0), Inode bitmap at 78850 (+1)
++  Inode table at 78851-78858 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 78859-79872
++  Free inodes: 4929-4992
++Group 78: (Blocks 79873-80896)
++  Block bitmap at 79873 (+0), Inode bitmap at 79874 (+1)
++  Inode table at 79875-79882 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 79883-80896
++  Free inodes: 4993-5056
++Group 79: (Blocks 80897-81920)
++  Block bitmap at 80897 (+0), Inode bitmap at 80898 (+1)
++  Inode table at 80899-80906 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 80907-81920
++  Free inodes: 5057-5120
++Group 80: (Blocks 81921-82944)
++  Block bitmap at 81921 (+0), Inode bitmap at 81922 (+1)
++  Inode table at 81923-81930 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 81931-82944
++  Free inodes: 5121-5184
++Group 81: (Blocks 82945-83968)
++  Backup superblock at 82945, Group descriptors at 82946-82961
++  Reserved GDT blocks at 82962-83217
++  Block bitmap at 83218 (+273), Inode bitmap at 83219 (+274)
++  Inode table at 83220-83227 (+275)
++  741 free blocks, 64 free inodes, 0 directories
++  Free blocks: 83228-83968
++  Free inodes: 5185-5248
++Group 82: (Blocks 83969-84992)
++  Block bitmap at 83969 (+0), Inode bitmap at 83970 (+1)
++  Inode table at 83971-83978 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 83979-84992
++  Free inodes: 5249-5312
++Group 83: (Blocks 84993-86016)
++  Block bitmap at 84993 (+0), Inode bitmap at 84994 (+1)
++  Inode table at 84995-85002 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 85003-86016
++  Free inodes: 5313-5376
++Group 84: (Blocks 86017-87040)
++  Block bitmap at 86017 (+0), Inode bitmap at 86018 (+1)
++  Inode table at 86019-86026 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 86027-87040
++  Free inodes: 5377-5440
++Group 85: (Blocks 87041-88064)
++  Block bitmap at 87041 (+0), Inode bitmap at 87042 (+1)
++  Inode table at 87043-87050 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 87051-88064
++  Free inodes: 5441-5504
++Group 86: (Blocks 88065-89088)
++  Block bitmap at 88065 (+0), Inode bitmap at 88066 (+1)
++  Inode table at 88067-88074 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 88075-89088
++  Free inodes: 5505-5568
++Group 87: (Blocks 89089-90112)
++  Block bitmap at 89089 (+0), Inode bitmap at 89090 (+1)
++  Inode table at 89091-89098 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 89099-90112
++  Free inodes: 5569-5632
++Group 88: (Blocks 90113-91136)
++  Block bitmap at 90113 (+0), Inode bitmap at 90114 (+1)
++  Inode table at 90115-90122 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 90123-91136
++  Free inodes: 5633-5696
++Group 89: (Blocks 91137-92160)
++  Block bitmap at 91137 (+0), Inode bitmap at 91138 (+1)
++  Inode table at 91139-91146 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 91147-92160
++  Free inodes: 5697-5760
++Group 90: (Blocks 92161-93184)
++  Block bitmap at 92161 (+0), Inode bitmap at 92162 (+1)
++  Inode table at 92163-92170 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 92171-93184
++  Free inodes: 5761-5824
++Group 91: (Blocks 93185-94208)
++  Block bitmap at 93185 (+0), Inode bitmap at 93186 (+1)
++  Inode table at 93187-93194 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 93195-94208
++  Free inodes: 5825-5888
++Group 92: (Blocks 94209-95232)
++  Block bitmap at 94209 (+0), Inode bitmap at 94210 (+1)
++  Inode table at 94211-94218 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 94219-95232
++  Free inodes: 5889-5952
++Group 93: (Blocks 95233-96256)
++  Block bitmap at 95233 (+0), Inode bitmap at 95234 (+1)
++  Inode table at 95235-95242 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 95243-96256
++  Free inodes: 5953-6016
++Group 94: (Blocks 96257-97280)
++  Block bitmap at 96257 (+0), Inode bitmap at 96258 (+1)
++  Inode table at 96259-96266 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 96267-97280
++  Free inodes: 6017-6080
++Group 95: (Blocks 97281-98304)
++  Block bitmap at 97281 (+0), Inode bitmap at 97282 (+1)
++  Inode table at 97283-97290 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 97291-98304
++  Free inodes: 6081-6144
++Group 96: (Blocks 98305-99328)
++  Block bitmap at 98305 (+0), Inode bitmap at 98306 (+1)
++  Inode table at 98307-98314 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 98315-99328
++  Free inodes: 6145-6208
++Group 97: (Blocks 99329-100352)
++  Block bitmap at 99329 (+0), Inode bitmap at 99330 (+1)
++  Inode table at 99331-99338 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 99339-100352
++  Free inodes: 6209-6272
++Group 98: (Blocks 100353-101376)
++  Block bitmap at 100353 (+0), Inode bitmap at 100354 (+1)
++  Inode table at 100355-100362 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 100363-101376
++  Free inodes: 6273-6336
++Group 99: (Blocks 101377-102400)
++  Block bitmap at 101377 (+0), Inode bitmap at 101378 (+1)
++  Inode table at 101379-101386 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 101387-102400
++  Free inodes: 6337-6400
++Group 100: (Blocks 102401-103424)
++  Block bitmap at 102401 (+0), Inode bitmap at 102402 (+1)
++  Inode table at 102403-102410 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 102411-103424
++  Free inodes: 6401-6464
++Group 101: (Blocks 103425-104448)
++  Block bitmap at 103425 (+0), Inode bitmap at 103426 (+1)
++  Inode table at 103427-103434 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 103435-104448
++  Free inodes: 6465-6528
++Group 102: (Blocks 104449-105472)
++  Block bitmap at 104449 (+0), Inode bitmap at 104450 (+1)
++  Inode table at 104451-104458 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 104459-105472
++  Free inodes: 6529-6592
++Group 103: (Blocks 105473-106496)
++  Block bitmap at 105473 (+0), Inode bitmap at 105474 (+1)
++  Inode table at 105475-105482 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 105483-106496
++  Free inodes: 6593-6656
++Group 104: (Blocks 106497-107520)
++  Block bitmap at 106497 (+0), Inode bitmap at 106498 (+1)
++  Inode table at 106499-106506 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 106507-107520
++  Free inodes: 6657-6720
++Group 105: (Blocks 107521-108544)
++  Block bitmap at 107521 (+0), Inode bitmap at 107522 (+1)
++  Inode table at 107523-107530 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 107531-108544
++  Free inodes: 6721-6784
++Group 106: (Blocks 108545-109568)
++  Block bitmap at 108545 (+0), Inode bitmap at 108546 (+1)
++  Inode table at 108547-108554 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 108555-109568
++  Free inodes: 6785-6848
++Group 107: (Blocks 109569-110592)
++  Block bitmap at 109569 (+0), Inode bitmap at 109570 (+1)
++  Inode table at 109571-109578 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 109579-110592
++  Free inodes: 6849-6912
++Group 108: (Blocks 110593-111616)
++  Block bitmap at 110593 (+0), Inode bitmap at 110594 (+1)
++  Inode table at 110595-110602 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 110603-111616
++  Free inodes: 6913-6976
++Group 109: (Blocks 111617-112640)
++  Block bitmap at 111617 (+0), Inode bitmap at 111618 (+1)
++  Inode table at 111619-111626 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 111627-112640
++  Free inodes: 6977-7040
++Group 110: (Blocks 112641-113664)
++  Block bitmap at 112641 (+0), Inode bitmap at 112642 (+1)
++  Inode table at 112643-112650 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 112651-113664
++  Free inodes: 7041-7104
++Group 111: (Blocks 113665-114688)
++  Block bitmap at 113665 (+0), Inode bitmap at 113666 (+1)
++  Inode table at 113667-113674 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 113675-114688
++  Free inodes: 7105-7168
++Group 112: (Blocks 114689-115712)
++  Block bitmap at 114689 (+0), Inode bitmap at 114690 (+1)
++  Inode table at 114691-114698 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 114699-115712
++  Free inodes: 7169-7232
++Group 113: (Blocks 115713-116736)
++  Block bitmap at 115713 (+0), Inode bitmap at 115714 (+1)
++  Inode table at 115715-115722 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 115723-116736
++  Free inodes: 7233-7296
++Group 114: (Blocks 116737-117760)
++  Block bitmap at 116737 (+0), Inode bitmap at 116738 (+1)
++  Inode table at 116739-116746 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 116747-117760
++  Free inodes: 7297-7360
++Group 115: (Blocks 117761-118784)
++  Block bitmap at 117761 (+0), Inode bitmap at 117762 (+1)
++  Inode table at 117763-117770 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 117771-118784
++  Free inodes: 7361-7424
++Group 116: (Blocks 118785-119808)
++  Block bitmap at 118785 (+0), Inode bitmap at 118786 (+1)
++  Inode table at 118787-118794 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 118795-119808
++  Free inodes: 7425-7488
++Group 117: (Blocks 119809-120832)
++  Block bitmap at 119809 (+0), Inode bitmap at 119810 (+1)
++  Inode table at 119811-119818 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 119819-120832
++  Free inodes: 7489-7552
++Group 118: (Blocks 120833-121856)
++  Block bitmap at 120833 (+0), Inode bitmap at 120834 (+1)
++  Inode table at 120835-120842 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 120843-121856
++  Free inodes: 7553-7616
++Group 119: (Blocks 121857-122880)
++  Block bitmap at 121857 (+0), Inode bitmap at 121858 (+1)
++  Inode table at 121859-121866 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 121867-122880
++  Free inodes: 7617-7680
++Group 120: (Blocks 122881-123904)
++  Block bitmap at 122881 (+0), Inode bitmap at 122882 (+1)
++  Inode table at 122883-122890 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 122891-123904
++  Free inodes: 7681-7744
++Group 121: (Blocks 123905-124928)
++  Block bitmap at 123905 (+0), Inode bitmap at 123906 (+1)
++  Inode table at 123907-123914 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 123915-124928
++  Free inodes: 7745-7808
++Group 122: (Blocks 124929-125952)
++  Block bitmap at 124929 (+0), Inode bitmap at 124930 (+1)
++  Inode table at 124931-124938 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 124939-125952
++  Free inodes: 7809-7872
++Group 123: (Blocks 125953-126976)
++  Block bitmap at 125953 (+0), Inode bitmap at 125954 (+1)
++  Inode table at 125955-125962 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 125963-126976
++  Free inodes: 7873-7936
++Group 124: (Blocks 126977-128000)
++  Block bitmap at 126977 (+0), Inode bitmap at 126978 (+1)
++  Inode table at 126979-126986 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 126987-128000
++  Free inodes: 7937-8000
++Group 125: (Blocks 128001-129024)
++  Backup superblock at 128001, Group descriptors at 128002-128017
++  Reserved GDT blocks at 128018-128273
++  Block bitmap at 128274 (+273), Inode bitmap at 128275 (+274)
++  Inode table at 128276-128283 (+275)
++  741 free blocks, 64 free inodes, 0 directories
++  Free blocks: 128284-129024
++  Free inodes: 8001-8064
++Group 126: (Blocks 129025-130048)
++  Block bitmap at 129025 (+0), Inode bitmap at 129026 (+1)
++  Inode table at 129027-129034 (+2)
++  1014 free blocks, 64 free inodes, 0 directories
++  Free blocks: 129035-130048
++  Free inodes: 8065-8128
++Group 127: (Blocks 130049-131071)
++  Block bitmap at 130049 (+0), Inode bitmap at 130050 (+1)
++  Inode table at 130051-130058 (+2)
++  1013 free blocks, 64 free inodes, 0 directories
++  Free blocks: 130059-131071
++  Free inodes: 8129-8192
+diff --git a/tests/m_desc_size_128/script b/tests/m_desc_size_128/script
+new file mode 100644
+index 0000000..b7a7d4f
+--- /dev/null
++++ b/tests/m_desc_size_128/script
+@@ -0,0 +1,4 @@
++DESCRIPTION="enable 128-byte group descriptor on mkfs"
++FS_SIZE=131072
++MKE2FS_OPTS="-b 1024 -O 64bit -g 1024 -N 8192 -E desc_size=128"
++. $cmd_dir/run_mke2fs
+-- 
+1.7.3.4
+
