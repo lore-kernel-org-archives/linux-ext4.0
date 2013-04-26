@@ -1,55 +1,63 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] [PATCH] xfstests: use -F when making scratch ext4 fs
-Date: Fri, 26 Apr 2013 14:18:26 -0500
-Message-ID: <517AD302.4000905@redhat.com>
-References: <1367003813-17686-1-git-send-email-jbacik@fusionio.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, xfs@oss.sgi.com
-To: Josef Bacik <jbacik@fusionio.com>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH 1/2] mke2fs: fix force option to create filesystem on mounted device
+Date: Fri, 26 Apr 2013 15:45:48 -0600
+Message-ID: <4A2A7340-F533-4C6E-B05C-39EC548A3D5F@gmail.com>
+References: <510F6B75.6090408@sx.jp.nec.com> <5179C331.7050109@sx.jp.nec.com>
+Mime-Version: 1.0 (Apple Message framework v1085)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Kazuya Mio <k-mio@sx.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28835 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757499Ab3DZTS3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 26 Apr 2013 15:18:29 -0400
-In-Reply-To: <1367003813-17686-1-git-send-email-jbacik@fusionio.com>
+Received: from mail-pd0-f182.google.com ([209.85.192.182]:63067 "EHLO
+	mail-pd0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751060Ab3DZVpw convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Apr 2013 17:45:52 -0400
+Received: by mail-pd0-f182.google.com with SMTP id 14so1100909pdj.27
+        for <linux-ext4@vger.kernel.org>; Fri, 26 Apr 2013 14:45:51 -0700 (PDT)
+In-Reply-To: <5179C331.7050109@sx.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 4/26/13 2:16 PM, Josef Bacik wrote:
-> mkfs.ext4 will ask you if you are sure if you try to mkfs an entire disk instead
-> of just a partition, so any xfstest that uses a scratch device and you specify a
-> full disk will appear to hang because it's waiting for you to say yes.  This
-> fixes the problem by just forcing it to do its thing.  Thanks,
+On 2013-04-25, at 5:58 PM, Kazuya Mio wrote:
+> 2013/02/04 17:04, Kazuya Mio wrote:
+>> According to mke2fs man, we can create a filesystem on the mounted device when -FF option is specified.
+>> However, currently we have to specify -F option third to force mke2fs. This patch fixes the problem.
+>> 
+>> Note that force mke2fs for mounted block device fails because mke2fs opens a device with O_EXCL flag. This work is contradictory to mke2fs man page,  
+>> but I'm not sure it should be fixed or not. What do you think?
 > 
-> Signed-off-by: Josef Bacik <jbacik@fusionio.com>
-
-Reviewed-by: Eric Sandeen <sandeen@redhat.com>
-
-The whole-disk test is pretty derpy anyway. Too bad -F overrides
-much more than just that, but this is probably a decent
-thing to do.
-
-Thanks,
--Eric
-
-> ---
->  common/rc |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
+> Ted, please merge two patches if no problem is found.
 > 
-> diff --git a/common/rc b/common/rc
-> index ff18cc2..9d1c3fc 100644
-> --- a/common/rc
-> +++ b/common/rc
-> @@ -485,7 +485,7 @@ _scratch_mkfs_ext4()
->  {
->  	local tmp_dir=/tmp/
->  
-> -	/sbin/mkfs -t $FSTYP -- $MKFS_OPTIONS $* $SCRATCH_DEV \
-> +	/sbin/mkfs -t $FSTYP -- -F $MKFS_OPTIONS $* $SCRATCH_DEV \
->  			2>$tmp_dir.mkfserr 1>$tmp_dir.mkfsstd
->  	local mkfs_status=$?
->  
-> 
+> http://patchwork.ozlabs.org/patch/217838/
+
+Out of curiosity, is formatting a mounted filesystem something
+that you are actually trying to do, or is this just a case of
+trying to make the mke2fs usage consistent with the man page?
+
+As for O_EXCL blocking mke2fs, this was changed by my patch in
+commit 732e26b98e5c.  The only reason that this used to work
+was because a filesystem might _appear_ to be mounted if /etc/mtab
+was stale, but wasn't actually in use by the kernel.  I don't
+think there is ANY good reason to allow mke2fs to succeed if the
+block device is _actually_ in use.
+
+Since 732e26b98e5c prevents mke2fs from actually formatting an
+in-use block device (at least on any modern kernel), I'm OK with
+this change, but wanted to understand the reasoning behind this.
+
+
+> http://patchwork.ozlabs.org/patch/217839/
+
+I don't understand the second patch.  If the user tries to format
+the /dev/loop device, then it is a "block device" and not really
+a "regular file" (i.e. the user probably knows what is going on).
+I don't think it is necessary to include the extra code and checking
+in this case.  Do I misunderstand what your patch is doing?
+
+Cheers, Andreas
+
+
+
+
 
