@@ -1,51 +1,76 @@
-From: LuVar <luvar@plaintext.sk>
-Subject: sustained write to disk, frozen copy
-Date: Sat, 27 Apr 2013 08:16:02 +0100 (GMT+01:00)
-Message-ID: <918096296.2221367046962554.JavaMail.root@shiva>
-References: <1719908460.2201367046573138.JavaMail.root@shiva>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: [PATCH] libext2fs: do not print any error message from libext2fs
+Date: Sat, 27 Apr 2013 18:44:41 +0800
+Message-ID: <1367059481-6090-1-git-send-email-wenqing.lz@taobao.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.plaintext.sk ([85.248.156.6]:48185 "EHLO
-	shiva.plaintext.sk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751699Ab3D0H02 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Apr 2013 03:26:28 -0400
-Received: from localhost (localhost.localdomain [127.0.0.1])
-	by shiva.plaintext.sk (Postfix) with ESMTP id BDDB926CE4
-	for <linux-ext4@vger.kernel.org>; Sat, 27 Apr 2013 09:16:10 +0200 (CEST)
-Received: from shiva.plaintext.sk ([127.0.0.1])
-	by localhost (shiva.plaintext.sk [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id b+XrU9ylkTex for <linux-ext4@vger.kernel.org>;
-	Sat, 27 Apr 2013 09:16:02 +0200 (CEST)
-Received: from shiva.plaintext.sk (shiva.plaintext.sk [85.248.156.6])
-	by shiva.plaintext.sk (Postfix) with ESMTP id B8EEA26354
-	for <linux-ext4@vger.kernel.org>; Sat, 27 Apr 2013 09:16:02 +0200 (CEST)
-In-Reply-To: <1719908460.2201367046573138.JavaMail.root@shiva>
+Received: from mail-pd0-f171.google.com ([209.85.192.171]:38595 "EHLO
+	mail-pd0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753325Ab3D0K12 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Apr 2013 06:27:28 -0400
+Received: by mail-pd0-f171.google.com with SMTP id t10so62646pdi.16
+        for <linux-ext4@vger.kernel.org>; Sat, 27 Apr 2013 03:27:27 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
-I have my desktop about 24 hours in "deadlock". I was copying (as root in krusader from USB key (mounted as [1]) data to filesystem [2]) some files from one point to another. Now it is more than 24 hours with sustained disk write, see [3].
+From: Zheng Liu <wenqing.lz@taobao.com>
 
-How can I help and "debug" this problem? I have 3.5.7 gentoo kernel ([4]).
+In libext2fs we don't print any error message form it except that OMIT_COM_ERR
+is defined.  In lib/ext2fs/inline_data.c it doesn't obey this rule.  So fix it.
+Meanwhile when we find an dir entry in inline data, we will print the message in
+debugfs rather than in libext2fs.
 
-PS: I am an average user, so please by verbose to me.
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+---
+[This patch is against pu branch of e2fsprogs tree]
 
-[1] sudo mount -o rw,uid=luvar,gid=luvar,iocharset=utf8 /dev/sdg1 /mnt/usbstick/
+ debugfs/htree.c          | 5 ++++-
+ lib/ext2fs/inline_data.c | 6 +++---
+ 2 files changed, 7 insertions(+), 4 deletions(-)
 
-[2]:
-luvar@blacktroja ~ $ mount | grep music
-/dev/mapper/vg-music on /var/lib/mpd/music/local type ext4 (rw,noatime,commit=0)
+diff --git a/debugfs/htree.c b/debugfs/htree.c
+index ca39b4b..e042fd7 100644
+--- a/debugfs/htree.c
++++ b/debugfs/htree.c
+@@ -388,8 +388,11 @@ void do_dirsearch(int argc, char *argv[])
+ 	pb.len = strlen(pb.search_name);
+ 
+ 	if (ext2fs_inode_has_inline_data(current_fs, inode)) {
+-		ext2fs_inline_data_dirsearch(current_fs, inode,
++		errcode_t retval;
++		retval = ext2fs_inline_data_dirsearch(current_fs, inode,
+ 					     argv[2], strlen(argv[2]));
++		if (retval)
++			printf("Entry found at inline data\n");
+ 		goto out;
+ 	}
+ 
+diff --git a/lib/ext2fs/inline_data.c b/lib/ext2fs/inline_data.c
+index ea3736c..6d5cf52 100644
+--- a/lib/ext2fs/inline_data.c
++++ b/lib/ext2fs/inline_data.c
+@@ -134,16 +134,16 @@ static int do_search_dir(ext2_filsys fs, void *start, unsigned int size,
+ 		de = (struct ext2_dir_entry *)(start + offset);
+ 		errcode = ext2fs_get_rec_len(fs, de, &rec_len);
+ 		if (errcode) {
++#ifndef OMIT_COM_ERR
+ 			com_err("search_dir_inline_data", errcode,
+ 				"while getting rec_len for inline data");
++#endif
+ 			return errcode;
+ 		}
+ 		if (de->inode &&
+ 		    len == (de->name_len & 0xFF) &&
+-		    strncmp(name, de->name, len) == 0) {
+-			printf("Entry found at inline data\n");
++		    strncmp(name, de->name, len) == 0)
+ 			return 1;
+-		}
+ 		offset += rec_len;
+ 	}
+ 	return 0;
+-- 
+1.7.12.rc2.18.g61b472e
 
-[3]:
-iotop, two first records :
-17714 be/3 root        0.00 B/s    0.00 B/s  0.00 % 97.60 % [jbd2/dm-3-8]
- 6546 be/4 root        0.00 B/s    0.00 B/s  0.00 % 93.48 % kdeinit4: kio_file [kdeinit] file local:/tmp/ksocket-root/~-socket local:/tmp/ksocket-root/krusaderZz6431.slave-socket
-
-[4]:
-luvar@blacktroja ~ $ uname -a
-Linux blacktroja 3.5.7-gentoo #1 SMP Sun Oct 28 17:18:07 CET 2012 x86_64 Intel(R) Core(TM) i7 CPU 930 @ 2.80GHz GenuineIntel GNU/Linux
-
-Thanks, LuVar
