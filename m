@@ -1,76 +1,134 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH] libext2fs: do not print any error message from libext2fs
-Date: Sat, 27 Apr 2013 18:44:41 +0800
-Message-ID: <1367059481-6090-1-git-send-email-wenqing.lz@taobao.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Zheng Liu <wenqing.lz@taobao.com>
-To: linux-ext4@vger.kernel.org
+From: Oleg Nesterov <oleg@redhat.com>
+Subject: Re: [PATCH v2] x86: make DR*_RESERVED unsigned long
+Date: Sat, 27 Apr 2013 16:45:37 +0200
+Message-ID: <20130427144537.GA24256@redhat.com>
+References: <CA+55aFwpLu0qNms=hkQr43yqD0K9DgESNm91OEWKT1ZuT8MU6Q@mail.gmail.com> <20130424072630.GB1780@gmail.com> <20130424170702.GA1867@redhat.com> <5178282D.9030902@zytor.com> <20130425144818.GA25921@redhat.com> <20130426163802.GA30351@redhat.com> <517AAED5.7040400@zytor.com> <20130426171526.GA30875@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Ingo Molnar <mingo@kernel.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Cyrill Gorcunov <gorcunov@gmail.com>,
+	Peter Zijlstra <a.p.zijlstra@chello.nl>,
+	Thomas Gleixner <tglx@linutronix.de>,
+	David Miller <davem@davemloft.net>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	the arch/x86 maintainers <x86@kernel.org>,
+	Network Development <netdev@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Fr??d??ric Weisbecker <fweisbec@gmail.com>
+To: "H. Peter Anvin" <hpa@zytor.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f171.google.com ([209.85.192.171]:38595 "EHLO
-	mail-pd0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753325Ab3D0K12 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Apr 2013 06:27:28 -0400
-Received: by mail-pd0-f171.google.com with SMTP id t10so62646pdi.16
-        for <linux-ext4@vger.kernel.org>; Sat, 27 Apr 2013 03:27:27 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:20317 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754105Ab3D0Osw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 27 Apr 2013 10:48:52 -0400
+Content-Disposition: inline
+In-Reply-To: <20130426171526.GA30875@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+On 04/26, Oleg Nesterov wrote:
 
-In libext2fs we don't print any error message form it except that OMIT_COM_ERR
-is defined.  In lib/ext2fs/inline_data.c it doesn't obey this rule.  So fix it.
-Meanwhile when we find an dir entry in inline data, we will print the message in
-debugfs rather than in libext2fs.
+> On 04/26, H. Peter Anvin wrote:
+> >
+> > On 04/26/2013 09:38 AM, Oleg Nesterov wrote:
+> > >
+> > > 	- do_debug:
+> > >
+> > > 		dr6 &= ~DR6_RESERVED;
+> > >
+> > > 	  this also wrongly clears 32-63 bits. Fortunately these
+> > > 	  bits are reserved and must be zero.
+> >
+> > I don't think this is wrongly at all.
+>
+> OK, I meant that it also clears the bits that are not specified in
+> DR6_RESERVED mask.
+>
+> > The whole point is to mask out
+> > the bits that the handler doesn't want to deal with, so masking out the
+> > reserved bits [63:32] seems reasonable to me.
+>
+> Then we should do
+>
+> 	- #define DR6_RESERVED    0xFFFF0FF0
+> 	+ #define DR6_RESERVED    0xFFFFFFFFFFFF0FF0
+>
+> ?
+>
+> or what? (just in case, I will happily agree with "do nothing" ;)
 
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
----
-[This patch is against pu branch of e2fsprogs tree]
+Or we can do the s/reserved/mask/ change and avoid any "unexpected"
+effect of "long &= ~int". This allso allows to kill ifdef(__i386__).
 
- debugfs/htree.c          | 5 ++++-
- lib/ext2fs/inline_data.c | 6 +++---
- 2 files changed, 7 insertions(+), 4 deletions(-)
+But this is include/uapi, I do not know if I can simply remove the
+old define's.
 
-diff --git a/debugfs/htree.c b/debugfs/htree.c
-index ca39b4b..e042fd7 100644
---- a/debugfs/htree.c
-+++ b/debugfs/htree.c
-@@ -388,8 +388,11 @@ void do_dirsearch(int argc, char *argv[])
- 	pb.len = strlen(pb.search_name);
+In short: whatever you prefer, including "leave it alone".
+
+Oleg.
+
+diff --git a/arch/x86/include/uapi/asm/debugreg.h b/arch/x86/include/uapi/asm/debugreg.h
+index 3c0874d..2678b23 100644
+--- a/arch/x86/include/uapi/asm/debugreg.h
++++ b/arch/x86/include/uapi/asm/debugreg.h
+@@ -14,8 +14,7 @@
+    which debugging register was responsible for the trap.  The other bits
+    are either reserved or not of interest to us. */
  
- 	if (ext2fs_inode_has_inline_data(current_fs, inode)) {
--		ext2fs_inline_data_dirsearch(current_fs, inode,
-+		errcode_t retval;
-+		retval = ext2fs_inline_data_dirsearch(current_fs, inode,
- 					     argv[2], strlen(argv[2]));
-+		if (retval)
-+			printf("Entry found at inline data\n");
- 		goto out;
- 	}
+-/* Define reserved bits in DR6 which are always set to 1 */
+-#define DR6_RESERVED	(0xFFFF0FF0)
++#define DR6_MASK	(0xF00FU)	/* Everything else is reserved */
  
-diff --git a/lib/ext2fs/inline_data.c b/lib/ext2fs/inline_data.c
-index ea3736c..6d5cf52 100644
---- a/lib/ext2fs/inline_data.c
-+++ b/lib/ext2fs/inline_data.c
-@@ -134,16 +134,16 @@ static int do_search_dir(ext2_filsys fs, void *start, unsigned int size,
- 		de = (struct ext2_dir_entry *)(start + offset);
- 		errcode = ext2fs_get_rec_len(fs, de, &rec_len);
- 		if (errcode) {
-+#ifndef OMIT_COM_ERR
- 			com_err("search_dir_inline_data", errcode,
- 				"while getting rec_len for inline data");
-+#endif
- 			return errcode;
- 		}
- 		if (de->inode &&
- 		    len == (de->name_len & 0xFF) &&
--		    strncmp(name, de->name, len) == 0) {
--			printf("Entry found at inline data\n");
-+		    strncmp(name, de->name, len) == 0)
- 			return 1;
--		}
- 		offset += rec_len;
- 	}
- 	return 0;
--- 
-1.7.12.rc2.18.g61b472e
+ #define DR_TRAP0	(0x1)		/* db0 */
+ #define DR_TRAP1	(0x2)		/* db1 */
+@@ -32,6 +31,8 @@
+    and indicates what types of access we trap on, and how large the data
+    field is that we are looking at */
+ 
++#define DR_CONTROL_MASK (0xFFFF03FFU) /* Everything else is reserved */
++
+ #define DR_CONTROL_SHIFT 16 /* Skip this many bits in ctl register */
+ #define DR_CONTROL_SIZE 4   /* 4 control bits per register */
+ 
+@@ -64,12 +65,6 @@
+    We can slow the instruction pipeline for instructions coming via the
+    gdt or the ldt if we want to.  I am not sure why this is an advantage */
+ 
+-#ifdef __i386__
+-#define DR_CONTROL_RESERVED (0xFC00) /* Reserved by Intel */
+-#else
+-#define DR_CONTROL_RESERVED (0xFFFFFFFF0000FC00UL) /* Reserved */
+-#endif
+-
+ #define DR_LOCAL_SLOWDOWN (0x100)   /* Local slow the pipeline */
+ #define DR_GLOBAL_SLOWDOWN (0x200)  /* Global slow the pipeline */
+ 
+diff --git a/arch/x86/kernel/ptrace.c b/arch/x86/kernel/ptrace.c
+index 7461f50..bc5fb98 100644
+--- a/arch/x86/kernel/ptrace.c
++++ b/arch/x86/kernel/ptrace.c
+@@ -657,7 +657,7 @@ static int ptrace_write_dr7(struct task_struct *tsk, unsigned long data)
+ 	bool second_pass = false;
+ 	int i, rc, ret = 0;
+ 
+-	data &= ~DR_CONTROL_RESERVED;
++	data &= DR_CONTROL_MASK;
+ 	old_dr7 = ptrace_get_dr7(thread->ptrace_bps);
+ 
+ restore:
+diff --git a/arch/x86/kernel/traps.c b/arch/x86/kernel/traps.c
+index 68bda7a..42a635f 100644
+--- a/arch/x86/kernel/traps.c
++++ b/arch/x86/kernel/traps.c
+@@ -402,7 +402,7 @@ dotraplinkage void __kprobes do_debug(struct pt_regs *regs, long error_code)
+ 	get_debugreg(dr6, 6);
+ 
+ 	/* Filter out all the reserved bits which are preset to 1 */
+-	dr6 &= ~DR6_RESERVED;
++	dr6 &= DR6_MASK;
+ 
+ 	/*
+ 	 * If dr6 has no reason to give us about the origin of this trap,
 
