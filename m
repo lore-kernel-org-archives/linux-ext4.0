@@ -1,43 +1,51 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH] ext4: remove unneeded call to ext4_es_remove_extent in
- punch hole
-Date: Sat, 27 Apr 2013 15:11:09 +0800
-Message-ID: <20130427071109.GA25329@gmail.com>
-References: <1367037053-1893-1-git-send-email-ashish.sangwan2@gmail.com>
- <20130427052809.GA25185@gmail.com>
- <CAOiN93n2pM0d9O=wON=nAJNxj3T3XRBfpUk4SOvgg4=3NsvcYA@mail.gmail.com>
+From: LuVar <luvar@plaintext.sk>
+Subject: sustained write to disk, frozen copy
+Date: Sat, 27 Apr 2013 08:16:02 +0100 (GMT+01:00)
+Message-ID: <918096296.2221367046962554.JavaMail.root@shiva>
+References: <1719908460.2201367046573138.JavaMail.root@shiva>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	wenqing.lz@taobao.com, Ashish Sangwan <a.sangwan@samsung.com>,
-	Namjae Jeon <namjae.jeon@samsung.com>
-To: Ashish Sangwan <ashishsangwan2@gmail.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f53.google.com ([209.85.210.53]:62228 "EHLO
-	mail-da0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750943Ab3D0Gxo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Apr 2013 02:53:44 -0400
-Received: by mail-da0-f53.google.com with SMTP id n34so2216232dal.40
-        for <linux-ext4@vger.kernel.org>; Fri, 26 Apr 2013 23:53:44 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <CAOiN93n2pM0d9O=wON=nAJNxj3T3XRBfpUk4SOvgg4=3NsvcYA@mail.gmail.com>
+Received: from mail.plaintext.sk ([85.248.156.6]:48185 "EHLO
+	shiva.plaintext.sk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751699Ab3D0H02 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Apr 2013 03:26:28 -0400
+Received: from localhost (localhost.localdomain [127.0.0.1])
+	by shiva.plaintext.sk (Postfix) with ESMTP id BDDB926CE4
+	for <linux-ext4@vger.kernel.org>; Sat, 27 Apr 2013 09:16:10 +0200 (CEST)
+Received: from shiva.plaintext.sk ([127.0.0.1])
+	by localhost (shiva.plaintext.sk [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id b+XrU9ylkTex for <linux-ext4@vger.kernel.org>;
+	Sat, 27 Apr 2013 09:16:02 +0200 (CEST)
+Received: from shiva.plaintext.sk (shiva.plaintext.sk [85.248.156.6])
+	by shiva.plaintext.sk (Postfix) with ESMTP id B8EEA26354
+	for <linux-ext4@vger.kernel.org>; Sat, 27 Apr 2013 09:16:02 +0200 (CEST)
+In-Reply-To: <1719908460.2201367046573138.JavaMail.root@shiva>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Apr 27, 2013 at 12:20:22PM +0530, Ashish Sangwan wrote:
-> >The commit
-> > log is right before we use extent status tree to track all extent
-> > information.  In dev branch of ext4 tree, we track all extent status in
-> > status tree.  So we need to remove extent from status tree in punch
-> > hole.
-> I was of the opinion that filemap_write_and_wait_range will remove the
-> extent from status tree if its still there.
-> ok, I will check the dev branch.
+Hi,
+I have my desktop about 24 hours in "deadlock". I was copying (as root in krusader from USB key (mounted as [1]) data to filesystem [2]) some files from one point to another. Now it is more than 24 hours with sustained disk write, see [3].
 
-Ah, please bear with me.  In mainline kernel 3.9-rcX, we have used
-status tree to track all extent status.  You could also check 3.9-rcX
-kernel.  Please let me know if I miss something.
+How can I help and "debug" this problem? I have 3.5.7 gentoo kernel ([4]).
 
-Thanks,
-                                                - Zheng
+PS: I am an average user, so please by verbose to me.
+
+[1] sudo mount -o rw,uid=luvar,gid=luvar,iocharset=utf8 /dev/sdg1 /mnt/usbstick/
+
+[2]:
+luvar@blacktroja ~ $ mount | grep music
+/dev/mapper/vg-music on /var/lib/mpd/music/local type ext4 (rw,noatime,commit=0)
+
+[3]:
+iotop, two first records :
+17714 be/3 root        0.00 B/s    0.00 B/s  0.00 % 97.60 % [jbd2/dm-3-8]
+ 6546 be/4 root        0.00 B/s    0.00 B/s  0.00 % 93.48 % kdeinit4: kio_file [kdeinit] file local:/tmp/ksocket-root/~-socket local:/tmp/ksocket-root/krusaderZz6431.slave-socket
+
+[4]:
+luvar@blacktroja ~ $ uname -a
+Linux blacktroja 3.5.7-gentoo #1 SMP Sun Oct 28 17:18:07 CET 2012 x86_64 Intel(R) Core(TM) i7 CPU 930 @ 2.80GHz GenuineIntel GNU/Linux
+
+Thanks, LuVar
