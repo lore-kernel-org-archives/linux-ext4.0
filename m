@@ -1,70 +1,101 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: sustained write to disk, frozen copy
-Date: Mon, 29 Apr 2013 00:50:23 +0800
-Message-ID: <20130428165023.GA5723@gmail.com>
-References: <1719908460.2201367046573138.JavaMail.root@shiva>
- <918096296.2221367046962554.JavaMail.root@shiva>
+From: Oleg Nesterov <oleg@redhat.com>
+Subject: Re: [PATCH v2] x86: make DR*_RESERVED unsigned long
+Date: Sun, 28 Apr 2013 19:27:31 +0200
+Message-ID: <20130428172731.GA26169@redhat.com>
+References: <CA+55aFwpLu0qNms=hkQr43yqD0K9DgESNm91OEWKT1ZuT8MU6Q@mail.gmail.com> <20130424072630.GB1780@gmail.com> <20130424170702.GA1867@redhat.com> <5178282D.9030902@zytor.com> <20130425144818.GA25921@redhat.com> <20130426163802.GA30351@redhat.com> <517AAED5.7040400@zytor.com> <20130426171526.GA30875@redhat.com> <20130427144537.GA24256@redhat.com> <20130428005814.GB10354@somewhere>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: LuVar <luvar@plaintext.sk>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f172.google.com ([209.85.192.172]:55760 "EHLO
-	mail-pd0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751622Ab3D1Qcx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 28 Apr 2013 12:32:53 -0400
-Received: by mail-pd0-f172.google.com with SMTP id 4so3233188pdd.31
-        for <linux-ext4@vger.kernel.org>; Sun, 28 Apr 2013 09:32:53 -0700 (PDT)
+Cc: "H. Peter Anvin" <hpa@zytor.com>, Ingo Molnar <mingo@kernel.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Cyrill Gorcunov <gorcunov@gmail.com>,
+	Peter Zijlstra <a.p.zijlstra@chello.nl>,
+	Thomas Gleixner <tglx@linutronix.de>,
+	David Miller <davem@davemloft.net>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	the arch/x86 maintainers <x86@kernel.org>,
+	Network Development <netdev@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Frederic Weisbecker <fweisbec@gmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <918096296.2221367046962554.JavaMail.root@shiva>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20130428005814.GB10354@somewhere>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sat, Apr 27, 2013 at 08:16:02AM +0100, LuVar wrote:
-> Hi,
-> I have my desktop about 24 hours in "deadlock". I was copying (as root in krusader from USB key (mounted as [1]) data to filesystem [2]) some files from one point to another. Now it is more than 24 hours with sustained disk write, see [3].
-> 
-> How can I help and "debug" this problem? I have 3.5.7 gentoo kernel ([4]).
+On 04/28, Frederic Weisbecker wrote:
+>
+> On Sat, Apr 27, 2013 at 04:45:37PM +0200, Oleg Nesterov wrote:
+> >
+> > -/* Define reserved bits in DR6 which are always set to 1 */
+> > -#define DR6_RESERVED	(0xFFFF0FF0)
+> > +#define DR6_MASK	(0xF00FU)	/* Everything else is reserved */
+>
+> I'm personally fine either with that or with Peter's suggestion to do:
+>
+> -#define DR6_RESERVED (0xFFFF0FF0)
+> +#define DR6_RESERVED (~0xF00FUL)
 
-Hi LuVar,
+I missed this suggestion...
 
-You could use 'echo w >/proc/sysrq-trigger' to look at which process has
-been deadlock.
+Yes, and this allows to kill ifdef too.
 
- # echo w >/proc/sysrq-trigger (WARN: you need a root privilege)
- # dmesg | vim -
+> If this should stay stable UAPI,
 
- SysRq : Show Blocked State
-   task                        PC stack   pid father
+I do not know, but I guess it would be safer to keep the old define's.
 
-Here is nothing because my system hasn't any deadlock.  Then you could
-use 'echo t >/proc/sysrq-trigger' to dump current tasks and their
-information.  That would be great if you could paste these details in
-mailing list.  They are very useful for us to dig this problem.
+> I really don't mind.
 
-Thanks,
-                                                - Zheng
+Oh, I do not mind too ;)
 
-> 
-> PS: I am an average user, so please by verbose to me.
-> 
-> [1] sudo mount -o rw,uid=luvar,gid=luvar,iocharset=utf8 /dev/sdg1 /mnt/usbstick/
-> 
-> [2]:
-> luvar@blacktroja ~ $ mount | grep music
-> /dev/mapper/vg-music on /var/lib/mpd/music/local type ext4 (rw,noatime,commit=0)
-> 
-> [3]:
-> iotop, two first records :
-> 17714 be/3 root        0.00 B/s    0.00 B/s  0.00 % 97.60 % [jbd2/dm-3-8]
->  6546 be/4 root        0.00 B/s    0.00 B/s  0.00 % 93.48 % kdeinit4: kio_file [kdeinit] file local:/tmp/ksocket-root/~-socket local:/tmp/ksocket-root/krusaderZz6431.slave-socket
-> 
-> [4]:
-> luvar@blacktroja ~ $ uname -a
-> Linux blacktroja 3.5.7-gentoo #1 SMP Sun Oct 28 17:18:07 CET 2012 x86_64 Intel(R) Core(TM) i7 CPU 930 @ 2.80GHz GenuineIntel GNU/Linux
-> 
-> Thanks, LuVar
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+OK, please see v3.
+
+------------------------------------------------------------------------------
+Subject: [PATCH v3] x86: make DR*_RESERVED unsigned long
+
+DR6_RESERVED and DR_CONTROL_RESERVED are used to clear the unwanted
+bits in the "unsigned long" data, but "ulong &= ~int" also clears the
+upper bits that are not specified in mask.
+
+This is actually fine, dr6[32:63] are reserved, but this is not clear
+so it would be better to make them "unsigned long" to cleanup the code.
+
+However, depending on sizeof(long), DR6_RESERVED should be either
+0xFFFF0FF0 or 0xFFFFFFFF_FFFF0FF0, so this patch redefines them as
+(~ 32_bit_mask UL) to avoid ifdef's.
+
+Reported-by: Linus Torvalds <torvalds@linux-foundation.org>
+Suggested-by: H. Peter Anvin <hpa@zytor.com>
+Signed-off-by: Oleg Nesterov <oleg@redhat.com>
+---
+ arch/x86/include/uapi/asm/debugreg.h |    8 ++------
+ 1 files changed, 2 insertions(+), 6 deletions(-)
+
+diff --git a/arch/x86/include/uapi/asm/debugreg.h b/arch/x86/include/uapi/asm/debugreg.h
+index 3c0874d..4ff5d05 100644
+--- a/arch/x86/include/uapi/asm/debugreg.h
++++ b/arch/x86/include/uapi/asm/debugreg.h
+@@ -15,7 +15,7 @@
+    are either reserved or not of interest to us. */
+ 
+ /* Define reserved bits in DR6 which are always set to 1 */
+-#define DR6_RESERVED	(0xFFFF0FF0)
++#define DR6_RESERVED	(~0xF00FUL)
+ 
+ #define DR_TRAP0	(0x1)		/* db0 */
+ #define DR_TRAP1	(0x2)		/* db1 */
+@@ -64,11 +64,7 @@
+    We can slow the instruction pipeline for instructions coming via the
+    gdt or the ldt if we want to.  I am not sure why this is an advantage */
+ 
+-#ifdef __i386__
+-#define DR_CONTROL_RESERVED (0xFC00) /* Reserved by Intel */
+-#else
+-#define DR_CONTROL_RESERVED (0xFFFFFFFF0000FC00UL) /* Reserved */
+-#endif
++#define DR_CONTROL_RESERVED (~0xFFFF03FFUL) /* Reserved by Intel */
+ 
+ #define DR_LOCAL_SLOWDOWN (0x100)   /* Local slow the pipeline */
+ #define DR_GLOBAL_SLOWDOWN (0x200)  /* Global slow the pipeline */
+-- 
+1.5.5.1
