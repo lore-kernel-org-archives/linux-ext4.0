@@ -1,100 +1,160 @@
-From: Frederic Weisbecker <fweisbec@gmail.com>
-Subject: Re: [PATCH v2] x86: make DR*_RESERVED unsigned long
-Date: Sun, 28 Apr 2013 02:58:16 +0200
-Message-ID: <20130428005814.GB10354@somewhere>
-References: <CA+55aFwpLu0qNms=hkQr43yqD0K9DgESNm91OEWKT1ZuT8MU6Q@mail.gmail.com>
- <20130424072630.GB1780@gmail.com>
- <20130424170702.GA1867@redhat.com>
- <5178282D.9030902@zytor.com>
- <20130425144818.GA25921@redhat.com>
- <20130426163802.GA30351@redhat.com>
- <517AAED5.7040400@zytor.com>
- <20130426171526.GA30875@redhat.com>
- <20130427144537.GA24256@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "H. Peter Anvin" <hpa@zytor.com>, Ingo Molnar <mingo@kernel.org>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	Cyrill Gorcunov <gorcunov@gmail.com>,
-	Peter Zijlstra <a.p.zijlstra@chello.nl>,
-	Thomas Gleixner <tglx@linutronix.de>,
-	David Miller <davem@davemloft.net>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	the arch/x86 maintainers <x86@kernel.org>,
-	Network Development <netdev@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Oleg Nesterov <oleg@redhat.com>
+From: "Yan, Zheng" <zheng.z.yan@intel.com>
+Subject: [PATCH] ext4: fix fio regression
+Date: Sun, 28 Apr 2013 13:45:34 +0800
+Message-ID: <1367127934-4321-1-git-send-email-zheng.z.yan@intel.com>
+Cc: wenqing.lz@taobao.com, tytso@mit.edu, lkp@linux.intel.com,
+	lkp@01.org, "Yan, Zheng" <zheng.z.yan@intel.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wi0-f179.google.com ([209.85.212.179]:59438 "EHLO
-	mail-wi0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752874Ab3D1A6U (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Apr 2013 20:58:20 -0400
-Content-Disposition: inline
-In-Reply-To: <20130427144537.GA24256@redhat.com>
+Received: from mga11.intel.com ([192.55.52.93]:54077 "EHLO mga11.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750969Ab3D1Fpi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 28 Apr 2013 01:45:38 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Apr 27, 2013 at 04:45:37PM +0200, Oleg Nesterov wrote:
-> On 04/26, Oleg Nesterov wrote:
-> 
-> > On 04/26, H. Peter Anvin wrote:
-> > >
-> > > On 04/26/2013 09:38 AM, Oleg Nesterov wrote:
-> > > >
-> > > > 	- do_debug:
-> > > >
-> > > > 		dr6 &= ~DR6_RESERVED;
-> > > >
-> > > > 	  this also wrongly clears 32-63 bits. Fortunately these
-> > > > 	  bits are reserved and must be zero.
-> > >
-> > > I don't think this is wrongly at all.
-> >
-> > OK, I meant that it also clears the bits that are not specified in
-> > DR6_RESERVED mask.
-> >
-> > > The whole point is to mask out
-> > > the bits that the handler doesn't want to deal with, so masking out the
-> > > reserved bits [63:32] seems reasonable to me.
-> >
-> > Then we should do
-> >
-> > 	- #define DR6_RESERVED    0xFFFF0FF0
-> > 	+ #define DR6_RESERVED    0xFFFFFFFFFFFF0FF0
-> >
-> > ?
-> >
-> > or what? (just in case, I will happily agree with "do nothing" ;)
-> 
-> Or we can do the s/reserved/mask/ change and avoid any "unexpected"
-> effect of "long &= ~int". This allso allows to kill ifdef(__i386__).
-> 
-> But this is include/uapi, I do not know if I can simply remove the
-> old define's.
-> 
-> In short: whatever you prefer, including "leave it alone".
-> 
-> Oleg.
-> 
-> diff --git a/arch/x86/include/uapi/asm/debugreg.h b/arch/x86/include/uapi/asm/debugreg.h
-> index 3c0874d..2678b23 100644
-> --- a/arch/x86/include/uapi/asm/debugreg.h
-> +++ b/arch/x86/include/uapi/asm/debugreg.h
-> @@ -14,8 +14,7 @@
->     which debugging register was responsible for the trap.  The other bits
->     are either reserved or not of interest to us. */
->  
-> -/* Define reserved bits in DR6 which are always set to 1 */
-> -#define DR6_RESERVED	(0xFFFF0FF0)
-> +#define DR6_MASK	(0xF00FU)	/* Everything else is reserved */
+From: "Yan, Zheng" <zheng.z.yan@intel.com>
 
-I'm personally fine either with that or with Peter's suggestion to do:
+We (Linux Kernel Performance project) found a regression introduced
+by commit:
 
--#define DR6_RESERVED (0xFFFF0FF0)
-+#define DR6_RESERVED (~0xF00FUL)
+  f7fec032aa ext4: track all extent status in extent status tree
 
-If this should stay stable UAPI, we probably want Peter's solution. Otherwise
-I really don't mind.
+The commit causes about 20% performance decrease in fio random write
+test. Profiler shows that rb_next() uses a lot of CPU time. The call
+stack is:
 
-Thanks.
+  rb_next
+  ext4_es_find_delayed_extent
+  ext4_map_blocks
+  _ext4_get_block
+  ext4_get_block_write
+  __blockdev_direct_IO
+  ext4_direct_IO
+  generic_file_direct_write
+  __generic_file_aio_write
+  ext4_file_write
+  aio_rw_vect_retry
+  aio_run_iocb
+  do_io_submit
+  sys_io_submit
+  system_call_fastpath
+  io_submit
+  td_io_getevents
+  io_u_queued_complete
+  thread_main
+  main
+  __libc_start_main
+
+The cause is that ext4_es_find_delayed_extent() doesn't have an
+upper bound, it keeps searching until a delayed extent is found.
+When there are a lots of non-delayed entries in the extent state
+tree, ext4_es_find_delayed_extent() may uses a lot of CPU time.
+
+Reported-by: LKP project <lkp@linux.intel.com>
+Signed-off-by: Yan, Zheng <zheng.z.yan@intel.com>
+---
+ fs/ext4/extents.c        | 6 +++---
+ fs/ext4/extents_status.c | 8 +++++++-
+ fs/ext4/extents_status.h | 3 ++-
+ fs/ext4/file.c           | 4 ++--
+ 4 files changed, 14 insertions(+), 7 deletions(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 9c6d06d..466f78b 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3537,7 +3537,7 @@ int ext4_find_delalloc_range(struct inode *inode,
+ {
+ 	struct extent_status es;
+ 
+-	ext4_es_find_delayed_extent(inode, lblk_start, &es);
++	ext4_es_find_delayed_extent(inode, lblk_start, lblk_end, &es);
+ 	if (es.es_len == 0)
+ 		return 0; /* there is no delay extent in this tree */
+ 	else if (es.es_lblk <= lblk_start &&
+@@ -4555,7 +4555,7 @@ static int ext4_find_delayed_extent(struct inode *inode,
+ 	struct extent_status es;
+ 	ext4_lblk_t block, next_del;
+ 
+-	ext4_es_find_delayed_extent(inode, newes->es_lblk, &es);
++	ext4_es_find_delayed_extent(inode, newes->es_lblk, EXT_MAX_BLOCKS, &es);
+ 
+ 	if (newes->es_pblk == 0) {
+ 		/*
+@@ -4577,7 +4577,7 @@ static int ext4_find_delayed_extent(struct inode *inode,
+ 	}
+ 
+ 	block = newes->es_lblk + newes->es_len;
+-	ext4_es_find_delayed_extent(inode, block, &es);
++	ext4_es_find_delayed_extent(inode, block, EXT_MAX_BLOCKS, &es);
+ 	if (es.es_len == 0)
+ 		next_del = EXT_MAX_BLOCKS;
+ 	else
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index fe3337a..2c2f3b8 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -237,9 +237,11 @@ static struct extent_status *__es_tree_search(struct rb_root *root,
+  *
+  * @inode: the inode which owns delayed extents
+  * @lblk: the offset where we start to search
++ * @end: the offset where we stop to search
+  * @es: delayed extent that we found
+  */
+-void ext4_es_find_delayed_extent(struct inode *inode, ext4_lblk_t lblk,
++void ext4_es_find_delayed_extent(struct inode *inode,
++				 ext4_lblk_t lblk, ext4_lblk_t end,
+ 				 struct extent_status *es)
+ {
+ 	struct ext4_es_tree *tree = NULL;
+@@ -270,6 +272,10 @@ out:
+ 	if (es1 && !ext4_es_is_delayed(es1)) {
+ 		while ((node = rb_next(&es1->rb_node)) != NULL) {
+ 			es1 = rb_entry(node, struct extent_status, rb_node);
++			if (es1->es_lblk > end) {
++				es1 = NULL;
++				break;
++			}
+ 			if (ext4_es_is_delayed(es1))
+ 				break;
+ 		}
+diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
+index d8e2d4d..7d41c4a 100644
+--- a/fs/ext4/extents_status.h
++++ b/fs/ext4/extents_status.h
+@@ -62,7 +62,8 @@ extern int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+ 				 unsigned long long status);
+ extern int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ 				 ext4_lblk_t len);
+-extern void ext4_es_find_delayed_extent(struct inode *inode, ext4_lblk_t lblk,
++extern void ext4_es_find_delayed_extent(struct inode *inode,
++					ext4_lblk_t lblk, ext4_lblk_t end,
+ 					struct extent_status *es);
+ extern int ext4_es_lookup_extent(struct inode *inode, ext4_lblk_t lblk,
+ 				 struct extent_status *es);
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 64848b5..52574ce6 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -464,7 +464,7 @@ static loff_t ext4_seek_data(struct file *file, loff_t offset, loff_t maxsize)
+ 		 * If there is a delay extent at this offset,
+ 		 * it will be as a data.
+ 		 */
+-		ext4_es_find_delayed_extent(inode, last, &es);
++		ext4_es_find_delayed_extent(inode, last, last, &es);
+ 		if (es.es_len != 0 && in_range(last, es.es_lblk, es.es_len)) {
+ 			if (last != start)
+ 				dataoff = last << blkbits;
+@@ -547,7 +547,7 @@ static loff_t ext4_seek_hole(struct file *file, loff_t offset, loff_t maxsize)
+ 		 * If there is a delay extent at this offset,
+ 		 * we will skip this extent.
+ 		 */
+-		ext4_es_find_delayed_extent(inode, last, &es);
++		ext4_es_find_delayed_extent(inode, last, last, &es);
+ 		if (es.es_len != 0 && in_range(last, es.es_lblk, es.es_len)) {
+ 			last = es.es_lblk + es.es_len;
+ 			holeoff = last << blkbits;
+-- 
+1.8.1.4
+
