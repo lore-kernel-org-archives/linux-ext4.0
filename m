@@ -1,63 +1,100 @@
-From: Azat Khuzhin <dohardgopro@gmail.com>
-Subject: Re: sustained write to disk, frozen copy
-Date: Sun, 28 Apr 2013 01:48:11 +0400
-Message-ID: <CAAW1UO8WSk6K9LOZurTuMMg6_UmTAOpriRVkpQPjdyaiuOD4MQ@mail.gmail.com>
-References: <1719908460.2201367046573138.JavaMail.root@shiva>
-	<918096296.2221367046962554.JavaMail.root@shiva>
+From: Frederic Weisbecker <fweisbec@gmail.com>
+Subject: Re: [PATCH v2] x86: make DR*_RESERVED unsigned long
+Date: Sun, 28 Apr 2013 02:58:16 +0200
+Message-ID: <20130428005814.GB10354@somewhere>
+References: <CA+55aFwpLu0qNms=hkQr43yqD0K9DgESNm91OEWKT1ZuT8MU6Q@mail.gmail.com>
+ <20130424072630.GB1780@gmail.com>
+ <20130424170702.GA1867@redhat.com>
+ <5178282D.9030902@zytor.com>
+ <20130425144818.GA25921@redhat.com>
+ <20130426163802.GA30351@redhat.com>
+ <517AAED5.7040400@zytor.com>
+ <20130426171526.GA30875@redhat.com>
+ <20130427144537.GA24256@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-ext4@vger.kernel.org
-To: LuVar <luvar@plaintext.sk>
+Content-Type: text/plain; charset=us-ascii
+Cc: "H. Peter Anvin" <hpa@zytor.com>, Ingo Molnar <mingo@kernel.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Cyrill Gorcunov <gorcunov@gmail.com>,
+	Peter Zijlstra <a.p.zijlstra@chello.nl>,
+	Thomas Gleixner <tglx@linutronix.de>,
+	David Miller <davem@davemloft.net>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	the arch/x86 maintainers <x86@kernel.org>,
+	Network Development <netdev@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Oleg Nesterov <oleg@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ia0-f178.google.com ([209.85.210.178]:52048 "EHLO
-	mail-ia0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755625Ab3D0VsM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Apr 2013 17:48:12 -0400
-Received: by mail-ia0-f178.google.com with SMTP id j38so4548891iad.23
-        for <linux-ext4@vger.kernel.org>; Sat, 27 Apr 2013 14:48:11 -0700 (PDT)
-In-Reply-To: <918096296.2221367046962554.JavaMail.root@shiva>
+Received: from mail-wi0-f179.google.com ([209.85.212.179]:59438 "EHLO
+	mail-wi0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752874Ab3D1A6U (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Apr 2013 20:58:20 -0400
+Content-Disposition: inline
+In-Reply-To: <20130427144537.GA24256@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Luvar,
+On Sat, Apr 27, 2013 at 04:45:37PM +0200, Oleg Nesterov wrote:
+> On 04/26, Oleg Nesterov wrote:
+> 
+> > On 04/26, H. Peter Anvin wrote:
+> > >
+> > > On 04/26/2013 09:38 AM, Oleg Nesterov wrote:
+> > > >
+> > > > 	- do_debug:
+> > > >
+> > > > 		dr6 &= ~DR6_RESERVED;
+> > > >
+> > > > 	  this also wrongly clears 32-63 bits. Fortunately these
+> > > > 	  bits are reserved and must be zero.
+> > >
+> > > I don't think this is wrongly at all.
+> >
+> > OK, I meant that it also clears the bits that are not specified in
+> > DR6_RESERVED mask.
+> >
+> > > The whole point is to mask out
+> > > the bits that the handler doesn't want to deal with, so masking out the
+> > > reserved bits [63:32] seems reasonable to me.
+> >
+> > Then we should do
+> >
+> > 	- #define DR6_RESERVED    0xFFFF0FF0
+> > 	+ #define DR6_RESERVED    0xFFFFFFFFFFFF0FF0
+> >
+> > ?
+> >
+> > or what? (just in case, I will happily agree with "do nothing" ;)
+> 
+> Or we can do the s/reserved/mask/ change and avoid any "unexpected"
+> effect of "long &= ~int". This allso allows to kill ifdef(__i386__).
+> 
+> But this is include/uapi, I do not know if I can simply remove the
+> old define's.
+> 
+> In short: whatever you prefer, including "leave it alone".
+> 
+> Oleg.
+> 
+> diff --git a/arch/x86/include/uapi/asm/debugreg.h b/arch/x86/include/uapi/asm/debugreg.h
+> index 3c0874d..2678b23 100644
+> --- a/arch/x86/include/uapi/asm/debugreg.h
+> +++ b/arch/x86/include/uapi/asm/debugreg.h
+> @@ -14,8 +14,7 @@
+>     which debugging register was responsible for the trap.  The other bits
+>     are either reserved or not of interest to us. */
+>  
+> -/* Define reserved bits in DR6 which are always set to 1 */
+> -#define DR6_RESERVED	(0xFFFF0FF0)
+> +#define DR6_MASK	(0xF00FU)	/* Everything else is reserved */
 
-Could you see this thread
-http://comments.gmane.org/gmane.comp.file-systems.ext4/38323
+I'm personally fine either with that or with Peter's suggestion to do:
 
-Seems that you have something similar.
+-#define DR6_RESERVED (0xFFFF0FF0)
++#define DR6_RESERVED (~0xF00FUL)
 
-On Sat, Apr 27, 2013 at 11:16 AM, LuVar <luvar@plaintext.sk> wrote:
-> Hi,
-> I have my desktop about 24 hours in "deadlock". I was copying (as root in krusader from USB key (mounted as [1]) data to filesystem [2]) some files from one point to another. Now it is more than 24 hours with sustained disk write, see [3].
->
-> How can I help and "debug" this problem? I have 3.5.7 gentoo kernel ([4]).
->
-> PS: I am an average user, so please by verbose to me.
->
-> [1] sudo mount -o rw,uid=luvar,gid=luvar,iocharset=utf8 /dev/sdg1 /mnt/usbstick/
->
-> [2]:
-> luvar@blacktroja ~ $ mount | grep music
-> /dev/mapper/vg-music on /var/lib/mpd/music/local type ext4 (rw,noatime,commit=0)
->
-> [3]:
-> iotop, two first records :
-> 17714 be/3 root        0.00 B/s    0.00 B/s  0.00 % 97.60 % [jbd2/dm-3-8]
->  6546 be/4 root        0.00 B/s    0.00 B/s  0.00 % 93.48 % kdeinit4: kio_file [kdeinit] file local:/tmp/ksocket-root/~-socket local:/tmp/ksocket-root/krusaderZz6431.slave-socket
->
-> [4]:
-> luvar@blacktroja ~ $ uname -a
-> Linux blacktroja 3.5.7-gentoo #1 SMP Sun Oct 28 17:18:07 CET 2012 x86_64 Intel(R) Core(TM) i7 CPU 930 @ 2.80GHz GenuineIntel GNU/Linux
->
-> Thanks, LuVar
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+If this should stay stable UAPI, we probably want Peter's solution. Otherwise
+I really don't mind.
 
-
-
--- 
-Respectfully
-Azat Khuzhin
-Primary email a3at.mail@gmail.com
+Thanks.
