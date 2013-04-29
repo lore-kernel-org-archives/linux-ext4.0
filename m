@@ -1,37 +1,55 @@
-From: "George Spelvin" <linux@horizon.com>
-Subject: Re: metadata_csum + e4defrag seems to cause problems
-Date: 29 Apr 2013 11:57:15 -0400
-Message-ID: <20130429155715.23219.qmail@science.horizon.com>
-References: <20130426025753.GA21659@gmail.com>
-Cc: linux-ext4@vger.kernel.org
-To: gnehzuil.liu@gmail.com, linux@horizon.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from science.horizon.com ([71.41.210.146]:63605 "HELO
-	science.horizon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1757253Ab3D2P5Q (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Apr 2013 11:57:16 -0400
-In-Reply-To: <20130426025753.GA21659@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Mel Gorman <mgorman@suse.de>
+Subject: [RFC PATCH 0/3] Obey mark_page_accessed hint given by filesystems
+Date: Mon, 29 Apr 2013 17:31:56 +0100
+Message-ID: <1367253119-6461-1-git-send-email-mgorman@suse.de>
+Cc: Theodore Tso <tytso@mit.edu>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Hugh Dickins <hughd@google.com>, Rik van Riel <riel@redhat.com>,
+	Johannes Weiner <hannes@cmpxchg.org>,
+	Bernd Schubert <bernd.schubert@fastmail.fm>,
+	David Howells <dhowells@redhat.com>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Linux-ext4 <linux-ext4@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>, Linux-mm <linux-mm@kvack.org>,
+	Mel Gorman <mgorman@suse.de>
+To: Alexey Lyahkov <alexey.lyashkov@gmail.com>,
+	Andrew Perepechko <anserper@ya.ru>, Robin Dong <sanbai@taobao.com>
+Return-path: <owner-linux-mm@kvack.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-> Yes, metatdata_csum + e4defrag could corrupt ext4 file system.  We have
-> found this bug and it has been fixed by this commit (2656497b, it is in
-> dev branch of ext4 tree).  I am not sure whether you use dev branch.
-> Could you please tell me your kernel version?  If you don't use dev
-> branch, could you please try dev branch of ext4 tree?  Here is the git
-> link:
->   https://git.kernel.org/cgit/linux/kernel/git/tytso/ext4.git/log/?h=dev
+Andrew Perepechko reported a problem whereby pages are being prematurely
+evicted as the mark_page_accessed() hint is ignored for pages that are
+currently on a pagevec -- http://www.spinics.net/lists/linux-ext4/msg37340.html .
+Alexey Lyahkov and Robin Dong have also reported problems recently that
+could be due to hot pages reaching the end of the inactive list too quickly
+and be reclaimed.
 
-I was running 3.8-rc7 at the time of the corruption; I rebooted to -rc8
-as part of the recovery.
+Rather than addressing this on a per-filesystem basis, this series aims
+to fix the mark_page_accessed() interface by deferring what LRU a page
+is added to pagevec drain time and allowing mark_page_accessed() to call
+SetPageActive on a pagevec page. This opens some important races that
+I think should be harmless but needs double checking. The races and the
+VM_BUG_ON checks that are removed are all described in patch 2.
 
-Yes, I already have the ext4 repository cloned, but that was just
-for pulling a particular fix Ted recommended a while ago.  I've been
-reluctant to use a branch labelled "dev" more routinely without more
-reassurance that it's believed to be "brave" rather than "stupid" to
-use in something other than a dedicated test environment.
+This series received only very light testing but it did not immediately
+blow up and a debugging patch confirmed that pages are now getting added
+to the active file LRU list that would previously have been added to the
+inactive list.
 
-I'll try v3.9 + ext4/dev.  Thank you!
+ fs/cachefiles/rdwr.c    | 30 ++++++------------------
+ fs/nfs/dir.c            |  7 ++----
+ include/linux/pagevec.h | 34 +--------------------------
+ mm/swap.c               | 61 ++++++++++++++++++++++++-------------------------
+ mm/vmscan.c             |  3 ---
+ 5 files changed, 40 insertions(+), 95 deletions(-)
 
-(Current head is 0d606e2c9fcc:
-"ext4: fix type-widening bug in inode table readahead code")
+-- 
+1.8.1.4
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
