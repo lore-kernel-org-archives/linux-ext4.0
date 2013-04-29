@@ -1,110 +1,53 @@
-From: "Stephen Elliott" <techweb@ntlworld.com>
-Subject: EXT4 Strange FSCK Behavior
-Date: Mon, 29 Apr 2013 01:45:05 +0100
-Message-ID: <003801ce4472$cad859e0$60890da0$@ntlworld.com>
-Reply-To: <techweb@ntlworld.com>
+From: Ashish Sangwan <ashishsangwan2@gmail.com>
+Subject: Re: [PATCH] ext4: remove unneeded call to ext4_es_remove_extent in
+ punch hole
+Date: Mon, 29 Apr 2013 14:10:42 +0530
+Message-ID: <CAOiN93msfJPVkE4OfodsBne5P7Ui7O0EfSdavbWK_-aZ-4crUA@mail.gmail.com>
+References: <1367037053-1893-1-git-send-email-ashish.sangwan2@gmail.com>
+	<20130427052809.GA25185@gmail.com>
+	<CAOiN93n2pM0d9O=wON=nAJNxj3T3XRBfpUk4SOvgg4=3NsvcYA@mail.gmail.com>
+	<20130427071109.GA25329@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: <linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+To: Ashish Sangwan <ashishsangwan2@gmail.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	wenqing.lz@taobao.com, Ashish Sangwan <a.sangwan@samsung.com>,
+	Namjae Jeon <namjae.jeon@samsung.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wg0-f47.google.com ([74.125.82.47]:59483 "EHLO
-	mail-wg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756574Ab3D2Aow (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 28 Apr 2013 20:44:52 -0400
-Received: by mail-wg0-f47.google.com with SMTP id j13so3172606wgh.2
-        for <linux-ext4@vger.kernel.org>; Sun, 28 Apr 2013 17:44:51 -0700 (PDT)
-References: 
-In-Reply-To: 
-Content-Language: en-gb
+Received: from mail-qa0-f42.google.com ([209.85.216.42]:46308 "EHLO
+	mail-qa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753523Ab3D2Ikn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Apr 2013 04:40:43 -0400
+Received: by mail-qa0-f42.google.com with SMTP id dx4so926201qab.15
+        for <linux-ext4@vger.kernel.org>; Mon, 29 Apr 2013 01:40:43 -0700 (PDT)
+In-Reply-To: <20130427071109.GA25329@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi all,
+On Sat, Apr 27, 2013 at 12:41 PM, Zheng Liu <gnehzuil.liu@gmail.com> wrote:
+> On Sat, Apr 27, 2013 at 12:20:22PM +0530, Ashish Sangwan wrote:
+>> >The commit
+>> > log is right before we use extent status tree to track all extent
+>> > information.  In dev branch of ext4 tree, we track all extent status in
+>> > status tree.  So we need to remove extent from status tree in punch
+>> > hole.
+>> I was of the opinion that filemap_write_and_wait_range will remove the
+>> extent from status tree if its still there.
+>> ok, I will check the dev branch.
+>
+> Ah, please bear with me.  In mainline kernel 3.9-rcX, we have used
+> status tree to track all extent status.  You could also check 3.9-rcX
+> kernel.  Please let me know if I miss something.
+Hi Zheng,
 
-I thought I'd reach out to your guys as trawling various forums and docs has
-not really got me any further. It may also be a possible bug.
+Ok, I understood your point.
+Currently, after step 2 of extent status tree, it houses _all_ the
+extents and not just delayed extents.
+This patch is not required now.
 
-Just rebooted my box today after 200 days uptime and thought I'd request a
-volume scan and it found errors! I've never had a power outage etc so am
-keen to know what could have caused this file system corruption? Anyu
-ideas???
-
-I'm running 4.2.21 on a ReadyNAS Pro6, but ultimately it is a Linux (Debian)
-2.6.37.6. based system underneath. 
-
-***** File system check forced at Fri Apr 26 20:08:38 WEST 2013 ***** fsck
-1.41.14 (22-Dec-2010) e2fsck 1.42.3 (14-May-2012) Pass 1: Checking inodes,
-blocks, and sizes Inode 4195619, i_blocks is 3135728, should be 3135904.
-Fix? yes
-
-
-Running additional passes to resolve blocks claimed by more than one
-inode...
-Pass 1B: Rescanning for multiply-claimed blocks Multiply-claimed block(s) in
-inode 4195619: 167904376 167904377 167904378 167904379 167904380 167904381
-167904382 167904383 167904384 167904385 167904386 167949296 167949297
-167949298 167949299 167949300 167949301 167949302 167949303 167949304
-167949305 167949306 Pass 1C: Scanning directories for inodes with
-multiply-claimed blocks Pass 1D: Reconciling multiply-claimed blocks (There
-are 1 inodes containing multiply-claimed blocks.)
-
-File /PREMIER/Premier Automation Purchase OrdersApp V18.5.mdb (inode
-#4195619, mod time Fri Apr 26 20:07:42 2013)
-has 22 multiply-claimed block(s), shared with 0 file(s):
-Multiply-claimed blocks already reassigned or cloned.
-
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-
-/dev/c/c: ***** FILE SYSTEM WAS MODIFIED *****
-/dev/c/c: 615898/30212096 files (13.6% non-contiguous), 62353456/483393536
-blocks
-
-I'm curious to know what this is all about, shared with 0 files!!!!:
-
-File /PREMIER/Premier Automation Purchase OrdersApp V18.5.mdb (inode
-#4195619, mod time Fri Apr 26 20:07:42 2013)
-has 22 multiply-claimed block(s), shared with 0 file(s):
-Multiply-claimed blocks already reassigned or cloned.
-
-
-Every follow on boot with FSCK yields the following:
-
-
-***** File system check forced at Fri Apr 26 20:21:42 WEST 2013 ***** fsck
-1.41.14 (22-Dec-2010) e2fsck 1.42.3 (14-May-2012) Pass 1: Checking inodes,
-blocks, and sizes
-
-Running additional passes to resolve blocks claimed by more than one
-inode...
-Pass 1B: Rescanning for multiply-claimed blocks Multiply-claimed block(s) in
-inode 4195619: 167904376 167904377 167904378 167904379 167904380 167904381
-167904382 167904383 167904384 167904385 167904386 167949296 167949297
-167949298 167949299 167949300 167949301 167949302 167949303 167949304
-167949305 167949306 Pass 1C: Scanning directories for inodes with
-multiply-claimed blocks Pass 1D: Reconciling multiply-claimed blocks (There
-are 1 inodes containing multiply-claimed blocks.)
-
-File /PREMIER/Premier Automation Purchase OrdersApp V18.5.mdb (inode
-#4195619, mod time Fri Apr 26 20:07:42 2013)
-has 22 multiply-claimed block(s), shared with 0 file(s):
-Multiply-claimed blocks already reassigned or cloned.
-
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-/dev/c/c: 615898/30212096 files (13.6% non-contiguous), 62353456/483393536
-blocks
-
-Still same thing with multiply claimed blocks but to say they are shared
-with 0 files makes no sense! And... Surely this should be corrected by FSCK?
-
-Smart logs are all good.... It was one of the first things I checked.
-
-Thanks...
-
+Regards,
+Ashish
+>
+> Thanks,
+>                                                 - Zheng
