@@ -1,53 +1,70 @@
-From: Ashish Sangwan <ashishsangwan2@gmail.com>
-Subject: Re: [PATCH] ext4: remove unneeded call to ext4_es_remove_extent in
- punch hole
-Date: Mon, 29 Apr 2013 14:10:42 +0530
-Message-ID: <CAOiN93msfJPVkE4OfodsBne5P7Ui7O0EfSdavbWK_-aZ-4crUA@mail.gmail.com>
-References: <1367037053-1893-1-git-send-email-ashish.sangwan2@gmail.com>
-	<20130427052809.GA25185@gmail.com>
-	<CAOiN93n2pM0d9O=wON=nAJNxj3T3XRBfpUk4SOvgg4=3NsvcYA@mail.gmail.com>
-	<20130427071109.GA25329@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: Ashish Sangwan <ashishsangwan2@gmail.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	wenqing.lz@taobao.com, Ashish Sangwan <a.sangwan@samsung.com>,
-	Namjae Jeon <namjae.jeon@samsung.com>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: [PATCH] jbd2: use kmem_cache_zalloc for allocating journal head
+Date: Mon, 29 Apr 2013 17:08:27 +0800
+Message-ID: <1367226507-2990-1-git-send-email-wenqing.lz@taobao.com>
+Cc: Zheng Liu <wenqing.lz@taobao.com>, "Theodore Ts'o" <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qa0-f42.google.com ([209.85.216.42]:46308 "EHLO
-	mail-qa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753523Ab3D2Ikn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Apr 2013 04:40:43 -0400
-Received: by mail-qa0-f42.google.com with SMTP id dx4so926201qab.15
-        for <linux-ext4@vger.kernel.org>; Mon, 29 Apr 2013 01:40:43 -0700 (PDT)
-In-Reply-To: <20130427071109.GA25329@gmail.com>
+Received: from mail-pa0-f41.google.com ([209.85.220.41]:34456 "EHLO
+	mail-pa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752580Ab3D2IvH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Apr 2013 04:51:07 -0400
+Received: by mail-pa0-f41.google.com with SMTP id kq12so2814081pab.14
+        for <linux-ext4@vger.kernel.org>; Mon, 29 Apr 2013 01:51:07 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Apr 27, 2013 at 12:41 PM, Zheng Liu <gnehzuil.liu@gmail.com> wrote:
-> On Sat, Apr 27, 2013 at 12:20:22PM +0530, Ashish Sangwan wrote:
->> >The commit
->> > log is right before we use extent status tree to track all extent
->> > information.  In dev branch of ext4 tree, we track all extent status in
->> > status tree.  So we need to remove extent from status tree in punch
->> > hole.
->> I was of the opinion that filemap_write_and_wait_range will remove the
->> extent from status tree if its still there.
->> ok, I will check the dev branch.
->
-> Ah, please bear with me.  In mainline kernel 3.9-rcX, we have used
-> status tree to track all extent status.  You could also check 3.9-rcX
-> kernel.  Please let me know if I miss something.
-Hi Zheng,
+From: Zheng Liu <wenqing.lz@taobao.com>
 
-Ok, I understood your point.
-Currently, after step 2 of extent status tree, it houses _all_ the
-extents and not just delayed extents.
-This patch is not required now.
+This commit tries to use kmem_cache_zalloc instead of kmem_cache_alloc/
+memset when a new journal head is alloctated.
+
+Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+---
+Hi Ted,
+
+This patch could be folded into the commit: (28daf4fa)
+    jbd2: use kmem_cache_zalloc instead of kmem_cache_alloc/memset
 
 Regards,
-Ashish
->
-> Thanks,
->                                                 - Zheng
+						- Zheng
+
+ fs/jbd2/journal.c | 8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
+
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index a62f57a..e90c0bf 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -2327,13 +2327,13 @@ static struct journal_head *journal_alloc_journal_head(void)
+ #ifdef CONFIG_JBD2_DEBUG
+ 	atomic_inc(&nr_journal_heads);
+ #endif
+-	ret = kmem_cache_alloc(jbd2_journal_head_cache, GFP_NOFS);
++	ret = kmem_cache_zalloc(jbd2_journal_head_cache, GFP_NOFS);
+ 	if (!ret) {
+ 		jbd_debug(1, "out of memory for journal_head\n");
+ 		pr_notice_ratelimited("ENOMEM in %s, retrying.\n", __func__);
+ 		while (!ret) {
+ 			yield();
+-			ret = kmem_cache_alloc(jbd2_journal_head_cache, GFP_NOFS);
++			ret = kmem_cache_zalloc(jbd2_journal_head_cache, GFP_NOFS);
+ 		}
+ 	}
+ 	return ret;
+@@ -2395,10 +2395,8 @@ struct journal_head *jbd2_journal_add_journal_head(struct buffer_head *bh)
+ 	struct journal_head *new_jh = NULL;
+ 
+ repeat:
+-	if (!buffer_jbd(bh)) {
++	if (!buffer_jbd(bh))
+ 		new_jh = journal_alloc_journal_head();
+-		memset(new_jh, 0, sizeof(*new_jh));
+-	}
+ 
+ 	jbd_lock_bh_journal_head(bh);
+ 	if (buffer_jbd(bh)) {
+-- 
+1.7.12.rc2.18.g61b472e
+
