@@ -1,132 +1,173 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] ext4: Reserve FEATURE_RO_COMPAT and INO flag
-Date: Mon, 29 Apr 2013 12:35:18 -0600
-Message-ID: <3CAF5E28-8718-4078-ACB9-607CA8DC5BA5@dilger.ca>
-References: <1366900760-18899-1-git-send-email-lczerner@redhat.com> <2B5199BA-39D5-4118-B4FC-96C8B800507B@dilger.ca> <alpine.LFD.2.00.1304291454240.20016@localhost>
-Mime-Version: 1.0 (Apple Message framework v1085)
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: =?windows-1252?Q?Luk=E1=9A_Czerner?= <lczerner@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f52.google.com ([209.85.210.52]:36371 "EHLO
-	mail-da0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757302Ab3D2SfV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Apr 2013 14:35:21 -0400
-Received: by mail-da0-f52.google.com with SMTP id j17so3063195dan.39
-        for <linux-ext4@vger.kernel.org>; Mon, 29 Apr 2013 11:35:20 -0700 (PDT)
-In-Reply-To: <alpine.LFD.2.00.1304291454240.20016@localhost>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Mel Gorman <mgorman@suse.de>
+Subject: Re: [PATCH 2/3] mm: Ensure that mark_page_accessed moves pages to
+ the active list
+Date: Mon, 29 Apr 2013 22:53:27 +0100
+Message-ID: <20130429215327.GA11497@suse.de>
+References: <1367253119-6461-1-git-send-email-mgorman@suse.de>
+ <1367253119-6461-3-git-send-email-mgorman@suse.de>
+ <517EA9E3.6050407@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-15
+Cc: Alexey Lyahkov <alexey.lyashkov@gmail.com>,
+	Andrew Perepechko <anserper@ya.ru>, Robin Dong <sanbai@taobao.com>,
+	Theodore Tso <tytso@mit.edu>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Hugh Dickins <hughd@google.com>,
+	Johannes Weiner <hannes@cmpxchg.org>,
+	Bernd Schubert <bernd.schubert@fastmail.fm>,
+	David Howells <dhowells@redhat.com>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Linux-ext4 <linux-ext4@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>, Linux-mm <linux-mm@kvack.org>
+To: Rik van Riel <riel@redhat.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <517EA9E3.6050407@redhat.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2013-04-29, at 6:58 AM, Luk=E1=9A Czerner wrote:
-> On Fri, 26 Apr 2013, Andreas Dilger wrote:
->> Date: Fri, 26 Apr 2013 05:47:58 -0600
->> From: Andreas Dilger <adilger@dilger.ca>
->> To: Lukas Czerner <lczerner@redhat.com>
->> Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
->>    Lukas Czerner <lczerner@redhat.com>
->> Subject: Re: [PATCH] ext4: Reserve FEATURE_RO_COMPAT and INO flag
->>=20
->> I was looking in the maint and master branches, but I don't see thes=
-e flags anywhere?
->=20
-> That's odd. I am using git repository:
->=20
-> git://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
->=20
-> and it is there added with the commit
-> 991211f676f49c6cf30af368dade2f81287f1fa8 libext2fs, libe2p: Reserve
-> RO_COMPAT_REPLICA feature
+On Mon, Apr 29, 2013 at 01:12:03PM -0400, Rik van Riel wrote:
+> On 04/29/2013 12:31 PM, Mel Gorman wrote:
+> 
+> >A PageActive page is now added to the inactivate list.
+> >
+> >While this looks strange, I think it is sufficiently harmless that additional
+> >barriers to address the case is not justified.  Unfortunately, while I never
+> >witnessed it myself, these parallel updates potentially trigger defensive
+> >DEBUG_VM checks on PageActive and hence they are removed by this patch.
+> 
+> Could this not cause issues with __page_cache_release, called from
+> munmap, exit, truncate, etc.?
+> 
 
-Strange, I see it now.  I don't know what file I was looking at
-that didn't have this included...
+Possibly if the page was activated before it was freed to the page allocator.
 
-One real problem that I see is that EXT4_REPLICA_INO uses the
-last reserved inode.  I recall in the past that Ted wanted to
-make this last reserved inode a hidden directory, so that it
-would be possible to put special inodes in there and access them
-by name.  Not quite as easy as accessing a reserved inode by
-number, but still preferable to not being able to have filesystem
-internal inodes at all in the future.
+> Could the eventual skewing of active vs inactive numbers break page
+> reclaim heuristics?
+> 
 
-Of the currently-reserved inodes, the only other one that might
-be a potential candidate for re-use is EXT2_UNDEL_DIR_INO, which
-has never been used in any upstream kernel (Googling shows there
-was a patch developed by some students, but never released
-AFAICS).  The BOOT_LOADED_INO has recently seen interest for use
-by Grub, and real patches exist for the snapshot code .
+Yes, good point and it would be very difficult to detect that it happened.
 
-That leaves us in a quandry - change the meaning of a reserved
-inode which has been publicly available for many years but never
-really used, or change the meaning of a private reserved inode
-which is (presumably) in use privately, but will (presumably) never
-be landed?
+> I wonder if we would need to move to a scheme where the PG_active bit
+> is always the authoritive one, and we never pass an overriding "lru"
+> parameter to __pagevec_lru_add.
+> 
 
-IMHO, since EXT2_UNDEL_DIR_INO was already supposed to be a
-directory it might be reasonable to repurpose it to be an "internal
-files" directory, possibly even linking the existing reserved
-directories to it by name for consistency?  This concept is used
-by ZFS to store all kinds of configuration data, mount parameters
-and tunables, etc. and is very handy IMHO.
+I don't think that necessarily gets away from the various differnet races.
 
-Cheers, Andreas
+> Would memory ordering between SetPageLRU and testing for PageLRU be
+> enough to then prevent the statistics from going off?
+> 
 
->> On 2013-04-25, at 8:39, Lukas Czerner <lczerner@redhat.com> wrote:
->>=20
->>> EXT4_FEATURE_RO_COMPAT_REPLICA and EXT4_REPLICA_INO are reserved in
->>> e2fsprogs for non-upstream feature. However it has never been reser=
-ved
->>> in kernel, fix this. Thanks to Radek Pazdera to pointing it out.
->>>=20
->>> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
->>> ---
->>> fs/ext4/ext4.h |    3 +++
->>> 1 files changed, 3 insertions(+), 0 deletions(-)
->>>=20
->>> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
->>> index 3b83cd6..6369c28 100644
->>> --- a/fs/ext4/ext4.h
->>> +++ b/fs/ext4/ext4.h
->>> @@ -241,6 +241,7 @@ struct ext4_io_submit {
->>> #define EXT4_UNDEL_DIR_INO     6    /* Undelete directory inode */
->>> #define EXT4_RESIZE_INO         7    /* Reserved group descriptors =
-inode */
->>> #define EXT4_JOURNAL_INO     8    /* Journal inode */
->>> +#define EXT4_REPLICA_INO     10    /* Used by non-upstream feature=
- */
->>>=20
->>> /* First non-reserved inode for old ext4 filesystems */
->>> #define EXT4_GOOD_OLD_FIRST_INO    11
->>> @@ -1481,6 +1482,8 @@ static inline void ext4_clear_state_flags(str=
-uct ext4_inode_info *ei)
->>> * GDT_CSUM bits are mutually exclusive.
->>> */
->>> #define EXT4_FEATURE_RO_COMPAT_METADATA_CSUM    0x0400
->>> +/* Reserved for non-upstream feature */
->>> +#define EXT4_FEATURE_RO_COMPAT_REPLICA        0x0800
->>>=20
->>> #define EXT4_FEATURE_INCOMPAT_COMPRESSION    0x0001
->>> #define EXT4_FEATURE_INCOMPAT_FILETYPE        0x0002
->>> --=20
->>> 1.7.7.6
->>>=20
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-ext=
-4" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>=20
+I do not think all the holes in every cases can be closed. There are a
+lot of races and bugs would creep in eventually. As the common case of
+interest is when a page has recently been added to the local CPUs pagevec
+the following should be sufficient.
 
+---8<---
+mm: Activate !PageLRU pages on mark_page_accessed if page is on local pagevec
 
-Cheers, Andreas
+If a page is on a pagevec then it is !PageLRU and mark_page_accessed()
+may fail to move a page to the active list as expected. Now that the LRU
+is selected at LRU drain time, mark pages PageActive if they are on the
+local pagevec so it gets moved to the correct list at LRU drain time.
+Using a debugging patch it was found that for a simple git checkout based
+workload that pages were never added to the active file list in practice
+but with this patch applied they are.
 
+				before   after
+LRU Add Active File                  0      750583
+LRU Add Active Anon            2640587     2702818
+LRU Add Inactive File          8833662     8068353
+LRU Add Inactive Anon              207         200
 
+Note that only pages on the local pagevec are considered on purpose. A
+!PageLRU page could be in the process of being released, reclaimed, migrated
+or on a remote pagevec that is currently being drained. Marking it PageActive
+is vunerable to races where PageLRU and Active bits are checked at the
+wrong time. Page reclaim will trigger VM_BUG_ONs but depending on when the
+race hits, it could also free a PageActive page to the page allocator and
+trigger a bad_page warning. Similarly a potential race exists between a
+per-cpu drain on a pagevec list and an activation on a remote CPU.
 
+				lru_add_drain_cpu
+				__pagevec_lru_add
+				  lru = page_lru(page);
+mark_page_accessed
+  if (PageLRU(page))
+    activate_page
+  else
+    SetPageActive
+				  SetPageLRU(page);
+				  add_page_to_lru_list(page, lruvec, lru);
 
+In this case a PageActive page is added to the inactivate list and later the
+inactive/active stats will get skewed. While the PageActive checks in vmscan
+could be removed and potentially dealt with, a skew in the statistics would
+be very difficult to detect. Hence this patch deals just with the common case
+where a page being marked accessed has just been added to the local pagevec.
+
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+---
+ mm/swap.c | 34 ++++++++++++++++++++++++++++++++--
+ 1 file changed, 32 insertions(+), 2 deletions(-)
+
+diff --git a/mm/swap.c b/mm/swap.c
+index 80fbc37..96565eb 100644
+--- a/mm/swap.c
++++ b/mm/swap.c
+@@ -427,6 +427,27 @@ void activate_page(struct page *page)
+ }
+ #endif
+ 
++static void __lru_cache_activate_page(struct page *page)
++{
++	struct pagevec *pvec = &get_cpu_var(lru_add_pvec);
++	int i;
++
++	/*
++	 * Search backwards on the optimistic assumption that the page being
++	 * activated has just been added to this pagevec
++	 */
++	for (i = pagevec_count(pvec) - 1; i >= 0; i--) {
++		struct page *pagevec_page = pvec->pages[i];
++
++		if (pagevec_page == page) {
++			SetPageActive(page);
++			break;
++		}
++	}
++
++	put_cpu_var(lru_add_pvec);
++}
++
+ /*
+  * Mark a page as having seen activity.
+  *
+@@ -437,8 +458,17 @@ void activate_page(struct page *page)
+ void mark_page_accessed(struct page *page)
+ {
+ 	if (!PageActive(page) && !PageUnevictable(page) &&
+-			PageReferenced(page) && PageLRU(page)) {
+-		activate_page(page);
++			PageReferenced(page)) {
++
++		/*
++		 * If the page is on the LRU, promote immediately. Otherwise,
++		 * assume the page is on a pagevec, mark it active and it'll
++		 * be moved to the active LRU on the next drain
++		 */
++		if (PageLRU(page))
++			activate_page(page);
++		else
++			__lru_cache_activate_page(page);
+ 		ClearPageReferenced(page);
+ 	} else if (!PageReferenced(page)) {
+ 		SetPageReferenced(page);
 
 --
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
