@@ -1,142 +1,148 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [GIT PULL] ext4 updates for 3.10
-Date: Wed, 01 May 2013 01:10:52 -0400
-Message-ID: <nsxppxbwahv.fsf@thunk.org>
+From: Sam Ben <sam.bennn@gmail.com>
+Subject: Re: [PATCH 2/3] mm: Ensure that mark_page_accessed moves pages to
+ the active list
+Date: Wed, 01 May 2013 13:41:34 +0800
+Message-ID: <5180AB0E.6030407@gmail.com>
+References: <1367253119-6461-1-git-send-email-mgorman@suse.de> <1367253119-6461-3-git-send-email-mgorman@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:45662 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751275Ab3EAFKz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 1 May 2013 01:10:55 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Alexey Lyahkov <alexey.lyashkov@gmail.com>,
+ Andrew Perepechko <anserper@ya.ru>,
+ Robin Dong <sanbai@taobao.com>, Theodore Tso <tytso@mit.edu>,
+ Andrew Morton <akpm@linux-foundation.org>,
+ Hugh Dickins <hughd@google.com>, Rik van Riel <riel@redhat.com>,
+ Johannes Weiner <hannes@cmpxchg.org>,
+ Bernd Schubert <bernd.schubert@fastmail.fm>,
+ David Howells <dhowells@redhat.com>,
+ Trond Myklebust <Trond.Myklebust@netapp.com>,
+ Linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+ Linux-ext4 <linux-ext4@vger.kernel.org>,
+ LKML <linux-kernel@vger.kernel.org>,
+ Linux-mm <linux-mm@kvack.org>
+To: Mel Gorman <mgorman@suse.de>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1367253119-6461-3-git-send-email-mgorman@suse.de>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
+Hi Mel,
+On 04/30/2013 12:31 AM, Mel Gorman wrote:
+> If a page is on a pagevec then it is !PageLRU and mark_page_accessed()
+> may fail to move a page to the active list as expected. Now that the
+> LRU is selected at LRU drain time, mark pages PageActive if they are
+> on a pagevec so it gets moved to the correct list at LRU drain time.
+> Using a debugging patch it was found that for a simple git checkout
+> based workload that pages were never added to the active file list in
 
-The following changes since commit 8cde7ad17e4f4ff8d12ff60dd09c0a291cb0b61c:
+Could you show us the details of your workload?
 
-  ext4: fix big-endian bugs which could cause fs corruptions (2013-04-03 12:37:17 -0400)
+> practice but with this patch applied they are.
+>
+> 				before   after
+> LRU Add Active File                  0  757121
+> LRU Add Active Anon            2678833 2633924
+> LRU Add Inactive File          8821711 8085543
+> LRU Add Inactive Anon              183     200
+>
+> The question to consider is if this is universally safe. If the page
+> was isolated for reclaim and there is a parallel mark_page_accessed()
+> then vmscan.c will get upset when it finds an isolated PageActive page.
+> Similarly a potential race exists between a per-cpu drain on a pagevec
+> list and an activation on a remote CPU.
+>
+> 				lru_add_drain_cpu
+> 				__pagevec_lru_add
+> 				  lru = page_lru(page);
+> mark_page_accessed
+>    if (PageLRU(page))
+>      activate_page
+>    else
+>      SetPageActive
+> 				  SetPageLRU(page);
+> 				  add_page_to_lru_list(page, lruvec, lru);
+>
+> A PageActive page is now added to the inactivate list.
+>
+> While this looks strange, I think it is sufficiently harmless that additional
+> barriers to address the case is not justified.  Unfortunately, while I never
+> witnessed it myself, these parallel updates potentially trigger defensive
+> DEBUG_VM checks on PageActive and hence they are removed by this patch.
+>
+> Signed-off-by: Mel Gorman <mgorman@suse.de>
+> ---
+>   mm/swap.c   | 18 ++++++++++++------
+>   mm/vmscan.c |  3 ---
+>   2 files changed, 12 insertions(+), 9 deletions(-)
+>
+> diff --git a/mm/swap.c b/mm/swap.c
+> index 80fbc37..2a10d08 100644
+> --- a/mm/swap.c
+> +++ b/mm/swap.c
+> @@ -437,8 +437,17 @@ void activate_page(struct page *page)
+>   void mark_page_accessed(struct page *page)
+>   {
+>   	if (!PageActive(page) && !PageUnevictable(page) &&
+> -			PageReferenced(page) && PageLRU(page)) {
+> -		activate_page(page);
+> +			PageReferenced(page)) {
+> +
+> +		/*
+> +		 * If the page is on the LRU, promote immediately. Otherwise,
+> +		 * assume the page is on a pagevec, mark it active and it'll
+> +		 * be moved to the active LRU on the next drain
+> +		 */
+> +		if (PageLRU(page))
+> +			activate_page(page);
+> +		else
+> +			SetPageActive(page);
+>   		ClearPageReferenced(page);
+>   	} else if (!PageReferenced(page)) {
+>   		SetPageReferenced(page);
+> @@ -478,11 +487,8 @@ EXPORT_SYMBOL(__lru_cache_add);
+>    */
+>   void lru_cache_add_lru(struct page *page, enum lru_list lru)
+>   {
+> -	if (PageActive(page)) {
+> +	if (PageActive(page))
+>   		VM_BUG_ON(PageUnevictable(page));
+> -	} else if (PageUnevictable(page)) {
+> -		VM_BUG_ON(PageActive(page));
+> -	}
+>   
+>   	VM_BUG_ON(PageLRU(page));
+>   	__lru_cache_add(page, lru);
+> diff --git a/mm/vmscan.c b/mm/vmscan.c
+> index 88c5fed..751b897 100644
+> --- a/mm/vmscan.c
+> +++ b/mm/vmscan.c
+> @@ -704,7 +704,6 @@ static unsigned long shrink_page_list(struct list_head *page_list,
+>   		if (!trylock_page(page))
+>   			goto keep;
+>   
+> -		VM_BUG_ON(PageActive(page));
+>   		VM_BUG_ON(page_zone(page) != zone);
+>   
+>   		sc->nr_scanned++;
+> @@ -935,7 +934,6 @@ activate_locked:
+>   		/* Not a candidate for swapping, so reclaim swap space. */
+>   		if (PageSwapCache(page) && vm_swap_full())
+>   			try_to_free_swap(page);
+> -		VM_BUG_ON(PageActive(page));
+>   		SetPageActive(page);
+>   		pgactivate++;
+>   keep_locked:
+> @@ -3488,7 +3486,6 @@ void check_move_unevictable_pages(struct page **pages, int nr_pages)
+>   		if (page_evictable(page)) {
+>   			enum lru_list lru = page_lru_base_type(page);
+>   
+> -			VM_BUG_ON(PageActive(page));
+>   			ClearPageUnevictable(page);
+>   			del_page_from_lru_list(page, lruvec, LRU_UNEVICTABLE);
+>   			add_page_to_lru_list(page, lruvec, lru);
 
-are available in the git repository at:
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
-
-for you to fetch changes up to 0d606e2c9fccdd4e67febf1e2da500e1bfe9e045:
-
-  ext4: fix type-widening bug in inode table readahead code (2013-04-23 08:59:35 -0400)
-
-----------------------------------------------------------------
-Mostly performance and bug fixes, plus some cleanups.  The one new
-feature this merge window is a new ioctl EXT4_IOC_SWAP_BOOT which
-allows installation of a hidden inode designed for boot loaders.
-
-----------------------------------------------------------------
-Andrey Sidorov (1):
-      ext4: speed-up releasing blocks on commit
-
-Darrick J. Wong (1):
-      ext4: mext_insert_extents should update extent block checksum
-
-Dmitri Monakho (1):
-      ext4: fix usless declarations
-
-Dmitry Monakhov (7):
-      jbd2: fix race between jbd2_journal_remove_checkpoint and ->j_commit_callback
-      ext4: fix journal callback list traversal
-      ext4: unregister es_shrinker if mount failed
-      ext4: fix incorrect lock ordering for ext4_ind_migrate
-      ext4: fix big-endian bug in extent migration code
-      ext4: fix big-endian bug in metadata checksum calculations
-      ext4: defragmentation code cleanup
-
-Dr. Tilmann Bubeck (1):
-      ext4: implementation of a new ioctl called EXT4_IOC_SWAP_BOOT
-
-Eric Whitney (1):
-      ext4: fix free space estimate in ext4_nonda_switch()
-
-Jan Kara (7):
-      ext4: fix deadlock with quota feature
-      ext4: improve credit estimate for EXT4_SINGLEDATA_TRANS_BLOCKS
-      ext4: make ext4_bio_write_page() use BH_Async_Write flags
-      ext4: use io_end for multiple bios
-      ext4: clear buffer_uninit flag when submitting IO
-      jbd2: reduce journal_head size
-      ext4: move quota initialization out of inode allocation transaction
-
-Lukas Czerner (9):
-      ext4: make ext4_block_in_group() much more efficient
-      ext4: introduce ext4_get_group_number()
-      ext4: Transfer initialized block to right neighbor if possible
-      ext4: try to prepend extent to the existing one
-      ext4: print more info in ext4_print_free_blocks()
-      ext4: introduce reserved space
-      ext4: move ext4_ind_migrate() into migrate.c
-      ext4: do not convert to indirect with bigalloc enabled
-      ext4: Use kstrtoul() instead of parse_strtoul()
-
-Tao Ma (2):
-      ext4: fix readdir error in the case of inline_data+dir_index
-      ext4: fix readdir error in case inline_data+^dir_index.
-
-Theodore Ts'o (18):
-      ext4: collapse handling of data=ordered and data=writeback codepaths
-      ext4: fold ext4_alloc_blocks() in ext4_alloc_branch()
-      ext4: refactor punch hole code
-      ext4: refactor truncate code
-      ext4: add mutex_is_locked() assertion to ext4_truncate()
-      ext4: add might_sleep() annotations
-      ext4/jbd2: don't wait (forever) for stale tid caused by wraparound
-      ext4: support simple conversion of extent-mapped inodes to use i_blocks
-      ext4: fix miscellaneous big endian warnings
-      ext4: reserve xattr index for Rich ACL support
-      ext4: mark all metadata I/O with REQ_META
-      buffer: add BH_Prio and BH_Meta flags
-      ext4: mark metadata blocks using bh flags
-      jbd2: trace when lock_buffer in do_get_write_access takes a long time
-      ext4: fix online resizing for ext3-compat file systems
-      ext4: fix Kconfig documentation for CONFIG_EXT4_DEBUG
-      ext4: add check for inodes_count overflow in new resize ioctl
-      ext4: fix type-widening bug in inode table readahead code
-
-Zheng Liu (2):
-      ext4: fold ext4_generic_write_end() into ext4_write_end()
-      jbd2: use kmem_cache_zalloc instead of kmem_cache_alloc/memset
-
- Documentation/filesystems/ext4.txt |  21 ++++
- fs/buffer.c                        |   5 +
- fs/ext4/Kconfig                    |   3 +-
- fs/ext4/balloc.c                   |  53 ++++++++---
- fs/ext4/dir.c                      |  20 ++--
- fs/ext4/ext4.h                     | 101 ++++++++++++++------
- fs/ext4/ext4_extents.h             |   5 +
- fs/ext4/ext4_jbd2.c                |   8 ++
- fs/ext4/ext4_jbd2.h                |  12 ++-
- fs/ext4/extents.c                  | 522 ++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------
- fs/ext4/fsync.c                    |   3 +-
- fs/ext4/ialloc.c                   |  88 +++++++++--------
- fs/ext4/indirect.c                 | 473 ++++++++++--------------------------------------------------------------------------------
- fs/ext4/inline.c                   | 178 ++++++++++++++++++++++++++++++----
- fs/ext4/inode.c                    | 580 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------
- fs/ext4/ioctl.c                    | 218 +++++++++++++++++++++++++++++++++++++++---
- fs/ext4/mballoc.c                  | 253 ++++++++++++++++++++++++++++++++++--------------
- fs/ext4/migrate.c                  |  62 +++++++++++-
- fs/ext4/mmp.c                      |   6 +-
- fs/ext4/move_extent.c              |  73 +++++++-------
- fs/ext4/namei.c                    |  48 ++++------
- fs/ext4/page-io.c                  | 280 +++++++++++++++++++++++++++++-------------------------
- fs/ext4/resize.c                   |  16 +++-
- fs/ext4/super.c                    | 131 ++++++++++++++++++++-----
- fs/ext4/xattr.c                    |  13 +--
- fs/ext4/xattr.h                    |   1 +
- fs/jbd2/commit.c                   |  50 +++++-----
- fs/jbd2/journal.c                  |  31 ++++++
- fs/jbd2/transaction.c              |   9 +-
- include/linux/buffer_head.h        |   4 +
- include/linux/jbd2.h               |   4 +-
- include/linux/journal-head.h       |  11 +--
- include/trace/events/ext4.h        |  16 +---
- include/trace/events/jbd2.h        |  21 ++++
- 34 files changed, 1900 insertions(+), 1419 deletions(-)
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
