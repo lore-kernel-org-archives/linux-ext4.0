@@ -1,11 +1,9 @@
 From: Mel Gorman <mgorman@suse.de>
-Subject: Re: [PATCH 2/3] mm: Ensure that mark_page_accessed moves pages to
- the active list
-Date: Wed, 1 May 2013 09:06:44 +0100
-Message-ID: <20130501080644.GE11497@suse.de>
+Subject: Re: [RFC PATCH 0/3] Obey mark_page_accessed hint given by filesystems
+Date: Wed, 1 May 2013 09:08:19 +0100
+Message-ID: <20130501080819.GF11497@suse.de>
 References: <1367253119-6461-1-git-send-email-mgorman@suse.de>
- <1367253119-6461-3-git-send-email-mgorman@suse.de>
- <5180AB0E.6030407@gmail.com>
+ <5180B601.8080005@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=iso-8859-15
 Cc: Alexey Lyahkov <alexey.lyashkov@gmail.com>,
@@ -20,29 +18,30 @@ Cc: Alexey Lyahkov <alexey.lyashkov@gmail.com>,
 	Linux-fsdevel <linux-fsdevel@vger.kernel.org>,
 	Linux-ext4 <linux-ext4@vger.kernel.org>,
 	LKML <linux-kernel@vger.kernel.org>, Linux-mm <linux-mm@kvack.org>
-To: Sam Ben <sam.bennn@gmail.com>
+To: Will Huck <will.huckk@gmail.com>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <5180AB0E.6030407@gmail.com>
+In-Reply-To: <5180B601.8080005@gmail.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, May 01, 2013 at 01:41:34PM +0800, Sam Ben wrote:
+On Wed, May 01, 2013 at 02:28:17PM +0800, Will Huck wrote:
 > Hi Mel,
 > On 04/30/2013 12:31 AM, Mel Gorman wrote:
-> >If a page is on a pagevec then it is !PageLRU and mark_page_accessed()
-> >may fail to move a page to the active list as expected. Now that the
-> >LRU is selected at LRU drain time, mark pages PageActive if they are
-> >on a pagevec so it gets moved to the correct list at LRU drain time.
-> >Using a debugging patch it was found that for a simple git checkout
-> >based workload that pages were never added to the active file list in
+> >Andrew Perepechko reported a problem whereby pages are being prematurely
+> >evicted as the mark_page_accessed() hint is ignored for pages that are
+> >currently on a pagevec -- http://www.spinics.net/lists/linux-ext4/msg37340.html .
+> >Alexey Lyahkov and Robin Dong have also reported problems recently that
+> >could be due to hot pages reaching the end of the inactive list too quickly
+> >and be reclaimed.
 > 
-> Could you show us the details of your workload?
+> Both shrink_active_list and shrink_inactive_list can call
+> lru_add_drain(), why the hot pages can't be mark Actived during this
+> time?
 > 
 
-The workload is git checkouts of a fixed number of commits for the
-kernel git tree. It starts with a warm-up run that is not timed and then
-records the time for a number of iterations.
+Because by then it's not known that the filesystem had called
+mark_page_accessed() to indicate the page should be activated.
 
 -- 
 Mel Gorman
