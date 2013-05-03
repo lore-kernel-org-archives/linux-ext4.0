@@ -1,31 +1,32 @@
-From: Rich Johnston <rjohnston@sgi.com>
-Subject: Re: [PATCH] [PATCH] xfstests: use -F when making scratch ext4 fs
-Date: Fri, 3 May 2013 07:48:59 -0500
-Message-ID: <5183B23B.2070708@sgi.com>
-References: <1367003813-17686-1-git-send-email-jbacik@fusionio.com>
+From: Carlos Maiolino <cmaiolino@redhat.com>
+Subject: out for vacations
+Date: Fri, 3 May 2013 09:53:22 -0300
+Message-ID: <20130503125322.GC22648@andromeda.usersys.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: <linux-ext4@vger.kernel.org>, <xfs@oss.sgi.com>
-To: Josef Bacik <jbacik@fusionio.com>
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from relay2.sgi.com ([192.48.179.30]:57473 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1755821Ab3ECMtM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 3 May 2013 08:49:12 -0400
-In-Reply-To: <1367003813-17686-1-git-send-email-jbacik@fusionio.com>
+Received: from mx1.redhat.com ([209.132.183.28]:35973 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752426Ab3ECMxa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 3 May 2013 08:53:30 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r43CrUm6002554
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Fri, 3 May 2013 08:53:30 -0400
+Received: from andromeda.usersys.redhat.com (ovpn-113-156.phx2.redhat.com [10.3.113.156])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r43CrNb0019886
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Fri, 3 May 2013 08:53:28 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Josef,
+Hi guys,
 
-Thanks for this patch, it has been committed,
+Just a reminder, as I said in the meeting on Monday,
+I'll be on vacations until June 3rd.
 
-Regards,
---Rich
-commit c150d937f506912da8c48419d6939731d5063967
-Author: Josef Bacik <jbacik@fusionio.com>
-Date:   Fri Apr 26 19:16:53 2013 +0000
-
-     xfstests: use -F when making scratch ext4 fs
-
+Cheers,
+-- 
+Carlos
