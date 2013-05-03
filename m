@@ -1,79 +1,337 @@
-From: "Stephen Elliott" <techweb@ntlworld.com>
-Subject: RE: 2nd Attempt - FSCK Errors
-Date: Fri, 3 May 2013 19:42:55 +0100
-Message-ID: <001601ce482e$07282510$15786f30$@ntlworld.com>
-References: <007b01ce45ab$0ffc24f0$2ff46ed0$@ntlworld.com> <CAFB1F4E-F086-4712-B70D-74F85F3BFDAE@dilger.ca> <000f01ce47ec$ca7767c0$5f663740$@ntlworld.com> <20130503131421.GC32297@thunk.org> <002701ce4802$8c4e4fc0$a4eaef40$@ntlworld.com> <20130503152914.GE32297@thunk.org>
-Reply-To: <techweb@ntlworld.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 07/29] jbd2: Refine waiting for shadow buffers
+Date: Fri, 3 May 2013 22:44:36 +0200
+Message-ID: <20130503204436.GC17214@quack.suse.cz>
+References: <1365456754-29373-1-git-send-email-jack@suse.cz>
+ <1365456754-29373-8-git-send-email-jack@suse.cz>
+ <20130503141613.GA9564@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: "'Andreas Dilger'" <adilger@dilger.ca>,
-	<linux-ext4@vger.kernel.org>
-To: "'Theodore Ts'o'" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-we0-f169.google.com ([74.125.82.169]:46321 "EHLO
-	mail-we0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758751Ab3ECSmt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 May 2013 14:42:49 -0400
-Received: by mail-we0-f169.google.com with SMTP id x51so1585476wey.0
-        for <linux-ext4@vger.kernel.org>; Fri, 03 May 2013 11:42:48 -0700 (PDT)
-In-Reply-To: <20130503152914.GE32297@thunk.org>
-Content-Language: en-gb
+Received: from cantor2.suse.de ([195.135.220.15]:48489 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1763479Ab3ECUok (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 3 May 2013 16:44:40 -0400
+Content-Disposition: inline
+In-Reply-To: <20130503141613.GA9564@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Thanks very much... I do appreciate you guys are developers and not support
-people :) The only thing is it is difficult to try and grasp an
-understanding when troubleshooting FS problems, since they generally just
-resolve themselves in my experience (Slackware linux user for 10+ years).
+On Fri 03-05-13 22:16:13, Zheng Liu wrote:
+> On Mon, Apr 08, 2013 at 11:32:12PM +0200, Jan Kara wrote:
+> > Currently when we add a buffer to a transaction, we wait until the
+> > buffer is removed from BJ_Shadow list (so that we prevent any changes to
+> > the buffer that is just written to the journal). This can take
+> > unnecessarily long as a lot happens between the time the buffer is
+> > submitted to the journal and the time when we remove the buffer from
+> > BJ_Shadow list (e.g.  we wait for all data buffers in the transaction,
+> > we issue a cache flush etc.). Also this creates a dependency of
+> > do_get_write_access() on transaction commit (namely waiting for data IO
+> > to complete) which we want to avoid when implementing transaction
+> > reservation.
+> > 
+> > So we modify commit code to set new BH_Shadow flag when temporary
+> > shadowing buffer is created and we clear that flag once IO on that
+> > buffer is complete. This allows do_get_write_access() to wait only for
+> > BH_Shadow bit and thus removes the dependency on data IO completion.
+> > 
+> > Signed-off-by: Jan Kara <jack@suse.cz>
+> 
+> A minor nit below.  Otherwise the patch looks good to me.
+> Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
+  Thanks for review! I'll fix that typo.
 
-We have another NAS which acts as a warm standby. To be on the safe side, I
-tested debugfs on that just to ensure it didn't crash the box etc. The
-standby box is running totally clean.
-
-One thing maybe you could explain (and Andreas gave me his take too) is how
-you can multiply assigned blocks shared with "0" files. Andreas offered the
-suggestion that they may be in the same file. If this were really the case,
-I would suspect there to be some file corruption issues etc...
-
-I think I am going to move the file off the device, run FSCK and then put it
-back on and monitor.
-
------Original Message-----
-From: Theodore Ts'o [mailto:tytso@mit.edu] 
-Sent: 03 May 2013 16:29
-To: Stephen Elliott
-Cc: 'Andreas Dilger'; linux-ext4@vger.kernel.org
-Subject: Re: 2nd Attempt - FSCK Errors
-
-On Fri, May 03, 2013 at 02:31:41PM +0100, Stephen Elliott wrote:
-> Well... Funny enough, the device which I ran debugfs on was the other 
-> ReadyNAS device, not the one with the issue anyway. I wanted to test 
-> it first.
-
-Was the inode number from the other device as well?  Sorry, this is the
-first I've heard that there are two ReadyNAS devices in play.
-It's one of the reasons why it's really painful to try to be a help desk for
-these sorts of questions over e-mail....
-
-> I suspect the underlying architecture supporting RAID in these devices 
-> screws with the debugfs interface.
-
-Debugfs uses the standard Linux block device interface.  If that's not sane,
-e2fsck isn't going to be sane either, and it's a kernel bug.  At that point,
-you'll have to talk to ReadyNAS folks since they are providing the kernel
-you are using (or the wonky non-standard hardware, or both....)
-
-> I just find it bizarre that I get the same message regarding multiply 
-> assigned blocks in 0 files on every FSCK as in it never gets resolved.
-> But... No issues with file access or no bad logs etc. I do have a case 
-> open with Netgear support, since this is basically an appliance.
-
-There have been NAS boxes out there which have used non-standard, out of
-tree kernel patches that have resulted in their devices using non-standard
-file system formats.  So that's yet another thing which can't be ruled
-out...
-
-						- Ted
-
+							Honza
+> 
+> > ---
+> >  fs/jbd2/commit.c           |   20 ++++++++++----------
+> >  fs/jbd2/journal.c          |    2 ++
+> >  fs/jbd2/transaction.c      |   44 +++++++++++++++++++-------------------------
+> >  include/linux/jbd.h        |   25 +++++++++++++++++++++++++
+> >  include/linux/jbd2.h       |   28 ++++++++++++++++++++++++++++
+> >  include/linux/jbd_common.h |   26 --------------------------
+> >  6 files changed, 84 insertions(+), 61 deletions(-)
+> > 
+> > diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+> > index 1a03762..4863f5b 100644
+> > --- a/fs/jbd2/commit.c
+> > +++ b/fs/jbd2/commit.c
+> > @@ -30,15 +30,22 @@
+> >  #include <trace/events/jbd2.h>
+> >  
+> >  /*
+> > - * Default IO end handler for temporary BJ_IO buffer_heads.
+> > + * IO end handler for temporary buffer_heads handling writes to the journal.
+> >   */
+> >  static void journal_end_buffer_io_sync(struct buffer_head *bh, int uptodate)
+> >  {
+> > +	struct buffer_head *orig_bh = bh->b_private;
+> > +
+> >  	BUFFER_TRACE(bh, "");
+> >  	if (uptodate)
+> >  		set_buffer_uptodate(bh);
+> >  	else
+> >  		clear_buffer_uptodate(bh);
+> > +	if (orig_bh) {
+> > +		clear_bit_unlock(BH_Shadow, &orig_bh->b_state);
+> > +		smp_mb__after_clear_bit();
+> > +		wake_up_bit(&orig_bh->b_state, BH_Shadow);
+> > +	}
+> >  	unlock_buffer(bh);
+> >  }
+> >  
+> > @@ -818,7 +825,7 @@ start_journal_io:
+> >  		jbd2_unfile_log_bh(bh);
+> >  
+> >  		/*
+> > -		 * The list contains temporary buffer heads created by
+> > +		 * The list contains temporary buffer heas created by
+>                                                       ^^^^
+>                                                 typo: head
+> 
+> Regards,
+>                                                 - Zheng
+> 
+> >  		 * jbd2_journal_write_metadata_buffer().
+> >  		 */
+> >  		BUFFER_TRACE(bh, "dumping temporary bh");
+> > @@ -831,6 +838,7 @@ start_journal_io:
+> >  		bh = jh2bh(jh);
+> >  		clear_buffer_jwrite(bh);
+> >  		J_ASSERT_BH(bh, buffer_jbddirty(bh));
+> > +		J_ASSERT_BH(bh, !buffer_shadow(bh));
+> >  
+> >  		/* The metadata is now released for reuse, but we need
+> >                     to remember it against this transaction so that when
+> > @@ -838,14 +846,6 @@ start_journal_io:
+> >                     required. */
+> >  		JBUFFER_TRACE(jh, "file as BJ_Forget");
+> >  		jbd2_journal_file_buffer(jh, commit_transaction, BJ_Forget);
+> > -		/*
+> > -		 * Wake up any transactions which were waiting for this IO to
+> > -		 * complete. The barrier must be here so that changes by
+> > -		 * jbd2_journal_file_buffer() take effect before wake_up_bit()
+> > -		 * does the waitqueue check.
+> > -		 */
+> > -		smp_mb();
+> > -		wake_up_bit(&bh->b_state, BH_Unshadow);
+> >  		JBUFFER_TRACE(jh, "brelse shadowed buffer");
+> >  		__brelse(bh);
+> >  	}
+> > diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> > index e03aae0..e9a9cdb 100644
+> > --- a/fs/jbd2/journal.c
+> > +++ b/fs/jbd2/journal.c
+> > @@ -453,6 +453,7 @@ repeat:
+> >  	new_bh->b_size = bh_in->b_size;
+> >  	new_bh->b_bdev = journal->j_dev;
+> >  	new_bh->b_blocknr = blocknr;
+> > +	new_bh->b_private = bh_in;
+> >  	set_buffer_mapped(new_bh);
+> >  	set_buffer_dirty(new_bh);
+> >  
+> > @@ -467,6 +468,7 @@ repeat:
+> >  	spin_lock(&journal->j_list_lock);
+> >  	__jbd2_journal_file_buffer(jh_in, transaction, BJ_Shadow);
+> >  	spin_unlock(&journal->j_list_lock);
+> > +	set_buffer_shadow(bh_in);
+> >  	jbd_unlock_bh_state(bh_in);
+> >  
+> >  	return do_escape | (done_copy_out << 1);
+> > diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+> > index bc35899..81df09c 100644
+> > --- a/fs/jbd2/transaction.c
+> > +++ b/fs/jbd2/transaction.c
+> > @@ -620,6 +620,12 @@ static void warn_dirty_buffer(struct buffer_head *bh)
+> >  	       bdevname(bh->b_bdev, b), (unsigned long long)bh->b_blocknr);
+> >  }
+> >  
+> > +static int sleep_on_shadow_bh(void *word)
+> > +{
+> > +	io_schedule();
+> > +	return 0;
+> > +}
+> > +
+> >  /*
+> >   * If the buffer is already part of the current transaction, then there
+> >   * is nothing we need to do.  If it is already part of a prior
+> > @@ -747,41 +753,29 @@ repeat:
+> >  		 * journaled.  If the primary copy is already going to
+> >  		 * disk then we cannot do copy-out here. */
+> >  
+> > -		if (jh->b_jlist == BJ_Shadow) {
+> > -			DEFINE_WAIT_BIT(wait, &bh->b_state, BH_Unshadow);
+> > -			wait_queue_head_t *wqh;
+> > -
+> > -			wqh = bit_waitqueue(&bh->b_state, BH_Unshadow);
+> > -
+> > +		if (buffer_shadow(bh)) {
+> >  			JBUFFER_TRACE(jh, "on shadow: sleep");
+> >  			jbd_unlock_bh_state(bh);
+> > -			/* commit wakes up all shadow buffers after IO */
+> > -			for ( ; ; ) {
+> > -				prepare_to_wait(wqh, &wait.wait,
+> > -						TASK_UNINTERRUPTIBLE);
+> > -				if (jh->b_jlist != BJ_Shadow)
+> > -					break;
+> > -				schedule();
+> > -			}
+> > -			finish_wait(wqh, &wait.wait);
+> > +			wait_on_bit(&bh->b_state, BH_Shadow,
+> > +				    sleep_on_shadow_bh, TASK_UNINTERRUPTIBLE);
+> >  			goto repeat;
+> >  		}
+> >  
+> > -		/* Only do the copy if the currently-owning transaction
+> > -		 * still needs it.  If it is on the Forget list, the
+> > -		 * committing transaction is past that stage.  The
+> > -		 * buffer had better remain locked during the kmalloc,
+> > -		 * but that should be true --- we hold the journal lock
+> > -		 * still and the buffer is already on the BUF_JOURNAL
+> > -		 * list so won't be flushed.
+> > +		/*
+> > +		 * Only do the copy if the currently-owning transaction still
+> > +		 * needs it. If buffer isn't on BJ_Metadata list, the
+> > +		 * committing transaction is past that stage (here we use the
+> > +		 * fact that BH_Shadow is set under bh_state lock together with
+> > +		 * refiling to BJ_Shadow list and at this point we know the
+> > +		 * buffer doesn't have BH_Shadow set).
+> >  		 *
+> >  		 * Subtle point, though: if this is a get_undo_access,
+> >  		 * then we will be relying on the frozen_data to contain
+> >  		 * the new value of the committed_data record after the
+> >  		 * transaction, so we HAVE to force the frozen_data copy
+> > -		 * in that case. */
+> > -
+> > -		if (jh->b_jlist != BJ_Forget || force_copy) {
+> > +		 * in that case.
+> > +		 */
+> > +		if (jh->b_jlist == BJ_Metadata || force_copy) {
+> >  			JBUFFER_TRACE(jh, "generate frozen data");
+> >  			if (!frozen_buffer) {
+> >  				JBUFFER_TRACE(jh, "allocate memory for buffer");
+> > diff --git a/include/linux/jbd.h b/include/linux/jbd.h
+> > index c8f3297..1c36b0c 100644
+> > --- a/include/linux/jbd.h
+> > +++ b/include/linux/jbd.h
+> > @@ -244,6 +244,31 @@ typedef struct journal_superblock_s
+> >  
+> >  #include <linux/fs.h>
+> >  #include <linux/sched.h>
+> > +
+> > +enum jbd_state_bits {
+> > +	BH_JBD			/* Has an attached ext3 journal_head */
+> > +	  = BH_PrivateStart,
+> > +	BH_JWrite,		/* Being written to log (@@@ DEBUGGING) */
+> > +	BH_Freed,		/* Has been freed (truncated) */
+> > +	BH_Revoked,		/* Has been revoked from the log */
+> > +	BH_RevokeValid,		/* Revoked flag is valid */
+> > +	BH_JBDDirty,		/* Is dirty but journaled */
+> > +	BH_State,		/* Pins most journal_head state */
+> > +	BH_JournalHead,		/* Pins bh->b_private and jh->b_bh */
+> > +	BH_Unshadow,		/* Dummy bit, for BJ_Shadow wakeup filtering */
+> > +	BH_JBDPrivateStart,	/* First bit available for private use by FS */
+> > +};
+> > +
+> > +BUFFER_FNS(JBD, jbd)
+> > +BUFFER_FNS(JWrite, jwrite)
+> > +BUFFER_FNS(JBDDirty, jbddirty)
+> > +TAS_BUFFER_FNS(JBDDirty, jbddirty)
+> > +BUFFER_FNS(Revoked, revoked)
+> > +TAS_BUFFER_FNS(Revoked, revoked)
+> > +BUFFER_FNS(RevokeValid, revokevalid)
+> > +TAS_BUFFER_FNS(RevokeValid, revokevalid)
+> > +BUFFER_FNS(Freed, freed)
+> > +
+> >  #include <linux/jbd_common.h>
+> >  
+> >  #define J_ASSERT(assert)	BUG_ON(!(assert))
+> > diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+> > index 4584518..be5115f 100644
+> > --- a/include/linux/jbd2.h
+> > +++ b/include/linux/jbd2.h
+> > @@ -302,6 +302,34 @@ typedef struct journal_superblock_s
+> >  
+> >  #include <linux/fs.h>
+> >  #include <linux/sched.h>
+> > +
+> > +enum jbd_state_bits {
+> > +	BH_JBD			/* Has an attached ext3 journal_head */
+> > +	  = BH_PrivateStart,
+> > +	BH_JWrite,		/* Being written to log (@@@ DEBUGGING) */
+> > +	BH_Freed,		/* Has been freed (truncated) */
+> > +	BH_Revoked,		/* Has been revoked from the log */
+> > +	BH_RevokeValid,		/* Revoked flag is valid */
+> > +	BH_JBDDirty,		/* Is dirty but journaled */
+> > +	BH_State,		/* Pins most journal_head state */
+> > +	BH_JournalHead,		/* Pins bh->b_private and jh->b_bh */
+> > +	BH_Shadow,		/* IO on shadow buffer is running */
+> > +	BH_Verified,		/* Metadata block has been verified ok */
+> > +	BH_JBDPrivateStart,	/* First bit available for private use by FS */
+> > +};
+> > +
+> > +BUFFER_FNS(JBD, jbd)
+> > +BUFFER_FNS(JWrite, jwrite)
+> > +BUFFER_FNS(JBDDirty, jbddirty)
+> > +TAS_BUFFER_FNS(JBDDirty, jbddirty)
+> > +BUFFER_FNS(Revoked, revoked)
+> > +TAS_BUFFER_FNS(Revoked, revoked)
+> > +BUFFER_FNS(RevokeValid, revokevalid)
+> > +TAS_BUFFER_FNS(RevokeValid, revokevalid)
+> > +BUFFER_FNS(Freed, freed)
+> > +BUFFER_FNS(Shadow, shadow)
+> > +BUFFER_FNS(Verified, verified)
+> > +
+> >  #include <linux/jbd_common.h>
+> >  
+> >  #define J_ASSERT(assert)	BUG_ON(!(assert))
+> > diff --git a/include/linux/jbd_common.h b/include/linux/jbd_common.h
+> > index 6133679..b1f7089 100644
+> > --- a/include/linux/jbd_common.h
+> > +++ b/include/linux/jbd_common.h
+> > @@ -1,32 +1,6 @@
+> >  #ifndef _LINUX_JBD_STATE_H
+> >  #define _LINUX_JBD_STATE_H
+> >  
+> > -enum jbd_state_bits {
+> > -	BH_JBD			/* Has an attached ext3 journal_head */
+> > -	  = BH_PrivateStart,
+> > -	BH_JWrite,		/* Being written to log (@@@ DEBUGGING) */
+> > -	BH_Freed,		/* Has been freed (truncated) */
+> > -	BH_Revoked,		/* Has been revoked from the log */
+> > -	BH_RevokeValid,		/* Revoked flag is valid */
+> > -	BH_JBDDirty,		/* Is dirty but journaled */
+> > -	BH_State,		/* Pins most journal_head state */
+> > -	BH_JournalHead,		/* Pins bh->b_private and jh->b_bh */
+> > -	BH_Unshadow,		/* Dummy bit, for BJ_Shadow wakeup filtering */
+> > -	BH_Verified,		/* Metadata block has been verified ok */
+> > -	BH_JBDPrivateStart,	/* First bit available for private use by FS */
+> > -};
+> > -
+> > -BUFFER_FNS(JBD, jbd)
+> > -BUFFER_FNS(JWrite, jwrite)
+> > -BUFFER_FNS(JBDDirty, jbddirty)
+> > -TAS_BUFFER_FNS(JBDDirty, jbddirty)
+> > -BUFFER_FNS(Revoked, revoked)
+> > -TAS_BUFFER_FNS(Revoked, revoked)
+> > -BUFFER_FNS(RevokeValid, revokevalid)
+> > -TAS_BUFFER_FNS(RevokeValid, revokevalid)
+> > -BUFFER_FNS(Freed, freed)
+> > -BUFFER_FNS(Verified, verified)
+> > -
+> >  static inline struct buffer_head *jh2bh(struct journal_head *jh)
+> >  {
+> >  	return jh->b_bh;
+> > -- 
+> > 1.7.1
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
