@@ -1,326 +1,60 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 07/29] jbd2: Refine waiting for shadow buffers
-Date: Fri, 3 May 2013 22:16:13 +0800
-Message-ID: <20130503141613.GA9564@gmail.com>
+Subject: Re: [PATCH 08/29] jbd2: Remove outdated comment
+Date: Fri, 3 May 2013 22:20:07 +0800
+Message-ID: <20130503142007.GB9564@gmail.com>
 References: <1365456754-29373-1-git-send-email-jack@suse.cz>
- <1365456754-29373-8-git-send-email-jack@suse.cz>
+ <1365456754-29373-9-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f54.google.com ([209.85.220.54]:52634 "EHLO
-	mail-pa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1762352Ab3ECN6j (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 May 2013 09:58:39 -0400
-Received: by mail-pa0-f54.google.com with SMTP id kx1so941070pab.13
-        for <linux-ext4@vger.kernel.org>; Fri, 03 May 2013 06:58:39 -0700 (PDT)
+Received: from mail-pd0-f170.google.com ([209.85.192.170]:42295 "EHLO
+	mail-pd0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1762472Ab3ECOCd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 May 2013 10:02:33 -0400
+Received: by mail-pd0-f170.google.com with SMTP id 10so930544pdi.1
+        for <linux-ext4@vger.kernel.org>; Fri, 03 May 2013 07:02:33 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <1365456754-29373-8-git-send-email-jack@suse.cz>
+In-Reply-To: <1365456754-29373-9-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 08, 2013 at 11:32:12PM +0200, Jan Kara wrote:
-> Currently when we add a buffer to a transaction, we wait until the
-> buffer is removed from BJ_Shadow list (so that we prevent any changes to
-> the buffer that is just written to the journal). This can take
-> unnecessarily long as a lot happens between the time the buffer is
-> submitted to the journal and the time when we remove the buffer from
-> BJ_Shadow list (e.g.  we wait for all data buffers in the transaction,
-> we issue a cache flush etc.). Also this creates a dependency of
-> do_get_write_access() on transaction commit (namely waiting for data IO
-> to complete) which we want to avoid when implementing transaction
-> reservation.
-> 
-> So we modify commit code to set new BH_Shadow flag when temporary
-> shadowing buffer is created and we clear that flag once IO on that
-> buffer is complete. This allows do_get_write_access() to wait only for
-> BH_Shadow bit and thus removes the dependency on data IO completion.
+On Mon, Apr 08, 2013 at 11:32:13PM +0200, Jan Kara wrote:
+> The comment about credit estimates isn't true anymore. We do what the
+> comment describes now.
 > 
 > Signed-off-by: Jan Kara <jack@suse.cz>
 
-A minor nit below.  Otherwise the patch looks good to me.
 Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
-
-> ---
->  fs/jbd2/commit.c           |   20 ++++++++++----------
->  fs/jbd2/journal.c          |    2 ++
->  fs/jbd2/transaction.c      |   44 +++++++++++++++++++-------------------------
->  include/linux/jbd.h        |   25 +++++++++++++++++++++++++
->  include/linux/jbd2.h       |   28 ++++++++++++++++++++++++++++
->  include/linux/jbd_common.h |   26 --------------------------
->  6 files changed, 84 insertions(+), 61 deletions(-)
-> 
-> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-> index 1a03762..4863f5b 100644
-> --- a/fs/jbd2/commit.c
-> +++ b/fs/jbd2/commit.c
-> @@ -30,15 +30,22 @@
->  #include <trace/events/jbd2.h>
->  
->  /*
-> - * Default IO end handler for temporary BJ_IO buffer_heads.
-> + * IO end handler for temporary buffer_heads handling writes to the journal.
->   */
->  static void journal_end_buffer_io_sync(struct buffer_head *bh, int uptodate)
->  {
-> +	struct buffer_head *orig_bh = bh->b_private;
-> +
->  	BUFFER_TRACE(bh, "");
->  	if (uptodate)
->  		set_buffer_uptodate(bh);
->  	else
->  		clear_buffer_uptodate(bh);
-> +	if (orig_bh) {
-> +		clear_bit_unlock(BH_Shadow, &orig_bh->b_state);
-> +		smp_mb__after_clear_bit();
-> +		wake_up_bit(&orig_bh->b_state, BH_Shadow);
-> +	}
->  	unlock_buffer(bh);
->  }
->  
-> @@ -818,7 +825,7 @@ start_journal_io:
->  		jbd2_unfile_log_bh(bh);
->  
->  		/*
-> -		 * The list contains temporary buffer heads created by
-> +		 * The list contains temporary buffer heas created by
-                                                      ^^^^
-                                                typo: head
-
 Regards,
                                                 - Zheng
 
->  		 * jbd2_journal_write_metadata_buffer().
->  		 */
->  		BUFFER_TRACE(bh, "dumping temporary bh");
-> @@ -831,6 +838,7 @@ start_journal_io:
->  		bh = jh2bh(jh);
->  		clear_buffer_jwrite(bh);
->  		J_ASSERT_BH(bh, buffer_jbddirty(bh));
-> +		J_ASSERT_BH(bh, !buffer_shadow(bh));
->  
->  		/* The metadata is now released for reuse, but we need
->                     to remember it against this transaction so that when
-> @@ -838,14 +846,6 @@ start_journal_io:
->                     required. */
->  		JBUFFER_TRACE(jh, "file as BJ_Forget");
->  		jbd2_journal_file_buffer(jh, commit_transaction, BJ_Forget);
-> -		/*
-> -		 * Wake up any transactions which were waiting for this IO to
-> -		 * complete. The barrier must be here so that changes by
-> -		 * jbd2_journal_file_buffer() take effect before wake_up_bit()
-> -		 * does the waitqueue check.
-> -		 */
-> -		smp_mb();
-> -		wake_up_bit(&bh->b_state, BH_Unshadow);
->  		JBUFFER_TRACE(jh, "brelse shadowed buffer");
->  		__brelse(bh);
->  	}
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index e03aae0..e9a9cdb 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -453,6 +453,7 @@ repeat:
->  	new_bh->b_size = bh_in->b_size;
->  	new_bh->b_bdev = journal->j_dev;
->  	new_bh->b_blocknr = blocknr;
-> +	new_bh->b_private = bh_in;
->  	set_buffer_mapped(new_bh);
->  	set_buffer_dirty(new_bh);
->  
-> @@ -467,6 +468,7 @@ repeat:
->  	spin_lock(&journal->j_list_lock);
->  	__jbd2_journal_file_buffer(jh_in, transaction, BJ_Shadow);
->  	spin_unlock(&journal->j_list_lock);
-> +	set_buffer_shadow(bh_in);
->  	jbd_unlock_bh_state(bh_in);
->  
->  	return do_escape | (done_copy_out << 1);
+> ---
+>  fs/jbd2/transaction.c |   10 ----------
+>  1 files changed, 0 insertions(+), 10 deletions(-)
+> 
 > diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-> index bc35899..81df09c 100644
+> index 81df09c..74cfbd3 100644
 > --- a/fs/jbd2/transaction.c
 > +++ b/fs/jbd2/transaction.c
-> @@ -620,6 +620,12 @@ static void warn_dirty_buffer(struct buffer_head *bh)
->  	       bdevname(bh->b_bdev, b), (unsigned long long)bh->b_blocknr);
->  }
->  
-> +static int sleep_on_shadow_bh(void *word)
-> +{
-> +	io_schedule();
-> +	return 0;
-> +}
-> +
->  /*
->   * If the buffer is already part of the current transaction, then there
->   * is nothing we need to do.  If it is already part of a prior
-> @@ -747,41 +753,29 @@ repeat:
->  		 * journaled.  If the primary copy is already going to
->  		 * disk then we cannot do copy-out here. */
->  
-> -		if (jh->b_jlist == BJ_Shadow) {
-> -			DEFINE_WAIT_BIT(wait, &bh->b_state, BH_Unshadow);
-> -			wait_queue_head_t *wqh;
+> @@ -283,16 +283,6 @@ repeat:
+>  	 * reduce the free space arbitrarily.  Be careful to account for
+>  	 * those buffers when checkpointing.
+>  	 */
 > -
-> -			wqh = bit_waitqueue(&bh->b_state, BH_Unshadow);
-> -
-> +		if (buffer_shadow(bh)) {
->  			JBUFFER_TRACE(jh, "on shadow: sleep");
->  			jbd_unlock_bh_state(bh);
-> -			/* commit wakes up all shadow buffers after IO */
-> -			for ( ; ; ) {
-> -				prepare_to_wait(wqh, &wait.wait,
-> -						TASK_UNINTERRUPTIBLE);
-> -				if (jh->b_jlist != BJ_Shadow)
-> -					break;
-> -				schedule();
-> -			}
-> -			finish_wait(wqh, &wait.wait);
-> +			wait_on_bit(&bh->b_state, BH_Shadow,
-> +				    sleep_on_shadow_bh, TASK_UNINTERRUPTIBLE);
->  			goto repeat;
->  		}
->  
-> -		/* Only do the copy if the currently-owning transaction
-> -		 * still needs it.  If it is on the Forget list, the
-> -		 * committing transaction is past that stage.  The
-> -		 * buffer had better remain locked during the kmalloc,
-> -		 * but that should be true --- we hold the journal lock
-> -		 * still and the buffer is already on the BUF_JOURNAL
-> -		 * list so won't be flushed.
-> +		/*
-> +		 * Only do the copy if the currently-owning transaction still
-> +		 * needs it. If buffer isn't on BJ_Metadata list, the
-> +		 * committing transaction is past that stage (here we use the
-> +		 * fact that BH_Shadow is set under bh_state lock together with
-> +		 * refiling to BJ_Shadow list and at this point we know the
-> +		 * buffer doesn't have BH_Shadow set).
->  		 *
->  		 * Subtle point, though: if this is a get_undo_access,
->  		 * then we will be relying on the frozen_data to contain
->  		 * the new value of the committed_data record after the
->  		 * transaction, so we HAVE to force the frozen_data copy
-> -		 * in that case. */
-> -
-> -		if (jh->b_jlist != BJ_Forget || force_copy) {
-> +		 * in that case.
-> +		 */
-> +		if (jh->b_jlist == BJ_Metadata || force_copy) {
->  			JBUFFER_TRACE(jh, "generate frozen data");
->  			if (!frozen_buffer) {
->  				JBUFFER_TRACE(jh, "allocate memory for buffer");
-> diff --git a/include/linux/jbd.h b/include/linux/jbd.h
-> index c8f3297..1c36b0c 100644
-> --- a/include/linux/jbd.h
-> +++ b/include/linux/jbd.h
-> @@ -244,6 +244,31 @@ typedef struct journal_superblock_s
->  
->  #include <linux/fs.h>
->  #include <linux/sched.h>
-> +
-> +enum jbd_state_bits {
-> +	BH_JBD			/* Has an attached ext3 journal_head */
-> +	  = BH_PrivateStart,
-> +	BH_JWrite,		/* Being written to log (@@@ DEBUGGING) */
-> +	BH_Freed,		/* Has been freed (truncated) */
-> +	BH_Revoked,		/* Has been revoked from the log */
-> +	BH_RevokeValid,		/* Revoked flag is valid */
-> +	BH_JBDDirty,		/* Is dirty but journaled */
-> +	BH_State,		/* Pins most journal_head state */
-> +	BH_JournalHead,		/* Pins bh->b_private and jh->b_bh */
-> +	BH_Unshadow,		/* Dummy bit, for BJ_Shadow wakeup filtering */
-> +	BH_JBDPrivateStart,	/* First bit available for private use by FS */
-> +};
-> +
-> +BUFFER_FNS(JBD, jbd)
-> +BUFFER_FNS(JWrite, jwrite)
-> +BUFFER_FNS(JBDDirty, jbddirty)
-> +TAS_BUFFER_FNS(JBDDirty, jbddirty)
-> +BUFFER_FNS(Revoked, revoked)
-> +TAS_BUFFER_FNS(Revoked, revoked)
-> +BUFFER_FNS(RevokeValid, revokevalid)
-> +TAS_BUFFER_FNS(RevokeValid, revokevalid)
-> +BUFFER_FNS(Freed, freed)
-> +
->  #include <linux/jbd_common.h>
->  
->  #define J_ASSERT(assert)	BUG_ON(!(assert))
-> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-> index 4584518..be5115f 100644
-> --- a/include/linux/jbd2.h
-> +++ b/include/linux/jbd2.h
-> @@ -302,6 +302,34 @@ typedef struct journal_superblock_s
->  
->  #include <linux/fs.h>
->  #include <linux/sched.h>
-> +
-> +enum jbd_state_bits {
-> +	BH_JBD			/* Has an attached ext3 journal_head */
-> +	  = BH_PrivateStart,
-> +	BH_JWrite,		/* Being written to log (@@@ DEBUGGING) */
-> +	BH_Freed,		/* Has been freed (truncated) */
-> +	BH_Revoked,		/* Has been revoked from the log */
-> +	BH_RevokeValid,		/* Revoked flag is valid */
-> +	BH_JBDDirty,		/* Is dirty but journaled */
-> +	BH_State,		/* Pins most journal_head state */
-> +	BH_JournalHead,		/* Pins bh->b_private and jh->b_bh */
-> +	BH_Shadow,		/* IO on shadow buffer is running */
-> +	BH_Verified,		/* Metadata block has been verified ok */
-> +	BH_JBDPrivateStart,	/* First bit available for private use by FS */
-> +};
-> +
-> +BUFFER_FNS(JBD, jbd)
-> +BUFFER_FNS(JWrite, jwrite)
-> +BUFFER_FNS(JBDDirty, jbddirty)
-> +TAS_BUFFER_FNS(JBDDirty, jbddirty)
-> +BUFFER_FNS(Revoked, revoked)
-> +TAS_BUFFER_FNS(Revoked, revoked)
-> +BUFFER_FNS(RevokeValid, revokevalid)
-> +TAS_BUFFER_FNS(RevokeValid, revokevalid)
-> +BUFFER_FNS(Freed, freed)
-> +BUFFER_FNS(Shadow, shadow)
-> +BUFFER_FNS(Verified, verified)
-> +
->  #include <linux/jbd_common.h>
->  
->  #define J_ASSERT(assert)	BUG_ON(!(assert))
-> diff --git a/include/linux/jbd_common.h b/include/linux/jbd_common.h
-> index 6133679..b1f7089 100644
-> --- a/include/linux/jbd_common.h
-> +++ b/include/linux/jbd_common.h
-> @@ -1,32 +1,6 @@
->  #ifndef _LINUX_JBD_STATE_H
->  #define _LINUX_JBD_STATE_H
->  
-> -enum jbd_state_bits {
-> -	BH_JBD			/* Has an attached ext3 journal_head */
-> -	  = BH_PrivateStart,
-> -	BH_JWrite,		/* Being written to log (@@@ DEBUGGING) */
-> -	BH_Freed,		/* Has been freed (truncated) */
-> -	BH_Revoked,		/* Has been revoked from the log */
-> -	BH_RevokeValid,		/* Revoked flag is valid */
-> -	BH_JBDDirty,		/* Is dirty but journaled */
-> -	BH_State,		/* Pins most journal_head state */
-> -	BH_JournalHead,		/* Pins bh->b_private and jh->b_bh */
-> -	BH_Unshadow,		/* Dummy bit, for BJ_Shadow wakeup filtering */
-> -	BH_Verified,		/* Metadata block has been verified ok */
-> -	BH_JBDPrivateStart,	/* First bit available for private use by FS */
-> -};
-> -
-> -BUFFER_FNS(JBD, jbd)
-> -BUFFER_FNS(JWrite, jwrite)
-> -BUFFER_FNS(JBDDirty, jbddirty)
-> -TAS_BUFFER_FNS(JBDDirty, jbddirty)
-> -BUFFER_FNS(Revoked, revoked)
-> -TAS_BUFFER_FNS(Revoked, revoked)
-> -BUFFER_FNS(RevokeValid, revokevalid)
-> -TAS_BUFFER_FNS(RevokeValid, revokevalid)
-> -BUFFER_FNS(Freed, freed)
-> -BUFFER_FNS(Verified, verified)
-> -
->  static inline struct buffer_head *jh2bh(struct journal_head *jh)
->  {
->  	return jh->b_bh;
+> -	/*
+> -	 * @@@ AKPM: This seems rather over-defensive.  We're giving commit
+> -	 * a _lot_ of headroom: 1/4 of the journal plus the size of
+> -	 * the committing transaction.  Really, we only need to give it
+> -	 * committing_transaction->t_outstanding_credits plus "enough" for
+> -	 * the log control blocks.
+> -	 * Also, this test is inconsistent with the matching one in
+> -	 * jbd2_journal_extend().
+> -	 */
+>  	if (__jbd2_log_space_left(journal) < jbd_space_needed(journal)) {
+>  		jbd_debug(2, "Handle %p waiting for checkpoint...\n", handle);
+>  		atomic_sub(nblocks, &transaction->t_outstanding_credits);
 > -- 
 > 1.7.1
 > 
