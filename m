@@ -1,182 +1,95 @@
 From: Radek Pazdera <rpazdera@redhat.com>
-Subject: [RFC 0/9] ext4: An Auxiliary Tree for the Directory Index
-Date: Sat,  4 May 2013 23:28:33 +0200
-Message-ID: <1367702922-3236-1-git-send-email-rpazdera@redhat.com>
+Subject: [RFC 1/9] ext4: Adding itree feature and inode flags
+Date: Sat,  4 May 2013 23:28:34 +0200
+Message-ID: <1367702922-3236-2-git-send-email-rpazdera@redhat.com>
+References: <1367702922-3236-1-git-send-email-rpazdera@redhat.com>
 Cc: lczerner@redhat.com, kasparek@fit.vutbr.cz,
 	Radek Pazdera <rpazdera@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:5739 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:43759 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759224Ab3EDVeV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1759251Ab3EDVeV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sat, 4 May 2013 17:34:21 -0400
+In-Reply-To: <1367702922-3236-1-git-send-email-rpazdera@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello everyone,
+This commit adds two new flags for the itree. A new read-only file
+system feature flag:
 
-I am an university student from Brno /CZE/. I decided to try to optimise
-the readdir/stat scenario in ext4 as the final project to school. I
-posted some test results I got few months ago [1].
+    EXT4_FEATURE_RO_COMPAT_ITREE    0x1000
 
-I tried to implement an additional tree for ext4's directory index
-that would be sorted by inode numbers. The tree then would be used
-by ext4_readdir() which should lead to substantial increase of
-performance of operations that manipulate a whole directory at once.
+And an inode flag to indicate that a directory has itree:
 
-The performance increase should be visible especially with large
-directories or in case of low memory or cache pressure.
+    EXT4_ITREE_FL = 0x10000000
+    EXT4_INODE_ITREE = 29
 
-This patch series is what I've got so far. I must say, I originally
-thought it would be *much* simpler :).
+Also a macro for checking these flags on a directory was added.
 
-TLDR
-====
+Signed-off-by: Radek Pazdera <rpazdera@redhat.com>
+---
+ fs/ext4/ext4.h | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
 
-The series contains the implementation of the new tree and several
-rather small changes to the original directory index. I also added
-a new implementation of ext4_readdir() that uses this new tree
-instead of the original one.
-
-It applies on 3.9, it is basically working, however, it is highly
-experimental at the moment. It doesn't survive XFS tests yet (I
-still need to work on that).
-
-DESIGN
-======
-
-The tree comes with a new read-only compatible file system feature
-called "itree". It is created in a directory at the same time as the
-original dx tree -- when the directory file exceeds a signle block of
-size. It is indicated by an inode flag.
-
-The tree resides completely outside of the directory file. I am using
-64bit block numbers (as suggested by Ted Ts'o), and the pointer to its
-root is stored in the end of the dx_root block.
-
-I tried to keep the structure of the tree as close as possible to the
-original dx tree. It is a B+ tree with a 64bit long compound key. The
-key consists of a inode number and a hash.
-
-The hash is there because of hard links. On ext4 there can be as much
-as 65 000 names for a single file which is, from the point of the inode
-tree, a collision. It is a very unlikely scenario to crate over 60 000
-names for a file from a single directory. But it would be a very serious
-problem for readdir() if someone tried to do that, so I decided to add
-the hash to the key as well. This reduces the problems of collisions to
-the same as of the hash tree.
-
-The depth of the tree is limited by a constant in the code to 3 levels,
-but it can be increased anytime.
-
-I decided to keep the directory entries within the leaf nodes sorted,
-which might have been a bad idea (and it brought me quite a few
-sleepless nights of pointer debugging). However, it is more convenient
-for readdir and splits. And in the case of the inode tree, there
-shouldn't be that much memmoving, because inodes are allocated linearly,
-therefore we're adding to the end most of the time anyway.
-
-I also had to implement coalesce-on-delete. Unlike the hash values,
-the inode numbers are not random, so the tree would get fragmented
-really easily. For example when a range of inodes would be freed
-and allocated somewhere else, that part of the tree would stay empty
-forever.
-
-In this implementation I used 8 bits for "node fullness". Neighbour
-nodes in the tree are merged as soon as their total fullness is smaller
-than maximum fullness. This way, coalescing happens too often. I plan
-to reduce it to only 2 bits (25% full, 50% full, 75% full, 100% full).
-
-There are also some optimisations to increase the fullness of blocks
-within the tree, because if the file system adds a contiguous sequence
-of inodes to a directory and we split the nodes in half, there will be
-some tree nodes that will never get another entry and still be only 50%
-full. In the current implementation, an append is performed instead of
-a split in case the new entry should be added to the end of the full
-block.
-
-BENCHMARKS
-==========
-
-I did some benchmarks and compared the performance with ext4/htree,
-XFS, and btrfs up to 5 000 000 of files in a single directory. Not
-all of them are done though (they run for days).
-
-Probably the biggest improvement can be observed with copying files.
-I used two physical SATA disks for the test. For 5M files, the itree
-implementation is 14x faster. With metadata only, ext4 is even a tiny
-bit faster than xfs:
-
-    http://www.stud.fit.vutbr.cz/~xpazde00/soubory/ext4-5M/0B-files/cp.png
-
-With each files 4kB big, the inode tree is 11x faster:
-
-    http://www.stud.fit.vutbr.cz/~xpazde00/soubory/ext4-5M/4096B-files/cp.png
-
-On the other hand, probably the biggest drawback of this implementation
-is that it slows down file creates, as we now have to insert the entry
-into both trees. The difference gets bigger as both trees grow (and their
-blocks get further apart). For 5M directory entries, the creation is
-roughly 40% slower. Hopefully, I'll be able to optimise it a bit in the
-future:
-
-    http://www.stud.fit.vutbr.cz/~xpazde00/soubory/ext4-5M/0B-files/create.png
-    http://www.stud.fit.vutbr.cz/~xpazde00/soubory/ext4-5M/4096B-files/create.png
-
-Deleting entries should also very much benefit from this. However, the
-increase of performance in my test is far lower than expected. I think
-that is due to my implementation of coalesce-on-delete, which happens
-too often and during these massive deletes, it coallesces all the time.
-I hope that when I fix that, it will get somewhere close to XFS as well:
-
-    http://www.stud.fit.vutbr.cz/~xpazde00/soubory/ext4-5M/0B-files/delete.png
-    http://www.stud.fit.vutbr.cz/~xpazde00/soubory/ext4-5M/4096B-files/delete.png
-
-All of the results have a graph and a table with precise values.
-You can always get the table by replacing the suffix of the graph
-*.png to *.results in the end of the link.
-
-Full results are available here:
-    http://www.stud.fit.vutbr.cz/~xpazde00/soubory/ext4-5M/
-
-
-I also did some tests on an aged file system (I used the simple 0.8
-chance to create, 0.2 to delete a file) where the results of ext4
-with itree are much better even than xfs, which gets fragmented:
-
-    http://www.stud.fit.vutbr.cz/~xpazde00/soubory/5M-dirty/cp.png
-    http://www.stud.fit.vutbr.cz/~xpazde00/soubory/5M-dirty/readdir-stat.png
-
-
-There are still some things to be done, the checksums are not yet
-finished and I certainly need to do a bit of cleaning up at some
-places. But as far as features go, it all should be there already.
-
-I'm working on this along with Lukas Czerner, who acts as my mentor
-and helps me with different things (big thanks!).
-
-Any feedback/ideas are greatly appeciated :)!
-
-Cheers,
-Radek
-
-
-Radek Pazdera (9):
-  ext4: Adding itree feature and inode flags
-  ext4: Allow sorting dx_map by inode as well
-  ext4: Adding a link to itree to the dx_root struct
-  ext4: Adding itree structures
-  ext4: Adding itree implementation I - Core
-  ext4: Adding itree implementation II - Inserting
-  ext4: Adding itree implementation III - Deleting
-  ext4: Make directory operations use itree
-  ext4: Make ext4_readdir() use itree if available
-
- fs/ext4/dir.c   |  177 +++-
- fs/ext4/ext4.h  |   21 +-
- fs/ext4/namei.c | 2442 +++++++++++++++++++++++++++++++++++++++++++++++++++++--
- 3 files changed, 2565 insertions(+), 75 deletions(-)
-
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 3b83cd6..763f958 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -400,6 +400,7 @@ struct flex_groups {
+ #define EXT4_EA_INODE_FL	        0x00200000 /* Inode used for large EA */
+ #define EXT4_EOFBLOCKS_FL		0x00400000 /* Blocks allocated beyond EOF */
+ #define EXT4_INLINE_DATA_FL		0x10000000 /* Inode has inline data. */
++#define EXT4_ITREE_FL			0x20000000 /* Directory has itree */
+ #define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
+ 
+ #define EXT4_FL_USER_VISIBLE		0x004BDFFF /* User visible flags */
+@@ -457,6 +458,7 @@ enum {
+ 	EXT4_INODE_EA_INODE	= 21,	/* Inode used for large EA */
+ 	EXT4_INODE_EOFBLOCKS	= 22,	/* Blocks allocated beyond EOF */
+ 	EXT4_INODE_INLINE_DATA	= 28,	/* Data in inode. */
++	EXT4_INODE_ITREE	= 29,	/* Directory has itree */
+ 	EXT4_INODE_RESERVED	= 31,	/* reserved for ext4 lib */
+ };
+ 
+@@ -501,6 +503,7 @@ static inline void ext4_check_flag_values(void)
+ 	CHECK_FLAG_VALUE(EA_INODE);
+ 	CHECK_FLAG_VALUE(EOFBLOCKS);
+ 	CHECK_FLAG_VALUE(INLINE_DATA);
++	CHECK_FLAG_VALUE(ITREE);
+ 	CHECK_FLAG_VALUE(RESERVED);
+ }
+ 
+@@ -1481,6 +1484,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+  * GDT_CSUM bits are mutually exclusive.
+  */
+ #define EXT4_FEATURE_RO_COMPAT_METADATA_CSUM	0x0400
++#define EXT4_FEATURE_RO_COMPAT_ITREE		0x1000
+ 
+ #define EXT4_FEATURE_INCOMPAT_COMPRESSION	0x0001
+ #define EXT4_FEATURE_INCOMPAT_FILETYPE		0x0002
+@@ -1530,7 +1534,8 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+ 					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE |\
+ 					 EXT4_FEATURE_RO_COMPAT_BIGALLOC |\
+ 					 EXT4_FEATURE_RO_COMPAT_METADATA_CSUM|\
+-					 EXT4_FEATURE_RO_COMPAT_QUOTA)
++					 EXT4_FEATURE_RO_COMPAT_QUOTA|\
++					 EXT4_FEATURE_RO_COMPAT_ITREE)
+ 
+ /*
+  * Default values for user and/or group using reserved blocks
+@@ -1688,6 +1693,11 @@ static inline __le16 ext4_rec_len_to_disk(unsigned len, unsigned blocksize)
+ #define EXT4_DIR_LINK_MAX(dir) (!is_dx(dir) && (dir)->i_nlink >= EXT4_LINK_MAX)
+ #define EXT4_DIR_LINK_EMPTY(dir) ((dir)->i_nlink == 2 || (dir)->i_nlink == 1)
+ 
++#define dx_itree(dir) (is_dx(dir) && \
++		       EXT4_HAS_RO_COMPAT_FEATURE(dir->i_sb, \
++					EXT4_FEATURE_RO_COMPAT_ITREE) && \
++		       ext4_test_inode_flag((dir), EXT4_INODE_ITREE))
++
+ /* Legal values for the dx_root hash_version field: */
+ 
+ #define DX_HASH_LEGACY		0
 -- 
 1.7.11.7
 
