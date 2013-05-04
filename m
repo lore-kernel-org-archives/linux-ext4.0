@@ -1,677 +1,602 @@
 From: Radek Pazdera <rpazdera@redhat.com>
-Subject: [RFC 6/9] ext4: Adding itree implementation II - Inserting
-Date: Sat,  4 May 2013 23:28:39 +0200
-Message-ID: <1367702922-3236-7-git-send-email-rpazdera@redhat.com>
+Subject: [RFC 7/9] ext4: Adding itree implementation III - Deleting
+Date: Sat,  4 May 2013 23:28:40 +0200
+Message-ID: <1367702922-3236-8-git-send-email-rpazdera@redhat.com>
 References: <1367702922-3236-1-git-send-email-rpazdera@redhat.com>
 Cc: lczerner@redhat.com, kasparek@fit.vutbr.cz,
 	Radek Pazdera <rpazdera@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:52120 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:28614 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756459Ab3EDVeb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 4 May 2013 17:34:31 -0400
+	id S1753603Ab3EDVec (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 4 May 2013 17:34:32 -0400
 In-Reply-To: <1367702922-3236-1-git-send-email-rpazdera@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This commit contains functions that are related to inserting entries
-to the inode tree including the functions that handle the node splits.
+This commit contains functions that are related to the deletion of
+entries from the inode tree. This also includes the code related to
+coalesce-on-delete.
 
 Signed-off-by: Radek Pazdera <rpazdera@redhat.com>
 ---
- fs/ext4/namei.c | 617 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 617 insertions(+)
+ fs/ext4/namei.c | 555 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 555 insertions(+)
 
 diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 1ed4d68..fb4aaf9 100644
+index fb4aaf9..4cb8552 100644
 --- a/fs/ext4/namei.c
 +++ b/fs/ext4/namei.c
-@@ -332,6 +332,10 @@ static int itree_init(handle_t *handle, struct inode *dir,
- 		      struct dentry *entry, struct inode *inode,
- 		      ext4_fsblk_t *root_block);
+@@ -336,6 +336,9 @@ static int itree_add_entry(handle_t *handle, struct inode *dir,
+ 			   ext4_fsblk_t root_blk, struct dentry *entry,
+ 			   struct inode *inode, u32 hash);
  
-+static int itree_add_entry(handle_t *handle, struct inode *dir,
-+			   ext4_fsblk_t root_blk, struct dentry *entry,
-+			   struct inode *inode, u32 hash);
++static int itree_delete_entry(handle_t *handle, struct inode *dir,
++			      struct dentry *entry);
 +
  static int itree_next_frame(struct inode *dir, u32 ino,
  			    struct itree_frame *frames,
  			    struct itree_frame *frame_in,
-@@ -3682,6 +3686,68 @@ static struct itree_leaf_entry
- 		itree_leaf_entry_get_len(le, blocksize));
+@@ -4441,6 +4444,558 @@ static int itree_next_frame(struct inode *dir, u32 ino,
+ 	return 0;
  }
  
-+static struct itree_leaf_entry *make_space_before(struct itree_leaf_entry *le,
-+						  int blocksize)
++static int itree_search_leaf(struct buffer_head *bh, struct inode *dir,
++			     u32 ino, u32 hash, const struct qstr *d_name,
++			     struct itree_leaf_entry **res_entry,
++			     struct itree_leaf_entry **prev_entry)
 +{
-+	int min_len = itree_leaf_entry_min_len(le);
-+	int rec_len = EXT4_DIR_REC_LEN(le->dirent.name_len);
-+	int len = itree_leaf_entry_get_len(le, blocksize);
-+	int new_rlen;
-+
-+	le->dirent.rec_len = ext4_rec_len_to_disk(rec_len, blocksize);
-+	memmove((void *)le + len - min_len, le, min_len);
-+
-+	new_rlen = len - min_len - ITREE_LE_HEAD_LEN;
-+	le->dirent.rec_len = ext4_rec_len_to_disk(new_rlen, blocksize);
-+
-+	return le;
-+}
-+
-+static struct itree_leaf_entry *make_space_after(struct itree_leaf_entry *le,
-+						 int blocksize)
-+{
-+	struct itree_leaf_entry *new;
-+	int len = itree_leaf_entry_get_len(le, blocksize);
-+	int min_len = itree_leaf_entry_min_len(le);
-+	int rec_len = EXT4_DIR_REC_LEN(le->dirent.name_len);
-+	int new_rlen;
-+
-+	new = (struct itree_leaf_entry *)((void *)le + min_len);
-+	le->dirent.rec_len = ext4_rec_len_to_disk(rec_len, blocksize);
-+
-+	new_rlen = len - min_len - ITREE_LE_HEAD_LEN;
-+	new->dirent.rec_len = ext4_rec_len_to_disk(new_rlen, blocksize);
-+	return new;
-+}
-+
-+static int itree_insert_dentry(struct itree_key *key, struct dentry *dentry,
-+			       struct inode *inode, struct itree_leaf_entry *le,
-+			       int blocksize)
-+{
-+	struct itree_leaf_entry *new;
-+	struct itree_key old_key;
-+
-+	itree_leaf_entry_get_key(le, &old_key);
-+
-+	new = le;
-+	if (le->dirent.inode) {
-+		if (itree_key_compare(key, &old_key) < 0)
-+			new = make_space_before(le, blocksize);
-+		else
-+			new = make_space_after(le, blocksize);
-+	}
-+
-+	new->dirent.file_type = EXT4_FT_UNKNOWN;
-+	new->dirent.inode = cpu_to_le32(inode->i_ino);
-+	ext4_set_de_type(inode->i_sb, &(new->dirent), inode->i_mode);
-+	new->dirent.name_len = dentry->d_name.len;
-+	memcpy(new->dirent.name, dentry->d_name.name, dentry->d_name.len);
-+
-+	new->hash = cpu_to_le32(key->hash);
-+
-+	return itree_leaf_entry_min_len(new);
-+}
-+
- struct itree_leaf_map {
- 	struct itree_leaf_head	*head;
- 
-@@ -3697,6 +3763,73 @@ struct itree_leaf_map {
- 	int used_length2;
- };
- 
-+static int put_entry_to_sorted_buf(struct itree_key *key,
-+				   struct dentry *dentry, struct inode *inode,
-+				   struct buffer_head *bh, int blocksize,
-+				   struct itree_leaf_map *leaf_map)
-+{
-+	void *at_end, *from, *to;
-+	int rlen, req_rlen, at_rec_len, free_rec_len, free_space;
-+	int at_len, free_len;
-+	struct itree_leaf_entry *at, *free;
-+	struct itree_leaf_head *head = itree_leaf_get_head(bh);
-+
-+	at = leaf_map->at;
-+	free = leaf_map->free;
-+
-+	at_rec_len = ext4_rec_len_from_disk(at->dirent.rec_len, blocksize);
-+	free_rec_len = ext4_rec_len_from_disk(free->dirent.rec_len, blocksize);
-+
-+	at_len = itree_leaf_entry_get_len(at, blocksize);
-+	free_len = itree_leaf_entry_get_len(free, blocksize);
-+
-+	at_end = (void *)at + at_len;
-+
-+	to = (void *)free + free_len;
-+	from = (void *)free;
-+	if (free->dirent.inode)
-+		from += itree_leaf_entry_min_len(free);
-+
-+	req_rlen = itree_leaf_entry_len(EXT4_DIR_REC_LEN(dentry->d_name.len));
-+	head->used_length = cpu_to_le16(le16_to_cpu(head->used_length) +
-+					req_rlen);
-+
-+	/*
-+	 * Don't copy anything if there is enough space at the
-+	 * right spot
-+	 */
-+	free_space = at_len;
-+	if (at->dirent.inode)
-+		free_space -= itree_leaf_entry_min_len(at);
-+	if (free_space >= req_rlen)
-+		return itree_insert_dentry(key, dentry, inode, at, blocksize);
-+
-+	/* In case there is an unused entry directly following 'at' */
-+	if (at_end == from)
-+		return itree_insert_dentry(key, dentry, inode, at, blocksize);
-+
-+	/* Fix free rec_len */
-+	rlen = free_rec_len;
-+	if (le32_to_cpu(free->dirent.inode))
-+		free->dirent.rec_len = ext4_rec_len_to_disk(rlen - (to - from),
-+							    blocksize);
-+
-+	/* Which part of memory we'll need to move */
-+	if (at_end > to) {
-+		memmove(from, to, at_end - to);
-+		at = (struct itree_leaf_entry *)((void *)at - (to - from));
-+	} else {
-+		memmove(at_end + (to - from), at_end, from - at_end);
-+	}
-+
-+	/* Fix at rec_len */
-+	rlen = at_rec_len;
-+	at->dirent.rec_len = ext4_rec_len_to_disk(rlen + (to - from),
-+						  blocksize);
-+
-+	return itree_insert_dentry(key, dentry, inode, at, blocksize);
-+}
-+
- static void scan_sorted_buf(struct itree_key *key, struct dentry *dentry,
- 			    struct buffer_head *bh, int blocksize,
- 			    struct itree_leaf_map *leaf_map)
-@@ -3773,6 +3906,490 @@ static void scan_sorted_buf(struct itree_key *key, struct dentry *dentry,
- 	}
- }
- 
-+/*
-+ * Used during node splits to test whether a split occured
-+ * in the middle of a key collision.
-+ */
-+static int itree_is_continuation(struct itree_entry *a, struct itree_entry *b)
-+{
-+	return (a->inode == b->inode && a->hash == b->hash) ||
-+	       b->flags & ITREE_NODE_FL_CONT;
-+}
-+
-+/*
-+ * Returns non-zero if the node can be split, zero otherwise
-+ */
-+static int itree_can_split(struct itree_frame *frame,
-+			   struct itree_frame *frames)
-+{
-+	int count, limit;
-+	struct itree_node *node;
-+
-+	while (frame >= frames) {
-+		node = (struct itree_node *)frame->bh->b_data;
-+		count = le16_to_cpu(node->count);
-+		limit = le16_to_cpu(node->limit);
-+
-+		if (count < limit)
-+			return 1;
-+		frame--;
-+	}
-+	node = (struct itree_node *)frames->bh->b_data;
-+	return node->indirect_levels < (ITREE_MAX_DEPTH - 1);
-+}
-+
-+static struct itree_entry *itree_node_make_space(struct itree_node *node,
-+						 struct itree_entry *old)
-+{
-+	struct itree_entry *new = old + 1;
-+	int len, count;
-+
-+	count = le16_to_cpu(node->count);
-+	len = (void *)(node->entries + count) - (void *)new;
-+	memmove(new + 1, new, len);
-+	node->count = cpu_to_le16(++count);
-+	return new;
-+}
-+
-+static void itree_store_entry(struct itree_entry *new, struct itree_key *key,
-+			      ext4_fsblk_t block, int continuation)
-+{
-+	new->inode = cpu_to_le32(key->inode);
-+	new->hash = cpu_to_le32(key->hash);
-+	new->block = cpu_to_le64(block);
-+
-+	new->flags = 0;
-+	if (continuation)
-+		new->flags |= ITREE_NODE_FL_CONT;
-+}
-+
-+static struct buffer_head *itree_node_split(handle_t *handle, struct inode *dir,
-+					    struct itree_frame *frame,
-+					    struct itree_entry **old,
-+					    struct itree_entry **new,
-+					    int *err)
-+{
-+	struct buffer_head *new_bh, *bh = frame->bh;
-+	struct itree_node *node = (struct itree_node *)bh->b_data, *new_node;
++	struct itree_leaf_head *lh;
++	struct itree_leaf_entry *le;
++	struct ext4_dir_entry_2 *de;
++	char *data;
++	const char *name = d_name->name;
++	int namelen = d_name->len;
 +	int blocksize = dir->i_sb->s_blocksize;
-+	int split, count, at;
-+	ext4_fsblk_t new_blk;
++	__le32 le_ino = cpu_to_le32(ino), le_hash = cpu_to_le32(hash);
 +
-+	BUFFER_TRACE(bh, "get_write_access");
-+	*err = ext4_journal_get_write_access(handle, bh);
-+	if (*err)
-+		return NULL;
++	lh = itree_leaf_get_head(bh);
++	le = itree_leaf_get_entries(bh);
++	data = (char *)le;
 +
-+	new_bh = ext4_new_itree_block(handle, dir, &new_blk, err);
-+	if (!new_bh)
-+		return NULL;
++	*res_entry = NULL;
++	*prev_entry = NULL;
 +
-+	new_node = (struct itree_node *)new_bh->b_data;
-+	new_node->indirect_levels = node->indirect_levels;
-+	new_node->limit = cpu_to_le16(get_itree_node_limit(blocksize));
-+
-+	count = le16_to_cpu(node->count);
-+
-+	/* Don't split, just append if adding to the end */
-+	if (frame->at == (node->entries + count - 1)) {
-+		new_node->count = cpu_to_le16(1);
-+		*old = node->entries + count - 1;
-+		*new = new_node->entries;
-+		return new_bh;
++	itree_leaf_for_each(le, de, lh, blocksize) {
++		if (le->hash == le_hash &&
++		    de->inode == le_ino &&
++		    ext4_match(namelen, name, de)) {
++			if (ext4_check_dir_entry(dir, NULL, de, bh, data,
++						 bh->b_size, 0/*offset*/))
++				return -1;
++			*res_entry = le;
++			return 1;
++		}
++		*prev_entry = le;
 +	}
-+
-+	/* Can't split a block with a single entry */
-+	BUG_ON(count <= 1);
-+
-+	split = count / 2;
-+	memcpy(new_node->entries, node->entries + split,
-+	       (count - split) * sizeof(struct itree_entry));
-+	node->count = le16_to_cpu(split);
-+	new_node->count = le16_to_cpu(count - split);
-+
-+	at = frame->at - frame->entries;
-+	if (at >= split) {
-+		*old = new_node->entries + at - split;
-+		*new = itree_node_make_space(new_node, *old);
-+	} else {
-+		*old = frame->at;
-+		*new = itree_node_make_space(node, *old);
-+	}
-+
-+	return new_bh;
-+}
-+
-+static int itree_add_level(handle_t *handle, struct inode *dir,
-+			   struct itree_frame *frame, struct itree_key *key,
-+			   ext4_fsblk_t block, int continuation, int len1,
-+			   int len2)
-+{
-+	struct buffer_head *bh1, *bh2;
-+	struct itree_entry *old, *new;
-+	ext4_fsblk_t new_blk1, new_blk2;
-+	struct itree_node *root, *node1, *node2;
-+	struct itree_key key1, key2;
-+	int limit, count, size, err;
-+
-+	bh1 = ext4_new_itree_block(handle, dir, &new_blk1, &err);
-+	if (!bh1)
-+		return err;
-+
-+	bh2 = itree_node_split(handle, dir, frame, &old, &new, &err);
-+	if (!bh2) {
-+		unlock_buffer(bh1);
-+		brelse(bh1);
-+		ext4_free_itree_block(handle, dir, new_blk1);
-+		return err;
-+	}
-+	new_blk2 = bh2->b_blocknr;
-+
-+	itree_store_entry(new, key, block, continuation);
-+
-+	root = (struct itree_node *)frame->bh->b_data;
-+	count = le16_to_cpu(root->count);
-+	limit = le16_to_cpu(root->limit);
-+
-+	old->fullness = itree_get_fullness(len1, limit);
-+	new->fullness = itree_get_fullness(len2, limit);
-+
-+	size = sizeof(struct itree_node) + count * sizeof(struct itree_entry);
-+	memcpy(bh1->b_data, root, size);
-+
-+	node1 = (struct itree_node *)bh1->b_data;
-+	node2 = (struct itree_node *)bh2->b_data;
-+
-+	continuation = itree_is_continuation(node1->entries + count - 1,
-+					     node2->entries);
-+
-+	itree_entry_get_key(node1->entries, &key1);
-+	itree_entry_get_key(node2->entries, &key2);
-+
-+	len1 = le16_to_cpu(node1->count);
-+	len2 = le16_to_cpu(node2->count);
-+
-+	root->indirect_levels++;
-+	root->count = cpu_to_le16(2);
-+
-+	itree_store_entry(root->entries, &key1, new_blk1, 0);
-+	root->entries->fullness = itree_get_fullness(len1, limit);
-+
-+	itree_store_entry(root->entries + 1, &key2, new_blk2, continuation);
-+	root->entries[1].fullness = itree_get_fullness(len2, limit);
-+
-+	set_buffer_uptodate(bh1);
-+	unlock_buffer(bh1);
-+	err = ext4_handle_dirty_metadata(handle, dir, bh1);
-+	if (err)
-+		return err; /* FIXME Free everything? */
-+	brelse(bh1);
-+
-+	set_buffer_uptodate(bh2);
-+	unlock_buffer(bh2);
-+	err = ext4_handle_dirty_metadata(handle, dir, bh2);
-+	if (err)
-+		return err; /* FIXME Free everything? */
-+	brelse(bh2);
-+
-+	err = ext4_handle_dirty_metadata(handle, dir, frame->bh);
-+	if (err)
-+		return err; /* FIXME Free everything? */
-+
 +	return 0;
 +}
 +
-+static int itree_node_insert_entry(handle_t *handle, struct inode *dir,
-+				   struct itree_key *key_in, ext4_fsblk_t block,
-+				   int continuation, struct itree_frame *frames,
-+				   struct itree_frame *frame,
-+				   int len1, int len2)
++static void itree_erease_leaf_entry(struct inode *dir, struct buffer_head *leaf,
++				    struct itree_leaf_entry *entry,
++				    struct itree_leaf_entry *prev)
 +{
-+	struct buffer_head *bh1, *bh2;
-+	struct itree_node *node, *node1, *node2;
-+	struct itree_entry *old, *new;
-+	struct itree_key key = *key_in;
-+	int count, limit, err, max, levels, fullness;
++	struct itree_leaf_head *head = itree_leaf_get_head(leaf);
 +	int blocksize = dir->i_sb->s_blocksize;
++	int prev_rec_len, entry_len, old_used_length, used_length;
++
++	if (prev) {
++		prev_rec_len = ext4_rec_len_from_disk(prev->dirent.rec_len,
++						      blocksize);
++		entry_len = itree_leaf_entry_get_len(entry, blocksize);
++		prev->dirent.rec_len = ext4_rec_len_to_disk(prev_rec_len +
++							    entry_len,
++							    blocksize);
++	}
++
++	used_length = itree_leaf_entry_min_len(entry);
++	old_used_length = le16_to_cpu(head->used_length);
++	head->used_length = cpu_to_le16(old_used_length - used_length);
++
++	entry->dirent.inode = 0;
++	dir->i_version++;
++}
++
++/* Returns the packed length of all the entries in the block */
++static int itree_leaf_pack_entries(struct inode *dir, struct buffer_head *leaf,
++				   int *last_offset)
++{
++	struct itree_leaf_head *lh;
++	struct itree_leaf_entry *le, *next, *last = NULL, *entries;
++	struct ext4_dir_entry_2 *de;
++	void *new_pos, *buff_end;
++	int blocksize = dir->i_sb->s_blocksize;
++	int new_reclen, old_reclen, entry_len, len = 0;
++
++	*last_offset = 0;
++
++	lh = itree_leaf_get_head(leaf);
++	entries = itree_leaf_get_entries(leaf);
++
++	buff_end = (void *)lh + blocksize;
++	new_pos = (void *)entries;
++	le = entries;
++
++	while ((void *)le < buff_end) {
++		de = &(le->dirent);
++		next = itree_next_leaf_entry(le, blocksize);
++
++		if (!de->inode) {
++			le = next;
++			continue;
++		}
++
++		old_reclen = ext4_rec_len_from_disk(de->rec_len, blocksize);
++		new_reclen = EXT4_DIR_REC_LEN(de->name_len);
++		if (new_reclen < old_reclen)
++			de->rec_len = ext4_rec_len_to_disk(new_reclen,
++							   blocksize);
++
++		entry_len = itree_leaf_entry_len(new_reclen);
++		len += entry_len;
++		if ((void *)le != new_pos)
++			memmove(new_pos, le, entry_len);
++		last = (struct itree_leaf_entry *)new_pos;
++		new_pos += entry_len;
++		le = next;
++	}
++
++	lh->used_length = cpu_to_le16(len);
++
++	if (last) {
++		new_reclen = buff_end - (void *)(&(last->dirent));
++		last->dirent.rec_len = ext4_rec_len_to_disk(new_reclen,
++							    blocksize);
++		*last_offset = (void *)last - (void *)entries;
++	}
++
++	return len;
++}
++
++/* Decide if we can coalesce and which neighbour will be used. Returns 1 if
++ * coalescing is possible and 0 otherwise. The entry parameters will be
++ * filled with pointers to entries that should be merged, while entry1 is
++ * always a pointer to the first block with smaller keys. */
++static int itree_can_coalesce(struct itree_frame *frame,
++			      struct itree_entry **entry1,
++			      struct itree_entry **entry2)
++{
++	struct itree_node *node = (struct itree_node *)frame->bh->b_data;
++	struct itree_entry *neighbour;
++	int count = le16_to_cpu(node->count);
++
++	/* Coalesce with the next entry? */
++	neighbour = frame->at + 1;
++	if ((neighbour < (frame->entries + count)) &&
++	    ((neighbour->fullness + frame->at->fullness) <= 255)) { /* FIXME */
++		*entry1 = frame->at;
++		*entry2 = neighbour;
++		return 1;
++	}
++
++	/* Coalesce with the previous entry? */
++	neighbour = frame->at - 1;
++	if ((neighbour >= frame->entries) &&
++	    ((neighbour->fullness + frame->at->fullness) <= 255)) {
++		*entry1 = neighbour;
++		*entry2 = frame->at;
++		return 1;
++	}
++
++	/* No sir. */
++	return 0;
++}
++
++/*
++ * Move entries from both leaves to the first one. The first block must
++ * contain entries with smaller keys than the second one.
++ *
++ * The function returns the number of bytes used in block1 after the merge.
++ */
++static int itree_merge_leaf_nodes(handle_t *handle, struct inode *dir,
++				  struct buffer_head *block1,
++				  struct buffer_head *block2)
++{
++	struct itree_leaf_head *head;
++	struct itree_leaf_entry *last;
++	int blocksize = dir->i_sb->s_blocksize;
++	int last_offset1, last_offset2;
++	int len1, len2, rec_len, used_length;
++	void *data1, *data2;
++	int err;
++
++	BUFFER_TRACE(block1, "get_write_access");
++	err = ext4_journal_get_write_access(handle, block1);
++	if (err)
++		return err;
++
++	len1 = itree_leaf_pack_entries(dir, block1, &last_offset1);
++	len2 = itree_leaf_pack_entries(dir, block2, &last_offset2);
++
++	data1 = (void *)itree_leaf_get_entries(block1);
++	data2 = (void *)itree_leaf_get_entries(block2);
++	memcpy(data1 + len1, data2, len2);
++
++	last = (struct itree_leaf_entry *)(data1 + last_offset1);
++	rec_len = EXT4_DIR_REC_LEN(last->dirent.name_len);
++	last->dirent.rec_len = ext4_rec_len_to_disk(rec_len, blocksize);
++
++	last = (struct itree_leaf_entry *)(data1 + len1 + last_offset2);
++	rec_len = ((void *)block1->b_data + blocksize) -
++		  (void *)(&(last->dirent));
++	last->dirent.rec_len = ext4_rec_len_to_disk(rec_len, blocksize);
++
++	head = itree_leaf_get_head(block2);
++	used_length = le16_to_cpu(head->used_length);
++
++	head = itree_leaf_get_head(block1);
++	used_length += le16_to_cpu(head->used_length);
++	head->used_length = cpu_to_le16(used_length);
++
++	/* TODO CHECKSUM */
++
++	err = ext4_handle_dirty_metadata(handle, dir, block1);
++	if (err)
++		return err;
++
++	return used_length;
++}
++
++/*
++ * This function removes frame->at + 1 entry from the index and
++ * coalesces the index if necessarry.
++ */
++static int itree_remove_from_index(handle_t *handle, struct inode *dir,
++				   struct itree_frame *frame,
++				   struct itree_frame *frames)
++{
++	struct itree_node *node, *node1, *node2;
++	struct buffer_head *node_bh, *neighbour_bh, *block1, *block2, *bh;
++	struct itree_entry *end, *entry, *entry1, *entry2;
++	ext4_fsblk_t blk;
++	int blocksize = dir->i_sb->s_blocksize;
++	int count, err = 0, count1, count2, fullness;
 +
 +	while (frame >= frames) {
-+		old = frame->at;
-+		new = old + 1;
-+		node = (struct itree_node *)frame->bh->b_data;
++		node_bh = frame->bh;
++		node = (struct itree_node *)(node_bh->b_data);
 +		count = le16_to_cpu(node->count);
-+		limit = le16_to_cpu(node->limit);
-+		levels = node->indirect_levels;
++		entry = frame->at + 1;
 +
-+		if (levels)
-+			max = le16_to_cpu(node->limit);
-+		else
-+			max = blocksize - sizeof(struct itree_leaf_head);
++		/* First we update the frame */
++		BUFFER_TRACE(node_bh, "get_write_access");
++		err = ext4_journal_get_write_access(handle, node_bh);
++		if (err)
++			return err;
 +
-+		/* No need for split */
-+		if (count < limit) {
-+			err = ext4_journal_get_write_access(handle, frame->bh);
-+			if (err)
-+				return err;
++		end = frame->entries + count;
++		memmove(entry, entry + 1, (void *)end - (void *)(entry + 1));
++		node->count = cpu_to_le16(--count);
 +
-+			new = itree_node_make_space(node, old);
-+			itree_store_entry(new, &key, block, continuation);
-+			old->fullness = itree_get_fullness(len1, max);
-+			new->fullness = itree_get_fullness(len2, max);
++		/*
++		 * Remove tree level in case the root has only a single child
++		 */
++		if (frame == frames && node->indirect_levels && count == 1) {
++			bh = sb_bread(dir->i_sb, le64_to_cpu(frame->at->block));
++			if (!bh)
++				return -EIO;
++			memcpy(node_bh->b_data, bh->b_data, blocksize);
++			ext4_free_blocks(handle, dir, bh, 0, 1,
++			EXT4_FREE_BLOCKS_METADATA | EXT4_FREE_BLOCKS_FORGET);
++		}
 +
-+			err = ext4_handle_dirty_metadata(handle, dir,
-+							 frame->bh);
-+			if (err)
-+				return err;
++		err = ext4_handle_dirty_metadata(handle, dir, node_bh);
++		if (err)
++			return err;
 +
-+			if (frame - 1 >= frames) {
-+				fullness = itree_get_node_fullness(node);
-+				err = itree_update_fullness(handle, dir,
-+							    frame-1, fullness);
-+			}
++		if (frame == frames)
++			return 0;
 +
++		/* Don't coalesce, remove right away */
++		if (!count) {
++			ext4_free_blocks(handle, dir, frame->bh, 0, 1,
++			EXT4_FREE_BLOCKS_METADATA | EXT4_FREE_BLOCKS_FORGET);
++
++			frame->bh = NULL;
++			frame->at = NULL;
++			frame->entries = NULL;
++
++			frame--;
++			frame->at--;
++			continue;
++		}
++
++		/* Can we coalesce? */
++		frame--;
++		if (!itree_can_coalesce(frame, &entry1, &entry2)) {
++			fullness = itree_get_node_fullness(node);
++			err = itree_update_fullness(handle, dir, frame,
++						    fullness);
 +			return err;
 +		}
 +
-+		if (frame > frames) {
-+			bh1 = frame->bh;
-+			bh2 = itree_node_split(handle, dir, frame, &old, &new,
-+					       &err);
-+			if (!bh2)
-+				return err;
++		/* Get the neighbour block */
++		if (frame->at == entry1) {
++			blk = le64_to_cpu(entry2->block);
++			neighbour_bh = sb_bread(dir->i_sb, blk);
++			if (!neighbour_bh)
++				return -EIO;
 +
-+			itree_store_entry(new, &key, block, continuation);
-+			old->fullness = itree_get_fullness(len1, max);
-+			new->fullness = itree_get_fullness(len2, max);
++			block1 = node_bh;
++			block2 = neighbour_bh;
 +
-+			node1 = (struct itree_node *)bh1->b_data;
-+			node2 = (struct itree_node *)bh2->b_data;
-+
-+			/* Values to add to the parent */
-+			len1 = le16_to_cpu(node1->count);
-+			len2 = le16_to_cpu(node2->count);
-+
-+			continuation = itree_is_continuation(node1->entries +
-+							     len1 - 1,
-+							     node2->entries);
-+
-+			itree_entry_get_key(node2->entries, &key);
-+			block = bh2->b_blocknr;
-+
-+			set_buffer_uptodate(bh2);
-+			unlock_buffer(bh2);
-+
-+			err = ext4_handle_dirty_metadata(handle, dir, bh1);
-+			if (err) {
-+				ext4_std_error(dir->i_sb, err);
-+				return err;
-+			}
-+
-+			err = ext4_handle_dirty_metadata(handle, dir, bh2);
-+			if (err) {
-+				ext4_std_error(dir->i_sb, err);
-+				return err;
-+			}
-+			brelse(bh2);
-+		} else if (frame == frames && levels < (ITREE_MAX_DEPTH - 1)) {
-+			return itree_add_level(handle, dir, frame, &key, block,
-+					       continuation, len1, len2);
++			entry = frame->at + 1;
 +		} else {
-+			return -ENOSPC;
++			blk = le64_to_cpu(entry1->block);
++			neighbour_bh = sb_bread(dir->i_sb, blk);
++			if (!neighbour_bh)
++				return -EIO;
++
++			block1 = neighbour_bh;
++			block2 = node_bh;
++
++			entry = frame->at--;
 +		}
++
++		BUFFER_TRACE(block1, "get_write_access");
++		err = ext4_journal_get_write_access(handle, block1);
++		if (err) {
++			brelse(block2);
++			return err;
++		}
++
++		node1 = (struct itree_node *)block1->b_data;
++		node2 = (struct itree_node *)block2->b_data;
++		count1 = le16_to_cpu(node1->count);
++		count2 = le16_to_cpu(node2->count);
++
++		memcpy(node1->entries + count1, node2->entries,
++		       count2 * sizeof(struct itree_entry));
++		count = count1 + count2;
++		node1->count = cpu_to_le16(count);
++
++		if ((frame+1)->bh == block2) {
++			(frame+1)->bh = block1;
++			(frame+1)->entries = node1->entries;
++			(frame+1)->at = node1->entries + count1 +
++					((frame+1)->at - (frame+1)->entries);
++		}
++
++		err = ext4_handle_dirty_metadata(handle, dir, block1);
++		if (err) {
++			brelse(block2);
++			return err;
++		}
++
++		fullness = itree_get_node_fullness(node1);
++		err = itree_update_fullness(handle, dir, frame, fullness);
++
++		brelse(block2);
++		ext4_free_itree_block(handle, dir, le64_to_cpu(entry->block));
++	}
++
++	return err;
++}
++
++static int is_last_leaf(struct itree_frame *frame, struct itree_frame *frames)
++{
++	struct itree_node *node;
++	int count = 0;
++
++	while (frame >= frames) {
++		node = (struct itree_node *)(frame->bh->b_data);
++		count = le16_to_cpu(node->count);
++		if (count > 1)
++			return 0;
 +
 +		frame--;
 +	}
-+	return 0;
++
++	return 1;
 +}
 +
-+static struct buffer_head *
-+itree_find_leaf_entry(struct inode *dir, struct itree_key *key,
-+		      struct dentry *dentry, struct itree_frame *frames,
-+		      struct itree_frame *frame,
-+		      struct itree_leaf_map *lm, int *err)
++static int itree_do_delete_entry(handle_t *handle, struct inode *dir,
++				 struct itree_leaf_entry *entry,
++				 struct itree_leaf_entry *prev_entry,
++				 struct buffer_head *leaf,
++				 struct itree_frame *frame,
++				 struct itree_frame *frames)
 +{
-+	int retval, blocksize = dir->i_sb->s_blocksize;
-+	struct buffer_head *bh;
++	struct itree_entry *entry1 = NULL, *entry2 = NULL;
++	struct itree_leaf_head *head;
++	struct buffer_head *neighbour, *block1, *block2;
++	int used_length = 0, err = 0, fullness;
++	int blocksize = dir->i_sb->s_blocksize;
 +
-+	while (1) {
-+		*err = -EIO;
-+		bh = sb_bread(dir->i_sb, le64_to_cpu(frame->at->block));
-+		if (!bh)
-+			return NULL;
-+
-+		/* TODO: Verify leaf checksum */
-+
-+		scan_sorted_buf(key, dentry, bh, blocksize, lm);
-+		if (lm->at != lm->last)
-+			break;
-+
-+		retval = itree_next_frame(dir, key->inode, frames, frame, 0);
-+		if (retval > 0)
-+			break;
-+
-+		brelse(bh);
-+		*err = retval;
-+		if (retval < 0)
-+			return NULL;
++	BUFFER_TRACE(leaf, "get_write_access");
++	err = ext4_journal_get_write_access(handle, leaf);
++	if (err) {
++		brelse(leaf);
++		return err;
 +	}
-+	*err = 0;
-+	return bh;
++
++	itree_erease_leaf_entry(dir, leaf, entry, prev_entry);
++
++	err = ext4_handle_dirty_metadata(handle, dir, leaf);
++	if (err) {
++		brelse(leaf);
++		return err;
++	}
++
++	head = (struct itree_leaf_head *)leaf->b_data;
++	fullness = itree_get_leaf_fullness(head, blocksize);
++	err = itree_update_fullness(handle, dir, frame, fullness);
++
++	/* No coalescing, remove the block right away */
++	used_length = le16_to_cpu(head->used_length);
++	if (!used_length && !is_last_leaf(frame, frames)) {
++		brelse(leaf);
++		ext4_free_blocks(handle, dir, leaf, 0, 1,
++			EXT4_FREE_BLOCKS_METADATA | EXT4_FREE_BLOCKS_FORGET);
++
++		frame->at--;
++		err = itree_remove_from_index(handle, dir, frame, frames);
++		return err;
++	}
++
++	if (!itree_can_coalesce(frame, &entry1, &entry2))
++		return 0;
++
++	/* Get the neighbour leaf block */
++	if (frame->at == entry1) {
++		neighbour = sb_bread(dir->i_sb, le64_to_cpu(entry2->block));
++		if (!neighbour) {
++			brelse(leaf);
++			return -EIO;
++		}
++
++		block1 = leaf;
++		block2 = neighbour;
++	} else {
++		neighbour = sb_bread(dir->i_sb, le64_to_cpu(entry1->block));
++		if (!neighbour) {
++			brelse(leaf);
++			return -EIO;
++		}
++
++		block1 = neighbour;
++		block2 = leaf;
++
++		frame->at--;
++	}
++
++	head = itree_leaf_get_head(block2);
++	if (head->used_length) {
++		err = itree_merge_leaf_nodes(handle, dir, block1, block2);
++		if (err < 0) {
++			brelse(block1);
++			brelse(block2);
++			return err;
++		}
++
++		head = (struct itree_leaf_head *)block1->b_data;
++		fullness = itree_get_leaf_fullness(head, blocksize);
++		err = itree_update_fullness(handle, dir, frame, fullness);
++	}
++
++	brelse(block1);
++	brelse(block2);
++	ext4_free_itree_block(handle, dir, le64_to_cpu(entry2->block));
++
++	err = itree_remove_from_index(handle, dir, frame, frames);
++
++	return err;
 +}
 +
-+static int itree_add_entry(handle_t *handle, struct inode *dir,
-+			   ext4_fsblk_t root_blk, struct dentry *entry,
-+			   struct inode *inode, u32 hash)
++static int itree_delete_entry(handle_t *handle, struct inode *dir,
++			      struct dentry *dentry)
 +{
-+	/* This will be called from ext4_dx_add_entry() */
++	/*
++	 * TODO When deleting the last entry, look at the previous
++	 * entry and if it is different, check the collission flag
++	 * of the next block and clear it.
++	 */
++
++	/* This will be called from ext4_delete_entry() */
 +	struct itree_frame frames[ITREE_MAX_DEPTH];
 +	struct itree_frame *frame;
-+	struct buffer_head *bh, *bh2 = NULL, *target_bh;
-+	ext4_fsblk_t new_block;
-+	int err, continued = 0;
-+	int new_len, len1, len2;
++	struct buffer_head *bh, *leaf;
++	ext4_fsblk_t root_blk, leaf_blk;
++	int err, retval;
++	struct itree_leaf_entry *entry, *prev_entry;
++	struct dx_hash_info hinfo;
++	struct dx_root *root;
++	struct itree_key key;
 +
-+	struct itree_leaf_entry *last, *first_new;
-+	struct itree_leaf_head *head, *head2;
-+	struct itree_key key, split_key;
-+	void *split_point, *buf_end;
-+	unsigned blocksize;
-+	int new_rlen, last_off, fullness;
-+	struct itree_leaf_map lm;
-+	__le32 rlen_disk;
++	/* TODO Split the finding code to itree_find_entry? */
 +
 +	memset(frames, 0, ITREE_MAX_DEPTH*sizeof(struct itree_frame));
 +
-+	blocksize = dir->i_sb->s_blocksize;
++	/* Get itree root block */
++	bh = ext4_bread(NULL, dir, 0, 0, &err);
++	if (!bh)
++		return err;
 +
-+	key.inode = inode->i_ino;
-+	key.hash = hash;
++	root = (struct dx_root *) bh->b_data;
++
++	err = dx_get_itree_root(dir, (struct ext4_dir_entry *)bh->b_data,
++				&root_blk);
++	brelse(bh);
++	if (err)
++		return err;
++
++	/* TODO Checksum */
++
++	hinfo.hash_version = root->info.hash_version;
++	if (hinfo.hash_version <= DX_HASH_TEA)
++		hinfo.hash_version += EXT4_SB(dir->i_sb)->s_hash_unsigned;
++	hinfo.seed = EXT4_SB(dir->i_sb)->s_hash_seed;
++	ext4fs_dirhash(dentry->d_name.name, dentry->d_name.len, &hinfo);
++
++	key.inode = dentry->d_inode->i_ino;
++	key.hash = hinfo.hash;
 +
 +	frame = itree_probe(&key, dir, root_blk, frames, &err);
 +	if (!frame)
 +		return err;
 +
-+	bh = itree_find_leaf_entry(dir, &key, entry, frames, frame, &lm, &err);
-+	if (err)
-+		goto out;
++	while (1) {
++		/* Get leaf */
++		leaf_blk = le64_to_cpu(frame->at->block);
++		err = -EIO;
++		leaf = sb_getblk(dir->i_sb, leaf_blk);
++		if (!leaf)
++			goto out; /* FIXME change GOTO's to breaks? */
 +
-+	/* TODO Add count to the map and check for that instead */
-+	if (lm.before_split && lm.split_at)
-+		continued = (lm.before_split->dirent.inode ==
-+			     lm.split_at->dirent.inode) &&
-+			    (lm.before_split->hash == lm.split_at->hash);
++		/* TODO Checksum */
 +
-+	buf_end = (void *)bh->b_data + blocksize;
-+
-+	err = ext4_journal_get_write_access(handle, bh);
-+	if (err)
-+		goto out;
-+
-+	if (lm.free) {
-+		new_rlen = put_entry_to_sorted_buf(&key, entry, inode, bh,
-+						   blocksize, &lm);
-+
-+		head = itree_leaf_get_head(bh);
-+		fullness = itree_get_leaf_fullness(head, blocksize);
-+		err = itree_update_fullness(handle, dir, frame, fullness);
-+		if (err)
++		retval = itree_search_leaf(leaf, dir, key.inode, key.hash,
++					   &(dentry->d_name), &entry,
++					   &prev_entry);
++		if (retval == 1) {
++			/*
++			 * The 'leaf' buffer head is released within this
++			 * function. It might also invalidate the frames
++			 * in case some blocks in the tree are merged.
++			 */
++			err = itree_do_delete_entry(handle, dir, entry,
++						    prev_entry, leaf,
++						    frame, frames);
 +			goto out;
-+	} else {
-+		err = -ENOSPC;
-+		if (!itree_can_split(frame, frames))
-+			goto out;
-+
-+		bh2 = ext4_new_itree_block(handle, dir, &new_block, &err);
-+		if (!bh2)
-+			goto out;
-+
-+		split_point = (void *)lm.split_at;
-+		memcpy(bh2->b_data + sizeof(struct itree_leaf_head),
-+		       split_point, buf_end - split_point);
-+
-+		/* Fix the rec_len of the last entries */
-+		new_rlen = buf_end - (void *)(&(lm.before_split->dirent));
-+		rlen_disk = ext4_rec_len_to_disk(new_rlen, blocksize);
-+		lm.before_split->dirent.rec_len = rlen_disk;
-+
-+		first_new = (struct itree_leaf_entry *)(bh2->b_data +
-+					sizeof(struct itree_leaf_head));
-+
-+		last_off = (void *)lm.last - split_point;
-+		last = (struct itree_leaf_entry *)((void *)first_new +
-+						   last_off);
-+
-+		buf_end = (void *)bh2->b_data + blocksize;
-+		new_rlen = buf_end - (void *)(&(last->dirent));
-+		last->dirent.rec_len = ext4_rec_len_to_disk(new_rlen,
-+							    blocksize);
-+
-+		/* TODO: Set checksums */
-+
-+		len1 = lm.used_length1;
-+		len2 = lm.used_length2;
-+
-+		itree_leaf_entry_get_key(lm.split_at, &split_key);
-+
-+		head = itree_leaf_get_head(bh);
-+		head2 = itree_leaf_get_head(bh2);
-+
-+		head->used_length = cpu_to_le16(len1);
-+		head2->used_length = cpu_to_le16(len2);
-+
-+		target_bh = bh;
-+		if ((void *)lm.at >= split_point)
-+			target_bh = bh2;
-+
-+		scan_sorted_buf(&key, entry, target_bh, blocksize, &lm);
-+		new_len = put_entry_to_sorted_buf(&key, entry, inode, target_bh,
-+						  blocksize, &lm);
-+
-+		if (target_bh == bh)
-+			len1 += new_len;
-+		else
-+			len2 += new_len;
-+
-+		/* Add the keys to the itree_frame */
-+		err = itree_node_insert_entry(handle, dir, &split_key,
-+					      new_block, continued, frames,
-+					      frame, len1, len2);
-+		if (err) {
-+			brelse(bh);
-+			unlock_buffer(bh2);
-+			brelse(bh2);
-+			ext4_free_itree_block(handle, dir, new_block);
++		} else if (retval == -1) {
++			err = -EIO;
++			brelse(leaf);
++			/* TODO: print error bad itree */
 +			goto out;
 +		}
 +
-+		set_buffer_uptodate(bh2);
-+		unlock_buffer(bh2);
++		/* Not found in the block. Could be collision. */
++		brelse(leaf);
++		retval = itree_next_frame(dir, key.inode, frames, frame, 0);
++		if (retval < 0) {
++			err = retval;
++			goto out;
++		}
++
++		err = -ENOENT;
++		if (retval > 0)
++			goto out;
 +	}
 +
-+	/* See add_dirent_to_buf() */
-+	dir->i_mtime = dir->i_ctime = ext4_current_time(dir);
-+	ext4_update_dx_flag(dir);
-+	dir->i_version++;
-+	ext4_mark_inode_dirty(handle, dir);
-+
-+	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
-+	err = ext4_handle_dirty_metadata(handle, dir, bh);
-+	if (err)
-+		ext4_std_error(dir->i_sb, err);
-+	brelse(bh);
-+
-+	if (bh2) {
-+		err = ext4_handle_dirty_metadata(handle, dir, bh2);
-+		if (err)
-+			ext4_std_error(dir->i_sb, err);
-+		brelse(bh2);
-+	}
-+
-+	err = 0;
 +out:
 +	itree_release_frames(frames);
-+
 +	return err;
 +}
 +
- static int itree_next_frame(struct inode *dir, u32 ino,
- 			    struct itree_frame *frames,
- 			    struct itree_frame *frame_in,
+ /*
+  * Arrange the dirents to the two new itree blocks in the order
+  * specified by the map. Returns 1 in case the split occured within
 -- 
 1.7.11.7
 
