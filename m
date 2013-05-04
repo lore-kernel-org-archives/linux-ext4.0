@@ -1,179 +1,297 @@
 From: Radek Pazdera <rpazdera@redhat.com>
-Subject: [RFC 2/9] ext4: Allow sorting dx_map by inode as well
-Date: Sat,  4 May 2013 23:28:35 +0200
-Message-ID: <1367702922-3236-3-git-send-email-rpazdera@redhat.com>
+Subject: [RFC 3/9] ext4: Adding a link to itree to the dx_root struct
+Date: Sat,  4 May 2013 23:28:36 +0200
+Message-ID: <1367702922-3236-4-git-send-email-rpazdera@redhat.com>
 References: <1367702922-3236-1-git-send-email-rpazdera@redhat.com>
 Cc: lczerner@redhat.com, kasparek@fit.vutbr.cz,
 	Radek Pazdera <rpazdera@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:4631 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:38463 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759251Ab3EDVeX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 4 May 2013 17:34:23 -0400
+	id S1759290Ab3EDVeZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 4 May 2013 17:34:25 -0400
 In-Reply-To: <1367702922-3236-1-git-send-email-rpazdera@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This commit extends the code used by the dir index to sort its leaf
-blocks by hash before splits.
+The dx_tail struct that can be stored at the end of each root block was
+extended with an additional link to the itree root block.
 
-The implementation of itree needs to do a similar sort when the tree
-is initialized. The order however is different.
-
-These changes allow sorting by inode using the same code.
+This commit renames the dx_tail to dx_csum_entry and adds dx_itree_entry
+that holds the 64bit block pointer to itree root.
 
 Signed-off-by: Radek Pazdera <rpazdera@redhat.com>
 ---
- fs/ext4/namei.c | 77 ++++++++++++++++++++++++++++++++++++++++-----------------
- 1 file changed, 54 insertions(+), 23 deletions(-)
+ fs/ext4/namei.c | 186 +++++++++++++++++++++++++++++++++++++++++++-------------
+ 1 file changed, 145 insertions(+), 41 deletions(-)
 
 diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 3825d6a..4a22393 100644
+index 4a22393..a3697a7 100644
 --- a/fs/ext4/namei.c
 +++ b/fs/ext4/namei.c
-@@ -226,6 +226,7 @@ struct dx_frame
+@@ -235,9 +235,30 @@ struct dx_map_entry
+ /*
+  * This goes at the end of each htree block.
+  */
++struct dx_csum_entry {
++	u32 de_reserved;
++	__le32 de_checksum;	/* crc32c(uuid+inum+dirblock) */
++};
++
++/*
++ * This goes at the end of a htree root block, if there is an itree
++ * available for that directory.
++ */
++struct dx_itree_entry {
++	__le64 de_itree_root;
++};
++
++/*
++ * This is a memory-only structure for easier handling the tail of
++ * dx_node. One or even both members can be set to NULL, which means
++ * that the node doesn't have the particular entry.
++ */
+ struct dx_tail {
+-	u32 dt_reserved;
+-	__le32 dt_checksum;	/* crc32c(uuid+inum+dirblock) */
++	void *start;
++	int len;
++
++	struct dx_csum_entry *csum;
++	struct dx_itree_entry *itree;
+ };
  
- struct dx_map_entry
- {
-+	u32 inode;
- 	u32 hash;
- 	u16 offs;
- 	u16 size;
-@@ -257,7 +258,12 @@ static struct dx_frame *dx_probe(const struct qstr *d_name,
- static void dx_release(struct dx_frame *frames);
- static int dx_make_map(struct ext4_dir_entry_2 *de, unsigned blocksize,
- 		       struct dx_hash_info *hinfo, struct dx_map_entry map[]);
--static void dx_sort_map(struct dx_map_entry *map, unsigned count);
-+static void dx_sort_map(int (*cmp)(struct dx_map_entry*, struct dx_map_entry*),
-+			struct dx_map_entry *map, unsigned count);
-+static inline int hash_order(struct dx_map_entry *e1, struct dx_map_entry *e2);
-+static inline int inode_order(struct dx_map_entry *e1, struct dx_map_entry *e2);
-+static unsigned dx_map_split_point(struct dx_map_entry *map,
-+				   unsigned count, unsigned long blocksize);
- static struct ext4_dir_entry_2 *dx_move_dirents(char *from, char *to,
- 		struct dx_map_entry *offsets, int count, unsigned blocksize);
- static struct ext4_dir_entry_2* dx_pack_dirents(char *base, unsigned blocksize);
-@@ -1060,8 +1066,9 @@ static int dx_make_map(struct ext4_dir_entry_2 *de, unsigned blocksize,
- 
- 	while ((char *) de < base + blocksize) {
- 		if (de->name_len && de->inode) {
--			ext4fs_dirhash(de->name, de->name_len, &h);
- 			map_tail--;
-+			map_tail->inode = le32_to_cpu(de->inode);
-+			ext4fs_dirhash(de->name, de->name_len, &h);
- 			map_tail->hash = h.hash;
- 			map_tail->offs = ((char *) de - base)>>2;
- 			map_tail->size = le16_to_cpu(de->rec_len);
-@@ -1074,8 +1081,21 @@ static int dx_make_map(struct ext4_dir_entry_2 *de, unsigned blocksize,
- 	return count;
+ static inline ext4_lblk_t dx_get_block(struct dx_entry *entry);
+@@ -250,6 +271,10 @@ static void dx_set_count(struct dx_entry *entries, unsigned value);
+ static void dx_set_limit(struct dx_entry *entries, unsigned value);
+ static unsigned dx_root_limit(struct inode *dir, unsigned infosize);
+ static unsigned dx_node_limit(struct inode *dir);
++static int dx_get_itree_root(struct inode *inode, struct ext4_dir_entry *dirent,
++			     ext4_fsblk_t *itree_root);
++static int dx_set_itree_root(struct inode *inode, struct ext4_dir_entry *dirent,
++			     ext4_fsblk_t itree_root);
+ static struct dx_frame *dx_probe(const struct qstr *d_name,
+ 				 struct inode *dir,
+ 				 struct dx_hash_info *hinfo,
+@@ -417,80 +442,119 @@ static struct dx_countlimit *get_dx_countlimit(struct inode *inode,
+ 	return (struct dx_countlimit *)(((void *)dirent) + count_offset);
  }
  
--/* Sort map by hash value */
--static void dx_sort_map (struct dx_map_entry *map, unsigned count)
-+static inline int hash_order(struct dx_map_entry *e1, struct dx_map_entry *e2)
+-static __le32 ext4_dx_csum(struct inode *inode, struct ext4_dir_entry *dirent,
+-			   int count_offset, int count, struct dx_tail *t)
++static int dx_get_tail(struct inode *inode, struct ext4_dir_entry *dirent,
++		       struct dx_tail *tail)
 +{
-+	return e1->hash < e2->hash;
-+}
++	struct dx_countlimit *c;
++	int tail_space, limit, count_offset;
++	void *tail_ptr;
 +
-+static inline int inode_order(struct dx_map_entry *e1, struct dx_map_entry *e2)
-+{
-+	if (e1->inode == e2->inode)
-+		return e1->hash < e2->hash;
-+	return e1->inode < e2->inode;
-+}
++	c = get_dx_countlimit(inode, dirent, &count_offset);
++	if (!c) {
++		EXT4_ERROR_INODE(inode, "dir seems corrupt?  Run e2fsck -D.");
++		return -EIO;
++	}
++	limit = le16_to_cpu(c->limit);
 +
-+/* Sort map. The order is determined by the comparison function (first arg) */
-+static void dx_sort_map(int (*cmp)(struct dx_map_entry*, struct dx_map_entry*),
-+			struct dx_map_entry *map, unsigned count)
- {
- 	struct dx_map_entry *p, *q, *top = map + count - 1;
- 	int more;
-@@ -1085,7 +1105,7 @@ static void dx_sort_map (struct dx_map_entry *map, unsigned count)
- 		if (count - 9 < 2) /* 9, 10 -> 11 */
- 			count = 11;
- 		for (p = top, q = p - count; q >= map; p--, q--)
--			if (p->hash < q->hash)
-+			if (cmp(p, q))
- 				swap(*p, *q);
- 	}
- 	/* Garden variety bubble sort */
-@@ -1093,14 +1113,34 @@ static void dx_sort_map (struct dx_map_entry *map, unsigned count)
- 		more = 0;
- 		q = top;
- 		while (q-- > map) {
--			if (q[1].hash >= q[0].hash)
--				continue;
--			swap(*(q+1), *q);
--			more = 1;
-+			if (cmp(q + 1, q)) {
-+				swap(*(q + 1), *q);
-+				more = 1;
-+			}
- 		}
- 	} while(more);
- }
- 
-+/* Split the existing block in the middle, size-wise */
-+static unsigned dx_map_split_point(struct dx_map_entry *map,
-+				   unsigned count, unsigned long blocksize)
-+{
-+	unsigned size, move;
-+	int i;
++	memset(tail, 0, sizeof(struct dx_tail));
++	tail_ptr = tail->start = (void *)(((struct dx_entry *)c) + limit);
++	tail_space = EXT4_BLOCK_SIZE(inode->i_sb) -
++		     (count_offset + (limit * sizeof(struct dx_entry)));
 +
-+	size = 0;
-+	move = 0;
-+	for (i = count - 1; i >= 0; i--) {
-+		/* is more than half of this entry in 2nd half of the block? */
-+		if (size + map[i].size/2 > blocksize/2)
-+			break;
-+		size += map[i].size;
-+		move++;
++	if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
++				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) &&
++	    tail_space >= sizeof(struct dx_csum_entry)) {
++		tail->len += sizeof(struct dx_csum_entry);
++		tail->csum = (struct dx_csum_entry *)tail_ptr;
++		tail_ptr += sizeof(struct dx_csum_entry);
++		tail_space -= sizeof(struct dx_csum_entry);
 +	}
 +
-+	return count - move;
++	if (dx_itree(inode) && tail_space >= sizeof(struct dx_itree_entry)) {
++		tail->len += sizeof(struct dx_itree_entry);
++		tail->itree = (struct dx_itree_entry *)tail_ptr;
++	}
++
++	return 0;
 +}
 +
- static void dx_insert_block(struct dx_frame *frame, u32 hash, ext4_lblk_t block)
++static int ext4_dx_csum(struct inode *inode, struct ext4_dir_entry *dirent,
++			struct dx_tail *tail, __le32 *csum)
  {
- 	struct dx_entry *entries = frame->entries;
-@@ -1538,11 +1578,11 @@ static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
- 	u32 hash2;
- 	struct dx_map_entry *map;
- 	char *data1 = (*bh)->b_data, *data2;
--	unsigned split, move, size;
-+	unsigned split;
- 	struct ext4_dir_entry_2 *de = NULL, *de2;
- 	struct ext4_dir_entry_tail *t;
- 	int	csum_size = 0;
--	int	err = 0, i;
-+	int	err = 0;
+ 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+-	__u32 csum, old_csum;
+-	int size;
++	__u32 new_csum, old_csum;
++	struct dx_countlimit *c;
++	int size, count, count_offset;
++
++	c = get_dx_countlimit(inode, dirent, &count_offset);
++	if (!c)
++		return -EIO;
++	count = le16_to_cpu(c->count);
+ 
+ 	size = count_offset + (count * sizeof(struct dx_entry));
+-	old_csum = t->dt_checksum;
+-	t->dt_checksum = 0;
+-	csum = ext4_chksum(sbi, ei->i_csum_seed, (__u8 *)dirent, size);
+-	csum = ext4_chksum(sbi, csum, (__u8 *)t, sizeof(struct dx_tail));
+-	t->dt_checksum = old_csum;
++	old_csum = tail->csum->de_checksum;
++	tail->csum->de_checksum = 0;
++	new_csum = ext4_chksum(sbi, ei->i_csum_seed, (__u8 *)dirent, size);
++	new_csum = ext4_chksum(sbi, new_csum, (__u8 *)tail->start, tail->len);
++	tail->csum->de_checksum = old_csum;
+ 
+-	return cpu_to_le32(csum);
++	*csum = cpu_to_le32(new_csum);
++	return 0;
+ }
+ 
+ static int ext4_dx_csum_verify(struct inode *inode,
+ 			       struct ext4_dir_entry *dirent)
+ {
+-	struct dx_countlimit *c;
+-	struct dx_tail *t;
+-	int count_offset, limit, count;
++	struct dx_tail tail;
++	int err;
++	__le32 csum;
+ 
+ 	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+ 					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
+ 		return 1;
+ 
+-	c = get_dx_countlimit(inode, dirent, &count_offset);
+-	if (!c) {
+-		EXT4_ERROR_INODE(inode, "dir seems corrupt?  Run e2fsck -D.");
++	err = dx_get_tail(inode, dirent, &tail);
++	if (err)
++		return err;
++
++	if (!tail.csum) {
++		warn_no_space_for_csum(inode);
+ 		return 1;
+ 	}
+-	limit = le16_to_cpu(c->limit);
+-	count = le16_to_cpu(c->count);
+-	if (count_offset + (limit * sizeof(struct dx_entry)) >
+-	    EXT4_BLOCK_SIZE(inode->i_sb) - sizeof(struct dx_tail)) {
+-		warn_no_space_for_csum(inode);
++
++	err = ext4_dx_csum(inode, dirent, &tail, &csum);
++	if (err) {
++		EXT4_ERROR_INODE(inode, "dir seems corrupt?  Run e2fsck -D.");
+ 		return 1;
+ 	}
+-	t = (struct dx_tail *)(((struct dx_entry *)c) + limit);
+ 
+-	if (t->dt_checksum != ext4_dx_csum(inode, dirent, count_offset,
+-					    count, t))
++	if (tail.csum->de_checksum != csum)
+ 		return 0;
+ 	return 1;
+ }
+ 
+ static void ext4_dx_csum_set(struct inode *inode, struct ext4_dir_entry *dirent)
+ {
+-	struct dx_countlimit *c;
+-	struct dx_tail *t;
+-	int count_offset, limit, count;
++	struct dx_tail tail;
++	int err;
+ 
+ 	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+ 					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
+ 		return;
+ 
+-	c = get_dx_countlimit(inode, dirent, &count_offset);
+-	if (!c) {
+-		EXT4_ERROR_INODE(inode, "dir seems corrupt?  Run e2fsck -D.");
++	err = dx_get_tail(inode, dirent, &tail);
++	if (err)
+ 		return;
+-	}
+-	limit = le16_to_cpu(c->limit);
+-	count = le16_to_cpu(c->count);
+-	if (count_offset + (limit * sizeof(struct dx_entry)) >
+-	    EXT4_BLOCK_SIZE(inode->i_sb) - sizeof(struct dx_tail)) {
++
++	if (!tail.csum) {
+ 		warn_no_space_for_csum(inode);
+ 		return;
+ 	}
+-	t = (struct dx_tail *)(((struct dx_entry *)c) + limit);
+ 
+-	t->dt_checksum = ext4_dx_csum(inode, dirent, count_offset, count, t);
++	err = ext4_dx_csum(inode, dirent, &tail, &(tail.csum->de_checksum));
++	if (err)
++		EXT4_ERROR_INODE(inode, "dir seems corrupt?  Run e2fsck -D.");
+ }
+ 
+ static inline int ext4_handle_dirty_dx_node(handle_t *handle,
+@@ -563,7 +627,9 @@ static inline unsigned dx_root_limit(struct inode *dir, unsigned infosize)
  
  	if (EXT4_HAS_RO_COMPAT_FEATURE(dir->i_sb,
  				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-@@ -1573,19 +1613,10 @@ static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
- 	count = dx_make_map((struct ext4_dir_entry_2 *) data1,
- 			     blocksize, hinfo, map);
- 	map -= count;
--	dx_sort_map(map, count);
--	/* Split the existing block in the middle, size-wise */
--	size = 0;
--	move = 0;
--	for (i = count-1; i >= 0; i--) {
--		/* is more than half of this entry in 2nd half of the block? */
--		if (size + map[i].size/2 > blocksize/2)
--			break;
--		size += map[i].size;
--		move++;
--	}
-+	dx_sort_map(hash_order, map, count);
+-		entry_space -= sizeof(struct dx_tail);
++		entry_space -= sizeof(struct dx_csum_entry);
++	if (dx_itree(dir))
++		entry_space -= sizeof(struct dx_itree_entry);
+ 	return entry_space / sizeof(struct dx_entry);
+ }
+ 
+@@ -573,10 +639,48 @@ static inline unsigned dx_node_limit(struct inode *dir)
+ 
+ 	if (EXT4_HAS_RO_COMPAT_FEATURE(dir->i_sb,
+ 				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
+-		entry_space -= sizeof(struct dx_tail);
++		entry_space -= sizeof(struct dx_csum_entry);
+ 	return entry_space / sizeof(struct dx_entry);
+ }
+ 
++static int dx_get_itree_root(struct inode *inode, struct ext4_dir_entry *dirent,
++			     ext4_fsblk_t *itree_root)
++{
++	int err;
++	struct dx_tail tail;
 +
- 	/* map index at which we will split */
--	split = count - move;
-+	split = dx_map_split_point(map, count, blocksize);
- 	hash2 = map[split].hash;
- 	continued = hash2 == map[split - 1].hash;
- 	dxtrace(printk(KERN_INFO "Split block %lu at %x, %i/%i\n",
++	err = dx_get_tail(inode, dirent, &tail);
++	if (err)
++		return err;
++
++	if (!tail.itree) {
++		EXT4_ERROR_INODE(inode, "dir seems corrupt?  Run e2fsck -D.");
++		return -EIO;
++	}
++
++	*itree_root = le64_to_cpu(tail.itree->de_itree_root);
++	return 0;
++}
++
++static int dx_set_itree_root(struct inode *inode, struct ext4_dir_entry *dirent,
++			     ext4_fsblk_t itree_root)
++{
++	int err;
++	struct dx_tail tail;
++
++	err = dx_get_tail(inode, dirent, &tail);
++	if (err)
++		return err;
++
++	if (!tail.itree) {
++		EXT4_ERROR_INODE(inode, "dir seems corrupt?  Run e2fsck -D.");
++		return -EIO;
++	}
++
++	tail.itree->de_itree_root = cpu_to_le64(itree_root);
++	return 0;
++}
++
+ /*
+  * Debug
+  */
 -- 
 1.7.11.7
 
