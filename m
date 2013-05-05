@@ -1,84 +1,213 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: Two questions regarding ext4_fallocate()
-Date: Sun, 05 May 2013 11:18:35 +0400
-Message-ID: <878v3tj3n8.fsf@openvz.org>
-References: <5185222A.20801@163.com> <20130504173326.GA5948@thunk.org>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH 09/29] jbd2: Cleanup needed free block estimates when
+ starting a transaction
+Date: Sun, 5 May 2013 16:17:32 +0800
+Message-ID: <20130505081732.GA23313@gmail.com>
+References: <1365456754-29373-1-git-send-email-jack@suse.cz>
+ <1365456754-29373-10-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Zheng Liu <gnehzuil.liu@gmail.com>
-To: Theodore Ts'o <tytso@mit.edu>, Ji Wu <wu_ji2012@163.com>
+Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-la0-f43.google.com ([209.85.215.43]:42468 "EHLO
-	mail-la0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751386Ab3EEHSi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 5 May 2013 03:18:38 -0400
-Received: by mail-la0-f43.google.com with SMTP id ea20so2518075lab.2
-        for <linux-ext4@vger.kernel.org>; Sun, 05 May 2013 00:18:37 -0700 (PDT)
-In-Reply-To: <20130504173326.GA5948@thunk.org>
+Received: from mail-pa0-f54.google.com ([209.85.220.54]:45154 "EHLO
+	mail-pa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751417Ab3EEH7z (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 5 May 2013 03:59:55 -0400
+Received: by mail-pa0-f54.google.com with SMTP id kx1so1556801pab.41
+        for <linux-ext4@vger.kernel.org>; Sun, 05 May 2013 00:59:55 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <1365456754-29373-10-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, 4 May 2013 13:33:26 -0400, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Sat, May 04, 2013 at 10:58:50PM +0800, Ji Wu wrote:
-> > Hi,
-> >    I have two questions regarding ext4_fallocate(),
-> > 
-> >    (1) The first is the FALLOC_FL_PUNCH_HOLE support, I am wondering
-> > what is the usage for it? The only use case comes to my mind is
-> > while ext4 being used for virtual machine image file storage. When
-> > VMM is aware of the file deleting operation in guest os, it can
-> > invoke host file system's fallocate() on the virtual machine image
-> > file to punch a hole to free host storage, so that save host
-> > space. But how can VMM being aware of guest file deleting? Simulate
-> > a virtual SSD-like block device to guest os, then capture the TRIM
-> > instruction issued by guest file system? That seems too tricky.  So
-> > basically, where and how to benefit from hole punching?
+On Mon, Apr 08, 2013 at 11:32:14PM +0200, Jan Kara wrote:
+> __jbd2_log_space_left() and jbd_space_needed() were kind of odd.
+> jbd_space_needed() accounted also credits needed for currently committing
+> transaction while it didn't account for credits needed for control blocks.
+> __jbd2_log_space_left() then accounted for control blocks as a fraction of free
+> space. Since results of these two functions are always only compared against
+> each other, this works correct but is somewhat strange. Move the estimates so
+> that jbd_space_needed() returns number of blocks needed for a transaction
+> including control blocks and __jbd2_log_space_left() returns free space in the
+> journal (with the committing transaction already subtracted). Rename functions
+> to jbd2_log_space_left() and jbd2_space_needed() while we are changing them.
 > 
-> It's not too tricky; all of the hypervisors, whether it's KVM, or Xen,
-> or VMWare, are already simulating a SATA device to the guest OS.
-> Implementing support for the TRIM request is not that hard, and most
-> of the hypervisors are doing this already.  Implementing the punch
-> hole functionality was indeed primarily motivated for this use case.
+> Signed-off-by: Jan Kara <jack@suse.cz>
+
+Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
+Regards,
+                                                - Zheng
+
+> ---
+>  fs/jbd2/checkpoint.c  |    8 ++++----
+>  fs/jbd2/journal.c     |   29 -----------------------------
+>  fs/jbd2/transaction.c |    9 +++++----
+>  include/linux/jbd2.h  |   32 ++++++++++++++++++++++++++------
+>  4 files changed, 35 insertions(+), 43 deletions(-)
 > 
-> The other historical use of this was for digital video recorders, but
-> that's a much more specialized use case.
+> diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+> index 65ec076..a572383 100644
+> --- a/fs/jbd2/checkpoint.c
+> +++ b/fs/jbd2/checkpoint.c
+> @@ -120,8 +120,8 @@ void __jbd2_log_wait_for_space(journal_t *journal)
+>  	int nblocks, space_left;
+>  	/* assert_spin_locked(&journal->j_state_lock); */
+>  
+> -	nblocks = jbd_space_needed(journal);
+> -	while (__jbd2_log_space_left(journal) < nblocks) {
+> +	nblocks = jbd2_space_needed(journal);
+> +	while (jbd2_log_space_left(journal) < nblocks) {
+>  		if (journal->j_flags & JBD2_ABORT)
+>  			return;
+>  		write_unlock(&journal->j_state_lock);
+> @@ -140,8 +140,8 @@ void __jbd2_log_wait_for_space(journal_t *journal)
+>  		 */
+>  		write_lock(&journal->j_state_lock);
+>  		spin_lock(&journal->j_list_lock);
+> -		nblocks = jbd_space_needed(journal);
+> -		space_left = __jbd2_log_space_left(journal);
+> +		nblocks = jbd2_space_needed(journal);
+> +		space_left = jbd2_log_space_left(journal);
+>  		if (space_left < nblocks) {
+>  			int chkpt = journal->j_checkpoint_transactions != NULL;
+>  			tid_t tid = 0;
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index e9a9cdb..e6f14e0 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -480,35 +480,6 @@ repeat:
+>   */
+>  
+>  /*
+> - * __jbd2_log_space_left: Return the number of free blocks left in the journal.
+> - *
+> - * Called with the journal already locked.
+> - *
+> - * Called under j_state_lock
+> - */
+> -
+> -int __jbd2_log_space_left(journal_t *journal)
+> -{
+> -	int left = journal->j_free;
+> -
+> -	/* assert_spin_locked(&journal->j_state_lock); */
+> -
+> -	/*
+> -	 * Be pessimistic here about the number of those free blocks which
+> -	 * might be required for log descriptor control blocks.
+> -	 */
+> -
+> -#define MIN_LOG_RESERVED_BLOCKS 32 /* Allow for rounding errors */
+> -
+> -	left -= MIN_LOG_RESERVED_BLOCKS;
+> -
+> -	if (left <= 0)
+> -		return 0;
+> -	left -= (left >> 3);
+> -	return left;
+> -}
+> -
+> -/*
+>   * Called with j_state_lock locked for writing.
+>   * Returns true if a transaction commit was started.
+>   */
+> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+> index 74cfbd3..aee40c9 100644
+> --- a/fs/jbd2/transaction.c
+> +++ b/fs/jbd2/transaction.c
+> @@ -283,12 +283,12 @@ repeat:
+>  	 * reduce the free space arbitrarily.  Be careful to account for
+>  	 * those buffers when checkpointing.
+>  	 */
+> -	if (__jbd2_log_space_left(journal) < jbd_space_needed(journal)) {
+> +	if (jbd2_log_space_left(journal) < jbd2_space_needed(journal)) {
+>  		jbd_debug(2, "Handle %p waiting for checkpoint...\n", handle);
+>  		atomic_sub(nblocks, &transaction->t_outstanding_credits);
+>  		read_unlock(&journal->j_state_lock);
+>  		write_lock(&journal->j_state_lock);
+> -		if (__jbd2_log_space_left(journal) < jbd_space_needed(journal))
+> +		if (jbd2_log_space_left(journal) < jbd2_space_needed(journal))
+>  			__jbd2_log_wait_for_space(journal);
+>  		write_unlock(&journal->j_state_lock);
+>  		goto repeat;
+> @@ -306,7 +306,7 @@ repeat:
+>  	jbd_debug(4, "Handle %p given %d credits (total %d, free %d)\n",
+>  		  handle, nblocks,
+>  		  atomic_read(&transaction->t_outstanding_credits),
+> -		  __jbd2_log_space_left(journal));
+> +		  jbd2_log_space_left(journal));
+>  	read_unlock(&journal->j_state_lock);
+>  
+>  	lock_map_acquire(&handle->h_lockdep_map);
+> @@ -442,7 +442,8 @@ int jbd2_journal_extend(handle_t *handle, int nblocks)
+>  		goto unlock;
+>  	}
+>  
+> -	if (wanted > __jbd2_log_space_left(journal)) {
+> +	if (wanted + (wanted >> JBD2_CONTROL_BLOCKS_SHIFT) >
+> +	    jbd2_log_space_left(journal)) {
+>  		jbd_debug(3, "denied handle %p %d blocks: "
+>  			  "insufficient log space\n", handle, nblocks);
+>  		goto unlock;
+> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+> index be5115f..9197d1b 100644
+> --- a/include/linux/jbd2.h
+> +++ b/include/linux/jbd2.h
+> @@ -1219,7 +1219,6 @@ extern void	jbd2_clear_buffer_revoked_flags(journal_t *journal);
+>   * transitions on demand.
+>   */
+>  
+> -int __jbd2_log_space_left(journal_t *); /* Called with journal locked */
+>  int jbd2_log_start_commit(journal_t *journal, tid_t tid);
+>  int __jbd2_log_start_commit(journal_t *journal, tid_t tid);
+>  int jbd2_journal_start_commit(journal_t *journal, tid_t *tid);
+> @@ -1289,16 +1288,37 @@ extern int jbd2_journal_blocks_per_page(struct inode *inode);
+>  extern size_t journal_tag_bytes(journal_t *journal);
+>  
+>  /*
+> + * We reserve t_outstanding_credits >> JBD2_CONTROL_BLOCKS_SHIFT for
+> + * transaction control blocks.
+> + */
+> +#define JBD2_CONTROL_BLOCKS_SHIFT 5
+> +
+> +/*
+>   * Return the minimum number of blocks which must be free in the journal
+>   * before a new transaction may be started.  Must be called under j_state_lock.
+>   */
+> -static inline int jbd_space_needed(journal_t *journal)
+> +static inline int jbd2_space_needed(journal_t *journal)
+>  {
+>  	int nblocks = journal->j_max_transaction_buffers;
+> -	if (journal->j_committing_transaction)
+> -		nblocks += atomic_read(&journal->j_committing_transaction->
+> -				       t_outstanding_credits);
+> -	return nblocks;
+> +	return nblocks + (nblocks >> JBD2_CONTROL_BLOCKS_SHIFT);
+> +}
+> +
+> +/*
+> + * Return number of free blocks in the log. Must be called under j_state_lock.
+> + */
+> +static inline unsigned long jbd2_log_space_left(journal_t *journal)
+> +{
+> +	/* Allow for rounding errors */
+> +	unsigned long free = journal->j_free - 32;
+> +
+> +	if (journal->j_committing_transaction) {
+> +		unsigned long committing = atomic_read(&journal->
+> +			j_committing_transaction->t_outstanding_credits);
+> +
+> +		/* Transaction + control blocks */
+> +		free -= committing + (committing >> JBD2_CONTROL_BLOCKS_SHIFT);
+> +	}
+> +	return free;
+>  }
+>  
+>  /*
+> -- 
+> 1.7.1
 > 
-> >    (2) At the beginning of the function ext4_ext_punch_hole(), the
-> > codes are as follows,
-> > 
-> >         /* write out all dirty pages to avoid race condition */
-> >         filemap_write_and_wait_range(mapping, offset, offset+length-1);
-> >         mutex_lock(&inode->i_mutex);
-> >         truncate_page_cache_range();
-> > 
-> >     Why does it need synchronously write back the dirty pages fit
-> > into the hole, the data on the disk responding to those pages are to
-> > be deleted, why not directly release those pages, no matter they are
-> > dirty or not.  And furthermore, this is done before the inode lock is
-> > held, so it seems it may happen that after the pages are written
-> > back, and before the lock is held, those pages are dirtied again.
-> > So basically, why does it need call filemap_write_and_wait_range()
-> > before releasing those pages?
-> 
-> That's a good a question.  Looking at it, I'm not sure we do.  I
-> suspect this was put in originally to avoid races with setting the
-> EOFBLOCKS_FL flag, but as you point out, there's no way we can prevent
-> writes to sneak in before we grab the i_mutex.  As a result, we ended
-> up dropping the need for EOFBLOCKS_FL entirely.
-> 
-> Maybe one of the ext4 developers will see something that I'm missing,
-> but I think we can drop this, which indeed will have a significant
-> performance improvement for systems that use the punch hole
-> functionality.
-Yes, there is a space for optimization here, but ordered case is special
-and we have to call analog of ext4_begin_ordered_truncate() with two
-arguments.
-> 
-> Cheers,
-> 
-> 						- Ted
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
