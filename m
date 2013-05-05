@@ -1,8 +1,8 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
 Subject: Re: [PATCH 13/29] ext4: Provide wrappers for transaction reservation
  calls
-Date: Sun, 5 May 2013 19:51:34 +0800
-Message-ID: <20130505115133.GA28373@gmail.com>
+Date: Sun, 5 May 2013 19:58:55 +0800
+Message-ID: <20130505115855.GB28373@gmail.com>
 References: <1365456754-29373-1-git-send-email-jack@suse.cz>
  <1365456754-29373-14-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
@@ -10,12 +10,12 @@ Content-Type: text/plain; charset=us-ascii
 Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f44.google.com ([209.85.160.44]:65382 "EHLO
-	mail-pb0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751106Ab3EELeB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 5 May 2013 07:34:01 -0400
-Received: by mail-pb0-f44.google.com with SMTP id wz17so1572515pbc.3
-        for <linux-ext4@vger.kernel.org>; Sun, 05 May 2013 04:34:01 -0700 (PDT)
+Received: from mail-pb0-f54.google.com ([209.85.160.54]:61594 "EHLO
+	mail-pb0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751176Ab3EELlV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 5 May 2013 07:41:21 -0400
+Received: by mail-pb0-f54.google.com with SMTP id rr4so1565712pbb.13
+        for <linux-ext4@vger.kernel.org>; Sun, 05 May 2013 04:41:21 -0700 (PDT)
 Content-Disposition: inline
 In-Reply-To: <1365456754-29373-14-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
@@ -24,7 +24,8 @@ List-ID: <linux-ext4.vger.kernel.org>
 On Mon, Apr 08, 2013 at 11:32:18PM +0200, Jan Kara wrote:
 > Signed-off-by: Jan Kara <jack@suse.cz>
 
-Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
+Oops, forgot to say, this patch needs to be rebased
+
 Regards,
                                                 - Zheng
 
