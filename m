@@ -1,148 +1,62 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 15/29] ext4: Deprecate max_writeback_mb_bump sysfs
- attribute
-Date: Sun, 5 May 2013 20:47:19 +0800
-Message-ID: <20130505124719.GA13178@gmail.com>
-References: <1365456754-29373-1-git-send-email-jack@suse.cz>
- <1365456754-29373-16-git-send-email-jack@suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+From: Alexey Khoroshilov <khoroshilov@ispras.ru>
+Subject: [PATCH] ext4: implement error handling of ext4_mb_new_preallocation()
+Date: Mon,  6 May 2013 00:51:15 +0400
+Message-ID: <1367787075-11626-1-git-send-email-khoroshilov@ispras.ru>
+Cc: Alexey Khoroshilov <khoroshilov@ispras.ru>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	spruce-project@linuxtesting.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f43.google.com ([209.85.160.43]:58734 "EHLO
-	mail-pb0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751634Ab3EEM3n (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 5 May 2013 08:29:43 -0400
-Received: by mail-pb0-f43.google.com with SMTP id md12so1585032pbc.16
-        for <linux-ext4@vger.kernel.org>; Sun, 05 May 2013 05:29:42 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <1365456754-29373-16-git-send-email-jack@suse.cz>
+Received: from mail.ispras.ru ([83.149.199.45]:55784 "EHLO mail.ispras.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752065Ab3EEUvz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 5 May 2013 16:51:55 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 08, 2013 at 11:32:20PM +0200, Jan Kara wrote:
-> This attribute is now unused so deprecate it. We still show the old
-> default value to keep some compatibility but we don't allow writing to
-> that attribute anymore.
+If memory allocation in ext4_mb_new_group_pa() is failed,
+it returns error code, ext4_mb_new_preallocation() propages it,
+but ext4_mb_new_blocks() ignores it.
 
-I think we can remove it completely.  IMHO, if an application tries to
-set this value, it will get an error because now it can't set it.
+An observed result was:
+- allocation fail means ext4_mb_new_group_pa() does not update ext4_allocation_context;
+- ext4_mb_new_blocks() sets ext4_allocation_request->len (ar->len = ac->ac_b_ex.fe_len;)
+  to number of blocks preallocated (512) instead of number of blocks requested (1);
+- that activates update cycle in ext4_splice_branch():
+    for (i = 1; i < blks; i++) <-- blks is 512 instead of 1 here
+      *(where->p + i) = cpu_to_le32(current_block++);
+- it iterates 511 times and corrupts a chunk of memory including inode structure;
+- page fault happens at EXT4_SB(inode->i_sb) in ext4_mark_inode_dirty();
+- system hangs with 'scheduling while atomic' BUG.
 
-Regards,
-                                                - Zheng
+The patch implements a check for ext4_mb_new_preallocation() error code
+and handles its failure as if ext4_mb_regular_allocator() fails.
 
-> 
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/ext4/ext4.h  |    1 -
->  fs/ext4/super.c |   30 ++++++++++++++++++++++++------
->  2 files changed, 24 insertions(+), 7 deletions(-)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index edf9b9e..3575fdb 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -1234,7 +1234,6 @@ struct ext4_sb_info {
->  	unsigned int s_mb_stats;
->  	unsigned int s_mb_order2_reqs;
->  	unsigned int s_mb_group_prealloc;
-> -	unsigned int s_max_writeback_mb_bump;
->  	unsigned int s_max_dir_size_kb;
->  	/* where last allocation was done - for stream allocation */
->  	unsigned long s_mb_last_group;
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 34e8552..09ff724 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -2374,7 +2374,10 @@ struct ext4_attr {
->  	ssize_t (*show)(struct ext4_attr *, struct ext4_sb_info *, char *);
->  	ssize_t (*store)(struct ext4_attr *, struct ext4_sb_info *,
->  			 const char *, size_t);
-> -	int offset;
-> +	union {
-> +		int offset;
-> +		int deprecated_val;
-> +	} u;
->  };
->  
->  static int parse_strtoul(const char *buf,
-> @@ -2443,7 +2446,7 @@ static ssize_t inode_readahead_blks_store(struct ext4_attr *a,
->  static ssize_t sbi_ui_show(struct ext4_attr *a,
->  			   struct ext4_sb_info *sbi, char *buf)
->  {
-> -	unsigned int *ui = (unsigned int *) (((char *) sbi) + a->offset);
-> +	unsigned int *ui = (unsigned int *) (((char *) sbi) + a->u.offset);
->  
->  	return snprintf(buf, PAGE_SIZE, "%u\n", *ui);
->  }
-> @@ -2452,7 +2455,7 @@ static ssize_t sbi_ui_store(struct ext4_attr *a,
->  			    struct ext4_sb_info *sbi,
->  			    const char *buf, size_t count)
->  {
-> -	unsigned int *ui = (unsigned int *) (((char *) sbi) + a->offset);
-> +	unsigned int *ui = (unsigned int *) (((char *) sbi) + a->u.offset);
->  	unsigned long t;
->  
->  	if (parse_strtoul(buf, 0xffffffff, &t))
-> @@ -2478,12 +2481,20 @@ static ssize_t trigger_test_error(struct ext4_attr *a,
->  	return count;
->  }
->  
-> +static ssize_t sbi_deprecated_show(struct ext4_attr *a,
-> +				   struct ext4_sb_info *sbi, char *buf)
-> +{
-> +	return snprintf(buf, PAGE_SIZE, "%d\n", a->u.deprecated_val);
-> +}
-> +
->  #define EXT4_ATTR_OFFSET(_name,_mode,_show,_store,_elname) \
->  static struct ext4_attr ext4_attr_##_name = {			\
->  	.attr = {.name = __stringify(_name), .mode = _mode },	\
->  	.show	= _show,					\
->  	.store	= _store,					\
-> -	.offset = offsetof(struct ext4_sb_info, _elname),	\
-> +	.u = {							\
-> +		.offset = offsetof(struct ext4_sb_info, _elname),\
-> +	},							\
->  }
->  #define EXT4_ATTR(name, mode, show, store) \
->  static struct ext4_attr ext4_attr_##name = __ATTR(name, mode, show, store)
-> @@ -2494,6 +2505,14 @@ static struct ext4_attr ext4_attr_##name = __ATTR(name, mode, show, store)
->  #define EXT4_RW_ATTR_SBI_UI(name, elname)	\
->  	EXT4_ATTR_OFFSET(name, 0644, sbi_ui_show, sbi_ui_store, elname)
->  #define ATTR_LIST(name) &ext4_attr_##name.attr
-> +#define EXT4_DEPRECATED_ATTR(_name, _val)	\
-> +static struct ext4_attr ext4_attr_##_name = {			\
-> +	.attr = {.name = __stringify(_name), .mode = 0444 },	\
-> +	.show	= sbi_deprecated_show,				\
-> +	.u = {							\
-> +		.deprecated_val = _val,				\
-> +	},							\
-> +}
->  
->  EXT4_RO_ATTR(delayed_allocation_blocks);
->  EXT4_RO_ATTR(session_write_kbytes);
-> @@ -2507,7 +2526,7 @@ EXT4_RW_ATTR_SBI_UI(mb_min_to_scan, s_mb_min_to_scan);
->  EXT4_RW_ATTR_SBI_UI(mb_order2_req, s_mb_order2_reqs);
->  EXT4_RW_ATTR_SBI_UI(mb_stream_req, s_mb_stream_request);
->  EXT4_RW_ATTR_SBI_UI(mb_group_prealloc, s_mb_group_prealloc);
-> -EXT4_RW_ATTR_SBI_UI(max_writeback_mb_bump, s_max_writeback_mb_bump);
-> +EXT4_DEPRECATED_ATTR(max_writeback_mb_bump, 128);
->  EXT4_RW_ATTR_SBI_UI(extent_max_zeroout_kb, s_extent_max_zeroout_kb);
->  EXT4_ATTR(trigger_fs_error, 0200, NULL, trigger_test_error);
->  
-> @@ -3718,7 +3737,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  	}
->  
->  	sbi->s_stripe = ext4_get_stripe_size(sbi);
-> -	sbi->s_max_writeback_mb_bump = 128;
->  	sbi->s_extent_max_zeroout_kb = 32;
->  
->  	/* Register extent status tree shrinker */
-> -- 
-> 1.7.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Found by Linux File System Verification project (linuxtesting.org).
+
+Signed-off-by: Alexey Khoroshilov <khoroshilov@ispras.ru>
+---
+ fs/ext4/mballoc.c |   15 ++++++++-------
+ 1 file changed, 8 insertions(+), 7 deletions(-)
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index b1ed9e0..95c6b0d 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4401,17 +4401,18 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ repeat:
+ 		/* allocate space in core */
+ 		*errp = ext4_mb_regular_allocator(ac);
++		if (!*errp) {
++			/* as we've just preallocated more space than
++			 * user requested orinally, we store allocated
++			 * space in a special descriptor */
++			if (ac->ac_status == AC_STATUS_FOUND &&
++					ac->ac_o_ex.fe_len < ac->ac_b_ex.fe_len)
++				*errp = ext4_mb_new_preallocation(ac);
++		}
+ 		if (*errp) {
+ 			ext4_discard_allocated_blocks(ac);
+ 			goto errout;
+ 		}
