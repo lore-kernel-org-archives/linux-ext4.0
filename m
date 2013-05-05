@@ -1,56 +1,84 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 0/3] e2fsprogs: Adding itree feature/inode flags
-Date: Sat, 4 May 2013 21:24:48 -0600
-Message-ID: <0BDEFE5C-3E54-4CEB-A94A-F35FEF593EDE@dilger.ca>
-References: <1367703310-3842-1-git-send-email-rpazdera@redhat.com>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"lczerner@redhat.com" <lczerner@redhat.com>,
-	"kasparek@fit.vutbr.cz" <kasparek@fit.vutbr.cz>,
-	Radek Pazdera <rpazdera@redhat.com>
-To: Radek Pazdera <rpazdera@redhat.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: Two questions regarding ext4_fallocate()
+Date: Sun, 05 May 2013 11:18:35 +0400
+Message-ID: <878v3tj3n8.fsf@openvz.org>
+References: <5185222A.20801@163.com> <20130504173326.GA5948@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Zheng Liu <gnehzuil.liu@gmail.com>
+To: Theodore Ts'o <tytso@mit.edu>, Ji Wu <wu_ji2012@163.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f173.google.com ([209.85.192.173]:63452 "EHLO
-	mail-pd0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751132Ab3EEDYt convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 4 May 2013 23:24:49 -0400
-Received: by mail-pd0-f173.google.com with SMTP id v10so1488152pde.18
-        for <linux-ext4@vger.kernel.org>; Sat, 04 May 2013 20:24:48 -0700 (PDT)
-In-Reply-To: <1367703310-3842-1-git-send-email-rpazdera@redhat.com>
+Received: from mail-la0-f43.google.com ([209.85.215.43]:42468 "EHLO
+	mail-la0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751386Ab3EEHSi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 5 May 2013 03:18:38 -0400
+Received: by mail-la0-f43.google.com with SMTP id ea20so2518075lab.2
+        for <linux-ext4@vger.kernel.org>; Sun, 05 May 2013 00:18:37 -0700 (PDT)
+In-Reply-To: <20130504173326.GA5948@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Could you please include some description of what "ITREE" is in the commit comments. 
-
-Cheers, Andreas
-
-On 2013-05-04, at 15:35, Radek Pazdera <rpazdera@redhat.com> wrote:
-
-> Hi,
+On Sat, 4 May 2013 13:33:26 -0400, Theodore Ts'o <tytso@mit.edu> wrote:
+> On Sat, May 04, 2013 at 10:58:50PM +0800, Ji Wu wrote:
+> > Hi,
+> >    I have two questions regarding ext4_fallocate(),
+> > 
+> >    (1) The first is the FALLOC_FL_PUNCH_HOLE support, I am wondering
+> > what is the usage for it? The only use case comes to my mind is
+> > while ext4 being used for virtual machine image file storage. When
+> > VMM is aware of the file deleting operation in guest os, it can
+> > invoke host file system's fallocate() on the virtual machine image
+> > file to punch a hole to free host storage, so that save host
+> > space. But how can VMM being aware of guest file deleting? Simulate
+> > a virtual SSD-like block device to guest os, then capture the TRIM
+> > instruction issued by guest file system? That seems too tricky.  So
+> > basically, where and how to benefit from hole punching?
 > 
-> This very short series that adds the itree flags to e2fsprogs mke2fs
-> and tune2fs in case someone would like to try the itree patches.
+> It's not too tricky; all of the hypervisors, whether it's KVM, or Xen,
+> or VMWare, are already simulating a SATA device to the guest OS.
+> Implementing support for the TRIM request is not that hard, and most
+> of the hypervisors are doing this already.  Implementing the punch
+> hole functionality was indeed primarily motivated for this use case.
 > 
-> -Radek
+> The other historical use of this was for digital video recorders, but
+> that's a much more specialized use case.
 > 
-> Radek Pazdera (3):
-> libext2fs: Adding itree feature flag
-> libext2fs: Adding inode flag for itree
-> mke2fs, tune2fs: Adding support for the itree flag
+> >    (2) At the beginning of the function ext4_ext_punch_hole(), the
+> > codes are as follows,
+> > 
+> >         /* write out all dirty pages to avoid race condition */
+> >         filemap_write_and_wait_range(mapping, offset, offset+length-1);
+> >         mutex_lock(&inode->i_mutex);
+> >         truncate_page_cache_range();
+> > 
+> >     Why does it need synchronously write back the dirty pages fit
+> > into the hole, the data on the disk responding to those pages are to
+> > be deleted, why not directly release those pages, no matter they are
+> > dirty or not.  And furthermore, this is done before the inode lock is
+> > held, so it seems it may happen that after the pages are written
+> > back, and before the lock is held, those pages are dirtied again.
+> > So basically, why does it need call filemap_write_and_wait_range()
+> > before releasing those pages?
 > 
-> lib/e2p/feature.c    | 2 ++
-> lib/e2p/pf.c         | 1 +
-> lib/ext2fs/ext2_fs.h | 2 ++
-> misc/mke2fs.c        | 3 ++-
-> misc/tune2fs.c       | 6 ++++--
-> 5 files changed, 11 insertions(+), 3 deletions(-)
+> That's a good a question.  Looking at it, I'm not sure we do.  I
+> suspect this was put in originally to avoid races with setting the
+> EOFBLOCKS_FL flag, but as you point out, there's no way we can prevent
+> writes to sneak in before we grab the i_mutex.  As a result, we ended
+> up dropping the need for EOFBLOCKS_FL entirely.
 > 
-> -- 
-> 1.7.11.7
+> Maybe one of the ext4 developers will see something that I'm missing,
+> but I think we can drop this, which indeed will have a significant
+> performance improvement for systems that use the punch hole
+> functionality.
+Yes, there is a space for optimization here, but ordered case is special
+and we have to call analog of ext4_begin_ordered_truncate() with two
+arguments.
 > 
+> Cheers,
+> 
+> 						- Ted
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
