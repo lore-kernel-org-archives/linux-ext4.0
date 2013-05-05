@@ -1,177 +1,144 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 14/29] ext4: Stop messing with nr_to_write in
- ext4_da_writepages()
-Date: Sun, 5 May 2013 20:40:45 +0800
-Message-ID: <20130505124045.GA12064@gmail.com>
+Subject: Re: [PATCH 15/29] ext4: Deprecate max_writeback_mb_bump sysfs
+ attribute
+Date: Sun, 5 May 2013 20:47:19 +0800
+Message-ID: <20130505124719.GA13178@gmail.com>
 References: <1365456754-29373-1-git-send-email-jack@suse.cz>
- <1365456754-29373-15-git-send-email-jack@suse.cz>
+ <1365456754-29373-16-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f47.google.com ([209.85.210.47]:53476 "EHLO
-	mail-da0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751634Ab3EEMXM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 5 May 2013 08:23:12 -0400
-Received: by mail-da0-f47.google.com with SMTP id k13so1425219dae.34
-        for <linux-ext4@vger.kernel.org>; Sun, 05 May 2013 05:23:12 -0700 (PDT)
+Received: from mail-pb0-f43.google.com ([209.85.160.43]:58734 "EHLO
+	mail-pb0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751634Ab3EEM3n (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 5 May 2013 08:29:43 -0400
+Received: by mail-pb0-f43.google.com with SMTP id md12so1585032pbc.16
+        for <linux-ext4@vger.kernel.org>; Sun, 05 May 2013 05:29:42 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <1365456754-29373-15-git-send-email-jack@suse.cz>
+In-Reply-To: <1365456754-29373-16-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 08, 2013 at 11:32:19PM +0200, Jan Kara wrote:
-> Writeback code got better in how it submits IO and now the number of
-> pages requested to be written is usually higher than original 1024. The
-> number is now dynamically computed based on observed throughput and is
-> set to be about 0.5 s worth of writeback. E.g. on ordinary SATA drive
-> this ends up somewhere around 10000 as my testing shows. So remove the
-> unnecessary smarts from ext4_da_writepages().
-> 
-> Signed-off-by: Jan Kara <jack@suse.cz>
+On Mon, Apr 08, 2013 at 11:32:20PM +0200, Jan Kara wrote:
+> This attribute is now unused so deprecate it. We still show the old
+> default value to keep some compatibility but we don't allow writing to
+> that attribute anymore.
 
-This patch needs to be rebase against latest dev branch of ext4 tree.
-Otherwise the patch looks good to me.
-Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
+I think we can remove it completely.  IMHO, if an application tries to
+set this value, it will get an error because now it can't set it.
 
 Regards,
                                                 - Zheng
 
-> ---
->  fs/ext4/inode.c |   96 -------------------------------------------------------
->  1 files changed, 0 insertions(+), 96 deletions(-)
 > 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index ba07412..f4dc4a1 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -423,66 +423,6 @@ static int __check_block_validity(struct inode *inode, const char *func,
->  	__check_block_validity((inode), __func__, __LINE__, (map))
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/ext4/ext4.h  |    1 -
+>  fs/ext4/super.c |   30 ++++++++++++++++++++++++------
+>  2 files changed, 24 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index edf9b9e..3575fdb 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1234,7 +1234,6 @@ struct ext4_sb_info {
+>  	unsigned int s_mb_stats;
+>  	unsigned int s_mb_order2_reqs;
+>  	unsigned int s_mb_group_prealloc;
+> -	unsigned int s_max_writeback_mb_bump;
+>  	unsigned int s_max_dir_size_kb;
+>  	/* where last allocation was done - for stream allocation */
+>  	unsigned long s_mb_last_group;
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 34e8552..09ff724 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -2374,7 +2374,10 @@ struct ext4_attr {
+>  	ssize_t (*show)(struct ext4_attr *, struct ext4_sb_info *, char *);
+>  	ssize_t (*store)(struct ext4_attr *, struct ext4_sb_info *,
+>  			 const char *, size_t);
+> -	int offset;
+> +	union {
+> +		int offset;
+> +		int deprecated_val;
+> +	} u;
+>  };
 >  
->  /*
-> - * Return the number of contiguous dirty pages in a given inode
-> - * starting at page frame idx.
-> - */
-> -static pgoff_t ext4_num_dirty_pages(struct inode *inode, pgoff_t idx,
-> -				    unsigned int max_pages)
-> -{
-> -	struct address_space *mapping = inode->i_mapping;
-> -	pgoff_t	index;
-> -	struct pagevec pvec;
-> -	pgoff_t num = 0;
-> -	int i, nr_pages, done = 0;
-> -
-> -	if (max_pages == 0)
-> -		return 0;
-> -	pagevec_init(&pvec, 0);
-> -	while (!done) {
-> -		index = idx;
-> -		nr_pages = pagevec_lookup_tag(&pvec, mapping, &index,
-> -					      PAGECACHE_TAG_DIRTY,
-> -					      (pgoff_t)PAGEVEC_SIZE);
-> -		if (nr_pages == 0)
-> -			break;
-> -		for (i = 0; i < nr_pages; i++) {
-> -			struct page *page = pvec.pages[i];
-> -			struct buffer_head *bh, *head;
-> -
-> -			lock_page(page);
-> -			if (unlikely(page->mapping != mapping) ||
-> -			    !PageDirty(page) ||
-> -			    PageWriteback(page) ||
-> -			    page->index != idx) {
-> -				done = 1;
-> -				unlock_page(page);
-> -				break;
-> -			}
-> -			if (page_has_buffers(page)) {
-> -				bh = head = page_buffers(page);
-> -				do {
-> -					if (!buffer_delay(bh) &&
-> -					    !buffer_unwritten(bh))
-> -						done = 1;
-> -					bh = bh->b_this_page;
-> -				} while (!done && (bh != head));
-> -			}
-> -			unlock_page(page);
-> -			if (done)
-> -				break;
-> -			idx++;
-> -			num++;
-> -			if (num >= max_pages) {
-> -				done = 1;
-> -				break;
-> -			}
-> -		}
-> -		pagevec_release(&pvec);
-> -	}
-> -	return num;
-> -}
-> -
-> -/*
->   * The ext4_map_blocks() function tries to look up the requested blocks,
->   * and returns if the blocks are already mapped.
->   *
-> @@ -2334,10 +2274,8 @@ static int ext4_da_writepages(struct address_space *mapping,
->  	struct mpage_da_data mpd;
->  	struct inode *inode = mapping->host;
->  	int pages_written = 0;
-> -	unsigned int max_pages;
->  	int range_cyclic, cycled = 1, io_done = 0;
->  	int needed_blocks, ret = 0;
-> -	long desired_nr_to_write, nr_to_writebump = 0;
->  	loff_t range_start = wbc->range_start;
->  	struct ext4_sb_info *sbi = EXT4_SB(mapping->host->i_sb);
->  	pgoff_t done_index = 0;
-> @@ -2384,39 +2322,6 @@ static int ext4_da_writepages(struct address_space *mapping,
->  		end = wbc->range_end >> PAGE_CACHE_SHIFT;
+>  static int parse_strtoul(const char *buf,
+> @@ -2443,7 +2446,7 @@ static ssize_t inode_readahead_blks_store(struct ext4_attr *a,
+>  static ssize_t sbi_ui_show(struct ext4_attr *a,
+>  			   struct ext4_sb_info *sbi, char *buf)
+>  {
+> -	unsigned int *ui = (unsigned int *) (((char *) sbi) + a->offset);
+> +	unsigned int *ui = (unsigned int *) (((char *) sbi) + a->u.offset);
+>  
+>  	return snprintf(buf, PAGE_SIZE, "%u\n", *ui);
+>  }
+> @@ -2452,7 +2455,7 @@ static ssize_t sbi_ui_store(struct ext4_attr *a,
+>  			    struct ext4_sb_info *sbi,
+>  			    const char *buf, size_t count)
+>  {
+> -	unsigned int *ui = (unsigned int *) (((char *) sbi) + a->offset);
+> +	unsigned int *ui = (unsigned int *) (((char *) sbi) + a->u.offset);
+>  	unsigned long t;
+>  
+>  	if (parse_strtoul(buf, 0xffffffff, &t))
+> @@ -2478,12 +2481,20 @@ static ssize_t trigger_test_error(struct ext4_attr *a,
+>  	return count;
+>  }
+>  
+> +static ssize_t sbi_deprecated_show(struct ext4_attr *a,
+> +				   struct ext4_sb_info *sbi, char *buf)
+> +{
+> +	return snprintf(buf, PAGE_SIZE, "%d\n", a->u.deprecated_val);
+> +}
+> +
+>  #define EXT4_ATTR_OFFSET(_name,_mode,_show,_store,_elname) \
+>  static struct ext4_attr ext4_attr_##_name = {			\
+>  	.attr = {.name = __stringify(_name), .mode = _mode },	\
+>  	.show	= _show,					\
+>  	.store	= _store,					\
+> -	.offset = offsetof(struct ext4_sb_info, _elname),	\
+> +	.u = {							\
+> +		.offset = offsetof(struct ext4_sb_info, _elname),\
+> +	},							\
+>  }
+>  #define EXT4_ATTR(name, mode, show, store) \
+>  static struct ext4_attr ext4_attr_##name = __ATTR(name, mode, show, store)
+> @@ -2494,6 +2505,14 @@ static struct ext4_attr ext4_attr_##name = __ATTR(name, mode, show, store)
+>  #define EXT4_RW_ATTR_SBI_UI(name, elname)	\
+>  	EXT4_ATTR_OFFSET(name, 0644, sbi_ui_show, sbi_ui_store, elname)
+>  #define ATTR_LIST(name) &ext4_attr_##name.attr
+> +#define EXT4_DEPRECATED_ATTR(_name, _val)	\
+> +static struct ext4_attr ext4_attr_##_name = {			\
+> +	.attr = {.name = __stringify(_name), .mode = 0444 },	\
+> +	.show	= sbi_deprecated_show,				\
+> +	.u = {							\
+> +		.deprecated_val = _val,				\
+> +	},							\
+> +}
+>  
+>  EXT4_RO_ATTR(delayed_allocation_blocks);
+>  EXT4_RO_ATTR(session_write_kbytes);
+> @@ -2507,7 +2526,7 @@ EXT4_RW_ATTR_SBI_UI(mb_min_to_scan, s_mb_min_to_scan);
+>  EXT4_RW_ATTR_SBI_UI(mb_order2_req, s_mb_order2_reqs);
+>  EXT4_RW_ATTR_SBI_UI(mb_stream_req, s_mb_stream_request);
+>  EXT4_RW_ATTR_SBI_UI(mb_group_prealloc, s_mb_group_prealloc);
+> -EXT4_RW_ATTR_SBI_UI(max_writeback_mb_bump, s_max_writeback_mb_bump);
+> +EXT4_DEPRECATED_ATTR(max_writeback_mb_bump, 128);
+>  EXT4_RW_ATTR_SBI_UI(extent_max_zeroout_kb, s_extent_max_zeroout_kb);
+>  EXT4_ATTR(trigger_fs_error, 0200, NULL, trigger_test_error);
+>  
+> @@ -3718,7 +3737,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
 >  	}
 >  
-> -	/*
-> -	 * This works around two forms of stupidity.  The first is in
-> -	 * the writeback code, which caps the maximum number of pages
-> -	 * written to be 1024 pages.  This is wrong on multiple
-> -	 * levels; different architectues have a different page size,
-> -	 * which changes the maximum amount of data which gets
-> -	 * written.  Secondly, 4 megabytes is way too small.  XFS
-> -	 * forces this value to be 16 megabytes by multiplying
-> -	 * nr_to_write parameter by four, and then relies on its
-> -	 * allocator to allocate larger extents to make them
-> -	 * contiguous.  Unfortunately this brings us to the second
-> -	 * stupidity, which is that ext4's mballoc code only allocates
-> -	 * at most 2048 blocks.  So we force contiguous writes up to
-> -	 * the number of dirty blocks in the inode, or
-> -	 * sbi->max_writeback_mb_bump whichever is smaller.
-> -	 */
-> -	max_pages = sbi->s_max_writeback_mb_bump << (20 - PAGE_CACHE_SHIFT);
-> -	if (!range_cyclic && range_whole) {
-> -		if (wbc->nr_to_write == LONG_MAX)
-> -			desired_nr_to_write = wbc->nr_to_write;
-> -		else
-> -			desired_nr_to_write = wbc->nr_to_write * 8;
-> -	} else
-> -		desired_nr_to_write = ext4_num_dirty_pages(inode, index,
-> -							   max_pages);
-> -	if (desired_nr_to_write > max_pages)
-> -		desired_nr_to_write = max_pages;
-> -
-> -	if (wbc->nr_to_write < desired_nr_to_write) {
-> -		nr_to_writebump = desired_nr_to_write - wbc->nr_to_write;
-> -		wbc->nr_to_write = desired_nr_to_write;
-> -	}
-> -
->  retry:
->  	if (wbc->sync_mode == WB_SYNC_ALL || wbc->tagged_writepages)
->  		tag_pages_for_writeback(mapping, index, end);
-> @@ -2509,7 +2414,6 @@ retry:
->  		mapping->writeback_index = done_index;
+>  	sbi->s_stripe = ext4_get_stripe_size(sbi);
+> -	sbi->s_max_writeback_mb_bump = 128;
+>  	sbi->s_extent_max_zeroout_kb = 32;
 >  
->  out_writepages:
-> -	wbc->nr_to_write -= nr_to_writebump;
->  	wbc->range_start = range_start;
->  	trace_ext4_da_writepages_result(inode, wbc, ret, pages_written);
->  	return ret;
+>  	/* Register extent status tree shrinker */
 > -- 
 > 1.7.1
 > 
