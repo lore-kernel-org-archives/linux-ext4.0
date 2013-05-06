@@ -1,70 +1,63 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: fsck memory usage
-Date: Sun, 5 May 2013 19:27:57 -0600
-Message-ID: <307CE092-F24C-4F8A-8AA9-B9E15C03BF3E@dilger.ca>
-References: <CAEUQceh3Wm6LZpGQnXNjh0c9WbO8S70D5-KYjY8anup80WbLHQ@mail.gmail.com> <20130417230745.GC5401@thunk.org> <CAEUQceh8oX9TsOR-rtn44QtegGSGH_+QHm9GPcoVPqHGJMhWHw@mail.gmail.com>
-Mime-Version: 1.0 (Apple Message framework v1085)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Subranshu Patel <spatel.ml@gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] ext4: recalculate s_blockfile_groups during resize2fs
+Date: Sun, 05 May 2013 21:08:14 -0500
+Message-ID: <5187108E.5000105@redhat.com>
+References: <518426F0.1000103@redhat.com> <1822783755.19193156.1367800576698.JavaMail.root@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Lachlan McIlroy <lmcilroy@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f47.google.com ([209.85.160.47]:38024 "EHLO
-	mail-pb0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751778Ab3EFB15 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 5 May 2013 21:27:57 -0400
-Received: by mail-pb0-f47.google.com with SMTP id uo1so1715992pbc.20
-        for <linux-ext4@vger.kernel.org>; Sun, 05 May 2013 18:27:56 -0700 (PDT)
-In-Reply-To: <CAEUQceh8oX9TsOR-rtn44QtegGSGH_+QHm9GPcoVPqHGJMhWHw@mail.gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:37289 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751864Ab3EFCIM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 5 May 2013 22:08:12 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r4628CED031319
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Sun, 5 May 2013 22:08:12 -0400
+In-Reply-To: <1822783755.19193156.1367800576698.JavaMail.root@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2013-04-30, at 8:42 PM, Subranshu Patel wrote:
->> What version of e2fsprogs are you using? There has been a number of
->> changes made to improve both CPU and memory utilization in more recent versions of e2fsprogs.
+On 5/5/13 7:36 PM, Lachlan McIlroy wrote:
+> ----- Original Message -----
+>> s_blockfile_groups is used to limit allocations for non-extent
+>> files to block groups with block numbers less than 2^32.
+>> However, it's not updated when the filesystem is resized online,
+>> so the new groups are unavailable to non-extent files until a remount.
+>>
+>> Fix this by updating the value in ext4_update_super() at
+>> resize time.
+>>
+>> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+>> ---
+>>
+>> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+>> index c169477..1357260 100644
+>> --- a/fs/ext4/resize.c
+>> +++ b/fs/ext4/resize.c
+>> @@ -1341,6 +1341,8 @@ static void ext4_update_super(struct super_block *sb,
+>>  
+>>  	/* Update the global fs size fields */
+>>  	sbi->s_groups_count += flex_gd->count;
+>> +	sbi->s_blockfile_groups = min_t(ext4_group_t, sbi->s_groups_count,
+>> +			(EXT4_MAX_BLOCK_FILE_PHYS / EXT4_BLOCKS_PER_GROUP(sb)));
+>>  
+>>  	/* Update the reserved block counts only once the new group is
+>>  	 * active. */
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
 > 
-> I am using version 1.41.12
+> Good catch Eric - this would have prevented the bug in
+> ext4_mb_regular_allocator() too.  Looks good to me.
 
-Could you please retest with a recent release like 1.42.7?  That
-would allow us to compare the memory usage of the newer bitmap
-code.  To make it fair, it would probably be best to run the
-1.41.12 and 1.42.7 e2fsck on the same image, so you should make
-a copy of the block device after corrupting it, but before the
-first e2fsck.
+Yep - at least until the filesystem grows > 16TB :)
 
->>> Then I performed metadata corruption - 10% of the files, 10% of the directories and some superblock attributes using debugfs.
->>> Then I executed fsck to find a memory usage of around 8GB, a
->>> much larger value.
->> 
->> It's going to depend on what sort of metadata corruption was suffered.  If you need to do pass 1b/c/d fix ups, it will need
->> more memory.
->> 
->> That's pretty much unavoidable, but it's also not the common case.
->> In most use cases, if those cases require using swap, that's
->> generally OK if it's the rare case, and not the common case.
->> That's why it's not something I've really been worried about.
-> 
-> I used the sar command for tracking memory usage. The total memory
-> usage reported by sar command is around 8GB, but it includes the
-> buffer and cache memory.
-> 
-> memused = 8GB
-> 
-> buffer = 6.7GB
-> 
-> cache = negligible (some MBs)
-> 
-> So I think the effective memory usage will be 1.3GB (8 - 6.7). So the
-> memory reported under buffer and cache is available for use (if any
-> other process requires it). Please correct my understanding.
-
-It would also be useful to compare the "sar" memory usage to the
-usage reported by e2fsck itself with "-ttt" to see if they match
-relatively well or not.
-
-Cheers, Andreas
-
-
-
-
+-Eric
 
