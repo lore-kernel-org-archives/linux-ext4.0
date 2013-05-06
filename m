@@ -1,30 +1,42 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: limit group search loop for non-extent files
-Date: Mon, 6 May 2013 09:48:22 -0400
-Message-ID: <20130506134822.GB29247@thunk.org>
-References: <5184230E.6020500@redhat.com>
- <20130506030841.GB4974@thunk.org>
- <1925767831.19220386.1367816162830.JavaMail.root@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Lachlan McIlroy <lmcilroy@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:46633 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753190Ab3EFNsZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 6 May 2013 09:48:25 -0400
-Content-Disposition: inline
-In-Reply-To: <1925767831.19220386.1367816162830.JavaMail.root@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Maarten ter Huurne <maarten@treewalker.org>
+Subject: [PATCH] ext4: Fixed corruption when online resizing a fs with 1K block size
+Date: Mon,  6 May 2013 18:06:07 +0200
+Message-ID: <1367856367-15924-1-git-send-email-maarten@treewalker.org>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Maarten ter Huurne <maarten@treewalker.org>
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, May 06, 2013 at 12:56:02AM -0400, Lachlan McIlroy wrote:
-> Ack.  Yes Ted that's fine with me to add my Signed-off-by.  Thanks.
+Subtracting the number of the first data block places the superblock
+backups one block too early, corrupting the file system. When the block
+size is larger than 1K, the first data block is 0, so the subtraction
+has no effect and no corruption occurs.
 
-Thanks!
+Signed-off-by: Maarten ter Huurne <maarten@treewalker.org>
+---
+ fs/ext4/resize.c |    4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
 
-I've also tagged this with a cc:stable@vger.kernel.org.
-
-					- Ted
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index c169477..116c80d 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -1654,12 +1654,10 @@ errout:
+ 		err = err2;
+ 
+ 	if (!err) {
+-		ext4_fsblk_t first_block;
+-		first_block = ext4_group_first_block_no(sb, 0);
+ 		if (test_opt(sb, DEBUG))
+ 			printk(KERN_DEBUG "EXT4-fs: extended group to %llu "
+ 			       "blocks\n", ext4_blocks_count(es));
+-		update_backups(sb, EXT4_SB(sb)->s_sbh->b_blocknr - first_block,
++		update_backups(sb, EXT4_SB(sb)->s_sbh->b_blocknr,
+ 			       (char *)es, sizeof(struct ext4_super_block), 0);
+ 	}
+ 	return err;
+-- 
+1.7.10.4
