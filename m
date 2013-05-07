@@ -1,62 +1,73 @@
-From: Radek Pazdera <rpazdera@redhat.com>
-Subject: Re: [PATCH 0/3] e2fsprogs: Adding itree feature/inode flags
-Date: Tue, 7 May 2013 14:47:28 +0200
-Message-ID: <20130507124728.GA15311@laptop.redhat.com>
-References: <1367703310-3842-1-git-send-email-rpazdera@redhat.com>
- <0BDEFE5C-3E54-4CEB-A94A-F35FEF593EDE@dilger.ca>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 17/29] ext4: Better estimate credits needed for
+ ext4_da_writepages()
+Date: Tue, 7 May 2013 16:17:38 +0200
+Message-ID: <20130507141738.GA3154@quack.suse.cz>
+References: <1365456754-29373-1-git-send-email-jack@suse.cz>
+ <1365456754-29373-18-git-send-email-jack@suse.cz>
+ <20130507063347.GA19271@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"lczerner@redhat.com" <lczerner@redhat.com>,
-	"kasparek@fit.vutbr.cz" <kasparek@fit.vutbr.cz>
-To: Andreas Dilger <adilger@dilger.ca>
+Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:52312 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:43080 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758067Ab3EGMre (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 7 May 2013 08:47:34 -0400
+	id S1752586Ab3EGORm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 7 May 2013 10:17:42 -0400
 Content-Disposition: inline
-In-Reply-To: <0BDEFE5C-3E54-4CEB-A94A-F35FEF593EDE@dilger.ca>
+In-Reply-To: <20130507063347.GA19271@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, May 04, 2013 at 09:24:48PM -0600, Andreas Dilger wrote:
->Could you please include some description of what "ITREE" is in the commit comments. 
+On Tue 07-05-13 14:33:47, Zheng Liu wrote:
+> On Mon, Apr 08, 2013 at 11:32:22PM +0200, Jan Kara wrote:
+> > We limit the number of blocks written in a single loop of
+> > ext4_da_writepages() to 64 when inode uses indirect blocks. That is
+> > unnecessary as credit estimates for mapping logically continguous run of
+> > blocks is rather low even for inode with indirect blocks. So just lift
+> > this limitation and properly calculate the number of necessary credits.
+> > 
+> > This better credit estimate will also later allow us to always write at
+> > least a single page in one iteration.
+> > 
+> > Signed-off-by: Jan Kara <jack@suse.cz>
+> 
+> A minor comment below.  Otherwise the patch looks good to me.
+> Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
+> 
+> > ---
+> >  fs/ext4/ext4.h    |    3 +-
+> >  fs/ext4/extents.c |   16 ++++++--------
+> >  fs/ext4/inode.c   |   58 ++++++++++++++++++++--------------------------------
+> >  3 files changed, 30 insertions(+), 47 deletions(-)
+> ...
+> >  static int ext4_da_writepages_trans_blocks(struct inode *inode)
+> >  {
+> > -	int max_blocks = EXT4_I(inode)->i_reserved_data_blocks;
+> > -
+> > -	/*
+> > -	 * With non-extent format the journal credit needed to
+> > -	 * insert nrblocks contiguous block is dependent on
+> > -	 * number of contiguous block. So we will limit
+> > -	 * number of contiguous block to a sane value
+> > -	 */
+> > -	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) &&
+> > -	    (max_blocks > EXT4_MAX_TRANS_DATA))
+> > -		max_blocks = EXT4_MAX_TRANS_DATA;
+> > +	int bpp = ext4_journal_blocks_per_page(inode);
+> >  
+> > -	return ext4_chunk_trans_blocks(inode, max_blocks);
+> > +	return ext4_meta_trans_blocks(inode,
+> > +				MAX_WRITEPAGES_EXTENT_LEN + bpp - 1, bpp);
+> 
+> FWIW, MAX_WRITEPAGES_EXTENT_LEN is defined at patch 18/29.  So after
+> applied this patch, we will get a build error.  So that would be great
+> if MAX_WRITEPAGES_EXTENT_LEN can be define in this commit.
+  Good catch. Thanks! I've fixed that up.
 
-Oh, that's right, there should be some description with these patches as
-well. I'll add it there and repost them.
-
-Thanks!
-
--Radek
-
->Cheers, Andreas
->
->On 2013-05-04, at 15:35, Radek Pazdera <rpazdera@redhat.com> wrote:
->
->> Hi,
->> 
->> This very short series that adds the itree flags to e2fsprogs mke2fs
->> and tune2fs in case someone would like to try the itree patches.
->> 
->> -Radek
->> 
->> Radek Pazdera (3):
->> libext2fs: Adding itree feature flag
->> libext2fs: Adding inode flag for itree
->> mke2fs, tune2fs: Adding support for the itree flag
->> 
->> lib/e2p/feature.c    | 2 ++
->> lib/e2p/pf.c         | 1 +
->> lib/ext2fs/ext2_fs.h | 2 ++
->> misc/mke2fs.c        | 3 ++-
->> misc/tune2fs.c       | 6 ++++--
->> 5 files changed, 11 insertions(+), 3 deletions(-)
->> 
->> -- 
->> 1.7.11.7
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
