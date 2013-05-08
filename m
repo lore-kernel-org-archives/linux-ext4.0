@@ -1,600 +1,373 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 18/29] ext4: Restructure writeback path
-Date: Wed, 8 May 2013 13:20:07 +0200
-Message-ID: <20130508112007.GB30550@quack.suse.cz>
+Subject: Re: [PATCH 21/29] ext4: Split extent conversion lists to reserved &
+ unreserved parts
+Date: Wed, 8 May 2013 13:23:55 +0200
+Message-ID: <20130508112355.GC30550@quack.suse.cz>
 References: <1365456754-29373-1-git-send-email-jack@suse.cz>
- <1365456754-29373-19-git-send-email-jack@suse.cz>
- <20130508034857.GA32131@gmail.com>
+ <1365456754-29373-22-git-send-email-jack@suse.cz>
+ <20130508070335.GC20599@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
 	linux-ext4@vger.kernel.org
 To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:51433 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:51618 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754894Ab3EHLUL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 8 May 2013 07:20:11 -0400
+	id S1752469Ab3EHLX6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 8 May 2013 07:23:58 -0400
 Content-Disposition: inline
-In-Reply-To: <20130508034857.GA32131@gmail.com>
+In-Reply-To: <20130508070335.GC20599@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 08-05-13 11:48:57, Zheng Liu wrote:
-> On Mon, Apr 08, 2013 at 11:32:23PM +0200, Jan Kara wrote:
-> > There are two issues with current writeback path in ext4. For one we
-> > don't necessarily map complete pages when blocksize < pagesize and thus
-> > needn't do any writeback in one iteration. We always map some blocks
-> > though so we will eventually finish mapping the page. Just if writeback
-> > races with other operations on the file, forward progress is not really
-> > guaranteed. The second problem is that current code structure makes it
-> > hard to associate all the bios to some range of pages with one io_end
-> > structure so that unwritten extents can be converted after all the bios
-> > are finished. This will be especially difficult later when io_end will
-> > be associated with reserved transaction handle.
-> > 
-> > We restructure the writeback path to a relatively simple loop which
-> > first prepares extent of pages, then maps one or more extents so that
-> > no page is partially mapped, and once page is fully mapped it is
-> > submitted for IO. We keep all the mapping and IO submission information
-> > in mpage_da_data structure to somewhat reduce stack usage. Resulting
-> > code is somewhat shorter than the old one and hopefully also easier to
-> > read.
-> > 
+On Wed 08-05-13 15:03:35, Zheng Liu wrote:
+> On Mon, Apr 08, 2013 at 11:32:26PM +0200, Jan Kara wrote:
+> > Now that we have extent conversions with reserved transaction, we h=
+ave
+> > to prevent extent conversions without reserved transaction (from DI=
+O
+> > code) to block these (as that would effectively void any transactio=
+n
+> > reservation we did). So split lists, work items, and work queues to
+> > reserved and unreserved parts.
+> >=20
 > > Signed-off-by: Jan Kara <jack@suse.cz>
-> 
-> One nit below.  Otherwise the patch looks good to be.
+>=20
+> I got a build error that looks like this.
+>=20
+>  fs/ext4/page-io.c: In function =E2=80=98ext4_ioend_shutdown=E2=80=99=
+:
+>  fs/ext4/page-io.c:60: error: =E2=80=98struct ext4_inode_info=E2=80=99=
+ has no member
+>  named =E2=80=98i_unwritten_work=E2=80=99
+>=20
+> I guess the reason is that when this patch set is sent out,
+> ext4_io_end_shutdown() hasn't be added.  So please add the code
+> like this.  Otherwise the patch looks good to me.
 > Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
-  Thanks for review!
-
-> > ---
-> >  fs/ext4/ext4.h              |   15 -
-> >  fs/ext4/inode.c             |  978 +++++++++++++++++++++----------------------
-> >  include/trace/events/ext4.h |   64 ++-
-> >  3 files changed, 508 insertions(+), 549 deletions(-)
-> ...
-> >  /*
-> > - * write_cache_pages_da - walk the list of dirty pages of the given
-> > - * address space and accumulate pages that need writing, and call
-> > - * mpage_da_map_and_submit to map a single contiguous memory region
-> > - * and then write them.
-> > + * mpage_prepare_extent_to_map - find & lock contiguous range of dirty pages
-> > + * 				 and underlying extent to map
-> > + *
-> > + * @mpd - where to look for pages
-> > + *
-> > + * Walk dirty pages in the mapping while they are contiguous and lock them.
-> > + * While pages are fully mapped submit them for IO. When we find a page which
-> > + * isn't mapped we start accumulating extent of buffers underlying these pages
-> > + * that needs mapping (formed by either delayed or unwritten buffers). The
-> > + * extent found is returned in @mpd structure (starting at mpd->lblk with
-> > + * length mpd->len blocks).
-> >   */
-> > -static int write_cache_pages_da(handle_t *handle,
-> > -				struct address_space *mapping,
-> > -				struct writeback_control *wbc,
-> > -				struct mpage_da_data *mpd,
-> > -				pgoff_t *done_index)
-> > +static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
-> >  {
-> > -	struct buffer_head	*bh, *head;
-> > -	struct inode		*inode = mapping->host;
-> > -	struct pagevec		pvec;
-> > -	unsigned int		nr_pages;
-> > -	sector_t		logical;
-> > -	pgoff_t			index, end;
-> > -	long			nr_to_write = wbc->nr_to_write;
-> > -	int			i, tag, ret = 0;
-> > -
-> > -	memset(mpd, 0, sizeof(struct mpage_da_data));
-> > -	mpd->wbc = wbc;
-> > -	mpd->inode = inode;
-> > -	pagevec_init(&pvec, 0);
-> > -	index = wbc->range_start >> PAGE_CACHE_SHIFT;
-> > -	end = wbc->range_end >> PAGE_CACHE_SHIFT;
-> > +	struct address_space *mapping = mpd->inode->i_mapping;
-> > +	struct pagevec pvec;
-> > +	unsigned int nr_pages;
-> > +	pgoff_t index = mpd->first_page;
-> > +	pgoff_t end = mpd->last_page;
-> > +	bool first_page_found = false;
-> > +	int tag;
-> > +	int i, err = 0;
-> > +	int blkbits = mpd->inode->i_blkbits;
-> > +	ext4_lblk_t lblk;
-> > +	struct buffer_head *head;
-> >  
-> > -	if (wbc->sync_mode == WB_SYNC_ALL || wbc->tagged_writepages)
-> > +	if (mpd->wbc->sync_mode == WB_SYNC_ALL || mpd->wbc->tagged_writepages)
-> >  		tag = PAGECACHE_TAG_TOWRITE;
-> >  	else
-> >  		tag = PAGECACHE_TAG_DIRTY;
-> >  
-> > -	*done_index = index;
-> > +	mpd->map.m_len = 0;
-> > +	mpd->next_page = index;
-> 
-> Forgot to call pagevec_init(&pvec, 0) here.
-  I actually don't think it can cause any problems here (pagevec_lookup()
-simply overwrites the pvec and we call pagevec_release() only after
-pagevec_lookup()) but it's certainly a good practice so I added it.
+  Yeah, I've already rebased the series on top of current Linus's tree =
+and
+I've notice this problem as well. It should be fixed by now. I didn't p=
+ost
+the rebased series yet because I'm looking into some xfstests failures =
+I
+hit when testing it...
 
 								Honza
-
-> >  	while (index <= end) {
-> >  		nr_pages = pagevec_lookup_tag(&pvec, mapping, &index, tag,
-> >  			      min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1);
-> >  		if (nr_pages == 0)
-> > -			return 0;
-> > +			goto out;
-> >  
-> >  		for (i = 0; i < nr_pages; i++) {
-> >  			struct page *page = pvec.pages[i];
-> > @@ -2145,31 +2138,21 @@ static int write_cache_pages_da(handle_t *handle,
-> >  			if (page->index > end)
-> >  				goto out;
-> >  
-> > -			*done_index = page->index + 1;
-> > -
-> > -			/*
-> > -			 * If we can't merge this page, and we have
-> > -			 * accumulated an contiguous region, write it
-> > -			 */
-> > -			if ((mpd->next_page != page->index) &&
-> > -			    (mpd->next_page != mpd->first_page)) {
-> > -				mpage_da_map_and_submit(mpd);
-> > -				goto ret_extent_tail;
-> > -			}
-> > +			/* If we can't merge this page, we are done. */
-> > +			if (first_page_found && mpd->next_page != page->index)
-> > +				goto out;
-> >  
-> >  			lock_page(page);
-> > -
-> >  			/*
-> > -			 * If the page is no longer dirty, or its
-> > -			 * mapping no longer corresponds to inode we
-> > -			 * are writing (which means it has been
-> > -			 * truncated or invalidated), or the page is
-> > -			 * already under writeback and we are not
-> > -			 * doing a data integrity writeback, skip the page
-> > +			 * If the page is no longer dirty, or its mapping no
-> > +			 * longer corresponds to inode we are writing (which
-> > +			 * means it has been truncated or invalidated), or the
-> > +			 * page is already under writeback and we are not doing
-> > +			 * a data integrity writeback, skip the page
-> >  			 */
-> >  			if (!PageDirty(page) ||
-> >  			    (PageWriteback(page) &&
-> > -			     (wbc->sync_mode == WB_SYNC_NONE)) ||
-> > +			     (mpd->wbc->sync_mode == WB_SYNC_NONE)) ||
-> >  			    unlikely(page->mapping != mapping)) {
-> >  				unlock_page(page);
-> >  				continue;
-> > @@ -2178,101 +2161,60 @@ static int write_cache_pages_da(handle_t *handle,
-> >  			wait_on_page_writeback(page);
-> >  			BUG_ON(PageWriteback(page));
-> >  
-> > -			/*
-> > -			 * If we have inline data and arrive here, it means that
-> > -			 * we will soon create the block for the 1st page, so
-> > -			 * we'd better clear the inline data here.
-> > -			 */
-> > -			if (ext4_has_inline_data(inode)) {
-> > -				BUG_ON(ext4_test_inode_state(inode,
-> > -						EXT4_STATE_MAY_INLINE_DATA));
-> > -				ext4_destroy_inline_data(handle, inode);
-> > -			}
-> > -
-> > -			if (mpd->next_page != page->index)
-> > +			if (!first_page_found) {
-> >  				mpd->first_page = page->index;
-> > +				first_page_found = true;
-> > +			}
-> >  			mpd->next_page = page->index + 1;
-> > -			logical = (sector_t) page->index <<
-> > -				(PAGE_CACHE_SHIFT - inode->i_blkbits);
-> > +			lblk = ((ext4_lblk_t)page->index) <<
-> > +				(PAGE_CACHE_SHIFT - blkbits);
-> >  
-> >  			/* Add all dirty buffers to mpd */
-> >  			head = page_buffers(page);
-> > -			bh = head;
-> > -			do {
-> > -				BUG_ON(buffer_locked(bh));
-> > -				/*
-> > -				 * We need to try to allocate unmapped blocks
-> > -				 * in the same page.  Otherwise we won't make
-> > -				 * progress with the page in ext4_writepage
-> > -				 */
-> > -				if (ext4_bh_delay_or_unwritten(NULL, bh)) {
-> > -					mpage_add_bh_to_extent(mpd, logical,
-> > -							       bh->b_state);
-> > -					if (mpd->io_done)
-> > -						goto ret_extent_tail;
-> > -				} else if (buffer_dirty(bh) &&
-> > -					   buffer_mapped(bh)) {
-> > -					/*
-> > -					 * mapped dirty buffer. We need to
-> > -					 * update the b_state because we look
-> > -					 * at b_state in mpage_da_map_blocks.
-> > -					 * We don't update b_size because if we
-> > -					 * find an unmapped buffer_head later
-> > -					 * we need to use the b_state flag of
-> > -					 * that buffer_head.
-> > -					 */
-> > -					if (mpd->b_size == 0)
-> > -						mpd->b_state =
-> > -							bh->b_state & BH_FLAGS;
-> > -				}
-> > -				logical++;
-> > -			} while ((bh = bh->b_this_page) != head);
-> > -
-> > -			if (nr_to_write > 0) {
-> > -				nr_to_write--;
-> > -				if (nr_to_write == 0 &&
-> > -				    wbc->sync_mode == WB_SYNC_NONE)
-> > -					/*
-> > -					 * We stop writing back only if we are
-> > -					 * not doing integrity sync. In case of
-> > -					 * integrity sync we have to keep going
-> > -					 * because someone may be concurrently
-> > -					 * dirtying pages, and we might have
-> > -					 * synced a lot of newly appeared dirty
-> > -					 * pages, but have not synced all of the
-> > -					 * old dirty pages.
-> > -					 */
-> > +			if (!add_page_bufs_to_extent(mpd, head, head, lblk))
-> > +				goto out;
-> > +			/* So far everything mapped? Submit the page for IO. */
-> > +			if (mpd->map.m_len == 0) {
-> > +				err = mpage_submit_page(mpd, page);
-> > +				if (err < 0)
-> >  					goto out;
-> >  			}
-> > +
-> > +			/*
-> > +			 * Accumulated enough dirty pages? This doesn't apply
-> > +			 * to WB_SYNC_ALL mode. For integrity sync we have to
-> > +			 * keep going because someone may be concurrently
-> > +			 * dirtying pages, and we might have synced a lot of
-> > +			 * newly appeared dirty pages, but have not synced all
-> > +			 * of the old dirty pages.
-> > +			 */
-> > +			if (mpd->wbc->sync_mode == WB_SYNC_NONE &&
-> > +			    mpd->next_page - mpd->first_page >=
-> > +							mpd->wbc->nr_to_write)
-> > +				goto out;
-> >  		}
-> >  		pagevec_release(&pvec);
-> >  		cond_resched();
-> >  	}
-> >  	return 0;
-> > -ret_extent_tail:
-> > -	ret = MPAGE_DA_EXTENT_TAIL;
-> >  out:
-> >  	pagevec_release(&pvec);
-> > -	cond_resched();
-> > -	return ret;
-> > +	return err;
-> >  }
-> >  
-> > -
-> >  static int ext4_da_writepages(struct address_space *mapping,
-> >  			      struct writeback_control *wbc)
-> >  {
-> > -	pgoff_t	index;
-> > +	pgoff_t	writeback_index = 0;
-> > +	long nr_to_write = wbc->nr_to_write;
-> >  	int range_whole = 0;
-> > +	int cycled = 1;
-> >  	handle_t *handle = NULL;
-> >  	struct mpage_da_data mpd;
-> >  	struct inode *inode = mapping->host;
-> > -	int pages_written = 0;
-> > -	int range_cyclic, cycled = 1, io_done = 0;
-> >  	int needed_blocks, ret = 0;
-> > -	loff_t range_start = wbc->range_start;
-> >  	struct ext4_sb_info *sbi = EXT4_SB(mapping->host->i_sb);
-> > -	pgoff_t done_index = 0;
-> > -	pgoff_t end;
-> > +	bool done;
-> >  	struct blk_plug plug;
-> >  
-> >  	trace_ext4_da_writepages(inode, wbc);
-> > @@ -2298,40 +2240,65 @@ static int ext4_da_writepages(struct address_space *mapping,
-> >  	if (unlikely(sbi->s_mount_flags & EXT4_MF_FS_ABORTED))
-> >  		return -EROFS;
-> >  
+>=20
+> Regards,
+>                                                 - Zheng
+>=20
+> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+> index 3fea79e..f9ecc4f 100644
+> --- a/fs/ext4/page-io.c
+> +++ b/fs/ext4/page-io.c
+> @@ -57,8 +57,10 @@ void ext4_ioend_shutdown(struct inode *inode)
+>          * We need to make sure the work structure is finished being
+>          * used before we let the inode get destroyed.
+>          */
+> -       if (work_pending(&EXT4_I(inode)->i_unwritten_work))
+> -               cancel_work_sync(&EXT4_I(inode)->i_unwritten_work);
+> +       if (work_pending(&EXT4_I(inode)->i_rsv_conversion_work))
+> +               cancel_work_sync(&EXT4_I(inode)->i_rsv_conversion_wor=
+k);
+> +       if (work_pending(&EXT4_I(inode)->i_unrsv_conversion_work))
+> + cancel_work_sync(&EXT4_I(inode)->i_unrsv_conversion_work);
+>  }
+> =20
+>  static void ext4_release_io_end(ext4_io_end_t *io_end)
+>=20
+> > ---
+> >  fs/ext4/ext4.h    |   25 +++++++++++++++++-----
+> >  fs/ext4/page-io.c |   59 ++++++++++++++++++++++++++++++++++-------=
+-----------
+> >  fs/ext4/super.c   |   38 ++++++++++++++++++++++++---------
+> >  3 files changed, 84 insertions(+), 38 deletions(-)
+> >=20
+> > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> > index 65adf0d..a594a94 100644
+> > --- a/fs/ext4/ext4.h
+> > +++ b/fs/ext4/ext4.h
+> > @@ -889,12 +889,22 @@ struct ext4_inode_info {
+> >  	qsize_t i_reserved_quota;
+> >  #endif
+> > =20
+> > -	/* completed IOs that might need unwritten extents handling */
+> > -	struct list_head i_completed_io_list;
+> > +	/* Lock protecting lists below */
+> >  	spinlock_t i_completed_io_lock;
 > > +	/*
-> > +	 * If we have inline data and arrive here, it means that
-> > +	 * we will soon create the block for the 1st page, so
-> > +	 * we'd better clear the inline data here.
+> > +	 * Completed IOs that need unwritten extents handling and have
+> > +	 * transaction reserved
 > > +	 */
-> > +	if (ext4_has_inline_data(inode)) {
-> > +		/* Just inode will be modified... */
-> > +		handle = ext4_journal_start(inode, EXT4_HT_INODE, 1);
-> > +		if (IS_ERR(handle)) {
-> > +			ret = PTR_ERR(handle);
-> > +			goto out_writepages;
-> > +		}
-> > +		BUG_ON(ext4_test_inode_state(inode,
-> > +				EXT4_STATE_MAY_INLINE_DATA));
-> > +		ext4_destroy_inline_data(handle, inode);
-> > +		ext4_journal_stop(handle);
-> > +	}
-> > +
-> >  	if (wbc->range_start == 0 && wbc->range_end == LLONG_MAX)
-> >  		range_whole = 1;
-> >  
-> > -	range_cyclic = wbc->range_cyclic;
-> >  	if (wbc->range_cyclic) {
-> > -		index = mapping->writeback_index;
-> > -		if (index)
-> > +		writeback_index = mapping->writeback_index;
-> > +		if (writeback_index)
-> >  			cycled = 0;
-> > -		wbc->range_start = index << PAGE_CACHE_SHIFT;
-> > -		wbc->range_end  = LLONG_MAX;
-> > -		wbc->range_cyclic = 0;
-> > -		end = -1;
-> > +		mpd.first_page = writeback_index;
-> > +		mpd.last_page = -1;
-> >  	} else {
-> > -		index = wbc->range_start >> PAGE_CACHE_SHIFT;
-> > -		end = wbc->range_end >> PAGE_CACHE_SHIFT;
-> > +		mpd.first_page = wbc->range_start >> PAGE_CACHE_SHIFT;
-> > +		mpd.last_page = wbc->range_end >> PAGE_CACHE_SHIFT;
-> >  	}
-> >  
-> > +	mpd.inode = inode;
-> > +	mpd.wbc = wbc;
-> > +	ext4_io_submit_init(&mpd.io_submit, wbc);
-> >  retry:
-> >  	if (wbc->sync_mode == WB_SYNC_ALL || wbc->tagged_writepages)
-> > -		tag_pages_for_writeback(mapping, index, end);
-> > -
-> > +		tag_pages_for_writeback(mapping, mpd.first_page, mpd.last_page);
-> > +	done = false;
-> >  	blk_start_plug(&plug);
-> > -	while (!ret && wbc->nr_to_write > 0) {
-> > +	while (!done && mpd.first_page <= mpd.last_page) {
-> > +		/* For each extent of pages we use new io_end */
-> > +		mpd.io_submit.io_end = ext4_init_io_end(inode, GFP_KERNEL);
-> > +		if (!mpd.io_submit.io_end) {
-> > +			ret = -ENOMEM;
-> > +			break;
-> > +		}
-> >  
-> >  		/*
-> > -		 * we  insert one extent at a time. So we need
-> > -		 * credit needed for single extent allocation.
-> > -		 * journalled mode is currently not supported
-> > -		 * by delalloc
-> > +		 * We have two constraints: We find one extent to map and we
-> > +		 * must always write out whole page (makes a difference when
-> > +		 * blocksize < pagesize) so that we don't block on IO when we
-> > +		 * try to write out the rest of the page. Journalled mode is
-> > +		 * not supported by delalloc.
-> >  		 */
-> >  		BUG_ON(ext4_should_journal_data(inode));
-> >  		needed_blocks = ext4_da_writepages_trans_blocks(inode);
-> >  
-> > -		/* start a new transaction*/
-> > +		/* start a new transaction */
-> >  		handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE,
-> >  					    needed_blocks);
-> >  		if (IS_ERR(handle)) {
-> > @@ -2339,76 +2306,67 @@ retry:
-> >  			ext4_msg(inode->i_sb, KERN_CRIT, "%s: jbd2_start: "
-> >  			       "%ld pages, ino %lu; err %d", __func__,
-> >  				wbc->nr_to_write, inode->i_ino, ret);
-> > -			blk_finish_plug(&plug);
-> > -			goto out_writepages;
-> > +			/* Release allocated io_end */
-> > +			ext4_put_io_end(mpd.io_submit.io_end);
-> > +			break;
-> >  		}
-> >  
-> > -		/*
-> > -		 * Now call write_cache_pages_da() to find the next
-> > -		 * contiguous region of logical blocks that need
-> > -		 * blocks to be allocated by ext4 and submit them.
-> > -		 */
-> > -		ret = write_cache_pages_da(handle, mapping,
-> > -					   wbc, &mpd, &done_index);
-> > -		/*
-> > -		 * If we have a contiguous extent of pages and we
-> > -		 * haven't done the I/O yet, map the blocks and submit
-> > -		 * them for I/O.
-> > -		 */
-> > -		if (!mpd.io_done && mpd.next_page != mpd.first_page) {
-> > -			mpage_da_map_and_submit(&mpd);
-> > -			ret = MPAGE_DA_EXTENT_TAIL;
-> > +		trace_ext4_da_write_pages(inode, mpd.first_page, mpd.wbc);
-> > +		ret = mpage_prepare_extent_to_map(&mpd);
-> > +		if (!ret) {
-> > +			if (mpd.map.m_len)
-> > +				ret = mpage_map_and_submit_extent(handle, &mpd);
-> > +			else {
-> > +				/*
-> > +				 * We scanned the whole range (or exhausted
-> > +				 * nr_to_write), submitted what was mapped and
-> > +				 * didn't find anything needing mapping. We are
-> > +				 * done.
-> > +				 */
-> > +				done = true;
-> > +			}
-> >  		}
-> > -		trace_ext4_da_write_pages(inode, &mpd);
-> > -		wbc->nr_to_write -= mpd.pages_written;
-> > -
-> >  		ext4_journal_stop(handle);
-> > -
-> > -		if ((mpd.retval == -ENOSPC) && sbi->s_journal) {
-> > -			/* commit the transaction which would
-> > +		/* Submit prepared bio */
-> > +		ext4_io_submit(&mpd.io_submit);
-> > +		/* Unlock pages we didn't use */
-> > +		mpage_release_unused_pages(&mpd, false);
-> > +		/* Drop our io_end reference we got from init */
-> > +		ext4_put_io_end(mpd.io_submit.io_end);
-> > +
-> > +		if (ret == -ENOSPC && sbi->s_journal) {
-> > +			/*
-> > +			 * Commit the transaction which would
-> >  			 * free blocks released in the transaction
-> >  			 * and try again
-> >  			 */
-> >  			jbd2_journal_force_commit_nested(sbi->s_journal);
-> >  			ret = 0;
-> > -		} else if (ret == MPAGE_DA_EXTENT_TAIL) {
-> > -			/*
-> > -			 * Got one extent now try with rest of the pages.
-> > -			 * If mpd.retval is set -EIO, journal is aborted.
-> > -			 * So we don't need to write any more.
-> > -			 */
-> > -			pages_written += mpd.pages_written;
-> > -			ret = mpd.retval;
-> > -			io_done = 1;
-> > -		} else if (wbc->nr_to_write)
-> > -			/*
-> > -			 * There is no more writeout needed
-> > -			 * or we requested for a noblocking writeout
-> > -			 * and we found the device congested
-> > -			 */
-> > +			continue;
-> > +		}
-> > +		/* Fatal error - ENOMEM, EIO... */
-> > +		if (ret)
-> >  			break;
-> >  	}
-> >  	blk_finish_plug(&plug);
-> > -	if (!io_done && !cycled) {
-> > +	if (!ret && !cycled) {
-> >  		cycled = 1;
-> > -		index = 0;
-> > -		wbc->range_start = index << PAGE_CACHE_SHIFT;
-> > -		wbc->range_end  = mapping->writeback_index - 1;
-> > +		mpd.last_page = writeback_index - 1;
-> > +		mpd.first_page = 0;
-> >  		goto retry;
-> >  	}
-> >  
-> >  	/* Update index */
-> > -	wbc->range_cyclic = range_cyclic;
-> >  	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
-> >  		/*
-> > -		 * set the writeback_index so that range_cyclic
-> > +		 * Set the writeback_index so that range_cyclic
-> >  		 * mode will write it back later
-> >  		 */
-> > -		mapping->writeback_index = done_index;
-> > +		mapping->writeback_index = mpd.first_page;
-> >  
-> >  out_writepages:
-> > -	wbc->range_start = range_start;
-> > -	trace_ext4_da_writepages_result(inode, wbc, ret, pages_written);
-> > +	trace_ext4_da_writepages_result(inode, wbc, ret,
-> > +					nr_to_write - wbc->nr_to_write);
+> > +	struct list_head i_rsv_conversion_list;
+> > +	/*
+> > +	 * Completed IOs that need unwritten extents handling and don't h=
+ave
+> > +	 * transaction reserved
+> > +	 */
+> > +	struct list_head i_unrsv_conversion_list;
+> >  	atomic_t i_ioend_count;	/* Number of outstanding io_end structs *=
+/
+> >  	atomic_t i_unwritten; /* Nr. of inflight conversions pending */
+> > -	struct work_struct i_unwritten_work;	/* deferred extent conversio=
+n */
+> > +	struct work_struct i_rsv_conversion_work;
+> > +	struct work_struct i_unrsv_conversion_work;
+> > =20
+> >  	spinlock_t i_block_reservation_lock;
+> > =20
+> > @@ -1257,8 +1267,10 @@ struct ext4_sb_info {
+> >  	struct flex_groups *s_flex_groups;
+> >  	ext4_group_t s_flex_groups_allocated;
+> > =20
+> > -	/* workqueue for dio unwritten */
+> > -	struct workqueue_struct *dio_unwritten_wq;
+> > +	/* workqueue for unreserved extent convertions (dio) */
+> > +	struct workqueue_struct *unrsv_conversion_wq;
+> > +	/* workqueue for reserved extent conversions (buffered io) */
+> > +	struct workqueue_struct *rsv_conversion_wq;
+> > =20
+> >  	/* timer for periodic error stats printing */
+> >  	struct timer_list s_err_report;
+> > @@ -2599,7 +2611,8 @@ extern int ext4_put_io_end(ext4_io_end_t *io_=
+end);
+> >  extern void ext4_put_io_end_defer(ext4_io_end_t *io_end);
+> >  extern void ext4_io_submit_init(struct ext4_io_submit *io,
+> >  				struct writeback_control *wbc);
+> > -extern void ext4_end_io_work(struct work_struct *work);
+> > +extern void ext4_end_io_rsv_work(struct work_struct *work);
+> > +extern void ext4_end_io_unrsv_work(struct work_struct *work);
+> >  extern void ext4_io_submit(struct ext4_io_submit *io);
+> >  extern int ext4_bio_write_page(struct ext4_io_submit *io,
+> >  			       struct page *page,
+> > diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+> > index e8ee4da..8bff3b3 100644
+> > --- a/fs/ext4/page-io.c
+> > +++ b/fs/ext4/page-io.c
+> > @@ -103,20 +103,17 @@ static int ext4_end_io(ext4_io_end_t *io)
 > >  	return ret;
 > >  }
-> >  
-> > diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-> > index a601bb3..203dcd5 100644
-> > --- a/include/trace/events/ext4.h
-> > +++ b/include/trace/events/ext4.h
-> > @@ -332,43 +332,59 @@ TRACE_EVENT(ext4_da_writepages,
-> >  );
-> >  
-> >  TRACE_EVENT(ext4_da_write_pages,
-> > -	TP_PROTO(struct inode *inode, struct mpage_da_data *mpd),
-> > +	TP_PROTO(struct inode *inode, pgoff_t first_page,
-> > +		 struct writeback_control *wbc),
-> >  
-> > -	TP_ARGS(inode, mpd),
-> > +	TP_ARGS(inode, first_page, wbc),
-> >  
-> >  	TP_STRUCT__entry(
-> >  		__field(	dev_t,	dev			)
-> >  		__field(	ino_t,	ino			)
-> > -		__field(	__u64,	b_blocknr		)
-> > -		__field(	__u32,	b_size			)
-> > -		__field(	__u32,	b_state			)
-> > -		__field(	unsigned long,	first_page	)
-> > -		__field(	int,	io_done			)
-> > -		__field(	int,	pages_written		)
-> > -		__field(	int,	sync_mode		)
-> > +		__field(      pgoff_t,	first_page		)
-> > +		__field(	 long,	nr_to_write		)
-> > +		__field(	  int,	sync_mode		)
-> >  	),
-> >  
-> >  	TP_fast_assign(
-> >  		__entry->dev		= inode->i_sb->s_dev;
-> >  		__entry->ino		= inode->i_ino;
-> > -		__entry->b_blocknr	= mpd->b_blocknr;
-> > -		__entry->b_size		= mpd->b_size;
-> > -		__entry->b_state	= mpd->b_state;
-> > -		__entry->first_page	= mpd->first_page;
-> > -		__entry->io_done	= mpd->io_done;
-> > -		__entry->pages_written	= mpd->pages_written;
-> > -		__entry->sync_mode	= mpd->wbc->sync_mode;
-> > +		__entry->first_page	= first_page;
-> > +		__entry->nr_to_write	= wbc->nr_to_write;
-> > +		__entry->sync_mode	= wbc->sync_mode;
-> >  	),
-> >  
-> > -	TP_printk("dev %d,%d ino %lu b_blocknr %llu b_size %u b_state 0x%04x "
-> > -		  "first_page %lu io_done %d pages_written %d sync_mode %d",
-> > +	TP_printk("dev %d,%d ino %lu first_page %lu nr_to_write %ld "
-> > +		  "sync_mode %d",
-> >  		  MAJOR(__entry->dev), MINOR(__entry->dev),
-> > -		  (unsigned long) __entry->ino,
-> > -		  __entry->b_blocknr, __entry->b_size,
-> > -		  __entry->b_state, __entry->first_page,
-> > -		  __entry->io_done, __entry->pages_written,
-> > -		  __entry->sync_mode
-> > -                  )
-> > +		  (unsigned long) __entry->ino, __entry->first_page,
-> > +		  __entry->nr_to_write, __entry->sync_mode)
-> > +);
+> > =20
+> > -static void dump_completed_IO(struct inode *inode)
+> > +static void dump_completed_IO(struct inode *inode, struct list_hea=
+d *head)
+> >  {
+> >  #ifdef	EXT4FS_DEBUG
+> >  	struct list_head *cur, *before, *after;
+> >  	ext4_io_end_t *io, *io0, *io1;
+> > =20
+> > -	if (list_empty(&EXT4_I(inode)->i_completed_io_list)) {
+> > -		ext4_debug("inode %lu completed_io list is empty\n",
+> > -			   inode->i_ino);
+> > +	if (list_empty(head))
+> >  		return;
+> > -	}
+> > =20
+> > -	ext4_debug("Dump inode %lu completed_io list\n", inode->i_ino);
+> > -	list_for_each_entry(io, &EXT4_I(inode)->i_completed_io_list, list=
+) {
+> > +	ext4_debug("Dump inode %lu completed io list\n", inode->i_ino);
+> > +	list_for_each_entry(io, head, list) {
+> >  		cur =3D &io->list;
+> >  		before =3D cur->prev;
+> >  		io0 =3D container_of(before, ext4_io_end_t, list);
+> > @@ -137,16 +134,23 @@ static void ext4_add_complete_io(ext4_io_end_=
+t *io_end)
+> >  	unsigned long flags;
+> > =20
+> >  	BUG_ON(!(io_end->flag & EXT4_IO_END_UNWRITTEN));
+> > -	wq =3D EXT4_SB(io_end->inode->i_sb)->dio_unwritten_wq;
+> > -
+> >  	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
+> > -	if (list_empty(&ei->i_completed_io_list))
+> > -		queue_work(wq, &ei->i_unwritten_work);
+> > -	list_add_tail(&io_end->list, &ei->i_completed_io_list);
+> > +	if (io_end->handle) {
+> > +		wq =3D EXT4_SB(io_end->inode->i_sb)->rsv_conversion_wq;
+> > +		if (list_empty(&ei->i_rsv_conversion_list))
+> > +			queue_work(wq, &ei->i_rsv_conversion_work);
+> > +		list_add_tail(&io_end->list, &ei->i_rsv_conversion_list);
+> > +	} else {
+> > +		wq =3D EXT4_SB(io_end->inode->i_sb)->unrsv_conversion_wq;
+> > +		if (list_empty(&ei->i_unrsv_conversion_list))
+> > +			queue_work(wq, &ei->i_unrsv_conversion_work);
+> > +		list_add_tail(&io_end->list, &ei->i_unrsv_conversion_list);
+> > +	}
+> >  	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
+> >  }
+> > =20
+> > -static int ext4_do_flush_completed_IO(struct inode *inode)
+> > +static int ext4_do_flush_completed_IO(struct inode *inode,
+> > +				      struct list_head *head)
+> >  {
+> >  	ext4_io_end_t *io;
+> >  	struct list_head unwritten;
+> > @@ -155,8 +159,8 @@ static int ext4_do_flush_completed_IO(struct in=
+ode *inode)
+> >  	int err, ret =3D 0;
+> > =20
+> >  	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
+> > -	dump_completed_IO(inode);
+> > -	list_replace_init(&ei->i_completed_io_list, &unwritten);
+> > +	dump_completed_IO(inode, head);
+> > +	list_replace_init(head, &unwritten);
+> >  	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
+> > =20
+> >  	while (!list_empty(&unwritten)) {
+> > @@ -172,21 +176,34 @@ static int ext4_do_flush_completed_IO(struct =
+inode *inode)
+> >  }
+> > =20
+> >  /*
+> > - * work on completed aio dio IO, to convert unwritten extents to e=
+xtents
+> > + * work on completed IO, to convert unwritten extents to extents
+> >   */
+> > -void ext4_end_io_work(struct work_struct *work)
+> > +void ext4_end_io_rsv_work(struct work_struct *work)
+> >  {
+> >  	struct ext4_inode_info *ei =3D container_of(work, struct ext4_ino=
+de_info,
+> > -						  i_unwritten_work);
+> > -	ext4_do_flush_completed_IO(&ei->vfs_inode);
+> > +						  i_rsv_conversion_work);
+> > +	ext4_do_flush_completed_IO(&ei->vfs_inode, &ei->i_rsv_conversion_=
+list);
+> > +}
 > > +
-> > +TRACE_EVENT(ext4_da_write_pages_extent,
-> > +	TP_PROTO(struct inode *inode, struct ext4_map_blocks *map),
+> > +void ext4_end_io_unrsv_work(struct work_struct *work)
+> > +{
+> > +	struct ext4_inode_info *ei =3D container_of(work, struct ext4_ino=
+de_info,
+> > +						  i_unrsv_conversion_work);
+> > +	ext4_do_flush_completed_IO(&ei->vfs_inode, &ei->i_unrsv_conversio=
+n_list);
+> >  }
+> > =20
+> >  int ext4_flush_unwritten_io(struct inode *inode)
+> >  {
+> > -	int ret;
+> > +	int ret, err;
 > > +
-> > +	TP_ARGS(inode, map),
+> >  	WARN_ON_ONCE(!mutex_is_locked(&inode->i_mutex) &&
+> >  		     !(inode->i_state & I_FREEING));
+> > -	ret =3D ext4_do_flush_completed_IO(inode);
+> > +	ret =3D ext4_do_flush_completed_IO(inode,
+> > +					 &EXT4_I(inode)->i_rsv_conversion_list);
+> > +	err =3D ext4_do_flush_completed_IO(inode,
+> > +					 &EXT4_I(inode)->i_unrsv_conversion_list);
+> > +	if (!ret)
+> > +		ret =3D err;
+> >  	ext4_unwritten_wait(inode);
+> >  	return ret;
+> >  }
+> > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> > index 09ff724..916c4fb 100644
+> > --- a/fs/ext4/super.c
+> > +++ b/fs/ext4/super.c
+> > @@ -747,8 +747,10 @@ static void ext4_put_super(struct super_block =
+*sb)
+> >  	ext4_unregister_li_request(sb);
+> >  	dquot_disable(sb, -1, DQUOT_USAGE_ENABLED | DQUOT_LIMITS_ENABLED)=
+;
+> > =20
+> > -	flush_workqueue(sbi->dio_unwritten_wq);
+> > -	destroy_workqueue(sbi->dio_unwritten_wq);
+> > +	flush_workqueue(sbi->unrsv_conversion_wq);
+> > +	flush_workqueue(sbi->rsv_conversion_wq);
+> > +	destroy_workqueue(sbi->unrsv_conversion_wq);
+> > +	destroy_workqueue(sbi->rsv_conversion_wq);
+> > =20
+> >  	if (sbi->s_journal) {
+> >  		err =3D jbd2_journal_destroy(sbi->s_journal);
+> > @@ -856,13 +858,15 @@ static struct inode *ext4_alloc_inode(struct =
+super_block *sb)
+> >  	ei->i_reserved_quota =3D 0;
+> >  #endif
+> >  	ei->jinode =3D NULL;
+> > -	INIT_LIST_HEAD(&ei->i_completed_io_list);
+> > +	INIT_LIST_HEAD(&ei->i_rsv_conversion_list);
+> > +	INIT_LIST_HEAD(&ei->i_unrsv_conversion_list);
+> >  	spin_lock_init(&ei->i_completed_io_lock);
+> >  	ei->i_sync_tid =3D 0;
+> >  	ei->i_datasync_tid =3D 0;
+> >  	atomic_set(&ei->i_ioend_count, 0);
+> >  	atomic_set(&ei->i_unwritten, 0);
+> > -	INIT_WORK(&ei->i_unwritten_work, ext4_end_io_work);
+> > +	INIT_WORK(&ei->i_rsv_conversion_work, ext4_end_io_rsv_work);
+> > +	INIT_WORK(&ei->i_unrsv_conversion_work, ext4_end_io_unrsv_work);
+> > =20
+> >  	return &ei->vfs_inode;
+> >  }
+> > @@ -3867,12 +3871,20 @@ no_journal:
+> >  	 * The maximum number of concurrent works can be high and
+> >  	 * concurrency isn't really necessary.  Limit it to 1.
+> >  	 */
+> > -	EXT4_SB(sb)->dio_unwritten_wq =3D
+> > -		alloc_workqueue("ext4-dio-unwritten", WQ_MEM_RECLAIM | WQ_UNBOUN=
+D, 1);
+> > -	if (!EXT4_SB(sb)->dio_unwritten_wq) {
+> > -		printk(KERN_ERR "EXT4-fs: failed to create DIO workqueue\n");
+> > +	EXT4_SB(sb)->rsv_conversion_wq =3D
+> > +		alloc_workqueue("ext4-rsv-conversion", WQ_MEM_RECLAIM | WQ_UNBOU=
+ND, 1);
+> > +	if (!EXT4_SB(sb)->rsv_conversion_wq) {
+> > +		printk(KERN_ERR "EXT4-fs: failed to create workqueue\n");
+> >  		ret =3D -ENOMEM;
+> > -		goto failed_mount_wq;
+> > +		goto failed_mount4;
+> > +	}
 > > +
-> > +	TP_STRUCT__entry(
-> > +		__field(	dev_t,	dev			)
-> > +		__field(	ino_t,	ino			)
-> > +		__field(	__u64,	lblk			)
-> > +		__field(	__u32,	len			)
-> > +		__field(	__u32,	flags			)
-> > +	),
-> > +
-> > +	TP_fast_assign(
-> > +		__entry->dev		= inode->i_sb->s_dev;
-> > +		__entry->ino		= inode->i_ino;
-> > +		__entry->lblk		= map->m_lblk;
-> > +		__entry->len		= map->m_len;
-> > +		__entry->flags		= map->m_flags;
-> > +	),
-> > +
-> > +	TP_printk("dev %d,%d ino %lu lblk %llu len %u flags 0x%04x",
-> > +		  MAJOR(__entry->dev), MINOR(__entry->dev),
-> > +		  (unsigned long) __entry->ino, __entry->lblk, __entry->len,
-> > +		  __entry->flags)
-> >  );
-> >  
-> >  TRACE_EVENT(ext4_da_writepages_result,
-> > -- 
+> > +	EXT4_SB(sb)->unrsv_conversion_wq =3D
+> > +		alloc_workqueue("ext4-unrsv-conversion", WQ_MEM_RECLAIM | WQ_UNB=
+OUND, 1);
+> > +	if (!EXT4_SB(sb)->unrsv_conversion_wq) {
+> > +		printk(KERN_ERR "EXT4-fs: failed to create workqueue\n");
+> > +		ret =3D -ENOMEM;
+> > +		goto failed_mount4;
+> >  	}
+> > =20
+> >  	/*
+> > @@ -4019,7 +4031,10 @@ failed_mount4a:
+> >  	sb->s_root =3D NULL;
+> >  failed_mount4:
+> >  	ext4_msg(sb, KERN_ERR, "mount failed");
+> > -	destroy_workqueue(EXT4_SB(sb)->dio_unwritten_wq);
+> > +	if (EXT4_SB(sb)->rsv_conversion_wq)
+> > +		destroy_workqueue(EXT4_SB(sb)->rsv_conversion_wq);
+> > +	if (EXT4_SB(sb)->unrsv_conversion_wq)
+> > +		destroy_workqueue(EXT4_SB(sb)->unrsv_conversion_wq);
+> >  failed_mount_wq:
+> >  	if (sbi->s_journal) {
+> >  		jbd2_journal_destroy(sbi->s_journal);
+> > @@ -4464,7 +4479,8 @@ static int ext4_sync_fs(struct super_block *s=
+b, int wait)
+> >  	struct ext4_sb_info *sbi =3D EXT4_SB(sb);
+> > =20
+> >  	trace_ext4_sync_fs(sb, wait);
+> > -	flush_workqueue(sbi->dio_unwritten_wq);
+> > +	flush_workqueue(sbi->rsv_conversion_wq);
+> > +	flush_workqueue(sbi->unrsv_conversion_wq);
+> >  	/*
+> >  	 * Writeback quota in non-journalled quota case - journalled quot=
+a has
+> >  	 * no dirty dquots
+> > --=20
 > > 1.7.1
-> > 
+> >=20
 > > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext=
+4" in
 > > the body of a message to majordomo@vger.kernel.org
 > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
+--=20
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
