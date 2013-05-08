@@ -1,102 +1,106 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 28/29] ext4: Don't wait for extent conversion in
- ext4_ext_punch_hole()
-Date: Wed, 8 May 2013 15:56:34 +0800
-Message-ID: <20130508075634.GB6045@gmail.com>
+Subject: Re: [PATCH 29/29] ext4: Remove ext4_ioend_wait()
+Date: Wed, 8 May 2013 15:57:12 +0800
+Message-ID: <20130508075712.GC6045@gmail.com>
 References: <1365456754-29373-1-git-send-email-jack@suse.cz>
- <1365456754-29373-29-git-send-email-jack@suse.cz>
+ <1365456754-29373-30-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f53.google.com ([209.85.210.53]:46570 "EHLO
-	mail-da0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751385Ab3EHHiw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 May 2013 03:38:52 -0400
-Received: by mail-da0-f53.google.com with SMTP id o9so815012dan.26
-        for <linux-ext4@vger.kernel.org>; Wed, 08 May 2013 00:38:51 -0700 (PDT)
+Received: from mail-da0-f43.google.com ([209.85.210.43]:33024 "EHLO
+	mail-da0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751230Ab3EHHjb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 May 2013 03:39:31 -0400
+Received: by mail-da0-f43.google.com with SMTP id u7so836264dae.16
+        for <linux-ext4@vger.kernel.org>; Wed, 08 May 2013 00:39:30 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <1365456754-29373-29-git-send-email-jack@suse.cz>
+In-Reply-To: <1365456754-29373-30-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 08, 2013 at 11:32:33PM +0200, Jan Kara wrote:
-> We don't have to wait for extent conversion in ext4_ext_punch_hole() as
-> buffered IO for the punched range has been flushed and waited upon (thus
-> all extent conversions for that range have completed). Also we wait for
-> all DIO to finish using inode_dio_wait() so there cannot be any extent
-> conversions pending due to direct IO.
-> 
-> Also remove ext4_flush_unwritten_io() since it's unused now.
+On Mon, Apr 08, 2013 at 11:32:34PM +0200, Jan Kara wrote:
+> Now that we clear PageWriteback after extent conversion, there's no need
+> to wait for io_end processing in ext4_evict_inode(). Running AIO/DIO
+> keeps file reference until aio_complete() is called so ext4_evict_inode()
+> cannot be called. For io_end structures resulting from buffered IO
+> waiting is happening because we wait for PageWriteback in
+> truncate_inode_pages().
 > 
 > Signed-off-by: Jan Kara <jack@suse.cz>
 
-Need to be rebased.  Otherwise the patch looks good to me.
+Need to be rebased.
 Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
 
 Regards,
                                                 - Zheng
-
 > ---
 >  fs/ext4/ext4.h    |    1 -
->  fs/ext4/extents.c |    3 ---
->  fs/ext4/page-io.c |   16 ----------------
->  3 files changed, 0 insertions(+), 20 deletions(-)
+>  fs/ext4/inode.c   |    5 +++--
+>  fs/ext4/page-io.c |    7 -------
+>  3 files changed, 3 insertions(+), 10 deletions(-)
 > 
 > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 2b0dd9a..859f235 100644
+> index 859f235..b359aef 100644
 > --- a/fs/ext4/ext4.h
 > +++ b/fs/ext4/ext4.h
-> @@ -1986,7 +1986,6 @@ static inline  unsigned char get_dtype(struct super_block *sb, int filetype)
+> @@ -2605,7 +2605,6 @@ extern int ext4_move_extents(struct file *o_filp, struct file *d_filp,
+>  /* page-io.c */
+>  extern int __init ext4_init_pageio(void);
+>  extern void ext4_exit_pageio(void);
+> -extern void ext4_ioend_wait(struct inode *);
+>  extern ext4_io_end_t *ext4_init_io_end(struct inode *inode, gfp_t flags);
+>  extern ext4_io_end_t *ext4_get_io_end(ext4_io_end_t *io_end);
+>  extern int ext4_put_io_end(ext4_io_end_t *io_end);
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index f493ec2..1f88941 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -188,8 +188,6 @@ void ext4_evict_inode(struct inode *inode)
 >  
->  /* fsync.c */
->  extern int ext4_sync_file(struct file *, loff_t, loff_t, int);
-> -extern int ext4_flush_unwritten_io(struct inode *);
+>  	trace_ext4_evict_inode(inode);
 >  
->  /* hash.c */
->  extern int ext4fs_dirhash(const char *name, int len, struct
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index ca4ff71..96c4855 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4697,9 +4697,6 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
+> -	ext4_ioend_wait(inode);
+> -
+>  	if (inode->i_nlink) {
+>  		/*
+>  		 * When journalling data dirty buffers are tracked only in the
+> @@ -219,6 +217,8 @@ void ext4_evict_inode(struct inode *inode)
+>  			filemap_write_and_wait(&inode->i_data);
+>  		}
+>  		truncate_inode_pages(&inode->i_data, 0);
+> +
+> +		WARN_ON(atomic_read(&EXT4_I(inode)->i_ioend_count));
+>  		goto no_delete;
+>  	}
 >  
->  	/* Wait all existing dio workers, newcomers will block on i_mutex */
->  	ext4_inode_block_unlocked_dio(inode);
-> -	err = ext4_flush_unwritten_io(inode);
-> -	if (err)
-> -		goto out_dio;
->  	inode_dio_wait(inode);
+> @@ -229,6 +229,7 @@ void ext4_evict_inode(struct inode *inode)
+>  		ext4_begin_ordered_truncate(inode, 0);
+>  	truncate_inode_pages(&inode->i_data, 0);
 >  
->  	credits = ext4_writepage_trans_blocks(inode);
+> +	WARN_ON(atomic_read(&EXT4_I(inode)->i_ioend_count));
+>  	if (is_bad_inode(inode))
+>  		goto no_delete;
+>  
 > diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-> index 2f0b943..1156b9f 100644
+> index 1156b9f..e720d4e 100644
 > --- a/fs/ext4/page-io.c
 > +++ b/fs/ext4/page-io.c
-> @@ -268,22 +268,6 @@ void ext4_end_io_unrsv_work(struct work_struct *work)
->  	ext4_do_flush_completed_IO(&ei->vfs_inode, &ei->i_unrsv_conversion_list);
+> @@ -44,13 +44,6 @@ void ext4_exit_pageio(void)
+>  	kmem_cache_destroy(io_end_cachep);
 >  }
 >  
-> -int ext4_flush_unwritten_io(struct inode *inode)
+> -void ext4_ioend_wait(struct inode *inode)
 > -{
-> -	int ret, err;
+> -	wait_queue_head_t *wq = ext4_ioend_wq(inode);
 > -
-> -	WARN_ON_ONCE(!mutex_is_locked(&inode->i_mutex) &&
-> -		     !(inode->i_state & I_FREEING));
-> -	ret = ext4_do_flush_completed_IO(inode,
-> -					 &EXT4_I(inode)->i_rsv_conversion_list);
-> -	err = ext4_do_flush_completed_IO(inode,
-> -					 &EXT4_I(inode)->i_unrsv_conversion_list);
-> -	if (!ret)
-> -		ret = err;
-> -	ext4_unwritten_wait(inode);
-> -	return ret;
+> -	wait_event(*wq, (atomic_read(&EXT4_I(inode)->i_ioend_count) == 0));
 > -}
 > -
->  ext4_io_end_t *ext4_init_io_end(struct inode *inode, gfp_t flags)
->  {
->  	ext4_io_end_t *io = kmem_cache_zalloc(io_end_cachep, flags);
+>  /*
+>   * Print an buffer I/O error compatible with the fs/buffer.c.  This
+>   * provides compatibility with dmesg scrapers that look for a specific
 > -- 
 > 1.7.1
 > 
