@@ -1,373 +1,143 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 21/29] ext4: Split extent conversion lists to reserved &
- unreserved parts
-Date: Wed, 8 May 2013 13:23:55 +0200
-Message-ID: <20130508112355.GC30550@quack.suse.cz>
+Subject: Re: [PATCH 25/29] ext4: Use generic_file_fsync() in
+ ext4_file_fsync() in nojournal mode
+Date: Wed, 8 May 2013 13:29:41 +0200
+Message-ID: <20130508112941.GD30550@quack.suse.cz>
 References: <1365456754-29373-1-git-send-email-jack@suse.cz>
- <1365456754-29373-22-git-send-email-jack@suse.cz>
- <20130508070335.GC20599@gmail.com>
+ <1365456754-29373-26-git-send-email-jack@suse.cz>
+ <20130508073734.GB32600@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Type: text/plain; charset=us-ascii
 Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
 	linux-ext4@vger.kernel.org
 To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:51618 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:51801 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752469Ab3EHLX6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 8 May 2013 07:23:58 -0400
+	id S1753729Ab3EHL3o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 8 May 2013 07:29:44 -0400
 Content-Disposition: inline
-In-Reply-To: <20130508070335.GC20599@gmail.com>
+In-Reply-To: <20130508073734.GB32600@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 08-05-13 15:03:35, Zheng Liu wrote:
-> On Mon, Apr 08, 2013 at 11:32:26PM +0200, Jan Kara wrote:
-> > Now that we have extent conversions with reserved transaction, we h=
-ave
-> > to prevent extent conversions without reserved transaction (from DI=
-O
-> > code) to block these (as that would effectively void any transactio=
-n
-> > reservation we did). So split lists, work items, and work queues to
-> > reserved and unreserved parts.
-> >=20
+On Wed 08-05-13 15:37:34, Zheng Liu wrote:
+> On Mon, Apr 08, 2013 at 11:32:30PM +0200, Jan Kara wrote:
+> > Just use the generic function instead of duplicating it. We only need
+> > to reshuffle the read-only check a bit (which is there to prevent
+> > writing to a filesystem which has been remounted read-only after error
+> > I assume).
+> > 
 > > Signed-off-by: Jan Kara <jack@suse.cz>
->=20
-> I got a build error that looks like this.
->=20
->  fs/ext4/page-io.c: In function =E2=80=98ext4_ioend_shutdown=E2=80=99=
-:
->  fs/ext4/page-io.c:60: error: =E2=80=98struct ext4_inode_info=E2=80=99=
- has no member
->  named =E2=80=98i_unwritten_work=E2=80=99
->=20
-> I guess the reason is that when this patch set is sent out,
-> ext4_io_end_shutdown() hasn't be added.  So please add the code
-> like this.  Otherwise the patch looks good to me.
+> 
+> A minor nit below.  Otherwise the patch looks good to me.
 > Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
-  Yeah, I've already rebased the series on top of current Linus's tree =
-and
-I've notice this problem as well. It should be fixed by now. I didn't p=
-ost
-the rebased series yet because I'm looking into some xfstests failures =
-I
-hit when testing it...
+> 
+> > ---
+> >  fs/ext4/fsync.c |   45 ++++++++++-----------------------------------
+> >  1 files changed, 10 insertions(+), 35 deletions(-)
+> > 
+> > diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+> > index e02ba1b..1c08780 100644
+> > --- a/fs/ext4/fsync.c
+> > +++ b/fs/ext4/fsync.c
+> > @@ -73,32 +73,6 @@ static int ext4_sync_parent(struct inode *inode)
+> >  	return ret;
+> >  }
+> >  
+> > -/**
+> > - * __sync_file - generic_file_fsync without the locking and filemap_write
+> > - * @inode:	inode to sync
+> > - * @datasync:	only sync essential metadata if true
+> > - *
+> > - * This is just generic_file_fsync without the locking.  This is needed for
+> > - * nojournal mode to make sure this inodes data/metadata makes it to disk
+> > - * properly.  The i_mutex should be held already.
+> > - */
+> > -static int __sync_inode(struct inode *inode, int datasync)
+> > -{
+> > -	int err;
+> > -	int ret;
+> > -
+> > -	ret = sync_mapping_buffers(inode->i_mapping);
+> > -	if (!(inode->i_state & I_DIRTY))
+> > -		return ret;
+> > -	if (datasync && !(inode->i_state & I_DIRTY_DATASYNC))
+> > -		return ret;
+> > -
+> > -	err = sync_inode_metadata(inode, 1);
+> > -	if (ret == 0)
+> > -		ret = err;
+> > -	return ret;
+> > -}
+> > -
+> >  /*
+> >   * akpm: A new design for ext4_sync_file().
+> >   *
+> > @@ -116,7 +90,7 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+> >  	struct inode *inode = file->f_mapping->host;
+> >  	struct ext4_inode_info *ei = EXT4_I(inode);
+> >  	journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
+> > -	int ret, err;
+> > +	int ret = 0, err;
+> >  	tid_t commit_tid;
+> >  	bool needs_barrier = false;
+> >  
+> > @@ -124,21 +98,21 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+> >  
+> >  	trace_ext4_sync_file_enter(file, datasync);
+> >  
+> > -	ret = filemap_write_and_wait_range(inode->i_mapping, start, end);
+> > -	if (ret)
+> > -		return ret;
+> > -	mutex_lock(&inode->i_mutex);
+> > -
+> >  	if (inode->i_sb->s_flags & MS_RDONLY)
+> > -		goto out;
+> > +		goto out_trace;
+> >  
+> >  	if (!journal) {
+> > -		ret = __sync_inode(inode, datasync);
+> > +		ret = generic_file_fsync(file, start, end, datasync);
+> >  		if (!ret && !hlist_empty(&inode->i_dentry))
+> >  			ret = ext4_sync_parent(inode);
+> >  		goto out;
+>                      ^^^^
+>                 goto out_trace;
+> Otherwise we will unlock i_mutex that we haven't take it.
+  Ha, good spotting! The following patch will fix this but nevertheless
+it's good to fix the breakage here. Thanks for review.
 
 								Honza
->=20
-> Regards,
->                                                 - Zheng
->=20
-> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-> index 3fea79e..f9ecc4f 100644
-> --- a/fs/ext4/page-io.c
-> +++ b/fs/ext4/page-io.c
-> @@ -57,8 +57,10 @@ void ext4_ioend_shutdown(struct inode *inode)
->          * We need to make sure the work structure is finished being
->          * used before we let the inode get destroyed.
->          */
-> -       if (work_pending(&EXT4_I(inode)->i_unwritten_work))
-> -               cancel_work_sync(&EXT4_I(inode)->i_unwritten_work);
-> +       if (work_pending(&EXT4_I(inode)->i_rsv_conversion_work))
-> +               cancel_work_sync(&EXT4_I(inode)->i_rsv_conversion_wor=
-k);
-> +       if (work_pending(&EXT4_I(inode)->i_unrsv_conversion_work))
-> + cancel_work_sync(&EXT4_I(inode)->i_unrsv_conversion_work);
->  }
-> =20
->  static void ext4_release_io_end(ext4_io_end_t *io_end)
->=20
-> > ---
-> >  fs/ext4/ext4.h    |   25 +++++++++++++++++-----
-> >  fs/ext4/page-io.c |   59 ++++++++++++++++++++++++++++++++++-------=
------------
-> >  fs/ext4/super.c   |   38 ++++++++++++++++++++++++---------
-> >  3 files changed, 84 insertions(+), 38 deletions(-)
-> >=20
-> > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> > index 65adf0d..a594a94 100644
-> > --- a/fs/ext4/ext4.h
-> > +++ b/fs/ext4/ext4.h
-> > @@ -889,12 +889,22 @@ struct ext4_inode_info {
-> >  	qsize_t i_reserved_quota;
-> >  #endif
-> > =20
-> > -	/* completed IOs that might need unwritten extents handling */
-> > -	struct list_head i_completed_io_list;
-> > +	/* Lock protecting lists below */
-> >  	spinlock_t i_completed_io_lock;
-> > +	/*
-> > +	 * Completed IOs that need unwritten extents handling and have
-> > +	 * transaction reserved
-> > +	 */
-> > +	struct list_head i_rsv_conversion_list;
-> > +	/*
-> > +	 * Completed IOs that need unwritten extents handling and don't h=
-ave
-> > +	 * transaction reserved
-> > +	 */
-> > +	struct list_head i_unrsv_conversion_list;
-> >  	atomic_t i_ioend_count;	/* Number of outstanding io_end structs *=
-/
-> >  	atomic_t i_unwritten; /* Nr. of inflight conversions pending */
-> > -	struct work_struct i_unwritten_work;	/* deferred extent conversio=
-n */
-> > +	struct work_struct i_rsv_conversion_work;
-> > +	struct work_struct i_unrsv_conversion_work;
-> > =20
-> >  	spinlock_t i_block_reservation_lock;
-> > =20
-> > @@ -1257,8 +1267,10 @@ struct ext4_sb_info {
-> >  	struct flex_groups *s_flex_groups;
-> >  	ext4_group_t s_flex_groups_allocated;
-> > =20
-> > -	/* workqueue for dio unwritten */
-> > -	struct workqueue_struct *dio_unwritten_wq;
-> > +	/* workqueue for unreserved extent convertions (dio) */
-> > +	struct workqueue_struct *unrsv_conversion_wq;
-> > +	/* workqueue for reserved extent conversions (buffered io) */
-> > +	struct workqueue_struct *rsv_conversion_wq;
-> > =20
-> >  	/* timer for periodic error stats printing */
-> >  	struct timer_list s_err_report;
-> > @@ -2599,7 +2611,8 @@ extern int ext4_put_io_end(ext4_io_end_t *io_=
-end);
-> >  extern void ext4_put_io_end_defer(ext4_io_end_t *io_end);
-> >  extern void ext4_io_submit_init(struct ext4_io_submit *io,
-> >  				struct writeback_control *wbc);
-> > -extern void ext4_end_io_work(struct work_struct *work);
-> > +extern void ext4_end_io_rsv_work(struct work_struct *work);
-> > +extern void ext4_end_io_unrsv_work(struct work_struct *work);
-> >  extern void ext4_io_submit(struct ext4_io_submit *io);
-> >  extern int ext4_bio_write_page(struct ext4_io_submit *io,
-> >  			       struct page *page,
-> > diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-> > index e8ee4da..8bff3b3 100644
-> > --- a/fs/ext4/page-io.c
-> > +++ b/fs/ext4/page-io.c
-> > @@ -103,20 +103,17 @@ static int ext4_end_io(ext4_io_end_t *io)
-> >  	return ret;
-> >  }
-> > =20
-> > -static void dump_completed_IO(struct inode *inode)
-> > +static void dump_completed_IO(struct inode *inode, struct list_hea=
-d *head)
-> >  {
-> >  #ifdef	EXT4FS_DEBUG
-> >  	struct list_head *cur, *before, *after;
-> >  	ext4_io_end_t *io, *io0, *io1;
-> > =20
-> > -	if (list_empty(&EXT4_I(inode)->i_completed_io_list)) {
-> > -		ext4_debug("inode %lu completed_io list is empty\n",
-> > -			   inode->i_ino);
-> > +	if (list_empty(head))
-> >  		return;
-> > -	}
-> > =20
-> > -	ext4_debug("Dump inode %lu completed_io list\n", inode->i_ino);
-> > -	list_for_each_entry(io, &EXT4_I(inode)->i_completed_io_list, list=
-) {
-> > +	ext4_debug("Dump inode %lu completed io list\n", inode->i_ino);
-> > +	list_for_each_entry(io, head, list) {
-> >  		cur =3D &io->list;
-> >  		before =3D cur->prev;
-> >  		io0 =3D container_of(before, ext4_io_end_t, list);
-> > @@ -137,16 +134,23 @@ static void ext4_add_complete_io(ext4_io_end_=
-t *io_end)
-> >  	unsigned long flags;
-> > =20
-> >  	BUG_ON(!(io_end->flag & EXT4_IO_END_UNWRITTEN));
-> > -	wq =3D EXT4_SB(io_end->inode->i_sb)->dio_unwritten_wq;
-> > -
-> >  	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
-> > -	if (list_empty(&ei->i_completed_io_list))
-> > -		queue_work(wq, &ei->i_unwritten_work);
-> > -	list_add_tail(&io_end->list, &ei->i_completed_io_list);
-> > +	if (io_end->handle) {
-> > +		wq =3D EXT4_SB(io_end->inode->i_sb)->rsv_conversion_wq;
-> > +		if (list_empty(&ei->i_rsv_conversion_list))
-> > +			queue_work(wq, &ei->i_rsv_conversion_work);
-> > +		list_add_tail(&io_end->list, &ei->i_rsv_conversion_list);
-> > +	} else {
-> > +		wq =3D EXT4_SB(io_end->inode->i_sb)->unrsv_conversion_wq;
-> > +		if (list_empty(&ei->i_unrsv_conversion_list))
-> > +			queue_work(wq, &ei->i_unrsv_conversion_work);
-> > +		list_add_tail(&io_end->list, &ei->i_unrsv_conversion_list);
-> > +	}
-> >  	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
-> >  }
-> > =20
-> > -static int ext4_do_flush_completed_IO(struct inode *inode)
-> > +static int ext4_do_flush_completed_IO(struct inode *inode,
-> > +				      struct list_head *head)
-> >  {
-> >  	ext4_io_end_t *io;
-> >  	struct list_head unwritten;
-> > @@ -155,8 +159,8 @@ static int ext4_do_flush_completed_IO(struct in=
-ode *inode)
-> >  	int err, ret =3D 0;
-> > =20
-> >  	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
-> > -	dump_completed_IO(inode);
-> > -	list_replace_init(&ei->i_completed_io_list, &unwritten);
-> > +	dump_completed_IO(inode, head);
-> > +	list_replace_init(head, &unwritten);
-> >  	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
-> > =20
-> >  	while (!list_empty(&unwritten)) {
-> > @@ -172,21 +176,34 @@ static int ext4_do_flush_completed_IO(struct =
-inode *inode)
-> >  }
-> > =20
-> >  /*
-> > - * work on completed aio dio IO, to convert unwritten extents to e=
-xtents
-> > + * work on completed IO, to convert unwritten extents to extents
-> >   */
-> > -void ext4_end_io_work(struct work_struct *work)
-> > +void ext4_end_io_rsv_work(struct work_struct *work)
-> >  {
-> >  	struct ext4_inode_info *ei =3D container_of(work, struct ext4_ino=
-de_info,
-> > -						  i_unwritten_work);
-> > -	ext4_do_flush_completed_IO(&ei->vfs_inode);
-> > +						  i_rsv_conversion_work);
-> > +	ext4_do_flush_completed_IO(&ei->vfs_inode, &ei->i_rsv_conversion_=
-list);
-> > +}
-> > +
-> > +void ext4_end_io_unrsv_work(struct work_struct *work)
-> > +{
-> > +	struct ext4_inode_info *ei =3D container_of(work, struct ext4_ino=
-de_info,
-> > +						  i_unrsv_conversion_work);
-> > +	ext4_do_flush_completed_IO(&ei->vfs_inode, &ei->i_unrsv_conversio=
-n_list);
-> >  }
-> > =20
-> >  int ext4_flush_unwritten_io(struct inode *inode)
-> >  {
-> > -	int ret;
-> > +	int ret, err;
-> > +
-> >  	WARN_ON_ONCE(!mutex_is_locked(&inode->i_mutex) &&
-> >  		     !(inode->i_state & I_FREEING));
-> > -	ret =3D ext4_do_flush_completed_IO(inode);
-> > +	ret =3D ext4_do_flush_completed_IO(inode,
-> > +					 &EXT4_I(inode)->i_rsv_conversion_list);
-> > +	err =3D ext4_do_flush_completed_IO(inode,
-> > +					 &EXT4_I(inode)->i_unrsv_conversion_list);
-> > +	if (!ret)
-> > +		ret =3D err;
-> >  	ext4_unwritten_wait(inode);
-> >  	return ret;
-> >  }
-> > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> > index 09ff724..916c4fb 100644
-> > --- a/fs/ext4/super.c
-> > +++ b/fs/ext4/super.c
-> > @@ -747,8 +747,10 @@ static void ext4_put_super(struct super_block =
-*sb)
-> >  	ext4_unregister_li_request(sb);
-> >  	dquot_disable(sb, -1, DQUOT_USAGE_ENABLED | DQUOT_LIMITS_ENABLED)=
-;
-> > =20
-> > -	flush_workqueue(sbi->dio_unwritten_wq);
-> > -	destroy_workqueue(sbi->dio_unwritten_wq);
-> > +	flush_workqueue(sbi->unrsv_conversion_wq);
-> > +	flush_workqueue(sbi->rsv_conversion_wq);
-> > +	destroy_workqueue(sbi->unrsv_conversion_wq);
-> > +	destroy_workqueue(sbi->rsv_conversion_wq);
-> > =20
-> >  	if (sbi->s_journal) {
-> >  		err =3D jbd2_journal_destroy(sbi->s_journal);
-> > @@ -856,13 +858,15 @@ static struct inode *ext4_alloc_inode(struct =
-super_block *sb)
-> >  	ei->i_reserved_quota =3D 0;
-> >  #endif
-> >  	ei->jinode =3D NULL;
-> > -	INIT_LIST_HEAD(&ei->i_completed_io_list);
-> > +	INIT_LIST_HEAD(&ei->i_rsv_conversion_list);
-> > +	INIT_LIST_HEAD(&ei->i_unrsv_conversion_list);
-> >  	spin_lock_init(&ei->i_completed_io_lock);
-> >  	ei->i_sync_tid =3D 0;
-> >  	ei->i_datasync_tid =3D 0;
-> >  	atomic_set(&ei->i_ioend_count, 0);
-> >  	atomic_set(&ei->i_unwritten, 0);
-> > -	INIT_WORK(&ei->i_unwritten_work, ext4_end_io_work);
-> > +	INIT_WORK(&ei->i_rsv_conversion_work, ext4_end_io_rsv_work);
-> > +	INIT_WORK(&ei->i_unrsv_conversion_work, ext4_end_io_unrsv_work);
-> > =20
-> >  	return &ei->vfs_inode;
-> >  }
-> > @@ -3867,12 +3871,20 @@ no_journal:
-> >  	 * The maximum number of concurrent works can be high and
-> >  	 * concurrency isn't really necessary.  Limit it to 1.
-> >  	 */
-> > -	EXT4_SB(sb)->dio_unwritten_wq =3D
-> > -		alloc_workqueue("ext4-dio-unwritten", WQ_MEM_RECLAIM | WQ_UNBOUN=
-D, 1);
-> > -	if (!EXT4_SB(sb)->dio_unwritten_wq) {
-> > -		printk(KERN_ERR "EXT4-fs: failed to create DIO workqueue\n");
-> > +	EXT4_SB(sb)->rsv_conversion_wq =3D
-> > +		alloc_workqueue("ext4-rsv-conversion", WQ_MEM_RECLAIM | WQ_UNBOU=
-ND, 1);
-> > +	if (!EXT4_SB(sb)->rsv_conversion_wq) {
-> > +		printk(KERN_ERR "EXT4-fs: failed to create workqueue\n");
-> >  		ret =3D -ENOMEM;
-> > -		goto failed_mount_wq;
-> > +		goto failed_mount4;
-> > +	}
-> > +
-> > +	EXT4_SB(sb)->unrsv_conversion_wq =3D
-> > +		alloc_workqueue("ext4-unrsv-conversion", WQ_MEM_RECLAIM | WQ_UNB=
-OUND, 1);
-> > +	if (!EXT4_SB(sb)->unrsv_conversion_wq) {
-> > +		printk(KERN_ERR "EXT4-fs: failed to create workqueue\n");
-> > +		ret =3D -ENOMEM;
-> > +		goto failed_mount4;
+
 > >  	}
-> > =20
+> >  
+> > +	ret = filemap_write_and_wait_range(inode->i_mapping, start, end);
+> > +	if (ret)
+> > +		return ret;
+> > +	mutex_lock(&inode->i_mutex);
+> > +
 > >  	/*
-> > @@ -4019,7 +4031,10 @@ failed_mount4a:
-> >  	sb->s_root =3D NULL;
-> >  failed_mount4:
-> >  	ext4_msg(sb, KERN_ERR, "mount failed");
-> > -	destroy_workqueue(EXT4_SB(sb)->dio_unwritten_wq);
-> > +	if (EXT4_SB(sb)->rsv_conversion_wq)
-> > +		destroy_workqueue(EXT4_SB(sb)->rsv_conversion_wq);
-> > +	if (EXT4_SB(sb)->unrsv_conversion_wq)
-> > +		destroy_workqueue(EXT4_SB(sb)->unrsv_conversion_wq);
-> >  failed_mount_wq:
-> >  	if (sbi->s_journal) {
-> >  		jbd2_journal_destroy(sbi->s_journal);
-> > @@ -4464,7 +4479,8 @@ static int ext4_sync_fs(struct super_block *s=
-b, int wait)
-> >  	struct ext4_sb_info *sbi =3D EXT4_SB(sb);
-> > =20
-> >  	trace_ext4_sync_fs(sb, wait);
-> > -	flush_workqueue(sbi->dio_unwritten_wq);
-> > +	flush_workqueue(sbi->rsv_conversion_wq);
-> > +	flush_workqueue(sbi->unrsv_conversion_wq);
-> >  	/*
-> >  	 * Writeback quota in non-journalled quota case - journalled quot=
-a has
-> >  	 * no dirty dquots
-> > --=20
+> >  	 * data=writeback,ordered:
+> >  	 *  The caller's filemap_fdatawrite()/wait will sync the data.
+> > @@ -169,8 +143,9 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+> >  		if (!ret)
+> >  			ret = err;
+> >  	}
+> > - out:
+> > +out:
+> >  	mutex_unlock(&inode->i_mutex);
+> > +out_trace:
+> >  	trace_ext4_sync_file_exit(inode, ret);
+> >  	return ret;
+> >  }
+> > -- 
 > > 1.7.1
-> >=20
+> > 
 > > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext=
-4" in
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > > the body of a message to majordomo@vger.kernel.org
 > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
---=20
+-- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
