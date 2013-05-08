@@ -1,82 +1,134 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 24/29] ext4: Remove wait for unwritten extent conversion
- from ext4_ext_truncate()
-Date: Wed, 8 May 2013 15:35:23 +0800
-Message-ID: <20130508073523.GA32600@gmail.com>
+Subject: Re: [PATCH 25/29] ext4: Use generic_file_fsync() in
+ ext4_file_fsync() in nojournal mode
+Date: Wed, 8 May 2013 15:37:34 +0800
+Message-ID: <20130508073734.GB32600@gmail.com>
 References: <1365456754-29373-1-git-send-email-jack@suse.cz>
- <1365456754-29373-25-git-send-email-jack@suse.cz>
+ <1365456754-29373-26-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f179.google.com ([209.85.192.179]:65398 "EHLO
-	mail-pd0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752808Ab3EHHRl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 May 2013 03:17:41 -0400
-Received: by mail-pd0-f179.google.com with SMTP id q10so1020148pdj.24
-        for <linux-ext4@vger.kernel.org>; Wed, 08 May 2013 00:17:41 -0700 (PDT)
+Received: from mail-pd0-f170.google.com ([209.85.192.170]:51522 "EHLO
+	mail-pd0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752602Ab3EHHTx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 May 2013 03:19:53 -0400
+Received: by mail-pd0-f170.google.com with SMTP id 10so1029111pdi.29
+        for <linux-ext4@vger.kernel.org>; Wed, 08 May 2013 00:19:52 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <1365456754-29373-25-git-send-email-jack@suse.cz>
+In-Reply-To: <1365456754-29373-26-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 08, 2013 at 11:32:29PM +0200, Jan Kara wrote:
-> Since PageWriteback bit is now cleared after extents are converted from
-> unwritten to written ones, we have full exclusion of writeback path from
-> truncate (truncate_inode_pages() waits for PageWriteback bits to get cleared
-> on all invalidated pages). Exclusion from DIO path is achieved by
-> inode_dio_wait() call in ext4_setattr(). So there's no need to wait for
-> extent convertion in ext4_ext_truncate() anymore.
+On Mon, Apr 08, 2013 at 11:32:30PM +0200, Jan Kara wrote:
+> Just use the generic function instead of duplicating it. We only need
+> to reshuffle the read-only check a bit (which is there to prevent
+> writing to a filesystem which has been remounted read-only after error
+> I assume).
 > 
 > Signed-off-by: Jan Kara <jack@suse.cz>
 
+A minor nit below.  Otherwise the patch looks good to me.
 Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
-Regards,
-                                                - Zheng
 
 > ---
->  fs/ext4/extents.c |    6 ------
->  fs/ext4/page-io.c |    9 ++++++++-
->  2 files changed, 8 insertions(+), 7 deletions(-)
+>  fs/ext4/fsync.c |   45 ++++++++++-----------------------------------
+>  1 files changed, 10 insertions(+), 35 deletions(-)
 > 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index ae22735..ca4ff71 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4256,12 +4256,6 @@ void ext4_ext_truncate(struct inode *inode)
->  	int err = 0;
->  
->  	/*
-> -	 * finish any pending end_io work so we won't run the risk of
-> -	 * converting any truncated blocks to initialized later
-> -	 */
-> -	ext4_flush_unwritten_io(inode);
-> -
-> -	/*
->  	 * probably first extent we're gonna free will be last in block
->  	 */
->  	err = ext4_writepage_trans_blocks(inode);
-> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-> index 2967794..2f0b943 100644
-> --- a/fs/ext4/page-io.c
-> +++ b/fs/ext4/page-io.c
-> @@ -145,7 +145,14 @@ static void ext4_clear_io_unwritten_flag(ext4_io_end_t *io_end)
->  		wake_up_all(ext4_ioend_wq(inode));
+> diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+> index e02ba1b..1c08780 100644
+> --- a/fs/ext4/fsync.c
+> +++ b/fs/ext4/fsync.c
+> @@ -73,32 +73,6 @@ static int ext4_sync_parent(struct inode *inode)
+>  	return ret;
 >  }
 >  
-> -/* check a range of space and convert unwritten extents to written. */
-> +/*
-> + * Check a range of space and convert unwritten extents to written. Note that
-> + * we are protected from truncate touching same part of extent tree by the
-> + * fact that truncate code waits for all DIO to finish (thus exclusion from
-> + * direct IO is achieved) and also waits for PageWriteback bits. Thus we
-> + * cannot get to ext4_ext_truncate() before all IOs overlapping that range are
-> + * completed (happens from ext4_free_ioend()).
-> + */
->  static int ext4_end_io(ext4_io_end_t *io)
->  {
->  	struct inode *inode = io->inode;
+> -/**
+> - * __sync_file - generic_file_fsync without the locking and filemap_write
+> - * @inode:	inode to sync
+> - * @datasync:	only sync essential metadata if true
+> - *
+> - * This is just generic_file_fsync without the locking.  This is needed for
+> - * nojournal mode to make sure this inodes data/metadata makes it to disk
+> - * properly.  The i_mutex should be held already.
+> - */
+> -static int __sync_inode(struct inode *inode, int datasync)
+> -{
+> -	int err;
+> -	int ret;
+> -
+> -	ret = sync_mapping_buffers(inode->i_mapping);
+> -	if (!(inode->i_state & I_DIRTY))
+> -		return ret;
+> -	if (datasync && !(inode->i_state & I_DIRTY_DATASYNC))
+> -		return ret;
+> -
+> -	err = sync_inode_metadata(inode, 1);
+> -	if (ret == 0)
+> -		ret = err;
+> -	return ret;
+> -}
+> -
+>  /*
+>   * akpm: A new design for ext4_sync_file().
+>   *
+> @@ -116,7 +90,7 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+>  	struct inode *inode = file->f_mapping->host;
+>  	struct ext4_inode_info *ei = EXT4_I(inode);
+>  	journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
+> -	int ret, err;
+> +	int ret = 0, err;
+>  	tid_t commit_tid;
+>  	bool needs_barrier = false;
+>  
+> @@ -124,21 +98,21 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+>  
+>  	trace_ext4_sync_file_enter(file, datasync);
+>  
+> -	ret = filemap_write_and_wait_range(inode->i_mapping, start, end);
+> -	if (ret)
+> -		return ret;
+> -	mutex_lock(&inode->i_mutex);
+> -
+>  	if (inode->i_sb->s_flags & MS_RDONLY)
+> -		goto out;
+> +		goto out_trace;
+>  
+>  	if (!journal) {
+> -		ret = __sync_inode(inode, datasync);
+> +		ret = generic_file_fsync(file, start, end, datasync);
+>  		if (!ret && !hlist_empty(&inode->i_dentry))
+>  			ret = ext4_sync_parent(inode);
+>  		goto out;
+                     ^^^^
+                goto out_trace;
+Otherwise we will unlock i_mutex that we haven't take it.
+
+Regards
+                                                - Zheng
+
+>  	}
+>  
+> +	ret = filemap_write_and_wait_range(inode->i_mapping, start, end);
+> +	if (ret)
+> +		return ret;
+> +	mutex_lock(&inode->i_mutex);
+> +
+>  	/*
+>  	 * data=writeback,ordered:
+>  	 *  The caller's filemap_fdatawrite()/wait will sync the data.
+> @@ -169,8 +143,9 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+>  		if (!ret)
+>  			ret = err;
+>  	}
+> - out:
+> +out:
+>  	mutex_unlock(&inode->i_mutex);
+> +out_trace:
+>  	trace_ext4_sync_file_exit(inode, ret);
+>  	return ret;
+>  }
 > -- 
 > 1.7.1
 > 
