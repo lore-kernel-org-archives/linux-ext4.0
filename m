@@ -1,44 +1,144 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: EXT4 panic at jbd2_journal_put_journal_head() in 3.9+
-Date: Thu, 9 May 2013 11:31:52 -0400
-Message-ID: <20130509153152.GB3458@thunk.org>
-References: <15102321.375241368086369792.JavaMail.weblogic@epml19>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] xfstests: regression test for ext4 resize with non-extent
+ files
+Date: Thu, 09 May 2013 17:02:48 -0500
+Message-ID: <518C1D08.4080309@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: EUNBONG SONG <eunb.song@samsung.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: xfs-oss <xfs@oss.sgi.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:47335 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751592Ab3EIPb4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 9 May 2013 11:31:56 -0400
-Content-Disposition: inline
-In-Reply-To: <15102321.375241368086369792.JavaMail.weblogic@epml19>
+Received: from mx1.redhat.com ([209.132.183.28]:36621 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751921Ab3EIWCz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 9 May 2013 18:02:55 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, May 09, 2013 at 07:59:30AM +0000, EUNBONG SONG wrote:
-> 
-> I got a message as below every time i ran iozone test. 
-> 
-> 
-> [ 4876.293124] [<ffffffff80272d18>] show_stack+0x68/0x80
-> [ 4876.309411] [<ffffffff802bde4c>] notifier_call_chain+0x5c/0xa8
-> [ 4876.315245] [<ffffffff802be524>] __atomic_notifier_call_chain+0x3c/0x58
-> [ 4876.321860] [<ffffffff802be588>] notify_die+0x38/0x48
-> [ 4876.326913] [<ffffffff80272548>] do_trap_or_bp+0x48/0x1a8
-> [ 4876.332312] [<ffffffff8026cfe4>] resume_userspace_check+0x0/0x10
-> [ 4876.338323] [<ffffffff80462994>] jbd2_journal_put_journal_head+0xcc/0x250
-> [ 4876.345111] [<ffffffff804603b4>] __jbd2_journal_remove_checkpoint+0x54/0x130
-> [ 4876.352160] [<ffffffff8045e630>] jbd2_journal_commit_transaction+0x1318/0x1ad0
-> [ 4876.359383] [<ffffffff80463f4c>] kjournald2+0x114/0x450
-> [ 4876.364611] [<ffffffff802b8160>] kthread+0xb8/0xc0
-> [ 4876.369402] [<ffffffff8026d060>] ret_from_kernel_thread+0x10/0x18
-> 
-> When i ran without multi-thread option, the problem was not ocurred.
+Regression test for:
 
-Can you give us the full crash message, (i.e., the panic, the BUG,
-WARN, the registers, etc.), and not the stack trace?
+c5c72d8 ext4: fix online resizing for ext3-compat file systems
 
-      	  	     	    	    - Ted
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+diff --git a/tests/ext4/306 b/tests/ext4/306
+new file mode 100755
+index 0000000..6a961ee
+--- /dev/null
++++ b/tests/ext4/306
+@@ -0,0 +1,83 @@
++#! /bin/bash
++# FS QA Test No. ext4/306
++#
++# Test that blocks are available to non-extent files after a resize2fs
++# Regression test for commit:
++# c5c72d8 ext4: fix online resizing for ext3-compat file systems
++#
++#-----------------------------------------------------------------------
++# Copyright (c) 2013 Red Hat, Inc.  All Rights Reserved.
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License as
++# published by the Free Software Foundation.
++#
++# This program is distributed in the hope that it would be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write the Free Software Foundation,
++# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++#-----------------------------------------------------------------------
++
++seq=`basename $0`
++seqres=$RESULT_DIR/$seq
++echo "QA output created by $seq"
++
++PIDS=""
++status=1	# failure is the default!
++trap "_cleanup; exit \$status" 0 1 2 3 15
++
++_cleanup()
++{
++    _scratch_unmount
++}
++
++# get standard environment, filters and checks
++. ./common/rc
++. ./common/filter
++
++# real QA test starts here
++_supported_fs ext4
++_supported_os Linux
++
++_require_scratch
++
++# This needs to mount ext3; might require ext3 driver, or ext4
++# might handle it itself.  Find out if we have it one way or another.
++modprobe ext3 > /dev/null 2>&1
++grep -q ext3 /proc/filesystems || _notrun "This test requires ext3 support"
++
++rm -f $seqres.full
++echo "Silence is golden"
++
++# Make a small ext3 fs, (extents disabled) & mount it
++yes | mkfs.ext3 $SCRATCH_DEV 512m >> $seqres.full 2>&1
++_scratch_mount -t ext3 || _fail "couldn't mount fs as ext3"
++# Create a small non-extent-based file
++echo "Create 1m testfile1"
++$XFS_IO_PROG -f $SCRATCH_MNT/testfile1 -c "pwrite 0 1m" | _filter_xfs_io
++echo "Create testfile2 to fill the fs"
++# A large non-extent-based file filling the fs; this will run out & fail
++$XFS_IO_PROG -f $SCRATCH_MNT/testfile2 -c "pwrite 0 512m" | _filter_xfs_io
++
++# Remount as ext4
++_scratch_unmount
++_scratch_mount -t ext4 || _fail "couldn't remount fs as ext4"
++df -h $SCRATCH_MNT >> $seqres.full
++
++# Grow it by 512m
++echo "Resize to 1g"
++resize2fs $SCRATCH_DEV 1g >> $seqres.full 2>&1 || _fail "Could not resize to 1g"
++df -h $SCRATCH_MNT >> $seqres.full
++
++# See if we can add more blocks to the files
++echo "append 2m to testfile1"
++$XFS_IO_PROG -f $SCRATCH_MNT/testfile1 -c "pwrite 1m 2m" | _filter_xfs_io
++echo "append 2m to testfile2"
++$XFS_IO_PROG -f $SCRATCH_MNT/testfile1 -c "pwrite 512m 2m" | _filter_xfs_io
++
++status=0
++exit
+diff --git a/tests/ext4/306.out b/tests/ext4/306.out
+new file mode 100644
+index 0000000..654637d
+--- /dev/null
++++ b/tests/ext4/306.out
+@@ -0,0 +1,14 @@
++QA output created by 306
++Silence is golden
++Create 1m testfile1
++wrote 1048576/1048576 bytes at offset 0
++XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
++Create testfile2 to fill the fs
++pwrite64: No space left on device
++Resize to 1g
++append 2m to testfile1
++wrote 2097152/2097152 bytes at offset 1048576
++XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
++append 2m to testfile2
++wrote 2097152/2097152 bytes at offset 536870912
++XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
+diff --git a/tests/ext4/group b/tests/ext4/group
+index 53af708..4c3e2f4 100644
+--- a/tests/ext4/group
++++ b/tests/ext4/group
+@@ -9,3 +9,4 @@
+ 303 aio dangerous ioctl rw stress
+ 304 aio dangerous ioctl rw stress
+ 305 auto
++306 dangerous rw resize quick
+
