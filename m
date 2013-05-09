@@ -1,39 +1,53 @@
-From: Al Viro <viro@ZenIV.linux.org.uk>
-Subject: Re: [PATCH] jbd2: Fix block tag checksum verification brokenness
-Date: Thu, 9 May 2013 00:03:39 +0100
-Message-ID: <20130508230339.GC25399@ZenIV.linux.org.uk>
-References: <20130508220027.GB7730@blackbox.djwong.org>
+From: EUNBONG SONG <eunb.song@samsung.com>
+Subject: EXT4 panic at jbd2_journal_put_journal_head() in 3.9+
+Date: Thu, 09 May 2013 07:59:30 +0000 (GMT)
+Message-ID: <15102321.375241368086369792.JavaMail.weblogic@epml19>
+Reply-To: eunb.song@samsung.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@dilger.ca>, Theodore Ts'o <tytso@mit.edu>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: text/plain; charset=euc-kr
+Content-Transfer-Encoding: base64
+To: tytso@mit.edu, linux-ext4@vger.kernel.org,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:59692 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751996Ab3EHXDn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 May 2013 19:03:43 -0400
-Content-Disposition: inline
-In-Reply-To: <20130508220027.GB7730@blackbox.djwong.org>
+Received: from mailout3.samsung.com ([203.254.224.33]:56751 "EHLO
+	mailout3.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751969Ab3EIH7c (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 May 2013 03:59:32 -0400
+Received: from epcpsbgr2.samsung.com
+ (u142.gpu120.samsung.co.kr [203.254.230.142])
+ by mailout3.samsung.com (Oracle Communications Messaging Server 7u4-24.01
+ (7.0.4.24.0) 64bit (built Nov 17 2011))
+ with ESMTP id <0MMI00MPCU6J6D00@mailout3.samsung.com> for
+ linux-ext4@vger.kernel.org; Thu, 09 May 2013 16:59:30 +0900 (KST)
+MIME-version: 1.0
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 08, 2013 at 03:00:27PM -0700, Darrick J. Wong wrote:
-> +	crc = csum32 & 0xFFFF;
->  
-> -	tag->t_checksum = cpu_to_be32(csum);
-> +	tag->t_checksum = cpu_to_be16(crc);
+DQpIZWxsby4NCkluIG15IGJvYXJkLCBpIHJhbiB0aGUgaW96b25lIHdpdGggbXVsdGktdGhyZWFk
+IG9wdGlvbi4gDQpNeSBib2FyZCBoYXMgOCBjb3JlcyBhbmQgaSBlbmFibGVkIENPTkZJR19TTVAu
+IA0KdGhlIGlvem9uZSBjb21tYW5kIGFzIGZvbGxvdzogaW96b25lIC1sIDIwIC11IDIwIC1yIDY0
+ayAtcyA1bSAtbyAtRiAvdXNlci9mMSAvdXNlci9mMiAvdXNlci9mMyAvdXNlci9mNCAvdXNlci9m
+NSAvdXNlci9mNiAvdXNlci9mNyAvdXNlci9mOCAvdXNlci9mOSAvdXNlci9mMTAgL3VzZXIvZjEx
+IC91c2VyL2YxMiAvdXNlci9mMTMgL3VzZXIvZjE0IC91c2VyL2YxNSAvdXNlci9mMTYgL3VzZXIv
+ZjE3IC91c2VyL2YxOCAvdXNlci9mMTkgL3VzZXIvZjIwDQoNCm1vdW50IGluZm8gYXMgZm9sbG93
+DQpjYXQgL3Byb2MvbW91bnRzDQovZGV2L3NkYTMgL3VzZXIgZXh0NCBydyxub2F0aW1lLG5vZGly
+YXRpbWUsZXJyb3JzPXBhbmljLGJhcnJpZXI9MSxkYXRhPW9yZGVyZWQgMCAwDQoNCkkgZ290IGEg
+bWVzc2FnZSBhcyBiZWxvdyBldmVyeSB0aW1lIGkgcmFuIGlvem9uZSB0ZXN0LiANCg0KDQpbIDQ4
+NzYuMjkzMTI0XSBbPGZmZmZmZmZmODAyNzJkMTg+XSBzaG93X3N0YWNrKzB4NjgvMHg4MA0KWyA0
+ODc2LjMwOTQxMV0gWzxmZmZmZmZmZjgwMmJkZTRjPl0gbm90aWZpZXJfY2FsbF9jaGFpbisweDVj
+LzB4YTgNClsgNDg3Ni4zMTUyNDVdIFs8ZmZmZmZmZmY4MDJiZTUyND5dIF9fYXRvbWljX25vdGlm
+aWVyX2NhbGxfY2hhaW4rMHgzYy8weDU4DQpbIDQ4NzYuMzIxODYwXSBbPGZmZmZmZmZmODAyYmU1
+ODg+XSBub3RpZnlfZGllKzB4MzgvMHg0OA0KWyA0ODc2LjMyNjkxM10gWzxmZmZmZmZmZjgwMjcy
+NTQ4Pl0gZG9fdHJhcF9vcl9icCsweDQ4LzB4MWE4DQpbIDQ4NzYuMzMyMzEyXSBbPGZmZmZmZmZm
+ODAyNmNmZTQ+XSByZXN1bWVfdXNlcnNwYWNlX2NoZWNrKzB4MC8weDEwDQpbIDQ4NzYuMzM4MzIz
+XSBbPGZmZmZmZmZmODA0NjI5OTQ+XSBqYmQyX2pvdXJuYWxfcHV0X2pvdXJuYWxfaGVhZCsweGNj
+LzB4MjUwDQpbIDQ4NzYuMzQ1MTExXSBbPGZmZmZmZmZmODA0NjAzYjQ+XSBfX2piZDJfam91cm5h
+bF9yZW1vdmVfY2hlY2twb2ludCsweDU0LzB4MTMwDQpbIDQ4NzYuMzUyMTYwXSBbPGZmZmZmZmZm
+ODA0NWU2MzA+XSBqYmQyX2pvdXJuYWxfY29tbWl0X3RyYW5zYWN0aW9uKzB4MTMxOC8weDFhZDAN
+ClsgNDg3Ni4zNTkzODNdIFs8ZmZmZmZmZmY4MDQ2M2Y0Yz5dIGtqb3VybmFsZDIrMHgxMTQvMHg0
+NTANClsgNDg3Ni4zNjQ2MTFdIFs8ZmZmZmZmZmY4MDJiODE2MD5dIGt0aHJlYWQrMHhiOC8weGMw
+DQpbIDQ4NzYuMzY5NDAyXSBbPGZmZmZmZmZmODAyNmQwNjA+XSByZXRfZnJvbV9rZXJuZWxfdGhy
+ZWFkKzB4MTAvMHgxOA0KDQpXaGVuIGkgcmFuIHdpdGhvdXQgbXVsdGktdGhyZWFkIG9wdGlvbiwg
+dGhlIHByb2JsZW0gd2FzIG5vdCBvY3VycmVkLg0KDQoNClRoYW5rcy4gDQoNCg==
 
-Simple cpu_to_be16(csum) will do - it'll convert the argument to __u16,
-which will do exactly the same thing your & 0xFFFF is doing.  Matter of
-taste...
 
-> +	crc = csum32 & 0xFFFF;
-> +	provided = be16_to_cpu(tag->t_checksum);
->  
-> -	return provided == cpu_to_be32(calculated);
-> +	return provided == crc;
-
-I'd go for tag->t_checksum == cpu_to_be16(calculated) - less cluttered that
-way, IMO.  Again, a matter of taste.  ACK, as far as correctness is concerned.
