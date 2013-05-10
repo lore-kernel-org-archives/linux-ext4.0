@@ -1,113 +1,365 @@
-From: EUNBONG SONG <eunb.song@samsung.com>
-Subject: Re: Re: EXT4 panic at jbd2_journal_put_journal_head() in 3.9+
-Date: Fri, 10 May 2013 00:51:51 +0000 (GMT)
-Message-ID: <6719519.5821368147110937.JavaMail.weblogic@epml17>
-Reply-To: eunb.song@samsung.com
+From: Eryu Guan <guaneryu@gmail.com>
+Subject: Re: [PATCH] xfstests: regression test for ext4 resize with non-extent
+	files
+Date: Fri, 10 May 2013 11:03:17 +0800
+Message-ID: <CA+dCu8_DtrqMy97u9NfHwCC8_-z9uSrF1oR3B=ej15gL6C=W+Q@mail.gmail.com>
+References: <518C1D08.4080309@redhat.com>
+Reply-To: guaneryu@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=euc-kr
-Content-Transfer-Encoding: base64
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout4.samsung.com ([203.254.224.34]:42208 "EHLO
-	mailout4.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757360Ab3EJAvx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 May 2013 20:51:53 -0400
-Received: from epcpsbgr5.samsung.com
- (u145.gpu120.samsung.co.kr [203.254.230.145])
- by mailout4.samsung.com (Oracle Communications Messaging Server 7u4-24.01
- (7.0.4.24.0) 64bit (built Nov 17 2011))
- with ESMTP id <0MMK00F7M52DB440@mailout4.samsung.com> for
- linux-ext4@vger.kernel.org; Fri, 10 May 2013 09:51:51 +0900 (KST)
-MIME-version: 1.0
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: multipart/mixed; boundary="===============7530362613810048636=="
+Cc: ext4 development <linux-ext4@vger.kernel.org>, xfs-oss <xfs@oss.sgi.com>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <518C1D08.4080309@redhat.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-DQo+IENhbiB5b3UgZ2l2ZSB1cyB0aGUgZnVsbCBjcmFzaCBtZXNzYWdlLCAoaS5lLiwgdGhlIHBh
-bmljLCB0aGUgQlVHLA0KPiBXQVJOLCB0aGUgcmVnaXN0ZXJzLCBldGMuKSwgYW5kIG5vdCB0aGUg
-c3RhY2sgdHJhY2U/DQoNCj4gICAgICAgICAgICAgICAgICAgICAgIC0gVGVkDQoNCkhpLCBUZWQN
-CkFjdHVhbGx5IGkgdHJ5IHRvIGZpbmQgdGhlIGNyYXNoIHBvaW50LiBBbmQgaSBjb25maXJtZWQg
-Y3Jhc2ggcG9pbnQgaXMgaW4gX19qb3VybmFsX3JlbW92ZV9qb3VybmFsX2hlYWQoKSBmdW5jdGlv
-bi4NCkkgYWRkZWQgc29tZSBkZWJ1ZyBjb2RlIGFuZCBpIGZvdW5kICBKX0FTU0VSVF9KSCBpcyBm
-YWlsZWQgZm9yIGpoLT5iX3RyYW5zYWN0aW9uLiANCk15IHNvdXJjZSB0cmVlIGhhcyBzb21lIG1v
-ZGlmaWNhdGlvbnMgb25seSBmb3IgTUlQUyBhcmNoaXRlY3R1cmUuIEkgZG9uJ3QgdGhpbmsgaXQg
-ZG9lcyBub3QgYWZmZWN0IHRvIGV4dDQgb3BlcmF0aW9uLiANCkFsc28gSSBjb25maXJtZWQgdGhl
-IHByb2JsZW0gaXMgbm90IHJlcHJvZHVjZWQgYmVmb3JlIG1lcmdlIDE0OWIzMDYwODliODhlMTg2
-OTQyYThkNjY0NzAyOGFlNjY4M2FhZjkuDQoNCjE0OWIzMDYwODliODhlMTg2OTQyYThkNjY0NzAy
-OGFlNjY4M2FhZjkgTWVyZ2UgdGFnICdleHQ0X2Zvcl9saW51cycgb2YgZ2l0Oi8vZ2l0Lmtlcm5l
-bC5vcmcvcHViL3NjbS9saW51eC9rZXJuZWwvZ2l0L3R5dHNvL2V4dDQNCg0KTXkgZnVsbCBjcmFz
-aCBtZXNzYWdlcyBhcmUgYXMgZm9sbG93cy4NCg0KSW96b25lOiBQZXJmb3JtYW5jZSBUZXN0IG9m
-IEZpbGUgSS9PDQogICAgICAgICAgICAgICAgVmVyc2lvbiAkUmV2aXNpb246IDMuMzk3ICQNCiAg
-ICAgICAgICAgICAgICBDb21waWxlZCBmb3IgNjQgYml0IG1vZGUuDQogICAgICAgICAgICAgICAg
-QnVpbGQ6IGxpbnV4LXBvd2VycGM2NA0KDQogICAgICAgIENvbnRyaWJ1dG9yczpXaWxsaWFtIE5v
-cmNvdHQsIERvbiBDYXBwcywgSXNvbSBDcmF3Zm9yZCwgS2lyYnkgQ29sbGlucw0KICAgICAgICAg
-ICAgICAgICAgICAgQWwgU2xhdGVyLCBTY290dCBSaGluZSwgTWlrZSBXaXNuZXIsIEtlbiBHb3Nz
-DQogICAgICAgICAgICAgICAgICAgICBTdGV2ZSBMYW5kaGVyciwgQnJhZCBTbWl0aCwgTWFyayBL
-ZWxseSwgRHIuIEFsYWluIENZUiwNCiAgICAgICAgICAgICAgICAgICAgIFJhbmR5IER1bmxhcCwg
-TWFyayBNb250YWd1ZSwgRGFuIE1pbGxpb24sIEdhdmluIEJyZWJuZXIsDQogICAgICAgICAgICAg
-ICAgICAgICBKZWFuLU1hcmMgWnVjY29uaSwgSmVmZiBCbG9tYmVyZywgQmVubnkgSGFsZXZ5LCBE
-YXZlIEJvb25lLA0KICAgICAgICAgICAgICAgICAgICAgRXJpayBIYWJiaW5nYSwgS3JpcyBTdHJl
-Y2tlciwgV2FsdGVyIFdvbmcsIEpvc2h1YSBSb29bICAyMzMuNDU4NzY2XSBDUFU6IDMgUElEOiAx
-NTM1IENvbW06IGlvem9uZSBOb3QgdGFpbnRlZCAzLjkuMCsgIzgxDQp0LA0KICAgICAgICAgICAg
-ICAgICAgICAgRmFicmljZSBCYWNjaGVsbGEsIFpoZW5naHVhIFh1ZSwgUWluIExpLCBEYXJyZVsg
-IDIzMy40NzAxMzJdIFN0YWNrIDpuIFNhd3llci4NCiAgICAgICAgICAgICAgICAgICAgIEJlbiBF
-bmdsYW5kLg0KDQogICAgICAgIFJ1biBiZWdhbjogU3VuIERlYyAxMCAgZmZmZmZmZmY4MTAxMTQz
-ODA4OjM4OjI0IDIwMDANCg0KICAgICAgICBSZWNvcmQgU2l6ZSA2NCBLQg0KICAgICAgICBGaWxl
-IHNpemUgc2V0IHRvIDUxMjAgS0INCiBhODAwMDAwMDhiNjRiMDAwICAgICAgIFNZTkMgTW9kZS4N
-CiAgICAgICAgQ29tbWFuZCBsaW5lIHVzZWQ6IGlvem9uZSAtbCAyMCAtdSAyMCAtciA2NGsgLXMg
-NSAwMDAwMDAwMDAwMDAwMDAzbSAtbyAtRiAvdXNlci9mMSAvdXNlci9mMiAvdXNlci9mMyAvdXNl
-ci9mNCAvdXNlci9mNSAvdXNlci9mNiAvdSBmZmZmZmZmZjgwMjkyNDcwc2VyL2Y3IC91c2VyL2Y4
-IC91c2VyL2Y5IC91c2VyL2YxMCAvdXNlci9mMTEgL3VzZXIvZjEyIC91c2VyL2YxMw0KICAgICAg
-ICAgIC91c2VyL2YxNCAvdXNlci9mMTUgL3VzZXIvZjE2IC91c2VyL2YxNyAvdXNlci9mMTggL3Vz
-ZXIvZjE5IC91cyAwMDAwMDAwMDAwMDAwMDAwZXIvZjIwDQogICAgICAgIE91dHB1dCBpcyBpbiBL
-Ynl0ZXMvc2VjDQogICAgICAgIFRpbWUgUmVzb2x1dGlvbiA9IDAuMDAwMDAxIHNlIGZmZmZmZmZm
-ODBmYTAwMDBjb25kcy4NCiAgICAgICAgUHJvY2Vzc29yIGNhY2hlIHNpemUgc2V0IHRvIDEwMjQg
-S2J5dGVzLg0KICAgICAgICBQcm9jZXNzb3IgY2EgMDAwMDAwMDAwMDAwMDAxZmNoZSBsaW5lIHNp
-emUgc2V0IHRvIDMyIGJ5dGVzLg0KICAgICAgICBGaWxlIHN0cmlkZSBzaXplIHNldCB0byAxNyAq
-IHJlIGZmZmZmZmZmODAyOTM3Mjhjb3JkIHNpemUuDQogICAgICAgIE1pbiBwcm9jZXNzID0gMjAN
-CiAgICAgICAgTWF4IHByb2Nlc3MgPSAyMA0KICAgICAgICBUaHJvdWdocHV0DQogICAgICAgICB0
-ZXN0IHdpdGggMjAgcHJvY2Vzc2VzDQogICAgICAgIEVhY2ggcHJvY2VzcyB3cml0ZXMgYSA1MTIw
-IEtieXRlIGZpbGUgaSAwMDAwMDAwMDAwMDAwMDAwbiA2NCBLYnl0ZSByZWNvcmRzDQogMDAwMDAw
-MDAwMDAwMDAwMCBmZmZmZmZmZjgxMDgwMDAwIGZmZmZmZmZmODEwODAwMDANCiAgICAgICAgICBm
-ZmZmZmZmZjgwZTJhYmYwIGZmZmZmZmZmODBmOGY5ZjcgYTgwMDAwMDIwMTdhMGRiOCAwMDAwMDAw
-MDAwMDAwMDIwDQogICAgICAgICAgMDAwMDAwMDAwMDAwMDAwMyAwMDAwMDAwMDAwMDAwMDIwIGE4
-MDAwMDAyMDAyNWY5NjggZmZmZmZmZmY4MTBmMDAwMA0KICAgICAgICAgIGE4MDAwMDAyMDAyNWY3
-NzAgZmZmZmZmZmY4MDZlZTg4YyBhODAwMDAwMjAwMjVmNTg4IGZmZmZmZmZmODAyOTA5OTQNCiAg
-ICAgICAgICAwMDAwMDAwMDdlZjEwMDg3IGZmZmZmZmZmODAyOTNiNTggMDAwMDAwMDAwMDAwMDAw
-YSBmZmZmZmZmZjgwZTJhYmYwDQogICAgICAgICAgMDAwMDAwMDAwMDAwMDAwMyBhODAwMDAwMjAw
-MjVmNGIwIDAwMDAwMDAyMDE3YTEwZjggZmZmZmZmZmY4MDVlNjhiNA0KICAgICAgICAgIDAwMDAw
-MDAwMDAwMDAwMDAgMDAwMDAwMDAwMDAwMDAwMCAwMDAwMDAwMDAwMDAwMDAwIDAwMDAwMDAwMDAw
-MDAwMDANCiAgICAgICAgICAwMDAwMDAwMDAwMDAwMDAwIGZmZmZmZmZmODAyNzI0MTggMDAwMDAw
-MDAwMDAwMDAwMCAwMDAwMDAwMDAwMDAwMDAwDQogICAgICAgICAgLi4uDQpbICAyMzMuNjA0MDQx
-XSBDYWxsIFRyYWNlOg0KWyAgMjMzLjYwNjQ5NV0gWzxmZmZmZmZmZjgwMjcyNDE4Pl0gc2hvd19z
-dGFjaysweDY4LzB4ODANClsgIDIzMy42MTE1NTBdIFs8ZmZmZmZmZmY4MDVlNjhiND5dIGNkcl9l
-dmVudF9oYW5kbGVyKzB4NjA0LzB4YmY4DQpbICAyMzMuNjE3Mzg0XSBbPGZmZmZmZmZmODA1ZTc2
-NDg+XSBjZHJfZXZlbnRfZGllKzB4ZDAvMHgxNTANClsgIDIzMy42MjI3ODRdIFs8ZmZmZmZmZmY4
-MDJiZDQyYz5dIG5vdGlmaWVyX2NhbGxfY2hhaW4rMHg1Yy8weGE4DQpbICAyMzMuNjI4NjE5XSBb
-PGZmZmZmZmZmODAyYmRiMDQ+XSBfX2F0b21pY19ub3RpZmllcl9jYWxsX2NoYWluKzB4M2MvMHg1
-OA0KWyAgMjMzLjYzNTIzM10gWzxmZmZmZmZmZjgwMmJkYjY4Pl0gbm90aWZ5X2RpZSsweDM4LzB4
-NDgNClsgIDIzMy42NDAyODVdIFs8ZmZmZmZmZmY4MDI3MWM0OD5dIGRvX3RyYXBfb3JfYnArMHg0
-OC8weDFhOA0KWyAgMjMzLjY0NTY4NF0gWzxmZmZmZmZmZjgwMjZjNzY0Pl0gcmVzdW1lX3VzZXJz
-cGFjZV9jaGVjaysweDAvMHgxMA0KWyAgMjMzLjY1MTY5NV0gWzxmZmZmZmZmZjgwNDYwYjY0Pl0g
-amJkMl9qb3VybmFsX3B1dF9qb3VybmFsX2hlYWQrMHhjYy8weDI1MA0KWyAgMjMzLjY1ODQ4NF0g
-WzxmZmZmZmZmZjgwNDVhMWI0Pl0gamJkMl9qb3VybmFsX2dldF93cml0ZV9hY2Nlc3MrMHgzYy8w
-eDU4DQpbICAyMzMuNjY1MTg4XSBbPGZmZmZmZmZmODA0MzQ4YTg+XSBfX2V4dDRfam91cm5hbF9n
-ZXRfd3JpdGVfYWNjZXNzKzB4NTgvMHhhMA0KWyAgMjMzLjY3MjA2NF0gWzxmZmZmZmZmZjgwNDEw
-MzQ0Pl0gZXh0NF9yZXNlcnZlX2lub2RlX3dyaXRlKzB4ODQvMHhiMA0KWyAgMjMzLjY3ODMzMV0g
-WzxmZmZmZmZmZjgwNDEwM2FjPl0gZXh0NF9tYXJrX2lub2RlX2RpcnR5KzB4M2MvMHgxZTANClsg
-IDIzMy42ODQ0MjRdIFs8ZmZmZmZmZmY4MDQxMDU5MD5dIGV4dDRfZGlydHlfaW5vZGUrMHg0MC8w
-eDcwDQpbICAyMzMuNjg5OTk4XSBbPGZmZmZmZmZmODAzOTIyNTg+XSBfX21hcmtfaW5vZGVfZGly
-dHkrMHg0OC8weDIzOA0KWyAgMjMzLjY5NTgzMl0gWzxmZmZmZmZmZjgwMzgyOGY0Pl0gdXBkYXRl
-X3RpbWUrMHhiNC8weDEwMA0KWyAgMjMzLjcwMTA1OF0gWzxmZmZmZmZmZjgwMzgyOWYwPl0gZmls
-ZV91cGRhdGVfdGltZSsweGIwLzB4MTA4DQpbICAyMzMuNzA2NzE4XSBbPGZmZmZmZmZmODAzMWVi
-OTg+XSBfX2dlbmVyaWNfZmlsZV9haW9fd3JpdGUrMHgxODAvMHgzODANClsgIDIzMy43MTMxNThd
-IFs8ZmZmZmZmZmY4MDMxZWRmOD5dIGdlbmVyaWNfZmlsZV9haW9fd3JpdGUrMHg2MC8weGMwDQpb
-ICAyMzMuNzE5MjUyXSBbPGZmZmZmZmZmODA0MGFmNTQ+XSBleHQ0X2ZpbGVfd3JpdGUrMHg2Yy8w
-eDQ2OA0KWyAgMjMzLjcyNDgyN10gWzxmZmZmZmZmZjgwMzY2Y2JjPl0gZG9fc3luY193cml0ZSsw
-eDg0LzB4ZTgNClsgIDIzMy43MzAxMzldIFs8ZmZmZmZmZmY4MDM2ODcwMD5dIHZmc193cml0ZSsw
-eGUwLzB4MWUwDQpbICAyMzMuNzM1MTkxXSBbPGZmZmZmZmZmODAzNjg4Zjg+XSBTeVNfd3JpdGUr
-MHg1MC8weGMwDQpbICAyMzMuNzQwMTU3XSBbPGZmZmZmZmZmODAyNzQ4NjQ+XSBoYW5kbGVfc3lz
-NjQrMHg0NC8weDY0DQoNClRoYW5rcy4g
+--===============7530362613810048636==
+Content-Type: multipart/alternative; boundary=bcaec547c9efcdbb5204dc546979
+
+--bcaec547c9efcdbb5204dc546979
+Content-Type: text/plain; charset=ISO-8859-1
+
+On Fri, May 10, 2013 at 6:02 AM, Eric Sandeen <sandeen@redhat.com> wrote:
+
+> Regression test for:
+>
+> c5c72d8 ext4: fix online resizing for ext3-compat file systems
+>
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> ---
+>
+> diff --git a/tests/ext4/306 b/tests/ext4/306
+> new file mode 100755
+> index 0000000..6a961ee
+> --- /dev/null
+> +++ b/tests/ext4/306
+> @@ -0,0 +1,83 @@
+> +#! /bin/bash
+> +# FS QA Test No. ext4/306
+> +#
+> +# Test that blocks are available to non-extent files after a resize2fs
+> +# Regression test for commit:
+> +# c5c72d8 ext4: fix online resizing for ext3-compat file systems
+> +#
+> +#-----------------------------------------------------------------------
+> +# Copyright (c) 2013 Red Hat, Inc.  All Rights Reserved.
+> +#
+> +# This program is free software; you can redistribute it and/or
+> +# modify it under the terms of the GNU General Public License as
+> +# published by the Free Software Foundation.
+> +#
+> +# This program is distributed in the hope that it would be useful,
+> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
+> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> +# GNU General Public License for more details.
+> +#
+> +# You should have received a copy of the GNU General Public License
+> +# along with this program; if not, write the Free Software Foundation,
+> +# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+> +#-----------------------------------------------------------------------
+> +
+> +seq=`basename $0`
+> +seqres=$RESULT_DIR/$seq
+> +echo "QA output created by $seq"
+> +
+> +PIDS=""
+> +status=1       # failure is the default!
+> +trap "_cleanup; exit \$status" 0 1 2 3 15
+> +
+> +_cleanup()
+> +{
+> +    _scratch_unmount
+> +}
+> +
+> +# get standard environment, filters and checks
+> +. ./common/rc
+> +. ./common/filter
+> +
+> +# real QA test starts here
+> +_supported_fs ext4
+> +_supported_os Linux
+> +
+> +_require_scratch
+> +
+> +# This needs to mount ext3; might require ext3 driver, or ext4
+> +# might handle it itself.  Find out if we have it one way or another.
+> +modprobe ext3 > /dev/null 2>&1
+> +grep -q ext3 /proc/filesystems || _notrun "This test requires ext3
+> support"
+> +
+> +rm -f $seqres.full
+> +echo "Silence is golden"
+>
+
+The test has verbose output log, so "Silence is golden" is not true here,
+remove this line or redirect other echo to $seqres.full ?
+
+> +
+> +# Make a small ext3 fs, (extents disabled) & mount it
+> +yes | mkfs.ext3 $SCRATCH_DEV 512m >> $seqres.full 2>&1
+> +_scratch_mount -t ext3 || _fail "couldn't mount fs as ext3"
+> +# Create a small non-extent-based file
+> +echo "Create 1m testfile1"
+> +$XFS_IO_PROG -f $SCRATCH_MNT/testfile1 -c "pwrite 0 1m" | _filter_xfs_io
+> +echo "Create testfile2 to fill the fs"
+> +# A large non-extent-based file filling the fs; this will run out & fail
+> +$XFS_IO_PROG -f $SCRATCH_MNT/testfile2 -c "pwrite 0 512m" | _filter_xfs_io
+> +
+> +# Remount as ext4
+> +_scratch_unmount
+> +_scratch_mount -t ext4 || _fail "couldn't remount fs as ext4"
+> +df -h $SCRATCH_MNT >> $seqres.full
+> +
+> +# Grow it by 512m
+> +echo "Resize to 1g"
+> +resize2fs $SCRATCH_DEV 1g >> $seqres.full 2>&1 || _fail "Could not resize
+> to 1g"
+> +df -h $SCRATCH_MNT >> $seqres.full
+> +
+> +# See if we can add more blocks to the files
+> +echo "append 2m to testfile1"
+> +$XFS_IO_PROG -f $SCRATCH_MNT/testfile1 -c "pwrite 1m 2m" | _filter_xfs_io
+> +echo "append 2m to testfile2"
+> +$XFS_IO_PROG -f $SCRATCH_MNT/testfile1 -c "pwrite 512m 2m" |
+> _filter_xfs_io
+> +
+> +status=0
+> +exit
+> diff --git a/tests/ext4/306.out b/tests/ext4/306.out
+> new file mode 100644
+> index 0000000..654637d
+> --- /dev/null
+> +++ b/tests/ext4/306.out
+> @@ -0,0 +1,14 @@
+> +QA output created by 306
+> +Silence is golden
+> +Create 1m testfile1
+> +wrote 1048576/1048576 bytes at offset 0
+> +XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
+> +Create testfile2 to fill the fs
+> +pwrite64: No space left on device
+> +Resize to 1g
+> +append 2m to testfile1
+> +wrote 2097152/2097152 bytes at offset 1048576
+> +XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
+> +append 2m to testfile2
+> +wrote 2097152/2097152 bytes at offset 536870912
+> +XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
+> diff --git a/tests/ext4/group b/tests/ext4/group
+> index 53af708..4c3e2f4 100644
+> --- a/tests/ext4/group
+> +++ b/tests/ext4/group
+> @@ -9,3 +9,4 @@
+>  303 aio dangerous ioctl rw stress
+>  304 aio dangerous ioctl rw stress
+>  305 auto
+> +306 dangerous rw resize quick
+>
+
+I'm wondering why it's not in auto group :)
+
+Otherwise patch looks good to me.
+
+Eryu Guan
+
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+
+--bcaec547c9efcdbb5204dc546979
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
+
+<div dir=3D"ltr"><div class=3D"gmail_extra">On Fri, May 10, 2013 at 6:02 AM=
+, Eric Sandeen <span dir=3D"ltr">&lt;<a href=3D"mailto:sandeen@redhat.com" =
+target=3D"_blank">sandeen@redhat.com</a>&gt;</span> wrote:<br><div class=3D=
+"gmail_quote">
+
+<blockquote class=3D"gmail_quote" style=3D"margin:0 0 0 .8ex;border-left:1p=
+x #ccc solid;padding-left:1ex">Regression test for:<br>
+<br>
+c5c72d8 ext4: fix online resizing for ext3-compat file systems<br>
+<br>
+Signed-off-by: Eric Sandeen &lt;<a href=3D"mailto:sandeen@redhat.com">sande=
+en@redhat.com</a>&gt;<br>
+---<br>
+<br>
+diff --git a/tests/ext4/306 b/tests/ext4/306<br>
+new file mode 100755<br>
+index 0000000..6a961ee<br>
+--- /dev/null<br>
++++ b/tests/ext4/306<br>
+@@ -0,0 +1,83 @@<br>
++#! /bin/bash<br>
++# FS QA Test No. ext4/306<br>
++#<br>
++# Test that blocks are available to non-extent files after a resize2fs<br>
++# Regression test for commit:<br>
++# c5c72d8 ext4: fix online resizing for ext3-compat file systems<br>
++#<br>
++#-----------------------------------------------------------------------<b=
+r>
++# Copyright (c) 2013 Red Hat, Inc. =A0All Rights Reserved.<br>
++#<br>
++# This program is free software; you can redistribute it and/or<br>
++# modify it under the terms of the GNU General Public License as<br>
++# published by the Free Software Foundation.<br>
++#<br>
++# This program is distributed in the hope that it would be useful,<br>
++# but WITHOUT ANY WARRANTY; without even the implied warranty of<br>
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. =A0See the<br>
++# GNU General Public License for more details.<br>
++#<br>
++# You should have received a copy of the GNU General Public License<br>
++# along with this program; if not, write the Free Software Foundation,<br>
++# Inc., =A051 Franklin St, Fifth Floor, Boston, MA =A002110-1301 =A0USA<br=
+>
++#-----------------------------------------------------------------------<b=
+r>
++<br>
++seq=3D`basename $0`<br>
++seqres=3D$RESULT_DIR/$seq<br>
++echo &quot;QA output created by $seq&quot;<br>
++<br>
++PIDS=3D&quot;&quot;<br>
++status=3D1 =A0 =A0 =A0 # failure is the default!<br>
++trap &quot;_cleanup; exit \$status&quot; 0 1 2 3 15<br>
++<br>
++_cleanup()<br>
++{<br>
++ =A0 =A0_scratch_unmount<br>
++}<br>
++<br>
++# get standard environment, filters and checks<br>
++. ./common/rc<br>
++. ./common/filter<br>
++<br>
++# real QA test starts here<br>
++_supported_fs ext4<br>
++_supported_os Linux<br>
++<br>
++_require_scratch<br>
++<br>
++# This needs to mount ext3; might require ext3 driver, or ext4<br>
++# might handle it itself. =A0Find out if we have it one way or another.<br=
+>
++modprobe ext3 &gt; /dev/null 2&gt;&amp;1<br>
++grep -q ext3 /proc/filesystems || _notrun &quot;This test requires ext3 su=
+pport&quot;<br>
++<br>
++rm -f $seqres.full<br>
++echo &quot;Silence is golden&quot;<br></blockquote><div><br>The test has v=
+erbose output log, so &quot;Silence is golden&quot; is not true here, remov=
+e this line or redirect other echo to $seqres.full ? <br></div><blockquote =
+class=3D"gmail_quote" style=3D"margin:0 0 0 .8ex;border-left:1px #ccc solid=
+;padding-left:1ex">
 
 
++<br>
++# Make a small ext3 fs, (extents disabled) &amp; mount it<br>
++yes | mkfs.ext3 $SCRATCH_DEV 512m &gt;&gt; $seqres.full 2&gt;&amp;1<br>
++_scratch_mount -t ext3 || _fail &quot;couldn&#39;t mount fs as ext3&quot;<=
+br>
++# Create a small non-extent-based file<br>
++echo &quot;Create 1m testfile1&quot;<br>
++$XFS_IO_PROG -f $SCRATCH_MNT/testfile1 -c &quot;pwrite 0 1m&quot; | _filte=
+r_xfs_io<br>
++echo &quot;Create testfile2 to fill the fs&quot;<br>
++# A large non-extent-based file filling the fs; this will run out &amp; fa=
+il<br>
++$XFS_IO_PROG -f $SCRATCH_MNT/testfile2 -c &quot;pwrite 0 512m&quot; | _fil=
+ter_xfs_io<br>
++<br>
++# Remount as ext4<br>
++_scratch_unmount<br>
++_scratch_mount -t ext4 || _fail &quot;couldn&#39;t remount fs as ext4&quot=
+;<br>
++df -h $SCRATCH_MNT &gt;&gt; $seqres.full<br>
++<br>
++# Grow it by 512m<br>
++echo &quot;Resize to 1g&quot;<br>
++resize2fs $SCRATCH_DEV 1g &gt;&gt; $seqres.full 2&gt;&amp;1 || _fail &quot=
+;Could not resize to 1g&quot;<br>
++df -h $SCRATCH_MNT &gt;&gt; $seqres.full<br>
++<br>
++# See if we can add more blocks to the files<br>
++echo &quot;append 2m to testfile1&quot;<br>
++$XFS_IO_PROG -f $SCRATCH_MNT/testfile1 -c &quot;pwrite 1m 2m&quot; | _filt=
+er_xfs_io<br>
++echo &quot;append 2m to testfile2&quot;<br>
++$XFS_IO_PROG -f $SCRATCH_MNT/testfile1 -c &quot;pwrite 512m 2m&quot; | _fi=
+lter_xfs_io<br>
++<br>
++status=3D0<br>
++exit<br>
+diff --git a/tests/ext4/306.out b/tests/ext4/306.out<br>
+new file mode 100644<br>
+index 0000000..654637d<br>
+--- /dev/null<br>
++++ b/tests/ext4/306.out<br>
+@@ -0,0 +1,14 @@<br>
++QA output created by 306<br>
++Silence is golden<br>
++Create 1m testfile1<br>
++wrote 1048576/1048576 bytes at offset 0<br>
++XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)<br>
++Create testfile2 to fill the fs<br>
++pwrite64: No space left on device<br>
++Resize to 1g<br>
++append 2m to testfile1<br>
++wrote 2097152/2097152 bytes at offset 1048576<br>
++XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)<br>
++append 2m to testfile2<br>
++wrote 2097152/2097152 bytes at offset 536870912<br>
++XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)<br>
+diff --git a/tests/ext4/group b/tests/ext4/group<br>
+index 53af708..4c3e2f4 100644<br>
+--- a/tests/ext4/group<br>
++++ b/tests/ext4/group<br>
+@@ -9,3 +9,4 @@<br>
+=A0303 aio dangerous ioctl rw stress<br>
+=A0304 aio dangerous ioctl rw stress<br>
+=A0305 auto<br>
++306 dangerous rw resize quick<br></blockquote><div><br>I&#39;m wondering w=
+hy it&#39;s not in auto group :)<br><br></div><div>Otherwise patch looks go=
+od to me.<br><br>Eryu Guan <br></div><blockquote class=3D"gmail_quote" styl=
+e=3D"margin:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1ex">
+
+
+<br>
+--<br>
+To unsubscribe from this list: send the line &quot;unsubscribe linux-ext4&q=
+uot; in<br>
+the body of a message to <a href=3D"mailto:majordomo@vger.kernel.org">major=
+domo@vger.kernel.org</a><br>
+More majordomo info at =A0<a href=3D"http://vger.kernel.org/majordomo-info.=
+html" target=3D"_blank">http://vger.kernel.org/majordomo-info.html</a><br>
+</blockquote></div><br></div></div>
+
+--bcaec547c9efcdbb5204dc546979--
+
+
+--===============7530362613810048636==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
+
+--===============7530362613810048636==--
