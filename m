@@ -1,92 +1,45 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH v2] jbd2: Fix block tag checksum verification brokenness
-Date: Fri, 10 May 2013 16:38:07 -0700
-Message-ID: <20130510233807.GB5706@blackbox.djwong.org>
+Subject: [PATCH] jbd2: Always set journal superblock checksum when writing
+ out superblock
+Date: Fri, 10 May 2013 16:40:13 -0700
+Message-ID: <20130510234013.GC5706@blackbox.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Al Viro <viro@ZenIV.linux.org.uk>,
-	Andreas Dilger <adilger@dilger.ca>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+Cc: linux-kernel <linux-kernel@vger.kernel.org>,
 	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Al Viro complained of a ton of bogosity with regards to the jbd2 block tag
-header checksum.  This one checksum is 16 bits, so cut off the upper 16 bits
-and treat it as a 16-bit value and don't mess around with be32* conversions.
-Fortunately metadata checksumming is still "experimental" and not in a shipping
-e2fsprogs, so there should be few users affected by this.
+Add a few missing calls to jbd2_superblock_csum_set just prior to calling
+jbd2_write_superblock.  This fixes complaints about corrupt journals if
+metadata checksumming and journal checksumming are both enabled.
 
-v2: Eliminate unnecessary variables and make it clear(er) which values are 32
-bits wide.
-
-Reported-by: Al Viro <viro@ZenIV.linux.org.uk>
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- fs/jbd2/commit.c   |   12 ++++++------
- fs/jbd2/recovery.c |   11 +++++------
- 2 files changed, 11 insertions(+), 12 deletions(-)
+ fs/jbd2/journal.c |    2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 750c701..67a8a2f 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -343,20 +343,20 @@ static void jbd2_block_tag_csum_set(journal_t *j, journal_block_tag_t *tag,
- {
- 	struct page *page = bh->b_page;
- 	__u8 *addr;
--	__u32 csum;
-+	__u32 csum32;
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index b6cdc57..a4c7678 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -1348,6 +1348,7 @@ void jbd2_journal_update_sb_log_tail(journal_t *journal, tid_t tail_tid,
  
- 	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
- 		return;
+ 	sb->s_sequence = cpu_to_be32(tail_tid);
+ 	sb->s_start    = cpu_to_be32(tail_block);
++	jbd2_superblock_csum_set(journal, sb);
  
- 	sequence = cpu_to_be32(sequence);
- 	addr = kmap_atomic(page);
--	csum = jbd2_chksum(j, j->j_csum_seed, (__u8 *)&sequence,
--			  sizeof(sequence));
--	csum = jbd2_chksum(j, csum, addr + offset_in_page(bh->b_data),
--			  bh->b_size);
-+	csum32 = jbd2_chksum(j, j->j_csum_seed, (__u8 *)&sequence,
-+			     sizeof(sequence));
-+	csum32 = jbd2_chksum(j, csum32, addr + offset_in_page(bh->b_data),
-+			     bh->b_size);
- 	kunmap_atomic(addr);
+ 	jbd2_write_superblock(journal, write_op);
  
--	tag->t_checksum = cpu_to_be32(csum);
-+	tag->t_checksum = cpu_to_be16(csum32);
- }
- /*
-  * jbd2_journal_commit_transaction
-diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
-index 626846b..d4851464 100644
---- a/fs/jbd2/recovery.c
-+++ b/fs/jbd2/recovery.c
-@@ -399,18 +399,17 @@ static int jbd2_commit_block_csum_verify(journal_t *j, void *buf)
- static int jbd2_block_tag_csum_verify(journal_t *j, journal_block_tag_t *tag,
- 				      void *buf, __u32 sequence)
- {
--	__u32 provided, calculated;
-+	__u32 csum32;
+@@ -1381,6 +1382,7 @@ static void jbd2_mark_journal_empty(journal_t *journal)
  
- 	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
- 		return 1;
+ 	sb->s_sequence = cpu_to_be32(journal->j_tail_sequence);
+ 	sb->s_start    = cpu_to_be32(0);
++	jbd2_superblock_csum_set(journal, sb);
+ 	read_unlock(&journal->j_state_lock);
  
- 	sequence = cpu_to_be32(sequence);
--	calculated = jbd2_chksum(j, j->j_csum_seed, (__u8 *)&sequence,
--				 sizeof(sequence));
--	calculated = jbd2_chksum(j, calculated, buf, j->j_blocksize);
--	provided = be32_to_cpu(tag->t_checksum);
-+	csum32 = jbd2_chksum(j, j->j_csum_seed, (__u8 *)&sequence,
-+			     sizeof(sequence));
-+	csum32 = jbd2_chksum(j, csum32, buf, j->j_blocksize);
- 
--	return provided == cpu_to_be32(calculated);
-+	return tag->t_checksum == cpu_to_be16(csum32);
- }
- 
- static int do_one_pass(journal_t *journal,
+ 	jbd2_write_superblock(journal, WRITE_FUA);
