@@ -1,76 +1,92 @@
-From: David Daney <ddaney.cavm@gmail.com>
-Subject: Re: EXT4 panic at jbd2_journal_put_journal_head() in 3.9+
-Date: Fri, 10 May 2013 13:38:57 -0700
-Message-ID: <518D5AE1.7040905@gmail.com>
-References: <6719519.5821368147110937.JavaMail.weblogic@epml17> <20130510192747.GA11707@thunk.org>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [PATCH v2] jbd2: Fix block tag checksum verification brokenness
+Date: Fri, 10 May 2013 16:38:07 -0700
+Message-ID: <20130510233807.GB5706@blackbox.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: Theodore Ts'o <tytso@mit.edu>,
-	EUNBONG SONG <eunb.song@samsung.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Al Viro <viro@ZenIV.linux.org.uk>,
+	Andreas Dilger <adilger@dilger.ca>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20130510192747.GA11707@thunk.org>
+Content-Disposition: inline
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 05/10/2013 12:27 PM, Theodore Ts'o wrote:
-> Hmm, since you seem to be able to reproduce the problem reliably, any
-> chance you can try bisecting the problem?  I've looked at the commits
-> that touch fs/jbd2 and nothing is jumping out at me.
->
-> Also, how many CPU's do you have your system, and what kind of storage
-> device were you using when you were running iozone (5400rpm HDD,
-> 7200RPM HDD, RAID array, SSD, etc.)?
+Al Viro complained of a ton of bogosity with regards to the jbd2 block tag
+header checksum.  This one checksum is 16 bits, so cut off the upper 16 bits
+and treat it as a 16-bit value and don't mess around with be32* conversions.
+Fortunately metadata checksumming is still "experimental" and not in a shipping
+e2fsprogs, so there should be few users affected by this.
 
-I too have seen this.
+v2: Eliminate unnecessary variables and make it clear(er) which values are 32
+bits wide.
 
-My system is:
+Reported-by: Al Viro <viro@ZenIV.linux.org.uk>
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ fs/jbd2/commit.c   |   12 ++++++------
+ fs/jbd2/recovery.c |   11 +++++------
+ 2 files changed, 11 insertions(+), 12 deletions(-)
 
-   12 CPU Octeon (MIPS64)
-   Root is ext3, mounted via ext4fs on a slow CompactFlash/PIO6
-
-I saw the crash when simply booting  a fairly bare-bones Debian distro, 
-although it is somewhat random:
-.
-.
-ata3: PATA max PIO6 cmd 900000001d040000 ctl 900000001d05000d irq 63
-.
-.
-ata3.00: CFA: CF 4GB, 20101001, max UDMA/133
-ata3.00: 7847280 sectors, multi 0: LBA
-ata3.00: configured for PIO6
-.
-.
-scsi 2:0:0:0: Direct-Access     ATA      CF 4GB           2010 PQ: 0 ANSI: 5
-sd 2:0:0:0: [sda] 7847280 512-byte logical blocks: (4.01 GB/3.74 GiB)
-sd 2:0:0:0: [sda] Write Protect is off
-sd 2:0:0:0: [sda] Write cache: disabled, read cache: enabled, doesn't 
-support DPO or FUA
-  sda: sda1 sda2
-sd 2:0:0:0: [sda] Attached SCSI disk
-EXT4-fs (sda2): mounting ext3 file system using the ext4 subsystem
-EXT4-fs (sda2): mounted filesystem with ordered data mode. Opts: (null)
-VFS: Mounted root (ext3 filesystem) readonly on device 8:2.
-.
-.
-.
-
-I have not been able to get it to fail a second time.  So for me 
-bisecting might not work.
-
-David Daney
-
-
->
-> Thanks,
->
-> 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
->
->
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 750c701..67a8a2f 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -343,20 +343,20 @@ static void jbd2_block_tag_csum_set(journal_t *j, journal_block_tag_t *tag,
+ {
+ 	struct page *page = bh->b_page;
+ 	__u8 *addr;
+-	__u32 csum;
++	__u32 csum32;
+ 
+ 	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
+ 		return;
+ 
+ 	sequence = cpu_to_be32(sequence);
+ 	addr = kmap_atomic(page);
+-	csum = jbd2_chksum(j, j->j_csum_seed, (__u8 *)&sequence,
+-			  sizeof(sequence));
+-	csum = jbd2_chksum(j, csum, addr + offset_in_page(bh->b_data),
+-			  bh->b_size);
++	csum32 = jbd2_chksum(j, j->j_csum_seed, (__u8 *)&sequence,
++			     sizeof(sequence));
++	csum32 = jbd2_chksum(j, csum32, addr + offset_in_page(bh->b_data),
++			     bh->b_size);
+ 	kunmap_atomic(addr);
+ 
+-	tag->t_checksum = cpu_to_be32(csum);
++	tag->t_checksum = cpu_to_be16(csum32);
+ }
+ /*
+  * jbd2_journal_commit_transaction
+diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
+index 626846b..d4851464 100644
+--- a/fs/jbd2/recovery.c
++++ b/fs/jbd2/recovery.c
+@@ -399,18 +399,17 @@ static int jbd2_commit_block_csum_verify(journal_t *j, void *buf)
+ static int jbd2_block_tag_csum_verify(journal_t *j, journal_block_tag_t *tag,
+ 				      void *buf, __u32 sequence)
+ {
+-	__u32 provided, calculated;
++	__u32 csum32;
+ 
+ 	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
+ 		return 1;
+ 
+ 	sequence = cpu_to_be32(sequence);
+-	calculated = jbd2_chksum(j, j->j_csum_seed, (__u8 *)&sequence,
+-				 sizeof(sequence));
+-	calculated = jbd2_chksum(j, calculated, buf, j->j_blocksize);
+-	provided = be32_to_cpu(tag->t_checksum);
++	csum32 = jbd2_chksum(j, j->j_csum_seed, (__u8 *)&sequence,
++			     sizeof(sequence));
++	csum32 = jbd2_chksum(j, csum32, buf, j->j_blocksize);
+ 
+-	return provided == cpu_to_be32(calculated);
++	return tag->t_checksum == cpu_to_be16(csum32);
+ }
+ 
+ static int do_one_pass(journal_t *journal,
