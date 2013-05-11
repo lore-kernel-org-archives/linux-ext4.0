@@ -1,45 +1,32 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH] jbd2: Always set journal superblock checksum when writing
- out superblock
-Date: Fri, 10 May 2013 16:40:13 -0700
-Message-ID: <20130510234013.GC5706@blackbox.djwong.org>
+From: Al Viro <viro@ZenIV.linux.org.uk>
+Subject: Re: [PATCH v2] jbd2: Fix block tag checksum verification brokenness
+Date: Sat, 11 May 2013 01:14:32 +0100
+Message-ID: <20130511001432.GO25399@ZenIV.linux.org.uk>
+References: <20130510233807.GB5706@blackbox.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel <linux-kernel@vger.kernel.org>,
+Cc: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
 	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+	linux-kernel <linux-kernel@vger.kernel.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
+In-Reply-To: <20130510233807.GB5706@blackbox.djwong.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Add a few missing calls to jbd2_superblock_csum_set just prior to calling
-jbd2_write_superblock.  This fixes complaints about corrupt journals if
-metadata checksumming and journal checksumming are both enabled.
+On Fri, May 10, 2013 at 04:38:07PM -0700, Darrick J. Wong wrote:
+> Al Viro complained of a ton of bogosity with regards to the jbd2 block tag
+> header checksum.  This one checksum is 16 bits, so cut off the upper 16 bits
+> and treat it as a 16-bit value and don't mess around with be32* conversions.
+> Fortunately metadata checksumming is still "experimental" and not in a shipping
+> e2fsprogs, so there should be few users affected by this.
+> 
+> v2: Eliminate unnecessary variables and make it clear(er) which values are 32
+> bits wide.
+> 
+> Reported-by: Al Viro <viro@ZenIV.linux.org.uk>
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
----
- fs/jbd2/journal.c |    2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index b6cdc57..a4c7678 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -1348,6 +1348,7 @@ void jbd2_journal_update_sb_log_tail(journal_t *journal, tid_t tail_tid,
- 
- 	sb->s_sequence = cpu_to_be32(tail_tid);
- 	sb->s_start    = cpu_to_be32(tail_block);
-+	jbd2_superblock_csum_set(journal, sb);
- 
- 	jbd2_write_superblock(journal, write_op);
- 
-@@ -1381,6 +1382,7 @@ static void jbd2_mark_journal_empty(journal_t *journal)
- 
- 	sb->s_sequence = cpu_to_be32(journal->j_tail_sequence);
- 	sb->s_start    = cpu_to_be32(0);
-+	jbd2_superblock_csum_set(journal, sb);
- 	read_unlock(&journal->j_state_lock);
- 
- 	jbd2_write_superblock(journal, WRITE_FUA);
+ACKed-by: Al Viro <viro@ZenIV.linux.org.uk>
