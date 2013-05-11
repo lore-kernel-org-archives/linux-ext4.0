@@ -1,209 +1,469 @@
-From: Radek Pazdera <rpazdera@redhat.com>
-Subject: Re: [RFC 0/9] ext4: An Auxiliary Tree for the Directory Index
-Date: Sat, 11 May 2013 23:18:52 +0200
-Message-ID: <20130511211852.GA2891@laptop.redhat.com>
-References: <1367702922-3236-1-git-send-email-rpazdera@redhat.com>
- <20130511132833.GA21325@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: EXT4 regression caused 4eec7
+Date: Sat, 11 May 2013 19:05:59 -0400
+Message-ID: <20130511230559.GD26298@thunk.org>
+References: <6719519.5821368147110937.JavaMail.weblogic@epml17>
+ <20130510192747.GA11707@thunk.org>
+ <87y5bm53z3.fsf@openvz.org>
+ <87txm96fkd.fsf@openvz.org>
+ <87mws1eq6y.fsf@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org, lczerner@redhat.com,
-	kasparek@fit.vutbr.cz
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:63573 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754253Ab3EKWTF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 11 May 2013 18:19:05 -0400
+Cc: EUNBONG SONG <eunb.song@samsung.com>, Jan Kara <jack@suse.cz>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	linux-xfs@vger.kernel.org, Dave Chinner <david@fromorbit.com>
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20130511132833.GA21325@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <87mws1eq6y.fsf@openvz.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sat, May 11, 2013 at 09:28:34PM +0800, Zheng Liu wrote:
->Hi Radek,
->
->Could you please rebase your patch series against dev branch of ext4
->tree?  I couldn't apply your patches against this branch.  You can get
->the tree from here:
->  https://git.kernel.org/cgit/linux/kernel/git/tytso/ext4.git/
+On Sat, May 11, 2013 at 03:00:53PM +0400, Dmitry Monakhov wrote:
+> I've bisected ext4 related issue. It is appeared that it is pure ext4
+> specific. Regression caused by  following commit
+> commit 4eec708d263f0ee10861d69251708a225b64cac7
+> Author: Jan Kara <jack@suse.cz>
+> Date:   Thu Apr 11 23:56:53 2013 -0400
+>     ext4: use io_end for multiple bios
 
-Hi Zheng,
+Hmm... the next question is why did I see this in my testing.  Did you
+find this on ia64, or x86?  Also what about the slab corruption which
+you saw when running XFS; was that unrelated?
 
-Sure, I will do the rebase and repost the series tomorrow.
+Since at this point it's safer to rollback the change and we can
+investigate more deeply how to fix it correctly for the next
+development cycle, this is the patch which I'm testing.
 
--Radek
+	    	   	       	     - Ted
 
->Regards,
->                                                - Zheng
->
->On Sat, May 04, 2013 at 11:28:33PM +0200, Radek Pazdera wrote:
->> Hello everyone,
->> 
->> I am an university student from Brno /CZE/. I decided to try to optimise
->> the readdir/stat scenario in ext4 as the final project to school. I
->> posted some test results I got few months ago [1].
->> 
->> I tried to implement an additional tree for ext4's directory index
->> that would be sorted by inode numbers. The tree then would be used
->> by ext4_readdir() which should lead to substantial increase of
->> performance of operations that manipulate a whole directory at once.
->> 
->> The performance increase should be visible especially with large
->> directories or in case of low memory or cache pressure.
->> 
->> This patch series is what I've got so far. I must say, I originally
->> thought it would be *much* simpler :).
->> 
->> TLDR
->> ====
->> 
->> The series contains the implementation of the new tree and several
->> rather small changes to the original directory index. I also added
->> a new implementation of ext4_readdir() that uses this new tree
->> instead of the original one.
->> 
->> It applies on 3.9, it is basically working, however, it is highly
->> experimental at the moment. It doesn't survive XFS tests yet (I
->> still need to work on that).
->> 
->> DESIGN
->> ======
->> 
->> The tree comes with a new read-only compatible file system feature
->> called "itree". It is created in a directory at the same time as the
->> original dx tree -- when the directory file exceeds a signle block of
->> size. It is indicated by an inode flag.
->> 
->> The tree resides completely outside of the directory file. I am using
->> 64bit block numbers (as suggested by Ted Ts'o), and the pointer to its
->> root is stored in the end of the dx_root block.
->> 
->> I tried to keep the structure of the tree as close as possible to the
->> original dx tree. It is a B+ tree with a 64bit long compound key. The
->> key consists of a inode number and a hash.
->> 
->> The hash is there because of hard links. On ext4 there can be as much
->> as 65 000 names for a single file which is, from the point of the inode
->> tree, a collision. It is a very unlikely scenario to crate over 60 000
->> names for a file from a single directory. But it would be a very serious
->> problem for readdir() if someone tried to do that, so I decided to add
->> the hash to the key as well. This reduces the problems of collisions to
->> the same as of the hash tree.
->> 
->> The depth of the tree is limited by a constant in the code to 3 levels,
->> but it can be increased anytime.
->> 
->> I decided to keep the directory entries within the leaf nodes sorted,
->> which might have been a bad idea (and it brought me quite a few
->> sleepless nights of pointer debugging). However, it is more convenient
->> for readdir and splits. And in the case of the inode tree, there
->> shouldn't be that much memmoving, because inodes are allocated linearly,
->> therefore we're adding to the end most of the time anyway.
->> 
->> I also had to implement coalesce-on-delete. Unlike the hash values,
->> the inode numbers are not random, so the tree would get fragmented
->> really easily. For example when a range of inodes would be freed
->> and allocated somewhere else, that part of the tree would stay empty
->> forever.
->> 
->> In this implementation I used 8 bits for "node fullness". Neighbour
->> nodes in the tree are merged as soon as their total fullness is smaller
->> than maximum fullness. This way, coalescing happens too often. I plan
->> to reduce it to only 2 bits (25% full, 50% full, 75% full, 100% full).
->> 
->> There are also some optimisations to increase the fullness of blocks
->> within the tree, because if the file system adds a contiguous sequence
->> of inodes to a directory and we split the nodes in half, there will be
->> some tree nodes that will never get another entry and still be only 50%
->> full. In the current implementation, an append is performed instead of
->> a split in case the new entry should be added to the end of the full
->> block.
->> 
->> BENCHMARKS
->> ==========
->> 
->> I did some benchmarks and compared the performance with ext4/htree,
->> XFS, and btrfs up to 5 000 000 of files in a single directory. Not
->> all of them are done though (they run for days).
->> 
->> Probably the biggest improvement can be observed with copying files.
->> I used two physical SATA disks for the test. For 5M files, the itree
->> implementation is 14x faster. With metadata only, ext4 is even a tiny
->> bit faster than xfs:
->> 
->>     http://www.stud.fit.vutbr.cz/~xpazde00/soubory/ext4-5M/0B-files/cp.png
->> 
->> With each files 4kB big, the inode tree is 11x faster:
->> 
->>     http://www.stud.fit.vutbr.cz/~xpazde00/soubory/ext4-5M/4096B-files/cp.png
->> 
->> On the other hand, probably the biggest drawback of this implementation
->> is that it slows down file creates, as we now have to insert the entry
->> into both trees. The difference gets bigger as both trees grow (and their
->> blocks get further apart). For 5M directory entries, the creation is
->> roughly 40% slower. Hopefully, I'll be able to optimise it a bit in the
->> future:
->> 
->>     http://www.stud.fit.vutbr.cz/~xpazde00/soubory/ext4-5M/0B-files/create.png
->>     http://www.stud.fit.vutbr.cz/~xpazde00/soubory/ext4-5M/4096B-files/create.png
->> 
->> Deleting entries should also very much benefit from this. However, the
->> increase of performance in my test is far lower than expected. I think
->> that is due to my implementation of coalesce-on-delete, which happens
->> too often and during these massive deletes, it coallesces all the time.
->> I hope that when I fix that, it will get somewhere close to XFS as well:
->> 
->>     http://www.stud.fit.vutbr.cz/~xpazde00/soubory/ext4-5M/0B-files/delete.png
->>     http://www.stud.fit.vutbr.cz/~xpazde00/soubory/ext4-5M/4096B-files/delete.png
->> 
->> All of the results have a graph and a table with precise values.
->> You can always get the table by replacing the suffix of the graph
->> *.png to *.results in the end of the link.
->> 
->> Full results are available here:
->>     http://www.stud.fit.vutbr.cz/~xpazde00/soubory/ext4-5M/
->> 
->> 
->> I also did some tests on an aged file system (I used the simple 0.8
->> chance to create, 0.2 to delete a file) where the results of ext4
->> with itree are much better even than xfs, which gets fragmented:
->> 
->>     http://www.stud.fit.vutbr.cz/~xpazde00/soubory/5M-dirty/cp.png
->>     http://www.stud.fit.vutbr.cz/~xpazde00/soubory/5M-dirty/readdir-stat.png
->> 
->> 
->> There are still some things to be done, the checksums are not yet
->> finished and I certainly need to do a bit of cleaning up at some
->> places. But as far as features go, it all should be there already.
->> 
->> I'm working on this along with Lukas Czerner, who acts as my mentor
->> and helps me with different things (big thanks!).
->> 
->> Any feedback/ideas are greatly appeciated :)!
->> 
->> Cheers,
->> Radek
->> 
->> 
->> Radek Pazdera (9):
->>   ext4: Adding itree feature and inode flags
->>   ext4: Allow sorting dx_map by inode as well
->>   ext4: Adding a link to itree to the dx_root struct
->>   ext4: Adding itree structures
->>   ext4: Adding itree implementation I - Core
->>   ext4: Adding itree implementation II - Inserting
->>   ext4: Adding itree implementation III - Deleting
->>   ext4: Make directory operations use itree
->>   ext4: Make ext4_readdir() use itree if available
->> 
->>  fs/ext4/dir.c   |  177 +++-
->>  fs/ext4/ext4.h  |   21 +-
->>  fs/ext4/namei.c | 2442 +++++++++++++++++++++++++++++++++++++++++++++++++++++--
->>  3 files changed, 2565 insertions(+), 75 deletions(-)
->> 
->> -- 
->> 1.7.11.7
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>From dfd5057908a66b414d5d5fa2fc7ff7945e5a277c Mon Sep 17 00:00:00 2001
+From: Theodore Ts'o <tytso@mit.edu>
+Date: Sat, 11 May 2013 18:59:39 -0400
+Subject: [PATCH] Revert "ext4: use io_end for multiple bios"
+
+This reverts commit 4eec708d263f0ee10861d69251708a225b64cac7.
+
+Multiple users have reported crashes which is apparently caused by
+this commit.  Thanks to Dmitry Monakhov for bisecting it.
+
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>
+Cc: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/ext4.h    |   8 +---
+ fs/ext4/inode.c   |  85 +++++++++++++++++---------------------
+ fs/ext4/page-io.c | 121 ++++++++++++++++++++----------------------------------
+ 3 files changed, 85 insertions(+), 129 deletions(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 0aabb34..5aae3d1 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -209,7 +209,6 @@ typedef struct ext4_io_end {
+ 	ssize_t			size;		/* size of the extent */
+ 	struct kiocb		*iocb;		/* iocb struct for AIO */
+ 	int			result;		/* error value for AIO */
+-	atomic_t		count;		/* reference counter */
+ } ext4_io_end_t;
+ 
+ struct ext4_io_submit {
+@@ -2651,14 +2650,11 @@ extern int ext4_move_extents(struct file *o_filp, struct file *d_filp,
+ 
+ /* page-io.c */
+ extern int __init ext4_init_pageio(void);
++extern void ext4_add_complete_io(ext4_io_end_t *io_end);
+ extern void ext4_exit_pageio(void);
+ extern void ext4_ioend_shutdown(struct inode *);
++extern void ext4_free_io_end(ext4_io_end_t *io);
+ extern ext4_io_end_t *ext4_init_io_end(struct inode *inode, gfp_t flags);
+-extern ext4_io_end_t *ext4_get_io_end(ext4_io_end_t *io_end);
+-extern int ext4_put_io_end(ext4_io_end_t *io_end);
+-extern void ext4_put_io_end_defer(ext4_io_end_t *io_end);
+-extern void ext4_io_submit_init(struct ext4_io_submit *io,
+-				struct writeback_control *wbc);
+ extern void ext4_end_io_work(struct work_struct *work);
+ extern void ext4_io_submit(struct ext4_io_submit *io);
+ extern int ext4_bio_write_page(struct ext4_io_submit *io,
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 793d44b..d666569 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1487,10 +1487,7 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd,
+ 	struct ext4_io_submit io_submit;
+ 
+ 	BUG_ON(mpd->next_page <= mpd->first_page);
+-	ext4_io_submit_init(&io_submit, mpd->wbc);
+-	io_submit.io_end = ext4_init_io_end(inode, GFP_NOFS);
+-	if (!io_submit.io_end)
+-		return -ENOMEM;
++	memset(&io_submit, 0, sizeof(io_submit));
+ 	/*
+ 	 * We need to start from the first_page to the next_page - 1
+ 	 * to make sure we also write the mapped dirty buffer_heads.
+@@ -1578,8 +1575,6 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd,
+ 		pagevec_release(&pvec);
+ 	}
+ 	ext4_io_submit(&io_submit);
+-	/* Drop io_end reference we got from init */
+-	ext4_put_io_end_defer(io_submit.io_end);
+ 	return ret;
+ }
+ 
+@@ -2238,16 +2233,9 @@ static int ext4_writepage(struct page *page,
+ 		 */
+ 		return __ext4_journalled_writepage(page, len);
+ 
+-	ext4_io_submit_init(&io_submit, wbc);
+-	io_submit.io_end = ext4_init_io_end(inode, GFP_NOFS);
+-	if (!io_submit.io_end) {
+-		redirty_page_for_writepage(wbc, page);
+-		return -ENOMEM;
+-	}
++	memset(&io_submit, 0, sizeof(io_submit));
+ 	ret = ext4_bio_write_page(&io_submit, page, len, wbc);
+ 	ext4_io_submit(&io_submit);
+-	/* Drop io_end reference we got from init */
+-	ext4_put_io_end_defer(io_submit.io_end);
+ 	return ret;
+ }
+ 
+@@ -3078,13 +3066,9 @@ static void ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
+ 	struct inode *inode = file_inode(iocb->ki_filp);
+         ext4_io_end_t *io_end = iocb->private;
+ 
+-	/* if not async direct IO just return */
+-	if (!io_end) {
+-		inode_dio_done(inode);
+-		if (is_async)
+-			aio_complete(iocb, ret, 0);
+-		return;
+-	}
++	/* if not async direct IO or dio with 0 bytes write, just return */
++	if (!io_end || !size)
++		goto out;
+ 
+ 	ext_debug("ext4_end_io_dio(): io_end 0x%p "
+ 		  "for inode %lu, iocb 0x%p, offset %llu, size %zd\n",
+@@ -3092,13 +3076,25 @@ static void ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
+ 		  size);
+ 
+ 	iocb->private = NULL;
++
++	/* if not aio dio with unwritten extents, just free io and return */
++	if (!(io_end->flag & EXT4_IO_END_UNWRITTEN)) {
++		ext4_free_io_end(io_end);
++out:
++		inode_dio_done(inode);
++		if (is_async)
++			aio_complete(iocb, ret, 0);
++		return;
++	}
++
+ 	io_end->offset = offset;
+ 	io_end->size = size;
+ 	if (is_async) {
+ 		io_end->iocb = iocb;
+ 		io_end->result = ret;
+ 	}
+-	ext4_put_io_end_defer(io_end);
++
++	ext4_add_complete_io(io_end);
+ }
+ 
+ /*
+@@ -3132,7 +3128,6 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+ 	get_block_t *get_block_func = NULL;
+ 	int dio_flags = 0;
+ 	loff_t final_size = offset + count;
+-	ext4_io_end_t *io_end = NULL;
+ 
+ 	/* Use the old path for reads and writes beyond i_size. */
+ 	if (rw != WRITE || final_size > inode->i_size)
+@@ -3171,16 +3166,13 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+ 	iocb->private = NULL;
+ 	ext4_inode_aio_set(inode, NULL);
+ 	if (!is_sync_kiocb(iocb)) {
+-		io_end = ext4_init_io_end(inode, GFP_NOFS);
++		ext4_io_end_t *io_end = ext4_init_io_end(inode, GFP_NOFS);
+ 		if (!io_end) {
+ 			ret = -ENOMEM;
+ 			goto retake_lock;
+ 		}
+ 		io_end->flag |= EXT4_IO_END_DIRECT;
+-		/*
+-		 * Grab reference for DIO. Will be dropped in ext4_end_io_dio()
+-		 */
+-		iocb->private = ext4_get_io_end(io_end);
++		iocb->private = io_end;
+ 		/*
+ 		 * we save the io structure for current async direct
+ 		 * IO, so that later ext4_map_blocks() could flag the
+@@ -3204,27 +3196,26 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+ 				   NULL,
+ 				   dio_flags);
+ 
++	if (iocb->private)
++		ext4_inode_aio_set(inode, NULL);
+ 	/*
+-	 * Put our reference to io_end. This can free the io_end structure e.g.
+-	 * in sync IO case or in case of error. It can even perform extent
+-	 * conversion if all bios we submitted finished before we got here.
+-	 * Note that in that case iocb->private can be already set to NULL
+-	 * here.
++	 * The io_end structure takes a reference to the inode, that
++	 * structure needs to be destroyed and the reference to the
++	 * inode need to be dropped, when IO is complete, even with 0
++	 * byte write, or failed.
++	 *
++	 * In the successful AIO DIO case, the io_end structure will
++	 * be destroyed and the reference to the inode will be dropped
++	 * after the end_io call back function is called.
++	 *
++	 * In the case there is 0 byte write, or error case, since VFS
++	 * direct IO won't invoke the end_io call back function, we
++	 * need to free the end_io structure here.
+ 	 */
+-	if (io_end) {
+-		ext4_inode_aio_set(inode, NULL);
+-		ext4_put_io_end(io_end);
+-		/*
+-		 * In case of error or no write ext4_end_io_dio() was not
+-		 * called so we have to put iocb's reference.
+-		 */
+-		if (ret <= 0 && ret != -EIOCBQUEUED) {
+-			WARN_ON(iocb->private != io_end);
+-			ext4_put_io_end(io_end);
+-			iocb->private = NULL;
+-		}
+-	}
+-	if (ret > 0 && !overwrite && ext4_test_inode_state(inode,
++	if (ret != -EIOCBQUEUED && ret <= 0 && iocb->private) {
++		ext4_free_io_end(iocb->private);
++		iocb->private = NULL;
++	} else if (ret > 0 && !overwrite && ext4_test_inode_state(inode,
+ 						EXT4_STATE_DIO_UNWRITTEN)) {
+ 		int err;
+ 		/*
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 5929cd0..6626aba 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -61,28 +61,15 @@ void ext4_ioend_shutdown(struct inode *inode)
+ 		cancel_work_sync(&EXT4_I(inode)->i_unwritten_work);
+ }
+ 
+-static void ext4_release_io_end(ext4_io_end_t *io_end)
++void ext4_free_io_end(ext4_io_end_t *io)
+ {
+-	BUG_ON(!list_empty(&io_end->list));
+-	BUG_ON(io_end->flag & EXT4_IO_END_UNWRITTEN);
+-
+-	if (atomic_dec_and_test(&EXT4_I(io_end->inode)->i_ioend_count))
+-		wake_up_all(ext4_ioend_wq(io_end->inode));
+-	if (io_end->flag & EXT4_IO_END_DIRECT)
+-		inode_dio_done(io_end->inode);
+-	if (io_end->iocb)
+-		aio_complete(io_end->iocb, io_end->result, 0);
+-	kmem_cache_free(io_end_cachep, io_end);
+-}
+-
+-static void ext4_clear_io_unwritten_flag(ext4_io_end_t *io_end)
+-{
+-	struct inode *inode = io_end->inode;
++	BUG_ON(!io);
++	BUG_ON(!list_empty(&io->list));
++	BUG_ON(io->flag & EXT4_IO_END_UNWRITTEN);
+ 
+-	io_end->flag &= ~EXT4_IO_END_UNWRITTEN;
+-	/* Wake up anyone waiting on unwritten extent conversion */
+-	if (atomic_dec_and_test(&EXT4_I(inode)->i_unwritten))
+-		wake_up_all(ext4_ioend_wq(inode));
++	if (atomic_dec_and_test(&EXT4_I(io->inode)->i_ioend_count))
++		wake_up_all(ext4_ioend_wq(io->inode));
++	kmem_cache_free(io_end_cachep, io);
+ }
+ 
+ /* check a range of space and convert unwritten extents to written. */
+@@ -105,8 +92,13 @@ static int ext4_end_io(ext4_io_end_t *io)
+ 			 "(inode %lu, offset %llu, size %zd, error %d)",
+ 			 inode->i_ino, offset, size, ret);
+ 	}
+-	ext4_clear_io_unwritten_flag(io);
+-	ext4_release_io_end(io);
++	/* Wake up anyone waiting on unwritten extent conversion */
++	if (atomic_dec_and_test(&EXT4_I(inode)->i_unwritten))
++		wake_up_all(ext4_ioend_wq(inode));
++	if (io->flag & EXT4_IO_END_DIRECT)
++		inode_dio_done(inode);
++	if (io->iocb)
++		aio_complete(io->iocb, io->result, 0);
+ 	return ret;
+ }
+ 
+@@ -137,7 +129,7 @@ static void dump_completed_IO(struct inode *inode)
+ }
+ 
+ /* Add the io_end to per-inode completed end_io list. */
+-static void ext4_add_complete_io(ext4_io_end_t *io_end)
++void ext4_add_complete_io(ext4_io_end_t *io_end)
+ {
+ 	struct ext4_inode_info *ei = EXT4_I(io_end->inode);
+ 	struct workqueue_struct *wq;
+@@ -174,6 +166,8 @@ static int ext4_do_flush_completed_IO(struct inode *inode)
+ 		err = ext4_end_io(io);
+ 		if (unlikely(!ret && err))
+ 			ret = err;
++		io->flag &= ~EXT4_IO_END_UNWRITTEN;
++		ext4_free_io_end(io);
+ 	}
+ 	return ret;
+ }
+@@ -205,43 +199,10 @@ ext4_io_end_t *ext4_init_io_end(struct inode *inode, gfp_t flags)
+ 		atomic_inc(&EXT4_I(inode)->i_ioend_count);
+ 		io->inode = inode;
+ 		INIT_LIST_HEAD(&io->list);
+-		atomic_set(&io->count, 1);
+ 	}
+ 	return io;
+ }
+ 
+-void ext4_put_io_end_defer(ext4_io_end_t *io_end)
+-{
+-	if (atomic_dec_and_test(&io_end->count)) {
+-		if (!(io_end->flag & EXT4_IO_END_UNWRITTEN) || !io_end->size) {
+-			ext4_release_io_end(io_end);
+-			return;
+-		}
+-		ext4_add_complete_io(io_end);
+-	}
+-}
+-
+-int ext4_put_io_end(ext4_io_end_t *io_end)
+-{
+-	int err = 0;
+-
+-	if (atomic_dec_and_test(&io_end->count)) {
+-		if (io_end->flag & EXT4_IO_END_UNWRITTEN) {
+-			err = ext4_convert_unwritten_extents(io_end->inode,
+-						io_end->offset, io_end->size);
+-			ext4_clear_io_unwritten_flag(io_end);
+-		}
+-		ext4_release_io_end(io_end);
+-	}
+-	return err;
+-}
+-
+-ext4_io_end_t *ext4_get_io_end(ext4_io_end_t *io_end)
+-{
+-	atomic_inc(&io_end->count);
+-	return io_end;
+-}
+-
+ /*
+  * Print an buffer I/O error compatible with the fs/buffer.c.  This
+  * provides compatibility with dmesg scrapers that look for a specific
+@@ -324,7 +285,12 @@ static void ext4_end_bio(struct bio *bio, int error)
+ 			     bi_sector >> (inode->i_blkbits - 9));
+ 	}
+ 
+-	ext4_put_io_end_defer(io_end);
++	if (!(io_end->flag & EXT4_IO_END_UNWRITTEN)) {
++		ext4_free_io_end(io_end);
++		return;
++	}
++
++	ext4_add_complete_io(io_end);
+ }
+ 
+ void ext4_io_submit(struct ext4_io_submit *io)
+@@ -338,37 +304,40 @@ void ext4_io_submit(struct ext4_io_submit *io)
+ 		bio_put(io->io_bio);
+ 	}
+ 	io->io_bio = NULL;
+-}
+-
+-void ext4_io_submit_init(struct ext4_io_submit *io,
+-			 struct writeback_control *wbc)
+-{
+-	io->io_op = (wbc->sync_mode == WB_SYNC_ALL ?  WRITE_SYNC : WRITE);
+-	io->io_bio = NULL;
++	io->io_op = 0;
+ 	io->io_end = NULL;
+ }
+ 
+-static int io_submit_init_bio(struct ext4_io_submit *io,
+-			      struct buffer_head *bh)
++static int io_submit_init(struct ext4_io_submit *io,
++			  struct inode *inode,
++			  struct writeback_control *wbc,
++			  struct buffer_head *bh)
+ {
++	ext4_io_end_t *io_end;
++	struct page *page = bh->b_page;
+ 	int nvecs = bio_get_nr_vecs(bh->b_bdev);
+ 	struct bio *bio;
+ 
++	io_end = ext4_init_io_end(inode, GFP_NOFS);
++	if (!io_end)
++		return -ENOMEM;
+ 	bio = bio_alloc(GFP_NOIO, min(nvecs, BIO_MAX_PAGES));
+ 	bio->bi_sector = bh->b_blocknr * (bh->b_size >> 9);
+ 	bio->bi_bdev = bh->b_bdev;
++	bio->bi_private = io->io_end = io_end;
+ 	bio->bi_end_io = ext4_end_bio;
+-	bio->bi_private = ext4_get_io_end(io->io_end);
+-	if (!io->io_end->size)
+-		io->io_end->offset = (bh->b_page->index << PAGE_CACHE_SHIFT)
+-				     + bh_offset(bh);
++
++	io_end->offset = (page->index << PAGE_CACHE_SHIFT) + bh_offset(bh);
++
+ 	io->io_bio = bio;
++	io->io_op = (wbc->sync_mode == WB_SYNC_ALL ?  WRITE_SYNC : WRITE);
+ 	io->io_next_block = bh->b_blocknr;
+ 	return 0;
+ }
+ 
+ static int io_submit_add_bh(struct ext4_io_submit *io,
+ 			    struct inode *inode,
++			    struct writeback_control *wbc,
+ 			    struct buffer_head *bh)
+ {
+ 	ext4_io_end_t *io_end;
+@@ -379,18 +348,18 @@ submit_and_retry:
+ 		ext4_io_submit(io);
+ 	}
+ 	if (io->io_bio == NULL) {
+-		ret = io_submit_init_bio(io, bh);
++		ret = io_submit_init(io, inode, wbc, bh);
+ 		if (ret)
+ 			return ret;
+ 	}
+-	ret = bio_add_page(io->io_bio, bh->b_page, bh->b_size, bh_offset(bh));
+-	if (ret != bh->b_size)
+-		goto submit_and_retry;
+ 	io_end = io->io_end;
+ 	if (test_clear_buffer_uninit(bh))
+ 		ext4_set_io_unwritten_flag(inode, io_end);
+-	io_end->size += bh->b_size;
++	io->io_end->size += bh->b_size;
+ 	io->io_next_block++;
++	ret = bio_add_page(io->io_bio, bh->b_page, bh->b_size, bh_offset(bh));
++	if (ret != bh->b_size)
++		goto submit_and_retry;
+ 	return 0;
+ }
+ 
+@@ -462,7 +431,7 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 	do {
+ 		if (!buffer_async_write(bh))
+ 			continue;
+-		ret = io_submit_add_bh(io, inode, bh);
++		ret = io_submit_add_bh(io, inode, wbc, bh);
+ 		if (ret) {
+ 			/*
+ 			 * We only get here on ENOMEM.  Not much else
+-- 
+1.7.12.rc0.22.gcdd159b
