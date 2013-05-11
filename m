@@ -1,65 +1,56 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: Re: EXT4 panic at jbd2_journal_put_journal_head() in 3.9+
-Date: Sat, 11 May 2013 11:52:38 +0400
-Message-ID: <871u9e6ji1.fsf@openvz.org>
-References: <6719519.5821368147110937.JavaMail.weblogic@epml17> <CA+8MBbKHJgnueAurRV1aeeV-NdzRTz_gVwYcJuyDrjJLErtcfg@mail.gmail.com>
+Subject: Nasty memory corrution v3.9-12555-g2dbd3ca
+Date: Sat, 11 May 2013 12:13:20 +0400
+Message-ID: <87y5bm53z3.fsf@openvz.org>
+References: <6719519.5821368147110937.JavaMail.weblogic@epml17> <20130510192747.GA11707@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	"linux-ext4\@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: Tony Luck <tony.luck@gmail.com>, eunb.song@samsung.com
+Cc: "linux-ext4\@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	linux-xfs@vger.kernel.org, Dave Chinner <david@fromorbit.com>
+To: Theodore Ts'o <tytso@mit.edu>, EUNBONG SONG <eunb.song@samsung.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <CA+8MBbKHJgnueAurRV1aeeV-NdzRTz_gVwYcJuyDrjJLErtcfg@mail.gmail.com>
+In-Reply-To: <20130510192747.GA11707@thunk.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 10 May 2013 10:27:58 -0700, Tony Luck <tony.luck@gmail.com> wrote:
-Non-text part: multipart/mixed
-> I think I have the same (or highly similar) thing happening on ia64.
-What was page_size and fsblock size?
+On Fri, 10 May 2013 15:27:47 -0400, Theodore Ts'o <tytso@mit.edu> wrote:
+> Hmm, since you seem to be able to reproduce the problem reliably, any
+> chance you can try bisecting the problem?  I've looked at the commits
+> that touch fs/jbd2 and nothing is jumping out at me.
 > 
-> Similarities: seeing assertions fail for b_transaction
-> Differences: I only have ext3 filesystems mounted, no ext4
-> 
-> See attached trace.  I'm pretty certain that the highly unhelpful
-> 
->     bugcheck! 0 [1]
-> 
-> comes from the
-> 
->         J_ASSERT_JH(jh, jh->b_transaction == NULL);
-> 
-> from disassembling __journal_remove_journal_head(). The instruction
-> pointer <a0000001003d6690> points to the 2nd "break" instruction
-> in the function.
-> 
-> The problem shows up after 30 minutes to a couple of hours of stress (kernel
-> builds with "make -j32").
-I cant reproduce this one yet.
-But changes {ext3,jbd} are minimal
-#git log --oneline v3.9.. fs/{ext3,jbd}
-5af43c2 Merge branch 'akpm' (incoming from Andrew)
-a27bb33 aio: don't include aio.h in sched.h
-4385bab make blkdev_put() return void
-14a9e5c Merge branch 'for_linus' of git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs
-e760040 fs/buffer.c: remove unnecessary init operation after allocating buffer_head.
-713685111 mm: make snapshotting pages for stable writes a per-bio
-operation
-8bb9da9 jbd: use kmem_cache_zalloc for allocating journal head
-e162b2f jbd: use kmem_cache_zalloc instead of kmem_cache_alloc/memset
-e678a4f jbd: don't wait (forever) for stale tid caused by wraparound
-e643692 ext3: fix data=journal fast mount/umount hang
+> Also, how many CPU's do you have your system, and what kind of storage
+> device were you using when you were running iozone (5400rpm HDD,
+> 7200RPM HDD, RAID array, SSD, etc.)?
+XFS TOO....
+It it definitely just an ext3/4 related issue.
+I've run xfstests on xfs and almost immediately have got slub corruption
+I use following HEAD: 2dbd3cac87250a0d44e07acc86c4224a08522709
 
-So looks very strange..
-I have ia64 and now I work on reproduction.
+2013-05-11 11:59:30 Slab corruption (Not tainted): xfs_efi_item
+start=ffff8802335063f0, len=400^M
+2013-05-11 11:59:30 Redzone: 0x9f911029d74e35b/0x9f911029d74e35b.^M
+2013-05-11 11:59:30 Last user:
+[<ffffffffa03ba36f>](xfs_efi_item_free+0x3f/0x50 [xfs])^M
+2013-05-11 11:59:30 070: 6a 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b
+jkkkkkkkkkkkkkkk^M
+2013-05-11 11:59:30 Single bit error detected. Probably bad RAM.^M
+2013-05-11 11:59:30 Run memtest86+ or a similar memory test tool.^M
+2013-05-11 11:59:30 Prev obj: start=ffff880233506248, len=400^M
+2013-05-11 11:59:30 Redzone: 0xd84156c5635688c0/0xd84156c5635688c0.^M
+2013-05-11 11:59:30 Last user:
+[<ffffffffa034d7bb>](kmem_zone_alloc+0xbb/0x190 [xfs])^M
+2013-05-11 11:59:30 000: 48 62 50 33 02 88 ff ff 48 62 50 33 02 88 ff ff
+HbP3....HbP3....^M
+2013-05-11 11:59:30 010: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+................^M
+2013-05-11 11:59:30 Next obj: start=ffff880233506598, len=400^M
+2013-05-11 11:59:30 Redzone: 0x9f911029d74e35b/0x9f911029d74e35b.^M
 > 
-> I'm pretty sure this problem didn't occur in plain v3.9 (it can run for
-> a full 24 hours).
+> Thanks,
 > 
-> Trying to bisect - but it takes a while to be convinced that a good kernel
-> is actually good (since I don't have a clear picture of how long to run
-> before deciding that the bug isn't going to show)
-> 
-> -Tony
-Attachment: bug (application/octet-stream)
+> 						- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
