@@ -1,61 +1,99 @@
-From: EUNBONG SONG <eunb.song@samsung.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
 Subject: Re: Re: Re: EXT4 regression caused 4eec7
-Date: Sun, 12 May 2013 13:05:00 +0000 (GMT)
-Message-ID: <31302271.2821368363898561.JavaMail.weblogic@epml17>
-Reply-To: eunb.song@samsung.com
+Date: Sun, 12 May 2013 17:40:31 +0400
+Message-ID: <87li7kxqnk.fsf@openvz.org>
+References: <31302271.2821368363898561.JavaMail.weblogic@epml17>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=euc-kr
-Content-Transfer-Encoding: base64
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: Jan Kara <jack@suse.cz>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>,
+	"linux-ext4\@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-xfs\@vger.kernel.org" <linux-xfs@vger.kernel.org>,
 	Dave Chinner <david@fromorbit.com>
-To: Theodore Ts'o <tytso@mit.edu>,
-	Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout4.samsung.com ([203.254.224.34]:11485 "EHLO
-	mailout4.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752317Ab3ELNFC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 12 May 2013 09:05:02 -0400
-Received: from epcpsbgr5.samsung.com
- (u145.gpu120.samsung.co.kr [203.254.230.145])
- by mailout4.samsung.com (Oracle Communications Messaging Server 7u4-24.01
- (7.0.4.24.0) 64bit (built Nov 17 2011))
- with ESMTP id <0MMO00HOPSCAFF90@mailout4.samsung.com> for
- linux-ext4@vger.kernel.org; Sun, 12 May 2013 22:05:00 +0900 (KST)
-MIME-version: 1.0
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+To: eunb.song@samsung.com, Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <31302271.2821368363898561.JavaMail.weblogic@epml17>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-DQoNCj4+IFNpbmNlIGF0IHRoaXMgcG9pbnQgaXQncyBzYWZlciB0byByb2xsYmFjayB0aGUgY2hh
-bmdlIGFuZCB3ZSBjYW4NCj4+IGludmVzdGlnYXRlIG1vcmUgZGVlcGx5IGhvdyB0byBmaXggaXQg
-Y29ycmVjdGx5IGZvciB0aGUgbmV4dA0KPj4gZGV2ZWxvcG1lbnQgY3ljbGUsIHRoaXMgaXMgdGhl
-IHBhdGNoIHdoaWNoIEknbSB0ZXN0aW5nLg0KDQo+PiAgICAgICAgICAgICAgICAgICAgIC0gVGVk
-DQoNCj4gSGVsbG8sIEkndmUgdGVzdGVkIHdpdGggeW91ciBwYXRjaC4gQnV0IHRoZSBzYW1lIHBy
-b2JsZW0gd2FzIHJlcHJvZHVjZWQuDQo+IEN1cnJlbnRseSwgSSdtIHRyeWluZyB0byBnaXQgYmlz
-ZWN0LiBJZiBpIGRvbmUgZ2l0IGJpc2VjdCwgaSB3aWxsIGxldCB5b3Uga25vdy4NCg0KSGksIEkn
-dmUgZG9uZSBnaXQgYmlzZWN0LiBhbmQgcGFuaWMgYXQgamJkMl9qb3VybmFsX3B1dF9qb3VybmFs
-X2hlYWQoKSBpcyBjYXVzZWQgYnkgDQphZTQ2NDdmYjc2NTQ2NzZmYzQ0YTk3ZTg2ZWIzNWY5ZjA2
-Yjk5ZjY2OiAiamJkMjogcmVkdWNlIGpvdXJuYWxfaGVhZCBzaXplLiINCkkgd3JpdGUganVzdCBj
-b2RlIHBhdGNoIHdoaWNoIHJldmVydCBhZTQ2NDdmYjc2NTQ2NzZmYzQ0YTk3ZTg2ZWIzNWY5ZjA2
-Yjk5ZjY2IGJlY2F1c2UNCkkgZG9uJ3Qga25vdyB0aGUgcm9vdCBjYXVzZS4gDQoNCg0KU2lnbmVk
-LW9mZi1ieTogRXVuYm9uZyBTb25nIDxldW5iLnNvbmdAc2Ftc3VuZy5jb20+DQotLS0NCiBpbmNs
-dWRlL2xpbnV4L2pvdXJuYWwtaGVhZC5oIHwgICAxMSArKysrKysrKystLQ0KIDEgZmlsZXMgY2hh
-bmdlZCwgOSBpbnNlcnRpb25zKCspLCAyIGRlbGV0aW9ucygtKQ0KDQpkaWZmIC0tZ2l0IGEvaW5j
-bHVkZS9saW51eC9qb3VybmFsLWhlYWQuaCBiL2luY2x1ZGUvbGludXgvam91cm5hbC1oZWFkLmgN
-CmluZGV4IDEzYTNkYTIuLmMxOGI0NmYgMTAwNjQ0DQotLS0gYS9pbmNsdWRlL2xpbnV4L2pvdXJu
-YWwtaGVhZC5oDQorKysgYi9pbmNsdWRlL2xpbnV4L2pvdXJuYWwtaGVhZC5oDQpAQCAtMzEsMTQg
-KzMxLDIxIEBAIHN0cnVjdCBqb3VybmFsX2hlYWQgew0KIAkvKg0KIAkgKiBKb3VybmFsbGluZyBs
-aXN0IGZvciB0aGlzIGJ1ZmZlciBbamJkX2xvY2tfYmhfc3RhdGUoKV0NCiAJICovDQotCXVuc2ln
-bmVkIGJfamxpc3Q6NDsNCisJdW5zaWduZWQgYl9qbGlzdDsNCiANCiAJLyoNCiAJICogVGhpcyBm
-bGFnIHNpZ25hbHMgdGhlIGJ1ZmZlciBoYXMgYmVlbiBtb2RpZmllZCBieQ0KIAkgKiB0aGUgY3Vy
-cmVudGx5IHJ1bm5pbmcgdHJhbnNhY3Rpb24NCiAJICogW2piZF9sb2NrX2JoX3N0YXRlKCldDQog
-CSAqLw0KLQl1bnNpZ25lZCBiX21vZGlmaWVkOjE7DQorCXVuc2lnbmVkIGJfbW9kaWZpZWQ7DQor
-DQorCS8qDQorCSAqIFRoaXMgZmVpbGQgdHJhY2tzIHRoZSBsYXN0IHRyYW5zYWN0aW9uIGlkIGlu
-IHdoaWNoIHRoaXMgYnVmZmVyDQorCSAqIGhhcyBiZWVuIGNvd2VkDQorCSAqIFtqYmRfbG9ja19i
-aF9zdGF0ZSgpXQ0KKwkgKi8NCisJdGlkX3QgYl9jb3dfdGlkOw0KIA0KIAkvKg0KIAkgKiBDb3B5
-IG9mIHRoZSBidWZmZXIgZGF0YSBmcm96ZW4gZm9yIHdyaXRpbmcgdG8gdGhlIGxvZy4NCi0tIA0K
-MS43LjAuNA0KDQoNClRoYW5rcy4g
+On Sun, 12 May 2013 13:05:00 +0000 (GMT), EUNBONG SONG <eunb.song@samsu=
+ng.com> wrote:
+>=20
+>=20
+> >> Since at this point it's safer to rollback the change and we can
+> >> investigate more deeply how to fix it correctly for the next
+> >> development cycle, this is the patch which I'm testing.
+>=20
+> >>                     - Ted
+>=20
+> > Hello, I've tested with your patch. But the same problem was reprod=
+uced.
+> > Currently, I'm trying to git bisect. If i done git bisect, i will l=
+et you know.
+>=20
+> Hi, I've done git bisect. and panic at jbd2_journal_put_journal_head(=
+) is caused by=20
+> ae4647fb7654676fc44a97e86eb35f9f06b99f66: "jbd2: reduce journal_head =
+size."
+OK that explains both regressions ext4/jbd2 and ext3/jbd(https://lkml.o=
+rg/lkml/2013/5/10/434)
+Probably some race because b_jlist accessed w/o lock some places.=20
+BUT i still can not reproduce original issue :(
+I've tried all types of disks near me (ssd,hdd,usb-dongle),
+What disk type you use? Is it reproducible on x86?
+Please post following info:
+#fdisk -l  $HDD
+#hdparm -t $HDD
+#df -h=20
+#cat /proc/mounts
 
-
+> I write just code patch which revert ae4647fb7654676fc44a97e86eb35f9f=
+06b99f66 because
+> I don't know the root cause.=20
+>=20
+>=20
+> Signed-off-by: Eunbong Song <eunb.song@samsung.com>
+> ---
+>  include/linux/journal-head.h |   11 +++++++++--
+>  1 files changed, 9 insertions(+), 2 deletions(-)
+>=20
+> diff --git a/include/linux/journal-head.h b/include/linux/journal-hea=
+d.h
+> index 13a3da2..c18b46f 100644
+> --- a/include/linux/journal-head.h
+> +++ b/include/linux/journal-head.h
+> @@ -31,14 +31,21 @@ struct journal_head {
+>  	/*
+>  	 * Journalling list for this buffer [jbd_lock_bh_state()]
+>  	 */
+> -	unsigned b_jlist:4;
+> +	unsigned b_jlist;
+> =20
+>  	/*
+>  	 * This flag signals the buffer has been modified by
+>  	 * the currently running transaction
+>  	 * [jbd_lock_bh_state()]
+>  	 */
+> -	unsigned b_modified:1;
+> +	unsigned b_modified;
+> +
+> +	/*
+> +	 * This feild tracks the last transaction id in which this buffer
+> +	 * has been cowed
+> +	 * [jbd_lock_bh_state()]
+> +	 */
+> +	tid_t b_cow_tid;
+> =20
+>  	/*
+>  	 * Copy of the buffer data frozen for writing to the log.
+> --=20
+> 1.7.0.4
+>=20
+>=20
+> Thanks. N=C2=8B=E3=8E=A0=EF=A6=9Er=C2=9By=E9=89=89=C2=9AbX=D0=A4=ED=91=
+=A4v^=C2=96)=E9=A0=BB{.n+=C2=89=EB=9E=A8=C2=8A{=C2=91=E5=96=A9zX=E3=8E=8D=
+=C2=9B=E2=97=8F}=C2=9E=EA=BC=BFz&j:+v=C2=89=E3=89=AD=07=C2=91=E5=96=A9z=
+Z+=C2=80+zf=EF=BC=82h=C2=9A=C2=88~=C2=86=C2=86i=E9=8E=ACzw=E2=85=B1?=C2=
+=99=E2=91=A1&)=E5=88=AAf=C2=94^j=ED=91=B9ym=C2=85@Aa=EB=9B=B4=7F=0C0=EB=
+=9D=A0h=C2=92i=7F
