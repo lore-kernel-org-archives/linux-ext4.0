@@ -1,46 +1,69 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: EXT4 regression caused 4eec7
-Date: Mon, 13 May 2013 12:09:22 -0500
-Message-ID: <51911E42.7010008@redhat.com>
-References: <6719519.5821368147110937.JavaMail.weblogic@epml17> <20130510192747.GA11707@thunk.org> <87y5bm53z3.fsf@openvz.org> <87txm96fkd.fsf@openvz.org> <87mws1eq6y.fsf@openvz.org> <20130511230559.GD26298@thunk.org> <87a9o01siw.fsf@openvz.org> <51911604.2060805@redhat.com> <20130513170124.GJ400@quack.suse.cz>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH] jbd2: Always set journal superblock checksum when
+ writing out superblock
+Date: Mon, 13 May 2013 11:46:15 -0700
+Message-ID: <20130513184615.GA8037@blackbox.djwong.org>
+References: <20130510234013.GC5706@blackbox.djwong.org>
+ <328F41F9-3133-4742-9172-C7C3C79BD1CB@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	EUNBONG SONG <eunb.song@samsung.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	linux-xfs@vger.kernel.org, Dave Chinner <david@fromorbit.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:5408 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751088Ab3EMRJf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 13 May 2013 13:09:35 -0400
-In-Reply-To: <20130513170124.GJ400@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <328F41F9-3133-4742-9172-C7C3C79BD1CB@dilger.ca>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 5/13/13 12:01 PM, Jan Kara wrote:
-> On Mon 13-05-13 11:34:12, Eric Sandeen wrote:
->> On 5/12/13 4:01 AM, Dmitry Monakhov wrote:
->>> In fact '4eec70' are vexing because I have reviewed and tested this patch before
->>> it was marked as Review-by, but missed the bug. This is because xfstests
->>> was executed manually logs was full of warnings but tainted flag was not
->>> checked at the end. 
->>
->> Can you elaborate on this?  What was logged, and is it something we could
->> try to pick up post-test in xfstests?
->   Generally I think it might be useful if xfstests would fail / warn if
-> kernel became tainted during the test (e.g. due to WARN_ON or oops, or
-> something like that). It should be even relatively easy to implement
-> (just compare /proc/sys/kernel/tainted before and after each test).
+On Fri, May 10, 2013 at 10:56:15PM -0600, Andreas Dilger wrote:
+> On 2013-05-10, at 17:40, "Darrick J. Wong" <darrick.wong@oracle.com> wrote:
 > 
-> 								Honza
+> > Add a few missing calls to jbd2_superblock_csum_set just prior to calling
+> > jbd2_write_superblock.  This fixes complaints about corrupt journals if
+> > metadata checksumming and journal checksumming are both enabled.
 > 
+> Why not just put this call inside jbd2_write_superblock()?
 
-Ah, right.  That should be easy, I'll see if I can cook that up.
+You're right, I was confused and thought j_state_lock also protected the sb.
+It doesn't, so we can avoid future programming errors by moving it.  I'll fix
+the patch (and go see what mysteries 3.10 provides).
 
-Thanks,
--Eric
+--D
+> 
+> Cheers, Andreas
+> 
+> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> > ---
+> > fs/jbd2/journal.c |    2 ++
+> > 1 file changed, 2 insertions(+)
+> > 
+> > diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> > index b6cdc57..a4c7678 100644
+> > --- a/fs/jbd2/journal.c
+> > +++ b/fs/jbd2/journal.c
+> > @@ -1348,6 +1348,7 @@ void jbd2_journal_update_sb_log_tail(journal_t *journal, tid_t tail_tid,
+> > 
+> >    sb->s_sequence = cpu_to_be32(tail_tid);
+> >    sb->s_start    = cpu_to_be32(tail_block);
+> > +    jbd2_superblock_csum_set(journal, sb);
+> > 
+> >    jbd2_write_superblock(journal, write_op);
+> > 
+> > @@ -1381,6 +1382,7 @@ static void jbd2_mark_journal_empty(journal_t *journal)
+> > 
+> >    sb->s_sequence = cpu_to_be32(journal->j_tail_sequence);
+> >    sb->s_start    = cpu_to_be32(0);
+> > +    jbd2_superblock_csum_set(journal, sb);
+> >    read_unlock(&journal->j_state_lock);
+> > 
+> >    jbd2_write_superblock(journal, WRITE_FUA);
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
