@@ -1,44 +1,53 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] mke2fs: do not change root dir ownership
-Date: Mon, 13 May 2013 09:37:31 -0400
-Message-ID: <20130513133731.GC4845@thunk.org>
-References: <1367875316-3089-1-git-send-email-vapier@gentoo.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: EXT4 regression caused 4eec7
+Date: Mon, 13 May 2013 15:38:43 +0200
+Message-ID: <20130513133843.GH400@quack.suse.cz>
+References: <31302271.2821368363898561.JavaMail.weblogic@epml17>
+ <20130513131809.GG400@quack.suse.cz>
+ <20130513133036.GB4845@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Mike Frysinger <vapier@gentoo.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:48012 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751191Ab3EMNhe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 13 May 2013 09:37:34 -0400
+Cc: Jan Kara <jack@suse.cz>, EUNBONG SONG <eunb.song@samsung.com>,
+	Dmitry Monakhov <dmonakhov@openvz.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>,
+	Dave Chinner <david@fromorbit.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1367875316-3089-1-git-send-email-vapier@gentoo.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20130513133036.GB4845@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, May 06, 2013 at 05:21:56PM -0400, Mike Frysinger wrote:
-> If you use `mke2fs` on a file, the code will automatically chown the root
-> dir to the active uid/gid.  It doesn't do this to any other files though.
+On Mon 13-05-13 09:30:36, Ted Tso wrote:
+> On Mon, May 13, 2013 at 03:18:09PM +0200, Jan Kara wrote:
+> > Grumble. In this case I think bitfields are not worth the trouble with gcc.
+> > It's a pitty we have to spend additional 8 bytes for every journal_head but
+> > we'll survive... I'll send Ted a partial revert and add a comment so that
+> > we won't repeat this mistake in future.
 > 
-> I can't see where this would really be desirable: you still need root in
-> order to mount, and the lost+found dir is owned by root.  It means if you
-> want to generate a rootfs as a non-root user, you first have to run it
-> through sudo or manually run `chown 0:0` after you've mounted it.
+> Or just switch things to use explicit 32-bit boolean operations.
+> Sounds the safest way to go is to simply not trust bitfields to be
+> something gcc is competent to compile correctly, and just open code it
+> in standard C.  (Large portions of ext4 and e2fsprogs do this
+> manually, for historical reasons, and it sounds like we have a good
+> reason to do it going forward.)
+  Yeah, but in this case b_jlist testing / setting would require accessor
+functions which is slightly ugly. For now I just submitted a revert of the
+bitfield part and if someone feels like saving 8 bytes in struct
+journal_head is worth the hassle, then we can later go that route.
 
-Yeah, this was something that we've been doing in e2fsprogs since 0.5b
-(i.e., dating back to 1997).  I agree that the behavior is a bit silly
-and we should probably change it.  It *is* a behavioural change,
-though, so I'm going to make it something that changes in 1.43, as
-opposed to a 1.42.x maintenance release.
+> Jan, Dmitry --- I still have in my tree a revert for commit 4eec708d2:
+> ext4: use io_end for multiple bios, since I belive Dmitry still
+> bisected a regression for xfstests 299.  Dmitry, can you confirm that
+> you are definitely seeing a regression here?  Jan, do you mind if we
+> try to figure out how to fix this during the next development cycle,
+> since it was part of your much longer, extensive patch series anyway?
+  Yeah, for now just send a revert to Linus. I'll look into that failure
+now but since I didn't hit the problem in my testing it may take a while.
 
-A workarond that I'd recommend (since we will have lots of people
-creating file systems for various mobile/embedded systems, and they
-will have scripts that need to work on existing versions of e2fsprogs)
-is to do something like this:
-
-   mke2fs -t ext4 /tmp/foo.img 16384
-   debugfs /tmp/foo.img -R "set_inode_field / uid 0"
-   debugfs /tmp/foo.img -R "set_inode_field / gid 0"
-
-   	   		   		      	  - Ted
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
