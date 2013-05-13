@@ -1,59 +1,30 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: EXT4 regression caused 4eec7
-Date: Mon, 13 May 2013 17:47:05 +0400
-Message-ID: <87bo8fxa92.fsf@openvz.org>
-References: <31302271.2821368363898561.JavaMail.weblogic@epml17> <20130513131809.GG400@quack.suse.cz> <20130513133036.GB4845@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] jbd2: Fix oops in jbd2_journal_put_journal_head()
+Date: Mon, 13 May 2013 09:49:28 -0400
+Message-ID: <20130513134928.GD4845@thunk.org>
+References: <1368451916-16785-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: EUNBONG SONG <eunb.song@samsung.com>,
-	"linux-ext4\@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-xfs\@vger.kernel.org" <linux-xfs@vger.kernel.org>,
-	Dave Chinner <david@fromorbit.com>
-To: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20130513133036.GB4845@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>, eunb.song@samsung.com,
+	linux-ext4@vger.kernel.org, Tony Luck <tony.luck@gmail.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:48025 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752114Ab3EMNtf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 13 May 2013 09:49:35 -0400
+Content-Disposition: inline
+In-Reply-To: <1368451916-16785-1-git-send-email-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 13 May 2013 09:30:36 -0400, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Mon, May 13, 2013 at 03:18:09PM +0200, Jan Kara wrote:
-> > Grumble. In this case I think bitfields are not worth the trouble with gcc.
-> > It's a pitty we have to spend additional 8 bytes for every journal_head but
-> > we'll survive... I'll send Ted a partial revert and add a comment so that
-> > we won't repeat this mistake in future.
-> 
-> Or just switch things to use explicit 32-bit boolean operations.
-> Sounds the safest way to go is to simply not trust bitfields to be
-> something gcc is competent to compile correctly, and just open code it
-> in standard C.  (Large portions of ext4 and e2fsprogs do this
-> manually, for historical reasons, and it sounds like we have a good
-> reason to do it going forward.)
-> 
-> Jan, Dmitry --- I still have in my tree a revert for commit 4eec708d2:
-> ext4: use io_end for multiple bios, since I belive Dmitry still
-> bisected a regression for xfstests 299.  Dmitry, can you confirm that
-> you are definitely seeing a regression here?
-Yes, this patch provoke use-after-free which detected by slab sanity checks.
->  Jan, do you mind if we
-> try to figure out how to fix this during the next development cycle,
-> since it was part of your much longer, extensive patch series anyway?
-> 
-> I've determined that the reason why I didn't see a problem was because
-> xfstests 299 was failing earlier on the baseline, and crashing my
-> regression tests. So I simply commented it out just so I could
-> complete the testing.  It seems that xfstests 299 is problematic for
-> me, and I need to focus on how to make it pass successfully.  (Dmitry,
-> when I revert the commit which you identified, xfstests 299 is *still*
-> failing for me....) 
-In fact generic/299 always succeed for me, but it produce warning
-WARNING: at fs/ext4/inode.c:3218 ext4_ext_direct_IO
-and complains from slab debug. But it was missed because i've missed
-this error in the logs and forget to check /proc/sys/kernel/tained.
-> 
-> 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
+Thanks, applied.  BTW, I've changed the subject line to be "jbd,jbd2",
+since the change was to a common journal-head.h file, and although
+this problem was identified with ext4, it would apply to ext3 users as
+well.
+
+I also added Tony Luck to the reported by line since he also helped to
+identify and bisect the problem.  Thanks to Tony and Eunbong for
+reporting and then identifying the suspect commit!
+
+						- Ted
