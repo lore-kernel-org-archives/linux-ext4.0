@@ -1,27 +1,37 @@
-From: Tony Luck <tony.luck@gmail.com>
-Subject: Re: EXT4 panic at jbd2_journal_put_journal_head() in 3.9+
-Date: Sun, 12 May 2013 23:14:42 -0700
-Message-ID: <CA+8MBbJ94CrUO8mjJo0Z0fG7Ah3Hzop0HDQQ1ricDm3jfPGkQw@mail.gmail.com>
-References: <7032562.14371368411664268.JavaMail.weblogic@epml07>
-	<CA+8MBb+51dMaYQd-g-T40+UstbxsSbmewSXiUfNDrVouSA3=Zw@mail.gmail.com>
-	<20130513033655.GE25996@thunk.org>
-	<1368422306.5774.70.camel@marge.simpson.net>
+From: Stone <stone@heisl.org>
+Subject: Re: fsck illegal bitmap block
+Date: Mon, 13 May 2013 08:50:10 +0200
+Message-ID: <51908D22.3000108@heisl.org>
+References: <5187EB06.7030409@heisl.org> <20130507041717.GC12578@thunk.org> <51892B8F.6020407@heisl.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Theodore Ts'o" <tytso@mit.edu>, eunb.song@samsung.com,
-	Dmitry Monakhov <dmonakhov@openvz.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: Mike Galbraith <bitbucket@online.de>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1368422306.5774.70.camel@marge.simpson.net>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.heisl.org ([86.59.94.242]:56517 "EHLO donkey.heisl.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752190Ab3EMGuN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 13 May 2013 02:50:13 -0400
+In-Reply-To: <51892B8F.6020407@heisl.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-The 3.10-rc1 with ae4647fb765467 reverted is still running OK. At
-3 hours now (only marginally longer that the 2.5 hours that one of
-the "bad" runs during the bisect managed).  So I'm about 30% sure
-that we have a winner at the moment. I'll leave it running and check
-again in the morning. This penguin is heading to bed now.
+hi ted.
 
--Tony
+do you have any news?
+
+thx, stone
+
+Am 07.05.2013 18:27, schrieb Stone:
+> here is the output. it is a 13mb file.
+> http://www.heisl.org/dumpe2fs.txt
+>
+> thx, stone
+>> Can you send us the output of "dumpe2fs /dev/mapper/md2_nas"?  See
+>> also the "REPORTING BUGS" section of e2fsck for more discussion of
+>> useful information.
+>>
+>>                     - Ted
+>
+
