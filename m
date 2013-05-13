@@ -1,75 +1,49 @@
-From: Radek Pazdera <rpazdera@redhat.com>
-Subject: [PATCH v2 2/2] mke2fs, tune2fs: Adding support for the itree flag
-Date: Mon, 13 May 2013 17:43:50 +0200
-Message-ID: <1368459830-3651-3-git-send-email-rpazdera@redhat.com>
-References: <1368459830-3651-1-git-send-email-rpazdera@redhat.com>
-Cc: lczerner@redhat.com, kasparek@fit.vutbr.cz,
-	Radek Pazdera <rpazdera@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: Re: EXT4 regression caused 4eec7
+Date: Mon, 13 May 2013 19:01:24 +0200
+Message-ID: <20130513170124.GJ400@quack.suse.cz>
+References: <6719519.5821368147110937.JavaMail.weblogic@epml17>
+ <20130510192747.GA11707@thunk.org>
+ <87y5bm53z3.fsf@openvz.org>
+ <87txm96fkd.fsf@openvz.org>
+ <87mws1eq6y.fsf@openvz.org>
+ <20130511230559.GD26298@thunk.org>
+ <87a9o01siw.fsf@openvz.org>
+ <51911604.2060805@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
+	Theodore Ts'o <tytso@mit.edu>,
+	EUNBONG SONG <eunb.song@samsung.com>, Jan Kara <jack@suse.cz>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	linux-xfs@vger.kernel.org, Dave Chinner <david@fromorbit.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28608 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:59080 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754328Ab3EMQoF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 13 May 2013 12:44:05 -0400
-In-Reply-To: <1368459830-3651-1-git-send-email-rpazdera@redhat.com>
+	id S1750912Ab3EMRB3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 13 May 2013 13:01:29 -0400
+Content-Disposition: inline
+In-Reply-To: <51911604.2060805@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This commit enables the itree feature flag for the mke2fs and tune2fs.
+On Mon 13-05-13 11:34:12, Eric Sandeen wrote:
+> On 5/12/13 4:01 AM, Dmitry Monakhov wrote:
+> > In fact '4eec70' are vexing because I have reviewed and tested this patch before
+> > it was marked as Review-by, but missed the bug. This is because xfstests
+> > was executed manually logs was full of warnings but tainted flag was not
+> > checked at the end. 
+> 
+> Can you elaborate on this?  What was logged, and is it something we could
+> try to pick up post-test in xfstests?
+  Generally I think it might be useful if xfstests would fail / warn if
+kernel became tainted during the test (e.g. due to WARN_ON or oops, or
+something like that). It should be even relatively easy to implement
+(just compare /proc/sys/kernel/tainted before and after each test).
 
-The 'itree' feature adds an auxiliary tree that should help with indexing
-directories. The tree resides on the file system along with the original
-HTree (althought it is placed outside of the directory file).
-
-It is a B+tree that contains directory entries sorted in inode order and
-it is used to implement the getdents/readdir system calls. The inodes
-are then returned in the optimal order, which improves the performance of
-directory traversal.
-
-Signed-off-by: Radek Pazdera <rpazdera@redhat.com>
----
- misc/mke2fs.c  |    3 ++-
- misc/tune2fs.c |    6 ++++--
- 2 files changed, 6 insertions(+), 3 deletions(-)
-
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 7ff759d..672bcde 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -914,7 +914,8 @@ static __u32 ok_features[3] = {
- #ifdef CONFIG_QUOTA
- 		EXT4_FEATURE_RO_COMPAT_QUOTA|
- #endif
--		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM
-+		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM|
-+		EXT4_FEATURE_RO_COMPAT_ITREE
- };
- 
- 
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 332aafd..a638d55 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -148,7 +148,8 @@ static __u32 ok_features[3] = {
- #ifdef CONFIG_QUOTA
- 		EXT4_FEATURE_RO_COMPAT_QUOTA |
- #endif
--		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM
-+		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM|
-+		EXT4_FEATURE_RO_COMPAT_ITREE
- };
- 
- static __u32 clear_ok_features[3] = {
-@@ -169,7 +170,8 @@ static __u32 clear_ok_features[3] = {
- #ifdef CONFIG_QUOTA
- 		EXT4_FEATURE_RO_COMPAT_QUOTA |
- #endif
--		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM
-+		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM|
-+		EXT4_FEATURE_RO_COMPAT_ITREE
- };
- 
- /*
+								Honza
 -- 
-1.7.7.6
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
