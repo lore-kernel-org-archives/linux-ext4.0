@@ -1,52 +1,47 @@
-From: Tony Luck <tony.luck@gmail.com>
-Subject: Re: Re: EXT4 panic at jbd2_journal_put_journal_head() in 3.9+
-Date: Sun, 12 May 2013 19:04:45 -0700
-Message-ID: <CA+8MBbLY1jQCQmBrKdVpihkqFBf93iJKZ7J8E_JXcu9NVeff_w@mail.gmail.com>
-References: <6719519.5821368147110937.JavaMail.weblogic@epml17>
-	<CA+8MBbKHJgnueAurRV1aeeV-NdzRTz_gVwYcJuyDrjJLErtcfg@mail.gmail.com>
-	<871u9e6ji1.fsf@openvz.org>
+From: EUNBONG SONG <eunb.song@samsung.com>
+Subject: Re: Re: Re: EXT4 panic at jbd2_journal_put_journal_head() in 3.9+
+Date: Mon, 13 May 2013 02:21:05 +0000 (GMT)
+Message-ID: <7032562.14371368411664268.JavaMail.weblogic@epml07>
+Reply-To: eunb.song@samsung.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: eunb.song@samsung.com, "Theodore Ts'o" <tytso@mit.edu>,
+Content-Type: text/plain; charset=euc-kr
+Content-Transfer-Encoding: base64
+Cc: Theodore Ts'o <tytso@mit.edu>,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
 	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+To: Tony Luck <tony.luck@gmail.com>,
+	Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-oa0-f54.google.com ([209.85.219.54]:49658 "EHLO
-	mail-oa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752535Ab3EMCEq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 12 May 2013 22:04:46 -0400
-In-Reply-To: <871u9e6ji1.fsf@openvz.org>
+Received: from mailout1.samsung.com ([203.254.224.24]:15553 "EHLO
+	mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752535Ab3EMCVH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 12 May 2013 22:21:07 -0400
+Received: from epcpsbgr4.samsung.com
+ (u144.gpu120.samsung.co.kr [203.254.230.144])
+ by mailout1.samsung.com (Oracle Communications Messaging Server 7u4-24.01
+ (7.0.4.24.0) 64bit (built Nov 17 2011))
+ with ESMTP id <0MMP003LNT610WG0@mailout1.samsung.com> for
+ linux-ext4@vger.kernel.org; Mon, 13 May 2013 11:21:06 +0900 (KST)
+MIME-version: 1.0
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, May 11, 2013 at 12:52 AM, Dmitry Monakhov <dmonakhov@openvz.org> wrote:.
-> What was page_size and fsblock size?
+DQoNCj4gQ09ORklHX0lBNjRfUEFHRV9TSVpFXzY0S0I9eQ0KDQo+IGZzYmxvY2sgc2l6ZSBpcyB3
+aGF0ZXZlciBpcyB0aGUgZGVmYXVsdCBmb3IgU0xFUzExU1AyIG9uIGlhNjQgLSB3aGljaA0KPiB0
+b29sIHdpbGwgdGVsbCBtZT8NCg0KPiBNeSBnaXQgYmlzZWN0IGZpbmFsbHkgY29tcGV0ZWQgYW5k
+IHBvaW50cyB0aGUgYSBmaW5nZXIgYXQ6DQoNCj4gYmlzZWN0PiBnaXQgYmlzZWN0IGdvb2QNCj4g
+YWU0NjQ3ZmI3NjU0Njc2ZmM0NGE5N2U4NmViMzVmOWYwNmI5OWY2NiBpcyBmaXJzdCBiYWQgY29t
+bWl0DQo+IGNvbW1pdCBhZTQ2NDdmYjc2NTQ2NzZmYzQ0YTk3ZTg2ZWIzNWY5ZjA2Yjk5ZjY2DQo+
+IEF1dGhvcjogSmFuIEthcmEgDQo+IERhdGU6ICAgRnJpIEFwciAxMiAwMDowMzo0MiAyMDEzIC0w
+NDAwDQoNCj4gICAgIGpiZDI6IHJlZHVjZSBqb3VybmFsX2hlYWQgc2l6ZQ0KDQo+ICAgICBSZW1v
+dmUgdW51c2VkIHRfY293X3RpZCBmaWVsZCAoZXh0NCBjb3B5LW9uLXdyaXRlIHN1cHBvcnQgZG9l
+c24ndCBzZWVtDQo+ICAgICB0byBiZSBoYXBwZW5pbmcpIGFuZCBjaGFuZ2UgYl9tb2RpZmllZCBh
+bmQgYl9qbGlzdCB0byBiaXRmaWVsZHMgdGh1cw0KPiAgICAgc2F2aW5nIDggYnl0ZXMgaW4gdGhl
+IHN0cnVjdHVyZS4NCg0KPiAgICAgU2lnbmVkLW9mZi1ieTogSmFuIEthcmEgDQo+ICAgICBTaWdu
+ZWQtb2ZmLWJ5OiAiVGhlb2RvcmUgVHMnbyIgDQo+ICAgICBSZXZpZXdlZC1ieTogWmhlbmcgTGl1
+IA0KDQo+IDowNDAwMDAgMDQwMDAwIGMzOWVjZTQzNDE4OTRiM2RhZjg0NzY0YmE0MjVhODdmZmI5
+MGZlNTANCj4gZDRlOGQ5MTg1YzJhMWI3NDBjMjM1Y2E4ZWQwNWQ0OTZhNDQyZmNlMyBNICAgICAg
+aW5jbHVkZQ0KDQpIaSwgbXkgZ2l0IGJpc2VjdCByZXN1bHQgaXMgc2FtZSB5b3Vycy4gQW5kIGkg
+cmVwb3J0ZWQgdGhhdCB0byBjb21tdW5pdHkgeWVzdGVyZGF5Lg0KVGhhbmtzLiANCg==
 
-CONFIG_IA64_PAGE_SIZE_64KB=y
 
-fsblock size is whatever is the default for SLES11SP2 on ia64 - which
-tool will tell me?
-
-My git bisect finally competed and points the a finger at:
-
-bisect> git bisect good
-ae4647fb7654676fc44a97e86eb35f9f06b99f66 is first bad commit
-commit ae4647fb7654676fc44a97e86eb35f9f06b99f66
-Author: Jan Kara <jack@suse.cz>
-Date:   Fri Apr 12 00:03:42 2013 -0400
-
-    jbd2: reduce journal_head size
-
-    Remove unused t_cow_tid field (ext4 copy-on-write support doesn't seem
-    to be happening) and change b_modified and b_jlist to bitfields thus
-    saving 8 bytes in the structure.
-
-    Signed-off-by: Jan Kara <jack@suse.cz>
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-    Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
-
-:040000 040000 c39ece4341894b3daf84764ba425a87ffb90fe50
-d4e8d9185c2a1b740c235ca8ed05d496a442fce3 M      include
-
--Tony
