@@ -1,51 +1,99 @@
-From: EUNBONG SONG <eunb.song@samsung.com>
-Subject: Re: Re: Re: EXT4 panic at jbd2_journal_put_journal_head() in 3.9+
-Date: Mon, 13 May 2013 09:53:27 +0000 (GMT)
-Message-ID: <12945098.35291368438804981.JavaMail.weblogic@epv6ml07>
-Reply-To: eunb.song@samsung.com
-Mime-Version: 1.0
-Content-Type: text/plain; charset=euc-kr
-Content-Transfer-Encoding: base64
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: Zheng Liu <gnehzuil.liu@gmail.com>, Tony Luck <tony.luck@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout4.samsung.com ([203.254.224.34]:37830 "EHLO
-	mailout4.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752590Ab3EMJxy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 13 May 2013 05:53:54 -0400
-Received: from epcpsbgr1.samsung.com
- (u141.gpu120.samsung.co.kr [203.254.230.141])
- by mailout4.samsung.com (Oracle Communications Messaging Server 7u4-24.01
- (7.0.4.24.0) 64bit (built Nov 17 2011))
- with ESMTP id <0MMQ00NO3E4J0DB0@mailout4.samsung.com> for
- linux-ext4@vger.kernel.org; Mon, 13 May 2013 18:53:27 +0900 (KST)
-MIME-version: 1.0
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 0/4] Obey mark_page_accessed hint given by filesystems v2
+Date: Mon, 13 May 2013 11:21:18 +0100
+Message-ID: <1368440482-27909-1-git-send-email-mgorman@suse.de>
+Cc: Theodore Tso <tytso@mit.edu>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Hugh Dickins <hughd@google.com>, Rik van Riel <riel@redhat.com>,
+	Johannes Weiner <hannes@cmpxchg.org>,
+	Bernd Schubert <bernd.schubert@fastmail.fm>,
+	David Howells <dhowells@redhat.com>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Linux-ext4 <linux-ext4@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>, Linux-mm <linux-mm@kvack.org>,
+	Mel Gorman <mgorman@suse.de>
+To: Alexey Lyahkov <alexey.lyashkov@gmail.com>,
+	Andrew Perepechko <anserper@ya.ru>, Robin Dong <sanbai@taobao.com>
+Return-path: <owner-linux-mm@kvack.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-DQoNCj4gSGkgYWxsLA0KDQo+IEZpcnN0IG9mIGFsbCBJIGNvdWxkbid0IHJlcHJvZHVjZSB0aGlz
-IHJlZ3Jlc3Npb24gaW4gbXkgc2FuZCBib3guICBTbw0KPiB0aGUgZm9sbG93aW5nIHNwZWN1bGF0
-aW9uIGlzIG9ubHkgbXkgZ3Vlc3MuICBJIHN1c3BlY3QgdGhhdCB0aGUgY29tbWl0DQo+IChhZTQ2
-NDdmYikgaXNuJ3Qgcm9vdCBjYXVzZS4gIEl0IGp1c3QgdW5jb3ZlciBhIHBvdGVudGlhbCBidWcg
-dGhhdCBoYXMNCj4gYmVlbiB0aGVyZSBmb3IgYSBsb25nIHRpbWUuICBJIGxvb2sgYXQgdGhlIGNv
-ZGUsIGFuZCBmb3VuZCB0d28NCj4gc3VzcGljaW91cyBzdHVmZiBpbiBqYmQyLiAgVGhlIGZpcnN0
-IG9uZSBpcyBpbiBkb19nZXRfd3JpdGVfYWNjZXNzKCkuDQo+IEluIHRoaXMgZnVuY3Rpb24gd2Ug
-Zm9yZ290IHRvIGxvY2sgYmggc3RhdGUgd2hlbiB3ZSBjaGVjayBiX2psaXN0ID09DQo+IEJKX1No
-YWRvdy4gIEkgZ2VuZXJhdGUgYSBwYXRjaCB0byBmaXggaXQsIGFuZCBJIHJlYWxseSB0aGluayBp
-dCBpcyB0aGUNCj4gcm9vdCBjYXVzZS4gIEZ1cnRoZXIsIGluIF9fam91cm5hbF9yZW1vdmVfam91
-cm5hbF9oZWFkKCkgd2UgY2hlY2sNCj4gYl9qbGlzdCA9PSBCSl9Ob25lLiAgQnV0LCB3aGVuIHRo
-aXMgZnVuY3Rpb24gaXMgY2FsbGVkLCBiaCBzdGF0ZSB3b24ndA0KPiBiZSBsb2NrZWQgc29tZXRp
-bWVzLiAgU28gSSBzdXNwZWN0IHRoaXMgaXMgd2h5IHdlIGhpdCBhIEJVRyBpbg0KPiBqYmQyX2pv
-dXJuYWxfcHV0X2pvdXJuYWxfaGVhZCgpLiAgQnV0IEkgZG9uJ3QgaGF2ZSBhIGdvb2Qgc29sdXRp
-b24gdG8NCj4gZml4IHRoaXMgdW50aWwgbm93IGJlY2F1c2UgSSBkb24ndCBrbm93IHdoZXRoZXIg
-d2UgbmVlZCB0byBsb2NrIGJoIHN0YXRlDQo+IGhlcmUsIG9yIG1heWJlIHdlIHNob3VsZCByZW1v
-dmUgdGhpcyBhc3NlcnRhdGlvbi4NCj4NCj4gU28sIGdlbmVyYWxseSwgVG9ueSwgRXVuYm9uZywg
-Y291bGQgeW91IHBsZWFzZSB0cnkgdGhlIGZvbGxvd2luZyBwYXRjaD8NCj4NCj4gVGhhbmtzIGlu
-IGFkdmFuY2UsDQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgIC0gWmhlbmcNCg0KDQpIaSwgSSB0ZXN0ZWQgeW91ciBwYXRjaC4gVW5mb3J0dW5hdGVseSwg
-dGhlIHNhbWUgcHJvYmxlbSB3YXMgcmVwcm9kdWNlZC4NClRoYW5rcy4NCg==
+This series is in need of Tested-by's and some reviewing before it can be
+pushed anywhere. The performance of the tests I ran were not sensitive
+to the premature reclaim of buffer pages although I was able to show
+the average age of buffer pages is now higher as expected. Also note the
+comments I make about the average age of file pages versus buffer pages
+at the end of this mail that I'd like filesystem people to think about.
 
+Changelog since V1
+o Add tracepoint to model age of page types			(mel)
 
+Andrew Perepechko reported a problem whereby pages are being prematurely
+evicted as the mark_page_accessed() hint is ignored for pages that are
+currently on a pagevec -- http://www.spinics.net/lists/linux-ext4/msg37340.html .
+Alexey Lyahkov and Robin Dong have also reported problems recently that
+could be due to hot pages reaching the end of the inactive list too quickly
+and be reclaimed.
+
+Rather than addressing this on a per-filesystem basis, this series aims
+to fix the mark_page_accessed() interface by deferring what LRU a page
+is added to pagevec drain time and allowing mark_page_accessed() to call
+SetPageActive on a pagevec page.
+
+Patch 1 adds two tracepoints for LRU page activation and insertion. Using
+	these processes it's possible to build a model of pages in the
+	LRU that can be processed offline.
+
+Patch 2 defers making the decision on what LRU to add a page to until when
+	the pagevec is drained.
+
+Patch 3 searches the local pagevec for pages to mark PageActive on
+	mark_page_accessed. The changelog explains why only the local
+	pagevec is examined.
+
+Patch 4 tidies up the API.
+
+postmark, a dd-based test and fs-mark both single and threaded mode were
+run but none of them showed any performance degradation or gain as a result
+of the patch.
+
+Using patch 1, I built a *very* basic model of the LRU to examine
+offline what the average age of different page types on the LRU were in
+milliseconds. Of course, capturing the trace distorts the test as it's
+written to local disk but it does not matter for the purposes of this test.
+The average age of pages in milliseconds were
+
+				    vanilla deferdrain
+Average age mapped anon:               1454       1855
+Average age mapped file:             127841     143755
+Average age unmapped anon:               85        157
+Average age unmapped file:            73633      39368
+Average age unmapped buffers:         74054     116636
+
+The LRU activity was mostly files which you'd expect for a dd-based
+workload. Note that the average age of buffer pages is increased by the
+series and it is expected this is due to the fact that the buffer pages are
+now getting added to the active list when drained from the pagevecs. Note
+that the average age of the unmapped file data is decreased as they are
+still added to the inactive list and are reclaimed before the buffers. There
+is no guarantee this is a universal win for all workloads and it would be
+nice if the filesystem people gave some thought as to whether this decision
+is generally a win or a loss.
+
+ fs/cachefiles/rdwr.c           | 30 ++++----------
+ fs/nfs/dir.c                   |  7 +---
+ include/linux/pagevec.h        | 34 +---------------
+ include/trace/events/pagemap.h | 89 ++++++++++++++++++++++++++++++++++++++++++
+ mm/swap.c                      | 82 +++++++++++++++++++++++++-------------
+ 5 files changed, 154 insertions(+), 88 deletions(-)
+ create mode 100644 include/trace/events/pagemap.h
+
+-- 
+1.8.1.4
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
