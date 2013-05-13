@@ -1,87 +1,63 @@
-From: Mike Frysinger <vapier@gentoo.org>
-Subject: Re: [PATCH] mke2fs: do not change root dir ownership
-Date: Mon, 13 May 2013 12:12:27 -0400
-Message-ID: <201305131212.28657.vapier@gentoo.org>
-References: <1367875316-3089-1-git-send-email-vapier@gentoo.org> <20130513133731.GC4845@thunk.org>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: Re: Re: EXT4 regression caused 4eec7
+Date: Tue, 14 May 2013 00:43:26 +0800
+Message-ID: <20130513164326.GA14526@gmail.com>
+References: <31302271.2821368363898561.JavaMail.weblogic@epml17>
+ <20130513131809.GG400@quack.suse.cz>
+ <20130513135643.GB12883@gmail.com>
+ <20130513151727.GI400@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: multipart/signed;
-  boundary="nextPart40257069.JQLg13x5Vg";
-  protocol="application/pgp-signature";
-  micalg=pgp-sha1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.gentoo.org ([140.211.166.183]:51395 "EHLO smtp.gentoo.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755120Ab3EMQM1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 13 May 2013 12:12:27 -0400
-In-Reply-To: <20130513133731.GC4845@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: EUNBONG SONG <eunb.song@samsung.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Dmitry Monakhov <dmonakhov@openvz.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>,
+	Dave Chinner <david@fromorbit.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20130513151727.GI400@quack.suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
---nextPart40257069.JQLg13x5Vg
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+On Mon, May 13, 2013 at 05:17:27PM +0200, Jan Kara wrote:
+> On Mon 13-05-13 21:56:43, Zheng Liu wrote:
+> > On Mon, May 13, 2013 at 03:18:09PM +0200, Jan Kara wrote:
+> > > On Sun 12-05-13 13:04:59, EUNBONG SONG wrote:
+> > > > 
+> > > > 
+> > > > >> Since at this point it's safer to rollback the change and we can
+> > > > >> investigate more deeply how to fix it correctly for the next
+> > > > >> development cycle, this is the patch which I'm testing.
+> > > > 
+> > > > >>                     - Ted
+> > > > 
+> > > > > Hello, I've tested with your patch. But the same problem was reproduced.
+> > > > > Currently, I'm trying to git bisect. If i done git bisect, i will let you know.
+> > > > 
+> > > > Hi, I've done git bisect. and panic at jbd2_journal_put_journal_head() is caused by 
+> > > > ae4647fb7654676fc44a97e86eb35f9f06b99f66: "jbd2: reduce journal_head size."
+> > > > I write just code patch which revert ae4647fb7654676fc44a97e86eb35f9f06b99f66 because
+> > > > I don't know the root cause. 
+> > >   This is really strange. I've verified the code and all the places
+> > > modifying b_jlist or b_modified are holding bh_state lock so we should be
+> > > safe...
+> > 
+> > Hi Jan,
+> > 
+> > Could you please take a look at this mail [1].  I don't think we hold
+> > bh_state lock there.
+> > 
+> > 1. http://www.spinics.net/lists/linux-ext4/msg38205.html
+>   I'll also reply to that thread but: Yes, we don't hold bh_state lock when
+> reading b_jlist in that one case (that's why I wrote 'modify' and not just
+> 'access' in my previous email). But that's really harmless since we don't
+> do any complex operations with b_jlist (only get & set) so we either see an
+> old value or a new one. And that particular use is going away anyway later
+> in my series.
 
-On Monday 13 May 2013 09:37:31 Theodore Ts'o wrote:
-> On Mon, May 06, 2013 at 05:21:56PM -0400, Mike Frysinger wrote:
-> > If you use `mke2fs` on a file, the code will automatically chown the ro=
-ot
-> > dir to the active uid/gid.  It doesn't do this to any other files thoug=
-h.
-> >=20
-> > I can't see where this would really be desirable: you still need root in
-> > order to mount, and the lost+found dir is owned by root.  It means if y=
-ou
-> > want to generate a rootfs as a non-root user, you first have to run it
-> > through sudo or manually run `chown 0:0` after you've mounted it.
->=20
-> Yeah, this was something that we've been doing in e2fsprogs since 0.5b
-> (i.e., dating back to 1997).  I agree that the behavior is a bit silly
-> and we should probably change it.  It *is* a behavioural change,
-> though, so I'm going to make it something that changes in 1.43, as
-> opposed to a 1.42.x maintenance release.
+I see.  Thanks for your explanation.
 
-np.  as long as it eventually gets fixed, i'm happy :).
-
-> A workarond that I'd recommend (since we will have lots of people
-> creating file systems for various mobile/embedded systems, and they
-> will have scripts that need to work on existing versions of e2fsprogs)
-> is to do something like this:
->=20
->    mke2fs -t ext4 /tmp/foo.img 16384
->    debugfs /tmp/foo.img -R "set_inode_field / uid 0"
->    debugfs /tmp/foo.img -R "set_inode_field / gid 0"
-
-nifty.  we already have to mount the fs to populate it, so putting a chown =
-in=20
-there isn't a big deal in the current setup.
-
-now if only e2fsprogs would integrate the `genext2fs` project :).
-=2Dmike
-
---nextPart40257069.JQLg13x5Vg
-Content-Type: application/pgp-signature; name=signature.asc 
-Content-Description: This is a digitally signed message part.
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.17 (GNU/Linux)
-
-iQIcBAABAgAGBQJRkRDsAAoJEEFjO5/oN/WBFq4P/Rn6wWkaivUr6zFE6oM8qyQe
-uaHguZDPf7/HT65vmxZZgGee3UljCEiORcLyVyYinClkGWWyyuXhv7fV2DhgvwAa
-LMfxp3XBYNcyu7EKXfk8xaXfywcXqnoELze+Yxl+1GqYKUWb5wLWMVkUx6GSAbEV
-Jg2qqpGIY/umgjtOfpHtKuU+bCNeeaNiN2vTWaIX8GGxkqKmOj6Welx5tM3Hk2VE
-HbnkaK33W3iqn2bhv795mX5b70h54IMZV2lNV4LlhpU0HbCl3z+cTNVAL/hOdgk9
-YbcJZ6cODnR+EVr5fBDRVdpHCFDOOV+XAqmbjyydagtcjCjIVRvnJhrxRe4ax88t
-CcXVAzVnYrAOpricculeAykuTqkVJ9kCyr0RgCF2SpcICFNq+PAFiHDruWJJBNO3
-DCbIyy6u5n6mJPTJf8kRSq2RfpiodRVmg33JfnzDedCmCcE8mLywQY8ctqnlvJZ7
-//Xie2C2la7DzUXM93QC5th1QRTlDFcScp89bJNPtUdtihNCrAbPbgEOERNbl6CV
-KswDZhTYf27tVBCRZg/OdhO8RQAFtCE5irGcvxHGdCamEo+lfrWHtCFuiLZISKSK
-tm725U+KG07DKBrRF8MC1Z4h5ysJvag3LW6mpAQLo2B0mCRvp+ureyxRXmIen+0W
-hM5SedCy5cR09u7C5g2g
-=9hCo
------END PGP SIGNATURE-----
-
---nextPart40257069.JQLg13x5Vg--
+                                                - Zheng
