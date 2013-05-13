@@ -1,47 +1,61 @@
-From: EUNBONG SONG <eunb.song@samsung.com>
-Subject: Re: Re: Re: EXT4 panic at jbd2_journal_put_journal_head() in 3.9+
-Date: Mon, 13 May 2013 02:21:05 +0000 (GMT)
-Message-ID: <7032562.14371368411664268.JavaMail.weblogic@epml07>
-Reply-To: eunb.song@samsung.com
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: EXT4 panic at jbd2_journal_put_journal_head() in 3.9+
+Date: Sun, 12 May 2013 23:07:12 -0400
+Message-ID: <20130513030712.GC25996@thunk.org>
+References: <6719519.5821368147110937.JavaMail.weblogic@epml17>
+ <CA+8MBbKHJgnueAurRV1aeeV-NdzRTz_gVwYcJuyDrjJLErtcfg@mail.gmail.com>
+ <871u9e6ji1.fsf@openvz.org>
+ <CA+8MBbLY1jQCQmBrKdVpihkqFBf93iJKZ7J8E_JXcu9NVeff_w@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=euc-kr
-Content-Transfer-Encoding: base64
-Cc: Theodore Ts'o <tytso@mit.edu>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>, eunb.song@samsung.com,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
 	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: Tony Luck <tony.luck@gmail.com>,
-	Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout1.samsung.com ([203.254.224.24]:15553 "EHLO
-	mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752535Ab3EMCVH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 12 May 2013 22:21:07 -0400
-Received: from epcpsbgr4.samsung.com
- (u144.gpu120.samsung.co.kr [203.254.230.144])
- by mailout1.samsung.com (Oracle Communications Messaging Server 7u4-24.01
- (7.0.4.24.0) 64bit (built Nov 17 2011))
- with ESMTP id <0MMP003LNT610WG0@mailout1.samsung.com> for
- linux-ext4@vger.kernel.org; Mon, 13 May 2013 11:21:06 +0900 (KST)
-MIME-version: 1.0
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+To: Tony Luck <tony.luck@gmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <CA+8MBbLY1jQCQmBrKdVpihkqFBf93iJKZ7J8E_JXcu9NVeff_w@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-DQoNCj4gQ09ORklHX0lBNjRfUEFHRV9TSVpFXzY0S0I9eQ0KDQo+IGZzYmxvY2sgc2l6ZSBpcyB3
-aGF0ZXZlciBpcyB0aGUgZGVmYXVsdCBmb3IgU0xFUzExU1AyIG9uIGlhNjQgLSB3aGljaA0KPiB0
-b29sIHdpbGwgdGVsbCBtZT8NCg0KPiBNeSBnaXQgYmlzZWN0IGZpbmFsbHkgY29tcGV0ZWQgYW5k
-IHBvaW50cyB0aGUgYSBmaW5nZXIgYXQ6DQoNCj4gYmlzZWN0PiBnaXQgYmlzZWN0IGdvb2QNCj4g
-YWU0NjQ3ZmI3NjU0Njc2ZmM0NGE5N2U4NmViMzVmOWYwNmI5OWY2NiBpcyBmaXJzdCBiYWQgY29t
-bWl0DQo+IGNvbW1pdCBhZTQ2NDdmYjc2NTQ2NzZmYzQ0YTk3ZTg2ZWIzNWY5ZjA2Yjk5ZjY2DQo+
-IEF1dGhvcjogSmFuIEthcmEgDQo+IERhdGU6ICAgRnJpIEFwciAxMiAwMDowMzo0MiAyMDEzIC0w
-NDAwDQoNCj4gICAgIGpiZDI6IHJlZHVjZSBqb3VybmFsX2hlYWQgc2l6ZQ0KDQo+ICAgICBSZW1v
-dmUgdW51c2VkIHRfY293X3RpZCBmaWVsZCAoZXh0NCBjb3B5LW9uLXdyaXRlIHN1cHBvcnQgZG9l
-c24ndCBzZWVtDQo+ICAgICB0byBiZSBoYXBwZW5pbmcpIGFuZCBjaGFuZ2UgYl9tb2RpZmllZCBh
-bmQgYl9qbGlzdCB0byBiaXRmaWVsZHMgdGh1cw0KPiAgICAgc2F2aW5nIDggYnl0ZXMgaW4gdGhl
-IHN0cnVjdHVyZS4NCg0KPiAgICAgU2lnbmVkLW9mZi1ieTogSmFuIEthcmEgDQo+ICAgICBTaWdu
-ZWQtb2ZmLWJ5OiAiVGhlb2RvcmUgVHMnbyIgDQo+ICAgICBSZXZpZXdlZC1ieTogWmhlbmcgTGl1
-IA0KDQo+IDowNDAwMDAgMDQwMDAwIGMzOWVjZTQzNDE4OTRiM2RhZjg0NzY0YmE0MjVhODdmZmI5
-MGZlNTANCj4gZDRlOGQ5MTg1YzJhMWI3NDBjMjM1Y2E4ZWQwNWQ0OTZhNDQyZmNlMyBNICAgICAg
-aW5jbHVkZQ0KDQpIaSwgbXkgZ2l0IGJpc2VjdCByZXN1bHQgaXMgc2FtZSB5b3Vycy4gQW5kIGkg
-cmVwb3J0ZWQgdGhhdCB0byBjb21tdW5pdHkgeWVzdGVyZGF5Lg0KVGhhbmtzLiANCg==
+On Sun, May 12, 2013 at 07:04:45PM -0700, Tony Luck wrote:
+> My git bisect finally competed and points the a finger at:
+> 
+> commit ae4647fb7654676fc44a97e86eb35f9f06b99f66
+> Author: Jan Kara <jack@suse.cz>
+> Date:   Fri Apr 12 00:03:42 2013 -0400
+> 
+>     jbd2: reduce journal_head size
+> 
+>     Remove unused t_cow_tid field (ext4 copy-on-write support doesn't seem
+>     to be happening) and change b_modified and b_jlist to bitfields thus
+>     saving 8 bytes in the structure.
 
+Both you and Eunbong Song bisected to the same commit, so presumably
+the right thing to do at this point is to revert it.  Have you tried
+reverting the commit and demonstrating that the problem goes away
+afterwards?
 
+The reason why I ask is that I'm completely at a lost to understand
+why this commit could be making a difference.  Loooking at the commit,
+we're converting two unsigned fields, neither of which use more than 4
+bits or 1 bits, respectively, to use bitfields instead.  Why this
+could be causing __journal_remove_journal_head() to fail, especially
+in the way that it does, isn't making any sense to me.  We are
+technically accessing jh->b_jlist without first locking
+jbd2_lock_bh_state(), but (a) it shouldn't make a difference whether
+we use a bitfield or 32-bit unsigned value, and (b) by the time we get
+to __journal_remove_journal_head(), nothing should be using the
+journal head, and we've locked jbd_lock_bh_journal_head(), which
+should prevent any one else from starting to use the journal head.
+
+Applying patch where I don't understand how it would make things
+better, even if it is a revert, scares me.  If we are going to do
+this, and since I haven't yet been able to reproduce it on my testing
+setup, could you try taking Linus's just released 3.10-rc1 release,
+and revert commit ae4647fb765467, and confirm that this avoids the
+crash which you are seeing?
+
+Thanks,
+
+					- Ted
