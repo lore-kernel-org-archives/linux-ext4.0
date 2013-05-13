@@ -1,50 +1,62 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: EXT4 regression caused 4eec7
-Date: Mon, 13 May 2013 09:30:36 -0400
-Message-ID: <20130513133036.GB4845@thunk.org>
-References: <31302271.2821368363898561.JavaMail.weblogic@epml17>
- <20130513131809.GG400@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: EUNBONG SONG <eunb.song@samsung.com>,
-	Dmitry Monakhov <dmonakhov@openvz.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>,
-	Dave Chinner <david@fromorbit.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20130513131809.GG400@quack.suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] jbd2: Fix oops in jbd2_journal_put_journal_head()
+Date: Mon, 13 May 2013 15:31:56 +0200
+Message-ID: <1368451916-16785-1-git-send-email-jack@suse.cz>
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>, eunb.song@samsung.com,
+	linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:45623 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751435Ab3EMNcE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 13 May 2013 09:32:04 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 13, 2013 at 03:18:09PM +0200, Jan Kara wrote:
-> Grumble. In this case I think bitfields are not worth the trouble with gcc.
-> It's a pitty we have to spend additional 8 bytes for every journal_head but
-> we'll survive... I'll send Ted a partial revert and add a comment so that
-> we won't repeat this mistake in future.
+Commit ae4647fb (jbd2: reduce journal_head size.) introduced a
+regression where we occasionally hit panic in
+jbd2_journal_put_journal_head() because of wrong b_jcount. The bug is
+caused by gcc making 64-bit access to 32-bit bitfield and thus
+clobbering b_jcount.
 
-Or just switch things to use explicit 32-bit boolean operations.
-Sounds the safest way to go is to simply not trust bitfields to be
-something gcc is competent to compile correctly, and just open code it
-in standard C.  (Large portions of ext4 and e2fsprogs do this
-manually, for historical reasons, and it sounds like we have a good
-reason to do it going forward.)
+At least for now, those 8 bytes saved in struct journal_head are not
+worth the trouble with gcc bitfield handling so revert that part of the
+patch.
 
-Jan, Dmitry --- I still have in my tree a revert for commit 4eec708d2:
-ext4: use io_end for multiple bios, since I belive Dmitry still
-bisected a regression for xfstests 299.  Dmitry, can you confirm that
-you are definitely seeing a regression here?  Jan, do you mind if we
-try to figure out how to fix this during the next development cycle,
-since it was part of your much longer, extensive patch series anyway?
+Reported-by: EUNBONG SONG <eunb.song@samsung.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ include/linux/journal-head.h | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
-I've determined that the reason why I didn't see a problem was because
-xfstests 299 was failing earlier on the baseline, and crashing my
-regression tests.  So I simply commented it out just so I could
-complete the testing.  It seems that xfstests 299 is problematic for
-me, and I need to focus on how to make it pass successfully.  (Dmitry,
-when I revert the commit which you identified, xfstests 299 is *still*
-failing for me....) 
+  Ted, this should fix the regression reported by EUNBONG SONG. Please apply.
 
-						- Ted
+diff --git a/include/linux/journal-head.h b/include/linux/journal-head.h
+index 13a3da2..3594c74 100644
+--- a/include/linux/journal-head.h
++++ b/include/linux/journal-head.h
+@@ -30,15 +30,19 @@ struct journal_head {
+ 
+ 	/*
+ 	 * Journalling list for this buffer [jbd_lock_bh_state()]
++	 * NOTE: We *cannot* combine this with b_modified into a bitfield
++	 * as gcc would then (correctly according to C++11) make 64-bit
++	 * accesses to the bitfield and clobber b_jcount if its update
++	 * races with bitfield modification.
+ 	 */
+-	unsigned b_jlist:4;
++	unsigned b_jlist;
+ 
+ 	/*
+ 	 * This flag signals the buffer has been modified by
+ 	 * the currently running transaction
+ 	 * [jbd_lock_bh_state()]
+ 	 */
+-	unsigned b_modified:1;
++	unsigned b_modified;
+ 
+ 	/*
+ 	 * Copy of the buffer data frozen for writing to the log.
+-- 
+1.8.1.4
+
