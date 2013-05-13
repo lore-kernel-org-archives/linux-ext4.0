@@ -1,38 +1,42 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: EXT4 regression caused 4eec7
-Date: Mon, 13 May 2013 16:30:06 -0400
-Message-ID: <20130513203006.GA20102@thunk.org>
-References: <31302271.2821368363898561.JavaMail.weblogic@epml17>
- <20130513131809.GG400@quack.suse.cz>
- <20130513133036.GB4845@thunk.org>
- <87bo8fxa92.fsf@openvz.org>
- <20130513135221.GE4845@thunk.org>
- <878v3jx9oi.fsf@openvz.org>
+Subject: Re: [PATCH] mke2fs: do not change root dir ownership
+Date: Mon, 13 May 2013 17:06:13 -0400
+Message-ID: <20130513210613.GB20102@thunk.org>
+References: <1367875316-3089-1-git-send-email-vapier@gentoo.org>
+ <20130513133731.GC4845@thunk.org>
+ <201305131212.28657.vapier@gentoo.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, EUNBONG SONG <eunb.song@samsung.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>,
-	Dave Chinner <david@fromorbit.com>
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Cc: linux-ext4@vger.kernel.org, dvhart@linux.intel.com
+To: Mike Frysinger <vapier@gentoo.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:48126 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:48139 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751052Ab3EMUaR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 13 May 2013 16:30:17 -0400
+	id S1753285Ab3EMVGT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 13 May 2013 17:06:19 -0400
 Content-Disposition: inline
-In-Reply-To: <878v3jx9oi.fsf@openvz.org>
+In-Reply-To: <201305131212.28657.vapier@gentoo.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 13, 2013 at 05:59:25PM +0400, Dmitry Monakhov wrote:
-> > This is how it's failing for me....
-> Because you ask questions, but do not read answers :)
-> http://marc.info/?l=linux-ext4&m=136580060822252&w=2
-> http://marc.info/?l=linux-ext4&m=136610044500931&w=2
+On Mon, May 13, 2013 at 12:12:27PM -0400, Mike Frysinger wrote:
+> nifty.  we already have to mount the fs to populate it, so putting a chown in 
+> there isn't a big deal in the current setup.
+> 
+> now if only e2fsprogs would integrate the `genext2fs` project :).
 
-Sorry, I thought I was running with the updated fio, but apparently I
-was using an old xfstests.tar.gz tarball on my KVM image.  Mea culpa....
+Darren Hart created a shell script which uses debugfs to do all of the
+dirty work, called populate-extfs.sh which I believe Linaro and the
+Yocto project is using instead of genext2fs.
 
-    	     	 		 	 - Ted
+I'm not entirely sure this the latest version, but so you can get a
+flavor of the script, see:
+
+http://patches.openembedded.org/patch/45415/
+
+Darren, if you think the script is pretty stable, I'd be happy to drop
+the latest version of it into the contrib directory of e2fsprogs.
+
+Cheers,
+
+					- Ted
