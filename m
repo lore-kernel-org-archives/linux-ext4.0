@@ -1,62 +1,44 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] jbd2: Fix oops in jbd2_journal_put_journal_head()
-Date: Mon, 13 May 2013 15:31:56 +0200
-Message-ID: <1368451916-16785-1-git-send-email-jack@suse.cz>
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>, eunb.song@samsung.com,
-	linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] mke2fs: do not change root dir ownership
+Date: Mon, 13 May 2013 09:37:31 -0400
+Message-ID: <20130513133731.GC4845@thunk.org>
+References: <1367875316-3089-1-git-send-email-vapier@gentoo.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Mike Frysinger <vapier@gentoo.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:45623 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751435Ab3EMNcE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 13 May 2013 09:32:04 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:48012 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751191Ab3EMNhe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 13 May 2013 09:37:34 -0400
+Content-Disposition: inline
+In-Reply-To: <1367875316-3089-1-git-send-email-vapier@gentoo.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Commit ae4647fb (jbd2: reduce journal_head size.) introduced a
-regression where we occasionally hit panic in
-jbd2_journal_put_journal_head() because of wrong b_jcount. The bug is
-caused by gcc making 64-bit access to 32-bit bitfield and thus
-clobbering b_jcount.
+On Mon, May 06, 2013 at 05:21:56PM -0400, Mike Frysinger wrote:
+> If you use `mke2fs` on a file, the code will automatically chown the root
+> dir to the active uid/gid.  It doesn't do this to any other files though.
+> 
+> I can't see where this would really be desirable: you still need root in
+> order to mount, and the lost+found dir is owned by root.  It means if you
+> want to generate a rootfs as a non-root user, you first have to run it
+> through sudo or manually run `chown 0:0` after you've mounted it.
 
-At least for now, those 8 bytes saved in struct journal_head are not
-worth the trouble with gcc bitfield handling so revert that part of the
-patch.
+Yeah, this was something that we've been doing in e2fsprogs since 0.5b
+(i.e., dating back to 1997).  I agree that the behavior is a bit silly
+and we should probably change it.  It *is* a behavioural change,
+though, so I'm going to make it something that changes in 1.43, as
+opposed to a 1.42.x maintenance release.
 
-Reported-by: EUNBONG SONG <eunb.song@samsung.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- include/linux/journal-head.h | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
+A workarond that I'd recommend (since we will have lots of people
+creating file systems for various mobile/embedded systems, and they
+will have scripts that need to work on existing versions of e2fsprogs)
+is to do something like this:
 
-  Ted, this should fix the regression reported by EUNBONG SONG. Please apply.
+   mke2fs -t ext4 /tmp/foo.img 16384
+   debugfs /tmp/foo.img -R "set_inode_field / uid 0"
+   debugfs /tmp/foo.img -R "set_inode_field / gid 0"
 
-diff --git a/include/linux/journal-head.h b/include/linux/journal-head.h
-index 13a3da2..3594c74 100644
---- a/include/linux/journal-head.h
-+++ b/include/linux/journal-head.h
-@@ -30,15 +30,19 @@ struct journal_head {
- 
- 	/*
- 	 * Journalling list for this buffer [jbd_lock_bh_state()]
-+	 * NOTE: We *cannot* combine this with b_modified into a bitfield
-+	 * as gcc would then (correctly according to C++11) make 64-bit
-+	 * accesses to the bitfield and clobber b_jcount if its update
-+	 * races with bitfield modification.
- 	 */
--	unsigned b_jlist:4;
-+	unsigned b_jlist;
- 
- 	/*
- 	 * This flag signals the buffer has been modified by
- 	 * the currently running transaction
- 	 * [jbd_lock_bh_state()]
- 	 */
--	unsigned b_modified:1;
-+	unsigned b_modified;
- 
- 	/*
- 	 * Copy of the buffer data frozen for writing to the log.
--- 
-1.8.1.4
-
+   	   		   		      	  - Ted
