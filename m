@@ -1,46 +1,63 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: EXT4 regression caused 4eec7
-Date: Tue, 14 May 2013 09:08:13 -0500
-Message-ID: <5192454D.5030805@redhat.com>
-References: <6719519.5821368147110937.JavaMail.weblogic@epml17> <20130510192747.GA11707@thunk.org> <87y5bm53z3.fsf@openvz.org> <87txm96fkd.fsf@openvz.org> <87mws1eq6y.fsf@openvz.org> <20130511230559.GD26298@thunk.org> <87a9o01siw.fsf@openvz.org> <51911604.2060805@redhat.com> <20130513170124.GJ400@quack.suse.cz> <51911E42.7010008@redhat.com> <874ne6xcgr.fsf@openvz.org>
+From: folkert <folkert@vanheusden.com>
+Subject: Re: checksums
+Date: Tue, 14 May 2013 16:40:34 +0200
+Message-ID: <20130514144032.GD2041@belle.intranet.vanheusden.com>
+References: <20130514091407.GC2041@belle.intranet.vanheusden.com>
+ <20130514131830.GA19563@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>,
-	EUNBONG SONG <eunb.song@samsung.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	linux-xfs@vger.kernel.org, Dave Chinner <david@fromorbit.com>
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <874ne6xcgr.fsf@openvz.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from keetweej.vanheusden.com ([80.101.105.103]:52292 "EHLO
+	keetweej.vanheusden.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932124Ab3ENOkh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 14 May 2013 10:40:37 -0400
+Content-Disposition: inline
+In-Reply-To: <20130514131830.GA19563@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 5/14/13 2:11 AM, Dmitry Monakhov wrote:
-> On Mon, 13 May 2013 12:09:22 -0500, Eric Sandeen <sandeen@redhat.com> wrote:
->> On 5/13/13 12:01 PM, Jan Kara wrote:
->>> On Mon 13-05-13 11:34:12, Eric Sandeen wrote:
->>>> On 5/12/13 4:01 AM, Dmitry Monakhov wrote:
->>>>> In fact '4eec70' are vexing because I have reviewed and tested this patch before
->>>>> it was marked as Review-by, but missed the bug. This is because xfstests
->>>>> was executed manually logs was full of warnings but tainted flag was not
->>>>> checked at the end. 
->>>>
->>>> Can you elaborate on this?  What was logged, and is it something we could
->>>> try to pick up post-test in xfstests?
->>>   Generally I think it might be useful if xfstests would fail / warn if
->>> kernel became tainted during the test (e.g. due to WARN_ON or oops, or
->>> something like that). It should be even relatively easy to implement
->>> (just compare /proc/sys/kernel/tainted before and after each test).
->>>
->>> 								Honza
->>>
->>
->> Ah, right.  That should be easy, I'll see if I can cook that up.
-> Also we can use abrt's kernel-oops handler to collect messages.
+> > Is it possible to "scrub" (check/verify) (the new-) checksums in ext4?
+> 
+> When e2fsck does a full check, it verifies the contents of all of the
+> metadata blocks, and this includes verifying all of the checksums.
 
-I sent a pretty simple patch to just check the sysctl to the xfs list
-yesterday.
+Ok. But that would only when the filesystem is not mounted.
+Maybe some on-line functionality for doing so would be nice. I'm not
+totally aware of the filesystem structures in memory/on disk, but
+reading meta-data from disk which has changes pending in memory/in the
+journal would give at worst a verify of old(er) data. I don't think this
+(checking occasional old data) is a bad thing - scrubbing a
+raid-device/disk doesn't give you the situation for the whole disk(s) in
+1 (!) point at time either. If that would be required, then the user
+could still unmount the filesystem and do a check.
 
--Eric
+> > Also: is it planned to add an option to add checksums to the data as
+> > well?
+> That's not currently on the development roadmap; I could imagine
+> someone deciding to design an extension to ext4 that would do this
+> probably by storing the checksums in the indirect blocks, but no one
+> is currently working on it.
+
+Would crowdfunding such a feature be an option?
+E.g. via https://www.catincan.com/ or http://www.kickstarter.com/
+
+On other thing I was thinking of, was a switch that would enable a
+read-after-write which would verify that the data is indeed on the
+platters/NAND-chips.
+(I don't care (too) much about speed - I just want to be really sure my
+data doesn't get corrupt/lost without investing huge piles of money on
+a san/nas with remote mirroring etc.).
+
+
+Regards,
+
+Folkert van Heusden
+
+-- 
+Winnen in de staatsloterij? Check htp://vanheusden.com/sl.php voor
+alle staatsloterij-uitslag statistieken denkbaar en zelfs ook een paar
+win-tips!
+----------------------------------------------------------------------
+Phone: +31-6-41278122, PGP-key: 1F28D8AE, www.vanheusden.com
