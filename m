@@ -1,76 +1,60 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: checksums
-Date: Tue, 14 May 2013 12:21:43 -0700
-Message-ID: <20130514192143.GA6086@blackbox.djwong.org>
-References: <20130514091407.GC2041@belle.intranet.vanheusden.com>
- <20130514131830.GA19563@thunk.org>
- <20130514144032.GD2041@belle.intranet.vanheusden.com>
- <20130514180923.GD8037@blackbox.djwong.org>
- <20130514185754.GF2041@belle.intranet.vanheusden.com>
+From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
+Subject: Re: v3.10: unmount won't work
+Date: Tue, 14 May 2013 22:09:58 +0200
+Message-ID: <51929A16.8050306@gmx.de>
+References: <51928CB5.2050406@gmx.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: folkert <folkert@vanheusden.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Linux Kernel <linux-kernel@vger.kernel.org>
+To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:47287 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755446Ab3ENTVw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 14 May 2013 15:21:52 -0400
-Content-Disposition: inline
-In-Reply-To: <20130514185754.GF2041@belle.intranet.vanheusden.com>
+Received: from mout.gmx.net ([212.227.17.20]:59513 "EHLO mout.gmx.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755446Ab3ENUKF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 14 May 2013 16:10:05 -0400
+Received: from mailout-de.gmx.net ([10.1.76.31]) by mrigmx.server.lan
+ (mrigmx002) with ESMTP (Nemesis) id 0LqoQe-1Ty2i82yqQ-00eMce for
+ <linux-ext4@vger.kernel.org>; Tue, 14 May 2013 22:10:02 +0200
+In-Reply-To: <51928CB5.2050406@gmx.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 14, 2013 at 08:57:54PM +0200, folkert wrote:
-> > > Ok. But that would only when the filesystem is not mounted.
-> > > Maybe some on-line functionality for doing so would be nice. I'm not
-> > > totally aware of the filesystem structures in memory/on disk, but
-> > > reading meta-data from disk which has changes pending in memory/in the
-> > > journal would give at worst a verify of old(er) data. I don't think this
-> > > (checking occasional old data) is a bad thing - scrubbing a
-> > > raid-device/disk doesn't give you the situation for the whole disk(s) in
-> > > 1 (!) point at time either. If that would be required, then the user
-> > > could still unmount the filesystem and do a check.
-> > 
-> > Well... if you ran filefrag -v on every file on the disk and read all the
-> > xattrs, you'd scrub nearly all the metadata.  The only things you'd miss are
-> > unallocated parts of the disk, most of which e2fsck also skips.
-> 
-> Yes but that is, imho, a bit dirty method.
-> Because I assume the result will be a message in dmesg and the
-> filesystem being remounted r/o?
-> I think it would be better if a nice message on the user's terminal and
-> an exit code.
+On 05/14/2013 09:12 PM, Toralf F=C3=B6rster wrote:
+> At a stable 32 bit stable Gentoo with kernel v3.10-rc1-113-ga2c7a54 I=
+ cannot umount an (EXT4) fs
+> which was created in a file located in a tmpfs partition and loop mou=
+nted  :
+>=20
+> That file system was used to hold victims files shared via NFSv4 to a=
+n user mode linux=20
+> on which trinity was used to fuzz testing a patched UML guest kernel.
 
-You should see "I/O Error" (or whatever -EIO becomes in the message catalog) on
-the terminal running filefrag if you hit a checksum error, in addition to a
-complaint in dmesg and a ro fs.
+=46WIW the numbers are really wrong for /mnt/trinity
 
-> > > > That's not currently on the development roadmap; I could imagine
-> > > > someone deciding to design an extension to ext4 that would do this
-> > > > probably by storing the checksums in the indirect blocks, but no one
-> > > > is currently working on it.
-> > 
-> > sha256sum < file > file.sha256 ? :D
-> 
-> Then you would need to read the whole file. I think it would be better
-> to have this on e.g. block-level. 4KB so CRC32 suffices?
+# df -m /mnt/trinity/
+=46ilesystem     1M-blocks  Used Available Use% Mounted on
+/dev/loop0        183851 31165    143325  18% /mnt/trinity
 
-block or bigalloc-cluster level, I suppose.
+b/c 257 MB were specified for the file in which the EXT4FS was created:
 
---D
-> 
-> > (If only there was disk space and brain-time to do something where you could
-> > *reconstruct* data.)
-> 
-> ah yes.
-> These days everything is done by the gpu, maybe it can help with that :)
-> 
-> 
-> Folkert van Heusden
-> 
-> -- 
-> www.vanheusden.com/multitail - multitail is tail on steroids. multiple
->                windows, filtering, coloring, anything you can think of
-> ----------------------------------------------------------------------
-> Phone: +31-6-41278122, PGP-key: 1F28D8AE, www.vanheusden.com
+# ls -lh /mnt/ramdisk/disk0
+-rw-r--r-- 1 tfoerste users 257M May 14 20:56 /mnt/ramdisk/disk0
+
+here is the corresponding code snippet :
+	FS=3D"ext4"
+        dd if=3D/dev/zero of=3D/mnt/ramdisk/disk0 bs=3D1M count=3D257 2=
+>/dev/null || return 2
+        yes | /sbin/mkfs.$FS /mnt/ramdisk/disk0 1>/dev/null || return 3
+        sudo su -c "mount -o loop /mnt/ramdisk/disk0 /mnt/trinity/; chm=
+od 777 /mnt/trinity" || return 4
+
+--=20
+MfG/Sincerely
+Toralf F=C3=B6rster
+pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
