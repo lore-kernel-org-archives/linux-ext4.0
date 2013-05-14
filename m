@@ -1,37 +1,46 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: checksums
-Date: Tue, 14 May 2013 09:18:30 -0400
-Message-ID: <20130514131830.GA19563@thunk.org>
-References: <20130514091407.GC2041@belle.intranet.vanheusden.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: EXT4 regression caused 4eec7
+Date: Tue, 14 May 2013 09:08:13 -0500
+Message-ID: <5192454D.5030805@redhat.com>
+References: <6719519.5821368147110937.JavaMail.weblogic@epml17> <20130510192747.GA11707@thunk.org> <87y5bm53z3.fsf@openvz.org> <87txm96fkd.fsf@openvz.org> <87mws1eq6y.fsf@openvz.org> <20130511230559.GD26298@thunk.org> <87a9o01siw.fsf@openvz.org> <51911604.2060805@redhat.com> <20130513170124.GJ400@quack.suse.cz> <51911E42.7010008@redhat.com> <874ne6xcgr.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: folkert <folkert@vanheusden.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:48306 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752594Ab3ENNSg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 14 May 2013 09:18:36 -0400
-Content-Disposition: inline
-In-Reply-To: <20130514091407.GC2041@belle.intranet.vanheusden.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>,
+	EUNBONG SONG <eunb.song@samsung.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	linux-xfs@vger.kernel.org, Dave Chinner <david@fromorbit.com>
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <874ne6xcgr.fsf@openvz.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, May 14, 2013 at 11:14:08AM +0200, folkert wrote:
-> 
-> Is it possible to "scrub" (check/verify) (the new-) checksums in ext4?
+On 5/14/13 2:11 AM, Dmitry Monakhov wrote:
+> On Mon, 13 May 2013 12:09:22 -0500, Eric Sandeen <sandeen@redhat.com> wrote:
+>> On 5/13/13 12:01 PM, Jan Kara wrote:
+>>> On Mon 13-05-13 11:34:12, Eric Sandeen wrote:
+>>>> On 5/12/13 4:01 AM, Dmitry Monakhov wrote:
+>>>>> In fact '4eec70' are vexing because I have reviewed and tested this patch before
+>>>>> it was marked as Review-by, but missed the bug. This is because xfstests
+>>>>> was executed manually logs was full of warnings but tainted flag was not
+>>>>> checked at the end. 
+>>>>
+>>>> Can you elaborate on this?  What was logged, and is it something we could
+>>>> try to pick up post-test in xfstests?
+>>>   Generally I think it might be useful if xfstests would fail / warn if
+>>> kernel became tainted during the test (e.g. due to WARN_ON or oops, or
+>>> something like that). It should be even relatively easy to implement
+>>> (just compare /proc/sys/kernel/tainted before and after each test).
+>>>
+>>> 								Honza
+>>>
+>>
+>> Ah, right.  That should be easy, I'll see if I can cook that up.
+> Also we can use abrt's kernel-oops handler to collect messages.
 
-When e2fsck does a full check, it verifies the contents of all of the
-metadata blocks, and this includes verifying all of the checksums.
+I sent a pretty simple patch to just check the sysctl to the xfs list
+yesterday.
 
-> Also: is it planned to add an option to add checksums to the data as
-> well?
-
-That's not currently on the development roadmap; I could imagine
-someone deciding to design an extension to ext4 that would do this
-probably by storing the checksums in the indirect blocks, but no one
-is currently working on it.
-
-Regards,
-
-					- Ted
+-Eric
