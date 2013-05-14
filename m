@@ -1,323 +1,79 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH v4 19/20] ext4: make punch hole code path work with bigalloc
-Date: Tue, 14 May 2013 18:37:33 +0200
-Message-ID: <1368549454-8930-20-git-send-email-lczerner@redhat.com>
+Subject: [PATCH v4 13/20] Revert "ext4: fix fsx truncate failure"
+Date: Tue, 14 May 2013 18:37:27 +0200
+Message-ID: <1368549454-8930-14-git-send-email-lczerner@redhat.com>
 References: <1368549454-8930-1-git-send-email-lczerner@redhat.com>
 Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, akpm@linux-foundation.org,
-	hughd@google.com, lczerner@redhat.com
+        linux-ext4@vger.kernel.org, akpm@linux-foundation.org,
+        hughd@google.com, lczerner@redhat.com
 To: linux-mm@kvack.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <owner-linux-mm@kvack.org>
 In-Reply-To: <1368549454-8930-1-git-send-email-lczerner@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Currently punch hole is disabled in file systems with bigalloc
-feature enabled. However the recent changes in punch hole patch should
-make it easier to support punching holes on bigalloc enabled file
-systems.
+This reverts commit 189e868fa8fdca702eb9db9d8afc46b5cb9144c9.
 
-This commit changes partial_cluster handling in ext4_remove_blocks(),
-ext4_ext_rm_leaf() and ext4_ext_remove_space(). Currently
-partial_cluster is unsigned long long type and it makes sure that we
-will free the partial cluster if all extents has been released from that
-cluster. However it has been specifically designed only for truncate.
+This commit reintroduces the use of ext4_block_truncate_page() in ext4
+truncate operation instead of ext4_discard_partial_page_buffers().
 
-With punch hole we can be freeing just some extents in the cluster
-leaving the rest untouched. So we have to make sure that we will notice
-cluster which still has some extents. To do this I've changed
-partial_cluster to be signed long long type. The only scenario where
-this could be a problem is when cluster_size == block size, however in
-that case there would not be any partial clusters so we're safe. For
-bigger clusters the signed type is enough. Now we use the negative value
-in partial_cluster to mark such cluster used, hence we know that we must
-not free it even if all other extents has been freed from such cluster.
+The statement in the commit description that the truncate operation only
+zero block unaligned portion of the last page is not exactly right,
+since truncate_pagecache_range() also zeroes and invalidate the unaligned
+portion of the page. Then there is no need to zero and unmap it once more
+and ext4_block_truncate_page() was doing the right job, although we
+still need to update the buffer head containing the last block, which is
+exactly what ext4_block_truncate_page() is doing.
 
-This scenario can be described in simple diagram:
+Moreover the problem described in the commit is fixed more properly with
+commit
 
-|FFF...FF..FF.UUU|
- ^----------^
-  punch hole
+15291164b22a357cb211b618adfef4fa82fc0de3
+	jbd2: clear BH_Delay & BH_Unwritten in journal_unmap_buffer
 
-. - free space
-| - cluster boundary
-F - freed extent
-U - used extent
-
-Also update respective tracepoints to use signed long long type for
-partial_cluster.
+This was tested on ppc64 machine with block size of 1024 bytes without
+any problems.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/extents.c           |   69 +++++++++++++++++++++++++++++++-----------
- include/trace/events/ext4.h |   25 ++++++++-------
- 2 files changed, 64 insertions(+), 30 deletions(-)
+ fs/ext4/inode.c |   11 ++---------
+ 1 files changed, 2 insertions(+), 9 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index fb9b414..214e68a 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2359,7 +2359,7 @@ int ext4_ext_index_trans_blocks(struct inode *inode, int nrblocks, int chunk)
- 
- static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
- 			      struct ext4_extent *ex,
--			      ext4_fsblk_t *partial_cluster,
-+			      long long *partial_cluster,
- 			      ext4_lblk_t from, ext4_lblk_t to)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-@@ -2388,7 +2388,8 @@ static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
- 	 * partial cluster here.
- 	 */
- 	pblk = ext4_ext_pblock(ex) + ee_len - 1;
--	if (*partial_cluster && (EXT4_B2C(sbi, pblk) != *partial_cluster)) {
-+	if ((*partial_cluster > 0) &&
-+	    (EXT4_B2C(sbi, pblk) != *partial_cluster)) {
- 		ext4_free_blocks(handle, inode, NULL,
- 				 EXT4_C2B(sbi, *partial_cluster),
- 				 sbi->s_cluster_ratio, flags);
-@@ -2414,23 +2415,41 @@ static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
- 	    && to == le32_to_cpu(ex->ee_block) + ee_len - 1) {
- 		/* tail removal */
- 		ext4_lblk_t num;
-+		unsigned int unaligned;
- 
- 		num = le32_to_cpu(ex->ee_block) + ee_len - from;
- 		pblk = ext4_ext_pblock(ex) + ee_len - num;
--		ext_debug("free last %u blocks starting %llu\n", num, pblk);
-+		/*
-+		 * Usually we want to free partial cluster at the end of the
-+		 * extent, except for the situation when the cluster is still
-+		 * used by any other extent (partial_cluster is negative).
-+		 */
-+		if (*partial_cluster < 0 &&
-+		    -(*partial_cluster) == EXT4_B2C(sbi, pblk + num - 1))
-+			flags |= EXT4_FREE_BLOCKS_NOFREE_LAST_CLUSTER;
-+
-+		ext_debug("free last %u blocks starting %llu partial %lld\n",
-+			  num, pblk, *partial_cluster);
- 		ext4_free_blocks(handle, inode, NULL, pblk, num, flags);
- 		/*
- 		 * If the block range to be freed didn't start at the
- 		 * beginning of a cluster, and we removed the entire
--		 * extent, save the partial cluster here, since we
--		 * might need to delete if we determine that the
--		 * truncate operation has removed all of the blocks in
--		 * the cluster.
-+		 * extent and the cluster is not used by any other extent,
-+		 * save the partial cluster here, since we might need to
-+		 * delete if we determine that the truncate operation has
-+		 * removed all of the blocks in the cluster.
-+		 *
-+		 * On the other hand, if we did not manage to free the whole
-+		 * extent, we have to mark the cluster as used (store negative
-+		 * cluster number in partial_cluster).
- 		 */
--		if (pblk & (sbi->s_cluster_ratio - 1) &&
--		    (ee_len == num))
-+		unaligned = pblk & (sbi->s_cluster_ratio - 1);
-+		if (unaligned && (ee_len == num) &&
-+		    (*partial_cluster != -((long long)EXT4_B2C(sbi, pblk))))
- 			*partial_cluster = EXT4_B2C(sbi, pblk);
--		else
-+		else if (unaligned)
-+			*partial_cluster = -((long long)EXT4_B2C(sbi, pblk));
-+		else if (*partial_cluster > 0)
- 			*partial_cluster = 0;
- 	} else
- 		ext4_error(sbi->s_sb, "strange request: removal(2) "
-@@ -2448,12 +2467,16 @@ static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
-  * @handle: The journal handle
-  * @inode:  The files inode
-  * @path:   The path to the leaf
-+ * @partial_cluster: The cluster which we'll have to free if all extents
-+ *                   has been released from it. It gets negative in case
-+ *                   that the cluster is still used.
-  * @start:  The first block to remove
-  * @end:   The last block to remove
-  */
- static int
- ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
--		 struct ext4_ext_path *path, ext4_fsblk_t *partial_cluster,
-+		 struct ext4_ext_path *path,
-+		 long long *partial_cluster,
- 		 ext4_lblk_t start, ext4_lblk_t end)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-@@ -2466,6 +2489,7 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
- 	unsigned short ex_ee_len;
- 	unsigned uninitialized = 0;
- 	struct ext4_extent *ex;
-+	ext4_fsblk_t pblk;
- 
- 	/* the header must be checked already in ext4_ext_remove_space() */
- 	ext_debug("truncate since %u in leaf to %u\n", start, end);
-@@ -2504,6 +2528,16 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
- 
- 		/* If this extent is beyond the end of the hole, skip it */
- 		if (end < ex_ee_block) {
-+			/*
-+			 * We're going to skip this extent and move to another,
-+			 * so if this extent is not cluster aligned we have
-+			 * to mark the current cluster as used to avoid
-+			 * accidentally freeing it later on
-+			 */
-+			pblk = ext4_ext_pblock(ex);
-+			if (pblk & (sbi->s_cluster_ratio - 1))
-+				*partial_cluster =
-+					-((long long)EXT4_B2C(sbi, pblk));
- 			ex--;
- 			ex_ee_block = le32_to_cpu(ex->ee_block);
- 			ex_ee_len = ext4_ext_get_actual_len(ex);
-@@ -2579,7 +2613,7 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
- 					sizeof(struct ext4_extent));
- 			}
- 			le16_add_cpu(&eh->eh_entries, -1);
--		} else
-+		} else if (*partial_cluster > 0)
- 			*partial_cluster = 0;
- 
- 		err = ext4_ext_dirty(handle, inode, path + depth);
-@@ -2597,11 +2631,10 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
- 		err = ext4_ext_correct_indexes(handle, inode, path);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 8187c3e..34ebb62 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3937,7 +3937,6 @@ void ext4_truncate(struct inode *inode)
+ 	unsigned int credits;
+ 	handle_t *handle;
+ 	struct address_space *mapping = inode->i_mapping;
+-	loff_t page_len;
  
  	/*
--	 * If there is still a entry in the leaf node, check to see if
--	 * it references the partial cluster.  This is the only place
--	 * where it could; if it doesn't, we can free the cluster.
-+	 * Free the partial cluster only if the current extent does not
-+	 * reference it. Otherwise we might free used cluster.
- 	 */
--	if (*partial_cluster && ex >= EXT_FIRST_EXTENT(eh) &&
-+	if (*partial_cluster > 0 &&
- 	    (EXT4_B2C(sbi, ext4_ext_pblock(ex) + ex_ee_len - 1) !=
- 	     *partial_cluster)) {
- 		int flags = EXT4_FREE_BLOCKS_FORGET;
-@@ -2651,7 +2684,7 @@ int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
- 	struct super_block *sb = inode->i_sb;
- 	int depth = ext_depth(inode);
- 	struct ext4_ext_path *path = NULL;
--	ext4_fsblk_t partial_cluster = 0;
-+	long long partial_cluster = 0;
- 	handle_t *handle;
- 	int i = 0, err = 0;
+ 	 * There is a possibility that we're either freeing the inode
+@@ -3981,14 +3980,8 @@ void ext4_truncate(struct inode *inode)
+ 		return;
+ 	}
  
-@@ -2837,7 +2870,7 @@ again:
- 	/* If we still have something in the partial cluster and we have removed
- 	 * even the first extent, then we should free the blocks in the partial
- 	 * cluster as well. */
--	if (partial_cluster && path->p_hdr->eh_entries == 0) {
-+	if (partial_cluster > 0 && path->p_hdr->eh_entries == 0) {
- 		int flags = EXT4_FREE_BLOCKS_FORGET;
+-	if (inode->i_size % PAGE_CACHE_SIZE != 0) {
+-		page_len = PAGE_CACHE_SIZE -
+-			(inode->i_size & (PAGE_CACHE_SIZE - 1));
+-
+-		if (ext4_discard_partial_page_buffers(handle,
+-				mapping, inode->i_size, page_len, 0))
+-			goto out_stop;
+-	}
++	if (inode->i_size & (inode->i_sb->s_blocksize - 1))
++		ext4_block_truncate_page(handle, mapping, inode->i_size);
  
- 		if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index bcb5a02..e23b218 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -1928,7 +1928,7 @@ TRACE_EVENT(ext4_ext_show_extent,
- TRACE_EVENT(ext4_remove_blocks,
- 	    TP_PROTO(struct inode *inode, struct ext4_extent *ex,
- 		ext4_lblk_t from, ext4_fsblk_t to,
--		ext4_fsblk_t partial_cluster),
-+		long long partial_cluster),
- 
- 	TP_ARGS(inode, ex, from, to, partial_cluster),
- 
-@@ -1937,7 +1937,7 @@ TRACE_EVENT(ext4_remove_blocks,
- 		__field(	ino_t,		ino	)
- 		__field(	ext4_lblk_t,	from	)
- 		__field(	ext4_lblk_t,	to	)
--		__field(	ext4_fsblk_t,	partial	)
-+		__field(	long long,	partial	)
- 		__field(	ext4_fsblk_t,	ee_pblk	)
- 		__field(	ext4_lblk_t,	ee_lblk	)
- 		__field(	unsigned short,	ee_len	)
-@@ -1955,7 +1955,7 @@ TRACE_EVENT(ext4_remove_blocks,
- 	),
- 
- 	TP_printk("dev %d,%d ino %lu extent [%u(%llu), %u]"
--		  "from %u to %u partial_cluster %u",
-+		  "from %u to %u partial_cluster %lld",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
- 		  (unsigned) __entry->ee_lblk,
-@@ -1963,19 +1963,20 @@ TRACE_EVENT(ext4_remove_blocks,
- 		  (unsigned short) __entry->ee_len,
- 		  (unsigned) __entry->from,
- 		  (unsigned) __entry->to,
--		  (unsigned) __entry->partial)
-+		  (long long) __entry->partial)
- );
- 
- TRACE_EVENT(ext4_ext_rm_leaf,
- 	TP_PROTO(struct inode *inode, ext4_lblk_t start,
--		 struct ext4_extent *ex, ext4_fsblk_t partial_cluster),
-+		 struct ext4_extent *ex,
-+		 long long partial_cluster),
- 
- 	TP_ARGS(inode, start, ex, partial_cluster),
- 
- 	TP_STRUCT__entry(
- 		__field(	dev_t,		dev	)
- 		__field(	ino_t,		ino	)
--		__field(	ext4_fsblk_t,	partial	)
-+		__field(	long long,	partial	)
- 		__field(	ext4_lblk_t,	start	)
- 		__field(	ext4_lblk_t,	ee_lblk	)
- 		__field(	ext4_fsblk_t,	ee_pblk	)
-@@ -1993,14 +1994,14 @@ TRACE_EVENT(ext4_ext_rm_leaf,
- 	),
- 
- 	TP_printk("dev %d,%d ino %lu start_lblk %u last_extent [%u(%llu), %u]"
--		  "partial_cluster %u",
-+		  "partial_cluster %lld",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
- 		  (unsigned) __entry->start,
- 		  (unsigned) __entry->ee_lblk,
- 		  (unsigned long long) __entry->ee_pblk,
- 		  (unsigned short) __entry->ee_len,
--		  (unsigned) __entry->partial)
-+		  (long long) __entry->partial)
- );
- 
- TRACE_EVENT(ext4_ext_rm_idx,
-@@ -2058,7 +2059,7 @@ TRACE_EVENT(ext4_ext_remove_space,
- 
- TRACE_EVENT(ext4_ext_remove_space_done,
- 	TP_PROTO(struct inode *inode, ext4_lblk_t start, ext4_lblk_t end,
--		 int depth, ext4_lblk_t partial, __le16 eh_entries),
-+		 int depth, long long partial, __le16 eh_entries),
- 
- 	TP_ARGS(inode, start, end, depth, partial, eh_entries),
- 
-@@ -2068,7 +2069,7 @@ TRACE_EVENT(ext4_ext_remove_space_done,
- 		__field(	ext4_lblk_t,	start		)
- 		__field(	ext4_lblk_t,	end		)
- 		__field(	int,		depth		)
--		__field(	ext4_lblk_t,	partial		)
-+		__field(	long long,	partial		)
- 		__field(	unsigned short,	eh_entries	)
- 	),
- 
-@@ -2082,14 +2083,14 @@ TRACE_EVENT(ext4_ext_remove_space_done,
- 		__entry->eh_entries	= le16_to_cpu(eh_entries);
- 	),
- 
--	TP_printk("dev %d,%d ino %lu since %u end %u depth %d partial %u "
-+	TP_printk("dev %d,%d ino %lu since %u end %u depth %d partial %lld "
- 		  "remaining_entries %u",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
- 		  (unsigned) __entry->start,
- 		  (unsigned) __entry->end,
- 		  __entry->depth,
--		  (unsigned) __entry->partial,
-+		  (long long) __entry->partial,
- 		  (unsigned short) __entry->eh_entries)
- );
- 
+ 	/*
+ 	 * We add the inode to the orphan list, so that if this
 -- 
 1.7.7.6
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
