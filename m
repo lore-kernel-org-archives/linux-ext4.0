@@ -1,49 +1,94 @@
-From: Rik van Riel <riel@redhat.com>
-Subject: Re: [PATCH 4/4] mm: Remove lru parameter from __pagevec_lru_add and
- remove parts of pagevec API
-Date: Wed, 15 May 2013 13:46:02 -0400
-Message-ID: <5193C9DA.8030504@redhat.com>
-References: <1368440482-27909-1-git-send-email-mgorman@suse.de> <1368440482-27909-5-git-send-email-mgorman@suse.de>
+From: EUNBONG SONG <eunb.song@samsung.com>
+Subject: Re: Re: Question about ext4 excessive stall time
+Date: Wed, 15 May 2013 22:07:33 +0000 (GMT)
+Message-ID: <17112733.237501368655652616.JavaMail.weblogic@epv6ml08>
+Reply-To: eunb.song@samsung.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Alexey Lyahkov <alexey.lyashkov@gmail.com>,
-        Andrew Perepechko <anserper@ya.ru>, Robin Dong <sanbai@taobao.com>,
-        Theodore Tso <tytso@mit.edu>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Hugh Dickins <hughd@google.com>, Johannes Weiner <hannes@cmpxchg.org>,
-        Bernd Schubert <bernd.schubert@fastmail.fm>,
-        David Howells <dhowells@redhat.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux-ext4 <linux-ext4@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>, Linux-mm <linux-mm@kvack.org>
-To: Mel Gorman <mgorman@suse.de>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1368440482-27909-5-git-send-email-mgorman@suse.de>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=euc-kr
+Content-Transfer-Encoding: base64
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"jack@suse.cz" <jack@suse.cz>,
+	"dmonakhov@openvz.org" <dmonakhov@openvz.org>,
+	"gnehzuil.liu@gmail.com" <gnehzuil.liu@gmail.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mailout4.samsung.com ([203.254.224.34]:28971 "EHLO
+	mailout4.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752701Ab3EOWHe (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 15 May 2013 18:07:34 -0400
+Received: from epcpsbgr1.samsung.com
+ (u141.gpu120.samsung.co.kr [203.254.230.141])
+ by mailout4.samsung.com (Oracle Communications Messaging Server 7u4-24.01
+ (7.0.4.24.0) 64bit (built Nov 17 2011))
+ with ESMTP id <0MMV00A3K1GKYMK0@mailout4.samsung.com> for
+ linux-ext4@vger.kernel.org; Thu, 16 May 2013 07:07:33 +0900 (KST)
+MIME-version: 1.0
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 05/13/2013 06:21 AM, Mel Gorman wrote:
-> Now that the LRU to add a page to is decided at LRU-add time, remove the
-> misleading lru parameter from __pagevec_lru_add. A consequence of this is
-> that the pagevec_lru_add_file, pagevec_lru_add_anon and similar helpers
-> are misleading as the caller no longer has direct control over what LRU
-> the page is added to. Unused helpers are removed by this patch and existing
-> users of pagevec_lru_add_file() are converted to use lru_cache_add_file()
-> directly and use the per-cpu pagevecs instead of creating their own pagevec.
->
-> Signed-off-by: Mel Gorman <mgorman@suse.de>
-> Reviewed-by: Jan Kara <jack@suse.cz>
+DQo+IE9uIFdlZCwgTWF5IDE1LCAyMDEzIGF0IDA3OjE1OjAyQU0gKzAwMDAsIEVVTkJPTkcgU09O
+RyB3cm90ZToNCj4gPiBJIGtub3cgbXkga2VybmVsIHZlcnNpb24gaXMgc28gb2xkLiBJIGp1c3Qg
+d2FudCB0byBrbm93IHdoeSB0aGlzDQo+ID4gcHJvYmxlbSBpcyBoYXBwZW5lZC4gIEJlY2F1c2Ug
+b2YgbXkga2VybmVsIHZlcnNpb24gaXMgb2xkPyBvcg0KPiA+IEJlY2F1c2Ugb2YgZGlzayA/LCwg
+SWYgYW55b25lIGtub3dzIGFib3V0IHRoaXMgcHJvYmxlbSwgQ291bGQgeW91DQo+ID4gaGVscCBt
+ZT8NCg0KPiBTbyB3aGF0J3MgaGFwcGVuaW5nIGlzIHRoaXMuICBUaGUgQ0ZRIEkvTyBzY2hlZHVs
+ZXIgcHJpb3JpdGl6ZXMgcmVhZHMNCj4gb3ZlciB3cml0ZXMsIHNpbmNlIG1vc3QgcmVhZHMgYXJl
+IHN5bmNocm9ub3VzIChmb3IgZXhhbXBsZSwgaWYgdGhlDQo+IGNvbXBpbGVyIGlzIHdhaXRpbmcg
+Zm9yIHRoZSBkYXRhIGJsb2NrIGZyb20gaW5jbHVkZS91bmlzdGQuaCwgaXQgY2FudA0KPiBtYWtl
+IGZvcndhcmQgcHJvZ3Jlc3MgdW50aWwgaXQgcmVjZWl2ZXMgdGhlIGRhdGEgYmxvY2tzOyB0aGVy
+ZSBpcyBhbg0KPiBleGNlcHRpb24gZm9yIHJlYWRhaGVhZCBibG9ja3MsIGJ1dCB0aG9zZSBhcmUg
+ZGVhbHQgd2l0aCBhdCBhIGxvdw0KPiBwcmlvcml0eSksIGFuZCBtb3N0IHdyaXRlcyBhcmUgc3lu
+Y2hyb25vdXMgKHNpbmNlIHRoZXkgYXJlIGlzc3VlZCBieQ0KPiB0aGUgd3JpdGViYWNrIGRhZW1v
+bnMsIGFuZCB1bmxlc3Mgd2UgYXJlIGRvaW5nIGFuIGZzeW5jLCBubyBvbmUgaXMNCj4gd2FpdGlu
+ZyBmb3IgdGhlbSkuDQo+DQo+IFRoZSBwcm9ibGVtIGNvbWVzIHdoZW4gYSBtZXRhZGF0YSBibG9j
+aywgdXN1YWxseSBvbmUgd2hpY2ggaXMgc2hhcmVkDQo+IGFjcm9zcyBtdWx0aXBsZSBmaWxlcyBp
+cyB1bmRlcmdvaW5nIHdyaXRlYmFjaywgc3VjaCBhcyBhbiBpbm9kZSB0YWJsZQ0KPiBibG9jayBv
+ciBhIGFsbG9jYXRpb24gYml0bWFwIGJsb2NrLiAgVGhlIHdyaXRlIGdldHMgaXNzdWVkIGFzIGEg
+bG93DQo+IHByaW9yaXR5IEkvTyBvcGVyYXRpb24uICBUaGVuIGR1cmluZyB0aGUgdGhlIG5leHQg
+amJkMiB0cmFuc2FjdGlvbiwNCj4gc29tZSB1c2Vyc3BhY2Ugb3BlcmF0aW9uIG5lZWRzIHRvIG1v
+ZGlmeSB0aGF0IG1ldGFkYXRhIGJsb2NrLCBhbmQgaW4NCj4gb3JkZXIgdG8gZG8gdGhhdCwgaXQg
+aGFzIHRvIGNhbGwgamJkMl9qb3VybmFsX2dldF93cml0ZV9hY2Nlc3MoKS4gIEJ1dA0KPiBpZiB0
+aGVyZSBpcyBoZWF2eSByZWFkIHRyYWZmaWMgZ29pbmcgb24sIGR1ZSB0byBzb21lIG90aGVyIHBy
+b2Nlc3MNCj4gdXNpbmcgdGhlIGRpc2sgYSBsb3QsIHRoZSB3cml0ZWJhY2sgb3BlcmF0aW9uIG1h
+eSBlbmQgdXAgZ2V0dGluZw0KPiBzdGFydmVkLCBhbmQgZG9lc24ndCBnZXQgYWN0ZWQgb24gZm9y
+IGEgdmVyeSBsb25nIHRpbWUuDQo+DQo+IEJ1dCB0aGUgbW9tZW50IGEgcHJvY2VzcyBjYWxsZWQg
+amJkMl9qb3VybmFsX2dldF93cml0ZV9hY2Nlc3MoKSwgdGhlDQo+IHdyaXRlIGhhcyBlZmZlY3Rp
+dmVseSBiZWNvbWUgb25lIHdoaWNoIGlzIHN5bmNocm9ub3VzLCBpbiB0aGF0IGZvcndhcmQNCj4g
+cHJvZ3Jlc3Mgb2YgYXQgbGVhc3Qgb25lIHByb2Nlc3MgaXMgbm93IGdldHRpbmcgYmxvY2tlZCB3
+YWl0aW5nIGZvcg0KPiB0aGlzIEkvTyB0byBjb21wbGV0ZSwgc2luY2UgdGhlIGJ1ZmZlcl9oZWFk
+IGlzIGxvY2tlZCBmb3Igd3JpdGViYWNrLA0KPiBwb3NzaWJseSBmb3IgaHVuZHJlZHMgb3IgdGhv
+dXNhbmRzIG9mIG1pbGxpc2Vjb25kcywgYW5kDQo+IGpiZDJfam91cm5hbF9nZXRfd3JpdGVfYWNj
+ZXNzKCkgY2FuIG5vdCBwcm9jZWVkIHVudGlsIGl0IGNhbiBnZXQgdGhlDQo+IGJ1ZmZlcl9oZWFk
+IGxvY2suDQo+DQo+IFRoaXMgd2FzIGRpc2N1c3NlZCBhdCBsZWFzdCBtb250aCdzIExpbnV4IFN0
+b3JhZ2UsIEZpbGUgU3lzdGVtLCBhbmQgTU0NCj4gd29ya3N0aG9wLiAgVGhlIHJpZ2h0IHNvbHV0
+aW9uIGlzIHRvIGZvciBsb2NrX2J1ZmZlcigpIHRvIG5vdGljZSBpZg0KPiB0aGUgYnVmZmVyIGhl
+YWQgaGFzIGJlZW4gbG9ja2VkIGZvciB3cml0ZWJhY2ssIGFuZCBpZiBzbywgdG8gYnVtcCB0aGUN
+Cj4gd3JpdGUgcmVxdWVzdCB0byB0aGUgaGVhZCBvZiB0aGUgZWxldmF0b3IuICBKZWZmIE1veWVy
+IGlzIGxvb2tpbmcgYXQNCj4gdGhpcy4NCj4NCj4gVGhlIHBhcnRpYWwgd29ya2Fyb3VuZCB3aGlj
+aCB3aWxsIGJlIGluIDMuMTAgaXMgdGhhdCB3ZSdyZSBtYXJraW5nIGFsbA0KPiBtZXRhZGF0YSB3
+cml0ZXMgd2l0aCBSRVFfTUVUQSBhbmQgUkVRX1BSSU8uICBUaGlzIHdpbGwgY2F1c2UgbWV0YWRh
+dGENCj4gd3JpdGViYWNrcyB0byBiZSBwcmlvcml0aXplZCBhdCB0aGUgc2FtZSBwcmlvcml0eSBs
+ZXZlbCBhcyBzeW5jaHJub3VzDQo+IHJlYWRzLiAgSWYgdGhlcmUgaXMgaGVhdnkgcmVhZCB0cmFm
+ZmljLCB0aGUgbWV0YWRhdGEgd3JpdGViYWNrcyB3aWxsDQo+IHN0aWxsIGJlIGluIGNvbXBldGl0
+aW9uIHdpdGggdGhlIHJlYWRzLCBidXQgYXQgbGVhc3QgdGhleSB3aWxsDQo+IGNvbXBsZXRlLg0K
+Pg0KPiBPbmNlIHdlIGdldCBwcmlvcml0eSBlc2NhbGF0aW9uIChvciBwcmlvcml0eSBpbmhlcml0
+YW5jZSwgYmVjYXVzZSB3aGF0DQo+IHdlJ3JlIHNlZWluZyBoZXJlIGlzIHJlYWxseSBhIGNsYXNz
+aWMgcHJpb3JpdHkgaW52ZXJzaW9uIHByb2JsZW0pLA0KPiB0aGVuIGl0IHdvdWxkIG1ha2Ugc2Vu
+c2UgZm9yIHVzIHRvIG5vIGxvbmdlciBzZXQgUkVRX1BSSU8gZm9yIG1ldGFkYXRhDQo+IHdyaXRl
+YmFja3MsIHNvIHRoZSBtZXRhZGF0YSB3cml0ZWJhY2tzIG9ubHkgZ2V0IHByaW9yaXRpemVkIHdo
+ZW4gdGhleQ0KPiBhcmUgYmxvY2tpbmcgc29tZSBwcm9jZXNzIGZyb20gbWFraW5nIGZvcndhcmQg
+cHJvZ3Jlc3MuICAoRG9pbmcgdGhpcw0KPiB3aWxsIHByb2JhYmx5IHJlc3VsdCBpbiBhIHNsaWdo
+dCBwZXJmb3JtYW5jZSBkZWdyYWRhdGlvbiBvbiBzb21lDQo+IHdvcmtsb2FkcywgYnV0IGl0IHdp
+bGwgaW1wcm92ZSBvdGhlcnMgd2l0aCBhIGhlYXZ5IHJlYWQgdHJhZmZpYyBhbmQNCj4gbWluaW1h
+bCB3cml0ZWJhY2sgaW50ZXJmZXJlbmNlLiAgV2UnbGwgd2FudCB0byBiZW5jaG1hcmsgd2hhdA0K
+PiBwZXJjZW50YWdlIG9mIG1ldGFkYXRhIHdyaXRlYmFja3MgcmVxdWlyZSBnZXR0aW5nIGJ1bXBl
+ZCB0byB0aGUgaGVhZA0KPiBvZiB0aGUgbGluZSwgYnV0IEkgc3VzcGVjdCBpdCB3aWxsIGJlIHRo
+ZSByaWdodCBjaG9pY2UuKQ0KPg0KPiBJZiB5b3Ugd2FudCB0byB0cnkgdG8gYmFja3BvcnQgdGhp
+cyB3b3JrYXJvdW5kIHRvIHlvdXIgb2xkZXIga2VybmVsLA0KPiBwbGVhc2Ugc2VlIGNvbW1pdCA5
+ZjIwMzUwN2VkMjc3Lg0KDQoNCkhpLCBUZWQuDQpJIGFwcHJlY2lhdGUgZm9yIHlvdXIgZmFudGFz
+dGljIGV4cGxhbmF0aW9uLiBJdCdzIHJlYWxseSBncmVhdCBhbmQgdmVyeSBoZWxwZnVsIGZvciBt
+ZS4NCk5vdyBpIGNhbiB1bmRlcnN0YW5kIGFib3V0IHRoaXMgaXNzdWUgdGhhbmtzIHRvIHlvdS4N
+Cg0KVGhhbmtzIQ0KRXVuQm9uZw0KDQo=
 
-Reviewed-by: Rik van Riel <riel@redhat.com>
 
-
--- 
-All rights reversed
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
