@@ -1,7 +1,7 @@
 From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
 Subject: Re: v3.10: unmount won't work
-Date: Thu, 16 May 2013 22:43:33 +0200
-Message-ID: <519544F5.8010703@gmx.de>
+Date: Thu, 16 May 2013 22:45:33 +0200
+Message-ID: <5195456D.8030805@gmx.de>
 References: <51928CB5.2050406@gmx.de> <5192A8CE.30809@redhat.com> <5195402A.20100@gmx.de> <51954330.1080106@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
@@ -9,46 +9,31 @@ Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: linux-ext4@vger.kernel.org
 To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mout.gmx.net ([212.227.15.15]:61643 "EHLO mout.gmx.net"
+Received: from mout.gmx.net ([212.227.15.19]:62636 "EHLO mout.gmx.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751185Ab3EPUnh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 May 2013 16:43:37 -0400
-Received: from mailout-de.gmx.net ([10.1.76.28]) by mrigmx.server.lan
- (mrigmx001) with ESMTP (Nemesis) id 0MLUcO-1UddFl3HWM-000ZZp for
- <linux-ext4@vger.kernel.org>; Thu, 16 May 2013 22:43:35 +0200
+	id S1752531Ab3EPUph (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 16 May 2013 16:45:37 -0400
+Received: from mailout-de.gmx.net ([10.1.76.17]) by mrigmx.server.lan
+ (mrigmx001) with ESMTP (Nemesis) id 0MYIEJ-1UymlS2DYH-00VBSs for
+ <linux-ext4@vger.kernel.org>; Thu, 16 May 2013 22:45:35 +0200
 In-Reply-To: <51954330.1080106@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 05/16/2013 10:36 PM, Eric Sandeen wrote:
-> any chance you've got anything crazy going on like mounting the same =
-loop
-> file on 2 machines via an nfs export, or anything else out of the ord=
-inary?
->=20
-I mount that directory only from 1 UML guest and only once.
-The I run a lot of trinity test in the UML guest suing that share.
-After that the UML guest was shutdowned.
-=46inally I stoped teh NFS daemon at the host.
-Then I tried to unmount the the drive.
+=46orget to mention, that now df shows for the loop the same values as =
+for / :
 
-> If you mount it and do "find -inum 32017 /mount/point" for each of th=
-e inode
-> numbers below, do the files in question have anything unique going on=
-?
-
-
-n22 ~ # find /mnt/trinity/ -inum 32017
-
-
-=46WIW :
-
-n22 ~ # umount /mnt/trinity/
-umount: /mnt/trinity: not mounted
-
-n22 ~ # grep trinity /etc/mtab /proc/mounts
-/etc/mtab:/dev/loop0 /mnt/trinity ext4 rw 0 0
-
+n22 ~ # df
+=46ilesystem     1K-blocks     Used Available Use% Mounted on
+rootfs         188262740 32904632 145771804  19% /
+/dev/root      188262740 32904632 145771804  19% /
+devtmpfs         4086480        0   4086480   0% /dev
+tmpfs            4086744      888   4085856   1% /run
+shm              4086744        0   4086744   0% /dev/shm
+cgroup_root        10240        0     10240   0% /sys/fs/cgroup
+/dev/sdb4      530428688 24466632 505962056   5% /mnt/E
+tmpfs            3145728   243872   2901856   8% /mnt/ramdisk
+/dev/loop0     188262740 32904632 145771804  19% /mnt/trinity
 
 
 --=20
