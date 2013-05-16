@@ -1,93 +1,120 @@
-From: Mel Gorman <mgorman@suse.de>
-Subject: Re: [PATCH 2/4] mm: pagevec: Defer deciding what LRU to add a page
- to until pagevec drain time
-Date: Thu, 16 May 2013 15:29:42 +0100
-Message-ID: <20130516142941.GK11497@suse.de>
-References: <1368440482-27909-1-git-send-email-mgorman@suse.de>
- <1368440482-27909-3-git-send-email-mgorman@suse.de>
- <20130515155330.35036978515a6d8e0fe98feb@linux-foundation.org>
+From: Autif Khan <autif.mlist@gmail.com>
+Subject: Re: How can I flush all writes before yanking the power cable?
+Date: Thu, 16 May 2013 14:31:45 -0400
+Message-ID: <CADzUK1J9Zqc=kZhrFy3W9=h0p+L9vWzBhv5a3ZJbW_WAeawwOA@mail.gmail.com>
+References: <CADzUK1LUXH=w+FMxScugv-jW8ECHYmDBOrwT8OpXJdA336XA4g@mail.gmail.com>
+	<5113EE8F.2080104@redhat.com>
+	<CADzUK1LnJ7nhgMf-6nigxfnaa0MY16NOwpAkuy4qEy7E=wG7hg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Cc: Alexey Lyahkov <alexey.lyashkov@gmail.com>,
-	Andrew Perepechko <anserper@ya.ru>, Robin Dong <sanbai@taobao.com>,
-	Theodore Tso <tytso@mit.edu>, Hugh Dickins <hughd@google.com>,
-	Rik van Riel <riel@redhat.com>, Johannes Weiner <hannes@cmpxchg.org>,
-	Bernd Schubert <bernd.schubert@fastmail.fm>,
-	David Howells <dhowells@redhat.com>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Linux-ext4 <linux-ext4@vger.kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>, Linux-mm <linux-mm@kvack.org>
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20130515155330.35036978515a6d8e0fe98feb@linux-foundation.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-la0-f51.google.com ([209.85.215.51]:34692 "EHLO
+	mail-la0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752403Ab3EPSbr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 May 2013 14:31:47 -0400
+Received: by mail-la0-f51.google.com with SMTP id lx15so1424816lab.10
+        for <linux-ext4@vger.kernel.org>; Thu, 16 May 2013 11:31:45 -0700 (PDT)
+In-Reply-To: <CADzUK1LnJ7nhgMf-6nigxfnaa0MY16NOwpAkuy4qEy7E=wG7hg@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 15, 2013 at 03:53:30PM -0700, Andrew Morton wrote:
-> On Mon, 13 May 2013 11:21:20 +0100 Mel Gorman <mgorman@suse.de> wrote:
-> 
-> > mark_page_accessed cannot activate an inactive page that is located on
-> > an inactive LRU pagevec. Hints from filesystems may be ignored as a
-> > result. In preparation for fixing that problem, this patch removes the
-> > per-LRU pagevecs and leaves just one pagevec. The final LRU the page is
-> > added to is deferred until the pagevec is drained.
-> > 
-> > This means that fewer pagevecs are available and potentially there is
-> > greater contention on the LRU lock. However, this only applies in the case
-> > where there is an almost perfect mix of file, anon, active and inactive
-> > pages being added to the LRU. In practice I expect that we are adding
-> > stream of pages of a particular time and that the changes in contention
-> > will barely be measurable.
-> > 
-> > ...
+On Thu, Feb 7, 2013 at 2:37 PM, Autif Khan <autif.mlist@gmail.com> wrote:
+>
+> On Thu, Feb 7, 2013 at 1:12 PM, Eric Sandeen <sandeen@redhat.com> wrote:
+> > On 2/7/13 10:43 AM, Autif Khan wrote:
+> >> The standard operating procedure to power down my machine is to switch
+> >> it off. To work around this, we use mSATA SSDs (actually we recently
+> >> switched from SATA SSDs) with linux on a read only partition.
 > >
-> > index c612a6a..0911579 100644
-> > --- a/mm/swap.c
-> > +++ b/mm/swap.c
-> > @@ -39,7 +39,7 @@
-> >  /* How many pages do we try to swap or page in/out together? */
-> >  int page_cluster;
-> >  
-> > -static DEFINE_PER_CPU(struct pagevec[NR_LRU_LISTS], lru_add_pvecs);
-> > +static DEFINE_PER_CPU(struct pagevec, lru_add_pvec);
-> >  static DEFINE_PER_CPU(struct pagevec, lru_rotate_pvecs);
-> >  static DEFINE_PER_CPU(struct pagevec, lru_deactivate_pvecs);
-> >  
-> > @@ -460,13 +460,18 @@ EXPORT_SYMBOL(mark_page_accessed);
-> >   */
-> 
-> The comment preceding __lru_cache_add() needs an update.
-> 
+> > Not sure the SSD part makes any significant difference, but the RO
+> > mount should.
+> >
+> >> This works just fine, however, we want to be able to upgrade some
+> >> parts of the application. To do this, we have put the application on
+> >> /app partition. We mount it read only at start up. When we want to
+> >> upgrade the app, we remount read-write sync (mount -o remount,rw,sync
+> >> /app) perform the write operations and remount read only.
+> >>
+> >> If we yank the power cable after this, we get file system errors on
+> >> the next reboot.
+> >
+> > What kind of errors? (and on what kernel?  Are you mounted with
+> > barriers enabled?)
+>
+> Filesystem check errors that the OS throws at you on an unclean
+> shutdown. Where it asks you to 'F'ix, 'S'kip, 'Ignore or 'M'anually
+> fix the error using fsck. The kernel is a custom kernel for our
+> hardware.
+>
+> > If you use barriers, remount RO, that completes, you yank the power,
+> > and you see corruption, I would guess one of a few things is happening:
+> >
+> > 1) You're not mounting w/ barriers, and you lose data in the SSD's cache
+>
+> That was precisely my ignorance. I did not know about barrier. Adding
+> it during mount ro and remount rw seems to have fixed these issues.
+>
+> Thanks you very much for all your help.
+>
+> Autif
+>
+> > 2) You *are* mounting w/ barriers, and the SSD is lying to you
 
-This?
+Resurrecting this thread as we have run into a very peculiar problem.
 
----8<---
-diff --git a/mm/swap.c b/mm/swap.c
-index 05944d4..ac23602 100644
---- a/mm/swap.c
-+++ b/mm/swap.c
-@@ -489,12 +489,10 @@ void mark_page_accessed(struct page *page)
- EXPORT_SYMBOL(mark_page_accessed);
- 
- /*
-- * Order of operations is important: flush the pagevec when it's already
-- * full, not when adding the last page, to make sure that last page is
-- * not added to the LRU directly when passed to this function. Because
-- * mark_page_accessed() (called after this when writing) only activates
-- * pages that are on the LRU, linear writes in subpage chunks would see
-- * every PAGEVEC_SIZE page activated, which is unexpected.
-+ * Queue the page for addition to the LRU via pagevec. The decision on whether
-+ * to add the page to the [in]active [file|anon] list is deferred until the
-+ * pagevec is drained. This gives a chance for the caller of __lru_cache_add()
-+ * have the page added to the active list using mark_page_accessed().
-  */
- void __lru_cache_add(struct page *page)
- {
+We now mount our partitions either ro or rw,barriers=1 and remount
+ro,barrier=1 after write is complete.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+This worked beautifully well on the one prototype that we have.
+
+We built another prototype with a different mSATA SSD and we are now
+seeing FS corruption after we mount rw,barrier=1, write, remount
+ro,barrier=1 and finally yank the power cable (after a considerable
+wait ~10 seconds). We tried 3-4 different SSDs but we have the one SSD
+that does not exhibit this issue and several SSDs that do exhibit this
+issue. The issue travels with the SSD.
+
+I am guessing that the SSD is lying (Eric's choice of the word - above :-)
+
+How can we tell if an SSD supports barriers or flushes etc?
+
+(Apologies to Eric for spam - somehow I replied, instead of reply to all)
+
+> > 3) There's a bug in our remount,ro path which doesn't quiesce things properly
+> >
+> > mount -o remount,ro should be >this< close to an unmount; things should
+> > be stable on disk when it's done.
+> >
+> > -Eric
+> >
+> >> We can display a message to the user telling them that it is safe to
+> >> power down the machine.
+> >>
+> >> My question is
+> >>
+> >> 1) Is this the right place to discuss this or should I have posted
+> >> this in the file systems mailing list?
+> >>
+> >> 2) how can we determine that all the writes are flushed? (and this it
+> >> is safe to yank the power cable)
+> >>
+> >> 3) is there a better way to do this? - for example we may not have to
+> >> remount read write sync - and we can force a sync before remounting
+> >> read only or something
+> >>
+> >> I have already tried "sudo sync" before remounting the filesystem as
+> >> read only. It does not help.
+> >>
+> >> Please advise.
+> >>
+> >> Thanks
+> >>
+> >> Autif
+> >> --
+> >> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> >> the body of a message to majordomo@vger.kernel.org
+> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >>
+> >
