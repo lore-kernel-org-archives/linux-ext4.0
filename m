@@ -1,48 +1,54 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: v3.10: unmount won't work
-Date: Thu, 16 May 2013 15:50:38 -0500
-Message-ID: <5195469E.4090200@redhat.com>
-References: <51928CB5.2050406@gmx.de> <5192A8CE.30809@redhat.com> <5195402A.20100@gmx.de> <51954330.1080106@redhat.com> <5195456D.8030805@gmx.de>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH] xfstests: test data integrity under disk failure
+Date: Fri, 17 May 2013 09:31:53 +1000
+Message-ID: <20130516233153.GI24635@dastard>
+References: <1368706052-24391-1-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:4612 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752545Ab3EPUum (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 May 2013 16:50:42 -0400
-In-Reply-To: <5195456D.8030805@gmx.de>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1368706052-24391-1-git-send-email-dmonakhov@openvz.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 5/16/13 3:45 PM, Toralf F=C3=B6rster wrote:
-> Forget to mention, that now df shows for the loop the same values as =
-for / :
+On Thu, May 16, 2013 at 04:07:32PM +0400, Dmitry Monakhov wrote:
+> Parallels team have old good tool called hwflush-check which is server/client
+> application for testing data integrity under system/disk failure conditions.
+> Usually we run hwflush-check on two different hosts and use PMU to trigger real
+> power failure of the client as a whole unit. This tests may be used for
+> SSD checking (some of them are known to have probelms with hwflush).
+> I hope it will be good to share it with community.
+> 
+> This tests simulate just one disk failure while client system should
+> survive this failure. This test extend idea of shared/305.
+> 1) Run hwflush-check server and client on same host as usual
+> 2) Simulare disk failure via blkdev failt injection API aka 'make-it-fail'
+> 3) Umount failed device
+> 4) Makes disk operatable again
+> 5) Mount filesystem
+> 3) Check data integrity
 
-because it's "half unmounted" - mtab still has it, so df is
-doing a statfs of it, but it's not really mounted (as /proc/mounts
-shows) so you get a 2nd statfs on /
+So, for local disk failure, why do we need a client/server network
+architecture? That just complicates the code, and AFAICT
 
--Eric
+all the client does is send report report packets to server which
+contain an id number that is kept in memory. If on restart of the
+client after failure the ID in the report packet doesn't match what
+the server wants, then it fails the test.
 
-> n22 ~ # df
-> Filesystem     1K-blocks     Used Available Use% Mounted on
-> rootfs         188262740 32904632 145771804  19% /
-> /dev/root      188262740 32904632 145771804  19% /
-> devtmpfs         4086480        0   4086480   0% /dev
-> tmpfs            4086744      888   4085856   1% /run
-> shm              4086744        0   4086744   0% /dev/shm
-> cgroup_root        10240        0     10240   0% /sys/fs/cgroup
-> /dev/sdb4      530428688 24466632 505962056   5% /mnt/E
-> tmpfs            3145728   243872   2901856   8% /mnt/ramdisk
-> /dev/loop0     188262740 32904632 145771804  19% /mnt/trinity
->=20
->=20
+So, why is the server needed here? Just dump the IDs the client
+writes to the file on a device not being tested, and either diff
+them against a golden image or run a check to see all the IDs are
+monotonically increasing. That removes all the networking code from
+the test, the need for a client/server architecture, etc, and makes
+the test far easier to review.
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
