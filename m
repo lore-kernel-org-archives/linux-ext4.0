@@ -1,102 +1,128 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: How can I flush all writes before yanking the power cable?
-Date: Thu, 16 May 2013 15:03:42 -0400
-Message-ID: <20130516190342.GA29931@thunk.org>
-References: <CADzUK1LUXH=w+FMxScugv-jW8ECHYmDBOrwT8OpXJdA336XA4g@mail.gmail.com>
- <5113EE8F.2080104@redhat.com>
- <CADzUK1LnJ7nhgMf-6nigxfnaa0MY16NOwpAkuy4qEy7E=wG7hg@mail.gmail.com>
- <CADzUK1J9Zqc=kZhrFy3W9=h0p+L9vWzBhv5a3ZJbW_WAeawwOA@mail.gmail.com>
+From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
+Subject: Re: v3.10: unmount won't work
+Date: Thu, 16 May 2013 22:23:06 +0200
+Message-ID: <5195402A.20100@gmx.de>
+References: <51928CB5.2050406@gmx.de> <5192A8CE.30809@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
-To: Autif Khan <autif.mlist@gmail.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Linux Kernel <linux-kernel@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:49044 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751558Ab3EPTDr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 May 2013 15:03:47 -0400
-Content-Disposition: inline
-In-Reply-To: <CADzUK1J9Zqc=kZhrFy3W9=h0p+L9vWzBhv5a3ZJbW_WAeawwOA@mail.gmail.com>
+Received: from mout.gmx.net ([212.227.17.22]:62845 "EHLO mout.gmx.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750942Ab3EPUXO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 16 May 2013 16:23:14 -0400
+Received: from mailout-de.gmx.net ([10.1.76.10]) by mrigmx.server.lan
+ (mrigmx001) with ESMTP (Nemesis) id 0Lbx3C-1UBklI2HYq-00jIGy for
+ <linux-ext4@vger.kernel.org>; Thu, 16 May 2013 22:23:12 +0200
+In-Reply-To: <5192A8CE.30809@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, May 16, 2013 at 02:31:45PM -0400, Autif Khan wrote:
-> > >
-> > > 1) You're not mounting w/ barriers, and you lose data in the SSD's cache
-> >
-> > That was precisely my ignorance. I did not know about barrier. Adding
-> > it during mount ro and remount rw seems to have fixed these issues.
+On 05/14/2013 11:12 PM, Eric Sandeen wrote:
+> Is your "mount" looking at /etc/mtab ot at /proc/mounts?
+I dunno, it is package sys-apps/util-linux-2.22.2 - maybe the Gentoo de=
+vs know more (it is a stable 32bit Gentoo).
 
-What kernel version and file system (ext3 vs ext4) are you using?
-Barriers have been enabled by default for quite a while.
+=46WIW today I got after another test run (kernel 3.10.-rc1+) :
 
-> > > 2) You *are* mounting w/ barriers, and the SSD is lying to you
-> 
-> Resurrecting this thread as we have run into a very peculiar problem.
-> 
-> We now mount our partitions either ro or rw,barriers=1 and remount
-> ro,barrier=1 after write is complete.
-> 
-> This worked beautifully well on the one prototype that we have.
-> 
-> We built another prototype with a different mSATA SSD and we are now
-> seeing FS corruption after we mount rw,barrier=1, write, remount
-> ro,barrier=1 and finally yank the power cable (after a considerable
-> wait ~10 seconds). We tried 3-4 different SSDs but we have the one SSD
-> that does not exhibit this issue and several SSDs that do exhibit this
-> issue. The issue travels with the SSD.
 
-Are the SSD's from different manufacturers?  If they are from the same
-manufacturer and have the same model number, do they have the same
-firmware version?
+2013-05-16T22:17:20.984+02:00 n22 kernel: EXT4-fs (loop0): sb orphan he=
+ad is 32017
+2013-05-16T22:17:20.984+02:00 n22 kernel: sb_info orphan list:
+2013-05-16T22:17:20.984+02:00 n22 kernel: inode loop0:32017 at d9ed5a50=
+: mode 103777, nlink 0, next 32003
+2013-05-16T22:17:20.984+02:00 n22 kernel: inode loop0:32003 at dfde6d10=
+: mode 102777, nlink 0, next 32021
+2013-05-16T22:17:20.984+02:00 n22 kernel: inode loop0:32021 at d9ed6158=
+: mode 103777, nlink 0, next 32013
+2013-05-16T22:17:20.984+02:00 n22 kernel: inode loop0:32013 at d9ed55a0=
+: mode 103777, nlink 0, next 0
+2013-05-16T22:17:20.984+02:00 n22 kernel: ------------[ cut here ]-----=
+-------
+2013-05-16T22:17:20.984+02:00 n22 kernel: kernel BUG at fs/ext4/super.c=
+:804!
+2013-05-16T22:17:20.984+02:00 n22 kernel: invalid opcode: 0000 [#1] SMP
+2013-05-16T22:17:20.984+02:00 n22 kernel: Modules linked in: dm_crypt c=
+pufreq_stats loop nfsd auth_rpcgss oid_registry lockd sunrpc ipt_MASQUE=
+RADE xt_owner xt_multiport ipt_REJECT xt_tcpudp xt_recent xt_conntrack =
+nf_conntrack_ftp xt_limit xt_LOG iptable_nat nf_conntrack_ipv4 nf_defra=
+g_ipv4 nf_nat_ipv4 nf_nat nf_conntrack iptable_filter ip_tables x_table=
+s af_packet pppoe pppox ppp_generic slhc bridge stp llc tun fuse dm_mod=
+ coretemp kvm_intel kvm hid_cherry aesni_intel uvcvideo xts aes_i586 vi=
+deobuf2_vmalloc lrw videobuf2_memops gf128mul ablk_helper hid_generic a=
+rc4 usbhid videobuf2_core cryptd iwldvm mac80211 usblp videodev hid i91=
+5 snd_hda_codec_conexant snd_hda_intel iwlwifi cfg80211 cfbfillrect cfb=
+imgblt i2c_algo_bit cfbcopyarea intel_agp intel_gtt snd_hda_codec snd_p=
+cm fbcon snd_page_alloc bitblit softcursor font drm_kms_helper drm snd_=
+timer psmouse tpm_tis 8250_pci thinkpad_acpi agpgart nvram sr_mod evdev=
+ snd tpm wmi 8250 serial_core i2c_i801 i2c_core cdrom sdhci_pci sdhci m=
+mc_co
+re soundcore acpi_cpufreq thermal mperf battery ac tpm_bios e1000e rfki=
+ll ptp video fb button fbdev pps_core processor thermal_sys hwmon [last=
+ unloaded: microcode]
+2013-05-16T22:17:20.984+02:00 n22 kernel: CPU: 1 PID: 9391 Comm: umount=
+ Not tainted 3.10.0-rc1+ #1
+2013-05-16T22:17:20.984+02:00 n22 kernel: Hardware name: LENOVO 4180F65=
+/4180F65, BIOS 83ET73WW (1.43 ) 11/30/2012
+2013-05-16T22:17:20.984+02:00 n22 kernel: task: eab54290 ti: d6cfc000 t=
+ask.ti: d6cfc000
+2013-05-16T22:17:20.984+02:00 n22 kernel: EIP: 0060:[<c11bcb8c>] EFLAGS=
+: 00010283 CPU: 1
+2013-05-16T22:17:20.984+02:00 n22 kernel: EIP is at ext4_put_super+0x2d=
+c/0x2e0
+2013-05-16T22:17:20.984+02:00 n22 kernel: EAX: 0000003d EBX: e7adbc00 E=
+CX: e7adbd50 EDX: e7adbd50
+2013-05-16T22:17:20.984+02:00 n22 kernel: ESI: e7addc00 EDI: e7adbd14 E=
+BP: d6cfdefc ESP: d6cfdecc
+2013-05-16T22:17:20.984+02:00 n22 kernel: DS: 007b ES: 007b FS: 00d8 GS=
+: 00e0 SS: 0068
+2013-05-16T22:17:20.984+02:00 n22 kernel: CR0: 80050033 CR2: b76bd0c0 C=
+R3: 2f41e000 CR4: 000407f0
+2013-05-16T22:17:20.984+02:00 n22 kernel: DR0: 00000000 DR1: 00000000 D=
+R2: 00000000 DR3: 00000000
+2013-05-16T22:17:20.984+02:00 n22 kernel: DR6: ffff0ff0 DR7: 00000400
+2013-05-16T22:17:20.984+02:00 n22 kernel: Stack:
+2013-05-16T22:17:20.984+02:00 n22 kernel: c155c130 e7adddbc 00007d0d d9=
+ed55a0 000087ff 00000000 00000000 d9ed5580
+2013-05-16T22:17:20.984+02:00 n22 kernel: e7adbd50 e7addc00 e7addc58 c1=
+4957a0 d6cfdf18 c111f441 d6cfdf28 d6cfdf18
+2013-05-16T22:17:20.984+02:00 n22 kernel: f1fd4200 00000083 e7addc00 d6=
+cfdf28 c111f4e9 e7addc00 c15f1e28 d6cfdf38
+2013-05-16T22:17:20.984+02:00 n22 kernel: Call Trace:
+2013-05-16T22:17:20.984+02:00 n22 kernel: [<c111f441>] generic_shutdown=
+_super+0x51/0xd0
+2013-05-16T22:17:20.984+02:00 n22 kernel: [<c111f4e9>] kill_block_super=
++0x29/0x70
+2013-05-16T22:17:20.984+02:00 n22 kernel: [<c111f734>] deactivate_locke=
+d_super+0x44/0x70
+2013-05-16T22:17:20.984+02:00 n22 kernel: [<c1120107>] deactivate_super=
++0x47/0x60
+2013-05-16T22:17:20.985+02:00 n22 kernel: [<c1136e8d>] mntput_no_expire=
++0xcd/0x120
+2013-05-16T22:17:20.985+02:00 n22 kernel: [<c1137d4e>] SyS_umount+0xae/=
+0x330
+2013-05-16T22:17:20.985+02:00 n22 kernel: [<c1137fee>] SyS_oldumount+0x=
+1e/0x20
+2013-05-16T22:17:20.985+02:00 n22 kernel: [<c1477601>] sysenter_do_call=
++0x12/0x22
+2013-05-16T22:17:20.985+02:00 n22 kernel: Code: 24 30 c1 55 c1 05 bc 01=
+ 00 00 89 44 24 04 e8 4d 22 2b 00 8b 4d ec 8b 55 f0 8b 09 39 ca 75 b2 3=
+9 93 50 01 00 00 0f 84 9a fe ff ff <0f> 0b 66 90 55 89 e5 83 ec 20 66 6=
+6 66 66 90 8d 45 18 c7 04 24
+2013-05-16T22:17:20.985+02:00 n22 kernel: EIP: [<c11bcb8c>] ext4_put_su=
+per+0x2dc/0x2e0 SS:ESP 0068:d6cfdecc
+2013-05-16T22:17:20.985+02:00 n22 kernel: ---[ end trace 0970735cee5272=
+0b ]---
 
-Note that there are some cheap (or to put another way, crappy) SSD's
-where yanking the power cable at the wrong time causes the SSD's
-internal metadata for its Flash Translation Layer to get corrupted,
-and you end up with a completely bricked SSD.
-
-This was much more common in the past with Compact Flash cards, where
-stories of wedding photographers who lost all of their photos from a
-wedding shoot after they accidentally ejected their flash card, and
-the CF card was complteely toasted.  If you were lucky, the compact
-flash manufacturer had special recovery software that would allow you
-to do the moral equivalent of running fsck on the FTL metadata (since
-the FTL can be thought of as a file system, where instead of file
-names you use sector numbers instead), and then you might get to
-recover some of the photos.  If you were not so lucky, you got to
-replace the compact flash card (which was annoying, but the cost of
-losing all of the wedding photos was often far more expensive from a
-commercial perspective).
-
-> I am guessing that the SSD is lying (Eric's choice of the word - above :-)
-> 
-> How can we tell if an SSD supports barriers or flushes etc?
-
-Well, it's not necessarily lying --- it could just be buggy.  That is,
-it tried to make sure all of the data was written to the flash chips,
-but on a ower pull, the SSD's FTL metadata got corrupted, and this
-caused the wrong data to be returned when you try to read from the SSD
---- which in some ways is worse, since if the SSD is lying, it's
-generally only the most recently written blocks which get lost.  If
-the SSD is buggy, blocks written hours or days ago could get lost when
-the FTL gets corrupted.
-
-Well, if you're a manufacturer, you write programs which test to see
-whether the SSD does the right thing after a power pull (i.e. write a
-test progam which writes blocks with timestamps and periodic CACHE
-FLUSH commands, and then execute a power drop, and then verify that
-the data on the disk is as you expect).  If it isn't, then you reject
-the SSD vendor as providing devices which are not fit for purpose.
-Since as a manufacturer, you're purchasing SSD's or eMMC devices by
-the millions, you have a certain amount of leverage over the
-manufacturer.  :-)
-
-If you're some random end user, you're basically at the mercy of the
-SSD manufacturer.  You can look at various review sites, but
-unfortunately not all reviewers test to make sure the barriers work
-correctly and that the device is robust against power drops.  The
-problem is all of the reviewers tend to do performance tests, and so
-there is a huge temptation to optimize for performance over
-robustness....
-
-     	 	   	  	  	       - Ted
+--=20
+MfG/Sincerely
+Toralf F=C3=B6rster
+pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
