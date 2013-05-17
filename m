@@ -1,57 +1,51 @@
-From: Christian Kujau <lists@nerdbynature.de>
-Subject: Re: xattr performance
-Date: Fri, 17 May 2013 13:09:39 -0700 (PDT)
-Message-ID: <alpine.DEB.2.10.1305171300490.13746@trent.utfs.org>
-References: <alpine.DEB.2.10.1305170444590.13746@trent.utfs.org>
-	<20130517154436.GW29359@sgi.com>
+From: Johannes Weiner <hannes@cmpxchg.org>
+Subject: Re: [PATCH 2/5] mm: pagevec: Defer deciding what LRU to add a page
+ to until pagevec drain time
+Date: Fri, 17 May 2013 16:37:44 -0400
+Message-ID: <20130517203744.GA15721@cmpxchg.org>
+References: <1368784087-956-1-git-send-email-mgorman@suse.de>
+ <1368784087-956-3-git-send-email-mgorman@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: jfs-discussion@lists.sourceforge.net, linux-ext4@vger.kernel.org,
-	reiserfs-devel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	xfs@oss.sgi.com
-To: Ben Myers <bpm@sgi.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <20130517154436.GW29359@sgi.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+Content-Type: text/plain; charset=us-ascii
+Cc: Alexey Lyahkov <alexey.lyashkov@gmail.com>,
+	Andrew Perepechko <anserper@ya.ru>, Robin Dong <sanbai@taobao.com>,
+	Theodore Tso <tytso@mit.edu>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Hugh Dickins <hughd@google.com>, Rik van Riel <riel@redhat.com>,
+	Bernd Schubert <bernd.schubert@fastmail.fm>,
+	David Howells <dhowells@redhat.com>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Linux-ext4 <linux-ext4@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>, Linux-mm <linux-mm@kvack.org>
+To: Mel Gorman <mgorman@suse.de>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <1368784087-956-3-git-send-email-mgorman@suse.de>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 17 May 2013 at 10:44, Ben Myers wrote:
-> The short version:
-> inode core (96 bytes) + literal area == inode size
+On Fri, May 17, 2013 at 10:48:04AM +0100, Mel Gorman wrote:
+> mark_page_accessed cannot activate an inactive page that is located on
+> an inactive LRU pagevec. Hints from filesystems may be ignored as a
+> result. In preparation for fixing that problem, this patch removes the
+> per-LRU pagevecs and leaves just one pagevec. The final LRU the page is
+> added to is deferred until the pagevec is drained.
+> 
+> This means that fewer pagevecs are available and potentially there is
+> greater contention on the LRU lock. However, this only applies in the case
+> where there is an almost perfect mix of file, anon, active and inactive
+> pages being added to the LRU. In practice I expect that we are adding
+> stream of pages of a particular time and that the changes in contention
+> will barely be measurable.
+> 
+> Signed-off-by: Mel Gorman <mgorman@suse.de>
+> Acked-by: Rik van Riel <riel@redhat.com>
 
-Ah, yes indeed. I had another issue earlier on the same filesystem and 
-Christoph told me[0] that I may have run out of inode attributes. 
+Acked-by: Johannes Weiner <hannes@cmpxchg.org>
 
-xfs_info reports isize=256 for this filesystem and now that I'm using 
-xattr even more (I'm storing sha256 checksum plus the filename in each 
-file's xattr) this looks like it might exceed the literal area after all. 
-
-> Anyway... If you're a heavy user of EAs you might benefit from using larger
-> inodes.  Just something to consider.  Cool tests!  ;)
-
-Yeah, next time I'll have to take this into consideration, but the fs was 
-created long ago and I didn't plan to use xattr. Now I do but mkfs is not 
-an option right now.
-
-Thanks for the insight,
-Christian.
-
-[0] http://oss.sgi.com/archives/xfs/2012-07/msg00116.html
--- 
-BOFH excuse #247:
-
-Due to Federal Budget problems we have been forced to cut back on the number of users able to access the system at one time. (namely none allowed....)
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
