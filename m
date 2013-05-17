@@ -1,158 +1,154 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 1/4] ext4: Fix fsync error handling after filesysteb abort.
-Date: Fri, 17 May 2013 11:10:28 +0400
-Message-ID: <87y5beaxp7.fsf@openvz.org>
-References: <20130517032416.5110@gmx.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: Yuan Fu <yuan.fu@gmx.cn>, linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-la0-f48.google.com ([209.85.215.48]:57521 "EHLO
-	mail-la0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754750Ab3EQHKc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 May 2013 03:10:32 -0400
-Received: by mail-la0-f48.google.com with SMTP id fs12so3824884lab.7
-        for <linux-ext4@vger.kernel.org>; Fri, 17 May 2013 00:10:31 -0700 (PDT)
-In-Reply-To: <20130517032416.5110@gmx.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 2/5] mm: pagevec: Defer deciding what LRU to add a page to until pagevec drain time
+Date: Fri, 17 May 2013 10:48:04 +0100
+Message-ID: <1368784087-956-3-git-send-email-mgorman@suse.de>
+References: <1368784087-956-1-git-send-email-mgorman@suse.de>
+Cc: Theodore Tso <tytso@mit.edu>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Hugh Dickins <hughd@google.com>, Rik van Riel <riel@redhat.com>,
+	Johannes Weiner <hannes@cmpxchg.org>,
+	Bernd Schubert <bernd.schubert@fastmail.fm>,
+	David Howells <dhowells@redhat.com>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Linux-ext4 <linux-ext4@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>, Linux-mm <linux-mm@kvack.org>,
+	Mel Gorman <mgorman@suse.de>
+To: Alexey Lyahkov <alexey.lyashkov@gmail.com>,
+	Andrew Perepechko <anserper@ya.ru>, Robin Dong <sanbai@taobao.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1368784087-956-1-git-send-email-mgorman@suse.de>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 17 May 2013 05:24:15 +0200, "Yuan Fu" <yuan.fu@gmx.cn> wrote:
-> Dear Dmitry Monakhov,=C2=A0
->=20
->  =C2=A0I see a race condition, =C2=A0
-> =C2=A0 =C2=A0=C2=A0 =C2=A0__ext4_abort() =C2=A0=C2=A0 =C2=A0
->  =C2=A0 =C2=A0=C2=A0 =C2=A0 =C2=A0 ... =C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=
-=A0
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0EXT4_SB(sb)->s_mount_=
-flags |=3D EXT4_MF_FS_ABORTED;
->  =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0...
->  =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 smp_wmb()
-> =C2=A0
->  =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 [if scheduled at this poin=
-t ]
->  =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0...
->  =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 sb->s_flags |=3D MS_RDONLY=
-;
-> =C2=A0
->=20
-> =C2=A0 =C2=A0if schedule occur above point(in red). There comes=C2=A0=
-race condition
-> =C2=A0 =C2=A0the s_mount_flags=C2=A0set to=C2=A0EXT4_MF_FS_ABORTED. O=
-n the other hand =C2=A0=20
->  =C2=A0 sb->s_flags is not set to MS_RDONLY. Now if ext4_fsync_file()=
- is=20
->  =C2=A0 called from =C2=A0 some process, the check s_flags to MS_RDON=
-LY will fail,
->  =C2=A0 and it will flush =C2=A0 unwritten io and not return -EORFS.
-If flush_unwritten_io() was called after fs was aborted it will return
-appropriate code (EROFS or EIO) so fsync(2) will fail as expected.
->=20
->  =C2=A0thanks =C2=A0 =C2=A0 =C2=A0=C2=A0=C2=A0=C2=A0
->=20
->  =C2=A0----- Original Message -----
-> From: Dmitry Monakhov
-> Sent: 05/16/13 05:58 PM
-> Subject: [PATCH 1/4] ext4: Fix fsync error handling after filesysteb =
-abort.
-> =C2=A0If filesystem was aborted after inode's write back complete=20
-> but before it's metadata was updated we may return success=20
-> due to (sb->s_flags & MS_RDONLY) which is incorrect and=20
-> result in data loss.=20
-> In order to handle fs abort correctly we have to check=20
-> fs state once we discover that it is in MS_RDONLY state=20
->=20
-> Test case: http://patchwork.ozlabs.org/patch/244297/=20
->=20
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>=20
-> ---=20
->  fs/ext4/fsync.c | 8 ++++++--=20
->  fs/ext4/super.c | 13 ++++++++++++-=20
->  2 files changed, 18 insertions(+), 3 deletions(-)=20
->=20
-> diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c=20
-> index e0ba8a4..d7df2f1 100644=20
-> --- a/fs/ext4/fsync.c=20
-> +++ b/fs/ext4/fsync.c=20
-> @@ -129,9 +129,13 @@ int ext4_sync_file(struct file *file, loff_t sta=
-rt, loff_t end, int datasync)=20
->  return ret;=20
->  mutex_lock(&inode->i_mutex);=20
-> =20
-> - if (inode->i_sb->s_flags & MS_RDONLY)=20
-> + if (inode->i_sb->s_flags & MS_RDONLY) {=20
-> + /* Make shure that we read updated s_mount_flags value */=20
-> + smp_rmb();=20
-> + if (EXT4_SB(inode->i_sb)->s_mount_flags & EXT4_MF_FS_ABORTED)=20
-> + ret =3D -EROFS;=20
->  goto out;=20
-> -=20
-> + }=20
->  ret =3D ext4_flush_unwritten_io(inode);=20
->  if (ret < 0)=20
->  goto out;=20
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c=20
-> index dbc7c09..6c91c8e 100644=20
-> --- a/fs/ext4/super.c=20
-> +++ b/fs/ext4/super.c=20
-> @@ -398,6 +398,11 @@ static void ext4_handle_error(struct super_block=
- *sb)=20
->  }=20
->  if (test_opt(sb, ERRORS_RO)) {=20
->  ext4_msg(sb, KERN_CRIT, "Remounting filesystem read-only");=20
-> + /*=20
-> + * Make shure updated value of ->s_mount_flags will be visiable=20
-> + * before ->s_flags update=20
-> + */=20
-> + smp_wmb();=20
->  sb->s_flags |=3D MS_RDONLY;=20
->  }=20
->  if (test_opt(sb, ERRORS_PANIC))=20
-> @@ -552,6 +557,7 @@ void __ext4_std_error(struct super_block *sb, con=
-st char *function,=20
->  *=20
->  * We unconditionally force the filesystem into an ABORT|READONLY sta=
-te,=20
->  * unless the error response on the fs has been set to panic in which=
-=20
-> +=20
->  * case we take the easy way out and panic immediately.=20
->  */=20
-> =20
-> @@ -570,8 +576,13 @@ void __ext4_abort(struct super_block *sb, const =
-char *function,=20
-> =20
->  if ((sb->s_flags & MS_RDONLY) =3D=3D 0) {=20
->  ext4_msg(sb, KERN_CRIT, "Remounting filesystem read-only");=20
-> - sb->s_flags |=3D MS_RDONLY;=20
->  EXT4_SB(sb)->s_mount_flags |=3D EXT4_MF_FS_ABORTED;=20
-> + /*=20
-> + * Make shure updated value of ->s_mount_flags will be visiable=20
-> + * before ->s_flags update=20
-> + */=20
-> + smp_wmb();=20
-> + sb->s_flags |=3D MS_RDONLY;=20
->  if (EXT4_SB(sb)->s_journal)=20
->  jbd2_journal_abort(EXT4_SB(sb)->s_journal, -EIO);=20
->  save_error_info(sb, function, line);=20
-> --=20
-> 1.7.1=20
->=20
-> --=20
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in=20
-> the body of a message to majordomo@vger.kernel.org=20
-> More majordomo info at http://vger.kernel.org/majordomo-info.html =C2=
-=A0 =C2=A0 =C2=A0
->  =C2=A0=20
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+mark_page_accessed cannot activate an inactive page that is located on
+an inactive LRU pagevec. Hints from filesystems may be ignored as a
+result. In preparation for fixing that problem, this patch removes the
+per-LRU pagevecs and leaves just one pagevec. The final LRU the page is
+added to is deferred until the pagevec is drained.
+
+This means that fewer pagevecs are available and potentially there is
+greater contention on the LRU lock. However, this only applies in the case
+where there is an almost perfect mix of file, anon, active and inactive
+pages being added to the LRU. In practice I expect that we are adding
+stream of pages of a particular time and that the changes in contention
+will barely be measurable.
+
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+Acked-by: Rik van Riel <riel@redhat.com>
+---
+ mm/swap.c | 47 +++++++++++++++++++++--------------------------
+ 1 file changed, 21 insertions(+), 26 deletions(-)
+
+diff --git a/mm/swap.c b/mm/swap.c
+index 53c9ceb..868b493 100644
+--- a/mm/swap.c
++++ b/mm/swap.c
+@@ -40,7 +40,7 @@
+ /* How many pages do we try to swap or page in/out together? */
+ int page_cluster;
+ 
+-static DEFINE_PER_CPU(struct pagevec[NR_LRU_LISTS], lru_add_pvecs);
++static DEFINE_PER_CPU(struct pagevec, lru_add_pvec);
+ static DEFINE_PER_CPU(struct pagevec, lru_rotate_pvecs);
+ static DEFINE_PER_CPU(struct pagevec, lru_deactivate_pvecs);
+ 
+@@ -452,22 +452,25 @@ void mark_page_accessed(struct page *page)
+ EXPORT_SYMBOL(mark_page_accessed);
+ 
+ /*
+- * Order of operations is important: flush the pagevec when it's already
+- * full, not when adding the last page, to make sure that last page is
+- * not added to the LRU directly when passed to this function. Because
+- * mark_page_accessed() (called after this when writing) only activates
+- * pages that are on the LRU, linear writes in subpage chunks would see
+- * every PAGEVEC_SIZE page activated, which is unexpected.
++ * Queue the page for addition to the LRU via pagevec. The decision on whether
++ * to add the page to the [in]active [file|anon] list is deferred until the
++ * pagevec is drained. This gives a chance for the caller of __lru_cache_add()
++ * have the page added to the active list using mark_page_accessed().
+  */
+ void __lru_cache_add(struct page *page, enum lru_list lru)
+ {
+-	struct pagevec *pvec = &get_cpu_var(lru_add_pvecs)[lru];
++	struct pagevec *pvec = &get_cpu_var(lru_add_pvec);
++
++	if (is_active_lru(lru))
++		SetPageActive(page);
++	else
++		ClearPageActive(page);
+ 
+ 	page_cache_get(page);
+ 	if (!pagevec_space(pvec))
+ 		__pagevec_lru_add(pvec, lru);
+ 	pagevec_add(pvec, page);
+-	put_cpu_var(lru_add_pvecs);
++	put_cpu_var(lru_add_pvec);
+ }
+ EXPORT_SYMBOL(__lru_cache_add);
+ 
+@@ -480,13 +483,11 @@ void lru_cache_add_lru(struct page *page, enum lru_list lru)
+ {
+ 	if (PageActive(page)) {
+ 		VM_BUG_ON(PageUnevictable(page));
+-		ClearPageActive(page);
+ 	} else if (PageUnevictable(page)) {
+ 		VM_BUG_ON(PageActive(page));
+-		ClearPageUnevictable(page);
+ 	}
+ 
+-	VM_BUG_ON(PageLRU(page) || PageActive(page) || PageUnevictable(page));
++	VM_BUG_ON(PageLRU(page));
+ 	__lru_cache_add(page, lru);
+ }
+ 
+@@ -587,15 +588,10 @@ static void lru_deactivate_fn(struct page *page, struct lruvec *lruvec,
+  */
+ void lru_add_drain_cpu(int cpu)
+ {
+-	struct pagevec *pvecs = per_cpu(lru_add_pvecs, cpu);
+-	struct pagevec *pvec;
+-	int lru;
++	struct pagevec *pvec = &per_cpu(lru_add_pvec, cpu);
+ 
+-	for_each_lru(lru) {
+-		pvec = &pvecs[lru - LRU_BASE];
+-		if (pagevec_count(pvec))
+-			__pagevec_lru_add(pvec, lru);
+-	}
++	if (pagevec_count(pvec))
++		__pagevec_lru_add(pvec, NR_LRU_LISTS);
+ 
+ 	pvec = &per_cpu(lru_rotate_pvecs, cpu);
+ 	if (pagevec_count(pvec)) {
+@@ -799,17 +795,16 @@ void lru_add_page_tail(struct page *page, struct page *page_tail,
+ static void __pagevec_lru_add_fn(struct page *page, struct lruvec *lruvec,
+ 				 void *arg)
+ {
+-	enum lru_list lru = (enum lru_list)arg;
+-	int file = is_file_lru(lru);
+-	int active = is_active_lru(lru);
++	enum lru_list requested_lru = (enum lru_list)arg;
++	int file = page_is_file_cache(page);
++	int active = PageActive(page);
++	enum lru_list lru = page_lru(page);
+ 
+-	VM_BUG_ON(PageActive(page));
++	WARN_ON_ONCE(requested_lru < NR_LRU_LISTS && requested_lru != lru);
+ 	VM_BUG_ON(PageUnevictable(page));
+ 	VM_BUG_ON(PageLRU(page));
+ 
+ 	SetPageLRU(page);
+-	if (active)
+-		SetPageActive(page);
+ 	add_page_to_lru_list(page, lruvec, lru);
+ 	update_page_reclaim_stat(lruvec, file, active);
+ 	trace_mm_lru_insertion(page, page_to_pfn(page), lru, trace_pagemap_flags(page));
+-- 
+1.8.1.4
+
 --
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
