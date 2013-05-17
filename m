@@ -1,172 +1,53 @@
-From: Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 5/5] mm: Remove lru parameter from __lru_cache_add and lru_cache_add_lru
-Date: Fri, 17 May 2013 10:48:07 +0100
-Message-ID: <1368784087-956-6-git-send-email-mgorman@suse.de>
-References: <1368784087-956-1-git-send-email-mgorman@suse.de>
-Cc: Theodore Tso <tytso@mit.edu>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Hugh Dickins <hughd@google.com>, Rik van Riel <riel@redhat.com>,
-	Johannes Weiner <hannes@cmpxchg.org>,
-	Bernd Schubert <bernd.schubert@fastmail.fm>,
-	David Howells <dhowells@redhat.com>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Linux-ext4 <linux-ext4@vger.kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>, Linux-mm <linux-mm@kvack.org>,
-	Mel Gorman <mgorman@suse.de>
-To: Alexey Lyahkov <alexey.lyashkov@gmail.com>,
-	Andrew Perepechko <anserper@ya.ru>, Robin Dong <sanbai@taobao.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1368784087-956-1-git-send-email-mgorman@suse.de>
-Sender: owner-linux-mm@kvack.org
+From: Christian Kujau <lists@nerdbynature.de>
+Subject: xattr performance
+Date: Fri, 17 May 2013 05:02:21 -0700 (PDT)
+Message-ID: <alpine.DEB.2.10.1305170444590.13746@trent.utfs.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: jfs-discussion@lists.sourceforge.net, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, reiserfs-devel@vger.kernel.org,
+	xfs@oss.sgi.com
+Return-path: <xfs-bounces@oss.sgi.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-Similar to __pagevec_lru_add, this patch removes the LRU parameter
-from __lru_cache_add and lru_cache_add_lru as the caller does not
-control the exact LRU the page gets added to. lru_cache_add_lru gets
-renamed to lru_cache_add the name is silly without the lru parameter.
-With the parameter removed, it is required that the caller indicate
-if they want the page added to the active or inactive list by setting
-or clearing PageActive respectively.
+Hi,
 
-[akpm@linux-foundation.org: Suggested the patch]
-Signed-off-by: Mel Gorman <mgorman@suse.de>
----
- include/linux/swap.h | 11 +++++++----
- mm/rmap.c            |  7 ++++---
- mm/swap.c            | 14 ++++----------
- mm/vmscan.c          |  4 +---
- 4 files changed, 16 insertions(+), 20 deletions(-)
+a while ago I was setting & reading extended attributes to ~25000 files 
+in a directory structure on an XFS filesystem. The files were usually a 
+few MB in size, but some where up to 2GB in size.
 
-diff --git a/include/linux/swap.h b/include/linux/swap.h
-index 1701ce4..85d7437 100644
---- a/include/linux/swap.h
-+++ b/include/linux/swap.h
-@@ -10,6 +10,7 @@
- #include <linux/node.h>
- #include <linux/fs.h>
- #include <linux/atomic.h>
-+#include <linux/page-flags.h>
- #include <asm/page.h>
- 
- struct notifier_block;
-@@ -233,8 +234,8 @@ extern unsigned long nr_free_pagecache_pages(void);
- 
- 
- /* linux/mm/swap.c */
--extern void __lru_cache_add(struct page *, enum lru_list lru);
--extern void lru_cache_add_lru(struct page *, enum lru_list lru);
-+extern void __lru_cache_add(struct page *);
-+extern void lru_cache_add(struct page *);
- extern void lru_add_page_tail(struct page *page, struct page *page_tail,
- 			 struct lruvec *lruvec, struct list_head *head);
- extern void activate_page(struct page *);
-@@ -254,12 +255,14 @@ extern void add_page_to_unevictable_list(struct page *page);
-  */
- static inline void lru_cache_add_anon(struct page *page)
- {
--	__lru_cache_add(page, LRU_INACTIVE_ANON);
-+	ClearPageActive(page);
-+	__lru_cache_add(page);
- }
- 
- static inline void lru_cache_add_file(struct page *page)
- {
--	__lru_cache_add(page, LRU_INACTIVE_FILE);
-+	ClearPageActive(page);
-+	__lru_cache_add(page);
- }
- 
- /* linux/mm/vmscan.c */
-diff --git a/mm/rmap.c b/mm/rmap.c
-index 6280da8..e22ceeb 100644
---- a/mm/rmap.c
-+++ b/mm/rmap.c
-@@ -1093,9 +1093,10 @@ void page_add_new_anon_rmap(struct page *page,
- 	else
- 		__inc_zone_page_state(page, NR_ANON_TRANSPARENT_HUGEPAGES);
- 	__page_set_anon_rmap(page, vma, address, 1);
--	if (!mlocked_vma_newpage(vma, page))
--		lru_cache_add_lru(page, LRU_ACTIVE_ANON);
--	else
-+	if (!mlocked_vma_newpage(vma, page)) {
-+		SetPageActive(page);
-+		lru_cache_add(page);
-+	} else
- 		add_page_to_unevictable_list(page);
- }
- 
-diff --git a/mm/swap.c b/mm/swap.c
-index 6a9d0c4..ac23602 100644
---- a/mm/swap.c
-+++ b/mm/swap.c
-@@ -494,15 +494,10 @@ EXPORT_SYMBOL(mark_page_accessed);
-  * pagevec is drained. This gives a chance for the caller of __lru_cache_add()
-  * have the page added to the active list using mark_page_accessed().
-  */
--void __lru_cache_add(struct page *page, enum lru_list lru)
-+void __lru_cache_add(struct page *page)
- {
- 	struct pagevec *pvec = &get_cpu_var(lru_add_pvec);
- 
--	if (is_active_lru(lru))
--		SetPageActive(page);
--	else
--		ClearPageActive(page);
--
- 	page_cache_get(page);
- 	if (!pagevec_space(pvec))
- 		__pagevec_lru_add(pvec);
-@@ -512,11 +507,10 @@ void __lru_cache_add(struct page *page, enum lru_list lru)
- EXPORT_SYMBOL(__lru_cache_add);
- 
- /**
-- * lru_cache_add_lru - add a page to a page list
-+ * lru_cache_add - add a page to a page list
-  * @page: the page to be added to the LRU.
-- * @lru: the LRU list to which the page is added.
-  */
--void lru_cache_add_lru(struct page *page, enum lru_list lru)
-+void lru_cache_add(struct page *page)
- {
- 	if (PageActive(page)) {
- 		VM_BUG_ON(PageUnevictable(page));
-@@ -525,7 +519,7 @@ void lru_cache_add_lru(struct page *page, enum lru_list lru)
- 	}
- 
- 	VM_BUG_ON(PageLRU(page));
--	__lru_cache_add(page, lru);
-+	__lru_cache_add(page);
- }
- 
- /**
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index fa6a853..50088ba 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -546,7 +546,6 @@ int remove_mapping(struct address_space *mapping, struct page *page)
- void putback_lru_page(struct page *page)
- {
- 	int lru;
--	int active = !!TestClearPageActive(page);
- 	int was_unevictable = PageUnevictable(page);
- 
- 	VM_BUG_ON(PageLRU(page));
-@@ -561,8 +560,7 @@ redo:
- 		 * unevictable page on [in]active list.
- 		 * We know how to handle that.
- 		 */
--		lru = active + page_lru_base_type(page);
--		lru_cache_add_lru(page, lru);
-+		lru_cache_add(page);
- 	} else {
- 		/*
- 		 * Put unevictable pages directly on zone's unevictable
+Anyway, I *felt* that setting or reading these xattrs was going very
+slowly. While the storage may be not the fastest, stat()'ing these
+files was fine, but getfattr/setfattr took very long.
+
+I got curious and while it turned out that the slowness was related to the 
+wrapper script I used to read/set those values, I created a little test 
+suite to 1) create a few thousand files and 2) do xattr operations on 
+them and see if xattr performance was filesystem specific:
+
+   http://nerdbynature.de/bits/xattr/
+
+Not very sophisticated, true. But it was interesting to see that 
+ext3/ext4/xfs behaved kinda well for all these tests; btrfs/jfs/reiserfs
+sometimes took way longer than the others.
+
+Christian.
 -- 
-1.8.1.4
+BOFH excuse #43:
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+boss forgot system password
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
