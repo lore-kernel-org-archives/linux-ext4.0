@@ -1,7 +1,7 @@
 From: Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 1/5] mm: Add tracepoints for LRU activation and insertions
-Date: Fri, 17 May 2013 10:48:03 +0100
-Message-ID: <1368784087-956-2-git-send-email-mgorman@suse.de>
+Subject: [PATCH 3/5] mm: Activate !PageLRU pages on mark_page_accessed if page is on local pagevec
+Date: Fri, 17 May 2013 10:48:05 +0100
+Message-ID: <1368784087-956-4-git-send-email-mgorman@suse.de>
 References: <1368784087-956-1-git-send-email-mgorman@suse.de>
 Cc: Theodore Tso <tytso@mit.edu>,
 	Andrew Morton <akpm@linux-foundation.org>,
@@ -21,144 +21,110 @@ In-Reply-To: <1368784087-956-1-git-send-email-mgorman@suse.de>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Using these tracepoints it is possible to model LRU activity and the
-average residency of pages of different types. This can be used to
-debug problems related to premature reclaim of pages of particular
-types.
+If a page is on a pagevec then it is !PageLRU and mark_page_accessed()
+may fail to move a page to the active list as expected. Now that the LRU
+is selected at LRU drain time, mark pages PageActive if they are on the
+local pagevec so it gets moved to the correct list at LRU drain time.
+Using a debugging patch it was found that for a simple git checkout based
+workload that pages were never added to the active file list in practice
+but with this patch applied they are.
+
+				before   after
+LRU Add Active File                  0      750583
+LRU Add Active Anon            2640587     2702818
+LRU Add Inactive File          8833662     8068353
+LRU Add Inactive Anon              207         200
+
+Note that only pages on the local pagevec are considered on purpose. A
+!PageLRU page could be in the process of being released, reclaimed, migrated
+or on a remote pagevec that is currently being drained. Marking it PageActive
+is vunerable to races where PageLRU and Active bits are checked at the
+wrong time. Page reclaim will trigger VM_BUG_ONs but depending on when the
+race hits, it could also free a PageActive page to the page allocator and
+trigger a bad_page warning. Similarly a potential race exists between a
+per-cpu drain on a pagevec list and an activation on a remote CPU.
+
+				lru_add_drain_cpu
+				__pagevec_lru_add
+				  lru = page_lru(page);
+mark_page_accessed
+  if (PageLRU(page))
+    activate_page
+  else
+    SetPageActive
+				  SetPageLRU(page);
+				  add_page_to_lru_list(page, lruvec, lru);
+
+In this case a PageActive page is added to the inactivate list and later the
+inactive/active stats will get skewed. While the PageActive checks in vmscan
+could be removed and potentially dealt with, a skew in the statistics would
+be very difficult to detect. Hence this patch deals just with the common case
+where a page being marked accessed has just been added to the local pagevec.
 
 Signed-off-by: Mel Gorman <mgorman@suse.de>
-Reviewed-by: Rik van Riel <riel@redhat.com>
 ---
- include/trace/events/pagemap.h | 89 ++++++++++++++++++++++++++++++++++++++++++
- mm/swap.c                      |  5 +++
- 2 files changed, 94 insertions(+)
- create mode 100644 include/trace/events/pagemap.h
+ mm/swap.c | 41 +++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 39 insertions(+), 2 deletions(-)
 
-diff --git a/include/trace/events/pagemap.h b/include/trace/events/pagemap.h
-new file mode 100644
-index 0000000..1c9fabd
---- /dev/null
-+++ b/include/trace/events/pagemap.h
-@@ -0,0 +1,89 @@
-+#undef TRACE_SYSTEM
-+#define TRACE_SYSTEM pagemap
-+
-+#if !defined(_TRACE_PAGEMAP_H) || defined(TRACE_HEADER_MULTI_READ)
-+#define _TRACE_PAGEMAP_H
-+
-+#include <linux/tracepoint.h>
-+#include <linux/mm.h>
-+
-+#define	PAGEMAP_MAPPED		0x0001u
-+#define PAGEMAP_ANONYMOUS	0x0002u
-+#define PAGEMAP_FILE		0x0004u
-+#define PAGEMAP_SWAPCACHE	0x0008u
-+#define PAGEMAP_SWAPBACKED	0x0010u
-+#define PAGEMAP_MAPPEDDISK	0x0020u
-+#define PAGEMAP_BUFFERS		0x0040u
-+
-+#define trace_pagemap_flags(page) ( \
-+	(PageAnon(page)		? PAGEMAP_ANONYMOUS  : PAGEMAP_FILE) | \
-+	(page_mapped(page)	? PAGEMAP_MAPPED     : 0) | \
-+	(PageSwapCache(page)	? PAGEMAP_SWAPCACHE  : 0) | \
-+	(PageSwapBacked(page)	? PAGEMAP_SWAPBACKED : 0) | \
-+	(PageMappedToDisk(page)	? PAGEMAP_MAPPEDDISK : 0) | \
-+	(page_has_private(page) ? PAGEMAP_BUFFERS    : 0) \
-+	)
-+
-+TRACE_EVENT(mm_lru_insertion,
-+
-+	TP_PROTO(
-+		struct page *page,
-+		unsigned long pfn,
-+		int lru,
-+		unsigned long flags
-+	),
-+
-+	TP_ARGS(page, pfn, lru, flags),
-+
-+	TP_STRUCT__entry(
-+		__field(struct page *,	page	)
-+		__field(unsigned long,	pfn	)
-+		__field(int,		lru	)
-+		__field(unsigned long,	flags	)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->page	= page;
-+		__entry->pfn	= pfn;
-+		__entry->lru	= lru;
-+		__entry->flags	= flags;
-+	),
-+
-+	/* Flag format is based on page-types.c formatting for pagemap */
-+	TP_printk("page=%p pfn=%lu lru=%d flags=%s%s%s%s%s%s",
-+			__entry->page,
-+			__entry->pfn,
-+			__entry->lru,
-+			__entry->flags & PAGEMAP_MAPPED		? "M" : " ",
-+			__entry->flags & PAGEMAP_ANONYMOUS	? "a" : "f",
-+			__entry->flags & PAGEMAP_SWAPCACHE	? "s" : " ",
-+			__entry->flags & PAGEMAP_SWAPBACKED	? "b" : " ",
-+			__entry->flags & PAGEMAP_MAPPEDDISK	? "d" : " ",
-+			__entry->flags & PAGEMAP_BUFFERS	? "B" : " ")
-+);
-+
-+TRACE_EVENT(mm_lru_activate,
-+
-+	TP_PROTO(struct page *page, unsigned long pfn),
-+
-+	TP_ARGS(page, pfn),
-+
-+	TP_STRUCT__entry(
-+		__field(struct page *,	page	)
-+		__field(unsigned long,	pfn	)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->page	= page;
-+		__entry->pfn	= pfn;
-+	),
-+
-+	/* Flag format is based on page-types.c formatting for pagemap */
-+	TP_printk("page=%p pfn=%lu", __entry->page, __entry->pfn)
-+
-+);
-+
-+#endif /* _TRACE_PAGEMAP_H */
-+
-+/* This part must be outside protection */
-+#include <trace/define_trace.h>
 diff --git a/mm/swap.c b/mm/swap.c
-index dfd7d71..53c9ceb 100644
+index 868b493..c53d161 100644
 --- a/mm/swap.c
 +++ b/mm/swap.c
-@@ -34,6 +34,9 @@
- 
- #include "internal.h"
- 
-+#define CREATE_TRACE_POINTS
-+#include <trace/events/pagemap.h>
-+
- /* How many pages do we try to swap or page in/out together? */
- int page_cluster;
- 
-@@ -384,6 +387,7 @@ static void __activate_page(struct page *page, struct lruvec *lruvec,
- 		SetPageActive(page);
- 		lru += LRU_ACTIVE;
- 		add_page_to_lru_list(page, lruvec, lru);
-+		trace_mm_lru_activate(page, page_to_pfn(page));
- 
- 		__count_vm_event(PGACTIVATE);
- 		update_page_reclaim_stat(lruvec, file, 1);
-@@ -808,6 +812,7 @@ static void __pagevec_lru_add_fn(struct page *page, struct lruvec *lruvec,
- 		SetPageActive(page);
- 	add_page_to_lru_list(page, lruvec, lru);
- 	update_page_reclaim_stat(lruvec, file, active);
-+	trace_mm_lru_insertion(page, page_to_pfn(page), lru, trace_pagemap_flags(page));
+@@ -432,6 +432,33 @@ void activate_page(struct page *page)
  }
+ #endif
  
++static void __lru_cache_activate_page(struct page *page)
++{
++	struct pagevec *pvec = &get_cpu_var(lru_add_pvec);
++	int i;
++
++	/*
++	 * Search backwards on the optimistic assumption that the page being
++	 * activated has just been added to this pagevec. Note that only
++	 * the local pagevec is examined as a !PageLRU page could be in the
++	 * process of being released, reclaimed, migrated or on a remote
++	 * pagevec that is currently being drained. Furthermore, marking
++	 * a remote pagevec's page PageActive potentially hits a race where
++	 * a page is marked PageActive just after it is added to the inactive
++	 * list causing accounting errors and BUG_ON checks to trigger.
++	 */
++	for (i = pagevec_count(pvec) - 1; i >= 0; i--) {
++		struct page *pagevec_page = pvec->pages[i];
++
++		if (pagevec_page == page) {
++			SetPageActive(page);
++			break;
++		}
++	}
++
++	put_cpu_var(lru_add_pvec);
++}
++
  /*
+  * Mark a page as having seen activity.
+  *
+@@ -442,8 +469,18 @@ void activate_page(struct page *page)
+ void mark_page_accessed(struct page *page)
+ {
+ 	if (!PageActive(page) && !PageUnevictable(page) &&
+-			PageReferenced(page) && PageLRU(page)) {
+-		activate_page(page);
++			PageReferenced(page)) {
++
++		/*
++		 * If the page is on the LRU, queue it for activation via
++		 * activate_page_pvecs. Otherwise, assume the page is on a
++		 * pagevec, mark it active and it'll be moved to the active
++		 * LRU on the next drain.
++		 */
++		if (PageLRU(page))
++			activate_page(page);
++		else
++			__lru_cache_activate_page(page);
+ 		ClearPageReferenced(page);
+ 	} else if (!PageReferenced(page)) {
+ 		SetPageReferenced(page);
 -- 
 1.8.1.4
 
