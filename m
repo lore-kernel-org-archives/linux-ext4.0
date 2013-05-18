@@ -1,71 +1,80 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH] xfstests: test data integrity under disk failure
-Date: Sat, 18 May 2013 16:13:25 +0400
-Message-ID: <878v3cv63e.fsf@openvz.org>
-References: <1368706052-24391-1-git-send-email-dmonakhov@openvz.org> <20130516233153.GI24635@dastard>
+From: "Sidorov, Andrei" <Andrei.Sidorov@arrisi.com>
+Subject: Re: Aw: Re: Ext4: Slow performance on first write after mount
+Date: Sat, 18 May 2013 20:34:02 +0000
+Message-ID: <C0F0BC787567C848B2C90989451123DAE3CB76@ATLEXMBX4.ARRS.ARRISI.com>
+References: <1323812284.643758.1368874202987.JavaMail.ngmail@webmail11.arcor-online.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: "frankcmoeller@arcor.de" <frankcmoeller@arcor.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-la0-f54.google.com ([209.85.215.54]:48910 "EHLO
-	mail-la0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753615Ab3ERMNb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 18 May 2013 08:13:31 -0400
-In-Reply-To: <20130516233153.GI24635@dastard>
+Received: from ironmail.arrisi.com ([216.234.147.20]:48591 "EHLO arrisi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1752988Ab3ERUeU convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 18 May 2013 16:34:20 -0400
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 17 May 2013 09:31:53 +1000, Dave Chinner <david@fromorbit.com> wrote:
-> On Thu, May 16, 2013 at 04:07:32PM +0400, Dmitry Monakhov wrote:
-> > Parallels team have old good tool called hwflush-check which is server/client
-> > application for testing data integrity under system/disk failure conditions.
-> > Usually we run hwflush-check on two different hosts and use PMU to trigger real
-> > power failure of the client as a whole unit. This tests may be used for
-> > SSD checking (some of them are known to have probelms with hwflush).
-> > I hope it will be good to share it with community.
-> > 
-> > This tests simulate just one disk failure while client system should
-> > survive this failure. This test extend idea of shared/305.
-> > 1) Run hwflush-check server and client on same host as usual
-> > 2) Simulare disk failure via blkdev failt injection API aka 'make-it-fail'
-> > 3) Umount failed device
-> > 4) Makes disk operatable again
-> > 5) Mount filesystem
-> > 3) Check data integrity
-> 
-> So, for local disk failure, why do we need a client/server network
-> architecture? That just complicates the code, and AFAICT
-> 
-> all the client does is send report report packets to server which
-> contain an id number that is kept in memory. If on restart of the
-> client after failure the ID in the report packet doesn't match what
-> the server wants, then it fails the test.
-> 
-> So, why is the server needed here? Just dump the IDs the client
-> writes to the file on a device not being tested, and either diff
-> them against a golden image or run a check to see all the IDs are
-> monotonically increasing. That removes all the networking code from
-> the test, the need for a client/server architecture, etc, and makes
-> the test far easier to review
-In fact the reason is quite simple. Initially the this tool was designed
-for real disk cache testing under power failure conditions. And want to
-share it with community. Off course it is possible to simplify things 
-for 'one hose' case but it is not too big. Let's review it one and keep
-it simple but useful not just for local but also for real power failure
-tests.
-Fairly to say that initial idea was to add persistent state to FIO.
-But logic starts to getting too complex so we write hwflush-check.
+Frank,
 
-> 
-> Cheers,
-> 
-> Dave.
-> -- 
-> Dave Chinner
-> david@fromorbit.com
+Well, the main point was to use bigalloc. Unfortunately it requires
+reformat.
+W/o bigalloc there will be ~7800 block groups for 1T drive. Those groups
+take 32M of ondisk data and up to 64M when it comes to RAM because of
+runtime buddy bitmaps. I don't think it worth storing buddy bitmaps on
+drive. It's not a surprise it can take long time to read lots of block
+bitmaps scattered over drive and construct buddies out of them. And it's
+not a surprise some these pages are evicted under high memory pressure.
+With bigalloc 1M cluster size you get 256 times less metadata (128K
+instead of 32M) and you get all the benefits of faster allocate,
+truncate and lesser fragmentation.
+
+Yes, you don't know file size in advance, but speculating say each 128M
+is clearly a benefit. truncate to real file size once recording finished
+to release unused preallocated space.
+There are some caveats with O_DIRECT, but it is faster if done correctly.
+
+Regards,
+Andrei.
+
+On 18.05.2013 03:50, frankcmoeller@arcor.de wrote:
+> Hi Andrei,
+>
+> thanks for your quick answer!
+> Perhaps you understood me wrong. The general write performance is quite good. We can record more than 4 HD channels at the same time without problems. Except the problems with the first write after mount. And there are also some users which have problems 1-2 times during a recording.
+> I think the ext4 group initialization is the main problem, because it takes so long (as written before: around 1300 groups per second). Why don't you store the gathered informations on disk when a umount takes place?
+>
+> With fallocate the group initialization is partly made before first write. This helps, but it's no solution, because the finally file size is unknown. So I cannot preallocate space for the complete file. And after the preallocated space is consumed the same problem with the initialization arises until all groups are initialized.
+>
+> I also made some tests with O_DIRECT (my first tests ever). Perhaps I did something wrong, but it isn't very fast. And you have to take care about alignment and there are several threads in the internet which explain why you shouldn't use it (or only in very special situations and I don't think that my situation is one of them). And ext4 group initialization takes also place when using O_DIRECT (as said before perhaps I did something wrong).
+>
+> Regards,
+> Frank
+>
+> ----- Original Nachricht ----
+> Von:     "Sidorov, Andrei" <Andrei.Sidorov@arrisi.com>
+> An:      "frankcmoeller@arcor.de" <frankcmoeller@arcor.de>, ext4 development <linux-ext4@vger.kernel.org>
+> Datum:   17.05.2013 23:18
+> Betreff: Re: Ext4: Slow performance on first write after mount
+>
+>> Hi Frank,
+>>
+>> Consider using bigalloc feature (requires reformat), preallocate space
+>> with fallocate and use O_DIRECT for reads/writes. However, 188k writes
+>> are too small for good throughput with O_DIRECT. You might also want to
+>> adjust max_sectors_kb to something larger than 512k.
+>>
+>> We're doing 6in+6out 20Mbps streams just fine.
+>>
+>> Regards,
+>> Andrei.
+>>
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
+
