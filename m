@@ -1,96 +1,74 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH] xfstests: test data integrity under disk failure
-Date: Sun, 19 May 2013 11:32:09 +1000
-Message-ID: <20130519013209.GG6495@dastard>
-References: <1368706052-24391-1-git-send-email-dmonakhov@openvz.org>
-	<20130516233153.GI24635@dastard> <878v3cv63e.fsf@openvz.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, xfs@oss.sgi.com
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-In-Reply-To: <878v3cv63e.fsf@openvz.org>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: Aw: Re: Ext4: Slow performance on first write after mount
+Date: Sat, 18 May 2013 19:49:03 -0600
+Message-ID: <BDA7A734-1326-4977-8068-FCEF1CF84CC1@dilger.ca>
+References: <1323812284.643758.1368874202987.JavaMail.ngmail@webmail11.arcor-online.net>
+Mime-Version: 1.0 (1.0)
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: "frankcmoeller@arcor.de" <frankcmoeller@arcor.de>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pd0-f180.google.com ([209.85.192.180]:58581 "EHLO
+	mail-pd0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753719Ab3ESBtG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 18 May 2013 21:49:06 -0400
+Received: by mail-pd0-f180.google.com with SMTP id 10so3323756pdc.11
+        for <linux-ext4@vger.kernel.org>; Sat, 18 May 2013 18:49:05 -0700 (PDT)
+In-Reply-To: <1323812284.643758.1368874202987.JavaMail.ngmail@webmail11.arcor-online.net>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, May 18, 2013 at 04:13:25PM +0400, Dmitry Monakhov wrote:
-> On Fri, 17 May 2013 09:31:53 +1000, Dave Chinner <david@fromorbit.com> wrote:
-> > On Thu, May 16, 2013 at 04:07:32PM +0400, Dmitry Monakhov wrote:
-> > > Parallels team have old good tool called hwflush-check which is server/client
-> > > application for testing data integrity under system/disk failure conditions.
-> > > Usually we run hwflush-check on two different hosts and use PMU to trigger real
-> > > power failure of the client as a whole unit. This tests may be used for
-> > > SSD checking (some of them are known to have probelms with hwflush).
-> > > I hope it will be good to share it with community.
-> > > 
-> > > This tests simulate just one disk failure while client system should
-> > > survive this failure. This test extend idea of shared/305.
-> > > 1) Run hwflush-check server and client on same host as usual
-> > > 2) Simulare disk failure via blkdev failt injection API aka 'make-it-fail'
-> > > 3) Umount failed device
-> > > 4) Makes disk operatable again
-> > > 5) Mount filesystem
-> > > 3) Check data integrity
-> > 
-> > So, for local disk failure, why do we need a client/server network
-> > architecture? That just complicates the code, and AFAICT
-> > 
-> > all the client does is send report report packets to server which
-> > contain an id number that is kept in memory. If on restart of the
-> > client after failure the ID in the report packet doesn't match what
-> > the server wants, then it fails the test.
-> > 
-> > So, why is the server needed here? Just dump the IDs the client
-> > writes to the file on a device not being tested, and either diff
-> > them against a golden image or run a check to see all the IDs are
-> > monotonically increasing. That removes all the networking code from
-> > the test, the need for a client/server architecture, etc, and makes
-> > the test far easier to review
-> In fact the reason is quite simple. Initially the this tool was designed
-> for real disk cache testing under power failure conditions. And want to
-> share it with community. Off course it is possible to simplify things 
-> for 'one hose' case but it is not too big. Let's review it one and keep
-> it simple but useful not just for local but also for real power failure
-> tests.
+On 2013-05-18, at 4:50, frankcmoeller@arcor.de wrote:
+> thanks for your quick answer!
+> Perhaps you understood me wrong. The general write performance is quite good. We can record more than 4 HD channels at the same time without problems. Except the problems with the first write after mount. And there are also some users which have problems 1-2 times during a recording.
+> I think the ext4 group initialization is the main problem, because it takes so long (as written before: around 1300 groups per second). Why don't you store the gathered informations on disk when a umount takes place?
 
-It's more that you can't actually use for real power fail testing in
-xfstests. Keeping stuff in xfstests that the harness won't or can't
-ever use is just an added maintenance burden that we don't need.
-xfstests is not a dumping ground for random test source code that
-*might* be useful outside xfstests.
+Part of the problem is that filesystems are rarely unmounted cleanly, so it means that this information would need to be updated periodically to disk so that it is available after a crash.
 
-Regression tests need to be as simple as possible so their
-functioning is obvious and easy to understand. There is nothing
-worse than a test failing and having to spend time determining if
-the test itself is failing or whether it's uncovered a real bug or
-not. And anytime I see a test with 500 lines of test infrasrtucture
-that can be replaced with a printf() call and some redirection in
-the test harness I see a test that is going to be trouble....
+I wouldn't object to some kind of "lazy" updating of group information on disk that at least gives the newly-mounted filesystem a rough idea of what each group's usage is. It wouldn't have to be totally accurate (it wouldn't replace the bitmaps), but maybe 2 bits per group would be enough as a starting point?
 
-> Fairly to say that initial idea was to add persistent state to FIO.
-> But logic starts to getting too complex so we write hwflush-check.
+For a 32 TB filesystem that would be about 16 4kB blocks of bits that would be updated periodically (e.g. every five minutes or so). Since the allocator will typically work in successive groups that might not cause too much churn. 
 
-Sure, and now you want to put it in xfstests and the hwflush-check
-infrastructure is just too complex....
+> With fallocate the group initialization is partly made before first write. This helps, but it's no solution, because the finally file size is unknown.
 
-Cheers,
+It would be possible to fallocate() at some expected size (e.g. average file size) and then either truncate off the unused space, or fallocate() some more in another thread when you are close to tunning out. 
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+> So I cannot preallocate space for the complete file. And after the preallocated space is consumed the same problem with the initialization arises until all groups are initialized.
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+If the fallocate() is done in a separate thread the latency can be hidden from the main application?
+> 
+> I also made some tests with O_DIRECT (my first tests ever). Perhaps I did something wrong, but it isn't very fast.
+
+That is true, and depends heavily on your workload. 
+
+Cheers, Andreas 
+
+> And you have to take care about alignment and there are several threads in the internet which explain why you shouldn't use it (or only in very special situations and I don't think that my situation is one of them). And ext4 group initialization takes also place when using O_DIRECT (as said before perhaps I did something wrong).
+> 
+> Regards,
+> Frank
+> 
+> ----- Original Nachricht ----
+> Von:     "Sidorov, Andrei" <Andrei.Sidorov@arrisi.com>
+> An:      "frankcmoeller@arcor.de" <frankcmoeller@arcor.de>, ext4 development <linux-ext4@vger.kernel.org>
+> Datum:   17.05.2013 23:18
+> Betreff: Re: Ext4: Slow performance on first write after mount
+> 
+>> Hi Frank,
+>> 
+>> Consider using bigalloc feature (requires reformat), preallocate space
+>> with fallocate and use O_DIRECT for reads/writes. However, 188k writes
+>> are too small for good throughput with O_DIRECT. You might also want to
+>> adjust max_sectors_kb to something larger than 512k.
+>> 
+>> We're doing 6in+6out 20Mbps streams just fine.
+>> 
+>> Regards,
+>> Andrei.
+>> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
