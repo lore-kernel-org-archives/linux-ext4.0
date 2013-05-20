@@ -1,81 +1,57 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: BUG at fs/ext4/inode.c:1590!
-Date: Mon, 20 May 2013 07:32:16 -0500
-Message-ID: <519A17D0.4050807@redhat.com>
-References: <5199514D.5090606@gmx.de> <20130519235504.GA8404@thunk.org> <51998A31.7060200@redhat.com> <5199D615.20106@gmx.de>
+Subject: Re: Ext4: Slow performance on first write after mount
+Date: Mon, 20 May 2013 07:37:58 -0500
+Message-ID: <519A1926.4050408@redhat.com>
+References: <1679869241.585607.1368809483337.JavaMail.ngmail@webmail12.arcor-online.net> <20130519140023.GB7183@thunk.org> <FB0094B8-15F8-4190-ABC6-2C06C6BC2521@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	"frankcmoeller@arcor.de" <frankcmoeller@arcor.de>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:64660 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:21942 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754741Ab3ETMcV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 20 May 2013 08:32:21 -0400
-In-Reply-To: <5199D615.20106@gmx.de>
+	id S1756378Ab3ETMiE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 20 May 2013 08:38:04 -0400
+In-Reply-To: <FB0094B8-15F8-4190-ABC6-2C06C6BC2521@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 5/20/13 2:51 AM, Toralf F=C3=B6rster wrote:
-> On 05/20/2013 04:28 AM, Eric Sandeen wrote:
->> It's probably possible that it's memory corruption too.
+On 5/20/13 1:39 AM, Andreas Dilger wrote:
+> On 2013-05-19, at 8:00, Theodore Ts'o <tytso@mit.edu> wrote:
+>> On Fri, May 17, 2013 at 06:51:23PM +0200, frankcmoeller@arcor.de wrote:
+>>> - Why do you throw away buffer cache and don't store it on disk during umount? The initialization of the buffer cache is quite awful for application which need a specific write throughput.
+>>> - A workaround would be to read whole /proc/.../mb_groups file right after every mount. Correct?
 >>
->>>> Can you replicate it?   Do you have the corrupted file system?
->> Right, these bugs need to be narrowed down to be useful.
+>> Simply adding "cat /proc/fs/<dev>/mb_groups > /dev/null" to one of the
+>> /etc/init.d scripts, or to /etc/rc.local is probably the simplest fix,
+>> yes.
 >>
-> When the bug occurred I was neither able to cd into the directory whe=
-re
-> the log files resides nor I could do a sync. psgrep and friends hang =
-too.
-> On the other hand I was able to write an email with thunderbird and s=
-end
-> it out before I had to power off the system - sysrq key alt+print+b
-> didn't worked too.
->=20
->> Does trinity start w/ a random seed, so you can restart?  Or better
->> yet, restart w/ that seed and show the last 20 syscalls before the
->> bug, etc?
-> yes - trinity uses a randomly choosen seed. SO a replay is possible l=
-ater.
-> But because the bug occurred after 3 hours /me thinks that a simple
-> replay with just few syscalls won't work.
+>>> - I can try to add a mount option to initialize the cache at mount time. Would you be interested in such a patch?
+>>
+>> Given the simple nature of the above workaround, it's not obvious to
+>> me that trying to make file system format changes, or even adding a
+>> new mount option, is really worth it.  This is especially true given
+>> that mount -a is sequential so if there are a large number of big file
+>> systems, using this as a mount option would be slow down the boot
+>> significantly.  It would be better to do this parallel, which you
+>> could do in userspace much more easily using the "cat
+>> /proc/fs/<dev>/mb_groups" workaround.
+> 
+> Since we already have a thread starting at mount time to check the
+> inode table zeroing, it would also be possible to co-opt this thread
+> for preloading the group metadata from the bitmaps. 
 
-Then maybe it needs an option to say "start with this seed, but only
-start operation at the Nth syscall in the series" where N is indicated =
-by
-the last bit of info in the logs.
+Only up to a point, I hope; if the fs is so big that you start dropping the
+first ones that were read, it'd be pointless.  So it'd need some nuance,
+at the very least least.
 
-i.e. rather than start with seed S and do 10,000 operations and crash,
-start with seed S, skip the first 9,990 operations, and do the next 10.
-If that doesn't work, skip the first 9,900 ... back up until you get
-a small set of reproducing steps.
+How much memory are you willing to dedicate to this, and how much does
+it really help long-term, given that it's not pinned in any way?
 
->> "I threw random garbage at the kernel and something fell off after a
->> few hours" is a bit vague.  ;)
->=20
-> yes - I do know that the bug report lacks data to easy reproduce it -
-> OTOH I thought it is better to report that then to ignore.
+As long as we don't have efficiently-searchable on-disk freespace info
+it seems like anything else is just a workaround, I'm afraid.
 
-Possibly.  :)  (fwiw I think davej asks that he be cc'd on bugs that
-it finds as well)
-
-> To speed up things for fuzzy tests I do use file systems living in a
-> tempfs. I'll change my scripts to hold at least the main log file of
-> trinity on a hard disk and came back if I do have useful log data too=
-=2E
-
-Ok, I do think it's worth testing, but it's not actionable this way.
-
-Given the fact that it's a purely random and usually intended to be
-invalid input, it's going to be something that's never been seen
-before, and very hard to solve by inspection.
-
-Thanks,
 -Eric
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
