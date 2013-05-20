@@ -1,169 +1,184 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/3] e2fsck: fix gcc -Wall nits
-Date: Mon, 20 May 2013 09:59:02 -0400
-Message-ID: <1369058343-1988-2-git-send-email-tytso@mit.edu>
-References: <1369058343-1988-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 1/3] libext2fs: fix gcc -Wall nits
+Date: Mon, 20 May 2013 09:59:01 -0400
+Message-ID: <1369058343-1988-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:49957 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:49955 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756933Ab3ETN7E (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1756930Ab3ETN7E (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Mon, 20 May 2013 09:59:04 -0400
-In-Reply-To: <1369058343-1988-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-[For 1.43 branch]
-
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- e2fsck/journal.c  | 15 +++++++++------
- e2fsck/pass5.c    |  6 ------
- e2fsck/recovery.c |  4 ++--
- e2fsck/rehash.c   |  5 ++---
- 4 files changed, 13 insertions(+), 17 deletions(-)
+ lib/ext2fs/blkmap64_rb.c |  4 +++-
+ lib/ext2fs/crc32c.c      |  6 +++---
+ lib/ext2fs/csum.c        | 22 ++++++++++++----------
+ lib/ext2fs/ext2fs.h      |  4 +++-
+ 4 files changed, 21 insertions(+), 15 deletions(-)
 
-diff --git a/e2fsck/journal.c b/e2fsck/journal.c
-index 2ca19b8..45d9462 100644
---- a/e2fsck/journal.c
-+++ b/e2fsck/journal.c
-@@ -41,7 +41,8 @@ static int bh_count = 0;
- #undef USE_INODE_IO
+diff --git a/lib/ext2fs/blkmap64_rb.c b/lib/ext2fs/blkmap64_rb.c
+index 9c1abc5..d6442fc 100644
+--- a/lib/ext2fs/blkmap64_rb.c
++++ b/lib/ext2fs/blkmap64_rb.c
+@@ -862,7 +862,9 @@ static void rb_print_stats(ext2fs_generic_bitmap bitmap)
+ 		eff);
+ }
+ #else
+-static void rb_print_stats(ext2fs_generic_bitmap bitmap){}
++static void rb_print_stats(ext2fs_generic_bitmap bitmap EXT2FS_ATTR((unused)))
++{
++}
+ #endif
  
- /* Checksumming functions */
--int e2fsck_journal_verify_csum_type(journal_t *j, journal_superblock_t *jsb)
-+static int e2fsck_journal_verify_csum_type(journal_t *j,
-+					   journal_superblock_t *jsb)
+ struct ext2_bitmap_ops ext2fs_blkmap64_rbtree = {
+diff --git a/lib/ext2fs/crc32c.c b/lib/ext2fs/crc32c.c
+index 4e72eda..624ad77 100644
+--- a/lib/ext2fs/crc32c.c
++++ b/lib/ext2fs/crc32c.c
+@@ -125,7 +125,7 @@ crc32_body(uint32_t crc, unsigned char const *buf, size_t len,
+ 	len = rem_len;
+ 	/* And the last few bytes */
+ 	if (len) {
+-		uint8_t *p = (uint8_t *)(b + 1) - 1;
++		const uint8_t *p = (const uint8_t *)(b + 1) - 1;
+ 		do {
+ 			DO_CRC(*++p); /* use pre increment for speed */
+ 		} while (--len);
+@@ -146,7 +146,7 @@ crc32_body(uint32_t crc, unsigned char const *buf, size_t len,
+  */
+ static inline uint32_t crc32_le_generic(uint32_t crc, unsigned char const *p,
+ 					size_t len, const uint32_t (*tab)[256],
+-					uint32_t polynomial)
++					uint32_t polynomial EXT2FS_ATTR((unused)))
  {
- 	if (!JFS_HAS_INCOMPAT_FEATURE(j, JFS_FEATURE_INCOMPAT_CSUM_V2))
- 		return 1;
-@@ -49,7 +50,7 @@ int e2fsck_journal_verify_csum_type(journal_t *j, journal_superblock_t *jsb)
- 	return jsb->s_checksum_type == JBD2_CRC32C_CHKSUM;
+ #if CRC_LE_BITS == 1
+ 	int i;
+@@ -197,7 +197,7 @@ uint32_t ext2fs_crc32c_le(uint32_t crc, unsigned char const *p, size_t len)
+  */
+ static inline uint32_t crc32_be_generic(uint32_t crc, unsigned char const *p,
+ 					size_t len, const uint32_t (*tab)[256],
+-					uint32_t polynomial)
++					uint32_t polynomial EXT2FS_ATTR((unused)))
+ {
+ #if CRC_BE_BITS == 1
+ 	int i;
+diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
+index ebd544f..607f74a 100644
+--- a/lib/ext2fs/csum.c
++++ b/lib/ext2fs/csum.c
+@@ -73,7 +73,8 @@ int ext2fs_verify_csum_type(ext2_filsys fs, struct ext2_super_block *sb)
+ 	return sb->s_checksum_type == EXT2_CRC32C_CHKSUM;
  }
  
--static __u32 e2fsck_journal_sb_csum(journal_t *j, journal_superblock_t *jsb)
-+static __u32 e2fsck_journal_sb_csum(journal_superblock_t *jsb)
+-static __u32 ext2fs_superblock_csum(ext2_filsys fs, struct ext2_super_block *sb)
++static __u32 ext2fs_superblock_csum(ext2_filsys fs EXT2FS_ATTR((unused)),
++				    struct ext2_super_block *sb)
  {
- 	__u32 crc, old_crc;
+ 	int offset = offsetof(struct ext2_super_block, s_checksum);
  
-@@ -62,7 +63,8 @@ static __u32 e2fsck_journal_sb_csum(journal_t *j, journal_superblock_t *jsb)
- 	return crc;
- }
- 
--int e2fsck_journal_sb_csum_verify(journal_t *j, journal_superblock_t *jsb)
-+static int e2fsck_journal_sb_csum_verify(journal_t *j,
-+					 journal_superblock_t *jsb)
- {
- 	__u32 provided, calculated;
- 
-@@ -70,19 +72,20 @@ int e2fsck_journal_sb_csum_verify(journal_t *j, journal_superblock_t *jsb)
- 		return 1;
- 
- 	provided = ext2fs_be32_to_cpu(jsb->s_checksum);
--	calculated = e2fsck_journal_sb_csum(j, jsb);
-+	calculated = e2fsck_journal_sb_csum(jsb);
- 
- 	return provided == calculated;
- }
- 
--errcode_t e2fsck_journal_sb_csum_set(journal_t *j, journal_superblock_t *jsb)
-+static errcode_t e2fsck_journal_sb_csum_set(journal_t *j,
-+					    journal_superblock_t *jsb)
- {
- 	__u32 crc;
- 
- 	if (!JFS_HAS_INCOMPAT_FEATURE(j, JFS_FEATURE_INCOMPAT_CSUM_V2))
- 		return 0;
- 
--	crc = e2fsck_journal_sb_csum(j, jsb);
-+	crc = e2fsck_journal_sb_csum(jsb);
- 	jsb->s_checksum = ext2fs_cpu_to_be32(crc);
+@@ -108,7 +109,8 @@ errcode_t ext2fs_superblock_csum_set(ext2_filsys fs,
  	return 0;
  }
-diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
-index 86b5225..51e4683 100644
---- a/e2fsck/pass5.c
-+++ b/e2fsck/pass5.c
-@@ -82,7 +82,6 @@ void e2fsck_pass5(e2fsck_t ctx)
- static void check_inode_bitmap_checksum(e2fsck_t ctx)
- {
- 	struct problem_context	pctx;
--	struct ext4_group_desc	*gdp;
- 	char		*buf;
- 	dgrp_t		i;
- 	int		nbytes;
-@@ -112,8 +111,6 @@ static void check_inode_bitmap_checksum(e2fsck_t ctx)
- 			continue;
  
- 		ino_itr = 1 + (i * (nbytes << 3));
--		gdp = (struct ext4_group_desc *)ext2fs_group_desc(ctx->fs,
--				ctx->fs->group_desc, i);
- 		retval = ext2fs_get_inode_bitmap_range2(ctx->fs->inode_map,
- 							ino_itr, nbytes << 3,
- 							buf);
-@@ -141,7 +138,6 @@ static void check_inode_bitmap_checksum(e2fsck_t ctx)
- static void check_block_bitmap_checksum(e2fsck_t ctx)
- {
- 	struct problem_context	pctx;
--	struct ext4_group_desc	*gdp;
- 	char		*buf;
- 	dgrp_t		i;
- 	int		nbytes;
-@@ -173,8 +169,6 @@ static void check_block_bitmap_checksum(e2fsck_t ctx)
- 		blk_itr = EXT2FS_B2C(ctx->fs,
- 				     ctx->fs->super->s_first_data_block) +
- 			  (i * (nbytes << 3));
--		gdp = (struct ext4_group_desc *)ext2fs_group_desc(ctx->fs,
--				ctx->fs->group_desc, i);
- 		retval = ext2fs_get_block_bitmap_range2(ctx->fs->block_map,
- 							blk_itr, nbytes << 3,
- 							buf);
-diff --git a/e2fsck/recovery.c b/e2fsck/recovery.c
-index 7712185..b04a204 100644
---- a/e2fsck/recovery.c
-+++ b/e2fsck/recovery.c
-@@ -183,7 +183,7 @@ static int jbd2_descr_block_csum_verify(journal_t *j,
- 	if (!JFS_HAS_INCOMPAT_FEATURE(j, JFS_FEATURE_INCOMPAT_CSUM_V2))
- 		return 1;
+-static errcode_t ext2fs_ext_attr_block_csum(ext2_filsys fs, ext2_ino_t inum,
++static errcode_t ext2fs_ext_attr_block_csum(ext2_filsys fs,
++					    ext2_ino_t inum EXT2FS_ATTR((unused)),
+ 					    blk64_t block,
+ 					    struct ext2_ext_attr_header *hdr,
+ 					    __u32 *crc)
+@@ -190,11 +192,11 @@ static errcode_t __get_dx_countlimit(ext2_filsys fs,
+ 	if (rec_len == fs->blocksize && translate(dirent->name_len) == 0)
+ 		count_offset = 8;
+ 	else if (rec_len == 12) {
+-		dp = (struct ext2_dir_entry *)(((void *)dirent) + rec_len);
++		dp = (struct ext2_dir_entry *)(((char *)dirent) + rec_len);
+ 		rec_len = translate(dp->rec_len);
+ 		if (rec_len != fs->blocksize - 12)
+ 			return EXT2_ET_DB_NOT_FOUND;
+-		root = (struct ext2_dx_root_info *)(((void *)dp + 12));
++		root = (struct ext2_dx_root_info *)(((char *)dp + 12));
+ 		if (root->reserved_zero ||
+ 		    root->info_length != sizeof(struct ext2_dx_root_info))
+ 			return EXT2_ET_DB_NOT_FOUND;
+@@ -202,7 +204,7 @@ static errcode_t __get_dx_countlimit(ext2_filsys fs,
+ 	} else
+ 		return EXT2_ET_DB_NOT_FOUND;
  
--	tail = (struct journal_block_tail *)(buf + j->j_blocksize -
-+	tail = (struct journal_block_tail *)((char *)buf + j->j_blocksize -
- 			sizeof(struct journal_block_tail));
- 	provided = tail->t_checksum;
- 	tail->t_checksum = 0;
-@@ -821,7 +821,7 @@ static int jbd2_revoke_block_csum_verify(journal_t *j,
- 	if (!JFS_HAS_INCOMPAT_FEATURE(j, JFS_FEATURE_INCOMPAT_CSUM_V2))
- 		return 1;
+-	c = (struct ext2_dx_countlimit *)(((void *)dirent) + count_offset);
++	c = (struct ext2_dx_countlimit *)(((char *)dirent) + count_offset);
+ 	max_sane_entries = (fs->blocksize - count_offset) /
+ 			   sizeof(struct ext2_dx_entry);
+ 	if (ext2fs_le16_to_cpu(c->limit) > max_sane_entries ||
+@@ -251,7 +253,7 @@ static errcode_t __get_dirent_tail(ext2_filsys fs,
  
--	tail = (struct journal_revoke_tail *)(buf + j->j_blocksize -
-+	tail = (struct journal_revoke_tail *)((char *)buf + j->j_blocksize -
- 			sizeof(struct journal_revoke_tail));
- 	provided = tail->r_checksum;
- 	tail->r_checksum = 0;
-diff --git a/e2fsck/rehash.c b/e2fsck/rehash.c
-index df3afab..5592e3f 100644
---- a/e2fsck/rehash.c
-+++ b/e2fsck/rehash.c
-@@ -420,8 +420,7 @@ static int duplicate_search_and_fix(e2fsck_t ctx, ext2_filsys fs,
- 
- static errcode_t copy_dir_entries(e2fsck_t ctx,
- 				  struct fill_dir_struct *fd,
--				  struct out_dir *outdir,
--				  ext2_ino_t ino)
-+				  struct out_dir *outdir)
- {
- 	ext2_filsys 		fs = ctx->fs;
- 	errcode_t		retval;
-@@ -857,7 +856,7 @@ resort:
- 	 * Copy the directory entries.  In a htree directory these
- 	 * will become the leaf nodes.
+ 	rec_len = translate(d->rec_len);
+ 	while (rec_len && !(rec_len & 0x3)) {
+-		d = (struct ext2_dir_entry *)(((void *)d) + rec_len);
++		d = (struct ext2_dir_entry *)(((char *)d) + rec_len);
+ 		if ((void *)d >= top)
+ 			break;
+ 		rec_len = translate(d->rec_len);
+@@ -315,7 +317,7 @@ int ext2fs_dirent_csum_verify(ext2_filsys fs, ext2_ino_t inum,
+ 	 * so the swapfs.c functions won't change the endianness.
  	 */
--	retval = copy_dir_entries(ctx, &fd, &outdir, ino);
-+	retval = copy_dir_entries(ctx, &fd, &outdir);
+ 	retval = ext2fs_dirent_csum(fs, inum, dirent, &calculated,
+-				    (void *)t - (void *)dirent);
++				    (char *)t - (char *)dirent);
  	if (retval)
- 		goto errout;
+ 		return 0;
+ 	return ext2fs_le32_to_cpu(t->det_checksum) == calculated;
+@@ -334,7 +336,7 @@ static errcode_t ext2fs_dirent_csum_set(ext2_filsys fs, ext2_ino_t inum,
  
+ 	/* swapfs.c functions don't change the checksum endianness */
+ 	retval = ext2fs_dirent_csum(fs, inum, dirent, &crc,
+-				    (void *)t - (void *)dirent);
++				    (char *)t - (char *)dirent);
+ 	if (retval)
+ 		return retval;
+ 	t->det_checksum = ext2fs_cpu_to_le32(crc);
+@@ -464,7 +466,7 @@ errcode_t ext2fs_dir_block_csum_set(ext2_filsys fs, ext2_ino_t inum,
+ 
+ static struct ext3_extent_tail *get_extent_tail(struct ext3_extent_header *h)
+ {
+-	return (struct ext3_extent_tail *)(((void *)h) +
++	return (struct ext3_extent_tail *)(((char *)h) +
+ 					   EXT3_EXTENT_TAIL_OFFSET(h));
+ }
+ 
+@@ -653,7 +655,7 @@ int ext2fs_inode_csum_verify(ext2_filsys fs, ext2_ino_t inum,
+ {
+ 	errcode_t retval;
+ 	__u32 provided, calculated;
+-	int i, has_hi;
++	unsigned int i, has_hi;
+ 	char *cp;
+ 
+ 	if (fs->super->s_creator_os != EXT2_OS_LINUX ||
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index cd59473..6923f34 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -963,13 +963,15 @@ extern int ext2fs_ext_attr_block_csum_verify(ext2_filsys fs, ext2_ino_t inum,
+ 					     blk64_t block,
+ 					     struct ext2_ext_attr_header *hdr);
+ #define EXT2_DIRENT_TAIL(block, blocksize) \
+-	((struct ext2_dir_entry_tail *)(((void *)(block)) + \
++	((struct ext2_dir_entry_tail *)(((char *)(block)) + \
+ 	(blocksize) - sizeof(struct ext2_dir_entry_tail)))
+ 
+ extern void ext2fs_initialize_dirent_tail(ext2_filsys fs,
+ 					  struct ext2_dir_entry_tail *t);
+ extern int ext2fs_dirent_has_tail(ext2_filsys fs,
+ 				  struct ext2_dir_entry *dirent);
++extern int ext2fs_dirent_csum_verify(ext2_filsys fs, ext2_ino_t inum,
++				     struct ext2_dir_entry *dirent);
+ extern int ext2fs_dir_block_csum_verify(ext2_filsys fs, ext2_ino_t inum,
+ 					struct ext2_dir_entry *dirent);
+ extern errcode_t ext2fs_dir_block_csum_set(ext2_filsys fs, ext2_ino_t inum,
 -- 
 1.7.12.rc0.22.gcdd159b
 
