@@ -1,426 +1,302 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/3] libext2fs: fix gcc -Wall warnings
-Date: Mon, 20 May 2013 09:58:57 -0400
-Message-ID: <1369058339-1925-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 3/3] e2fsck: fix gcc -Wall nits
+Date: Mon, 20 May 2013 09:58:59 -0400
+Message-ID: <1369058339-1925-3-git-send-email-tytso@mit.edu>
+References: <1369058339-1925-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:49953 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:49961 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756907Ab3ETN7C (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 20 May 2013 09:59:02 -0400
+	id S1756952Ab3ETN7G (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 20 May 2013 09:59:06 -0400
+In-Reply-To: <1369058339-1925-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Primarily signed vs unsigned and const warnings.
+Perhaps the most serious fix up is a type-punning warning which could
+result in miscompilation with overly enthusiastic compilers.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- debian/e2fslibs.symbols   |  1 -
- lib/ext2fs/bitops.c       |  2 +-
- lib/ext2fs/bitops.h       | 19 ++++++++-----------
- lib/ext2fs/blkmap64_rb.c  | 48 ++++++++++++++++++++++++++++-------------------
- lib/ext2fs/block.c        |  4 ++--
- lib/ext2fs/crc32c.c       |  8 ++++----
- lib/ext2fs/gen_bitmap64.c |  2 +-
- lib/ext2fs/mmp.c          |  3 ++-
- lib/ext2fs/rbtree.c       |  4 ++--
- lib/ext2fs/rbtree.h       |  4 ++--
- lib/ext2fs/rw_bitmaps.c   |  3 ++-
- lib/ext2fs/symlink.c      |  2 +-
- 12 files changed, 54 insertions(+), 46 deletions(-)
+ e2fsck/journal.c    |  2 +-
+ e2fsck/message.c    |  3 +--
+ e2fsck/pass1.c      | 15 ++++++++-------
+ e2fsck/pass1b.c     | 35 ++++++++++++++++++-----------------
+ e2fsck/pass2.c      |  2 +-
+ e2fsck/recovery.c   | 16 ++++++++++------
+ e2fsck/rehash.c     |  9 ++++-----
+ e2fsck/sigcatcher.c |  3 ++-
+ e2fsck/super.c      |  2 +-
+ 9 files changed, 46 insertions(+), 41 deletions(-)
 
-diff --git a/debian/e2fslibs.symbols b/debian/e2fslibs.symbols
-index b8eea52..5784a25 100644
---- a/debian/e2fslibs.symbols
-+++ b/debian/e2fslibs.symbols
-@@ -352,7 +352,6 @@ libext2fs.so.2 e2fslibs #MINVER#
-  ext2fs_open_file@Base 1.42
-  ext2fs_open_inode_scan@Base 1.37
-  ext2fs_parse_version_string@Base 1.37
-- ext2fs_print_bmap_statistics@Base 1.42.1
-  ext2fs_process_dir_block@Base 1.37
-  ext2fs_punch@Base 1.42
-  ext2fs_r_blocks_count@Base 1.42
-diff --git a/lib/ext2fs/bitops.c b/lib/ext2fs/bitops.c
-index 7c3f215..8e4c05c 100644
---- a/lib/ext2fs/bitops.c
-+++ b/lib/ext2fs/bitops.c
-@@ -142,7 +142,7 @@ unsigned int ext2fs_bitcount(const void *addr, unsigned int nbytes)
- 		res += popcount8(*cp++);
- 		nbytes--;
+diff --git a/e2fsck/journal.c b/e2fsck/journal.c
+index 69771da..6908aec 100644
+--- a/e2fsck/journal.c
++++ b/e2fsck/journal.c
+@@ -314,7 +314,7 @@ static errcode_t e2fsck_get_journal(e2fsck_t ctx, journal_t **ret_journal)
+ 					       BLOCK_FLAG_HOLE, 0,
+ 					       process_journal_block, &pb);
+ 		if ((pb.last_block + 1) * ctx->fs->blocksize <
+-		    EXT2_I_SIZE(&j_inode->i_ext2)) {
++		    (int) EXT2_I_SIZE(&j_inode->i_ext2)) {
+ 			retval = EXT2_ET_JOURNAL_TOO_SMALL;
+ 			goto try_backup_journal;
+ 		}
+diff --git a/e2fsck/message.c b/e2fsck/message.c
+index b79b895..b99473d 100644
+--- a/e2fsck/message.c
++++ b/e2fsck/message.c
+@@ -361,8 +361,7 @@ static _INLINE_ void expand_dirent_expression(FILE *f, ext2_filsys fs, char ch,
+ 					      struct problem_context *ctx)
+ {
+ 	struct ext2_dir_entry	*dirent;
+-	unsigned int rec_len;
+-	int	len;
++	unsigned int rec_len, len;
+ 
+ 	if (!ctx || !ctx->dirent)
+ 		goto no_dirent;
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index 4095703..de00638 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -1837,12 +1837,12 @@ report_problem:
+ 			}
+ 			/* The next extent should match this index's logical start */
+ 			if (extent.e_lblk != lblk) {
+-				struct ext2_extent_info info;
++				struct ext2_extent_info e_info;
+ 
+-				ext2fs_extent_get_info(ehandle, &info);
++				ext2fs_extent_get_info(ehandle, &e_info);
+ 				pctx->blk = lblk;
+ 				pctx->blk2 = extent.e_lblk;
+-				pctx->num = info.curr_level - 1;
++				pctx->num = e_info.curr_level - 1;
+ 				problem = PR_1_EXTENT_INDEX_START_INVALID;
+ 				if (fix_problem(ctx, problem, pctx))
+ 					ext2fs_extent_fix_parents(ehandle);
+@@ -1882,7 +1882,8 @@ report_problem:
+ 			}
+ 			pb->fragmented = 1;
+ 		}
+-		while (is_dir && ++pb->last_db_block < extent.e_lblk) {
++		while (is_dir && (++pb->last_db_block <
++				  (e2_blkcnt_t) extent.e_lblk)) {
+ 			pctx->errcode = ext2fs_add_dir_block2(ctx->fs->dblist,
+ 							      pb->ino, 0,
+ 							      pb->last_db_block);
+@@ -1904,7 +1905,7 @@ report_problem:
+ 			      (EXT2FS_B2C(ctx->fs, blk) ==
+ 			       EXT2FS_B2C(ctx->fs, pb->previous_block)) &&
+ 			      (blk & EXT2FS_CLUSTER_MASK(ctx->fs)) ==
+-			      (blockcnt & EXT2FS_CLUSTER_MASK(ctx->fs)))) {
++			      ((unsigned) blockcnt & EXT2FS_CLUSTER_MASK(ctx->fs)))) {
+ 				mark_block_used(ctx, blk);
+ 				pb->num_blocks++;
+ 			}
+@@ -2353,7 +2354,7 @@ static int process_block(ext2_filsys fs,
+ 		     (EXT2FS_B2C(ctx->fs, blk) ==
+ 		      EXT2FS_B2C(ctx->fs, p->previous_block)) &&
+ 		     (blk & EXT2FS_CLUSTER_MASK(ctx->fs)) ==
+-		     (blockcnt & EXT2FS_CLUSTER_MASK(ctx->fs)))) {
++		     ((unsigned) blockcnt & EXT2FS_CLUSTER_MASK(ctx->fs)))) {
+ 		mark_block_used(ctx, blk);
+ 		p->num_blocks++;
  	}
--	p = (__u32 *) cp;
-+	p = (const __u32 *) cp;
+@@ -2684,7 +2685,7 @@ static void mark_table_blocks(e2fsck_t ctx)
+ 	ext2_filsys fs = ctx->fs;
+ 	blk64_t	b;
+ 	dgrp_t	i;
+-	int	j;
++	unsigned int	j;
+ 	struct problem_context pctx;
  
- 	while (nbytes > 4) {
- 		res += popcount32(*p++);
-diff --git a/lib/ext2fs/bitops.h b/lib/ext2fs/bitops.h
-index 1559539..edf82f2 100644
---- a/lib/ext2fs/bitops.h
-+++ b/lib/ext2fs/bitops.h
-@@ -54,6 +54,14 @@ extern void ext2fs_warn_bitmap2(ext2fs_generic_bitmap bitmap,
- 				int code, unsigned long arg);
+ 	clear_problem_context(&pctx);
+diff --git a/e2fsck/pass1b.c b/e2fsck/pass1b.c
+index 93fb630..cd6c883 100644
+--- a/e2fsck/pass1b.c
++++ b/e2fsck/pass1b.c
+@@ -624,7 +624,6 @@ static void delete_file(e2fsck_t ctx, ext2_ino_t ino,
+ {
+ 	ext2_filsys fs = ctx->fs;
+ 	struct process_block_struct pb;
+-	struct ext2_inode	inode;
+ 	struct problem_context	pctx;
+ 	unsigned int		count;
  
- #ifdef NO_INLINE_FUNCS
-+extern void ext2fs_fast_set_bit(unsigned int nr,void * addr);
-+extern void ext2fs_fast_clear_bit(unsigned int nr, void * addr);
-+extern void ext2fs_fast_set_bit64(__u64 nr,void * addr);
-+extern void ext2fs_fast_clear_bit64(__u64 nr, void * addr);
-+extern __u16 ext2fs_swab16(__u16 val);
-+extern __u32 ext2fs_swab32(__u32 val);
-+extern __u64 ext2fs_swab64(__u64 val);
-+
- extern int ext2fs_mark_block_bitmap(ext2fs_block_bitmap bitmap, blk_t block);
- extern int ext2fs_unmark_block_bitmap(ext2fs_block_bitmap bitmap,
- 				       blk_t block);
-@@ -650,14 +658,3 @@ extern int ext2fs_set_bit64(__u64 nr,void * addr);
- extern int ext2fs_clear_bit64(__u64 nr, void * addr);
- extern int ext2fs_test_bit64(__u64 nr, const void * addr);
- extern unsigned int ext2fs_bitcount(const void *addr, unsigned int nbytes);
--
--#ifdef NO_INLINE_FUNCS
--extern void ext2fs_fast_set_bit(unsigned int nr,void * addr);
--extern void ext2fs_fast_clear_bit(unsigned int nr, void * addr);
--extern void ext2fs_fast_set_bit64(__u64 nr,void * addr);
--extern void ext2fs_fast_clear_bit64(__u64 nr, void * addr);
--extern __u16 ext2fs_swab16(__u16 val);
--extern __u32 ext2fs_swab32(__u32 val);
--extern __u64 ext2fs_swab64(__u64 val);
--#endif
--
-diff --git a/lib/ext2fs/blkmap64_rb.c b/lib/ext2fs/blkmap64_rb.c
-index 9a8938a..a22682e 100644
---- a/lib/ext2fs/blkmap64_rb.c
-+++ b/lib/ext2fs/blkmap64_rb.c
-@@ -47,6 +47,17 @@ struct ext2fs_rb_private {
- #endif
- };
+@@ -635,33 +634,35 @@ static void delete_file(e2fsck_t ctx, ext2_ino_t ino,
+ 	pctx.str = "delete_file";
+ 	pb.cur_cluster = ~0;
  
-+inline static struct bmap_rb_extent *node_to_extent(struct rb_node *node)
-+{
-+	/*
-+	 * This depends on the fact the struct rb_node is at the
-+	 * beginning of the bmap_rb_extent structure.  We use this
-+	 * instead of the ext2fs_rb_entry macro because it causes gcc
-+	 * -Wall to generate a huge amount of noise.
-+	 */
-+	return (struct bmap_rb_extent *) node;
-+}
-+
- static int rb_insert_extent(__u64 start, __u64 count,
- 			    struct ext2fs_rb_private *);
- static void rb_get_new_extent(struct bmap_rb_extent **, __u64, __u64);
-@@ -63,7 +74,7 @@ static void print_tree(struct rb_root *root)
- 	node = ext2fs_rb_first(root);
- 	for (node = ext2fs_rb_first(root); node != NULL; 
- 	     node = ext2fs_rb_next(node)) {
--		ext = ext2fs_rb_entry(node, struct bmap_rb_extent, node);
-+		ext = node_to_extent(node);
- 		printf("\t\t\t--> (%llu -> %llu)\n",
- 			ext->start, ext->start + ext->count);
+-	e2fsck_read_inode(ctx, ino, &inode, "delete_file");
+-	if (ext2fs_inode_has_valid_blocks2(fs, &inode))
+-		pctx.errcode = ext2fs_block_iterate3(fs, ino, BLOCK_FLAG_READ_ONLY,
+-						     block_buf, delete_file_block, &pb);
++	if (ext2fs_inode_has_valid_blocks2(fs, &dp->inode))
++		pctx.errcode = ext2fs_block_iterate3(fs, ino,
++						     BLOCK_FLAG_READ_ONLY,
++						     block_buf,
++						     delete_file_block, &pb);
+ 	if (pctx.errcode)
+ 		fix_problem(ctx, PR_1B_BLOCK_ITERATE, &pctx);
+ 	if (ctx->inode_bad_map)
+ 		ext2fs_unmark_inode_bitmap2(ctx->inode_bad_map, ino);
+-	ext2fs_inode_alloc_stats2(fs, ino, -1, LINUX_S_ISDIR(inode.i_mode));
+-	quota_data_sub(ctx->qctx, &inode, ino, pb.dup_blocks * fs->blocksize);
+-	quota_data_inodes(ctx->qctx, &inode, ino, -1);
++	ext2fs_inode_alloc_stats2(fs, ino, -1, LINUX_S_ISDIR(dp->inode.i_mode));
++	quota_data_sub(ctx->qctx, &dp->inode, ino,
++		       pb.dup_blocks * fs->blocksize);
++	quota_data_inodes(ctx->qctx, &dp->inode, ino, -1);
+ 
+ 	/* Inode may have changed by block_iterate, so reread it */
+-	e2fsck_read_inode(ctx, ino, &inode, "delete_file");
+-	e2fsck_clear_inode(ctx, ino, &inode, 0, "delete_file");
+-	if (ext2fs_file_acl_block(fs, &inode) &&
++	e2fsck_read_inode(ctx, ino, &dp->inode, "delete_file");
++	e2fsck_clear_inode(ctx, ino, &dp->inode, 0, "delete_file");
++	if (ext2fs_file_acl_block(fs, &dp->inode) &&
+ 	    (fs->super->s_feature_compat & EXT2_FEATURE_COMPAT_EXT_ATTR)) {
+ 		count = 1;
+ 		pctx.errcode = ext2fs_adjust_ea_refcount2(fs,
+-					ext2fs_file_acl_block(fs, &inode),
++					ext2fs_file_acl_block(fs, &dp->inode),
+ 						   block_buf, -1, &count);
+ 		if (pctx.errcode == EXT2_ET_BAD_EA_BLOCK_NUM) {
+ 			pctx.errcode = 0;
+ 			count = 1;
+ 		}
+ 		if (pctx.errcode) {
+-			pctx.blk = ext2fs_file_acl_block(fs, &inode);
++			pctx.blk = ext2fs_file_acl_block(fs, &dp->inode);
+ 			fix_problem(ctx, PR_1B_ADJ_EA_REFCOUNT, &pctx);
+ 		}
+ 		/*
+@@ -672,12 +673,12 @@ static void delete_file(e2fsck_t ctx, ext2_ino_t ino,
+ 		 */
+ 		if ((count == 0) ||
+ 		    ext2fs_test_block_bitmap2(ctx->block_dup_map,
+-					ext2fs_file_acl_block(fs, &inode))) {
+-			blk64_t blk = ext2fs_file_acl_block(fs, &inode);
++					ext2fs_file_acl_block(fs, &dp->inode))) {
++			blk64_t blk = ext2fs_file_acl_block(fs, &dp->inode);
+ 			delete_file_block(fs, &blk,
+ 					  BLOCK_COUNT_EXTATTR, 0, 0, &pb);
+-			ext2fs_file_acl_block_set(fs, &inode, blk);
+-			quota_data_sub(ctx->qctx, &inode, ino, fs->blocksize);
++			ext2fs_file_acl_block_set(fs, &dp->inode, blk);
++			quota_data_sub(ctx->qctx, &dp->inode, ino, fs->blocksize);
+ 		}
  	}
-@@ -77,7 +88,7 @@ static void check_tree(struct rb_root *root, const char *msg)
- 
- 	for (node = ext2fs_rb_first(root); node;
- 	     node = ext2fs_rb_next(node)) {
--		ext = ext2fs_rb_entry(node, struct bmap_rb_extent, node);
-+		ext = node_to_extent(node);
- 		if (ext->count <= 0) {
- 			printf("Tree Error: count is crazy\n");
- 			printf("extent: %llu -> %llu (%u)\n", ext->start,
-@@ -200,7 +211,7 @@ static void rb_free_tree(struct rb_root *root)
- 
- 	for (node = ext2fs_rb_first(root); node; node = next) {
- 		next = ext2fs_rb_next(node);
--		ext = ext2fs_rb_entry(node, struct bmap_rb_extent, node);
-+		ext = node_to_extent(node);
- 		ext2fs_rb_erase(node, root);
- 		ext2fs_free_mem(&ext);
- 	}
-@@ -236,7 +247,7 @@ static errcode_t rb_copy_bmap(ext2fs_generic_bitmap src,
- 
- 	src_node = ext2fs_rb_first(&src_bp->root);
- 	while (src_node) {
--		src_ext = ext2fs_rb_entry(src_node, struct bmap_rb_extent, node);
-+		src_ext = node_to_extent(src_node);
- 		retval = ext2fs_get_mem(sizeof (struct bmap_rb_extent),
- 					&dest_ext);
- 		if (retval)
-@@ -269,7 +280,7 @@ static void rb_truncate(__u64 new_max, struct rb_root *root)
- 
- 	node = ext2fs_rb_last(root);
- 	while (node) {
--		ext = ext2fs_rb_entry(node, struct bmap_rb_extent, node);
-+		ext = node_to_extent(node);
- 
- 		if ((ext->start + ext->count - 1) <= new_max)
- 			break;
-@@ -330,8 +341,7 @@ rb_test_bit(struct ext2fs_rb_private *bp, __u64 bit)
- 	if (!next_ext) {
- 		next = ext2fs_rb_next(&rcursor->node);
- 		if (next)
--			next_ext = ext2fs_rb_entry(next, struct bmap_rb_extent,
--						   node);
-+			next_ext = node_to_extent(next);
- 		bp->rcursor_next = next_ext;
- 	}
- 	if (next_ext) {
-@@ -357,7 +367,7 @@ search_tree:
- 
- 	while (*n) {
- 		parent = *n;
--		ext = ext2fs_rb_entry(parent, struct bmap_rb_extent, node);
-+		ext = node_to_extent(parent);
- 		if (bit < ext->start)
- 			n = &(*n)->rb_left;
- 		else if (bit >= (ext->start + ext->count))
-@@ -395,7 +405,7 @@ static int rb_insert_extent(__u64 start, __u64 count,
- 
- 	while (*n) {
- 		parent = *n;
--		ext = ext2fs_rb_entry(parent, struct bmap_rb_extent, node);
-+		ext = node_to_extent(parent);
- 
- 		if (start < ext->start) {
- 			n = &(*n)->rb_left;
-@@ -429,7 +439,7 @@ got_extent:
- 
- 	node = ext2fs_rb_prev(new_node);
- 	if (node) {
--		ext = ext2fs_rb_entry(node, struct bmap_rb_extent, node);
-+		ext = node_to_extent(node);
- 		if ((ext->start + ext->count) == start) {
- 			start = ext->start;
- 			count += ext->count;
-@@ -442,7 +452,7 @@ skip_insert:
- 	/* See if we can merge extent to the right */
- 	for (node = ext2fs_rb_next(new_node); node != NULL; node = next) {
- 		next = ext2fs_rb_next(node);
--		ext = ext2fs_rb_entry(node, struct bmap_rb_extent, node);
-+		ext = node_to_extent(node);
- 
- 		if ((ext->start + ext->count) <= start)
- 			continue;
-@@ -487,7 +497,7 @@ static int rb_remove_extent(__u64 start, __u64 count,
- 
- 	while (*n) {
- 		parent = *n;
--		ext = ext2fs_rb_entry(parent, struct bmap_rb_extent, node);
-+		ext = node_to_extent(parent);
- 		if (start < ext->start) {
- 			n = &(*n)->rb_left;
- 			continue;
-@@ -530,7 +540,7 @@ static int rb_remove_extent(__u64 start, __u64 count,
- 	/* See if we should delete or truncate extent on the right */
- 	for (; parent != NULL; parent = node) {
- 		node = ext2fs_rb_next(parent);
--		ext = ext2fs_rb_entry(parent, struct bmap_rb_extent, node);
-+		ext = node_to_extent(parent);
- 		if ((ext->start + ext->count) <= start)
- 			continue;
- 
-@@ -637,7 +647,7 @@ static int rb_test_clear_bmap_extent(ext2fs_generic_bitmap bitmap,
+ }
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index 882950d..749d264 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -668,7 +668,7 @@ static void salvage_directory(ext2_filsys fs,
  	 */
- 	while (*n) {
- 		parent = *n;
--		ext = ext2fs_rb_entry(parent, struct bmap_rb_extent, node);
-+		ext = node_to_extent(parent);
- 		if (start < ext->start) {
- 			n = &(*n)->rb_left;
- 		} else if (start >= (ext->start + ext->count)) {
-@@ -654,7 +664,7 @@ static int rb_test_clear_bmap_extent(ext2fs_generic_bitmap bitmap,
- 	node = parent;
- 	while (node) {
- 		next = ext2fs_rb_next(node);
--		ext = ext2fs_rb_entry(node, struct bmap_rb_extent, node);
-+		ext = node_to_extent(node);
- 		node = next;
+ 	if ((left < 0) &&
+ 	    ((int) rec_len + left > 8) &&
+-	    (name_len + 8 <= (int) rec_len + left) &&
++	    ((int) name_len + 8 <= (int) rec_len + left) &&
+ 	    dirent->inode <= fs->super->s_inodes_count &&
+ 	    strnlen(dirent->name, name_len) == name_len) {
+ 		(void) ext2fs_set_rec_len(fs, (int) rec_len + left, dirent);
+diff --git a/e2fsck/recovery.c b/e2fsck/recovery.c
+index bdfcd19..e4e5ae1 100644
+--- a/e2fsck/recovery.c
++++ b/e2fsck/recovery.c
+@@ -729,12 +729,16 @@ static int scan_revoke_records(journal_t *journal, struct buffer_head *bh,
+ 		unsigned long long blocknr;
+ 		int err;
  
- 		if ((ext->start + ext->count) <= start)
-@@ -732,7 +742,7 @@ static errcode_t rb_get_bmap_range(ext2fs_generic_bitmap bitmap,
+-		if (record_len == 4)
+-			blocknr = ext2fs_be32_to_cpu(*((__be32 *)(bh->b_data +
+-								  offset)));
+-		else
+-			blocknr = ext2fs_be64_to_cpu(*((__be64 *)(bh->b_data +
+-								  offset)));
++		if (record_len == 4) {
++			__be32 b;
++			memcpy(&b, bh->b_data + offset, sizeof(__be32));
++			blocknr = ext2fs_be32_to_cpu(b);
++		} else {
++			__be64 b;
++			memcpy(&b, bh->b_data + offset, sizeof(__be64));
++			blocknr = ext2fs_be64_to_cpu(b);
++		}
++
+ 		offset += record_len;
+ 		err = journal_set_revoke(journal, blocknr, sequence);
+ 		if (err)
+diff --git a/e2fsck/rehash.c b/e2fsck/rehash.c
+index 1f0a0b8..3d509ad 100644
+--- a/e2fsck/rehash.c
++++ b/e2fsck/rehash.c
+@@ -59,7 +59,7 @@ struct fill_dir_struct {
+ 	e2fsck_t ctx;
+ 	struct hash_entry *harray;
+ 	int max_array, num_array;
+-	int dir_size;
++	unsigned int dir_size;
+ 	int compress;
+ 	ino_t parent;
+ };
+@@ -122,7 +122,7 @@ static int fill_dir_block(ext2_filsys fs,
+ 		if (((dir_offset + rec_len) > fs->blocksize) ||
+ 		    (rec_len < 8) ||
+ 		    ((rec_len % 4) != 0) ||
+-		    (((dirent->name_len & 0xFF)+8) > rec_len)) {
++		    (((dirent->name_len & 0xFF)+8U) > rec_len)) {
+ 			fd->err = EXT2_ET_DIR_CORRUPTED;
+ 			return BLOCK_ABORT;
+ 		}
+@@ -404,10 +404,9 @@ static errcode_t copy_dir_entries(e2fsck_t ctx,
+ 	char			*block_start;
+ 	struct hash_entry 	*ent;
+ 	struct ext2_dir_entry	*dirent;
+-	unsigned int		rec_len, prev_rec_len;
+-	int			i, left;
++	unsigned int		rec_len, prev_rec_len, left, slack, offset;
++	int			i;
+ 	ext2_dirhash_t		prev_hash;
+-	int			offset, slack;
  
- 	while (*n) {
- 		parent = *n;
--		ext = ext2fs_rb_entry(parent, struct bmap_rb_extent, node);
-+		ext = node_to_extent(parent);
- 		if (start < ext->start) {
- 			n = &(*n)->rb_left;
- 		} else if (start >= (ext->start + ext->count)) {
-@@ -745,7 +755,7 @@ static errcode_t rb_get_bmap_range(ext2fs_generic_bitmap bitmap,
- 
- 	for (; parent != NULL; parent = next) {
- 		next = ext2fs_rb_next(parent);
--		ext = ext2fs_rb_entry(parent, struct bmap_rb_extent, node);
-+		ext = node_to_extent(parent);
- 
- 		pos = ext->start;
- 		count = ext->count;
-@@ -766,7 +776,7 @@ static errcode_t rb_get_bmap_range(ext2fs_generic_bitmap bitmap,
- 				int nbytes = count >> 3;
- 				int offset = (pos - start) >> 3;
- 
--				memset(out + offset, 0xFF, nbytes);
-+				memset(((char *) out) + offset, 0xFF, nbytes);
- 				pos += nbytes << 3;
- 				count -= nbytes << 3;
- 				continue;
-@@ -812,7 +822,7 @@ static void rb_print_stats(ext2fs_generic_bitmap bitmap)
- 	node = ext2fs_rb_first(&bp->root);
- 	for (node = ext2fs_rb_first(&bp->root); node != NULL;
- 	     node = ext2fs_rb_next(node)) {
--		ext = ext2fs_rb_entry(node, struct bmap_rb_extent, node);
-+		ext = node_to_extent(node);
- 		count++;
- 		if (ext->count > max_size)
- 			max_size = ext->count;
-diff --git a/lib/ext2fs/block.c b/lib/ext2fs/block.c
-index 68dcb03..b8c6879 100644
---- a/lib/ext2fs/block.c
-+++ b/lib/ext2fs/block.c
-@@ -472,9 +472,9 @@ errcode_t ext2fs_block_iterate3(ext2_filsys fs,
- 			       extent.e_lblk, extent.e_pblk,
- 			       extent.e_len, blockcnt);
- #endif
--			if (extent.e_lblk + extent.e_len <= blockcnt)
-+			if (extent.e_lblk + extent.e_len <= (blk64_t) blockcnt)
- 				continue;
--			if (extent.e_lblk > blockcnt)
-+			if (extent.e_lblk > (blk64_t) blockcnt)
- 				blockcnt = extent.e_lblk;
- 			j = blockcnt - extent.e_lblk;
- 			blk += j;
-diff --git a/lib/ext2fs/crc32c.c b/lib/ext2fs/crc32c.c
-index b54fc27..2512528 100644
---- a/lib/ext2fs/crc32c.c
-+++ b/lib/ext2fs/crc32c.c
-@@ -224,7 +224,7 @@ static uint32_t crc32c_le_body(uint32_t crc, uint8_t const *buf, size_t len)
- 	crc = (__force uint32_t) __cpu_to_le32(crc);
- 
- 	p8 = buf;
--	p32 = (uint32_t *)PTR_ALIGN(p8, 8);
-+	p32 = (const uint32_t *)PTR_ALIGN(p8, 8);
- 	init_bytes = min((uintptr_t)p32 - (uintptr_t)p8, len);
- 	words = (len - init_bytes) >> 3;
- 	end_bytes = (len - init_bytes) & 7;
-@@ -273,7 +273,7 @@ static uint32_t crc32c_le_body(uint32_t crc, uint8_t const *buf, size_t len)
- #endif
- 	}
- 
--	p8 = (uint8_t *)(++p32);
-+	p8 = (const uint8_t *)(++p32);
- 
- 	for (i = 0; i < end_bytes; i++) {
- #ifndef WORDS_BIGENDIAN
-@@ -304,7 +304,7 @@ static uint32_t crc32c_be_body(uint32_t crc, uint8_t const *buf, size_t len)
- 	crc = (__force uint32_t) __cpu_to_be32(crc);
- 
- 	p8 = buf;
--	p32 = (uint32_t *)PTR_ALIGN(p8, 8);
-+	p32 = (const uint32_t *)PTR_ALIGN(p8, 8);
- 	init_bytes = min((uintptr_t)p32 - (uintptr_t)p8, len);
- 	words = (len - init_bytes) >> 3;
- 	end_bytes = (len - init_bytes) & 7;
-@@ -353,7 +353,7 @@ static uint32_t crc32c_be_body(uint32_t crc, uint8_t const *buf, size_t len)
- #endif
- 	}
- 
--	p8 = (uint8_t *)(++p32);
-+	p8 = (const uint8_t *)(++p32);
- 
- 	for (i = 0; i < end_bytes; i++) {
- #ifndef WORDS_BIGENDIAN
-diff --git a/lib/ext2fs/gen_bitmap64.c b/lib/ext2fs/gen_bitmap64.c
-index 7265f94..d02488c 100644
---- a/lib/ext2fs/gen_bitmap64.c
-+++ b/lib/ext2fs/gen_bitmap64.c
-@@ -174,7 +174,7 @@ errcode_t ext2fs_alloc_generic_bmap(ext2_filsys fs, errcode_t magic,
+ 	if (ctx->htree_slack_percentage == 255) {
+ 		profile_get_uint(ctx->profile, "options",
+diff --git a/e2fsck/sigcatcher.c b/e2fsck/sigcatcher.c
+index faafb57..13b9bcc 100644
+--- a/e2fsck/sigcatcher.c
++++ b/e2fsck/sigcatcher.c
+@@ -331,7 +331,8 @@ static const char *lookup_table_fallback(int num, struct str_table *table)
+ 	return buf;
  }
  
- #ifdef BMAP_STATS
--void ext2fs_print_bmap_statistics(ext2fs_generic_bitmap bitmap)
-+static void ext2fs_print_bmap_statistics(ext2fs_generic_bitmap bitmap)
+-static void die_signal_handler(int signum, siginfo_t *siginfo, void *context)
++static void die_signal_handler(int signum, siginfo_t *siginfo,
++			       void *context EXT2FS_ATTR((unused)))
  {
- 	struct ext2_bmap_statistics *stats = &bitmap->stats;
- #ifdef BMAP_STATS_OPS
-diff --git a/lib/ext2fs/mmp.c b/lib/ext2fs/mmp.c
-index 435c5f4..98562e7 100644
---- a/lib/ext2fs/mmp.c
-+++ b/lib/ext2fs/mmp.c
-@@ -62,7 +62,8 @@ errcode_t ext2fs_mmp_read(ext2_filsys fs, blk64_t mmp_blk, void *buf)
- 			return retval;
- 	}
- 
--	if (ext2fs_llseek(fs->mmp_fd, mmp_blk * fs->blocksize, SEEK_SET) !=
-+	if ((blk64_t) ext2fs_llseek(fs->mmp_fd, mmp_blk * fs->blocksize,
-+				    SEEK_SET) !=
- 	    mmp_blk * fs->blocksize) {
- 		retval = EXT2_ET_LLSEEK_FAILED;
- 		goto out;
-diff --git a/lib/ext2fs/rbtree.c b/lib/ext2fs/rbtree.c
-index 7467e10..9439303 100644
---- a/lib/ext2fs/rbtree.c
-+++ b/lib/ext2fs/rbtree.c
-@@ -375,7 +375,7 @@ struct rb_node *ext2fs_rb_last(const struct rb_root *root)
- 	return n;
- }
- 
--struct rb_node *ext2fs_rb_next(const struct rb_node *node)
-+struct rb_node *ext2fs_rb_next(struct rb_node *node)
- {
- 	struct rb_node *parent;
- 
-@@ -403,7 +403,7 @@ struct rb_node *ext2fs_rb_next(const struct rb_node *node)
- 	return parent;
- }
- 
--struct rb_node *ext2fs_rb_prev(const struct rb_node *node)
-+struct rb_node *ext2fs_rb_prev(struct rb_node *node)
- {
- 	struct rb_node *parent;
- 
-diff --git a/lib/ext2fs/rbtree.h b/lib/ext2fs/rbtree.h
-index 16defb5..3b0b078 100644
---- a/lib/ext2fs/rbtree.h
-+++ b/lib/ext2fs/rbtree.h
-@@ -158,8 +158,8 @@ extern void ext2fs_rb_augment_erase_end(struct rb_node *node,
- 				 rb_augment_f func, void *data);
- 
- /* Find logical next and previous nodes in a tree */
--extern struct rb_node *ext2fs_rb_next(const struct rb_node *);
--extern struct rb_node *ext2fs_rb_prev(const struct rb_node *);
-+extern struct rb_node *ext2fs_rb_next(struct rb_node *);
-+extern struct rb_node *ext2fs_rb_prev(struct rb_node *);
- extern struct rb_node *ext2fs_rb_first(const struct rb_root *);
- extern struct rb_node *ext2fs_rb_last(const struct rb_root *);
- 
-diff --git a/lib/ext2fs/rw_bitmaps.c b/lib/ext2fs/rw_bitmaps.c
-index 3f3ed65..b7d65a9 100644
---- a/lib/ext2fs/rw_bitmaps.c
-+++ b/lib/ext2fs/rw_bitmaps.c
-@@ -163,7 +163,8 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block)
- 
- 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
- 
--	if ((block_nbytes > fs->blocksize) || (inode_nbytes > fs->blocksize))
-+	if ((block_nbytes > (int) fs->blocksize) ||
-+	    (inode_nbytes > (int) fs->blocksize))
- 		return EXT2_ET_CORRUPT_SUPERBLOCK;
- 
- 	fs->write_bitmaps = ext2fs_write_bitmaps;
-diff --git a/lib/ext2fs/symlink.c b/lib/ext2fs/symlink.c
-index da6e3a8..e943412 100644
---- a/lib/ext2fs/symlink.c
-+++ b/lib/ext2fs/symlink.c
-@@ -37,7 +37,7 @@ errcode_t ext2fs_symlink(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t ino,
- 	ext2_ino_t		scratch_ino;
- 	blk64_t			blk;
- 	int			fastlink;
--	int			target_len;
-+	unsigned int		target_len;
- 	char			*block_buf = 0;
- 
- 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
+        void *stack_syms[32];
+        int frames;
+diff --git a/e2fsck/super.c b/e2fsck/super.c
+index b9870f7..07f5fe5 100644
+--- a/e2fsck/super.c
++++ b/e2fsck/super.c
+@@ -465,11 +465,11 @@ void check_super_block(e2fsck_t ctx)
+ 	ext2_filsys fs = ctx->fs;
+ 	blk64_t	first_block, last_block;
+ 	struct ext2_super_block *sb = fs->super;
++	unsigned int	ipg_max;
+ 	problem_t	problem;
+ 	blk64_t	blocks_per_group = fs->super->s_blocks_per_group;
+ 	__u32	bpg_max, cpg_max;
+ 	int	inodes_per_block;
+-	int	ipg_max;
+ 	int	inode_size;
+ 	int	accept_time_fudge;
+ 	int	broken_system_clock;
 -- 
 1.7.12.rc0.22.gcdd159b
 
