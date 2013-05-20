@@ -1,405 +1,169 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/3] misc: fix gcc -Wall warnings
-Date: Mon, 20 May 2013 09:58:58 -0400
-Message-ID: <1369058339-1925-2-git-send-email-tytso@mit.edu>
-References: <1369058339-1925-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2/3] e2fsck: fix gcc -Wall nits
+Date: Mon, 20 May 2013 09:59:02 -0400
+Message-ID: <1369058343-1988-2-git-send-email-tytso@mit.edu>
+References: <1369058343-1988-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:49959 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:49957 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756946Ab3ETN7F (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 20 May 2013 09:59:05 -0400
-In-Reply-To: <1369058339-1925-1-git-send-email-tytso@mit.edu>
+	id S1756933Ab3ETN7E (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 20 May 2013 09:59:04 -0400
+In-Reply-To: <1369058343-1988-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+[For 1.43 branch]
+
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- lib/quota/quotaio.h      |  5 -----
- lib/quota/quotaio_tree.c |  5 +++++
- misc/badblocks.c         | 16 ++++++++--------
- misc/e2image.c           |  2 +-
- misc/filefrag.c          |  6 +++---
- misc/mke2fs.c            | 45 ++++++++++++++++++++++-----------------------
- misc/tune2fs.c           | 25 +++++++++++++------------
- 7 files changed, 52 insertions(+), 52 deletions(-)
+ e2fsck/journal.c  | 15 +++++++++------
+ e2fsck/pass5.c    |  6 ------
+ e2fsck/recovery.c |  4 ++--
+ e2fsck/rehash.c   |  5 ++---
+ 4 files changed, 13 insertions(+), 17 deletions(-)
 
-diff --git a/lib/quota/quotaio.h b/lib/quota/quotaio.h
-index 5a7db7b..1c062f1 100644
---- a/lib/quota/quotaio.h
-+++ b/lib/quota/quotaio.h
-@@ -132,11 +132,6 @@ struct quotafile_ops {
- /* This might go into a special header file but that sounds a bit silly... */
- extern struct quotafile_ops quotafile_ops_meta;
+diff --git a/e2fsck/journal.c b/e2fsck/journal.c
+index 2ca19b8..45d9462 100644
+--- a/e2fsck/journal.c
++++ b/e2fsck/journal.c
+@@ -41,7 +41,8 @@ static int bh_count = 0;
+ #undef USE_INODE_IO
  
--static inline void mark_quotafile_info_dirty(struct quota_handle *h)
--{
--	h->qh_io_flags |= IOFL_INFODIRTY;
--}
--
- /* Open existing quotafile of given type (and verify its format) on given
-  * filesystem. */
- errcode_t quota_file_open(struct quota_handle *h, ext2_filsys fs,
-diff --git a/lib/quota/quotaio_tree.c b/lib/quota/quotaio_tree.c
-index e7aea3b..c1653a3 100644
---- a/lib/quota/quotaio_tree.c
-+++ b/lib/quota/quotaio_tree.c
-@@ -53,6 +53,11 @@ static int get_index(qid_t id, int depth)
- 	return (id >> ((QT_TREEDEPTH - depth - 1) * 8)) & 0xff;
+ /* Checksumming functions */
+-int e2fsck_journal_verify_csum_type(journal_t *j, journal_superblock_t *jsb)
++static int e2fsck_journal_verify_csum_type(journal_t *j,
++					   journal_superblock_t *jsb)
+ {
+ 	if (!JFS_HAS_INCOMPAT_FEATURE(j, JFS_FEATURE_INCOMPAT_CSUM_V2))
+ 		return 1;
+@@ -49,7 +50,7 @@ int e2fsck_journal_verify_csum_type(journal_t *j, journal_superblock_t *jsb)
+ 	return jsb->s_checksum_type == JBD2_CRC32C_CHKSUM;
  }
  
-+static inline void mark_quotafile_info_dirty(struct quota_handle *h)
-+{
-+	h->qh_io_flags |= IOFL_INFODIRTY;
-+}
-+
- /* Read given block */
- static void read_blk(struct quota_handle *h, uint blk, dqbuf_t buf)
+-static __u32 e2fsck_journal_sb_csum(journal_t *j, journal_superblock_t *jsb)
++static __u32 e2fsck_journal_sb_csum(journal_superblock_t *jsb)
  {
-diff --git a/misc/badblocks.c b/misc/badblocks.c
-index f37cf26..c9e47c7 100644
---- a/misc/badblocks.c
-+++ b/misc/badblocks.c
-@@ -557,7 +557,7 @@ static unsigned int test_ro (int dev, blk_t last_block,
- 		currently_testing += got;
- 		if (got != try) {
- 			try = 1;
--			if (recover_block == ~0)
-+			if (recover_block == ~0U)
- 				recover_block = currently_testing - got +
- 					blocks_at_once;
- 			continue;
-@@ -647,7 +647,7 @@ static unsigned int test_rw (int dev, blk_t last_block,
- 			currently_testing += got;
- 			if (got != try) {
- 				try = 1;
--				if (recover_block == ~0)
-+				if (recover_block == ~0U)
- 					recover_block = currently_testing -
- 						got + blocks_at_once;
- 				continue;
-@@ -686,13 +686,13 @@ static unsigned int test_rw (int dev, blk_t last_block,
- 			currently_testing += got;
- 			if (got != try) {
- 				try = 1;
--				if (recover_block == ~0)
-+				if (recover_block == ~0U)
- 					recover_block = currently_testing -
- 						got + blocks_at_once;
- 				continue;
- 			} else if (currently_testing == recover_block) {
- 				try = blocks_at_once;
--				recover_block = ~0;
-+				recover_block = ~0U;
- 			}
- 			for (i=0; i < got; i++) {
- 				if (memcmp(read_buffer + i * block_size,
-@@ -739,8 +739,8 @@ static unsigned int test_nd (int dev, blk_t last_block,
- 	errcode_t errcode;
- 	unsigned long buf_used;
- 	static unsigned int bb_count;
--	int granularity = blocks_at_once;
--	blk_t recover_block = ~0;
-+	unsigned int granularity = blocks_at_once;
-+	blk_t recover_block = ~0U;
+ 	__u32 crc, old_crc;
  
- 	bb_count = 0;
- 	errcode = ext2fs_badblocks_list_iterate_begin(bb_list,&bb_iter);
-@@ -839,7 +839,7 @@ static unsigned int test_nd (int dev, blk_t last_block,
- 			got = do_read (dev, save_ptr, try, block_size,
- 				       currently_testing);
- 			if (got == 0) {
--				if (recover_block == ~0)
-+				if (recover_block == ~0U)
- 					recover_block = currently_testing +
- 						blocks_at_once;
- 				if (granularity != 1) {
-@@ -874,7 +874,7 @@ static unsigned int test_nd (int dev, blk_t last_block,
- 			currently_testing += got;
- 			if (got != try) {
- 				try = 1;
--				if (recover_block == ~0)
-+				if (recover_block == ~0U)
- 					recover_block = currently_testing -
- 						got + blocks_at_once;
- 				continue;
-diff --git a/misc/e2image.c b/misc/e2image.c
-index 70bb9ac..369c946 100644
---- a/misc/e2image.c
-+++ b/misc/e2image.c
-@@ -453,7 +453,7 @@ static void scramble_dir_block(ext2_filsys fs, blk64_t blk, char *buf)
- #endif
- 			continue;
- 		}
--		if (dirent->name_len + 8 > rec_len) {
-+		if (dirent->name_len + 8U > rec_len) {
- 			printf("Corrupt directory block %lu: "
- 			       "bad name_len (%d)\n", (unsigned long) blk,
- 			       dirent->name_len);
-diff --git a/misc/filefrag.c b/misc/filefrag.c
-index ee03a07..35b3544 100644
---- a/misc/filefrag.c
-+++ b/misc/filefrag.c
-@@ -52,8 +52,8 @@ int force_bmap;	/* force use of FIBMAP instead of FIEMAP */
- int force_extent;	/* print output in extent format always */
- int logical_width = 8;
- int physical_width = 10;
--char *ext_fmt = "%4d: %*llu..%*llu: %*llu..%*llu: %6llu: %s\n";
--char *hex_fmt = "%4d: %*llx..%*llx: %*llx..%*llx: %6llx: %s\n";
-+const char *ext_fmt = "%4d: %*llu..%*llu: %*llu..%*llu: %6llu: %s\n";
-+const char *hex_fmt = "%4d: %*llx..%*llx: %*llx..%*llx: %6llx: %s\n";
+@@ -62,7 +63,8 @@ static __u32 e2fsck_journal_sb_csum(journal_t *j, journal_superblock_t *jsb)
+ 	return crc;
+ }
  
- #define FILEFRAG_FIEMAP_FLAGS_COMPAT (FIEMAP_FLAG_SYNC | FIEMAP_FLAG_XATTR)
- 
-@@ -166,7 +166,7 @@ static void print_extent_info(struct fiemap_extent *fm_extent, int cur_ex,
- 	if (fm_extent->fe_flags & FIEMAP_EXTENT_MERGED)
- 		strcat(flags, "merged,");
- 
--	if (fm_extent->fe_logical + fm_extent->fe_length >= st->st_size)
-+	if (fm_extent->fe_logical + fm_extent->fe_length >= (__u64) st->st_size)
- 		strcat(flags, "eof,");
- 
- 	/* Remove trailing comma, if any */
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 7448255..fef25ee 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -960,7 +960,7 @@ static void print_str_list(char **list)
- /*
-  * Return TRUE if the profile has the given subsection
-  */
--static int profile_has_subsection(profile_t profile, const char *section,
-+static int profile_has_subsection(profile_t prof, const char *section,
- 				  const char *subsection)
+-int e2fsck_journal_sb_csum_verify(journal_t *j, journal_superblock_t *jsb)
++static int e2fsck_journal_sb_csum_verify(journal_t *j,
++					 journal_superblock_t *jsb)
  {
- 	void			*state;
-@@ -972,7 +972,7 @@ static int profile_has_subsection(profile_t profile, const char *section,
- 	names[1] = subsection;
- 	names[2] = 0;
+ 	__u32 provided, calculated;
  
--	if (profile_iterator_create(profile, names,
-+	if (profile_iterator_create(prof, names,
- 				    PROFILE_ITER_LIST_SECTION |
- 				    PROFILE_ITER_RELATIONS_ONLY, &state))
+@@ -70,19 +72,20 @@ int e2fsck_journal_sb_csum_verify(journal_t *j, journal_superblock_t *jsb)
+ 		return 1;
+ 
+ 	provided = ext2fs_be32_to_cpu(jsb->s_checksum);
+-	calculated = e2fsck_journal_sb_csum(j, jsb);
++	calculated = e2fsck_journal_sb_csum(jsb);
+ 
+ 	return provided == calculated;
+ }
+ 
+-errcode_t e2fsck_journal_sb_csum_set(journal_t *j, journal_superblock_t *jsb)
++static errcode_t e2fsck_journal_sb_csum_set(journal_t *j,
++					    journal_superblock_t *jsb)
+ {
+ 	__u32 crc;
+ 
+ 	if (!JFS_HAS_INCOMPAT_FEATURE(j, JFS_FEATURE_INCOMPAT_CSUM_V2))
  		return 0;
-@@ -988,7 +988,7 @@ static int profile_has_subsection(profile_t profile, const char *section,
  
- static char **parse_fs_type(const char *fs_type,
- 			    const char *usage_types,
--			    struct ext2_super_block *fs_param,
-+			    struct ext2_super_block *sb,
- 			    blk64_t fs_blocks_count,
- 			    char *progname)
- {
-@@ -1055,7 +1055,7 @@ static char **parse_fs_type(const char *fs_type,
- 		}
- 	}
- 
--	meg = (1024 * 1024) / EXT2_BLOCK_SIZE(fs_param);
-+	meg = (1024 * 1024) / EXT2_BLOCK_SIZE(sb);
- 	if (fs_blocks_count < 3 * meg)
- 		size_type = "floppy";
- 	else if (fs_blocks_count < 512 * meg)
-@@ -1096,10 +1096,8 @@ static char **parse_fs_type(const char *fs_type,
- 		}
- 		if (t)
- 			cp = t+1;
--		else {
--			cp = "";
-+		else
- 			break;
--		}
- 	}
- 	free(parse_str);
- 	free(profile_type);
-@@ -1108,15 +1106,15 @@ static char **parse_fs_type(const char *fs_type,
- 	return (list.list);
+-	crc = e2fsck_journal_sb_csum(j, jsb);
++	crc = e2fsck_journal_sb_csum(jsb);
+ 	jsb->s_checksum = ext2fs_cpu_to_be32(crc);
+ 	return 0;
  }
- 
--static char *get_string_from_profile(char **fs_types, const char *opt,
-+static char *get_string_from_profile(char **types, const char *opt,
- 				     const char *def_val)
+diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
+index 86b5225..51e4683 100644
+--- a/e2fsck/pass5.c
++++ b/e2fsck/pass5.c
+@@ -82,7 +82,6 @@ void e2fsck_pass5(e2fsck_t ctx)
+ static void check_inode_bitmap_checksum(e2fsck_t ctx)
  {
- 	char *ret = 0;
- 	int i;
+ 	struct problem_context	pctx;
+-	struct ext4_group_desc	*gdp;
+ 	char		*buf;
+ 	dgrp_t		i;
+ 	int		nbytes;
+@@ -112,8 +111,6 @@ static void check_inode_bitmap_checksum(e2fsck_t ctx)
+ 			continue;
  
--	for (i=0; fs_types[i]; i++);
-+	for (i=0; types[i]; i++);
- 	for (i-=1; i >=0 ; i--) {
--		profile_get_string(profile, "fs_types", fs_types[i],
-+		profile_get_string(profile, "fs_types", types[i],
- 				   opt, 0, &ret);
- 		if (ret)
- 			return ret;
-@@ -1125,36 +1123,36 @@ static char *get_string_from_profile(char **fs_types, const char *opt,
- 	return (ret);
- }
- 
--static int get_int_from_profile(char **fs_types, const char *opt, int def_val)
-+static int get_int_from_profile(char **types, const char *opt, int def_val)
+ 		ino_itr = 1 + (i * (nbytes << 3));
+-		gdp = (struct ext4_group_desc *)ext2fs_group_desc(ctx->fs,
+-				ctx->fs->group_desc, i);
+ 		retval = ext2fs_get_inode_bitmap_range2(ctx->fs->inode_map,
+ 							ino_itr, nbytes << 3,
+ 							buf);
+@@ -141,7 +138,6 @@ static void check_inode_bitmap_checksum(e2fsck_t ctx)
+ static void check_block_bitmap_checksum(e2fsck_t ctx)
  {
- 	int ret;
- 	char **cpp;
+ 	struct problem_context	pctx;
+-	struct ext4_group_desc	*gdp;
+ 	char		*buf;
+ 	dgrp_t		i;
+ 	int		nbytes;
+@@ -173,8 +169,6 @@ static void check_block_bitmap_checksum(e2fsck_t ctx)
+ 		blk_itr = EXT2FS_B2C(ctx->fs,
+ 				     ctx->fs->super->s_first_data_block) +
+ 			  (i * (nbytes << 3));
+-		gdp = (struct ext4_group_desc *)ext2fs_group_desc(ctx->fs,
+-				ctx->fs->group_desc, i);
+ 		retval = ext2fs_get_block_bitmap_range2(ctx->fs->block_map,
+ 							blk_itr, nbytes << 3,
+ 							buf);
+diff --git a/e2fsck/recovery.c b/e2fsck/recovery.c
+index 7712185..b04a204 100644
+--- a/e2fsck/recovery.c
++++ b/e2fsck/recovery.c
+@@ -183,7 +183,7 @@ static int jbd2_descr_block_csum_verify(journal_t *j,
+ 	if (!JFS_HAS_INCOMPAT_FEATURE(j, JFS_FEATURE_INCOMPAT_CSUM_V2))
+ 		return 1;
  
- 	profile_get_integer(profile, "defaults", opt, 0, def_val, &ret);
--	for (cpp = fs_types; *cpp; cpp++)
-+	for (cpp = types; *cpp; cpp++)
- 		profile_get_integer(profile, "fs_types", *cpp, opt, ret, &ret);
- 	return ret;
- }
+-	tail = (struct journal_block_tail *)(buf + j->j_blocksize -
++	tail = (struct journal_block_tail *)((char *)buf + j->j_blocksize -
+ 			sizeof(struct journal_block_tail));
+ 	provided = tail->t_checksum;
+ 	tail->t_checksum = 0;
+@@ -821,7 +821,7 @@ static int jbd2_revoke_block_csum_verify(journal_t *j,
+ 	if (!JFS_HAS_INCOMPAT_FEATURE(j, JFS_FEATURE_INCOMPAT_CSUM_V2))
+ 		return 1;
  
--static double get_double_from_profile(char **fs_types, const char *opt,
-+static double get_double_from_profile(char **types, const char *opt,
- 				      double def_val)
+-	tail = (struct journal_revoke_tail *)(buf + j->j_blocksize -
++	tail = (struct journal_revoke_tail *)((char *)buf + j->j_blocksize -
+ 			sizeof(struct journal_revoke_tail));
+ 	provided = tail->r_checksum;
+ 	tail->r_checksum = 0;
+diff --git a/e2fsck/rehash.c b/e2fsck/rehash.c
+index df3afab..5592e3f 100644
+--- a/e2fsck/rehash.c
++++ b/e2fsck/rehash.c
+@@ -420,8 +420,7 @@ static int duplicate_search_and_fix(e2fsck_t ctx, ext2_filsys fs,
+ 
+ static errcode_t copy_dir_entries(e2fsck_t ctx,
+ 				  struct fill_dir_struct *fd,
+-				  struct out_dir *outdir,
+-				  ext2_ino_t ino)
++				  struct out_dir *outdir)
  {
- 	double ret;
- 	char **cpp;
- 
- 	profile_get_double(profile, "defaults", opt, 0, def_val, &ret);
--	for (cpp = fs_types; *cpp; cpp++)
-+	for (cpp = types; *cpp; cpp++)
- 		profile_get_double(profile, "fs_types", *cpp, opt, ret, &ret);
- 	return ret;
- }
- 
--static int get_bool_from_profile(char **fs_types, const char *opt, int def_val)
-+static int get_bool_from_profile(char **types, const char *opt, int def_val)
- {
- 	int ret;
- 	char **cpp;
- 
- 	profile_get_boolean(profile, "defaults", opt, 0, def_val, &ret);
--	for (cpp = fs_types; *cpp; cpp++)
-+	for (cpp = types; *cpp; cpp++)
- 		profile_get_boolean(profile, "fs_types", *cpp, opt, ret, &ret);
- 	return ret;
- }
-@@ -2042,7 +2040,7 @@ profile_error:
- 	fs_param.s_inodes_count = num_inodes ? num_inodes :
- 		(ext2fs_blocks_count(&fs_param) * blocksize) / inode_ratio;
- 
--	if ((((long long)fs_param.s_inodes_count) *
-+	if ((((unsigned long long)fs_param.s_inodes_count) *
- 	     (inode_size ? inode_size : EXT2_GOOD_OLD_INODE_SIZE)) >=
- 	    ((ext2fs_blocks_count(&fs_param)) *
- 	     EXT2_BLOCK_SIZE(&fs_param))) {
-@@ -2122,7 +2120,7 @@ static int mke2fs_setup_tdb(const char *name, io_manager *io_ptr)
- {
- 	errcode_t retval = ENOMEM;
- 	char *tdb_dir = NULL, *tdb_file = NULL;
--	char *device_name, *tmp_name;
-+	char *dev_name, *tmp_name;
- 	int free_tdb_dir = 0;
- 
- 	/*
-@@ -2144,13 +2142,13 @@ static int mke2fs_setup_tdb(const char *name, io_manager *io_ptr)
- 	tmp_name = strdup(name);
- 	if (!tmp_name)
+ 	ext2_filsys 		fs = ctx->fs;
+ 	errcode_t		retval;
+@@ -857,7 +856,7 @@ resort:
+ 	 * Copy the directory entries.  In a htree directory these
+ 	 * will become the leaf nodes.
+ 	 */
+-	retval = copy_dir_entries(ctx, &fd, &outdir, ino);
++	retval = copy_dir_entries(ctx, &fd, &outdir);
+ 	if (retval)
  		goto errout;
--	device_name = basename(tmp_name);
--	tdb_file = malloc(strlen(tdb_dir) + 8 + strlen(device_name) + 7 + 1);
-+	dev_name = basename(tmp_name);
-+	tdb_file = malloc(strlen(tdb_dir) + 8 + strlen(dev_name) + 7 + 1);
- 	if (!tdb_file) {
- 		free(tmp_name);
- 		goto errout;
- 	}
--	sprintf(tdb_file, "%s/mke2fs-%s.e2undo", tdb_dir, device_name);
-+	sprintf(tdb_file, "%s/mke2fs-%s.e2undo", tdb_dir, dev_name);
- 	free(tmp_name);
  
- 	if (!access(tdb_file, F_OK)) {
-@@ -2234,10 +2232,11 @@ static int mke2fs_discard_device(ext2_filsys fs)
- static void fix_cluster_bg_counts(ext2_filsys fs)
- {
- 	blk64_t	cluster, num_clusters, tot_free;
--	int	grp_free, num_free, group, num;
-+	unsigned num = 0;
-+	int	grp_free, num_free, group;
- 
- 	num_clusters = EXT2FS_B2C(fs, ext2fs_blocks_count(fs->super));
--	tot_free = num_free = num = group = grp_free = 0;
-+	tot_free = num_free = group = grp_free = 0;
- 	for (cluster = EXT2FS_B2C(fs, fs->super->s_first_data_block);
- 	     cluster < num_clusters; cluster++) {
- 		if (!ext2fs_test_block_bitmap2(fs->block_map,
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 47a7711..b088f17 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -375,7 +375,8 @@ static int update_feature_set(ext2_filsys fs, char *features)
- 	struct ext2_super_block *sb = fs->super;
- 	struct ext2_group_desc *gd;
- 	__u32		old_features[3];
--	int		i, type_err;
-+	dgrp_t		i;
-+	int		type_err;
- 	unsigned int	mask_err;
- 
- #define FEATURE_ON(type, mask) (!(old_features[(type)] & (mask)) && \
-@@ -701,7 +702,7 @@ err:
- 	return 1;
- }
- 
--void handle_quota_options(ext2_filsys fs)
-+static void handle_quota_options(ext2_filsys fs)
- {
- 	quota_ctx_t qctx;
- 	ext2_ino_t qf_ino;
-@@ -751,7 +752,7 @@ void handle_quota_options(ext2_filsys fs)
- 	return;
- }
- 
--void parse_quota_opts(const char *opts)
-+static void parse_quota_opts(const char *opts)
- {
- 	char	*buf, *token, *next, *p;
- 	int	len;
-@@ -1153,12 +1154,12 @@ static int parse_extended_opts(ext2_filsys fs, const char *opts)
- 		    strcmp(token, "clear_mmp") == 0) {
- 			clear_mmp = 1;
- 		} else if (strcmp(token, "mmp_update_interval") == 0) {
--			unsigned long interval;
-+			unsigned long intv;
- 			if (!arg) {
- 				r_usage++;
- 				continue;
- 			}
--			interval = strtoul(arg, &p, 0);
-+			intv = strtoul(arg, &p, 0);
- 			if (*p) {
- 				fprintf(stderr,
- 					_("Invalid mmp_update_interval: %s\n"),
-@@ -1166,21 +1167,21 @@ static int parse_extended_opts(ext2_filsys fs, const char *opts)
- 				r_usage++;
- 				continue;
- 			}
--			if (interval == 0) {
--				interval = EXT4_MMP_UPDATE_INTERVAL;
--			} else if (interval > EXT4_MMP_MAX_UPDATE_INTERVAL) {
-+			if (intv == 0) {
-+				intv = EXT4_MMP_UPDATE_INTERVAL;
-+			} else if (intv > EXT4_MMP_MAX_UPDATE_INTERVAL) {
- 				fprintf(stderr,
- 					_("mmp_update_interval too big: %lu\n"),
--					interval);
-+					intv);
- 				r_usage++;
- 				continue;
- 			}
- 			printf(P_("Setting multiple mount protection update "
- 				  "interval to %lu second\n",
- 				  "Setting multiple mount protection update "
--				  "interval to %lu seconds\n", interval),
--			       interval);
--			fs->super->s_mmp_update_interval = interval;
-+				  "interval to %lu seconds\n", intv),
-+			       intv);
-+			fs->super->s_mmp_update_interval = intv;
- 			ext2fs_mark_super_dirty(fs);
- 		} else if (!strcmp(token, "test_fs")) {
- 			fs->super->s_flags |= EXT2_FLAGS_TEST_FILESYS;
 -- 
 1.7.12.rc0.22.gcdd159b
 
