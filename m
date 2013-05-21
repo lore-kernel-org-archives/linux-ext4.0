@@ -1,104 +1,246 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: My current version of the inline data patches
-Date: Tue, 21 May 2013 12:01:56 +0800
-Message-ID: <20130521040156.GC23907@gmail.com>
-References: <1367059481-6090-1-git-send-email-wenqing.lz@taobao.com>
- <20130521023636.GA586@thunk.org>
- <20130521031144.GA23907@gmail.com>
- <20130521032657.GB586@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v2] ext4: Avoid unnecessarily writing back dirty pages
+ before  hole punching
+Date: Tue, 21 May 2013 11:22:33 +0200
+Message-ID: <20130521092233.GA10180@quack.suse.cz>
+References: <20130517032328.GA14249@gmail.com>
+ <1369040675-7347-1-git-send-email-liwang@ubuntukylin.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f49.google.com ([209.85.160.49]:63036 "EHLO
-	mail-pb0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752838Ab3EUDoE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 May 2013 23:44:04 -0400
-Received: by mail-pb0-f49.google.com with SMTP id rp8so168618pbb.8
-        for <linux-ext4@vger.kernel.org>; Mon, 20 May 2013 20:44:03 -0700 (PDT)
+Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Dmitry Monakhov <dmonakhov@openvz.org>,
+	Zheng Liu <gnehzuil.liu@gmail.com>,
+	linux-kernel@vger.kernel.org,
+	Yunchuan Wen <yunchuanwen@ubuntukylin.com>
+To: Li Wang <liwang@ubuntukylin.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20130521032657.GB586@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1369040675-7347-1-git-send-email-liwang@ubuntukylin.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, May 20, 2013 at 11:26:57PM -0400, Theodore Ts'o wrote:
-> The inlinie data patches, which have been updated to the latest master
-> branch, can be found here:
+On Mon 20-05-13 17:04:35, Li Wang wrote:
+> For hole punching, currently ext4 will synchronously write back the
+> dirty pages fit into the hole, since the data on the disk responding
+> to those pages are to be deleted, it is benefical to directly release
+> those pages, no matter they are dirty or not, except the ordered case.
 > 
-> https://github.com/tytso/e2fsprogs-inline-patch-queue
-> 
-> or
-> 
-> git://github.com/tytso/e2fsprogs-inline-patch-queue.git
-> 
-> 
-> You can look at the history if you want to see what I've done.  The
-> main thing to note is that while we are maintaining patches in a patch
-> series, and while we are still trying to clean up the function
-> interfaces, to fold any changes into parent patches.
-> 
-> So for example, I've folded all of the gcc -Wall cleanups that had
-> been in "libext2fs-fix-some-warnings-from-gcc-Wall" into the patches
-> that introduced the gcc warnings.  This makes it easier to review the
-> patches, since we don't have the problem of a patch which has bugs or
-> warnings which is fixed in a later patch.
-> 
-> When I did that, I found a change which was not related to gcc -Wall
-> cleanups hiding in that patch.
-> 
-> I think I remember seeing other places where unrelated changes were
-> glommed together into a single patch.  As we find them, we should
-> split them into separate patches, again for ease of patch maintenance
-> and improvements.
-> 
-> Again, my apologies for taking so long in getting these patches out
-> there.  I really wanted to give you some examples in the kind of patch
-> factoring and interface cleanups that I was hoping for before merging
-> this support upstream.  Unfortuantely, I've been crazy busy these last
-> few weeks.  I had hoped to put more work into this today, but I lost
-> at least two hours due to a burst gas main which forced the
-> evacuations of the offices.  :-(
-> 
-> (Turns out it's not just network fibers which emit backhoe pheromones,
-> gas mains do as well.  :-)
-> 
-> I'll let you take the next whack at improving the patches.  My
-> suggestion is that you create your own github repository, and update
-> the patches using git.  What I generally do is to apply the patches
-> using guilt (I suggest using v0.35 from git://repo.or.cz/guilt.git) by
-> pulling down the github repository into an e2fsprogs repository at
-> ".git/patches/inline".  Then take a look at first line of
-> .git/patches/inline/series, which currently reads:
-> 
-> # BASE 4cf7a7014a209b82aada9b5d83ecdb9b07e60a1a
-> 
-> In the top of the e2fsprogs repository, type the commands:
-> 
-> % pushd .git/patches/inline ; sh timestamps ; popd
-> % git branch inline 4cf7a7014a209b82aada9b5d83ecdb9b07e60a1a
-> % git checkout inline
-> % guilt push -a
-> 
-> This will apply all of the patches in .git/patches/inline (which you
-> pulled down from github) to the e2fsprogs tree.  You can go back and
-> forth by using the commands "guilt pop" and "guilt push".  To modify a
-> patch, just edit the e2fsprogs files, and then use the command "guilt
-> refresh --diffstat" to merge your edits into the patch file.  You can
-> then commit changes to the patch queue by cd'ing into
-> .git/patches/inline directory, and running standard "git commit"
-> commands.  This way, when you send me an updated set of patches, I can
-> look at the git log to see what changes you've made.
-> 
-> Does this make sense?  If not, please feel free to send me any
-> questions you have.
+> Signed-off-by: Li Wang <liwang@ubuntukylin.com>
+> Signed-off-by: Yunchuan Wen <yunchuanwen@ubuntukylin.com>
+> Reviewed-by: Zheng Liu <gnehzuil.liu@gmail.com>
+> Cc: Dmitry Monakhov <dmonakhov@openvz.org>
+> ---
+> Hi Zheng,
+>   Thanks for your comments.
+>   This is the revised version with the operation of writting back moved
+> down after the inode mutex held. But there is one thing I wanna confirm
+> is that whether the inode mutex could prevent the mmap() writer? I did
+> not take a careful look at the mmap() code, the straightforward thinking
+> is that mmap() write will directly dirty the pages without going through 
+> the VFS generic_file_write() path.
+  Currently there's no easy way to stop mmap writer. When I eventually get
+to implementing the mapping range lock, it will be used exactly for that.
 
-Hi Ted,
+>   BTW, I have one other question to confirm regarding the ext4 journal mode:
+> what is the advantage of data=ordered journal mode compared to data=writeback?
+> For overwriting write, it still may lead to the inconsistence between data and
+> metadata, that is, data is new and metadata is old. So its standpoint is
+> that it beats data=writeback in appending write?
+  The advantage of data=ordered mode is that in case of a system crash /
+power failure, you are guaranteed that only data sometimes written to a
+file is visible there - i.e., you will not ever expose uninitialized blocks
+to user (which is a security concern on multiuser systems as those
+uninitialized blocks can contain old versions of /etc/shadow or other
+sensitive data).
 
-Definitely it makes sense to me.  I really appreciate and thank you
-for your suggestion.  Yes, I have used guilt to manage my patches for
-a long time.  That is really useful for me.  I will revise every
-single commit, and improve them.
+								Honza
 
-Thanks,
-                                                - Zheng
+> ---
+>  fs/ext4/inode.c       |   27 +++++++++++++---------
+>  fs/jbd2/journal.c     |    1 +
+>  fs/jbd2/transaction.c |   61 +++++++++++++++++++++++++++++++------------------
+>  include/linux/jbd2.h  |    3 +++
+>  4 files changed, 59 insertions(+), 33 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index d6382b8..568b0bd 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -3569,6 +3569,16 @@ int ext4_can_truncate(struct inode *inode)
+>  	return 0;
+>  }
+>  
+> +static inline int ext4_begin_ordered_fallocate(struct inode *inode,
+> +					       loff_t start, loff_t length)
+> +{
+> +	if (!EXT4_I(inode)->jinode)
+> +		return 0;
+> +	return jbd2_journal_begin_ordered_fallocate(EXT4_JOURNAL(inode),
+> +						    EXT4_I(inode)->jinode,
+> +						    start, length);
+> +}
+> +
+  I somewhat dislike the naming of the functions - especially 'fallocate'
+seems a bit misleading as it's really about hole punching. So maybe we
+could call the functions like:
+  ext4_begin_ordered_punch_hole()
+and
+  jbd2_journal_begin_ordered_punch_hole()?
+
+>  /*
+>   * ext4_punch_hole: punches a hole in a file by releaseing the blocks
+>   * associated with the given offset and length
+> @@ -3602,17 +3612,6 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
+>  
+>  	trace_ext4_punch_hole(inode, offset, length);
+>  
+> -	/*
+> -	 * Write out all dirty pages to avoid race conditions
+> -	 * Then release them.
+> -	 */
+> -	if (mapping->nrpages && mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
+> -		ret = filemap_write_and_wait_range(mapping, offset,
+> -						   offset + length - 1);
+> -		if (ret)
+> -			return ret;
+> -	}
+> -
+>  	mutex_lock(&inode->i_mutex);
+>  	/* It's not possible punch hole on append only file */
+>  	if (IS_APPEND(inode) || IS_IMMUTABLE(inode)) {
+> @@ -3644,6 +3643,12 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
+>  	first_page_offset = first_page << PAGE_CACHE_SHIFT;
+>  	last_page_offset = last_page << PAGE_CACHE_SHIFT;
+>  
+> +	if (ext4_should_order_data(inode)) {
+> +		ret = ext4_begin_ordered_fallocate(inode, offset, length);
+> +		if (ret)
+> +			return ret;
+> +	}
+> +
+>  	/* Now release the pages */
+>  	if (last_page_offset > first_page_offset) {
+>  		truncate_pagecache_range(inode, first_page_offset,
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index 9545757..ccc483a 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -98,6 +98,7 @@ EXPORT_SYMBOL(jbd2_journal_file_inode);
+>  EXPORT_SYMBOL(jbd2_journal_init_jbd_inode);
+>  EXPORT_SYMBOL(jbd2_journal_release_jbd_inode);
+>  EXPORT_SYMBOL(jbd2_journal_begin_ordered_truncate);
+> +EXPORT_SYMBOL(jbd2_journal_begin_ordered_fallocate);
+>  EXPORT_SYMBOL(jbd2_inode_cache);
+>  
+>  static void __journal_abort_soft (journal_t *journal, int errno);
+> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+> index 10f524c..035c064 100644
+> --- a/fs/jbd2/transaction.c
+> +++ b/fs/jbd2/transaction.c
+> @@ -2305,6 +2305,36 @@ done:
+>  	return 0;
+>  }
+>  
+> +
+> +static int jbd2_journal_begin_ordered_discard(journal_t *journal,
+> +					struct jbd2_inode *jinode,
+> +					loff_t start, loff_t end)
+> +{
+  I don't see a need for this internal function - it is exactly the same as
+the external one (jbd2_journal_begin_ordered_punch_hole()).
+
+> +	transaction_t *inode_trans, *commit_trans;
+> +	int ret = 0;
+> +
+> +	/* This is a quick check to avoid locking if not necessary */
+> +	if (!jinode->i_transaction)
+> +		goto out;
+> +	/* Locks are here just to force reading of recent values, it is
+> +	 * enough that the transaction was not committing before we started
+> +	 * a transaction adding the inode to orphan list */
+> +	read_lock(&journal->j_state_lock);
+> +	commit_trans = journal->j_committing_transaction;
+> +	read_unlock(&journal->j_state_lock);
+> +	spin_lock(&journal->j_list_lock);
+> +	inode_trans = jinode->i_transaction;
+> +	spin_unlock(&journal->j_list_lock);
+> +	if (inode_trans == commit_trans) {
+> +		ret = filemap_fdatawrite_range(jinode->i_vfs_inode->i_mapping,
+> +			start, end);
+> +		if (ret)
+> +			jbd2_journal_abort(journal, ret);
+> +	}
+> +out:
+> +	return ret;
+> +}
+> +
+>  /*
+>   * File truncate and transaction commit interact with each other in a
+>   * non-trivial way.  If a transaction writing data block A is
+> @@ -2329,27 +2359,14 @@ int jbd2_journal_begin_ordered_truncate(journal_t *journal,
+>  					struct jbd2_inode *jinode,
+>  					loff_t new_size)
+>  {
+> -	transaction_t *inode_trans, *commit_trans;
+> -	int ret = 0;
+> +	return jbd2_journal_begin_ordered_discard(journal, jinode,
+> +						  new_size, LLONG_MAX);
+> +}
+  You can make this function inline and declare it in jbd2.h header file...
+
+									Honza
+
+>  
+> -	/* This is a quick check to avoid locking if not necessary */
+> -	if (!jinode->i_transaction)
+> -		goto out;
+> -	/* Locks are here just to force reading of recent values, it is
+> -	 * enough that the transaction was not committing before we started
+> -	 * a transaction adding the inode to orphan list */
+> -	read_lock(&journal->j_state_lock);
+> -	commit_trans = journal->j_committing_transaction;
+> -	read_unlock(&journal->j_state_lock);
+> -	spin_lock(&journal->j_list_lock);
+> -	inode_trans = jinode->i_transaction;
+> -	spin_unlock(&journal->j_list_lock);
+> -	if (inode_trans == commit_trans) {
+> -		ret = filemap_fdatawrite_range(jinode->i_vfs_inode->i_mapping,
+> -			new_size, LLONG_MAX);
+> -		if (ret)
+> -			jbd2_journal_abort(journal, ret);
+> -	}
+> -out:
+> -	return ret;
+> +int jbd2_journal_begin_ordered_fallocate(journal_t *journal,
+> +					struct jbd2_inode *jinode,
+> +					loff_t start, loff_t length)
+> +{
+> +	return jbd2_journal_begin_ordered_discard(journal, jinode,
+> +						  start, start + length - 1);
+>  }
+> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+> index 6e051f4..6c63c5e 100644
+> --- a/include/linux/jbd2.h
+> +++ b/include/linux/jbd2.h
+> @@ -1128,6 +1128,9 @@ extern int	   jbd2_journal_force_commit(journal_t *);
+>  extern int	   jbd2_journal_file_inode(handle_t *handle, struct jbd2_inode *inode);
+>  extern int	   jbd2_journal_begin_ordered_truncate(journal_t *journal,
+>  				struct jbd2_inode *inode, loff_t new_size);
+> +extern int	   jbd2_journal_begin_ordered_fallocate(journal_t *journal,
+> +				struct jbd2_inode *inode, loff_t start,
+> +				loff_t length);
+>  extern void	   jbd2_journal_init_jbd_inode(struct jbd2_inode *jinode, struct inode *inode);
+>  extern void	   jbd2_journal_release_jbd_inode(journal_t *journal, struct jbd2_inode *jinode);
+>  
+> -- 
+> 1.7.9.5
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
