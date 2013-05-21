@@ -1,107 +1,111 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH v4 00/20] change invalidatepage prototype to accept
- length
-Date: Tue, 21 May 2013 16:34:25 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1305211622330.2469@localhost>
-References: <1368549454-8930-1-git-send-email-lczerner@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/4] ext4: Fix fsync error handling after filesysteb
+ abort.
+Date: Tue, 21 May 2013 18:18:50 +0200
+Message-ID: <20130521161850.GE11616@quack.suse.cz>
+References: <1368707290-26185-1-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        akpm@linux-foundation.org, hughd@google.com
-To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1368549454-8930-1-git-send-email-lczerner@redhat.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:36648 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754272Ab3EUQSy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 21 May 2013 12:18:54 -0400
+Content-Disposition: inline
+In-Reply-To: <1368707290-26185-1-git-send-email-dmonakhov@openvz.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 14 May 2013, Lukas Czerner wrote:
+On Thu 16-05-13 16:28:07, Dmitry Monakhov wrote:
+  The patch looks OK but I have some typo fixes below. But you can add
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-> Date: Tue, 14 May 2013 18:37:14 +0200
-> From: Lukas Czerner <lczerner@redhat.com>
-> To: linux-mm@kvack.org
-> Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
->     linux-ext4@vger.kernel.org, akpm@linux-foundation.org, hughd@google.com,
->     lczerner@redhat.com
-> Subject: [PATCH v4 00/20] change invalidatepage prototype to accept length
+> If filesystem was aborted after inode's write back complete
+						    ^^ is
+> but before it's metadata was updated we may return success
+             ^^^ its
 
-Hi Ted,
+> due to (sb->s_flags & MS_RDONLY) which is incorrect and
+> result in data loss.
+   ^^^ results
 
-you've mentioned that you'll carry the changed in the ext4 tree. Are
-you going to take it for the next merge window ?
+> In order to handle fs abort correctly we have to check
+> fs state once we discover that it is in MS_RDONLY state
+> 
+> Test case: http://patchwork.ozlabs.org/patch/244297/
+> 
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> ---
+>  fs/ext4/fsync.c |    8 ++++++--
+>  fs/ext4/super.c |   13 ++++++++++++-
+>  2 files changed, 18 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+> index e0ba8a4..d7df2f1 100644
+> --- a/fs/ext4/fsync.c
+> +++ b/fs/ext4/fsync.c
+> @@ -129,9 +129,13 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+>  		return ret;
+>  	mutex_lock(&inode->i_mutex);
+>  
+> -	if (inode->i_sb->s_flags & MS_RDONLY)
+> +	if (inode->i_sb->s_flags & MS_RDONLY) {
+> +		/* Make shure that we read updated s_mount_flags value */
+                        ^^^ sure
+> +		smp_rmb();
+> +		if (EXT4_SB(inode->i_sb)->s_mount_flags & EXT4_MF_FS_ABORTED)
+> +			ret = -EROFS;
+>  		goto out;
+> -
+> +	}
+>  	ret = ext4_flush_unwritten_io(inode);
+>  	if (ret < 0)
+>  		goto out;
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index dbc7c09..6c91c8e 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -398,6 +398,11 @@ static void ext4_handle_error(struct super_block *sb)
+>  	}
+>  	if (test_opt(sb, ERRORS_RO)) {
+>  		ext4_msg(sb, KERN_CRIT, "Remounting filesystem read-only");
+> +		/*
+> +		 * Make shure updated value of ->s_mount_flags will be visiable
+                        ^^^ sure                                  visible ^^
+> +		 * before ->s_flags update
+> +		 */
+> +		smp_wmb();
+>  		sb->s_flags |= MS_RDONLY;
+>  	}
+>  	if (test_opt(sb, ERRORS_PANIC))
+> @@ -552,6 +557,7 @@ void __ext4_std_error(struct super_block *sb, const char *function,
+>   *
+>   * We unconditionally force the filesystem into an ABORT|READONLY state,
+>   * unless the error response on the fs has been set to panic in which
+> +
+  ^^ Stray empty line.
 
-However I still need some review on the mm part of the series,
-Andrew, Hugh, anyone ?
-
-Thanks!
--Lukas
-
-> 
-> Hi,
-> 
-> This set of patches are aimed to allow truncate_inode_pages_range() handle
-> ranges which are not aligned at the end of the page. Currently it will
-> hit BUG_ON() when the end of the range is not aligned. Punch hole feature
-> however can benefit from this ability saving file systems some work not
-> forcing them to implement their own invalidate code to handle unaligned
-> ranges.
-> 
-> In order for this to woke we need change ->invalidatepage() address space
-> operation to to accept range to invalidate by adding 'length' argument in
-> addition to 'offset'. This is different from my previous attempt to create
-> new aop ->invalidatepage_range (http://lwn.net/Articles/514828/) which I
-> reconsidered to be unnecessary.
-> 
-> It would be for the best if this series could go through ext4 branch since
-> there are a lot of ext4 changes which are based on dev branch of ext4 
-> (git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git)
-> 
-> For description purposes this patch set can be divided into following
-> groups:
-> 
-> patch 0001:    Change ->invalidatepage() prototype adding 'length' argument
-> 	and changing all the instances. In very simple cases file
-> 	system methods are completely adapted, otherwise only
-> 	prototype is changed and the rest will follow. This patch
-> 	also implement the 'range' invalidation in
-> 	block_invalidatepage().
-> 
-> patch 0002 - 0009:
-> 	Make the use of new 'length' argument in the file system
-> 	itself. Some file systems can take advantage of it trying
-> 	to invalidate only portion of the page if possible, some
-> 	can't, however none of the file systems currently attempt
-> 	to truncate non page aligned ranges.
-> 
-> 
-> patch 0010:    Teach truncate_inode_pages_range() to handle non page aligned
-> 	ranges.
-> 
-> patch 0011 - 0020:
-> 	Ext4 changes build on top of previous changes, simplifying
-> 	punch hole code. Not all changes are realated specifically
-> 	to invalidatepage() change, but all are related to the punch
-> 	hole feature.
-> 
-> Even though this patch set would mainly affect functionality of the file
-> file systems implementing punch hole I've tested all the following file
-> system using xfstests without noticing any bugs related to this change.
-> 
-> ext3, ext4, xfs, btrfs, gfs2 and reiserfs
-> 
-> I've also tested block size < page size on ext4 with xfstests and fsx.
-> 
-> 
-> v3 -> v4: Some minor changes based on the reviews. Added two ext4 patches
-> 	  as suggested by Jan Kara.
-> 
-> Thanks!
-> -Lukas
-> 
-> 
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+>   * case we take the easy way out and panic immediately.
+>   */
+>  
+> @@ -570,8 +576,13 @@ void __ext4_abort(struct super_block *sb, const char *function,
+>  
+>  	if ((sb->s_flags & MS_RDONLY) == 0) {
+>  		ext4_msg(sb, KERN_CRIT, "Remounting filesystem read-only");
+> -		sb->s_flags |= MS_RDONLY;
+>  		EXT4_SB(sb)->s_mount_flags |= EXT4_MF_FS_ABORTED;
+> +		/*
+> +		 * Make shure updated value of ->s_mount_flags will be visiable
+                         ^^ sure                                 visible ^^
+> +		 * before ->s_flags update
+> +		 */
+> +		smp_wmb();
+> +		sb->s_flags |= MS_RDONLY;
+>  		if (EXT4_SB(sb)->s_journal)
+>  			jbd2_journal_abort(EXT4_SB(sb)->s_journal, -EIO);
+>  		save_error_info(sb, function, line);
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
