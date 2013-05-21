@@ -1,102 +1,73 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH 3/4] mm: Activate !PageLRU pages on mark_page_accessed
- if page is on local pagevec
-Date: Mon, 20 May 2013 15:09:26 -0700
-Message-ID: <20130520150926.9c374888290246f683272330@linux-foundation.org>
-References: <1368440482-27909-1-git-send-email-mgorman@suse.de>
-	<1368440482-27909-4-git-send-email-mgorman@suse.de>
-	<20130515155500.ffe53764d9018c80572544cc@linux-foundation.org>
-	<20130516134104.GH11497@suse.de>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] libext2fs: do not print any error message from libext2fs
+Date: Mon, 20 May 2013 22:36:36 -0400
+Message-ID: <20130521023636.GA586@thunk.org>
+References: <1367059481-6090-1-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Alexey Lyahkov <alexey.lyashkov@gmail.com>, Andrew Perepechko
- <anserper@ya.ru>, Robin Dong <sanbai@taobao.com>, Theodore Tso
- <tytso@mit.edu>, Hugh Dickins <hughd@google.com>, Rik van Riel
- <riel@redhat.com>, Johannes Weiner <hannes@cmpxchg.org>, Bernd Schubert
- <bernd.schubert@fastmail.fm>, David Howells <dhowells@redhat.com>, Trond
- Myklebust <Trond.Myklebust@netapp.com>, Linux-fsdevel
- <linux-fsdevel@vger.kernel.org>, Linux-ext4 <linux-ext4@vger.kernel.org>,
- LKML <linux-kernel@vger.kernel.org>, Linux-mm <linux-mm@kvack.org>
-To: Mel Gorman <mgorman@suse.de>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20130516134104.GH11497@suse.de>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:50117 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755340Ab3EUCgm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 20 May 2013 22:36:42 -0400
+Content-Disposition: inline
+In-Reply-To: <1367059481-6090-1-git-send-email-wenqing.lz@taobao.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 16 May 2013 14:41:04 +0100 Mel Gorman <mgorman@suse.de> wrote:
+On Sat, Apr 27, 2013 at 06:44:41PM +0800, Zheng Liu wrote:
+> diff --git a/debugfs/htree.c b/debugfs/htree.c
+> index ca39b4b..e042fd7 100644
+> --- a/debugfs/htree.c
+> +++ b/debugfs/htree.c
+> @@ -388,8 +388,11 @@ void do_dirsearch(int argc, char *argv[])
+>  	pb.len = strlen(pb.search_name);
+>  
+>  	if (ext2fs_inode_has_inline_data(current_fs, inode)) {
+> -		ext2fs_inline_data_dirsearch(current_fs, inode,
+> +		errcode_t retval;
+> +		retval = ext2fs_inline_data_dirsearch(current_fs, inode,
+>  					     argv[2], strlen(argv[2]));
+> +		if (retval)
+> +			printf("Entry found at inline data\n");
+>  		goto out;
+>  	}
 
-> On Wed, May 15, 2013 at 03:55:00PM -0700, Andrew Morton wrote:
-> > > @@ -441,8 +462,17 @@ void activate_page(struct page *page)
-> > >  void mark_page_accessed(struct page *page)
-> > >  {
-> > >  	if (!PageActive(page) && !PageUnevictable(page) &&
-> > > -			PageReferenced(page) && PageLRU(page)) {
-> > > -		activate_page(page);
-> > > +			PageReferenced(page)) {
-> > > +
-> > > +		/*
-> > > +		 * If the page is on the LRU, promote immediately. Otherwise,
-> > > +		 * assume the page is on a pagevec, mark it active and it'll
-> > > +		 * be moved to the active LRU on the next drain
-> > > +		 */
-> > > +		if (PageLRU(page))
-> > > +			activate_page(page);
-> > > +		else
-> > > +			__lru_cache_activate_page(page);
-> > >  		ClearPageReferenced(page);
-> > >  	} else if (!PageReferenced(page)) {
-> > >  		SetPageReferenced(page);
-> > 
-> > For starters, activate_page() doesn't "promote immediately".  It sticks
-> > the page into yet another pagevec for deferred activation.
-> > 
-> 
-> True, comment updated.
-> 
-> > Also, I really worry about the fact that
-> > activate_page()->drain->__activate_page() will simply skip over the
-> > page if it has PageActive set!  So PageActive does something useful if
-> > the page is in the add-to-lru pagevec but nothing useful if the page is
-> > in the activate-it-soon pagevec.  This is a confusing, unobvious bug
-> > attractant.
-> > 
-> 
-> >From mark_page_accessed, we only call activate_page() for !PageActive
-> and PageLRU. The PageLRU is key, if it's set, the pages *must* be on the
-> inactive list or they'd trigger BUG_ON(PageActive) checks within
-> vmscan.c. Am I missing your point?
+The problem with this is that ext2_inline_data_dirsearch() also
+returns a non-zero error code.  So it returns 0 if the entry is not
+found in the inline data, 1 if it is found in the inline data, and
+some other error code --- and if some system call returns EPERM (which
+is one) there will be a collision.
 
-I've forgotten what my point was.  I'll ramp back up when looking at
-v2.  But this code is at the stage where it needs a state transition
-diagram, or table.  Which makes on wonder if it's too damn complex.
+This is an example of a badly designed library interface; and since I
+don't want to break backwards compatibility by removing a library
+interface once we've added one, we need to be very careful for each
+new interface that we are thinking of adding.
 
-Testing PageLRU while not holding lru_lock is always ... interesting.
+In this particular case, it's not clear to me that this library
+interface is at all useful, or that dirsearch needs to support inline
+directories at all in the first place.  The only reason dirsearch
+exists is to debug very large htree directories where the index has
+gotten corrupted.  For a small inline directory, it's just as easy to
+check to see what's in the directory by using the "ls" command.
 
-> ...
->
-> > Secondly, I really don't see how this code avoids the races.  Suppose
-> > the page gets spilled from the to-add-to-lru pagevec and onto the real
-> > LRU while mark_page_accessed() is concurrently executing. 
-> 
-> Good question. The key here is that __lru_cache_activate_page only
-> searches the pagevec for the local CPU. If the current CPU is draining the
-> to_add_to_lru pagevec, it cannot also be simultaneously setting PageActive
-> in mark_page_accessed. It was discussed in the changelog here.
-> 
-> "Note that only pages on the local pagevec are considered on purpose. A
-> !PageLRU page could be in the process of being released, reclaimed,
-> migrated or on a remote pagevec that is currently being drained. Marking
-> it PageActive is vunerable to races where PageLRU and Active bits are
-> checked at the wrong time."
-> 
-> Subtle comments on the code belong in the changelog, right?
+So having dirsearch simply give an error and not support inline data
+directory, or to have dirsearch work by iterating over each of the
+entries in the inline data directory would both be acceptable
+alternatives.
 
-Not if you want anyone to read them ;)
+And we need to carry out a similar very careful examination of all of
+the other new interfaces added to inline_data.c.  Sometimes it helps
+to document exactly what it is that this interface is doing, and what
+does it return under what circumstance.  Then think about what the
+best generic interface would be for all possible future users of that
+interface, not just the one or ones in the current e2fsprogs tree.
+And if there is only one caller of a particular interface, then it may
+be fair to ask the question whether it should be in the library at
+all.
 
+Regards,
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+						- Ted
