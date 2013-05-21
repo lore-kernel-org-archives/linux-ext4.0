@@ -1,75 +1,79 @@
-From: Dave Jones <davej@redhat.com>
-Subject: Re: Trinity: BUG at fs/ext4/inode.c:1590!
-Date: Tue, 21 May 2013 13:07:07 -0400
-Message-ID: <20130521170707.GD9163@redhat.com>
-References: <5199514D.5090606@gmx.de>
- <519A40DE.2060409@redhat.com>
+From: frankcmoeller@arcor.de
+Subject: Aw: Re: Ext4: Slow performance on first write after mount
+Date: Tue, 21 May 2013 20:02:36 +0200 (CEST)
+Message-ID: <46558986.3488364.1369159356954.JavaMail.ngmail@webmail09.arcor-online.net>
+References: <D1047C91-765D-4EBD-A6CC-869DF0D5AD90@dilger.ca> <1679869241.585607.1368809483337.JavaMail.ngmail@webmail12.arcor-online.net> <20130519140023.GB7183@thunk.org> <FB0094B8-15F8-4190-ABC6-2C06C6BC2521@dilger.ca> <20130520114647.GC8404@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Toralf =?iso-8859-1?Q?F=F6rster?= <toralf.foerster@gmx.de>,
-	linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: adilger@dilger.ca
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38199 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754691Ab3EURHO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 21 May 2013 13:07:14 -0400
-Content-Disposition: inline
-In-Reply-To: <519A40DE.2060409@redhat.com>
+Received: from mail-in-02.arcor-online.net ([151.189.21.42]:58766 "EHLO
+	mail-in-02.arcor-online.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755000Ab3EUSCi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 21 May 2013 14:02:38 -0400
+In-Reply-To: <D1047C91-765D-4EBD-A6CC-869DF0D5AD90@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 20, 2013 at 10:27:26AM -0500, Eric Sandeen wrote:
+Hi Andreas,
 
- > Dave, I had suggested earlier in the thread that an option to specify a seed and a nr. of syscalls
- > to skip would help narrow down what triggers a bug.
- >  i.e. in this case, we could find the last seed (for this child?) and then run with:
+only a short question: 
 
-The seed is 'global', ie, child 1 uses seed+1, child 2 uses seed+2 etc etc.
-We only log the seed value without the child number, so as long as you run with the same number
-of child processes, the children will all get the correct seed values.
- 
- > * that seed
- > * max syscalls 421
- > * skip the first 400 syscalls
- > 
- > and see if it reproduces.  Keep narrowing the window until we get the smallest set that reproduces.  fsx has something similar to this.
+> I like the idea of keeping the high bits of the buddy bitmap in the group
+> descriptor, instead of just the largest free order. It takes the same
+> amount of space, but provides more information. 
+More informations for what? The allocator or better the good_group function
+needs bb_largest_free_order and in some cases fragment count. Do you 
+want to use the bitmap for a not 100% correct fragment count calculation? 
+Or is there another use for it?
 
-Setting the seed with -N should have the same net result as skipping the syscalls up until that point.
+Best regards,
+Frank
 
-There are however two gotchas with the code to use prior seeds.
-
-1. imagine this scenario.
-
-   a. initial seed
-   b. N syscalls done
-   c. reseed
-   d. N syscalls done.
-
-  If we get an oops after D, you might think "great, I can ignore everything before (c)" but that may not necessarily
-  be the case, if something at (b) created/corrupted some kernel state that (d) ends up falling over.
-
-2. We gather a list of filenames at startup from /proc, /sys and /dev, and these change at each run.
-   This has undesirable results when you're trying to recreate something based on 'fd 243' etc, when that
-   ends up mapping to a different file.
-   However, in Toralf's case, if he's using -V, we'll only gather fd's from there, and as long as the files/dirs
-   at that path are static across runs, all should be good.
-
- > (heh, now I want an option to emit C code to recreate the last N syscalls it's made, for permanent testcases.  I suppose that'd be tough) ;)
-
-Not tough, just yet another idea to add to the already mile-long TODO :-)
- 
- > Here's a really hacky, untested patch that might implement the skipping I'm talking about.  Caveat; I've never actually used trinity.  :)
-
-I think if we wanted to skip a few million syscalls this would involve
-quite a wait, and you're not really going to be saving much time over
-just doing the syscalls ;)
-
- > So if I'm missing something obvious about how to narrow down a failure to the call that caused it, I'm all ears.  :)
-
-I really hope that -N is enough here.  The only real gotcha is the 2nd case
-above, which we could solve by using a filename cache in the same way
-there's a network socket cache.
-
-	Dave
-
+> 
+> > On Sun, 19 May 2013 21:36:02 +0200 (CEST) Frank C Moeller wrote:
+> >> From my point (end user) I would prefer a builtin solution. I'm also a
+> >> programmer and I can therefore understand why you don't want to change
+> >> anything.
+> > 
+> > It's not that I don't want to change anything, it's that I'm very
+> > hesitant to add new mount options or new code paths that now need more
+> > testing unless there's no other way of addressing a particular use
+> > case.  Another consideration is how to do it in such a way that it
+> > doesn't degrade other users' performance.
+> > 
+> > Issuing readahead requests for the bitmap blocks might be good
+> > compromise; since they are readahead requests, as low priority
+> > requests they won't interfere with anything else going on, and in
+> > practice, unless you are starting your video recording **immediately**
+> > after the reboot, it should address your concern.
+> 
+> Right. Some of our users do something similar in userspace to avoid
+> slowdown on first write, which doesn't _usually_ happen immediately
+> after mount, but this isn't always helpful. 
+> 
+> >  (Also note that for
+> > most people willing to hack a DVR, adding a line to /etc/rc.local is
+> > usually considered easier than building a new kernel from sources and
+> > then after making file system format changes, requiring a reformat of
+> > their data disk!)
+> 
+> I think storing the buddy bitmap top bits in the GDT could be a COMPAT
+> feature.  It is just a hint that could be ignored or incorrect, since
+> the actual bitmap would be authoritative. 
+> 
+> Cheers, Andreas
+> 
+> > So it's not that I'm against solutions that involve kernel changes or
+> > file system format changes.  It's just that I want to make sure we
+> > explore the entire solution space, since there are costs in terms of
+> > testing costs, the need to do a backup-reformat-restore pass, etc,
+> > etc., to some of the solutions that have been suggested so far.
+> > 
+> > Regards,
+> > 
+> >                        - Ted
+> 
