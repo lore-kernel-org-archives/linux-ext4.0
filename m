@@ -1,113 +1,79 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH V2] xfstests: fix src/seek_sanity_test -t option
-Date: Fri, 24 May 2013 16:02:32 +0800
-Message-ID: <20130524080232.GA32562@gmail.com>
-References: <519EF4AE.60702@redhat.com>
- <519EF740.1000907@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 3/4] jbd2: make shure that we do not miss aborted state
+Date: Fri, 24 May 2013 15:09:07 +0200
+Message-ID: <20130524130907.GA11493@quack.suse.cz>
+References: <1368707290-26185-1-git-send-email-dmonakhov@openvz.org>
+ <1368707290-26185-3-git-send-email-dmonakhov@openvz.org>
+ <20130521162114.GF11616@quack.suse.cz>
+ <87mwrn75gt.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>, xfs-oss <xfs@oss.sgi.com>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <xfs-bounces@oss.sgi.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:50678 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754860Ab3EXNJK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 24 May 2013 09:09:10 -0400
 Content-Disposition: inline
-In-Reply-To: <519EF740.1000907@redhat.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <87mwrn75gt.fsf@openvz.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, May 24, 2013 at 12:14:40AM -0500, Eric Sandeen wrote:
-> _require_seek_data_hole() does not work because
-> the -t (test) option of seek_sanity_test is broken,
-> because of an early check for (argc != 2):
-> 
-> # src/seek_sanity_test -t foo
-> Usage: src/seek_sanity_test base_file_path
-> 
-> So _require_seek_data_hole() doesn't see the
-> "Kernel does not support" string it's looking for,
-> and passes the check.
-> 
-> So rather than _notrun-ing the test, it proceeds to
-> fail with noisy errors.
-> 
-> Fix that, make a common usage() function, and check for
-> too many args as well.
-> 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+On Wed 22-05-13 13:02:10, Dmitry Monakhov wrote:
+> On Tue, 21 May 2013 18:21:14 +0200, Jan Kara <jack@suse.cz> wrote:
+> > On Thu 16-05-13 16:28:09, Dmitry Monakhov wrote:
+> > > 
+> > > Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> >   Can you elaborate a bit more on how the aborted state could be missed so
+> > that it would cause any problems?
+> Fairly to say this was fix of hypothetical issue.
+> Since we  j_state_lock goes trough lock/unlock after wait_event()
+> we should not miss an error for the certain tid we are interested in.
+> But this patch makes code looks cleaner. 
+  Well, we often check is_journal_aborted() without holding any lock so
+moving it inside the lock in this case doesn't make much sence to me. So at
+least for jbd I'm not inclined to take it as it seems as an unnecessary
+churn. For jbd2 it's Ted's choice...
 
-Sorry, my apologies.  I made a mistake when I rebased the patch.  Thanks
-for fixing it.
-Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
+								Honza
 
-                                                - Zheng
-
-> ---
-> 
-> V2: saner test for too many args
-> 
-> diff --git a/src/seek_sanity_test.c b/src/seek_sanity_test.c
-> index 4275a84..f957178 100644
-> --- a/src/seek_sanity_test.c
-> +++ b/src/seek_sanity_test.c
-> @@ -656,6 +656,12 @@ out:
->  	return ret;
->  }
->  
-> +void usage(char *cmd)
-> +{
-> +	fprintf(stdout, "Usage: %s [-t] base_file_path\n", cmd);
-> +	exit(1);
-> +}
-> +
->  int main(int argc, char **argv)
->  {
->  	int ret = -1;
-> @@ -664,23 +670,20 @@ int main(int argc, char **argv)
->  	int check_support = 0;
->  	int numtests = sizeof(seek_tests) / sizeof(struct testrec);
->  
-> -	if (argc != 2) {
-> -		fprintf(stdout, "Usage: %s base_file_path\n", argv[0]);
-> -		return ret;
-> -	}
-> -
->  	while ((opt = getopt(argc, argv, "t")) != -1) {
->  		switch (opt) {
->  		case 't':
->  			check_support++;
->  			break;
->  		default:
-> -			fprintf(stderr, "Usage: %s [-t] base_file_path\n",
-> -				argv[0]);
-> -			return ret;
-> +			usage(argv[0]);
->  		}
->  	}
->  
-> +	/* should be exactly one arg left, the filename */
-> +	if (optind != argc - 1)
-> +		usage(argv[0]);
-> +
->  	base_file_path = (char *)strdup(argv[optind]);
->  
->  	ret = test_basic_support();
-> 
-> 
-> 
-> _______________________________________________
-> xfs mailing list
-> xfs@oss.sgi.com
-> http://oss.sgi.com/mailman/listinfo/xfs
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+> > > ---
+> > >  fs/jbd2/journal.c |    3 +--
+> > >  1 files changed, 1 insertions(+), 2 deletions(-)
+> > > 
+> > > diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> > > index 886ec2f..57b9120 100644
+> > > --- a/fs/jbd2/journal.c
+> > > +++ b/fs/jbd2/journal.c
+> > > @@ -700,12 +700,11 @@ int jbd2_log_wait_commit(journal_t *journal, tid_t tid)
+> > >  				!tid_gt(tid, journal->j_commit_sequence));
+> > >  		read_lock(&journal->j_state_lock);
+> > >  	}
+> > > -	read_unlock(&journal->j_state_lock);
+> > > -
+> > >  	if (unlikely(is_journal_aborted(journal))) {
+> > >  		printk(KERN_EMERG "journal commit I/O error\n");
+> > >  		err = -EIO;
+> > >  	}
+> > > +	read_unlock(&journal->j_state_lock);
+> > >  	return err;
+> > >  }
+> > >  
+> > > -- 
+> > > 1.7.1
+> > > 
+> > > --
+> > > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > > the body of a message to majordomo@vger.kernel.org
+> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > -- 
+> > Jan Kara <jack@suse.cz>
+> > SUSE Labs, CR
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
