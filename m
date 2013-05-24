@@ -1,17 +1,19 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] xfstests: fix src/seek_sanity_test -t option
-Date: Fri, 24 May 2013 00:03:42 -0500
-Message-ID: <519EF4AE.60702@redhat.com>
+Subject: [PATCH V2] xfstests: fix src/seek_sanity_test -t option
+Date: Fri, 24 May 2013 00:14:40 -0500
+Message-ID: <519EF740.1000907@redhat.com>
+References: <519EF4AE.60702@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 To: xfs-oss <xfs@oss.sgi.com>,
 	ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49641 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:33122 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752504Ab3EXFDp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 24 May 2013 01:03:45 -0400
+	id S1752685Ab3EXFOn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 24 May 2013 01:14:43 -0400
+In-Reply-To: <519EF4AE.60702@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -34,6 +36,8 @@ too many args as well.
 
 Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
+
+V2: saner test for too many args
 
 diff --git a/src/seek_sanity_test.c b/src/seek_sanity_test.c
 index 4275a84..f957178 100644
