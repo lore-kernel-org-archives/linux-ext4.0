@@ -1,79 +1,73 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 3/4] jbd2: make shure that we do not miss aborted state
-Date: Fri, 24 May 2013 15:09:07 +0200
-Message-ID: <20130524130907.GA11493@quack.suse.cz>
-References: <1368707290-26185-1-git-send-email-dmonakhov@openvz.org>
- <1368707290-26185-3-git-send-email-dmonakhov@openvz.org>
- <20130521162114.GF11616@quack.suse.cz>
- <87mwrn75gt.fsf@openvz.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+From: ashishsangwan2@gmail.com
+Subject: [PATCH] ext4: pass inode pointer instead of file poiner to punch hole
+Date: Fri, 24 May 2013 20:06:55 +0530
+Message-ID: <519f7b26.81b1440a.6cc8.ffffa881@mx.google.com>
+Cc: linux-ext4@vger.kernel.org, Ashish Sangwan <a.sangwan@samsung.com>,
+	Namjae Jeon <namjae.jeon@samsung.com>
+To: tytso@mit.edu, adilger@dilger.ca
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:50678 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754860Ab3EXNJK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 24 May 2013 09:09:10 -0400
-Content-Disposition: inline
-In-Reply-To: <87mwrn75gt.fsf@openvz.org>
+Received: from mail-pa0-f44.google.com ([209.85.220.44]:58100 "EHLO
+	mail-pa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751441Ab3EXOh1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 May 2013 10:37:27 -0400
+Received: by mail-pa0-f44.google.com with SMTP id wp1so1770299pac.17
+        for <linux-ext4@vger.kernel.org>; Fri, 24 May 2013 07:37:27 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 22-05-13 13:02:10, Dmitry Monakhov wrote:
-> On Tue, 21 May 2013 18:21:14 +0200, Jan Kara <jack@suse.cz> wrote:
-> > On Thu 16-05-13 16:28:09, Dmitry Monakhov wrote:
-> > > 
-> > > Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> >   Can you elaborate a bit more on how the aborted state could be missed so
-> > that it would cause any problems?
-> Fairly to say this was fix of hypothetical issue.
-> Since we  j_state_lock goes trough lock/unlock after wait_event()
-> we should not miss an error for the certain tid we are interested in.
-> But this patch makes code looks cleaner. 
-  Well, we often check is_journal_aborted() without holding any lock so
-moving it inside the lock in this case doesn't make much sence to me. So at
-least for jbd I'm not inclined to take it as it seems as an unnecessary
-churn. For jbd2 it's Ted's choice...
+From: Ashish Sangwan <a.sangwan@samsung.com>
 
-								Honza
+No need to pass file pointer when we can directly pass inode pointer.
 
-> > > ---
-> > >  fs/jbd2/journal.c |    3 +--
-> > >  1 files changed, 1 insertions(+), 2 deletions(-)
-> > > 
-> > > diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> > > index 886ec2f..57b9120 100644
-> > > --- a/fs/jbd2/journal.c
-> > > +++ b/fs/jbd2/journal.c
-> > > @@ -700,12 +700,11 @@ int jbd2_log_wait_commit(journal_t *journal, tid_t tid)
-> > >  				!tid_gt(tid, journal->j_commit_sequence));
-> > >  		read_lock(&journal->j_state_lock);
-> > >  	}
-> > > -	read_unlock(&journal->j_state_lock);
-> > > -
-> > >  	if (unlikely(is_journal_aborted(journal))) {
-> > >  		printk(KERN_EMERG "journal commit I/O error\n");
-> > >  		err = -EIO;
-> > >  	}
-> > > +	read_unlock(&journal->j_state_lock);
-> > >  	return err;
-> > >  }
-> > >  
-> > > -- 
-> > > 1.7.1
-> > > 
-> > > --
-> > > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > > the body of a message to majordomo@vger.kernel.org
-> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > -- 
-> > Jan Kara <jack@suse.cz>
-> > SUSE Labs, CR
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
+Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
+---
+ fs/ext4/ext4.h    |    2 +-
+ fs/ext4/extents.c |    2 +-
+ fs/ext4/inode.c   |    3 +--
+ 3 files changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 5aae3d1..04e4d1e 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2088,7 +2088,7 @@ extern int ext4_change_inode_journal_flag(struct inode *, int);
+ extern int ext4_get_inode_loc(struct inode *, struct ext4_iloc *);
+ extern int ext4_can_truncate(struct inode *inode);
+ extern void ext4_truncate(struct inode *);
+-extern int ext4_punch_hole(struct file *file, loff_t offset, loff_t length);
++extern int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length);
+ extern int ext4_truncate_restart_trans(handle_t *, struct inode *, int nblocks);
+ extern void ext4_set_inode_flags(struct inode *);
+ extern void ext4_get_inode_flags(struct ext4_inode_info *);
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index bc0f191..3676dae 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4446,7 +4446,7 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+ 		return -EOPNOTSUPP;
+ 
+ 	if (mode & FALLOC_FL_PUNCH_HOLE)
+-		return ext4_punch_hole(file, offset, len);
++		return ext4_punch_hole(inode, offset, len);
+ 
+ 	ret = ext4_convert_inline_data(inode);
+ 	if (ret)
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index d6382b8..06e0fe2 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3580,9 +3580,8 @@ int ext4_can_truncate(struct inode *inode)
+  * Returns: 0 on success or negative on failure
+  */
+ 
+-int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
++int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
+ {
+-	struct inode *inode = file_inode(file);
+ 	struct super_block *sb = inode->i_sb;
+ 	ext4_lblk_t first_block, stop_block;
+ 	struct address_space *mapping = inode->i_mapping;
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.7.2.3
+
