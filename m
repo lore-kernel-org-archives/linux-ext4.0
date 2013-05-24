@@ -1,14 +1,16 @@
-From: Jeff Liu <jeff.liu@oracle.com>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
 Subject: Re: [PATCH V2] xfstests: fix src/seek_sanity_test -t option
-Date: Fri, 24 May 2013 14:54:32 +0800
-Message-ID: <519F0EA8.8010305@oracle.com>
-References: <519EF4AE.60702@redhat.com> <519EF740.1000907@redhat.com>
+Date: Fri, 24 May 2013 16:02:32 +0800
+Message-ID: <20130524080232.GA32562@gmail.com>
+References: <519EF4AE.60702@redhat.com>
+ <519EF740.1000907@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 Cc: ext4 development <linux-ext4@vger.kernel.org>, xfs-oss <xfs@oss.sgi.com>
 To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <xfs-bounces@oss.sgi.com>
+Content-Disposition: inline
 In-Reply-To: <519EF740.1000907@redhat.com>
 List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
 	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
@@ -21,7 +23,7 @@ Errors-To: xfs-bounces@oss.sgi.com
 Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On 05/24/2013 01:14 PM, Eric Sandeen wrote:
+On Fri, May 24, 2013 at 12:14:40AM -0500, Eric Sandeen wrote:
 > _require_seek_data_hole() does not work because
 > the -t (test) option of seek_sanity_test is broken,
 > because of an early check for (argc != 2):
@@ -40,6 +42,13 @@ On 05/24/2013 01:14 PM, Eric Sandeen wrote:
 > too many args as well.
 > 
 > Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+
+Sorry, my apologies.  I made a mistake when I rebased the patch.  Thanks
+for fixing it.
+Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
+
+                                                - Zheng
+
 > ---
 > 
 > V2: saner test for too many args
@@ -90,13 +99,13 @@ On 05/24/2013 01:14 PM, Eric Sandeen wrote:
 >  	base_file_path = (char *)strdup(argv[optind]);
 >  
 >  	ret = test_basic_support();
-
-This looks good to me.
-
-Reviewed-by: Jie Liu <jeff.liu@oracle.com>
-
-Thanks,
--Jeff
+> 
+> 
+> 
+> _______________________________________________
+> xfs mailing list
+> xfs@oss.sgi.com
+> http://oss.sgi.com/mailman/listinfo/xfs
 
 _______________________________________________
 xfs mailing list
