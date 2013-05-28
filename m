@@ -1,60 +1,41 @@
-From: Rich Johnston <rjohnston@sgi.com>
-Subject: Re: [PATCH] add generic/286 to the auto and quick groups
-Date: Tue, 28 May 2013 11:05:43 -0500
-Message-ID: <51A4D5D7.1040708@sgi.com>
-References: <1369369981-7035-1-git-send-email-tytso@mit.edu>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: Why does journal mode outperforms all other modes when reading
+ and writing data at the same time?
+Date: Tue, 28 May 2013 18:14:18 +0200
+Message-ID: <20130528161418.GD27920@quack.suse.cz>
+References: <CANPB7a4A+CbRcNoDc2=G=u8zy+q7ky=pGQxAMJrbxPC3sfytjw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"; Format="flowed"
-Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <1369369981-7035-1-git-send-email-tytso@mit.edu>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: jingguo yao <yaojingguo@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:47299 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S934710Ab3E1QOU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 May 2013 12:14:20 -0400
+Content-Disposition: inline
+In-Reply-To: <CANPB7a4A+CbRcNoDc2=G=u8zy+q7ky=pGQxAMJrbxPC3sfytjw@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 05/23/2013 11:33 PM, Theodore Ts'o wrote:
-> The generic/286 test tests SEEK_HOLE and SEEK_DATA, and is reasonably
-> fast.  We should just run the test by default.
->
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->   tests/generic/group | 2 +-
->   1 file changed, 1 insertion(+), 1 deletion(-)
->
-> diff --git a/tests/generic/group b/tests/generic/group
-> index e2ef70e..bd443c1 100644
-> --- a/tests/generic/group
-> +++ b/tests/generic/group
-> @@ -103,7 +103,7 @@
->   277 auto ioctl quick metadata
->   280 auto quota freeze dangerous
->   285 auto rw
-> -286 other
-> +286 auto quick other
->   288 auto quick ioctl trim
->   294 auto quick
->   299 auto aio enospc rw stress
->
-Thanks, this patch has been committed:
+On Tue 28-05-13 22:39:18, jingguo yao wrote:
+> Documentation/filesystems/ext4.txt has the following sentence:
+> 
+>   This mode is the slowest except when data needs to be read from and
+>   written to disk at the same time where it outperforms all others
+>   modes.
+> 
+> And the following link talks about it in more details. Can anybody give
+> the reason?
+> 
+> http://www.ibm.com/developerworks/library/l-fs8/index.html#4
+  Not sure why exactly data=journal was faster in that workload. But
+generally data=journal is known to help if you have shortlived files which
+are then written only to the journal and deleted before they are copied to
+the final location on disk. Also it may help by penalizing the writer so
+that readers have better chance to do their work...
 
-commit f45c6881577221e04f6cfe19d25e571bee088996
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Tue May 28 11:01:01 2013 -0500
-
-     xfstests: add generic/286 to the auto and quick groups
-
---Rich
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
