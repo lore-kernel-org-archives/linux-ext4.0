@@ -1,42 +1,36 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v3] jbd2: Fix block tag checksum verification brokenness
-Date: Tue, 28 May 2013 07:34:30 -0400
-Message-ID: <20130528113430.GC11839@thunk.org>
-References: <20130510233807.GB5706@blackbox.djwong.org>
- <4CE338D9-F69A-4568-AA82-012FEED2E252@dilger.ca>
- <20130513214750.GB8037@blackbox.djwong.org>
+Subject: Re: [PATCH] fs: ext4: Printing debug is now configurable
+Date: Tue, 28 May 2013 07:53:52 -0400
+Message-ID: <20130528115352.GD11839@thunk.org>
+References: <1367358660-940-1-git-send-email-taysom@chromium.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@dilger.ca>,
-	Al Viro <viro@ZenIV.linux.org.uk>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:52511 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932878Ab3E1Lef (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 May 2013 07:34:35 -0400
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	olofj@chromium.org
+To: Paul Taysom <taysom@chromium.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20130513214750.GB8037@blackbox.djwong.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1367358660-940-1-git-send-email-taysom@chromium.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, May 13, 2013 at 02:47:50PM -0700, Darrick J. Wong wrote:
-> Al Viro complained of a ton of bogosity with regards to the jbd2 block tag
-> header checksum.  This one checksum is 16 bits, so cut off the upper 16 bits
-> and treat it as a 16-bit value and don't mess around with be32* conversions.
-> Fortunately metadata checksumming is still "experimental" and not in a shipping
-> e2fsprogs, so there should be few users affected by this.
+On Tue, Apr 30, 2013 at 02:51:00PM -0700, Paul Taysom wrote:
+> Printing the "truncating inode" and "deleting unreferenced inode"
+> messages is now controlled by the "debug" option to mount.
+> These messages were filling the /var/log/messages file and
+> are normal for ext4 file system recovery.
 > 
-> v2: Eliminate unnecessary variables and make it clear(er) which values are 32
-> bits wide.
+> Tested by opening several files, unlinking them, then
+> crashing the system, rebooting the system and examining
+> /var/log/messages.
 > 
-> v3: Add a comment about why we're only storing half of the crc32c.
+> Addresses the problem described in http://crbug.com/220976
 > 
-> Reported-by: Al Viro <viro@ZenIV.linux.org.uk>
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> Signed-off-by: Paul Taysom <taysom@chromium.org>
 
-Thanks, applied.
+Added to the ext4 patch queue with a slightly modified description.
+(Sorry for the delay, you sent the patch just as the merge window had
+starting, and I wasn't accepting new until the tree had settled down.)
 
-					- Ted
+	      	       		     - Ted
