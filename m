@@ -1,170 +1,129 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 1/6] jbd2: optimize jbd2_journal_force_commit
-Date: Tue, 28 May 2013 13:18:56 +0400
-Message-ID: <1369732741-26070-2-git-send-email-dmonakhov@openvz.org>
+Subject: [PATCH 2/6] ext4: fix data integrity for ext4_sync_fs
+Date: Tue, 28 May 2013 13:18:57 +0400
+Message-ID: <1369732741-26070-3-git-send-email-dmonakhov@openvz.org>
 References: <1369732741-26070-1-git-send-email-dmonakhov@openvz.org>
 Cc: jack@suse.cz, Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:43903 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:44525 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933708Ab3E1JTN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S933697Ab3E1JTN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 28 May 2013 05:19:13 -0400
 In-Reply-To: <1369732741-26070-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Current implementation of jbd2_journal_force_commit() is suboptimal because
-result in empty and useless commits. But callers just want to force and wait
-any unfinished commits. We already has jbd2_journal_force_commit_nested()
-which does exactly what we want, except we are guaranteed that we do not hold
-journal transaction open.
+Inode's data or non journaled quota may be written w/o jounral so we _must_
+send a barrier at the end of ext4_sync_fs. But it can be skipped if journal
+commit will do it for us.
+
+Also fix data integrity for nojournal mode.
+changes from v1:
+ skip barrier for async mode
 
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- fs/jbd2/journal.c     |   55 ++++++++++++++++++++++++++++++++++++------------
- fs/jbd2/transaction.c |   23 --------------------
- include/linux/jbd2.h  |    2 +-
- 3 files changed, 42 insertions(+), 38 deletions(-)
+ fs/ext4/super.c      |   35 ++++++++++++++++++++++++++++++++++-
+ include/linux/jbd2.h |   15 +++++++++++++++
+ 2 files changed, 49 insertions(+), 1 deletions(-)
 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 886ec2f..078e8ea 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -566,21 +566,19 @@ int jbd2_log_start_commit(journal_t *journal, tid_t tid)
- }
- 
- /*
-- * Force and wait upon a commit if the calling process is not within
-- * transaction.  This is used for forcing out undo-protected data which contains
-- * bitmaps, when the fs is running out of space.
-- *
-- * We can only force the running transaction if we don't have an active handle;
-- * otherwise, we will deadlock.
-- *
-- * Returns true if a transaction was started.
-+ * Force and wait any uncommitted transactions.  We can only force the running
-+ * transaction if we don't have an active handle, otherwise, we will deadlock.
-  */
--int jbd2_journal_force_commit_nested(journal_t *journal)
-+int __jbd2_journal_force_commit(journal_t *journal, int nested, int *progress)
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index dbc7c09..edc716d 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -69,6 +69,7 @@ static void ext4_mark_recovery_complete(struct super_block *sb,
+ static void ext4_clear_journal_err(struct super_block *sb,
+ 				   struct ext4_super_block *es);
+ static int ext4_sync_fs(struct super_block *sb, int wait);
++static int ext4_sync_fs_nojournal(struct super_block *sb, int wait);
+ static int ext4_remount(struct super_block *sb, int *flags, char *data);
+ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf);
+ static int ext4_unfreeze(struct super_block *sb);
+@@ -1096,6 +1097,7 @@ static const struct super_operations ext4_nojournal_sops = {
+ 	.dirty_inode	= ext4_dirty_inode,
+ 	.drop_inode	= ext4_drop_inode,
+ 	.evict_inode	= ext4_evict_inode,
++	.sync_fs	= ext4_sync_fs_nojournal,
+ 	.put_super	= ext4_put_super,
+ 	.statfs		= ext4_statfs,
+ 	.remount_fs	= ext4_remount,
+@@ -4520,6 +4522,7 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
  {
- 	transaction_t *transaction = NULL;
- 	tid_t tid;
--	int need_to_start = 0;
-+	int need_to_start = 0, ret = 0;
+ 	int ret = 0;
+ 	tid_t target;
++	bool needs_barrier = false;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
  
-+	J_ASSERT(!current->journal_info || nested);
+ 	trace_ext4_sync_fs(sb, wait);
+@@ -4529,10 +4532,40 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
+ 	 * no dirty dquots
+ 	 */
+ 	dquot_writeback_dquots(sb, -1);
++	/*
++	 * Data writeback is possible w/o journal transaction, so barrier must
++	 * being sent at the end of the function. But we can skip it if
++	 * transaction_commit will do it for us.
++	 */
++	target = jbd2_get_latest_transaction(sbi->s_journal);
++	if (wait && sbi->s_journal->j_flags & JBD2_BARRIER &&
++	    !jbd2_trans_will_send_data_barrier(sbi->s_journal, target))
++		needs_barrier = true;
 +
-+	if (progress)
-+		*progress = 0;
- 	read_lock(&journal->j_state_lock);
- 	if (journal->j_running_transaction && !current->journal_info) {
- 		transaction = journal->j_running_transaction;
-@@ -590,16 +588,45 @@ int jbd2_journal_force_commit_nested(journal_t *journal)
- 		transaction = journal->j_committing_transaction;
- 
- 	if (!transaction) {
-+		/* Nothing to commit */
- 		read_unlock(&journal->j_state_lock);
--		return 0;	/* Nothing to retry */
-+		return 0;
+ 	if (jbd2_journal_start_commit(sbi->s_journal, &target)) {
+ 		if (wait)
+-			jbd2_log_wait_commit(sbi->s_journal, target);
++			ret = jbd2_log_wait_commit(sbi->s_journal, target);
++	}
++	if (needs_barrier) {
++		int err;
++		err = blkdev_issue_flush(sb->s_bdev, GFP_KERNEL, NULL);
++		if (!ret)
++			ret = err;
  	}
--
- 	tid = transaction->t_tid;
- 	read_unlock(&journal->j_state_lock);
- 	if (need_to_start)
- 		jbd2_log_start_commit(journal, tid);
--	jbd2_log_wait_commit(journal, tid);
--	return 1;
-+	ret = jbd2_log_wait_commit(journal, tid);
-+	if (!ret && progress)
-+		*progress = 1;
 +
 +	return ret;
 +}
 +
-+/**
-+ * Force and wait upon a commit if the calling process is not within
-+ * transaction.  This is used for forcing out undo-protected data which contains
-+ * bitmaps, when the fs is running out of space.
-+ *
-+ * @journal: journal to force
-+ * Returns true if progress was made.
-+ */
-+int jbd2_journal_force_commit_nested(journal_t *journal)
++static int ext4_sync_fs_nojournal(struct super_block *sb, int wait)
 +{
-+	int progress;
++	int ret = 0;
 +
-+	__jbd2_journal_force_commit(journal, 1, &progress);
-+	return progress;
-+}
++	trace_ext4_sync_fs(sb, wait);
++	flush_workqueue(EXT4_SB(sb)->dio_unwritten_wq);
++	dquot_writeback_dquots(sb, -1);
++	if (wait && test_opt(sb, BARRIER))
++		ret = blkdev_issue_flush(sb->s_bdev, GFP_KERNEL, NULL);
 +
-+/**
-+ * int journal_force_commit() - force any uncommitted transactions
-+ * @journal: journal to force
-+ *
-+ */
-+int jbd2_journal_force_commit(journal_t *journal)
-+{
-+	return __jbd2_journal_force_commit(journal, 0, NULL);
+ 	return ret;
  }
  
- /*
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 10f524c..dae6b3d 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -1522,29 +1522,6 @@ int jbd2_journal_stop(handle_t *handle)
- 	return err;
- }
- 
--/**
-- * int jbd2_journal_force_commit() - force any uncommitted transactions
-- * @journal: journal to force
-- *
-- * For synchronous operations: force any uncommitted transactions
-- * to disk.  May seem kludgy, but it reuses all the handle batching
-- * code in a very simple manner.
-- */
--int jbd2_journal_force_commit(journal_t *journal)
--{
--	handle_t *handle;
--	int ret;
--
--	handle = jbd2_journal_start(journal, 1);
--	if (IS_ERR(handle)) {
--		ret = PTR_ERR(handle);
--	} else {
--		handle->h_sync = 1;
--		ret = jbd2_journal_stop(handle);
--	}
--	return ret;
--}
--
- /*
-  *
-  * List management code snippets: various functions for manipulating the
 diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 6e051f4..c9e1ab6 100644
+index c9e1ab6..ed974fd 100644
 --- a/include/linux/jbd2.h
 +++ b/include/linux/jbd2.h
-@@ -1125,6 +1125,7 @@ extern void	   jbd2_journal_ack_err    (journal_t *);
- extern int	   jbd2_journal_clear_err  (journal_t *);
- extern int	   jbd2_journal_bmap(journal_t *, unsigned long, unsigned long long *);
- extern int	   jbd2_journal_force_commit(journal_t *);
-+extern int	   jbd2_journal_force_commit_nested(journal_t *);
- extern int	   jbd2_journal_file_inode(handle_t *handle, struct jbd2_inode *inode);
- extern int	   jbd2_journal_begin_ordered_truncate(journal_t *journal,
- 				struct jbd2_inode *inode, loff_t new_size);
-@@ -1199,7 +1200,6 @@ int __jbd2_log_space_left(journal_t *); /* Called with journal locked */
- int jbd2_log_start_commit(journal_t *journal, tid_t tid);
- int __jbd2_log_start_commit(journal_t *journal, tid_t tid);
- int jbd2_journal_start_commit(journal_t *journal, tid_t *tid);
--int jbd2_journal_force_commit_nested(journal_t *journal);
- int jbd2_log_wait_commit(journal_t *journal, tid_t tid);
- int jbd2_complete_transaction(journal_t *journal, tid_t tid);
- int jbd2_log_do_checkpoint(journal_t *journal);
+@@ -1319,6 +1319,21 @@ static inline u32 jbd2_chksum(journal_t *journal, u32 crc,
+ 	return *(u32 *)desc.ctx;
+ }
+ 
++/* Return most recent uncommitted transaction */
++static inline tid_t  jbd2_get_latest_transaction(journal_t *journal)
++{
++	tid_t tid;
++
++	read_lock(&journal->j_state_lock);
++	tid = journal->j_commit_request;
++	if (journal->j_running_transaction) {
++		tid = journal->j_running_transaction->t_tid;
++	} else if (!journal->j_commit_sequence)
++		tid = journal->j_commit_sequence;
++	read_unlock(&journal->j_state_lock);
++	return tid;
++}
++
+ #ifdef __KERNEL__
+ 
+ #define buffer_trace_init(bh)	do {} while (0)
 -- 
 1.7.1
 
