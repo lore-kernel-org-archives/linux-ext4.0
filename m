@@ -1,185 +1,98 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/6] jbd2: optimize jbd2_journal_force_commit
-Date: Tue, 28 May 2013 23:22:05 +0200
-Message-ID: <20130528212205.GB16408@quack.suse.cz>
+Subject: Re: [PATCH 5/6] ext4: Fix fsync error handling after filesystem
+ abort.
+Date: Tue, 28 May 2013 23:29:22 +0200
+Message-ID: <20130528212922.GC16408@quack.suse.cz>
 References: <1369732741-26070-1-git-send-email-dmonakhov@openvz.org>
- <1369732741-26070-2-git-send-email-dmonakhov@openvz.org>
+ <1369732741-26070-6-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, jack@suse.cz
 To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:58045 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:58340 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755905Ab3E1VWH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 May 2013 17:22:07 -0400
+	id S933814Ab3E1V3Y (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 May 2013 17:29:24 -0400
 Content-Disposition: inline
-In-Reply-To: <1369732741-26070-2-git-send-email-dmonakhov@openvz.org>
+In-Reply-To: <1369732741-26070-6-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 28-05-13 13:18:56, Dmitry Monakhov wrote:
-> Current implementation of jbd2_journal_force_commit() is suboptimal because
-> result in empty and useless commits. But callers just want to force and wait
-> any unfinished commits. We already has jbd2_journal_force_commit_nested()
-> which does exactly what we want, except we are guaranteed that we do not hold
-> journal transaction open.
+On Tue 28-05-13 13:19:00, Dmitry Monakhov wrote:
+> If filesystem was aborted after inode's write back is complete
+> but before its metadata was updated we may return success
+> results in data loss.
+> In order to handle fs abort correctly we have to check
+> fs state once we discover that it is in MS_RDONLY state
 > 
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-  Hum, didn't I already review something like this?
-
-> ---
->  fs/jbd2/journal.c     |   55 ++++++++++++++++++++++++++++++++++++------------
->  fs/jbd2/transaction.c |   23 --------------------
->  include/linux/jbd2.h  |    2 +-
->  3 files changed, 42 insertions(+), 38 deletions(-)
+> Test case: http://patchwork.ozlabs.org/patch/244297
 > 
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index 886ec2f..078e8ea 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -566,21 +566,19 @@ int jbd2_log_start_commit(journal_t *journal, tid_t tid)
->  }
->  
->  /*
-> - * Force and wait upon a commit if the calling process is not within
-> - * transaction.  This is used for forcing out undo-protected data which contains
-> - * bitmaps, when the fs is running out of space.
-> - *
-> - * We can only force the running transaction if we don't have an active handle;
-> - * otherwise, we will deadlock.
-> - *
-> - * Returns true if a transaction was started.
-> + * Force and wait any uncommitted transactions.  We can only force the running
-> + * transaction if we don't have an active handle, otherwise, we will deadlock.
->   */
-> -int jbd2_journal_force_commit_nested(journal_t *journal)
-> +int __jbd2_journal_force_commit(journal_t *journal, int nested, int *progress)
->  {
->  	transaction_t *transaction = NULL;
->  	tid_t tid;
-> -	int need_to_start = 0;
-> +	int need_to_start = 0, ret = 0;
->  
-> +	J_ASSERT(!current->journal_info || nested);
-> +
-> +	if (progress)
-> +		*progress = 0;
->  	read_lock(&journal->j_state_lock);
->  	if (journal->j_running_transaction && !current->journal_info) {
->  		transaction = journal->j_running_transaction;
-> @@ -590,16 +588,45 @@ int jbd2_journal_force_commit_nested(journal_t *journal)
->  		transaction = journal->j_committing_transaction;
->  
->  	if (!transaction) {
-> +		/* Nothing to commit */
->  		read_unlock(&journal->j_state_lock);
-> -		return 0;	/* Nothing to retry */
-> +		return 0;
->  	}
-> -
->  	tid = transaction->t_tid;
->  	read_unlock(&journal->j_state_lock);
->  	if (need_to_start)
->  		jbd2_log_start_commit(journal, tid);
-> -	jbd2_log_wait_commit(journal, tid);
-> -	return 1;
-> +	ret = jbd2_log_wait_commit(journal, tid);
-> +	if (!ret && progress)
-> +		*progress = 1;
-> +
-> +	return ret;
-> +}
-  Can't we just make this function return <0, 0, 1 and get rid of
-'progress' argument? Caller jbd2_journal_force_commit() can then return 0
-if __jbd2_journal_force_commit() returned >= 0...
-
-> +
-> +/**
-> + * Force and wait upon a commit if the calling process is not within
-> + * transaction.  This is used for forcing out undo-protected data which contains
-> + * bitmaps, when the fs is running out of space.
-> + *
-> + * @journal: journal to force
-> + * Returns true if progress was made.
-> + */
-> +int jbd2_journal_force_commit_nested(journal_t *journal)
-> +{
-> +	int progress;
-> +
-> +	__jbd2_journal_force_commit(journal, 1, &progress);
-> +	return progress;
-> +}
-> +
-> +/**
-> + * int journal_force_commit() - force any uncommitted transactions
-> + * @journal: journal to force
-> + *
-> + */
-> +int jbd2_journal_force_commit(journal_t *journal)
-> +{
-> +	return __jbd2_journal_force_commit(journal, 0, NULL);
->  }
-  Also if we move the WARN_ON(!current->journal_info) here, we can remove
-the 'nested' argument.
+> Changes from V1:
+>  - fix spelling
+  Still not quite ;) Search for 'shure' and 'visiable'. But feel free to
+add
+  Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
-
->  /*
-> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-> index 10f524c..dae6b3d 100644
-> --- a/fs/jbd2/transaction.c
-> +++ b/fs/jbd2/transaction.c
-> @@ -1522,29 +1522,6 @@ int jbd2_journal_stop(handle_t *handle)
->  	return err;
->  }
+> 
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> ---
+>  fs/ext4/fsync.c |    8 ++++++--
+>  fs/ext4/super.c |   12 +++++++++++-
+>  2 files changed, 17 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+> index e0ba8a4..d7df2f1 100644
+> --- a/fs/ext4/fsync.c
+> +++ b/fs/ext4/fsync.c
+> @@ -129,9 +129,13 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+>  		return ret;
+>  	mutex_lock(&inode->i_mutex);
 >  
-> -/**
-> - * int jbd2_journal_force_commit() - force any uncommitted transactions
-> - * @journal: journal to force
-> - *
-> - * For synchronous operations: force any uncommitted transactions
-> - * to disk.  May seem kludgy, but it reuses all the handle batching
-> - * code in a very simple manner.
-> - */
-> -int jbd2_journal_force_commit(journal_t *journal)
-> -{
-> -	handle_t *handle;
-> -	int ret;
+> -	if (inode->i_sb->s_flags & MS_RDONLY)
+> +	if (inode->i_sb->s_flags & MS_RDONLY) {
+> +		/* Make shure that we read updated s_mount_flags value */
+> +		smp_rmb();
+> +		if (EXT4_SB(inode->i_sb)->s_mount_flags & EXT4_MF_FS_ABORTED)
+> +			ret = -EROFS;
+>  		goto out;
 > -
-> -	handle = jbd2_journal_start(journal, 1);
-> -	if (IS_ERR(handle)) {
-> -		ret = PTR_ERR(handle);
-> -	} else {
-> -		handle->h_sync = 1;
-> -		ret = jbd2_journal_stop(handle);
-> -	}
-> -	return ret;
-> -}
-> -
->  /*
->   *
->   * List management code snippets: various functions for manipulating the
-> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-> index 6e051f4..c9e1ab6 100644
-> --- a/include/linux/jbd2.h
-> +++ b/include/linux/jbd2.h
-> @@ -1125,6 +1125,7 @@ extern void	   jbd2_journal_ack_err    (journal_t *);
->  extern int	   jbd2_journal_clear_err  (journal_t *);
->  extern int	   jbd2_journal_bmap(journal_t *, unsigned long, unsigned long long *);
->  extern int	   jbd2_journal_force_commit(journal_t *);
-> +extern int	   jbd2_journal_force_commit_nested(journal_t *);
->  extern int	   jbd2_journal_file_inode(handle_t *handle, struct jbd2_inode *inode);
->  extern int	   jbd2_journal_begin_ordered_truncate(journal_t *journal,
->  				struct jbd2_inode *inode, loff_t new_size);
-> @@ -1199,7 +1200,6 @@ int __jbd2_log_space_left(journal_t *); /* Called with journal locked */
->  int jbd2_log_start_commit(journal_t *journal, tid_t tid);
->  int __jbd2_log_start_commit(journal_t *journal, tid_t tid);
->  int jbd2_journal_start_commit(journal_t *journal, tid_t *tid);
-> -int jbd2_journal_force_commit_nested(journal_t *journal);
->  int jbd2_log_wait_commit(journal_t *journal, tid_t tid);
->  int jbd2_complete_transaction(journal_t *journal, tid_t tid);
->  int jbd2_log_do_checkpoint(journal_t *journal);
+> +	}
+>  	ret = ext4_flush_unwritten_io(inode);
+>  	if (ret < 0)
+>  		goto out;
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index edc716d..b4154d3 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -399,6 +399,11 @@ static void ext4_handle_error(struct super_block *sb)
+>  	}
+>  	if (test_opt(sb, ERRORS_RO)) {
+>  		ext4_msg(sb, KERN_CRIT, "Remounting filesystem read-only");
+> +		/*
+> +		 * Make shure updated value of ->s_mount_flags will be visiable
+> +		 * before ->s_flags update
+> +		 */
+> +		smp_wmb();
+>  		sb->s_flags |= MS_RDONLY;
+>  	}
+>  	if (test_opt(sb, ERRORS_PANIC))
+> @@ -571,8 +576,13 @@ void __ext4_abort(struct super_block *sb, const char *function,
+>  
+>  	if ((sb->s_flags & MS_RDONLY) == 0) {
+>  		ext4_msg(sb, KERN_CRIT, "Remounting filesystem read-only");
+> -		sb->s_flags |= MS_RDONLY;
+>  		EXT4_SB(sb)->s_mount_flags |= EXT4_MF_FS_ABORTED;
+> +		/*
+> +		 * Make shure updated value of ->s_mount_flags will be visiable
+> +		 * before ->s_flags update
+> +		 */
+> +		smp_wmb();
+> +		sb->s_flags |= MS_RDONLY;
+>  		if (EXT4_SB(sb)->s_journal)
+>  			jbd2_journal_abort(EXT4_SB(sb)->s_journal, -EIO);
+>  		save_error_info(sb, function, line);
 > -- 
 > 1.7.1
 > 
