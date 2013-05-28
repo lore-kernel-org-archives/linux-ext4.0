@@ -1,64 +1,208 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: delayed allocation blocks not flushed?
-Date: Mon, 27 May 2013 22:35:01 +0200
-Message-ID: <20130527203501.GA21682@quack.suse.cz>
-References: <51A31052.4030507@amplidata.com>
- <51A31125.1070100@amplidata.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-	Bastiaan Stougie <bstougie@amplidata.com>
-To: Bert De Jonghe <Bert.DeJonghe@amplidata.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:42561 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757261Ab3E0UfE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 27 May 2013 16:35:04 -0400
-Content-Disposition: inline
-In-Reply-To: <51A31125.1070100@amplidata.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Li Wang <liwang@ubuntukylin.com>
+Subject: [PATCH v4] ext4: Avoid unnecessarily writing back dirty pages before  hole punching
+Date: Tue, 28 May 2013 10:23:25 +0800
+Message-ID: <1369707805-11976-1-git-send-email-liwang@ubuntukylin.com>
+References: <20130527144727.GA3877@quack.suse.cz>
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Dmitry Monakhov <dmonakhov@openvz.org>,
+	Zheng Liu <gnehzuil.liu@gmail.com>, Jan Kara <jack@suse.cz>,
+	linux-kernel@vger.kernel.org, Li Wang <liwang@ubuntukylin.com>,
+	Yunchuan Wen <yunchuanwen@ubuntukylin.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20130527144727.GA3877@quack.suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-  Hello,
+For hole punching, currently ext4 will synchronously write back the
+dirty pages fit into the hole, since the data on the disk responding
+to those pages are to be deleted, it is benefical to directly release
+those pages, no matter they are dirty or not, except the ordered case.
 
-On Mon 27-05-13 09:54:13, Bert De Jonghe wrote:
-> On an otherwise idle system, create an ext4 filesystem on /dev/sdi,
-> mount it and wait more than dirty_writeback_centisecs.
-  What kernel version are you using?
+Signed-off-by: Li Wang <liwang@ubuntukylin.com>
+Signed-off-by: Yunchuan Wen <yunchuanwen@ubuntukylin.com>
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>
+Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+---
+Hi Jan,
+  Did you mean this?
+  It seems you donot like the jbd2_journal_begin_ordered_discard:),
+However, what do you think of calling jbd2_journal_begin_ordered_punch_hole()
+from jbd2_journal_begin_ordered_truncate()? In my option, 
+the two guys stand at the same level. Nevertheless, 
+it is up to your choice.
+---
+ fs/ext4/inode.c       |   27 ++++++++++++++++-----------
+ fs/jbd2/journal.c     |    2 +-
+ fs/jbd2/transaction.c |   29 ++++++-----------------------
+ include/linux/jbd2.h  |   33 +++++++++++++++++++++++++++++++--
+ 4 files changed, 54 insertions(+), 37 deletions(-)
 
-> Then create a small file (echo something > file);  wait
-> (dirty_expire_centisecs x 2), expect delayed_allocation_blocks to
-> fall to zero but it remains at 2 over here.
-> 
-> Create another small file (echo something_else > file2); again wait
-> (dirty_expire_centisecs x 2); check delayed_allocation_blocks which
-> is now at 4.
->
-> Wait a weekend more:
-> 
->    # date; cat /sys/fs/ext4/sdi/delayed_allocation_blocks
->    Fri May 24 15:33:21 UTC 2013
->    4
-> 
->    # date; cat /sys/fs/ext4/sdi/delayed_allocation_blocks
->    Mon May 27 07:14:30 UTC 2013
->    4
-> 
-> Doing a manual sync flushes out all blocks, also adding a sync after
-> mounting solves the not flushing behaviour (possible patch
-> attached).
-> 
-> Has anyone noticed this before and is this expected behaviour? It
-> looks like these blocks are not flushed out to disk thus remain in
-> memory and will be lost upon power failure?
-  This would be a bug. I have tried to recreate this with my 3.7.10 kernel
-but I failed. File gets flushed to disk after 30s or so. What kernel
-version are you using?
-
-Also I don't see why syncing after mount would help to resolve the problem
-that files are not flushed to disk in a timely manner...
-
-								Honza
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index d6382b8..844d1b8 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3569,6 +3569,16 @@ int ext4_can_truncate(struct inode *inode)
+ 	return 0;
+ }
+ 
++static inline int ext4_begin_ordered_punch_hole(struct inode *inode,
++					       loff_t start, loff_t length)
++{
++	if (!EXT4_I(inode)->jinode)
++		return 0;
++	return jbd2_journal_begin_ordered_punch_hole(EXT4_JOURNAL(inode),
++						    EXT4_I(inode)->jinode,
++						    start, start+length-1);
++}
++
+ /*
+  * ext4_punch_hole: punches a hole in a file by releaseing the blocks
+  * associated with the given offset and length
+@@ -3602,17 +3612,6 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
+ 
+ 	trace_ext4_punch_hole(inode, offset, length);
+ 
+-	/*
+-	 * Write out all dirty pages to avoid race conditions
+-	 * Then release them.
+-	 */
+-	if (mapping->nrpages && mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
+-		ret = filemap_write_and_wait_range(mapping, offset,
+-						   offset + length - 1);
+-		if (ret)
+-			return ret;
+-	}
+-
+ 	mutex_lock(&inode->i_mutex);
+ 	/* It's not possible punch hole on append only file */
+ 	if (IS_APPEND(inode) || IS_IMMUTABLE(inode)) {
+@@ -3644,6 +3643,12 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
+ 	first_page_offset = first_page << PAGE_CACHE_SHIFT;
+ 	last_page_offset = last_page << PAGE_CACHE_SHIFT;
+ 
++	if (ext4_should_order_data(inode)) {
++		ret = ext4_begin_ordered_punch_hole(inode, offset, length);
++		if (ret)
++			return ret;
++	}
++
+ 	/* Now release the pages */
+ 	if (last_page_offset > first_page_offset) {
+ 		truncate_pagecache_range(inode, first_page_offset,
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 9545757..7af4e4f 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -97,7 +97,7 @@ EXPORT_SYMBOL(jbd2_journal_force_commit);
+ EXPORT_SYMBOL(jbd2_journal_file_inode);
+ EXPORT_SYMBOL(jbd2_journal_init_jbd_inode);
+ EXPORT_SYMBOL(jbd2_journal_release_jbd_inode);
+-EXPORT_SYMBOL(jbd2_journal_begin_ordered_truncate);
++EXPORT_SYMBOL(jbd2_journal_begin_ordered_punch_hole);
+ EXPORT_SYMBOL(jbd2_inode_cache);
+ 
+ static void __journal_abort_soft (journal_t *journal, int errno);
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 10f524c..262b1c3 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -2305,29 +2305,10 @@ done:
+ 	return 0;
+ }
+ 
+-/*
+- * File truncate and transaction commit interact with each other in a
+- * non-trivial way.  If a transaction writing data block A is
+- * committing, we cannot discard the data by truncate until we have
+- * written them.  Otherwise if we crashed after the transaction with
+- * write has committed but before the transaction with truncate has
+- * committed, we could see stale data in block A.  This function is a
+- * helper to solve this problem.  It starts writeout of the truncated
+- * part in case it is in the committing transaction.
+- *
+- * Filesystem code must call this function when inode is journaled in
+- * ordered mode before truncation happens and after the inode has been
+- * placed on orphan list with the new inode size. The second condition
+- * avoids the race that someone writes new data and we start
+- * committing the transaction after this function has been called but
+- * before a transaction for truncate is started (and furthermore it
+- * allows us to optimize the case where the addition to orphan list
+- * happens in the same transaction as write --- we don't have to write
+- * any data in such case).
+- */
+-int jbd2_journal_begin_ordered_truncate(journal_t *journal,
++
++int jbd2_journal_begin_ordered_punch_hole(journal_t *journal,
+ 					struct jbd2_inode *jinode,
+-					loff_t new_size)
++					loff_t start, loff_t end)
+ {
+ 	transaction_t *inode_trans, *commit_trans;
+ 	int ret = 0;
+@@ -2346,10 +2327,12 @@ int jbd2_journal_begin_ordered_truncate(journal_t *journal,
+ 	spin_unlock(&journal->j_list_lock);
+ 	if (inode_trans == commit_trans) {
+ 		ret = filemap_fdatawrite_range(jinode->i_vfs_inode->i_mapping,
+-			new_size, LLONG_MAX);
++			start, end);
+ 		if (ret)
+ 			jbd2_journal_abort(journal, ret);
+ 	}
+ out:
+ 	return ret;
+ }
++
++
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 6e051f4..8eb7865 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1126,12 +1126,41 @@ extern int	   jbd2_journal_clear_err  (journal_t *);
+ extern int	   jbd2_journal_bmap(journal_t *, unsigned long, unsigned long long *);
+ extern int	   jbd2_journal_force_commit(journal_t *);
+ extern int	   jbd2_journal_file_inode(handle_t *handle, struct jbd2_inode *inode);
+-extern int	   jbd2_journal_begin_ordered_truncate(journal_t *journal,
+-				struct jbd2_inode *inode, loff_t new_size);
++extern int	   jbd2_journal_begin_ordered_punch_hole(journal_t *,
++					struct jbd2_inode *,
++					loff_t, loff_t);
+ extern void	   jbd2_journal_init_jbd_inode(struct jbd2_inode *jinode, struct inode *inode);
+ extern void	   jbd2_journal_release_jbd_inode(journal_t *journal, struct jbd2_inode *jinode);
+ 
+ /*
++ * File truncate and transaction commit interact with each other in a
++ * non-trivial way.  If a transaction writing data block A is
++ * committing, we cannot discard the data by truncate until we have
++ * written them.  Otherwise if we crashed after the transaction with
++ * write has committed but before the transaction with truncate has
++ * committed, we could see stale data in block A.  This function is a
++ * helper to solve this problem.  It starts writeout of the truncated
++ * part in case it is in the committing transaction.
++ *
++ * Filesystem code must call this function when inode is journaled in
++ * ordered mode before truncation happens and after the inode has been
++ * placed on orphan list with the new inode size. The second condition
++ * avoids the race that someone writes new data and we start
++ * committing the transaction after this function has been called but
++ * before a transaction for truncate is started (and furthermore it
++ * allows us to optimize the case where the addition to orphan list
++ * happens in the same transaction as write --- we don't have to write
++ * any data in such case).
++ */
++static inline int jbd2_journal_begin_ordered_truncate(journal_t *journal,
++					struct jbd2_inode *jinode,
++					loff_t new_size)
++{
++	return jbd2_journal_begin_ordered_punch_hole(journal, jinode,
++						  new_size, LLONG_MAX);
++}
++
++/*
+  * journal_head management
+  */
+ struct journal_head *jbd2_journal_add_journal_head(struct buffer_head *bh);
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.7.9.5
