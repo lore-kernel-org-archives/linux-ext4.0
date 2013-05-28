@@ -1,31 +1,49 @@
-From: jingguo yao <yaojingguo@gmail.com>
-Subject: Why does journal mode outperforms all other modes when reading and
- writing data at the same time?
-Date: Tue, 28 May 2013 22:39:18 +0800
-Message-ID: <CANPB7a4A+CbRcNoDc2=G=u8zy+q7ky=pGQxAMJrbxPC3sfytjw@mail.gmail.com>
+From: Rich Johnston <rjohnston@sgi.com>
+Subject: Re: [PATCH] xfstests: fix src/seek_sanity_test -t option
+Date: Tue, 28 May 2013 10:57:22 -0500
+Message-ID: <51A4D3E2.3020204@sgi.com>
+References: <519EF4AE.60702@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: xfs-oss <xfs@oss.sgi.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wi0-f171.google.com ([209.85.212.171]:58024 "EHLO
-	mail-wi0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934325Ab3E1OjU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 May 2013 10:39:20 -0400
-Received: by mail-wi0-f171.google.com with SMTP id hq7so2571383wib.10
-        for <linux-ext4@vger.kernel.org>; Tue, 28 May 2013 07:39:19 -0700 (PDT)
+Received: from relay2.sgi.com ([192.48.179.30]:33253 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S934641Ab3E1P4a (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 May 2013 11:56:30 -0400
+In-Reply-To: <519EF4AE.60702@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Documentation/filesystems/ext4.txt has the following sentence:
+On 05/24/2013 12:03 AM, Eric Sandeen wrote:
+> _require_seek_data_hole() does not work because
+> the -t (test) option of seek_sanity_test is broken,
+> because of an early check for (argc != 2):
+>
+> # src/seek_sanity_test -t foo
+> Usage: src/seek_sanity_test base_file_path
+>
+> So _require_seek_data_hole() doesn't see the
+> "Kernel does not support" string it's looking for,
+> and passes the check.
+>
+> So rather than _notrun-ing the test, it proceeds to
+> fail with noisy errors.
+>
+> Fix that, make a common usage() function, and check for
+> too many args as well.
+>
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-  This mode is the slowest except when data needs to be read from and
-  written to disk at the same time where it outperforms all others
-  modes.
+Thanks, this has been committed:
 
-And the following link talks about it in more details. Can anybody give
-the reason?
+commit bd13bf9e2a87a40d3aab2644967029b854ed2d11
+Author: Eric Sandeen <sandeen@redhat.com>
+Date:   Tue May 28 10:37:39 2013 -0500
 
-http://www.ibm.com/developerworks/library/l-fs8/index.html#4
+     xfstests: fix src/seek_sanity_test -t option
 
---
-Jingguo
+--Rich
