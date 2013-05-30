@@ -1,77 +1,54 @@
-From: Eric Sandeen <sandeen@sandeen.net>
-Subject: Re: [PATCH 2/3 v2] 285: Fix indentation of do_pwrite
-Date: Thu, 30 May 2013 16:25:11 -0500
-Message-ID: <51A7C3B7.4090204@sandeen.net>
-References: <1369948905-6693-1-git-send-email-jack@suse.cz>
-	<1369948905-6693-2-git-send-email-jack@suse.cz>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 1/3] 285: Fix test for ext4 in some configurations
+Date: Fri, 31 May 2013 08:30:00 +1000
+Message-ID: <20130530223000.GQ29466@dastard>
+References: <1369917939-22660-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, xfs@oss.sgi.com
+Content-Type: text/plain; charset=us-ascii
+Cc: xfs@oss.sgi.com, linux-ext4@vger.kernel.org
 To: Jan Kara <jack@suse.cz>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <1369948905-6693-2-git-send-email-jack@suse.cz>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:29408 "EHLO
+	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751140Ab3E3Wa1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 30 May 2013 18:30:27 -0400
+Content-Disposition: inline
+In-Reply-To: <1369917939-22660-1-git-send-email-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 5/30/13 4:21 PM, Jan Kara wrote:
+On Thu, May 30, 2013 at 02:45:37PM +0200, Jan Kara wrote:
+> In some configurations (e.g. 1 KB block size), ext4 can decide it is
+> better to zero out several blocks rather than splitting unwritten
+> extent. This changes results SEEK_HOLE / SEEK_DATA returns and thus the
+> test fails. Fix the problem by disabling the feature for this test.
+> 
 > Signed-off-by: Jan Kara <jack@suse.cz>
 > ---
->  src/seek_sanity_test.c | 26 +++++++++++++-------------
->  1 file changed, 13 insertions(+), 13 deletions(-)
-
-mmm, whitespace.
-
-Reviewed-by: Eric Sandeen <sandeen@redhat.com>
-
-> diff --git a/src/seek_sanity_test.c b/src/seek_sanity_test.c
-> index eec6903..748eec2 100644
-> --- a/src/seek_sanity_test.c
-> +++ b/src/seek_sanity_test.c
-> @@ -120,19 +120,19 @@ static int do_sync_dirty_pages(int fd, off64_t offset, off64_t nbytes)
->  
->  static ssize_t do_pwrite(int fd, const void *buf, size_t count, off_t offset)
->  {
-> -       ssize_t ret, written = 0;
-> -
-> -       while (count > written) {
-> -               ret = pwrite(fd, buf + written, count - written, offset + written);
-> -               if (ret < 0) {
-> -                       fprintf(stderr, "  ERROR %d: Failed to write %ld "
-> -                               "bytes\n", errno, (long)count);
-> -                       return ret;
-> -               }
-> -               written += ret;
-> -       }
-> -
-> -       return 0;
-> +	ssize_t ret, written = 0;
-> +
-> +	while (count > written) {
-> +		ret = pwrite(fd, buf + written, count - written, offset + written);
-> +		if (ret < 0) {
-> +			fprintf(stderr, "  ERROR %d: Failed to write %ld "
-> +				"bytes\n", errno, (long)count);
-> +			return ret;
-> +		}
-> +		written += ret;
-> +	}
-> +
-> +	return 0;
->  }
->  
->  #define do_close(x)	do { if ((x) > -1) close(x); } while(0);
+>  tests/generic/285 | 6 ++++++
+>  1 file changed, 6 insertions(+)
 > 
+> diff --git a/tests/generic/285 b/tests/generic/285
+> index b700a15..8078b1c 100755
+> --- a/tests/generic/285
+> +++ b/tests/generic/285
+> @@ -46,6 +46,12 @@ BASE_TEST_FILE=$TEST_DIR/seek_sanity_testfile
+>  
+>  [ -x $here/src/seek_sanity_test ] || _notrun "seek_sanitfy_tester not built"
+>  
+> +# Disable extent zeroing for ext4 as that change where holes are created
+> +if [ "$FSTYP" = "ext4" ]; then
+> +	DEV=`basename $TEST_DEV`
+> +	echo 0 >/sys/fs/ext4/$DEV/extent_max_zeroout_kb
+> +fi
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+would that be better going into _require_seek_data_hole so that 286
+also picks up this behaviour for ext4?
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
