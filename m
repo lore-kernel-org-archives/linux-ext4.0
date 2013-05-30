@@ -1,41 +1,50 @@
-From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
-Subject: Re: found a scenario for BUG at fs/ext4/super.c:804!
-Date: Thu, 30 May 2013 20:06:20 +0200
-Message-ID: <51A7951C.5020300@gmx.de>
-References: <51A79353.7030604@gmx.de>
+From: "Joseph D. Wagner" <joe@josephdwagner.info>
+Subject: [Bug 968876] e4defrag incorrectly calculates optimum extents
+Date: Thu, 30 May 2013 11:19:26 -0700
+Message-ID: <7516c4d492bad2bbb810a779816fcea5@josephdwagner.info>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8;
+ format=flowed
+Content-Transfer-Encoding: 7bit
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mout.gmx.net ([212.227.17.20]:55668 "EHLO mout.gmx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757184Ab3E3SGY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 30 May 2013 14:06:24 -0400
-Received: from mailout-de.gmx.net ([10.1.76.29]) by mrigmx.server.lan
- (mrigmx001) with ESMTP (Nemesis) id 0LgKlO-1U3IJV2efs-00ngaM for
- <linux-ext4@vger.kernel.org>; Thu, 30 May 2013 20:06:21 +0200
-In-Reply-To: <51A79353.7030604@gmx.de>
+Received: from josephdwagner.info ([72.4.161.242]:41153 "EHLO
+	josephdwagner.info" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756339Ab3E3TR2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 30 May 2013 15:17:28 -0400
+Received: from josephdwagner.info (josephdwagner.info [72.4.161.242])
+	(authenticated bits=0)
+	by josephdwagner.info (8.14.4/8.14.4) with ESMTP id r4UIJRt7025702
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 30 May 2013 14:19:27 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 05/30/2013 07:58 PM, Toralf F=C3=B6rster wrote:
-> 11. if that attempt fails stop the nfs service and run the umount com=
-mand again - it segfaults now
+https://bugzilla.redhat.com/show_bug.cgi?id=968876
 
-forgot to mention that after that just sysrq+b thelps me to reboot the
-machine, a "sync" does not come back nor can be interrupted with Ctrl-C=
-,
-"reboot" don't work too - OTOH I'm able to write an email and save it a=
-s
-a draft.
+The "Total/best extents" calculation for done in the e4defrag program 
+doesn't seems to not consider the limit of 32768 file system blocks (see 
+/usr/src/linux/fs/ext4/ext4_extents.h comment EXT_INIT_MAX_LEN) in an 
+extent when computing the "best" value. It seems to presume 2G is the 
+best extent size, but on a file system with a 4kb block size the largest 
+available extent is 128M not 2G.
 
---=20
-MfG/Sincerely
-Toralf F=C3=B6rster
-pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+(The best extent size calculation in e4defrag seems to be based on 
+block group size but the underlying implementation in the kernel is 
+limited to a __le16 blocks and uses up one whole bit of that to flag 
+whether the extent is initialized, which actually produces a one-block 
+perturbation in the actual limit based on how the extent was allocated 
+(e.g. whether falloc used FS_KEEP_SIZE or not), go go gadget perturbed 
+math. 8-)).
+
+Example:
+-rw-r--r-- 1 rwhite rwhite 5.0G Jun 13 16:28 CentOS.qcow2
+
+yeilds output: (where "/3" is wrong).
+
+Total/best extents 152/3
+
+Proposed patch available here:
+http://pastebin.com/9XTFcVM0
+
+Joseph D. Wagner
