@@ -1,55 +1,55 @@
-From: Rich Johnston <rjohnston@sgi.com>
-Subject: Re: [PATCH] xfstests: fix seek_sanity_test for fs w/o fallocate
-Date: Fri, 31 May 2013 14:02:38 -0500
-Message-ID: <51A8F3CE.4030801@sgi.com>
-References: <51A8C59B.3030308@redhat.com> <20130531172456.GB6915@gmail.com>
-	<51A8DACB.2030806@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: dev branch or master branch?
+Date: Fri, 31 May 2013 19:07:07 -0400
+Message-ID: <20130531230707.GA23048@thunk.org>
+References: <20130531163305.297890@gmx.com>
+ <20130531171352.GA6915@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"; Format="flowed"
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>, xfs-oss <xfs@oss.sgi.com>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <51A8DACB.2030806@redhat.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: jon ernst <jonernst07@gmx.com>, linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:53846 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756836Ab3EaXHM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 31 May 2013 19:07:12 -0400
+Content-Disposition: inline
+In-Reply-To: <20130531171352.GA6915@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 05/31/2013 12:15 PM, Eric Sandeen wrote:
-> On 5/31/13 12:24 PM, Zheng Liu wrote:
->> On Fri, May 31, 2013 at 10:45:31AM -0500, Eric Sandeen wrote:
->>> currently the seek_sanity_test (generic/285) fails on ext3
->>> or ext2 due to fallocate() failures.  Just ignore that test
->>> if the fs doesn't support fallocate.
->>
->> Hi Eric,
->>
->> I remember that my patch had been applied [1].  But stranger I couldn't
->> find it in xfstests tree.  However, I think that your patch is better.
->>
->> 1. http://oss.sgi.com/archives/xfs/2013-05/msg00534.html
->
-> Oh, right, I had forgotten about that.  Rich, any idea?
+On Sat, Jun 01, 2013 at 01:13:52AM +0800, Zheng Liu wrote:
+> On Fri, May 31, 2013 at 12:33:05PM -0400, jon ernst wrote:
+> > Hi list,
+> > =20
+> > Patches that people send to this list, =A0are those against to dev =
+branch or master branch?
+>=20
+> You'd better send a patch that bases against dev branch.  You can clo=
+ne
+> ext4 tree from here:
+>   https://git.kernel.org/cgit/linux/kernel/git/tytso/ext4.git/
 
-No other than it was a Friday.  My apologies Zheng.
-Zheng as your's should have been committed, what do you want me to do?
+Note that the dev branch is rewinding, so sometimes patches will drop
+from it.  So it is a bit dangerous to base a git branch on the dev
+branch if you care about this sort of thing.  But if you are
+submitting patches, that shouldn't be a major problem.
 
---Rich
+Normally the master branch will be between origin and dev (where
+origin is the commit from Linus's mainline kernel tree from which we
+do development during a particular development cycle).  Currently the
+origin branch is at v3.10-rc2.  I had forgotten to push the master
+branch forward until very recently; I've just fixed this.
 
->
-> I don't care which patch goes in....
->
-> -Eric
->
+Normally I'll push the master branch forward after the patches have
+fully passed a regression test run and we're confident that we don't
+need to modify the patches between origin and master.
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+Hope this helps,
+
+					- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
