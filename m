@@ -1,250 +1,129 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 10/26] ext4: Provide wrappers for transaction reservation calls
-Date: Fri, 31 May 2013 11:42:43 +0200
-Message-ID: <1369993379-13017-11-git-send-email-jack@suse.cz>
+Subject: [PATCH 12/26] ext4: Deprecate max_writeback_mb_bump sysfs attribute
+Date: Fri, 31 May 2013 11:42:45 +0200
+Message-ID: <1369993379-13017-13-git-send-email-jack@suse.cz>
 References: <1369993379-13017-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:42992 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:43005 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751938Ab3EaJnJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 31 May 2013 05:43:09 -0400
+	id S1751416Ab3EaJnP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 31 May 2013 05:43:15 -0400
 In-Reply-To: <1369993379-13017-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
+This attribute is now unused so deprecate it. We still show the old
+default value to keep some compatibility but we don't allow writing to
+that attribute anymore.
+
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ext4_jbd2.c         | 58 ++++++++++++++++++++++++++++++++++++---------
- fs/ext4/ext4_jbd2.h         | 26 ++++++++++++++++----
- fs/ext4/ialloc.c            |  3 ++-
- include/trace/events/ext4.h | 41 +++++++++++++++++++++++++-------
- 4 files changed, 103 insertions(+), 25 deletions(-)
+ fs/ext4/ext4.h  |  1 -
+ fs/ext4/super.c | 30 ++++++++++++++++++++++++------
+ 2 files changed, 24 insertions(+), 7 deletions(-)
 
-diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index bd25e78..72a3600 100644
---- a/fs/ext4/ext4_jbd2.c
-+++ b/fs/ext4/ext4_jbd2.c
-@@ -38,31 +38,43 @@ static void ext4_put_nojournal(handle_t *handle)
- /*
-  * Wrappers for jbd2_journal_start/end.
-  */
--handle_t *__ext4_journal_start_sb(struct super_block *sb, unsigned int line,
--				  int type, int nblocks)
-+static int ext4_journal_check_start(struct super_block *sb)
- {
- 	journal_t *journal;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 0aabb34..d260fb7 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1246,7 +1246,6 @@ struct ext4_sb_info {
+ 	unsigned int s_mb_stats;
+ 	unsigned int s_mb_order2_reqs;
+ 	unsigned int s_mb_group_prealloc;
+-	unsigned int s_max_writeback_mb_bump;
+ 	unsigned int s_max_dir_size_kb;
+ 	/* where last allocation was done - for stream allocation */
+ 	unsigned long s_mb_last_group;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 94cc84d..18bd6dd 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2377,7 +2377,10 @@ struct ext4_attr {
+ 	ssize_t (*show)(struct ext4_attr *, struct ext4_sb_info *, char *);
+ 	ssize_t (*store)(struct ext4_attr *, struct ext4_sb_info *,
+ 			 const char *, size_t);
+-	int offset;
++	union {
++		int offset;
++		int deprecated_val;
++	} u;
+ };
  
- 	might_sleep();
--
--	trace_ext4_journal_start(sb, nblocks, _RET_IP_);
- 	if (sb->s_flags & MS_RDONLY)
--		return ERR_PTR(-EROFS);
--
-+		return -EROFS;
- 	WARN_ON(sb->s_writers.frozen == SB_FREEZE_COMPLETE);
- 	journal = EXT4_SB(sb)->s_journal;
--	if (!journal)
--		return ext4_get_nojournal();
- 	/*
- 	 * Special case here: if the journal has aborted behind our
- 	 * backs (eg. EIO in the commit thread), then we still need to
- 	 * take the FS itself readonly cleanly.
- 	 */
--	if (is_journal_aborted(journal)) {
-+	if (journal && is_journal_aborted(journal)) {
- 		ext4_abort(sb, "Detected aborted journal");
--		return ERR_PTR(-EROFS);
-+		return -EROFS;
+ static int parse_strtoull(const char *buf,
+@@ -2446,7 +2449,7 @@ static ssize_t inode_readahead_blks_store(struct ext4_attr *a,
+ static ssize_t sbi_ui_show(struct ext4_attr *a,
+ 			   struct ext4_sb_info *sbi, char *buf)
+ {
+-	unsigned int *ui = (unsigned int *) (((char *) sbi) + a->offset);
++	unsigned int *ui = (unsigned int *) (((char *) sbi) + a->u.offset);
+ 
+ 	return snprintf(buf, PAGE_SIZE, "%u\n", *ui);
+ }
+@@ -2455,7 +2458,7 @@ static ssize_t sbi_ui_store(struct ext4_attr *a,
+ 			    struct ext4_sb_info *sbi,
+ 			    const char *buf, size_t count)
+ {
+-	unsigned int *ui = (unsigned int *) (((char *) sbi) + a->offset);
++	unsigned int *ui = (unsigned int *) (((char *) sbi) + a->u.offset);
+ 	unsigned long t;
+ 	int ret;
+ 
+@@ -2504,12 +2507,20 @@ static ssize_t trigger_test_error(struct ext4_attr *a,
+ 	return count;
+ }
+ 
++static ssize_t sbi_deprecated_show(struct ext4_attr *a,
++				   struct ext4_sb_info *sbi, char *buf)
++{
++	return snprintf(buf, PAGE_SIZE, "%d\n", a->u.deprecated_val);
++}
++
+ #define EXT4_ATTR_OFFSET(_name,_mode,_show,_store,_elname) \
+ static struct ext4_attr ext4_attr_##_name = {			\
+ 	.attr = {.name = __stringify(_name), .mode = _mode },	\
+ 	.show	= _show,					\
+ 	.store	= _store,					\
+-	.offset = offsetof(struct ext4_sb_info, _elname),	\
++	.u = {							\
++		.offset = offsetof(struct ext4_sb_info, _elname),\
++	},							\
+ }
+ #define EXT4_ATTR(name, mode, show, store) \
+ static struct ext4_attr ext4_attr_##name = __ATTR(name, mode, show, store)
+@@ -2520,6 +2531,14 @@ static struct ext4_attr ext4_attr_##name = __ATTR(name, mode, show, store)
+ #define EXT4_RW_ATTR_SBI_UI(name, elname)	\
+ 	EXT4_ATTR_OFFSET(name, 0644, sbi_ui_show, sbi_ui_store, elname)
+ #define ATTR_LIST(name) &ext4_attr_##name.attr
++#define EXT4_DEPRECATED_ATTR(_name, _val)	\
++static struct ext4_attr ext4_attr_##_name = {			\
++	.attr = {.name = __stringify(_name), .mode = 0444 },	\
++	.show	= sbi_deprecated_show,				\
++	.u = {							\
++		.deprecated_val = _val,				\
++	},							\
++}
+ 
+ EXT4_RO_ATTR(delayed_allocation_blocks);
+ EXT4_RO_ATTR(session_write_kbytes);
+@@ -2534,7 +2553,7 @@ EXT4_RW_ATTR_SBI_UI(mb_min_to_scan, s_mb_min_to_scan);
+ EXT4_RW_ATTR_SBI_UI(mb_order2_req, s_mb_order2_reqs);
+ EXT4_RW_ATTR_SBI_UI(mb_stream_req, s_mb_stream_request);
+ EXT4_RW_ATTR_SBI_UI(mb_group_prealloc, s_mb_group_prealloc);
+-EXT4_RW_ATTR_SBI_UI(max_writeback_mb_bump, s_max_writeback_mb_bump);
++EXT4_DEPRECATED_ATTR(max_writeback_mb_bump, 128);
+ EXT4_RW_ATTR_SBI_UI(extent_max_zeroout_kb, s_extent_max_zeroout_kb);
+ EXT4_ATTR(trigger_fs_error, 0200, NULL, trigger_test_error);
+ 
+@@ -3787,7 +3806,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
  	}
--	return jbd2__journal_start(journal, nblocks, 0, GFP_NOFS, type, line);
-+	return 0;
-+}
-+
-+handle_t *__ext4_journal_start_sb(struct super_block *sb, unsigned int line,
-+				  int type, int blocks, int rsv_blocks)
-+{
-+	journal_t *journal;
-+	int err;
-+
-+	trace_ext4_journal_start(sb, blocks, rsv_blocks, _RET_IP_);
-+	err = ext4_journal_check_start(sb);
-+	if (err < 0)
-+		return ERR_PTR(err);
-+
-+	journal = EXT4_SB(sb)->s_journal;
-+	if (!journal)
-+		return ext4_get_nojournal();
-+	return jbd2__journal_start(journal, blocks, rsv_blocks, GFP_NOFS,
-+				   type, line);
- }
  
- int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle)
-@@ -86,6 +98,30 @@ int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle)
- 	return err;
- }
+ 	sbi->s_stripe = ext4_get_stripe_size(sbi);
+-	sbi->s_max_writeback_mb_bump = 128;
+ 	sbi->s_extent_max_zeroout_kb = 32;
  
-+handle_t *__ext4_journal_start_reserved(handle_t *handle, unsigned int line,
-+					int type)
-+{
-+	struct super_block *sb;
-+	int err;
-+
-+	if (!ext4_handle_valid(handle))
-+		return ext4_get_nojournal();
-+
-+	sb = handle->h_journal->j_private;
-+	trace_ext4_journal_start_reserved(sb, handle->h_buffer_credits,
-+					  _RET_IP_);
-+	err = ext4_journal_check_start(sb);
-+	if (err < 0) {
-+		jbd2_journal_free_reserved(handle);
-+		return ERR_PTR(err);
-+	}
-+
-+	err = jbd2_journal_start_reserved(handle, type, line);
-+	if (err < 0)
-+		return ERR_PTR(err);
-+	return handle;
-+}
-+
- void ext4_journal_abort_handle(const char *caller, unsigned int line,
- 			       const char *err_fn, struct buffer_head *bh,
- 			       handle_t *handle, int err)
-diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-index c8c6885..fdd865e 100644
---- a/fs/ext4/ext4_jbd2.h
-+++ b/fs/ext4/ext4_jbd2.h
-@@ -265,7 +265,7 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
- 	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb))
- 
- handle_t *__ext4_journal_start_sb(struct super_block *sb, unsigned int line,
--				  int type, int nblocks);
-+				  int type, int blocks, int rsv_blocks);
- int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle);
- 
- #define EXT4_NOJOURNAL_MAX_REF_COUNT ((unsigned long) 4096)
-@@ -300,21 +300,37 @@ static inline int ext4_handle_has_enough_credits(handle_t *handle, int needed)
- }
- 
- #define ext4_journal_start_sb(sb, type, nblocks)			\
--	__ext4_journal_start_sb((sb), __LINE__, (type), (nblocks))
-+	__ext4_journal_start_sb((sb), __LINE__, (type), (nblocks), 0)
- 
- #define ext4_journal_start(inode, type, nblocks)			\
--	__ext4_journal_start((inode), __LINE__, (type), (nblocks))
-+	__ext4_journal_start((inode), __LINE__, (type), (nblocks), 0)
-+
-+#define ext4_journal_start_with_reserve(inode, type, blocks, rsv_blocks) \
-+	__ext4_journal_start((inode), __LINE__, (type), (blocks), (rsv_blocks))
- 
- static inline handle_t *__ext4_journal_start(struct inode *inode,
- 					     unsigned int line, int type,
--					     int nblocks)
-+					     int blocks, int rsv_blocks)
- {
--	return __ext4_journal_start_sb(inode->i_sb, line, type, nblocks);
-+	return __ext4_journal_start_sb(inode->i_sb, line, type, blocks,
-+				       rsv_blocks);
- }
- 
- #define ext4_journal_stop(handle) \
- 	__ext4_journal_stop(__func__, __LINE__, (handle))
- 
-+#define ext4_journal_start_reserve(handle, type) \
-+	__ext4_journal_start_reserved((handle), __LINE__, (type))
-+
-+handle_t *__ext4_journal_start_reserved(handle_t *handle, unsigned int line,
-+					int type);
-+
-+static inline void ext4_journal_free_reserved(handle_t *handle)
-+{
-+	if (ext4_handle_valid(handle))
-+		jbd2_journal_free_reserved(handle);
-+}
-+
- static inline handle_t *ext4_journal_current_handle(void)
- {
- 	return journal_current_handle();
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 00a818d..f03598c 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -747,7 +747,8 @@ repeat_in_this_group:
- 		if (!handle) {
- 			BUG_ON(nblocks <= 0);
- 			handle = __ext4_journal_start_sb(dir->i_sb, line_no,
--							 handle_type, nblocks);
-+							 handle_type, nblocks,
-+							 0);
- 			if (IS_ERR(handle)) {
- 				err = PTR_ERR(handle);
- 				ext4_std_error(sb, err);
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index 8ee15b9..e0f3c63 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -1638,25 +1638,50 @@ TRACE_EVENT(ext4_load_inode,
- );
- 
- TRACE_EVENT(ext4_journal_start,
--	TP_PROTO(struct super_block *sb, int nblocks, unsigned long IP),
-+	TP_PROTO(struct super_block *sb, int blocks, int rsv_blocks,
-+		 unsigned long IP),
- 
--	TP_ARGS(sb, nblocks, IP),
-+	TP_ARGS(sb, blocks, rsv_blocks, IP),
- 
- 	TP_STRUCT__entry(
- 		__field(	dev_t,	dev			)
- 		__field(unsigned long,	ip			)
--		__field(	int,	nblocks			)
-+		__field(	  int,	blocks			)
-+		__field(	  int,	rsv_blocks		)
- 	),
- 
- 	TP_fast_assign(
--		__entry->dev	 = sb->s_dev;
--		__entry->ip	 = IP;
--		__entry->nblocks = nblocks;
-+		__entry->dev		 = sb->s_dev;
-+		__entry->ip		 = IP;
-+		__entry->blocks		 = blocks;
-+		__entry->rsv_blocks	 = rsv_blocks;
- 	),
- 
--	TP_printk("dev %d,%d nblocks %d caller %pF",
-+	TP_printk("dev %d,%d blocks, %d rsv_blocks, %d caller %pF",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
--		  __entry->nblocks, (void *)__entry->ip)
-+		  __entry->blocks, __entry->rsv_blocks, (void *)__entry->ip)
-+);
-+
-+TRACE_EVENT(ext4_journal_start_reserved,
-+	TP_PROTO(struct super_block *sb, int blocks, unsigned long IP),
-+
-+	TP_ARGS(sb, blocks, IP),
-+
-+	TP_STRUCT__entry(
-+		__field(	dev_t,	dev			)
-+		__field(unsigned long,	ip			)
-+		__field(	  int,	blocks			)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->dev		 = sb->s_dev;
-+		__entry->ip		 = IP;
-+		__entry->blocks		 = blocks;
-+	),
-+
-+	TP_printk("dev %d,%d blocks, %d caller %pF",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  __entry->blocks, (void *)__entry->ip)
- );
- 
- DECLARE_EVENT_CLASS(ext4__trim,
+ 	/*
 -- 
 1.8.1.4
 
