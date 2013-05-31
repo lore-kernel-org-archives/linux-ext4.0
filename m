@@ -1,34 +1,44 @@
-From: Rich Johnston <rjohnston@sgi.com>
-Subject: Re: [PATCH 2/3 v2] 285: Fix indentation of do_pwrite
-Date: Fri, 31 May 2013 07:30:20 -0500
-Message-ID: <51A897DC.1030801@sgi.com>
-References: <1369948905-6693-1-git-send-email-jack@suse.cz> <1369948905-6693-2-git-send-email-jack@suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v4 20/20] ext4: Allow punch hole with bigalloc enabled
+Date: Fri, 31 May 2013 11:14:54 -0400
+Message-ID: <20130531151454.GB19561@thunk.org>
+References: <1368549454-8930-1-git-send-email-lczerner@redhat.com>
+ <1368549454-8930-21-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: <xfs@oss.sgi.com>, <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from relay2.sgi.com ([192.48.179.30]:35099 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754596Ab3EaM30 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 31 May 2013 08:29:26 -0400
-In-Reply-To: <1369948905-6693-2-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	akpm@linux-foundation.org, hughd@google.com
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <1368549454-8930-21-git-send-email-lczerner@redhat.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 05/30/2013 04:21 PM, Jan Kara wrote:
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->   src/seek_sanity_test.c | 26 +++++++++++++-------------
->   1 file changed, 13 insertions(+), 13 deletions(-)
->
-Thanks for the patch, it has been committed:
+On Tue, May 14, 2013 at 06:37:34PM +0200, Lukas Czerner wrote:
+> In commits 5f95d21fb6f2aaa52830e5b7fb405f6c71d3ab85 and
+> 30bc2ec9598a1b156ad75217f2e7d4560efdeeab we've reworked punch_hole
+> implementation and there is noting holding us back from using punch hole
+> on file system with bigalloc feature enabled.
+> 
+> This has been tested with fsx and xfstests.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> Reviewed-by: Jan Kara <jack@suse.cz>
 
-commit 1515c26fd44ee2f84ce43ebcd9168130801dd9a0
-Author: Jan Kara <jack@suse.cz>
-Date:   Fri May 31 07:19:47 2013 -0500
+This patch is causing a test failure with bigalloc enabled with the
+xfstests shared/298.
 
-     xfstests 285: Fix indentation of do_pwrite
+Since it's at the end of the invalidate page range tests, I'm going to
+drop this patch for now.  Could you take a look at this?
 
---Rich
+Thanks!!
+
+					- Ted
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
