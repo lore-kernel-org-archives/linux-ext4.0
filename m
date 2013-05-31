@@ -1,67 +1,46 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 3/3] 285: Test offsets over 4GB
-Date: Fri, 31 May 2013 08:34:14 +1000
-Message-ID: <20130530223414.GR29466@dastard>
-References: <1369917939-22660-1-git-send-email-jack@suse.cz>
- <1369917939-22660-3-git-send-email-jack@suse.cz>
- <51A758A8.80502@redhat.com>
- <20130530200118.GC586@quack.suse.cz>
- <51A7B0EE.1010300@redhat.com>
- <20130530204921.GD586@quack.suse.cz>
+From: Felipe Monteiro de Carvalho <felipemonteiro.carvalho@gmail.com>
+Subject: How to differentiate ext4 from ext2/3 in code?
+Date: Fri, 31 May 2013 07:04:18 +0000 (UTC)
+Message-ID: <loom.20130531T090136-835@post.gmane.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>, xfs@oss.sgi.com,
-	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:29570 "EHLO
-	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751140Ab3E3WeQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 30 May 2013 18:34:16 -0400
-Content-Disposition: inline
-In-Reply-To: <20130530204921.GD586@quack.suse.cz>
+Received: from plane.gmane.org ([80.91.229.3]:59052 "EHLO plane.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751161Ab3EaHKG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 31 May 2013 03:10:06 -0400
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
+	id 1UiJTO-0001gz-Ps
+	for linux-ext4@vger.kernel.org; Fri, 31 May 2013 09:10:02 +0200
+Received: from user-31-174-109-102.play-internet.pl ([31.174.109.102])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Fri, 31 May 2013 09:10:02 +0200
+Received: from felipemonteiro.carvalho by user-31-174-109-102.play-internet.pl with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Fri, 31 May 2013 09:10:02 +0200
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, May 30, 2013 at 10:49:21PM +0200, Jan Kara wrote:
-> On Thu 30-05-13 15:05:02, Eric Sandeen wrote:
-> > On 5/30/13 3:01 PM, Jan Kara wrote:
-> > > On Thu 30-05-13 08:48:24, Eric Sandeen wrote:
-> > >> On 5/30/13 7:45 AM, Jan Kara wrote:
-> > >>> Test whether SEEK_HOLE and SEEK_DATA works correctly with offsets over
-> > >>> 4GB.
-> > >>
-> > >>
-> > >> Hm, should we add 2T as well while we're at it?
-> > >>
-> > >> (and does this cause any new failures?)
-> > >   Yes, ext4 is broken. I've sent fixes for it yesterday. I'm not sure what
-> > 
-> > Argh, sorry I forgot that.  I just want to be careful about more rigorous
-> > tests making it look like we have regressions in the code.
-> > 
-> > > exactly would overflow at 2T ... block counts if signed int is used and
-> > > blocksize is 1KB?
-> > 
-> > Hum ok, where'd I come up with 2T?  :)  never mind that maybe, unless
-> > there are other potential trouble points we should add (8T? 16T for
-> > filesystems that can handle it?)
->   Yeah, so 8T + something might be interesting and both ext4 & xfs should
-> handle that fine. 16T + something might be interesting for xfs if it
-> supports that size. I'll update this patch with these checks.
+Hello,
 
-What boundary traversal are we trying to test at these high
-offsets? 
+I am working on a software which has its own code to mount file systems, but 
+when working on adding ext4 support I just noticed something strange. The 
+ext2/3 reader already works quite well for ext4!
 
-I mean, I can understand wanting to confirm they work, but there's
-no 32 bit variable boundary in the seek code at 8/16TB that needs to
-be specifically test is there? i.e. is it just testing the same case
-as the 8GB case?
+Also: EXT2_SUPER_MAGIC == EXT3_SUPER_MAGIC == EXT4_SUPER_MAGIC
 
-Cheers,
+So does anyone know what is the best way to differentiate in a file system 
+reader between ext3 and ext4?
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+The best I came up so far would be checking the size of the superblock ... for 
+ext3 it seams to be smaller I think ... but I guess people here might have 
+better ideas.
+
+thanks,
+
+Felipe Monteiro de Carvalho
+
