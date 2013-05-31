@@ -1,77 +1,49 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 3/3] 285: Test offsets over 4GB
-Date: Fri, 31 May 2013 10:22:29 +0200
-Message-ID: <20130531082229.GB9269@quack.suse.cz>
-References: <1369917939-22660-1-git-send-email-jack@suse.cz>
-	<1369917939-22660-3-git-send-email-jack@suse.cz>
-	<51A758A8.80502@redhat.com> <20130530200118.GC586@quack.suse.cz>
-	<51A7B0EE.1010300@redhat.com> <20130530204921.GD586@quack.suse.cz>
-	<20130530223414.GR29466@dastard>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
-	Jan Kara <jack@suse.cz>, xfs@oss.sgi.com
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-In-Reply-To: <20130530223414.GR29466@dastard>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Subject: [PATCH 00/22 v2] Fixes and improvements in ext4 writeback path
+Date: Fri, 31 May 2013 11:42:33 +0200
+Message-ID: <1369993379-13017-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:42963 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751461Ab3EaJnH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 31 May 2013 05:43:07 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 31-05-13 08:34:14, Dave Chinner wrote:
-> On Thu, May 30, 2013 at 10:49:21PM +0200, Jan Kara wrote:
-> > On Thu 30-05-13 15:05:02, Eric Sandeen wrote:
-> > > On 5/30/13 3:01 PM, Jan Kara wrote:
-> > > > On Thu 30-05-13 08:48:24, Eric Sandeen wrote:
-> > > >> On 5/30/13 7:45 AM, Jan Kara wrote:
-> > > >>> Test whether SEEK_HOLE and SEEK_DATA works correctly with offsets over
-> > > >>> 4GB.
-> > > >>
-> > > >>
-> > > >> Hm, should we add 2T as well while we're at it?
-> > > >>
-> > > >> (and does this cause any new failures?)
-> > > >   Yes, ext4 is broken. I've sent fixes for it yesterday. I'm not sure what
-> > > 
-> > > Argh, sorry I forgot that.  I just want to be careful about more rigorous
-> > > tests making it look like we have regressions in the code.
-> > > 
-> > > > exactly would overflow at 2T ... block counts if signed int is used and
-> > > > blocksize is 1KB?
-> > > 
-> > > Hum ok, where'd I come up with 2T?  :)  never mind that maybe, unless
-> > > there are other potential trouble points we should add (8T? 16T for
-> > > filesystems that can handle it?)
-> >   Yeah, so 8T + something might be interesting and both ext4 & xfs should
-> > handle that fine. 16T + something might be interesting for xfs if it
-> > supports that size. I'll update this patch with these checks.
-> 
-> What boundary traversal are we trying to test at these high
-> offsets? 
-  If fs converts passed offsets to block numbers (as ext4 does) and wrongly
-used 32-bit signed instead of 32-bit unsigned type for block numbers, the
-overflow would happen at 8T. In case of XFS 64-bit counters should be used
-for blocks so checking somewhere beyond 16T is for that.
+  Hello,
 
-I'm testing at 3 different offsets because different filesystems have
-different s_maxbytes settings so we cannot just test beyond 16 TB - ext4
-would just return EFBIG for that.
+  this is my series of patches improving ext4 writeback path and somewhat
+cleaning up that code. Some things this patch set achieves:
+* ext4_io_end structure doesn't contain page pointers anymore so it is
+  significantly smaller (by about 1KB) (patch 1)
+* bio splitting is now handled properly so we no longer hit warnings
+  about extents changed while IO was in progress (patch 2)
+* JBD2 supports transaction reservations - a way to start a transaction
+  without blocking on journal (patch 12)
+* cleanups of ext4_da_writepages() and connected stuff (patches 14-18)
+* we clear PageWriteback bit only after extents are converted (PATCHES 22)
+* we can thus remove waits for unwritten extent conversion
+
+  I've tested patches with xfstests in different configurations (default,
+dioread_nolock, nojournal, blocksize 1KB). The patches are based on recent
+Linus' tree.
+
+Since v1 I've fixed couple of bugs found during testing:
+* Changed transaction reservation API because it had inherent deadlocks when
+  the journal got frozen
+* I've fixed some issues in my writeback patches resulting in bad extent
+  conversion
+
+The timing of the submission isn't perfect since I'm leaving for two weeks
+of vacation (out of email) so I won't be able to react but it took me much
+longer than I expected to nail down all the bugs I found.
+
+The patch set needs a serious testing so please beat it as much as you can.
+I once hit a fs corruption (used block marked as freed) which I was not able
+to explain in nojournal mode and I didn't reproduce it since so there may be
+bugs hiding (or it may have been completely unrelated bug).
 
 								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
