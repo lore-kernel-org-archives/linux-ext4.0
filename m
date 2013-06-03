@@ -1,39 +1,36 @@
-From: Rich Johnston <rjohnston@sgi.com>
-Subject: Re: [PATCH] xfstests: fix seek_sanity_test for fs w/o fallocate
-Date: Mon, 3 Jun 2013 07:42:08 -0500
-Message-ID: <51AC8F20.8030501@sgi.com>
-References: <51A8C59B.3030308@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/2] jbd2: check bh->b_data for NULL in
+ jbd2_journal_get_descriptor_buffer before memset()
+Date: Mon, 3 Jun 2013 11:33:23 -0400
+Message-ID: <20130603153323.GB20009@thunk.org>
+References: <1370253616-8173-1-git-send-email-ruslan.bilovol@ti.com>
+ <1370253616-8173-2-git-send-email-ruslan.bilovol@ti.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: xfs-oss <xfs@oss.sgi.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from relay1.sgi.com ([192.48.179.29]:45700 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756049Ab3FCMlG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Jun 2013 08:41:06 -0400
-In-Reply-To: <51A8C59B.3030308@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Ruslan Bilovol <ruslan.bilovol@ti.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1370253616-8173-2-git-send-email-ruslan.bilovol@ti.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 05/31/2013 10:45 AM, Eric Sandeen wrote:
-> currently the seek_sanity_test (generic/285) fails on ext3
-> or ext2 due to fallocate() failures.  Just ignore that test
-> if the fs doesn't support fallocate.
->
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+On Mon, Jun 03, 2013 at 01:00:15PM +0300, Ruslan Bilovol wrote:
+> The memset() doesn't perform any NULL-pointer checking
+> before dereferencing passed pointer so this should be
+> checked before calling it.
 
-Thanks Eric and Zheng, this has been committed.
+I can see that __getblk() can return NULL if there is a memory
+allocation failure (and is defined to do so), so checking to make sure
+bh is not NULL is a good thing to do.
 
-commit 3e889c6735117e0906c339ffae0dbc17a4df27fb
-Author: Eric Sandeen <sandeen@redhat.com>
-Date:   Mon Jun 3 07:28:17 2013 -0500
+Have you actually seen a case where bh is non-NULL, but bh->b_data is
+NULL?  If not, it might be better to do something like this:
 
-     xfstests: fix seek_sanity_test for fs w/o fallocate
+>  	bh = __getblk(journal->j_dev, blocknr, journal->j_blocksize);
+	if (!bh)
+		return NULL;
+	BUG_ON(!bh->b_data);
 
-(Rich adds another step to his commit procedure to prevent this from 
-happening again)
-
---Rich
+						- Ted
