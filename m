@@ -1,70 +1,39 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 2/6] ext4: fix data integrity for ext4_sync_fs
-Date: Mon, 03 Jun 2013 15:30:19 +0400
-Message-ID: <87mwr7fn3o.fsf@openvz.org>
-References: <1369732741-26070-1-git-send-email-dmonakhov@openvz.org> <1369732741-26070-3-git-send-email-dmonakhov@openvz.org> <20130528215112.GF16408@quack.suse.cz>
+From: Rich Johnston <rjohnston@sgi.com>
+Subject: Re: [PATCH] xfstests: fix seek_sanity_test for fs w/o fallocate
+Date: Mon, 3 Jun 2013 07:42:08 -0500
+Message-ID: <51AC8F20.8030501@sgi.com>
+References: <51A8C59B.3030308@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: xfs-oss <xfs@oss.sgi.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-la0-f53.google.com ([209.85.215.53]:52399 "EHLO
-	mail-la0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754102Ab3FCLaY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Jun 2013 07:30:24 -0400
-Received: by mail-la0-f53.google.com with SMTP id ea20so3346094lab.12
-        for <linux-ext4@vger.kernel.org>; Mon, 03 Jun 2013 04:30:22 -0700 (PDT)
-In-Reply-To: <20130528215112.GF16408@quack.suse.cz>
+Received: from relay1.sgi.com ([192.48.179.29]:45700 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756049Ab3FCMlG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 3 Jun 2013 08:41:06 -0400
+In-Reply-To: <51A8C59B.3030308@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 28 May 2013 23:51:12 +0200, Jan Kara <jack@suse.cz> wrote:
-> On Tue 28-05-13 13:18:57, Dmitry Monakhov wrote:
-> > Inode's data or non journaled quota may be written w/o jounral so we _must_
-> > send a barrier at the end of ext4_sync_fs. But it can be skipped if journal
-> > commit will do it for us.
-> > 
-> > Also fix data integrity for nojournal mode.
-> > changes from v1:
-> >  skip barrier for async mode
->   One comment below:
-> 
-> > diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-> > index c9e1ab6..ed974fd 100644
-> > --- a/include/linux/jbd2.h
-> > +++ b/include/linux/jbd2.h
-> > @@ -1319,6 +1319,21 @@ static inline u32 jbd2_chksum(journal_t *journal, u32 crc,
-> >  	return *(u32 *)desc.ctx;
-> >  }
-> >  
-> > +/* Return most recent uncommitted transaction */
-> > +static inline tid_t  jbd2_get_latest_transaction(journal_t *journal)
-> > +{
-> > +	tid_t tid;
-> > +
-> > +	read_lock(&journal->j_state_lock);
-> > +	tid = journal->j_commit_request;
-> > +	if (journal->j_running_transaction) {
-> > +		tid = journal->j_running_transaction->t_tid;
-> > +	} else if (!journal->j_commit_sequence)
->   I would expect here journal->j_committing_transaction and then
-> journal->j_commit_request below. And you can use j_commit_sequence as an
-> initial 'tid' value...
-I have to admit that my code is not correct because function should
-return 'most recent uncommitted transaction', but I do not get your
-idea. journal->j_commit_request >= jorunal->j_committing_transaction
-and journal->j_commit_request >= journal->j_commit_sequence
+On 05/31/2013 10:45 AM, Eric Sandeen wrote:
+> currently the seek_sanity_test (generic/285) fails on ext3
+> or ext2 due to fallocate() failures.  Just ignore that test
+> if the fs doesn't support fallocate.
+>
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-So it is reasonable to define function like follows:
+Thanks Eric and Zheng, this has been committed.
 
-static inline tid_t  jbd2_get_latest_transaction(journal_t journal)
-{
-   tid_t tid;
+commit 3e889c6735117e0906c339ffae0dbc17a4df27fb
+Author: Eric Sandeen <sandeen@redhat.com>
+Date:   Mon Jun 3 07:28:17 2013 -0500
 
-   read_lock(&journal->j_state_lock);
-   tid = journal->j_commit_request;
-   if (journal->j_running_transaction)
-           tid = journal->j_running_transaction->t_tid;
-   read_unlock(&journal->j_state_lock);
-   return tid;
-}
+     xfstests: fix seek_sanity_test for fs w/o fallocate
+
+(Rich adds another step to his commit procedure to prevent this from 
+happening again)
+
+--Rich
