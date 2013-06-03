@@ -1,116 +1,117 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Filesystem state: clean with errors - what errors?
-Date: Mon, 03 Jun 2013 15:14:26 -0500
-Message-ID: <51ACF922.2050306@redhat.com>
-References: <CADzUK1K08XjYuz_Mrv6sF8e7-M9ToStfjN7e7s3v+2q9wX+-xQ@mail.gmail.com> <51ACEAEF.6040109@redhat.com> <CADzUK1KXvQbb+jUK=JpYLXD1S+-dCLnYRU8Dc+mPDf3b4ipU8A@mail.gmail.com> <51ACEFA8.8000907@redhat.com> <CADzUK1JvWW=YkS2e1gZM=Zt3SDKbhLhqH0_i_UnVLhBY51r2Nw@mail.gmail.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 13/26] ext4: Improve writepage credit estimate for files
+ with indirect blocks
+Date: Mon, 3 Jun 2013 14:45:55 -0700
+Message-ID: <20130603214555.GA6083@blackbox.djwong.org>
+References: <1369993379-13017-1-git-send-email-jack@suse.cz>
+ <1369993379-13017-14-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Autif Khan <autif.mlist@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33918 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754201Ab3FCUO3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Jun 2013 16:14:29 -0400
-In-Reply-To: <CADzUK1JvWW=YkS2e1gZM=Zt3SDKbhLhqH0_i_UnVLhBY51r2Nw@mail.gmail.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:18769 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756402Ab3FCVqF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Jun 2013 17:46:05 -0400
+Content-Disposition: inline
+In-Reply-To: <1369993379-13017-14-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 6/3/13 3:07 PM, Autif Khan wrote:
-> On Mon, Jun 3, 2013 at 3:34 PM, Eric Sandeen <sandeen@redhat.com> wrote:
->> On 6/3/13 2:29 PM, Autif Khan wrote:
->>> On Mon, Jun 3, 2013 at 3:13 PM, Eric Sandeen <sandeen@redhat.com> wrote:
->>>> On 6/3/13 1:45 PM, Autif Khan wrote:
->>>>> Executing dumpe2fs -h on one of the partitions says
->>>>>
->>>>> ...
->>>>> Filesystem features:      has_journal ext_attr resize_inode dir_index
->>>>> filetype extent flex_bg sparse_super large_file huge_file uninit_bg
->>>>> dir_nlink extra_isize
->>>>> Filesystem flags:         signed_directory_hash
->>>>> Default mount options:    user_xattr acl
->>>>> Filesystem state:         clean with errors
->>>>> ...
->>>>>
->>>>> How can I find out what the errors are - the details of the errors.
->>>>
->>>> "clean" means the log has been replayed (log is not dirty)
->>>> "with errors" means that it encountered concistency errors at runtime
->>>>
->>>> run e2fsck -f on it to see what it finds (or e2fsck -fn if you want a no-op
->>>> dry run)
->>>
->>> --- spin ---
->>>
->>> ubuntu@mac0013950af6fb:~$ sudo fsck -V -n -f /dev/sda5
->>> fsck from util-linux 2.20.1
->>> [/sbin/fsck.ext4 (1) -- /koko] fsck.ext4 -n -f /dev/sda5
->>> e2fsck 1.42 (29-Nov-2011)
->>> Warning!  /dev/sda5 is mounted.
->>
->> Surprising that it didn't find errors since you ran it on a mounted fs!
->>
->> That's also an older e2fsck, so I suppose it's possible that it missed
->> something.
->>
->>> Pass 1: Checking inodes, blocks, and sizes
->>> Pass 2: Checking directory structure
->>> Pass 3: Checking directory connectivity
->>> Pass 4: Checking reference counts
->>> Pass 5: Checking group summary information
->>> /dev/sda5: 24770/262144 files (0.1% non-contiguous), 328031/1048576 blocks
->>> ubuntu@mac0013950af6fb:~$
->>>
->>> I am not sure I see any errors. Is there an error here?
->>
->> No, that didn't report any errors.
->>
->> If you unmount it and do it w/o -n, it should clear the error state.
->> Perhaps it encountered an error for a file that got subsequently deleted,
->> or something - not sure.
->>
+On Fri, May 31, 2013 at 11:42:46AM +0200, Jan Kara wrote:
+> ext4_ind_trans_blocks() wrongly used 'chunk' argument to decide whether
+> blocks mapped are logically continguous. That is wrong since the argument
+
+Picking nits here, but I think you meant 'contiguous' here?  Or 'continuous'
+perhaps?  Either way, 'continguous' isn't a word.  There's a bunch more of this
+sprinkled over this patch.
+
+--D
+
+> informs whether the blocks are physically continguous. As the blocks
+> mapped are always logically continguous and that's all
+> ext4_ind_trans_blocks() cares about, just remove the 'chunk' argument.
 > 
-> That is true - we are able to fix this - almost trivially - the
-> problem is that we are causing this frequently (sometimes always) with
-> inexpensive SSDs. I am sure you have seen my other email:
-> http://marc.info/?l=linux-ext4&m=137028288823079&w=2
+> Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/ext4/ext4.h     |  2 +-
+>  fs/ext4/indirect.c | 27 +++++++++------------------
+>  fs/ext4/inode.c    |  2 +-
+>  3 files changed, 11 insertions(+), 20 deletions(-)
 > 
-> I assume that there is no other tool that I can use - (short of a hex
-> dump of the 4.0G partition using dd) - to further debug this. Is
-> there?
-
-"with errors" is printed when the fs state has EXT2_ERROR_FS set.
-
-Looking at the system logs would be a start - when the filesystem was set
-into error state, the kernel should have logged that fact, along with
-why it did so... you could go from there.
-
-Also, kernels since 2.6.36 save more info:
-
-commit 1c13d5c0872870cca3e612aa045d492ead9ab004
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Tue Jul 27 11:56:03 2010 -0400
-
-    ext4: Save error information to the superblock for analysis
-    
-    Save number of file system errors, and the time function name, line
-    number, block number, and inode number of the first and most recent
-    errors reported on the file system in the superblock.
-    
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-
-This gets printed daily:
-
-        if (es->s_error_count)
-                ext4_msg(sb, KERN_NOTICE, "error count: %u",
-                         le32_to_cpu(es->s_error_count));
-        if (es->s_first_error_time) {
-                printk(KERN_NOTICE "EXT4-fs (%s): initial error at %u: %.*s:%d",
-                       sb->s_id, le32_to_cpu(es->s_first_error_time),
-                       (int) sizeof(es->s_first_error_func),
-                       es->s_first_error_func,
-                       le32_to_cpu(es->s_first_error_line));
-
--Eric
-
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index d260fb7..bca9889 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -2111,7 +2111,7 @@ extern ssize_t ext4_ind_direct_IO(int rw, struct kiocb *iocb,
+>  				const struct iovec *iov, loff_t offset,
+>  				unsigned long nr_segs);
+>  extern int ext4_ind_calc_metadata_amount(struct inode *inode, sector_t lblock);
+> -extern int ext4_ind_trans_blocks(struct inode *inode, int nrblocks, int chunk);
+> +extern int ext4_ind_trans_blocks(struct inode *inode, int nrblocks);
+>  extern void ext4_ind_truncate(handle_t *, struct inode *inode);
+>  extern int ext4_free_hole_blocks(handle_t *handle, struct inode *inode,
+>  				 ext4_lblk_t first, ext4_lblk_t stop);
+> diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+> index b8d5d35..c8b3861 100644
+> --- a/fs/ext4/indirect.c
+> +++ b/fs/ext4/indirect.c
+> @@ -779,27 +779,18 @@ int ext4_ind_calc_metadata_amount(struct inode *inode, sector_t lblock)
+>  	return (blk_bits / EXT4_ADDR_PER_BLOCK_BITS(inode->i_sb)) + 1;
+>  }
+>  
+> -int ext4_ind_trans_blocks(struct inode *inode, int nrblocks, int chunk)
+> +/*
+> + * Calculate number of indirect blocks touched by mapping @nrblocks logically
+> + * continguous blocks
+> + */
+> +int ext4_ind_trans_blocks(struct inode *inode, int nrblocks)
+>  {
+> -	int indirects;
+> -
+> -	/* if nrblocks are contiguous */
+> -	if (chunk) {
+> -		/*
+> -		 * With N contiguous data blocks, we need at most
+> -		 * N/EXT4_ADDR_PER_BLOCK(inode->i_sb) + 1 indirect blocks,
+> -		 * 2 dindirect blocks, and 1 tindirect block
+> -		 */
+> -		return DIV_ROUND_UP(nrblocks,
+> -				    EXT4_ADDR_PER_BLOCK(inode->i_sb)) + 4;
+> -	}
+>  	/*
+> -	 * if nrblocks are not contiguous, worse case, each block touch
+> -	 * a indirect block, and each indirect block touch a double indirect
+> -	 * block, plus a triple indirect block
+> +	 * With N contiguous data blocks, we need at most
+> +	 * N/EXT4_ADDR_PER_BLOCK(inode->i_sb) + 1 indirect blocks,
+> +	 * 2 dindirect blocks, and 1 tindirect block
+>  	 */
+> -	indirects = nrblocks * 2 + 1;
+> -	return indirects;
+> +	return DIV_ROUND_UP(nrblocks, EXT4_ADDR_PER_BLOCK(inode->i_sb)) + 4;
+>  }
+>  
+>  /*
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 3eb7ad6..27b8504 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -4756,7 +4756,7 @@ int ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
+>  static int ext4_index_trans_blocks(struct inode *inode, int nrblocks, int chunk)
+>  {
+>  	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
+> -		return ext4_ind_trans_blocks(inode, nrblocks, chunk);
+> +		return ext4_ind_trans_blocks(inode, nrblocks);
+>  	return ext4_ext_index_trans_blocks(inode, nrblocks, chunk);
+>  }
+>  
+> -- 
+> 1.8.1.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
