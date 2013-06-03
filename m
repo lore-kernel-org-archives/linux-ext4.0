@@ -1,91 +1,58 @@
-From: Eric Sandeen <sandeen@redhat.com>
+From: Autif Khan <autif.mlist@gmail.com>
 Subject: Re: Filesystem state: clean with errors - what errors?
-Date: Mon, 03 Jun 2013 14:13:51 -0500
-Message-ID: <51ACEAEF.6040109@redhat.com>
+Date: Mon, 3 Jun 2013 15:29:31 -0400
+Message-ID: <CADzUK1KXvQbb+jUK=JpYLXD1S+-dCLnYRU8Dc+mPDf3b4ipU8A@mail.gmail.com>
 References: <CADzUK1K08XjYuz_Mrv6sF8e7-M9ToStfjN7e7s3v+2q9wX+-xQ@mail.gmail.com>
+	<51ACEAEF.6040109@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
-To: Autif Khan <autif.mlist@gmail.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:11369 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756211Ab3FCTNy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Jun 2013 15:13:54 -0400
-In-Reply-To: <CADzUK1K08XjYuz_Mrv6sF8e7-M9ToStfjN7e7s3v+2q9wX+-xQ@mail.gmail.com>
+Received: from mail-la0-f53.google.com ([209.85.215.53]:62059 "EHLO
+	mail-la0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757600Ab3FCTa6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Jun 2013 15:30:58 -0400
+Received: by mail-la0-f53.google.com with SMTP id ea20so3831756lab.40
+        for <linux-ext4@vger.kernel.org>; Mon, 03 Jun 2013 12:30:56 -0700 (PDT)
+In-Reply-To: <51ACEAEF.6040109@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 6/3/13 1:45 PM, Autif Khan wrote:
-> Executing dumpe2fs -h on one of the partitions says
-> 
-> ...
-> Filesystem features:      has_journal ext_attr resize_inode dir_index
-> filetype extent flex_bg sparse_super large_file huge_file uninit_bg
-> dir_nlink extra_isize
-> Filesystem flags:         signed_directory_hash
-> Default mount options:    user_xattr acl
-> Filesystem state:         clean with errors
-> ...
-> 
-> How can I find out what the errors are - the details of the errors.
+On Mon, Jun 3, 2013 at 3:13 PM, Eric Sandeen <sandeen@redhat.com> wrote:
+> On 6/3/13 1:45 PM, Autif Khan wrote:
+>> Executing dumpe2fs -h on one of the partitions says
+>>
+>> ...
+>> Filesystem features:      has_journal ext_attr resize_inode dir_index
+>> filetype extent flex_bg sparse_super large_file huge_file uninit_bg
+>> dir_nlink extra_isize
+>> Filesystem flags:         signed_directory_hash
+>> Default mount options:    user_xattr acl
+>> Filesystem state:         clean with errors
+>> ...
+>>
+>> How can I find out what the errors are - the details of the errors.
+>
+> "clean" means the log has been replayed (log is not dirty)
+> "with errors" means that it encountered concistency errors at runtime
+>
+> run e2fsck -f on it to see what it finds (or e2fsck -fn if you want a no-op
+> dry run)
 
-"clean" means the log has been replayed (log is not dirty)
-"with errors" means that it encountered concistency errors at runtime
+--- spin ---
 
-run e2fsck -f on it to see what it finds (or e2fsck -fn if you want a no-op
-dry run)
+ubuntu@mac0013950af6fb:~$ sudo fsck -V -n -f /dev/sda5
+fsck from util-linux 2.20.1
+[/sbin/fsck.ext4 (1) -- /koko] fsck.ext4 -n -f /dev/sda5
+e2fsck 1.42 (29-Nov-2011)
+Warning!  /dev/sda5 is mounted.
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/dev/sda5: 24770/262144 files (0.1% non-contiguous), 328031/1048576 blocks
+ubuntu@mac0013950af6fb:~$
 
--Eric
-
-> Thanks
-> 
-> Autif
-> 
-> Some more logs (I am not sure I see an error here):
-> 
-> Group 0: (Blocks 0-32767) [ITABLE_ZEROED]
->   Checksum 0xc4c7, unused inodes 0
->   Primary superblock at 0, Group descriptors at 1-1
->   Reserved GDT blocks at 2-256
->   Block bitmap at 257 (+257), Inode bitmap at 273 (+273)
->   Inode table at 289-800 (+289)
->   21467 free blocks, 0 free inodes, 1834 directories
->   Free blocks: 11301-32767
->   Free inodes:
-> Group 1: (Blocks 32768-65535) [ITABLE_ZEROED]
->   Checksum 0xc9c2, unused inodes 623
->   Backup superblock at 32768, Group descriptors at 32769-32769
->   Reserved GDT blocks at 32770-33024
->   Block bitmap at 258 (bg #0 + 258), Inode bitmap at 274 (bg #0 + 274)
->   Inode table at 801-1312 (bg #0 + 801)
->   0 free blocks, 623 free inodes, 974 directories, 623 unused inodes
->   Free blocks:
->   Free inodes: 15762-16384
-> Group 2: (Blocks 65536-98303) [INODE_UNINIT, ITABLE_ZEROED]
-> ...
-> Group 16: (Blocks 524288-557055) [ITABLE_ZEROED]
->   Checksum 0xcee5, unused inodes 0
->   Block bitmap at 524288 (+0), Inode bitmap at 524304 (+16)
->   Inode table at 524320-524831 (+32)
->   22714 free blocks, 0 free inodes, 1672 directories
->   Free blocks: 534342-557055
->   Free inodes:
-> Group 17: (Blocks 557056-589823) [ITABLE_ZEROED]
->   Checksum 0x9983, unused inodes 7375
->   Block bitmap at 524289 (bg #16 + 1), Inode bitmap at 524305 (bg #16 + 17)
->   Inode table at 524832-525343 (bg #16 + 544)
->   16730 free blocks, 7375 free inodes, 140 directories, 7375 unused inodes
->   Free blocks: 557571-558079, 565411-573439, 581632-589823
->   Free inodes: 140082-147456
-> Group 18: (Blocks 589824-622591) [INODE_UNINIT, BLOCK_UNINIT, ITABLE_ZEROED]
-> ...
-> 
-> Everything else is INODE_UNINIT
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
+I am not sure I see any errors. Is there an error here?
