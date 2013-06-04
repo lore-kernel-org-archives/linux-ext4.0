@@ -1,27 +1,45 @@
-From: "George Spelvin" <linux@horizon.com>
-Subject: Re: [PATCH v3] jbd2: Fix block tag checksum verification brokenness
-Date: 3 Jun 2013 23:32:08 -0400
-Message-ID: <20130604033208.32486.qmail@science.horizon.com>
-References: <20130604004015.GA6087@blackbox.djwong.org>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: darrick.wong@oracle.com, linux@horizon.com, tytso@mit.edu
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20130604004015.GA6087@blackbox.djwong.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Question on delalloc
+Date: Tue, 4 Jun 2013 01:22:03 -0400
+Message-ID: <20130604052203.GA29587@thunk.org>
+References: <CAJ1XODTmBmdOu+EL8OZy8ZRU4DbT7F179U7BrNDrQJQGtYQuWw@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: =?utf-8?B?5a6L5p+P57+w?= <solarispika@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:54560 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756177Ab3FDFWH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 4 Jun 2013 01:22:07 -0400
+Content-Disposition: inline
+In-Reply-To: <CAJ1XODTmBmdOu+EL8OZy8ZRU4DbT7F179U7BrNDrQJQGtYQuWw@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jun 03, 2013 at 12:55:21AM -0700, Darrick J. Wong wrote:
-> Drat, I was writing this email too late at night.  There /is/ a related
-> e2fsprogs patch for this:
-> http://comments.gmane.org/gmane.comp.file-systems.ext4/38621
+On Tue, Jun 04, 2013 at 03:00:29AM +0800, =E5=AE=8B=E6=9F=8F=E7=BF=B0 w=
+rote:
+> Also after I traced into filemap_write_and_wait_range, I found it
+> eventually calls ext4_writepage to do the most part of work, which in
+> its comment says "We don't do any block allocation in this function."
+>=20
+> So, can anyone kindly shed any light on my question, or point out my =
+mistakes?
 
-> Hey Ted, any thoughts on this jbd2/e2fsprogs patch pair?  Al acked the jbd2
-> part.
+There are three possible address_space_operations structures that can
+be used for ext4 files.  They are ext4_aops, ext4_journalled_aops, and
+ext4_da_aops.  It is the last one which is used for delayed allocation
+files, and in that case filemap_write_and_wait_range will use
+ext4_da_writepages().
 
-He's already pulled it into ext4/dev (eee06c56).  I've been watching
-it because an earlier version (which got merged into 3.10-rc1) has
-an essential fix to update extent block checksums properly during
-defragmentation.
+These days, if there is an writepages function, the writepage function
+is not used at all.  It used to be used for direct reclaim, but that's
+been replaced by I/O-less reclaim.
 
-I just have to be careful not to pull the *current* ext4/dev or I'll
-break things.  :-(
+						- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
