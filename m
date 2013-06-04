@@ -1,45 +1,71 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Question on delalloc
-Date: Tue, 4 Jun 2013 01:22:03 -0400
-Message-ID: <20130604052203.GA29587@thunk.org>
-References: <CAJ1XODTmBmdOu+EL8OZy8ZRU4DbT7F179U7BrNDrQJQGtYQuWw@mail.gmail.com>
+From: Ruslan Bilovol <ruslan.bilovol@ti.com>
+Subject: Re: [PATCH 1/2] jbd2: check bh->b_data for NULL in
+ jbd2_journal_get_descriptor_buffer before memset()
+Date: Tue, 4 Jun 2013 14:15:57 +0300
+Message-ID: <CAB=otbT15wLGkb_A9pa7-U=wH-_gOPgOR9Ee4uSL7_P0BmXt4Q@mail.gmail.com>
+References: <1370253616-8173-1-git-send-email-ruslan.bilovol@ti.com>
+	<1370253616-8173-2-git-send-email-ruslan.bilovol@ti.com>
+	<20130603153323.GB20009@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: =?utf-8?B?5a6L5p+P57+w?= <solarispika@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:54560 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756177Ab3FDFWH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 4 Jun 2013 01:22:07 -0400
-Content-Disposition: inline
-In-Reply-To: <CAJ1XODTmBmdOu+EL8OZy8ZRU4DbT7F179U7BrNDrQJQGtYQuWw@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	Ruslan Bilovol <ruslan.bilovol@ti.com>,
+	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20130603153323.GB20009@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jun 04, 2013 at 03:00:29AM +0800, =E5=AE=8B=E6=9F=8F=E7=BF=B0 w=
-rote:
-> Also after I traced into filemap_write_and_wait_range, I found it
-> eventually calls ext4_writepage to do the most part of work, which in
-> its comment says "We don't do any block allocation in this function."
->=20
-> So, can anyone kindly shed any light on my question, or point out my =
-mistakes?
+Hi Ted,
 
-There are three possible address_space_operations structures that can
-be used for ext4 files.  They are ext4_aops, ext4_journalled_aops, and
-ext4_da_aops.  It is the last one which is used for delayed allocation
-files, and in that case filemap_write_and_wait_range will use
-ext4_da_writepages().
+On Mon, Jun 3, 2013 at 6:33 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+> On Mon, Jun 03, 2013 at 01:00:15PM +0300, Ruslan Bilovol wrote:
+>> The memset() doesn't perform any NULL-pointer checking
+>> before dereferencing passed pointer so this should be
+>> checked before calling it.
+>
+> I can see that __getblk() can return NULL if there is a memory
+> allocation failure (and is defined to do so), so checking to make sure
+> bh is not NULL is a good thing to do.
+>
+> Have you actually seen a case where bh is non-NULL, but bh->b_data is
+> NULL?  If not, it might be better to do something like this:
 
-These days, if there is an writepages function, the writepage function
-is not used at all.  It used to be used for direct reclaim, but that's
-been replaced by I/O-less reclaim.
+Yes, this is exactly the situation I observe (bh is non-NULL, but
+bh->b_data is NULL)
 
-						- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>>       bh = __getblk(journal->j_dev, blocknr, journal->j_blocksize);
+>         if (!bh)
+>                 return NULL;
+>         BUG_ON(!bh->b_data);
+
+Is it so critical that we need to stop the kernel here?
+Can we recover from this state gracefully?
+Maybe something like this may be better:
+
+       bh = __getblk(journal->j_dev, blocknr, journal->j_blocksize);
+         if (!bh)
+                 return NULL;
+         if(!bh->b_data) {
+                 WARN_ON(1);
+                 return NULL;
+         }
+
+Regards,
+Ruslan
+
+>
+>                                                 - Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
+
+
+
+-- 
+Best regards,
+Ruslan Bilvol
