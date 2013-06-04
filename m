@@ -1,35 +1,75 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 17/26] ext4: Use transaction reservation for extent
- conversion in ext4_end_io
-Date: Tue, 4 Jun 2013 13:29:22 -0400
-Message-ID: <20130604172922.GH3030@thunk.org>
-References: <1369993379-13017-1-git-send-email-jack@suse.cz>
- <1369993379-13017-18-git-send-email-jack@suse.cz>
+From: =?Big5?B?p7qsZr+r?= <solarispika@gmail.com>
+Subject: Re: Question on delalloc
+Date: Wed, 5 Jun 2013 01:30:22 +0800
+Message-ID: <CAJ1XODRNm6RyCNdQrUTKe2hOvECDVmxuzv6BUFY8eSX_MVSWSQ@mail.gmail.com>
+References: <CAJ1XODTmBmdOu+EL8OZy8ZRU4DbT7F179U7BrNDrQJQGtYQuWw@mail.gmail.com>
+	<51ADF914.6070209@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=Big5
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:54788 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753479Ab3FDR30 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 4 Jun 2013 13:29:26 -0400
-Content-Disposition: inline
-In-Reply-To: <1369993379-13017-18-git-send-email-jack@suse.cz>
+Received: from mail-ob0-f181.google.com ([209.85.214.181]:46866 "EHLO
+	mail-ob0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753422Ab3FDRaW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Jun 2013 13:30:22 -0400
+Received: by mail-ob0-f181.google.com with SMTP id 16so863416obc.40
+        for <linux-ext4@vger.kernel.org>; Tue, 04 Jun 2013 10:30:22 -0700 (PDT)
+In-Reply-To: <51ADF914.6070209@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, May 31, 2013 at 11:42:50AM +0200, Jan Kara wrote:
-> Later we would like to clear PageWriteback bit only after extent conversion
-> from unwritten to written extents is performed. However it is not possible
-> to start a transaction after PageWriteback is set because that violates
-> lock ordering (and is easy to deadlock). So we have to reserve a transaction
-> before locking pages and sending them for IO and later we use the transaction
-> for extent conversion from ext4_end_io().
-> 
-> Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
-> Signed-off-by: Jan Kara <jack@suse.cz>
+Hi Eric,
+    I've found a mistake I'd made. I used to take for granted that
+ext4 using ordered mode journal will have ext4_writepage do the
+writing.
+But with delalloc enabled, no matter what journal mode one uses, ext4
+will use ext4_da_writepages do handle those delayed buffer heads'
+writing.
+Thanks for your advice, I know what you meant:) Though what I tried to
+said is that delalloc'd data will stop kjournald from writing them
+back when it would like to do so, therefore those delalloc'd data will
+stay in memory more longer than those non-delalloc'd ones. As
+described in http://lwn.net/Articles/322823/. Sorry for my unclear
+statement.
 
-Thanks, applied.
+Sung Po-Han
 
-					- Ted
+
+2013/6/4 Eric Sandeen <sandeen@redhat.com>:
+> On 6/3/13 2:00 PM, =A7=BA=ACf=BF=AB wrote:
+>> Hi everybody,
+>>
+>> I am new to ext4 and doing research on Android with ext4 as file
+>> system. These days, I have a question on ext4's delayed allocation
+>> against ext4_sync_file.
+>> I have learned that delalloc won't guarantee file data's integrity o=
+n
+>> power failure, since those delayed allocated buffer heads won't be
+>> handled by jbd2.
+>
+> I just want to address your first assertion regarding delalloc:
+>
+>> In order to protect data, user programs need to fsync
+>> those files to be secured.
+>
+> This is true with or without delayed allocation.
+>
+> With delayed allocation, the blocks are chosen a the time of the IO.
+> Without delayed allocation, the blocks are chosen at the write syscal=
+l time.
+>
+> But in both cases, data is only in memory after the write(), and is n=
+ot
+> guaranteed to be on disk until an fsync or similar data integrity sys=
+call.
+>
+> http://lwn.net/Articles/457667/
+>
+> -Eric
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
