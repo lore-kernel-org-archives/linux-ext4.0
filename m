@@ -1,69 +1,70 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/2] jbd2: check bh->b_data for NULL in
- jbd2_journal_get_descriptor_buffer before memset()
-Date: Tue, 4 Jun 2013 09:37:49 -0400
-Message-ID: <20130604133749.GB23132@thunk.org>
-References: <1370253616-8173-1-git-send-email-ruslan.bilovol@ti.com>
- <1370253616-8173-2-git-send-email-ruslan.bilovol@ti.com>
- <20130603153323.GB20009@thunk.org>
- <CAB=otbT15wLGkb_A9pa7-U=wH-_gOPgOR9Ee4uSL7_P0BmXt4Q@mail.gmail.com>
+Subject: Re: Filesystem state: clean with errors - what errors?
+Date: Tue, 4 Jun 2013 09:49:38 -0400
+Message-ID: <20130604134938.GC23132@thunk.org>
+References: <CADzUK1K08XjYuz_Mrv6sF8e7-M9ToStfjN7e7s3v+2q9wX+-xQ@mail.gmail.com>
+ <51ACEAEF.6040109@redhat.com>
+ <CADzUK1KXvQbb+jUK=JpYLXD1S+-dCLnYRU8Dc+mPDf3b4ipU8A@mail.gmail.com>
+ <51ACEFA8.8000907@redhat.com>
+ <CADzUK1JvWW=YkS2e1gZM=Zt3SDKbhLhqH0_i_UnVLhBY51r2Nw@mail.gmail.com>
+ <51ACF922.2050306@redhat.com>
+ <CADzUK1JyZA=2+yn7K30K5te-cZTiS0RY9L8YYKn+Dr1JxhHOtQ@mail.gmail.com>
+ <CADzUK1+fVXBWjuhEJpQp3skSkxxa7oM=KKM370LacVAyqY0TeQ@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Ruslan Bilovol <ruslan.bilovol@ti.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
+To: Autif Khan <autif.mlist@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:54677 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751317Ab3FDNto (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 4 Jun 2013 09:49:44 -0400
 Content-Disposition: inline
-In-Reply-To: <CAB=otbT15wLGkb_A9pa7-U=wH-_gOPgOR9Ee4uSL7_P0BmXt4Q@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <CADzUK1+fVXBWjuhEJpQp3skSkxxa7oM=KKM370LacVAyqY0TeQ@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 04, 2013 at 02:15:57PM +0300, Ruslan Bilovol wrote:
-> > Have you actually seen a case where bh is non-NULL, but bh->b_data is
-> > NULL?  If not, it might be better to do something like this:
-> 
-> Yes, this is exactly the situation I observe (bh is non-NULL, but
-> bh->b_data is NULL)
+Hmm... what version of e2fsprogs are you using?  Is there any chance
+it's older than 1.42.4?  Hmmm, yes, you're using a positively ancient
+(and filled with bugs that have since been fixed e2fsprogs 1.42).
 
-Hmm... so the stack trace you sent in the commit description was one
-where bh->b_data was NULL?  I'm trying to make sure there isn't
-something else going on that we don't understand.
+I suspect you're getting hit bug a problem which we fixed in e2fsprogs
+1.42.4 (and you *REALLY* want to upgrade to the latest released
+version of e2fsprogs):
 
-Could you put some instrumentation in __find_get_block()?  Something like this:
+   Fixed e2fsck's handling of the journal's s_errno field.  E2fsck was
+   not properly propagating the journal's s_errno field to the superblock
+   field; it was not checking this field if the journal had already been
+   replayed, and if the journal *was* being replayed, the "error bit"
+   wasn't getting flushed out to disk.
 
-struct buffer_head *
-__find_get_block(struct block_device *bdev, sector_t block, unsigned size)
-{
-	struct buffer_head *bh = lookup_bh_lru(bdev, block, size);
+The kernel side fix for this particular issue (if this is what is
+going on) is:
 
-	if (bh == NULL) {
-		bh = __find_get_block_slow(bdev, block);
-		if (bh->b_data == NULL) {
-		   pr_crit("b_data NULL after find_get_block_slow\n);
-		   WARN_ON(1);
-		}
-		if (bh)
-			bh_lru_install(bh);
-	} else {
-		if (bh->b_data == NULL) {
-			pr_crit("b_data NULL after lookup_bh_lru\n");
-			WARN_ON(1);
-		}
-	}
-	if (bh)
-		touch_buffer(bh);
-	return bh;
-}
+commit d796c52ef0b71a988364f6109aeb63d79c5b116b
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Sun Aug 5 19:04:57 2012 -0400
 
-... and then send me the stack trace after running your reproduction
-case.  If it turns out the problem is in __find_get_block_slow(),
-could you put in similar debugging checks there and try to track it
-down?
+    ext4: make sure the journal sb is written in ext4_clear_journal_err()
+    
+    After we transfer set the EXT4_ERROR_FS bit in the file system
+    superblock, it's not enough to call jbd2_journal_clear_err() to clear
+    the error indication from journal superblock --- we need to call
+    jbd2_journal_update_sb_errno() as well.  Otherwise, when the root file
+    system is mounted read-only, the journal is replayed, and the error
+    indicator is transferred to the superblock --- but the s_errno field
+    in the jbd2 superblock is left set (since although we cleared it in
+    memory, we never flushed it out to disk).
+    
+    This can end up confusing e2fsck.  We should make e2fsck more robust
+    in this case, but the kernel shouldn't be leaving things in this
+    confused state, either.
+    
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+    Cc: stable@kernel.org
 
-I'm pretty sure the case of bh non-NULL and bh->b_data NULL is never
-supposed to happen, and while we could just put a check where you
-suggested, there are plenty of other places which use __getblk(), and
-there may be other bugs that are hiding here.
+... which first appeared in the 3.6 kernel, and which for some reason
+was never backported to the 3.2 stable series.
 
 Regards,
 
