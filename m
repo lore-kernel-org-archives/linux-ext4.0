@@ -1,202 +1,99 @@
-From: Joe Perches <joe@perches.com>
-Subject: [PATCH] ext4: Reduce object size when !CONFIG_PRINTK
-Date: Tue,  4 Jun 2013 19:55:05 -0700
-Message-ID: <a629c1c6359886419e24179dbb04484a88e6b0f2.1370400427.git.joe@perches.com>
-Cc: Dave Kleikamp <dave.kleikamp@oracle.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-embedded@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org
-To: linux-kernel@vger.kernel.org
+From: Ashish Sangwan <ashishsangwan2@gmail.com>
+Subject: Re: [PATCH]mke2fs: Calculate journal blocks just after fs initialize
+Date: Wed, 5 Jun 2013 13:55:31 +0530
+Message-ID: <CAOiN93=QDRpp7bHygcnom0ZMwU-dc1dRaGf62qw3GDXgCb7uKQ@mail.gmail.com>
+References: <1368243733-1600-1-git-send-email-ashish.sangwan2@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Ashish Sangwan <a.sangwan@samsung.com>,
+	Namjae Jeon <namjae.jeon@samsung.com>
+To: "Theodore Ts'o" <tytso@mit.edu>, adilger@dilger.ca
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from perches-mx.perches.com ([206.117.179.246]:37358 "EHLO
-	labridge.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1750905Ab3FECzJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 4 Jun 2013 22:55:09 -0400
+Received: from mail-lb0-f181.google.com ([209.85.217.181]:43837 "EHLO
+	mail-lb0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751405Ab3FEIZd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Jun 2013 04:25:33 -0400
+Received: by mail-lb0-f181.google.com with SMTP id 13so1604979lba.12
+        for <linux-ext4@vger.kernel.org>; Wed, 05 Jun 2013 01:25:31 -0700 (PDT)
+In-Reply-To: <1368243733-1600-1-git-send-email-ashish.sangwan2@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Reduce the object size ~10% could be useful for embedded
-systems.
+any comments?
 
-Add #ifdef CONFIG_PRINTK #else #endif blocks
-to hold formats and arguments, passing " " to
-functions when !CONFIG_PRINTK and still verifying
-format and arguments with no_printk.
-
-$ size fs/ext4/built-in.o*
-   text	   data	    bss	    dec	    hex	filename
- 239375	    610	    888	 240873	  3ace9	fs/ext4/built-in.o.new
- 264167	    738	    888	 265793	  40e41	fs/ext4/built-in.o.old
-
-    $ grep -E "CONFIG_EXT4|CONFIG_PRINTK" .config
-    # CONFIG_PRINTK is not set
-    CONFIG_EXT4_FS=y
-    CONFIG_EXT4_USE_FOR_EXT23=y
-    CONFIG_EXT4_FS_POSIX_ACL=y
-    # CONFIG_EXT4_FS_SECURITY is not set
-    # CONFIG_EXT4_DEBUG is not set
-
-Signed-off-by: Joe Perches <joe@perches.com>
----
- fs/ext4/ext4.h  | 80 +++++++++++++++++++++++++++++++++++++++++++++++----------
- fs/ext4/super.c | 15 ++++++-----
- 2 files changed, 75 insertions(+), 20 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 019db3c..f4baeb06 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2164,42 +2164,96 @@ extern int ext4_alloc_flex_bg_array(struct super_block *sb,
- 				    ext4_group_t ngroup);
- extern const char *ext4_decode_error(struct super_block *sb, int errno,
- 				     char nbuf[16]);
-+
- extern __printf(4, 5)
- void __ext4_error(struct super_block *, const char *, unsigned int,
- 		  const char *, ...);
--#define ext4_error(sb, message...)	__ext4_error(sb, __func__,	\
--						     __LINE__, ## message)
- extern __printf(5, 6)
--void ext4_error_inode(struct inode *, const char *, unsigned int, ext4_fsblk_t,
-+void __ext4_error_inode(struct inode *, const char *, unsigned int, ext4_fsblk_t,
- 		      const char *, ...);
- extern __printf(5, 6)
--void ext4_error_file(struct file *, const char *, unsigned int, ext4_fsblk_t,
-+void __ext4_error_file(struct file *, const char *, unsigned int, ext4_fsblk_t,
- 		     const char *, ...);
- extern void __ext4_std_error(struct super_block *, const char *,
- 			     unsigned int, int);
- extern __printf(4, 5)
- void __ext4_abort(struct super_block *, const char *, unsigned int,
- 		  const char *, ...);
--#define ext4_abort(sb, message...)	__ext4_abort(sb, __func__, \
--						       __LINE__, ## message)
- extern __printf(4, 5)
- void __ext4_warning(struct super_block *, const char *, unsigned int,
- 		    const char *, ...);
--#define ext4_warning(sb, message...)	__ext4_warning(sb, __func__, \
--						       __LINE__, ## message)
- extern __printf(3, 4)
--void ext4_msg(struct super_block *, const char *, const char *, ...);
-+void __ext4_msg(struct super_block *, const char *, const char *, ...);
- extern void __dump_mmp_msg(struct super_block *, struct mmp_struct *mmp,
- 			   const char *, unsigned int, const char *);
--#define dump_mmp_msg(sb, mmp, msg)	__dump_mmp_msg(sb, mmp, __func__, \
--						       __LINE__, msg)
- extern __printf(7, 8)
- void __ext4_grp_locked_error(const char *, unsigned int,
- 			     struct super_block *, ext4_group_t,
- 			     unsigned long, ext4_fsblk_t,
- 			     const char *, ...);
--#define ext4_grp_locked_error(sb, grp, message...) \
--	__ext4_grp_locked_error(__func__, __LINE__, (sb), (grp), ## message)
-+
-+#ifdef CONFIG_PRINTK
-+
-+#define ext4_error_inode(inode, func, line, block, fmt, ...)		\
-+	__ext4_error_inode(inode, func, line, block, fmt, ##__VA_ARGS__)
-+#define ext4_error_file(file, func, line, block, fmt, ...)		\
-+	__ext4_error_file(file, func, line, block, fmt, ##__VA_ARGS__)
-+#define ext4_error(sb, fmt, ...)					\
-+	__ext4_error(sb, __func__, __LINE__, fmt, ##__VA_ARGS__)
-+#define ext4_abort(sb, fmt, ...)					\
-+	__ext4_abort(sb, __func__, __LINE__, fmt, ##__VA_ARGS__)
-+#define ext4_warning(sb, fmt, ...)					\
-+	__ext4_warning(sb, __func__, __LINE__, fmt, ##__VA_ARGS__)
-+#define ext4_msg(sb, level, fmt, ...)				\
-+	__ext4_msg(sb, level, fmt, ##__VA_ARGS__)
-+#define dump_mmp_msg(sb, mmp, msg)					\
-+	__dump_mmp_msg(sb, mmp, __func__, __LINE__, msg)
-+#define ext4_grp_locked_error(sb, grp, ino, block, fmt, ...)		\
-+	__ext4_grp_locked_error(__func__, __LINE__, sb, grp, ino, block, \
-+				fmt, ##__VA_ARGS__)
-+
-+#else
-+
-+#define ext4_error_inode(inode, func, line, block, fmt, ...)		\
-+do {									\
-+	no_printk(fmt, ##__VA_ARGS__);					\
-+	__ext4_error_inode(inode, "", 0, block, " ");			\
-+} while (0)
-+#define ext4_error_file(file, func, line, block, fmt, ...)		\
-+do {									\
-+	no_printk(fmt, ##__VA_ARGS__);					\
-+	__ext4_error_file(file, "", 0, block, " ");			\
-+} while (0)
-+#define ext4_error(sb, fmt, ...)					\
-+do {									\
-+	no_printk(fmt, ##__VA_ARGS__);					\
-+	__ext4_error(sb, "", 0, " ");					\
-+} while (0)
-+#define ext4_abort(sb, fmt, ...)					\
-+do {									\
-+	no_printk(fmt, ##__VA_ARGS__);					\
-+	__ext4_abort(sb, "", 0, " ");					\
-+} while (0)
-+#define ext4_warning(sb, fmt, ...)					\
-+do {									\
-+	no_printk(fmt, ##__VA_ARGS__);					\
-+	__ext4_warning(sb, "", 0, " ");					\
-+} while (0)
-+#define ext4_msg(sb, level, fmt, ...)					\
-+do {									\
-+	no_printk(fmt, ##__VA_ARGS__);					\
-+	__ext4_msg(sb, "", " ");					\
-+} while (0)
-+#define dump_mmp_msg(sb, mmp, msg)					\
-+	__dump_mmp_msg(sb, mmp, "", 0, "")
-+#define ext4_grp_locked_error(sb, grp, ino, block, fmt, ...)		\
-+do {									\
-+	no_printk(fmt, ##__VA_ARGS__);				\
-+	__ext4_grp_locked_error("", 0, sb, grp, ino, block, " ");	\
-+} while (0)
-+
-+#endif
-+
- extern void ext4_update_dynamic_rev(struct super_block *sb);
- extern int ext4_update_compat_feature(handle_t *handle, struct super_block *sb,
- 					__u32 compat);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index a9c1438..2e2825b 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -422,9 +422,9 @@ void __ext4_error(struct super_block *sb, const char *function,
- 	ext4_handle_error(sb);
- }
- 
--void ext4_error_inode(struct inode *inode, const char *function,
--		      unsigned int line, ext4_fsblk_t block,
--		      const char *fmt, ...)
-+void __ext4_error_inode(struct inode *inode, const char *function,
-+			unsigned int line, ext4_fsblk_t block,
-+			const char *fmt, ...)
- {
- 	va_list args;
- 	struct va_format vaf;
-@@ -451,9 +451,9 @@ void ext4_error_inode(struct inode *inode, const char *function,
- 	ext4_handle_error(inode->i_sb);
- }
- 
--void ext4_error_file(struct file *file, const char *function,
--		     unsigned int line, ext4_fsblk_t block,
--		     const char *fmt, ...)
-+void __ext4_error_file(struct file *file, const char *function,
-+		       unsigned int line, ext4_fsblk_t block,
-+		       const char *fmt, ...)
- {
- 	va_list args;
- 	struct va_format vaf;
-@@ -580,7 +580,8 @@ void __ext4_abort(struct super_block *sb, const char *function,
- 		panic("EXT4-fs panic from previous error\n");
- }
- 
--void ext4_msg(struct super_block *sb, const char *prefix, const char *fmt, ...)
-+void __ext4_msg(struct super_block *sb,
-+		const char *prefix, const char *fmt, ...)
- {
- 	struct va_format vaf;
- 	va_list args;
--- 
-1.8.1.2.459.gbcd45b4.dirty
-
+On Sat, May 11, 2013 at 9:12 AM, Ashish Sangwan
+<ashishsangwan2@gmail.com> wrote:
+> From: Ashish Sangwan <a.sangwan@samsung.com>
+>
+> We can calculate journal blocks as soon as blocksize is set.
+> It will help to figure out wrong journal blocks count earlier.
+> This will save some un-necessary initialization.
+>
+> Without patch output =>
+> mke2fs /dev/sdc1 -J size=1048576
+> mke2fs 1.42.7 (21-Jan-2013)
+> Filesystem label=
+> OS type: Linux
+> Block size=4096 (log=2)
+> Fragment size=4096 (log=2)
+> Stride=0 blocks, Stripe width=0 blocks
+> 61312 inodes, 244936 blocks
+> 12246 blocks (5.00%) reserved for the super user
+> First data block=0
+> Maximum filesystem blocks=251658240
+> 8 block groups
+> 32768 blocks per group, 32768 fragments per group
+> 7664 inodes per group
+> Superblock backups stored on blocks:
+>         32768, 98304, 163840, 229376
+>
+> Allocating group tables: done
+> Writing inode tables: done
+>
+> The requested journal size is 268435456 blocks; it must be
+> between 1024 and 10240000 blocks.  Aborting.
+>
+>
+> With patch output =>
+> mke2fs /dev/sdc1 -J size=1048576
+> mke2fs 1.42.7 (21-Jan-2013)
+>
+> The requested journal size is 268435456 blocks; it must be
+> between 1024 and 10240000 blocks.  Aborting.
+>
+> Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
+> Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
+> ---
+>  misc/mke2fs.c |    8 ++++++--
+>  1 files changed, 6 insertions(+), 2 deletions(-)
+>
+> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+> index bbf477a..0232053 100644
+> --- a/misc/mke2fs.c
+> +++ b/misc/mke2fs.c
+> @@ -2407,6 +2407,12 @@ int main (int argc, char *argv[])
+>                 com_err(device_name, retval, _("while setting up superblock"));
+>                 exit(1);
+>         }
+> +
+> +       /* Calculate journal blocks */
+> +       if (!journal_device && ((journal_size) ||
+> +               (fs_param.s_feature_compat &
+> +                EXT3_FEATURE_COMPAT_HAS_JOURNAL)))
+> +               journal_blocks = figure_journal_size(journal_size, fs);
+>         fs->progress_ops = &ext2fs_numeric_progress_ops;
+>
+>         /* Check the user's mkfs options for metadata checksumming */
+> @@ -2683,8 +2689,6 @@ int main (int argc, char *argv[])
+>         } else if ((journal_size) ||
+>                    (fs_param.s_feature_compat &
+>                     EXT3_FEATURE_COMPAT_HAS_JOURNAL)) {
+> -               journal_blocks = figure_journal_size(journal_size, fs);
+> -
+>                 if (super_only) {
+>                         printf(_("Skipping journal creation in super-only mode\n"));
+>                         fs->super->s_journal_inum = EXT2_JOURNAL_INO;
+> --
+> 1.7.2.3
+>
