@@ -1,66 +1,43 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH v4 20/20] ext4: Allow punch hole with bigalloc enabled
-Date: Wed, 5 Jun 2013 12:04:39 +0200 (CEST)
-Message-ID: <alpine.LFD.2.03.1306051203310.2912@redhat.com>
-References: <1368549454-8930-1-git-send-email-lczerner@redhat.com> <1368549454-8930-21-git-send-email-lczerner@redhat.com> <20130531151454.GB19561@thunk.org>
+From: Stratos Karafotis <stratosk@semaphore.gr>
+Subject: [PATCH linux-next] ext4: inode: Fix compiler warning
+Date: Wed, 05 Jun 2013 22:24:41 +0300
+Message-ID: <51AF9079.90304@semaphore.gr>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        akpm@linux-foundation.org, hughd@google.com
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20130531151454.GB19561@thunk.org>
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 31 May 2013, Theodore Ts'o wrote:
+=46ix the following compiler warning:
 
-> Date: Fri, 31 May 2013 11:14:54 -0400
-> From: Theodore Ts'o <tytso@mit.edu>
-> To: Lukas Czerner <lczerner@redhat.com>
-> Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
->     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
->     akpm@linux-foundation.org, hughd@google.com
-> Subject: Re: [PATCH v4 20/20] ext4: Allow punch hole with bigalloc enabled
-> 
-> On Tue, May 14, 2013 at 06:37:34PM +0200, Lukas Czerner wrote:
-> > In commits 5f95d21fb6f2aaa52830e5b7fb405f6c71d3ab85 and
-> > 30bc2ec9598a1b156ad75217f2e7d4560efdeeab we've reworked punch_hole
-> > implementation and there is noting holding us back from using punch hole
-> > on file system with bigalloc feature enabled.
-> > 
-> > This has been tested with fsx and xfstests.
-> > 
-> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> > Reviewed-by: Jan Kara <jack@suse.cz>
-> 
-> This patch is causing a test failure with bigalloc enabled with the
-> xfstests shared/298.
-> 
-> Since it's at the end of the invalidate page range tests, I'm going to
-> drop this patch for now.  Could you take a look at this?
+fs/ext4/inode.c: In function =91ext4_da_writepages=92:
+fs/ext4/inode.c:2212:6: warning: =91err=92 may be used uninitialized in=
+ this
+function [-Wmaybe-uninitialized]
+fs/ext4/inode.c:2155:6: note: =91err=92 was declared here
 
-Hi Ted,
+Signed-off-by: Stratos Karafotis <stratosk@semaphore.gr>
+---
+ fs/ext4/inode.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-sorry for the delay, I've been on vacation last week so I am trying
-to catch on the recent development :) I'll take a look at it
-hopefully this week. Thanks for letting me know.
-
--Lukas
-
-> 
-> Thanks!!
-> 
-> 					- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 442c5d2..702428c 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2152,7 +2152,7 @@ static int mpage_map_and_submit_extent(handle_t *=
+handle,
+ {
+ 	struct inode *inode =3D mpd->inode;
+ 	struct ext4_map_blocks *map =3D &mpd->map;
+-	int err;
++	int err =3D 0;
+ 	loff_t disksize;
+=20
+ 	mpd->io_submit.io_end->offset =3D
+--=20
+1.8.1.4
