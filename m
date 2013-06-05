@@ -1,99 +1,66 @@
-From: Ashish Sangwan <ashishsangwan2@gmail.com>
-Subject: Re: [PATCH]mke2fs: Calculate journal blocks just after fs initialize
-Date: Wed, 5 Jun 2013 13:55:31 +0530
-Message-ID: <CAOiN93=QDRpp7bHygcnom0ZMwU-dc1dRaGf62qw3GDXgCb7uKQ@mail.gmail.com>
-References: <1368243733-1600-1-git-send-email-ashish.sangwan2@gmail.com>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH v4 20/20] ext4: Allow punch hole with bigalloc enabled
+Date: Wed, 5 Jun 2013 12:04:39 +0200 (CEST)
+Message-ID: <alpine.LFD.2.03.1306051203310.2912@redhat.com>
+References: <1368549454-8930-1-git-send-email-lczerner@redhat.com> <1368549454-8930-21-git-send-email-lczerner@redhat.com> <20130531151454.GB19561@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Ashish Sangwan <a.sangwan@samsung.com>,
-	Namjae Jeon <namjae.jeon@samsung.com>
-To: "Theodore Ts'o" <tytso@mit.edu>, adilger@dilger.ca
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f181.google.com ([209.85.217.181]:43837 "EHLO
-	mail-lb0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751405Ab3FEIZd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Jun 2013 04:25:33 -0400
-Received: by mail-lb0-f181.google.com with SMTP id 13so1604979lba.12
-        for <linux-ext4@vger.kernel.org>; Wed, 05 Jun 2013 01:25:31 -0700 (PDT)
-In-Reply-To: <1368243733-1600-1-git-send-email-ashish.sangwan2@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        akpm@linux-foundation.org, hughd@google.com
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20130531151454.GB19561@thunk.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-any comments?
+On Fri, 31 May 2013, Theodore Ts'o wrote:
 
-On Sat, May 11, 2013 at 9:12 AM, Ashish Sangwan
-<ashishsangwan2@gmail.com> wrote:
-> From: Ashish Sangwan <a.sangwan@samsung.com>
->
-> We can calculate journal blocks as soon as blocksize is set.
-> It will help to figure out wrong journal blocks count earlier.
-> This will save some un-necessary initialization.
->
-> Without patch output =>
-> mke2fs /dev/sdc1 -J size=1048576
-> mke2fs 1.42.7 (21-Jan-2013)
-> Filesystem label=
-> OS type: Linux
-> Block size=4096 (log=2)
-> Fragment size=4096 (log=2)
-> Stride=0 blocks, Stripe width=0 blocks
-> 61312 inodes, 244936 blocks
-> 12246 blocks (5.00%) reserved for the super user
-> First data block=0
-> Maximum filesystem blocks=251658240
-> 8 block groups
-> 32768 blocks per group, 32768 fragments per group
-> 7664 inodes per group
-> Superblock backups stored on blocks:
->         32768, 98304, 163840, 229376
->
-> Allocating group tables: done
-> Writing inode tables: done
->
-> The requested journal size is 268435456 blocks; it must be
-> between 1024 and 10240000 blocks.  Aborting.
->
->
-> With patch output =>
-> mke2fs /dev/sdc1 -J size=1048576
-> mke2fs 1.42.7 (21-Jan-2013)
->
-> The requested journal size is 268435456 blocks; it must be
-> between 1024 and 10240000 blocks.  Aborting.
->
-> Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
-> Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-> ---
->  misc/mke2fs.c |    8 ++++++--
->  1 files changed, 6 insertions(+), 2 deletions(-)
->
-> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> index bbf477a..0232053 100644
-> --- a/misc/mke2fs.c
-> +++ b/misc/mke2fs.c
-> @@ -2407,6 +2407,12 @@ int main (int argc, char *argv[])
->                 com_err(device_name, retval, _("while setting up superblock"));
->                 exit(1);
->         }
-> +
-> +       /* Calculate journal blocks */
-> +       if (!journal_device && ((journal_size) ||
-> +               (fs_param.s_feature_compat &
-> +                EXT3_FEATURE_COMPAT_HAS_JOURNAL)))
-> +               journal_blocks = figure_journal_size(journal_size, fs);
->         fs->progress_ops = &ext2fs_numeric_progress_ops;
->
->         /* Check the user's mkfs options for metadata checksumming */
-> @@ -2683,8 +2689,6 @@ int main (int argc, char *argv[])
->         } else if ((journal_size) ||
->                    (fs_param.s_feature_compat &
->                     EXT3_FEATURE_COMPAT_HAS_JOURNAL)) {
-> -               journal_blocks = figure_journal_size(journal_size, fs);
-> -
->                 if (super_only) {
->                         printf(_("Skipping journal creation in super-only mode\n"));
->                         fs->super->s_journal_inum = EXT2_JOURNAL_INO;
+> Date: Fri, 31 May 2013 11:14:54 -0400
+> From: Theodore Ts'o <tytso@mit.edu>
+> To: Lukas Czerner <lczerner@redhat.com>
+> Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
+>     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+>     akpm@linux-foundation.org, hughd@google.com
+> Subject: Re: [PATCH v4 20/20] ext4: Allow punch hole with bigalloc enabled
+> 
+> On Tue, May 14, 2013 at 06:37:34PM +0200, Lukas Czerner wrote:
+> > In commits 5f95d21fb6f2aaa52830e5b7fb405f6c71d3ab85 and
+> > 30bc2ec9598a1b156ad75217f2e7d4560efdeeab we've reworked punch_hole
+> > implementation and there is noting holding us back from using punch hole
+> > on file system with bigalloc feature enabled.
+> > 
+> > This has been tested with fsx and xfstests.
+> > 
+> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> > Reviewed-by: Jan Kara <jack@suse.cz>
+> 
+> This patch is causing a test failure with bigalloc enabled with the
+> xfstests shared/298.
+> 
+> Since it's at the end of the invalidate page range tests, I'm going to
+> drop this patch for now.  Could you take a look at this?
+
+Hi Ted,
+
+sorry for the delay, I've been on vacation last week so I am trying
+to catch on the recent development :) I'll take a look at it
+hopefully this week. Thanks for letting me know.
+
+-Lukas
+
+> 
+> Thanks!!
+> 
+> 					- Ted
 > --
-> 1.7.2.3
->
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
