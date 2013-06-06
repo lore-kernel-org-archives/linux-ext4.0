@@ -1,65 +1,88 @@
 From: Stephen Rothwell <sfr@canb.auug.org.au>
-Subject: Re: [PATCH] ext4: add check to io_submit_init_bio
-Date: Fri, 7 Jun 2013 09:49:40 +1000
-Message-ID: <20130607094940.d4a0056025f1c3ad32c35155@canb.auug.org.au>
-References: <20130606115653.a21b0c6a7bdbbbac23164b85@canb.auug.org.au>
-	<20130606141941.GA5382@thunk.org>
+Subject: Re: [ext4:dev 43/52] fs/ext4/inode.c:2211:6: warning: 'err' may be
+ used uninitialized in this function
+Date: Fri, 7 Jun 2013 09:52:23 +1000
+Message-ID: <20130607095223.b14f75f47630c39b434f449a@canb.auug.org.au>
+References: <51aed48d.xK+2xHaWtYVlAT8d%fengguang.wu@intel.com>
+	<20130606145711.GC5382@thunk.org>
 Mime-Version: 1.0
 Content-Type: multipart/signed; protocol="application/pgp-signature";
  micalg="PGP-SHA256";
- boundary="Signature=_Fri__7_Jun_2013_09_49_40_+1000_.py8XxszQ1LcfX.u"
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
+ boundary="Signature=_Fri__7_Jun_2013_09_52_23_+1000_PJzQgvZgJGBL.NSb"
+Cc: kbuild test robot <fengguang.wu@intel.com>,
+	Jan Kara <jack@suse.cz>, kbuild-all@01.org,
+	linux-ext4@vger.kernel.org
 To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20130606141941.GA5382@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from haggis.pcug.org.au ([203.10.76.10]:55959 "EHLO
+	members.tip.net.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751908Ab3FFXw1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Jun 2013 19:52:27 -0400
+In-Reply-To: <20130606145711.GC5382@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
---Signature=_Fri__7_Jun_2013_09_49_40_+1000_.py8XxszQ1LcfX.u
+--Signature=_Fri__7_Jun_2013_09_52_23_+1000_PJzQgvZgJGBL.NSb
 Content-Type: text/plain; charset=US-ASCII
 Content-Disposition: inline
 Content-Transfer-Encoding: quoted-printable
 
-Hi Ted,
+HI Ted,
 
-On Thu, 6 Jun 2013 10:19:41 -0400 Theodore Ts'o <tytso@mit.edu> wrote:
+On Thu, 6 Jun 2013 10:57:11 -0400 Theodore Ts'o <tytso@mit.edu> wrote:
 >
-> On Thu, Jun 06, 2013 at 11:56:53AM +1000, Stephen Rothwell wrote:
+> On Wed, Jun 05, 2013 at 02:02:53PM +0800, kbuild test robot wrote:
+> > All warnings:
 > >=20
-> > In tracking this down, I followed the call chains and discovered that
-> > io_submit_init_bio() only ever returned 0.  Switching that to return
-> > void and following back up the chain lead to the following patch.
+> >    fs/ext4/inode.c: In function 'ext4_da_writepages':
+> > >> fs/ext4/inode.c:2211:6: warning: 'err' may be used uninitialized in =
+this function [-Wmaybe-uninitialized]
+> >    fs/ext4/inode.c:2154:6: note: 'err' was declared here
 >=20
-> Actually, that's a bug.  We're missing an check in that function.
-> Thanks for looking at this code.  (I'll fix the uninitialized err
-> warning another way.)
+> This looks like a false warning.  mpage_map_and_submit_extent() is
+> only capped when mpd.m_len is non-zero.  Hence we will execute the
+> budy of the while loop in that function at least once, which means err
+> will be initialized.
 
-Glad to be of service.
+Yeah, I guessed that was the case.
+
+> I'm curious what gcc version and/or -Wall flags triggered this
+> warning.  I'm using gcc 4.7.2 from Debian and it's not complaining.
+
+$ gcc --version
+gcc (Debian 4.7.3-4) 4.7.3
+
+I also saw it with gcc 4.8.0.
+
+> I'm happy to initialize err to zero just to shut up the gcc warning,
+> but I'm curious how often it's triggered, since this looked pretty
+> trivial for gcc to be able to figure out on its own.
+
+gcc may not be as clever as you hope :-)
 
 --=20
 Cheers,
 Stephen Rothwell                    sfr@canb.auug.org.au
 
---Signature=_Fri__7_Jun_2013_09_49_40_+1000_.py8XxszQ1LcfX.u
+--Signature=_Fri__7_Jun_2013_09_52_23_+1000_PJzQgvZgJGBL.NSb
 Content-Type: application/pgp-signature
 
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v2.0.20 (GNU/Linux)
 
-iQIcBAEBCAAGBQJRsSAYAAoJEECxmPOUX5FESGYP/RPUQO39eFs1JGS/FEWd9Ciz
-JsSe2/e3+mx8dQXNYz8EsvNGBglkA4ViclVFPT7Mv+hPzcblLpL+p4NLGnzhB64f
-b5iSYtWpEGfgXCj387cxtjtGeuMbB8jTyYB45RcFD119Yr4oUo70E0ixZSRw0FOw
-LN2mVd6hZiC/lU8IKXU4ZybDCxa8B46V+DSQf7m+LvVacx/Igr2HokfyHXVeNdA1
-fInfcYpSsb7zCVaXktdqOBRVGGlbFw3XhoC9r3IxNRKm4k417flYXNjQBsByG/de
-vMuf6DCUzckc48st7Zxrf0dI28uOPDW8z7FfGbDU6jw8rRLOQqpZEigbdg1fQ6hf
-aIRmKbGL1E4wPea3tQwhRGZspR1WEYjqmOxoPcSQ1Mvg/Y8ufRp1U0xVguPCzWo7
-NJ45Y85yk+CaCZAwURda6hGBvA3BK689DyiBz8Y8hcnXKQucE4LadGZM2RJEsQ0y
-PmvtgY0ISIe11KPBDli7RP0udruN6/uyazh7cRg0RJRQ8QIsW7nKqOBzG6LaWVc2
-4cBPaTW2sr2UITTs8VBoKfmgDAFKLLHOX12VdXmCjw8QukUf2ktkapDjMtQJbd16
-Bx+/hlemk1/M2bUG2q585fMmwRU13DbunWamDh4YfrZEuyUgW3+P7rI38y62qD+s
-TOenNVRrmbulelx/PNMz
-=OSN6
+iQIcBAEBCAAGBQJRsSC3AAoJEECxmPOUX5FEyBoP/15M9KUhuEGdHClxvAxuFD3c
+NOT6hSXxh08fR8Z/fJM0iwif1sUlXeUFE4lW31Uu1dYqaqvP+9SKKwint7AcywvW
+09VzA0M8PV59iMtTZ0CGqHYpcKFm8MoQe0vGdNKkb/rZtfZW1ogZu1R2i1NCZBEX
+JirAj7m4m47k5h4Hhw4jsZ9by63abIC64r0kWmwxzwa+Z35+ZPx4pzX8kRgloTdO
+bInJLr1cUYwuxsMSEPVOoUAOyLLmnA2bzmOMVjL5/xBcPmMBMdirX0LUOrDCV558
+Wh5n11CT2weanHMy2pjZ5hDWcUHDkTOXDSS7lFRGxVUbULSDUpI3bYiOLnhw43ZQ
+5WqL2rQOgtJBgFgw0gtbzF6yhUVMxqtZHQ+3Nx01kKTcCflg7txUMcB7zp54mulL
+bBip1iTpW/+oH6K+MofczGP0G4b5D6AW2vvYsra2H7Qp9dX1Mv0lvpPOZbOoPb96
+nRzP4m/Icjb1xcFFedVayKam7TIbSJusFq1RQyHeBtngFvEXb00ZJIHXYt1T7YMH
+swofn4oIIFZRPu0WNOCd40KGNazL8oxmYq44xutpHcPtrfSGrBPywXgPQqZN2TcI
+u01nPxI1rq75JsKl3BQ59O8X/ujTLXTFkGuAT5odZesqnkbBAbjAAxvOiT8XiJYG
+dZhX2tgvz2BLAZGd3Qy9
+=IGQK
 -----END PGP SIGNATURE-----
 
---Signature=_Fri__7_Jun_2013_09_49_40_+1000_.py8XxszQ1LcfX.u--
+--Signature=_Fri__7_Jun_2013_09_52_23_+1000_PJzQgvZgJGBL.NSb--
