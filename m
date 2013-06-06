@@ -1,172 +1,65 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: use ext4_da_writepages() for all modes
-Date: Thu,  6 Jun 2013 14:01:16 -0400
-Message-ID: <1370541676-31739-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:55572 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751693Ab3FFSBS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 6 Jun 2013 14:01:18 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Stephen Rothwell <sfr@canb.auug.org.au>
+Subject: Re: [PATCH] ext4: add check to io_submit_init_bio
+Date: Fri, 7 Jun 2013 09:49:40 +1000
+Message-ID: <20130607094940.d4a0056025f1c3ad32c35155@canb.auug.org.au>
+References: <20130606115653.a21b0c6a7bdbbbac23164b85@canb.auug.org.au>
+	<20130606141941.GA5382@thunk.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; protocol="application/pgp-signature";
+ micalg="PGP-SHA256";
+ boundary="Signature=_Fri__7_Jun_2013_09_49_40_+1000_.py8XxszQ1LcfX.u"
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20130606141941.GA5382@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Rename ext4_da_writepages() to ext4_writepages() and use it for all
-modes.  We still need to iterate over all the pages in the case of
-data=journalling, but in the case of nodelalloc/data=ordered (which is
-what file systems mounted using ext3 backwards compatibility will use)
-this will allow us to use a much more efficient I/O submission path.
+--Signature=_Fri__7_Jun_2013_09_49_40_+1000_.py8XxszQ1LcfX.u
+Content-Type: text/plain; charset=US-ASCII
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/inode.c             | 41 +++++++++++++++++++++++++++++++----------
- include/trace/events/ext4.h |  4 ++--
- 2 files changed, 33 insertions(+), 12 deletions(-)
+Hi Ted,
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 442c5d2..0db830d 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1799,7 +1799,7 @@ out:
-  * lock so we have to do some magic.
-  *
-  * This function can get called via...
-- *   - ext4_da_writepages after taking page lock (have journal handle)
-+ *   - ext4_writepages after taking page lock (have journal handle)
-  *   - journal_submit_inode_data_buffers (no journal handle)
-  *   - shrink_page_list via the kswapd/direct reclaim (no journal handle)
-  *   - grab_page_cache when doing write_begin (have journal handle)
-@@ -2217,7 +2217,7 @@ static int mpage_map_and_submit_extent(handle_t *handle,
- 
- /*
-  * Calculate the total number of credits to reserve for one writepages
-- * iteration. This is called from ext4_da_writepages(). We map an extent of
-+ * iteration. This is called from ext4_writepages(). We map an extent of
-  * upto MAX_WRITEPAGES_EXTENT_LEN blocks and then we go on and finish mapping
-  * the last partial page. So in total we can map MAX_WRITEPAGES_EXTENT_LEN +
-  * bpp - 1 blocks in bpp different extents.
-@@ -2349,8 +2349,17 @@ out:
- 	return err;
- }
- 
--static int ext4_da_writepages(struct address_space *mapping,
--			      struct writeback_control *wbc)
-+static int __writepage(struct page *page, struct writeback_control *wbc,
-+		       void *data)
-+{
-+	struct address_space *mapping = data;
-+	int ret = ext4_writepage(page, wbc);
-+	mapping_set_error(mapping, ret);
-+	return ret;
-+}
-+
-+static int ext4_writepages(struct address_space *mapping,
-+			   struct writeback_control *wbc)
- {
- 	pgoff_t	writeback_index = 0;
- 	long nr_to_write = wbc->nr_to_write;
-@@ -2364,7 +2373,7 @@ static int ext4_da_writepages(struct address_space *mapping,
- 	bool done;
- 	struct blk_plug plug;
- 
--	trace_ext4_da_writepages(inode, wbc);
-+	trace_ext4_writepages(inode, wbc);
- 
- 	/*
- 	 * No pages to write? This is mainly a kludge to avoid starting
-@@ -2374,13 +2383,23 @@ static int ext4_da_writepages(struct address_space *mapping,
- 	if (!mapping->nrpages || !mapping_tagged(mapping, PAGECACHE_TAG_DIRTY))
- 		return 0;
- 
-+	if (ext4_should_journal_data(inode)) {
-+		struct blk_plug plug;
-+		int ret;
-+
-+		blk_start_plug(&plug);
-+		ret = write_cache_pages(mapping, wbc, __writepage, mapping);
-+		blk_finish_plug(&plug);
-+		return ret;
-+	}
-+
- 	/*
- 	 * If the filesystem has aborted, it is read-only, so return
- 	 * right away instead of dumping stack traces later on that
- 	 * will obscure the real source of the problem.  We test
- 	 * EXT4_MF_FS_ABORTED instead of sb->s_flag's MS_RDONLY because
- 	 * the latter could be true if the filesystem is mounted
--	 * read-only, and in that case, ext4_da_writepages should
-+	 * read-only, and in that case, ext4_writepages should
- 	 * *never* be called, so if that ever happens, we would want
- 	 * the stack trace.
- 	 */
-@@ -2520,8 +2539,8 @@ retry:
- 		mapping->writeback_index = mpd.first_page;
- 
- out_writepages:
--	trace_ext4_da_writepages_result(inode, wbc, ret,
--					nr_to_write - wbc->nr_to_write);
-+	trace_ext4_writepages_result(inode, wbc, ret,
-+				     nr_to_write - wbc->nr_to_write);
- 	return ret;
- }
- 
-@@ -2769,7 +2788,7 @@ int ext4_alloc_da_blocks(struct inode *inode)
- 	 * laptop_mode, not even desirable).  However, to do otherwise
- 	 * would require replicating code paths in:
- 	 *
--	 * ext4_da_writepages() ->
-+	 * ext4_writepages() ->
- 	 *    write_cache_pages() ---> (via passed in callback function)
- 	 *        __mpage_da_writepage() -->
- 	 *           mpage_add_bh_to_extent()
-@@ -3213,6 +3232,7 @@ static const struct address_space_operations ext4_aops = {
- 	.readpage		= ext4_readpage,
- 	.readpages		= ext4_readpages,
- 	.writepage		= ext4_writepage,
-+	.writepages		= ext4_writepages,
- 	.write_begin		= ext4_write_begin,
- 	.write_end		= ext4_write_end,
- 	.bmap			= ext4_bmap,
-@@ -3228,6 +3248,7 @@ static const struct address_space_operations ext4_journalled_aops = {
- 	.readpage		= ext4_readpage,
- 	.readpages		= ext4_readpages,
- 	.writepage		= ext4_writepage,
-+	.writepages		= ext4_writepages,
- 	.write_begin		= ext4_write_begin,
- 	.write_end		= ext4_journalled_write_end,
- 	.set_page_dirty		= ext4_journalled_set_page_dirty,
-@@ -3243,7 +3264,7 @@ static const struct address_space_operations ext4_da_aops = {
- 	.readpage		= ext4_readpage,
- 	.readpages		= ext4_readpages,
- 	.writepage		= ext4_writepage,
--	.writepages		= ext4_da_writepages,
-+	.writepages		= ext4_writepages,
- 	.write_begin		= ext4_da_write_begin,
- 	.write_end		= ext4_da_write_end,
- 	.bmap			= ext4_bmap,
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index 832a412..72f523e 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -281,7 +281,7 @@ DEFINE_EVENT(ext4__write_end, ext4_da_write_end,
- 	TP_ARGS(inode, pos, len, copied)
- );
- 
--TRACE_EVENT(ext4_da_writepages,
-+TRACE_EVENT(ext4_writepages,
- 	TP_PROTO(struct inode *inode, struct writeback_control *wbc),
- 
- 	TP_ARGS(inode, wbc),
-@@ -379,7 +379,7 @@ TRACE_EVENT(ext4_da_write_pages_extent,
- 		  __entry->flags)
- );
- 
--TRACE_EVENT(ext4_da_writepages_result,
-+TRACE_EVENT(ext4_writepages_result,
- 	TP_PROTO(struct inode *inode, struct writeback_control *wbc,
- 			int ret, int pages_written),
- 
--- 
-1.7.12.rc0.22.gcdd159b
+On Thu, 6 Jun 2013 10:19:41 -0400 Theodore Ts'o <tytso@mit.edu> wrote:
+>
+> On Thu, Jun 06, 2013 at 11:56:53AM +1000, Stephen Rothwell wrote:
+> >=20
+> > In tracking this down, I followed the call chains and discovered that
+> > io_submit_init_bio() only ever returned 0.  Switching that to return
+> > void and following back up the chain lead to the following patch.
+>=20
+> Actually, that's a bug.  We're missing an check in that function.
+> Thanks for looking at this code.  (I'll fix the uninitialized err
+> warning another way.)
 
+Glad to be of service.
+
+--=20
+Cheers,
+Stephen Rothwell                    sfr@canb.auug.org.au
+
+--Signature=_Fri__7_Jun_2013_09_49_40_+1000_.py8XxszQ1LcfX.u
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.20 (GNU/Linux)
+
+iQIcBAEBCAAGBQJRsSAYAAoJEECxmPOUX5FESGYP/RPUQO39eFs1JGS/FEWd9Ciz
+JsSe2/e3+mx8dQXNYz8EsvNGBglkA4ViclVFPT7Mv+hPzcblLpL+p4NLGnzhB64f
+b5iSYtWpEGfgXCj387cxtjtGeuMbB8jTyYB45RcFD119Yr4oUo70E0ixZSRw0FOw
+LN2mVd6hZiC/lU8IKXU4ZybDCxa8B46V+DSQf7m+LvVacx/Igr2HokfyHXVeNdA1
+fInfcYpSsb7zCVaXktdqOBRVGGlbFw3XhoC9r3IxNRKm4k417flYXNjQBsByG/de
+vMuf6DCUzckc48st7Zxrf0dI28uOPDW8z7FfGbDU6jw8rRLOQqpZEigbdg1fQ6hf
+aIRmKbGL1E4wPea3tQwhRGZspR1WEYjqmOxoPcSQ1Mvg/Y8ufRp1U0xVguPCzWo7
+NJ45Y85yk+CaCZAwURda6hGBvA3BK689DyiBz8Y8hcnXKQucE4LadGZM2RJEsQ0y
+PmvtgY0ISIe11KPBDli7RP0udruN6/uyazh7cRg0RJRQ8QIsW7nKqOBzG6LaWVc2
+4cBPaTW2sr2UITTs8VBoKfmgDAFKLLHOX12VdXmCjw8QukUf2ktkapDjMtQJbd16
+Bx+/hlemk1/M2bUG2q585fMmwRU13DbunWamDh4YfrZEuyUgW3+P7rI38y62qD+s
+TOenNVRrmbulelx/PNMz
+=OSN6
+-----END PGP SIGNATURE-----
+
+--Signature=_Fri__7_Jun_2013_09_49_40_+1000_.py8XxszQ1LcfX.u--
