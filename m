@@ -1,45 +1,52 @@
-From: Jeff Liu <jeff.liu@oracle.com>
-Subject: [PATCH] ext4: return FIEMAP_EXTENT_UNKNOWN if an extent is delayed
- allocations
-Date: Thu, 06 Jun 2013 21:31:49 +0800
-Message-ID: <51B08F45.1050605@oracle.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: add check to io_submit_init_bio
+Date: Thu, 6 Jun 2013 10:19:41 -0400
+Message-ID: <20130606141941.GA5382@thunk.org>
+References: <20130606115653.a21b0c6a7bdbbbac23164b85@canb.auug.org.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:28539 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751101Ab3FFNb4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Jun 2013 09:31:56 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
+To: Stephen Rothwell <sfr@canb.auug.org.au>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20130606115653.a21b0c6a7bdbbbac23164b85@canb.auug.org.au>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Jie Liu <jeff.liu@oracle.com>
+On Thu, Jun 06, 2013 at 11:56:53AM +1000, Stephen Rothwell wrote:
+> 
+> In tracking this down, I followed the call chains and discovered that
+> io_submit_init_bio() only ever returned 0.  Switching that to return
+> void and following back up the chain lead to the following patch.
 
-Return the FIEMAP_EXTENT_UNKNOWN flag as well except the
-FIEMAP_EXTENT_DELALLOC because the data location of an
-delayed allocation extent is unknown.
+Actually, that's a bug.  We're missing an check in that function.
+Thanks for looking at this code.  (I'll fix the uninitialized err
+warning another way.)
 
-Signed-off-by: Jie Liu <jeff.liu@oracle.com>
----
- fs/ext4/extents.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+						- Ted
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index bc0f191..47e17b1 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2125,7 +2125,8 @@ static int ext4_fill_fiemap_extents(struct inode *inode,
- 		next_del = ext4_find_delayed_extent(inode, &es);
- 		if (!exists && next_del) {
- 			exists = 1;
--			flags |= FIEMAP_EXTENT_DELALLOC;
-+			flags |= (FIEMAP_EXTENT_DELALLOC |
-+				  FIEMAP_EXTENT_UNKNOWN);
- 		}
- 		up_read(&EXT4_I(inode)->i_data_sem);
+commit 7745883f99c0e81e6bc71527d23ca363eb125a3f
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Thu Jun 6 10:18:22 2013 -0400
+
+    ext4: add check to io_submit_init_bio
+    
+    The bio_alloc() function can return NULL if the memory allocation
+    fails.  So we need to check for this.
+    
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index ce8c15a..48786cd 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -372,6 +372,8 @@ static int io_submit_init_bio(struct ext4_io_submit *io,
+ 	struct bio *bio;
  
--- 
-1.7.9.5
+ 	bio = bio_alloc(GFP_NOIO, min(nvecs, BIO_MAX_PAGES));
++	if (!bio)
++		return -ENOMEM;
+ 	bio->bi_sector = bh->b_blocknr * (bh->b_size >> 9);
+ 	bio->bi_bdev = bh->b_bdev;
+ 	bio->bi_end_io = ext4_end_bio;
