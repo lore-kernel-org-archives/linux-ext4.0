@@ -1,44 +1,172 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/3] ext4: optimize test_root()
-Date: Thu,  6 Jun 2013 11:41:15 -0400
-Message-ID: <1370533275-22381-3-git-send-email-tytso@mit.edu>
-References: <1370533275-22381-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH] ext4: use ext4_da_writepages() for all modes
+Date: Thu,  6 Jun 2013 14:01:16 -0400
+Message-ID: <1370541676-31739-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:55522 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:55572 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751975Ab3FFPlV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 6 Jun 2013 11:41:21 -0400
-In-Reply-To: <1370533275-22381-1-git-send-email-tytso@mit.edu>
+	id S1751693Ab3FFSBS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 6 Jun 2013 14:01:18 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The test_root() function could potentially loop forever due to
-overflow issues.  So rewrite test_root() to avoid this issue; as a
-bonus, it is 38% faster when benchmarked via a test loop:
-
-int main(int argc, char **argv)
-{
-	int  i;
-
-	for (i = 0; i < 1 << 24; i++) {
-		if (test_root(i, 7))
-			printf("%d\n", i);
-	}
-}
+Rename ext4_da_writepages() to ext4_writepages() and use it for all
+modes.  We still need to iterate over all the pages in the case of
+data=journalling, but in the case of nodelalloc/data=ordered (which is
+what file systems mounted using ext3 backwards compatibility will use)
+this will allow us to use a much more efficient I/O submission path.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/balloc.c | 14 +++++++++-----
- 1 file changed, 9 insertions(+), 5 deletions(-)
+ fs/ext4/inode.c             | 41 +++++++++++++++++++++++++++++++----------
+ include/trace/events/ext4.h |  4 ++--
+ 2 files changed, 33 insertions(+), 12 deletions(-)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index d0f13ea..5833939 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -682,11 +682,15 @@ ext4_fsblk_t ext4_count_free_clusters(struct super_block *sb)
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 442c5d2..0db830d 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1799,7 +1799,7 @@ out:
+  * lock so we have to do some magic.
+  *
+  * This function can get called via...
+- *   - ext4_da_writepages after taking page lock (have journal handle)
++ *   - ext4_writepages after taking page lock (have journal handle)
+  *   - journal_submit_inode_data_buffers (no journal handle)
+  *   - shrink_page_list via the kswapd/direct reclaim (no journal handle)
+  *   - grab_page_cache when doing write_begin (have journal handle)
+@@ -2217,7 +2217,7 @@ static int mpage_map_and_submit_extent(handle_t *handle,
  
- static inline int test_root(ext4_group_t a, int b)
+ /*
+  * Calculate the total number of credits to reserve for one writepages
+- * iteration. This is called from ext4_da_writepages(). We map an extent of
++ * iteration. This is called from ext4_writepages(). We map an extent of
+  * upto MAX_WRITEPAGES_EXTENT_LEN blocks and then we go on and finish mapping
+  * the last partial page. So in total we can map MAX_WRITEPAGES_EXTENT_LEN +
+  * bpp - 1 blocks in bpp different extents.
+@@ -2349,8 +2349,17 @@ out:
+ 	return err;
+ }
+ 
+-static int ext4_da_writepages(struct address_space *mapping,
+-			      struct writeback_control *wbc)
++static int __writepage(struct page *page, struct writeback_control *wbc,
++		       void *data)
++{
++	struct address_space *mapping = data;
++	int ret = ext4_writepage(page, wbc);
++	mapping_set_error(mapping, ret);
++	return ret;
++}
++
++static int ext4_writepages(struct address_space *mapping,
++			   struct writeback_control *wbc)
  {
--	int num = b;
+ 	pgoff_t	writeback_index = 0;
+ 	long nr_to_write = wbc->nr_to_write;
+@@ -2364,7 +2373,7 @@ static int ext4_da_writepages(struct address_space *mapping,
+ 	bool done;
+ 	struct blk_plug plug;
+ 
+-	trace_ext4_da_writepages(inode, wbc);
++	trace_ext4_writepages(inode, wbc);
+ 
+ 	/*
+ 	 * No pages to write? This is mainly a kludge to avoid starting
+@@ -2374,13 +2383,23 @@ static int ext4_da_writepages(struct address_space *mapping,
+ 	if (!mapping->nrpages || !mapping_tagged(mapping, PAGECACHE_TAG_DIRTY))
+ 		return 0;
+ 
++	if (ext4_should_journal_data(inode)) {
++		struct blk_plug plug;
++		int ret;
++
++		blk_start_plug(&plug);
++		ret = write_cache_pages(mapping, wbc, __writepage, mapping);
++		blk_finish_plug(&plug);
++		return ret;
++	}
++
+ 	/*
+ 	 * If the filesystem has aborted, it is read-only, so return
+ 	 * right away instead of dumping stack traces later on that
+ 	 * will obscure the real source of the problem.  We test
+ 	 * EXT4_MF_FS_ABORTED instead of sb->s_flag's MS_RDONLY because
+ 	 * the latter could be true if the filesystem is mounted
+-	 * read-only, and in that case, ext4_da_writepages should
++	 * read-only, and in that case, ext4_writepages should
+ 	 * *never* be called, so if that ever happens, we would want
+ 	 * the stack trace.
+ 	 */
+@@ -2520,8 +2539,8 @@ retry:
+ 		mapping->writeback_index = mpd.first_page;
+ 
+ out_writepages:
+-	trace_ext4_da_writepages_result(inode, wbc, ret,
+-					nr_to_write - wbc->nr_to_write);
++	trace_ext4_writepages_result(inode, wbc, ret,
++				     nr_to_write - wbc->nr_to_write);
+ 	return ret;
+ }
+ 
+@@ -2769,7 +2788,7 @@ int ext4_alloc_da_blocks(struct inode *inode)
+ 	 * laptop_mode, not even desirable).  However, to do otherwise
+ 	 * would require replicating code paths in:
+ 	 *
+-	 * ext4_da_writepages() ->
++	 * ext4_writepages() ->
+ 	 *    write_cache_pages() ---> (via passed in callback function)
+ 	 *        __mpage_da_writepage() -->
+ 	 *           mpage_add_bh_to_extent()
+@@ -3213,6 +3232,7 @@ static const struct address_space_operations ext4_aops = {
+ 	.readpage		= ext4_readpage,
+ 	.readpages		= ext4_readpages,
+ 	.writepage		= ext4_writepage,
++	.writepages		= ext4_writepages,
+ 	.write_begin		= ext4_write_begin,
+ 	.write_end		= ext4_write_end,
+ 	.bmap			= ext4_bmap,
+@@ -3228,6 +3248,7 @@ static const struct address_space_operations ext4_journalled_aops = {
+ 	.readpage		= ext4_readpage,
+ 	.readpages		= ext4_readpages,
+ 	.writepage		= ext4_writepage,
++	.writepages		= ext4_writepages,
+ 	.write_begin		= ext4_write_begin,
+ 	.write_end		= ext4_journalled_write_end,
+ 	.set_page_dirty		= ext4_journalled_set_page_dirty,
+@@ -3243,7 +3264,7 @@ static const struct address_space_operations ext4_da_aops = {
+ 	.readpage		= ext4_readpage,
+ 	.readpages		= ext4_readpages,
+ 	.writepage		= ext4_writepage,
+-	.writepages		= ext4_da_writepages,
++	.writepages		= ext4_writepages,
+ 	.write_begin		= ext4_da_write_begin,
+ 	.write_end		= ext4_da_write_end,
+ 	.bmap			= ext4_bmap,
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index 832a412..72f523e 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -281,7 +281,7 @@ DEFINE_EVENT(ext4__write_end, ext4_da_write_end,
+ 	TP_ARGS(inode, pos, len, copied)
+ );
+ 
+-TRACE_EVENT(ext4_da_writepages,
++TRACE_EVENT(ext4_writepages,
+ 	TP_PROTO(struct inode *inode, struct writeback_control *wbc),
+ 
+ 	TP_ARGS(inode, wbc),
+@@ -379,7 +379,7 @@ TRACE_EVENT(ext4_da_write_pages_extent,
+ 		  __entry->flags)
+ );
+ 
+-TRACE_EVENT(ext4_da_writepages_result,
++TRACE_EVENT(ext4_writepages_result,
+ 	TP_PROTO(struct inode *inode, struct writeback_control *wbc,
+ 			int ret, int pages_written),
+ 
+-- 
+1.7.12.rc0.22.gcdd159b
+
