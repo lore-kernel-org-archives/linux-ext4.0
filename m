@@ -1,97 +1,129 @@
-From: Ruslan Bilovol <ruslan.bilovol@ti.com>
-Subject: Re: [PATCH 1/2] jbd2: check bh->b_data for NULL in
- jbd2_journal_get_descriptor_buffer before memset()
-Date: Thu, 6 Jun 2013 11:02:55 +0300
-Message-ID: <CAB=otbTdCjpm9Hnbb-gbc_=rsy0Dkd6LcfqoQtptRYWhXv8Ggg@mail.gmail.com>
-References: <1370253616-8173-1-git-send-email-ruslan.bilovol@ti.com>
-	<1370253616-8173-2-git-send-email-ruslan.bilovol@ti.com>
-	<20130603153323.GB20009@thunk.org>
-	<CAB=otbT15wLGkb_A9pa7-U=wH-_gOPgOR9Ee4uSL7_P0BmXt4Q@mail.gmail.com>
-	<20130604133749.GB23132@thunk.org>
+From: "www.swisslotto.ch" <sender@aol.jp>
+Subject: =?utf-8?Q?PROCES_A_ODKUPU_VA=C5=A0?=
+ =?utf-8?Q?=C3=8D_VYHR=C3=81L_CENU_=C2=A3_7.?=
+ =?utf-8?Q?500,000LIBRA_BRITSK=C3=81?=
+ =?utf-8?Q?_LIBRA_{_GBP_}?=
+Date: Thu, 6 Jun 2013 05:00:44 -0400 (EDT)
+Message-ID: <8D030AB76842FE4-63C-80B3__32076.8327489079$1370509404$gmane$org@webmail-vd016.sysops.aol.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Ruslan Bilovol <ruslan.bilovol@ti.com>,
-	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset=utf-8;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: unlisted-recipients:; (no To-header on input)
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-oa0-f54.google.com ([209.85.219.54]:50897 "EHLO
-	mail-oa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932235Ab3FFIC4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Jun 2013 04:02:56 -0400
-In-Reply-To: <20130604133749.GB23132@thunk.org>
+Received: from oms-db03.r1000.mx.aol.com ([205.188.58.3]:37538 "EHLO
+	oms-db03.r1000.mx.aol.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932326Ab3FFJAs convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Jun 2013 05:00:48 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+www.swisslotto.ch 2013
+SWISSLOTTO
 
-On Tue, Jun 4, 2013 at 4:37 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Tue, Jun 04, 2013 at 02:15:57PM +0300, Ruslan Bilovol wrote:
->> > Have you actually seen a case where bh is non-NULL, but bh->b_data is
->> > NULL?  If not, it might be better to do something like this:
->>
->> Yes, this is exactly the situation I observe (bh is non-NULL, but
->> bh->b_data is NULL)
->
-> Hmm... so the stack trace you sent in the commit description was one
-> where bh->b_data was NULL?  I'm trying to make sure there isn't
-> something else going on that we don't understand.
->
-> Could you put some instrumentation in __find_get_block()?  Something like this:
->
-> struct buffer_head *
-> __find_get_block(struct block_device *bdev, sector_t block, unsigned size)
-> {
->         struct buffer_head *bh = lookup_bh_lru(bdev, block, size);
->
->         if (bh == NULL) {
->                 bh = __find_get_block_slow(bdev, block);
->                 if (bh->b_data == NULL) {
->                    pr_crit("b_data NULL after find_get_block_slow\n);
->                    WARN_ON(1);
->                 }
->                 if (bh)
->                         bh_lru_install(bh);
->         } else {
->                 if (bh->b_data == NULL) {
->                         pr_crit("b_data NULL after lookup_bh_lru\n");
->                         WARN_ON(1);
->                 }
->         }
->         if (bh)
->                 touch_buffer(bh);
->         return bh;
-> }
->
-> ... and then send me the stack trace after running your reproduction
-> case.  If it turns out the problem is in __find_get_block_slow(),
-> could you put in similar debugging checks there and try to track it
-> down?
->
-> I'm pretty sure the case of bh non-NULL and bh->b_data NULL is never
-> supposed to happen, and while we could just put a check where you
-> suggested, there are plenty of other places which use __getblk(), and
-> there may be other bugs that are hiding here.
+Gratulujeme: Toto je ofici=C3=A1ln=C4=9B p=C5=99in=C3=A9st do va=C5=A1=C3=
+=AD pozornosti, =C5=BEe va=C5=A1e=20
+e-mailov=C3=A1 adresa z=C3=ADskal pro v=C3=A1s on-line elektronickou lo=
+terii o=20
+prob=C3=ADhaj=C3=ADc=C3=ADm Swisslotto platby loterie on-line p=C5=99es=
+ n=C3=A1hodn=C3=A9=20
+elektronick=C3=BDm syst=C3=A9mem e-mailovou volebn=C3=AD qualification.=
+The sou=C4=8Det=20
+7.500,000libra Great British Pounds { CZK} m=C3=A1 b=C3=BDt ud=C4=9Blen=
+a v=C3=A1s v=20
+prob=C3=ADhaj=C3=ADc=C3=ADm programu Swislotto, aby v=C3=A1m zpracov=C3=
+=A1vat a vyu=C5=BE=C3=ADvat sv=C3=A9=20
+vyhr=C3=A1l cenu, mus=C3=ADte j=C3=ADt vykupitelsk=C3=A9 politiky a str=
+=C3=A1=C5=BEn=C3=AD linek z va=C5=A1=C3=AD=20
+platebn=C3=AD ur=C4=8Den=C3=A9 banky. V tomto n=C5=98=C3=A1dek V=C3=ADt=
+=C4=9Bzov=C3=A9 loterie elektronick=C3=BDch=20
+cvi=C4=8Den=C3=AD se vyno=C5=99ila z 7 kontinent=C5=AF sv=C4=9Bta a 201=
+3 vyd=C3=A1n=C3=AD Swisslotto je=20
+zes=C3=ADlen=C3=BD vyd=C3=A1n=C3=AD, p=C5=99i=C4=8Dem=C5=BE v=C3=ADt=C4=
+=9Bzov=C3=A9 vyno=C5=99il ze seznamu kontinentech=20
+Afrika, Antarktida, Asie, Austr=C3=A1lie, Evropy, Severn=C3=AD Ameriky
+Ji=C5=BEn=C3=AD Amerika.
 
-Yes agree, that's what I told about in my cover letter fir this patch series.
-I will debug it with code you mentioned, but the issue appears
-very rarely, so I need at lease few days for catching this..
+Podle n=C3=A1hodn=C3=A9 e-mailov=C3=A9 adresy s=C4=8D=C3=ADtac=C3=AD sy=
+st=C3=A9m e-mailovou kvalifikaci=20
+va=C5=A1e e-mailov=C3=A1 adresa z=C3=ADskal pro V=C3=A1s sou=C4=8Det 7.=
+500,000libra Great=20
+British liber {GBP}  a z=C3=ADskala cenu pat=C5=99=C3=AD do Va=C5=A1=C3=
+=AD tud=C3=AD=C5=BE va=C5=A1e jsou=20
+opr=C3=A1vn=C4=9Bn=C3=BD u=C5=BEivatel e-mailov=C3=A9 adresy se svou v=C3=
+=ADt=C4=9Bznou viz n=C3=AD=C5=BEe:
 
-Regards,
-Ruslan
+V=C3=ADt=C4=9Bzn=C3=A9 =C4=8D=C3=ADslo: 46689 \ 67 \ 2013k
+Sm=C4=9Brov=C3=A1n=C3=AD =C4=8D=C3=ADslo: V=C3=ADt=C4=9Bz # 5657
+V=C3=BDrobn=C3=AD k=C3=B3d: 56579Kl
 
->
-> Regards,
->
->                                                 - Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
+Va=C5=A1e p=C5=99esto je t=C5=99eba je=C5=A1t=C4=9B zpracovat, je to va=
+=C5=A1e pr=C3=A1vo je =C5=A1=C5=A5astn=C3=BDm=20
+v=C3=BDhercem zpracov=C3=A1vat a vyu=C5=BE=C3=ADvat sv=C3=A9 vyhr=C3=A1=
+l cenu p=C5=99es norm=C3=A1ln=C3=AD=20
+prohla=C5=A1ovat postupu sami pr=C3=A1vn=C3=ADho p=C5=99=C3=ADjemce, pr=
+o proces=C3=AD a =C4=8Derp=C3=A1n=C3=AD=20
+va=C5=A1eho vyhr=C3=A1l cenu pos=C3=ADlat n=C3=AD=C5=BEe uveden=C3=A9 i=
+nformace do centr=C3=A1ln=C3=AD sv=C4=9Bta=20
+=C5=A0irok=C3=A1 agent i.desk1@aol.com v=C3=A1m sm=C4=9Brnic do pr=C5=AF=
+vodu a platebn=C3=AD banku
+
+                                                                     =20
+POSKYTN=C4=9ATE N=C3=8D=C5=BDE UVEDEN=C3=89 INFORMACE
+
+P=C5=99=C3=ADjmen=C3=AD:
+Jm=C3=A9no
+Druh=C3=A9 jm=C3=A9no:
+Pohlav=C3=AD:
+Datum narozen=C3=AD:
+Povol=C3=A1n=C3=AD:
+=C4=8C=C3=ADslo mobiln=C3=ADho telefonu:
+Tel. =C4=8C=C3=ADslo:
+N=C3=A1rodnost:
+Domovsk=C3=A1 adresa:
+=C3=9A=C5=99ad nebo Po=C5=A1tovn=C3=AD adresa:
+Zem=C4=9B:
+Sou=C4=8Dasn=C3=A1 Zem=C4=9B:
+V=C3=BDhern=C3=AD =C4=8D=C3=ADslo:
+Sm=C4=9Brovac=C3=AD =C4=8D=C3=ADslo:
+V=C3=BDrobn=C3=AD k=C3=B3d:
+
+kontakt : i.desk1@aol.com
+
+Jste zaslat po=C5=BEadovan=C3=A9 informace popsan=C3=A9 v=C3=BD=C5=A1e =
+proces=C3=AD a vyu=C5=BE=C3=ADvat sv=C3=BDch=20
+mand=C3=A1t=C5=AF z=C3=ADskaly prize.Z=C3=A1kon, m=C5=AF=C5=BEete jako =
+pr=C3=A1vn=C3=AD p=C5=99=C3=ADjemci t=C3=A9to v=C3=BDhra v=20
+loterii zpracov=C3=A1vat pro n=C3=A1roky va=C5=A1eho z=C3=ADskal fond o=
+d sv=C3=A9ho ur=C4=8Den=C3=A9ho=20
+platebn=C3=ADho banky t=C3=ADm, =C5=BEe cituje sv=C3=A9 v=C3=ADt=C4=9Bz=
+n=C3=A9 =C3=BAdaje, jako=C5=BE jak jdou podle=20
+pravidel a regulace st=C5=99e=C5=BE=C3=ADc=C3=ADch vykupuj=C3=ADc=C3=AD=
+ procesu procedure.Your se=20
+pros=C3=ADm doporu=C4=8Duje zkontrolovat e-maily denn=C4=9B, co=C5=BE n=
+=C3=A1m pom=C3=A1h=C3=A1 usnadnit=20
+pr=C5=AFvod va=C5=A1=C3=AD cenu.
+
+Pozn=C3=A1mka: Nen=C3=AD-li p=C5=99esm=C4=9Brovat informace k t=C3=A9to=
+ e-mailovou adresu=20
+i.desk1@aol.com nebo zv=C3=A1=C5=BEit s=C3=A1m automaticky diskvalifiko=
+v=C3=A1n.
 
 
+D=C4=9Bkovat
+Pan=C3=AD Anna Van
+-----------------------------------------------------------------------=
+--
+-----------------------------------------------------------------------=
+--
+-----------------------------------------------------------------------=
+--
+----------------
+Copyright =C2=A9 2013 Swiss loterie! V=C5=A1echna pr=C3=A1va vyhrazena
 
--- 
-Best regards,
-Ruslan Bilvol
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
