@@ -1,345 +1,214 @@
-From: Stephen Rothwell <sfr@canb.auug.org.au>
-Subject: [RFC] ext4: simplify the code a bit
-Date: Thu, 6 Jun 2013 11:56:53 +1000
-Message-ID: <20130606115653.a21b0c6a7bdbbbac23164b85@canb.auug.org.au>
+From: CAI Qian <caiqian@redhat.com>
+Subject: kernel BUG at mm/slub.c:3352!
+Date: Thu, 6 Jun 2013 03:13:31 -0400 (EDT)
+Message-ID: <1965620152.12263736.1370502811027.JavaMail.root@redhat.com>
+References: <1516975240.12263021.1370502669219.JavaMail.root@redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; protocol="application/pgp-signature";
- micalg="PGP-SHA256";
- boundary="Signature=_Thu__6_Jun_2013_11_56_53_+1000_leyrFH.KCQfZY7NM"
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from haggis.pcug.org.au ([203.10.76.10]:33865 "EHLO
-	members.tip.net.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756590Ab3FFB5G (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Jun 2013 21:57:06 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+To: linux-mm <linux-mm@kvack.org>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1516975240.12263021.1370502669219.JavaMail.root@redhat.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
---Signature=_Thu__6_Jun_2013_11_56_53_+1000_leyrFH.KCQfZY7NM
-Content-Type: text/plain; charset=US-ASCII
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Just a head-up. While testing the latest ext4 tree,
+https://ext4.wiki.kernel.org/index.php/Weekly_devel_tree_testing_status
+it triggered this,
+[ 1101.707942] kernel BUG at mm/slub.c:3352! 
+[ 1101.707949] Oops: Exception in kernel mode, sig: 5 [#1] 
+[ 1101.707953] SMP NR_CPUS=1024 NUMA pSeries 
+[ 1101.707959] Modules linked in: btrfs(F) raid6_pq(F) xor(F) vfat(F) fat(F) lockd(F) sunrpc(F) nf_conntrack_netbios_ns(F) nf_conntrack_broadcast(F) ipt_MASQUERADE(F) ip6table_mangle(F) ip6t_REJECT(F) nf_conntrack_ipv6(F) nf_defrag_ipv6(F) iptable_nat(F) nf_nat_ipv4(F) nf_nat(F) iptable_mangle(F) ipt_REJECT(F) nf_conntrack_ipv4(F) nf_defrag_ipv4(F) xt_conntrack(F) nf_conntrack(F) ebtable_filter(F) ebtables(F) ip6table_filter(F) ip6_tables(F) iptable_filter(F) ip_tables(F) sg(F) ehea(F) xfs(F) libcrc32c(F) sd_mod(F) crc_t10dif(F) ibmvscsi(F) scsi_transport_srp(F) scsi_tgt(F) dm_mirror(F) dm_region_hash(F) dm_log(F) dm_mod(F) [last unloaded: brd] 
+[ 1101.708036] CPU: 27 PID: 19560 Comm: rhts-test-runne Tainted: GF            3.10.0-rc2+ #1 
+[ 1101.708042] task: c0000003f54ecb00 ti: c0000003c7b7c000 task.ti: c0000003c7b7c000 
+[ 1101.708047] NIP: c0000000001f7960 LR: c00000000021e098 CTR: c00000000021e0c0 
+[ 1101.708053] REGS: c0000003c7b7f830 TRAP: 0700   Tainted: GF             (3.10.0-rc2+) 
+[ 1101.708057] MSR: 8000000000029032 <SF,EE,ME,IR,DR,RI>  CR: 22044428  XER: 00000000 
+[ 1101.708070] SOFTE: 1 
+[ 1101.708073] CFAR: c0000000001f78a0 
+[ 1101.708076]  
+GPR00: c00000000021e098 c0000003c7b7fab0 c000000001118258 c000000300000000  
+GPR04: c000000006ed0af0 c0000003f3324c00 c00000000021e08c 0000000000000000  
+GPR08: c0000000014b6000 0000000000000001 0000000000000000 0000000000000c00  
+GPR12: 0000000022044428 c00000000f246c00 0000010019f53f90 0000000000000000  
+GPR16: 0000000000000024 00000000100f2910 00000000101439b8 0000000000000014  
+GPR20: 0000000000000000 00000000ffffffff 0000000000000001 0000000000000000  
+GPR24: 0000000000000000 c00000037b8b9110 c0000003f6060220 c0000003ef76ad40  
+GPR28: c00000000021e098 c000000005fa0000 c000000300000000 c000000300000000  
+[ 1101.708141] NIP [c0000000001f7960] .kfree+0x150/0x280 
+[ 1101.708146] LR [c00000000021e098] .free_pipe_info+0xa8/0xd0 
+[ 1101.708150] Call Trace: 
+[ 1101.708156] [c0000003c7b7fab0] [c0000003c7b7fb30] 0xc0000003c7b7fb30 (unreliable) 
+[ 1101.708163] [c0000003c7b7fb50] [c00000000021e098] .free_pipe_info+0xa8/0xd0 
+[ 1101.708169] [c0000003c7b7fbd0] [c00000000021e198] .pipe_release+0xd8/0x160 
+[ 1101.708175] [c0000003c7b7fc60] [c000000000213dd0] .__fput+0xd0/0x2d0 
+[ 1101.708183] [c0000003c7b7fd10] [c0000000000b4ca8] .task_work_run+0xe8/0x170 
+[ 1101.708189] [c0000003c7b7fdb0] [c000000000017240] .do_notify_resume+0xa0/0xb0 
+[ 1101.708195] [c0000003c7b7fe30] [c00000000000a41c] .ret_from_except_lite+0x48/0x4c 
+[ 1101.708200] Instruction dump: 
+[ 1101.708204] e90d0040 7ca32b78 e9290000 7cea3b78 7c8a402a 7fa44800 409eff98 4bffff80  
+[ 1101.708214] e93d0000 552a0423 7d380026 55291ffe <0b090000> e93d0000 38800000 792a97e3  
+[ 1101.708230] ---[ end trace c320e07d73bae68f ]--- 
+[ 1101.709081]  
+[ 1101.709788] Unable to handle kernel paging request for data at address 0x2020207044657669 
+[ 1101.709802] Faulting instruction address: 0xc0000000001f91d8 
+[ 1101.709814] Oops: Kernel access of bad area, sig: 11 [#2] 
+[ 1101.709820] SMP NR_CPUS=1024 NUMA pSeries 
+[ 1101.709832] Modules linked in: btrfs(F) raid6_pq(F) xor(F) vfat(F) fat(F) lockd(F) sunrpc(F) nf_conntrack_netbios_ns(F) nf_conntrack_broadcast(F) ipt_MASQUERADE(F) ip6table_mangle(F) ip6t_REJECT(F) nf_conntrack_ipv6(F) nf_defrag_ipv6(F) iptable_nat(F) nf_nat_ipv4(F) nf_nat(F) iptable_mangle(F) ipt_REJECT(F) nf_conntrack_ipv4(F) nf_defrag_ipv4(F) xt_conntrack(F) nf_conntrack(F) ebtable_filter(F) ebtables(F) ip6table_filter(F) ip6_tables(F) iptable_filter(F) ip_tables(F) sg(F) ehea(F) xfs(F) libcrc32c(F) sd_mod(F) crc_t10dif(F) ibmvscsi(F) scsi_transport_srp(F) scsi_tgt(F) dm_mirror(F) dm_region_hash(F) dm_log(F) dm_mod(F) [last unloaded: brd] 
+[ 1101.709999] CPU: 26 PID: 12052 Comm: rhts-test-runne Tainted: GF     D      3.10.0-rc2+ #1 
+[ 1101.710014] task: c0000003db44f780 ti: c0000003dbd4c000 task.ti: c0000003dbd4c000 
+[ 1101.710026] NIP: c0000000001f91d8 LR: c0000000001f92d4 CTR: 0000000000000000 
+[ 1101.710039] REGS: c0000003dbd4f810 TRAP: 0300   Tainted: GF     D       (3.10.0-rc2+) 
+[ 1101.710052] MSR: 8000000000009032 <SF,EE,ME,IR,DR,RI>  CR: 24044428  XER: 00000000 
+[ 1101.710091] SOFTE: 1 
+[ 1101.710095] CFAR: c00000000000908c 
+[ 1101.710105] DAR: 2020207044657669, DSISR: 40000000 
+[ 1101.710117]  
+GPR00: c0000000001f92d4 c0000003dbd4fa90 c000000001118258 0000000000000000  
+GPR04: 00000000000080d0 0000000000000088 c0000003d4e924e0 c000000001855d00  
+GPR08: 000000000000301c 0000000000000000 0000000000000000 c000000000015600  
+GPR12: 800000000200f032 c00000000f246800 0000010019f47520 0000000000000000  
+GPR16: 0000000000000024 00000000100f2910 00000000101439b8 0000000000000028  
+GPR20: 0000000000000000 00000000ffffffff 0000000000000001 0000000000000000  
+GPR24: 0000000000000000 0000000000000000 0000000000000088 c0000003fe01b400  
+GPR28: c00000000021df30 00000000000080d0 2020207044657669 c0000003fe01b400  
+[ 1101.710288] NIP [c0000000001f91d8] .kmem_cache_alloc_trace+0x98/0x2f0 
+[ 1101.710299] LR [c0000000001f92d4] .kmem_cache_alloc_trace+0x194/0x2f0 
+[ 1101.710306] Call Trace: 
+[ 1101.710316] [c0000003dbd4fa90] [c0000000001f92d4] .kmem_cache_alloc_trace+0x194/0x2f0 (unreliable) 
+[ 1101.710337] [c0000003dbd4fb40] [c00000000021df30] .alloc_pipe_info+0x30/0xf0 
+[ 1101.710351] [c0000003dbd4fbc0] [c00000000021e6b8] .create_pipe_files+0x58/0x240 
+[ 1101.710367] [c0000003dbd4fc80] [c00000000021e8ec] .__do_pipe_flags+0x4c/0x180 
+[ 1101.710378] [c0000003dbd4fd20] [c00000000021eab4] .SyS_pipe2+0x24/0xd0 
+[ 1101.710394] [c0000003dbd4fdc0] [c00000000021eb74] .SyS_pipe+0x14/0x30 
+[ 1101.710409] [c0000003dbd4fe30] [c000000000009e54] syscall_exit+0x0/0x98 
+[ 1101.710415] Instruction dump: 
+[ 1101.717943] 7ce95214 e9070008 7fc9502a e9270010 2fbe0000 41de0084 2fa90000 3b200000  
+[ 1101.717975] 419e0078 e95f0022 e93f0000 79290720 <7f1e502a> 0b090000 0b190000 39200000  
+[ 1101.718013] ---[ end trace c320e07d73bae690 ]--- 
+[ 1101.728370]  
+[ 1102.130418] Unable to handle kernel paging request for data at address 0x2020207044657669 
+[ 1102.137941] Faulting instruction address: 0xc0000000001f91d8 
+[ 1102.137950] Oops: Kernel access of bad area, sig: 11 [#3] 
+[ 1102.137954] SMP NR_CPUS=1024 NUMA pSeries 
+[ 1102.137961] Modules linked in: btrfs(F) raid6_pq(F) xor(F) vfat(F) fat(F) lockd(F) sunrpc(F) nf_conntrack_netbios_ns(F) nf_conntrack_broadcast(F) ipt_MASQUERADE(F) ip6table_mangle(F) ip6t_REJECT(F) nf_conntrack_ipv6(F) nf_defrag_ipv6(F) iptable_nat(F) nf_nat_ipv4(F) nf_nat(F) iptable_mangle(F) ipt_REJECT(F) nf_conntrack_ipv4(F) nf_defrag_ipv4(F) xt_conntrack(F) nf_conntrack(F) ebtable_filter(F) ebtables(F) ip6table_filter(F) ip6_tables(F) iptable_filter(F) ip_tables(F) sg(F) ehea(F) xfs(F) libcrc32c(F) sd_mod(F) crc_t10dif(F) ibmvscsi(F) scsi_transport_srp(F) scsi_tgt(F) dm_mirror(F) dm_region_hash(F) dm_log(F) dm_mod(F) [last unloaded: brd] 
+[ 1102.138037] CPU: 26 PID: 19585 Comm: groff Tainted: GF     D      3.10.0-rc2+ #1 
+[ 1102.138044] task: c0000003f0c29400 ti: c0000003f0ce0000 task.ti: c0000003f0ce0000 
+[ 1102.138050] NIP: c0000000001f91d8 LR: c0000000001f92d4 CTR: 0000000000000000 
+[ 1102.138055] REGS: c0000003f0ce3810 TRAP: 0300   Tainted: GF     D       (3.10.0-rc2+) 
+[ 1102.138060] MSR: 8000000000009032 <SF,EE,ME,IR,DR,RI>  CR: 24024088  XER: 00000000 
+[ 1102.138075] SOFTE: 1 
+[ 1102.138078] CFAR: c00000000000908c 
+[ 1102.138082] DAR: 2020207044657669, DSISR: 40000000 
+[ 1102.138086]  
+GPR00: c0000000001f92d4 c0000003f0ce3a90 c000000001118258 0000000000000000  
+GPR04: 00000000000080d0 0000000000000088 c0000003d4e92210 c000000001855d00  
+GPR08: 0000000000003020 0000000000000000 0000000000000000 c000000000015600  
+GPR12: 800000000200f032 c00000000f246800 00000000100103f0 0000000000000000  
+GPR16: 0000000000000000 0000000000000001 00000000100103f8 0000000000000000  
+GPR20: 0000000010010820 0000000000000000 0000000010010830 0000000000000001  
+GPR24: 0000000010010828 0000000000000000 0000000000000088 c0000003fe01b400  
+GPR28: c00000000021df30 00000000000080d0 2020207044657669 c0000003fe01b400  
+[ 1102.138158] NIP [c0000000001f91d8] .kmem_cache_alloc_trace+0x98/0x2f0 
+[ 1102.138164] LR [c0000000001f92d4] .kmem_cache_alloc_trace+0x194/0x2f0 
+[ 1102.138168] Call Trace: 
+[ 1102.138173] [c0000003f0ce3a90] [c0000000001f92d4] .kmem_cache_alloc_trace+0x194/0x2f0 (unreliable) 
+[ 1102.138181] [c0000003f0ce3b40] [c00000000021df30] .alloc_pipe_info+0x30/0xf0 
+[ 1102.138188] [c0000003f0ce3bc0] [c00000000021e6b8] .create_pipe_files+0x58/0x240 
+[ 1102.138195] [c0000003f0ce3c80] [c00000000021e8ec] .__do_pipe_flags+0x4c/0x180 
+[ 1102.138201] [c0000003f0ce3d20] [c00000000021eab4] .SyS_pipe2+0x24/0xd0 
+[ 1102.138208] [c0000003f0ce3dc0] [c00000000021eb74] .SyS_pipe+0x14/0x30 
+[ 1102.138215] [c0000003f0ce3e30] [c000000000009e54] syscall_exit+0x0/0x98 
+[ 1102.138220] Instruction dump: 
+[ 1102.138224] 7ce95214 e9070008 7fc9502a e9270010 2fbe0000 41de0084 2fa90000 3b200000  
+[ 1102.138236] 419e0078 e95f0022 e93f0000 79290720 <7f1e502a> 0b090000 0b190000 39200000  
+[ 1102.138250] ---[ end trace c320e07d73bae691 ]--- 
+[ 1102.139874]  
+[ 1103.769587] Unable to handle kernel paging request for data at address 0x2020207044657669 
+[ 1103.769602] Faulting instruction address: 0xc0000000001f91d8 
+[ 1103.769609] Oops: Kernel access of bad area, sig: 11 [#4] 
+[ 1103.769614] SMP NR_CPUS=1024 NUMA pSeries 
+[ 1103.769621] Modules linked in: btrfs(F) raid6_pq(F) xor(F) vfat(F) fat(F) lockd(F) sunrpc(F) nf_conntrack_netbios_ns(F) nf_conntrack_broadcast(F) ipt_MASQUERADE(F) ip6table_mangle(F) ip6t_REJECT(F) nf_conntrack_ipv6(F) nf_defrag_ipv6(F) iptable_nat(F) nf_nat_ipv4(F) nf_nat(F) iptable_mangle(F) ipt_REJECT(F) nf_conntrack_ipv4(F) nf_defrag_ipv4(F) xt_conntrack(F) nf_conntrack(F) ebtable_filter(F) ebtables(F) ip6table_filter(F) ip6_tables(F) iptable_filter(F) ip_tables(F) sg(F) ehea(F) xfs(F) libcrc32c(F) sd_mod(F) crc_t10dif(F) ibmvscsi(F) scsi_transport_srp(F) scsi_tgt(F) dm_mirror(F) dm_region_hash(F) dm_log(F) dm_mod(F) [last unloaded: brd] 
+[ 1103.769692] CPU: 26 PID: 19614 Comm: xargs Tainted: GF     D      3.10.0-rc2+ #1 
+[ 1103.769698] task: c0000003f5b78b80 ti: c0000003f5bd8000 task.ti: c0000003f5bd8000 
+[ 1103.769704] NIP: c0000000001f91d8 LR: c0000000001f92d4 CTR: 0000000000000000 
+[ 1103.769709] REGS: c0000003f5bdb810 TRAP: 0300   Tainted: GF     D       (3.10.0-rc2+) 
+[ 1103.769714] MSR: 8000000000009032 <SF,EE,ME,IR,DR,RI>  CR: 24000428  XER: 00000000 
+[ 1103.769729] SOFTE: 1 
+[ 1103.769732] CFAR: c00000000000908c 
+[ 1103.769736] DAR: 2020207044657669, DSISR: 40000000 
+[ 1103.769740]  
+GPR00: c0000000001f92d4 c0000003f5bdba90 c000000001118258 0000000000000000  
+GPR04: 00000000000080d0 0000000000000088 c0000003d4e921c0 c000000001855d00  
+GPR08: 0000000000003020 0000000000000000 0000000000000000 c000000000015600  
+GPR12: 800000000200f032 c00000000f246800 000000001000b770 000000001000b778  
+GPR16: 000000001000b6e8 0000000010020004 0000000000000001 0000000000000000  
+GPR20: 00001ffffff60110 000000001000ac70 00000000100200b0 0000000010020e20  
+GPR24: 0000000010020dc8 0000000000000000 0000000000000088 c0000003fe01b400  
+GPR28: c00000000021df30 00000000000080d0 2020207044657669 c0000003fe01b400  
+[ 1103.769812] NIP [c0000000001f91d8] .kmem_cache_alloc_trace+0x98/0x2f0 
+[ 1103.769818] LR [c0000000001f92d4] .kmem_cache_alloc_trace+0x194/0x2f0 
+[ 1103.769822] Call Trace: 
+[ 1103.769827] [c0000003f5bdba90] [c0000000001f92d4] .kmem_cache_alloc_trace+0x194/0x2f0 (unreliable) 
+[ 1103.769835] [c0000003f5bdbb40] [c00000000021df30] .alloc_pipe_info+0x30/0xf0 
+[ 1103.769842] [c0000003f5bdbbc0] [c00000000021e6b8] .create_pipe_files+0x58/0x240 
+[ 1103.769849] [c0000003f5bdbc80] [c00000000021e8ec] .__do_pipe_flags+0x4c/0x180 
+[ 1103.769855] [c0000003f5bdbd20] [c00000000021eab4] .SyS_pipe2+0x24/0xd0 
+[ 1103.769862] [c0000003f5bdbdc0] [c00000000021eb74] .SyS_pipe+0x14/0x30 
+[ 1103.769869] [c0000003f5bdbe30] [c000000000009e54] syscall_exit+0x0/0x98 
+[ 1103.769874] Instruction dump: 
+[ 1103.769878] 7ce95214 e9070008 7fc9502a e9270010 2fbe0000 41de0084 2fa90000 3b200000  
+[ 1103.769890] 419e0078 e95f0022 e93f0000 79290720 <7f1e502a> 0b090000 0b190000 39200000  
+[ 1103.769904] ---[ end trace c320e07d73bae692 ]--- 
+[ 1103.778891]  
+[ 1104.319798] Unable to handle kernel paging request for data at address 0x2020207044657669 
+[ 1104.319816] Faulting instruction address: 0xc0000000001f8314 
+[ 1104.319823] Oops: Kernel access of bad area, sig: 11 [#5] 
+[ 1104.319827] SMP NR_CPUS=1024 NUMA pSeries 
+[ 1104.319835] Modules linked in: btrfs(F) raid6_pq(F) xor(F) vfat(F) fat(F) lockd(F) sunrpc(F) nf_conntrack_netbios_ns(F) nf_conntrack_broadcast(F) ipt_MASQUERADE(F) ip6table_mangle(F) ip6t_REJECT(F) nf_conntrack_ipv6(F) nf_defrag_ipv6(F) iptable_nat(F) nf_nat_ipv4(F) nf_nat(F) iptable_mangle(F) ipt_REJECT(F) nf_conntrack_ipv4(F) nf_defrag_ipv4(F) xt_conntrack(F) nf_conntrack(F) ebtable_filter(F) ebtables(F) ip6table_filter(F) ip6_tables(F) iptable_filter(F) ip_tables(F) sg(F) ehea(F) xfs(F) libcrc32c(F) sd_mod(F) crc_t10dif(F) ibmvscsi(F) scsi_transport_srp(F) scsi_tgt(F) dm_mirror(F) dm_region_hash(F) dm_log(F) dm_mod(F) [last unloaded: brd] 
+[ 1104.319905] CPU: 26 PID: 19635 Comm: tar Tainted: GF     D      3.10.0-rc2+ #1 
+[ 1104.319911] task: c0000003f221b800 ti: c0000003f22a4000 task.ti: c0000003f22a4000 
+[ 1104.319917] NIP: c0000000001f8314 LR: c0000000001f84a4 CTR: c0000000001f8260 
+[ 1104.319923] REGS: c0000003f22a7190 TRAP: 0300   Tainted: GF     D       (3.10.0-rc2+) 
+[ 1104.319928] MSR: 8000000000009032 <SF,EE,ME,IR,DR,RI>  CR: 24022448  XER: 00000000 
+[ 1104.319942] SOFTE: 1 
+[ 1104.319945] CFAR: c00000000000908c 
+[ 1104.319949] DAR: 2020207044657669, DSISR: 40000000 
+[ 1104.319953]  
+GPR00: c0000000001f84a4 c0000003f22a7410 c000000001118258 0000000000000000  
+GPR04: 0000000000000250 0000000000000001 0000000000000000 c000000001855d00  
+GPR08: 0000000000003020 0000000000000000 0000000000000000 c0000000001f8260  
+GPR12: d0000000023dc278 c00000000f246800 0000000000000000 0000000000000000  
+GPR16: 00000000000081b6 0000000000000004 c00000000bc1c000 c0000003f22a76d0  
+GPR20: 0000000000000000 c0000000096b6b30 c0000003f1424000 c0000000096b6c10  
+GPR24: 0000000000000000 0000000000000000 d000000002367c1c 0000000000000098  
+GPR28: c0000003fe01b400 0000000000000250 2020207044657669 c0000003fe01b400  
+[ 1104.320024] NIP [c0000000001f8314] .__kmalloc+0xb4/0x360 
+[ 1104.320029] LR [c0000000001f84a4] .__kmalloc+0x244/0x360 
+[ 1104.320033] Call Trace: 
+[ 1104.320037] [c0000003f22a7410] [c0000000001f84a4] .__kmalloc+0x244/0x360 (unreliable) 
+[ 1104.320084] [c0000003f22a74c0] [d000000002367c1c] .kmem_alloc+0x9c/0x140 [xfs] 
+[ 1104.320130] [c0000003f22a7560] [d0000000023c1018] .xfs_log_commit_cil+0x188/0x600 [xfs] 
+[ 1104.320175] [c0000003f22a7660] [d0000000023baa48] .xfs_trans_commit+0x168/0x300 [xfs] 
+[ 1104.320217] [c0000003f22a7710] [d0000000023662c4] .xfs_create+0x5e4/0x620 [xfs] 
+[ 1104.320259] [c0000003f22a7830] [d00000000235d8fc] .xfs_vn_mknod+0x8c/0x230 [xfs] 
+[ 1104.320267] [c0000003f22a7900] [c000000000222b90] .vfs_create+0xf0/0x180 
+[ 1104.320274] [c0000003f22a79b0] [c000000000225bcc] .do_last+0x9ec/0xdf0 
+[ 1104.320280] [c0000003f22a7ad0] [c0000000002260bc] .path_openat+0xec/0x5c0 
+[ 1104.320287] [c0000003f22a7bf0] [c0000000002269e0] .do_filp_open+0x40/0xb0 
+[ 1104.320294] [c0000003f22a7d10] [c000000000210c30] .do_sys_open+0x140/0x250 
+[ 1104.320300] [c0000003f22a7dc0] [c000000000210d98] .SyS_creat+0x18/0x30 
+[ 1104.320308] [c0000003f22a7e30] [c000000000009e54] syscall_exit+0x0/0x98 
+[ 1104.320313] Instruction dump: 
+[ 1104.320317] 7ce95214 e9070008 7fc9502a e9270010 2fbe0000 41de0088 2fa90000 3b200000  
+[ 1104.320329] 419e007c e95c0022 e93c0000 79290720 <7f1e502a> 0b090000 0b190000 39200000  
+[ 1104.320342] ---[ end trace c320e07d73bae693 ]--- 
+[ 1104.329423]  
+CAI Qian
 
-Hi guys,
-
-I noticed the following warning in a linux-next build:
-
-fs/ext4/inode.c: In function 'ext4_da_writepages':
-fs/ext4/inode.c:2212:6: warning: 'err' may be used uninitialized in this fu=
-nction [-Wmaybe-uninitialized]
-
-In tracking this down, I followed the call chains and discovered that
-io_submit_init_bio() only ever returned 0.  Switching that to return
-void and following back up the chain lead to the following patch.  This
-makes it far more obvious that by the end of the loop in
-mpage_map_and_submit_extent(), err must be zero, which allows the final
-removal of err2 and the check that caused the above warning.
-
-This does remove the above warning and simplifies the code a bit, but may
-be removing error infrastructure that may be used in the future.
-
-Signed-off-by: Stephen Rothwell <sfr@canb.auug.org.au>
----
- fs/ext4/ext4.h    |  8 ++++----
- fs/ext4/inode.c   | 46 +++++++++++++---------------------------------
- fs/ext4/page-io.c | 35 ++++++-----------------------------
- 3 files changed, 23 insertions(+), 66 deletions(-)
-
-This is against today's ext4 tree dev branch.
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index bd9890f..1341452 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2660,10 +2660,10 @@ extern void ext4_io_submit_init(struct ext4_io_subm=
-it *io,
- extern void ext4_end_io_rsv_work(struct work_struct *work);
- extern void ext4_end_io_unrsv_work(struct work_struct *work);
- extern void ext4_io_submit(struct ext4_io_submit *io);
--extern int ext4_bio_write_page(struct ext4_io_submit *io,
--			       struct page *page,
--			       int len,
--			       struct writeback_control *wbc);
-+extern void ext4_bio_write_page(struct ext4_io_submit *io,
-+				struct page *page,
-+				int len,
-+				struct writeback_control *wbc);
-=20
- /* mmp.c */
- extern int ext4_multi_mount_protect(struct super_block *, ext4_fsblk_t);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 442c5d2..80bc416 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1832,7 +1832,6 @@ out:
- static int ext4_writepage(struct page *page,
- 			  struct writeback_control *wbc)
- {
--	int ret =3D 0;
- 	loff_t size;
- 	unsigned int len;
- 	struct buffer_head *page_bufs =3D NULL;
-@@ -1884,11 +1883,11 @@ static int ext4_writepage(struct page *page,
- 		unlock_page(page);
- 		return -ENOMEM;
- 	}
--	ret =3D ext4_bio_write_page(&io_submit, page, len, wbc);
-+	ext4_bio_write_page(&io_submit, page, len, wbc);
- 	ext4_io_submit(&io_submit);
- 	/* Drop io_end reference we got from init */
- 	ext4_put_io_end_defer(io_submit.io_end);
--	return ret;
-+	return 0;
- }
-=20
- #define BH_FLAGS ((1 << BH_Unwritten) | (1 << BH_Delay))
-@@ -1963,11 +1962,10 @@ static bool add_page_bufs_to_extent(struct mpage_da=
-_data *mpd,
- 	return true;
- }
-=20
--static int mpage_submit_page(struct mpage_da_data *mpd, struct page *page)
-+static void mpage_submit_page(struct mpage_da_data *mpd, struct page *page)
- {
- 	int len;
- 	loff_t size =3D i_size_read(mpd->inode);
--	int err;
-=20
- 	BUG_ON(page->index !=3D mpd->first_page);
- 	if (page->index =3D=3D size >> PAGE_CACHE_SHIFT)
-@@ -1975,12 +1973,9 @@ static int mpage_submit_page(struct mpage_da_data *m=
-pd, struct page *page)
- 	else
- 		len =3D PAGE_CACHE_SIZE;
- 	clear_page_dirty_for_io(page);
--	err =3D ext4_bio_write_page(&mpd->io_submit, page, len, mpd->wbc);
--	if (!err)
--		mpd->wbc->nr_to_write--;
-+	ext4_bio_write_page(&mpd->io_submit, page, len, mpd->wbc);
-+	mpd->wbc->nr_to_write--;
- 	mpd->first_page++;
--
--	return err;
- }
-=20
- /*
-@@ -1997,7 +1992,7 @@ static int mpage_submit_page(struct mpage_da_data *mp=
-d, struct page *page)
-  * mapped, we update @map to the next extent in the last page that needs
-  * mapping. Otherwise we submit the page for IO.
-  */
--static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
-+static void mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
- {
- 	struct pagevec pvec;
- 	int nr_pages, i;
-@@ -2009,7 +2004,6 @@ static int mpage_map_and_submit_buffers(struct mpage_=
-da_data *mpd)
- 	pgoff_t start, end;
- 	ext4_lblk_t lblk;
- 	sector_t pblock;
--	int err;
-=20
- 	start =3D mpd->map.m_lblk >> bpp_bits;
- 	end =3D (mpd->map.m_lblk + mpd->map.m_len - 1) >> bpp_bits;
-@@ -2043,7 +2037,7 @@ static int mpage_map_and_submit_buffers(struct mpage_=
-da_data *mpd)
- 					add_page_bufs_to_extent(mpd, head, bh,
- 								lblk);
- 					pagevec_release(&pvec);
--					return 0;
-+					return;
- 				}
- 				if (buffer_delay(bh)) {
- 					clear_buffer_delay(bh);
-@@ -2060,11 +2054,7 @@ static int mpage_map_and_submit_buffers(struct mpage=
-_da_data *mpd)
- 			 */
- 			mpd->io_submit.io_end->size +=3D PAGE_CACHE_SIZE;
- 			/* Page fully mapped - let IO run! */
--			err =3D mpage_submit_page(mpd, page);
--			if (err < 0) {
--				pagevec_release(&pvec);
--				return err;
--			}
-+			mpage_submit_page(mpd, page);
- 			start++;
- 		}
- 		pagevec_release(&pvec);
-@@ -2072,7 +2062,6 @@ static int mpage_map_and_submit_buffers(struct mpage_=
-da_data *mpd)
- 	/* Extent fully mapped and matches with page boundary. We are done. */
- 	mpd->map.m_len =3D 0;
- 	mpd->map.m_flags =3D 0;
--	return 0;
- }
-=20
- static int mpage_map_one_extent(handle_t *handle, struct mpage_da_data *mp=
-d)
-@@ -2191,9 +2180,7 @@ static int mpage_map_and_submit_extent(handle_t *hand=
-le,
- 		 * Update buffer state, submit mapped pages, and get us new
- 		 * extent to map
- 		 */
--		err =3D mpage_map_and_submit_buffers(mpd);
--		if (err < 0)
--			return err;
-+		mpage_map_and_submit_buffers(mpd);
- 	}
-=20
- 	/* Update on-disk size after IO is submitted */
-@@ -2201,16 +2188,12 @@ static int mpage_map_and_submit_extent(handle_t *ha=
-ndle,
- 	if (disksize > i_size_read(inode))
- 		disksize =3D i_size_read(inode);
- 	if (disksize > EXT4_I(inode)->i_disksize) {
--		int err2;
--
- 		ext4_update_i_disksize(inode, disksize);
--		err2 =3D ext4_mark_inode_dirty(handle, inode);
--		if (err2)
-+		err =3D ext4_mark_inode_dirty(handle, inode);
-+		if (err)
- 			ext4_error(inode->i_sb,
- 				   "Failed to mark inode %lu dirty",
- 				   inode->i_ino);
--		if (!err)
--			err =3D err2;
- 	}
- 	return err;
- }
-@@ -2321,11 +2304,8 @@ static int mpage_prepare_extent_to_map(struct mpage_=
-da_data *mpd)
- 			if (!add_page_bufs_to_extent(mpd, head, head, lblk))
- 				goto out;
- 			/* So far everything mapped? Submit the page for IO. */
--			if (mpd->map.m_len =3D=3D 0) {
--				err =3D mpage_submit_page(mpd, page);
--				if (err < 0)
--					goto out;
--			}
-+			if (mpd->map.m_len =3D=3D 0)
-+				mpage_submit_page(mpd, page);
-=20
- 			/*
- 			 * Accumulated enough dirty pages? This doesn't apply
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index ce8c15a..530ccb0 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -365,7 +365,7 @@ void ext4_io_submit_init(struct ext4_io_submit *io,
- 	io->io_end =3D NULL;
- }
-=20
--static int io_submit_init_bio(struct ext4_io_submit *io,
-+static void io_submit_init_bio(struct ext4_io_submit *io,
- 			      struct buffer_head *bh)
- {
- 	int nvecs =3D bio_get_nr_vecs(bh->b_bdev);
-@@ -378,10 +378,9 @@ static int io_submit_init_bio(struct ext4_io_submit *i=
-o,
- 	bio->bi_private =3D ext4_get_io_end(io->io_end);
- 	io->io_bio =3D bio;
- 	io->io_next_block =3D bh->b_blocknr;
--	return 0;
- }
-=20
--static int io_submit_add_bh(struct ext4_io_submit *io,
-+static void io_submit_add_bh(struct ext4_io_submit *io,
- 			    struct inode *inode,
- 			    struct buffer_head *bh)
- {
-@@ -391,19 +390,15 @@ static int io_submit_add_bh(struct ext4_io_submit *io,
- submit_and_retry:
- 		ext4_io_submit(io);
- 	}
--	if (io->io_bio =3D=3D NULL) {
--		ret =3D io_submit_init_bio(io, bh);
--		if (ret)
--			return ret;
--	}
-+	if (io->io_bio =3D=3D NULL)
-+		io_submit_init_bio(io, bh);
- 	ret =3D bio_add_page(io->io_bio, bh->b_page, bh->b_size, bh_offset(bh));
- 	if (ret !=3D bh->b_size)
- 		goto submit_and_retry;
- 	io->io_next_block++;
--	return 0;
- }
-=20
--int ext4_bio_write_page(struct ext4_io_submit *io,
-+void ext4_bio_write_page(struct ext4_io_submit *io,
- 			struct page *page,
- 			int len,
- 			struct writeback_control *wbc)
-@@ -411,7 +406,6 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
- 	struct inode *inode =3D page->mapping->host;
- 	unsigned block_start, blocksize;
- 	struct buffer_head *bh, *head;
--	int ret =3D 0;
- 	int nr_submitted =3D 0;
-=20
- 	blocksize =3D 1 << inode->i_blkbits;
-@@ -471,30 +465,13 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
- 	do {
- 		if (!buffer_async_write(bh))
- 			continue;
--		ret =3D io_submit_add_bh(io, inode, bh);
--		if (ret) {
--			/*
--			 * We only get here on ENOMEM.  Not much else
--			 * we can do but mark the page as dirty, and
--			 * better luck next time.
--			 */
--			redirty_page_for_writepage(wbc, page);
--			break;
--		}
-+		io_submit_add_bh(io, inode, bh);
- 		nr_submitted++;
- 		clear_buffer_dirty(bh);
- 	} while ((bh =3D bh->b_this_page) !=3D head);
-=20
--	/* Error stopped previous loop? Clean up buffers... */
--	if (ret) {
--		do {
--			clear_buffer_async_write(bh);
--			bh =3D bh->b_this_page;
--		} while (bh !=3D head);
--	}
- 	unlock_page(page);
- 	/* Nothing submitted - we have to end page writeback */
- 	if (!nr_submitted)
- 		end_page_writeback(page);
--	return ret;
- }
---=20
-1.8.1
-
---=20
-Cheers,
-Stephen Rothwell                    sfr@canb.auug.org.au
-
---Signature=_Thu__6_Jun_2013_11_56_53_+1000_leyrFH.KCQfZY7NM
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.20 (GNU/Linux)
-
-iQIcBAEBCAAGBQJRr+xpAAoJEECxmPOUX5FE6iUQAKMmp07Y7vpxxybOqxDNiN0Y
-c006l70nN5gryhUnqwQTWgedwoBOavxas7Y3RBywXCH2j9iVYMxtdRB1h09m/v+P
-4HouEBnmYRrNpvQSnGo42olBdfV9ChRdvcpZWQV+JP4jEPM1zDACM5BkoxDAblDc
-CdQXKcx7uV8SX3zhnKjEpGrJ3df+ENOVCG8RyJL2K/OnMBQIrM8GR6UXfNE3feNe
-1GkluPkaj5X03i2uhcE8GqhKRdA6IMEEboPaRoC1ndxkD238wxoggBKTJf0Frahx
-zMFTHGt8fafwDFjkA8cI8UYnmP5B2uYYCKbt6RBUPw0JkkxkjQ5ABk/O+Z/NpWBF
-Tq1Mu9JycajArgkTf3AA0KJaBPKnsltOPdB4WpXOSZyIUyklSkLv0gZz0WYs9G5g
-g0B0Wx39tlPE3kkDPzLWoCE7+YlRiklnKLtXhdRWBN2KPM5xmGWkCuoqQLXqaCK4
-xACsv/smDF+i1fHv6WbpvY2InkxM+6waad6ET3sWn6PgH8ZalKNO1T4plp2JLfDX
-vPbCMka+vSbjr4GBpbN0PQRHPbmNYULWQKhqHHu41+p9eRfg0dfpzvR+J+DXVqcT
-sqy8SFd0dFU3/Jg9d0GLEEDosluTOWOc/05MLIheUduY5yDsNJ6eJNi1UNuo5Pf4
-4PkIk6q7QWnKN7qNAQtA
-=/eDL
------END PGP SIGNATURE-----
-
---Signature=_Thu__6_Jun_2013_11_56_53_+1000_leyrFH.KCQfZY7NM--
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
