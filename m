@@ -1,59 +1,57 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH] ext4: return FIEMAP_EXTENT_UNKNOWN if an extent is
- delayed allocations
-Date: Fri, 7 Jun 2013 19:54:22 +0800
-Message-ID: <20130607115422.GA12217@gmail.com>
-References: <51B08F45.1050605@oracle.com>
+From: Zhao Hongjiang <zhaohongjiang@huawei.com>
+Subject: xfstests failure generic/239
+Date: Sat, 8 Jun 2013 11:13:35 +0800
+Message-ID: <51B2A15F.1060704@huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Jeff Liu <jeff.liu@oracle.com>
+Content-Type: text/plain; charset="ISO-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: <hch@lst.de>
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f180.google.com ([209.85.192.180]:58950 "EHLO
-	mail-pd0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753647Ab3FGLgV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Jun 2013 07:36:21 -0400
-Received: by mail-pd0-f180.google.com with SMTP id 10so4672180pdi.25
-        for <linux-ext4@vger.kernel.org>; Fri, 07 Jun 2013 04:36:20 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <51B08F45.1050605@oracle.com>
+Received: from szxga01-in.huawei.com ([119.145.14.64]:32103 "EHLO
+	szxga01-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750786Ab3FHDN6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Jun 2013 23:13:58 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 06, 2013 at 09:31:49PM +0800, Jeff Liu wrote:
-> From: Jie Liu <jeff.liu@oracle.com>
-> 
-> Return the FIEMAP_EXTENT_UNKNOWN flag as well except the
-> FIEMAP_EXTENT_DELALLOC because the data location of an
-> delayed allocation extent is unknown.
-> 
-> Signed-off-by: Jie Liu <jeff.liu@oracle.com>
+Hi all,
 
-Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
+I run xfstests #239 against mainline 3.10.0-rc3, unfortunately it failure in my QEMU. I run the
+case a hundred times, it certainly hit the failure several times. The failure msg is as follow:
 
-                                                - Zheng
+FSTYP         -- ext4
+PLATFORM      -- Linux/x86_64  3.10.0-rc3-mainline
 
-> ---
->  fs/ext4/extents.c |    3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index bc0f191..47e17b1 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -2125,7 +2125,8 @@ static int ext4_fill_fiemap_extents(struct inode *inode,
->  		next_del = ext4_find_delayed_extent(inode, &es);
->  		if (!exists && next_del) {
->  			exists = 1;
-> -			flags |= FIEMAP_EXTENT_DELALLOC;
-> +			flags |= (FIEMAP_EXTENT_DELALLOC |
-> +				  FIEMAP_EXTENT_UNKNOWN);
->  		}
->  		up_read(&EXT4_I(inode)->i_data_sem);
->  
-> -- 
-> 1.7.9.5
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+generic/239 1s ... - output mismatch (see /home/zhj/xfstests/results/generic/239.out.bad)
+    --- tests/generic/239.out   2013-06-07 22:04:09.000000000 -0400
+    +++ /home/zff/xfstests/results/generic/239.out.bad  2013-06-07 22:04:09.000000000 -0400
+    @@ -1,2 +1,515 @@
+     QA output created by 239
+    +hostname: Host name lookup failure
+     Silence is golden
+    +0: 0x0
+    +1: 0x0
+    +2: 0x0
+    +3: 0x0
+     ...
+
+I found that from 2.6.39 the test case occur this failure and it is is introduced by this
+commit: 198868f35de99e7197829314076e5465c37e4cc5
+ext4: Use single thread to perform DIO unwritten convertion
+
+When i revert this patch, the failure seems go away. But when i see 
+http://oss.sgi.com/archives/xfs/2010-06/msg00269.html, it said that 
+"This contains core direct I/O changes to allow the filesystem to delay AIO completion, 
+as well as a patch to fix XFS.  ext4 also has the same issue, and from a quick look also 
+doesn't properly complete unwritten extent conversions for synchronous direct I/O, but 
+I'll leave that for someone more familar to figure out."
+
+I also run the test against 3.4.24 rt-tree with revert the patch which i found before, but
+the hundred times tests all failure.
+
+So, things maybe not simple, i doubt the patch i found isn't the root cause.
+
+Regards,
+						 - Hongjiang
+
