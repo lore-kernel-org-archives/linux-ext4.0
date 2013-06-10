@@ -1,86 +1,107 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: xfstests  shared/313 result in OOPS
-Date: Mon, 10 Jun 2013 22:31:05 +0400
-Message-ID: <878v2hx1g6.fsf@openvz.org>
-References: <87bo7evsqf.fsf@openvz.org>
+From: Paul Gortmaker <paul.gortmaker@windriver.com>
+Subject: [RFC PATCH 0/4] ext4/jbd2: several possible mainline fixes
+Date: Mon, 10 Jun 2013 15:31:59 -0400
+Message-ID: <1370892723-30860-1-git-send-email-paul.gortmaker@windriver.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain
+Cc: <linux-rt-users@vger.kernel.org>,
+	Paul Gortmaker <paul.gortmaker@windriver.com>
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f175.google.com ([209.85.217.175]:38739 "EHLO
-	mail-lb0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754028Ab3FJSbK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Jun 2013 14:31:10 -0400
-Received: by mail-lb0-f175.google.com with SMTP id r10so2468812lbi.34
-        for <linux-ext4@vger.kernel.org>; Mon, 10 Jun 2013 11:31:09 -0700 (PDT)
-Received: from smtp.gmail.com (swsoft-msk-nat.sw.ru. [195.214.232.10])
-        by mx.google.com with ESMTPSA id p20sm3237424lbb.17.2013.06.10.11.31.06
-        for <linux-ext4@vger.kernel.org>
-        (version=TLSv1.2 cipher=RC4-SHA bits=128/128);
-        Mon, 10 Jun 2013 11:31:07 -0700 (PDT)
-In-Reply-To: <87bo7evsqf.fsf@openvz.org>
+Received: from mail1.windriver.com ([147.11.146.13]:43151 "EHLO
+	mail1.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751302Ab3FJTcS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Jun 2013 15:32:18 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 10 Jun 2013 20:24:40 +0400, Dmitry Monakhov <dmonakhov@openvz.org> wrote:
-> 
-> I've run shared/313 (posted here http://patchwork.ozlabs.org/patch/244297)
-> And have got following bugon( BUG_ON(!PageLocked())
-first bad commit it obvious though
->From 4e7ea81db53465ddd753678bc4cebf95369d0984 Mon Sep 17 00:00:00 2001
-From: Jan Kara <jack@suse.cz>
-Date: Tue, 4 Jun 2013 13:17:40 -0400
-> 
-> I think this also will be reproducible via shared/305
-> Currently I try to bisect this issue.
-> 
-> ------------[ cut here ]------------
-> kernel BUG at fs/ext4/inode.c:1458!
-> invalid opcode: 0000 [#1] SMP 
-> Modules linked in: dm_flakey tun cpufreq_ondemand acpi_cpufreq
-> freq_table mperf coretemp kvm_intel kvm crc32c_intel ghash_clmulni_intel
-> microcode sg xhci_hcd button sd_mod crc_t10dif aesni_intel ablk_helper
-> cryptd lrw gf128mul glue_helper aes_x86_64 ahci libahci pata_acpi
-> ata_generic dm_mirror dm_region_hash dm_log dm_mod
-> CPU: 2 PID: 12142 Comm: hwflush-check Tainted: G        W    3.10.0-rc2+
-> #78
-> Hardware name:                  /DQ67SW, BIOS
-> SWQ6710H.86A.0052.2011.0520.1802 05/20/2011
-> task: ffff8801c8a6cdc0 ti: ffff8802296f2000 task.ti: ffff8802296f2000
-> RIP: 0010:[<ffffffff81315cf7>]  [<ffffffff81315cf7>]
-> mpage_release_unused_pages+0x197/0x280
-> RSP: 0018:ffff8802296f3c08  EFLAGS: 00010202
-> RAX: 0000000000000003 RBX: ffffea0004332ad8 RCX: 00000000001d025f
-> RDX: 0000000000000001 RSI: 0000000000000001 RDI: ffffffff82136dc0
-> RBP: ffff8802296f3ce8 R08: 0000000000000000 R09: 0000000000000001
-> R10: 0000000000000001 R11: 0000000000000003 R12: 0000000000000002
-> R13: ffff8802296f3c38 R14: 0000000000000000 R15: 0000000000000001
-> FS:  00007f8c0dffb700(0000) GS:ffff88023d800000(0000)
-> knlGS:0000000000000000
-> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> CR2: 00007f8bac003000 CR3: 000000022a1a6000 CR4: 00000000000407e0
-> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> Stack:
->  0000000000000000 ffff8802296f3c48 ffff8801a92d8aa0 0000000000000004
->  00000000000005e6 ffff8802296f3c48 0000000000000004 0000000000000000
->  ffffea0004332ad8 ffffea0004332b10 ffffea0004332b48 ffffea0006dd0000
-> Call Trace:
->  [<ffffffff81193c47>] ? mempool_free_slab+0x17/0x20
->  [<ffffffff81193d55>] ? mempool_free+0xe5/0x100
->  [<ffffffff8127bca0>] ? bio_put+0xe0/0xf0
->  [<ffffffff8131bcc4>] ext4_da_writepages+0x684/0x910
->  [<ffffffff810f56be>] ? __lock_acquire+0x4fe/0x5c0
->  [<ffffffff811a3071>] do_writepages+0x51/0x70
->  [<ffffffff8118f464>] __filemap_fdatawrite_range+0x64/0x70
->  [<ffffffff810f5e4a>] ? __lock_rele [<ffffffff81270288>]
->  do_fsync+0x58/0xa0
->  [<ffffffff81270300>] SyS_fsync+0x10/0x20
->  [<ffffffff818d5c82>] system_call_fastpath+0x16/0x1b
-> Code: 83 f7 01 44 89 fe e8 f9 56 e5 ff 49 63 c7 48 83 c0 02 48 8b 14 c5
-> f0 f1 2a 82 48 83 c2 01 45 85 ff 48 89 14 c5 EXT4-fs (dm-1): mounted
-> filesystem with ordered data mode. Opts: acl,user_xattr
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I've been trying to diagnose a problem where ext4 can't be reliably
+used under preempt-rt kernels.  While I've not solved that yet, I
+have found two things that look to me to be possible issues that
+could also impact mainline (and two cosmetic fixes), so I'm sending
+them here to see if they make sense to others who are more familiar
+with filesystem code than I am.  At the moment, I can't see why the
+issues I've identified here couldn't happen on mainline/non-RT.
+The series attached here was build/boot tested on v3.10-rc5.
+
+[ -- stop reading here if you don't care about how ext4 fails on RT -- ]
+
+With respect to the RT problem, it looks like I'm seeing a stall
+in jbd2_journal_commit_transaction() in the jbd2 thread, and then
+everything else piles up behind that.   The stall looks like this:
+
+[ 1593.701664] jbd2/sda1-8     D ffff880223c758c0  4832  1214      2 0x00000000
+[ 1593.701668]  ffff88021ff97b10 0000000000000046 ffff88021ff97ac0 ffffffff8106e8f1
+[ 1593.701669]  ffff880223c75500 ffff88021ff97fd8 ffff88021ff97fd8 ffff88021ff97fd8
+[ 1593.701670]  ffffffff81c16440 ffff880223c75500 ffff88021ff97ae0 ffff880223c75500
+[ 1593.701671] Call Trace:
+[ 1593.701673]  [<ffffffff8106e8f1>] ? get_parent_ip+0x11/0x50
+[ 1593.701674]  [<ffffffff810e9560>] ? __lock_page+0x70/0x70
+[ 1593.701676]  [<ffffffff8172dc34>] schedule+0x24/0x70
+[ 1593.701677]  [<ffffffff8172dd0a>] io_schedule+0x8a/0xd0
+[ 1593.701678]  [<ffffffff810e9569>] sleep_on_page+0x9/0x10
+[ 1593.701679]  [<ffffffff8172cba8>] __wait_on_bit+0x58/0x90
+[ 1593.701680]  [<ffffffff810e9ca9>] ? find_get_pages_tag+0x109/0x190
+[ 1593.701681]  [<ffffffff810e9688>] wait_on_page_bit+0x78/0x80
+[ 1593.701682]  [<ffffffff810603d0>] ? autoremove_wake_function+0x40/0x40
+[ 1593.701684]  [<ffffffff810e9a39>] filemap_fdatawait_range+0xf9/0x190
+[ 1593.701685]  [<ffffffff812c4451>] ? submit_bio+0x71/0xe0
+[ 1593.701686]  [<ffffffff8106e8f1>] ? get_parent_ip+0x11/0x50
+[ 1593.701687]  [<ffffffff8103f125>] ? unpin_current_cpu+0x15/0x80
+[ 1593.701689]  [<ffffffff810e9aef>] filemap_fdatawait+0x1f/0x30
+[ 1593.701691]  [<ffffffff81220c34>] jbd2_journal_commit_transaction+0xb14/0x1c20
+[ 1593.701692]  [<ffffffff81226b91>] kjournald2+0xc1/0x270
+
+Using jbd_debug() it seems that I end up with jbd2_log_do_checkpoint
+and jbd2_journal_commit_transaction running into each other.  In one of
+my attached patches, I show they overlap to the point of interrupting
+each others jbd_debug messages.  Maybe that doesn't matter?  Here is a
+typical debug trace with time stamps:
+
+[  695.229129] (fs/jbd2/journal.c, 495): __jbd2_log_start_commit: JBD2: requesting commit 42331/42330
+[  695.229141] (fs/jbd2/journal.c, 203): kjournald2: kjournald2 wakes
+[  695.229145] (fs/jbd2/journal.c, 211): kjournald2: woke because of timeout
+[  695.229147] (fs/jbd2/journal.c, 155): kjournald2: commit_sequence=42330, commit_request=42331
+[  695.229150] (fs/jbd2/journal.c, 158): kjournald2: OK, requests differ
+[  695.229158] (fs/jbd2/commit.c, 372): jbd2_journal_commit_transaction: JBD2: starting commit of transaction 42331
+[  695.229164] (fs/jbd2/journal.c, 495): __jbd2_log_start_commit: JBD2: requesting commit 42331/42330
+[  695.243653] (fs/jbd2/journal.c, 495): __jbd2_log_start_commit: JBD2: requesting commit 42331/42330
+[  695.247738] (fs/jbd2/checkpoint.c, 345): jbd2_log_do_checkpoint: Start checkpoint
+[  695.247749] (fs/jbd2/checkpoint.c, 354): jbd2_log_do_checkpoint: cleanup_journal_tail returned 1
+[  695.248917] (fs/jbd2/journal.c, 648): jbd2_log_wait_commit: JBD2: want 42331, j_commit_sequence=42330
+[  695.265162] (fs/jbd2/revoke.c, 566): jbd2_journal_write_revoke_records: Wrote 10 revoke records
+        <filesystem now dead for writes>
+
+Notice that we never got the expected message:
+
+  "jbd2_journal_commit_transaction: JBD2: commit 42331 complete"
+
+Stuck waiting/spinning somewhere in jbd2_journal_commit_transaction.
+As near as I can tell, it never got to phase 3 of commit_transaction.
+
+Since jbd2_journal_commit_transaction is such a large function,
+I'm tempted to break it up some, just to ease my debugging (compare
+0x1c20 to the smaller numbers around it).  Perhaps there would be
+interest in such kinds of patches for mainline?
+
+Thanks,
+Paul.
+---
+
+Paul Gortmaker (4):
+  jbd2/journal_commit_transaction: relocate state lock to incorporate
+    all users
+  jbd2/log_wait_for_space: drop checkpoint mutex when waiting
+  jbd2: fix duplicate debug label for phase 2
+  jbd/jbd2: relocate bit_spinlock header to jbd_common
+
+ fs/jbd2/checkpoint.c       | 7 +++++++
+ fs/jbd2/commit.c           | 7 ++++---
+ include/linux/jbd.h        | 1 -
+ include/linux/jbd2.h       | 1 -
+ include/linux/jbd_common.h | 2 ++
+ 5 files changed, 13 insertions(+), 5 deletions(-)
+
+-- 
+1.8.1.2
+
