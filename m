@@ -1,83 +1,104 @@
-From: Paul Gortmaker <paul.gortmaker@windriver.com>
-Subject: [PATCH 2/4] jbd2/log_wait_for_space: drop checkpoint mutex when waiting
-Date: Mon, 10 Jun 2013 15:32:01 -0400
-Message-ID: <1370892723-30860-3-git-send-email-paul.gortmaker@windriver.com>
-References: <1370892723-30860-1-git-send-email-paul.gortmaker@windriver.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 3/3] ext4: Fix fsync error handling after filesystem
+ abort.
+Date: Mon, 10 Jun 2013 14:22:09 -0700
+Message-ID: <20130610212209.GA6021@blackbox.djwong.org>
+References: <1370882461-12786-1-git-send-email-dmonakhov@openvz.org>
+ <1370882461-12786-3-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: <linux-rt-users@vger.kernel.org>,
-	Paul Gortmaker <paul.gortmaker@windriver.com>
-To: <linux-ext4@vger.kernel.org>
-Return-path: <linux-rt-users-owner@vger.kernel.org>
-In-Reply-To: <1370892723-30860-1-git-send-email-paul.gortmaker@windriver.com>
-Sender: linux-rt-users-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.cz
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:48559 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752205Ab3FJVWV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Jun 2013 17:22:21 -0400
+Content-Disposition: inline
+In-Reply-To: <1370882461-12786-3-git-send-email-dmonakhov@openvz.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-While trying to debug an an issue under extreme I/O loading
-on preempt-rt kernels, the following backtrace was observed
-via SysRQ output:
+On Mon, Jun 10, 2013 at 08:41:01PM +0400, Dmitry Monakhov wrote:
+> If filesystem was aborted after inode's write back is complete
+> but before its metadata was updated we may return success
+> results in data loss.
+> In order to handle fs abort correctly we have to check
+> fs state once we discover that it is in MS_RDONLY state
+> 
+> Test case: http://patchwork.ozlabs.org/patch/244297
+> 
+> Changes from V2:
+>  - more spelling fixes
+> 
+> Changes from V1:
+>  - fix spelling
+> 
+> Reviewed-by: Jan Kara <jack@suse.cz>
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> ---
+>  fs/ext4/fsync.c |    7 ++++++-
+>  fs/ext4/super.c |   12 +++++++++++-
+>  2 files changed, 17 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+> index fc938eb..a8bc47f 100644
+> --- a/fs/ext4/fsync.c
+> +++ b/fs/ext4/fsync.c
+> @@ -98,8 +98,13 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+>  
+>  	trace_ext4_sync_file_enter(file, datasync);
+>  
+> -	if (inode->i_sb->s_flags & MS_RDONLY)
+> +	if (inode->i_sb->s_flags & MS_RDONLY) {
+> +		/* Make sure that we read updated s_mount_flags value */
+> +		smp_rmb();
+> +		if (EXT4_SB(inode->i_sb)->s_mount_flags & EXT4_MF_FS_ABORTED)
+> +			ret = -EROFS;
+>  		goto out;
+> +	}
+>  
+>  	if (!journal) {
+>  		ret = generic_file_fsync(file, start, end, datasync);
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 0f77c2e..f23daaa 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -399,6 +399,11 @@ static void ext4_handle_error(struct super_block *sb)
+>  	}
+>  	if (test_opt(sb, ERRORS_RO)) {
+>  		ext4_msg(sb, KERN_CRIT, "Remounting filesystem read-only");
+> +		/*
+> +		 * Make shure updated value of ->s_mount_flags will be visible
+> +		 * before ->s_flags update
+> +		 */
+> +		smp_wmb();
+>  		sb->s_flags |= MS_RDONLY;
+>  	}
+>  	if (test_opt(sb, ERRORS_PANIC))
+> @@ -571,8 +576,13 @@ void __ext4_abort(struct super_block *sb, const char *function,
+>  
+>  	if ((sb->s_flags & MS_RDONLY) == 0) {
+>  		ext4_msg(sb, KERN_CRIT, "Remounting filesystem read-only");
+> -		sb->s_flags |= MS_RDONLY;
+>  		EXT4_SB(sb)->s_mount_flags |= EXT4_MF_FS_ABORTED;
+> +		/*
+> +		 * Make shure updated value of ->s_mount_flags will be visiable
 
-rm              D ffff8802203afbc0  4600  4878   4748 0x00000000
- ffff8802217bfb78 0000000000000082 ffff88021fc2bb80 ffff88021fc2bb80
- ffff88021fc2bb80 ffff8802217bffd8 ffff8802217bffd8 ffff8802217bffd8
- ffff88021f1d4c80 ffff88021fc2bb80 ffff8802217bfb88 ffff88022437b000
-Call Trace:
- [<ffffffff8172dc34>] schedule+0x24/0x70
- [<ffffffff81225b5d>] jbd2_log_wait_commit+0xbd/0x140
- [<ffffffff81060390>] ? __init_waitqueue_head+0x50/0x50
- [<ffffffff81223635>] jbd2_log_do_checkpoint+0xf5/0x520
- [<ffffffff81223b09>] __jbd2_log_wait_for_space+0xa9/0x1f0
- [<ffffffff8121dc40>] start_this_handle.isra.10+0x2e0/0x530
- [<ffffffff81060390>] ? __init_waitqueue_head+0x50/0x50
- [<ffffffff8121e0a3>] jbd2__journal_start+0xc3/0x110
- [<ffffffff811de7ce>] ? ext4_rmdir+0x6e/0x230
- [<ffffffff8121e0fe>] jbd2_journal_start+0xe/0x10
- [<ffffffff811f308b>] ext4_journal_start_sb+0x5b/0x160
- [<ffffffff811de7ce>] ext4_rmdir+0x6e/0x230
- [<ffffffff811435c5>] vfs_rmdir+0xd5/0x140
- [<ffffffff8114370f>] do_rmdir+0xdf/0x120
- [<ffffffff8105c6b4>] ? task_work_run+0x44/0x80
- [<ffffffff81002889>] ? do_notify_resume+0x89/0x100
- [<ffffffff817361ae>] ? int_signal+0x12/0x17
- [<ffffffff81145d85>] sys_unlinkat+0x25/0x40
- [<ffffffff81735f22>] system_call_fastpath+0x16/0x1b
+I think you meant 'sure' and 'visible' here and in the previous hunk.
 
-What is interesting here, is that we call log_wait_commit, from
-within wait_for_space, but we are still holding the checkpoint_mutex
-as it surrounds mostly the whole of wait_for_space.  And then, as we
-are waiting, journal_commit_transaction can run, and if the JBD2_FLUSHED
-bit is set, then we will also try to take the same checkpoint_mutex.
-
-It seems that we need to drop checkpoint_mutex temporarily while
-waiting, if we want to guarantee that progress can be made by
-jbd2_journal_commit_transaction().  There doesn't seem to be anything
-preempt-rt specific about this, other then perhaps increasing the
-odds of it happening.
-
-Signed-off-by: Paul Gortmaker <paul.gortmaker@windriver.com>
----
- fs/jbd2/checkpoint.c | 7 +++++++
- 1 file changed, 7 insertions(+)
-
-diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-index c78841e..d042283 100644
---- a/fs/jbd2/checkpoint.c
-+++ b/fs/jbd2/checkpoint.c
-@@ -156,7 +156,14 @@ void __jbd2_log_wait_for_space(journal_t *journal)
- 				/* We were able to recover space; yay! */
- 				;
- 			} else if (tid) {
-+				/*
-+				 * jbd2_journal_commit_transaction() may want
-+				 * to take the checkpoint_mutex if JBD2_FLUSHED
-+				 * is set.  So we need to temporarily drop it.
-+				 */
-+				mutex_unlock(&journal->j_checkpoint_mutex);
- 				jbd2_log_wait_commit(journal, tid);
-+				mutex_lock(&journal->j_checkpoint_mutex);
- 			} else {
- 				printk(KERN_ERR "%s: needed %d blocks and "
- 				       "only had %d space available\n",
--- 
-1.8.1.2
-
+--D
+> +		 * before ->s_flags update
+> +		 */
+> +		smp_wmb();
+> +		sb->s_flags |= MS_RDONLY;
+>  		if (EXT4_SB(sb)->s_journal)
+>  			jbd2_journal_abort(EXT4_SB(sb)->s_journal, -EIO);
+>  		save_error_info(sb, function, line);
+> -- 
+> 1.7.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
