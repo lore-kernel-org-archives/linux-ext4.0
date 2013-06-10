@@ -1,75 +1,130 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: xfstests  shared/313 result in OOPS
-Date: Mon, 10 Jun 2013 20:24:40 +0400
-Message-ID: <87bo7evsqf.fsf@openvz.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: ext4 development <linux-ext4@vger.kernel.org>
+Subject: [PATCH 2/3] ext4: fix data integrity for ext4_sync_fs
+Date: Mon, 10 Jun 2013 20:41:00 +0400
+Message-ID: <1370882461-12786-2-git-send-email-dmonakhov@openvz.org>
+References: <1370882461-12786-1-git-send-email-dmonakhov@openvz.org>
+Cc: tytso@mit.edu, jack@suse.cz, Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-la0-f41.google.com ([209.85.215.41]:53224 "EHLO
-	mail-la0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752354Ab3FJQYo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Jun 2013 12:24:44 -0400
-Received: by mail-la0-f41.google.com with SMTP id fn20so5972891lab.28
-        for <linux-ext4@vger.kernel.org>; Mon, 10 Jun 2013 09:24:42 -0700 (PDT)
-Received: from smtp.gmail.com (swsoft-msk-nat.sw.ru. [195.214.232.10])
-        by mx.google.com with ESMTPSA id f9sm5950029lbf.4.2013.06.10.09.24.41
-        for <linux-ext4@vger.kernel.org>
-        (version=TLSv1.2 cipher=RC4-SHA bits=128/128);
-        Mon, 10 Jun 2013 09:24:42 -0700 (PDT)
+Received: from mailhub.sw.ru ([195.214.232.25]:45418 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751489Ab3FJQlU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 10 Jun 2013 12:41:20 -0400
+In-Reply-To: <1370882461-12786-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Inode's data or non journaled quota may be written w/o jounral so we _must_
+send a barrier at the end of ext4_sync_fs. But it can be skipped if journal
+commit will do it for us.
 
-I've run shared/313 (posted here http://patchwork.ozlabs.org/patch/244297)
-And have got following bugon( BUG_ON(!PageLocked())
+Also fix data integrity for nojournal mode.
+changes from v2:
+ fix jbd2_get_latest_transaction() return correct transaction
+changes from v1:
+ skip barrier for async mode
 
-I think this also will be reproducible via shared/305
-Currently I try to bisect this issue.
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ fs/ext4/super.c      |   36 +++++++++++++++++++++++++++++++++++-
+ include/linux/jbd2.h |   13 +++++++++++++
+ 2 files changed, 48 insertions(+), 1 deletions(-)
 
-------------[ cut here ]------------
-kernel BUG at fs/ext4/inode.c:1458!
-invalid opcode: 0000 [#1] SMP 
-Modules linked in: dm_flakey tun cpufreq_ondemand acpi_cpufreq
-freq_table mperf coretemp kvm_intel kvm crc32c_intel ghash_clmulni_intel
-microcode sg xhci_hcd button sd_mod crc_t10dif aesni_intel ablk_helper
-cryptd lrw gf128mul glue_helper aes_x86_64 ahci libahci pata_acpi
-ata_generic dm_mirror dm_region_hash dm_log dm_mod
-CPU: 2 PID: 12142 Comm: hwflush-check Tainted: G        W    3.10.0-rc2+
-#78
-Hardware name:                  /DQ67SW, BIOS
-SWQ6710H.86A.0052.2011.0520.1802 05/20/2011
-task: ffff8801c8a6cdc0 ti: ffff8802296f2000 task.ti: ffff8802296f2000
-RIP: 0010:[<ffffffff81315cf7>]  [<ffffffff81315cf7>]
-mpage_release_unused_pages+0x197/0x280
-RSP: 0018:ffff8802296f3c08  EFLAGS: 00010202
-RAX: 0000000000000003 RBX: ffffea0004332ad8 RCX: 00000000001d025f
-RDX: 0000000000000001 RSI: 0000000000000001 RDI: ffffffff82136dc0
-RBP: ffff8802296f3ce8 R08: 0000000000000000 R09: 0000000000000001
-R10: 0000000000000001 R11: 0000000000000003 R12: 0000000000000002
-R13: ffff8802296f3c38 R14: 0000000000000000 R15: 0000000000000001
-FS:  00007f8c0dffb700(0000) GS:ffff88023d800000(0000)
-knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00007f8bac003000 CR3: 000000022a1a6000 CR4: 00000000000407e0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Stack:
- 0000000000000000 ffff8802296f3c48 ffff8801a92d8aa0 0000000000000004
- 00000000000005e6 ffff8802296f3c48 0000000000000004 0000000000000000
- ffffea0004332ad8 ffffea0004332b10 ffffea0004332b48 ffffea0006dd0000
-Call Trace:
- [<ffffffff81193c47>] ? mempool_free_slab+0x17/0x20
- [<ffffffff81193d55>] ? mempool_free+0xe5/0x100
- [<ffffffff8127bca0>] ? bio_put+0xe0/0xf0
- [<ffffffff8131bcc4>] ext4_da_writepages+0x684/0x910
- [<ffffffff810f56be>] ? __lock_acquire+0x4fe/0x5c0
- [<ffffffff811a3071>] do_writepages+0x51/0x70
- [<ffffffff8118f464>] __filemap_fdatawrite_range+0x64/0x70
- [<ffffffff810f5e4a>] ? __lock_rele [<ffffffff81270288>]
- do_fsync+0x58/0xa0
- [<ffffffff81270300>] SyS_fsync+0x10/0x20
- [<ffffffff818d5c82>] system_call_fastpath+0x16/0x1b
-Code: 83 f7 01 44 89 fe e8 f9 56 e5 ff 49 63 c7 48 83 c0 02 48 8b 14 c5
-f0 f1 2a 82 48 83 c2 01 45 85 ff 48 89 14 c5 EXT4-fs (dm-1): mounted
-filesystem with ordered data mode. Opts: acl,user_xattr
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 7c8e171..0f77c2e 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -69,6 +69,7 @@ static void ext4_mark_recovery_complete(struct super_block *sb,
+ static void ext4_clear_journal_err(struct super_block *sb,
+ 				   struct ext4_super_block *es);
+ static int ext4_sync_fs(struct super_block *sb, int wait);
++static int ext4_sync_fs_nojournal(struct super_block *sb, int wait);
+ static int ext4_remount(struct super_block *sb, int *flags, char *data);
+ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf);
+ static int ext4_unfreeze(struct super_block *sb);
+@@ -1097,6 +1098,7 @@ static const struct super_operations ext4_nojournal_sops = {
+ 	.dirty_inode	= ext4_dirty_inode,
+ 	.drop_inode	= ext4_drop_inode,
+ 	.evict_inode	= ext4_evict_inode,
++	.sync_fs	= ext4_sync_fs_nojournal,
+ 	.put_super	= ext4_put_super,
+ 	.statfs		= ext4_statfs,
+ 	.remount_fs	= ext4_remount,
+@@ -4553,6 +4555,7 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
+ {
+ 	int ret = 0;
+ 	tid_t target;
++	bool needs_barrier = false;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 
+ 	trace_ext4_sync_fs(sb, wait);
+@@ -4563,10 +4566,41 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
+ 	 * no dirty dquots
+ 	 */
+ 	dquot_writeback_dquots(sb, -1);
++	/*
++	 * Data writeback is possible w/o journal transaction, so barrier must
++	 * being sent at the end of the function. But we can skip it if
++	 * transaction_commit will do it for us.
++	 */
++	target = jbd2_get_latest_transaction(sbi->s_journal);
++	if (wait && sbi->s_journal->j_flags & JBD2_BARRIER &&
++	    !jbd2_trans_will_send_data_barrier(sbi->s_journal, target))
++		needs_barrier = true;
++
+ 	if (jbd2_journal_start_commit(sbi->s_journal, &target)) {
+ 		if (wait)
+-			jbd2_log_wait_commit(sbi->s_journal, target);
++			ret = jbd2_log_wait_commit(sbi->s_journal, target);
++	}
++	if (needs_barrier) {
++		int err;
++		err = blkdev_issue_flush(sb->s_bdev, GFP_KERNEL, NULL);
++		if (!ret)
++			ret = err;
+ 	}
++
++	return ret;
++}
++
++static int ext4_sync_fs_nojournal(struct super_block *sb, int wait)
++{
++	int ret = 0;
++
++	trace_ext4_sync_fs(sb, wait);
++	flush_workqueue(EXT4_SB(sb)->rsv_conversion_wq);
++	flush_workqueue(EXT4_SB(sb)->unrsv_conversion_wq);
++	dquot_writeback_dquots(sb, -1);
++	if (wait && test_opt(sb, BARRIER))
++		ret = blkdev_issue_flush(sb->s_bdev, GFP_KERNEL, NULL);
++
+ 	return ret;
+ }
+ 
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index c3645b9..a79783f 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1374,6 +1374,19 @@ static inline u32 jbd2_chksum(journal_t *journal, u32 crc,
+ 	return *(u32 *)desc.ctx;
+ }
+ 
++/* Return most recent uncommitted transaction */
++static inline tid_t  jbd2_get_latest_transaction(journal_t *journal)
++{
++	tid_t tid;
++
++	read_lock(&journal->j_state_lock);
++	tid = journal->j_commit_request;
++	if (journal->j_running_transaction)
++		tid = journal->j_running_transaction->t_tid;
++	read_unlock(&journal->j_state_lock);
++	return tid;
++}
++
+ #ifdef __KERNEL__
+ 
+ #define buffer_trace_init(bh)	do {} while (0)
+-- 
+1.7.1
+
