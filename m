@@ -1,130 +1,90 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 2/3] ext4: fix data integrity for ext4_sync_fs
-Date: Mon, 10 Jun 2013 20:41:00 +0400
-Message-ID: <1370882461-12786-2-git-send-email-dmonakhov@openvz.org>
+Subject: [PATCH 3/3] ext4: Fix fsync error handling after filesystem abort.
+Date: Mon, 10 Jun 2013 20:41:01 +0400
+Message-ID: <1370882461-12786-3-git-send-email-dmonakhov@openvz.org>
 References: <1370882461-12786-1-git-send-email-dmonakhov@openvz.org>
 Cc: tytso@mit.edu, jack@suse.cz, Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:45418 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:17467 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751489Ab3FJQlU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1752161Ab3FJQlU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Mon, 10 Jun 2013 12:41:20 -0400
 In-Reply-To: <1370882461-12786-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Inode's data or non journaled quota may be written w/o jounral so we _must_
-send a barrier at the end of ext4_sync_fs. But it can be skipped if journal
-commit will do it for us.
+If filesystem was aborted after inode's write back is complete
+but before its metadata was updated we may return success
+results in data loss.
+In order to handle fs abort correctly we have to check
+fs state once we discover that it is in MS_RDONLY state
 
-Also fix data integrity for nojournal mode.
-changes from v2:
- fix jbd2_get_latest_transaction() return correct transaction
-changes from v1:
- skip barrier for async mode
+Test case: http://patchwork.ozlabs.org/patch/244297
 
+Changes from V2:
+ - more spelling fixes
+
+Changes from V1:
+ - fix spelling
+
+Reviewed-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- fs/ext4/super.c      |   36 +++++++++++++++++++++++++++++++++++-
- include/linux/jbd2.h |   13 +++++++++++++
- 2 files changed, 48 insertions(+), 1 deletions(-)
+ fs/ext4/fsync.c |    7 ++++++-
+ fs/ext4/super.c |   12 +++++++++++-
+ 2 files changed, 17 insertions(+), 2 deletions(-)
 
+diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+index fc938eb..a8bc47f 100644
+--- a/fs/ext4/fsync.c
++++ b/fs/ext4/fsync.c
+@@ -98,8 +98,13 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+ 
+ 	trace_ext4_sync_file_enter(file, datasync);
+ 
+-	if (inode->i_sb->s_flags & MS_RDONLY)
++	if (inode->i_sb->s_flags & MS_RDONLY) {
++		/* Make sure that we read updated s_mount_flags value */
++		smp_rmb();
++		if (EXT4_SB(inode->i_sb)->s_mount_flags & EXT4_MF_FS_ABORTED)
++			ret = -EROFS;
+ 		goto out;
++	}
+ 
+ 	if (!journal) {
+ 		ret = generic_file_fsync(file, start, end, datasync);
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 7c8e171..0f77c2e 100644
+index 0f77c2e..f23daaa 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -69,6 +69,7 @@ static void ext4_mark_recovery_complete(struct super_block *sb,
- static void ext4_clear_journal_err(struct super_block *sb,
- 				   struct ext4_super_block *es);
- static int ext4_sync_fs(struct super_block *sb, int wait);
-+static int ext4_sync_fs_nojournal(struct super_block *sb, int wait);
- static int ext4_remount(struct super_block *sb, int *flags, char *data);
- static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf);
- static int ext4_unfreeze(struct super_block *sb);
-@@ -1097,6 +1098,7 @@ static const struct super_operations ext4_nojournal_sops = {
- 	.dirty_inode	= ext4_dirty_inode,
- 	.drop_inode	= ext4_drop_inode,
- 	.evict_inode	= ext4_evict_inode,
-+	.sync_fs	= ext4_sync_fs_nojournal,
- 	.put_super	= ext4_put_super,
- 	.statfs		= ext4_statfs,
- 	.remount_fs	= ext4_remount,
-@@ -4553,6 +4555,7 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
- {
- 	int ret = 0;
- 	tid_t target;
-+	bool needs_barrier = false;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 
- 	trace_ext4_sync_fs(sb, wait);
-@@ -4563,10 +4566,41 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
- 	 * no dirty dquots
- 	 */
- 	dquot_writeback_dquots(sb, -1);
-+	/*
-+	 * Data writeback is possible w/o journal transaction, so barrier must
-+	 * being sent at the end of the function. But we can skip it if
-+	 * transaction_commit will do it for us.
-+	 */
-+	target = jbd2_get_latest_transaction(sbi->s_journal);
-+	if (wait && sbi->s_journal->j_flags & JBD2_BARRIER &&
-+	    !jbd2_trans_will_send_data_barrier(sbi->s_journal, target))
-+		needs_barrier = true;
-+
- 	if (jbd2_journal_start_commit(sbi->s_journal, &target)) {
- 		if (wait)
--			jbd2_log_wait_commit(sbi->s_journal, target);
-+			ret = jbd2_log_wait_commit(sbi->s_journal, target);
-+	}
-+	if (needs_barrier) {
-+		int err;
-+		err = blkdev_issue_flush(sb->s_bdev, GFP_KERNEL, NULL);
-+		if (!ret)
-+			ret = err;
+@@ -399,6 +399,11 @@ static void ext4_handle_error(struct super_block *sb)
  	}
-+
-+	return ret;
-+}
-+
-+static int ext4_sync_fs_nojournal(struct super_block *sb, int wait)
-+{
-+	int ret = 0;
-+
-+	trace_ext4_sync_fs(sb, wait);
-+	flush_workqueue(EXT4_SB(sb)->rsv_conversion_wq);
-+	flush_workqueue(EXT4_SB(sb)->unrsv_conversion_wq);
-+	dquot_writeback_dquots(sb, -1);
-+	if (wait && test_opt(sb, BARRIER))
-+		ret = blkdev_issue_flush(sb->s_bdev, GFP_KERNEL, NULL);
-+
- 	return ret;
- }
+ 	if (test_opt(sb, ERRORS_RO)) {
+ 		ext4_msg(sb, KERN_CRIT, "Remounting filesystem read-only");
++		/*
++		 * Make shure updated value of ->s_mount_flags will be visible
++		 * before ->s_flags update
++		 */
++		smp_wmb();
+ 		sb->s_flags |= MS_RDONLY;
+ 	}
+ 	if (test_opt(sb, ERRORS_PANIC))
+@@ -571,8 +576,13 @@ void __ext4_abort(struct super_block *sb, const char *function,
  
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index c3645b9..a79783f 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -1374,6 +1374,19 @@ static inline u32 jbd2_chksum(journal_t *journal, u32 crc,
- 	return *(u32 *)desc.ctx;
- }
- 
-+/* Return most recent uncommitted transaction */
-+static inline tid_t  jbd2_get_latest_transaction(journal_t *journal)
-+{
-+	tid_t tid;
-+
-+	read_lock(&journal->j_state_lock);
-+	tid = journal->j_commit_request;
-+	if (journal->j_running_transaction)
-+		tid = journal->j_running_transaction->t_tid;
-+	read_unlock(&journal->j_state_lock);
-+	return tid;
-+}
-+
- #ifdef __KERNEL__
- 
- #define buffer_trace_init(bh)	do {} while (0)
+ 	if ((sb->s_flags & MS_RDONLY) == 0) {
+ 		ext4_msg(sb, KERN_CRIT, "Remounting filesystem read-only");
+-		sb->s_flags |= MS_RDONLY;
+ 		EXT4_SB(sb)->s_mount_flags |= EXT4_MF_FS_ABORTED;
++		/*
++		 * Make shure updated value of ->s_mount_flags will be visiable
++		 * before ->s_flags update
++		 */
++		smp_wmb();
++		sb->s_flags |= MS_RDONLY;
+ 		if (EXT4_SB(sb)->s_journal)
+ 			jbd2_journal_abort(EXT4_SB(sb)->s_journal, -EIO);
+ 		save_error_info(sb, function, line);
 -- 
 1.7.1
 
