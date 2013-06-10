@@ -1,104 +1,58 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 3/3] ext4: Fix fsync error handling after filesystem
- abort.
-Date: Mon, 10 Jun 2013 14:22:09 -0700
-Message-ID: <20130610212209.GA6021@blackbox.djwong.org>
-References: <1370882461-12786-1-git-send-email-dmonakhov@openvz.org>
- <1370882461-12786-3-git-send-email-dmonakhov@openvz.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [RFC PATCH 0/4] ext4/jbd2: several possible mainline fixes
+Date: Mon, 10 Jun 2013 19:38:51 -0400
+Message-ID: <20130610233850.GA21795@thunk.org>
+References: <1370892723-30860-1-git-send-email-paul.gortmaker@windriver.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.cz
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:48559 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752205Ab3FJVWV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Jun 2013 17:22:21 -0400
+Cc: linux-ext4@vger.kernel.org, linux-rt-users@vger.kernel.org
+To: Paul Gortmaker <paul.gortmaker@windriver.com>
+Return-path: <linux-rt-users-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1370882461-12786-3-git-send-email-dmonakhov@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1370892723-30860-1-git-send-email-paul.gortmaker@windriver.com>
+Sender: linux-rt-users-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jun 10, 2013 at 08:41:01PM +0400, Dmitry Monakhov wrote:
-> If filesystem was aborted after inode's write back is complete
-> but before its metadata was updated we may return success
-> results in data loss.
-> In order to handle fs abort correctly we have to check
-> fs state once we discover that it is in MS_RDONLY state
-> 
-> Test case: http://patchwork.ozlabs.org/patch/244297
-> 
-> Changes from V2:
->  - more spelling fixes
-> 
-> Changes from V1:
->  - fix spelling
-> 
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> ---
->  fs/ext4/fsync.c |    7 ++++++-
->  fs/ext4/super.c |   12 +++++++++++-
->  2 files changed, 17 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-> index fc938eb..a8bc47f 100644
-> --- a/fs/ext4/fsync.c
-> +++ b/fs/ext4/fsync.c
-> @@ -98,8 +98,13 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
->  
->  	trace_ext4_sync_file_enter(file, datasync);
->  
-> -	if (inode->i_sb->s_flags & MS_RDONLY)
-> +	if (inode->i_sb->s_flags & MS_RDONLY) {
-> +		/* Make sure that we read updated s_mount_flags value */
-> +		smp_rmb();
-> +		if (EXT4_SB(inode->i_sb)->s_mount_flags & EXT4_MF_FS_ABORTED)
-> +			ret = -EROFS;
->  		goto out;
-> +	}
->  
->  	if (!journal) {
->  		ret = generic_file_fsync(file, start, end, datasync);
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 0f77c2e..f23daaa 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -399,6 +399,11 @@ static void ext4_handle_error(struct super_block *sb)
->  	}
->  	if (test_opt(sb, ERRORS_RO)) {
->  		ext4_msg(sb, KERN_CRIT, "Remounting filesystem read-only");
-> +		/*
-> +		 * Make shure updated value of ->s_mount_flags will be visible
-> +		 * before ->s_flags update
-> +		 */
-> +		smp_wmb();
->  		sb->s_flags |= MS_RDONLY;
->  	}
->  	if (test_opt(sb, ERRORS_PANIC))
-> @@ -571,8 +576,13 @@ void __ext4_abort(struct super_block *sb, const char *function,
->  
->  	if ((sb->s_flags & MS_RDONLY) == 0) {
->  		ext4_msg(sb, KERN_CRIT, "Remounting filesystem read-only");
-> -		sb->s_flags |= MS_RDONLY;
->  		EXT4_SB(sb)->s_mount_flags |= EXT4_MF_FS_ABORTED;
-> +		/*
-> +		 * Make shure updated value of ->s_mount_flags will be visiable
+On Mon, Jun 10, 2013 at 03:31:59PM -0400, Paul Gortmaker wrote:
+> Using jbd_debug() it seems that I end up with jbd2_log_do_checkpoint
+> and jbd2_journal_commit_transaction running into each other.  In one of
+> my attached patches, I show they overlap to the point of interrupting
+> each others jbd_debug messages.  Maybe that doesn't matter?  
 
-I think you meant 'sure' and 'visible' here and in the previous hunk.
+That should be OK.  We do allow a new transactions while we are
+committing an older transaction, and if this requires more space, a
+checkpoint could start.  I'm not sure why you're apparently seeing a
+deadlock under RT-linux, though.
 
---D
-> +		 * before ->s_flags update
-> +		 */
-> +		smp_wmb();
-> +		sb->s_flags |= MS_RDONLY;
->  		if (EXT4_SB(sb)->s_journal)
->  			jbd2_journal_abort(EXT4_SB(sb)->s_journal, -EIO);
->  		save_error_info(sb, function, line);
-> -- 
-> 1.7.1
+> Stuck waiting/spinning somewhere in jbd2_journal_commit_transaction.
+> As near as I can tell, it never got to phase 3 of commit_transaction.
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Since jbd2_journal_commit_transaction is such a large function,
+> I'm tempted to break it up some, just to ease my debugging (compare
+> 0x1c20 to the smaller numbers around it).  Perhaps there would be
+> interest in such kinds of patches for mainline?
+
+Instead of breaking it up, can you just use addr2line, i.e.:
+
+% addr2line -a ffffffff8046a067 -i -e vmlinux  
+0xffffffff8046a067
+./include/linux/buffer_head.h:287
+./fs/ext4/inode.c:5585
+./fs/ext4/inode.c:5963
+
+I find this to be incredibly useful, since with the -i option it will
+handle inline functions correctly.  In the above example there are two
+levels of inlining, one explicitly marked inline in
+include/linux/buffer.h, and one implicit inlining taking place because
+we had a static function in fs/ext4/inode.c that was only called by
+one caller.
+
+Because of gcc's implicit inlining, just breaking up the function by
+itself wouldn't be enough, unless you explicitly marked the new static
+functions with noinline; but that introduces inefficiencies.  If the
+only reason you want to do this is to make it easier to figure out a
+stack trace, addr2line really is your friend....
+
+Cheers,
+
+					- Ted
