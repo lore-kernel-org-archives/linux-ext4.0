@@ -1,182 +1,86 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 1/3] jbd2: optimize jbd2_journal_force_commit V3
-Date: Mon, 10 Jun 2013 20:40:59 +0400
-Message-ID: <1370882461-12786-1-git-send-email-dmonakhov@openvz.org>
-Cc: tytso@mit.edu, jack@suse.cz, Dmitry Monakhov <dmonakhov@openvz.org>
-To: linux-ext4@vger.kernel.org
+Subject: Re: xfstests  shared/313 result in OOPS
+Date: Mon, 10 Jun 2013 22:31:05 +0400
+Message-ID: <878v2hx1g6.fsf@openvz.org>
+References: <87bo7evsqf.fsf@openvz.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:30013 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750861Ab3FJQlU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Jun 2013 12:41:20 -0400
+Received: from mail-lb0-f175.google.com ([209.85.217.175]:38739 "EHLO
+	mail-lb0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754028Ab3FJSbK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Jun 2013 14:31:10 -0400
+Received: by mail-lb0-f175.google.com with SMTP id r10so2468812lbi.34
+        for <linux-ext4@vger.kernel.org>; Mon, 10 Jun 2013 11:31:09 -0700 (PDT)
+Received: from smtp.gmail.com (swsoft-msk-nat.sw.ru. [195.214.232.10])
+        by mx.google.com with ESMTPSA id p20sm3237424lbb.17.2013.06.10.11.31.06
+        for <linux-ext4@vger.kernel.org>
+        (version=TLSv1.2 cipher=RC4-SHA bits=128/128);
+        Mon, 10 Jun 2013 11:31:07 -0700 (PDT)
+In-Reply-To: <87bo7evsqf.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Current implementation of jbd2_journal_force_commit() is suboptimal because
-result in empty and useless commits. But callers just want to force and wait
-any unfinished commits. We already has jbd2_journal_force_commit_nested()
-which does exactly what we want, except we are guaranteed that we do not hold
-journal transaction open.
-
-Changes since V3 to V2
- - API changes according to Jan's comments
- - make __jbd2_journal_force_commit() static
-
-Changes since V2 to V1
- - Fix incorrect return value  according to Jan's comments.
-
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/jbd2/journal.c     |   63 ++++++++++++++++++++++++++++++++++++++-----------
- fs/jbd2/transaction.c |   23 ------------------
- include/linux/jbd2.h  |    2 +-
- 3 files changed, 50 insertions(+), 38 deletions(-)
-
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 70990d6..8771fe5 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -529,20 +529,18 @@ int jbd2_log_start_commit(journal_t *journal, tid_t tid)
- }
- 
- /*
-- * Force and wait upon a commit if the calling process is not within
-- * transaction.  This is used for forcing out undo-protected data which contains
-- * bitmaps, when the fs is running out of space.
-- *
-- * We can only force the running transaction if we don't have an active handle;
-- * otherwise, we will deadlock.
-- *
-- * Returns true if a transaction was started.
-+ * Force and wait any uncommitted transactions.  We can only force the running
-+ * transaction if we don't have an active handle, otherwise, we will deadlock.
-+ * Returns: <0 in case of error,
-+ *           0 if nothing to commit,
-+ *           1 if transaction was successfully committed.
-  */
--int jbd2_journal_force_commit_nested(journal_t *journal)
-+static int __jbd2_journal_force_commit(journal_t *journal)
- {
- 	transaction_t *transaction = NULL;
- 	tid_t tid;
--	int need_to_start = 0;
-+	int need_to_start = 0, ret = 0;
-+
- 
- 	read_lock(&journal->j_state_lock);
- 	if (journal->j_running_transaction && !current->journal_info) {
-@@ -553,16 +551,53 @@ int jbd2_journal_force_commit_nested(journal_t *journal)
- 		transaction = journal->j_committing_transaction;
- 
- 	if (!transaction) {
-+		/* Nothing to commit */
- 		read_unlock(&journal->j_state_lock);
--		return 0;	/* Nothing to retry */
-+		return 0;
- 	}
--
- 	tid = transaction->t_tid;
- 	read_unlock(&journal->j_state_lock);
- 	if (need_to_start)
- 		jbd2_log_start_commit(journal, tid);
--	jbd2_log_wait_commit(journal, tid);
--	return 1;
-+	ret = jbd2_log_wait_commit(journal, tid);
-+	if (!ret)
-+		ret = 1;
-+
-+	return ret;
-+}
-+
-+/**
-+ * Force and wait upon a commit if the calling process is not within
-+ * transaction.  This is used for forcing out undo-protected data which contains
-+ * bitmaps, when the fs is running out of space.
-+ *
-+ * @journal: journal to force
-+ * Returns true if progress was made.
-+ */
-+int jbd2_journal_force_commit_nested(journal_t *journal)
-+{
-+	int ret;
-+
-+	ret = __jbd2_journal_force_commit(journal);
-+	return ret > 0;
-+}
-+
-+/**
-+ * int journal_force_commit() - force any uncommitted transactions
-+ * @journal: journal to force
-+ *
-+ * Caller want unconditional commit. We can only force the running transaction
-+ * if we don't have an active handle, otherwise, we will deadlock.
-+ */
-+int jbd2_journal_force_commit(journal_t *journal)
-+{
-+	int ret;
-+
-+	J_ASSERT(!current->journal_info);
-+	ret = __jbd2_journal_force_commit(journal);
-+	if (ret > 0)
-+		ret = 0;
-+	return ret;
- }
- 
- /*
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index f33342a..dd422e6 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -1661,29 +1661,6 @@ int jbd2_journal_stop(handle_t *handle)
- 	return err;
- }
- 
--/**
-- * int jbd2_journal_force_commit() - force any uncommitted transactions
-- * @journal: journal to force
-- *
-- * For synchronous operations: force any uncommitted transactions
-- * to disk.  May seem kludgy, but it reuses all the handle batching
-- * code in a very simple manner.
-- */
--int jbd2_journal_force_commit(journal_t *journal)
--{
--	handle_t *handle;
--	int ret;
--
--	handle = jbd2_journal_start(journal, 1);
--	if (IS_ERR(handle)) {
--		ret = PTR_ERR(handle);
--	} else {
--		handle->h_sync = 1;
--		ret = jbd2_journal_stop(handle);
--	}
--	return ret;
--}
--
- /*
-  *
-  * List management code snippets: various functions for manipulating the
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index fb91c8d..c3645b9 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -1160,6 +1160,7 @@ extern void	   jbd2_journal_ack_err    (journal_t *);
- extern int	   jbd2_journal_clear_err  (journal_t *);
- extern int	   jbd2_journal_bmap(journal_t *, unsigned long, unsigned long long *);
- extern int	   jbd2_journal_force_commit(journal_t *);
-+extern int	   jbd2_journal_force_commit_nested(journal_t *);
- extern int	   jbd2_journal_file_inode(handle_t *handle, struct jbd2_inode *inode);
- extern int	   jbd2_journal_begin_ordered_truncate(journal_t *journal,
- 				struct jbd2_inode *inode, loff_t new_size);
-@@ -1235,7 +1236,6 @@ extern void	jbd2_clear_buffer_revoked_flags(journal_t *journal);
- int jbd2_log_start_commit(journal_t *journal, tid_t tid);
- int __jbd2_log_start_commit(journal_t *journal, tid_t tid);
- int jbd2_journal_start_commit(journal_t *journal, tid_t *tid);
--int jbd2_journal_force_commit_nested(journal_t *journal);
- int jbd2_log_wait_commit(journal_t *journal, tid_t tid);
- int jbd2_complete_transaction(journal_t *journal, tid_t tid);
- int jbd2_log_do_checkpoint(journal_t *journal);
--- 
-1.7.1
-
+On Mon, 10 Jun 2013 20:24:40 +0400, Dmitry Monakhov <dmonakhov@openvz.org> wrote:
+> 
+> I've run shared/313 (posted here http://patchwork.ozlabs.org/patch/244297)
+> And have got following bugon( BUG_ON(!PageLocked())
+first bad commit it obvious though
+>From 4e7ea81db53465ddd753678bc4cebf95369d0984 Mon Sep 17 00:00:00 2001
+From: Jan Kara <jack@suse.cz>
+Date: Tue, 4 Jun 2013 13:17:40 -0400
+> 
+> I think this also will be reproducible via shared/305
+> Currently I try to bisect this issue.
+> 
+> ------------[ cut here ]------------
+> kernel BUG at fs/ext4/inode.c:1458!
+> invalid opcode: 0000 [#1] SMP 
+> Modules linked in: dm_flakey tun cpufreq_ondemand acpi_cpufreq
+> freq_table mperf coretemp kvm_intel kvm crc32c_intel ghash_clmulni_intel
+> microcode sg xhci_hcd button sd_mod crc_t10dif aesni_intel ablk_helper
+> cryptd lrw gf128mul glue_helper aes_x86_64 ahci libahci pata_acpi
+> ata_generic dm_mirror dm_region_hash dm_log dm_mod
+> CPU: 2 PID: 12142 Comm: hwflush-check Tainted: G        W    3.10.0-rc2+
+> #78
+> Hardware name:                  /DQ67SW, BIOS
+> SWQ6710H.86A.0052.2011.0520.1802 05/20/2011
+> task: ffff8801c8a6cdc0 ti: ffff8802296f2000 task.ti: ffff8802296f2000
+> RIP: 0010:[<ffffffff81315cf7>]  [<ffffffff81315cf7>]
+> mpage_release_unused_pages+0x197/0x280
+> RSP: 0018:ffff8802296f3c08  EFLAGS: 00010202
+> RAX: 0000000000000003 RBX: ffffea0004332ad8 RCX: 00000000001d025f
+> RDX: 0000000000000001 RSI: 0000000000000001 RDI: ffffffff82136dc0
+> RBP: ffff8802296f3ce8 R08: 0000000000000000 R09: 0000000000000001
+> R10: 0000000000000001 R11: 0000000000000003 R12: 0000000000000002
+> R13: ffff8802296f3c38 R14: 0000000000000000 R15: 0000000000000001
+> FS:  00007f8c0dffb700(0000) GS:ffff88023d800000(0000)
+> knlGS:0000000000000000
+> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> CR2: 00007f8bac003000 CR3: 000000022a1a6000 CR4: 00000000000407e0
+> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> Stack:
+>  0000000000000000 ffff8802296f3c48 ffff8801a92d8aa0 0000000000000004
+>  00000000000005e6 ffff8802296f3c48 0000000000000004 0000000000000000
+>  ffffea0004332ad8 ffffea0004332b10 ffffea0004332b48 ffffea0006dd0000
+> Call Trace:
+>  [<ffffffff81193c47>] ? mempool_free_slab+0x17/0x20
+>  [<ffffffff81193d55>] ? mempool_free+0xe5/0x100
+>  [<ffffffff8127bca0>] ? bio_put+0xe0/0xf0
+>  [<ffffffff8131bcc4>] ext4_da_writepages+0x684/0x910
+>  [<ffffffff810f56be>] ? __lock_acquire+0x4fe/0x5c0
+>  [<ffffffff811a3071>] do_writepages+0x51/0x70
+>  [<ffffffff8118f464>] __filemap_fdatawrite_range+0x64/0x70
+>  [<ffffffff810f5e4a>] ? __lock_rele [<ffffffff81270288>]
+>  do_fsync+0x58/0xa0
+>  [<ffffffff81270300>] SyS_fsync+0x10/0x20
+>  [<ffffffff818d5c82>] system_call_fastpath+0x16/0x1b
+> Code: 83 f7 01 44 89 fe e8 f9 56 e5 ff 49 63 c7 48 83 c0 02 48 8b 14 c5
+> f0 f1 2a 82 48 83 c2 01 45 85 ff 48 89 14 c5 EXT4-fs (dm-1): mounted
+> filesystem with ordered data mode. Opts: acl,user_xattr
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
