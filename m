@@ -1,42 +1,38 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [RESEND] libext2fs: Provide functions to safely access name_len
- and file_type
-Date: Mon, 10 Jun 2013 08:39:56 -0400
-Message-ID: <20130610123956.GA23226@thunk.org>
-References: <1369773935-16889-1-git-send-email-jack@suse.cz>
+Subject: Re: [PATCH 1/6] jbd2: optimize jbd2_journal_force_commit
+Date: Mon, 10 Jun 2013 09:07:30 -0400
+Message-ID: <20130610130730.GA23051@thunk.org>
+References: <1369732741-26070-1-git-send-email-dmonakhov@openvz.org>
+ <1369732741-26070-2-git-send-email-dmonakhov@openvz.org>
+ <20130528212205.GB16408@quack.suse.cz>
+ <87ppw3fnqh.fsf@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:56569 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:56584 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751008Ab3FJMkB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Jun 2013 08:40:01 -0400
+	id S1752172Ab3FJNHg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 10 Jun 2013 09:07:36 -0400
 Content-Disposition: inline
-In-Reply-To: <1369773935-16889-1-git-send-email-jack@suse.cz>
+In-Reply-To: <87ppw3fnqh.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 28, 2013 at 10:45:35AM -0000, Jan Kara wrote:
-> Accessing name_len (and file_type) in ext4_dir_entry structure is somewhat
-> problematic because on big endian architecture we need to now whether we
-> are really dealing with ext4_dir_entry (which has u16 name_len which
-> needs byte swapping) or ext4_dir_entry_2 (which has u8 name_len which
-> must not be byte swapped).
-> 
-> Currently the code is somewhat surprising and name_len is always treated
-> as u16 and byte swapped (flag EXT2_DIRBLOCK_V2_STRUCT isn't ever used)
-> and then masking of name_len is used to access real name_len or
-> file_type. Doing things this way in applications using libext2fs is
-> unexpected to say the least (more natural is to type struct
-> ext4_dir_entry * to struct ext4_dir_entry_2 * but that gives wrong
-> results on big endian architectures. So provide helper functions that
-> give endian-safe access to these fields. Also convert users in e2fsprogs
-> to use these functions.
-> 
-> Signed-off-by: Jan Kara <jack@suse.cz>
+On Mon, Jun 03, 2013 at 03:16:38PM +0400, Dmitry Monakhov wrote:
+> Ok, sound reasonable. In fact __jbd2_journal_force_commit() should be
+> static so misuse is no likely to happen.
+>
+> >   Also if we move the WARN_ON(!current->journal_info) here, we can remove
+> > the 'nested' argument.
+> Also agree. Will send you with updated version soon.
 
-Applied, thanks.
+Hi Dmitry,
+
+Have you had a chance to work on an updated version of this series
+with Jan's requested changes?
+
+Thanks,
 
 					- Ted
