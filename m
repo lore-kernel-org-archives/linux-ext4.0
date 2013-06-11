@@ -1,85 +1,27 @@
-From: Paul Gortmaker <paul.gortmaker@windriver.com>
-Subject: [PATCH 2/6] jbd2/log_wait_for_space: drop checkpoint mutex when waiting
-Date: Tue, 11 Jun 2013 18:44:26 -0400
-Message-ID: <1370990670-49249-3-git-send-email-paul.gortmaker@windriver.com>
-References: <1370892723-30860-1-git-send-email-paul.gortmaker@windriver.com>
- <1370990670-49249-1-git-send-email-paul.gortmaker@windriver.com>
+From: Dave Hansen <dave.hansen@intel.com>
+Subject: ext4 extent status tree LRU locking
+Date: Tue, 11 Jun 2013 16:22:16 -0700
+Message-ID: <51B7B128.60909@intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: <linux-ext4@vger.kernel.org>, <linux-rt-users@vger.kernel.org>,
-	Paul Gortmaker <paul.gortmaker@windriver.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-rt-users-owner@vger.kernel.org>
-In-Reply-To: <1370990670-49249-1-git-send-email-paul.gortmaker@windriver.com>
-Sender: linux-rt-users-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+	"Theodore Ts'o" <tytso@mit.edu>, Jan kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-While trying to debug an an issue under extreme I/O loading
-on preempt-rt kernels, the following backtrace was observed
-via SysRQ output:
+I've got a test case which I intended to use to stress the VM a bit.  It
+fills memory up with page cache a couple of times.  It essentially runs
+30 or so cp's in parallel.
 
-rm              D ffff8802203afbc0  4600  4878   4748 0x00000000
- ffff8802217bfb78 0000000000000082 ffff88021fc2bb80 ffff88021fc2bb80
- ffff88021fc2bb80 ffff8802217bffd8 ffff8802217bffd8 ffff8802217bffd8
- ffff88021f1d4c80 ffff88021fc2bb80 ffff8802217bfb88 ffff88022437b000
-Call Trace:
- [<ffffffff8172dc34>] schedule+0x24/0x70
- [<ffffffff81225b5d>] jbd2_log_wait_commit+0xbd/0x140
- [<ffffffff81060390>] ? __init_waitqueue_head+0x50/0x50
- [<ffffffff81223635>] jbd2_log_do_checkpoint+0xf5/0x520
- [<ffffffff81223b09>] __jbd2_log_wait_for_space+0xa9/0x1f0
- [<ffffffff8121dc40>] start_this_handle.isra.10+0x2e0/0x530
- [<ffffffff81060390>] ? __init_waitqueue_head+0x50/0x50
- [<ffffffff8121e0a3>] jbd2__journal_start+0xc3/0x110
- [<ffffffff811de7ce>] ? ext4_rmdir+0x6e/0x230
- [<ffffffff8121e0fe>] jbd2_journal_start+0xe/0x10
- [<ffffffff811f308b>] ext4_journal_start_sb+0x5b/0x160
- [<ffffffff811de7ce>] ext4_rmdir+0x6e/0x230
- [<ffffffff811435c5>] vfs_rmdir+0xd5/0x140
- [<ffffffff8114370f>] do_rmdir+0xdf/0x120
- [<ffffffff8105c6b4>] ? task_work_run+0x44/0x80
- [<ffffffff81002889>] ? do_notify_resume+0x89/0x100
- [<ffffffff817361ae>] ? int_signal+0x12/0x17
- [<ffffffff81145d85>] sys_unlinkat+0x25/0x40
- [<ffffffff81735f22>] system_call_fastpath+0x16/0x1b
+98% of my CPU is system time, and 96% of _that_ is being spent on the
+spinlock in ext4_es_lru_add().  I think the LRU list head and its lock
+end up being *REALLY* hot cachelines and are *the* bottleneck on this
+test.  Note that this is _before_ we go in to reclaim and actually start
+calling in to the shrinker.  There is zero memory pressure in this test.
 
-What is interesting here, is that we call log_wait_commit, from
-within wait_for_space, but we are still holding the checkpoint_mutex
-as it surrounds mostly the whole of wait_for_space.  And then, as we
-are waiting, journal_commit_transaction can run, and if the JBD2_FLUSHED
-bit is set, then we will also try to take the same checkpoint_mutex.
+I'm not sure the benefits of having a proper in-order LRU during reclaim
+outweigh such a drastic downside for the common case.
 
-It seems that we need to drop the checkpoint_mutex while sitting in
-jbd2_log_wait_commit, if we want to guarantee that progress can be made
-by jbd2_journal_commit_transaction().  There does not seem to be
-anything preempt-rt specific about this, other then perhaps increasing
-the odds of it happening.
-
-Signed-off-by: Paul Gortmaker <paul.gortmaker@windriver.com>
----
- fs/jbd2/checkpoint.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
-
-diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-index c78841e..1d4f129 100644
---- a/fs/jbd2/checkpoint.c
-+++ b/fs/jbd2/checkpoint.c
-@@ -156,7 +156,15 @@ void __jbd2_log_wait_for_space(journal_t *journal)
- 				/* We were able to recover space; yay! */
- 				;
- 			} else if (tid) {
-+				/*
-+				 * jbd2_journal_commit_transaction() may want
-+				 * to take the checkpoint_mutex if JBD2_FLUSHED
-+				 * is set.  So we need to temporarily drop it.
-+				 */
-+				mutex_unlock(&journal->j_checkpoint_mutex);
- 				jbd2_log_wait_commit(journal, tid);
-+				write_lock(&journal->j_state_lock);
-+				continue;
- 			} else {
- 				printk(KERN_ERR "%s: needed %d blocks and "
- 				       "only had %d space available\n",
--- 
-1.8.1.2
-
+Any thoughts?
