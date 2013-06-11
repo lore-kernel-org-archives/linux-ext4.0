@@ -1,53 +1,66 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/4] jbd2/journal_commit_transaction: relocate state lock
- to incorporate all users
-Date: Mon, 10 Jun 2013 22:12:30 -0400
-Message-ID: <20130611021230.GA23966@thunk.org>
+Subject: Re: [PATCH 2/4] jbd2/log_wait_for_space: drop checkpoint mutex when
+ waiting
+Date: Mon, 10 Jun 2013 22:33:31 -0400
+Message-ID: <20130611023331.GB23966@thunk.org>
 References: <1370892723-30860-1-git-send-email-paul.gortmaker@windriver.com>
- <1370892723-30860-2-git-send-email-paul.gortmaker@windriver.com>
+ <1370892723-30860-3-git-send-email-paul.gortmaker@windriver.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, linux-rt-users@vger.kernel.org
 To: Paul Gortmaker <paul.gortmaker@windriver.com>
 Return-path: <linux-rt-users-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1370892723-30860-2-git-send-email-paul.gortmaker@windriver.com>
+In-Reply-To: <1370892723-30860-3-git-send-email-paul.gortmaker@windriver.com>
 Sender: linux-rt-users-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jun 10, 2013 at 03:32:00PM -0400, Paul Gortmaker wrote:
-> The state lock is taken after we are doing an assert on the state
-> value, not before.  It is also taken after the jbd_debug() call.
-> Noting that jbd_debug() is implemented with two separate printk()
-> calls, it can lead to corrupted and misleading debug output like
-> the following (see lines marked with "*"):
+On Mon, Jun 10, 2013 at 03:32:01PM -0400, Paul Gortmaker wrote:
+> 
+> What is interesting here, is that we call log_wait_commit, from
+> within wait_for_space, but we are still holding the checkpoint_mutex
+> as it surrounds mostly the whole of wait_for_space.  And then, as we
+> are waiting, journal_commit_transaction can run, and if the JBD2_FLUSHED
+> bit is set, then we will also try to take the same checkpoint_mutex.
 
-This is only a cosmetic fix, but instead of trying to fix it by moving
-a lock --- which would only fix this issue, but there are probably
-others cases where this might be an issue, I'd suggest fixing it with
-something like this:
+>  			} else if (tid) {
+> +				/*
+> +				 * jbd2_journal_commit_transaction() may want
+> +				 * to take the checkpoint_mutex if JBD2_FLUSHED
+> +				 * is set.  So we need to temporarily drop it.
+> +				 */
+> +				mutex_unlock(&journal->j_checkpoint_mutex);
+>  				jbd2_log_wait_commit(journal, tid);
+> +				mutex_lock(&journal->j_checkpoint_mutex);
+>  			} else {
+>  				printk(KERN_ERR "%s: needed %d blocks and "
+>  				       "only had %d space available\n",
 
-/* in fs/jbd2/journal.c */
-void __jbd2_debug(int level, const char *func, unsigned int line, const char *fmt, ...)
-{
-	struct va_format vaf;
-	va_list args;
+After we execute the code in the else cause, we drop through to just
+before the bottom of the while loop, where we see:
 
-	if (level < jbd2_journal_enable_debug)
-		return;
-	va_start(args, fmt);
-	vaf.fmt = fmt;
-	vaf.va = &args
-	printk(KERN_DEBUG, "jbd2: (%s, %u): %pV\n", func, line, &vaf);
-	va_end(args);
-}
+		mutex_unlock(&journal->j_checkpoint_mutex);
+	}
 
-/* in jbd2.h */
+So it would be better to change things like this instead, so we don't
+end up grabbing and releasing the j_checkpoint_mutex unnecessarily:
 
-#define jbd_debug(n, fmt, a...) __jbd2_debug((n), __func__, __LINE__, (fmt), ##a)
+ 			} else if (tid) {
++				/*
++				 * jbd2_journal_commit_transaction() may want
++				 * to take the checkpoint_mutex if JBD2_FLUSHED
++				 * is set.  So we need to temporarily drop it.
++				 */
++				mutex_unlock(&journal->j_checkpoint_mutex);
+ 				jbd2_log_wait_commit(journal, tid);
++				write_lock(&journal->j_state_lock);
++				continue;
+ 			} else {
+ 				printk(KERN_ERR "%s: needed %d blocks and "
+ 				       "only had %d space available\n",
 
-Could you give this approach a try?
+Could you try respinning the patch like this and testing the result?
 
 Thanks,
 
-							- Ted
+						- Ted
