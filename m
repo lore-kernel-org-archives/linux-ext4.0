@@ -1,7 +1,7 @@
 From: Paul Gortmaker <paul.gortmaker@windriver.com>
-Subject: [PATCH 1/6] jbd2/journal_commit_transaction: relocate assert after state lock
-Date: Tue, 11 Jun 2013 18:44:25 -0400
-Message-ID: <1370990670-49249-2-git-send-email-paul.gortmaker@windriver.com>
+Subject: [PATCH 5/6] jbd2: make jbd_debug that won't split printk statements
+Date: Tue, 11 Jun 2013 18:44:29 -0400
+Message-ID: <1370990670-49249-6-git-send-email-paul.gortmaker@windriver.com>
 References: <1370892723-30860-1-git-send-email-paul.gortmaker@windriver.com>
  <1370990670-49249-1-git-send-email-paul.gortmaker@windriver.com>
 Mime-Version: 1.0
@@ -9,40 +9,101 @@ Content-Type: text/plain
 Cc: <linux-ext4@vger.kernel.org>, <linux-rt-users@vger.kernel.org>,
 	Paul Gortmaker <paul.gortmaker@windriver.com>
 To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-rt-users-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.windriver.com ([147.11.1.11]:32974 "EHLO
+	mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756938Ab3FKWpP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Jun 2013 18:45:15 -0400
 In-Reply-To: <1370990670-49249-1-git-send-email-paul.gortmaker@windriver.com>
-Sender: linux-rt-users-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-The state lock is taken after we are doing an assert on the state
-value, not before.  So we might in fact be doing an assert on a
-transient value.  Ensure the state check is within the scope of
-the state lock being taken.
+Since the jbd_debug() is implemented with two separate printk()
+calls, it can lead to corrupted and misleading debug output like
+the following (see lines marked with "*"):
 
+[  290.339362] (fs/jbd2/journal.c, 203): kjournald2: kjournald2 wakes
+[  290.339365] (fs/jbd2/journal.c, 155): kjournald2: commit_sequence=42103, commit_request=42104
+[  290.339369] (fs/jbd2/journal.c, 158): kjournald2: OK, requests differ
+[* 290.339376] (fs/jbd2/journal.c, 648): jbd2_log_wait_commit:
+[* 290.339379] (fs/jbd2/commit.c, 370): jbd2_journal_commit_transaction: JBD2: want 42104, j_commit_sequence=42103
+[* 290.339382] JBD2: starting commit of transaction 42104
+[  290.339410] (fs/jbd2/revoke.c, 566): jbd2_journal_write_revoke_records: Wrote 0 revoke records
+[  290.376555] (fs/jbd2/commit.c, 1088): jbd2_journal_commit_transaction: JBD2: commit 42104 complete, head 42079
+
+i.e. the debug output from log_wait_commit and journal_commit_transaction
+have become interleaved.  The output should have been:
+
+(fs/jbd2/journal.c, 648): jbd2_log_wait_commit: JBD2: want 42104, j_commit_sequence=42103
+(fs/jbd2/commit.c, 370): jbd2_journal_commit_transaction: JBD2: starting commit of transaction 42104
+
+It is expected that this is not easy to replicate -- I was only able
+to cause it on preempt-rt kernels, and even then only under heavy
+I/O load.
+
+Reported-by: Paul Gortmaker <paul.gortmaker@windriver.com>
+Suggested-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Paul Gortmaker <paul.gortmaker@windriver.com>
 ---
- fs/jbd2/commit.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/jbd2/journal.c    | 17 +++++++++++++++++
+ include/linux/jbd2.h | 14 +++++---------
+ 2 files changed, 22 insertions(+), 9 deletions(-)
 
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 0f53946..3263e4a 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -424,13 +424,13 @@ void jbd2_journal_commit_transaction(journal_t *journal)
- 	J_ASSERT(journal->j_committing_transaction == NULL);
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 9545757..6aa196e 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -103,6 +103,23 @@ EXPORT_SYMBOL(jbd2_inode_cache);
+ static void __journal_abort_soft (journal_t *journal, int errno);
+ static int jbd2_journal_create_slab(size_t slab_size);
  
- 	commit_transaction = journal->j_running_transaction;
--	J_ASSERT(commit_transaction->t_state == T_RUNNING);
++#ifdef CONFIG_JBD2_DEBUG
++void __jbd2_debug(int level, const char *file, const char *func,
++		  unsigned int line, const char *fmt, ...)
++{
++	struct va_format vaf;
++	va_list args;
++
++	if (level > jbd2_journal_enable_debug)
++		return;
++	va_start(args, fmt);
++	vaf.fmt = fmt;
++	vaf.va = &args;
++	printk(KERN_DEBUG "%s: (%s, %u): %pV\n", file, func, line, &vaf);
++	va_end(args);
++}
++#endif
++
+ /* Checksumming functions */
+ int jbd2_verify_csum_type(journal_t *j, journal_superblock_t *sb)
+ {
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 9986ab8..8d95314 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -56,17 +56,13 @@
+  */
+ #define JBD2_EXPENSIVE_CHECKING
+ extern ushort jbd2_journal_enable_debug;
++void __jbd2_debug(int level, const char *file, const char *func,
++		  unsigned int line, const char *fmt, ...);
  
- 	trace_jbd2_start_commit(journal, commit_transaction);
- 	jbd_debug(1, "JBD2: starting commit of transaction %d\n",
- 			commit_transaction->t_tid);
+-#define jbd_debug(n, f, a...)						\
+-	do {								\
+-		if ((n) <= jbd2_journal_enable_debug) {			\
+-			printk (KERN_DEBUG "(%s, %d): %s: ",		\
+-				__FILE__, __LINE__, __func__);	\
+-			printk (f, ## a);				\
+-		}							\
+-	} while (0)
++#define jbd_debug(n, fmt, a...) \
++	__jbd2_debug((n), __FILE__, __func__, __LINE__, (fmt), ##a)
+ #else
+-#define jbd_debug(f, a...)	/**/
++#define jbd_debug(n, fmt, a...)    /**/
+ #endif
  
- 	write_lock(&journal->j_state_lock);
-+	J_ASSERT(commit_transaction->t_state == T_RUNNING);
- 	commit_transaction->t_state = T_LOCKED;
- 
- 	trace_jbd2_commit_locking(journal, commit_transaction);
+ extern void *jbd2_alloc(size_t size, gfp_t flags);
 -- 
 1.8.1.2
 
