@@ -1,7 +1,7 @@
 From: Paul Gortmaker <paul.gortmaker@windriver.com>
-Subject: [PATCH 6/6] jbd2: remove debug dependency on debug_fs; update help text
-Date: Tue, 11 Jun 2013 18:44:30 -0400
-Message-ID: <1370990670-49249-7-git-send-email-paul.gortmaker@windriver.com>
+Subject: [PATCH 3/6] jbd2: fix duplicate debug label for phase 2
+Date: Tue, 11 Jun 2013 18:44:27 -0400
+Message-ID: <1370990670-49249-4-git-send-email-paul.gortmaker@windriver.com>
 References: <1370892723-30860-1-git-send-email-paul.gortmaker@windriver.com>
  <1370990670-49249-1-git-send-email-paul.gortmaker@windriver.com>
 Mime-Version: 1.0
@@ -9,49 +9,52 @@ Content-Type: text/plain
 Cc: <linux-ext4@vger.kernel.org>, <linux-rt-users@vger.kernel.org>,
 	Paul Gortmaker <paul.gortmaker@windriver.com>
 To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail1.windriver.com ([147.11.146.13]:48001 "EHLO
-	mail1.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757138Ab3FKWpQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Jun 2013 18:45:16 -0400
+Return-path: <linux-rt-users-owner@vger.kernel.org>
 In-Reply-To: <1370990670-49249-1-git-send-email-paul.gortmaker@windriver.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-rt-users-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-commit b6e96d0067d8 ("jbd2: use module parameters instead of debugfs
-for jbd_debug") removed any need for a dependency on DEBUG_FS.  It
-also moved the /sys variables out from underneath the typical debugfs
-mount point.  Delete the dependency and update the /sys path to where
-the debug settings are currently.
+Currently we see this output:
+
+  $git grep phase fs/jbd2
+  fs/jbd2/commit.c:       jbd_debug(3, "JBD2: commit phase 1\n");
+  fs/jbd2/commit.c:       jbd_debug(3, "JBD2: commit phase 2\n");
+  fs/jbd2/commit.c:       jbd_debug(3, "JBD2: commit phase 2\n");
+  fs/jbd2/commit.c:       jbd_debug(3, "JBD2: commit phase 3\n");
+  fs/jbd2/commit.c:       jbd_debug(3, "JBD2: commit phase 4\n");
+  [...]
+
+There is clearly a duplicate label for phase 2, and they are
+both active (i.e. not in #if ... #else block).  Rename them to
+be "2a" and "2b" so the debug output is unambiguous.
 
 Signed-off-by: Paul Gortmaker <paul.gortmaker@windriver.com>
 ---
- fs/jbd2/Kconfig | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ fs/jbd2/commit.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/jbd2/Kconfig b/fs/jbd2/Kconfig
-index 69a48c2..5a9f553 100644
---- a/fs/jbd2/Kconfig
-+++ b/fs/jbd2/Kconfig
-@@ -20,7 +20,7 @@ config JBD2
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 3263e4a..ab3c9d9 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -533,7 +533,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 	wake_up(&journal->j_wait_transaction_locked);
+ 	write_unlock(&journal->j_state_lock);
  
- config JBD2_DEBUG
- 	bool "JBD2 (ext4) debugging support"
--	depends on JBD2 && DEBUG_FS
-+	depends on JBD2
- 	help
- 	  If you are using the ext4 journaled file system (or
- 	  potentially any other filesystem/device using JBD2), this option
-@@ -29,7 +29,7 @@ config JBD2_DEBUG
- 	  By default, the debugging output will be turned off.
+-	jbd_debug(3, "JBD2: commit phase 2\n");
++	jbd_debug(3, "JBD2: commit phase 2a\n");
  
- 	  If you select Y here, then you will be able to turn on debugging
--	  with "echo N > /sys/kernel/debug/jbd2/jbd2-debug", where N is a
-+	  with "echo N > /sys/module/jbd2/parameters/jbd2_debug", where N is a
- 	  number between 1 and 5. The higher the number, the more debugging
- 	  output is generated.  To turn debugging off again, do
--	  "echo 0 > /sys/kernel/debug/jbd2/jbd2-debug".
-+	  "echo 0 > /sys/module/jbd2/parameters/jbd2_debug".
+ 	/*
+ 	 * Now start flushing things to disk, in the order they appear
+@@ -548,7 +548,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 					  WRITE_SYNC);
+ 	blk_finish_plug(&plug);
+ 
+-	jbd_debug(3, "JBD2: commit phase 2\n");
++	jbd_debug(3, "JBD2: commit phase 2b\n");
+ 
+ 	/*
+ 	 * Way to go: we have now written out all of the data for a
 -- 
 1.8.1.2
 
