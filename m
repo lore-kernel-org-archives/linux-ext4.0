@@ -1,7 +1,7 @@
 From: Paul Gortmaker <paul.gortmaker@windriver.com>
-Subject: [PATCH 4/6] jbd/jbd2: relocate bit_spinlock header to jbd_common
-Date: Tue, 11 Jun 2013 18:44:28 -0400
-Message-ID: <1370990670-49249-5-git-send-email-paul.gortmaker@windriver.com>
+Subject: [PATCH 1/6] jbd2/journal_commit_transaction: relocate assert after state lock
+Date: Tue, 11 Jun 2013 18:44:25 -0400
+Message-ID: <1370990670-49249-2-git-send-email-paul.gortmaker@windriver.com>
 References: <1370892723-30860-1-git-send-email-paul.gortmaker@windriver.com>
  <1370990670-49249-1-git-send-email-paul.gortmaker@windriver.com>
 Mime-Version: 1.0
@@ -9,67 +9,40 @@ Content-Type: text/plain
 Cc: <linux-ext4@vger.kernel.org>, <linux-rt-users@vger.kernel.org>,
 	Paul Gortmaker <paul.gortmaker@windriver.com>
 To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail1.windriver.com ([147.11.146.13]:47998 "EHLO
-	mail1.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756291Ab3FKWpO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Jun 2013 18:45:14 -0400
+Return-path: <linux-rt-users-owner@vger.kernel.org>
 In-Reply-To: <1370990670-49249-1-git-send-email-paul.gortmaker@windriver.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-rt-users-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-The bit_spinlock functions are only used for the jbd_lock_bh_state
-functions (and friends) in jbd_common.h and are not directly used
-by either of jbd.h or jbd2.h content.
-
-The jbd_common file is new as of commit 446066724c36 ("jdb/jbd2: factor
-out common functions from the jbd[2] header files") but common
-(and isolated) headers were not considered for factoring at that time.
+The state lock is taken after we are doing an assert on the state
+value, not before.  So we might in fact be doing an assert on a
+transient value.  Ensure the state check is within the scope of
+the state lock being taken.
 
 Signed-off-by: Paul Gortmaker <paul.gortmaker@windriver.com>
 ---
- include/linux/jbd.h        | 1 -
- include/linux/jbd2.h       | 1 -
- include/linux/jbd_common.h | 2 ++
- 3 files changed, 2 insertions(+), 2 deletions(-)
+ fs/jbd2/commit.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/include/linux/jbd.h b/include/linux/jbd.h
-index 7e0b622..6e5524f 100644
---- a/include/linux/jbd.h
-+++ b/include/linux/jbd.h
-@@ -27,7 +27,6 @@
- #include <linux/buffer_head.h>
- #include <linux/journal-head.h>
- #include <linux/stddef.h>
--#include <linux/bit_spinlock.h>
- #include <linux/mutex.h>
- #include <linux/timer.h>
- #include <linux/lockdep.h>
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 6e051f4..9986ab8 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -26,7 +26,6 @@
- #include <linux/buffer_head.h>
- #include <linux/journal-head.h>
- #include <linux/stddef.h>
--#include <linux/bit_spinlock.h>
- #include <linux/mutex.h>
- #include <linux/timer.h>
- #include <linux/slab.h>
-diff --git a/include/linux/jbd_common.h b/include/linux/jbd_common.h
-index 6133679..949b5dd 100644
---- a/include/linux/jbd_common.h
-+++ b/include/linux/jbd_common.h
-@@ -1,6 +1,8 @@
- #ifndef _LINUX_JBD_STATE_H
- #define _LINUX_JBD_STATE_H
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 0f53946..3263e4a 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -424,13 +424,13 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 	J_ASSERT(journal->j_committing_transaction == NULL);
  
-+#include <linux/bit_spinlock.h>
-+
- enum jbd_state_bits {
- 	BH_JBD			/* Has an attached ext3 journal_head */
- 	  = BH_PrivateStart,
+ 	commit_transaction = journal->j_running_transaction;
+-	J_ASSERT(commit_transaction->t_state == T_RUNNING);
+ 
+ 	trace_jbd2_start_commit(journal, commit_transaction);
+ 	jbd_debug(1, "JBD2: starting commit of transaction %d\n",
+ 			commit_transaction->t_tid);
+ 
+ 	write_lock(&journal->j_state_lock);
++	J_ASSERT(commit_transaction->t_state == T_RUNNING);
+ 	commit_transaction->t_state = T_LOCKED;
+ 
+ 	trace_jbd2_commit_locking(journal, commit_transaction);
 -- 
 1.8.1.2
 
