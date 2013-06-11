@@ -1,58 +1,53 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [RFC PATCH 0/4] ext4/jbd2: several possible mainline fixes
-Date: Mon, 10 Jun 2013 19:38:51 -0400
-Message-ID: <20130610233850.GA21795@thunk.org>
+Subject: Re: [PATCH 1/4] jbd2/journal_commit_transaction: relocate state lock
+ to incorporate all users
+Date: Mon, 10 Jun 2013 22:12:30 -0400
+Message-ID: <20130611021230.GA23966@thunk.org>
 References: <1370892723-30860-1-git-send-email-paul.gortmaker@windriver.com>
+ <1370892723-30860-2-git-send-email-paul.gortmaker@windriver.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, linux-rt-users@vger.kernel.org
 To: Paul Gortmaker <paul.gortmaker@windriver.com>
 Return-path: <linux-rt-users-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1370892723-30860-1-git-send-email-paul.gortmaker@windriver.com>
+In-Reply-To: <1370892723-30860-2-git-send-email-paul.gortmaker@windriver.com>
 Sender: linux-rt-users-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jun 10, 2013 at 03:31:59PM -0400, Paul Gortmaker wrote:
-> Using jbd_debug() it seems that I end up with jbd2_log_do_checkpoint
-> and jbd2_journal_commit_transaction running into each other.  In one of
-> my attached patches, I show they overlap to the point of interrupting
-> each others jbd_debug messages.  Maybe that doesn't matter?  
+On Mon, Jun 10, 2013 at 03:32:00PM -0400, Paul Gortmaker wrote:
+> The state lock is taken after we are doing an assert on the state
+> value, not before.  It is also taken after the jbd_debug() call.
+> Noting that jbd_debug() is implemented with two separate printk()
+> calls, it can lead to corrupted and misleading debug output like
+> the following (see lines marked with "*"):
 
-That should be OK.  We do allow a new transactions while we are
-committing an older transaction, and if this requires more space, a
-checkpoint could start.  I'm not sure why you're apparently seeing a
-deadlock under RT-linux, though.
+This is only a cosmetic fix, but instead of trying to fix it by moving
+a lock --- which would only fix this issue, but there are probably
+others cases where this might be an issue, I'd suggest fixing it with
+something like this:
 
-> Stuck waiting/spinning somewhere in jbd2_journal_commit_transaction.
-> As near as I can tell, it never got to phase 3 of commit_transaction.
-> 
-> Since jbd2_journal_commit_transaction is such a large function,
-> I'm tempted to break it up some, just to ease my debugging (compare
-> 0x1c20 to the smaller numbers around it).  Perhaps there would be
-> interest in such kinds of patches for mainline?
+/* in fs/jbd2/journal.c */
+void __jbd2_debug(int level, const char *func, unsigned int line, const char *fmt, ...)
+{
+	struct va_format vaf;
+	va_list args;
 
-Instead of breaking it up, can you just use addr2line, i.e.:
+	if (level < jbd2_journal_enable_debug)
+		return;
+	va_start(args, fmt);
+	vaf.fmt = fmt;
+	vaf.va = &args
+	printk(KERN_DEBUG, "jbd2: (%s, %u): %pV\n", func, line, &vaf);
+	va_end(args);
+}
 
-% addr2line -a ffffffff8046a067 -i -e vmlinux  
-0xffffffff8046a067
-./include/linux/buffer_head.h:287
-./fs/ext4/inode.c:5585
-./fs/ext4/inode.c:5963
+/* in jbd2.h */
 
-I find this to be incredibly useful, since with the -i option it will
-handle inline functions correctly.  In the above example there are two
-levels of inlining, one explicitly marked inline in
-include/linux/buffer.h, and one implicit inlining taking place because
-we had a static function in fs/ext4/inode.c that was only called by
-one caller.
+#define jbd_debug(n, fmt, a...) __jbd2_debug((n), __func__, __LINE__, (fmt), ##a)
 
-Because of gcc's implicit inlining, just breaking up the function by
-itself wouldn't be enough, unless you explicitly marked the new static
-functions with noinline; but that introduces inefficiencies.  If the
-only reason you want to do this is to make it easier to figure out a
-stack trace, addr2line really is your friend....
+Could you give this approach a try?
 
-Cheers,
+Thanks,
 
-					- Ted
+							- Ted
