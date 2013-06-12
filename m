@@ -1,108 +1,24 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: don't use EXT4_FREE_BLOCKS_FORGET unnecessarily
-Date: Wed, 12 Jun 2013 11:49:37 -0400
-Message-ID: <1371052177-5385-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>, Andrey Sidorov <qrxd43@motorola.com>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:57305 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757230Ab3FLPtj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 12 Jun 2013 11:49:39 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Dave Hansen <dave@sr71.net>
+Subject: Re: ext4 extent status tree LRU locking
+Date: Wed, 12 Jun 2013 10:52:13 -0700
+Message-ID: <51B8B54D.2040200@sr71.net>
+References: <51B7B128.60909@intel.com> <20130612071735.GB29898@gmail.com> <51B88F1A.5000909@intel.com> <20130612160320.GA29156@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: Dave Hansen <dave.hansen@intel.com>, linux-ext4@vger.kernel.org,
+	LKML <linux-kernel@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>, Jan kara <jack@suse.cz>,
+	gnehzuil.liu@gmail.com
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20130612160320.GA29156@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Commit 18888cf0883c: "ext4: speed up truncate/unlink by not using
-bforget() unless needed" removed the use of EXT4_FREE_BLOCKS_FORGET in
-the most important codepath for file systems using extents, but a
-similar optimization also can be done for file systems using indirect
-blocks, and for the two special cases in the ext4 extents code.
+FWIW, I'm also seeing this contention to a much smaller extent on much
+more "normal" hardware.  I've got a 6-core (as opposed to 80) desktop
+machine where I'm doing the same test on a real disk (instead of a
+loopback-mounted ramfs file).
 
-Cc: Andrey Sidorov <qrxd43@motorola.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/extents.c  | 26 ++++++++++++--------------
- fs/ext4/indirect.c |  6 ++++--
- 2 files changed, 16 insertions(+), 16 deletions(-)
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 208f664..d04f409 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2355,6 +2355,15 @@ int ext4_ext_index_trans_blocks(struct inode *inode, int extents)
- 	return index;
- }
- 
-+static inline int get_default_free_blocks_flags(struct inode *inode)
-+{
-+	if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
-+		return EXT4_FREE_BLOCKS_METADATA | EXT4_FREE_BLOCKS_FORGET;
-+	else if (ext4_should_journal_data(inode))
-+		return EXT4_FREE_BLOCKS_FORGET;
-+	return 0;
-+}
-+
- static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
- 			      struct ext4_extent *ex,
- 			      long long *partial_cluster,
-@@ -2363,12 +2372,7 @@ static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	unsigned short ee_len =  ext4_ext_get_actual_len(ex);
- 	ext4_fsblk_t pblk;
--	int flags = 0;
--
--	if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
--		flags |= EXT4_FREE_BLOCKS_METADATA | EXT4_FREE_BLOCKS_FORGET;
--	else if (ext4_should_journal_data(inode))
--		flags |= EXT4_FREE_BLOCKS_FORGET;
-+	int flags = get_default_free_blocks_flags(inode);
- 
- 	/*
- 	 * For bigalloc file systems, we never free a partial cluster
-@@ -2635,10 +2639,7 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
- 	if (*partial_cluster > 0 &&
- 	    (EXT4_B2C(sbi, ext4_ext_pblock(ex) + ex_ee_len - 1) !=
- 	     *partial_cluster)) {
--		int flags = EXT4_FREE_BLOCKS_FORGET;
--
--		if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
--			flags |= EXT4_FREE_BLOCKS_METADATA;
-+		int flags = get_default_free_blocks_flags(inode);
- 
- 		ext4_free_blocks(handle, inode, NULL,
- 				 EXT4_C2B(sbi, *partial_cluster),
-@@ -2869,10 +2870,7 @@ again:
- 	 * even the first extent, then we should free the blocks in the partial
- 	 * cluster as well. */
- 	if (partial_cluster > 0 && path->p_hdr->eh_entries == 0) {
--		int flags = EXT4_FREE_BLOCKS_FORGET;
--
--		if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
--			flags |= EXT4_FREE_BLOCKS_METADATA;
-+		int flags = get_default_free_blocks_flags(inode);
- 
- 		ext4_free_blocks(handle, inode, NULL,
- 				 EXT4_C2B(EXT4_SB(sb), partial_cluster),
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index 2a1f8a5..963d23d 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -926,11 +926,13 @@ static int ext4_clear_blocks(handle_t *handle, struct inode *inode,
- 			     __le32 *last)
- {
- 	__le32 *p;
--	int	flags = EXT4_FREE_BLOCKS_FORGET | EXT4_FREE_BLOCKS_VALIDATED;
-+	int	flags = EXT4_FREE_BLOCKS_VALIDATED;
- 	int	err;
- 
- 	if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
--		flags |= EXT4_FREE_BLOCKS_METADATA;
-+		flags |= EXT4_FREE_BLOCKS_FORGET | EXT4_FREE_BLOCKS_METADATA;
-+	else if (ext4_should_journal_data(inode))
-+		flags |= EXT4_FREE_BLOCKS_FORGET;
- 
- 	if (!ext4_data_block_valid(EXT4_SB(inode->i_sb), block_to_free,
- 				   count)) {
--- 
-1.7.12.rc0.22.gcdd159b
-
+I'm seeing _about_ 10% CPU time being used on just spinning on the same
+ext4 LRU lock.
