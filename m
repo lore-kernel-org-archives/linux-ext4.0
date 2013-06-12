@@ -1,61 +1,108 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: add cond_resched() to ext4_free_blocks() & ext4_mb_regular_allocator()
-Date: Wed, 12 Jun 2013 11:49:16 -0400
-Message-ID: <1371052156-4821-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: don't use EXT4_FREE_BLOCKS_FORGET unnecessarily
+Date: Wed, 12 Jun 2013 11:49:37 -0400
+Message-ID: <1371052177-5385-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>, Andrey Sidorov <qrxd43@motorola.com>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:57302 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:57305 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755183Ab3FLPtT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 12 Jun 2013 11:49:19 -0400
+	id S1757230Ab3FLPtj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 12 Jun 2013 11:49:39 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-For a file systems with a very large number of block groups, if all of
-the block group bitmaps are in memory and the file system is
-relatively badly fragmented, it's possible ext4_mb_regular_allocator()
-to take a long time trying to find a good match.  This is especially
-true if the tuning parameter mb_max_to_scan has been sent to a very
-large number.  So add a cond_resched() to avoid soft lockup warnings
-and to provide better system responsiveness.
+Commit 18888cf0883c: "ext4: speed up truncate/unlink by not using
+bforget() unless needed" removed the use of EXT4_FREE_BLOCKS_FORGET in
+the most important codepath for file systems using extents, but a
+similar optimization also can be done for file systems using indirect
+blocks, and for the two special cases in the ext4 extents code.
 
-For ext4_free_blocks(), if we are deleting a large range of blocks,
-and data=journal is enabled so that EXT4_FREE_BLOCKS_FORGET is passed,
-the loop to call sb_find_get_block() and to call ext4_forget() can
-take over 10-15 milliseocnds or more.  So it's better to add a
-cond_resched() here a well.
-
+Cc: Andrey Sidorov <qrxd43@motorola.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/mballoc.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ fs/ext4/extents.c  | 26 ++++++++++++--------------
+ fs/ext4/indirect.c |  6 ++++--
+ 2 files changed, 16 insertions(+), 16 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index def8408..1a9c22b 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2105,6 +2105,7 @@ repeat:
- 		group = ac->ac_g_ex.fe_group;
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 208f664..d04f409 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2355,6 +2355,15 @@ int ext4_ext_index_trans_blocks(struct inode *inode, int extents)
+ 	return index;
+ }
  
- 		for (i = 0; i < ngroups; group++, i++) {
-+			cond_resched();
- 			/*
- 			 * Artificially restricted ngroups for non-extent
- 			 * files makes group > ngroups possible on first loop.
-@@ -4612,10 +4613,11 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 		BUG_ON(bh && (count > 1));
++static inline int get_default_free_blocks_flags(struct inode *inode)
++{
++	if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
++		return EXT4_FREE_BLOCKS_METADATA | EXT4_FREE_BLOCKS_FORGET;
++	else if (ext4_should_journal_data(inode))
++		return EXT4_FREE_BLOCKS_FORGET;
++	return 0;
++}
++
+ static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
+ 			      struct ext4_extent *ex,
+ 			      long long *partial_cluster,
+@@ -2363,12 +2372,7 @@ static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
+ 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+ 	unsigned short ee_len =  ext4_ext_get_actual_len(ex);
+ 	ext4_fsblk_t pblk;
+-	int flags = 0;
+-
+-	if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
+-		flags |= EXT4_FREE_BLOCKS_METADATA | EXT4_FREE_BLOCKS_FORGET;
+-	else if (ext4_should_journal_data(inode))
+-		flags |= EXT4_FREE_BLOCKS_FORGET;
++	int flags = get_default_free_blocks_flags(inode);
  
- 		for (i = 0; i < count; i++) {
-+			cond_resched();
- 			if (!bh)
- 				tbh = sb_find_get_block(inode->i_sb,
- 							block + i);
--			if (unlikely(!tbh))
-+			if (!tbh)
- 				continue;
- 			ext4_forget(handle, flags & EXT4_FREE_BLOCKS_METADATA,
- 				    inode, tbh, block + i);
+ 	/*
+ 	 * For bigalloc file systems, we never free a partial cluster
+@@ -2635,10 +2639,7 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
+ 	if (*partial_cluster > 0 &&
+ 	    (EXT4_B2C(sbi, ext4_ext_pblock(ex) + ex_ee_len - 1) !=
+ 	     *partial_cluster)) {
+-		int flags = EXT4_FREE_BLOCKS_FORGET;
+-
+-		if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
+-			flags |= EXT4_FREE_BLOCKS_METADATA;
++		int flags = get_default_free_blocks_flags(inode);
+ 
+ 		ext4_free_blocks(handle, inode, NULL,
+ 				 EXT4_C2B(sbi, *partial_cluster),
+@@ -2869,10 +2870,7 @@ again:
+ 	 * even the first extent, then we should free the blocks in the partial
+ 	 * cluster as well. */
+ 	if (partial_cluster > 0 && path->p_hdr->eh_entries == 0) {
+-		int flags = EXT4_FREE_BLOCKS_FORGET;
+-
+-		if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
+-			flags |= EXT4_FREE_BLOCKS_METADATA;
++		int flags = get_default_free_blocks_flags(inode);
+ 
+ 		ext4_free_blocks(handle, inode, NULL,
+ 				 EXT4_C2B(EXT4_SB(sb), partial_cluster),
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index 2a1f8a5..963d23d 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -926,11 +926,13 @@ static int ext4_clear_blocks(handle_t *handle, struct inode *inode,
+ 			     __le32 *last)
+ {
+ 	__le32 *p;
+-	int	flags = EXT4_FREE_BLOCKS_FORGET | EXT4_FREE_BLOCKS_VALIDATED;
++	int	flags = EXT4_FREE_BLOCKS_VALIDATED;
+ 	int	err;
+ 
+ 	if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
+-		flags |= EXT4_FREE_BLOCKS_METADATA;
++		flags |= EXT4_FREE_BLOCKS_FORGET | EXT4_FREE_BLOCKS_METADATA;
++	else if (ext4_should_journal_data(inode))
++		flags |= EXT4_FREE_BLOCKS_FORGET;
+ 
+ 	if (!ext4_data_block_valid(EXT4_SB(inode->i_sb), block_to_free,
+ 				   count)) {
 -- 
 1.7.12.rc0.22.gcdd159b
 
