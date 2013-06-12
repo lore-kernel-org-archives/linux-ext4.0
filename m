@@ -1,37 +1,47 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: xfstest ext4 'utility required' run stop
-Date: Wed, 12 Jun 2013 14:31:32 +0800
-Message-ID: <20130612063132.GA29898@gmail.com>
-References: <20130612053618.296170@gmx.com>
+Subject: Re: ext4 extent status tree LRU locking
+Date: Wed, 12 Jun 2013 15:17:35 +0800
+Message-ID: <20130612071735.GB29898@gmail.com>
+References: <51B7B128.60909@intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: jon ernst <jonernst07@gmx.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f170.google.com ([209.85.192.170]:47898 "EHLO
-	mail-pd0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752763Ab3FLGNW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Jun 2013 02:13:22 -0400
-Received: by mail-pd0-f170.google.com with SMTP id x11so3739127pdj.1
-        for <linux-ext4@vger.kernel.org>; Tue, 11 Jun 2013 23:13:22 -0700 (PDT)
+Cc: linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>, Jan kara <jack@suse.cz>
+To: Dave Hansen <dave.hansen@intel.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20130612053618.296170@gmx.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <51B7B128.60909@intel.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jun 12, 2013 at 01:36:18AM -0400, jon ernst wrote:
-> Hi,
+Hi Dave
+
+Thanks for reporting this.
+
+On Tue, Jun 11, 2013 at 04:22:16PM -0700, Dave Hansen wrote:
+> I've got a test case which I intended to use to stress the VM a bit.  It
+> fills memory up with page cache a couple of times.  It essentially runs
+> 30 or so cp's in parallel.
+
+Could you please share your test case with me? I am glad to look at it
+and think about how to improve LRU locking.
+
 > 
-> When I try to run xfstest 301 - 304. They all got error message "utility required, run stop, stkip this test" , test 305 is fine.
-> But it did not tell which utility is required. I do have test patition and scratch partition set up. And I do have e4defrag on my linux.
+> 98% of my CPU is system time, and 96% of _that_ is being spent on the
+> spinlock in ext4_es_lru_add().  I think the LRU list head and its lock
+> end up being *REALLY* hot cachelines and are *the* bottleneck on this
+> test.  Note that this is _before_ we go in to reclaim and actually start
+> calling in to the shrinker.  There is zero memory pressure in this test.
 > 
-> What could be the reason?please help.
+> I'm not sure the benefits of having a proper in-order LRU during reclaim
+> outweigh such a drastic downside for the common case.
 
-Hi Jon,
-
-Could you please check that 'fio' utility has been installed?  You can
-get it from this link:
-  git clone git://git.kernel.dk/fio.git
+A proper in-order LRU can help us to reclaim some memory from extent
+status tree when we are under heavy memory pressure.  When shrinker
+tries to reclaim extents from these trees, some extents of files that
+are accessed infrequnetly will be reclaimed because we hope that
+frequently accessed files' extents can be kept in memory as much as
+possible.  That is why we need a proper in-order LRU list.
 
 Regards,
                                                 - Zheng
