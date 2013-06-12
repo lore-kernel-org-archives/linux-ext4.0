@@ -1,54 +1,68 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: xfstest ext4 'utility required' run stop
-Date: Wed, 12 Jun 2013 15:57:14 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1306121555350.14273@localhost.localdomain>
-References: <20130612053618.296170@gmx.com> <20130612063132.GA29898@gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Too large value in inode.i_blocks[1]
+Date: Wed, 12 Jun 2013 09:25:36 -0500
+Message-ID: <51B884E0.5000405@redhat.com>
+References: <loom.20130612T065900-326@post.gmane.org> <20130612125954.GB26388@thunk.org> <loom.20130612T152507-9@post.gmane.org> <20130612135204.GA27403@thunk.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: jon ernst <jonernst07@gmx.com>, linux-ext4@vger.kernel.org
-To: Zheng Liu <gnehzuil.liu@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Felipe Monteiro de Carvalho <felipemonteiro.carvalho@gmail.com>,
+	linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:30654 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:6831 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753181Ab3FLN5V (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 12 Jun 2013 09:57:21 -0400
-In-Reply-To: <20130612063132.GA29898@gmail.com>
+	id S1752103Ab3FLOZj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 12 Jun 2013 10:25:39 -0400
+In-Reply-To: <20130612135204.GA27403@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 12 Jun 2013, Zheng Liu wrote:
+On 6/12/13 8:52 AM, Theodore Ts'o wrote:
+> On Wed, Jun 12, 2013 at 01:34:37PM +0000, Felipe Monteiro de Carvalho wrote:
+>> I see that i_block has 15*4=60 bytes, and with EXTENTS_FL the first 12 bytes 
+>> of i_block are filled with a ext4_extent_header
+>>
+>> What about the rest of it? I couldn't understand from the wiki page what
+>> the rest holds exactly, it is not 100% clear ...
+>>
+>> My first guess would be that it has in this order:
+>>
+>> ext4_extent_header, 12 bytes long
+>> ext4_extent_idx, 12 bytes long:
+>> ext4_extent, 12 bytes long
+>> ext4_extent_tail 4 bytes long
+> 
+> The ext4_extent_tail is not used in i_blocks[].  There will be up to 4
+> ext4_extent structures, or ext4_extent_idx structures, depending on
+> the depth of the tree.  The ext4_extent_idx structures are used for
+> the interior inodes of the tree.  The ext4_extent structures are used
+> for the leaf nodes of the tree.  The ext4_extent_tail is used in
+> extent tree blocks so we can checksum the metadata if the
+> metadata_csum feature is enabled.  The entire inode is checksummed, so
+> we don't need the ext4_extent_tail in i_blocks[].
+> 
+>> Please don't worry that I am not frivolously attempting to access the
+>> file system directly. My project explictly requires this, it is a
+>> recovery tool to repair damaged file systems, and it must work in
+>> Windows and Mac OS X. Maybe libext2fs works outside Linux, not sure, 
+>> but anyway we already have source code for reading/recovering ext2/3, 
+>> I am just expanding it to ext4. External dependencies are always
+>> not ideal.
+> 
+> Libext2fs is designed to be cross OS portable.  It's used for the FUSE
+> extensions that allow Mac and Windows machines to access ext2/3/4 file
+> systems.  And libext2fs is designed to work with corrupted file
+> systems, since after e2fsck is the normal tool most people use to
+> repair damaged file systems, and debugfs is the command line tool
+> which is used by people to examine file systems, corrupt fie systems
+> for e2fsck test cases, and in a few cases, attempt to do manual repair
+> of file systems in some extreme circumstances.
 
-> Date: Wed, 12 Jun 2013 14:31:32 +0800
-> From: Zheng Liu <gnehzuil.liu@gmail.com>
-> To: jon ernst <jonernst07@gmx.com>
-> Cc: linux-ext4@vger.kernel.org
-> Subject: Re: xfstest ext4 'utility required' run stop
-> 
-> On Wed, Jun 12, 2013 at 01:36:18AM -0400, jon ernst wrote:
-> > Hi,
-> > 
-> > When I try to run xfstest 301 - 304. They all got error message "utility required, run stop, stkip this test" , test 305 is fine.
-> > But it did not tell which utility is required. I do have test patition and scratch partition set up. And I do have e4defrag on my linux.
-> > 
-> > What could be the reason?please help.
-> 
-> Hi Jon,
-> 
-> Could you please check that 'fio' utility has been installed?  You can
-> get it from this link:
->   git clone git://git.kernel.dk/fio.git
-> 
-> Regards,
->                                                 - Zheng
+Indeed, I know of at least one "clean room" ext3 driver for windows
+which did a fine job of corrupting proper ext3 filesystems, because it
+was written incorrectly and didn't use the standard body of code.
+Wasted a lot of my time getting to the bottom of that one.  :(
 
-Right, you're missing 'fio' utility. And there is a bug in xfstests
-because it should tell you that, I will send patch.
+-Eric
 
-Thanks!
--Lukas
-
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
