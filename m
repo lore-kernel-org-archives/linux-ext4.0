@@ -1,74 +1,61 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: ext4 extent status tree LRU locking
-Date: Thu, 13 Jun 2013 00:03:21 +0800
-Message-ID: <20130612160320.GA29156@gmail.com>
-References: <51B7B128.60909@intel.com>
- <20130612071735.GB29898@gmail.com>
- <51B88F1A.5000909@intel.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>, Jan kara <jack@suse.cz>
-To: Dave Hansen <dave.hansen@intel.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <51B88F1A.5000909@intel.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: add cond_resched() to ext4_free_blocks() & ext4_mb_regular_allocator()
+Date: Wed, 12 Jun 2013 11:49:16 -0400
+Message-ID: <1371052156-4821-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:57302 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755183Ab3FLPtT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 12 Jun 2013 11:49:19 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 12, 2013 at 08:09:14AM -0700, Dave Hansen wrote:
-> On 06/12/2013 12:17 AM, Zheng Liu wrote:
-> > On Tue, Jun 11, 2013 at 04:22:16PM -0700, Dave Hansen wrote:
-> >> I've got a test case which I intended to use to stress the VM a bit.  It
-> >> fills memory up with page cache a couple of times.  It essentially runs
-> >> 30 or so cp's in parallel.
-> > 
-> > Could you please share your test case with me? I am glad to look at it
-> > and think about how to improve LRU locking.
-> 
-> I'll look in to giving you the actual test case.  But I'm not sure of
-> the licensing on it.
+For a file systems with a very large number of block groups, if all of
+the block group bitmaps are in memory and the file system is
+relatively badly fragmented, it's possible ext4_mb_regular_allocator()
+to take a long time trying to find a good match.  This is especially
+true if the tuning parameter mb_max_to_scan has been sent to a very
+large number.  So add a cond_resched() to avoid soft lockup warnings
+and to provide better system responsiveness.
 
-That would be great if you could share it.
+For ext4_free_blocks(), if we are deleting a large range of blocks,
+and data=journal is enabled so that EXT4_FREE_BLOCKS_FORGET is passed,
+the loop to call sb_find_get_block() and to call ext4_forget() can
+take over 10-15 milliseocnds or more.  So it's better to add a
+cond_resched() here a well.
 
-> 
-> Essentially, the test creates an (small (~256MB) ext4 fs on a
-> loopback-mounted ramfs device.  It then goes and creates 160 64GB sparse
-> files (one per cpu) and then cp's them all to /dev/null.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/mballoc.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-Thanks for letting me know.
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index def8408..1a9c22b 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2105,6 +2105,7 @@ repeat:
+ 		group = ac->ac_g_ex.fe_group;
+ 
+ 		for (i = 0; i < ngroups; group++, i++) {
++			cond_resched();
+ 			/*
+ 			 * Artificially restricted ngroups for non-extent
+ 			 * files makes group > ngroups possible on first loop.
+@@ -4612,10 +4613,11 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
+ 		BUG_ON(bh && (count > 1));
+ 
+ 		for (i = 0; i < count; i++) {
++			cond_resched();
+ 			if (!bh)
+ 				tbh = sb_find_get_block(inode->i_sb,
+ 							block + i);
+-			if (unlikely(!tbh))
++			if (!tbh)
+ 				continue;
+ 			ext4_forget(handle, flags & EXT4_FREE_BLOCKS_METADATA,
+ 				    inode, tbh, block + i);
+-- 
+1.7.12.rc0.22.gcdd159b
 
-> 
-> >> 98% of my CPU is system time, and 96% of _that_ is being spent on the
-> >> spinlock in ext4_es_lru_add().  I think the LRU list head and its lock
-> >> end up being *REALLY* hot cachelines and are *the* bottleneck on this
-> >> test.  Note that this is _before_ we go in to reclaim and actually start
-> >> calling in to the shrinker.  There is zero memory pressure in this test.
-> >>
-> >> I'm not sure the benefits of having a proper in-order LRU during reclaim
-> >> outweigh such a drastic downside for the common case.
-> > 
-> > A proper in-order LRU can help us to reclaim some memory from extent
-> > status tree when we are under heavy memory pressure.  When shrinker
-> > tries to reclaim extents from these trees, some extents of files that
-> > are accessed infrequnetly will be reclaimed because we hope that
-> > frequently accessed files' extents can be kept in memory as much as
-> > possible.  That is why we need a proper in-order LRU list.
-> 
-> Does it need to be _strictly_ in order, though?  In other words, do you
-> truly need a *global*, perfectly in-order LRU?
-> 
-> You could make per-cpu LRUs, and batch movement on and off the global
-> LRU once the local ones get to be a certain size.  Or, you could keep
-> them cpu-local *until* the shrinker is called, when the shrinker could
-> go drain all the percpu ones.
-> 
-> Or, you could tag each extent in memory with its last-used time.  You
-> write an algorithm to go and walk the tree and attempt to _generally_
-> free the oldest objects out of a limited window.
-
-Thanks for your suggestions.  I will try these solutions, and look at
-which one is best for us.
-
-Regards,
-                                                - Zheng
