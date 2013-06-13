@@ -1,42 +1,29 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 3/3] ext4: Fix fsync error handling after filesystem
- abort.
-Date: Wed, 12 Jun 2013 22:39:11 -0400
-Message-ID: <20130613023911.GB16959@thunk.org>
-References: <1370882461-12786-1-git-send-email-dmonakhov@openvz.org>
- <1370882461-12786-3-git-send-email-dmonakhov@openvz.org>
+Subject: Re: [PATCH 1/6] jbd2/journal_commit_transaction: relocate assert
+ after state lock
+Date: Wed, 12 Jun 2013 22:42:52 -0400
+Message-ID: <20130613024252.GC16959@thunk.org>
+References: <1370892723-30860-1-git-send-email-paul.gortmaker@windriver.com>
+ <1370990670-49249-1-git-send-email-paul.gortmaker@windriver.com>
+ <1370990670-49249-2-git-send-email-paul.gortmaker@windriver.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, jack@suse.cz
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:57461 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758256Ab3FMCjR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 12 Jun 2013 22:39:17 -0400
+Cc: linux-ext4@vger.kernel.org, linux-rt-users@vger.kernel.org
+To: Paul Gortmaker <paul.gortmaker@windriver.com>
+Return-path: <linux-rt-users-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1370882461-12786-3-git-send-email-dmonakhov@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1370990670-49249-2-git-send-email-paul.gortmaker@windriver.com>
+Sender: linux-rt-users-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jun 10, 2013 at 08:41:01PM +0400, Dmitry Monakhov wrote:
-> If filesystem was aborted after inode's write back is complete
-> but before its metadata was updated we may return success
-> results in data loss.
-> In order to handle fs abort correctly we have to check
-> fs state once we discover that it is in MS_RDONLY state
+On Tue, Jun 11, 2013 at 06:44:25PM -0400, Paul Gortmaker wrote:
+> The state lock is taken after we are doing an assert on the state
+> value, not before.  So we might in fact be doing an assert on a
+> transient value.  Ensure the state check is within the scope of
+> the state lock being taken.
 > 
-> Test case: http://patchwork.ozlabs.org/patch/244297
-> 
-> Changes from V2:
->  - more spelling fixes
-> 
-> Changes from V1:
->  - fix spelling
-> 
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> Signed-off-by: Paul Gortmaker <paul.gortmaker@windriver.com>
 
-Thanks, applied with Darrick's further suggested spelling fixes.
+Thanks, applied.
 
-		     	       	       		 - Ted
+					- Ted
