@@ -1,40 +1,49 @@
-From: "jon ernst" <jonernst07@gmx.com>
-Subject: Re: xfstest ext4 'utility required' run stop
-Date: Thu, 13 Jun 2013 09:43:46 -0400
-Message-ID: <20130613134347.300880@gmx.com>
+From: Paul Gortmaker <paul.gortmaker@windriver.com>
+Subject: [PATCH] jbd2: export __jbd2_debug for modular builds
+Date: Thu, 13 Jun 2013 09:45:30 -0400
+Message-ID: <1371131130-1894-1-git-send-email-paul.gortmaker@windriver.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: "Zheng Liu" <gnehzuil.liu@gmail.com>
+Content-Type: text/plain
+Cc: <linux-ext4@vger.kernel.org>,
+	Paul Gortmaker <paul.gortmaker@windriver.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mout.gmx.net ([74.208.4.201]:52679 "EHLO mout.gmx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752892Ab3FMNnu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 13 Jun 2013 09:43:50 -0400
-Received: from mailout-us.gmx.com ([172.19.198.48]) by mrigmx.server.lan
- (mrigmxus001) with ESMTP (Nemesis) id 0LkOel-1UBrKB34It-00cTow for
- <linux-ext4@vger.kernel.org>; Thu, 13 Jun 2013 15:43:48 +0200
+Received: from mail1.windriver.com ([147.11.146.13]:44238 "EHLO
+	mail1.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754770Ab3FMNpj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Jun 2013 09:45:39 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+The commit "jbd2: use a single printk for jbd_debug()" introduced
+a new function, __jbd2_debug.  However it needs to be exported
+or the final modpost stage of the build will fail with:
 
-> =C2=A0Hi Jon,
+  ERROR: "__jbd2_debug" [fs/ext4/ext4.ko] undefined!
+  make[1]: *** [__modpost] Error 1
+  make: *** [modules] Error 2
 
-> Could you please tell us which xfstest's version are you used? If I
-> remember correctly, testcases 301-304 have a bug at some certain
-> version. Could you please upgrade your xfstests to the latest version=
-?
-> Or as Ted suggested, you could use xfstests-bld.
+Signed-off-by: Paul Gortmaker <paul.gortmaker@windriver.com>
+---
 
-> Regards,
-> =C2=A0- Zheng
+[Feel free to squash this into the original commit since it is
+in your dev branch.]
 
-I built xfstest from latest code. I also built fio from latest code bas=
-e.
-Thanks for your help!
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+ fs/jbd2/journal.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 331fd59..4c8b8d4 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -118,6 +118,7 @@ void __jbd2_debug(int level, const char *file, const char *func,
+ 	printk(KERN_DEBUG "%s: (%s, %u): %pV\n", file, func, line, &vaf);
+ 	va_end(args);
+ }
++EXPORT_SYMBOL(__jbd2_debug);
+ #endif
+ 
+ /* Checksumming functions */
+-- 
+1.8.1.2
+
