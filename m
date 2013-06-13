@@ -1,40 +1,34 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 6/6] jbd2: remove debug dependency on debug_fs; update
- help text
-Date: Thu, 13 Jun 2013 10:14:31 -0400
-Message-ID: <20130613141431.GE13429@thunk.org>
-References: <1370892723-30860-1-git-send-email-paul.gortmaker@windriver.com>
- <1370990670-49249-1-git-send-email-paul.gortmaker@windriver.com>
- <1370990670-49249-7-git-send-email-paul.gortmaker@windriver.com>
- <20130613030831.GG16959@thunk.org>
- <51B9CE63.9000509@windriver.com>
+Subject: Re: [PATCH] jbd2: export __jbd2_debug for modular builds
+Date: Thu, 13 Jun 2013 10:18:49 -0400
+Message-ID: <20130613141849.GF13429@thunk.org>
+References: <1371131130-1894-1-git-send-email-paul.gortmaker@windriver.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-rt-users@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
 To: Paul Gortmaker <paul.gortmaker@windriver.com>
-Return-path: <linux-rt-users-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:57678 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752642Ab3FMOSv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 13 Jun 2013 10:18:51 -0400
 Content-Disposition: inline
-In-Reply-To: <51B9CE63.9000509@windriver.com>
-Sender: linux-rt-users-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1371131130-1894-1-git-send-email-paul.gortmaker@windriver.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 13, 2013 at 09:51:31AM -0400, Paul Gortmaker wrote:
-> On 13-06-12 11:08 PM, Theodore Ts'o wrote:
-> > On Tue, Jun 11, 2013 at 06:44:30PM -0400, Paul Gortmaker wrote:
-> >> commit b6e96d0067d8 ("jbd2: use module parameters instead of debugfs
-> >> for jbd_debug") removed any need for a dependency on DEBUG_FS.  It
-> >> also moved the /sys variables out from underneath the typical debugfs
-> >> mount point.  Delete the dependency and update the /sys path to where
-> >> the debug settings are currently.
-> >>
-> >> Signed-off-by: Paul Gortmaker <paul.gortmaker@windriver.com>
-> > 
-> > Applied, thanks.
+On Thu, Jun 13, 2013 at 09:45:30AM -0400, Paul Gortmaker wrote:
+> The commit "jbd2: use a single printk for jbd_debug()" introduced
+> a new function, __jbd2_debug.  However it needs to be exported
+> or the final modpost stage of the build will fail with:
 > 
-> Just a heads up -- it seems some script threw away the 1st line of the
-> commit log here.
+>   ERROR: "__jbd2_debug" [fs/ext4/ext4.ko] undefined!
+>   make[1]: *** [__modpost] Error 1
+>   make: *** [modules] Error 2
+> 
+> Signed-off-by: Paul Gortmaker <paul.gortmaker@windriver.com>
 
-Thanks for noticing this.  Guilt is apparently stripping lines that
-begin with "commit".  Using "Commit" avoids this.
+Thanks, I've merged this into the original commit and pushed out an
+updated dev branch.
 
-      	   	      	    	     	    - Ted
+					- Ted
