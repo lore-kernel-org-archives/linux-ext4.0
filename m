@@ -1,40 +1,38 @@
-From: Steve Bergman <sbergman27@gmail.com>
-Subject: What does commit=5 really mean?
-Date: Wed, 12 Jun 2013 16:23:44 -0500
-Message-ID: <CAO9HMNE=orzyjaH09X4Vp1rzmsu9A2b53YY_-zV_ZQ4=sz0TQQ@mail.gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/3] jbd2: optimize jbd2_journal_force_commit V3
+Date: Wed, 12 Jun 2013 20:42:24 -0400
+Message-ID: <20130613004224.GA14627@thunk.org>
+References: <1370882461-12786-1-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, jack@suse.cz
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qa0-f41.google.com ([209.85.216.41]:41628 "EHLO
-	mail-qa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755695Ab3FLVXp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Jun 2013 17:23:45 -0400
-Received: by mail-qa0-f41.google.com with SMTP id f14so653049qak.0
-        for <linux-ext4@vger.kernel.org>; Wed, 12 Jun 2013 14:23:44 -0700 (PDT)
+Received: from li9-11.members.linode.com ([67.18.176.11]:57438 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755889Ab3FMAm3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 12 Jun 2013 20:42:29 -0400
+Content-Disposition: inline
+In-Reply-To: <1370882461-12786-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On Mon, Jun 10, 2013 at 08:40:59PM +0400, Dmitry Monakhov wrote:
+> Current implementation of jbd2_journal_force_commit() is suboptimal because
+> result in empty and useless commits. But callers just want to force and wait
+> any unfinished commits. We already has jbd2_journal_force_commit_nested()
+> which does exactly what we want, except we are guaranteed that we do not hold
+> journal transaction open.
+> 
+> Changes since V3 to V2
+>  - API changes according to Jan's comments
+>  - make __jbd2_journal_force_commit() static
+> 
+> Changes since V2 to V1
+>  - Fix incorrect return value  according to Jan's comments.
+> 
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 
-I'm trying to understand the "commit=nrsec" mount option. I had
-thought that it controlled the time between commits of journaled
-metadata to its permanent location in disk. However, the kernel
-documentation says:
+Applied, thanks.
 
-"""
-Ext4 can be told to sync all its data and metadata
-every 'nrsec' seconds. The default value is 5 seconds.
-This means that if you lose your power, you will lose
-as much as the latest 5 seconds of work (your
-filesystem will not be damaged though, thanks to the
-journaling).
-"""
-
-This suggests that both metadata and data get committed every nrsec
-seconds. But my understanding was that in the default
-"data=ordered,delalloc" mode, metadata gets commited every 5s, and
-data every 30s. Could someone please clarify?
-
-Thanks,
-Steve Bergman
+						- Ted
