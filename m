@@ -1,55 +1,43 @@
 From: Paul Gortmaker <paul.gortmaker@windriver.com>
-Subject: [PATCH] ext4: delete unused mapping variable
-Date: Thu, 13 Jun 2013 09:48:18 -0400
-Message-ID: <1371131298-2059-1-git-send-email-paul.gortmaker@windriver.com>
+Subject: Re: [PATCH 6/6] jbd2: remove debug dependency on debug_fs; update
+ help text
+Date: Thu, 13 Jun 2013 09:51:31 -0400
+Message-ID: <51B9CE63.9000509@windriver.com>
+References: <1370892723-30860-1-git-send-email-paul.gortmaker@windriver.com> <1370990670-49249-1-git-send-email-paul.gortmaker@windriver.com> <1370990670-49249-7-git-send-email-paul.gortmaker@windriver.com> <20130613030831.GG16959@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: <linux-ext4@vger.kernel.org>,
-	Paul Gortmaker <paul.gortmaker@windriver.com>
+Content-Type: text/plain; charset="ISO-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: <linux-ext4@vger.kernel.org>, <linux-rt-users@vger.kernel.org>
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.windriver.com ([147.11.1.11]:34519 "EHLO
+Received: from mail.windriver.com ([147.11.1.11]:35855 "EHLO
 	mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752678Ab3FMNsZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Jun 2013 09:48:25 -0400
+	with ESMTP id S1752960Ab3FMNu7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Jun 2013 09:50:59 -0400
+In-Reply-To: <20130613030831.GG16959@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The code refactoring in commit "ext4: refactor punch hole code"
-left behind a now unused variable, causing:
+On 13-06-12 11:08 PM, Theodore Ts'o wrote:
+> On Tue, Jun 11, 2013 at 06:44:30PM -0400, Paul Gortmaker wrote:
+>> commit b6e96d0067d8 ("jbd2: use module parameters instead of debugfs
+>> for jbd_debug") removed any need for a dependency on DEBUG_FS.  It
+>> also moved the /sys variables out from underneath the typical debugfs
+>> mount point.  Delete the dependency and update the /sys path to where
+>> the debug settings are currently.
+>>
+>> Signed-off-by: Paul Gortmaker <paul.gortmaker@windriver.com>
+> 
+> Applied, thanks.
 
-fs/ext4/inode.c: In function =E2=80=98ext4_punch_hole=E2=80=99:
-fs/ext4/inode.c:3495:24: warning: unused variable =E2=80=98mapping=E2=80=
-=99 [-Wunused-variable]
+Just a heads up -- it seems some script threw away the 1st line of the
+commit log here.
 
-Signed-off-by: Paul Gortmaker <paul.gortmaker@windriver.com>
----
+https://git.kernel.org/cgit/linux/kernel/git/tytso/ext4.git/commit/?h=dev&id=7c39c8340334b79019812d7366057b1d4376516e
 
-[Feel free to also fold this trivial change back into the original
-punch hole commit on the dev branch]
-
- fs/ext4/inode.c | 1 -
- 1 file changed, 1 deletion(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 4411130..2644679 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3492,7 +3492,6 @@ int ext4_punch_hole(struct file *file, loff_t off=
-set, loff_t length)
- 	struct inode *inode =3D file_inode(file);
- 	struct super_block *sb =3D inode->i_sb;
- 	ext4_lblk_t first_block, stop_block;
--	struct address_space *mapping =3D inode->i_mapping;
- 	loff_t first_block_offset, last_block_offset;
- 	handle_t *handle;
- 	unsigned int credits;
---=20
-1.8.1.2
-
+Paul.
 --
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+> 
+> 						- Ted
+> 
