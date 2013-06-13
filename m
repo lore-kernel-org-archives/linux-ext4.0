@@ -1,39 +1,51 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: delete unused mapping variable
-Date: Thu, 13 Jun 2013 10:19:37 -0400
-Message-ID: <20130613141937.GG13429@thunk.org>
-References: <1371131298-2059-1-git-send-email-paul.gortmaker@windriver.com>
+From: Paul Gortmaker <paul.gortmaker@windriver.com>
+Subject: Re: [PATCH 6/6] jbd2: remove debug dependency on debug_fs; update
+ help text
+Date: Thu, 13 Jun 2013 10:47:04 -0400
+Message-ID: <51B9DB68.6080208@windriver.com>
+References: <1370892723-30860-1-git-send-email-paul.gortmaker@windriver.com> <1370990670-49249-1-git-send-email-paul.gortmaker@windriver.com> <1370990670-49249-7-git-send-email-paul.gortmaker@windriver.com> <20130613030831.GG16959@thunk.org> <51B9CE63.9000509@windriver.com> <20130613141431.GE13429@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: Paul Gortmaker <paul.gortmaker@windriver.com>
+Content-Type: text/plain; charset="ISO-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: <linux-ext4@vger.kernel.org>, <linux-rt-users@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:57681 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751483Ab3FMOTi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 13 Jun 2013 10:19:38 -0400
-Content-Disposition: inline
-In-Reply-To: <1371131298-2059-1-git-send-email-paul.gortmaker@windriver.com>
+Received: from mail1.windriver.com ([147.11.146.13]:45855 "EHLO
+	mail1.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757816Ab3FMOqc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Jun 2013 10:46:32 -0400
+In-Reply-To: <20130613141431.GE13429@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 13, 2013 at 09:48:18AM -0400, Paul Gortmaker wrote:
-> The code refactoring in commit "ext4: refactor punch hole code"
-> left behind a now unused variable, causing:
->=20
-> fs/ext4/inode.c: In function =E2=80=98ext4_punch_hole=E2=80=99:
-> fs/ext4/inode.c:3495:24: warning: unused variable =E2=80=98mapping=E2=
-=80=99 [-Wunused-variable]
->=20
-> Signed-off-by: Paul Gortmaker <paul.gortmaker@windriver.com>
+On 13-06-13 10:14 AM, Theodore Ts'o wrote:
+> On Thu, Jun 13, 2013 at 09:51:31AM -0400, Paul Gortmaker wrote:
+>> On 13-06-12 11:08 PM, Theodore Ts'o wrote:
+>>> On Tue, Jun 11, 2013 at 06:44:30PM -0400, Paul Gortmaker wrote:
+>>>> commit b6e96d0067d8 ("jbd2: use module parameters instead of debugfs
+>>>> for jbd_debug") removed any need for a dependency on DEBUG_FS.  It
+>>>> also moved the /sys variables out from underneath the typical debugfs
+>>>> mount point.  Delete the dependency and update the /sys path to where
+>>>> the debug settings are currently.
+>>>>
+>>>> Signed-off-by: Paul Gortmaker <paul.gortmaker@windriver.com>
+>>>
+>>> Applied, thanks.
+>>
+>> Just a heads up -- it seems some script threw away the 1st line of the
+>> commit log here.
+> 
+> Thanks for noticing this.  Guilt is apparently stripping lines that
+> begin with "commit".  Using "Commit" avoids this.
 
-Thanks, I had actually noticed this already, but I had pushed out the
-wrong version to the dev branch.
+It appears that Guilt is guilty of clobbering the author dates with
+the commit date too, which might not be desirable...
 
-				- Ted
+https://lkml.org/lkml/2013/6/9/200
+
+Paul.
 --
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+> 
+>       	   	      	    	     	    - Ted
+> 
