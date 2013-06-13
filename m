@@ -1,30 +1,40 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: xfstest ext4 'utility required' run stop
-Date: Thu, 13 Jun 2013 09:59:55 -0400
-Message-ID: <20130613135955.GD13429@thunk.org>
-References: <20130613134347.300880@gmx.com>
+Subject: Re: [PATCH 6/6] jbd2: remove debug dependency on debug_fs; update
+ help text
+Date: Thu, 13 Jun 2013 10:14:31 -0400
+Message-ID: <20130613141431.GE13429@thunk.org>
+References: <1370892723-30860-1-git-send-email-paul.gortmaker@windriver.com>
+ <1370990670-49249-1-git-send-email-paul.gortmaker@windriver.com>
+ <1370990670-49249-7-git-send-email-paul.gortmaker@windriver.com>
+ <20130613030831.GG16959@thunk.org>
+ <51B9CE63.9000509@windriver.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Zheng Liu <gnehzuil.liu@gmail.com>, linux-ext4@vger.kernel.org
-To: jon ernst <jonernst07@gmx.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:57669 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757363Ab3FMOAD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 13 Jun 2013 10:00:03 -0400
+Cc: linux-ext4@vger.kernel.org, linux-rt-users@vger.kernel.org
+To: Paul Gortmaker <paul.gortmaker@windriver.com>
+Return-path: <linux-rt-users-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20130613134347.300880@gmx.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <51B9CE63.9000509@windriver.com>
+Sender: linux-rt-users-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jun 13, 2013 at 09:43:46AM -0400, jon ernst wrote:
-> I built xfstest from latest code. I also built fio from latest code base.
-> Thanks for your help!
+On Thu, Jun 13, 2013 at 09:51:31AM -0400, Paul Gortmaker wrote:
+> On 13-06-12 11:08 PM, Theodore Ts'o wrote:
+> > On Tue, Jun 11, 2013 at 06:44:30PM -0400, Paul Gortmaker wrote:
+> >> commit b6e96d0067d8 ("jbd2: use module parameters instead of debugfs
+> >> for jbd_debug") removed any need for a dependency on DEBUG_FS.  It
+> >> also moved the /sys variables out from underneath the typical debugfs
+> >> mount point.  Delete the dependency and update the /sys path to where
+> >> the debug settings are currently.
+> >>
+> >> Signed-off-by: Paul Gortmaker <paul.gortmaker@windriver.com>
+> > 
+> > Applied, thanks.
+> 
+> Just a heads up -- it seems some script threw away the 1st line of the
+> commit log here.
 
-Dmitry's advice is on-target.  Do you have:
+Thanks for noticing this.  Guilt is apparently stripping lines that
+begin with "commit".  Using "Commit" avoids this.
 
-#define CONFIG_LINUX_EXT4_MOVE_EXTENT
-
-defined in fio/config-host.h?
-
-						- Ted
+      	   	      	    	     	    - Ted
