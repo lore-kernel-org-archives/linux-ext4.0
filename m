@@ -1,335 +1,181 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
 Subject: Re: xfstest ext4 'utility required' run stop
-Date: Thu, 13 Jun 2013 15:02:12 +0800
-Message-ID: <20130613070211.GA26762@gmail.com>
+Date: Thu, 13 Jun 2013 11:33:50 +0400
+Message-ID: <878v2eihwh.fsf@openvz.org>
 References: <20130613051731.207470@gmx.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Transfer-Encoding: base64
 Cc: linux-ext4@vger.kernel.org
 To: jon ernst <jonernst07@gmx.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f170.google.com ([209.85.192.170]:43807 "EHLO
-	mail-pd0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750762Ab3FMGn5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Jun 2013 02:43:57 -0400
-Received: by mail-pd0-f170.google.com with SMTP id x11so5200852pdj.1
-        for <linux-ext4@vger.kernel.org>; Wed, 12 Jun 2013 23:43:56 -0700 (PDT)
-Content-Disposition: inline
+Received: from mail-la0-f43.google.com ([209.85.215.43]:42464 "EHLO
+	mail-la0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754608Ab3FMHdz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Jun 2013 03:33:55 -0400
+Received: by mail-la0-f43.google.com with SMTP id gw10so8774778lab.30
+        for <linux-ext4@vger.kernel.org>; Thu, 13 Jun 2013 00:33:53 -0700 (PDT)
 In-Reply-To: <20130613051731.207470@gmx.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Jon,
-
-Could you please tell us which xfstest's version are you used?  If I
-remember correctly, testcases 301-304 have a bug at some certain
-version.  Could you please upgrade your xfstests to the latest version?
-Or as Ted suggested, you could use xfstests-bld.
-
-Regards,
-                                                - Zheng
-
-On Thu, Jun 13, 2013 at 01:17:30AM -0400, jon ernst wrote:
-> Hi All,
-> about xfstestI installed fio. But still got error when I run ext4 tes=
-t 301.
-> Could anyone enlight me what;s wrong with my configuration?=20
-> I have latest ext4 dev branch code with latest xfstest code.
-> fio version is 2.1.1
->=20
-> this is whole log:
-> Thank you!=20
->=20
-> fio: failed parsing ioengine=3Dioe_e4defrag
-> fio: job global dropped
-> fio =C2=A0 =C2=A0 =C2=A0 =C2=A0 valid values: sync =C2=A0 =C2=A0 =C2=A0=
- Use read/write
->  =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
-: psync =C2=A0 =C2=A0 =C2=A0Use pread/pwrite
->  =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
-: vsync =C2=A0 =C2=A0 =C2=A0Use readv/writev
->  =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
-: libaio =C2=A0 =C2=A0 Linux native asynchronous IO
->  =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
-: posixaio =C2=A0 POSIX asynchronous IO
->  =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
-: mmap =C2=A0 =C2=A0 =C2=A0 Memory mapped IO
->  =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
-: splice =C2=A0 =C2=A0 splice/vmsplice based IO
->  =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
-: netsplice =C2=A0splice/vmsplice to/from the network
->  =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
-: sg =C2=A0 =C2=A0 =C2=A0 =C2=A0 SCSI generic v3 IO
->  =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
-: null =C2=A0 =C2=A0 =C2=A0 Testing engine (no data transfer)
->  =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
-: net =C2=A0 =C2=A0 =C2=A0 =C2=A0Network IO
->  =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
-: syslet-rw =C2=A0syslet enabled async pread/pwrite IO
->  =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
-: cpuio =C2=A0 =C2=A0 =C2=A0CPU cycle burner engine
->  =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
-: binject =C2=A0 =C2=A0binject direct inject block engine
->  =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
-: rdma =C2=A0 =C2=A0 =C2=A0 RDMA IO engine
->  =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
-: external =C2=A0 Load external engine (append name)
->=20
->=20
-> fio --ioengine=3Dioe_e4defrag --iodepth=3D1 --directory=3D/device8 --=
-filesize=3D3424725990 --size=3D999G --buffered=3D0 --fadvise_hint=3D0 -=
--name=3Ddefrag-4k --ioengine=3De4defrag --iodepth=3D1 --bs=3D128k --don=
-orname=3Dtest1.def --inplace=3D0 --rw=3Dwrite --numjobs=3D4 --runtime=3D=
-30*1 --time_based --filename=3Dtest1 --name=3Daio-dio-verifier --ioengi=
-ne=3Dlibaio --iodepth=3D128*1 --numjobs=3D1 --verify=3Dcrc32c-intel --v=
-erify_fatal=3D1 --verify_dump=3D1 --verify_backlog=3D1024 --verify_asyn=
-c=3D1 --verifysort=3D1 --direct=3D1 --bs=3D64k --rw=3Drandwrite --runti=
-me=3D30*1 --time_based --filename=3Dtest1=20
-> mke2fs 1.42 (29-Nov-2011)
-> Filesystem label=3D
-> OS type: Linux
-> Block size=3D4096 (log=3D2)
-> Fragment size=3D4096 (log=3D2)
-> Stride=3D0 blocks, Stripe width=3D0 blocks
-> 629552 inodes, 2518180 blocks
-> 125909 blocks (5.00%) reserved for the super user
-> First data block=3D0
-> Maximum filesystem blocks=3D2579496960
-> 77 block groups
-> 32768 blocks per group, 32768 fragments per group
-> 8176 inodes per group
-> Superblock backups stored on blocks:=20
->  32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632
->=20
-> Allocating group tables:
->=20
-> # Common e4defrag regression tests
-> [global]
-> ioengine=3Dioe_e4defrag
-> iodepth=3D1
-> directory=3D/device8
-> filesize=3D3424725990
-> size=3D999G
-> buffered=3D0
-> fadvise_hint=3D0
->=20
-> #################################
-> # Test1
-> # Defragment file while other task does direct io
->=20
-> # Continious sequential defrag activity
-> [defrag-4k]
-> ioengine=3De4defrag
-> iodepth=3D1
-> bs=3D128k
-> donorname=3Dtest1.def
-> filename=3Dtest1
-> inplace=3D0
-> rw=3Dwrite
-> numjobs=3D4
-> runtime=3D30*1
-> time_based
->=20
-> # Verifier
-> [aio-dio-verifier]
-> ioengine=3Dlibaio
-> iodepth=3D128*1
-> numjobs=3D1
-> verify=3Dcrc32c-intel
-> verify_fatal=3D1
-> verify_dump=3D1
-> verify_backlog=3D1024
-> verify_async=3D1
-> verifysort=3D1
-> direct=3D1
-> bs=3D64k
-> rw=3Drandwrite
-> filename=3Dtest1
-> runtime=3D30*1
-> time_based
-> # /usr/bin/fio /tmp/5884.fio
-> fio: engine libaio not loadable
-> fio: failed to load engine libaio
-> defrag-4k: (g=3D0): rw=3Dwrite, bs=3D128K-128K/128K-128K/128K-128K, i=
-oengine=3De4defrag, iodepth=3D1
-> ...
-> defrag-4k: (g=3D0): rw=3Dwrite, bs=3D128K-128K/128K-128K/128K-128K, i=
-oengine=3De4defrag, iodepth=3D1
-> fio: file:ioengines.c:99, func=3Ddlopen, error=3Dlibaio: cannot open =
-shared object file: No such file or directory
-> failed: '/usr/bin/fio /tmp/5884.fio'
-> fio --ioengine=3Dioe_e4defrag --iodepth=3D1 --directory=3D/device8 --=
-filesize=3D3424725990 --size=3D999G --buffered=3D0 --fadvise_hint=3D0 -=
--name=3Ddefrag-4k --ioengine=3De4defrag --iodepth=3D1 --bs=3D128k --don=
-orname=3Dtest1.def --inplace=3D0 --rw=3Dwrite --numjobs=3D4 --runtime=3D=
-30*1 --time_based --filename=3Dtest1 --name=3Daio-dio-verifier --ioengi=
-ne=3Dlibaio --iodepth=3D128*1 --numjobs=3D1 --verify=3Dcrc32c-intel --v=
-erify_fatal=3D1 --verify_dump=3D1 --verify_backlog=3D1024 --verify_asyn=
-c=3D1 --verifysort=3D1 --direct=3D1 --bs=3D64k --rw=3Drandwrite --runti=
-me=3D30*1 --time_based --filename=3Dtest1=20
-> mke2fs 1.42 (29-Nov-2011)
-> Filesystem label=3D
-> OS type: Linux
-> Block size=3D4096 (log=3D2)
-> Fragment size=3D4096 (log=3D2)
-> Stride=3D0 blocks, Stripe width=3D0 blocks
-> 629552 inodes, 2518180 blocks
-> 125909 blocks (5.00%) reserved for the super user
-> First data block=3D0
-> Maximum filesystem blocks=3D2579496960
-> 77 block groups
-> 32768 blocks per group, 32768 fragments per group
-> 8176 inodes per group
-> Superblock backups stored on blocks:=20
->  32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632
->=20
-> Allocating group tables:=20
->=20
-> # Common e4defrag regression tests
-> [global]
-> ioengine=3Dioe_e4defrag
-> iodepth=3D1
-> directory=3D/device8
-> filesize=3D3424725990
-> size=3D999G
-> buffered=3D0
-> fadvise_hint=3D0
->=20
-> #################################
-> # Test1
-> # Defragment file while other task does direct io
->=20
-> # Continious sequential defrag activity
-> [defrag-4k]
-> ioengine=3De4defrag
-> iodepth=3D1
-> bs=3D128k
-> donorname=3Dtest1.def
-> filename=3Dtest1
-> inplace=3D0
-> rw=3Dwrite
-> numjobs=3D4
-> runtime=3D30*1
-> time_based
->=20
-> # Verifier
-> [aio-dio-verifier]
-> ioengine=3Dlibaio
-> iodepth=3D128*1
-> numjobs=3D1
-> verify=3Dcrc32c-intel
-> verify_fatal=3D1
-> verify_dump=3D1
-> verify_backlog=3D1024
-> verify_async=3D1
-> verifysort=3D1
-> direct=3D1
-> bs=3D64k
-> rw=3Drandwrite
-> filename=3Dtest1
-> runtime=3D30*1
-> time_based
-> # /usr/bin/fio /tmp/3999.fio
-> fio: engine libaio not loadable
-> fio: failed to load engine libaio
-> defrag-4k: (g=3D0): rw=3Dwrite, bs=3D128K-128K/128K-128K/128K-128K, i=
-oengine=3De4defrag, iodepth=3D1
-> ...
-> defrag-4k: (g=3D0): rw=3Dwrite, bs=3D128K-128K/128K-128K/128K-128K, i=
-oengine=3De4defrag, iodepth=3D1
-> fio: file:ioengines.c:99, func=3Ddlopen, error=3Dlibaio: cannot open =
-shared object file: No such file or directory
-> failed: '/usr/bin/fio /tmp/3999.fio'
-> fio --ioengine=3Dioe_e4defrag --iodepth=3D1 --directory=3D/device8 --=
-filesize=3D3424725990 --size=3D999G --buffered=3D0 --fadvise_hint=3D0 -=
--name=3Ddefrag-4k --ioengine=3De4defrag --iodepth=3D1 --bs=3D128k --don=
-orname=3Dtest1.def --inplace=3D0 --rw=3Dwrite --numjobs=3D4 --runtime=3D=
-30*1 --time_based --filename=3Dtest1 --name=3Daio-dio-verifier --ioengi=
-ne=3Dlibaio --iodepth=3D128*1 --numjobs=3D1 --verify=3Dcrc32c-intel --v=
-erify_fatal=3D1 --verify_dump=3D1 --verify_backlog=3D1024 --verify_asyn=
-c=3D1 --verifysort=3D1 --direct=3D1 --bs=3D64k --rw=3Drandwrite --runti=
-me=3D30*1 --time_based --filename=3Dtest1=20
-> mke2fs 1.42 (29-Nov-2011)
-> Filesystem label=3D
-> OS type: Linux
-> Block size=3D4096 (log=3D2)
-> Fragment size=3D4096 (log=3D2)
-> Stride=3D0 blocks, Stripe width=3D0 blocks
-> 629552 inodes, 2518180 blocks
-> 125909 blocks (5.00%) reserved for the super user
-> First data block=3D0
-> Maximum filesystem blocks=3D2579496960
-> 77 block groups
-> 32768 blocks per group, 32768 fragments per group
-> 8176 inodes per group
-> Superblock backups stored on blocks:=20
->  32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632
->=20
-> Allocating group tables: =C2=A0
->=20
-> # Common e4defrag regression tests
-> [global]
-> ioengine=3Dioe_e4defrag
-> iodepth=3D1
-> directory=3D/device8
-> filesize=3D3424725990
-> size=3D999G
-> buffered=3D0
-> fadvise_hint=3D0
->=20
-> #################################
-> # Test1
-> # Defragment file while other task does direct io
->=20
-> # Continious sequential defrag activity
-> [defrag-4k]
-> ioengine=3De4defrag
-> iodepth=3D1
-> bs=3D128k
-> donorname=3Dtest1.def
-> filename=3Dtest1
-> inplace=3D0
-> rw=3Dwrite
-> numjobs=3D4
-> runtime=3D30*1
-> time_based
->=20
-> # Verifier
-> [aio-dio-verifier]
-> ioengine=3Dlibaio
-> iodepth=3D128*1
-> numjobs=3D1
-> verify=3Dcrc32c-intel
-> verify_fatal=3D1
-> verify_dump=3D1
-> verify_backlog=3D1024
-> verify_async=3D1
-> verifysort=3D1
-> direct=3D1
-> bs=3D64k
-> rw=3Drandwrite
-> filename=3Dtest1
-> runtime=3D30*1
-> time_based
-> # /usr/bin/fio /tmp/12231.fio
-> fio: engine libaio not loadable
-> fio: failed to load engine libaio
-> defrag-4k: (g=3D0): rw=3Dwrite, bs=3D128K-128K/128K-128K/128K-128K, i=
-oengine=3De4defrag, iodepth=3D1
-> ...
-> defrag-4k: (g=3D0): rw=3Dwrite, bs=3D128K-128K/128K-128K/128K-128K, i=
-oengine=3De4defrag, iodepth=3D1
-> fio: file:ioengines.c:99, func=3Ddlopen, error=3Dlibaio: cannot open =
-shared object file: No such file or directory
-> failed: '/usr/bin/fio /tmp/12231.fio'
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+T24gVGh1LCAxMyBKdW4gMjAxMyAwMToxNzozMCAtMDQwMCwgImpvbiBlcm5zdCIgPGpvbmVybnN0
+MDdAZ214LmNvbT4gd3JvdGU6DQo+IEhpIEFsbCwNCj4gYWJvdXQgeGZzdGVzdEkgaW5zdGFsbGVk
+IGZpby4gQnV0IHN0aWxsIGdvdCBlcnJvciB3aGVuIEkgcnVuIGV4dDQgdGVzdCAzMDEuDQo+IENv
+dWxkIGFueW9uZSBlbmxpZ2h0IG1lIHdoYXQ7cyB3cm9uZyB3aXRoIG15IGNvbmZpZ3VyYXRpb24/
+IA0KPiBJIGhhdmUgbGF0ZXN0IGV4dDQgZGV2IGJyYW5jaCBjb2RlIHdpdGggbGF0ZXN0IHhmc3Rl
+c3QgY29kZS4NCj4gZmlvIHZlcnNpb24gaXMgMi4xLjENCllvdSBoYXZlIGNvbXBpbGVkIGZpbyB3
+L28gJ0VYVDQgbW92ZSBleHRlbnQnIHN1cHBvcnQNCndoaWNoIGxvb2tzIHN0cmFuZ2UgYmVjYXVz
+ZSBpdCBlbmFibGVkIG9uIGxpbnV4IGJ5IGRlZmF1bHQNClNlZTogJ2V4dDRfbWUnIG9wdGlvbiBp
+biAuL2NvbmZpZ3VyZQ0KQlRXOiAyLjEuMSBpcyBicm9rZW4sIFVzZSAnNGUwYThmYScgaXQgaXMg
+a25vd24gdG8gd29yaw0KPiANCj4gdGhpcyBpcyB3aG9sZSBsb2c6DQo+IFRoYW5rIHlvdSEgDQo+
+IA0KPiBmaW86IGZhaWxlZCBwYXJzaW5nIGlvZW5naW5lPWlvZV9lNGRlZnJhZw0KPiBmaW86IGpv
+YiBnbG9iYWwgZHJvcHBlZA0KPiBmaW8gwqAgwqAgwqAgwqAgdmFsaWQgdmFsdWVzOiBzeW5jIMKg
+IMKgIMKgIFVzZSByZWFkL3dyaXRlDQo+ICDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoDog
+cHN5bmMgwqAgwqAgwqBVc2UgcHJlYWQvcHdyaXRlDQo+ICDCoCDCoCDCoCDCoCDCoCDCoCDCoCDC
+oCDCoCDCoDogdnN5bmMgwqAgwqAgwqBVc2UgcmVhZHYvd3JpdGV2DQo+ICDCoCDCoCDCoCDCoCDC
+oCDCoCDCoCDCoCDCoCDCoDogbGliYWlvIMKgIMKgIExpbnV4IG5hdGl2ZSBhc3luY2hyb25vdXMg
+SU8NCj4gIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgOiBwb3NpeGFpbyDCoCBQT1NJWCBh
+c3luY2hyb25vdXMgSU8NCj4gIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgOiBtbWFwIMKg
+IMKgIMKgIE1lbW9yeSBtYXBwZWQgSU8NCj4gIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKg
+OiBzcGxpY2UgwqAgwqAgc3BsaWNlL3Ztc3BsaWNlIGJhc2VkIElPDQo+ICDCoCDCoCDCoCDCoCDC
+oCDCoCDCoCDCoCDCoCDCoDogbmV0c3BsaWNlIMKgc3BsaWNlL3Ztc3BsaWNlIHRvL2Zyb20gdGhl
+IG5ldHdvcmsNCj4gIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgOiBzZyDCoCDCoCDCoCDC
+oCBTQ1NJIGdlbmVyaWMgdjMgSU8NCj4gIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgOiBu
+dWxsIMKgIMKgIMKgIFRlc3RpbmcgZW5naW5lIChubyBkYXRhIHRyYW5zZmVyKQ0KPiAgwqAgwqAg
+wqAgwqAgwqAgwqAgwqAgwqAgwqAgwqA6IG5ldCDCoCDCoCDCoCDCoE5ldHdvcmsgSU8NCj4gIMKg
+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgOiBzeXNsZXQtcncgwqBzeXNsZXQgZW5hYmxlZCBh
+c3luYyBwcmVhZC9wd3JpdGUgSU8NCj4gIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgOiBj
+cHVpbyDCoCDCoCDCoENQVSBjeWNsZSBidXJuZXIgZW5naW5lDQo+ICDCoCDCoCDCoCDCoCDCoCDC
+oCDCoCDCoCDCoCDCoDogYmluamVjdCDCoCDCoGJpbmplY3QgZGlyZWN0IGluamVjdCBibG9jayBl
+bmdpbmUNCj4gIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgOiByZG1hIMKgIMKgIMKgIFJE
+TUEgSU8gZW5naW5lDQo+ICDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoDogZXh0ZXJuYWwg
+wqAgTG9hZCBleHRlcm5hbCBlbmdpbmUgKGFwcGVuZCBuYW1lKQ0KPiANCj4gDQo+IGZpbyAtLWlv
+ZW5naW5lPWlvZV9lNGRlZnJhZyAtLWlvZGVwdGg9MSAtLWRpcmVjdG9yeT0vZGV2aWNlOCAtLWZp
+bGVzaXplPTM0MjQ3MjU5OTAgLS1zaXplPTk5OUcgLS1idWZmZXJlZD0wIC0tZmFkdmlzZV9oaW50
+PTAgLS1uYW1lPWRlZnJhZy00ayAtLWlvZW5naW5lPWU0ZGVmcmFnIC0taW9kZXB0aD0xIC0tYnM9
+MTI4ayAtLWRvbm9ybmFtZT10ZXN0MS5kZWYgLS1pbnBsYWNlPTAgLS1ydz13cml0ZSAtLW51bWpv
+YnM9NCAtLXJ1bnRpbWU9MzAqMSAtLXRpbWVfYmFzZWQgLS1maWxlbmFtZT10ZXN0MSAtLW5hbWU9
+YWlvLWRpby12ZXJpZmllciAtLWlvZW5naW5lPWxpYmFpbyAtLWlvZGVwdGg9MTI4KjEgLS1udW1q
+b2JzPTEgLS12ZXJpZnk9Y3JjMzJjLWludGVsIC0tdmVyaWZ5X2ZhdGFsPTEgLS12ZXJpZnlfZHVt
+cD0xIC0tdmVyaWZ5X2JhY2tsb2c9MTAyNCAtLXZlcmlmeV9hc3luYz0xIC0tdmVyaWZ5c29ydD0x
+IC0tZGlyZWN0PTEgLS1icz02NGsgLS1ydz1yYW5kd3JpdGUgLS1ydW50aW1lPTMwKjEgLS10aW1l
+X2Jhc2VkIC0tZmlsZW5hbWU9dGVzdDEgDQo+IG1rZTJmcyAxLjQyICgyOS1Ob3YtMjAxMSkNCj4g
+RmlsZXN5c3RlbSBsYWJlbD0NCj4gT1MgdHlwZTogTGludXgNCj4gQmxvY2sgc2l6ZT00MDk2IChs
+b2c9MikNCj4gRnJhZ21lbnQgc2l6ZT00MDk2IChsb2c9MikNCj4gU3RyaWRlPTAgYmxvY2tzLCBT
+dHJpcGUgd2lkdGg9MCBibG9ja3MNCj4gNjI5NTUyIGlub2RlcywgMjUxODE4MCBibG9ja3MNCj4g
+MTI1OTA5IGJsb2NrcyAoNS4wMCUpIHJlc2VydmVkIGZvciB0aGUgc3VwZXIgdXNlcg0KPiBGaXJz
+dCBkYXRhIGJsb2NrPTANCj4gTWF4aW11bSBmaWxlc3lzdGVtIGJsb2Nrcz0yNTc5NDk2OTYwDQo+
+IDc3IGJsb2NrIGdyb3Vwcw0KPiAzMjc2OCBibG9ja3MgcGVyIGdyb3VwLCAzMjc2OCBmcmFnbWVu
+dHMgcGVyIGdyb3VwDQo+IDgxNzYgaW5vZGVzIHBlciBncm91cA0KPiBTdXBlcmJsb2NrIGJhY2t1
+cHMgc3RvcmVkIG9uIGJsb2NrczogDQo+ICAzMjc2OCwgOTgzMDQsIDE2Mzg0MCwgMjI5Mzc2LCAy
+OTQ5MTIsIDgxOTIwMCwgODg0NzM2LCAxNjA1NjMyDQo+IA0KPiBBbGxvY2F0aW5nIGdyb3VwIHRh
+YmxlczoNCj4gDQo+ICMgQ29tbW9uIGU0ZGVmcmFnIHJlZ3Jlc3Npb24gdGVzdHMNCj4gW2dsb2Jh
+bF0NCj4gaW9lbmdpbmU9aW9lX2U0ZGVmcmFnDQo+IGlvZGVwdGg9MQ0KPiBkaXJlY3Rvcnk9L2Rl
+dmljZTgNCj4gZmlsZXNpemU9MzQyNDcyNTk5MA0KPiBzaXplPTk5OUcNCj4gYnVmZmVyZWQ9MA0K
+PiBmYWR2aXNlX2hpbnQ9MA0KPiANCj4gIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMj
+DQo+ICMgVGVzdDENCj4gIyBEZWZyYWdtZW50IGZpbGUgd2hpbGUgb3RoZXIgdGFzayBkb2VzIGRp
+cmVjdCBpbw0KPiANCj4gIyBDb250aW5pb3VzIHNlcXVlbnRpYWwgZGVmcmFnIGFjdGl2aXR5DQo+
+IFtkZWZyYWctNGtdDQo+IGlvZW5naW5lPWU0ZGVmcmFnDQo+IGlvZGVwdGg9MQ0KPiBicz0xMjhr
+DQo+IGRvbm9ybmFtZT10ZXN0MS5kZWYNCj4gZmlsZW5hbWU9dGVzdDENCj4gaW5wbGFjZT0wDQo+
+IHJ3PXdyaXRlDQo+IG51bWpvYnM9NA0KPiBydW50aW1lPTMwKjENCj4gdGltZV9iYXNlZA0KPiAN
+Cj4gIyBWZXJpZmllcg0KPiBbYWlvLWRpby12ZXJpZmllcl0NCj4gaW9lbmdpbmU9bGliYWlvDQo+
+IGlvZGVwdGg9MTI4KjENCj4gbnVtam9icz0xDQo+IHZlcmlmeT1jcmMzMmMtaW50ZWwNCj4gdmVy
+aWZ5X2ZhdGFsPTENCj4gdmVyaWZ5X2R1bXA9MQ0KPiB2ZXJpZnlfYmFja2xvZz0xMDI0DQo+IHZl
+cmlmeV9hc3luYz0xDQo+IHZlcmlmeXNvcnQ9MQ0KPiBkaXJlY3Q9MQ0KPiBicz02NGsNCj4gcnc9
+cmFuZHdyaXRlDQo+IGZpbGVuYW1lPXRlc3QxDQo+IHJ1bnRpbWU9MzAqMQ0KPiB0aW1lX2Jhc2Vk
+DQo+ICMgL3Vzci9iaW4vZmlvIC90bXAvNTg4NC5maW8NCj4gZmlvOiBlbmdpbmUgbGliYWlvIG5v
+dCBsb2FkYWJsZQ0KPiBmaW86IGZhaWxlZCB0byBsb2FkIGVuZ2luZSBsaWJhaW8NCj4gZGVmcmFn
+LTRrOiAoZz0wKTogcnc9d3JpdGUsIGJzPTEyOEstMTI4Sy8xMjhLLTEyOEsvMTI4Sy0xMjhLLCBp
+b2VuZ2luZT1lNGRlZnJhZywgaW9kZXB0aD0xDQo+IC4uLg0KPiBkZWZyYWctNGs6IChnPTApOiBy
+dz13cml0ZSwgYnM9MTI4Sy0xMjhLLzEyOEstMTI4Sy8xMjhLLTEyOEssIGlvZW5naW5lPWU0ZGVm
+cmFnLCBpb2RlcHRoPTENCj4gZmlvOiBmaWxlOmlvZW5naW5lcy5jOjk5LCBmdW5jPWRsb3Blbiwg
+ZXJyb3I9bGliYWlvOiBjYW5ub3Qgb3BlbiBzaGFyZWQgb2JqZWN0IGZpbGU6IE5vIHN1Y2ggZmls
+ZSBvciBkaXJlY3RvcnkNCj4gZmFpbGVkOiAnL3Vzci9iaW4vZmlvIC90bXAvNTg4NC5maW8nDQo+
+IGZpbyAtLWlvZW5naW5lPWlvZV9lNGRlZnJhZyAtLWlvZGVwdGg9MSAtLWRpcmVjdG9yeT0vZGV2
+aWNlOCAtLWZpbGVzaXplPTM0MjQ3MjU5OTAgLS1zaXplPTk5OUcgLS1idWZmZXJlZD0wIC0tZmFk
+dmlzZV9oaW50PTAgLS1uYW1lPWRlZnJhZy00ayAtLWlvZW5naW5lPWU0ZGVmcmFnIC0taW9kZXB0
+aD0xIC0tYnM9MTI4ayAtLWRvbm9ybmFtZT10ZXN0MS5kZWYgLS1pbnBsYWNlPTAgLS1ydz13cml0
+ZSAtLW51bWpvYnM9NCAtLXJ1bnRpbWU9MzAqMSAtLXRpbWVfYmFzZWQgLS1maWxlbmFtZT10ZXN0
+MSAtLW5hbWU9YWlvLWRpby12ZXJpZmllciAtLWlvZW5naW5lPWxpYmFpbyAtLWlvZGVwdGg9MTI4
+KjEgLS1udW1qb2JzPTEgLS12ZXJpZnk9Y3JjMzJjLWludGVsIC0tdmVyaWZ5X2ZhdGFsPTEgLS12
+ZXJpZnlfZHVtcD0xIC0tdmVyaWZ5X2JhY2tsb2c9MTAyNCAtLXZlcmlmeV9hc3luYz0xIC0tdmVy
+aWZ5c29ydD0xIC0tZGlyZWN0PTEgLS1icz02NGsgLS1ydz1yYW5kd3JpdGUgLS1ydW50aW1lPTMw
+KjEgLS10aW1lX2Jhc2VkIC0tZmlsZW5hbWU9dGVzdDEgDQo+IG1rZTJmcyAxLjQyICgyOS1Ob3Yt
+MjAxMSkNCj4gRmlsZXN5c3RlbSBsYWJlbD0NCj4gT1MgdHlwZTogTGludXgNCj4gQmxvY2sgc2l6
+ZT00MDk2IChsb2c9MikNCj4gRnJhZ21lbnQgc2l6ZT00MDk2IChsb2c9MikNCj4gU3RyaWRlPTAg
+YmxvY2tzLCBTdHJpcGUgd2lkdGg9MCBibG9ja3MNCj4gNjI5NTUyIGlub2RlcywgMjUxODE4MCBi
+bG9ja3MNCj4gMTI1OTA5IGJsb2NrcyAoNS4wMCUpIHJlc2VydmVkIGZvciB0aGUgc3VwZXIgdXNl
+cg0KPiBGaXJzdCBkYXRhIGJsb2NrPTANCj4gTWF4aW11bSBmaWxlc3lzdGVtIGJsb2Nrcz0yNTc5
+NDk2OTYwDQo+IDc3IGJsb2NrIGdyb3Vwcw0KPiAzMjc2OCBibG9ja3MgcGVyIGdyb3VwLCAzMjc2
+OCBmcmFnbWVudHMgcGVyIGdyb3VwDQo+IDgxNzYgaW5vZGVzIHBlciBncm91cA0KPiBTdXBlcmJs
+b2NrIGJhY2t1cHMgc3RvcmVkIG9uIGJsb2NrczogDQo+ICAzMjc2OCwgOTgzMDQsIDE2Mzg0MCwg
+MjI5Mzc2LCAyOTQ5MTIsIDgxOTIwMCwgODg0NzM2LCAxNjA1NjMyDQo+IA0KPiBBbGxvY2F0aW5n
+IGdyb3VwIHRhYmxlczogDQo+IA0KPiAjIENvbW1vbiBlNGRlZnJhZyByZWdyZXNzaW9uIHRlc3Rz
+DQo+IFtnbG9iYWxdDQo+IGlvZW5naW5lPWlvZV9lNGRlZnJhZw0KPiBpb2RlcHRoPTENCj4gZGly
+ZWN0b3J5PS9kZXZpY2U4DQo+IGZpbGVzaXplPTM0MjQ3MjU5OTANCj4gc2l6ZT05OTlHDQo+IGJ1
+ZmZlcmVkPTANCj4gZmFkdmlzZV9oaW50PTANCj4gDQo+ICMjIyMjIyMjIyMjIyMjIyMjIyMjIyMj
+IyMjIyMjIyMjIw0KPiAjIFRlc3QxDQo+ICMgRGVmcmFnbWVudCBmaWxlIHdoaWxlIG90aGVyIHRh
+c2sgZG9lcyBkaXJlY3QgaW8NCj4gDQo+ICMgQ29udGluaW91cyBzZXF1ZW50aWFsIGRlZnJhZyBh
+Y3Rpdml0eQ0KPiBbZGVmcmFnLTRrXQ0KPiBpb2VuZ2luZT1lNGRlZnJhZw0KPiBpb2RlcHRoPTEN
+Cj4gYnM9MTI4aw0KPiBkb25vcm5hbWU9dGVzdDEuZGVmDQo+IGZpbGVuYW1lPXRlc3QxDQo+IGlu
+cGxhY2U9MA0KPiBydz13cml0ZQ0KPiBudW1qb2JzPTQNCj4gcnVudGltZT0zMCoxDQo+IHRpbWVf
+YmFzZWQNCj4gDQo+ICMgVmVyaWZpZXINCj4gW2Fpby1kaW8tdmVyaWZpZXJdDQo+IGlvZW5naW5l
+PWxpYmFpbw0KPiBpb2RlcHRoPTEyOCoxDQo+IG51bWpvYnM9MQ0KPiB2ZXJpZnk9Y3JjMzJjLWlu
+dGVsDQo+IHZlcmlmeV9mYXRhbD0xDQo+IHZlcmlmeV9kdW1wPTENCj4gdmVyaWZ5X2JhY2tsb2c9
+MTAyNA0KPiB2ZXJpZnlfYXN5bmM9MQ0KPiB2ZXJpZnlzb3J0PTENCj4gZGlyZWN0PTENCj4gYnM9
+NjRrDQo+IHJ3PXJhbmR3cml0ZQ0KPiBmaWxlbmFtZT10ZXN0MQ0KPiBydW50aW1lPTMwKjENCj4g
+dGltZV9iYXNlZA0KPiAjIC91c3IvYmluL2ZpbyAvdG1wLzM5OTkuZmlvDQo+IGZpbzogZW5naW5l
+IGxpYmFpbyBub3QgbG9hZGFibGUNCj4gZmlvOiBmYWlsZWQgdG8gbG9hZCBlbmdpbmUgbGliYWlv
+DQo+IGRlZnJhZy00azogKGc9MCk6IHJ3PXdyaXRlLCBicz0xMjhLLTEyOEsvMTI4Sy0xMjhLLzEy
+OEstMTI4SywgaW9lbmdpbmU9ZTRkZWZyYWcsIGlvZGVwdGg9MQ0KPiAuLi4NCj4gZGVmcmFnLTRr
+OiAoZz0wKTogcnc9d3JpdGUsIGJzPTEyOEstMTI4Sy8xMjhLLTEyOEsvMTI4Sy0xMjhLLCBpb2Vu
+Z2luZT1lNGRlZnJhZywgaW9kZXB0aD0xDQo+IGZpbzogZmlsZTppb2VuZ2luZXMuYzo5OSwgZnVu
+Yz1kbG9wZW4sIGVycm9yPWxpYmFpbzogY2Fubm90IG9wZW4gc2hhcmVkIG9iamVjdCBmaWxlOiBO
+byBzdWNoIGZpbGUgb3IgZGlyZWN0b3J5DQo+IGZhaWxlZDogJy91c3IvYmluL2ZpbyAvdG1wLzM5
+OTkuZmlvJw0KPiBmaW8gLS1pb2VuZ2luZT1pb2VfZTRkZWZyYWcgLS1pb2RlcHRoPTEgLS1kaXJl
+Y3Rvcnk9L2RldmljZTggLS1maWxlc2l6ZT0zNDI0NzI1OTkwIC0tc2l6ZT05OTlHIC0tYnVmZmVy
+ZWQ9MCAtLWZhZHZpc2VfaGludD0wIC0tbmFtZT1kZWZyYWctNGsgLS1pb2VuZ2luZT1lNGRlZnJh
+ZyAtLWlvZGVwdGg9MSAtLWJzPTEyOGsgLS1kb25vcm5hbWU9dGVzdDEuZGVmIC0taW5wbGFjZT0w
+IC0tcnc9d3JpdGUgLS1udW1qb2JzPTQgLS1ydW50aW1lPTMwKjEgLS10aW1lX2Jhc2VkIC0tZmls
+ZW5hbWU9dGVzdDEgLS1uYW1lPWFpby1kaW8tdmVyaWZpZXIgLS1pb2VuZ2luZT1saWJhaW8gLS1p
+b2RlcHRoPTEyOCoxIC0tbnVtam9icz0xIC0tdmVyaWZ5PWNyYzMyYy1pbnRlbCAtLXZlcmlmeV9m
+YXRhbD0xIC0tdmVyaWZ5X2R1bXA9MSAtLXZlcmlmeV9iYWNrbG9nPTEwMjQgLS12ZXJpZnlfYXN5
+bmM9MSAtLXZlcmlmeXNvcnQ9MSAtLWRpcmVjdD0xIC0tYnM9NjRrIC0tcnc9cmFuZHdyaXRlIC0t
+cnVudGltZT0zMCoxIC0tdGltZV9iYXNlZCAtLWZpbGVuYW1lPXRlc3QxIA0KPiBta2UyZnMgMS40
+MiAoMjktTm92LTIwMTEpDQo+IEZpbGVzeXN0ZW0gbGFiZWw9DQo+IE9TIHR5cGU6IExpbnV4DQo+
+IEJsb2NrIHNpemU9NDA5NiAobG9nPTIpDQo+IEZyYWdtZW50IHNpemU9NDA5NiAobG9nPTIpDQo+
+IFN0cmlkZT0wIGJsb2NrcywgU3RyaXBlIHdpZHRoPTAgYmxvY2tzDQo+IDYyOTU1MiBpbm9kZXMs
+IDI1MTgxODAgYmxvY2tzDQo+IDEyNTkwOSBibG9ja3MgKDUuMDAlKSByZXNlcnZlZCBmb3IgdGhl
+IHN1cGVyIHVzZXINCj4gRmlyc3QgZGF0YSBibG9jaz0wDQo+IE1heGltdW0gZmlsZXN5c3RlbSBi
+bG9ja3M9MjU3OTQ5Njk2MA0KPiA3NyBibG9jayBncm91cHMNCj4gMzI3NjggYmxvY2tzIHBlciBn
+cm91cCwgMzI3NjggZnJhZ21lbnRzIHBlciBncm91cA0KPiA4MTc2IGlub2RlcyBwZXIgZ3JvdXAN
+Cj4gU3VwZXJibG9jayBiYWNrdXBzIHN0b3JlZCBvbiBibG9ja3M6IA0KPiAgMzI3NjgsIDk4MzA0
+LCAxNjM4NDAsIDIyOTM3NiwgMjk0OTEyLCA4MTkyMDAsIDg4NDczNiwgMTYwNTYzMg0KPiANCj4g
+QWxsb2NhdGluZyBncm91cCB0YWJsZXM6IMKgDQo+IA0KPiAjIENvbW1vbiBlNGRlZnJhZyByZWdy
+ZXNzaW9uIHRlc3RzDQo+IFtnbG9iYWxdDQo+IGlvZW5naW5lPWlvZV9lNGRlZnJhZw0KPiBpb2Rl
+cHRoPTENCj4gZGlyZWN0b3J5PS9kZXZpY2U4DQo+IGZpbGVzaXplPTM0MjQ3MjU5OTANCj4gc2l6
+ZT05OTlHDQo+IGJ1ZmZlcmVkPTANCj4gZmFkdmlzZV9oaW50PTANCj4gDQo+ICMjIyMjIyMjIyMj
+IyMjIyMjIyMjIyMjIyMjIyMjIyMjIw0KPiAjIFRlc3QxDQo+ICMgRGVmcmFnbWVudCBmaWxlIHdo
+aWxlIG90aGVyIHRhc2sgZG9lcyBkaXJlY3QgaW8NCj4gDQo+ICMgQ29udGluaW91cyBzZXF1ZW50
+aWFsIGRlZnJhZyBhY3Rpdml0eQ0KPiBbZGVmcmFnLTRrXQ0KPiBpb2VuZ2luZT1lNGRlZnJhZw0K
+PiBpb2RlcHRoPTENCj4gYnM9MTI4aw0KPiBkb25vcm5hbWU9dGVzdDEuZGVmDQo+IGZpbGVuYW1l
+PXRlc3QxDQo+IGlucGxhY2U9MA0KPiBydz13cml0ZQ0KPiBudW1qb2JzPTQNCj4gcnVudGltZT0z
+MCoxDQo+IHRpbWVfYmFzZWQNCj4gDQo+ICMgVmVyaWZpZXINCj4gW2Fpby1kaW8tdmVyaWZpZXJd
+DQo+IGlvZW5naW5lPWxpYmFpbw0KPiBpb2RlcHRoPTEyOCoxDQo+IG51bWpvYnM9MQ0KPiB2ZXJp
+Znk9Y3JjMzJjLWludGVsDQo+IHZlcmlmeV9mYXRhbD0xDQo+IHZlcmlmeV9kdW1wPTENCj4gdmVy
+aWZ5X2JhY2tsb2c9MTAyNA0KPiB2ZXJpZnlfYXN5bmM9MQ0KPiB2ZXJpZnlzb3J0PTENCj4gZGly
+ZWN0PTENCj4gYnM9NjRrDQo+IHJ3PXJhbmR3cml0ZQ0KPiBmaWxlbmFtZT10ZXN0MQ0KPiBydW50
+aW1lPTMwKjENCj4gdGltZV9iYXNlZA0KPiAjIC91c3IvYmluL2ZpbyAvdG1wLzEyMjMxLmZpbw0K
+PiBmaW86IGVuZ2luZSBsaWJhaW8gbm90IGxvYWRhYmxlDQo+IGZpbzogZmFpbGVkIHRvIGxvYWQg
+ZW5naW5lIGxpYmFpbw0KPiBkZWZyYWctNGs6IChnPTApOiBydz13cml0ZSwgYnM9MTI4Sy0xMjhL
+LzEyOEstMTI4Sy8xMjhLLTEyOEssIGlvZW5naW5lPWU0ZGVmcmFnLCBpb2RlcHRoPTENCj4gLi4u
+DQo+IGRlZnJhZy00azogKGc9MCk6IHJ3PXdyaXRlLCBicz0xMjhLLTEyOEsvMTI4Sy0xMjhLLzEy
+OEstMTI4SywgaW9lbmdpbmU9ZTRkZWZyYWcsIGlvZGVwdGg9MQ0KPiBmaW86IGZpbGU6aW9lbmdp
+bmVzLmM6OTksIGZ1bmM9ZGxvcGVuLCBlcnJvcj1saWJhaW86IGNhbm5vdCBvcGVuIHNoYXJlZCBv
+YmplY3QgZmlsZTogTm8gc3VjaCBmaWxlIG9yIGRpcmVjdG9yeQ0KPiBmYWlsZWQ6ICcvdXNyL2Jp
+bi9maW8gL3RtcC8xMjIzMS5maW8nDQo+IC0tDQo+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBs
+aXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1leHQ0IiBpbg0KPiB0aGUgYm9k
+eSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0KPiBNb3JlIG1ham9y
+ZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwN
+Cg==
