@@ -1,60 +1,42 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: ext4 extent status tree LRU locking
-Date: Fri, 14 Jun 2013 14:00:54 -0400
-Message-ID: <20130614180054.GB1017@thunk.org>
-References: <51B7B128.60909@intel.com>
- <20130614140940.GA20401@gmail.com>
- <20130614140215.GA1017@thunk.org>
- <20130614170028.GA21544@gmail.com>
+Subject: Re: [PATCH] tests: clean up sed filtering of test output
+Date: Sat, 15 Jun 2013 18:46:25 -0400
+Message-ID: <20130615224625.GA32754@thunk.org>
+References: <1367281645-10595-1-git-send-email-adilger@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Dave Hansen <dave.hansen@intel.com>, linux-ext4@vger.kernel.org,
-	LKML <linux-kernel@vger.kernel.org>, Jan kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from [67.18.176.11] ([67.18.176.11]:58245 "EHLO imap.thunk.org"
+	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1754558Ab3FOWrA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 15 Jun 2013 18:47:00 -0400
 Content-Disposition: inline
-In-Reply-To: <20130614170028.GA21544@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1367281645-10595-1-git-send-email-adilger@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Jun 15, 2013 at 01:00:28AM +0800, Zheng Liu wrote:
-> > I have a suggestion for how to address this: Keep a timestamp of when
-> > the list last has been sorted in struct ext4_super_info.  When
-> > iterating over the list, looking for a candidate inode, if inode's
-> > i_touch_when is greater than the last time sorted, skip the inode.  If
-> > there are no inodes left in the list, or more than some threshold
-> > inodes have been skipped, only then resort the list (and update the
-> > timestamp in the ext4_super_info structure).
-> > 
+On Mon, Apr 29, 2013 at 06:27:25PM -0600, Andreas Dilger wrote:
+> The sed filters for test outputs that are used to remove build and
+> test specific information (such as version strings, dates, times,
+> UUIDs) were unconditionally deleting the first line of output.  This
+> would normally contain the tool version string, but in some cases
+> contained other information that was being lost.  This can lead to
+> difficulty debugging test failures.
 > 
-> Thanks for your suggestion.  I fully agree with you.  What I concern is
-> how to define this threshold.  A fixed value is very simple but too
-> inflexible.  If this value is too big, this lru list could never be
-> sorted.
+> The sed filtering has been changed to only remove the actual version
+> strings.  As well, similar filter strings were duplicated throughout
+> many scripts, and "sed" and "tr" were often called multiple times in
+> a pipeline.  These have been consolidated into a single filter.sed
+> file to avoid having to maintain these filters in multiple places.
+> 
+> In a few cases, accidentally deleted messages have been restored to
+> the expect output for the tests.  In other cases, trivial whitespace
+> has been changed in the expect files.
+> 
+> Signed-off-by: Andreas Dilger <adilger@dilger.ca>
 
-In my proposal, if the list is never sorted before, we would
-definitely sort the list the first time there is a request to shrink
-the number of extent caches.  So the list would always be sorted at
-least once.
-
-If an inode gets accessed after the time when the list has been
-sorted, then the last_touch time will be greater than the last_sorted
-time, right?  And our goal is to use the least recently used inode, so
-as long as we know they have been used more recently than the time the
-list was sorted, and there are still inodes on the list where the
-last_touch time is older than the last_sort time, we don't have a
-problem.  So we will evict all of the non-delalloc extent cache items
-from that inode, and remove it from the list.
-
-The original reason for having the threshold at all is so that if we
-skip a huge number of inodes on the list, this would take a long time.
-But thinking about this some more, we don't even need a threshold.
-What we do instead is if the the last_touch time is newer than the
-last_sort time, we just move the inode to the end of the list.  That
-means the end of the list will be unsorted, but that's OK, because the
-oldest inodes are still at the beginning of the list.  Once the head
-of the list is newer than the last_sorted time, then we know we need
-to resort the entire list.
-
-Does that make sense to you?
+Applied, thanks.
 
 					- Ted
