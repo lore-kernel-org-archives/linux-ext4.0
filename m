@@ -1,37 +1,35 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] e2image: fix crash when using e2image -I with a 64-bit file system
-Date: Sat, 15 Jun 2013 21:00:27 -0400
-Message-ID: <1371344427-18466-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH] mke2fs: don't set root dir UID/GID automatically
+Date: Sat, 15 Jun 2013 21:49:12 -0400
+Message-ID: <20130616014912.GC19200@thunk.org>
+References: <1371007922-20423-1-git-send-email-adilger@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:58265 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:58299 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754789Ab3FPBAa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 15 Jun 2013 21:00:30 -0400
+	id S1754786Ab3FPBtP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 15 Jun 2013 21:49:15 -0400
+Content-Disposition: inline
+In-Reply-To: <1371007922-20423-1-git-send-email-adilger@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Addresses-Debian-Bug: #703067
+On Tue, Jun 11, 2013 at 09:32:02PM -0600, Andreas Dilger wrote:
+> Don't change the root directory's UID/GID automatically just because
+> mke2fs was run as a non-root user.  This can be confusing for users,
+> and is not flexible for non-root installation tools that need to
+> create a filesystem with different ownership from the current user.
+> 
+> Add the "-E root_owner[=uid:gid]" option to mke2fs so that the user
+> and group can be explicitly specified for the root directory.  If
+> the "=uid:gid" argument is not specified, the current UID and GID
+> are extracted from the running process, as was done in the past.
+> 
+> Signed-off-by: Andreas Dilger <adilger@dilger.ca>
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- misc/e2image.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Thanks, applied.
 
-diff --git a/misc/e2image.c b/misc/e2image.c
-index 369c946..885a794 100644
---- a/misc/e2image.c
-+++ b/misc/e2image.c
-@@ -1171,7 +1171,7 @@ static void install_image(char *device, char *image_fn, int type)
- {
- 	errcode_t retval;
- 	ext2_filsys fs;
--	int open_flag = EXT2_FLAG_IMAGE_FILE;
-+	int open_flag = EXT2_FLAG_IMAGE_FILE | EXT2_FLAG_64BITS;
- 	int fd = 0;
- 	io_manager	io_ptr;
- 	io_channel	io;
--- 
-1.7.12.rc0.22.gcdd159b
-
+					- Ted
