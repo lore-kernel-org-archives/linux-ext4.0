@@ -1,22 +1,38 @@
-From: Sec Capital Loan <jose_carlos@mp.ro.gov.br>
-Subject: Quick Loans
-Date: Mon, 17 Jun 2013 09:24:19 +0530
-Message-ID: <156893a2-a9cc-4f84-bedb-b3a6b5603cb5__18156.4017119401$1371443309$gmane$org@DTI-APL-036.mpro.gov>
-Reply-To: seccapittals@mit.tc
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 59801] kernel BUG at /kernel/fs/ext4/extents.c:1996!
+Date: Mon, 17 Jun 2013 05:32:43 +0000 (UTC)
+Message-ID: <20130617053243.273CC11FB51@bugzilla.kernel.org>
+References: <bug-59801-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-To: Recipients <jose_carlos@mp.ro.gov.br>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ns2.mp.ro.gov.br ([200.101.66.131]:60908 "EHLO
-	mail.mp.ro.gov.br" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751140Ab3FQE2K convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Jun 2013 00:28:10 -0400
-Content-Description: Mail message body
+Received: from mail.kernel.org ([198.145.19.201]:41162 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755834Ab3FQFcp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 17 Jun 2013 01:32:45 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id B311120169
+	for <linux-ext4@vger.kernel.org>; Mon, 17 Jun 2013 05:32:44 +0000 (UTC)
+Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
+	by mail.kernel.org (Postfix) with ESMTP id 34EF72015C
+	for <linux-ext4@vger.kernel.org>; Mon, 17 Jun 2013 05:32:43 +0000 (UTC)
+In-Reply-To: <bug-59801-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Do you need a personal or business loan without stress and quick approval? If yes, contact us today as we are currently offering loans at superb interest rate. Our loan is secured and safe,For more information and Application, Please reply to this Email.
+https://bugzilla.kernel.org/show_bug.cgi?id=59801
 
-Sincerely,
-Vijay Nath
+
+
+
+
+--- Comment #3 from yyl810 <yang.yulin@zte.com.cn>  2013-06-17 05:32:42 ---
+Thank you so much.
+I was using 1.41.11, do you have e2fsprogs 1.42.7 bin file for ARM? if yes,
+could you kindly share with me?
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
