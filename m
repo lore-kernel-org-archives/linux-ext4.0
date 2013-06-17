@@ -1,108 +1,153 @@
 From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
 Subject: Re: [PATCH v4 15/20] ext4: use ext4_zero_partial_blocks in
  punch_hole
-Date: Mon, 17 Jun 2013 14:46:29 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1306171435301.3270@localhost.localdomain>
+Date: Mon, 17 Jun 2013 14:30:28 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1306171423300.3270@localhost.localdomain>
 References: <1368549454-8930-1-git-send-email-lczerner@redhat.com> <1368549454-8930-16-git-send-email-lczerner@redhat.com> <20130614030154.GA18731@thunk.org> <alpine.LFD.2.00.1306141216070.2327@localhost.localdomain> <20130614133710.GA6250@localhost>
- <alpine.LFD.2.00.1306171104540.3270@localhost.localdomain> <20130617122518.GA24403@thunk.org>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1097702182-1371473192=:3270"
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-2027307158-1371472231=:3270"
 Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:20194 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:57122 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756175Ab3FQMqf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 17 Jun 2013 08:46:35 -0400
-In-Reply-To: <20130617122518.GA24403@thunk.org>
+	id S1752397Ab3FQMwU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 17 Jun 2013 08:52:20 -0400
+In-Reply-To: <20130614133710.GA6250@localhost>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
   This message is in MIME format.  The first part should be readable text,
   while the remaining parts are likely unreadable without MIME-aware tools.
 
---8323328-1097702182-1371473192=:3270
+--8323328-2027307158-1371472231=:3270
 Content-Type: TEXT/PLAIN; charset=utf-8
 Content-Transfer-Encoding: 8BIT
 
-On Mon, 17 Jun 2013, Theodore Ts'o wrote:
+On Fri, 14 Jun 2013, Ted Ts'o wrote:
 
-> Date: Mon, 17 Jun 2013 08:25:18 -0400
-> From: Theodore Ts'o <tytso@mit.edu>
+> Date: Fri, 14 Jun 2013 09:39:39 -0400
+> From: Ted Ts'o <tytso@mit.edu>
 > To: Lukáš Czerner <lczerner@redhat.com>
 > Cc: linux-ext4@vger.kernel.org
 > Subject: Re: [PATCH v4 15/20] ext4: use ext4_zero_partial_blocks in punch_hole
 > 
-> On Mon, Jun 17, 2013 at 11:08:32AM +0200, Lukáš Czerner wrote:
-> > > Correction...  reverting patches #15 through #19 (which is what I did in
-> > > the dev-with-revert branch found on ext4.git) causes the problem to go
-> > > away in the nojournal case, but it causes a huge number of other
-> > > problems.  Some of the reverts weren't clean, so it's possible I
-> > > screwed up one of the reverts.  It's also possible that only applying
-> > > part of this series leaves the tree in an unstable state.
-> > > 
-> > > I'd much rather figure out how to fix the problem on the dev branch,
-> > > so thank you for looking into this!
-> > 
-> > Wow, this looks bad. Theoretically reverting patches %15 through
-> > #19 should not have any real impact. So far I do not see what is
-> > causing that, but I am looking into this.
+> On Fri, Jun 14, 2013 at 12:16:53PM +0200, Lukáš Czerner wrote:
+> > > It bisects down to this patch, and if I take the dev branch, and
+> > > revert patches #15 through #19 in this series, the problem goes away.
 > 
-> I've been looking into this more intensively over the weekend.  I'm
-> now beginning to think we have had a pre-existing race, and the
-> changes in question has simply changed the timing.  I tried a version
-> of the dev branch (you can find it as the branch dev2 in my
-> kernel.org's ext4.git tree) which only had patches 1 through 10 of the
-> invalidate page range patches (dropping patches 11 through 20), and I
-> found that generic/300 was failing in the configuration ext3 (a file
-> system with nodelalloc, no flex_bg, and no extents).  I also found
-> the same failure with a 3.10-rc2 configuration.
+> Correction...  reverting patches #15 through #19 (which is what I did in
+> the dev-with-revert branch found on ext4.git) causes the problem to go
+> away in the nojournal case, but it causes a huge number of other
+> problems.  Some of the reverts weren't clean, so it's possible I
+> screwed up one of the reverts.  It's also possible that only applying
+> part of this series leaves the tree in an unstable state.
 > 
-> The your changes seem to make generic/300 failure consistently for me
-> using the nojournal configuration, but looking at patches in question,
-> I don't think they could have directly caused the problem.  Instead, I
-> think they just changed the timing to unmask the problem.
+> I'd much rather figure out how to fix the problem on the dev branch,
+> so thank you for looking into this!
 
-Ok, I though that there is something weird because patches #1-#14
-should not cause anything like that and from my testing (see my
-previous mail) it really seems it does not cause it, at least not
-directly.
+Ok so it seem like the problems you're seeing here after the revert
+might be cause wrong revert. Simply applying patches #1 through #14
+on top of the c7788792a5e7b0d5d7f96d0766b4cb6112d47d75 (Linux
+3.10-rc2 - that seem to be what is ext4 branch based on?) does not
+yield any errors without journal.
 
-> 
-> Given that I've seen generic/300 test failures in various different
-> baselines going all the way back to 3.9-rc4, this isn't a recent
-> regression.  And given that it does seem to be timing sensitive,
-> bisecting it is going to be difficult.  On the other hand, given that
-> using the dev (or master) branch, generic/300 is failing with a
-> greater than 70% probability using kvm with 2 cpu's, 2 megs of RAM and
-> 5400 rpm laptop drives in nojournal mode, the fact that it's
-> reproducing relatively reliably hopefully will make it easier to find
-> the problem.
+FSTYP         -- ext4
+PLATFORM      -- Linux/x86_64 rhel6_vm1 3.10.0-rc2-debug+
+MKFS_OPTIONS  -- -q -F -b4096 -O ^has_journal /dev/sdb
+MOUNT_OPTIONS -- -o acl,user_xattr /dev/sdb /mnt/test1
 
-As mentioned in previous email test generic/300 runs without any
-problems (even in the loop) without journal with patches #1 through
-#14 applied on 3.10-rc2 (c7788792a5e7b0d5d7f96d0766b4cb6112d47d75).
-This is on kvm with 24 cpu's, 8GB of RAM (I suppose you're not using
-2MB of ram in your setup, but rather 2GB :) and server drives with
-linear lvm on top of it.
+generic/075 10s ... 10s
+generic/091 21s ... 18s
+generic/112      10s
+generic/127 286s ... 248s
+generic/231 206s ... 77s
+generic/255 1s ... 1s
+generic/263 16s ... 11s
+generic/269 29s ... 30s
+generic/270 32s ... 32s
+generic/300 8s ... 7s
+shared/218       4s
+shared/298 33s ... 21s
+Ran: generic/075 generic/091 generic/112 generic/127 generic/231
+generic/255 generic/263 generic/269 generic/270 generic/300
+shared/218 shared/298
+Passed all 12 tests
 
+If required I will do the revert myself to make sure that nothing
+breaks. However I certainly hope it would not be necessary.
+
+I am still working to figure out what's going on. I'll keep you
+posted.
+
+Thanks!
 -Lukas
 
+
 > 
-> > I see that there are problems in other mode, not just nojournal. Are
-> > those caused by this as well, or are you seeing those even without
-> > the patchset ?
+> 						- Ted
 > 
-> I think the other problems in my dev-with-revert branch was caused by
-> some screw up on my part when did the revert using git.  I found that
-> dropping the patches from a copy of the guilt patch stack, and then
-> applying all of the patches except for the last half of the invalidate
-> page range patch series, resulted in a clean branch that didn't have
-> any of these failures.  It's what I should have done late last week,
-> instead of trying to use "git revert".
+> BEGIN TEST: Ext4 4k block Thu Jun 13 23:25:45 EDT 2013
+> Failures: generic/075 generic/091 generic/112 generic/127 generic/231 generic/255 generic/263 shared/218
+> END TEST: Ext4 4k block Fri Jun 14 00:29:17 EDT 2013
 > 
-> Cheers,
+> BEGIN TEST: Ext4 4k block w/nodelalloc, no flex_bg, and no extents Fri Jun 14 00:29:22 EDT 2013
+>     +_check_generic_filesystem: filesystem on /dev/vdc is inconsistent (see /root/xfstests/results/generic/269.full)
+> generic/270 69s ...     [01:34:24][ 8102.435986] EXT4-fs error (device vdc): htree_dirblock_to_tree:920: inode #25735: block 99331: comm quotacheck: bad entry in directory: rec_len % 4 != 0 -\
+>  offset=0(0), inode=3739147998, rec_len=57054, name_len=222
+> Failures: generic/075 generic/091 generic/112 generic/127 generic/231 generic/263 generic/269 generic/270 generic/285 generic/300 shared/218
+> END TEST: Ext4 4k block w/nodelalloc, no flex_bg, and no extents Fri Jun 14 01:49:59 EDT 2013
 > 
-> 					- Ted
+> BEGIN TEST: Ext4 4k block w/ no journal Fri Jun 14 01:50:00 EDT 2013
+>     +_check_generic_filesystem: filesystem on /dev/vdc is inconsistent (see /root/xfstests/results/generic/269.full)
+> generic/270 69s ...     [02:20:21][10531.911437] EXT4-fs error (device vdc): htree_dirblock_to_tree:920: inode #9894: block 6526: comm quotacheck: bad entry in directory: rec_len is smaller t\
+> han minimal - offset=0(0), inode=0, rec_len=0, name_len=0
+> [10532.535861] EXT4-fs error (device vdc): htree_dirblock_to_tree:920: inode #9692: block 6534: comm quotacheck: bad entry in directory: rec_len % 4 != 0 - offset=0(0), inode=1044266558, rec_\
+> len=15934, name_len=62
+> [10534.266775] EXT4-fs error (device vdc): htree_dirblock_to_tree:920: inode #9906: block 6530: comm quotacheck: bad entry in directory: rec_len % 4 != 0 - offset=0(0), inode=1044266558, rec_\
+> len=15934, name_len=62
+> [10534.697885] EXT4-fs error (device vdc): htree_dirblock_to_tree:920: inode #24673: block 6531: comm quotacheck: bad entry in directory: rec_len % 4 != 0 - offset=0(0), inode=1044266558, rec\
+> _len=15934, name_len=62
+> [10535.157126] EXT4-fs error (device vdc): htree_dirblock_to_tree:920: inode #9898: block 6532: comm quotacheck: bad entry in directory: rec_len % 4 != 0 - offset=0(0), inode=1044266558, rec_\
+> len=15934, name_len=62
+> [10536.395838] EXT4-fs error (device vdc): htree_dirblock_to_tree:920: inode #9905: block 6529: comm quotacheck: bad entry in directory: rec_len % 4 != 0 - offset=0(0), inode=1044266558, rec_\
+> len=15934, name_len=62
+> [10537.029470] EXT4-fs error (device vdc): htree_dirblock_to_tree:920: inode #9899: block 6533: comm quotacheck: bad entry in directory: rec_len % 4 != 0 - offset=0(0), inode=1044266558, rec_\
+> len=15934, name_len=62
+> [10537.259601] EXT4-fs error (device vdc): htree_dirblock_to_tree:920: inode #9929: block 6527: comm quotacheck: bad entry in directory: rec_len % 4 != 0 - offset=0(0), inode=1044266558, rec_\
+> len=15934, name_len=62
+> Failures: generic/075 generic/091 generic/112 generic/127 generic/231 generic/255 generic/263 generic/269 generic/270 shared/218 shared/298
+> END TEST: Ext4 4k block w/ no journal Fri Jun 14 02:32:14 EDT 2013
 > 
---8323328-1097702182-1371473192=:3270--
+> BEGIN TEST: Ext4 1k block Fri Jun 14 02:32:18 EDT 2013
+> Failures: generic/075 generic/091 generic/112 generic/127 generic/231 generic/255 generic/263 generic/285 shared/218
+> END TEST: Ext4 1k block Fri Jun 14 04:00:17 EDT 2013
+> 
+> BEGIN TEST: Ext4 4k block w/nodelalloc and no flex_bg Fri Jun 14 04:00:20 EDT 2013
+>     +_check_generic_filesystem: filesystem on /dev/vdc is inconsistent (see /root/xfstests/results/generic/269.full)
+> Failures: generic/075 generic/091 generic/112 generic/127 generic/223 generic/231 generic/255 generic/263 generic/269 shared/218
+> END TEST: Ext4 4k block w/nodelalloc and no flex_bg Fri Jun 14 05:16:10 EDT 2013
+> 
+> BEGIN TEST: Ext4 4k block w/metadata_csum Fri Jun 14 05:16:12 EDT 2013
+> Failures: generic/075 generic/091 generic/112 generic/127 generic/231 generic/255 generic/263 shared/218
+> END TEST: Ext4 4k block w/metadata_csum Fri Jun 14 06:16:31 EDT 2013
+> 
+> BEGIN TEST: Ext4 4k block w/dioread_nolock Fri Jun 14 06:16:31 EDT 2013
+> _check_generic_filesystem: filesystem on /dev/vdb is inconsistent (see /root/xfstests/results/generic/013.full)
+> Failures: generic/013
+> END TEST: Ext4 4k block w/dioread_nolock Fri Jun 14 06:21:37 EDT 2013
+> 
+> BEGIN TEST: Ext4 4k block w/data=journal Fri Jun 14 06:21:41 EDT 2013
+>     +_check_generic_filesystem: filesystem on /dev/vdc is inconsistent (see /root/xfstests/results/generic/269.full)
+>     +_check_generic_filesystem: filesystem on /dev/vdc is inconsistent (see /root/xfstests/results/generic/300.full)
+> [29242.456266] WARNING: at /usr/local/google/home/tytso/linux/ext4/fs/buffer.c:1120 mark_buffer_dirty+0x54/0x1ff()
+> Failures: generic/075 generic/091 generic/112 generic/127 generic/223 generic/231 generic/255 generic/263 generic/269 generic/270 generic/300 shared/218
+> END TEST: Ext4 4k block w/data=journal Fri Jun 14 07:33:10 EDT 2013
+> 
+> BEGIN TEST: Ext4 4k block w/bigalloc Fri Jun 14 07:33:16 EDT 2013
+> [33544.485801] WARNING: at /usr/local/google/home/tytso/linux/ext4/fs/quota/dquot.c:1090 dquot_claim_space_nodirty+0xf1/0x1e3()
+> Failures: generic/204 generic/219 generic/233 generic/235 generic/273 generic/275 generic/300 shared/218
+> END TEST: Ext4 4k block w/bigalloc Fri Jun 14 08:56:56 EDT 2013
+> 
+> 
+--8323328-2027307158-1371472231=:3270--
