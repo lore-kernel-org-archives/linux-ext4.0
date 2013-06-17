@@ -1,38 +1,21 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 59801] kernel BUG at /kernel/fs/ext4/extents.c:1996!
-Date: Mon, 17 Jun 2013 05:32:43 +0000 (UTC)
-Message-ID: <20130617053243.273CC11FB51@bugzilla.kernel.org>
-References: <bug-59801-13602@https.bugzilla.kernel.org/>
+From: Sec Capital Loan <sri_sunarjono@ums.ac.id>
+Subject: Quick Loans
+Date: Mon, 17 Jun 2013 12:46:44 +0700 (WIT)
+Message-ID: <151155211.738078.1371448004577.JavaMail.root__26502.3327469409$1371452511$gmane$org@ums.ac.id>
+Reply-To: Sec Capital Loan <seccapittals@mit.tc>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+To: unlisted-recipients:; (no To-header on input)
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:41162 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755834Ab3FQFcp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 17 Jun 2013 01:32:45 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id B311120169
-	for <linux-ext4@vger.kernel.org>; Mon, 17 Jun 2013 05:32:44 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id 34EF72015C
-	for <linux-ext4@vger.kernel.org>; Mon, 17 Jun 2013 05:32:43 +0000 (UTC)
-In-Reply-To: <bug-59801-13602@https.bugzilla.kernel.org/>
+Received: from 96.subnet222-124-208.astinet.telkom.net.id ([222.124.208.96]:46018
+	"EHLO mail.ums.ac.id" rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org
+	with ESMTP id S932144Ab3FQHBe (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Jun 2013 03:01:34 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=59801
+Do you need a personal or business loan without stress and quick approval? If yes, contact us today as we are currently offering loans at superb interest rate. Our loan is secured and safe,For more information and Application, Please reply to this Email.
 
-
-
-
-
---- Comment #3 from yyl810 <yang.yulin@zte.com.cn>  2013-06-17 05:32:42 ---
-Thank you so much.
-I was using 1.41.11, do you have e2fsprogs 1.42.7 bin file for ARM? if yes,
-could you kindly share with me?
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Sincerely,
+Vijay Nath
