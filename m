@@ -1,69 +1,99 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] jbd2: move superblock checksum calculation to
- jbd2_write_superblock()
-Date: Tue, 18 Jun 2013 09:55:54 -0700
-Message-ID: <20130618165554.GA4715@blackbox.djwong.org>
-References: <1371570842-28031-1-git-send-email-tytso@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:51124 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933016Ab3FRQz7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 18 Jun 2013 12:55:59 -0400
-Content-Disposition: inline
-In-Reply-To: <1371570842-28031-1-git-send-email-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Joe Perches <joe@perches.com>
+Subject: [PATCH 1/2] ext2: Reduce object size when !CONFIG_PRINTK
+Date: Tue, 18 Jun 2013 10:14:39 -0700
+Message-ID: <2e70d518b9f6b8eea33c01a36983a1ccb1839282.1371575536.git.joe@perches.com>
+Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	linux-kernel@vger.kernel.org
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jun 18, 2013 at 11:54:02AM -0400, Theodore Ts'o wrote:
-> Some of the functions which modify the jbd2 superblock were not
-> updating the checksum before calling jbd2_write_superblock().  Move
-> the call to jbd2_superblock_csum_set() to jbd2_write_superblock(), so
-> that the checksum is calculated consistently.
+Reducing the object size ~5kb/15% could be useful for embedded
+systems.
 
-Seems to do about the same as http://patchwork.ozlabs.org/patch/243542/ so...
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+Add #ifdef CONFIG_PRINTK #else #endif blocks
+to hold formats and arguments, passing " " to
+functions when !CONFIG_PRINTK and still verifying
+format and arguments with no_printk.
 
---D
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Darrick J. Wong <darrick.wong@oracle.com>
-> Cc: stable@vger.kernel.org
-> ---
->  fs/jbd2/journal.c | 3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index 4c8b8d4..28bcfa1 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -1335,6 +1335,7 @@ static int journal_reset(journal_t *journal)
->  static void jbd2_write_superblock(journal_t *journal, int write_op)
->  {
->  	struct buffer_head *bh = journal->j_sb_buffer;
-> +	journal_superblock_t *sb = journal->j_superblock;
->  	int ret;
->  
->  	trace_jbd2_write_superblock(journal, write_op);
-> @@ -1356,6 +1357,7 @@ static void jbd2_write_superblock(journal_t *journal, int write_op)
->  		clear_buffer_write_io_error(bh);
->  		set_buffer_uptodate(bh);
->  	}
-> +	jbd2_superblock_csum_set(journal, sb);
->  	get_bh(bh);
->  	bh->b_end_io = end_buffer_write_sync;
->  	ret = submit_bh(write_op, bh);
-> @@ -1452,7 +1454,6 @@ void jbd2_journal_update_sb_errno(journal_t *journal)
->  	jbd_debug(1, "JBD2: updating superblock error (errno %d)\n",
->  		  journal->j_errno);
->  	sb->s_errno    = cpu_to_be32(journal->j_errno);
-> -	jbd2_superblock_csum_set(journal, sb);
->  	read_unlock(&journal->j_state_lock);
->  
->  	jbd2_write_superblock(journal, WRITE_SYNC);
-> -- 
-> 1.7.12.rc0.22.gcdd159b
-> 
+ $ size fs/ext2/built-in.o*
+    text   data	    bss	    dec	    hex	filename
+   31297     44	      4	  31345	   7a71	fs/ext2/built-in.o.ext2.new
+   36288     44	      4	  36336	   8df0	fs/ext2/built-in.o.ext2.old
+
+ $ grep -E "CONFIG_EXT2|CONFIG_PRINTK" .config
+ # CONFIG_PRINTK is not set
+ CONFIG_EXT2_FS=y
+ # CONFIG_EXT2_FS_XATTR is not set
+ # CONFIG_EXT2_FS_XIP is not set
+
+Signed-off-by: Joe Perches <joe@perches.com>
+---
+ fs/ext2/ext2.h  | 22 ++++++++++++++++++++--
+ fs/ext2/super.c |  6 +++---
+ 2 files changed, 23 insertions(+), 5 deletions(-)
+
+diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
+index d9a17d0..888ae31 100644
+--- a/fs/ext2/ext2.h
++++ b/fs/ext2/ext2.h
+@@ -767,12 +767,30 @@ struct dentry *ext2_get_parent(struct dentry *child);
+ 
+ /* super.c */
+ extern __printf(3, 4)
+-void ext2_error(struct super_block *, const char *, const char *, ...);
++void __ext2_error(struct super_block *, const char *, const char *, ...);
+ extern __printf(3, 4)
+-void ext2_msg(struct super_block *, const char *, const char *, ...);
++void __ext2_msg(struct super_block *, const char *, const char *, ...);
+ extern void ext2_update_dynamic_rev (struct super_block *sb);
+ extern void ext2_write_super (struct super_block *);
+ 
++#ifdef CONFIG_PRINTK
++#define ext2_error(sb, func, fmt, ...)					\
++	__ext2_error(sb, func, fmt, ##__VA_ARGS__)
++#define ext2_msg(sb, prefix, fmt, ...)					\
++	__ext2_msg(sb, prefix, fmt, ##__VA_ARGS__)
++#else
++#define ext2_error(sb, func, fmt, ...)					\
++do {									\
++	no_printk(fmt, ##__VA_ARGS__);					\
++	__ext2_error(sb, func, " ");					\
++} while (0)
++#define ext2_msg(sb, prefix, fmt, ...)					\
++do {									\
++	no_printk(fmt, ##__VA_ARGS__);					\
++	__ext2_msg(sb, prefix, " ");					\
++} while (0)
++#endif
++
+ /*
+  * Inodes and files operations
+  */
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index 2885349..61ffb3f 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -45,8 +45,8 @@ static int ext2_sync_fs(struct super_block *sb, int wait);
+ static int ext2_freeze(struct super_block *sb);
+ static int ext2_unfreeze(struct super_block *sb);
+ 
+-void ext2_error(struct super_block *sb, const char *function,
+-		const char *fmt, ...)
++void __ext2_error(struct super_block *sb, const char *function,
++		  const char *fmt, ...)
+ {
+ 	struct va_format vaf;
+ 	va_list args;
+@@ -80,7 +80,7 @@ void ext2_error(struct super_block *sb, const char *function,
+ 	}
+ }
+ 
+-void ext2_msg(struct super_block *sb, const char *prefix,
++void __ext2_msg(struct super_block *sb, const char *prefix,
+ 		const char *fmt, ...)
+ {
+ 	struct va_format vaf;
+-- 
+1.8.1.2.459.gbcd45b4.dirty
