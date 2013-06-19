@@ -1,75 +1,145 @@
-From: Ashish Sangwan <ashishsangwan2@gmail.com>
-Subject: Re: [PATCH] ext4: optimize extent selection for block removal in case
- of hole punch
-Date: Wed, 19 Jun 2013 21:14:53 +0530
-Message-ID: <CAOiN93=8fTSxNOuzQEhrg69FHb2uCNdLWXKObhGPLqaqXX0B4A@mail.gmail.com>
-References: <519f7ba2.04fc440a.06c2.ffffd589@mx.google.com>
-	<20130618154053.GF7359@thunk.org>
-	<CAOiN93mMc1zG-YToRxVfbm8iDeeB6roJ_AZKcXJgGpfS+yn9xA@mail.gmail.com>
-	<20130619140605.GA24194@thunk.org>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH v4 15/20] ext4: use ext4_zero_partial_blocks in
+ punch_hole
+Date: Wed, 19 Jun 2013 18:37:53 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1306191831210.2085@localhost.localdomain>
+References: <1368549454-8930-1-git-send-email-lczerner@redhat.com> <1368549454-8930-16-git-send-email-lczerner@redhat.com> <20130614030154.GA18731@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: adilger@dilger.ca, ext4 development <linux-ext4@vger.kernel.org>,
-	Ashish Sangwan <a.sangwan@samsung.com>,
-	Namjae Jeon <namjae.jeon@samsung.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        akpm@linux-foundation.org, hughd@google.com
 To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qa0-f43.google.com ([209.85.216.43]:41875 "EHLO
-	mail-qa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756632Ab3FSPox (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Jun 2013 11:44:53 -0400
-Received: by mail-qa0-f43.google.com with SMTP id d13so516863qak.9
-        for <linux-ext4@vger.kernel.org>; Wed, 19 Jun 2013 08:44:53 -0700 (PDT)
-In-Reply-To: <20130619140605.GA24194@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20130614030154.GA18731@thunk.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jun 19, 2013 at 7:36 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Wed, Jun 19, 2013 at 07:15:35PM +0530, Ashish Sangwan wrote:
->> On Tue, Jun 18, 2013 at 9:10 PM, Theodore Ts'o <tytso@mit.edu> wrote:
->> > On Fri, May 24, 2013 at 08:09:17PM +0530, ashishsangwan2@gmail.com wrote:
->> >> From: Ashish Sangwan <a.sangwan@samsung.com>
->> >>
->> >> Both hole punch and truncate use ext4_ext_rm_leaf for removing
->> >> blocks. Currently we choose the last extent as the starting
->> >> point for removing blocks: ex = EXT_LAST_EXTENT(eh);
->> >> This is OK for truncate but for hole punch we can optimize the
->> >> extent selection as the path is already initialized.
->> >> We could use this information to select proper starting extent.
->> >> The code change in this patch will not affect truncate as for
->> >> truncate path[depth].p_ext will always be NULL.
->> >>
->> >> Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
->> >> Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
->> >
->> > Applied, thanks.
->>
->> Sorry I cannot see the patch changes in ext4 dev branch.
->
-> Sorry, I dropped this patch from the dev branch last night, but I
-> didn't want to send e-mail about it until I had completed enough
-> testing to be sure.  It appears that this patch is causing a
-> regression; xfstests generic/269 and generic/279 to fail in the
-> nojournal configuration.
->
-Dropping this patch makes sense until root cause is not obvious.
+On Thu, 13 Jun 2013, Theodore Ts'o wrote:
 
-> The tests are ones which have multiple fsstress threads racing with
-> dd/ENOSPC hitters, with (#270) and without (#269) quota enabled.  It's
-> not at all obvious to me why your particular change would make a
-> difference here, and it may simply be that your optimization is
-> exposing a timing change and is not the root cause of the failure, but
-> I'm going to move this to the unstable portion of the patch series
-> until we do further investigation.
->
-> If you could take a look at this, I would appreciate it, but as I
-> said, this may very well turn out not be the fault of your patch.
->
-Sure, I will try looking into it.
+> Date: Thu, 13 Jun 2013 23:01:54 -0400
+> From: Theodore Ts'o <tytso@mit.edu>
+> To: Lukas Czerner <lczerner@redhat.com>
+> Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
+>     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+>     akpm@linux-foundation.org, hughd@google.com
+> Subject: Re: [PATCH v4 15/20] ext4: use ext4_zero_partial_blocks in punch_hole
+> 
+> On Tue, May 14, 2013 at 06:37:29PM +0200, Lukas Czerner wrote:
+> > We're doing to get rid of ext4_discard_partial_page_buffers() since it is
+> > duplicating some code and also partially duplicating work of
+> > truncate_pagecache_range(), moreover the old implementation was much
+> > clearer.
+> > 
+> > Now when the truncate_inode_pages_range() can handle truncating non page
+> > aligned regions we can use this to invalidate and zero out block aligned
+> > region of the punched out range and then use ext4_block_truncate_page()
+> > to zero the unaligned blocks on the start and end of the range. This
+> > will greatly simplify the punch hole code. Moreover after this commit we
+> > can get rid of the ext4_discard_partial_page_buffers() completely.
+> > 
+> > We also introduce function ext4_prepare_punch_hole() to do come common
+> > operations before we attempt to do the actual punch hole on
+> > indirect or extent file which saves us some code duplication.
+> > 
+> > This has been tested on ppc64 with 1k block size with fsx and xfstests
+> > without any problems.
+> > 
+> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> 
+> Hi Lukas,
+> 
+> I've been seeing xfstests failures on test generic/300 in nojournal
+> mode.
+> 
+> BEGIN TEST: Ext4 4k block w/ no journal Thu Jun 13 22:38:47 EDT 2013
+> Device: /dev/vdb
+> mk2fs options: -q -O ^has_journal
+> mount options: -o block_validity,noload
+> FSTYP         -- ext4
+> PLATFORM      -- Linux/i686 candygram 3.10.0-rc2-00477-g1e1cad7
+> MKFS_OPTIONS  -- -q -O ^has_journal /dev/vdc
+> MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity,noload /dev/vdc /vdc
+> 
+> generic/300		[20:42:18][  116.877278] fio (3320) used greatest stack depth: 5580 bytes left
+> [  116.967122] fio (3321) used greatest stack depth: 5560 bytes left
+> [  117.573861] fio (3325) used greatest stack depth: 5504 bytes left
+>  [20:44:01] [failed, exit status 1] - output mismatch (see /root/xfstests/results/generic/300.out.bad)
+>     --- tests/generic/300.out	 2013-06-04 22:42:55.000000000 -0400
+>     +++ /root/xfstests/results/generic/300.out.bad	       2013-06-13 20:44:01.306666665 -0400
+>     @@ -2,3 +2,4 @@
+>      
+>      Run fio with random aio-dio pattern
+>      
+>     +_check_generic_filesystem: filesystem on /dev/vdc is inconsistent (see /root/xfstests/results/generic/300.full)
+>      ...
+>      (Run 'diff -u tests/generic/300.out /root/xfstests/results/generic/300.out.bad' to see the entire diff)
 
-Regards,
-Ashish
-> Regards,
->
->                                                 - Ted
->
+I think I've got this. The problem actually is in
+ext4_zero_partial_blocks() where we would attempt to zero out page
+which has been previously released by truncate_pagecache_range().
+This might happen when we're punching out just a single page because
+in ext4_zero_partial_blocks() we do not check whether we're dealing
+with the whole, or partial page. At the point we're going to zero it
+out it might have been already released and reused by someone else.
+
+This patch should fix this issue. And indeed with this applied I do
+not see the problem anymore but I am still testing.
+
+-Lukas
+
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 3acf353..ce9f926 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3698,33 +3698,36 @@ int ext4_zero_partial_blocks(handle_t *handle, struct inode *inode,
+ {
+ 	struct super_block *sb = inode->i_sb;
+ 	struct address_space *mapping = inode->i_mapping;
+-	unsigned partial = lstart & (sb->s_blocksize - 1);
++	unsigned partial_start, partial_end;
+ 	ext4_fsblk_t start, end;
+ 	loff_t byte_end = (lstart + length - 1);
+ 	int err = 0;
+ 
++	partial_start = lstart & (sb->s_blocksize - 1);
++	partial_end = byte_end & (sb->s_blocksize - 1);
++
+ 	start = lstart >> sb->s_blocksize_bits;
+ 	end = byte_end >> sb->s_blocksize_bits;
+ 
+ 	/* Handle partial zero within the single block */
+-	if (start == end) {
++	if (start == end &&
++	    (partial_start || (partial_end != sb->s_blocksize - 1))) {
+ 		err = ext4_block_zero_page_range(handle, mapping,
+ 						 lstart, length);
+ 		return err;
+ 	}
+ 	/* Handle partial zero out on the start of the range */
+-	if (partial) {
++	if (partial_start) {
+ 		err = ext4_block_zero_page_range(handle, mapping,
+ 						 lstart, sb->s_blocksize);
+ 		if (err)
+ 			return err;
+ 	}
+ 	/* Handle partial zero out on the end of the range */
+-	partial = byte_end & (sb->s_blocksize - 1);
+-	if (partial != sb->s_blocksize - 1)
++	if (partial_end != sb->s_blocksize - 1)
+ 		err = ext4_block_zero_page_range(handle, mapping,
+-						 byte_end - partial,
+-						 partial + 1);
++						 byte_end - partial_end,
++						 partial_end + 1);
+ 	return err;
+ }
+ 
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
