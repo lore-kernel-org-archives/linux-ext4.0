@@ -1,48 +1,34 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: check error return from ext4_write_inline_data_end()
-Date: Thu, 20 Jun 2013 10:52:23 -0400
-Message-ID: <1371739943-31176-1-git-send-email-tytso@mit.edu>
-References: <20130620144421.GC28309@thunk.org>
-Cc: jonernst07@gmx.com, Theodore Ts'o <tytso@mit.edu>,
-	Zheng Liu <wenqing.lz@taobao.com>, stable@vger.kernel.org
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <stable-owner@vger.kernel.org>
-In-Reply-To: <20130620144421.GC28309@thunk.org>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Subject: Re: [PATCH] ext4: Only zero partial blocks in
+ ext4_zero_partial_blocks()
+Date: Thu, 20 Jun 2013 11:01:03 -0400
+Message-ID: <20130620150103.GD28309@thunk.org>
+References: <20130619234243.GE24587@thunk.org>
+ <1371719673-3033-1-git-send-email-lczerner@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:59798 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757593Ab3FTPBL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 20 Jun 2013 11:01:11 -0400
+Content-Disposition: inline
+In-Reply-To: <1371719673-3033-1-git-send-email-lczerner@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-The function ext4_write_inline_data_end() can return an error.  So we
-need to assign it to a signed integer variable to check for an error
-return (since copied is an unsigned int).
+On Thu, Jun 20, 2013 at 11:14:33AM +0200, Lukas Czerner wrote:
+> Currently if we pass range into ext4_zero_partial_blocks() which covers
+> entire block we would attempt to zero it even though we should only zero
+> unaligned part of the block.
+> 
+> Fix this by checking whether the range covers the whole block skip
+> zeroing if so.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Zheng Liu <wenqing.lz@taobao.com>
-Cc: stable@vger.kernel.org
----
- fs/ext4/inode.c | 11 +++++++----
- 1 file changed, 7 insertions(+), 4 deletions(-)
+Applied, thanks.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index baf5c2b..567a734 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1061,10 +1061,13 @@ static int ext4_write_end(struct file *file,
- 		}
- 	}
- 
--	if (ext4_has_inline_data(inode))
--		copied = ext4_write_inline_data_end(inode, pos, len,
--						    copied, page);
--	else
-+	if (ext4_has_inline_data(inode)) {
-+		ret = ext4_write_inline_data_end(inode, pos, len,
-+						 copied, page);
-+		if (ret < 0)
-+			goto errout;
-+		copied = ret;
-+	} else
- 		copied = block_write_end(file, mapping, pos,
- 					 len, copied, page, fsdata);
- 
--- 
-1.7.12.rc0.22.gcdd159b
+						- Ted
