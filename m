@@ -1,79 +1,65 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] ext4: Only zero partial blocks in ext4_zero_partial_blocks()
-Date: Thu, 20 Jun 2013 11:14:33 +0200
-Message-ID: <1371719673-3033-1-git-send-email-lczerner@redhat.com>
-References: <20130619234243.GE24587@thunk.org>
-Cc: tytso@mit.edu, Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47524 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S964817Ab3FTJOk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 20 Jun 2013 05:14:40 -0400
-In-Reply-To: <20130619234243.GE24587@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [patch] ext4: signedness bug breaks ext4_inode_touch_time_cmp()
+Date: Thu, 20 Jun 2013 10:13:10 -0400
+Message-ID: <20130620141310.GB28309@thunk.org>
+References: <20130620080858.GA15095@elgon.mountain>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Zheng Liu <wenqing.lz@taobao.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org
+To: Dan Carpenter <dan.carpenter@oracle.com>
+Return-path: <kernel-janitors-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20130620080858.GA15095@elgon.mountain>
+Sender: kernel-janitors-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Currently if we pass range into ext4_zero_partial_blocks() which covers
-entire block we would attempt to zero it even though we should only zero
-unaligned part of the block.
+On Thu, Jun 20, 2013 at 11:08:58AM +0300, Dan Carpenter wrote:
+> "diff" is unsigned so this doesn't sort the LRU list correctly.
+> 
+> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+> ---
+> This was introduced in 6480bad916be "ext4: improve extent cache shrink
+> mechanism to avoid to burn CPU time"
 
-Fix this by checking whether the range covers the whole block skip
-zeroing if so.
+Thanks for pointing this out!  The following patch is better I think
+because it uses the time_after() abstraction.  I will be folding the
+following into Zheng's "ext4: improve extent cache shrink > mechanism
+to avoid to burn CPU time".
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- fs/ext4/inode.c | 17 ++++++++++-------
- 1 file changed, 10 insertions(+), 7 deletions(-)
+I've desk checked this but we may want to do some explicit testing to
+make sure we are in fact ejecting the appropriate inode from the list.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 3acf353..ce9f926 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3698,33 +3698,36 @@ int ext4_zero_partial_blocks(handle_t *handle, struct inode *inode,
+     	     	    	 	      - Ted
+
+ fs/ext4/extents_status.c | 12 +++++-------
+ 1 file changed, 5 insertions(+), 7 deletions(-)
+
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index 80dcc59..ee018d5 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -880,17 +880,15 @@ static int ext4_inode_touch_time_cmp(void *priv, struct list_head *a,
+ 				     struct list_head *b)
  {
- 	struct super_block *sb = inode->i_sb;
- 	struct address_space *mapping = inode->i_mapping;
--	unsigned partial = lstart & (sb->s_blocksize - 1);
-+	unsigned partial_start, partial_end;
- 	ext4_fsblk_t start, end;
- 	loff_t byte_end = (lstart + length - 1);
- 	int err = 0;
+ 	struct ext4_inode_info *eia, *eib;
+-	unsigned long diff;
+-
+ 	eia = list_entry(a, struct ext4_inode_info, i_es_lru);
+ 	eib = list_entry(b, struct ext4_inode_info, i_es_lru);
  
-+	partial_start = lstart & (sb->s_blocksize - 1);
-+	partial_end = byte_end & (sb->s_blocksize - 1);
-+
- 	start = lstart >> sb->s_blocksize_bits;
- 	end = byte_end >> sb->s_blocksize_bits;
- 
- 	/* Handle partial zero within the single block */
--	if (start == end) {
-+	if (start == end &&
-+	    (partial_start || (partial_end != sb->s_blocksize - 1))) {
- 		err = ext4_block_zero_page_range(handle, mapping,
- 						 lstart, length);
- 		return err;
- 	}
- 	/* Handle partial zero out on the start of the range */
--	if (partial) {
-+	if (partial_start) {
- 		err = ext4_block_zero_page_range(handle, mapping,
- 						 lstart, sb->s_blocksize);
- 		if (err)
- 			return err;
- 	}
- 	/* Handle partial zero out on the end of the range */
--	partial = byte_end & (sb->s_blocksize - 1);
--	if (partial != sb->s_blocksize - 1)
-+	if (partial_end != sb->s_blocksize - 1)
- 		err = ext4_block_zero_page_range(handle, mapping,
--						 byte_end - partial,
--						 partial + 1);
-+						 byte_end - partial_end,
-+						 partial_end + 1);
- 	return err;
+-	diff = eia->i_touch_when - eib->i_touch_when;
+-	if (diff < 0)
+-		return -1;
+-	if (diff > 0)
++	if (eia->i_touch_when == eib->i_touch_when)
++		return 0;
++	if (time_after(eia->i_touch_when, eib->i_touch_when))
+ 		return 1;
+-	return 0;
++	else
++		return -1;
  }
  
--- 
-1.8.2.1
-
+ static int ext4_es_shrink(struct shrinker *shrink, struct shrink_control *sc)
