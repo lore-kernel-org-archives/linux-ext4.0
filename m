@@ -1,94 +1,80 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/2] ext4: allocate delayed allocation blocks before rename
-Date: Fri, 21 Jun 2013 15:30:30 -0400
-Message-ID: <1371843030-24038-2-git-send-email-tytso@mit.edu>
-References: <1371843030-24038-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 1/2] ext4: start handle at least possible moment when renaming files
+Date: Fri, 21 Jun 2013 15:30:29 -0400
+Message-ID: <1371843030-24038-1-git-send-email-tytso@mit.edu>
 Cc: desrt@desrt.ca, Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:60142 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:60143 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1423672Ab3FUTae (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1423686Ab3FUTae (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Fri, 21 Jun 2013 15:30:34 -0400
-In-Reply-To: <1371843030-24038-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When ext4_rename() overwrites an already existing file, call
-ext4_alloc_da_blocks() before starting the journal handle which
-actually does the rename, instead of doing this afterwards.  This
-improves the likelihood that the contents will survive a crash if an
-application replaces a file using the sequence:
-
-1)  write replacement contents to foo.new
-2)  <omit fsync of foo.new>
-3)  rename foo.new to foo
-
-It is still not a guarantee, since ext4_alloc_da_blocks() is *not*
-doing a file integrity sync; this means if foo.new is a very large
-file, it may not be completely flushed out to disk.
-
-However, for files smaller than a megabyte or so, any dirty pages
-should be flushed out before we do the rename operation, and so at the
-next journal commit, the CACHE FLUSH command will make sure al of
-these pages are safely on the disk platter.
+In ext4_rename(), don't start the journal handle until the the
+directory entries have been successfully looked up.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/namei.c | 12 +++++++-----
- 1 file changed, 7 insertions(+), 5 deletions(-)
+ fs/ext4/namei.c | 23 +++++++++++++----------
+ 1 file changed, 13 insertions(+), 10 deletions(-)
 
 diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index f57980c..ca8174b 100644
+index ab2f6dc..f57980c 100644
 --- a/fs/ext4/namei.c
 +++ b/fs/ext4/namei.c
-@@ -2961,6 +2961,10 @@ static struct buffer_head *ext4_get_first_dir_block(handle_t *handle,
- /*
-  * Anybody can rename anything with this: the permission checks are left to the
-  * higher-level routines.
-+ *
-+ * n.b.  old_{dentry,inode) refers to the source dentry/inode
-+ * while new_{dentry,inode) refers to the destination dentry/inode
-+ * This comes from rename(const char *oldpath, const char *newpath)
-  */
+@@ -2965,7 +2965,7 @@ static struct buffer_head *ext4_get_first_dir_block(handle_t *handle,
  static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
  		       struct inode *new_dir, struct dentry *new_dentry)
-@@ -2969,7 +2973,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ {
+-	handle_t *handle;
++	handle_t *handle = NULL;
  	struct inode *old_inode, *new_inode;
  	struct buffer_head *old_bh, *new_bh, *dir_bh;
  	struct ext4_dir_entry_2 *old_de, *new_de;
--	int retval, force_da_alloc = 0;
-+	int retval;
- 	int inlined = 0, new_inlined = 0;
- 	struct ext4_dir_entry_2 *parent_de;
+@@ -2982,14 +2982,6 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	 * in separate transaction */
+ 	if (new_dentry->d_inode)
+ 		dquot_initialize(new_dentry->d_inode);
+-	handle = ext4_journal_start(old_dir, EXT4_HT_DIR,
+-		(2 * EXT4_DATA_TRANS_BLOCKS(old_dir->i_sb) +
+-		 EXT4_INDEX_EXTRA_TRANS_BLOCKS + 2));
+-	if (IS_ERR(handle))
+-		return PTR_ERR(handle);
+-
+-	if (IS_DIRSYNC(old_dir) || IS_DIRSYNC(new_dir))
+-		ext4_handle_sync(handle);
  
-@@ -3004,6 +3008,8 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	old_bh = ext4_find_entry(old_dir, &old_dentry->d_name, &old_de, NULL);
+ 	/*
+@@ -3012,6 +3004,16 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
  			new_bh = NULL;
  		}
  	}
-+	if (new_inode && !test_opt(new_dir->i_sb, NO_AUTO_DA_ALLOC))
-+		ext4_alloc_da_blocks(old_inode);
- 
- 	handle = ext4_journal_start(old_dir, EXT4_HT_DIR,
- 		(2 * EXT4_DATA_TRANS_BLOCKS(old_dir->i_sb) +
-@@ -3144,8 +3150,6 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
- 		ext4_mark_inode_dirty(handle, new_inode);
- 		if (!new_inode->i_nlink)
- 			ext4_orphan_add(handle, new_inode);
--		if (!test_opt(new_dir->i_sb, NO_AUTO_DA_ALLOC))
--			force_da_alloc = 1;
- 	}
- 	retval = 0;
- 
-@@ -3155,8 +3159,6 @@ end_rename:
++
++	handle = ext4_journal_start(old_dir, EXT4_HT_DIR,
++		(2 * EXT4_DATA_TRANS_BLOCKS(old_dir->i_sb) +
++		 EXT4_INDEX_EXTRA_TRANS_BLOCKS + 2));
++	if (IS_ERR(handle))
++		return PTR_ERR(handle);
++
++	if (IS_DIRSYNC(old_dir) || IS_DIRSYNC(new_dir))
++		ext4_handle_sync(handle);
++
+ 	if (S_ISDIR(old_inode->i_mode)) {
+ 		if (new_inode) {
+ 			retval = -ENOTEMPTY;
+@@ -3151,7 +3153,8 @@ end_rename:
+ 	brelse(dir_bh);
+ 	brelse(old_bh);
  	brelse(new_bh);
- 	if (handle)
- 		ext4_journal_stop(handle);
--	if (retval == 0 && force_da_alloc)
--		ext4_alloc_da_blocks(old_inode);
+-	ext4_journal_stop(handle);
++	if (handle)
++		ext4_journal_stop(handle);
+ 	if (retval == 0 && force_da_alloc)
+ 		ext4_alloc_da_blocks(old_inode);
  	return retval;
- }
- 
 -- 
 1.7.12.rc0.22.gcdd159b
 
