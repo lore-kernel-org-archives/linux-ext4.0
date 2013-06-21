@@ -1,50 +1,86 @@
-From: "Sidorov, Andrei" <Andrei.Sidorov@arrisi.com>
-Subject: RE: ext4 file replace guarantees
-Date: Fri, 21 Jun 2013 21:49:26 +0000
-Message-ID: <C0F0BC787567C848B2C90989451123DA2363CAFF@ATLEXMBX4.ARRS.ARRISI.com>
-References: <1371764058.18527.140661246414097.671B4999@webmail.messagingengine.com>
- <20130621005937.GB10730@thunk.org>
- <1371818596.20553.140661246775057.0F7160F3@webmail.messagingengine.com>
- <20130621131521.GE10730@thunk.org>
- <1371822707.3188.140661246795017.2D10645B@webmail.messagingengine.com>
- <bf675d01f2290be4e38f602ce78643c9@josephdwagner.info>,<20130621210556.GB10582@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] fs/jbd2: t_updates should increase when
+ start_this_handle() failed in jbd2__journal_restart()
+Date: Sat, 22 Jun 2013 01:26:17 +0200
+Message-ID: <20130621232617.GS13932@quack.suse.cz>
+References: <51C1381A.2@huawei.com>
+ <20130620155555.GE28309@thunk.org>
+ <20130620172609.GC4288@localhost.localdomain>
+ <20130620181215.GD4982@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Ryan Lortie <desrt@desrt.ca>
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	"Joseph D. Wagner" <joe@josephdwagner.info>
+Content-Type: text/plain; charset=us-ascii
+Cc: Josef Bacik <jbacik@fusionio.com>,
+	Younger Liu <younger.liu@huawei.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org,
+	Ocfs2-Devel <ocfs2-devel@oss.oracle.com>,
+	Li Zefan <lizefan@huawei.com>, jack@suse.cz
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.arrisi.com ([216.234.147.109]:51803 "EHLO mail.arrisi.com"
+Received: from cantor2.suse.de ([195.135.220.15]:34384 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1946231Ab3FUXSd convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Jun 2013 19:18:33 -0400
-In-Reply-To: <20130621210556.GB10582@thunk.org>
-Content-Language: en-US
+	id S1161469Ab3FUX0U (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 21 Jun 2013 19:26:20 -0400
+Content-Disposition: inline
+In-Reply-To: <20130620181215.GD4982@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-But there is no need to mount entire fs with data journalling mode.
-In fact I find per-file data journalling extremely useful. It would be even more useful if it allowed regular users to set journalling mode on specific file and there was some way to designate rewrite transaction boundaries (even 128k would cover a lot of small-but-important-file use cases).
+On Thu 20-06-13 14:12:15, Ted Tso wrote:
+> On Thu, Jun 20, 2013 at 01:26:09PM -0400, Josef Bacik wrote:
+> > I realize it's been a little bit since I've looked at jbd but I'll offer my
+> > opinion.  Callers of jbd2_journal_restart() may not be the ones who originated
+> > the handle, so doing what Jan has done with jbd2_journal_start_reserved() isn't
+> > going to work because all the guy at the top is going to see is an error and
+> > have no way to tell if his handle is invalid or not.
+> 
+> Yeah, that's what I meant by "it would require changing all of the
+> callers".
+> 
+> > What I would suggest is getting a unified way to mark that the handle has
+> > already been cleaned up and can just be free'd.
+> 
+> The problem though is we need to make sure none of the callers don't
+> try to do anything else with handle besides calling
+> jbd2_journal_stop().  In particular, we can't allow a call to
+> jbd2_journal_get_write_access(), jbd2_journal_revoke() to operate on
+> the handle, because its transaction pointer is (potentially) invalid.
+  I think this is the cleanest solution going forward as well.
 
-As for now it is a best choice for app running with root privileges for rewriting files <= page size.
+> > Then fix jbd2_journal_start_reserved() and jbd2_journal_restart() to
+> > set that in the handle and make jbd2_journal_stop() just free up the
+> > handle and reset current->journal_info but not return an error.
+> > It's important to not return an error from jbd2_journal_stop() so
+> > that it doesn't invoke the ext4 error handling stuff and you get a
+> > read only file system when the error may not be read only file
+> > system worthy.
+> 
+> The handle->h_aborted bit, which is currently not used, does most of
+> the right thing, modulo the question of the fact that
+> jbd2_journal_stop() will return an error.  What's important from my
+> perspective is that the various callers that operate on a handle check
+> is_handle_aborted() before trying to use the it.  We'll still need to
+> audit the callers to make sure there isn't some uncommon-taken code
+> path where ext4_handle_dirty_metadata() gets called after
+> ext4_journal_restart() has returned an error.
+  Yeah, I don't see a solution where we could avoid the audit... Somewhat
+comforting is that if the change to error handling will break something it
+has been broken previously as well, only the bug was better hidden :)
 
-Regards,
-Andrey.
+> As a FAST paper once opined, "EIO: Error Handling Is Occasionally correct".  :-)
+> 
+> > This way you have a nice clean way of dealing with handle errors that allow you
+> > to pass back a real error to the caller and the caller can just do its normal
+> > jbd2_journal_stop() and cleanup and do its own error handling the way it feels.
+> > This keeps the yucky details of no longer valid handles all internal to jbd2 and
+> > ext4/ocfs2 don't have to worry about it.  Thanks,
+> 
+> Yes, that could work, although we'll need to check to make sure all of
+> the code paths that invoke jbd2_journal_restart() handle errors
+> appropriately, and don't rely on jbd2_journal_stop() returning an
+> error.  Thanks for your thoughts!
 
-________________________________________
-From: linux-ext4-owner@vger.kernel.org [linux-ext4-owner@vger.kernel.org] on behalf of Theodore Ts'o [tytso@mit.edu]
-Sent: Saturday, June 22, 2013 01:05
-To: Joseph D. Wagner
-Cc: linux-ext4@vger.kernel.org; Ryan Lortie
-Subject: Re: ext4 file replace guarantees
-
-On Fri, Jun 21, 2013 at 09:25:13AM -0700, Joseph D. Wagner wrote:
->
-> Please forgive me for the stupid question.  Would Ryan's concerns be
-> addressed by configuring ext4 to run in data=journal mode?
-
-It would, but for most workloads, data=journal is much, much slower.
-
-                                         - Ted
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
