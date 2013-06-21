@@ -1,52 +1,94 @@
-From: Joe Perches <joe@perches.com>
-Subject: Re: [PATCH 1/2] ext2: Reduce object size when !CONFIG_PRINTK
-Date: Fri, 21 Jun 2013 10:06:23 -0700
-Message-ID: <1371834383.19215.44.camel@joe-AO722>
-References: <2e70d518b9f6b8eea33c01a36983a1ccb1839282.1371575536.git.joe@perches.com>
-	 <20130621165049.GP13932@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	linux-kernel@vger.kernel.org,
-	linux-embedded <linux-embedded@vger.kernel.org>,
-	openwrt-hackers@openwrt.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20130621165049.GP13932@quack.suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 2/2] ext4: allocate delayed allocation blocks before rename
+Date: Fri, 21 Jun 2013 15:30:30 -0400
+Message-ID: <1371843030-24038-2-git-send-email-tytso@mit.edu>
+References: <1371843030-24038-1-git-send-email-tytso@mit.edu>
+Cc: desrt@desrt.ca, Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:60142 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1423672Ab3FUTae (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 21 Jun 2013 15:30:34 -0400
+In-Reply-To: <1371843030-24038-1-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 2013-06-21 at 18:50 +0200, Jan Kara wrote:
-> On Tue 18-06-13 10:14:39, Joe Perches wrote:
-> > Reducing the object size ~5kb/15% could be useful for embedded
-> > systems.
-> > 
-> > Add #ifdef CONFIG_PRINTK #else #endif blocks
-> > to hold formats and arguments, passing " " to
-> > functions when !CONFIG_PRINTK and still verifying
-> > format and arguments with no_printk.
-> > 
-> >  $ size fs/ext2/built-in.o*
-> >     text   data	    bss	    dec	    hex	filename
-> >    31297     44	      4	  31345	   7a71	fs/ext2/built-in.o.ext2.new
-> >    36288     44	      4	  36336	   8df0	fs/ext2/built-in.o.ext2.old
-> > 
-> >  $ grep -E "CONFIG_EXT2|CONFIG_PRINTK" .config
-> >  # CONFIG_PRINTK is not set
-> >  CONFIG_EXT2_FS=y
-> >  # CONFIG_EXT2_FS_XATTR is not set
-> >  # CONFIG_EXT2_FS_XIP is not set
->   I'm somewhat reluctant to merge this unless I know someone really
-> cares. It looks a bit ugly to ifdef every function doing some printing just
-> to reduce object size when CONFIG_PRINTK is disabled... And in future LTO
-> might help us ;)
+When ext4_rename() overwrites an already existing file, call
+ext4_alloc_da_blocks() before starting the journal handle which
+actually does the rename, instead of doing this afterwards.  This
+improves the likelihood that the contents will survive a crash if an
+application replaces a file using the sequence:
 
-(adding cc's to linux-embedded and openwrt
- maybe someone there cares)
+1)  write replacement contents to foo.new
+2)  <omit fsync of foo.new>
+3)  rename foo.new to foo
 
-Link time optimization might help some, but these calls
-are still made and the strings could not be eliminated
-without this.
+It is still not a guarantee, since ext4_alloc_da_blocks() is *not*
+doing a file integrity sync; this means if foo.new is a very large
+file, it may not be completely flushed out to disk.
 
-Original patch: http://patchwork.kernel.org/patch/2744401/
+However, for files smaller than a megabyte or so, any dirty pages
+should be flushed out before we do the rename operation, and so at the
+next journal commit, the CACHE FLUSH command will make sure al of
+these pages are safely on the disk platter.
+
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/namei.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
+
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index f57980c..ca8174b 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2961,6 +2961,10 @@ static struct buffer_head *ext4_get_first_dir_block(handle_t *handle,
+ /*
+  * Anybody can rename anything with this: the permission checks are left to the
+  * higher-level routines.
++ *
++ * n.b.  old_{dentry,inode) refers to the source dentry/inode
++ * while new_{dentry,inode) refers to the destination dentry/inode
++ * This comes from rename(const char *oldpath, const char *newpath)
+  */
+ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 		       struct inode *new_dir, struct dentry *new_dentry)
+@@ -2969,7 +2973,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	struct inode *old_inode, *new_inode;
+ 	struct buffer_head *old_bh, *new_bh, *dir_bh;
+ 	struct ext4_dir_entry_2 *old_de, *new_de;
+-	int retval, force_da_alloc = 0;
++	int retval;
+ 	int inlined = 0, new_inlined = 0;
+ 	struct ext4_dir_entry_2 *parent_de;
+ 
+@@ -3004,6 +3008,8 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 			new_bh = NULL;
+ 		}
+ 	}
++	if (new_inode && !test_opt(new_dir->i_sb, NO_AUTO_DA_ALLOC))
++		ext4_alloc_da_blocks(old_inode);
+ 
+ 	handle = ext4_journal_start(old_dir, EXT4_HT_DIR,
+ 		(2 * EXT4_DATA_TRANS_BLOCKS(old_dir->i_sb) +
+@@ -3144,8 +3150,6 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 		ext4_mark_inode_dirty(handle, new_inode);
+ 		if (!new_inode->i_nlink)
+ 			ext4_orphan_add(handle, new_inode);
+-		if (!test_opt(new_dir->i_sb, NO_AUTO_DA_ALLOC))
+-			force_da_alloc = 1;
+ 	}
+ 	retval = 0;
+ 
+@@ -3155,8 +3159,6 @@ end_rename:
+ 	brelse(new_bh);
+ 	if (handle)
+ 		ext4_journal_stop(handle);
+-	if (retval == 0 && force_da_alloc)
+-		ext4_alloc_da_blocks(old_inode);
+ 	return retval;
+ }
+ 
+-- 
+1.7.12.rc0.22.gcdd159b
+
