@@ -1,193 +1,138 @@
-From: Younger Liu <younger.liu@huawei.com>
-Subject: Re: [PATCH] fs/jbd2: t_updates should increase when start_this_handle()
- failed in jbd2__journal_restart()
-Date: Fri, 21 Jun 2013 21:29:31 +0800
-Message-ID: <51C4553B.7010809@huawei.com>
-References: <51C1381A.2@huawei.com> <20130620155555.GE28309@thunk.org>
+From: Ryan Lortie <desrt@desrt.ca>
+Subject: Re: ext4 file replace guarantees
+Date: Fri, 21 Jun 2013 09:51:47 -0400
+Message-ID: <1371822707.3188.140661246795017.2D10645B@webmail.messagingengine.com>
+References: <1371764058.18527.140661246414097.671B4999@webmail.messagingengine.com>
+ <20130621005937.GB10730@thunk.org>
+ <1371818596.20553.140661246775057.0F7160F3@webmail.messagingengine.com>
+ <20130621131521.GE10730@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	<linux-ext4@vger.kernel.org>,
-	Ocfs2-Devel <ocfs2-devel@oss.oracle.com>,
-	Li Zefan <lizefan@huawei.com>, <jack@suse.cz>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from szxga01-in.huawei.com ([119.145.14.64]:43535 "EHLO
-	szxga01-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1030216Ab3FUN36 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Jun 2013 09:29:58 -0400
-In-Reply-To: <20130620155555.GE28309@thunk.org>
+Received: from out1-smtp.messagingengine.com ([66.111.4.25]:49136 "EHLO
+	out1-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1030256Ab3FUNvs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 21 Jun 2013 09:51:48 -0400
+In-Reply-To: <20130621131521.GE10730@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+hi,
 
-On 2013/6/20 23:55, Theodore Ts'o wrote:
-> [ LKML and linux-fsdevel BCC'ed ]
->=20
-> On Wed, Jun 19, 2013 at 12:48:26PM +0800, Younger Liu wrote:
->> jbd2_journal_restart() would restart a handle. In this function, it
->> calls start_this_handle(). Before calling start_this_handle()=EF=BC=8C=
-subtract
->> 1 from transaction->t_updates.
->> If start_this_handle() succeeds, transaction->t_updates increases by=
- 1
->> in it. But if start_this_handle() fails, transaction->t_updates does
->> not increase.
->> So, when commit the handle's transaction in jbd2_journal_stop(), the
->> assertion is false, and then trigger a bug.
->> The assertion is as follows:
->> J_ASSERT(atomic_read(&transaction->t_updates) > 0)=20
->>
->> Signed-off-by: Younger Liu <younger.liu@huawei.com>
->=20
-> Thanks for pointing out this potential problem.  Your fix isn't quite
-> the right one, however.
->=20
-> The problem is once we get to this point, the transaction pointer may
-> no longer be valid, since once we decrement t_updates, the transactio=
-n
-> could start commiting, and so we should not actually dereference the
-> transaction pointer after we unlock transaction->t_handle_lock.  (We
-> are referencing t_tid two lines later, and technically that's a bug.
-> We've just been getting lucky.)
->=20
-> The real issue is that by the time we call start_this_handle() in
-> jbd2__journal_restart, the handle is not attached to any transaction.
-> So if jbd2_journal_restart() fails, the handle has to be considered
-> invalid, and the calling code should not try to use the handle at all=
-,
-> including calling jbd2_journal_stop().
->=20
-> Jan Kara is I believe currently on vacation but I'd really like him t=
-o
-> chime in with his opinion about the best way to fix this, since he's
-> also quite familiar with the jbd2 code.
->=20
-> Also, Jan has recently submitted changes to implement reserved handle=
-s
-> (to be submitted in the next merge window), and in these new
-> functions, if start_this_handle() fails when called from
-> jbd2_journal_start_reserved(), the handle is left invalidated, and th=
-e
-> caller of jbd2_journal_start_reserved() must not touch the handle
-> again, including calling jbd2_journal_stop() --- in fact, because
-> jbd2_journal_start_reserved() clears current->journal_info on failure=
-,
-> an attempt to call jbd2_journal_stop() will result in the kernel oops
-> due to an assertion failure.
->=20
-> My inclination is to fix this in the same way, but it will require
-> changing the current code paths that use jbd2_journal_restart(), and
-> in some cases passing back the state that the handle is now invalid
-> and should not be released via jbd2_journal_stop() is going to be
-> tricky indeed.
->=20
->=20
-> Another possible fix is to set the handle to be aborted, via
-> jbd2_journal_abort_handle().  This function isn't used at all at the
-> moment, but from what I can tell this should do the right thing.  The
-> one unfortunate thing about this is that when jbd2_journal_stop() get=
-s
-> called, it will return EROFS, which is a misleading error code.  I'm
-> guessing you're seeing this because start_this_handle() returned
-> ENOMEM, correct?  We could hack around this by stashing the real erro=
-r
-> in the handle, and then change jbd2_journal_stop() to return that
-> error instead of EROFS if it is set.
->=20
-> This second solution is hacky all-around, and it's also inconsistent
-> with how we are doing things with jbd2_journal_start_reserved().  So
-> I'm not so happy with this solution.  But it would require a lot less
-> work because the fix would be isolated in the jbd2 layer.  OTOH, righ=
-t
-> now if the code calls jbd2_journal_stop() on the handle after a
-> failure in jbd2_journal_start_reserved(), they are crashing anyway, s=
-o
-> changing the code so it changes with an assertion failure doesn't mak=
-e
-> things any worse, and then we fix things in ext4 and ocfs2 without an=
-y
-> patch interdependencies --- and this is a problem which appears to
-> happen very rarely in practice.
->=20
-> (How did you manage to trigger this, BTW?  Was this something you
-> noticed by manual code inspection?  Or are you instrumenting the
-> kernel's memory allocators to occasionally fail to test our error
-> paths?  Or were you running in a system with very heavy memory
-> pressure?)
->=20
-> 						- Ted
->=20
+On Fri, Jun 21, 2013, at 9:15, Theodore Ts'o wrote:
+> I agree it can be read that way, although we were very careful to
+> avoid the word "guarantee".
 
-This bug was triggered by the following scenario:
-In ocfs2 file system, allocate a very large disk space for a small file
-with ocfs2_fallocate(), while the journal file size is 32M.=20
+It would still be great if you could update the docs to say very clearly
+that there is no guarantee.  Using words other than 'guarantee' can
+(clearly) still mislead people to believing that there is.
 
-Because there are much many journal blocks needed by jbd2_journal_resta=
-rt(),=20
-so that nblocks is greater than journal->j_max_transaction_buffers=20
-in start_this_handle(), and then return -ENOSPC.
+> #2) If an existing file is removed via a rename, if there are any
+>     delayed allocation blocks in the new file, they will be flushed
+>     out.
 
-In start_this_handle():
-	if (nblocks > journal->j_max_transaction_buffers) {
-		printk(KERN_ERR "JBD: %s wants too many credits (%d > %d)\n",
-		       current->comm, nblocks,
-		       journal->j_max_transaction_buffers);
-		return -ENOSPC;
-	}
+Can you describe to me exactly what this means in terms of the syscall
+API?  Do I void these "delayed allocation blocks" guarantees by using
+fallocate() before-hand?
 
-Dump stack:
-       <ffffffffa0b04620>{jbd2:jbd2_journal_stop+0x50}
-       <ffffffffa0b671a3>{ocfs2:ocfs2_commit_trans+0x23}
-       <ffffffffa0b5c8ce>{ocfs2:__ocfs2_extend_allocation+0x66e}
-       <ffffffffa0b5cc55>{ocfs2:ocfs2_allocate_unwritten_extents+0xc5}
-       <ffffffffa0b5d315>{ocfs2:__ocfs2_change_file_space+0x3f5}
-       <ffffffffa0b5d67a>{ocfs2:ocfs2_fallocate+0x7a}
-       <ffffffff80127689>{do_fallocate+0x129}
-       <ffffffff801276d6>{sys_fallocate+0x46}
-       <ffffffff803fd423>{system_call_fastpath+0x16}
-       [<00007f7283b25030>]
+> > It would be great if the docs would just said "If you want safety with
+> > ext4, it's going to be slow.  Please always call fsync()." instead of
+> > making it sound like I'll probably be mostly OKish if I don't.
+> 
+> This is going to be true for all file systems.  If application writers
+> are trying to surf the boundaries of what is safe or not, inevitably
+> they will eventually run into problems.
 
-This problem may be because jbd2_journal_restart() was called incorrect=
-ly=20
-in __ocfs2_extend_allocation() which was called by ocfs2_fallocate().=20
+btrfs explicitly states in its documentation that replace-by-rename is
+safe without fsync().  Although, I start to wonder about that guarantee
+considering my reading of the ext4 documentation led me to believe the
+same was true for ext4...
 
-Although I solved this question by modifing __ocfs2_extend_allocation()=
-,=20
-there is also a risk in jbd2_journal_restart() for jbd2 system.
-So I put this potential risk to see if there is a better ideas.
+As an application developer, what I want is extremely simple: I want to
+replace a file in such a way that if, at ANY time, the system crashes or
+loses power, then when it comes back on (after replaying the journal), I
+will have, at the filename of the file, either the old contents or the
+new contents.
 
->=20
->=20
->> ---
->>  fs/jbd2/transaction.c |    2 ++
->>  1 file changed, 2 insertions(+)
->>
->> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
->> index 325bc01..9ddb444 100644
->> --- a/fs/jbd2/transaction.c
->> +++ b/fs/jbd2/transaction.c
->> @@ -530,6 +530,8 @@ int jbd2__journal_restart(handle_t *handle, int =
-nblocks, gfp_t gfp_mask)
->>  	lock_map_release(&handle->h_lockdep_map);
->>  	handle->h_buffer_credits =3D nblocks;
->>  	ret =3D start_this_handle(journal, handle, gfp_mask);
->> +	if (ret < 0)
->> +		atomic_inc(&transaction->t_updates);
->>  	return ret;
->>  }
->>  EXPORT_SYMBOL(jbd2__journal_restart);
->> --=20
->> 1.7.9.7
->>
->=20
-> .
->=20
+This is my primary concern.  I also have a secondary concern:
+performance.
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I have a legitimate desire to optimise for my second concern without
+sacrificing my first concern and I don't think that it's unreasonable
+for me to ask where the line is.  I don't really accept this "surf the
+boundaries" business about fuzzy APIs that "should do the right thing
+usually, but no guarantees if you get too close to the line".  I just
+want to know what I have to do in order to be safe.
+
+If there are no guarantees then please say that, explicitly, in your
+documentation.  I'm fine calling fsync() constantly if that's what your
+filesystem requires me to do.
+
+> Finally, I strongly encourage you to think very carefully about your
+> strategy for storing these sorts of registry data.  Even if it is
+> "safe" for btrfs, if the desktop applications are constantly writing
+> back files for no good reason, it's going to burn battery, SSD write
+> cycles, and etc.
+
+I agree.  A stated design goal of dconf has always been that reads are
+insanely fast at the cost of extremely expensive writes.  This is why it
+is only for storing settings (which are rarely modified, but are read by
+the thousands on login).  I consider fsync() to be an acceptable level
+of "expensive", even on spinning disks, and the system is designed to
+hide the latency from applications.
+
+I've gone on several campaigns of bug-filing against other people's
+applications in order to find cases of writes-with-no-good-reason and
+I've created tools for tracking these cases down and figuring out who is
+at fault.  The result is that on a properly-functioning system, the
+dconf database is never written to except in response to explicit user
+actions.  This means no writes on login, no writes on merely starting
+apps, etc.
+
+Meanwhile, the file size is pretty small.  100k is really on the high
+side, for someone who has aggressively customised a large number of
+applications.
+
+> modifies an element or two (and said application is doing this several
+> times a seocnd), the user is going to have a bad time --- in shortened
+> battery and SSD life if nothing else.
+
+I agree.  I would consider this an application bug.
+
+But it brings me to another interesting point: I don't want to sync the
+filesystem.  I really don't care when the data makes it to disk.  I
+don't want to waste battery and SSD life.  But I am forced to.  I only
+want one thing, which is what I said before: I want to know that either
+the old data will be there, or the new data.  The fact that I have to
+force the hard drive to wake up in order to get this is pretty
+unreasonable.
+
+Why can't we get what we really need?
+
+Honestly, what would be absolutely awesome is g_file_set_contents() in
+the kernel, with the "old or new" guarantee.  I have all of the data in
+a single buffer and I know the size of it in advance.  I just want you
+to get it onto the disk, at some point that is convenient to you, in
+such a way that I don't end up destroying the old data while still not
+having the new.
+
+If not that, then I'd accept some sort of barrier operation where I
+could tell the kernel "do not commit this next operation to disk until
+you commit the previous one".  It's a bit sad that the only way that I
+can get this to happen is to have the kernel do the first operation
+*right now* and wait until it's done before telling the kernel to do the
+second one.
+
+> The fact that you are trying to optimize out the fsync() makes me
+> wonder if there is something fundamentally flawed in the design of
+> either the application or its underlying libraries....
+
+I took out the fsync() because I thought it was no longer needed and
+therefore pointless.  As I mentioned above, with dconf, fsync() is not a
+substantial problem (or a visible problem at all, really).
+
+Thanks
