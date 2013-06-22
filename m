@@ -1,56 +1,49 @@
-From: "Sidorov, Andrei" <Andrei.Sidorov@arrisi.com>
-Subject: RE: ext4 file replace guarantees
-Date: Sat, 22 Jun 2013 14:01:39 +0000
-Message-ID: <C0F0BC787567C848B2C90989451123DA2363CBCC@ATLEXMBX4.ARRS.ARRISI.com>
-References: <1371764058.18527.140661246414097.671B4999@webmail.messagingengine.com>
- <20130621005937.GB10730@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: ext4 file replace guarantees
+Date: Sat, 22 Jun 2013 10:06:13 -0400
+Message-ID: <20130622140613.GE4727@thunk.org>
+References: <20130621005937.GB10730@thunk.org>
  <1371818596.20553.140661246775057.0F7160F3@webmail.messagingengine.com>
  <20130621131521.GE10730@thunk.org>
  <1371822707.3188.140661246795017.2D10645B@webmail.messagingengine.com>
- <bf675d01f2290be4e38f602ce78643c9@josephdwagner.info>
- <20130621210556.GB10582@thunk.org>
- <C0F0BC787567C848B2C90989451123DA2363CAFF@ATLEXMBX4.ARRS.ARRISI.com>,<20130622125604.GD4727@thunk.org>
+ <20130621143347.GF10730@thunk.org>
+ <1371828285.23425.140661246894093.6DC945E0@webmail.messagingengine.com>
+ <20130621203547.GA10582@thunk.org>
+ <20130622032944.GX29376@dastard>
+ <20130622044718.GC4727@thunk.org>
+ <C0F0BC787567C848B2C90989451123DA2363CBBE@ATLEXMBX4.ARRS.ARRISI.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-Cc: "Joseph D. Wagner" <joe@josephdwagner.info>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Ryan Lortie <desrt@desrt.ca>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Dave Chinner <david@fromorbit.com>, Ryan Lortie <desrt@desrt.ca>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: "Sidorov, Andrei" <Andrei.Sidorov@arrisi.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.arrisi.com ([216.234.147.109]:38282 "EHLO mail.arrisi.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754882Ab3FVOCH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 22 Jun 2013 10:02:07 -0400
-In-Reply-To: <20130622125604.GD4727@thunk.org>
-Content-Language: en-US
+Received: from li9-11.members.linode.com ([67.18.176.11]:60263 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755835Ab3FVOGT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 22 Jun 2013 10:06:19 -0400
+Content-Disposition: inline
+In-Reply-To: <C0F0BC787567C848B2C90989451123DA2363CBBE@ATLEXMBX4.ARRS.ARRISI.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> So if you want to use the +j flag, you have to mount the file system
-> with the non-standard nodelalloc mount option.  And that's actually
-> sufficient to be bug-for-bug compatible with ext3 in terms of the
-> commit of the transaction which contains the rename operation first
-> forcing the file out to disk first.
+On Sat, Jun 22, 2013 at 01:40:26PM +0000, Sidorov, Andrei wrote:
+> Me too, but people have to do that because fs api is too generic and
+> at the same time one has to account fs specifics in order to make
+> their app take most advantage or at least to avoid inefficiencies.
+> For example I have an app that constantly does appending writes to
+> about 15 files and I must ensure that no more than 5 seconds will be
+> lost in an event of system crash or power loss.
 
-Thanks for pointing this, I didn't know that. In my appliance I don't benefit
-from delalloc, so that's not a problem.
+Stop right there.  If you are doing lots of appending writes, and you
+dont want to lose no more than 5 seconds, why do you have 15 files?
+Why send your appending writes into a single file and then later on,
+disaggregate out the logs when you need to read them?  With 15 files,
+no matter what you are doing, you will be forcing the heads to seek
+all over the place, and since the 4k blocks won't be full when you
+sync them, you're wasting write cycles and disk bandwidth.
 
-> The best choice for an application rewriting files <= a single 4k
-> block is to use O_DIRECT to rewrite the contents of the file, using a
-> 4k buffer which is zero padded.  This is the most performant, uses the
-> fewest write cycles for a SSD, etc.
+See what I mean?  There's a reason why I said the fault was
+incompetent application design, not just incomplement implementation.
 
-This doesn't work in power loss scenario.
-First of all majority of hdd's still have 512b sectors, so it is possible that
-hdd won't have a chance to write all 8 sectors.
-This doesn't work even with 4k drives because they are susceptible to spliced
-sector writes. Well, 512b are susceptible too, but 4k drives have wider
-window.
-That's why for rewrite to be completely safe data has to be written twice. And
-that's where inode's data journalling is a win.
-I guess this isn't an issue for SSD's provided they properly order remapping
-(which is a bug otherwise).
-
-Regards,
-Andrey.
+	    			    	 	      - Ted
