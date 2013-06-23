@@ -1,185 +1,244 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: ext4 file replace guarantees
-Date: Sun, 23 Jun 2013 11:58:05 +1000
-Message-ID: <20130623015805.GY29376@dastard>
-References: <1371764058.18527.140661246414097.671B4999@webmail.messagingengine.com>
- <20130621005937.GB10730@thunk.org>
- <1371818596.20553.140661246775057.0F7160F3@webmail.messagingengine.com>
- <20130621131521.GE10730@thunk.org>
- <1371822707.3188.140661246795017.2D10645B@webmail.messagingengine.com>
- <20130621143347.GF10730@thunk.org>
- <1371828285.23425.140661246894093.6DC945E0@webmail.messagingengine.com>
- <20130621203547.GA10582@thunk.org>
- <20130622032944.GX29376@dastard>
- <20130622044718.GC4727@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ryan Lortie <desrt@desrt.ca>, linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+From: Namjae Jeon <linkinjeon@gmail.com>
+Subject: [PATCH 0/3] ext4: introduce two new ioctls
+Date: Sun, 23 Jun 2013 15:07:22 +0900
+Message-ID: <1371967642-3116-1-git-send-email-linkinjeon@gmail.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, a.sangwan@samsung.com,
+	Namjae Jeon <linkinjeon@gmail.com>,
+	Namjae Jeon <namjae.jeon@samsung.com>
+To: tytso@mit.edu, adilger.kernel@dilger.ca
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:58589 "EHLO
-	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751714Ab3FWB6M (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 22 Jun 2013 21:58:12 -0400
-Content-Disposition: inline
-In-Reply-To: <20130622044718.GC4727@thunk.org>
+Received: from mail-pa0-f48.google.com ([209.85.220.48]:45348 "EHLO
+	mail-pa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750704Ab3FWGHc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 23 Jun 2013 02:07:32 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Jun 22, 2013 at 12:47:18AM -0400, Theodore Ts'o wrote:
-> On Sat, Jun 22, 2013 at 01:29:44PM +1000, Dave Chinner wrote:
-> > > This will work on today's kernels, and it should be safe to do for all
-> > > file systems.
-> > 
-> > No, it's not. SYNC_FILE_RANGE_WRITE does not wait for IO completion,
-> > and not all filesystems sychronise journal flushes with data write
-> > IO completion.
-> 
-> Sorry, what I should have said is:
-> 
-> sync_file_range(fd, 0, 0, SYNC_FILE_RANGE_WRITE | SYNC_FILE_RANGE_WAIT_AFTER);
-> 
-> This *does* wait for I/O completion; the result is the equivalent
-> filemap_fdatawrite() followed by filemap_fdatawait().
+From: Namjae Jeon <namjae.jeon@samsung.com>
 
-Right, and now it is effectively identical to fsync() in terms of
-speed. And when performance is the reason for avoiding fsync()....
+This patch series introduces 2 new ioctls for ext4.
 
-> > Indeed, we have a current "data corruption after power failure"
-> > problem found on Ceph storage clusters using XFS for the OSD storage
-> > that is specifically triggered by the use of SYNC_FILE_RANGE_WRITE
-> > rather than using fsync() to get data to disk.
-> > 
-> > http://oss.sgi.com/pipermail/xfs/2013-June/027390.html
-> 
-> This woudn't be a problem in the sequence I suggested.
-> 
-> 1)  write foo.new
-> 2)  sync_file_range(...)
-> 3)  rename foo.new to foo
+Truncate_block_range ioctl truncates blocks from source file.
+Transfer_block_range ioctl transfers data blocks from source file
+and append them at the end of destination file.
 
-You miss the point - it's not a data integrity operation, and to
-present it as a way of obtaining data integrity across *all
-filesystems* because it would work on ex4 is extremely dangerous.
-You're relying on side effects of a specific filesystem implementation
-to give you the desired result.
+Ioctl1:		EXT4_IOC_TRUNCATE_BLOCK_RANGE:
+This ioctl truncates a range of data blocks from file.
+It is useful to remove easily and quickly the garbage data
+at the middle of file.
 
-> If the system crashes right after foo.new, yes, there's no
-> guarantee since the metadata blocks are written.
+e.g. we have a movie file and there is long advertisement in movie file.
+user want to remove only advertisement range.
 
-Sure, but focussing on ext4 behaviour misses the larger issue -
-sync_file_range() has no well defined integrity rules and hence
-exposes applications to unexpected behaviours on different
-filesystems.
+ 1) Movie file (8GB), There is the adverisement of 500MB size.
+ ____________________________________________________________________
+ |                     |                   |                         |
+ |   a) range          | b) Advertisement  |     c) range            | 
+ |                     | (unneeded data)   |                         |
+ |_____________________|___________________|_________________________| 
 
-> (Although if XFS
-> is exposing stale data as a result of sync_file_range, that's
-> arguably a security bug, since sync_file_range doesn't require
-> root to execute, and it _has_ been part of the Linux interface for
-> a long time.)
+ 2) Currently if user want to remove portion b), the conventional way
+    would be to copy a) and c) (7.5GB) to new file by reading data from
+    original file and writing to new file, followed up by  delete original
+    file and rename new file. It will take long time.
+    When we measure time, it takes around 3 minutes.
 
-Yes, it is.
+ 3) If we use EXT4_IOC_TRUNCATE_BLOCK_RANGE, we can have garbage data removed
+    in less than a second. Also, no need to perform deletion and rename.
+ _______________________________________________
+ |                     |                        |
+ |   a) range          |     c) range           | 
+ |                     |                        |
+ |_____________________|________________________| 
 
-But doesn't this point out one of the problems with
-moving from a well known interface to something that almost nobody
-uses and (obviously) has never tested in a data integrity test bench
-previously? it's taken how many years for this problem to be
-exposed? We test fsync crash integrity all the time, but do we test
-sync_file_range()? No, we don't, because it doesn't have any data
-integrity guarantees that we can validate.
 
-So while the interface may have been around for years, the first
-serious storage product I've heard of that has tried to use it to
-optimise away fsync() calls to use it has found that:
+#define EXT4_IOC_TRUNCATE_BLOCK_RANGE  _IOW('f', 18, struct truncate_range)
+struct truncate_range {
+       __u32 start_block;
+       __u32 length;
+};
 
-	a) it exposes strange behaviours on different filesystems;
-	b) doesn't provide data integrity guarantees worth a damn;
-	and
-	c) isn't any faster than using fsync/fdatasync() in the
-	   first place.
+example =>
+Originally the file "abc" has the below extent tree:
+debugfs:  ex abc
+Level Entries       Logical        Physical Length Flags
+ 0/ 0   1/  3     0 -     4  33615 -  33619      5 
+ 0/ 0   2/  3     5 -     9  33855 -  33859      5 
+ 0/ 0   3/  3    10 -    14  69657 -  69661      5
 
-And so has reverted back to using fsync()....
+ls -lh abc
+-rw-r--r--    1 root     0          60.0K Jan  1 00:01 abc
 
-> So for ext3 and ext4, this sequence will guarantee that the file
+du -h abc
+60.0K	abc
 
-Exactly my point. You're designing for ext3/4 data=ordered behaviour
-and so it's not a replacement for fsync/fdatasync...
+e4_truncate_block_range abc 2 10
+Return:
+: Success
 
-> > But, let me make a very important point here. Nobody should be
-> > trying to optimise a general purpose application for a specific
-> > filesystem's data integrity behaviour. fsync() and fdatasync()
-> > are the gold standards as it is consistently implemented across
-> > all Linux filesystems.
-> 
-> From a philosophical point of view, I agree with you.  As I wrote
-> in my earlier messages, assuming the applications aren't abusively
-> calling g_file_set_contents() several times per second, I don't
-> understand why Ryan is trying so hard to optimize it.  The fact
-> that he's trying to optimize it at least to me seems to indicate a
-> simple admission that there *are* broken applications out there,
-> some of which may be calling it with high frequency, perhaps out
-> of the UI thread.  
+After executing truncate_block_range ioctl, the extent tree:
+ex abc
+Level Entries       Logical        Physical Length Flags
+ 0/ 0   1/  2     0 -     1  33615 -  33616      2 
+ 0/ 0   2/  2     2 -     4  69659 -  69661      3 
 
-That's not a problem that should be solved by trading off data
-integrity and losing user's configurations. Have a backbone, Ted,
-and tell people they are doing something stupid when they are doing
-something stupid.
+ls -lh abc
+-rw-r--r--    1 root     0          20.0K Jan  1 00:08 abc
 
-> And having general applications or generic desktop libraries
-> trying to depend on specific implementation details of file
-> systems is really ugly.  So it's not something I'm all that
-> excited about.
+du -h abc
+20.0K	abc
 
-Not excited? That's an understatement - it's the sort of thing that
-gives me nightmares.
+This ioctl works in 2 parts:
+1) remove _only_ data blocks that resides within specified range.
+If the entire range is a hole than nothing is removed.
 
-We've *been here before*. We've been telling application developer's
-to use fsync/fdatasync() since the O_PONIES saga so we don't end up
-back in that world of hurt. Yet here you are advocating that
-application developers go back down the rat hole of relying on
-implicit side effects of the design of a specific filesystem
-configuration to provide them with data integrity guarantees....
+2) update file's logical block offsets ranging from block number
+"start_block + length" to last logical block of file such that
+lblk_number = lblk_number - length;
+This is done by updating starting block of all the extents that
+resides within the range.
 
-> But if XFS is doing something sufficiently clever that
-> sync_file_range() isn't going to do the right thing, and if we
-> presume that abusive applications will always exist, then maybe
-> it's time to consider implementing a new system call which has
-> very well defined semantics,
+If "start_block + length" is already equal to the last block of file
+than no block is updated. This case is similar to convential truncate.
 
-That's fine - go and define the requirements for an
-rename_datasync() syscall, write a bunch of xfstests to ensure the
-API is usable and provides the required behaviour. Then do a slow
-generic implementation that you wire all the filesystems up to so
-it's available to everyone (i.e.  no fs probing needed).
-Applications can start using it immediately, knowing it will work on
-every filesystem. i.e:
+In the above example:
+The data blocks ranging from [2 - 11] have been removed
+and the logical offsets of the file beyond block number 12 till last block 
+of file are updated by subtracting length from each of logical numbers.
+This gives a contiguous logical space to the file.
+Also, the logical size and disksize of the file are updated accordingly.
 
-generic_rename_datasync()
-{
-	vfs_fsync(src);
-	->rename()
-}
+Ioctl2:		EXT4_IOC_TRANSFER_BLOCK_RANGE:
+This ioctl transfers a range of data blocks from source file and append
+them at the end of the destination file.
+This is not actual data transfer but only metadata is moved.
 
-At that point you can implement a fast, optimal implementation in
-ext3/4 that nobody outside ext3/4 needs to care about how it works.
-The BTRFS guys can optimise it appropriately in their own time, as
-can us XFS people. But the most important point is that we start
-with on implementation that *works everywhere*...
+ ____________________________________________________________________
+ |                     |                   |                         |
+ |   a) range          | b) range          |     c) range            |
+ |                     |                   |                         |
+ |_____________________|___________________|_________________________|
 
-> Personally, I think application programmers *shouldn't* need such
-> a facility, if their applications are competently designed and
-> implemented.  But unfortunately, they outnumber us file system
-> developers, and apparently many of them seem to want to do things
-> their way, whether we like it or not.
+If user does not want b) in the orig file but wants to make a new file
+comprising only b) OR wants b) at the end of an already existing file,
+the conventional way of doing it would be to:
+1) Copy b) to new file
+2) Copy c) to temp file
+3) Truncate orig file to a)
+4) Copy c) from temp file to the end of orig file.
+5) Delete temp file.
 
-And you're too afraid to call out someone when they are doing something
-stupid. If you don't call them out, they'll keep doing stupid things
-and the problems will never get solved.
+After this operations =>
+orig_file:
+__________________________________________
+|                     |                   |
+|   a) range          | c) range          |
+|                     |                   |
+|_____________________|___________________|
 
-Cheers,
+new_file:
+_______________________
+|                     |
+|   b) range          |
+|                     |
+|_____________________|
 
-Dave.
+Again, this operation would take a long time (depending on the sizes of range)
+if done using conventional way while using transfer_block_range ioctl reduces
+the time within a second.
+
+#define EXT4_IOC_TRANSFER_BLOCK_RANGE  _IOW('f', 19, struct transfer_range)
+struct transfer_range {
+	__u32 dest_fd;
+	__u32 start_block;
+	__u32 length;
+};
+
+example=>
+debugfs: ex source
+Level Entries       Logical        Physical Length Flags
+ 0/ 1   1/  1     0 -    24  32809              25
+ 1/ 1   1/  5     0 -     4   4071 -   4075      5 
+ 1/ 1   2/  5     5 -     9   4081 -   4085      5 
+ 1/ 1   3/  5    10 -    14   4091 -   4095      5 
+ 1/ 1   4/  5    15 -    19   4101 -   4105      5 
+ 1/ 1   5/  5    20 -    24   4151 -   4155      5 
+
+debugfs:  ex dest
+Level Entries       Logical        Physical Length Flags
+ 0/ 0   1/  3     0 -     4  32825 -  32829      5 
+ 0/ 0   2/  3     5 -     9  33545 -  33549      5 
+ 0/ 0   3/  3    10 -    14  33615 -  33619      5
+
+ls -lh source 
+-rw-r--r--    1 root     0         100.0K Jan  1 00:01 source
+ls -lh dest 
+-rw-r--r--    1 root     0          60.0K Jan  1 00:01 dest
+
+du -h source 
+104.0K	source
+du -h dest 
+60.0K	dest
+
+e4_transfer_block_range source dest 2 10
+Return:
+: Success
+
+debugfs:  ex source
+Level Entries       Logical        Physical Length Flags
+ 0/ 1   1/  1     0 -    24  32809              25
+ 1/ 1   1/  4     0 -     1   4071 -   4072      2 
+ 1/ 1   2/  4    12 -    14   4093 -   4095      3 
+ 1/ 1   3/  4    15 -    19   4101 -   4105      5 
+ 1/ 1   4/  4    20 -    24   4151 -   4155      5 
+debugfs:  ex dest
+Level Entries       Logical        Physical Length Flags
+ 0/ 1   1/  1     0 -    24  32835              25
+ 1/ 1   1/  6     0 -     4  32825 -  32829      5 
+ 1/ 1   2/  6     5 -     9  33545 -  33549      5 
+ 1/ 1   3/  6    10 -    14  33615 -  33619      5 
+ 1/ 1   4/  6    15 -    17   4073 -   4075      3 
+ 1/ 1   5/  6    18 -    22   4081 -   4085      5 
+ 1/ 1   6/  6    23 -    24   4091 -   4092      2 
+
+ls -lh source
+-rw-r--r--    1 root     0         100.0K Jan  1 00:04 source
+ls -lh dest 
+-rw-r--r--    1 root     0         100.0K Jan  1 00:04 dest
+
+du -h source 
+64.0K	source
+du -h dest
+104.0K	dest
+
+The data blocks lying between [start_block to start_block + length) are appended
+contiguously at the end of destination file.
+The block transfer leaves a hole in the source file.
+If any hole is encountered in the range, it is ommited.
+
+This ioctl does not change the logical size of the source file hence
+leaves a hole in place of transfered range.
+If user want contiguous logical space for source file,
+it can truncate the hole by calling truncate_range_ioctl for source file.
+
+Example for above "source" file:
+e4_truncate_block_range source 2 10
+Return:
+: Success
+debugfs:  ex source
+Level Entries       Logical        Physical Length Flags
+ 0/ 1   1/  1     0 -    14  32809              15
+ 1/ 1   1/  4     0 -     1   4071 -   4072      2 
+ 1/ 1   2/  4     2 -     4   4093 -   4095      3 
+ 1/ 1   3/  4     5 -     9   4101 -   4105      5 
+ 1/ 1   4/  4    10 -    14   4151 -   4155      5 
+
+Namjae Jeon (3):
+  ext4: Add EXT4_IOC_TRUNCATE_BLOCK_RANGE ioctl
+  ext4: make mext_next_extent non static and move get_ext_path
+  ext4: Add EXT4_IOC_TRANSFER_BLOCK_RANGE ioctl
+
 -- 
-Dave Chinner
-david@fromorbit.com
+1.7.9.5
+
