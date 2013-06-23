@@ -1,375 +1,261 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: translate flag bits to strings in tracepoints
-Date: Sun, 23 Jun 2013 08:13:45 -0400
-Message-ID: <1371989625-16570-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:60415 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751607Ab3FWMNs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 23 Jun 2013 08:13:48 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH 0/3] ext4: introduce two new ioctls
+Date: Sun, 23 Jun 2013 11:00:51 -0600
+Message-ID: <03D226D6-9598-473F-90FC-03A389E2A625@dilger.ca>
+References: <1371967642-3116-1-git-send-email-linkinjeon@gmail.com>
+Mime-Version: 1.0 (1.0)
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: "tytso@mit.edu" <tytso@mit.edu>,
+	"adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"a.sangwan@samsung.com" <a.sangwan@samsung.com>,
+	Namjae Jeon <linkinjeon@gmail.com>,
+	Namjae Jeon <namjae.jeon@samsung.com>
+To: Namjae Jeon <linkinjeon@gmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1371967642-3116-1-git-send-email-linkinjeon@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Translate the bitfields used in various flags argument to strings to
-make the tracepoint output more human-readable.
+On 2013-06-23, at 0:07, Namjae Jeon <linkinjeon@gmail.com> wrote:
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/extents.c           |   2 +-
- fs/ext4/indirect.c          |   2 +-
- include/trace/events/ext4.h | 135 +++++++++++++++++++++++++++++++-------------
- 3 files changed, 98 insertions(+), 41 deletions(-)
+> From: Namjae Jeon <namjae.jeon@samsung.com>
+> 
+> This patch series introduces 2 new ioctls for ext4.
+> 
+> Truncate_block_range ioctl truncates blocks from source file.
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 937593e..575faa0 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4380,7 +4380,7 @@ out2:
- 	}
- 
- out3:
--	trace_ext4_ext_map_blocks_exit(inode, map, err ? err : allocated);
-+	trace_ext4_ext_map_blocks_exit(inode, flags, map, err ? err : allocated);
- 
- 	return err ? err : allocated;
- }
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index 963d23d..87b30cd 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -624,7 +624,7 @@ cleanup:
- 		partial--;
- 	}
- out:
--	trace_ext4_ind_map_blocks_exit(inode, map, err);
-+	trace_ext4_ind_map_blocks_exit(inode, flags, map, err);
- 	return err;
- }
- 
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index 72f523e..2068db2 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -19,6 +19,57 @@ struct extent_status;
- 
- #define EXT4_I(inode) (container_of(inode, struct ext4_inode_info, vfs_inode))
- 
-+#define show_mballoc_flags(flags) __print_flags(flags, "|",	\
-+	{ EXT4_MB_HINT_MERGE,		"HINT_MERGE" },		\
-+	{ EXT4_MB_HINT_RESERVED,	"HINT_RESV" },		\
-+	{ EXT4_MB_HINT_METADATA,	"HINT_MDATA" },		\
-+	{ EXT4_MB_HINT_FIRST,		"HINT_FIRST" },		\
-+	{ EXT4_MB_HINT_BEST,		"HINT_BEST" },		\
-+	{ EXT4_MB_HINT_DATA,		"HINT_DATA" },		\
-+	{ EXT4_MB_HINT_NOPREALLOC,	"HINT_NOPREALLOC" },	\
-+	{ EXT4_MB_HINT_GROUP_ALLOC,	"HINT_GRP_ALLOC" },	\
-+	{ EXT4_MB_HINT_GOAL_ONLY,	"HINT_GOAL_ONLY" },	\
-+	{ EXT4_MB_HINT_TRY_GOAL,	"HINT_TRY_GOAL" },	\
-+	{ EXT4_MB_DELALLOC_RESERVED,	"DELALLOC_RESV" },	\
-+	{ EXT4_MB_STREAM_ALLOC,		"STREAM_ALLOC" },	\
-+	{ EXT4_MB_USE_ROOT_BLOCKS,	"USE_ROOT_BLKS" },	\
-+	{ EXT4_MB_USE_RESERVED,		"USE_RESV" })
-+
-+#define show_map_flags(flags) __print_flags(flags, "|",			\
-+	{ EXT4_GET_BLOCKS_CREATE,		"CREATE" },		\
-+	{ EXT4_GET_BLOCKS_UNINIT_EXT,		"UNINIT" },		\
-+	{ EXT4_GET_BLOCKS_DELALLOC_RESERVE,	"DELALLOC" },		\
-+	{ EXT4_GET_BLOCKS_PRE_IO,		"PRE_IO" },		\
-+	{ EXT4_GET_BLOCKS_CONVERT,		"CONVERT" },		\
-+	{ EXT4_GET_BLOCKS_METADATA_NOFAIL,	"METADATA_NOFAIL" },	\
-+	{ EXT4_GET_BLOCKS_NO_NORMALIZE,		"NO_NORMALIZE" },	\
-+	{ EXT4_GET_BLOCKS_KEEP_SIZE,		"KEEP_SIZE" },		\
-+	{ EXT4_GET_BLOCKS_NO_LOCK,		"NO_LOCK" },		\
-+	{ EXT4_GET_BLOCKS_NO_PUT_HOLE,		"NO_PUT_HOLE" })
-+
-+#define show_mflags(flags) __print_flags(flags, "",	\
-+	{ EXT4_MAP_NEW,		"N" },			\
-+	{ EXT4_MAP_MAPPED,	"M" },			\
-+	{ EXT4_MAP_UNWRITTEN,	"U" },			\
-+	{ EXT4_MAP_BOUNDARY,	"B" },			\
-+	{ EXT4_MAP_UNINIT,	"u" },			\
-+	{ EXT4_MAP_FROM_CLUSTER, "C" })
-+
-+#define show_free_flags(flags) __print_flags(flags, "|",	\
-+	{ EXT4_FREE_BLOCKS_METADATA,		"METADATA" },	\
-+	{ EXT4_FREE_BLOCKS_FORGET,		"FORGET" },	\
-+	{ EXT4_FREE_BLOCKS_VALIDATED,		"VALIDATED" },	\
-+	{ EXT4_FREE_BLOCKS_NO_QUOT_UPDATE,	"NO_QUOTA" },	\
-+	{ EXT4_FREE_BLOCKS_NOFREE_FIRST_CLUSTER,"1ST_CLUSTER" },\
-+	{ EXT4_FREE_BLOCKS_NOFREE_LAST_CLUSTER,	"LAST_CLUSTER" })
-+
-+#define show_extent_status(status) __print_flags(status, "",	\
-+	{ (1 << 3),	"W" }, 					\
-+	{ (1 << 2),	"U" },					\
-+	{ (1 << 1),	"D" },					\
-+	{ (1 << 0),	"H" })
-+
-+
- TRACE_EVENT(ext4_free_inode,
- 	TP_PROTO(struct inode *inode),
- 
-@@ -373,10 +424,10 @@ TRACE_EVENT(ext4_da_write_pages_extent,
- 		__entry->flags		= map->m_flags;
- 	),
- 
--	TP_printk("dev %d,%d ino %lu lblk %llu len %u flags 0x%04x",
-+	TP_printk("dev %d,%d ino %lu lblk %llu len %u flags %s",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino, __entry->lblk, __entry->len,
--		  __entry->flags)
-+		  show_mflags(__entry->flags))
- );
- 
- TRACE_EVENT(ext4_writepages_result,
-@@ -691,10 +742,10 @@ TRACE_EVENT(ext4_request_blocks,
- 		__entry->flags	= ar->flags;
- 	),
- 
--	TP_printk("dev %d,%d ino %lu flags %u len %u lblk %u goal %llu "
-+	TP_printk("dev %d,%d ino %lu flags %s len %u lblk %u goal %llu "
- 		  "lleft %u lright %u pleft %llu pright %llu ",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
--		  (unsigned long) __entry->ino, __entry->flags,
-+		  (unsigned long) __entry->ino, show_mballoc_flags(__entry->flags),
- 		  __entry->len, __entry->logical, __entry->goal,
- 		  __entry->lleft, __entry->lright, __entry->pleft,
- 		  __entry->pright)
-@@ -733,10 +784,10 @@ TRACE_EVENT(ext4_allocate_blocks,
- 		__entry->flags	= ar->flags;
- 	),
- 
--	TP_printk("dev %d,%d ino %lu flags %u len %u block %llu lblk %u "
-+	TP_printk("dev %d,%d ino %lu flags %s len %u block %llu lblk %u "
- 		  "goal %llu lleft %u lright %u pleft %llu pright %llu",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
--		  (unsigned long) __entry->ino, __entry->flags,
-+		  (unsigned long) __entry->ino, show_mballoc_flags(__entry->flags),
- 		  __entry->len, __entry->block, __entry->logical,
- 		  __entry->goal,  __entry->lleft, __entry->lright,
- 		  __entry->pleft, __entry->pright)
-@@ -766,11 +817,11 @@ TRACE_EVENT(ext4_free_blocks,
- 		__entry->mode		= inode->i_mode;
- 	),
- 
--	TP_printk("dev %d,%d ino %lu mode 0%o block %llu count %lu flags %d",
-+	TP_printk("dev %d,%d ino %lu mode 0%o block %llu count %lu flags %s",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
- 		  __entry->mode, __entry->block, __entry->count,
--		  __entry->flags)
-+		  show_free_flags(__entry->flags))
- );
- 
- TRACE_EVENT(ext4_sync_file_enter,
-@@ -921,7 +972,7 @@ TRACE_EVENT(ext4_mballoc_alloc,
- 	),
- 
- 	TP_printk("dev %d,%d inode %lu orig %u/%d/%u@%u goal %u/%d/%u@%u "
--		  "result %u/%d/%u@%u blks %u grps %u cr %u flags 0x%04x "
-+		  "result %u/%d/%u@%u blks %u grps %u cr %u flags %s "
- 		  "tail %u broken %u",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
-@@ -932,7 +983,7 @@ TRACE_EVENT(ext4_mballoc_alloc,
- 		  __entry->result_group, __entry->result_start,
- 		  __entry->result_len, __entry->result_logical,
- 		  __entry->found, __entry->groups, __entry->cr,
--		  __entry->flags, __entry->tail,
-+		  show_mballoc_flags(__entry->flags), __entry->tail,
- 		  __entry->buddy ? 1 << __entry->buddy : 0)
- );
- 
-@@ -1546,10 +1597,10 @@ DECLARE_EVENT_CLASS(ext4__map_blocks_enter,
- 		__entry->flags	= flags;
- 	),
- 
--	TP_printk("dev %d,%d ino %lu lblk %u len %u flags %u",
-+	TP_printk("dev %d,%d ino %lu lblk %u len %u flags %s",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
--		  __entry->lblk, __entry->len, __entry->flags)
-+		  __entry->lblk, __entry->len, show_map_flags(__entry->flags))
- );
- 
- DEFINE_EVENT(ext4__map_blocks_enter, ext4_ext_map_blocks_enter,
-@@ -1567,47 +1618,53 @@ DEFINE_EVENT(ext4__map_blocks_enter, ext4_ind_map_blocks_enter,
- );
- 
- DECLARE_EVENT_CLASS(ext4__map_blocks_exit,
--	TP_PROTO(struct inode *inode, struct ext4_map_blocks *map, int ret),
-+	TP_PROTO(struct inode *inode, unsigned flags, struct ext4_map_blocks *map,
-+		 int ret),
- 
--	TP_ARGS(inode, map, ret),
-+	TP_ARGS(inode, flags, map, ret),
- 
- 	TP_STRUCT__entry(
- 		__field(	dev_t,		dev		)
- 		__field(	ino_t,		ino		)
-+		__field(	unsigned int,	flags		)
- 		__field(	ext4_fsblk_t,	pblk		)
- 		__field(	ext4_lblk_t,	lblk		)
- 		__field(	unsigned int,	len		)
--		__field(	unsigned int,	flags		)
-+		__field(	unsigned int,	mflags		)
- 		__field(	int,		ret		)
- 	),
- 
- 	TP_fast_assign(
- 		__entry->dev    = inode->i_sb->s_dev;
- 		__entry->ino    = inode->i_ino;
-+		__entry->flags	= flags;
- 		__entry->pblk	= map->m_pblk;
- 		__entry->lblk	= map->m_lblk;
- 		__entry->len	= map->m_len;
--		__entry->flags	= map->m_flags;
-+		__entry->mflags	= map->m_flags;
- 		__entry->ret	= ret;
- 	),
- 
--	TP_printk("dev %d,%d ino %lu lblk %u pblk %llu len %u flags %x ret %d",
-+	TP_printk("dev %d,%d ino %lu flags %s lblk %u pblk %llu len %u "
-+		  "mflags %s ret %d",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
--		  __entry->lblk, __entry->pblk,
--		  __entry->len, __entry->flags, __entry->ret)
-+		  show_map_flags(__entry->flags), __entry->lblk, __entry->pblk,
-+		  __entry->len, show_mflags(__entry->mflags), __entry->ret)
- );
- 
- DEFINE_EVENT(ext4__map_blocks_exit, ext4_ext_map_blocks_exit,
--	TP_PROTO(struct inode *inode, struct ext4_map_blocks *map, int ret),
-+	TP_PROTO(struct inode *inode, unsigned flags,
-+		 struct ext4_map_blocks *map, int ret),
- 
--	TP_ARGS(inode, map, ret)
-+	TP_ARGS(inode, flags, map, ret)
- );
- 
- DEFINE_EVENT(ext4__map_blocks_exit, ext4_ind_map_blocks_exit,
--	TP_PROTO(struct inode *inode, struct ext4_map_blocks *map, int ret),
-+	TP_PROTO(struct inode *inode, unsigned flags,
-+		 struct ext4_map_blocks *map, int ret),
- 
--	TP_ARGS(inode, map, ret)
-+	TP_ARGS(inode, flags, map, ret)
- );
- 
- TRACE_EVENT(ext4_ext_load_extent,
-@@ -1779,12 +1836,12 @@ TRACE_EVENT(ext4_ext_handle_uninitialized_extents,
- 		__entry->newblk		= newblock;
- 	),
- 
--	TP_printk("dev %d,%d ino %lu m_lblk %u m_pblk %llu m_len %u flags %x "
-+	TP_printk("dev %d,%d ino %lu m_lblk %u m_pblk %llu m_len %u flags %s "
- 		  "allocated %d newblock %llu",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
- 		  (unsigned) __entry->lblk, (unsigned long long) __entry->pblk,
--		  __entry->len, __entry->flags,
-+		  __entry->len, show_map_flags(__entry->flags),
- 		  (unsigned int) __entry->allocated,
- 		  (unsigned long long) __entry->newblk)
- );
-@@ -1812,10 +1869,10 @@ TRACE_EVENT(ext4_get_implied_cluster_alloc_exit,
- 		__entry->ret	= ret;
- 	),
- 
--	TP_printk("dev %d,%d m_lblk %u m_pblk %llu m_len %u m_flags %u ret %d",
-+	TP_printk("dev %d,%d m_lblk %u m_pblk %llu m_len %u m_flags %s ret %d",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  __entry->lblk, (unsigned long long) __entry->pblk,
--		  __entry->len, __entry->flags, __entry->ret)
-+		  __entry->len, show_mflags(__entry->flags), __entry->ret)
- );
- 
- TRACE_EVENT(ext4_ext_put_in_cache,
-@@ -2146,7 +2203,7 @@ TRACE_EVENT(ext4_es_insert_extent,
- 		__field(	ext4_lblk_t,	lblk		)
- 		__field(	ext4_lblk_t,	len		)
- 		__field(	ext4_fsblk_t,	pblk		)
--		__field(	unsigned long long, status	)
-+		__field(	char, status	)
- 	),
- 
- 	TP_fast_assign(
-@@ -2155,14 +2212,14 @@ TRACE_EVENT(ext4_es_insert_extent,
- 		__entry->lblk	= es->es_lblk;
- 		__entry->len	= es->es_len;
- 		__entry->pblk	= ext4_es_pblock(es);
--		__entry->status	= ext4_es_status(es);
-+		__entry->status	= ext4_es_status(es) >> 60;
- 	),
- 
--	TP_printk("dev %d,%d ino %lu es [%u/%u) mapped %llu status %llx",
-+	TP_printk("dev %d,%d ino %lu es [%u/%u) mapped %llu status %s",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
- 		  __entry->lblk, __entry->len,
--		  __entry->pblk, __entry->status)
-+		  __entry->pblk, show_extent_status(__entry->status))
- );
- 
- TRACE_EVENT(ext4_es_remove_extent,
-@@ -2223,7 +2280,7 @@ TRACE_EVENT(ext4_es_find_delayed_extent_range_exit,
- 		__field(	ext4_lblk_t,	lblk		)
- 		__field(	ext4_lblk_t,	len		)
- 		__field(	ext4_fsblk_t,	pblk		)
--		__field(	unsigned long long, status	)
-+		__field(	char, status	)
- 	),
- 
- 	TP_fast_assign(
-@@ -2232,14 +2289,14 @@ TRACE_EVENT(ext4_es_find_delayed_extent_range_exit,
- 		__entry->lblk	= es->es_lblk;
- 		__entry->len	= es->es_len;
- 		__entry->pblk	= ext4_es_pblock(es);
--		__entry->status	= ext4_es_status(es);
-+		__entry->status	= ext4_es_status(es) >> 60;
- 	),
- 
--	TP_printk("dev %d,%d ino %lu es [%u/%u) mapped %llu status %llx",
-+	TP_printk("dev %d,%d ino %lu es [%u/%u) mapped %llu status %s",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
- 		  __entry->lblk, __entry->len,
--		  __entry->pblk, __entry->status)
-+		  __entry->pblk, show_extent_status(__entry->status))
- );
- 
- TRACE_EVENT(ext4_es_lookup_extent_enter,
-@@ -2276,7 +2333,7 @@ TRACE_EVENT(ext4_es_lookup_extent_exit,
- 		__field(	ext4_lblk_t,	lblk		)
- 		__field(	ext4_lblk_t,	len		)
- 		__field(	ext4_fsblk_t,	pblk		)
--		__field(	unsigned long long,	status	)
-+		__field(	char,		status		)
- 		__field(	int,		found		)
- 	),
- 
-@@ -2286,16 +2343,16 @@ TRACE_EVENT(ext4_es_lookup_extent_exit,
- 		__entry->lblk	= es->es_lblk;
- 		__entry->len	= es->es_len;
- 		__entry->pblk	= ext4_es_pblock(es);
--		__entry->status	= ext4_es_status(es);
-+		__entry->status	= ext4_es_status(es) >> 60;
- 		__entry->found	= found;
- 	),
- 
--	TP_printk("dev %d,%d ino %lu found %d [%u/%u) %llu %llx",
-+	TP_printk("dev %d,%d ino %lu found %d [%u/%u) %llu %s",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino, __entry->found,
- 		  __entry->lblk, __entry->len,
- 		  __entry->found ? __entry->pblk : 0,
--		  __entry->found ? __entry->status : 0)
-+		  show_extent_status(__entry->found ? __entry->status : 0))
- );
- 
- TRACE_EVENT(ext4_es_shrink_enter,
--- 
-1.7.12.rc0.22.gcdd159b
+How is this different from fallocate(FALLOC_FL_PUNCH_HOLE)?  That is already in existing kernels, and portable across multiple filesystems. 
 
+> Transfer_block_range ioctl transfers data blocks from source file
+> and append them at the end of destination file.
+
+There is already a similar ioctl for defragmenting files. Is it possible to use that, or does it have different semantics?
+
+> Ioctl1:        EXT4_IOC_TRUNCATE_BLOCK_RANGE:
+> This ioctl truncates a range of data blocks from file.
+> It is useful to remove easily and quickly the garbage data
+> at the middle of file.
+> 
+> e.g. we have a movie file and there is long advertisement in movie file.
+> user want to remove only advertisement range.
+
+While this works in theory, there is very little chance that the movie data will align exactly to filesystem block boundaries. 
+
+Cheers, Andreas 
+
+> 1) Movie file (8GB), There is the adverisement of 500MB size.
+> ____________________________________________________________________
+> |                     |                   |                         |
+> |   a) range          | b) Advertisement  |     c) range            | 
+> |                     | (unneeded data)   |                         |
+> |_____________________|___________________|_________________________| 
+> 
+> 2) Currently if user want to remove portion b), the conventional way
+>    would be to copy a) and c) (7.5GB) to new file by reading data from
+>    original file and writing to new file, followed up by  delete original
+>    file and rename new file. It will take long time.
+>    When we measure time, it takes around 3 minutes.
+> 
+> 3) If we use EXT4_IOC_TRUNCATE_BLOCK_RANGE, we can have garbage data removed
+>    in less than a second. Also, no need to perform deletion and rename.
+> _______________________________________________
+> |                     |                        |
+> |   a) range          |     c) range           | 
+> |                     |                        |
+> |_____________________|________________________| 
+> 
+> 
+> #define EXT4_IOC_TRUNCATE_BLOCK_RANGE  _IOW('f', 18, struct truncate_range)
+> struct truncate_range {
+>       __u32 start_block;
+>       __u32 length;
+> };
+> 
+> example =>
+> Originally the file "abc" has the below extent tree:
+> debugfs:  ex abc
+> Level Entries       Logical        Physical Length Flags
+> 0/ 0   1/  3     0 -     4  33615 -  33619      5 
+> 0/ 0   2/  3     5 -     9  33855 -  33859      5 
+> 0/ 0   3/  3    10 -    14  69657 -  69661      5
+> 
+> ls -lh abc
+> -rw-r--r--    1 root     0          60.0K Jan  1 00:01 abc
+> 
+> du -h abc
+> 60.0K    abc
+> 
+> e4_truncate_block_range abc 2 10
+> Return:
+> : Success
+> 
+> After executing truncate_block_range ioctl, the extent tree:
+> ex abc
+> Level Entries       Logical        Physical Length Flags
+> 0/ 0   1/  2     0 -     1  33615 -  33616      2 
+> 0/ 0   2/  2     2 -     4  69659 -  69661      3 
+> 
+> ls -lh abc
+> -rw-r--r--    1 root     0          20.0K Jan  1 00:08 abc
+> 
+> du -h abc
+> 20.0K    abc
+> 
+> This ioctl works in 2 parts:
+> 1) remove _only_ data blocks that resides within specified range.
+> If the entire range is a hole than nothing is removed.
+> 
+> 2) update file's logical block offsets ranging from block number
+> "start_block + length" to last logical block of file such that
+> lblk_number = lblk_number - length;
+> This is done by updating starting block of all the extents that
+> resides within the range.
+> 
+> If "start_block + length" is already equal to the last block of file
+> than no block is updated. This case is similar to convential truncate.
+> 
+> In the above example:
+> The data blocks ranging from [2 - 11] have been removed
+> and the logical offsets of the file beyond block number 12 till last block 
+> of file are updated by subtracting length from each of logical numbers.
+> This gives a contiguous logical space to the file.
+> Also, the logical size and disksize of the file are updated accordingly.
+> 
+> Ioctl2:        EXT4_IOC_TRANSFER_BLOCK_RANGE:
+> This ioctl transfers a range of data blocks from source file and append
+> them at the end of the destination file.
+> This is not actual data transfer but only metadata is moved.
+> 
+> ____________________________________________________________________
+> |                     |                   |                         |
+> |   a) range          | b) range          |     c) range            |
+> |                     |                   |                         |
+> |_____________________|___________________|_________________________|
+> 
+> If user does not want b) in the orig file but wants to make a new file
+> comprising only b) OR wants b) at the end of an already existing file,
+> the conventional way of doing it would be to:
+> 1) Copy b) to new file
+> 2) Copy c) to temp file
+> 3) Truncate orig file to a)
+> 4) Copy c) from temp file to the end of orig file.
+> 5) Delete temp file.
+> 
+> After this operations =>
+> orig_file:
+> __________________________________________
+> |                     |                   |
+> |   a) range          | c) range          |
+> |                     |                   |
+> |_____________________|___________________|
+> 
+> new_file:
+> _______________________
+> |                     |
+> |   b) range          |
+> |                     |
+> |_____________________|
+> 
+> Again, this operation would take a long time (depending on the sizes of range)
+> if done using conventional way while using transfer_block_range ioctl reduces
+> the time within a second.
+> 
+> #define EXT4_IOC_TRANSFER_BLOCK_RANGE  _IOW('f', 19, struct transfer_range)
+> struct transfer_range {
+>    __u32 dest_fd;
+>    __u32 start_block;
+>    __u32 length;
+> };
+> 
+> example=>
+> debugfs: ex source
+> Level Entries       Logical        Physical Length Flags
+> 0/ 1   1/  1     0 -    24  32809              25
+> 1/ 1   1/  5     0 -     4   4071 -   4075      5 
+> 1/ 1   2/  5     5 -     9   4081 -   4085      5 
+> 1/ 1   3/  5    10 -    14   4091 -   4095      5 
+> 1/ 1   4/  5    15 -    19   4101 -   4105      5 
+> 1/ 1   5/  5    20 -    24   4151 -   4155      5 
+> 
+> debugfs:  ex dest
+> Level Entries       Logical        Physical Length Flags
+> 0/ 0   1/  3     0 -     4  32825 -  32829      5 
+> 0/ 0   2/  3     5 -     9  33545 -  33549      5 
+> 0/ 0   3/  3    10 -    14  33615 -  33619      5
+> 
+> ls -lh source 
+> -rw-r--r--    1 root     0         100.0K Jan  1 00:01 source
+> ls -lh dest 
+> -rw-r--r--    1 root     0          60.0K Jan  1 00:01 dest
+> 
+> du -h source 
+> 104.0K    source
+> du -h dest 
+> 60.0K    dest
+> 
+> e4_transfer_block_range source dest 2 10
+> Return:
+> : Success
+> 
+> debugfs:  ex source
+> Level Entries       Logical        Physical Length Flags
+> 0/ 1   1/  1     0 -    24  32809              25
+> 1/ 1   1/  4     0 -     1   4071 -   4072      2 
+> 1/ 1   2/  4    12 -    14   4093 -   4095      3 
+> 1/ 1   3/  4    15 -    19   4101 -   4105      5 
+> 1/ 1   4/  4    20 -    24   4151 -   4155      5 
+> debugfs:  ex dest
+> Level Entries       Logical        Physical Length Flags
+> 0/ 1   1/  1     0 -    24  32835              25
+> 1/ 1   1/  6     0 -     4  32825 -  32829      5 
+> 1/ 1   2/  6     5 -     9  33545 -  33549      5 
+> 1/ 1   3/  6    10 -    14  33615 -  33619      5 
+> 1/ 1   4/  6    15 -    17   4073 -   4075      3 
+> 1/ 1   5/  6    18 -    22   4081 -   4085      5 
+> 1/ 1   6/  6    23 -    24   4091 -   4092      2 
+> 
+> ls -lh source
+> -rw-r--r--    1 root     0         100.0K Jan  1 00:04 source
+> ls -lh dest 
+> -rw-r--r--    1 root     0         100.0K Jan  1 00:04 dest
+> 
+> du -h source 
+> 64.0K    source
+> du -h dest
+> 104.0K    dest
+> 
+> The data blocks lying between [start_block to start_block + length) are appended
+> contiguously at the end of destination file.
+> The block transfer leaves a hole in the source file.
+> If any hole is encountered in the range, it is ommited.
+> 
+> This ioctl does not change the logical size of the source file hence
+> leaves a hole in place of transfered range.
+> If user want contiguous logical space for source file,
+> it can truncate the hole by calling truncate_range_ioctl for source file.
+> 
+> Example for above "source" file:
+> e4_truncate_block_range source 2 10
+> Return:
+> : Success
+> debugfs:  ex source
+> Level Entries       Logical        Physical Length Flags
+> 0/ 1   1/  1     0 -    14  32809              15
+> 1/ 1   1/  4     0 -     1   4071 -   4072      2 
+> 1/ 1   2/  4     2 -     4   4093 -   4095      3 
+> 1/ 1   3/  4     5 -     9   4101 -   4105      5 
+> 1/ 1   4/  4    10 -    14   4151 -   4155      5 
+> 
+> Namjae Jeon (3):
+>  ext4: Add EXT4_IOC_TRUNCATE_BLOCK_RANGE ioctl
+>  ext4: make mext_next_extent non static and move get_ext_path
+>  ext4: Add EXT4_IOC_TRANSFER_BLOCK_RANGE ioctl
+> 
+> -- 
+> 1.7.9.5
+> 
