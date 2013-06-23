@@ -1,244 +1,407 @@
 From: Namjae Jeon <linkinjeon@gmail.com>
-Subject: [PATCH 0/3] ext4: introduce two new ioctls
-Date: Sun, 23 Jun 2013 15:07:22 +0900
-Message-ID: <1371967642-3116-1-git-send-email-linkinjeon@gmail.com>
+Subject: [PATCH 1/3] ext4: Add EXT4_IOC_TRUNCATE_BLOCK_RANGE ioctl
+Date: Sun, 23 Jun 2013 15:07:36 +0900
+Message-ID: <1371967656-3150-1-git-send-email-linkinjeon@gmail.com>
 Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	linux-ext4@vger.kernel.org, a.sangwan@samsung.com,
 	Namjae Jeon <linkinjeon@gmail.com>,
 	Namjae Jeon <namjae.jeon@samsung.com>
 To: tytso@mit.edu, adilger.kernel@dilger.ca
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f48.google.com ([209.85.220.48]:45348 "EHLO
-	mail-pa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750704Ab3FWGHc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 23 Jun 2013 02:07:32 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 From: Namjae Jeon <namjae.jeon@samsung.com>
 
-This patch series introduces 2 new ioctls for ext4.
+The EXT4_IOC_TRUNCATE_BLOCK_RANGE removes the data blocks lying
+between [start, "start + length") and updates the logical block numbers
+of data blocks starting from "start + length" block to last block of file.
+This will maintain contiguous nature of logical block numbers
+after block removal.
+Both the inode's disksize and logical size are updated after block
+removal
 
-Truncate_block_range ioctl truncates blocks from source file.
-Transfer_block_range ioctl transfers data blocks from source file
-and append them at the end of destination file.
+Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
+Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
+---
+ fs/ext4/ext4.h         |    8 ++
+ fs/ext4/ext4_extents.h |    3 +
+ fs/ext4/extents.c      |  245 ++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/ioctl.c        |   62 ++++++++++++
+ 4 files changed, 318 insertions(+)
 
-Ioctl1:		EXT4_IOC_TRUNCATE_BLOCK_RANGE:
-This ioctl truncates a range of data blocks from file.
-It is useful to remove easily and quickly the garbage data
-at the middle of file.
-
-e.g. we have a movie file and there is long advertisement in movie file.
-user want to remove only advertisement range.
-
- 1) Movie file (8GB), There is the adverisement of 500MB size.
- ____________________________________________________________________
- |                     |                   |                         |
- |   a) range          | b) Advertisement  |     c) range            | 
- |                     | (unneeded data)   |                         |
- |_____________________|___________________|_________________________| 
-
- 2) Currently if user want to remove portion b), the conventional way
-    would be to copy a) and c) (7.5GB) to new file by reading data from
-    original file and writing to new file, followed up by  delete original
-    file and rename new file. It will take long time.
-    When we measure time, it takes around 3 minutes.
-
- 3) If we use EXT4_IOC_TRUNCATE_BLOCK_RANGE, we can have garbage data removed
-    in less than a second. Also, no need to perform deletion and rename.
- _______________________________________________
- |                     |                        |
- |   a) range          |     c) range           | 
- |                     |                        |
- |_____________________|________________________| 
-
-
-#define EXT4_IOC_TRUNCATE_BLOCK_RANGE  _IOW('f', 18, struct truncate_range)
-struct truncate_range {
-       __u32 start_block;
-       __u32 length;
-};
-
-example =>
-Originally the file "abc" has the below extent tree:
-debugfs:  ex abc
-Level Entries       Logical        Physical Length Flags
- 0/ 0   1/  3     0 -     4  33615 -  33619      5 
- 0/ 0   2/  3     5 -     9  33855 -  33859      5 
- 0/ 0   3/  3    10 -    14  69657 -  69661      5
-
-ls -lh abc
--rw-r--r--    1 root     0          60.0K Jan  1 00:01 abc
-
-du -h abc
-60.0K	abc
-
-e4_truncate_block_range abc 2 10
-Return:
-: Success
-
-After executing truncate_block_range ioctl, the extent tree:
-ex abc
-Level Entries       Logical        Physical Length Flags
- 0/ 0   1/  2     0 -     1  33615 -  33616      2 
- 0/ 0   2/  2     2 -     4  69659 -  69661      3 
-
-ls -lh abc
--rw-r--r--    1 root     0          20.0K Jan  1 00:08 abc
-
-du -h abc
-20.0K	abc
-
-This ioctl works in 2 parts:
-1) remove _only_ data blocks that resides within specified range.
-If the entire range is a hole than nothing is removed.
-
-2) update file's logical block offsets ranging from block number
-"start_block + length" to last logical block of file such that
-lblk_number = lblk_number - length;
-This is done by updating starting block of all the extents that
-resides within the range.
-
-If "start_block + length" is already equal to the last block of file
-than no block is updated. This case is similar to convential truncate.
-
-In the above example:
-The data blocks ranging from [2 - 11] have been removed
-and the logical offsets of the file beyond block number 12 till last block 
-of file are updated by subtracting length from each of logical numbers.
-This gives a contiguous logical space to the file.
-Also, the logical size and disksize of the file are updated accordingly.
-
-Ioctl2:		EXT4_IOC_TRANSFER_BLOCK_RANGE:
-This ioctl transfers a range of data blocks from source file and append
-them at the end of the destination file.
-This is not actual data transfer but only metadata is moved.
-
- ____________________________________________________________________
- |                     |                   |                         |
- |   a) range          | b) range          |     c) range            |
- |                     |                   |                         |
- |_____________________|___________________|_________________________|
-
-If user does not want b) in the orig file but wants to make a new file
-comprising only b) OR wants b) at the end of an already existing file,
-the conventional way of doing it would be to:
-1) Copy b) to new file
-2) Copy c) to temp file
-3) Truncate orig file to a)
-4) Copy c) from temp file to the end of orig file.
-5) Delete temp file.
-
-After this operations =>
-orig_file:
-__________________________________________
-|                     |                   |
-|   a) range          | c) range          |
-|                     |                   |
-|_____________________|___________________|
-
-new_file:
-_______________________
-|                     |
-|   b) range          |
-|                     |
-|_____________________|
-
-Again, this operation would take a long time (depending on the sizes of range)
-if done using conventional way while using transfer_block_range ioctl reduces
-the time within a second.
-
-#define EXT4_IOC_TRANSFER_BLOCK_RANGE  _IOW('f', 19, struct transfer_range)
-struct transfer_range {
-	__u32 dest_fd;
-	__u32 start_block;
-	__u32 length;
-};
-
-example=>
-debugfs: ex source
-Level Entries       Logical        Physical Length Flags
- 0/ 1   1/  1     0 -    24  32809              25
- 1/ 1   1/  5     0 -     4   4071 -   4075      5 
- 1/ 1   2/  5     5 -     9   4081 -   4085      5 
- 1/ 1   3/  5    10 -    14   4091 -   4095      5 
- 1/ 1   4/  5    15 -    19   4101 -   4105      5 
- 1/ 1   5/  5    20 -    24   4151 -   4155      5 
-
-debugfs:  ex dest
-Level Entries       Logical        Physical Length Flags
- 0/ 0   1/  3     0 -     4  32825 -  32829      5 
- 0/ 0   2/  3     5 -     9  33545 -  33549      5 
- 0/ 0   3/  3    10 -    14  33615 -  33619      5
-
-ls -lh source 
--rw-r--r--    1 root     0         100.0K Jan  1 00:01 source
-ls -lh dest 
--rw-r--r--    1 root     0          60.0K Jan  1 00:01 dest
-
-du -h source 
-104.0K	source
-du -h dest 
-60.0K	dest
-
-e4_transfer_block_range source dest 2 10
-Return:
-: Success
-
-debugfs:  ex source
-Level Entries       Logical        Physical Length Flags
- 0/ 1   1/  1     0 -    24  32809              25
- 1/ 1   1/  4     0 -     1   4071 -   4072      2 
- 1/ 1   2/  4    12 -    14   4093 -   4095      3 
- 1/ 1   3/  4    15 -    19   4101 -   4105      5 
- 1/ 1   4/  4    20 -    24   4151 -   4155      5 
-debugfs:  ex dest
-Level Entries       Logical        Physical Length Flags
- 0/ 1   1/  1     0 -    24  32835              25
- 1/ 1   1/  6     0 -     4  32825 -  32829      5 
- 1/ 1   2/  6     5 -     9  33545 -  33549      5 
- 1/ 1   3/  6    10 -    14  33615 -  33619      5 
- 1/ 1   4/  6    15 -    17   4073 -   4075      3 
- 1/ 1   5/  6    18 -    22   4081 -   4085      5 
- 1/ 1   6/  6    23 -    24   4091 -   4092      2 
-
-ls -lh source
--rw-r--r--    1 root     0         100.0K Jan  1 00:04 source
-ls -lh dest 
--rw-r--r--    1 root     0         100.0K Jan  1 00:04 dest
-
-du -h source 
-64.0K	source
-du -h dest
-104.0K	dest
-
-The data blocks lying between [start_block to start_block + length) are appended
-contiguously at the end of destination file.
-The block transfer leaves a hole in the source file.
-If any hole is encountered in the range, it is ommited.
-
-This ioctl does not change the logical size of the source file hence
-leaves a hole in place of transfered range.
-If user want contiguous logical space for source file,
-it can truncate the hole by calling truncate_range_ioctl for source file.
-
-Example for above "source" file:
-e4_truncate_block_range source 2 10
-Return:
-: Success
-debugfs:  ex source
-Level Entries       Logical        Physical Length Flags
- 0/ 1   1/  1     0 -    14  32809              15
- 1/ 1   1/  4     0 -     1   4071 -   4072      2 
- 1/ 1   2/  4     2 -     4   4093 -   4095      3 
- 1/ 1   3/  4     5 -     9   4101 -   4105      5 
- 1/ 1   4/  4    10 -    14   4151 -   4155      5 
-
-Namjae Jeon (3):
-  ext4: Add EXT4_IOC_TRUNCATE_BLOCK_RANGE ioctl
-  ext4: make mext_next_extent non static and move get_ext_path
-  ext4: Add EXT4_IOC_TRANSFER_BLOCK_RANGE ioctl
-
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 6ed348d..df2c411 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -590,6 +590,7 @@ enum {
+ #define EXT4_IOC_MOVE_EXT		_IOWR('f', 15, struct move_extent)
+ #define EXT4_IOC_RESIZE_FS		_IOW('f', 16, __u64)
+ #define EXT4_IOC_SWAP_BOOT		_IO('f', 17)
++#define EXT4_IOC_TRUNCATE_BLOCK_RANGE	_IOW('f', 18, struct truncate_range)
+ 
+ #if defined(__KERNEL__) && defined(CONFIG_COMPAT)
+ /*
+@@ -682,6 +683,11 @@ struct move_extent {
+ 	__u64 moved_len;	/* moved block length */
+ };
+ 
++struct truncate_range {
++	__u32 start_block;
++	__u32 length;
++};
++
+ #define EXT4_EPOCH_BITS 2
+ #define EXT4_EPOCH_MASK ((1 << EXT4_EPOCH_BITS) - 1)
+ #define EXT4_NSEC_MASK  (~0UL << EXT4_EPOCH_BITS)
+@@ -2692,6 +2698,8 @@ extern int ext4_find_delalloc_range(struct inode *inode,
+ extern int ext4_find_delalloc_cluster(struct inode *inode, ext4_lblk_t lblk);
+ extern int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+ 			__u64 start, __u64 len);
++extern int ext4_ext_truncate_range(struct inode *inode, ext4_lblk_t start,
++				   ext4_lblk_t end, ext4_lblk_t last_block);
+ 
+ 
+ /* move_extent.c */
+diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
+index 51bc821..cc113cc 100644
+--- a/fs/ext4/ext4_extents.h
++++ b/fs/ext4/ext4_extents.h
+@@ -178,6 +178,9 @@ struct ext4_ext_path {
+ #define EXT_MAX_INDEX(__hdr__) \
+ 	(EXT_FIRST_INDEX((__hdr__)) + le16_to_cpu((__hdr__)->eh_max) - 1)
+ 
++#define EXTENT_START_FLAG	0x1
++#define INDEX_START_FLAG	0x2
++
+ static inline struct ext4_extent_header *ext_inode_hdr(struct inode *inode)
+ {
+ 	return (struct ext4_extent_header *) EXT4_I(inode)->i_data;
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 937593e..ed85e34 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4757,3 +4757,248 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+ 
+ 	return error;
+ }
++
++/*
++ * ext4_trange_dirty_path: Function to mark the path buffer dirty.
++ * It also checks if there are sufficient credits left in the
++ * journal to update metadata. If the number of credits are less
++ * restart the handle with additional credits.
++ *
++ * @handle: journal handle
++ * @inode: file inode
++ * @path: pointer to path
++ * @num: number of inodes to be updated
++ *
++ * Returns: 0 on success or negative value on error
++ */
++int ext4_trange_dirty_path(handle_t *handle, struct inode *inode,
++			   struct ext4_ext_path *path,
++			   int num, ...)
++{
++	int credits, err, i;
++	struct inode *iptr;
++	va_list args;
++
++	/*
++	 * Check if need to extend journal credits
++	 * 3 for leaf, sb, and inode plus 2 (bmap and group
++	 * descriptor) for each block group; assume two block
++	 * groups
++	 */
++	if (handle->h_buffer_credits < 7*(num + 1)) {
++		credits = ext4_writepage_trans_blocks(inode);
++		va_start(args, num);
++		for (i = 1; i <= num; i++) {
++			iptr = va_arg(args, struct inode *);
++			credits += ext4_writepage_trans_blocks(iptr);
++		}
++		va_end(args);
++		err = ext4_ext_truncate_extend_restart(handle, inode, credits);
++		/* EAGAIN is success */
++		if (err && err != -EAGAIN)
++			return err;
++	}
++	err = ext4_ext_get_access(handle, inode, path);
++	return err;
++}
++
++/*
++ * ext4_ext_update_path: update the extents of a path structure
++ * lying between path[depth].p_ext and EXT_LAST_EXTENT(path[depth].p_hdr)
++ * subtracting shift from starting block for each extent.
++ *
++ * @path: path for which extents are updated
++ * @shift: Number of blocks to be subtracted from first logical block
++ * that extent covers for each extent.
++ * @inode: file inode
++ * @handle: journal handle
++ * @start_block: Points to the starting block of next extent which is
++ * to be updated.
++ *
++ * Returns: 0 on success or negative on error.
++ */
++int ext4_ext_update_path(struct ext4_ext_path *path, ext4_lblk_t shift,
++			 struct inode *inode, handle_t *handle,
++			 ext4_lblk_t *start_block)
++{
++	int depth, err = 0, flag = 0;
++	struct ext4_extent *ex_start, *ex_last;
++
++	depth = path->p_depth;
++	while (depth >= 0) {
++		if (depth == path->p_depth) {
++			ex_start = path[depth].p_ext;
++			if (!ex_start)
++				return -EIO;
++
++			err = ext4_trange_dirty_path(handle, inode,
++						     path + depth, 0);
++			if (err)
++				goto out;
++
++			if (path[depth].p_ext ==
++				EXT_FIRST_EXTENT(path[depth].p_hdr))
++				flag |= EXTENT_START_FLAG;
++
++			ex_last = EXT_LAST_EXTENT(path[depth].p_hdr);
++			while (ex_start <= ex_last) {
++				*start_block = ex_start->ee_block +
++					ext4_ext_get_actual_len(ex_start);
++				ex_start->ee_block -= shift;
++				ex_start++;
++			}
++			err = ext4_ext_dirty(handle, inode, path + depth);
++			if (err)
++				goto out;
++		} else {
++			/* If encountered starting extent, update index too */
++			if (path->p_depth - depth == 1) {
++				if (flag & EXTENT_START_FLAG) {
++					/* Update index too */
++					err = ext4_trange_dirty_path(handle,
++						    inode, path + depth, 0);
++					if (err)
++						goto out;
++					path[depth].p_idx->ei_block -= shift;
++					err = ext4_ext_dirty(handle, inode,
++							     path + depth);
++					if (err)
++						goto out;
++					flag &= ~EXTENT_START_FLAG;
++				} else
++					/* No need to update any extent index */
++					break;
++			}
++			/* Check, if earlier encountered starting index */
++			if (flag & INDEX_START_FLAG) {
++				err = ext4_trange_dirty_path(handle, inode,
++							path + (depth), 0);
++				if (err)
++					goto out;
++				path[depth].p_idx->ei_block -= shift;
++				err = ext4_ext_dirty(handle, inode,
++						     path + depth);
++				if (err)
++					goto out;
++				flag &= ~INDEX_START_FLAG;
++			}
++			/* Check if this is a starting index */
++			if (path[depth].p_idx ==
++			    EXT_FIRST_INDEX(path[depth].p_hdr)) {
++				/* starting of a block */
++				flag |= INDEX_START_FLAG;
++			} else
++				break;
++		}
++		depth--;
++	}
++out:
++	return err;
++}
++
++/*
++ * ext4_ext_update_logical: update logical blocks ranging from start
++ * to the end block for inode by moving them shift blocks to the left
++ *
++ * @inode: file inode
++ * @handle: journal handle
++ * @start_block : starting block for block updation
++ * @shift: number of blocks to be shifted
++ * @end_block: last block to be updated
++ *
++ * Returns: 0 on success or negative on failure
++ */
++static int ext4_ext_update_logical(struct inode *inode, handle_t *handle,
++				   ext4_lblk_t start_block, ext4_lblk_t shift,
++				   ext4_lblk_t end_block)
++{
++	struct ext4_ext_path *path;
++	int err = 0;
++
++	while (start_block < end_block) {
++		path = ext4_ext_find_extent(inode, start_block, NULL);
++		if (IS_ERR(path)) {
++			err = PTR_ERR(path);
++			break;
++		}
++		err = ext4_ext_update_path(path, shift, inode,
++					   handle, &start_block);
++		ext4_ext_drop_refs(path);
++		kfree(path);
++		if (err)
++			break;
++	}
++	return err;
++}
++
++/*
++ * ext4_ext_truncate_range: truncate the block range from start
++ * block to end block including the end block from inode.
++ *
++ * @inode: file inode
++ * @start: start block
++ * @end: end block
++ * last_block: last_block number of the inode
++ *
++ * Returns: 0 on success or negative on error
++ */
++int ext4_ext_truncate_range(struct inode *inode, ext4_lblk_t start,
++			    ext4_lblk_t end, ext4_lblk_t last_block)
++{
++	int ret, credits;
++	ext4_lblk_t shift = end - start + 1;
++	handle_t *handle;
++	loff_t isize_reduced;
++	int blkbits = inode->i_blkbits;
++	struct address_space *mapping = inode->i_mapping;
++
++	/* sync dirty pages for transfer */
++	if (mapping->nrpages && mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
++		ret = filemap_write_and_wait_range(mapping,
++				(loff_t)start << blkbits,
++				((loff_t)(last_block + 1) << blkbits) - 1);
++		if (ret)
++			return ret;
++	}
++	truncate_inode_pages_range(inode->i_mapping,
++				   start << inode->i_blkbits, -1);
++	ext4_inode_block_unlocked_dio(inode);
++	inode_dio_wait(inode);
++	down_write(&EXT4_I(inode)->i_data_sem);
++	ext4_discard_preallocations(inode);
++	ret = ext4_es_remove_extent(inode, start, end - start + 1);
++	if (ret)
++		goto out;
++
++	credits = ext4_writepage_trans_blocks(inode);
++	handle = ext4_journal_start(inode, EXT4_HT_TRUNCATE, credits);
++	if (IS_ERR(handle)) {
++		ret = PTR_ERR(handle);
++		goto out;
++	}
++
++	ret = ext4_ext_remove_space(inode, start, end);
++	if (ret)
++		goto journal_stop;
++
++	ext4_discard_preallocations(inode);
++
++	if (end < last_block) {
++		ret = ext4_ext_update_logical(inode, handle, end + 1,
++					      shift, last_block + 1);
++		if (ret)
++			goto journal_stop;
++	}
++	isize_reduced = (loff_t)shift << blkbits;
++	i_size_write(inode, inode->i_size - isize_reduced);
++	EXT4_I(inode)->i_disksize -= isize_reduced;
++	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
++	ext4_mark_inode_dirty(handle, inode);
++journal_stop:
++	ext4_journal_stop(handle);
++out:
++	ext4_inode_resume_unlocked_dio(inode);
++	up_write(&EXT4_I(inode)->i_data_sem);
++	return ret;
++}
++
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 9491ac0..0530daf 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -622,6 +622,68 @@ resizefs_out:
+ 
+ 		return 0;
+ 	}
++	case EXT4_IOC_TRUNCATE_BLOCK_RANGE:
++	{
++		struct truncate_range tr;
++		ext4_lblk_t last_block, end_block;
++		int error;
++		loff_t i_size = i_size_read(inode);
++
++		if (!i_size)
++			return 0;
++
++		if (!(filp->f_mode & FMODE_WRITE))
++			return -EBADF;
++
++		if (IS_IMMUTABLE(inode) || IS_APPEND(inode))
++			return -EPERM;
++
++		if (!S_ISREG(inode->i_mode))
++			return -EOPNOTSUPP;
++
++		if (IS_SWAPFILE(inode))
++			return -EOPNOTSUPP;
++
++		if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
++			return -EOPNOTSUPP;
++
++		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
++		    EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
++			ext4_msg(sb, KERN_ERR,
++			 "Truncate block range not supported with bigalloc");
++			return -EOPNOTSUPP;
++		}
++
++		if (copy_from_user(&tr, (const void *) arg,
++				sizeof(struct truncate_range)))
++			return -EFAULT;
++
++		if (!tr.length)
++			return -EINVAL;
++
++		end_block = tr.start_block + tr.length - 1;
++
++		last_block = ((round_up(i_size,
++					EXT4_BLOCK_SIZE(inode->i_sb)))
++			      >> inode->i_blkbits) - 1;
++		if (tr.start_block > end_block ||
++		    tr.start_block > last_block)
++			return -EINVAL;
++
++		if (end_block > last_block)
++			end_block = last_block;
++
++		error = mnt_want_write_file(filp);
++		if (error)
++			return error;
++
++		mutex_lock(&inode->i_mutex);
++		error = ext4_ext_truncate_range(inode, tr.start_block,
++						end_block, last_block);
++		mutex_unlock(&inode->i_mutex);
++		mnt_drop_write_file(filp);
++		return error;
++	}
+ 
+ 	default:
+ 		return -ENOTTY;
 -- 
 1.7.9.5
-
