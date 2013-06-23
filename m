@@ -1,261 +1,59 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 0/3] ext4: introduce two new ioctls
-Date: Sun, 23 Jun 2013 11:00:51 -0600
-Message-ID: <03D226D6-9598-473F-90FC-03A389E2A625@dilger.ca>
-References: <1371967642-3116-1-git-send-email-linkinjeon@gmail.com>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: "tytso@mit.edu" <tytso@mit.edu>,
-	"adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"a.sangwan@samsung.com" <a.sangwan@samsung.com>,
-	Namjae Jeon <linkinjeon@gmail.com>,
-	Namjae Jeon <namjae.jeon@samsung.com>
-To: Namjae Jeon <linkinjeon@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1371967642-3116-1-git-send-email-linkinjeon@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] fs/jbd2: t_updates should increase when
+ start_this_handle() failed in jbd2__journal_restart()
+Date: Sun, 23 Jun 2013 13:36:28 -0400
+Message-ID: <20130623173628.GC16620@thunk.org>
+References: <51C1381A.2@huawei.com>
+ <20130620155555.GE28309@thunk.org>
+ <51C4553B.7010809@huawei.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org,
+	Ocfs2-Devel <ocfs2-devel@oss.oracle.com>,
+	Li Zefan <lizefan@huawei.com>, jack@suse.cz
+To: Younger Liu <younger.liu@huawei.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:60476 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751637Ab3FWRgg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 23 Jun 2013 13:36:36 -0400
+Content-Disposition: inline
+In-Reply-To: <51C4553B.7010809@huawei.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 2013-06-23, at 0:07, Namjae Jeon <linkinjeon@gmail.com> wrote:
+On Fri, Jun 21, 2013 at 09:29:31PM +0800, Younger Liu wrote:
+> 
+> This bug was triggered by the following scenario:
+> In ocfs2 file system, allocate a very large disk space for a small file
+> with ocfs2_fallocate(), while the journal file size is 32M. 
+> 
+> Because there are much many journal blocks needed by jbd2_journal_restart(), 
+> so that nblocks is greater than journal->j_max_transaction_buffers 
+> in start_this_handle(), and then return -ENOSPC.
 
-> From: Namjae Jeon <namjae.jeon@samsung.com>
-> 
-> This patch series introduces 2 new ioctls for ext4.
-> 
-> Truncate_block_range ioctl truncates blocks from source file.
+Ah, I see.  I have a patch that should prevent the kernel from
+crashing in this situation, and which adds some additional checks to
+make sure no one tries to use the handle after jbd2_journal_restart()
+fails in this circumstance.
 
-How is this different from fallocate(FALLOC_FL_PUNCH_HOLE)?  That is already in existing kernels, and portable across multiple filesystems. 
+However, you may want to further pursue a fix in ocfs2 so you don't
+actually return ENOSPC to userspace, since it is a very misleading
+error message --- it's not that the file system is out of space, but
+that the journal is too small for the amount of space that you are
+trying to allocate using fallocate().
 
-> Transfer_block_range ioctl transfers data blocks from source file
-> and append them at the end of destination file.
+I would think a better way of handling this situation would be to log
+a warning message that the journal is probably too small, and then to
+break up the fallocate into smaller chunks, so that it can
+successfully complete despite the fact that the journal was
+unfortunately missized.
 
-There is already a similar ioctl for defragmenting files. Is it possible to use that, or does it have different semantics?
+I'll be sending the proposed fix in a moment; could you check and see
+if the patch prevents ocfs2/jbd2 from tripping over the assertion
+given your test case?
 
-> Ioctl1:        EXT4_IOC_TRUNCATE_BLOCK_RANGE:
-> This ioctl truncates a range of data blocks from file.
-> It is useful to remove easily and quickly the garbage data
-> at the middle of file.
-> 
-> e.g. we have a movie file and there is long advertisement in movie file.
-> user want to remove only advertisement range.
+Thanks,
 
-While this works in theory, there is very little chance that the movie data will align exactly to filesystem block boundaries. 
-
-Cheers, Andreas 
-
-> 1) Movie file (8GB), There is the adverisement of 500MB size.
-> ____________________________________________________________________
-> |                     |                   |                         |
-> |   a) range          | b) Advertisement  |     c) range            | 
-> |                     | (unneeded data)   |                         |
-> |_____________________|___________________|_________________________| 
-> 
-> 2) Currently if user want to remove portion b), the conventional way
->    would be to copy a) and c) (7.5GB) to new file by reading data from
->    original file and writing to new file, followed up by  delete original
->    file and rename new file. It will take long time.
->    When we measure time, it takes around 3 minutes.
-> 
-> 3) If we use EXT4_IOC_TRUNCATE_BLOCK_RANGE, we can have garbage data removed
->    in less than a second. Also, no need to perform deletion and rename.
-> _______________________________________________
-> |                     |                        |
-> |   a) range          |     c) range           | 
-> |                     |                        |
-> |_____________________|________________________| 
-> 
-> 
-> #define EXT4_IOC_TRUNCATE_BLOCK_RANGE  _IOW('f', 18, struct truncate_range)
-> struct truncate_range {
->       __u32 start_block;
->       __u32 length;
-> };
-> 
-> example =>
-> Originally the file "abc" has the below extent tree:
-> debugfs:  ex abc
-> Level Entries       Logical        Physical Length Flags
-> 0/ 0   1/  3     0 -     4  33615 -  33619      5 
-> 0/ 0   2/  3     5 -     9  33855 -  33859      5 
-> 0/ 0   3/  3    10 -    14  69657 -  69661      5
-> 
-> ls -lh abc
-> -rw-r--r--    1 root     0          60.0K Jan  1 00:01 abc
-> 
-> du -h abc
-> 60.0K    abc
-> 
-> e4_truncate_block_range abc 2 10
-> Return:
-> : Success
-> 
-> After executing truncate_block_range ioctl, the extent tree:
-> ex abc
-> Level Entries       Logical        Physical Length Flags
-> 0/ 0   1/  2     0 -     1  33615 -  33616      2 
-> 0/ 0   2/  2     2 -     4  69659 -  69661      3 
-> 
-> ls -lh abc
-> -rw-r--r--    1 root     0          20.0K Jan  1 00:08 abc
-> 
-> du -h abc
-> 20.0K    abc
-> 
-> This ioctl works in 2 parts:
-> 1) remove _only_ data blocks that resides within specified range.
-> If the entire range is a hole than nothing is removed.
-> 
-> 2) update file's logical block offsets ranging from block number
-> "start_block + length" to last logical block of file such that
-> lblk_number = lblk_number - length;
-> This is done by updating starting block of all the extents that
-> resides within the range.
-> 
-> If "start_block + length" is already equal to the last block of file
-> than no block is updated. This case is similar to convential truncate.
-> 
-> In the above example:
-> The data blocks ranging from [2 - 11] have been removed
-> and the logical offsets of the file beyond block number 12 till last block 
-> of file are updated by subtracting length from each of logical numbers.
-> This gives a contiguous logical space to the file.
-> Also, the logical size and disksize of the file are updated accordingly.
-> 
-> Ioctl2:        EXT4_IOC_TRANSFER_BLOCK_RANGE:
-> This ioctl transfers a range of data blocks from source file and append
-> them at the end of the destination file.
-> This is not actual data transfer but only metadata is moved.
-> 
-> ____________________________________________________________________
-> |                     |                   |                         |
-> |   a) range          | b) range          |     c) range            |
-> |                     |                   |                         |
-> |_____________________|___________________|_________________________|
-> 
-> If user does not want b) in the orig file but wants to make a new file
-> comprising only b) OR wants b) at the end of an already existing file,
-> the conventional way of doing it would be to:
-> 1) Copy b) to new file
-> 2) Copy c) to temp file
-> 3) Truncate orig file to a)
-> 4) Copy c) from temp file to the end of orig file.
-> 5) Delete temp file.
-> 
-> After this operations =>
-> orig_file:
-> __________________________________________
-> |                     |                   |
-> |   a) range          | c) range          |
-> |                     |                   |
-> |_____________________|___________________|
-> 
-> new_file:
-> _______________________
-> |                     |
-> |   b) range          |
-> |                     |
-> |_____________________|
-> 
-> Again, this operation would take a long time (depending on the sizes of range)
-> if done using conventional way while using transfer_block_range ioctl reduces
-> the time within a second.
-> 
-> #define EXT4_IOC_TRANSFER_BLOCK_RANGE  _IOW('f', 19, struct transfer_range)
-> struct transfer_range {
->    __u32 dest_fd;
->    __u32 start_block;
->    __u32 length;
-> };
-> 
-> example=>
-> debugfs: ex source
-> Level Entries       Logical        Physical Length Flags
-> 0/ 1   1/  1     0 -    24  32809              25
-> 1/ 1   1/  5     0 -     4   4071 -   4075      5 
-> 1/ 1   2/  5     5 -     9   4081 -   4085      5 
-> 1/ 1   3/  5    10 -    14   4091 -   4095      5 
-> 1/ 1   4/  5    15 -    19   4101 -   4105      5 
-> 1/ 1   5/  5    20 -    24   4151 -   4155      5 
-> 
-> debugfs:  ex dest
-> Level Entries       Logical        Physical Length Flags
-> 0/ 0   1/  3     0 -     4  32825 -  32829      5 
-> 0/ 0   2/  3     5 -     9  33545 -  33549      5 
-> 0/ 0   3/  3    10 -    14  33615 -  33619      5
-> 
-> ls -lh source 
-> -rw-r--r--    1 root     0         100.0K Jan  1 00:01 source
-> ls -lh dest 
-> -rw-r--r--    1 root     0          60.0K Jan  1 00:01 dest
-> 
-> du -h source 
-> 104.0K    source
-> du -h dest 
-> 60.0K    dest
-> 
-> e4_transfer_block_range source dest 2 10
-> Return:
-> : Success
-> 
-> debugfs:  ex source
-> Level Entries       Logical        Physical Length Flags
-> 0/ 1   1/  1     0 -    24  32809              25
-> 1/ 1   1/  4     0 -     1   4071 -   4072      2 
-> 1/ 1   2/  4    12 -    14   4093 -   4095      3 
-> 1/ 1   3/  4    15 -    19   4101 -   4105      5 
-> 1/ 1   4/  4    20 -    24   4151 -   4155      5 
-> debugfs:  ex dest
-> Level Entries       Logical        Physical Length Flags
-> 0/ 1   1/  1     0 -    24  32835              25
-> 1/ 1   1/  6     0 -     4  32825 -  32829      5 
-> 1/ 1   2/  6     5 -     9  33545 -  33549      5 
-> 1/ 1   3/  6    10 -    14  33615 -  33619      5 
-> 1/ 1   4/  6    15 -    17   4073 -   4075      3 
-> 1/ 1   5/  6    18 -    22   4081 -   4085      5 
-> 1/ 1   6/  6    23 -    24   4091 -   4092      2 
-> 
-> ls -lh source
-> -rw-r--r--    1 root     0         100.0K Jan  1 00:04 source
-> ls -lh dest 
-> -rw-r--r--    1 root     0         100.0K Jan  1 00:04 dest
-> 
-> du -h source 
-> 64.0K    source
-> du -h dest
-> 104.0K    dest
-> 
-> The data blocks lying between [start_block to start_block + length) are appended
-> contiguously at the end of destination file.
-> The block transfer leaves a hole in the source file.
-> If any hole is encountered in the range, it is ommited.
-> 
-> This ioctl does not change the logical size of the source file hence
-> leaves a hole in place of transfered range.
-> If user want contiguous logical space for source file,
-> it can truncate the hole by calling truncate_range_ioctl for source file.
-> 
-> Example for above "source" file:
-> e4_truncate_block_range source 2 10
-> Return:
-> : Success
-> debugfs:  ex source
-> Level Entries       Logical        Physical Length Flags
-> 0/ 1   1/  1     0 -    14  32809              15
-> 1/ 1   1/  4     0 -     1   4071 -   4072      2 
-> 1/ 1   2/  4     2 -     4   4093 -   4095      3 
-> 1/ 1   3/  4     5 -     9   4101 -   4105      5 
-> 1/ 1   4/  4    10 -    14   4151 -   4155      5 
-> 
-> Namjae Jeon (3):
->  ext4: Add EXT4_IOC_TRUNCATE_BLOCK_RANGE ioctl
->  ext4: make mext_next_extent non static and move get_ext_path
->  ext4: Add EXT4_IOC_TRANSFER_BLOCK_RANGE ioctl
-> 
-> -- 
-> 1.7.9.5
-> 
+					- Ted
