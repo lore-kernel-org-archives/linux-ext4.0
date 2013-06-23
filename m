@@ -1,420 +1,152 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 1/3] ext4: Add EXT4_IOC_TRUNCATE_BLOCK_RANGE ioctl
-Date: Sun, 23 Jun 2013 13:30:22 +0400
-Message-ID: <878v219ntd.fsf@openvz.org>
-References: <1371967656-3150-1-git-send-email-linkinjeon@gmail.com>
+From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
+Subject: fuzzy'ing a 3.10-rc7 gives warning ext4_da_update_reserve_space
+Date: Sun, 23 Jun 2013 13:55:22 +0200
+Message-ID: <51C6E22A.5090206@gmx.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, a.sangwan@samsung.com,
-	Namjae Jeon <linkinjeon@gmail.com>,
-	Namjae Jeon <namjae.jeon@samsung.com>
-To: Namjae Jeon <linkinjeon@gmail.com>, tytso@mit.edu,
-	adilger.kernel@dilger.ca
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1371967656-3150-1-git-send-email-linkinjeon@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mout.gmx.net ([212.227.17.21]:57918 "EHLO mout.gmx.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751609Ab3FWLz1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 23 Jun 2013 07:55:27 -0400
+Received: from mailout-de.gmx.net ([10.1.76.17]) by mrigmx.server.lan
+ (mrigmx002) with ESMTP (Nemesis) id 0M4lZj-1U5Win0uSr-00yzeW for
+ <linux-ext4@vger.kernel.org>; Sun, 23 Jun 2013 13:55:24 +0200
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, 23 Jun 2013 15:07:36 +0900, Namjae Jeon <linkinjeon@gmail.com> wrote:
-> From: Namjae Jeon <namjae.jeon@samsung.com>
-What is the difference between this ioctl and generic punch_hole?
-> 
-> The EXT4_IOC_TRUNCATE_BLOCK_RANGE removes the data blocks lying
-> between [start, "start + length") and updates the logical block numbers
-> of data blocks starting from "start + length" block to last block of file.
-> This will maintain contiguous nature of logical block numbers
-> after block removal.
-> Both the inode's disksize and logical size are updated after block
-> removal
-> 
-> Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-> Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
-> ---
->  fs/ext4/ext4.h         |    8 ++
->  fs/ext4/ext4_extents.h |    3 +
->  fs/ext4/extents.c      |  245 ++++++++++++++++++++++++++++++++++++++++++++++++
->  fs/ext4/ioctl.c        |   62 ++++++++++++
->  4 files changed, 318 insertions(+)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 6ed348d..df2c411 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -590,6 +590,7 @@ enum {
->  #define EXT4_IOC_MOVE_EXT		_IOWR('f', 15, struct move_extent)
->  #define EXT4_IOC_RESIZE_FS		_IOW('f', 16, __u64)
->  #define EXT4_IOC_SWAP_BOOT		_IO('f', 17)
-> +#define EXT4_IOC_TRUNCATE_BLOCK_RANGE	_IOW('f', 18, struct truncate_range)
->  
->  #if defined(__KERNEL__) && defined(CONFIG_COMPAT)
->  /*
-> @@ -682,6 +683,11 @@ struct move_extent {
->  	__u64 moved_len;	/* moved block length */
->  };
->  
-> +struct truncate_range {
-> +	__u32 start_block;
-> +	__u32 length;
-> +};
-> +
->  #define EXT4_EPOCH_BITS 2
->  #define EXT4_EPOCH_MASK ((1 << EXT4_EPOCH_BITS) - 1)
->  #define EXT4_NSEC_MASK  (~0UL << EXT4_EPOCH_BITS)
-> @@ -2692,6 +2698,8 @@ extern int ext4_find_delalloc_range(struct inode *inode,
->  extern int ext4_find_delalloc_cluster(struct inode *inode, ext4_lblk_t lblk);
->  extern int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
->  			__u64 start, __u64 len);
-> +extern int ext4_ext_truncate_range(struct inode *inode, ext4_lblk_t start,
-> +				   ext4_lblk_t end, ext4_lblk_t last_block);
->  
->  
->  /* move_extent.c */
-> diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
-> index 51bc821..cc113cc 100644
-> --- a/fs/ext4/ext4_extents.h
-> +++ b/fs/ext4/ext4_extents.h
-> @@ -178,6 +178,9 @@ struct ext4_ext_path {
->  #define EXT_MAX_INDEX(__hdr__) \
->  	(EXT_FIRST_INDEX((__hdr__)) + le16_to_cpu((__hdr__)->eh_max) - 1)
->  
-> +#define EXTENT_START_FLAG	0x1
-> +#define INDEX_START_FLAG	0x2
-> +
->  static inline struct ext4_extent_header *ext_inode_hdr(struct inode *inode)
->  {
->  	return (struct ext4_extent_header *) EXT4_I(inode)->i_data;
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 937593e..ed85e34 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4757,3 +4757,248 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
->  
->  	return error;
->  }
-> +
-> +/*
-> + * ext4_trange_dirty_path: Function to mark the path buffer dirty.
-> + * It also checks if there are sufficient credits left in the
-> + * journal to update metadata. If the number of credits are less
-> + * restart the handle with additional credits.
-> + *
-> + * @handle: journal handle
-> + * @inode: file inode
-> + * @path: pointer to path
-> + * @num: number of inodes to be updated
-> + *
-> + * Returns: 0 on success or negative value on error
-> + */
-> +int ext4_trange_dirty_path(handle_t *handle, struct inode *inode,
-> +			   struct ext4_ext_path *path,
-> +			   int num, ...)
-> +{
-> +	int credits, err, i;
-> +	struct inode *iptr;
-> +	va_list args;
-> +
-> +	/*
-> +	 * Check if need to extend journal credits
-> +	 * 3 for leaf, sb, and inode plus 2 (bmap and group
-> +	 * descriptor) for each block group; assume two block
-> +	 * groups
-> +	 */
-> +	if (handle->h_buffer_credits < 7*(num + 1)) {
-> +		credits = ext4_writepage_trans_blocks(inode);
-> +		va_start(args, num);
-> +		for (i = 1; i <= num; i++) {
-> +			iptr = va_arg(args, struct inode *);
-> +			credits += ext4_writepage_trans_blocks(iptr);
-> +		}
-> +		va_end(args);
-> +		err = ext4_ext_truncate_extend_restart(handle, inode, credits);
-> +		/* EAGAIN is success */
-> +		if (err && err != -EAGAIN)
-> +			return err;
-> +	}
-> +	err = ext4_ext_get_access(handle, inode, path);
-> +	return err;
-> +}
-> +
-> +/*
-> + * ext4_ext_update_path: update the extents of a path structure
-> + * lying between path[depth].p_ext and EXT_LAST_EXTENT(path[depth].p_hdr)
-> + * subtracting shift from starting block for each extent.
-> + *
-> + * @path: path for which extents are updated
-> + * @shift: Number of blocks to be subtracted from first logical block
-> + * that extent covers for each extent.
-> + * @inode: file inode
-> + * @handle: journal handle
-> + * @start_block: Points to the starting block of next extent which is
-> + * to be updated.
-> + *
-> + * Returns: 0 on success or negative on error.
-> + */
-> +int ext4_ext_update_path(struct ext4_ext_path *path, ext4_lblk_t shift,
-> +			 struct inode *inode, handle_t *handle,
-> +			 ext4_lblk_t *start_block)
-> +{
-> +	int depth, err = 0, flag = 0;
-> +	struct ext4_extent *ex_start, *ex_last;
-> +
-> +	depth = path->p_depth;
-> +	while (depth >= 0) {
-> +		if (depth == path->p_depth) {
-> +			ex_start = path[depth].p_ext;
-> +			if (!ex_start)
-> +				return -EIO;
-> +
-> +			err = ext4_trange_dirty_path(handle, inode,
-> +						     path + depth, 0);
-> +			if (err)
-> +				goto out;
-> +
-> +			if (path[depth].p_ext ==
-> +				EXT_FIRST_EXTENT(path[depth].p_hdr))
-> +				flag |= EXTENT_START_FLAG;
-> +
-> +			ex_last = EXT_LAST_EXTENT(path[depth].p_hdr);
-> +			while (ex_start <= ex_last) {
-> +				*start_block = ex_start->ee_block +
-> +					ext4_ext_get_actual_len(ex_start);
-> +				ex_start->ee_block -= shift;
-> +				ex_start++;
-> +			}
-> +			err = ext4_ext_dirty(handle, inode, path + depth);
-> +			if (err)
-> +				goto out;
-> +		} else {
-> +			/* If encountered starting extent, update index too */
-> +			if (path->p_depth - depth == 1) {
-> +				if (flag & EXTENT_START_FLAG) {
-> +					/* Update index too */
-> +					err = ext4_trange_dirty_path(handle,
-> +						    inode, path + depth, 0);
-> +					if (err)
-> +						goto out;
-> +					path[depth].p_idx->ei_block -= shift;
-> +					err = ext4_ext_dirty(handle, inode,
-> +							     path + depth);
-> +					if (err)
-> +						goto out;
-> +					flag &= ~EXTENT_START_FLAG;
-> +				} else
-> +					/* No need to update any extent index */
-> +					break;
-> +			}
-> +			/* Check, if earlier encountered starting index */
-> +			if (flag & INDEX_START_FLAG) {
-> +				err = ext4_trange_dirty_path(handle, inode,
-> +							path + (depth), 0);
-> +				if (err)
-> +					goto out;
-> +				path[depth].p_idx->ei_block -= shift;
-> +				err = ext4_ext_dirty(handle, inode,
-> +						     path + depth);
-> +				if (err)
-> +					goto out;
-> +				flag &= ~INDEX_START_FLAG;
-> +			}
-> +			/* Check if this is a starting index */
-> +			if (path[depth].p_idx ==
-> +			    EXT_FIRST_INDEX(path[depth].p_hdr)) {
-> +				/* starting of a block */
-> +				flag |= INDEX_START_FLAG;
-> +			} else
-> +				break;
-> +		}
-> +		depth--;
-> +	}
-> +out:
-> +	return err;
-> +}
-> +
-> +/*
-> + * ext4_ext_update_logical: update logical blocks ranging from start
-> + * to the end block for inode by moving them shift blocks to the left
-> + *
-> + * @inode: file inode
-> + * @handle: journal handle
-> + * @start_block : starting block for block updation
-> + * @shift: number of blocks to be shifted
-> + * @end_block: last block to be updated
-> + *
-> + * Returns: 0 on success or negative on failure
-> + */
-> +static int ext4_ext_update_logical(struct inode *inode, handle_t *handle,
-> +				   ext4_lblk_t start_block, ext4_lblk_t shift,
-> +				   ext4_lblk_t end_block)
-> +{
-> +	struct ext4_ext_path *path;
-> +	int err = 0;
-> +
-> +	while (start_block < end_block) {
-> +		path = ext4_ext_find_extent(inode, start_block, NULL);
-> +		if (IS_ERR(path)) {
-> +			err = PTR_ERR(path);
-> +			break;
-> +		}
-> +		err = ext4_ext_update_path(path, shift, inode,
-> +					   handle, &start_block);
-> +		ext4_ext_drop_refs(path);
-> +		kfree(path);
-> +		if (err)
-> +			break;
-> +	}
-> +	return err;
-> +}
-> +
-> +/*
-> + * ext4_ext_truncate_range: truncate the block range from start
-> + * block to end block including the end block from inode.
-> + *
-> + * @inode: file inode
-> + * @start: start block
-> + * @end: end block
-> + * last_block: last_block number of the inode
-> + *
-> + * Returns: 0 on success or negative on error
-> + */
-> +int ext4_ext_truncate_range(struct inode *inode, ext4_lblk_t start,
-> +			    ext4_lblk_t end, ext4_lblk_t last_block)
-> +{
-> +	int ret, credits;
-> +	ext4_lblk_t shift = end - start + 1;
-> +	handle_t *handle;
-> +	loff_t isize_reduced;
-> +	int blkbits = inode->i_blkbits;
-> +	struct address_space *mapping = inode->i_mapping;
-> +
-> +	/* sync dirty pages for transfer */
-> +	if (mapping->nrpages && mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
-> +		ret = filemap_write_and_wait_range(mapping,
-> +				(loff_t)start << blkbits,
-> +				((loff_t)(last_block + 1) << blkbits) - 1);
-> +		if (ret)
-> +			return ret;
-> +	}
-> +	truncate_inode_pages_range(inode->i_mapping,
-> +				   start << inode->i_blkbits, -1);
-> +	ext4_inode_block_unlocked_dio(inode);
-> +	inode_dio_wait(inode);
-> +	down_write(&EXT4_I(inode)->i_data_sem);
-> +	ext4_discard_preallocations(inode);
-> +	ret = ext4_es_remove_extent(inode, start, end - start + 1);
-> +	if (ret)
-> +		goto out;
-> +
-> +	credits = ext4_writepage_trans_blocks(inode);
-> +	handle = ext4_journal_start(inode, EXT4_HT_TRUNCATE, credits);
-> +	if (IS_ERR(handle)) {
-> +		ret = PTR_ERR(handle);
-> +		goto out;
-> +	}
-> +
-> +	ret = ext4_ext_remove_space(inode, start, end);
-> +	if (ret)
-> +		goto journal_stop;
-> +
-> +	ext4_discard_preallocations(inode);
-> +
-> +	if (end < last_block) {
-> +		ret = ext4_ext_update_logical(inode, handle, end + 1,
-> +					      shift, last_block + 1);
-> +		if (ret)
-> +			goto journal_stop;
-> +	}
-> +	isize_reduced = (loff_t)shift << blkbits;
-> +	i_size_write(inode, inode->i_size - isize_reduced);
-> +	EXT4_I(inode)->i_disksize -= isize_reduced;
-> +	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
-> +	ext4_mark_inode_dirty(handle, inode);
-> +journal_stop:
-> +	ext4_journal_stop(handle);
-> +out:
-> +	ext4_inode_resume_unlocked_dio(inode);
-> +	up_write(&EXT4_I(inode)->i_data_sem);
-> +	return ret;
-> +}
-> +
-> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-> index 9491ac0..0530daf 100644
-> --- a/fs/ext4/ioctl.c
-> +++ b/fs/ext4/ioctl.c
-> @@ -622,6 +622,68 @@ resizefs_out:
->  
->  		return 0;
->  	}
-> +	case EXT4_IOC_TRUNCATE_BLOCK_RANGE:
-> +	{
-> +		struct truncate_range tr;
-> +		ext4_lblk_t last_block, end_block;
-> +		int error;
-> +		loff_t i_size = i_size_read(inode);
-> +
-> +		if (!i_size)
-> +			return 0;
-> +
-> +		if (!(filp->f_mode & FMODE_WRITE))
-> +			return -EBADF;
-> +
-> +		if (IS_IMMUTABLE(inode) || IS_APPEND(inode))
-> +			return -EPERM;
-> +
-> +		if (!S_ISREG(inode->i_mode))
-> +			return -EOPNOTSUPP;
-> +
-> +		if (IS_SWAPFILE(inode))
-> +			return -EOPNOTSUPP;
-> +
-> +		if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
-> +			return -EOPNOTSUPP;
-> +
-> +		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
-> +		    EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
-> +			ext4_msg(sb, KERN_ERR,
-> +			 "Truncate block range not supported with bigalloc");
-> +			return -EOPNOTSUPP;
-> +		}
-> +
-> +		if (copy_from_user(&tr, (const void *) arg,
-> +				sizeof(struct truncate_range)))
-> +			return -EFAULT;
-> +
-> +		if (!tr.length)
-> +			return -EINVAL;
-> +
-> +		end_block = tr.start_block + tr.length - 1;
-> +
-> +		last_block = ((round_up(i_size,
-> +					EXT4_BLOCK_SIZE(inode->i_sb)))
-> +			      >> inode->i_blkbits) - 1;
-> +		if (tr.start_block > end_block ||
-> +		    tr.start_block > last_block)
-> +			return -EINVAL;
-> +
-> +		if (end_block > last_block)
-> +			end_block = last_block;
-> +
-> +		error = mnt_want_write_file(filp);
-> +		if (error)
-> +			return error;
-> +
-> +		mutex_lock(&inode->i_mutex);
-> +		error = ext4_ext_truncate_range(inode, tr.start_block,
-> +						end_block, last_block);
-> +		mutex_unlock(&inode->i_mutex);
-> +		mnt_drop_write_file(filp);
-> +		return error;
-> +	}
->  
->  	default:
->  		return -ENOTTY;
-> -- 
-> 1.7.9.5
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
+I do regular fuzz testing of upcoming kernel versions.
+So the following warning doesn't occurred at a productive system, but I=
+ never saw it before during tests :
+
+
+2013-06-23T12:28:02.826+02:00 n22 kernel: EXT4-fs warning (device loop1=
+): ext4_da_update_reserve_space:350: ext4_da_update_reserve_space: ino =
+32215, used 17 with only 13 reserved data blocks
+2013-06-23T12:28:02.826+02:00 n22 kernel: ------------[ cut here ]-----=
+-------
+2013-06-23T12:28:02.826+02:00 n22 kernel: WARNING: at fs/ext4/inode.c:3=
+51 ext4_da_update_reserve_space+0x258/0x270()
+2013-06-23T12:28:02.826+02:00 n22 kernel: Modules linked in: loop ip6t_=
+REJECT ip6table_filter ip6_tables ipt_MASQUERADE xt_owner xt_LOG xt_lim=
+it xt_multiport ipt_REJECT xt_tcpudp xt_recent xt_conntrack iptable_nat=
+ nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack iptab=
+le_filter ip_tables x_tables af_packet pppoe pppox ppp_generic slhc bri=
+dge stp ipv6 llc tun fuse dm_mod coretemp kvm_intel kvm aesni_intel i91=
+5 xts hid_cherry aes_i586 cfbfillrect cfbimgblt hid_generic i2c_algo_bi=
+t cfbcopyarea usbhid intel_agp uvcvideo lrw videobuf2_vmalloc videobuf2=
+_memops videobuf2_core usblp hid gf128mul ablk_helper cryptd arc4 video=
+dev iwldvm mac80211 fbcon intel_gtt bitblit snd_hda_codec_conexant soft=
+cursor font drm_kms_helper drm psmouse 8250_pci agpgart 8250 snd_hda_in=
+tel snd_hda_codec snd_pcm iwlwifi e1000e tpm_tis sr_mod snd_page_alloc =
+cfg80211 snd_timer fb sdhci_pci evdev thinkpad_acpi serial_core ac tpm =
+cdrom sdhci nvram snd mmc_core rfkill soundcore i2c_i801 thermal wmi fb=
+dev t
+pm_bios i2c_core ptp pps_core battery video acpi_cpufreq button mperf p=
+rocessor thermal_sys hwmon [last unloaded: microcode]
+2013-06-23T12:28:02.826+02:00 n22 kernel: CPU: 2 PID: 5857 Comm: kworke=
+r/u16:0 Not tainted 3.10.0-rc7+ #1
+2013-06-23T12:28:02.826+02:00 n22 kernel: Hardware name: LENOVO 4180F65=
+/4180F65, BIOS 83ET73WW (1.43 ) 11/30/2012
+2013-06-23T12:28:02.826+02:00 n22 kernel: Workqueue: writeback bdi_writ=
+eback_workfn (flush-7:1)
+2013-06-23T12:28:02.826+02:00 n22 kernel: c14a4b9a c14a4b9a e98d3a20 c1=
+3d3ced e98d3a48 c1033e84 c1490d45 c14a4b9a
+2013-06-23T12:28:02.826+02:00 n22 kernel: 0000015f c119f6b8 c119f6b8 00=
+000011 e8e3e3b0 00000025 e98d3a58 c1033ec2
+2013-06-23T12:28:02.826+02:00 n22 kernel: 00000009 00000000 e98d3aa4 c1=
+19f6b8 ef786400 c13f5d71 0000015e c149d754
+2013-06-23T12:28:02.827+02:00 n22 kernel: Call Trace:
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c13d3ced>] dump_stack+0x16/=
+0x18
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c1033e84>] warn_slowpath_co=
+mmon+0x64/0x80
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c119f6b8>] ? ext4_da_update=
+_reserve_space+0x258/0x270
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c119f6b8>] ? ext4_da_update=
+_reserve_space+0x258/0x270
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c1033ec2>] warn_slowpath_nu=
+ll+0x22/0x30
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c119f6b8>] ext4_da_update_r=
+eserve_space+0x258/0x270
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c11c6cf7>] ext4_ext_map_blo=
+cks+0xfb7/0x1bc0
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c110e8f7>] ? kmem_cache_all=
+oc+0x77/0x150
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c10d7e53>] ? mempool_alloc_=
+slab+0x13/0x20
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c114b8c8>] ? bvec_alloc+0x5=
+8/0xf0
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c1219293>] ? generic_make_r=
+equest+0xa3/0xd0
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c121931d>] ? submit_bio+0x5=
+d/0x140
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c11d8560>] ? ext4_es_lru_ad=
+d+0x20/0x70
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c119f9e2>] ext4_map_blocks+=
+0x312/0x500
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c11a3e41>] mpage_da_map_and=
+_submit+0x131/0x5e0
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c11c87c4>] ? __ext4_journal=
+_start_sb+0x74/0x150
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c11a4a59>] ext4_da_writepag=
+es+0x339/0x5d0
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c10dd4e0>] ? set_page_dirty=
+_lock+0x50/0x50
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c10df1a1>] do_writepages+0x=
+21/0x40
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c113f798>] __writeback_sing=
+le_inode+0x38/0x240
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c1054ff3>] ? wake_up_bit+0x=
+23/0x30
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c114079b>] writeback_sb_ino=
+des+0x16b/0x2f0
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c114099c>] __writeback_inod=
+es_wb+0x7c/0xb0
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c1140bfa>] wb_writeback+0x2=
+2a/0x2c0
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c114209c>] wb_do_writeback+=
+0x9c/0x1d0
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c1060288>] ? ttwu_do_wakeup=
++0x18/0x130
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c114224a>] bdi_writeback_wo=
+rkfn+0x7a/0x1c0
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c10624cf>] ? wake_up_proces=
+s+0x1f/0x40
+2013-06-23T12:28:02.827+02:00 n22 kernel: [<c104e74e>] process_one_work=
++0x10e/0x390
+2013-06-23T12:28:02.828+02:00 n22 kernel: [<c104c945>] ? start_worker+0=
+x25/0x30
+2013-06-23T12:28:02.828+02:00 n22 kernel: [<c104f518>] ? manage_workers=
+=2Eisra.24+0x188/0x290
+2013-06-23T12:28:02.828+02:00 n22 kernel: [<c104f722>] worker_thread+0x=
+102/0x320
+2013-06-23T12:28:02.828+02:00 n22 kernel: [<c104f620>] ? manage_workers=
+=2Eisra.24+0x290/0x290
+2013-06-23T12:28:02.828+02:00 n22 kernel: [<c1054c94>] kthread+0x94/0xa=
+0
+2013-06-23T12:28:02.828+02:00 n22 kernel: [<c13d85f7>] ret_from_kernel_=
+thread+0x1b/0x28
+2013-06-23T12:28:02.828+02:00 n22 kernel: [<c1054c00>] ? flush_kthread_=
+worker+0x90/0x90
+2013-06-23T12:28:02.828+02:00 n22 kernel: ---[ end trace b176e82a59e909=
+b3 ]---
+
+
+The file system is 257 MB big (created at a file on a tmpfs) and then m=
+ounted
+onto a directory accessible from a chrooted 32 bit Gentoo Linux.
+
+In the man while that fs was overwritten however.
+
+--=20
+MfG/Sincerely
+Toralf F=C3=B6rster
+pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
