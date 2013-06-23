@@ -1,7 +1,7 @@
-From: "Sidorov, Andrei" <Andrei.Sidorov@arrisi.com>
-Subject: RE: ext4 file replace guarantees
-Date: Sat, 22 Jun 2013 13:40:26 +0000
-Message-ID: <C0F0BC787567C848B2C90989451123DA2363CBBE@ATLEXMBX4.ARRS.ARRISI.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: ext4 file replace guarantees
+Date: Sun, 23 Jun 2013 11:58:05 +1000
+Message-ID: <20130623015805.GY29376@dastard>
 References: <1371764058.18527.140661246414097.671B4999@webmail.messagingengine.com>
  <20130621005937.GB10730@thunk.org>
  <1371818596.20553.140661246775057.0F7160F3@webmail.messagingengine.com>
@@ -10,83 +10,176 @@ References: <1371764058.18527.140661246414097.671B4999@webmail.messagingengine.c
  <20130621143347.GF10730@thunk.org>
  <1371828285.23425.140661246894093.6DC945E0@webmail.messagingengine.com>
  <20130621203547.GA10582@thunk.org>
- <20130622032944.GX29376@dastard>,<20130622044718.GC4727@thunk.org>
+ <20130622032944.GX29376@dastard>
+ <20130622044718.GC4727@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-Cc: Ryan Lortie <desrt@desrt.ca>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>, Dave Chinner <david@fromorbit.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ryan Lortie <desrt@desrt.ca>, linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.arrisi.com ([216.234.147.109]:43081 "EHLO mail.arrisi.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751796Ab3FVPEH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 22 Jun 2013 11:04:07 -0400
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:58589 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751714Ab3FWB6M (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 22 Jun 2013 21:58:12 -0400
+Content-Disposition: inline
 In-Reply-To: <20130622044718.GC4727@thunk.org>
-Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> From a philosophical point of view, I agree with you.  As I wrote in
-> my earlier messages, assuming the applications aren't abusively
+On Sat, Jun 22, 2013 at 12:47:18AM -0400, Theodore Ts'o wrote:
+> On Sat, Jun 22, 2013 at 01:29:44PM +1000, Dave Chinner wrote:
+> > > This will work on today's kernels, and it should be safe to do for all
+> > > file systems.
+> > 
+> > No, it's not. SYNC_FILE_RANGE_WRITE does not wait for IO completion,
+> > and not all filesystems sychronise journal flushes with data write
+> > IO completion.
+> 
+> Sorry, what I should have said is:
+> 
+> sync_file_range(fd, 0, 0, SYNC_FILE_RANGE_WRITE | SYNC_FILE_RANGE_WAIT_AFTER);
+> 
+> This *does* wait for I/O completion; the result is the equivalent
+> filemap_fdatawrite() followed by filemap_fdatawait().
+
+Right, and now it is effectively identical to fsync() in terms of
+speed. And when performance is the reason for avoiding fsync()....
+
+> > Indeed, we have a current "data corruption after power failure"
+> > problem found on Ceph storage clusters using XFS for the OSD storage
+> > that is specifically triggered by the use of SYNC_FILE_RANGE_WRITE
+> > rather than using fsync() to get data to disk.
+> > 
+> > http://oss.sgi.com/pipermail/xfs/2013-June/027390.html
+> 
+> This woudn't be a problem in the sequence I suggested.
+> 
+> 1)  write foo.new
+> 2)  sync_file_range(...)
+> 3)  rename foo.new to foo
+
+You miss the point - it's not a data integrity operation, and to
+present it as a way of obtaining data integrity across *all
+filesystems* because it would work on ex4 is extremely dangerous.
+You're relying on side effects of a specific filesystem implementation
+to give you the desired result.
+
+> If the system crashes right after foo.new, yes, there's no
+> guarantee since the metadata blocks are written.
+
+Sure, but focussing on ext4 behaviour misses the larger issue -
+sync_file_range() has no well defined integrity rules and hence
+exposes applications to unexpected behaviours on different
+filesystems.
+
+> (Although if XFS
+> is exposing stale data as a result of sync_file_range, that's
+> arguably a security bug, since sync_file_range doesn't require
+> root to execute, and it _has_ been part of the Linux interface for
+> a long time.)
+
+Yes, it is.
+
+But doesn't this point out one of the problems with
+moving from a well known interface to something that almost nobody
+uses and (obviously) has never tested in a data integrity test bench
+previously? it's taken how many years for this problem to be
+exposed? We test fsync crash integrity all the time, but do we test
+sync_file_range()? No, we don't, because it doesn't have any data
+integrity guarantees that we can validate.
+
+So while the interface may have been around for years, the first
+serious storage product I've heard of that has tried to use it to
+optimise away fsync() calls to use it has found that:
+
+	a) it exposes strange behaviours on different filesystems;
+	b) doesn't provide data integrity guarantees worth a damn;
+	and
+	c) isn't any faster than using fsync/fdatasync() in the
+	   first place.
+
+And so has reverted back to using fsync()....
+
+> So for ext3 and ext4, this sequence will guarantee that the file
+
+Exactly my point. You're designing for ext3/4 data=ordered behaviour
+and so it's not a replacement for fsync/fdatasync...
+
+> > But, let me make a very important point here. Nobody should be
+> > trying to optimise a general purpose application for a specific
+> > filesystem's data integrity behaviour. fsync() and fdatasync()
+> > are the gold standards as it is consistently implemented across
+> > all Linux filesystems.
+> 
+> From a philosophical point of view, I agree with you.  As I wrote
+> in my earlier messages, assuming the applications aren't abusively
 > calling g_file_set_contents() several times per second, I don't
-> understand why Ryan is trying so hard to optimize it.  The fact that
-> he's trying to optimize it at least to me seems to indicate a simple
-> admission that there *are* broken applications out there, some of
-> which may be calling it with high frequency, perhaps out of the UI
-> thread.
+> understand why Ryan is trying so hard to optimize it.  The fact
+> that he's trying to optimize it at least to me seems to indicate a
+> simple admission that there *are* broken applications out there,
+> some of which may be calling it with high frequency, perhaps out
+> of the UI thread.  
 
-Well, one application calling fsync is almost nothing to care about.
-On the other hand tens and hundreds of apps doing fsync's is a disaster.
+That's not a problem that should be solved by trading off data
+integrity and losing user's configurations. Have a backbone, Ted,
+and tell people they are doing something stupid when they are doing
+something stupid.
 
-> And having general applications or generic desktop libraries trying to
-> depend on specific implementation details of file systems is really
-> ugly.  So it's not something I'm all that excited about.
+> And having general applications or generic desktop libraries
+> trying to depend on specific implementation details of file
+> systems is really ugly.  So it's not something I'm all that
+> excited about.
 
-Me too, but people have to do that because fs api is too generic and at the
-same time one has to account fs specifics in order to make their app take most
-advantage or at least to avoid inefficiencies.
-For example I have an app that constantly does appending writes to about 15
-files and I must ensure that no more than 5 seconds will be lost in an event
-of system crash or power loss. How would you do that in generic way?
-Generic and portable way to do it is to start 15 threads and call fsyncs on
-those fds at the same time. That works fine with JFS since it doesn't do
-flushes and it works fine with ext4 because all those fsync's are likely to
-complete within single transaction.
-However that doesn't scale well and it forces app to do bursts. Scalable, but
-still bursty solution could be io_submit, but afaik no fs currently supports
-async fsync.
-What if you want to distribute the load? Single dedicated thread calling
-fsync's works fine with JFS, but sucks with ext4. Ok, there is a
-sync_file_range, let's try it out. Luckily I have control over commit=N option
-to underlying ext4 fs which I leave at default 5s. Otherwise I would like to
-have an ioctl to ext4 to force commit (I'm not sure if fsync on a single fd
-will commit currently running transaction). Sync thread calls sync_file_range
-evenly over 5s interval, ext4 does commits every 5s. Nice! But it doesn't work
-with JFS. Therefore I have two implementations for different file systems.
+Not excited? That's an understatement - it's the sort of thing that
+gives me nightmares.
 
-> Personally, I think application programmers *shouldn't* need such a
-> facility, if their applications are competently designed and
+We've *been here before*. We've been telling application developer's
+to use fsync/fdatasync() since the O_PONIES saga so we don't end up
+back in that world of hurt. Yet here you are advocating that
+application developers go back down the rat hole of relying on
+implicit side effects of the design of a specific filesystem
+configuration to provide them with data integrity guarantees....
+
+> But if XFS is doing something sufficiently clever that
+> sync_file_range() isn't going to do the right thing, and if we
+> presume that abusive applications will always exist, then maybe
+> it's time to consider implementing a new system call which has
+> very well defined semantics,
+
+That's fine - go and define the requirements for an
+rename_datasync() syscall, write a bunch of xfstests to ensure the
+API is usable and provides the required behaviour. Then do a slow
+generic implementation that you wire all the filesystems up to so
+it's available to everyone (i.e.  no fs probing needed).
+Applications can start using it immediately, knowing it will work on
+every filesystem. i.e:
+
+generic_rename_datasync()
+{
+	vfs_fsync(src);
+	->rename()
+}
+
+At that point you can implement a fast, optimal implementation in
+ext3/4 that nobody outside ext3/4 needs to care about how it works.
+The BTRFS guys can optimise it appropriately in their own time, as
+can us XFS people. But the most important point is that we start
+with on implementation that *works everywhere*...
+
+> Personally, I think application programmers *shouldn't* need such
+> a facility, if their applications are competently designed and
 > implemented.  But unfortunately, they outnumber us file system
 > developers, and apparently many of them seem to want to do things
 > their way, whether we like it or not.
 
-I would argue : )
-fsync is not the one to rule them all. It's semantics is clear: write all
-those bytes NOW.
-The fact fsync can be used as a barrier doesn't mean it's the best way to do
-it. There are quite few cases where write-right-now semantics is
-absolutely required. More often apps just want atomic file updates and
-sort of writeback control which is available only as system-wide knob.
+And you're too afraid to call out someone when they are doing something
+stupid. If you don't call them out, they'll keep doing stupid things
+and the problems will never get solved.
 
-As for atomic updates, I'm thinking of something like io_exec() or
-io_submit_atomic() or whatever name is best for it. Probably it shouldn't be
-tied to kaio.
-This syscall would accept an array of iocb's and guarantee atomicity of the
-update. This shouldn't be a big deal for ext4 to support it because it already
-supports data journalling, which is however only block/page-wise atomic.
-Such a syscall wouldn't be undervalued if majority of file systems support it.
+Cheers,
 
-Regards,
-Andrey.
-
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
