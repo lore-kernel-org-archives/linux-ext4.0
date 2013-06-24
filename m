@@ -1,51 +1,67 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: 3.9-rc6 ext4: free_rb_tree_fname oops
-Date: Mon, 24 Jun 2013 21:28:04 +0800
-Message-ID: <20130624132804.GA7709@gmail.com>
-References: <CAMVG2sskpWgL4JLKZZs8YXqNoLt4gB-UgeeMPnb8bTDKyUeRng@mail.gmail.com>
- <CAMVG2ssG0PvedeuT6f3g=20Gv51f6gXWxxMFbtL4H=ngAJ9Gvg@mail.gmail.com>
- <20130624123726.GA17012@thunk.org>
+Subject: Re: [PATCH] ext4: check error return from
+ ext4_write_inline_data_end()
+Date: Mon, 24 Jun 2013 21:40:02 +0800
+Message-ID: <20130624134002.GB7709@gmail.com>
+References: <20130620144421.GC28309@thunk.org>
+ <1371739943-31176-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Daniel J Blueman <daniel@quora.org>, linux-ext4@vger.kernel.org
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	jonernst07@gmx.com, Zheng Liu <wenqing.lz@taobao.com>,
+	stable@vger.kernel.org
 To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f48.google.com ([209.85.220.48]:37083 "EHLO
-	mail-pa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750745Ab3FXNJg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Jun 2013 09:09:36 -0400
-Received: by mail-pa0-f48.google.com with SMTP id kp12so10981494pab.35
-        for <linux-ext4@vger.kernel.org>; Mon, 24 Jun 2013 06:09:36 -0700 (PDT)
+Return-path: <stable-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20130624123726.GA17012@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1371739943-31176-1-git-send-email-tytso@mit.edu>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jun 24, 2013 at 08:37:26AM -0400, Theodore Ts'o wrote:
-> (LKML and Linux-fsdevel moved to bcc)
+On Thu, Jun 20, 2013 at 10:52:23AM -0400, Theodore Ts'o wrote:
+> The function ext4_write_inline_data_end() can return an error.  So we
+> need to assign it to a signed integer variable to check for an error
+> return (since copied is an unsigned int).
 > 
-> On Mon, Jun 24, 2013 at 02:34:00PM +0800, Daniel J Blueman wrote:
-> > On 16 April 2013 15:37, Daniel J Blueman <daniel@quora.org> wrote:
-> > > When using e4defrag on a ext4 filesystem created a month ago, I ran
-> > > into this fatal page fault [1]
-> > >  while running e4defrag on 3.9-rc6 (Ubuntu mainline).
-> > >
-> > > e2fsdump output is at http://quora.org/2012/e2fsdump.txt ; let me know
-> > > if you need any more info.
-> > 
-> > With 3.9.6 mainline, I got the exact same protection fault at
-> > free_rb_tree_fname() from ext4_htree_free_dir_info() [1]. This
-> > suggests use-after-free, as there's no pagetable mapping.
-> > 
-> > There is nothing special with my setups, so there is fair chance it's
-> > reproducible there with e4defrag on a few month old filesystem and
-> > recent kernels.
-> 
-> Sounds like we may have a bug in how the new extent_status tree code
-> was integrated into fs/ext4/move_extent.c.  Zheng, if you could take a
-> look I'd really appreciate it.
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: Zheng Liu <wenqing.lz@taobao.com>
+> Cc: stable@vger.kernel.org
 
-Sorry for the late reply.  I will take a close look at this bug.
+Sorry for the late reply.  Thanks for fixing this.  The patch looks good
+to me.
+Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
 
-Regards,
                                                 - Zheng
+
+> ---
+>  fs/ext4/inode.c | 11 +++++++----
+>  1 file changed, 7 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index baf5c2b..567a734 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -1061,10 +1061,13 @@ static int ext4_write_end(struct file *file,
+>  		}
+>  	}
+>  
+> -	if (ext4_has_inline_data(inode))
+> -		copied = ext4_write_inline_data_end(inode, pos, len,
+> -						    copied, page);
+> -	else
+> +	if (ext4_has_inline_data(inode)) {
+> +		ret = ext4_write_inline_data_end(inode, pos, len,
+> +						 copied, page);
+> +		if (ret < 0)
+> +			goto errout;
+> +		copied = ret;
+> +	} else
+>  		copied = block_write_end(file, mapping, pos,
+>  					 len, copied, page, fsdata);
+>  
+> -- 
+> 1.7.12.rc0.22.gcdd159b
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
