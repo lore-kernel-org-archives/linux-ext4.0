@@ -1,431 +1,148 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 1/3] ext4: Add EXT4_IOC_TRUNCATE_BLOCK_RANGE ioctl
-Date: Sun, 23 Jun 2013 19:55:09 -0600
-Message-ID: <6952E758-B52D-4A78-AAD4-53FA0B09291B@dilger.ca>
-References: <1371967656-3150-1-git-send-email-linkinjeon@gmail.com>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: "tytso@mit.edu" <tytso@mit.edu>,
-	"adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"a.sangwan@samsung.com" <a.sangwan@samsung.com>,
-	Namjae Jeon <linkinjeon@gmail.com>,
-	Namjae Jeon <namjae.jeon@samsung.com>
-To: Namjae Jeon <linkinjeon@gmail.com>
+From: Eric Whitney <enwlinux@gmail.com>
+Subject: xfstest generic/068 dev branch failures
+Date: Sun, 23 Jun 2013 22:06:27 -0400
+Message-ID: <20130624020627.GA29365@wallace>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ie0-f181.google.com ([209.85.223.181]:54506 "EHLO
-	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752262Ab3FXBzO convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 23 Jun 2013 21:55:14 -0400
-Received: by mail-ie0-f181.google.com with SMTP id x12so23729718ief.12
-        for <linux-ext4@vger.kernel.org>; Sun, 23 Jun 2013 18:55:13 -0700 (PDT)
-In-Reply-To: <1371967656-3150-1-git-send-email-linkinjeon@gmail.com>
+Received: from mail-ve0-f170.google.com ([209.85.128.170]:52736 "EHLO
+	mail-ve0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752252Ab3FXCGd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 23 Jun 2013 22:06:33 -0400
+Received: by mail-ve0-f170.google.com with SMTP id 14so8233023vea.1
+        for <linux-ext4@vger.kernel.org>; Sun, 23 Jun 2013 19:06:32 -0700 (PDT)
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2013-06-23, at 0:07, Namjae Jeon <linkinjeon@gmail.com> wrote:
+In last week's ext4 concall I mentioned that I'd seen five consecutive failures
+of xfstest generic/068 on an ext4 file system mounted with data=journal while
+doing dev branch testing on a Pandaboard.  Similar failures of generic/068 on
+filesystems mounted with data=journal have been visible for some time with
+mainline kernels on both x86-64 and ARM in about 10% of the tests run.  (That
+was still the case for my x86-64 runs on this dev kernel.)
 
-> From: Namjae Jeon <namjae.jeon@samsung.com>
-> The EXT4_IOC_TRUNCATE_BLOCK_RANGE removes the data blocks lying
-> between [start, "start + length") and updates the logical block numbers
-> of data blocks starting from "start + length" block to last block of file.
-> This will maintain contiguous nature of logical block numbers
-> after block removal.
-> Both the inode's disksize and logical size are updated after block
-> removal
+Because we'd like a dependable reproducer to help find a fix for these failures,
+I ran a larger number of trials on the Pandaboard using the same dev kernel
+to see if we really had one.  Unfortunately, the failure rate for this larger
+sample set was 40% rather than 100%.  The failure rate did still appear to be
+elevated as compared to 3.10 on ARM.
 
-I don't think "truncate" describes this operation very well. It is more like "punch hole and shrink size". 
+More recent runs of generic/068 on a dev kernel from Friday failed at
+about a 30% rate in the same test scenario on the Pandaboard and at the
+same statement in the jbd2 code.
 
-The real question I have for both this operation is what practical use it has. I don't think that "editing a movie clip" is a real example, because the stream will not align on block boundaries, and will just result in copying most of the file data if it is a byte-aligned operation.
+As requested, the last commit for the initial dev kernel:
+74039f20b5 - ext4: remove ext4_ioend_wait()
 
-Cheers, Andreas
+The last commit for Friday's dev kernel:
+a1edc9ea52 - jbd2: fix theoretical race in jbd2__journal_restart
 
-> Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-> Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
-> ---
-> fs/ext4/ext4.h         |    8 ++
-> fs/ext4/ext4_extents.h |    3 +
-> fs/ext4/extents.c      |  245 ++++++++++++++++++++++++++++++++++++++++++++++++
-> fs/ext4/ioctl.c        |   62 ++++++++++++
-> 4 files changed, 318 insertions(+)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 6ed348d..df2c411 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -590,6 +590,7 @@ enum {
-> #define EXT4_IOC_MOVE_EXT        _IOWR('f', 15, struct move_extent)
-> #define EXT4_IOC_RESIZE_FS        _IOW('f', 16, __u64)
-> #define EXT4_IOC_SWAP_BOOT        _IO('f', 17)
-> +#define EXT4_IOC_TRUNCATE_BLOCK_RANGE    _IOW('f', 18, struct truncate_range)
-> 
-> #if defined(__KERNEL__) && defined(CONFIG_COMPAT)
-> /*
-> @@ -682,6 +683,11 @@ struct move_extent {
->    __u64 moved_len;    /* moved block length */
-> };
-> 
-> +struct truncate_range {
-> +    __u32 start_block;
-> +    __u32 length;
-> +};
-> +
-> #define EXT4_EPOCH_BITS 2
-> #define EXT4_EPOCH_MASK ((1 << EXT4_EPOCH_BITS) - 1)
-> #define EXT4_NSEC_MASK  (~0UL << EXT4_EPOCH_BITS)
-> @@ -2692,6 +2698,8 @@ extern int ext4_find_delalloc_range(struct inode *inode,
-> extern int ext4_find_delalloc_cluster(struct inode *inode, ext4_lblk_t lblk);
-> extern int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
->            __u64 start, __u64 len);
-> +extern int ext4_ext_truncate_range(struct inode *inode, ext4_lblk_t start,
-> +                   ext4_lblk_t end, ext4_lblk_t last_block);
-> 
-> 
-> /* move_extent.c */
-> diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
-> index 51bc821..cc113cc 100644
-> --- a/fs/ext4/ext4_extents.h
-> +++ b/fs/ext4/ext4_extents.h
-> @@ -178,6 +178,9 @@ struct ext4_ext_path {
-> #define EXT_MAX_INDEX(__hdr__) \
->    (EXT_FIRST_INDEX((__hdr__)) + le16_to_cpu((__hdr__)->eh_max) - 1)
-> 
-> +#define EXTENT_START_FLAG    0x1
-> +#define INDEX_START_FLAG    0x2
-> +
-> static inline struct ext4_extent_header *ext_inode_hdr(struct inode *inode)
-> {
->    return (struct ext4_extent_header *) EXT4_I(inode)->i_data;
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 937593e..ed85e34 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4757,3 +4757,248 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
-> 
->    return error;
-> }
-> +
-> +/*
-> + * ext4_trange_dirty_path: Function to mark the path buffer dirty.
-> + * It also checks if there are sufficient credits left in the
-> + * journal to update metadata. If the number of credits are less
-> + * restart the handle with additional credits.
-> + *
-> + * @handle: journal handle
-> + * @inode: file inode
-> + * @path: pointer to path
-> + * @num: number of inodes to be updated
-> + *
-> + * Returns: 0 on success or negative value on error
-> + */
-> +int ext4_trange_dirty_path(handle_t *handle, struct inode *inode,
-> +               struct ext4_ext_path *path,
-> +               int num, ...)
-> +{
-> +    int credits, err, i;
-> +    struct inode *iptr;
-> +    va_list args;
-> +
-> +    /*
-> +     * Check if need to extend journal credits
-> +     * 3 for leaf, sb, and inode plus 2 (bmap and group
-> +     * descriptor) for each block group; assume two block
-> +     * groups
-> +     */
-> +    if (handle->h_buffer_credits < 7*(num + 1)) {
-> +        credits = ext4_writepage_trans_blocks(inode);
-> +        va_start(args, num);
-> +        for (i = 1; i <= num; i++) {
-> +            iptr = va_arg(args, struct inode *);
-> +            credits += ext4_writepage_trans_blocks(iptr);
-> +        }
-> +        va_end(args);
-> +        err = ext4_ext_truncate_extend_restart(handle, inode, credits);
-> +        /* EAGAIN is success */
-> +        if (err && err != -EAGAIN)
-> +            return err;
-> +    }
-> +    err = ext4_ext_get_access(handle, inode, path);
-> +    return err;
-> +}
-> +
-> +/*
-> + * ext4_ext_update_path: update the extents of a path structure
-> + * lying between path[depth].p_ext and EXT_LAST_EXTENT(path[depth].p_hdr)
-> + * subtracting shift from starting block for each extent.
-> + *
-> + * @path: path for which extents are updated
-> + * @shift: Number of blocks to be subtracted from first logical block
-> + * that extent covers for each extent.
-> + * @inode: file inode
-> + * @handle: journal handle
-> + * @start_block: Points to the starting block of next extent which is
-> + * to be updated.
-> + *
-> + * Returns: 0 on success or negative on error.
-> + */
-> +int ext4_ext_update_path(struct ext4_ext_path *path, ext4_lblk_t shift,
-> +             struct inode *inode, handle_t *handle,
-> +             ext4_lblk_t *start_block)
-> +{
-> +    int depth, err = 0, flag = 0;
-> +    struct ext4_extent *ex_start, *ex_last;
-> +
-> +    depth = path->p_depth;
-> +    while (depth >= 0) {
-> +        if (depth == path->p_depth) {
-> +            ex_start = path[depth].p_ext;
-> +            if (!ex_start)
-> +                return -EIO;
-> +
-> +            err = ext4_trange_dirty_path(handle, inode,
-> +                             path + depth, 0);
-> +            if (err)
-> +                goto out;
-> +
-> +            if (path[depth].p_ext ==
-> +                EXT_FIRST_EXTENT(path[depth].p_hdr))
-> +                flag |= EXTENT_START_FLAG;
-> +
-> +            ex_last = EXT_LAST_EXTENT(path[depth].p_hdr);
-> +            while (ex_start <= ex_last) {
-> +                *start_block = ex_start->ee_block +
-> +                    ext4_ext_get_actual_len(ex_start);
-> +                ex_start->ee_block -= shift;
-> +                ex_start++;
-> +            }
-> +            err = ext4_ext_dirty(handle, inode, path + depth);
-> +            if (err)
-> +                goto out;
-> +        } else {
-> +            /* If encountered starting extent, update index too */
-> +            if (path->p_depth - depth == 1) {
-> +                if (flag & EXTENT_START_FLAG) {
-> +                    /* Update index too */
-> +                    err = ext4_trange_dirty_path(handle,
-> +                            inode, path + depth, 0);
-> +                    if (err)
-> +                        goto out;
-> +                    path[depth].p_idx->ei_block -= shift;
-> +                    err = ext4_ext_dirty(handle, inode,
-> +                                 path + depth);
-> +                    if (err)
-> +                        goto out;
-> +                    flag &= ~EXTENT_START_FLAG;
-> +                } else
-> +                    /* No need to update any extent index */
-> +                    break;
-> +            }
-> +            /* Check, if earlier encountered starting index */
-> +            if (flag & INDEX_START_FLAG) {
-> +                err = ext4_trange_dirty_path(handle, inode,
-> +                            path + (depth), 0);
-> +                if (err)
-> +                    goto out;
-> +                path[depth].p_idx->ei_block -= shift;
-> +                err = ext4_ext_dirty(handle, inode,
-> +                             path + depth);
-> +                if (err)
-> +                    goto out;
-> +                flag &= ~INDEX_START_FLAG;
-> +            }
-> +            /* Check if this is a starting index */
-> +            if (path[depth].p_idx ==
-> +                EXT_FIRST_INDEX(path[depth].p_hdr)) {
-> +                /* starting of a block */
-> +                flag |= INDEX_START_FLAG;
-> +            } else
-> +                break;
-> +        }
-> +        depth--;
-> +    }
-> +out:
-> +    return err;
-> +}
-> +
-> +/*
-> + * ext4_ext_update_logical: update logical blocks ranging from start
-> + * to the end block for inode by moving them shift blocks to the left
-> + *
-> + * @inode: file inode
-> + * @handle: journal handle
-> + * @start_block : starting block for block updation
-> + * @shift: number of blocks to be shifted
-> + * @end_block: last block to be updated
-> + *
-> + * Returns: 0 on success or negative on failure
-> + */
-> +static int ext4_ext_update_logical(struct inode *inode, handle_t *handle,
-> +                   ext4_lblk_t start_block, ext4_lblk_t shift,
-> +                   ext4_lblk_t end_block)
-> +{
-> +    struct ext4_ext_path *path;
-> +    int err = 0;
-> +
-> +    while (start_block < end_block) {
-> +        path = ext4_ext_find_extent(inode, start_block, NULL);
-> +        if (IS_ERR(path)) {
-> +            err = PTR_ERR(path);
-> +            break;
-> +        }
-> +        err = ext4_ext_update_path(path, shift, inode,
-> +                       handle, &start_block);
-> +        ext4_ext_drop_refs(path);
-> +        kfree(path);
-> +        if (err)
-> +            break;
-> +    }
-> +    return err;
-> +}
-> +
-> +/*
-> + * ext4_ext_truncate_range: truncate the block range from start
-> + * block to end block including the end block from inode.
-> + *
-> + * @inode: file inode
-> + * @start: start block
-> + * @end: end block
-> + * last_block: last_block number of the inode
-> + *
-> + * Returns: 0 on success or negative on error
-> + */
-> +int ext4_ext_truncate_range(struct inode *inode, ext4_lblk_t start,
-> +                ext4_lblk_t end, ext4_lblk_t last_block)
-> +{
-> +    int ret, credits;
-> +    ext4_lblk_t shift = end - start + 1;
-> +    handle_t *handle;
-> +    loff_t isize_reduced;
-> +    int blkbits = inode->i_blkbits;
-> +    struct address_space *mapping = inode->i_mapping;
-> +
-> +    /* sync dirty pages for transfer */
-> +    if (mapping->nrpages && mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
-> +        ret = filemap_write_and_wait_range(mapping,
-> +                (loff_t)start << blkbits,
-> +                ((loff_t)(last_block + 1) << blkbits) - 1);
-> +        if (ret)
-> +            return ret;
-> +    }
-> +    truncate_inode_pages_range(inode->i_mapping,
-> +                   start << inode->i_blkbits, -1);
-> +    ext4_inode_block_unlocked_dio(inode);
-> +    inode_dio_wait(inode);
-> +    down_write(&EXT4_I(inode)->i_data_sem);
-> +    ext4_discard_preallocations(inode);
-> +    ret = ext4_es_remove_extent(inode, start, end - start + 1);
-> +    if (ret)
-> +        goto out;
-> +
-> +    credits = ext4_writepage_trans_blocks(inode);
-> +    handle = ext4_journal_start(inode, EXT4_HT_TRUNCATE, credits);
-> +    if (IS_ERR(handle)) {
-> +        ret = PTR_ERR(handle);
-> +        goto out;
-> +    }
-> +
-> +    ret = ext4_ext_remove_space(inode, start, end);
-> +    if (ret)
-> +        goto journal_stop;
-> +
-> +    ext4_discard_preallocations(inode);
-> +
-> +    if (end < last_block) {
-> +        ret = ext4_ext_update_logical(inode, handle, end + 1,
-> +                          shift, last_block + 1);
-> +        if (ret)
-> +            goto journal_stop;
-> +    }
-> +    isize_reduced = (loff_t)shift << blkbits;
-> +    i_size_write(inode, inode->i_size - isize_reduced);
-> +    EXT4_I(inode)->i_disksize -= isize_reduced;
-> +    inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
-> +    ext4_mark_inode_dirty(handle, inode);
-> +journal_stop:
-> +    ext4_journal_stop(handle);
-> +out:
-> +    ext4_inode_resume_unlocked_dio(inode);
-> +    up_write(&EXT4_I(inode)->i_data_sem);
-> +    return ret;
-> +}
-> +
-> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-> index 9491ac0..0530daf 100644
-> --- a/fs/ext4/ioctl.c
-> +++ b/fs/ext4/ioctl.c
-> @@ -622,6 +622,68 @@ resizefs_out:
-> 
->        return 0;
->    }
-> +    case EXT4_IOC_TRUNCATE_BLOCK_RANGE:
-> +    {
-> +        struct truncate_range tr;
-> +        ext4_lblk_t last_block, end_block;
-> +        int error;
-> +        loff_t i_size = i_size_read(inode);
-> +
-> +        if (!i_size)
-> +            return 0;
-> +
-> +        if (!(filp->f_mode & FMODE_WRITE))
-> +            return -EBADF;
-> +
-> +        if (IS_IMMUTABLE(inode) || IS_APPEND(inode))
-> +            return -EPERM;
-> +
-> +        if (!S_ISREG(inode->i_mode))
-> +            return -EOPNOTSUPP;
-> +
-> +        if (IS_SWAPFILE(inode))
-> +            return -EOPNOTSUPP;
-> +
-> +        if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
-> +            return -EOPNOTSUPP;
-> +
-> +        if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
-> +            EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
-> +            ext4_msg(sb, KERN_ERR,
-> +             "Truncate block range not supported with bigalloc");
-> +            return -EOPNOTSUPP;
-> +        }
-> +
-> +        if (copy_from_user(&tr, (const void *) arg,
-> +                sizeof(struct truncate_range)))
-> +            return -EFAULT;
-> +
-> +        if (!tr.length)
-> +            return -EINVAL;
-> +
-> +        end_block = tr.start_block + tr.length - 1;
-> +
-> +        last_block = ((round_up(i_size,
-> +                    EXT4_BLOCK_SIZE(inode->i_sb)))
-> +                  >> inode->i_blkbits) - 1;
-> +        if (tr.start_block > end_block ||
-> +            tr.start_block > last_block)
-> +            return -EINVAL;
-> +
-> +        if (end_block > last_block)
-> +            end_block = last_block;
-> +
-> +        error = mnt_want_write_file(filp);
-> +        if (error)
-> +            return error;
-> +
-> +        mutex_lock(&inode->i_mutex);
-> +        error = ext4_ext_truncate_range(inode, tr.start_block,
-> +                        end_block, last_block);
-> +        mutex_unlock(&inode->i_mutex);
-> +        mnt_drop_write_file(filp);
-> +        return error;
-> +    }
-> 
->    default:
->        return -ENOTTY;
-> -- 
-> 1.7.9.5
-> 
+Configuration for SUT:
+Pandaboard ES, 2 ARM cores, 1 GB memory, 1 SATA III disk attached via USB 2.0
+on which three 5 GB test file systems were located.  e2fsprogs master branch,
+1.43 WIP.
+
+Stack trace excerpt from original dev kernel on Pandaboard:
+
+ kernel BUG at fs/jbd2/transaction.c:2156!
+ Internal error: Oops - BUG: 0 [#1] SMP ARM
+ Modules linked in:
+ CPU: 1 PID: 30272 Comm: fstest Not tainted 3.10.0-rc2-13849-g74039f2 #1
+ task: ed184140 ti: ec4c4000 task.ti: ec4c4000
+ PC is at jbd2_journal_invalidatepage+0x3cc/0x3f4
+ LR is at jbd2_journal_invalidatepage+0x208/0x3f4
+ pc : [<c01f926c>]    lr : [<c01f90a8>]    psr: 00000113
+ sp : ec4c5b88  ip : 00000000  fp : ec4c5bd4
+ r10: ecb58f88  r9 : 00200000  r8 : 00001000
+ r7 : ecb58f88  r6 : 00000000  r5 : ecb58f88  r4 : 00001000
+ r3 : 00000002  r2 : 0071c025  r1 : ecb58f88  r0 : 00000000
+ Flags: nzcv  IRQs on  FIQs on  Mode SVC_32  ISA ARM  Segment user
+ Control: 10c5387d  Table: a77c804a  DAC: 00000015
+ Process fstest (pid: 30272, stack limit = 0xec4c4240)
+ 
+ [<c01f926c>] (jbd2_journal_invalidatepage+0x3cc/0x3f4)
+ [<c01aab88>] (__ext4_journalled_invalidatepage+0x70/0xac)
+ [<c01abdb0>] (ext4_journalled_invalidatepage+0x18/0x34)
+ [<c00e355c>] (truncate_inode_page+0xbc/0xc4)
+ [<c00e36a4>] (truncate_inode_pages_range+0x140/0x47c)
+ [<c00e3abc>] (truncate_inode_pages+0x28/0x30)
+ [<c00e3b34>] (truncate_pagecache+0x70/0x90)
+ [<c01b04ac>] (ext4_setattr+0x40c/0x688)
+ [<c012df14>] (notify_change+0x1e8/0x334)
+ [<c0112368>] (do_truncate+0x84/0xa8)
+ [<c0121c7c>] (do_last.isra.28+0x634/0xba8)
+ [<c01222ac>] (path_openat+0xbc/0x498)
+ [<c01229a4>] (do_filp_open+0x3c/0x90)
+ [<c0113358>] (do_sys_open+0xf4/0x180)
+ [<c0113410>] (SyS_open+0x2c/0x30)
+
+
+And another problem - when I ran generic/068 on an ext4 file system mounted with
+data=journal using an x86-64 VM using Friday's dev kernel, the kernel BUGed
+about 10% of the time as usual at fs/jbd2/transaction.c: 2133. However, it
+also failed about 40% of the time in a way it didn't on the Pandaboard.
+Retesting on x86-64 running 3.10-rc6, I was able to get the same failure but
+at a lower rate of between 10 and 20%.  (This may not bode well for trying to
+reproduce the transaction.c BUG() on a physical x86-64 as we discussed in
+the call.)
+
+Here's an excerpt from that stack trace:
+
+kernel BUG at fs/buffer.c:2956!
+invalid opcode: 0000 [#1] SMP
+Modules linked in: kvm_intel kvm microcode snd_hda_intel psmouse serio_raw snd_hda_codec snd_hwdep snd_pcm snd_timer snd soundcore snd_page_alloc virtio_balloon i2c_piix4 mac_hid lp parport f\
+
+CPU: 0 PID: 3644 Comm: fstest Not tainted 3.10.0-rc6-ext4testing #1
+Hardware name: Bochs Bochs, BIOS Bochs 01/01/2007
+task: ffff88003bbb9fb0 ti: ffff88003d23c000 task.ti: ffff88003d23c000
+RIP: 0010:[<ffffffff811b8bca>]  [<ffffffff811b8bca>] _submit_bh+0x17a/0x200
+RSP: 0000:ffff88003d23d878  EFLAGS: 00010246
+RAX: 000000000011c005 RBX: ffff88003b4f4f70 RCX: 0000000000000000
+RDX: 0000000000000000 RSI: ffff88003b4f4f70 RDI: 0000000000000411
+RBP: ffff88003d23d898 R08: 0000000000000004 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000001 R12: 0000000000000411
+R13: ffff88003d23d964 R14: ffff8800256b1800 R15: ffff88003b4f4f70
+FS:  00007fcb7c652700(0000) GS:ffff88003fc00000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00007fcb7c5e6000 CR3: 0000000036847000 CR4: 00000000000006f0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+Stack:
+ ffff88003b4f4f70 0000000000000411 ffff88003d23d964 ffff8800256b1800
+ ffff88003d23d8a8 ffffffff811b8c60 ffff88003d23d8c8 ffffffff811ba015
+ 0000000000000001 ffff8800256b1b48 ffff88003d23d928 ffffffff8127932d
+Call Trace:
+ [<ffffffff811b8c60>] submit_bh+0x10/0x20
+ [<ffffffff811ba015>] write_dirty_buffer+0x55/0x80
+ [<ffffffff8127932d>] __flush_batch+0x4d/0xa0
+ [<ffffffff81279b7f>] jbd2_log_do_checkpoint+0x27f/0x480
+ [<ffffffff81279e27>] __jbd2_log_wait_for_space+0xa7/0x1d0
+ [<ffffffff81273f70>] start_this_handle+0x2d0/0x550
+ [<ffffffff81178f2a>] ? kmem_cache_alloc+0x13a/0x140
+ [<ffffffff81274457>] jbd2__journal_start+0xf7/0x1d0
+ [<ffffffff8122cbf0>] ? ext4_dirty_inode+0x30/0x70
+ [<ffffffff81252bf2>] __ext4_journal_start_sb+0x82/0x150
+ [<ffffffff8122cbf0>] ext4_dirty_inode+0x30/0x70
+ [<ffffffff811b0942>] __mark_inode_dirty+0xe2/0x2b0
+ [<ffffffff811a10e1>] update_time+0x81/0xc0
+ [<ffffffff811a5662>] ? mnt_clone_write+0x12/0x30
+ [<ffffffff811a11b8>] file_update_time+0x98/0xf0
+ [<ffffffff8112a8aa>] ? find_get_page+0x9a/0xf0
+ [<ffffffff8122ce10>] ext4_page_mkwrite+0x60/0x450
+ [<ffffffff8114e84e>] __do_fault+0xde/0x470
+ [<ffffffff8115149f>] handle_pte_fault+0x8f/0x890
+ [<ffffffff811524a0>] handle_mm_fault+0x210/0x300
+ [<ffffffff816cfecf>] __do_page_fault+0x18f/0x510
+ [<ffffffff81070a63>] ? up_write+0x23/0x40
+ [<ffffffff811452e4>] ? vm_mmap_pgoff+0xb4/0xe0
+ [<ffffffff816cc5c9>] ? retint_swapgs+0xe/0x13
+ [<ffffffff813493ad>] ? trace_hardirqs_off_thunk+0x3a/0x3c
+ [<ffffffff816d025e>] do_page_fault+0xe/0x10
+ [<ffffffff816cc7e2>] page_fault+0x22/0x30
+
+Thanks,
+Eric
+
