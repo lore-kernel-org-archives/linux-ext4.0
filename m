@@ -1,132 +1,165 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [BUG] xfstest269 causes deadlock on linux-3.9.0 (ext4)
-Date: Mon, 24 Jun 2013 13:04:02 +0200
-Message-ID: <20130624110402.GD20471@quack.suse.cz>
-References: <51908CF4.2000703@rs.jp.nec.com>
- <20130514213755.GA10769@quack.suse.cz>
- <5192F998.6080706@rs.jp.nec.com>
- <51A2BB97.7030802@rs.jp.nec.com>
- <8738t8on26.fsf@openvz.org>
- <20130527083301.GA17423@quack.suse.cz>
- <51A46C79.4000105@rs.jp.nec.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: 3.9-rc6 ext4: free_rb_tree_fname oops
+Date: Mon, 24 Jun 2013 08:37:26 -0400
+Message-ID: <20130624123726.GA17012@thunk.org>
+References: <CAMVG2sskpWgL4JLKZZs8YXqNoLt4gB-UgeeMPnb8bTDKyUeRng@mail.gmail.com>
+ <CAMVG2ssG0PvedeuT6f3g=20Gv51f6gXWxxMFbtL4H=ngAJ9Gvg@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Dmitry Monakhov <dmonakhov@openvz.org>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Akira Fujita <a-fujita@rs.jp.nec.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:44697 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751232Ab3FXLEI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 24 Jun 2013 07:04:08 -0400
+Cc: linux-ext4@vger.kernel.org, gnehzuil.liu@gmail.com
+To: Daniel J Blueman <daniel@quora.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <51A46C79.4000105@rs.jp.nec.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <CAMVG2ssG0PvedeuT6f3g=20Gv51f6gXWxxMFbtL4H=ngAJ9Gvg@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue 28-05-13 17:36:09, Akira Fujita wrote:
-> Hello,
+(LKML and Linux-fsdevel moved to bcc)
+
+On Mon, Jun 24, 2013 at 02:34:00PM +0800, Daniel J Blueman wrote:
+> On 16 April 2013 15:37, Daniel J Blueman <daniel@quora.org> wrote:
+> > When using e4defrag on a ext4 filesystem created a month ago, I ran
+> > into this fatal page fault [1]
+> >  while running e4defrag on 3.9-rc6 (Ubuntu mainline).
+> >
+> > e2fsdump output is at http://quora.org/2012/e2fsdump.txt ; let me know
+> > if you need any more info.
 > 
-> (2013/05/27 17:33), Jan Kara wrote:
-> > On Mon 27-05-13 12:16:01, Dmitry Monakhov wrote:
-> >> On Mon, 27 May 2013 10:49:11 +0900, Akira Fujita <a-fujita@rs.jp.nec.com> wrote:
-> >>> Hi Jan,
-> >>>
-> >>> (2013/05/15 11:57), Akira Fujita wrote:
-> >>>> Hi,
-> >>>>
-> >>>> (2013/05/15 6:37), Jan Kara wrote:
-> >>>>>      Hello,
-> >>>>>
-> >>>>> On Mon 13-05-13 15:49:24, Akira Fujita wrote:
-> >>>>>> I ran into the deaclock with xfs_test 269 on linux-3.9.0.
-> >>>>>> It seems happen between jbd2_log_wait_commit, sleep_on_buffer
-> >>>>>> and writeback_indoes (Please see ps log below).
-> >>>>>> Once it occurs we can't touch FS anymore.
-> >>>>>> In my case 300 - 1000 trials to occur. Is this known issue?
-> >>>>>>
-> >>>>>> The following kernels seems to have same problem:
-> >>>>>> - linux-3.5-rc5
-> >>>>>> - linux-3.8.5
-> >>>>>> - linux-3.9-rc7
-> >>>>>> And now I'm trying it on linux-3.10-rc1.
-> >>>>>>
-> >>>>>> # ./check generic/269
-> >>>>>> FSTYP         -- ext4
-> >>>>>> PLATFORM      -- Linux/x86_64 mcds1 3.9.0
-> >>>>>> MKFS_OPTIONS  -- /dev/sda12
-> >>>>>> MOUNT_OPTIONS -- -o acl,user_xattr /dev/sda12 /mnt/mp2
-> >>>>>>
-> >>>>>>
-> >>>>>> # ps -eo pid,tid,class,rtprio,ni,pri,psr,pcpu,stat,wchan:16,comm
-> >>>>>>      PID   TID CLS RTPRIO  NI PRI PSR %CPU STAT WCHAN            COMMAND
-> >>>>>>        1     1 TS       -   0  19   0  0.0 Ss   poll_schedule_ti init
-> >>>>>>        2     2 TS       -   0  19   0  0.0 S    kthreadd         kthreadd
-> >>>>>>        3     3 TS       -   0  19   0  0.0 S    smpboot_thread_f ksoftirqd/0
-> >>>>>> ...
-> >>>>>>     2391  2391 TS       -   0  19   2  0.1 D    jbd2_log_wait_co flush-8:0
-> >>>>>> ...
-> >>>>>> 22647 22647 TS       -   0  19   3  0.0 S    worker_thread    kworker/3:1
-> >>>>>> 22655 22655 TS       -   0  19   0  0.0 S    hrtimer_nanoslee sleep
-> >>>>>> 22657 22657 TS       -   0  19   2  0.0 R+   -                ps
-> >>>>>> 25330 25330 TS       -   0  19   0  0.0 S    worker_thread    kworker/0:0
-> >>>>>> 28963 28963 TS       -   0  19   1  0.0 S+   wait             loop_xfstests.s
-> >>>>>> 28964 28964 TS       -   0  19   1  0.0 S+   wait             check
-> >>>>>> 29180 29180 TS       -   0  19   3  0.0 S    kjournald2       jbd2/sda11-8
-> >>>>>> 29181 29181 TS       - -20  39   3  0.0 S<   rescuer_thread   ext4-dio-unwrit
-> >>>>>> 29199 29199 TS       -   0  19   3  0.0 S+   wait             269
-> >>>>>> 29391 29391 TS       -   0  19   0  0.6 D    sleep_on_buffer  jbd2/sda12-8
-> >>>>>> 29392 29392 TS       - -20  39   3  0.0 S<   rescuer_thread   ext4-dio-unwrit
-> >>>>>> 29394 29394 TS       -   0  19   0  0.0 S    wait             fsstress
-> >>>>>> 29505 29505 TS       -   0  19   3  0.0 D    writeback_inodes fsstress
-> >>>>>>
-> >>>>>> # df -T /dev/sda11 /dev/sda12
-> >>>>>> Filesystem    Type   1K-blocks      Used Available Use% Mounted on
-> >>>>>> /dev/sda11    ext4     9857264     22308   9327564   1% /mnt/mp1
-> >>>>>> /dev/sda12    ext4      499656    499656         0 100% /mnt/mp2
-> >>>>>      Thanks for report. No I don't think this problem has been reported
-> >>>>> before. Seeing that sda12 is out of space and fsstress hangs in
-> >>>>> writeback_inodes(), I suspect we have some deadlock in ENOSPC recovery path
-> >>>>> when we want to flush data to disk to reduce delalloc uncertainty. Can you
-> >>>>> run 'echo w >/proc/sysrq-trigger' when the deadlock happens and post your
-> >>>>> dmesg here? Thanks!
-> >>>>>
-> >>>>
-> >>>> Thanks for reply.
-> >>>> I'll take that information when the deadlock happens again.
-> >>>
-> >>> Finally, I got the following messages on linux-3.9.0.
-> >>> Could you take a look?
-> >> Is it a real deadlock?
-> >> umount wait for flush-8:0
-> >> flush wait for jbd2
-> >> jbd2 wait for bh.
-> >> All buffer-heads will be written at sooner or later.
-> >> It probably will require significant amount of time, because fs is too
-> >> fragmented(that is what this test all about), but it is not a deadlock.
-> >    Yeah, that is my analysis as well. I was only thinking whether we
-> > couldn't forget some buffer locked on some error recovery path (we are
-> > getting ENOSPC) but it's not obvious where it would be. Akira-san, could
-> > you also send us disassembly of your jbd2_journal_commit_transaction()
-> > function so that we can check where exactly offset 0xee0 is in the
-> > function?
-> > 
-> > 								Honza
+> With 3.9.6 mainline, I got the exact same protection fault at
+> free_rb_tree_fname() from ext4_htree_free_dir_info() [1]. This
+> suggests use-after-free, as there's no pagetable mapping.
 > 
-> I attached disasemble code of jbd2_journal_commit_tnrasaction,
-> please check it.
-  Thanks. I've looked into the disassembly now and we are waiting for the
-write of commit record to finish. We have submitted the buffer just before
-so it can hardly be some issue like forgotten locked buffer. Really
-strange. It looks like some problem in block layer, device driver, or HW
-itself... I'm thinking how to debug this further - it would be good if we
-had blktrace data just before the moment when the hang happens but given
-how hard this is to reproduce the traces would be extremly large...
+> There is nothing special with my setups, so there is fair chance it's
+> reproducible there with e4defrag on a few month old filesystem and
+> recent kernels.
 
-One idea - can you try whether the problem reproduces with 'nobarrier'
-mount option? It could be some problem with flush / fua handling.
+Sounds like we may have a bug in how the new extent_status tree code
+was integrated into fs/ext4/move_extent.c.  Zheng, if you could take a
+look I'd really appreciate it.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Thanks!!
+
+						- Ted
+
+
+> > --- [1]
+> >
+> > general protection fault: 0000 [#1] SMP
+> > Modules linked in: btrfs raid6_pq zlib_deflate xor ufs qnx4 hfsplus
+> > hfs minix ntfs msdos jfs xfs libcrc32c reiserfs ext2 8021q garp
+> > parport_pc ppdev rfcomm bnep nfsd auth_rpcgss nfs_acl nfs lockd sunrpc
+> > fscache snd_hda_codec_hdmi snd_hda_codec_realtek coretemp kvm_intel
+> > kvm snd_hda_intel snd_hda_codec snd_hwdep ghash_clmulni_intel arc4
+> > bridge iwldvm joydev i915 cryptd snd_pcm mac80211 stp llc
+> > snd_page_alloc drm_kms_helper drm snd_seq_midi snd_seq_midi_event
+> > snd_rawmidi snd_seq psmouse snd_seq_device btusb ir_sony_decoder
+> > ir_rc5_decoder ir_lirc_codec lirc_dev ir_sanyo_decoder
+> > ir_mce_kbd_decoder ir_jvc_decoder serio_raw ir_rc6_decoder iwlwifi
+> > ir_nec_decoder snd_timer i2c_algo_bit rc_rc6_mce microcode nuvoton_cir
+> > snd rc_core bluetooth soundcore mac_hid cfg80211 mei lpc_ich video lp
+> > parport hid_generic usbhid hid r8169 ahci libahci
+> > CPU 0
+> > Pid: 18139, comm: e4defrag Not tainted 3.9.0-030900rc6-generic
+> > #201304080035 ZOTAC XXXXXX/XXXXXX
+> > RIP: 0010:[<ffffffff81238188>] [<ffffffff81238188>] free_rb_tree_fname+0x28/0xb0
+> > RSP: 0018:ffff8801134a9e28 EFLAGS: 00010202
+> > RAX: 0036b44b00008001 RBX: ffff880080e09018 RCX: 0000000180400028
+> > RDX: 0036b44b00008001 RSI: 0000000000000001 RDI: ffff88013b001700
+> > RBP: ffff8801134a9e48 R08: 0000000000000000 R09: ffffea0000dbe380
+> > R10: ffffffff812381bc R11: 0000000000000206 R12: 0000000000000000
+> > R13: ffff880036f8ec80 R14: ffff880036f8ebc8 R15: ffff8800ade074c0
+> > FS: 00007fd1923d7740(0000) GS:ffff88013fa00000(0000) knlGS:0000000000000000
+> > CS: 0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> > CR2: 00000000013974d8 CR3: 00000001352f2000 CR4: 00000000000407f0
+> > DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> > DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> > Process e4defrag (pid: 18139, threadinfo ffff8801134a8000, task
+> > ffff880138d9c5f0)
+> > Stack:
+> >  ffff880036f8ec80 0000000040000010 ffff880021a2f900 ffff8800ade074c0
+> >  ffff8801134a9e68 ffffffff81238f36 0000000040000010 ffff88013890f000
+> >  ffff8801134a9e78 ffffffff81238f6a ffff8801134a9ec8 ffffffff8119f57a
+> > Call Trace:
+> >  [<ffffffff81238f36>] ext4_htree_free_dir_info+0x16/0x30
+> >  [<ffffffff81238f6a>] ext4_release_dir+0x1a/0x20
+> >  [<ffffffff8119f57a>] __fput+0xba/0x240
+> >  [<ffffffff8119f70e>] ____fput+0xe/0x10
+> >  [<ffffffff8107ca58>] task_work_run+0xc8/0xf0
+> >  [<ffffffff81014d7a>] do_notify_resume+0xaa/0xc0
+> >  [<ffffffff8170d0da>] int_signal+0x12/0x17
+> > Code: 90 90 90 66 66 66 66 90 55 48 89 e5 41 56 41 55 49 89 fd 41 54
+> > 53 48 8b 1f 48 85 db 74 67 48 8b 43 10 eb 11 0f 1f 80 00 00 00 00 <48>
+> > 8b 50 10 48 89 c3 48 89 d0 48 85 c0 75 f1 48 8b 43 08 48 85
+> > RIP [<ffffffff81238188>] free_rb_tree_fname+0x28/0xb0
+> >  RSP <ffff8801134a9e28>
+> > ---[ end trace 02741f61e6b3c24b ]---
+> > general protection fault: 0000 [#2] SMP
+> > Modules linked in: btrfs raid6_pq zlib_deflate xor ufs qnx4 hfsplus
+> > hfs minix ntfs msdos jfs xfs libcrc32c reiserfs ext2 8021q garp
+> > parport_pc ppdev rfcomm bnep nfsd auth_rpcgss nfs_acl nfs lockd sunrpc
+> > fscache snd_hda_codec_hdmi snd_hda_codec_realtek coretemp kvm_intel
+> > kvm snd_hda_intel snd_hda_codec snd_hwdep ghash_clmulni_intel arc4
+> > bridge iwldvm joydev i915 cryptd snd_pcm mac80211 stp llc
+> > snd_page_alloc drm_kms_helper drm snd_seq_midi snd_seq_midi_event
+> > snd_rawmidi snd_seq psmouse snd_seq_device btusb ir_sony_decoder
+> > ir_rc5_decoder ir_lirc_codec lirc_dev ir_sanyo_decoder
+> > ir_mce_kbd_decoder ir_jvc_decoder serio_raw ir_rc6_decoder iwlwifi
+> > ir_nec_decoder snd_timer i2c_algo_bit rc_rc6_mce microcode nuvoton_cir
+> > snd rc_core bluetooth soundcore mac_hid cfg80211 mei lpc_ich video lp
+> > parport hid_generic usbhid hid r8169 ahci libahci
+> > CPU 0
+> > Pid: 18139, comm: e4defrag Tainted: G   D   3.9.0-030900rc6-generic
+> > #201304080035 ZOTAC XXXXXX/XXXXXX
+> > RIP: 0010:[<ffffffff81238188>] [<ffffffff81238188>] free_rb_tree_fname+0x28/0xb0
+> > RSP: 0018:ffff8801134a9b78 EFLAGS: 00010202
+> > RAX: 0036b44b00008001 RBX: ffff880080e09018 RCX: 0000000000000001
+> > RDX: 0036b44b00008001 RSI: ffff88013890fb00 RDI: ffff880036f8ef80
+> > RBP: ffff8801134a9b98 R08: 0000000000000000 R09: 0000000000000000
+> > R10: ffff88013890fb10 R11: 0000000000000000 R12: 0000000040000010
+> > R13: ffff880036f8ef80 R14: ffff8800ade07108 R15: ffff8800ade07108
+> > FS: 0000000000000000(0000) GS:ffff88013fa00000(0000) knlGS:0000000000000000
+> > CS: 0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> > CR2: 00007f718650aed4 CR3: 0000000001c0d000 CR4: 00000000000407f0
+> > DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> > DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> > Process e4defrag (pid: 18139, threadinfo ffff8801134a8000, task
+> > ffff880138d9c5f0)
+> > Stack:
+> >  ffff880036f8ef80 0000000040000010 ffff880021a2fb40 ffff8800ade07108
+> >  ffff8801134a9bb8 ffffffff81238f36 0000000040000010 ffff88013890fb00
+> >  ffff8801134a9bc8 ffffffff81238f6a ffff8801134a9c18 ffffffff8119f57a
+> > Call Trace:
+> >  [<ffffffff81238f36>] ext4_htree_free_dir_info+0x16/0x30
+> >  [<ffffffff81238f6a>] ext4_release_dir+0x1a/0x20
+> >  [<ffffffff8119f57a>] __fput+0xba/0x240
+> >  [<ffffffff8119f70e>] ____fput+0xe/0x10
+> >  [<ffffffff8107ca58>] task_work_run+0xc8/0xf0
+> >  [<ffffffff81060876>] do_exit+0x196/0x480
+> >  [<ffffffff81705329>] oops_end+0xb9/0x100
+> >  [<ffffffff81017d88>] die+0x58/0x90
+> >  [<ffffffff81704d9c>] do_general_protection+0xdc/0x160
+> >  [<ffffffff81704728>] general_protection+0x28/0x30
+> >  [<ffffffff812381bc>] ? free_rb_tree_fname+0x5c/0xb0
+> >  [<ffffffff81238188>] ? free_rb_tree_fname+0x28/0xb0
+> >  [<ffffffff812381bc>] ? free_rb_tree_fname+0x5c/0xb0
+> >  [<ffffffff81238f36>] ext4_htree_free_dir_info+0x16/0x30
+> >  [<ffffffff81238f6a>] ext4_release_dir+0x1a/0x20
+> >  [<ffffffff8119f57a>] __fput+0xba/0x240
+> >  [<ffffffff8119f70e>] ____fput+0xe/0x10
+> >  [<ffffffff8107ca58>] task_work_run+0xc8/0xf0
+> >  [<ffffffff81014d7a>] do_notify_resume+0xaa/0xc0
+> >  [<ffffffff8170d0da>] int_signal+0x12/0x17
+> > Code: 90 90 90 66 66 66 66 90 55 48 89 e5 41 56 41 55 49 89 fd 41 54
+> > 53 48 8b 1f 48 85 db 74 67 48 8b 43 10 eb 11 0f 1f 80 00 00 00 00 <48>
+> > 8b 50 10 48 89 c3 48 89 d0 48 85 c0 75 f1 48 8b 43 08 48 85
+> > RIP [<ffffffff81238188>] free_rb_tree_fname+0x28/0xb0
+> >  RSP <ffff8801134a9b78>
+> > ---[ end trace 02741f61e6b3c24c ]---
+> > Fixing recursive fault but reboot is needed!
+> --
+> Daniel J Blueman
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
