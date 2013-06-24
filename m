@@ -1,203 +1,43 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] jbd2: invalidate handle if jbd2_journal_restart() fails
-Date: Mon, 24 Jun 2013 11:53:59 +0200
-Message-ID: <20130624095359.GC20471@quack.suse.cz>
-References: <20130623173628.GC16620@thunk.org>
- <1372009468-11651-1-git-send-email-tytso@mit.edu>
+From: "Sidorov, Andrei" <Andrei.Sidorov@arrisi.com>
+Subject: Re: [PATCH 0/3] ext4: introduce two new ioctls
+Date: Mon, 24 Jun 2013 10:37:57 +0000
+Message-ID: <C0F0BC787567C848B2C90989451123DA2363CDB7@ATLEXMBX4.ARRS.ARRISI.com>
+References: <1371967642-3116-1-git-send-email-linkinjeon@gmail.com>
+ <03D226D6-9598-473F-90FC-03A389E2A625@dilger.ca>
+ <7D1878F6-0387-48F3-8724-4A8946AECF9E@redhat.com>
+ <20130624024459.GJ29376@dastard> <20130624070656.GA20166@infradead.org>
+ <CAKYAXd-hJ71+zDn5c2ABb2J-zL=kb2M=GNzOWNHkS7-C4KXEzA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	jbacik@fusionio.com, younger.liu@huawei.com,
-	Jan Kara <jack@suse.cz>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:42179 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751157Ab3FXJyB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 24 Jun 2013 05:54:01 -0400
-Content-Disposition: inline
-In-Reply-To: <1372009468-11651-1-git-send-email-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Dave Chinner <david@fromorbit.com>,
+	Eric Sandeen <esandeen@redhat.com>,
+	Andreas Dilger <adilger@dilger.ca>,
+	"tytso@mit.edu" <tytso@mit.edu>,
+	"adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"a.sangwan@samsung.com" <a.sangwan@samsung.com>,
+	Namjae Jeon <namjae.jeon@samsung.com>
+To: Namjae Jeon <linkinjeon@gmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Language: en-US
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sun 23-06-13 13:44:28, Ted Tso wrote:
-> If jbd2_journal_restart() fails the handle will have been disconnected
-> from the current transaction.  In this situation, the handle must not
-> be used for for any jbd2 function other than jbd2_journal_stop().
-> Enforce this with by treating a handle which has a NULL transaction
-> pointer as an aborted handle, and issue a kernel warning if
-> jbd2_journal_extent(), jbd2_journal_get_write_access(),
-> jbd2_journal_dirty_metadata(), etc. is called with an invalid handle.
-> 
-> This commit also fixes a bug where jbd2_journal_stop() would trip over
-> a kernel jbd2 assertion check when trying to free an invalid handle.
-> 
-> Also move the responsibility of setting current->journal_info to
-> start_this_handle(), simplifying the three users of this function.
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> Reported-by: Younger Liu <younger.liu@huawei.com>
-> Cc: Jan Kara <jack@suse.cz>
-  The patch looks good to me. So you can add:
-Reviewed-by: Jan Kara <jack@suse.cz>
+On 24.06.2013 13:36, Namjae Jeon wrote:
+> Currently, we can try implementing dave's suggesstion of introducing a
+> new flag FALLOC_FL_COLLAPSE_RANGE for falloctae instead of individual
+> ioctls for both XFS and EXT4. Thanks.
 
-								Honza
+Hi,
 
-> ---
->  fs/jbd2/transaction.c | 27 ++++++++++++++++-----------
->  include/linux/jbd2.h  |  2 +-
->  2 files changed, 17 insertions(+), 12 deletions(-)
-> 
-> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-> index 7391456..8ac8306 100644
-> --- a/fs/jbd2/transaction.c
-> +++ b/fs/jbd2/transaction.c
-> @@ -368,6 +368,7 @@ repeat:
->  		  atomic_read(&transaction->t_outstanding_credits),
->  		  jbd2_log_space_left(journal));
->  	read_unlock(&journal->j_state_lock);
-> +	current->journal_info = handle;
->  
->  	lock_map_acquire(&handle->h_lockdep_map);
->  	jbd2_journal_free_transaction(new_transaction);
-> @@ -442,14 +443,11 @@ handle_t *jbd2__journal_start(journal_t *journal, int nblocks, int rsv_blocks,
->  		handle->h_rsv_handle = rsv_handle;
->  	}
->  
-> -	current->journal_info = handle;
-> -
->  	err = start_this_handle(journal, handle, gfp_mask);
->  	if (err < 0) {
->  		if (handle->h_rsv_handle)
->  			jbd2_free_handle(handle->h_rsv_handle);
->  		jbd2_free_handle(handle);
-> -		current->journal_info = NULL;
->  		return ERR_PTR(err);
->  	}
->  	handle->h_type = type;
-> @@ -511,16 +509,13 @@ int jbd2_journal_start_reserved(handle_t *handle, unsigned int type,
->  	}
->  
->  	handle->h_journal = NULL;
-> -	current->journal_info = handle;
->  	/*
->  	 * GFP_NOFS is here because callers are likely from writeback or
->  	 * similarly constrained call sites
->  	 */
->  	ret = start_this_handle(journal, handle, GFP_NOFS);
-> -	if (ret < 0) {
-> -		current->journal_info = NULL;
-> +	if (ret < 0)
->  		jbd2_journal_free_reserved(handle);
-> -	}
->  	handle->h_type = type;
->  	handle->h_line_no = line_no;
->  	return ret;
-> @@ -555,6 +550,7 @@ int jbd2_journal_extend(handle_t *handle, int nblocks)
->  	int wanted;
->  
->  	result = -EIO;
-> +	WARN_ON(!handle->h_transaction);
->  	if (is_handle_aborted(handle))
->  		goto out;
->  
-> @@ -630,6 +626,7 @@ int jbd2__journal_restart(handle_t *handle, int nblocks, gfp_t gfp_mask)
->  	tid_t		tid;
->  	int		need_to_start, ret;
->  
-> +	WARN_ON(!handle->h_transaction);
->  	/* If we've had an abort of any type, don't even think about
->  	 * actually doing the restart! */
->  	if (is_handle_aborted(handle))
-> @@ -654,6 +651,8 @@ int jbd2__journal_restart(handle_t *handle, int nblocks, gfp_t gfp_mask)
->  		wake_up(&journal->j_wait_updates);
->  	tid = transaction->t_tid;
->  	spin_unlock(&transaction->t_handle_lock);
-> +	handle->h_transaction = NULL;
-> +	current->journal_info = NULL;
->  
->  	jbd_debug(2, "restarting handle %p\n", handle);
->  	need_to_start = !tid_geq(journal->j_commit_request, tid);
-> @@ -790,6 +789,7 @@ do_get_write_access(handle_t *handle, struct journal_head *jh,
->  	int need_copy = 0;
->  	unsigned long start_lock, time_lock;
->  
-> +	WARN_ON(!handle->h_transaction);
->  	if (is_handle_aborted(handle))
->  		return -EROFS;
->  
-> @@ -1057,6 +1057,7 @@ int jbd2_journal_get_create_access(handle_t *handle, struct buffer_head *bh)
->  	int err;
->  
->  	jbd_debug(5, "journal_head %p\n", jh);
-> +	WARN_ON(!handle->h_transaction);
->  	err = -EROFS;
->  	if (is_handle_aborted(handle))
->  		goto out;
-> @@ -1269,6 +1270,7 @@ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
->  	struct journal_head *jh;
->  	int ret = 0;
->  
-> +	WARN_ON(!handle->h_transaction);
->  	if (is_handle_aborted(handle))
->  		goto out;
->  	jh = jbd2_journal_grab_journal_head(bh);
-> @@ -1523,18 +1525,19 @@ int jbd2_journal_stop(handle_t *handle)
->  {
->  	transaction_t *transaction = handle->h_transaction;
->  	journal_t *journal = transaction->t_journal;
-> -	int err, wait_for_commit = 0;
-> +	int err = 0, wait_for_commit = 0;
->  	tid_t tid;
->  	pid_t pid;
->  
-> +	if (!handle->h_transaction)
-> +		goto free_and_exit;
-> +
->  	J_ASSERT(journal_current_handle() == handle);
->  
->  	if (is_handle_aborted(handle))
->  		err = -EIO;
-> -	else {
-> +	else
->  		J_ASSERT(atomic_read(&transaction->t_updates) > 0);
-> -		err = 0;
-> -	}
->  
->  	if (--handle->h_ref > 0) {
->  		jbd_debug(4, "h_ref %d -> %d\n", handle->h_ref + 1,
-> @@ -1657,6 +1660,7 @@ int jbd2_journal_stop(handle_t *handle)
->  
->  	if (handle->h_rsv_handle)
->  		jbd2_journal_free_reserved(handle->h_rsv_handle);
-> +free_and_exit:
->  	jbd2_free_handle(handle);
->  	return err;
->  }
-> @@ -2364,6 +2368,7 @@ int jbd2_journal_file_inode(handle_t *handle, struct jbd2_inode *jinode)
->  	transaction_t *transaction = handle->h_transaction;
->  	journal_t *journal = transaction->t_journal;
->  
-> +	WARN_ON(!handle->h_transaction);
->  	if (is_handle_aborted(handle))
->  		return -EIO;
->  
-> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-> index 5f3c094..1891112 100644
-> --- a/include/linux/jbd2.h
-> +++ b/include/linux/jbd2.h
-> @@ -1295,7 +1295,7 @@ static inline int is_journal_aborted(journal_t *journal)
->  
->  static inline int is_handle_aborted(handle_t *handle)
->  {
-> -	if (handle->h_aborted)
-> +	if (handle->h_aborted || !handle->h_transaction)
->  		return 1;
->  	return is_journal_aborted(handle->h_transaction->t_journal);
->  }
-> -- 
-> 1.7.12.rc0.22.gcdd159b
-> 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Currently PUNCH_HOLE requires KEEP_SIZE to be set as well. I think there
+is no need to invent COLLAPSE_RANGE, but instead fallocate should
+support PUNCH_HOLE without KEEP_SIZE. However I'm not sure that putting
+block alignment restriction is a right way to go.
+
+Regards,
+Andrey.
