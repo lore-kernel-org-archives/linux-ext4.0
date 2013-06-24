@@ -1,63 +1,95 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH] ext4: check error return from
- ext4_write_inline_data_end()
-Date: Mon, 24 Jun 2013 21:40:02 +0800
-Message-ID: <20130624134002.GB7709@gmail.com>
-References: <20130620144421.GC28309@thunk.org>
- <1371739943-31176-1-git-send-email-tytso@mit.edu>
+Subject: Re: [PATCH -v3] ext4: delete unnecessary C statements
+Date: Mon, 24 Jun 2013 21:52:07 +0800
+Message-ID: <20130624135207.GC7709@gmail.com>
+References: <1371739943-31176-1-git-send-email-tytso@mit.edu>
+ <1371757548-30605-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	jonernst07@gmx.com, Zheng Liu <wenqing.lz@taobao.com>,
-	stable@vger.kernel.org
+	jon ernst <jonernst07@gmx.com>
 To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <stable-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pa0-f50.google.com ([209.85.220.50]:51951 "EHLO
+	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750875Ab3FXNds (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Jun 2013 09:33:48 -0400
+Received: by mail-pa0-f50.google.com with SMTP id fb1so10895050pad.23
+        for <linux-ext4@vger.kernel.org>; Mon, 24 Jun 2013 06:33:47 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <1371739943-31176-1-git-send-email-tytso@mit.edu>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1371757548-30605-1-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 20, 2013 at 10:52:23AM -0400, Theodore Ts'o wrote:
-> The function ext4_write_inline_data_end() can return an error.  So we
-> need to assign it to a signed integer variable to check for an error
-> return (since copied is an unsigned int).
+On Thu, Jun 20, 2013 at 03:45:48PM -0400, Theodore Ts'o wrote:
+> From: jon ernst <jonernst07@gmx.com>
 > 
+> Comparing unsigned variable with 0 always returns false.
+> err = 0 is duplicated and unnecessary.
+> 
+> [ tytso: Also cleaned up error handling in ext4_block_zero_page_range() ]
+> 
+> Signed-off-by: "Jon Ernst" <jonernst07@gmx.com>
 > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Zheng Liu <wenqing.lz@taobao.com>
-> Cc: stable@vger.kernel.org
-
-Sorry for the late reply.  Thanks for fixing this.  The patch looks good
-to me.
 Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
 
                                                 - Zheng
 
 > ---
->  fs/ext4/inode.c | 11 +++++++----
->  1 file changed, 7 insertions(+), 4 deletions(-)
+>  fs/ext4/inode.c | 10 +---------
+>  1 file changed, 1 insertion(+), 9 deletions(-)
 > 
 > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index baf5c2b..567a734 100644
+> index 78cf398..67963cf 100644
 > --- a/fs/ext4/inode.c
 > +++ b/fs/ext4/inode.c
-> @@ -1061,10 +1061,13 @@ static int ext4_write_end(struct file *file,
->  		}
+> @@ -1100,8 +1100,6 @@ static int ext4_write_end(struct file *file,
+>  	if (i_size_changed)
+>  		ext4_mark_inode_dirty(handle, inode);
+>  
+> -	if (copied < 0)
+> -		ret = copied;
+>  	if (pos + len > inode->i_size && ext4_can_truncate(inode))
+>  		/* if we have allocated more blocks and copied
+>  		 * less. We will have blocks allocated outside
+> @@ -3366,13 +3364,10 @@ int ext4_block_zero_page_range(handle_t *handle,
+>  		iblock++;
+>  		pos += blocksize;
 >  	}
+> -
+> -	err = 0;
+>  	if (buffer_freed(bh)) {
+>  		BUFFER_TRACE(bh, "freed: skip");
+>  		goto unlock;
+>  	}
+> -
+>  	if (!buffer_mapped(bh)) {
+>  		BUFFER_TRACE(bh, "unmapped");
+>  		ext4_get_block(inode, iblock, bh, 0);
+> @@ -3395,22 +3390,19 @@ int ext4_block_zero_page_range(handle_t *handle,
+>  		if (!buffer_uptodate(bh))
+>  			goto unlock;
+>  	}
+> -
+>  	if (ext4_should_journal_data(inode)) {
+>  		BUFFER_TRACE(bh, "get write access");
+>  		err = ext4_journal_get_write_access(handle, bh);
+>  		if (err)
+>  			goto unlock;
+>  	}
+> -
+>  	zero_user(page, offset, length);
+> -
+>  	BUFFER_TRACE(bh, "zeroed end of block");
 >  
-> -	if (ext4_has_inline_data(inode))
-> -		copied = ext4_write_inline_data_end(inode, pos, len,
-> -						    copied, page);
-> -	else
-> +	if (ext4_has_inline_data(inode)) {
-> +		ret = ext4_write_inline_data_end(inode, pos, len,
-> +						 copied, page);
-> +		if (ret < 0)
-> +			goto errout;
-> +		copied = ret;
-> +	} else
->  		copied = block_write_end(file, mapping, pos,
->  					 len, copied, page, fsdata);
->  
+> -	err = 0;
+>  	if (ext4_should_journal_data(inode)) {
+>  		err = ext4_handle_dirty_metadata(handle, inode, bh);
+>  	} else {
+> +		err = 0;
+>  		mark_buffer_dirty(bh);
+>  		if (ext4_test_inode_state(inode, EXT4_STATE_ORDERED_MODE))
+>  			err = ext4_jbd2_file_inode(handle, inode);
 > -- 
 > 1.7.12.rc0.22.gcdd159b
 > 
