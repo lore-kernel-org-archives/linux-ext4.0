@@ -1,55 +1,79 @@
-From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: [PATCH 1/2 V2] mke2fs: fix force option to create filesystem on mounted
- device
-Date: Mon, 24 Jun 2013 15:28:59 +0900
-Message-ID: <51C7E72B.2070608@sx.jp.nec.com>
+From: Namjae Jeon <linkinjeon@gmail.com>
+Subject: Re: [PATCH 0/3] ext4: introduce two new ioctls
+Date: Mon, 24 Jun 2013 15:48:14 +0900
+Message-ID: <CAKYAXd-QqhuDKAm8zFTtmiovWEax-OoyEixuQKSWxF2zQVXFSQ@mail.gmail.com>
+References: <1371967642-3116-1-git-send-email-linkinjeon@gmail.com>
+	<03D226D6-9598-473F-90FC-03A389E2A625@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>, tytso@mit.edu
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO200.gate.nec.co.jp ([210.143.35.50]:40674 "EHLO
-	tyo200.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751922Ab3FXGjx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Jun 2013 02:39:53 -0400
-Received: from tyo201.gate.nec.co.jp ([10.7.69.201])
-	by tyo200.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id r5O6dqg6004838
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 24 Jun 2013 15:39:52 +0900 (JST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: "tytso@mit.edu" <tytso@mit.edu>,
+	"adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"a.sangwan@samsung.com" <a.sangwan@samsung.com>,
+	Namjae Jeon <namjae.jeon@samsung.com>
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <03D226D6-9598-473F-90FC-03A389E2A625@dilger.ca>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-According to mke2fs man, we can create a filesystem on the mounted device
-when -FF option is specified.
-However, currently we have to specify -F option third to force mke2fs.
-This patch fixes the problem.
+2013/6/24, Andreas Dilger <adilger@dilger.ca>:
+> On 2013-06-23, at 0:07, Namjae Jeon <linkinjeon@gmail.com> wrote:
+>
+>> From: Namjae Jeon <namjae.jeon@samsung.com>
+>>
+>> This patch series introduces 2 new ioctls for ext4.
+>>
+>> Truncate_block_range ioctl truncates blocks from source file.
+>
+Hi. Andreas.
+> How is this different from fallocate(FALLOC_FL_PUNCH_HOLE)?  That is already
+> in existing kernels, and portable across multiple filesystems.
+Dave chinner already answered it.
 
-Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
----
- misc/util.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+>
+>> Transfer_block_range ioctl transfers data blocks from source file
+>> and append them at the end of destination file.
+>
+> There is already a similar ioctl for defragmenting files. Is it possible to
+> use that, or does it have different semantics?
 
-diff --git a/misc/util.c b/misc/util.c
-index 6c93e1c..40c8858 100644
---- a/misc/util.c
-+++ b/misc/util.c
-@@ -150,7 +150,7 @@ void check_mount(const char *device, int force, const char *type)
- 	}
- 	if (mount_flags & EXT2_MF_MOUNTED) {
- 		fprintf(stderr, _("%s is mounted; "), device);
--		if (force > 2) {
-+		if (force >= 2) {
- 			fputs(_("mke2fs forced anyway.  Hope /etc/mtab is "
- 				"incorrect.\n"), stderr);
- 			return;
-@@ -162,7 +162,7 @@ void check_mount(const char *device, int force, const char *type)
- 	if (mount_flags & EXT2_MF_BUSY) {
- 		fprintf(stderr, _("%s is apparently in use by the system; "),
- 			device);
--		if (force > 2) {
-+		if (force >= 2) {
- 			fputs(_("mke2fs forced anyway.\n"), stderr);
- 			return;
- 		}
+For defrag ioctl:
+struct move_extent {
+        __u32 reserved;         /* should be zero */
+        __u32 donor_fd;         /* donor file descriptor */
+        __u64 orig_start;       /* logical start offset in block for orig */
+        __u64 donor_start;      /* logical start offset in block for donor */
+        __u64 len;              /* block length to be moved */
+        __u64 moved_len;        /* moved block length */
+};
 
+For this ioctl to work, there are some pre conditions:
+1) Contiguous blocks for donor_fd are allocated in user space using fallocate.
+2) orig_start and donor_start should be same.
+
+The fundamental difference between these 2 ioctls is that in defrag
+ioctl data is copied, (page by page?) from the extents of source file
+to the newly allocated extents of donor file. However, in transfer
+block range ioctl the extents are transfered from the source file and
+appended at the end of donor file. There is only metadata movement.
+
+Thanks.
+>
+>> Ioctl1:        EXT4_IOC_TRUNCATE_BLOCK_RANGE:
+>> This ioctl truncates a range of data blocks from file.
+>> It is useful to remove easily and quickly the garbage data
+>> at the middle of file.
+>>
+>> e.g. we have a movie file and there is long advertisement in movie file.
+>> user want to remove only advertisement range.
+>
+> While this works in theory, there is very little chance that the movie data
+> will align exactly to filesystem block boundaries.
+>
+> Cheers, Andreas
+>
+>> 1) Movie file (8GB), There is the adverisement of 500MB size.
+>> ____________________________________________________________________
