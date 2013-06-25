@@ -1,145 +1,77 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [BUG] xfstest269 causes deadlock on linux-3.9.0 (ext4)
-Date: Tue, 25 Jun 2013 13:27:38 +0200
-Message-ID: <20130625112738.GF20471@quack.suse.cz>
-References: <51908CF4.2000703@rs.jp.nec.com>
- <20130514213755.GA10769@quack.suse.cz>
- <5192F998.6080706@rs.jp.nec.com>
- <51A2BB97.7030802@rs.jp.nec.com>
- <8738t8on26.fsf@openvz.org>
- <20130527083301.GA17423@quack.suse.cz>
- <51A46C79.4000105@rs.jp.nec.com>
- <20130624110402.GD20471@quack.suse.cz>
- <51C96BBD.8060701@rs.jp.nec.com>
+Subject: Re: ext4/jbd2 hangs in __jbd2_log_wait_for_space on 3.4-RT/3.6-RT
+Date: Tue, 25 Jun 2013 15:18:08 +0200
+Message-ID: <20130625131808.GA14581@quack.suse.cz>
+References: <20130531183411.GA30169@windriver.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Dmitry Monakhov <dmonakhov@openvz.org>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Akira Fujita <a-fujita@rs.jp.nec.com>
+Cc: linux-rt-users@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Paul Gortmaker <paul.gortmaker@windriver.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:33105 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:38531 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750830Ab3FYL1n (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 25 Jun 2013 07:27:43 -0400
+	id S1751332Ab3FYNSM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 Jun 2013 09:18:12 -0400
 Content-Disposition: inline
-In-Reply-To: <51C96BBD.8060701@rs.jp.nec.com>
+In-Reply-To: <20130531183411.GA30169@windriver.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 25-06-13 19:06:53, Akira Fujita wrote:
+On Fri 31-05-13 14:34:12, Paul Gortmaker wrote:
+> This problem is seen on vanilla 3.4-RT and 3.6-RT kernels. It is
+> not clear to me whether this is an RT issue, or whether (as usual)
+> RT has managed to shake out an issue in mainline code.  So I've
+> looped in the ext4 list as well as the RT list, since at the
+> moment it appears this can impact anyone using RT and ext4...
 > 
+> What happens is that under reasonable load, the jbd2/sda1-8 thread
+> goes D state, and then lots of regular processes follow suit, after
+> calling __jbd2_log_wait_for_space.  As can be seen at the bottom
+> of the sysrq-t output, j_checkpoint_mutex is implicated.  All
+> future processes trying to do I/O to/from that filesystem go D.
 > 
-> (2013/06/24 20:04), Jan Kara wrote:
-> > On Tue 28-05-13 17:36:09, Akira Fujita wrote:
-> >> Hello,
-> >>
-> >> (2013/05/27 17:33), Jan Kara wrote:
-> >>> On Mon 27-05-13 12:16:01, Dmitry Monakhov wrote:
-> >>>> On Mon, 27 May 2013 10:49:11 +0900, Akira Fujita <a-fujita@rs.jp.nec.com> wrote:
-> >>>>> Hi Jan,
-> >>>>>
-> >>>>> (2013/05/15 11:57), Akira Fujita wrote:
-> >>>>>> Hi,
-> >>>>>>
-> >>>>>> (2013/05/15 6:37), Jan Kara wrote:
-> >>>>>>>       Hello,
-> >>>>>>>
-> >>>>>>> On Mon 13-05-13 15:49:24, Akira Fujita wrote:
-> >>>>>>>> I ran into the deaclock with xfs_test 269 on linux-3.9.0.
-> >>>>>>>> It seems happen between jbd2_log_wait_commit, sleep_on_buffer
-> >>>>>>>> and writeback_indoes (Please see ps log below).
-> >>>>>>>> Once it occurs we can't touch FS anymore.
-> >>>>>>>> In my case 300 - 1000 trials to occur. Is this known issue?
-> >>>>>>>>
-> >>>>>>>> The following kernels seems to have same problem:
-> >>>>>>>> - linux-3.5-rc5
-> >>>>>>>> - linux-3.8.5
-> >>>>>>>> - linux-3.9-rc7
-> >>>>>>>> And now I'm trying it on linux-3.10-rc1.
-> >>>>>>>>
-> >>>>>>>> # ./check generic/269
-> >>>>>>>> FSTYP         -- ext4
-> >>>>>>>> PLATFORM      -- Linux/x86_64 mcds1 3.9.0
-> >>>>>>>> MKFS_OPTIONS  -- /dev/sda12
-> >>>>>>>> MOUNT_OPTIONS -- -o acl,user_xattr /dev/sda12 /mnt/mp2
-> >>>>>>>>
-> >>>>>>>>
-> >>>>>>>> # ps -eo pid,tid,class,rtprio,ni,pri,psr,pcpu,stat,wchan:16,comm
-> >>>>>>>>       PID   TID CLS RTPRIO  NI PRI PSR %CPU STAT WCHAN            COMMAND
-> >>>>>>>>         1     1 TS       -   0  19   0  0.0 Ss   poll_schedule_ti init
-> >>>>>>>>         2     2 TS       -   0  19   0  0.0 S    kthreadd         kthreadd
-> >>>>>>>>         3     3 TS       -   0  19   0  0.0 S    smpboot_thread_f ksoftirqd/0
-> >>>>>>>> ...
-> >>>>>>>>      2391  2391 TS       -   0  19   2  0.1 D    jbd2_log_wait_co flush-8:0
-> >>>>>>>> ...
-> >>>>>>>> 22647 22647 TS       -   0  19   3  0.0 S    worker_thread    kworker/3:1
-> >>>>>>>> 22655 22655 TS       -   0  19   0  0.0 S    hrtimer_nanoslee sleep
-> >>>>>>>> 22657 22657 TS       -   0  19   2  0.0 R+   -                ps
-> >>>>>>>> 25330 25330 TS       -   0  19   0  0.0 S    worker_thread    kworker/0:0
-> >>>>>>>> 28963 28963 TS       -   0  19   1  0.0 S+   wait             loop_xfstests.s
-> >>>>>>>> 28964 28964 TS       -   0  19   1  0.0 S+   wait             check
-> >>>>>>>> 29180 29180 TS       -   0  19   3  0.0 S    kjournald2       jbd2/sda11-8
-> >>>>>>>> 29181 29181 TS       - -20  39   3  0.0 S<   rescuer_thread   ext4-dio-unwrit
-> >>>>>>>> 29199 29199 TS       -   0  19   3  0.0 S+   wait             269
-> >>>>>>>> 29391 29391 TS       -   0  19   0  0.6 D    sleep_on_buffer  jbd2/sda12-8
-> >>>>>>>> 29392 29392 TS       - -20  39   3  0.0 S<   rescuer_thread   ext4-dio-unwrit
-> >>>>>>>> 29394 29394 TS       -   0  19   0  0.0 S    wait             fsstress
-> >>>>>>>> 29505 29505 TS       -   0  19   3  0.0 D    writeback_inodes fsstress
-> >>>>>>>>
-> >>>>>>>> # df -T /dev/sda11 /dev/sda12
-> >>>>>>>> Filesystem    Type   1K-blocks      Used Available Use% Mounted on
-> >>>>>>>> /dev/sda11    ext4     9857264     22308   9327564   1% /mnt/mp1
-> >>>>>>>> /dev/sda12    ext4      499656    499656         0 100% /mnt/mp2
-> >>>>>>>       Thanks for report. No I don't think this problem has been reported
-> >>>>>>> before. Seeing that sda12 is out of space and fsstress hangs in
-> >>>>>>> writeback_inodes(), I suspect we have some deadlock in ENOSPC recovery path
-> >>>>>>> when we want to flush data to disk to reduce delalloc uncertainty. Can you
-> >>>>>>> run 'echo w >/proc/sysrq-trigger' when the deadlock happens and post your
-> >>>>>>> dmesg here? Thanks!
-> >>>>>>>
-> >>>>>>
-> >>>>>> Thanks for reply.
-> >>>>>> I'll take that information when the deadlock happens again.
-> >>>>>
-> >>>>> Finally, I got the following messages on linux-3.9.0.
-> >>>>> Could you take a look?
-> >>>> Is it a real deadlock?
-> >>>> umount wait for flush-8:0
-> >>>> flush wait for jbd2
-> >>>> jbd2 wait for bh.
-> >>>> All buffer-heads will be written at sooner or later.
-> >>>> It probably will require significant amount of time, because fs is too
-> >>>> fragmented(that is what this test all about), but it is not a deadlock.
-> >>>     Yeah, that is my analysis as well. I was only thinking whether we
-> >>> couldn't forget some buffer locked on some error recovery path (we are
-> >>> getting ENOSPC) but it's not obvious where it would be. Akira-san, could
-> >>> you also send us disassembly of your jbd2_journal_commit_transaction()
-> >>> function so that we can check where exactly offset 0xee0 is in the
-> >>> function?
-> >>>
-> >>> 								Honza
-> >>
-> >> I attached disasemble code of jbd2_journal_commit_tnrasaction,
-> >> please check it.
-> >    Thanks. I've looked into the disassembly now and we are waiting for the
-> > write of commit record to finish. We have submitted the buffer just before
-> > so it can hardly be some issue like forgotten locked buffer. Really
-> > strange. It looks like some problem in block layer, device driver, or HW
-> > itself... I'm thinking how to debug this further - it would be good if we
-> > had blktrace data just before the moment when the hang happens but given
-> > how hard this is to reproduce the traces would be extremly large...
-> > 
-> > One idea - can you try whether the problem reproduces with 'nobarrier'
-> > mount option? It could be some problem with flush / fua handling.
-> > 
+> More testing details:
+> Even though debug_rt_mutex_print_deadlock shows up in each stalled
+> process backtrace, no output is seen from debug_rt_mutex_print_deadlock.
+> There are no messages in dmesg at all, until I trigger a SysRQ-t.
 > 
-> OK, I'll try to reproduce this issue with 'nobarrier'
-> (and take blktrace log if I can).
-  You can restart the blktrace every 5 minutes or so, so that trace files
-don't get too big. If we have a trace for a minute before the machine crashes
-it should be enough for debugging.
+> I've reproduced this on v3.4.42-rt57, v3.4.47-rt62, and v3.6.11.3-rt35.
+> 
+> The two separate versions of v3.4.x are because I noticed the 3.4.47
+> pulled in some jbd2 commits via stable, like 794446c6 "jbd2: fix race
+> between jbd2_journal_remove_checkpoint and ->j_commit_callback". It
+> looked promising, but having that present didn't change things.
+> 
+> I'm using a yocto build, configured for six parallel package builds,
+> each pkg in turn with "make -j6" to create I/O.  I've found that also
+> running an "rm -rf" of an old build (several gigs of data) at the
+> same time increases the probability of it.  Typically it will fail
+> within about 15m or so.  The test box is a dell optiplex 990 with
+> a single disk as ext4.  The box stays alive for basic sysrq operations
+> and anything else that doesn't touch the locked filesystem.  The build
+> halts with a static load average equal to the number of blocked D procs.
+> 
+> I've deleted the sysrq-t output from the irrelevant sleeping processes
+> in order to reduce the noise.  I'll keep looking at this but I'm hoping
+> more experienced eyes on the problem will help, since it seems common
+> to all RT users and hence of interest to everyone (I've not yet tried
+> 3.8.x-RT, mind you.)
+  Hum, this sounds familiar... I was already debugging this with RT kernel
+and I also remember it was RT specific issue. Let me try to remember the
+whole story... yes, while wandering over the traces I think I remember what
+was the problem: In standard kernel, whenever we scheduler process out from
+CPU, we unplug its IO queue in sched_submit_work(). However in RT kernel
+that was not the case. So it could happen that a process has IOs queued
+and was sent to sleep waiting for jbd2 thread to free some journal space
+and jbd2 thread was waiting for some IO to complete - however that never
+happened because the IO was sitting in the sleeping process' queue.
+
+>From a quick look into the traces you've provided this seems to be your
+case as well. I think newer RT kernels should have the bug fixed but I
+wasn't really watching closely after I handed over the problem to RT folks.
 
 								Honza
+
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
