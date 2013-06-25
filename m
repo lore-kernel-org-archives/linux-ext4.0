@@ -1,80 +1,188 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: ext4/jbd2 hangs in __jbd2_log_wait_for_space on 3.4-RT/3.6-RT
-Date: Tue, 25 Jun 2013 16:56:42 +0200
-Message-ID: <20130625145642.GA16841@quack.suse.cz>
-References: <20130531183411.GA30169@windriver.com>
- <20130625131808.GA14581@quack.suse.cz>
- <51C9A0A1.3030703@windriver.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 60121] New: -next and -mm: kmemleak reports 6 leaks in
+ ext4_mount paths
+Date: Tue, 25 Jun 2013 18:25:04 +0000 (UTC)
+Message-ID: <bug-60121-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-rt-users@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Paul Gortmaker <paul.gortmaker@windriver.com>
-Return-path: <linux-rt-users-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <51C9A0A1.3030703@windriver.com>
-Sender: linux-rt-users-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.19.201]:35693 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751005Ab3FYSZJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 Jun 2013 14:25:09 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 8E80D20396
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Jun 2013 18:25:07 +0000 (UTC)
+Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
+	by mail.kernel.org (Postfix) with ESMTP id 6DCF32038B
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Jun 2013 18:25:05 +0000 (UTC)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 25-06-13 09:52:33, Paul Gortmaker wrote:
-> On 13-06-25 09:18 AM, Jan Kara wrote:
-> > On Fri 31-05-13 14:34:12, Paul Gortmaker wrote:
-> >> This problem is seen on vanilla 3.4-RT and 3.6-RT kernels. It is
-> >> not clear to me whether this is an RT issue, or whether (as usual)
-> >> RT has managed to shake out an issue in mainline code.  So I've
-> >> looped in the ext4 list as well as the RT list, since at the
-> >> moment it appears this can impact anyone using RT and ext4...
-> >>
-> >> What happens is that under reasonable load, the jbd2/sda1-8 thread
-> >> goes D state, and then lots of regular processes follow suit, after
-> >> calling __jbd2_log_wait_for_space.  As can be seen at the bottom
-> >> of the sysrq-t output, j_checkpoint_mutex is implicated.  All
-> >> future processes trying to do I/O to/from that filesystem go D.
-> >>
-> >> More testing details:
-> >> Even though debug_rt_mutex_print_deadlock shows up in each stalled
-> >> process backtrace, no output is seen from debug_rt_mutex_print_deadlock.
-> >> There are no messages in dmesg at all, until I trigger a SysRQ-t.
-> >>
-> >> I've reproduced this on v3.4.42-rt57, v3.4.47-rt62, and v3.6.11.3-rt35.
-> >>
-> >> The two separate versions of v3.4.x are because I noticed the 3.4.47
-> >> pulled in some jbd2 commits via stable, like 794446c6 "jbd2: fix race
-> >> between jbd2_journal_remove_checkpoint and ->j_commit_callback". It
-> >> looked promising, but having that present didn't change things.
-> >>
-> >> I'm using a yocto build, configured for six parallel package builds,
-> >> each pkg in turn with "make -j6" to create I/O.  I've found that also
-> >> running an "rm -rf" of an old build (several gigs of data) at the
-> >> same time increases the probability of it.  Typically it will fail
-> >> within about 15m or so.  The test box is a dell optiplex 990 with
-> >> a single disk as ext4.  The box stays alive for basic sysrq operations
-> >> and anything else that doesn't touch the locked filesystem.  The build
-> >> halts with a static load average equal to the number of blocked D procs.
-> >>
-> >> I've deleted the sysrq-t output from the irrelevant sleeping processes
-> >> in order to reduce the noise.  I'll keep looking at this but I'm hoping
-> >> more experienced eyes on the problem will help, since it seems common
-> >> to all RT users and hence of interest to everyone (I've not yet tried
-> >> 3.8.x-RT, mind you.)
-> >   Hum, this sounds familiar... I was already debugging this with RT kernel
-> > and I also remember it was RT specific issue. Let me try to remember the
-> > whole story... yes, while wandering over the traces I think I remember what
-> > was the problem: In standard kernel, whenever we scheduler process out from
-> > CPU, we unplug its IO queue in sched_submit_work(). However in RT kernel
-> > that was not the case. So it could happen that a process has IOs queued
-> > and was sent to sleep waiting for jbd2 thread to free some journal space
-> > and jbd2 thread was waiting for some IO to complete - however that never
-> > happened because the IO was sitting in the sleeping process' queue.
-> 
-> Do you have a link to that older discussion?  I did search around before
-> posting, but came up empty.  I'll try and fold your description into my
-> thoughts as I return to looking at it (got dragged into other things
-> as of late, and haven't been spending time on this as of late...)
-  So I did some more archeology and the discussion starts here:
-https://lkml.org/lkml/2012/7/11/255
+https://bugzilla.kernel.org/show_bug.cgi?id=60121
 
-								Honza
+           Summary: -next and -mm: kmemleak reports 6 leaks in ext4_mount
+                    paths
+           Product: File System
+           Version: 2.5
+    Kernel Version: v3.10-rc6-684-g9dcc58c
+          Platform: All
+        OS/Version: Linux
+              Tree: -mm
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: jmesmon@gmail.com
+        Regression: Yes
+
+
+Created an attachment (id=106021)
+ --> (https://bugzilla.kernel.org/attachment.cgi?id=106021)
+.config
+
+In next-20130624, next-20130625 and mmotm (v3.10-rc6-684-g9dcc58c), kmemleak
+complains about some ext4_mount related allocations.
+
+----
+# cat /sys/kernel/debug/kmemleak 
+unreferenced object 0xffff880002a6dd80 (size 256):
+  comm "swapper/0", pid 1, jiffies 4294892475 (age 33.128s)
+  hex dump (first 32 bytes):
+    00 00 00 00 ad 4e ad de ff ff ff ff 00 00 00 00  .....N..........
+    ff ff ff ff ff ff ff ff 0c 0d 36 82 ff ff ff ff  ..........6.....
+  backtrace:
+    [<ffffffff813adfc1>] kmemleak_alloc+0x21/0x50
+    [<ffffffff810e7b43>] __kmalloc+0x103/0x460
+    [<ffffffff810cdd81>] list_lru_init+0x21/0xb0
+    [<ffffffff810f36b5>] sget+0x305/0x670
+    [<ffffffff810f463a>] mount_bdev+0xba/0x1e0
+    [<ffffffff81175460>] ext4_mount+0x10/0x20
+    [<ffffffff810f4950>] mount_fs+0x10/0xc0
+    [<ffffffff81111c5a>] vfs_kern_mount+0x5a/0xf0
+    [<ffffffff811133ca>] do_mount+0x1da/0x9d0
+    [<ffffffff81113c3e>] SyS_mount+0x7e/0xc0
+    [<ffffffff8184c245>] mount_block_root+0x104/0x223
+    [<ffffffff8184c455>] mount_root+0xf1/0xfa
+    [<ffffffff8184c58e>] prepare_namespace+0x130/0x168
+    [<ffffffff8184bff8>] kernel_init_freeable+0x185/0x192
+    [<ffffffff813ab7f9>] kernel_init+0x9/0x180
+    [<ffffffff813c963c>] ret_from_fork+0x7c/0xb0
+unreferenced object 0xffff880002a6d980 (size 256):
+  comm "swapper/0", pid 1, jiffies 4294892475 (age 33.128s)
+  hex dump (first 32 bytes):
+    00 00 00 00 ad 4e ad de ff ff ff ff 00 00 00 00  .....N..........
+    ff ff ff ff ff ff ff ff 0c 0d 36 82 ff ff ff ff  ..........6.....
+  backtrace:
+    [<ffffffff813adfc1>] kmemleak_alloc+0x21/0x50
+    [<ffffffff810e7b43>] __kmalloc+0x103/0x460
+    [<ffffffff810cdd81>] list_lru_init+0x21/0xb0
+    [<ffffffff810f36c9>] sget+0x319/0x670
+    [<ffffffff810f463a>] mount_bdev+0xba/0x1e0
+    [<ffffffff81175460>] ext4_mount+0x10/0x20
+    [<ffffffff810f4950>] mount_fs+0x10/0xc0
+    [<ffffffff81111c5a>] vfs_kern_mount+0x5a/0xf0
+    [<ffffffff811133ca>] do_mount+0x1da/0x9d0
+    [<ffffffff81113c3e>] SyS_mount+0x7e/0xc0
+    [<ffffffff8184c245>] mount_block_root+0x104/0x223
+    [<ffffffff8184c455>] mount_root+0xf1/0xfa
+    [<ffffffff8184c58e>] prepare_namespace+0x130/0x168
+    [<ffffffff8184bff8>] kernel_init_freeable+0x185/0x192
+    [<ffffffff813ab7f9>] kernel_init+0x9/0x180
+    [<ffffffff813c963c>] ret_from_fork+0x7c/0xb0
+unreferenced object 0xffff880002a7a7a0 (size 32):
+  comm "swapper/0", pid 1, jiffies 4294892475 (age 33.128s)
+  hex dump (first 32 bytes):
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+  backtrace:
+    [<ffffffff813adfc1>] kmemleak_alloc+0x21/0x50
+    [<ffffffff810e7b43>] __kmalloc+0x103/0x460
+    [<ffffffff810c091e>] register_shrinker+0x7e/0xa0
+    [<ffffffff810f394e>] sget+0x59e/0x670
+    [<ffffffff810f463a>] mount_bdev+0xba/0x1e0
+    [<ffffffff81175460>] ext4_mount+0x10/0x20
+    [<ffffffff810f4950>] mount_fs+0x10/0xc0
+    [<ffffffff81111c5a>] vfs_kern_mount+0x5a/0xf0
+    [<ffffffff811133ca>] do_mount+0x1da/0x9d0
+    [<ffffffff81113c3e>] SyS_mount+0x7e/0xc0
+    [<ffffffff8184c245>] mount_block_root+0x104/0x223
+    [<ffffffff8184c455>] mount_root+0xf1/0xfa
+    [<ffffffff8184c58e>] prepare_namespace+0x130/0x168
+    [<ffffffff8184bff8>] kernel_init_freeable+0x185/0x192
+    [<ffffffff813ab7f9>] kernel_init+0x9/0x180
+    [<ffffffff813c963c>] ret_from_fork+0x7c/0xb0
+unreferenced object 0xffff88000692b1c0 (size 256):
+  comm "swapper/0", pid 1, jiffies 4294892648 (age 32.500s)
+  hex dump (first 32 bytes):
+    00 00 00 00 ad 4e ad de ff ff ff ff 00 00 00 00  .....N..........
+    ff ff ff ff ff ff ff ff 0c 0d 36 82 ff ff ff ff  ..........6.....
+  backtrace:
+    [<ffffffff813adfc1>] kmemleak_alloc+0x21/0x50
+    [<ffffffff810e7b43>] __kmalloc+0x103/0x460
+    [<ffffffff810cdd81>] list_lru_init+0x21/0xb0
+    [<ffffffff810f36b5>] sget+0x305/0x670
+    [<ffffffff810f463a>] mount_bdev+0xba/0x1e0
+    [<ffffffff81175460>] ext4_mount+0x10/0x20
+    [<ffffffff810f4950>] mount_fs+0x10/0xc0
+    [<ffffffff81111c5a>] vfs_kern_mount+0x5a/0xf0
+    [<ffffffff811133ca>] do_mount+0x1da/0x9d0
+    [<ffffffff81113c3e>] SyS_mount+0x7e/0xc0
+    [<ffffffff8184c245>] mount_block_root+0x104/0x223
+    [<ffffffff8184c455>] mount_root+0xf1/0xfa
+    [<ffffffff8184c58e>] prepare_namespace+0x130/0x168
+    [<ffffffff8184bff8>] kernel_init_freeable+0x185/0x192
+    [<ffffffff813ab7f9>] kernel_init+0x9/0x180
+    [<ffffffff813c963c>] ret_from_fork+0x7c/0xb0
+unreferenced object 0xffff88000692b2c0 (size 256):
+  comm "swapper/0", pid 1, jiffies 4294892648 (age 32.500s)
+  hex dump (first 32 bytes):
+    00 00 00 00 ad 4e ad de ff ff ff ff 00 00 00 00  .....N..........
+    ff ff ff ff ff ff ff ff 0c 0d 36 82 ff ff ff ff  ..........6.....
+  backtrace:
+    [<ffffffff813adfc1>] kmemleak_alloc+0x21/0x50
+    [<ffffffff810e7b43>] __kmalloc+0x103/0x460
+    [<ffffffff810cdd81>] list_lru_init+0x21/0xb0
+    [<ffffffff810f36c9>] sget+0x319/0x670
+    [<ffffffff810f463a>] mount_bdev+0xba/0x1e0
+    [<ffffffff81175460>] ext4_mount+0x10/0x20
+    [<ffffffff810f4950>] mount_fs+0x10/0xc0
+    [<ffffffff81111c5a>] vfs_kern_mount+0x5a/0xf0
+    [<ffffffff811133ca>] do_mount+0x1da/0x9d0
+    [<ffffffff81113c3e>] SyS_mount+0x7e/0xc0
+    [<ffffffff8184c245>] mount_block_root+0x104/0x223
+    [<ffffffff8184c455>] mount_root+0xf1/0xfa
+    [<ffffffff8184c58e>] prepare_namespace+0x130/0x168
+    [<ffffffff8184bff8>] kernel_init_freeable+0x185/0x192
+    [<ffffffff813ab7f9>] kernel_init+0x9/0x180
+    [<ffffffff813c963c>] ret_from_fork+0x7c/0xb0
+unreferenced object 0xffff880006916780 (size 32):
+  comm "swapper/0", pid 1, jiffies 4294892648 (age 32.500s)
+  hex dump (first 32 bytes):
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+  backtrace:
+    [<ffffffff813adfc1>] kmemleak_alloc+0x21/0x50
+    [<ffffffff810e7b43>] __kmalloc+0x103/0x460
+    [<ffffffff810c091e>] register_shrinker+0x7e/0xa0
+    [<ffffffff810f394e>] sget+0x59e/0x670
+    [<ffffffff810f463a>] mount_bdev+0xba/0x1e0
+    [<ffffffff81175460>] ext4_mount+0x10/0x20
+    [<ffffffff810f4950>] mount_fs+0x10/0xc0
+    [<ffffffff81111c5a>] vfs_kern_mount+0x5a/0xf0
+    [<ffffffff811133ca>] do_mount+0x1da/0x9d0
+    [<ffffffff81113c3e>] SyS_mount+0x7e/0xc0
+    [<ffffffff8184c245>] mount_block_root+0x104/0x223
+    [<ffffffff8184c455>] mount_root+0xf1/0xfa
+    [<ffffffff8184c58e>] prepare_namespace+0x130/0x168
+    [<ffffffff8184bff8>] kernel_init_freeable+0x185/0x192
+    [<ffffffff813ab7f9>] kernel_init+0x9/0x180
+    [<ffffffff813c963c>] ret_from_fork+0x7c/0xb0
+#
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
