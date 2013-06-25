@@ -1,104 +1,89 @@
-From: Nagachandra P <nagachandra@gmail.com>
-Subject: Kernel crash cause by allocation failures
-Date: Tue, 25 Jun 2013 19:02:01 +0530
-Message-ID: <CAFy9=U5M+7w3zLSeuKjwKRaKmKY+SoYpzxOoFrJDQbSR3npT-A@mail.gmail.com>
+From: Paul Gortmaker <paul.gortmaker@windriver.com>
+Subject: Re: ext4/jbd2 hangs in __jbd2_log_wait_for_space on 3.4-RT/3.6-RT
+Date: Tue, 25 Jun 2013 09:52:33 -0400
+Message-ID: <51C9A0A1.3030703@windriver.com>
+References: <20130531183411.GA30169@windriver.com> <20130625131808.GA14581@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-la0-f54.google.com ([209.85.215.54]:37888 "EHLO
-	mail-la0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751314Ab3FYNiY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Jun 2013 09:38:24 -0400
-Received: by mail-la0-f54.google.com with SMTP id ec20so12155820lab.13
-        for <linux-ext4@vger.kernel.org>; Tue, 25 Jun 2013 06:38:22 -0700 (PDT)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="ISO-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: <linux-rt-users@vger.kernel.org>, <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-rt-users-owner@vger.kernel.org>
+In-Reply-To: <20130625131808.GA14581@quack.suse.cz>
+Sender: linux-rt-users-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Apologies for re-sending (Adding the subject)
+On 13-06-25 09:18 AM, Jan Kara wrote:
+> On Fri 31-05-13 14:34:12, Paul Gortmaker wrote:
+>> This problem is seen on vanilla 3.4-RT and 3.6-RT kernels. It is
+>> not clear to me whether this is an RT issue, or whether (as usual)
+>> RT has managed to shake out an issue in mainline code.  So I've
+>> looped in the ext4 list as well as the RT list, since at the
+>> moment it appears this can impact anyone using RT and ext4...
+>>
+>> What happens is that under reasonable load, the jbd2/sda1-8 thread
+>> goes D state, and then lots of regular processes follow suit, after
+>> calling __jbd2_log_wait_for_space.  As can be seen at the bottom
+>> of the sysrq-t output, j_checkpoint_mutex is implicated.  All
+>> future processes trying to do I/O to/from that filesystem go D.
+>>
+>> More testing details:
+>> Even though debug_rt_mutex_print_deadlock shows up in each stalled
+>> process backtrace, no output is seen from debug_rt_mutex_print_deadlock.
+>> There are no messages in dmesg at all, until I trigger a SysRQ-t.
+>>
+>> I've reproduced this on v3.4.42-rt57, v3.4.47-rt62, and v3.6.11.3-rt35.
+>>
+>> The two separate versions of v3.4.x are because I noticed the 3.4.47
+>> pulled in some jbd2 commits via stable, like 794446c6 "jbd2: fix race
+>> between jbd2_journal_remove_checkpoint and ->j_commit_callback". It
+>> looked promising, but having that present didn't change things.
+>>
+>> I'm using a yocto build, configured for six parallel package builds,
+>> each pkg in turn with "make -j6" to create I/O.  I've found that also
+>> running an "rm -rf" of an old build (several gigs of data) at the
+>> same time increases the probability of it.  Typically it will fail
+>> within about 15m or so.  The test box is a dell optiplex 990 with
+>> a single disk as ext4.  The box stays alive for basic sysrq operations
+>> and anything else that doesn't touch the locked filesystem.  The build
+>> halts with a static load average equal to the number of blocked D procs.
+>>
+>> I've deleted the sysrq-t output from the irrelevant sleeping processes
+>> in order to reduce the noise.  I'll keep looking at this but I'm hoping
+>> more experienced eyes on the problem will help, since it seems common
+>> to all RT users and hence of interest to everyone (I've not yet tried
+>> 3.8.x-RT, mind you.)
+>   Hum, this sounds familiar... I was already debugging this with RT kernel
+> and I also remember it was RT specific issue. Let me try to remember the
+> whole story... yes, while wandering over the traces I think I remember what
+> was the problem: In standard kernel, whenever we scheduler process out from
+> CPU, we unplug its IO queue in sched_submit_work(). However in RT kernel
+> that was not the case. So it could happen that a process has IOs queued
+> and was sent to sleep waiting for jbd2 thread to free some journal space
+> and jbd2 thread was waiting for some IO to complete - however that never
+> happened because the IO was sitting in the sleeping process' queue.
 
-Hi,
+Do you have a link to that older discussion?  I did search around before
+posting, but came up empty.  I'll try and fold your description into my
+thoughts as I return to looking at it (got dragged into other things
+as of late, and haven't been spending time on this as of late...)
 
-Here are some details on the platform
+> 
+> From a quick look into the traces you've provided this seems to be your
+> case as well. I think newer RT kernels should have the bug fixed but I
+> wasn't really watching closely after I handed over the problem to RT folks.
 
-Linux kernel version - 3.4.5
-Android - 4.2.2
-ext4 mounted with *errors=panic* option.
+I was able to reproduce it on 3.4.x and 3.6.x -- but not on 3.8.x-rt.
+However, it seemed harder to trigger on 3.6 than 3.4, and hence I'm
+never 100% confident that the problem isn't there vs. just hard to
+trigger.  The 3.8.x-rt is (as I understand it) largely technically
+equivalent to the 3.6.x-rt kernel -- so I can't explain why it can't
+happen there in principle.
 
-We see memory allocation failures mostly caused by low memory kill the
-ext4 process which is waiting for a allocation on slow path. (below is
-one such instance)
+Thanks,
+Paul.
+--
 
-select 26413 (AsyncTask #3), score_adj 647, adj 10,size 15287, to kill
-send sigkill to 26413 (AsyncTask #3), score_adj 647,adj 10, size 15287
-with ofree -450 10896, cfree 27845 984 msa 529 ma 8
-AsyncTask #3: page allocation failure: order:0, mode:0x80050
-[<c001595c>] (unwind_backtrace+0x0/0x11c) from [<c00dc064>]
-(warn_alloc_failed+0xe8/0x110)
-[<c00dc064>] (warn_alloc_failed+0xe8/0x110) from [<c00dee54>]
-(__alloc_pages_nodemask+0x6d4/0x800)
-[<c00dee54>] (__alloc_pages_nodemask+0x6d4/0x800) from [<c05fe250>]
-(cache_alloc_refill+0x30c/0x6a4)
-[<c05fe250>] (cache_alloc_refill+0x30c/0x6a4) from [<c0104eb4>]
-(kmem_cache_alloc+0xa0/0x1b8)
-[<c0104eb4>] (kmem_cache_alloc+0xa0/0x1b8) from [<c0192c34>]
-(ext4_free_blocks+0x9c4/0xa08)
-[<c0192c34>] (ext4_free_blocks+0x9c4/0xa08) from [<c01873bc>]
-(ext4_ext_remove_space+0x690/0xd9c)
-[<c01873bc>] (ext4_ext_remove_space+0x690/0xd9c) from [<c01897f8>]
-(ext4_ext_truncate+0x100/0x1c8)
-[<c01897f8>] (ext4_ext_truncate+0x100/0x1c8) from [<c016447c>]
-(ext4_truncate+0xf4/0x194)
-[<c016447c>] (ext4_truncate+0xf4/0x194) from [<c0166cc0>]
-(ext4_setattr+0x36c/0x3f8)
-[<c0166cc0>] (ext4_setattr+0x36c/0x3f8) from [<c011f540>]
-(notify_change+0x1dc/0x2a8)
-[<c011f540>] (notify_change+0x1dc/0x2a8) from [<c0107cc8>]
-(do_truncate+0x74/0x90)
-[<c0107cc8>] (do_truncate+0x74/0x90) from [<c0107e20>]
-(do_sys_ftruncate+0x13c/0x144)
-[<c0107e20>] (do_sys_ftruncate+0x13c/0x144) from [<c0108020>]
-(sys_ftruncate+0x18/0x1c)
-[<c0108020>] (sys_ftruncate+0x18/0x1c) from [<c000e140>]
-(ret_fast_syscall+0x0/0x48)
-
-followed by....
-
-SLAB: Unable to allocate memory on node 0 (gfp=0x80050)
-  cache: ext4_free_data, object size: 64, order: 0
-  node 0: slabs: 0/0, objs: 0/0, free: 0
-EXT4-fs error (device mmcblk0p26) in ext4_free_blocks:4700: Out of memory
-Aborting journal on device mmcblk0p26-8.
-EXT4-fs error (device mmcblk0p26): ext4_journal_start_sb:328: Detected
-aborted journal
-EXT4-fs (mmcblk0p26): Remounting filesystem read-only
-Kernel panic - not syncing: EXT4-fs panic from previous error
-
-[<c001595c>] (unwind_backtrace+0x0/0x11c) from [<c05fc5b4>] (panic+0x80/0x1cc)
-[<c05fc5b4>] (panic+0x80/0x1cc) from [<c017ddec>] (__ext4_abort+0xc0/0xe0)
-[<c017ddec>] (__ext4_abort+0xc0/0xe0) from [<c017dfa0>]
-(ext4_journal_start_sb+0x194/0x1c4)
-[<c017dfa0>] (ext4_journal_start_sb+0x194/0x1c4) from [<c0168c60>]
-(ext4_dirty_inode+0x14/0x40)
-[<c0168c60>] (ext4_dirty_inode+0x14/0x40) from [<c01293c0>]
-(__mark_inode_dirty+0x2c/0x1b4)
-[<c01293c0>] (__mark_inode_dirty+0x2c/0x1b4) from [<c011d6b8>]
-(file_update_time+0xfc/0x11c)
-[<c011d6b8>] (file_update_time+0xfc/0x11c) from [<c00d8f34>]
-(__generic_file_aio_write+0x2d8/0x40c)
-[<c00d8f34>] (__generic_file_aio_write+0x2d8/0x40c) from [<c00d90c8>]
-(generic_file_aio_write+0x60/0xc8)
-[<c00d90c8>] (generic_file_aio_write+0x60/0xc8) from [<c015f74c>]
-(ext4_file_write+0x244/0x2b4)
-[<c015f74c>] (ext4_file_write+0x244/0x2b4) from [<c0108a38>]
-(do_sync_write+0x9c/0xd8)
-[<c0108a38>] (do_sync_write+0x9c/0xd8) from [<c0109304>] (vfs_write+0xb0/0x128)
-[<c0109304>] (vfs_write+0xb0/0x128) from [<c010953c>] (sys_write+0x38/0x64)
-[<c010953c>] (sys_write+0x38/0x64) from [<c000e140>] (ret_fast_syscall+0x0/0x48)
-
-Is there a way in which we could avoid ext4 panic caused by allocation
-failure (a method other than setting errors=continue :-) )? (or is
-memory allocation failure considered as fatal as any other IO error)
-
-Thanks
-Nagachandra
+> 
+> 								Honza
+> 
