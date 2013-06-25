@@ -1,128 +1,131 @@
-From: Younger Liu <younger.liu@huawei.com>
-Subject: Re: [PATCH] jbd2: invalidate handle if jbd2_journal_restart() fails
-Date: Tue, 25 Jun 2013 17:42:10 +0800
-Message-ID: <51C965F2.3090704@huawei.com>
-References: <20130623173628.GC16620@thunk.org> <1372009468-11651-1-git-send-email-tytso@mit.edu>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: Re: [BUG] xfstest269 causes deadlock on linux-3.9.0 (ext4)
+Date: Tue, 25 Jun 2013 19:06:53 +0900
+Message-ID: <51C96BBD.8060701@rs.jp.nec.com>
+References: <51908CF4.2000703@rs.jp.nec.com> <20130514213755.GA10769@quack.suse.cz> <5192F998.6080706@rs.jp.nec.com> <51A2BB97.7030802@rs.jp.nec.com> <8738t8on26.fsf@openvz.org> <20130527083301.GA17423@quack.suse.cz> <51A46C79.4000105@rs.jp.nec.com> <20130624110402.GD20471@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"
+Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	<jbacik@fusionio.com>, Jan Kara <jack@suse.cz>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from szxga02-in.huawei.com ([119.145.14.65]:42155 "EHLO
-	szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752399Ab3FYJmP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Jun 2013 05:42:15 -0400
-In-Reply-To: <1372009468-11651-1-git-send-email-tytso@mit.edu>
+Received: from TYO202.gate.nec.co.jp ([210.143.35.52]:45584 "EHLO
+	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751490Ab3FYKHa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Jun 2013 06:07:30 -0400
+In-Reply-To: <20130624110402.GD20471@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2013/6/24 1:44, Theodore Ts'o wrote:
-> If jbd2_journal_restart() fails the handle will have been disconnected
-> from the current transaction.  In this situation, the handle must not
-> be used for for any jbd2 function other than jbd2_journal_stop().
-> Enforce this with by treating a handle which has a NULL transaction
-> pointer as an aborted handle, and issue a kernel warning if
-> jbd2_journal_extent(), jbd2_journal_get_write_access(),
-> jbd2_journal_dirty_metadata(), etc. is called with an invalid handle.
+
+
+(2013/06/24 20:04), Jan Kara wrote:
+> On Tue 28-05-13 17:36:09, Akira Fujita wrote:
+>> Hello,
+>>
+>> (2013/05/27 17:33), Jan Kara wrote:
+>>> On Mon 27-05-13 12:16:01, Dmitry Monakhov wrote:
+>>>> On Mon, 27 May 2013 10:49:11 +0900, Akira Fujita <a-fujita@rs.jp.nec.com> wrote:
+>>>>> Hi Jan,
+>>>>>
+>>>>> (2013/05/15 11:57), Akira Fujita wrote:
+>>>>>> Hi,
+>>>>>>
+>>>>>> (2013/05/15 6:37), Jan Kara wrote:
+>>>>>>>       Hello,
+>>>>>>>
+>>>>>>> On Mon 13-05-13 15:49:24, Akira Fujita wrote:
+>>>>>>>> I ran into the deaclock with xfs_test 269 on linux-3.9.0.
+>>>>>>>> It seems happen between jbd2_log_wait_commit, sleep_on_buffer
+>>>>>>>> and writeback_indoes (Please see ps log below).
+>>>>>>>> Once it occurs we can't touch FS anymore.
+>>>>>>>> In my case 300 - 1000 trials to occur. Is this known issue?
+>>>>>>>>
+>>>>>>>> The following kernels seems to have same problem:
+>>>>>>>> - linux-3.5-rc5
+>>>>>>>> - linux-3.8.5
+>>>>>>>> - linux-3.9-rc7
+>>>>>>>> And now I'm trying it on linux-3.10-rc1.
+>>>>>>>>
+>>>>>>>> # ./check generic/269
+>>>>>>>> FSTYP         -- ext4
+>>>>>>>> PLATFORM      -- Linux/x86_64 mcds1 3.9.0
+>>>>>>>> MKFS_OPTIONS  -- /dev/sda12
+>>>>>>>> MOUNT_OPTIONS -- -o acl,user_xattr /dev/sda12 /mnt/mp2
+>>>>>>>>
+>>>>>>>>
+>>>>>>>> # ps -eo pid,tid,class,rtprio,ni,pri,psr,pcpu,stat,wchan:16,comm
+>>>>>>>>       PID   TID CLS RTPRIO  NI PRI PSR %CPU STAT WCHAN            COMMAND
+>>>>>>>>         1     1 TS       -   0  19   0  0.0 Ss   poll_schedule_ti init
+>>>>>>>>         2     2 TS       -   0  19   0  0.0 S    kthreadd         kthreadd
+>>>>>>>>         3     3 TS       -   0  19   0  0.0 S    smpboot_thread_f ksoftirqd/0
+>>>>>>>> ...
+>>>>>>>>      2391  2391 TS       -   0  19   2  0.1 D    jbd2_log_wait_co flush-8:0
+>>>>>>>> ...
+>>>>>>>> 22647 22647 TS       -   0  19   3  0.0 S    worker_thread    kworker/3:1
+>>>>>>>> 22655 22655 TS       -   0  19   0  0.0 S    hrtimer_nanoslee sleep
+>>>>>>>> 22657 22657 TS       -   0  19   2  0.0 R+   -                ps
+>>>>>>>> 25330 25330 TS       -   0  19   0  0.0 S    worker_thread    kworker/0:0
+>>>>>>>> 28963 28963 TS       -   0  19   1  0.0 S+   wait             loop_xfstests.s
+>>>>>>>> 28964 28964 TS       -   0  19   1  0.0 S+   wait             check
+>>>>>>>> 29180 29180 TS       -   0  19   3  0.0 S    kjournald2       jbd2/sda11-8
+>>>>>>>> 29181 29181 TS       - -20  39   3  0.0 S<   rescuer_thread   ext4-dio-unwrit
+>>>>>>>> 29199 29199 TS       -   0  19   3  0.0 S+   wait             269
+>>>>>>>> 29391 29391 TS       -   0  19   0  0.6 D    sleep_on_buffer  jbd2/sda12-8
+>>>>>>>> 29392 29392 TS       - -20  39   3  0.0 S<   rescuer_thread   ext4-dio-unwrit
+>>>>>>>> 29394 29394 TS       -   0  19   0  0.0 S    wait             fsstress
+>>>>>>>> 29505 29505 TS       -   0  19   3  0.0 D    writeback_inodes fsstress
+>>>>>>>>
+>>>>>>>> # df -T /dev/sda11 /dev/sda12
+>>>>>>>> Filesystem    Type   1K-blocks      Used Available Use% Mounted on
+>>>>>>>> /dev/sda11    ext4     9857264     22308   9327564   1% /mnt/mp1
+>>>>>>>> /dev/sda12    ext4      499656    499656         0 100% /mnt/mp2
+>>>>>>>       Thanks for report. No I don't think this problem has been reported
+>>>>>>> before. Seeing that sda12 is out of space and fsstress hangs in
+>>>>>>> writeback_inodes(), I suspect we have some deadlock in ENOSPC recovery path
+>>>>>>> when we want to flush data to disk to reduce delalloc uncertainty. Can you
+>>>>>>> run 'echo w >/proc/sysrq-trigger' when the deadlock happens and post your
+>>>>>>> dmesg here? Thanks!
+>>>>>>>
+>>>>>>
+>>>>>> Thanks for reply.
+>>>>>> I'll take that information when the deadlock happens again.
+>>>>>
+>>>>> Finally, I got the following messages on linux-3.9.0.
+>>>>> Could you take a look?
+>>>> Is it a real deadlock?
+>>>> umount wait for flush-8:0
+>>>> flush wait for jbd2
+>>>> jbd2 wait for bh.
+>>>> All buffer-heads will be written at sooner or later.
+>>>> It probably will require significant amount of time, because fs is too
+>>>> fragmented(that is what this test all about), but it is not a deadlock.
+>>>     Yeah, that is my analysis as well. I was only thinking whether we
+>>> couldn't forget some buffer locked on some error recovery path (we are
+>>> getting ENOSPC) but it's not obvious where it would be. Akira-san, could
+>>> you also send us disassembly of your jbd2_journal_commit_transaction()
+>>> function so that we can check where exactly offset 0xee0 is in the
+>>> function?
+>>>
+>>> 								Honza
+>>
+>> I attached disasemble code of jbd2_journal_commit_tnrasaction,
+>> please check it.
+>    Thanks. I've looked into the disassembly now and we are waiting for the
+> write of commit record to finish. We have submitted the buffer just before
+> so it can hardly be some issue like forgotten locked buffer. Really
+> strange. It looks like some problem in block layer, device driver, or HW
+> itself... I'm thinking how to debug this further - it would be good if we
+> had blktrace data just before the moment when the hang happens but given
+> how hard this is to reproduce the traces would be extremly large...
 > 
-> This commit also fixes a bug where jbd2_journal_stop() would trip over
-> a kernel jbd2 assertion check when trying to free an invalid handle.
-> 
-> Also move the responsibility of setting current->journal_info to
-> start_this_handle(), simplifying the three users of this function.
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> Reported-by: Younger Liu <younger.liu@huawei.com>
-> Cc: Jan Kara <jack@suse.cz>
-Hi Ted,
-There is a mistake in this patch.
-Please see my comments below.
-> ---
->  fs/jbd2/transaction.c | 27 ++++++++++++++++-----------
->  include/linux/jbd2.h  |  2 +-
->  2 files changed, 17 insertions(+), 12 deletions(-)
-> 
-> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-> index 7391456..8ac8306 100644
-> --- a/fs/jbd2/transaction.c
-> +++ b/fs/jbd2/transaction.c
-...
-> @@ -1523,18 +1525,19 @@ int jbd2_journal_stop(handle_t *handle)
->  {
->  	transaction_t *transaction = handle->h_transaction;
->  	journal_t *journal = transaction->t_journal;
-> -	int err, wait_for_commit = 0;
-> +	int err = 0, wait_for_commit = 0;
->  	tid_t tid;
->  	pid_t pid;
->  
-> +	if (!handle->h_transaction)
-> +		goto free_and_exit;
-> +
->  	J_ASSERT(journal_current_handle() == handle);
->  
-If jbd2__journal_restart fails, handle->h_transaction may be NULL.
-So we should check handle->h_transaction before 
-"journal = transaction->t_journal", Right?
-How about the following?
-
-    transaction_t *transaction = handle->h_transaction;
-    journal_t *journal = NULL;
-    int err = 0, wait_for_commit = 0;
-    tid_t tid;
-    pid_t pid;
-
-    if (!handle->h_transaction)
-        goto free_and_exit;
-
-    journal = transaction->t_journal;
-    J_ASSERT(journal_current_handle() == handle);
-
-We should check this in other functions too,such as 
-jbd2_journal_extend(), jbd2_journal_get_create_access(),
-jbd2_journal_dirty_metadata(),jbd2_journal_file_inode(),
-jbd2__journal_restart(), etc. 
-
->  	if (is_handle_aborted(handle))
->  		err = -EIO;
-> -	else {
-> +	else
->  		J_ASSERT(atomic_read(&transaction->t_updates) > 0);
-> -		err = 0;
-> -	}
->  
->  	if (--handle->h_ref > 0) {
->  		jbd_debug(4, "h_ref %d -> %d\n", handle->h_ref + 1,
-> @@ -1657,6 +1660,7 @@ int jbd2_journal_stop(handle_t *handle)
->  
->  	if (handle->h_rsv_handle)
->  		jbd2_journal_free_reserved(handle->h_rsv_handle);
-> +free_and_exit:
->  	jbd2_free_handle(handle);
->  	return err;
->  }
-> @@ -2364,6 +2368,7 @@ int jbd2_journal_file_inode(handle_t *handle, struct jbd2_inode *jinode)
->  	transaction_t *transaction = handle->h_transaction;
->  	journal_t *journal = transaction->t_journal;
->  
-> +	WARN_ON(!handle->h_transaction);
->  	if (is_handle_aborted(handle))
->  		return -EIO;
->  
-> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-> index 5f3c094..1891112 100644
-> --- a/include/linux/jbd2.h
-> +++ b/include/linux/jbd2.h
-> @@ -1295,7 +1295,7 @@ static inline int is_journal_aborted(journal_t *journal)
->  
->  static inline int is_handle_aborted(handle_t *handle)
->  {
-> -	if (handle->h_aborted)
-> +	if (handle->h_aborted || !handle->h_transaction)
->  		return 1;
->  	return is_journal_aborted(handle->h_transaction->t_journal);
->  }
+> One idea - can you try whether the problem reproduces with 'nobarrier'
+> mount option? It could be some problem with flush / fua handling.
 > 
 
+OK, I'll try to reproduce this issue with 'nobarrier'
+(and take blktrace log if I can).
+
+Thanks,
+Akira Fujita
