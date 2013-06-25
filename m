@@ -1,87 +1,70 @@
-From: Zhao Hongjiang <zhaohongjiang@huawei.com>
-Subject: Re: xfstests failure generic/239
-Date: Tue, 25 Jun 2013 15:18:03 +0800
-Message-ID: <51C9442B.3030907@huawei.com>
-References: <51B2A15F.1060704@huawei.com> <20130608223038.GA19229@thunk.org>
+From: Younger Liu <younger.liu@huawei.com>
+Subject: Re: [PATCH] fs/jbd2: t_updates should increase when start_this_handle()
+ failed in jbd2__journal_restart()
+Date: Tue, 25 Jun 2013 16:30:18 +0800
+Message-ID: <51C9551A.7000900@huawei.com>
+References: <51C1381A.2@huawei.com> <20130620155555.GE28309@thunk.org> <51C4553B.7010809@huawei.com> <20130623173628.GC16620@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="ISO-8859-1"
 Content-Transfer-Encoding: 7bit
-Cc: <linux-ext4@vger.kernel.org>, <hch@lst.de>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	<linux-ext4@vger.kernel.org>,
+	Ocfs2-Devel <ocfs2-devel@oss.oracle.com>,
+	Li Zefan <lizefan@huawei.com>, <jack@suse.cz>
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from szxga03-in.huawei.com ([119.145.14.66]:10502 "EHLO
+Received: from szxga03-in.huawei.com ([119.145.14.66]:23567 "EHLO
 	szxga03-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751219Ab3FYHSj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Jun 2013 03:18:39 -0400
-In-Reply-To: <20130608223038.GA19229@thunk.org>
+	with ESMTP id S1751525Ab3FYIe6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Jun 2013 04:34:58 -0400
+In-Reply-To: <20130623173628.GC16620@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi, Ted
+I will check and test the pacth.
 
-How about this problem? Is there some progress?
+I only merge the patch about " jbd2: invalidate handle if 
+jbd2_journal_restart() fails" int my source. But I do not 
+merge the patch about "jbd2: Transaction reservation support...".
 
-				Hongjiang
+Does it affect the test?
 
-On 2013/6/9 6:30, Theodore Ts'o wrote:
-> On Sat, Jun 08, 2013 at 11:13:35AM +0800, Zhao Hongjiang wrote:
+On 2013/6/24 1:36, Theodore Ts'o wrote:
+> On Fri, Jun 21, 2013 at 09:29:31PM +0800, Younger Liu wrote:
 >>
->> I run xfstests #239 against mainline 3.10.0-rc3, unfortunately it failure in my QEMU. I run the
->> case a hundred times, it certainly hit the failure several times. The failure msg is as follow:
+>> This bug was triggered by the following scenario:
+>> In ocfs2 file system, allocate a very large disk space for a small file
+>> with ocfs2_fallocate(), while the journal file size is 32M. 
 >>
->> FSTYP         -- ext4
->> PLATFORM      -- Linux/x86_64  3.10.0-rc3-mainline
->>
->> generic/239 1s ... - output mismatch (see /home/zhj/xfstests/results/generic/239.out.bad)
->>     --- tests/generic/239.out   2013-06-07 22:04:09.000000000 -0400
->>     +++ /home/zff/xfstests/results/generic/239.out.bad  2013-06-07 22:04:09.000000000 -0400
->>     @@ -1,2 +1,515 @@
->>      QA output created by 239
->>     +hostname: Host name lookup failure
+>> Because there are much many journal blocks needed by jbd2_journal_restart(), 
+>> so that nblocks is greater than journal->j_max_transaction_buffers 
+>> in start_this_handle(), and then return -ENOSPC.
 > 
-> OK, so this hostname failure is weird; I'm not sure what's causing
-> this, but this I presume unrelated to the failure at hand.
+> Ah, I see.  I have a patch that should prevent the kernel from
+> crashing in this situation, and which adds some additional checks to
+> make sure no one tries to use the handle after jbd2_journal_restart()
+> fails in this circumstance.
 > 
->>      Silence is golden
->>     +0: 0x0
->>     +1: 0x0
->>     +2: 0x0
->>     +3: 0x0
+> However, you may want to further pursue a fix in ocfs2 so you don't
+> actually return ENOSPC to userspace, since it is a very misleading
+> error message --- it's not that the file system is out of space, but
+> that the journal is too small for the amount of space that you are
+> trying to allocate using fallocate().
 > 
-> This indicates a problem.  Test generic/239 is running
-> aio-dio-hole-filling-race.c, which submits an asynchronous, direct I/O
-> 4k write with a buffer containing non-zero contents to a sparse file,
-> and once the I/O has completed, it uses pread to read it back, using
-> the same descriptor, so it is doing the read using direct I/O.  It
-> then checks to see if the read returns zero or not.  
+> I would think a better way of handling this situation would be to log
+> a warning message that the journal is probably too small, and then to
+> break up the fallocate into smaller chunks, so that it can
+> successfully complete despite the fact that the journal was
+> unfortunately missized.
 > 
-> The "XX: 0x0" lines indicates that buffer is zero, which implies that
-> somehow aio_complete() is getting called before the uninitialized to
-> initialized conversion is taking place.  I'm not seeing how this is
-> happening, though, so I'm a bit puzzled.  If there are any unwritten
-> extents, we don't call aio_complete() in ext4_end_io_dio(), but
-> instead the conversion is queued via a call to ext4_add_compete_io(),
-> and and aio_done() is only called on the iocb after the conversion is
-> complete.
+> I'll be sending the proposed fix in a moment; could you check and see
+> if the patch prevents ocfs2/jbd2 from tripping over the assertion
+> given your test case?
 > 
-> Can anyone see something that I might be missing?
+> Thanks,
 > 
->     	       		      	      - Ted
-> 
-> P.S.  Zhao, what was the hardware that you using to find this failure?
-> I'm not seeing it, but then again if the failure is only happening
-> once every few hundred runs that might explain it.  I'm perhaps
-> wondering if we should add a mode to aio-dio-hole-filling-race.c which
-> allows it to try the race a large number of times, instead of just
-> once.
-> 
-> P.P.S.  One thought.... perhaps it might be useful to have a debug
-> mode where we use queue_delayed_work() to submit the conversion
-> request to the workqueue.  It will of course make certain workloads
-> run slow as molasses, but it might expose some races so we can see
-> them more easily.
+> 					- Ted
 > 
 > .
 > 
-
 
