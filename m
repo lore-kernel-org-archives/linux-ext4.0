@@ -1,196 +1,87 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH FOR DISCUSSION] add delalloc debugging
-Date: Tue, 25 Jun 2013 11:50:03 +0800
-Message-ID: <20130625035002.GA2896@gmail.com>
-References: <20130620164249.GC4982@thunk.org>
+From: Zhao Hongjiang <zhaohongjiang@huawei.com>
+Subject: Re: xfstests failure generic/239
+Date: Tue, 25 Jun 2013 15:18:03 +0800
+Message-ID: <51C9442B.3030907@huawei.com>
+References: <51B2A15F.1060704@huawei.com> <20130608223038.GA19229@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset="ISO-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: <linux-ext4@vger.kernel.org>, <hch@lst.de>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f169.google.com ([209.85.192.169]:34445 "EHLO
-	mail-pd0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750784Ab3FYDbh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Jun 2013 23:31:37 -0400
-Received: by mail-pd0-f169.google.com with SMTP id y10so744530pdj.0
-        for <linux-ext4@vger.kernel.org>; Mon, 24 Jun 2013 20:31:37 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <20130620164249.GC4982@thunk.org>
+Received: from szxga03-in.huawei.com ([119.145.14.66]:10502 "EHLO
+	szxga03-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751219Ab3FYHSj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Jun 2013 03:18:39 -0400
+In-Reply-To: <20130608223038.GA19229@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+Hi, Ted
 
-On Thu, Jun 20, 2013 at 12:42:49PM -0400, Theodore Ts'o wrote:
-> I've been carrying a patch in the unstable portion of the patch series
-> for a while now to debug problems with delayed allocation.  This
-> allows us to observe the state of which inodes have inodes subject for
-> delayed allocation, and how many data/metadata blocks have been
-> reserved.
+How about this problem? Is there some progress?
+
+				Hongjiang
+
+On 2013/6/9 6:30, Theodore Ts'o wrote:
+> On Sat, Jun 08, 2013 at 11:13:35AM +0800, Zhao Hongjiang wrote:
+>>
+>> I run xfstests #239 against mainline 3.10.0-rc3, unfortunately it failure in my QEMU. I run the
+>> case a hundred times, it certainly hit the failure several times. The failure msg is as follow:
+>>
+>> FSTYP         -- ext4
+>> PLATFORM      -- Linux/x86_64  3.10.0-rc3-mainline
+>>
+>> generic/239 1s ... - output mismatch (see /home/zhj/xfstests/results/generic/239.out.bad)
+>>     --- tests/generic/239.out   2013-06-07 22:04:09.000000000 -0400
+>>     +++ /home/zff/xfstests/results/generic/239.out.bad  2013-06-07 22:04:09.000000000 -0400
+>>     @@ -1,2 +1,515 @@
+>>      QA output created by 239
+>>     +hostname: Host name lookup failure
 > 
-> I've finally cleaned it up enough that it's something where I wouldn't
-> feel terrible dropping it into the mainline kernel.  (It's still a
-> little gross, but it's not truly horrifying any more.)  
+> OK, so this hostname failure is weird; I'm not sure what's causing
+> this, but this I presume unrelated to the failure at hand.
 > 
-> What do people think?  Is this something that's worth having in the
-> kernel sources?  Or shall I continue carrying it as an out-of-tree
-> debugging patch?
-
-I think it is worth having it in the kernel source.  But before we apply
-this patch, it seems that we need to solve some problems.
-
-1. Now when we read /proc/fs/ext4/{$DEV}/delalloc_debug, it will print
-the result in console.  IMHO, I don't think it is a good choice.  I
-prefer to print this result in debugfs or in sysfs.
-
-2. If we want to gain this feature, we will enable EXT4_DEBUG option.
-But in a product system, we never enable it because of performance
-degradation.  So I think that maybe we can compile it without EXT4_DEBUG
-option and dynamically enable/disalbe it.
-
-3. Maybe we can provide a interface to let the user indicate which inode
-they want to observe.
-
-Finally, the patch itself still has two minor problems.  We forget
-to call remove_proc_entry() in ext4_put_super().  Another problem is
-compile warnings.
-
+>>      Silence is golden
+>>     +0: 0x0
+>>     +1: 0x0
+>>     +2: 0x0
+>>     +3: 0x0
 > 
-> (Note: we can use similar technique to gain visibility into the status
-> the extent status LRU list.)
+> This indicates a problem.  Test generic/239 is running
+> aio-dio-hole-filling-race.c, which submits an asynchronous, direct I/O
+> 4k write with a buffer containing non-zero contents to a sparse file,
+> and once the I/O has completed, it uses pread to read it back, using
+> the same descriptor, so it is doing the read using direct I/O.  It
+> then checks to see if the read returns zero or not.  
+> 
+> The "XX: 0x0" lines indicates that buffer is zero, which implies that
+> somehow aio_complete() is getting called before the uninitialized to
+> initialized conversion is taking place.  I'm not seeing how this is
+> happening, though, so I'm a bit puzzled.  If there are any unwritten
+> extents, we don't call aio_complete() in ext4_end_io_dio(), but
+> instead the conversion is queued via a call to ext4_add_compete_io(),
+> and and aio_done() is only called on the iocb after the conversion is
+> complete.
+> 
+> Can anyone see something that I might be missing?
+> 
+>     	       		      	      - Ted
+> 
+> P.S.  Zhao, what was the hardware that you using to find this failure?
+> I'm not seeing it, but then again if the failure is only happening
+> once every few hundred runs that might explain it.  I'm perhaps
+> wondering if we should add a mode to aio-dio-hole-filling-race.c which
+> allows it to try the race a large number of times, instead of just
+> once.
+> 
+> P.P.S.  One thought.... perhaps it might be useful to have a debug
+> mode where we use queue_delayed_work() to submit the conversion
+> request to the workqueue.  It will of course make certain workloads
+> run slow as molasses, but it might expose some races so we can see
+> them more easily.
+> 
+> .
+> 
 
-I am happy to generate a patch for extent status LRU list.
 
-> 
->       	          	       	      	  - Ted
-> 
-> From f6417debc1c96a9dfa6b9f19da14eff35bf0f504 Mon Sep 17 00:00:00 2001
-> From: Theodore Ts'o <tytso@mit.edu>
-> Date: Thu, 20 Jun 2013 12:35:39 -0400
-> Subject: [PATCH] ext4: add delalloc debugging
-> 
-> This adds a file in /proc/fs/ext4/<dev> which when opened for reading,
-> will trigger debugging code that dumps a lot of information about
-> inodes subject to delayed allocation to the console.
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  fs/ext4/super.c | 78 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
->  1 file changed, 77 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 85b3dd6..ecb8256 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1832,6 +1832,74 @@ static const struct file_operations ext4_seq_options_fops = {
->  	.release = single_release,
->  };
->  
-> +#ifdef CONFIG_EXT4_DEBUG
-#ifndef MODULE
-> +static void print_inode_delalloc_info(struct inode *inode)
-> +{
-> +	if (!EXT4_I(inode)->i_reserved_data_blocks ||
-> +	    !EXT4_I(inode)->i_reserved_meta_blocks)
-> +		return;
-> +
-> +	printk(KERN_DEBUG "ino %lu: %u %u\n", inode->i_ino,
-> +	       EXT4_I(inode)->i_reserved_data_blocks,
-> +	       EXT4_I(inode)->i_reserved_meta_blocks);
-> +}
-#endif
-> +
-> +static int debug_delalloc_show(struct seq_file *seq, void *offset)
-> +{
-> +	return 0;
-> +}
-> +
-> +static int options_delalloc_debug_open_fs(struct inode *proc_inode,
-> +					  struct file *file)
-> +{
-> +	struct super_block *sb = PDE_DATA(proc_inode);
-> +	struct ext4_sb_info *sbi = EXT4_SB(sb);
-#ifndef MODULE
-> +	struct inode *inode;
-> +	extern spinlock_t inode_sb_list_lock;
-#endif
-
-Regards,
-                                                - Zheng
-
-> +
-> +	printk(KERN_DEBUG "EXT4-fs debug delalloc of %s\n", sb->s_id);
-> +	printk(KERN_DEBUG "EXT4-fs: dirty clusters %lld free clusters %lld\n",
-> +	       percpu_counter_sum(&sbi->s_dirtyclusters_counter),
-> +	       percpu_counter_sum(&sbi->s_freeclusters_counter));
-> +
-> +#ifndef MODULE
-> +	spin_lock(&inode_sb_list_lock);
-> +	if (!list_empty(&sb->s_bdi->wb.b_dirty)) {
-> +		printk(KERN_DEBUG "s_bdi->wb.b_dirty list:\n");
-> +		list_for_each_entry(inode, &sb->s_bdi->wb.b_dirty,
-> +				    i_wb_list) {
-> +			print_inode_delalloc_info(inode);
-> +		}
-> +	}
-> +	if (!list_empty(&sb->s_bdi->wb.b_io)) {
-> +		printk(KERN_DEBUG "s_bdi->wb.b_io list:\n");
-> +		list_for_each_entry(inode, &sb->s_bdi->wb.b_io,
-> +				    i_wb_list) {
-> +			print_inode_delalloc_info(inode);
-> +		}
-> +	}
-> +	if (!list_empty(&sb->s_bdi->wb.b_more_io)) {
-> +		printk(KERN_DEBUG "s_bdi->wb.b_more_io list:\n");
-> +		list_for_each_entry(inode, &sb->s_bdi->wb.b_more_io,
-> +				    i_wb_list) {
-> +			print_inode_delalloc_info(inode);
-> +		}
-> +	}
-> +	spin_unlock(&inode_sb_list_lock);
-> +	printk(KERN_DEBUG "ext4 debug delalloc done\n");
-> +#endif
-> +	return single_open(file, debug_delalloc_show, sb);
-> +}
-> +
-> +static const struct file_operations ext4_seq_delalloc_debug_fops = {
-> +	.owner = THIS_MODULE,
-> +	.open = options_delalloc_debug_open_fs,
-> +	.read = seq_read,
-> +	.llseek = seq_lseek,
-> +	.release = single_release,
-> +};
-> +#endif
-> +
->  static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
->  			    int read_only)
->  {
-> @@ -3764,9 +3832,14 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  	if (ext4_proc_root)
->  		sbi->s_proc = proc_mkdir(sb->s_id, ext4_proc_root);
->  
-> -	if (sbi->s_proc)
-> +	if (sbi->s_proc) {
->  		proc_create_data("options", S_IRUGO, sbi->s_proc,
->  				 &ext4_seq_options_fops, sb);
-> +#ifdef CONFIG_EXT4_DEBUG
-> +		proc_create_data("delalloc_debug", S_IRUSR, sbi->s_proc,
-> +				 &ext4_seq_delalloc_debug_fops, sb);
-> +#endif
-> +	}
->  
->  	bgl_lock_init(sbi->s_blockgroup_lock);
->  
-> @@ -4149,6 +4222,9 @@ failed_mount:
->  		crypto_free_shash(sbi->s_chksum_driver);
->  	if (sbi->s_proc) {
->  		remove_proc_entry("options", sbi->s_proc);
-> +#ifdef CONFIG_EXT4_DEBUG
-> +		remove_proc_entry("delalloc_debug", sbi->s_proc);
-> +#endif
->  		remove_proc_entry(sb->s_id, ext4_proc_root);
->  	}
->  #ifdef CONFIG_QUOTA
-> -- 
-> 1.7.12.rc0.22.gcdd159b
-> 
