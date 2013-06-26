@@ -1,59 +1,55 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Memory allocation can cause ext4 filesystem to be remounted r/o
-Date: Wed, 26 Jun 2013 18:14:22 -0400
-Message-ID: <20130626221422.GC4128@thunk.org>
-References: <CAFy9=U5n-YF017L+gni4v8pgq-AsLVTZBLwaZhPjHJCMXzLLag@mail.gmail.com>
- <20130626140205.GE3875@thunk.org>
- <20130626145417.GB32092@thunk.org>
- <49ee4e84554c82d944d092fe2ec8ce82@josephdwagner.info>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH V2] e2fsprogs: fix tests/f_extent_oobounds
+Date: Wed, 26 Jun 2013 19:09:22 -0400
+Message-ID: <51CB74A2.3020807@redhat.com>
+References: <51CB41AA.5040605@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Nagachandra P <nagachandra@gmail.com>,
-	Vikram MP <mp.vikram@gmail.com>, linux-ext4@vger.kernel.org
-To: "Joseph D. Wagner" <joe@josephdwagner.info>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:33253 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752890Ab3FZWO1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 26 Jun 2013 18:14:27 -0400
-Content-Disposition: inline
-In-Reply-To: <49ee4e84554c82d944d092fe2ec8ce82@josephdwagner.info>
+Received: from mx1.redhat.com ([209.132.183.28]:50115 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752953Ab3FZXJX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 26 Jun 2013 19:09:23 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r5QN9NXe027904
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Wed, 26 Jun 2013 19:09:23 -0400
+Received: from Liberator-563.local (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r5QN9MR4010912
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 26 Jun 2013 19:09:23 -0400
+In-Reply-To: <51CB41AA.5040605@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 26, 2013 at 11:53:12AM -0700, Joseph D. Wagner wrote:
->  1. Does not guarantee that memory will be available when ext4 needs
->     its.  Memory might be available during this pre-check, but another
->     process might scoop it up between the pre-check and ext4's
->     allocation.
+Use $DEBUGFS and $MKE2FS to get the in-tree executables
+for this test.
 
-This is the huge one.  In some cases we might need to read potentially
-one or more disk blocks in the course of servicing the request.  By
-the time we've read in the disk blocks, hundreds of milliseconds can
-have gone by.  If there is a high speed network transfer coming in
-over the network, the networking stack can chew up a huge amount of
-memory surprisingly quickly (to say nothing of a JVM that might be
-starting up in parallel with reading in the allocation bitmaps, for
-example).
+(Build machines which run make check shouldn't need to have
+e2fsprogs installed, and we should be testing just-built versions
+of the tools anyway)
 
-This is also assuming we know in advance how much memory would be
-needed.  Depending on how fragmented a file might be, the amount of
-memory required can vary significantly.  And if the required metadata
-blocks are in memory, we won't know how much memory will be needed
-until we pull the necessary blocks into memory.
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-The other problem with doing this is that the point at which we would
-do the check for the necessary memory is at the high-level portions of
-the ext4, and the places where we are doing the memory allocation are
-sometimes deep in the guts of ext4.  So figuring this out would
-require some truly nasty abstraction violations.  For the same reason,
-we can't just simply allocate the memory before we start the
-file system operation.
+V2: need to fix mke2fs as well as debugfs
 
-There are places where we could do this, without doing severe violence
-to the surrounding code and without making things a total maintenance
-nightmare.  But it's one of those things where we'd have to look at
-each place where we allocate memory and decide what's the best way to
-handle things.
+diff --git a/tests/f_extent_oobounds/script b/tests/f_extent_oobounds/script
+index 31ac6c9..b00b031 100644
+--- a/tests/f_extent_oobounds/script
++++ b/tests/f_extent_oobounds/script
+@@ -4,8 +4,8 @@ SKIP_GUNZIP="true"
+ TEST_DATA="$test_name.tmp"
+ 
+ dd if=/dev/zero of=$TMPFILE bs=1k count=256 > /dev/null 2>&1
+-mke2fs -Ft ext4 $TMPFILE > /dev/null 2>&1
+-debugfs -w $TMPFILE << EOF  > /dev/null 2>&1
++$MKE2FS -Ft ext4 $TMPFILE > /dev/null 2>&1
++$DEBUGFS -w $TMPFILE << EOF  > /dev/null 2>&1
+ write /dev/null testfile
+ extent_open testfile
+   insert_node 0 15 100
 
-							- Ted
+
