@@ -1,74 +1,160 @@
-From: "Joseph D. Wagner" <joe@josephdwagner.info>
-Subject: Re: Memory allocation can cause ext4 filesystem to be remounted r/o
-Date: Wed, 26 Jun 2013 11:53:12 -0700
-Message-ID: <49ee4e84554c82d944d092fe2ec8ce82@josephdwagner.info>
-References: <CAFy9=U5n-YF017L+gni4v8pgq-AsLVTZBLwaZhPjHJCMXzLLag@mail.gmail.com>
- <20130626140205.GE3875@thunk.org> <20130626145417.GB32092@thunk.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] tests: add new test f_extent_oobounds
+Date: Wed, 26 Jun 2013 15:30:46 -0400
+Message-ID: <51CB4166.7090107@redhat.com>
+References: <51B158C4.8070000@redhat.com> <1370577376-2875-1-git-send-email-tytso@mit.edu> <51B15BC0.2020308@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Nagachandra P <nagachandra@gmail.com>,
-	Vikram MP <mp.vikram@gmail.com>, <linux-ext4@vger.kernel.org>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from josephdwagner.info ([72.4.161.242]:59741 "EHLO
-	josephdwagner.info" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752616Ab3FZSwk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Jun 2013 14:52:40 -0400
-In-Reply-To: <20130626145417.GB32092@thunk.org>
+Received: from mx1.redhat.com ([209.132.183.28]:61238 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751912Ab3FZTat (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 26 Jun 2013 15:30:49 -0400
+In-Reply-To: <51B15BC0.2020308@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 06/26/2013 7:54 am, Theodore Ts'o wrote:
-
-> On Wed, Jun 26, 2013 at 10:02:05AM -0400, Theodore Ts'o wrote:
+On 6/7/13 12:04 AM, Eric Sandeen wrote:
+> On 6/6/13 10:56 PM, Theodore Ts'o wrote:
+>> This tests creates a file system where the last entry in one leaf
+>> block overlaps with logical block range in the first entry of the next
+>> leaf block.
+>>
+>> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 > 
->> In this particular case, we could reflect the error all the way up to
->> the ftruncate(2) system call. Fixing this is going to be a bit
->> involved, unfortunately; we'll need to update a fairly large number 
->> of
->> function signatures, including ext4_truncate(), ext4_ext_truncate(),
->> ext4_free_blocks(), and a number of others.
+> Looks good to me, thanks.
 > 
-> One thing that comes to mind. If we change things so that ftruncate
-> reflects an ENOMEM error all the way up to userspace, one side effect
-> of this is that the file may be partially truncated when ENOMEM is
-> returned. Applications may not be prepared for this.
+> Reviewed-by: Eric Sandeen <sandeen@redhat.com>
 
-Hi Ted, it's the newbie again.  I'd like to throw out a possible
-band-aid, which I know is ugly, but I'm not sure how it compares to
-other ideas discussed.
+Ho hum, but not tested-by.  :(  This actually fails for me.
 
-What if there was a check at the start of the chain for free memory?
-For example:
+--- f_extent_oobounds/expect.1  2013-06-26 19:54:18.687988530 +0000
++++ f_extent_oobounds.1.log     2013-06-26 19:55:13.071988447 +0000
+@@ -1,24 +1,20 @@
+ Pass 1: Checking inodes, blocks, and sizes
+-Inode 12, end of extent exceeds allowed value
+-       (logical block 15, physical block 200, len 30)
+-Clear? yes
+-
+-Inode 12, i_blocks is 154, should be 94.  Fix? yes
++Inode 12, i_blocks is 154, should be 0.  Fix? yes
 
-  1. User program calls function_x(parameter y).
-  2. We know function_x() calls function_a(), function_b(), and
-     function_c().
-  3. Based upon our knowledge of those functions (and perhaps
-     parameter y), we can _estimate_ that function_x() will require
-     z bytes memory.
-  4. Alter function_x() so that the first step is to check for free
-     memory z.
+This is because the test runs debugfs from the system, not
+from the tree, and if that debugfs doesn't have the extent_open command,
+it fails silently.
 
-Upside
-  1. Obvious memory shortages are returned immediately, instead of 30
-     steps down the chain.
-  2. No risk of non-deterministic data changes (if caught; see 
-downside).
-  2. No risk of infinite loop due to retries.
-  3. Puts a spotlight on applications that do not correctly handle
-     ENOMEM, which to me is the equivalent of not correctly calling
-     fsync().
+I'll send a patch.
 
-Downside
-  1. Does not guarantee that memory will be available when ext4 needs
-     its.  Memory might be available during this pre-check, but another
-     process might scoop it up between the pre-check and ext4's
-     allocation.
-  2. Does not catch all cases.  The check is only an estimate.
+-eric
 
-Thank you for your patience and for answering my questions.
+>> ---
+>>  tests/f_extent_oobounds/expect.1 | 24 +++++++++++++++++++++++
+>>  tests/f_extent_oobounds/expect.2 |  7 +++++++
+>>  tests/f_extent_oobounds/script   | 42 ++++++++++++++++++++++++++++++++++++++++
+>>  3 files changed, 73 insertions(+)
+>>  create mode 100644 tests/f_extent_oobounds/expect.1
+>>  create mode 100644 tests/f_extent_oobounds/expect.2
+>>  create mode 100644 tests/f_extent_oobounds/script
+>>
+>> diff --git a/tests/f_extent_oobounds/expect.1 b/tests/f_extent_oobounds/expect.1
+>> new file mode 100644
+>> index 0000000..3164ea0
+>> --- /dev/null
+>> +++ b/tests/f_extent_oobounds/expect.1
+>> @@ -0,0 +1,24 @@
+>> +Pass 1: Checking inodes, blocks, and sizes
+>> +Inode 12, end of extent exceeds allowed value
+>> +	(logical block 15, physical block 200, len 30)
+>> +Clear? yes
+>> +
+>> +Inode 12, i_blocks is 154, should be 94.  Fix? yes
+>> +
+>> +Pass 2: Checking directory structure
+>> +Pass 3: Checking directory connectivity
+>> +Pass 4: Checking reference counts
+>> +Pass 5: Checking group summary information
+>> +Block bitmap differences:  -(200--229)
+>> +Fix? yes
+>> +
+>> +Free blocks count wrong for group #0 (156, counted=186).
+>> +Fix? yes
+>> +
+>> +Free blocks count wrong (156, counted=186).
+>> +Fix? yes
+>> +
+>> +
+>> +test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
+>> +test_filesys: 12/32 files (8.3% non-contiguous), 70/256 blocks
+>> +Exit status is 1
+>> diff --git a/tests/f_extent_oobounds/expect.2 b/tests/f_extent_oobounds/expect.2
+>> new file mode 100644
+>> index 0000000..22c4f2c
+>> --- /dev/null
+>> +++ b/tests/f_extent_oobounds/expect.2
+>> @@ -0,0 +1,7 @@
+>> +Pass 1: Checking inodes, blocks, and sizes
+>> +Pass 2: Checking directory structure
+>> +Pass 3: Checking directory connectivity
+>> +Pass 4: Checking reference counts
+>> +Pass 5: Checking group summary information
+>> +test_filesys: 12/32 files (8.3% non-contiguous), 70/256 blocks
+>> +Exit status is 0
+>> diff --git a/tests/f_extent_oobounds/script b/tests/f_extent_oobounds/script
+>> new file mode 100644
+>> index 0000000..31ac6c9
+>> --- /dev/null
+>> +++ b/tests/f_extent_oobounds/script
+>> @@ -0,0 +1,42 @@
+>> +if test -x $DEBUGFS_EXE; then
+>> +
+>> +SKIP_GUNZIP="true"
+>> +TEST_DATA="$test_name.tmp"
+>> +
+>> +dd if=/dev/zero of=$TMPFILE bs=1k count=256 > /dev/null 2>&1
+>> +mke2fs -Ft ext4 $TMPFILE > /dev/null 2>&1
+>> +debugfs -w $TMPFILE << EOF  > /dev/null 2>&1
+>> +write /dev/null testfile
+>> +extent_open testfile
+>> +  insert_node 0 15 100
+>> +  insert_node --after 15 15 115
+>> +  insert_node --after 30 15 130
+>> +  insert_node --after 45 15 145
+>> +  split
+>> +  down
+>> +  split
+>> +  root
+>> +  down
+>> +  next
+>> +  replace_node 15 30 200
+>> +  extent_close
+>> +set_inode_field testfile i_size 61400
+>> +set_inode_field testfile i_blocks 154
+>> +setb 100 15
+>> +setb 130 30
+>> +setb 200 30
+>> +set_bg 0 free_blocks_count 156
+>> +set_bg 0 bg_checksum calc
+>> +set_super_value free_blocks_count 156
+>> +q
+>> +EOF
+>> +
+>> +. $cmd_dir/run_e2fsck
+>> +
+>> +rm -f $TEST_DATA
+>> +
+>> +unset E2FSCK_TIME TEST_DATA
+>> +
+>> +else #if test -x $DEBUGFS_EXE; then
+>> +	echo "$test_name: $test_description: skipped"
+>> +fi
+>>
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
-Joseph D. Wagner
