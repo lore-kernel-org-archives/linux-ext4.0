@@ -1,75 +1,74 @@
-From: Theodore Ts'o <tytso@mit.edu>
+From: "Joseph D. Wagner" <joe@josephdwagner.info>
 Subject: Re: Memory allocation can cause ext4 filesystem to be remounted r/o
-Date: Wed, 26 Jun 2013 14:03:45 -0400
-Message-ID: <20130626180345.GA4128@thunk.org>
+Date: Wed, 26 Jun 2013 11:53:12 -0700
+Message-ID: <49ee4e84554c82d944d092fe2ec8ce82@josephdwagner.info>
 References: <CAFy9=U5n-YF017L+gni4v8pgq-AsLVTZBLwaZhPjHJCMXzLLag@mail.gmail.com>
- <20130626140205.GE3875@thunk.org>
- <20130626145417.GB32092@thunk.org>
- <CAFy9=U5O9qQP5QU_Nw4fEbfy2oVxUub=ddYgJ_ZKXmjdChO4iA@mail.gmail.com>
- <20130626163450.GA2487@thunk.org>
- <CAFy9=U5m5uew586C2eZJ7HjkRN5PvKr8+FoDdj8xtJoBeuP-_A@mail.gmail.com>
+ <20130626140205.GE3875@thunk.org> <20130626145417.GB32092@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Vikram MP <mp.vikram@gmail.com>, linux-ext4@vger.kernel.org
-To: Nagachandra P <nagachandra@gmail.com>
+Content-Type: text/plain; charset=UTF-8;
+ format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Nagachandra P <nagachandra@gmail.com>,
+	Vikram MP <mp.vikram@gmail.com>, <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:33183 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752487Ab3FZSDs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 26 Jun 2013 14:03:48 -0400
-Content-Disposition: inline
-In-Reply-To: <CAFy9=U5m5uew586C2eZJ7HjkRN5PvKr8+FoDdj8xtJoBeuP-_A@mail.gmail.com>
+Received: from josephdwagner.info ([72.4.161.242]:59741 "EHLO
+	josephdwagner.info" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752616Ab3FZSwk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Jun 2013 14:52:40 -0400
+In-Reply-To: <20130626145417.GB32092@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 26, 2013 at 10:35:22PM +0530, Nagachandra P wrote:
+On 06/26/2013 7:54 am, Theodore Ts'o wrote:
+
+> On Wed, Jun 26, 2013 at 10:02:05AM -0400, Theodore Ts'o wrote:
 > 
-> These issue are not easy to reproduce!!! We are running multiple
-> applications (of different memory size) over a period of a 24 hrs to
-> 36 hrs and we hit this once. We have seen these issues easier to
-> reproduce typically with around 512MB memory (may be in about 16 hrs -
-> 20 hrs), and harder to reproduce with 1GB memory.
+>> In this particular case, we could reflect the error all the way up to
+>> the ftruncate(2) system call. Fixing this is going to be a bit
+>> involved, unfortunately; we'll need to update a fairly large number 
+>> of
+>> function signatures, including ext4_truncate(), ext4_ext_truncate(),
+>> ext4_free_blocks(), and a number of others.
 > 
-> Most of the time we get into these situation are when an application
-> (Typically AsyncTasks in Android) that is doing ext4 fs ops are of low
-> adj values (> 9, typically 10 - 12) and hence would be fairly gullible
-> to be killed (and there would be no way to distinguish this from
-> application perspective), this is one of the challenges we are facing.
-> Also, here we are don't have to completely be out of memory (but just
-> withing the LMK band for the process adj value).
+> One thing that comes to mind. If we change things so that ftruncate
+> reflects an ENOMEM error all the way up to userspace, one side effect
+> of this is that the file may be partially truncated when ENOMEM is
+> returned. Applications may not be prepared for this.
 
-To be clear, if the application is killed by the low memory killer,
-we're not going to trigger the ext4_std_err() codepath.  The
-ext4_std_error() is getting called because free memory has fallen to
-_zero_ and so kmem_cache_alloc() returns an error.  Should ext4 do a
-better job with handling this?  Yes, absolutely.  I do consider this a
-fs bug that we should try to fix.  The reality though is if that free
-memory has gone to zero, it's going to put multiple kernel subsystems
-under stress.
+Hi Ted, it's the newbie again.  I'd like to throw out a possible
+band-aid, which I know is ugly, but I'm not sure how it compares to
+other ideas discussed.
 
-It is good to hear that this is only happening on highly memory
-constrained devices --- speaking as a owner of a Nexus 4 with 2GB of
-memory.  :-P
+What if there was a check at the start of the chain for free memory?
+For example:
 
-That's why the bigger issue is why did free memory go to zero in the
-first place?  That means the LMK was probably not being aggressive
-enough, or something started consuming a lot of memory too quickly,
-before the page cleaner and write throttling algorithms could kick in
-and try to deal with it.
+  1. User program calls function_x(parameter y).
+  2. We know function_x() calls function_a(), function_b(), and
+     function_c().
+  3. Based upon our knowledge of those functions (and perhaps
+     parameter y), we can _estimate_ that function_x() will require
+     z bytes memory.
+  4. Alter function_x() so that the first step is to check for free
+     memory z.
 
-> But, on rethinking your idea on retrying may work if we have some
-> tweaks in LMK as well (like killing multiple tasks instead of just
-> one).
+Upside
+  1. Obvious memory shortages are returned immediately, instead of 30
+     steps down the chain.
+  2. No risk of non-deterministic data changes (if caught; see 
+downside).
+  2. No risk of infinite loop due to retries.
+  3. Puts a spotlight on applications that do not correctly handle
+     ENOMEM, which to me is the equivalent of not correctly calling
+     fsync().
 
-You might also consider looking at tweaking the mm low watermark and
-minimum watermark.  See the tunable /proc/sys/vm/min_free_kbytes.
+Downside
+  1. Does not guarantee that memory will be available when ext4 needs
+     its.  Memory might be available during this pre-check, but another
+     process might scoop it up between the pre-check and ext4's
+     allocation.
+  2. Does not catch all cases.  The check is only an estimate.
 
-You might want to just simply try monitorinig the free memory levels
-on a continuous basis, and see how often it's dropping below some
-minimum level.  This will allow you to give you a figure of merit by
-which you can try tuning your system, without needing to wait for a
-file system error.
+Thank you for your patience and for answering my questions.
 
-Cheers,
-
-					- Ted
+Joseph D. Wagner
