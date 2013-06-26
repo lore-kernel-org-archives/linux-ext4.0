@@ -1,72 +1,70 @@
-From: Dave Chinner <david@fromorbit.com>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: [PATCH FOR DISCUSSION] add delalloc debugging
-Date: Wed, 26 Jun 2013 23:18:23 +1000
-Message-ID: <20130626131823.GA20140@dastard>
+Date: Wed, 26 Jun 2013 09:39:13 -0400
+Message-ID: <20130626133913.GD3875@thunk.org>
 References: <20130620164249.GC4982@thunk.org>
+ <20130625035002.GA2896@gmail.com>
+ <alpine.LFD.2.00.1306261414000.5729@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <gnehzuil.liu@gmail.com>
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Zheng Liu <gnehzuil.liu@gmail.com>, linux-ext4@vger.kernel.org
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:33406 "EHLO
-	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751355Ab3FZNS3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 26 Jun 2013 09:18:29 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:33069 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751960Ab3FZNjR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 26 Jun 2013 09:39:17 -0400
 Content-Disposition: inline
-In-Reply-To: <20130620164249.GC4982@thunk.org>
+In-Reply-To: <alpine.LFD.2.00.1306261414000.5729@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 20, 2013 at 12:42:49PM -0400, Theodore Ts'o wrote:
-> I've been carrying a patch in the unstable portion of the patch series
-> for a while now to debug problems with delayed allocation.  This
-> allows us to observe the state of which inodes have inodes subject for
-> delayed allocation, and how many data/metadata blocks have been
-> reserved.
-> 
-> I've finally cleaned it up enough that it's something where I wouldn't
-> feel terrible dropping it into the mainline kernel.  (It's still a
-> little gross, but it's not truly horrifying any more.)  
-> 
-> What do people think?  Is this something that's worth having in the
-> kernel sources?  Or shall I continue carrying it as an out-of-tree
-> debugging patch?
-> 
-> (Note: we can use similar technique to gain visibility into the status
-> the extent status LRU list.)
-> 
->       	          	       	      	  - Ted
-> 
-> From f6417debc1c96a9dfa6b9f19da14eff35bf0f504 Mon Sep 17 00:00:00 2001
-> From: Theodore Ts'o <tytso@mit.edu>
-> Date: Thu, 20 Jun 2013 12:35:39 -0400
-> Subject: [PATCH] ext4: add delalloc debugging
-> 
-> This adds a file in /proc/fs/ext4/<dev> which when opened for reading,
-> will trigger debugging code that dumps a lot of information about
-> inodes subject to delayed allocation to the console.
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-.....
+On Wed, Jun 26, 2013 at 02:31:14PM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
+:
+> > 1. Now when we read /proc/fs/ext4/{$DEV}/delalloc_debug, it will pr=
+int
+> > the result in console.  IMHO, I don't think it is a good choice.  I
+> > prefer to print this result in debugfs or in sysfs.
+>=20
+> I would prefer to print this info in debug_delalloc_show() so we can
+> simply read the file instead of read the file + read the log.
 
-> +
-> +#ifndef MODULE
-> +	spin_lock(&inode_sb_list_lock);
-> +	if (!list_empty(&sb->s_bdi->wb.b_dirty)) {
+This turns out to be tricky because we would need to grab all of this
+information and stash it in kernel allocated memory, since otherwise
+it might change out from under us if we need to read the information
+across multiple read requests to the /proc file.
 
-NACK. Do not use VFS level locks and list walks in filesystem code,
-not even in debugging code. It's ok for you to do this in private
-patches and maintain such abuses yourself, but it's not acceptible
-for merging into the mainline tree...
+> I think that having this enabled only is EXT4_DEBUG is set is just
+> fine. However if you want to be able to use it even without EXT4_DEBU=
+G
+> option we could just set proper permissions on the
+> /proc/fs/ext4/{$DEV}/delalloc_debug so that only privileged user can
+> open it.
 
-Besides, you haven't even used the correct lock - these bdi
-writeback lists are protected by the bdi writeback list lock, not
-the superblock inode list lock....
+The file is mode 400 readable by root already.
 
-Cheers,
+> > 3. Maybe we can provide a interface to let the user indicate which =
+inode
+> > they want to observe.
+>=20
+> you can grep for it, I do not think it's a big deal.
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+If we wanted to release the delalloc information for an inode, that's
+actually easier; we could do this via an ioctl.
+
+> > Finally, the patch itself still has two minor problems.  We forget
+> > to call remove_proc_entry() in ext4_put_super().  Another problem i=
+s
+> > compile warnings.
+
+This were alrady fixed in the version which is in the ext4 patch
+queue.  I noticed those issues shortly after I sent out the patch for
+discussion.
+
+							- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
