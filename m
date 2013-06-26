@@ -1,160 +1,47 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] tests: add new test f_extent_oobounds
-Date: Wed, 26 Jun 2013 15:30:46 -0400
-Message-ID: <51CB4166.7090107@redhat.com>
-References: <51B158C4.8070000@redhat.com> <1370577376-2875-1-git-send-email-tytso@mit.edu> <51B15BC0.2020308@redhat.com>
+Subject: [PATCH] e2fsprogs: fix tests/f_extent_oobounds
+Date: Wed, 26 Jun 2013 15:31:54 -0400
+Message-ID: <51CB41AA.5040605@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:61238 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:34630 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751912Ab3FZTat (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 26 Jun 2013 15:30:49 -0400
-In-Reply-To: <51B15BC0.2020308@redhat.com>
+	id S1752924Ab3FZTb4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 26 Jun 2013 15:31:56 -0400
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r5QJVtVS015034
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Wed, 26 Jun 2013 15:31:55 -0400
+Received: from Liberator-563.local (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r5QJVsdF015800
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 26 Jun 2013 15:31:55 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 6/7/13 12:04 AM, Eric Sandeen wrote:
-> On 6/6/13 10:56 PM, Theodore Ts'o wrote:
->> This tests creates a file system where the last entry in one leaf
->> block overlaps with logical block range in the first entry of the next
->> leaf block.
->>
->> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> 
-> Looks good to me, thanks.
-> 
-> Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+tests/f_extent_oobounds runs debugfs from the system, not
+from the source tree, and if the system's debugfs doesn't
+have the extent_open command it fails silently.
 
-Ho hum, but not tested-by.  :(  This actually fails for me.
+Use $DEBUGFS to get the right executable.
 
---- f_extent_oobounds/expect.1  2013-06-26 19:54:18.687988530 +0000
-+++ f_extent_oobounds.1.log     2013-06-26 19:55:13.071988447 +0000
-@@ -1,24 +1,20 @@
- Pass 1: Checking inodes, blocks, and sizes
--Inode 12, end of extent exceeds allowed value
--       (logical block 15, physical block 200, len 30)
--Clear? yes
--
--Inode 12, i_blocks is 154, should be 94.  Fix? yes
-+Inode 12, i_blocks is 154, should be 0.  Fix? yes
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-This is because the test runs debugfs from the system, not
-from the tree, and if that debugfs doesn't have the extent_open command,
-it fails silently.
-
-I'll send a patch.
-
--eric
-
->> ---
->>  tests/f_extent_oobounds/expect.1 | 24 +++++++++++++++++++++++
->>  tests/f_extent_oobounds/expect.2 |  7 +++++++
->>  tests/f_extent_oobounds/script   | 42 ++++++++++++++++++++++++++++++++++++++++
->>  3 files changed, 73 insertions(+)
->>  create mode 100644 tests/f_extent_oobounds/expect.1
->>  create mode 100644 tests/f_extent_oobounds/expect.2
->>  create mode 100644 tests/f_extent_oobounds/script
->>
->> diff --git a/tests/f_extent_oobounds/expect.1 b/tests/f_extent_oobounds/expect.1
->> new file mode 100644
->> index 0000000..3164ea0
->> --- /dev/null
->> +++ b/tests/f_extent_oobounds/expect.1
->> @@ -0,0 +1,24 @@
->> +Pass 1: Checking inodes, blocks, and sizes
->> +Inode 12, end of extent exceeds allowed value
->> +	(logical block 15, physical block 200, len 30)
->> +Clear? yes
->> +
->> +Inode 12, i_blocks is 154, should be 94.  Fix? yes
->> +
->> +Pass 2: Checking directory structure
->> +Pass 3: Checking directory connectivity
->> +Pass 4: Checking reference counts
->> +Pass 5: Checking group summary information
->> +Block bitmap differences:  -(200--229)
->> +Fix? yes
->> +
->> +Free blocks count wrong for group #0 (156, counted=186).
->> +Fix? yes
->> +
->> +Free blocks count wrong (156, counted=186).
->> +Fix? yes
->> +
->> +
->> +test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
->> +test_filesys: 12/32 files (8.3% non-contiguous), 70/256 blocks
->> +Exit status is 1
->> diff --git a/tests/f_extent_oobounds/expect.2 b/tests/f_extent_oobounds/expect.2
->> new file mode 100644
->> index 0000000..22c4f2c
->> --- /dev/null
->> +++ b/tests/f_extent_oobounds/expect.2
->> @@ -0,0 +1,7 @@
->> +Pass 1: Checking inodes, blocks, and sizes
->> +Pass 2: Checking directory structure
->> +Pass 3: Checking directory connectivity
->> +Pass 4: Checking reference counts
->> +Pass 5: Checking group summary information
->> +test_filesys: 12/32 files (8.3% non-contiguous), 70/256 blocks
->> +Exit status is 0
->> diff --git a/tests/f_extent_oobounds/script b/tests/f_extent_oobounds/script
->> new file mode 100644
->> index 0000000..31ac6c9
->> --- /dev/null
->> +++ b/tests/f_extent_oobounds/script
->> @@ -0,0 +1,42 @@
->> +if test -x $DEBUGFS_EXE; then
->> +
->> +SKIP_GUNZIP="true"
->> +TEST_DATA="$test_name.tmp"
->> +
->> +dd if=/dev/zero of=$TMPFILE bs=1k count=256 > /dev/null 2>&1
->> +mke2fs -Ft ext4 $TMPFILE > /dev/null 2>&1
->> +debugfs -w $TMPFILE << EOF  > /dev/null 2>&1
->> +write /dev/null testfile
->> +extent_open testfile
->> +  insert_node 0 15 100
->> +  insert_node --after 15 15 115
->> +  insert_node --after 30 15 130
->> +  insert_node --after 45 15 145
->> +  split
->> +  down
->> +  split
->> +  root
->> +  down
->> +  next
->> +  replace_node 15 30 200
->> +  extent_close
->> +set_inode_field testfile i_size 61400
->> +set_inode_field testfile i_blocks 154
->> +setb 100 15
->> +setb 130 30
->> +setb 200 30
->> +set_bg 0 free_blocks_count 156
->> +set_bg 0 bg_checksum calc
->> +set_super_value free_blocks_count 156
->> +q
->> +EOF
->> +
->> +. $cmd_dir/run_e2fsck
->> +
->> +rm -f $TEST_DATA
->> +
->> +unset E2FSCK_TIME TEST_DATA
->> +
->> +else #if test -x $DEBUGFS_EXE; then
->> +	echo "$test_name: $test_description: skipped"
->> +fi
->>
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+diff --git a/tests/f_extent_oobounds/script b/tests/f_extent_oobounds/script
+index 31ac6c9..b1f0e1a 100644
+--- a/tests/f_extent_oobounds/script
++++ b/tests/f_extent_oobounds/script
+@@ -5,7 +5,7 @@ TEST_DATA="$test_name.tmp"
+ 
+ dd if=/dev/zero of=$TMPFILE bs=1k count=256 > /dev/null 2>&1
+ mke2fs -Ft ext4 $TMPFILE > /dev/null 2>&1
+-debugfs -w $TMPFILE << EOF  > /dev/null 2>&1
++$DEBUGFS -w $TMPFILE << EOF  > /dev/null 2>&1
+ write /dev/null testfile
+ extent_open testfile
+   insert_node 0 15 100
 
