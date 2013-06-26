@@ -1,70 +1,61 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH FOR DISCUSSION] add delalloc debugging
-Date: Wed, 26 Jun 2013 09:39:13 -0400
-Message-ID: <20130626133913.GD3875@thunk.org>
-References: <20130620164249.GC4982@thunk.org>
- <20130625035002.GA2896@gmail.com>
- <alpine.LFD.2.00.1306261414000.5729@localhost.localdomain>
+Subject: Re: Memory allocation can cause ext4 filesystem to be remounted r/o
+Date: Wed, 26 Jun 2013 10:02:05 -0400
+Message-ID: <20130626140205.GE3875@thunk.org>
+References: <CAFy9=U5n-YF017L+gni4v8pgq-AsLVTZBLwaZhPjHJCMXzLLag@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Zheng Liu <gnehzuil.liu@gmail.com>, linux-ext4@vger.kernel.org
-To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Vikram MP <mp.vikram@gmail.com>, linux-ext4@vger.kernel.org
+To: Nagachandra P <nagachandra@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:33069 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:33084 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751960Ab3FZNjR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 26 Jun 2013 09:39:17 -0400
+	id S1751492Ab3FZOCK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 26 Jun 2013 10:02:10 -0400
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1306261414000.5729@localhost.localdomain>
+In-Reply-To: <CAFy9=U5n-YF017L+gni4v8pgq-AsLVTZBLwaZhPjHJCMXzLLag@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 26, 2013 at 02:31:14PM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
-:
-> > 1. Now when we read /proc/fs/ext4/{$DEV}/delalloc_debug, it will pr=
-int
-> > the result in console.  IMHO, I don't think it is a good choice.  I
-> > prefer to print this result in debugfs or in sysfs.
->=20
-> I would prefer to print this info in debug_delalloc_show() so we can
-> simply read the file instead of read the file + read the log.
+On Tue, Jun 25, 2013 at 02:55:33PM +0530, Nagachandra P wrote:
+> 
+> Here are some details on the platform
+> 
+> Linux kernel version - 3.4.5
+> Android - 4.2.2
+> ext4 mounted with *errors=panic* option.
+> 
+> We see memory allocation failures mostly caused by low memory kill the
+> ext4 process which is waiting for a allocation on slow path. (below is
+> one such instance)
+>
+> Is there a way in which we could avoid ext4 panic caused by allocation
+> failure (a method other than setting errors=continue :-) )? (or is
+> memory allocation failure considered as fatal as any other IO error)
 
-This turns out to be tricky because we would need to grab all of this
-information and stash it in kernel allocated memory, since otherwise
-it might change out from under us if we need to read the information
-across multiple read requests to the /proc file.
+In this particular case, we could reflect the error all the way up to
+the ftruncate(2) system call.  Fixing this is going to be a bit
+involved, unfortunately; we'll need to update a fairly large number of
+function signatures, including ext4_truncate(), ext4_ext_truncate(),
+ext4_free_blocks(), and a number of others.
 
-> I think that having this enabled only is EXT4_DEBUG is set is just
-> fine. However if you want to be able to use it even without EXT4_DEBU=
-G
-> option we could just set proper permissions on the
-> /proc/fs/ext4/{$DEV}/delalloc_debug so that only privileged user can
-> open it.
+One of the problems is that there are code paths, such as ext4's
+evict_inode() call, where there is the potential that if there was a
+file descriptor holding the inode open at the time when it was
+unlinked, we can only delete the file (which involves a call to
+ext4_truncate) in ext4_evict_inode(), and there isn't a good error
+recovery path in that case.
 
-The file is mode 400 readable by root already.
+Probably the best short-term fix for now is to add a flag used by
+ext4_free_blocks() which retries the memory allocation in a loop (see
+the retry_alloc loop in jbd2_journal_write_metadata_buffer() in
+fs/jbd2/journal.c) and then initially add this flag to all of the
+callers of ext4_free_blocks().
 
-> > 3. Maybe we can provide a interface to let the user indicate which =
-inode
-> > they want to observe.
->=20
-> you can grep for it, I do not think it's a big deal.
+We'll then need to fix the various callers where we can reflect the
+error back to userspace to do so, and then drop the flag.  In the case
+of ext4_evict_inode(), what we can do is to call ext4_truncate() inode
+truncation in the unlink() system call if there are no other file
+descriptors keeping the inode from being deleted immediately.
 
-If we wanted to release the delalloc information for an inode, that's
-actually easier; we could do this via an ioctl.
-
-> > Finally, the patch itself still has two minor problems.  We forget
-> > to call remove_proc_entry() in ext4_put_super().  Another problem i=
-s
-> > compile warnings.
-
-This were alrady fixed in the version which is in the ext4 patch
-queue.  I noticed those issues shortly after I sent out the patch for
-discussion.
-
-							- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+	    	    	      	   	 - Ted
