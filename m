@@ -1,75 +1,95 @@
-From: Nagachandra P <nagachandra@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: Memory allocation can cause ext4 filesystem to be remounted r/o
-Date: Wed, 26 Jun 2013 20:50:50 +0530
-Message-ID: <CAFy9=U5O9qQP5QU_Nw4fEbfy2oVxUub=ddYgJ_ZKXmjdChO4iA@mail.gmail.com>
+Date: Wed, 26 Jun 2013 12:34:50 -0400
+Message-ID: <20130626163450.GA2487@thunk.org>
 References: <CAFy9=U5n-YF017L+gni4v8pgq-AsLVTZBLwaZhPjHJCMXzLLag@mail.gmail.com>
-	<20130626140205.GE3875@thunk.org>
-	<20130626145417.GB32092@thunk.org>
+ <20130626140205.GE3875@thunk.org>
+ <20130626145417.GB32092@thunk.org>
+ <CAFy9=U5O9qQP5QU_Nw4fEbfy2oVxUub=ddYgJ_ZKXmjdChO4iA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
 Cc: Vikram MP <mp.vikram@gmail.com>, linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: Nagachandra P <nagachandra@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-la0-f52.google.com ([209.85.215.52]:65234 "EHLO
-	mail-la0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751466Ab3FZPUw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Jun 2013 11:20:52 -0400
-Received: by mail-la0-f52.google.com with SMTP id fo12so13624980lab.25
-        for <linux-ext4@vger.kernel.org>; Wed, 26 Jun 2013 08:20:51 -0700 (PDT)
-In-Reply-To: <20130626145417.GB32092@thunk.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:33147 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752222Ab3FZQey (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 26 Jun 2013 12:34:54 -0400
+Content-Disposition: inline
+In-Reply-To: <CAFy9=U5O9qQP5QU_Nw4fEbfy2oVxUub=ddYgJ_ZKXmjdChO4iA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Thanks Theodore,
+On Wed, Jun 26, 2013 at 08:50:50PM +0530, Nagachandra P wrote:
+> 
+> We also have seen case where the current allocation itself could cause
+> the lowmem shrinker to be called (which in-turn chooses the same
+> process for killing because of oom_adj_value of the current process,
+> oom_adj_value is a weight age value associated with each process based
+> on which the android low memory killer would select a process for
+> killing to get memory). If we chose to retry in such case we could end
+> up in endless loop of retrying the allocation. It would be better to
+> handle this without retrying.
 
-We also have seen case where the current allocation itself could cause
-the lowmem shrinker to be called (which in-turn chooses the same
-process for killing because of oom_adj_value of the current process,
-oom_adj_value is a weight age value associated with each process based
-on which the android low memory killer would select a process for
-killing to get memory). If we chose to retry in such case we could end
-up in endless loop of retrying the allocation. It would be better to
-handle this without retrying.
+The challenge is that in some cases there's no good way to return an
+error back upwards, and in other cases, the ability to back out of the
+middle of a file system operation is incredibly hard.  This is why we
+have the retry loop in the jbd2 code; the presumption is that some
+other process is scheduable, so that allows other processes to exit
+when the OOM killer takes out other processes.
 
-We could your above suggestion which could address this specific path.
-But, there are quiet a number of allocation in ext4 which could call
-ext4_std_error on failure and we may need to look each one of them to
-see on how do we handle each one of them. Do think this something that
-could be done?
+It's not an ideal solution, but in practice it's been good enough.  In
+general the OOM killer will be able to take out some other process and
+free up memory that way.
 
-We have in the past tried some ugly hacks to workaround the problem
-(by adjusting oom_adj_values, guarding them from being killed) but
-they don't seem provide fool proof mechanism at high memory pressure
-environment. Any advice on what we could try to fix the issue in
-general would be appreciated?
+Are you seeing this a lot?  If so, I think it's fair to ask why; from
+what I can tell it's not a situation that is happening often on most
+systems using ext4 (including Android devices, of which I have
+several).
 
-Thanks again.
+> We could your above suggestion which could address this specific path.
+> But, there are quiet a number of allocation in ext4 which could call
+> ext4_std_error on failure and we may need to look each one of them to
+> see on how do we handle each one of them. Do think this something that
+> could be done?
 
-Best regards
-Nagachandra
+There aren't that many places where ext4 does memory allocations,
+actually.  And once you exclude those which are used when the file
+system is initially mounted, there is quite a manageable number.  It's
+probably better to audit all of those and to make sure we have a good
+error recovery if any of these calls to kmalloc() or
+kmem_cache_alloc() fail.
 
-On Wed, Jun 26, 2013 at 8:24 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Wed, Jun 26, 2013 at 10:02:05AM -0400, Theodore Ts'o wrote:
->>
->> In this particular case, we could reflect the error all the way up to
->> the ftruncate(2) system call.  Fixing this is going to be a bit
->> involved, unfortunately; we'll need to update a fairly large number of
->> function signatures, including ext4_truncate(), ext4_ext_truncate(),
->> ext4_free_blocks(), and a number of others.
->
-> One thing that comes to mind.  If we change things so that ftruncate
-> reflects an ENOMEM error all the way up to userspace, one side effect
-> of this is that the file may be partially truncated when ENOMEM is
-> returned.  Applications may not be prepared for this.
->
-> There would be a similar issue if we do the truncate in the unlink
-> call and return ENOMEM in case of a failure, the file might not be
-> unlinked, and in fact we might have a partially truncated file in the
-> directory, which would probably cause all sorts of confusion.  So
-> we're probably better off, putting the inode on a list of inodes in
-> memory, and on the orphan list on disk, and then retry the truncation
-> when memory is available.  Messy, but that probably gives the best
-> result for applications living constantly in high memory pressure
-> environments.
->
->                                                         - Ted
+In many of the cases where we end up calling ext4_std_error(), the
+most common cause of is an I/O error while trying to read some
+critical metadata block, and in that case, declaring that the file
+system is corrupted is in fact the appropriate thing to do.
+
+> We have in the past tried some ugly hacks to workaround the problem
+> (by adjusting oom_adj_values, guarding them from being killed) but
+> they don't seem provide fool proof mechanism at high memory pressure
+> environment. Any advice on what we could try to fix the issue in
+> general would be appreciated?
+
+What version of the kernel are using?  And do you understand why you
+are under so much memory pressure?  Is it due to applications not
+getting killed quickly enough?  Are applications dirtying too much
+memory too quickly?  Is write throttling not working?  Or are they
+allocating too much memory when they start up their JVM?  Or is it
+just that your Android device has far less memory than most of the
+other devices out there?
+
+Speaking generally, if you're regularly seeing that kmem_cache_alloc
+failing, that means free memory has fallen to zero.  Which to me
+sounds like the OOM killer should be trying to kill processes more
+aggressively, and more generally you should be trying to be trying to
+make sure the kernel is maintaining a somewhat larger amount of free
+memory.  The fact that you mentioned trying to prevent certain
+processes from being killed may mean that you are approaching this
+problem from the wrong direction.  It may be more fruitful to
+encourage the system to kill those user applications that most
+deserving _earlier_.
+
+Regards,
+
+					- Ted
