@@ -1,47 +1,59 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] e2fsprogs: fix tests/f_extent_oobounds
-Date: Wed, 26 Jun 2013 15:31:54 -0400
-Message-ID: <51CB41AA.5040605@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Memory allocation can cause ext4 filesystem to be remounted r/o
+Date: Wed, 26 Jun 2013 18:14:22 -0400
+Message-ID: <20130626221422.GC4128@thunk.org>
+References: <CAFy9=U5n-YF017L+gni4v8pgq-AsLVTZBLwaZhPjHJCMXzLLag@mail.gmail.com>
+ <20130626140205.GE3875@thunk.org>
+ <20130626145417.GB32092@thunk.org>
+ <49ee4e84554c82d944d092fe2ec8ce82@josephdwagner.info>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Nagachandra P <nagachandra@gmail.com>,
+	Vikram MP <mp.vikram@gmail.com>, linux-ext4@vger.kernel.org
+To: "Joseph D. Wagner" <joe@josephdwagner.info>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34630 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752924Ab3FZTb4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 26 Jun 2013 15:31:56 -0400
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r5QJVtVS015034
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Wed, 26 Jun 2013 15:31:55 -0400
-Received: from Liberator-563.local (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r5QJVsdF015800
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 26 Jun 2013 15:31:55 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:33253 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752890Ab3FZWO1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 26 Jun 2013 18:14:27 -0400
+Content-Disposition: inline
+In-Reply-To: <49ee4e84554c82d944d092fe2ec8ce82@josephdwagner.info>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-tests/f_extent_oobounds runs debugfs from the system, not
-from the source tree, and if the system's debugfs doesn't
-have the extent_open command it fails silently.
+On Wed, Jun 26, 2013 at 11:53:12AM -0700, Joseph D. Wagner wrote:
+>  1. Does not guarantee that memory will be available when ext4 needs
+>     its.  Memory might be available during this pre-check, but another
+>     process might scoop it up between the pre-check and ext4's
+>     allocation.
 
-Use $DEBUGFS to get the right executable.
+This is the huge one.  In some cases we might need to read potentially
+one or more disk blocks in the course of servicing the request.  By
+the time we've read in the disk blocks, hundreds of milliseconds can
+have gone by.  If there is a high speed network transfer coming in
+over the network, the networking stack can chew up a huge amount of
+memory surprisingly quickly (to say nothing of a JVM that might be
+starting up in parallel with reading in the allocation bitmaps, for
+example).
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+This is also assuming we know in advance how much memory would be
+needed.  Depending on how fragmented a file might be, the amount of
+memory required can vary significantly.  And if the required metadata
+blocks are in memory, we won't know how much memory will be needed
+until we pull the necessary blocks into memory.
 
-diff --git a/tests/f_extent_oobounds/script b/tests/f_extent_oobounds/script
-index 31ac6c9..b1f0e1a 100644
---- a/tests/f_extent_oobounds/script
-+++ b/tests/f_extent_oobounds/script
-@@ -5,7 +5,7 @@ TEST_DATA="$test_name.tmp"
- 
- dd if=/dev/zero of=$TMPFILE bs=1k count=256 > /dev/null 2>&1
- mke2fs -Ft ext4 $TMPFILE > /dev/null 2>&1
--debugfs -w $TMPFILE << EOF  > /dev/null 2>&1
-+$DEBUGFS -w $TMPFILE << EOF  > /dev/null 2>&1
- write /dev/null testfile
- extent_open testfile
-   insert_node 0 15 100
+The other problem with doing this is that the point at which we would
+do the check for the necessary memory is at the high-level portions of
+the ext4, and the places where we are doing the memory allocation are
+sometimes deep in the guts of ext4.  So figuring this out would
+require some truly nasty abstraction violations.  For the same reason,
+we can't just simply allocate the memory before we start the
+file system operation.
 
+There are places where we could do this, without doing severe violence
+to the surrounding code and without making things a total maintenance
+nightmare.  But it's one of those things where we'd have to look at
+each place where we allocate memory and decide what's the best way to
+handle things.
+
+							- Ted
