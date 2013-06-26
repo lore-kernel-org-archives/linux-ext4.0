@@ -1,143 +1,224 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: [BUG] xfstest269 causes deadlock on linux-3.9.0 (ext4)
-Date: Wed, 26 Jun 2013 17:38:35 +0900
-Message-ID: <51CAA88B.2050802@rs.jp.nec.com>
-References: <51908CF4.2000703@rs.jp.nec.com> <20130514213755.GA10769@quack.suse.cz> <5192F998.6080706@rs.jp.nec.com> <51A2BB97.7030802@rs.jp.nec.com> <8738t8on26.fsf@openvz.org> <20130527083301.GA17423@quack.suse.cz> <51A46C79.4000105@rs.jp.nec.com> <20130624110402.GD20471@quack.suse.cz> <51C96BBD.8060701@rs.jp.nec.com> <20130625112738.GF20471@quack.suse.cz>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH FOR DISCUSSION] add delalloc debugging
+Date: Wed, 26 Jun 2013 14:31:14 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1306261414000.5729@localhost.localdomain>
+References: <20130620164249.GC4982@thunk.org> <20130625035002.GA2896@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([210.143.35.52]:44846 "EHLO
-	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751195Ab3FZIjI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Jun 2013 04:39:08 -0400
-In-Reply-To: <20130625112738.GF20471@quack.suse.cz>
+Received: from mx1.redhat.com ([209.132.183.28]:39368 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751368Ab3FZMbT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 26 Jun 2013 08:31:19 -0400
+In-Reply-To: <20130625035002.GA2896@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Tue, 25 Jun 2013, Zheng Liu wrote:
 
+> Date: Tue, 25 Jun 2013 11:50:03 +0800
+> From: Zheng Liu <gnehzuil.liu@gmail.com>
+> To: Theodore Ts'o <tytso@mit.edu>
+> Cc: linux-ext4@vger.kernel.org
+> Subject: Re: [PATCH FOR DISCUSSION] add delalloc debugging
+> 
+> Hi Ted,
+> 
+> On Thu, Jun 20, 2013 at 12:42:49PM -0400, Theodore Ts'o wrote:
+> > I've been carrying a patch in the unstable portion of the patch series
+> > for a while now to debug problems with delayed allocation.  This
+> > allows us to observe the state of which inodes have inodes subject for
+> > delayed allocation, and how many data/metadata blocks have been
+> > reserved.
+> > 
+> > I've finally cleaned it up enough that it's something where I wouldn't
+> > feel terrible dropping it into the mainline kernel.  (It's still a
+> > little gross, but it's not truly horrifying any more.)  
+> > 
+> > What do people think?  Is this something that's worth having in the
+> > kernel sources?  Or shall I continue carrying it as an out-of-tree
+> > debugging patch?
+> 
+> I think it is worth having it in the kernel source.  But before we apply
+> this patch, it seems that we need to solve some problems.
 
-(2013/06/25 20:27), Jan Kara wrote:
-> On Tue 25-06-13 19:06:53, Akira Fujita wrote:
->>
->>
->> (2013/06/24 20:04), Jan Kara wrote:
->>> On Tue 28-05-13 17:36:09, Akira Fujita wrote:
->>>> Hello,
->>>>
->>>> (2013/05/27 17:33), Jan Kara wrote:
->>>>> On Mon 27-05-13 12:16:01, Dmitry Monakhov wrote:
->>>>>> On Mon, 27 May 2013 10:49:11 +0900, Akira Fujita <a-fujita@rs.jp.nec.com> wrote:
->>>>>>> Hi Jan,
->>>>>>>
->>>>>>> (2013/05/15 11:57), Akira Fujita wrote:
->>>>>>>> Hi,
->>>>>>>>
->>>>>>>> (2013/05/15 6:37), Jan Kara wrote:
->>>>>>>>>        Hello,
->>>>>>>>>
->>>>>>>>> On Mon 13-05-13 15:49:24, Akira Fujita wrote:
->>>>>>>>>> I ran into the deaclock with xfs_test 269 on linux-3.9.0.
->>>>>>>>>> It seems happen between jbd2_log_wait_commit, sleep_on_buffer
->>>>>>>>>> and writeback_indoes (Please see ps log below).
->>>>>>>>>> Once it occurs we can't touch FS anymore.
->>>>>>>>>> In my case 300 - 1000 trials to occur. Is this known issue?
->>>>>>>>>>
->>>>>>>>>> The following kernels seems to have same problem:
->>>>>>>>>> - linux-3.5-rc5
->>>>>>>>>> - linux-3.8.5
->>>>>>>>>> - linux-3.9-rc7
->>>>>>>>>> And now I'm trying it on linux-3.10-rc1.
->>>>>>>>>>
->>>>>>>>>> # ./check generic/269
->>>>>>>>>> FSTYP         -- ext4
->>>>>>>>>> PLATFORM      -- Linux/x86_64 mcds1 3.9.0
->>>>>>>>>> MKFS_OPTIONS  -- /dev/sda12
->>>>>>>>>> MOUNT_OPTIONS -- -o acl,user_xattr /dev/sda12 /mnt/mp2
->>>>>>>>>>
->>>>>>>>>>
->>>>>>>>>> # ps -eo pid,tid,class,rtprio,ni,pri,psr,pcpu,stat,wchan:16,comm
->>>>>>>>>>        PID   TID CLS RTPRIO  NI PRI PSR %CPU STAT WCHAN            COMMAND
->>>>>>>>>>          1     1 TS       -   0  19   0  0.0 Ss   poll_schedule_ti init
->>>>>>>>>>          2     2 TS       -   0  19   0  0.0 S    kthreadd         kthreadd
->>>>>>>>>>          3     3 TS       -   0  19   0  0.0 S    smpboot_thread_f ksoftirqd/0
->>>>>>>>>> ...
->>>>>>>>>>       2391  2391 TS       -   0  19   2  0.1 D    jbd2_log_wait_co flush-8:0
->>>>>>>>>> ...
->>>>>>>>>> 22647 22647 TS       -   0  19   3  0.0 S    worker_thread    kworker/3:1
->>>>>>>>>> 22655 22655 TS       -   0  19   0  0.0 S    hrtimer_nanoslee sleep
->>>>>>>>>> 22657 22657 TS       -   0  19   2  0.0 R+   -                ps
->>>>>>>>>> 25330 25330 TS       -   0  19   0  0.0 S    worker_thread    kworker/0:0
->>>>>>>>>> 28963 28963 TS       -   0  19   1  0.0 S+   wait             loop_xfstests.s
->>>>>>>>>> 28964 28964 TS       -   0  19   1  0.0 S+   wait             check
->>>>>>>>>> 29180 29180 TS       -   0  19   3  0.0 S    kjournald2       jbd2/sda11-8
->>>>>>>>>> 29181 29181 TS       - -20  39   3  0.0 S<   rescuer_thread   ext4-dio-unwrit
->>>>>>>>>> 29199 29199 TS       -   0  19   3  0.0 S+   wait             269
->>>>>>>>>> 29391 29391 TS       -   0  19   0  0.6 D    sleep_on_buffer  jbd2/sda12-8
->>>>>>>>>> 29392 29392 TS       - -20  39   3  0.0 S<   rescuer_thread   ext4-dio-unwrit
->>>>>>>>>> 29394 29394 TS       -   0  19   0  0.0 S    wait             fsstress
->>>>>>>>>> 29505 29505 TS       -   0  19   3  0.0 D    writeback_inodes fsstress
->>>>>>>>>>
->>>>>>>>>> # df -T /dev/sda11 /dev/sda12
->>>>>>>>>> Filesystem    Type   1K-blocks      Used Available Use% Mounted on
->>>>>>>>>> /dev/sda11    ext4     9857264     22308   9327564   1% /mnt/mp1
->>>>>>>>>> /dev/sda12    ext4      499656    499656         0 100% /mnt/mp2
->>>>>>>>>        Thanks for report. No I don't think this problem has been reported
->>>>>>>>> before. Seeing that sda12 is out of space and fsstress hangs in
->>>>>>>>> writeback_inodes(), I suspect we have some deadlock in ENOSPC recovery path
->>>>>>>>> when we want to flush data to disk to reduce delalloc uncertainty. Can you
->>>>>>>>> run 'echo w >/proc/sysrq-trigger' when the deadlock happens and post your
->>>>>>>>> dmesg here? Thanks!
->>>>>>>>>
->>>>>>>>
->>>>>>>> Thanks for reply.
->>>>>>>> I'll take that information when the deadlock happens again.
->>>>>>>
->>>>>>> Finally, I got the following messages on linux-3.9.0.
->>>>>>> Could you take a look?
->>>>>> Is it a real deadlock?
->>>>>> umount wait for flush-8:0
->>>>>> flush wait for jbd2
->>>>>> jbd2 wait for bh.
->>>>>> All buffer-heads will be written at sooner or later.
->>>>>> It probably will require significant amount of time, because fs is too
->>>>>> fragmented(that is what this test all about), but it is not a deadlock.
->>>>>      Yeah, that is my analysis as well. I was only thinking whether we
->>>>> couldn't forget some buffer locked on some error recovery path (we are
->>>>> getting ENOSPC) but it's not obvious where it would be. Akira-san, could
->>>>> you also send us disassembly of your jbd2_journal_commit_transaction()
->>>>> function so that we can check where exactly offset 0xee0 is in the
->>>>> function?
->>>>>
->>>>> 								Honza
->>>>
->>>> I attached disasemble code of jbd2_journal_commit_tnrasaction,
->>>> please check it.
->>>     Thanks. I've looked into the disassembly now and we are waiting for the
->>> write of commit record to finish. We have submitted the buffer just before
->>> so it can hardly be some issue like forgotten locked buffer. Really
->>> strange. It looks like some problem in block layer, device driver, or HW
->>> itself... I'm thinking how to debug this further - it would be good if we
->>> had blktrace data just before the moment when the hang happens but given
->>> how hard this is to reproduce the traces would be extremly large...
->>>
->>> One idea - can you try whether the problem reproduces with 'nobarrier'
->>> mount option? It could be some problem with flush / fua handling.
->>>
->>
->> OK, I'll try to reproduce this issue with 'nobarrier'
->> (and take blktrace log if I can).
->    You can restart the blktrace every 5 minutes or so, so that trace files
-> don't get too big. If we have a trace for a minute before the machine crashes
-> it should be enough for debugging.
+Yes, I very much like this patch. It's worth having and it can yield
+important information.
 
-Thanks for advice, I'll try it.
-In my environment, 1 time xfstests269 running generates
-about 150MB log by blktrace, so taking log seems okay.
+> 
+> 1. Now when we read /proc/fs/ext4/{$DEV}/delalloc_debug, it will print
+> the result in console.  IMHO, I don't think it is a good choice.  I
+> prefer to print this result in debugfs or in sysfs.
 
-Thanks,
-Akira Fujita
+I would prefer to print this info in debug_delalloc_show() so we can
+simply read the file instead of read the file + read the log.
 
+> 
+> 2. If we want to gain this feature, we will enable EXT4_DEBUG option.
+> But in a product system, we never enable it because of performance
+> degradation.  So I think that maybe we can compile it without EXT4_DEBUG
+> option and dynamically enable/disalbe it.
+
+I think that having this enabled only is EXT4_DEBUG is set is just
+fine. However if you want to be able to use it even without EXT4_DEBUG
+option we could just set proper permissions on the
+/proc/fs/ext4/{$DEV}/delalloc_debug so that only privileged user can
+open it.
+
+> 
+> 3. Maybe we can provide a interface to let the user indicate which inode
+> they want to observe.
+
+you can grep for it, I do not think it's a big deal.
+
+> 
+> Finally, the patch itself still has two minor problems.  We forget
+> to call remove_proc_entry() in ext4_put_super().  Another problem is
+> compile warnings.
+> 
+> > 
+> > (Note: we can use similar technique to gain visibility into the status
+> > the extent status LRU list.)
+> 
+> I am happy to generate a patch for extent status LRU list.
+> 
+> > 
+> >       	          	       	      	  - Ted
+> > 
+> > From f6417debc1c96a9dfa6b9f19da14eff35bf0f504 Mon Sep 17 00:00:00 2001
+> > From: Theodore Ts'o <tytso@mit.edu>
+> > Date: Thu, 20 Jun 2013 12:35:39 -0400
+> > Subject: [PATCH] ext4: add delalloc debugging
+> > 
+> > This adds a file in /proc/fs/ext4/<dev> which when opened for reading,
+> > will trigger debugging code that dumps a lot of information about
+> > inodes subject to delayed allocation to the console.
+> > 
+> > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> > ---
+> >  fs/ext4/super.c | 78 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+> >  1 file changed, 77 insertions(+), 1 deletion(-)
+> > 
+> > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> > index 85b3dd6..ecb8256 100644
+> > --- a/fs/ext4/super.c
+> > +++ b/fs/ext4/super.c
+> > @@ -1832,6 +1832,74 @@ static const struct file_operations ext4_seq_options_fops = {
+> >  	.release = single_release,
+> >  };
+> >  
+> > +#ifdef CONFIG_EXT4_DEBUG
+> #ifndef MODULE
+> > +static void print_inode_delalloc_info(struct inode *inode)
+> > +{
+> > +	if (!EXT4_I(inode)->i_reserved_data_blocks ||
+> > +	    !EXT4_I(inode)->i_reserved_meta_blocks)
+> > +		return;
+> > +
+> > +	printk(KERN_DEBUG "ino %lu: %u %u\n", inode->i_ino,
+> > +	       EXT4_I(inode)->i_reserved_data_blocks,
+> > +	       EXT4_I(inode)->i_reserved_meta_blocks);
+> > +}
+> #endif
+> > +
+> > +static int debug_delalloc_show(struct seq_file *seq, void *offset)
+> > +{
+> > +	return 0;
+> > +}
+> > +
+> > +static int options_delalloc_debug_open_fs(struct inode *proc_inode,
+> > +					  struct file *file)
+> > +{
+> > +	struct super_block *sb = PDE_DATA(proc_inode);
+> > +	struct ext4_sb_info *sbi = EXT4_SB(sb);
+> #ifndef MODULE
+> > +	struct inode *inode;
+> > +	extern spinlock_t inode_sb_list_lock;
+> #endif
+> 
+> Regards,
+>                                                 - Zheng
+> 
+> > +
+> > +	printk(KERN_DEBUG "EXT4-fs debug delalloc of %s\n", sb->s_id);
+> > +	printk(KERN_DEBUG "EXT4-fs: dirty clusters %lld free clusters %lld\n",
+> > +	       percpu_counter_sum(&sbi->s_dirtyclusters_counter),
+> > +	       percpu_counter_sum(&sbi->s_freeclusters_counter));
+> > +
+> > +#ifndef MODULE
+> > +	spin_lock(&inode_sb_list_lock);
+> > +	if (!list_empty(&sb->s_bdi->wb.b_dirty)) {
+> > +		printk(KERN_DEBUG "s_bdi->wb.b_dirty list:\n");
+> > +		list_for_each_entry(inode, &sb->s_bdi->wb.b_dirty,
+> > +				    i_wb_list) {
+> > +			print_inode_delalloc_info(inode);
+> > +		}
+> > +	}
+> > +	if (!list_empty(&sb->s_bdi->wb.b_io)) {
+> > +		printk(KERN_DEBUG "s_bdi->wb.b_io list:\n");
+> > +		list_for_each_entry(inode, &sb->s_bdi->wb.b_io,
+> > +				    i_wb_list) {
+> > +			print_inode_delalloc_info(inode);
+> > +		}
+> > +	}
+> > +	if (!list_empty(&sb->s_bdi->wb.b_more_io)) {
+> > +		printk(KERN_DEBUG "s_bdi->wb.b_more_io list:\n");
+> > +		list_for_each_entry(inode, &sb->s_bdi->wb.b_more_io,
+> > +				    i_wb_list) {
+> > +			print_inode_delalloc_info(inode);
+> > +		}
+> > +	}
+> > +	spin_unlock(&inode_sb_list_lock);
+> > +	printk(KERN_DEBUG "ext4 debug delalloc done\n");
+> > +#endif
+> > +	return single_open(file, debug_delalloc_show, sb);
+> > +}
+> > +
+> > +static const struct file_operations ext4_seq_delalloc_debug_fops = {
+> > +	.owner = THIS_MODULE,
+> > +	.open = options_delalloc_debug_open_fs,
+> > +	.read = seq_read,
+> > +	.llseek = seq_lseek,
+> > +	.release = single_release,
+> > +};
+> > +#endif
+> > +
+> >  static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
+> >  			    int read_only)
+> >  {
+> > @@ -3764,9 +3832,14 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+> >  	if (ext4_proc_root)
+> >  		sbi->s_proc = proc_mkdir(sb->s_id, ext4_proc_root);
+> >  
+> > -	if (sbi->s_proc)
+> > +	if (sbi->s_proc) {
+> >  		proc_create_data("options", S_IRUGO, sbi->s_proc,
+> >  				 &ext4_seq_options_fops, sb);
+> > +#ifdef CONFIG_EXT4_DEBUG
+> > +		proc_create_data("delalloc_debug", S_IRUSR, sbi->s_proc,
+> > +				 &ext4_seq_delalloc_debug_fops, sb);
+> > +#endif
+> > +	}
+> >  
+> >  	bgl_lock_init(sbi->s_blockgroup_lock);
+> >  
+> > @@ -4149,6 +4222,9 @@ failed_mount:
+> >  		crypto_free_shash(sbi->s_chksum_driver);
+> >  	if (sbi->s_proc) {
+> >  		remove_proc_entry("options", sbi->s_proc);
+> > +#ifdef CONFIG_EXT4_DEBUG
+> > +		remove_proc_entry("delalloc_debug", sbi->s_proc);
+> > +#endif
+> >  		remove_proc_entry(sb->s_id, ext4_proc_root);
+> >  	}
+> >  #ifdef CONFIG_QUOTA
+> > -- 
+> > 1.7.12.rc0.22.gcdd159b
+> > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
