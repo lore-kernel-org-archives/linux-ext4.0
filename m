@@ -1,201 +1,122 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [RFC 0/9] ext4: An Auxiliary Tree for the Directory Index
-Date: Thu, 27 Jun 2013 11:24:19 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1306271123000.1781@localhost.localdomain>
-References: <1367702922-3236-1-git-send-email-rpazdera@redhat.com>
+From: Nagachandra P <nagachandra@gmail.com>
+Subject: Re: Memory allocation can cause ext4 filesystem to be remounted r/o
+Date: Thu, 27 Jun 2013 18:28:21 +0530
+Message-ID: <CAFy9=U5bPbDqfU=NVdaxvK5gNX9O33LD6mYJYqoTQLq7UTjqFw@mail.gmail.com>
+References: <CAFy9=U5n-YF017L+gni4v8pgq-AsLVTZBLwaZhPjHJCMXzLLag@mail.gmail.com>
+	<20130626140205.GE3875@thunk.org>
+	<20130626145417.GB32092@thunk.org>
+	<CAFy9=U5O9qQP5QU_Nw4fEbfy2oVxUub=ddYgJ_ZKXmjdChO4iA@mail.gmail.com>
+	<20130626163450.GA2487@thunk.org>
+	<CAFy9=U5m5uew586C2eZJ7HjkRN5PvKr8+FoDdj8xtJoBeuP-_A@mail.gmail.com>
+	<20130626180345.GA4128@thunk.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org, kasparek@fit.vutbr.cz
-To: Radek Pazdera <rpazdera@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Vikram MP <mp.vikram@gmail.com>, linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36190 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751431Ab3F0JY1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 27 Jun 2013 05:24:27 -0400
-In-Reply-To: <1367702922-3236-1-git-send-email-rpazdera@redhat.com>
+Received: from mail-la0-f52.google.com ([209.85.215.52]:55310 "EHLO
+	mail-la0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753217Ab3F0M6X (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Jun 2013 08:58:23 -0400
+Received: by mail-la0-f52.google.com with SMTP id fo12so777610lab.39
+        for <linux-ext4@vger.kernel.org>; Thu, 27 Jun 2013 05:58:22 -0700 (PDT)
+In-Reply-To: <20130626180345.GA4128@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, 4 May 2013, Radek Pazdera wrote:
+Hi Theodore,
 
-> Date: Sat,  4 May 2013 23:28:33 +0200
-> From: Radek Pazdera <rpazdera@redhat.com>
-> To: linux-ext4@vger.kernel.org
-> Cc: lczerner@redhat.com, kasparek@fit.vutbr.cz,
->     Radek Pazdera <rpazdera@redhat.com>
-> Subject: [RFC 0/9] ext4: An Auxiliary Tree for the Directory Index
+Could you point me to the code where ext4_std_err is not triggered
+because of LMK? As I see it, if a memory allocation returns error in
+some of the case ext4_std_error would invariably be called. Please
+consider the following call stack
 
-Hi Radek,
+send sigkill to 5648 (id.app.sbrowser), score_adj 1000,adj 15, size
+13257 with ofree -2010 20287, cfree 18597 902 msa 1000 ma 15
+id.app.sbrowser: page allocation failure: order:0, mode:0x50
+[<c0013aa8>] (unwind_backtrace+0x0/0x11c) from [<c00d6530>]
+(warn_alloc_failed+0xe8/0x110)
+[<c00d6530>] (warn_alloc_failed+0xe8/0x110) from [<c00d9308>]
+(__alloc_pages_nodemask+0x6d4/0x804)
+[<c00d9308>] (__alloc_pages_nodemask+0x6d4/0x804) from [<c00d2b34>]
+(find_or_create_page+0x40/0x84)
+[<c00d2b34>] (find_or_create_page+0x40/0x84) from [<c0188858>]
+(ext4_mb_load_buddy+0xd4/0x2b4)
+[<c0188858>] (ext4_mb_load_buddy+0xd4/0x2b4) from [<c018c69c>]
+(ext4_free_blocks+0x5d4/0xa08)
+[<c018c69c>] (ext4_free_blocks+0x5d4/0xa08) from [<c0181218>]
+(ext4_ext_remove_space+0x690/0xd9c)
+[<c0181218>] (ext4_ext_remove_space+0x690/0xd9c) from [<c0183654>]
+(ext4_ext_truncate+0x100/0x1c8)
+[<c0183654>] (ext4_ext_truncate+0x100/0x1c8) from [<c015e2ec>]
+(ext4_truncate+0xf4/0x194)
+[<c015e2ec>] (ext4_truncate+0xf4/0x194) from [<c01629dc>]
+(ext4_evict_inode+0x3b4/0x4ac)
+[<c01629dc>] (ext4_evict_inode+0x3b4/0x4ac) from [<c011871c>] (evict+0x8c/0x150)
+[<c011871c>] (evict+0x8c/0x150) from [<c010f030>] (do_unlinkat+0xdc/0x134)
+[<c010f030>] (do_unlinkat+0xdc/0x134) from [<c000e100>]
+(ret_fast_syscall+0x0/0x30)
 
-patches do not apply cleanly any more on the ext4 dev branch. Can
-you rebase and resend the whole patch set ?
+The failure to allocate memory in above case is because of the kill
+signal received.
 
-Thanks!
--Lukas
+__alloc_pages_slowpath would return NULL in case its received a KILL
+signal. (I don't see any code in 3.4.5 that would check for something
+similar to TIF_MEMDIE to make an decision on whether to call
+ext4_std_error or not, is this added recently).
 
-> 
-> Hello everyone,
-> 
-> I am an university student from Brno /CZE/. I decided to try to optimise
-> the readdir/stat scenario in ext4 as the final project to school. I
-> posted some test results I got few months ago [1].
-> 
-> I tried to implement an additional tree for ext4's directory index
-> that would be sorted by inode numbers. The tree then would be used
-> by ext4_readdir() which should lead to substantial increase of
-> performance of operations that manipulate a whole directory at once.
-> 
-> The performance increase should be visible especially with large
-> directories or in case of low memory or cache pressure.
-> 
-> This patch series is what I've got so far. I must say, I originally
-> thought it would be *much* simpler :).
-> 
-> TLDR
-> ====
-> 
-> The series contains the implementation of the new tree and several
-> rather small changes to the original directory index. I also added
-> a new implementation of ext4_readdir() that uses this new tree
-> instead of the original one.
-> 
-> It applies on 3.9, it is basically working, however, it is highly
-> experimental at the moment. It doesn't survive XFS tests yet (I
-> still need to work on that).
-> 
-> DESIGN
-> ======
-> 
-> The tree comes with a new read-only compatible file system feature
-> called "itree". It is created in a directory at the same time as the
-> original dx tree -- when the directory file exceeds a signle block of
-> size. It is indicated by an inode flag.
-> 
-> The tree resides completely outside of the directory file. I am using
-> 64bit block numbers (as suggested by Ted Ts'o), and the pointer to its
-> root is stored in the end of the dx_root block.
-> 
-> I tried to keep the structure of the tree as close as possible to the
-> original dx tree. It is a B+ tree with a 64bit long compound key. The
-> key consists of a inode number and a hash.
-> 
-> The hash is there because of hard links. On ext4 there can be as much
-> as 65 000 names for a single file which is, from the point of the inode
-> tree, a collision. It is a very unlikely scenario to crate over 60 000
-> names for a file from a single directory. But it would be a very serious
-> problem for readdir() if someone tried to do that, so I decided to add
-> the hash to the key as well. This reduces the problems of collisions to
-> the same as of the hash tree.
-> 
-> The depth of the tree is limited by a constant in the code to 3 levels,
-> but it can be increased anytime.
-> 
-> I decided to keep the directory entries within the leaf nodes sorted,
-> which might have been a bad idea (and it brought me quite a few
-> sleepless nights of pointer debugging). However, it is more convenient
-> for readdir and splits. And in the case of the inode tree, there
-> shouldn't be that much memmoving, because inodes are allocated linearly,
-> therefore we're adding to the end most of the time anyway.
-> 
-> I also had to implement coalesce-on-delete. Unlike the hash values,
-> the inode numbers are not random, so the tree would get fragmented
-> really easily. For example when a range of inodes would be freed
-> and allocated somewhere else, that part of the tree would stay empty
-> forever.
-> 
-> In this implementation I used 8 bits for "node fullness". Neighbour
-> nodes in the tree are merged as soon as their total fullness is smaller
-> than maximum fullness. This way, coalescing happens too often. I plan
-> to reduce it to only 2 bits (25% full, 50% full, 75% full, 100% full).
-> 
-> There are also some optimisations to increase the fullness of blocks
-> within the tree, because if the file system adds a contiguous sequence
-> of inodes to a directory and we split the nodes in half, there will be
-> some tree nodes that will never get another entry and still be only 50%
-> full. In the current implementation, an append is performed instead of
-> a split in case the new entry should be added to the end of the full
-> block.
-> 
-> BENCHMARKS
-> ==========
-> 
-> I did some benchmarks and compared the performance with ext4/htree,
-> XFS, and btrfs up to 5 000 000 of files in a single directory. Not
-> all of them are done though (they run for days).
-> 
-> Probably the biggest improvement can be observed with copying files.
-> I used two physical SATA disks for the test. For 5M files, the itree
-> implementation is 14x faster. With metadata only, ext4 is even a tiny
-> bit faster than xfs:
-> 
->     http://www.stud.fit.vutbr.cz/~xpazde00/soubory/ext4-5M/0B-files/cp.png
-> 
-> With each files 4kB big, the inode tree is 11x faster:
-> 
->     http://www.stud.fit.vutbr.cz/~xpazde00/soubory/ext4-5M/4096B-files/cp.png
-> 
-> On the other hand, probably the biggest drawback of this implementation
-> is that it slows down file creates, as we now have to insert the entry
-> into both trees. The difference gets bigger as both trees grow (and their
-> blocks get further apart). For 5M directory entries, the creation is
-> roughly 40% slower. Hopefully, I'll be able to optimise it a bit in the
-> future:
-> 
->     http://www.stud.fit.vutbr.cz/~xpazde00/soubory/ext4-5M/0B-files/create.png
->     http://www.stud.fit.vutbr.cz/~xpazde00/soubory/ext4-5M/4096B-files/create.png
-> 
-> Deleting entries should also very much benefit from this. However, the
-> increase of performance in my test is far lower than expected. I think
-> that is due to my implementation of coalesce-on-delete, which happens
-> too often and during these massive deletes, it coallesces all the time.
-> I hope that when I fix that, it will get somewhere close to XFS as well:
-> 
->     http://www.stud.fit.vutbr.cz/~xpazde00/soubory/ext4-5M/0B-files/delete.png
->     http://www.stud.fit.vutbr.cz/~xpazde00/soubory/ext4-5M/4096B-files/delete.png
-> 
-> All of the results have a graph and a table with precise values.
-> You can always get the table by replacing the suffix of the graph
-> *.png to *.results in the end of the link.
-> 
-> Full results are available here:
->     http://www.stud.fit.vutbr.cz/~xpazde00/soubory/ext4-5M/
-> 
-> 
-> I also did some tests on an aged file system (I used the simple 0.8
-> chance to create, 0.2 to delete a file) where the results of ext4
-> with itree are much better even than xfs, which gets fragmented:
-> 
->     http://www.stud.fit.vutbr.cz/~xpazde00/soubory/5M-dirty/cp.png
->     http://www.stud.fit.vutbr.cz/~xpazde00/soubory/5M-dirty/readdir-stat.png
-> 
-> 
-> There are still some things to be done, the checksums are not yet
-> finished and I certainly need to do a bit of cleaning up at some
-> places. But as far as features go, it all should be there already.
-> 
-> I'm working on this along with Lukas Czerner, who acts as my mentor
-> and helps me with different things (big thanks!).
-> 
-> Any feedback/ideas are greatly appeciated :)!
-> 
+Thanks
+Naga
+
+On Wed, Jun 26, 2013 at 11:33 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+> On Wed, Jun 26, 2013 at 10:35:22PM +0530, Nagachandra P wrote:
+>>
+>> These issue are not easy to reproduce!!! We are running multiple
+>> applications (of different memory size) over a period of a 24 hrs to
+>> 36 hrs and we hit this once. We have seen these issues easier to
+>> reproduce typically with around 512MB memory (may be in about 16 hrs -
+>> 20 hrs), and harder to reproduce with 1GB memory.
+>>
+>> Most of the time we get into these situation are when an application
+>> (Typically AsyncTasks in Android) that is doing ext4 fs ops are of low
+>> adj values (> 9, typically 10 - 12) and hence would be fairly gullible
+>> to be killed (and there would be no way to distinguish this from
+>> application perspective), this is one of the challenges we are facing.
+>> Also, here we are don't have to completely be out of memory (but just
+>> withing the LMK band for the process adj value).
+>
+> To be clear, if the application is killed by the low memory killer,
+> we're not going to trigger the ext4_std_err() codepath.  The
+> ext4_std_error() is getting called because free memory has fallen to
+> _zero_ and so kmem_cache_alloc() returns an error.  Should ext4 do a
+> better job with handling this?  Yes, absolutely.  I do consider this a
+> fs bug that we should try to fix.  The reality though is if that free
+> memory has gone to zero, it's going to put multiple kernel subsystems
+> under stress.
+>
+> It is good to hear that this is only happening on highly memory
+> constrained devices --- speaking as a owner of a Nexus 4 with 2GB of
+> memory.  :-P
+>
+> That's why the bigger issue is why did free memory go to zero in the
+> first place?  That means the LMK was probably not being aggressive
+> enough, or something started consuming a lot of memory too quickly,
+> before the page cleaner and write throttling algorithms could kick in
+> and try to deal with it.
+>
+>> But, on rethinking your idea on retrying may work if we have some
+>> tweaks in LMK as well (like killing multiple tasks instead of just
+>> one).
+>
+> You might also consider looking at tweaking the mm low watermark and
+> minimum watermark.  See the tunable /proc/sys/vm/min_free_kbytes.
+>
+> You might want to just simply try monitorinig the free memory levels
+> on a continuous basis, and see how often it's dropping below some
+> minimum level.  This will allow you to give you a figure of merit by
+> which you can try tuning your system, without needing to wait for a
+> file system error.
+>
 > Cheers,
-> Radek
-> 
-> 
-> Radek Pazdera (9):
->   ext4: Adding itree feature and inode flags
->   ext4: Allow sorting dx_map by inode as well
->   ext4: Adding a link to itree to the dx_root struct
->   ext4: Adding itree structures
->   ext4: Adding itree implementation I - Core
->   ext4: Adding itree implementation II - Inserting
->   ext4: Adding itree implementation III - Deleting
->   ext4: Make directory operations use itree
->   ext4: Make ext4_readdir() use itree if available
-> 
->  fs/ext4/dir.c   |  177 +++-
->  fs/ext4/ext4.h  |   21 +-
->  fs/ext4/namei.c | 2442 +++++++++++++++++++++++++++++++++++++++++++++++++++++--
->  3 files changed, 2565 insertions(+), 75 deletions(-)
-> 
-> 
+>
+>                                         - Ted
