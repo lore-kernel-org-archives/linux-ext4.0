@@ -1,47 +1,44 @@
-From: Eric Sandeen <sandeen@redhat.com>
+From: Nick Dokos <ndokos@gmail.com>
 Subject: Re: "block_dump, bd" in debugfs
-Date: Thu, 27 Jun 2013 00:00:13 -0400
-Message-ID: <51CBB8CD.8090907@redhat.com>
-References: <20130627035830.253590@gmx.com>
+Date: Thu, 27 Jun 2013 02:00:50 -0400
+Message-ID: <87d2r83xf1.fsf@gmail.com>
+References: <20130627030513.217820@gmx.com> <51CBB405.2080401@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: jon ernst <jonernst07@gmx.com>
+Content-Type: text/plain
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50737 "EHLO mx1.redhat.com"
+Received: from plane.gmane.org ([80.91.229.3]:37067 "EHLO plane.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750727Ab3F0EA1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 27 Jun 2013 00:00:27 -0400
-In-Reply-To: <20130627035830.253590@gmx.com>
+	id S1751003Ab3F0GFG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 27 Jun 2013 02:05:06 -0400
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
+	id 1Us5KJ-0001Ws-KE
+	for linux-ext4@vger.kernel.org; Thu, 27 Jun 2013 08:05:03 +0200
+Received: from pool-108-7-96-134.bstnma.fios.verizon.net ([108.7.96.134])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Thu, 27 Jun 2013 08:05:03 +0200
+Received: from ndokos by pool-108-7-96-134.bstnma.fios.verizon.net with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Thu, 27 Jun 2013 08:05:03 +0200
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 6/26/13 11:58 PM, jon ernst wrote:
-> ----- Original Message -----
-> From: Eric Sandeen
-> Sent: 06/26/13 11:39 PM
-> To: jon ernst
-> Subject: Re: "block_dump, bd" in debugfs
->  On 6/26/13 11:05 PM, jon ernst wrote:
->>> Hi, 
->>> When I use "block_dump" to dump certain block. I got 12288 bytes dumped.
-> 
->> output example? It dumps a hexadecimal representation w/ octal
->> offsets, if you're counting bytes in the *text* output it'd be more than 4096.
-> 
-> 
-> This is example:
+Eric Sandeen <sandeen@redhat.com> writes:
 
-<snip, I assume>
+> On 6/26/13 11:05 PM, jon ernst wrote:
+>  ...
+>> Also at the beginning of each line. The output pattern is "0000,
+>> 0020, 0040, 0060, 0100, 0120", where are numbers such as"0080,"?
+>
+> Identical lines are suppressed, similar to what hexdump does by
+> default.  You might have had a "*" in between?
+>
 
-> 7020  ae1c aefc aef4 aedf ae65 ae83 ae2e ae19  .........e......
+Offsets are octal, so there is no 0080: adding octal 020 to
+octal 0060 gets you to octal 0100.
 
-<my snip>
-
-> 7760  ae42 ae44 ae04 ae0b aec9 ae62 aedd ae95  .B.D.......b....
-
-Octal 07760 -> 0777, i.e. ending at byte 4095, or one full block.
-
--Eric
+-- 
+Nick
 
