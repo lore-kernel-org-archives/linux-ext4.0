@@ -1,38 +1,47 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
 Subject: Re: [PATCH 1/2 V2] mke2fs: fix force option to create filesystem on
  mounted device
-Date: Thu, 27 Jun 2013 14:52:19 +0800
-Message-ID: <20130627065218.GA16789@gmail.com>
+Date: Thu, 27 Jun 2013 11:05:18 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1306271103260.1781@localhost.localdomain>
 References: <51C7E72B.2070608@sx.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: Andreas Dilger <adilger@dilger.ca>, tytso@mit.edu,
 	linux-ext4@vger.kernel.org
 To: Kazuya Mio <k-mio@sx.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f51.google.com ([209.85.220.51]:60937 "EHLO
-	mail-pa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752286Ab3F0Gdu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Jun 2013 02:33:50 -0400
-Received: by mail-pa0-f51.google.com with SMTP id lf11so609518pab.38
-        for <linux-ext4@vger.kernel.org>; Wed, 26 Jun 2013 23:33:49 -0700 (PDT)
-Content-Disposition: inline
+Received: from mx1.redhat.com ([209.132.183.28]:36865 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752545Ab3F0JF1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 27 Jun 2013 05:05:27 -0400
 In-Reply-To: <51C7E72B.2070608@sx.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jun 24, 2013 at 03:28:59PM +0900, Kazuya Mio wrote:
+On Mon, 24 Jun 2013, Kazuya Mio wrote:
+
+> Date: Mon, 24 Jun 2013 15:28:59 +0900
+> From: Kazuya Mio <k-mio@sx.jp.nec.com>
+> To: Andreas Dilger <adilger@dilger.ca>, tytso@mit.edu
+> Cc: linux-ext4@vger.kernel.org
+> Subject: [PATCH 1/2 V2] mke2fs: fix force option to create filesystem on
+>     mounted device
+> 
 > According to mke2fs man, we can create a filesystem on the mounted device
 > when -FF option is specified.
 > However, currently we have to specify -F option third to force mke2fs.
+
+Oh, you mean we have to specify -F option three times ? It took me
+some time to understand. Please rephrase the description.
+
+Otherwise the patch looks good.
+
+Thanks!
+-Lukas
+
 > This patch fixes the problem.
 > 
 > Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
-
-Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
-
-                                                - Zheng
-
 > ---
 >  misc/util.c |    4 ++--
 >  1 files changed, 2 insertions(+), 2 deletions(-)
@@ -64,3 +73,4 @@ Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
