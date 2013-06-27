@@ -1,38 +1,66 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: "block_dump, bd" in debugfs
-Date: Thu, 27 Jun 2013 12:51:13 -0400
-Message-ID: <51CC6D81.4040105@redhat.com>
-References: <20130627030513.217820@gmx.com> <51CBB405.2080401@redhat.com> <87d2r83xf1.fsf@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Memory allocation can cause ext4 filesystem to be remounted r/o
+Date: Thu, 27 Jun 2013 13:36:52 -0400
+Message-ID: <20130627173652.GA22107@thunk.org>
+References: <CAFy9=U5n-YF017L+gni4v8pgq-AsLVTZBLwaZhPjHJCMXzLLag@mail.gmail.com>
+ <20130626140205.GE3875@thunk.org>
+ <20130626145417.GB32092@thunk.org>
+ <CAFy9=U5O9qQP5QU_Nw4fEbfy2oVxUub=ddYgJ_ZKXmjdChO4iA@mail.gmail.com>
+ <20130626163450.GA2487@thunk.org>
+ <CAFy9=U5m5uew586C2eZJ7HjkRN5PvKr8+FoDdj8xtJoBeuP-_A@mail.gmail.com>
+ <20130626180345.GA4128@thunk.org>
+ <CAFy9=U5bPbDqfU=NVdaxvK5gNX9O33LD6mYJYqoTQLq7UTjqFw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Nick Dokos <ndokos@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Vikram MP <mp.vikram@gmail.com>, linux-ext4@vger.kernel.org
+To: Nagachandra P <nagachandra@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59594 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752165Ab3F0QvQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 27 Jun 2013 12:51:16 -0400
-In-Reply-To: <87d2r83xf1.fsf@gmail.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:33512 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752152Ab3F0Rgz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 27 Jun 2013 13:36:55 -0400
+Content-Disposition: inline
+In-Reply-To: <CAFy9=U5bPbDqfU=NVdaxvK5gNX9O33LD6mYJYqoTQLq7UTjqFw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 6/27/13 2:00 AM, Nick Dokos wrote:
-> Eric Sandeen <sandeen@redhat.com> writes:
+On Thu, Jun 27, 2013 at 06:28:21PM +0530, Nagachandra P wrote:
+> Hi Theodore,
 > 
->> On 6/26/13 11:05 PM, jon ernst wrote:
->>  ...
->>> Also at the beginning of each line. The output pattern is "0000,
->>> 0020, 0040, 0060, 0100, 0120", where are numbers such as"0080,"?
->>
->> Identical lines are suppressed, similar to what hexdump does by
->> default.  You might have had a "*" in between?
->>
-> 
-> Offsets are octal, so there is no 0080: adding octal 020 to
-> octal 0060 gets you to octal 0100.
-> 
+> Could you point me to the code where ext4_std_err is not triggered
+> because of LMK? As I see it, if a memory allocation returns error in
+> some of the case ext4_std_error would invariably be called. Please
+> consider the following call stack
 
-Oh right, that too.  :)  Thanks.
+Yes, that's one example where a memory allocation failure can lead to
+ext4_std_error() getting called, and I've already acknowledged that's
+one that we need to fix (although as I said, fixing it may be tricky,
+short of calling congestion_wait() and then retrying the allocation,
+and hoping that in the meantime the OOM killer has freed up some
+memory).
 
--Eric
+If you'd could give me a list of other memory allocations where
+ext4_std_error() could get called, please let me know.  Note that in
+the jbd2 layer, though, we handle a memory allocation failure by
+retrying the allocation, to avoid this the file system getting marked
+read/only.  Examples of this include in jbd2_journal_write_metadata_buffer(),
+and in jbd2_journal_add_journal_head() when it calls
+journal_alloc_journal_head().  (Although the way we're doing the retry
+in the latter case is a bit ugly and we're not sleeping with a call to
+congestion_wait(), so it's something we should clean up.)
+
+To give you an example of the intended use of ext4_std_error(), if the
+journal commit code runs into a disk I/O error while writing to the
+journal, the jbd2 code has to mark the journal as aborted.  This could
+happen because the disk has gone off-line, or the HDD has run out of
+spare disk sectors in its bad block replacement pool, so it has to
+return a write error to the OS.  Once the journal has been marked as
+aborted, the next time the ext4 code tries to access the journal, by
+starting a new journal handle, or marking a metadata block dirty, the
+jbd2 function will return an error, and this will cause
+ext4_std_error() to be called so the file system can be marked as
+requiring a file system check.
+
+Regards,
+
+					- Ted
