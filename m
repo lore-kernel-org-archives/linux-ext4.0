@@ -1,73 +1,340 @@
-From: Joel Becker <jlbec@evilplan.org>
-Subject: Re: [PATCH] fs/jbd2: t_updates should increase when
- start_this_handle() failed in jbd2__journal_restart()
-Date: Sat, 29 Jun 2013 14:22:29 +0100
-Message-ID: <20130629132229.GJ13405@ZenIV.linux.org.uk>
-References: <51C1381A.2@huawei.com>
- <20130620155555.GE28309@thunk.org>
- <51C4553B.7010809@huawei.com>
- <20130623173628.GC16620@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] jbd2: invalidate handle if jbd2_journal_restart() fails
+Date: Sat, 29 Jun 2013 19:46:48 -0400
+Message-ID: <20130629234648.GA4560@thunk.org>
+References: <20130623173628.GC16620@thunk.org>
+ <1372009468-11651-1-git-send-email-tytso@mit.edu>
+ <51C965F2.3090704@huawei.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Younger Liu <younger.liu@huawei.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org,
-	Ocfs2-Devel <ocfs2-devel@oss.oracle.com>,
-	Li Zefan <lizefan@huawei.com>, jack@suse.cz
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	jbacik@fusionio.com, Jan Kara <jack@suse.cz>
+To: Younger Liu <younger.liu@huawei.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:57688 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751683Ab3F2NWf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 29 Jun 2013 09:22:35 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:33998 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751431Ab3F2Xq7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 29 Jun 2013 19:46:59 -0400
 Content-Disposition: inline
-In-Reply-To: <20130623173628.GC16620@thunk.org>
+In-Reply-To: <51C965F2.3090704@huawei.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jun 23, 2013 at 01:36:28PM -0400, Theodore Ts'o wrote:
-> On Fri, Jun 21, 2013 at 09:29:31PM +0800, Younger Liu wrote:
-> > 
-> > This bug was triggered by the following scenario:
-> > In ocfs2 file system, allocate a very large disk space for a small file
-> > with ocfs2_fallocate(), while the journal file size is 32M. 
-> > 
-> > Because there are much many journal blocks needed by jbd2_journal_restart(), 
-> > so that nblocks is greater than journal->j_max_transaction_buffers 
-> > in start_this_handle(), and then return -ENOSPC.
-> 
-> Ah, I see.  I have a patch that should prevent the kernel from
-> crashing in this situation, and which adds some additional checks to
-> make sure no one tries to use the handle after jbd2_journal_restart()
-> fails in this circumstance.
-> 
-> However, you may want to further pursue a fix in ocfs2 so you don't
-> actually return ENOSPC to userspace, since it is a very misleading
-> error message --- it's not that the file system is out of space, but
-> that the journal is too small for the amount of space that you are
-> trying to allocate using fallocate().
-> 
-> I would think a better way of handling this situation would be to log
-> a warning message that the journal is probably too small, and then to
-> break up the fallocate into smaller chunks, so that it can
-> successfully complete despite the fact that the journal was
-> unfortunately missized.
+On Tue, Jun 25, 2013 at 05:42:10PM +0800, Younger Liu wrote:
+> If jbd2__journal_restart fails, handle->h_transaction may be NULL.
+> So we should check handle->h_transaction before 
+> "journal = transaction->t_journal", Right?
 
-	Yes, this solution is a good one.
+Good point, yes.  Here's a new version of the patch which I have in my tree.
 
-Joel
+     	    	  	       	       	      - Ted
 
-> 
-> I'll be sending the proposed fix in a moment; could you check and see
-> if the patch prevents ocfs2/jbd2 from tripping over the assertion
-> given your test case?
-> 
-> Thanks,
-> 
-> 					- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>From fd8d369f9ad921eb6dc5c56e87e4c6d6106bad56 Mon Sep 17 00:00:00 2001
+From: Theodore Ts'o <tytso@mit.edu>
+Date: Sun, 23 Jun 2013 12:59:01 -0400
+Subject: [PATCH] jbd2: invalidate handle if jbd2_journal_restart() fails
 
+If jbd2_journal_restart() fails the handle will have been disconnected
+from the current transaction.  In this situation, the handle must not
+be used for for any jbd2 function other than jbd2_journal_stop().
+Enforce this with by treating a handle which has a NULL transaction
+pointer as an aborted handle, and issue a kernel warning if
+jbd2_journal_extent(), jbd2_journal_get_write_access(),
+jbd2_journal_dirty_metadata(), etc. is called with an invalid handle.
+
+This commit also fixes a bug where jbd2_journal_stop() would trip over
+a kernel jbd2 assertion check when trying to free an invalid handle.
+
+Also move the responsibility of setting current->journal_info to
+start_this_handle(), simplifying the three users of this function.
+
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Reported-by: Younger Liu <younger.liu@huawei.com>
+Cc: Jan Kara <jack@suse.cz>
+---
+ fs/jbd2/transaction.c | 74 ++++++++++++++++++++++++++++++---------------------
+ include/linux/jbd2.h  |  2 +-
+ 2 files changed, 44 insertions(+), 32 deletions(-)
+
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 383b0fb..7aa9a32 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -368,6 +368,7 @@ repeat:
+ 		  atomic_read(&transaction->t_outstanding_credits),
+ 		  jbd2_log_space_left(journal));
+ 	read_unlock(&journal->j_state_lock);
++	current->journal_info = handle;
+ 
+ 	lock_map_acquire(&handle->h_lockdep_map);
+ 	jbd2_journal_free_transaction(new_transaction);
+@@ -442,14 +443,11 @@ handle_t *jbd2__journal_start(journal_t *journal, int nblocks, int rsv_blocks,
+ 		handle->h_rsv_handle = rsv_handle;
+ 	}
+ 
+-	current->journal_info = handle;
+-
+ 	err = start_this_handle(journal, handle, gfp_mask);
+ 	if (err < 0) {
+ 		if (handle->h_rsv_handle)
+ 			jbd2_free_handle(handle->h_rsv_handle);
+ 		jbd2_free_handle(handle);
+-		current->journal_info = NULL;
+ 		return ERR_PTR(err);
+ 	}
+ 	handle->h_type = type;
+@@ -511,16 +509,13 @@ int jbd2_journal_start_reserved(handle_t *handle, unsigned int type,
+ 	}
+ 
+ 	handle->h_journal = NULL;
+-	current->journal_info = handle;
+ 	/*
+ 	 * GFP_NOFS is here because callers are likely from writeback or
+ 	 * similarly constrained call sites
+ 	 */
+ 	ret = start_this_handle(journal, handle, GFP_NOFS);
+-	if (ret < 0) {
+-		current->journal_info = NULL;
++	if (ret < 0)
+ 		jbd2_journal_free_reserved(handle);
+-	}
+ 	handle->h_type = type;
+ 	handle->h_line_no = line_no;
+ 	return ret;
+@@ -550,20 +545,21 @@ EXPORT_SYMBOL(jbd2_journal_start_reserved);
+ int jbd2_journal_extend(handle_t *handle, int nblocks)
+ {
+ 	transaction_t *transaction = handle->h_transaction;
+-	journal_t *journal = transaction->t_journal;
++	journal_t *journal;
+ 	int result;
+ 	int wanted;
+ 
+-	result = -EIO;
++	WARN_ON(!transaction);
+ 	if (is_handle_aborted(handle))
+-		goto out;
++		return -EROFS;
++	journal = transaction->t_journal;
+ 
+ 	result = 1;
+ 
+ 	read_lock(&journal->j_state_lock);
+ 
+ 	/* Don't extend a locked-down transaction! */
+-	if (handle->h_transaction->t_state != T_RUNNING) {
++	if (transaction->t_state != T_RUNNING) {
+ 		jbd_debug(3, "denied handle %p %d blocks: "
+ 			  "transaction not running\n", handle, nblocks);
+ 		goto error_out;
+@@ -589,7 +585,7 @@ int jbd2_journal_extend(handle_t *handle, int nblocks)
+ 	}
+ 
+ 	trace_jbd2_handle_extend(journal->j_fs_dev->bd_dev,
+-				 handle->h_transaction->t_tid,
++				 transaction->t_tid,
+ 				 handle->h_type, handle->h_line_no,
+ 				 handle->h_buffer_credits,
+ 				 nblocks);
+@@ -603,7 +599,6 @@ unlock:
+ 	spin_unlock(&transaction->t_handle_lock);
+ error_out:
+ 	read_unlock(&journal->j_state_lock);
+-out:
+ 	return result;
+ }
+ 
+@@ -626,14 +621,16 @@ out:
+ int jbd2__journal_restart(handle_t *handle, int nblocks, gfp_t gfp_mask)
+ {
+ 	transaction_t *transaction = handle->h_transaction;
+-	journal_t *journal = transaction->t_journal;
++	journal_t *journal;
+ 	tid_t		tid;
+ 	int		need_to_start, ret;
+ 
++	WARN_ON(!transaction);
+ 	/* If we've had an abort of any type, don't even think about
+ 	 * actually doing the restart! */
+ 	if (is_handle_aborted(handle))
+ 		return 0;
++	journal = transaction->t_journal;
+ 
+ 	/*
+ 	 * First unlink the handle from its current transaction, and start the
+@@ -654,6 +651,8 @@ int jbd2__journal_restart(handle_t *handle, int nblocks, gfp_t gfp_mask)
+ 		wake_up(&journal->j_wait_updates);
+ 	tid = transaction->t_tid;
+ 	spin_unlock(&transaction->t_handle_lock);
++	handle->h_transaction = NULL;
++	current->journal_info = NULL;
+ 
+ 	jbd_debug(2, "restarting handle %p\n", handle);
+ 	need_to_start = !tid_geq(journal->j_commit_request, tid);
+@@ -783,17 +782,16 @@ do_get_write_access(handle_t *handle, struct journal_head *jh,
+ 			int force_copy)
+ {
+ 	struct buffer_head *bh;
+-	transaction_t *transaction;
++	transaction_t *transaction = handle->h_transaction;
+ 	journal_t *journal;
+ 	int error;
+ 	char *frozen_buffer = NULL;
+ 	int need_copy = 0;
+ 	unsigned long start_lock, time_lock;
+ 
++	WARN_ON(!transaction);
+ 	if (is_handle_aborted(handle))
+ 		return -EROFS;
+-
+-	transaction = handle->h_transaction;
+ 	journal = transaction->t_journal;
+ 
+ 	jbd_debug(5, "journal_head %p, force_copy %d\n", jh, force_copy);
+@@ -1052,14 +1050,16 @@ int jbd2_journal_get_write_access(handle_t *handle, struct buffer_head *bh)
+ int jbd2_journal_get_create_access(handle_t *handle, struct buffer_head *bh)
+ {
+ 	transaction_t *transaction = handle->h_transaction;
+-	journal_t *journal = transaction->t_journal;
++	journal_t *journal;
+ 	struct journal_head *jh = jbd2_journal_add_journal_head(bh);
+ 	int err;
+ 
+ 	jbd_debug(5, "journal_head %p\n", jh);
++	WARN_ON(!transaction);
+ 	err = -EROFS;
+ 	if (is_handle_aborted(handle))
+ 		goto out;
++	journal = transaction->t_journal;
+ 	err = 0;
+ 
+ 	JBUFFER_TRACE(jh, "entry");
+@@ -1265,12 +1265,14 @@ void jbd2_buffer_abort_trigger(struct journal_head *jh,
+ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
+ {
+ 	transaction_t *transaction = handle->h_transaction;
+-	journal_t *journal = transaction->t_journal;
++	journal_t *journal;
+ 	struct journal_head *jh;
+ 	int ret = 0;
+ 
++	WARN_ON(!transaction);
+ 	if (is_handle_aborted(handle))
+-		goto out;
++		return -EROFS;
++	journal = transaction->t_journal;
+ 	jh = jbd2_journal_grab_journal_head(bh);
+ 	if (!jh) {
+ 		ret = -EUCLEAN;
+@@ -1364,7 +1366,7 @@ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
+ 
+ 	JBUFFER_TRACE(jh, "file as BJ_Metadata");
+ 	spin_lock(&journal->j_list_lock);
+-	__jbd2_journal_file_buffer(jh, handle->h_transaction, BJ_Metadata);
++	__jbd2_journal_file_buffer(jh, transaction, BJ_Metadata);
+ 	spin_unlock(&journal->j_list_lock);
+ out_unlock_bh:
+ 	jbd_unlock_bh_state(bh);
+@@ -1395,12 +1397,17 @@ out:
+ int jbd2_journal_forget (handle_t *handle, struct buffer_head *bh)
+ {
+ 	transaction_t *transaction = handle->h_transaction;
+-	journal_t *journal = transaction->t_journal;
++	journal_t *journal;
+ 	struct journal_head *jh;
+ 	int drop_reserve = 0;
+ 	int err = 0;
+ 	int was_modified = 0;
+ 
++	WARN_ON(!transaction);
++	if (is_handle_aborted(handle))
++		return -EROFS;
++	journal = transaction->t_journal;
++
+ 	BUFFER_TRACE(bh, "entry");
+ 
+ 	jbd_lock_bh_state(bh);
+@@ -1427,7 +1434,7 @@ int jbd2_journal_forget (handle_t *handle, struct buffer_head *bh)
+ 	 */
+ 	jh->b_modified = 0;
+ 
+-	if (jh->b_transaction == handle->h_transaction) {
++	if (jh->b_transaction == transaction) {
+ 		J_ASSERT_JH(jh, !jh->b_frozen_data);
+ 
+ 		/* If we are forgetting a buffer which is already part
+@@ -1522,19 +1529,21 @@ drop:
+ int jbd2_journal_stop(handle_t *handle)
+ {
+ 	transaction_t *transaction = handle->h_transaction;
+-	journal_t *journal = transaction->t_journal;
+-	int err, wait_for_commit = 0;
++	journal_t *journal;
++	int err = 0, wait_for_commit = 0;
+ 	tid_t tid;
+ 	pid_t pid;
+ 
++	if (!transaction)
++		goto free_and_exit;
++	journal = transaction->t_journal;
++
+ 	J_ASSERT(journal_current_handle() == handle);
+ 
+ 	if (is_handle_aborted(handle))
+ 		err = -EIO;
+-	else {
++	else
+ 		J_ASSERT(atomic_read(&transaction->t_updates) > 0);
+-		err = 0;
+-	}
+ 
+ 	if (--handle->h_ref > 0) {
+ 		jbd_debug(4, "h_ref %d -> %d\n", handle->h_ref + 1,
+@@ -1544,7 +1553,7 @@ int jbd2_journal_stop(handle_t *handle)
+ 
+ 	jbd_debug(4, "Handle %p going down\n", handle);
+ 	trace_jbd2_handle_stats(journal->j_fs_dev->bd_dev,
+-				handle->h_transaction->t_tid,
++				transaction->t_tid,
+ 				handle->h_type, handle->h_line_no,
+ 				jiffies - handle->h_start_jiffies,
+ 				handle->h_sync, handle->h_requested_credits,
+@@ -1657,6 +1666,7 @@ int jbd2_journal_stop(handle_t *handle)
+ 
+ 	if (handle->h_rsv_handle)
+ 		jbd2_journal_free_reserved(handle->h_rsv_handle);
++free_and_exit:
+ 	jbd2_free_handle(handle);
+ 	return err;
+ }
+@@ -2362,10 +2372,12 @@ void jbd2_journal_refile_buffer(journal_t *journal, struct journal_head *jh)
+ int jbd2_journal_file_inode(handle_t *handle, struct jbd2_inode *jinode)
+ {
+ 	transaction_t *transaction = handle->h_transaction;
+-	journal_t *journal = transaction->t_journal;
++	journal_t *journal;
+ 
++	WARN_ON(!transaction);
+ 	if (is_handle_aborted(handle))
+-		return -EIO;
++		return -EROFS;
++	journal = transaction->t_journal;
+ 
+ 	jbd_debug(4, "Adding inode %lu, tid:%d\n", jinode->i_vfs_inode->i_ino,
+ 			transaction->t_tid);
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 0302f3f..d5b50a1 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1266,7 +1266,7 @@ static inline int is_journal_aborted(journal_t *journal)
+ 
+ static inline int is_handle_aborted(handle_t *handle)
+ {
+-	if (handle->h_aborted)
++	if (handle->h_aborted || !handle->h_transaction)
+ 		return 1;
+ 	return is_journal_aborted(handle->h_transaction->t_journal);
+ }
 -- 
+1.7.12.rc0.22.gcdd159b
+
