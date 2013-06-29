@@ -1,78 +1,73 @@
-From: Nagachandra P <nagachandra@gmail.com>
-Subject: Re: Memory allocation can cause ext4 filesystem to be remounted r/o
-Date: Fri, 28 Jun 2013 19:22:51 +0530
-Message-ID: <CAFy9=U4+OmqvtuDv646EWYmmF58-Nh-GhRc47FPQzcttSY25ig@mail.gmail.com>
-References: <CAFy9=U5n-YF017L+gni4v8pgq-AsLVTZBLwaZhPjHJCMXzLLag@mail.gmail.com>
-	<20130626140205.GE3875@thunk.org>
-	<20130626145417.GB32092@thunk.org>
-	<CAFy9=U5O9qQP5QU_Nw4fEbfy2oVxUub=ddYgJ_ZKXmjdChO4iA@mail.gmail.com>
-	<20130626163450.GA2487@thunk.org>
-	<CAFy9=U5m5uew586C2eZJ7HjkRN5PvKr8+FoDdj8xtJoBeuP-_A@mail.gmail.com>
-	<20130626180345.GA4128@thunk.org>
-	<CAFy9=U5bPbDqfU=NVdaxvK5gNX9O33LD6mYJYqoTQLq7UTjqFw@mail.gmail.com>
-	<20130627173652.GA22107@thunk.org>
+From: Joel Becker <jlbec@evilplan.org>
+Subject: Re: [PATCH] fs/jbd2: t_updates should increase when
+ start_this_handle() failed in jbd2__journal_restart()
+Date: Sat, 29 Jun 2013 14:22:29 +0100
+Message-ID: <20130629132229.GJ13405@ZenIV.linux.org.uk>
+References: <51C1381A.2@huawei.com>
+ <20130620155555.GE28309@thunk.org>
+ <51C4553B.7010809@huawei.com>
+ <20130623173628.GC16620@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Vikram MP <mp.vikram@gmail.com>, linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Younger Liu <younger.liu@huawei.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org,
+	Ocfs2-Devel <ocfs2-devel@oss.oracle.com>,
+	Li Zefan <lizefan@huawei.com>, jack@suse.cz
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f172.google.com ([209.85.217.172]:36040 "EHLO
-	mail-lb0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751743Ab3F1Nwx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Jun 2013 09:52:53 -0400
-Received: by mail-lb0-f172.google.com with SMTP id v20so1050077lbc.3
-        for <linux-ext4@vger.kernel.org>; Fri, 28 Jun 2013 06:52:51 -0700 (PDT)
-In-Reply-To: <20130627173652.GA22107@thunk.org>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:57688 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751683Ab3F2NWf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 29 Jun 2013 09:22:35 -0400
+Content-Disposition: inline
+In-Reply-To: <20130623173628.GC16620@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Thanks a lot for explaining this.
+On Sun, Jun 23, 2013 at 01:36:28PM -0400, Theodore Ts'o wrote:
+> On Fri, Jun 21, 2013 at 09:29:31PM +0800, Younger Liu wrote:
+> > 
+> > This bug was triggered by the following scenario:
+> > In ocfs2 file system, allocate a very large disk space for a small file
+> > with ocfs2_fallocate(), while the journal file size is 32M. 
+> > 
+> > Because there are much many journal blocks needed by jbd2_journal_restart(), 
+> > so that nblocks is greater than journal->j_max_transaction_buffers 
+> > in start_this_handle(), and then return -ENOSPC.
+> 
+> Ah, I see.  I have a patch that should prevent the kernel from
+> crashing in this situation, and which adds some additional checks to
+> make sure no one tries to use the handle after jbd2_journal_restart()
+> fails in this circumstance.
+> 
+> However, you may want to further pursue a fix in ocfs2 so you don't
+> actually return ENOSPC to userspace, since it is a very misleading
+> error message --- it's not that the file system is out of space, but
+> that the journal is too small for the amount of space that you are
+> trying to allocate using fallocate().
+> 
+> I would think a better way of handling this situation would be to log
+> a warning message that the journal is probably too small, and then to
+> break up the fallocate into smaller chunks, so that it can
+> successfully complete despite the fact that the journal was
+> unfortunately missized.
 
-I will have a look into the jbd2 code for having similar
-implementation on ext4 as well. I will keep you posted on any patches
-we try out and get your opinion.
+	Yes, this solution is a good one.
 
-Best regards
-Naga
+Joel
 
-On Thu, Jun 27, 2013 at 11:06 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Thu, Jun 27, 2013 at 06:28:21PM +0530, Nagachandra P wrote:
->> Hi Theodore,
->>
->> Could you point me to the code where ext4_std_err is not triggered
->> because of LMK? As I see it, if a memory allocation returns error in
->> some of the case ext4_std_error would invariably be called. Please
->> consider the following call stack
->
-> Yes, that's one example where a memory allocation failure can lead to
-> ext4_std_error() getting called, and I've already acknowledged that's
-> one that we need to fix (although as I said, fixing it may be tricky,
-> short of calling congestion_wait() and then retrying the allocation,
-> and hoping that in the meantime the OOM killer has freed up some
-> memory).
->
-> If you'd could give me a list of other memory allocations where
-> ext4_std_error() could get called, please let me know.  Note that in
-> the jbd2 layer, though, we handle a memory allocation failure by
-> retrying the allocation, to avoid this the file system getting marked
-> read/only.  Examples of this include in jbd2_journal_write_metadata_buffer(),
-> and in jbd2_journal_add_journal_head() when it calls
-> journal_alloc_journal_head().  (Although the way we're doing the retry
-> in the latter case is a bit ugly and we're not sleeping with a call to
-> congestion_wait(), so it's something we should clean up.)
->
-> To give you an example of the intended use of ext4_std_error(), if the
-> journal commit code runs into a disk I/O error while writing to the
-> journal, the jbd2 code has to mark the journal as aborted.  This could
-> happen because the disk has gone off-line, or the HDD has run out of
-> spare disk sectors in its bad block replacement pool, so it has to
-> return a write error to the OS.  Once the journal has been marked as
-> aborted, the next time the ext4 code tries to access the journal, by
-> starting a new journal handle, or marking a metadata block dirty, the
-> jbd2 function will return an error, and this will cause
-> ext4_std_error() to be called so the file system can be marked as
-> requiring a file system check.
->
-> Regards,
->
->                                         - Ted
+> 
+> I'll be sending the proposed fix in a moment; could you check and see
+> if the patch prevents ocfs2/jbd2 from tripping over the assertion
+> given your test case?
+> 
+> Thanks,
+> 
+> 					- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
