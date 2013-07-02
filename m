@@ -1,76 +1,80 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] e2fsprogs: allocate inode table wholly within group
-Date: Tue, 02 Jul 2013 15:14:35 -0400
-Message-ID: <51D3269B.5080608@redhat.com>
+From: Stephen Rothwell <sfr@canb.auug.org.au>
+Subject: Re: [GIT PULL] ext4 updates for 3.11
+Date: Wed, 3 Jul 2013 09:41:35 +1000
+Message-ID: <20130703094135.985a3130812988831f3f524a@canb.auug.org.au>
+References: <nsxbo6mxu38.fsf@lambda.thunk.org>
+	<CA+55aFyRLc81s03ULLZ26N0qwRqxS-9+6XpyhxVH62qx2b5o2A@mail.gmail.com>
+	<20130702180447.GB16282@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51643 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753212Ab3GBTOY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 2 Jul 2013 15:14:24 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r62JEOcK024765
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Tue, 2 Jul 2013 15:14:24 -0400
-Received: from [IPv6:::1] (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r62JEMxU015144
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 2 Jul 2013 15:14:23 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: multipart/signed; protocol="application/pgp-signature";
+ micalg="PGP-SHA256";
+ boundary="Signature=_Wed__3_Jul_2013_09_41_35_+1000_aR+LAyiG/=hg=6gL"
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	Theodore Ts'o <tytso@mit.edu>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20130702180447.GB16282@quack.suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Building e2fsprogs 1.42.8 on ppc, I got this:
+--Signature=_Wed__3_Jul_2013_09_41_35_+1000_aR+LAyiG/=hg=6gL
+Content-Type: text/plain; charset=UTF-8
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-r_1024_small_bg: ext2 1024 blocksize with small block groups: failed
+On Tue, 2 Jul 2013 20:04:47 +0200 Jan Kara <jack@suse.cz> wrote:
+>
+> On Tue 02-07-13 10:18:32, Linus Torvalds wrote:
+> > Hmm I'm getting this compiler warning:
+> >=20
+> >   fs/ext4/inode.c: In function =E2=80=98ext4_writepages=E2=80=99:
+> >   fs/ext4/inode.c:2219:6: warning: =E2=80=98err=E2=80=99 may be used un=
+initialized in
+> > this function [-Wmaybe-uninitialized]
+> >=20
+> > and I think the compiler is right to warn. The 'err' variable is set
+> > inside a whilte() and an if() statement, and it is not at all obvious
+> > that those codepaths are always taken.
+> >=20
+> > Maybe that "map->m_len" is always guaranteed to be nonzero, and the
+> > "while()" statement could be a "do { } while()" one. But if so, make
+> > it so, don't write code as if it might never be executed, when the
+> > return value seems to *depend* on it being executed.
+>   That's caused by my patches (only for certain gcc versions). map->m_len
+> is guaranteed to be > 0 in the first iteration (the function is called fr=
+om
+> under if (map->m_len > 0)). I though Ted silenced that warning but
+> apparently he did not. The cleanest fix is likely to make a do-while loop
+> from that one. I'll send Ted a patch for that.
 
-Because during the resize step it did this:
+I did report that warning about 4 weeks ago ... and provided a fix that
+was way over the top (but pointed out another problem that was fixed).
 
-Itable move group 1 block 1030->1092 (diff 62)
+--=20
+Cheers,
+Stephen Rothwell                    sfr@canb.auug.org.au
 
-but during e2fsck it found:
+--Signature=_Wed__3_Jul_2013_09_41_35_+1000_aR+LAyiG/=hg=6gL
+Content-Type: application/pgp-signature
 
-/tmp/e2fsprogs-tmp.uiFhgP: Inode table for group 1 is not in group.  (block 1092)
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.20 (GNU/Linux)
 
-i.e. from dumpe2fs we can see:
+iQIcBAEBCAAGBQJR02UvAAoJEECxmPOUX5FEcLcP/j/TifxfijY91RLQtu2cTgP2
+jXdbvg/3yGj8e81lK6J5OY3WOAVQ5/ZypXYYMcexWU5GxN03brsKRhKVBfJu2buJ
+3ydJRS5xDi2ebiQdAJxxERVFeVqHQNB876xOEJTnRItKIO24FfKVzxMvS6siZnqa
+dZU+zgMsZF8ksgiuA4yLoT7X0wI41Uazq6LeQ+FpXRBqNYB40vQX2QldsQMtxrzn
+dtRlhqpeIgrL0bZPLi+e8kE3c6z7fOUUaEaonbb+HF4gNgYwfrSMl5M/aTETD9f2
+IAXhe7oWrmRZrm73a2RRvdf1Kz8VleKcE5wLS7X95ghkoRGiIQfGG+gZ6woEHQv0
+MM1vyA2rApD7FZd1Gy0dmZAtjrg9FQw5eZ0K94zYa/jq7MZEv3JR6gwHQXO/XR5M
+UiJqEz2OVlulB5kZ/4hrt1lWPbZSpw6vD8gfcRsH2pP6nHPQ4kpzo+AT7UH1H1TL
+sdDwzp3HZjUNWYyHmd33ft1qXNjbONL9+22eYFGDo58C0SCSQbHFqIOKjxgdGVPL
+0AQvHMIK4Yb4ZJ4FA0OpybwSkiviLo6bHUyFImUSPtfTdXp+Iw0DA51ZumGf//Dd
+vh2MuP8XU2bbj5SOXKZi7Ymuhu/nOycAAl1SbXl6B3gPHKjZoKXri4uafHb7QmdZ
+dyxrDe3Ga8mzV2us7qlh
+=Qh3u
+-----END PGP SIGNATURE-----
 
-Group 1: (Blocks 1025-1110)
-  Backup superblock at 1025, Group descriptors at 1026-1026
-  Block bitmap at 1090 (+65), Inode bitmap at 1091 (+66)
-  Inode table at 1092-1123 (+67)
-                      ^^^^ beyond end of block group
-
-ext2fs_allocate_group_table() currently sends the last block of the
-group as an acceptable *starting* point for the inode table allocation.
-
-Because the inode table may be several blocks, and must reside wholly
-within the group, move the last acceptable starting block back by this
-amount so that the allocated range cannot extend past the end of the
-group.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
-
-p.s. I *think* this fixes it; I've not convinced myself that the failure
-is 100% deterministic, so extra eyeballs on the patch are welcome.
-
-Thanks,
--Eric
-
-Index: e2fsprogs-1.42.8/lib/ext2fs/alloc_tables.c
-===================================================================
---- e2fsprogs-1.42.8.orig/lib/ext2fs/alloc_tables.c
-+++ e2fsprogs-1.42.8/lib/ext2fs/alloc_tables.c
-@@ -200,6 +200,9 @@ errcode_t ext2fs_allocate_group_table(ex
- 	}
- 
- 	if (!ext2fs_inode_table_loc(fs, group)) {
-+		/* Inode table must fit within group, so adjust last blk */
-+		last_blk -= (fs->inode_blocks_per_group - 1);
-+
- 		retval = ext2fs_get_free_blocks2(fs, group_blk, last_blk,
- 						fs->inode_blocks_per_group,
- 						bmap, &new_blk);
-
+--Signature=_Wed__3_Jul_2013_09_41_35_+1000_aR+LAyiG/=hg=6gL--
