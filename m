@@ -1,57 +1,50 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [GIT PULL] ext4 updates for 3.11
-Date: Tue, 2 Jul 2013 20:04:47 +0200
-Message-ID: <20130702180447.GB16282@quack.suse.cz>
-References: <nsxbo6mxu38.fsf@lambda.thunk.org>
- <CA+55aFyRLc81s03ULLZ26N0qwRqxS-9+6XpyhxVH62qx2b5o2A@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: [PATCH] ext4: Silence warning in ext4_writepages()
+Date: Tue,  2 Jul 2013 20:14:29 +0200
+Message-ID: <1372788869-24456-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:57863 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:58034 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752060Ab3GBSEv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 2 Jul 2013 14:04:51 -0400
-Content-Disposition: inline
-In-Reply-To: <CA+55aFyRLc81s03ULLZ26N0qwRqxS-9+6XpyhxVH62qx2b5o2A@mail.gmail.com>
+	id S1753455Ab3GBSOd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 2 Jul 2013 14:14:33 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 02-07-13 10:18:32, Linus Torvalds wrote:
-> Hmm I'm getting this compiler warning:
->=20
->   fs/ext4/inode.c: In function =E2=80=98ext4_writepages=E2=80=99:
->   fs/ext4/inode.c:2219:6: warning: =E2=80=98err=E2=80=99 may be used =
-uninitialized in
-> this function [-Wmaybe-uninitialized]
->=20
-> and I think the compiler is right to warn. The 'err' variable is set
-> inside a whilte() and an if() statement, and it is not at all obvious
-> that those codepaths are always taken.
->=20
-> Maybe that "map->m_len" is always guaranteed to be nonzero, and the
-> "while()" statement could be a "do { } while()" one. But if so, make
-> it so, don't write code as if it might never be executed, when the
-> return value seems to *depend* on it being executed.
-  That's caused by my patches (only for certain gcc versions). map->m_l=
-en
-is guaranteed to be > 0 in the first iteration (the function is called =
-from
-under if (map->m_len > 0)). I though Ted silenced that warning but
-apparently he did not. The cleanest fix is likely to make a do-while lo=
-op
-from that one. I'll send Ted a patch for that.
+The loop in mpage_map_and_submit_extent() is guaranteed to always run at
+least once since the caller of mpage_map_and_submit_extent() makes sure
+map->m_len > 0. So make that explicit using do-while instead of pure
+while which also silences the compiler warning about uninitialized 'err'
+variable.
 
-								Honza
---=20
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/inode.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 0188e65..19a1643 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2163,7 +2163,7 @@ static int mpage_map_and_submit_extent(handle_t *handle,
+ 
+ 	mpd->io_submit.io_end->offset =
+ 				((loff_t)map->m_lblk) << inode->i_blkbits;
+-	while (map->m_len) {
++	do {
+ 		err = mpage_map_one_extent(handle, mpd);
+ 		if (err < 0) {
+ 			struct super_block *sb = inode->i_sb;
+@@ -2201,7 +2201,7 @@ static int mpage_map_and_submit_extent(handle_t *handle,
+ 		err = mpage_map_and_submit_buffers(mpd);
+ 		if (err < 0)
+ 			return err;
+-	}
++	} while (map->m_len);
+ 
+ 	/* Update on-disk size after IO is submitted */
+ 	disksize = ((loff_t)mpd->first_page) << PAGE_CACHE_SHIFT;
+-- 
+1.8.1.4
+
