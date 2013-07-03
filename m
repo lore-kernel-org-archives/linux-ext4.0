@@ -1,65 +1,39 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: Silence warning in ext4_writepages()
-Date: Wed, 3 Jul 2013 12:07:25 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1307031204000.3892@localhost.localdomain>
-References: <1372788869-24456-1-git-send-email-jack@suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [GIT PULL] ext4 updates for 3.11
+Date: Wed, 3 Jul 2013 07:35:20 -0400
+Message-ID: <20130703113520.GA21189@thunk.org>
+References: <nsxbo6mxu38.fsf@lambda.thunk.org>
+ <CA+55aFyRLc81s03ULLZ26N0qwRqxS-9+6XpyhxVH62qx2b5o2A@mail.gmail.com>
+ <20130702180447.GB16282@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
 To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39072 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753038Ab3GCKHj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Jul 2013 06:07:39 -0400
-In-Reply-To: <1372788869-24456-1-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20130702180447.GB16282@quack.suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 2 Jul 2013, Jan Kara wrote:
+On Tue, Jul 02, 2013 at 08:04:47PM +0200, Jan Kara wrote:
+>   That's caused by my patches (only for certain gcc versions). map->m_len
+> is guaranteed to be > 0 in the first iteration (the function is called from
+> under if (map->m_len > 0)). I though Ted silenced that warning but
+> apparently he did not. The cleanest fix is likely to make a do-while loop
+> from that one. I'll send Ted a patch for that.
 
-> Date: Tue,  2 Jul 2013 20:14:29 +0200
-> From: Jan Kara <jack@suse.cz>
-> To: Ted Tso <tytso@mit.edu>
-> Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-> Subject: [PATCH] ext4: Silence warning in ext4_writepages()
-> 
-> The loop in mpage_map_and_submit_extent() is guaranteed to always run at
-> least once since the caller of mpage_map_and_submit_extent() makes sure
-> map->m_len > 0. So make that explicit using do-while instead of pure
-> while which also silences the compiler warning about uninitialized 'err'
-> variable.
+Sorry, I fixed it with a code simplification (I thought the while loop
+wasn't needed at all), but when you explained why in fact we still
+needed it, I dropped my commit, and forgot that this also dropped the
+fix which silenced the warning.  I'll grab your patch and included
+with any other fixes that we might need for this merge window.
 
-Looks good.
+Linus, are you in a hurry to get this fixed up?  It's a false warning
+on gcc's part, so it's not actually causing any actual problems.  If
+not, I can wait until a week or so to see if there are any other bug
+fixes that are required and push the fix to you towards the end of the
+merge window.
 
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
-
-> 
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/ext4/inode.c | 4 ++--
->  1 file changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 0188e65..19a1643 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -2163,7 +2163,7 @@ static int mpage_map_and_submit_extent(handle_t *handle,
->  
->  	mpd->io_submit.io_end->offset =
->  				((loff_t)map->m_lblk) << inode->i_blkbits;
-> -	while (map->m_len) {
-> +	do {
->  		err = mpage_map_one_extent(handle, mpd);
->  		if (err < 0) {
->  			struct super_block *sb = inode->i_sb;
-> @@ -2201,7 +2201,7 @@ static int mpage_map_and_submit_extent(handle_t *handle,
->  		err = mpage_map_and_submit_buffers(mpd);
->  		if (err < 0)
->  			return err;
-> -	}
-> +	} while (map->m_len);
->  
->  	/* Update on-disk size after IO is submitted */
->  	disksize = ((loff_t)mpd->first_page) << PAGE_CACHE_SHIFT;
-> 
+							- Ted
