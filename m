@@ -1,68 +1,50 @@
-From: Benjamin LaHaise <bcrl@kvack.org>
-Subject: [PATCH stable 3.3 thru 3.8] ext3: fix data=journal fast mount/umount hang
-Date: Wed, 3 Jul 2013 17:34:36 -0400
-Message-ID: <20130703213436.GA16960@kvack.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] jbd: remove unneeded semicolon
+Date: Thu, 4 Jul 2013 00:59:08 +0200
+Message-ID: <20130703225908.GA30822@quack.suse.cz>
+References: <1372884741.11138.0.camel@lizardlounge>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org
-To: stable@vger.kernel.org
+Cc: akpm@linux-foundation.org, jack@suse.cz,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Nathaniel Yazdani <n1ght.4nd.d4y@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kanga.kvack.org ([205.233.56.17]:47177 "EHLO kanga.kvack.org"
+Received: from cantor2.suse.de ([195.135.220.15]:53181 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932417Ab3GCVeh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Jul 2013 17:34:37 -0400
+	id S1755195Ab3GCW7K (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 3 Jul 2013 18:59:10 -0400
 Content-Disposition: inline
+In-Reply-To: <1372884741.11138.0.camel@lizardlounge>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch appears to have been missed for ext3, while the ext4 version was 
-merged back in March -- see 1363783057-3874-1-git-send-email-tytso@mit.edu.  
-A customer of mine has been running into this bug on their production 
-servers on 3.4-stable.  It applies cleanly to the 3.3 through 3.8 trees.
+On Wed 03-07-13 13:52:21, Nathaniel Yazdani wrote:
+> This patch removes an unnecessary semicolon that was placed after the closing
+> bracket of an inline JBD wrapper function.
+  Thanks. Added to my tree.
 
-		-ben
-
-commit e643692138cfa33528f054b071ba2583509bb217
-Author: Jan Kara <jack@suse.cz>
-Date:   Wed Mar 20 14:39:05 2013 +0100
-
-ext3: fix data=journal fast mount/umount hang
-    
-In data=journal mode, if we unmount the file system before a
-transaction has a chance to complete, when the journal inode is being
-evicted, we can end up calling into log_wait_commit() for the
-last transaction, after the journalling machinery has been shut down.
-That triggers the WARN_ONCE in __log_start_commit().
-    
-Arguably we should adjust ext3_should_journal_data() to return FALSE
-for the journal inode, but the only place it matters is
-ext3_evict_inode(), and so it's to save a bit of CPU time, and to make
-the patch much more obviously correct by inspection(tm), we'll fix it
-by explicitly not trying to waiting for a journal commit when we are
-evicting the journal inode, since it's guaranteed to never succeed in
-this case.
-    
-This can be easily replicated via:
-    
-         mount -t ext3 -o data=journal /dev/vdb /vdb ; umount /vdb
-    
-This is a port of ext4 fix from Ted Ts'o.
-    
-Signed-off-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Benjamin LaHaise <bcrl@kvack.org>
-
-diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-index d512c4b..d706dbf 100644
---- a/fs/ext3/inode.c
-+++ b/fs/ext3/inode.c
-@@ -218,7 +218,8 @@ void ext3_evict_inode (struct inode *inode)
- 	 */
- 	if (inode->i_nlink && ext3_should_journal_data(inode) &&
- 	    EXT3_SB(inode->i_sb)->s_journal &&
--	    (S_ISLNK(inode->i_mode) || S_ISREG(inode->i_mode))) {
-+	    (S_ISLNK(inode->i_mode) || S_ISREG(inode->i_mode)) &&
-+	    inode->i_ino != EXT3_JOURNAL_INO) {
- 		tid_t commit_tid = atomic_read(&ei->i_datasync_tid);
- 		journal_t *journal = EXT3_SB(inode->i_sb)->s_journal;
- 
+								Honza
+> 
+> Signed-off-by: Nathaniel Yazdani <n1ght.4nd.d4y@gmail.com>
+> ---
+> diff --git a/include/linux/jbd.h b/include/linux/jbd.h
+> index 7e0b622..9d789a9 100644
+> --- a/include/linux/jbd.h
+> +++ b/include/linux/jbd.h
+> @@ -78,7 +78,7 @@ static inline void *jbd_alloc(size_t size, gfp_t flags)
+>  static inline void jbd_free(void *ptr, size_t size)
+>  {
+>  	free_pages((unsigned long)ptr, get_order(size));
+> -};
+> +}
+>  
+>  #define JFS_MIN_JOURNAL_BLOCKS 1024
+>  
+> 
+> 
+> 
+> 
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
