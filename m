@@ -1,30 +1,32 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [GIT PULL] ext4 updates for 3.11
-Date: Wed, 3 Jul 2013 09:09:46 -0700
-Message-ID: <CA+55aFzK0fZ6ZM=m8UuDNMF74qeunus_ztrjuvddgXG=Ehbr5w@mail.gmail.com>
-References: <nsxbo6mxu38.fsf@lambda.thunk.org>
-	<CA+55aFyRLc81s03ULLZ26N0qwRqxS-9+6XpyhxVH62qx2b5o2A@mail.gmail.com>
-	<20130702180447.GB16282@quack.suse.cz>
-	<20130703113520.GA21189@thunk.org>
+From: Nathaniel Yazdani <n1ght.4nd.d4y@gmail.com>
+Subject: [PATCH] jbd: remove unneeded semicolon
+Date: Wed, 03 Jul 2013 13:52:21 -0700
+Message-ID: <1372884741.11138.0.camel@lizardlounge>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Nathaniel Yazdani <n1ght.4nd.d4y@gmail.com>
+To: akpm@linux-foundation.org, jack@suse.cz
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20130703113520.GA21189@thunk.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jul 3, 2013 at 4:35 AM, Theodore Ts'o <tytso@mit.edu> wrote:
->
-> Linus, are you in a hurry to get this fixed up?  I
+This patch removes an unnecessary semicolon that was placed after the closing
+bracket of an inline JBD wrapper function.
 
-No, I just hate seeing warnings in my (simplified) standard build. I'm
-used to them in the "allmodconfig" builds I do, but prefer to not see
-them when I just build a localized kernel.
-
-But it's not critical. Just as long as I know it will get fixed, I'm happy.
-
-             Linus
+Signed-off-by: Nathaniel Yazdani <n1ght.4nd.d4y@gmail.com>
+---
+diff --git a/include/linux/jbd.h b/include/linux/jbd.h
+index 7e0b622..9d789a9 100644
+--- a/include/linux/jbd.h
++++ b/include/linux/jbd.h
+@@ -78,7 +78,7 @@ static inline void *jbd_alloc(size_t size, gfp_t flags)
+ static inline void jbd_free(void *ptr, size_t size)
+ {
+ 	free_pages((unsigned long)ptr, get_order(size));
+-};
++}
+ 
+ #define JFS_MIN_JOURNAL_BLOCKS 1024
+ 
