@@ -1,67 +1,30 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: 2013 Kernel Summit: Call for Topics/Proposals
-Date: Wed, 03 Jul 2013 08:45:49 -0400
-Message-ID: <nsxa9m3ke0y.fsf__13198.794439859$1372855594$gmane$org@lambda.thunk.org>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:34809 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932066Ab3GCMqV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Jul 2013 08:46:21 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [GIT PULL] ext4 updates for 3.11
+Date: Wed, 3 Jul 2013 09:09:46 -0700
+Message-ID: <CA+55aFzK0fZ6ZM=m8UuDNMF74qeunus_ztrjuvddgXG=Ehbr5w@mail.gmail.com>
+References: <nsxbo6mxu38.fsf@lambda.thunk.org>
+	<CA+55aFyRLc81s03ULLZ26N0qwRqxS-9+6XpyhxVH62qx2b5o2A@mail.gmail.com>
+	<20130702180447.GB16282@quack.suse.cz>
+	<20130703113520.GA21189@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+To: "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20130703113520.GA21189@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+On Wed, Jul 3, 2013 at 4:35 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+>
+> Linus, are you in a hurry to get this fixed up?  I
 
-The annual Kernel Summit for 2013 will be held October 23rd through
-the 25th in Edinburgh, overlapping with LinuxCon Europe (which will be
-held October 21th through the 23rd) at the Edinburgh International
-Conference Centre in the United Kingdom.
+No, I just hate seeing warnings in my (simplified) standard build. I'm
+used to them in the "allmodconfig" builds I do, but prefer to not see
+them when I just build a localized kernel.
 
-The format of the Kernel Summit will be:
+But it's not critical. Just as long as I know it will get fixed, I'm happy.
 
-* Wednesday: Break out sessions/workshops in parallel with LinuxCon Europe
-* Thursday: Core plenary sessions
-* Friday: Dual-track technical sessions
-
-
-As we did last year, we are issuing this general call for proposals
-to attend from which we'll select most of the Kernel Summit attendees.
-We will be trying to cap the attendance at around 80-100 for the last
-two days of the session, so please get your request in early!
-
-Suggestions for topics should be sent before July 19th, 2013.  Please
-send them to
-
-	ksummit-2013-discuss@lists.linuxfoundation.org
-
-Please summarize what expertise you will bring to the meeting, and
-what you'd like to discuss.  If there are people whom you believe
-would be important to have for your proposed topic, please include
-them.  Please also tag your e-mail with [ATTEND] so we can easily pick
-them out, and use separate e-mail messages for each proposed topic, so
-that mail threads for each topic can be kept separate.  Sending one or
-more [ATTEND] messages will be considered a request to attend the
-kernel summit.
-
-Requests to attend will be looked upon more favorably if you also
-participate in the discussion of topics at:
-
-	ksummit-2013-discuss@lists.linuxfoundation.org
-
-You can subscribe to the list using mailman:
-
-   https://lists.linuxfoundation.org/mailman/listinfo/ksummit-2013-discuss
-
-
-The best topics for the kernel summit tend to focus on topics which
-are not appropriate for any of the subsystem-specific workshops or
-minisummits, and which can not be easily resolved using the normal
-e-mail and IRC channels.  These include issues about our overall
-development process, and topics which span multiple subsystems.
-
-
-For reference, previous years' kernel summit agendas can be found here:
-
-https://sites.google.com/site/kernelsummit2012/agenda
-https://sites.google.com/site/kernelsummit2011/agenda
-
+             Linus
