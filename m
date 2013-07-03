@@ -1,80 +1,65 @@
-From: Stephen Rothwell <sfr@canb.auug.org.au>
-Subject: Re: [GIT PULL] ext4 updates for 3.11
-Date: Wed, 3 Jul 2013 09:41:35 +1000
-Message-ID: <20130703094135.985a3130812988831f3f524a@canb.auug.org.au>
-References: <nsxbo6mxu38.fsf@lambda.thunk.org>
-	<CA+55aFyRLc81s03ULLZ26N0qwRqxS-9+6XpyhxVH62qx2b5o2A@mail.gmail.com>
-	<20130702180447.GB16282@quack.suse.cz>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: Silence warning in ext4_writepages()
+Date: Wed, 3 Jul 2013 12:07:25 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1307031204000.3892@localhost.localdomain>
+References: <1372788869-24456-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: multipart/signed; protocol="application/pgp-signature";
- micalg="PGP-SHA256";
- boundary="Signature=_Wed__3_Jul_2013_09_41_35_+1000_aR+LAyiG/=hg=6gL"
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
 To: Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20130702180447.GB16282@quack.suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:39072 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753038Ab3GCKHj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 3 Jul 2013 06:07:39 -0400
+In-Reply-To: <1372788869-24456-1-git-send-email-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
---Signature=_Wed__3_Jul_2013_09_41_35_+1000_aR+LAyiG/=hg=6gL
-Content-Type: text/plain; charset=UTF-8
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+On Tue, 2 Jul 2013, Jan Kara wrote:
 
-On Tue, 2 Jul 2013 20:04:47 +0200 Jan Kara <jack@suse.cz> wrote:
->
-> On Tue 02-07-13 10:18:32, Linus Torvalds wrote:
-> > Hmm I'm getting this compiler warning:
-> >=20
-> >   fs/ext4/inode.c: In function =E2=80=98ext4_writepages=E2=80=99:
-> >   fs/ext4/inode.c:2219:6: warning: =E2=80=98err=E2=80=99 may be used un=
-initialized in
-> > this function [-Wmaybe-uninitialized]
-> >=20
-> > and I think the compiler is right to warn. The 'err' variable is set
-> > inside a whilte() and an if() statement, and it is not at all obvious
-> > that those codepaths are always taken.
-> >=20
-> > Maybe that "map->m_len" is always guaranteed to be nonzero, and the
-> > "while()" statement could be a "do { } while()" one. But if so, make
-> > it so, don't write code as if it might never be executed, when the
-> > return value seems to *depend* on it being executed.
->   That's caused by my patches (only for certain gcc versions). map->m_len
-> is guaranteed to be > 0 in the first iteration (the function is called fr=
-om
-> under if (map->m_len > 0)). I though Ted silenced that warning but
-> apparently he did not. The cleanest fix is likely to make a do-while loop
-> from that one. I'll send Ted a patch for that.
+> Date: Tue,  2 Jul 2013 20:14:29 +0200
+> From: Jan Kara <jack@suse.cz>
+> To: Ted Tso <tytso@mit.edu>
+> Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+> Subject: [PATCH] ext4: Silence warning in ext4_writepages()
+> 
+> The loop in mpage_map_and_submit_extent() is guaranteed to always run at
+> least once since the caller of mpage_map_and_submit_extent() makes sure
+> map->m_len > 0. So make that explicit using do-while instead of pure
+> while which also silences the compiler warning about uninitialized 'err'
+> variable.
 
-I did report that warning about 4 weeks ago ... and provided a fix that
-was way over the top (but pointed out another problem that was fixed).
+Looks good.
 
---=20
-Cheers,
-Stephen Rothwell                    sfr@canb.auug.org.au
+Reviewed-by: Lukas Czerner <lczerner@redhat.com>
 
---Signature=_Wed__3_Jul_2013_09_41_35_+1000_aR+LAyiG/=hg=6gL
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.20 (GNU/Linux)
-
-iQIcBAEBCAAGBQJR02UvAAoJEECxmPOUX5FEcLcP/j/TifxfijY91RLQtu2cTgP2
-jXdbvg/3yGj8e81lK6J5OY3WOAVQ5/ZypXYYMcexWU5GxN03brsKRhKVBfJu2buJ
-3ydJRS5xDi2ebiQdAJxxERVFeVqHQNB876xOEJTnRItKIO24FfKVzxMvS6siZnqa
-dZU+zgMsZF8ksgiuA4yLoT7X0wI41Uazq6LeQ+FpXRBqNYB40vQX2QldsQMtxrzn
-dtRlhqpeIgrL0bZPLi+e8kE3c6z7fOUUaEaonbb+HF4gNgYwfrSMl5M/aTETD9f2
-IAXhe7oWrmRZrm73a2RRvdf1Kz8VleKcE5wLS7X95ghkoRGiIQfGG+gZ6woEHQv0
-MM1vyA2rApD7FZd1Gy0dmZAtjrg9FQw5eZ0K94zYa/jq7MZEv3JR6gwHQXO/XR5M
-UiJqEz2OVlulB5kZ/4hrt1lWPbZSpw6vD8gfcRsH2pP6nHPQ4kpzo+AT7UH1H1TL
-sdDwzp3HZjUNWYyHmd33ft1qXNjbONL9+22eYFGDo58C0SCSQbHFqIOKjxgdGVPL
-0AQvHMIK4Yb4ZJ4FA0OpybwSkiviLo6bHUyFImUSPtfTdXp+Iw0DA51ZumGf//Dd
-vh2MuP8XU2bbj5SOXKZi7Ymuhu/nOycAAl1SbXl6B3gPHKjZoKXri4uafHb7QmdZ
-dyxrDe3Ga8mzV2us7qlh
-=Qh3u
------END PGP SIGNATURE-----
-
---Signature=_Wed__3_Jul_2013_09_41_35_+1000_aR+LAyiG/=hg=6gL--
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/ext4/inode.c | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 0188e65..19a1643 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -2163,7 +2163,7 @@ static int mpage_map_and_submit_extent(handle_t *handle,
+>  
+>  	mpd->io_submit.io_end->offset =
+>  				((loff_t)map->m_lblk) << inode->i_blkbits;
+> -	while (map->m_len) {
+> +	do {
+>  		err = mpage_map_one_extent(handle, mpd);
+>  		if (err < 0) {
+>  			struct super_block *sb = inode->i_sb;
+> @@ -2201,7 +2201,7 @@ static int mpage_map_and_submit_extent(handle_t *handle,
+>  		err = mpage_map_and_submit_buffers(mpd);
+>  		if (err < 0)
+>  			return err;
+> -	}
+> +	} while (map->m_len);
+>  
+>  	/* Update on-disk size after IO is submitted */
+>  	disksize = ((loff_t)mpd->first_page) << PAGE_CACHE_SHIFT;
+> 
