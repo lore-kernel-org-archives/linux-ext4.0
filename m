@@ -1,50 +1,63 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] jbd: remove unneeded semicolon
-Date: Thu, 4 Jul 2013 00:59:08 +0200
-Message-ID: <20130703225908.GA30822@quack.suse.cz>
-References: <1372884741.11138.0.camel@lizardlounge>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: akpm@linux-foundation.org, jack@suse.cz,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Nathaniel Yazdani <n1ght.4nd.d4y@gmail.com>
+From: Eryu Guan <guaneryu@gmail.com>
+Subject: [PATCH] mke2fs: disable resize_inode feature if 64bit feature is enabled
+Date: Thu,  4 Jul 2013 17:05:10 +0800
+Message-ID: <1372928710-10461-1-git-send-email-guaneryu@gmail.com>
+Cc: tytso@mit.edu, Eryu Guan <guaneryu@gmail.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:53181 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755195Ab3GCW7K (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Jul 2013 18:59:10 -0400
-Content-Disposition: inline
-In-Reply-To: <1372884741.11138.0.camel@lizardlounge>
+Received: from mail-pb0-f47.google.com ([209.85.160.47]:43408 "EHLO
+	mail-pb0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752144Ab3GDJFS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Jul 2013 05:05:18 -0400
+Received: by mail-pb0-f47.google.com with SMTP id rr13so1020991pbb.6
+        for <linux-ext4@vger.kernel.org>; Thu, 04 Jul 2013 02:05:17 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 03-07-13 13:52:21, Nathaniel Yazdani wrote:
-> This patch removes an unnecessary semicolon that was placed after the closing
-> bracket of an inline JBD wrapper function.
-  Thanks. Added to my tree.
+Since auto_64-bit_support is on by default, resize_inode feature will
+be disabled when creating a >16T ext4 according to mke2fs.conf(5).
 
-								Honza
-> 
-> Signed-off-by: Nathaniel Yazdani <n1ght.4nd.d4y@gmail.com>
-> ---
-> diff --git a/include/linux/jbd.h b/include/linux/jbd.h
-> index 7e0b622..9d789a9 100644
-> --- a/include/linux/jbd.h
-> +++ b/include/linux/jbd.h
-> @@ -78,7 +78,7 @@ static inline void *jbd_alloc(size_t size, gfp_t flags)
->  static inline void jbd_free(void *ptr, size_t size)
->  {
->  	free_pages((unsigned long)ptr, get_order(size));
-> -};
-> +}
->  
->  #define JFS_MIN_JOURNAL_BLOCKS 1024
->  
-> 
-> 
-> 
-> 
-> 
+This should also be done when making ext4 with "-O 64bit" to enable
+64bit feature explicitly. Otherwise online resize to enlarge a
+over-16T fs to larger would fail.
+
+[root@localhost resize]# truncate -s 50t fs.img
+[root@localhost resize]# losetup /dev/loop0 fs.img
+[root@localhost resize]# mkfs -t ext4 -O 64bit /dev/loop0 30t
+[root@localhost resize]# mount /dev/loop0 mnt
+[root@localhost resize]# resize2fs /dev/loop0
+resize2fs 1.42.7 (21-Jan-2013)
+Filesystem at /dev/loop0 is mounted on /root/resize/mnt; on-line resizing required
+old_desc_blocks = 3840, new_desc_blocks = 6400
+resize2fs: Invalid argument While checking for on-line resizing support
+
+And dmesg shows
+[688378.442623] EXT4-fs (loop0): resizing filesystem from 6710886400 to 13421772800 blocks
+[688378.443216] EXT4-fs warning (device loop0): verify_reserved_gdb:700: reserved GDT 3201 missing grp 177147 (5804756097)
+[688378.443222] EXT4-fs (loop0): resized filesystem to 8858370048
+[688378.528451] EXT4-fs warning (device loop0): ext4_group_extend:1710: can't shrink FS - resize aborted
+
+With this fix resize2fs could do the online enlarge correctly.
+
+Signed-off-by: Eryu Guan <guaneryu@gmail.com>
+---
+ misc/mke2fs.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index d96f156..e4102b9 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -1790,6 +1790,9 @@ profile_error:
+ 		fs_param.s_log_block_size = 2;
+ 	}
+ 	if ((fs_blocks_count > MAX_32_NUM) &&
++	    (fs_param.s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT))
++		fs_param.s_feature_compat &= ~EXT2_FEATURE_COMPAT_RESIZE_INODE;
++	if ((fs_blocks_count > MAX_32_NUM) &&
+ 	    !(fs_param.s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT) &&
+ 	    get_bool_from_profile(fs_types, "auto_64-bit_support", 0)) {
+ 		fs_param.s_feature_incompat |= EXT4_FEATURE_INCOMPAT_64BIT;
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.8.3.1
+
