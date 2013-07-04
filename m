@@ -1,63 +1,45 @@
-From: Eryu Guan <guaneryu@gmail.com>
-Subject: [PATCH] mke2fs: disable resize_inode feature if 64bit feature is enabled
-Date: Thu,  4 Jul 2013 17:05:10 +0800
-Message-ID: <1372928710-10461-1-git-send-email-guaneryu@gmail.com>
-Cc: tytso@mit.edu, Eryu Guan <guaneryu@gmail.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [RFC PATCH 0/1] ext4: Try to better reuse recently freed space
+Date: Thu,  4 Jul 2013 11:11:53 +0200
+Message-ID: <1372929114-12808-1-git-send-email-lczerner@redhat.com>
+Cc: enwlinux@gmail.com, Jose_Mario_Gallegos@Dell.com,
+	jordan_hargrave@Dell.com, rwheeler@redhat.com
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f47.google.com ([209.85.160.47]:43408 "EHLO
-	mail-pb0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752144Ab3GDJFS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Jul 2013 05:05:18 -0400
-Received: by mail-pb0-f47.google.com with SMTP id rr13so1020991pbb.6
-        for <linux-ext4@vger.kernel.org>; Thu, 04 Jul 2013 02:05:17 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:27229 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933532Ab3GDJMZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 4 Jul 2013 05:12:25 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Since auto_64-bit_support is on by default, resize_inode feature will
-be disabled when creating a >16T ext4 according to mke2fs.conf(5).
+Hi all,
 
-This should also be done when making ext4 with "-O 64bit" to enable
-64bit feature explicitly. Otherwise online resize to enlarge a
-over-16T fs to larger would fail.
+as I just recently discovered here http://www.ogris.de/blkalloc/ ext4 have
+some unexpected allocation strategies which can cause some problems in
+certain scenarios (see the 1/1 patch).
 
-[root@localhost resize]# truncate -s 50t fs.img
-[root@localhost resize]# losetup /dev/loop0 fs.img
-[root@localhost resize]# mkfs -t ext4 -O 64bit /dev/loop0 30t
-[root@localhost resize]# mount /dev/loop0 mnt
-[root@localhost resize]# resize2fs /dev/loop0
-resize2fs 1.42.7 (21-Jan-2013)
-Filesystem at /dev/loop0 is mounted on /root/resize/mnt; on-line resizing required
-old_desc_blocks = 3840, new_desc_blocks = 6400
-resize2fs: Invalid argument While checking for on-line resizing support
+This is my attempt to fix this, however I think that this will need some
+discussion because it changes some of the block allocator heuristic
+quite significantly and I would like to make sure that it will not hurt
+our performance in some widely used workloads. Eric, could you run your
+performance testing with your test suite to see how it performs ?
 
-And dmesg shows
-[688378.442623] EXT4-fs (loop0): resizing filesystem from 6710886400 to 13421772800 blocks
-[688378.443216] EXT4-fs warning (device loop0): verify_reserved_gdb:700: reserved GDT 3201 missing grp 177147 (5804756097)
-[688378.443222] EXT4-fs (loop0): resized filesystem to 8858370048
-[688378.528451] EXT4-fs warning (device loop0): ext4_group_extend:1710: can't shrink FS - resize aborted
+Also, I think that the old behaviour might be quite helpful for SSD because
+we're not overwriting existing blocks but rather trying to use new one, so
+the firmware should have easier job. However I do not know how significant
+impact if at all it might have. If we find out that this is helpful for
+SSD we might make this conditional depending on the type of the device.
 
-With this fix resize2fs could do the online enlarge correctly.
+Which brings me to the other problem. Since the original behaviour is really
+bad for thinly provisioned devices we would like to avoid using it even if
+the underlying storage is SSD, however IIRC there is no way to distinguish
+this from within the kernel.
 
-Signed-off-by: Eryu Guan <guaneryu@gmail.com>
----
- misc/mke2fs.c | 3 +++
- 1 file changed, 3 insertions(+)
+See the comparison between the old and new allocator behaviour
+http://people.redhat.com/lczerner/allocator/
 
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index d96f156..e4102b9 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -1790,6 +1790,9 @@ profile_error:
- 		fs_param.s_log_block_size = 2;
- 	}
- 	if ((fs_blocks_count > MAX_32_NUM) &&
-+	    (fs_param.s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT))
-+		fs_param.s_feature_compat &= ~EXT2_FEATURE_COMPAT_RESIZE_INODE;
-+	if ((fs_blocks_count > MAX_32_NUM) &&
- 	    !(fs_param.s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT) &&
- 	    get_bool_from_profile(fs_types, "auto_64-bit_support", 0)) {
- 		fs_param.s_feature_incompat |= EXT4_FEATURE_INCOMPAT_64BIT;
--- 
-1.8.3.1
+Comments and testing is welcomed.
 
+Thanks!
+-Lukas
