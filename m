@@ -1,80 +1,101 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH] mke2fs: disable resize_inode feature if 64bit feature is
- enabled
-Date: Fri, 5 Jul 2013 09:21:28 +0800
-Message-ID: <20130705012128.GA11793@gmail.com>
-References: <1372928710-10461-1-git-send-email-guaneryu@gmail.com>
+From: Li Zhong <lizhongfs@gmail.com>
+Subject: [RFC PATCH] ext4: Fix group number calculation
+Date: Fri, 05 Jul 2013 17:29:48 +0800
+Message-ID: <1373016588.2939.15.camel@ThinkPad-T5421>
+Reply-To: lizhongfs@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Eryu Guan <guaneryu@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f170.google.com ([209.85.192.170]:38187 "EHLO
-	mail-pd0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751781Ab3GEBCv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Jul 2013 21:02:51 -0400
-Received: by mail-pd0-f170.google.com with SMTP id x11so1506355pdj.15
-        for <linux-ext4@vger.kernel.org>; Thu, 04 Jul 2013 18:02:51 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <1372928710-10461-1-git-send-email-guaneryu@gmail.com>
+Received: from mail-ob0-f174.google.com ([209.85.214.174]:37868 "EHLO
+	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753718Ab3GEJ3y (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Jul 2013 05:29:54 -0400
+Received: by mail-ob0-f174.google.com with SMTP id wd20so2627895obb.19
+        for <linux-ext4@vger.kernel.org>; Fri, 05 Jul 2013 02:29:54 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 04, 2013 at 05:05:10PM +0800, Eryu Guan wrote:
-> Since auto_64-bit_support is on by default, resize_inode feature will
-> be disabled when creating a >16T ext4 according to mke2fs.conf(5).
-> 
-> This should also be done when making ext4 with "-O 64bit" to enable
-> 64bit feature explicitly. Otherwise online resize to enlarge a
-> over-16T fs to larger would fail.
-> 
-> [root@localhost resize]# truncate -s 50t fs.img
-> [root@localhost resize]# losetup /dev/loop0 fs.img
-> [root@localhost resize]# mkfs -t ext4 -O 64bit /dev/loop0 30t
-> [root@localhost resize]# mount /dev/loop0 mnt
-> [root@localhost resize]# resize2fs /dev/loop0
-> resize2fs 1.42.7 (21-Jan-2013)
-> Filesystem at /dev/loop0 is mounted on /root/resize/mnt; on-line resizing required
-> old_desc_blocks = 3840, new_desc_blocks = 6400
-> resize2fs: Invalid argument While checking for on-line resizing support
-> 
-> And dmesg shows
-> [688378.442623] EXT4-fs (loop0): resizing filesystem from 6710886400 to 13421772800 blocks
-> [688378.443216] EXT4-fs warning (device loop0): verify_reserved_gdb:700: reserved GDT 3201 missing grp 177147 (5804756097)
-> [688378.443222] EXT4-fs (loop0): resized filesystem to 8858370048
-> [688378.528451] EXT4-fs warning (device loop0): ext4_group_extend:1710: can't shrink FS - resize aborted
-> 
-> With this fix resize2fs could do the online enlarge correctly.
-> 
-> Signed-off-by: Eryu Guan <guaneryu@gmail.com>
-> ---
->  misc/mke2fs.c | 3 +++
->  1 file changed, 3 insertions(+)
-> 
-> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> index d96f156..e4102b9 100644
-> --- a/misc/mke2fs.c
-> +++ b/misc/mke2fs.c
-> @@ -1790,6 +1790,9 @@ profile_error:
->  		fs_param.s_log_block_size = 2;
->  	}
->  	if ((fs_blocks_count > MAX_32_NUM) &&
+This patch tries to fix the following BUG:
 
-Do we really need to check it?  My point is that we just clear
-RESIZE_INODE flag if 64BIT flag is enabled.
+[  568.877799] ------------[ cut here ]------------
+[  568.877833] kernel BUG at fs/ext4/mballoc.c:3728!
+[  568.877840] Oops: Exception in kernel mode, sig: 5 [#1]
+[  568.877845] SMP NR_CPUS=32 NUMA pSeries
+[  568.877852] Modules linked in: binfmt_misc
+[  568.877861] CPU: 1 PID: 3516 Comm: fs_mark Not tainted 3.10.0-03216-g7c6809f-dirty #1
+[  568.877867] task: c0000001fb0b8000 ti: c0000001fa954000 task.ti: c0000001fa954000
+[  568.877873] NIP: c0000000002f42a4 LR: c0000000002f4274 CTR: c000000000317ef8
+[  568.877879] REGS: c0000001fa956ed0 TRAP: 0700   Not tainted  (3.10.0-03216-g7c6809f-dirty)
+[  568.877884] MSR: 8000000000029032 <SF,EE,ME,IR,DR,RI>  CR: 24000428  XER: 00000000
+[  568.877902] SOFTE: 1
+[  568.877905] CFAR: c0000000002b5464
+[  568.877908]
+GPR00: 0000000000000001 c0000001fa957150 c000000000c6a408 c0000001fb588000
+GPR04: 0000000000003fff c0000001fa9571c0 c0000001fa9571c4 000138098c50625f
+GPR08: 1301200000000000 0000000000000002 0000000000000001 0000000000000000
+GPR12: 0000000024000422 c00000000f33a300 0000000000008000 c0000001fa9577f0
+GPR16: c0000001fb7d0100 c000000000c29190 c0000000007f46e8 c000000000a14672
+GPR20: 0000000000000001 0000000000000008 ffffffffffffffff 0000000000000000
+GPR24: 0000000000000100 c0000001fa957278 c0000001fdb2bc78 c0000001fa957288
+GPR28: 0000000000100100 c0000001fa957288 c0000001fb588000 c0000001fdb2bd10
+[  568.877993] NIP [c0000000002f42a4] .ext4_mb_release_group_pa+0xec/0x1c0
+[  568.877999] LR [c0000000002f4274] .ext4_mb_release_group_pa+0xbc/0x1c0
+[  568.878004] Call Trace:
+[  568.878008] [c0000001fa957150] [c0000000002f4274] .ext4_mb_release_group_pa+0xbc/0x1c0 (unreliable)
+[  568.878017] [c0000001fa957200] [c0000000002fb070] .ext4_mb_discard_lg_preallocations+0x394/0x444
+[  568.878025] [c0000001fa957340] [c0000000002fb45c] .ext4_mb_release_context+0x33c/0x734
+[  568.878032] [c0000001fa957440] [c0000000002fbcf8] .ext4_mb_new_blocks+0x4a4/0x5f4
+[  568.878039] [c0000001fa957510] [c0000000002ef56c] .ext4_ext_map_blocks+0xc28/0x1178
+[  568.878047] [c0000001fa957640] [c0000000002c1a94] .ext4_map_blocks+0x2c8/0x490
+[  568.878054] [c0000001fa957730] [c0000000002c536c] .ext4_writepages+0x738/0xc60
+[  568.878062] [c0000001fa957950] [c000000000168a78] .do_writepages+0x5c/0x80
+[  568.878069] [c0000001fa9579d0] [c00000000015d1c4] .__filemap_fdatawrite_range+0x88/0xb0
+[  568.878078] [c0000001fa957aa0] [c00000000015d23c] .filemap_write_and_wait_range+0x50/0xfc
+[  568.878085] [c0000001fa957b30] [c0000000002b8edc] .ext4_sync_file+0x220/0x3c4
+[  568.878092] [c0000001fa957be0] [c0000000001f849c] .vfs_fsync_range+0x64/0x80
+[  568.878098] [c0000001fa957c70] [c0000000001f84f0] .vfs_fsync+0x38/0x4c
+[  568.878105] [c0000001fa957d00] [c0000000001f87f4] .do_fsync+0x54/0x90
+[  568.878111] [c0000001fa957db0] [c0000000001f8894] .SyS_fsync+0x28/0x3c
+[  568.878120] [c0000001fa957e30] [c000000000009c88] syscall_exit+0x0/0x7c
+[  568.878125] Instruction dump:
+[  568.878130] 60000000 813d0034 81610070 38000000 7f8b4800 419e001c 813f007c 7d2bfe70
+[  568.878144] 7d604a78 7c005850 54000ffe 7c0007b4 <0b000000> e8a10076 e87f0090 7fa4eb78
+[  568.878160] ---[ end trace 594d911d9654770b ]---
 
-                                                - Zheng
+It seems that it is caused by different group numbers calculated from
+ext4_get_group_number() and ext4_get_group_no_and_offset().
 
-> +	    (fs_param.s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT))
-> +		fs_param.s_feature_compat &= ~EXT2_FEATURE_COMPAT_RESIZE_INODE;
-> +	if ((fs_blocks_count > MAX_32_NUM) &&
->  	    !(fs_param.s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT) &&
->  	    get_bool_from_profile(fs_types, "auto_64-bit_support", 0)) {
->  		fs_param.s_feature_incompat |= EXT4_FEATURE_INCOMPAT_64BIT;
-> -- 
-> 1.8.3.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+The fix below tries to make ext4_get_group_number() consistent with
+ext4_get_group_no_and_offset():
+1) minus first data block number instead of adding it
+2) remove the cluster bits, as seems it is used for offset calculation in
+ext4_get_group_no_and_offset().
+
+Signed-off-by: Li Zhong <lizhongfs@gmail.com>
+---
+ fs/ext4/balloc.c |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 5833939..938c97e 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -38,9 +38,9 @@ ext4_group_t ext4_get_group_number(struct super_block *sb,
+ 	ext4_group_t group;
+ 
+ 	if (test_opt2(sb, STD_GROUP_SIZE))
+-		group = (le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block) +
+-			 block) >>
+-			(EXT4_BLOCK_SIZE_BITS(sb) + EXT4_CLUSTER_BITS(sb) + 3);
++		group = (block -
++			 le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block)) >>
++			(EXT4_BLOCK_SIZE_BITS(sb) + 3);
+ 	else
+ 		ext4_get_group_no_and_offset(sb, block, &group, NULL);
+ 	return group;
+-- 
+1.7.9.5
+
