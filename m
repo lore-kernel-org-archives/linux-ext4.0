@@ -1,132 +1,236 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [RFC PATCH] ext4: Fix group number calculation
-Date: Fri, 5 Jul 2013 23:11:47 -0400
-Message-ID: <20130706031147.GB32062@thunk.org>
-References: <1373016588.2939.15.camel@ThinkPad-T5421>
+From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
+Subject: Re: found a scenario for BUG at fs/ext4/super.c:804!
+Date: Sat, 06 Jul 2013 11:38:17 +0200
+Message-ID: <51D7E589.4000409@gmx.de>
+References: <51A79353.7030604@gmx.de> <51AA0CA1.6080600@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
-	Lukas Czerner <lczerner@redhat.com>
-To: Li Zhong <lizhongfs@gmail.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:35399 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752162Ab3GFDL4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 5 Jul 2013 23:11:56 -0400
-Content-Disposition: inline
-In-Reply-To: <1373016588.2939.15.camel@ThinkPad-T5421>
+Received: from mout.gmx.net ([212.227.17.20]:52937 "EHLO mout.gmx.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752728Ab3GFJiZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 6 Jul 2013 05:38:25 -0400
+In-Reply-To: <51AA0CA1.6080600@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 05, 2013 at 05:29:48PM +0800, Li Zhong wrote:
-> 
-> It seems that it is caused by different group numbers calculated from
-> ext4_get_group_number() and ext4_get_group_no_and_offset().
-> 
-> The fix below tries to make ext4_get_group_number() consistent with
-> ext4_get_group_no_and_offset():
-> 1) minus first data block number instead of adding it
-> 2) remove the cluster bits, as seems it is used for offset calculation in
-> ext4_get_group_no_and_offset().
+On 06/01/2013 05:00 PM, Eric Sandeen wrote:
+> On 5/30/13 12:58 PM, Toralf F=C3=B6rster wrote:
+>> With kernel 3.10-rcX there's a big likelihood to observe that issue =
+if I do the following steps:=20
+>>
+>>  1. create a 257 MB file /mnt/ramdisk/disk0
+>>  2. create an EXT4 fs onto it
+>>  3. mount it onto /mnt/ramdisk/victims/
+>>  4. create files and directories in /mnt/ramdisk/victims/v1/v2
+>>  5. exportfs the directory /mnt/ramdisk/victims/ via NFS=20
+>>  6. start a user mode linux
+>>  7. within UML nfs-mount the exported directory /mnt/ramdisk/victims=
+/ onto 3 different UML directories /mnt/nfsv[234] - just to test all 3 =
+NFS versions
+>>  8. run trinity within the UML guest using a victims directory /mnt/=
+nfsv[234]/v1/v2 for a longer period (rather hours)
+>=20
+> And therein lies the unknown magic.
+>=20
+> Again, trinity's job is to try to corrupt the kernel by fuzzing sysca=
+lls.
 
-Thanks for reporting the problem, but only (1) is a problem.  The
-cluster bits part is right, although it wasn't actually ever going to
-be used because we were only setting STD_GROUP_SIZE for non-bigalloc
-file systems.  The following is I believe the correct fix.
+But does trintiy corrupts the host kernel if it runs within a
+cirtualized environemtn (ok, "just" a user mode linux image) ?
 
-     	       	   	     	  	  - Ted
+>=20
+> It could be a filesystem bug, or just as easily some other bug in a s=
+yscall that allowed trinity to corrupt memory.
 
->From 96eaeed0d7fc516481ed07739826dac840755eb3 Mon Sep 17 00:00:00 2001
-From: Theodore Ts'o <tytso@mit.edu>
-Date: Fri, 5 Jul 2013 23:11:16 -0400
-Subject: [PATCH] ext4: fix ext4_get_group_number()
+I bet that it is related ot the interaction of NFS and EXT4FS, because
+the  host is mostly stressed by scary file system calls calls coming
+from the client over BFS (=3D=3Dtrinity)
 
-The function ext4_get_group_number() was introduced as an optimization
-in commit bd86298e60b8.  Unfortunately, this commit incorrectly
-calculate the group number for file systems with a 1k block size (when
-s_first_data_block is 1 instead of zero).  This could cause the
-following kernel BUG:
 
-[  568.877799] ------------[ cut here ]------------
-[  568.877833] kernel BUG at fs/ext4/mballoc.c:3728!
-[  568.877840] Oops: Exception in kernel mode, sig: 5 [#1]
-[  568.877845] SMP NR_CPUS=32 NUMA pSeries
-[  568.877852] Modules linked in: binfmt_misc
-[  568.877861] CPU: 1 PID: 3516 Comm: fs_mark Not tainted 3.10.0-03216-g7c6809f-dirty #1
-[  568.877867] task: c0000001fb0b8000 ti: c0000001fa954000 task.ti: c0000001fa954000
-[  568.877873] NIP: c0000000002f42a4 LR: c0000000002f4274 CTR: c000000000317ef8
-[  568.877879] REGS: c0000001fa956ed0 TRAP: 0700   Not tainted  (3.10.0-03216-g7c6809f-dirty)
-[  568.877884] MSR: 8000000000029032 <SF,EE,ME,IR,DR,RI>  CR: 24000428  XER: 00000000
-[  568.877902] SOFTE: 1
-[  568.877905] CFAR: c0000000002b5464
-[  568.877908]
-GPR00: 0000000000000001 c0000001fa957150 c000000000c6a408 c0000001fb588000
-GPR04: 0000000000003fff c0000001fa9571c0 c0000001fa9571c4 000138098c50625f
-GPR08: 1301200000000000 0000000000000002 0000000000000001 0000000000000000
-GPR12: 0000000024000422 c00000000f33a300 0000000000008000 c0000001fa9577f0
-GPR16: c0000001fb7d0100 c000000000c29190 c0000000007f46e8 c000000000a14672
-GPR20: 0000000000000001 0000000000000008 ffffffffffffffff 0000000000000000
-GPR24: 0000000000000100 c0000001fa957278 c0000001fdb2bc78 c0000001fa957288
-GPR28: 0000000000100100 c0000001fa957288 c0000001fb588000 c0000001fdb2bd10
-[  568.877993] NIP [c0000000002f42a4] .ext4_mb_release_group_pa+0xec/0x1c0
-[  568.877999] LR [c0000000002f4274] .ext4_mb_release_group_pa+0xbc/0x1c0
-[  568.878004] Call Trace:
-[  568.878008] [c0000001fa957150] [c0000000002f4274] .ext4_mb_release_group_pa+0xbc/0x1c0 (unreliable)
-[  568.878017] [c0000001fa957200] [c0000000002fb070] .ext4_mb_discard_lg_preallocations+0x394/0x444
-[  568.878025] [c0000001fa957340] [c0000000002fb45c] .ext4_mb_release_context+0x33c/0x734
-[  568.878032] [c0000001fa957440] [c0000000002fbcf8] .ext4_mb_new_blocks+0x4a4/0x5f4
-[  568.878039] [c0000001fa957510] [c0000000002ef56c] .ext4_ext_map_blocks+0xc28/0x1178
-[  568.878047] [c0000001fa957640] [c0000000002c1a94] .ext4_map_blocks+0x2c8/0x490
-[  568.878054] [c0000001fa957730] [c0000000002c536c] .ext4_writepages+0x738/0xc60
-[  568.878062] [c0000001fa957950] [c000000000168a78] .do_writepages+0x5c/0x80
-[  568.878069] [c0000001fa9579d0] [c00000000015d1c4] .__filemap_fdatawrite_range+0x88/0xb0
-[  568.878078] [c0000001fa957aa0] [c00000000015d23c] .filemap_write_and_wait_range+0x50/0xfc
-[  568.878085] [c0000001fa957b30] [c0000000002b8edc] .ext4_sync_file+0x220/0x3c4
-[  568.878092] [c0000001fa957be0] [c0000000001f849c] .vfs_fsync_range+0x64/0x80
-[  568.878098] [c0000001fa957c70] [c0000000001f84f0] .vfs_fsync+0x38/0x4c
-[  568.878105] [c0000001fa957d00] [c0000000001f87f4] .do_fsync+0x54/0x90
-[  568.878111] [c0000001fa957db0] [c0000000001f8894] .SyS_fsync+0x28/0x3c
-[  568.878120] [c0000001fa957e30] [c000000000009c88] syscall_exit+0x0/0x7c
-[  568.878125] Instruction dump:
-[  568.878130] 60000000 813d0034 81610070 38000000 7f8b4800 419e001c 813f007c 7d2bfe70
-[  568.878144] 7d604a78 7c005850 54000ffe 7c0007b4 <0b000000> e8a10076 e87f0090 7fa4eb78
-[  568.878160] ---[ end trace 594d911d9654770b ]---
+> I do not think these bug reports are actionable until you can figure =
+out how to narrow down the trinity operations that cause the problem.
+>=20
+> -Eric
 
-In addition fix the STD_GROUP optimization so that it works for
-bigalloc file systems as well.
+I really try to get a scenario.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Reported-by: Li Zhong <lizhongfs@gmail.com>
-Cc: Lukas Czerner <lczerner@redhat.com>
-Cc: stable@vger.kernel.org  # 3.10
----
- fs/ext4/balloc.c | 4 ++--
- fs/ext4/super.c  | 8 ++++----
- 2 files changed, 6 insertions(+), 6 deletions(-)
+With the latest trinity versions at least the handling of the fuzz
+testing becomes much more easier and reliable.
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 5833939..ddd715e 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -38,8 +38,8 @@ ext4_group_t ext4_get_group_number(struct super_block *sb,
- 	ext4_group_t group;
- 
- 	if (test_opt2(sb, STD_GROUP_SIZE))
--		group = (le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block) +
--			 block) >>
-+		group = (block -
-+			 le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block)) >>
- 			(EXT4_BLOCK_SIZE_BITS(sb) + EXT4_CLUSTER_BITS(sb) + 3);
- 	else
- 		ext4_get_group_no_and_offset(sb, block, &group, NULL);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 85b3dd6..8862d4d 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3624,10 +3624,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	sbi->s_addr_per_block_bits = ilog2(EXT4_ADDR_PER_BLOCK(sb));
- 	sbi->s_desc_per_block_bits = ilog2(EXT4_DESC_PER_BLOCK(sb));
- 
--	/* Do we have standard group size of blocksize * 8 blocks ? */
--	if (sbi->s_blocks_per_group == blocksize << 3)
--		set_opt2(sb, STD_GROUP_SIZE);
+=46WIW  with 3.10 for the host kernel that bug appears now much more of=
+ten
+than with 3.9.X (for the host, the UML client runs mostly latest git
+tree + 3 UML patches)
+
+
+>>  9. stop UML, Ctrl-C any running trinity / UML process
+>> 10. try to umount mnt/ramdisk/victims/
+>> 11. if that attempt fails stop the nfs service and run the umount co=
+mmand again - it segfaults now
+>> 12. if the 1st umount is however successfully then make a :-/
+>>
+>>
+>> 2013-05-30T19:20:28.000+02:00 n22 rpc.mountd[2921]: authenticated un=
+mount request from 192.168.1.63:798 for /mnt/ramdisk/victims (/mnt/ramd=
+isk/victims)
+>> 2013-05-30T19:20:28.000+02:00 n22 rpc.mountd[2921]: authenticated un=
+mount request from 192.168.1.63:799 for /mnt/ramdisk/victims (/mnt/ramd=
+isk/victims)
+>> 2013-05-30T19:20:42.569+02:00 n22 kernel: br0: port 1(tap0) entered =
+disabled state
+>> 2013-05-30T19:21:10.000+02:00 n22 rpc.mountd[2921]: Caught signal 15=
+, un-registering and exiting.
+>> 2013-05-30T19:21:10.336+02:00 n22 kernel: lockd: couldn't shutdown h=
+ost module for net c161c200!
+>> 2013-05-30T19:21:10.338+02:00 n22 kernel: nfsd: last server has exit=
+ed, flushing export cache
+>> 2013-05-30T19:21:12.227+02:00 n22 kernel: EXT4-fs (loop0): sb orphan=
+ head is 32315
+>> 2013-05-30T19:21:12.227+02:00 n22 kernel: sb_info orphan list:
+>> 2013-05-30T19:21:12.227+02:00 n22 kernel: inode loop0:32315 at e8702=
+158: mode 102357, nlink 0, next 32173
+>> 2013-05-30T19:21:12.227+02:00 n22 kernel: inode loop0:32173 at e773a=
+860: mode 100406, nlink 0, next 32383
+>> 2013-05-30T19:21:12.227+02:00 n22 kernel: inode loop0:32383 at e93bb=
+d78: mode 102041, nlink 0, next 32233
+>> 2013-05-30T19:21:12.227+02:00 n22 kernel: inode loop0:32233 at e7e74=
+2e0: mode 103267, nlink 0, next 32421
+>> 2013-05-30T19:21:12.227+02:00 n22 kernel: inode loop0:32421 at e84fa=
+d10: mode 100102, nlink 0, next 32155
+>> 2013-05-30T19:21:12.227+02:00 n22 kernel: inode loop0:32155 at e8700=
+538: mode 100700, nlink 0, next 32230
+>> 2013-05-30T19:21:12.227+02:00 n22 kernel: inode loop0:32230 at e7739=
+7f8: mode 102747, nlink 0, next 32313
+>> 2013-05-30T19:21:12.227+02:00 n22 kernel: inode loop0:32313 at e8701=
+ca8: mode 102667, nlink 0, next 32244
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: inode loop0:32244 at e79b3=
+670: mode 100353, nlink 0, next 32361
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: inode loop0:32361 at e8703=
+b20: mode 100206, nlink 0, next 32271
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: inode loop0:32271 at e79b3=
+b20: mode 100000, nlink 0, next 32255
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: inode loop0:32255 at eb8ec=
+088: mode 104657, nlink 0, next 32366
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: inode loop0:32366 at e8701=
+f00: mode 105711, nlink 0, next 32281
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: inode loop0:32281 at e7738=
+2e0: mode 101637, nlink 0, next 32151
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: inode loop0:32151 at e92cc=
+e98: mode 101557, nlink 0, next 32138
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: inode loop0:32138 at e932a=
+608: mode 101327, nlink 0, next 32013
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: inode loop0:32013 at e74be=
+158: mode 101527, nlink 0, next 32012
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: inode loop0:32012 at e74be=
+3b0: mode 102427, nlink 0, next 32110
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: inode loop0:32110 at e74bd=
+f00: mode 101303, nlink 0, next 32112
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: inode loop0:32112 at e74be=
+ab8: mode 100000, nlink 0, next 32066
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: inode loop0:32066 at e79f9=
+a50: mode 104607, nlink 0, next 32148
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: inode loop0:32148 at e9331=
+ca8: mode 102507, nlink 0, next 32158
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: inode loop0:32158 at e84c3=
+1c0: mode 100000, nlink 0, next 32139
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: inode loop0:32139 at e84c1=
+ca8: mode 101507, nlink 0, next 32115
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: inode loop0:32115 at e9331=
+0f0: mode 104037, nlink 0, next 0
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: ------------[ cut here ]--=
+----------
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: kernel BUG at fs/ext4/supe=
+r.c:804!
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: invalid opcode: 0000 [#1] =
+SMP 2013-05-30T19:21:12.228+02:00 n22 kernel: Modules linked in: loop n=
+fsd auth_rpcgss oid_registry lockd sunrpc ip6t_REJECT ip6table_filter i=
+p6_tables ipt_MASQUERADE xt_owner xt_LOG xt_limit xt_multiport ipt_REJE=
+CT xt_tcpudp xt_recent xt_conntrack iptable_nat nf_conntrack_ipv4 nf_de=
+frag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack iptable_filter ip_tables x_ta=
+bles af_packet pppoe pppox ppp_generic slhc bridge stp llc ipv6 tun fus=
+e dm_mod coretemp kvm_intel kvm aesni_intel i915 xts aes_i586 lrw gf128=
+mul ablk_helper arc4 hid_cherry hid_generic iwldvm fbcon snd_hda_codec_=
+conexant cfbfillrect cfbimgblt cryptd i2c_algo_bit sr_mod cfbcopyarea i=
+ntel_agp sdhci_pci cdrom intel_gtt evdev mac80211 sdhci bitblit mmc_cor=
+e softcursor font acpi_cpufreq mperf psmouse usbhid drm_kms_helper usbl=
+p snd_hda_intel e1000e uvcvideo drm videobuf2_vmalloc hid agpgart video=
+buf2_memops videobuf2_core videodev fb 8250_pci snd_hda_codec ptp i!
+>  2c!
+>>  _i801 8250
+>>  pps_core processor battery fbdev iwlwifi i2c_core cfg80211 thermal =
+wmi tpm_tis snd_pcm snd_page_alloc snd_timer tpm tpm_bios thinkpad_acpi=
+ video nvram snd soundcore ac rfkill thermal_sys button serial_core hwm=
+on [last unloaded: microcode]
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: CPU: 1 PID: 11831 Comm: um=
+ount Not tainted 3.10.0-rc3+ #6
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: Hardware name: LENOVO 4180=
+=4665/4180F65, BIOS 83ET73WW (1.43 ) 11/30/2012
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: task: eec69aa0 ti: eb4b600=
+0 task.ti: eb4b6000
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: EIP: 0060:[<c11ba6ec>] EFL=
+AGS: 00010287 CPU: 1
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: EIP is at ext4_put_super+0=
+x2dc/0x2e0
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: EAX: 0000003d EBX: eaa3d40=
+0 ECX: eaa3d550 EDX: eaa3d550
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: ESI: eaa3f000 EDI: eaa3d51=
+4 EBP: eb4b7efc ESP: eb4b7ecc
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: DS: 007b ES: 007b FS: 00d8=
+ GS: 00e0 SS: 0068
+>> 2013-05-30T19:21:12.228+02:00 n22 kernel: CR0: 80050033 CR2: b6bab00=
+0 CR3: 2edc6000 CR4: 000407f0
+>> 2013-05-30T19:21:12.229+02:00 n22 kernel: DR0: 00000000 DR1: 0000000=
+0 DR2: 00000000 DR3: 00000000
+>> 2013-05-30T19:21:12.229+02:00 n22 kernel: DR6: ffff0ff0 DR7: 0000040=
+0
+>> 2013-05-30T19:21:12.229+02:00 n22 kernel: Stack:
+>> 2013-05-30T19:21:12.229+02:00 n22 kernel: c1567fa0 eaa3f1bc 00007d73=
+ e93310f0 0000881f 00000000 00000000 e93310d0
+>> 2013-05-30T19:21:12.229+02:00 n22 kernel: eaa3d550 eaa3f000 eaa3f058=
+ c14a06e0 eb4b7f18 c111f771 eb4b7f28 eb4b7f18
+>> 2013-05-30T19:21:12.229+02:00 n22 kernel: f1d70400 00000083 eaa3f000=
+ eb4b7f28 c111f819 eaa3f000 c15fde28 eb4b7f38
+>> 2013-05-30T19:21:12.229+02:00 n22 kernel: Call Trace:
+>> 2013-05-30T19:21:12.229+02:00 n22 kernel: [<c111f771>] generic_shutd=
+own_super+0x51/0xd0
+>> 2013-05-30T19:21:12.229+02:00 n22 kernel: [<c111f819>] kill_block_su=
+per+0x29/0x70
+>> 2013-05-30T19:21:12.229+02:00 n22 kernel: [<c111fa64>] deactivate_lo=
+cked_super+0x44/0x70
+>> 2013-05-30T19:21:12.229+02:00 n22 kernel: [<c1120437>] deactivate_su=
+per+0x47/0x60
+>> 2013-05-30T19:21:12.229+02:00 n22 kernel: [<c11371bd>] mntput_no_exp=
+ire+0xcd/0x120
+>> 2013-05-30T19:21:12.229+02:00 n22 kernel: [<c113807e>] SyS_umount+0x=
+ae/0x330
+>> 2013-05-30T19:21:12.229+02:00 n22 kernel: [<c113831e>] SyS_oldumount=
++0x1e/0x20
+>> 2013-05-30T19:21:12.229+02:00 n22 kernel: [<c1482701>] sysenter_do_c=
+all+0x12/0x22
+>> 2013-05-30T19:21:12.229+02:00 n22 kernel: Code: 24 a0 7f 56 c1 05 bc=
+ 01 00 00 89 44 24 04 e8 d2 f8 2b 00 8b 4d ec 8b 55 f0 8b 09 39 ca 75 b=
+2 39 93 50 01 00 00 0f 84 9a fe ff ff <0f> 0b 66 90 55 89 e5 83 ec 20 6=
+6 66 66 66 90 8d 45 18 c7 04 24
+>> 2013-05-30T19:21:12.229+02:00 n22 kernel: EIP: [<c11ba6ec>] ext4_put=
+_super+0x2dc/0x2e0 SS:ESP 0068:eb4b7ecc
+>> 2013-05-30T19:21:12.229+02:00 n22 kernel: ---[ end trace 2a52a524ae1=
+76def ]---
+>>
+>>
+>=20
+>=20
+
+
+--=20
+MfG/Sincerely
+Toralf F=C3=B6rster
+pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
