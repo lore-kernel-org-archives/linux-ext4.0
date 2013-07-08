@@ -1,114 +1,124 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] e2fsprogs: allocate inode table wholly within group
-Date: Mon, 08 Jul 2013 16:27:21 -0500
-Message-ID: <51DB2EB9.4010903@redhat.com>
-References: <51D3269B.5080608@redhat.com>
-Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------030301020001030608030407"
-To: ext4 development <linux-ext4@vger.kernel.org>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH v2] ext4: Try to better reuse recently freed space
+Date: Mon, 8 Jul 2013 15:27:21 -0600
+Message-ID: <0D534283-4B81-45CA-B7D2-E2857F0EAB85@dilger.ca>
+References: <alpine.LFD.2.00.1307041730590.30302@localhost.localdomain> <1373269107-9678-1-git-send-email-lczerner@redhat.com> <20130708085603.GB5988@quack.suse.cz> <alpine.LFD.2.00.1307081108380.1843@localhost.localdomain> <20130708115951.GC5988@quack.suse.cz>
+Mime-Version: 1.0 (Apple Message framework v1085)
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: =?windows-1252?Q?Luk=E1=9A_Czerner?= <lczerner@redhat.com>,
+	Alex Zhuravlev <alexey.zhuravlev@intel.com>,
+	"linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:65139 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753087Ab3GHV1W (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Jul 2013 17:27:22 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r68LRM4W002003
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Mon, 8 Jul 2013 17:27:22 -0400
-Received: from Liberator-563.local (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r68LRL0F030105
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 8 Jul 2013 17:27:21 -0400
-In-Reply-To: <51D3269B.5080608@redhat.com>
+Received: from mail-pb0-f49.google.com ([209.85.160.49]:35097 "EHLO
+	mail-pb0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753087Ab3GHV1Y convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Jul 2013 17:27:24 -0400
+Received: by mail-pb0-f49.google.com with SMTP id jt11so4709056pbb.8
+        for <linux-ext4@vger.kernel.org>; Mon, 08 Jul 2013 14:27:23 -0700 (PDT)
+In-Reply-To: <20130708115951.GC5988@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------030301020001030608030407
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+On 2013-07-08, at 5:59 AM, Jan Kara wrote:
+> On Mon 08-07-13 11:24:01, Luk=E1=9A Czerner wrote:
+>> On Mon, 8 Jul 2013, Jan Kara wrote:
+>>> On Mon, 8 Jul 2013, Jan Kara <jack@suse.cz> wrote:
+>>> On Mon 08-07-13 09:38:27, Lukas Czerner wrote:
+>>>> Currently if the block allocator can not find the goal to
+>>>> allocate we would use global goal for stream allocation.
+>>>> However the global goal (s_mb_last_group and s_mb_last_start) will=
+ move further every time such allocation appears and
+>>>> never move backwards.
+>>>>=20
+>>>> This causes several problems in certain scenarios:
+>>>> - the goal will move further and further preventing us from
+>>>>   reusing space which might have been freed since then. This
+>>>>   is ok from the file system point of view because we will
+>>>>   reuse that space eventually, however we're allocating block
+>>>>   from slower parts of the spinning disk even though it might
+>>>>   not be necessary.
+>>>> - The above also causes more serious problem for example for
+>>>>   thinly  provisioned storage (sparse images backed storage
+>>>>   as well), because instead of reusing blocks which are
+>>>>   already provisioned we would try to use new blocks. This
+>>>>   would unnecessarily drain storage free blocks pool.
+>>>> - This will also cause blocks to be allocated further from
+>>>>   the given goal than it's necessary. Consider for example
+>>>>   truncating, or removing and rewriting the file in the loop.
+>>>> This workload will never reuse freed blocks until we continually
+>>>> claim and free all the block in the file system.
+>>>>=20
+>>>> Note that file systems like xfs, ext3, or btrfs does not have this=
+ problem. This is simply caused by the notion of global pool.
+>>>>=20
+>>>> Fix this by changing the global goal to be goal per inode. This wi=
+ll allow us to invalidate the goal every time the inode has
+>>>> been truncated, or newly created, so in those cases we would try
+>>>> to use the proper more specific goal which is based on inode
+>>>> position.
+>>> When looking at your patch for second time, I started wondering,
+>>> whether we need per-inode stream goal at all. We already do set
+>>> goal in the allocation request for mballoc (ar->goal) e.g. in
+>>> ext4_ext_find_goal().
+>>> It seems strange to then reset it inside mballoc and I don't
+>>> even think mballoc will change it to something else now when
+>>> the goal is per-inode and not global.
+>>=20
+>> Yes, we do set the goal in the allocation request and it is supposed
+>> to be the "best" goal. However sometimes it can not be fulfilled
+>> because we do not have any free block at "goal".
+>>=20
+>> That's when the global (or per-inode) goal comes into play. I suppos=
+e
+>> that there was several reasons for that. First of all it makes it
+>> easier for allocator, because it can directly jump at the point
+>> where we allocated last time and it is likely that there is some
+>> free space to allocate from - so the benefit is that we do not have
+>> to walk all the space in between which is likely to be allocated.
+>=20
+> Yep, but my question is: If we have per-inode streaming goal, can
+> you show an example when the "best" goal will be different from the
+> "streaming" goal? Because from a (I admit rather quick) look at how
+> each of these is computed, it seems that both will point after the
+> next allocated block in case of streaming IO.
 
-Ok, resetting a little on this one.
+There were a few goals with the design of the mballoc allocator:
+- keep large allocations sized and aligned on RAID chunks
+- pack small allocations together, so they can fit into a
+  single RAID chunk and avoid many read-modify-write cycles
+- keep allocations relatively close together, so that seeking is
+  minimized and it doesn't search through fragmented free space
 
-The actual problem seems to be that the test does successive "-M" minimal resizes, and eventually we resize into the middle of an inode table, leaving the end of the table beyond the fs.
+It was designed for high-bandwidth streaming IO, and not small random I=
+O as is seen with VM images and thin-provisioned storage.  That said, w=
+ith TRIM and sparse storage, there is no guarantee that offset within t=
+he virtual device has any association with the real disk, so I'm not su=
+re it makes sense to optimize for this case.
 
-Point "resize2fs -M" at the attached image once or twice w/ fscks in between and you should see it.
+The ext4 code will already bias new allocations towards the beginning o=
+f the disk because this is how inodes are allocated and this influences=
+ each inode's block allocation.  The global target allows the large all=
+ocations to get out of the mess of fragmented free space and into other=
+ parts of the filesystem that are not as heavily used.
 
-It seems like the obvious fix would be to move the inode table if necessary, as with the following patch.
+Rather than tweaking the global target (which is currently just a simpl=
+e round-robin), it probably makes sense to look at a global extent map =
+for free space, so that it is easier to find large chunks of free space=
+=2E  It is still desirable to keep these allocations closer together, o=
+therwise the "optimum" location for several large allocations may be on=
+ different ends of the disk and the situation would be far worse than m=
+aking periodic writes over the whole disk.
 
-But then of course we find that we've run out of room to move the table, and the resize fails; so we've let resize2fs choose its own minimum size - which which it cannot handle.  Presumably something's gone wrong in calculate_minimum_resize_size(), though I can't tell what.
+Cheers, Andreas
 
-Truth be told, I'm not enjoying resize2fs right now!
 
-diff --git a/resize/resize2fs.c b/resize/resize2fs.c
-index 204b10a..27dc5e6 100644
---- a/resize/resize2fs.c
-+++ b/resize/resize2fs.c
-@@ -891,18 +891,25 @@ static errcode_t blocks_to_move(ext2_resize_t rfs)
- 	new_size = ext2fs_blocks_count(fs->super);
- 	if (new_size < ext2fs_blocks_count(old_fs->super)) {
- 		for (g = 0; g < fs->group_desc_count; g++) {
-+			int realloc = 0;
- 			/*
- 			 * ext2fs_allocate_group_table re-allocates bitmaps
- 			 * which are set to block 0.
- 			 */
- 			if (ext2fs_block_bitmap_loc(fs, g) >= new_size) {
- 				ext2fs_block_bitmap_loc_set(fs, g, 0);
--				retval = ext2fs_allocate_group_table(fs, g, 0);
--				if (retval)
--					return retval;
-+				realloc = 1;
- 			}
- 			if (ext2fs_inode_bitmap_loc(fs, g) >= new_size) {
- 				ext2fs_inode_bitmap_loc_set(fs, g, 0);
-+				realloc = 1;
-+			}
-+			if (ext2fs_inode_table_loc(fs, g) + fs->inode_blocks_per_group > new_size) {
-+				ext2fs_inode_table_loc_set(fs, g, 0);
-+				realloc = 1;
-+			}
-+
-+			if (realloc) {
- 				retval = ext2fs_allocate_group_table(fs, g, 0);
- 				if (retval)
- 					return retval;
 
---------------030301020001030608030407
-Content-Type: application/x-bzip;
- name="test.img.bz2"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment;
- filename="test.img.bz2"
 
-QlpoOTFBWSZTWaUqFtIAACr/////////////////////////////////////////////4Aef
-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
---------------030301020001030608030407--
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
