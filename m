@@ -1,74 +1,114 @@
-From: Guenter Roeck <linux@roeck-us.net>
-Subject: WARNING: at fs/ext4/inode.c:230 ext4_evict_inode+0x41b/0x510
-Date: Mon, 8 Jul 2013 11:38:29 -0700
-Message-ID: <20130708183829.GA3205@roeck-us.net>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] e2fsprogs: allocate inode table wholly within group
+Date: Mon, 08 Jul 2013 16:27:21 -0500
+Message-ID: <51DB2EB9.4010903@redhat.com>
+References: <51D3269B.5080608@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>
-To: linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: multipart/mixed;
+ boundary="------------030301020001030608030407"
+To: ext4 development <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:65139 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753087Ab3GHV1W (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 8 Jul 2013 17:27:22 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r68LRM4W002003
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Mon, 8 Jul 2013 17:27:22 -0400
+Received: from Liberator-563.local (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r68LRL0F030105
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 8 Jul 2013 17:27:21 -0400
+In-Reply-To: <51D3269B.5080608@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+This is a multi-part message in MIME format.
+--------------030301020001030608030407
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 
-seen this morning with a brand new top-of-tree kernel (as of last night) plus a
-couple of patches I am working on.
+Ok, resetting a little on this one.
 
-Due to my changes, there is a slight chance that the problem is not due to an
-upstream bug, but I think that is quite unlikely (my changes are unrelated
-to file system code).
+The actual problem seems to be that the test does successive "-M" minimal resizes, and eventually we resize into the middle of an inode table, leaving the end of the table beyond the fs.
 
-If there is anything I can help to track this down, please let me know.
+Point "resize2fs -M" at the attached image once or twice w/ fscks in between and you should see it.
 
-Thanks,
-Guenter
+It seems like the obvious fix would be to move the inode table if necessary, as with the following patch.
 
-[13071.291013] ------------[ cut here ]------------
-[13071.291021] WARNING: at fs/ext4/inode.c:230 ext4_evict_inode+0x41b/0x510()
-[13071.291022] Modules linked in: ds1621 i2c_diolan_u2c(O) xt_multiport iptable_filter ip_tables x_tables snd_hda_codec_realtek spi_diolan_u2c(O) snd_hda_intel snd_hda_codec snd_hwdep snd_pcm snd_page_alloc snd_seq_midi snd_seq_midi_event hid_generic snd_rawmidi diolan_u2c_core(O) snd_seq snd_seq_device parport_pc snd_timer psmouse bnep serio_raw rfcomm ppdev bluetooth snd usbhid hid lpc_ich i915 soundcore video drm_kms_helper drm mac_hid i2c_algo_bit coretemp hwmon i2c_dev lp parport e1000e ptp pps_core [last unloaded: i2c_diolan_u2c]
-[13071.291051] CPU: 5 PID: 17981 Comm: git Tainted: G           O 3.10.0+ #1
-[13071.291052] Hardware name:                  /DB65AL, BIOS ALB6510H.86A.0041.2011.0114.1553 01/14/2011
-[13071.291053]  0000000000000009 ffff8803a992fca8 ffffffff81671d5c 0000000000000000
-[13071.291055]  ffff8803a992fce0 ffffffff81043370 ffff88030e409cb0 ffff88030e409cb0
-[13071.291056]  ffffffff8182b6c0 ffffffff8182b6c0 00000000ffffff9c ffff8803a992fcf0
-[13071.291058] Call Trace:
-[13071.291069]  [<ffffffff81671d5c>] dump_stack+0x45/0x56
-[13071.291072]  [<ffffffff81043370>] warn_slowpath_common+0x70/0xa0
-[13071.291074]  [<ffffffff810433ba>] warn_slowpath_null+0x1a/0x20
-[13071.291075]  [<ffffffff8121145b>] ext4_evict_inode+0x41b/0x510
-[13071.291078]  [<ffffffff8118b24c>] evict+0xac/0x1a0
-[13071.291079]  [<ffffffff8118b9d5>] iput+0x105/0x190
-[13071.291081]  [<ffffffff811875c8>] d_kill+0xf8/0x130
-[13071.291083]  [<ffffffff81187cb7>] dput+0xe7/0x1c0
-[13071.291085]  [<ffffffff8117fa49>] SYSC_renameat+0x3a9/0x450
-[13071.291087]  [<ffffffff8118f629>] ? mntput_no_expire+0x49/0x160
-[13071.291089]  [<ffffffff8118f766>] ? mntput+0x26/0x40
-[13071.291091]  [<ffffffff8117358e>] ? ____fput+0xe/0x10
-[13071.291094]  [<ffffffff810651cc>] ? task_work_run+0xac/0xe0
-[13071.291096]  [<ffffffff8118241e>] SyS_renameat+0xe/0x10
-[13071.291098]  [<ffffffff8118243b>] SyS_rename+0x1b/0x20
-[13071.291100]  [<ffffffff81680f02>] system_call_fastpath+0x16/0x1b
-[13071.291101] ---[ end trace 3c1a516fb2cf5d2f ]---
-[15600.880124] ------------[ cut here ]------------
-[15600.880134] WARNING: at fs/ext4/inode.c:230 ext4_evict_inode+0x41b/0x510()
-[15600.880136] Modules linked in: ds1621 i2c_diolan_u2c(O) xt_multiport iptable_filter ip_tables x_tables snd_hda_codec_realtek spi_diolan_u2c(O) snd_hda_intel snd_hda_codec snd_hwdep snd_pcm snd_page_alloc snd_seq_midi snd_seq_midi_event hid_generic snd_rawmidi diolan_u2c_core(O) snd_seq snd_seq_device parport_pc snd_timer psmouse bnep serio_raw rfcomm ppdev bluetooth snd usbhid hid lpc_ich i915 soundcore video drm_kms_helper drm mac_hid i2c_algo_bit coretemp hwmon i2c_dev lp parport e1000e ptp pps_core [last unloaded: i2c_diolan_u2c]
-[15600.880176] CPU: 1 PID: 17263 Comm: collect2 Tainted: G        W  O 3.10.0+ #1
-[15600.880178] Hardware name:                  /DB65AL, BIOS ALB6510H.86A.0041.2011.0114.1553 01/14/2011
-[15600.880180]  0000000000000009 ffff8803cfbc7dd0 ffffffff81671d5c 0000000000000000
-[15600.880185]  ffff8803cfbc7e08 ffffffff81043370 ffff8802e2cd38b0 ffff8802e2cd38b0
-[15600.880188]  ffffffff8182b6c0 ffffffff8182b6c0 0000000000000000 ffff8803cfbc7e18
-[15600.880192] Call Trace:
-[15600.880199]  [<ffffffff81671d5c>] dump_stack+0x45/0x56
-[15600.880205]  [<ffffffff81043370>] warn_slowpath_common+0x70/0xa0
-[15600.880209]  [<ffffffff810433ba>] warn_slowpath_null+0x1a/0x20
-[15600.880213]  [<ffffffff8121145b>] ext4_evict_inode+0x41b/0x510
-[15600.880217]  [<ffffffff8118b24c>] evict+0xac/0x1a0
-[15600.880221]  [<ffffffff8118b9d5>] iput+0x105/0x190
-[15600.880225]  [<ffffffff8117ee8e>] do_unlinkat+0x1de/0x240
-[15600.880229]  [<ffffffff81144239>] ? vm_munmap+0x59/0x70
-[15600.880233]  [<ffffffff81182076>] SyS_unlink+0x16/0x20
-[15600.880238]  [<ffffffff81680f02>] system_call_fastpath+0x16/0x1b
-[15600.880241] ---[ end trace 3c1a516fb2cf5d30 ]---
+But then of course we find that we've run out of room to move the table, and the resize fails; so we've let resize2fs choose its own minimum size - which which it cannot handle.  Presumably something's gone wrong in calculate_minimum_resize_size(), though I can't tell what.
+
+Truth be told, I'm not enjoying resize2fs right now!
+
+diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+index 204b10a..27dc5e6 100644
+--- a/resize/resize2fs.c
++++ b/resize/resize2fs.c
+@@ -891,18 +891,25 @@ static errcode_t blocks_to_move(ext2_resize_t rfs)
+ 	new_size = ext2fs_blocks_count(fs->super);
+ 	if (new_size < ext2fs_blocks_count(old_fs->super)) {
+ 		for (g = 0; g < fs->group_desc_count; g++) {
++			int realloc = 0;
+ 			/*
+ 			 * ext2fs_allocate_group_table re-allocates bitmaps
+ 			 * which are set to block 0.
+ 			 */
+ 			if (ext2fs_block_bitmap_loc(fs, g) >= new_size) {
+ 				ext2fs_block_bitmap_loc_set(fs, g, 0);
+-				retval = ext2fs_allocate_group_table(fs, g, 0);
+-				if (retval)
+-					return retval;
++				realloc = 1;
+ 			}
+ 			if (ext2fs_inode_bitmap_loc(fs, g) >= new_size) {
+ 				ext2fs_inode_bitmap_loc_set(fs, g, 0);
++				realloc = 1;
++			}
++			if (ext2fs_inode_table_loc(fs, g) + fs->inode_blocks_per_group > new_size) {
++				ext2fs_inode_table_loc_set(fs, g, 0);
++				realloc = 1;
++			}
++
++			if (realloc) {
+ 				retval = ext2fs_allocate_group_table(fs, g, 0);
+ 				if (retval)
+ 					return retval;
+
+--------------030301020001030608030407
+Content-Type: application/x-bzip;
+ name="test.img.bz2"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+ filename="test.img.bz2"
+
+QlpoOTFBWSZTWaUqFtIAACr/////////////////////////////////////////////4Aef
+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
+--------------030301020001030608030407--
