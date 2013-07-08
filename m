@@ -1,161 +1,163 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [RFC PATCH] ext4: Fix group number calculation
-Date: Mon, 8 Jul 2013 08:25:53 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1307080821410.1843@localhost.localdomain>
-References: <1373016588.2939.15.camel@ThinkPad-T5421> <20130706031147.GB32062@thunk.org>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Li Zhong <lizhongfs@gmail.com>, linux-ext4@vger.kernel.org,
-	adilger.kernel@dilger.ca
-To: "Theodore Ts'o" <tytso@mit.edu>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH v2] ext4: Try to better reuse recently freed space
+Date: Mon,  8 Jul 2013 09:38:27 +0200
+Message-ID: <1373269107-9678-1-git-send-email-lczerner@redhat.com>
+References: <alpine.LFD.2.00.1307041730590.30302@localhost.localdomain>
+Cc: jack@suse.cz, Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28179 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:2495 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753381Ab3GHG0B (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Jul 2013 02:26:01 -0400
-In-Reply-To: <20130706031147.GB32062@thunk.org>
+	id S1751464Ab3GHHie (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 8 Jul 2013 03:38:34 -0400
+In-Reply-To: <alpine.LFD.2.00.1307041730590.30302@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 5 Jul 2013, Theodore Ts'o wrote:
+Currently if the block allocator can not find the goal to allocate we
+would use global goal for stream allocation. However the global goal
+(s_mb_last_group and s_mb_last_start) will move further every time such
+allocation appears and never move backwards.
 
-> Date: Fri, 5 Jul 2013 23:11:47 -0400
-> From: Theodore Ts'o <tytso@mit.edu>
-> To: Li Zhong <lizhongfs@gmail.com>
-> Cc: linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
->     Lukas Czerner <lczerner@redhat.com>
-> Subject: Re: [RFC PATCH] ext4: Fix group number calculation
-> 
-> On Fri, Jul 05, 2013 at 05:29:48PM +0800, Li Zhong wrote:
-> > 
-> > It seems that it is caused by different group numbers calculated from
-> > ext4_get_group_number() and ext4_get_group_no_and_offset().
-> > 
-> > The fix below tries to make ext4_get_group_number() consistent with
-> > ext4_get_group_no_and_offset():
-> > 1) minus first data block number instead of adding it
-> > 2) remove the cluster bits, as seems it is used for offset calculation in
-> > ext4_get_group_no_and_offset().
-> 
-> Thanks for reporting the problem, but only (1) is a problem.  The
-> cluster bits part is right, although it wasn't actually ever going to
-> be used because we were only setting STD_GROUP_SIZE for non-bigalloc
-> file systems.  The following is I believe the correct fix.
-> 
->      	       	   	     	  	  - Ted
-> 
-> From 96eaeed0d7fc516481ed07739826dac840755eb3 Mon Sep 17 00:00:00 2001
-> From: Theodore Ts'o <tytso@mit.edu>
-> Date: Fri, 5 Jul 2013 23:11:16 -0400
-> Subject: [PATCH] ext4: fix ext4_get_group_number()
-> 
-> The function ext4_get_group_number() was introduced as an optimization
-> in commit bd86298e60b8.  Unfortunately, this commit incorrectly
-> calculate the group number for file systems with a 1k block size (when
-> s_first_data_block is 1 instead of zero).  This could cause the
-> following kernel BUG:
+This causes several problems in certain scenarios:
 
-Yes this is a correct fix, thanks!
+- the goal will move further and further preventing us from reusing
+  space which might have been freed since then. This is ok from the file
+  system point of view because we will reuse that space eventually,
+  however we're allocating block from slower parts of the spinning disk
+  even though it might not be necessary.
+- The above also causes more serious problem for example for thinly
+  provisioned storage (sparse images backed storage as well), because
+  instead of reusing blocks which are already provisioned we would try
+  to use new blocks. This would unnecessarily drain storage free blocks
+  pool.
+- This will also cause blocks to be allocated further from the given
+  goal than it's necessary. Consider for example truncating, or removing
+  and rewriting the file in the loop. This workload will never reuse
+  freed blocks until we continually claim and free all the block in the
+  file system.
 
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+Note that file systems like xfs, ext3, or btrfs does not have this
+problem. This is simply caused by the notion of global pool.
 
-> 
-> [  568.877799] ------------[ cut here ]------------
-> [  568.877833] kernel BUG at fs/ext4/mballoc.c:3728!
-> [  568.877840] Oops: Exception in kernel mode, sig: 5 [#1]
-> [  568.877845] SMP NR_CPUS=32 NUMA pSeries
-> [  568.877852] Modules linked in: binfmt_misc
-> [  568.877861] CPU: 1 PID: 3516 Comm: fs_mark Not tainted 3.10.0-03216-g7c6809f-dirty #1
-> [  568.877867] task: c0000001fb0b8000 ti: c0000001fa954000 task.ti: c0000001fa954000
-> [  568.877873] NIP: c0000000002f42a4 LR: c0000000002f4274 CTR: c000000000317ef8
-> [  568.877879] REGS: c0000001fa956ed0 TRAP: 0700   Not tainted  (3.10.0-03216-g7c6809f-dirty)
-> [  568.877884] MSR: 8000000000029032 <SF,EE,ME,IR,DR,RI>  CR: 24000428  XER: 00000000
-> [  568.877902] SOFTE: 1
-> [  568.877905] CFAR: c0000000002b5464
-> [  568.877908]
-> GPR00: 0000000000000001 c0000001fa957150 c000000000c6a408 c0000001fb588000
-> GPR04: 0000000000003fff c0000001fa9571c0 c0000001fa9571c4 000138098c50625f
-> GPR08: 1301200000000000 0000000000000002 0000000000000001 0000000000000000
-> GPR12: 0000000024000422 c00000000f33a300 0000000000008000 c0000001fa9577f0
-> GPR16: c0000001fb7d0100 c000000000c29190 c0000000007f46e8 c000000000a14672
-> GPR20: 0000000000000001 0000000000000008 ffffffffffffffff 0000000000000000
-> GPR24: 0000000000000100 c0000001fa957278 c0000001fdb2bc78 c0000001fa957288
-> GPR28: 0000000000100100 c0000001fa957288 c0000001fb588000 c0000001fdb2bd10
-> [  568.877993] NIP [c0000000002f42a4] .ext4_mb_release_group_pa+0xec/0x1c0
-> [  568.877999] LR [c0000000002f4274] .ext4_mb_release_group_pa+0xbc/0x1c0
-> [  568.878004] Call Trace:
-> [  568.878008] [c0000001fa957150] [c0000000002f4274] .ext4_mb_release_group_pa+0xbc/0x1c0 (unreliable)
-> [  568.878017] [c0000001fa957200] [c0000000002fb070] .ext4_mb_discard_lg_preallocations+0x394/0x444
-> [  568.878025] [c0000001fa957340] [c0000000002fb45c] .ext4_mb_release_context+0x33c/0x734
-> [  568.878032] [c0000001fa957440] [c0000000002fbcf8] .ext4_mb_new_blocks+0x4a4/0x5f4
-> [  568.878039] [c0000001fa957510] [c0000000002ef56c] .ext4_ext_map_blocks+0xc28/0x1178
-> [  568.878047] [c0000001fa957640] [c0000000002c1a94] .ext4_map_blocks+0x2c8/0x490
-> [  568.878054] [c0000001fa957730] [c0000000002c536c] .ext4_writepages+0x738/0xc60
-> [  568.878062] [c0000001fa957950] [c000000000168a78] .do_writepages+0x5c/0x80
-> [  568.878069] [c0000001fa9579d0] [c00000000015d1c4] .__filemap_fdatawrite_range+0x88/0xb0
-> [  568.878078] [c0000001fa957aa0] [c00000000015d23c] .filemap_write_and_wait_range+0x50/0xfc
-> [  568.878085] [c0000001fa957b30] [c0000000002b8edc] .ext4_sync_file+0x220/0x3c4
-> [  568.878092] [c0000001fa957be0] [c0000000001f849c] .vfs_fsync_range+0x64/0x80
-> [  568.878098] [c0000001fa957c70] [c0000000001f84f0] .vfs_fsync+0x38/0x4c
-> [  568.878105] [c0000001fa957d00] [c0000000001f87f4] .do_fsync+0x54/0x90
-> [  568.878111] [c0000001fa957db0] [c0000000001f8894] .SyS_fsync+0x28/0x3c
-> [  568.878120] [c0000001fa957e30] [c000000000009c88] syscall_exit+0x0/0x7c
-> [  568.878125] Instruction dump:
-> [  568.878130] 60000000 813d0034 81610070 38000000 7f8b4800 419e001c 813f007c 7d2bfe70
-> [  568.878144] 7d604a78 7c005850 54000ffe 7c0007b4 <0b000000> e8a10076 e87f0090 7fa4eb78
-> [  568.878160] ---[ end trace 594d911d9654770b ]---
-> 
-> In addition fix the STD_GROUP optimization so that it works for
-> bigalloc file systems as well.
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> Reported-by: Li Zhong <lizhongfs@gmail.com>
-> Cc: Lukas Czerner <lczerner@redhat.com>
-> Cc: stable@vger.kernel.org  # 3.10
-> ---
->  fs/ext4/balloc.c | 4 ++--
->  fs/ext4/super.c  | 8 ++++----
->  2 files changed, 6 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-> index 5833939..ddd715e 100644
-> --- a/fs/ext4/balloc.c
-> +++ b/fs/ext4/balloc.c
-> @@ -38,8 +38,8 @@ ext4_group_t ext4_get_group_number(struct super_block *sb,
->  	ext4_group_t group;
->  
->  	if (test_opt2(sb, STD_GROUP_SIZE))
-> -		group = (le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block) +
-> -			 block) >>
-> +		group = (block -
-> +			 le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block)) >>
->  			(EXT4_BLOCK_SIZE_BITS(sb) + EXT4_CLUSTER_BITS(sb) + 3);
->  	else
->  		ext4_get_group_no_and_offset(sb, block, &group, NULL);
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 85b3dd6..8862d4d 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -3624,10 +3624,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  	sbi->s_addr_per_block_bits = ilog2(EXT4_ADDR_PER_BLOCK(sb));
->  	sbi->s_desc_per_block_bits = ilog2(EXT4_DESC_PER_BLOCK(sb));
->  
-> -	/* Do we have standard group size of blocksize * 8 blocks ? */
-> -	if (sbi->s_blocks_per_group == blocksize << 3)
-> -		set_opt2(sb, STD_GROUP_SIZE);
-> -
->  	for (i = 0; i < 4; i++)
->  		sbi->s_hash_seed[i] = le32_to_cpu(es->s_hash_seed[i]);
->  	sbi->s_def_hash_version = es->s_def_hash_version;
-> @@ -3697,6 +3693,10 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  		goto failed_mount;
->  	}
->  
-> +	/* Do we have standard group size of clustersize * 8 blocks ? */
-> +	if (sbi->s_blocks_per_group == clustersize << 3)
-> +		set_opt2(sb, STD_GROUP_SIZE);
-> +
->  	/*
->  	 * Test whether we have more sectors than will fit in sector_t,
->  	 * and whether the max offset is addressable by the page cache.
-> 
+Fix this by changing the global goal to be goal per inode. This will
+allow us to invalidate the goal every time the inode has been truncated,
+or newly created, so in those cases we would try to use the proper more
+specific goal which is based on inode position.
+
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+v2: Use proper types. Define invalid value
+
+ fs/ext4/ext4.h    | 12 +++++++++---
+ fs/ext4/inode.c   |  8 ++++++++
+ fs/ext4/mballoc.c | 20 ++++++++------------
+ 3 files changed, 25 insertions(+), 15 deletions(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 6ed348d..d3e9d10 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -917,9 +917,18 @@ struct ext4_inode_info {
+ 
+ 	/* Precomputed uuid+inum+igen checksum for seeding inode checksums */
+ 	__u32 i_csum_seed;
++
++	/* Where last allocation was done - for stream allocation */
++	ext4_group_t i_last_group;
++	ext4_grpblk_t i_last_start;
+ };
+ 
+ /*
++ * Invalid value for last allocation pointer
++ */
++#define EXT4_INVAL_GRPNO		UINT_MAX
++
++/*
+  * File system states
+  */
+ #define	EXT4_VALID_FS			0x0001	/* Unmounted cleanly */
+@@ -1242,9 +1251,6 @@ struct ext4_sb_info {
+ 	unsigned int s_mb_order2_reqs;
+ 	unsigned int s_mb_group_prealloc;
+ 	unsigned int s_max_dir_size_kb;
+-	/* where last allocation was done - for stream allocation */
+-	unsigned long s_mb_last_group;
+-	unsigned long s_mb_last_start;
+ 
+ 	/* stats for buddy allocator */
+ 	atomic_t s_bal_reqs;	/* number of reqs with len > 1 */
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 0188e65..8d3e67c 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3702,6 +3702,10 @@ void ext4_truncate(struct inode *inode)
+ 	else
+ 		ext4_ind_truncate(handle, inode);
+ 
++	/* Invalidate last allocation pointers */
++	ei->i_last_group = EXT4_INVAL_GRPNO;
++	ei->i_last_start = 0;
++
+ 	up_write(&ei->i_data_sem);
+ 
+ 	if (IS_SYNC(inode))
+@@ -4060,6 +4064,10 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+ 	inode->i_generation = le32_to_cpu(raw_inode->i_generation);
+ 	ei->i_block_group = iloc.block_group;
+ 	ei->i_last_alloc_group = ~0;
++
++	/* Invalidate last allocation counters */
++	ei->i_last_group = EXT4_INVAL_GRPNO;
++	ei->i_last_start = 0;
+ 	/*
+ 	 * NOTE! The in-memory inode i_data array is in little-endian order
+ 	 * even on big-endian machines: we do NOT byteswap the block numbers!
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index a9ff5e5..7609f77 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1591,7 +1591,6 @@ static int mb_mark_used(struct ext4_buddy *e4b, struct ext4_free_extent *ex)
+ static void ext4_mb_use_best_found(struct ext4_allocation_context *ac,
+ 					struct ext4_buddy *e4b)
+ {
+-	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
+ 	int ret;
+ 
+ 	BUG_ON(ac->ac_b_ex.fe_group != e4b->bd_group);
+@@ -1622,10 +1621,8 @@ static void ext4_mb_use_best_found(struct ext4_allocation_context *ac,
+ 	get_page(ac->ac_buddy_page);
+ 	/* store last allocated for subsequent stream allocation */
+ 	if (ac->ac_flags & EXT4_MB_STREAM_ALLOC) {
+-		spin_lock(&sbi->s_md_lock);
+-		sbi->s_mb_last_group = ac->ac_f_ex.fe_group;
+-		sbi->s_mb_last_start = ac->ac_f_ex.fe_start;
+-		spin_unlock(&sbi->s_md_lock);
++		EXT4_I(ac->ac_inode)->i_last_group = ac->ac_f_ex.fe_group;
++		EXT4_I(ac->ac_inode)->i_last_start = ac->ac_f_ex.fe_start;
+ 	}
+ }
+ 
+@@ -2080,13 +2077,12 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ 			ac->ac_2order = i - 1;
+ 	}
+ 
+-	/* if stream allocation is enabled, use global goal */
+-	if (ac->ac_flags & EXT4_MB_STREAM_ALLOC) {
+-		/* TBD: may be hot point */
+-		spin_lock(&sbi->s_md_lock);
+-		ac->ac_g_ex.fe_group = sbi->s_mb_last_group;
+-		ac->ac_g_ex.fe_start = sbi->s_mb_last_start;
+-		spin_unlock(&sbi->s_md_lock);
++	/* if stream allocation is enabled and per inode goal is
++	 * set, use it */
++	if ((ac->ac_flags & EXT4_MB_STREAM_ALLOC) &&
++	   (EXT4_I(ac->ac_inode)->i_last_group != EXT4_INVAL_GRPNO)) {
++		ac->ac_g_ex.fe_group = EXT4_I(ac->ac_inode)->i_last_group;
++		ac->ac_g_ex.fe_start = EXT4_I(ac->ac_inode)->i_last_start;
+ 	}
+ 
+ 	/* Let's just scan groups to find more-less suitable blocks */
+-- 
+1.8.3.1
+
