@@ -1,140 +1,74 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] e2fsprogs: allocate inode table wholly within group
-Date: Mon, 08 Jul 2013 13:34:03 -0500
-Message-ID: <51DB061B.3020400@redhat.com>
-References: <51D3269B.5080608@redhat.com> <20130707155316.GB11993@thunk.org>
+From: Guenter Roeck <linux@roeck-us.net>
+Subject: WARNING: at fs/ext4/inode.c:230 ext4_evict_inode+0x41b/0x510
+Date: Mon, 8 Jul 2013 11:38:29 -0700
+Message-ID: <20130708183829.GA3205@roeck-us.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57518 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752613Ab3GHSeF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Jul 2013 14:34:05 -0400
-In-Reply-To: <20130707155316.GB11993@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+To: linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 7/7/13 10:53 AM, Theodore Ts'o wrote:
-> On Tue, Jul 02, 2013 at 03:14:35PM -0400, Eric Sandeen wrote:
->> Building e2fsprogs 1.42.8 on ppc, I got this:
->>
->> r_1024_small_bg: ext2 1024 blocksize with small block groups: failed
->>
->> Because during the resize step it did this:
->>
->> Itable move group 1 block 1030->1092 (diff 62)
->>
->> but during e2fsck it found:
->>
->> /tmp/e2fsprogs-tmp.uiFhgP: Inode table for group 1 is not in group.  (block 1092)
->>
->> i.e. from dumpe2fs we can see:
->>
->> Group 1: (Blocks 1025-1110)
->>   Backup superblock at 1025, Group descriptors at 1026-1026
->>   Block bitmap at 1090 (+65), Inode bitmap at 1091 (+66)
->>   Inode table at 1092-1123 (+67)
->>                       ^^^^ beyond end of block group
-> 
-> There seems to be something wrong here.  The test file system was
-> created like this:
-> 
->   mke2fs -t ext2 -O ^resize_inode -b 1024 -g 1024 -qF /tmp/foo.img 64M
-> 
-> The file system hence should have 64 block groups, and dumpe2fs before
-> the resize looks like this on an x86 system:
-> 
-> Group 1: (Blocks 1025-2048)
->   Backup superblock at 1025, Group descriptors at 1026-1027
->   Block bitmap at 1028 (+3), Inode bitmap at 1029 (+4)
->   Inode table at 1030-1061 (+5)
-> 
-> ... and after:
-> 
-> Group 1: (Blocks 1025-2048)
->   Backup superblock at 1025, Group descriptors at 1026-1089
->   Block bitmap at 1090 (+65), Inode bitmap at 1091 (+66)
->   Inode table at 1092-1123 (+67)
-> 
-> Note the range of block group #1: 1025-2048, whereas on the PPC,
-> apparently the range is quite different: Group 1: (Blocks 1025-1110)
-> 
-> So there's something else going really wrong here....
+Hi,
 
-I don't think so - that's only after the shrink, right?
+seen this morning with a brand new top-of-tree kernel (as of last night) plus a
+couple of patches I am working on.
 
-However, I understand your confusion.  The test is not at all obvious
-about what it's doing:
+Due to my changes, there is a slight chance that the problem is not due to an
+upstream bug, but I think that is quite unlikely (my changes are unrelated
+to file system code).
 
-> test_description="ext2 1024 blocksize with small block groups"
-> FEATURES="-t ext2 -O ^resize_inode -b 1024 -g 1024"
-> SIZE_1=64M
-> SIZE_2=2G
-> LOG=$test_name.log
-> E2FSCK=../e2fsck/e2fsck
-> 
-> 
-> . $cmd_dir/scripts/resize_test
+If there is anything I can help to track this down, please let me know.
 
-Um, ok, so we "resize test" with those parameters.
+Thanks,
+Guenter
 
-Looking at that script, which sadly has no comments, it invokes
-a resize to $SIZE_2 (2G) first, but then does something different:
-
-# grep RESIZE tests/scripts/resize_test | grep -v echo
-if ! $RESIZE2FS $RESIZE2FS_OPTS -d 31 $TMPFILE $SIZE_2 >> $LOG 2>&1
-if ! $RESIZE2FS $RESIZE2FS_OPTS -d 31 -M $TMPFILE $SIZE_2 >> $LOG 2>&1
-if ! $RESIZE2FS $RESIZE2FS_OPTS -d 31 -M $TMPFILE $SIZE_2 >> $LOG 2>&1
-if ! $RESIZE2FS $RESIZE2FS_OPTS -d 31 -M $TMPFILE $SIZE_2 >> $LOG 2>&1
-
-so it does 4 resizes; the last 3 are using "-M" which says "go to the
-minimum size."   Which is a weird thing to do when also specifying
-an actual size:
-
-# grep "\-M" tests/r_1024_small_bg.log 
-../resize/resize2fs -d 31 -M /tmp/e2fsprogs-tmp.LoNby5 2G
-../resize/resize2fs -d 31 -M /tmp/e2fsprogs-tmp.LoNby5 2G
-../resize/resize2fs -d 31 -M /tmp/e2fsprogs-tmp.LoNby5 2G
-
-But the 2G is ignored.... so it's re-resizing to minimum sizes.  On x86:
-
-# grep -w "resize\|is now" tests/r_1024_small_bg.log 
-../resize/resize2fs -d 31 /tmp/e2fsprogs-tmp.LoNby5 2G
-The filesystem on /tmp/e2fsprogs-tmp.LoNby5 is now 2097152 blocks long.
-../resize/resize2fs -d 31 -M /tmp/e2fsprogs-tmp.LoNby5 2G
-The filesystem on /tmp/e2fsprogs-tmp.LoNby5 is now 1174 blocks long.
-../resize/resize2fs -d 31 -M /tmp/e2fsprogs-tmp.LoNby5 2G
-The filesystem on /tmp/e2fsprogs-tmp.LoNby5 is now 1002 blocks long.
-
-on the failing PPC build:
-
-# grep -w "resize\|is now" tests/r_1024_small_bg.log 
-../resize/resize2fs -d 31 /tmp/e2fsprogs-tmp.4KTO7a 2G
-The filesystem on /tmp/e2fsprogs-tmp.4KTO7a is now 2097152 blocks long.
-../resize/resize2fs -d 31 -M /tmp/e2fsprogs-tmp.4KTO7a 2G
-The filesystem on /tmp/e2fsprogs-tmp.4KTO7a is now 1247 blocks long.
-../resize/resize2fs -d 31 -M /tmp/e2fsprogs-tmp.4KTO7a 2G
-The filesystem on /tmp/e2fsprogs-tmp.4KTO7a is now 1121 blocks long.
-
-so they're both shrinking quite a bit.  But I think due to the vagaries
-of the initial filesystem population, the test is behaving differently
-and just happening to hit this corner case.
-
-On the last failing run, the minimum size happens to be calculated
-at 1121 blocks; with debug printfs:
-
-> ../resize/resize2fs -d 31 -M /tmp/e2fsprogs-tmp.gB4G7E 2G
-> resize2fs 1.42.8 (20-Jun-2013)
-> forcing to min size 1121
-> Resizing the filesystem on /tmp/e2fsprogs-tmp.gB4G7E to 1121 (1k) blocks.
-
-But what's weird is that in this resize run it didn't actually
-move the inode table; that was done in a prior minimization run,
-and in this case it seems to have simply shrunk past the existing
-inode table end.  Argh.  Still looking.
-
--Eric
-
+[13071.291013] ------------[ cut here ]------------
+[13071.291021] WARNING: at fs/ext4/inode.c:230 ext4_evict_inode+0x41b/0x510()
+[13071.291022] Modules linked in: ds1621 i2c_diolan_u2c(O) xt_multiport iptable_filter ip_tables x_tables snd_hda_codec_realtek spi_diolan_u2c(O) snd_hda_intel snd_hda_codec snd_hwdep snd_pcm snd_page_alloc snd_seq_midi snd_seq_midi_event hid_generic snd_rawmidi diolan_u2c_core(O) snd_seq snd_seq_device parport_pc snd_timer psmouse bnep serio_raw rfcomm ppdev bluetooth snd usbhid hid lpc_ich i915 soundcore video drm_kms_helper drm mac_hid i2c_algo_bit coretemp hwmon i2c_dev lp parport e1000e ptp pps_core [last unloaded: i2c_diolan_u2c]
+[13071.291051] CPU: 5 PID: 17981 Comm: git Tainted: G           O 3.10.0+ #1
+[13071.291052] Hardware name:                  /DB65AL, BIOS ALB6510H.86A.0041.2011.0114.1553 01/14/2011
+[13071.291053]  0000000000000009 ffff8803a992fca8 ffffffff81671d5c 0000000000000000
+[13071.291055]  ffff8803a992fce0 ffffffff81043370 ffff88030e409cb0 ffff88030e409cb0
+[13071.291056]  ffffffff8182b6c0 ffffffff8182b6c0 00000000ffffff9c ffff8803a992fcf0
+[13071.291058] Call Trace:
+[13071.291069]  [<ffffffff81671d5c>] dump_stack+0x45/0x56
+[13071.291072]  [<ffffffff81043370>] warn_slowpath_common+0x70/0xa0
+[13071.291074]  [<ffffffff810433ba>] warn_slowpath_null+0x1a/0x20
+[13071.291075]  [<ffffffff8121145b>] ext4_evict_inode+0x41b/0x510
+[13071.291078]  [<ffffffff8118b24c>] evict+0xac/0x1a0
+[13071.291079]  [<ffffffff8118b9d5>] iput+0x105/0x190
+[13071.291081]  [<ffffffff811875c8>] d_kill+0xf8/0x130
+[13071.291083]  [<ffffffff81187cb7>] dput+0xe7/0x1c0
+[13071.291085]  [<ffffffff8117fa49>] SYSC_renameat+0x3a9/0x450
+[13071.291087]  [<ffffffff8118f629>] ? mntput_no_expire+0x49/0x160
+[13071.291089]  [<ffffffff8118f766>] ? mntput+0x26/0x40
+[13071.291091]  [<ffffffff8117358e>] ? ____fput+0xe/0x10
+[13071.291094]  [<ffffffff810651cc>] ? task_work_run+0xac/0xe0
+[13071.291096]  [<ffffffff8118241e>] SyS_renameat+0xe/0x10
+[13071.291098]  [<ffffffff8118243b>] SyS_rename+0x1b/0x20
+[13071.291100]  [<ffffffff81680f02>] system_call_fastpath+0x16/0x1b
+[13071.291101] ---[ end trace 3c1a516fb2cf5d2f ]---
+[15600.880124] ------------[ cut here ]------------
+[15600.880134] WARNING: at fs/ext4/inode.c:230 ext4_evict_inode+0x41b/0x510()
+[15600.880136] Modules linked in: ds1621 i2c_diolan_u2c(O) xt_multiport iptable_filter ip_tables x_tables snd_hda_codec_realtek spi_diolan_u2c(O) snd_hda_intel snd_hda_codec snd_hwdep snd_pcm snd_page_alloc snd_seq_midi snd_seq_midi_event hid_generic snd_rawmidi diolan_u2c_core(O) snd_seq snd_seq_device parport_pc snd_timer psmouse bnep serio_raw rfcomm ppdev bluetooth snd usbhid hid lpc_ich i915 soundcore video drm_kms_helper drm mac_hid i2c_algo_bit coretemp hwmon i2c_dev lp parport e1000e ptp pps_core [last unloaded: i2c_diolan_u2c]
+[15600.880176] CPU: 1 PID: 17263 Comm: collect2 Tainted: G        W  O 3.10.0+ #1
+[15600.880178] Hardware name:                  /DB65AL, BIOS ALB6510H.86A.0041.2011.0114.1553 01/14/2011
+[15600.880180]  0000000000000009 ffff8803cfbc7dd0 ffffffff81671d5c 0000000000000000
+[15600.880185]  ffff8803cfbc7e08 ffffffff81043370 ffff8802e2cd38b0 ffff8802e2cd38b0
+[15600.880188]  ffffffff8182b6c0 ffffffff8182b6c0 0000000000000000 ffff8803cfbc7e18
+[15600.880192] Call Trace:
+[15600.880199]  [<ffffffff81671d5c>] dump_stack+0x45/0x56
+[15600.880205]  [<ffffffff81043370>] warn_slowpath_common+0x70/0xa0
+[15600.880209]  [<ffffffff810433ba>] warn_slowpath_null+0x1a/0x20
+[15600.880213]  [<ffffffff8121145b>] ext4_evict_inode+0x41b/0x510
+[15600.880217]  [<ffffffff8118b24c>] evict+0xac/0x1a0
+[15600.880221]  [<ffffffff8118b9d5>] iput+0x105/0x190
+[15600.880225]  [<ffffffff8117ee8e>] do_unlinkat+0x1de/0x240
+[15600.880229]  [<ffffffff81144239>] ? vm_munmap+0x59/0x70
+[15600.880233]  [<ffffffff81182076>] SyS_unlink+0x16/0x20
+[15600.880238]  [<ffffffff81680f02>] system_call_fastpath+0x16/0x1b
+[15600.880241] ---[ end trace 3c1a516fb2cf5d30 ]---
