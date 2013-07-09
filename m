@@ -1,47 +1,45 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: EXT4 Larger Than 16TB
-Date: Mon, 8 Jul 2013 22:14:03 -0400
-Message-ID: <20130709021403.GC6000@thunk.org>
-References: <CAGJTRcg0SHP3-9V-0nDttZ+atn5Kbhf9RRnn_VOaNOq8MgDe6Q@mail.gmail.com>
+Subject: Re: WARNING: at fs/ext4/inode.c:230 ext4_evict_inode+0x41b/0x510
+Date: Mon, 8 Jul 2013 23:35:10 -0400
+Message-ID: <20130709033510.GE6000@thunk.org>
+References: <20130708183829.GA3205@roeck-us.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Michael <mike@draftx.net>
+Cc: linux-ext4@vger.kernel.org,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Jan Kara <jack@suse.cz>
+To: Guenter Roeck <linux@roeck-us.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:36052 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:36074 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751441Ab3GICOG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Jul 2013 22:14:06 -0400
+	id S1751780Ab3GIDfQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 8 Jul 2013 23:35:16 -0400
 Content-Disposition: inline
-In-Reply-To: <CAGJTRcg0SHP3-9V-0nDttZ+atn5Kbhf9RRnn_VOaNOq8MgDe6Q@mail.gmail.com>
+In-Reply-To: <20130708183829.GA3205@roeck-us.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jul 08, 2013 at 04:32:50PM -0500, Michael wrote:
-> I have a currently 15TB FS that I want to expand to 18TB.
-> Unfortunately EXT4 e2fsprogs has an issue that stops you from being
-> able to do this:
+On Mon, Jul 08, 2013 at 11:38:29AM -0700, Guenter Roeck wrote:
+> Hi,
 > 
-> sudo resize2fs /dev/md0
-> resize2fs 1.42.5 (29-Jul-2012)
-> resize2fs: New size too large to be expressed in 32 bits
+> seen this morning with a brand new top-of-tree kernel (as of last night) plus a
+> couple of patches I am working on.
 > 
-> It seems to me, reading the change logs, that this only supported if
-> you created your FS with 64 bit specified. There seems to have been a
-> patch last year that added support for changing 32->64bit, but I had a
-> hard time finding/tracking that.
+> Due to my changes, there is a slight chance that the problem is not due to an
+> upstream bug, but I think that is quite unlikely (my changes are unrelated
+> to file system code).
+> 
+> If there is anything I can help to track this down, please let me know.
+> 
+> [13071.291013] ------------[ cut here ]------------
+> [13071.291021] WARNING: at fs/ext4/inode.c:230 ext4_evict_inode+0x41b/0x510()
 
-Unfortuantely, there is no patch that would enable this.
+Hmm, this warning was added by commit 5dc23bdd5: ext4: remove
+ext4_ioend_wait().
 
-In theory it could be done; it would require doubling the size of the
-block group descriptors, which would require moving other metadata
-blocks out of the way.  Resize2fs does do this when growing a file
-system off-line when no blocks are available from the resize inode,
-but no one has implemented the necessary changes to extend this to
-adding the 64-bit feature.
+What sort of work load are you running on this machine?  Do you know
+what might have triggered it?
 
-So it's technically possible, but it's not implemented at this time.
+Thanks,
 
-Sorry,
-
-							- Ted
+					- Ted
