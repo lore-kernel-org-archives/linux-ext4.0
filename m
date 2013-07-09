@@ -1,71 +1,60 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH] ext4: make ext4_add_dirent_to_inline function return 0
-Date: Tue, 9 Jul 2013 20:15:02 +0800
-Message-ID: <20130709121502.GA3946@gmail.com>
-References: <1373328699-23037-1-git-send-email-wenqing.lz@taobao.com>
- <51DB6BA0.7000800@tao.ma>
+From: Michael <mike@draftx.net>
+Subject: Re: EXT4 Larger Than 16TB
+Date: Tue, 9 Jul 2013 08:45:12 -0500
+Message-ID: <CAGJTRchb5KpYLEOKB1bzNSmJ4SQQ9YVf9UZEsd+Hu38D5mW05g@mail.gmail.com>
+References: <CAGJTRcg0SHP3-9V-0nDttZ+atn5Kbhf9RRnn_VOaNOq8MgDe6Q@mail.gmail.com>
+	<20130709021403.GC6000@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
-To: Tao Ma <tm@tao.ma>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f48.google.com ([209.85.160.48]:51129 "EHLO
-	mail-pb0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751554Ab3GIL4Y (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Jul 2013 07:56:24 -0400
-Received: by mail-pb0-f48.google.com with SMTP id ma3so5416397pbc.21
-        for <linux-ext4@vger.kernel.org>; Tue, 09 Jul 2013 04:56:23 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <51DB6BA0.7000800@tao.ma>
+Received: from mail-pd0-f180.google.com ([209.85.192.180]:45082 "EHLO
+	mail-pd0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753656Ab3GINpM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Jul 2013 09:45:12 -0400
+Received: by mail-pd0-f180.google.com with SMTP id 10so5222228pdi.11
+        for <linux-ext4@vger.kernel.org>; Tue, 09 Jul 2013 06:45:12 -0700 (PDT)
+In-Reply-To: <20130709021403.GC6000@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 09, 2013 at 09:47:12AM +0800, Tao Ma wrote:
-> On 07/09/2013 08:11 AM, Zheng Liu wrote:
-> > From: Zheng Liu <wenqing.lz@taobao.com>
-> > 
-> > Currently ext4_add_dirent_to_inline() function returns 1 to indicate
-> > that a new directory entry has been added.  But it sounds reasonable
-> > to return 0 in this function.  Meanwhile we also can eliminate a if
-> > statement in ext4_add_entry() function when a directory entry has added
-> > correctly.
-> > 
-> > Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-> > Cc: Tao Ma <tm@tao.ma>
-> > Cc: "Theodore Ts'o" <tytso@mit.edu>
-> > ---
-> >  fs/ext4/inline.c |    2 +-
-> >  fs/ext4/namei.c  |    6 +-----
-> >  2 files changed, 2 insertions(+), 6 deletions(-)
-> > 
-> > diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-> > index b8a0746..5a27d32 100644
-> > --- a/fs/ext4/inline.c
-> > +++ b/fs/ext4/inline.c
-> > @@ -1027,7 +1027,7 @@ static int ext4_add_dirent_to_inline(handle_t *handle,
-> >  	ext4_update_dx_flag(dir);
-> >  	dir->i_version++;
-> >  	ext4_mark_inode_dirty(handle, dir);
-> > -	return 1;
-> > +	return 0;
-> >  }
-> >  
-> >  static void *ext4_get_inline_xattr_pos(struct inode *inode,
-> > diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> > index ab2f6dc..2a6a736 100644
-> > --- a/fs/ext4/namei.c
-> > +++ b/fs/ext4/namei.c
-> > @@ -1901,12 +1901,8 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
-> >  
-> >  	if (ext4_has_inline_data(dir)) {
-> >  		retval = ext4_try_add_inline_entry(handle, dentry, inode);
-> > -		if (retval < 0)
-> > +		if (retval <= 0)
-> Sorry, I guess you misread the codes here. If we get 0 here, it means
-> that ext4_try_add_inline_entry can't add this entry into the inline
-> data, but there is no error, so please go on with the normal case. "1"
-> means we have successfully done the work. So your change is wrong.
+No problem, it sounds like it would be a very tricky bit of code to
+write. Shuffling metadata blocks is not an easy feat.
 
-Ah, you are right.  Thanks for pointing it out.
+Is there any way to tell if I'm using 64 bit? Ubuntu defaults to
+setting ext4 to default, but I don't know if it did when I first
+created this FS.
 
-                                                - Zheng
+If it is 64 bit, the resize2fs utility should be able to handle this
+one kernels >3.7, correct?
+
+On Mon, Jul 8, 2013 at 9:14 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+> On Mon, Jul 08, 2013 at 04:32:50PM -0500, Michael wrote:
+>> I have a currently 15TB FS that I want to expand to 18TB.
+>> Unfortunately EXT4 e2fsprogs has an issue that stops you from being
+>> able to do this:
+>>
+>> sudo resize2fs /dev/md0
+>> resize2fs 1.42.5 (29-Jul-2012)
+>> resize2fs: New size too large to be expressed in 32 bits
+>>
+>> It seems to me, reading the change logs, that this only supported if
+>> you created your FS with 64 bit specified. There seems to have been a
+>> patch last year that added support for changing 32->64bit, but I had a
+>> hard time finding/tracking that.
+>
+> Unfortuantely, there is no patch that would enable this.
+>
+> In theory it could be done; it would require doubling the size of the
+> block group descriptors, which would require moving other metadata
+> blocks out of the way.  Resize2fs does do this when growing a file
+> system off-line when no blocks are available from the resize inode,
+> but no one has implemented the necessary changes to extend this to
+> adding the 64-bit feature.
+>
+> So it's technically possible, but it's not implemented at this time.
+>
+> Sorry,
+>
+>                                                         - Ted
