@@ -1,200 +1,71 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 4/4] large-fs: fix ext4 defragmentation tests
-Date: Tue,  9 Jul 2013 15:05:18 +0400
-Message-ID: <1373367918-7516-4-git-send-email-dmonakhov@openvz.org>
-References: <1373367918-7516-1-git-send-email-dmonakhov@openvz.org>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	dchinner@redhat.com, Dmitry Monakhov <dmonakhov@openvz.org>
-To: xfs@oss.sgi.com
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1373367918-7516-1-git-send-email-dmonakhov@openvz.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH] ext4: make ext4_add_dirent_to_inline function return 0
+Date: Tue, 9 Jul 2013 20:15:02 +0800
+Message-ID: <20130709121502.GA3946@gmail.com>
+References: <1373328699-23037-1-git-send-email-wenqing.lz@taobao.com>
+ <51DB6BA0.7000800@tao.ma>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
+To: Tao Ma <tm@tao.ma>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pb0-f48.google.com ([209.85.160.48]:51129 "EHLO
+	mail-pb0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751554Ab3GIL4Y (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Jul 2013 07:56:24 -0400
+Received: by mail-pb0-f48.google.com with SMTP id ma3so5416397pbc.21
+        for <linux-ext4@vger.kernel.org>; Tue, 09 Jul 2013 04:56:23 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <51DB6BA0.7000800@tao.ma>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Initially work space size calculation was based on size of blkdev which
-obviously wrong for large-fs case. This patch calculate work space based
-on `df` cmd.
+On Tue, Jul 09, 2013 at 09:47:12AM +0800, Tao Ma wrote:
+> On 07/09/2013 08:11 AM, Zheng Liu wrote:
+> > From: Zheng Liu <wenqing.lz@taobao.com>
+> > 
+> > Currently ext4_add_dirent_to_inline() function returns 1 to indicate
+> > that a new directory entry has been added.  But it sounds reasonable
+> > to return 0 in this function.  Meanwhile we also can eliminate a if
+> > statement in ext4_add_entry() function when a directory entry has added
+> > correctly.
+> > 
+> > Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+> > Cc: Tao Ma <tm@tao.ma>
+> > Cc: "Theodore Ts'o" <tytso@mit.edu>
+> > ---
+> >  fs/ext4/inline.c |    2 +-
+> >  fs/ext4/namei.c  |    6 +-----
+> >  2 files changed, 2 insertions(+), 6 deletions(-)
+> > 
+> > diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+> > index b8a0746..5a27d32 100644
+> > --- a/fs/ext4/inline.c
+> > +++ b/fs/ext4/inline.c
+> > @@ -1027,7 +1027,7 @@ static int ext4_add_dirent_to_inline(handle_t *handle,
+> >  	ext4_update_dx_flag(dir);
+> >  	dir->i_version++;
+> >  	ext4_mark_inode_dirty(handle, dir);
+> > -	return 1;
+> > +	return 0;
+> >  }
+> >  
+> >  static void *ext4_get_inline_xattr_pos(struct inode *inode,
+> > diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> > index ab2f6dc..2a6a736 100644
+> > --- a/fs/ext4/namei.c
+> > +++ b/fs/ext4/namei.c
+> > @@ -1901,12 +1901,8 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
+> >  
+> >  	if (ext4_has_inline_data(dir)) {
+> >  		retval = ext4_try_add_inline_entry(handle, dentry, inode);
+> > -		if (retval < 0)
+> > +		if (retval <= 0)
+> Sorry, I guess you misread the codes here. If we get 0 here, it means
+> that ext4_try_add_inline_entry can't add this entry into the inline
+> data, but there is no error, so please go on with the normal case. "1"
+> means we have successfully done the work. So your change is wrong.
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- tests/ext4/301 |   20 +++++++++++---------
- tests/ext4/302 |   15 ++++++++-------
- tests/ext4/303 |   15 ++++++++-------
- tests/ext4/304 |   15 ++++++++-------
- 4 files changed, 35 insertions(+), 30 deletions(-)
+Ah, you are right.  Thanks for pointing it out.
 
-diff --git a/tests/ext4/301 b/tests/ext4/301
-index 30e4273..8c698b5 100755
---- a/tests/ext4/301
-+++ b/tests/ext4/301
-@@ -45,18 +45,13 @@ _require_scratch
- _require_defrag
- 
- NUM_JOBS=$((4*LOAD_FACTOR))
--BLK_DEV_SIZE=`blockdev --getsz $SCRATCH_DEV`
--# We need space for 2 files (test file, and donor one)
--# reserve 30% in order to avoid ENOSPC
--FILE_SIZE=$((BLK_DEV_SIZE * (512 / (2 + 1))))
--
- cat >$fio_config <<EOF
- # Common e4defrag regression tests
- [global]
- ioengine=ioe_e4defrag
- iodepth=1
- directory=${SCRATCH_MNT}
--filesize=${FILE_SIZE}
-+filesize=\${FIO_FILE_SIZE}
- size=999G
- buffered=0
- fadvise_hint=0
-@@ -105,11 +100,18 @@ _workout()
- 	echo ""
- 	echo " Start defragment activity"
- 	echo ""
-+	free_space=`df -klP /mnt_scratch | grep -v Filesystem | awk '{print $2 - $3 }'`
-+	# We need space for 2 files (test file and donor)
-+	# reserve 20% in order to avoid ENOSPC (1024*0.80 == 816)
-+	export FIO_FILE_SIZE=$((($free_space * 816) / 2))
-+	echo "FIO_FILE_SIZE=$FIO_FILE_SIZE" >> $seqres.full
- 	cat $fio_config >>  $seqres.full
--	run_check $FIO_PROG $fio_config
--}
-+	run_check $FIO_PROG  $fio_config 
- 
--_require_fio $fio_config
-+}
-+# Temproraly export FIO_FILE_SIZE which is required for fio's job validation
-+export FIO_FILE_SIZE=16384
-+_require_fio  $fio_config
- 
- _scratch_mkfs  >> $seqres.full 2>&1
- _scratch_mount
-diff --git a/tests/ext4/302 b/tests/ext4/302
-index 5ce007b..e525977 100755
---- a/tests/ext4/302
-+++ b/tests/ext4/302
-@@ -45,18 +45,13 @@ _need_to_be_root
- _require_scratch
- _require_defrag
- 
--BLK_DEV_SIZE=`blockdev --getsz $SCRATCH_DEV`
--# We need space for 2 files (test file, and donor one)
--# reserve 30% in order to avoid ENOSPC
--FILE_SIZE=$((BLK_DEV_SIZE * (512 / (2 + 1))))
--
- cat >$fio_config <<EOF
- # Common e4defrag regression tests
- [global]
- ioengine=ioe_e4defrag
- iodepth=1
- directory=${SCRATCH_MNT}
--filesize=${FILE_SIZE}
-+filesize=\${FIO_FILE_SIZE}
- size=999G
- buffered=0
- fadvise_hint=0
-@@ -121,10 +116,16 @@ _workout()
- 	echo ""
- 	echo " Start defragment activity"
- 	echo ""
-+	free_space=`df -klP /mnt_scratch | grep -v Filesystem | awk '{print $2 - $3 }'`
-+	# We need space for 2 files (test file, and donor one)
-+	# reserve 20% in order to avoid ENOSPC (1024*0.80 == 816)
-+	export FIO_FILE_SIZE=$((($free_space * 816) / 2))
-+	echo "FIO_FILE_SIZE=$FIO_FILE_SIZE" >> $seqres.full
- 	cat $fio_config >>  $seqres.full
- 	run_check $FIO_PROG $fio_config
- }
--
-+# Temproraly export FIO_FILE_SIZE which is required for fio's job validation
-+export FIO_FILE_SIZE=16384
- _require_fio $fio_config
- 
- _scratch_mkfs  >> $seqres.full 2>&1
-diff --git a/tests/ext4/303 b/tests/ext4/303
-index f96264e..6fb6357 100755
---- a/tests/ext4/303
-+++ b/tests/ext4/303
-@@ -45,18 +45,13 @@ _need_to_be_root
- _require_scratch
- _require_defrag
- 
--BLK_DEV_SIZE=`blockdev --getsz $SCRATCH_DEV`
--# We need space for 3 files (one donor file and two test files)
--# Reserve space for 4 files in order to avoid ENOSPC
--FILE_SIZE=$((BLK_DEV_SIZE * (512 / (3+1))))
--
- cat >$fio_config <<EOF
- # Common e4defrag regression tests
- [global]
- ioengine=ioe_e4defrag
- iodepth=1
- directory=${SCRATCH_MNT}
--filesize=${FILE_SIZE}
-+filesize=\${FIO_FILE_SIZE}
- size=999G
- buffered=0
- fadvise_hint=0
-@@ -134,10 +129,16 @@ _workout()
- 	echo ""
- 	echo " Start defragment activity"
- 	echo ""
-+	free_space=`df -klP /mnt_scratch | grep -v Filesystem | awk '{print $2 - $3 }'`
-+	# We need space for 3 files (test file and donor)
-+	# reserve 20% in order to avoid ENOSPC (1024*0.80 == 816)
-+	export FIO_FILE_SIZE=$((($free_space * 816) / 3))
-+	echo "FIO_FILE_SIZE=$FIO_FILE_SIZE" >> $seqres.full
- 	cat $fio_config >>  $seqres.full
- 	run_check $FIO_PROG $fio_config
- }
--
-+# Temproraly export FIO_FILE_SIZE which is required for fio's job validation
-+export FIO_FILE_SIZE=16384
- _require_fio $fio_config
- 
- _scratch_mkfs  >> $seqres.full 2>&1
-diff --git a/tests/ext4/304 b/tests/ext4/304
-index 5e03d4a..7cbf1dd 100755
---- a/tests/ext4/304
-+++ b/tests/ext4/304
-@@ -46,18 +46,13 @@ _need_to_be_root
- _require_scratch
- _require_defrag
- 
--BLK_DEV_SIZE=`blockdev --getsz $SCRATCH_DEV`
--# We need space for 2 files (test file, and donor one)
--# reserve 30% in order to avoid ENOSPC
--FILE_SIZE=$((BLK_DEV_SIZE * (512 / (2 + 1))))
--
- cat >$fio_config <<EOF
- # Common e4defrag regression tests
- [global]
- ioengine=ioe_e4defrag
- iodepth=1
- directory=${SCRATCH_MNT}
--filesize=${FILE_SIZE}
-+filesize=\${FIO_FILE_SIZE}
- size=999G
- buffered=0
- fadvise_hint=0
-@@ -108,10 +103,16 @@ _workout()
- 	echo ""
- 	echo " Start defragment activity"
- 	echo ""
-+	free_space=`df -klP /mnt_scratch | grep -v Filesystem | awk '{print $2 - $3 }'`
-+	# We need space for test file only
-+	# reserve 20% in order to avoid ENOSPC (1024*0.80 == 816)
-+	export FIO_FILE_SIZE=$((($free_space * 816) / 1))
-+	echo "FIO_FILE_SIZE=$FIO_FILE_SIZE" >> $seqres.full
- 	cat $fio_config >>  $seqres.full
- 	run_check $FIO_PROG $fio_config
- }
--
-+# Temproraly export FIO_FILE_SIZE which is required for fio's job validation
-+export FIO_FILE_SIZE=16384
- _require_fio $fio_config
- 
- _scratch_mkfs  >> $seqres.full 2>&1
--- 
-1.7.1
-
+                                                - Zheng
