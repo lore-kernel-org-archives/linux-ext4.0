@@ -1,60 +1,106 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 1/4] large-fs: fix large_fs space detection
-Date: Tue,  9 Jul 2013 15:05:15 +0400
-Message-ID: <1373367918-7516-1-git-send-email-dmonakhov@openvz.org>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	dchinner@redhat.com, Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH 3/4] ext4: ignore valid errors from defragmentation tests
+Date: Tue,  9 Jul 2013 15:05:17 +0400
+Message-ID: <1373367918-7516-3-git-send-email-dmonakhov@openvz.org>
+References: <1373367918-7516-1-git-send-email-dmonakhov@openvz.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, Dmitry Monakhov <dmonakhov@openvz.org>,
+	linux-ext4@vger.kernel.org, dchinner@redhat.com
 To: xfs@oss.sgi.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:38246 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751834Ab3GILFk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Jul 2013 07:05:40 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <1373367918-7516-1-git-send-email-dmonakhov@openvz.org>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-Currenly large_fs check compare $SCRATCH_DEV_EMPTY_SPACE and $fs_size
-which is not correct because total empty size required is $SCRATCH_DEV_EMPTY_SPACE + 50Gb
-This path fix space detection, so check becomes valid for all situations.
 
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- common/rc |   27 +++++++++++++++------------
- 1 files changed, 15 insertions(+), 12 deletions(-)
+ tests/ext4/301 |    3 +++
+ tests/ext4/302 |    3 +++
+ tests/ext4/303 |    6 ++++++
+ tests/ext4/304 |    3 +++
+ 4 files changed, 15 insertions(+), 0 deletions(-)
 
-diff --git a/common/rc b/common/rc
-index fe6bbfc..c44acea 100644
---- a/common/rc
-+++ b/common/rc
-@@ -306,16 +306,17 @@ _setup_large_xfs_fs()
- {
- 	fs_size=$1
- 	local tmp_dir=/tmp/
-+	# Default free space in the FS is 50GB, but you can specify more via
-+	# SCRATCH_DEV_EMPTY_SPACE
-+	fs_empty_space=$((50*1024*1024*1024))
- 
- 	[ "$LARGE_SCRATCH_DEV" != yes ] && return 0
--	[ -z "$SCRATCH_DEV_EMPTY_SPACE" ] && SCRATCH_DEV_EMPTY_SPACE=0
--	[ $SCRATCH_DEV_EMPTY_SPACE -ge $fs_size ] && return 0
-+	[ -z "$SCRATCH_DEV_EMPTY_SPACE" ] && SCRATCH_DEV_EMPTY_SPACE=0	
-+	fs_empty_space=$((fs_empty_space + $SCRATCH_DEV_EMPTY_SPACE))
-+	[ $fs_empty_space -ge $fs_size ] && return 0
- 
- 	# calculate the size of the file we need to allocate.
--	# Default free space in the FS is 50GB, but you can specify more via
--	# SCRATCH_DEV_EMPTY_SPACE
--	file_size=$(($fs_size - 50*1024*1024*1024))
--	file_size=$(($file_size - $SCRATCH_DEV_EMPTY_SPACE))
-+	file_size=$(($fs_size - $fs_empty_space))
- 
- 	# mount the filesystem, create the file, unmount it
- 	_scratch_mount 2>&1 >$tmp_dir/mnt.err
-@@ -434,15 +435,17 @@ _setup_large_ext4_fs()
- {
- 	fs_size=$1
- 	local tmp_dir=/tmp/
--
--	[ "$LARGE_SCRATCH_DEV" != yes ] && return 0
--	[ -z "$SCRATCH_DEV_EMPTY_SPACE" ] && SCRATCH_DEV_EMPTY_SPACE=0
--	[ $SCRATCH_DEV_EMPTY_SPACE -ge $fs_size ] && return 0
+diff --git a/tests/ext4/301 b/tests/ext4/301
+index 0ca3622..30e4273 100755
+--- a/tests/ext4/301
++++ b/tests/ext4/301
+@@ -74,6 +74,9 @@ donorname=test1.def
+ filename=test1
+ inplace=0
+ rw=write
++continue_on_error=write
++ignore_error=,ENOSPC:EBUSY
++error_dump=0
+ numjobs=${NUM_JOBS}
+ runtime=30*${TIME_FACTOR}
+ time_based
+diff --git a/tests/ext4/302 b/tests/ext4/302
+index 497f4c6..5ce007b 100755
+--- a/tests/ext4/302
++++ b/tests/ext4/302
+@@ -76,6 +76,9 @@ donorname=test2.def
+ filename=test2
+ inplace=0
+ rw=write
++continue_on_error=write
++ignore_error=,ENOSPC:EBUSY
++error_dump=0
+ numjobs=${LOAD_FACTOR}
+ runtime=30*${TIME_FACTOR}
+ time_based
+diff --git a/tests/ext4/303 b/tests/ext4/303
+index 93354e5..f96264e 100755
+--- a/tests/ext4/303
++++ b/tests/ext4/303
+@@ -72,6 +72,9 @@ donorname=test3.def
+ filename=test31
+ inplace=0
+ rw=write
++continue_on_error=write
++ignore_error=,ENOSPC:EBUSY
++error_dump=0
+ numjobs=${LOAD_FACTOR}
+ runtime=30*${TIME_FACTOR}
+ time_based
+@@ -84,6 +87,9 @@ donorname=test3.def
+ filename=test32
+ inplace=0
+ rw=write
++continue_on_error=write
++ignore_error=,ENOSPC:EBUSY
++error_dump=0
+ numjobs=${LOAD_FACTOR}
+ runtime=30*${TIME_FACTOR}
+ time_based
+diff --git a/tests/ext4/304 b/tests/ext4/304
+index 74e601a..5e03d4a 100755
+--- a/tests/ext4/304
++++ b/tests/ext4/304
+@@ -76,6 +76,9 @@ donorname=test4.def
+ filename=test4
+ inplace=1
+ rw=randwrite
++continue_on_error=write
++ignore_error=,ENOSPC:EBUSY:EINVAL:61
++error_dump=0
+ numjobs=4*${LOAD_FACTOR}
+ runtime=30*${TIME_FACTOR}
+ time_based
+-- 
+1.7.1
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
