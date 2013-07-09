@@ -1,77 +1,47 @@
-From: Tao Ma <tm@tao.ma>
-Subject: Re: [PATCH] ext4: make ext4_add_dirent_to_inline function return
- 0
-Date: Tue, 09 Jul 2013 09:47:12 +0800
-Message-ID: <51DB6BA0.7000800@tao.ma>
-References: <1373328699-23037-1-git-send-email-wenqing.lz@taobao.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: EXT4 Larger Than 16TB
+Date: Mon, 8 Jul 2013 22:14:03 -0400
+Message-ID: <20130709021403.GC6000@thunk.org>
+References: <CAGJTRcg0SHP3-9V-0nDttZ+atn5Kbhf9RRnn_VOaNOq8MgDe6Q@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Michael <mike@draftx.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy13-pub.unifiedlayer.com ([69.89.16.30]:33103 "HELO
-	oproxy13-pub.unifiedlayer.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1751245Ab3GIBrZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Jul 2013 21:47:25 -0400
-In-Reply-To: <1373328699-23037-1-git-send-email-wenqing.lz@taobao.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:36052 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751441Ab3GICOG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 8 Jul 2013 22:14:06 -0400
+Content-Disposition: inline
+In-Reply-To: <CAGJTRcg0SHP3-9V-0nDttZ+atn5Kbhf9RRnn_VOaNOq8MgDe6Q@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 07/09/2013 08:11 AM, Zheng Liu wrote:
-> From: Zheng Liu <wenqing.lz@taobao.com>
+On Mon, Jul 08, 2013 at 04:32:50PM -0500, Michael wrote:
+> I have a currently 15TB FS that I want to expand to 18TB.
+> Unfortunately EXT4 e2fsprogs has an issue that stops you from being
+> able to do this:
 > 
-> Currently ext4_add_dirent_to_inline() function returns 1 to indicate
-> that a new directory entry has been added.  But it sounds reasonable
-> to return 0 in this function.  Meanwhile we also can eliminate a if
-> statement in ext4_add_entry() function when a directory entry has added
-> correctly.
+> sudo resize2fs /dev/md0
+> resize2fs 1.42.5 (29-Jul-2012)
+> resize2fs: New size too large to be expressed in 32 bits
 > 
-> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-> Cc: Tao Ma <tm@tao.ma>
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  fs/ext4/inline.c |    2 +-
->  fs/ext4/namei.c  |    6 +-----
->  2 files changed, 2 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-> index b8a0746..5a27d32 100644
-> --- a/fs/ext4/inline.c
-> +++ b/fs/ext4/inline.c
-> @@ -1027,7 +1027,7 @@ static int ext4_add_dirent_to_inline(handle_t *handle,
->  	ext4_update_dx_flag(dir);
->  	dir->i_version++;
->  	ext4_mark_inode_dirty(handle, dir);
-> -	return 1;
-> +	return 0;
->  }
->  
->  static void *ext4_get_inline_xattr_pos(struct inode *inode,
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index ab2f6dc..2a6a736 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -1901,12 +1901,8 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
->  
->  	if (ext4_has_inline_data(dir)) {
->  		retval = ext4_try_add_inline_entry(handle, dentry, inode);
-> -		if (retval < 0)
-> +		if (retval <= 0)
-Sorry, I guess you misread the codes here. If we get 0 here, it means
-that ext4_try_add_inline_entry can't add this entry into the inline
-data, but there is no error, so please go on with the normal case. "1"
-means we have successfully done the work. So your change is wrong.
+> It seems to me, reading the change logs, that this only supported if
+> you created your FS with 64 bit specified. There seems to have been a
+> patch last year that added support for changing 32->64bit, but I had a
+> hard time finding/tracking that.
 
-Thanks,
-Tao
->  			return retval;
-> -		if (retval == 1) {
-> -			retval = 0;
-> -			return retval;
-> -		}
->  	}
->  
->  	if (is_dx(dir)) {
-> 
+Unfortuantely, there is no patch that would enable this.
 
+In theory it could be done; it would require doubling the size of the
+block group descriptors, which would require moving other metadata
+blocks out of the way.  Resize2fs does do this when growing a file
+system off-line when no blocks are available from the resize inode,
+but no one has implemented the necessary changes to extend this to
+adding the 64-bit feature.
+
+So it's technically possible, but it's not implemented at this time.
+
+Sorry,
+
+							- Ted
