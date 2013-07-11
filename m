@@ -1,56 +1,31 @@
-From: Zach Brown <zab@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: [RFC PATCH 3/3] ext4: cache all of an extent tree's leaf block
  upon reading
-Date: Thu, 11 Jul 2013 11:54:23 -0700
-Message-ID: <20130711185423.GA25414@lenny.home.zabbo.net>
+Date: Thu, 11 Jul 2013 15:33:56 -0400
+Message-ID: <20130711193356.GB11689@thunk.org>
 References: <1373517542-21234-1-git-send-email-tytso@mit.edu>
  <1373517542-21234-3-git-send-email-tytso@mit.edu>
+ <20130711185423.GA25414@lenny.home.zabbo.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	Zheng Liu <gnehzuil.liu@gmail.com>,
 	Zheng Liu <wenqing.lz@taobao.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: Zach Brown <zab@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35662 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754513Ab3GKSyb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 11 Jul 2013 14:54:31 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:36967 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756476Ab3GKTeD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 11 Jul 2013 15:34:03 -0400
 Content-Disposition: inline
-In-Reply-To: <1373517542-21234-3-git-send-email-tytso@mit.edu>
+In-Reply-To: <20130711185423.GA25414@lenny.home.zabbo.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> @@ -490,6 +491,31 @@ __read_extent_tree_block(const char *function, unsigned int line,
->  	if (err)
->  		goto errout;
->  	set_buffer_verified(bh);
-> +	/*
-> +	 * If this is a leaf block, cache all of its entries
-> +	 */
-> +	if (!(flags & EXT4_EX_NOCACHE) && depth == 0) {
-> +		struct ext4_extent_header *eh = ext_block_hdr(bh);
-> +		struct ext4_extent *ex = EXT_FIRST_EXTENT(eh);
-> +		int i;
-> +
-> +		for (i = eh->eh_entries; i > 0; i--, ex++) {
-> +			unsigned int status = EXTENT_STATUS_WRITTEN;
-> +			ext4_lblk_t prev = 0, lblk = le32_to_cpu(ex->ee_block);
-> +			int len = ext4_ext_get_actual_len(ex);
-> +
-> +			if (prev && (prev != lblk))
-> +				ext4_es_cache_extent(inode, prev,
-> +						     lblk - prev, ~0,
-> +						     EXTENT_STATUS_HOLE);
-> +
-> +			if (ext4_ext_is_uninitialized(ex))
-> +				status = EXTENT_STATUS_UNWRITTEN;
-> +			ext4_es_cache_extent(inode, lblk, len,
-> +					     ext4_ext_pblock(ex), status);
-> +			prev = lblk + len;
-> +		}
-> +	}
+On Thu, Jul 11, 2013 at 11:54:23AM -0700, Zach Brown wrote:
+> 
+> Isn't prev going to be reinitialized to 0 for every extent?
 
-Isn't prev going to be reinitialized to 0 for every extent?
+Whoops, nice catch.  I'll fix this in my next spin of the patches.
 
-- z
+	     	     	      	   - Ted
