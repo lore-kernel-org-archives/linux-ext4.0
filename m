@@ -1,201 +1,139 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [RFC PATCH 1/3] ext4: refactor code to read the extent tree block
-Date: Thu, 11 Jul 2013 20:41:13 +0800
-Message-ID: <20130711124112.GA6427@gmail.com>
+Subject: Re: [RFC PATCH 2/3] ext4: use unsigned int for es_status values
+Date: Thu, 11 Jul 2013 20:48:23 +0800
+Message-ID: <20130711124823.GB6427@gmail.com>
 References: <1373517542-21234-1-git-send-email-tytso@mit.edu>
+ <1373517542-21234-2-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Zheng Liu <wenqing.lz@taobao.com>
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f170.google.com ([209.85.192.170]:54072 "EHLO
-	mail-pd0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751357Ab3GKMWb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Jul 2013 08:22:31 -0400
-Received: by mail-pd0-f170.google.com with SMTP id x11so7465545pdj.29
-        for <linux-ext4@vger.kernel.org>; Thu, 11 Jul 2013 05:22:31 -0700 (PDT)
+Received: from mail-pd0-f177.google.com ([209.85.192.177]:52730 "EHLO
+	mail-pd0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754538Ab3GKM3l (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Jul 2013 08:29:41 -0400
+Received: by mail-pd0-f177.google.com with SMTP id p10so7404595pdj.36
+        for <linux-ext4@vger.kernel.org>; Thu, 11 Jul 2013 05:29:40 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <1373517542-21234-1-git-send-email-tytso@mit.edu>
+In-Reply-To: <1373517542-21234-2-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 11, 2013 at 12:39:00AM -0400, Theodore Ts'o wrote:
-> Refactor out the code needed to read the extent tree block into a
-> single read_extent_tree_block() function.  In addition to simplifying
-> the code, it also makes sure that we call the ext4_ext_load_extent
-> tracepoint whenever we need to read an extent tree block from disk.
+Hi Ted,
+
+On Thu, Jul 11, 2013 at 12:39:01AM -0400, Theodore Ts'o wrote:
+> Don't use an unsigned long long for the es_status flags; this requires
+> that we pass 64-bit values around which is painful on 32-bit systems.
+> Instead pass the extent status flags around using the low 4 bits of an
+> unsigned int, and shift them into place when we are reading or writing
+> es_pblk.
 > 
 > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: Zheng Liu <wenqing.lz@taobao.com>
 
-The patch looks good to me.
+Thanks for fixing this.  One minor nit below.  Otherwise, the patch
+looks good to me.
 Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
 
+> ---
+>  fs/ext4/extents_status.c    |  6 +++---
+>  fs/ext4/extents_status.h    | 47 ++++++++++++++++++++++++++-------------------
+>  fs/ext4/inode.c             |  4 ++--
+>  include/trace/events/ext4.h | 14 +++++++-------
+>  4 files changed, 39 insertions(+), 32 deletions(-)
+> 
+[...]
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 19a1643..f27fa9d 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -554,7 +554,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+>  	}
+>  	if (retval > 0) {
+>  		int ret;
+> -		unsigned long long status;
+> +		unsigned int status;
+>  
+>  #ifdef ES_AGGRESSIVE_TEST
+>  		if (retval != map->m_len) {
+
+In ext4_map_blocks() function, we have two places that need to be
+change.
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index f27fa9d..3cfbcaa 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -655,7 +655,7 @@ found:
+ 
+ 	if (retval > 0) {
+ 		int ret;
+-		unsigned long long status;
++		unsigned int status;
+ 
+ #ifdef ES_AGGRESSIVE_TEST
+ 		if (retval != map->m_len) {
+
+Thanks,
                                                 - Zheng
 
-> ---
->  fs/ext4/extents.c | 100 ++++++++++++++++++++++++------------------------------
->  1 file changed, 45 insertions(+), 55 deletions(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 7097b0f..e174814 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -464,25 +464,41 @@ int ext4_ext_check_inode(struct inode *inode)
->  	return ext4_ext_check(inode, ext_inode_hdr(inode), ext_depth(inode));
->  }
+> @@ -1638,7 +1638,7 @@ add_delayed:
+>  		set_buffer_delay(bh);
+>  	} else if (retval > 0) {
+>  		int ret;
+> -		unsigned long long status;
+> +		unsigned int status;
 >  
-> -static int __ext4_ext_check_block(const char *function, unsigned int line,
-> -				  struct inode *inode,
-> -				  struct ext4_extent_header *eh,
-> -				  int depth,
-> -				  struct buffer_head *bh)
-> +static struct buffer_head *
-> +__read_extent_tree_block(const char *function, unsigned int line,
-> +			 struct inode *inode, ext4_fsblk_t pblk, int depth)
->  {
-> -	int ret;
-> +	struct buffer_head		*bh;
-> +	int				err;
-> +
-> +	BUG_ON(!rwsem_is_locked(&EXT4_I(inode)->i_data_sem));
-> +
-> +	bh = sb_getblk(inode->i_sb, pblk);
-> +	if (unlikely(!bh))
-> +		return ERR_PTR(-ENOMEM);
+>  #ifdef ES_AGGRESSIVE_TEST
+>  		if (retval != map->m_len) {
+> diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+> index 2068db2..47a355b 100644
+> --- a/include/trace/events/ext4.h
+> +++ b/include/trace/events/ext4.h
+> @@ -64,10 +64,10 @@ struct extent_status;
+>  	{ EXT4_FREE_BLOCKS_NOFREE_LAST_CLUSTER,	"LAST_CLUSTER" })
 >  
-> +	if (!bh_uptodate_or_lock(bh)) {
-> +		trace_ext4_ext_load_extent(inode, pblk, _RET_IP_);
-> +		err = bh_submit_read(bh);
-> +		if (err < 0)
-> +			goto errout;
-> +	}
->  	if (buffer_verified(bh))
-> -		return 0;
-> -	ret = ext4_ext_check(inode, eh, depth);
-> -	if (ret)
-> -		return ret;
-> +		return bh;
-> +	err = __ext4_ext_check(function, line, inode,
-> +			       ext_block_hdr(bh), depth);
-> +	if (err)
-> +		goto errout;
->  	set_buffer_verified(bh);
-> -	return ret;
-> +	return bh;
-> +errout:
-> +	put_bh(bh);
-> +	return ERR_PTR(err);
-> +
->  }
+>  #define show_extent_status(status) __print_flags(status, "",	\
+> -	{ (1 << 3),	"W" }, 					\
+> -	{ (1 << 2),	"U" },					\
+> -	{ (1 << 1),	"D" },					\
+> -	{ (1 << 0),	"H" })
+> +	{ EXTENT_STATUS_WRITTEN,	"W" },			\
+> +	{ EXTENT_STATUS_UNWRITTEN,	"U" },			\
+> +	{ EXTENT_STATUS_DELAYED,	"D" },			\
+> +	{ EXTENT_STATUS_HOLE,		"H" })
 >  
-> -#define ext4_ext_check_block(inode, eh, depth, bh)	\
-> -	__ext4_ext_check_block(__func__, __LINE__, inode, eh, depth, bh)
-> +#define read_extent_tree_block(inode, pblk, depth)		\
-> +	__read_extent_tree_block(__func__, __LINE__, (inode), (pblk), (depth))
 >  
->  #ifdef EXT_DEBUG
->  static void ext4_ext_show_path(struct inode *inode, struct ext4_ext_path *path)
-> @@ -748,20 +764,12 @@ ext4_ext_find_extent(struct inode *inode, ext4_lblk_t block,
->  		path[ppos].p_depth = i;
->  		path[ppos].p_ext = NULL;
+>  TRACE_EVENT(ext4_free_inode,
+> @@ -2212,7 +2212,7 @@ TRACE_EVENT(ext4_es_insert_extent,
+>  		__entry->lblk	= es->es_lblk;
+>  		__entry->len	= es->es_len;
+>  		__entry->pblk	= ext4_es_pblock(es);
+> -		__entry->status	= ext4_es_status(es) >> 60;
+> +		__entry->status	= ext4_es_status(es);
+>  	),
 >  
-> -		bh = sb_getblk(inode->i_sb, path[ppos].p_block);
-> -		if (unlikely(!bh)) {
-> -			ret = -ENOMEM;
-> +		bh = read_extent_tree_block(inode, path[ppos].p_block, --i);
-> +		if (IS_ERR(bh)) {
-> +			ret = PTR_ERR(bh);
->  			goto err;
->  		}
-> -		if (!bh_uptodate_or_lock(bh)) {
-> -			trace_ext4_ext_load_extent(inode, block,
-> -						path[ppos].p_block);
-> -			ret = bh_submit_read(bh);
-> -			if (ret < 0) {
-> -				put_bh(bh);
-> -				goto err;
-> -			}
-> -		}
-> +
->  		eh = ext_block_hdr(bh);
->  		ppos++;
->  		if (unlikely(ppos > depth)) {
-> @@ -773,11 +781,6 @@ ext4_ext_find_extent(struct inode *inode, ext4_lblk_t block,
->  		}
->  		path[ppos].p_bh = bh;
->  		path[ppos].p_hdr = eh;
-> -		i--;
-> -
-> -		ret = ext4_ext_check_block(inode, eh, i, bh);
-> -		if (ret < 0)
-> -			goto err;
->  	}
+>  	TP_printk("dev %d,%d ino %lu es [%u/%u) mapped %llu status %s",
+> @@ -2289,7 +2289,7 @@ TRACE_EVENT(ext4_es_find_delayed_extent_range_exit,
+>  		__entry->lblk	= es->es_lblk;
+>  		__entry->len	= es->es_len;
+>  		__entry->pblk	= ext4_es_pblock(es);
+> -		__entry->status	= ext4_es_status(es) >> 60;
+> +		__entry->status	= ext4_es_status(es);
+>  	),
 >  
->  	path[ppos].p_depth = i;
-> @@ -1412,29 +1415,21 @@ got_index:
->  	ix++;
->  	block = ext4_idx_pblock(ix);
->  	while (++depth < path->p_depth) {
-> -		bh = sb_bread(inode->i_sb, block);
-> -		if (bh == NULL)
-> -			return -EIO;
-> -		eh = ext_block_hdr(bh);
->  		/* subtract from p_depth to get proper eh_depth */
-> -		if (ext4_ext_check_block(inode, eh,
-> -					 path->p_depth - depth, bh)) {
-> -			put_bh(bh);
-> -			return -EIO;
-> -		}
-> +		bh = read_extent_tree_block(inode, *logical,
-> +					    path->p_depth - depth);
-> +		if (IS_ERR(bh))
-> +			return PTR_ERR(bh);
-> +		eh = ext_block_hdr(bh);
->  		ix = EXT_FIRST_INDEX(eh);
->  		block = ext4_idx_pblock(ix);
->  		put_bh(bh);
->  	}
+>  	TP_printk("dev %d,%d ino %lu es [%u/%u) mapped %llu status %s",
+> @@ -2343,7 +2343,7 @@ TRACE_EVENT(ext4_es_lookup_extent_exit,
+>  		__entry->lblk	= es->es_lblk;
+>  		__entry->len	= es->es_len;
+>  		__entry->pblk	= ext4_es_pblock(es);
+> -		__entry->status	= ext4_es_status(es) >> 60;
+> +		__entry->status	= ext4_es_status(es);
+>  		__entry->found	= found;
+>  	),
 >  
-> -	bh = sb_bread(inode->i_sb, block);
-> -	if (bh == NULL)
-> -		return -EIO;
-> +	bh = read_extent_tree_block(inode, *logical, path->p_depth - depth);
-> +	if (IS_ERR(bh))
-> +		return PTR_ERR(bh);
->  	eh = ext_block_hdr(bh);
-> -	if (ext4_ext_check_block(inode, eh, path->p_depth - depth, bh)) {
-> -		put_bh(bh);
-> -		return -EIO;
-> -	}
->  	ex = EXT_FIRST_EXTENT(eh);
->  found_extent:
->  	*logical = le32_to_cpu(ex->ee_block);
-> @@ -2829,21 +2824,16 @@ again:
->  			ext_debug("move to level %d (block %llu)\n",
->  				  i + 1, ext4_idx_pblock(path[i].p_idx));
->  			memset(path + i + 1, 0, sizeof(*path));
-> -			bh = sb_bread(sb, ext4_idx_pblock(path[i].p_idx));
-> -			if (!bh) {
-> -				/* should we reset i_size? */
-> -				err = -EIO;
-> +			bh = read_extent_tree_block(inode,
-> +				ext4_idx_pblock(path[i].p_idx), depth - i - 1);
-> +			if (IS_ERR(bh)) {
-> +				err = PTR_ERR(bh);
->  				break;
->  			}
->  			if (WARN_ON(i + 1 > depth)) {
->  				err = -EIO;
->  				break;
->  			}
-> -			if (ext4_ext_check_block(inode, ext_block_hdr(bh),
-> -							depth - i - 1, bh)) {
-> -				err = -EIO;
-> -				break;
-> -			}
->  			path[i + 1].p_bh = bh;
->  
->  			/* save actual number of indexes since this
 > -- 
 > 1.7.12.rc0.22.gcdd159b
 > 
