@@ -1,148 +1,39 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/2] direct-io: Handle O_(D)SYNC AIO
-Date: Thu, 11 Jul 2013 00:02:19 +0200
-Message-ID: <1373493739-2243-2-git-send-email-jack@suse.cz>
-References: <1373493739-2243-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, xfs@oss.sgi.com, hch@infradead.org,
-	Jeff Moyer <jmoyer@redhat.com>,
-	Al Viro <viro@ZenIV.linux.org.uk>,
-	Christoph Hellwig <hch@lst.de>, Jan Kara <jack@suse.cz>
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:48617 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754563Ab3GJWCh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Jul 2013 18:02:37 -0400
-In-Reply-To: <1373493739-2243-1-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 1/4] large-fs: fix large_fs space detection
+Date: Thu, 11 Jul 2013 10:54:54 +1000
+Message-ID: <20130711005454.GT3438@dastard>
+References: <1373367918-7516-1-git-send-email-dmonakhov@openvz.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, dchinner@redhat.com
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1373367918-7516-1-git-send-email-dmonakhov@openvz.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Christoph Hellwig <hch@infradead.org>
+On Tue, Jul 09, 2013 at 03:05:15PM +0400, Dmitry Monakhov wrote:
+> Currenly large_fs check compare $SCRATCH_DEV_EMPTY_SPACE and $fs_size
+> which is not correct because total empty size required is $SCRATCH_DEV_EMPTY_SPACE + 50Gb
+> This path fix space detection, so check becomes valid for all situations.
 
-Call generic_write_sync() from the deferred I/O completion handler if
-O_DSYNC is set for a write request.  Also make sure various callers
-don't call generic_write_sync if the direct I/O code returns
--EIOCBQUEUED.
+I'm not sure what problem you're fixing from this description?
 
-Based on an earlier patch from Jan Kara <jack@suse.cz> with updates from
-Jeff Moyer <jmoyer@redhat.com> and Darrick J. Wong <darrick.wong@oracle.com>.
+It's takenme a few minutes to work out that:
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/block_dev.c  |  2 +-
- fs/btrfs/file.c |  2 +-
- fs/cifs/file.c  |  2 +-
- fs/direct-io.c  | 21 ++++++++++++++++++++-
- fs/ext4/file.c  |  2 +-
- mm/filemap.c    |  2 +-
- 6 files changed, 25 insertions(+), 6 deletions(-)
+"If SCRATCH_DEV_EMPTY_SPACE + 50GB is larger than the filesystem
+size being tested, then the configuration being tested is invalid
+and should fail. Currently we only check that
+SCRATCH_DEV_EMPTY_SPACE is greater than the the filesystem size. Fix
+it to check the combined empty space fits in the filesystem being
+tested."
 
-diff --git a/fs/block_dev.c b/fs/block_dev.c
-index bb43ce0..a884054 100644
---- a/fs/block_dev.c
-+++ b/fs/block_dev.c
-@@ -1512,7 +1512,7 @@ ssize_t blkdev_aio_write(struct kiocb *iocb, const struct iovec *iov,
- 
- 	blk_start_plug(&plug);
- 	ret = __generic_file_aio_write(iocb, iov, nr_segs, &iocb->ki_pos);
--	if (ret > 0 || ret == -EIOCBQUEUED) {
-+	if (ret > 0) {
- 		ssize_t err;
- 
- 		err = generic_write_sync(file, pos, ret);
-diff --git a/fs/btrfs/file.c b/fs/btrfs/file.c
-index 89da56a..6eb61da 100644
---- a/fs/btrfs/file.c
-+++ b/fs/btrfs/file.c
-@@ -1610,7 +1610,7 @@ static ssize_t btrfs_file_aio_write(struct kiocb *iocb,
- 	 */
- 	BTRFS_I(inode)->last_trans = root->fs_info->generation + 1;
- 	BTRFS_I(inode)->last_sub_trans = root->log_transid;
--	if (num_written > 0 || num_written == -EIOCBQUEUED) {
-+	if (num_written > 0) {
- 		err = generic_write_sync(file, pos, num_written);
- 		if (err < 0 && num_written > 0)
- 			num_written = err;
-diff --git a/fs/cifs/file.c b/fs/cifs/file.c
-index 91d8629..275ab19 100644
---- a/fs/cifs/file.c
-+++ b/fs/cifs/file.c
-@@ -2530,7 +2530,7 @@ cifs_writev(struct kiocb *iocb, const struct iovec *iov,
- 		mutex_unlock(&inode->i_mutex);
- 	}
- 
--	if (rc > 0 || rc == -EIOCBQUEUED) {
-+	if (rc > 0) {
- 		ssize_t err;
- 
- 		err = generic_write_sync(file, pos, rc);
-diff --git a/fs/direct-io.c b/fs/direct-io.c
-index 36bddad..fe8562e 100644
---- a/fs/direct-io.c
-+++ b/fs/direct-io.c
-@@ -266,8 +266,18 @@ static ssize_t dio_complete(struct dio *dio, loff_t offset, ssize_t ret,
- 		dio->end_io(dio->iocb, offset, transferred, dio->private);
- 
- 	inode_dio_done(dio->inode);
--	if (is_async)
-+	if (is_async) {
-+		if (dio->rw & WRITE) {
-+			int err;
-+
-+			err = generic_write_sync(dio->iocb->ki_filp, offset,
-+						 transferred);
-+			if (err < 0 && ret > 0)
-+				ret = err;
-+		}
-+
- 		aio_complete(dio->iocb, ret, 0);
-+	}
- 
- 	kmem_cache_free(dio_cache, dio);
- 	return ret;
-@@ -1161,6 +1171,15 @@ do_blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
- 	dio->is_async = !is_sync_kiocb(iocb) && !((rw & WRITE) &&
- 		(end > i_size_read(inode)));
- 
-+	/*
-+	 * For AIO O_(D)SYNC writes we need to defer completions to a workqueue
-+	 * so that we can call ->fsync.
-+	 */
-+	if (dio->is_async && (rw & WRITE) &&
-+	    ((iocb->ki_filp->f_flags & O_DSYNC) ||
-+	     IS_SYNC(iocb->ki_filp->f_mapping->host)))
-+		dio->defer_completion = true;
-+
- 	retval = 0;
- 
- 	dio->inode = inode;
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 6f4cc56..bb9efc0 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -149,7 +149,7 @@ ext4_file_dio_write(struct kiocb *iocb, const struct iovec *iov,
- 	ret = __generic_file_aio_write(iocb, iov, nr_segs, &iocb->ki_pos);
- 	mutex_unlock(&inode->i_mutex);
- 
--	if (ret > 0 || ret == -EIOCBQUEUED) {
-+	if (ret > 0) {
- 		ssize_t err;
- 
- 		err = generic_write_sync(file, pos, ret);
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 7905fe7..928572e 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -2550,7 +2550,7 @@ ssize_t generic_file_aio_write(struct kiocb *iocb, const struct iovec *iov,
- 	ret = __generic_file_aio_write(iocb, iov, nr_segs, &iocb->ki_pos);
- 	mutex_unlock(&inode->i_mutex);
- 
--	if (ret > 0 || ret == -EIOCBQUEUED) {
-+	if (ret > 0) {
- 		ssize_t err;
- 
- 		err = generic_write_sync(file, pos, ret);
+Otherwise the change looks good.
+
+Reviewed-by: Dave Chinner <dchinner@redhat.com>
+
 -- 
-1.8.1.4
-
+Dave Chinner
+david@fromorbit.com
