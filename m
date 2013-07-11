@@ -1,96 +1,201 @@
-From: Andy Whitcroft <apw@canonical.com>
-Subject: [PATCH 1/1] ext4: fix ext4_get_group_number() at cluster boundaries
-Date: Thu, 11 Jul 2013 12:28:48 +0100
-Message-ID: <1373542128-15662-1-git-send-email-apw@canonical.com>
-Cc: Andy Whitcroft <apw@canonical.com>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [RFC PATCH 1/3] ext4: refactor code to read the extent tree block
+Date: Thu, 11 Jul 2013 20:41:13 +0800
+Message-ID: <20130711124112.GA6427@gmail.com>
+References: <1373517542-21234-1-git-send-email-tytso@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ea0-f171.google.com ([209.85.215.171]:45340 "EHLO
-	mail-ea0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750904Ab3GKL2x (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Jul 2013 07:28:53 -0400
-Received: by mail-ea0-f171.google.com with SMTP id m14so5593512eaj.2
-        for <linux-ext4@vger.kernel.org>; Thu, 11 Jul 2013 04:28:52 -0700 (PDT)
+Received: from mail-pd0-f170.google.com ([209.85.192.170]:54072 "EHLO
+	mail-pd0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751357Ab3GKMWb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Jul 2013 08:22:31 -0400
+Received: by mail-pd0-f170.google.com with SMTP id x11so7465545pdj.29
+        for <linux-ext4@vger.kernel.org>; Thu, 11 Jul 2013 05:22:31 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <1373517542-21234-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Commit bd86298e60b8 introduced a new optimisation for callers who needed
-only the ext4 group number and not the block offset within.  It hand
-calculates the group number from the block in the common case, falling
-back to the original group offset implementation otherwise.
+On Thu, Jul 11, 2013 at 12:39:00AM -0400, Theodore Ts'o wrote:
+> Refactor out the code needed to read the extent tree block into a
+> single read_extent_tree_block() function.  In addition to simplifying
+> the code, it also makes sure that we call the ext4_ext_load_extent
+> tracepoint whenever we need to read an extent tree block from disk.
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-Clearly the group number returned by this speed optimised block to group
-mapping in ext4_get_group_number() must return the same group that
-ext4_get_group_no_and_offset() otherwise we get group missmatches when
-compared with callers needing the offset.  Currently where the first
-block is non-zero we will return differing blocks near cluster boundaries.
+The patch looks good to me.
+Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
 
-This missmatch was uncovered by a multi-lvm test case which builds
-systems with a large number of separate filesystems.  It was reliably
-triggering the BUG below in ext4_mb_release_group_pa() when trying to
-clean up preallocations:
+                                                - Zheng
 
-    static noinline_for_stack int ext4_mb_release_group_pa(
-	    struct ext4_buddy *e4b, struct ext4_prealloc_space *pa)
-    {
-	[...]
-	    BUG_ON(group != e4b->bd_group && pa->pa_len != 0);
-	[...]
-    }
-
-This was occuring because the caller uses ext4_get_group_number() to obtain
-the buddy information and when that was compared against the group number
-locally calculated via ext4_get_group_no_and_offset() from the same block
-number it was inconsistant tripping the above BUG.
-
-I pulled these two routines out and fed them the filesystem parameters
-for the filesystem triggering the OOPS and a range of block numbers.
-Comparing the results I found the following inconsistancies at cluster
-boundaries:
-
-    1 != 0 at 8191
-    1 != 0 at 8192
-    2 != 1 at 16383
-    2 != 1 at 16384
-    3 != 2 at 24575
-    3 != 2 at 24576
-
-We are calculating incorrect block numbers within s_first_data_block blocks
-of the boundary (1 block in my failing example).  Fix up the calculations
-to match.
-
-BugLink: http://bugs.launchpad.net/bugs/1195710
-Signed-off-by: Andy Whitcroft <apw@canonical.com>
----
- fs/ext4/balloc.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-	While it seems clear this must be correct I would like some
-	confirmation on my thinking.  I have done some touch testing
-	and it seems to fix the OOPS in my test setup, but I am somewhat
-	unsure why this does not commonly get triggered in all testing
-	but only in the specific testing scenario.  Perhaps it is only
-	trivially triggered with very small filesystems or similar.
-
-	-apw
-
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index d0f13ea..e496f03 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -38,8 +38,8 @@ ext4_group_t ext4_get_group_number(struct super_block *sb,
- 	ext4_group_t group;
- 
- 	if (test_opt2(sb, STD_GROUP_SIZE))
--		group = (le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block) +
--			 block) >>
-+		group = (block - 
-+			le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block)) >>
- 			(EXT4_BLOCK_SIZE_BITS(sb) + EXT4_CLUSTER_BITS(sb) + 3);
- 	else
- 		ext4_get_group_no_and_offset(sb, block, &group, NULL);
--- 
-1.8.1.2
-
+> ---
+>  fs/ext4/extents.c | 100 ++++++++++++++++++++++++------------------------------
+>  1 file changed, 45 insertions(+), 55 deletions(-)
+> 
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 7097b0f..e174814 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -464,25 +464,41 @@ int ext4_ext_check_inode(struct inode *inode)
+>  	return ext4_ext_check(inode, ext_inode_hdr(inode), ext_depth(inode));
+>  }
+>  
+> -static int __ext4_ext_check_block(const char *function, unsigned int line,
+> -				  struct inode *inode,
+> -				  struct ext4_extent_header *eh,
+> -				  int depth,
+> -				  struct buffer_head *bh)
+> +static struct buffer_head *
+> +__read_extent_tree_block(const char *function, unsigned int line,
+> +			 struct inode *inode, ext4_fsblk_t pblk, int depth)
+>  {
+> -	int ret;
+> +	struct buffer_head		*bh;
+> +	int				err;
+> +
+> +	BUG_ON(!rwsem_is_locked(&EXT4_I(inode)->i_data_sem));
+> +
+> +	bh = sb_getblk(inode->i_sb, pblk);
+> +	if (unlikely(!bh))
+> +		return ERR_PTR(-ENOMEM);
+>  
+> +	if (!bh_uptodate_or_lock(bh)) {
+> +		trace_ext4_ext_load_extent(inode, pblk, _RET_IP_);
+> +		err = bh_submit_read(bh);
+> +		if (err < 0)
+> +			goto errout;
+> +	}
+>  	if (buffer_verified(bh))
+> -		return 0;
+> -	ret = ext4_ext_check(inode, eh, depth);
+> -	if (ret)
+> -		return ret;
+> +		return bh;
+> +	err = __ext4_ext_check(function, line, inode,
+> +			       ext_block_hdr(bh), depth);
+> +	if (err)
+> +		goto errout;
+>  	set_buffer_verified(bh);
+> -	return ret;
+> +	return bh;
+> +errout:
+> +	put_bh(bh);
+> +	return ERR_PTR(err);
+> +
+>  }
+>  
+> -#define ext4_ext_check_block(inode, eh, depth, bh)	\
+> -	__ext4_ext_check_block(__func__, __LINE__, inode, eh, depth, bh)
+> +#define read_extent_tree_block(inode, pblk, depth)		\
+> +	__read_extent_tree_block(__func__, __LINE__, (inode), (pblk), (depth))
+>  
+>  #ifdef EXT_DEBUG
+>  static void ext4_ext_show_path(struct inode *inode, struct ext4_ext_path *path)
+> @@ -748,20 +764,12 @@ ext4_ext_find_extent(struct inode *inode, ext4_lblk_t block,
+>  		path[ppos].p_depth = i;
+>  		path[ppos].p_ext = NULL;
+>  
+> -		bh = sb_getblk(inode->i_sb, path[ppos].p_block);
+> -		if (unlikely(!bh)) {
+> -			ret = -ENOMEM;
+> +		bh = read_extent_tree_block(inode, path[ppos].p_block, --i);
+> +		if (IS_ERR(bh)) {
+> +			ret = PTR_ERR(bh);
+>  			goto err;
+>  		}
+> -		if (!bh_uptodate_or_lock(bh)) {
+> -			trace_ext4_ext_load_extent(inode, block,
+> -						path[ppos].p_block);
+> -			ret = bh_submit_read(bh);
+> -			if (ret < 0) {
+> -				put_bh(bh);
+> -				goto err;
+> -			}
+> -		}
+> +
+>  		eh = ext_block_hdr(bh);
+>  		ppos++;
+>  		if (unlikely(ppos > depth)) {
+> @@ -773,11 +781,6 @@ ext4_ext_find_extent(struct inode *inode, ext4_lblk_t block,
+>  		}
+>  		path[ppos].p_bh = bh;
+>  		path[ppos].p_hdr = eh;
+> -		i--;
+> -
+> -		ret = ext4_ext_check_block(inode, eh, i, bh);
+> -		if (ret < 0)
+> -			goto err;
+>  	}
+>  
+>  	path[ppos].p_depth = i;
+> @@ -1412,29 +1415,21 @@ got_index:
+>  	ix++;
+>  	block = ext4_idx_pblock(ix);
+>  	while (++depth < path->p_depth) {
+> -		bh = sb_bread(inode->i_sb, block);
+> -		if (bh == NULL)
+> -			return -EIO;
+> -		eh = ext_block_hdr(bh);
+>  		/* subtract from p_depth to get proper eh_depth */
+> -		if (ext4_ext_check_block(inode, eh,
+> -					 path->p_depth - depth, bh)) {
+> -			put_bh(bh);
+> -			return -EIO;
+> -		}
+> +		bh = read_extent_tree_block(inode, *logical,
+> +					    path->p_depth - depth);
+> +		if (IS_ERR(bh))
+> +			return PTR_ERR(bh);
+> +		eh = ext_block_hdr(bh);
+>  		ix = EXT_FIRST_INDEX(eh);
+>  		block = ext4_idx_pblock(ix);
+>  		put_bh(bh);
+>  	}
+>  
+> -	bh = sb_bread(inode->i_sb, block);
+> -	if (bh == NULL)
+> -		return -EIO;
+> +	bh = read_extent_tree_block(inode, *logical, path->p_depth - depth);
+> +	if (IS_ERR(bh))
+> +		return PTR_ERR(bh);
+>  	eh = ext_block_hdr(bh);
+> -	if (ext4_ext_check_block(inode, eh, path->p_depth - depth, bh)) {
+> -		put_bh(bh);
+> -		return -EIO;
+> -	}
+>  	ex = EXT_FIRST_EXTENT(eh);
+>  found_extent:
+>  	*logical = le32_to_cpu(ex->ee_block);
+> @@ -2829,21 +2824,16 @@ again:
+>  			ext_debug("move to level %d (block %llu)\n",
+>  				  i + 1, ext4_idx_pblock(path[i].p_idx));
+>  			memset(path + i + 1, 0, sizeof(*path));
+> -			bh = sb_bread(sb, ext4_idx_pblock(path[i].p_idx));
+> -			if (!bh) {
+> -				/* should we reset i_size? */
+> -				err = -EIO;
+> +			bh = read_extent_tree_block(inode,
+> +				ext4_idx_pblock(path[i].p_idx), depth - i - 1);
+> +			if (IS_ERR(bh)) {
+> +				err = PTR_ERR(bh);
+>  				break;
+>  			}
+>  			if (WARN_ON(i + 1 > depth)) {
+>  				err = -EIO;
+>  				break;
+>  			}
+> -			if (ext4_ext_check_block(inode, ext_block_hdr(bh),
+> -							depth - i - 1, bh)) {
+> -				err = -EIO;
+> -				break;
+> -			}
+>  			path[i + 1].p_bh = bh;
+>  
+>  			/* save actual number of indexes since this
+> -- 
+> 1.7.12.rc0.22.gcdd159b
+> 
