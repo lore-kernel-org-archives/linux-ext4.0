@@ -1,241 +1,36 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [RFC PATCH 2/3] ext4: use unsigned int for es_status values
-Date: Thu, 11 Jul 2013 00:39:01 -0400
-Message-ID: <1373517542-21234-2-git-send-email-tytso@mit.edu>
-References: <1373517542-21234-1-git-send-email-tytso@mit.edu>
-Cc: Zheng Liu <gnehzuil.liu@gmail.com>, Theodore Ts'o <tytso@mit.edu>,
-	Zheng Liu <wenqing.lz@taobao.com>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Felipe Monteiro de Carvalho <felipemonteiro.carvalho@gmail.com>
+Subject: Re: Beginner questions about ext4
+Date: Thu, 11 Jul 2013 09:37:05 +0200
+Message-ID: <CACyNnZPc8-r3Qa+_MWiwB+niMkpbpgSfH8MHEOY0tM0n66LFgA@mail.gmail.com>
+References: <loom.20130612T140739-743@post.gmane.org>
+	<loom.20130623T082353-563@post.gmane.org>
+	<20130623115953.GA16193@thunk.org>
+	<CACyNnZNQ00D=hKHZ_wvfwJx3CWt7iELrbgUf_41AzzSAJmxGUw@mail.gmail.com>
+	<20130701165524.GB23896@thunk.org>
+	<CACyNnZPoAt2VNgGfRwzcvVdJHF8xKhE93zS7dGrmodg9Lm=cNQ@mail.gmail.com>
+	<20130710172409.GC28076@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:36730 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751133Ab3GKEjL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 11 Jul 2013 00:39:11 -0400
-In-Reply-To: <1373517542-21234-1-git-send-email-tytso@mit.edu>
+Received: from mail-pb0-f44.google.com ([209.85.160.44]:55582 "EHLO
+	mail-pb0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755602Ab3GKHhG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Jul 2013 03:37:06 -0400
+Received: by mail-pb0-f44.google.com with SMTP id uo1so7605393pbc.17
+        for <linux-ext4@vger.kernel.org>; Thu, 11 Jul 2013 00:37:05 -0700 (PDT)
+In-Reply-To: <20130710172409.GC28076@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Don't use an unsigned long long for the es_status flags; this requires
-that we pass 64-bit values around which is painful on 32-bit systems.
-Instead pass the extent status flags around using the low 4 bits of an
-unsigned int, and shift them into place when we are reading or writing
-es_pblk.
+Hello,
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Zheng Liu <wenqing.lz@taobao.com>
----
- fs/ext4/extents_status.c    |  6 +++---
- fs/ext4/extents_status.h    | 47 ++++++++++++++++++++++++++-------------------
- fs/ext4/inode.c             |  4 ++--
- include/trace/events/ext4.h | 14 +++++++-------
- 4 files changed, 39 insertions(+), 32 deletions(-)
+That would be great, but then how to explain that
+EXT4_FEATURE_INCOMPAT_FLEX_BG is present in
+superblock^.s_feature_incompat
 
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index ee018d5..7358fb3 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -261,7 +261,7 @@ void ext4_es_find_delayed_extent_range(struct inode *inode,
- 	if (tree->cache_es) {
- 		es1 = tree->cache_es;
- 		if (in_range(lblk, es1->es_lblk, es1->es_len)) {
--			es_debug("%u cached by [%u/%u) %llu %llx\n",
-+			es_debug("%u cached by [%u/%u) %llu %x\n",
- 				 lblk, es1->es_lblk, es1->es_len,
- 				 ext4_es_pblock(es1), ext4_es_status(es1));
- 			goto out;
-@@ -641,13 +641,13 @@ out:
-  */
- int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
- 			  ext4_lblk_t len, ext4_fsblk_t pblk,
--			  unsigned long long status)
-+			  unsigned int status)
- {
- 	struct extent_status newes;
- 	ext4_lblk_t end = lblk + len - 1;
- 	int err = 0;
- 
--	es_debug("add [%u/%u) %llu %llx to extent status tree of inode %lu\n",
-+	es_debug("add [%u/%u) %llu %x to extent status tree of inode %lu\n",
- 		 lblk, len, pblk, status, inode->i_ino);
- 
- 	if (!len)
-diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-index e936730..ae1be58 100644
---- a/fs/ext4/extents_status.h
-+++ b/fs/ext4/extents_status.h
-@@ -29,16 +29,26 @@
- /*
-  * These flags live in the high bits of extent_status.es_pblk
-  */
--#define EXTENT_STATUS_WRITTEN	(1ULL << 63)
--#define EXTENT_STATUS_UNWRITTEN (1ULL << 62)
--#define EXTENT_STATUS_DELAYED	(1ULL << 61)
--#define EXTENT_STATUS_HOLE	(1ULL << 60)
-+#define ES_SHIFT	60
-+
-+#define EXTENT_STATUS_WRITTEN	(1 << 3)
-+#define EXTENT_STATUS_UNWRITTEN (1 << 2)
-+#define EXTENT_STATUS_DELAYED	(1 << 1)
-+#define EXTENT_STATUS_HOLE	(1 << 0)
- 
- #define EXTENT_STATUS_FLAGS	(EXTENT_STATUS_WRITTEN | \
- 				 EXTENT_STATUS_UNWRITTEN | \
- 				 EXTENT_STATUS_DELAYED | \
- 				 EXTENT_STATUS_HOLE)
- 
-+#define ES_WRITTEN		(1ULL << 63)
-+#define ES_UNWRITTEN		(1ULL << 62)
-+#define ES_DELAYED		(1ULL << 61)
-+#define ES_HOLE			(1ULL << 60)
-+
-+#define ES_MASK			(ES_WRITTEN | ES_UNWRITTEN | \
-+				 ES_DELAYED | ES_HOLE)
-+
- struct ext4_sb_info;
- struct ext4_extent;
- 
-@@ -60,7 +70,7 @@ extern void ext4_es_init_tree(struct ext4_es_tree *tree);
- 
- extern int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
- 				 ext4_lblk_t len, ext4_fsblk_t pblk,
--				 unsigned long long status);
-+				 unsigned int status);
- extern int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
- 				 ext4_lblk_t len);
- extern void ext4_es_find_delayed_extent_range(struct inode *inode,
-@@ -72,32 +82,32 @@ extern int ext4_es_zeroout(struct inode *inode, struct ext4_extent *ex);
- 
- static inline int ext4_es_is_written(struct extent_status *es)
- {
--	return (es->es_pblk & EXTENT_STATUS_WRITTEN) != 0;
-+	return (es->es_pblk & ES_WRITTEN) != 0;
- }
- 
- static inline int ext4_es_is_unwritten(struct extent_status *es)
- {
--	return (es->es_pblk & EXTENT_STATUS_UNWRITTEN) != 0;
-+	return (es->es_pblk & ES_UNWRITTEN) != 0;
- }
- 
- static inline int ext4_es_is_delayed(struct extent_status *es)
- {
--	return (es->es_pblk & EXTENT_STATUS_DELAYED) != 0;
-+	return (es->es_pblk & ES_DELAYED) != 0;
- }
- 
- static inline int ext4_es_is_hole(struct extent_status *es)
- {
--	return (es->es_pblk & EXTENT_STATUS_HOLE) != 0;
-+	return (es->es_pblk & ES_HOLE) != 0;
- }
- 
--static inline ext4_fsblk_t ext4_es_status(struct extent_status *es)
-+static inline unsigned int ext4_es_status(struct extent_status *es)
- {
--	return (es->es_pblk & EXTENT_STATUS_FLAGS);
-+	return (es->es_pblk >> ES_SHIFT);
- }
- 
- static inline ext4_fsblk_t ext4_es_pblock(struct extent_status *es)
- {
--	return (es->es_pblk & ~EXTENT_STATUS_FLAGS);
-+	return (es->es_pblk & ~ES_MASK);
- }
- 
- static inline void ext4_es_store_pblock(struct extent_status *es,
-@@ -105,19 +115,16 @@ static inline void ext4_es_store_pblock(struct extent_status *es,
- {
- 	ext4_fsblk_t block;
- 
--	block = (pb & ~EXTENT_STATUS_FLAGS) |
--		(es->es_pblk & EXTENT_STATUS_FLAGS);
-+	block = (pb & ~ES_MASK) | (es->es_pblk & ES_MASK);
- 	es->es_pblk = block;
- }
- 
- static inline void ext4_es_store_status(struct extent_status *es,
--					unsigned long long status)
-+					unsigned int status)
- {
--	ext4_fsblk_t block;
--
--	block = (status & EXTENT_STATUS_FLAGS) |
--		(es->es_pblk & ~EXTENT_STATUS_FLAGS);
--	es->es_pblk = block;
-+	es->es_pblk = (((unsigned long long)
-+			(status & EXTENT_STATUS_FLAGS) << ES_SHIFT) |
-+		       (es->es_pblk & ~ES_MASK));
- }
- 
- extern void ext4_es_register_shrinker(struct ext4_sb_info *sbi);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 19a1643..f27fa9d 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -554,7 +554,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 	}
- 	if (retval > 0) {
- 		int ret;
--		unsigned long long status;
-+		unsigned int status;
- 
- #ifdef ES_AGGRESSIVE_TEST
- 		if (retval != map->m_len) {
-@@ -1638,7 +1638,7 @@ add_delayed:
- 		set_buffer_delay(bh);
- 	} else if (retval > 0) {
- 		int ret;
--		unsigned long long status;
-+		unsigned int status;
- 
- #ifdef ES_AGGRESSIVE_TEST
- 		if (retval != map->m_len) {
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index 2068db2..47a355b 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -64,10 +64,10 @@ struct extent_status;
- 	{ EXT4_FREE_BLOCKS_NOFREE_LAST_CLUSTER,	"LAST_CLUSTER" })
- 
- #define show_extent_status(status) __print_flags(status, "",	\
--	{ (1 << 3),	"W" }, 					\
--	{ (1 << 2),	"U" },					\
--	{ (1 << 1),	"D" },					\
--	{ (1 << 0),	"H" })
-+	{ EXTENT_STATUS_WRITTEN,	"W" },			\
-+	{ EXTENT_STATUS_UNWRITTEN,	"U" },			\
-+	{ EXTENT_STATUS_DELAYED,	"D" },			\
-+	{ EXTENT_STATUS_HOLE,		"H" })
- 
- 
- TRACE_EVENT(ext4_free_inode,
-@@ -2212,7 +2212,7 @@ TRACE_EVENT(ext4_es_insert_extent,
- 		__entry->lblk	= es->es_lblk;
- 		__entry->len	= es->es_len;
- 		__entry->pblk	= ext4_es_pblock(es);
--		__entry->status	= ext4_es_status(es) >> 60;
-+		__entry->status	= ext4_es_status(es);
- 	),
- 
- 	TP_printk("dev %d,%d ino %lu es [%u/%u) mapped %llu status %s",
-@@ -2289,7 +2289,7 @@ TRACE_EVENT(ext4_es_find_delayed_extent_range_exit,
- 		__entry->lblk	= es->es_lblk;
- 		__entry->len	= es->es_len;
- 		__entry->pblk	= ext4_es_pblock(es);
--		__entry->status	= ext4_es_status(es) >> 60;
-+		__entry->status	= ext4_es_status(es);
- 	),
- 
- 	TP_printk("dev %d,%d ino %lu es [%u/%u) mapped %llu status %s",
-@@ -2343,7 +2343,7 @@ TRACE_EVENT(ext4_es_lookup_extent_exit,
- 		__entry->lblk	= es->es_lblk;
- 		__entry->len	= es->es_len;
- 		__entry->pblk	= ext4_es_pblock(es);
--		__entry->status	= ext4_es_status(es) >> 60;
-+		__entry->status	= ext4_es_status(es);
- 		__entry->found	= found;
- 	),
- 
+Which indicates that knowledge of this feature is necessary in the reader
+
 -- 
-1.7.12.rc0.22.gcdd159b
-
+Felipe Monteiro de Carvalho
