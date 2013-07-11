@@ -1,63 +1,37 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 3/4] ext4: ignore valid errors from defragmentation tests
-Date: Thu, 11 Jul 2013 11:11:05 +1000
-Message-ID: <20130711011105.GV3438@dastard>
+Subject: Re: [PATCH 4/4] large-fs: fix ext4 defragmentation tests
+Date: Thu, 11 Jul 2013 11:17:41 +1000
+Message-ID: <20130711011741.GW3438@dastard>
 References: <1373367918-7516-1-git-send-email-dmonakhov@openvz.org>
-	<1373367918-7516-3-git-send-email-dmonakhov@openvz.org>
+ <1373367918-7516-4-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	dchinner@redhat.com, xfs@oss.sgi.com
+Content-Type: text/plain; charset=us-ascii
+Cc: xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, dchinner@redhat.com
 To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <xfs-bounces@oss.sgi.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:30785 "EHLO
+	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754046Ab3GKBS3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 10 Jul 2013 21:18:29 -0400
 Content-Disposition: inline
-In-Reply-To: <1373367918-7516-3-git-send-email-dmonakhov@openvz.org>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1373367918-7516-4-git-send-email-dmonakhov@openvz.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 09, 2013 at 03:05:17PM +0400, Dmitry Monakhov wrote:
-> 
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> ---
->  tests/ext4/301 |    3 +++
->  tests/ext4/302 |    3 +++
->  tests/ext4/303 |    6 ++++++
->  tests/ext4/304 |    3 +++
->  4 files changed, 15 insertions(+), 0 deletions(-)
-> 
-> diff --git a/tests/ext4/301 b/tests/ext4/301
-> index 0ca3622..30e4273 100755
-> --- a/tests/ext4/301
-> +++ b/tests/ext4/301
-> @@ -74,6 +74,9 @@ donorname=test1.def
->  filename=test1
->  inplace=0
->  rw=write
-> +continue_on_error=write
-> +ignore_error=,ENOSPC:EBUSY
-> +error_dump=0
->  numjobs=${NUM_JOBS}
->  runtime=30*${TIME_FACTOR}
->  time_based
+On Tue, Jul 09, 2013 at 03:05:18PM +0400, Dmitry Monakhov wrote:
+> Initially work space size calculation was based on size of blkdev which
+> obviously wrong for large-fs case. This patch calculate work space based
+> on `df` cmd.
 
-Seems harmless enough to me.
+when have a "_used" command in common/rc for getting the used space
+on a device (i.e. _used $SCRATCH_DEV). This loocks like a case for a
+"_free" equivalent....
 
-Acked-by: Dave Chinner <dchinner@redhat.com>
+Cheers,
 
+Dave.
 -- 
 Dave Chinner
 david@fromorbit.com
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
