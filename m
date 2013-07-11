@@ -1,31 +1,44 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [RFC PATCH 3/3] ext4: cache all of an extent tree's leaf block
- upon reading
-Date: Thu, 11 Jul 2013 15:33:56 -0400
-Message-ID: <20130711193356.GB11689@thunk.org>
-References: <1373517542-21234-1-git-send-email-tytso@mit.edu>
- <1373517542-21234-3-git-send-email-tytso@mit.edu>
- <20130711185423.GA25414@lenny.home.zabbo.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Zheng Liu <gnehzuil.liu@gmail.com>,
-	Zheng Liu <wenqing.lz@taobao.com>
-To: Zach Brown <zab@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:36967 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756476Ab3GKTeD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 11 Jul 2013 15:34:03 -0400
-Content-Disposition: inline
-In-Reply-To: <20130711185423.GA25414@lenny.home.zabbo.net>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Subject: [PATCH] ext4: don't show usrquota/grpquota twice in /proc/mounts
+Date: Thu, 11 Jul 2013 18:55:05 -0400
+Message-ID: <1373583305-29126-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <stable-owner@vger.kernel.org>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jul 11, 2013 at 11:54:23AM -0700, Zach Brown wrote:
-> 
-> Isn't prev going to be reinitialized to 0 for every extent?
+We now print mount options in a generic fashion in
+ext4_show_options(), so we shouldn't be explicitly printing the
+{usr,grp}quota options in ext4_show_quota_options().
 
-Whoops, nice catch.  I'll fix this in my next spin of the patches.
+Without this patch, /proc/mounts can look like this:
 
-	     	     	      	   - Ted
+ /dev/vdb /vdb ext4 rw,relatime,quota,usrquota,data=ordered,usrquota 0 0
+                                      ^^^^^^^^              ^^^^^^^^
+
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: stable@vger.kernel.org
+---
+ fs/ext4/super.c | 6 ------
+ 1 file changed, 6 deletions(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 8862d4d..bca26f3 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1702,12 +1702,6 @@ static inline void ext4_show_quota_options(struct seq_file *seq,
+ 
+ 	if (sbi->s_qf_names[GRPQUOTA])
+ 		seq_printf(seq, ",grpjquota=%s", sbi->s_qf_names[GRPQUOTA]);
+-
+-	if (test_opt(sb, USRQUOTA))
+-		seq_puts(seq, ",usrquota");
+-
+-	if (test_opt(sb, GRPQUOTA))
+-		seq_puts(seq, ",grpquota");
+ #endif
+ }
+ 
+-- 
+1.7.12.rc0.22.gcdd159b
