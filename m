@@ -1,111 +1,234 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH v2] ext4: add WARN_ON to check the length of allocated blocks
-Date: Fri, 12 Jul 2013 09:00:52 +0800
-Message-ID: <1373590852-29544-1-git-send-email-wenqing.lz@taobao.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Zheng Liu <wenqing.lz@taobao.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f45.google.com ([209.85.160.45]:63213 "EHLO
-	mail-pb0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932110Ab3GLAmU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Jul 2013 20:42:20 -0400
-Received: by mail-pb0-f45.google.com with SMTP id mc8so8395784pbc.18
-        for <linux-ext4@vger.kernel.org>; Thu, 11 Jul 2013 17:42:20 -0700 (PDT)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 1/2] direct-io: Implement generic deferred AIO completions
+Date: Fri, 12 Jul 2013 10:44:21 +1000
+Message-ID: <20130712004421.GE3438@dastard>
+References: <1373493739-2243-1-git-send-email-jack@suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: xfs@oss.sgi.com, hch@infradead.org, Jeff Moyer <jmoyer@redhat.com>,
+	Al Viro <viro@ZenIV.linux.org.uk>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, Christoph Hellwig <hch@lst.de>
+To: Jan Kara <jack@suse.cz>
+Return-path: <xfs-bounces@oss.sgi.com>
+Content-Disposition: inline
+In-Reply-To: <1373493739-2243-1-git-send-email-jack@suse.cz>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+On Thu, Jul 11, 2013 at 12:02:18AM +0200, Jan Kara wrote:
+> From: Christoph Hellwig <hch@infradead.org>
+> 
+> Add support to the core direct-io code to defer AIO completions to user
+> context using a workqueue.  This replaces opencoded and less efficient
+> code in XFS and ext4 and will be needed to properly support O_(D)SYNC
+> for AIO.
 
-In this commit (921f266b) a sanity check is added in map_blocks to make
-sure 'retval == map->m_len'.  But we'd better enable this check all the
-time because it can help us to dig some bugs that is hard to be hitted.
+I don't see how this is any more efficient than the deferral
+that XFS already does for direct IO completion - it just changes
+what queues IO for completions. And on that topic:
 
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
----
-changelog:
-v2 <- v1:
- * print more details to help us to dig some bugs that is hard to be hitted
+> Currently this creates a per-superblock unbound workqueue for these
+> completions, which is taken from an earlier patch by Jan Kara.  I'm
+> not really convinced about this use and would prefer a "normal" global
+> workqueue with a high concurrency limit, but this needs further discussion.
 
-v1: http://patchwork.ozlabs.org/patch/230406/
+Unbound workqueues sacrifice locality for immediate dispatch.
+AIO-DIO performance at the high end is determined by IO submission
+and completion locality - we want submission and completion to occur
+on the same CPU as much as possible so cachelines are not bounced
+aroundi needlessly. An unbound workqueue would seem to be the wrong
+choice on this basis alone.
 
-Hi Ted,
+Further the use of @max_active = 1 means that it is a global, single
+threaded workqueue. While ext4 might require single threaded
+execution of unwritten extent completion, it would be introducing a
+massive bottleneck into XFS which currently uses the default
+concurrency depth of 256 worker threads per CPU per superblock just
+for unwritten extent conversion.
 
-This patch sleeps on my own tree for a very long time so that I almost forgot
-it.  Sorry about that.
+Hmmmm. I notice that the next patch then does generic_write_sync()
+is the IO completion handler, too. In XFS that causes log forces and
+will block, so that's yet more concurrency required that is required
+for this workqueue. Doing this in a single threaded workqueue and
+marshalling all sync AIO through it is highly unfriendly to
+concurrent IO completion.
 
-						- Zheng
+FWIW, in XFS we queue unwritten extent conversion completions on a
+different workqueue to EOF size update completions because the
+latter are small, fast and rarely require IO or get blocked. The
+data IO completion workqueue for EOF updates has the same
+concurrency and depth as the unwritten extent work queue (i.e. 256
+workers per cpu per superblock). So pushing all of this DIO and EOF
+completion work into a single threaded global workqueue that can
+block in every IO completion doesn't seem like a very smart idea to
+me...
 
- fs/ext4/inode.c |   39 ++++++++++++++++++---------------------
- 1 file changed, 18 insertions(+), 21 deletions(-)
+> -static ssize_t dio_complete(struct dio *dio, loff_t offset, ssize_t ret, bool is_async)
+> +static ssize_t dio_complete(struct dio *dio, loff_t offset, ssize_t ret,
+> +		bool is_async)
+>  {
+>  	ssize_t transferred = 0;
+>  
+> @@ -258,19 +262,26 @@ static ssize_t dio_complete(struct dio *dio, loff_t offset, ssize_t ret, bool is
+>  	if (ret == 0)
+>  		ret = transferred;
+>  
+> -	if (dio->end_io && dio->result) {
+> -		dio->end_io(dio->iocb, offset, transferred,
+> -			    dio->private, ret, is_async);
+> -	} else {
+> -		inode_dio_done(dio->inode);
+> -		if (is_async)
+> -			aio_complete(dio->iocb, ret, 0);
+> -	}
+> +	if (dio->end_io && dio->result)
+> +		dio->end_io(dio->iocb, offset, transferred, dio->private);
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 19a1643..95bad70 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -556,14 +556,13 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 		int ret;
- 		unsigned long long status;
- 
--#ifdef ES_AGGRESSIVE_TEST
--		if (retval != map->m_len) {
--			printk("ES len assertation failed for inode: %lu "
--			       "retval %d != map->m_len %d "
--			       "in %s (lookup)\n", inode->i_ino, retval,
--			       map->m_len, __func__);
-+		if (unlikely(retval != map->m_len)) {
-+			ext4_warning(inode->i_sb,
-+				     "ES len assertation failed for inode: "
-+				     "%lu retval %d != map->m_len %d\n",
-+				     inode->i_ino, retval, map->m_len);
-+			WARN_ON(1);
- 		}
--#endif
- 
- 		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
- 				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
-@@ -657,14 +656,13 @@ found:
- 		int ret;
- 		unsigned long long status;
- 
--#ifdef ES_AGGRESSIVE_TEST
--		if (retval != map->m_len) {
--			printk("ES len assertation failed for inode: %lu "
--			       "retval %d != map->m_len %d "
--			       "in %s (allocation)\n", inode->i_ino, retval,
--			       map->m_len, __func__);
-+		if (unlikely(retval != map->m_len)) {
-+			ext4_warning(inode->i_sb,
-+				     "ES len assertation failed for inode: "
-+				     "%lu retval %d != map->m_len %d\n",
-+				     inode->i_ino, retval, map->m_len);
-+			WARN_ON(1);
- 		}
--#endif
- 
- 		/*
- 		 * If the extent has been zeroed out, we don't need to update
-@@ -1640,14 +1638,13 @@ add_delayed:
- 		int ret;
- 		unsigned long long status;
- 
--#ifdef ES_AGGRESSIVE_TEST
--		if (retval != map->m_len) {
--			printk("ES len assertation failed for inode: %lu "
--			       "retval %d != map->m_len %d "
--			       "in %s (lookup)\n", inode->i_ino, retval,
--			       map->m_len, __func__);
-+		if (unlikely(retval != map->m_len)) {
-+			ext4_warning(inode->i_sb,
-+				     "ES len assertation failed for inode: "
-+				     "%lu retval %d != map->m_len %d\n",
-+				     inode->i_ino, retval, map->m_len);
-+			WARN_ON(1);
- 		}
--#endif
- 
- 		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
- 				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
+Ok, so by here we are assuming all filesystem IO completion
+processing is completed.
+
+> +
+> +	inode_dio_done(dio->inode);
+> +	if (is_async)
+> +		aio_complete(dio->iocb, ret, 0);
+>  
+> +	kmem_cache_free(dio_cache, dio);
+>  	return ret;
+
+Hmmm. I started wonder if this is valid, because XFS is supposed to
+be doing workqueue based IO completion for appending writes and they
+are supposed to be run in a workqueue.
+
+But, looking at the XFS code, there's actually a bug in the direct
+IO completion code and we are not defering completion to a workqueue
+like we should be for the append case.  This code in
+xfs_finish_ioend() demonstrates the intent:
+
+                if (ioend->io_type == XFS_IO_UNWRITTEN)
+                        queue_work(mp->m_unwritten_workqueue, &ioend->io_work);
+                else if (ioend->io_append_trans ||
+>>>>>>                   (ioend->io_isdirect && xfs_ioend_is_append(ioend)))
+                        queue_work(mp->m_data_workqueue, &ioend->io_work);
+
+The problem is that we only ever call xfs_finish_ioend() if is_async
+is true, and that will never be true for direct IO beyond the current
+EOF. That's a bug, and is Bad(tm).
+
+[ Interestingly, it turns out that dio->is_async is never set for
+writes beyond EOF because of filesystems that update file sizes
+before data IO completion occurs (stale data exposure issues). For
+XFS, that can't happen and so dio->is_async could always be set.... ]
+
+What this means is that there's a condition for work queue deferral
+of DIO IO completion that this patch doesn't handle. Setting deferral
+only on unwritten extents like this:
+
+> @@ -1292,8 +1281,10 @@ __xfs_get_blocks(
+>  		if (create || !ISUNWRITTEN(&imap))
+>  			xfs_map_buffer(inode, bh_result, &imap, offset);
+>  		if (create && ISUNWRITTEN(&imap)) {
+> -			if (direct)
+> +			if (direct) {
+>  				bh_result->b_private = inode;
+> +				set_buffer_defer_completion(bh_result);
+> +			}
+>  			set_buffer_unwritten(bh_result);
+>  		}
+>  	}
+
+misses that case. I suspect Christoph's original patch predated the
+changes to XFS that added transactional file size updates to IO
+completion and so didn't take it into account.
+
+> @@ -1390,9 +1381,7 @@ xfs_end_io_direct_write(
+>  	struct kiocb		*iocb,
+>  	loff_t			offset,
+>  	ssize_t			size,
+> -	void			*private,
+> -	int			ret,
+> -	bool			is_async)
+> +	void			*private)
+>  {
+>  	struct xfs_ioend	*ioend = iocb->private;
+>  
+> @@ -1414,17 +1403,10 @@ xfs_end_io_direct_write(
+>  
+>  	ioend->io_offset = offset;
+>  	ioend->io_size = size;
+> -	ioend->io_iocb = iocb;
+> -	ioend->io_result = ret;
+>  	if (private && size > 0)
+>  		ioend->io_type = XFS_IO_UNWRITTEN;
+>  
+> -	if (is_async) {
+> -		ioend->io_isasync = 1;
+> -		xfs_finish_ioend(ioend);
+> -	} else {
+> -		xfs_finish_ioend_sync(ioend);
+> -	}
+> +	xfs_finish_ioend_sync(ioend);
+>  }
+
+As i mentioned, the existing code here is buggy. What we should be
+doing here is:
+
+	if (is_async) {
+		ioend->io_isasync = 1;
+		xfs_finish_ioend(ioend);
+	} else if (xfs_ioend_is_append(ioend))) {
+		xfs_finish_ioend(ioend);
+	} else {
+		xfs_finish_ioend_sync(ioend);
+	}
+
+Which means that the new code boils down to:
+
+	if (xfs_ioend_is_append(ioend)))
+		xfs_finish_ioend(ioend);
+	else
+		xfs_finish_ioend_sync(ioend);
+
+And now we see the problem with the only defering unwritten IO -
+the new direct IO code will think IO is completed when all we've
+done is queued it to another workqueue.
+
+I'm not sure we can handle this in get_blocks - we don't have the
+context to know how to treat allocation beyond the current EOF.
+Indeed, the current block being mapped might not be beyond EOF, but
+some of the IO might be (e.g. lies across an extent boundary),
+so setting the deferred completion in get_blocks doesn't allow the
+entire IO to be treated the same.
+
+So I think there's a bit of re-thinking needed to aspects of this
+patch to be done.
+
+> +		 * avoids problems with pseudo filesystems which get initialized
+> +		 * before workqueues can be created
+> +		 */
+> +		if (type->fs_flags & FS_REQUIRES_DEV) {
+> +			s->s_dio_done_wq =
+> +				alloc_workqueue("dio-sync", WQ_UNBOUND, 1);
+
+The workqueue name needs to be combined with the fs_name so we know
+what filesystem is having problems in sysrq-w output.
+
+Cheers,
+
+Dave.
 -- 
-1.7.9.7
+Dave Chinner
+david@fromorbit.com
 
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
