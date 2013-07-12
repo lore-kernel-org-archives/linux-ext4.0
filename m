@@ -1,69 +1,76 @@
-From: "faibish, sorin" <faibish_sorin@emc.com>
-Subject: RE: Linux Plumbers IO & File System Micro-conference
-Date: Fri, 12 Jul 2013 13:42:21 -0400
-Message-ID: <F0897B83F4BC10458936F08DADF233160F65F99416@MX02A.corp.emc.com>
-References: <51E03AFB.1000000@gmail.com>
+From: Dave Jones <davej@redhat.com>
+Subject: WARNING: at fs/ext4/inode.c:230 ext4_evict_inode+0x4b9/0x6d0()
+Date: Fri, 12 Jul 2013 15:35:28 -0400
+Message-ID: <20130712193528.GA15261@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Ric Wheeler <ricwheeler@gmail.com>, "linux-scsi@vger.kernel.org"
-	<linux-scsi@vger.kernel.org>,
-	Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>, linux-btrfs
-	<linux-btrfs@vger.kernel.org>, xfs-oss <xfs@oss.sgi.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>, device-mapper
-	development <dm-devel@redhat.com>, IDE/ATA development list
-	<linux-ide@vger.kernel.org>, "anaconda-devel-list@redhat.com"
-	<anaconda-devel-list@redhat.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <51E03AFB.1000000@gmail.com>
-Content-Language: en-US
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Linux Kernel <linux-kernel@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:53620 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757521Ab3GLTfh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 12 Jul 2013 15:35:37 -0400
+Content-Disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Can we have a discussion on Lustre client in the kernel? Thanks
+Just hit a bunch of these..
 
-./Sorin
+WARNING: CPU: 0 PID: 995613 at fs/ext4/inode.c:230 ext4_evict_inode+0x4b9/0x6d0()
+Modules linked in: 8021q garp mrp bridge stp rfcomm tun nfsd nfs_acl rpcsec_gss_krb5 auth_rpcgss oid_registry nfsv4 nfs lockd 
+sunrpc fscache fuse l2tp_ppp l2tp_netlink l2tp_core bnep cmtp kernelcapi hidp scsi_transport_iscsi can_raw ipt_ULOG nfnetlink can_bcm llc2 irda af_802154 x25 can pppoe pppox p
+pp_generic af_key slhc af_rxrpc atm rds bluetooth vmw_vsock_vmci_transport vmw_vmci phonet vsock netrom appletalk rose ipx p8023 ax25 psnap p8022 llc nfc rfkill caif_socket ca
+if crc_ccitt btrfs xor snd_hda_codec_realtek snd_hda_intel snd_hda_codec raid6_pq libcrc32c snd_pcm zlib_deflate snd_page_alloc snd_timer pcspkr snd serio_raw edac_core soundc
+ore r8169 mii sr_mod cdrom pata_atiixp radeon backlight drm_kms_helper ttm
+CPU: 0 PID: 995613 Comm: trinity-child1 Not tainted 3.10.0+ #10
+Hardware name: Gigabyte Technology Co., Ltd. GA-MA78GM-S2H/GA-MA78GM-S2H, BIOS F12a 04/23/2010
+ ffffffff81a1c2b3 ffff88010d537d18 ffffffff816bbb90 0000000000000000
+ ffff88010d537d50 ffffffff81043f0c ffff88000c583970 ffff88000c583970
+ ffffffff81825420 ffffffff81825420 ffff88011d4f9f90 ffff88010d537d60
+Call Trace:
+ [<ffffffff816bbb90>] dump_stack+0x4e/0x82
+ [<ffffffff81043f0c>] warn_slowpath_common+0x8c/0xc0
+ [<ffffffff81043ffa>] warn_slowpath_null+0x1a/0x20
+ [<ffffffff81258079>] ext4_evict_inode+0x4b9/0x6d0
+ [<ffffffff811da983>] evict+0xa3/0x1a0
+ [<ffffffff811db335>] iput+0x105/0x190
+ [<ffffffff811eccf4>] sync_inodes_sb+0x194/0x240
+ [<ffffffff816c18df>] ? wait_for_completion+0xdf/0x110
+ [<ffffffff811f2ad0>] ? generic_write_sync+0x70/0x70
+ [<ffffffff811f2ae9>] sync_inodes_one_sb+0x19/0x20
+ [<ffffffff811c2100>] iterate_supers+0xb0/0x110
+ [<ffffffff811f2d65>] sys_sync+0x35/0x90
+ [<ffffffff816cdd94>] tracesys+0xdd/0xe2
+---[ end trace 1749b013664e80fc ]---
 
------Original Message-----
-From: linux-fsdevel-owner@vger.kernel.org [mailto:linux-fsdevel-owner@vger.kernel.org] On Behalf Of Ric Wheeler
-Sent: Friday, July 12, 2013 1:21 PM
-To: linux-scsi@vger.kernel.org; Linux FS Devel; linux-nfs@vger.kernel.org; linux-btrfs; xfs-oss; linux-ext4@vger.kernel.org; device-mapper development; IDE/ATA development list; anaconda-devel-list@redhat.com
-Subject: Linux Plumbers IO & File System Micro-conference
+WARNING: CPU: 1 PID: 998688 at fs/ext4/inode.c:230 ext4_evict_inode+0x4b9/0x6d0()
+Modules linked in: 8021q garp mrp bridge stp rfcomm tun nfsd nfs_acl rpcsec_gss_krb5 auth_rpcgss oid_registry nfsv4 nfs lockd sunrpc fscache fuse l2tp_ppp l2tp_netlink l2tp_core bnep cmtp kernelcapi hidp scsi_transport_iscsi can_raw ipt_ULOG nfnetlink can_bcm llc2 irda af_802154 x25 can pppoe pppox ppp_generic af_key slhc af_rxrpc atm rds bluetooth vmw_vsock_vmci_transport vmw_vmci phonet vsock netrom appletalk rose ipx p8023 ax25 psnap p8022 llc nfc rfkill caif_socket caif crc_ccitt btrfs xor snd_hda_codec_realtek snd_hda_intel snd_hda_codec raid6_pq libcrc32c snd_pcm zlib_deflate snd_page_alloc snd_timer pcspkr snd serio_raw edac_core soundcore r8169 mii sr_mod cdrom pata_atiixp radeon backlight drm_kms_helper ttm
+CPU: 1 PID: 998688 Comm: gcc Tainted: G        W    3.10.0+ #10 
+Hardware name: Gigabyte Technology Co., Ltd. GA-MA78GM-S2H/GA-MA78GM-S2H, BIOS F12a 04/23/2010
+ ffffffff81a1c2b3 ffff880126ce7cd0 ffffffff816bbb90 0000000000000000
+ ffff880126ce7d08 ffffffff81043f0c ffff880007d88ae0 ffff880007d88ae0
+ ffffffff81825420 ffffffff81825420 ffff88011afcd780 ffff880126ce7d18
+Call Trace:
+ [<ffffffff816bbb90>] dump_stack+0x4e/0x82
+ [<ffffffff81043f0c>] warn_slowpath_common+0x8c/0xc0
+ [<ffffffff81043ffa>] warn_slowpath_null+0x1a/0x20
+ [<ffffffff81258079>] ext4_evict_inode+0x4b9/0x6d0
+ [<ffffffff811da983>] evict+0xa3/0x1a0
+ [<ffffffff811db335>] iput+0x105/0x190
+ [<ffffffff811d6878>] dput+0x1f8/0x2d0
+ [<ffffffff811cd73d>] SYSC_renameat+0x35d/0x3b0
+ [<ffffffff810b993e>] ? put_lock_stats.isra.27+0xe/0x40
+ [<ffffffff810b9f25>] ? lock_release_holdtime.part.28+0xe5/0x160
+ [<ffffffff810bcb4d>] ? trace_hardirqs_on+0xd/0x10
+ [<ffffffff81010725>] ? syscall_trace_enter+0x25/0x290
+ [<ffffffff811cfd7e>] SyS_renameat+0xe/0x10
+ [<ffffffff811cfd9b>] SyS_rename+0x1b/0x20
+ [<ffffffff816cdd94>] tracesys+0xdd/0xe2
+---[ end trace 1749b013664e812a ]---
 
 
-Linux Plumbers has approved a file and storage microconference. The overview page is here:
+That's...
 
-http://wiki.linuxplumbersconf.org/2013:file_and_storage_systems
+	WARN_ON(atomic_read(&EXT4_I(inode)->i_ioend_count));
 
-I would like to started gathering in ideas for topics. I have been approached already with a request to cover the copy_range work Zach Brown kicked off at LSF which I think is a great topic since it has impact throughout the stack, all the way up to applications programmers.
-
-A similar request was made to give some time to non-volatile memory devices and the proposed "persistent memory" backed block device and persistent memory file system from Intel. That also seems to fall in nicely with the plumbers mission statement since it clearly will impact everything from the application on down through the kernel.
-
-Last year, we had a good discussion on management of storage (anaconda, yast, libstoragemgt, etc) - that also might be worth giving updates on.
-
-The instructions for submitting ideas will be updated later today at:
-
-http://www.linuxplumbersconf.org/2013/submitting-topic/
-
-If you have topics that you would like to add, wait until the instructions get posted at the link above. If you are impatient, feel free to email me directly (but probably best to drop the broad mailing lists from the reply).
-
-Thanks!
-
-Ric
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in the body of a message to majordomo@vger.kernel.org More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
