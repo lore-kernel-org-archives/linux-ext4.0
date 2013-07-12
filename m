@@ -1,34 +1,38 @@
-From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: Re: [PATCH 0/2 V3] Fix mke2fs -F for consistency with the man page
-Date: Fri, 12 Jul 2013 15:51:35 +0900
-Message-ID: <51DFA777.50205@sx.jp.nec.com>
-References: <51D290CA.7010605@sx.jp.nec.com>
+From: Josh Boyer <jwboyer@gmail.com>
+Subject: Re: [PATCH 0/4] ext4: Fix overflows in ext4 code
+Date: Fri, 12 Jul 2013 09:15:06 -0400
+Message-ID: <CA+5PVA4C0PsQ20r_sg=me6QwGFJJTwbGdQZz6N9481H_=WkZsw@mail.gmail.com>
+References: <1369829133-4307-1-git-send-email-jack@suse.cz>
+	<51DC1AC5.8010809@redhat.com>
+	<20130709143855.GF6000@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org
-To: tytso@mit.edu
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO200.gate.nec.co.jp ([210.143.35.50]:46113 "EHLO
-	tyo200.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757095Ab3GLHCT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Jul 2013 03:02:19 -0400
-Received: from tyo201.gate.nec.co.jp ([10.7.69.201])
-	by tyo200.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id r6C72Iji023594
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 12 Jul 2013 16:02:18 +0900 (JST)
-In-Reply-To: <51D290CA.7010605@sx.jp.nec.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Eric Sandeen <sandeen@redhat.com>, Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org,
+	"stable@vger.kernel.org" <stable@vger.kernel.org>,
+	Greg KH <gregkh@linuxfoundation.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <stable-owner@vger.kernel.org>
+In-Reply-To: <20130709143855.GF6000@thunk.org>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-2013/07/02 17:35, Kazuya Mio wrote:
-> I try to fix mke2fs -F for consistency with the man page.
+On Tue, Jul 9, 2013 at 10:38 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+> On Tue, Jul 09, 2013 at 09:14:29AM -0500, Eric Sandeen wrote:
+>>
+>> I don't think these did get cc'd to stable.  Was there a reason for that,
+>> or was it an oversight?
+>
+> It was an oversight; my fault, sorry.  I'll send a request to the
+> stable kernel tree for the following patches:
+>
+> 8af8eec ext4: fix overflow when counting used blocks on 32-bit architectures
+> a60697f ext4: fix data offset overflow in ext4_xattr_fiemap() on 32-bit archs
+> e7293fd ext4: fix overflows in SEEK_HOLE, SEEK_DATA implementations
+> eaf3793 ext4: fix data offset overflow on 32-bit archs in ext4_inline_data_fiemap()
 
-Ted, could you please merge this patchset if you don't have any comments.
+Greg, are these 4 commits part of the large pile you're sitting on
+right now?  Just want to make sure the request wasn't missed, as they
+lack the CC to stable.
 
-http://patchwork.ozlabs.org/patch/256301/
-http://patchwork.ozlabs.org/patch/256302/
-
-Regards,
-Kazuya Mio
-
+josh
