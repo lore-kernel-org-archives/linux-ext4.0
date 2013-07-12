@@ -1,45 +1,52 @@
-From: Greg KH <gregkh@linuxfoundation.org>
-Subject: Re: [PATCH 0/4] ext4: Fix overflows in ext4 code
-Date: Fri, 12 Jul 2013 07:50:16 -0700
-Message-ID: <20130712145016.GB9979@kroah.com>
-References: <1369829133-4307-1-git-send-email-jack@suse.cz>
- <51DC1AC5.8010809@redhat.com>
- <20130709143855.GF6000@thunk.org>
- <CA+5PVA4C0PsQ20r_sg=me6QwGFJJTwbGdQZz6N9481H_=WkZsw@mail.gmail.com>
+From: Ric Wheeler <ricwheeler@gmail.com>
+Subject: Linux Plumbers IO & File System Micro-conference
+Date: Fri, 12 Jul 2013 13:20:59 -0400
+Message-ID: <51E03AFB.1000000@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
-	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	"stable@vger.kernel.org" <stable@vger.kernel.org>
-To: Josh Boyer <jwboyer@gmail.com>
-Return-path: <stable-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <CA+5PVA4C0PsQ20r_sg=me6QwGFJJTwbGdQZz6N9481H_=WkZsw@mail.gmail.com>
-Sender: stable-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
+	Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	linux-btrfs <linux-btrfs@vger.kernel.org>,
+	xfs-oss <xfs@oss.sgi.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	device-mapper development <dm-devel@redhat.com>,
+	IDE/ATA development list <linux-ide@vger.kernel.org>,
+	anaconda-devel-list@redhat.com
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jul 12, 2013 at 09:15:06AM -0400, Josh Boyer wrote:
-> On Tue, Jul 9, 2013 at 10:38 AM, Theodore Ts'o <tytso@mit.edu> wrote:
-> > On Tue, Jul 09, 2013 at 09:14:29AM -0500, Eric Sandeen wrote:
-> >>
-> >> I don't think these did get cc'd to stable.  Was there a reason for that,
-> >> or was it an oversight?
-> >
-> > It was an oversight; my fault, sorry.  I'll send a request to the
-> > stable kernel tree for the following patches:
-> >
-> > 8af8eec ext4: fix overflow when counting used blocks on 32-bit architectures
-> > a60697f ext4: fix data offset overflow in ext4_xattr_fiemap() on 32-bit archs
-> > e7293fd ext4: fix overflows in SEEK_HOLE, SEEK_DATA implementations
-> > eaf3793 ext4: fix data offset overflow on 32-bit archs in ext4_inline_data_fiemap()
-> 
-> Greg, are these 4 commits part of the large pile you're sitting on
-> right now?  Just want to make sure the request wasn't missed, as they
-> lack the CC to stable.
 
-They are still in my "to-apply" queue, and are not lost.  And I wasn't
-counting them in the 170 patches I have to review, make that 174 now :)
+Linux Plumbers has approved a file and storage microconference. The overview 
+page is here:
 
-thanks,
+http://wiki.linuxplumbersconf.org/2013:file_and_storage_systems
 
-greg k-h
+I would like to started gathering in ideas for topics. I have been approached 
+already with a request to cover the copy_range work Zach Brown kicked off at LSF 
+which I think is a great topic since it has impact throughout the stack, all the 
+way up to applications programmers.
+
+A similar request was made to give some time to non-volatile memory devices and 
+the proposed "persistent memory" backed block device and persistent memory file 
+system from Intel. That also seems to fall in nicely with the plumbers mission 
+statement since it clearly will impact everything from the application on down 
+through the kernel.
+
+Last year, we had a good discussion on management of storage (anaconda, yast, 
+libstoragemgt, etc) - that also might be worth giving updates on.
+
+The instructions for submitting ideas will be updated later today at:
+
+http://www.linuxplumbersconf.org/2013/submitting-topic/
+
+If you have topics that you would like to add, wait until the instructions get 
+posted at the link above. If you are impatient, feel free to email me directly 
+(but probably best to drop the broad mailing lists from the reply).
+
+Thanks!
+
+Ric
+
