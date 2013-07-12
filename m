@@ -1,65 +1,41 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: WARNING: at fs/ext4/inode.c:230 ext4_evict_inode+0x4b9/0x6d0()
-Date: Fri, 12 Jul 2013 15:42:29 -0400
-Message-ID: <20130712194229.GC342@thunk.org>
-References: <20130712193528.GA15261@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Dave Jones <davej@redhat.com>,
-	Linux Kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20130712193528.GA15261@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Subject: [PATCH] ext4: yield during large unlinks
+Date: Fri, 12 Jul 2013 17:45:14 -0400
+Message-ID: <1373665514-709-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:37326 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757555Ab3GLVpQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 12 Jul 2013 17:45:16 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 12, 2013 at 03:35:28PM -0400, Dave Jones wrote:
-> Just hit a bunch of these..
-> 
-> WARNING: CPU: 0 PID: 995613 at fs/ext4/inode.c:230 ext4_evict_inode+0x4b9/0x6d0()
+During large unlink operations on files with extents, we can use a lot
+of CPU time.  This adds a cond_resched() call when starting to examine
+the next level of a multi-level extent tree.  Multi-level extent trees
+are rare in the first place, and this should rarely be executed.
 
-This is fixed up by the following commit which is queued up to be sent
-to Linus, hopefully before he ships -rc1.  I'm just waiting for the
-regression tests to complete before I sent a pull request.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/extents.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-Thanks for testing and reporting this warning!
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 3d99b18..cc4731fd 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2861,6 +2861,9 @@ again:
+ 				err = PTR_ERR(bh);
+ 				break;
+ 			}
++			/* Yield here to deal with large extent trees. Should be
++			 * a no-op if we did IO for the above sb_bread. */
++			cond_resched();
+ 			if (WARN_ON(i + 1 > depth)) {
+ 				err = -EIO;
+ 				break;
+-- 
+1.7.12.rc0.22.gcdd159b
 
-	   	    	     	      	   - Ted
-
-commit 822dbba33458cd6ad0e715f3f4a57ebc99d54d1b
-Author: Jan Kara <jack@suse.cz>
-Date:   Wed Jul 10 21:31:04 2013 -0400
-
-    ext4: fix warning in ext4_evict_inode()
-    
-    The following race can lead to ext4_evict_inode() seeing i_ioend_count
-    > 0 and thus triggering a sanity check warning:
-    
-            CPU1                                    CPU2
-    ext4_end_bio()                          ext4_evict_inode()
-      ext4_finish_bio()
-        end_page_writeback();
-                                              truncate_inode_pages()
-                                                evict page
-                                            WARN_ON(i_ioend_count > 0);
-      ext4_put_io_end_defer()
-        ext4_release_io_end()
-          dec i_ioend_count
-    
-    This is possible use-after-free bug since we decrement i_ioend_count in
-    possibly released inode.
-    
-    Since i_ioend_count is used only for sanity checks one possible solution
-    would be to just remove it but for now I'd like to keep those sanity
-    checks to help debugging the new ext4 writeback code.
-    
-    This patch changes ext4_end_bio() to call ext4_put_io_end_defer() before
-    ext4_finish_bio() in the shortcut case when unwritten extent conversion
-    isn't needed.  In that case we don't need the io_end so we are safe to
-    drop it early.
-    
-    Reported-by: Guenter Roeck <linux@roeck-us.net>
-    Tested-by: Guenter Roeck <linux@roeck-us.net>
-    Signed-off-by: Jan Kara <jack@suse.cz>
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
