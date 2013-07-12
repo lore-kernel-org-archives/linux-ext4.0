@@ -1,44 +1,111 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: don't show usrquota/grpquota twice in /proc/mounts
-Date: Thu, 11 Jul 2013 18:55:05 -0400
-Message-ID: <1373583305-29126-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <stable-owner@vger.kernel.org>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: [PATCH v2] ext4: add WARN_ON to check the length of allocated blocks
+Date: Fri, 12 Jul 2013 09:00:52 +0800
+Message-ID: <1373590852-29544-1-git-send-email-wenqing.lz@taobao.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Zheng Liu <wenqing.lz@taobao.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pb0-f45.google.com ([209.85.160.45]:63213 "EHLO
+	mail-pb0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932110Ab3GLAmU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Jul 2013 20:42:20 -0400
+Received: by mail-pb0-f45.google.com with SMTP id mc8so8395784pbc.18
+        for <linux-ext4@vger.kernel.org>; Thu, 11 Jul 2013 17:42:20 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-We now print mount options in a generic fashion in
-ext4_show_options(), so we shouldn't be explicitly printing the
-{usr,grp}quota options in ext4_show_quota_options().
+From: Zheng Liu <wenqing.lz@taobao.com>
 
-Without this patch, /proc/mounts can look like this:
+In this commit (921f266b) a sanity check is added in map_blocks to make
+sure 'retval == map->m_len'.  But we'd better enable this check all the
+time because it can help us to dig some bugs that is hard to be hitted.
 
- /dev/vdb /vdb ext4 rw,relatime,quota,usrquota,data=ordered,usrquota 0 0
-                                      ^^^^^^^^              ^^^^^^^^
-
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: stable@vger.kernel.org
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- fs/ext4/super.c | 6 ------
- 1 file changed, 6 deletions(-)
+changelog:
+v2 <- v1:
+ * print more details to help us to dig some bugs that is hard to be hitted
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 8862d4d..bca26f3 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1702,12 +1702,6 @@ static inline void ext4_show_quota_options(struct seq_file *seq,
+v1: http://patchwork.ozlabs.org/patch/230406/
+
+Hi Ted,
+
+This patch sleeps on my own tree for a very long time so that I almost forgot
+it.  Sorry about that.
+
+						- Zheng
+
+ fs/ext4/inode.c |   39 ++++++++++++++++++---------------------
+ 1 file changed, 18 insertions(+), 21 deletions(-)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 19a1643..95bad70 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -556,14 +556,13 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 		int ret;
+ 		unsigned long long status;
  
- 	if (sbi->s_qf_names[GRPQUOTA])
- 		seq_printf(seq, ",grpjquota=%s", sbi->s_qf_names[GRPQUOTA]);
--
--	if (test_opt(sb, USRQUOTA))
--		seq_puts(seq, ",usrquota");
--
--	if (test_opt(sb, GRPQUOTA))
--		seq_puts(seq, ",grpquota");
- #endif
- }
+-#ifdef ES_AGGRESSIVE_TEST
+-		if (retval != map->m_len) {
+-			printk("ES len assertation failed for inode: %lu "
+-			       "retval %d != map->m_len %d "
+-			       "in %s (lookup)\n", inode->i_ino, retval,
+-			       map->m_len, __func__);
++		if (unlikely(retval != map->m_len)) {
++			ext4_warning(inode->i_sb,
++				     "ES len assertation failed for inode: "
++				     "%lu retval %d != map->m_len %d\n",
++				     inode->i_ino, retval, map->m_len);
++			WARN_ON(1);
+ 		}
+-#endif
  
+ 		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
+ 				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
+@@ -657,14 +656,13 @@ found:
+ 		int ret;
+ 		unsigned long long status;
+ 
+-#ifdef ES_AGGRESSIVE_TEST
+-		if (retval != map->m_len) {
+-			printk("ES len assertation failed for inode: %lu "
+-			       "retval %d != map->m_len %d "
+-			       "in %s (allocation)\n", inode->i_ino, retval,
+-			       map->m_len, __func__);
++		if (unlikely(retval != map->m_len)) {
++			ext4_warning(inode->i_sb,
++				     "ES len assertation failed for inode: "
++				     "%lu retval %d != map->m_len %d\n",
++				     inode->i_ino, retval, map->m_len);
++			WARN_ON(1);
+ 		}
+-#endif
+ 
+ 		/*
+ 		 * If the extent has been zeroed out, we don't need to update
+@@ -1640,14 +1638,13 @@ add_delayed:
+ 		int ret;
+ 		unsigned long long status;
+ 
+-#ifdef ES_AGGRESSIVE_TEST
+-		if (retval != map->m_len) {
+-			printk("ES len assertation failed for inode: %lu "
+-			       "retval %d != map->m_len %d "
+-			       "in %s (lookup)\n", inode->i_ino, retval,
+-			       map->m_len, __func__);
++		if (unlikely(retval != map->m_len)) {
++			ext4_warning(inode->i_sb,
++				     "ES len assertation failed for inode: "
++				     "%lu retval %d != map->m_len %d\n",
++				     inode->i_ino, retval, map->m_len);
++			WARN_ON(1);
+ 		}
+-#endif
+ 
+ 		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
+ 				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
 -- 
-1.7.12.rc0.22.gcdd159b
+1.7.9.7
+
