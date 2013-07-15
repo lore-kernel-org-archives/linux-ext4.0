@@ -1,43 +1,43 @@
-From: "George Daniels" <dangeorg121@live.com>
-Subject: It is Private
-Date: Sun, 14 Jul 2013 03:26:24 +0300 (EEST)
-Message-ID: <65031.83.49.169.117.1373761584.squirrel__24914.833243429$1373835758$gmane$org@mail1.centrum-group.com>
-Reply-To: dangeorg121@live.com
-Mime-Version: 1.0
-Content-Type: text/plain;charset=WINDOWS-1251
-Content-Transfer-Encoding: 8bit
-To: unlisted-recipients:; (no To-header on input)
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: simplify calculation of blocks to free on error
+Date: Mon, 15 Jul 2013 00:11:07 -0400
+Message-ID: <1373861467-14834-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail1.centrum-group.com ([194.12.254.133]:45302 "EHLO
-	mail1.centrum-group.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753271Ab3GNVCW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Jul 2013 17:02:22 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:37810 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750853Ab3GOELK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 15 Jul 2013 00:11:10 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-It is Private
+In ext4_ext_map_blocks(), if we have successfully allocated the data
+blocks, but then run into trouble inserting the extent into the extent
+tree, most likely due to an ENOSPC condition, determine the arguments
+to ext4_free_blocks() in a simpler way which is easier to prove to be
+correct.
 
-I am George Daniels, a Banker and credit system programmer (HSBC bank).
-I saw your email address while browsing through  the bank D.T.C Screen in
-my office yesterday so I decided to use this very chance to know you. I
-believe we should use every opportunity to know each other better.
-However, I am contacting you for obvious reason which you will understand.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/extents.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-I am sending this mail just to know if this email address is OK,
-reply me back so that I will send  more details to you.
-I have a very important thing to discuss with you, I look forward to
-receiving your response at
-georgedaniels@postino.net. Have a pleasant day.
-
-George Daniels
-
-
-
-
-
-
-
-
-
-
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index f57cc0e..5930915 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4261,8 +4261,8 @@ got_allocated_blocks:
+ 		/* not a good idea to call discard here directly,
+ 		 * but otherwise we'd need to call it every free() */
+ 		ext4_discard_preallocations(inode);
+-		ext4_free_blocks(handle, inode, NULL, ext4_ext_pblock(&newex),
+-				 ext4_ext_get_actual_len(&newex), fb_flags);
++		ext4_free_blocks(handle, inode, NULL, newblock,
++				 EXT4_C2B(sbi, allocated_clusters), fb_flags);
+ 		goto out2;
+ 	}
+ 
+-- 
+1.7.12.rc0.22.gcdd159b
 
