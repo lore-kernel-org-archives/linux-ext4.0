@@ -1,43 +1,63 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: simplify calculation of blocks to free on error
-Date: Mon, 15 Jul 2013 00:11:07 -0400
-Message-ID: <1373861467-14834-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: block direct I/O writes during ext4_truncate
+Date: Mon, 15 Jul 2013 00:11:19 -0400
+Message-ID: <1373861479-15136-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:37810 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750853Ab3GOELK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 15 Jul 2013 00:11:10 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <stable-owner@vger.kernel.org>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-In ext4_ext_map_blocks(), if we have successfully allocated the data
-blocks, but then run into trouble inserting the extent into the extent
-tree, most likely due to an ENOSPC condition, determine the arguments
-to ext4_free_blocks() in a simpler way which is easier to prove to be
-correct.
+Just as in ext4_punch_hole() it is important that we block DIO writes
+while the truncate is proceeding, since during the overwriting DIO
+write, we drop i_mutex, which means a truncate could start while the
+Direct I/O operation is still in progress.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: stable@vger.kernel.org
 ---
- fs/ext4/extents.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/ext4/inode.c | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index f57cc0e..5930915 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4261,8 +4261,8 @@ got_allocated_blocks:
- 		/* not a good idea to call discard here directly,
- 		 * but otherwise we'd need to call it every free() */
- 		ext4_discard_preallocations(inode);
--		ext4_free_blocks(handle, inode, NULL, ext4_ext_pblock(&newex),
--				 ext4_ext_get_actual_len(&newex), fb_flags);
-+		ext4_free_blocks(handle, inode, NULL, newblock,
-+				 EXT4_C2B(sbi, allocated_clusters), fb_flags);
- 		goto out2;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 98b9bff..3c5edf2 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3659,12 +3659,16 @@ void ext4_truncate(struct inode *inode)
+ 	if (inode->i_size == 0 && !test_opt(inode->i_sb, NO_AUTO_DA_ALLOC))
+ 		ext4_set_inode_state(inode, EXT4_STATE_DA_ALLOC_CLOSE);
+ 
++	/* Wait all existing dio workers, newcomers will block on i_mutex */
++	ext4_inode_block_unlocked_dio(inode);
++	inode_dio_wait(inode);
++
+ 	if (ext4_has_inline_data(inode)) {
+ 		int has_inline = 1;
+ 
+ 		ext4_inline_data_truncate(inode, &has_inline);
+ 		if (has_inline)
+-			return;
++			goto out_resume;
  	}
+ 
+ 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+@@ -3675,7 +3679,7 @@ void ext4_truncate(struct inode *inode)
+ 	handle = ext4_journal_start(inode, EXT4_HT_TRUNCATE, credits);
+ 	if (IS_ERR(handle)) {
+ 		ext4_std_error(inode->i_sb, PTR_ERR(handle));
+-		return;
++		goto out_resume;
+ 	}
+ 
+ 	if (inode->i_size & (inode->i_sb->s_blocksize - 1))
+@@ -3722,6 +3726,8 @@ out_stop:
+ 	ext4_mark_inode_dirty(handle, inode);
+ 	ext4_journal_stop(handle);
+ 
++out_resume:
++	ext4_inode_resume_unlocked_dio(inode);
+ 	trace_ext4_truncate_exit(inode);
+ }
  
 -- 
 1.7.12.rc0.22.gcdd159b
-
