@@ -1,45 +1,189 @@
-From: Felipe Monteiro de Carvalho <felipemonteiro.carvalho@gmail.com>
-Subject: Re: Beginner questions about ext4
-Date: Tue, 16 Jul 2013 08:14:26 +0200
-Message-ID: <CACyNnZOgfC+BqvULLSoyo=ZZDaRtS8ydpOm9ZCZ3VerMkPdA0w@mail.gmail.com>
-References: <loom.20130612T140739-743@post.gmane.org>
-	<loom.20130623T082353-563@post.gmane.org>
-	<20130623115953.GA16193@thunk.org>
-	<CACyNnZOkmpkTtDU_-6D9iC3aKOnP4n-XoO1_XJq=Hn2=BnEQYQ@mail.gmail.com>
-	<20130715134357.GA26359@thunk.org>
-	<CACyNnZPnzEbcFj69+fGjm1rkLay51WTXFMqr25AOzY3vtvegpw@mail.gmail.com>
-	<20130715163720.GC26359@thunk.org>
-	<CACyNnZMxN7p9k0UOFLNmKL6sV0k+grNh85UpPJVyHck9pA7M5w@mail.gmail.com>
-	<20130715181037.GD26359@thunk.org>
-	<CACyNnZN7jGKYp5P87+OYJzAa-iVWMvBSujBh==A=w642RFDUvQ@mail.gmail.com>
-	<20130715185953.GE26359@thunk.org>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH] e2fsck: detect invalid extents at the end of an extent-block
+Date: Tue, 16 Jul 2013 18:24:50 +0400
+Message-ID: <87k3kqa8gd.fsf@openvz.org>
+References: <20130403190841.GA16276@fury.redhat.com> <51AE61FB.8080402@redhat.com> <20130607033934.GB7555@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: David Jeffery <djeffery@redhat.com>, linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f176.google.com ([209.85.192.176]:41147 "EHLO
-	mail-pd0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751931Ab3GPGO1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Jul 2013 02:14:27 -0400
-Received: by mail-pd0-f176.google.com with SMTP id t12so318626pdi.7
-        for <linux-ext4@vger.kernel.org>; Mon, 15 Jul 2013 23:14:26 -0700 (PDT)
-In-Reply-To: <20130715185953.GE26359@thunk.org>
+Received: from mail-lb0-f176.google.com ([209.85.217.176]:47588 "EHLO
+	mail-lb0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932351Ab3GPOYz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Jul 2013 10:24:55 -0400
+Received: by mail-lb0-f176.google.com with SMTP id z5so641343lbh.21
+        for <linux-ext4@vger.kernel.org>; Tue, 16 Jul 2013 07:24:53 -0700 (PDT)
+In-Reply-To: <20130607033934.GB7555@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-wow, that was a genial catch, thank you very much =)
+On Thu, 6 Jun 2013 23:39:34 -0400, Theodore Ts'o <tytso@mit.edu> wrote:
+> Thanks for the review.  I took your changes, and added a bit more code
+> cleanup.
+> 
+> Here's the version I ultimately checked into my tree.
+This patch cause regression
+TESTCASE:
+#!/bin/bash
 
-With this tip I managed to find what was wrong in the code and then
-fixed some other stuff and now it seams that my ext4 reader is fully
-working correctly =D
+IMG=./IMG
+MNT=/mnt
+dd if=/dev/zero of=$IMG bs=1M count=16
+mkfs.ext4 -b4096 -F $IMG
+mount $IMG $MNT -oloop || exit 1
+fallocate -n -l $((1024*1024*2)) $MNT/f1
 
-It did come to my mind the size of group descriptors many days ago,
-but I had supposed that the _hi elements would be filled with zeroes,
-not that they would be completely removed.
-
-Also good to know about debugfs and dumpe2fs
-
-thanks again for all the help and sorry for any disturbance, =)
--- 
-Felipe Monteiro de Carvalho
+for ((i=0;i<4;i++))
+do
+    dd if=/dev/zero of=$MNT/f1 bs=4k count=1 seek=$((i*100)) conv=notrunc
+done
+sync
+filefrag -v $MNT/f1
+umount $MNT
+e2fsck -f -n $IMG
+ 
+> 
+> 						- Ted
+> 
+> commit d3f32c2db8f11c87aa7939d78e7eb4c373f7034f
+> Author: David Jeffery <djeffery@redhat.com>
+> Date:   Thu Jun 6 20:04:33 2013 -0400
+> 
+>     e2fsck: detect invalid extents at the end of an extent-block
+>     
+>     e2fsck does not detect extents which are outside their location in the
+>     extent tree.  This can result in a bad extent at the end of an extent-block
+>     not being detected.
+>     
+>     From a part of a dump_extents output:
+>     
+>      1/ 2  37/ 68 143960 - 146679 123826181               2720
+>      2/ 2   1/  2 143960 - 146679 123785816 - 123788535   2720
+>      2/ 2   2/  2 146680 - 147583 123788536 - 123789439    904 Uninit <-bad extent
+>      1/ 2  38/ 68 146680 - 149391 123826182               2712
+>      2/ 2   1/  2 146680 - 147583     18486 -     19389    904
+>      2/ 2   2/  2 147584 - 149391 123789440 - 123791247   1808
+>     
+>     e2fsck does not detect this bad extent which both overlaps another, valid
+>     extent, and is invalid by being beyond the end of the extent above it in
+>     the tree.
+>     
+>     This patch modifies e2fsck to detect this invalid extent and remove it.
+>     
+>     Signed-off-by: David Jeffery <djeffery@redhat.com>
+>     Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+>     Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+> 
+> diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+> index de00638..af9afe3 100644
+> --- a/e2fsck/pass1.c
+> +++ b/e2fsck/pass1.c
+> @@ -1760,11 +1760,11 @@ void e2fsck_clear_inode(e2fsck_t ctx, ext2_ino_t ino,
+>  
+>  static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
+>  			     struct process_block_struct *pb,
+> -			     blk64_t start_block,
+> +			     blk64_t start_block, blk64_t end_block,
+>  			     ext2_extent_handle_t ehandle)
+>  {
+>  	struct ext2fs_extent	extent;
+> -	blk64_t			blk;
+> +	blk64_t			blk, last_lblk;
+>  	e2_blkcnt_t		blockcnt;
+>  	unsigned int		i;
+>  	int			is_dir, is_leaf;
+> @@ -1780,6 +1780,7 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
+>  	while (!pctx->errcode && info.num_entries-- > 0) {
+>  		is_leaf = extent.e_flags & EXT2_EXTENT_FLAGS_LEAF;
+>  		is_dir = LINUX_S_ISDIR(pctx->inode->i_mode);
+> +		last_lblk = extent.e_lblk + extent.e_len - 1;
+>  
+>  		problem = 0;
+>  		if (extent.e_pblk == 0 ||
+> @@ -1788,6 +1789,8 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
+>  			problem = PR_1_EXTENT_BAD_START_BLK;
+>  		else if (extent.e_lblk < start_block)
+>  			problem = PR_1_OUT_OF_ORDER_EXTENTS;
+> +		else if (end_block && last_lblk > end_block)
+> +			problem = PR_1_EXTENT_END_OUT_OF_BOUNDS;
+>  		else if (is_leaf && extent.e_len == 0)
+>  			problem = PR_1_EXTENT_LENGTH_ZERO;
+>  		else if (is_leaf &&
+> @@ -1822,10 +1825,9 @@ report_problem:
+>  		}
+>  
+>  		if (!is_leaf) {
+> -			blk64_t lblk;
+> +			blk64_t lblk = extent.e_lblk;
+>  
+>  			blk = extent.e_pblk;
+> -			lblk = extent.e_lblk;
+>  			pctx->errcode = ext2fs_extent_get(ehandle,
+>  						  EXT2_EXTENT_DOWN, &extent);
+>  			if (pctx->errcode) {
+> @@ -1847,7 +1849,8 @@ report_problem:
+>  				if (fix_problem(ctx, problem, pctx))
+>  					ext2fs_extent_fix_parents(ehandle);
+>  			}
+> -			scan_extent_node(ctx, pctx, pb, extent.e_lblk, ehandle);
+> +			scan_extent_node(ctx, pctx, pb, extent.e_lblk,
+> +					 last_lblk, ehandle);
+>  			if (pctx->errcode)
+>  				return;
+>  			pctx->errcode = ext2fs_extent_get(ehandle,
+> @@ -1928,10 +1931,10 @@ report_problem:
+>  		if (is_dir && extent.e_len > 0)
+>  			pb->last_db_block = blockcnt - 1;
+>  		pb->previous_block = extent.e_pblk + extent.e_len - 1;
+> -		start_block = pb->last_block = extent.e_lblk + extent.e_len - 1;
+> +		start_block = pb->last_block = last_lblk;
+>  		if (is_leaf && !is_dir &&
+>  		    !(extent.e_flags & EXT2_EXTENT_FLAGS_UNINIT))
+> -			pb->last_init_lblock = extent.e_lblk + extent.e_len - 1;
+> +			pb->last_init_lblock = last_lblk;
+>  	next:
+>  		pctx->errcode = ext2fs_extent_get(ehandle,
+>  						  EXT2_EXTENT_NEXT_SIB,
+> @@ -1967,7 +1970,7 @@ static void check_blocks_extents(e2fsck_t ctx, struct problem_context *pctx,
+>  		ctx->extent_depth_count[info.max_depth]++;
+>  	}
+>  
+> -	scan_extent_node(ctx, pctx, pb, 0, ehandle);
+> +	scan_extent_node(ctx, pctx, pb, 0, 0, ehandle);
+>  	if (pctx->errcode &&
+>  	    fix_problem(ctx, PR_1_EXTENT_ITERATE_FAILURE, pctx)) {
+>  		pb->num_blocks = 0;
+> diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+> index 05ef626..6d03765 100644
+> --- a/e2fsck/problem.c
+> +++ b/e2fsck/problem.c
+> @@ -954,6 +954,12 @@ static struct e2fsck_problem problem_table[] = {
+>  	     "Logical start %b does not match logical start %c at next level.  "),
+>  	  PROMPT_FIX, 0 },
+>  
+> +	/* Extent end is out of bounds for the tree */
+> +	{ PR_1_EXTENT_END_OUT_OF_BOUNDS,
+> +	  N_("@i %i, end of extent exceeds allowed value\n\t(logical @b %c, physical @b %b, len %N)\n"),
+> +	  PROMPT_CLEAR, 0 },
+> +
+> +
+>  	/* Pass 1b errors */
+>  
+>  	/* Pass 1B: Rescan for duplicate/bad blocks */
+> diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+> index aed524d..b578678 100644
+> --- a/e2fsck/problem.h
+> +++ b/e2fsck/problem.h
+> @@ -561,6 +561,7 @@ struct problem_context {
+>  /* Index start doesn't match start of next extent down */
+>  #define PR_1_EXTENT_INDEX_START_INVALID	0x01006D
+>  
+> +#define PR_1_EXTENT_END_OUT_OF_BOUNDS	0x01006E
+>  /*
+>   * Pass 1b errors
+>   */
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
