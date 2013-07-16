@@ -1,64 +1,89 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: don't show usrquota/grpquota twice in /proc/mounts
-Date: Tue, 16 Jul 2013 17:18:01 +0200
-Message-ID: <20130716151801.GD25632@quack.suse.cz>
-References: <1373583305-29126-1-git-send-email-tytso@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	stable@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <stable-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1373583305-29126-1-git-send-email-tytso@mit.edu>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 2/5] ext4: print the block number of invalid extent tree blocks
+Date: Tue, 16 Jul 2013 11:18:00 -0400
+Message-ID: <1373987883-4466-3-git-send-email-tytso@mit.edu>
+References: <1373987883-4466-1-git-send-email-tytso@mit.edu>
+Cc: Zheng Liu <gnehzuil.liu@gmail.com>, Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:38264 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932447Ab3GPPSH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 16 Jul 2013 11:18:07 -0400
+In-Reply-To: <1373987883-4466-1-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 11-07-13 18:55:05, Ted Tso wrote:
-> We now print mount options in a generic fashion in
-> ext4_show_options(), so we shouldn't be explicitly printing the
-> {usr,grp}quota options in ext4_show_quota_options().
-> 
-> Without this patch, /proc/mounts can look like this:
-> 
->  /dev/vdb /vdb ext4 rw,relatime,quota,usrquota,data=ordered,usrquota 0 0
->                                       ^^^^^^^^              ^^^^^^^^
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: stable@vger.kernel.org
-  Looks good. You can add:
-Reviewed-by: Jan Kara <jack@suse.cz>
+When we find an invalid extent tree block, report the block number of
+the bad block for debugging purposes.
 
-								Honza
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/extents.c | 24 ++++++++++++------------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
 
-> ---
->  fs/ext4/super.c | 6 ------
->  1 file changed, 6 deletions(-)
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 8862d4d..bca26f3 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1702,12 +1702,6 @@ static inline void ext4_show_quota_options(struct seq_file *seq,
->  
->  	if (sbi->s_qf_names[GRPQUOTA])
->  		seq_printf(seq, ",grpjquota=%s", sbi->s_qf_names[GRPQUOTA]);
-> -
-> -	if (test_opt(sb, USRQUOTA))
-> -		seq_puts(seq, ",usrquota");
-> -
-> -	if (test_opt(sb, GRPQUOTA))
-> -		seq_puts(seq, ",grpquota");
->  #endif
->  }
->  
-> -- 
-> 1.7.12.rc0.22.gcdd159b
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index dd422db..ba58815 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -407,7 +407,7 @@ static int ext4_valid_extent_entries(struct inode *inode,
+ 
+ static int __ext4_ext_check(const char *function, unsigned int line,
+ 			    struct inode *inode, struct ext4_extent_header *eh,
+-			    int depth)
++			    int depth, ext4_fsblk_t pblk)
+ {
+ 	const char *error_msg;
+ 	int max = 0;
+@@ -447,21 +447,21 @@ static int __ext4_ext_check(const char *function, unsigned int line,
+ 
+ corrupted:
+ 	ext4_error_inode(inode, function, line, 0,
+-			"bad header/extent: %s - magic %x, "
+-			"entries %u, max %u(%u), depth %u(%u)",
+-			error_msg, le16_to_cpu(eh->eh_magic),
+-			le16_to_cpu(eh->eh_entries), le16_to_cpu(eh->eh_max),
+-			max, le16_to_cpu(eh->eh_depth), depth);
+-
++			 "pblk %llu bad header/extent: %s - magic %x, "
++			 "entries %u, max %u(%u), depth %u(%u)",
++			 (unsigned long long) pblk, error_msg,
++			 le16_to_cpu(eh->eh_magic),
++			 le16_to_cpu(eh->eh_entries), le16_to_cpu(eh->eh_max),
++			 max, le16_to_cpu(eh->eh_depth), depth);
+ 	return -EIO;
+ }
+ 
+-#define ext4_ext_check(inode, eh, depth)	\
+-	__ext4_ext_check(__func__, __LINE__, inode, eh, depth)
++#define ext4_ext_check(inode, eh, depth, pblk)			\
++	__ext4_ext_check(__func__, __LINE__, (inode), (eh), (depth), (pblk))
+ 
+ int ext4_ext_check_inode(struct inode *inode)
+ {
+-	return ext4_ext_check(inode, ext_inode_hdr(inode), ext_depth(inode));
++	return ext4_ext_check(inode, ext_inode_hdr(inode), ext_depth(inode), 0);
+ }
+ 
+ static struct buffer_head *
+@@ -484,7 +484,7 @@ __read_extent_tree_block(const char *function, unsigned int line,
+ 	if (buffer_verified(bh))
+ 		return bh;
+ 	err = __ext4_ext_check(function, line, inode,
+-			       ext_block_hdr(bh), depth);
++			       ext_block_hdr(bh), depth, pblk);
+ 	if (err)
+ 		goto errout;
+ 	set_buffer_verified(bh);
+@@ -2775,7 +2775,7 @@ again:
+ 		path[0].p_hdr = ext_inode_hdr(inode);
+ 		i = 0;
+ 
+-		if (ext4_ext_check(inode, path[0].p_hdr, depth)) {
++		if (ext4_ext_check(inode, path[0].p_hdr, depth, 0)) {
+ 			err = -EIO;
+ 			goto out;
+ 		}
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.7.12.rc0.22.gcdd159b
+
