@@ -1,53 +1,42 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: block direct I/O writes during ext4_truncate
-Date: Tue, 16 Jul 2013 12:49:42 -0400
-Message-ID: <20130716164942.GA6002@thunk.org>
-References: <1373861479-15136-1-git-send-email-tytso@mit.edu>
- <20130716154658.GE25632@quack.suse.cz>
+From: Dave Jones <davej@redhat.com>
+Subject: ext4_da_release_space:1333: ext4_da_release_space: ino 12, to_free 1
+ with only 0 reserved data  blocks
+Date: Tue, 16 Jul 2013 16:25:33 -0400
+Message-ID: <20130716202533.GA16061@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	stable@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:38307 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932889Ab3GPQtq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 16 Jul 2013 12:49:46 -0400
+Cc: linux-ext4@vger.kernel.org
+To: Linux Kernel <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20130716154658.GE25632@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jul 16, 2013 at 05:46:58PM +0200, Jan Kara wrote:
-> and ext4_setattr() does (again under i_mutex):
->                                         ext4_inode_block_unlocked_dio(inode);
->                                         inode_dio_wait(inode);
->                                         ext4_inode_resume_unlocked_dio(inode);
+I've seen this happen a few times this week..
 
-Ah, I missed this; thanks for pointing this out.
-
-> So either DIO gets i_mutex first and then ext4_setattr() waits for it to
-> complete, or truncate completes before unlocked DIO is able to get & drop
-> i_mutex.
-> 
-> OTOH unlocked DIO *read* might be vulnerable to a race with truncate. That
-> never acquires i_mutex so if the DIO read arrives after ext4_setattr() goes
-> through inode_dio_wait(), we can have the read and truncate racing and read
-> possibly submitting read of a just truncated block (which can get
-> reallocated in theory while the IO is running).
-> 
-> So something like what you do in the patch is likely needed, just the
-> justification is somewhat different and you should also rip out / adjust
-> the other synchronizations we have in ext4_setattr(), ext4_ext_direct_IO()
-> and ext4_ind_direct_IO().
-
-Ok, I'll drop my current patch for now, and revisit this when I have a
-bit more time.  I agree with your analysis, but fortunately it sounds
-like this race is going to be pretty hard to hit in practice ---
-especially, since with the journal enabled, we won't allow the block
-to get reused until the next commit boundary.  The situation where we
-would need to worry would be dioread_nolock combined with no journal
-mode.
-
-						- Ted
+EXT4-fs (sdb1): mounted filesystem with ordered data mode. Opts: (null)
+EXT4-fs warning (device sdb1): ext4_da_release_space:1333: ext4_da_release_space: ino 12, to_free 1 with only 0 reserved data  blocks
+------------[ cut here ]------------
+WARNING: CPU: 3 PID: 798 at fs/ext4/inode.c:1334 ext4_da_invalidatepage+0x39e/0x3c0()
+Modules linked in: btrfs snd_hda_codec_realtek xor snd_hda_intel snd_hda_codec snd_pcm raid6_pq libcrc32c zlib_deflate snd_pag e_alloc snd_timer edac_core snd pcspkr serio_raw soundcore r8169 mii sr_mod cdrom pata_atiixp radeon backlight drm_kms_helper ttm
+CPU: 3 PID: 798 Comm: fsx Not tainted 3.11.0-rc1+ #12
+Hardware name: Gigabyte Technology Co., Ltd. GA-MA78GM-S2H/GA-MA78GM-S2H, BIOS F12a 04/23/2010
+ ffffffff81a1bec7 ffff880126c81c18 ffffffff816b8a79 0000000000000000
+ ffff880126c81c50 ffffffff81043efc ffff88010b753020 0000000000000002
+ ffff88011bc237b0 ffff88011bc237b0 ffffea00045fbe00 ffff880126c81c60
+Call Trace:
+ [<ffffffff816b8a79>] dump_stack+0x4e/0x82
+ [<ffffffff81043efc>] warn_slowpath_common+0x8c/0xc0
+ [<ffffffff81043fea>] warn_slowpath_null+0x1a/0x20
+ [<ffffffff8124f1ae>] ext4_da_invalidatepage+0x39e/0x3c0
+ [<ffffffff81152b6e>] truncate_inode_page+0x8e/0x90
+ [<ffffffff81152f0a>] truncate_inode_pages_range+0x35a/0x650
+ [<ffffffff81153272>] truncate_pagecache+0x52/0x80
+ [<ffffffff81255f1d>] ext4_setattr+0x33d/0x840
+ [<ffffffff811d90a8>] notify_change+0x1d8/0x350
+ [<ffffffff811b91e9>] do_truncate+0x69/0x90
+ [<ffffffff811b953e>] do_sys_ftruncate.constprop.17+0x10e/0x160
+ [<ffffffff811b95ce>] SyS_ftruncate+0xe/0x10
+ [<ffffffff816ca8d4>] tracesys+0xdd/0xe2
+---[ end trace 267735bac62efc6a ]---
+EXT4-fs warning (device sdb1): ext4_da_release_space:1333: ext4_da_release_space: ino 12, to_free 1 with only 0 reserved data blocks
