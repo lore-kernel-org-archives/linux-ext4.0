@@ -1,89 +1,189 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/5] ext4: print the block number of invalid extent tree blocks
-Date: Tue, 16 Jul 2013 11:18:00 -0400
-Message-ID: <1373987883-4466-3-git-send-email-tytso@mit.edu>
+Subject: [PATCH 1/5] ext4: refactor code to read the extent tree block
+Date: Tue, 16 Jul 2013 11:17:59 -0400
+Message-ID: <1373987883-4466-2-git-send-email-tytso@mit.edu>
 References: <1373987883-4466-1-git-send-email-tytso@mit.edu>
 Cc: Zheng Liu <gnehzuil.liu@gmail.com>, Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:38264 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:38267 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932447Ab3GPPSH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S932827Ab3GPPSH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 16 Jul 2013 11:18:07 -0400
 In-Reply-To: <1373987883-4466-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When we find an invalid extent tree block, report the block number of
-the bad block for debugging purposes.
+Refactor out the code needed to read the extent tree block into a
+single read_extent_tree_block() function.  In addition to simplifying
+the code, it also makes sure that we call the ext4_ext_load_extent
+tracepoint whenever we need to read an extent tree block from disk.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- fs/ext4/extents.c | 24 ++++++++++++------------
- 1 file changed, 12 insertions(+), 12 deletions(-)
+ fs/ext4/extents.c | 97 ++++++++++++++++++++++++-------------------------------
+ 1 file changed, 43 insertions(+), 54 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index dd422db..ba58815 100644
+index a618738..dd422db 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -407,7 +407,7 @@ static int ext4_valid_extent_entries(struct inode *inode,
- 
- static int __ext4_ext_check(const char *function, unsigned int line,
- 			    struct inode *inode, struct ext4_extent_header *eh,
--			    int depth)
-+			    int depth, ext4_fsblk_t pblk)
- {
- 	const char *error_msg;
- 	int max = 0;
-@@ -447,21 +447,21 @@ static int __ext4_ext_check(const char *function, unsigned int line,
- 
- corrupted:
- 	ext4_error_inode(inode, function, line, 0,
--			"bad header/extent: %s - magic %x, "
--			"entries %u, max %u(%u), depth %u(%u)",
--			error_msg, le16_to_cpu(eh->eh_magic),
--			le16_to_cpu(eh->eh_entries), le16_to_cpu(eh->eh_max),
--			max, le16_to_cpu(eh->eh_depth), depth);
--
-+			 "pblk %llu bad header/extent: %s - magic %x, "
-+			 "entries %u, max %u(%u), depth %u(%u)",
-+			 (unsigned long long) pblk, error_msg,
-+			 le16_to_cpu(eh->eh_magic),
-+			 le16_to_cpu(eh->eh_entries), le16_to_cpu(eh->eh_max),
-+			 max, le16_to_cpu(eh->eh_depth), depth);
- 	return -EIO;
+@@ -464,25 +464,39 @@ int ext4_ext_check_inode(struct inode *inode)
+ 	return ext4_ext_check(inode, ext_inode_hdr(inode), ext_depth(inode));
  }
  
--#define ext4_ext_check(inode, eh, depth)	\
--	__ext4_ext_check(__func__, __LINE__, inode, eh, depth)
-+#define ext4_ext_check(inode, eh, depth, pblk)			\
-+	__ext4_ext_check(__func__, __LINE__, (inode), (eh), (depth), (pblk))
- 
- int ext4_ext_check_inode(struct inode *inode)
+-static int __ext4_ext_check_block(const char *function, unsigned int line,
+-				  struct inode *inode,
+-				  struct ext4_extent_header *eh,
+-				  int depth,
+-				  struct buffer_head *bh)
++static struct buffer_head *
++__read_extent_tree_block(const char *function, unsigned int line,
++			 struct inode *inode, ext4_fsblk_t pblk, int depth)
  {
--	return ext4_ext_check(inode, ext_inode_hdr(inode), ext_depth(inode));
-+	return ext4_ext_check(inode, ext_inode_hdr(inode), ext_depth(inode), 0);
- }
+-	int ret;
++	struct buffer_head		*bh;
++	int				err;
  
- static struct buffer_head *
-@@ -484,7 +484,7 @@ __read_extent_tree_block(const char *function, unsigned int line,
++	bh = sb_getblk(inode->i_sb, pblk);
++	if (unlikely(!bh))
++		return ERR_PTR(-ENOMEM);
++
++	if (!bh_uptodate_or_lock(bh)) {
++		trace_ext4_ext_load_extent(inode, pblk, _RET_IP_);
++		err = bh_submit_read(bh);
++		if (err < 0)
++			goto errout;
++	}
  	if (buffer_verified(bh))
- 		return bh;
- 	err = __ext4_ext_check(function, line, inode,
--			       ext_block_hdr(bh), depth);
-+			       ext_block_hdr(bh), depth, pblk);
- 	if (err)
- 		goto errout;
+-		return 0;
+-	ret = ext4_ext_check(inode, eh, depth);
+-	if (ret)
+-		return ret;
++		return bh;
++	err = __ext4_ext_check(function, line, inode,
++			       ext_block_hdr(bh), depth);
++	if (err)
++		goto errout;
  	set_buffer_verified(bh);
-@@ -2775,7 +2775,7 @@ again:
- 		path[0].p_hdr = ext_inode_hdr(inode);
- 		i = 0;
+-	return ret;
++	return bh;
++errout:
++	put_bh(bh);
++	return ERR_PTR(err);
++
+ }
  
--		if (ext4_ext_check(inode, path[0].p_hdr, depth)) {
-+		if (ext4_ext_check(inode, path[0].p_hdr, depth, 0)) {
- 			err = -EIO;
- 			goto out;
+-#define ext4_ext_check_block(inode, eh, depth, bh)	\
+-	__ext4_ext_check_block(__func__, __LINE__, inode, eh, depth, bh)
++#define read_extent_tree_block(inode, pblk, depth)		\
++	__read_extent_tree_block(__func__, __LINE__, (inode), (pblk), (depth))
+ 
+ #ifdef EXT_DEBUG
+ static void ext4_ext_show_path(struct inode *inode, struct ext4_ext_path *path)
+@@ -748,20 +762,12 @@ ext4_ext_find_extent(struct inode *inode, ext4_lblk_t block,
+ 		path[ppos].p_depth = i;
+ 		path[ppos].p_ext = NULL;
+ 
+-		bh = sb_getblk(inode->i_sb, path[ppos].p_block);
+-		if (unlikely(!bh)) {
+-			ret = -ENOMEM;
++		bh = read_extent_tree_block(inode, path[ppos].p_block, --i);
++		if (IS_ERR(bh)) {
++			ret = PTR_ERR(bh);
+ 			goto err;
  		}
+-		if (!bh_uptodate_or_lock(bh)) {
+-			trace_ext4_ext_load_extent(inode, block,
+-						path[ppos].p_block);
+-			ret = bh_submit_read(bh);
+-			if (ret < 0) {
+-				put_bh(bh);
+-				goto err;
+-			}
+-		}
++
+ 		eh = ext_block_hdr(bh);
+ 		ppos++;
+ 		if (unlikely(ppos > depth)) {
+@@ -773,11 +779,6 @@ ext4_ext_find_extent(struct inode *inode, ext4_lblk_t block,
+ 		}
+ 		path[ppos].p_bh = bh;
+ 		path[ppos].p_hdr = eh;
+-		i--;
+-
+-		ret = ext4_ext_check_block(inode, eh, i, bh);
+-		if (ret < 0)
+-			goto err;
+ 	}
+ 
+ 	path[ppos].p_depth = i;
+@@ -1412,29 +1413,21 @@ got_index:
+ 	ix++;
+ 	block = ext4_idx_pblock(ix);
+ 	while (++depth < path->p_depth) {
+-		bh = sb_bread(inode->i_sb, block);
+-		if (bh == NULL)
+-			return -EIO;
+-		eh = ext_block_hdr(bh);
+ 		/* subtract from p_depth to get proper eh_depth */
+-		if (ext4_ext_check_block(inode, eh,
+-					 path->p_depth - depth, bh)) {
+-			put_bh(bh);
+-			return -EIO;
+-		}
++		bh = read_extent_tree_block(inode, block,
++					    path->p_depth - depth);
++		if (IS_ERR(bh))
++			return PTR_ERR(bh);
++		eh = ext_block_hdr(bh);
+ 		ix = EXT_FIRST_INDEX(eh);
+ 		block = ext4_idx_pblock(ix);
+ 		put_bh(bh);
+ 	}
+ 
+-	bh = sb_bread(inode->i_sb, block);
+-	if (bh == NULL)
+-		return -EIO;
++	bh = read_extent_tree_block(inode, block, path->p_depth - depth);
++	if (IS_ERR(bh))
++		return PTR_ERR(bh);
+ 	eh = ext_block_hdr(bh);
+-	if (ext4_ext_check_block(inode, eh, path->p_depth - depth, bh)) {
+-		put_bh(bh);
+-		return -EIO;
+-	}
+ 	ex = EXT_FIRST_EXTENT(eh);
+ found_extent:
+ 	*logical = le32_to_cpu(ex->ee_block);
+@@ -2829,10 +2822,11 @@ again:
+ 			ext_debug("move to level %d (block %llu)\n",
+ 				  i + 1, ext4_idx_pblock(path[i].p_idx));
+ 			memset(path + i + 1, 0, sizeof(*path));
+-			bh = sb_bread(sb, ext4_idx_pblock(path[i].p_idx));
+-			if (!bh) {
++			bh = read_extent_tree_block(inode,
++				ext4_idx_pblock(path[i].p_idx), depth - i - 1);
++			if (IS_ERR(bh)) {
+ 				/* should we reset i_size? */
+-				err = -EIO;
++				err = PTR_ERR(bh);
+ 				break;
+ 			}
+ 			/* Yield here to deal with large extent trees.
+@@ -2842,11 +2836,6 @@ again:
+ 				err = -EIO;
+ 				break;
+ 			}
+-			if (ext4_ext_check_block(inode, ext_block_hdr(bh),
+-							depth - i - 1, bh)) {
+-				err = -EIO;
+-				break;
+-			}
+ 			path[i + 1].p_bh = bh;
+ 
+ 			/* save actual number of indexes since this
 -- 
 1.7.12.rc0.22.gcdd159b
 
