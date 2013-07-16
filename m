@@ -1,68 +1,45 @@
-From: Ric Wheeler <ricwheeler@gmail.com>
-Subject: Re: Linux Plumbers IO & File System Micro-conference
-Date: Mon, 15 Jul 2013 17:22:46 -0400
-Message-ID: <51E46826.20709@gmail.com>
-References: <51E03AFB.1000000@gmail.com> <F0897B83F4BC10458936F08DADF233160F65F99416@MX02A.corp.emc.com>
+From: Felipe Monteiro de Carvalho <felipemonteiro.carvalho@gmail.com>
+Subject: Re: Beginner questions about ext4
+Date: Tue, 16 Jul 2013 08:14:26 +0200
+Message-ID: <CACyNnZOgfC+BqvULLSoyo=ZZDaRtS8ydpOm9ZCZ3VerMkPdA0w@mail.gmail.com>
+References: <loom.20130612T140739-743@post.gmane.org>
+	<loom.20130623T082353-563@post.gmane.org>
+	<20130623115953.GA16193@thunk.org>
+	<CACyNnZOkmpkTtDU_-6D9iC3aKOnP4n-XoO1_XJq=Hn2=BnEQYQ@mail.gmail.com>
+	<20130715134357.GA26359@thunk.org>
+	<CACyNnZPnzEbcFj69+fGjm1rkLay51WTXFMqr25AOzY3vtvegpw@mail.gmail.com>
+	<20130715163720.GC26359@thunk.org>
+	<CACyNnZMxN7p9k0UOFLNmKL6sV0k+grNh85UpPJVyHck9pA7M5w@mail.gmail.com>
+	<20130715181037.GD26359@thunk.org>
+	<CACyNnZN7jGKYp5P87+OYJzAa-iVWMvBSujBh==A=w642RFDUvQ@mail.gmail.com>
+	<20130715185953.GE26359@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
-	Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	linux-btrfs <linux-btrfs@vger.kernel.org>,
-	xfs-oss <xfs@oss.sgi.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	device-mapper development <dm-devel@redhat.com>,
-	IDE/ATA development list <linux-ide@vger.kernel.org>,
-	"anaconda-devel-list@redhat.com" <anaconda-devel-list@redhat.com>
-To: "faibish, sorin" <faibish_sorin@emc.com>
-Return-path: <linux-scsi-owner@vger.kernel.org>
-In-Reply-To: <F0897B83F4BC10458936F08DADF233160F65F99416@MX02A.corp.emc.com>
-Sender: linux-scsi-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pd0-f176.google.com ([209.85.192.176]:41147 "EHLO
+	mail-pd0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751931Ab3GPGO1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Jul 2013 02:14:27 -0400
+Received: by mail-pd0-f176.google.com with SMTP id t12so318626pdi.7
+        for <linux-ext4@vger.kernel.org>; Mon, 15 Jul 2013 23:14:26 -0700 (PDT)
+In-Reply-To: <20130715185953.GE26359@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 07/12/2013 01:42 PM, faibish, sorin wrote:
-> Can we have a discussion on Lustre client in the kernel? Thanks
->
-> ./Sorin
+wow, that was a genial catch, thank you very much =)
 
-I am not sure that we have that much to do for Lustre on the client side. Is 
-this a topic that would be of broad enough interest to include people outside of 
-the kernel developers?
+With this tip I managed to find what was wrong in the code and then
+fixed some other stuff and now it seams that my ext4 reader is fully
+working correctly =D
 
-thanks!
+It did come to my mind the size of group descriptors many days ago,
+but I had supposed that the _hi elements would be filled with zeroes,
+not that they would be completely removed.
 
-Ric
+Also good to know about debugfs and dumpe2fs
 
->
-> -----Original Message-----
-> From: linux-fsdevel-owner@vger.kernel.org [mailto:linux-fsdevel-owner@vger.kernel.org] On Behalf Of Ric Wheeler
-> Sent: Friday, July 12, 2013 1:21 PM
-> To: linux-scsi@vger.kernel.org; Linux FS Devel; linux-nfs@vger.kernel.org; linux-btrfs; xfs-oss; linux-ext4@vger.kernel.org; device-mapper development; IDE/ATA development list; anaconda-devel-list@redhat.com
-> Subject: Linux Plumbers IO & File System Micro-conference
->
->
-> Linux Plumbers has approved a file and storage microconference. The overview page is here:
->
-> http://wiki.linuxplumbersconf.org/2013:file_and_storage_systems
->
-> I would like to started gathering in ideas for topics. I have been approached already with a request to cover the copy_range work Zach Brown kicked off at LSF which I think is a great topic since it has impact throughout the stack, all the way up to applications programmers.
->
-> A similar request was made to give some time to non-volatile memory devices and the proposed "persistent memory" backed block device and persistent memory file system from Intel. That also seems to fall in nicely with the plumbers mission statement since it clearly will impact everything from the application on down through the kernel.
->
-> Last year, we had a good discussion on management of storage (anaconda, yast, libstoragemgt, etc) - that also might be worth giving updates on.
->
-> The instructions for submitting ideas will be updated later today at:
->
-> http://www.linuxplumbersconf.org/2013/submitting-topic/
->
-> If you have topics that you would like to add, wait until the instructions get posted at the link above. If you are impatient, feel free to email me directly (but probably best to drop the broad mailing lists from the reply).
->
-> Thanks!
->
-> Ric
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in the body of a message to majordomo@vger.kernel.org More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
-
+thanks again for all the help and sorry for any disturbance, =)
+-- 
+Felipe Monteiro de Carvalho
