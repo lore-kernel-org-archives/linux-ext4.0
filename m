@@ -1,39 +1,56 @@
 From: Dave Jones <davej@redhat.com>
-Subject: Re: ext4_da_release_space:1333: ext4_da_release_space: ino 12,
- to_free 1 with only 0 reserved data  blocks
-Date: Wed, 17 Jul 2013 10:52:18 -0400
-Message-ID: <20130717145218.GA27731@redhat.com>
-References: <20130716202533.GA16061@redhat.com>
- <20130717125322.GA29294@quack.suse.cz>
+Subject: kernel BUG at fs/ext4/namei.c:2572!
+Date: Wed, 17 Jul 2013 12:19:44 -0400
+Message-ID: <20130717161944.GA19405@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33485 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755476Ab3GQOw1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Jul 2013 10:52:27 -0400
+Cc: linux-ext4@vger.kernel.org
+To: Linux Kernel <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20130717125322.GA29294@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jul 17, 2013 at 02:53:22PM +0200, Jan Kara wrote:
- > On Tue 16-07-13 16:25:33, Dave Jones wrote:
- > > I've seen this happen a few times this week..
- >   Thanks for report! Was this when fuzzing or just normal desktop load?
- > What is inode with inode number 12 on your filesystem sdb1? What IO happens
- > to it? Apparently some delalloc accounting went wrong somewhere and it's
- > searching for a needle in a haystack unless we have more details...
+Seen while fuzzing..
 
-It was running this.. https://github.com/kernelslacker/io-tests/blob/master/setup.sh
-in a loop. After about 6 hours, that fell out.  It made it all the way through
-every test a few times, which is odd, as the test should be fairly deterministic.
-Ah, I wasn't capturing the fsx seed. I'll do that on the next run.
+kernel BUG at fs/ext4/namei.c:2572!
+invalid opcode: 0000 [#1] PREEMPT SMP DEBUG_PAGEALLOC
+Modules linked in: dlci bridge stp hidp cmtp kernelcapi l2tp_ppp l2tp_netlink l2tp_core sctp libcrc32c rfcomm tun fuse nfnetli
+nk can_raw ipt_ULOG can_bcm x25 scsi_transport_iscsi ipx p8023 p8022 appletalk phonet psnap vmw_vsock_vmci_transport af_key vmw_vmci rose vsock atm can netrom ax25 af_rxrpc ir
+da pppoe pppox ppp_generic slhc bluetooth nfc rfkill rds caif_socket caif crc_ccitt af_802154 llc2 llc snd_hda_codec_realtek snd_hda_intel snd_hda_codec serio_raw snd_pcm pcsp
+kr edac_core snd_page_alloc snd_timer snd soundcore r8169 mii sr_mod cdrom pata_atiixp radeon backlight drm_kms_helper ttm
+CPU: 1 PID: 1812571 Comm: trinity-child2 Not tainted 3.11.0-rc1+ #12
+Hardware name: Gigabyte Technology Co., Ltd. GA-MA78GM-S2H/GA-MA78GM-S2H, BIOS F12a 04/23/2010
+task: ffff88007dfe69a0 ti: ffff88010f7b6000 task.ti: ffff88010f7b6000
+RIP: 0010:[<ffffffff8125ce69>]  [<ffffffff8125ce69>] ext4_orphan_add+0x299/0x2b0
+RSP: 0018:ffff88010f7b7cf8  EFLAGS: 00010202
+RAX: 0000000000000000 RBX: ffff8800966d3020 RCX: 0000000000000000
+RDX: 0000000000000000 RSI: ffff88007dfe70b8 RDI: 0000000000000001
+RBP: ffff88010f7b7d40 R08: ffff880126a3c4e0 R09: ffff88010f7b7ca0
+R10: 0000000000000000 R11: 0000000000000000 R12: ffff8801271fd668
+R13: ffff8800966d2f78 R14: ffff88011d7089f0 R15: ffff88007dfe69a0
+FS:  00007f70441a3740(0000) GS:ffff88012a800000(0000) knlGS:00000000f77c96c0
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 0000000002834000 CR3: 0000000107964000 CR4: 00000000000007e0
+DR0: 0000000000780000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000600
+Stack:
+ 0000000000002000 00000020810b6dde 0000000000000000 ffff88011d46db00
+ ffff8800966d3020 ffff88011d7089f0 ffff88009c7f4c10 ffff88010f7b7f2c
+ ffff88007dfe69a0 ffff88010f7b7da8 ffffffff8125cfac ffff880100000004
+Call Trace:
+ [<ffffffff8125cfac>] ext4_tmpfile+0x12c/0x180
+ [<ffffffff811cba78>] path_openat+0x238/0x700
+ [<ffffffff8100afc4>] ? native_sched_clock+0x24/0x80
+ [<ffffffff811cc647>] do_filp_open+0x47/0xa0
+ [<ffffffff811db73f>] ? __alloc_fd+0xaf/0x200
+ [<ffffffff811ba2e4>] do_sys_open+0x124/0x210
+ [<ffffffff81010725>] ? syscall_trace_enter+0x25/0x290
+ [<ffffffff811ba3ee>] SyS_open+0x1e/0x20
+ [<ffffffff816ca8d4>] tracesys+0xdd/0xe2
+ [<ffffffff81001001>] ? start_thread_common.constprop.6+0x1/0xa0
+Code: 04 00 00 00 89 04 24 31 c0 e8 c4 77 04 00 e9 43 fe ff ff 66 25 00 d0 66 3d 00 80 0f 84 0e fe ff ff 83 7b 48 00 0f 84 04 fe ff ff <0f> 0b 49 8b 8c 24 50 07 00 00 e9 88 fe ff ff 0f 1f 84 00 00 00 
 
-Perhaps that will make it easier to reproduce.
- 
-	Dave
 
+2571         J_ASSERT((S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
+2572                   S_ISLNK(inode->i_mode)) || inode->i_nlink == 0);
