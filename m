@@ -1,35 +1,40 @@
-From: Dave Jones <davej@redhat.com>
-Subject: Re: ext4_da_release_space:1333: ext4_da_release_space: ino 12,
- to_free 1 with only 0 reserved data  blocks
-Date: Wed, 17 Jul 2013 17:42:35 -0400
-Message-ID: <20130717214235.GB12401@redhat.com>
-References: <20130716202533.GA16061@redhat.com>
- <20130717125322.GA29294@quack.suse.cz>
- <20130717145218.GA27731@redhat.com>
- <20130717213850.GA5025@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20130717213850.GA5025@quack.suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] ext4: Remove extent tree purging from ext4_da_page_release_reservation()
+Date: Thu, 18 Jul 2013 00:10:15 +0200
+Message-ID: <1374099015-6829-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Ted Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:37134 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756419Ab3GQWKV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 17 Jul 2013 18:10:21 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 17, 2013 at 11:38:50PM +0200, Jan Kara wrote:
+ext4_da_page_release_reservation() gets called from
+ext4_da_invalidatepage(). This function is used when we are truncating
+page cache for punch hole or truncate operations. In either case these
+operations take care of removing extents from the extent tree. This is
+more efficient and the code in ext4_da_page_release_reservation() is
+actually buggy anyway. So just remove it.
 
- > > It was running this.. https://github.com/kernelslacker/io-tests/blob/master/setup.sh
- > > in a loop. After about 6 hours, that fell out.  It made it all the way through
- > > every test a few times, which is odd, as the test should be fairly deterministic.
- > > Ah, I wasn't capturing the fsx seed. I'll do that on the next run.
- >   So inode 12 was likely the file used by fsx. OK. Looking at the script
- > link, fsx is run as:
- >   /usr/local/bin/fsx -N 250000 -S0 foo &
- > so the seed is always 0. So it is a deterministic test and there must be
- > some race with writeback or something that is rarely triggered. Drat.
+CC: Zheng Liu <wenqing.lz@taobao.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/inode.c | 5 -----
+ 1 file changed, 5 deletions(-)
 
-S0 is special. it means 'use timeofday as seed'
-
-	Dave
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 0188e65..98a9972 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1388,11 +1388,6 @@ static void ext4_da_page_release_reservation(struct page *page,
+ 		curr_off = next_off;
+ 	} while ((bh = bh->b_this_page) != head);
+ 
+-	if (to_release) {
+-		lblk = page->index << (PAGE_CACHE_SHIFT - inode->i_blkbits);
+-		ext4_es_remove_extent(inode, lblk, to_release);
+-	}
