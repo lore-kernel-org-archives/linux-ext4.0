@@ -1,47 +1,35 @@
-From: Jan Kara <jack@suse.cz>
+From: Dave Jones <davej@redhat.com>
 Subject: Re: ext4_da_release_space:1333: ext4_da_release_space: ino 12,
  to_free 1 with only 0 reserved data  blocks
-Date: Wed, 17 Jul 2013 23:38:50 +0200
-Message-ID: <20130717213850.GA5025@quack.suse.cz>
+Date: Wed, 17 Jul 2013 17:42:35 -0400
+Message-ID: <20130717214235.GB12401@redhat.com>
 References: <20130716202533.GA16061@redhat.com>
  <20130717125322.GA29294@quack.suse.cz>
  <20130717145218.GA27731@redhat.com>
+ <20130717213850.GA5025@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-	Linux Kernel <linux-kernel@vger.kernel.org>,
+Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
 	linux-ext4@vger.kernel.org
-To: Dave Jones <davej@redhat.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20130717145218.GA27731@redhat.com>
+In-Reply-To: <20130717213850.GA5025@quack.suse.cz>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed 17-07-13 10:52:18, Dave Jones wrote:
-> On Wed, Jul 17, 2013 at 02:53:22PM +0200, Jan Kara wrote:
->  > On Tue 16-07-13 16:25:33, Dave Jones wrote:
->  > > I've seen this happen a few times this week..
->  >   Thanks for report! Was this when fuzzing or just normal desktop load?
->  > What is inode with inode number 12 on your filesystem sdb1? What IO happens
->  > to it? Apparently some delalloc accounting went wrong somewhere and it's
->  > searching for a needle in a haystack unless we have more details...
-> 
-> It was running this.. https://github.com/kernelslacker/io-tests/blob/master/setup.sh
-> in a loop. After about 6 hours, that fell out.  It made it all the way through
-> every test a few times, which is odd, as the test should be fairly deterministic.
-> Ah, I wasn't capturing the fsx seed. I'll do that on the next run.
-  So inode 12 was likely the file used by fsx. OK. Looking at the script
-link, fsx is run as:
-  /usr/local/bin/fsx -N 250000 -S0 foo &
-so the seed is always 0. So it is a deterministic test and there must be
-some race with writeback or something that is rarely triggered. Drat.
+On Wed, Jul 17, 2013 at 11:38:50PM +0200, Jan Kara wrote:
 
-Umm, looking at the filesystems this tests, ext4 with 1 KB blocksize is
-likely the config which hits this (the accounting is more complex there) so
-it might be interesting to concentrace on this one.
+ > > It was running this.. https://github.com/kernelslacker/io-tests/blob/master/setup.sh
+ > > in a loop. After about 6 hours, that fell out.  It made it all the way through
+ > > every test a few times, which is odd, as the test should be fairly deterministic.
+ > > Ah, I wasn't capturing the fsx seed. I'll do that on the next run.
+ >   So inode 12 was likely the file used by fsx. OK. Looking at the script
+ > link, fsx is run as:
+ >   /usr/local/bin/fsx -N 250000 -S0 foo &
+ > so the seed is always 0. So it is a deterministic test and there must be
+ > some race with writeback or something that is rarely triggered. Drat.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+S0 is special. it means 'use timeofday as seed'
+
+	Dave
