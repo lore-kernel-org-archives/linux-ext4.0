@@ -1,64 +1,54 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: ext4_da_release_space:1333: ext4_da_release_space: ino 12,
- to_free 1 with only 0 reserved data  blocks
-Date: Wed, 17 Jul 2013 14:53:22 +0200
-Message-ID: <20130717125322.GA29294@quack.suse.cz>
-References: <20130716202533.GA16061@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Prevent massive fs corruption if verifying the
+ block bitmap fails
+Date: Wed, 17 Jul 2013 09:19:51 -0400
+Message-ID: <20130717131951.GC12908@thunk.org>
+References: <20130717020209.GB5785@blackbox.djwong.org>
+ <20130717030832.GB12908@thunk.org>
+ <20130717070900.GA5790@blackbox.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Dave Jones <davej@redhat.com>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:47661 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754533Ab3GQMxZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Jul 2013 08:53:25 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:38596 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753479Ab3GQNTz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 17 Jul 2013 09:19:55 -0400
 Content-Disposition: inline
-In-Reply-To: <20130716202533.GA16061@redhat.com>
+In-Reply-To: <20130717070900.GA5790@blackbox.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 16-07-13 16:25:33, Dave Jones wrote:
-> I've seen this happen a few times this week..
-  Thanks for report! Was this when fuzzing or just normal desktop load?
-What is inode with inode number 12 on your filesystem sdb1? What IO happens
-to it? Apparently some delalloc accounting went wrong somewhere and it's
-searching for a needle in a haystack unless we have more details...
+On Wed, Jul 17, 2013 at 12:09:00AM -0700, Darrick J. Wong wrote:
+> 
+> I have a question though -- ext4_init_inode_bitmap (and the block bitmap
+> equivalent) contain code to detect a corrupt block group descriptor and "seal"
+> it off by setting the inode/block's free counts to zero and writing 1s to the
+> bitmap.  Does it make more sense to keep doing that, or to hook that up to this
+> EXT4_MB_GRP_CORRUPT mechanism?
 
-								Honza
-> 
-> EXT4-fs (sdb1): mounted filesystem with ordered data mode. Opts: (null)
-> EXT4-fs warning (device sdb1): ext4_da_release_space:1333: ext4_da_release_space: ino 12, to_free 1 with only 0 reserved data  blocks
-> ------------[ cut here ]------------
-> WARNING: CPU: 3 PID: 798 at fs/ext4/inode.c:1334 ext4_da_invalidatepage+0x39e/0x3c0()
-> Modules linked in: btrfs snd_hda_codec_realtek xor snd_hda_intel snd_hda_codec snd_pcm raid6_pq libcrc32c zlib_deflate snd_pag e_alloc snd_timer edac_core snd pcspkr serio_raw soundcore r8169 mii sr_mod cdrom pata_atiixp radeon backlight drm_kms_helper ttm
-> CPU: 3 PID: 798 Comm: fsx Not tainted 3.11.0-rc1+ #12
-> Hardware name: Gigabyte Technology Co., Ltd. GA-MA78GM-S2H/GA-MA78GM-S2H, BIOS F12a 04/23/2010
->  ffffffff81a1bec7 ffff880126c81c18 ffffffff816b8a79 0000000000000000
->  ffff880126c81c50 ffffffff81043efc ffff88010b753020 0000000000000002
->  ffff88011bc237b0 ffff88011bc237b0 ffffea00045fbe00 ffff880126c81c60
-> Call Trace:
->  [<ffffffff816b8a79>] dump_stack+0x4e/0x82
->  [<ffffffff81043efc>] warn_slowpath_common+0x8c/0xc0
->  [<ffffffff81043fea>] warn_slowpath_null+0x1a/0x20
->  [<ffffffff8124f1ae>] ext4_da_invalidatepage+0x39e/0x3c0
->  [<ffffffff81152b6e>] truncate_inode_page+0x8e/0x90
->  [<ffffffff81152f0a>] truncate_inode_pages_range+0x35a/0x650
->  [<ffffffff81153272>] truncate_pagecache+0x52/0x80
->  [<ffffffff81255f1d>] ext4_setattr+0x33d/0x840
->  [<ffffffff811d90a8>] notify_change+0x1d8/0x350
->  [<ffffffff811b91e9>] do_truncate+0x69/0x90
->  [<ffffffff811b953e>] do_sys_ftruncate.constprop.17+0x10e/0x160
->  [<ffffffff811b95ce>] SyS_ftruncate+0xe/0x10
->  [<ffffffff816ca8d4>] tracesys+0xdd/0xe2
-> ---[ end trace 267735bac62efc6a ]---
-> EXT4-fs warning (device sdb1): ext4_da_release_space:1333: ext4_da_release_space: ino 12, to_free 1 with only 0 reserved data blocks
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+The only thing a I worry a bit about this what
+ext4_init_inode_bitmap() is doing is if the block group descriptor
+checksum is wrong, who's to say that the location of the inode bitmap
+is correct?  Maybe it has been set to overlap with some valid data
+block belonging to a directory, and by memset'ing the bh to zero and
+then marking it up to date, when you try to read the directory, it
+will get all zero's instead of the valid directory information.
+(Fortunately the code in question isn't marking the bh dirty; if it
+did, then it would guarantee the overwritting the directory or data
+block in question, where as if it is just in the buffer cache marked
+uptodate, the user might get lucky and the bh might get pushed out of
+memory.)
+
+What I would think is a better approach is to change the patch so that
+we have bits indicating an invalid block bitmap and an invalid
+inode/table bitmap, which disables block and inode allocations to that
+block group, respectively.
+
+We could just also set the inode/block's free counts to zero, but then
+we would need to audit all of the codepaths where we decrement the
+free count to make sure it never goes negative.  (We shold be doing
+that already, though.)
+
+					- Ted
