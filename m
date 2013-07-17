@@ -1,147 +1,63 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH] jbd2: Fix endian mixing problems in the checksumming code
-Date: Tue, 16 Jul 2013 19:00:02 -0700
-Message-ID: <20130717020002.GA5785@blackbox.djwong.org>
+Subject: [PATCH] ext4: Prevent massive fs corruption if verifying the block
+ bitmap fails
+Date: Tue, 16 Jul 2013 19:02:09 -0700
+Message-ID: <20130717020209.GB5785@blackbox.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4 <linux-ext4@vger.kernel.org>
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:49975 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:50531 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751221Ab3GQCAH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Jul 2013 22:00:07 -0400
+	with ESMTP id S1751221Ab3GQCCP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Jul 2013 22:02:15 -0400
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In the jbd2 checksumming code, explicitly declare separate variables with
-endianness information so that we don't get confused and screw things up again.
-Also fixes sparse warnings.
+The block bitmap verification code assumes that calling ext4_error() either
+panics the system or makes the fs readonly.  However, this is not always true:
+when 'errors=continue' is specified, an error is printed but we don't return
+any indication of error to the caller, which is (probably) the block allocator,
+which pretends that the crud we read in off the disk is a usable bitmap.  Yuck.
+
+A block bitmap that fails the check should at least return no bitmap to the
+caller.  The block allocator should be told to go look in a different group,
+but that's a separate issue.
+
+The easiest way to reproduce this is to modify bg_block_bitmap (on a ^flex_bg
+fs) to point to a block outside the block group; or you can create a
+metadata_csum filesystem and zero out the block bitmaps after copying files.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- fs/jbd2/commit.c   |    6 +++---
- fs/jbd2/journal.c  |    5 +++--
- fs/jbd2/recovery.c |   24 ++++++++++++------------
- 3 files changed, 18 insertions(+), 17 deletions(-)
+ fs/ext4/balloc.c |    8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 559bec1..cf2fc05 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -343,14 +343,14 @@ static void jbd2_block_tag_csum_set(journal_t *j, journal_block_tag_t *tag,
- 	struct page *page = bh->b_page;
- 	__u8 *addr;
- 	__u32 csum32;
-+	__be32 seq;
- 
- 	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
- 		return;
- 
--	sequence = cpu_to_be32(sequence);
-+	seq = cpu_to_be32(sequence);
- 	addr = kmap_atomic(page);
--	csum32 = jbd2_chksum(j, j->j_csum_seed, (__u8 *)&sequence,
--			     sizeof(sequence));
-+	csum32 = jbd2_chksum(j, j->j_csum_seed, (__u8 *)&seq, sizeof(seq));
- 	csum32 = jbd2_chksum(j, csum32, addr + offset_in_page(bh->b_data),
- 			     bh->b_size);
- 	kunmap_atomic(addr);
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 02c7ad9..5203264 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -130,9 +130,10 @@ int jbd2_verify_csum_type(journal_t *j, journal_superblock_t *sb)
- 	return sb->s_checksum_type == JBD2_CRC32C_CHKSUM;
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index ddd715e..b430afe 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -445,7 +445,10 @@ ext4_read_block_bitmap_nowait(struct super_block *sb, ext4_group_t block_group)
+ 	return bh;
+ verify:
+ 	ext4_validate_block_bitmap(sb, desc, block_group, bh);
+-	return bh;
++	if (buffer_verified(bh))
++		return bh;
++	put_bh(bh);
++	return NULL;
  }
  
--static __u32 jbd2_superblock_csum(journal_t *j, journal_superblock_t *sb)
-+static __be32 jbd2_superblock_csum(journal_t *j, journal_superblock_t *sb)
- {
--	__u32 csum, old_csum;
-+	__u32 csum;
-+	__be32 old_csum;
- 
- 	old_csum = sb->s_checksum;
- 	sb->s_checksum = 0;
-diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
-index d4851464..3929c50 100644
---- a/fs/jbd2/recovery.c
-+++ b/fs/jbd2/recovery.c
-@@ -178,7 +178,8 @@ static int jbd2_descr_block_csum_verify(journal_t *j,
- 					void *buf)
- {
- 	struct jbd2_journal_block_tail *tail;
--	__u32 provided, calculated;
-+	__be32 provided;
-+	__u32 calculated;
- 
- 	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
- 		return 1;
-@@ -190,8 +191,7 @@ static int jbd2_descr_block_csum_verify(journal_t *j,
- 	calculated = jbd2_chksum(j, j->j_csum_seed, buf, j->j_blocksize);
- 	tail->t_checksum = provided;
- 
--	provided = be32_to_cpu(provided);
--	return provided == calculated;
-+	return provided == cpu_to_be32(calculated);
+ /* Returns 0 on success, 1 on error */
+@@ -469,7 +472,8 @@ int ext4_wait_block_bitmap(struct super_block *sb, ext4_group_t block_group,
+ 	clear_buffer_new(bh);
+ 	/* Panic or remount fs read-only if block bitmap is invalid */
+ 	ext4_validate_block_bitmap(sb, desc, block_group, bh);
+-	return 0;
++	/* ...but check for error just in case errors=continue. */
++	return !buffer_verified(bh);
  }
  
- /*
-@@ -381,7 +381,8 @@ static int calc_chksums(journal_t *journal, struct buffer_head *bh,
- static int jbd2_commit_block_csum_verify(journal_t *j, void *buf)
- {
- 	struct commit_header *h;
--	__u32 provided, calculated;
-+	__be32 provided;
-+	__u32 calculated;
- 
- 	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
- 		return 1;
-@@ -392,21 +393,20 @@ static int jbd2_commit_block_csum_verify(journal_t *j, void *buf)
- 	calculated = jbd2_chksum(j, j->j_csum_seed, buf, j->j_blocksize);
- 	h->h_chksum[0] = provided;
- 
--	provided = be32_to_cpu(provided);
--	return provided == calculated;
-+	return provided == cpu_to_be32(calculated);
- }
- 
- static int jbd2_block_tag_csum_verify(journal_t *j, journal_block_tag_t *tag,
- 				      void *buf, __u32 sequence)
- {
- 	__u32 csum32;
-+	__be32 seq;
- 
- 	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
- 		return 1;
- 
--	sequence = cpu_to_be32(sequence);
--	csum32 = jbd2_chksum(j, j->j_csum_seed, (__u8 *)&sequence,
--			     sizeof(sequence));
-+	seq = cpu_to_be32(sequence);
-+	csum32 = jbd2_chksum(j, j->j_csum_seed, (__u8 *)&seq, sizeof(seq));
- 	csum32 = jbd2_chksum(j, csum32, buf, j->j_blocksize);
- 
- 	return tag->t_checksum == cpu_to_be16(csum32);
-@@ -808,7 +808,8 @@ static int jbd2_revoke_block_csum_verify(journal_t *j,
- 					 void *buf)
- {
- 	struct jbd2_journal_revoke_tail *tail;
--	__u32 provided, calculated;
-+	__be32 provided;
-+	__u32 calculated;
- 
- 	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
- 		return 1;
-@@ -820,8 +821,7 @@ static int jbd2_revoke_block_csum_verify(journal_t *j,
- 	calculated = jbd2_chksum(j, j->j_csum_seed, buf, j->j_blocksize);
- 	tail->r_checksum = provided;
- 
--	provided = be32_to_cpu(provided);
--	return provided == calculated;
-+	return provided == cpu_to_be32(calculated);
- }
- 
- /* Scan a revoke record, marking all blocks mentioned as revoked. */
+ struct buffer_head *
