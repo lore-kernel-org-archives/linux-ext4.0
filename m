@@ -1,92 +1,65 @@
-From: T Makphaibulchoke <tmac@hp.com>
-Subject: [PATCH 0/2] ext4: increase mbcache scalability
-Date: Wed, 17 Jul 2013 18:55:34 -0600
-Message-ID: <1374108934-50550-1-git-send-email-tmac@hp.com>
-Cc: aswin@hp.com
-To: viro@zeniv.linux.org.uk, tytso@mit.edu, adilger.kernel@dilger.ca,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, tmakph@gmail.com
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH 5/5] ext4: add new ioctl EXT4_IOC_PRECACHE_EXTENTS
+Date: Thu, 18 Jul 2013 09:19:41 +0800
+Message-ID: <20130718011940.GA8785@gmail.com>
+References: <1373987883-4466-1-git-send-email-tytso@mit.edu>
+ <1373987883-4466-6-git-send-email-tytso@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pd0-f170.google.com ([209.85.192.170]:65006 "EHLO
+	mail-pd0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757823Ab3GRBB5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Jul 2013 21:01:57 -0400
+Received: by mail-pd0-f170.google.com with SMTP id x11so2441751pdj.15
+        for <linux-ext4@vger.kernel.org>; Wed, 17 Jul 2013 18:01:56 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <1373987883-4466-6-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This patch intends to improve the scalability of an ext4 filesystem by
-introducing higher degree of parallelism to the usages of its mb_cache and
-mb_cache_entries.
+On Tue, Jul 16, 2013 at 11:18:03AM -0400, Theodore Ts'o wrote:
+> Add a new ioctl which forces the all of the extents in an inode to be
+> cached in the extent_status tree.  This is critically important when
+> using AIO to a preallocated file, since if we need to read in blocks
+> from the extent tree, the io_submit(2) system call becomes
+> synchronous, and the AIO is no longer "A", which is bad.
+> 
+> In addition, for most files which have an external leaf tree block,
+> the cost of caching the information in the extent status tree will be
+> less than caching the entire 4k block in the buffer cache.  So it is
+> generally a win to keep the extent information cached.
+> ---
+[...]
+> @@ -1069,10 +1072,16 @@ static int __es_try_to_reclaim_extents(struct ext4_inode_info *ei,
+>  	struct rb_node *node;
+>  	struct extent_status *es;
+>  	int nr_shrunk = 0;
+> +	static DEFINE_RATELIMIT_STATE(_rs, DEFAULT_RATELIMIT_INTERVAL,
+> +	                              DEFAULT_RATELIMIT_BURST);
+>  
+>  	if (ei->i_es_lru_nr == 0)
+>  		return 0;
+>  
+> +	if (ext4_test_inode_state(inode, EXT4_STATE_EXT_PRECACHED) &&
+> +	    __ratelimit(&_rs))
+> +		ext4_warning(inode->i_sb, "forced shrink of precached extents");
 
-Here are some of the benchmark results with the changes. 
+If I understand correctly, we don't want to reclaim from an inode with
+EXT4_STATE_EXT_PRECACHED flag when __ratelimit() returns 0, right?  So
+I propose the following code:
 
-On a 90 core machine:
+        if (ext4_test_inode_state(inode, EXT4_STATE_EXT_PRECACHED) {
+                if (!__ratelimit(&_rs))
+                        return 0;
+                ext4_warning(inode->i_sb, "forced shrink of precached extents");
+        }
 
-Here are the performance improvements in some of the aim7 workloads,
+                                                - Zheng
 
----------------------------
-|             | % increase |
----------------------------
-| custom      |     13.30  |
----------------------------
-| disk        |      5.00  |  
----------------------------
-| new_fserver |      6.73  |  
----------------------------
-| shared      |      7.12  |  
----------------------------
-
-For Swingbench dss workload,
-
--------------------------------------------------------------------------------
-| Users        | 100  | 200  | 300  | 400  | 500  | 600  | 700  | 800  | 900  |
--------------------------------------------------------------------------------
-| % imprvoment | 9.14 | 9.26 | 19.9 | 5.31 | 7.79 | 0.23 |-4.39 |-4.48 |-4.36 |
--------------------------------------------------------------------------------
-
-For SPECjbb2013, composite run,
-
---------------------------------------------
-|               | max-jOPS | critical-jOPS |
---------------------------------------------
-| % improvement |   6.73   |     16.37     |
---------------------------------------------
-
-
-
-On an 80 core machine:
-
-Here are the improvments in some of the aim7 workloads,
- 
----------------------------
-|             | % increase |
----------------------------
-| fserver     |      6.47  |
----------------------------
-| new_fserver |      4.62  |  
----------------------------
-
-For Swingbench dss workload,
-
--------------------------------------------------------------------------------
-| Users        | 100  | 200  | 300  | 400  | 500  | 600  | 700  | 800  | 900  |
--------------------------------------------------------------------------------
-| % imprvoment | 4.29 | 2.28 | 3.25 | 1.45 |-0.84 | 3.11 |-0.61 | 3.80 | 2.58 |
--------------------------------------------------------------------------------
-
-For SPECjbb2013, composite run,
-
---------------------------------------------
-|               | max-jOPS | critical-jOPS |
---------------------------------------------
-| % improvement |   0.49   |      3.21     |
---------------------------------------------
-
-The changes have been tested with ext4 xfstests to verify that no regression
-has been introduced.  
-
-
- fs/ext4/ext4.h          |   1 +
- fs/ext4/super.c         |   8 ++
- fs/ext4/xattr.c         |  41 +++++---
- fs/ext4/xattr.h         |   3 +
- fs/mbcache.c            | 432 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------
- include/linux/mbcache.h |   5 +
- 6 files changed, 385 insertions(+), 105 deletions(-)
-
+> +
+>  	node = rb_first(&tree->root);
+>  	while (node != NULL) {
+>  		es = rb_entry(node, struct extent_status, rb_node);
