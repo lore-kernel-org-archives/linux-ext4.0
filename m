@@ -1,59 +1,113 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 5/5] ext4: add new ioctl EXT4_IOC_PRECACHE_EXTENTS
-Date: Wed, 17 Jul 2013 22:50:25 -0400
-Message-ID: <20130718025025.GA30405@thunk.org>
-References: <1373987883-4466-1-git-send-email-tytso@mit.edu>
- <1373987883-4466-6-git-send-email-tytso@mit.edu>
- <20130718011940.GA8785@gmail.com>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH] ext4: call ext4_es_lru_add() after handling cache miss
+Date: Thu, 18 Jul 2013 20:46:03 +0800
+Message-ID: <20130718124603.GA14274@gmail.com>
+References: <1373984980-9895-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:38773 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752464Ab3GRCu2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Jul 2013 22:50:28 -0400
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Zheng Liu <wenqing.lz@taobao.com>, stable@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <stable-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20130718011940.GA8785@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1373984980-9895-1-git-send-email-tytso@mit.edu>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jul 18, 2013 at 09:19:41AM +0800, Zheng Liu wrote:
+Hi Ted,
+
+On Tue, Jul 16, 2013 at 10:29:40AM -0400, Theodore Ts'o wrote:
+> If there are no items in the extent status tree, ext4_es_lru_add() is
+> a no-op.
+
+Sorry, but I don't understand your point of view.  Now ext4_es_lru_add
+is used to set i_touch_when and put this inode into the tail of lru if
+this inode hasn't been no matter whether there has an item in extent
+status tree.  So only we need to do is to call this function when we
+think the item of extent status tree in this inode needs to be kept in
+memory.  That is why I call this function in ext4_*_map_blocks() because
+we always use these two functions to get a block mapping.  So that means
+that this inode is accessed recently and it should be kept in memory as
+much as possible than other inodes.
+
+Ah, maybe I got your point.  You mean that if ther are no item in the
+extent status tree, we don't need to reclaim the item from it, right?
+IMHO, when ext4_*_map_blocks() are called, that means that we will put
+some items into the extent status tree if there are no item in the tree.
+So I don't think we need to worry about it.
+
+> So it is not sufficient to call ext4_es_lru_add() before we
+> try to lookup an entry in the extent status tree.  We also need to
+> call it at the end of ext4_ext_map_blocks(), after items have been
+> added to the extent status tree.
+
+I don't think we only need to call ext4_es_lru_add() in
+ext4_ext_map_blocks() when an item is added to the tree because extent
+status tree is also useful for a indirect-based file.  That is why I
+call ext4_es_insert_extent() in ext4_map_blocks().  Please correct me if
+I miss something.
+
+Thanks,
+                                                - Zheng
+
 > 
-> If I understand correctly, we don't want to reclaim from an inode with
-> EXT4_STATE_EXT_PRECACHED flag when __ratelimit() returns 0, right?  
-
-No, the intent of the code was to make sure we don't trigger the
-warning too often, in case the system is under massive memory
-pressure.  In the original implementation of this ioctl which we used
-at Google (with an extent cache that was much less functional than the
-extent status tree we now have upstream), the extents were pinned in
-memory permanently, until the inode is evicted from memory.
-
-I thought about doing this, since normally the cached extents will
-take less memory than the extent tree in the buffer cache (especially
-in any sane setup where the large tablespace, etc., files are are
-fallocated in advance and are largely contiguous).  But for upstream,
-I was concerned that someone might deliberately create lots of
-fragmented files, and then call the precache ioctl on all of them.
-
-So what I did was to change the sort function such that the shrinker
-would put those files at the end of the list.  And although it's not
-in the patch that I've sent out, I've since changed it so that if the
-head of the list is an precached inode, and it's been more than 5
-seconds, we force a resort of the list.
-
-That way if we are under heavy memory pressure, we will eventually get
-rid of the precached extents --- but under normal circumstnaces, we
-try very hard not to, at least via the es_shrinker.  (If the inode
-gets closed, and then eventually the inode gets evicted, then of
-course we'll drop all of the precached extents.)
-
-So the ratelimited warning is so we can know if this has happened,
-since it's probably a sign that something bad has happened.  Either a
-process ran wild trying to precache too many extents, or the system
-was under far more memory pressure, which is probably something that
-needs to be fixed by changing some configuration parameter or by
-tweaking the load balancer.
-
-						- Ted
+> This could lead to inodes with that have extent status trees but which
+> are not in the LRU list, which means they won't get considered for
+> eviction by the es_shrinker.
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: Zheng Liu <wenqing.lz@taobao.com>
+> Cc: stable@vger.kernel.org
+> ---
+>  fs/ext4/extents.c | 5 +++--
+>  fs/ext4/inode.c   | 7 ++-----
+>  2 files changed, 5 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index cfdc51e..a618738 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -4385,8 +4385,9 @@ out2:
+>  	}
+>  
+>  out3:
+> -	trace_ext4_ext_map_blocks_exit(inode, flags, map, err ? err : allocated);
+> -
+> +	trace_ext4_ext_map_blocks_exit(inode, flags, map,
+> +				       err ? err : allocated);
+> +	ext4_es_lru_add(inode);
+>  	return err ? err : allocated;
+>  }
+>  
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 3c5edf2..ea2cbf1 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -514,10 +514,9 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+>  		  "logical block %lu\n", inode->i_ino, flags, map->m_len,
+>  		  (unsigned long) map->m_lblk);
+>  
+> -	ext4_es_lru_add(inode);
+> -
+>  	/* Lookup extent status tree firstly */
+>  	if (ext4_es_lookup_extent(inode, map->m_lblk, &es)) {
+> +		ext4_es_lru_add(inode);
+>  		if (ext4_es_is_written(&es) || ext4_es_is_unwritten(&es)) {
+>  			map->m_pblk = ext4_es_pblock(&es) +
+>  					map->m_lblk - es.es_lblk;
+> @@ -1529,11 +1528,9 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+>  		  "logical block %lu\n", inode->i_ino, map->m_len,
+>  		  (unsigned long) map->m_lblk);
+>  
+> -	ext4_es_lru_add(inode);
+> -
+>  	/* Lookup extent status tree firstly */
+>  	if (ext4_es_lookup_extent(inode, iblock, &es)) {
+> -
+> +		ext4_es_lru_add(inode);
+>  		if (ext4_es_is_hole(&es)) {
+>  			retval = 0;
+>  			down_read((&EXT4_I(inode)->i_data_sem));
+> -- 
+> 1.7.12.rc0.22.gcdd159b
+> 
