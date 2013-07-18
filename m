@@ -1,83 +1,50 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 5/5] ext4: add new ioctl EXT4_IOC_PRECACHE_EXTENTS
-Date: Thu, 18 Jul 2013 21:06:11 +0800
-Message-ID: <20130718130611.GB14274@gmail.com>
-References: <1373987883-4466-1-git-send-email-tytso@mit.edu>
- <1373987883-4466-6-git-send-email-tytso@mit.edu>
- <20130718011940.GA8785@gmail.com>
- <20130718025025.GA30405@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: block direct I/O writes during ext4_truncate
+Date: Thu, 18 Jul 2013 16:11:17 +0200
+Message-ID: <20130718141117.GB10419@quack.suse.cz>
+References: <1373861479-15136-1-git-send-email-tytso@mit.edu>
+ <20130716154658.GE25632@quack.suse.cz>
+ <20130716164942.GA6002@thunk.org>
+ <20130717182709.GB26859@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc: Jan Kara <jack@suse.cz>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	stable@vger.kernel.org
 To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f46.google.com ([209.85.220.46]:50394 "EHLO
-	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754507Ab3GRMrY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Jul 2013 08:47:24 -0400
-Received: by mail-pa0-f46.google.com with SMTP id fa11so3198775pad.33
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Jul 2013 05:47:23 -0700 (PDT)
+Return-path: <stable-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20130718025025.GA30405@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20130717182709.GB26859@thunk.org>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Ted,
-
-Thanks for your explanation.  I can always learn something from your
-reply. :-)
-
-On Wed, Jul 17, 2013 at 10:50:25PM -0400, Theodore Ts'o wrote:
-> On Thu, Jul 18, 2013 at 09:19:41AM +0800, Zheng Liu wrote:
+On Wed 17-07-13 14:27:10, Ted Tso wrote:
+> On Tue, Jul 16, 2013 at 12:49:42PM -0400, Theodore Ts'o wrote:
+> > On Tue, Jul 16, 2013 at 05:46:58PM +0200, Jan Kara wrote:
+> > > and ext4_setattr() does (again under i_mutex):
+> > >                                         ext4_inode_block_unlocked_dio(inode);
+> > >                                         inode_dio_wait(inode);
+> > >                                         ext4_inode_resume_unlocked_dio(inode);
 > > 
-> > If I understand correctly, we don't want to reclaim from an inode with
-> > EXT4_STATE_EXT_PRECACHED flag when __ratelimit() returns 0, right?  
+> > Ah, I missed this; thanks for pointing this out.
 > 
-> No, the intent of the code was to make sure we don't trigger the
-> warning too often, in case the system is under massive memory
-> pressure.  In the original implementation of this ioctl which we used
-> at Google (with an extent cache that was much less functional than the
-> extent status tree we now have upstream), the extents were pinned in
-> memory permanently, until the inode is evicted from memory.
-> 
-> I thought about doing this, since normally the cached extents will
-> take less memory than the extent tree in the buffer cache (especially
-> in any sane setup where the large tablespace, etc., files are are
-> fallocated in advance and are largely contiguous).  But for upstream,
-> I was concerned that someone might deliberately create lots of
-> fragmented files, and then call the precache ioctl on all of them.
+> I took a closer look, and there are other code paths which call
+> ext4_truncate() which don't call ext4_inode_block_unlocked_dio() and
+> inode_dio_wait().  In particular, the orphan cleanup code and the
+> SETFLAGS ioctl.
+  True although both should be harmless. Also you have
+ext4_truncate_failed_write() which is harmless as well.
 
-Yes, at least for a internet company we can control everything, but for
-upstream the kernel might run under some weird environments.  The lesson
-from this is that I need to think deeply for non-internet applications,
-and make a better design.  Now I fully agree with you about this
-implementation.  Meanwhile the patch looks good to me.
-Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
+> I suspect the right answer is to move these these calls, and possibly
+> also the truncate_pagecache() call.
+  Could be.
 
-                                                - Zheng
+> The other thing that we probably will want to do as a cleanup for the
+> next merge window is to look at merging more of the code paths for
+> ext4_punch_hole() and ext4_truncate().
+  Yeah, that would be definitely worthwhile effort.
 
-> 
-> So what I did was to change the sort function such that the shrinker
-> would put those files at the end of the list.  And although it's not
-> in the patch that I've sent out, I've since changed it so that if the
-> head of the list is an precached inode, and it's been more than 5
-> seconds, we force a resort of the list.
-> 
-> That way if we are under heavy memory pressure, we will eventually get
-> rid of the precached extents --- but under normal circumstnaces, we
-> try very hard not to, at least via the es_shrinker.  (If the inode
-> gets closed, and then eventually the inode gets evicted, then of
-> course we'll drop all of the precached extents.)
-> 
-> So the ratelimited warning is so we can know if this has happened,
-> since it's probably a sign that something bad has happened.  Either a
-> process ran wild trying to precache too many extents, or the system
-> was under far more memory pressure, which is probably something that
-> needs to be fixed by changing some configuration parameter or by
-> tweaking the load balancer.
-> 
-> 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
