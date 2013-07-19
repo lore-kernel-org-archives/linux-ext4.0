@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 4/5] ext4: Mark block group as corrupt on inode bitmap error
-Date: Fri, 19 Jul 2013 16:55:59 -0700
-Message-ID: <20130719235559.24017.72336.stgit@blackbox.djwong.org>
+Subject: [PATCH 5/5] ext4: Mark group corrupt on group descriptor checksum
+ error
+Date: Fri, 19 Jul 2013 16:56:05 -0700
+Message-ID: <20130719235605.24017.35311.stgit@blackbox.djwong.org>
 References: <20130719235532.24017.31896.stgit@blackbox.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,127 +11,79 @@ Cc: linux-ext4@vger.kernel.org
 To: "Theodore Ts'o" <tytso@mit.edu>,
 	"Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:32278 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751786Ab3GSX4F (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Jul 2013 19:56:05 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:36475 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751132Ab3GSX4O (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Jul 2013 19:56:14 -0400
 In-Reply-To: <20130719235532.24017.31896.stgit@blackbox.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If we detect either a discrepancy between the inode bitmap and the inode counts
-or the inode bitmap fails to pass validation checks, mark the block group
-corrupt and refuse to allocate or deallocate inodes from the group.
+If the group descriptor fails validation, mark the whole blockgroup corrupt so
+that the inode/block allocators skip this group.  The previous approach takes
+the risk of writing to a damaged group descriptor; hopefully it was never the
+case that the [ib]bitmap fields pointed to another valid block and got dirtied,
+since the memset would fill the page with 1s.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- fs/ext4/ext4.h   |    3 +++
- fs/ext4/ialloc.c |   29 +++++++++++++++++++++++++----
- 2 files changed, 28 insertions(+), 4 deletions(-)
+ fs/ext4/balloc.c |    9 ++++-----
+ fs/ext4/ialloc.c |   10 ++++------
+ 2 files changed, 8 insertions(+), 11 deletions(-)
 
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 45cc955..b8ac53d 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2449,11 +2449,14 @@ struct ext4_group_info {
- #define EXT4_GROUP_INFO_NEED_INIT_BIT		0
- #define EXT4_GROUP_INFO_WAS_TRIMMED_BIT		1
- #define EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT	2
-+#define EXT4_GROUP_INFO_IBITMAP_CORRUPT_BIT	4
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index b4c406b..f19e94d 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -184,6 +184,7 @@ void ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	ext4_fsblk_t start, tmp;
+ 	int flex_bg = 0;
++	struct ext4_group_info *grp;
  
- #define EXT4_MB_GRP_NEED_INIT(grp)	\
- 	(test_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &((grp)->bb_state)))
- #define EXT4_MB_GRP_BBITMAP_CORRUPT(grp)	\
- 	(test_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &((grp)->bb_state)))
-+#define EXT4_MB_GRP_IBITMAP_CORRUPT(grp)	\
-+	(test_bit(EXT4_GROUP_INFO_IBITMAP_CORRUPT_BIT, &((grp)->bb_state)))
+ 	J_ASSERT_BH(bh, buffer_locked(bh));
  
- #define EXT4_MB_GRP_WAS_TRIMMED(grp)	\
- 	(test_bit(EXT4_GROUP_INFO_WAS_TRIMMED_BIT, &((grp)->bb_state)))
+@@ -191,11 +192,9 @@ void ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
+ 	 * essentially implementing a per-group read-only flag. */
+ 	if (!ext4_group_desc_csum_verify(sb, block_group, gdp)) {
+ 		ext4_error(sb, "Checksum bad for group %u", block_group);
+-		ext4_free_group_clusters_set(sb, gdp, 0);
+-		ext4_free_inodes_set(sb, gdp, 0);
+-		ext4_itable_unused_set(sb, gdp, 0);
+-		memset(bh->b_data, 0xff, sb->s_blocksize);
+-		ext4_block_bitmap_csum_set(sb, block_group, gdp, bh);
++		grp = ext4_get_group_info(sb, block_group);
++		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
++		set_bit(EXT4_GROUP_INFO_IBITMAP_CORRUPT_BIT, &grp->bb_state);
+ 		return;
+ 	}
+ 	memset(bh->b_data, 0, sb->s_blocksize);
 diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index f03598c..08c7fa7 100644
+index 08c7fa7..f75be27 100644
 --- a/fs/ext4/ialloc.c
 +++ b/fs/ext4/ialloc.c
-@@ -117,6 +117,7 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
- 	struct ext4_group_desc *desc;
- 	struct buffer_head *bh = NULL;
- 	ext4_fsblk_t bitmap_blk;
+@@ -70,18 +70,16 @@ static unsigned ext4_init_inode_bitmap(struct super_block *sb,
+ 				       ext4_group_t block_group,
+ 				       struct ext4_group_desc *gdp)
+ {
 +	struct ext4_group_info *grp;
+ 	J_ASSERT_BH(bh, buffer_locked(bh));
  
- 	desc = ext4_get_group_desc(sb, block_group, NULL);
- 	if (!desc)
-@@ -185,6 +186,8 @@ verify:
- 		put_bh(bh);
- 		ext4_error(sb, "Corrupt inode bitmap - block_group = %u, "
- 			   "inode_bitmap = %llu", block_group, bitmap_blk);
+ 	/* If checksum is bad mark all blocks and inodes use to prevent
+ 	 * allocation, essentially implementing a per-group read-only flag. */
+ 	if (!ext4_group_desc_csum_verify(sb, block_group, gdp)) {
+ 		ext4_error(sb, "Checksum bad for group %u", block_group);
+-		ext4_free_group_clusters_set(sb, gdp, 0);
+-		ext4_free_inodes_set(sb, gdp, 0);
+-		ext4_itable_unused_set(sb, gdp, 0);
+-		memset(bh->b_data, 0xff, sb->s_blocksize);
+-		ext4_inode_bitmap_csum_set(sb, block_group, gdp, bh,
+-					   EXT4_INODES_PER_GROUP(sb) / 8);
 +		grp = ext4_get_group_info(sb, block_group);
++		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
 +		set_bit(EXT4_GROUP_INFO_IBITMAP_CORRUPT_BIT, &grp->bb_state);
- 		return NULL;
+ 		return 0;
  	}
- 	ext4_unlock_group(sb, block_group);
-@@ -221,6 +224,7 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
- 	struct ext4_super_block *es;
- 	struct ext4_sb_info *sbi;
- 	int fatal = 0, err, count, cleared;
-+	struct ext4_group_info *grp;
  
- 	if (!sb) {
- 		printk(KERN_ERR "EXT4-fs: %s:%d: inode on "
-@@ -266,7 +270,9 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
- 	block_group = (ino - 1) / EXT4_INODES_PER_GROUP(sb);
- 	bit = (ino - 1) % EXT4_INODES_PER_GROUP(sb);
- 	bitmap_bh = ext4_read_inode_bitmap(sb, block_group);
--	if (!bitmap_bh)
-+	/* Don't bother if the inode bitmap is corrupt. */
-+	grp = ext4_get_group_info(sb, block_group);
-+	if (unlikely(EXT4_MB_GRP_IBITMAP_CORRUPT(grp)) || !bitmap_bh)
- 		goto error_return;
- 
- 	BUFFER_TRACE(bitmap_bh, "get_write_access");
-@@ -315,8 +321,10 @@ out:
- 		err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
- 		if (!fatal)
- 			fatal = err;
--	} else
-+	} else {
- 		ext4_error(sb, "bit already cleared for inode %lu", ino);
-+		set_bit(EXT4_GROUP_INFO_IBITMAP_CORRUPT_BIT, &grp->bb_state);
-+	}
- 
- error_return:
- 	brelse(bitmap_bh);
-@@ -652,6 +660,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 	struct inode *ret;
- 	ext4_group_t i;
- 	ext4_group_t flex_group;
-+	struct ext4_group_info *grp;
- 
- 	/* Cannot create files in a deleted directory */
- 	if (!dir || !dir->i_nlink)
-@@ -725,10 +734,22 @@ got_group:
- 			continue;
- 		}
- 
-+		grp = ext4_get_group_info(sb, group);
-+		/* Skip groups with already-known suspicious inode tables */
-+		if (EXT4_MB_GRP_IBITMAP_CORRUPT(grp)) {
-+			if (++group == ngroups)
-+				group = 0;
-+			continue;
-+		}
-+
- 		brelse(inode_bitmap_bh);
- 		inode_bitmap_bh = ext4_read_inode_bitmap(sb, group);
--		if (!inode_bitmap_bh)
--			goto out;
-+		/* Skip groups with suspicious inode tables */
-+		if (EXT4_MB_GRP_IBITMAP_CORRUPT(grp) || !inode_bitmap_bh) {
-+			if (++group == ngroups)
-+				group = 0;
-+			continue;
-+		}
- 
- repeat_in_this_group:
- 		ino = ext4_find_next_zero_bit((unsigned long *)
 
