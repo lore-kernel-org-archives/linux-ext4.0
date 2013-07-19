@@ -1,33 +1,42 @@
-From: Al Viro <viro@ZenIV.linux.org.uk>
-Subject: Re: [PATCH] ext4: fix a bug when we try to open a file with
- O_TMPFILE flag
-Date: Sat, 20 Jul 2013 00:36:13 +0100
-Message-ID: <20130719233613.GH4165@ZenIV.linux.org.uk>
-References: <20130717161944.GA19405@redhat.com>
- <20130719121405.GA3856@gmail.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [PATCH v1 0/5] ext4: Shut down block groups when damage is detected
+Date: Fri, 19 Jul 2013 16:55:32 -0700
+Message-ID: <20130719235532.24017.31896.stgit@blackbox.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Dave Jones <davej@redhat.com>,
-	Linux Kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	"Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:55520 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752484Ab3GSXgQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Jul 2013 19:36:16 -0400
-Content-Disposition: inline
-In-Reply-To: <20130719121405.GA3856@gmail.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:36349 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751132Ab3GSXzk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Jul 2013 19:55:40 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 19, 2013 at 08:14:05PM +0800, Zheng Liu wrote:
-> Hi Dave,
-> 
-> After applied this patch, the problem has been fixed in my own sand box.
-> But that would be great if you could give it a try.  I want to make sure
-> that this patch can fix the problem.  It looks like there has the same
-> problem in ext3.  So if this patch is fine, I will generate a patch for
-> ext3 file system.
+Right now, ext4 doesn't do quite a good enough job shutting off allocation and
+freeing activity in block groups when damage is detected, which means that ext4
+can obliviously load a corrupt bitmap, base allocation decisions off of that,
+and trash the filesystem.  We'd like to be able to freeze the block group when
+this happens, so hopefully the next fsck can repair the damage.
 
-Nice catch, and you have my ACK.  Which tree do you prefer that to go
-through?  vfs and ext4 are the obvious candidates...
+The first patch fixes the behavior that a corrupt bitmap can be returned to
+mballoc as if it was accurate.  The second patch is a trivial fix, and the two
+after it provide for detecting damage in either the block bitmap or the inode
+bitmap, and disabling all allocation/deallocation activity in the block group.
+The final patch changes runtime block group descriptor validation failure
+behavior to use the corruption flag to mark off the block group.
+
+This patchset has been tested (albeit lightly) against 3.11-rc1 on x64.  I'm
+wondering about a few things -- if we detect corrupt *inodes*, should we invoke
+this mechanism as well?  Second, as I mentioned a few days ago, maybe it's time
+for block_validity to be set always, since it seems to have a low speed impact?
+Third, the block bitmap corruption flag patch is based off of Aditya Kali's
+patch that you forwarded; can a proper Signed-off-by be attached since I mostly
+just massaged that one into 3.11?
+
+Comments and questions are, as always, welcome.
+
+--D
