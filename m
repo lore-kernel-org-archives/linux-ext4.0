@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 2/5] ext4: Fix type declaration of ext4_validate_block_bitmap
-Date: Fri, 19 Jul 2013 16:55:46 -0700
-Message-ID: <20130719235546.24017.98557.stgit@blackbox.djwong.org>
+Subject: [PATCH 3/5] ext4: Mark block group as corrupt on block bitmap error
+Date: Fri, 19 Jul 2013 16:55:52 -0700
+Message-ID: <20130719235552.24017.26642.stgit@blackbox.djwong.org>
 References: <20130719235532.24017.31896.stgit@blackbox.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,50 +10,184 @@ Cc: linux-ext4@vger.kernel.org
 To: "Theodore Ts'o" <tytso@mit.edu>,
 	"Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:32207 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751786Ab3GSXzv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Jul 2013 19:55:51 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:36376 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751786Ab3GSXz7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Jul 2013 19:55:59 -0400
 In-Reply-To: <20130719235532.24017.31896.stgit@blackbox.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The block_group parameter to ext4_validate_block_bitmap is both used as a
-ext4_group_t inside the function and the same type is passed in by all callers.
-We might as well use the typedef consistently instead of open-coding the
-'unsigned int'.
+When we notice a block-bitmap corruption (because of device failure or
+something else), we should mark this group as corrupt and prevent further block
+allocations/deallocations from it. Currently, we end up generating one error
+message for every block in the bitmap. This potentially could make the system
+unstable as noticed in some bugs. With this patch, the error will be printed
+only the first time and mark the entire block group as corrupted. This prevents
+future access allocations/deallocations from it.
 
+Also tested by corrupting the block
+bitmap and forcefully introducing the mb_free_blocks error:
+(1) create a largefile (2Gb)
+$ dd if=/dev/zero of=largefile oflag=direct bs=10485760 count=200
+(2) umount filesystem. use dumpe2fs to see which block-bitmaps
+are in use by largefile and note their block numbers
+(3) use dd to zero-out the used block bitmaps
+$ dd if=/dev/zero of=/dev/hdc4 bs=4096 seek=14 count=8 oflag=direct
+(4) mount the FS and delete the largefile.
+(5) recreate the largefile. verify that the new largefile does not
+get any blocks from the groups marked as bad.
+Without the patch, we will see mb_free_blocks error for each bit in
+each zero'ed out bitmap at (4). With the patch, we only see the error
+once per blockgroup:
+[  309.706803] EXT4-fs error (device sdb4): ext4_mb_generate_buddy:735: group 15: 32768 clusters in bitmap, 0 in gd. blk grp corrupted.
+[  309.720824] EXT4-fs error (device sdb4): ext4_mb_generate_buddy:735: group 14: 32768 clusters in bitmap, 0 in gd. blk grp corrupted.
+[  309.732858] EXT4-fs error (device sdb4) in ext4_free_blocks:4802: IO failure
+[  309.748321] EXT4-fs error (device sdb4): ext4_mb_generate_buddy:735: group 13: 32768 clusters in bitmap, 0 in gd. blk grp corrupted.
+[  309.760331] EXT4-fs error (device sdb4) in ext4_free_blocks:4802: IO failure
+[  309.769695] EXT4-fs error (device sdb4): ext4_mb_generate_buddy:735: group 12: 32768 clusters in bitmap, 0 in gd. blk grp corrupted.
+[  309.781721] EXT4-fs error (device sdb4) in ext4_free_blocks:4802: IO failure
+[  309.798166] EXT4-fs error (device sdb4): ext4_mb_generate_buddy:735: group 11: 32768 clusters in bitmap, 0 in gd. blk grp corrupted.
+[  309.810184] EXT4-fs error (device sdb4) in ext4_free_blocks:4802: IO failure
+[  309.819532] EXT4-fs error (device sdb4): ext4_mb_generate_buddy:735: group 10: 32768 clusters in bitmap, 0 in gd. blk grp corrupted.
+
+Google-Bug-Id: 7258357
+
+[darrick.wong@oracle.com]
+Further modifications (by Darrick) to make more obvious that this corruption
+bit applies to blocks only.  Set the corruption flag if the block group bitmap
+verification fails.
+
+Original-author: Aditya Kali <adityakali@google.com>
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- fs/ext4/balloc.c |    2 +-
- fs/ext4/ext4.h   |    2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ fs/ext4/balloc.c  |    3 +++
+ fs/ext4/ext4.h    |    3 +++
+ fs/ext4/mballoc.c |   28 +++++++++++++++++++++++++---
+ 3 files changed, 31 insertions(+), 3 deletions(-)
 
 
 diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index b430afe..735e701 100644
+index 735e701..b4c406b 100644
 --- a/fs/ext4/balloc.c
 +++ b/fs/ext4/balloc.c
-@@ -352,7 +352,7 @@ static ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *sb,
- 
- void ext4_validate_block_bitmap(struct super_block *sb,
- 			       struct ext4_group_desc *desc,
--			       unsigned int block_group,
-+			       ext4_group_t block_group,
+@@ -356,6 +356,7 @@ void ext4_validate_block_bitmap(struct super_block *sb,
  			       struct buffer_head *bh)
  {
  	ext4_fsblk_t	blk;
++	struct ext4_group_info *grp = ext4_get_group_info(sb, block_group);
+ 
+ 	if (buffer_verified(bh))
+ 		return;
+@@ -366,12 +367,14 @@ void ext4_validate_block_bitmap(struct super_block *sb,
+ 		ext4_unlock_group(sb, block_group);
+ 		ext4_error(sb, "bg %u: block %llu: invalid block bitmap",
+ 			   block_group, blk);
++		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
+ 		return;
+ 	}
+ 	if (unlikely(!ext4_block_bitmap_csum_verify(sb, block_group,
+ 			desc, bh))) {
+ 		ext4_unlock_group(sb, block_group);
+ 		ext4_error(sb, "bg %u: bad block bitmap checksum", block_group);
++		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
+ 		return;
+ 	}
+ 	set_buffer_verified(bh);
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index b577e45..39d24e2 100644
+index 39d24e2..45cc955 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1915,7 +1915,7 @@ extern ext4_group_t ext4_get_group_number(struct super_block *sb,
+@@ -2448,9 +2448,12 @@ struct ext4_group_info {
  
- extern void ext4_validate_block_bitmap(struct super_block *sb,
- 				       struct ext4_group_desc *desc,
--				       unsigned int block_group,
-+				       ext4_group_t block_group,
- 				       struct buffer_head *bh);
- extern unsigned int ext4_block_group(struct super_block *sb,
- 			ext4_fsblk_t blocknr);
+ #define EXT4_GROUP_INFO_NEED_INIT_BIT		0
+ #define EXT4_GROUP_INFO_WAS_TRIMMED_BIT		1
++#define EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT	2
+ 
+ #define EXT4_MB_GRP_NEED_INIT(grp)	\
+ 	(test_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &((grp)->bb_state)))
++#define EXT4_MB_GRP_BBITMAP_CORRUPT(grp)	\
++	(test_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &((grp)->bb_state)))
+ 
+ #define EXT4_MB_GRP_WAS_TRIMMED(grp)	\
+ 	(test_bit(EXT4_GROUP_INFO_WAS_TRIMMED_BIT, &((grp)->bb_state)))
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 4bbbf13b..40ebcf6 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -751,13 +751,15 @@ void ext4_mb_generate_buddy(struct super_block *sb,
+ 
+ 	if (free != grp->bb_free) {
+ 		ext4_grp_locked_error(sb, group, 0, 0,
+-				      "%u clusters in bitmap, %u in gd",
++				      "%u clusters in bitmap, %u in gd; "
++				      "block bitmap corrupt.",
+ 				      free, grp->bb_free);
+ 		/*
+-		 * If we intent to continue, we consider group descritor
++		 * If we intend to continue, we consider group descriptor
+ 		 * corrupt and update bb_free using bitmap value
+ 		 */
+ 		grp->bb_free = free;
++		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
+ 	}
+ 	mb_set_largest_free_order(sb, grp);
+ 
+@@ -1398,6 +1400,10 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
+ 
+ 	BUG_ON(last >= (sb->s_blocksize << 3));
+ 	assert_spin_locked(ext4_group_lock_ptr(sb, e4b->bd_group));
++	/* Don't bother if the block group is corrupt. */
++	if (unlikely(EXT4_MB_GRP_BBITMAP_CORRUPT(e4b->bd_info)))
++		return;
++
+ 	mb_check_buddy(e4b);
+ 	mb_free_blocks_double(inode, e4b, first, count);
+ 
+@@ -1423,7 +1429,11 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
+ 				      inode ? inode->i_ino : 0,
+ 				      blocknr,
+ 				      "freeing already freed block "
+-				      "(bit %u)", block);
++				      "(bit %u); block bitmap corrupt.",
++				      block);
++		/* Mark the block group as corrupt. */
++		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT,
++			&e4b->bd_info->bb_state);
+ 		mb_regenerate_buddy(e4b);
+ 		goto done;
+ 	}
+@@ -1790,6 +1800,11 @@ int ext4_mb_find_by_goal(struct ext4_allocation_context *ac,
+ 	if (err)
+ 		return err;
+ 
++	if (unlikely(EXT4_MB_GRP_BBITMAP_CORRUPT(e4b->bd_info))) {
++		ext4_mb_unload_buddy(e4b);
++		return 0;
++	}
++
+ 	ext4_lock_group(ac->ac_sb, group);
+ 	max = mb_find_extent(e4b, ac->ac_g_ex.fe_start,
+ 			     ac->ac_g_ex.fe_len, &ex);
+@@ -1987,6 +2002,9 @@ static int ext4_mb_good_group(struct ext4_allocation_context *ac,
+ 	if (cr <= 2 && free < ac->ac_g_ex.fe_len)
+ 		return 0;
+ 
++	if (unlikely(EXT4_MB_GRP_BBITMAP_CORRUPT(grp)))
++		return 0;
++
+ 	/* We only do this if the grp has never been initialized */
+ 	if (unlikely(EXT4_MB_GRP_NEED_INIT(grp))) {
+ 		int ret = ext4_mb_init_group(ac->ac_sb, group);
+@@ -4673,6 +4691,10 @@ do_more:
+ 	overflow = 0;
+ 	ext4_get_group_no_and_offset(sb, block, &block_group, &bit);
+ 
++	if (unlikely(EXT4_MB_GRP_BBITMAP_CORRUPT(
++			ext4_get_group_info(sb, block_group))))
++		return;
++
+ 	/*
+ 	 * Check to see if we are freeing blocks across a group
+ 	 * boundary.
 
