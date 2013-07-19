@@ -1,86 +1,48 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: [PATCH 0/5 v2] add extent status tree caching
-Date: Fri, 19 Jul 2013 07:54:51 +0800
-Message-ID: <20130718235451.GA29997@gmail.com>
+Date: Thu, 18 Jul 2013 20:07:38 -0400
+Message-ID: <20130719000738.GD17938@thunk.org>
 References: <1373987883-4466-1-git-send-email-tytso@mit.edu>
  <51E8356C.9030603@redhat.com>
+ <20130718235451.GA29997@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
+To: Eric Sandeen <sandeen@redhat.com>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f43.google.com ([209.85.160.43]:34044 "EHLO
-	mail-pb0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934751Ab3GRXgC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Jul 2013 19:36:02 -0400
-Received: by mail-pb0-f43.google.com with SMTP id md12so3720823pbc.16
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Jul 2013 16:36:01 -0700 (PDT)
+Received: from li9-11.members.linode.com ([67.18.176.11]:39099 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759508Ab3GSAHn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 18 Jul 2013 20:07:43 -0400
 Content-Disposition: inline
-In-Reply-To: <51E8356C.9030603@redhat.com>
+In-Reply-To: <20130718235451.GA29997@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Eric,
-
-On Thu, Jul 18, 2013 at 01:35:24PM -0500, Eric Sandeen wrote:
-> On 7/16/13 10:17 AM, Theodore Ts'o wrote:
-> > In addition to fixing a few bugs and addressing review comments, we now
-> > add a new ioctl, EXT4_IOC_PRECACHE_EXTENTS, which forces all of the
-> > extents in an inode to be cached in the extents status tree, and marks
-> > them to be preferentially protected when under memory pressure.  
-> > 
-> > This is critically important when using AIO to a preallocated file,
-> > since if we need to read in blocks from the extent tree, the
-> > io_submit(2) system call becomes synchronous, which is rather rude to
-> > applications which were expecting the AIO to be "A".
-> > 
-> > As a bonus, using the extent status tree to store the logical to
-> > physical block mapping is usually more compact that having to keep one
-> > or more extent tree blocks in the buffer cache.
-> > 
-> > (Should we do this all the time, instead of when the application
-> > explicitly requests it?  Maybe; there could be cases with very large,
-> > fragmented files accessed by an application such as "file" is only needs
-> > to look at a small subset of the file where this could result in an
-> > unnecessary work and memory allocated.  OTOH, 95%+ of the time this
-> > would probably be a win...)
+On Fri, Jul 19, 2013 at 07:54:51AM +0800, Zheng Liu wrote:
 > 
-> I'd say yes, we should - maybe not in all cases but if you need it for
-> AIO, try to make it "all the time" at least for that AIO?
-> 
-> We keep telling application writers not to assume certain things about
-> various filesystems, or to write applications that treat ext4 differently 
-> han ext3 differently than xfs etc...
+> I have talked with my colleague who is a MySQL contributor about whether
+> MySQL tries to preallocate some files or not.  As far as I know, at
+> least MySQL doesn't try to do it until now.  I don't have the source
+> code of Oracle or DB2, these giant databases might use preallocation I
+> guess.
 
-Yes, I agree with you.  As Ted and I have discussed the problem of
-setting 'data=writeback' by default in ext4.  Although most application
-writers have realized that they need to explicit call fsync to flush all
-dirty pages, there are still some legacy applications that depends on
-the 'data=ordered' mode to flush all dirty pages.
+Oracle and DB2 don't use preallocate, because they don't want the
+metadata update overhead.  So for software packages that are really
+critically worried about 99percentile latency, they will generally
+either pre-zero the file ahead of time, so all of the extents are
+written.  Or, they will use the out-of-tree nohidestale patch, and
+mark all of the extents as written.  (If you are doing A/B benchmark
+comparisons, using nohidestale means the setup overhead for each
+benchmark run can be measured in minutes instead of hours...)
 
-> 
-> This goes the other way.
-> 
-> In the end who (besides google?) is really going to call this IOCTL?
-> 
-> I wondered if only doing this when files are opened O_DIRECT might make
-> sense, but Jeff Moyer pointed out that giant databases probably don't
-> want to read in their entire block mapping tree - OTOH, they probably use
-> preallocation if they're smart, and maybe it's not that bad.
+On at least one of the enterprise databases which I'm familiar with,
+they don't pre-zero the entire database file, but they'll do it in
+chunks of N megabytes.  That means they don't have the huge time lag
+when the database is initially created, but then every so often, when
+the database will suddenly use most of the disk bandwidth to zero the
+next chunk of 16 or 32 or 64 megabytes.  (This tends to do a real
+number on your 99.9 percentile latency numbers, if you care about such
+things....)
 
-I have talked with my colleague who is a MySQL contributor about whether
-MySQL tries to preallocate some files or not.  As far as I know, at
-least MySQL doesn't try to do it until now.  I don't have the source
-code of Oracle or DB2, these giant databases might use preallocation I
-guess.
-
-> 
-> Or what about tying this into POSIX_FADV_WILLNEED?  Hohum, that gets
-> into force_page_cache_readahead().  We need POSIX_FADV_WILLNEED_META...
-
-Yes, _WILLNEED_METADATA flag makes sense to me if other file systems
-also want to support it.  But, as Ted said, now adding it in ioctl might
-a good choice because we won't impact other file systems.
-
-                                                - Zheng
+						- Ted
