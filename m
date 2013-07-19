@@ -1,120 +1,66 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH] ext4: fix a bug when we try to open a file with O_TMPFILE
- flag
-Date: Fri, 19 Jul 2013 20:14:05 +0800
-Message-ID: <20130719121405.GA3856@gmail.com>
-References: <20130717161944.GA19405@redhat.com>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: Re: [PATCH 0/5 v2] add extent status tree caching
+Date: Fri, 19 Jul 2013 10:22:35 -0400
+Message-ID: <x498v12iq8k.fsf@segfault.boston.devel.redhat.com>
+References: <1373987883-4466-1-git-send-email-tytso@mit.edu>
+	<51E8356C.9030603@redhat.com> <20130718185310.GA17548@thunk.org>
+	<51E88ECD.3040806@redhat.com> <20130719025934.GE17938@thunk.org>
+	<20130719033309.GQ11674@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, Al Viro <viro@zeniv.linux.org.uk>
-To: Dave Jones <davej@redhat.com>,
-	Linux Kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20130717161944.GA19405@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Zheng Liu <gnehzuil.liu@gmail.com>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:15384 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752111Ab3GSOWm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 19 Jul 2013 10:22:42 -0400
+In-Reply-To: <20130719033309.GQ11674@dastard> (Dave Chinner's message of "Fri,
+	19 Jul 2013 13:33:09 +1000")
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Dave,
+Dave Chinner <david@fromorbit.com> writes:
 
-After applied this patch, the problem has been fixed in my own sand box.
-But that would be great if you could give it a try.  I want to make sure
-that this patch can fix the problem.  It looks like there has the same
-problem in ext3.  So if this patch is fine, I will generate a patch for
-ext3 file system.
+> On Thu, Jul 18, 2013 at 10:59:34PM -0400, Theodore Ts'o wrote:
+>> On Thu, Jul 18, 2013 at 07:56:45PM -0500, Eric Sandeen wrote:
+>> > > The problem is we don't know that we're doing AIO until we see the
+>> > > first io_submit(2) call.  With this patch series, we'll pull the
+>> > > contents of the entire leaf tree block into extent cache, but if the
+>> > > extent tree is larger than that, if we read in the entire extent tree
+>> > > on the first AIO request, then that first request will delayed even
+>> > > more, and it's not clear that's a good thing.
+>> > 
+>> > Is blocking on a pre-AIO ioctl better than blocking on the
+>> > first AIO?
+>> 
+>> The precache ioctl is something which the application is expecting to
+>> block.  The question is, if we have a heavily fragmented extent tree,
+>> is it better for the first AIO to block long enough to read in one
+>> metadata block --- and then never block again, or to have that first
+>> AIO request take a long, LONG time?  Especially if the application
+>> isn't expecting it?
+>> 
+>> Also there are use cases for the precache ioctl even if you are not
+>> using AIO.  If you've taken care to make sure the file is as
+>> contiguous as possible, having the extents be cached will save a lot
+>> of memory compared to if the buffer heads are always entering the
+>> buffer cache.  So reading in all of the metadata can be a good thing
+>> to do, especially if you can do this *before* you declare that the
+>> server is healthy and is ready to start receiving traffic.
+>
+> An ioctl is kinda silly for this. Just use O_NONBLOCK when calling
+> open() and do the prefetch right in the open call. The open() can
+> block, anyway, and what you are trying to do is non-blocking IO with
+> AIO, so it seems like we've already got a sensible, generic
+> interface for triggering this sort of prefetch operation.
 
-Thanks,
-						- Zheng
+Hmm, O_NONBLOCK on regular files, eh?  That brings back memories:
+  http://www.gossamer-threads.com/lists/linux/kernel/481855
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+I don't recall exactly how that ended, but I'm pretty sure the
+conclusion was that it was a bad idea.
 
-When we try to open a file with O_TMPFILE flag, we will trigger a bug.
-The root cause is that in ext4_orphan_add() we check ->i_nlink == 0 and
-this check always fails because we set ->i_nlink = 1 in
-inode_init_always().  We can use the following program to trigger it:
-
-int main(int argc, char *argv[])
-{
-	int fd;
-
-	fd = open(argv[1], O_TMPFILE, 0666);
-	if (fd < 0) {
-		perror("open ");
-		return -1;
-	}
-	close(fd);
-	return 0;
-}
-
-The oops message looks like this:
-
-kernel BUG at fs/ext4/namei.c:2572!
-invalid opcode: 0000 [#1] PREEMPT SMP DEBUG_PAGEALLOC
-Modules linked in: dlci bridge stp hidp cmtp kernelcapi l2tp_ppp l2tp_netlink l2tp_core sctp libcrc32c rfcomm tun fuse nfnetli
-nk can_raw ipt_ULOG can_bcm x25 scsi_transport_iscsi ipx p8023 p8022 appletalk phonet psnap vmw_vsock_vmci_transport af_key vmw_vmci rose vsock atm can netrom ax25 af_rxrpc ir
-da pppoe pppox ppp_generic slhc bluetooth nfc rfkill rds caif_socket caif crc_ccitt af_802154 llc2 llc snd_hda_codec_realtek snd_hda_intel snd_hda_codec serio_raw snd_pcm pcsp
-kr edac_core snd_page_alloc snd_timer snd soundcore r8169 mii sr_mod cdrom pata_atiixp radeon backlight drm_kms_helper ttm
-CPU: 1 PID: 1812571 Comm: trinity-child2 Not tainted 3.11.0-rc1+ #12
-Hardware name: Gigabyte Technology Co., Ltd. GA-MA78GM-S2H/GA-MA78GM-S2H, BIOS F12a 04/23/2010
-task: ffff88007dfe69a0 ti: ffff88010f7b6000 task.ti: ffff88010f7b6000
-RIP: 0010:[<ffffffff8125ce69>]  [<ffffffff8125ce69>] ext4_orphan_add+0x299/0x2b0
-RSP: 0018:ffff88010f7b7cf8  EFLAGS: 00010202
-RAX: 0000000000000000 RBX: ffff8800966d3020 RCX: 0000000000000000
-RDX: 0000000000000000 RSI: ffff88007dfe70b8 RDI: 0000000000000001
-RBP: ffff88010f7b7d40 R08: ffff880126a3c4e0 R09: ffff88010f7b7ca0
-R10: 0000000000000000 R11: 0000000000000000 R12: ffff8801271fd668
-R13: ffff8800966d2f78 R14: ffff88011d7089f0 R15: ffff88007dfe69a0
-FS:  00007f70441a3740(0000) GS:ffff88012a800000(0000) knlGS:00000000f77c96c0
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 0000000002834000 CR3: 0000000107964000 CR4: 00000000000007e0
-DR0: 0000000000780000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000600
-Stack:
- 0000000000002000 00000020810b6dde 0000000000000000 ffff88011d46db00
- ffff8800966d3020 ffff88011d7089f0 ffff88009c7f4c10 ffff88010f7b7f2c
- ffff88007dfe69a0 ffff88010f7b7da8 ffffffff8125cfac ffff880100000004
-Call Trace:
- [<ffffffff8125cfac>] ext4_tmpfile+0x12c/0x180
- [<ffffffff811cba78>] path_openat+0x238/0x700
- [<ffffffff8100afc4>] ? native_sched_clock+0x24/0x80
- [<ffffffff811cc647>] do_filp_open+0x47/0xa0
- [<ffffffff811db73f>] ? __alloc_fd+0xaf/0x200
- [<ffffffff811ba2e4>] do_sys_open+0x124/0x210
- [<ffffffff81010725>] ? syscall_trace_enter+0x25/0x290
- [<ffffffff811ba3ee>] SyS_open+0x1e/0x20
- [<ffffffff816ca8d4>] tracesys+0xdd/0xe2
- [<ffffffff81001001>] ? start_thread_common.constprop.6+0x1/0xa0
-Code: 04 00 00 00 89 04 24 31 c0 e8 c4 77 04 00 e9 43 fe ff ff 66 25 00 d0 66 3d 00 80 0f 84 0e fe ff ff 83 7b 48 00 0f 84 04 fe ff ff <0f> 0b 49 8b 8c 24 50 07 00 00 e9 88 fe ff ff 0f 1f 84 00 00 00
-
-Here we couldn't call clear_nlink() directly because in d_tmpfile() we
-will call inode_dec_link_count() to decrease ->i_nlink.  So this commit
-tries to call d_tmpfile() before ext4_orphan_add() to fix this problem.
-
-Reported-by: Dave Jones <davej@redhat.com>
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Al Viro <viro@zeniv.linux.org.uk>
----
- fs/ext4/namei.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 234b834..35f55a0 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -2316,11 +2316,11 @@ retry:
- 		inode->i_op = &ext4_file_inode_operations;
- 		inode->i_fop = &ext4_file_operations;
- 		ext4_set_aops(inode);
-+		d_tmpfile(dentry, inode);
- 		err = ext4_orphan_add(handle, inode);
- 		if (err)
- 			goto err_drop_inode;
- 		mark_inode_dirty(inode);
--		d_tmpfile(dentry, inode);
- 		unlock_new_inode(inode);
- 	}
- 	if (handle)
--- 
-1.7.9.7
+-Jeff
