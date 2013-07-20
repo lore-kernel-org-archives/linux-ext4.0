@@ -1,99 +1,105 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH] ext3: fix a bug when we try to open a file with O_TMPFILE flag
-Date: Sun, 21 Jul 2013 00:53:47 +0800
-Message-ID: <1374339227-9382-1-git-send-email-wenqing.lz@taobao.com>
-Cc: Zheng Liu <wenqing.lz@taobao.com>, Jan Kara <jack@suse.cz>,
-	Al Viro <viro@zeniv.linux.org.uk>
-To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Larry Keegan <lk@pfw.demon.co.uk>
+Subject: 3.10.0: kernel BUG at fs/ext4/super.c:804!
+Date: Sat, 20 Jul 2013 18:49:07 +0000
+Message-ID: <20130720184907.4fff17ee@fs6.al.itld>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from pfw.demon.co.uk ([62.49.22.168]:36403 "EHLO pfw.demon.co.uk"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754715Ab3GTS75 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 20 Jul 2013 14:59:57 -0400
+Received: from fs6.al.itld (fs6.al.itld [10.1.1.175])
+	by pfw.demon.co.uk (Postfix) with ESMTP id 2F10043
+	for <linux-ext4@vger.kernel.org>; Sat, 20 Jul 2013 18:49:11 +0000 (UTC)
+Received: from fs6.al.itld (fs6.al.itld [10.1.1.175])
+	by fs6.al.itld (Postfix) with ESMTP id 1F94C253
+	for <linux-ext4@vger.kernel.org>; Sat, 20 Jul 2013 18:49:10 +0000 (UTC)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+Dear Sirs,
 
-When we try to open a file with O_TMPFILE flag, we will trigger a bug.
-The root cause is that in ext4_orphan_add() we check ->i_nlink == 0 and
-this check always fails because we set ->i_nlink = 1 in
-inode_init_always().  We can use the following program to trigger it:
+I just had a nasty surprise when unmounting an ext 4 system on my file
+server. It was running a plain kernel 3.10.0 at the time.
 
-int main(int argc, char *argv[])
-{
-	int fd;
+It is a pretty quiet file server which is in an HA configuration with
+an identical machine. It serves a dozen or so low traffic home volumes
+over NFSv4.1. All the machines were running identical software. A few
+minutes before I elected to unmount the filesystems I was running
+claws-mail on a client machine. Despite using mbox format, claws-mail
+really hammers the file server with the conventional mbox lock/unlock
+trickery *for each message in each mbox*. Even so, it only lasts a few
+seconds.
 
-	fd = open(argv[1], O_TMPFILE, 0666);
-	if (fd < 0) {
-		perror("open ");
-		return -1;
-	}
-	close(fd);
-	return 0;
-}
+When I elected to shut down the machine, I unexported the NFS
+filesystems and unmounted them. At this point umount SEGVd and this
+appeared in syslog:
 
-The oops message looks like this:
+EXT4-fs (dm-41): sb orphan head is 5207
+sb_info orphan list:
+  inode dm-41:5207 at e3a7cef8: mode 100644, nlink 0, next 0
+------------[ cut here ]------------
+kernel BUG at fs/ext4/super.c:804!
+invalid opcode: 0000 [#1] SMP 
+Modules linked in: videobuf_dvb dvb_core mt20xx tda9887 tda18271 xc5000
+tuner_simple videobuf_core t da8290 tuner_types tuner_xc2028 tda827x
+mc44s803 tda10048 xc4000 s5h1411 m2m_deinterlace videobuf2_dma_contig
+videobuf2_memops v4l2_mem2mem videob uf2_core videodev media
+snd_hda_codec_realtek snd_hda_intel snd_hda_codec snd_hwdep snd_pcm
+snd_page_alloc snd_timer snd soundcore objlayoutdriver netlink_diag
+generic_bl fbcon tileblit blocklayoutdriver nfs_layout_nfsv41_files
+libore ams369fg06 lcd bitblit output font ip_vs_ftp softcursor f b
+fbdev intel_agp intel_gtt agpgart CPU: 1 PID: 32533 Comm: umount Not
+tainted 3.10.0 #1 Hardware name: Gigabyte Technology Co., Ltd.
+EP45-UD3L/EP45-UD3L, BIOS F4 02/24/2009 task: e9a3f2c0 ti: e7662000
+task.ti: e7662000 EIP: 0060:[ext4_put_super+0x2f9/0x300] EFLAGS:
+00010216 CPU: 1 EIP is at ext4_put_super+0x2f9/0x300 EAX: 0000003c EBX:
+e7ed4800 ECX: e7ed4950 EDX: e7ed4950 ESI: e7ed6c00 EDI: 00000002 EBP:
+e7663ef4 ESP: e7663ec0 DS: 007b ES: 007b FS: 00d8 GS: 00e0 SS: 0068
+CR0: 8005003b CR2: b717d7e0 CR3: 29f09000 CR4: 000007f0 DR0: 00000000
+DR1: 00000000 DR2: 00000000 DR3: 00000000 DR6: ffff0ff0 DR7: 00000400
+Stack: c1ee5834 e7ed6dbc 00001457 e3a7cef8 000081a4 00000000 00000000
+e3a7ced8 e7ed4950 e7ed4914 e7ed6c00 e7ed6c58 c1c40ee0 e7663f10 c111479c
+e7663f20 c10e6fc2 f0443400 00000083 ea0ba310 e7663f20 c1114834 e7ed6c00
+c20637a8 Call Trace:
+ [generic_shutdown_super+0x4c/0xc0] generic_shutdown_super+0x4c/0xc0
+ [pcpu_free_area+0x162/0x1f0] ? pcpu_free_area+0x162/0x1f0
+ [kill_block_super+0x24/0x70] kill_block_super+0x24/0x70
+ [deactivate_locked_super+0x33/0x60] deactivate_locked_super+0x33/0x60
+ [deactivate_super+0x42/0x60] deactivate_super+0x42/0x60
+ [mntput_no_expire+0xc3/0x120] mntput_no_expire+0xc3/0x120
+ [sys_umount+0x84/0x320] SyS_umount+0x84/0x320
+ [sys_oldumount+0x19/0x20] SyS_oldumount+0x19/0x20
+ [syscall_call+0x7/0x0b] syscall_call+0x7/0xb
+Code: 55 ec 89 4d e8 05 bc 01 00 00 89 44 24 04 e8 be 4d a0 00 8b 4d e8
+8b 55 ec 8b 09 39 ca 75 b2 3b 93 50 01 00 00 0f 84 de fe ff ff <0f> 0b
+90 8d 74 26 00 55 89 e5 83 ec 20 8d 45 18 c7 04 24 68 58 EIP:
+[ext4_put_super+0x2f9/0x300] ext4_put_super+0x2f9/0x300 SS:ESP
+0068:e7663ec0 ---[ end trace 5309e7ede4b7c1d0 ]---
 
-kernel: kernel BUG at fs/ext3/namei.c:1992!
-kernel: invalid opcode: 0000 [#1] SMP
-kernel: Modules linked in: ext4 jbd2 crc16 cpufreq_ondemand ipv6 dm_mirror dm_region_hash dm_log dm_mod parport_pc parport serio_raw sg dcdbas pcspkr i2c_i801 ehci_pci ehci_hcd button acpi_cpufreq mperf e1000e ptp pps_core ttm drm_kms_helper drm hwmon i2c_algo_bit i2c_core ext3 jbd sd_mod ahci libahci libata scsi_mod uhci_hcd
-kernel: CPU: 0 PID: 2882 Comm: tst_tmpfile Not tainted 3.11.0-rc1+ #4
-kernel: Hardware name: Dell Inc. OptiPlex 780 /0V4W66, BIOS A05 08/11/2010
-kernel: task: ffff880112d30050 ti: ffff8801124d4000 task.ti: ffff8801124d4000
-kernel: RIP: 0010:[<ffffffffa00db5ae>] [<ffffffffa00db5ae>] ext3_orphan_add+0x6a/0x1eb [ext3]
-kernel: RSP: 0018:ffff8801124d5cc8  EFLAGS: 00010202
-kernel: RAX: 0000000000000000 RBX: ffff880111510128 RCX: ffff8801114683a0
-kernel: RDX: 0000000000000000 RSI: ffff880111510128 RDI: ffff88010fcf65a8
-kernel: RBP: ffff8801124d5d18 R08: 0080000000000000 R09: ffffffffa00d3b7f
-kernel: R10: ffff8801114683a0 R11: ffff8801032a2558 R12: 0000000000000000
-kernel: R13: ffff88010fcf6800 R14: ffff8801032a2558 R15: ffff8801115100d8
-kernel: FS:  00007f5d172b5700(0000) GS:ffff880117c00000(0000) knlGS:0000000000000000
-kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-kernel: CR2: 00007f5d16df15d0 CR3: 0000000110b1d000 CR4: 00000000000407f0
-kernel: Stack:
-kernel: 000000000000000c ffff8801048a7dc8 ffff8801114685a8 ffffffffa00b80d7
-kernel: ffff8801124d5e38 ffff8801032a2558 ffff88010ce24d68 0000000000000000
-kernel: ffff88011146b300 ffff8801124d5d44 ffff8801124d5d78 ffffffffa00db7e1
-kernel: Call Trace:
-kernel: [<ffffffffa00b80d7>] ? journal_start+0x8c/0xbd [jbd]
-kernel: [<ffffffffa00db7e1>] ext3_tmpfile+0xb2/0x13b [ext3]
-kernel: [<ffffffff821076f8>] path_openat+0x11f/0x5e7
-kernel: [<ffffffff821c86b4>] ? list_del+0x11/0x30
-kernel: [<ffffffff82065fa2>] ?  __dequeue_entity+0x33/0x38
-kernel: [<ffffffff82107cd5>] do_filp_open+0x3f/0x8d
-kernel: [<ffffffff82112532>] ? __alloc_fd+0x50/0x102
-kernel: [<ffffffff820f9296>] do_sys_open+0x13b/0x1cd
-kernel: [<ffffffff820f935c>] SyS_open+0x1e/0x20
-kernel: [<ffffffff82398c02>] system_call_fastpath+0x16/0x1b
-kernel: Code: 39 c7 0f 85 67 01 00 00 0f b7 03 25 00 f0 00 00 3d 00 40 00 00 74 18 3d 00 80 00 00 74 11 3d 00 a0 00 00 74 0a 83 7b 48 00 74 04 <0f> 0b eb fe 49 8b 85 50 03 00 00 4c 89 f6 48 c7 c7 c0 99 0e a0
-kernel: RIP  [<ffffffffa00db5ae>] ext3_orphan_add+0x6a/0x1eb [ext3]
-kernel: RSP <ffff8801124d5cc8>
+The strange thing is that this particular filesystem, although exported
+via NFS won't have been mounted by any machine (not for weeks at any
+rate).
 
-Here we couldn't call clear_nlink() directly because in d_tmpfile() we
-will call inode_dec_link_count() to decrease ->i_nlink.  So this commit
-tries to call d_tmpfile() before ext4_orphan_add() to fix this problem.
+After the crash, attempts to umount or sync caused those processes to
+hang, followed by more processes and so on. The only escape was to
+SysRq+U and SysRq+B. No filesystem errors were reported by e2fsck on
+any filesystems when they came back up.
 
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-Cc: Jan Kara <jack@suse.cz>
-Cc: Al Viro <viro@zeniv.linux.org.uk>
----
- fs/ext3/namei.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+I've been experiencing a few oddities when unmounting filesystems ever
+since I upgraded my file server to gigabit when I was running kernel
+3.4.4. I am satisfied that I can reproduce the hanging problem
+reliably-enough for it to be a real pain in the arse, but this is the
+first time I've seen a BUG.
 
-diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
-index 998ea11..1194b1f 100644
---- a/fs/ext3/namei.c
-+++ b/fs/ext3/namei.c
-@@ -1780,11 +1780,11 @@ retry:
- 		inode->i_op = &ext3_file_inode_operations;
- 		inode->i_fop = &ext3_file_operations;
- 		ext3_set_aops(inode);
-+		d_tmpfile(dentry, inode);
- 		err = ext3_orphan_add(handle, inode);
- 		if (err)
- 			goto err_drop_inode;
- 		mark_inode_dirty(inode);
--		d_tmpfile(dentry, inode);
- 		unlock_new_inode(inode);
- 	}
- 	ext3_journal_stop(handle);
--- 
-1.7.9.7
+I'm now running 3.10.1 and have NFSv4.1 client support switched off in
+the hope it might not happen again.
 
+Any ideas?
+
+Yours,
+
+Larry.
