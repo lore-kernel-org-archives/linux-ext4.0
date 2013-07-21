@@ -1,60 +1,69 @@
-From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
-Subject: Re: fuzzying a user mode linux image often core dumps with
-Date: Sun, 21 Jul 2013 13:14:13 +0200
-Message-ID: <51EBC285.2030104@gmx.de>
-References: <51EAA7A7.4000104@gmx.de> <20130721010352.GB21484@thunk.org>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH v1 0/5] ext4: Shut down block groups when damage is
+ detected
+Date: Sun, 21 Jul 2013 22:32:26 +0800
+Message-ID: <20130721143226.GA13473@gmail.com>
+References: <20130719235532.24017.31896.stgit@blackbox.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org,
-	"user-mode-linux-devel@lists.sourceforge.net"
-	<user-mode-linux-devel@lists.sourceforge.net>
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>,
+	Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mout.gmx.net ([212.227.15.15]:55371 "EHLO mout.gmx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754542Ab3GULOP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 21 Jul 2013 07:14:15 -0400
-Received: from [80.171.226.24] ([80.171.226.24]) by mail.gmx.com (mrgmx002)
- with ESMTPSA (Nemesis) id 0M1msU-1U77JE0ANG-00tkot for
- <linux-ext4@vger.kernel.org>; Sun, 21 Jul 2013 13:14:14 +0200
-In-Reply-To: <20130721010352.GB21484@thunk.org>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:64570 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755519Ab3GUOcf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 21 Jul 2013 10:32:35 -0400
+Received: by mail-pb0-f46.google.com with SMTP id rq2so6103924pbb.5
+        for <linux-ext4@vger.kernel.org>; Sun, 21 Jul 2013 07:32:34 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <20130719235532.24017.31896.stgit@blackbox.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 07/21/2013 03:03 AM, Theodore Ts'o wrote:
-> On Sat, Jul 20, 2013 at 05:07:19PM +0200, Toralf F=C3=B6rster wrote:
->> I do run the fuzzer trinity within a 32 bit user mode linux.
->> With latest git tree I do often get a core dump like the one attache=
-d.
->>
->> Although it is the nature of trinity to corrupt the kernel /me wonde=
-rs why it happens nearly alway
->> at the same place. That's why I decided to just report it here.
->=20
-> Thanks, this is a known problem for which the fix is can be found her=
-e:
->=20
-> 	http://patchwork.ozlabs.org/patch/260250/
->=20
-Ah - so no bisecting necessary.
+On Fri, Jul 19, 2013 at 04:55:32PM -0700, Darrick J. Wong wrote:
+> Right now, ext4 doesn't do quite a good enough job shutting off allocation and
+> freeing activity in block groups when damage is detected, which means that ext4
+> can obliviously load a corrupt bitmap, base allocation decisions off of that,
+> and trash the filesystem.  We'd like to be able to freeze the block group when
+> this happens, so hopefully the next fsck can repair the damage.
+> 
+> The first patch fixes the behavior that a corrupt bitmap can be returned to
+> mballoc as if it was accurate.  The second patch is a trivial fix, and the two
+> after it provide for detecting damage in either the block bitmap or the inode
+> bitmap, and disabling all allocation/deallocation activity in the block group.
+> The final patch changes runtime block group descriptor validation failure
+> behavior to use the corruption flag to mark off the block group.
+> 
+> This patchset has been tested (albeit lightly) against 3.11-rc1 on x64.  I'm
+> wondering about a few things -- if we detect corrupt *inodes*, should we invoke
+> this mechanism as well?  Second, as I mentioned a few days ago, maybe it's time
+> for block_validity to be set always, since it seems to have a low speed impact?
+> Third, the block bitmap corruption flag patch is based off of Aditya Kali's
+> patch that you forwarded; can a proper Signed-off-by be attached since I mostly
+> just massaged that one into 3.11?
+> 
+> Comments and questions are, as always, welcome.
 
-> I hope to get this fixed before -rc2 is released; the only question a=
-t
-> the moment is whether the fix is going to go to Linus via the ext4
-> tree or the VFS tree....
+Wow, it seems to me that I have missed a very important thread [1] after
+serveral crazy busy weeks.  There is an idea that is in my mind for a
+while and I still can not have a proper time to try it.
 
-yep - Linus had it now in its tree-.
+My idea is to let file system can ignore the currurted block.  Namely,
+when we meet a currupted block, we will track it as bad block in bad
+block inode and find another block to save data.  This currupted block
+will never be used.  The first step in my mind is to detect a currpted
+block and mark it as bad block.  After reading the thread and Darrick's
+original patch, I think Darrick's patch is a good start.
 
-BTW that issue seems to be the reason for a lot of erratically crashes
-of an UML while fuzzy tested.
+At Taobao, we have a large CDN system.  These servers are a cache for
+web site, and this system can tolerate the data loss.  So we hope when
+we detect a currupted block, we can just ignore it and use another block
+until the whole disk currupted or the server is dropped.
 
---=20
-MfG/Sincerely
-Toralf F=C3=B6rster
-pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I will take a closer look at these patches later.
+
+Thanks,
+                                                - Zheng
+
+1. http://www.spinics.net/lists/linux-ext4/msg39053.html
