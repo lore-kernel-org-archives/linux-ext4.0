@@ -1,83 +1,32 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: [PATCH] e2fsprogs: Don't report uninit extents past EOF invalid
-Date: Sun, 21 Jul 2013 16:28:49 -0400
-Message-ID: <20130721202849.GB2331@wallace>
+From: "H. Peter Anvin" <hpa@zytor.com>
+Subject: e2fsck running extremely slowly
+Date: Sun, 21 Jul 2013 15:45:20 -0700
+Message-ID: <51EC6480.6000200@zytor.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qe0-f52.google.com ([209.85.128.52]:64986 "EHLO
-	mail-qe0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755822Ab3GUU2y (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 21 Jul 2013 16:28:54 -0400
-Received: by mail-qe0-f52.google.com with SMTP id i11so3382543qej.39
-        for <linux-ext4@vger.kernel.org>; Sun, 21 Jul 2013 13:28:53 -0700 (PDT)
-Content-Disposition: inline
+Received: from terminus.zytor.com ([198.137.202.10]:37299 "EHLO mail.zytor.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751253Ab3GUWpl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 21 Jul 2013 18:45:41 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Commit d3f32c2db8 caused e2fsck misbehavior during xfstests runs.
-It reported that uninitialized extents created by fallocate() at
-the end of file with the FALLOC_FL_KEEP_SIZE flag were invalid.
-Because FALLOC_FL_KEEP_SIZE does not increase the file size when
-an extent is fallocated, an uninitialized extent can legally contain
-blocks past the end of file.
+I have a large filesystem (14 TB) which suffered a RAID failure which
+seems to have corrupted some inodes.  Unfortunately as a result there
+are now a number of inodes with "false extents" which result in a very
+large number of multiply claimed blocks.
 
-The information reported by ext2fs_extent_get() and used by the commit
-to determine legal extent ranges is limited by the value of i_size
-(determines end_blk in the root extent index), so block values greater
-than that containing i_size were reported as invalid.
+I have tried to run e2fsck on this filesystem, and it gets as far as
+phase 1D, at which point it starts running at a glacial pace.  After 48
+hours -- most of it sitting at 100% CPU executing no system calls at all
+-- it claims to have processed a single file out of almost 10000.
 
-To fix this, filter out possible invalid extent candidates if they are
-uninitialized and extend past the block containing the end of file.
+Anything I can do (to rescue the filesystem or try to debug the problem)
+other than "wipe and start over"?
 
-Signed-off-by: Eric Whitney <enwlinux@gmail.com>
----
- e2fsck/pass1.c      |    4 +++-
- lib/ext2fs/ext2fs.h |    1 +
- lib/ext2fs/extent.c |    1 +
- 3 files changed, 5 insertions(+), 1 deletion(-)
+I believe this is e2fsck 1.42.3 from Fedora 17.
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index ba6025b..b84b0d0 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -1892,7 +1892,9 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
- 			problem = PR_1_EXTENT_BAD_START_BLK;
- 		else if (extent.e_lblk < start_block)
- 			problem = PR_1_OUT_OF_ORDER_EXTENTS;
--		else if (end_block && last_lblk > end_block)
-+		else if ((end_block && last_lblk > end_block) &&
-+			 (!(extent.e_flags & EXT2_EXTENT_FLAGS_UNINIT &&
-+			    last_lblk > info.eof_blk - 1)))
- 			problem = PR_1_EXTENT_END_OUT_OF_BOUNDS;
- 		else if (is_leaf && extent.e_len == 0)
- 			problem = PR_1_EXTENT_LENGTH_ZERO;
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 311ceda..85f2ac8 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -409,6 +409,7 @@ struct ext2_extent_info {
- 	int		bytes_avail;
- 	blk64_t		max_lblk;
- 	blk64_t		max_pblk;
-+	blk64_t         eof_blk;
- 	__u32		max_len;
- 	__u32		max_uninit_len;
- };
-diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
-index 65bb099..de54319 100644
---- a/lib/ext2fs/extent.c
-+++ b/lib/ext2fs/extent.c
-@@ -1572,6 +1572,7 @@ errcode_t ext2fs_extent_get_info(ext2_extent_handle_t handle,
- 	info->max_depth = handle->max_depth;
- 	info->max_lblk = ((__u64) 1 << 32) - 1;
- 	info->max_pblk = ((__u64) 1 << 48) - 1;
-+	info->eof_blk = handle->path[0].end_blk;
- 	info->max_len = (1UL << 15);
- 	info->max_uninit_len = (1UL << 15) - 1;
- 
--- 
-1.7.10.4
-
+	-hpa
