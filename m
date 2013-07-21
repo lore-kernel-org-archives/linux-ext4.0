@@ -1,38 +1,45 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix a bug when we try to open a file with
- O_TMPFILE flag
-Date: Sat, 20 Jul 2013 20:56:36 -0400
-Message-ID: <20130721005636.GA21484@thunk.org>
-References: <20130717161944.GA19405@redhat.com>
- <20130719121405.GA3856@gmail.com>
- <20130719233613.GH4165@ZenIV.linux.org.uk>
- <20130720163737.GA8870@gmail.com>
+Subject: Re: fuzzying a user mode linux image often core dumps with
+Date: Sat, 20 Jul 2013 21:03:52 -0400
+Message-ID: <20130721010352.GB21484@thunk.org>
+References: <51EAA7A7.4000104@gmx.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Al Viro <viro@ZenIV.linux.org.uk>, Dave Jones <davej@redhat.com>,
-	Linux Kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org,
+	"user-mode-linux-devel@lists.sourceforge.net"
+	<user-mode-linux-devel@lists.sourceforge.net>
+To: Toralf =?iso-8859-1?Q?F=F6rster?= <toralf.foerster@gmx.de>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:39611 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755216Ab3GUBD6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 20 Jul 2013 21:03:58 -0400
 Content-Disposition: inline
-In-Reply-To: <20130720163737.GA8870@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <51EAA7A7.4000104@gmx.de>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jul 21, 2013 at 12:37:37AM +0800, Zheng Liu wrote:
-> 
-> Now ext4 tree has not yet rebased against 3.11-rcX.  So it seems that
-> vfs tree is better if we want to fix this bug in mainline kernel as soon
-> as possible.
+On Sat, Jul 20, 2013 at 05:07:19PM +0200, Toralf F=F6rster wrote:
+> I do run the fuzzer trinity within a 32 bit user mode linux.
+> With latest git tree I do often get a core dump like the one attached=
+=2E
+>=20
+> Although it is the nature of trinity to corrupt the kernel /me wonder=
+s why it happens nearly alway
+> at the same place. That's why I decided to just report it here.
 
-I was going to rebase the ext4 tree to Linus's current tree just to
-get this patch in.  I think it would be good to get this fix before
--rc2, so either you or I should get this to Linus ASAP.
+Thanks, this is a known problem for which the fix is can be found here:
 
-So Al, if you're going to send vfs patches to Linus this weekend (say,
-to fix the equivalent bug for ext3), go for it.  Otherwise, let me
-know and I'll send Linus a one-commit pull request just to get this
-fix in.
+	http://patchwork.ozlabs.org/patch/260250/
 
-Cheers,
+I hope to get this fixed before -rc2 is released; the only question at
+the moment is whether the fix is going to go to Linus via the ext4
+tree or the VFS tree....
 
-						- Ted
+					- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
