@@ -1,102 +1,118 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 0/5 v2] add extent status tree caching
-Date: Mon, 22 Jul 2013 20:57:45 +0800
-Message-ID: <20130722125745.GA2827@gmail.com>
-References: <1373987883-4466-1-git-send-email-tytso@mit.edu>
- <51E8356C.9030603@redhat.com>
- <20130718185310.GA17548@thunk.org>
- <51E88ECD.3040806@redhat.com>
- <20130719025934.GE17938@thunk.org>
- <20130719033309.GQ11674@dastard>
- <20130719161930.GF17938@thunk.org>
- <20130722013831.GE11674@dastard>
- <20130722021742.GA24195@gmail.com>
- <20130722100255.GF11674@dastard>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext3: fix a bug when we try to open a file with
+ O_TMPFILE flag
+Date: Mon, 22 Jul 2013 15:07:37 +0200
+Message-ID: <20130722130737.GC23658@quack.suse.cz>
+References: <1374339227-9382-1-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Dave Chinner <david@fromorbit.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Zheng Liu <wenqing.lz@taobao.com>, Jan Kara <jack@suse.cz>,
+	Al Viro <viro@zeniv.linux.org.uk>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f44.google.com ([209.85.160.44]:56698 "EHLO
-	mail-pb0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754150Ab3GVM5v (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Jul 2013 08:57:51 -0400
-Received: by mail-pb0-f44.google.com with SMTP id uo1so7012005pbc.31
-        for <linux-ext4@vger.kernel.org>; Mon, 22 Jul 2013 05:57:50 -0700 (PDT)
+Received: from cantor2.suse.de ([195.135.220.15]:50974 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750876Ab3GVNHm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 22 Jul 2013 09:07:42 -0400
 Content-Disposition: inline
-In-Reply-To: <20130722100255.GF11674@dastard>
+In-Reply-To: <1374339227-9382-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jul 22, 2013 at 08:02:55PM +1000, Dave Chinner wrote:
-> On Mon, Jul 22, 2013 at 10:17:42AM +0800, Zheng Liu wrote:
-> > On Mon, Jul 22, 2013 at 11:38:31AM +1000, Dave Chinner wrote:
-> > > On Fri, Jul 19, 2013 at 12:19:30PM -0400, Theodore Ts'o wrote:
-> > > > On Fri, Jul 19, 2013 at 01:33:09PM +1000, Dave Chinner wrote:
-> > > > > An ioctl is kinda silly for this. Just use O_NONBLOCK when calling
-> > > > > open() and do the prefetch right in the open call. The open() can
-> > > > > block, anyway, and what you are trying to do is non-blocking IO with
-> > > > > AIO, so it seems like we've already got a sensible, generic
-> > > > > interface for triggering this sort of prefetch operation.
-> > > > 
-> > > > O_NONBLOCK (either set via open or fcntl) is a possibility, since it's
-> > > > carefully defined to be unspecified for regular files by SUSv3.  It is
-> > > > quite different from the existing semantics for O_NONBLOCK, though.
-> > > > Currently, for all file types where O_NONBLOCK is not ignored, open(2)
-> > > > is guaranteed itself not to block.  If we use O_NONBLOCK for regular
-> > > > files to mean that any necessary metadata blocks required for AIO to
-> > > > be "A" will be cached, then it will make open(2) much more likely to
-> > > > block.  Also, for all file types where O_NONBLOCK is not ignored,
-> > > > read(2) will not block but instead return -1 and set errno to EAGAIN.
-> > > > This would also be a change.
-> > > > 
-> > > > If we tried to get this new semantics for O_NONBLOCK to be accepted by
-> > > > the Austin Group for standardization in the future, would they accept
-> > > > it, or would they say, "this makes me vommit"?  I have a suspicion
-> > > > there reaction might be closer to the latter....
-> > > > 
-> > > > If we want a VFS-level API, in my opinion an fadvise() flag would be a
-> > > > better choice.
-> > > 
-> > > Sure. Make it an fadvise() flag - just don't add ioctls for things
-> > > that are generically useful.
-> > > 
-> > > On second thoughts - you're trying to get the extent map read in. We
-> > > already have an interface for querying extent maps - fiemap.
-> > > FIEMAP_FLAG_PREFETCH along with the range of the file you want the
-> > > extent map prefetched for?
-> > 
-> > I don't think fiemap is a good interface.  The application uses
-> > fiemap(2) to retrieve extent mapping. 
+On Sun 21-07-13 00:53:47, Zheng Liu wrote:
+> From: Zheng Liu <wenqing.lz@taobao.com>
 > 
-> fiemap is used to query information about extent maps. What it
-> returns is entirely dependent on the input parameters that are
-> passed to it. Indeed, from Documentation/filesystems/fiemap.txt:
+> When we try to open a file with O_TMPFILE flag, we will trigger a bug.
+> The root cause is that in ext4_orphan_add() we check ->i_nlink == 0 and
+> this check always fails because we set ->i_nlink = 1 in
+> inode_init_always().  We can use the following program to trigger it:
 > 
-> "If fm_extent_count is zero, then the fm_extents[] array is ignored
-> (no extents will be returned), and the fm_mapped_extents count will
-> hold the number of extents needed in fm_extents[] to hold the file's
-> current mapping."
+> int main(int argc, char *argv[])
+> {
+> 	int fd;
 > 
-> Think about that for a minute. What does the filesystem do with such
-> an fiemap query when the extent map is not cached?  That's right,
-> *fiemap reads the extent map from disk into the cache* and then
-> returns the number of extents in the range.
+> 	fd = open(argv[1], O_TMPFILE, 0666);
+> 	if (fd < 0) {
+> 		perror("open ");
+> 		return -1;
+> 	}
+> 	close(fd);
+> 	return 0;
+> }
 > 
-> All I have suggested is adding a flag to make this an *explicit
-> operation* rather than a side effect of a "count extents" query. I
-> fail to see any justification for a whole new interface when we
-> already have a perfectly functional one that already provides the
-> functionality that is required...
+> The oops message looks like this:
+> 
+> kernel: kernel BUG at fs/ext3/namei.c:1992!
+> kernel: invalid opcode: 0000 [#1] SMP
+> kernel: Modules linked in: ext4 jbd2 crc16 cpufreq_ondemand ipv6 dm_mirror dm_region_hash dm_log dm_mod parport_pc parport serio_raw sg dcdbas pcspkr i2c_i801 ehci_pci ehci_hcd button acpi_cpufreq mperf e1000e ptp pps_core ttm drm_kms_helper drm hwmon i2c_algo_bit i2c_core ext3 jbd sd_mod ahci libahci libata scsi_mod uhci_hcd
+> kernel: CPU: 0 PID: 2882 Comm: tst_tmpfile Not tainted 3.11.0-rc1+ #4
+> kernel: Hardware name: Dell Inc. OptiPlex 780 /0V4W66, BIOS A05 08/11/2010
+> kernel: task: ffff880112d30050 ti: ffff8801124d4000 task.ti: ffff8801124d4000
+> kernel: RIP: 0010:[<ffffffffa00db5ae>] [<ffffffffa00db5ae>] ext3_orphan_add+0x6a/0x1eb [ext3]
+> kernel: RSP: 0018:ffff8801124d5cc8  EFLAGS: 00010202
+> kernel: RAX: 0000000000000000 RBX: ffff880111510128 RCX: ffff8801114683a0
+> kernel: RDX: 0000000000000000 RSI: ffff880111510128 RDI: ffff88010fcf65a8
+> kernel: RBP: ffff8801124d5d18 R08: 0080000000000000 R09: ffffffffa00d3b7f
+> kernel: R10: ffff8801114683a0 R11: ffff8801032a2558 R12: 0000000000000000
+> kernel: R13: ffff88010fcf6800 R14: ffff8801032a2558 R15: ffff8801115100d8
+> kernel: FS:  00007f5d172b5700(0000) GS:ffff880117c00000(0000) knlGS:0000000000000000
+> kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+> kernel: CR2: 00007f5d16df15d0 CR3: 0000000110b1d000 CR4: 00000000000407f0
+> kernel: Stack:
+> kernel: 000000000000000c ffff8801048a7dc8 ffff8801114685a8 ffffffffa00b80d7
+> kernel: ffff8801124d5e38 ffff8801032a2558 ffff88010ce24d68 0000000000000000
+> kernel: ffff88011146b300 ffff8801124d5d44 ffff8801124d5d78 ffffffffa00db7e1
+> kernel: Call Trace:
+> kernel: [<ffffffffa00b80d7>] ? journal_start+0x8c/0xbd [jbd]
+> kernel: [<ffffffffa00db7e1>] ext3_tmpfile+0xb2/0x13b [ext3]
+> kernel: [<ffffffff821076f8>] path_openat+0x11f/0x5e7
+> kernel: [<ffffffff821c86b4>] ? list_del+0x11/0x30
+> kernel: [<ffffffff82065fa2>] ?  __dequeue_entity+0x33/0x38
+> kernel: [<ffffffff82107cd5>] do_filp_open+0x3f/0x8d
+> kernel: [<ffffffff82112532>] ? __alloc_fd+0x50/0x102
+> kernel: [<ffffffff820f9296>] do_sys_open+0x13b/0x1cd
+> kernel: [<ffffffff820f935c>] SyS_open+0x1e/0x20
+> kernel: [<ffffffff82398c02>] system_call_fastpath+0x16/0x1b
+> kernel: Code: 39 c7 0f 85 67 01 00 00 0f b7 03 25 00 f0 00 00 3d 00 40 00 00 74 18 3d 00 80 00 00 74 11 3d 00 a0 00 00 74 0a 83 7b 48 00 74 04 <0f> 0b eb fe 49 8b 85 50 03 00 00 4c 89 f6 48 c7 c7 c0 99 0e a0
+> kernel: RIP  [<ffffffffa00db5ae>] ext3_orphan_add+0x6a/0x1eb [ext3]
+> kernel: RSP <ffff8801124d5cc8>
+> 
+> Here we couldn't call clear_nlink() directly because in d_tmpfile() we
+> will call inode_dec_link_count() to decrease ->i_nlink.  So this commit
+> tries to call d_tmpfile() before ext4_orphan_add() to fix this problem.
+  Thanks the patch looks good. I've added the patch to my tree and will
+push it to Linus soon.
 
-Yes, I understand your point of view.  We can use fiemap to do that.
-All I concern is about semantics.  When someone mention about fiemap,
-first I remember is that I can use it to retrieve the extent mappings.
-But for fadvise, it looks like more naturally.  When I look at it, I
-always think that I can use it to provide a hint to the kernel, and then
-the kernel will do the rest of things for me.   So that is why I prefer
-to use a fadvise flag rather than use fiemap.
-
-Regards,
-                                                - Zheng
+								Honza
+> 
+> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+> Cc: Jan Kara <jack@suse.cz>
+> Cc: Al Viro <viro@zeniv.linux.org.uk>
+> ---
+>  fs/ext3/namei.c |    2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
+> index 998ea11..1194b1f 100644
+> --- a/fs/ext3/namei.c
+> +++ b/fs/ext3/namei.c
+> @@ -1780,11 +1780,11 @@ retry:
+>  		inode->i_op = &ext3_file_inode_operations;
+>  		inode->i_fop = &ext3_file_operations;
+>  		ext3_set_aops(inode);
+> +		d_tmpfile(dentry, inode);
+>  		err = ext3_orphan_add(handle, inode);
+>  		if (err)
+>  			goto err_drop_inode;
+>  		mark_inode_dirty(inode);
+> -		d_tmpfile(dentry, inode);
+>  		unlock_new_inode(inode);
+>  	}
+>  	ext3_journal_stop(handle);
+> -- 
+> 1.7.9.7
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
