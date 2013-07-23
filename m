@@ -1,138 +1,342 @@
-From: jon ernst <jonernst07@gmail.com>
-Subject: Re: [PATCH] ext4: fix a bug when we try to open a file with O_TMPFILE flag
-Date: Tue, 23 Jul 2013 07:51:41 +0000
-Message-ID: <CAGW2f1GqTR8xtE_bEN3O+QrRy75h9EjHYkYVnn7-vaoRucaQzg@mail.gmail.com>
-References: <20130717161944.GA19405@redhat.com>
-	<20130719121405.GA3856@gmail.com>
+From: Robert Yang <liezhi.yang@windriver.com>
+Subject: Re: [PATCH 2/2] debugfs.c: do sparse copy when src is a sparse file
+Date: Tue, 23 Jul 2013 17:44:09 +0800
+Message-ID: <51EE5069.6050003@windriver.com>
+References: <1374200257-2873-1-git-send-email-liezhi.yang@windriver.com> <1374200257-2873-3-git-send-email-liezhi.yang@windriver.com> <20130719185515.GC5785@blackbox.djwong.org> <51EB4994.3050703@windriver.com> <20130722173031.GE5785@blackbox.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: <tytso@mit.edu>, <dvhart@linux.intel.com>,
+	<linux-ext4@vger.kernel.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-we0-f170.google.com ([74.125.82.170]:52742 "EHLO
-	mail-we0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753751Ab3GWHvm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Jul 2013 03:51:42 -0400
-Received: by mail-we0-f170.google.com with SMTP id w60so659328wes.15
-        for <linux-ext4@vger.kernel.org>; Tue, 23 Jul 2013 00:51:41 -0700 (PDT)
-In-Reply-To: <20130719121405.GA3856@gmail.com>
+Received: from mail.windriver.com ([147.11.1.11]:42528 "EHLO
+	mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755973Ab3GWJog (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Jul 2013 05:44:36 -0400
+In-Reply-To: <20130722173031.GE5785@blackbox.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Zheng,
 
-I updated my kernel code to this commit, built kernel and loaded this kernel.
-I checked "uname -r", it is 3.11.0-rc1+ But when I run your test code,
-I always got "O_TMPFILE" undeclared.
-Could you please help, what could be wrong? (I included fcntl.h)
+Hi Darrick,
 
-Thank you!
+Thank you very much for your very detailed review, I will fix them
+one by one and send a V2 sooner.
+
+// Robert
 
 
-On Fri, Jul 19, 2013 at 12:14 PM, Zheng Liu <gnehzuil.liu@gmail.com> wrote:
-> Hi Dave,
+On 07/23/2013 01:30 AM, Darrick J. Wong wrote:
+> On Sun, Jul 21, 2013 at 10:38:12AM +0800, Robert Yang wrote:
+>>
+>> Hi Darrick,
+>>
+>> Thanks for your reply, it seems that 64K is a good idea since put 128K
+>> on the stack might cause problems, I will wait for one or two days for
+>> more comments on other parts of the patches, then send a V2 with the
+>> updates.
 >
-> After applied this patch, the problem has been fixed in my own sand box.
-> But that would be great if you could give it a try.  I want to make sure
-> that this patch can fix the problem.  It looks like there has the same
-> problem in ext3.  So if this patch is fine, I will generate a patch for
-> ext3 file system.
+> Well in that case I'll review harder. :)
 >
-> Thanks,
->                                                 - Zheng
+> (Actually I thought of a few more things this morning.)
 >
-> From: Zheng Liu <wenqing.lz@taobao.com>
+>>
+>> // Robert
+>>
+>>
+>> On 07/20/2013 02:55 AM, Darrick J. Wong wrote:
+>>> On Fri, Jul 19, 2013 at 10:17:37AM +0800, Robert Yang wrote:
+>>>> Let debugfs do sparse copy when src is a sparse file, just like
+>>>> "cp --sparse=auto"
+>>>>
+>>>> * For the
+>>>>    #define IO_BUFSIZE 32*1024
+>>>>
+>>>>    This is from coreutils-8.13/src/ioblksize.h (GPL V3):
+>>>> /* As of Mar 2009, 32KiB is determined to be the minimium
+>>>>     blksize to best minimize system call overhead.
+>>>>     This can be tested with this script with the results
+>>>>     shown for a 1.7GHz pentium-m with 2GB of 400MHz DDR2 RAM:
+>>>
+>>> Um.... GNU updated this to 64K a couple of years ago:
+>>> http://git.savannah.gnu.org/gitweb/?p=coreutils.git;a=blob;f=src/ioblksize.h;h=1ae93255e7d0ccf0855208c7ae5888209997bf16;hb=HEAD
+>>>
+>>> Just for laughs I tried it on a T430 with an i5-3320M and 16G of DDR3-1600 RAM:
+>>>
+>>>     1024=3.7 GB/s
+>>>     2048=7.1 GB/s
+>>>     4096=8.8 GB/s
+>>>     8192=14.9 GB/s
+>>>    16384=14.3 GB/s
+>>>    32768=13.4 GB/s
+>>>    65536=15.8 GB/s
+>>>   131072=20.7 GB/s
+>>>   262144=16.4 GB/s
+>>>   524288=15.9 GB/s
+>>> 1048576=15.8 GB/s
+>>> 2097152=15.1 GB/s
+>>> 4194304=11.7 GB/s
+>>> 8388608=9.9 GB/s
+>>> 16777216=9.4 GB/s
+>>> 33554432=9.3 GB/s
+>>> 67108864=9.3 GB/s
+>>> 134217728=8.8 GB/s
+>>>
+>>> For that matter, a 2010-era i7-950/DDR3-1066 system showed this:
+>>>
+>>>     1024=3.4 GB/s
+>>>     2048=5.6 GB/s
+>>>     4096=7.8 GB/s
+>>>     8192=9.5 GB/s
+>>>    16384=10.8 GB/s
+>>>    32768=11.4 GB/s
+>>>    65536=11.6 GB/s
+>>>   131072=12.2 GB/s
+>>>   262144=11.9 GB/s
+>>>   524288=12.3 GB/s
+>>> 1048576=12.4 GB/s
+>>> 2097152=12.5 GB/s
+>>> 4194304=12.5 GB/s
+>>> 8388608=10.3 GB/s
+>>> 16777216=8.0 GB/s
+>>> 33554432=7.6 GB/s
+>>> 67108864=7.8 GB/s
+>>> 134217728=7.5 GB/s
+>>>
+>>> And for good measure, a cruddy old T2300 Core Duo from 2006 spat out this:
+>>>
+>>>     1024=1.1 GB/s
+>>>     2048=2.1 GB/s
+>>>     4096=3.6 GB/s
+>>>     8192=5.0 GB/s
+>>>    16384=6.3 GB/s
+>>>    32768=6.5 GB/s
+>>>    65536=6.6 GB/s
+>>>   131072=7.0 GB/s
+>>>   262144=7.1 GB/s
+>>>   524288=7.1 GB/s
+>>> 1048576=6.8 GB/s
+>>> 2097152=4.4 GB/s
+>>> 4194304=2.3 GB/s
+>>> 8388608=2.0 GB/s
+>>> 16777216=2.0 GB/s
+>>> 33554432=2.0 GB/s
+>>> 67108864=2.0 GB/s
+>>> 134217728=1.9 GB/s
+>>>
+>>> I suspect you could increase the buffer size to 128K (or possibly even BLKRAGET
+>>> size?) without much of a problem...
+>>>
+>>>>
+>>>>     for i in $(seq 0 10); do
+>>>>       size=$((8*1024**3)) #ensure this is big enough
+>>>>       bs=$((1024*2**$i))
+>>>>       printf "%7s=" $bs
+>>>>       dd bs=$bs if=/dev/zero of=/dev/null count=$(($size/$bs)) 2>&1 |
+>>>>       sed -n 's/.* \([0-9.]* [GM]B\/s\)/\1/p'
+>>>>     done
+>>>>
+>>>>        1024=734 MB/s
+>>>>        2048=1.3 GB/s
+>>>>        4096=2.4 GB/s
+>>>>        8192=3.5 GB/s
+>>>>       16384=3.9 GB/s
+>>>>       32768=5.2 GB/s
+>>>>       65536=5.3 GB/s
+>>>>      131072=5.5 GB/s
+>>>>      262144=5.7 GB/s
+>>>>      524288=5.7 GB/s
+>>>>     1048576=5.8 GB/s
+>>>>
+>>>>     Note that this is to minimize system call overhead.
+>>>>     Other values may be appropriate to minimize file system
+>>>>     or disk overhead.  For example on my current GNU/Linux system
+>>>>     the readahead setting is 128KiB which was read using:
+>>>>
+>>>>     file="."
+>>>>     device=$(df -P --local "$file" | tail -n1 | cut -d' ' -f1)
+>>>>     echo $(( $(blockdev --getra $device) * 512 ))
+>>>>
+>>>>     However there isn't a portable way to get the above.
+>>>>     In the future we could use the above method if available
+>>>>     and default to io_blksize() if not.
+>>>>   */
+>>>> enum { IO_BUFSIZE = 32*1024 };
+>>>>
+>>>> Signed-off-by: Robert Yang <liezhi.yang@windriver.com>
+>>>> Acked-by: Darren Hart <dvhart@linux.intel.com>
+>>>> ---
+>>>>   debugfs/debugfs.c | 70 +++++++++++++++++++++++++++++++++++++++++++++++--------
+>>>>   1 file changed, 60 insertions(+), 10 deletions(-)
+>>>>
+>>>> diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+>>>> index b77d0b5..e443703 100644
+>>>> --- a/debugfs/debugfs.c
+>>>> +++ b/debugfs/debugfs.c
+>>>> @@ -37,6 +37,16 @@ extern char *optarg;
+>>>>   #include "../version.h"
+>>>>   #include "jfs_user.h"
+>>>>
+>>>> +/* 32KiB is the minimium blksize to best minimize system call overhead. */
+>>>> +#ifndef IO_BUFSIZE
+>>>> +#define IO_BUFSIZE 32*1024
+>>>> +#endif
+>>>> +
+>>>> +/* Block size for `st_blocks' */
+>>>> +#ifndef S_BLKSIZE
+>>>> +#define S_BLKSIZE 512
+>>>> +#endif
+>>>> +
+>>>>   ss_request_table *extra_cmds;
+>>>>   const char *debug_prog_name;
+>>>>   int sci_idx;
+>>>> @@ -1571,14 +1581,17 @@ void do_find_free_inode(int argc, char *argv[])
+>>>>   }
+>>>>
+>>>>   #ifndef READ_ONLY
+>>>> -static errcode_t copy_file(int fd, ext2_ino_t newfile)
+>>>> +static errcode_t copy_file(int fd, ext2_ino_t newfile, int bufsize,
+>>>> +			int make_holes, int *zero_written)
+>>>>   {
+>>>>   	ext2_file_t	e2_file;
+>>>>   	errcode_t	retval;
+>>>>   	int		got;
+>>>>   	unsigned int	written;
+>>>> -	char		buf[8192];
+>>>> +	char		buf[bufsize];
 >
-> When we try to open a file with O_TMPFILE flag, we will trigger a bug.
-> The root cause is that in ext4_orphan_add() we check ->i_nlink == 0 and
-> this check always fails because we set ->i_nlink = 1 in
-> inode_init_always().  We can use the following program to trigger it:
+> I wonder, do we allow variable length arrays?  I recall Ted was trying to get
+> rid of these.
 >
-> int main(int argc, char *argv[])
-> {
->         int fd;
+>>>
+>>> ...well, I guess it could be more of a problem if you put 128K on the stack.
+>>>
+>>> --D
+>>>
+>>>>   	char		*ptr;
+>>>> +	char		*cp;
+>>>> +	int		count;
+>>>>
+>>>>   	retval = ext2fs_file_open(current_fs, newfile,
+>>>>   				  EXT2_FILE_WRITE, &e2_file);
+>>>> @@ -1594,14 +1607,30 @@ static errcode_t copy_file(int fd, ext2_ino_t newfile)
+>>>>   			goto fail;
+>>>>   		}
+>>>>   		ptr = buf;
+>>>> +		cp = ptr;
+>>>> +		count = got;
+>>>>   		while (got > 0) {
+>>>> -			retval = ext2fs_file_write(e2_file, ptr,
+>>>> -						   got, &written);
+>>>> -			if (retval)
+>>>> -				goto fail;
+>>>> -
+>>>> -			got -= written;
+>>>> -			ptr += written;
+>>>> +			if (make_holes) {
+>>>> +				/* Check whether all is zero */
+>>>> +				while (count-- && *cp++ == 0)
+>>>> +					continue;
 >
->         fd = open(argv[1], O_TMPFILE, 0666);
->         if (fd < 0) {
->                 perror("open ");
->                 return -1;
->         }
->         close(fd);
->         return 0;
-> }
+> I suspect that calloc()ing a zero buffer and calling memcmp() would be faster
+> than a byte-for-byte comparison.
 >
-> The oops message looks like this:
+>>>> +				if (count < 0) {
+>>>> +					 /* The whole block is zero, make a hole */
+>>>> +					retval = ext2fs_file_lseek(e2_file, got, EXT2_SEEK_CUR, NULL);
+>>>> +					if (retval)
+>>>> +						goto fail;
+>>>> +					got = 0;
 >
-> kernel BUG at fs/ext4/namei.c:2572!
-> invalid opcode: 0000 [#1] PREEMPT SMP DEBUG_PAGEALLOC
-> Modules linked in: dlci bridge stp hidp cmtp kernelcapi l2tp_ppp l2tp_netlink l2tp_core sctp libcrc32c rfcomm tun fuse nfnetli
-> nk can_raw ipt_ULOG can_bcm x25 scsi_transport_iscsi ipx p8023 p8022 appletalk phonet psnap vmw_vsock_vmci_transport af_key vmw_vmci rose vsock atm can netrom ax25 af_rxrpc ir
-> da pppoe pppox ppp_generic slhc bluetooth nfc rfkill rds caif_socket caif crc_ccitt af_802154 llc2 llc snd_hda_codec_realtek snd_hda_intel snd_hda_codec serio_raw snd_pcm pcsp
-> kr edac_core snd_page_alloc snd_timer snd soundcore r8169 mii sr_mod cdrom pata_atiixp radeon backlight drm_kms_helper ttm
-> CPU: 1 PID: 1812571 Comm: trinity-child2 Not tainted 3.11.0-rc1+ #12
-> Hardware name: Gigabyte Technology Co., Ltd. GA-MA78GM-S2H/GA-MA78GM-S2H, BIOS F12a 04/23/2010
-> task: ffff88007dfe69a0 ti: ffff88010f7b6000 task.ti: ffff88010f7b6000
-> RIP: 0010:[<ffffffff8125ce69>]  [<ffffffff8125ce69>] ext4_orphan_add+0x299/0x2b0
-> RSP: 0018:ffff88010f7b7cf8  EFLAGS: 00010202
-> RAX: 0000000000000000 RBX: ffff8800966d3020 RCX: 0000000000000000
-> RDX: 0000000000000000 RSI: ffff88007dfe70b8 RDI: 0000000000000001
-> RBP: ffff88010f7b7d40 R08: ffff880126a3c4e0 R09: ffff88010f7b7ca0
-> R10: 0000000000000000 R11: 0000000000000000 R12: ffff8801271fd668
-> R13: ffff8800966d2f78 R14: ffff88011d7089f0 R15: ffff88007dfe69a0
-> FS:  00007f70441a3740(0000) GS:ffff88012a800000(0000) knlGS:00000000f77c96c0
-> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> CR2: 0000000002834000 CR3: 0000000107964000 CR4: 00000000000007e0
-> DR0: 0000000000780000 DR1: 0000000000000000 DR2: 0000000000000000
-> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000600
-> Stack:
->  0000000000002000 00000020810b6dde 0000000000000000 ffff88011d46db00
->  ffff8800966d3020 ffff88011d7089f0 ffff88009c7f4c10 ffff88010f7b7f2c
->  ffff88007dfe69a0 ffff88010f7b7da8 ffffffff8125cfac ffff880100000004
-> Call Trace:
->  [<ffffffff8125cfac>] ext4_tmpfile+0x12c/0x180
->  [<ffffffff811cba78>] path_openat+0x238/0x700
->  [<ffffffff8100afc4>] ? native_sched_clock+0x24/0x80
->  [<ffffffff811cc647>] do_filp_open+0x47/0xa0
->  [<ffffffff811db73f>] ? __alloc_fd+0xaf/0x200
->  [<ffffffff811ba2e4>] do_sys_open+0x124/0x210
->  [<ffffffff81010725>] ? syscall_trace_enter+0x25/0x290
->  [<ffffffff811ba3ee>] SyS_open+0x1e/0x20
->  [<ffffffff816ca8d4>] tracesys+0xdd/0xe2
->  [<ffffffff81001001>] ? start_thread_common.constprop.6+0x1/0xa0
-> Code: 04 00 00 00 89 04 24 31 c0 e8 c4 77 04 00 e9 43 fe ff ff 66 25 00 d0 66 3d 00 80 0f 84 0e fe ff ff 83 7b 48 00 0f 84 04 fe ff ff <0f> 0b 49 8b 8c 24 50 07 00 00 e9 88 fe ff ff 0f 1f 84 00 00 00
+> I think the entire make_holes clause could be lifted out of the inner while and
+> placed in the outer while, since the is-zero-buffer test depends only on the
+> input.
 >
-> Here we couldn't call clear_nlink() directly because in d_tmpfile() we
-> will call inode_dec_link_count() to decrease ->i_nlink.  So this commit
-> tries to call d_tmpfile() before ext4_orphan_add() to fix this problem.
+> You could use FIEMAP/FIBMAP or SEEK_DATA or something to efficiently walk the
+> allocated regions of the incoming file.  If they're available...
 >
-> Reported-by: Dave Jones <davej@redhat.com>
-> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Al Viro <viro@zeniv.linux.org.uk>
-> ---
->  fs/ext4/namei.c |    2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+>>>> +				}
+>>>> +			}
+>>>> +			/* Normal copy */
+>>>> +			if (got > 0) {
 >
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index 234b834..35f55a0 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -2316,11 +2316,11 @@ retry:
->                 inode->i_op = &ext4_file_inode_operations;
->                 inode->i_fop = &ext4_file_operations;
->                 ext4_set_aops(inode);
-> +               d_tmpfile(dentry, inode);
->                 err = ext4_orphan_add(handle, inode);
->                 if (err)
->                         goto err_drop_inode;
->                 mark_inode_dirty(inode);
-> -               d_tmpfile(dentry, inode);
->                 unlock_new_inode(inode);
->         }
->         if (handle)
-> --
-> 1.7.9.7
+> Then you don't need the test here.
 >
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>> +				*zero_written = 0;
+>>>> +				retval = ext2fs_file_write(e2_file, ptr, got, &written);
+>>>> +				if (retval)
+>>>> +					goto fail;
+>>>> +				got -= written;
+>>>> +				ptr += written;
+>>>> +			}
+>>>>   		}
+>>>>   	}
+>>>>   	retval = ext2fs_file_close(e2_file);
+>>>> @@ -1620,6 +1649,9 @@ void do_write(int argc, char *argv[])
+>>>>   	ext2_ino_t	newfile;
+>>>>   	errcode_t	retval;
+>>>>   	struct ext2_inode inode;
+>>>> +	int		bufsize = IO_BUFSIZE;
+>>>> +	int		make_holes = 0;
+>>>> +	int 		zero_written = 1;
+>>>>
+>>>>   	if (common_args_process(argc, argv, 3, 3, "write",
+>>>>   				"<native file> <new file>", CHECK_FS_RW))
+>>>> @@ -1684,9 +1716,27 @@ void do_write(int argc, char *argv[])
+>>>>   		return;
+>>>>   	}
+>>>>   	if (LINUX_S_ISREG(inode.i_mode)) {
+>>>> -		retval = copy_file(fd, newfile);
+>>>> +		if (statbuf.st_blocks < statbuf.st_size / S_BLKSIZE) {
+>
+> Well, that's one way to detect a sparse file coming in -- but do we care about
+> the case of copying in a non-sparse file that contains a lot of zero regions?
+>
+> Maybe we could add a flag to the 'write' command to force make_holes=1?
+>
+> (Or just figure it out ourselves via fiemap as suggested above.)
+>
+>>>> +			make_holes = 1;
+>>>> +			/*
+>>>> +			 * Use I/O blocksize as buffer size when
+>>>> +			 * copying sparse files.
+>>>> +			 */
+>>>> +			bufsize = statbuf.st_blksize;
+>>>> +		}
+>>>> +		retval = copy_file(fd, newfile, bufsize, make_holes, &zero_written);
+>>>>   		if (retval)
+>>>>   			com_err("copy_file", retval, 0);
+>>>> +
+>>>> +		if ((inode.i_flags & EXT4_EXTENTS_FL) && zero_written) {
+>>>> +			/*
+>>>> +			 * If no data is copied which indicateds that no write
+>>>> +			 * happens, we need to turn off the EXT4_EXTENTS_FL.
+>
+> I don't think removing the extents flag is necessary; "touch /mnt/emptyfile"
+> creates an empty flag with the extents flag set.
+>
+> --D
+>>>> +			 */
+>>>> +			inode.i_flags &= ~EXT4_EXTENTS_FL;
+>>>> +			if (debugfs_write_inode(newfile, &inode, argv[0]))
+>>>> +				close(fd);
+>>>> +		}
+>>>>   	}
+>>>>   	close(fd);
+>>>>   }
+>>>> --
+>>>> 1.8.1.2
+>>>>
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>
+>>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
