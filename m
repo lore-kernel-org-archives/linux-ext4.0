@@ -1,57 +1,41 @@
-From: jon ernst <jonernst07@gmail.com>
-Subject: Re: [PATCH] ext4: fix a bug when we try to open a file with O_TMPFILE flag
-Date: Tue, 23 Jul 2013 13:39:39 +0000
-Message-ID: <CAGW2f1GjYwVjw=b1O+_SmSW6CvCd9R1QP54TXFo7XoMguOqR=g@mail.gmail.com>
-References: <20130717161944.GA19405@redhat.com>
-	<20130719121405.GA3856@gmail.com>
-	<CAGW2f1GqTR8xtE_bEN3O+QrRy75h9EjHYkYVnn7-vaoRucaQzg@mail.gmail.com>
-	<20130723095928.GA3278@gmail.com>
+From: TC@zimbra.relato.net.br, idthida.choun@gmail.com
+Subject: Letter Of Intent
+Date: Wed, 24 Jul 2013 02:00:56 +0700
+Message-ID: <20130723190138.0B5655654AC@zimbra.relato.net.br>
+Reply-To: thida.choun@yahoo.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: linux-ext4@vger.kernel.org, gnehzuil.liu@gmail.com
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-oa0-f44.google.com ([209.85.219.44]:55083 "EHLO
-	mail-oa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755210Ab3GWNjk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Jul 2013 09:39:40 -0400
-Received: by mail-oa0-f44.google.com with SMTP id l10so11121726oag.17
-        for <linux-ext4@vger.kernel.org>; Tue, 23 Jul 2013 06:39:39 -0700 (PDT)
-In-Reply-To: <20130723095928.GA3278@gmail.com>
+Received: from host53-147.brs.com.br ([177.11.53.147]:41959 "EHLO
+	zimbra.relato.net.br" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S933733Ab3GWTK0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Jul 2013 15:10:26 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by zimbra.relato.net.br (Postfix) with ESMTP id 99F19565495
+	for <linux-ext4@vger.kernel.org>; Tue, 23 Jul 2013 16:01:39 -0300 (BRT)
+Received: from zimbra.relato.net.br ([127.0.0.1])
+	by localhost (zimbra.relato.net.br [127.0.0.1]) (amavisd-new, port 10032)
+	with ESMTP id otW5hwlw0Gcn for <linux-ext4@vger.kernel.org>;
+	Tue, 23 Jul 2013 16:01:39 -0300 (BRT)
+Received: from localhost (localhost [127.0.0.1])
+	by zimbra.relato.net.br (Postfix) with ESMTP id 099F75654A6
+	for <linux-ext4@vger.kernel.org>; Tue, 23 Jul 2013 16:01:39 -0300 (BRT)
+Received: from zimbra.relato.net.br ([127.0.0.1])
+	by localhost (zimbra.relato.net.br [127.0.0.1]) (amavisd-new, port 10026)
+	with ESMTP id gWrZfaVrPcxE for <linux-ext4@vger.kernel.org>;
+	Tue, 23 Jul 2013 16:01:38 -0300 (BRT)
+Received: from [192.168.2.100] (unknown [192.168.6.2])
+	by zimbra.relato.net.br (Postfix) with ESMTP id 0B5655654AC
+	for <linux-ext4@vger.kernel.org>; Tue, 23 Jul 2013 16:01:37 -0300 (BRT)
+Content-Description: Mail message body
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> Ah, actually I used the following program to hit the bug.  Just for your
-> information.  Please let me know if you have any question.
->
-> Regards,
->                                                 - Zheng
->
-> #include <stdio.h>
-> #include <stdlib.h>
-> #include <string.h>
->
-> #include <unistd.h>
-> #include <sys/types.h>
-> #include <fcntl.h>
->
-> #define __O_TMPFILE     020000000
-> #define O_TMPFILE (__O_TMPFILE | O_DIRECTORY)
->
-> int main(int argc, char *argv[])
-> {
->         int fd;
->
->         fd = open(argv[1], O_RDWR|O_TMPFILE);
->         if (fd < 0) {
->                 perror("open ");
->                 return -1;
->         }
->         close(fd);
->         return 0;
-> }
+Dear Friend
 
-Thank you Zheng!  Pardon if this is a dumb question: why do we need to
-manually define "O_TMPFILE"? Not like "O_APPEND" etc. ?  I saw it has
-been defined in header file. (fcntl.h) Did I miss anything?
+It is my interest to contact you in respect of our client from your country who died 3 years ago leaving some huge amount of money in our bank without any next of kin or link to his family. I shall explain in details when I read your reply.You are my first contact, I shall wait for days and if I do not hear from you. I shall continue with my search,
 
-Thanks!
+Thanks.
+Thida Choun
