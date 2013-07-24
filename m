@@ -1,85 +1,55 @@
-From: Dhaval Giani <dgiani@mozilla.com>
-Subject: [RFC/PATCH 0/2] ext4: Transparent Decompression Support
-Date: Wed, 24 Jul 2013 17:03:53 -0400
-Message-ID: <1374699833.7083.2.camel@localhost>
+From: jon ernst <jonernst07@gmail.com>
+Subject: Re: [PATCH] ext4: fix a bug when we try to open a file with O_TMPFILE flag
+Date: Wed, 24 Jul 2013 21:58:45 +0000
+Message-ID: <CAGW2f1HgtwdekeETXpZvm-KT6Sdw1bUas799yWjQ_jZp3kwaug@mail.gmail.com>
+References: <20130717161944.GA19405@redhat.com>
+	<20130719121405.GA3856@gmail.com>
+	<CAGW2f1GqTR8xtE_bEN3O+QrRy75h9EjHYkYVnn7-vaoRucaQzg@mail.gmail.com>
+	<20130723095928.GA3278@gmail.com>
+	<CAGW2f1GjYwVjw=b1O+_SmSW6CvCd9R1QP54TXFo7XoMguOqR=g@mail.gmail.com>
+	<20130723233859.GA5435@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, tglek@mozilla.com, vdjeric@mozilla.com,
-	glandium@mozilla.com, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-ob0-f176.google.com ([209.85.214.176]:53041 "EHLO
+	mail-ob0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752163Ab3GXV6r (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Jul 2013 17:58:47 -0400
+Received: by mail-ob0-f176.google.com with SMTP id v19so14217307obq.21
+        for <linux-ext4@vger.kernel.org>; Wed, 24 Jul 2013 14:58:46 -0700 (PDT)
+In-Reply-To: <20130723233859.GA5435@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-
-Hi there!
-
-I am posting this series early in its development phase to solicit some
-feedback.
-
-We are implementing transparent decompression with a focus on ext4. One
-of the main usecases is that of Firefox on Android. Currently libxul.so
-is compressed and it is loaded into memory by a custom linker on
-demand. With the use of transparent decompression, we can make do
-without the custom linker. More details (i.e. code) about the linker can
-be found at https://github.com/glandium/faulty.lib
-
-Patch 1 introduces the seekable zip format to the kernel. The tool to
-create the szip file can be found in the git repository mentioned
-earlier. Patch 2 introduces transparent decompression to ext4. This
-patch is really ugly, but it gives an idea of what I am upto right now.
-
-Now let's move on the interesting bits.
-
-There are a few flaws with the current approach (though most are easily
-fixable)
-1. The decompression takes place very late. We probably want to be
-decompressing soon after get the data off disk.
-2. No seek support. This is for simplicity as I was experimenting with
-filesystems for the first time. I have a patch that does it, but it is
-too ugly to see the world. I will fix it up in time for the next set.
-3. No mmap support. For a similar reason as 1. There is no reason it
-cannot be done, it just has not been done correctly.
-4. stat still returns the compressed size. We need to modify
-compressed files to return uncompressed size.
-5. Implementation is tied to the szip format. However it is quite easy
-to decouple the compression scheme from the filesystem. I will probably
-get to that in another 2 rounds (first goal is to get seek support
-working fine, and mmap in place)
-6. Introduction of an additional file_operation to decompress the
-buffer. This will be *removed* in the next posting once I have seek
-support implemented properly.
-7. The compressed file is read only. In order to write to the file, it
-shall have to be replaced.
-8. The kernel learns that the file is compressed with the use of the
-chattr tool. For now I am abusing the +c flag. Please let me know if
-that should not be used.
-
-In order to try this patch out, please create an szip file using the
-szip tool. Then, read the file. Just ensure that the buffer you provide
-to the kernel is big enough to fit the uncompressed file (and that you
-read the whole file in one go.)
-
-Thanks!
-Dhaval
-
+> My purpose is to trigger this bug and fix it.  So I manually define this
+> flag for my convenience.
+>
+>> I saw it has
+>> been defined in header file. (fcntl.h) Did I miss anything?
+>
+> I guess that you might 'include <fcntl.h>' header file, right?  But the
+> O_TMPFILE is defined in $LINUX/include/uapi/asm-generic/fcntl.h.  So
+> maybe compiler couldn't find this header file.
+>
+> Regards,
+>                                                 - Zheng
 --
-Dhaval Giani (2):
-  szip: Add seekable zip format
-  Add rudimentary transparent decompression support to ext4
+Got it. Thank you.  BTW, the weird thing is I didn't see any
+discussion on ext4 mailing list before Al Viro committed this change.
+The first time I heard about this is someone reporting a bug about it.
+Document about this FLAG might be necessary.
+Also, about this code:
 
- fs/ext4/file.c       |  66 ++++++++++++++++
- fs/read_write.c      |   3 +
- include/linux/fs.h   |   1 +
- include/linux/szip.h |  32 ++++++++
- lib/Kconfig          |   8 ++
- lib/Makefile         |   1 +
- lib/szip.c           | 217 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 7 files changed, 328 insertions(+)
- create mode 100644 include/linux/szip.h
- create mode 100644 lib/szip.c
+/* a horrid kludge trying to make sure that this will fail on old kernels */
+#define O_TMPFILE (__O_TMPFILE | O_DIRECTORY)
 
--- 
-1.8.1.4
+why not doing something like this:
+
+#ifndef O_TMPFILE
+/* a horrid kludge trying to make sure that this will fail on old kernels */
+#define O_TMPFILE (__O_TMPFILE | O_DIRECTORY)
+#endif
+
+Thanks,
+Jon
