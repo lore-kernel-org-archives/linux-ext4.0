@@ -1,74 +1,72 @@
-From: Ben Hutchings <ben@decadent.org.uk>
-Subject: Re: [PATCH 0/4] ext4: Fix overflows in ext4 code
-Date: Wed, 24 Jul 2013 05:46:02 +0100
-Message-ID: <1374641162.18653.20.camel@deadeye.wl.decadent.org.uk>
-References: <1369829133-4307-1-git-send-email-jack@suse.cz>
-	 <51DC1AC5.8010809@redhat.com> <20130709143855.GF6000@thunk.org>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH 2/5] ext4: Fix type declaration of
+ ext4_validate_block_bitmap
+Date: Wed, 24 Jul 2013 15:12:01 +0800
+Message-ID: <20130724071201.GA3474@gmail.com>
+References: <20130719235532.24017.31896.stgit@blackbox.djwong.org>
+ <20130719235546.24017.98557.stgit@blackbox.djwong.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg="pgp-sha512";
-	protocol="application/pgp-signature"; boundary="=-yx3IvL0cPngsNZqpvJDI"
-Cc: Eric Sandeen <sandeen@redhat.com>, Jan Kara <jack@suse.cz>,
-	linux-ext4@vger.kernel.org, stable@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <stable-owner@vger.kernel.org>
-In-Reply-To: <20130709143855.GF6000@thunk.org>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pb0-f49.google.com ([209.85.160.49]:59061 "EHLO
+	mail-pb0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752012Ab3GXHMI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Jul 2013 03:12:08 -0400
+Received: by mail-pb0-f49.google.com with SMTP id jt11so9316435pbb.36
+        for <linux-ext4@vger.kernel.org>; Wed, 24 Jul 2013 00:12:07 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <20130719235546.24017.98557.stgit@blackbox.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On Fri, Jul 19, 2013 at 04:55:46PM -0700, Darrick J. Wong wrote:
+> The block_group parameter to ext4_validate_block_bitmap is both used as a
+> ext4_group_t inside the function and the same type is passed in by all callers.
+> We might as well use the typedef consistently instead of open-coding the
+> 'unsigned int'.
+> 
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> ---
+>  fs/ext4/balloc.c |    2 +-
+>  fs/ext4/ext4.h   |    2 +-
+>  2 files changed, 2 insertions(+), 2 deletions(-)
+> 
+> 
+> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+> index b430afe..735e701 100644
+> --- a/fs/ext4/balloc.c
+> +++ b/fs/ext4/balloc.c
+> @@ -352,7 +352,7 @@ static ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *sb,
+                                          ^^^
+It seems that this function also needs to be fixed.
 
---=-yx3IvL0cPngsNZqpvJDI
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+                                                - Zheng
 
-On Tue, 2013-07-09 at 10:38 -0400, Theodore Ts'o wrote:
-> On Tue, Jul 09, 2013 at 09:14:29AM -0500, Eric Sandeen wrote:
-> >=20
-> > I don't think these did get cc'd to stable.  Was there a reason for tha=
-t,
-> > or was it an oversight?
->=20
-> It was an oversight; my fault, sorry.  I'll send a request to the
-> stable kernel tree for the following patches:
->=20
-> 8af8eec ext4: fix overflow when counting used blocks on 32-bit architectu=
-res
-> a60697f ext4: fix data offset overflow in ext4_xattr_fiemap() on 32-bit a=
-rchs
-
-Both queued up for 3.2, thanks.
-
-> e7293fd ext4: fix overflows in SEEK_HOLE, SEEK_DATA implementations
-> eaf3793 ext4: fix data offset overflow on 32-bit archs in ext4_inline_dat=
-a_fiemap()
-
-These are for features that were added after 3.2.
-
-Ben.
-
---=20
-Ben Hutchings
-Once a job is fouled up, anything done to improve it makes it worse.
-
---=-yx3IvL0cPngsNZqpvJDI
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
-
-iQIVAwUAUe9cCue/yOyVhhEJAQr+DhAAmb4FJXx8IwtBpYmN/bf9VwoQow8GkIJP
-vdJIlH5nCk01jg9cAw3CZds/WAmLKGxoNl7sYSsV5Et7ptySOyc3jypH0tq4+dRC
-rE3nydgKDuTPhsAdfpUEw2FoJm/mN/eDuXHsXNRxGRbXAne71kahcuUPNmTyj06e
-a61n5uEARgIGNO7IlTYg3QTksr08z8gN1em8L9Z+XB9y/Tr9/ItGdD08Bwn+r52E
-XFiMmitU1Sl+LQ6M4hQ2aQ9IEvdd2Oa1RFd0SDZbM8m3DlG2eGINYE1sJNCMoCka
-NWAefjFO0I6VhNX95rRVJ6PzC1io2B90le9H8SNtR/eqh1XdxtTX7JDoirH6a/m6
-/IIyv1G7l3HF1x4/yYh3dQnzh4oWrJ0NnkoE4HkxbeQys642JbrETigGjgy6ZZPk
-j0HODkyCHs0lj9vsBNuKN/jFhC5V66TwyANkgr3uEruWs2GrSZEiC3/aUXUiJZvp
-iewxCE0tUdfaFAgHPTnoFJa33T8xGm8R9c+ddroszADPhvQjU3738eMznL+KNfiv
-jj5mvQ0QVENi/KjFmc9x6kOskn53zOA+g7eUIfkb5hqu6/iiv3vKRXyyae+8jp00
-2mpTJuI0dJmljx9ZnGOJxOaQ7M1U+7r3vduWJqnjj3OQd4ezXaUFHOoK191kNfYU
-TonENrsRZoM=
-=gLr2
------END PGP SIGNATURE-----
-
---=-yx3IvL0cPngsNZqpvJDI--
+>  
+>  void ext4_validate_block_bitmap(struct super_block *sb,
+>  			       struct ext4_group_desc *desc,
+> -			       unsigned int block_group,
+> +			       ext4_group_t block_group,
+>  			       struct buffer_head *bh)
+>  {
+>  	ext4_fsblk_t	blk;
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index b577e45..39d24e2 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1915,7 +1915,7 @@ extern ext4_group_t ext4_get_group_number(struct super_block *sb,
+>  
+>  extern void ext4_validate_block_bitmap(struct super_block *sb,
+>  				       struct ext4_group_desc *desc,
+> -				       unsigned int block_group,
+> +				       ext4_group_t block_group,
+>  				       struct buffer_head *bh);
+>  extern unsigned int ext4_block_group(struct super_block *sb,
+>  			ext4_fsblk_t blocknr);
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
