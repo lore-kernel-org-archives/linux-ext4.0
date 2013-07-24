@@ -1,74 +1,74 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 1/1] ext4: Fix Opts: (null)
-Date: Tue, 23 Jul 2013 21:18:56 -0500
-Message-ID: <51EF3990.4010901@redhat.com>
-References: <1374531868-1800-1-git-send-email-johannbg@fedoraproject.org>
+From: Ben Hutchings <ben@decadent.org.uk>
+Subject: Re: [PATCH 0/4] ext4: Fix overflows in ext4 code
+Date: Wed, 24 Jul 2013 05:46:02 +0100
+Message-ID: <1374641162.18653.20.camel@deadeye.wl.decadent.org.uk>
+References: <1369829133-4307-1-git-send-email-jack@suse.cz>
+	 <51DC1AC5.8010809@redhat.com> <20130709143855.GF6000@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Theodore Tso <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	=?UTF-8?B?IkrDsw==?= =?UTF-8?B?aGFubiBCLiBHdcOwbXVuZHNzb24i?=
-	<johannbg@fedoraproject.org>
-To: =?UTF-8?B?IkrDs2hhbm4gQi4gR3XDsG11bmRzc29uIg==?=
-	<johannbg@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:64332 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750731Ab3GXCTC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 23 Jul 2013 22:19:02 -0400
-In-Reply-To: <1374531868-1800-1-git-send-email-johannbg@fedoraproject.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: multipart/signed; micalg="pgp-sha512";
+	protocol="application/pgp-signature"; boundary="=-yx3IvL0cPngsNZqpvJDI"
+Cc: Eric Sandeen <sandeen@redhat.com>, Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org, stable@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <stable-owner@vger.kernel.org>
+In-Reply-To: <20130709143855.GF6000@thunk.org>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 7/22/13 5:24 PM, J=C3=B3hann B. Gu=C3=B0mundsson wrote:
-> null null null no more Opts: (null) but something that actually makes=
- sense to
-> human beings...
 
-It's not clear to me how this changes the (null) output...
-Have you tested it?  What's the difference in output?
+--=-yx3IvL0cPngsNZqpvJDI
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
--Eric
-
-> Signed-off-by: J=C3=B3hann B. Gu=C3=B0mundsson <johannbg@fedoraprojec=
-t.org>
-> ---
->  fs/ext4/super.c | 6 +++---
->  1 file changed, 3 insertions(+), 3 deletions(-)
+On Tue, 2013-07-09 at 10:38 -0400, Theodore Ts'o wrote:
+> On Tue, Jul 09, 2013 at 09:14:29AM -0500, Eric Sandeen wrote:
+> >=20
+> > I don't think these did get cc'd to stable.  Was there a reason for tha=
+t,
+> > or was it an oversight?
 >=20
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 85b3dd6..ef141b7 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -4088,8 +4088,8 @@ no_journal:
->  				 "the device does not support discard");
->  	}
-> =20
-> -	ext4_msg(sb, KERN_INFO, "mounted filesystem with%s. "
-> -		 "Opts: %s%s%s", descr, sbi->s_es->s_mount_opts,
-> +	ext4_msg(sb, KERN_INFO, "mounted filesystem with%s "
-> +		 "%s%s%s mount option(s)", descr, sbi->s_es->s_mount_opts,
->  		 *sbi->s_es->s_mount_opts ? "; " : "", orig_data);
-> =20
->  	if (es->s_error_count)
-> @@ -4866,7 +4866,7 @@ static int ext4_remount(struct super_block *sb,=
- int *flags, char *data)
->  	}
->  #endif
-> =20
-> -	ext4_msg(sb, KERN_INFO, "re-mounted. Opts: %s", orig_data);
-> +	ext4_msg(sb, KERN_INFO, "re-mounted %s mount option(s)", orig_data)=
-;
-
->  	kfree(orig_data);
->  	return 0;
-> =20
+> It was an oversight; my fault, sorry.  I'll send a request to the
+> stable kernel tree for the following patches:
 >=20
+> 8af8eec ext4: fix overflow when counting used blocks on 32-bit architectu=
+res
+> a60697f ext4: fix data offset overflow in ext4_xattr_fiemap() on 32-bit a=
+rchs
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Both queued up for 3.2, thanks.
+
+> e7293fd ext4: fix overflows in SEEK_HOLE, SEEK_DATA implementations
+> eaf3793 ext4: fix data offset overflow on 32-bit archs in ext4_inline_dat=
+a_fiemap()
+
+These are for features that were added after 3.2.
+
+Ben.
+
+--=20
+Ben Hutchings
+Once a job is fouled up, anything done to improve it makes it worse.
+
+--=-yx3IvL0cPngsNZqpvJDI
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.12 (GNU/Linux)
+
+iQIVAwUAUe9cCue/yOyVhhEJAQr+DhAAmb4FJXx8IwtBpYmN/bf9VwoQow8GkIJP
+vdJIlH5nCk01jg9cAw3CZds/WAmLKGxoNl7sYSsV5Et7ptySOyc3jypH0tq4+dRC
+rE3nydgKDuTPhsAdfpUEw2FoJm/mN/eDuXHsXNRxGRbXAne71kahcuUPNmTyj06e
+a61n5uEARgIGNO7IlTYg3QTksr08z8gN1em8L9Z+XB9y/Tr9/ItGdD08Bwn+r52E
+XFiMmitU1Sl+LQ6M4hQ2aQ9IEvdd2Oa1RFd0SDZbM8m3DlG2eGINYE1sJNCMoCka
+NWAefjFO0I6VhNX95rRVJ6PzC1io2B90le9H8SNtR/eqh1XdxtTX7JDoirH6a/m6
+/IIyv1G7l3HF1x4/yYh3dQnzh4oWrJ0NnkoE4HkxbeQys642JbrETigGjgy6ZZPk
+j0HODkyCHs0lj9vsBNuKN/jFhC5V66TwyANkgr3uEruWs2GrSZEiC3/aUXUiJZvp
+iewxCE0tUdfaFAgHPTnoFJa33T8xGm8R9c+ddroszADPhvQjU3738eMznL+KNfiv
+jj5mvQ0QVENi/KjFmc9x6kOskn53zOA+g7eUIfkb5hqu6/iiv3vKRXyyae+8jp00
+2mpTJuI0dJmljx9ZnGOJxOaQ7M1U+7r3vduWJqnjj3OQd4ezXaUFHOoK191kNfYU
+TonENrsRZoM=
+=gLr2
+-----END PGP SIGNATURE-----
+
+--=-yx3IvL0cPngsNZqpvJDI--
