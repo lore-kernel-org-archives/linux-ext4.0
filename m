@@ -1,7 +1,8 @@
 From: Dhaval Giani <dgiani@mozilla.com>
-Subject: [RFC/PATCH 1/2] szip: Add seekable zip format
-Date: Wed, 24 Jul 2013 17:03:41 -0400
-Message-ID: <1374699821.7083.0.camel@localhost>
+Subject: [RFC/PATCH 2/2] Add rudimentary transparent decompression support
+ to ext4
+Date: Wed, 24 Jul 2013 17:03:47 -0400
+Message-ID: <1374699827.7083.1.camel@localhost>
 References: <cover.1374693578.git.dgiani@mozilla.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
@@ -16,15 +17,16 @@ Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
-Add support for inflating seekable zip format. This uses zlib
-underneath. In order to create a seekable zip file, use the
-szip utility which can be obtained from
+Adds basic support for transparently reading compressed
+files in ext4.
 
-https://github.com/glandium/faulty.lib
-
-We shall use this to implement transparent decompression on
-ext4. The use would be very similar to that used by the faulty.lib
-linker.
+Lots of issues in this patch
+1. It requires a fully read file from disk, no seeking allowed
+2. Compressed files give their compressed sizes and not uncompressed
+sizes. Therefore cat will return truncated data (since the buffer
+isn't big enough)
+3. It adds a new file operation. That will be *removed*.
+4. Doesn't mmap decompressed data
 
 Cc: Theodore Ts'o <tytso@mit.edu>
 Cc: Taras Glek <tglek@mozilla.com>
@@ -35,305 +37,134 @@ Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>
 Cc: Mike Hommey <glandium@mozilla.com>
 Signed-off-by: Dhaval Giani <dgiani@mozilla.com>
 ---
- include/linux/szip.h |  32 ++++++++
- lib/Kconfig          |   8 ++
- lib/Makefile         |   1 +
- lib/szip.c           | 217 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 258 insertions(+)
- create mode 100644 include/linux/szip.h
- create mode 100644 lib/szip.c
+ fs/ext4/file.c     | 66 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/read_write.c    |  3 +++
+ include/linux/fs.h |  1 +
+ 3 files changed, 70 insertions(+)
 
-diff --git a/include/linux/szip.h b/include/linux/szip.h
-new file mode 100644
-index 0000000..1d4421e
---- /dev/null
-+++ b/include/linux/szip.h
-@@ -0,0 +1,32 @@
-+#ifndef __SZIP_H
-+#define __SZIP_H
-+
-+#include <linux/zlib.h>
-+#include <linux/types.h>
-+
-+#define SZIP_HEADER_SIZE (20)
-+
-+struct szip_struct {
-+	u32 magic;
-+	u32 total_size;
-+	u16 chunk_size;
-+	u16 dict_size;
-+	u32 nr_chunks;
-+	u16 last_chunk_size;
-+	signed char window_bits;
-+	signed char filter;
-+	unsigned *offset_table;
-+	unsigned *dictionary;
-+	char *buffer;
-+	void *workspace;
-+};
-+
-+extern int szip_decompress(struct szip_struct *, char *, size_t);
-+extern int szip_seekable_decompress(struct szip_struct *, size_t,
-+						size_t, char *, size_t);
-+extern size_t szip_uncompressed_size(struct szip_struct *);
-+extern int szip_init(struct szip_struct *, char *);
-+extern void szip_init_offset_table(struct szip_struct *szip, char *buf);
-+extern size_t szip_offset_table_size(struct szip_struct *szip);
-+
-+#endif
-diff --git a/lib/Kconfig b/lib/Kconfig
-index fe01d41..0903693 100644
---- a/lib/Kconfig
-+++ b/lib/Kconfig
-@@ -213,6 +213,14 @@ config DECOMPRESS_LZO
- 	select LZO_DECOMPRESS
- 	tristate
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index b1b4d51..5c9db04 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -31,6 +31,9 @@
+ #include "xattr.h"
+ #include "acl.h"
  
-+config SZIP
-+	select ZLIB_INFLATE
-+	tristate
-+	help
-+	  Use this to provide szip decompression support. szip is a seekable
-+	  zlib format. Check https://github.com/glandium/faulty.lib for the
-+	  szip tool. This is required for transparent ext4 decompression.
-+
- #
- # Generic allocator support is selected if needed
- #
-diff --git a/lib/Makefile b/lib/Makefile
-index c55a037..86a5d4b 100644
---- a/lib/Makefile
-+++ b/lib/Makefile
-@@ -77,6 +77,7 @@ obj-$(CONFIG_LZO_COMPRESS) += lzo/
- obj-$(CONFIG_LZO_DECOMPRESS) += lzo/
- obj-$(CONFIG_XZ_DEC) += xz/
- obj-$(CONFIG_RAID6_PQ) += raid6/
-+obj-${CONFIG_SZIP} += szip.o
- 
- lib-$(CONFIG_DECOMPRESS_GZIP) += decompress_inflate.o
- lib-$(CONFIG_DECOMPRESS_BZIP2) += decompress_bunzip2.o
-diff --git a/lib/szip.c b/lib/szip.c
-new file mode 100644
-index 0000000..d610e62
---- /dev/null
-+++ b/lib/szip.c
-@@ -0,0 +1,217 @@
-+/*
-+ * lib/szip.c
-+ *
-+ * This is a seekable zip file, the format of which is based on
-+ * code available at https://github.com/glandium/faulty.lib
-+ *
-+ * Copyright: Mozilla
-+ * Author: Dhaval Giani <dgiani@mozilla.com>
-+ *
-+ * Based on code written by Mike Hommey <glandium@mozilla.com> as
-+ * part of faulty.lib .
-+ *
-+ * This code is available under the MPL v2.0 which is explicitly
-+ * compatible with GPL v2.
-+ */
-+
 +#include <linux/zlib.h>
 +#include <linux/szip.h>
-+#include <linux/vmalloc.h>
 +
-+#include <linux/string.h>
-+
-+#define SZIP_MAGIC 0x7a5a6553
-+
-+static int szip_decompress_seekable_chunk(struct szip_struct *szip,
-+		char *output, size_t offset, size_t chunk, size_t length)
+ /*
+  * Called when an inode is released. Note that this is different
+  * from ext4_file_open: open gets called at every open, but release
+@@ -623,6 +626,68 @@ loff_t ext4_llseek(struct file *file, loff_t offset, int whence)
+ 	return -EINVAL;
+ }
+ 
++static int ext4_is_file_compressed(struct file *file)
 +{
-+	int is_last_chunk = (chunk == szip->nr_chunks - 1);
-+	size_t chunk_len = is_last_chunk ? szip->last_chunk_size
-+						: szip->chunk_size;
-+	z_stream zstream;
-+	int ret = 0;
-+	int flush;
-+	int success;
-+
-+	memset(&zstream, 0, sizeof(zstream));
-+
-+	if (length == 0 || length > chunk_len)
-+		length = chunk_len;
-+
-+	if (is_last_chunk)
-+		zstream.avail_in = szip->total_size;
-+	else
-+		zstream.avail_in = szip->offset_table[chunk + 1]
-+					- szip->offset_table[chunk];
-+
-+	zstream.next_in = szip->buffer + offset;
-+	zstream.avail_out = length;
-+	zstream.next_out = output;
-+	if (!szip->workspace)
-+		szip->workspace = vzalloc(zlib_inflate_workspacesize());
-+	zstream.workspace = szip->workspace;
-+	if (!zstream.workspace) {
-+		ret = -ENOMEM;
-+		goto out;
-+	}
-+
-+	/* Decompress Chunk */
-+	/* **TODO: Correct return value for bad zlib format** */
-+	if (zlib_inflateInit2(&zstream, (int) szip->window_bits) != Z_OK) {
-+		ret = -EMEDIUMTYPE;
-+		goto out;
-+	}
-+
-+	/* We don't have dictionary logic yet */
-+	if (length == chunk_len) {
-+		flush = Z_FINISH;
-+		success = Z_STREAM_END;
-+	} else {
-+		flush = Z_SYNC_FLUSH;
-+		success = Z_OK;
-+	}
-+
-+	ret = zlib_inflate(&zstream, flush);
-+
-+	/*
-+	 * Ignore Z_BUF_ERROR for now. I am sure it will bite us
-+	 * later on
-+	 */
-+	if (ret != success && ret != Z_BUF_ERROR) {
-+		ret = -EMEDIUMTYPE;
-+		goto out;
-+	}
-+
-+	if (zlib_inflateEnd(&zstream) != Z_OK) {
-+		ret = -EMEDIUMTYPE;
-+		goto out;
-+	}
-+
-+	ret = 0;
-+out:
-+	return ret;
++	struct inode *inode = file->f_mapping->host;
++	return ext4_test_inode_flag(inode, EXT4_INODE_COMPR);
 +}
 +
-+int szip_seekable_decompress(struct szip_struct *szip, size_t start,
-+				size_t end, char *output, size_t length)
++static int _ext4_decompress(char __user *buf, int sz)
++{
++	/*
++	 * We can really cheat here since we have the full buffer already read
++	 * and made available
++	 */
++	struct szip_struct szip;
++	char *temp;
++	size_t uncom_size;
++
++	int ret = szip_init(&szip, buf);
++	if (ret) {
++		ret = -1;
++		goto out;
++	}
++
++	uncom_size = szip_uncompressed_size(&szip);
++	temp = kmalloc(uncom_size, GFP_NOFS);
++	if (!temp) {
++		ret = -2;
++		goto out;
++	}
++
++	ret = szip_decompress(&szip, temp, 0);
++	if (ret) {
++		ret = -3;
++		goto out_free;
++	}
++
++	sz = min_t(int, sz, uncom_size);
++
++	memset(buf, 0, sz);
++	memcpy(buf, temp, sz);
++out_free:
++	kfree(temp);
++
++out:
++	return ret;
++
++}
++
++int ext4_decompress(struct file *file, char __user *buf, size_t len)
 +{
 +	int ret = 0;
-+	size_t chunk_nr;
 +
-+	for (chunk_nr = start; chunk_nr <= end; chunk_nr++) {
-+		size_t len = min_t(size_t, length, szip->chunk_size);
-+		size_t offset = szip->offset_table[chunk_nr]
-+					- szip->offset_table[start];
-+		ret = szip_decompress_seekable_chunk(szip, output,
-+						offset, chunk_nr, len);
-+		if (ret)
-+			goto out;
++	if (!ext4_is_file_compressed(file))
++		return 0;
 +
-+
-+		output += len;
-+		length -= len;
++	ret = _ext4_decompress(buf, len);
++	if (ret) {
++		goto out;
 +	}
 +out:
 +	return ret;
 +}
 +
-+int szip_decompress(struct szip_struct *szip, char *output, size_t length)
-+{
-+	size_t header_size = 20;
-+	char *buf;
-+	buf = szip->buffer + header_size;
-+	szip_init_offset_table(szip, buf);
-+	szip->buffer = szip->buffer + szip->offset_table[0];
-+	return szip_seekable_decompress(szip, 0,
-+			szip->nr_chunks, output, length);
-+}
+ const struct file_operations ext4_file_operations = {
+ 	.llseek		= ext4_llseek,
+ 	.read		= do_sync_read,
+@@ -640,6 +705,7 @@ const struct file_operations ext4_file_operations = {
+ 	.splice_read	= generic_file_splice_read,
+ 	.splice_write	= generic_file_splice_write,
+ 	.fallocate	= ext4_fallocate,
++	.decompress	= ext4_decompress,
+ };
+ 
+ const struct inode_operations ext4_file_inode_operations = {
+diff --git a/fs/read_write.c b/fs/read_write.c
+index 2cefa41..44d2523 100644
+--- a/fs/read_write.c
++++ b/fs/read_write.c
+@@ -330,6 +330,7 @@ int rw_verify_area(int read_write, struct file *file, loff_t *ppos, size_t count
+ 	return count > MAX_RW_COUNT ? MAX_RW_COUNT : count;
+ }
+ 
 +
-+size_t szip_uncompressed_size(struct szip_struct *szip)
-+{
-+	return (szip->chunk_size * (szip->nr_chunks - 1))
-+					+ szip->last_chunk_size;
-+}
-+
-+void szip_init_offset_table(struct szip_struct *szip, char *buf)
-+{
-+	szip->offset_table = vzalloc(sizeof(unsigned) * szip->nr_chunks);
-+	memcpy(szip->offset_table, buf , sizeof(unsigned) * szip->nr_chunks);
-+}
-+
-+size_t szip_offset_table_size(struct szip_struct *szip)
-+{
-+	return sizeof(unsigned) * szip->nr_chunks;
-+}
-+
-+/*
-+ * Initialize a szip structure looking at the buffer
-+ * Returns 0 on success
-+ *
-+ * XX: Fixup the return values. No magic numbers!
-+ */
-+int szip_init(struct szip_struct *szip, char *buf)
-+{
-+	char *ptr = buf;
-+
-+	szip->buffer = buf;
-+	/* We don't implement it yet */
-+	szip->dictionary = NULL;
-+
-+	memcpy(&szip->magic, ptr, sizeof(szip->magic));
-+	/* No need to decode the structure if its not an szip buffer */
-+	if (szip->magic != SZIP_MAGIC)
-+		return -1;
-+
-+	ptr += sizeof(szip->magic);
-+	memcpy(&szip->total_size, ptr, sizeof(szip->total_size));
-+
-+	ptr += sizeof(szip->total_size);
-+	memcpy(&szip->chunk_size, ptr, sizeof(szip->chunk_size));
-+	/*
-+	 * If chunk_size is not a multiple of PAGE_SIZE, its malformed
-+	 * No need to decode further
-+	 */
-+	if ((szip->chunk_size % PAGE_SIZE) ||
-+			(szip->chunk_size > 8 * PAGE_SIZE))
-+		return -2;
-+
-+	ptr += sizeof(szip->chunk_size);
-+	memcpy(&szip->dict_size, ptr, sizeof(szip->dict_size));
-+	if (szip->dict_size)
-+		return -EINVAL;
-+
-+	ptr += sizeof(szip->dict_size);
-+	memcpy(&szip->nr_chunks, ptr, sizeof(szip->nr_chunks));
-+	/* If there are no chunks, no need to decode further*/
-+	if (szip->nr_chunks < 1)
-+		return -3;
-+
-+	ptr += sizeof(szip->nr_chunks);
-+	memcpy(&szip->last_chunk_size, ptr, sizeof(szip->last_chunk_size));
-+	/* Last Chunk Size is never 0 or greater than chunk size*/
-+	if (!szip->last_chunk_size || szip->last_chunk_size > szip->chunk_size)
-+		return -4;
-+
-+	ptr += sizeof(szip->last_chunk_size);
-+	memcpy(&szip->window_bits, ptr, sizeof(szip->window_bits));
-+
-+	ptr += sizeof(szip->window_bits);
-+	memcpy(&szip->filter, ptr, sizeof(szip->filter));
-+	if (szip->filter)
-+		return -EINVAL;
-+
-+	ptr += sizeof(szip->filter);
-+
-+	szip->workspace = NULL;
-+
-+	return 0;
-+}
-+
-+/*
-+ * We just allocated memory for the offset table, nothing else
-+ */
-+void free_szip(struct szip_struct *szip)
-+{
-+	vfree(szip->offset_table);
-+	vfree(szip->workspace);
-+}
+ ssize_t do_sync_read(struct file *filp, char __user *buf, size_t len, loff_t *ppos)
+ {
+ 	struct iovec iov = { .iov_base = buf, .iov_len = len };
+@@ -345,6 +346,8 @@ ssize_t do_sync_read(struct file *filp, char __user *buf, size_t len, loff_t *pp
+ 	if (-EIOCBQUEUED == ret)
+ 		ret = wait_on_sync_kiocb(&kiocb);
+ 	*ppos = kiocb.ki_pos;
++	if (filp->f_op->decompress)
++		filp->f_op->decompress(filp, buf, len);
+ 	return ret;
+ }
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 65c2be2..ce43e82 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1543,6 +1543,7 @@ struct file_operations {
+ 	long (*fallocate)(struct file *file, int mode, loff_t offset,
+ 			  loff_t len);
+ 	int (*show_fdinfo)(struct seq_file *m, struct file *f);
++	int (*decompress)(struct file *, char *, size_t);
+ };
+ 
+ struct inode_operations {
 -- 
 1.8.1.4
