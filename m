@@ -1,68 +1,339 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: Remove extent tree purging from
- ext4_da_page_release_reservation()
-Date: Wed, 24 Jul 2013 22:05:36 +0200
-Message-ID: <20130724200536.GC27307@quack.suse.cz>
-References: <1374099015-6829-1-git-send-email-jack@suse.cz>
- <20130719004439.GA21615@gmail.com>
+From: Dhaval Giani <dgiani@mozilla.com>
+Subject: [RFC/PATCH 1/2] szip: Add seekable zip format
+Date: Wed, 24 Jul 2013 17:03:41 -0400
+Message-ID: <1374699821.7083.0.camel@localhost>
+References: <cover.1374693578.git.dgiani@mozilla.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:44549 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752155Ab3GXUF7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 24 Jul 2013 16:05:59 -0400
-Content-Disposition: inline
-In-Reply-To: <20130719004439.GA21615@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: tytso@mit.edu, tglek@mozilla.com, vdjeric@mozilla.com,
+	glandium@mozilla.com, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <cover.1374693578.git.dgiani@mozilla.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-  Hi Zheng,
 
-On Fri 19-07-13 08:44:39, Zheng Liu wrote:
-> On Thu, Jul 18, 2013 at 12:10:15AM +0200, Jan Kara wrote:
-> > ext4_da_page_release_reservation() gets called from
-> > ext4_da_invalidatepage(). This function is used when we are truncating
-> > page cache for punch hole or truncate operations. In either case these
-> > operations take care of removing extents from the extent tree. This is
-> > more efficient and the code in ext4_da_page_release_reservation() is
-> > actually buggy anyway. So just remove it.
-> 
-> I remember that I try to remove the entry from extent status tree here
-> because at the end of this function it tries to relase the reserved
-> space for delalloc.  For 4k block we can simply release it because
-> ->s_cluster_ratio == 1.  But when bigalloc is enabled, we need to
-> determine whether we can release the reserved space according to the
-> result of ext4_find_delalloc_cluster() as the comment described.  If we
-> don't remove the entry from extent status tree here, we could lost some
-> spaces that could be reused by other files.  If I remember correctly, I
-> have hitted a warning message when I run xfstests to test it.  These
-> days I try to trigger it using xfstests but I failed.  Have you seen a
-> prblem that is caused by this code?  Maybe we need to refactor out the
-> code and release the reserved space outside this function.
-  Ah, I see. No, I didn't observe any problem due to this code, I just
-didn't understand why is it there. Also when blocksize < pagesize, the code
-is wrong because delayed buffers to release need not be contiguous so
-ext4_es_remove_extent(inode, lblk, to_release) may not free all the buffers
-we want. But subsequent extent tree truncation in ext4_ext_truncate() hides
-this problem.
+Add support for inflating seekable zip format. This uses zlib
+underneath. In order to create a seekable zip file, use the
+szip utility which can be obtained from
 
-So I think we might just change the condition:
+https://github.com/glandium/faulty.lib
 
-if (to_release) {
+We shall use this to implement transparent decompression on
+ext4. The use would be very similar to that used by the faulty.lib
+linker.
 
-to
+Cc: Theodore Ts'o <tytso@mit.edu>
+Cc: Taras Glek <tglek@mozilla.com>
+Cc: Vladan Djeric <vdjeric@mozilla.com>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+Cc: LKML <linux-kernel@vger.kernel.org>
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>
+Cc: Mike Hommey <glandium@mozilla.com>
+Signed-off-by: Dhaval Giani <dgiani@mozilla.com>
+---
+ include/linux/szip.h |  32 ++++++++
+ lib/Kconfig          |   8 ++
+ lib/Makefile         |   1 +
+ lib/szip.c           | 217 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 258 insertions(+)
+ create mode 100644 include/linux/szip.h
+ create mode 100644 lib/szip.c
 
-if (to_release && sbi->s_cluster_ratio > 1) {
-
-and add explanatory comment why cluster_ratio > 1 needs the truncation and
-other cases don't. It will also save some needlessly burned CPU cycles
-spent when manipulating extent tree.
-
-								Honza
+diff --git a/include/linux/szip.h b/include/linux/szip.h
+new file mode 100644
+index 0000000..1d4421e
+--- /dev/null
++++ b/include/linux/szip.h
+@@ -0,0 +1,32 @@
++#ifndef __SZIP_H
++#define __SZIP_H
++
++#include <linux/zlib.h>
++#include <linux/types.h>
++
++#define SZIP_HEADER_SIZE (20)
++
++struct szip_struct {
++	u32 magic;
++	u32 total_size;
++	u16 chunk_size;
++	u16 dict_size;
++	u32 nr_chunks;
++	u16 last_chunk_size;
++	signed char window_bits;
++	signed char filter;
++	unsigned *offset_table;
++	unsigned *dictionary;
++	char *buffer;
++	void *workspace;
++};
++
++extern int szip_decompress(struct szip_struct *, char *, size_t);
++extern int szip_seekable_decompress(struct szip_struct *, size_t,
++						size_t, char *, size_t);
++extern size_t szip_uncompressed_size(struct szip_struct *);
++extern int szip_init(struct szip_struct *, char *);
++extern void szip_init_offset_table(struct szip_struct *szip, char *buf);
++extern size_t szip_offset_table_size(struct szip_struct *szip);
++
++#endif
+diff --git a/lib/Kconfig b/lib/Kconfig
+index fe01d41..0903693 100644
+--- a/lib/Kconfig
++++ b/lib/Kconfig
+@@ -213,6 +213,14 @@ config DECOMPRESS_LZO
+ 	select LZO_DECOMPRESS
+ 	tristate
+ 
++config SZIP
++	select ZLIB_INFLATE
++	tristate
++	help
++	  Use this to provide szip decompression support. szip is a seekable
++	  zlib format. Check https://github.com/glandium/faulty.lib for the
++	  szip tool. This is required for transparent ext4 decompression.
++
+ #
+ # Generic allocator support is selected if needed
+ #
+diff --git a/lib/Makefile b/lib/Makefile
+index c55a037..86a5d4b 100644
+--- a/lib/Makefile
++++ b/lib/Makefile
+@@ -77,6 +77,7 @@ obj-$(CONFIG_LZO_COMPRESS) += lzo/
+ obj-$(CONFIG_LZO_DECOMPRESS) += lzo/
+ obj-$(CONFIG_XZ_DEC) += xz/
+ obj-$(CONFIG_RAID6_PQ) += raid6/
++obj-${CONFIG_SZIP} += szip.o
+ 
+ lib-$(CONFIG_DECOMPRESS_GZIP) += decompress_inflate.o
+ lib-$(CONFIG_DECOMPRESS_BZIP2) += decompress_bunzip2.o
+diff --git a/lib/szip.c b/lib/szip.c
+new file mode 100644
+index 0000000..d610e62
+--- /dev/null
++++ b/lib/szip.c
+@@ -0,0 +1,217 @@
++/*
++ * lib/szip.c
++ *
++ * This is a seekable zip file, the format of which is based on
++ * code available at https://github.com/glandium/faulty.lib
++ *
++ * Copyright: Mozilla
++ * Author: Dhaval Giani <dgiani@mozilla.com>
++ *
++ * Based on code written by Mike Hommey <glandium@mozilla.com> as
++ * part of faulty.lib .
++ *
++ * This code is available under the MPL v2.0 which is explicitly
++ * compatible with GPL v2.
++ */
++
++#include <linux/zlib.h>
++#include <linux/szip.h>
++#include <linux/vmalloc.h>
++
++#include <linux/string.h>
++
++#define SZIP_MAGIC 0x7a5a6553
++
++static int szip_decompress_seekable_chunk(struct szip_struct *szip,
++		char *output, size_t offset, size_t chunk, size_t length)
++{
++	int is_last_chunk = (chunk == szip->nr_chunks - 1);
++	size_t chunk_len = is_last_chunk ? szip->last_chunk_size
++						: szip->chunk_size;
++	z_stream zstream;
++	int ret = 0;
++	int flush;
++	int success;
++
++	memset(&zstream, 0, sizeof(zstream));
++
++	if (length == 0 || length > chunk_len)
++		length = chunk_len;
++
++	if (is_last_chunk)
++		zstream.avail_in = szip->total_size;
++	else
++		zstream.avail_in = szip->offset_table[chunk + 1]
++					- szip->offset_table[chunk];
++
++	zstream.next_in = szip->buffer + offset;
++	zstream.avail_out = length;
++	zstream.next_out = output;
++	if (!szip->workspace)
++		szip->workspace = vzalloc(zlib_inflate_workspacesize());
++	zstream.workspace = szip->workspace;
++	if (!zstream.workspace) {
++		ret = -ENOMEM;
++		goto out;
++	}
++
++	/* Decompress Chunk */
++	/* **TODO: Correct return value for bad zlib format** */
++	if (zlib_inflateInit2(&zstream, (int) szip->window_bits) != Z_OK) {
++		ret = -EMEDIUMTYPE;
++		goto out;
++	}
++
++	/* We don't have dictionary logic yet */
++	if (length == chunk_len) {
++		flush = Z_FINISH;
++		success = Z_STREAM_END;
++	} else {
++		flush = Z_SYNC_FLUSH;
++		success = Z_OK;
++	}
++
++	ret = zlib_inflate(&zstream, flush);
++
++	/*
++	 * Ignore Z_BUF_ERROR for now. I am sure it will bite us
++	 * later on
++	 */
++	if (ret != success && ret != Z_BUF_ERROR) {
++		ret = -EMEDIUMTYPE;
++		goto out;
++	}
++
++	if (zlib_inflateEnd(&zstream) != Z_OK) {
++		ret = -EMEDIUMTYPE;
++		goto out;
++	}
++
++	ret = 0;
++out:
++	return ret;
++}
++
++int szip_seekable_decompress(struct szip_struct *szip, size_t start,
++				size_t end, char *output, size_t length)
++{
++	int ret = 0;
++	size_t chunk_nr;
++
++	for (chunk_nr = start; chunk_nr <= end; chunk_nr++) {
++		size_t len = min_t(size_t, length, szip->chunk_size);
++		size_t offset = szip->offset_table[chunk_nr]
++					- szip->offset_table[start];
++		ret = szip_decompress_seekable_chunk(szip, output,
++						offset, chunk_nr, len);
++		if (ret)
++			goto out;
++
++
++		output += len;
++		length -= len;
++	}
++out:
++	return ret;
++}
++
++int szip_decompress(struct szip_struct *szip, char *output, size_t length)
++{
++	size_t header_size = 20;
++	char *buf;
++	buf = szip->buffer + header_size;
++	szip_init_offset_table(szip, buf);
++	szip->buffer = szip->buffer + szip->offset_table[0];
++	return szip_seekable_decompress(szip, 0,
++			szip->nr_chunks, output, length);
++}
++
++size_t szip_uncompressed_size(struct szip_struct *szip)
++{
++	return (szip->chunk_size * (szip->nr_chunks - 1))
++					+ szip->last_chunk_size;
++}
++
++void szip_init_offset_table(struct szip_struct *szip, char *buf)
++{
++	szip->offset_table = vzalloc(sizeof(unsigned) * szip->nr_chunks);
++	memcpy(szip->offset_table, buf , sizeof(unsigned) * szip->nr_chunks);
++}
++
++size_t szip_offset_table_size(struct szip_struct *szip)
++{
++	return sizeof(unsigned) * szip->nr_chunks;
++}
++
++/*
++ * Initialize a szip structure looking at the buffer
++ * Returns 0 on success
++ *
++ * XX: Fixup the return values. No magic numbers!
++ */
++int szip_init(struct szip_struct *szip, char *buf)
++{
++	char *ptr = buf;
++
++	szip->buffer = buf;
++	/* We don't implement it yet */
++	szip->dictionary = NULL;
++
++	memcpy(&szip->magic, ptr, sizeof(szip->magic));
++	/* No need to decode the structure if its not an szip buffer */
++	if (szip->magic != SZIP_MAGIC)
++		return -1;
++
++	ptr += sizeof(szip->magic);
++	memcpy(&szip->total_size, ptr, sizeof(szip->total_size));
++
++	ptr += sizeof(szip->total_size);
++	memcpy(&szip->chunk_size, ptr, sizeof(szip->chunk_size));
++	/*
++	 * If chunk_size is not a multiple of PAGE_SIZE, its malformed
++	 * No need to decode further
++	 */
++	if ((szip->chunk_size % PAGE_SIZE) ||
++			(szip->chunk_size > 8 * PAGE_SIZE))
++		return -2;
++
++	ptr += sizeof(szip->chunk_size);
++	memcpy(&szip->dict_size, ptr, sizeof(szip->dict_size));
++	if (szip->dict_size)
++		return -EINVAL;
++
++	ptr += sizeof(szip->dict_size);
++	memcpy(&szip->nr_chunks, ptr, sizeof(szip->nr_chunks));
++	/* If there are no chunks, no need to decode further*/
++	if (szip->nr_chunks < 1)
++		return -3;
++
++	ptr += sizeof(szip->nr_chunks);
++	memcpy(&szip->last_chunk_size, ptr, sizeof(szip->last_chunk_size));
++	/* Last Chunk Size is never 0 or greater than chunk size*/
++	if (!szip->last_chunk_size || szip->last_chunk_size > szip->chunk_size)
++		return -4;
++
++	ptr += sizeof(szip->last_chunk_size);
++	memcpy(&szip->window_bits, ptr, sizeof(szip->window_bits));
++
++	ptr += sizeof(szip->window_bits);
++	memcpy(&szip->filter, ptr, sizeof(szip->filter));
++	if (szip->filter)
++		return -EINVAL;
++
++	ptr += sizeof(szip->filter);
++
++	szip->workspace = NULL;
++
++	return 0;
++}
++
++/*
++ * We just allocated memory for the offset table, nothing else
++ */
++void free_szip(struct szip_struct *szip)
++{
++	vfree(szip->offset_table);
++	vfree(szip->workspace);
++}
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.8.1.4
