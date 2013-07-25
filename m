@@ -1,56 +1,38 @@
-From: =?utf-8?B?SsO2cm4=?= Engel <joern@logfs.org>
-Subject: Re: [RFC/PATCH 0/2] ext4: Transparent Decompression Support
-Date: Thu, 25 Jul 2013 14:46:47 -0400
-Message-ID: <20130725184647.GD15590@logfs.org>
-References: <1374699833.7083.2.camel@localhost>
- <20130724233628.GD3641@logfs.org>
- <51F14136.30409@mozilla.com>
- <20130725180545.GB15590@logfs.org>
- <20130725200939.GH26554@lenny.home.zabbo.net>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH] ext4: Remove extent tree purging from
+ ext4_da_page_release_reservation()
+Date: Fri, 26 Jul 2013 07:36:11 +0800
+Message-ID: <20130725233611.GA27902@gmail.com>
+References: <1374099015-6829-1-git-send-email-jack@suse.cz>
+ <20130719004439.GA21615@gmail.com>
+ <20130724200536.GC27307@quack.suse.cz>
+ <20130725115234.GA26044@gmail.com>
+ <20130725140528.GD9388@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Dhaval Giani <dgiani@mozilla.com>, linux-kernel@vger.kernel.org,
-	tytso@mit.edu, tglek@mozilla.com, vdjeric@mozilla.com,
-	glandium@mozilla.com, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Zach Brown <zab@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pd0-f179.google.com ([209.85.192.179]:42054 "EHLO
+	mail-pd0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752418Ab3GYXgL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Jul 2013 19:36:11 -0400
+Received: by mail-pd0-f179.google.com with SMTP id v10so2073238pde.24
+        for <linux-ext4@vger.kernel.org>; Thu, 25 Jul 2013 16:36:10 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <20130725200939.GH26554@lenny.home.zabbo.net>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20130725140528.GD9388@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 25 July 2013 13:09:39 -0700, Zach Brown wrote:
->=20
-> > > What about introducing a new flag, O_COMPR which tells the
-> > > kernel, btw, we want this file to be decompressed if it can be. I=
-t
-> > > can fallback to O_RDONLY or something like that? That gets rid of
-> > > the chattr ugliness.
-> >=20
-> > How is that different from chattr ugliness, which also comes down t=
-o a
-> > single flag? ;)
->=20
-> It's much worse because it's per fd instead of per inode.
->=20
-> The page cache, where the undisclosed complexity of this proposal lur=
-ks,
-> where compressed and uncompressed cached copies of the data need to b=
-e
-> managed somehow, is per inode.
+On Thu, Jul 25, 2013 at 04:05:28PM +0200, Jan Kara wrote:
+[...]
+> > Yes, thanks for pointing it out.  I attach a patch below.  Could you
+> > please review it?
+>   Thanks for writing the patch! It looks good. BTW, feel free to take
+> authorship of it.  I've just pointed out the problem. One typo correction
+> below:
 
-You've been giving it away!  Bad Zach, no cookies tonight.
+Thanks for your review.  The latest patch will be sent out soon.
 
-J=C3=B6rn
-
---
-With a PC, I always felt limited by the software available. On Unix,
-I am limited only by my knowledge.
--- Peter J. Schoenster
---
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+                                                - Zheng
