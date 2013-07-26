@@ -1,62 +1,45 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH v2] ext4: remove the entry from es tree when bigalloc is enabled
-Date: Fri, 26 Jul 2013 07:42:06 +0800
-Message-ID: <1374795726-28859-1-git-send-email-wenqing.lz@taobao.com>
-Cc: Jan Kara <jack@suse.cz>, Zheng Liu <wenqing.lz@taobao.com>
-To: linux-ext4@vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] destroy ext4_es_cachep on module unload
+Date: Thu, 25 Jul 2013 21:19:58 -0500
+Message-ID: <51F1DCCE.6060405@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f43.google.com ([209.85.220.43]:53882 "EHLO
-	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755903Ab3GYXmU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Jul 2013 19:42:20 -0400
-Received: by mail-pa0-f43.google.com with SMTP id hz10so1590697pad.2
-        for <linux-ext4@vger.kernel.org>; Thu, 25 Jul 2013 16:42:20 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:55826 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756932Ab3GZCT7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 25 Jul 2013 22:19:59 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r6Q2Jxiw020439
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Thu, 25 Jul 2013 22:19:59 -0400
+Received: from Liberator.local (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r6Q2Jw3e019056
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 25 Jul 2013 22:19:59 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Jan Kara <jack@suse.cz>
+Without this, module can't be reloaded.
 
-Now in ext4_da_page_release_reservation() we remove the entry from es
-tree if to_release != 0.  But there are two issues.  One is that it is
-wrong when blocksize != pagesize, another is that we don't need to do
-this if ->s_cluster_ratio == 1 because we will remove the entry in
-ext4_truncate/ext4_punch_hole.  Here we need to do this just because
-when ->s_cluster_ratio > 1 we will determine whether we can release
-the reserved space according to ext4_find_delalloc_cluster().
+[  500.521980] kmem_cache_sanity_check (ext4_extent_status): Cache name already exists.
 
-This commit tries to fix these problems.  Now we remove the entry from
-es tree only if ->s_cluster_ratio > 1.
-
-Signed-off-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
-v2:
- * fix a typo in comment.
 
- fs/ext4/inode.c |   10 +++++++++-
- 1 file changed, 9 insertions(+), 1 deletion(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index ba33c67..2cc97a4 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1387,7 +1387,15 @@ static void ext4_da_page_release_reservation(struct page *page,
- 		curr_off = next_off;
- 	} while ((bh = bh->b_this_page) != head);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index bca26f3..59c0c03 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -5481,6 +5483,7 @@ static void __exit ext4_exit_fs(void)
+ 	kset_unregister(ext4_kset);
+ 	ext4_exit_system_zone();
+ 	ext4_exit_pageio();
++	ext4_exit_es();
+ }
  
--	if (to_release) {
-+	/*
-+	 * Here we need to remove the entry from es tree because when bigalloc
-+	 * is enabled we need to determine whether we can release the reserved
-+	 * space according to the result of ext4_find_delalloc_cluster().
-+	 *
-+	 * If bigalloc is disabled, we don't need to do this here because these
-+	 * entries in es tree will be removed in ext4_truncate/ext4_punch_hole.
-+	 */
-+	if (sbi->s_cluster_ratio > 1 && to_release) {
- 		lblk = page->index << (PAGE_CACHE_SHIFT - inode->i_blkbits);
- 		ext4_es_remove_extent(inode, lblk, to_release);
- 	}
--- 
-1.7.9.7
+ MODULE_AUTHOR("Remy Card, Stephen Tweedie, Andrew Morton, Andreas Dilger, Theodore Ts'o and others");
+
 
