@@ -1,113 +1,99 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: avoid reusing recently deleted inodes in no journal mode
-Date: Thu, 25 Jul 2013 23:33:51 -0400
-Message-ID: <1374809631-5258-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:45248 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756295Ab3GZDdz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 25 Jul 2013 23:33:55 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Vyacheslav Dubeyko <slava@dubeyko.com>
+Subject: Re: [RFC/PATCH 0/2] ext4: Transparent Decompression Support
+Date: Fri, 26 Jul 2013 11:47:19 +0400
+Message-ID: <1374824839.3671.23.camel@slavad-ubuntu>
+References: <1374699833.7083.2.camel@localhost>
+	 <20130724233628.GD3641@logfs.org> <51F14136.30409@mozilla.com>
+	 <51F1556A.20909@mozilla.com>
+	 <51FB2C87-854F-4250-9587-B5BBF4E85EE8@dubeyko.com>
+	 <51F16B9A.5020006@mozilla.com>
+Reply-To: slava@dubeyko.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: Dhaval Giani <dgiani@mozilla.com>,
+	=?ISO-8859-1?Q?J=F6rn?= Engel <joern@logfs.org>,
+	linux-kernel@vger.kernel.org, tytso@mit.edu, vdjeric@mozilla.com,
+	glandium@mozilla.com, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: Taras Glek <tglek@mozilla.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <51F16B9A.5020006@mozilla.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-In no journal mode, if an inode has recently been deleted, we
-shouldn't reuse it right away.  Otherwise it's possible, after an
-unclean shutdown, to hit a situation where a recently deleted inode
-gets reused for some other purpose before the inode table block has
-been written to disk.  However, if the directory entry has been
-updated, then the directory entry will be pointing at the old inode
-contents.
+On Thu, 2013-07-25 at 11:16 -0700, Taras Glek wrote:
+> 
+> 
+> Vyacheslav Dubeyko wrote: 
+> > On Jul 25, 2013, at 8:42 PM, Taras Glek wrote:
+> > 
+> > [snip]
+> > > > To introduce transparent decompression. Let someone else do the compression for us, and supply decompressed data on demand  (in this case a read call). Reduces the complexity which would otherwise have to be brought into the filesystem.
+> > > The main use for file compression for Firefox(it's useful on Linux desktop too) is to improve IO-throughput and reduce startup latency. In order for compression to be a net win an application should be aware of what is being compressed and what isn't. For example patterns for IO on large libraries (eg 30mb libxul.so) are well suited to compression, but SQLite databases are not.  Similarly for our disk cache: images should not be compressed, but javascript should be. Footprint wins are useful on android, but it's the increased IO throughput on crappy storage devices that makes this most attractive.
+> > > 
+> > > In addition of being aware of which files should be compressed, Firefox is aware of patterns of usage of various files it could schedule compression at the most optimal time.
+> > > 
+> > > Above needs tie in nicely with the simplification of not implementing compression at fs-level.
+> > 
+> > There are many filesystems that uses compression as internal technique. And, as I understand, implementation
+> > of compression in different Linux kernel filesystem drivers has similar code patterns. So, from my point of view,
+> > it makes sense to generalize compression/decompression code in the form of library. The API of such generalized
+> > compression kernel library can be used in drivers of different file systems. Also such generalized compression
+> > library will simplify support of compression in file system drivers that don't support compression feature currently.
+> > 
+> > Moreover, I think that it is possible to implement compression support on VFS level. Such feature gives
+> > opportunity to have compression support for filesystems that don't support compression feature as
+> > internal technique.
+> >From my conversations with Ted, it sounded like it was easier to
+> accomplish changes like this at fs level than vfs. Maybe things are
+> different now
 
-E2fsck will make sure the file system is consistent after the
-unclean shutdown.  However, if the recently deleted inode is a
-character mode device, or an inode with the immutable bit set, even
-after the file system has been fixed up by e2fsck, it can be
-possible for a *.pyc file to be pointing at a character mode
-device, and when python tries to open the *.pyc file, Hilarity
-Ensues.  We could change all of userspace to be very suspicious
-about stat'ing files before opening them, and clearing the
-immutable flag if necessary --- or we can just avoid reusing an
-inode number if it has been recently deleted.
+If I understand the idea correctly, you want to have file-oriented
+compression. I mean that you want to have one type of files are
+compressed but another type of ones should be not compressed. So, from
+my understanding, a file is not ext4 specific concept. Every filesystem
+contains files. So, if you intend to implement compression support in
+ext4 then you need to use e2compr as basis for full-featured compression
+in ext4. But if you want to have something like file-oriented
+compression then it is not feature of concrete filesystem. Do you mean
+that Firefox will work only on ext4? So, it means for me that feature
+likewise file-oriented compression should be on VFS level or over VFS.
+And I am not fully confident that it should be a feature in
+kernel-space.
 
-Google-Bug-Id: 10017573
+> > 
+> > [snip]
+> > > This transparent decompression idea is based on our experience with HFS+. Apple uses the fs-attribute approach. OSX is able to compress application libraries at installation-time, apps remain blissfully unaware but get an extra boost in startup perf.
+> > > 
+> > 
+> > HFS+ supports compression as internal filesystem technique. It means that HFS+ volume layout has
+> > metadata structures for compression support (compressed xattrs or compressed resource forks).
+> > So, compression is supported on FS level. As I know, Mac OS X has native decompression support
+> > for compressed files but you need to use special tool for compression of files on HFS+. Maybe
+> > Mac OS X has internal library that give opportunity to compress application libraries at installation
+> > time. But I suppose that it is simply user-space tool or library that uses HFS+ compression support
+> > on kernel-space and volume layout levels.
+> OSX compression is done in userspace, all heuristics are done in
+> userspace. https://github.com/jrk/afsctool/blob/master/afsctool.c#L87 
+> Rest of the details are there too. 
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/ialloc.c | 52 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 52 insertions(+)
+Anyway, HFS+ keeps compressed files' content in com.apple.decmpfs xattr
+or in resource fork. It means for me that HFS+ volume layout has special
+metadata structures for compression support. Because if you will try to
+work with HFS+ compressed file under Linux then you will see file with
+zero byte in size. And, moreover, Mac OS X filesystem driver should know
+about these metadata structures. Otherwise, it cannot process HFS+
+compressed files. We can discuss about HFS+ compression in more details
+but I think that it is not key topic for this patch set.
 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index f03598c..da45802 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -625,6 +625,51 @@ static int find_group_other(struct super_block *sb, struct inode *parent,
- }
- 
- /*
-+ * In no journal mode, if an inode has recently been deleted, we want
-+ * to avoid reusing it until we're reasonably sure the inode table
-+ * block has been written back to disk.
-+ */
-+int recently_deleted(struct super_block *sb, ext4_group_t group, int ino)
-+{
-+	struct ext4_group_desc	*gdp;
-+	struct ext4_inode	*raw_inode;
-+	struct buffer_head	*bh;
-+	unsigned long		dtime, now;
-+	int	inodes_per_block = EXT4_SB(sb)->s_inodes_per_block;
-+	int	offset, ret = 0, recentcy = 30;
-+
-+	gdp = ext4_get_group_desc(sb, group, NULL);
-+	if (unlikely(!gdp))
-+		return 0;
-+
-+	bh = sb_getblk(sb, ext4_inode_table(sb, gdp) +
-+		       (ino / inodes_per_block));
-+	if (unlikely(!bh) || !buffer_uptodate(bh))
-+		/*
-+		 * If the block is not in the buffer head, then it
-+		 * must have been written out.
-+		 */
-+		goto out;
-+
-+	offset = (ino % inodes_per_block) * EXT4_INODE_SIZE(sb);
-+	raw_inode = (struct ext4_inode *) (bh->b_data + offset);
-+	dtime = le32_to_cpu(raw_inode->i_dtime);
-+	now = get_seconds();
-+	if (!buffer_dirty(bh))
-+		/*
-+		 * Five seconds should be enough time for a block to be
-+		 * committed to the platter once it is sent to the HDD
-+		 */
-+		recentcy = 5;
-+
-+	if (dtime && (dtime < now) && (now < dtime + recentcy))
-+		ret = 1;
-+out:
-+	brelse(bh);
-+	return ret;
-+}
-+
-+/*
-  * There are two policies for allocating an inode.  If the new inode is
-  * a directory, then a forward search is made for a block group with both
-  * free space and a low directory-to-inode ratio; if that fails, then of
-@@ -744,6 +789,13 @@ repeat_in_this_group:
- 				   "inode=%lu", ino + 1);
- 			continue;
- 		}
-+		if ((EXT4_SB(sb)->s_journal == NULL) &&
-+		    recently_deleted(sb, group, ino)) {
-+			if (++ino < EXT4_INODES_PER_GROUP(sb))
-+				goto repeat_in_this_group;
-+			else
-+				continue;
-+		}
- 		if (!handle) {
- 			BUG_ON(nblocks <= 0);
- 			handle = __ext4_journal_start_sb(dir->i_sb, line_no,
--- 
-1.7.12.rc0.22.gcdd159b
+With the best regards,
+Vyacheslav Dubeyko.
+
+> Taras
+> > 
+> > With the best regards,
+> > Vyacheslav Dubeyko.
+> > 
+
 
