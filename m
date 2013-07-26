@@ -1,81 +1,164 @@
-From: Vyacheslav Dubeyko <slava@dubeyko.com>
-Subject: Re: [RFC/PATCH 0/2] ext4: Transparent Decompression Support
-Date: Fri, 26 Jul 2013 12:01:23 +0400
-Message-ID: <1374825683.3671.35.camel@slavad-ubuntu>
-References: <1374699833.7083.2.camel@localhost>
-	 <20130724233628.GD3641@logfs.org> <51F14136.30409@mozilla.com>
-	 <51F1556A.20909@mozilla.com>
-	 <51FB2C87-854F-4250-9587-B5BBF4E85EE8@dubeyko.com>
-	 <51F17005.7030309@mozilla.com>
-Reply-To: slava@dubeyko.com
+From: Robert Yang <liezhi.yang@windriver.com>
+Subject: Re: [PATCH 2/2] debugfs.c: do sparse copy when src is a sparse file
+Date: Fri, 26 Jul 2013 18:18:59 +0800
+Message-ID: <51F24D13.6030402@windriver.com>
+References: <1374200257-2873-1-git-send-email-liezhi.yang@windriver.com> <1374200257-2873-3-git-send-email-liezhi.yang@windriver.com> <20130719185515.GC5785@blackbox.djwong.org> <51EB4994.3050703@windriver.com> <20130722173031.GE5785@blackbox.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Taras Glek <tglek@mozilla.com>,
-	=?ISO-8859-1?Q?J=F6rn?= Engel <joern@logfs.org>,
-	linux-kernel@vger.kernel.org, tytso@mit.edu, vdjeric@mozilla.com,
-	glandium@mozilla.com, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Dhaval Giani <dgiani@mozilla.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <51F17005.7030309@mozilla.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: <tytso@mit.edu>, <dvhart@linux.intel.com>,
+	<linux-ext4@vger.kernel.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.windriver.com ([147.11.1.11]:60609 "EHLO
+	mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751983Ab3GZKT1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Jul 2013 06:19:27 -0400
+In-Reply-To: <20130722173031.GE5785@blackbox.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 2013-07-25 at 14:35 -0400, Dhaval Giani wrote:
-> On 2013-07-25 2:15 PM, Vyacheslav Dubeyko wrote:
-> > On Jul 25, 2013, at 8:42 PM, Taras Glek wrote:
-> >
-> > [snip]
-> >>> To introduce transparent decompression. Let someone else do the compression for us, and supply decompressed data on demand  (in this case a read call). Reduces the complexity which would otherwise have to be brought into the filesystem.
-> >> The main use for file compression for Firefox(it's useful on Linux desktop too) is to improve IO-throughput and reduce startup latency. In order for compression to be a net win an application should be aware of what is being compressed and what isn't. For example patterns for IO on large libraries (eg 30mb libxul.so) are well suited to compression, but SQLite databases are not.  Similarly for our disk cache: images should not be compressed, but javascript should be. Footprint wins are useful on android, but it's the increased IO throughput on crappy storage devices that makes this most attractive.
-> >>
-> >> In addition of being aware of which files should be compressed, Firefox is aware of patterns of usage of various files it could schedule compression at the most optimal time.
-> >>
-> >> Above needs tie in nicely with the simplification of not implementing compression at fs-level.
-> > There are many filesystems that uses compression as internal technique. And, as I understand, implementation
-> > of compression in different Linux kernel filesystem drivers has similar code patterns. So, from my point of view,
-> > it makes sense to generalize compression/decompression code in the form of library. The API of such generalized
-> > compression kernel library can be used in drivers of different file systems. Also such generalized compression
-> > library will simplify support of compression in file system drivers that don't support compression feature currently.
-> >
-> > Moreover, I think that it is possible to implement compression support on VFS level. Such feature gives
-> > opportunity to have compression support for filesystems that don't support compression feature as
-> > internal technique.
-> 
-> I am not sure it is a very good idea at this stage.
+Hi Darrick,
 
-We are discussing not about good or bad idea. We need to elaborate a
-right solution. I think that suggested idea is not clear. Do you want to
-support compression in ext4? Or do you want to add some new compression
-feature (likewise file-oriented compression)? If we are talking about
-compression in ext4 then it needs to use e2compr patch set. Otherwise,
-if we are talking about file compression then it is not question of
-concrete filesystem. And we need to make implementation on VFS level. It
-is only architectural point of view.
+Thank you very much, I've pulled in most of your suggestions, the V2 is
+coming, please see my comments in line, and please feel free to give
+your comments.
 
-> > [snip]
-> >> This transparent decompression idea is based on our experience with HFS+. Apple uses the fs-attribute approach. OSX is able to compress application libraries at installation-time, apps remain blissfully unaware but get an extra boost in startup perf.
-> >>
-> > HFS+ supports compression as internal filesystem technique. It means that HFS+ volume layout has
-> > metadata structures for compression support (compressed xattrs or compressed resource forks).
-> > So, compression is supported on FS level. As I know, Mac OS X has native decompression support
-> > for compressed files but you need to use special tool for compression of files on HFS+. Maybe
-> > Mac OS X has internal library that give opportunity to compress application libraries at installation
-> > time. But I suppose that it is simply user-space tool or library that uses HFS+ compression support
-> > on kernel-space and volume layout levels.
-> In addition to what Taras mentioned, there is a similar approach being 
-> followed here. There is a compression tool to compress files at 
-> https://github.com/glandium/faulty.lib/blob/master/linker/szip.cpp .
-> 
+On 07/23/2013 01:30 AM, Darrick J. Wong wrote:
+> On Sun, Jul 21, 2013 at 10:38:12AM +0800, Robert Yang wrote:
+>>
+>>>> @@ -1594,14 +1607,30 @@ static errcode_t copy_file(int fd, ext2_ino_t newfile)
+>>>>   			goto fail;
+>>>>   		}
+>>>>   		ptr = buf;
+>>>> +		cp = ptr;
+>>>> +		count = got;
+>>>>   		while (got > 0) {
+>>>> -			retval = ext2fs_file_write(e2_file, ptr,
+>>>> -						   got, &written);
+>>>> -			if (retval)
+>>>> -				goto fail;
+>>>> -
+>>>> -			got -= written;
+>>>> -			ptr += written;
+>>>> +			if (make_holes) {
+>>>> +				/* Check whether all is zero */
+>>>> +				while (count-- && *cp++ == 0)
+>>>> +					continue;
+>
+> I suspect that calloc()ing a zero buffer and calling memcmp() would be faster
+> than a byte-for-byte comparison.
+>
+>>>> +				if (count < 0) {
+>>>> +					 /* The whole block is zero, make a hole */
+>>>> +					retval = ext2fs_file_lseek(e2_file, got, EXT2_SEEK_CUR, NULL);
+>>>> +					if (retval)
+>>>> +						goto fail;
+>>>> +					got = 0;
+>
+> I think the entire make_holes clause could be lifted out of the inner while and
+> placed in the outer while, since the is-zero-buffer test depends only on the
+> input.
+>
+> You could use FIEMAP/FIBMAP or SEEK_DATA or something to efficiently walk the
+> allocated regions of the incoming file.  If they're available...
+>
 
-Why do you try to implement likewise concept on kernel level? It looks
-like you try to move some user-space concept in kernel-space.
+It seems that the "ioctl(fd, FIBMAP, &b)" requires the root privileges, so I
+didn't use it, others are fixed.
 
-With the best regards,
-Vyacheslav Dubeyko.
+>>>> +				}
+>>>> +			}
+>>>> +			/* Normal copy */
+>>>> +			if (got > 0) {
+>
+> Then you don't need the test here.
+>
+>>>> +				*zero_written = 0;
+>>>> +				retval = ext2fs_file_write(e2_file, ptr, got, &written);
+>>>> +				if (retval)
+>>>> +					goto fail;
+>>>> +				got -= written;
+>>>> +				ptr += written;
+>>>> +			}
+>>>>   		}
+>>>>   	}
+>>>>   	retval = ext2fs_file_close(e2_file);
+>>>> @@ -1620,6 +1649,9 @@ void do_write(int argc, char *argv[])
+>>>>   	ext2_ino_t	newfile;
+>>>>   	errcode_t	retval;
+>>>>   	struct ext2_inode inode;
+>>>> +	int		bufsize = IO_BUFSIZE;
+>>>> +	int		make_holes = 0;
+>>>> +	int 		zero_written = 1;
+>>>>
+>>>>   	if (common_args_process(argc, argv, 3, 3, "write",
+>>>>   				"<native file> <new file>", CHECK_FS_RW))
+>>>> @@ -1684,9 +1716,27 @@ void do_write(int argc, char *argv[])
+>>>>   		return;
+>>>>   	}
+>>>>   	if (LINUX_S_ISREG(inode.i_mode)) {
+>>>> -		retval = copy_file(fd, newfile);
+>>>> +		if (statbuf.st_blocks < statbuf.st_size / S_BLKSIZE) {
+>
+> Well, that's one way to detect a sparse file coming in -- but do we care about
+> the case of copying in a non-sparse file that contains a lot of zero regions?
+>
 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I think that we need to care about whether it is a sparse file or not:
+1) We need to use the statbuf.st_blksize as the buffer size to check
+    whether the entire block is full of holes, and for the non-sparse
+    file, statbuf.st_blksize (usually 512B) is too small to be the buffer.
+
+2) For performance reason, we need to avoid checking whether it is a sparse
+    file or not in copy_file() if we know that it is not a sparse file.
+
+// Robert
+
+> Maybe we could add a flag to the 'write' command to force make_holes=1?
+>
+> (Or just figure it out ourselves via fiemap as suggested above.)
+>
+>>>> +			make_holes = 1;
+>>>> +			/*
+>>>> +			 * Use I/O blocksize as buffer size when
+>>>> +			 * copying sparse files.
+>>>> +			 */
+>>>> +			bufsize = statbuf.st_blksize;
+>>>> +		}
+>>>> +		retval = copy_file(fd, newfile, bufsize, make_holes, &zero_written);
+>>>>   		if (retval)
+>>>>   			com_err("copy_file", retval, 0);
+>>>> +
+>>>> +		if ((inode.i_flags & EXT4_EXTENTS_FL) && zero_written) {
+>>>> +			/*
+>>>> +			 * If no data is copied which indicateds that no write
+>>>> +			 * happens, we need to turn off the EXT4_EXTENTS_FL.
+>
+> I don't think removing the extents flag is necessary; "touch /mnt/emptyfile"
+> creates an empty flag with the extents flag set.
+>
+> --D
+>>>> +			 */
+>>>> +			inode.i_flags &= ~EXT4_EXTENTS_FL;
+>>>> +			if (debugfs_write_inode(newfile, &inode, argv[0]))
+>>>> +				close(fd);
+>>>> +		}
+>>>>   	}
+>>>>   	close(fd);
+>>>>   }
+>>>> --
+>>>> 1.8.1.2
+>>>>
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>
+>>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
