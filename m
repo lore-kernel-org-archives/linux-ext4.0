@@ -1,56 +1,29 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: make sure group number is bumped after a inode allocation race
-Date: Fri, 26 Jul 2013 15:16:14 -0400
-Message-ID: <1374866174-14481-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <stable-owner@vger.kernel.org>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Subject: Re: [PATCH] destroy ext4_es_cachep on module unload
+Date: Fri, 26 Jul 2013 15:22:40 -0400
+Message-ID: <20130726192240.GA7247@thunk.org>
+References: <51F1DCCE.6060405@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:45421 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752657Ab3GZTWp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 26 Jul 2013 15:22:45 -0400
+Content-Disposition: inline
+In-Reply-To: <51F1DCCE.6060405@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-When we try to allocate an inode, and there is a race between two
-CPU's trying to grab the same inode, _and_ this inode is the last free
-inode in the block group, make sure the group number is bumped before
-we continue searching the rest of the block groups.  Otherwise, we end
-up searching the current block group twice, and we end up skipping
-searching the last block group.  So in the unlikely situation where
-almost all of the inodes are allocated, it's possible that we will
-return ENOSPC even though there might be free inodes in that last
-block group.
+On Thu, Jul 25, 2013 at 09:19:58PM -0500, Eric Sandeen wrote:
+> Without this, module can't be reloaded.
+> 
+> [  500.521980] kmem_cache_sanity_check (ext4_extent_status): Cache name already exists.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: stable@vger.kernel.org
----
- fs/ext4/ialloc.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+Applied, thanks.
 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index f03598c..5b8e22e 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -734,11 +734,8 @@ repeat_in_this_group:
- 		ino = ext4_find_next_zero_bit((unsigned long *)
- 					      inode_bitmap_bh->b_data,
- 					      EXT4_INODES_PER_GROUP(sb), ino);
--		if (ino >= EXT4_INODES_PER_GROUP(sb)) {
--			if (++group == ngroups)
--				group = 0;
--			continue;
--		}
-+		if (ino >= EXT4_INODES_PER_GROUP(sb))
-+			goto next_group;
- 		if (group == 0 && (ino+1) < EXT4_FIRST_INO(sb)) {
- 			ext4_error(sb, "reserved inode found cleared - "
- 				   "inode=%lu", ino + 1);
-@@ -769,6 +766,9 @@ repeat_in_this_group:
- 			goto got; /* we grabbed the inode! */
- 		if (ino < EXT4_INODES_PER_GROUP(sb))
- 			goto repeat_in_this_group;
-+	next_group:
-+		if (++group == ngroups)
-+			group = 0;
- 	}
- 	err = -ENOSPC;
- 	goto out;
--- 
-1.7.12.rc0.22.gcdd159b
+					- Ted
