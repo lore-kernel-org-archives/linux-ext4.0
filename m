@@ -1,45 +1,113 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] destroy ext4_es_cachep on module unload
-Date: Thu, 25 Jul 2013 21:19:58 -0500
-Message-ID: <51F1DCCE.6060405@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: avoid reusing recently deleted inodes in no journal mode
+Date: Thu, 25 Jul 2013 23:33:51 -0400
+Message-ID: <1374809631-5258-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55826 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756932Ab3GZCT7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 25 Jul 2013 22:19:59 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r6Q2Jxiw020439
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Thu, 25 Jul 2013 22:19:59 -0400
-Received: from Liberator.local (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r6Q2Jw3e019056
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 25 Jul 2013 22:19:59 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:45248 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756295Ab3GZDdz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 25 Jul 2013 23:33:55 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Without this, module can't be reloaded.
+In no journal mode, if an inode has recently been deleted, we
+shouldn't reuse it right away.  Otherwise it's possible, after an
+unclean shutdown, to hit a situation where a recently deleted inode
+gets reused for some other purpose before the inode table block has
+been written to disk.  However, if the directory entry has been
+updated, then the directory entry will be pointing at the old inode
+contents.
 
-[  500.521980] kmem_cache_sanity_check (ext4_extent_status): Cache name already exists.
+E2fsck will make sure the file system is consistent after the
+unclean shutdown.  However, if the recently deleted inode is a
+character mode device, or an inode with the immutable bit set, even
+after the file system has been fixed up by e2fsck, it can be
+possible for a *.pyc file to be pointing at a character mode
+device, and when python tries to open the *.pyc file, Hilarity
+Ensues.  We could change all of userspace to be very suspicious
+about stat'ing files before opening them, and clearing the
+immutable flag if necessary --- or we can just avoid reusing an
+inode number if it has been recently deleted.
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Google-Bug-Id: 10017573
+
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
+ fs/ext4/ialloc.c | 52 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 52 insertions(+)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index bca26f3..59c0c03 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -5481,6 +5483,7 @@ static void __exit ext4_exit_fs(void)
- 	kset_unregister(ext4_kset);
- 	ext4_exit_system_zone();
- 	ext4_exit_pageio();
-+	ext4_exit_es();
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index f03598c..da45802 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -625,6 +625,51 @@ static int find_group_other(struct super_block *sb, struct inode *parent,
  }
  
- MODULE_AUTHOR("Remy Card, Stephen Tweedie, Andrew Morton, Andreas Dilger, Theodore Ts'o and others");
-
+ /*
++ * In no journal mode, if an inode has recently been deleted, we want
++ * to avoid reusing it until we're reasonably sure the inode table
++ * block has been written back to disk.
++ */
++int recently_deleted(struct super_block *sb, ext4_group_t group, int ino)
++{
++	struct ext4_group_desc	*gdp;
++	struct ext4_inode	*raw_inode;
++	struct buffer_head	*bh;
++	unsigned long		dtime, now;
++	int	inodes_per_block = EXT4_SB(sb)->s_inodes_per_block;
++	int	offset, ret = 0, recentcy = 30;
++
++	gdp = ext4_get_group_desc(sb, group, NULL);
++	if (unlikely(!gdp))
++		return 0;
++
++	bh = sb_getblk(sb, ext4_inode_table(sb, gdp) +
++		       (ino / inodes_per_block));
++	if (unlikely(!bh) || !buffer_uptodate(bh))
++		/*
++		 * If the block is not in the buffer head, then it
++		 * must have been written out.
++		 */
++		goto out;
++
++	offset = (ino % inodes_per_block) * EXT4_INODE_SIZE(sb);
++	raw_inode = (struct ext4_inode *) (bh->b_data + offset);
++	dtime = le32_to_cpu(raw_inode->i_dtime);
++	now = get_seconds();
++	if (!buffer_dirty(bh))
++		/*
++		 * Five seconds should be enough time for a block to be
++		 * committed to the platter once it is sent to the HDD
++		 */
++		recentcy = 5;
++
++	if (dtime && (dtime < now) && (now < dtime + recentcy))
++		ret = 1;
++out:
++	brelse(bh);
++	return ret;
++}
++
++/*
+  * There are two policies for allocating an inode.  If the new inode is
+  * a directory, then a forward search is made for a block group with both
+  * free space and a low directory-to-inode ratio; if that fails, then of
+@@ -744,6 +789,13 @@ repeat_in_this_group:
+ 				   "inode=%lu", ino + 1);
+ 			continue;
+ 		}
++		if ((EXT4_SB(sb)->s_journal == NULL) &&
++		    recently_deleted(sb, group, ino)) {
++			if (++ino < EXT4_INODES_PER_GROUP(sb))
++				goto repeat_in_this_group;
++			else
++				continue;
++		}
+ 		if (!handle) {
+ 			BUG_ON(nblocks <= 0);
+ 			handle = __ext4_journal_start_sb(dir->i_sb, line_no,
+-- 
+1.7.12.rc0.22.gcdd159b
 
