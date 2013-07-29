@@ -1,176 +1,143 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 1/3] e2fsprogs: Build external libblkid by default
-Date: Mon, 29 Jul 2013 14:57:49 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1307291454440.4274@localhost.localdomain>
-References: <1360321623-8188-1-git-send-email-lczerner@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH -v2] ext4: avoid reusing recently deleted inodes in no
+ journal mode
+Date: Mon, 29 Jul 2013 15:32:31 +0200
+Message-ID: <20130729133231.GC9860@quack.suse.cz>
+References: <1374809631-5258-1-git-send-email-tytso@mit.edu>
+ <1374867164-21942-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: sandeen@redhat.com, tytso@mit.edu
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48848 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:39703 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753117Ab3G2M5x (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Jul 2013 08:57:53 -0400
-In-Reply-To: <1360321623-8188-1-git-send-email-lczerner@redhat.com>
+	id S1751498Ab3G2Nce (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Jul 2013 09:32:34 -0400
+Content-Disposition: inline
+In-Reply-To: <1374867164-21942-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 8 Feb 2013, Lukas Czerner wrote:
-
-> Date: Fri,  8 Feb 2013 12:07:01 +0100
-> From: Lukas Czerner <lczerner@redhat.com>
-> To: linux-ext4@vger.kernel.org
-> Cc: sandeen@redhat.com, tytso@mit.edu, Lukas Czerner <lczerner@redhat.com>
-> Subject: [PATCH 1/3] e2fsprogs: Build external libblkid by default
+On Fri 26-07-13 15:32:43, Ted Tso wrote:
+> In no journal mode, if an inode has recently been deleted, we
+> shouldn't reuse it right away.  Otherwise it's possible, after an
+> unclean shutdown, to hit a situation where a recently deleted inode
+> gets reused for some other purpose before the inode table block has
+> been written to disk.  However, if the directory entry has been
+> updated, then the directory entry will be pointing at the old inode
+> contents.
 > 
-> This commit changes configure script to build external libblkid library by
-> default instead of building the local blkid. The reason is that the
-> the external libblkid is where all the development takes place and it
-> should be always preferred option. We still have an option
-> '--enable-blkid' to enable local build of the blkid library.
+> E2fsck will make sure the file system is consistent after the
+> unclean shutdown.  However, if the recently deleted inode is a
+> character mode device, or an inode with the immutable bit set, even
+> after the file system has been fixed up by e2fsck, it can be
+> possible for a *.pyc file to be pointing at a character mode
+> device, and when python tries to open the *.pyc file, Hilarity
+> Ensues.  We could change all of userspace to be very suspicious
+> about stat'ing files before opening them, and clearing the
+> immutable flag if necessary --- or we can just avoid reusing an
+> inode number if it has been recently deleted.
+  Hum, I don't like this very much since it's just a heuristic which is
+going to work in 99% of cases but not all. But likely it's better than
+nothing...
 
-As we've previously discussed I'll drop the series, however I think
-that this particular patch might be actually useful. What do you
-think Ted ?
-
-(I might need to rebase this one)
-
-Thanks!
--Lukas
-
+> Google-Bug-Id: 10017573
 > 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 > ---
->  configure    |   60 ++++++++++++++++++++++++++++++++++++++++++++++++---------
->  configure.in |   23 ++++++++++++---------
->  2 files changed, 63 insertions(+), 20 deletions(-)
+>  fs/ext4/ialloc.c | 51 +++++++++++++++++++++++++++++++++++++++++++++++++++
+>  1 file changed, 51 insertions(+)
 > 
-> diff --git a/configure b/configure
-> index 84e7e03..5b91c01 100755
-> --- a/configure
-> +++ b/configure
-> @@ -1497,7 +1497,7 @@ Optional Features:
->    --enable-blkid-debug    enable blkid debugging
->    --disable-testio-debug  disable the use of the test I/O manager for debugging
->    --disable-libuuid	  do not build private uuid library
-> -  --disable-libblkid	  do not build private blkid library
-> +  --enable-libblkid	  build private blkid library
->    --enable-quota	  enable quota support
->    --disable-debugfs   	  disable support of debugfs program
->    --disable-imager   	  disable support of e2image program
-> @@ -5168,16 +5168,56 @@ $as_echo "Enabling private blkid library" >&6; }
->  fi
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index 5b8e22e..7d5ac66 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -625,6 +625,51 @@ static int find_group_other(struct super_block *sb, struct inode *parent,
+>  }
 >  
->  else
-> -  LIBBLKID='$(LIB)/libblkid'$LIB_EXT
-> -DEPLIBBLKID=$LIBBLKID
-> -STATIC_LIBBLKID='$(LIB)/libblkid'$STATIC_LIB_EXT
-> -DEPSTATIC_LIBBLKID=$STATIC_LIBBLKID
-> -PROFILED_LIBBLKID='$(LIB)/libblkid'$PROFILED_LIB_EXT
-> -DEPPROFILED_LIBBLKID=$PROFILED_LIBBLKID
-> -$as_echo "#define CONFIG_BUILD_FINDFS 1" >>confdefs.h
-> +  if test -z "$PKG_CONFIG"; then
-> +	as_fn_error $? "pkg-config not installed; please install it." "$LINENO" 5
-> +fi
-> +
-> +{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for blkid_get_cache in -lblkid" >&5
-> +$as_echo_n "checking for blkid_get_cache in -lblkid... " >&6; }
-> +if ${ac_cv_lib_blkid_blkid_get_cache+:} false; then :
-> +  $as_echo_n "(cached) " >&6
-> +else
-> +  ac_check_lib_save_LIBS=$LIBS
-> +LIBS="-lblkid $LIBBLKID $LIBS"
-> +cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-> +/* end confdefs.h.  */
-> +
-> +/* Override any GCC internal prototype to avoid an error.
-> +   Use char because int might match the return type of a GCC
-> +   builtin and then its argument prototype would still apply.  */
-> +#ifdef __cplusplus
-> +extern "C"
-> +#endif
-> +char blkid_get_cache ();
-> +int
-> +main ()
+>  /*
+> + * In no journal mode, if an inode has recently been deleted, we want
+> + * to avoid reusing it until we're reasonably sure the inode table
+> + * block has been written back to disk.
+> + */
+> +int recently_deleted(struct super_block *sb, ext4_group_t group, int ino)
 > +{
-> +return blkid_get_cache ();
-> +  ;
-> +  return 0;
-> +}
-> +_ACEOF
-> +if ac_fn_c_try_link "$LINENO"; then :
-> +  ac_cv_lib_blkid_blkid_get_cache=yes
-> +else
-> +  ac_cv_lib_blkid_blkid_get_cache=no
-> +fi
-> +rm -f core conftest.err conftest.$ac_objext \
-> +    conftest$ac_exeext conftest.$ac_ext
-> +LIBS=$ac_check_lib_save_LIBS
-> +fi
-> +{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_blkid_blkid_get_cache" >&5
-> +$as_echo "$ac_cv_lib_blkid_blkid_get_cache" >&6; }
-> +if test "x$ac_cv_lib_blkid_blkid_get_cache" = xyes; then :
-> +  LIBBLKID=`$PKG_CONFIG --libs blkid`;
-> +	 STATIC_LIBBLKID=`$PKG_CONFIG --static --libs blkid`
-> +else
-> +  as_fn_error $? "external blkid library not found" "$LINENO" 5
-> +fi
->  
-> -{ $as_echo "$as_me:${as_lineno-$LINENO}: result: Enabling private blkid library by default" >&5
-> -$as_echo "Enabling private blkid library by default" >&6; }
-> +BLKID_CMT=#
-> +{ $as_echo "$as_me:${as_lineno-$LINENO}: result: Disabling private blkid library by default" >&5
-> +$as_echo "Disabling private blkid library by default" >&6; }
->  
->  fi
->  
-> diff --git a/configure.in b/configure.in
-> index ac3cd92..68fc806 100644
-> --- a/configure.in
-> +++ b/configure.in
-> @@ -509,7 +509,7 @@ AC_SUBST(PROFILED_LIBUUID)
->  AC_SUBST(DEPPROFILED_LIBUUID)
->  AC_SUBST(UUID_CMT)
->  dnl
-> -dnl handle --disable-libblkid
-> +dnl handle --enable-libblkid
->  dnl
->  PKG_PROG_PKG_CONFIG
->  LIBBLKID=
-> @@ -521,7 +521,7 @@ DEPPROFILED_LIBBLKID=
->  BLKID_CMT=
->  AH_TEMPLATE([CONFIG_BUILD_FINDFS], [Define to 1 to compile findfs])
->  AC_ARG_ENABLE([libblkid],
-> -[  --disable-libblkid	  do not build private blkid library],
-> +[  --enable-libblkid	  build private blkid library],
->  if test "$enableval" = "no"
->  then
->  	if test -z "$PKG_CONFIG"; then
-> @@ -546,14 +546,17 @@ else
->  	AC_MSG_RESULT([Enabling private blkid library])
->  fi
->  ,
-> -LIBBLKID='$(LIB)/libblkid'$LIB_EXT
-> -DEPLIBBLKID=$LIBBLKID
-> -STATIC_LIBBLKID='$(LIB)/libblkid'$STATIC_LIB_EXT
-> -DEPSTATIC_LIBBLKID=$STATIC_LIBBLKID
-> -PROFILED_LIBBLKID='$(LIB)/libblkid'$PROFILED_LIB_EXT
-> -DEPPROFILED_LIBBLKID=$PROFILED_LIBBLKID
-> -AC_DEFINE(CONFIG_BUILD_FINDFS, 1)
-> -AC_MSG_RESULT([Enabling private blkid library by default])
-> +if test -z "$PKG_CONFIG"; then
-> +	AC_MSG_ERROR([pkg-config not installed; please install it.])
-> +fi
+> +	struct ext4_group_desc	*gdp;
+> +	struct ext4_inode	*raw_inode;
+> +	struct buffer_head	*bh;
+> +	unsigned long		dtime, now;
+> +	int	inodes_per_block = EXT4_SB(sb)->s_inodes_per_block;
+> +	int	offset, ret = 0, recentcy = 30;
+  I'd use dirty_expire_interval here so that we are at least tied to
+flusher thread timeout...
+
 > +
-> +AC_CHECK_LIB(blkid, blkid_get_cache,
-> +	[LIBBLKID=`$PKG_CONFIG --libs blkid`;
-> +	 STATIC_LIBBLKID=`$PKG_CONFIG --static --libs blkid`],
-> +	[AC_MSG_ERROR([external blkid library not found])],
-> +	[$LIBBLKID])
-> +BLKID_CMT=#
-> +AC_MSG_RESULT([Disabling private blkid library by default])
->  )
->  AC_SUBST(LIBBLKID)
->  AC_SUBST(DEPLIBBLKID)
-> 
+> +	gdp = ext4_get_group_desc(sb, group, NULL);
+> +	if (unlikely(!gdp))
+> +		return 0;
+> +
+> +	bh = sb_getblk(sb, ext4_inode_table(sb, gdp) +
+> +		       (ino / inodes_per_block));
+> +	if (unlikely(!bh) || !buffer_uptodate(bh))
+> +		/*
+> +		 * If the block is not in the buffer head, then it
+                                                     ^^^^ cache
+
+> +		 * must have been written out.
+> +		 */
+> +		goto out;
+> +
+> +	offset = (ino % inodes_per_block) * EXT4_INODE_SIZE(sb);
+> +	raw_inode = (struct ext4_inode *) (bh->b_data + offset);
+> +	dtime = le32_to_cpu(raw_inode->i_dtime);
+> +	now = get_seconds();
+> +	if (!buffer_dirty(bh))
+> +		/*
+> +		 * Five seconds should be enough time for a block to be
+> +		 * committed to the platter once it is sent to the HDD
+> +		 */
+> +		recentcy = 5;
+  This is completely ad-hoc and I cannot say anything about what value
+would be appropriate here. Jens told me disk can hold on sectors for
+*minutes* in their writeback caches when these blocks are unsuitably placed
+and there's enough streaming IO going on. So the question is what value do
+we want to base this on?
+
+> +
+> +	if (dtime && (dtime < now) && (now < dtime + recentcy))
+> +		ret = 1;
+> +out:
+> +	brelse(bh);
+> +	return ret;
+> +}
+> +
+> +/*
+>   * There are two policies for allocating an inode.  If the new inode is
+>   * a directory, then a forward search is made for a block group with both
+>   * free space and a low directory-to-inode ratio; if that fails, then of
+> @@ -741,6 +786,11 @@ repeat_in_this_group:
+>  				   "inode=%lu", ino + 1);
+>  			continue;
+>  		}
+> +		if ((EXT4_SB(sb)->s_journal == NULL) &&
+> +		    recently_deleted(sb, group, ino)) {
+> +			ino++;
+> +			goto next_inode;
+> +		}
+>  		if (!handle) {
+>  			BUG_ON(nblocks <= 0);
+>  			handle = __ext4_journal_start_sb(dir->i_sb, line_no,
+> @@ -764,6 +814,7 @@ repeat_in_this_group:
+>  		ino++;		/* the inode bitmap is zero-based */
+>  		if (!ret2)
+>  			goto got; /* we grabbed the inode! */
+> +	next_ino:
+>  		if (ino < EXT4_INODES_PER_GROUP(sb))
+>  			goto repeat_in_this_group;
+>  	next_group:
+
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
