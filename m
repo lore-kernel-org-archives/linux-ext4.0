@@ -1,39 +1,61 @@
-From: Jeff Moyer <jmoyer@redhat.com>
-Subject: Re: [PATCH v1 0/5] ext4: Shut down block groups when damage is detected
-Date: Mon, 29 Jul 2013 11:28:38 -0400
-Message-ID: <x49txjdbd21.fsf@segfault.boston.devel.redhat.com>
-References: <20130719235532.24017.31896.stgit@blackbox.djwong.org>
-	<20130721143226.GA13473@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: don't re-try to remove the entry from es tree when
+ we encounter a ENOMEM in ext4_ext_truncate
+Date: Mon, 29 Jul 2013 11:42:39 -0400
+Message-ID: <20130729154239.GD11816@thunk.org>
+References: <1374753397-26432-1-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-	"Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
 To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60522 "EHLO mx1.redhat.com"
+Received: from imap.thunk.org ([74.207.234.97]:37022 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755901Ab3G2P2n (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Jul 2013 11:28:43 -0400
-In-Reply-To: <20130721143226.GA13473@gmail.com> (Zheng Liu's message of "Sun,
-	21 Jul 2013 22:32:26 +0800")
+	id S1753179Ab3G2Pmo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Jul 2013 11:42:44 -0400
+Content-Disposition: inline
+In-Reply-To: <1374753397-26432-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Zheng Liu <gnehzuil.liu@gmail.com> writes:
+On Thu, Jul 25, 2013 at 07:56:37PM +0800, Zheng Liu wrote:
+> From: Zheng Liu <wenqing.lz@taobao.com>
+> 
+> ext4_es_remove_extent returns ENOMEM only if we need to split an entry
+> and insert a part into es tree.  After applied this commit (e15f742c),
+> we have retried to do this.  So we don't need to do this again in
+> ext4_ext_truncate().
+> 
+> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+> Cc: "Theodore Ts'o" <tytso@mit.edu>
 
-> My idea is to let file system can ignore the currurted block.  Namely,
-> when we meet a currupted block, we will track it as bad block in bad
-> block inode and find another block to save data.  This currupted block
-> will never be used.  The first step in my mind is to detect a currpted
-> block and mark it as bad block.  After reading the thread and Darrick's
-> original patch, I think Darrick's patch is a good start.
+Actually, we still need to do this, since the retry loop in
+__es_remove_extent() tries to shrink the extent status tree for the
+inode in question, and only retries if we were able to free up some
+memory.  (We only do it for the inode we're working on, since we have
+it locked already.)  So __es_remove_extent() can still return ENOMEM,
+and so callers of ext4_es_insert_extent() and ext4_es_remove_extent()
+still need to check for ENOMEM and try to do something sane if
+possible.
 
-I think it's important to call out the exact failure scenario you're
-trying to address.  For hard disks, if you get a read error, it can
-typically be recovered by re-writing the block.  I imagine this is what
-fsck would be doing for metadata repair.  So, I'm not at all sure why
-you'd want to track bad blocks in the file system itself.  Could you
-elaborate, please?
+The problem with truncate is that the VFS assumes truncate() will
+always succeed (the method function is returns a void, so there isn't
+even a way to propagate an error code back p to the VFS), so we really
+do need to do a retry in ext4's truncate code.
 
-Cheers,
-Jeff
+For other code paths, like for example fallocate(), it's completely
+fair game for it to return ENOMEM, although we need to make sure that
+we've gotten the error handling correct.  
+
+For the writeback paths, where the application which performed the
+write may have exited already and we have dirty pages in the page
+cache, retrying an ENOMEM after calling congestion_wait() is something
+that *does* make sense.
+
+This is why I didn't add an unconditional retry loop to the low-level
+extent_status tree code, since where we can return ENOMEM, it's better
+to do that, since that way applications can start failing fast in OOM
+conditions.  Whether or not we want do that is going to depend on the
+higher level code paths.
+
+					- Ted
