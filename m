@@ -1,110 +1,152 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: [PATCH] tests: add another test for uninit extents past eof
-Date: Sun, 28 Jul 2013 22:44:40 -0400
-Message-ID: <20130729024440.GB20180@wallace>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu
-To: linux-ext4@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] e2fsck: correctly deallocate invalid extent-mapped symlinks
+Date: Sun, 28 Jul 2013 22:08:30 -0400
+Message-ID: <1375063710-22787-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qa0-f44.google.com ([209.85.216.44]:35735 "EHLO
-	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752371Ab3G2Cus (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 28 Jul 2013 22:50:48 -0400
-Received: by mail-qa0-f44.google.com with SMTP id hu16so1408426qab.17
-        for <linux-ext4@vger.kernel.org>; Sun, 28 Jul 2013 19:50:48 -0700 (PDT)
-Content-Disposition: inline
+Received: from li9-11.members.linode.com ([67.18.176.11]:45891 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752435Ab3G2D0l (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 28 Jul 2013 23:26:41 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Commit d3f32c2db8 was intended to detect extents found outside their
-proper location in the extent tree, including invalid extents at the
-end of an extent block.  However, it incorrectly reported legal
-uninitialized extents created by fallocate() at the end of file with
-the FALLOC_FL_KEEP_SIZE flag as false positives.  xfstests
-generic/263 (among others) caught this problem, while the e2fsprogs
-test f_uninit_ext_past_eof did not.  The latter test failed to
-detect the problem in part because it uses a test file whose i_size
-is 0.
+The function deallocate_inode() in e2fsck/pass2.c was buggy in that it
+would clear out the inode's mode and flags fields before trying to
+deallocate any blocks which might belong to the inode.
 
-Add a test derived from the fsx-based test case in xfstests
-generic/263 consisting of a file with non-zero length, more than
-four extents total, and two uninitialized extents past EOF to
-reliably reproduce commit d3f32c2db8's false positive behavior.
+The good news is that deallocate_inode() is mostly used to free inodes
+which do not have blocks: device inodes, FIFO's, Unix-domain sockets.
 
-Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+The bad news is that if deallocate_inode() tried to free an invalid
+extent-mapped inode, it would try to interpret the root of the extent
+node as block numbers, and would therefore mark various file system
+metadata blocks (the superblock, block group descriptors, the root
+directory, etc.) as free and available for allocation.  This was
+unfortunate.
+
+(Try running an older e2fsck against the test file system image in the
+new test f_invalid_extent_symlink, and then run e2fsck a second time
+on the fs image, and weep.)
+
+Fortunately, this kind of file system image corruption appears to be
+fairly rare in actual practice, since it would require a very unlucky
+set of bits to be flipped, or a buggy file system implementation.
+
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- tests/f_uninit_ext_past_eof2/expect.1 |    7 +++++++
- tests/f_uninit_ext_past_eof2/expect.2 |    7 +++++++
- tests/f_uninit_ext_past_eof2/image.gz |  Bin 0 -> 989 bytes
- tests/f_uninit_ext_past_eof2/name     |    1 +
- 4 files changed, 15 insertions(+)
- create mode 100644 tests/f_uninit_ext_past_eof2/expect.1
- create mode 100644 tests/f_uninit_ext_past_eof2/expect.2
- create mode 100644 tests/f_uninit_ext_past_eof2/image.gz
- create mode 100644 tests/f_uninit_ext_past_eof2/name
+ e2fsck/pass2.c                          |   7 +++++--
+ tests/f_invalid_extent_symlink/expect.1 |  12 ++++++++++++
+ tests/f_invalid_extent_symlink/expect.2 |   7 +++++++
+ tests/f_invalid_extent_symlink/image.gz | Bin 0 -> 1115 bytes
+ tests/f_invalid_extent_symlink/name     |   1 +
+ 5 files changed, 25 insertions(+), 2 deletions(-)
+ create mode 100644 tests/f_invalid_extent_symlink/expect.1
+ create mode 100644 tests/f_invalid_extent_symlink/expect.2
+ create mode 100644 tests/f_invalid_extent_symlink/image.gz
+ create mode 100644 tests/f_invalid_extent_symlink/name
 
-diff --git a/tests/f_uninit_ext_past_eof2/expect.1 b/tests/f_uninit_ext_past_eof2/expect.1
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index 749d264..bceadfe 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -1189,7 +1189,6 @@ static void deallocate_inode(e2fsck_t ctx, ext2_ino_t ino, char* block_buf)
+ 	struct del_block	del_block;
+ 
+ 	e2fsck_read_inode(ctx, ino, &inode, "deallocate_inode");
+-	e2fsck_clear_inode(ctx, ino, &inode, 0, "deallocate_inode");
+ 	clear_problem_context(&pctx);
+ 	pctx.ino = ino;
+ 
+@@ -1224,7 +1223,7 @@ static void deallocate_inode(e2fsck_t ctx, ext2_ino_t ino, char* block_buf)
+ 	}
+ 
+ 	if (!ext2fs_inode_has_valid_blocks2(fs, &inode))
+-		return;
++		goto clear_inode;
+ 
+ 	if (LINUX_S_ISREG(inode.i_mode) && EXT2_I_SIZE(&inode) >= 0x80000000UL)
+ 		ctx->large_files--;
+@@ -1239,6 +1238,10 @@ static void deallocate_inode(e2fsck_t ctx, ext2_ino_t ino, char* block_buf)
+ 		ctx->flags |= E2F_FLAG_ABORT;
+ 		return;
+ 	}
++clear_inode:
++	/* Inode may have changed by block_iterate, so reread it */
++	e2fsck_read_inode(ctx, ino, &inode, "deallocate_inode");
++	e2fsck_clear_inode(ctx, ino, &inode, 0, "deallocate_inode");
+ }
+ 
+ /*
+diff --git a/tests/f_invalid_extent_symlink/expect.1 b/tests/f_invalid_extent_symlink/expect.1
 new file mode 100644
-index 0000000..eb8248e
+index 0000000..7bda0b7
 --- /dev/null
-+++ b/tests/f_uninit_ext_past_eof2/expect.1
++++ b/tests/f_invalid_extent_symlink/expect.1
+@@ -0,0 +1,12 @@
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Symlink /a (inode #12) is invalid.
++Clear? yes
++
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
++test_filesys: 11/16 files (9.1% non-contiguous), 21/100 blocks
++Exit status is 1
+diff --git a/tests/f_invalid_extent_symlink/expect.2 b/tests/f_invalid_extent_symlink/expect.2
+new file mode 100644
+index 0000000..41ceefb
+--- /dev/null
++++ b/tests/f_invalid_extent_symlink/expect.2
 @@ -0,0 +1,7 @@
 +Pass 1: Checking inodes, blocks, and sizes
 +Pass 2: Checking directory structure
 +Pass 3: Checking directory connectivity
 +Pass 4: Checking reference counts
 +Pass 5: Checking group summary information
-+test_filesys: 12/16 files (8.3% non-contiguous), 70/100 blocks
++test_filesys: 11/16 files (0.0% non-contiguous), 21/100 blocks
 +Exit status is 0
-diff --git a/tests/f_uninit_ext_past_eof2/expect.2 b/tests/f_uninit_ext_past_eof2/expect.2
+diff --git a/tests/f_invalid_extent_symlink/image.gz b/tests/f_invalid_extent_symlink/image.gz
 new file mode 100644
-index 0000000..eb8248e
---- /dev/null
-+++ b/tests/f_uninit_ext_past_eof2/expect.2
-@@ -0,0 +1,7 @@
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+test_filesys: 12/16 files (8.3% non-contiguous), 70/100 blocks
-+Exit status is 0
-diff --git a/tests/f_uninit_ext_past_eof2/image.gz b/tests/f_uninit_ext_past_eof2/image.gz
-new file mode 100644
-index 0000000000000000000000000000000000000000..c739e499475a47d2ebc8247a5e448b4bba310e33
+index 0000000000000000000000000000000000000000..d4a6eef7e21483cb945052c6603173761702a89a
 GIT binary patch
-literal 989
-zcmb2|=HN&!{}{-`oSB=Lp33m{?&<uHP#J~?#{3Ije#mH)I-21#u_Z{;Bs6Q$5e3C*
-zD*`g4Qx~#iE)~r1jK3%`dDH9o2j`|9*--fWkSe#>-HnDjN)9*m@;5EB6MJk~o>pKb
-zdsJgq)_(n;U+0{&J%776?_HXoGsCr2+awknUOQT0<7Vi#Zr=gnsUA=J&fK;9=++aX
-zF};1?+0>`I9=+eXXlvC{iO+`fdOs%FwR}(db#ZO`Ion@PA9~Nvv-<pye|KK5Szq$~
-zqn$JBtJW>utiCQrvi9f7)AP6FWd8o~b#~?+>DAX?J^!fibau_OcOMzO`$HE9BuDqm
-zz4=f7*w?5v(aX1Uy%YFTKlQZt(<iMn{%_=2qx$oWti|;AEBCF=<M~<R@BdV`t~%pv
-z{ERvCUe;9?l_hQYwC<1V!Wq@+Wsml#tN-~vRqEUS@2#i)v0v+06wUC>KH)zzHiBVw
-z<m<a%6L&leO$hIqmbFhi<lH}xpM4Yd2}^wbtY{;2xjlJJ|Ig!2Pv1<CHQa9=vQNE2
-z*(-JWCuL>L*f$ycyLWpfK0F&_@&D(Q@|{`HFRQfd3raG6eE67rSiOIL(R-i1fbjik
-z!BV&HEYpc!J^$FR&`|Hgf3n`bfAjWr{jUA{zdOX|U;e1No89`*+lfItDnGwSe`xnO
-zJA22zf(;_;_C=q%m6>Dzcb~-beLreGzt)t!AH&7`c<F_rvg`;gk$orsUi_06a%Ek9
-zU*`FJGdI4RxjB8=@pHYtEoUPazV&_f-zWe6r+?ha%GOD@em?oFFDq+jYjLHzD&xVA
-zY~^NWpbKTHzBZrR@OV4l>=nKBwO{3y87?cS@qc;m$L&?~^^cs7+U5Ol=c~V~*T?6q
-zsNcG<u1N9NTidDC5%KnOV~bxVq^Fm4_)h+K_1cj`{<k-k-p%>b`}h63xSRivnyh~}
-z^>2R1&y^cz-dx$aVPPT5>0keMR{r1mO+5Mb_SswR%YD9FEL^?(n4aIcp096S&YZhT
-z;FdP)w5|V7zdyhJ<NM1+wb^F-KZ)IMY}<NDT7Urstg(wNF890g=>D7UubmaGYZSj$
-zuacUo-TLOg;PS~Hmm($BmKUGy(>%?3eA>tFXXE?qzlnEiU$0-c>)*d!W!uZI?w&T!
-z{`YL#|DSIDbelSPLYQ6sB}uE-at{B)Fa46{d3dGkdA#19sY{tl&+ospw<>z|%lVee
-dU*7sL?e)J)DDEJcbKvhEu8<}N4TcGf3;?{p01W^D
+literal 1115
+zc-oWi=3sbw@M|Cw^V_>;^KYlf94J&jEAUY(x5u-<u_{6{^U}4qS|5#C6?f@=alNqB
+zcY9%X&~MMAi8l|H2{8IfsmJ}}Y&jBtLD<~l@KjHkAL0V+Gmhxm^viBPXH}MPb;Y&!
+z?zNMCeBbkH<NW3OOiXzg)UQTPm6__d^2<Ii)~Q7|nUp-!-P>nZf8WlNY_aD5#O~9o
+z$2+&&%bfad)t6;n;h)+J1K#WV?Ei9=|NFK0-@h);pI7-b=Kbmak7M@#{MtM}I{JOh
+zmhZJcw^wJ!uX+8^ukVwZ@$<qdMf{yFE$ik+^B+IZ;&pztiRk+OO%waypZj9B_p6pM
+zi_PA)!^Xe&Gyj)kvhe)$(YQb_f93Zl#di6TCyoD99zIk4*I-ue&)V~z^QP9%Jn?i^
+z&g=uh55F+K{=dF6<u9{^B9{;2fnV%+5Cg;Un@&eXL_coiak~CpC;H6!^WC|UUzz<~
+zWM`&v>=%_k<-bVvVrhAEnnA$VlB=uh@&$Ih^;1b(H|^+A@9FmhtYu$X*C`zJi}<uQ
+zaOX?yO>e6{uio_XL_(B%nN^-fR9<-3?X!(HrYcS7lXh#|eY<~&@~?SX65pjxJ}8^P
+zmzesvts=jkCCRnQD5LCXTK)Fdx3rE=i_>`ijeTFr(Ye=c)GvQ+%Jkbg@9tacpqLG{
+z>z{60dyZ8!yYuSP*;|kG_HO-kZtJmEjw`qSnkO|Yx%8gd@+HrAto4~Dx9NJ{W+TJn
+zUynPNnY{3nJ@sYn^UW8zCZF4UP-Plt)U~Exp6e%{<6fM$<Xi-=eNW5XOtwXf*7+#g
+zemuQs+n2oB;@`i#_7-m578}2NU*O;ER({5ll110)zQ3|+*~_Yl9&VRkm^KG2>ouPg
+zJn!VT#hct7Zu&Vh@=V&zy{jUx<jVHs7W!G#UD@z=AJ=N<tC1U@vL_vTxAJiFwpE3>
+ziQm)GPdk}LhfL2{wun1cOm+2?Baa@`6|Y*-CtA*Y^UsD=_NVeR9#4=8c~Vuoa&fs^
+z@7_0UeYeY$?`B!9+Zq2cVTbX{<6S#;M2KxZDe=rTb7M%DYG}0MrZl&wtDeag=lr^5
+zl+|<1*Qzsl^YoefEN$5)N@y=yA5_-$^~L7RaXM*Hfz9Xc@LpZ=C4zg^4lB8N5Azo^
+zPWI}1FJ9Gtq55Nnb@i2J^KZtTs@nfJl8XTwu+W+e%mSCbsQmt0d$VJI{hNaS!XN)D
+zoAsnW4*z`q&W-C+p7QM5#?$})-Sbze8v`tA{y%m5e!u>^%;oAge^-2;f3*FredXh$
+z?r-cTYt6N4`nUi0HG^xRhgYw<Z?g1zeBzq_e-{3If9FN)^3O3|3^WD(FXhd(*REoi
+Hz{mgq9nc_3
 
 literal 0
-HcmV?d00001
+Hc-jL100001
 
-diff --git a/tests/f_uninit_ext_past_eof2/name b/tests/f_uninit_ext_past_eof2/name
+diff --git a/tests/f_invalid_extent_symlink/name b/tests/f_invalid_extent_symlink/name
 new file mode 100644
-index 0000000..352a0f5
+index 0000000..3792aac
 --- /dev/null
-+++ b/tests/f_uninit_ext_past_eof2/name
++++ b/tests/f_invalid_extent_symlink/name
 @@ -0,0 +1 @@
-+fallocated extents after nonzero i_size and total extents > 4
++extent-mapped symlink with two blocks
 -- 
-1.7.10.4
+1.7.12.rc0.22.gcdd159b
 
