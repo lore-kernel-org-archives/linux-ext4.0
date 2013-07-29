@@ -1,54 +1,77 @@
-From: Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>
-Subject: Re: [PATCH 0/2] ext4: increase mbcache scalability
-Date: Mon, 29 Jul 2013 10:08:18 +0000
-Message-ID: <51F63F12.6070300@hp.com>
-References: <1374108910-50444-1-git-send-email-tmac@hp.com> <20130718163024.GA12727@thunk.org> <20130718163301.GB12727@thunk.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: e2fsprogs - possible regression between 1.42.7 and 1.42.8
+Date: Mon, 29 Jul 2013 11:13:42 -0500
+Message-ID: <51F694B6.90901@redhat.com>
+References: <20130729083941.GG28871@pcnci.linuxbox.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-To: Theodore Ts'o <tytso@mit.edu>, T Makphaibulchoke <tmac@hp.com>,
-	viro@zeniv.linux.org.uk, adilger.kernel@dilger.ca,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, tmakph@gmail.com, aswin@hp.com
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20130718163301.GB12727@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+To: Nikola Ciprich <nikola.ciprich@linuxbox.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:26116 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754869Ab3G2QN4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Jul 2013 12:13:56 -0400
+In-Reply-To: <20130729083941.GG28871@pcnci.linuxbox.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 07/18/2013 04:33 PM, Theodore Ts'o wrote:
-> On Thu, Jul 18, 2013 at 12:30:24PM -0400, Theodore Ts'o wrote:
->> On Wed, Jul 17, 2013 at 06:55:10PM -0600, T Makphaibulchoke wrote:
->>> This patch intends to improve the scalability of an ext4 filesystem by
->>> introducing higher degree of parallelism to the usages of its mb_cache and
->>> mb_cache_entries.
->>>
->>> ...
->>>
->>>  fs/ext4/ext4.h          |   1 +
->>>  fs/ext4/super.c         |   8 ++
->>>  fs/ext4/xattr.c         |  41 +++++---
->>>  fs/ext4/xattr.h         |   3 +
->>>  fs/mbcache.c            | 432 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------
->>>  include/linux/mbcache.h |   5 +
->>>  6 files changed, 385 insertions(+), 105 deletions(-)
->>>
->>
->> I see the diff stats, but there was no patch attached to your message.
->> Could you please resend the patch to the linux-ext4 list?
-> 
-> Never mind, I see them now.  I didn't notice this was a 0/2 message,
-> and since you are apparently using an old versio of git which doesn't
-> enable --thread by default (or you have a git config setting which
-> disables the use of mail threading), I didn't see the patches chained
-> to the message.
-> 
-> Sorry for being confused,
-> 
-> 						- Ted
-> 
-Hi Ted,
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-Could you please let me know if you have comment, suggestion or feedback for the patch.  Thanks in advance.
+On 7/29/13 3:39 AM, Nikola Ciprich wrote:
+> Hi,
+> 
+> trying to compile latest e2fsprogs and running check under RHEL6-compatible
+> distro (centos) fails:
+> 
+> r_1024_small_bg: ext2 1024 blocksize with small block groups: failed
+> r_ext4_small_bg: ext4 1024 blocksize with small block groups: failed
+> 
+> dunno whether this is known issue... will bisect help?
+> 
+> with regards
+> 
+> nik
+> 
 
-Thanks,
-Mak.
+Ted, these are the same ones I saw, plus one I think (working on getting
+all the info).
+
+I don't think it's a regression, because:
+
+commit e79a9395b382e831c125d000d2bf16ba4b6253d4
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Sun Mar 31 20:34:24 2013 -0400
+
+    tests: add more tests for off-line resizing
+
+and:
+
+$ git describe --contains e79a9395b382e831c125d000d2bf16ba4b6253d4
+v1.42.8~31
+
+the tests were only added in the last release.  Running the same tests
+on older releases most likely breaks as well.
+
+- -Eric
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG/MacGPG2 v2.0.17 (Darwin)
+Comment: GPGTools - http://gpgtools.org
+Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
+
+iQIcBAEBAgAGBQJR9pS1AAoJECCuFpLhPd7g+dMP/1MdRJN8AzVIL6iX8sQ/yo2F
+atDLdkzDjyjS+UzsTPEP0Q7C9MjSl74Z7+57SNyKjgESAY1MOp8LlPSsFMiuJfbW
+u7Myd9iWfVHK/DIlOPBvW55WAi8y7w6HhXcTKhbjuEPUPJAPb1H36p+iwb/Sd40H
+A/Ti6yOYyI05rXHonG+zzD4TFG3gNQT0zg3O0+BQZgX5uFuENlehgoZXxH61dwtP
+tQTbFCrjcn337fTukwKDgDSBzuQT1Z6cQemzmoT+2C9Nhkqztjm6MMX+xjd96W0R
+/aPITdVC4zLVl15QZSv/knAP0fJJyhhKsGJOYvzGXW2ydhFu/EmLtWSvu80E+slf
+tigSqmh98WJzqyrrxcLOmV/ZncYKke/hpWa20t3eD775Lx4znkOGt7XkB7RtK648
+LAcTrGi6Z7Saj44kS2zOvWs+IcxEzKAZWpZ2tFxxa5kn1riuHimhIlQZJwIAVF+j
+XJT4c0IMGOIan0Z0NuP+K68RVi6X6Rsvr+o5OiUv6N4pnv8DsIskDAmpYpRUSwPV
+R5WlwidCOpnPoiff8dAOnFjDZnmxG0VUMq9URTtvchNwPflBgp6LDC7LLbb+HWkh
+uxCOqiirv1T1ZTGIglN804CzccWHjTufNZz6p/5klApxBa/HUZuzb29YQ7oicUSy
+3fiWWRobTPA/+PQGKGBT
+=G+1+
+-----END PGP SIGNATURE-----
