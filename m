@@ -1,124 +1,39 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH v2] ext4: add WARN_ON to check the length of allocated
- blocks
-Date: Mon, 29 Jul 2013 23:09:16 +0800
-Message-ID: <20130729150915.GC2615@gmail.com>
-References: <1373590852-29544-1-git-send-email-wenqing.lz@taobao.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: e2fsprogs - possible regression between 1.42.7 and 1.42.8
+Date: Mon, 29 Jul 2013 10:40:33 -0400
+Message-ID: <20130729144033.GA11816@thunk.org>
+References: <20130729083941.GG28871@pcnci.linuxbox.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Zheng Liu <wenqing.lz@taobao.com>
-To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+To: Nikola Ciprich <nikola.ciprich@linuxbox.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f43.google.com ([209.85.220.43]:57912 "EHLO
-	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752218Ab3G2PJP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Jul 2013 11:09:15 -0400
-Received: by mail-pa0-f43.google.com with SMTP id hz10so4952395pad.2
-        for <linux-ext4@vger.kernel.org>; Mon, 29 Jul 2013 08:09:15 -0700 (PDT)
+Received: from imap.thunk.org ([74.207.234.97]:37012 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756350Ab3G2PYz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Jul 2013 11:24:55 -0400
 Content-Disposition: inline
-In-Reply-To: <1373590852-29544-1-git-send-email-wenqing.lz@taobao.com>
+In-Reply-To: <20130729083941.GG28871@pcnci.linuxbox.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 12, 2013 at 09:00:52AM +0800, Zheng Liu wrote:
-> From: Zheng Liu <wenqing.lz@taobao.com>
+On Mon, Jul 29, 2013 at 10:39:41AM +0200, Nikola Ciprich wrote:
 > 
-> In this commit (921f266b) a sanity check is added in map_blocks to make
-> sure 'retval == map->m_len'.  But we'd better enable this check all the
-> time because it can help us to dig some bugs that is hard to be hitted.
+> trying to compile latest e2fsprogs and running check under RHEL6-compatible
+> distro (centos) fails:
 > 
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+> r_1024_small_bg: ext2 1024 blocksize with small block groups: failed
+> r_ext4_small_bg: ext4 1024 blocksize with small block groups: failed
+> 
+> dunno whether this is known issue... will bisect help?
 
-Any comment?
+What platform are you running this on?  X86?  I generally do a full
+regression test run before I do an e2fsprogs release, so it may very
+well be something which might be platform or compiler specific.
 
-Thanks
-                                                - Zheng
+Can you send me the r_1024_small_bg.failed and r_ext4_small_bg.failed
+files?
 
-> ---
-> changelog:
-> v2 <- v1:
->  * print more details to help us to dig some bugs that is hard to be hitted
-> 
-> v1: http://patchwork.ozlabs.org/patch/230406/
-> 
-> Hi Ted,
-> 
-> This patch sleeps on my own tree for a very long time so that I almost forgot
-> it.  Sorry about that.
-> 
-> 						- Zheng
-> 
->  fs/ext4/inode.c |   39 ++++++++++++++++++---------------------
->  1 file changed, 18 insertions(+), 21 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 19a1643..95bad70 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -556,14 +556,13 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
->  		int ret;
->  		unsigned long long status;
->  
-> -#ifdef ES_AGGRESSIVE_TEST
-> -		if (retval != map->m_len) {
-> -			printk("ES len assertation failed for inode: %lu "
-> -			       "retval %d != map->m_len %d "
-> -			       "in %s (lookup)\n", inode->i_ino, retval,
-> -			       map->m_len, __func__);
-> +		if (unlikely(retval != map->m_len)) {
-> +			ext4_warning(inode->i_sb,
-> +				     "ES len assertation failed for inode: "
-> +				     "%lu retval %d != map->m_len %d\n",
-> +				     inode->i_ino, retval, map->m_len);
-> +			WARN_ON(1);
->  		}
-> -#endif
->  
->  		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
->  				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
-> @@ -657,14 +656,13 @@ found:
->  		int ret;
->  		unsigned long long status;
->  
-> -#ifdef ES_AGGRESSIVE_TEST
-> -		if (retval != map->m_len) {
-> -			printk("ES len assertation failed for inode: %lu "
-> -			       "retval %d != map->m_len %d "
-> -			       "in %s (allocation)\n", inode->i_ino, retval,
-> -			       map->m_len, __func__);
-> +		if (unlikely(retval != map->m_len)) {
-> +			ext4_warning(inode->i_sb,
-> +				     "ES len assertation failed for inode: "
-> +				     "%lu retval %d != map->m_len %d\n",
-> +				     inode->i_ino, retval, map->m_len);
-> +			WARN_ON(1);
->  		}
-> -#endif
->  
->  		/*
->  		 * If the extent has been zeroed out, we don't need to update
-> @@ -1640,14 +1638,13 @@ add_delayed:
->  		int ret;
->  		unsigned long long status;
->  
-> -#ifdef ES_AGGRESSIVE_TEST
-> -		if (retval != map->m_len) {
-> -			printk("ES len assertation failed for inode: %lu "
-> -			       "retval %d != map->m_len %d "
-> -			       "in %s (lookup)\n", inode->i_ino, retval,
-> -			       map->m_len, __func__);
-> +		if (unlikely(retval != map->m_len)) {
-> +			ext4_warning(inode->i_sb,
-> +				     "ES len assertation failed for inode: "
-> +				     "%lu retval %d != map->m_len %d\n",
-> +				     inode->i_ino, retval, map->m_len);
-> +			WARN_ON(1);
->  		}
-> -#endif
->  
->  		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
->  				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
-> -- 
-> 1.7.9.7
-> 
+Thanks,
+
+						- Ted
