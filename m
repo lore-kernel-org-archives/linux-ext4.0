@@ -1,45 +1,69 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v2] ext4: remove the entry from es tree when bigalloc is
- enabled
-Date: Mon, 29 Jul 2013 19:50:47 +0200
-Message-ID: <20130729175047.GA14316@quack.suse.cz>
-References: <1374795726-28859-1-git-send-email-wenqing.lz@taobao.com>
- <20130729162151.GH11816@thunk.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] ext4: remove unused ac_ex_scanned
+Date: Mon, 29 Jul 2013 18:14:03 -0500
+Message-ID: <51F6F73B.3050809@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Zheng Liu <gnehzuil.liu@gmail.com>, linux-ext4@vger.kernel.org,
-	Jan Kara <jack@suse.cz>, Zheng Liu <wenqing.lz@taobao.com>
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:50056 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:65050 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751150Ab3G2Ruu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Jul 2013 13:50:50 -0400
-Content-Disposition: inline
-In-Reply-To: <20130729162151.GH11816@thunk.org>
+	id S1754155Ab3G2XOE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Jul 2013 19:14:04 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r6TNE496001435
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Mon, 29 Jul 2013 19:14:04 -0400
+Received: from Liberator.local (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id r6TNE3Ae022583
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 29 Jul 2013 19:14:03 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 29-07-13 12:21:51, Ted Tso wrote:
-> On Fri, Jul 26, 2013 at 07:42:06AM +0800, Zheng Liu wrote:
-> > From: Jan Kara <jack@suse.cz>
-> > 
-> > Now in ext4_da_page_release_reservation() we remove the entry from es
-> > tree if to_release != 0.  But there are two issues.  One is that it is
-> > wrong when blocksize != pagesize,
-> 
-> The commit description says that this is wrong, but I don't see
-> anything in the patch which addresses this.  And could you state what
-> the impact is of this wrongness?
-  Well, this wrongness actually shouldn't have any real impact - for
-blocksize < pagesize the extent tree isn't used while truncate_pagecache()
-is running and ext4_truncate() then removes the whole truncated range from
-the tree again which hides any problems in
-ext4_da_page_release_reservation(). When bigalloc is used, we use the
-extent tree during truncate_pagecache() but to_release is always == 1 and
-thus the problem doesn't exist.
+When looking at a bug report with:
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> kernel: EXT4-fs: 0 scanned, 0 found
+
+I thought wow, 0 scanned, that's odd?  But it's not odd; it's printing
+a variable that is initialized to 0 and never touched again.
+
+It's never been used since the original merge, so I don't really even
+know what the original intent was, either.
+
+If anyone knows how to hook it up, speak now via patch, otherwise just
+yank it so it's not making a confusing situation more confusing in
+kernel logs.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 4bbbf13..3aee266 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -3983,8 +3983,7 @@ static void ext4_mb_show_ac(struct ext4_allocation_context *ac)
+ 			(unsigned long)ac->ac_b_ex.fe_len,
+ 			(unsigned long)ac->ac_b_ex.fe_logical,
+ 			(int)ac->ac_criteria);
+-	ext4_msg(ac->ac_sb, KERN_ERR, "%lu scanned, %d found",
+-		 ac->ac_ex_scanned, ac->ac_found);
++	ext4_msg(ac->ac_sb, KERN_ERR, "%d found", ac->ac_found);
+ 	ext4_msg(ac->ac_sb, KERN_ERR, "groups: ");
+ 	ngroups = ext4_get_groups_count(sb);
+ 	for (i = 0; i < ngroups; i++) {
+diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
+index 08481ee..72db0a0 100644
+--- a/fs/ext4/mballoc.h
++++ b/fs/ext4/mballoc.h
+@@ -175,8 +175,6 @@ struct ext4_allocation_context {
+ 	/* copy of the best found extent taken before preallocation efforts */
+ 	struct ext4_free_extent ac_f_ex;
+ 
+-	/* number of iterations done. we have to track to limit searching */
+-	unsigned long ac_ex_scanned;
+ 	__u16 ac_groups_scanned;
+ 	__u16 ac_found;
+ 	__u16 ac_tail;
+
