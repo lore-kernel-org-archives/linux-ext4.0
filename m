@@ -1,71 +1,66 @@
-From: Nikola Ciprich <nikola.ciprich@linuxbox.cz>
-Subject: e2fsprogs - possible regression between 1.42.7 and 1.42.8
-Date: Mon, 29 Jul 2013 10:39:41 +0200
-Message-ID: <20130729083941.GG28871@pcnci.linuxbox.cz>
+From: Robert Yang <liezhi.yang@windriver.com>
+Subject: [PATCH 0/2 V3] e2fsprogs/debugfs: do sparse copy when src is a sparse file
+Date: Mon, 29 Jul 2013 17:06:23 +0800
+Message-ID: <1375088785-30653-1-git-send-email-liezhi.yang@windriver.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="eVzOFob/8UvintSX"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain
+Cc: <tytso@mit.edu>, <dvhart@linux.intel.com>,
+	<darrick.wong@oracle.com>
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gwu.lbox.cz ([62.245.111.132]:59835 "EHLO gwu.lbox.cz"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750904Ab3G2Iyw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Jul 2013 04:54:52 -0400
-Received: from pcnci.linuxbox.cz (pcnci.linuxbox.cz [10.76.3.14])
-	by gwu.lbox.cz (Sendmail) with ESMTP id r6T8dfhX009553
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 29 Jul 2013 10:39:41 +0200
-Received: from pcnci.linuxbox.cz (localhost.localdomain [127.0.0.1])
-	by pcnci.linuxbox.cz (8.14.7/8.14.5) with SMTP id r6T8dfYb018043
-	for <linux-ext4@vger.kernel.org>; Mon, 29 Jul 2013 10:39:41 +0200
-Content-Disposition: inline
+Received: from mail.windriver.com ([147.11.1.11]:57121 "EHLO
+	mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752515Ab3G2JIu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Jul 2013 05:08:50 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+=== V3: 
+* Use BUFSIZ (which is 8192 on Linux systems) for the max argument
+  length as Ted suggested.
 
---eVzOFob/8UvintSX
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+* Use ext2fs_get_memzero() and move it out of the while loop to get a
+  better performance as Darrick suggested.
 
-Hi,
+=== V2: 
+* Use 64K for the IO_BUFSIZE and use malloc() to allocate the memory for 
+  the buffer respect to Darrick's comments.
 
-trying to compile latest e2fsprogs and running check under RHEL6-compatible
-distro (centos) fails:
+* Use calloc() and memcmp() to check the sparse block as Darrick
+  suggested.
 
-r_1024_small_bg: ext2 1024 blocksize with small block groups: failed
-r_ext4_small_bg: ext4 1024 blocksize with small block groups: failed
+* Adjust the frame and remove a few un-needed code as Darrick
+  suggested.
 
-dunno whether this is known issue... will bisect help?
+=== V1: 
+* There are two patches, one is used for fixing the max length of the 
+  argument, the other one is for sparsing copy when src is a sparse
+  file.
 
-with regards
+* BTW., we are trying to use the debugfs to create an ext2/ext3/ext4
+  image based on a given directory or file, which is similar to genext2fs,
+  please vist here for the script you are interested in it: 
 
-nik
+  https://gist.github.com/robertlinux/6034499
 
---=20
--------------------------------------
-Ing. Nikola CIPRICH
-LinuxBox.cz, s.r.o.
-28.rijna 168, 709 00 Ostrava
+  It is an external shell script at the moment, the performance is not good,
+  so we are going to: 
+  - Integrate this function into mke2fs in C language.
+  - Add a [-d <directory>] option to specify the initial directory in mke2fs
 
-tel.:   +420 591 166 214
-fax:    +420 596 621 273
-mobil:  +420 777 093 799
-www.linuxbox.cz
+  I'm not sure whether such a patch is acceptable or not, please feel free to
+  give your comments.
 
-mobil servis: +420 737 238 656
-email servis: servis@linuxbox.cz
--------------------------------------
+Robert Yang
+Wind River System
 
---eVzOFob/8UvintSX
-Content-Type: application/pgp-signature
+Robert Yang (2):
+  debugfs.c: the max length of debugfs argument is too short
+  debugfs.c: do sparse copy when src is a sparse file
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.14 (GNU/Linux)
+ debugfs/debugfs.c | 67 ++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 62 insertions(+), 5 deletions(-)
 
-iEYEARECAAYFAlH2Kk0ACgkQ3xdJJrLygV7p2ACgjKZXvNnHDgBfcXYpDi7H3AHA
-ITMAoIBFPMBguzVwJ23lXwunaIYjz+zD
-=Gh5C
------END PGP SIGNATURE-----
+-- 
+1.8.1.2
 
---eVzOFob/8UvintSX--
