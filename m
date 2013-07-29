@@ -1,79 +1,114 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: e2fsprogs - possible regression between 1.42.7 and 1.42.8
-Date: Mon, 29 Jul 2013 12:38:38 -0400
-Message-ID: <20130729163838.GI11816@thunk.org>
-References: <20130729083941.GG28871@pcnci.linuxbox.cz>
- <51F694B6.90901@redhat.com>
+Subject: Re: [PATCH v2] ext4: add WARN_ON to check the length of allocated
+ blocks
+Date: Mon, 29 Jul 2013 12:52:45 -0400
+Message-ID: <20130729165245.GJ11816@thunk.org>
+References: <1373590852-29544-1-git-send-email-wenqing.lz@taobao.com>
+ <20130729150915.GC2615@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Nikola Ciprich <nikola.ciprich@linuxbox.cz>,
-	linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+To: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:37053 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:37059 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757619Ab3G2Qiq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Jul 2013 12:38:46 -0400
+	id S1757002Ab3G2Qwv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Jul 2013 12:52:51 -0400
 Content-Disposition: inline
-In-Reply-To: <51F694B6.90901@redhat.com>
+In-Reply-To: <20130729150915.GC2615@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jul 29, 2013 at 11:13:42AM -0500, Eric Sandeen wrote:
-> 
-> Ted, these are the same ones I saw, plus one I think (working on getting
-> all the info).
-> 
-> I don't think it's a regression, because:
-> 
-> commit e79a9395b382e831c125d000d2bf16ba4b6253d4
-> Author: Theodore Ts'o <tytso@mit.edu>
-> Date:   Sun Mar 31 20:34:24 2013 -0400
-> 
->     tests: add more tests for off-line resizing
-> 
-> and:
-> 
-> $ git describe --contains e79a9395b382e831c125d000d2bf16ba4b6253d4
-> v1.42.8~31
-> 
-> the tests were only added in the last release.  Running the same tests
-> on older releases most likely breaks as well.
-
-Well, they would almost certainly break on older releases because of
-bugs due to bugs that were fixed in 1.42.8.  :-)
-
-Let me be more precise; these tests aren't failing for me when I run
-build and run "make check" on pristine 1.42.8 version of e2fsprogs on
-Debian Stable.  So it's likely that the test is doing something that
-is specific to Red Hat systems.  It may stil be turning up a bug that
-for some reason we're not seeing on Debian systems.  
-
-We are using the e2fsck binary built in the tree as the source of test
-bits for the resize test.  I'm guessing that it is substantially
-smaller or bigger when built on Red Hat systems?!?
-
-Could you modify tests/script/resize to capture a copy of the
-constructed file system before we start running resize2fs on it so I
-can try reproducing it on my end?
+The patch didn't apply as-is so I had to adjust it a bit.  I also
+reworded the commit description.
 
 					- Ted
 
-P.S.  Hmm, for some reason the size of the e2fsck binary must be
-*substantially* smaller on Red Hat systems.  What configure options
-are you using?
+>From 44fb851dfb2f8e3462617e19a7b3b9025db9d919 Mon Sep 17 00:00:00 2001
+From: Zheng Liu <wenqing.lz@taobao.com>
+Date: Mon, 29 Jul 2013 12:51:42 -0400
+Subject: [PATCH] ext4: add WARN_ON to check the length of allocated blocks
 
-Looking at my log, it shrinks the file system to:
+In commit 921f266b: ext4: add self-testing infrastructure to do a
+sanity check, some sanity checks were added in map_blocks to make sure
+'retval == map->m_len'.
 
-r_1024_small_bg.log:The filesystem on /tmp/e2fsprogs-tmp.RE74xl is now 1341 blocks long.
+Enable these checks by default and report any assertion failures using
+ext4_warning() and WARN_ON() since they can help us to figure out some
+bugs that are otherwise hard to hit.
 
-and then
+Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/inode.c | 39 ++++++++++++++++++---------------------
+ 1 file changed, 18 insertions(+), 21 deletions(-)
 
-r_1024_small_bg.log:The filesystem on /tmp/e2fsprogs-tmp.RE74xl is now 1215 blocks long.
-
-On your log, it shrinks the filesystem to 1191 blocks and then 1111 blocks.
-
-On my system with default configure options, the size of the e2fsck
-binary is 1124k.  It sounds like the size of your compiled e2fsck
-binary is approximately 100k smaller?
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index ba33c67..dd32a2e 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -555,14 +555,13 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 		int ret;
+ 		unsigned long long status;
+ 
+-#ifdef ES_AGGRESSIVE_TEST
+-		if (retval != map->m_len) {
+-			printk("ES len assertion failed for inode: %lu "
+-			       "retval %d != map->m_len %d "
+-			       "in %s (lookup)\n", inode->i_ino, retval,
+-			       map->m_len, __func__);
++		if (unlikely(retval != map->m_len)) {
++			ext4_warning(inode->i_sb,
++				     "ES len assertion failed for inode "
++				     "%lu: retval %d != map->m_len %d",
++				     inode->i_ino, retval, map->m_len);
++			WARN_ON(1);
+ 		}
+-#endif
+ 
+ 		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
+ 				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
+@@ -656,14 +655,13 @@ found:
+ 		int ret;
+ 		unsigned long long status;
+ 
+-#ifdef ES_AGGRESSIVE_TEST
+-		if (retval != map->m_len) {
+-			printk("ES len assertion failed for inode: %lu "
+-			       "retval %d != map->m_len %d "
+-			       "in %s (allocation)\n", inode->i_ino, retval,
+-			       map->m_len, __func__);
++		if (unlikely(retval != map->m_len)) {
++			ext4_warning(inode->i_sb,
++				     "ES len assertion failed for inode "
++				     "%lu: retval %d != map->m_len %d",
++				     inode->i_ino, retval, map->m_len);
++			WARN_ON(1);
+ 		}
+-#endif
+ 
+ 		/*
+ 		 * If the extent has been zeroed out, we don't need to update
+@@ -1637,14 +1635,13 @@ add_delayed:
+ 		int ret;
+ 		unsigned long long status;
+ 
+-#ifdef ES_AGGRESSIVE_TEST
+-		if (retval != map->m_len) {
+-			printk("ES len assertion failed for inode: %lu "
+-			       "retval %d != map->m_len %d "
+-			       "in %s (lookup)\n", inode->i_ino, retval,
+-			       map->m_len, __func__);
++		if (unlikely(retval != map->m_len)) {
++			ext4_warning(inode->i_sb,
++				     "ES len assertion failed for inode "
++				     "%lu: retval %d != map->m_len %d",
++				     inode->i_ino, retval, map->m_len);
++			WARN_ON(1);
+ 		}
+-#endif
+ 
+ 		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
+ 				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
+-- 
+1.7.12.rc0.22.gcdd159b
 
