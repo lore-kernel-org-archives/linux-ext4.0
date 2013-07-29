@@ -1,143 +1,75 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH -v2] ext4: avoid reusing recently deleted inodes in no
- journal mode
-Date: Mon, 29 Jul 2013 15:32:31 +0200
-Message-ID: <20130729133231.GC9860@quack.suse.cz>
-References: <1374809631-5258-1-git-send-email-tytso@mit.edu>
- <1374867164-21942-1-git-send-email-tytso@mit.edu>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH v2] ext4: remove the entry from es tree when bigalloc is
+ enabled
+Date: Mon, 29 Jul 2013 23:07:10 +0800
+Message-ID: <20130729150710.GA2615@gmail.com>
+References: <1374795726-28859-1-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: Jan Kara <jack@suse.cz>, Zheng Liu <wenqing.lz@taobao.com>
+To: linux-ext4@vger.kernel.org, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:39703 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751498Ab3G2Nce (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Jul 2013 09:32:34 -0400
+Received: from mail-pd0-f178.google.com ([209.85.192.178]:34418 "EHLO
+	mail-pd0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755065Ab3G2PHL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Jul 2013 11:07:11 -0400
+Received: by mail-pd0-f178.google.com with SMTP id w10so2700738pde.37
+        for <linux-ext4@vger.kernel.org>; Mon, 29 Jul 2013 08:07:11 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <1374867164-21942-1-git-send-email-tytso@mit.edu>
+In-Reply-To: <1374795726-28859-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 26-07-13 15:32:43, Ted Tso wrote:
-> In no journal mode, if an inode has recently been deleted, we
-> shouldn't reuse it right away.  Otherwise it's possible, after an
-> unclean shutdown, to hit a situation where a recently deleted inode
-> gets reused for some other purpose before the inode table block has
-> been written to disk.  However, if the directory entry has been
-> updated, then the directory entry will be pointing at the old inode
-> contents.
+On Fri, Jul 26, 2013 at 07:42:06AM +0800, Zheng Liu wrote:
+> From: Jan Kara <jack@suse.cz>
 > 
-> E2fsck will make sure the file system is consistent after the
-> unclean shutdown.  However, if the recently deleted inode is a
-> character mode device, or an inode with the immutable bit set, even
-> after the file system has been fixed up by e2fsck, it can be
-> possible for a *.pyc file to be pointing at a character mode
-> device, and when python tries to open the *.pyc file, Hilarity
-> Ensues.  We could change all of userspace to be very suspicious
-> about stat'ing files before opening them, and clearing the
-> immutable flag if necessary --- or we can just avoid reusing an
-> inode number if it has been recently deleted.
-  Hum, I don't like this very much since it's just a heuristic which is
-going to work in 99% of cases but not all. But likely it's better than
-nothing...
+> Now in ext4_da_page_release_reservation() we remove the entry from es
+> tree if to_release != 0.  But there are two issues.  One is that it is
+> wrong when blocksize != pagesize, another is that we don't need to do
+> this if ->s_cluster_ratio == 1 because we will remove the entry in
+> ext4_truncate/ext4_punch_hole.  Here we need to do this just because
+> when ->s_cluster_ratio > 1 we will determine whether we can release
+> the reserved space according to ext4_find_delalloc_cluster().
+> 
+> This commit tries to fix these problems.  Now we remove the entry from
+> es tree only if ->s_cluster_ratio > 1.
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 
-> Google-Bug-Id: 10017573
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Any comment?
+
+Thanks,
+                                                - Zheng
+
 > ---
->  fs/ext4/ialloc.c | 51 +++++++++++++++++++++++++++++++++++++++++++++++++++
->  1 file changed, 51 insertions(+)
+> v2:
+>  * fix a typo in comment.
 > 
-> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-> index 5b8e22e..7d5ac66 100644
-> --- a/fs/ext4/ialloc.c
-> +++ b/fs/ext4/ialloc.c
-> @@ -625,6 +625,51 @@ static int find_group_other(struct super_block *sb, struct inode *parent,
->  }
+>  fs/ext4/inode.c |   10 +++++++++-
+>  1 file changed, 9 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index ba33c67..2cc97a4 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -1387,7 +1387,15 @@ static void ext4_da_page_release_reservation(struct page *page,
+>  		curr_off = next_off;
+>  	} while ((bh = bh->b_this_page) != head);
 >  
->  /*
-> + * In no journal mode, if an inode has recently been deleted, we want
-> + * to avoid reusing it until we're reasonably sure the inode table
-> + * block has been written back to disk.
-> + */
-> +int recently_deleted(struct super_block *sb, ext4_group_t group, int ino)
-> +{
-> +	struct ext4_group_desc	*gdp;
-> +	struct ext4_inode	*raw_inode;
-> +	struct buffer_head	*bh;
-> +	unsigned long		dtime, now;
-> +	int	inodes_per_block = EXT4_SB(sb)->s_inodes_per_block;
-> +	int	offset, ret = 0, recentcy = 30;
-  I'd use dirty_expire_interval here so that we are at least tied to
-flusher thread timeout...
-
-> +
-> +	gdp = ext4_get_group_desc(sb, group, NULL);
-> +	if (unlikely(!gdp))
-> +		return 0;
-> +
-> +	bh = sb_getblk(sb, ext4_inode_table(sb, gdp) +
-> +		       (ino / inodes_per_block));
-> +	if (unlikely(!bh) || !buffer_uptodate(bh))
-> +		/*
-> +		 * If the block is not in the buffer head, then it
-                                                     ^^^^ cache
-
-> +		 * must have been written out.
-> +		 */
-> +		goto out;
-> +
-> +	offset = (ino % inodes_per_block) * EXT4_INODE_SIZE(sb);
-> +	raw_inode = (struct ext4_inode *) (bh->b_data + offset);
-> +	dtime = le32_to_cpu(raw_inode->i_dtime);
-> +	now = get_seconds();
-> +	if (!buffer_dirty(bh))
-> +		/*
-> +		 * Five seconds should be enough time for a block to be
-> +		 * committed to the platter once it is sent to the HDD
-> +		 */
-> +		recentcy = 5;
-  This is completely ad-hoc and I cannot say anything about what value
-would be appropriate here. Jens told me disk can hold on sectors for
-*minutes* in their writeback caches when these blocks are unsuitably placed
-and there's enough streaming IO going on. So the question is what value do
-we want to base this on?
-
-> +
-> +	if (dtime && (dtime < now) && (now < dtime + recentcy))
-> +		ret = 1;
-> +out:
-> +	brelse(bh);
-> +	return ret;
-> +}
-> +
-> +/*
->   * There are two policies for allocating an inode.  If the new inode is
->   * a directory, then a forward search is made for a block group with both
->   * free space and a low directory-to-inode ratio; if that fails, then of
-> @@ -741,6 +786,11 @@ repeat_in_this_group:
->  				   "inode=%lu", ino + 1);
->  			continue;
->  		}
-> +		if ((EXT4_SB(sb)->s_journal == NULL) &&
-> +		    recently_deleted(sb, group, ino)) {
-> +			ino++;
-> +			goto next_inode;
-> +		}
->  		if (!handle) {
->  			BUG_ON(nblocks <= 0);
->  			handle = __ext4_journal_start_sb(dir->i_sb, line_no,
-> @@ -764,6 +814,7 @@ repeat_in_this_group:
->  		ino++;		/* the inode bitmap is zero-based */
->  		if (!ret2)
->  			goto got; /* we grabbed the inode! */
-> +	next_ino:
->  		if (ino < EXT4_INODES_PER_GROUP(sb))
->  			goto repeat_in_this_group;
->  	next_group:
-
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> -	if (to_release) {
+> +	/*
+> +	 * Here we need to remove the entry from es tree because when bigalloc
+> +	 * is enabled we need to determine whether we can release the reserved
+> +	 * space according to the result of ext4_find_delalloc_cluster().
+> +	 *
+> +	 * If bigalloc is disabled, we don't need to do this here because these
+> +	 * entries in es tree will be removed in ext4_truncate/ext4_punch_hole.
+> +	 */
+> +	if (sbi->s_cluster_ratio > 1 && to_release) {
+>  		lblk = page->index << (PAGE_CACHE_SHIFT - inode->i_blkbits);
+>  		ext4_es_remove_extent(inode, lblk, to_release);
+>  	}
+> -- 
+> 1.7.9.7
+> 
