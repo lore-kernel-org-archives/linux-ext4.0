@@ -1,75 +1,64 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH v2] ext4: remove the entry from es tree when bigalloc is
- enabled
-Date: Mon, 29 Jul 2013 23:07:10 +0800
-Message-ID: <20130729150710.GA2615@gmail.com>
-References: <1374795726-28859-1-git-send-email-wenqing.lz@taobao.com>
+Subject: Re: [PATCH] ext4: don't re-try to remove the entry from es tree when
+ we encounter a ENOMEM in ext4_ext_truncate
+Date: Mon, 29 Jul 2013 23:07:58 +0800
+Message-ID: <20130729150758.GB2615@gmail.com>
+References: <1374753397-26432-1-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Zheng Liu <wenqing.lz@taobao.com>
-To: linux-ext4@vger.kernel.org, tytso@mit.edu
+Cc: Zheng Liu <wenqing.lz@taobao.com>
+To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f178.google.com ([209.85.192.178]:34418 "EHLO
-	mail-pd0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755065Ab3G2PHL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Jul 2013 11:07:11 -0400
-Received: by mail-pd0-f178.google.com with SMTP id w10so2700738pde.37
-        for <linux-ext4@vger.kernel.org>; Mon, 29 Jul 2013 08:07:11 -0700 (PDT)
+Received: from mail-pb0-f52.google.com ([209.85.160.52]:34389 "EHLO
+	mail-pb0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752194Ab3G2PH7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Jul 2013 11:07:59 -0400
+Received: by mail-pb0-f52.google.com with SMTP id xa12so4700040pbc.39
+        for <linux-ext4@vger.kernel.org>; Mon, 29 Jul 2013 08:07:59 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <1374795726-28859-1-git-send-email-wenqing.lz@taobao.com>
+In-Reply-To: <1374753397-26432-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 26, 2013 at 07:42:06AM +0800, Zheng Liu wrote:
-> From: Jan Kara <jack@suse.cz>
+On Thu, Jul 25, 2013 at 07:56:37PM +0800, Zheng Liu wrote:
+> From: Zheng Liu <wenqing.lz@taobao.com>
 > 
-> Now in ext4_da_page_release_reservation() we remove the entry from es
-> tree if to_release != 0.  But there are two issues.  One is that it is
-> wrong when blocksize != pagesize, another is that we don't need to do
-> this if ->s_cluster_ratio == 1 because we will remove the entry in
-> ext4_truncate/ext4_punch_hole.  Here we need to do this just because
-> when ->s_cluster_ratio > 1 we will determine whether we can release
-> the reserved space according to ext4_find_delalloc_cluster().
+> ext4_es_remove_extent returns ENOMEM only if we need to split an entry
+> and insert a part into es tree.  After applied this commit (e15f742c),
+> we have retried to do this.  So we don't need to do this again in
+> ext4_ext_truncate().
 > 
-> This commit tries to fix these problems.  Now we remove the entry from
-> es tree only if ->s_cluster_ratio > 1.
-> 
-> Signed-off-by: Jan Kara <jack@suse.cz>
 > Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+> Cc: "Theodore Ts'o" <tytso@mit.edu>
 
 Any comment?
 
-Thanks,
+Thanks
                                                 - Zheng
 
 > ---
-> v2:
->  * fix a typo in comment.
+>  fs/ext4/extents.c |    6 ------
+>  1 file changed, 6 deletions(-)
 > 
->  fs/ext4/inode.c |   10 +++++++++-
->  1 file changed, 9 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index ba33c67..2cc97a4 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -1387,7 +1387,15 @@ static void ext4_da_page_release_reservation(struct page *page,
->  		curr_off = next_off;
->  	} while ((bh = bh->b_this_page) != head);
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index a618738..4404297 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -4409,14 +4409,8 @@ void ext4_ext_truncate(handle_t *handle, struct inode *inode)
 >  
-> -	if (to_release) {
-> +	/*
-> +	 * Here we need to remove the entry from es tree because when bigalloc
-> +	 * is enabled we need to determine whether we can release the reserved
-> +	 * space according to the result of ext4_find_delalloc_cluster().
-> +	 *
-> +	 * If bigalloc is disabled, we don't need to do this here because these
-> +	 * entries in es tree will be removed in ext4_truncate/ext4_punch_hole.
-> +	 */
-> +	if (sbi->s_cluster_ratio > 1 && to_release) {
->  		lblk = page->index << (PAGE_CACHE_SHIFT - inode->i_blkbits);
->  		ext4_es_remove_extent(inode, lblk, to_release);
->  	}
+>  	last_block = (inode->i_size + sb->s_blocksize - 1)
+>  			>> EXT4_BLOCK_SIZE_BITS(sb);
+> -retry:
+>  	err = ext4_es_remove_extent(inode, last_block,
+>  				    EXT_MAX_BLOCKS - last_block);
+> -	if (err == ENOMEM) {
+> -		cond_resched();
+> -		congestion_wait(BLK_RW_ASYNC, HZ/50);
+> -		goto retry;
+> -	}
+>  	if (err) {
+>  		ext4_std_error(inode->i_sb, err);
+>  		return;
 > -- 
 > 1.7.9.7
 > 
