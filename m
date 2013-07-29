@@ -1,90 +1,54 @@
-From: Nikola Ciprich <nikola.ciprich@linuxbox.cz>
-Subject: Re: e2fsprogs - possible regression between 1.42.7 and 1.42.8
-Date: Mon, 29 Jul 2013 18:00:05 +0200
-Message-ID: <20130729160005.GA4676@nik-comp.linuxbox.cz>
-References: <20130729083941.GG28871@pcnci.linuxbox.cz>
- <20130729144033.GA11816@thunk.org>
+From: Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>
+Subject: Re: [PATCH 0/2] ext4: increase mbcache scalability
+Date: Mon, 29 Jul 2013 10:08:18 +0000
+Message-ID: <51F63F12.6070300@hp.com>
+References: <1374108910-50444-1-git-send-email-tmac@hp.com> <20130718163024.GA12727@thunk.org> <20130718163301.GB12727@thunk.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="FL5UXtIhxfXey3p5"
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gwu.lbox.cz ([62.245.111.132]:55122 "EHLO gwu.lbox.cz"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756370Ab3G2P7U (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Jul 2013 11:59:20 -0400
-Content-Disposition: inline
-In-Reply-To: <20130729144033.GA11816@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: Theodore Ts'o <tytso@mit.edu>, T Makphaibulchoke <tmac@hp.com>,
+	viro@zeniv.linux.org.uk, adilger.kernel@dilger.ca,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, tmakph@gmail.com, aswin@hp.com
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20130718163301.GB12727@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-
---FL5UXtIhxfXey3p5
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
-
-Hello,
-
-On Mon, Jul 29, 2013 at 10:40:33AM -0400, Theodore Ts'o wrote:
-> What platform are you running this on?  X86?  I generally do a full
-> regression test run before I do an e2fsprogs release, so it may very
-> well be something which might be platform or compiler specific.
-
-it's x86_64 running kernel 3.0.88-rc1. I also tried x86_64 centos 5, and
-different test fails (I was successfully compiling previous releases on tho=
-se
-boxes).
-
->=20
-> Can you send me the r_1024_small_bg.failed and r_ext4_small_bg.failed
-> files?
-sure, although both those files are empty.. I've uploaded test logs (includ=
-ing
-rhel5 failed one) here:
-
-http://nik.lbox.cz/download/e2fsprogs-tests/
-
-please let me know if I could provide more information
-
-BR
-
-nik
-
-
-
->=20
-> Thanks,
->=20
+On 07/18/2013 04:33 PM, Theodore Ts'o wrote:
+> On Thu, Jul 18, 2013 at 12:30:24PM -0400, Theodore Ts'o wrote:
+>> On Wed, Jul 17, 2013 at 06:55:10PM -0600, T Makphaibulchoke wrote:
+>>> This patch intends to improve the scalability of an ext4 filesystem by
+>>> introducing higher degree of parallelism to the usages of its mb_cache and
+>>> mb_cache_entries.
+>>>
+>>> ...
+>>>
+>>>  fs/ext4/ext4.h          |   1 +
+>>>  fs/ext4/super.c         |   8 ++
+>>>  fs/ext4/xattr.c         |  41 +++++---
+>>>  fs/ext4/xattr.h         |   3 +
+>>>  fs/mbcache.c            | 432 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------
+>>>  include/linux/mbcache.h |   5 +
+>>>  6 files changed, 385 insertions(+), 105 deletions(-)
+>>>
+>>
+>> I see the diff stats, but there was no patch attached to your message.
+>> Could you please resend the patch to the linux-ext4 list?
+> 
+> Never mind, I see them now.  I didn't notice this was a 0/2 message,
+> and since you are apparently using an old versio of git which doesn't
+> enable --thread by default (or you have a git config setting which
+> disables the use of mail threading), I didn't see the patches chained
+> to the message.
+> 
+> Sorry for being confused,
+> 
 > 						- Ted
->=20
+> 
+Hi Ted,
 
---=20
--------------------------------------
-Ing. Nikola CIPRICH
-LinuxBox.cz, s.r.o.
-28. rijna 168, 709 00 Ostrava
+Could you please let me know if you have comment, suggestion or feedback for the patch.  Thanks in advance.
 
-tel.:   +420 591 166 214
-fax:    +420 596 621 273
-mobil:  +420 777 093 799
-
-www.linuxbox.cz
-
-mobil servis: +420 737 238 656
-email servis: servis@linuxbox.cz
--------------------------------------
-
---FL5UXtIhxfXey3p5
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.14 (GNU/Linux)
-
-iEYEARECAAYFAlH2kYUACgkQ3xdJJrLygV6RtwCgi6ls8GIZ0yzp/FNzbyE9+SlL
-gdcAoN4yWJg0hrnWZxPMjuMIKUwCAcEH
-=Xj7u
------END PGP SIGNATURE-----
-
---FL5UXtIhxfXey3p5--
+Thanks,
+Mak.
