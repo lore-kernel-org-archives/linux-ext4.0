@@ -1,71 +1,50 @@
-From: Xiong Zhou <jencce.kernel@gmail.com>
-Subject: [PATCH] include/jbd: add missing ifdef CONFIG_BLOCK
-Date: Tue, 30 Jul 2013 08:31:46 +0800 (CST)
-Message-ID: <alpine.DEB.2.02.1307300830370.2625@M2420>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v1 0/5] ext4: Shut down block groups when damage is
+ detected
+Date: Mon, 29 Jul 2013 21:57:47 -0400
+Message-ID: <20130730015747.GA20629@thunk.org>
+References: <20130719235532.24017.31896.stgit@blackbox.djwong.org>
+ <20130721143226.GA13473@gmail.com>
+ <x49txjdbd21.fsf@segfault.boston.devel.redhat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Paul Gortmaker <paul.gortmaker@windriver.com>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>,
-	Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Zheng Liu <gnehzuil.liu@gmail.com>,
+	"Darrick J. Wong" <darrick.wong@oracle.com>,
+	linux-ext4@vger.kernel.org
+To: Jeff Moyer <jmoyer@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f172.google.com ([209.85.192.172]:59651 "EHLO
-	mail-pd0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752284Ab3G3AcH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Jul 2013 20:32:07 -0400
+Received: from imap.thunk.org ([74.207.234.97]:37132 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756644Ab3G3B5z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Jul 2013 21:57:55 -0400
+Content-Disposition: inline
+In-Reply-To: <x49txjdbd21.fsf@segfault.boston.devel.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Xiong Zhou <jencce.kernel@gmail.com>
+On Mon, Jul 29, 2013 at 11:28:38AM -0400, Jeff Moyer wrote:
+> I think it's important to call out the exact failure scenario you're
+> trying to address.  For hard disks, if you get a read error, it can
+> typically be recovered by re-writing the block.  I imagine this is what
+> fsck would be doing for metadata repair.  So, I'm not at all sure why
+> you'd want to track bad blocks in the file system itself.  Could you
+> elaborate, please?
 
-In jbd{2}.h, BH_PrivateStart is used in the define of enum jbd_state_bits,
-which is defined in buffer_head.h under ifdef CONFIG_BLOCK. In these
-two headers, BUFFER_FNS and TAS_BUFFER_FNS and jbd_common.h refer to
-enum jbd_state_bits, so they should under ifdef CONFIG_BLOCK.
+The basic idea why we had a similar patch in Google was so that when
+we discovered a potential problem in an allocation bitmap (i.e.,
+either a read error, or finding that we had freed a bloc/inode which
+was already marked as freed), instead of panic'ing the entire server,
+or remounting the file system read/only (or otherwise taking it
+off-line), you can just avoid allocating any blocks/inodes in that
+block group (since we can't trust the allocation bitmap), but we can
+keep using the file system, in a somewhat degraded mode.
 
-Signed-off-by: Xiong Zhou <jencce.kernel@gmail.com>
----
- include/linux/jbd.h  |    2 ++
- include/linux/jbd2.h |    2 ++
- 2 files changed, 4 insertions(+)
+Of course, eventually you'd want to take the machine off-line and run
+fsck on the whole thing, and then rewrite the broken allocation
+bitmap.  But in the meantime, there might be circumstances where it
+would be inconvenient (or violate some pesky SLA :-), to take down the
+server or even the individual storage device to run fsck on it.
 
-diff --git a/include/linux/jbd.h b/include/linux/jbd.h
-index 8685d1b..e9dcf47 100644
---- a/include/linux/jbd.h
-+++ b/include/linux/jbd.h
-@@ -244,6 +244,7 @@ typedef struct journal_superblock_s
- #include <linux/fs.h>
- #include <linux/sched.h>
- 
-+#ifdef CONFIG_BLOCK
- enum jbd_state_bits {
- 	BH_JBD			/* Has an attached ext3 journal_head */
- 	  = BH_PrivateStart,
-@@ -269,6 +270,7 @@ TAS_BUFFER_FNS(RevokeValid, revokevalid)
- BUFFER_FNS(Freed, freed)
- 
- #include <linux/jbd_common.h>
-+#endif
- 
- #define J_ASSERT(assert)	BUG_ON(!(assert))
- 
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index d5b50a1..6214b80 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -298,6 +298,7 @@ typedef struct journal_superblock_s
- #include <linux/fs.h>
- #include <linux/sched.h>
- 
-+#ifdef CONFIG_BLOCK
- enum jbd_state_bits {
- 	BH_JBD			/* Has an attached ext3 journal_head */
- 	  = BH_PrivateStart,
-@@ -326,6 +327,7 @@ BUFFER_FNS(Shadow, shadow)
- BUFFER_FNS(Verified, verified)
- 
- #include <linux/jbd_common.h>
-+#endif
- 
- #define J_ASSERT(assert)	BUG_ON(!(assert))
- 
+Regards,
+
+						- Ted
