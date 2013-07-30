@@ -1,104 +1,91 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 0/5 v2] add extent status tree caching
-Date: Tue, 30 Jul 2013 13:08:07 +1000
-Message-ID: <20130730030807.GI21982@dastard>
-References: <51E8356C.9030603@redhat.com>
- <20130718185310.GA17548@thunk.org>
- <51E88ECD.3040806@redhat.com>
- <20130719025934.GE17938@thunk.org>
- <20130719033309.GQ11674@dastard>
- <20130719161930.GF17938@thunk.org>
- <20130722013831.GE11674@dastard>
- <20130722021742.GA24195@gmail.com>
- <20130722100255.GF11674@dastard>
- <20130722125745.GA2827@gmail.com>
+From: Zhao Hongjiang <zhaohongjiang@huawei.com>
+Subject: Re: xfstests failure generic/239
+Date: Tue, 30 Jul 2013 11:28:58 +0800
+Message-ID: <51F732FA.9090307@huawei.com>
+References: <51B2A15F.1060704@huawei.com> <20130608223038.GA19229@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Theodore Ts'o <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="ISO-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: <linux-ext4@vger.kernel.org>, <hch@lst.de>, <khoroshilov@ispras.ru>
+To: "Theodore Ts'o" <tytso@mit.edu>, <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:49216 "EHLO
-	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753254Ab3G3DIO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Jul 2013 23:08:14 -0400
-Content-Disposition: inline
-In-Reply-To: <20130722125745.GA2827@gmail.com>
+Received: from szxga02-in.huawei.com ([119.145.14.65]:61301 "EHLO
+	szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753516Ab3G3D3L (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Jul 2013 23:29:11 -0400
+In-Reply-To: <20130608223038.GA19229@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jul 22, 2013 at 08:57:45PM +0800, Zheng Liu wrote:
-> On Mon, Jul 22, 2013 at 08:02:55PM +1000, Dave Chinner wrote:
-> > On Mon, Jul 22, 2013 at 10:17:42AM +0800, Zheng Liu wrote:
-> > > I don't think fiemap is a good interface.  The application uses
-> > > fiemap(2) to retrieve extent mapping. 
-> > 
-> > fiemap is used to query information about extent maps. What it
-> > returns is entirely dependent on the input parameters that are
-> > passed to it. Indeed, from Documentation/filesystems/fiemap.txt:
-> > 
-> > "If fm_extent_count is zero, then the fm_extents[] array is ignored
-> > (no extents will be returned), and the fm_mapped_extents count will
-> > hold the number of extents needed in fm_extents[] to hold the file's
-> > current mapping."
-> > 
-> > Think about that for a minute. What does the filesystem do with such
-> > an fiemap query when the extent map is not cached?  That's right,
-> > *fiemap reads the extent map from disk into the cache* and then
-> > returns the number of extents in the range.
-> > 
-> > All I have suggested is adding a flag to make this an *explicit
-> > operation* rather than a side effect of a "count extents" query. I
-> > fail to see any justification for a whole new interface when we
-> > already have a perfectly functional one that already provides the
-> > functionality that is required...
+Hi, jack
+
+I test the latest kernel 3.11-rc2 and it seems the problem is fix by the follow patch:
+commit id:97a851ed71cd9cc2542955e92a001c6ea3d21d35 (ext4: use io_end for multiple bios).
+But it's so difficult to backport to kernel 3.4-stable, any suggestion for this?
+
+Regards,
+Zhao
+
+
+On 2013/6/9 6:30, Theodore Ts'o wrote:
+> On Sat, Jun 08, 2013 at 11:13:35AM +0800, Zhao Hongjiang wrote:
+>>
+>> I run xfstests #239 against mainline 3.10.0-rc3, unfortunately it failure in my QEMU. I run the
+>> case a hundred times, it certainly hit the failure several times. The failure msg is as follow:
+>>
+>> FSTYP         -- ext4
+>> PLATFORM      -- Linux/x86_64  3.10.0-rc3-mainline
+>>
+>> generic/239 1s ... - output mismatch (see /home/zhj/xfstests/results/generic/239.out.bad)
+>>     --- tests/generic/239.out   2013-06-07 22:04:09.000000000 -0400
+>>     +++ /home/zff/xfstests/results/generic/239.out.bad  2013-06-07 22:04:09.000000000 -0400
+>>     @@ -1,2 +1,515 @@
+>>      QA output created by 239
+>>     +hostname: Host name lookup failure
 > 
-> Yes, I understand your point of view.  We can use fiemap to do that.
-> All I concern is about semantics.  When someone mention about fiemap,
-> first I remember is that I can use it to retrieve the extent mappings.
+> OK, so this hostname failure is weird; I'm not sure what's causing
+> this, but this I presume unrelated to the failure at hand.
+> 
+>>      Silence is golden
+>>     +0: 0x0
+>>     +1: 0x0
+>>     +2: 0x0
+>>     +3: 0x0
+> 
+> This indicates a problem.  Test generic/239 is running
+> aio-dio-hole-filling-race.c, which submits an asynchronous, direct I/O
+> 4k write with a buffer containing non-zero contents to a sparse file,
+> and once the I/O has completed, it uses pread to read it back, using
+> the same descriptor, so it is doing the read using direct I/O.  It
+> then checks to see if the read returns zero or not.  
+> 
+> The "XX: 0x0" lines indicates that buffer is zero, which implies that
+> somehow aio_complete() is getting called before the uninitialized to
+> initialized conversion is taking place.  I'm not seeing how this is
+> happening, though, so I'm a bit puzzled.  If there are any unwritten
+> extents, we don't call aio_complete() in ext4_end_io_dio(), but
+> instead the conversion is queued via a call to ext4_add_compete_io(),
+> and and aio_done() is only called on the iocb after the conversion is
+> complete.
+> 
+> Can anyone see something that I might be missing?
+> 
+>     	       		      	      - Ted
+> 
+> P.S.  Zhao, what was the hardware that you using to find this failure?
+> I'm not seeing it, but then again if the failure is only happening
+> once every few hundred runs that might explain it.  I'm perhaps
+> wondering if we should add a mode to aio-dio-hole-filling-race.c which
+> allows it to try the race a large number of times, instead of just
+> once.
+> 
+> P.P.S.  One thought.... perhaps it might be useful to have a debug
+> mode where we use queue_delayed_work() to submit the conversion
+> request to the workqueue.  It will of course make certain workloads
+> run slow as molasses, but it might expose some races so we can see
+> them more easily.
+> 
+> .
+> 
 
-But that's exactly what Ted wants to do - retreive extent maps from
-disk. From Documentation/filesystems/fiemap.txt:
 
-"The fiemap ioctl is an efficient method for userspace to get file
-extent mappings. .....
-
-Certain flags to modify the way in which mappings are looked up can
-be set in fm_flags. .....  This scheme is intended to allow the
-fiemap interface to grow in the future but without losing
-compatibility with old software. ..... "
-
-The functionality being discussed here is userspace being able to
-retreive extents from disk into memory. The initial description of
-FIEMAP covers this. We can change the way fiemap behaves by input
-flags - that's clearly stated - and it is intended to be extended in
-this manner for future functionality. That's what I suggested to
-make it explicit, but it's not actually necessary to actually read
-the extent map into memory with FIEMAP.
-
-Keep in mind that this "new extent map functionality" is *exactly*
-why we designed the FIEMAP interface to be extensible.
-
-> But for fadvise, it looks like more naturally.
-
-fadvise() is for giving data access behaviour hints. It is not for
-controlling how filesystems access their internal metadata.
-
-> When I look at it, I
-> always think that I can use it to provide a hint to the kernel, and then
-> the kernel will do the rest of things for me.   So that is why I prefer
-> to use a fadvise flag rather than use fiemap.
-
-But Ted's case is not a "hint" - it's a direct command to fetch the
-extent map from disk. You can do that already with FIEMAP, so no new
-code or interfaces are needed. fadvise() is not the proper interface
-for manipulating filesystem metadata behaviour, and fiemap can
-already do what you need. There is no need for any new interfaces
-here.
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
