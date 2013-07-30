@@ -1,137 +1,104 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH -v2] ext4: avoid reusing recently deleted inodes in no
- journal mode
-Date: Tue, 30 Jul 2013 10:33:30 +0800
-Message-ID: <20130730023330.GA663@gmail.com>
-References: <1374809631-5258-1-git-send-email-tytso@mit.edu>
- <1374867164-21942-1-git-send-email-tytso@mit.edu>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 0/5 v2] add extent status tree caching
+Date: Tue, 30 Jul 2013 13:08:07 +1000
+Message-ID: <20130730030807.GI21982@dastard>
+References: <51E8356C.9030603@redhat.com>
+ <20130718185310.GA17548@thunk.org>
+ <51E88ECD.3040806@redhat.com>
+ <20130719025934.GE17938@thunk.org>
+ <20130719033309.GQ11674@dastard>
+ <20130719161930.GF17938@thunk.org>
+ <20130722013831.GE11674@dastard>
+ <20130722021742.GA24195@gmail.com>
+ <20130722100255.GF11674@dastard>
+ <20130722125745.GA2827@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
+To: Theodore Ts'o <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f171.google.com ([209.85.192.171]:38554 "EHLO
-	mail-pd0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752594Ab3G3Cda (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Jul 2013 22:33:30 -0400
-Received: by mail-pd0-f171.google.com with SMTP id y14so6142155pdi.16
-        for <linux-ext4@vger.kernel.org>; Mon, 29 Jul 2013 19:33:29 -0700 (PDT)
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:49216 "EHLO
+	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753254Ab3G3DIO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Jul 2013 23:08:14 -0400
 Content-Disposition: inline
-In-Reply-To: <1374867164-21942-1-git-send-email-tytso@mit.edu>
+In-Reply-To: <20130722125745.GA2827@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 26, 2013 at 03:32:43PM -0400, Theodore Ts'o wrote:
-> In no journal mode, if an inode has recently been deleted, we
-> shouldn't reuse it right away.  Otherwise it's possible, after an
-> unclean shutdown, to hit a situation where a recently deleted inode
-> gets reused for some other purpose before the inode table block has
-> been written to disk.  However, if the directory entry has been
-> updated, then the directory entry will be pointing at the old inode
-> contents.
+On Mon, Jul 22, 2013 at 08:57:45PM +0800, Zheng Liu wrote:
+> On Mon, Jul 22, 2013 at 08:02:55PM +1000, Dave Chinner wrote:
+> > On Mon, Jul 22, 2013 at 10:17:42AM +0800, Zheng Liu wrote:
+> > > I don't think fiemap is a good interface.  The application uses
+> > > fiemap(2) to retrieve extent mapping. 
+> > 
+> > fiemap is used to query information about extent maps. What it
+> > returns is entirely dependent on the input parameters that are
+> > passed to it. Indeed, from Documentation/filesystems/fiemap.txt:
+> > 
+> > "If fm_extent_count is zero, then the fm_extents[] array is ignored
+> > (no extents will be returned), and the fm_mapped_extents count will
+> > hold the number of extents needed in fm_extents[] to hold the file's
+> > current mapping."
+> > 
+> > Think about that for a minute. What does the filesystem do with such
+> > an fiemap query when the extent map is not cached?  That's right,
+> > *fiemap reads the extent map from disk into the cache* and then
+> > returns the number of extents in the range.
+> > 
+> > All I have suggested is adding a flag to make this an *explicit
+> > operation* rather than a side effect of a "count extents" query. I
+> > fail to see any justification for a whole new interface when we
+> > already have a perfectly functional one that already provides the
+> > functionality that is required...
 > 
-> E2fsck will make sure the file system is consistent after the
-> unclean shutdown.  However, if the recently deleted inode is a
-> character mode device, or an inode with the immutable bit set, even
-> after the file system has been fixed up by e2fsck, it can be
-> possible for a *.pyc file to be pointing at a character mode
-> device, and when python tries to open the *.pyc file, Hilarity
-> Ensues.  We could change all of userspace to be very suspicious
-> about stat'ing files before opening them, and clearing the
-> immutable flag if necessary --- or we can just avoid reusing an
-> inode number if it has been recently deleted.
-> 
-> Google-Bug-Id: 10017573
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  fs/ext4/ialloc.c | 51 +++++++++++++++++++++++++++++++++++++++++++++++++++
->  1 file changed, 51 insertions(+)
-> 
-> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-> index 5b8e22e..7d5ac66 100644
-> --- a/fs/ext4/ialloc.c
-> +++ b/fs/ext4/ialloc.c
-> @@ -625,6 +625,51 @@ static int find_group_other(struct super_block *sb, struct inode *parent,
->  }
->  
->  /*
-> + * In no journal mode, if an inode has recently been deleted, we want
-> + * to avoid reusing it until we're reasonably sure the inode table
-> + * block has been written back to disk.
-> + */
-> +int recently_deleted(struct super_block *sb, ext4_group_t group, int ino)
-> +{
-> +	struct ext4_group_desc	*gdp;
-> +	struct ext4_inode	*raw_inode;
-> +	struct buffer_head	*bh;
-> +	unsigned long		dtime, now;
-> +	int	inodes_per_block = EXT4_SB(sb)->s_inodes_per_block;
-> +	int	offset, ret = 0, recentcy = 30;
-> +
-> +	gdp = ext4_get_group_desc(sb, group, NULL);
-> +	if (unlikely(!gdp))
-> +		return 0;
-> +
-> +	bh = sb_getblk(sb, ext4_inode_table(sb, gdp) +
-> +		       (ino / inodes_per_block));
-> +	if (unlikely(!bh) || !buffer_uptodate(bh))
-> +		/*
-> +		 * If the block is not in the buffer head, then it
-> +		 * must have been written out.
-> +		 */
-> +		goto out;
-> +
-> +	offset = (ino % inodes_per_block) * EXT4_INODE_SIZE(sb);
-> +	raw_inode = (struct ext4_inode *) (bh->b_data + offset);
-> +	dtime = le32_to_cpu(raw_inode->i_dtime);
-> +	now = get_seconds();
-> +	if (!buffer_dirty(bh))
-> +		/*
-> +		 * Five seconds should be enough time for a block to be
-> +		 * committed to the platter once it is sent to the HDD
-> +		 */
-> +		recentcy = 5;
-> +
-> +	if (dtime && (dtime < now) && (now < dtime + recentcy))
-> +		ret = 1;
-> +out:
-> +	brelse(bh);
-> +	return ret;
-> +}
-> +
-> +/*
->   * There are two policies for allocating an inode.  If the new inode is
->   * a directory, then a forward search is made for a block group with both
->   * free space and a low directory-to-inode ratio; if that fails, then of
-> @@ -741,6 +786,11 @@ repeat_in_this_group:
->  				   "inode=%lu", ino + 1);
->  			continue;
->  		}
-> +		if ((EXT4_SB(sb)->s_journal == NULL) &&
-> +		    recently_deleted(sb, group, ino)) {
-> +			ino++;
-> +			goto next_inode;
-                             ^^^^^^^^^^^
-                             next_ino;
+> Yes, I understand your point of view.  We can use fiemap to do that.
+> All I concern is about semantics.  When someone mention about fiemap,
+> first I remember is that I can use it to retrieve the extent mappings.
 
-                                                - Zheng
-> +		}
->  		if (!handle) {
->  			BUG_ON(nblocks <= 0);
->  			handle = __ext4_journal_start_sb(dir->i_sb, line_no,
-> @@ -764,6 +814,7 @@ repeat_in_this_group:
->  		ino++;		/* the inode bitmap is zero-based */
->  		if (!ret2)
->  			goto got; /* we grabbed the inode! */
-> +	next_ino:
->  		if (ino < EXT4_INODES_PER_GROUP(sb))
->  			goto repeat_in_this_group;
->  	next_group:
-> -- 
-> 1.7.12.rc0.22.gcdd159b
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+But that's exactly what Ted wants to do - retreive extent maps from
+disk. From Documentation/filesystems/fiemap.txt:
+
+"The fiemap ioctl is an efficient method for userspace to get file
+extent mappings. .....
+
+Certain flags to modify the way in which mappings are looked up can
+be set in fm_flags. .....  This scheme is intended to allow the
+fiemap interface to grow in the future but without losing
+compatibility with old software. ..... "
+
+The functionality being discussed here is userspace being able to
+retreive extents from disk into memory. The initial description of
+FIEMAP covers this. We can change the way fiemap behaves by input
+flags - that's clearly stated - and it is intended to be extended in
+this manner for future functionality. That's what I suggested to
+make it explicit, but it's not actually necessary to actually read
+the extent map into memory with FIEMAP.
+
+Keep in mind that this "new extent map functionality" is *exactly*
+why we designed the FIEMAP interface to be extensible.
+
+> But for fadvise, it looks like more naturally.
+
+fadvise() is for giving data access behaviour hints. It is not for
+controlling how filesystems access their internal metadata.
+
+> When I look at it, I
+> always think that I can use it to provide a hint to the kernel, and then
+> the kernel will do the rest of things for me.   So that is why I prefer
+> to use a fadvise flag rather than use fiemap.
+
+But Ted's case is not a "hint" - it's a direct command to fetch the
+extent map from disk. You can do that already with FIEMAP, so no new
+code or interfaces are needed. fadvise() is not the proper interface
+for manipulating filesystem metadata behaviour, and fiemap can
+already do what you need. There is no need for any new interfaces
+here.
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
