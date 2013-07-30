@@ -1,91 +1,98 @@
-From: Zhao Hongjiang <zhaohongjiang@huawei.com>
-Subject: Re: xfstests failure generic/239
-Date: Tue, 30 Jul 2013 11:28:58 +0800
-Message-ID: <51F732FA.9090307@huawei.com>
-References: <51B2A15F.1060704@huawei.com> <20130608223038.GA19229@thunk.org>
+From: Paul Gortmaker <paul.gortmaker@windriver.com>
+Subject: Re: [PATCH] include/jbd: add missing ifdef CONFIG_BLOCK
+Date: Tue, 30 Jul 2013 09:17:26 -0400
+Message-ID: <51F7BCE6.6080005@windriver.com>
+References: <alpine.DEB.2.02.1307300830370.2625@M2420>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="ISO-8859-1"
 Content-Transfer-Encoding: 7bit
-Cc: <linux-ext4@vger.kernel.org>, <hch@lst.de>, <khoroshilov@ispras.ru>
-To: "Theodore Ts'o" <tytso@mit.edu>, <jack@suse.cz>
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	<linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>
+To: Xiong Zhou <jencce.kernel@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from szxga02-in.huawei.com ([119.145.14.65]:61301 "EHLO
-	szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753516Ab3G3D3L (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Jul 2013 23:29:11 -0400
-In-Reply-To: <20130608223038.GA19229@thunk.org>
+Received: from mail1.windriver.com ([147.11.146.13]:55498 "EHLO
+	mail1.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752523Ab3G3NRL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Jul 2013 09:17:11 -0400
+In-Reply-To: <alpine.DEB.2.02.1307300830370.2625@M2420>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi, jack
+On 13-07-29 08:31 PM, Xiong Zhou wrote:
+> From: Xiong Zhou <jencce.kernel@gmail.com>
+> 
+> In jbd{2}.h, BH_PrivateStart is used in the define of enum jbd_state_bits,
+> which is defined in buffer_head.h under ifdef CONFIG_BLOCK. In these
+> two headers, BUFFER_FNS and TAS_BUFFER_FNS and jbd_common.h refer to
+> enum jbd_state_bits, so they should under ifdef CONFIG_BLOCK.
 
-I test the latest kernel 3.11-rc2 and it seems the problem is fix by the follow patch:
-commit id:97a851ed71cd9cc2542955e92a001c6ea3d21d35 (ext4: use io_end for multiple bios).
-But it's so difficult to backport to kernel 3.4-stable, any suggestion for this?
+What exactly is it you are trying to solve here?  I 1st thought
+perhaps some pointless randconfig build fail, but even if you try
+to hand craft a .config with "# CONFIG_BLOCK is not set" you still
+can't get to ext2/3/4 options because fs/Kconfig has this:
 
-Regards,
-Zhao
+ ---------------
+if BLOCK
 
+source "fs/ext2/Kconfig"
+source "fs/ext3/Kconfig"
+source "fs/ext4/Kconfig"
+ ----------
 
-On 2013/6/9 6:30, Theodore Ts'o wrote:
-> On Sat, Jun 08, 2013 at 11:13:35AM +0800, Zhao Hongjiang wrote:
->>
->> I run xfstests #239 against mainline 3.10.0-rc3, unfortunately it failure in my QEMU. I run the
->> case a hundred times, it certainly hit the failure several times. The failure msg is as follow:
->>
->> FSTYP         -- ext4
->> PLATFORM      -- Linux/x86_64  3.10.0-rc3-mainline
->>
->> generic/239 1s ... - output mismatch (see /home/zhj/xfstests/results/generic/239.out.bad)
->>     --- tests/generic/239.out   2013-06-07 22:04:09.000000000 -0400
->>     +++ /home/zff/xfstests/results/generic/239.out.bad  2013-06-07 22:04:09.000000000 -0400
->>     @@ -1,2 +1,515 @@
->>      QA output created by 239
->>     +hostname: Host name lookup failure
-> 
-> OK, so this hostname failure is weird; I'm not sure what's causing
-> this, but this I presume unrelated to the failure at hand.
-> 
->>      Silence is golden
->>     +0: 0x0
->>     +1: 0x0
->>     +2: 0x0
->>     +3: 0x0
-> 
-> This indicates a problem.  Test generic/239 is running
-> aio-dio-hole-filling-race.c, which submits an asynchronous, direct I/O
-> 4k write with a buffer containing non-zero contents to a sparse file,
-> and once the I/O has completed, it uses pread to read it back, using
-> the same descriptor, so it is doing the read using direct I/O.  It
-> then checks to see if the read returns zero or not.  
-> 
-> The "XX: 0x0" lines indicates that buffer is zero, which implies that
-> somehow aio_complete() is getting called before the uninitialized to
-> initialized conversion is taking place.  I'm not seeing how this is
-> happening, though, so I'm a bit puzzled.  If there are any unwritten
-> extents, we don't call aio_complete() in ext4_end_io_dio(), but
-> instead the conversion is queued via a call to ext4_add_compete_io(),
-> and and aio_done() is only called on the iocb after the conversion is
-> complete.
-> 
-> Can anyone see something that I might be missing?
-> 
->     	       		      	      - Ted
-> 
-> P.S.  Zhao, what was the hardware that you using to find this failure?
-> I'm not seeing it, but then again if the failure is only happening
-> once every few hundred runs that might explain it.  I'm perhaps
-> wondering if we should add a mode to aio-dio-hole-filling-race.c which
-> allows it to try the race a large number of times, instead of just
-> once.
-> 
-> P.P.S.  One thought.... perhaps it might be useful to have a debug
-> mode where we use queue_delayed_work() to submit the conversion
-> request to the workqueue.  It will of course make certain workloads
-> run slow as molasses, but it might expose some races so we can see
-> them more easily.
-> 
-> .
-> 
+The help text for CONFIG_BLOCK is explicit in saying this too.
 
+I don't see value in adding more #ifdef noise that doesn't do anything.
 
+Thanks,
+Paul.
+--
+
+> 
+> Signed-off-by: Xiong Zhou <jencce.kernel@gmail.com>
+> ---
+>  include/linux/jbd.h  |    2 ++
+>  include/linux/jbd2.h |    2 ++
+>  2 files changed, 4 insertions(+)
+> 
+> diff --git a/include/linux/jbd.h b/include/linux/jbd.h
+> index 8685d1b..e9dcf47 100644
+> --- a/include/linux/jbd.h
+> +++ b/include/linux/jbd.h
+> @@ -244,6 +244,7 @@ typedef struct journal_superblock_s
+>  #include <linux/fs.h>
+>  #include <linux/sched.h>
+>  
+> +#ifdef CONFIG_BLOCK
+>  enum jbd_state_bits {
+>  	BH_JBD			/* Has an attached ext3 journal_head */
+>  	  = BH_PrivateStart,
+> @@ -269,6 +270,7 @@ TAS_BUFFER_FNS(RevokeValid, revokevalid)
+>  BUFFER_FNS(Freed, freed)
+>  
+>  #include <linux/jbd_common.h>
+> +#endif
+>  
+>  #define J_ASSERT(assert)	BUG_ON(!(assert))
+>  
+> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+> index d5b50a1..6214b80 100644
+> --- a/include/linux/jbd2.h
+> +++ b/include/linux/jbd2.h
+> @@ -298,6 +298,7 @@ typedef struct journal_superblock_s
+>  #include <linux/fs.h>
+>  #include <linux/sched.h>
+>  
+> +#ifdef CONFIG_BLOCK
+>  enum jbd_state_bits {
+>  	BH_JBD			/* Has an attached ext3 journal_head */
+>  	  = BH_PrivateStart,
+> @@ -326,6 +327,7 @@ BUFFER_FNS(Shadow, shadow)
+>  BUFFER_FNS(Verified, verified)
+>  
+>  #include <linux/jbd_common.h>
+> +#endif
+>  
+>  #define J_ASSERT(assert)	BUG_ON(!(assert))
+>  
+> 
