@@ -1,62 +1,188 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: crash in __jbd2_journal_file_buffer
-Date: Wed, 31 Jul 2013 21:02:45 +0200
-Message-ID: <20130731190245.GC28018@quack.suse.cz>
-References: <alpine.DEB.2.00.1307301540110.12830@cobra.newdream.net>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH V2] ext3: allow specifying external journal by pathname mount
+ option
+Date: Wed, 31 Jul 2013 14:33:00 -0500
+Message-ID: <51F9666C.1050603@redhat.com>
+References: <51F83D90.5080708@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Sage Weil <sage@inktank.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Leonardo Menezes Vaz <lvaz@redhat.com>
+To: ext4 development <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:49746 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:28625 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753289Ab3GaTCs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 31 Jul 2013 15:02:48 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.DEB.2.00.1307301540110.12830@cobra.newdream.net>
+	id S1754297Ab3GaTdI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 31 Jul 2013 15:33:08 -0400
+In-Reply-To: <51F83D90.5080708@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello,
+It's always been a hassle that if an external journal's
+device number changes, the filesystem won't mount.
+And since boot-time enumeration can change, device number
+changes aren't unusual.
 
-On Tue 30-07-13 15:41:40, Sage Weil wrote:
-> Hit this on 3.10.  Is this a known issue?
-  No, I haven't seen it. Why did the kernel crash?
+The current mechanism to update the journal location is by
+passing in a mount option w/ a new devnum, but that's a hassle;
+it's a manual approach, fixing things after the fact.
 
-								Honza
-> 
-> Thanks-
-> sage
-> 
-> 
-> Stack traceback for pid 23944
-> 0xffff8802206edeb0    23944    23840  1    2   R  0xffff8802206ee338 
-> *ceph-osd
->  ffff88020bf17b78 0000000000000018 ffffffff81267398 ffff8802256d40c0
->  ffff88020b5a1230 ffff88020bf17bb8 ffffffff81325d9c ffff88020b5a1230
->  ffff8802256d40c0 ffff88020b5a1230 00000000698a8d24 ffff88020bf17be8
-> Call Trace:
->  [<ffffffff81267398>] ? __jbd2_journal_file_buffer+0x188/0x260
->  [<ffffffff81325d9c>] ? do_raw_spin_lock+0x10c/0x150
->  [<ffffffff81268118>] ? do_get_write_access+0x448/0x650
->  [<ffffffff81213caf>] ? ext4_read_inode_bitmap+0x9f/0x5f0
->  [<ffffffff81167849>] ? kmem_cache_alloc+0x39/0x160
->  [<ffffffff81268490>] ? jbd2_journal_get_write_access+0x30/0x50
->  [<ffffffff81244d43>] ? __ext4_journal_get_write_access+0x43/0x90
->  [<ffffffff812143d7>] ? ext4_free_inode+0x1d7/0x5d0
->  [<ffffffff8121e601>] ? ext4_evict_inode+0x341/0x4d0
->  [<ffffffff8121b268>] ? ext4_mark_inode_dirty+0x88/0x230
->  [<ffffffff8121e610>] ? ext4_evict_inode+0x350/0x4d0
->  [<ffffffff8118a098>] ? evict+0xb8/0x1c0
->  [<ffffffff8118a9d5>] ? iput+0x105/0x190
->  [<ffffffff8117d341>] ? do_unlinkat+0x201/0x270
->  [<ffffffff8131e9be>] ? trace_hardirqs_on_thunk+0x3a/0x3f
->  [<ffffffff81180356>] ? SyS_unlink+0x16/0x20
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Adding a mount option, "-o journal_path=/dev/$DEVICE" would
+help, since then we can do i.e.
+
+# mount -o journal_path=/dev/disk/by-label/$JOURNAL_LABEL ...
+
+and it'll mount even if the devnum has changed, as shown here:
+
+# losetup /dev/loop0 journalfile
+# mke2fs -L mylabel-journal -O journal_dev /dev/loop0 
+# mkfs.ext3 -L mylabel -J device=/dev/loop0 /dev/sdb1
+
+Change the journal device number:
+
+# losetup -d /dev/loop0
+# losetup /dev/loop1 journalfile 
+
+And today it will fail:
+
+# mount /dev/sdb1 /mnt/test
+mount: wrong fs type, bad option, bad superblock on /dev/sdb1,
+       missing codepage or helper program, or other error
+       In some cases useful info is found in syslog - try
+       dmesg | tail  or so
+
+# dmesg | tail -n 1
+[17343.240702] EXT3-fs (sdb1): error: couldn't read superblock of external journal
+
+But with this new mount option, we can specify the new path:
+
+# mount -o journal_path=/dev/loop1 /dev/sdb1 /mnt/test
+#
+
+(which does update the encoded device number, incidentally):
+
+# umount /dev/sdb1
+# dumpe2fs -h /dev/sdb1 | grep "Journal device"
+dumpe2fs 1.41.12 (17-May-2010)
+Journal device:	          0x0701
+
+But best of all we can just always mount by journal-path, and
+it'll always work:
+
+# mount -o journal_path=/dev/disk/by-label/mylabel-journal /dev/sdb1 /mnt/test
+#
+
+So the journal_path option can be specified in fstab, and as long as
+the disk is available somewhere, and findable by label (or by UUID),
+we can mount.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+V2: get device out of bdev's inode, rather than grabbing bdev & releasing it
+
+diff --git a/Documentation/filesystems/ext3.txt b/Documentation/filesystems/ext3.txt
+index 293855e..7ed0d17 100644
+--- a/Documentation/filesystems/ext3.txt
++++ b/Documentation/filesystems/ext3.txt
+@@ -26,11 +26,12 @@ journal=inum		When a journal already exists, this option is ignored.
+ 			Otherwise, it specifies the number of the inode which
+ 			will represent the ext3 file system's journal file.
+ 
++journal_path=path
+ journal_dev=devnum	When the external journal device's major/minor numbers
+-			have changed, this option allows the user to specify
++			have changed, these options allow the user to specify
+ 			the new journal location.  The journal device is
+-			identified through its new major/minor numbers encoded
+-			in devnum.
++			identified through either its new major/minor numbers
++			encoded in devnum, or via a path to the device.
+ 
+ norecovery		Don't load the journal on mounting. Note that this forces
+ noload			mount of inconsistent filesystem, which can lead to
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index c47f147..c50c761 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -27,6 +27,7 @@
+ #include <linux/seq_file.h>
+ #include <linux/log2.h>
+ #include <linux/cleancache.h>
++#include <linux/namei.h>
+ 
+ #include <asm/uaccess.h>
+ 
+@@ -819,6 +820,7 @@ enum {
+ 	Opt_user_xattr, Opt_nouser_xattr, Opt_acl, Opt_noacl,
+ 	Opt_reservation, Opt_noreservation, Opt_noload, Opt_nobh, Opt_bh,
+ 	Opt_commit, Opt_journal_update, Opt_journal_inum, Opt_journal_dev,
++	Opt_journal_path,
+ 	Opt_abort, Opt_data_journal, Opt_data_ordered, Opt_data_writeback,
+ 	Opt_data_err_abort, Opt_data_err_ignore,
+ 	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
+@@ -860,6 +862,7 @@ static const match_table_t tokens = {
+ 	{Opt_journal_update, "journal=update"},
+ 	{Opt_journal_inum, "journal=%u"},
+ 	{Opt_journal_dev, "journal_dev=%u"},
++	{Opt_journal_path, "journal_path=%s"},
+ 	{Opt_abort, "abort"},
+ 	{Opt_data_journal, "data=journal"},
+ 	{Opt_data_ordered, "data=ordered"},
+@@ -975,6 +978,11 @@ static int parse_options (char *options, struct super_block *sb,
+ 	int option;
+ 	kuid_t uid;
+ 	kgid_t gid;
++	char *journal_path;
++	struct inode *journal_inode;
++	struct path path;
++	int error;
++
+ #ifdef CONFIG_QUOTA
+ 	int qfmt;
+ #endif
+@@ -1129,6 +1137,41 @@ static int parse_options (char *options, struct super_block *sb,
+ 				return 0;
+ 			*journal_devnum = option;
+ 			break;
++		case Opt_journal_path:
++			if (is_remount) {
++				ext3_msg(sb, KERN_ERR, "error: cannot specify "
++				       "journal on remount");
++				return 0;
++			}
++
++			journal_path = match_strdup(&args[0]);
++			if (!journal_path) {
++				ext3_msg(sb, KERN_ERR, "error: could not dup "
++					"journal device string");
++				return 0;
++			}
++
++			error = kern_path(journal_path, LOOKUP_FOLLOW, &path);
++			if (error) {
++				ext3_msg(sb, KERN_ERR, "error: could not find "
++					"journal device path: error %d", error);
++				kfree(journal_path);
++				return 0;
++			}
++
++			journal_inode = path.dentry->d_inode;
++			if (!S_ISBLK(journal_inode->i_mode)) {
++				ext3_msg(sb, KERN_ERR, "error: journal path %s "
++					"is not a block device", journal_path);
++				path_put(&path);
++				kfree(journal_path);
++				return 0;
++			}
++
++			*journal_devnum = new_encode_dev(journal_inode->i_rdev);
++			path_put(&path);
++			kfree(journal_path);
++			break;
+ 		case Opt_noload:
+ 			set_opt (sbi->s_mount_opt, NOLOAD);
+ 			break;
+
+
