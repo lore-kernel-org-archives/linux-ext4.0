@@ -1,53 +1,78 @@
-From: Sage Weil <sage@inktank.com>
-Subject: crash in __jbd2_journal_file_buffer
-Date: Tue, 30 Jul 2013 15:41:40 -0700 (PDT)
-Message-ID: <alpine.DEB.2.00.1307301540110.12830@cobra.newdream.net>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: e2fsprogs - possible regression between 1.42.7 and 1.42.8
+Date: Tue, 30 Jul 2013 21:10:53 -0500
+Message-ID: <51F8722D.9050707@redhat.com>
+References: <20130729083941.GG28871@pcnci.linuxbox.cz> <51F694B6.90901@redhat.com> <51F87075.2020508@redhat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Nikola Ciprich <nikola.ciprich@linuxbox.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cobra.newdream.net ([66.33.216.30]:40886 "EHLO
-	cobra.newdream.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752631Ab3G3Wlk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Jul 2013 18:41:40 -0400
-Received: from cobra.newdream.net (localhost [127.0.0.1])
-	by cobra.newdream.net (Postfix) with ESMTP id 3D88C8044E
-	for <linux-ext4@vger.kernel.org>; Tue, 30 Jul 2013 15:41:40 -0700 (PDT)
-Received: from localhost (localhost [127.0.0.1])
-	by cobra.newdream.net (Postfix) with ESMTP id 1A92C8044E
-	for <linux-ext4@vger.kernel.org>; Tue, 30 Jul 2013 15:41:40 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:58311 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750918Ab3GaCK5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 30 Jul 2013 22:10:57 -0400
+In-Reply-To: <51F87075.2020508@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi everyone,
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-Hit this on 3.10.  Is this a known issue?
+On 7/30/13 9:03 PM, Eric Sandeen wrote:
+> On 7/29/13 11:13 AM, Eric Sandeen wrote:
+>> On 7/29/13 3:39 AM, Nikola Ciprich wrote:
+>>> Hi,
+> 
+>>> trying to compile latest e2fsprogs and running check under RHEL6-compatible
+>>> distro (centos) fails:
+> 
+>>> r_1024_small_bg: ext2 1024 blocksize with small block groups: failed
+>>> r_ext4_small_bg: ext4 1024 blocksize with small block groups: failed
+> 
+>>> dunno whether this is known issue... will bisect help?
+> 
+>>> with regards
+> 
+>>> nik
+> 
+> 
+>> Ted, these are the same ones I saw, plus one I think (working on getting
+>> all the info).
+> 
+> Sorry this took a while.  Attached is a qcow image of a broken r_1024_small_bg
+> filesystem.  Doing resize2fs -M on it twice should corrupt it, even on x86_64.
 
-Thanks-
-sage
+Sorry - the image as attached is not broken, but 2 current resize2fs -M's break it.
 
+- -Eric
 
-Stack traceback for pid 23944
-0xffff8802206edeb0    23944    23840  1    2   R  0xffff8802206ee338 
-*ceph-osd
- ffff88020bf17b78 0000000000000018 ffffffff81267398 ffff8802256d40c0
- ffff88020b5a1230 ffff88020bf17bb8 ffffffff81325d9c ffff88020b5a1230
- ffff8802256d40c0 ffff88020b5a1230 00000000698a8d24 ffff88020bf17be8
-Call Trace:
- [<ffffffff81267398>] ? __jbd2_journal_file_buffer+0x188/0x260
- [<ffffffff81325d9c>] ? do_raw_spin_lock+0x10c/0x150
- [<ffffffff81268118>] ? do_get_write_access+0x448/0x650
- [<ffffffff81213caf>] ? ext4_read_inode_bitmap+0x9f/0x5f0
- [<ffffffff81167849>] ? kmem_cache_alloc+0x39/0x160
- [<ffffffff81268490>] ? jbd2_journal_get_write_access+0x30/0x50
- [<ffffffff81244d43>] ? __ext4_journal_get_write_access+0x43/0x90
- [<ffffffff812143d7>] ? ext4_free_inode+0x1d7/0x5d0
- [<ffffffff8121e601>] ? ext4_evict_inode+0x341/0x4d0
- [<ffffffff8121b268>] ? ext4_mark_inode_dirty+0x88/0x230
- [<ffffffff8121e610>] ? ext4_evict_inode+0x350/0x4d0
- [<ffffffff8118a098>] ? evict+0xb8/0x1c0
- [<ffffffff8118a9d5>] ? iput+0x105/0x190
- [<ffffffff8117d341>] ? do_unlinkat+0x201/0x270
- [<ffffffff8131e9be>] ? trace_hardirqs_on_thunk+0x3a/0x3f
- [<ffffffff81180356>] ? SyS_unlink+0x16/0x20
+> (aside: the test is a bit weird, it does:
+> 
+> echo $RESIZE2FS $RESIZE2FS_OPTS -d 31 -M $TMPFILE $SIZE_2 >> $LOG 2>&1
+> 
+> but specifying -M as well as a size doesn't make much sense?)
+> 
+> -Eric
+> 
 
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG/MacGPG2 v2.0.17 (Darwin)
+Comment: GPGTools - http://gpgtools.org
+Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
+
+iQIcBAEBAgAGBQJR+HIsAAoJECCuFpLhPd7gT3cP/3YLhpclAhU6UHIW4cqyKhIl
+STIwV3ROZmic5qQb8X6l5etc8ALCs2b5LVYjhlMlZWISkN64pXOhL0lz7coSABM9
+wnZU2y3LntcyGFEg7aEs+sXe2mXqX139NkoNwKfBBPidQ/HdwpnnTdlu4FZeTyrj
+aDHIUGPs2YBbp2QaBhmzl5b7xwEoHCq/XtrH7v7+SHyHEGzIYTn3w96vyXqVYTjs
+csUgeMhFFw58Hq+/03UE13Ig/Et8AqSgonnaEiG3ZKXsDIxhjFxqQPGsdD2BleGd
+Rb/fxnkM0RKhr7xSK3CFWnLQ8LkaUtexazxvr+7BmmgRx8jyQhQj8ASYXzmUuh/S
+RtbnZ3wioxEwCRhr3FP0ZpoOZwbkDWd/UBy407ZBblxVafjLSYbsMHDM7rPrQHoz
+oSo1W4c7sy85pNfCgMnQYyuqik5KVDuQNk/nqEkv6tE1YOb5zXTrpDKjEFgBKYVd
+FpLRk9f0rhoxcwyfZsIY6Wx/4h4rWKnhK6jqL5unDLJitPv405KlNfY28AoFNme4
+ZxwDSddausNm+8u9sZON7cuyhAb70Q8N0W6ECPX8+ie8fvXwPDRSJYPpMXqOBK06
+35SPqxKlCpT7BGMAqr7+h8qemYdcTS0z7ag2im+MRS1t58AFSsuIyj+IirPWwTUM
+SQRtuG3mOsWE7l93c8bc
+=96jm
+-----END PGP SIGNATURE-----
