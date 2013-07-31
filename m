@@ -1,54 +1,67 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: ext4_da_release_space:1333: ext4_da_release_space: ino 12,
- to_free 1 with only 0 reserved data  blocks
-Date: Wed, 31 Jul 2013 20:32:00 +0200
-Message-ID: <20130731183200.GA28018@quack.suse.cz>
-References: <20130716202533.GA16061@redhat.com>
- <20130717125322.GA29294@quack.suse.cz>
- <20130717145218.GA27731@redhat.com>
- <20130717213850.GA5025@quack.suse.cz>
- <20130731163901.GA10973@redhat.com>
+Subject: Re: [PATCH v1 0/5] ext4: Shut down block groups when damage is
+ detected
+Date: Wed, 31 Jul 2013 20:52:43 +0200
+Message-ID: <20130731185243.GB28018@quack.suse.cz>
+References: <20130719235532.24017.31896.stgit@blackbox.djwong.org>
+ <20130721143226.GA13473@gmail.com>
+ <x49txjdbd21.fsf@segfault.boston.devel.redhat.com>
+ <20130730003109.GE3648@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-	Linux Kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Dave Jones <davej@redhat.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Jeff Moyer <jmoyer@redhat.com>,
+	"Darrick J. Wong" <darrick.wong@oracle.com>,
+	Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Zheng Liu <gnehzuil.liu@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:49195 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757214Ab3GaSwq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 31 Jul 2013 14:52:46 -0400
 Content-Disposition: inline
-In-Reply-To: <20130731163901.GA10973@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20130730003109.GE3648@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 31-07-13 12:39:01, Dave Jones wrote:
-> On Wed, Jul 17, 2013 at 11:38:50PM +0200, Jan Kara wrote:
->  > On Wed 17-07-13 10:52:18, Dave Jones wrote:
->  > > On Wed, Jul 17, 2013 at 02:53:22PM +0200, Jan Kara wrote:
->  > >  > On Tue 16-07-13 16:25:33, Dave Jones wrote:
->  > >  > > I've seen this happen a few times this week..
->  > >  >   Thanks for report! Was this when fuzzing or just normal desktop load?
->  > >  > What is inode with inode number 12 on your filesystem sdb1? What IO happens
->  > >  > to it? Apparently some delalloc accounting went wrong somewhere and it's
->  > >  > searching for a needle in a haystack unless we have more details...
->  > > 
->  > > It was running this.. https://github.com/kernelslacker/io-tests/blob/master/setup.sh
->  > > in a loop. After about 6 hours, that fell out.  It made it all the way through
->  > > every test a few times, which is odd, as the test should be fairly deterministic.
->  > > Ah, I wasn't capturing the fsx seed. I'll do that on the next run.
->  >   So inode 12 was likely the file used by fsx. OK. Looking at the script
->  > link, fsx is run as:
->  >   /usr/local/bin/fsx -N 250000 -S0 foo &
->  > so the seed is always 0. So it is a deterministic test and there must be
->  > some race with writeback or something that is rarely triggered. Drat.
->  > 
->  > Umm, looking at the filesystems this tests, ext4 with 1 KB blocksize is
->  > likely the config which hits this (the accounting is more complex there) so
->  > it might be interesting to concentrace on this one.
+On Tue 30-07-13 08:31:09, Zheng Liu wrote:
+> Hi Jeff,
 > 
-> I just retried these tests, and hit this again.
-> I can confirm it happens on the 1k block filesystem.
-  Great, thanks for confirmation. I've just managed to reproduce the
-problem yesterday so I'm debugging it...
+> On Mon, Jul 29, 2013 at 11:28:38AM -0400, Jeff Moyer wrote:
+> > Zheng Liu <gnehzuil.liu@gmail.com> writes:
+> > 
+> > > My idea is to let file system can ignore the currurted block.  Namely,
+> > > when we meet a currupted block, we will track it as bad block in bad
+> > > block inode and find another block to save data.  This currupted block
+> > > will never be used.  The first step in my mind is to detect a currpted
+> > > block and mark it as bad block.  After reading the thread and Darrick's
+> > > original patch, I think Darrick's patch is a good start.
+> > 
+> > I think it's important to call out the exact failure scenario you're
+> > trying to address.  For hard disks, if you get a read error, it can
+> > typically be recovered by re-writing the block.  I imagine this is what
+> > fsck would be doing for metadata repair.  So, I'm not at all sure why
+> > you'd want to track bad blocks in the file system itself.  Could you
+> > elaborate, please?
+> 
+> In our product system at Taobao, we have a large CDN system around the
+> country.  These servers cache the most of web pages, images, etc....
+> These servers have some disks, and the disk must break down at some
+> time.  Now we need to umount this disk, and the whole disk just be left
+> in server until the whole server is dropped.  But as you have pointed
+> out, when we meet a disk failure, the whole disk might still works.  So
+> we hope that the file system could track the bad block, doesn't allocate
+> them, and the rest of spaces also can be used.  This can help us to
+> reduce the cost.
+  Well, before spending too much time with this, try finding some study
+(I've read some from Google I think, just I don't have the url at hand) on
+what is the estimated lifetime of a disk after bad sectors start appearing. 
+What I remember is that usually when bad sectors start appearing the disk
+is going to die within weeks with high probability. So I'm not sure if the
+cost saving of additional few weeks of lifetime is worth the trouble. As
+Ted said, there may be other reasons why you'd want a feature like this -
+kernel error causing bitmap corruption - or just that you need to keep the
+machine up for a few more hours before you can take it down for
+maintenance.
 
 								Honza
 -- 
