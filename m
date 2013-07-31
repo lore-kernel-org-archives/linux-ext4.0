@@ -1,25 +1,27 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] ext4: allow specifying external journal by pathname mount
+Subject: [PATCH V2] ext4: allow specifying external journal by pathname mount
  option
-Date: Wed, 31 Jul 2013 17:17:08 -0500
-Message-ID: <51F98CE4.1050508@redhat.com>
+Date: Wed, 31 Jul 2013 17:20:29 -0500
+Message-ID: <51F98DAD.2020909@redhat.com>
+References: <51F98CE4.1050508@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34177 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:61976 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752517Ab3GaWRK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 31 Jul 2013 18:17:10 -0400
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r6VMH9E5025214
+	id S1760889Ab3GaWUa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 31 Jul 2013 18:20:30 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r6VMKUiN009333
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Wed, 31 Jul 2013 18:17:10 -0400
+	for <linux-ext4@vger.kernel.org>; Wed, 31 Jul 2013 18:20:30 -0400
 Received: from Liberator.local (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r6VMH8gp017244
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r6VMKTXB019836
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 31 Jul 2013 18:17:09 -0400
+	for <linux-ext4@vger.kernel.org>; Wed, 31 Jul 2013 18:20:30 -0400
+In-Reply-To: <51F98CE4.1050508@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -84,6 +86,8 @@ we can mount.
 Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
 
+V2: grr, remove debug printk, sorry :/
+
 p.s. is there any point to MOPT_GTE0?  Doesn't the "=%u" token parsing
 exclude negative numbers?
 
@@ -91,6 +95,8 @@ I hate to add the MOPT_STRING, but since we try to grab arguments
 outside the case statement, I guess it's required...
 
 -Eric
+
+
 
 diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
 index f7cbf57..b91cfaa 100644
@@ -113,7 +119,7 @@ index f7cbf57..b91cfaa 100644
  norecovery		Don't load the journal on mounting.  Note that
  noload			if the filesystem was not unmounted cleanly,
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index bca26f3..e9544e0 100644
+index bca26f3..2f5ce3a 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
 @@ -1134,8 +1134,8 @@ enum {
@@ -160,7 +166,7 @@ index bca26f3..e9544e0 100644
  		return -1;
  	if (args->from && (m->flags & MOPT_GTE0) && (arg < 0))
  		return -1;
-@@ -1544,6 +1547,45 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
+@@ -1544,6 +1547,44 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
  			return -1;
  		}
  		*journal_devnum = arg;
@@ -170,7 +176,6 @@ index bca26f3..e9544e0 100644
 +		struct path path;
 +		int error;
 +
-+		printk("parsing Opt_journal_path\n");
 +		if (is_remount) {
 +			ext4_msg(sb, KERN_ERR,
 +				 "Cannot specify journal on remount");
@@ -206,4 +211,5 @@ index bca26f3..e9544e0 100644
  	} else if (token == Opt_journal_ioprio) {
  		if (arg > 7) {
  			ext4_msg(sb, KERN_ERR, "Invalid journal IO priority"
+
 
