@@ -1,34 +1,50 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/3] fs: Introduce new flag FALLOC_FL_COLLAPSE_RANGE
-Date: Wed, 31 Jul 2013 18:01:54 -0400
-Message-ID: <20130731220154.GA11378@thunk.org>
-References: <1375281721-15840-1-git-send-email-linkinjeon@gmail.com>
+Subject: Re: [PATCH -v2] ext4: avoid reusing recently deleted inodes in no
+ journal mode
+Date: Wed, 31 Jul 2013 18:12:35 -0400
+Message-ID: <20130731221235.GB11378@thunk.org>
+References: <1374809631-5258-1-git-send-email-tytso@mit.edu>
+ <1374867164-21942-1-git-send-email-tytso@mit.edu>
+ <20130729133231.GC9860@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: adilger.kernel@dilger.ca, bpm@sgi.com, elder@kernel.org,
-	hch@infradead.org, david@fromorbit.com,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, a.sangwan@samsung.com,
-	Namjae Jeon <namjae.jeon@samsung.com>
-To: Namjae Jeon <linkinjeon@gmail.com>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:37593 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:37599 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751835Ab3GaWC5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 31 Jul 2013 18:02:57 -0400
+	id S1753732Ab3GaWMj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 31 Jul 2013 18:12:39 -0400
 Content-Disposition: inline
-In-Reply-To: <1375281721-15840-1-git-send-email-linkinjeon@gmail.com>
+In-Reply-To: <20130729133231.GC9860@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Have you considered what happens if you have a 10 megabyte file, of
-which the first 5 megs are mmap'ed into a userspace process.
+On Mon, Jul 29, 2013 at 03:32:31PM +0200, Jan Kara wrote:
+>   I'd use dirty_expire_interval here so that we are at least tied to
+> flusher thread timeout...
 
-Now suppose you call COLLAPASE_RANGE on a one megabyte range starting
-at offset 1024k from the beginning of the file.
+Makes sense, done.
 
-Does the right thing happen to the mmap'ed region in memory?
+> > +		/*
+> > +		 * Five seconds should be enough time for a block to be
+> > +		 * committed to the platter once it is sent to the HDD
+> > +		 */
+> > +		recentcy = 5;
+>   This is completely ad-hoc and I cannot say anything about what value
+> would be appropriate here. Jens told me disk can hold on sectors for
+> *minutes* in their writeback caches when these blocks are unsuitably placed
+> and there's enough streaming IO going on. So the question is what value do
+> we want to base this on?
 
-Cheers,
+Yes, it is completely ad-hoc.  How long a disk will hold on to sectors
+in their writeback caches really depends on its elevator algorithms;
+so it is indeed completely a hueristic.  I will say though that the
+workloads that allow a sector to be pinned for even seconds (let alone
+minutes) are very artifical workloads and it's very unclear whether
+it's realistic that they would exist on most normal productoin
+servers.  The use cases for no journal mode is for places where
+performance is critical, so we really don't want to send a CACHE FLUSH
+command, which is really the only way you can be sure.
 
 					- Ted
