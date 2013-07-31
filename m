@@ -1,197 +1,294 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH V2] ext3: allow specifying external journal by pathname
- mount option
-Date: Wed, 31 Jul 2013 22:10:36 +0200
-Message-ID: <20130731201036.GA29593@quack.suse.cz>
-References: <51F83D90.5080708@redhat.com>
- <51F9666C.1050603@redhat.com>
+From: Ben Myers <bpm@sgi.com>
+Subject: Re: [PATCH 2/3] xfs: Implement FALLOC_FL_COLLAPSE_RANGE
+Date: Wed, 31 Jul 2013 16:11:15 -0500
+Message-ID: <20130731211115.GU3111@sgi.com>
+References: <1375281734-15874-1-git-send-email-linkinjeon@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>, Leonardo Menezes Vaz <lvaz@redhat.com>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:51736 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760619Ab3GaUKj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 31 Jul 2013 16:10:39 -0400
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: elder@kernel.org, tytso@mit.edu, Namjae Jeon <namjae.jeon@samsung.com>,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com, hch@infradead.org,
+	adilger.kernel@dilger.ca, a.sangwan@samsung.com,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Namjae Jeon <linkinjeon@gmail.com>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <51F9666C.1050603@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1375281734-15874-1-git-send-email-linkinjeon@gmail.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed 31-07-13 14:33:00, Eric Sandeen wrote:
-> It's always been a hassle that if an external journal's
-> device number changes, the filesystem won't mount.
-> And since boot-time enumeration can change, device number
-> changes aren't unusual.
-> 
-> The current mechanism to update the journal location is by
-> passing in a mount option w/ a new devnum, but that's a hassle;
-> it's a manual approach, fixing things after the fact.
-> 
-> Adding a mount option, "-o journal_path=/dev/$DEVICE" would
-> help, since then we can do i.e.
-> 
-> # mount -o journal_path=/dev/disk/by-label/$JOURNAL_LABEL ...
-> 
-> and it'll mount even if the devnum has changed, as shown here:
-> 
-> # losetup /dev/loop0 journalfile
-> # mke2fs -L mylabel-journal -O journal_dev /dev/loop0 
-> # mkfs.ext3 -L mylabel -J device=/dev/loop0 /dev/sdb1
-> 
-> Change the journal device number:
-> 
-> # losetup -d /dev/loop0
-> # losetup /dev/loop1 journalfile 
-> 
-> And today it will fail:
-> 
-> # mount /dev/sdb1 /mnt/test
-> mount: wrong fs type, bad option, bad superblock on /dev/sdb1,
->        missing codepage or helper program, or other error
->        In some cases useful info is found in syslog - try
->        dmesg | tail  or so
-> 
-> # dmesg | tail -n 1
-> [17343.240702] EXT3-fs (sdb1): error: couldn't read superblock of external journal
-> 
-> But with this new mount option, we can specify the new path:
-> 
-> # mount -o journal_path=/dev/loop1 /dev/sdb1 /mnt/test
-> #
-> 
-> (which does update the encoded device number, incidentally):
-> 
-> # umount /dev/sdb1
-> # dumpe2fs -h /dev/sdb1 | grep "Journal device"
-> dumpe2fs 1.41.12 (17-May-2010)
-> Journal device:	          0x0701
-> 
-> But best of all we can just always mount by journal-path, and
-> it'll always work:
-> 
-> # mount -o journal_path=/dev/disk/by-label/mylabel-journal /dev/sdb1 /mnt/test
-> #
-> 
-> So the journal_path option can be specified in fstab, and as long as
-> the disk is available somewhere, and findable by label (or by UUID),
-> we can mount.
-> 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-  Thanks! I've merged the patch to my tree.
+Hey Namjae,
 
-								Honza
+On Wed, Jul 31, 2013 at 11:42:14PM +0900, Namjae Jeon wrote:
+> From: Namjae Jeon <namjae.jeon@samsung.com>
+> 
+> New fallocate flag FALLOC_FL_COLLAPSE_RANGE implementation for XFS.
+> 
+> Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
+> Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
+    
+Very cool feature!  ;) 
+
+I have a couple initial suggestions/questions:
 
 > ---
+>  fs/xfs/xfs_bmap.c     |   92 +++++++++++++++++++++++++++++++++++++++++++++++++
+>  fs/xfs/xfs_bmap.h     |    3 ++
+>  fs/xfs/xfs_file.c     |   26 ++++++++++++--
+>  fs/xfs/xfs_iops.c     |   35 +++++++++++++++++++
+>  fs/xfs/xfs_vnodeops.c |   62 +++++++++++++++++++++++++++++++++
+>  fs/xfs/xfs_vnodeops.h |    2 ++
+>  6 files changed, 217 insertions(+), 3 deletions(-)
 > 
-> V2: get device out of bdev's inode, rather than grabbing bdev & releasing it
-> 
-> diff --git a/Documentation/filesystems/ext3.txt b/Documentation/filesystems/ext3.txt
-> index 293855e..7ed0d17 100644
-> --- a/Documentation/filesystems/ext3.txt
-> +++ b/Documentation/filesystems/ext3.txt
-> @@ -26,11 +26,12 @@ journal=inum		When a journal already exists, this option is ignored.
->  			Otherwise, it specifies the number of the inode which
->  			will represent the ext3 file system's journal file.
+> diff --git a/fs/xfs/xfs_bmap.c b/fs/xfs/xfs_bmap.c
+> index 05c698c..ae677b1 100644
+> --- a/fs/xfs/xfs_bmap.c
+> +++ b/fs/xfs/xfs_bmap.c
+> @@ -6145,3 +6145,95 @@ next_block:
 >  
-> +journal_path=path
->  journal_dev=devnum	When the external journal device's major/minor numbers
-> -			have changed, this option allows the user to specify
-> +			have changed, these options allow the user to specify
->  			the new journal location.  The journal device is
-> -			identified through its new major/minor numbers encoded
-> -			in devnum.
-> +			identified through either its new major/minor numbers
-> +			encoded in devnum, or via a path to the device.
+>  	return error;
+>  }
+> +
+> +/*
+> + * xfs_update_logical()
+> + *	Updates starting logical block of extents by subtracting
+> + *	shift from them. At max XFS_LINEAR_EXTS number extents
+> + *	will be updated and *current_ext is the extent number which
+> + *	is currently being updated.
+> + */
+> +int
+> +xfs_update_logical(
+> +	xfs_trans_t		*tp,
+> +	struct xfs_inode	*ip,
+> +	int			*done,
+> +	xfs_fileoff_t		start_fsb,
+> +	xfs_fileoff_t		shift,
+> +	xfs_extnum_t		*current_ext)
+
+Could we find a better name for this function?  Maybe something like
+xfs_shift_extent_startblocks or xfs_shift_extent_offsets?
+
+Also, is there also a case for being able to shift extent offsets upward in the
+file's address space so that you can splice in a chunk of data?  For that I
+think maybe you'd want to be able to shift on sub-block boundaries too, and
+there would be some copying and zeroing involved on the boundary block.  Not sure.
+
+> +{
+> +	xfs_btree_cur_t		*cur;
+> +	xfs_bmbt_rec_host_t	*gotp;
+> +	xfs_mount_t		*mp;
+> +	xfs_ifork_t		*ifp;
+> +	xfs_extnum_t		nexts = 0;
+> +	xfs_fileoff_t		startoff;
+> +	int			error = 0;
+> +	int			i;
+> +
+> +	ifp = XFS_IFORK_PTR(ip, XFS_DATA_FORK);
+> +	mp = ip->i_mount;
+> +
+> +	if (!(ifp->if_flags & XFS_IFEXTENTS) &&
+> +		(error = xfs_iread_extents(tp, ip, XFS_DATA_FORK)))
+> +		return error;
+> +
+> +	if (!*current_ext) {
+> +		gotp = xfs_iext_bno_to_ext(ifp, start_fsb, current_ext);
+> +		/*
+> +		 * gotp can be null in 2 cases: 1) if there are no extents
+> +		 * or 2) start_fsb lies in a hole beyond which there are
+> +		 * no extents. Either way, we are done.
+> +		 */
+> +		if (!gotp) {
+> +			*done = 1;
+> +			return 0;
+> +		}
+> +	}
+> +
+> +	if (ifp->if_flags & XFS_IFBROOT)
+> +		cur = xfs_bmbt_init_cursor(mp, tp, ip, XFS_DATA_FORK);
+> +	else
+> +		cur = NULL;
+> +
+> +	while (nexts++ < XFS_LINEAR_EXTS &&
+> +	       *current_ext <  XFS_IFORK_NEXTENTS(ip, XFS_DATA_FORK)) {
+> +		gotp = xfs_iext_get_ext(ifp, (*current_ext)++);
+> +		startoff = xfs_bmbt_get_startoff(gotp);
+> +		if (cur) {
+> +			if ((error = xfs_bmbt_lookup_eq(cur,
+> +					startoff,
+> +					xfs_bmbt_get_startblock(gotp),
+> +					xfs_bmbt_get_blockcount(gotp),
+> +					&i)))
+> +				goto del_cursor;
+> +			XFS_WANT_CORRUPTED_GOTO(i == 1, del_cursor);
+> +		}
+> +		startoff -= shift;
+> +		xfs_bmbt_set_startoff(gotp, startoff);
+> +		if (cur) {
+> +			error = xfs_bmbt_update(cur, startoff,
+> +						xfs_bmbt_get_startblock(gotp),
+> +						xfs_bmbt_get_blockcount(gotp),
+> +						xfs_bmbt_get_state(gotp));
+> +			if (error)
+> +				goto del_cursor;
+> +		}
+> +	}
+> +
+> +	/* Check if we are done */
+> +	if (*current_ext ==  XFS_IFORK_NEXTENTS(ip, XFS_DATA_FORK))
+> +		*done = 1;
+> +
+> +del_cursor:
+> +	if (cur) {
+> +		if (!error)
+> +			cur->bc_private.b.allocated = 0;
+> +		 xfs_btree_del_cursor(cur,
+> +				error ? XFS_BTREE_ERROR : XFS_BTREE_NOERROR);
+> +	}
+> +
+> +	xfs_trans_log_inode(tp, ip, XFS_ILOG_CORE | XFS_ILOG_DEXT);
+> +
+> +	return error;
+> +}
+> diff --git a/fs/xfs/xfs_bmap.h b/fs/xfs/xfs_bmap.h
+> index 1cf1292..f923734 100644
+> --- a/fs/xfs/xfs_bmap.h
+> +++ b/fs/xfs/xfs_bmap.h
+> @@ -204,6 +204,9 @@ int	xfs_bunmapi(struct xfs_trans *tp, struct xfs_inode *ip,
+>  int	xfs_check_nostate_extents(struct xfs_ifork *ifp, xfs_extnum_t idx,
+>  		xfs_extnum_t num);
+>  uint	xfs_default_attroffset(struct xfs_inode *ip);
+> +int	xfs_update_logical(xfs_trans_t *tp, struct xfs_inode *ip, int *done,
+> +		xfs_fileoff_t start_fsb, xfs_fileoff_t shift,
+> +		xfs_extnum_t *current_ext);
 >  
->  norecovery		Don't load the journal on mounting. Note that this forces
->  noload			mount of inconsistent filesystem, which can lead to
-> diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-> index c47f147..c50c761 100644
-> --- a/fs/ext3/super.c
-> +++ b/fs/ext3/super.c
-> @@ -27,6 +27,7 @@
->  #include <linux/seq_file.h>
->  #include <linux/log2.h>
->  #include <linux/cleancache.h>
-> +#include <linux/namei.h>
+>  #ifdef __KERNEL__
+>  /* bmap to userspace formatter - copy to user & advance pointer */
+> diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+> index de3dc98..7d871bc 100644
+> --- a/fs/xfs/xfs_file.c
+> +++ b/fs/xfs/xfs_file.c
+> @@ -817,7 +817,12 @@ xfs_file_fallocate(
+>  	int		cmd = XFS_IOC_RESVSP;
+>  	int		attr_flags = XFS_ATTR_NOLOCK;
 >  
->  #include <asm/uaccess.h>
+> -	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
+> +	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE |
+> +		     FALLOC_FL_COLLAPSE_RANGE))
+> +		return -EOPNOTSUPP;
+> +
+> +	/* not just yet for rt inodes */
+> +	if ((mode & FALLOC_FL_COLLAPSE_RANGE) && XFS_IS_REALTIME_INODE(ip))
+>  		return -EOPNOTSUPP;
 >  
-> @@ -819,6 +820,7 @@ enum {
->  	Opt_user_xattr, Opt_nouser_xattr, Opt_acl, Opt_noacl,
->  	Opt_reservation, Opt_noreservation, Opt_noload, Opt_nobh, Opt_bh,
->  	Opt_commit, Opt_journal_update, Opt_journal_inum, Opt_journal_dev,
-> +	Opt_journal_path,
->  	Opt_abort, Opt_data_journal, Opt_data_ordered, Opt_data_writeback,
->  	Opt_data_err_abort, Opt_data_err_ignore,
->  	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
-> @@ -860,6 +862,7 @@ static const match_table_t tokens = {
->  	{Opt_journal_update, "journal=update"},
->  	{Opt_journal_inum, "journal=%u"},
->  	{Opt_journal_dev, "journal_dev=%u"},
-> +	{Opt_journal_path, "journal_path=%s"},
->  	{Opt_abort, "abort"},
->  	{Opt_data_journal, "data=journal"},
->  	{Opt_data_ordered, "data=ordered"},
-> @@ -975,6 +978,11 @@ static int parse_options (char *options, struct super_block *sb,
->  	int option;
->  	kuid_t uid;
->  	kgid_t gid;
-> +	char *journal_path;
-> +	struct inode *journal_inode;
-> +	struct path path;
-> +	int error;
+>  	bf.l_whence = 0;
+> @@ -826,11 +831,11 @@ xfs_file_fallocate(
+>  
+>  	xfs_ilock(ip, XFS_IOLOCK_EXCL);
+>  
+> -	if (mode & FALLOC_FL_PUNCH_HOLE)
+> +	if (mode & (FALLOC_FL_PUNCH_HOLE | FALLOC_FL_COLLAPSE_RANGE))
+>  		cmd = XFS_IOC_UNRESVSP;
+>  
+>  	/* check the new inode size is valid before allocating */
+> -	if (!(mode & FALLOC_FL_KEEP_SIZE) &&
+> +	if (!(mode & (FALLOC_FL_KEEP_SIZE | FALLOC_FL_COLLAPSE_RANGE)) &&
+>  	    offset + len > i_size_read(inode)) {
+>  		new_size = offset + len;
+>  		error = inode_newsize_ok(inode, new_size);
+> @@ -845,6 +850,21 @@ xfs_file_fallocate(
+>  	if (error)
+>  		goto out_unlock;
+>  
+> +	if (mode & FALLOC_FL_COLLAPSE_RANGE) {
+> +		error = -xfs_collapse_file_space(ip, offset + len, len);
+> +		if (error || offset >= i_size_read(inode))
+> +			goto out_unlock;
 > +
->  #ifdef CONFIG_QUOTA
->  	int qfmt;
->  #endif
-> @@ -1129,6 +1137,41 @@ static int parse_options (char *options, struct super_block *sb,
->  				return 0;
->  			*journal_devnum = option;
->  			break;
-> +		case Opt_journal_path:
-> +			if (is_remount) {
-> +				ext3_msg(sb, KERN_ERR, "error: cannot specify "
-> +				       "journal on remount");
-> +				return 0;
-> +			}
+> +		/* Shrink size in case of FALLOC_FL_COLLAPSE_RANGE */
+> +		if ((offset + len) > i_size_read(inode))
+> +			new_size = offset;
+> +		else
+> +			new_size = i_size_read(inode) - len;
+> +		error = -xfs_update_file_size(ip, new_size);
 > +
-> +			journal_path = match_strdup(&args[0]);
-> +			if (!journal_path) {
-> +				ext3_msg(sb, KERN_ERR, "error: could not dup "
-> +					"journal device string");
-> +				return 0;
-> +			}
+> +		goto out_unlock;
+> +	}
 > +
-> +			error = kern_path(journal_path, LOOKUP_FOLLOW, &path);
-> +			if (error) {
-> +				ext3_msg(sb, KERN_ERR, "error: could not find "
-> +					"journal device path: error %d", error);
-> +				kfree(journal_path);
-> +				return 0;
-> +			}
+
+Since you're not implementing an XFS_IOC_COLLAPSE_RANGE flag for the
+xfs_change_file_space interface, it might be cleaner not to use change_space at
+all... e.g. call xfs_free_file_space directly from xfs_collapse_file_space or
+in the above conditional (making the conditional exclusive with the
+change_space call).
+
+Alternatively, you could implement this fully through xfs_change_file_space.
+
+Either way I think it would be best for it to be all or nothing with respect to
+the xfs_change_file_space interface, and my preference is that you implement
+this through xfs_collapse_file_space interface just as the rest of these
+operations are implemented in xfs.
+
+>  	/* Change file size if needed */
+>  	if (new_size) {
+>  		struct iattr iattr;
+> diff --git a/fs/xfs/xfs_iops.c b/fs/xfs/xfs_iops.c
+> index 96dda62..16b20f1 100644
+> --- a/fs/xfs/xfs_iops.c
+> +++ b/fs/xfs/xfs_iops.c
+> @@ -1236,3 +1236,38 @@ xfs_setup_inode(
+>  
+>  	unlock_new_inode(inode);
+>  }
 > +
-> +			journal_inode = path.dentry->d_inode;
-> +			if (!S_ISBLK(journal_inode->i_mode)) {
-> +				ext3_msg(sb, KERN_ERR, "error: journal path %s "
-> +					"is not a block device", journal_path);
-> +				path_put(&path);
-> +				kfree(journal_path);
-> +				return 0;
-> +			}
+> +/*
+> + * xfs_update_file_size()
+> + *	Just a simple disk size and time update
+> + */
+> +int
+> +xfs_update_file_size(
+> +	struct xfs_inode        *ip,
+> +	loff_t			newsize)
+> +{
+> +	xfs_mount_t		*mp = ip->i_mount;
+> +	struct inode		*inode = VFS_I(ip);
+> +	struct xfs_trans	*tp;
+> +	int			error;
 > +
-> +			*journal_devnum = new_encode_dev(journal_inode->i_rdev);
-> +			path_put(&path);
-> +			kfree(journal_path);
-> +			break;
->  		case Opt_noload:
->  			set_opt (sbi->s_mount_opt, NOLOAD);
->  			break;
-> 
-> 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> +	tp = xfs_trans_alloc(mp, XFS_TRANS_SETATTR_NOT_SIZE);
+> +
+> +	error = xfs_trans_reserve(tp, 0, XFS_ICHANGE_LOG_RES(mp), 0, 0, 0);
+> +	if (error)
+> +		return error;
+> +
+> +	xfs_trans_ijoin(tp, ip, 0);
+> +	truncate_setsize(inode, newsize);
+> +	ip->i_d.di_size = newsize;
+> +
+> +	xfs_trans_ichgtime(tp, ip, XFS_ICHGTIME_CHG);
+> +
+> +	xfs_trans_log_inode(tp, ip, XFS_ILOG_CORE);
+> +
+> +	if (mp->m_flags & XFS_MOUNT_WSYNC)
+> +		xfs_trans_set_sync(tp);
+> +
+> +	return xfs_trans_commit(tp, 0);
+> +
+> +}
+
+Did you consider xfs_setattr_size for this?
+
+Thanks,
+	Ben
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
