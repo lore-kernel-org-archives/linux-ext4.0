@@ -1,390 +1,116 @@
-From: Namjae Jeon <linkinjeon@gmail.com>
-Subject: [PATCH 3/3] ext4: Implement FALLOC_FL_COLLAPSE_RANGE
-Date: Wed, 31 Jul 2013 23:42:26 +0900
-Message-ID: <1375281746-15908-1-git-send-email-linkinjeon@gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 60667] New: resizing ext4 with small block size corrupts
+ filesystem
+Date: Wed, 31 Jul 2013 15:56:26 +0000
+Message-ID: <bug-60667-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: Namjae Jeon <linkinjeon@gmail.com>, Namjae Jeon <namjae.jeon@samsung.com>,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
-	a.sangwan@samsung.com, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: tytso@mit.edu, adilger.kernel@dilger.ca, bpm@sgi.com, elder@kernel.org,
-	hch@infradead.org, david@fromorbit.com
-Return-path: <xfs-bounces@oss.sgi.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.19.201]:52080 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756857Ab3GaP4a (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 31 Jul 2013 11:56:30 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 0A0092047E
+	for <linux-ext4@vger.kernel.org>; Wed, 31 Jul 2013 15:56:29 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id BF33020456
+	for <linux-ext4@vger.kernel.org>; Wed, 31 Jul 2013 15:56:26 +0000 (UTC)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Namjae Jeon <namjae.jeon@samsung.com>
+https://bugzilla.kernel.org/show_bug.cgi?id=60667
 
-New fallocate flag FALLOC_FL_COLLAPSE_RANGE implementation for Ext4
+            Bug ID: 60667
+           Summary: resizing ext4 with small block size corrupts
+                    filesystem
+           Product: File System
+           Version: 2.5
+    Kernel Version: 3.10.4
+          Hardware: x86-64
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: trevor.w.jones@gmail.com
+        Regression: No
 
-Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
----
- fs/ext4/ext4.h              |    3 +
- fs/ext4/extents.c           |  255 ++++++++++++++++++++++++++++++++++++++++++-
- fs/ext4/move_extent.c       |    2 +-
- include/trace/events/ext4.h |   25 +++++
- 4 files changed, 283 insertions(+), 2 deletions(-)
+I have a filesystem with lots of small files (gentoo portage tree) that I
+created with a 1024 block size.  I resized that filesystem and it resulted in
+corruption.  I am able to consistently reproduce it by resizing a filesystem
+that was created 512mb with 1024 block size up to 1g.  My data was still
+recoverable, and fortunately it was nothing that can not easily be reproduced,
+however I could not get it to fsck cleanly.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index b577e45..35eed6a 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2692,6 +2692,7 @@ extern int ext4_find_delalloc_range(struct inode *inode,
- extern int ext4_find_delalloc_cluster(struct inode *inode, ext4_lblk_t lblk);
- extern int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 			__u64 start, __u64 len);
-+extern int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len);
- 
- 
- /* move_extent.c */
-@@ -2704,6 +2705,8 @@ void ext4_inode_double_unlock(struct inode *inode1, struct inode *inode2);
- extern int ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 			     __u64 start_orig, __u64 start_donor,
- 			     __u64 len, __u64 *moved_len);
-+extern int mext_next_extent(struct inode *inode, struct ext4_ext_path *path,
-+			    struct ext4_extent **extent);
- 
- /* page-io.c */
- extern int __init ext4_init_pageio(void);
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index a618738..8df082d 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4476,12 +4476,16 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
- 	unsigned int credits, blkbits = inode->i_blkbits;
- 
- 	/* Return error if mode is not supported */
--	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
-+	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE |
-+		     FALLOC_FL_COLLAPSE_RANGE))
- 		return -EOPNOTSUPP;
- 
- 	if (mode & FALLOC_FL_PUNCH_HOLE)
- 		return ext4_punch_hole(inode, offset, len);
- 
-+	if (mode & FALLOC_FL_COLLAPSE_RANGE)
-+		return ext4_collapse_range(inode, offset, len);
-+
- 	ret = ext4_convert_inline_data(inode);
- 	if (ret)
- 		return ret;
-@@ -4774,3 +4778,252 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 
- 	return error;
- }
-+
-+/*
-+ * ext4_access_path:
-+ * Function to access the path buffer for marking it dirty.
-+ * It also checks if there are sufficient credits left in the journal handle
-+ * to update path.
-+ */
-+static int
-+ext4_access_path(handle_t *handle, struct inode *inode,
-+		 struct ext4_ext_path *path)
-+{
-+	int credits, err;
-+
-+	/*
-+	 * Check if need to extend journal credits
-+	 * 3 for leaf, sb, and inode plus 2 (bmap and group
-+	 * descriptor) for each block group; assume two block
-+	 * groups
-+	 */
-+	if (handle->h_buffer_credits < 7) {
-+		credits = ext4_writepage_trans_blocks(inode);
-+		err = ext4_ext_truncate_extend_restart(handle, inode, credits);
-+		/* EAGAIN is success */
-+		if (err && err != -EAGAIN)
-+			return err;
-+	}
-+
-+	err = ext4_ext_get_access(handle, inode, path);
-+	return err;
-+}
-+
-+/*
-+ * ext4_ext_update_path:
-+ * Update the extents of a path structure lying between path[depth].p_ext
-+ * and EXT_LAST_EXTENT(path[depth].p_hdr) by subtracting shift from starting
-+ * block for each extent.
-+ */
-+static int
-+ext4_ext_update_path(struct ext4_ext_path *path, ext4_lblk_t shift,
-+		     struct inode *inode, handle_t *handle, ext4_lblk_t *start)
-+{
-+	int depth, err = 0;
-+	struct ext4_extent *ex_start, *ex_last;
-+	bool update = 0;
-+	depth = path->p_depth;
-+
-+	while (depth >= 0) {
-+		if (depth == path->p_depth) {
-+			ex_start = path[depth].p_ext;
-+			if (!ex_start)
-+				return -EIO;
-+
-+			ex_last = EXT_LAST_EXTENT(path[depth].p_hdr);
-+			if (!ex_last)
-+				return -EIO;
-+
-+			err = ext4_access_path(handle, inode, path + depth);
-+			if (err)
-+				goto out;
-+
-+			if (ex_start == EXT_FIRST_EXTENT(path[depth].p_hdr))
-+				update = 1;
-+
-+			*start = ex_last->ee_block +
-+					ext4_ext_get_actual_len(ex_last);
-+
-+			while (ex_start <= ex_last) {
-+				ex_start->ee_block -= shift;
-+				ex_start++;
-+			}
-+			err = ext4_ext_dirty(handle, inode, path + depth);
-+			if (err)
-+				goto out;
-+
-+			if (--depth < 0 || !update)
-+				break;
-+		}
-+
-+		/* Update index too */
-+		err = ext4_access_path(handle, inode, path + depth);
-+		if (err)
-+			goto out;
-+
-+		path[depth].p_idx->ei_block -= shift;
-+		err = ext4_ext_dirty(handle, inode, path + depth);
-+		if (err)
-+			goto out;
-+
-+		/* we are done if current index is not a starting index */
-+		if (path[depth].p_idx != EXT_FIRST_INDEX(path[depth].p_hdr))
-+			break;
-+
-+		depth--;
-+	}
-+
-+out:
-+	return err;
-+}
-+
-+/*
-+ * ext4_ext_update_logical:
-+ * All the extents which lies in the range from start to the last allocated
-+ * block for the file are updated by moving them shift blocks to the left.
-+ */
-+static int
-+ext4_ext_update_logical(struct inode *inode, handle_t *handle,
-+			ext4_lblk_t start, ext4_lblk_t shift)
-+{
-+	struct ext4_ext_path *path;
-+	int ret = 0, depth;
-+	struct ext4_extent *extent;
-+	ext4_lblk_t stop_block, current_block;
-+
-+	/* Let path point to the last extent */
-+	path = ext4_ext_find_extent(inode, EXT_MAX_BLOCKS - 1, NULL);
-+	if (IS_ERR(path))
-+		return PTR_ERR(path);
-+
-+	depth = path->p_depth;
-+	extent = path[depth].p_ext;
-+	stop_block = extent->ee_block + ext4_ext_get_actual_len(extent);
-+	ext4_ext_drop_refs(path);
-+	kfree(path);
-+
-+	while (start < stop_block) {
-+		path = ext4_ext_find_extent(inode, start, NULL);
-+		if (IS_ERR(path))
-+			return PTR_ERR(path);
-+		depth = path->p_depth;
-+		extent = path[depth].p_ext;
-+		current_block = extent->ee_block;
-+		if (start > current_block) {
-+			/* Hole, move to the next extent */
-+			ret = mext_next_extent(inode, path, &extent);
-+			if (ret < 0) {
-+				ext4_ext_drop_refs(path);
-+				kfree(path);
-+				break;
-+			}
-+		}
-+		ret = ext4_ext_update_path(path, shift, inode, handle, &start);
-+		ext4_ext_drop_refs(path);
-+		kfree(path);
-+		if (ret)
-+			break;
-+	}
-+
-+	return ret;
-+}
-+
-+/*
-+ * ext4_collapse_range:
-+ * This implements the fallocate's collapse range functionality for ext4
-+ * Returns: 0 on success or negative on error
-+ */
-+int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
-+{
-+	struct super_block *sb = inode->i_sb;
-+	ext4_lblk_t punch_start, punch_stop;
-+	handle_t *handle;
-+	unsigned int credits;
-+	unsigned int rounding;
-+	loff_t ioffset, new_size;
-+	int ret;
-+
-+	if (!S_ISREG(inode->i_mode))
-+		return -EOPNOTSUPP;
-+
-+	if (EXT4_SB(sb)->s_cluster_ratio > 1)
-+		return -EOPNOTSUPP;
-+
-+	/* Currently just for extent based files */
-+	if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
-+		return -EOPNOTSUPP;
-+
-+	if (IS_SWAPFILE(inode))
-+		return -ETXTBSY;
-+
-+	trace_ext4_collapse_range(inode, offset, len);
-+
-+	punch_start = offset >> EXT4_BLOCK_SIZE_BITS(sb);
-+	punch_stop = (offset + len) >> EXT4_BLOCK_SIZE_BITS(sb);
-+
-+	rounding = max_t(uint, 1 << EXT4_BLOCK_SIZE_BITS(sb), PAGE_CACHE_SIZE);
-+	ioffset = offset & ~(rounding - 1);
-+
-+	/* Write out all dirty pages */
-+	ret = filemap_write_and_wait_range(inode->i_mapping, ioffset, -1);
-+	if (ret)
-+		return ret;
-+
-+	/* Take mutex lock */
-+	mutex_lock(&inode->i_mutex);
-+
-+	truncate_pagecache_range(inode, ioffset, -1);
-+
-+	/* Wait for existing dio to complete */
-+	ext4_inode_block_unlocked_dio(inode);
-+	inode_dio_wait(inode);
-+
-+	credits = ext4_writepage_trans_blocks(inode);
-+	handle = ext4_journal_start(inode, EXT4_HT_TRUNCATE, credits);
-+	if (IS_ERR(handle)) {
-+		ret = PTR_ERR(handle);
-+		goto out_dio;
-+	}
-+
-+	down_write(&EXT4_I(inode)->i_data_sem);
-+
-+	ext4_discard_preallocations(inode);
-+
-+	ret = ext4_es_remove_extent(inode, punch_start,
-+				    EXT_MAX_BLOCKS - punch_start - 1);
-+	if (ret)
-+		goto journal_stop;
-+
-+	ret = ext4_ext_remove_space(inode, punch_start, punch_stop - 1);
-+	if (ret)
-+		goto journal_stop;
-+
-+	ret = ext4_ext_update_logical(inode, handle, punch_stop,
-+				      punch_stop - punch_start);
-+	if (ret)
-+		goto journal_stop;
-+
-+	if (offset >= i_size_read(inode))
-+		goto update_time;
-+
-+	if ((offset + len) > i_size_read(inode))
-+		new_size = offset;
-+	else
-+		new_size = i_size_read(inode) - len;
-+
-+	truncate_setsize(inode, new_size);
-+	EXT4_I(inode)->i_disksize = new_size;
-+
-+update_time:
-+	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
-+	ext4_mark_inode_dirty(handle, inode);
-+
-+journal_stop:
-+	ext4_journal_stop(handle);
-+	up_write(&EXT4_I(inode)->i_data_sem);
-+
-+out_dio:
-+	ext4_inode_resume_unlocked_dio(inode);
-+	mutex_unlock(&inode->i_mutex);
-+	return ret;
-+}
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index e86dddb..c3a5ccf 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -76,7 +76,7 @@ copy_extent_status(struct ext4_extent *src, struct ext4_extent *dest)
-  * ext4_ext_path structure refers to the last extent, or a negative error
-  * value on failure.
-  */
--static int
-+int
- mext_next_extent(struct inode *inode, struct ext4_ext_path *path,
- 		      struct ext4_extent **extent)
- {
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index 2068db2..a1f357c 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -2399,6 +2399,31 @@ TRACE_EVENT(ext4_es_shrink_exit,
- 		  __entry->shrunk_nr, __entry->cache_cnt)
- );
- 
-+TRACE_EVENT(ext4_collapse_range,
-+	TP_PROTO(struct inode *inode, loff_t offset, loff_t len),
-+
-+	TP_ARGS(inode, offset, len),
-+
-+	TP_STRUCT__entry(
-+		__field(dev_t,	dev)
-+		__field(ino_t,	ino)
-+		__field(loff_t,	offset)
-+		__field(loff_t, len)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->dev	= inode->i_sb->s_dev;
-+		__entry->ino	= inode->i_ino;
-+		__entry->offset	= offset;
-+		__entry->len	= len;
-+	),
-+
-+	TP_printk("dev %d,%d ino %lu offset %lld len %lld",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  (unsigned long) __entry->ino,
-+		  __entry->offset, __entry->len)
-+);
-+
- #endif /* _TRACE_EXT4_H */
- 
- /* This part must be outside protection */
+
+
+dagron ~ # lvcreate -L 1g resizetest vgtest
+  Volume group "resizetest" not found
+dagron ~ # lvcreate -L 1g -n resizetest vgtest
+  Logical volume "resizetest" created
+dagron ~ # mkfs.ext4 -b 1024 -i 2048 /dev/vgtest/resizetest 524288
+mke2fs 1.42.7 (21-Jan-2013)
+Filesystem label=
+OS type: Linux
+Block size=1024 (log=0)
+Fragment size=1024 (log=0)
+Stride=0 blocks, Stripe width=0 blocks
+262144 inodes, 524288 blocks
+26214 blocks (5.00%) reserved for the super user
+First data block=1
+Maximum filesystem blocks=67633152
+64 block groups
+8192 blocks per group, 8192 fragments per group
+4096 inodes per group
+Superblock backups stored on blocks: 
+        8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409
+
+Allocating group tables: done                            
+Writing inode tables: done                            
+Creating journal (16384 blocks): done
+Writing superblocks and filesystem accounting information: done 
+
+dagron ~ # mount /dev/vgtest/resizetest /mnt/tmp
+dagron ~ # df /mnt/tmp
+Filesystem                    1K-blocks  Used Available Use% Mounted on
+/dev/mapper/vgtest-resizetest    442212  2318    409584   1% /mnt/tmp
+dagron ~ # resize2fs /dev/mapper/vgtest-resizetest
+resize2fs 1.42.7 (21-Jan-2013)
+Filesystem at /dev/mapper/vgtest-resizetest is mounted on /mnt/tmp; on-line
+resizing required
+old_desc_blocks = 2, new_desc_blocks = 4
+The filesystem on /dev/mapper/vgtest-resizetest is now 1048576 blocks long.
+
+dagron ~ # df /mnt/tmp
+Filesystem                    1K-blocks         Used   Available Use% Mounted
+on
+/dev/mapper/vgtest-resizetest    900808 -21474833672 21475683202    - /mnt/tmp
+dagron ~ # umount /mnt/tmp
+dagron ~ # e2fsck /dev/vgtest/resizetest
+e2fsck 1.42.7 (21-Jan-2013)
+ext2fs_check_desc: Corrupt group descriptor: bad block for inode table
+e2fsck: Group descriptors look bad... trying backup blocks...
+/dev/vgtest/resizetest: recovering journal
+e2fsck: unable to set superblock flags on /dev/vgtest/resizetest
+
+
+/dev/vgtest/resizetest: ***** FILE SYSTEM WAS MODIFIED *****
+
+/dev/vgtest/resizetest: ********** WARNING: Filesystem still has errors
+**********
+
+dagron ~ # uname -a
+Linux dagron 3.10.4 #13 SMP Tue Jul 30 14:45:19 EDT 2013 x86_64 AMD Athlon(tm)
+II X4 620 Processor AuthenticAMD GNU/Linux
+dagron ~ # e2fsck -V
+e2fsck 1.42.7 (21-Jan-2013)
+        Using EXT2FS Library version 1.42.7, 21-Jan-2013
+
 -- 
-1.7.9.5
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+You are receiving this mail because:
+You are watching the assignee of the bug.
