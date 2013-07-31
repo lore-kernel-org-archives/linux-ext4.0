@@ -1,69 +1,62 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v1 0/5] ext4: Shut down block groups when damage is
- detected
-Date: Wed, 31 Jul 2013 20:52:43 +0200
-Message-ID: <20130731185243.GB28018@quack.suse.cz>
-References: <20130719235532.24017.31896.stgit@blackbox.djwong.org>
- <20130721143226.GA13473@gmail.com>
- <x49txjdbd21.fsf@segfault.boston.devel.redhat.com>
- <20130730003109.GE3648@gmail.com>
+Subject: Re: crash in __jbd2_journal_file_buffer
+Date: Wed, 31 Jul 2013 21:02:45 +0200
+Message-ID: <20130731190245.GC28018@quack.suse.cz>
+References: <alpine.DEB.2.00.1307301540110.12830@cobra.newdream.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jeff Moyer <jmoyer@redhat.com>,
-	"Darrick J. Wong" <darrick.wong@oracle.com>,
-	Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Zheng Liu <gnehzuil.liu@gmail.com>
+Cc: linux-ext4@vger.kernel.org
+To: Sage Weil <sage@inktank.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:49195 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:49746 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757214Ab3GaSwq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 31 Jul 2013 14:52:46 -0400
+	id S1753289Ab3GaTCs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 31 Jul 2013 15:02:48 -0400
 Content-Disposition: inline
-In-Reply-To: <20130730003109.GE3648@gmail.com>
+In-Reply-To: <alpine.DEB.2.00.1307301540110.12830@cobra.newdream.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 30-07-13 08:31:09, Zheng Liu wrote:
-> Hi Jeff,
-> 
-> On Mon, Jul 29, 2013 at 11:28:38AM -0400, Jeff Moyer wrote:
-> > Zheng Liu <gnehzuil.liu@gmail.com> writes:
-> > 
-> > > My idea is to let file system can ignore the currurted block.  Namely,
-> > > when we meet a currupted block, we will track it as bad block in bad
-> > > block inode and find another block to save data.  This currupted block
-> > > will never be used.  The first step in my mind is to detect a currpted
-> > > block and mark it as bad block.  After reading the thread and Darrick's
-> > > original patch, I think Darrick's patch is a good start.
-> > 
-> > I think it's important to call out the exact failure scenario you're
-> > trying to address.  For hard disks, if you get a read error, it can
-> > typically be recovered by re-writing the block.  I imagine this is what
-> > fsck would be doing for metadata repair.  So, I'm not at all sure why
-> > you'd want to track bad blocks in the file system itself.  Could you
-> > elaborate, please?
-> 
-> In our product system at Taobao, we have a large CDN system around the
-> country.  These servers cache the most of web pages, images, etc....
-> These servers have some disks, and the disk must break down at some
-> time.  Now we need to umount this disk, and the whole disk just be left
-> in server until the whole server is dropped.  But as you have pointed
-> out, when we meet a disk failure, the whole disk might still works.  So
-> we hope that the file system could track the bad block, doesn't allocate
-> them, and the rest of spaces also can be used.  This can help us to
-> reduce the cost.
-  Well, before spending too much time with this, try finding some study
-(I've read some from Google I think, just I don't have the url at hand) on
-what is the estimated lifetime of a disk after bad sectors start appearing. 
-What I remember is that usually when bad sectors start appearing the disk
-is going to die within weeks with high probability. So I'm not sure if the
-cost saving of additional few weeks of lifetime is worth the trouble. As
-Ted said, there may be other reasons why you'd want a feature like this -
-kernel error causing bitmap corruption - or just that you need to keep the
-machine up for a few more hours before you can take it down for
-maintenance.
+  Hello,
+
+On Tue 30-07-13 15:41:40, Sage Weil wrote:
+> Hit this on 3.10.  Is this a known issue?
+  No, I haven't seen it. Why did the kernel crash?
 
 								Honza
+> 
+> Thanks-
+> sage
+> 
+> 
+> Stack traceback for pid 23944
+> 0xffff8802206edeb0    23944    23840  1    2   R  0xffff8802206ee338 
+> *ceph-osd
+>  ffff88020bf17b78 0000000000000018 ffffffff81267398 ffff8802256d40c0
+>  ffff88020b5a1230 ffff88020bf17bb8 ffffffff81325d9c ffff88020b5a1230
+>  ffff8802256d40c0 ffff88020b5a1230 00000000698a8d24 ffff88020bf17be8
+> Call Trace:
+>  [<ffffffff81267398>] ? __jbd2_journal_file_buffer+0x188/0x260
+>  [<ffffffff81325d9c>] ? do_raw_spin_lock+0x10c/0x150
+>  [<ffffffff81268118>] ? do_get_write_access+0x448/0x650
+>  [<ffffffff81213caf>] ? ext4_read_inode_bitmap+0x9f/0x5f0
+>  [<ffffffff81167849>] ? kmem_cache_alloc+0x39/0x160
+>  [<ffffffff81268490>] ? jbd2_journal_get_write_access+0x30/0x50
+>  [<ffffffff81244d43>] ? __ext4_journal_get_write_access+0x43/0x90
+>  [<ffffffff812143d7>] ? ext4_free_inode+0x1d7/0x5d0
+>  [<ffffffff8121e601>] ? ext4_evict_inode+0x341/0x4d0
+>  [<ffffffff8121b268>] ? ext4_mark_inode_dirty+0x88/0x230
+>  [<ffffffff8121e610>] ? ext4_evict_inode+0x350/0x4d0
+>  [<ffffffff8118a098>] ? evict+0xb8/0x1c0
+>  [<ffffffff8118a9d5>] ? iput+0x105/0x190
+>  [<ffffffff8117d341>] ? do_unlinkat+0x201/0x270
+>  [<ffffffff8131e9be>] ? trace_hardirqs_on_thunk+0x3a/0x3f
+>  [<ffffffff81180356>] ? SyS_unlink+0x16/0x20
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
