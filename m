@@ -1,215 +1,127 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH V2] ext4: allow specifying external journal by pathname mount
- option
-Date: Wed, 31 Jul 2013 17:20:29 -0500
-Message-ID: <51F98DAD.2020909@redhat.com>
-References: <51F98CE4.1050508@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] ext4: Make ext4_writepages() resilient to i_size changes
+Date: Thu,  1 Aug 2013 00:42:12 +0200
+Message-ID: <1375310532-17731-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Dave Jones <davej@redhat.com>,
+	Zheng Liu <gnehzuil.liu@gmail.com>, Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:61976 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:55361 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760889Ab3GaWUa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 31 Jul 2013 18:20:30 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r6VMKUiN009333
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Wed, 31 Jul 2013 18:20:30 -0400
-Received: from Liberator.local (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r6VMKTXB019836
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 31 Jul 2013 18:20:30 -0400
-In-Reply-To: <51F98CE4.1050508@redhat.com>
+	id S1755709Ab3GaWmV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 31 Jul 2013 18:42:21 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-It's always been a hassle that if an external journal's
-device number changes, the filesystem won't mount.
-And since boot-time enumeration can change, device number
-changes aren't unusual.
+Inode size can arbitrarily change while writeback is in progress. This
+can have various strange effects when we use one value of i_size for one
+decision during writeback and another value of i_size for a different
+decision during writeback. In particular a check for lblk < blocks in
+mpage_map_and_submit_buffers() causes problems when i_size is reduced
+while writeback is running because we can end up not using all blocks
+we've allocated. Thus these blocks are leaked and also delalloc
+accounting gets wrong manifesting as a warning like:
 
-The current mechanism to update the journal location is by
-passing in a mount option w/ a new devnum, but that's a hassle;
-it's a manual approach, fixing things after the fact.
+ext4_da_release_space:1333: ext4_da_release_space: ino 12, to_free 1
+with only 0 reserved data blocks
 
-Adding a mount option, "-o journal_path=/dev/$DEVICE" would
-help, since then we can do i.e.
+The problem can happen only when blocksize < pagesize because the check
+for size is performed only after the first iteration of the mapping
+loop.
 
-# mount -o journal_path=/dev/disk/by-label/$JOURNAL_LABEL ...
+Fix the problem by removing the size check from the mapping loop. We
+have an extent allocated so we have to use it all before checking for
+i_size. We may call add_page_bufs_to_extent() unnecessarily but that
+function won't do anything if passed block number is beyond file size.
 
-and it'll mount even if the devnum has changed, as shown here:
+Also to avoid future surprises like this sample inode size when
+starting writeback in ext4_writepages() and then use this sampled size
+throughout the writeback call stack.
 
-# losetup /dev/loop0 journalfile
-# mke2fs -L mylabel-journal -O journal_dev /dev/loop0 
-# mkfs.ext4 -L mylabel -J device=/dev/loop0 /dev/sdb1
-
-Change the journal device number:
-
-# losetup -d /dev/loop0
-# losetup /dev/loop1 journalfile 
-
-And today it will fail:
-
-# mount /dev/sdb1 /mnt/test
-mount: wrong fs type, bad option, bad superblock on /dev/sdb1,
-       missing codepage or helper program, or other error
-       In some cases useful info is found in syslog - try
-       dmesg | tail  or so
-
-# dmesg | tail -n 1
-[17343.240702] EXT4-fs (sdb1): error: couldn't read superblock of external journal
-
-But with this new mount option, we can specify the new path:
-
-# mount -o journal_path=/dev/loop1 /dev/sdb1 /mnt/test
-#
-
-(which does update the encoded device number, incidentally):
-
-# umount /dev/sdb1
-# dumpe2fs -h /dev/sdb1 | grep "Journal device"
-dumpe2fs 1.41.12 (17-May-2010)
-Journal device:	          0x0701
-
-But best of all we can just always mount by journal-path, and
-it'll always work:
-
-# mount -o journal_path=/dev/disk/by-label/mylabel-journal /dev/sdb1 /mnt/test
-#
-
-So the journal_path option can be specified in fstab, and as long as
-the disk is available somewhere, and findable by label (or by UUID),
-we can mount.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Reported-by: Dave Jones <davej@redhat.com>
+Reported-by: Zheng Liu <gnehzuil.liu@gmail.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
+ fs/ext4/inode.c | 21 ++++++++++++---------
+ 1 file changed, 12 insertions(+), 9 deletions(-)
 
-V2: grr, remove debug printk, sorry :/
-
-p.s. is there any point to MOPT_GTE0?  Doesn't the "=%u" token parsing
-exclude negative numbers?
-
-I hate to add the MOPT_STRING, but since we try to grab arguments
-outside the case statement, I guess it's required...
-
--Eric
-
-
-
-diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
-index f7cbf57..b91cfaa 100644
---- a/Documentation/filesystems/ext4.txt
-+++ b/Documentation/filesystems/ext4.txt
-@@ -144,11 +144,12 @@ journal_async_commit	Commit block can be written to disk without waiting
- 			mount the device. This will enable 'journal_checksum'
- 			internally.
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index ba33c67..8bd0240 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1413,6 +1413,8 @@ static void ext4_da_page_release_reservation(struct page *page,
+ struct mpage_da_data {
+ 	struct inode *inode;
+ 	struct writeback_control *wbc;
++	loff_t i_size;		/* Inode size can change while we do writeback.
++				 * Use one fixed value to make things simpler */
  
-+journal_path=path
- journal_dev=devnum	When the external journal device's major/minor numbers
--			have changed, this option allows the user to specify
-+			have changed, these options allow the user to specify
- 			the new journal location.  The journal device is
--			identified through its new major/minor numbers encoded
--			in devnum.
-+			identified through either its new major/minor numbers
-+			encoded in devnum, or via a path to the device.
+ 	pgoff_t first_page;	/* The first page to write */
+ 	pgoff_t next_page;	/* Current page to examine */
+@@ -1943,7 +1945,7 @@ static bool add_page_bufs_to_extent(struct mpage_da_data *mpd,
+ 				    ext4_lblk_t lblk)
+ {
+ 	struct inode *inode = mpd->inode;
+-	ext4_lblk_t blocks = (i_size_read(inode) + (1 << inode->i_blkbits) - 1)
++	ext4_lblk_t blocks = (mpd->i_size + (1 << inode->i_blkbits) - 1)
+ 							>> inode->i_blkbits;
  
- norecovery		Don't load the journal on mounting.  Note that
- noload			if the filesystem was not unmounted cleanly,
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index bca26f3..2f5ce3a 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1134,8 +1134,8 @@ enum {
- 	Opt_nouid32, Opt_debug, Opt_removed,
- 	Opt_user_xattr, Opt_nouser_xattr, Opt_acl, Opt_noacl,
- 	Opt_auto_da_alloc, Opt_noauto_da_alloc, Opt_noload,
--	Opt_commit, Opt_min_batch_time, Opt_max_batch_time,
--	Opt_journal_dev, Opt_journal_checksum, Opt_journal_async_commit,
-+	Opt_commit, Opt_min_batch_time, Opt_max_batch_time, Opt_journal_dev,
-+	Opt_journal_path, Opt_journal_checksum, Opt_journal_async_commit,
- 	Opt_abort, Opt_data_journal, Opt_data_ordered, Opt_data_writeback,
- 	Opt_data_err_abort, Opt_data_err_ignore,
- 	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
-@@ -1179,6 +1179,7 @@ static const match_table_t tokens = {
- 	{Opt_min_batch_time, "min_batch_time=%u"},
- 	{Opt_max_batch_time, "max_batch_time=%u"},
- 	{Opt_journal_dev, "journal_dev=%u"},
-+	{Opt_journal_path, "journal_path=%s"},
- 	{Opt_journal_checksum, "journal_checksum"},
- 	{Opt_journal_async_commit, "journal_async_commit"},
- 	{Opt_abort, "abort"},
-@@ -1338,6 +1339,7 @@ static int clear_qf_name(struct super_block *sb, int qtype)
- #define MOPT_NO_EXT2	0x0100
- #define MOPT_NO_EXT3	0x0200
- #define MOPT_EXT4_ONLY	(MOPT_NO_EXT2 | MOPT_NO_EXT3)
-+#define MOPT_STRING	0x0400
+ 	do {
+@@ -1968,12 +1970,11 @@ static bool add_page_bufs_to_extent(struct mpage_da_data *mpd,
+ static int mpage_submit_page(struct mpage_da_data *mpd, struct page *page)
+ {
+ 	int len;
+-	loff_t size = i_size_read(mpd->inode);
+ 	int err;
  
- static const struct mount_opts {
- 	int	token;
-@@ -1387,6 +1389,7 @@ static const struct mount_opts {
- 	{Opt_resuid, 0, MOPT_GTE0},
- 	{Opt_resgid, 0, MOPT_GTE0},
- 	{Opt_journal_dev, 0, MOPT_GTE0},
-+	{Opt_journal_path, 0, MOPT_STRING},
- 	{Opt_journal_ioprio, 0, MOPT_GTE0},
- 	{Opt_data_journal, EXT4_MOUNT_JOURNAL_DATA, MOPT_NO_EXT2 | MOPT_DATAJ},
- 	{Opt_data_ordered, EXT4_MOUNT_ORDERED_DATA, MOPT_NO_EXT2 | MOPT_DATAJ},
-@@ -1480,7 +1483,7 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
- 		return -1;
- 	}
+ 	BUG_ON(page->index != mpd->first_page);
+-	if (page->index == size >> PAGE_CACHE_SHIFT)
+-		len = size & ~PAGE_CACHE_MASK;
++	if (page->index == mpd->i_size >> PAGE_CACHE_SHIFT)
++		len = mpd->i_size & ~PAGE_CACHE_MASK;
+ 	else
+ 		len = PAGE_CACHE_SIZE;
+ 	clear_page_dirty_for_io(page);
+@@ -2006,8 +2007,6 @@ static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
+ 	struct inode *inode = mpd->inode;
+ 	struct buffer_head *head, *bh;
+ 	int bpp_bits = PAGE_CACHE_SHIFT - inode->i_blkbits;
+-	ext4_lblk_t blocks = (i_size_read(inode) + (1 << inode->i_blkbits) - 1)
+-							>> inode->i_blkbits;
+ 	pgoff_t start, end;
+ 	ext4_lblk_t lblk;
+ 	sector_t pblock;
+@@ -2052,8 +2051,7 @@ static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
+ 					bh->b_blocknr = pblock++;
+ 				}
+ 				clear_buffer_unwritten(bh);
+-			} while (++lblk < blocks &&
+-				 (bh = bh->b_this_page) != head);
++			} while (lblk++, (bh = bh->b_this_page) != head);
  
--	if (args->from && match_int(args, &arg))
-+	if (args->from && !(m->flags & MOPT_STRING) && match_int(args, &arg))
- 		return -1;
- 	if (args->from && (m->flags & MOPT_GTE0) && (arg < 0))
- 		return -1;
-@@ -1544,6 +1547,44 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
- 			return -1;
- 		}
- 		*journal_devnum = arg;
-+	} else if (token == Opt_journal_path) {
-+		char *journal_path;
-+		struct inode *journal_inode;
-+		struct path path;
-+		int error;
-+
-+		if (is_remount) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "Cannot specify journal on remount");
-+			return -1;
-+		}
-+		journal_path = match_strdup(&args[0]);
-+		if (!journal_path) {
-+			ext4_msg(sb, KERN_ERR, "error: could not dup "
-+				"journal device string");
-+			return -1;
-+		}
-+
-+		error = kern_path(journal_path, LOOKUP_FOLLOW, &path);
-+		if (error) {
-+			ext4_msg(sb, KERN_ERR, "error: could not find "
-+				"journal device path: error %d", error);
-+			kfree(journal_path);
-+			return -1;
-+		}
-+
-+		journal_inode = path.dentry->d_inode;
-+		if (!S_ISBLK(journal_inode->i_mode)) {
-+			ext4_msg(sb, KERN_ERR, "error: journal path %s "
-+				"is not a block device", journal_path);
-+			path_put(&path);
-+			kfree(journal_path);
-+			return -1;
-+		}
-+
-+		*journal_devnum = new_encode_dev(journal_inode->i_rdev);
-+		path_put(&path);
-+		kfree(journal_path);
- 	} else if (token == Opt_journal_ioprio) {
- 		if (arg > 7) {
- 			ext4_msg(sb, KERN_ERR, "Invalid journal IO priority"
-
+ 			/*
+ 			 * FIXME: This is going to break if dioread_nolock
+@@ -2200,7 +2198,11 @@ static int mpage_map_and_submit_extent(handle_t *handle,
+ 			return err;
+ 	} while (map->m_len);
+ 
+-	/* Update on-disk size after IO is submitted */
++	/*
++	 * Update on-disk size after IO is submitted. Here we cannot use
++	 * mpd->i_size as we must avoid increasing i_disksize when racing
++	 * truncate already set it to a small value.
++	 */
+ 	disksize = ((loff_t)mpd->first_page) << PAGE_CACHE_SHIFT;
+ 	if (disksize > i_size_read(inode))
+ 		disksize = i_size_read(inode);
+@@ -2453,6 +2455,7 @@ static int ext4_writepages(struct address_space *mapping,
+ 
+ 	mpd.inode = inode;
+ 	mpd.wbc = wbc;
++	mpd.i_size = i_size_read(inode);
+ 	ext4_io_submit_init(&mpd.io_submit, wbc);
+ retry:
+ 	if (wbc->sync_mode == WB_SYNC_ALL || wbc->tagged_writepages)
+-- 
+1.8.1.4
 
