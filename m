@@ -1,70 +1,56 @@
-From: Bill McGonigle <bill@bfccomputing.com>
-Subject: Re: [PATCH] ext3: allow specifying external journal by pathname mount
- option
-Date: Wed, 31 Jul 2013 13:28:24 -0400
-Message-ID: <51F94938.1040303@bfccomputing.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: ext4_da_release_space:1333: ext4_da_release_space: ino 12,
+ to_free 1 with only 0 reserved data  blocks
+Date: Wed, 31 Jul 2013 20:32:00 +0200
+Message-ID: <20130731183200.GA28018@quack.suse.cz>
+References: <20130716202533.GA16061@redhat.com>
+ <20130717125322.GA29294@quack.suse.cz>
+ <20130717145218.GA27731@redhat.com>
+ <20130717213850.GA5025@quack.suse.cz>
+ <20130731163901.GA10973@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from borlaug.bfccomputing.com ([173.9.115.12]:54788 "EHLO
-	borlaug.bfccomputing.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754855Ab3GaRjX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Jul 2013 13:39:23 -0400
-Received: from zpm.bfccomputing.com (unknown [10.5.1.146])
-	by borlaug.bfccomputing.com (Postfix) with ESMTPSA id 9831947A8EE
-	for <linux-ext4@vger.kernel.org>; Wed, 31 Jul 2013 13:28:25 -0400 (EDT)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>,
+	Linux Kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org
+To: Dave Jones <davej@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20130731163901.GA10973@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+On Wed 31-07-13 12:39:01, Dave Jones wrote:
+> On Wed, Jul 17, 2013 at 11:38:50PM +0200, Jan Kara wrote:
+>  > On Wed 17-07-13 10:52:18, Dave Jones wrote:
+>  > > On Wed, Jul 17, 2013 at 02:53:22PM +0200, Jan Kara wrote:
+>  > >  > On Tue 16-07-13 16:25:33, Dave Jones wrote:
+>  > >  > > I've seen this happen a few times this week..
+>  > >  >   Thanks for report! Was this when fuzzing or just normal desktop load?
+>  > >  > What is inode with inode number 12 on your filesystem sdb1? What IO happens
+>  > >  > to it? Apparently some delalloc accounting went wrong somewhere and it's
+>  > >  > searching for a needle in a haystack unless we have more details...
+>  > > 
+>  > > It was running this.. https://github.com/kernelslacker/io-tests/blob/master/setup.sh
+>  > > in a loop. After about 6 hours, that fell out.  It made it all the way through
+>  > > every test a few times, which is odd, as the test should be fairly deterministic.
+>  > > Ah, I wasn't capturing the fsx seed. I'll do that on the next run.
+>  >   So inode 12 was likely the file used by fsx. OK. Looking at the script
+>  > link, fsx is run as:
+>  >   /usr/local/bin/fsx -N 250000 -S0 foo &
+>  > so the seed is always 0. So it is a deterministic test and there must be
+>  > some race with writeback or something that is rarely triggered. Drat.
+>  > 
+>  > Umm, looking at the filesystems this tests, ext4 with 1 KB blocksize is
+>  > likely the config which hits this (the accounting is more complex there) so
+>  > it might be interesting to concentrace on this one.
+> 
+> I just retried these tests, and hit this again.
+> I can confirm it happens on the 1k block filesystem.
+  Great, thanks for confirmation. I've just managed to reproduce the
+problem yesterday so I'm debugging it...
 
-> Adding a mount option, "-o journal_path=/dev/$DEVICE" would
-> help, since then we can do i.e.
->
-> # mount -o journal_path=/dev/disk/by-label/$JOURNAL_LABEL /mnt
-
-I came here with a related problem, and I wonder if it would be a more 
-general solution to this one too.
-
-I've got a machine with root on ext4 on LUKS on md, and while I was 
-first planning to use flashcache or dm-cache underneath it (for SSD 
-acceleration) I saw benchmarks that convinced me that an external 
-journal on ext4 was the better option.
-
-It's getting it mounted at boot time that's the trick.
-
-I saw that tune2fs supports '-J device=UUID=foo-bar-baz', so I setup a 
-LUKS volume on the SSD, formatted it, passed it in, and it sets up the 
-journal fine when I'm booted from external media, but when I reboot 
-under the OS (3.10 in Fedora 19 in this case) it fails to mount because 
-the device number has changed.
-
-I see the proper UUID listed in 'tune2fs -l' - the "Journal UUID" is 
-right, but "Journal device" is no longer correct, so boot fails until I 
-remove the journal again.  I think with LUKS, I'm never guaranteed to 
-get a consistent device ID between boots, so the kernel command line 
-options don't help either.
-
-So, I was thinking, that if the ext code did:
-   1) try stored journal device ID
-   2) on fail, look up the UUID via libblkid
-   3) perhaps update the stored device ID
-
-it would solve my problem.  I wonder if it would be a more robust 
-solution to the problem posed here as well (having the filesystem 
-contain its own references is better IMHO).  My one handy system that 
-has an ext3 volume (still on Fedora 16, e2fsprogs-1.41) does not show a 
-Journal UUID flag via 'tune2fs -l', but I'm unaware of whether the flag 
-is unavailable/missing/unsupported there or if it could be added.
-
--Bill
-
+								Honza
 -- 
-Bill McGonigle, Owner
-BFC Computing, LLC
-http://bfccomputing.com/
-Telephone: +1.855.SW.LIBRE
-Email, IM, VOIP: bill@bfccomputing.com
-VCard: http://bfccomputing.com/vcard/bill.vcf
-Social networks: bill_mcgonigle/bill.mcgonigle
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
