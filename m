@@ -1,186 +1,161 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext3: allow specifying external journal by pathname
- mount option
-Date: Wed, 31 Jul 2013 16:05:45 +0200
-Message-ID: <20130731140545.GA22930@quack.suse.cz>
-References: <51F83D90.5080708@redhat.com>
+Subject: Re: xfstests failure generic/239
+Date: Wed, 31 Jul 2013 16:13:40 +0200
+Message-ID: <20130731141340.GB22930@quack.suse.cz>
+References: <51B2A15F.1060704@huawei.com>
+ <20130608223038.GA19229@thunk.org>
+ <51F732FA.9090307@huawei.com>
+ <20130730154801.GA22013@quack.suse.cz>
+ <51F8799D.7070202@huawei.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>, Leonardo Menezes Vaz <lvaz@redhat.com>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org, hch@lst.de, khoroshilov@ispras.ru
+To: Zhao Hongjiang <zhaohongjiang@huawei.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:38343 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:38632 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752816Ab3GaOFr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 31 Jul 2013 10:05:47 -0400
+	id S1756400Ab3GaONm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 31 Jul 2013 10:13:42 -0400
 Content-Disposition: inline
-In-Reply-To: <51F83D90.5080708@redhat.com>
+In-Reply-To: <51F8799D.7070202@huawei.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 30-07-13 17:26:24, Eric Sandeen wrote:
-> It's always been a hassle that if an external journal's
-> device number changes, the filesystem won't mount.
-> And since boot-time enumeration can change, device number
-> changes aren't unusual.
+On Wed 31-07-13 10:42:37, Zhao Hongjiang wrote:
+> On 2013/7/30 23:48, Jan Kara wrote:
+> > On Tue 30-07-13 11:28:58, Zhao Hongjiang wrote:
+> >> Hi, jack
+> >>
+> >> I test the latest kernel 3.11-rc2 and it seems the problem is fix by the
+> >> follow patch: commit id:97a851ed71cd9cc2542955e92a001c6ea3d21d35 (ext4:
+> >> use io_end for multiple bios).  But it's so difficult to backport to
+> >> kernel 3.4-stable, any suggestion for this?
+> >   Backporting that patch to stable kernels is no-go. It is far to intrusive
+> > for stable kernels. I was looking for a while how that patch could fix the
+> > problem you were observing. I think there is a subtle race possible when
+> > AIO DIO write completes before __blockdev_direct_IO() returns. In that case
+> > we set iocb->private to NULL in ext4_end_io_dio() but we also key off
+> > iocb->private in ext4_ext_direct_IO() as:
+> >                 if (iocb->private)
+> >                         ext4_inode_aio_set(inode, NULL);
+> > 
+> > So in the case above we forget to reset inode's AIO pointer. That can then
+> > cause strange effects with unwritten extent handling (although I admit I'm
+> > not sure whether it can also cause the failure you observe) and
+> > 97a851ed71cd9cc2542955e92a001c6ea3d21d35 actually fixes that bug. You can
+> > easily check whether you are hitting that bug or not by changing the above
+> > condition from testing iocb->private to testing some private variable...
+> > E.g. you could declare io_end and set it to NULL one level up in 
+> > ext4_ext_direct_IO() and then test io_end != NULL in that condition.
+> > 
+> Thanks for your reply first. 
+> I change the code like the follow:
 > 
-> The current mechanism to update the journal location is by
-> passing in a mount option w/ a new devnum, but that's a hassle;
-> it's a manual approach, fixing things after the fact.
+> @@ -2921,6 +2921,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+>         struct inode *inode = file->f_mapping->host;
+>         ssize_t ret;
+>         size_t count = iov_length(iov, nr_segs);
+> +       ext4_io_end_t *io_end = NULL;
 > 
-> Adding a mount option, "-o journal_path=/dev/$DEVICE" would
-> help, since then we can do i.e.
+>         loff_t final_size = offset + count;
+>         if (rw == WRITE && final_size <= inode->i_size) {
+> @@ -2947,8 +2948,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+>                 iocb->private = NULL;
+>                 EXT4_I(inode)->cur_aio_dio = NULL;
+>                 if (!is_sync_kiocb(iocb)) {
+> -                       ext4_io_end_t *io_end =
+> -                               ext4_init_io_end(inode, GFP_NOFS);
+> +                       io_end = ext4_init_io_end(inode, GFP_NOFS);
+>                         if (!io_end)
+>                                 return -ENOMEM;
+>                         io_end->flag |= EXT4_IO_END_DIRECT;
+> @@ -2970,8 +2970,10 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+>                                          ext4_end_io_dio,
+>                                          NULL,
+>                                          DIO_LOCKING);
+> -               if (iocb->private)
+> +               if (io_end != NULL) {
+> +                       printk("Zhao Hongjiang Ext4 test!\n");
+>                         EXT4_I(inode)->cur_aio_dio = NULL;
+> +               }
+>                 /*
+>                  * The io_end structure takes a reference to the inode,
+>                  * that structure needs to be destroyed and the
 > 
-> # mount -o journal_path=/dev/disk/by-label/$JOURNAL_LABEL /mnt
-> 
-> and it'll mount even if the devnum has changed, as shown here:
-> 
-> # losetup /dev/loop0 journalfile
-> # mke2fs -L mylabel-journal -O journal_dev /dev/loop0 
-> # mkfs.ext3 -L mylabel -J device=/dev/loop0 /dev/sdb1
-> 
-> Change the journal device number:
-> 
-> # losetup -d /dev/loop0
-> # losetup /dev/loop1 journalfile 
-> 
-> And today it will fail:
-> 
-> # mount /dev/sdb1 /mnt/test
-> mount: wrong fs type, bad option, bad superblock on /dev/sdb1,
->        missing codepage or helper program, or other error
->        In some cases useful info is found in syslog - try
->        dmesg | tail  or so
-> 
-> # dmesg | tail -n 1
-> [17343.240702] EXT3-fs (sdb1): error: couldn't read superblock of external journal
-> 
-> But with this new mount option, we can specify the new path:
-> 
-> # mount -o journal_path=/dev/loop1 /dev/sdb1 /mnt/test
-> #
-> 
-> (which does update the encoded device number, incidentally):
-> 
-> # umount /dev/sdb1
-> # dumpe2fs -h /dev/sdb1 | grep "Journal device"
-> dumpe2fs 1.41.12 (17-May-2010)
-> Journal device:	          0x0701
-> 
-> But best of all we can just always mount by journal-path, and
-> it'll always work:
-> 
-> # mount -o journal_path=/dev/disk/by-label/mylabel-journal /dev/sdb1 /mnt/test
-> #
-> 
-> So the journal_path option can be specified in fstab, and as long as
-> the disk is available somewhere, and findable by label (or by UUID),
-> we can mount.
-> 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> ---
-> 
-> The patch is a little hacky, doing all the work in option parsing,
-> just to get to a journal devnum like the old option expected, only
-> to later re-decode it when we really want to open it.
-> 
-> I could clean it up so that both journal-update mount options
-> find the bdev, rather than ending with an encoded device number,
-> which must then be decoded & re-opened, if that seems better.
-> 
-> But this was expedient enough to get the idea out on the list.
-> 
-> If we like it, I'll do ext4 as well.
-  Yeah, it looks like a good idea. You could just lookup the path via
-kern_path() and then take the device numbers from the inode so you won't
-have to do the decode-recode dance. That would look like the cleanest option
-to me.
+> And the print come out when i run the test everytime. So i think the test
+> hit the bug that you mentioned, Am i right or miss something?
+  It is not a bug that you hit the branch with printk(). It would be a bug
+if the debug check looked like:
+	if (io_end != NULL) {
+		if (iocb->private == NULL)
+			printk("Bug happened!\n");
+		EXT4_I(inode)->cur_aio_dio = NULL;
+	}
 
 								Honza
 
-> diff --git a/Documentation/filesystems/ext3.txt b/Documentation/filesystems/ext3.txt
-> index 293855e..7ed0d17 100644
-> --- a/Documentation/filesystems/ext3.txt
-> +++ b/Documentation/filesystems/ext3.txt
-> @@ -26,11 +26,12 @@ journal=inum		When a journal already exists, this option is ignored.
->  			Otherwise, it specifies the number of the inode which
->  			will represent the ext3 file system's journal file.
->  
-> +journal_path=path
->  journal_dev=devnum	When the external journal device's major/minor numbers
-> -			have changed, this option allows the user to specify
-> +			have changed, these options allow the user to specify
->  			the new journal location.  The journal device is
-> -			identified through its new major/minor numbers encoded
-> -			in devnum.
-> +			identified through either its new major/minor numbers
-> +			encoded in devnum, or via a path to the device.
->  
->  norecovery		Don't load the journal on mounting. Note that this forces
->  noload			mount of inconsistent filesystem, which can lead to
-> diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-> index c47f147..cb1dd6e 100644
-> --- a/fs/ext3/super.c
-> +++ b/fs/ext3/super.c
-> @@ -819,6 +819,7 @@ enum {
->  	Opt_user_xattr, Opt_nouser_xattr, Opt_acl, Opt_noacl,
->  	Opt_reservation, Opt_noreservation, Opt_noload, Opt_nobh, Opt_bh,
->  	Opt_commit, Opt_journal_update, Opt_journal_inum, Opt_journal_dev,
-> +	Opt_journal_path,
->  	Opt_abort, Opt_data_journal, Opt_data_ordered, Opt_data_writeback,
->  	Opt_data_err_abort, Opt_data_err_ignore,
->  	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
-> @@ -860,6 +861,7 @@ static const match_table_t tokens = {
->  	{Opt_journal_update, "journal=update"},
->  	{Opt_journal_inum, "journal=%u"},
->  	{Opt_journal_dev, "journal_dev=%u"},
-> +	{Opt_journal_path, "journal_path=%s"},
->  	{Opt_abort, "abort"},
->  	{Opt_data_journal, "data=journal"},
->  	{Opt_data_ordered, "data=ordered"},
-> @@ -975,6 +977,9 @@ static int parse_options (char *options, struct super_block *sb,
->  	int option;
->  	kuid_t uid;
->  	kgid_t gid;
-> +	struct block_device *journal_bdev;
-> +	char *journal_path;
-> +
->  #ifdef CONFIG_QUOTA
->  	int qfmt;
->  #endif
-> @@ -1129,6 +1134,31 @@ static int parse_options (char *options, struct super_block *sb,
->  				return 0;
->  			*journal_devnum = option;
->  			break;
-> +		case Opt_journal_path:
-> +			if (is_remount) {
-> +				ext3_msg(sb, KERN_ERR, "error: cannot specify "
-> +				       "journal on remount");
-> +				return 0;
-> +			}
-> +			journal_path = match_strdup(&args[0]);
-> +			if (!journal_path) {
-> +				ext3_msg(sb, KERN_ERR, "error: could not dup "
-> +					"journal device string");
-> +				return 0;
-> +			}
-> +			journal_bdev = lookup_bdev(journal_path);
-> +			if (IS_ERR(journal_bdev)) {
-> +				ext3_msg(sb, KERN_ERR, "error: could not look "
-> +					"up journal device: error %d",
-> +					(int)PTR_ERR(journal_bdev));
-> +				kfree(journal_path);
-> +				return 0;
-> +			}
-> +
-> +			*journal_devnum = new_encode_dev(journal_bdev->bd_dev);
-> +			bdput(journal_bdev);
-> +			kfree(journal_path);
-> +			break;
->  		case Opt_noload:
->  			set_opt (sbi->s_mount_opt, NOLOAD);
->  			break;
+> >> On 2013/6/9 6:30, Theodore Ts'o wrote:
+> >>> On Sat, Jun 08, 2013 at 11:13:35AM +0800, Zhao Hongjiang wrote:
+> >>>>
+> >>>> I run xfstests #239 against mainline 3.10.0-rc3, unfortunately it failure in my QEMU. I run the
+> >>>> case a hundred times, it certainly hit the failure several times. The failure msg is as follow:
+> >>>>
+> >>>> FSTYP         -- ext4
+> >>>> PLATFORM      -- Linux/x86_64  3.10.0-rc3-mainline
+> >>>>
+> >>>> generic/239 1s ... - output mismatch (see /home/zhj/xfstests/results/generic/239.out.bad)
+> >>>>     --- tests/generic/239.out   2013-06-07 22:04:09.000000000 -0400
+> >>>>     +++ /home/zff/xfstests/results/generic/239.out.bad  2013-06-07 22:04:09.000000000 -0400
+> >>>>     @@ -1,2 +1,515 @@
+> >>>>      QA output created by 239
+> >>>>     +hostname: Host name lookup failure
+> >>>
+> >>> OK, so this hostname failure is weird; I'm not sure what's causing
+> >>> this, but this I presume unrelated to the failure at hand.
+> >>>
+> >>>>      Silence is golden
+> >>>>     +0: 0x0
+> >>>>     +1: 0x0
+> >>>>     +2: 0x0
+> >>>>     +3: 0x0
+> >>>
+> >>> This indicates a problem.  Test generic/239 is running
+> >>> aio-dio-hole-filling-race.c, which submits an asynchronous, direct I/O
+> >>> 4k write with a buffer containing non-zero contents to a sparse file,
+> >>> and once the I/O has completed, it uses pread to read it back, using
+> >>> the same descriptor, so it is doing the read using direct I/O.  It
+> >>> then checks to see if the read returns zero or not.  
+> >>>
+> >>> The "XX: 0x0" lines indicates that buffer is zero, which implies that
+> >>> somehow aio_complete() is getting called before the uninitialized to
+> >>> initialized conversion is taking place.  I'm not seeing how this is
+> >>> happening, though, so I'm a bit puzzled.  If there are any unwritten
+> >>> extents, we don't call aio_complete() in ext4_end_io_dio(), but
+> >>> instead the conversion is queued via a call to ext4_add_compete_io(),
+> >>> and and aio_done() is only called on the iocb after the conversion is
+> >>> complete.
+> >>>
+> >>> Can anyone see something that I might be missing?
+> >>>
+> >>>     	       		      	      - Ted
+> >>>
+> >>> P.S.  Zhao, what was the hardware that you using to find this failure?
+> >>> I'm not seeing it, but then again if the failure is only happening
+> >>> once every few hundred runs that might explain it.  I'm perhaps
+> >>> wondering if we should add a mode to aio-dio-hole-filling-race.c which
+> >>> allows it to try the race a large number of times, instead of just
+> >>> once.
+> >>>
+> >>> P.P.S.  One thought.... perhaps it might be useful to have a debug
+> >>> mode where we use queue_delayed_work() to submit the conversion
+> >>> request to the workqueue.  It will of course make certain workloads
+> >>> run slow as molasses, but it might expose some races so we can see
+> >>> them more easily.
+> >>>
+> >>> .
+> 
+> 
 > 
 -- 
 Jan Kara <jack@suse.cz>
