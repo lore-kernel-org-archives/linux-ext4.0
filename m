@@ -1,59 +1,180 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: WARNING: CPU: 26 PID: 93793 at fs/ext4/inode.c:230
- ext4_evict_inode+0x4c9/0x500 [ext4]() still in 3.11-rc3
-Date: Thu, 1 Aug 2013 22:33:20 +0200
-Message-ID: <20130801203320.GB31857@quack.suse.cz>
-References: <1375388059.2097.10.camel@buesod1.americas.hpqcorp.net>
+From: Christian Nilsson <nikize@gmail.com>
+Subject: resize2fs ext4 shrink corruption?
+Date: Thu, 1 Aug 2013 22:46:39 +0200
+Message-ID: <CAHhAHvhth46yz==nnZ8WeVgYDPB2gTpmFdV2eAoL5-6xLPOnbw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
-	Guenter Roeck <linux@roeck-us.net>,
-	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
-To: Davidlohr Bueso <davidlohr@hp.com>
+Content-Type: text/plain; charset=UTF-8
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:47126 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752412Ab3HAUdW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 1 Aug 2013 16:33:22 -0400
-Content-Disposition: inline
-In-Reply-To: <1375388059.2097.10.camel@buesod1.americas.hpqcorp.net>
+Received: from mail-vb0-f50.google.com ([209.85.212.50]:65096 "EHLO
+	mail-vb0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751957Ab3HAUqk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Aug 2013 16:46:40 -0400
+Received: by mail-vb0-f50.google.com with SMTP id x14so2685000vbb.9
+        for <linux-ext4@vger.kernel.org>; Thu, 01 Aug 2013 13:46:39 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi,
+Hi,
+This is half a support request and half a possible issue. - sorry about that.
+Got some fs problems after resize.
+Shrink of ext4 fs from ~6.8TB to ~5.5TB
+now getting fs errors, is this expected or can someone see a reason
+for it going wrong? (anyone seen this before? Could not find similar
+issues reported, except for other features enabled.)
+And are there anything better to do to recover then a fsck?
+Test run of fsck -y is in progress and not yet complete.
 
-On Thu 01-08-13 13:14:19, Davidlohr Bueso wrote:
-> FYI I'm seeing loads of the following messages with Linus' latest
-> 3.11-rc3 (which includes 822dbba33458cd6ad)
-  Thanks for notice. I see you are running reaim to trigger this. What
-workload?
+Some commands and output below
+(underlaying md3 as of this posting not yet shrunk)
 
-								Honza
+# resize2fs -d 31 -p /dev/md3 5545605120K > md3shrink.log
+(log is 16GB uncompressed bz2 is 1.7G)
+estimated runtime maybe ~24h(?) (i started of by reading source code
+and canceling on block move because of no output or status messages at
+all, and on that not i sugest using xx% compleate instead of those XXX
+if possible since any other output will change the layout of them.)
 
-> ------------[ cut here ]------------
-> WARNING: CPU: 26 PID: 93793 at fs/ext4/inode.c:230 ext4_evict_inode+0x4c9/0x500 [ext4]()
-> Modules linked in: autofs4 cpufreq_ondemand freq_table sunrpc 8021q garp stp llc pcc_cpufreq ipt_REJECT nf_conntrack_ipv4 nf_defrag_ipv4 iptable_filter ip_tables ip6t_REJECT nf_conntrack_ipv6 nf_defrag_ipv6 xt_state nf_conntrack ip6table_filter ip6_tables ipv6 dm_mirror dm_region_hash dm_log dm_mod uinput iTCO_wdt iTCO_vendor_support coretemp kvm_intel kvm crc32c_intel ghash_clmulni_intel microcode pcspkr sg lpc_ich mfd_core hpilo hpwdt i7core_edac edac_core netxen_nic mperf ext4 jbd2 mbcache sd_mod crc_t10dif aesni_intel ablk_helper cryptd lrw gf128mul glue_helper aes_x86_64 hpsa radeon ttm drm_kms_helper drm i2c_algo_bit i2c_core [last unloaded: freq_table]
-> CPU: 26 PID: 93793 Comm: reaim Tainted: G        W    3.11.0-rc3+ #1
-> Hardware name: HP ProLiant DL980 G7, BIOS P66 06/24/2011
->  00000000000000e6 ffff8985db603d78 ffffffff8153ce4d 00000000000000e6
->  0000000000000000 ffff8985db603db8 ffffffff8104cf1c ffff8985db603dc8
->  ffff8b05c485b8b0 ffff8b05c485b9b8 ffff8b05c485b800 00000000ffffff9c
-> Call Trace:
->  [<ffffffff8153ce4d>] dump_stack+0x49/0x5c
->  [<ffffffff8104cf1c>] warn_slowpath_common+0x8c/0xc0
->  [<ffffffff8104cf6a>] warn_slowpath_null+0x1a/0x20
->  [<ffffffffa02a0179>] ext4_evict_inode+0x4c9/0x500 [ext4]
->  [<ffffffff811915e7>] evict+0xa7/0x1c0
->  [<ffffffff811917e3>] iput_final+0xe3/0x170
->  [<ffffffff811918ae>] iput+0x3e/0x50
->  [<ffffffff81187aa6>] do_unlinkat+0x1c6/0x280
->  [<ffffffff8106f3e4>] ? task_work_run+0x94/0xf0
->  [<ffffffff81003a44>] ? do_notify_resume+0x84/0x90
->  [<ffffffff81187b76>] SyS_unlink+0x16/0x20
->  [<ffffffff81549a02>] system_call_fastpath+0x16/0x1b
-> ---[ end trace 15e812809616488b ]---
-> 
-> 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+# dumpe2fs /dev/md3 > md3_dumpe2fs.full
+let me know if any of these log files are of interest. and I will make
+them available.
+
+# dumpe2fs -h /dev/md3
+Filesystem volume name:   data
+Last mounted on:          /data
+Filesystem UUID:          70131c5d-de06-4349-954e-6f0d9ef3538c
+Filesystem magic number:  0xEF53
+Filesystem revision #:    1 (dynamic)
+Filesystem features:      has_journal ext_attr resize_inode dir_index
+filetype extent sparse_super large_file uninit_bg
+Filesystem flags:         signed_directory_hash
+Default mount options:    (none)
+Filesystem state:         clean
+Errors behavior:          Continue
+Filesystem OS type:       Linux
+Inode count:              346603520
+Block count:              1386401280
+Reserved block count:     69303139
+Free blocks:              31526436
+Free inodes:              346589276
+First block:              0
+Block size:               4096
+Fragment size:            4096
+Reserved GDT blocks:      693
+Blocks per group:         32768
+Fragments per group:      32768
+Inodes per group:         8192
+Inode blocks per group:   512
+RAID stride:              16
+RAID stripe width:        112
+Filesystem created:       Tue Apr 22 23:51:00 2008
+Last mount time:          Sun Feb  3 15:52:25 2013
+Last write time:          Thu Aug  1 10:21:05 2013
+Mount count:              0
+Maximum mount count:      35
+Last checked:             Tue Jul 30 13:03:01 2013
+Check interval:           15552000 (6 months)
+Next check after:         Sun Jan 26 12:03:01 2014
+Lifetime writes:          1738 GB
+Reserved blocks uid:      0 (user root)
+Reserved blocks gid:      0 (group root)
+First inode:              11
+Inode size:               256
+Journal inode:            8
+Default directory hash:   tea
+Directory Hash Seed:      cd66ced7-b600-43c2-82ef-b0971239f822
+Journal backup:           inode blocks
+Journal features:         journal_incompat_revoke
+Journal size:             128M
+Journal length:           32768
+Journal sequence:         0x00dcfa88
+Journal start:            0
+
+
+# fsck.ext4 -C0 -n /dev/md3 > md3fsck_errs.log
+estimated runtime ~5h
+Here is part of the output the "Illegal block number" is not in the
+logfile. (actually from separate run)
+e2fsck 1.42.7 (21-Jan-2013)
+ext2fs_check_desc: Corrupt group descriptor: bad block for block bitmap
+e2fsck: Group descriptors look bad... trying backup blocks...
+Block bitmap for group 42309 is not in group.  (block 1386413648)
+Relocate? no
+
+Inode bitmap for group 42309 is not in group.  (block 1386413649)
+Relocate? no
+
+data contains a file system with errors, check forced.
+Pass 1: Checking inodes, blocks, and sizes
+Illegal block number passed to ext2fs_test_block_bitmap #1386413648
+for in-use block map
+Illegal block number passed to ext2fs_mark_block_bitmap #1386413648
+for in-use block map
+Illegal block number passed to ext2fs_test_block_bitmap #1386413649
+for in-use block map
+Illegal block number passed to ext2fs_mark_block_bitmap #1386413649
+for in-use block map
+Interior extent node level 1 of inode 357:
+Logical start 36672 does not match logical start 36863 at next level.  Fix? no
+
+Interior extent node level 1 of inode 357:
+Logical start 46464 does not match logical start 46591 at next level.  Fix? no
+
+Interior extent node level 1 of inode 357:
+Logical start 140096 does not match logical start 140159 at next level.  Fix? no
+
+Interior extent node level 1 of inode 363:
+Logical start 46656 does not match logical start 46783 at next level.  Fix? no
+
+[...snip...]
+
+Interior extent node level 0 of inode 267124739:
+Logical start 38784 does not match logical start 39039 at next level.  Fix? no
+
+Interior extent node level 1 of inode 315826185:
+Logical start 25728 does not match logical start 25855 at next level.  Fix? no
+
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+
+data: ********** WARNING: Filesystem still has errors **********
+
+data: 14244/346603520 files (31.6% non-contiguous), 1354874844/1386401280 blocks
+
+
+Before i do a fsck on the device, let's see if any of the files are available...
+# mount /dev/md3 /mnt/floppy -r
+mount: wrong fs type ...
+
+Nope, Ok lets create a cow image we can use to test the result of fsck
+# qemu-img create -f qcow2 -o backing_file=/dev/md3 md3.qcow2
+Formatting 'md3.qcow2', fmt=qcow2 size=7571599523840
+backing_file='/dev/md3' encryption=off cluster_size=65536
+# qemu-nbd -c /dev/nbd1 md3.qcow2
+
+# e2fsck -C0 /dev/nbd1
+e2fsck 1.42.7 (21-Jan-2013)
+ext2fs_check_desc: Corrupt group descriptor: bad block for block bitmap
+e2fsck: Group descriptors look bad... trying backup blocks...
+Block bitmap for group 42309 is not in group.  (block 1386413648)
+Relocate<y>? yes
+Inode bitmap for group 42309 is not in group.  (block 1386413649)
+Relocate<y>? yes
+One or more block group descriptor checksums are invalid.  Fix<y>? yes
+Group descriptor 42309 checksum is 0x561b, should be 0xf661.  FIXED.
+data contains a file system with errors, check forced.
+Pass 1: Checking inodes, blocks, and sizes
+Interior extent node level 1 of inode 357:
+Logical start 36672 does not match logical start 36863 at next level.
+Fix<y>? yes
+Interior extent node level 1 of inode 357:
+Logical start 46464 does not match logical start 46591 at next level.
+Fix<y>? yes
+
+... and waiting on 33%, qcow image at 5.8MB
+
+Any pointers at all would be greatly appreciated.
+
+/Christian
