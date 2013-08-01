@@ -1,194 +1,202 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: xfstests failure generic/239
-Date: Thu, 1 Aug 2013 23:03:24 +0200
-Message-ID: <20130801210324.GC31857@quack.suse.cz>
-References: <51B2A15F.1060704@huawei.com>
- <20130608223038.GA19229@thunk.org>
- <51F732FA.9090307@huawei.com>
- <20130730154801.GA22013@quack.suse.cz>
- <51F8799D.7070202@huawei.com>
- <20130731141340.GB22930@quack.suse.cz>
- <51F9C254.1000207@huawei.com>
- <20130801084941.GB19219@quack.suse.cz>
- <51FA2A46.5020904@huawei.com>
+Subject: Re: [PATCH 1/4] jbd: use module parameters instead of debugfs for
+ jbd_debug
+Date: Thu, 1 Aug 2013 23:24:05 +0200
+Message-ID: <20130801212405.GD31857@quack.suse.cz>
+References: <1375383668-8072-1-git-send-email-paul.gortmaker@windriver.com>
+ <1375383668-8072-2-git-send-email-paul.gortmaker@windriver.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org, hch@lst.de, khoroshilov@ispras.ru
-To: Zhao Hongjiang <zhaohongjiang@huawei.com>
+Cc: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Paul Gortmaker <paul.gortmaker@windriver.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:47785 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:48383 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757041Ab3HAVD1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 1 Aug 2013 17:03:27 -0400
+	id S1752774Ab3HAVYI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 1 Aug 2013 17:24:08 -0400
 Content-Disposition: inline
-In-Reply-To: <51FA2A46.5020904@huawei.com>
+In-Reply-To: <1375383668-8072-2-git-send-email-paul.gortmaker@windriver.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 01-08-13 17:28:38, Zhao Hongjiang wrote:
-> On 2013/8/1 16:49, Jan Kara wrote:
-> >   Hi,
-> > 
-> > On Thu 01-08-13 10:05:08, Zhao Hongjiang wrote:
-> >> It hit this bug, the "Bug happened!" is come out everytime while the test
-> >> is fail.  Any suggestion for fix this?
-> >   OK, so the test is still failing after using io_end instead of
-> > iocb->private? If yes, I'm not sure where the problem exactly is, sorry.
-> > 
-> I hit the bug just with the follow code that you give out:
+On Thu 01-08-13 15:01:05, Paul Gortmaker wrote:
+> This is a direct backport of commit b6e96d0067d81f6a300bedee
+> ("jbd2: use module parameters instead of debugfs for jbd_debug")
+> from jbd2 into jbd.  The value is in making ext4 and ext3 user
+> experiences consistent with each other.  Quoting the original:
 > 
-> 	if (io_end != NULL) {
->  		if (iocb->private == NULL)
->  			printk("Bug happened!\n");
->  		EXT4_I(inode)->cur_aio_dio = NULL;
->  	}
+>  --------------
+>  There are multiple reasons to move away from debugfs.  First of all,
+>  we are only using it for a single parameter, and it is much more
+>  complicated to set up (some 30 lines of code compared to 3), and one
+>  more thing that might fail while loading the jbd2 module.
 > 
-> With this the "Bug happened!" is come out everytime while the test is fail.
-> But if the test case is pass, the "Bug happened!" never come out!
-  Yes, so we know early completion of direct IO triggers the bug. The above
-condition fixes a bug in ext4_ext_direct_IO() but as you are still getting
-test failures, there must be some other bug still present. And I don't know
-where it is...
+>  Secondly, as a module paramter it can be specified as a boot option if
+>  jbd2 is built into the kernel, or as a parameter when the module is
+>  loaded, and it can also be manipulated dynamically under
+>  /sys/module/jbd2/parameters/jbd2_debug.  So it is more flexible.
+> 
+>  Ultimately we want to move away from using jbd_debug() towards
+>  tracepoints, but for now this is still a useful simplification of the
+>  code base.
+>  --------------
+> 
+> It is worth noting that we use /sys/module/jbd/parameters/jbd1_debug
+> (i.e. the "1" might appear odd) for the module parameter in order to
+> avoid namespace collisions with the existing jbd_debug used as a
+> function call.
+> 
+> In addition, we combine the content of jbd2 commit 75497d0607b56e16e4
+> ("jbd2: remove debug dependency on debug_fs and update Kconfig help text")
+> since they were only separate commits unintentionally in jbd2.
+  Thanks for the patch but is jbd_debug really worth it - especially with
+the somewhat ugly jbd1_debug? I don't thing anybody besides kernel
+developers really uses it and those can figure how to do what they need...
 
 								Honza
-
-> >> On 2013/7/31 22:13, Jan Kara wrote:
-> >>> On Wed 31-07-13 10:42:37, Zhao Hongjiang wrote:
-> >>>> On 2013/7/30 23:48, Jan Kara wrote:
-> >>>>> On Tue 30-07-13 11:28:58, Zhao Hongjiang wrote:
-> >>>>>> Hi, jack
-> >>>>>>
-> >>>>>> I test the latest kernel 3.11-rc2 and it seems the problem is fix by the
-> >>>>>> follow patch: commit id:97a851ed71cd9cc2542955e92a001c6ea3d21d35 (ext4:
-> >>>>>> use io_end for multiple bios).  But it's so difficult to backport to
-> >>>>>> kernel 3.4-stable, any suggestion for this?
-> >>>>>   Backporting that patch to stable kernels is no-go. It is far to intrusive
-> >>>>> for stable kernels. I was looking for a while how that patch could fix the
-> >>>>> problem you were observing. I think there is a subtle race possible when
-> >>>>> AIO DIO write completes before __blockdev_direct_IO() returns. In that case
-> >>>>> we set iocb->private to NULL in ext4_end_io_dio() but we also key off
-> >>>>> iocb->private in ext4_ext_direct_IO() as:
-> >>>>>                 if (iocb->private)
-> >>>>>                         ext4_inode_aio_set(inode, NULL);
-> >>>>>
-> >>>>> So in the case above we forget to reset inode's AIO pointer. That can then
-> >>>>> cause strange effects with unwritten extent handling (although I admit I'm
-> >>>>> not sure whether it can also cause the failure you observe) and
-> >>>>> 97a851ed71cd9cc2542955e92a001c6ea3d21d35 actually fixes that bug. You can
-> >>>>> easily check whether you are hitting that bug or not by changing the above
-> >>>>> condition from testing iocb->private to testing some private variable...
-> >>>>> E.g. you could declare io_end and set it to NULL one level up in 
-> >>>>> ext4_ext_direct_IO() and then test io_end != NULL in that condition.
-> >>>>>
-> >>>> Thanks for your reply first. 
-> >>>> I change the code like the follow:
-> >>>>
-> >>>> @@ -2921,6 +2921,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
-> >>>>         struct inode *inode = file->f_mapping->host;
-> >>>>         ssize_t ret;
-> >>>>         size_t count = iov_length(iov, nr_segs);
-> >>>> +       ext4_io_end_t *io_end = NULL;
-> >>>>
-> >>>>         loff_t final_size = offset + count;
-> >>>>         if (rw == WRITE && final_size <= inode->i_size) {
-> >>>> @@ -2947,8 +2948,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
-> >>>>                 iocb->private = NULL;
-> >>>>                 EXT4_I(inode)->cur_aio_dio = NULL;
-> >>>>                 if (!is_sync_kiocb(iocb)) {
-> >>>> -                       ext4_io_end_t *io_end =
-> >>>> -                               ext4_init_io_end(inode, GFP_NOFS);
-> >>>> +                       io_end = ext4_init_io_end(inode, GFP_NOFS);
-> >>>>                         if (!io_end)
-> >>>>                                 return -ENOMEM;
-> >>>>                         io_end->flag |= EXT4_IO_END_DIRECT;
-> >>>> @@ -2970,8 +2970,10 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
-> >>>>                                          ext4_end_io_dio,
-> >>>>                                          NULL,
-> >>>>                                          DIO_LOCKING);
-> >>>> -               if (iocb->private)
-> >>>> +               if (io_end != NULL) {
-> >>>> +                       printk("Zhao Hongjiang Ext4 test!\n");
-> >>>>                         EXT4_I(inode)->cur_aio_dio = NULL;
-> >>>> +               }
-> >>>>                 /*
-> >>>>                  * The io_end structure takes a reference to the inode,
-> >>>>                  * that structure needs to be destroyed and the
-> >>>>
-> >>>> And the print come out when i run the test everytime. So i think the test
-> >>>> hit the bug that you mentioned, Am i right or miss something?
-> >>>   It is not a bug that you hit the branch with printk(). It would be a bug
-> >>> if the debug check looked like:
-> >>> 	if (io_end != NULL) {
-> >>> 		if (iocb->private == NULL)
-> >>> 			printk("Bug happened!\n");
-> >>> 		EXT4_I(inode)->cur_aio_dio = NULL;
-> >>> 	}
-> >>>
-> >>> 								Honza
-> >>>
-> >>>>>> On 2013/6/9 6:30, Theodore Ts'o wrote:
-> >>>>>>> On Sat, Jun 08, 2013 at 11:13:35AM +0800, Zhao Hongjiang wrote:
-> >>>>>>>>
-> >>>>>>>> I run xfstests #239 against mainline 3.10.0-rc3, unfortunately it failure in my QEMU. I run the
-> >>>>>>>> case a hundred times, it certainly hit the failure several times. The failure msg is as follow:
-> >>>>>>>>
-> >>>>>>>> FSTYP         -- ext4
-> >>>>>>>> PLATFORM      -- Linux/x86_64  3.10.0-rc3-mainline
-> >>>>>>>>
-> >>>>>>>> generic/239 1s ... - output mismatch (see /home/zhj/xfstests/results/generic/239.out.bad)
-> >>>>>>>>     --- tests/generic/239.out   2013-06-07 22:04:09.000000000 -0400
-> >>>>>>>>     +++ /home/zff/xfstests/results/generic/239.out.bad  2013-06-07 22:04:09.000000000 -0400
-> >>>>>>>>     @@ -1,2 +1,515 @@
-> >>>>>>>>      QA output created by 239
-> >>>>>>>>     +hostname: Host name lookup failure
-> >>>>>>>
-> >>>>>>> OK, so this hostname failure is weird; I'm not sure what's causing
-> >>>>>>> this, but this I presume unrelated to the failure at hand.
-> >>>>>>>
-> >>>>>>>>      Silence is golden
-> >>>>>>>>     +0: 0x0
-> >>>>>>>>     +1: 0x0
-> >>>>>>>>     +2: 0x0
-> >>>>>>>>     +3: 0x0
-> >>>>>>>
-> >>>>>>> This indicates a problem.  Test generic/239 is running
-> >>>>>>> aio-dio-hole-filling-race.c, which submits an asynchronous, direct I/O
-> >>>>>>> 4k write with a buffer containing non-zero contents to a sparse file,
-> >>>>>>> and once the I/O has completed, it uses pread to read it back, using
-> >>>>>>> the same descriptor, so it is doing the read using direct I/O.  It
-> >>>>>>> then checks to see if the read returns zero or not.  
-> >>>>>>>
-> >>>>>>> The "XX: 0x0" lines indicates that buffer is zero, which implies that
-> >>>>>>> somehow aio_complete() is getting called before the uninitialized to
-> >>>>>>> initialized conversion is taking place.  I'm not seeing how this is
-> >>>>>>> happening, though, so I'm a bit puzzled.  If there are any unwritten
-> >>>>>>> extents, we don't call aio_complete() in ext4_end_io_dio(), but
-> >>>>>>> instead the conversion is queued via a call to ext4_add_compete_io(),
-> >>>>>>> and and aio_done() is only called on the iocb after the conversion is
-> >>>>>>> complete.
-> >>>>>>>
-> >>>>>>> Can anyone see something that I might be missing?
-> >>>>>>>
-> >>>>>>>     	       		      	      - Ted
-> >>>>>>>
-> >>>>>>> P.S.  Zhao, what was the hardware that you using to find this failure?
-> >>>>>>> I'm not seeing it, but then again if the failure is only happening
-> >>>>>>> once every few hundred runs that might explain it.  I'm perhaps
-> >>>>>>> wondering if we should add a mode to aio-dio-hole-filling-race.c which
-> >>>>>>> allows it to try the race a large number of times, instead of just
-> >>>>>>> once.
-> >>>>>>>
-> >>>>>>> P.P.S.  One thought.... perhaps it might be useful to have a debug
-> >>>>>>> mode where we use queue_delayed_work() to submit the conversion
-> >>>>>>> request to the workqueue.  It will of course make certain workloads
-> >>>>>>> run slow as molasses, but it might expose some races so we can see
-> >>>>>>> them more easily.
-> >>>>>>>
-> >>>>>>> .
-> >>
-> >>
 > 
+> Signed-off-by: Paul Gortmaker <paul.gortmaker@windriver.com>
+> ---
+>  fs/jbd/Kconfig      |  6 +++---
+>  fs/jbd/journal.c    | 49 ++++++++-----------------------------------------
+>  include/linux/jbd.h |  3 +--
+>  3 files changed, 12 insertions(+), 46 deletions(-)
+> 
+> diff --git a/fs/jbd/Kconfig b/fs/jbd/Kconfig
+> index 4e28bee..54cbb55 100644
+> --- a/fs/jbd/Kconfig
+> +++ b/fs/jbd/Kconfig
+> @@ -15,7 +15,7 @@ config JBD
+>  
+>  config JBD_DEBUG
+>  	bool "JBD (ext3) debugging support"
+> -	depends on JBD && DEBUG_FS
+> +	depends on JBD
+>  	help
+>  	  If you are using the ext3 journaled file system (or potentially any
+>  	  other file system/device using JBD), this option allows you to
+> @@ -24,7 +24,7 @@ config JBD_DEBUG
+>  	  debugging output will be turned off.
+>  
+>  	  If you select Y here, then you will be able to turn on debugging
+> -	  with "echo N > /sys/kernel/debug/jbd/jbd-debug", where N is a
+> +	  with "echo N > /sys/module/jbd/parameters/jbd1_debug", where N is a
+>  	  number between 1 and 5, the higher the number, the more debugging
+>  	  output is generated.  To turn debugging off again, do
+> -	  "echo 0 > /sys/kernel/debug/jbd/jbd-debug".
+> +	  "echo 0 > /sys/module/jbd/parameters/jbd1_debug".
+> diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+> index 6510d63..166263d 100644
+> --- a/fs/jbd/journal.c
+> +++ b/fs/jbd/journal.c
+> @@ -35,7 +35,6 @@
+>  #include <linux/kthread.h>
+>  #include <linux/poison.h>
+>  #include <linux/proc_fs.h>
+> -#include <linux/debugfs.h>
+>  #include <linux/ratelimit.h>
+>  
+>  #define CREATE_TRACE_POINTS
+> @@ -44,6 +43,14 @@
+>  #include <asm/uaccess.h>
+>  #include <asm/page.h>
+>  
+> +#ifdef CONFIG_JBD_DEBUG
+> +ushort jbd_journal_enable_debug __read_mostly;
+> +EXPORT_SYMBOL(jbd_journal_enable_debug);
+> +
+> +module_param_named(jbd1_debug, jbd_journal_enable_debug, ushort, 0644);
+> +MODULE_PARM_DESC(jbd1_debug, "Debugging level for jbd");
+> +#endif
+> +
+>  EXPORT_SYMBOL(journal_start);
+>  EXPORT_SYMBOL(journal_restart);
+>  EXPORT_SYMBOL(journal_extend);
+> @@ -2017,44 +2024,6 @@ void journal_put_journal_head(struct journal_head *jh)
+>  		jbd_unlock_bh_journal_head(bh);
+>  }
+>  
+> -/*
+> - * debugfs tunables
+> - */
+> -#ifdef CONFIG_JBD_DEBUG
+> -
+> -u8 journal_enable_debug __read_mostly;
+> -EXPORT_SYMBOL(journal_enable_debug);
+> -
+> -static struct dentry *jbd_debugfs_dir;
+> -static struct dentry *jbd_debug;
+> -
+> -static void __init jbd_create_debugfs_entry(void)
+> -{
+> -	jbd_debugfs_dir = debugfs_create_dir("jbd", NULL);
+> -	if (jbd_debugfs_dir)
+> -		jbd_debug = debugfs_create_u8("jbd-debug", S_IRUGO | S_IWUSR,
+> -					       jbd_debugfs_dir,
+> -					       &journal_enable_debug);
+> -}
+> -
+> -static void __exit jbd_remove_debugfs_entry(void)
+> -{
+> -	debugfs_remove(jbd_debug);
+> -	debugfs_remove(jbd_debugfs_dir);
+> -}
+> -
+> -#else
+> -
+> -static inline void jbd_create_debugfs_entry(void)
+> -{
+> -}
+> -
+> -static inline void jbd_remove_debugfs_entry(void)
+> -{
+> -}
+> -
+> -#endif
+> -
+>  struct kmem_cache *jbd_handle_cache;
+>  
+>  static int __init journal_init_handle_cache(void)
+> @@ -2109,7 +2078,6 @@ static int __init journal_init(void)
+>  	ret = journal_init_caches();
+>  	if (ret != 0)
+>  		journal_destroy_caches();
+> -	jbd_create_debugfs_entry();
+>  	return ret;
+>  }
+>  
+> @@ -2120,7 +2088,6 @@ static void __exit journal_exit(void)
+>  	if (n)
+>  		printk(KERN_EMERG "JBD: leaked %d journal_heads!\n", n);
+>  #endif
+> -	jbd_remove_debugfs_entry();
+>  	journal_destroy_caches();
+>  }
+>  
+> diff --git a/include/linux/jbd.h b/include/linux/jbd.h
+> index 8685d1b..e45b430 100644
+> --- a/include/linux/jbd.h
+> +++ b/include/linux/jbd.h
+> @@ -20,7 +20,6 @@
+>  #ifndef __KERNEL__
+>  #include "jfs_compat.h"
+>  #define JFS_DEBUG
+> -#define jfs_debug jbd_debug
+>  #else
+>  
+>  #include <linux/types.h>
+> @@ -55,7 +54,7 @@
+>   * CONFIG_JBD_DEBUG is on.
+>   */
+>  #define JBD_EXPENSIVE_CHECKING
+> -extern u8 journal_enable_debug;
+> +extern ushort journal_enable_debug;
+>  
+>  #define jbd_debug(n, f, a...)						\
+>  	do {								\
+> -- 
+> 1.8.1.2
 > 
 -- 
 Jan Kara <jack@suse.cz>
