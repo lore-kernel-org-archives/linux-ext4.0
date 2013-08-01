@@ -1,56 +1,329 @@
-From: "Theodore Ts'o" <tytso@MIT.EDU>
-Subject: [GIT PULL] more ext4 bug fixes
-Date: Thu, 01 Aug 2013 01:35:48 -0400
-Message-ID: <nsxa9l29dmz.fsf@lambda.thunk.org>
+From: Namjae Jeon <linkinjeon@gmail.com>
+Subject: Re: [PATCH 2/3] xfs: Implement FALLOC_FL_COLLAPSE_RANGE
+Date: Thu, 1 Aug 2013 15:20:18 +0900
+Message-ID: <CAKYAXd9pfvZy8PTukyO5AOM3boitdWVXAu8TQTPrh-Zbt7RLGQ@mail.gmail.com>
+References: <1375281734-15874-1-git-send-email-linkinjeon@gmail.com>
+	<20130731211115.GU3111@sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:37682 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751475Ab3HAFfv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 1 Aug 2013 01:35:51 -0400
-From: Theodore Ts'o <tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: elder@kernel.org, tytso@mit.edu, Namjae Jeon <namjae.jeon@samsung.com>,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com, hch@infradead.org,
+	adilger.kernel@dilger.ca, a.sangwan@samsung.com,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Ben Myers <bpm@sgi.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <20130731211115.GU3111@sgi.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
+2013/8/1, Ben Myers <bpm@sgi.com>:
+> Hey Namjae,
+>
+> On Wed, Jul 31, 2013 at 11:42:14PM +0900, Namjae Jeon wrote:
+>> From: Namjae Jeon <namjae.jeon@samsung.com>
+>>
+>> New fallocate flag FALLOC_FL_COLLAPSE_RANGE implementation for XFS.
+>>
+>> Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
+>> Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
+>
+Hi Ben.
+> Very cool feature!  ;)
+Thank you :)
+>
+> I have a couple initial suggestions/questions:
+>
+>> ---
+>>  fs/xfs/xfs_bmap.c     |   92
+>> +++++++++++++++++++++++++++++++++++++++++++++++++
+>>  fs/xfs/xfs_bmap.h     |    3 ++
+>>  fs/xfs/xfs_file.c     |   26 ++++++++++++--
+>>  fs/xfs/xfs_iops.c     |   35 +++++++++++++++++++
+>>  fs/xfs/xfs_vnodeops.c |   62 +++++++++++++++++++++++++++++++++
+>>  fs/xfs/xfs_vnodeops.h |    2 ++
+>>  6 files changed, 217 insertions(+), 3 deletions(-)
+>>
+>> diff --git a/fs/xfs/xfs_bmap.c b/fs/xfs/xfs_bmap.c
+>> index 05c698c..ae677b1 100644
+>> --- a/fs/xfs/xfs_bmap.c
+>> +++ b/fs/xfs/xfs_bmap.c
+>> @@ -6145,3 +6145,95 @@ next_block:
+>>
+>>  	return error;
+>>  }
+>> +
+>> +/*
+>> + * xfs_update_logical()
+>> + *	Updates starting logical block of extents by subtracting
+>> + *	shift from them. At max XFS_LINEAR_EXTS number extents
+>> + *	will be updated and *current_ext is the extent number which
+>> + *	is currently being updated.
+>> + */
+>> +int
+>> +xfs_update_logical(
+>> +	xfs_trans_t		*tp,
+>> +	struct xfs_inode	*ip,
+>> +	int			*done,
+>> +	xfs_fileoff_t		start_fsb,
+>> +	xfs_fileoff_t		shift,
+>> +	xfs_extnum_t		*current_ext)
+>
+> Could we find a better name for this function?  Maybe something like
+> xfs_shift_extent_startblocks or xfs_shift_extent_offsets?
+Sure, Dave suggessted  xfs_bmbt_shift_rec_offsets().
+>
+> Also, is there also a case for being able to shift extent offsets upward in
+> the
+> file's address space so that you can splice in a chunk of data?  For that I
+> think maybe you'd want to be able to shift on sub-block boundaries too, and
+> there would be some copying and zeroing involved on the boundary block.  Not
+> sure.
+Currently no such case where we need to shift extents upward.
+Also, no need to zero out anything as the offsets are fs block size aligned.
+However, for Ext4, previously we submitted this ioctl which moves
+extent blocks between files.
+https://lkml.org/lkml/2013/6/23/10
+This ioctl moves a range of data blocks from one file and appends them
+at the end of other file.
+This (appending at the end) seems a limitation, as we could easily
+insert metadata blocks anywhere in the extent tree of second file.
+This operation of inserting new extents in the middle will surely
+require the extents of the second file to be moved upward.
+We are planning to work on it.
 
-(Sorry for the repeated resends to the kernel.org mailing lists; I'm on
-the road, and my attempts to send this has been screwing up the e-mail
-send to Linus in various different ways, most of it caused by the fact
-that emacs message mode is helpfully trying to colorize the e-mail
-addresses in a way that makes them impossible to read when using ssh
-from a ChromeOS laptop...)
+>
+>> +{
+>> +	xfs_btree_cur_t		*cur;
+>> +	xfs_bmbt_rec_host_t	*gotp;
+>> +	xfs_mount_t		*mp;
+>> +	xfs_ifork_t		*ifp;
+>> +	xfs_extnum_t		nexts = 0;
+>> +	xfs_fileoff_t		startoff;
+>> +	int			error = 0;
+>> +	int			i;
+>> +
+>> +	ifp = XFS_IFORK_PTR(ip, XFS_DATA_FORK);
+>> +	mp = ip->i_mount;
+>> +
+>> +	if (!(ifp->if_flags & XFS_IFEXTENTS) &&
+>> +		(error = xfs_iread_extents(tp, ip, XFS_DATA_FORK)))
+>> +		return error;
+>> +
+>> +	if (!*current_ext) {
+>> +		gotp = xfs_iext_bno_to_ext(ifp, start_fsb, current_ext);
+>> +		/*
+>> +		 * gotp can be null in 2 cases: 1) if there are no extents
+>> +		 * or 2) start_fsb lies in a hole beyond which there are
+>> +		 * no extents. Either way, we are done.
+>> +		 */
+>> +		if (!gotp) {
+>> +			*done = 1;
+>> +			return 0;
+>> +		}
+>> +	}
+>> +
+>> +	if (ifp->if_flags & XFS_IFBROOT)
+>> +		cur = xfs_bmbt_init_cursor(mp, tp, ip, XFS_DATA_FORK);
+>> +	else
+>> +		cur = NULL;
+>> +
+>> +	while (nexts++ < XFS_LINEAR_EXTS &&
+>> +	       *current_ext <  XFS_IFORK_NEXTENTS(ip, XFS_DATA_FORK)) {
+>> +		gotp = xfs_iext_get_ext(ifp, (*current_ext)++);
+>> +		startoff = xfs_bmbt_get_startoff(gotp);
+>> +		if (cur) {
+>> +			if ((error = xfs_bmbt_lookup_eq(cur,
+>> +					startoff,
+>> +					xfs_bmbt_get_startblock(gotp),
+>> +					xfs_bmbt_get_blockcount(gotp),
+>> +					&i)))
+>> +				goto del_cursor;
+>> +			XFS_WANT_CORRUPTED_GOTO(i == 1, del_cursor);
+>> +		}
+>> +		startoff -= shift;
+>> +		xfs_bmbt_set_startoff(gotp, startoff);
+>> +		if (cur) {
+>> +			error = xfs_bmbt_update(cur, startoff,
+>> +						xfs_bmbt_get_startblock(gotp),
+>> +						xfs_bmbt_get_blockcount(gotp),
+>> +						xfs_bmbt_get_state(gotp));
+>> +			if (error)
+>> +				goto del_cursor;
+>> +		}
+>> +	}
+>> +
+>> +	/* Check if we are done */
+>> +	if (*current_ext ==  XFS_IFORK_NEXTENTS(ip, XFS_DATA_FORK))
+>> +		*done = 1;
+>> +
+>> +del_cursor:
+>> +	if (cur) {
+>> +		if (!error)
+>> +			cur->bc_private.b.allocated = 0;
+>> +		 xfs_btree_del_cursor(cur,
+>> +				error ? XFS_BTREE_ERROR : XFS_BTREE_NOERROR);
+>> +	}
+>> +
+>> +	xfs_trans_log_inode(tp, ip, XFS_ILOG_CORE | XFS_ILOG_DEXT);
+>> +
+>> +	return error;
+>> +}
+>> diff --git a/fs/xfs/xfs_bmap.h b/fs/xfs/xfs_bmap.h
+>> index 1cf1292..f923734 100644
+>> --- a/fs/xfs/xfs_bmap.h
+>> +++ b/fs/xfs/xfs_bmap.h
+>> @@ -204,6 +204,9 @@ int	xfs_bunmapi(struct xfs_trans *tp, struct xfs_inode
+>> *ip,
+>>  int	xfs_check_nostate_extents(struct xfs_ifork *ifp, xfs_extnum_t idx,
+>>  		xfs_extnum_t num);
+>>  uint	xfs_default_attroffset(struct xfs_inode *ip);
+>> +int	xfs_update_logical(xfs_trans_t *tp, struct xfs_inode *ip, int *done,
+>> +		xfs_fileoff_t start_fsb, xfs_fileoff_t shift,
+>> +		xfs_extnum_t *current_ext);
+>>
+>>  #ifdef __KERNEL__
+>>  /* bmap to userspace formatter - copy to user & advance pointer */
+>> diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+>> index de3dc98..7d871bc 100644
+>> --- a/fs/xfs/xfs_file.c
+>> +++ b/fs/xfs/xfs_file.c
+>> @@ -817,7 +817,12 @@ xfs_file_fallocate(
+>>  	int		cmd = XFS_IOC_RESVSP;
+>>  	int		attr_flags = XFS_ATTR_NOLOCK;
+>>
+>> -	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
+>> +	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE |
+>> +		     FALLOC_FL_COLLAPSE_RANGE))
+>> +		return -EOPNOTSUPP;
+>> +
+>> +	/* not just yet for rt inodes */
+>> +	if ((mode & FALLOC_FL_COLLAPSE_RANGE) && XFS_IS_REALTIME_INODE(ip))
+>>  		return -EOPNOTSUPP;
+>>
+>>  	bf.l_whence = 0;
+>> @@ -826,11 +831,11 @@ xfs_file_fallocate(
+>>
+>>  	xfs_ilock(ip, XFS_IOLOCK_EXCL);
+>>
+>> -	if (mode & FALLOC_FL_PUNCH_HOLE)
+>> +	if (mode & (FALLOC_FL_PUNCH_HOLE | FALLOC_FL_COLLAPSE_RANGE))
+>>  		cmd = XFS_IOC_UNRESVSP;
+>>
+>>  	/* check the new inode size is valid before allocating */
+>> -	if (!(mode & FALLOC_FL_KEEP_SIZE) &&
+>> +	if (!(mode & (FALLOC_FL_KEEP_SIZE | FALLOC_FL_COLLAPSE_RANGE)) &&
+>>  	    offset + len > i_size_read(inode)) {
+>>  		new_size = offset + len;
+>>  		error = inode_newsize_ok(inode, new_size);
+>> @@ -845,6 +850,21 @@ xfs_file_fallocate(
+>>  	if (error)
+>>  		goto out_unlock;
+>>
+>> +	if (mode & FALLOC_FL_COLLAPSE_RANGE) {
+>> +		error = -xfs_collapse_file_space(ip, offset + len, len);
+>> +		if (error || offset >= i_size_read(inode))
+>> +			goto out_unlock;
+>> +
+>> +		/* Shrink size in case of FALLOC_FL_COLLAPSE_RANGE */
+>> +		if ((offset + len) > i_size_read(inode))
+>> +			new_size = offset;
+>> +		else
+>> +			new_size = i_size_read(inode) - len;
+>> +		error = -xfs_update_file_size(ip, new_size);
+>> +
+>> +		goto out_unlock;
+>> +	}
+>> +
+>
+> Since you're not implementing an XFS_IOC_COLLAPSE_RANGE flag for the
+> xfs_change_file_space interface, it might be cleaner not to use change_space
+> at
+> all... e.g. call xfs_free_file_space directly from xfs_collapse_file_space
+> or
+> in the above conditional (making the conditional exclusive with the
+> change_space call).
+>
+> Alternatively, you could implement this fully through
+> xfs_change_file_space.
+>
+> Either way I think it would be best for it to be all or nothing with respect
+> to
+> the xfs_change_file_space interface, and my preference is that you
+> implement
+> this through xfs_collapse_file_space interface just as the rest of these
+> operations are implemented in xfs.
+OK, we will try to call xfs_change_file_space interface from within
+collapse space.
+All or nothing approach makes sense, but its just for avoiding code
+duplicacy we decided to uses XFS_IOC_UNRESVSP.
 
-The following changes since commit 3b2f64d00c46e1e4e9bd0bb9bb12619adac27a4b:
+>
+>>  	/* Change file size if needed */
+>>  	if (new_size) {
+>>  		struct iattr iattr;
+>> diff --git a/fs/xfs/xfs_iops.c b/fs/xfs/xfs_iops.c
+>> index 96dda62..16b20f1 100644
+>> --- a/fs/xfs/xfs_iops.c
+>> +++ b/fs/xfs/xfs_iops.c
+>> @@ -1236,3 +1236,38 @@ xfs_setup_inode(
+>>
+>>  	unlock_new_inode(inode);
+>>  }
+>> +
+>> +/*
+>> + * xfs_update_file_size()
+>> + *	Just a simple disk size and time update
+>> + */
+>> +int
+>> +xfs_update_file_size(
+>> +	struct xfs_inode        *ip,
+>> +	loff_t			newsize)
+>> +{
+>> +	xfs_mount_t		*mp = ip->i_mount;
+>> +	struct inode		*inode = VFS_I(ip);
+>> +	struct xfs_trans	*tp;
+>> +	int			error;
+>> +
+>> +	tp = xfs_trans_alloc(mp, XFS_TRANS_SETATTR_NOT_SIZE);
+>> +
+>> +	error = xfs_trans_reserve(tp, 0, XFS_ICHANGE_LOG_RES(mp), 0, 0, 0);
+>> +	if (error)
+>> +		return error;
+>> +
+>> +	xfs_trans_ijoin(tp, ip, 0);
+>> +	truncate_setsize(inode, newsize);
+>> +	ip->i_d.di_size = newsize;
+>> +
+>> +	xfs_trans_ichgtime(tp, ip, XFS_ICHGTIME_CHG);
+>> +
+>> +	xfs_trans_log_inode(tp, ip, XFS_ILOG_CORE);
+>> +
+>> +	if (mp->m_flags & XFS_MOUNT_WSYNC)
+>> +		xfs_trans_set_sync(tp);
+>> +
+>> +	return xfs_trans_commit(tp, 0);
+>> +
+>> +}
+>
+> Did you consider xfs_setattr_size for this?
+Yeah we did, but it will also truncate any preallocated extent beyond EOF.
 
-  Linux 3.11-rc2 (2013-07-21 12:05:29 -0700)
+Thanks for review!
+>
+> Thanks,
+> 	Ben
+>
 
-are available in the git repository at:
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
-
-for you to fetch changes up to 44fb851dfb2f8e3462617e19a7b3b9025db9d919:
-
-  ext4: add WARN_ON to check the length of allocated blocks (2013-07-29 12:51:42 -0400)
-
-----------------------------------------------------------------
-ext4 bugfixes for v3.11-rc4
-
-----------------------------------------------------------------
-Eric Sandeen (1):
-      ext4: destroy ext4_es_cachep on module unload
-
-Theodore Ts'o (2):
-      ext4: make sure group number is bumped after a inode allocation race
-      ext4: fix retry handling in ext4_ext_truncate()
-
-Zheng Liu (1):
-      ext4: add WARN_ON to check the length of allocated blocks
-
- fs/ext4/extents.c |  2 +-
- fs/ext4/ialloc.c  | 10 +++++-----
- fs/ext4/inode.c   | 39 ++++++++++++++++++---------------------
- fs/ext4/super.c   |  1 +
- 4 files changed, 25 insertions(+), 27 deletions(-)
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
