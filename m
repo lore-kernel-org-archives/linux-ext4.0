@@ -1,24 +1,19 @@
-From: Dave Chinner <david@fromorbit.com>
+From: Namjae Jeon <linkinjeon@gmail.com>
 Subject: Re: [PATCH 1/3] fs: Introduce new flag FALLOC_FL_COLLAPSE_RANGE
-Date: Thu, 1 Aug 2013 14:32:20 +1000
-Message-ID: <20130801043220.GN7118@dastard>
+Date: Thu, 1 Aug 2013 14:07:39 +0900
+Message-ID: <CAKYAXd_VvGQL6KW3+FmfPogxzkXq7yF-4WPM9iebXcTn7tiN9A@mail.gmail.com>
 References: <1375281721-15840-1-git-send-email-linkinjeon@gmail.com>
-	<20130731220154.GA11378@thunk.org> <20130801002341.GI7118@dastard>
-	<20130801004645.GC11378@thunk.org> <20130801005447.GS13468@dastard>
-	<20130801010751.GD11378@thunk.org> <20130801025914.GL7118@dastard>
-	<20130801040605.GA20351@thunk.org>
+	<20130801002241.GH7118@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Theodore Ts'o <tytso@mit.edu>, Namjae Jeon <linkinjeon@gmail.com>,
-	adilger.kernel@dilger.ca, bpm@sgi.com, elder@kernel.org,
-	hch@infradead.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com, a.sangwan@samsung.com,
-	Namjae Jeon <namjae.jeon@samsung.com>
+Cc: elder@kernel.org, tytso@mit.edu, Namjae Jeon <namjae.jeon@samsung.com>,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com, hch@infradead.org,
+	bpm@sgi.com, adilger.kernel@dilger.ca, a.sangwan@samsung.com,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-In-Reply-To: <20130801040605.GA20351@thunk.org>
+In-Reply-To: <20130801002241.GH7118@dastard>
 List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
 	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
 List-Archive: <http://oss.sgi.com/pipermail/xfs>
@@ -30,80 +25,129 @@ Errors-To: xfs-bounces@oss.sgi.com
 Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Aug 01, 2013 at 12:06:05AM -0400, Theodore Ts'o wrote:
-> On Thu, Aug 01, 2013 at 12:59:14PM +1000, Dave Chinner wrote:
-> > 
-> > This funtionality is not introducing any new problems w.r.t. mmap().
-> > In terms of truncating a mmap'd file, that can already occur and
-> > the behaviour is well known.
-> 
-> That's not race I'm worried about.  Consider the following scenario.
-> We have a 10 meg file, and the first five megs are mapped read/write.
-> We do a collapse range of one meg starting at the one meg boundary.
-> Menwhile another process is constantly modifying the pages between the
-> 3 meg and 4 meg mark, via a mmap'ed region of memory.
-> 
-> You can have the code which does the collapse range call
-> filemap_fdatawrite_range() to flush out to disk all of the inode's
-> dirty pages in the page cache, but between the call to
-> filemap_fdatawrite_range() and truncate_page_cache_range(), more pages
-> could have gotten dirtied, and those changes will get lost.
+2013/8/1, Dave Chinner <david@fromorbit.com>:
+> On Wed, Jul 31, 2013 at 11:42:00PM +0900, Namjae Jeon wrote:
+>> From: Namjae Jeon <namjae.jeon@samsung.com>
+>>
+>> Fallocate now supports new FALLOC_FL_COLLAPSE_RANGE flag.
+>> The semantics of this flag are following:
+>> 1) It collapses the range lying between offset and length by removing any
+>> data
+>>    blocks which are present in this range and than updates all the
+>> logical
+>>    offsets of extents beyond "offset + len" to nullify the hole created
+>> by
+>>    removing blocks. In short, it does not leave a hole.
+>> 1) It should be used exclusively. No other fallocate flag in combination.
+>> 2) Offset and length supplied to fallocate should be fs block size
+>> aligned.
+>
+Hi Dave.
 
-That's one of the many race conditions that Jan's patches are
-intended to solve. Locking the range and then unmapping the pages
-will then cause the refault to block until the range is unlocked.
+> Given that the rest of fallocate() interfaces are byte based, this
+> is going to cause some confusion if it's not well documented. i.e.
+> this restriction needs to be documented in the header file that is
+> exposed to userspace, as well as in the fallocate(2) man page.
+Agree.
 
-While the range is locked, we can then writeback all the dirty
-pages, invalidate the page cache and modify the underlying extents
-without having to care about user page faults racing with the
-operation.
+>
+>> 3) It wokrs beyond "EOF", so the extents which are pre-allocated beyond
+>> "EOF"
+>>    are also updated.
+>
+> I don't think that's valid for this operation. If the range is
+> beyond EOF, you are not modifying anything visible to userspace, and
+> that makes it the same as a hole punch operation. So, I'd get rid of
+> thisnasty implementation complexity altogether.
+The basic idea behind collapse range is that it does'nt leaves a hole.
+And this is achieved by updating starting block of each of the extents
+which lies beyond hole.
+When we are updating an extent, we are actually moving hole to the
+right, towards the last allocated block in the file space.
+We continue doing this for each extent and finally when this operation
+completes, the hole is gone.
+If the file has preallocated extent(s) beyond EOF, something like this=>
+hole, extent1, extent2, extent_beyond_EOF1.
+And we start updating extents one by one, to nullify the effect of hole=>
+STEP1: After updating extent1: extent1, hole, extent2, extent_beyond_EOF1.
+STEP2: After updating extent2: extent1, extent2, hole, extent_beyond_EOF1.
+STEP3: After updating extent_beyond_EOF1: extent1, extent2,
+extent_beyond_EOF1, hole => And this removes hole from the file.
+If we stop updating just after extent2, this will not remove hole from
+the file space but instead, it will place the hole between EOF and 1st
+preallcoated extent beyond EOF as in STEP2.
+So, if user does an extending truncate, hole will became visible as it
+is still there.
 
-Let's face it, without that we current cannot serialise *any*
-multi-page page cache operation against mmap() - direct IO has
-exactly the same problems as you are describing, as does hole
-punching, and anything else that relies on the i_mutex or other
-IO-based locks for serialisation.
+>
+>> 4) It reduces the i_size of inode by the amount of collapse range which
+>> lies
+>>    within i_size. So, if offset >= i_size, i_size won't be changed at
+>> all.
+>
+> Similarly, I don't think that asking for a range that overlaps EOF
+> is valid, either. The moment you overlap or go beyond EOF, you are
+> effectively truncating the file as there is no data to collapse into
+> the range
+Yes, we could put a restriction on that, something like: if (len +
+offset > i_size) { return -EINVAL;}
 
-> The difference between punch_hole and collapse_range is that
-> previously, we only needed to call truncate_page_cache_range() on the
-> pages that were going to be disappearing from the page cache, so it
-> didn't matter if you had someone dirtying the pages racing with the
-> punch_hole operation.  But in the collapse_range case, we need to call
-> truncate_page_cache_range() on data that is not going to disappear,
-> but rather be _renumbered_.
+>
+> As it is, I don't see these EOF rules enforced by this patch, nor
+> are they documented at all in the patch.
+The EOF file rules are handled in the fs specific patches. As in XFS =>
++       if (mode & FALLOC_FL_COLLAPSE_RANGE) {
++               error = -xfs_collapse_file_space(ip, offset + len, len);
++               if (error || offset >= i_size_read(inode))
++                       goto out_unlock;
++
++               /* Shrink size in case of FALLOC_FL_COLLAPSE_RANGE */
++               if ((offset + len) > i_size_read(inode))
++                       new_size = offset;
++               else
++                       new_size = i_size_read(inode) - len;
++               error = -xfs_update_file_size(ip, new_size);
+But it seems ok to not allow (offset + len) > i_size.
 
-Sure - as it said up front "the range of the pages being operated
-on" need to be invalidating. And, if you look at the ext4 patch, is
-actaully does exactly that....
+>
+> Regardless of what semantics we decide on, this needs xfs_io
+> support and extensive corner case tests added to xfstests so that we
+> can confirm the implementation in every filesystem is correct and we
+> don't introduce regressions in future. it also needs documentation
+> in the fallocate(2) man page.
+Yes, we are currently working on it.
+With next version of collapse_range patches, we will also send xfs_io
+and xfstests patches and manpage also.
 
-> I'll also note that depending on the use case, doing the renumbering
-> of the pages by throwing all of the pages from the page cache and
-> forcing them to be read back in from disk might not all be friendly to
-> a performance sensitive application.
+>
+>> diff --git a/include/uapi/linux/falloc.h b/include/uapi/linux/falloc.h
+>> index 990c4cc..7567c8c 100644
+>> --- a/include/uapi/linux/falloc.h
+>> +++ b/include/uapi/linux/falloc.h
+>> @@ -1,9 +1,10 @@
+>>  #ifndef _UAPI_FALLOC_H_
+>>  #define _UAPI_FALLOC_H_
+>>
+>> -#define FALLOC_FL_KEEP_SIZE	0x01 /* default is extend size */
+>> -#define FALLOC_FL_PUNCH_HOLE	0x02 /* de-allocates range */
+>> +#define FALLOC_FL_KEEP_SIZE		0x01 /* default is extend size */
+>> +#define FALLOC_FL_PUNCH_HOLE		0x02 /* de-allocates range */
+>>  #define FALLOC_FL_NO_HIDE_STALE	0x04 /* reserved codepoint */
+>> +#define FALLOC_FL_COLLAPSE_RANGE	0x08 /* it does not leave a hole */
+>
+> I'd suggest that you need to explain what FALLOC_FL_COLLAPSE_RANGE
+> does in great detail right here.
+Okay!
 
-Application problem.
-
-Besides, this is for accelerating video stream editting (i.e. NLE
-workflows). Such applications tend to use direct IO for recording
-and playback, and they most certainly won't have concurrent access
-to the video stream either by mmap or direct/buferred IO while the
-non linear editor is punching the advertisements out of the recorded
-video stream......
-
-> In the case where the page size == the fs block size, instead of
-> throwing away all of the pages, we could also have VM code which
-> remaps the pages in the page cache (including potentially editing the
-> page tables for any mmap'ed pages).
-
-That way lies insanity. Not to mention that it's completely
-unnecessary for the use case this ioctl is actually accelerating.
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+Thanks for review!
+>
+> Cheers,
+>
+> Dave.
+> --
+> Dave Chinner
+> david@fromorbit.com
+>
 
 _______________________________________________
 xfs mailing list
