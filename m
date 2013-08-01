@@ -1,180 +1,195 @@
-From: Christian Nilsson <nikize@gmail.com>
-Subject: resize2fs ext4 shrink corruption?
-Date: Thu, 1 Aug 2013 22:46:39 +0200
-Message-ID: <CAHhAHvhth46yz==nnZ8WeVgYDPB2gTpmFdV2eAoL5-6xLPOnbw@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: xfstests failure generic/239
+Date: Thu, 1 Aug 2013 23:03:24 +0200
+Message-ID: <20130801210324.GC31857@quack.suse.cz>
+References: <51B2A15F.1060704@huawei.com>
+ <20130608223038.GA19229@thunk.org>
+ <51F732FA.9090307@huawei.com>
+ <20130730154801.GA22013@quack.suse.cz>
+ <51F8799D.7070202@huawei.com>
+ <20130731141340.GB22930@quack.suse.cz>
+ <51F9C254.1000207@huawei.com>
+ <20130801084941.GB19219@quack.suse.cz>
+ <51FA2A46.5020904@huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org, hch@lst.de, khoroshilov@ispras.ru
+To: Zhao Hongjiang <zhaohongjiang@huawei.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vb0-f50.google.com ([209.85.212.50]:65096 "EHLO
-	mail-vb0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751957Ab3HAUqk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Aug 2013 16:46:40 -0400
-Received: by mail-vb0-f50.google.com with SMTP id x14so2685000vbb.9
-        for <linux-ext4@vger.kernel.org>; Thu, 01 Aug 2013 13:46:39 -0700 (PDT)
+Received: from cantor2.suse.de ([195.135.220.15]:47785 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757041Ab3HAVD1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 1 Aug 2013 17:03:27 -0400
+Content-Disposition: inline
+In-Reply-To: <51FA2A46.5020904@huawei.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
-This is half a support request and half a possible issue. - sorry about that.
-Got some fs problems after resize.
-Shrink of ext4 fs from ~6.8TB to ~5.5TB
-now getting fs errors, is this expected or can someone see a reason
-for it going wrong? (anyone seen this before? Could not find similar
-issues reported, except for other features enabled.)
-And are there anything better to do to recover then a fsck?
-Test run of fsck -y is in progress and not yet complete.
+On Thu 01-08-13 17:28:38, Zhao Hongjiang wrote:
+> On 2013/8/1 16:49, Jan Kara wrote:
+> >   Hi,
+> > 
+> > On Thu 01-08-13 10:05:08, Zhao Hongjiang wrote:
+> >> It hit this bug, the "Bug happened!" is come out everytime while the test
+> >> is fail.  Any suggestion for fix this?
+> >   OK, so the test is still failing after using io_end instead of
+> > iocb->private? If yes, I'm not sure where the problem exactly is, sorry.
+> > 
+> I hit the bug just with the follow code that you give out:
+> 
+> 	if (io_end != NULL) {
+>  		if (iocb->private == NULL)
+>  			printk("Bug happened!\n");
+>  		EXT4_I(inode)->cur_aio_dio = NULL;
+>  	}
+> 
+> With this the "Bug happened!" is come out everytime while the test is fail.
+> But if the test case is pass, the "Bug happened!" never come out!
+  Yes, so we know early completion of direct IO triggers the bug. The above
+condition fixes a bug in ext4_ext_direct_IO() but as you are still getting
+test failures, there must be some other bug still present. And I don't know
+where it is...
 
-Some commands and output below
-(underlaying md3 as of this posting not yet shrunk)
+								Honza
 
-# resize2fs -d 31 -p /dev/md3 5545605120K > md3shrink.log
-(log is 16GB uncompressed bz2 is 1.7G)
-estimated runtime maybe ~24h(?) (i started of by reading source code
-and canceling on block move because of no output or status messages at
-all, and on that not i sugest using xx% compleate instead of those XXX
-if possible since any other output will change the layout of them.)
-
-# dumpe2fs /dev/md3 > md3_dumpe2fs.full
-let me know if any of these log files are of interest. and I will make
-them available.
-
-# dumpe2fs -h /dev/md3
-Filesystem volume name:   data
-Last mounted on:          /data
-Filesystem UUID:          70131c5d-de06-4349-954e-6f0d9ef3538c
-Filesystem magic number:  0xEF53
-Filesystem revision #:    1 (dynamic)
-Filesystem features:      has_journal ext_attr resize_inode dir_index
-filetype extent sparse_super large_file uninit_bg
-Filesystem flags:         signed_directory_hash
-Default mount options:    (none)
-Filesystem state:         clean
-Errors behavior:          Continue
-Filesystem OS type:       Linux
-Inode count:              346603520
-Block count:              1386401280
-Reserved block count:     69303139
-Free blocks:              31526436
-Free inodes:              346589276
-First block:              0
-Block size:               4096
-Fragment size:            4096
-Reserved GDT blocks:      693
-Blocks per group:         32768
-Fragments per group:      32768
-Inodes per group:         8192
-Inode blocks per group:   512
-RAID stride:              16
-RAID stripe width:        112
-Filesystem created:       Tue Apr 22 23:51:00 2008
-Last mount time:          Sun Feb  3 15:52:25 2013
-Last write time:          Thu Aug  1 10:21:05 2013
-Mount count:              0
-Maximum mount count:      35
-Last checked:             Tue Jul 30 13:03:01 2013
-Check interval:           15552000 (6 months)
-Next check after:         Sun Jan 26 12:03:01 2014
-Lifetime writes:          1738 GB
-Reserved blocks uid:      0 (user root)
-Reserved blocks gid:      0 (group root)
-First inode:              11
-Inode size:               256
-Journal inode:            8
-Default directory hash:   tea
-Directory Hash Seed:      cd66ced7-b600-43c2-82ef-b0971239f822
-Journal backup:           inode blocks
-Journal features:         journal_incompat_revoke
-Journal size:             128M
-Journal length:           32768
-Journal sequence:         0x00dcfa88
-Journal start:            0
-
-
-# fsck.ext4 -C0 -n /dev/md3 > md3fsck_errs.log
-estimated runtime ~5h
-Here is part of the output the "Illegal block number" is not in the
-logfile. (actually from separate run)
-e2fsck 1.42.7 (21-Jan-2013)
-ext2fs_check_desc: Corrupt group descriptor: bad block for block bitmap
-e2fsck: Group descriptors look bad... trying backup blocks...
-Block bitmap for group 42309 is not in group.  (block 1386413648)
-Relocate? no
-
-Inode bitmap for group 42309 is not in group.  (block 1386413649)
-Relocate? no
-
-data contains a file system with errors, check forced.
-Pass 1: Checking inodes, blocks, and sizes
-Illegal block number passed to ext2fs_test_block_bitmap #1386413648
-for in-use block map
-Illegal block number passed to ext2fs_mark_block_bitmap #1386413648
-for in-use block map
-Illegal block number passed to ext2fs_test_block_bitmap #1386413649
-for in-use block map
-Illegal block number passed to ext2fs_mark_block_bitmap #1386413649
-for in-use block map
-Interior extent node level 1 of inode 357:
-Logical start 36672 does not match logical start 36863 at next level.  Fix? no
-
-Interior extent node level 1 of inode 357:
-Logical start 46464 does not match logical start 46591 at next level.  Fix? no
-
-Interior extent node level 1 of inode 357:
-Logical start 140096 does not match logical start 140159 at next level.  Fix? no
-
-Interior extent node level 1 of inode 363:
-Logical start 46656 does not match logical start 46783 at next level.  Fix? no
-
-[...snip...]
-
-Interior extent node level 0 of inode 267124739:
-Logical start 38784 does not match logical start 39039 at next level.  Fix? no
-
-Interior extent node level 1 of inode 315826185:
-Logical start 25728 does not match logical start 25855 at next level.  Fix? no
-
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-
-data: ********** WARNING: Filesystem still has errors **********
-
-data: 14244/346603520 files (31.6% non-contiguous), 1354874844/1386401280 blocks
-
-
-Before i do a fsck on the device, let's see if any of the files are available...
-# mount /dev/md3 /mnt/floppy -r
-mount: wrong fs type ...
-
-Nope, Ok lets create a cow image we can use to test the result of fsck
-# qemu-img create -f qcow2 -o backing_file=/dev/md3 md3.qcow2
-Formatting 'md3.qcow2', fmt=qcow2 size=7571599523840
-backing_file='/dev/md3' encryption=off cluster_size=65536
-# qemu-nbd -c /dev/nbd1 md3.qcow2
-
-# e2fsck -C0 /dev/nbd1
-e2fsck 1.42.7 (21-Jan-2013)
-ext2fs_check_desc: Corrupt group descriptor: bad block for block bitmap
-e2fsck: Group descriptors look bad... trying backup blocks...
-Block bitmap for group 42309 is not in group.  (block 1386413648)
-Relocate<y>? yes
-Inode bitmap for group 42309 is not in group.  (block 1386413649)
-Relocate<y>? yes
-One or more block group descriptor checksums are invalid.  Fix<y>? yes
-Group descriptor 42309 checksum is 0x561b, should be 0xf661.  FIXED.
-data contains a file system with errors, check forced.
-Pass 1: Checking inodes, blocks, and sizes
-Interior extent node level 1 of inode 357:
-Logical start 36672 does not match logical start 36863 at next level.
-Fix<y>? yes
-Interior extent node level 1 of inode 357:
-Logical start 46464 does not match logical start 46591 at next level.
-Fix<y>? yes
-
-... and waiting on 33%, qcow image at 5.8MB
-
-Any pointers at all would be greatly appreciated.
-
-/Christian
+> >> On 2013/7/31 22:13, Jan Kara wrote:
+> >>> On Wed 31-07-13 10:42:37, Zhao Hongjiang wrote:
+> >>>> On 2013/7/30 23:48, Jan Kara wrote:
+> >>>>> On Tue 30-07-13 11:28:58, Zhao Hongjiang wrote:
+> >>>>>> Hi, jack
+> >>>>>>
+> >>>>>> I test the latest kernel 3.11-rc2 and it seems the problem is fix by the
+> >>>>>> follow patch: commit id:97a851ed71cd9cc2542955e92a001c6ea3d21d35 (ext4:
+> >>>>>> use io_end for multiple bios).  But it's so difficult to backport to
+> >>>>>> kernel 3.4-stable, any suggestion for this?
+> >>>>>   Backporting that patch to stable kernels is no-go. It is far to intrusive
+> >>>>> for stable kernels. I was looking for a while how that patch could fix the
+> >>>>> problem you were observing. I think there is a subtle race possible when
+> >>>>> AIO DIO write completes before __blockdev_direct_IO() returns. In that case
+> >>>>> we set iocb->private to NULL in ext4_end_io_dio() but we also key off
+> >>>>> iocb->private in ext4_ext_direct_IO() as:
+> >>>>>                 if (iocb->private)
+> >>>>>                         ext4_inode_aio_set(inode, NULL);
+> >>>>>
+> >>>>> So in the case above we forget to reset inode's AIO pointer. That can then
+> >>>>> cause strange effects with unwritten extent handling (although I admit I'm
+> >>>>> not sure whether it can also cause the failure you observe) and
+> >>>>> 97a851ed71cd9cc2542955e92a001c6ea3d21d35 actually fixes that bug. You can
+> >>>>> easily check whether you are hitting that bug or not by changing the above
+> >>>>> condition from testing iocb->private to testing some private variable...
+> >>>>> E.g. you could declare io_end and set it to NULL one level up in 
+> >>>>> ext4_ext_direct_IO() and then test io_end != NULL in that condition.
+> >>>>>
+> >>>> Thanks for your reply first. 
+> >>>> I change the code like the follow:
+> >>>>
+> >>>> @@ -2921,6 +2921,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+> >>>>         struct inode *inode = file->f_mapping->host;
+> >>>>         ssize_t ret;
+> >>>>         size_t count = iov_length(iov, nr_segs);
+> >>>> +       ext4_io_end_t *io_end = NULL;
+> >>>>
+> >>>>         loff_t final_size = offset + count;
+> >>>>         if (rw == WRITE && final_size <= inode->i_size) {
+> >>>> @@ -2947,8 +2948,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+> >>>>                 iocb->private = NULL;
+> >>>>                 EXT4_I(inode)->cur_aio_dio = NULL;
+> >>>>                 if (!is_sync_kiocb(iocb)) {
+> >>>> -                       ext4_io_end_t *io_end =
+> >>>> -                               ext4_init_io_end(inode, GFP_NOFS);
+> >>>> +                       io_end = ext4_init_io_end(inode, GFP_NOFS);
+> >>>>                         if (!io_end)
+> >>>>                                 return -ENOMEM;
+> >>>>                         io_end->flag |= EXT4_IO_END_DIRECT;
+> >>>> @@ -2970,8 +2970,10 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+> >>>>                                          ext4_end_io_dio,
+> >>>>                                          NULL,
+> >>>>                                          DIO_LOCKING);
+> >>>> -               if (iocb->private)
+> >>>> +               if (io_end != NULL) {
+> >>>> +                       printk("Zhao Hongjiang Ext4 test!\n");
+> >>>>                         EXT4_I(inode)->cur_aio_dio = NULL;
+> >>>> +               }
+> >>>>                 /*
+> >>>>                  * The io_end structure takes a reference to the inode,
+> >>>>                  * that structure needs to be destroyed and the
+> >>>>
+> >>>> And the print come out when i run the test everytime. So i think the test
+> >>>> hit the bug that you mentioned, Am i right or miss something?
+> >>>   It is not a bug that you hit the branch with printk(). It would be a bug
+> >>> if the debug check looked like:
+> >>> 	if (io_end != NULL) {
+> >>> 		if (iocb->private == NULL)
+> >>> 			printk("Bug happened!\n");
+> >>> 		EXT4_I(inode)->cur_aio_dio = NULL;
+> >>> 	}
+> >>>
+> >>> 								Honza
+> >>>
+> >>>>>> On 2013/6/9 6:30, Theodore Ts'o wrote:
+> >>>>>>> On Sat, Jun 08, 2013 at 11:13:35AM +0800, Zhao Hongjiang wrote:
+> >>>>>>>>
+> >>>>>>>> I run xfstests #239 against mainline 3.10.0-rc3, unfortunately it failure in my QEMU. I run the
+> >>>>>>>> case a hundred times, it certainly hit the failure several times. The failure msg is as follow:
+> >>>>>>>>
+> >>>>>>>> FSTYP         -- ext4
+> >>>>>>>> PLATFORM      -- Linux/x86_64  3.10.0-rc3-mainline
+> >>>>>>>>
+> >>>>>>>> generic/239 1s ... - output mismatch (see /home/zhj/xfstests/results/generic/239.out.bad)
+> >>>>>>>>     --- tests/generic/239.out   2013-06-07 22:04:09.000000000 -0400
+> >>>>>>>>     +++ /home/zff/xfstests/results/generic/239.out.bad  2013-06-07 22:04:09.000000000 -0400
+> >>>>>>>>     @@ -1,2 +1,515 @@
+> >>>>>>>>      QA output created by 239
+> >>>>>>>>     +hostname: Host name lookup failure
+> >>>>>>>
+> >>>>>>> OK, so this hostname failure is weird; I'm not sure what's causing
+> >>>>>>> this, but this I presume unrelated to the failure at hand.
+> >>>>>>>
+> >>>>>>>>      Silence is golden
+> >>>>>>>>     +0: 0x0
+> >>>>>>>>     +1: 0x0
+> >>>>>>>>     +2: 0x0
+> >>>>>>>>     +3: 0x0
+> >>>>>>>
+> >>>>>>> This indicates a problem.  Test generic/239 is running
+> >>>>>>> aio-dio-hole-filling-race.c, which submits an asynchronous, direct I/O
+> >>>>>>> 4k write with a buffer containing non-zero contents to a sparse file,
+> >>>>>>> and once the I/O has completed, it uses pread to read it back, using
+> >>>>>>> the same descriptor, so it is doing the read using direct I/O.  It
+> >>>>>>> then checks to see if the read returns zero or not.  
+> >>>>>>>
+> >>>>>>> The "XX: 0x0" lines indicates that buffer is zero, which implies that
+> >>>>>>> somehow aio_complete() is getting called before the uninitialized to
+> >>>>>>> initialized conversion is taking place.  I'm not seeing how this is
+> >>>>>>> happening, though, so I'm a bit puzzled.  If there are any unwritten
+> >>>>>>> extents, we don't call aio_complete() in ext4_end_io_dio(), but
+> >>>>>>> instead the conversion is queued via a call to ext4_add_compete_io(),
+> >>>>>>> and and aio_done() is only called on the iocb after the conversion is
+> >>>>>>> complete.
+> >>>>>>>
+> >>>>>>> Can anyone see something that I might be missing?
+> >>>>>>>
+> >>>>>>>     	       		      	      - Ted
+> >>>>>>>
+> >>>>>>> P.S.  Zhao, what was the hardware that you using to find this failure?
+> >>>>>>> I'm not seeing it, but then again if the failure is only happening
+> >>>>>>> once every few hundred runs that might explain it.  I'm perhaps
+> >>>>>>> wondering if we should add a mode to aio-dio-hole-filling-race.c which
+> >>>>>>> allows it to try the race a large number of times, instead of just
+> >>>>>>> once.
+> >>>>>>>
+> >>>>>>> P.P.S.  One thought.... perhaps it might be useful to have a debug
+> >>>>>>> mode where we use queue_delayed_work() to submit the conversion
+> >>>>>>> request to the workqueue.  It will of course make certain workloads
+> >>>>>>> run slow as molasses, but it might expose some races so we can see
+> >>>>>>> them more easily.
+> >>>>>>>
+> >>>>>>> .
+> >>
+> >>
+> 
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
