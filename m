@@ -1,9 +1,10 @@
 From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: [PATCH 1/3] fs: Introduce new flag FALLOC_FL_COLLAPSE_RANGE
-Date: Wed, 31 Jul 2013 20:46:45 -0400
-Message-ID: <20130801004645.GC11378@thunk.org>
+Date: Wed, 31 Jul 2013 21:07:52 -0400
+Message-ID: <20130801010751.GD11378@thunk.org>
 References: <1375281721-15840-1-git-send-email-linkinjeon@gmail.com>
 	<20130731220154.GA11378@thunk.org> <20130801002341.GI7118@dastard>
+	<20130801004645.GC11378@thunk.org> <20130801005447.GS13468@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -15,7 +16,7 @@ Cc: Namjae Jeon <linkinjeon@gmail.com>, elder@kernel.org,
 To: Dave Chinner <david@fromorbit.com>
 Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <20130801002341.GI7118@dastard>
+In-Reply-To: <20130801005447.GS13468@dastard>
 List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
 	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
 List-Archive: <http://oss.sgi.com/pipermail/xfs>
@@ -27,32 +28,31 @@ Errors-To: xfs-bounces@oss.sgi.com
 Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Aug 01, 2013 at 10:23:41AM +1000, Dave Chinner wrote:
-> On Wed, Jul 31, 2013 at 06:01:54PM -0400, Theodore Ts'o wrote:
-> > Have you considered what happens if you have a 10 megabyte file, of
-> > which the first 5 megs are mmap'ed into a userspace process.
-> > 
-> > Now suppose you call COLLAPASE_RANGE on a one megabyte range starting
-> > at offset 1024k from the beginning of the file.
-> > 
-> > Does the right thing happen to the mmap'ed region in memory?
+On Thu, Aug 01, 2013 at 10:54:47AM +1000, Dave Chinner wrote:
+> > It's not just the range that it's operating on, but also the region
+> > beyond the range that's been collapsed out.
 > 
-> Implementation detail. like a hole punch, it needs to invalidate the
-> range that it is operating over so mmap()d regions are refaulted
-> after the operation is done.
+> Yes, that's part of "the range that it is operating over".
+> 
+> > A quick eyeball of the patch didn't seem to show any code that handled
+> > this, which is why I asked the question.
+> 
+> Right, but really it's the least of the problems I've noticed - the
+> XFS code is fundamentally broken in many ways - once I've finished
+> commenting on it, I'll have a quick look to see if the ext4 code has
+> the same fundamental flaws....
 
-It's not just the range that it's operating on, but also the region
-beyond the range that's been collapsed out.  That's because the page
-that had formerly located at offset 3072k would now be located at
-2048k.  And you had better make sure that any dirty pages located
-beyond that are written out to disk before you do the invalidate and
-collapse.  As a result, there's going to be potential races that don't
-exist with truncate and punch.
+Well, the fundamental flaw of potential races if the file being
+collapsed has been mmap'ed and there is another process making changes
+beyond the range that is being collapsed is I suspect one that is
+going to be very hard to solve, short of not allowing the collapse
+while there are any read/write mmap's for the file in question.
 
-A quick eyeball of the patch didn't seem to show any code that handled
-this, which is why I asked the question.
+And I would think these sorts of VM issues should be handled with some
+generic library functions, instead of reimplementing them from scratch
+in each file system.
 
-      	    				- Ted
+						- Ted
 
 _______________________________________________
 xfs mailing list
