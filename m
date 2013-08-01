@@ -1,22 +1,41 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [Bug 60676] New: Stat system call gives permission denied to
- root for links under a sticky bit
-Date: Thu, 1 Aug 2013 11:21:16 -0700
-Message-ID: <20130801182116.GA32574@infradead.org>
-References: <bug-60676-13602@https.bugzilla.kernel.org/>
+From: Paul Gortmaker <paul.gortmaker@windriver.com>
+Subject: [PATCH 0/4] Backports of jbd2 commits to jbd
+Date: Thu, 1 Aug 2013 15:01:04 -0400
+Message-ID: <1375383668-8072-1-git-send-email-paul.gortmaker@windriver.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: bugzilla-daemon@bugzilla.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:45655 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754378Ab3HASVQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Aug 2013 14:21:16 -0400
-Content-Disposition: inline
-In-Reply-To: <bug-60676-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	<linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+	Paul Gortmaker <paul.gortmaker@windriver.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Try reverting 800179c9b8a1e796e441674776d11cd4c05d61d7
+The following commits exist in jbd2, and the backport to jbd is
+relatively straightforward.  In doing so we make the debug enable
+interface consistent between jbd and jbd2.
 
+For testing, I've booted up a machine with ext3 fs, done some basic
+operations (update a git tree, build a kernel) and also ensured that
+enabling debug via the new /sys/module/jbd/parameters/ entry works.
+Testing was on a baseline of v3.10-rc1-39-g741ddbc.
+
+Paul.
+---
+
+Paul Gortmaker (4):
+  jbd: use module parameters instead of debugfs for jbd_debug
+  jbd: relocate assert after state lock in journal_commit_transaction()
+  jbd: drop checkpoint mutex when waiting in __log_wait_for_space()
+  jbd: use a single printk for jbd_debug()
+
+ fs/jbd/Kconfig      |  6 ++---
+ fs/jbd/checkpoint.c |  8 +++++++
+ fs/jbd/commit.c     |  2 +-
+ fs/jbd/journal.c    | 67 +++++++++++++++++++++--------------------------------
+ include/linux/jbd.h | 20 +++++++---------
+ 5 files changed, 46 insertions(+), 57 deletions(-)
+
+-- 
+1.8.1.2
