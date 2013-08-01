@@ -1,35 +1,43 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: File permissions in ext4
-Date: Thu, 01 Aug 2013 12:27:56 -0500
-Message-ID: <51FA9A9C.1090301@redhat.com>
-References: <CACyNnZM5iCC+A_RPM90jr-UUNP5VVnm=+59w6ip0oABqNbFXvQ@mail.gmail.com> <CACyNnZM51RDcyzah_nbQA+tSYDVAXsduzDkGAK-gjfBfo1NWDg@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 60676] Stat system call gives permission denied to root for
+ links under a sticky bit
+Date: Thu, 01 Aug 2013 18:19:08 +0000
+Message-ID: <bug-60676-13602-ZFF2nCjOZw@https.bugzilla.kernel.org/>
+References: <bug-60676-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Felipe Monteiro de Carvalho <felipemonteiro.carvalho@gmail.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:27001 "EHLO mx1.redhat.com"
+Received: from mail.kernel.org ([198.145.19.201]:54612 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751194Ab3HAR17 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 1 Aug 2013 13:27:59 -0400
-In-Reply-To: <CACyNnZM51RDcyzah_nbQA+tSYDVAXsduzDkGAK-gjfBfo1NWDg@mail.gmail.com>
+	id S1751837Ab3HASTL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 1 Aug 2013 14:19:11 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id A6D1B20363
+	for <linux-ext4@vger.kernel.org>; Thu,  1 Aug 2013 18:19:10 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id B307920354
+	for <linux-ext4@vger.kernel.org>; Thu,  1 Aug 2013 18:19:08 +0000 (UTC)
+In-Reply-To: <bug-60676-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 8/1/13 7:34 AM, Felipe Monteiro de Carvalho wrote:
-> Hello,
-> 
-> Ok, I found that the permissions that I was looking for are stored in
-> ext4_inode.i_mode ... but still there is the question: What is ACL
-> used for then, and when is it different than zero?
-> 
-> thanks =)
-> 
+https://bugzilla.kernel.org/show_bug.cgi?id=60676
 
-It is the block number containing an extended attribute for that inode,
-if any; that extended attribute may be a file ACL.
+--- Comment #2 from James Kolb <jck@videk.com> ---
+The stat command (stat(1)) works on the link itself (but you can't go further
+down the filesystem hierarchy).
 
-It's a bit odd to call the xattr block "ACL" but it is what it is.  ;)
+So, in my previous example, calling "stat /tmp/testlink" and "stat
+/tmp/testdir/testfile" both work, but "stat /tmp/testlink/testfile" gives a
+permission error if you are root:
+> stat: cannot stat `/tmp/testlink/testfile': Permission denied
 
--Eric
+The glibc stat function (stat(2)) does not even work on the link itself.
+
+I'm not using SELinux.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
