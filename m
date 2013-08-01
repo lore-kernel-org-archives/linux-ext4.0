@@ -1,28 +1,60 @@
-From: Paul Gortmaker <paul.gortmaker@windriver.com>
-Subject: Re: [PATCH 0/4] Backports of jbd2 commits to jbd
-Date: Thu, 1 Aug 2013 15:08:22 -0400
-Message-ID: <51FAB226.3040405@windriver.com>
+From: Joe Perches <joe@perches.com>
+Subject: Re: [PATCH 4/4] jbd: use a single printk for jbd_debug()
+Date: Thu, 01 Aug 2013 12:21:05 -0700
+Message-ID: <1375384865.2034.70.camel@joe-AO722>
 References: <1375383668-8072-1-git-send-email-paul.gortmaker@windriver.com>
+	 <1375383668-8072-5-git-send-email-paul.gortmaker@windriver.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="ISO-8859-1"
 Content-Transfer-Encoding: 7bit
 Cc: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
-	<linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 To: Paul Gortmaker <paul.gortmaker@windriver.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1375383668-8072-1-git-send-email-paul.gortmaker@windriver.com>
+In-Reply-To: <1375383668-8072-5-git-send-email-paul.gortmaker@windriver.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 13-08-01 03:01 PM, Paul Gortmaker wrote:
-> The following commits exist in jbd2, and the backport to jbd is
-> relatively straightforward.  In doing so we make the debug enable
-> interface consistent between jbd and jbd2.
-> 
-> For testing, I've booted up a machine with ext3 fs, done some basic
-> operations (update a git tree, build a kernel) and also ensured that
-> enabling debug via the new /sys/module/jbd/parameters/ entry works.
-> Testing was on a baseline of v3.10-rc1-39-g741ddbc.
+On Thu, 2013-08-01 at 15:01 -0400, Paul Gortmaker wrote:
+> Backport of jbd2 commit 169f1a2a87aae44034da4b9f81be1683d33de6d0
+> ("jbd2: use a single printk for jbd_debug()")
 
-That should have been v3.11-rc3-40-g75eaff0; the above just happens
-to be the 1st non-merge commit on mainline today.
+Hey Paul.
+
+> diff --git a/include/linux/jbd.h b/include/linux/jbd.h
+[]
+> @@ -56,16 +56,13 @@
+>  #define JBD_EXPENSIVE_CHECKING
+>  extern ushort journal_enable_debug;
+>  
+> -#define jbd_debug(n, f, a...)						\
+> -	do {								\
+> -		if ((n) <= journal_enable_debug) {			\
+> -			printk (KERN_DEBUG "(%s, %d): %s: ",		\
+> -				__FILE__, __LINE__, __func__);	\
+> -			printk (f, ## a);				\
+> -		}							\
+> -	} while (0)
+> +void __jbd_debug(int level, const char *file, const char *func,
+> +		 unsigned int line, const char *fmt, ...
+> +
+> +#define jbd_debug(n, fmt, a...) \
+> +	__jbd_debug((n), __FILE__, __func__, __LINE__, (fmt), ##a)
+>  #else
+> -#define jbd_debug(f, a...)	/**/
+> +#define jbd_debug(n, fmt, a...)    /**/
+>  #endif
+
+It might have been (and may still be) simpler/better
+to use a single macro like:
+
+#define jbd_dbg(n, fmt, ...)			\
+do {						\
+	if ((n) < journal_enable_debug)		\
+		pr_debug(fmt, ##__VA_ARGS__);	\
+} while (0)
+
+and then use dynamic_debug to add the __func__,
+and __LINE__ when desired.
+
+echo -n 'module jbd +pfl' <dynamic_debug>/control
