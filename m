@@ -1,330 +1,163 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 2/3] xfs: Implement FALLOC_FL_COLLAPSE_RANGE
-Date: Thu, 1 Aug 2013 11:18:12 +1000
-Message-ID: <20130801011812.GJ7118@dastard>
-References: <1375281734-15874-1-git-send-email-linkinjeon@gmail.com>
+From: Zhao Hongjiang <zhaohongjiang@huawei.com>
+Subject: Re: xfstests failure generic/239
+Date: Thu, 1 Aug 2013 10:05:08 +0800
+Message-ID: <51F9C254.1000207@huawei.com>
+References: <51B2A15F.1060704@huawei.com> <20130608223038.GA19229@thunk.org> <51F732FA.9090307@huawei.com> <20130730154801.GA22013@quack.suse.cz> <51F8799D.7070202@huawei.com> <20130731141340.GB22930@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, bpm@sgi.com,
-	elder@kernel.org, hch@infradead.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com, a.sangwan@samsung.com,
-	Namjae Jeon <namjae.jeon@samsung.com>
-To: Namjae Jeon <linkinjeon@gmail.com>
+Content-Type: text/plain; charset="ISO-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: "Theodore Ts'o" <tytso@mit.edu>, <linux-ext4@vger.kernel.org>,
+	<hch@lst.de>, <khoroshilov@ispras.ru>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:31510 "EHLO
-	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751112Ab3HABSQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 31 Jul 2013 21:18:16 -0400
-Content-Disposition: inline
-In-Reply-To: <1375281734-15874-1-git-send-email-linkinjeon@gmail.com>
+Received: from szxga01-in.huawei.com ([119.145.14.64]:63778 "EHLO
+	szxga01-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751335Ab3HACGA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Jul 2013 22:06:00 -0400
+In-Reply-To: <20130731141340.GB22930@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 31, 2013 at 11:42:14PM +0900, Namjae Jeon wrote:
-> From: Namjae Jeon <namjae.jeon@samsung.com>
+Hi, Jan
+
+It hit this bug, the "Bug happened!" is come out everytime while the test is fail.
+Any suggestion for fix this?
+
+Regards,
+Zhao
+
+On 2013/7/31 22:13, Jan Kara wrote:
+> On Wed 31-07-13 10:42:37, Zhao Hongjiang wrote:
+>> On 2013/7/30 23:48, Jan Kara wrote:
+>>> On Tue 30-07-13 11:28:58, Zhao Hongjiang wrote:
+>>>> Hi, jack
+>>>>
+>>>> I test the latest kernel 3.11-rc2 and it seems the problem is fix by the
+>>>> follow patch: commit id:97a851ed71cd9cc2542955e92a001c6ea3d21d35 (ext4:
+>>>> use io_end for multiple bios).  But it's so difficult to backport to
+>>>> kernel 3.4-stable, any suggestion for this?
+>>>   Backporting that patch to stable kernels is no-go. It is far to intrusive
+>>> for stable kernels. I was looking for a while how that patch could fix the
+>>> problem you were observing. I think there is a subtle race possible when
+>>> AIO DIO write completes before __blockdev_direct_IO() returns. In that case
+>>> we set iocb->private to NULL in ext4_end_io_dio() but we also key off
+>>> iocb->private in ext4_ext_direct_IO() as:
+>>>                 if (iocb->private)
+>>>                         ext4_inode_aio_set(inode, NULL);
+>>>
+>>> So in the case above we forget to reset inode's AIO pointer. That can then
+>>> cause strange effects with unwritten extent handling (although I admit I'm
+>>> not sure whether it can also cause the failure you observe) and
+>>> 97a851ed71cd9cc2542955e92a001c6ea3d21d35 actually fixes that bug. You can
+>>> easily check whether you are hitting that bug or not by changing the above
+>>> condition from testing iocb->private to testing some private variable...
+>>> E.g. you could declare io_end and set it to NULL one level up in 
+>>> ext4_ext_direct_IO() and then test io_end != NULL in that condition.
+>>>
+>> Thanks for your reply first. 
+>> I change the code like the follow:
+>>
+>> @@ -2921,6 +2921,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+>>         struct inode *inode = file->f_mapping->host;
+>>         ssize_t ret;
+>>         size_t count = iov_length(iov, nr_segs);
+>> +       ext4_io_end_t *io_end = NULL;
+>>
+>>         loff_t final_size = offset + count;
+>>         if (rw == WRITE && final_size <= inode->i_size) {
+>> @@ -2947,8 +2948,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+>>                 iocb->private = NULL;
+>>                 EXT4_I(inode)->cur_aio_dio = NULL;
+>>                 if (!is_sync_kiocb(iocb)) {
+>> -                       ext4_io_end_t *io_end =
+>> -                               ext4_init_io_end(inode, GFP_NOFS);
+>> +                       io_end = ext4_init_io_end(inode, GFP_NOFS);
+>>                         if (!io_end)
+>>                                 return -ENOMEM;
+>>                         io_end->flag |= EXT4_IO_END_DIRECT;
+>> @@ -2970,8 +2970,10 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+>>                                          ext4_end_io_dio,
+>>                                          NULL,
+>>                                          DIO_LOCKING);
+>> -               if (iocb->private)
+>> +               if (io_end != NULL) {
+>> +                       printk("Zhao Hongjiang Ext4 test!\n");
+>>                         EXT4_I(inode)->cur_aio_dio = NULL;
+>> +               }
+>>                 /*
+>>                  * The io_end structure takes a reference to the inode,
+>>                  * that structure needs to be destroyed and the
+>>
+>> And the print come out when i run the test everytime. So i think the test
+>> hit the bug that you mentioned, Am i right or miss something?
+>   It is not a bug that you hit the branch with printk(). It would be a bug
+> if the debug check looked like:
+> 	if (io_end != NULL) {
+> 		if (iocb->private == NULL)
+> 			printk("Bug happened!\n");
+> 		EXT4_I(inode)->cur_aio_dio = NULL;
+> 	}
 > 
-> New fallocate flag FALLOC_FL_COLLAPSE_RANGE implementation for XFS.
-
-A good start, but there's lots of work needed to make this safe for
-general use.
-
-> Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-> Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
-> ---
->  fs/xfs/xfs_bmap.c     |   92 +++++++++++++++++++++++++++++++++++++++++++++++++
->  fs/xfs/xfs_bmap.h     |    3 ++
->  fs/xfs/xfs_file.c     |   26 ++++++++++++--
->  fs/xfs/xfs_iops.c     |   35 +++++++++++++++++++
->  fs/xfs/xfs_vnodeops.c |   62 +++++++++++++++++++++++++++++++++
->  fs/xfs/xfs_vnodeops.h |    2 ++
->  6 files changed, 217 insertions(+), 3 deletions(-)
+> 								Honza
 > 
-> diff --git a/fs/xfs/xfs_bmap.c b/fs/xfs/xfs_bmap.c
-> index 05c698c..ae677b1 100644
-> --- a/fs/xfs/xfs_bmap.c
-> +++ b/fs/xfs/xfs_bmap.c
-> @@ -6145,3 +6145,95 @@ next_block:
->  
->  	return error;
->  }
-> +
-> +/*
-> + * xfs_update_logical()
-> + *	Updates starting logical block of extents by subtracting
-> + *	shift from them. At max XFS_LINEAR_EXTS number extents
-> + *	will be updated and *current_ext is the extent number which
-> + *	is currently being updated.
+>>>> On 2013/6/9 6:30, Theodore Ts'o wrote:
+>>>>> On Sat, Jun 08, 2013 at 11:13:35AM +0800, Zhao Hongjiang wrote:
+>>>>>>
+>>>>>> I run xfstests #239 against mainline 3.10.0-rc3, unfortunately it failure in my QEMU. I run the
+>>>>>> case a hundred times, it certainly hit the failure several times. The failure msg is as follow:
+>>>>>>
+>>>>>> FSTYP         -- ext4
+>>>>>> PLATFORM      -- Linux/x86_64  3.10.0-rc3-mainline
+>>>>>>
+>>>>>> generic/239 1s ... - output mismatch (see /home/zhj/xfstests/results/generic/239.out.bad)
+>>>>>>     --- tests/generic/239.out   2013-06-07 22:04:09.000000000 -0400
+>>>>>>     +++ /home/zff/xfstests/results/generic/239.out.bad  2013-06-07 22:04:09.000000000 -0400
+>>>>>>     @@ -1,2 +1,515 @@
+>>>>>>      QA output created by 239
+>>>>>>     +hostname: Host name lookup failure
+>>>>>
+>>>>> OK, so this hostname failure is weird; I'm not sure what's causing
+>>>>> this, but this I presume unrelated to the failure at hand.
+>>>>>
+>>>>>>      Silence is golden
+>>>>>>     +0: 0x0
+>>>>>>     +1: 0x0
+>>>>>>     +2: 0x0
+>>>>>>     +3: 0x0
+>>>>>
+>>>>> This indicates a problem.  Test generic/239 is running
+>>>>> aio-dio-hole-filling-race.c, which submits an asynchronous, direct I/O
+>>>>> 4k write with a buffer containing non-zero contents to a sparse file,
+>>>>> and once the I/O has completed, it uses pread to read it back, using
+>>>>> the same descriptor, so it is doing the read using direct I/O.  It
+>>>>> then checks to see if the read returns zero or not.  
+>>>>>
+>>>>> The "XX: 0x0" lines indicates that buffer is zero, which implies that
+>>>>> somehow aio_complete() is getting called before the uninitialized to
+>>>>> initialized conversion is taking place.  I'm not seeing how this is
+>>>>> happening, though, so I'm a bit puzzled.  If there are any unwritten
+>>>>> extents, we don't call aio_complete() in ext4_end_io_dio(), but
+>>>>> instead the conversion is queued via a call to ext4_add_compete_io(),
+>>>>> and and aio_done() is only called on the iocb after the conversion is
+>>>>> complete.
+>>>>>
+>>>>> Can anyone see something that I might be missing?
+>>>>>
+>>>>>     	       		      	      - Ted
+>>>>>
+>>>>> P.S.  Zhao, what was the hardware that you using to find this failure?
+>>>>> I'm not seeing it, but then again if the failure is only happening
+>>>>> once every few hundred runs that might explain it.  I'm perhaps
+>>>>> wondering if we should add a mode to aio-dio-hole-filling-race.c which
+>>>>> allows it to try the race a large number of times, instead of just
+>>>>> once.
+>>>>>
+>>>>> P.P.S.  One thought.... perhaps it might be useful to have a debug
+>>>>> mode where we use queue_delayed_work() to submit the conversion
+>>>>> request to the workqueue.  It will of course make certain workloads
+>>>>> run slow as molasses, but it might expose some races so we can see
+>>>>> them more easily.
+>>>>>
+>>>>> .
 
-Single space after the "*" in the comments. Also, format them out to
-80 columns.
 
-> + */
-> +int
-> +xfs_update_logical(
-> +	xfs_trans_t		*tp,
-> +	struct xfs_inode	*ip,
-> +	int			*done,
-> +	xfs_fileoff_t		start_fsb,
-> +	xfs_fileoff_t		shift,
-> +	xfs_extnum_t		*current_ext)
-
-This belongs in xfs_bmap_btree.c, named something like
-xfs_bmbt_shift_rec_offsets().
-
-Also, not typedefs for structures, please. (i.e. struct xfs_trans).
-
-
-> +{
-> +	xfs_btree_cur_t		*cur;
-
-	struct xfs_btree_cur	*cur;
-
-And for all the other structures, too.
-
-> +	xfs_bmbt_rec_host_t	*gotp;
-> +	xfs_mount_t		*mp;
-> +	xfs_ifork_t		*ifp;
-> +	xfs_extnum_t		nexts = 0;
-> +	xfs_fileoff_t		startoff;
-> +	int			error = 0;
-> +	int			i;
-> +
-> +	ifp = XFS_IFORK_PTR(ip, XFS_DATA_FORK);
-> +	mp = ip->i_mount;
-
-Do the assigment in the declaration on mp.
-
-	struct xfs_mount	*mp = ip->i_mount;
-
-> +
-> +	if (!(ifp->if_flags & XFS_IFEXTENTS) &&
-> +		(error = xfs_iread_extents(tp, ip, XFS_DATA_FORK)))
-> +		return error;
-
-Hmmmm - that rings alarm bells.
-
-> +
-> +	if (!*current_ext) {
-> +		gotp = xfs_iext_bno_to_ext(ifp, start_fsb, current_ext);
-> +		/*
-> +		 * gotp can be null in 2 cases: 1) if there are no extents
-> +		 * or 2) start_fsb lies in a hole beyond which there are
-> +		 * no extents. Either way, we are done.
-> +		 */
-> +		if (!gotp) {
-> +			*done = 1;
-> +			return 0;
-> +		}
-> +	}
-
-So, you do a lookup on an extent index, which returns a incore
-extent record.
-
-> +
-> +	if (ifp->if_flags & XFS_IFBROOT)
-> +		cur = xfs_bmbt_init_cursor(mp, tp, ip, XFS_DATA_FORK);
-> +	else
-> +		cur = NULL;
-> +
-> +	while (nexts++ < XFS_LINEAR_EXTS &&
-
-What has XFS_LINEAR_EXTS got to do with how many extents can be moved
-in a single transaction at a time?
-
-> +	       *current_ext <  XFS_IFORK_NEXTENTS(ip, XFS_DATA_FORK)) {
-> +		gotp = xfs_iext_get_ext(ifp, (*current_ext)++);
-> +		startoff = xfs_bmbt_get_startoff(gotp);
-> +		if (cur) {
-> +			if ((error = xfs_bmbt_lookup_eq(cur,
-> +					startoff,
-> +					xfs_bmbt_get_startblock(gotp),
-> +					xfs_bmbt_get_blockcount(gotp),
-> +					&i)))
-
-Please don't put assignments inside if() statements where possible.
-i.e.
-			error = xfs_bmbt_lookup_eq(cur, ....
-			if (error)
-
-Is the normal way of doing this.
-
-> +				goto del_cursor;
-> +			XFS_WANT_CORRUPTED_GOTO(i == 1, del_cursor);
-> +		}
-> +		startoff -= shift;
-> +		xfs_bmbt_set_startoff(gotp, startoff);
-
-So, we've looked up and extent, and reduced it's offset by shift.
-
-> +		if (cur) {
-> +			error = xfs_bmbt_update(cur, startoff,
-> +						xfs_bmbt_get_startblock(gotp),
-> +						xfs_bmbt_get_blockcount(gotp),
-> +						xfs_bmbt_get_state(gotp));
-> +			if (error)
-> +				goto del_cursor;
-
-And then we update the btree record in place.
-
-Ok, major alarm bells are going off at this point. Is the record
-still in the right place? Where did you validate that the shift
-downwards didn't overlap the previous extent in the tree?
-
-What happens if the start or end of the range to be shifted partially
-overlaps an extent? The shift can only be done into a hole in the
-file offset, so any attempt to shift downwards that overlaps an
-existing extent is immediately invalid and indicates something is
-wrong (pssobily corruption).
-
-And if the end of the range being shifted partially overlaps an
-extent, then that extent needs to be split - it requires two records
-in the tree to track the part that was shifted and the part that was
-not.
-
-> +		}
-> +	}
-> +
-> +	/* Check if we are done */
-> +	if (*current_ext ==  XFS_IFORK_NEXTENTS(ip, XFS_DATA_FORK))
-> +		*done = 1;
-> +
-> +del_cursor:
-> +	if (cur) {
-> +		if (!error)
-> +			cur->bc_private.b.allocated = 0;
-
-Um, why?
-
-> -	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
-> +	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE |
-> +		     FALLOC_FL_COLLAPSE_RANGE))
-> +		return -EOPNOTSUPP;
-> +
-> +	/* not just yet for rt inodes */
-> +	if ((mode & FALLOC_FL_COLLAPSE_RANGE) && XFS_IS_REALTIME_INODE(ip))
->  		return -EOPNOTSUPP;
-
-Why not? The extent manipulations are identical....
-
-> @@ -845,6 +850,21 @@ xfs_file_fallocate(
->  	if (error)
->  		goto out_unlock;
->  
-> +	if (mode & FALLOC_FL_COLLAPSE_RANGE) {
-> +		error = -xfs_collapse_file_space(ip, offset + len, len);
-> +		if (error || offset >= i_size_read(inode))
-> +			goto out_unlock;
-> +
-> +		/* Shrink size in case of FALLOC_FL_COLLAPSE_RANGE */
-> +		if ((offset + len) > i_size_read(inode))
-> +			new_size = offset;
-> +		else
-> +			new_size = i_size_read(inode) - len;
-> +		error = -xfs_update_file_size(ip, new_size);
-> +
-> +		goto out_unlock;
-> +	}
-
-This needs to vector through xfs_change_file_space() - it already
-has code for doing offset/range validity checks, attaching
-appropriate dquots for accounting, post-op file size and timestamp
-updates, etc.
-
-> +
-> +/*
-> + * xfs_update_file_size()
-> + *	Just a simple disk size and time update
-> + */
-> +int
-> +xfs_update_file_size(
-> +	struct xfs_inode        *ip,
-> +	loff_t			newsize)
-
-This function should be nuked from orbit. I stopped looking at it
-when the bug count got past 5. If you use xfs_change_file_space,
-it's not necessary, either.
-
-> diff --git a/fs/xfs/xfs_vnodeops.c b/fs/xfs/xfs_vnodeops.c
-> index dc730ac..95b46e7 100644
-> --- a/fs/xfs/xfs_vnodeops.c
-> +++ b/fs/xfs/xfs_vnodeops.c
-> @@ -1868,3 +1868,65 @@ xfs_change_file_space(
->  		xfs_trans_set_sync(tp);
->  	return xfs_trans_commit(tp, 0);
->  }
-> +
-> +/*
-> + * xfs_collapse_file_space()
-> + *	This implements the fallocate collapse range functionlaity.
-> + *	It removes the hole from file by shifting all the extents which
-> + *	lies beyond start block.
-> + */
-> +int
-> +xfs_collapse_file_space(
-> +	xfs_inode_t	*ip,
-> +	loff_t		start,
-> +	loff_t		shift)
-> +{
-> +	int		done = 0;
-> +	xfs_mount_t	*mp = ip->i_mount;
-> +	uint		resblks;
-> +	xfs_trans_t	*tp;
-> +	int		error = 0;
-> +	xfs_extnum_t	current_ext = 0;
-> +	xfs_fileoff_t	start_fsb = XFS_B_TO_FSB(mp, start);
-> +	xfs_fileoff_t	shift_fsb = XFS_B_TO_FSB(mp, shift);
-> +	resblks = XFS_DIOSTRAT_SPACE_RES(mp, 0);
-> +
-> +	while (!error && !done) {
-> +		tp = xfs_trans_alloc(mp, XFS_TRANS_DIOSTRAT);
-> +		tp->t_flags |= XFS_TRANS_RESERVE;
-> +		error = xfs_trans_reserve(tp, resblks, XFS_WRITE_LOG_RES(mp),
-> +					  0, XFS_TRANS_PERM_LOG_RES,
-> +					  XFS_WRITE_LOG_COUNT);
-
-Why a permanent log reservation for a single, non-nested transaction?
-
-> +		if (error) {
-> +			ASSERT(error == ENOSPC || XFS_FORCED_SHUTDOWN(mp));
-> +			xfs_trans_cancel(tp, 0);
-> +			break;
-> +		}
-> +
-> +		xfs_ilock(ip, XFS_ILOCK_EXCL);
-> +
-> +		error = xfs_trans_reserve_quota(tp, mp, ip->i_udquot,
-> +						ip->i_gdquot, ip->i_pdquot,
-> +						resblks, 0,
-> +						XFS_QMOPT_RES_REGBLKS);
-> +		if (error)
-> +			goto out;
-> +
-> +		xfs_trans_ijoin(tp, ip, 0);
-> +
-> +		error = xfs_update_logical(tp, ip, &done, start_fsb,
-> +					   shift_fsb, &current_ext);
-> +		if (error)
-> +			goto out;
-> +
-> +		error = xfs_trans_commit(tp, XFS_TRANS_RELEASE_LOG_RES);
-> +		xfs_iunlock(ip, XFS_ILOCK_EXCL);
-> +	}
-
-Where are you punching out the blocks in the range we are shifting
-the down into? i.e. before you can do this shift operation, you have
-to ensure that the range being shifted into has no extents in it.
-IOWs, the first operation that needs to be done is a hole punch of
-the range being removed - we need xfs_free_file_space() call on the
-range first.
-
-And as Ted pointed out, we also need to invalidate the page cache
-over the range being moved.
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
