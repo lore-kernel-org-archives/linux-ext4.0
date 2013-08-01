@@ -1,89 +1,43 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 60676] Stat system call gives permission denied to root for
- links under a sticky bit
-Date: Thu, 01 Aug 2013 15:55:00 +0000
-Message-ID: <bug-60676-13602-4tfhYrgx4e@https.bugzilla.kernel.org/>
-References: <bug-60676-13602@https.bugzilla.kernel.org/>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] ext3: allow specifying external journal by pathname mount
+ option
+Date: Thu, 01 Aug 2013 12:23:22 -0500
+Message-ID: <51FA998A.8050305@redhat.com>
+References: <51F94938.1040303@bfccomputing.com> <51F96964.4000608@redhat.com> <51FA055F.90000@bfccomputing.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+To: Bill McGonigle <bill@bfccomputing.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:48951 "EHLO mail.kernel.org"
+Received: from mx1.redhat.com ([209.132.183.28]:51518 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756076Ab3HAPzJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 1 Aug 2013 11:55:09 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 6AB6720115
-	for <linux-ext4@vger.kernel.org>; Thu,  1 Aug 2013 15:55:04 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 175D4201EE
-	for <linux-ext4@vger.kernel.org>; Thu,  1 Aug 2013 15:55:01 +0000 (UTC)
-In-Reply-To: <bug-60676-13602@https.bugzilla.kernel.org/>
+	id S1751980Ab3HARX1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 1 Aug 2013 13:23:27 -0400
+In-Reply-To: <51FA055F.90000@bfccomputing.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=60676
-
---- Comment #1 from Theodore Tso <tytso@mit.edu> ---
-On Thu, Aug 01, 2013 at 03:02:36PM +0000, bugzilla-daemon@bugzilla.kernel.org
-wrote:
+On 8/1/13 1:51 AM, Bill McGonigle wrote:
+> On 07/31/2013 03:45 PM, Eric Sandeen wrote:
+>> well, kernelspace can't use libblkid.
 > 
-> If a directory has a sticky bit set, root cannot use anything that makes the
-> stat system call on any of the links there.
+> ah, right.  But userspace could, and with your patch, basically do
+> the same thing and mount using the UUID number stored in the
+> superblock using the 'by-uuid' path.  Sweet.
+
+yeah.  Right now mount can't parse i.e. "journal_path=UUID=$UUID" type
+options as it can do for the device specification, but if the /dev/disk/by-uuid
+paths are set up by the time you mount the fs, that works too.
+
+>> I'll send the ext4 version in a minute if you want to try it.
 > 
-> Example:
-> > $ ls -ld /tmp/
-> > drwxrwxrwt 17 root root 4825088 Aug  1 10:50 /tmp/
-> > $ mkdir /tmp/testdir
-> > $ touch /tmp/testdir/testfile
-> > $ ln -s /tmp/testdir/ /tmp/testlink
-> > $ ls /tmp/testlink/
-> > testfile
-> > $ su
-> > # ls /tmp/testlink
-> ls: cannot access /tmp/testlink: Permission denied
-> > # ls /tmp/testdir
-> > testfile
+> that would be super - I'd be happy to test it soon.
 
-Works for me:
+K, it's on the list now.  :)
 
-<tytso.root@lambda> {/tmp}, level 2  
-509# ls -aldg /tmp
-0 drwxrwxrwt 18 root 1840 Aug  1 11:10 /tmp/
-<tytso.root@lambda> {/tmp}, level 2  
-510# stat /tmp/testdir
-  File: tmp/testdir'
-  Size: 60              Blocks: 0          IO Block: 4096   directory
-Device: 12h/18d Inode: 3290419     Links: 2
-Access: (0700/drwx------)  Uid: (15806/   tytso)   Gid: (15806/   tytso)
-Access: 2013-08-01 11:10:01.141462969 -0400
-Modify: 2013-08-01 11:09:53.301463057 -0400
-Change: 2013-08-01 11:10:51.261462406 -0400
- Birth: -
-<tytso.root@lambda> {/tmp}, level 2  
-511# stat /tmp/testfile
-  File: tmp/testfile' -> stdir/testfile'
-  Size: 16              Blocks: 0          IO Block: 4096   symbolic link
-Device: 12h/18d Inode: 3288475     Links: 1
-Access: (0777/lrwxrwxrwx)  Uid: (15806/   tytso)   Gid: (15806/   tytso)
-Access: 2013-08-01 11:10:04.701462929 -0400
-Modify: 2013-08-01 11:10:03.691462941 -0400
-Change: 2013-08-01 11:10:03.691462941 -0400
- Birth: -
-<tytso.root@lambda> {/tmp}, level 2  
-512# uname -a
-Linux lambda 3.11.0-rc2-00261-g316da4e #50 SMP Fri Jul 26 08:41:29 EDT 2013
-x86_64 GNU/Linux
-<tytso.root@lambda> {/tmp}, level 2  
-513# 
+-Eric
 
-I suspect you are using SELinux?  (You have a security problem.  So
-you install SELinux; now you have 6+ megabytes worth of problems when
-you try to decipher the SELinux policy definitions.  :-)
+> -Bill
+> 
 
-                                               - Ted
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
