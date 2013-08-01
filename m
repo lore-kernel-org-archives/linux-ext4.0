@@ -1,7 +1,7 @@
 From: Paul Gortmaker <paul.gortmaker@windriver.com>
-Subject: [PATCH 3/4] jbd: drop checkpoint mutex when waiting in __log_wait_for_space()
-Date: Thu, 1 Aug 2013 15:01:07 -0400
-Message-ID: <1375383668-8072-4-git-send-email-paul.gortmaker@windriver.com>
+Subject: [PATCH 4/4] jbd: use a single printk for jbd_debug()
+Date: Thu, 1 Aug 2013 15:01:08 -0400
+Message-ID: <1375383668-8072-5-git-send-email-paul.gortmaker@windriver.com>
 References: <1375383668-8072-1-git-send-email-paul.gortmaker@windriver.com>
 Mime-Version: 1.0
 Content-Type: text/plain
@@ -9,87 +9,101 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
 	<linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
 	Paul Gortmaker <paul.gortmaker@windriver.com>
 To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail1.windriver.com ([147.11.146.13]:62903 "EHLO
-	mail1.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756447Ab3HATB0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Aug 2013 15:01:26 -0400
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <1375383668-8072-1-git-send-email-paul.gortmaker@windriver.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Backport of jbd2 commit 0ef54180e0187117062939202b96faf04c8673bc
-("jbd2: drop checkpoint mutex when waiting in __jbd2_log_wait_for_space()")
+Backport of jbd2 commit 169f1a2a87aae44034da4b9f81be1683d33de6d0
+("jbd2: use a single printk for jbd_debug()")
 
-Quoting that commit:
+Quoting the original:
  --------------
- While trying to debug an an issue under extreme I/O loading
- on preempt-rt kernels, the following backtrace was observed
- via SysRQ output:
+ Since the jbd_debug() is implemented with two separate printk()
+ calls, it can lead to corrupted and misleading debug output like
+ the following (see lines marked with "*"):
 
- rm              D ffff8802203afbc0  4600  4878   4748 0x00000000
-  ffff8802217bfb78 0000000000000082 ffff88021fc2bb80 ffff88021fc2bb80
-  ffff88021fc2bb80 ffff8802217bffd8 ffff8802217bffd8 ffff8802217bffd8
-  ffff88021f1d4c80 ffff88021fc2bb80 ffff8802217bfb88 ffff88022437b000
- Call Trace:
-  [<ffffffff8172dc34>] schedule+0x24/0x70
-  [<ffffffff81225b5d>] jbd2_log_wait_commit+0xbd/0x140
-  [<ffffffff81060390>] ? __init_waitqueue_head+0x50/0x50
-  [<ffffffff81223635>] jbd2_log_do_checkpoint+0xf5/0x520
-  [<ffffffff81223b09>] __jbd2_log_wait_for_space+0xa9/0x1f0
-  [<ffffffff8121dc40>] start_this_handle.isra.10+0x2e0/0x530
-  [<ffffffff81060390>] ? __init_waitqueue_head+0x50/0x50
-  [<ffffffff8121e0a3>] jbd2__journal_start+0xc3/0x110
-  [<ffffffff811de7ce>] ? ext4_rmdir+0x6e/0x230
-  [<ffffffff8121e0fe>] jbd2_journal_start+0xe/0x10
-  [<ffffffff811f308b>] ext4_journal_start_sb+0x5b/0x160
-  [<ffffffff811de7ce>] ext4_rmdir+0x6e/0x230
-  [<ffffffff811435c5>] vfs_rmdir+0xd5/0x140
-  [<ffffffff8114370f>] do_rmdir+0xdf/0x120
-  [<ffffffff8105c6b4>] ? task_work_run+0x44/0x80
-  [<ffffffff81002889>] ? do_notify_resume+0x89/0x100
-  [<ffffffff817361ae>] ? int_signal+0x12/0x17
-  [<ffffffff81145d85>] sys_unlinkat+0x25/0x40
-  [<ffffffff81735f22>] system_call_fastpath+0x16/0x1b
+ [  290.339362] (fs/jbd2/journal.c, 203): kjournald2: kjournald2 wakes
+ [  290.339365] (fs/jbd2/journal.c, 155): kjournald2: commit_sequence=42103, commit_request=42104
+ [  290.339369] (fs/jbd2/journal.c, 158): kjournald2: OK, requests differ
+ [* 290.339376] (fs/jbd2/journal.c, 648): jbd2_log_wait_commit:
+ [* 290.339379] (fs/jbd2/commit.c, 370): jbd2_journal_commit_transaction: JBD2: want 42104, j_commit_sequence=42103
+ [* 290.339382] JBD2: starting commit of transaction 42104
+ [  290.339410] (fs/jbd2/revoke.c, 566): jbd2_journal_write_revoke_records: Wrote 0 revoke records
+ [  290.376555] (fs/jbd2/commit.c, 1088): jbd2_journal_commit_transaction: JBD2: commit 42104 complete, head 42079
 
- What is interesting here, is that we call log_wait_commit, from
- within wait_for_space, but we are still holding the checkpoint_mutex
- as it surrounds mostly the whole of wait_for_space.  And then, as we
- are waiting, journal_commit_transaction can run, and if the JBD2_FLUSHED
- bit is set, then we will also try to take the same checkpoint_mutex.
+ i.e. the debug output from log_wait_commit and journal_commit_transaction
+ have become interleaved.  The output should have been:
 
- It seems that we need to drop the checkpoint_mutex while sitting in
- jbd2_log_wait_commit, if we want to guarantee that progress can be made
- by jbd2_journal_commit_transaction().  There does not seem to be
- anything preempt-rt specific about this, other then perhaps increasing
- the odds of it happening.
+ (fs/jbd2/journal.c, 648): jbd2_log_wait_commit: JBD2: want 42104, j_commit_sequence=42103
+ (fs/jbd2/commit.c, 370): jbd2_journal_commit_transaction: JBD2: starting commit of transaction 42104
+
+ It is expected that this is not easy to replicate -- I was only able
+ to cause it on preempt-rt kernels, and even then only under heavy
+ I/O load.
  --------------
 
 Signed-off-by: Paul Gortmaker <paul.gortmaker@windriver.com>
 ---
- fs/jbd/checkpoint.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ fs/jbd/journal.c    | 18 ++++++++++++++++++
+ include/linux/jbd.h | 15 ++++++---------
+ 2 files changed, 24 insertions(+), 9 deletions(-)
 
-diff --git a/fs/jbd/checkpoint.c b/fs/jbd/checkpoint.c
-index 08c0304..8e8e0ee 100644
---- a/fs/jbd/checkpoint.c
-+++ b/fs/jbd/checkpoint.c
-@@ -160,7 +160,15 @@ void __log_wait_for_space(journal_t *journal)
- 				/* We were able to recover space; yay! */
- 				;
- 			} else if (tid) {
-+				/*
-+				 * jbd_journal_commit_transaction() may want
-+				 * to take the checkpoint_mutex if JBD_FLUSHED
-+				 * is set.  So we need to temporarily drop it.
-+				 */
-+				mutex_unlock(&journal->j_checkpoint_mutex);
- 				log_wait_commit(journal, tid);
-+				spin_lock(&journal->j_state_lock);
-+				continue;
- 			} else {
- 				printk(KERN_ERR "%s: needed %d blocks and "
- 				       "only had %d space available\n",
+diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+index 166263d..f45f0a3 100644
+--- a/fs/jbd/journal.c
++++ b/fs/jbd/journal.c
+@@ -97,6 +97,24 @@ static int journal_convert_superblock_v1(journal_t *, journal_superblock_t *);
+ static void __journal_abort_soft (journal_t *journal, int errno);
+ static const char *journal_dev_name(journal_t *journal, char *buffer);
+ 
++#ifdef CONFIG_JBD_DEBUG
++void __jbd_debug(int level, const char *file, const char *func,
++		 unsigned int line, const char *fmt, ...)
++{
++	struct va_format vaf;
++	va_list args;
++
++	if (level > jbd_journal_enable_debug)
++		return;
++	va_start(args, fmt);
++	vaf.fmt = fmt;
++	vaf.va = &args;
++	printk(KERN_DEBUG "%s: (%s, %u): %pV\n", file, func, line, &vaf);
++	va_end(args);
++}
++EXPORT_SYMBOL(__jbd_debug);
++#endif
++
+ /*
+  * Helper function used to manage commit timeouts
+  */
+diff --git a/include/linux/jbd.h b/include/linux/jbd.h
+index e45b430..d6d3ae0 100644
+--- a/include/linux/jbd.h
++++ b/include/linux/jbd.h
+@@ -56,16 +56,13 @@
+ #define JBD_EXPENSIVE_CHECKING
+ extern ushort journal_enable_debug;
+ 
+-#define jbd_debug(n, f, a...)						\
+-	do {								\
+-		if ((n) <= journal_enable_debug) {			\
+-			printk (KERN_DEBUG "(%s, %d): %s: ",		\
+-				__FILE__, __LINE__, __func__);	\
+-			printk (f, ## a);				\
+-		}							\
+-	} while (0)
++void __jbd_debug(int level, const char *file, const char *func,
++		 unsigned int line, const char *fmt, ...);
++
++#define jbd_debug(n, fmt, a...) \
++	__jbd_debug((n), __FILE__, __func__, __LINE__, (fmt), ##a)
+ #else
+-#define jbd_debug(f, a...)	/**/
++#define jbd_debug(n, fmt, a...)    /**/
+ #endif
+ 
+ static inline void *jbd_alloc(size_t size, gfp_t flags)
 -- 
 1.8.1.2
-
