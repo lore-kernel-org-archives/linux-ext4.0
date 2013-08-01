@@ -1,127 +1,60 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext4: Make ext4_writepages() resilient to i_size changes
-Date: Thu,  1 Aug 2013 00:42:12 +0200
-Message-ID: <1375310532-17731-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Dave Jones <davej@redhat.com>,
-	Zheng Liu <gnehzuil.liu@gmail.com>, Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:55361 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755709Ab3GaWmV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 31 Jul 2013 18:42:21 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/3] fs: Introduce new flag FALLOC_FL_COLLAPSE_RANGE
+Date: Wed, 31 Jul 2013 20:46:45 -0400
+Message-ID: <20130801004645.GC11378@thunk.org>
+References: <1375281721-15840-1-git-send-email-linkinjeon@gmail.com>
+	<20130731220154.GA11378@thunk.org> <20130801002341.GI7118@dastard>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Namjae Jeon <linkinjeon@gmail.com>, elder@kernel.org,
+	Namjae Jeon <namjae.jeon@samsung.com>,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com, hch@infradead.org,
+	bpm@sgi.com, adilger.kernel@dilger.ca, a.sangwan@samsung.com,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+Content-Disposition: inline
+In-Reply-To: <20130801002341.GI7118@dastard>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-Inode size can arbitrarily change while writeback is in progress. This
-can have various strange effects when we use one value of i_size for one
-decision during writeback and another value of i_size for a different
-decision during writeback. In particular a check for lblk < blocks in
-mpage_map_and_submit_buffers() causes problems when i_size is reduced
-while writeback is running because we can end up not using all blocks
-we've allocated. Thus these blocks are leaked and also delalloc
-accounting gets wrong manifesting as a warning like:
+On Thu, Aug 01, 2013 at 10:23:41AM +1000, Dave Chinner wrote:
+> On Wed, Jul 31, 2013 at 06:01:54PM -0400, Theodore Ts'o wrote:
+> > Have you considered what happens if you have a 10 megabyte file, of
+> > which the first 5 megs are mmap'ed into a userspace process.
+> > 
+> > Now suppose you call COLLAPASE_RANGE on a one megabyte range starting
+> > at offset 1024k from the beginning of the file.
+> > 
+> > Does the right thing happen to the mmap'ed region in memory?
+> 
+> Implementation detail. like a hole punch, it needs to invalidate the
+> range that it is operating over so mmap()d regions are refaulted
+> after the operation is done.
 
-ext4_da_release_space:1333: ext4_da_release_space: ino 12, to_free 1
-with only 0 reserved data blocks
+It's not just the range that it's operating on, but also the region
+beyond the range that's been collapsed out.  That's because the page
+that had formerly located at offset 3072k would now be located at
+2048k.  And you had better make sure that any dirty pages located
+beyond that are written out to disk before you do the invalidate and
+collapse.  As a result, there's going to be potential races that don't
+exist with truncate and punch.
 
-The problem can happen only when blocksize < pagesize because the check
-for size is performed only after the first iteration of the mapping
-loop.
+A quick eyeball of the patch didn't seem to show any code that handled
+this, which is why I asked the question.
 
-Fix the problem by removing the size check from the mapping loop. We
-have an extent allocated so we have to use it all before checking for
-i_size. We may call add_page_bufs_to_extent() unnecessarily but that
-function won't do anything if passed block number is beyond file size.
+      	    				- Ted
 
-Also to avoid future surprises like this sample inode size when
-starting writeback in ext4_writepages() and then use this sampled size
-throughout the writeback call stack.
-
-Reported-by: Dave Jones <davej@redhat.com>
-Reported-by: Zheng Liu <gnehzuil.liu@gmail.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/inode.c | 21 ++++++++++++---------
- 1 file changed, 12 insertions(+), 9 deletions(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index ba33c67..8bd0240 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1413,6 +1413,8 @@ static void ext4_da_page_release_reservation(struct page *page,
- struct mpage_da_data {
- 	struct inode *inode;
- 	struct writeback_control *wbc;
-+	loff_t i_size;		/* Inode size can change while we do writeback.
-+				 * Use one fixed value to make things simpler */
- 
- 	pgoff_t first_page;	/* The first page to write */
- 	pgoff_t next_page;	/* Current page to examine */
-@@ -1943,7 +1945,7 @@ static bool add_page_bufs_to_extent(struct mpage_da_data *mpd,
- 				    ext4_lblk_t lblk)
- {
- 	struct inode *inode = mpd->inode;
--	ext4_lblk_t blocks = (i_size_read(inode) + (1 << inode->i_blkbits) - 1)
-+	ext4_lblk_t blocks = (mpd->i_size + (1 << inode->i_blkbits) - 1)
- 							>> inode->i_blkbits;
- 
- 	do {
-@@ -1968,12 +1970,11 @@ static bool add_page_bufs_to_extent(struct mpage_da_data *mpd,
- static int mpage_submit_page(struct mpage_da_data *mpd, struct page *page)
- {
- 	int len;
--	loff_t size = i_size_read(mpd->inode);
- 	int err;
- 
- 	BUG_ON(page->index != mpd->first_page);
--	if (page->index == size >> PAGE_CACHE_SHIFT)
--		len = size & ~PAGE_CACHE_MASK;
-+	if (page->index == mpd->i_size >> PAGE_CACHE_SHIFT)
-+		len = mpd->i_size & ~PAGE_CACHE_MASK;
- 	else
- 		len = PAGE_CACHE_SIZE;
- 	clear_page_dirty_for_io(page);
-@@ -2006,8 +2007,6 @@ static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
- 	struct inode *inode = mpd->inode;
- 	struct buffer_head *head, *bh;
- 	int bpp_bits = PAGE_CACHE_SHIFT - inode->i_blkbits;
--	ext4_lblk_t blocks = (i_size_read(inode) + (1 << inode->i_blkbits) - 1)
--							>> inode->i_blkbits;
- 	pgoff_t start, end;
- 	ext4_lblk_t lblk;
- 	sector_t pblock;
-@@ -2052,8 +2051,7 @@ static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
- 					bh->b_blocknr = pblock++;
- 				}
- 				clear_buffer_unwritten(bh);
--			} while (++lblk < blocks &&
--				 (bh = bh->b_this_page) != head);
-+			} while (lblk++, (bh = bh->b_this_page) != head);
- 
- 			/*
- 			 * FIXME: This is going to break if dioread_nolock
-@@ -2200,7 +2198,11 @@ static int mpage_map_and_submit_extent(handle_t *handle,
- 			return err;
- 	} while (map->m_len);
- 
--	/* Update on-disk size after IO is submitted */
-+	/*
-+	 * Update on-disk size after IO is submitted. Here we cannot use
-+	 * mpd->i_size as we must avoid increasing i_disksize when racing
-+	 * truncate already set it to a small value.
-+	 */
- 	disksize = ((loff_t)mpd->first_page) << PAGE_CACHE_SHIFT;
- 	if (disksize > i_size_read(inode))
- 		disksize = i_size_read(inode);
-@@ -2453,6 +2455,7 @@ static int ext4_writepages(struct address_space *mapping,
- 
- 	mpd.inode = inode;
- 	mpd.wbc = wbc;
-+	mpd.i_size = i_size_read(inode);
- 	ext4_io_submit_init(&mpd.io_submit, wbc);
- retry:
- 	if (wbc->sync_mode == WB_SYNC_ALL || wbc->tagged_writepages)
--- 
-1.8.1.4
-
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
