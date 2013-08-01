@@ -1,79 +1,98 @@
-From: majianpeng <majianpeng@gmail.com>
-Subject: BUG:OOPS
-Date: Thu, 1 Aug 2013 11:10:57 +0800
-Message-ID: <201308011053355032592@gmail.com>
-Reply-To: majianpeng <majianpeng@gmail.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 1/3] fs: Introduce new flag FALLOC_FL_COLLAPSE_RANGE
+Date: Thu, 1 Aug 2013 10:22:41 +1000
+Message-ID: <20130801002241.GH7118@dastard>
+References: <1375281721-15840-1-git-send-email-linkinjeon@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="gb2312"
-Content-Transfer-Encoding: base64
-To: linux-ext4 <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f46.google.com ([209.85.220.46]:42983 "EHLO
-	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751083Ab3HADQA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Jul 2013 23:16:00 -0400
-Received: by mail-pa0-f46.google.com with SMTP id fa1so1608199pad.5
-        for <linux-ext4@vger.kernel.org>; Wed, 31 Jul 2013 20:15:59 -0700 (PDT)
-Received: from majianpeng ([218.242.10.182])
-        by mx.google.com with ESMTPSA id pu5sm1068541pac.21.2013.07.31.20.11.06
-        for <linux-ext4@vger.kernel.org>
-        (version=TLSv1 cipher=RC4-SHA bits=128/128);
-        Wed, 31 Jul 2013 20:15:58 -0700 (PDT)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: elder@kernel.org, tytso@mit.edu, Namjae Jeon <namjae.jeon@samsung.com>,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com, hch@infradead.org,
+	bpm@sgi.com, adilger.kernel@dilger.ca, a.sangwan@samsung.com,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Namjae Jeon <linkinjeon@gmail.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+Content-Disposition: inline
+In-Reply-To: <1375281721-15840-1-git-send-email-linkinjeon@gmail.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-VGhlIGN1cnJlbnQgZ2l0OiBjb21taXQgMDY2OTNmMzA1ZTYwMjAyZDI3OTVhMTBiZWU3ZmI3ZGEy
-M2JjMmFjYy4NCkkgZG9uJ3Qga25vdyBob3cgdG8gcmVwcm9kdWNlIHRoaXMuDQoNClsgIDU0MS4x
-NzczOTZdIEJVRzogdW5hYmxlIHRvIGhhbmRsZSBrZXJuZWwgTlVMTCBwb2ludGVyIGRlcmVmZXJl
-bmNlIGF0ICAgICAgICAgICAobnVsbCkNClsgIDU0MS4xNzc0NDJdIElQOiBbPGZmZmZmZmZmODEy
-MmU3OTM+XSBqYmQyX2pvdXJuYWxfZmlsZV9pbm9kZSsweDUzLzB4MTQwDQpbICA1NDEuMTc3NDc2
-XSBQR0QgYjdiZWQwNjcgUFVEIDlmZWZkMDY3IFBNRCAwIA0KWyAgNTQxLjE3NzUwNV0gT29wczog
-MDAwMCBbIzFdIFNNUCANClsgIDU0MS4xNzc1MjldIE1vZHVsZXMgbGlua2VkIGluOiBmdXNlIGUx
-MDAwZQ0KWyAgNTQxLjE3NzU2Ml0gQ1BVOiAxIFBJRDogNzE0NSBDb21tOiBjZXBoLW9zZCBUYWlu
-dGVkOiBHICAgICAgICBXICAgIDMuMTEuMC1yYzMrICMyOQ0KWyAgNTQxLjE3NzU5NV0gSGFyZHdh
-cmUgbmFtZTogVG8gQmUgRmlsbGVkIEJ5IE8uRS5NLiBUbyBCZSBGaWxsZWQgQnkgTy5FLk0uL1Rv
-IGJlIGZpbGxlZCBieSBPLkUuTS4sIEJJT1MgMDgwMDE1ICAxMS8wOS8yMDExDQpbICA1NDEuMTc3
-NjM4XSB0YXNrOiBmZmZmODgwMDlmZWU0NjAwIHRpOiBmZmZmODgwMDlkOWRlMDAwIHRhc2sudGk6
-IGZmZmY4ODAwOWQ5ZGUwMDANClsgIDU0MS4xNzc2NjddIFJJUDogMDAxMDpbPGZmZmZmZmZmODEy
-MmU3OTM+XSAgWzxmZmZmZmZmZjgxMjJlNzkzPl0gamJkMl9qb3VybmFsX2ZpbGVfaW5vZGUrMHg1
-My8weDE0MA0KWyAgNTQxLjE3NzcwNV0gUlNQOiAwMDE4OmZmZmY4ODAwOWQ5ZGZjYzAgIEVGTEFH
-UzogMDAwMTAyNDYNClsgIDU0MS4xNzc3MjhdIFJBWDogZmZmZjg4MDBiNzhkYTAwMCBSQlg6IGZm
-ZmY4ODAwOTRkZGZjYzAgUkNYOiAwMDAwMDAwMDAwMDA0MDQwDQpbICA1NDEuMTc3NzU2XSBSRFg6
-IGZmZmY4ODAwYmQ0MjljYzAgUlNJOiAwMDAwMDAwMDAwMDAwMDAwIFJESTogZmZmZjg4MDBiNjcw
-Y2MwMA0KWyAgNTQxLjE3Nzc4M10gUkJQOiBmZmZmODgwMDlkOWRmY2UwIFIwODogMDAwMDAwMDAw
-MDAwMDAwMCBSMDk6IDAwMDAwMDAwMDAwMDAwMDANClsgIDU0MS4xNzc4MTBdIFIxMDogMDAwMDAw
-MDAwMDAwMDAwMSBSMTE6IDAwMDAwMDAwMDAwMDAwMDAgUjEyOiAwMDAwMDAwMDAwMDAwMDAwDQpb
-ICA1NDEuMTc3ODM4XSBSMTM6IGZmZmY4ODAwYjY3MGNjMDAgUjE0OiBmZmZmODgwMDcyMDIyMjA4
-IFIxNTogMDAwMDAwMDAwMDAwMGE0YQ0KWyAgNTQxLjE3Nzg2Nl0gRlM6ICAwMDAwN2YzZjk3Njk2
-NzAwKDAwMDApIEdTOmZmZmY4ODAwYmQ0MDAwMDAoMDAwMCkga25sR1M6MDAwMDAwMDAwMDAwMDAw
-MA0KWyAgNTQxLjE3NzkwM10gQ1M6ICAwMDEwIERTOiAwMDAwIEVTOiAwMDAwIENSMDogMDAwMDAw
-MDA4MDA1MDAzMw0KWyAgNTQxLjE3NzkyN10gQ1IyOiAwMDAwMDAwMDAwMDAwMDAwIENSMzogMDAw
-MDAwMDA5ZmUxZDAwMCBDUjQ6IDAwMDAwMDAwMDAwNDA3ZTANClsgIDU0MS4xNzc5NTRdIFN0YWNr
-Og0KWyAgNTQxLjE3Nzk2NV0gIDAwMDAwMDAwMDAwMDBhNGEgZmZmZjg4MDA4NzkxNmE2MCBmZmZm
-ZWEwMDAxYWRiMDgwIGZmZmY4ODAwNzIwMjIyMDgNClsgIDU0MS4xNzgwMDVdICBmZmZmODgwMDlk
-OWRmZDQwIGZmZmZmZmZmODExZTk1ZWIgMDAwMDAwMDAwMDAwMTAwMCAwMDAwMDAwMDAwMDAxMDAw
-DQpbICA1NDEuMTc4MDA1XSAgMDAwMDAwMDAwMDAwMDViNiBmZmZmODgwMGI2NzBjYzAwIGZmZmY4
-ODAwNzIwMjIyMDggZmZmZjg4MDA4NzkxNmE2MA0KWyAgNTQxLjE3ODAwNV0gQ2FsbCBUcmFjZToN
-ClsgIDU0MS4xNzgwMDVdICBbPGZmZmZmZmZmODExZTk1ZWI+XSBleHQ0X2Jsb2NrX3plcm9fcGFn
-ZV9yYW5nZSsweDNiYi8weDNlMA0KWyAgNTQxLjE3ODAwNV0gIFs8ZmZmZmZmZmY4MTFlOTcyYj5d
-IGV4dDRfYmxvY2tfdHJ1bmNhdGVfcGFnZSsweDJiLzB4MzANClsgIDU0MS4xNzgxNDFdICBbPGZm
-ZmZmZmZmODExZWEzNjM+XSBleHQ0X3RydW5jYXRlKzB4MzEzLzB4M2EwDQpbICA1NDEuMTc4MTQx
-XSAgWzxmZmZmZmZmZjgxMTI1NDJkPl0gPyB0cnVuY2F0ZV9wYWdlY2FjaGUrMHg1ZC8weDcwDQpb
-ICA1NDEuMTc4MTQxXSAgWzxmZmZmZmZmZjgxMWVhZWJkPl0gZXh0NF9zZXRhdHRyKzB4M2ZkLzB4
-NzQwDQpbICA1NDEuMTc4MTQxXSAgWzxmZmZmZmZmZjgxMTgzNmFiPl0gbm90aWZ5X2NoYW5nZSsw
-eDFkYi8weDM5MA0KWyAgNTQxLjE3ODE0MV0gIFs8ZmZmZmZmZmY4MTE2NTU1MD5dIGRvX3RydW5j
-YXRlKzB4NjAvMHhhMA0KWyAgNTQxLjE3ODE0MV0gIFs8ZmZmZmZmZmY4MTE2NTcwNj5dIHZmc190
-cnVuY2F0ZSsweDE3Ni8weDFhMA0KWyAgNTQxLjE3ODE0MV0gIFs8ZmZmZmZmZmY4MTE2NTc4Yz5d
-IGRvX3N5c190cnVuY2F0ZSsweDVjLzB4YTANClsgIDU0MS4xNzgxNDFdICBbPGZmZmZmZmZmODEx
-NjU5NGU+XSBTeVNfdHJ1bmNhdGUrMHhlLzB4MTANClsgIDU0MS4xNzgxNDFdICBbPGZmZmZmZmZm
-ODE2ZTYyNTQ+XSB0cmFjZXN5cysweGRkLzB4ZTINClsgIDU0MS4xNzgxNDFdIENvZGU6IGRiIDBm
-IDg0IGYzIDAwIDAwIDAwIDQxIGY2IDQ1IDFjIDA4IDBmIDg1IGFlIDAwIDAwIDAwIDQ5IDhiIDQ1
-IDAwIDQ4IDg1IGMwIDBmIDg0IGExIDAwIDAwIDAwIDQ4IDhiIDAwIGY2IDAwIDAyIDBmIDg1IDk1
-IDAwIDAwIDAwIDw0OT4gMzkgMWMgMjQgNGMgOGIgMmIgMGYgODQgOTAgMDAgMDAgMDAgNDkgMzkg
-NWMgMjQgMDggMGYgODQgODUgDQpbICA1NDEuMTc4MTQxXSBSSVAgIFs8ZmZmZmZmZmY4MTIyZTc5
-Mz5dIGpiZDJfam91cm5hbF9maWxlX2lub2RlKzB4NTMvMHgxNDANClsgIDU0MS4xNzgxNDFdICBS
-U1AgPGZmZmY4ODAwOWQ5ZGZjYzA+DQpbICA1NDEuMTc4MTQxXSBDUjI6IDAwMDAwMDAwMDAwMDAw
-MDANClsgIDU0MS4xNzg3MzhdIC0tLVsgZW5kIHRyYWNlIDk1MWNkNjNhYzVkZjAyZDIgXS0tLQ0K
-DQoNClRoYW5rcyENCkppYW5wZW5nIE1h
+On Wed, Jul 31, 2013 at 11:42:00PM +0900, Namjae Jeon wrote:
+> From: Namjae Jeon <namjae.jeon@samsung.com>
+> 
+> Fallocate now supports new FALLOC_FL_COLLAPSE_RANGE flag.
+> The semantics of this flag are following:
+> 1) It collapses the range lying between offset and length by removing any data
+>    blocks which are present in this range and than updates all the logical
+>    offsets of extents beyond "offset + len" to nullify the hole created by
+>    removing blocks. In short, it does not leave a hole.
+> 1) It should be used exclusively. No other fallocate flag in combination.
+> 2) Offset and length supplied to fallocate should be fs block size aligned.
 
+Given that the rest of fallocate() interfaces are byte based, this
+is going to cause some confusion if it's not well documented. i.e.
+this restriction needs to be documented in the header file that is
+exposed to userspace, as well as in the fallocate(2) man page.
+
+> 3) It wokrs beyond "EOF", so the extents which are pre-allocated beyond "EOF"
+>    are also updated.
+
+I don't think that's valid for this operation. If the range is
+beyond EOF, you are not modifying anything visible to userspace, and
+that makes it the same as a hole punch operation. So, I'd get rid of
+thisnasty implementation complexity altogether.
+
+> 4) It reduces the i_size of inode by the amount of collapse range which lies
+>    within i_size. So, if offset >= i_size, i_size won't be changed at all.
+
+Similarly, I don't think that asking for a range that overlaps EOF
+is valid, either. The moment you overlap or go beyond EOF, you are
+effectively truncating the file as there is no data to collapse into
+the range
+
+As it is, I don't see these EOF rules enforced by this patch, nor
+are they documented at all in the patch.
+
+Regardless of what semantics we decide on, this needs xfs_io
+support and extensive corner case tests added to xfstests so that we
+can confirm the implementation in every filesystem is correct and we
+don't introduce regressions in future. it also needs documentation
+in the fallocate(2) man page.
+
+> diff --git a/include/uapi/linux/falloc.h b/include/uapi/linux/falloc.h
+> index 990c4cc..7567c8c 100644
+> --- a/include/uapi/linux/falloc.h
+> +++ b/include/uapi/linux/falloc.h
+> @@ -1,9 +1,10 @@
+>  #ifndef _UAPI_FALLOC_H_
+>  #define _UAPI_FALLOC_H_
+>  
+> -#define FALLOC_FL_KEEP_SIZE	0x01 /* default is extend size */
+> -#define FALLOC_FL_PUNCH_HOLE	0x02 /* de-allocates range */
+> +#define FALLOC_FL_KEEP_SIZE		0x01 /* default is extend size */
+> +#define FALLOC_FL_PUNCH_HOLE		0x02 /* de-allocates range */
+>  #define FALLOC_FL_NO_HIDE_STALE	0x04 /* reserved codepoint */
+> +#define FALLOC_FL_COLLAPSE_RANGE	0x08 /* it does not leave a hole */
+
+I'd suggest that you need to explain what FALLOC_FL_COLLAPSE_RANGE
+does in great detail right here.
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
