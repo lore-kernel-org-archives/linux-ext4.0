@@ -1,46 +1,65 @@
-From: Vyacheslav Dubeyko <slava@dubeyko.com>
-Subject: Re: File permissions in ext4
-Date: Thu, 01 Aug 2013 17:35:10 +0400
-Message-ID: <1375364110.2304.11.camel@slavad-ubuntu>
-References: <CACyNnZM5iCC+A_RPM90jr-UUNP5VVnm=+59w6ip0oABqNbFXvQ@mail.gmail.com>
-	 <CACyNnZM51RDcyzah_nbQA+tSYDVAXsduzDkGAK-gjfBfo1NWDg@mail.gmail.com>
-	 <1375361980.2304.4.camel@slavad-ubuntu>
-	 <CACyNnZNdVo73TUhaMsx8j7kZq=M65XEMzwmWCi4M7Js0G0k4TA@mail.gmail.com>
-	 <1375363302.2304.9.camel@slavad-ubuntu>
-	 <CACyNnZM9Fm8s+3Eg-yL3bd0KSbZNvPCmUWEBrETCUdj_RMwnwg@mail.gmail.com>
-Reply-To: slava@dubeyko.com
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 60676] New: Stat system call gives permission denied to root
+ for links under a sticky bit
+Date: Thu, 01 Aug 2013 15:02:36 +0000
+Message-ID: <bug-60676-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Felipe Monteiro de Carvalho <felipemonteiro.carvalho@gmail.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy7-pub.bluehost.com ([67.222.55.9]:36575 "HELO
-	oproxy7-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1755177Ab3HANfR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Aug 2013 09:35:17 -0400
-In-Reply-To: <CACyNnZM9Fm8s+3Eg-yL3bd0KSbZNvPCmUWEBrETCUdj_RMwnwg@mail.gmail.com>
+Received: from mail.kernel.org ([198.145.19.201]:46422 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755737Ab3HAPCo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 1 Aug 2013 11:02:44 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id D6AC62035A
+	for <linux-ext4@vger.kernel.org>; Thu,  1 Aug 2013 15:02:42 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 032752035D
+	for <linux-ext4@vger.kernel.org>; Thu,  1 Aug 2013 15:02:37 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 2013-08-01 at 15:23 +0200, Felipe Monteiro de Carvalho wrote:
-> On Thu, Aug 1, 2013 at 3:21 PM, Vyacheslav Dubeyko <slava@dubeyko.com> wrote:
-> > config EXT4_FS_POSIX_ACL
-> >           POSIX Access Control Lists (ACLs) support permissions for users and
-> >           groups beyond the owner/group/world scheme.
-> >
-> >           To learn more about Access Control Lists, visit the POSIX ACLs for
-> >           Linux website <http://acl.bestbits.at/>.
-> 
-> Aha, so it is just a more advanced version of the permissions. But I
-> suppose that i_mode will always be valid even if the file system also
-> support ACL, correct?
-> 
+https://bugzilla.kernel.org/show_bug.cgi?id=60676
 
-As I understand, yes. Because ACLs are simply enhancement of permission
-model.
+            Bug ID: 60676
+           Summary: Stat system call gives permission denied to root for
+                    links under a sticky bit
+           Product: File System
+           Version: 2.5
+    Kernel Version: 3.5.0
+          Hardware: x86-64
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: jck@videk.com
+        Regression: No
 
-With the best regards,
-Vyacheslav Dubeyko.
+If a directory has a sticky bit set, root cannot use anything that makes the
+stat system call on any of the links there.
 
+Example:
+> $ ls -ld /tmp/
+> drwxrwxrwt 17 root root 4825088 Aug  1 10:50 /tmp/
+> $ mkdir /tmp/testdir
+> $ touch /tmp/testdir/testfile
+> $ ln -s /tmp/testdir/ /tmp/testlink
+> $ ls /tmp/testlink/
+> testfile
+> $ su
+> # ls /tmp/testlink
+ls: cannot access /tmp/testlink: Permission denied
+> # ls /tmp/testdir
+> testfile
 
+I can see how having root blindly follow links in a sticky directory could be a
+bad idea, but this goes against the behavior described by the man pages.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
