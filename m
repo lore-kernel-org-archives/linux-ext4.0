@@ -1,160 +1,195 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH v1 12/22] debugfs: handle inline_data in punch command
-Date: Fri,  2 Aug 2013 17:49:39 +0800
-Message-ID: <1375436989-18948-13-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH v1 16/22] e2fsck: add problem descriptions and check inline data feature
+Date: Fri,  2 Aug 2013 17:49:43 +0800
+Message-ID: <1375436989-18948-17-git-send-email-wenqing.lz@taobao.com>
 References: <1375436989-18948-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Theodore Ts'o <tytso@mit.edu>, Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f49.google.com ([209.85.160.49]:56003 "EHLO
-	mail-pb0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758281Ab3HBJvA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Aug 2013 05:51:00 -0400
-Received: by mail-pb0-f49.google.com with SMTP id xb4so499306pbc.8
-        for <linux-ext4@vger.kernel.org>; Fri, 02 Aug 2013 02:51:00 -0700 (PDT)
+Received: from mail-pb0-f54.google.com ([209.85.160.54]:44973 "EHLO
+	mail-pb0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758382Ab3HBJvR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Aug 2013 05:51:17 -0400
+Received: by mail-pb0-f54.google.com with SMTP id ro12so500094pbb.13
+        for <linux-ext4@vger.kernel.org>; Fri, 02 Aug 2013 02:51:17 -0700 (PDT)
 In-Reply-To: <1375436989-18948-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-Now punch command only can truncate an inode with inline_data.  The
-start block must be 0 because the size of an inode shouldn't be greater
-than one block.
-
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- lib/ext2fs/ext2fsP.h     |    3 +++
- lib/ext2fs/inline_data.c |    9 +++----
- lib/ext2fs/punch.c       |   59 ++++++++++++++++++++++++++++++++++++++++++++--
- 3 files changed, 63 insertions(+), 8 deletions(-)
+ e2fsck/pass1.c           |   33 ++++++++++++++++++++++++++++++++-
+ e2fsck/problem.c         |   15 +++++++++++++++
+ e2fsck/problem.h         |    9 +++++++++
+ lib/ext2fs/ext2fs.h      |    1 +
+ lib/ext2fs/inline_data.c |   28 ++++++++++++++++++++++++++++
+ 5 files changed, 85 insertions(+), 1 deletion(-)
 
-diff --git a/lib/ext2fs/ext2fsP.h b/lib/ext2fs/ext2fsP.h
-index ed89272..1e5aa32 100644
---- a/lib/ext2fs/ext2fsP.h
-+++ b/lib/ext2fs/ext2fsP.h
-@@ -110,6 +110,9 @@ extern errcode_t ext2fs_inline_data_find(ext2_filsys fs,
- 					 struct inline_data *data);
- extern errcode_t ext2fs_inline_data_convert(ext2_filsys fs, ext2_ino_t ino,
- 					    void *priv_data);
-+extern errcode_t ext2fs_inline_data_destory_data(ext2_filsys fs, ext2_ino_t ino,
-+					   struct ext2_inode_large *inode,
-+					   struct inline_data *data);
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index 1b410be..e6ea460 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -592,7 +592,7 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 	struct ext2_super_block *sb = ctx->fs->super;
+ 	const char	*old_op;
+ 	unsigned int	save_type;
+-	int		imagic_fs, extent_fs;
++	int		imagic_fs, extent_fs, inlinedata_fs;
+ 	int		busted_fs_time = 0;
+ 	int		inode_size;
+ 	int		failed_csum = 0;
+@@ -626,6 +626,8 @@ void e2fsck_pass1(e2fsck_t ctx)
  
- /* Generic numeric progress meter */
+ 	imagic_fs = (sb->s_feature_compat & EXT2_FEATURE_COMPAT_IMAGIC_INODES);
+ 	extent_fs = (sb->s_feature_incompat & EXT3_FEATURE_INCOMPAT_EXTENTS);
++	inlinedata_fs = (sb->s_feature_incompat &
++			EXT4_FEATURE_INCOMPAT_INLINE_DATA);
  
+ 	/*
+ 	 * Allocate bitmaps structures
+@@ -757,6 +759,20 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 		ext2fs_mark_block_bitmap2(ctx->block_found_map,
+ 					  fs->super->s_mmp_block);
+ 
++	/*
++	 * If INLINE_DATA feature is set and EXT_ATTR feature missing,
++	 * EXT_ATTR needs to be set because INLINE_DATA depends on it and
++	 * this feature is enabled on default.
++	 */
++	if (!(fs->super->s_feature_compat & EXT2_FEATURE_COMPAT_EXT_ATTR) &&
++	    inlinedata_fs) {
++		if (fix_problem(ctx, PR_1_INLINE_DATA_AND_EXT_ATTR, &pctx)) {
++			fs->super->s_feature_compat |=
++				EXT2_FEATURE_COMPAT_EXT_ATTR;
++			ext2fs_mark_super_dirty(fs);
++		}
++	}
++
+ 	/* Set up ctx->lost_and_found if possible */
+ 	(void) e2fsck_get_lost_and_found(ctx, 0);
+ 
+@@ -808,6 +824,21 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 			}
+ 		}
+ 
++		/* Test for incorrect inline_data flags settings. */
++		if ((inode->i_flags & EXT4_INLINE_DATA_FL) && !inlinedata_fs &&
++		    (ino >= EXT2_FIRST_INODE(fs->super))) {
++			if (ext2fs_inline_data_check(fs, ino) &&
++			    !fix_problem(ctx, PR_1_INLINE_DATA_FEATURE, &pctx)) {
++				sb->s_feature_incompat |=
++					EXT4_FEATURE_INCOMPAT_INLINE_DATA;
++				ext2fs_mark_super_dirty(fs);
++				inlinedata_fs = 1;
++			} else if (!fix_problem(ctx, PR_1_INLINE_DATA_SET, &pctx)) {
++				e2fsck_clear_inode(ctx, ino, inode, 0, "pass1");
++				continue;
++			}
++		}
++
+ 		/*
+ 		 * Test for incorrect extent flag settings.
+ 		 *
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index 76bc1d5..d79115a 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -1008,6 +1008,21 @@ static struct e2fsck_problem problem_table[] = {
+ 	     "Logical start %b does not match logical start %c at next level.  "),
+ 	  PROMPT_FIX, 0 },
+ 
++	/* INLINE_DATA feature is set, but EXT_ATTR missing */
++	{ PR_1_INLINE_DATA_AND_EXT_ATTR,
++	  N_("INLINE_DATA feature is set in @S, but EXT_ATTR feature missing\n"),
++	  PROMPT_FIX, 0 },
++
++	/* Inode has inline data, but superblock is missing INLINE_DATA feature. */
++	{ PR_1_INLINE_DATA_FEATURE,
++	  N_("@i %i has inline data, but @S is missing INLINE_DATA feature\n"),
++	  PROMPT_CLEAR, PR_PREEN_OK },
++
++	/* INLINE_DATA feature is set in a non-inline-data filesystem */
++	{ PR_1_INLINE_DATA_SET,
++	  N_("@i %i has INLINE_DATA_FL flag on @f without inline data support.\n"),
++	  PROMPT_CLEAR, 0 },
++
+ 	/* Pass 1b errors */
+ 
+ 	/* Pass 1B: Rescan for duplicate/bad blocks */
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index d2b6df4..83257ae 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -589,6 +589,15 @@ struct problem_context {
+ /* Index start doesn't match start of next extent down */
+ #define PR_1_EXTENT_INDEX_START_INVALID	0x01006D
+ 
++/* INLINE_DATA feature is set, but EXT_ATTR missing */
++#define PR_1_INLINE_DATA_AND_EXT_ATTR  0x01006E
++
++/* Inode has inline data, but superblock is missing INLINE_DATA feature. */
++#define PR_1_INLINE_DATA_FEATURE       0x01006F
++
++/* INLINE_DATA feature is set in a non-inline-data filesystem */
++#define PR_1_INLINE_DATA_SET	       0x010070
++
+ /*
+  * Pass 1b errors
+  */
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index ab4c70e..fc40ef2 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -1357,6 +1357,7 @@ extern errcode_t ext2fs_inline_data_iterate(ext2_filsys fs,
+ 						  struct ext2_inode_large *inode,
+ 						  void *priv_data),
+ 				      void *priv_data);
++extern int ext2fs_inline_data_check(ext2_filsys fs, ext2_ino_t ino);
+ extern errcode_t ext2fs_inline_data_create(ext2_filsys fs,
+ 					   struct ext2_inode_large *inode,
+ 					   unsigned int len);
 diff --git a/lib/ext2fs/inline_data.c b/lib/ext2fs/inline_data.c
-index 5ca95ee..52ac133 100644
+index 52ac133..1c954a3 100644
 --- a/lib/ext2fs/inline_data.c
 +++ b/lib/ext2fs/inline_data.c
-@@ -28,9 +28,6 @@ static void ext2fs_inline_data_finish_convert(ext2_filsys fs, ext2_ino_t ino,
- 					      int inline_size);
- static void ext2fs_update_final_de(ext2_filsys fs, char *de_buf,
- 				   int old_size, int new_size);
--static errcode_t ext2fs_inline_data_destory_data(ext2_filsys fs, ext2_ino_t ino,
--					   struct ext2_inode_large *inode,
--					   struct inline_data *data);
- 
- errcode_t ext2fs_inline_data_find(ext2_filsys fs,
- 				  struct ext2_inode_large *inode,
-@@ -78,9 +75,9 @@ static void *ext2fs_get_inline_xattr_pos(struct ext2_inode_large *inode,
- 	return (void *) (IFIRST(header) + entry->e_value_offs);
- }
- 
--static errcode_t ext2fs_inline_data_destory_data(ext2_filsys fs, ext2_ino_t ino,
--						 struct ext2_inode_large *inode,
--						 struct inline_data *data)
-+errcode_t ext2fs_inline_data_destory_data(ext2_filsys fs, ext2_ino_t ino,
-+					  struct ext2_inode_large *inode,
-+					  struct inline_data *data)
- {
- 	struct ext2_ext_attr_ibody_header *header;
- 	struct ext2_ext_attr_search s = {
-diff --git a/lib/ext2fs/punch.c b/lib/ext2fs/punch.c
-index b53653a..3bfbd4d 100644
---- a/lib/ext2fs/punch.c
-+++ b/lib/ext2fs/punch.c
-@@ -19,6 +19,7 @@
- 
- #include "ext2_fs.h"
- #include "ext2fs.h"
-+#include "ext2fsP.h"
- 
- #undef PUNCH_DEBUG
- 
-@@ -281,7 +282,59 @@ errout:
- 	ext2fs_extent_free(handle);
+@@ -383,6 +383,34 @@ err:
  	return retval;
  }
--	
-+
-+static errcode_t ext2fs_punch_inline_data(ext2_filsys fs, ext2_ino_t ino,
-+					  blk64_t start, blk64_t end)
+ 
++int ext2fs_inline_data_check(ext2_filsys fs, ext2_ino_t ino)
 +{
 +	struct ext2_inode_large *inode;
 +	struct inline_data data;
-+	errcode_t retval;
-+
-+	/*
-+	 * 'start' must be 0 because here it's a block and the size of
-+	 * an inode shouldn't greater than a block.
-+	 */
-+	if (start != 0)
-+		return 0;
-+
-+	/* Punching hole for inline_data is not supported */
-+	if ((unsigned int)end != ~0U)
-+		return EXT2_ET_OP_NOT_SUPPORTED;
++	errcode_t retval = 0;
++	int pass = 0;
 +
 +	retval = ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode);
 +	if (retval)
-+		return retval;
++		return pass;
 +
 +	retval = ext2fs_read_inode_full(fs, ino, (void *)inode,
 +					EXT2_INODE_SIZE(fs->super));
 +	if (retval)
-+		goto out;
++		goto err;
 +
 +	retval = ext2fs_inline_data_find(fs, inode, &data);
 +	if (retval)
-+		goto out;
++		goto err;
 +
-+	if (!data.inline_off)
-+		goto out;
++	if (data.inline_off != 0)
++		pass = 1;
 +
-+	if (inode->i_extra_isize > (EXT2_INODE_SIZE(fs->super) -
-+				    EXT2_GOOD_OLD_INODE_SIZE)) {
-+		retval = EXT2_ET_BAD_EXTRA_SIZE;
-+		goto out;
-+	}
-+
-+	retval = ext2fs_inline_data_destory_data(fs, ino, inode, &data);
-+	if (retval)
-+		goto out;
-+
-+	inode->i_size = 0;
-+	retval = ext2fs_write_inode_full(fs, ino, (void *)inode,
-+					 EXT2_INODE_SIZE(fs->super));
-+out:
++err:
 +	ext2fs_free_mem(&inode);
-+	return retval;
++	return pass;
 +}
 +
- /*
-  * Deallocate all logical blocks starting at start to end, inclusive.
-  * If end is ~0, then this is effectively truncate.
-@@ -307,7 +360,9 @@ extern errcode_t ext2fs_punch(ext2_filsys fs, ext2_ino_t ino,
- 			return retval;
- 		inode = &inode_buf;
- 	}
--	if (inode->i_flags & EXT4_EXTENTS_FL)
-+	if (inode->i_flags & EXT4_INLINE_DATA_FL)
-+		return ext2fs_punch_inline_data(fs, ino, start, end);
-+	else if (inode->i_flags & EXT4_EXTENTS_FL)
- 		retval = ext2fs_punch_extent(fs, ino, inode, start, end);
- 	else {
- 		blk_t	count;
+ errcode_t ext2fs_inline_data_convert(ext2_filsys fs,
+ 				     ext2_ino_t  ino,
+ 				     void *priv_data)
 -- 
 1.7.9.7
 
