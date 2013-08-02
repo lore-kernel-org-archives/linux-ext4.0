@@ -1,57 +1,114 @@
-From: Dave Jones <davej@redhat.com>
-Subject: Re: [PATCH] ext4: Make ext4_writepages() resilient to i_size changes
-Date: Fri, 2 Aug 2013 11:26:24 -0400
-Message-ID: <20130802152624.GA1121@redhat.com>
-References: <1375310532-17731-1-git-send-email-jack@suse.cz>
- <20130802142324.GA20484@quack.suse.cz>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] mke2fs: remove quota docs if not configured in
+Date: Fri, 02 Aug 2013 10:48:17 -0500
+Message-ID: <51FBD4C1.9060106@redhat.com>
+References: <50B504C4.6090504@redhat.com> <50B50804.6020309@redhat.com> <50B6F707.60308@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Zheng Liu <gnehzuil.liu@gmail.com>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Bert.Deknuydt@esat.kuleuven.be
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:30509 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:17719 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753555Ab3HBP0i (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 2 Aug 2013 11:26:38 -0400
-Content-Disposition: inline
-In-Reply-To: <20130802142324.GA20484@quack.suse.cz>
+	id S1754003Ab3HBPtm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 2 Aug 2013 11:49:42 -0400
+In-Reply-To: <50B6F707.60308@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 02, 2013 at 04:23:24PM +0200, Jan Kara wrote:
- > On Thu 01-08-13 00:42:12, Jan Kara wrote:
- > > Inode size can arbitrarily change while writeback is in progress. This
- > > can have various strange effects when we use one value of i_size for one
- > > decision during writeback and another value of i_size for a different
- > > decision during writeback. In particular a check for lblk < blocks in
- > > mpage_map_and_submit_buffers() causes problems when i_size is reduced
- > > while writeback is running because we can end up not using all blocks
- > > we've allocated. Thus these blocks are leaked and also delalloc
- > > accounting gets wrong manifesting as a warning like:
- > > 
- > > ext4_da_release_space:1333: ext4_da_release_space: ino 12, to_free 1
- > > with only 0 reserved data blocks
- > > 
- > > The problem can happen only when blocksize < pagesize because the check
- > > for size is performed only after the first iteration of the mapping
- > > loop.
- > > 
- > > Fix the problem by removing the size check from the mapping loop. We
- > > have an extent allocated so we have to use it all before checking for
- > > i_size. We may call add_page_bufs_to_extent() unnecessarily but that
- > > function won't do anything if passed block number is beyond file size.
- > > 
- > > Also to avoid future surprises like this sample inode size when
- > > starting writeback in ext4_writepages() and then use this sampled size
- > > throughout the writeback call stack.
- >   Ted, please disregard this patch. It is buggy. I'll send a better fix
- > soon.
- 
-I was about to post that I was seeing fsx failures on 1k filesystems
-on a kernel with this patch.
+On 11/28/12 11:47 PM, Eric Sandeen wrote:
+> If quota isn't turned on with --enable-quota, then comment
+> quota documentation out of the mke2fs manpage.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> ---
+> 
+> first time I've mucked with subst, dunno if this is right
+> but it seems to work :)
 
-Is that the same thing you're seeing ?
+Going through old patches - ping on this one?
 
-	Dave
+-Eric
+
+> diff --git a/configure.in b/configure.in
+> index bc8d1e8..2d431bd 100644
+> --- a/configure.in
+> +++ b/configure.in
+> @@ -565,6 +565,8 @@ AC_SUBST(BLKID_CMT)
+>  dnl
+>  dnl handle --enable-quota
+>  dnl
+> +QUOTA_MAN_COMMENT='.\"'
+> +AC_SUBST(QUOTA_MAN_COMMENT)
+>  PKG_PROG_PKG_CONFIG
+>  AH_TEMPLATE([CONFIG_QUOTA], [Define to 1 to enable quota support])
+>  AC_ARG_ENABLE([quota],
+> @@ -575,6 +577,8 @@ then
+>  else
+>  	AC_DEFINE(CONFIG_QUOTA, 1)
+>  	AC_MSG_RESULT([Enabling quota support])
+> +	QUOTA_MAN_COMMENT=""
+> +	AC_SUBST(QUOTA_MAN_COMMENT)
+>  fi
+>  ,
+>  AC_MSG_RESULT([Disabling quota support by default])
+> diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
+> index d4fbe00..92cae74 100644
+> --- a/misc/mke2fs.8.in
+> +++ b/misc/mke2fs.8.in
+> @@ -275,13 +275,13 @@ as default.
+>  .TP
+>  .BI nodiscard
+>  Do not attempt to discard blocks at mkfs time.
+> -.TP
+> -.BI quotatype
+> -Specify which quota type ('usr' or 'grp') is to be initialized. This
+> -option has any effect only if
+> -.B quota
+> -feature is set. Without this extended option, the default behavior is to
+> -initialize both user and group quotas.
+> +@QUOTA_MAN_COMMENT@.TP
+> +@QUOTA_MAN_COMMENT@.BI quotatype
+> +@QUOTA_MAN_COMMENT@Specify which quota type ('usr' or 'grp') is to be initialized. This
+> +@QUOTA_MAN_COMMENT@option has any effect only if
+> +@QUOTA_MAN_COMMENT@.B quota
+> +@QUOTA_MAN_COMMENT@feature is set. Without this extended option, the default behavior is to
+> +@QUOTA_MAN_COMMENT@initialize both user and group quotas.
+>  .RE
+>  .TP
+>  .BI \-f " fragment-size"
+> @@ -555,11 +555,11 @@ option).
+>  .B large_file
+>  Filesystem can contain files that are greater than 2GB.  (Modern kernels
+>  set this feature automatically when a file > 2GB is created.)
+> -.TP
+> -.B quota
+> -Create quota inodes (inode# 3 for userquota and inode# 4 for group quota) and
+> -set them in the superblock.  With this feature, the quotas will be enabled
+> -automatically when the filesystem is mounted.
+> +@QUOTA_MAN_COMMENT@.TP
+> +@QUOTA_MAN_COMMENT@.B quota
+> +@QUOTA_MAN_COMMENT@Create quota inodes (inode# 3 for userquota and inode# 4 for group quota) and
+> +@QUOTA_MAN_COMMENT@set them in the superblock.  With this feature, the quotas will be enabled
+> +@QUOTA_MAN_COMMENT@automatically when the filesystem is mounted.
+>  .TP
+>  .B resize_inode
+>  Reserve space so the block group descriptor table may grow in the future.
+> diff --git a/util/subst.conf.in b/util/subst.conf.in
+> index 0e074d8..64fde7a 100644
+> --- a/util/subst.conf.in
+> +++ b/util/subst.conf.in
+> @@ -18,3 +18,5 @@ $prefix			@prefix@
+>  # Enable the documentation for the journal device mke2fs, tune2fs, and
+>  # e2fsck's man page
+>  JDEV			
+> +# Enable documentation for quota feature in mke2fs
+> +QUOTA_MAN_COMMENT	@QUOTA_MAN_COMMENT@
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
