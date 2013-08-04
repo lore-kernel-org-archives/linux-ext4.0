@@ -1,40 +1,44 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/1] EXT4: LazyInit Mount Bug Fix
-Date: Sat, 3 Aug 2013 20:49:04 -0400
-Message-ID: <20130804004904.GB19781@thunk.org>
-References: <CAOprVPLa0-xmKE9_vBddR06-RS3WHUGHH5J4pb28L32jHFOFoQ@mail.gmail.com>
+Subject: Re: [PATCH 1/2] ext4: fix handling of nodelalloc parameter
+Date: Sat, 3 Aug 2013 21:36:58 -0400
+Message-ID: <20130804013658.GD19781@thunk.org>
+References: <1375445027-25024-1-git-send-email-p.sarna@partner.samsung.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, Manish Sharma <manishrma@gmail.com>,
-	kapil upadhayay <Kapil.48@gmail.com>
-To: Nitin Singla <nitin.akshainie@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:39067 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753233Ab3HDBoZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 3 Aug 2013 21:44:25 -0400
+Cc: adilger.kernel@dilger.ca, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, b.zolnierkie@samsung.com,
+	Kyungmin Park <kyungmin.park@samsung.com>
+To: Piotr Sarna <p.sarna@partner.samsung.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <CAOprVPLa0-xmKE9_vBddR06-RS3WHUGHH5J4pb28L32jHFOFoQ@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1375445027-25024-1-git-send-email-p.sarna@partner.samsung.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jul 15, 2013 at 12:14:18PM +0530, Nitin Singla wrote:
-> -    sbi->s_itb_per_group = sbi->s_inodes_per_group /
-> -                    sbi->s_inodes_per_block;
-> +    sbi->s_itb_per_group = DIV_ROUND_UP(sbi->s_inodes_per_group,
-> +                    sbi->s_inodes_per_block);
+On Fri, Aug 02, 2013 at 02:03:46PM +0200, Piotr Sarna wrote:
+> Commit 26092bf ("ext4: use a table-driven handler for mount options")
+> introduced buggy handling of nodelalloc parameter in mount command.
+> 
+> After explicitly using delalloc or nodelalloc parameter in mount command,
+> MOPT_EXPLICIT flag is set. After that, a test ensures that "data=journal"
+> and "delalloc" parameters are not simultaneously activated.
+> Unluckily, the mentioned test reports a bug in both situations:
+> - "data=journal,delalloc"
+> - "data=journal,nodelalloc"
+> whereas the second one is perfectly legal and acceptable.
+> 
+> A simple solution to this problem is in setting EXPLICIT_DELALLOC flag
+> properly. This patch ensures that EXPLICIT_DELALLOC flag is set only
+> if "delalloc" parameter was used, and not set in case of "nodelalloc".
 
-This would only matter if s_inodes_per_group is not a multiple of
-s_inodes_per_block.  Which is never supposed to happen; mke2fs doesn't
-create file systems like this.
+Thanks for this bug report and patch.  There is an even simpler way of
+fixing this doesn't involve adding an additional check in the code,
+though.  Just make the following change the table entry:
 
-Ancient Android build systems, before the bug was fixed, did do this
-in the past, but that was a long time ago.  Where did this file system
-come from?
+     {Opt_nodelalloc, EXT4_MOUNT_DELALLOC,
+-      MOPT_EXT4_ONLY | MOPT_CLEAR | MOPT_EXPLICIT},
++      MOPT_EXT4_ONLY | MOPT_CLEAR},
 
-I could apply this patch, but you should be warned that there may be
-other bugs hiding here for file systems like this, both in the kernel
-and in e2fsprogs.
+I'll send out a patch which does this...
 
 					- Ted
