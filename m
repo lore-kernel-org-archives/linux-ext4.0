@@ -1,7 +1,7 @@
-From: Theodore Ts'o <tytso@mit.edu>
+From: =?utf-8?B?SsO2cm4=?= Engel <joern@logfs.org>
 Subject: Re: [RFC/PATCH 0/2] ext4: Transparent Decompression Support
-Date: Sat, 3 Aug 2013 20:33:16 -0400
-Message-ID: <20130804003316.GA19781@thunk.org>
+Date: Sat, 3 Aug 2013 22:21:14 -0400
+Message-ID: <20130804022114.GA24655@logfs.org>
 References: <1374699833.7083.2.camel@localhost>
  <20130724233628.GD3641@logfs.org>
  <51F14136.30409@mozilla.com>
@@ -10,72 +10,57 @@ References: <1374699833.7083.2.camel@localhost>
  <51F17005.7030309@mozilla.com>
  <1374825683.3671.35.camel@slavad-ubuntu>
  <20130726132034.GB21977@logfs.org>
+ <20130804003316.GA19781@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: Vyacheslav Dubeyko <slava@dubeyko.com>,
 	Dhaval Giani <dgiani@mozilla.com>,
 	Taras Glek <tglek@mozilla.com>, linux-kernel@vger.kernel.org,
 	vdjeric@mozilla.com, glandium@mozilla.com,
 	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: =?iso-8859-1?Q?J=F6rn?= Engel <joern@logfs.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20130726132034.GB21977@logfs.org>
+In-Reply-To: <20130804003316.GA19781@thunk.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jul 26, 2013 at 09:20:34AM -0400, J=F6rn Engel wrote:
+On Sat, 3 August 2013 20:33:16 -0400, Theodore Ts'o wrote:
 >=20
-> I don't think the e2compr patches are strictly necessary.  They are a
-> good option, but not the only one.
+> P.P.S.  At least in theory, nothing of what I've described here has t=
+o
+> be ext4 specific.  We could implement this in the VFS layer, at which
+> point not only ext4 would benefit, but also btrfs, xfs, f2fs, etc.
 
-Sorry for not chiming in earlier; I've been travelling this past week,
-and between that and a bunch of other things I've fallen a bit earlier
-on my e-mail.
+Except for an inode bit that needs to be stored in the filesystem,
+agreed.  The ugliness I see is in detecting how to treat the
+filesystem at hand.
 
-> One trick to simplify the problem is to make Dhaval's compressed file=
-s
-> strictly read-only.  It will require some dance to load the compresse=
-d
-> content, flip the switch, then uncompress data on the fly and disallo=
-w
-> writes.  Not the most pleasing of interfaces, but yet another option.
+=46ilesystems with mandatory compression (jffs2, ubifs,...):
+- Just write the file, nothing to do.
+=46ilesystems with optional compression (logfs, ext2compr,...):
+- You may or may not want to chattr between file creation and writing
+  the payload.
+=46ilesystems without compression (ext[234], xfs,...):
+- Just write the file, nothing can be done.
+- Alternatively fall back to a userspace version.
+=46ilesystems with optional uncompression (what is being proposed):
+- Write the file in compressed form, close, chattr.
 
-Yeah, this is something that I've wanted for a while.  (In fact a few
-years ago I shopped around this design to some folks who were
-associated with Firefox.)  MacOS has something rather similar to this.
-I haven't had a chance to look at Dhaval's patches yet, but the way
-I've been thinking about this is that the compression and building the
-table mapping compressed clusters to byte offsets in the file would be
-done in userspace.  Once the compressed file plus the table is written
-to the disk, the userspace program would then close the file
-descriptor, and then set the "compressed" bit.
+I would like to see the compression side done in the kernel as well.
+Then we can chattr right after creat() and, if that fails, either
+proceed anyway or go to a userspace fallback.  All decisions can be
+made early on and we don't have to share the format with lots of
+userspace.
 
-When the bit is set, we flush all of its pages from the page cache,
-and the file becomes immutable.  At that point, the kernel will handle
-the decompression, by implementing readpages() by reading the pages
-into the buffer cache, and then decompressing the compressed cluster
-of pages into the page cache.  This gives us transparent compression,
-with a fraction of the complexity of supporting read/write
-compression.  In addition, since we don't have to worry rewriting a
-cluster (and having the modified compressed cluster taking up more
-space), the on-disk representation can be a lot more efficient, since
-you don't have to use a stacker-style design.
+Sure, we still have to share the format with fsck and similar
+filesystem tools.  But not with installers.
 
-One of the cool things about this design is that the vast majority of
-files on a typical distribution are write-once, and better yet, they
-are written by the package manager.  So once you teach dpkg, rpm, and
-the Android package installer how to write the file in this compressed
-format and set the compressed bit, we can the vast majority of the
-benefits of using compressed file with minimal effort.
+J=C3=B6rn
 
-						- Ted
-
-P.S.  This is interesting not just for systems with slow HDD's, but
-also for cheap, single-channel MMC flash, the kind found in low-end
-handset and embedded systems.
-
-P.P.S.  At least in theory, nothing of what I've described here has to
-be ext4 specific.  We could implement this in the VFS layer, at which
-point not only ext4 would benefit, but also btrfs, xfs, f2fs, etc.
+--
+Man darf nicht das, was uns unwahrscheinlich und unnat=C3=BCrlich ersch=
+eint,
+mit dem verwechseln, was absolut unm=C3=B6glich ist.
+-- Carl Friedrich Gau=C3=9F
