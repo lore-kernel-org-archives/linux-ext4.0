@@ -1,44 +1,64 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/2] ext4: fix handling of nodelalloc parameter
-Date: Sat, 3 Aug 2013 21:36:58 -0400
-Message-ID: <20130804013658.GD19781@thunk.org>
-References: <1375445027-25024-1-git-send-email-p.sarna@partner.samsung.com>
+Subject: Re: [PATCH 0/5 v2] add extent status tree caching
+Date: Sat, 3 Aug 2013 21:27:40 -0400
+Message-ID: <20130804012740.GC19781@thunk.org>
+References: <20130718185310.GA17548@thunk.org>
+ <51E88ECD.3040806@redhat.com>
+ <20130719025934.GE17938@thunk.org>
+ <20130719033309.GQ11674@dastard>
+ <20130719161930.GF17938@thunk.org>
+ <20130722013831.GE11674@dastard>
+ <20130722021742.GA24195@gmail.com>
+ <20130722100255.GF11674@dastard>
+ <20130722125745.GA2827@gmail.com>
+ <20130730030807.GI21982@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: adilger.kernel@dilger.ca, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, b.zolnierkie@samsung.com,
-	Kyungmin Park <kyungmin.park@samsung.com>
-To: Piotr Sarna <p.sarna@partner.samsung.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:39082 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752639Ab3HDB7K (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 3 Aug 2013 21:59:10 -0400
 Content-Disposition: inline
-In-Reply-To: <1375445027-25024-1-git-send-email-p.sarna@partner.samsung.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20130730030807.GI21982@dastard>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 02, 2013 at 02:03:46PM +0200, Piotr Sarna wrote:
-> Commit 26092bf ("ext4: use a table-driven handler for mount options")
-> introduced buggy handling of nodelalloc parameter in mount command.
-> 
-> After explicitly using delalloc or nodelalloc parameter in mount command,
-> MOPT_EXPLICIT flag is set. After that, a test ensures that "data=journal"
-> and "delalloc" parameters are not simultaneously activated.
-> Unluckily, the mentioned test reports a bug in both situations:
-> - "data=journal,delalloc"
-> - "data=journal,nodelalloc"
-> whereas the second one is perfectly legal and acceptable.
-> 
-> A simple solution to this problem is in setting EXPLICIT_DELALLOC flag
-> properly. This patch ensures that EXPLICIT_DELALLOC flag is set only
-> if "delalloc" parameter was used, and not set in case of "nodelalloc".
+On Tue, Jul 30, 2013 at 01:08:07PM +1000, Dave Chinner wrote:
+> But Ted's case is not a "hint" - it's a direct command to fetch the
+> extent map from disk. You can do that already with FIEMAP, so no new
+> code or interfaces are needed. fadvise() is not the proper interface
+> for manipulating filesystem metadata behaviour, and fiemap can
+> already do what you need. There is no need for any new interfaces
+> here.
 
-Thanks for this bug report and patch.  There is an even simpler way of
-fixing this doesn't involve adding an additional check in the code,
-though.  Just make the following change the table entry:
+I've been looking at the definition of fiemap, and I'm not convinced.
+To quote from the fiemap.txt:
 
-     {Opt_nodelalloc, EXT4_MOUNT_DELALLOC,
--      MOPT_EXT4_ONLY | MOPT_CLEAR | MOPT_EXPLICIT},
-+      MOPT_EXT4_ONLY | MOPT_CLEAR},
+   The fiemap ioctl is an efficient method for userspace to get file
+   extent mappings.
 
-I'll send out a patch which does this...
+That's not what is going on here.  We are pre-caching them into kernel
+memory, not in user-space.  In addition, we're also setting a flag to
+keep these extents preferentially in memory compared to other entries
+in the extent cache.
 
-					- Ted
+I agree that posix_fadvise() isn't really a good match, either:
+
+   "posix_fadvise - predeclare an access pattern for file data"
+
+How about this?  FIEMAP is an ioctl, anyway.  How about if we just
+declare this as a new fs-independent ioctl, much like FS_IOC_FIEMAP?
+
+#define FS_IOC_PRECACHE_EXTENTS    _IO('f', 18)
+
+This is, of course, assuming that other file systems are interested in
+implementing this functionality.  If not, we can just keep it as
+EXT4_IOC_PRECACHE_EXTENTS, and just call it a day.  (We can always add
+a definition of FS_IOC_PRECACHE_EXTENTS set to ext4 ioctl's code
+point, at some later point, if people change their minds.)
+
+			       	    	      - Ted
