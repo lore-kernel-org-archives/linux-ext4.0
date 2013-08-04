@@ -1,64 +1,81 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 0/5 v2] add extent status tree caching
-Date: Sat, 3 Aug 2013 21:27:40 -0400
-Message-ID: <20130804012740.GC19781@thunk.org>
-References: <20130718185310.GA17548@thunk.org>
- <51E88ECD.3040806@redhat.com>
- <20130719025934.GE17938@thunk.org>
- <20130719033309.GQ11674@dastard>
- <20130719161930.GF17938@thunk.org>
- <20130722013831.GE11674@dastard>
- <20130722021742.GA24195@gmail.com>
- <20130722100255.GF11674@dastard>
- <20130722125745.GA2827@gmail.com>
- <20130730030807.GI21982@dastard>
+Subject: Re: [RFC/PATCH 0/2] ext4: Transparent Decompression Support
+Date: Sat, 3 Aug 2013 20:33:16 -0400
+Message-ID: <20130804003316.GA19781@thunk.org>
+References: <1374699833.7083.2.camel@localhost>
+ <20130724233628.GD3641@logfs.org>
+ <51F14136.30409@mozilla.com>
+ <51F1556A.20909@mozilla.com>
+ <51FB2C87-854F-4250-9587-B5BBF4E85EE8@dubeyko.com>
+ <51F17005.7030309@mozilla.com>
+ <1374825683.3671.35.camel@slavad-ubuntu>
+ <20130726132034.GB21977@logfs.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:39082 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752639Ab3HDB7K (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 3 Aug 2013 21:59:10 -0400
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Vyacheslav Dubeyko <slava@dubeyko.com>,
+	Dhaval Giani <dgiani@mozilla.com>,
+	Taras Glek <tglek@mozilla.com>, linux-kernel@vger.kernel.org,
+	vdjeric@mozilla.com, glandium@mozilla.com,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: =?iso-8859-1?Q?J=F6rn?= Engel <joern@logfs.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20130730030807.GI21982@dastard>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20130726132034.GB21977@logfs.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jul 30, 2013 at 01:08:07PM +1000, Dave Chinner wrote:
-> But Ted's case is not a "hint" - it's a direct command to fetch the
-> extent map from disk. You can do that already with FIEMAP, so no new
-> code or interfaces are needed. fadvise() is not the proper interface
-> for manipulating filesystem metadata behaviour, and fiemap can
-> already do what you need. There is no need for any new interfaces
-> here.
+On Fri, Jul 26, 2013 at 09:20:34AM -0400, J=F6rn Engel wrote:
+>=20
+> I don't think the e2compr patches are strictly necessary.  They are a
+> good option, but not the only one.
 
-I've been looking at the definition of fiemap, and I'm not convinced.
-To quote from the fiemap.txt:
+Sorry for not chiming in earlier; I've been travelling this past week,
+and between that and a bunch of other things I've fallen a bit earlier
+on my e-mail.
 
-   The fiemap ioctl is an efficient method for userspace to get file
-   extent mappings.
+> One trick to simplify the problem is to make Dhaval's compressed file=
+s
+> strictly read-only.  It will require some dance to load the compresse=
+d
+> content, flip the switch, then uncompress data on the fly and disallo=
+w
+> writes.  Not the most pleasing of interfaces, but yet another option.
 
-That's not what is going on here.  We are pre-caching them into kernel
-memory, not in user-space.  In addition, we're also setting a flag to
-keep these extents preferentially in memory compared to other entries
-in the extent cache.
+Yeah, this is something that I've wanted for a while.  (In fact a few
+years ago I shopped around this design to some folks who were
+associated with Firefox.)  MacOS has something rather similar to this.
+I haven't had a chance to look at Dhaval's patches yet, but the way
+I've been thinking about this is that the compression and building the
+table mapping compressed clusters to byte offsets in the file would be
+done in userspace.  Once the compressed file plus the table is written
+to the disk, the userspace program would then close the file
+descriptor, and then set the "compressed" bit.
 
-I agree that posix_fadvise() isn't really a good match, either:
+When the bit is set, we flush all of its pages from the page cache,
+and the file becomes immutable.  At that point, the kernel will handle
+the decompression, by implementing readpages() by reading the pages
+into the buffer cache, and then decompressing the compressed cluster
+of pages into the page cache.  This gives us transparent compression,
+with a fraction of the complexity of supporting read/write
+compression.  In addition, since we don't have to worry rewriting a
+cluster (and having the modified compressed cluster taking up more
+space), the on-disk representation can be a lot more efficient, since
+you don't have to use a stacker-style design.
 
-   "posix_fadvise - predeclare an access pattern for file data"
+One of the cool things about this design is that the vast majority of
+files on a typical distribution are write-once, and better yet, they
+are written by the package manager.  So once you teach dpkg, rpm, and
+the Android package installer how to write the file in this compressed
+format and set the compressed bit, we can the vast majority of the
+benefits of using compressed file with minimal effort.
 
-How about this?  FIEMAP is an ioctl, anyway.  How about if we just
-declare this as a new fs-independent ioctl, much like FS_IOC_FIEMAP?
+						- Ted
 
-#define FS_IOC_PRECACHE_EXTENTS    _IO('f', 18)
+P.S.  This is interesting not just for systems with slow HDD's, but
+also for cheap, single-channel MMC flash, the kind found in low-end
+handset and embedded systems.
 
-This is, of course, assuming that other file systems are interested in
-implementing this functionality.  If not, we can just keep it as
-EXT4_IOC_PRECACHE_EXTENTS, and just call it a day.  (We can always add
-a definition of FS_IOC_PRECACHE_EXTENTS set to ext4 ioctl's code
-point, at some later point, if people change their minds.)
-
-			       	    	      - Ted
+P.P.S.  At least in theory, nothing of what I've described here has to
+be ext4 specific.  We could implement this in the VFS layer, at which
+point not only ext4 would benefit, but also btrfs, xfs, f2fs, etc.
