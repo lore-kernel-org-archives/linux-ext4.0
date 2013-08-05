@@ -1,142 +1,118 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 4/4] ext4: Fix lost truncate due to race with writeback
-Date: Mon,  5 Aug 2013 15:52:24 +0200
-Message-ID: <1375710744-29329-5-git-send-email-jack@suse.cz>
+Subject: [PATCH 1/4] ext4: Move test whether extent to map can be extended to one place
+Date: Mon,  5 Aug 2013 15:52:21 +0200
+Message-ID: <1375710744-29329-2-git-send-email-jack@suse.cz>
 References: <1375710744-29329-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Dave Jones <davej@redhat.com>,
 	Zheng Liu <gnehzuil.liu@gmail.com>, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:55418 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:55416 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752992Ab3HENw2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1752865Ab3HENw2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Mon, 5 Aug 2013 09:52:28 -0400
 In-Reply-To: <1375710744-29329-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The following race can lead to a loss of i_disksize update from truncate
-thus resulting in a wrong inode size if the inode size isn't updated
-again before inode is reclaimed:
-
-ext4_setattr()				mpage_map_and_submit_extent()
-  EXT4_I(inode)->i_disksize = attr->ia_size;
-  ...					  ...
-					  disksize = ((loff_t)mpd->first_page) << PAGE_CACHE_SHIFT
-					  /* False because i_size isn't
-					   * updated yet */
-					  if (disksize > i_size_read(inode))
-					  /* True, because i_disksize is
-					   * already truncated */
-					  if (disksize > EXT4_I(inode)->i_disksize)
-					    /* Overwrite i_disksize
-					     * update from truncate */
-					    ext4_update_i_disksize()
-  i_size_write(inode, attr->ia_size);
-
-For other places updating i_disksize such race cannot happen because
-i_mutex prevents these races. Writeback is the only place where we do
-not hold i_mutex and we cannot grab it there because of lock ordering.
-
-We fix the race by doing both i_disksize and i_size update in truncate
-atomically under i_data_sem and in mpage_map_and_submit_extent() we move
-the check against i_size under i_data_sem as well.
+Currently the logic whether the current buffer can be added to an extent
+of buffers to map is split between mpage_add_bh_to_extent() and
+add_page_bufs_to_extent(). Move the whole logic to
+mpage_add_bh_to_extent() which makes things a bit more straightforward
+and make following i_size fixes easier.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ext4.h  | 24 ++++++++++++++++++++----
- fs/ext4/inode.c | 17 ++++++++++++-----
- 2 files changed, 32 insertions(+), 9 deletions(-)
+ fs/ext4/inode.c | 49 +++++++++++++++++++++++++++++--------------------
+ 1 file changed, 29 insertions(+), 20 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index b577e45..648c5e6 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2416,16 +2416,32 @@ do {								\
- #define EXT4_FREECLUSTERS_WATERMARK 0
- #endif
- 
-+/* Update i_disksize. Requires i_mutex to avoid races with truncate */
- static inline void ext4_update_i_disksize(struct inode *inode, loff_t newsize)
- {
--	/*
--	 * XXX: replace with spinlock if seen contended -bzzz
--	 */
-+	WARN_ON_ONCE(S_ISREG(inode->i_mode) &&
-+		     !mutex_is_locked(&inode->i_mutex));
-+	down_write(&EXT4_I(inode)->i_data_sem);
-+	if (newsize > EXT4_I(inode)->i_disksize)
-+		EXT4_I(inode)->i_disksize = newsize;
-+	up_write(&EXT4_I(inode)->i_data_sem);
-+}
-+
-+/*
-+ * Update i_disksize after writeback has been started. Races with truncate
-+ * are avoided by checking i_size under i_data_sem.
-+ */
-+static inline void ext4_wb_update_i_disksize(struct inode *inode, loff_t newsize)
-+{
-+	loff_t i_size;
-+
- 	down_write(&EXT4_I(inode)->i_data_sem);
-+	i_size = i_size_read(inode);
-+	if (newsize > i_size)
-+		newsize = i_size;
- 	if (newsize > EXT4_I(inode)->i_disksize)
- 		EXT4_I(inode)->i_disksize = newsize;
- 	up_write(&EXT4_I(inode)->i_data_sem);
--	return ;
- }
- 
- struct ext4_group_info {
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index e7d98d2..5d3706e 100644
+index ba33c67..afaf26b 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -2240,12 +2240,10 @@ static int mpage_map_and_submit_extent(handle_t *handle,
+@@ -1907,34 +1907,48 @@ static int ext4_writepage(struct page *page,
+  *
+  * @mpd - extent of blocks
+  * @lblk - logical number of the block in the file
+- * @b_state - b_state of the buffer head added
++ * @bh - buffer head we want to add to the extent
+  *
+- * the function is used to collect contig. blocks in same state
++ * The function is used to collect contig. blocks in the same state. If the
++ * buffer doesn't require mapping for writeback and we haven't started the
++ * extent of buffers to map yet, the function returns 'true' immediately - the
++ * caller can write the buffer right away. Otherwise the function returns true
++ * if the block has been added to the extent, false if the block couldn't be
++ * added.
+  */
+-static int mpage_add_bh_to_extent(struct mpage_da_data *mpd, ext4_lblk_t lblk,
+-				  unsigned long b_state)
++static bool mpage_add_bh_to_extent(struct mpage_da_data *mpd, ext4_lblk_t lblk,
++				   struct buffer_head *bh)
+ {
+ 	struct ext4_map_blocks *map = &mpd->map;
  
- 	/* Update on-disk size after IO is submitted */
- 	disksize = ((loff_t)mpd->first_page) << PAGE_CACHE_SHIFT;
--	if (disksize > i_size_read(inode))
--		disksize = i_size_read(inode);
- 	if (disksize > EXT4_I(inode)->i_disksize) {
- 		int err2;
+-	/* Don't go larger than mballoc is willing to allocate */
+-	if (map->m_len >= MAX_WRITEPAGES_EXTENT_LEN)
+-		return 0;
++	/* Buffer that doesn't need mapping for writeback? */
++	if (!buffer_dirty(bh) || !buffer_mapped(bh) ||
++	    (!buffer_delay(bh) && !buffer_unwritten(bh))) {
++		/* So far no extent to map => we write the buffer right away */
++		if (map->m_len == 0)
++			return true;
++		return false;
++	}
  
--		ext4_update_i_disksize(inode, disksize);
-+		ext4_wb_update_i_disksize(inode, disksize);
- 		err2 = ext4_mark_inode_dirty(handle, inode);
- 		if (err2)
- 			ext4_error(inode->i_sb,
-@@ -4587,18 +4585,27 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 				error = ext4_orphan_add(handle, inode);
- 				orphan = 1;
- 			}
-+			down_write(&EXT4_I(inode)->i_data_sem);
- 			EXT4_I(inode)->i_disksize = attr->ia_size;
- 			rc = ext4_mark_inode_dirty(handle, inode);
- 			if (!error)
- 				error = rc;
-+			/*
-+			 * We have to update i_size under i_data_sem together
-+			 * with i_disksize to avoid races with writeback code
-+			 * running ext4_wb_update_i_disksize().
-+			 */
-+			if (!error)
-+				i_size_write(inode, attr->ia_size);
-+			up_write(&EXT4_I(inode)->i_data_sem);
- 			ext4_journal_stop(handle);
- 			if (error) {
- 				ext4_orphan_del(NULL, inode);
- 				goto err_out;
- 			}
--		}
-+		} else
-+			i_size_write(inode, attr->ia_size);
+ 	/* First block in the extent? */
+ 	if (map->m_len == 0) {
+ 		map->m_lblk = lblk;
+ 		map->m_len = 1;
+-		map->m_flags = b_state & BH_FLAGS;
+-		return 1;
++		map->m_flags = bh->b_state & BH_FLAGS;
++		return true;
+ 	}
  
--		i_size_write(inode, attr->ia_size);
- 		/*
- 		 * Blocks are going to be removed from the inode. Wait
- 		 * for dio in flight.  Temporarily disable
++	/* Don't go larger than mballoc is willing to allocate */
++	if (map->m_len >= MAX_WRITEPAGES_EXTENT_LEN)
++		return false;
++
+ 	/* Can we merge the block to our big extent? */
+ 	if (lblk == map->m_lblk + map->m_len &&
+-	    (b_state & BH_FLAGS) == map->m_flags) {
++	    (bh->b_state & BH_FLAGS) == map->m_flags) {
+ 		map->m_len++;
+-		return 1;
++		return true;
+ 	}
+-	return 0;
++	return false;
+ }
+ 
+ static bool add_page_bufs_to_extent(struct mpage_da_data *mpd,
+@@ -1949,18 +1963,13 @@ static bool add_page_bufs_to_extent(struct mpage_da_data *mpd,
+ 	do {
+ 		BUG_ON(buffer_locked(bh));
+ 
+-		if (!buffer_dirty(bh) || !buffer_mapped(bh) ||
+-		    (!buffer_delay(bh) && !buffer_unwritten(bh)) ||
+-		    lblk >= blocks) {
++		if (lblk >= blocks || !mpage_add_bh_to_extent(mpd, lblk, bh)) {
+ 			/* Found extent to map? */
+ 			if (mpd->map.m_len)
+ 				return false;
+-			if (lblk >= blocks)
+-				return true;
+-			continue;
++			/* Everything mapped so far and we hit EOF */
++			return true;
+ 		}
+-		if (!mpage_add_bh_to_extent(mpd, lblk, bh->b_state))
+-			return false;
+ 	} while (lblk++, (bh = bh->b_this_page) != head);
+ 	return true;
+ }
 -- 
 1.8.1.4
 
