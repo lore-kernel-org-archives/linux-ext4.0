@@ -1,66 +1,332 @@
-From: Darren Hart <dvhart@linux.intel.com>
-Subject: Re: [RFC] e2fsprogs/mke2fs: add an option  "-d root-directory"
-Date: Mon, 05 Aug 2013 08:17:42 -0700
-Message-ID: <1375715862.14739.72.camel@dvhart-mobl4.amr.corp.intel.com>
-References: <51FF64FF.5090309@windriver.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH v1 03/22] libext2fs: add functions to operate on extended
+ attribute
+Date: Mon, 5 Aug 2013 10:34:52 -0700
+Message-ID: <20130805173452.GA9203@blackbox.djwong.org>
+References: <1375436989-18948-1-git-send-email-wenqing.lz@taobao.com>
+ <1375436989-18948-4-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
-To: Robert Yang <liezhi.yang@windriver.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
+	"Theodore Ts'o" <tytso@mit.edu>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga03.intel.com ([143.182.124.21]:9412 "EHLO mga03.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752000Ab3HEPSD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 Aug 2013 11:18:03 -0400
-In-Reply-To: <51FF64FF.5090309@windriver.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:29544 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752229Ab3HERfF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Aug 2013 13:35:05 -0400
+Content-Disposition: inline
+In-Reply-To: <1375436989-18948-4-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 2013-08-05 at 16:40 +0800, Robert Yang wrote:
-> Hello folks,
+On Fri, Aug 02, 2013 at 05:49:30PM +0800, Zheng Liu wrote:
+> From: Zheng Liu <wenqing.lz@taobao.com>
 > 
-> I'd like to add an "-d root-directory" option for mke2fs, which is used
-> for adding files from the "root-directory" to the filesystem after the
-> formatting, it is similar to genext2fs, but which only supports ext2 AFAIK.
-> it's usage example would be:
+> We need to define some functions to operate extended attribute in order
+> to support inline data.
 > 
-> $ mke2fs -t extX -d <dir> <device>
+> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> ---
+>  lib/ext2fs/ext2_err.et.in  |    3 +
+>  lib/ext2fs/ext2_ext_attr.h |   31 ++++++++
+>  lib/ext2fs/ext2fs.h        |    9 +++
+>  lib/ext2fs/ext_attr.c      |  186 ++++++++++++++++++++++++++++++++++++++++++++
+>  4 files changed, 229 insertions(+)
 > 
-> I've done a few work on it, we can re-use the code from debugfs/debugfs.c,
-> here are the draft implementation thoughts:
-> 
-> Move a part of the code from debugfs/debugfs.c to misc/util.c, for example,
-> we will change the function do_write() in debugfs.c to:
-> 
-> void do_write(int argc, char *argv[])
-> {
-> 	[snip];
-> 	retval = do_write_internal();
->          [snip];
-> }
-> 
-> The do_write_internal() will be defined in misc/util.c, then both debugfs.c
-> and mke2fs.c can use it. We will do the similar thing to do_mkdir(),
-> do_symlink() and so on.
-> 
-> My questions are:
-> 1) Is the "-d root-directory" option acceptable ?
-> 2) Is the implementation idea OK ?
-> 
-> Please feel free to give your comments, and I will send the patches later
-> if this is fine.
+> diff --git a/lib/ext2fs/ext2_err.et.in b/lib/ext2fs/ext2_err.et.in
+> index d20c6b7..7e6d6e5 100644
+> --- a/lib/ext2fs/ext2_err.et.in
+> +++ b/lib/ext2fs/ext2_err.et.in
+> @@ -476,4 +476,7 @@ ec	EXT2_ET_MMP_CSUM_INVALID,
+>  ec	EXT2_ET_FILE_EXISTS,
+>  	"Ext2 file already exists"
+>  
+> +ec	EXT2_ET_EXT_ATTR_CURRUPTED,
+> +	"Extended attribute currupted"
 
-The biggest concern expressed here when we first discussed this was an
-increase in size. When you prepare patches, please include a size delta
-report of the binary and ensure the dependencies don't increase any more
-than absolutely necessary - preferably not at all.
+"corrupted".
 
-Thanks,
+(Or maybe shorten that to "corrupt"?)
 
--- 
-Darren Hart
-Intel Open Source Technology Center
-Yocto Project - Linux Kernel
-
-
+--D
+> +
+>  	end
+> diff --git a/lib/ext2fs/ext2_ext_attr.h b/lib/ext2fs/ext2_ext_attr.h
+> index bbb0aaa..99ad849 100644
+> --- a/lib/ext2fs/ext2_ext_attr.h
+> +++ b/lib/ext2fs/ext2_ext_attr.h
+> @@ -15,6 +15,10 @@
+>  /* Maximum number of references to one attribute block */
+>  #define EXT2_EXT_ATTR_REFCOUNT_MAX	1024
+>  
+> +/* Name indexes */
+> +#define EXT4_EXT_ATTR_INDEX_SYSTEM	7
+> +#define EXT4_EXT_ATTR_SYSTEM_DATA	"data"
+> +
+>  struct ext2_ext_attr_header {
+>  	__u32	h_magic;	/* magic number for identification */
+>  	__u32	h_refcount;	/* reference count */
+> @@ -25,6 +29,10 @@ struct ext2_ext_attr_header {
+>  	__u32	h_reserved[3];	/* zero right now */
+>  };
+>  
+> +struct ext2_ext_attr_ibody_header {
+> +	__u32	h_magic;
+> +};
+> +
+>  struct ext2_ext_attr_entry {
+>  	__u8	e_name_len;	/* length of name */
+>  	__u8	e_name_index;	/* attribute name index */
+> @@ -57,6 +65,29 @@ struct ext2_ext_attr_entry {
+>  #define EXT2_XATTR_SIZE(size) \
+>  	(((size) + EXT2_EXT_ATTR_ROUND) & ~EXT2_EXT_ATTR_ROUND)
+>  
+> +#define IHDR(inode) \
+> +	((struct ext2_ext_attr_ibody_header *) \
+> +		((char *)inode + \
+> +		EXT2_GOOD_OLD_INODE_SIZE + \
+> +		inode->i_extra_isize))
+> +#define IFIRST(hdr) ((struct ext2_ext_attr_entry *)((hdr)+1))
+> +#define EXT2_ZERO_EXT_ATTR_VALUE ((void *)-1)
+> +
+> +struct ext2_ext_attr_info {
+> +	int name_index;
+> +	const char *name;
+> +	const void *value;
+> +	size_t value_len;
+> +};
+> +
+> +struct ext2_ext_attr_search {
+> +	struct ext2_ext_attr_entry *first;
+> +	void *base;
+> +	void *end;
+> +	struct ext2_ext_attr_entry *here;
+> +	int not_found;
+> +};
+> +
+>  #ifdef __KERNEL__
+>  # ifdef CONFIG_EXT2_FS_EXT_ATTR
+>  extern int ext2_get_ext_attr(struct inode *, const char *, char *, size_t, int);
+> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+> index 3346c00..8c30197 100644
+> --- a/lib/ext2fs/ext2fs.h
+> +++ b/lib/ext2fs/ext2fs.h
+> @@ -1136,6 +1136,15 @@ extern errcode_t ext2fs_adjust_ea_refcount3(ext2_filsys fs, blk64_t blk,
+>  					   char *block_buf,
+>  					   int adjust, __u32 *newcount,
+>  					   ext2_ino_t inum);
+> +extern errcode_t ext2fs_ext_attr_ibody_find(ext2_filsys fs,
+> +					    struct ext2_inode_large *inode,
+> +					    struct ext2_ext_attr_info *i,
+> +					    struct ext2_ext_attr_search *s);
+> +extern errcode_t ext2fs_ext_attr_find_entry(struct ext2_ext_attr_entry **pentry,
+> +					    int name_index, const char *name,
+> +					    size_t size, int sorted);
+> +extern errcode_t ext2fs_ext_attr_set_entry(struct ext2_ext_attr_info *i,
+> +					   struct ext2_ext_attr_search *s);
+>  
+>  /* extent.c */
+>  extern errcode_t ext2fs_extent_header_verify(void *ptr, int size);
+> diff --git a/lib/ext2fs/ext_attr.c b/lib/ext2fs/ext_attr.c
+> index 9649a14..6d55340 100644
+> --- a/lib/ext2fs/ext_attr.c
+> +++ b/lib/ext2fs/ext_attr.c
+> @@ -186,3 +186,189 @@ errcode_t ext2fs_adjust_ea_refcount(ext2_filsys fs, blk_t blk,
+>  	return ext2fs_adjust_ea_refcount2(fs, blk, block_buf, adjust,
+>  					  newcount);
+>  }
+> +
+> +static errcode_t
+> +ext2fs_ext_attr_check_names(struct ext2_ext_attr_entry *entry, void *end)
+> +{
+> +	while (!EXT2_EXT_IS_LAST_ENTRY(entry)) {
+> +		struct ext2_ext_attr_entry *next = EXT2_EXT_ATTR_NEXT(entry);
+> +		if ((void *)next >= end)
+> +			return EXT2_ET_EXT_ATTR_CURRUPTED;
+> +		entry = next;
+> +	}
+> +	return 0;
+> +}
+> +
+> +static inline errcode_t
+> +ext2fs_ext_attr_check_entry(struct ext2_ext_attr_entry *entry, size_t size)
+> +{
+> +	size_t value_size = entry->e_value_size;
+> +
+> +	if (entry->e_value_block != 0 || value_size > size ||
+> +	    entry->e_value_offs + value_size > size)
+> +		return EXT2_ET_EXT_ATTR_CURRUPTED;
+> +	return 0;
+> +}
+> +
+> +errcode_t ext2fs_ext_attr_find_entry(struct ext2_ext_attr_entry **pentry,
+> +				     int name_index, const char *name,
+> +				     size_t size, int sorted)
+> +{
+> +	struct ext2_ext_attr_entry *entry;
+> +	size_t name_len;
+> +	int cmp = 1;
+> +
+> +	if (name == NULL)
+> +		return EXT2_ET_INVALID_ARGUMENT;
+> +	name_len = strlen(name);
+> +	for (entry = *pentry; !EXT2_EXT_IS_LAST_ENTRY(entry);
+> +	     entry = EXT2_EXT_ATTR_NEXT(entry)) {
+> +		cmp = name_index - entry->e_name_index;
+> +		if (!cmp)
+> +			cmp = name_len - entry->e_name_len;
+> +		if (!cmp)
+> +			cmp = memcmp(name, EXT2_EXT_ATTR_NAME(entry),
+> +				     name_len);
+> +		if (cmp <= 0 && (sorted || cmp == 0))
+> +			break;
+> +	}
+> +	*pentry = entry;
+> +	if (!cmp && ext2fs_ext_attr_check_entry(entry, size))
+> +		return EXT2_ET_EXT_ATTR_CURRUPTED;
+> +	return cmp ? ENODATA : 0;
+> +}
+> +
+> +errcode_t ext2fs_ext_attr_ibody_find(ext2_filsys fs,
+> +				     struct ext2_inode_large *inode,
+> +				     struct ext2_ext_attr_info *i,
+> +				     struct ext2_ext_attr_search *s)
+> +{
+> +	struct ext2_ext_attr_ibody_header *header;
+> +	errcode_t error;
+> +
+> +	if (inode->i_extra_isize == 0)
+> +		return 0;
+> +	header = IHDR(inode);
+> +	s->base = s->first = IFIRST(header);
+> +	s->here = s->first;
+> +	s->end = (char *)inode + EXT2_INODE_SIZE(fs->super);
+> +
+> +	error = ext2fs_ext_attr_check_names(IFIRST(header), s->end);
+> +	if (error)
+> +		return error;
+> +	/* Find the named attribute. */
+> +	error = ext2fs_ext_attr_find_entry(&s->here, i->name_index,
+> +					   i->name, (char *)s->end -
+> +					   (char *)s->base, 0);
+> +	if (error && error != ENODATA)
+> +		return error;
+> +	s->not_found = error;
+> +	return 0;
+> +}
+> +
+> +errcode_t ext2fs_ext_attr_set_entry(struct ext2_ext_attr_info *i,
+> +				    struct ext2_ext_attr_search *s)
+> +{
+> +	struct ext2_ext_attr_entry *last;
+> +	size_t freesize, min_offs = (char *)s->end - (char *)s->base;
+> +	size_t name_len = strlen(i->name);
+> +
+> +	/* Compute min_offs and last. */
+> +	last = s->first;
+> +	for (; !EXT2_EXT_IS_LAST_ENTRY(last); last = EXT2_EXT_ATTR_NEXT(last)) {
+> +		if (!last->e_value_block && last->e_value_size) {
+> +			size_t offs = last->e_value_offs;
+> +			if (offs < min_offs)
+> +				min_offs = offs;
+> +		}
+> +	}
+> +	freesize = min_offs - ((char *)last - (char *)s->base) - sizeof(__u32);
+> +	if (!s->not_found) {
+> +		if (!s->here->e_value_block && s->here->e_value_size) {
+> +			size_t size = s->here->e_value_size;
+> +			freesize += EXT2_EXT_ATTR_SIZE(size);
+> +		}
+> +		freesize += EXT2_EXT_ATTR_LEN(name_len);
+> +	}
+> +	if (i->value) {
+> +		if (freesize < EXT2_EXT_ATTR_SIZE(i->value_len) ||
+> +		    freesize < EXT2_EXT_ATTR_LEN(name_len) +
+> +			   EXT2_EXT_ATTR_SIZE(i->value_len))
+> +			return ENOSPC;
+> +	}
+> +
+> +	if (i->value && s->not_found) {
+> +		/* Insert the new name. */
+> +		size_t size = EXT2_EXT_ATTR_LEN(name_len);
+> +		size_t rest = (char *)last - (char *)s->here + sizeof(__u32);
+> +		memmove((char *)s->here + size, s->here, rest);
+> +		memset(s->here, 0, size);
+> +		s->here->e_name_index = i->name_index;
+> +		s->here->e_name_len = name_len;
+> +		memcpy(EXT2_EXT_ATTR_NAME(s->here), i->name, name_len);
+> +	} else {
+> +		if (!s->here->e_value_block && s->here->e_value_size) {
+> +			char *first_val = (char *) s->base + min_offs;
+> +			size_t offs = s->here->e_value_offs;
+> +			char *val = (char *)s->base + offs;
+> +			size_t size = EXT2_EXT_ATTR_SIZE(s->here->e_value_size);
+> +
+> +			if (i->value && size == EXT2_EXT_ATTR_SIZE(i->value_len)) {
+> +				/* The old and the new value have the same
+> +				 * size. Just replace. */
+> +				s->here->e_value_size = i->value_len;
+> +				if (i->value == EXT2_ZERO_EXT_ATTR_VALUE) {
+> +					memset(val, 0, size);
+> +				} else {
+> +					memset(val + size - EXT2_EXT_ATTR_PAD, 0,
+> +						EXT2_EXT_ATTR_PAD);
+> +					memcpy(val, i->value, i->value_len);
+> +				}
+> +				return 0;
+> +			}
+> +
+> +			/* Remove the old value. */
+> +			memmove(first_val + size, first_val, val - first_val);
+> +			memset(first_val, 0, size);
+> +			s->here->e_value_size = 0;
+> +			s->here->e_value_offs = 0;
+> +			min_offs += size;
+> +
+> +			/* Adjust all value offsets. */
+> +			last = s->first;
+> +			while (!EXT2_EXT_IS_LAST_ENTRY(last)) {
+> +				size_t o = last->e_value_offs;
+> +				if (!last->e_value_block &&
+> +				    last->e_value_size && o < offs)
+> +					last->e_value_offs = o + size;
+> +				last = EXT2_EXT_ATTR_NEXT(last);
+> +			}
+> +		}
+> +		if (!i->value) {
+> +			/* Remove the old name. */
+> +			size_t size = EXT2_EXT_ATTR_LEN(name_len);
+> +			last = (struct ext2_ext_attr_entry *)last - size;
+> +			memmove(s->here, (char *)s->here + size,
+> +				(char *)last - (char *)s->here + sizeof(__u32));
+> +			memset(last, 0, size);
+> +		}
+> +	}
+> +
+> +	if (i->value) {
+> +		/* Insert the new value. */
+> +		s->here->e_value_size = i->value_len;
+> +		if (i->value_len) {
+> +			size_t size = EXT2_EXT_ATTR_SIZE(i->value_len);
+> +			char *val = (char *)s->base + min_offs - size;
+> +			s->here->e_value_offs = min_offs - size;
+> +			if (i->value == EXT2_ZERO_EXT_ATTR_VALUE) {
+> +				memset(val, 0, size);
+> +			} else {
+> +				memset(val + size - EXT2_EXT_ATTR_PAD, 0,
+> +					EXT2_EXT_ATTR_PAD);
+> +				memcpy(val, i->value, i->value_len);
+> +			}
+> +		}
+> +	}
+> +	return 0;
+> +}
+> -- 
+> 1.7.9.7
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
