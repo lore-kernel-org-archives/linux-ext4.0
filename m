@@ -1,56 +1,54 @@
-From: Robert Yang <liezhi.yang@windriver.com>
-Subject: [RFC] e2fsprogs/mke2fs: add an option  "-d root-directory"
-Date: Mon, 5 Aug 2013 16:40:31 +0800
-Message-ID: <51FF64FF.5090309@windriver.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: ways to debug Filesystem code.
+Date: Mon, 5 Aug 2013 09:46:34 -0400
+Message-ID: <20130805134634.GB20389@thunk.org>
+References: <CAGW2f1HfyW3WT-=OX3VSkMxrukSyw07G3PTfKzGZV=ANQh4qdA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Darren Hart <dvhart@linux.intel.com>,
-	"Theodore Ts'o" <tytso@mit.edu>
-To: <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: jon ernst <jonernst07@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.windriver.com ([147.11.1.11]:55590 "EHLO
-	mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754371Ab3HEIkh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Aug 2013 04:40:37 -0400
+Received: from imap.thunk.org ([74.207.234.97]:39582 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751543Ab3HENqh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 Aug 2013 09:46:37 -0400
+Content-Disposition: inline
+In-Reply-To: <CAGW2f1HfyW3WT-=OX3VSkMxrukSyw07G3PTfKzGZV=ANQh4qdA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Mon, Aug 05, 2013 at 02:38:53AM +0000, jon ernst wrote:
+> Hi list,
+> 
+> Sorry for the spam. Just curious what are the ways/tools filesystem
+> experts using for debugging.
+> I sometimes use Ftrace, Kgtp and printk. Seldomly use virtualbox with kgdb.
+> But each way has it short-comes.
+> Just want to get some enlightenment about debugging skills, especially
+> from you Filesystem experts.
 
-Hello folks,
+Those are the basic tools.  Also useful to consider is compiling with
+CONFIG_LOCKDEP, and with CONFIG_DEBUG_INFO or
+CONFIG_DEBUG_INFO_REDUCED, and then using a tool such as addr2line[1].
 
-I'd like to add an "-d root-directory" option for mke2fs, which is used
-for adding files from the "root-directory" to the filesystem after the
-formatting, it is similar to genext2fs, but which only supports ext2 AFAIK.
-it's usage example would be:
+[1] https://plus.google.com/117091380454742934025/posts/h8H9z4EopkS
 
-$ mke2fs -t extX -d <dir> <device>
+Other tools include using xfstests run automatically from kvm and
+having automated tools to parse the output of xfstests so you can see
+test failures much more easily[2].
 
-I've done a few work on it, we can re-use the code from debugfs/debugfs.c,
-here are the draft implementation thoughts:
+[2] https://git.kernel.org/cgit/fs/ext2/xfstests-bld.git/
 
-Move a part of the code from debugfs/debugfs.c to misc/util.c, for example,
-we will change the function do_write() in debugfs.c to:
+And then when you get a test failure, knowing how to run the test from
+xfstests by hand, with a fixed random number generator seed for better
+reproducibility.   And of course, knowing how to use git bisect.
 
-void do_write(int argc, char *argv[])
-{
-	[snip];
-	retval = do_write_internal();
-         [snip];
-}
+Beyond that, a huge amount of it is in experience in using the tools.
+After all, there isn't that much difference the tools used by between
+a master carpenter and a beginning journeyman.  They use the hammer,
+screwdriver, saws, planes, etc.  The trick is in knowing how to best
+use the tools.  :-)
 
-The do_write_internal() will be defined in misc/util.c, then both debugfs.c
-and mke2fs.c can use it. We will do the similar thing to do_mkdir(),
-do_symlink() and so on.
+Cheers,
 
-My questions are:
-1) Is the "-d root-directory" option acceptable ?
-2) Is the implementation idea OK ?
-
-Please feel free to give your comments, and I will send the patches later
-if this is fine.
-
--- 
-Thanks
-
-Robert
+					- Ted
