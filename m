@@ -1,60 +1,113 @@
 From: Andy Lutomirski <luto@amacapital.net>
-Subject: [RFC 0/3] Add madvise(..., MADV_WILLWRITE)
-Date: Mon,  5 Aug 2013 12:43:58 -0700
-Message-ID: <cover.1375729665.git.luto@amacapital.net>
+Subject: [RFC 2/3] fs: Add block_willwrite
+Date: Mon,  5 Aug 2013 12:44:00 -0700
+Message-ID: <50d921ff5d6fcb1a5da59b4bdb755e886cecab1f.1375729665.git.luto@amacapital.net>
+References: <cover.1375729665.git.luto@amacapital.net>
 Cc: linux-kernel@vger.kernel.org,
 	Andy Lutomirski <luto@amacapital.net>
 To: linux-mm@kvack.org,
 	linux-ext4@vger.kernel.org
 Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <cover.1375729665.git.luto@amacapital.net>
+In-Reply-To: <cover.1375729665.git.luto@amacapital.net>
+References: <cover.1375729665.git.luto@amacapital.net>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-My application fallocates and mmaps (shared, writable) a lot (several
-GB) of data at startup.  Those mappings are mlocked, and they live on
-ext4.  The first write to any given page is slow because
-ext4_da_get_block_prep can block.  This means that, to get decent
-performance, I need to write something to all of these pages at
-startup.  This, in turn, causes a giant IO storm as several GB of
-zeros get pointlessly written to disk.
+This provides generic support for MADV_WILLWRITE.  It creates and maps
+buffer heads, but it should not result in anything being marked dirty.
 
-This series is an attempt to add madvise(..., MADV_WILLWRITE) to
-signal to the kernel that I will eventually write to the referenced
-pages.  It should cause any expensive operations that happen on the
-first write to happen immediately, but it should not result in
-dirtying the pages.
+Signed-off-by: Andy Lutomirski <luto@amacapital.net>
+---
 
-madvice(addr, len, MADV_WILLWRITE) returns the number of bytes that
-the operation succeeded on or a negative error code if there was an
-actual failure.  A return value of zero signifies that the kernel
-doesn't know how to "willwrite" the range and that userspace should
-implement a fallback.
+As described in the 0/0 summary, this may have issues.
 
-For now, it only works on shared writable ext4 mappings.  Eventually
-it should support other filesystems as well as private pages (it
-should COW the pages but not cause swap IO) and anonymous pages (it
-should COW the zero page if applicable).
+ fs/buffer.c                 | 57 +++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/buffer_head.h |  3 +++
+ 2 files changed, 60 insertions(+)
 
-The implementation leaves much to be desired.  In particular, it
-generates dirty buffer heads on a clean page, and this scares me.
-
-Thoughts?
-
-Andy Lutomirski (3):
-  mm: Add MADV_WILLWRITE to indicate that a range will be written to
-  fs: Add block_willwrite
-  ext4: Implement willwrite for the delalloc case
-
- fs/buffer.c                            | 57 ++++++++++++++++++++++++++++++++++
- fs/ext4/ext4.h                         |  2 ++
- fs/ext4/file.c                         |  1 +
- fs/ext4/inode.c                        | 22 +++++++++++++
- include/linux/buffer_head.h            |  3 ++
- include/linux/mm.h                     | 12 +++++++
- include/uapi/asm-generic/mman-common.h |  3 ++
- mm/madvise.c                           | 28 +++++++++++++++--
- 8 files changed, 126 insertions(+), 2 deletions(-)
-
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 4d74335..017e822 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -2444,6 +2444,63 @@ int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
+ }
+ EXPORT_SYMBOL(block_page_mkwrite);
+ 
++long block_willwrite(struct vm_area_struct *vma,
++		     unsigned long start, unsigned long end,
++		     get_block_t get_block)
++{
++	long ret = 0;
++	loff_t size;
++	struct inode *inode = file_inode(vma->vm_file);
++	struct super_block *sb = inode->i_sb;
++
++	for (; start < end; start += PAGE_CACHE_SIZE) {
++		struct page *p;
++		int size_in_page;
++		int tmp = get_user_pages_fast(start, 1, 0, &p);
++		if (tmp == 0)
++			tmp = -EFAULT;
++		if (tmp != 1) {
++			ret = tmp;
++			break;
++		}
++
++		sb_start_pagefault(sb);
++
++		lock_page(p);
++		size = i_size_read(inode);
++		if (WARN_ON_ONCE(p->mapping != inode->i_mapping) ||
++		    (page_offset(p) > size)) {
++			ret = -EFAULT;  /* A real write would have failed. */
++			goto pagedone_unlock;
++		}
++
++		/* page is partially inside EOF? */
++		if (((p->index + 1) << PAGE_CACHE_SHIFT) > size)
++			size_in_page = size & ~PAGE_CACHE_MASK;
++		else
++			size_in_page = PAGE_CACHE_SIZE;
++
++		tmp = __block_write_begin(p, 0, size_in_page, get_block);
++		if (tmp) {
++			ret = tmp;
++			goto pagedone_unlock;
++		}
++
++		ret += PAGE_CACHE_SIZE;
++
++		/* No need to commit -- we're not writing anything yet. */
++
++	pagedone_unlock:
++		unlock_page(p);
++		sb_end_pagefault(sb);
++		if (ret < 0)
++			break;
++	}
++
++	return ret;
++}
++EXPORT_SYMBOL(block_willwrite);
++
+ /*
+  * nobh_write_begin()'s prereads are special: the buffer_heads are freed
+  * immediately, while under the page lock.  So it needs a special end_io
+diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+index 91fa9a9..c84639d 100644
+--- a/include/linux/buffer_head.h
++++ b/include/linux/buffer_head.h
+@@ -230,6 +230,9 @@ int __block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 				get_block_t get_block);
+ int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 				get_block_t get_block);
++long block_willwrite(struct vm_area_struct *vma,
++		     unsigned long start, unsigned long end,
++		     get_block_t get_block);
+ /* Convert errno to return value from ->page_mkwrite() call */
+ static inline int block_page_mkwrite_return(int err)
+ {
 -- 
 1.8.3.1
 
