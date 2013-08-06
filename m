@@ -1,74 +1,29 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH v1 03/22] libext2fs: add functions to operate on extended
- attribute
-Date: Tue, 6 Aug 2013 07:14:34 +0800
-Message-ID: <20130805231434.GA3784@gmail.com>
-References: <1375436989-18948-1-git-send-email-wenqing.lz@taobao.com>
- <1375436989-18948-4-git-send-email-wenqing.lz@taobao.com>
- <20130805173452.GA9203@blackbox.djwong.org>
+From: jon ernst <jonernst07@gmail.com>
+Subject: [ext4] found a minor typo in ext4/ialloc.c
+Date: Tue, 6 Aug 2013 01:23:02 +0000
+Message-ID: <CAGW2f1EWVTFxtowqBRdx5OmbkRvYvRCE_A6ep9kGmxoZWYb-1A@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
-	Theodore Ts'o <tytso@mit.edu>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f43.google.com ([209.85.220.43]:63004 "EHLO
-	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750888Ab3HEXOX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Aug 2013 19:14:23 -0400
-Received: by mail-pa0-f43.google.com with SMTP id hz10so3862629pad.2
-        for <linux-ext4@vger.kernel.org>; Mon, 05 Aug 2013 16:14:22 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <20130805173452.GA9203@blackbox.djwong.org>
+Received: from mail-oa0-f47.google.com ([209.85.219.47]:38357 "EHLO
+	mail-oa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751212Ab3HFBXD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Aug 2013 21:23:03 -0400
+Received: by mail-oa0-f47.google.com with SMTP id g12so7690689oah.6
+        for <linux-ext4@vger.kernel.org>; Mon, 05 Aug 2013 18:23:02 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 05, 2013 at 10:34:52AM -0700, Darrick J. Wong wrote:
-> On Fri, Aug 02, 2013 at 05:49:30PM +0800, Zheng Liu wrote:
-> > From: Zheng Liu <wenqing.lz@taobao.com>
-> > 
-> > We need to define some functions to operate extended attribute in order
-> > to support inline data.
-> > 
-> > Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-> > Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> > ---
-> >  lib/ext2fs/ext2_err.et.in  |    3 +
-> >  lib/ext2fs/ext2_ext_attr.h |   31 ++++++++
-> >  lib/ext2fs/ext2fs.h        |    9 +++
-> >  lib/ext2fs/ext_attr.c      |  186 ++++++++++++++++++++++++++++++++++++++++++++
-> >  4 files changed, 229 insertions(+)
-> > 
-> > diff --git a/lib/ext2fs/ext2_err.et.in b/lib/ext2fs/ext2_err.et.in
-> > index d20c6b7..7e6d6e5 100644
-> > --- a/lib/ext2fs/ext2_err.et.in
-> > +++ b/lib/ext2fs/ext2_err.et.in
-> > @@ -476,4 +476,7 @@ ec	EXT2_ET_MMP_CSUM_INVALID,
-> >  ec	EXT2_ET_FILE_EXISTS,
-> >  	"Ext2 file already exists"
-> >  
-> > +ec	EXT2_ET_EXT_ATTR_CURRUPTED,
-> > +	"Extended attribute currupted"
-> 
-> "corrupted".
+Hi Ted,
 
-Thanks for pointing it out.  Fix it in next spin.
+Found a minor typo on "dev" branch. commit 4a8603 "ext4: avoid reusing
+recently deleted inodes in no journal mode"
 
-> 
-> (Or maybe shorten that to "corrupt"?)
+line 792 goto net_inode; should be goto next_ino;
+it prevents compiling.
 
-I find the 'CORRUPT' in lib/ext2fs/ext2_err.et.in, and the result are as
-below.
+Best,
+P.S. thanks for answering my question regarding debug tools.
 
-$ grep CORRUPT lib/ext2fs/ext2_err.et.in
-ec      EXT2_ET_DIR_CORRUPTED,
-ec      EXT2_ET_CORRUPT_SUPERBLOCK,
-ec      EXT2_ET_RESIZE_INODE_CORRUPT,
-ec      EXT2_ET_TDB_ERR_CORRUPT,
-
-It seems that there is no any rule about this.  I am wondering if we
-need to rename _DIR_CORRUPTED to _DIR_CORRUPT.  I am ok for using
-_CORRUPT or _CORRUPTED.
-
-Regards,
-                                                - Zheng
+Jon
