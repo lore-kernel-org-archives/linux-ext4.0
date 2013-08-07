@@ -1,152 +1,68 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext4: Fix oops in jbd2_journal_file_inode()
-Date: Wed,  7 Aug 2013 16:41:16 +0200
-Message-ID: <1375886476-26805-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, majianpeng <majianpeng@gmail.com>,
-	Lukas Czerner <lczerner@redhat.com>, Jan Kara <jack@suse.cz>,
-	<stable@vger.kernel.org>
-To: Ted Tso <tytso@mit.edu>
-Return-path: <stable-owner@vger.kernel.org>
-Sender: stable-owner@vger.kernel.org
+Subject: Re: WARNING: CPU: 26 PID: 93793 at fs/ext4/inode.c:230
+ ext4_evict_inode+0x4c9/0x500 [ext4]() still in 3.11-rc3
+Date: Wed, 7 Aug 2013 17:20:50 +0200
+Message-ID: <20130807152050.GA26516@quack.suse.cz>
+References: <1375388059.2097.10.camel@buesod1.americas.hpqcorp.net>
+ <20130801203320.GB31857@quack.suse.cz>
+ <1375415926.2269.1.camel@buesod1.americas.hpqcorp.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
+	Guenter Roeck <linux@roeck-us.net>,
+	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
+To: Davidlohr Bueso <davidlohr@hp.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1375415926.2269.1.camel@buesod1.americas.hpqcorp.net>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Commit 0713ed0cde76438d05849f1537d3aab46e099475 added
-jbd2_journal_file_inode() call into ext4_block_zero_page_range().
-However that function gets called from truncate path and thus inode
-needn't have jinode attached - that happens in ext4_file_open() but the
-file needn't be ever open since mount. Calling jbd2_journal_file_inode()
-without jinode attached results in the oops.
+On Thu 01-08-13 20:58:46, Davidlohr Bueso wrote:
+> On Thu, 2013-08-01 at 22:33 +0200, Jan Kara wrote:
+> >   Hi,
+> > 
+> > On Thu 01-08-13 13:14:19, Davidlohr Bueso wrote:
+> > > FYI I'm seeing loads of the following messages with Linus' latest
+> > > 3.11-rc3 (which includes 822dbba33458cd6ad)
+> >   Thanks for notice. I see you are running reaim to trigger this. What
+> > workload?
+> 
+> After re-running the workloads one by one, I finally hit the issue again
+> with 'dbase'. FWIW I'm using ramdisks + ext4.
+  Hum, I'm not able to reproduce this with current Linus' kernel - commit
+e4ef108fcde0b97ed38923ba1ea06c7a152bab9e - I've tried with ramdisk but no
+luck. Are you using some special mount options?
 
-We fix the problem by attaching jinode to inode also in ext4_truncate()
-and ext4_punch_hole() when we are going to zero out partial blocks.
+								Honza
 
-CC: <stable@vger.kernel.org> (from 3.10)
-Reported-by: majianpeng <majianpeng@gmail.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/ext4.h  |  1 +
- fs/ext4/file.c  | 21 ++++-----------------
- fs/ext4/inode.c | 43 +++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 48 insertions(+), 17 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 648c5e6..78a0b30 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2086,6 +2086,7 @@ extern int  ext4_sync_inode(handle_t *, struct inode *);
- extern void ext4_dirty_inode(struct inode *, int);
- extern int ext4_change_inode_journal_flag(struct inode *, int);
- extern int ext4_get_inode_loc(struct inode *, struct ext4_iloc *);
-+extern int ext4_inode_attach_jinode(struct inode *inode);
- extern int ext4_can_truncate(struct inode *inode);
- extern void ext4_truncate(struct inode *);
- extern int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length);
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 6f4cc56..319c9d2 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -219,7 +219,6 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
- {
- 	struct super_block *sb = inode->i_sb;
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
--	struct ext4_inode_info *ei = EXT4_I(inode);
- 	struct vfsmount *mnt = filp->f_path.mnt;
- 	struct path path;
- 	char buf[64], *cp;
-@@ -259,22 +258,10 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
- 	 * Set up the jbd2_inode if we are opening the inode for
- 	 * writing and the journal is present
- 	 */
--	if (sbi->s_journal && !ei->jinode && (filp->f_mode & FMODE_WRITE)) {
--		struct jbd2_inode *jinode = jbd2_alloc_inode(GFP_KERNEL);
--
--		spin_lock(&inode->i_lock);
--		if (!ei->jinode) {
--			if (!jinode) {
--				spin_unlock(&inode->i_lock);
--				return -ENOMEM;
--			}
--			ei->jinode = jinode;
--			jbd2_journal_init_jbd_inode(ei->jinode, inode);
--			jinode = NULL;
--		}
--		spin_unlock(&inode->i_lock);
--		if (unlikely(jinode != NULL))
--			jbd2_free_inode(jinode);
-+	if (filp->f_mode & FMODE_WRITE) {
-+		int ret = ext4_inode_attach_jinode(inode);
-+		if (ret < 0)
-+			return ret;
- 	}
- 	return dquot_file_open(inode, filp);
- }
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 5d3706e..68109ad 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3568,6 +3568,18 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
- 		   offset;
- 	}
- 
-+	if (offset & (sb->s_blocksize - 1) ||
-+	    (offset + length) & (sb->s_blocksize - 1)) {
-+		/*
-+		 * Attach jinode to inode for jbd2 if we do any zeroing of
-+		 * partial block
-+		 */
-+		ret = ext4_inode_attach_jinode(inode);
-+		if (ret < 0)
-+			goto out_mutex;
-+
-+	}
-+
- 	first_block_offset = round_up(offset, sb->s_blocksize);
- 	last_block_offset = round_down((offset + length), sb->s_blocksize) - 1;
- 
-@@ -3636,6 +3648,31 @@ out_mutex:
- 	return ret;
- }
- 
-+int ext4_inode_attach_jinode(struct inode *inode)
-+{
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	struct jbd2_inode *jinode;
-+
-+	if (ei->jinode || !EXT4_SB(inode->i_sb)->s_journal)
-+		return 0;
-+
-+	jinode = jbd2_alloc_inode(GFP_KERNEL);
-+	spin_lock(&inode->i_lock);
-+	if (!ei->jinode) {
-+		if (!jinode) {
-+			spin_unlock(&inode->i_lock);
-+			return -ENOMEM;
-+		}
-+		ei->jinode = jinode;
-+		jbd2_journal_init_jbd_inode(ei->jinode, inode);
-+		jinode = NULL;
-+	}
-+	spin_unlock(&inode->i_lock);
-+	if (unlikely(jinode != NULL))
-+		jbd2_free_inode(jinode);
-+	return 0;
-+}
-+
- /*
-  * ext4_truncate()
-  *
-@@ -3696,6 +3733,12 @@ void ext4_truncate(struct inode *inode)
- 			return;
- 	}
- 
-+	/* If we zero-out tail of the page, we have to create jinode for jbd2 */
-+	if (inode->i_size & (inode->i_sb->s_blocksize - 1)) {
-+		if (ext4_inode_attach_jinode(inode) < 0)
-+			return;
-+	}
-+
- 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
- 		credits = ext4_writepage_trans_blocks(inode);
- 	else
+> > 
+> > > ------------[ cut here ]------------
+> > > WARNING: CPU: 26 PID: 93793 at fs/ext4/inode.c:230 ext4_evict_inode+0x4c9/0x500 [ext4]()
+> > > Modules linked in: autofs4 cpufreq_ondemand freq_table sunrpc 8021q garp stp llc pcc_cpufreq ipt_REJECT nf_conntrack_ipv4 nf_defrag_ipv4 iptable_filter ip_tables ip6t_REJECT nf_conntrack_ipv6 nf_defrag_ipv6 xt_state nf_conntrack ip6table_filter ip6_tables ipv6 dm_mirror dm_region_hash dm_log dm_mod uinput iTCO_wdt iTCO_vendor_support coretemp kvm_intel kvm crc32c_intel ghash_clmulni_intel microcode pcspkr sg lpc_ich mfd_core hpilo hpwdt i7core_edac edac_core netxen_nic mperf ext4 jbd2 mbcache sd_mod crc_t10dif aesni_intel ablk_helper cryptd lrw gf128mul glue_helper aes_x86_64 hpsa radeon ttm drm_kms_helper drm i2c_algo_bit i2c_core [last unloaded: freq_table]
+> > > CPU: 26 PID: 93793 Comm: reaim Tainted: G        W    3.11.0-rc3+ #1
+> > > Hardware name: HP ProLiant DL980 G7, BIOS P66 06/24/2011
+> > >  00000000000000e6 ffff8985db603d78 ffffffff8153ce4d 00000000000000e6
+> > >  0000000000000000 ffff8985db603db8 ffffffff8104cf1c ffff8985db603dc8
+> > >  ffff8b05c485b8b0 ffff8b05c485b9b8 ffff8b05c485b800 00000000ffffff9c
+> > > Call Trace:
+> > >  [<ffffffff8153ce4d>] dump_stack+0x49/0x5c
+> > >  [<ffffffff8104cf1c>] warn_slowpath_common+0x8c/0xc0
+> > >  [<ffffffff8104cf6a>] warn_slowpath_null+0x1a/0x20
+> > >  [<ffffffffa02a0179>] ext4_evict_inode+0x4c9/0x500 [ext4]
+> > >  [<ffffffff811915e7>] evict+0xa7/0x1c0
+> > >  [<ffffffff811917e3>] iput_final+0xe3/0x170
+> > >  [<ffffffff811918ae>] iput+0x3e/0x50
+> > >  [<ffffffff81187aa6>] do_unlinkat+0x1c6/0x280
+> > >  [<ffffffff8106f3e4>] ? task_work_run+0x94/0xf0
+> > >  [<ffffffff81003a44>] ? do_notify_resume+0x84/0x90
+> > >  [<ffffffff81187b76>] SyS_unlink+0x16/0x20
+> > >  [<ffffffff81549a02>] system_call_fastpath+0x16/0x1b
+> > > ---[ end trace 15e812809616488b ]---
+> > > 
+> > > 
+> 
+> 
 -- 
-1.8.1.4
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
