@@ -1,51 +1,222 @@
-From: Chris Puttick <cputtick@gmail.com>
-Subject: Make check fails (Ubuntu 12.04)
-Date: Wed, 7 Aug 2013 11:22:18 +0100
-Message-ID: <CALh+aRhF1We_VrDywFLQEYx3SWTa=GLVgacnNR55jyFpfFoVWQ@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH V2] ext4: allow specifying external journal by pathname
+ mount option
+Date: Wed, 7 Aug 2013 12:31:35 +0200
+Message-ID: <20130807103135.GA12843@quack.suse.cz>
+References: <51F98CE4.1050508@redhat.com>
+ <51F98DAD.2020909@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: linux-ext4 <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wg0-f48.google.com ([74.125.82.48]:52628 "EHLO
-	mail-wg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932459Ab3HGKWU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Aug 2013 06:22:20 -0400
-Received: by mail-wg0-f48.google.com with SMTP id f12so909060wgh.15
-        for <linux-ext4@vger.kernel.org>; Wed, 07 Aug 2013 03:22:18 -0700 (PDT)
+Received: from cantor2.suse.de ([195.135.220.15]:52151 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757220Ab3HGKbi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 7 Aug 2013 06:31:38 -0400
+Content-Disposition: inline
+In-Reply-To: <51F98DAD.2020909@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi
+On Wed 31-07-13 17:20:29, Eric Sandeen wrote:
+> It's always been a hassle that if an external journal's
+> device number changes, the filesystem won't mount.
+> And since boot-time enumeration can change, device number
+> changes aren't unusual.
+> 
+> The current mechanism to update the journal location is by
+> passing in a mount option w/ a new devnum, but that's a hassle;
+> it's a manual approach, fixing things after the fact.
+> 
+> Adding a mount option, "-o journal_path=/dev/$DEVICE" would
+> help, since then we can do i.e.
+> 
+> # mount -o journal_path=/dev/disk/by-label/$JOURNAL_LABEL ...
+> 
+> and it'll mount even if the devnum has changed, as shown here:
+> 
+> # losetup /dev/loop0 journalfile
+> # mke2fs -L mylabel-journal -O journal_dev /dev/loop0 
+> # mkfs.ext4 -L mylabel -J device=/dev/loop0 /dev/sdb1
+> 
+> Change the journal device number:
+> 
+> # losetup -d /dev/loop0
+> # losetup /dev/loop1 journalfile 
+> 
+> And today it will fail:
+> 
+> # mount /dev/sdb1 /mnt/test
+> mount: wrong fs type, bad option, bad superblock on /dev/sdb1,
+>        missing codepage or helper program, or other error
+>        In some cases useful info is found in syslog - try
+>        dmesg | tail  or so
+> 
+> # dmesg | tail -n 1
+> [17343.240702] EXT4-fs (sdb1): error: couldn't read superblock of external journal
+> 
+> But with this new mount option, we can specify the new path:
+> 
+> # mount -o journal_path=/dev/loop1 /dev/sdb1 /mnt/test
+> #
+> 
+> (which does update the encoded device number, incidentally):
+> 
+> # umount /dev/sdb1
+> # dumpe2fs -h /dev/sdb1 | grep "Journal device"
+> dumpe2fs 1.41.12 (17-May-2010)
+> Journal device:	          0x0701
+> 
+> But best of all we can just always mount by journal-path, and
+> it'll always work:
+> 
+> # mount -o journal_path=/dev/disk/by-label/mylabel-journal /dev/sdb1 /mnt/test
+> #
+> 
+> So the journal_path option can be specified in fstab, and as long as
+> the disk is available somewhere, and findable by label (or by UUID),
+> we can mount.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+  The patch looks good. You can add:
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-In an escalating process of attempting to recover a large backup
-volume (historic archaeological data) I tried to compile the latest
-release of e2fsprogs.
+								Honza
 
-This fails on make check with:
-
-f_extent_oobounds: failed
-
-(i) can I still safely use the compiled tools and progress to make
-install? If not can I fix something so that test will pass?
-
-(ii) given the reason for trying to compile updated tools was to get
-past the mke2fs -n /dev/xxx output error of "size of device too big to
-be expressed", is it even worth me trying the updated tools?
-
-My thanks in advance for any insights.
-
-Regards
-
-Chris
-
+> ---
+> 
+> V2: grr, remove debug printk, sorry :/
+> 
+> p.s. is there any point to MOPT_GTE0?  Doesn't the "=%u" token parsing
+> exclude negative numbers?
+> 
+> I hate to add the MOPT_STRING, but since we try to grab arguments
+> outside the case statement, I guess it's required...
+> 
+> -Eric
+> 
+> 
+> 
+> diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
+> index f7cbf57..b91cfaa 100644
+> --- a/Documentation/filesystems/ext4.txt
+> +++ b/Documentation/filesystems/ext4.txt
+> @@ -144,11 +144,12 @@ journal_async_commit	Commit block can be written to disk without waiting
+>  			mount the device. This will enable 'journal_checksum'
+>  			internally.
+>  
+> +journal_path=path
+>  journal_dev=devnum	When the external journal device's major/minor numbers
+> -			have changed, this option allows the user to specify
+> +			have changed, these options allow the user to specify
+>  			the new journal location.  The journal device is
+> -			identified through its new major/minor numbers encoded
+> -			in devnum.
+> +			identified through either its new major/minor numbers
+> +			encoded in devnum, or via a path to the device.
+>  
+>  norecovery		Don't load the journal on mounting.  Note that
+>  noload			if the filesystem was not unmounted cleanly,
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index bca26f3..2f5ce3a 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1134,8 +1134,8 @@ enum {
+>  	Opt_nouid32, Opt_debug, Opt_removed,
+>  	Opt_user_xattr, Opt_nouser_xattr, Opt_acl, Opt_noacl,
+>  	Opt_auto_da_alloc, Opt_noauto_da_alloc, Opt_noload,
+> -	Opt_commit, Opt_min_batch_time, Opt_max_batch_time,
+> -	Opt_journal_dev, Opt_journal_checksum, Opt_journal_async_commit,
+> +	Opt_commit, Opt_min_batch_time, Opt_max_batch_time, Opt_journal_dev,
+> +	Opt_journal_path, Opt_journal_checksum, Opt_journal_async_commit,
+>  	Opt_abort, Opt_data_journal, Opt_data_ordered, Opt_data_writeback,
+>  	Opt_data_err_abort, Opt_data_err_ignore,
+>  	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
+> @@ -1179,6 +1179,7 @@ static const match_table_t tokens = {
+>  	{Opt_min_batch_time, "min_batch_time=%u"},
+>  	{Opt_max_batch_time, "max_batch_time=%u"},
+>  	{Opt_journal_dev, "journal_dev=%u"},
+> +	{Opt_journal_path, "journal_path=%s"},
+>  	{Opt_journal_checksum, "journal_checksum"},
+>  	{Opt_journal_async_commit, "journal_async_commit"},
+>  	{Opt_abort, "abort"},
+> @@ -1338,6 +1339,7 @@ static int clear_qf_name(struct super_block *sb, int qtype)
+>  #define MOPT_NO_EXT2	0x0100
+>  #define MOPT_NO_EXT3	0x0200
+>  #define MOPT_EXT4_ONLY	(MOPT_NO_EXT2 | MOPT_NO_EXT3)
+> +#define MOPT_STRING	0x0400
+>  
+>  static const struct mount_opts {
+>  	int	token;
+> @@ -1387,6 +1389,7 @@ static const struct mount_opts {
+>  	{Opt_resuid, 0, MOPT_GTE0},
+>  	{Opt_resgid, 0, MOPT_GTE0},
+>  	{Opt_journal_dev, 0, MOPT_GTE0},
+> +	{Opt_journal_path, 0, MOPT_STRING},
+>  	{Opt_journal_ioprio, 0, MOPT_GTE0},
+>  	{Opt_data_journal, EXT4_MOUNT_JOURNAL_DATA, MOPT_NO_EXT2 | MOPT_DATAJ},
+>  	{Opt_data_ordered, EXT4_MOUNT_ORDERED_DATA, MOPT_NO_EXT2 | MOPT_DATAJ},
+> @@ -1480,7 +1483,7 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
+>  		return -1;
+>  	}
+>  
+> -	if (args->from && match_int(args, &arg))
+> +	if (args->from && !(m->flags & MOPT_STRING) && match_int(args, &arg))
+>  		return -1;
+>  	if (args->from && (m->flags & MOPT_GTE0) && (arg < 0))
+>  		return -1;
+> @@ -1544,6 +1547,44 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
+>  			return -1;
+>  		}
+>  		*journal_devnum = arg;
+> +	} else if (token == Opt_journal_path) {
+> +		char *journal_path;
+> +		struct inode *journal_inode;
+> +		struct path path;
+> +		int error;
+> +
+> +		if (is_remount) {
+> +			ext4_msg(sb, KERN_ERR,
+> +				 "Cannot specify journal on remount");
+> +			return -1;
+> +		}
+> +		journal_path = match_strdup(&args[0]);
+> +		if (!journal_path) {
+> +			ext4_msg(sb, KERN_ERR, "error: could not dup "
+> +				"journal device string");
+> +			return -1;
+> +		}
+> +
+> +		error = kern_path(journal_path, LOOKUP_FOLLOW, &path);
+> +		if (error) {
+> +			ext4_msg(sb, KERN_ERR, "error: could not find "
+> +				"journal device path: error %d", error);
+> +			kfree(journal_path);
+> +			return -1;
+> +		}
+> +
+> +		journal_inode = path.dentry->d_inode;
+> +		if (!S_ISBLK(journal_inode->i_mode)) {
+> +			ext4_msg(sb, KERN_ERR, "error: journal path %s "
+> +				"is not a block device", journal_path);
+> +			path_put(&path);
+> +			kfree(journal_path);
+> +			return -1;
+> +		}
+> +
+> +		*journal_devnum = new_encode_dev(journal_inode->i_rdev);
+> +		path_put(&path);
+> +		kfree(journal_path);
+>  	} else if (token == Opt_journal_ioprio) {
+>  		if (arg > 7) {
+>  			ext4_msg(sb, KERN_ERR, "Invalid journal IO priority"
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 -- 
-@putt1ck
-putt1ck.blogspot.com
-http://twoten.is
-skype: putt1ck
-
-Opinions in this email are my own and may not reflect that of my
-clients, past employers, associates, friends, family, pets etc..
-
-Documents attached to this email may be in ISO 26300 format:
-http://iso26300.info
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
