@@ -1,296 +1,134 @@
-From: Sedat Dilek <sedat.dilek@gmail.com>
-Subject: Re: linux-next: Tree for Aug 7 [ call-trace on suspend: ext4 | pm
- related ? ]
-Date: Thu, 8 Aug 2013 11:17:53 +0200
-Message-ID: <CA+icZUXr=YqR8q_f+u1_etKORyRLs7jJM-7hQ5LxioyRkDOo9g@mail.gmail.com>
-References: <CA+icZUW990rWKdQmppjkGTJzFBtTnW-tb0dRu2AbTYB8KSDN4w@mail.gmail.com>
-	<2146168.3J7W6RtiZr@vostro.rjw.lan>
-	<CAMbhsRSaJWUL2yBnEJ83TCjMJRSZNP0-XM3-mVYf7FuPtUYnUQ@mail.gmail.com>
-	<CA+icZUVCBdFARueFRzAWT6Ax19s83ds5LFvqpQ-tOO96-ZhStA@mail.gmail.com>
-	<CAMbhsRT6eki+oY4D-iRJz2iqS+N3YBmnC0eP4bMN69cbgj=UsQ@mail.gmail.com>
-	<CA+icZUVqGpB9pgzO+Ou=k2jNQFMdjQvxxiuvZCcY4+-BZJDgdw@mail.gmail.com>
-	<CAMbhsRSP_YmaFaZ8mrXJdXjWYaXfhQHwuFL5q=QxVxDvQpygWQ@mail.gmail.com>
-	<CA+icZUUff_ffAVaUxgMyvNwVX4yDaUeOJLFyiAuWDaraJD4VhQ@mail.gmail.com>
-Reply-To: sedat.dilek@gmail.com
+From: Andrey Vagin <avagin@openvz.org>
+Subject: ext4: the list debug reports about corruptions
+Date: Thu, 8 Aug 2013 13:45:52 +0400
+Message-ID: <CANaxB-yikOkwFLtMDJjUyOm6MQPyCr6P+awhp9eZdFL_9vw4ag@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary=047d7b45105e084fad04e36c22b3
-Cc: "Rafael J. Wysocki" <rjw@sisk.pl>,
-	Stephen Rothwell <sfr@canb.auug.org.au>,
-	linux-next@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Linux PM List <linux-pm@lists.linux-foundation.org>,
-	Tejun Heo <tj@kernel.org>, Miklos Szeredi <miklos@szeredi.hu>,
-	fuse-devel@lists.sourceforge.net
-To: Colin Cross <ccross@android.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-next@vger.kernel.org, Glauber Costa <glommer@openvz.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-next-owner@vger.kernel.org>
-In-Reply-To: <CA+icZUUff_ffAVaUxgMyvNwVX4yDaUeOJLFyiAuWDaraJD4VhQ@mail.gmail.com>
 Sender: linux-next-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
---047d7b45105e084fad04e36c22b3
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
+Hello,
 
-On Thu, Aug 8, 2013 at 10:46 AM, Sedat Dilek <sedat.dilek@gmail.com> wrote:
-> On Thu, Aug 8, 2013 at 3:12 AM, Colin Cross <ccross@android.com> wrote:
->> On Wed, Aug 7, 2013 at 6:01 PM, Sedat Dilek <sedat.dilek@gmail.com> wrot=
-e:
->>> On Thu, Aug 8, 2013 at 1:34 AM, Colin Cross <ccross@android.com> wrote:
->>>> On Wed, Aug 7, 2013 at 4:15 PM, Sedat Dilek <sedat.dilek@gmail.com> wr=
-ote:
->>>>> On Thu, Aug 8, 2013 at 12:58 AM, Colin Cross <ccross@android.com> wro=
-te:
->>>>>> Can you try add a call to show_state_filter(TASK_UNINTERRUPTIBLE) in
->>>>>> the error path of try_to_freeze_tasks(), where it prints the "refusi=
-ng
->>>>>> to freeze" message?  It will print the stack trace of every thread
->>>>>> since they are all in the freezer, so the output will be very long.
->>>>>>
->>>>>
->>>>> If you provide a patch, I will give it a try.
->>>>
->>>> Try the attached patch.
->>>
->>> This time I do not see ext4 related messages.
->>>
->>> - Sedat -
->>
->> Can you describe your filesystem setup?  It looks like you have an
->> ntfs fuse filesystem and a loopback ext4 mount?  Is the file backing
->> the loopback ext4 filesystem located on the ntfs filesystem?
->>
->
-> [ CC fuse folks ]
->
-> This is a Ubuntu/precise AMD64 installed in a WUBI environment (rootfs
-> is an image on my Win7-partition and thus uses fuse/ntfs/loop).
->
-> $ cat /etc/fstab
-> # /etc/fstab: static file system information.
->
-> # Use 'blkid' to print the universally unique identifier for a
-> # device; this may be used with UUID=3D as a more robust way to name devi=
-ces
-> # that works even if disks are added and removed. See fstab(5).
->
-> # <file system>                 <mount point>   <type>  <options>
->          <dump>  <pass>
-> proc                            /proc           proc
-> nodev,noexec,nosuid     0       0
-> /host/ubuntu/disks/root.disk    /               ext4
-> loop,errors=3Dremount-ro  0       1
-> /host/ubuntu/disks/swap.disk    none            swap    loop,sw
->          0       0
->
-> $ df -T
-> Dateisystem    Typ      1K-Bl=C3=B6cke   Benutzt Verf=C3=BCgbar Verw% Ein=
-geh=C3=A4ngt auf
-> rootfs         rootfs    17753424  11598008   5230540   69% / <---
-> 18GiB file-image
-> udev           devtmpfs   1969240         4   1969236    1% /dev
-> tmpfs          tmpfs       789036       884    788152    1% /run
-> /dev/sda2      fuseblk  465546236 107358584 358187652   24% /host <--- Wi=
-n7-OS
-> /dev/loop0     ext4      17753424  11598008   5230540   69% /
-> none           tmpfs         5120         0      5120    0% /run/lock
-> none           tmpfs      1972588       200   1972388    1% /run/shm
->
-> $ sudo LC_ALL=3DC fdisk -l /dev/sda
->
-> Disk /dev/sda: 500.1 GB, 500107862016 bytes
-> 255 heads, 63 sectors/track, 60801 cylinders, total 976773168 sectors
-> Units =3D sectors of 1 * 512 =3D 512 bytes
-> Sector size (logical/physical): 512 bytes / 4096 bytes
-> I/O size (minimum/optimal): 4096 bytes / 4096 bytes
-> Disk identifier: 0xcb9885ab
->
->    Device Boot      Start         End      Blocks   Id  System
-> /dev/sda1   *        2048      206847      102400    7  HPFS/NTFS/exFAT
-> /dev/sda2          206848   931299327   465546240    7  HPFS/NTFS/exFAT
-> /dev/sda3       931299328   976773119    22736896   27  Hidden NTFS WinRE
->
-> [ /etc/grub.d/40_custom ]
-> ...
-> menuentry "Ubuntu/precise AMD64, WUBI-system with Ubuntu-kernel"
-> --class ubuntu --class gnu-linux --class gnu --class os {
->         insmod part_msdos
->         insmod ntfs
->         set root=3D'(hd0,msdos2)'
->         search --no-floppy --fs-uuid --set=3Droot 001AADA61AAD9964
->         loopback loop0 /ubuntu/disks/root.disk
->         set root=3D(loop0)
->         linux /vmlinuz root=3DUUID=3D001AADA61AAD9964
-> loop=3D/ubuntu/disks/root.disk ro
->         initrd /initrd.img
-> }
-> ...
->
-> So, no "native" Linux installation here.
->
-> - Sedat -
->
-> [1] https://wiki.ubuntu.com/WubiGuide
->
->> This looks like the interesting part, the process backing the fuse
->> filesystem is frozen (through the normal freeze path, not any of my
->> new freeze points), and the loop0 processes are blocked on it.  It
->> doesn't seem related to my patches.
->>
->> [  125.336205] mount.ntfs      D ffffffff81811820     0   303      1 0x0=
-0000004
->> [  125.336209]  ffff8800d3e95d18 0000000000000002 0000000037a6b000
->> ffff8800d57a66b8
->> [  125.336212]  ffff8801185286c0 ffff8800d3e95fd8 ffff8800d3e95fd8
->> ffff8800d3e95fd8
->> [  125.336214]  ffffffff81c144a0 ffff8801185286c0 ffff8800d3e95d08
->> ffff8801185286c0
->> [  125.336217] Call Trace:
->> [  125.336225]  [<ffffffff816e81b9>] schedule+0x29/0x70
->> [  125.336230]  [<ffffffff810ba663>] __refrigerator+0x43/0xe0
->> [  125.336234]  [<ffffffff81078e19>] get_signal_to_deliver+0x5b9/0x600
->> [  125.336238]  [<ffffffff812c4b98>] ? fuse_dev_read+0x68/0x80
->> [  125.336242]  [<ffffffff810133b8>] do_signal+0x58/0x8f0
->> [  125.336246]  [<ffffffff8110906c>] ? acct_account_cputime+0x1c/0x20
->> [  125.336249]  [<ffffffff8137a90d>] ? do_raw_spin_unlock+0x5d/0xb0
->> [  125.336252]  [<ffffffff816e968e>] ? _raw_spin_unlock+0xe/0x10
->> [  125.336255]  [<ffffffff8109d00d>] ? vtime_account_user+0x6d/0x80
->> [  125.336258]  [<ffffffff81013cd8>] do_notify_resume+0x88/0xc0
->> [  125.336261]  [<ffffffff816f26da>] int_signal+0x12/0x17
->> [  125.336263] loop0           D ffffffff81811820     0   310      2 0x0=
-0000000
->> [  125.336265]  ffff8800d573d968 0000000000000002 0000000000000000
->> ffff8800d57aeb80
->> [  125.336268]  ffff880118bda740 ffff8800d573dfd8 ffff8800d573dfd8
->> ffff8800d573dfd8
->> [  125.336270]  ffff880119f98340 ffff880118bda740 ffff8800d573d968
->> ffff88011fad5118
->> [  125.336273] Call Trace:
->> [  125.336278]  [<ffffffff811443a0>] ? __lock_page+0x70/0x70
->> [  125.336280]  [<ffffffff816e81b9>] schedule+0x29/0x70
->> [  125.336283]  [<ffffffff816e828f>] io_schedule+0x8f/0xd0
->> [  125.336286]  [<ffffffff811443ae>] sleep_on_page+0xe/0x20
->> [  125.336288]  [<ffffffff816e49ed>] __wait_on_bit_lock+0x5d/0xc0
->> [  125.336291]  [<ffffffff81144397>] __lock_page+0x67/0x70
->> [  125.336294]  [<ffffffff8108a0e0>] ? wake_atomic_t_function+0x40/0x40
->> [  125.336298]  [<ffffffff811da79f>] __generic_file_splice_read+0x59f/0x=
-5d0
->> [  125.336302]  [<ffffffff813656d8>] ? cpumask_next_and+0x38/0x50
->> [  125.336305]  [<ffffffff810a3b33>] ? update_sd_lb_stats+0x123/0x610
->> [  125.336309]  [<ffffffff81048143>] ? x2apic_send_IPI_mask+0x13/0x20
->> [  125.336312]  [<ffffffff8104029b>] ? native_smp_send_reschedule+0x4b/0=
-x60
->> [  125.336315]  [<ffffffff810964b6>] ? resched_task+0x76/0x80
->> [  125.336318]  [<ffffffff811d8c80>] ? page_cache_pipe_buf_release+0x30/=
-0x30
->> [  125.336321]  [<ffffffff811da80e>] generic_file_splice_read+0x3e/0x80
->> [  125.336324]  [<ffffffff811d8f6b>] do_splice_to+0x7b/0xa0
->> [  125.336326]  [<ffffffff811d91f7>] splice_direct_to_actor+0xa7/0x1c0
->> [  125.336330]  [<ffffffff81495780>] ? loop_thread+0x2a0/0x2a0
->> [  125.336333]  [<ffffffff81495292>] do_bio_filebacked+0xf2/0x340
->> [  125.336336]  [<ffffffff8137a79c>] ? do_raw_spin_lock+0x4c/0x120
->> [  125.336339]  [<ffffffff814955c5>] loop_thread+0xe5/0x2a0
->> [  125.336341]  [<ffffffff8108a060>] ? __init_waitqueue_head+0x40/0x40
->> [  125.336344]  [<ffffffff814954e0>] ? do_bio_filebacked+0x340/0x340
->> [  125.336346]  [<ffffffff81089848>] kthread+0xd8/0xe0
->> [  125.336348]  [<ffffffff81089770>] ? flush_kthread_worker+0xe0/0xe0
->> [  125.336351]  [<ffffffff816f236c>] ret_from_fork+0x7c/0xb0
->> [  125.336353]  [<ffffffff81089770>] ? flush_kthread_worker+0xe0/0xe0
->> [  125.336354] jbd2/loop0-8    D 0000000000000000     0   312      2 0x0=
-0000000
->> [  125.336357]  ffff8800d56c7b08 0000000000000002 ffff8800d56c7ab8
->> ffffffff8137a90d
->> [  125.336359]  ffff880037ba4240 ffff8800d56c7fd8 ffff8800d56c7fd8
->> ffff8800d56c7fd8
->> [  125.336362]  ffff88010d33e5c0 ffff880037ba4240 ffff8800d56c7b08
->> ffff88011fad5118
->> [  125.336364] Call Trace:
->> [  125.336367]  [<ffffffff8137a90d>] ? do_raw_spin_unlock+0x5d/0xb0
->> [  125.336369]  [<ffffffff811ddcb0>] ? __wait_on_buffer+0x30/0x30
->> [  125.336371]  [<ffffffff816e81b9>] schedule+0x29/0x70
->> [  125.336374]  [<ffffffff816e828f>] io_schedule+0x8f/0xd0
->> [  125.336376]  [<ffffffff811ddcbe>] sleep_on_buffer+0xe/0x20
->> [  125.336378]  [<ffffffff816e4c22>] __wait_on_bit+0x62/0x90
->> [  125.336380]  [<ffffffff811ddcb0>] ? __wait_on_buffer+0x30/0x30
->> [  125.336382]  [<ffffffff816e4ccc>] out_of_line_wait_on_bit+0x7c/0x90
->> [  125.336384]  [<ffffffff8108a0e0>] ? wake_atomic_t_function+0x40/0x40
->> [  125.336386]  [<ffffffff811ddcae>] __wait_on_buffer+0x2e/0x30
->> [  125.336390]  [<ffffffff812a02c1>]
->> jbd2_journal_commit_transaction+0x1051/0x1c60
->> [  125.336393]  [<ffffffff810a460b>] ? load_balance+0x14b/0x870
->> [  125.336397]  [<ffffffff816e97e4>] ? _raw_spin_lock_irqsave+0x24/0x30
->> [  125.336399]  [<ffffffff8107328f>] ? try_to_del_timer_sync+0x4f/0x70
->> [  125.336402]  [<ffffffff812a5a7b>] kjournald2+0x11b/0x350
->> [  125.336405]  [<ffffffff816e72e5>] ? __schedule+0x3e5/0x850
->> [  125.336407]  [<ffffffff8108a060>] ? __init_waitqueue_head+0x40/0x40
->> [  125.336410]  [<ffffffff812a5960>] ? jbd2_journal_clear_features+0x90/=
-0x90
->> [  125.336412]  [<ffffffff81089848>] kthread+0xd8/0xe0
->> [  125.336414]  [<ffffffff81089770>] ? flush_kthread_worker+0xe0/0xe0
->> [  125.336416]  [<ffffffff816f236c>] ret_from_fork+0x7c/0xb0
->> [  125.336418]  [<ffffffff81089770>] ? flush_kthread_worker+0xe0/0xe0
+I use akpm branch of linux-next
+https://git.kernel.org/cgit/linux/kernel/git/next/linux-next.git/tree/?h=akpm&id=05abc43724793827835728f4f25ba827e1c54902
+.
+This bug is reproduced, when I do the following sequence of commands:
 
-My 1st suspend try with next-20130808 shows same isssue (w/o your "hack" pa=
-tch):
+mkdir /sys/fs/cgroup/memory/xxx
+echo 1024000000 >  /sys/fs/cgroup/memory/xxx/memory.kmem.limit_in_bytes
+echo $$ > /sys/fs/cgroup/memory/xxx/tasks
+find /proc -name abra-kadabra
+echo $$ > /sys/fs/cgroup/memory/tasks
+rmdir /sys/fs/cgroup/memory/xxx/
+echo 3 > /proc/sys/vm/drop_caches
 
-[   98.026982] PM: Syncing filesystems ... done.
-[   98.321181] PM: Preparing system for mem sleep
-[   98.321736] Freezing user space processes ...
-[  118.320817] Freezing of tasks failed after 20.003 seconds (1 tasks
-refusing to freeze, wq_busy=3D0):
-[  118.320838] apt-check       D 0000000000000000     0  2636   2456 0x0000=
-0004
-[  118.320841]  ffff880109631c98 0000000000000002 0000000000000000
-ffff88005c044280
-[  118.320845]  ffff88005c1d4640 ffff880109631fd8 ffff880109631fd8
-ffff880109631fd8
-[  118.320847]  ffff880119f440c0 ffff88005c1d4640 ffff880109631c98
-ffff88011fa15118
-[  118.320850] Call Trace:
-[  118.320859]  [<ffffffff81144500>] ? sleep_on_page+0x20/0x20
-[  118.320863]  [<ffffffff816e8889>] schedule+0x29/0x70
-[  118.320865]  [<ffffffff816e895f>] io_schedule+0x8f/0xd0
-[  118.320868]  [<ffffffff8114450e>] sleep_on_page_killable+0xe/0x40
-[  118.320871]  [<ffffffff816e50bd>] __wait_on_bit_lock+0x5d/0xc0
-[  118.320874]  [<ffffffff81144467>] __lock_page_killable+0x67/0x70
-[  118.320877]  [<ffffffff8108a110>] ? wake_atomic_t_function+0x40/0x40
-[  118.320880]  [<ffffffff8114738e>] generic_file_aio_read+0x47e/0x720
-[  118.320883]  [<ffffffff811ac3aa>] do_sync_read+0x5a/0x90
-[  118.320885]  [<ffffffff811ad444>] vfs_read+0xb4/0x180
-[  118.320887]  [<ffffffff811ad6c2>] SyS_read+0x52/0xa0
-[  118.320891]  [<ffffffff816f2cef>] tracesys+0xe1/0xe6
-[  118.320892]
-[  118.320893] Restarting tasks ... done.
+[   88.636551] ------------[ cut here ]------------
+[   88.638012] WARNING: CPU: 1 PID: 350 at lib/list_debug.c:62
+__list_del_entry+0x82/0xd0()
+[   88.639488] list_del corruption. next->prev should be
+ffff8800b567f588, but was ffff8800b8b83688
+[   88.641274] Modules linked in: binfmt_misc ip6table_filter
+ip6_tables iptable_filter ip_tables pcspkr virtio_balloon virtio_net
+i2c_piix4 i2c_core floppy
+[   88.644445] CPU: 1 PID: 350 Comm: bash Not tainted 3.11.0-rc4+ #35
+[   88.647081] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+[   88.648926]  0000000000000009 ffff880037a6dc10 ffffffff816480dd
+ffff880037a6dc58
+[   88.651832]  ffff880037a6dc48 ffffffff8105753d ffff8800b8602630
+ffff8800b8602000
+[   88.654598]  0000000000000001 ffff8800b88b8588 ffff8800b567f588
+ffff880037a6dca8
+[   88.656581] Call Trace:
+[   88.657197]  [<ffffffff816480dd>] dump_stack+0x45/0x56
+[   88.658293]  [<ffffffff8105753d>] warn_slowpath_common+0x7d/0xa0
+[   88.659444]  [<ffffffff810575ac>] warn_slowpath_fmt+0x4c/0x50
+[   88.660549]  [<ffffffff8130ac42>] __list_del_entry+0x82/0xd0
+[   88.661622]  [<ffffffff8125e8fb>] __ext4_es_shrink+0x23b/0x2b0
+[   88.662734]  [<ffffffff8125ea19>] ext4_es_scan+0xa9/0x100
+[   88.663794]  [<ffffffff81142ebf>] shrink_slab+0x1cf/0x380
+[   88.666224]  [<ffffffff811f821b>] drop_caches_sysctl_handler+0xab/0xe0
+[   88.667683]  [<ffffffff8120da03>] proc_sys_call_handler+0xb3/0xc0
+[   88.668924]  [<ffffffff8120da24>] proc_sys_write+0x14/0x20
+[   88.670001]  [<ffffffff8119a2dd>] vfs_write+0xbd/0x1e0
+[   88.671014]  [<ffffffff8119ad1c>] SyS_write+0x4c/0xa0
+[   88.671976]  [<ffffffff81659f99>] system_call_fastpath+0x16/0x1b
+[   88.673039] ---[ end trace 9d815cd93e122801 ]---
 
-I walked trough my scripts-dir... is run_pm-test.sh an appropriate
-test-case/use-case?
-
-- Sedat -
-
---047d7b45105e084fad04e36c22b3
-Content-Type: application/x-sh; name="run_pm-test.sh"
-Content-Disposition: attachment; filename="run_pm-test.sh"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_hk3r52kq0
-
-IyEvYmluL2Jhc2gKCiMjIyBOT1RFOiBSdW4gYXMgcm9vdAoKIyMjIEhFTFAKIyBbMV0gaHR0cDov
-L2dpdC5rZXJuZWwub3JnLz9wPWxpbnV4L2tlcm5lbC9naXQvdG9ydmFsZHMvbGludXguZ2l0O2E9
-YmxvYjtmPURvY3VtZW50YXRpb24vcG93ZXIvYmFzaWMtcG0tZGVidWdnaW5nLnR4dAojIFsyXSBo
-dHRwOi8vZ2l0Lmtlcm5lbC5vcmcvP3A9bGludXgva2VybmVsL2dpdC90b3J2YWxkcy9saW51eC5n
-aXQ7YT1ibG9iO2Y9RG9jdW1lbnRhdGlvbi9wb3dlci9mcmVlemluZy1vZi10YXNrcy50eHQKCiMj
-IyBQUkVSRVE6IEtlcm5lbCBERUJVRyBvcHRpb25zCiMgKyBDT05GSUdfUE1fREVCVUc9eQojICsg
-Q09ORklHX0VYVDRfREVCVUc9eQojICsgQ09ORklHX0pCRDJfREVCVUc9eQoKZXhwb3J0IExBTkc9
-QwpleHBvcnQgTENfQUxMPUMKCiMjIyBEZWZhdWx0IHZhbHVlIG9mIGh1bmdfdGFza190aW1lb3V0
-X3NlY3MgaXMgMTIwIFtzZWNzXQpTRUNTPSIwIgoKIyMjIFBvc3NpYmxlIHR5cGVzOiBub25lIGNv
-cmUgcHJvY2Vzc29ycyBwbGF0Zm9ybSBkZXZpY2VzIGZyZWV6ZXIKUE1fVEVTVF9UWVBFPSJmcmVl
-emVyIgoKIyMjIENvdW50ZXIgYW5kIGxvb3BzCkNPVU5URVI9IjAiCkxPT1BTPSIxMCIKCmVjaG8g
-IiRTRUNTIiA+IC9wcm9jL3N5cy9rZXJuZWwvaHVuZ190YXNrX3RpbWVvdXRfc2VjcwplY2hvICJo
-dW5nX3Rhc2tfdGltZW91dF9zZWNzIFtzZWNzXSBpcyBub3cgLi4uIgpjYXQgL3Byb2Mvc3lzL2tl
-cm5lbC9odW5nX3Rhc2tfdGltZW91dF9zZWNzCgplY2hvICIkUE1fVEVTVF9UWVBFIiA+IC9zeXMv
-cG93ZXIvcG1fdGVzdAplY2hvICJwbS10ZXN0IHR5cGUgW3N0cmluZ10gaXMgbm93IC4uLiIKY2F0
-IC9zeXMvcG93ZXIvcG1fdGVzdAoKZWNobyAicG1fdGVzdC8kUE1fVEVTVF9UWVBFOiBSdW5uaW5n
-IC4uLiIKd2hpbGUgWyAkQ09VTlRFUiAtbHQgJExPT1BTIF07IGRvCiAgICBlY2hvIFsgUnVubmlu
-ZyAuLi4gJENPVU5URVIgXQogICAgZWNobyBtZW0gPiAvc3lzL3Bvd2VyL3N0YXRlICYmIHNsZWVw
-IDEKICAgIGVjaG8gWyBEb25lIC4uLi4uLiAkQ09VTlRFUiBdCiAgICBsZXQgQ09VTlRFUj1DT1VO
-VEVSKzEKZG9uZQplY2hvICJwbV90ZXN0LyRQTV9URVNUX1RZUEU6IEVORC4iCg==
---047d7b45105e084fad04e36c22b3--
+Then the kernel reports BUG-s about soft lockup and the system hans up.
+[  116.077005] BUG: soft lockup - CPU#0 stuck for 23s! [jbd2/sda3-8:114]
+[  116.077005] Modules linked in: binfmt_misc ip6table_filter
+ip6_tables iptable_filter ip_tables pcspkr virtio_balloon virtio_net
+i2c_piix4 i2c_core floppy
+[  116.077005] irq event stamp: 6420
+[  116.077005] hardirqs last  enabled at (6419): [<ffffffff81650f16>]
+_raw_spin_unlock_irqrestore+0x36/0x60
+[  116.077005] hardirqs last disabled at (6420): [<ffffffff81650e3d>]
+_raw_spin_lock_irq+0x1d/0x50
+[  116.077005] softirqs last  enabled at (5776): [<ffffffff8105cdd7>]
+__do_softirq+0x197/0x260
+[  116.077005] softirqs last disabled at (5761): [<ffffffff8105d065>]
+irq_exit+0xc5/0xd0
+[  116.077005] CPU: 0 PID: 114 Comm: jbd2/sda3-8 Tainted: G        W
+ 3.11.0-rc4+ #35
+[  116.077005] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+[  116.077005] task: ffff8800b8580000 ti: ffff880037bb0000 task.ti:
+ffff880037bb0000
+[  116.077005] RIP: 0010:[<ffffffff81009bb0>]  [<ffffffff81009bb0>]
+hw_breakpoint_pmu_read+0x10/0x10
+[  116.077005] RSP: 0018:ffff880037bb18e0  EFLAGS: 00000202
+[  116.077005] RAX: 0000000000000000 RBX: 0000000000000000 RCX: 0000000000000000
+[  116.077005] RDX: 000000000000cccb RSI: 0000000000000000 RDI: 0000000000000001
+[  116.099005] BUG: soft lockup - CPU#1 stuck for 23s! [bash:350]
+[  116.099005] Modules linked in: binfmt_misc ip6table_filter
+ip6_tables iptable_filter ip_tables pcspkr virtio_balloon virtio_net
+i2c_piix4 i2c_core floppy
+[  116.099005] irq event stamp: 0
+[  116.099005] hardirqs last  enabled at (0): [<          (null)>]
+      (null)
+[  116.099005] hardirqs last disabled at (0): [<ffffffff81055586>]
+copy_process.part.25+0x5d6/0x1590
+[  116.099005] softirqs last  enabled at (0): [<ffffffff81055586>]
+copy_process.part.25+0x5d6/0x1590
+[  116.099005] softirqs last disabled at (0): [<          (null)>]
+      (null)
+[  116.099005] CPU: 1 PID: 350 Comm: bash Tainted: G        W    3.11.0-rc4+ #35
+[  116.099005] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+[  116.099005] task: ffff88003782a030 ti: ffff880037a6c000 task.ti:
+ffff880037a6c000
+[  116.099005] RIP: 0010:[<ffffffff8125e7a6>]  [<ffffffff8125e7a6>]
+__ext4_es_shrink+0xe6/0x2b0
+[  116.099005] RSP: 0018:ffff880037a6dcc8  EFLAGS: 00000212
+[  116.099005] RAX: ffff8800b567f588 RBX: ffffffff81651a73 RCX: 0000100000000000
+[  116.099005] RDX: 0000000000000020 RSI: 0000000000000000 RDI: 0000000000000000
+[  116.099005] RBP: ffff880037a6dd38 R08: 0000000000000002 R09: 0000000000000000
+[  116.099005] R10: 0000000000000000 R11: 0000000000000000 R12: ffff880037a6dc38
+[  116.099005] R13: ffff88003782a030 R14: ffff880037a6c000 R15: 0140000000000001
+[  116.099005] FS:  00007fc20d80f740(0000) GS:ffff8800bfb00000(0000)
+knlGS:0000000000000000
+[  116.099005] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+[  116.099005] CR2: 00007f1152f09000 CR3: 0000000037927000 CR4: 00000000000006e0
+[  116.099005] Stack:
+[  116.099005]  ffff8800b86026c0 0000000081c686f8 0000000000000000
+0000000000000000
+[  116.099005]  ffff880000000001 ffff8800b567bd50 0000000000000080
+ffff880037a6dd00
+[  116.099005]  ffff880037a6dd00 0000000000000020 0000000000000080
+ffff8800b8601000
+[  116.099005] Call Trace:
+[  116.099005]  [<ffffffff8125ea19>] ext4_es_scan+0xa9/0x100
+[  116.099005]  [<ffffffff81142ebf>] shrink_slab+0x1cf/0x380
+[  116.099005]  [<ffffffff811f821b>] drop_caches_sysctl_handler+0xab/0xe0
+[  116.099005]  [<ffffffff8120da03>] proc_sys_call_handler+0xb3/0xc0
+[  116.099005]  [<ffffffff8120da24>] proc_sys_write+0x14/0x20
+[  116.099005]  [<ffffffff8119a2dd>] vfs_write+0xbd/0x1e0
+[  116.099005]  [<ffffffff8119ad1c>] SyS_write+0x4c/0xa0
+[  116.099005]  [<ffffffff81659f99>] system_call_fastpath+0x16/0x1b
+[  116.099005] Code: c4 01 e8 3e c4 0a 00 48 8b 75 d0 48 8d 55 c8 4c
+89 ff e8 6e c3 0a 00 4c 39 f3 49 8b 06 0f 84 92 00 00 00 49 8b 94 24
+80 06 00 00 <48> 85 d2 0f 8e 81 00 00 00 4d 89 f7 49 89 c6 49 8b 47 18
+49 39
