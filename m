@@ -1,41 +1,66 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 60721] Rsync crashes due to ext4_ext_find_extent bug
-Date: Thu, 08 Aug 2013 15:39:03 +0000
-Message-ID: <bug-60721-13602-M60sV5nEcw@https.bugzilla.kernel.org/>
-References: <bug-60721-13602@https.bugzilla.kernel.org/>
+From: Andy Lutomirski <luto@amacapital.net>
+Subject: Re: [RFC 0/3] Add madvise(..., MADV_WILLWRITE)
+Date: Thu, 8 Aug 2013 08:56:28 -0700
+Message-ID: <CALCETrX1GXr58ujqAVT5_DtOx+8GEiyb9svK-SGH9d+7SXiNqQ@mail.gmail.com>
+References: <cover.1375729665.git.luto@amacapital.net> <20130807134058.GC12843@quack.suse.cz>
+ <520286A4.1020101@intel.com> <CALCETrXAz1fc7y07LhmxNh6zA_KZB4yv57NY2MrhUwKdkypB9w@mail.gmail.com>
+ <20130808101807.GB4325@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:50234 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757899Ab3HHPjH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 8 Aug 2013 11:39:07 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 214CA20317
-	for <linux-ext4@vger.kernel.org>; Thu,  8 Aug 2013 15:39:06 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 10A882037F
-	for <linux-ext4@vger.kernel.org>; Thu,  8 Aug 2013 15:39:05 +0000 (UTC)
-In-Reply-To: <bug-60721-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Dave Hansen <dave.hansen@intel.com>, linux-mm@kvack.org, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20130808101807.GB4325@quack.suse.cz>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=60721
+On Thu, Aug 8, 2013 at 3:18 AM, Jan Kara <jack@suse.cz> wrote:
+> On Wed 07-08-13 11:00:52, Andy Lutomirski wrote:
+>> On Wed, Aug 7, 2013 at 10:40 AM, Dave Hansen <dave.hansen@intel.com> wrote:
+>> > On 08/07/2013 06:40 AM, Jan Kara wrote:
+>> >>   One question before I look at the patches: Why don't you use fallocate()
+>> >> in your application? The functionality you require seems to be pretty
+>> >> similar to it - writing to an already allocated block is usually quick.
+>> >
+>> > One problem I've seen is that it still costs you a fault per-page to get
+>> > the PTEs in to a state where you can write to the memory.  MADV_WILLNEED
+>> > will do readahead to get the page cache filled, but it still leaves the
+>> > pages unmapped.  Those faults get expensive when you're trying to do a
+>> > couple hundred million of them all at once.
+>>
+>> I have grand plans to teach the kernel to use hardware dirty tracking
+>> so that (some?) pages can be left clean and writable for long periods
+>> of time.  This will be hard.
+>   Right that will be tough... Although with your application you could
+> require such pages to be mlocked and then I could imagine we would get away
+> at least from problems with dirty page accounting.
 
-Eric Sandeen <sandeen@redhat.com> changed:
+True.  The nasty part will be all the code that assumes that the acts
+of un-write-protecting and dirtying are the same thing, for example
+__block_write_begin, which is why I don't really believe in my
+willwrite patches...
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |sandeen@redhat.com
+>
+>> Even so, the second write fault to a page tends to take only a few
+>> microseconds, while the first one often blocks in fs code.
+>   So you wrote blocks are already preallocated with fallocate(). If you
+> also preload pages in memory with MADV_WILLNEED is there still big
+> difference between the first and subsequent write fault?
 
---- Comment #2 from Eric Sandeen <sandeen@redhat.com> ---
-You probably have on-disk corruption; I'd run e2fsck.
+I haven't measured it yet, because I suspect that my patches are
+rather buggy in their current form.  But the idea is that fallocate
+will do the heavy lifting and give me a nice contiguous allocation,
+and the MADV_WILLNEED call will take about as long as the first write
+fault would have taken.  Then the first write fault after
+MADV_WILLNEED will take about as long as the second write fault would
+have taken without it.
 
-Aside from that, the upstream bugtracker really isn't for (old) distro bugs I'm
-afraid.
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+--Andy
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
