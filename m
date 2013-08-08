@@ -1,35 +1,41 @@
-From: "EMAIL SERVICE ADMINISTRATION" <emailserviceadmin@mail.org>
-Subject: PROTECT YOUR MAIL
-Date: Thu, 8 Aug 2013 16:19:44 +0200
-Message-ID: <20130808141944.M7068@mail.org>
-Reply-To: webmailupdateteam@163.com
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 60721] Rsync crashes due to ext4_ext_find_extent bug
+Date: Thu, 08 Aug 2013 15:39:03 +0000
+Message-ID: <bug-60721-13602-M60sV5nEcw@https.bugzilla.kernel.org/>
+References: <bug-60721-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset=iso-8859-2
-To: undisclosed-recipients:;
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ns1.ef.uns.ac.rs ([147.91.175.65]:64639 "HELO
-	visnja.ef.uns.ac.rs" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1757850Ab3HHOaA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Aug 2013 10:30:00 -0400
+Received: from mail.kernel.org ([198.145.19.201]:50234 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757899Ab3HHPjH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 8 Aug 2013 11:39:07 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 214CA20317
+	for <linux-ext4@vger.kernel.org>; Thu,  8 Aug 2013 15:39:06 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 10A882037F
+	for <linux-ext4@vger.kernel.org>; Thu,  8 Aug 2013 15:39:05 +0000 (UTC)
+In-Reply-To: <bug-60721-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Dear EMAIL Subscriber,
-     
-    This is to inform you that We have
-noticed some unusual activities in your
-EMAIL account.
-    As a result, access to your EMAIL
- account has been limited in accordance with the EMAIL.
-    EMAIL Terms And Condition User
-Agreement. To re-validate your EMAIL box, respond
-to this e-mail immediately. 
-And protect your EMAIL from phishing mails.
- By clicking the link below and follow the instruction
+https://bugzilla.kernel.org/show_bug.cgi?id=60721
 
-http://www.cheatwoodsroofing.com/form/use/EMAILPROTECTIONSERVICE/form1.html
+Eric Sandeen <sandeen@redhat.com> changed:
 
-Thank you for using our email.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |sandeen@redhat.com
 
-Copyright 2013 Email Administrator
+--- Comment #2 from Eric Sandeen <sandeen@redhat.com> ---
+You probably have on-disk corruption; I'd run e2fsck.
+
+Aside from that, the upstream bugtracker really isn't for (old) distro bugs I'm
+afraid.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
