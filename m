@@ -1,40 +1,43 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/2] ext4: improve mount/remount error handling
-Date: Thu, 8 Aug 2013 23:03:50 -0400
-Message-ID: <20130809030350.GB1186@thunk.org>
-References: <1375445027-25024-1-git-send-email-p.sarna@partner.samsung.com>
- <1375445027-25024-2-git-send-email-p.sarna@partner.samsung.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: adilger.kernel@dilger.ca, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, b.zolnierkie@samsung.com,
-	Kyungmin Park <kyungmin.park@samsung.com>
-To: Piotr Sarna <p.sarna@partner.samsung.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1375445027-25024-2-git-send-email-p.sarna@partner.samsung.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Subject: [PATCH] ext4: allow the mount options nodelalloc and data=journal
+Date: Thu,  8 Aug 2013 23:04:57 -0400
+Message-ID: <1376017497-10773-1-git-send-email-tytso@mit.edu>
+Cc: b.zolnierkie@samsung.com, kyungmin.park@samsung.com,
+	Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:41327 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S967185Ab3HIDFB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 8 Aug 2013 23:05:01 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 02, 2013 at 02:03:47PM +0200, Piotr Sarna wrote:
-> Commit 5688978 ("ext4: improve handling of conflicting mount options")
-> introduced incorrect messages shown while choosing wrong mount options.
-> 
-> Firstly, both cases of incorrect mount options, "data=journal,delalloc"
-> and "data=journal,dioread_nolock" result in the same error message.
-> 
-> Secondly, the problem above isn't solved for remount option: the mismatched
-> parameter is simply ignored. Moreover, ext4_msg states that remount
-> with options "data=journal,delalloc" succeeded, which is not true.
-> 
-> To fix it up, I added a simple check after parse_options() call to ensure
-> that data=journal and delalloc/dioread_nolock parameters are not present
-> at the same time.
-> 
-> Signed-off-by: Piotr Sarna <p.sarna@partner.samsung.com>
-> Acked-by: Bartlomiej Zolnierkiewicz <b.zolnierkie@samsung.com>
-> Signed-off-by: Kyungmin Park <kyungmin.park@samsung.com>
+Commit 26092bf ("ext4: use a table-driven handler for mount options")
+wrongly disallows the specifying the mount options nodelalloc and
+data=journal simultaneously.  This is incorrect; it should have only
+disallowed the combination of delalloc and data=journal
+simultaneously.
 
-Applied, thanks.
+Reported-by: Piotr Sarna <p.sarna@partner.samsung.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/super.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-						- Ted
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 36b141e..75b3708 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1359,7 +1359,7 @@ static const struct mount_opts {
+ 	{Opt_delalloc, EXT4_MOUNT_DELALLOC,
+ 	 MOPT_EXT4_ONLY | MOPT_SET | MOPT_EXPLICIT},
+ 	{Opt_nodelalloc, EXT4_MOUNT_DELALLOC,
+-	 MOPT_EXT4_ONLY | MOPT_CLEAR | MOPT_EXPLICIT},
++	 MOPT_EXT4_ONLY | MOPT_CLEAR},
+ 	{Opt_journal_checksum, EXT4_MOUNT_JOURNAL_CHECKSUM,
+ 	 MOPT_EXT4_ONLY | MOPT_SET},
+ 	{Opt_journal_async_commit, (EXT4_MOUNT_JOURNAL_ASYNC_COMMIT |
+-- 
+1.7.12.rc0.22.gcdd159b
+
