@@ -1,191 +1,94 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 1/2] quota: Provide interface for readding allocated space into reserved space
-Date: Fri,  9 Aug 2013 15:06:59 +0200
-Message-ID: <1376053620-26987-1-git-send-email-jack@suse.cz>
+Subject: [PATCH 2/2] ext4: Fix warning in ext4_da_update_reserve_space()
+Date: Fri,  9 Aug 2013 15:07:00 +0200
+Message-ID: <1376053620-26987-2-git-send-email-jack@suse.cz>
+References: <1376053620-26987-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:59839 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:59840 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758003Ab3HINHH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1758022Ab3HINHH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Fri, 9 Aug 2013 09:07:07 -0400
+In-Reply-To: <1376053620-26987-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext4 needs to convert allocated (metadata) blocks back into blocks
-reserved for delayed allocation. Add functions into quota code for
-supporting such operation.
+reaim workfile.dbase test easily triggers warning in
+ext4_da_update_reserve_space():
+
+EXT4-fs warning (device ram0): ext4_da_update_reserve_space:365:
+ino 12, allocated 1 with only 0 reserved metadata blocks (releasing 1
+blocks with reserved 9 data blocks)
+
+The problem is that (one of) tests creates file and then randomly writes
+to it with O_SYNC. That results in writing back pages of the file in
+random order so we create extents for written blocks say 0, 2, 4, 6, 8
+- this last allocation also allocates new block for extents. Then we
+writeout block 1 so we have extents 0-2, 4, 6, 8 and we release
+indirect extent block because extents fit in the inode again. Then we
+writeout block 10 and we need to allocate indirect extent block again
+which triggers the warning because we don't have the reservation
+anymore.
+
+Fix the problem by giving back freed metadata blocks resulting from
+extent merging into inode's reservation pool.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/quota/dquot.c         | 46 ++++++++++++++++++++++++++++++++++++++++++++++
- fs/stat.c                | 11 +++++++++--
- include/linux/fs.h       |  1 +
- include/linux/quotaops.h | 15 +++++++++++++++
- 4 files changed, 71 insertions(+), 2 deletions(-)
+ fs/ext4/ext4.h    |  1 +
+ fs/ext4/extents.c |  3 ++-
+ fs/ext4/mballoc.c | 21 +++++++++++++++++----
+ 3 files changed, 20 insertions(+), 5 deletions(-)
 
- The ext4 patch depends on this so Ted please take it via ext4 tree. Thanks.
-
-diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
-index fbad622..9a702e1 100644
---- a/fs/quota/dquot.c
-+++ b/fs/quota/dquot.c
-@@ -1094,6 +1094,14 @@ static void dquot_claim_reserved_space(struct dquot *dquot, qsize_t number)
- 	dquot->dq_dqb.dqb_rsvspace -= number;
- }
- 
-+static void dquot_reclaim_reserved_space(struct dquot *dquot, qsize_t number)
-+{
-+	if (WARN_ON_ONCE(dquot->dq_dqb.dqb_curspace < number))
-+		number = dquot->dq_dqb.dqb_curspace;
-+	dquot->dq_dqb.dqb_rsvspace += number;
-+	dquot->dq_dqb.dqb_curspace -= number;
-+}
-+
- static inline
- void dquot_free_reserved_space(struct dquot *dquot, qsize_t number)
- {
-@@ -1528,6 +1536,15 @@ void inode_claim_rsv_space(struct inode *inode, qsize_t number)
- }
- EXPORT_SYMBOL(inode_claim_rsv_space);
- 
-+void inode_reclaim_rsv_space(struct inode *inode, qsize_t number)
-+{
-+	spin_lock(&inode->i_lock);
-+	*inode_reserved_space(inode) += number;
-+	__inode_sub_bytes(inode, number);
-+	spin_unlock(&inode->i_lock);
-+}
-+EXPORT_SYMBOL(inode_reclaim_rsv_space);
-+
- void inode_sub_rsv_space(struct inode *inode, qsize_t number)
- {
- 	spin_lock(&inode->i_lock);
-@@ -1702,6 +1719,35 @@ int dquot_claim_space_nodirty(struct inode *inode, qsize_t number)
- EXPORT_SYMBOL(dquot_claim_space_nodirty);
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 78a0b30..7f49dc7 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -569,6 +569,7 @@ enum {
+ #define EXT4_FREE_BLOCKS_NO_QUOT_UPDATE	0x0008
+ #define EXT4_FREE_BLOCKS_NOFREE_FIRST_CLUSTER	0x0010
+ #define EXT4_FREE_BLOCKS_NOFREE_LAST_CLUSTER	0x0020
++#define EXT4_FREE_BLOCKS_RESERVE		0x0040
  
  /*
-+ * Convert allocated space back to in-memory reserved quotas
-+ */
-+void dquot_reclaim_space_nodirty(struct inode *inode, qsize_t number)
-+{
-+	int cnt;
-+
-+	if (!dquot_active(inode)) {
-+		inode_reclaim_rsv_space(inode, number);
-+		return;
-+	}
-+
-+	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
-+	spin_lock(&dq_data_lock);
-+	/* Claim reserved quotas to allocated quotas */
-+	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
-+		if (inode->i_dquot[cnt])
-+			dquot_reclaim_reserved_space(inode->i_dquot[cnt],
-+						     number);
-+	}
-+	/* Update inode bytes */
-+	inode_reclaim_rsv_space(inode, number);
-+	spin_unlock(&dq_data_lock);
-+	mark_all_dquot_dirty(inode->i_dquot);
-+	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
-+	return;
-+}
-+EXPORT_SYMBOL(dquot_reclaim_space_nodirty);
-+
-+/*
-  * This operation can block, but only after everything is updated
-  */
- void __dquot_free_space(struct inode *inode, qsize_t number, int flags)
-diff --git a/fs/stat.c b/fs/stat.c
-index 04ce1ac..d0ea7ef 100644
---- a/fs/stat.c
-+++ b/fs/stat.c
-@@ -447,9 +447,8 @@ void inode_add_bytes(struct inode *inode, loff_t bytes)
+  * ioctl commands
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index a618738..324dfc6 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -1705,7 +1705,8 @@ static void ext4_ext_try_to_merge_up(handle_t *handle,
  
- EXPORT_SYMBOL(inode_add_bytes);
+ 	brelse(path[1].p_bh);
+ 	ext4_free_blocks(handle, inode, NULL, blk, 1,
+-			 EXT4_FREE_BLOCKS_METADATA | EXT4_FREE_BLOCKS_FORGET);
++			 EXT4_FREE_BLOCKS_METADATA | EXT4_FREE_BLOCKS_FORGET |
++			 EXT4_FREE_BLOCKS_RESERVE);
+ }
  
--void inode_sub_bytes(struct inode *inode, loff_t bytes)
-+void __inode_sub_bytes(struct inode *inode, loff_t bytes)
- {
--	spin_lock(&inode->i_lock);
- 	inode->i_blocks -= bytes >> 9;
- 	bytes &= 511;
- 	if (inode->i_bytes < bytes) {
-@@ -457,6 +456,14 @@ void inode_sub_bytes(struct inode *inode, loff_t bytes)
- 		inode->i_bytes += 512;
+ /*
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 4bbbf13b..aa7d058 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4585,6 +4585,7 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
+ 	struct buffer_head *gd_bh;
+ 	ext4_group_t block_group;
+ 	struct ext4_sb_info *sbi;
++	struct ext4_inode_info *ei = EXT4_I(inode);
+ 	struct ext4_buddy e4b;
+ 	unsigned int count_clusters;
+ 	int err = 0;
+@@ -4784,7 +4785,6 @@ do_more:
+ 	ext4_block_bitmap_csum_set(sb, block_group, gdp, bitmap_bh);
+ 	ext4_group_desc_csum_set(sb, block_group, gdp);
+ 	ext4_unlock_group(sb, block_group);
+-	percpu_counter_add(&sbi->s_freeclusters_counter, count_clusters);
+ 
+ 	if (sbi->s_log_groups_per_flex) {
+ 		ext4_group_t flex_group = ext4_flex_group(sbi, block_group);
+@@ -4792,10 +4792,23 @@ do_more:
+ 			     &sbi->s_flex_groups[flex_group].free_clusters);
  	}
- 	inode->i_bytes -= bytes;
-+}
-+
-+EXPORT_SYMBOL(__inode_sub_bytes);
-+
-+void inode_sub_bytes(struct inode *inode, loff_t bytes)
-+{
-+	spin_lock(&inode->i_lock);
-+	__inode_sub_bytes(inode, bytes);
- 	spin_unlock(&inode->i_lock);
- }
  
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 9818747..e789352 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2503,6 +2503,7 @@ extern void generic_fillattr(struct inode *, struct kstat *);
- extern int vfs_getattr(struct path *, struct kstat *);
- void __inode_add_bytes(struct inode *inode, loff_t bytes);
- void inode_add_bytes(struct inode *inode, loff_t bytes);
-+void __inode_sub_bytes(struct inode *inode, loff_t bytes);
- void inode_sub_bytes(struct inode *inode, loff_t bytes);
- loff_t inode_get_bytes(struct inode *inode);
- void inode_set_bytes(struct inode *inode, loff_t bytes);
-diff --git a/include/linux/quotaops.h b/include/linux/quotaops.h
-index 1c50093..6965fe3 100644
---- a/include/linux/quotaops.h
-+++ b/include/linux/quotaops.h
-@@ -41,6 +41,7 @@ void __quota_error(struct super_block *sb, const char *func,
- void inode_add_rsv_space(struct inode *inode, qsize_t number);
- void inode_claim_rsv_space(struct inode *inode, qsize_t number);
- void inode_sub_rsv_space(struct inode *inode, qsize_t number);
-+void inode_reclaim_rsv_space(struct inode *inode, qsize_t number);
- 
- void dquot_initialize(struct inode *inode);
- void dquot_drop(struct inode *inode);
-@@ -59,6 +60,7 @@ int dquot_alloc_inode(const struct inode *inode);
- 
- int dquot_claim_space_nodirty(struct inode *inode, qsize_t number);
- void dquot_free_inode(const struct inode *inode);
-+void dquot_reclaim_space_nodirty(struct inode *inode, qsize_t number);
- 
- int dquot_disable(struct super_block *sb, int type, unsigned int flags);
- /* Suspend quotas on remount RO */
-@@ -238,6 +240,13 @@ static inline int dquot_claim_space_nodirty(struct inode *inode, qsize_t number)
- 	return 0;
- }
- 
-+static inline int dquot_reclaim_space_nodirty(struct inode *inode,
-+					      qsize_t number)
-+{
-+	inode_sub_bytes(inode, number);
-+	return 0;
-+}
-+
- static inline int dquot_disable(struct super_block *sb, int type,
- 		unsigned int flags)
- {
-@@ -336,6 +345,12 @@ static inline int dquot_claim_block(struct inode *inode, qsize_t nr)
- 	return ret;
- }
- 
-+static inline void dquot_reclaim_block(struct inode *inode, qsize_t nr)
-+{
-+	dquot_reclaim_space_nodirty(inode, nr << inode->i_blkbits);
-+	mark_inode_dirty_sync(inode);
-+}
-+
- static inline void dquot_free_space_nodirty(struct inode *inode, qsize_t nr)
- {
- 	__dquot_free_space(inode, nr, 0);
--- 
-1.8.1.4
-
+-	ext4_mb_unload_buddy(&e4b);
