@@ -1,60 +1,191 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC 0/3] Add madvise(..., MADV_WILLWRITE)
-Date: Fri, 9 Aug 2013 09:55:23 +0200
-Message-ID: <20130809075523.GA14574@quack.suse.cz>
-References: <cover.1375729665.git.luto@amacapital.net>
- <20130807134058.GC12843@quack.suse.cz>
- <520286A4.1020101@intel.com>
- <CALCETrXAz1fc7y07LhmxNh6zA_KZB4yv57NY2MrhUwKdkypB9w@mail.gmail.com>
- <20130808101807.GB4325@quack.suse.cz>
- <CALCETrX1GXr58ujqAVT5_DtOx+8GEiyb9svK-SGH9d+7SXiNqQ@mail.gmail.com>
- <20130808185340.GA13926@quack.suse.cz>
- <CALCETrVXTXzXAmUsmmWxwr6vK+Vux7_pUzWPYyHjxEbn3ObABg@mail.gmail.com>
- <5204229F.8000507@intel.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andy Lutomirski <luto@amacapital.net>, Jan Kara <jack@suse.cz>,
-	linux-mm@kvack.org, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Dave Hansen <dave.hansen@intel.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <5204229F.8000507@intel.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Subject: [PATCH 1/2] quota: Provide interface for readding allocated space into reserved space
+Date: Fri,  9 Aug 2013 15:06:59 +0200
+Message-ID: <1376053620-26987-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:59839 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758003Ab3HINHH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 9 Aug 2013 09:07:07 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 08-08-13 15:58:39, Dave Hansen wrote:
-> I was coincidentally tracking down what I thought was a scalability
-> problem (turned out to be full disks :).  I noticed, though, that ext4
-> is about 20% slower than ext2/3 at doing write page faults (x-axis is
-> number of tasks):
-> 
-> http://www.sr71.net/~dave/intel/page-fault-exts/cmp.html?1=ext3&2=ext4&hide=linear,threads,threads_idle,processes_idle&rollPeriod=5
-> 
-> The test case is:
-> 
-> 	https://github.com/antonblanchard/will-it-scale/blob/master/tests/page_fault3.c
-  The reason is that ext2/ext3 do almost nothing in their write fault
-handler - they are about as fast as it can get. ext4 OTOH needs to reserve
-blocks for delayed allocation, setup buffers under a page etc. This is
-necessary if you want to make sure that if data are written via mmap, they
-also have space available on disk to be written to (ext2 / ext3 do not care
-and will just drop the data on the floor if you happen to hit ENOSPC during
-writeback).
+ext4 needs to convert allocated (metadata) blocks back into blocks
+reserved for delayed allocation. Add functions into quota code for
+supporting such operation.
 
-I'm not saying ext4 write fault path cannot possibly be optimized (noone
-seriously looked into that AFAIK so there may well be some low hanging
-fruit) but it will always be slower than ext2/3. A more meaningful
-comparison would be with filesystems like XFS which make similar guarantees
-regarding data safety.
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/quota/dquot.c         | 46 ++++++++++++++++++++++++++++++++++++++++++++++
+ fs/stat.c                | 11 +++++++++--
+ include/linux/fs.h       |  1 +
+ include/linux/quotaops.h | 15 +++++++++++++++
+ 4 files changed, 71 insertions(+), 2 deletions(-)
 
-								Honza
+ The ext4 patch depends on this so Ted please take it via ext4 tree. Thanks.
+
+diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
+index fbad622..9a702e1 100644
+--- a/fs/quota/dquot.c
++++ b/fs/quota/dquot.c
+@@ -1094,6 +1094,14 @@ static void dquot_claim_reserved_space(struct dquot *dquot, qsize_t number)
+ 	dquot->dq_dqb.dqb_rsvspace -= number;
+ }
+ 
++static void dquot_reclaim_reserved_space(struct dquot *dquot, qsize_t number)
++{
++	if (WARN_ON_ONCE(dquot->dq_dqb.dqb_curspace < number))
++		number = dquot->dq_dqb.dqb_curspace;
++	dquot->dq_dqb.dqb_rsvspace += number;
++	dquot->dq_dqb.dqb_curspace -= number;
++}
++
+ static inline
+ void dquot_free_reserved_space(struct dquot *dquot, qsize_t number)
+ {
+@@ -1528,6 +1536,15 @@ void inode_claim_rsv_space(struct inode *inode, qsize_t number)
+ }
+ EXPORT_SYMBOL(inode_claim_rsv_space);
+ 
++void inode_reclaim_rsv_space(struct inode *inode, qsize_t number)
++{
++	spin_lock(&inode->i_lock);
++	*inode_reserved_space(inode) += number;
++	__inode_sub_bytes(inode, number);
++	spin_unlock(&inode->i_lock);
++}
++EXPORT_SYMBOL(inode_reclaim_rsv_space);
++
+ void inode_sub_rsv_space(struct inode *inode, qsize_t number)
+ {
+ 	spin_lock(&inode->i_lock);
+@@ -1702,6 +1719,35 @@ int dquot_claim_space_nodirty(struct inode *inode, qsize_t number)
+ EXPORT_SYMBOL(dquot_claim_space_nodirty);
+ 
+ /*
++ * Convert allocated space back to in-memory reserved quotas
++ */
++void dquot_reclaim_space_nodirty(struct inode *inode, qsize_t number)
++{
++	int cnt;
++
++	if (!dquot_active(inode)) {
++		inode_reclaim_rsv_space(inode, number);
++		return;
++	}
++
++	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
++	spin_lock(&dq_data_lock);
++	/* Claim reserved quotas to allocated quotas */
++	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
++		if (inode->i_dquot[cnt])
++			dquot_reclaim_reserved_space(inode->i_dquot[cnt],
++						     number);
++	}
++	/* Update inode bytes */
++	inode_reclaim_rsv_space(inode, number);
++	spin_unlock(&dq_data_lock);
++	mark_all_dquot_dirty(inode->i_dquot);
++	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
++	return;
++}
++EXPORT_SYMBOL(dquot_reclaim_space_nodirty);
++
++/*
+  * This operation can block, but only after everything is updated
+  */
+ void __dquot_free_space(struct inode *inode, qsize_t number, int flags)
+diff --git a/fs/stat.c b/fs/stat.c
+index 04ce1ac..d0ea7ef 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -447,9 +447,8 @@ void inode_add_bytes(struct inode *inode, loff_t bytes)
+ 
+ EXPORT_SYMBOL(inode_add_bytes);
+ 
+-void inode_sub_bytes(struct inode *inode, loff_t bytes)
++void __inode_sub_bytes(struct inode *inode, loff_t bytes)
+ {
+-	spin_lock(&inode->i_lock);
+ 	inode->i_blocks -= bytes >> 9;
+ 	bytes &= 511;
+ 	if (inode->i_bytes < bytes) {
+@@ -457,6 +456,14 @@ void inode_sub_bytes(struct inode *inode, loff_t bytes)
+ 		inode->i_bytes += 512;
+ 	}
+ 	inode->i_bytes -= bytes;
++}
++
++EXPORT_SYMBOL(__inode_sub_bytes);
++
++void inode_sub_bytes(struct inode *inode, loff_t bytes)
++{
++	spin_lock(&inode->i_lock);
++	__inode_sub_bytes(inode, bytes);
+ 	spin_unlock(&inode->i_lock);
+ }
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 9818747..e789352 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2503,6 +2503,7 @@ extern void generic_fillattr(struct inode *, struct kstat *);
+ extern int vfs_getattr(struct path *, struct kstat *);
+ void __inode_add_bytes(struct inode *inode, loff_t bytes);
+ void inode_add_bytes(struct inode *inode, loff_t bytes);
++void __inode_sub_bytes(struct inode *inode, loff_t bytes);
+ void inode_sub_bytes(struct inode *inode, loff_t bytes);
+ loff_t inode_get_bytes(struct inode *inode);
+ void inode_set_bytes(struct inode *inode, loff_t bytes);
+diff --git a/include/linux/quotaops.h b/include/linux/quotaops.h
+index 1c50093..6965fe3 100644
+--- a/include/linux/quotaops.h
++++ b/include/linux/quotaops.h
+@@ -41,6 +41,7 @@ void __quota_error(struct super_block *sb, const char *func,
+ void inode_add_rsv_space(struct inode *inode, qsize_t number);
+ void inode_claim_rsv_space(struct inode *inode, qsize_t number);
+ void inode_sub_rsv_space(struct inode *inode, qsize_t number);
++void inode_reclaim_rsv_space(struct inode *inode, qsize_t number);
+ 
+ void dquot_initialize(struct inode *inode);
+ void dquot_drop(struct inode *inode);
+@@ -59,6 +60,7 @@ int dquot_alloc_inode(const struct inode *inode);
+ 
+ int dquot_claim_space_nodirty(struct inode *inode, qsize_t number);
+ void dquot_free_inode(const struct inode *inode);
++void dquot_reclaim_space_nodirty(struct inode *inode, qsize_t number);
+ 
+ int dquot_disable(struct super_block *sb, int type, unsigned int flags);
+ /* Suspend quotas on remount RO */
+@@ -238,6 +240,13 @@ static inline int dquot_claim_space_nodirty(struct inode *inode, qsize_t number)
+ 	return 0;
+ }
+ 
++static inline int dquot_reclaim_space_nodirty(struct inode *inode,
++					      qsize_t number)
++{
++	inode_sub_bytes(inode, number);
++	return 0;
++}
++
+ static inline int dquot_disable(struct super_block *sb, int type,
+ 		unsigned int flags)
+ {
+@@ -336,6 +345,12 @@ static inline int dquot_claim_block(struct inode *inode, qsize_t nr)
+ 	return ret;
+ }
+ 
++static inline void dquot_reclaim_block(struct inode *inode, qsize_t nr)
++{
++	dquot_reclaim_space_nodirty(inode, nr << inode->i_blkbits);
++	mark_inode_dirty_sync(inode);
++}
++
+ static inline void dquot_free_space_nodirty(struct inode *inode, qsize_t nr)
+ {
+ 	__dquot_free_space(inode, nr, 0);
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.8.1.4
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
