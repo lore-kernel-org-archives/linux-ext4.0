@@ -1,54 +1,91 @@
-From: Dave Hansen <dave.hansen@intel.com>
-Subject: Re: [RFC 0/3] Add madvise(..., MADV_WILLWRITE)
-Date: Mon, 12 Aug 2013 15:44:10 -0700
-Message-ID: <5209653A.2040303@intel.com>
-References: <cover.1375729665.git.luto@amacapital.net> <20130807134058.GC12843@quack.suse.cz> <520286A4.1020101@intel.com> <CALCETrXAz1fc7y07LhmxNh6zA_KZB4yv57NY2MrhUwKdkypB9w@mail.gmail.com> <20130808101807.GB4325@quack.suse.cz> <CALCETrX1GXr58ujqAVT5_DtOx+8GEiyb9svK-SGH9d+7SXiNqQ@mail.gmail.com> <20130808185340.GA13926@quack.suse.cz> <CALCETrVXTXzXAmUsmmWxwr6vK+Vux7_pUzWPYyHjxEbn3ObABg@mail.gmail.com> <5204229F.8000507@intel.com> <20130809075523.GA14574@quack.suse.cz>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] e2fsprogs: Don't report uninit extents past EOF invalid
+Date: Mon, 12 Aug 2013 18:21:25 -0500
+Message-ID: <52096DF5.9090700@redhat.com>
+References: <20130721202849.GB2331@wallace>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Andy Lutomirski <luto@amacapital.net>, linux-mm@kvack.org,
- linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20130809075523.GA14574@quack.suse.cz>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Eric Whitney <enwlinux@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:64440 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755596Ab3HLXV3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 12 Aug 2013 19:21:29 -0400
+In-Reply-To: <20130721202849.GB2331@wallace>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 08/09/2013 12:55 AM, Jan Kara wrote:
-> On Thu 08-08-13 15:58:39, Dave Hansen wrote:
->> I was coincidentally tracking down what I thought was a scalability
->> problem (turned out to be full disks :).  I noticed, though, that ext4
->> is about 20% slower than ext2/3 at doing write page faults (x-axis is
->> number of tasks):
->>
->> http://www.sr71.net/~dave/intel/page-fault-exts/cmp.html?1=ext3&2=ext4&hide=linear,threads,threads_idle,processes_idle&rollPeriod=5
->>
->> The test case is:
->>
->> 	https://github.com/antonblanchard/will-it-scale/blob/master/tests/page_fault3.c
->   The reason is that ext2/ext3 do almost nothing in their write fault
-> handler - they are about as fast as it can get. ext4 OTOH needs to reserve
-> blocks for delayed allocation, setup buffers under a page etc. This is
-> necessary if you want to make sure that if data are written via mmap, they
-> also have space available on disk to be written to (ext2 / ext3 do not care
-> and will just drop the data on the floor if you happen to hit ENOSPC during
-> writeback).
+On 7/21/13 3:28 PM, Eric Whitney wrote:
+> Commit d3f32c2db8 caused e2fsck misbehavior during xfstests runs.
+> It reported that uninitialized extents created by fallocate() at
+> the end of file with the FALLOC_FL_KEEP_SIZE flag were invalid.
+> Because FALLOC_FL_KEEP_SIZE does not increase the file size when
+> an extent is fallocated, an uninitialized extent can legally contain
+> blocks past the end of file.
 > 
-> I'm not saying ext4 write fault path cannot possibly be optimized (noone
-> seriously looked into that AFAIK so there may well be some low hanging
-> fruit) but it will always be slower than ext2/3. A more meaningful
-> comparison would be with filesystems like XFS which make similar guarantees
-> regarding data safety.
+> The information reported by ext2fs_extent_get() and used by the commit
+> to determine legal extent ranges is limited by the value of i_size
+> (determines end_blk in the root extent index), so block values greater
+> than that containing i_size were reported as invalid.
+> 
+> To fix this, filter out possible invalid extent candidates if they are
+> uninitialized and extend past the block containing the end of file.
+> 
+> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+> ---
+>  e2fsck/pass1.c      |    4 +++-
+>  lib/ext2fs/ext2fs.h |    1 +
+>  lib/ext2fs/extent.c |    1 +
+>  3 files changed, 5 insertions(+), 1 deletion(-)
+> 
+> diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+> index ba6025b..b84b0d0 100644
+> --- a/e2fsck/pass1.c
+> +++ b/e2fsck/pass1.c
+> @@ -1892,7 +1892,9 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
+>  			problem = PR_1_EXTENT_BAD_START_BLK;
+>  		else if (extent.e_lblk < start_block)
+>  			problem = PR_1_OUT_OF_ORDER_EXTENTS;
+> -		else if (end_block && last_lblk > end_block)
+> +		else if ((end_block && last_lblk > end_block) &&
+> +			 (!(extent.e_flags & EXT2_EXTENT_FLAGS_UNINIT &&
+> +			    last_lblk > info.eof_blk - 1)))
+>  			problem = PR_1_EXTENT_END_OUT_OF_BOUNDS;
+>  		else if (is_leaf && extent.e_len == 0)
+>  			problem = PR_1_EXTENT_LENGTH_ZERO;
+> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+> index 311ceda..85f2ac8 100644
+> --- a/lib/ext2fs/ext2fs.h
+> +++ b/lib/ext2fs/ext2fs.h
+> @@ -409,6 +409,7 @@ struct ext2_extent_info {
+>  	int		bytes_avail;
+>  	blk64_t		max_lblk;
+>  	blk64_t		max_pblk;
+> +	blk64_t         eof_blk;
+>  	__u32		max_len;
+>  	__u32		max_uninit_len;
+>  };
 
-ext4 beats xfs from what I can tell.  I ran with fewer steps to make the
-testing faster, which is to blame for the stair-stepping, btw...
+I just realized, this affects the ABI, doesn't it?  Hm.
 
- http://www.sr71.net/~dave/intel/page-fault-exts/cmp.html?1=ext3&2=ext4&3=xfs&hide=linear,threads,threads_idle,processes_idle
+As a hack-around, can probably just use ehandle->path[0].end_blk directly
+in scan_extent_node and stash eof_blk locally?
 
+-Eric
 
+> diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
+> index 65bb099..de54319 100644
+> --- a/lib/ext2fs/extent.c
+> +++ b/lib/ext2fs/extent.c
+> @@ -1572,6 +1572,7 @@ errcode_t ext2fs_extent_get_info(ext2_extent_handle_t handle,
+>  	info->max_depth = handle->max_depth;
+>  	info->max_lblk = ((__u64) 1 << 32) - 1;
+>  	info->max_pblk = ((__u64) 1 << 48) - 1;
+> +	info->eof_blk = handle->path[0].end_blk;
+>  	info->max_len = (1UL << 15);
+>  	info->max_uninit_len = (1UL << 15) - 1;
+>  
+> 
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
