@@ -1,166 +1,54 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/2] direct-io: Implement generic deferred AIO completions
-Date: Mon, 12 Aug 2013 18:14:55 +0200
-Message-ID: <20130812161455.GA19471@quack.suse.cz>
-References: <1373493739-2243-1-git-send-email-jack@suse.cz>
- <20130712004421.GE3438@dastard>
- <20130716210027.GA9595@quack.suse.cz>
+From: Dave Hansen <dave.hansen@intel.com>
+Subject: Re: [RFC 0/3] Add madvise(..., MADV_WILLWRITE)
+Date: Mon, 12 Aug 2013 15:44:10 -0700
+Message-ID: <5209653A.2040303@intel.com>
+References: <cover.1375729665.git.luto@amacapital.net> <20130807134058.GC12843@quack.suse.cz> <520286A4.1020101@intel.com> <CALCETrXAz1fc7y07LhmxNh6zA_KZB4yv57NY2MrhUwKdkypB9w@mail.gmail.com> <20130808101807.GB4325@quack.suse.cz> <CALCETrX1GXr58ujqAVT5_DtOx+8GEiyb9svK-SGH9d+7SXiNqQ@mail.gmail.com> <20130808185340.GA13926@quack.suse.cz> <CALCETrVXTXzXAmUsmmWxwr6vK+Vux7_pUzWPYyHjxEbn3ObABg@mail.gmail.com> <5204229F.8000507@intel.com> <20130809075523.GA14574@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-	xfs@oss.sgi.com, hch@infradead.org, Jeff Moyer <jmoyer@redhat.com>,
-	Al Viro <viro@ZenIV.linux.org.uk>, linux-ext4@vger.kernel.org,
-	Christoph Hellwig <hch@lst.de>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20130716210027.GA9595@quack.suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Andy Lutomirski <luto@amacapital.net>, linux-mm@kvack.org,
+ linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20130809075523.GA14574@quack.suse.cz>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-  Hi Dave,
-
-  I remembered about this patch set and realized I didn't get reply from
-you regarding the following question (see quoted email below for details):
-Do you really need to defer completion of appending direct IO? Because
-generic code makes sure appending direct IO isn't async and thus
-dio_complete() -> xfs_end_io_direct_write() gets called directly from
-do_blockdev_direct_IO(). I.e. from a normal context and not from interrupt.
-
-I've already addressed rest of your comments so this is the only item that
-is remaining.
-
-On Tue 16-07-13 23:00:27, Jan Kara wrote:
-> > > -static ssize_t dio_complete(struct dio *dio, loff_t offset, ssize_t ret, bool is_async)
-> > > +static ssize_t dio_complete(struct dio *dio, loff_t offset, ssize_t ret,
-> > > +		bool is_async)
-> > >  {
-> > >  	ssize_t transferred = 0;
-> > >  
-> > > @@ -258,19 +262,26 @@ static ssize_t dio_complete(struct dio *dio, loff_t offset, ssize_t ret, bool is
-> > >  	if (ret == 0)
-> > >  		ret = transferred;
-> > >  
-> > > -	if (dio->end_io && dio->result) {
-> > > -		dio->end_io(dio->iocb, offset, transferred,
-> > > -			    dio->private, ret, is_async);
-> > > -	} else {
-> > > -		inode_dio_done(dio->inode);
-> > > -		if (is_async)
-> > > -			aio_complete(dio->iocb, ret, 0);
-> > > -	}
-> > > +	if (dio->end_io && dio->result)
-> > > +		dio->end_io(dio->iocb, offset, transferred, dio->private);
-> > 
-> > Ok, so by here we are assuming all filesystem IO completion
-> > processing is completed.
->   Yes.
+On 08/09/2013 12:55 AM, Jan Kara wrote:
+> On Thu 08-08-13 15:58:39, Dave Hansen wrote:
+>> I was coincidentally tracking down what I thought was a scalability
+>> problem (turned out to be full disks :).  I noticed, though, that ext4
+>> is about 20% slower than ext2/3 at doing write page faults (x-axis is
+>> number of tasks):
+>>
+>> http://www.sr71.net/~dave/intel/page-fault-exts/cmp.html?1=ext3&2=ext4&hide=linear,threads,threads_idle,processes_idle&rollPeriod=5
+>>
+>> The test case is:
+>>
+>> 	https://github.com/antonblanchard/will-it-scale/blob/master/tests/page_fault3.c
+>   The reason is that ext2/ext3 do almost nothing in their write fault
+> handler - they are about as fast as it can get. ext4 OTOH needs to reserve
+> blocks for delayed allocation, setup buffers under a page etc. This is
+> necessary if you want to make sure that if data are written via mmap, they
+> also have space available on disk to be written to (ext2 / ext3 do not care
+> and will just drop the data on the floor if you happen to hit ENOSPC during
+> writeback).
 > 
-> > > +
-> > > +	inode_dio_done(dio->inode);
-> > > +	if (is_async)
-> > > +		aio_complete(dio->iocb, ret, 0);
-> > >  
-> > > +	kmem_cache_free(dio_cache, dio);
-> > >  	return ret;
-> > 
-> > Hmmm. I started wonder if this is valid, because XFS is supposed to
-> > be doing workqueue based IO completion for appending writes and they
-> > are supposed to be run in a workqueue.
-> > 
-> > But, looking at the XFS code, there's actually a bug in the direct
-> > IO completion code and we are not defering completion to a workqueue
-> > like we should be for the append case.  This code in
-> > xfs_finish_ioend() demonstrates the intent:
-> > 
-> >                 if (ioend->io_type == XFS_IO_UNWRITTEN)
-> >                         queue_work(mp->m_unwritten_workqueue, &ioend->io_work);
-> >                 else if (ioend->io_append_trans ||
-> > >>>>>>                   (ioend->io_isdirect && xfs_ioend_is_append(ioend)))
-> >                         queue_work(mp->m_data_workqueue, &ioend->io_work);
-> > 
-> > The problem is that we only ever call xfs_finish_ioend() if is_async
-> > is true, and that will never be true for direct IO beyond the current
-> > EOF. That's a bug, and is Bad(tm).
-> > 
-> > [ Interestingly, it turns out that dio->is_async is never set for
-> > writes beyond EOF because of filesystems that update file sizes
-> > before data IO completion occurs (stale data exposure issues). For
-> > XFS, that can't happen and so dio->is_async could always be set.... ]
-> > 
-> > What this means is that there's a condition for work queue deferral
-> > of DIO IO completion that this patch doesn't handle. Setting deferral
-> > only on unwritten extents like this:
-> > 
-> > > @@ -1292,8 +1281,10 @@ __xfs_get_blocks(
-> > >  		if (create || !ISUNWRITTEN(&imap))
-> > >  			xfs_map_buffer(inode, bh_result, &imap, offset);
-> > >  		if (create && ISUNWRITTEN(&imap)) {
-> > > -			if (direct)
-> > > +			if (direct) {
-> > >  				bh_result->b_private = inode;
-> > > +				set_buffer_defer_completion(bh_result);
-> > > +			}
-> > >  			set_buffer_unwritten(bh_result);
-> > >  		}
-> > >  	}
-> > 
-> > misses that case. I suspect Christoph's original patch predated the
-> > changes to XFS that added transactional file size updates to IO
-> > completion and so didn't take it into account.
->   OK, thanks for catching this. Doing the i_size check in
-> _xfs_get_blocks() would be somewhat cumbersome I presume so I guess we can
-> handle that case by adding __blockdev_direct_IO() flag to defer dio
-> completion to a workqueue. XFS can then set the flag when it sees it needs
-> and i_size update. OK?
-> 
-> > > @@ -1390,9 +1381,7 @@ xfs_end_io_direct_write(
-> > >  	struct kiocb		*iocb,
-> > >  	loff_t			offset,
-> > >  	ssize_t			size,
-> > > -	void			*private,
-> > > -	int			ret,
-> > > -	bool			is_async)
-> > > +	void			*private)
-> > >  {
-> > >  	struct xfs_ioend	*ioend = iocb->private;
-> > >  
-> > > @@ -1414,17 +1403,10 @@ xfs_end_io_direct_write(
-> > >  
-> > >  	ioend->io_offset = offset;
-> > >  	ioend->io_size = size;
-> > > -	ioend->io_iocb = iocb;
-> > > -	ioend->io_result = ret;
-> > >  	if (private && size > 0)
-> > >  		ioend->io_type = XFS_IO_UNWRITTEN;
-> > >  
-> > > -	if (is_async) {
-> > > -		ioend->io_isasync = 1;
-> > > -		xfs_finish_ioend(ioend);
-> > > -	} else {
-> > > -		xfs_finish_ioend_sync(ioend);
-> > > -	}
-> > > +	xfs_finish_ioend_sync(ioend);
-> > >  }
-> > 
-> > As i mentioned, the existing code here is buggy. What we should be
-> > doing here is:
-> > 
-> > 	if (is_async) {
-> > 		ioend->io_isasync = 1;
-> > 		xfs_finish_ioend(ioend);
-> > 	} else if (xfs_ioend_is_append(ioend))) {
-> > 		xfs_finish_ioend(ioend);
-> > 	} else {
-> > 		xfs_finish_ioend_sync(ioend);
-> > 	}
->   Umm, I started to wonder why do you actually need to defer the completion
-> for appending ioend. Because if DIO isn't async, dio_complete() won't be
-> called from interrupt context but from __blockdev_direct_IO(). So it seems
-> you can do everything you need directly there without deferring to a
-> workqueue. But maybe there's some locking subtlety I'm missing.
+> I'm not saying ext4 write fault path cannot possibly be optimized (noone
+> seriously looked into that AFAIK so there may well be some low hanging
+> fruit) but it will always be slower than ext2/3. A more meaningful
+> comparison would be with filesystems like XFS which make similar guarantees
+> regarding data safety.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+ext4 beats xfs from what I can tell.  I ran with fewer steps to make the
+testing faster, which is to blame for the stair-stepping, btw...
+
+ http://www.sr71.net/~dave/intel/page-fault-exts/cmp.html?1=ext3&2=ext4&3=xfs&hide=linear,threads,threads_idle,processes_idle
+
+
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
