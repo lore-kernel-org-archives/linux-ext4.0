@@ -1,230 +1,204 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: WARNING: CPU: 26 PID: 93793 at fs/ext4/inode.c:230
- ext4_evict_inode+0x4c9/0x500 [ext4]() still in 3.11-rc3
-Date: Mon, 12 Aug 2013 11:57:04 +0200
-Message-ID: <20130812095704.GA4596@quack.suse.cz>
-References: <1375388059.2097.10.camel@buesod1.americas.hpqcorp.net>
- <20130801203320.GB31857@quack.suse.cz>
- <1375415926.2269.1.camel@buesod1.americas.hpqcorp.net>
- <20130807152050.GA26516@quack.suse.cz>
- <1375898923.2134.63.camel@buesod1.americas.hpqcorp.net>
- <20130807184551.GD26516@quack.suse.cz>
- <1375909663.2134.70.camel@buesod1.americas.hpqcorp.net>
+Subject: Re: crash in __jbd2_journal_file_buffer
+Date: Mon, 12 Aug 2013 14:52:56 +0200
+Message-ID: <20130812125256.GB4596@quack.suse.cz>
+References: <alpine.DEB.2.00.1307301540110.12830@cobra.newdream.net>
+ <20130731190245.GC28018@quack.suse.cz>
+ <alpine.DEB.2.00.1308091031450.17790@cobra.newdream.net>
+ <20130809212425.GB1050@quack.suse.cz>
+ <alpine.DEB.2.00.1308091504320.14125@cobra.newdream.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
-	Guenter Roeck <linux@roeck-us.net>,
-	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
-To: Davidlohr Bueso <davidlohr@hp.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: Sage Weil <sage@inktank.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:33634 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756204Ab3HLMxA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 12 Aug 2013 08:53:00 -0400
 Content-Disposition: inline
-In-Reply-To: <1375909663.2134.70.camel@buesod1.americas.hpqcorp.net>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <alpine.DEB.2.00.1308091504320.14125@cobra.newdream.net>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 07-08-13 14:07:43, Davidlohr Bueso wrote:
-> On Wed, 2013-08-07 at 20:45 +0200, Jan Kara wrote:
-> > On Wed 07-08-13 11:08:43, Davidlohr Bueso wrote:
+On Fri 09-08-13 15:11:05, Sage Weil wrote:
+> On Fri, 9 Aug 2013, Jan Kara wrote:
+> > On Fri 09-08-13 10:36:37, Sage Weil wrote:
 > > > Hi Jan,
 > > > 
-> > > On Wed, 2013-08-07 at 17:20 +0200, Jan Kara wrote:
-> > > > On Thu 01-08-13 20:58:46, Davidlohr Bueso wrote:
-> > > > > On Thu, 2013-08-01 at 22:33 +0200, Jan Kara wrote:
-> > > > > >   Hi,
-> > > > > > 
-> > > > > > On Thu 01-08-13 13:14:19, Davidlohr Bueso wrote:
-> > > > > > > FYI I'm seeing loads of the following messages with Linus' latest
-> > > > > > > 3.11-rc3 (which includes 822dbba33458cd6ad)
-> > > > > >   Thanks for notice. I see you are running reaim to trigger this. What
-> > > > > > workload?
-> > > > > 
-> > > > > After re-running the workloads one by one, I finally hit the issue again
-> > > > > with 'dbase'. FWIW I'm using ramdisks + ext4.
-> > > >   Hum, I'm not able to reproduce this with current Linus' kernel - commit
-> > > > e4ef108fcde0b97ed38923ba1ea06c7a152bab9e - I've tried with ramdisk but no
-> > > > luck. Are you using some special mount options?
-> > > > 
+> > > Sorry for the slow response; took a while for this to happen again.  This 
+> > > time I'm keeping the machine sitting in kdb in case there is more 
+> > > information needed.
 > > > 
-> > > I just hit the issue again with today's latest pull, 3.11-rc4 (which has
-> > > e4ef108fcde0b97ed38923ba1ea06c7a152bab9e as of yesterday). I create the
-> > > fs with "-b 4096 -J size=4", and mount it with
-> > > "journal_async_commit,nobarrier,async,noatime,nodiratime"
-> >   Still no success :(.
+> > > <4>[19307.314449] ------------[ cut here ]------------
+> > > <4>[19307.319114] WARNING: at /srv/autobuild-ceph/gitbuilder.git/build/fs/jbd2/transaction.c:1237 jbd2_journal_dirty_metadata+0x1ba/0x260()
+> > > 
+> > > <4>[19307.382324] CPU: 0 PID: 8877 Comm: ceph-osd Tainted: G        W    3.10.0-ceph-00049-g68d04c9 #1
+> > > <4>[19307.391256] Hardware name: Dell Inc. PowerEdge R410/01V648, BIOS 1.6.3 02/07/2011
+> > > <4>[19307.398879]  ffffffff81a1d3c8 ffff880214469928 ffffffff816311b0 ffff880214469968
+> > > <4>[19307.407572]  ffffffff8103fae0 ffff880214469958 ffff880170a9dc30 ffff8802240fbe80
+> > > <4>[19307.415153]  0000000000000000 ffff88020b366000 ffff8802256e7510 ffff880214469978
+> > > <4>[19307.422633] Call Trace:
+> > > <4>[19307.425209]  [<ffffffff816311b0>] dump_stack+0x19/0x1b
+> > > <4>[19307.430368]  [<ffffffff8103fae0>] warn_slowpath_common+0x70/0xa0
+> > > <4>[19307.436502]  [<ffffffff8103fb2a>] warn_slowpath_null+0x1a/0x20
+> > > <4>[19307.442356]  [<ffffffff81267c2a>] jbd2_journal_dirty_metadata+0x1ba/0x260
+> > > <4>[19307.449271]  [<ffffffff81245093>] __ext4_handle_dirty_metadata+0xa3/0x140
+> > > <4>[19307.456192]  [<ffffffff812561f3>] ext4_xattr_release_block+0x103/0x1f0
+> > > <4>[19307.462742]  [<ffffffff81256680>] ext4_xattr_block_set+0x1e0/0x910
+> > > <4>[19307.469049]  [<ffffffff8125795b>] ext4_xattr_set_handle+0x38b/0x4a0
+> > > <4>[19307.475445]  [<ffffffff810a319d>] ? trace_hardirqs_on+0xd/0x10
+> > > <4>[19307.481300]  [<ffffffff81257b32>] ext4_xattr_set+0xc2/0x140
+> > > <4>[19307.486995]  [<ffffffff81258547>] ext4_xattr_user_set+0x47/0x50
+> > > <4>[19307.492936]  [<ffffffff811935ce>] generic_setxattr+0x6e/0x90
+> > > <4>[19307.498734]  [<ffffffff81193ecb>] __vfs_setxattr_noperm+0x7b/0x1c0
+> > > <4>[19307.505049]  [<ffffffff811940d4>] vfs_setxattr+0xc4/0xd0
+> > > <4>[19307.510380]  [<ffffffff8119421e>] setxattr+0x13e/0x1e0
+> > > <4>[19307.515646]  [<ffffffff811719c7>] ? __sb_start_write+0xe7/0x1b0
+> > > <4>[19307.521587]  [<ffffffff8118f2e8>] ? mnt_want_write_file+0x28/0x60
+> > > <4>[19307.527812]  [<ffffffff8118c65c>] ? fget_light+0x3c/0x130
+> > > <4>[19307.533230]  [<ffffffff8118f2e8>] ? mnt_want_write_file+0x28/0x60
+> > > <4>[19307.539522]  [<ffffffff8118f1f8>] ? __mnt_want_write+0x58/0x70
+> > > <4>[19307.545492]  [<ffffffff811946be>] SyS_fsetxattr+0xbe/0x100
+> > > <4>[19307.551001]  [<ffffffff816407c2>] system_call_fastpath+0x16/0x1b
+> > > <4>[19307.557137] ---[ end trace 3e447f9462172c58 ]---
+> >   Hum, weird. So we returned EUCLEAN from jbd2_journal_dirty_metadata()
+> > meaning that buffer head passed in there didn't have journal head attached.
+> > However ext4_xattr_release_block() does call
+> > ext4_journal_get_write_access() for the bh before calling
+> > ext4_handle_dirty_xattr_block(). So we should have bh attached to the
+> > running transaction which also keeps journal head in place.
 > > 
-> > > I cannot really think of any additional info I can give you, but if you
-> > > think of something else just shout :)
-> >   Maybe what's your reaim.config? And what is fs size and machine config?
+> > > <2>[19307.561776] EXT4-fs error (device sda1) in ext4_handle_dirty_xattr_block:167: error 117
+> > > <3>[19307.570181] Aborting journal on device sda1-8.
+> > > <2>[19307.604589] EXT4-fs (sda1): Remounting filesystem read-only
+> > > <2>[19307.610273] EXT4-fs error (device sda1) in ext4_xattr_release_block:558: error 117
+> > > <0>[19307.623337] journal commit I/O error
+> > > <0>[19307.623342] journal commit I/O error
+> > > <0>[19307.623405] journal commit I/O error
+> > > <0>[19307.623519] journal commit I/O error
+> > > <2>[19307.623585] EXT4-fs error (device sda1): __ext4_journal_start_sb:62: Detected aborted journal
+> > > <1>[19307.623642] BUG: unable to handle kernel NULL pointer dereference at 0000000000000010
+> > > <1>[19307.623649] IP: [<ffffffff81267c4a>] jbd2_journal_dirty_metadata+0x1da/0x260
+> >   Can you possibly disassemble where exactly did we crash in this function?
+> > Apparently we didn't properly handle the fact that the journal got aborted
+> > here. But I'm not sure what exactly failed.
 > 
-> The machine is an 8 socket, 80 core, 256Gb RAM, HP DL980 server. No
-> special storage being used. Attached is the reaim.config and
-> workfile.dbase files.
-  This is curious. I was trying really hard even on a similar machine
-(well, about half of your size) but no luck with reproducing the warning
-you see. OTOH I was getting a *flood* of warnings from
-ext4_da_update_reserve_space() - I've fixed that up and posted patch to
-linux-ext4 (ext4: Fix warning in ext4_da_update_reserve_space()).
+> Hrm, I'm having trouble getting from a bzImage back to something I can 
+> objdump with inline code, so this is a separate compile with the same 
+> .config that is hopefully right:
+> 
+>                 jh->b_modified = 1;
+>                 J_ASSERT_JH(jh, handle->h_buffer_credits > 0);
+>     1e33:       0f 0b                   ud2    
+>          */
+>         if (jh->b_transaction != transaction) {
+>                 JBUFFER_TRACE(jh, "already on other transaction");
+>                 if (unlikely(jh->b_transaction !=
+>                              journal->j_committing_transaction)) {
+>                         printk(KERN_EMERG "JBD: %s: "
+>     1e35:       4d 85 c9                test   %r9,%r9
+>     1e38:       74 04                   je     1e3e <jbd2_journal_dirty_metadata+0x1de>
+>     1e3a:       41 8b 41 08             mov    0x8(%r9),%eax
+> **here^^^
+>     1e3e:       45 31 c0                xor    %r8d,%r8d
+>     1e41:       48 85 c9                test   %rcx,%rcx
+>     1e44:       74 04                   je     1e4a <jbd2_journal_dirty_metadata+0x1ea>
+>     1e46:       44 8b 41 08             mov    0x8(%rcx),%r8d
+>     1e4a:       48 8b 53 18             mov    0x18(%rbx),%rdx
+>                                "jh->b_transaction (%llu, %p, %u) != "
+>                                "journal->j_committing_transaction (%p, %u)",
+>                                journal->j_devname,
+>     1e4e:       49 8d b6 80 05 00 00    lea    0x580(%r14),%rsi
+>          */
+>         if (jh->b_transaction != transaction) {
+>                 JBUFFER_TRACE(jh, "already on other transaction");
+>                 if (unlikely(jh->b_transaction !=
+>                              journal->j_committing_transaction)) {
+>                         printk(KERN_EMERG "JBD: %s: "
+>     1e55:       89 04 24                mov    %eax,(%rsp)
+>     1e58:       48 c7 c7 00 00 00 00    mov    $0x0,%rdi
+>                         1e5b: R_X86_64_32S      .rodata.str1.8+0x160
+>     1e5f:       31 c0                   xor    %eax,%eax
+>     1e61:       e8 00 00 00 00          callq  1e66 <jbd2_journal_dirty_metadata+0x206>
+>                         1e62: R_X86_64_PC32     printk-0x4
+>                                jh->b_transaction,
+>                                jh->b_transaction ? jh->b_transaction->t_tid : 0,
+>                                journal->j_committing_transaction,
+>                                journal->j_committing_transaction ?
+>                                journal->j_committing_transaction->t_tid : 0);
+>                         ret = -EINVAL;
+>     1e66:       b8 ea ff ff ff          mov    $0xffffffea,%eax
+>     1e6b:       e9 a4 fe ff ff          jmpq   1d14 <jbd2_journal_dirty_metadata+0xb4>
+>                 }
+>                 if (unlikely(jh->b_next_transaction != transaction)) {
+>                         printk(KERN_EMERG "JBD: %s: "
+>     1e70:       45 31 c0                xor    %r8d,%r8d
+>     1e73:       48 85 c9                test   %rcx,%rcx
+>     1e76:       41 8b 44 24 08          mov    0x8(%r12),%eax
+>     1e7b:       74 04                   je     1e81 <jbd2_journal_dirty_metadata+0x221>
+>     1e7d:       44 8b 41 08             mov    0x8(%rcx),%r8d
+>     1e81:       48 8b 53 18             mov    0x18(%rbx),%rdx
+>                                "jh->b_next_transaction (%llu, %p, %u) != "
+>                                "transaction (%p, %u)",
+>                                journal->j_devname,
+>     1e85:       49 8d b6 80 05 00 00    lea    0x580(%r14),%rsi
+>                                journal->j_committing_transaction ?
+>                                journal->j_committing_transaction->t_tid : 0);
+>                         ret = -EINVAL;
+>                 }
+>                 if (unlikely(jh->b_next_transaction != transaction)) {
+>                         printk(KERN_EMERG "JBD: %s: "
+>     1e8c:       89 04 24                mov    %eax,(%rsp)
+>     1e8f:       4d 89 e1                mov    %r12,%r9
+>     1e92:       48 c7 c7 00 00 00 00    mov    $0x0,%rdi
+>                         1e95: R_X86_64_32S      .rodata.str1.8+0x1c0
+>     1e99:       31 c0                   xor    %eax,%eax
+>     1e9b:       e8 00 00 00 00          callq  1ea0 <jbd2_journal_dirty_metadata+0x240>
+>                         1e9c: R_X86_64_PC32     printk-0x4
+>                                (unsigned long long) bh->b_blocknr,
+>                                jh->b_next_transaction,
+>                                jh->b_next_transaction ?
+>                                jh->b_next_transaction->t_tid : 0,
+>                                transaction, transaction->t_tid);
+>                         ret = -EINVAL;
+>     1ea0:       b8 ea ff ff ff          mov    $0xffffffea,%eax
+>     1ea5:       e9 77 fe ff ff          jmpq   1d21 <jbd2_journal_dirty_metadata+0xc1>
+>  *  bit-based spin_unlock()
+>  */
+> static inline void bit_spin_unlock(int bitnum, unsigned long *addr)
+> {
+> #ifdef CONFIG_DEBUG_SPINLOCK
+>         BUG_ON(!test_bit(bitnum, addr));
+>     1eaa:       e8 00 00 00 00          callq  1eaf <jbd2_journal_dirty_metadata+0x24f>
+>                         1eab: R_X86_64_PC32     .text.unlikely-0x4
+>                  * transaction's data buffer, ever. */
+> 
+> Registers are
+> 
+> [4]kdb> rd
+> ax: 0000000000000000  bx: ffff8801f57837b8  cx: 0000000000000000
+> dx: 000000000091c029  si: 000000000091c029  di: 0000000000000001
+> bp: ffff880214469a58  sp: ffff880214469a08  r8: ffff8801f57837b8
+> r9: 0000000000000008  r10: 0000000000000000  r11: 0000000000000000
+> r12: ffff8802256e7870  r13: ffff8801893c52a0  r14: ffff8802256e76c0
+> r15: ffff8802256e7510  ip: ffffffff81267c4a  flags: 00010202  cs: 00000010
+> ss: 00000018  ds: 00000018  es: 00000018  fs: 00000018  gs: 00000018
+> 
+> journal == NULL?
+  Umm, r9 is 0x8 so it seems jh->b_transaction or
+journal->j_running_transaction was 8 (instead of NULL vs valid pointer) and
+thus we oopsed while looking at ->t_tid... Oh, I see where's the problem.
+__ext4_handle_dirty_metadata() will stop the handle if there's an error but
+caller really doesn't count with this and further uses freed handle. So at
+least the BUG part of the problem is clear now - I'll look into fixing
+that.
+
+But how did we pass bh without jh into jbd2_journal_dirty_metadata() still
+isn't clear to me. BTW, I see 'W' taint flag in the warning which means
+there was some warning before this one. What was that?
 
 								Honza
-> 
-> Thanks,
-> Davidlohr
-> 
-> > 
-> > 								Honza
-> > 
-> > 
-> > > > > > > ------------[ cut here ]------------
-> > > > > > > WARNING: CPU: 26 PID: 93793 at fs/ext4/inode.c:230 ext4_evict_inode+0x4c9/0x500 [ext4]()
-> > > > > > > Modules linked in: autofs4 cpufreq_ondemand freq_table sunrpc 8021q garp stp llc pcc_cpufreq ipt_REJECT nf_conntrack_ipv4 nf_defrag_ipv4 iptable_filter ip_tables ip6t_REJECT nf_conntrack_ipv6 nf_defrag_ipv6 xt_state nf_conntrack ip6table_filter ip6_tables ipv6 dm_mirror dm_region_hash dm_log dm_mod uinput iTCO_wdt iTCO_vendor_support coretemp kvm_intel kvm crc32c_intel ghash_clmulni_intel microcode pcspkr sg lpc_ich mfd_core hpilo hpwdt i7core_edac edac_core netxen_nic mperf ext4 jbd2 mbcache sd_mod crc_t10dif aesni_intel ablk_helper cryptd lrw gf128mul glue_helper aes_x86_64 hpsa radeon ttm drm_kms_helper drm i2c_algo_bit i2c_core [last unloaded: freq_table]
-> > > > > > > CPU: 26 PID: 93793 Comm: reaim Tainted: G        W    3.11.0-rc3+ #1
-> > > > > > > Hardware name: HP ProLiant DL980 G7, BIOS P66 06/24/2011
-> > > > > > >  00000000000000e6 ffff8985db603d78 ffffffff8153ce4d 00000000000000e6
-> > > > > > >  0000000000000000 ffff8985db603db8 ffffffff8104cf1c ffff8985db603dc8
-> > > > > > >  ffff8b05c485b8b0 ffff8b05c485b9b8 ffff8b05c485b800 00000000ffffff9c
-> > > > > > > Call Trace:
-> > > > > > >  [<ffffffff8153ce4d>] dump_stack+0x49/0x5c
-> > > > > > >  [<ffffffff8104cf1c>] warn_slowpath_common+0x8c/0xc0
-> > > > > > >  [<ffffffff8104cf6a>] warn_slowpath_null+0x1a/0x20
-> > > > > > >  [<ffffffffa02a0179>] ext4_evict_inode+0x4c9/0x500 [ext4]
-> > > > > > >  [<ffffffff811915e7>] evict+0xa7/0x1c0
-> > > > > > >  [<ffffffff811917e3>] iput_final+0xe3/0x170
-> > > > > > >  [<ffffffff811918ae>] iput+0x3e/0x50
-> > > > > > >  [<ffffffff81187aa6>] do_unlinkat+0x1c6/0x280
-> > > > > > >  [<ffffffff8106f3e4>] ? task_work_run+0x94/0xf0
-> > > > > > >  [<ffffffff81003a44>] ? do_notify_resume+0x84/0x90
-> > > > > > >  [<ffffffff81187b76>] SyS_unlink+0x16/0x20
-> > > > > > >  [<ffffffff81549a02>] system_call_fastpath+0x16/0x1b
-> > > > > > > ---[ end trace 15e812809616488b ]---
-> > > > > > > 
-> > > > > > > 
-> > > > > 
-> > > > > 
-> > > 
-> > > 
-> 
-
-> # Sample configuration file for the reaim workload
-> # cliff white, OSDL 4/2003
-> #
-> # This is a comment (duh)
-> # all variables are named in UPPER CASE, unless you want
-> # to write a better option parser. Send me a patch
-> # I'm keeping this, but not used yet
-> #
-> # The disk tests in the AIM-7 test consist of three groups:
-> # basic block I/O tests, the same tests with an added sync,
-> # and the sync I/O tests. Each test determines file size from a
-> # global variable, disk_iteration_count.
-> # 
-> # There are two configuration variables that control this,
-> # FILESIZE and POOLSIZE  (specified in kilobytes or megabytes).
-> # If POOLSIZE is zero, each child will write or read a total of
-> # FILESIZE bytes. If POOLSIZE is non-zero, child file size is
-> # equal to FILESIZE + (POOLSIZE/number_of_children). Thus when
-> # POOLSIZE is non-zero, I/O per child will be reduced on each
-> # increase in child count.
-> # 
-> # For example, specifying a FILESIZE of 10K and a POOLSIZE of
-> # 100K will result in a single child creating a 110K byte file
-> # on each disk device listed. Two children will create a 60K
-> # file, etc. 24 children will create a 14K file, consuming
-> # 328KB per disk device.
-> #
-> # The file and poolsize values can be specified here, or
-> # in the workfile. Values in the workfile will over write
-> # these values
-> FILESIZE 10k
-> POOLSIZE 1m
-> # 
-> # A list of disk directories for the exerciser
-> # DISKDIR /tmp/diskdir
-> # To control number of users
-> # STARTUSERS 2
-> # ENDUSERS 3
-> # and to control the count
-> # INCREMENT 2
-> # Number of jobs per child
-> # JOBS 20
-> # All switch options will use '1' for on, anything else for off
-> # Extra output
-> # VERBOSE 1
-> # Switch for the crossover
-> # CROSSOVER 1
-> # Switch for STP-style results file
-> # BRIEF 1
-> DISKDIR /t0
-> DISKDIR /t1
-> DISKDIR /t2
-> DISKDIR /t3
-> DISKDIR /t4
-> DISKDIR /t5
-> DISKDIR /t6
-> DISKDIR /t7
-> DISKDIR /t8
-> DISKDIR /t9
-> DISKDIR /t10
-> DISKDIR /t11
-> DISKDIR /t12
-> DISKDIR /t13
-> DISKDIR /t14
-> DISKDIR /t15
-
-> # @(#) workfile.dbase:1.3 1/22/96 00:00:00
-> # Large Database Mix
-> # Unchanged from AIM
-> # Total Hits: 550
-> # Hits with 100% user time: 120 ( 21.8 % )
-> # FILESIZE: 1M
-> # POOLSIZE: 25M
-> # Filesize controlled by reaim.config now - uncomment to over-ride
-> 20  add_int
-> 20  add_long
-> 20  add_short
-> 40  disk_rd
-> 40  disk_rr
-> 10  div_int
-> 10  div_long
-> 10  div_short
-> 10  jmp_test
-> 40  mem_rtns_1
-> 40  mem_rtns_2
-> 10  mul_int
-> 10  mul_long
-> 10  mul_short
-> 40  page_test
-> 20  ram_copy
-> 40  shared_memory
-> 30  sieve
-> 30  sort_rtns_1
-> 10  stream_pipe
-> 30  string_rtns
-> 30  sync_disk_rw
-> 30  sync_disk_update
-> # Calculated percentages
-> #Hits           Name            Percent of total
-> #20		add_int	 	3.64
-> #20		add_long	3.64
-> #20		add_short	3.64
-> #40		disk_rd	 	7.27
-> #40		disk_rr	 	7.27
-> #10		div_int	 	1.82
-> #10		div_long	1.82
-> #10		div_short	1.82
-> #10		jmp_test	1.82
-> #40		mem_rtns_1	7.27
-> #40		mem_rtns_2	7.27
-> #10		mul_int	 	1.82
-> #10		mul_long	1.82
-> #10		mul_short	1.82
-> #40		page_test	7.27
-> #20		ram_copy	3.64
-> #40		shared_memory	7.27
-> #30		sieve	 	5.45
-> #30		sort_rtns_1	5.45
-> #10		stream_pipe	1.82
-> #30		string_rtns	5.45
-> #30		sync_disk_rw	5.45
-> #30		sync_disk_update	5.45
 
 -- 
 Jan Kara <jack@suse.cz>
