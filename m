@@ -1,163 +1,231 @@
-From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
-Subject: Issues with a rather unusual configured NFS server
-Date: Sun, 11 Aug 2013 11:48:49 +0200
-Message-ID: <52075E01.7030506@gmx.de>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: WARNING: CPU: 26 PID: 93793 at fs/ext4/inode.c:230
+ ext4_evict_inode+0x4c9/0x500 [ext4]() still in 3.11-rc3
+Date: Mon, 12 Aug 2013 11:57:04 +0200
+Message-ID: <20130812095704.GA4596@quack.suse.cz>
+References: <1375388059.2097.10.camel@buesod1.americas.hpqcorp.net>
+ <20130801203320.GB31857@quack.suse.cz>
+ <1375415926.2269.1.camel@buesod1.americas.hpqcorp.net>
+ <20130807152050.GA26516@quack.suse.cz>
+ <1375898923.2134.63.camel@buesod1.americas.hpqcorp.net>
+ <20130807184551.GD26516@quack.suse.cz>
+ <1375909663.2134.70.camel@buesod1.americas.hpqcorp.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "user-mode-linux-devel@lists.sourceforge.net"
-	<user-mode-linux-devel@lists.sourceforge.net>,
-	linux-ext4@vger.kernel.org,
-	Linux Kernel <linux-kernel@vger.kernel.org>
-To: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mout-xforward.gmx.net ([82.165.159.40]:58354 "EHLO
-	mout-xforward.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752745Ab3HKJsx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 11 Aug 2013 05:48:53 -0400
-Received: from [92.224.126.156] ([92.224.126.156]) by mail.gmx.com (mrgmx001)
- with ESMTPSA (Nemesis) id 0MRGTX-1VZ52a0heJ-00UddU for
- <linux-ext4@vger.kernel.org>; Sun, 11 Aug 2013 11:48:51 +0200
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
+	Guenter Roeck <linux@roeck-us.net>,
+	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
+To: Davidlohr Bueso <davidlohr@hp.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1375909663.2134.70.camel@buesod1.americas.hpqcorp.net>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-so that the server either crashes (if it is a user mode linux image) or=
- at least its reboot functionality got broken
-- if the NFS server is hammered with scary NFS calls using a fuzzy tool=
- running at a remote NFS client under a non-privileged user id.
+On Wed 07-08-13 14:07:43, Davidlohr Bueso wrote:
+> On Wed, 2013-08-07 at 20:45 +0200, Jan Kara wrote:
+> > On Wed 07-08-13 11:08:43, Davidlohr Bueso wrote:
+> > > Hi Jan,
+> > > 
+> > > On Wed, 2013-08-07 at 17:20 +0200, Jan Kara wrote:
+> > > > On Thu 01-08-13 20:58:46, Davidlohr Bueso wrote:
+> > > > > On Thu, 2013-08-01 at 22:33 +0200, Jan Kara wrote:
+> > > > > >   Hi,
+> > > > > > 
+> > > > > > On Thu 01-08-13 13:14:19, Davidlohr Bueso wrote:
+> > > > > > > FYI I'm seeing loads of the following messages with Linus' latest
+> > > > > > > 3.11-rc3 (which includes 822dbba33458cd6ad)
+> > > > > >   Thanks for notice. I see you are running reaim to trigger this. What
+> > > > > > workload?
+> > > > > 
+> > > > > After re-running the workloads one by one, I finally hit the issue again
+> > > > > with 'dbase'. FWIW I'm using ramdisks + ext4.
+> > > >   Hum, I'm not able to reproduce this with current Linus' kernel - commit
+> > > > e4ef108fcde0b97ed38923ba1ea06c7a152bab9e - I've tried with ramdisk but no
+> > > > luck. Are you using some special mount options?
+> > > > 
+> > > 
+> > > I just hit the issue again with today's latest pull, 3.11-rc4 (which has
+> > > e4ef108fcde0b97ed38923ba1ea06c7a152bab9e as of yesterday). I create the
+> > > fs with "-b 4096 -J size=4", and mount it with
+> > > "journal_async_commit,nobarrier,async,noatime,nodiratime"
+> >   Still no success :(.
+> > 
+> > > I cannot really think of any additional info I can give you, but if you
+> > > think of something else just shout :)
+> >   Maybe what's your reaim.config? And what is fs size and machine config?
+> 
+> The machine is an 8 socket, 80 core, 256Gb RAM, HP DL980 server. No
+> special storage being used. Attached is the reaim.config and
+> workfile.dbase files.
+  This is curious. I was trying really hard even on a similar machine
+(well, about half of your size) but no luck with reproducing the warning
+you see. OTOH I was getting a *flood* of warnings from
+ext4_da_update_reserve_space() - I've fixed that up and posted patch to
+linux-ext4 (ext4: Fix warning in ext4_da_update_reserve_space()).
 
-It can re reproduced, if
-	- the NFS share is an EXT3 or EXT4 directory
-	- and it is created at file located at tempfs and mounted via loop dev=
-ice
-	- and the NFS server is forced to umount the NFS share
-	- and the server forced to restart the NSF service afterwards
-	- and trinity is used
+								Honza
+> 
+> Thanks,
+> Davidlohr
+> 
+> > 
+> > 								Honza
+> > 
+> > 
+> > > > > > > ------------[ cut here ]------------
+> > > > > > > WARNING: CPU: 26 PID: 93793 at fs/ext4/inode.c:230 ext4_evict_inode+0x4c9/0x500 [ext4]()
+> > > > > > > Modules linked in: autofs4 cpufreq_ondemand freq_table sunrpc 8021q garp stp llc pcc_cpufreq ipt_REJECT nf_conntrack_ipv4 nf_defrag_ipv4 iptable_filter ip_tables ip6t_REJECT nf_conntrack_ipv6 nf_defrag_ipv6 xt_state nf_conntrack ip6table_filter ip6_tables ipv6 dm_mirror dm_region_hash dm_log dm_mod uinput iTCO_wdt iTCO_vendor_support coretemp kvm_intel kvm crc32c_intel ghash_clmulni_intel microcode pcspkr sg lpc_ich mfd_core hpilo hpwdt i7core_edac edac_core netxen_nic mperf ext4 jbd2 mbcache sd_mod crc_t10dif aesni_intel ablk_helper cryptd lrw gf128mul glue_helper aes_x86_64 hpsa radeon ttm drm_kms_helper drm i2c_algo_bit i2c_core [last unloaded: freq_table]
+> > > > > > > CPU: 26 PID: 93793 Comm: reaim Tainted: G        W    3.11.0-rc3+ #1
+> > > > > > > Hardware name: HP ProLiant DL980 G7, BIOS P66 06/24/2011
+> > > > > > >  00000000000000e6 ffff8985db603d78 ffffffff8153ce4d 00000000000000e6
+> > > > > > >  0000000000000000 ffff8985db603db8 ffffffff8104cf1c ffff8985db603dc8
+> > > > > > >  ffff8b05c485b8b0 ffff8b05c485b9b8 ffff8b05c485b800 00000000ffffff9c
+> > > > > > > Call Trace:
+> > > > > > >  [<ffffffff8153ce4d>] dump_stack+0x49/0x5c
+> > > > > > >  [<ffffffff8104cf1c>] warn_slowpath_common+0x8c/0xc0
+> > > > > > >  [<ffffffff8104cf6a>] warn_slowpath_null+0x1a/0x20
+> > > > > > >  [<ffffffffa02a0179>] ext4_evict_inode+0x4c9/0x500 [ext4]
+> > > > > > >  [<ffffffff811915e7>] evict+0xa7/0x1c0
+> > > > > > >  [<ffffffff811917e3>] iput_final+0xe3/0x170
+> > > > > > >  [<ffffffff811918ae>] iput+0x3e/0x50
+> > > > > > >  [<ffffffff81187aa6>] do_unlinkat+0x1c6/0x280
+> > > > > > >  [<ffffffff8106f3e4>] ? task_work_run+0x94/0xf0
+> > > > > > >  [<ffffffff81003a44>] ? do_notify_resume+0x84/0x90
+> > > > > > >  [<ffffffff81187b76>] SyS_unlink+0x16/0x20
+> > > > > > >  [<ffffffff81549a02>] system_call_fastpath+0x16/0x1b
+> > > > > > > ---[ end trace 15e812809616488b ]---
+> > > > > > > 
+> > > > > > > 
+> > > > > 
+> > > > > 
+> > > 
+> > > 
+> 
 
-I could find a scenario for an automated bisect. 2 times it brought thi=
-s commit=20
-commit 68a3396178e6688ad7367202cdf0af8ed03c8727
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Thu Mar 21 11:21:50 2013 -0400
+> # Sample configuration file for the reaim workload
+> # cliff white, OSDL 4/2003
+> #
+> # This is a comment (duh)
+> # all variables are named in UPPER CASE, unless you want
+> # to write a better option parser. Send me a patch
+> # I'm keeping this, but not used yet
+> #
+> # The disk tests in the AIM-7 test consist of three groups:
+> # basic block I/O tests, the same tests with an added sync,
+> # and the sync I/O tests. Each test determines file size from a
+> # global variable, disk_iteration_count.
+> # 
+> # There are two configuration variables that control this,
+> # FILESIZE and POOLSIZE  (specified in kilobytes or megabytes).
+> # If POOLSIZE is zero, each child will write or read a total of
+> # FILESIZE bytes. If POOLSIZE is non-zero, child file size is
+> # equal to FILESIZE + (POOLSIZE/number_of_children). Thus when
+> # POOLSIZE is non-zero, I/O per child will be reduced on each
+> # increase in child count.
+> # 
+> # For example, specifying a FILESIZE of 10K and a POOLSIZE of
+> # 100K will result in a single child creating a 110K byte file
+> # on each disk device listed. Two children will create a 60K
+> # file, etc. 24 children will create a 14K file, consuming
+> # 328KB per disk device.
+> #
+> # The file and poolsize values can be specified here, or
+> # in the workfile. Values in the workfile will over write
+> # these values
+> FILESIZE 10k
+> POOLSIZE 1m
+> # 
+> # A list of disk directories for the exerciser
+> # DISKDIR /tmp/diskdir
+> # To control number of users
+> # STARTUSERS 2
+> # ENDUSERS 3
+> # and to control the count
+> # INCREMENT 2
+> # Number of jobs per child
+> # JOBS 20
+> # All switch options will use '1' for on, anything else for off
+> # Extra output
+> # VERBOSE 1
+> # Switch for the crossover
+> # CROSSOVER 1
+> # Switch for STP-style results file
+> # BRIEF 1
+> DISKDIR /t0
+> DISKDIR /t1
+> DISKDIR /t2
+> DISKDIR /t3
+> DISKDIR /t4
+> DISKDIR /t5
+> DISKDIR /t6
+> DISKDIR /t7
+> DISKDIR /t8
+> DISKDIR /t9
+> DISKDIR /t10
+> DISKDIR /t11
+> DISKDIR /t12
+> DISKDIR /t13
+> DISKDIR /t14
+> DISKDIR /t15
 
-    nfsd4: shut down more of delegation earlier
+> # @(#) workfile.dbase:1.3 1/22/96 00:00:00
+> # Large Database Mix
+> # Unchanged from AIM
+> # Total Hits: 550
+> # Hits with 100% user time: 120 ( 21.8 % )
+> # FILESIZE: 1M
+> # POOLSIZE: 25M
+> # Filesize controlled by reaim.config now - uncomment to over-ride
+> 20  add_int
+> 20  add_long
+> 20  add_short
+> 40  disk_rd
+> 40  disk_rr
+> 10  div_int
+> 10  div_long
+> 10  div_short
+> 10  jmp_test
+> 40  mem_rtns_1
+> 40  mem_rtns_2
+> 10  mul_int
+> 10  mul_long
+> 10  mul_short
+> 40  page_test
+> 20  ram_copy
+> 40  shared_memory
+> 30  sieve
+> 30  sort_rtns_1
+> 10  stream_pipe
+> 30  string_rtns
+> 30  sync_disk_rw
+> 30  sync_disk_update
+> # Calculated percentages
+> #Hits           Name            Percent of total
+> #20		add_int	 	3.64
+> #20		add_long	3.64
+> #20		add_short	3.64
+> #40		disk_rd	 	7.27
+> #40		disk_rr	 	7.27
+> #10		div_int	 	1.82
+> #10		div_long	1.82
+> #10		div_short	1.82
+> #10		jmp_test	1.82
+> #40		mem_rtns_1	7.27
+> #40		mem_rtns_2	7.27
+> #10		mul_int	 	1.82
+> #10		mul_long	1.82
+> #10		mul_short	1.82
+> #40		page_test	7.27
+> #20		ram_copy	3.64
+> #40		shared_memory	7.27
+> #30		sieve	 	5.45
+> #30		sort_rtns_1	5.45
+> #10		stream_pipe	1.82
+> #30		string_rtns	5.45
+> #30		sync_disk_rw	5.45
+> #30		sync_disk_update	5.45
 
-
-to be the one after which the user mode linux server crashes with a bac=
-k trace like this:
-
-
-$ cat /mnt/ramdisk/bt.v3.11-rc4-172-g8ae3f1d
-[New LWP 14025]
-Core was generated by `/home/tfoerste/devel/linux/linux earlyprintk ubd=
-a=3D/home/tfoerste/virtual/uml/tr'.
-Program terminated with signal 6, Aborted.
-#0  0xb77ef424 in __kernel_vsyscall ()
-#0  0xb77ef424 in __kernel_vsyscall ()
-#1  0x083a33c5 in kill ()
-#2  0x0807163d in uml_abort () at arch/um/os-Linux/util.c:93
-#3  0x08071925 in os_dump_core () at arch/um/os-Linux/util.c:138
-#4  0x080613a7 in panic_exit (self=3D0x85a1518 <panic_exit_notifier>, u=
-nused1=3D0, unused2=3D0x85d6ce0 <buf.15904>) at arch/um/kernel/um_arch.=
-c:240
-#5  0x0809a3b8 in notifier_call_chain (nl=3D0x0, val=3D0, v=3D0x85d6ce0=
- <buf.15904>, nr_to_call=3D-2, nr_calls=3D0x0) at kernel/notifier.c:93
-#6  0x0809a503 in __atomic_notifier_call_chain (nr_calls=3D<optimized o=
-ut>, nr_to_call=3D<optimized out>, v=3D<optimized out>, val=3D<optimize=
-d out>, nh=3D<optimized out>) at kernel/notifier.c:182
-#7  atomic_notifier_call_chain (nh=3D0x85d6cc4 <panic_notifier_list>, v=
-al=3D0, v=3D0x85d6ce0 <buf.15904>) at kernel/notifier.c:191
-#8  0x08400ba8 in panic (fmt=3D0x0) at kernel/panic.c:128
-#9  0x0818edf4 in ext4_put_super (sb=3D0x4a042690) at fs/ext4/super.c:8=
-18
-#10 0x081010d2 in generic_shutdown_super (sb=3D0x4a042690) at fs/super.=
-c:418
-#11 0x0810209a in kill_block_super (sb=3D0x0) at fs/super.c:1028
-#12 0x08100f6a in deactivate_locked_super (s=3D0x4a042690) at fs/super.=
-c:299
-#13 0x08101001 in deactivate_super (s=3D0x4a042690) at fs/super.c:324
-#14 0x08118e0c in mntfree (mnt=3D<optimized out>) at fs/namespace.c:891
-#15 mntput_no_expire (mnt=3D0x0) at fs/namespace.c:929
-#16 0x0811a2f5 in SYSC_umount (flags=3D<optimized out>, name=3D<optimiz=
-ed out>) at fs/namespace.c:1335
-#17 SyS_umount (name=3D134541632, flags=3D0) at fs/namespace.c:1305
-#18 0x0811a369 in SYSC_oldumount (name=3D<optimized out>) at fs/namespa=
-ce.c:1347
-#19 SyS_oldumount (name=3D134541632) at fs/namespace.c:1345
-#20 0x080618e2 in handle_syscall (r=3D0x49e919d4) at arch/um/kernel/ska=
-s/syscall.c:35
-#21 0x08073c0d in handle_trap (local_using_sysemu=3D<optimized out>, re=
-gs=3D<optimized out>, pid=3D<optimized out>) at arch/um/os-Linux/skas/p=
-rocess.c:198
-#22 userspace (regs=3D0x49e919d4) at arch/um/os-Linux/skas/process.c:43=
-1
-#23 0x0805e65c in fork_handler () at arch/um/kernel/process.c:160
-#24 0x00000000 in ?? ()
-
-
-
-A real system however would not crash bug would give a kernel BUG as re=
-ported here:
-http://article.gmane.org/gmane.comp.file-systems.ext4/38915
-=46urthermore the server won't be able any longer to reboot - it would =
-hang infinitely in the reboot phase.
-Just the magic sysrq keys still works then.
-
-
-
-Steps to reproduce at two 32 bit Gentoo Linux user mode linux images:
-
-1. prepare the server :
-	<mount a tempfs onto /mnt/ramdisk>
-	mkdir /mnt/ramdisk/victims
-	dd if=3D/dev/zero of=3D/mnt/ramdisk/disk1 bs=3D1M count=3D257 2>/dev/n=
-ull
-	yes | mkfs.ext4 -q /mnt/ramdisk/disk1 1>/dev/null
-	mount -o loop /mnt/ramdisk/disk1 /mnt/ramdisk/victims
-	chmod 777 /mnt/ramdisk/victims
-	/etc/init.d/nfs restart
-
-2. prepare the client
-	mount the NFS share onto the local mount point /mnt/ramdisk/victims/ w=
-ith NFSv4
-=09
-3. run the fuzzy tool trinity at the client:
-	while [[ : ]]; do
-		<(re-)create and fill /mnt/ramdisk/victims/v1/v2 with 100 empty files=
- and 100 empty directories>
-		trinity -V /mnt/ramdisk/victims/v1/v2 -C 1 -N 10000 -q
-		sleep 3
-	done
-
-4. after 15 min kill the user mode linux client with -9
-
-5. now run at the server
-	umount /mnt/ramdisk/victims || /etc/init.d/nfs restart && umount /mnt/=
-ramdisk/victims && echo ' no issue so far'
-
-
-You might need this patch too from Oleg Nesterov <oleg@redhat.com> (not=
- in mainline currently) .
-
---- x/kernel/exit.c
-+++ x/kernel/exit.c
-@@ -783,8 +783,8 @@ void do_exit(long code)
-        exit_shm(tsk);
-        exit_files(tsk);
-        exit_fs(tsk);
--       exit_task_namespaces(tsk);
-        exit_task_work(tsk);
-+       exit_task_namespaces(tsk);
-        check_stack_usage();
-        exit_thread();
-
-
---=20
-MfG/Sincerely
-Toralf F=C3=B6rster
-pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
