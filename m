@@ -1,91 +1,102 @@
 From: Eric Sandeen <sandeen@redhat.com>
 Subject: Re: [PATCH] e2fsprogs: Don't report uninit extents past EOF invalid
-Date: Mon, 12 Aug 2013 18:21:25 -0500
-Message-ID: <52096DF5.9090700@redhat.com>
-References: <20130721202849.GB2331@wallace>
+Date: Mon, 12 Aug 2013 18:28:30 -0500
+Message-ID: <52096F9E.3060801@redhat.com>
+References: <20130721202849.GB2331@wallace> <52096DF5.9090700@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
 To: Eric Whitney <enwlinux@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:64440 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:49308 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755596Ab3HLXV3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 Aug 2013 19:21:29 -0400
-In-Reply-To: <20130721202849.GB2331@wallace>
+	id S1755751Ab3HLX2d (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 12 Aug 2013 19:28:33 -0400
+In-Reply-To: <52096DF5.9090700@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 7/21/13 3:28 PM, Eric Whitney wrote:
-> Commit d3f32c2db8 caused e2fsck misbehavior during xfstests runs.
-> It reported that uninitialized extents created by fallocate() at
-> the end of file with the FALLOC_FL_KEEP_SIZE flag were invalid.
-> Because FALLOC_FL_KEEP_SIZE does not increase the file size when
-> an extent is fallocated, an uninitialized extent can legally contain
-> blocks past the end of file.
+On 8/12/13 6:21 PM, Eric Sandeen wrote:
+> On 7/21/13 3:28 PM, Eric Whitney wrote:
+>> Commit d3f32c2db8 caused e2fsck misbehavior during xfstests runs.
+>> It reported that uninitialized extents created by fallocate() at
+>> the end of file with the FALLOC_FL_KEEP_SIZE flag were invalid.
+>> Because FALLOC_FL_KEEP_SIZE does not increase the file size when
+>> an extent is fallocated, an uninitialized extent can legally contain
+>> blocks past the end of file.
+>>
+>> The information reported by ext2fs_extent_get() and used by the commit
+>> to determine legal extent ranges is limited by the value of i_size
+>> (determines end_blk in the root extent index), so block values greater
+>> than that containing i_size were reported as invalid.
+>>
+>> To fix this, filter out possible invalid extent candidates if they are
+>> uninitialized and extend past the block containing the end of file.
+>>
+>> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+>> ---
+>>  e2fsck/pass1.c      |    4 +++-
+>>  lib/ext2fs/ext2fs.h |    1 +
+>>  lib/ext2fs/extent.c |    1 +
+>>  3 files changed, 5 insertions(+), 1 deletion(-)
+>>
+>> diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+>> index ba6025b..b84b0d0 100644
+>> --- a/e2fsck/pass1.c
+>> +++ b/e2fsck/pass1.c
+>> @@ -1892,7 +1892,9 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
+>>  			problem = PR_1_EXTENT_BAD_START_BLK;
+>>  		else if (extent.e_lblk < start_block)
+>>  			problem = PR_1_OUT_OF_ORDER_EXTENTS;
+>> -		else if (end_block && last_lblk > end_block)
+>> +		else if ((end_block && last_lblk > end_block) &&
+>> +			 (!(extent.e_flags & EXT2_EXTENT_FLAGS_UNINIT &&
+>> +			    last_lblk > info.eof_blk - 1)))
+>>  			problem = PR_1_EXTENT_END_OUT_OF_BOUNDS;
+>>  		else if (is_leaf && extent.e_len == 0)
+>>  			problem = PR_1_EXTENT_LENGTH_ZERO;
+>> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+>> index 311ceda..85f2ac8 100644
+>> --- a/lib/ext2fs/ext2fs.h
+>> +++ b/lib/ext2fs/ext2fs.h
+>> @@ -409,6 +409,7 @@ struct ext2_extent_info {
+>>  	int		bytes_avail;
+>>  	blk64_t		max_lblk;
+>>  	blk64_t		max_pblk;
+>> +	blk64_t         eof_blk;
+>>  	__u32		max_len;
+>>  	__u32		max_uninit_len;
+>>  };
 > 
-> The information reported by ext2fs_extent_get() and used by the commit
-> to determine legal extent ranges is limited by the value of i_size
-> (determines end_blk in the root extent index), so block values greater
-> than that containing i_size were reported as invalid.
+> I just realized, this affects the ABI, doesn't it?  Hm.
 > 
-> To fix this, filter out possible invalid extent candidates if they are
-> uninitialized and extend past the block containing the end of file.
+> As a hack-around, can probably just use ehandle->path[0].end_blk directly
+> in scan_extent_node and stash eof_blk locally?
+
+Nope, we can't crack an extent handle, it's an opaque type.
+
+Ned some V2 interfaces now?  :(
+
+> -Eric
 > 
-> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
-> ---
->  e2fsck/pass1.c      |    4 +++-
->  lib/ext2fs/ext2fs.h |    1 +
->  lib/ext2fs/extent.c |    1 +
->  3 files changed, 5 insertions(+), 1 deletion(-)
+>> diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
+>> index 65bb099..de54319 100644
+>> --- a/lib/ext2fs/extent.c
+>> +++ b/lib/ext2fs/extent.c
+>> @@ -1572,6 +1572,7 @@ errcode_t ext2fs_extent_get_info(ext2_extent_handle_t handle,
+>>  	info->max_depth = handle->max_depth;
+>>  	info->max_lblk = ((__u64) 1 << 32) - 1;
+>>  	info->max_pblk = ((__u64) 1 << 48) - 1;
+>> +	info->eof_blk = handle->path[0].end_blk;
+>>  	info->max_len = (1UL << 15);
+>>  	info->max_uninit_len = (1UL << 15) - 1;
+>>  
+>>
 > 
-> diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-> index ba6025b..b84b0d0 100644
-> --- a/e2fsck/pass1.c
-> +++ b/e2fsck/pass1.c
-> @@ -1892,7 +1892,9 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
->  			problem = PR_1_EXTENT_BAD_START_BLK;
->  		else if (extent.e_lblk < start_block)
->  			problem = PR_1_OUT_OF_ORDER_EXTENTS;
-> -		else if (end_block && last_lblk > end_block)
-> +		else if ((end_block && last_lblk > end_block) &&
-> +			 (!(extent.e_flags & EXT2_EXTENT_FLAGS_UNINIT &&
-> +			    last_lblk > info.eof_blk - 1)))
->  			problem = PR_1_EXTENT_END_OUT_OF_BOUNDS;
->  		else if (is_leaf && extent.e_len == 0)
->  			problem = PR_1_EXTENT_LENGTH_ZERO;
-> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-> index 311ceda..85f2ac8 100644
-> --- a/lib/ext2fs/ext2fs.h
-> +++ b/lib/ext2fs/ext2fs.h
-> @@ -409,6 +409,7 @@ struct ext2_extent_info {
->  	int		bytes_avail;
->  	blk64_t		max_lblk;
->  	blk64_t		max_pblk;
-> +	blk64_t         eof_blk;
->  	__u32		max_len;
->  	__u32		max_uninit_len;
->  };
-
-I just realized, this affects the ABI, doesn't it?  Hm.
-
-As a hack-around, can probably just use ehandle->path[0].end_blk directly
-in scan_extent_node and stash eof_blk locally?
-
--Eric
-
-> diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
-> index 65bb099..de54319 100644
-> --- a/lib/ext2fs/extent.c
-> +++ b/lib/ext2fs/extent.c
-> @@ -1572,6 +1572,7 @@ errcode_t ext2fs_extent_get_info(ext2_extent_handle_t handle,
->  	info->max_depth = handle->max_depth;
->  	info->max_lblk = ((__u64) 1 << 32) - 1;
->  	info->max_pblk = ((__u64) 1 << 48) - 1;
-> +	info->eof_blk = handle->path[0].end_blk;
->  	info->max_len = (1UL << 15);
->  	info->max_uninit_len = (1UL << 15) - 1;
->  
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
 
