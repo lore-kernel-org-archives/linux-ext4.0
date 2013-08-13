@@ -1,60 +1,101 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 1/2] direct-io: Implement generic deferred AIO completions
-Date: Tue, 13 Aug 2013 10:11:40 +1000
-Message-ID: <20130813001140.GR12779@dastard>
-References: <1373493739-2243-1-git-send-email-jack@suse.cz>
- <20130712004421.GE3438@dastard>
- <20130716210027.GA9595@quack.suse.cz>
- <20130812161455.GA19471@quack.suse.cz>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [PATCH] resize2fs: Use blk64_t and location getters for
+ free_gdp_blocks()
+Date: Mon, 12 Aug 2013 18:32:02 -0700
+Message-ID: <20130813013202.GB6945@blackbox.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com, hch@infradead.org,
-	Jeff Moyer <jmoyer@redhat.com>,
-	Al Viro <viro@ZenIV.linux.org.uk>, linux-ext4@vger.kernel.org,
-	Christoph Hellwig <hch@lst.de>
-To: Jan Kara <jack@suse.cz>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+	Eric Sandeen <sandeen@redhat.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:61008 "EHLO
-	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756038Ab3HMAMy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 Aug 2013 20:12:54 -0400
+Received: from aserp1040.oracle.com ([141.146.126.69]:39364 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756429Ab3HMBcJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Aug 2013 21:32:09 -0400
 Content-Disposition: inline
-In-Reply-To: <20130812161455.GA19471@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 12, 2013 at 06:14:55PM +0200, Jan Kara wrote:
->   Hi Dave,
-> 
->   I remembered about this patch set and realized I didn't get reply from
-> you regarding the following question (see quoted email below for details):
-> Do you really need to defer completion of appending direct IO? Because
-> generic code makes sure appending direct IO isn't async and thus
-> dio_complete() -> xfs_end_io_direct_write() gets called directly from
-> do_blockdev_direct_IO(). I.e. from a normal context and not from interrupt.
+free_gdp_blocks needs to be taught to use 64-bit fields and the appropriate
+getters, otherwise it'll truncate high block numbers (when, say, resizing a
+16T+ fs) and mark the low numbered group descriptor blocks as free.  Yikes.
+It's easy to trigger if you create a new 20T fs and shrink it to 18T.
 
-Hi Jan, sorry I haven't got back to you sooner - I've had a lot
-of stuff to deal with over the past couple of weeks.
+Reported-by: Eric Sandeen <sandeen@redhat.com>
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ resize/resize2fs.c |   41 ++++++++++++++++++++---------------------
+ 1 file changed, 20 insertions(+), 21 deletions(-)
 
-The issue is that one part of the code expects deferral , and the
-other part of the code isn't doing a deferral, and I never got
-around to determining which was correct. I didn't connect the dots
-between aio/appending and sync dispatch meaning that the way it is
-operating now is fine - i.e. that the fact it doesn't call the
-deferral completion path is OK and was intended to operate that
-way by Christoph.
-
-So leaving the code as it is without a deferal is fine.
-
-> I've already addressed rest of your comments so this is the only item that
-> is remaining.
-
-Great :)
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+index 3610e7b..76d7aa6 100644
+--- a/resize/resize2fs.c
++++ b/resize/resize2fs.c
+@@ -272,34 +272,36 @@ static void fix_uninit_block_bitmaps(ext2_filsys fs)
+  */
+ static void free_gdp_blocks(ext2_filsys fs,
+ 			    ext2fs_block_bitmap reserve_blocks,
+-			    struct ext2_group_desc *gdp)
++			    ext2_filsys old_fs,
++			    dgrp_t group)
+ {
+-	blk_t	blk;
++	blk64_t	blk;
+ 	int	j;
+ 
+-	if (gdp->bg_block_bitmap &&
+-	    (gdp->bg_block_bitmap < ext2fs_blocks_count(fs->super))) {
+-		ext2fs_block_alloc_stats(fs, gdp->bg_block_bitmap, -1);
+-		ext2fs_mark_block_bitmap2(reserve_blocks,
+-					 gdp->bg_block_bitmap);
++	blk = ext2fs_block_bitmap_loc(old_fs, group);
++	if (blk &&
++	    (blk < ext2fs_blocks_count(fs->super))) {
++		ext2fs_block_alloc_stats2(fs, blk, -1);
++		ext2fs_mark_block_bitmap2(reserve_blocks, blk);
+ 	}
+ 
+-	if (gdp->bg_inode_bitmap &&
+-	    (gdp->bg_inode_bitmap < ext2fs_blocks_count(fs->super))) {
+-		ext2fs_block_alloc_stats(fs, gdp->bg_inode_bitmap, -1);
+-		ext2fs_mark_block_bitmap2(reserve_blocks,
+-					 gdp->bg_inode_bitmap);
++	blk = ext2fs_inode_bitmap_loc(old_fs, group);
++	if (blk &&
++	    (blk < ext2fs_blocks_count(fs->super))) {
++		ext2fs_block_alloc_stats2(fs, blk, -1);
++		ext2fs_mark_block_bitmap2(reserve_blocks, blk);
+ 	}
+ 
+-	if (gdp->bg_inode_table == 0 ||
+-	    (gdp->bg_inode_table >= ext2fs_blocks_count(fs->super)))
++	blk = ext2fs_inode_table_loc(old_fs, group);
++	if (blk == 0 ||
++	    (blk >= ext2fs_blocks_count(fs->super)))
+ 		return;
+ 
+-	for (blk = gdp->bg_inode_table, j = 0;
++	for (j = 0;
+ 	     j < fs->inode_blocks_per_group; j++, blk++) {
+ 		if (blk >= ext2fs_blocks_count(fs->super))
+ 			break;
+-		ext2fs_block_alloc_stats(fs, blk, -1);
++		ext2fs_block_alloc_stats2(fs, blk, -1);
+ 		ext2fs_mark_block_bitmap2(reserve_blocks, blk);
+ 	}
+ }
+@@ -466,11 +468,8 @@ retry:
+ 		 * and free any blocks associated with their metadata
+ 		 */
+ 		for (i = fs->group_desc_count;
+-		     i < old_fs->group_desc_count; i++) {
+-			free_gdp_blocks(fs, reserve_blocks,
+-					ext2fs_group_desc(old_fs,
+-						old_fs->group_desc, i));
+-		}
++		     i < old_fs->group_desc_count; i++)
++			free_gdp_blocks(fs, reserve_blocks, old_fs, i);
+ 		retval = 0;
+ 		goto errout;
+ 	}
