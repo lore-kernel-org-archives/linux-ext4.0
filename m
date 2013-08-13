@@ -1,83 +1,106 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 0/5 v2] add extent status tree caching
-Date: Tue, 13 Aug 2013 09:04:59 -0400
-Message-ID: <20130813130459.GD8902@thunk.org>
-References: <20130719033309.GQ11674@dastard>
- <20130719161930.GF17938@thunk.org>
- <20130722013831.GE11674@dastard>
- <20130722021742.GA24195@gmail.com>
- <20130722100255.GF11674@dastard>
- <20130722125745.GA2827@gmail.com>
- <20130730030807.GI21982@dastard>
- <20130804012740.GC19781@thunk.org>
- <20130813031057.GV12779@dastard>
- <5209A649.90406@redhat.com>
+From: Eric Whitney <enwlinux@gmail.com>
+Subject: Re: [PATCH] e2fsprogs: Don't report uninit extents past EOF invalid
+Date: Tue, 13 Aug 2013 12:31:12 -0400
+Message-ID: <20130813163112.GA4990@wallace>
+References: <20130721202849.GB2331@wallace>
+ <52096DF5.9090700@redhat.com>
+ <52096F9E.3060801@redhat.com>
+ <52097153.4000600@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Dave Chinner <david@fromorbit.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
 To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:43171 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756195Ab3HMNFE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 13 Aug 2013 09:05:04 -0400
+Received: from mail-ye0-f175.google.com ([209.85.213.175]:36711 "EHLO
+	mail-ye0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757992Ab3HMQbS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Aug 2013 12:31:18 -0400
+Received: by mail-ye0-f175.google.com with SMTP id m9so2389510yen.6
+        for <linux-ext4@vger.kernel.org>; Tue, 13 Aug 2013 09:31:17 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <5209A649.90406@redhat.com>
+In-Reply-To: <52097153.4000600@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 12, 2013 at 10:21:45PM -0500, Eric Sandeen wrote:
+* Eric Sandeen <sandeen@redhat.com>:
+> On 8/12/13 6:28 PM, Eric Sandeen wrote:
+> > On 8/12/13 6:21 PM, Eric Sandeen wrote:
+> >> On 7/21/13 3:28 PM, Eric Whitney wrote:
+> >>> Commit d3f32c2db8 caused e2fsck misbehavior during xfstests runs.
+> >>> It reported that uninitialized extents created by fallocate() at
+> >>> the end of file with the FALLOC_FL_KEEP_SIZE flag were invalid.
+> >>> Because FALLOC_FL_KEEP_SIZE does not increase the file size when
+> >>> an extent is fallocated, an uninitialized extent can legally contain
+> >>> blocks past the end of file.
+> >>>
+> >>> The information reported by ext2fs_extent_get() and used by the commit
+> >>> to determine legal extent ranges is limited by the value of i_size
+> >>> (determines end_blk in the root extent index), so block values greater
+> >>> than that containing i_size were reported as invalid.
+> >>>
+> >>> To fix this, filter out possible invalid extent candidates if they are
+> >>> uninitialized and extend past the block containing the end of file.
+> >>>
+> >>> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+> >>> ---
+> >>>  e2fsck/pass1.c      |    4 +++-
+> >>>  lib/ext2fs/ext2fs.h |    1 +
+> >>>  lib/ext2fs/extent.c |    1 +
+> >>>  3 files changed, 5 insertions(+), 1 deletion(-)
+> >>>
+> >>> diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+> >>> index ba6025b..b84b0d0 100644
+> >>> --- a/e2fsck/pass1.c
+> >>> +++ b/e2fsck/pass1.c
+> >>> @@ -1892,7 +1892,9 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
+> >>>  			problem = PR_1_EXTENT_BAD_START_BLK;
+> >>>  		else if (extent.e_lblk < start_block)
+> >>>  			problem = PR_1_OUT_OF_ORDER_EXTENTS;
+> >>> -		else if (end_block && last_lblk > end_block)
+> >>> +		else if ((end_block && last_lblk > end_block) &&
+> >>> +			 (!(extent.e_flags & EXT2_EXTENT_FLAGS_UNINIT &&
+> >>> +			    last_lblk > info.eof_blk - 1)))
+> >>>  			problem = PR_1_EXTENT_END_OUT_OF_BOUNDS;
+> >>>  		else if (is_leaf && extent.e_len == 0)
+> >>>  			problem = PR_1_EXTENT_LENGTH_ZERO;
+> >>> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+> >>> index 311ceda..85f2ac8 100644
+> >>> --- a/lib/ext2fs/ext2fs.h
+> >>> +++ b/lib/ext2fs/ext2fs.h
+> >>> @@ -409,6 +409,7 @@ struct ext2_extent_info {
+> >>>  	int		bytes_avail;
+> >>>  	blk64_t		max_lblk;
+> >>>  	blk64_t		max_pblk;
+> >>> +	blk64_t         eof_blk;
+> >>>  	__u32		max_len;
+> >>>  	__u32		max_uninit_len;
+> >>>  };
+> >>
+> >> I just realized, this affects the ABI, doesn't it?  Hm.
+> >>
+> >> As a hack-around, can probably just use ehandle->path[0].end_blk directly
+> >> in scan_extent_node and stash eof_blk locally?
+> > 
+> > Nope, we can't crack an extent handle, it's an opaque type.
+> > 
+> > Ned some V2 interfaces now?  :(
+> > 
 > 
-> Reading extents via fiemap almost certainly moves that metadata into
-> kernel cache, simply by the act of reading the block device to get them.
-
-Well, if the file system has an extent cache.  It certainly will end
-up reading the pages involved with the extents into the buffer and/or
-page cache (depending on how the file system does things).
-
-> I see Dave's point that we _do_ have an interface today to read
-> all file extents into cache.  We don't mark them as particularly sticky,
-> however.
+> or maybe just:
 > 
-> This seems pretty clearly driven by a Google workload need; something you
-> can probably test.  Does FIEMAP do the job for you or not?  If not, why not?
+> +       eof_blk = (EXT2_I_SIZE(pctx->inode) + ctx->fs->blocksize - 1) >>
+> +                  EXT2_BLOCK_SIZE_BITS(ctx->fs->super);
+> 
+> unless that's too ugly.
+> 
 
-If you are using memory containers the way we do, in practice every
-single process is going to be under memory pressure.  See previous
-comments I've made about why in a cloud environment, memory is your
-most precious resource, since motherboards have limited numbers of
-DIMM slots, and high-density DIMMS are expensive --- this is why
-services like Amazon EC2 and Linode charge $$$ if you need much more
-than 512mb of memory.  This is because in order to make cloud systems
-cost effective from a financial ROI point of view (especially once you
-include power and cooling costs), you need to pack a large number of
-workloads on each machine, and this is true regardless of whether you
-are using containers or VM's as your method of isolation.
+Clearly, I wasn't thinking about the ABI at all - thanks for pointing out
+that misstep.
 
-So basically, if you are trying to use your memory efficiently, _and_
-you are trying to meet 99.9 percentile latency SLA numbers for your
-performance-critical workloads, you need to have a way of telling the
-system that certain pieces of memory (in this case, certain parts of
-the extent cache) are more important than others (for example, a
-no-longer-used inode/dentry in the inode/dentry cache or other slab
-objects).
+So, I'd like to withdraw that patch, please, and will post a V2 in a bit.
+Computing the eof_blk in that manner is better than an initial patch I had
+that worked but which was pretty ugly.
 
-						- Ted
+Thanks,
+Eric
 
-P.S.  In previous versions of this patch (which never went upstream,
-using a different implementation which also never went upstream), this
-ioctl nailed the relevant portions of the extent cache into memory
-permanently, and they wouldn't be evicted no matter how much memory
-pressure you would be under.  In the Google environment, this wasn't a
-major issue, since all jobs run under a restrictive memory container
-and so a buggy or malicious program which attempted to precache too
-many files would end up OOM-kiling itself (after which point the
-situation would correct itself).
-
-In this version of the patch, I've made the cache entries sticky, but
-they aren't permanently nailed in place.  This is because not all
-systems will be running with containers, and I wanted to make sure we
-had a safety valve against abuse.  Could someone still degrade the
-system performance if they tried to abuse this ioctl?  Sure, but
-someone can do the same thing with a "while (1) fork();" bomb.
