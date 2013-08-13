@@ -1,91 +1,60 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] e2fsprogs: Don't report uninit extents past EOF invalid
-Date: Mon, 12 Aug 2013 18:35:47 -0500
-Message-ID: <52097153.4000600@redhat.com>
-References: <20130721202849.GB2331@wallace> <52096DF5.9090700@redhat.com> <52096F9E.3060801@redhat.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 1/2] direct-io: Implement generic deferred AIO completions
+Date: Tue, 13 Aug 2013 10:11:40 +1000
+Message-ID: <20130813001140.GR12779@dastard>
+References: <1373493739-2243-1-git-send-email-jack@suse.cz>
+ <20130712004421.GE3438@dastard>
+ <20130716210027.GA9595@quack.suse.cz>
+ <20130812161455.GA19471@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Eric Whitney <enwlinux@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com, hch@infradead.org,
+	Jeff Moyer <jmoyer@redhat.com>,
+	Al Viro <viro@ZenIV.linux.org.uk>, linux-ext4@vger.kernel.org,
+	Christoph Hellwig <hch@lst.de>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:7353 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755751Ab3HLXfv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 Aug 2013 19:35:51 -0400
-In-Reply-To: <52096F9E.3060801@redhat.com>
+Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:61008 "EHLO
+	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756038Ab3HMAMy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 12 Aug 2013 20:12:54 -0400
+Content-Disposition: inline
+In-Reply-To: <20130812161455.GA19471@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 8/12/13 6:28 PM, Eric Sandeen wrote:
-> On 8/12/13 6:21 PM, Eric Sandeen wrote:
->> On 7/21/13 3:28 PM, Eric Whitney wrote:
->>> Commit d3f32c2db8 caused e2fsck misbehavior during xfstests runs.
->>> It reported that uninitialized extents created by fallocate() at
->>> the end of file with the FALLOC_FL_KEEP_SIZE flag were invalid.
->>> Because FALLOC_FL_KEEP_SIZE does not increase the file size when
->>> an extent is fallocated, an uninitialized extent can legally contain
->>> blocks past the end of file.
->>>
->>> The information reported by ext2fs_extent_get() and used by the commit
->>> to determine legal extent ranges is limited by the value of i_size
->>> (determines end_blk in the root extent index), so block values greater
->>> than that containing i_size were reported as invalid.
->>>
->>> To fix this, filter out possible invalid extent candidates if they are
->>> uninitialized and extend past the block containing the end of file.
->>>
->>> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
->>> ---
->>>  e2fsck/pass1.c      |    4 +++-
->>>  lib/ext2fs/ext2fs.h |    1 +
->>>  lib/ext2fs/extent.c |    1 +
->>>  3 files changed, 5 insertions(+), 1 deletion(-)
->>>
->>> diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
->>> index ba6025b..b84b0d0 100644
->>> --- a/e2fsck/pass1.c
->>> +++ b/e2fsck/pass1.c
->>> @@ -1892,7 +1892,9 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
->>>  			problem = PR_1_EXTENT_BAD_START_BLK;
->>>  		else if (extent.e_lblk < start_block)
->>>  			problem = PR_1_OUT_OF_ORDER_EXTENTS;
->>> -		else if (end_block && last_lblk > end_block)
->>> +		else if ((end_block && last_lblk > end_block) &&
->>> +			 (!(extent.e_flags & EXT2_EXTENT_FLAGS_UNINIT &&
->>> +			    last_lblk > info.eof_blk - 1)))
->>>  			problem = PR_1_EXTENT_END_OUT_OF_BOUNDS;
->>>  		else if (is_leaf && extent.e_len == 0)
->>>  			problem = PR_1_EXTENT_LENGTH_ZERO;
->>> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
->>> index 311ceda..85f2ac8 100644
->>> --- a/lib/ext2fs/ext2fs.h
->>> +++ b/lib/ext2fs/ext2fs.h
->>> @@ -409,6 +409,7 @@ struct ext2_extent_info {
->>>  	int		bytes_avail;
->>>  	blk64_t		max_lblk;
->>>  	blk64_t		max_pblk;
->>> +	blk64_t         eof_blk;
->>>  	__u32		max_len;
->>>  	__u32		max_uninit_len;
->>>  };
->>
->> I just realized, this affects the ABI, doesn't it?  Hm.
->>
->> As a hack-around, can probably just use ehandle->path[0].end_blk directly
->> in scan_extent_node and stash eof_blk locally?
+On Mon, Aug 12, 2013 at 06:14:55PM +0200, Jan Kara wrote:
+>   Hi Dave,
 > 
-> Nope, we can't crack an extent handle, it's an opaque type.
-> 
-> Ned some V2 interfaces now?  :(
-> 
+>   I remembered about this patch set and realized I didn't get reply from
+> you regarding the following question (see quoted email below for details):
+> Do you really need to defer completion of appending direct IO? Because
+> generic code makes sure appending direct IO isn't async and thus
+> dio_complete() -> xfs_end_io_direct_write() gets called directly from
+> do_blockdev_direct_IO(). I.e. from a normal context and not from interrupt.
 
-or maybe just:
+Hi Jan, sorry I haven't got back to you sooner - I've had a lot
+of stuff to deal with over the past couple of weeks.
 
-+       eof_blk = (EXT2_I_SIZE(pctx->inode) + ctx->fs->blocksize - 1) >>
-+                  EXT2_BLOCK_SIZE_BITS(ctx->fs->super);
+The issue is that one part of the code expects deferral , and the
+other part of the code isn't doing a deferral, and I never got
+around to determining which was correct. I didn't connect the dots
+between aio/appending and sync dispatch meaning that the way it is
+operating now is fine - i.e. that the fact it doesn't call the
+deferral completion path is OK and was intended to operate that
+way by Christoph.
 
-unless that's too ugly.
+So leaving the code as it is without a deferal is fine.
 
--Eric (done replying to himself for now)
+> I've already addressed rest of your comments so this is the only item that
+> is remaining.
 
+Great :)
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
