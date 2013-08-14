@@ -1,69 +1,89 @@
-From: Dave Hansen <dave.hansen@linux.intel.com>
-Subject: page fault scalability (ext3, ext4, xfs)
-Date: Wed, 14 Aug 2013 10:10:07 -0700
-Message-ID: <520BB9EF.5020308@linux.intel.com>
+From: Eric Whitney <enwlinux@gmail.com>
+Subject: [PATCH v2] Don't report uninit extents past EOF invalid
+Date: Wed, 14 Aug 2013 14:30:07 -0400
+Message-ID: <20130814183007.GB2602@wallace>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
-	linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
-	LKML <linux-kernel@vger.kernel.org>,
-	david@fromorbit.com, Tim Chen <tim.c.chen@linux.intel.com>,
-	Andi Kleen <ak@linux.intel.com>, Andy Lutomirski <luto@amacapital.net>
-Return-path: <xfs-bounces@oss.sgi.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-ve0-f178.google.com ([209.85.128.178]:49677 "EHLO
+	mail-ve0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760222Ab3HNSaP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Aug 2013 14:30:15 -0400
+Received: by mail-ve0-f178.google.com with SMTP id ox1so7931476veb.23
+        for <linux-ext4@vger.kernel.org>; Wed, 14 Aug 2013 11:30:14 -0700 (PDT)
+Content-Disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-We talked a little about this issue in this thread:
+Commit d3f32c2db8 introduced a regression that caused e2fsck failures
+in xfstests generic 013, 070, 083, 091, and 263.  Uninitialized
+extents created by fallocate() at the end of file with the
+FALLOC_FL_KEEP_SIZE flag were identified as invalid.  However,
+because the file size is not increased when FALLOC_FL_KEEP_SIZE is
+used, uninitialized extents can correctly contain blocks located past
+the end of file.
 
-	http://marc.info/?l=linux-mm&m=137573185419275&w=2
+Fix this by filtering out possible invalid extents if they are
+uninitialized and extend past the block containing the end of file.
 
-but I figured I'd follow up with a full comparison.  ext4 is about 20%
-slower in handling write page faults than ext3.  xfs is about 30% slower
-than ext3.  I'm running on an 8-socket / 80-core / 160-thread system.
-Test case is this:
+Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+---
+ e2fsck/pass1.c |   12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
 
-	https://github.com/antonblanchard/will-it-scale/blob/master/tests/page_fault3.c
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index ba6025b..6344d81 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -1849,6 +1849,7 @@ void e2fsck_clear_inode(e2fsck_t ctx, ext2_ino_t ino,
+ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
+ 			     struct process_block_struct *pb,
+ 			     blk64_t start_block, blk64_t end_block,
++			     blk64_t eof_block,
+ 			     ext2_extent_handle_t ehandle)
+ {
+ 	struct ext2fs_extent	extent;
+@@ -1892,7 +1893,9 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
+ 			problem = PR_1_EXTENT_BAD_START_BLK;
+ 		else if (extent.e_lblk < start_block)
+ 			problem = PR_1_OUT_OF_ORDER_EXTENTS;
+-		else if (end_block && last_lblk > end_block)
++		else if ((end_block && last_lblk > end_block) &&
++			 (!(extent.e_flags & EXT2_EXTENT_FLAGS_UNINIT &&
++				last_lblk > eof_block)))
+ 			problem = PR_1_EXTENT_END_OUT_OF_BOUNDS;
+ 		else if (is_leaf && extent.e_len == 0)
+ 			problem = PR_1_EXTENT_LENGTH_ZERO;
+@@ -1968,7 +1971,7 @@ fix_problem_now:
+ 					ext2fs_extent_fix_parents(ehandle);
+ 			}
+ 			scan_extent_node(ctx, pctx, pb, extent.e_lblk,
+-					 last_lblk, ehandle);
++					 last_lblk, eof_block, ehandle);
+ 			if (pctx->errcode)
+ 				return;
+ 			pctx->errcode = ext2fs_extent_get(ehandle,
+@@ -2071,6 +2074,7 @@ static void check_blocks_extents(e2fsck_t ctx, struct problem_context *pctx,
+ 	ext2_filsys		fs = ctx->fs;
+ 	ext2_ino_t		ino = pctx->ino;
+ 	errcode_t		retval;
++	blk64_t                 eof_lblk;
+ 
+ 	pctx->errcode = ext2fs_extent_open2(fs, ino, inode, &ehandle);
+ 	if (pctx->errcode) {
+@@ -2088,7 +2092,9 @@ static void check_blocks_extents(e2fsck_t ctx, struct problem_context *pctx,
+ 		ctx->extent_depth_count[info.max_depth]++;
+ 	}
+ 
+-	scan_extent_node(ctx, pctx, pb, 0, 0, ehandle);
++	eof_lblk = ((EXT2_I_SIZE(inode) + fs->blocksize - 1) >>
++		EXT2_BLOCK_SIZE_BITS(fs->super)) - 1;
++	scan_extent_node(ctx, pctx, pb, 0, 0, eof_lblk, ehandle);
+ 	if (pctx->errcode &&
+ 	    fix_problem(ctx, PR_1_EXTENT_ITERATE_FAILURE, pctx)) {
+ 		pb->num_blocks = 0;
+-- 
+1.7.10.4
 
-It's a little easier to look at the trends as you grow the number of
-processes:
-
-	http://www.sr71.net/~dave/intel/page-fault-exts/cmp.html?1=ext3&2=ext4&3=xfs&hide=linear,threads,threads_idle,processes_idle&rollPeriod=16
-
-I recorded and diff'd some perf data (I've still got the raw data if
-anyone wants it), and the main culprit of the ext4/xfs delta looks to be
-spinlock contention (or at least bouncing) in xfs_log_commit_cil().
-This looks to be a known problem:
-
-	http://oss.sgi.com/archives/xfs/2013-07/msg00110.html
-
-Here's a brief snippet of the ext4->xfs 'perf diff'.  Note that things
-like page_fault() go down in the profile because we are doing _fewer_ of
-them, not because it got faster:
-
-> # Baseline    Delta          Shared Object                                          Symbol
-> # ........  .......  .....................  ..............................................
-> #
->     22.04%   -4.07%  [kernel.kallsyms]      [k] page_fault                                
->      2.93%  +12.49%  [kernel.kallsyms]      [k] _raw_spin_lock                            
->      8.21%   -0.58%  page_fault3_processes  [.] testcase                                  
->      4.87%   -0.34%  [kernel.kallsyms]      [k] __set_page_dirty_buffers                  
->      4.07%   -0.58%  [kernel.kallsyms]      [k] mem_cgroup_update_page_stat               
->      4.10%   -0.61%  [kernel.kallsyms]      [k] __block_write_begin                       
->      3.69%   -0.57%  [kernel.kallsyms]      [k] find_get_page                             
-
-It's a bit of a bummer that things are so much less scalable on the
-newer filesystems.  I expected xfs to do a _lot_ better than it did.
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
