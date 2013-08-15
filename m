@@ -1,22 +1,20 @@
-From: Dave Hansen <dave.hansen@intel.com>
+From: Dave Hansen <dave.hansen@linux.intel.com>
 Subject: Re: page fault scalability (ext3, ext4, xfs)
-Date: Thu, 15 Aug 2013 08:36:40 -0700
-Message-ID: <520CF588.7090800@intel.com>
-References: <520BB9EF.5020308@linux.intel.com> <20130815002436.GI6023@dastard>
-	<20130815022401.GQ23412@tassilo.jf.intel.com>
-	<20130815042930.GO6023@dastard>
+Date: Thu, 15 Aug 2013 10:45:09 -0700
+Message-ID: <520D13A5.2070808@linux.intel.com>
+References: <520BB9EF.5020308@linux.intel.com>
+	<20130815150506.GA10415@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Andi Kleen <ak@linux.intel.com>, Jan Kara <jack@suse.cz>,
-	Dave Hansen <dave.hansen@linux.intel.com>,
-	LKML <linux-kernel@vger.kernel.org>, xfs@oss.sgi.com,
-	Andy Lutomirski <luto@amacapital.net>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Tim Chen <tim.c.chen@linux.intel.com>
-To: Dave Chinner <david@fromorbit.com>
+To: Theodore Ts'o <tytso@mit.edu>, Dave Hansen <dave.hansen@linux.intel.com>,
+	linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
+	LKML <linux-kernel@vger.kernel.org>,
+	david@fromorbit.com, Tim Chen <tim.c.chen@linux.intel.com>,
+	Andi Kleen <ak@linux.intel.com>, Andy Lutomirski <luto@amacapital.net>
 Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <20130815042930.GO6023@dastard>
+In-Reply-To: <20130815150506.GA10415@thunk.org>
 List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
 	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
 List-Archive: <http://oss.sgi.com/pipermail/xfs>
@@ -28,53 +26,78 @@ Errors-To: xfs-bounces@oss.sgi.com
 Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On 08/14/2013 09:29 PM, Dave Chinner wrote:
-> On Wed, Aug 14, 2013 at 07:24:01PM -0700, Andi Kleen wrote:
->>> And FWIW, it's no secret that XFS has more per-operation overhead
->>> than ext4 through the write path when it comes to allocation, so
->>> it's no surprise that on a workload that is highly dependent on
->>> allocation overhead that ext4 is a bit faster....
->>
->> This cannot explain a worse scaling curve though?
-> 
-> The scaling curve is pretty much identical. The difference in
-> performance will be the overhead of timestamp updates through
-> the transaction subsystems of the filesystems.
+On 08/15/2013 08:05 AM, Theodore Ts'o wrote:
+> IOW, if it really is about write page fault handling, the simplest
+> test to do is to mmap /dev/zero and then start dirtying pages.  At
+> that point we will be measuring the VM level write page fault code.
 
-I guess how you read it is in the eye of the beholder.  I see xfs being
-slower than ext3 or ext4.  Nobody sits and does this in a loop in real
-life (it's a microbenchbark), but I'd be willing to bet that this is a
-real *component* of real-life workloads.  It's a component where I think
-it's pretty clear xfs and ext4 lag behind ext3, and it _looks_ to me
-like it gets worse on larger systems.
+As I mentioned in some of the other replies, this is only one of six
+tests that look at page faults.  It's the only one of the six that even
+hinted at involvement by fs code.
 
-Maybe that's because of design decisions in the filesystem, or because
-of the enhanced integrity guarantees that xfs/ext4 provide.
+> If we start trying to add in file system specific behavior, then we
+> get into questions about block allocation vs. inode updates
+> vs. writeback code paths, depending on what we are trying to measure,
+> which then leads to the next logical question --- why are we trying to
+> measure this?
 
->> w-i-s is all about scaling.
-> 
-> Sure, but scaling *what*? It's spending all it's time in the
-> filesystem through the .page_mkwrite path. It's not a page fault
-> scaling test - it's a filesystem overwrite test that uses mmap.
+At the risk of putting the cart before the horse, I ran the following:
 
-will-it-scale tests a bunch of different scenarios.  This is just one of
-at least 6 tests that we do which beat on the page fault path.  It was
-the only one of those 6 that showed any kind of bottleneck being in the
-fs code.
+	http://sr71.net/~dave/intel/page-fault-exts/page_fault4.c.txt
 
-> Indeed, I bet if you replace the mmap() with a write(fd, buf, 4096)
-> loop, you'd get almost identical behaviour from the filesystems.
+It should do all of the block allocation during will-it-scale's warmup
+period.  I ran it for all 3 fs's with 160-processes.  The numbers were
+indistinguishable from the case where the blocks were not preallocated.
 
-In a quick 60-second test: xfs went from ~70M writes/sec (doing faults)
-to ~18M/sec (using write()).  ext4 went down to 0.5M/sec.  I didn't take
-the mmap()/munmap() out:
+I _believe_ this is because the block allocation is occurring during the
+warmup, even in those numbers I posted previously.  will-it-scale forks
+things off early and the tests spend most of their time in those while
+loops.  Each "page fault handled" (the y-axis) is a trip through the
+while loop, *not* a call to testcase().
 
-                lseek(fd, 0, SEEK_SET);
-                for (i = 0; i < MEMSIZE; i += pgsize) {
-                        write(fd, xxx, 4096);
-                        //c[i] = 0;
-                        (*iterations)++;
-                }
+It looks something like this:
+
+	for_each_cpu(cpu)
+		fork_off_stuff(testcase_func, &iterations[cpu]);
+	while(test_nr++) {
+		if (test_nr < 5)
+			printf("warmup...")
+		sleep(1);
+		sample_iterations_from_shmem();
+	}
+	kill_everything();
+
+In other words, block allocation isn't (or shouldn't be) playing a role
+here, at least in the faults-per-second numbers.
+
+> Is there a specific scalability problem that is show up in some real
+> world use case?  Or is this a theoretical exercise?  It's Ok if it's
+> just theoretical, since then we can try to figure out some kind of
+> useful scalability limitation which is of practical importance.  But
+> if there was some original workload which was motivating this
+> exercise, it would be good if we kept this in mind....
+
+It's definitely a theoretical exercise.  I'm in no way saying that all
+you lazy filesystem developers need to get off your butts and go fix
+this! ;)
+
+Here's the problem:
+
+We've got a kernel which works *really* well, even on very large
+systems.  There are vanishingly few places to make performance
+improvements, especially on more modestly-sized systems.  To _find_
+those smallish issues (which I believe this is), we run things on
+ridiculously-sized systems to make them easier to identify and measure.
+
+1. The test is doing something that is not out of the question for a
+   real workload to be doing (writing to an existing, medium-sized file
+   with mmap())
+2. I noticed that it exercised some of the same code paths Andy
+   Lutomirski was trying to work around with his MADV_WILLWRITE patch
+3. Dave Chinner _has_ patches which look to me like they could make an
+   impact (at least on the xfs_log_commit_cil() spinlock)
+4. This is something that is measurable, and we can easily measure
+   improvements
 
 _______________________________________________
 xfs mailing list
