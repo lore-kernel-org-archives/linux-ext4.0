@@ -1,64 +1,43 @@
-From: Dave Chinner <david@fromorbit.com>
+From: Andi Kleen <ak@linux.intel.com>
 Subject: Re: page fault scalability (ext3, ext4, xfs)
-Date: Thu, 15 Aug 2013 12:10:28 +1000
-Message-ID: <20130815021028.GM6023@dastard>
-References: <520BB9EF.5020308@linux.intel.com>
- <20130814194359.GA22316@thunk.org>
- <520BED7A.4000903@intel.com>
- <20130814230648.GD22316@thunk.org>
- <CALCETrVaRQ3WQ5++Uu_0JTaVnjUugAaAhqQK__7r5YWvLxpAhw@mail.gmail.com>
- <20130815011101.GA3572@thunk.org>
+Date: Wed, 14 Aug 2013 19:24:01 -0700
+Message-ID: <20130815022401.GQ23412@tassilo.jf.intel.com>
+References: <520BB9EF.5020308@linux.intel.com> <20130815002436.GI6023@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Theodore Ts'o <tytso@mit.edu>,
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>, Dave Hansen <dave.hansen@linux.intel.com>,
+	LKML <linux-kernel@vger.kernel.org>, xfs@oss.sgi.com,
 	Andy Lutomirski <luto@amacapital.net>,
-	Dave Hansen <dave.hansen@intel.com>,
-	Dave Hansen <dave.hansen@linux.intel.com>,
-	linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
-	linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
-	LKML <linux-kernel@vger.kernel.org>,
-	Tim Chen <tim.c.chen@linux.intel.com>,
-	Andi Kleen <ak@linux.intel.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Tim Chen <tim.c.chen@linux.intel.com>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <20130815011101.GA3572@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <20130815002436.GI6023@dastard>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Aug 14, 2013 at 09:11:01PM -0400, Theodore Ts'o wrote:
-> On Wed, Aug 14, 2013 at 04:38:12PM -0700, Andy Lutomirski wrote:
-> > > It would be better to write zeros to it, so we aren't measuring the
-> > > cost of the unwritten->written conversion.
-> > 
-> > At the risk of beating a dead horse, how hard would it be to defer
-> > this part until writeback?
-> 
-> Part of the work has to be done at write time because we need to
-> update allocation statistics (i.e., so that we don't have ENOSPC
-> problems).  The unwritten->written conversion does happen at writeback
-> (as does the actual block allocation if we are doing delayed
-> allocation).
-> 
-> The point is that if the goal is to measure page fault scalability, we
-> shouldn't have this other stuff happening as the same time as the page
-> fault workload.
+> And FWIW, it's no secret that XFS has more per-operation overhead
+> than ext4 through the write path when it comes to allocation, so
+> it's no surprise that on a workload that is highly dependent on
+> allocation overhead that ext4 is a bit faster....
 
-Sure, but the real problem is not the block mapping or allocation
-path - even if the test is changed to take that out of the picture,
-we still have timestamp updates being done on every single page
-fault. ext4, XFS and btrfs all do transactional timestamp updates
-and have nanosecond granularity, so every page fault is resulting in
-a transaction to update the timestamp of the file being modified.
+This cannot explain a worse scaling curve though?
 
-That's why on XFS the log is showing up in the profiles.
+w-i-s is all about scaling.
 
-So, even if we narrow the test down to just overwriting existing
-blocks, we've still got a filesystem transaction per page fault
-being done. IOWs, it's still just a filesystem overhead test....
+-Andi
 
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
