@@ -1,28 +1,40 @@
-From: "Roussel, Daniel" <droussel@olhcc.edu>
-Subject: It is Private
-Date: Fri, 16 Aug 2013 13:44:41 +0000
-Message-ID: <5F01BFF2D455C0448CD3A8E018CC7FAFB47E8224__770.347534171556$1376661046$gmane$org@VSP-3.hcc.local>
+From: Rich Johnston <rjohnston@sgi.com>
+Subject: Re: [PATCH v7] xfstests: add a new test case for ext4 indirect-based
+	file
+Date: Fri, 16 Aug 2013 09:00:19 -0500
+Message-ID: <520E3073.5060707@sgi.com>
+References: <1376630887-3829-1-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-To: unlisted-recipients:; (no To-header on input)
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailman.olhcc.edu ([66.210.239.126]:42583 "EHLO
-	mailman.olhcc.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751737Ab3HPNuL convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Aug 2013 09:50:11 -0400
-Content-Language: en-US
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"; Format="flowed"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@sandeen.net>,
+	Zheng Liu <wenqing.lz@taobao.com>, xfs@oss.sgi.com
+To: Zheng Liu <gnehzuil.liu@gmail.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <1376630887-3829-1-git-send-email-wenqing.lz@taobao.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-It is Private
+Thanks again for the patch Zheng, it has been committed.
 
-I am George Daniels, a Banker and credit system programmer (HSBC bank).
-I saw your email address while browsing through  the bank D.T.C Screen in my office yesterday so I decided to use this very chance to know you. I believe we should use every opportunity to know each other better. However, I am contacting you for obvious reason which you will understand.
+--Rich
 
-I am sending this mail just to know if this email address is OK,
-reply me back so that I will send  more details to you.
-I have a very important thing to discuss with you, I look forward to receiving your response at
-georgedaniels@postino.net<mailto:georgedaniels@postino.net>. Have a pleasant day.
+commit 060dd14cc86c4c911921799980a9ea84b380be38
+Author: Zheng Liu <wenqing.lz@taobao.com>
+Date:   Fri Aug 16 05:28:07 2013 +0000
 
-George Daniels
+     xfstests: add a new test case for ext4 indirect-based file
+
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
