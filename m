@@ -1,109 +1,69 @@
-From: Andy Lutomirski <luto@amacapital.net>
-Subject: Re: page fault scalability (ext3, ext4, xfs)
-Date: Thu, 15 Aug 2013 17:21:27 -0700
-Message-ID: <CALCETrUm0C+3etmsve7kQwspaycXnj4ZWNTWi+C5r4r-pahqUw@mail.gmail.com>
-References: <20130815021028.GM6023@dastard> <CALCETrUfuzgG9U=+eSzCGvbCx-ZskWw+MhQ-qmEyWZK=XWNVmg@mail.gmail.com>
- <20130815060149.GP6023@dastard> <CALCETrUF+dGhE3qv4LoYmc7A=a+ry93u-d-GgHSAwHXvYN+VNw@mail.gmail.com>
- <20130815071141.GQ6023@dastard> <CALCETrWyKSMDkgSbg20iWBRfHk0-oU+6A3X9xAEMg3vO=G_gDg@mail.gmail.com>
- <20130815213725.GT6023@dastard> <CALCETrV7F-47_nRx1AVFqeF8sNoREutbo3kf78ddBLvKKmFCzg@mail.gmail.com>
- <20130815221807.GW6023@dastard> <CALCETrVgSsJD8L5kDUp8JAhhjEoAZYCfOfAE7Mx-=2pbFnPESQ@mail.gmail.com>
- <20130816001435.GZ6023@dastard>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 0/5 v2] add extent status tree caching
+Date: Fri, 16 Aug 2013 13:21:24 +1000
+Message-ID: <20130816032124.GJ12779@dastard>
+References: <20130719161930.GF17938@thunk.org>
+ <20130722013831.GE11674@dastard>
+ <20130722021742.GA24195@gmail.com>
+ <20130722100255.GF11674@dastard>
+ <20130722125745.GA2827@gmail.com>
+ <20130730030807.GI21982@dastard>
+ <20130804012740.GC19781@thunk.org>
+ <20130813031057.GV12779@dastard>
+ <5209A649.90406@redhat.com>
+ <20130813130459.GD8902@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Dave Hansen <dave.hansen@intel.com>,
-	Dave Hansen <dave.hansen@linux.intel.com>,
-	Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-	xfs@oss.sgi.com,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>, LKML <linux-kernel@vger.kernel.org>,
-	Tim Chen <tim.c.chen@linux.intel.com>,
-	Andi Kleen <ak@linux.intel.com>
-To: Dave Chinner <david@fromorbit.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ve0-f169.google.com ([209.85.128.169]:45986 "EHLO
-	mail-ve0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752725Ab3HPAVs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Aug 2013 20:21:48 -0400
-Received: by mail-ve0-f169.google.com with SMTP id db10so1090508veb.0
-        for <linux-ext4@vger.kernel.org>; Thu, 15 Aug 2013 17:21:48 -0700 (PDT)
-In-Reply-To: <20130816001435.GZ6023@dastard>
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:49551 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753209Ab3HPDVa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 Aug 2013 23:21:30 -0400
+Content-Disposition: inline
+In-Reply-To: <20130813130459.GD8902@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Aug 15, 2013 at 5:14 PM, Dave Chinner <david@fromorbit.com> wrote:
-> On Thu, Aug 15, 2013 at 03:26:09PM -0700, Andy Lutomirski wrote:
->> On Thu, Aug 15, 2013 at 3:18 PM, Dave Chinner <david@fromorbit.com> wrote:
->> > On Thu, Aug 15, 2013 at 02:43:09PM -0700, Andy Lutomirski wrote:
->> >> On Thu, Aug 15, 2013 at 2:37 PM, Dave Chinner
->> >> <david@fromorbit.com> wrote:
->> >> > On Thu, Aug 15, 2013 at 08:17:18AM -0700, Andy Lutomirski wrote:
->
->> >> In current kernels, this chain of events won't work:
->> >>
->> >>  - Server goes down
->> >>  - Server comes up
->> >>  - Userspace on server calls mmap and writes something
->> >>  - Client reconnects and invalidates its cache
->> >>  - Userspace on server writes something else *to the same page*
->> >>
->> >> The client will never notice the second write, because it won't update
->> >> any inode state.
->> >
->> > That's wrong. The server wrote the dirty page before the client
->> > reconnected, therefore it got marked clean.
->>
->> Why would it write the dirty page?
->
-> Terminology mismatch - you said it "writes something", not "dirties
-> the page". So, it's easy to take that as "does writeback" as opposed
-> to "dirties memory".
+On Tue, Aug 13, 2013 at 09:04:59AM -0400, Theodore Ts'o wrote:
+> On Mon, Aug 12, 2013 at 10:21:45PM -0500, Eric Sandeen wrote:
+> > 
+> > Reading extents via fiemap almost certainly moves that metadata into
+> > kernel cache, simply by the act of reading the block device to get them.
+> 
+> Well, if the file system has an extent cache.  It certainly will end
+> up reading the pages involved with the extents into the buffer and/or
+> page cache (depending on how the file system does things).
 
-When I say "writes something" I mean literally performs a store to
-memory.  That is:
+Of course. ext4 has an extent cache, so you're agreeing that FIEMAP
+will populate the extent cache for the use case google has, right?
 
-ptr[offset] = value;
+> > I see Dave's point that we _do_ have an interface today to read
+> > all file extents into cache.  We don't mark them as particularly sticky,
+> > however.
+> > 
+> > This seems pretty clearly driven by a Google workload need; something you
+> > can probably test.  Does FIEMAP do the job for you or not?  If not, why not?
+> 
+> If you are using memory containers the way we do, in practice every
+> single process is going to be under memory pressure.  See previous
+> comments I've made about why in a cloud environment, memory is your
+> most precious resource.
 
-In my example, the client will *never* catch up.
+<snip>
 
->
->> > The second write to the
->> > server page marks it dirty again, causing page_mkwrite to be
->> > called, thereby updating the timestamp/i_version field. So, the NFS
->> > client will notice the second change on the server, and it will
->> > notice it immediately after the second access has occurred, not some
->> > time later when:
->> >
->> >> With my patches, the client will as soon as the
->> >> server starts writeback.
->> >
->> > Your patches introduce a 30+ second window where a file can be dirty
->> > on the server but the NFS server doesn't know about it and can't
->> > tell the clients about it because i_version doesn't get bumped until
->> > writeback.....
->>
->> I claim that there's an infinite window right now, and that 30 seconds
->> is therefore an improvement.
->
-> You're talking about after the second change is made. I'm talking
-> about the difference in behaviour after the *initial change* is
-> made. Your changes will result in the client not doing an
-> invalidation because timestamps don't get changed for 30s with your
-> patches.  That's the problem - the first change of a file needs to
-> bump the i_version immediately, not in 30s time.
->
-> That's why delaying timestamp updates doesn't fix the scalability
-> problem that was reported. It might fix a different problem, but it
-> doesn't void the *requirment* that filesystems need to do
-> transactional updates during page faults....
->
+Sure, we know all that. But you haven't answered the question being
+asked which was whether FIEMAP can acheive what you need. You've
+already admitted it can populate the extent cache for ext4, so
+there's little else that is needed to pin the extents is reads in a
+range in the cache. Just one flag...
 
-And this is why I'm unconvinced that your requirement is sensible.
-It's attempting to make sure that every mmaped write results in a some
-kind of FS update, but it actually only results in an FS update
-*before* the *first* mmapped write after writeback.  It's racy as
-hell.
+Cheers,
 
-My approach is slow but not racy.
-
---Andy
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
