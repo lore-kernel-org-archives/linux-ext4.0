@@ -1,67 +1,28 @@
-From: Stephen Rothwell <sfr@canb.auug.org.au>
-Subject: Re: [PATCH next] fix unused variable compiler warning
-Date: Fri, 16 Aug 2013 17:21:12 +1000
-Message-ID: <20130816172112.ad4c82b6a1e84f3f29744495@canb.auug.org.au>
-References: <1376635714.2642.6.camel@ThinkPad-T5421>
-	<20130816171932.1906a8be5caa7f89756b3c06@canb.auug.org.au>
+From: "Roussel, Daniel" <droussel@olhcc.edu>
+Subject: It is Private
+Date: Fri, 16 Aug 2013 13:44:41 +0000
+Message-ID: <5F01BFF2D455C0448CD3A8E018CC7FAFB47E8224__770.347534171556$1376661046$gmane$org@VSP-3.hcc.local>
 Mime-Version: 1.0
-Content-Type: multipart/signed; protocol="application/pgp-signature";
- micalg="PGP-SHA256";
- boundary="Signature=_Fri__16_Aug_2013_17_21_12_+1000_kwrzHJEkgwFg3u/z"
-Cc: linux-next list <linux-next@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org
-To: lizhongfs@gmail.com
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+To: unlisted-recipients:; (no To-header on input)
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from haggis.pcug.org.au ([203.10.76.10]:37087 "EHLO
-	members.tip.net.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753705Ab3HPHVP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Aug 2013 03:21:15 -0400
-In-Reply-To: <20130816171932.1906a8be5caa7f89756b3c06@canb.auug.org.au>
+Received: from mailman.olhcc.edu ([66.210.239.126]:42583 "EHLO
+	mailman.olhcc.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751737Ab3HPNuL convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Aug 2013 09:50:11 -0400
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---Signature=_Fri__16_Aug_2013_17_21_12_+1000_kwrzHJEkgwFg3u/z
-Content-Type: text/plain; charset=US-ASCII
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+It is Private
 
-Hi,
+I am George Daniels, a Banker and credit system programmer (HSBC bank).
+I saw your email address while browsing through  the bank D.T.C Screen in my office yesterday so I decided to use this very chance to know you. I believe we should use every opportunity to know each other better. However, I am contacting you for obvious reason which you will understand.
 
-On Fri, 16 Aug 2013 17:19:32 +1000 Stephen Rothwell <sfr@canb.auug.org.au> =
-wrote:
->
-> You should probably have cc'd the ext4 maintainers (cc'd).
+I am sending this mail just to know if this email address is OK,
+reply me back so that I will send  more details to you.
+I have a very important thing to discuss with you, I look forward to receiving your response at
+georgedaniels@postino.net<mailto:georgedaniels@postino.net>. Have a pleasant day.
 
-And I should probably check my own tree :-)
-
-Andrew already has a patch that does this.
-
---=20
-Cheers,
-Stephen Rothwell                    sfr@canb.auug.org.au
-
---Signature=_Fri__16_Aug_2013_17_21_12_+1000_kwrzHJEkgwFg3u/z
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.20 (GNU/Linux)
-
-iQIcBAEBCAAGBQJSDdLoAAoJEECxmPOUX5FED/wP/08nd28ye9jbfquWvJzNblxO
-4/X7oDu9obF6KBsR4pcBAyd6dZp0SYm8HrT2Vce5tky4tnk0eTa4WITx7GLmtmh1
-y2lhBtto/zB6i9WDcV0LBB0St4E8GSi5sQuSaQ864hi+BPySzCf/xxwoQvZ/9U6D
-wDDcvmHmEoSxJc3zU0aDErEhInP+VxBhBW/yF+9ILRnFSj9+qr+Zi3gItPoSNocT
-Hy9ElqiVUlmgmWqe3p4chFmlPLpC+vtgBXI5H0V1S/XxSCe03doNtMel2jZCT7An
-ISULsrPqkKDmIMUAqcygYKjNm7uub2+BG3BowuzNxMOLNuqVvmGYyI3qN8nJ7k8G
-Ec4O3SqgDoFkqmHdr4zXSiPFRH16WvYMLmTViIk+x3tbp0JVHyG2hLrCM9PT4Evf
-G8McxWgmAezbr37CydSUdtseHFpYXWWlSMRA3dkqryQbcVXYPQ6NLzCWxdwk36Bs
-U1Z2k4sQnM+vfbzlFiYn0Ae2jDYntUUtyM+2Nj99S5qWlZTNwfZCEFw8gbD0QMms
-/z5/40i3R0LuMd+ZqLT77UqepqVmSBhymXEnEfXaKPfx2kDOS8XN6TT9AGBMGTAD
-WJZdmTuR+WjWJcXo1YiJE5xntN31fJybcvixtmwpZuXgFnVo+yY9ins/FbJeMuyZ
-CHtG0NnBAZ3ClMIlQwCC
-=Q33i
------END PGP SIGNATURE-----
-
---Signature=_Fri__16_Aug_2013_17_21_12_+1000_kwrzHJEkgwFg3u/z--
+George Daniels
