@@ -1,536 +1,85 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH v7] xfstests: add a new test case for ext4 indirect-based file
-Date: Fri, 16 Aug 2013 13:28:07 +0800
-Message-ID: <1376630887-3829-1-git-send-email-wenqing.lz@taobao.com>
+From: Stephen Rothwell <sfr@canb.auug.org.au>
+Subject: Re: [PATCH next] fix unused variable compiler warning
+Date: Fri, 16 Aug 2013 17:19:32 +1000
+Message-ID: <20130816171932.1906a8be5caa7f89756b3c06@canb.auug.org.au>
+References: <1376635714.2642.6.camel@ThinkPad-T5421>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Eric Sandeen <sandeen@sandeen.net>, Zheng Liu <wenqing.lz@taobao.com>
-To: xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
-	Rich Johnston <rjohnston@sgi.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: multipart/signed; protocol="application/pgp-signature";
+ micalg="PGP-SHA256";
+ boundary="Signature=_Fri__16_Aug_2013_17_19_32_+1000_=/MrA5047P17eVT+"
+Cc: linux-next list <linux-next@vger.kernel.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org
+To: lizhongfs@gmail.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from haggis.pcug.org.au ([203.10.76.10]:55816 "EHLO
+	members.tip.net.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753658Ab3HPHTf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Aug 2013 03:19:35 -0400
+In-Reply-To: <1376635714.2642.6.camel@ThinkPad-T5421>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+--Signature=_Fri__16_Aug_2013_17_19_32_+1000_=/MrA5047P17eVT+
+Content-Type: text/plain; charset=US-ASCII
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-After applied this commit (864688d3), xfstests #255 will not test a
-file system that cannot support fallocate(2), such as a indirect-based
-file in ext4.  So we need to add a new generic test case to test it.
+Hi,
 
-The difference between #255 and this test case is only to use pwrite to
-allocate blocks.  Other filesystems should survive in this test case.
-In the mean time, a new argument '-u' is added into _test_generic_punch
-not to run unwritten tests.
+You should probably have cc'd the ext4 maintainers (cc'd).
 
-Reviewed-by: Rich Johnston <rjohnston@sgi.com>
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-Cc: Eric Sandeen <sandeen@sandeen.net>
-Cc: Dave Chinner <david@fromorbit.com>
----
-changelog:
- * rebase against the latest xfstests/master branch
- * don't change test case #255 because the problem has been fixed
+On Fri, 16 Aug 2013 14:48:34 +0800 Li Zhong <lizhongfs@gmail.com> wrote:
+>
+> fs/ext4/extents_status.c:950:6: warning: unused variable
+> 'ret' [-Wunused-variable]
+>=20
+> Signed-off-by: Li Zhong <lizhongfs@gmail.com>
+> ---
+>  fs/ext4/extents_status.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+>=20
+> diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+> index dc709e1..6708257 100644
+> --- a/fs/ext4/extents_status.c
+> +++ b/fs/ext4/extents_status.c
+> @@ -947,7 +947,7 @@ static int __ext4_es_shrink(struct ext4_sb_info *sbi,=
+ int nr_to_scan,
+>  	struct ext4_inode_info *ei;
+>  	struct list_head *cur, *tmp;
+>  	LIST_HEAD(skipped);
+> -	int ret, nr_shrunk =3D 0;
+> +	int nr_shrunk =3D 0;
+>  	int retried =3D 0, skip_precached =3D 1, nr_skipped =3D 0;
+> =20
+>  	spin_lock(&sbi->s_es_lru_lock);
+>=20
 
-Hi Rich,
+--=20
+Cheers,
+Stephen Rothwell                    sfr@canb.auug.org.au
 
-Could you please look at this patch?
+--Signature=_Fri__16_Aug_2013_17_19_32_+1000_=/MrA5047P17eVT+
+Content-Type: application/pgp-signature
 
-Thanks,
-						- Zheng
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.20 (GNU/Linux)
 
- common/punch          |  164 ++++++++++++++++++++++++++----------------------
- tests/generic/316     |   67 ++++++++++++++++++++
- tests/generic/316.out |  165 +++++++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/group   |    1 +
- 4 files changed, 322 insertions(+), 75 deletions(-)
- create mode 100755 tests/generic/316
- create mode 100644 tests/generic/316.out
+iQIcBAEBCAAGBQJSDdKEAAoJEECxmPOUX5FEz6sQAIHF4w4EUN715tV+HiC6fVzc
+CG8QJ6Ziz9+vFHqJWQud5sxDQz2K2WmnhuEg9MKoL4X/VDIjJB7XkPR4unbYFch9
+pOofCFTRzLr8OqHkXbKdrXpvTaMrlwfKMDwtsEGQcWJ6rhlsLobdGMxIIqub1fQV
+w274YYzsNhP84v4c3Xf7crKyjD8bta585U/5E69lY9z9z9XJOO0t1z608mDEy6KH
+PY5Fbuab0WBPeDP2xmLYkPL9tOzNIbVy+Y2xgwdLkd51889Zsf/eZghJ7QJ1snod
+DUAzY2W3ajoQbGIh7HR6GEu+MwcGOuzORGOCO3GK9XVAEQ7UqcsIx2MpSGPqDLrl
+wjAHlbvCl098ibK3lkawVPyms4I5pBLuJbmI57k3h2ocup6zZY8r5usKZcklrtgk
+mz2Ji/9FzjZ58qvD8/12AD9Qxa9EyGp7lGgLPRMH0UaGe1koTdXYjcYgRdioXIwY
+vAmCtHZZKRlW2M0Zpxi3JJxIUDYUVhdXqJe28QmRK547IN46zcbbUveNmMN+BPSI
+SJyr/C4oU839DGCMbUAqkTZ+Ds87UHhJigLrct5tQ2L4a3hukbQVBf+EtpLxW25k
+SmHDmZyT1utpQCK4xEPDEMSztKdY/wpa/bbLNfxA6QFFzzTc+gTiu+manfza6F6W
+qeHokcnpyqLVHfHuC6D8
+=oVwv
+-----END PGP SIGNATURE-----
 
-diff --git a/common/punch b/common/punch
-index d8f73d0..7b3c009 100644
---- a/common/punch
-+++ b/common/punch
-@@ -285,19 +285,25 @@ die_now()
- # Use the -d flag to not sync the file between tests.
- # This will test the handling of delayed extents
- #
-+# Use the -u flag to not run unwritten tests.
-+# This will eliminate some unnecessary information.
-+#
- _test_generic_punch()
- {
- 
- 	remove_testfile=1
- 	sync_cmd="-c fsync"
-+	unwritten_tests=1
- 	OPTIND=1
--	while getopts 'dk' OPTION
-+	while getopts 'dku' OPTION
- 	do
- 		case $OPTION in
- 		k)	remove_testfile=
- 		;;
- 		d)	sync_cmd=
- 		;;
-+		u)	unwritten_tests=
-+		;;
- 		?)	echo Invalid flag
- 		exit 1
- 		;;
-@@ -333,16 +339,18 @@ _test_generic_punch()
- 	[ $? -ne 0 ] && die_now
- 	_md5_checksum $testfile
- 
--	echo "	3. into unwritten space"
--	if [ "$remove_testfile" ]; then
--		rm -f $testfile
-+	if [ "$unwritten_tests" ]; then
-+		echo "	3. into unwritten space"
-+		if [ "$remove_testfile" ]; then
-+			rm -f $testfile
-+		fi
-+		$XFS_IO_PROG -f -c "truncate 20k" \
-+			-c "$alloc_cmd 0 20k" \
-+			-c "$zero_cmd 4k 8k" \
-+			-c "$map_cmd -v" $testfile | $filter_cmd
-+		[ $? -ne 0 ] && die_now
-+		_md5_checksum $testfile
- 	fi
--	$XFS_IO_PROG -f -c "truncate 20k" \
--		-c "$alloc_cmd 0 20k" \
--		-c "$zero_cmd 4k 8k" \
--		-c "$map_cmd -v" $testfile | $filter_cmd
--	[ $? -ne 0 ] && die_now
--	_md5_checksum $testfile
- 
- 	echo "	4. hole -> data"
- 	if [ "$remove_testfile" ]; then
-@@ -355,16 +363,18 @@ _test_generic_punch()
- 	[ $? -ne 0 ] && die_now
- 	_md5_checksum $testfile
- 
--	echo "	5. hole -> unwritten"
--	if [ "$remove_testfile" ]; then
--		rm -f $testfile
-+	if [ "$unwritten_tests" ]; then
-+		echo "	5. hole -> unwritten"
-+		if [ "$remove_testfile" ]; then
-+			rm -f $testfile
-+		fi
-+		$XFS_IO_PROG -f -c "truncate 20k" \
-+			-c "$alloc_cmd 8k 8k" \
-+			-c "$zero_cmd 4k 8k" \
-+			-c "$map_cmd -v" $testfile | $filter_cmd
-+		[ $? -ne 0 ] && die_now
-+		_md5_checksum $testfile
- 	fi
--	$XFS_IO_PROG -f -c "truncate 20k" \
--		-c "$alloc_cmd 8k 8k" \
--		-c "$zero_cmd 4k 8k" \
--		-c "$map_cmd -v" $testfile | $filter_cmd
--	[ $? -ne 0 ] && die_now
--	_md5_checksum $testfile
- 
- 	echo "	6. data -> hole"
- 	if [ "$remove_testfile" ]; then
-@@ -377,40 +387,42 @@ _test_generic_punch()
- 	[ $? -ne 0 ] && die_now
- 	_md5_checksum $testfile
- 
--	echo "	7. data -> unwritten"
--	if [ "$remove_testfile" ]; then
--		rm -f $testfile
--	fi
--	$XFS_IO_PROG -f -c "truncate 20k" \
--		-c "pwrite 0 8k" $sync_cmd \
--		-c "$alloc_cmd 8k 8k" \
--		-c "$zero_cmd 4k 8k" \
--		-c "$map_cmd -v" $testfile | $filter_cmd
--	[ $? -ne 0 ] && die_now
--	_md5_checksum $testfile
--
--	echo "	8. unwritten -> hole"
--	if [ "$remove_testfile" ]; then
--		rm -f $testfile
--	fi
--	$XFS_IO_PROG -f -c "truncate 20k" \
--		-c "$alloc_cmd 0 8k" \
--		-c "$zero_cmd 4k 8k" \
--		-c "$map_cmd -v" $testfile | $filter_cmd
--	[ $? -ne 0 ] && die_now
--	_md5_checksum $testfile
--
--	echo "	9. unwritten -> data"
--	if [ "$remove_testfile" ]; then
--		rm -f $testfile
-+	if [ "$unwritten_tests" ]; then
-+		echo "	7. data -> unwritten"
-+		if [ "$remove_testfile" ]; then
-+			rm -f $testfile
-+		fi
-+		$XFS_IO_PROG -f -c "truncate 20k" \
-+			-c "pwrite 0 8k" $sync_cmd \
-+			-c "$alloc_cmd 8k 8k" \
-+			-c "$zero_cmd 4k 8k" \
-+			-c "$map_cmd -v" $testfile | $filter_cmd
-+		[ $? -ne 0 ] && die_now
-+		_md5_checksum $testfile
-+
-+		echo "	8. unwritten -> hole"
-+		if [ "$remove_testfile" ]; then
-+			rm -f $testfile
-+		fi
-+		$XFS_IO_PROG -f -c "truncate 20k" \
-+			-c "$alloc_cmd 0 8k" \
-+			-c "$zero_cmd 4k 8k" \
-+			-c "$map_cmd -v" $testfile | $filter_cmd
-+		[ $? -ne 0 ] && die_now
-+		_md5_checksum $testfile
-+
-+		echo "	9. unwritten -> data"
-+		if [ "$remove_testfile" ]; then
-+			rm -f $testfile
-+		fi
-+		$XFS_IO_PROG -f -c "truncate 20k" \
-+			-c "$alloc_cmd 0 8k" \
-+			-c "pwrite 8k 8k" $sync_cmd \
-+			-c "$zero_cmd 4k 8k" \
-+			-c "$map_cmd -v" $testfile | $filter_cmd
-+		[ $? -ne 0 ] && die_now
-+		_md5_checksum $testfile
- 	fi
--	$XFS_IO_PROG -f -c "truncate 20k" \
--		-c "$alloc_cmd 0 8k" \
--		-c "pwrite 8k 8k" $sync_cmd \
--		-c "$zero_cmd 4k 8k" \
--		-c "$map_cmd -v" $testfile | $filter_cmd
--	[ $? -ne 0 ] && die_now
--	_md5_checksum $testfile
- 
- 	echo "	10. hole -> data -> hole"
- 	if [ "$remove_testfile" ]; then
-@@ -437,30 +449,32 @@ _test_generic_punch()
- 	[ $? -ne 0 ] && die_now
- 	_md5_checksum $testfile
- 
--	echo "	12. unwritten -> data -> unwritten"
--	if [ "$remove_testfile" ]; then
--		rm -f $testfile
--	fi
--	$XFS_IO_PROG -f -c "truncate 20k" \
--		-c "$alloc_cmd 0 20k" \
--		-c "pwrite 8k 4k" $sync_cmd \
--		-c "$zero_cmd 4k 12k" \
--		-c "$map_cmd -v" $testfile | $filter_cmd
--	[ $? -ne 0 ] && die_now
--	_md5_checksum $testfile
--
--	echo "	13. data -> unwritten -> data"
--	if [ "$remove_testfile" ]; then
--		rm -f $testfile
-+	if [ "$unwritten_tests" ]; then
-+		echo "	12. unwritten -> data -> unwritten"
-+		if [ "$remove_testfile" ]; then
-+			rm -f $testfile
-+		fi
-+		$XFS_IO_PROG -f -c "truncate 20k" \
-+			-c "$alloc_cmd 0 20k" \
-+			-c "pwrite 8k 4k" $sync_cmd \
-+			-c "$zero_cmd 4k 12k" \
-+			-c "$map_cmd -v" $testfile | $filter_cmd
-+		[ $? -ne 0 ] && die_now
-+		_md5_checksum $testfile
-+
-+		echo "	13. data -> unwritten -> data"
-+		if [ "$remove_testfile" ]; then
-+			rm -f $testfile
-+		fi
-+		$XFS_IO_PROG -f -c "truncate 20k" \
-+			-c "$alloc_cmd 0 20k" \
-+			-c "pwrite 0k 8k" $sync_cmd \
-+			-c "pwrite 12k 8k" -c "fsync" \
-+			-c "$zero_cmd 4k 12k" \
-+			-c "$map_cmd -v" $testfile | $filter_cmd
-+		[ $? -ne 0 ] && die_now
-+		_md5_checksum $testfile
- 	fi
--	$XFS_IO_PROG -f -c "truncate 20k" \
--		-c "$alloc_cmd 0 20k" \
--		-c "pwrite 0k 8k" $sync_cmd \
--		-c "pwrite 12k 8k" -c "fsync" \
--		-c "$zero_cmd 4k 12k" \
--		-c "$map_cmd -v" $testfile | $filter_cmd
--	[ $? -ne 0 ] && die_now
--	_md5_checksum $testfile
- 
- 	echo "	14. data -> hole @ EOF"
- 	rm -f $testfile
-diff --git a/tests/generic/316 b/tests/generic/316
-new file mode 100755
-index 0000000..8cb2975
---- /dev/null
-+++ b/tests/generic/316
-@@ -0,0 +1,67 @@
-+#! /bin/bash
-+# FS QA Test No. 316
-+#
-+# Test Generic fallocate hole punching w/o unwritten extent
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2013 Alibaba Group.  All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#-----------------------------------------------------------------------
-+#
-+
-+seq=`basename $0`
-+seqres=$RESULT_DIR/$seq
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1	# failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 15
-+
-+_cleanup()
-+{
-+    cd /
-+    rm -f $tmp.*
-+}
-+
-+# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
-+. ./common/punch
-+
-+# real QA test starts here
-+_supported_fs generic
-+_supported_os Linux
-+
-+_require_xfs_io_falloc_punch
-+_require_xfs_io_fiemap
-+
-+testfile=$TEST_DIR/$seq.$$
-+
-+# Standard punch hole tests
-+_test_generic_punch -u pwrite fpunch fpunch fiemap _filter_hole_fiemap $testfile
-+
-+# Delayed allocation punch hole tests
-+_test_generic_punch -u -d pwrite fpunch fpunch fiemap _filter_hole_fiemap $testfile
-+
-+# Multi hole punch tests
-+_test_generic_punch -u -k pwrite fpunch fpunch fiemap _filter_hole_fiemap $testfile
-+
-+# Delayed allocation multi punch hole tests
-+_test_generic_punch -u -d -k pwrite fpunch fpunch fiemap _filter_hole_fiemap $testfile
-+
-+# success, all done
-+status=0
-+exit
-diff --git a/tests/generic/316.out b/tests/generic/316.out
-new file mode 100644
-index 0000000..4bb11ec
---- /dev/null
-+++ b/tests/generic/316.out
-@@ -0,0 +1,165 @@
-+QA output created by 316
-+	1. into a hole
-+daa100df6e6711906b61c9ab5aa16032
-+	2. into allocated space
-+0: [0..7]: extent
-+1: [8..23]: hole
-+2: [24..39]: extent
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	4. hole -> data
-+0: [0..23]: hole
-+1: [24..31]: extent
-+2: [32..39]: hole
-+cc63069677939f69a6e8f68cae6a6dac
-+	6. data -> hole
-+0: [0..7]: extent
-+1: [8..39]: hole
-+1b3779878366498b28c702ef88c4a773
-+	10. hole -> data -> hole
-+daa100df6e6711906b61c9ab5aa16032
-+	11. data -> hole -> data
-+0: [0..7]: extent
-+1: [8..31]: hole
-+2: [32..39]: extent
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	14. data -> hole @ EOF
-+0: [0..23]: extent
-+1: [24..39]: hole
-+e1f024eedd27ea6b1c3e9b841c850404
-+	15. data -> hole @ 0
-+0: [0..15]: hole
-+1: [16..39]: extent
-+eecb7aa303d121835de05028751d301c
-+	16. data -> cache cold ->hole
-+0: [0..15]: hole
-+1: [16..39]: extent
-+eecb7aa303d121835de05028751d301c
-+	17. data -> hole in single block file
-+0: [0..7]: extent
-+13535fd4d496bf0b74bb2335aa4d1b31
-+	1. into a hole
-+daa100df6e6711906b61c9ab5aa16032
-+	2. into allocated space
-+0: [0..7]: extent
-+1: [8..23]: hole
-+2: [24..39]: extent
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	4. hole -> data
-+0: [0..23]: hole
-+1: [24..31]: extent
-+2: [32..39]: hole
-+cc63069677939f69a6e8f68cae6a6dac
-+	6. data -> hole
-+0: [0..7]: extent
-+1: [8..39]: hole
-+1b3779878366498b28c702ef88c4a773
-+	10. hole -> data -> hole
-+daa100df6e6711906b61c9ab5aa16032
-+	11. data -> hole -> data
-+0: [0..7]: extent
-+1: [8..31]: hole
-+2: [32..39]: extent
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	14. data -> hole @ EOF
-+0: [0..23]: extent
-+1: [24..39]: hole
-+e1f024eedd27ea6b1c3e9b841c850404
-+	15. data -> hole @ 0
-+0: [0..15]: hole
-+1: [16..39]: extent
-+eecb7aa303d121835de05028751d301c
-+	16. data -> cache cold ->hole
-+0: [0..15]: hole
-+1: [16..39]: extent
-+eecb7aa303d121835de05028751d301c
-+	17. data -> hole in single block file
-+0: [0..7]: extent
-+13535fd4d496bf0b74bb2335aa4d1b31
-+	1. into a hole
-+0: [0..7]: extent
-+1: [8..39]: hole
-+5a58e46082be047d0f13bee7974015b9
-+	2. into allocated space
-+0: [0..7]: extent
-+1: [8..23]: hole
-+2: [24..39]: extent
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	4. hole -> data
-+0: [0..7]: extent
-+1: [8..23]: hole
-+2: [24..39]: extent
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	6. data -> hole
-+0: [0..7]: extent
-+1: [8..23]: hole
-+2: [24..39]: extent
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	10. hole -> data -> hole
-+0: [0..7]: extent
-+1: [8..31]: hole
-+2: [32..39]: extent
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	11. data -> hole -> data
-+0: [0..7]: extent
-+1: [8..31]: hole
-+2: [32..39]: extent
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	14. data -> hole @ EOF
-+0: [0..23]: extent
-+1: [24..39]: hole
-+e1f024eedd27ea6b1c3e9b841c850404
-+	15. data -> hole @ 0
-+0: [0..15]: hole
-+1: [16..39]: extent
-+eecb7aa303d121835de05028751d301c
-+	16. data -> cache cold ->hole
-+0: [0..15]: hole
-+1: [16..39]: extent
-+eecb7aa303d121835de05028751d301c
-+	17. data -> hole in single block file
-+0: [0..7]: extent
-+13535fd4d496bf0b74bb2335aa4d1b31
-+	1. into a hole
-+0: [0..7]: extent
-+1: [8..39]: hole
-+5a58e46082be047d0f13bee7974015b9
-+	2. into allocated space
-+0: [0..7]: extent
-+1: [8..23]: hole
-+2: [24..39]: extent
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	4. hole -> data
-+0: [0..7]: extent
-+1: [8..23]: hole
-+2: [24..39]: extent
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	6. data -> hole
-+0: [0..7]: extent
-+1: [8..23]: hole
-+2: [24..39]: extent
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	10. hole -> data -> hole
-+0: [0..7]: extent
-+1: [8..31]: hole
-+2: [32..39]: extent
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	11. data -> hole -> data
-+0: [0..7]: extent
-+1: [8..31]: hole
-+2: [32..39]: extent
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	14. data -> hole @ EOF
-+0: [0..23]: extent
-+1: [24..39]: hole
-+e1f024eedd27ea6b1c3e9b841c850404
-+	15. data -> hole @ 0
-+0: [0..15]: hole
-+1: [16..39]: extent
-+eecb7aa303d121835de05028751d301c
-+	16. data -> cache cold ->hole
-+0: [0..15]: hole
-+1: [16..39]: extent
-+eecb7aa303d121835de05028751d301c
-+	17. data -> hole in single block file
-+0: [0..7]: extent
-+13535fd4d496bf0b74bb2335aa4d1b31
-diff --git a/tests/generic/group b/tests/generic/group
-index 052b0fe..c94cdde 100644
---- a/tests/generic/group
-+++ b/tests/generic/group
-@@ -118,3 +118,4 @@
- 313 auto quick
- 314 auto quick acl
- 315 auto quick rw prealloc
-+316 auto quick
--- 
-1.7.9.7
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+--Signature=_Fri__16_Aug_2013_17_19_32_+1000_=/MrA5047P17eVT+--
