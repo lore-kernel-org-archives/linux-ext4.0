@@ -1,134 +1,146 @@
-From: Anatol Pomozov <anatol.pomozov@gmail.com>
-Subject: [PATCH] ext4: Fix misspellings using 'codespell' tool
-Date: Fri, 16 Aug 2013 12:49:18 -0700
-Message-ID: <1376682558-21846-1-git-send-email-anatol.pomozov@gmail.com>
-Cc: tytso@mit.edu, Anatol Pomozov <anatol.pomozov@gmail.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qc0-f202.google.com ([209.85.216.202]:49675 "EHLO
-	mail-qc0-f202.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757473Ab3HPWnH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Aug 2013 18:43:07 -0400
-Received: by mail-qc0-f202.google.com with SMTP id s1so227520qcw.5
-        for <linux-ext4@vger.kernel.org>; Fri, 16 Aug 2013 15:43:06 -0700 (PDT)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Andy Lutomirski <luto@amacapital.net>
+Subject: Re: page fault scalability (ext3, ext4, xfs)
+Date: Fri, 16 Aug 2013 16:18:33 -0700
+Message-ID: <CALCETrWRjHcAaKcOrB3R54ZtCSNpv-ohDSzViDsP0JOOEhoOzg@mail.gmail.com>
+References: <20130814230648.GD22316@thunk.org>
+	<CALCETrVaRQ3WQ5++Uu_0JTaVnjUugAaAhqQK__7r5YWvLxpAhw@mail.gmail.com>
+	<20130815011101.GA3572@thunk.org> <20130815021028.GM6023@dastard>
+	<CALCETrUfuzgG9U=+eSzCGvbCx-ZskWw+MhQ-qmEyWZK=XWNVmg@mail.gmail.com>
+	<20130815060149.GP6023@dastard>
+	<CALCETrUF+dGhE3qv4LoYmc7A=a+ry93u-d-GgHSAwHXvYN+VNw@mail.gmail.com>
+	<20130815071141.GQ6023@dastard>
+	<CALCETrWyKSMDkgSbg20iWBRfHk0-oU+6A3X9xAEMg3vO=G_gDg@mail.gmail.com>
+	<20130815213725.GT6023@dastard> <20130816220204.GC21539@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Andi Kleen <ak@linux.intel.com>, Theodore Ts'o <tytso@mit.edu>,
+	Dave Hansen <dave.hansen@linux.intel.com>,
+	LKML <linux-kernel@vger.kernel.org>, xfs@oss.sgi.com,
+	Dave Hansen <dave.hansen@intel.com>,
+	Linux FS Devel <linux-fsdevel@vger.kernel.org>, Jan Kara <jack@suse.cz>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Tim Chen <tim.c.chen@linux.intel.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <20130816220204.GC21539@fieldses.org>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-Signed-off-by: Anatol Pomozov <anatol.pomozov@gmail.com>
----
- fs/ext3/dir.c       | 2 +-
- fs/ext4/dir.c       | 2 +-
- fs/ext4/ext4_jbd2.h | 2 +-
- fs/ext4/extents.c   | 2 +-
- fs/ext4/inode.c     | 8 ++++----
- fs/ext4/migrate.c   | 2 +-
- 6 files changed, 9 insertions(+), 9 deletions(-)
+On Fri, Aug 16, 2013 at 3:02 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Fri, Aug 16, 2013 at 07:37:25AM +1000, Dave Chinner wrote:
+>> On Thu, Aug 15, 2013 at 08:17:18AM -0700, Andy Lutomirski wrote:
+>> > On Thu, Aug 15, 2013 at 12:11 AM, Dave Chinner <david@fromorbit.com> wrote:
+>> > > On Wed, Aug 14, 2013 at 11:14:37PM -0700, Andy Lutomirski wrote:
+>> > >> On Wed, Aug 14, 2013 at 11:01 PM, Dave Chinner <david@fromorbit.com> wrote:
+>> > >> > On Wed, Aug 14, 2013 at 09:32:13PM -0700, Andy Lutomirski wrote:
+>> > >> >> On Wed, Aug 14, 2013 at 7:10 PM, Dave Chinner <david@fromorbit.com> wrote:
+>> > >> >> > On Wed, Aug 14, 2013 at 09:11:01PM -0400, Theodore Ts'o wrote:
+>> > >> >> >> On Wed, Aug 14, 2013 at 04:38:12PM -0700, Andy Lutomirski wrote:
+>> > >> >> >> > > It would be better to write zeros to it, so we aren't measuring the
+>> > >> >> >> > > cost of the unwritten->written conversion.
+>> > >> >> >> >
+>> > >> >> >> > At the risk of beating a dead horse, how hard would it be to defer
+>> > >> >> >> > this part until writeback?
+>> > >> >> >>
+>> > >> >> >> Part of the work has to be done at write time because we need to
+>> > >> >> >> update allocation statistics (i.e., so that we don't have ENOSPC
+>> > >> >> >> problems).  The unwritten->written conversion does happen at writeback
+>> > >> >> >> (as does the actual block allocation if we are doing delayed
+>> > >> >> >> allocation).
+>> > >> >> >>
+>> > >> >> >> The point is that if the goal is to measure page fault scalability, we
+>> > >> >> >> shouldn't have this other stuff happening as the same time as the page
+>> > >> >> >> fault workload.
+>> > >> >> >
+>> > >> >> > Sure, but the real problem is not the block mapping or allocation
+>> > >> >> > path - even if the test is changed to take that out of the picture,
+>> > >> >> > we still have timestamp updates being done on every single page
+>> > >> >> > fault. ext4, XFS and btrfs all do transactional timestamp updates
+>> > >> >> > and have nanosecond granularity, so every page fault is resulting in
+>> > >> >> > a transaction to update the timestamp of the file being modified.
+>> > >> >>
+>> > >> >> I have (unmergeable) patches to fix this:
+>> > >> >>
+>> > >> >> http://comments.gmane.org/gmane.linux.kernel.mm/92476
+>> > >> >
+>> > >> > The big problem with this approach is that not doing the
+>> > >> > timestamp update on page faults is going to break the inode change
+>> > >> > version counting because for ext4, btrfs and XFS it takes a
+>> > >> > transaction to bump that counter. NFS needs to know the moment a
+>> > >> > file is changed in memory, not when it is written to disk. Also, NFS
+>> > >> > requires the change to the counter to be persistent over server
+>> > >> > failures, so it needs to be changed as part of a transaction....
+>> > >>
+>> > >> I've been running a kernel that has the file_update_time call
+>> > >> commented out for over a year now, and the only problem I've seen is
+>> > >> that the timestamp doesn't get updated :)
+>> > >>
+>> >
+>> > [...]
+>> >
+>> > > If a filesystem is providing an i_version value, then NFS uses it to
+>> > > determine whether client side caches are still consistent with the
+>> > > server state. If the filesystem does not provide an i_version, then
+>> > > NFS falls back to checking c/mtime for changes. If files on the
+>> > > server are being modified without either the tiemstamps or i_version
+>> > > changing, then it's likely that there will be problems with client
+>> > > side cache consistency....
+>> >
+>> > I didn't think of that at all.
+>> >
+>> > If userspace does:
+>> >
+>> > ptr = mmap(...);
+>> > ptr[0] = 1;
+>> > sleep(1);
+>> > ptr[0] = 2;
+>> > sleep(1);
+>> > munmap();
+>> >
+>> > Then current kernels will mark the inode changed on (only) the ptr[0]
+>> > = 1 line.  My patches will instead mark the inode changed when munmap
+>> > is called (or after ptr[0] = 2 if writepages gets called for any
+>> > reason).
+>> >
+>> > I'm not sure which is better.  POSIX actually requires my behavior
+>> > (which is most irrelevant).
+>>
+>> Not by my reading of it. Posix states that c/mtime needs to be
+>> updated between the first access and the next msync() call. We
+>> update mtime on the first access, and so therefore we conform to the
+>> posix requirement....
+>>
+>> > My behavior also means that, if an NFS
+>> > client reads and caches the file between the two writes, then it will
+>> > eventually find out that the data is stale.
+>>
+>> "eventually" is very different behaviour to the current behaviour.
+>>
+>> My understanding is that NFS v4 delegations require the underlying
+>> filesystem to bump the version count on *any* modification made to
+>> the file so that delegations can be recalled appropriately.
+>
+> Delegations at least shouldn't be an issue here: they're recalled on the
+> open.
 
-diff --git a/fs/ext3/dir.c b/fs/ext3/dir.c
-index f522425..bafdd48 100644
---- a/fs/ext3/dir.c
-+++ b/fs/ext3/dir.c
-@@ -41,7 +41,7 @@ static unsigned char get_dtype(struct super_block *sb, int filetype)
- 
- /**
-  * Check if the given dir-inode refers to an htree-indexed directory
-- * (or a directory which chould potentially get coverted to use htree
-+ * (or a directory which could potentially get converted to use htree
-  * indexing).
-  *
-  * Return 1 if it is a dx dir, 0 if not
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index 3c7d288..680bb33 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -33,7 +33,7 @@ static int ext4_dx_readdir(struct file *, struct dir_context *);
- 
- /**
-  * Check if the given dir-inode refers to an htree-indexed directory
-- * (or a directory which chould potentially get coverted to use htree
-+ * (or a directory which could potentially get converted to use htree
-  * indexing).
-  *
-  * Return 1 if it is a dx dir, 0 if not
-diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-index 2877258..81cfefa 100644
---- a/fs/ext4/ext4_jbd2.h
-+++ b/fs/ext4/ext4_jbd2.h
-@@ -197,7 +197,7 @@ static inline void ext4_journal_callback_add(handle_t *handle,
-  * ext4_journal_callback_del: delete a registered callback
-  * @handle: active journal transaction handle on which callback was registered
-  * @jce: registered journal callback entry to unregister
-- * Return true if object was sucessfully removed
-+ * Return true if object was successfully removed
-  */
- static inline bool ext4_journal_callback_try_del(handle_t *handle,
- 					     struct ext4_journal_cb_entry *jce)
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 72ba470..043b433 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3133,7 +3133,7 @@ fix_extent_len:
-  * ext4_split_extents() splits an extent and mark extent which is covered
-  * by @map as split_flags indicates
-  *
-- * It may result in splitting the extent into multiple extents (upto three)
-+ * It may result in splitting the extent into multiple extents (up to three)
-  * There are three possibilities:
-  *   a> There is no split required
-  *   b> Splits in two extents: Split is happening at either end of the extent
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index dd32a2e..60c9278 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1895,7 +1895,7 @@ static int ext4_writepage(struct page *page,
- /*
-  * mballoc gives us at most this number of blocks...
-  * XXX: That seems to be only a limitation of ext4_mb_normalize_request().
-- * The rest of mballoc seems to handle chunks upto full group size.
-+ * The rest of mballoc seems to handle chunks up to full group size.
-  */
- #define MAX_WRITEPAGES_EXTENT_LEN 2048
- 
-@@ -2026,7 +2026,7 @@ static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
- 
- 			if (page->index > end)
- 				break;
--			/* Upto 'end' pages must be contiguous */
-+			/* Up to 'end' pages must be contiguous */
- 			BUG_ON(page->index != start);
- 			bh = head = page_buffers(page);
- 			do {
-@@ -2219,7 +2219,7 @@ static int mpage_map_and_submit_extent(handle_t *handle,
- /*
-  * Calculate the total number of credits to reserve for one writepages
-  * iteration. This is called from ext4_writepages(). We map an extent of
-- * upto MAX_WRITEPAGES_EXTENT_LEN blocks and then we go on and finish mapping
-+ * up to MAX_WRITEPAGES_EXTENT_LEN blocks and then we go on and finish mapping
-  * the last partial page. So in total we can map MAX_WRITEPAGES_EXTENT_LEN +
-  * bpp - 1 blocks in bpp different extents.
-  */
-@@ -2410,7 +2410,7 @@ static int ext4_writepages(struct address_space *mapping,
- 
- 	if (ext4_should_dioread_nolock(inode)) {
- 		/*
--		 * We may need to convert upto one extent per block in
-+		 * We may need to convert up to one extent per block in
- 		 * the page and we may dirty the inode.
- 		 */
- 		rsv_blocks = 1 + (PAGE_CACHE_SIZE >> inode->i_blkbits);
-diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-index 49e8bdf..bc178f8 100644
---- a/fs/ext4/migrate.c
-+++ b/fs/ext4/migrate.c
-@@ -494,7 +494,7 @@ int ext4_ext_migrate(struct inode *inode)
- 	 * superblock modification.
- 	 *
- 	 * For the tmp_inode we already have committed the
--	 * trascation that created the inode. Later as and
-+	 * transaction that created the inode. Later as and
- 	 * when we add extents we extent the journal
- 	 */
- 	/*
--- 
-1.8.3
+Can you translate that into clueless-non-NFS-expert? :)
 
+Anyway, I'm sending patches in a sec.  Dave (Hansen), want to test?  I
+played with will-it-scale a bit, but I don't really know what I'm
+doing.
+
+--Andy
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
