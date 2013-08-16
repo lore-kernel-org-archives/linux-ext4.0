@@ -1,55 +1,48 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 0/5 v2] add extent status tree caching
-Date: Fri, 16 Aug 2013 10:39:18 -0400
-Message-ID: <20130816143917.GA10304@thunk.org>
-References: <20130722013831.GE11674@dastard>
- <20130722021742.GA24195@gmail.com>
- <20130722100255.GF11674@dastard>
- <20130722125745.GA2827@gmail.com>
- <20130730030807.GI21982@dastard>
- <20130804012740.GC19781@thunk.org>
- <20130813031057.GV12779@dastard>
- <5209A649.90406@redhat.com>
- <20130813130459.GD8902@thunk.org>
- <20130816032124.GJ12779@dastard>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] e2fsck: don't try to stop mmp if there is no superblock set
+ up
+Date: Fri, 16 Aug 2013 12:05:55 -0500
+Message-ID: <520E5BF3.5090502@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Dave Chinner <david@fromorbit.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Hubert Kario <hkario@redhat.com>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:44575 "EHLO imap.thunk.org"
+Received: from mx1.redhat.com ([209.132.183.28]:8628 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751624Ab3HPOjX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 16 Aug 2013 10:39:23 -0400
-Content-Disposition: inline
-In-Reply-To: <20130816032124.GJ12779@dastard>
+	id S1752518Ab3HPRF5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 16 Aug 2013 13:05:57 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r7GH5vVU032535
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Fri, 16 Aug 2013 13:05:57 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 16, 2013 at 01:21:24PM +1000, Dave Chinner wrote:
-> 
-> Sure, we know all that. But you haven't answered the question being
-> asked which was whether FIEMAP can acheive what you need. You've
-> already admitted it can populate the extent cache for ext4, so
-> there's little else that is needed to pin the extents is reads in a
-> range in the cache. Just one flag...
+Under some failure cases, we can get to fatal_error()
+without even having a superblock set up.  In that case,
+ext2fs_mmp_stop() will segfault when it tries to dereference
+fs->super.
 
-I thought you were asking a different question, which is whether we
-could just use FIEMAP and not try to soft-pin the extents in the
-cache.  And the answer to that is no.
+Check for the existence of a superblock before we go
+down the ext2fs_mmp_stop() path to avoid this problem.
 
-If the argument is that you think it's better to allocate an extra bit
-to FIEMAP rather than allocate a new ioctl code --- shrug.  I'm not
-sure why you're making such a big deal about that; it's not like we're
-short on ioctl code points.  I'm willing to do this, although if we
-keep on getting API bikeshedding, my fallback position is to just
-implement this as an ext4-specific ioctl and call it a day.
+Reported-by: Hubert Kario <hkario@redhat.com>
+Addresses-Red-Hat-Bugzilla: #997972
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-I am curious whether any other file system is actually going to
-implement this or not, though.  If everyone else is convinced that
-their file system is so wonderful that they don't need this, or this
-is just a wierdo Google use case, I'm not sure why we're spending so
-much time bikeshedding the APi.
-
-						- Ted
+diff --git a/e2fsck/util.c b/e2fsck/util.c
+index 9eaf557..18005f4 100644
+--- a/e2fsck/util.c
++++ b/e2fsck/util.c
+@@ -55,7 +55,7 @@ void fatal_error(e2fsck_t ctx, const char *msg)
+ 		fprintf (stderr, "e2fsck: %s\n", msg);
+ 	if (!fs)
+ 		goto out;
+-	if (fs->io) {
++	if (fs->io && fs->super) {
+ 		ext2fs_mmp_stop(ctx->fs);
+ 		if (ctx->fs->io->magic == EXT2_ET_MAGIC_IO_CHANNEL)
+ 			io_channel_flush(ctx->fs->io);
