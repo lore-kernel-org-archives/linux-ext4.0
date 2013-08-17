@@ -1,351 +1,100 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/2 -v2] ext4: add support for extent pre-caching
-Date: Fri, 16 Aug 2013 22:06:42 -0400
-Message-ID: <1376705202-7437-2-git-send-email-tytso@mit.edu>
-References: <1376705202-7437-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Felipe Monteiro de Carvalho <felipemonteiro.carvalho@gmail.com>
+Subject: Re: Which features should I implement in my ext4 reader?
+Date: Sat, 17 Aug 2013 08:27:12 +0200
+Message-ID: <CACyNnZPfFM8s10N=rh20QoEFDtFp+yFuh6sgY=XZ_d77tT1L2A@mail.gmail.com>
+References: <CACyNnZNJssSL+UWOXYmWk9xy07WRT_z+Fk9Kjwfws9JRfWoNEQ@mail.gmail.com>
+	<CACyNnZManY_k3SB1-p4mQ8Z1+9B=VAdfXU7bWsFVHDsHV6KyUQ@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:44793 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751935Ab3HQCGq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 16 Aug 2013 22:06:46 -0400
-In-Reply-To: <1376705202-7437-1-git-send-email-tytso@mit.edu>
+Received: from mail-pa0-f54.google.com ([209.85.220.54]:32809 "EHLO
+	mail-pa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751315Ab3HQG1N (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 17 Aug 2013 02:27:13 -0400
+Received: by mail-pa0-f54.google.com with SMTP id kx10so2706652pab.13
+        for <linux-ext4@vger.kernel.org>; Fri, 16 Aug 2013 23:27:12 -0700 (PDT)
+In-Reply-To: <CACyNnZManY_k3SB1-p4mQ8Z1+9B=VAdfXU7bWsFVHDsHV6KyUQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Add a new fiemap flag which forces the all of the extents in an inode
-to be cached in the extent_status tree.  This is critically important
-when using AIO to a preallocated file, since if we need to read in
-blocks from the extent tree, the io_submit(2) system call becomes
-synchronous, and the AIO is no longer "A", which is bad.
+Hello,
 
-In addition, for most files which have an external leaf tree block,
-the cost of caching the information in the extent status tree will be
-less than caching the entire 4k block in the buffer cache.  So it is
-generally a win to keep the extent information cached.
+I wonder if when    EXT4_FEATURE_INCOMPAT_DIRDATA and
+EXT4_FEATURE_INCOMPAT_INLINEDATA are active, will all inodes have the
+first part of the data inlined? Or only some? How to know which ones?
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/ext4.h              | 17 ++++++-----
- fs/ext4/extents.c           | 73 ++++++++++++++++++++++++++++++++++++++++++++-
- fs/ext4/extents_status.c    | 72 +++++++++++++++++++++++++++++++-------------
- fs/ext4/ioctl.c             |  3 ++
- include/uapi/linux/fiemap.h |  1 +
- 5 files changed, 137 insertions(+), 29 deletions(-)
+Any ideas on this and also about which features are the most important
+to implement, how often they are used, how stable their implementation
+is, etc would be greatly appreciated =)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index c74b194..635135e 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -561,15 +561,16 @@ enum {
- #define EXT4_GET_BLOCKS_NO_PUT_HOLE		0x0200
- 
- /*
-- * The bit position of this flag must not overlap with any of the
-- * EXT4_GET_BLOCKS_*.  It is used by ext4_ext_find_extent(),
-+ * The bit position of these flags must not overlap with any of the
-+ * EXT4_GET_BLOCKS_*.  They are used by ext4_ext_find_extent(),
-  * read_extent_tree_block(), ext4_split_extent_at(),
-- * ext4_ext_insert_extent(), and ext4_ext_create_new_leaf() to
-- * indicate that the we shouldn't be caching the extents when reading
-- * from the extent tree while a truncate or punch hole operation
-- * is in progress.
-+ * ext4_ext_insert_extent(), and ext4_ext_create_new_leaf().
-+ * EXT4_EX_NOCACHE is used to indicate that the we shouldn't be
-+ * caching the extents when reading from the extent tree while a
-+ * truncate or punch hole operation is in progress.
-  */
- #define EXT4_EX_NOCACHE				0x0400
-+#define EXT4_EX_FORCE_CACHE			0x0800
- 
- /*
-  * Flags used by ext4_free_blocks
-@@ -601,6 +602,7 @@ enum {
- #define EXT4_IOC_MOVE_EXT		_IOWR('f', 15, struct move_extent)
- #define EXT4_IOC_RESIZE_FS		_IOW('f', 16, __u64)
- #define EXT4_IOC_SWAP_BOOT		_IO('f', 17)
-+#define EXT4_IOC_PRECACHE_EXTENTS	_IO('f', 18)
- 
- #if defined(__KERNEL__) && defined(CONFIG_COMPAT)
- /*
-@@ -1386,6 +1388,7 @@ enum {
- 					   nolocking */
- 	EXT4_STATE_MAY_INLINE_DATA,	/* may have in-inode data */
- 	EXT4_STATE_ORDERED_MODE,	/* data=ordered mode */
-+	EXT4_STATE_EXT_PRECACHED,	/* extents have been precached */
- };
- 
- #define EXT4_INODE_BIT_FNS(name, field, offset)				\
-@@ -2705,7 +2708,7 @@ extern int ext4_find_delalloc_range(struct inode *inode,
- extern int ext4_find_delalloc_cluster(struct inode *inode, ext4_lblk_t lblk);
- extern int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 			__u64 start, __u64 len);
--
-+extern int ext4_ext_precache(struct inode *inode);
- 
- /* move_extent.c */
- extern void ext4_double_down_write_data_sem(struct inode *first,
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 08c1ac9..0183887 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -482,7 +482,7 @@ __read_extent_tree_block(const char *function, unsigned int line,
- 		if (err < 0)
- 			goto errout;
- 	}
--	if (buffer_verified(bh))
-+	if (buffer_verified(bh) && !(flags & EXT4_EX_FORCE_CACHE))
- 		return bh;
- 	err = __ext4_ext_check(function, line, inode,
- 			       ext_block_hdr(bh), depth, pblk);
-@@ -526,6 +526,71 @@ errout:
- 	__read_extent_tree_block(__func__, __LINE__, (inode), (pblk),   \
- 				 (depth), (flags))
- 
-+/*
-+ * This function is called to cache a file's extent information in the
-+ * extent status tree
-+ */
-+int ext4_ext_precache(struct inode *inode)
-+{
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	struct ext4_ext_path *path = NULL;
-+	struct buffer_head *bh;
-+	int i = 0, depth, ret = 0;
-+
-+	if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
-+		return 0;	/* not an extent-mapped inode */
-+
-+	down_read(&ei->i_data_sem);
-+	depth = ext_depth(inode);
-+
-+	path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 1),
-+		       GFP_NOFS);
-+	if (path == NULL) {
-+		up_read(&ei->i_data_sem);
-+		return -ENOMEM;
-+	}
-+
-+	/* Don't cache anything if there are no external extent blocks */
-+	if (depth == 0)
-+		goto out;
-+	path[0].p_hdr = ext_inode_hdr(inode);
-+	ret = ext4_ext_check(inode, path[0].p_hdr, depth, 0);
-+	if (ret)
-+		goto out;
-+	path[0].p_idx = EXT_FIRST_INDEX(path[0].p_hdr);
-+	while (i >= 0) {
-+		/*
-+		 * If this is a leaf block or we've reached the end of
-+		 * the index block, go up
-+		 */
-+		if ((i == depth) ||
-+		    path[i].p_idx > EXT_LAST_INDEX(path[i].p_hdr)) {
-+			brelse(path[i].p_bh);
-+			path[i].p_bh = NULL;
-+			i--;
-+			continue;
-+		}
-+		bh = read_extent_tree_block(inode,
-+					    ext4_idx_pblock(path[i].p_idx++),
-+					    depth - i - 1,
-+					    EXT4_EX_FORCE_CACHE);
-+		if (IS_ERR(bh)) {
-+			ret = PTR_ERR(bh);
-+			break;
-+		}
-+		i++;
-+		path[i].p_bh = bh;
-+		path[i].p_hdr = ext_block_hdr(bh);
-+		path[i].p_idx = EXT_FIRST_INDEX(path[i].p_hdr);
-+	}
-+	ext4_set_inode_state(inode, EXT4_STATE_EXT_PRECACHED);
-+out:
-+	up_read(&ei->i_data_sem);
-+	ext4_ext_drop_refs(path);
-+	kfree(path);
-+	return ret;
-+}
-+
- #ifdef EXT_DEBUG
- static void ext4_ext_show_path(struct inode *inode, struct ext4_ext_path *path)
- {
-@@ -4766,6 +4831,12 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 			return error;
- 	}
- 
-+	if (fieinfo->fi_flags & FIEMAP_FLAG_CACHE) {
-+		error = ext4_ext_precache(inode);
-+		if (error)
-+			return error;
-+	}
-+
- 	/* fallback to generic here if not in extents fmt */
- 	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
- 		return generic_block_fiemap(inode, fieinfo, start, len,
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 1dc5df0..0e88a36 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -710,11 +710,8 @@ void ext4_es_cache_extent(struct inode *inode, ext4_lblk_t lblk,
- 	write_lock(&EXT4_I(inode)->i_es_lock);
- 
- 	es = __es_tree_search(&EXT4_I(inode)->i_es_tree.root, lblk);
--	if (es && ((es->es_lblk <= lblk) || (es->es_lblk <= end)))
--		goto out;
--
--	__es_insert_extent(inode, &newes);
--out:
-+	if (!es || es->es_lblk > end)
-+		__es_insert_extent(inode, &newes);
- 	write_unlock(&EXT4_I(inode)->i_es_lock);
- }
- 
-@@ -930,6 +927,12 @@ static int ext4_inode_touch_time_cmp(void *priv, struct list_head *a,
- 	eia = list_entry(a, struct ext4_inode_info, i_es_lru);
- 	eib = list_entry(b, struct ext4_inode_info, i_es_lru);
- 
-+	if (ext4_test_inode_state(&eia->vfs_inode, EXT4_STATE_EXT_PRECACHED) &&
-+	    !ext4_test_inode_state(&eib->vfs_inode, EXT4_STATE_EXT_PRECACHED))
-+		return 1;
-+	if (!ext4_test_inode_state(&eia->vfs_inode, EXT4_STATE_EXT_PRECACHED) &&
-+	    ext4_test_inode_state(&eib->vfs_inode, EXT4_STATE_EXT_PRECACHED))
-+		return -1;
- 	if (eia->i_touch_when == eib->i_touch_when)
- 		return 0;
- 	if (time_after(eia->i_touch_when, eib->i_touch_when))
-@@ -943,21 +946,13 @@ static int __ext4_es_shrink(struct ext4_sb_info *sbi, int nr_to_scan,
- {
- 	struct ext4_inode_info *ei;
- 	struct list_head *cur, *tmp;
--	LIST_HEAD(skiped);
-+	LIST_HEAD(skipped);
- 	int ret, nr_shrunk = 0;
-+	int retried = 0, skip_precached = 1, nr_skipped = 0;
- 
- 	spin_lock(&sbi->s_es_lru_lock);
- 
--	/*
--	 * If the inode that is at the head of LRU list is newer than
--	 * last_sorted time, that means that we need to sort this list.
--	 */
--	ei = list_first_entry(&sbi->s_es_lru, struct ext4_inode_info, i_es_lru);
--	if (sbi->s_es_last_sorted < ei->i_touch_when) {
--		list_sort(NULL, &sbi->s_es_lru, ext4_inode_touch_time_cmp);
--		sbi->s_es_last_sorted = jiffies;
--	}
--
-+retry:
- 	list_for_each_safe(cur, tmp, &sbi->s_es_lru) {
- 		/*
- 		 * If we have already reclaimed all extents from extent
-@@ -968,9 +963,16 @@ static int __ext4_es_shrink(struct ext4_sb_info *sbi, int nr_to_scan,
- 
- 		ei = list_entry(cur, struct ext4_inode_info, i_es_lru);
- 
--		/* Skip the inode that is newer than the last_sorted time */
--		if (sbi->s_es_last_sorted < ei->i_touch_when) {
--			list_move_tail(cur, &skiped);
-+		/*
-+		 * Skip the inode that is newer than the last_sorted
-+		 * time.  Normally we try hard to avoid shrinking
-+		 * precached inodes, but we will as a last resort.
-+		 */
-+		if ((sbi->s_es_last_sorted < ei->i_touch_when) ||
-+		    (skip_precached && ext4_test_inode_state(&ei->vfs_inode,
-+						EXT4_STATE_EXT_PRECACHED))) {
-+			nr_skipped++;
-+			list_move_tail(cur, &skipped);
- 			continue;
- 		}
- 
-@@ -990,11 +992,33 @@ static int __ext4_es_shrink(struct ext4_sb_info *sbi, int nr_to_scan,
- 	}
- 
- 	/* Move the newer inodes into the tail of the LRU list. */
--	list_splice_tail(&skiped, &sbi->s_es_lru);
-+	list_splice_tail(&skipped, &sbi->s_es_lru);
-+	INIT_LIST_HEAD(&skipped);
-+
-+	/*
-+	 * If we skipped any inodes, and we weren't able to make any
-+	 * forward progress, sort the list and try again.
-+	 */
-+	if ((nr_shrunk == 0) && nr_skipped && !retried) {
-+		retried++;
-+		list_sort(NULL, &sbi->s_es_lru, ext4_inode_touch_time_cmp);
-+		sbi->s_es_last_sorted = jiffies;
-+		ei = list_first_entry(&sbi->s_es_lru, struct ext4_inode_info,
-+				      i_es_lru);
-+		/*
-+		 * If there are no non-precached inodes left on the
-+		 * list, start releasing precached extents.
-+		 */
-+		if (ext4_test_inode_state(&ei->vfs_inode,
-+					  EXT4_STATE_EXT_PRECACHED))
-+			skip_precached = 0;
-+		goto retry;
-+	}
-+
- 	spin_unlock(&sbi->s_es_lru_lock);
- 
- 	if (locked_ei && nr_shrunk == 0)
--		nr_shrunk = __es_try_to_reclaim_extents(ei, nr_to_scan);
-+		nr_shrunk = __es_try_to_reclaim_extents(locked_ei, nr_to_scan);
- 
- 	return nr_shrunk;
- }
-@@ -1069,10 +1093,16 @@ static int __es_try_to_reclaim_extents(struct ext4_inode_info *ei,
- 	struct rb_node *node;
- 	struct extent_status *es;
- 	int nr_shrunk = 0;
-+	static DEFINE_RATELIMIT_STATE(_rs, DEFAULT_RATELIMIT_INTERVAL,
-+				      DEFAULT_RATELIMIT_BURST);
- 
- 	if (ei->i_es_lru_nr == 0)
- 		return 0;
- 
-+	if (ext4_test_inode_state(inode, EXT4_STATE_EXT_PRECACHED) &&
-+	    __ratelimit(&_rs))
-+		ext4_warning(inode->i_sb, "forced shrink of precached extents");
-+
- 	node = rb_first(&tree->root);
- 	while (node != NULL) {
- 		es = rb_entry(node, struct extent_status, rb_node);
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index c0427e2..5498f75 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -624,6 +624,8 @@ resizefs_out:
- 
- 		return 0;
- 	}
-+	case EXT4_IOC_PRECACHE_EXTENTS:
-+		return ext4_ext_precache(inode);
- 
- 	default:
- 		return -ENOTTY;
-@@ -688,6 +690,7 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
- 	case EXT4_IOC_MOVE_EXT:
- 	case FITRIM:
- 	case EXT4_IOC_RESIZE_FS:
-+	case EXT4_IOC_PRECACHE_EXTENTS:
- 		break;
- 	default:
- 		return -ENOIOCTLCMD;
-diff --git a/include/uapi/linux/fiemap.h b/include/uapi/linux/fiemap.h
-index d830747..0c51d61 100644
---- a/include/uapi/linux/fiemap.h
-+++ b/include/uapi/linux/fiemap.h
-@@ -40,6 +40,7 @@ struct fiemap {
- 
- #define FIEMAP_FLAG_SYNC	0x00000001 /* sync file data before map */
- #define FIEMAP_FLAG_XATTR	0x00000002 /* map extended attribute tree */
-+#define FIEMAP_FLAG_CACHE	0x00000004 /* request caching of the extents */
- 
- #define FIEMAP_FLAGS_COMPAT	(FIEMAP_FLAG_SYNC | FIEMAP_FLAG_XATTR)
- 
+thanks,
+
+Felipe Monteiro de Carvalho
+
+
+On Wed, Aug 14, 2013 at 7:06 AM, Felipe Monteiro de Carvalho
+<felipemonteiro.carvalho@gmail.com> wrote:
+> Hello,
+>
+> Did my last message go through? Just wondering if it was lost ...
+>
+> thanks,
+>
+> Felipe Monteiro de Carvalho
+>
+> On Mon, Aug 12, 2013 at 5:38 PM, Felipe Monteiro de Carvalho
+> <felipemonteiro.carvalho@gmail.com> wrote:
+>> Hello,
+>>
+>> Thanks to the help here I have essentially finished my ext4 reader =)
+>> At least it can read ext4 filesystems with these features, which is
+>> what I found when using Ubuntu and Mageia LInux:
+>>
+>>    EXT4_FEATURE_INCOMPAT_JOURNAL_DEV    = $0008; // Journal device */
+>>    EXT4_FEATURE_INCOMPAT_META_BG        = $0010;
+>>    EXT4_FEATURE_INCOMPAT_EXTENTS        = $0040; // extents support */
+>>    EXT4_FEATURE_INCOMPAT_FLEX_BG        = $0200;
+>>    EXT4_FEATURE_INCOMPAT_64BIT          = $0080;
+>>
+>> Some features seam to not require any extra care for my reader:
+>>
+>>    EXT4_FEATURE_INCOMPAT_COMPRESSION    = $0001;
+>>    EXT4_FEATURE_INCOMPAT_FILETYPE       = $0002;
+>>    EXT4_FEATURE_INCOMPAT_RECOVER        = $0004; // Needs recovery */
+>>    EXT4_FEATURE_INCOMPAT_BG_USE_META_CSUM= $2000; // use crc32c for bg */
+>>
+>> But I now wonder about these features:
+>>
+>>    EXT4_FEATURE_INCOMPAT_MMP            = $0100;
+>>    EXT4_FEATURE_INCOMPAT_EA_INODE       = $0400; // EA in inode */
+>>    EXT4_FEATURE_INCOMPAT_DIRDATA        = $1000; // data in dirent */
+>>    EXT4_FEATURE_INCOMPAT_LARGEDIR       = $4000; // >2GB or 3-lvl htree */
+>>    EXT4_FEATURE_INCOMPAT_INLINEDATA     = $8000; // data in inode */
+>>
+>> Could anyone comment how common is the use of those features and if
+>> they are already stable and in production usage (I read that they were
+>> under development in 2011)?
+>>
+>> And also which ones require an active work for a reader application to
+>> implement. As I already found out that FLEX_BG does not require active
+>> work to be supported despite being in the INCOMPAT list...
+>>
+>> From the description I'm pretty sure that at least DIRDATA and
+>> INLINEDATA would require adjustments in my software. But I wonder if
+>> they are already being used and stable, etc, and if it is a good idea
+>> to work on supporting them.
+>>
+>> thanks, =)
+>> --
+>> Felipe Monteiro de Carvalho
+>
+>
+>
+> --
+> Felipe Monteiro de Carvalho
+
+
+
 -- 
-1.7.12.rc0.22.gcdd159b
-
+Felipe Monteiro de Carvalho
