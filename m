@@ -1,100 +1,91 @@
-From: Felipe Monteiro de Carvalho <felipemonteiro.carvalho@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: Which features should I implement in my ext4 reader?
-Date: Sat, 17 Aug 2013 08:27:12 +0200
-Message-ID: <CACyNnZPfFM8s10N=rh20QoEFDtFp+yFuh6sgY=XZ_d77tT1L2A@mail.gmail.com>
+Date: Sat, 17 Aug 2013 09:02:04 -0400
+Message-ID: <20130817130204.GA30769@thunk.org>
 References: <CACyNnZNJssSL+UWOXYmWk9xy07WRT_z+Fk9Kjwfws9JRfWoNEQ@mail.gmail.com>
-	<CACyNnZManY_k3SB1-p4mQ8Z1+9B=VAdfXU7bWsFVHDsHV6KyUQ@mail.gmail.com>
+ <CACyNnZManY_k3SB1-p4mQ8Z1+9B=VAdfXU7bWsFVHDsHV6KyUQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Felipe Monteiro de Carvalho <felipemonteiro.carvalho@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f54.google.com ([209.85.220.54]:32809 "EHLO
-	mail-pa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751315Ab3HQG1N (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 17 Aug 2013 02:27:13 -0400
-Received: by mail-pa0-f54.google.com with SMTP id kx10so2706652pab.13
-        for <linux-ext4@vger.kernel.org>; Fri, 16 Aug 2013 23:27:12 -0700 (PDT)
+Received: from imap.thunk.org ([74.207.234.97]:44947 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753220Ab3HQNCI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 17 Aug 2013 09:02:08 -0400
+Content-Disposition: inline
 In-Reply-To: <CACyNnZManY_k3SB1-p4mQ8Z1+9B=VAdfXU7bWsFVHDsHV6KyUQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
-
-I wonder if when    EXT4_FEATURE_INCOMPAT_DIRDATA and
-EXT4_FEATURE_INCOMPAT_INLINEDATA are active, will all inodes have the
-first part of the data inlined? Or only some? How to know which ones?
-
-Any ideas on this and also about which features are the most important
-to implement, how often they are used, how stable their implementation
-is, etc would be greatly appreciated =)
-
-thanks,
-
-Felipe Monteiro de Carvalho
-
-
-On Wed, Aug 14, 2013 at 7:06 AM, Felipe Monteiro de Carvalho
-<felipemonteiro.carvalho@gmail.com> wrote:
-> Hello,
->
+On Wed, Aug 14, 2013 at 07:06:44AM +0200, Felipe Monteiro de Carvalho wrote:
+> 
 > Did my last message go through? Just wondering if it was lost ...
->
-> thanks,
->
-> Felipe Monteiro de Carvalho
->
-> On Mon, Aug 12, 2013 at 5:38 PM, Felipe Monteiro de Carvalho
-> <felipemonteiro.carvalho@gmail.com> wrote:
->> Hello,
->>
->> Thanks to the help here I have essentially finished my ext4 reader =)
->> At least it can read ext4 filesystems with these features, which is
->> what I found when using Ubuntu and Mageia LInux:
->>
->>    EXT4_FEATURE_INCOMPAT_JOURNAL_DEV    = $0008; // Journal device */
->>    EXT4_FEATURE_INCOMPAT_META_BG        = $0010;
->>    EXT4_FEATURE_INCOMPAT_EXTENTS        = $0040; // extents support */
->>    EXT4_FEATURE_INCOMPAT_FLEX_BG        = $0200;
->>    EXT4_FEATURE_INCOMPAT_64BIT          = $0080;
->>
->> Some features seam to not require any extra care for my reader:
->>
->>    EXT4_FEATURE_INCOMPAT_COMPRESSION    = $0001;
->>    EXT4_FEATURE_INCOMPAT_FILETYPE       = $0002;
->>    EXT4_FEATURE_INCOMPAT_RECOVER        = $0004; // Needs recovery */
->>    EXT4_FEATURE_INCOMPAT_BG_USE_META_CSUM= $2000; // use crc32c for bg */
->>
->> But I now wonder about these features:
->>
->>    EXT4_FEATURE_INCOMPAT_MMP            = $0100;
->>    EXT4_FEATURE_INCOMPAT_EA_INODE       = $0400; // EA in inode */
->>    EXT4_FEATURE_INCOMPAT_DIRDATA        = $1000; // data in dirent */
->>    EXT4_FEATURE_INCOMPAT_LARGEDIR       = $4000; // >2GB or 3-lvl htree */
->>    EXT4_FEATURE_INCOMPAT_INLINEDATA     = $8000; // data in inode */
->>
->> Could anyone comment how common is the use of those features and if
->> they are already stable and in production usage (I read that they were
->> under development in 2011)?
->>
->> And also which ones require an active work for a reader application to
->> implement. As I already found out that FLEX_BG does not require active
->> work to be supported despite being in the INCOMPAT list...
->>
->> From the description I'm pretty sure that at least DIRDATA and
->> INLINEDATA would require adjustments in my software. But I wonder if
->> they are already being used and stable, etc, and if it is a good idea
->> to work on supporting them.
->>
->> thanks, =)
->> --
->> Felipe Monteiro de Carvalho
->
->
->
-> --
-> Felipe Monteiro de Carvalho
 
+I think part of the problem (besids lots of people being busy and on
+vacation) is it's not clear what your ext4 reader is going to be used
+for.  As a result it's hard to give advice, not knowing what the
+requirements are for said reader.
 
+> >    EXT4_FEATURE_INCOMPAT_COMPRESSION    = $0001;
 
--- 
-Felipe Monteiro de Carvalho
+Compression isn't implemeneted, and so I'd suggest not trying to
+assume anything the file system with this feature.
+
+> >    EXT4_FEATURE_INCOMPAT_FILETYPE       = $0002;
+
+This would be true only if you are properly handling the name_len in
+the direct structure.  (It is a 16 bit Little Endian element, but only
+the low 8 bits are the name length; the high 8 bits are for the file
+type).
+
+> >    EXT4_FEATURE_INCOMPAT_RECOVER        = $0004; // Needs recovery */
+
+If you are not doing journal replay, you should *not* try to handle a
+file system with the needs recovery bit set.
+
+> >    EXT4_FEATURE_INCOMPAT_BG_USE_META_CSUM= $2000; // use crc32c for bg */
+
+If you're going to ignore potential checksum errors in the
+metadata....
+
+> > But I now wonder about these features:
+> >
+> >    EXT4_FEATURE_INCOMPAT_MMP            = $0100;
+
+This is used to protect against multiple systems trying to access a
+shared block device.  If you are not supporting the MMP protocol, it's
+possible for the metadata blocks on a shared block device to be
+changing out from under you, with potentially hilarious (if you find
+kernel oops or file system reader crashes funny) results.
+
+> >    EXT4_FEATURE_INCOMPAT_EA_INODE       = $0400; // EA in inode */
+> >    EXT4_FEATURE_INCOMPAT_DIRDATA        = $1000; // data in dirent */
+> >    EXT4_FEATURE_INCOMPAT_LARGEDIR       = $4000; // >2GB or 3-lvl htree */
+> >    EXT4_FEATURE_INCOMPAT_INLINEDATA     = $8000; // data in inode */
+
+These features aren't quite fully supported yet.  The inline data
+feature is probably closest to be being fully supported, when we
+release an the next major version of e2fsprogs.
+
+> > And also which ones require an active work for a reader application to
+> > implement. As I already found out that FLEX_BG does not require active
+> > work to be supported despite being in the INCOMPAT list...
+
+A lot of whether changes are needed to a file system implementation
+depends on how carefully and robustly it had been written in the first
+place.  Flex_bg had to be an incompat feature because the Linux kernel
+implementation was checking certain invariants which flex_bg would
+have violated.  If you have an implementation that isn't checking for
+various metadata inconsistenties or errors, it might not matter.
+
+By the way, depending on what your propietary reader is going to be
+used for, you might want to consider using an fsfuzzer to make sure it
+handles subtly corrupted file systems in a sane way.  If not (again
+depending on how oyu use it), you could end up crashing your system
+(if this mysterious proprietary reader is part of some OS) or
+potentially causing a security breach (buffer overruns, anyway?  :-)
+
+Cheers,
+
+						- Ted
