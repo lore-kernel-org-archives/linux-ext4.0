@@ -1,38 +1,30 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [GIT PULL] jbd2 bug fixes for v3.11-rc6
-Date: Sat, 17 Aug 2013 09:05:42 -0400
-Message-ID: <20130817130542.GA32430@thunk.org>
+Subject: Re: [PATCH 1/2] quota: Provide interface for readding allocated
+ space into reserved space
+Date: Sat, 17 Aug 2013 09:45:08 -0400
+Message-ID: <20130817134508.GB30769@thunk.org>
+References: <1376053620-26987-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: torvalds@linux-foundation.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:44964 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753131Ab3HQNpM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 17 Aug 2013 09:45:12 -0400
 Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1376053620-26987-1-git-send-email-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-The following changes since commit cde2d7a796f7e895e25b43471ed658079345636d:
+On Fri, Aug 09, 2013 at 03:06:59PM +0200, Jan Kara wrote:
+> ext4 needs to convert allocated (metadata) blocks back into blocks
+> reserved for delayed allocation. Add functions into quota code for
+> supporting such operation.
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
-  ext4: flush the extent status cache during EXT4_IOC_SWAP_BOOT (2013-08-12 09:29:30 -0400)
+Thanks, applied.
 
-are available in the git repository at:
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
-
-for you to fetch changes up to a361293f5fedea0016a10599f409631a15d47ee7:
-
-  jbd2: Fix oops in jbd2_journal_file_inode() (2013-08-16 21:19:41 -0400)
-
-----------------------------------------------------------------
-Two jbd2 bug fixes, one of which is a regression fix.
-
-----------------------------------------------------------------
-Jan Kara (2):
-      jbd2: Fix use after free after error in jbd2_journal_dirty_metadata()
-      jbd2: Fix oops in jbd2_journal_file_inode()
-
- fs/ext4/ext4.h      |  1 +
- fs/ext4/ext4_jbd2.c |  8 ++++----
- fs/ext4/file.c      | 21 ++++-----------------
- fs/ext4/inode.c     | 43 +++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 52 insertions(+), 21 deletions(-)
+						- Ted
