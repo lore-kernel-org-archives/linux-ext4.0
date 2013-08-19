@@ -1,184 +1,60 @@
-From: Darren Hart <dvhart@linux.intel.com>
-Subject: Re: [PATCH 2/2] debugfs.c: do sparse copy when src is a sparse file
-Date: Mon, 19 Aug 2013 15:43:07 -0700
-Message-ID: <1376952187.12131.105.camel@dvhart-mobl4.amr.corp.intel.com>
-References: <1375088785-30653-1-git-send-email-liezhi.yang@windriver.com>
-	 <1375088785-30653-3-git-send-email-liezhi.yang@windriver.com>
+From: David Lang <david@lang.hm>
+Subject: Re: page fault scalability (ext3, ext4, xfs)
+Date: Mon, 19 Aug 2013 16:23:23 -0700 (PDT)
+Message-ID: <alpine.DEB.2.02.1308191621130.30740@nftneq.ynat.uz>
+References: <520BED7A.4000903@intel.com> <20130814230648.GD22316@thunk.org>
+	<CALCETrVaRQ3WQ5++Uu_0JTaVnjUugAaAhqQK__7r5YWvLxpAhw@mail.gmail.com>
+	<20130815011101.GA3572@thunk.org> <20130815021028.GM6023@dastard>
+	<CALCETrUfuzgG9U=+eSzCGvbCx-ZskWw+MhQ-qmEyWZK=XWNVmg@mail.gmail.com>
+	<20130815060149.GP6023@dastard>
+	<CALCETrUF+dGhE3qv4LoYmc7A=a+ry93u-d-GgHSAwHXvYN+VNw@mail.gmail.com>
+	<20130815071141.GQ6023@dastard>
+	<20130815074531.GA2147@quack.suse.cz>
+	<20130815212826.GS6023@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="us-ascii"; Format="flowed"
 Content-Transfer-Encoding: 7bit
-Cc: "tom.zanussi@intel.com" <tom.zanussi@intel.com>,
-	Robert Yang <liezhi.yang@windriver.com>
-To: linux-ext4@vger.kernel.org, tytso@mit.edu, darrick.wong@oracle.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga02.intel.com ([134.134.136.20]:34259 "EHLO mga02.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751575Ab3HSWnJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 19 Aug 2013 18:43:09 -0400
-In-Reply-To: <1375088785-30653-3-git-send-email-liezhi.yang@windriver.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>, Dave Hansen <dave.hansen@linux.intel.com>,
+	LKML <linux-kernel@vger.kernel.org>, Andy Lutomirski <luto@amacapital.net>,
+	Dave Hansen <dave.hansen@intel.com>, Andi Kleen <ak@linux.intel.com>,
+	Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>, xfs@oss.sgi.com,
+	Tim Chen <tim.c.chen@linux.intel.com>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <20130815212826.GS6023@dastard>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-Ted, Darrick,
+On Fri, 16 Aug 2013, Dave Chinner wrote:
 
-Any more thoughts on this series from Robert?
+> The problem with "not exported, don't update" is that files can be
+> modified on server startup (e.g. after a crash) or in short
+> maintenance periods when the NFS service is down. When the server is
+> started back up, the change number needs to indicate the file has
+> been modified so that clients reconnecting to the server see the
+> change.
+>
+> IOWs, even if the NFS server is not up or the filesystem not
+> exported we still need to update change counts whenever a file
+> changes if we are going to tell the NFS server that we keep them...
 
-We'd like to pull this in to the Yocto Project, but are trying hard not
-to include patches that are not at least acked by the upstream
-maintainers.
+This sounds like you need something more like relctime rather than noctime, 
+something that updates the time in ram, but doesn't insist on flushing it to 
+disk immediatly, updating when convienient or when the file is closed.
 
-I believe Robert as addressed the concerns raised?
+David Lang
 
-Thanks!
-
-Darren
-
-On Mon, 2013-07-29 at 17:06 +0800, Robert Yang wrote:
-> Let debugfs do sparse copy when src is a sparse file, just like
-> "cp --sparse=auto"
-> 
-> * For the:
->   #define IO_BUFSIZE 64*1024
->   this is a suggested value from gnu coreutils:
->   http://git.savannah.gnu.org/gitweb/?p=coreutils.git;a=blob;f=src/ioblksize.h;h=1ae93255e7d0ccf0855208c7ae5888209997bf16;hb=HEAD
-> 
-> * Use malloc() to allocate memory for the buffer since put 64K (or
->   more) on the stack seems not a good idea.
-> 
-> Signed-off-by: Robert Yang <liezhi.yang@windriver.com>
-> Acked-by: Darren Hart <dvhart@linux.intel.com>
-> ---
->  debugfs/debugfs.c | 61 +++++++++++++++++++++++++++++++++++++++++++++++++++----
->  1 file changed, 57 insertions(+), 4 deletions(-)
-> 
-> diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-> index a6bc932..d35fecc 100644
-> --- a/debugfs/debugfs.c
-> +++ b/debugfs/debugfs.c
-> @@ -41,6 +41,16 @@ extern char *optarg;
->  #define BUFSIZ 8192
->  #endif
->  
-> +/* 64KiB is the minimium blksize to best minimize system call overhead. */
-> +#ifndef IO_BUFSIZE
-> +#define IO_BUFSIZE 64*1024
-> +#endif
-> +
-> +/* Block size for `st_blocks' */
-> +#ifndef S_BLKSIZE
-> +#define S_BLKSIZE 512
-> +#endif
-> +
->  ss_request_table *extra_cmds;
->  const char *debug_prog_name;
->  int sci_idx;
-> @@ -1575,22 +1585,36 @@ void do_find_free_inode(int argc, char *argv[])
->  }
->  
->  #ifndef READ_ONLY
-> -static errcode_t copy_file(int fd, ext2_ino_t newfile)
-> +static errcode_t copy_file(int fd, ext2_ino_t newfile, int bufsize, int make_holes)
->  {
->  	ext2_file_t	e2_file;
->  	errcode_t	retval;
->  	int		got;
->  	unsigned int	written;
-> -	char		buf[8192];
-> +	char		*buf;
->  	char		*ptr;
-> +	char		*zero_buf;
-> +	int		cmp;
->  
->  	retval = ext2fs_file_open(current_fs, newfile,
->  				  EXT2_FILE_WRITE, &e2_file);
->  	if (retval)
->  		return retval;
->  
-> +	if (!(buf = (char *) malloc(bufsize))){
-> +		com_err("copy_file", errno, "can't allocate buffer\n");
-> +		return;
-> +	}
-> +
-> +        /* This is used for checking whether the whole block is zero */
-> +	retval = ext2fs_get_memzero(bufsize, &zero_buf);
-> +	if (retval) {
-> +		com_err("copy_file", retval, "can't allocate buffer\n");
-> +		return retval;
-> +	}
-> +
->  	while (1) {
-> -		got = read(fd, buf, sizeof(buf));
-> +		got = read(fd, buf, bufsize);
->  		if (got == 0)
->  			break;
->  		if (got < 0) {
-> @@ -1598,6 +1622,21 @@ static errcode_t copy_file(int fd, ext2_ino_t newfile)
->  			goto fail;
->  		}
->  		ptr = buf;
-> +
-> +		/* Sparse copy */
-> +		if (make_holes) {
-> +			/* Check whether all is zero */
-> +			cmp = memcmp(ptr, zero_buf, got);
-> +			if (cmp == 0) {
-> +				 /* The whole block is zero, make a hole */
-> +				retval = ext2fs_file_lseek(e2_file, got, EXT2_SEEK_CUR, NULL);
-> +				if (retval)
-> +					goto fail;
-> +				got = 0;
-> +			}
-> +		}
-> +
-> +		/* Normal copy */
->  		while (got > 0) {
->  			retval = ext2fs_file_write(e2_file, ptr,
->  						   got, &written);
-> @@ -1608,10 +1647,14 @@ static errcode_t copy_file(int fd, ext2_ino_t newfile)
->  			ptr += written;
->  		}
->  	}
-> +	free(buf);
-> +	ext2fs_free_mem(&zero_buf);
->  	retval = ext2fs_file_close(e2_file);
->  	return retval;
->  
->  fail:
-> +	free(buf);
-> +	ext2fs_free_mem(&zero_buf);
->  	(void) ext2fs_file_close(e2_file);
->  	return retval;
->  }
-> @@ -1624,6 +1667,8 @@ void do_write(int argc, char *argv[])
->  	ext2_ino_t	newfile;
->  	errcode_t	retval;
->  	struct ext2_inode inode;
-> +	int		bufsize = IO_BUFSIZE;
-> +	int		make_holes = 0;
->  
->  	if (common_args_process(argc, argv, 3, 3, "write",
->  				"<native file> <new file>", CHECK_FS_RW))
-> @@ -1699,7 +1744,15 @@ void do_write(int argc, char *argv[])
->  		return;
->  	}
->  	if (LINUX_S_ISREG(inode.i_mode)) {
-> -		retval = copy_file(fd, newfile);
-> +		if (statbuf.st_blocks < statbuf.st_size / S_BLKSIZE) {
-> +			make_holes = 1;
-> +			/*
-> +			 * Use I/O blocksize as buffer size when
-> +			 * copying sparse files.
-> +			 */
-> +			bufsize = statbuf.st_blksize;
-> +		}
-> +		retval = copy_file(fd, newfile, bufsize, make_holes);
->  		if (retval)
->  			com_err("copy_file", retval, 0);
->  	}
-
--- 
-Darren Hart
-Intel Open Source Technology Center
-Yocto Project - Linux Kernel
-
-
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
