@@ -1,64 +1,113 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Which features should I implement in my ext4 reader?
-Date: Mon, 19 Aug 2013 10:03:21 -0400
-Message-ID: <20130819140321.GA21453@thunk.org>
-References: <CACyNnZNJssSL+UWOXYmWk9xy07WRT_z+Fk9Kjwfws9JRfWoNEQ@mail.gmail.com>
- <CACyNnZManY_k3SB1-p4mQ8Z1+9B=VAdfXU7bWsFVHDsHV6KyUQ@mail.gmail.com>
- <20130817130204.GA30769@thunk.org>
- <CACyNnZONOUy0+OeDriZaSt4OQrR6LzpyJz4Sj8XvMHvxr2u_Xg@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: page fault scalability (ext3, ext4, xfs)
+Date: Mon, 19 Aug 2013 18:17:16 -0400
+Message-ID: <20130819221716.GA17869@fieldses.org>
+References: <520BB9EF.5020308@linux.intel.com>
+	<20130814194359.GA22316@thunk.org> <520BED7A.4000903@intel.com>
+	<20130814230648.GD22316@thunk.org>
+	<CALCETrVaRQ3WQ5++Uu_0JTaVnjUugAaAhqQK__7r5YWvLxpAhw@mail.gmail.com>
+	<20130815011101.GA3572@thunk.org> <20130815021028.GM6023@dastard>
+	<CALCETrUfuzgG9U=+eSzCGvbCx-ZskWw+MhQ-qmEyWZK=XWNVmg@mail.gmail.com>
+	<20130815060149.GP6023@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Felipe Monteiro de Carvalho <felipemonteiro.carvalho@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:45692 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751033Ab3HSODY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 19 Aug 2013 10:03:24 -0400
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>, Dave Hansen <dave.hansen@linux.intel.com>,
+	LKML <linux-kernel@vger.kernel.org>, xfs@oss.sgi.com,
+	Dave Hansen <dave.hansen@intel.com>, Andi Kleen <ak@linux.intel.com>,
+	Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>, Andy Lutomirski <luto@amacapital.net>,
+	Tim Chen <tim.c.chen@linux.intel.com>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <CACyNnZONOUy0+OeDriZaSt4OQrR6LzpyJz4Sj8XvMHvxr2u_Xg@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20130815060149.GP6023@dastard>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Sun, Aug 18, 2013 at 08:04:20AM +0200, Felipe Monteiro de Carvalho wrote:
-> > These features aren't quite fully supported yet.  The inline data
-> > feature is probably closest to be being fully supported, when we
-> > release an the next major version of e2fsprogs.
+On Thu, Aug 15, 2013 at 04:01:49PM +1000, Dave Chinner wrote:
+> On Wed, Aug 14, 2013 at 09:32:13PM -0700, Andy Lutomirski wrote:
+> > On Wed, Aug 14, 2013 at 7:10 PM, Dave Chinner <david@fromorbit.com> wrote:
+> > > On Wed, Aug 14, 2013 at 09:11:01PM -0400, Theodore Ts'o wrote:
+> > >> On Wed, Aug 14, 2013 at 04:38:12PM -0700, Andy Lutomirski wrote:
+> > >> > > It would be better to write zeros to it, so we aren't measuring the
+> > >> > > cost of the unwritten->written conversion.
+> > >> >
+> > >> > At the risk of beating a dead horse, how hard would it be to defer
+> > >> > this part until writeback?
+> > >>
+> > >> Part of the work has to be done at write time because we need to
+> > >> update allocation statistics (i.e., so that we don't have ENOSPC
+> > >> problems).  The unwritten->written conversion does happen at writeback
+> > >> (as does the actual block allocation if we are doing delayed
+> > >> allocation).
+> > >>
+> > >> The point is that if the goal is to measure page fault scalability, we
+> > >> shouldn't have this other stuff happening as the same time as the page
+> > >> fault workload.
+> > >
+> > > Sure, but the real problem is not the block mapping or allocation
+> > > path - even if the test is changed to take that out of the picture,
+> > > we still have timestamp updates being done on every single page
+> > > fault. ext4, XFS and btrfs all do transactional timestamp updates
+> > > and have nanosecond granularity, so every page fault is resulting in
+> > > a transaction to update the timestamp of the file being modified.
+> > 
+> > I have (unmergeable) patches to fix this:
+> > 
+> > http://comments.gmane.org/gmane.linux.kernel.mm/92476
 > 
-> Just for completeness, which version number will that by?
+> The big problem with this approach is that not doing the
+> timestamp update on page faults is going to break the inode change
+> version counting because for ext4, btrfs and XFS it takes a
+> transaction to bump that counter. NFS needs to know the moment a
+> file is changed in memory, not when it is written to disk.
 
-When we release 1.43.x.  We are currently releasing maintenance
-releases on 1.42.x, tracked on the maint branch.  What will eventually
-become e2fsprogs 1.43.x is on the master branch in the git tree.  (As
-well as the next and pu -- proposed updates -- branches, which are
-supersets of the master branch.)
+I don't think the in-memory updates of the data and the version have to
+be completely atomic, if that's what you mean.
 
-> So, I understand that currently mkfs.ext4 cannot generate ext4 file
-> systems with this feature, correct?
+> Also, NFS
+> requires the change to the counter to be persistent over server
+> failures, so it needs to be changed as part of a transaction....
 
-Well, if you are building with the e2fsprogs with the pu branch, it
-will work.  This is a rewinding branch, so for example, when I process
-Zheng's latest set of changes, the pu branch will get rewound and the
-new patches applied.
+I'm not sure those two updates have to be a single atomic transaction on
+disk, either.
 
-BTW, for any new ABI's exported via libext2fs, there is no guarantee
-of stability until 1.43.x gets released.  If we find ABI
-incompatibilities for old interfaces in between 1.43.x and 1.42.x on
-the master branch, that is a bug that we will fix.
+(Though the reboot cases are more complicated, I may not have thought it
+through.)
 
-> Is there any other way to generate a file system with this feature
-> with a 3.8 kernel which will work?
+(By the way, I wonder what happens if we reuse a change attribute value
+after a crash?  There's probably a (hard to hit) bug there.)
+
+--b.
+
 > 
-> Just wondering if I can already start work on this or if I need to wait.
+> IOWs, fixing the "filesystems need a transaction on each page_mkwrite
+> call" problem isn't as simple as changing how timestamps are
+> updated.
+> 
+> Cheers,
+> 
+> Dave.
+> -- 
+> Dave Chinner
+> david@fromorbit.com
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
 
-It should be sufficient to use debugfs to manually set the inline_data
-feature.  However, you won't be able to run e2fsck on the file system
-after you do that.  So using the pu branch is probably your best bet.
-
-The git tree can be found here:
-
-    git://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
-
-Regards,
-
-						- Ted
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
