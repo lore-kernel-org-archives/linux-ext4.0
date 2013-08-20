@@ -1,53 +1,221 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: Which features should I implement in my ext4 reader?
-Date: Tue, 20 Aug 2013 18:39:56 +0800
-Message-ID: <20130820103956.GA7846@gmail.com>
-References: <CACyNnZNJssSL+UWOXYmWk9xy07WRT_z+Fk9Kjwfws9JRfWoNEQ@mail.gmail.com>
- <CACyNnZManY_k3SB1-p4mQ8Z1+9B=VAdfXU7bWsFVHDsHV6KyUQ@mail.gmail.com>
- <20130817130204.GA30769@thunk.org>
- <CACyNnZONOUy0+OeDriZaSt4OQrR6LzpyJz4Sj8XvMHvxr2u_Xg@mail.gmail.com>
- <20130819050803.GA10882@gmail.com>
- <CACyNnZN4z_mHq86+FPOaGpzjwBVmmsKNjnd45s53o2LdQjxEsg@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Felipe Monteiro de Carvalho <felipemonteiro.carvalho@gmail.com>
+Subject: [PATCH] ext4: isolate ext4_extents.h file
+Date: Tue, 20 Aug 2013 21:38:13 +0800
+Message-ID: <1377005893-4394-1-git-send-email-wenqing.lz@taobao.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Zheng Liu <wenqing.lz@taobao.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f49.google.com ([209.85.220.49]:40634 "EHLO
-	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750976Ab3HTKjM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Aug 2013 06:39:12 -0400
-Received: by mail-pa0-f49.google.com with SMTP id ld10so552874pab.22
-        for <linux-ext4@vger.kernel.org>; Tue, 20 Aug 2013 03:39:12 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <CACyNnZN4z_mHq86+FPOaGpzjwBVmmsKNjnd45s53o2LdQjxEsg@mail.gmail.com>
+Received: from mail-pd0-f182.google.com ([209.85.192.182]:55439 "EHLO
+	mail-pd0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751001Ab3HTNie (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Aug 2013 09:38:34 -0400
+Received: by mail-pd0-f182.google.com with SMTP id r10so393155pdi.13
+        for <linux-ext4@vger.kernel.org>; Tue, 20 Aug 2013 06:38:34 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 20, 2013 at 12:16:09PM +0200, Felipe Monteiro de Carvalho wrote:
-> On Mon, Aug 19, 2013 at 7:08 AM, Zheng Liu <gnehzuil.liu@gmail.com> wrote:
-> > You need to checkout to e2fsprogs/pu branch.  All patches for inline data
-> > are on this branch.  BTW, the latest refinement of patches had been sent
-> > to the mailing list [1].  It would be great if you could give it a try.
-> >
-> > 1. http://comments.gmane.org/gmane.comp.file-systems.ext4/39825
-> 
-> Ok I can try this branch, but I wonder if other tools will work too. I
-> need also to be able to add some files and directories to the
-> partition.
+From: Zheng Liu <wenqing.lz@taobao.com>
 
-I add some new interfaces in libext2fs to manipulate a file system
-with inline data feature.  You can use libext2fs to add some files and
-directories.  But these interfaces might be changed because it isn't
-exported as an ABI.  After it is released within a new e2fsprogs
-version, they will never be changed.
+After applied the commit (4a092d73), we have reduced the number of
+source files that need to #include ext4_extents.h.  But we can do
+better.
 
-> 
-> Will "mount" from a linux with kernel 3.8 work with a partition
-> generated with this new e2fsprogs?
+This commit defines ext4_zeroout_es() in extents.c and move
+EXT_MAX_BLOCKS into ext4.h in order not to include ext4_extents.h in
+indirect.c and ioctl.c.  Meanwhile we just need to include this file in
+extent_status.c when ES_AGGRESSIVE_TEST is defined.  Otherwise, this
+commit removes a duplicated declaration in trace/events/ext4.h.
 
-Yes, you can mount a file system with inline data in a 3.8 kernel using
-this branch.
+After applied this patch, we just need to include ext4_extents.h file
+in {super,migrate,move_extents,extents}.c, and it is easy for us to
+define a new extent disk layout.
 
-Regards,
-                                                - Zheng
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+---
+ fs/ext4/ext4.h              |    6 ++++++
+ fs/ext4/ext4_extents.h      |    6 ------
+ fs/ext4/extents.c           |   21 +++++++++++++++++++--
+ fs/ext4/extents_status.c    |   20 ++------------------
+ fs/ext4/extents_status.h    |    1 -
+ fs/ext4/indirect.c          |    1 -
+ fs/ext4/ioctl.c             |    1 -
+ include/trace/events/ext4.h |    1 -
+ 8 files changed, 27 insertions(+), 30 deletions(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 3dbc56e..2889665 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2686,6 +2686,12 @@ extern int ext4_check_blockref(const char *, unsigned int,
+ struct ext4_ext_path;
+ struct ext4_extent;
+ 
++/*
++ * Maximum number of logical blocks in a file; ext4_extent's ee_block is
++ * __le32.
++ */
++#define EXT_MAX_BLOCKS	0xffffffff
++
+ extern int ext4_ext_tree_init(handle_t *handle, struct inode *);
+ extern int ext4_ext_writepage_trans_blocks(struct inode *, int);
+ extern int ext4_ext_index_trans_blocks(struct inode *inode, int extents);
+diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
+index 51bc821..5074fe2 100644
+--- a/fs/ext4/ext4_extents.h
++++ b/fs/ext4/ext4_extents.h
+@@ -134,12 +134,6 @@ struct ext4_ext_path {
+  */
+ 
+ /*
+- * Maximum number of logical blocks in a file; ext4_extent's ee_block is
+- * __le32.
+- */
+-#define EXT_MAX_BLOCKS	0xffffffff
+-
+-/*
+  * EXT_INIT_MAX_LEN is the maximum number of blocks we can have in an
+  * initialized extent. This is 2^15 and not (2^16 - 1), since we use the
+  * MSB of ee_len field in the extent datastructure to signify if this
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 62b21cc..3ae9c31 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3049,6 +3049,23 @@ void ext4_ext_release(struct super_block *sb)
+ #endif
+ }
+ 
++static int ext4_zeroout_es(struct inode *inode, struct ext4_extent *ex)
++{
++	ext4_lblk_t  ee_block;
++	ext4_fsblk_t ee_pblock;
++	unsigned int ee_len;
++
++	ee_block  = le32_to_cpu(ex->ee_block);
++	ee_len    = ext4_ext_get_actual_len(ex);
++	ee_pblock = ext4_ext_pblock(ex);
++
++	if (ee_len == 0)
++		return 0;
++
++	return ext4_es_insert_extent(inode, ee_block, ee_len, ee_pblock,
++				     EXTENT_STATUS_WRITTEN);
++}
++
+ /* FIXME!! we need to try to merge to left or right after zero-out  */
+ static int ext4_ext_zeroout(struct inode *inode, struct ext4_extent *ex)
+ {
+@@ -3201,7 +3218,7 @@ static int ext4_split_extent_at(handle_t *handle,
+ 			goto fix_extent_len;
+ 
+ 		/* update extent status tree */
+-		err = ext4_es_zeroout(inode, &zero_ex);
++		err = ext4_zeroout_es(inode, &zero_ex);
+ 
+ 		goto out;
+ 	} else if (err)
+@@ -3552,7 +3569,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ out:
+ 	/* If we have gotten a failure, don't zero out status tree */
+ 	if (!err)
+-		err = ext4_es_zeroout(inode, &zero_ex);
++		err = ext4_zeroout_es(inode, &zero_ex);
+ 	return err ? err : allocated;
+ }
+ 
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index 0e88a36..2d1bdbe 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -13,7 +13,6 @@
+ #include <linux/list_sort.h>
+ #include "ext4.h"
+ #include "extents_status.h"
+-#include "ext4_extents.h"
+ 
+ #include <trace/events/ext4.h>
+ 
+@@ -409,6 +408,8 @@ ext4_es_try_to_merge_right(struct inode *inode, struct extent_status *es)
+ }
+ 
+ #ifdef ES_AGGRESSIVE_TEST
++#include "ext4_extents.h"	/* Needed when ES_AGGRESSIVE_TEST is defined */
++
+ static void ext4_es_insert_extent_ext_check(struct inode *inode,
+ 					    struct extent_status *es)
+ {
+@@ -903,23 +904,6 @@ int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ 	return err;
+ }
+ 
+-int ext4_es_zeroout(struct inode *inode, struct ext4_extent *ex)
+-{
+-	ext4_lblk_t  ee_block;
+-	ext4_fsblk_t ee_pblock;
+-	unsigned int ee_len;
+-
+-	ee_block  = le32_to_cpu(ex->ee_block);
+-	ee_len    = ext4_ext_get_actual_len(ex);
+-	ee_pblock = ext4_ext_pblock(ex);
+-
+-	if (ee_len == 0)
+-		return 0;
+-
+-	return ext4_es_insert_extent(inode, ee_block, ee_len, ee_pblock,
+-				     EXTENT_STATUS_WRITTEN);
+-}
+-
+ static int ext4_inode_touch_time_cmp(void *priv, struct list_head *a,
+ 				     struct list_head *b)
+ {
+diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
+index 3e83aef..167f4ab8 100644
+--- a/fs/ext4/extents_status.h
++++ b/fs/ext4/extents_status.h
+@@ -81,7 +81,6 @@ extern void ext4_es_find_delayed_extent_range(struct inode *inode,
+ 					struct extent_status *es);
+ extern int ext4_es_lookup_extent(struct inode *inode, ext4_lblk_t lblk,
+ 				 struct extent_status *es);
+-extern int ext4_es_zeroout(struct inode *inode, struct ext4_extent *ex);
+ 
+ static inline int ext4_es_is_written(struct extent_status *es)
+ {
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index 87b30cd..594009f 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -23,7 +23,6 @@
+ #include <linux/aio.h>
+ #include "ext4_jbd2.h"
+ #include "truncate.h"
+-#include "ext4_extents.h"	/* Needed for EXT_MAX_BLOCKS */
+ 
+ #include <trace/events/ext4.h>
+ 
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 5498f75..a569d33 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -17,7 +17,6 @@
+ #include <asm/uaccess.h>
+ #include "ext4_jbd2.h"
+ #include "ext4.h"
+-#include "ext4_extents.h"
+ 
+ #define MAX_32_NUM ((((unsigned long long) 1) << 32) - 1)
+ 
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index d892b55..197d312 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -14,7 +14,6 @@ struct ext4_prealloc_space;
+ struct ext4_inode_info;
+ struct mpage_da_data;
+ struct ext4_map_blocks;
+-struct ext4_extent;
+ struct extent_status;
+ 
+ #define EXT4_I(inode) (container_of(inode, struct ext4_inode_info, vfs_inode))
+-- 
+1.7.9.7
+
