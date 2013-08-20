@@ -1,47 +1,78 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH v3 5/5] ext4: Defer mmap cmtime update until writeback
-Date: Tue, 20 Aug 2013 12:38:49 +1000
-Message-ID: <20130820023849.GF6023@dastard>
+From: Andy Lutomirski <luto@amacapital.net>
+Subject: Re: [PATCH v3 2/5] fs: Add inode_update_time_writable
+Date: Mon, 19 Aug 2013 20:20:12 -0700
+Message-ID: <CALCETrVE2G4x9mL0-o1FDQPfc=qZzw10Cx6AgOdhwphSaCmyzw@mail.gmail.com>
 References: <cover.1376679411.git.luto@amacapital.net>
- <d59d6c9790bd3c36b93343ed91be5e0cda7e5f09.1376679411.git.luto@amacapital.net>
+	<a27accc2d9460b7ef194a203f305a18dafe926e8.1376679411.git.luto@amacapital.net>
+	<20130820022822.GD6023@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>, Dave Hansen <dave.hansen@linux.intel.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	xfs@oss.sgi.com, Christoph Hellwig <hch@infradead.org>,
 	Theodore Ts'o <tytso@mit.edu>,
-	Dave Hansen <dave.hansen@linux.intel.com>, xfs@oss.sgi.com,
-	Jan Kara <jack@suse.cz>, Tim Chen <tim.c.chen@linux.intel.com>,
-	Christoph Hellwig <hch@infradead.org>
-To: Andy Lutomirski <luto@amacapital.net>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:5989 "EHLO
-	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751350Ab3HTCiy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 19 Aug 2013 22:38:54 -0400
-Content-Disposition: inline
-In-Reply-To: <d59d6c9790bd3c36b93343ed91be5e0cda7e5f09.1376679411.git.luto@amacapital.net>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Tim Chen <tim.c.chen@linux.intel.com>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <20130820022822.GD6023@dastard>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Aug 16, 2013 at 04:22:12PM -0700, Andy Lutomirski wrote:
-> A fancier implementation could probably avoid an extra journal
-> transaction by adding a mapping_test_clear_cmtime call in
-> ext4_writepages, but this should already be a considerable
-> improvement -- we'll start one transaction per writepages call
-> instead of one per page.
+On Mon, Aug 19, 2013 at 7:28 PM, Dave Chinner <david@fromorbit.com> wrote:
+> On Fri, Aug 16, 2013 at 04:22:09PM -0700, Andy Lutomirski wrote:
+>> This is like file_update_time, except that it acts on a struct inode *
+>> instead of a struct file *.
+>>
+>> Signed-off-by: Andy Lutomirski <luto@amacapital.net>
+>> ---
+>>  fs/inode.c         | 72 ++++++++++++++++++++++++++++++++++++++++++------------
+>>  include/linux/fs.h |  1 +
+>>  2 files changed, 58 insertions(+), 15 deletions(-)
+>>
 
-I'd like to see more than just an ext4 implementation - btrfs and
-XFS are the other main filesystems that should behave identically.
+[...]
 
-Also, it's worthwhile to write a generic xfstest to ensure that they
-all update the timestamp appropriately - if its' in xfstests, then
-we can basically guarantee that it won't get randomly regressed in
-future, and other filesystems can be easily verified as well sa
-their implement this.
+>> +
+>> +int inode_update_time_writable(struct inode *inode)
+>> +{
+>> +     struct timespec now;
+>> +     int sync_it = prepare_update_cmtime(inode, &now);
+>> +     int ret;
+>> +
+>> +     if (!sync_it)
+>> +             return 0;
+>> +
+>> +     /* sb_start_pagefault and update_time can both sleep. */
+>> +     sb_start_pagefault(inode->i_sb);
+>> +     ret = update_time(inode, &now, sync_it);
+>> +     sb_end_pagefault(inode->i_sb);
+>
+> This gets called from the writeback path - you can't use
+> sb_start_pagefault/sb_end_pagefault in that path.
 
-Cheers,
+The race I'm worried about is:
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+ - mmap
+ - write to the mapping
+ - remount ro
+ - flush_cmtime -> inode_update_time_writable
+
+This may be impossible, in which case I'm okay, but it's nice to have
+a sanity check.  I'll see if I can figure out how to do that.
+
+--Andy
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
