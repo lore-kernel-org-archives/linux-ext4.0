@@ -1,36 +1,56 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: On the 16TiB max file size limit (not filesystem limit)
-Date: Tue, 20 Aug 2013 19:35:37 +0200
-Message-ID: <20130820173537.GA5030@quack.suse.cz>
-References: <521135ED.6010101@shiftmail.org>
+From: Felipe Monteiro de Carvalho <felipemonteiro.carvalho@gmail.com>
+Subject: Re: Which features should I implement in my ext4 reader?
+Date: Wed, 21 Aug 2013 14:16:03 +0200
+Message-ID: <CACyNnZP6m96Uv_acbVvf3K2UvcMhhqk2S2gmdZS9DG9GwqbUcg@mail.gmail.com>
+References: <CACyNnZNJssSL+UWOXYmWk9xy07WRT_z+Fk9Kjwfws9JRfWoNEQ@mail.gmail.com>
+	<CACyNnZManY_k3SB1-p4mQ8Z1+9B=VAdfXU7bWsFVHDsHV6KyUQ@mail.gmail.com>
+	<20130817130204.GA30769@thunk.org>
+	<CACyNnZONOUy0+OeDriZaSt4OQrR6LzpyJz4Sj8XvMHvxr2u_Xg@mail.gmail.com>
+	<20130819050803.GA10882@gmail.com>
+	<CACyNnZN4z_mHq86+FPOaGpzjwBVmmsKNjnd45s53o2LdQjxEsg@mail.gmail.com>
+	<20130820103956.GA7846@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Spelic <spelic@shiftmail.org>
+Content-Type: text/plain; charset=UTF-8
+To: Felipe Monteiro de Carvalho <felipemonteiro.carvalho@gmail.com>,
+	"Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:56664 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752288Ab3HUHsZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 21 Aug 2013 03:48:25 -0400
-Content-Disposition: inline
-In-Reply-To: <521135ED.6010101@shiftmail.org>
+Received: from mail-pd0-f178.google.com ([209.85.192.178]:39912 "EHLO
+	mail-pd0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751273Ab3HUMQF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Aug 2013 08:16:05 -0400
+Received: by mail-pd0-f178.google.com with SMTP id w10so379232pde.9
+        for <linux-ext4@vger.kernel.org>; Wed, 21 Aug 2013 05:16:04 -0700 (PDT)
+In-Reply-To: <20130820103956.GA7846@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun 18-08-13 23:00:29, Spelic wrote:
-> Dear ext4 developers
-> are there any plans to overcome the 16TiB maximum file size limit for ext4?
-> 
-> Now that resize works across 16TiB boundary, many people could be
-> interested in using ext4 as a slower but safer alternative to a
-> distributed filesystem for large storages. However 16TiB filesize
-> limit might be a problem if one wants to do big virtualization or
-> anyway somehow nesting storage systems one into the other. Is the
-> limit hard to fix?
-  It would mean an incompatible on disk format change in the format of
-extent. So it's doable but definitely not trivial.
+Hello,
 
-								Honza
+Ok, thanks a lot. I cloned the git repo, built everything, created my
+partition, and started studying inline_data =)
+
+So, the wiki says that files up to 60 bytes are stucked into i_block
+and that goes OK was easy to implement
+
+But I am having problems with " If the rest of the file would fit
+inside the extended attribute space, then it might be found as the
+extended attribute "system.data". This of course constrains the amount
+of extended attributes one can attach to an inode."
+
+I have some questions about this =)
+
+1> Up to how many bytes exactly will the extended attribute be used?
+
+2> Are the extended attribute space always used up to this limit of bytes?
+
+3> There is no per-inode setting of the inlining, right? For example,
+for extents I check for ext4_inode.i_flags if there is EXT4_EXTENTS_FL
+inside it. I couldn't find an equivalent EXT4_*_FL for inlining or
+does it exist?
+
+4> Do all inodes contain extended attributes? If one didn't previously
+contain any the disk saving would not happen I guess.
+
+thanks a lot,
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Felipe Monteiro de Carvalho
