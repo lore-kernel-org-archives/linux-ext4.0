@@ -1,7 +1,7 @@
 From: Andy Lutomirski <luto@amacapital.net>
-Subject: [PATCH v4 3/7] mm: Allow filesystems to defer cmtime updates
-Date: Thu, 22 Aug 2013 17:03:19 -0700
-Message-ID: <e1620c8e4909a65e270c8e9590e307c22fd96a44.1377193658.git.luto@amacapital.net>
+Subject: [PATCH v4 5/7] ext4: Defer mmap cmtime updates
+Date: Thu, 22 Aug 2013 17:03:21 -0700
+Message-ID: <a1e8b33cb80c0b5f6b437f35f298031c6b29c212.1377193658.git.luto@amacapital.net>
 References: <cover.1377193658.git.luto@amacapital.net>
 Cc: linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
 	Theodore Ts'o <tytso@mit.edu>,
@@ -10,219 +10,89 @@ Cc: linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
 	Christoph Hellwig <hch@infradead.org>,
 	Andy Lutomirski <luto@amacapital.net>
 To: linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pa0-f54.google.com ([209.85.220.54]:47514 "EHLO
+	mail-pa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754719Ab3HWADq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Aug 2013 20:03:46 -0400
+Received: by mail-pa0-f54.google.com with SMTP id kx10so1243774pab.27
+        for <linux-ext4@vger.kernel.org>; Thu, 22 Aug 2013 17:03:45 -0700 (PDT)
 In-Reply-To: <cover.1377193658.git.luto@amacapital.net>
 In-Reply-To: <cover.1377193658.git.luto@amacapital.net>
 References: <cover.1377193658.git.luto@amacapital.net>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
-
-Filesystems that defer cmtime updates should update cmtime when any
-of these events happen after a write via a mapping:
-
- - The mapping is written back to disk.  This happens from all kinds
-   of places, most of which eventually call ->writepages.  (The
-   exceptions are vmscan and migration.)
-
- - munmap is called or the mapping is removed when the process exits
-
- - msync(MS_ASYNC) is called.  Linux currently does nothing for
-   msync(MS_ASYNC), but POSIX says that cmtime should be updated some
-   time between an mmaped write and the subsequent msync call.
-   MS_SYNC calls ->writepages, but MS_ASYNC needs special handling.
-
-Filesystems are responsible for checking for pending deferred cmtime
-updates in .writepages (a helper is provided for this purpose) and
-for doing the actual update in .update_cmtime_deferred.
-
-These changes have no effect by themselves; filesystems must opt in
-by implementing .update_cmtime_deferred and removing any
-file_update_time call in .page_mkwrite.
-
-This patch does not implement the MS_ASYNC case; that's in the next
-patch.
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 Signed-off-by: Andy Lutomirski <luto@amacapital.net>
 ---
- include/linux/fs.h        |  8 +++++++
- include/linux/pagemap.h   |  6 ++++++
- include/linux/writeback.h |  1 +
- mm/migrate.c              |  2 ++
- mm/mmap.c                 |  6 +++++-
- mm/page-writeback.c       | 53 ++++++++++++++++++++++++++++++++++++++++++++++-
- mm/vmscan.c               |  1 +
- 7 files changed, 75 insertions(+), 2 deletions(-)
+ fs/ext4/inode.c | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 86cf0a4..f6b0f8b 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -350,6 +350,14 @@ struct address_space_operations {
- 	/* Write back some dirty pages from this mapping. */
- 	int (*writepages)(struct address_space *, struct writeback_control *);
- 
-+	/*
-+	 * Called when a deferred cmtime update should be applied.
-+	 * Implementations should update cmtime.  (As an optional
-+	 * optimization, implementaions can call mapping_test_clear_cmtime
-+	 * from writepages as well.)
-+	 */
-+	void (*update_cmtime_deferred)(struct address_space *);
-+
- 	/* Set a page dirty.  Return true if this dirtied it */
- 	int (*set_page_dirty)(struct page *page);
- 
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index 9a461ee..2647a13 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -90,6 +90,12 @@ static inline bool mapping_test_clear_cmtime(struct address_space * mapping)
- 	return test_and_clear_bit(AS_CMTIME, &mapping->flags);
- }
- 
-+/* Use this one in writepages, etc. */
-+extern void mapping_flush_cmtime(struct address_space * mapping);
-+
-+/* Use this one outside writeback. */
-+extern void mapping_flush_cmtime_nowb(struct address_space * mapping);
-+
- /*
-  * This is non-atomic.  Only to be used before the mapping is activated.
-  * Probably needs a barrier...
-diff --git a/include/linux/writeback.h b/include/linux/writeback.h
-index 4e198ca..efe4970 100644
---- a/include/linux/writeback.h
-+++ b/include/linux/writeback.h
-@@ -174,6 +174,7 @@ typedef int (*writepage_t)(struct page *page, struct writeback_control *wbc,
- 
- int generic_writepages(struct address_space *mapping,
- 		       struct writeback_control *wbc);
-+void generic_update_cmtime_deferred(struct address_space *mapping);
- void tag_pages_for_writeback(struct address_space *mapping,
- 			     pgoff_t start, pgoff_t end);
- int write_cache_pages(struct address_space *mapping,
-diff --git a/mm/migrate.c b/mm/migrate.c
-index 6f0c244..e4124e2 100644
---- a/mm/migrate.c
-+++ b/mm/migrate.c
-@@ -627,6 +627,8 @@ static int writeout(struct address_space *mapping, struct page *page)
- 		/* unlocked. Relock */
- 		lock_page(page);
- 
-+	mapping_flush_cmtime(mapping);
-+
- 	return (rc < 0) ? -EIO : -EAGAIN;
- }
- 
-diff --git a/mm/mmap.c b/mm/mmap.c
-index 1edbaa3..189eb7a 100644
---- a/mm/mmap.c
-+++ b/mm/mmap.c
-@@ -1,3 +1,4 @@
-+
- /*
-  * mm/mmap.c
-  *
-@@ -249,8 +250,11 @@ static struct vm_area_struct *remove_vma(struct vm_area_struct *vma)
- 	might_sleep();
- 	if (vma->vm_ops && vma->vm_ops->close)
- 		vma->vm_ops->close(vma);
--	if (vma->vm_file)
-+	if (vma->vm_file) {
-+		if ((vma->vm_flags & VM_SHARED) && vma->vm_file->f_mapping)
-+			mapping_flush_cmtime_nowb(vma->vm_file->f_mapping);
- 		fput(vma->vm_file);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index dd32a2e..2cb2961 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2382,8 +2382,11 @@ static int ext4_writepages(struct address_space *mapping,
+ 	 * a transaction for special inodes like journal inode on last iput()
+ 	 * because that could violate lock ordering on umount
+ 	 */
+-	if (!mapping->nrpages || !mapping_tagged(mapping, PAGECACHE_TAG_DIRTY))
++	if (!mapping->nrpages ||
++	    !mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
++		mapping_flush_cmtime(mapping);
+ 		return 0;
 +	}
- 	mpol_put(vma_policy(vma));
- 	kmem_cache_free(vm_area_cachep, vma);
- 	return next;
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index 3f0c895..4ec8c02 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -1912,12 +1912,30 @@ int generic_writepages(struct address_space *mapping,
  
- 	blk_start_plug(&plug);
- 	ret = write_cache_pages(mapping, wbc, __writepage, mapping);
+ 	if (ext4_should_journal_data(inode)) {
+ 		struct blk_plug plug;
+@@ -2391,6 +2394,7 @@ static int ext4_writepages(struct address_space *mapping,
+ 
+ 		blk_start_plug(&plug);
+ 		ret = write_cache_pages(mapping, wbc, __writepage, mapping);
++		mapping_flush_cmtime(mapping);
+ 		blk_finish_plug(&plug);
+ 		return ret;
+ 	}
+@@ -2525,6 +2529,7 @@ retry:
+ 		if (ret)
+ 			break;
+ 	}
 +	mapping_flush_cmtime(mapping);
  	blk_finish_plug(&plug);
- 	return ret;
- }
--
- EXPORT_SYMBOL(generic_writepages);
+ 	if (!ret && !cycled) {
+ 		cycled = 1;
+@@ -3238,6 +3243,7 @@ static const struct address_space_operations ext4_aops = {
+ 	.writepages		= ext4_writepages,
+ 	.write_begin		= ext4_write_begin,
+ 	.write_end		= ext4_write_end,
++	.update_cmtime_deferred	= generic_update_cmtime_deferred,
+ 	.bmap			= ext4_bmap,
+ 	.invalidatepage		= ext4_invalidatepage,
+ 	.releasepage		= ext4_releasepage,
+@@ -3254,6 +3260,7 @@ static const struct address_space_operations ext4_journalled_aops = {
+ 	.writepages		= ext4_writepages,
+ 	.write_begin		= ext4_write_begin,
+ 	.write_end		= ext4_journalled_write_end,
++	.update_cmtime_deferred	= generic_update_cmtime_deferred,
+ 	.set_page_dirty		= ext4_journalled_set_page_dirty,
+ 	.bmap			= ext4_bmap,
+ 	.invalidatepage		= ext4_journalled_invalidatepage,
+@@ -3270,6 +3277,7 @@ static const struct address_space_operations ext4_da_aops = {
+ 	.writepages		= ext4_writepages,
+ 	.write_begin		= ext4_da_write_begin,
+ 	.write_end		= ext4_da_write_end,
++	.update_cmtime_deferred	= generic_update_cmtime_deferred,
+ 	.bmap			= ext4_bmap,
+ 	.invalidatepage		= ext4_da_invalidatepage,
+ 	.releasepage		= ext4_releasepage,
+@@ -5025,7 +5033,6 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	int retries = 0;
  
-+/**
-+ * generic_update_cmtime_deferred - update cmtime after an mmapped write
-+ * @mapping: The mapping
-+ *
-+ * This library function implements .update_cmtime_deferred.  It is unlikely
-+ * that any filesystem will want to do anything here except update the time
-+ * (using this helper) or nothing at all (by leaving .update_cmtime_deferred
-+ * NULL).
-+ */
-+void generic_update_cmtime_deferred(struct address_space *mapping)
-+{
-+	struct blk_plug plug;
-+	blk_start_plug(&plug);
-+	inode_update_time_writable(mapping->host);
-+	blk_finish_plug(&plug);
-+}
-+EXPORT_SYMBOL(generic_update_cmtime_deferred);
-+
- int do_writepages(struct address_space *mapping, struct writeback_control *wbc)
- {
- 	int ret;
-@@ -1970,6 +1988,39 @@ int write_one_page(struct page *page, int wait)
- }
- EXPORT_SYMBOL(write_one_page);
- 
-+void mapping_flush_cmtime(struct address_space *mapping)
-+{
-+	if (mapping_test_clear_cmtime(mapping) &&
-+	    mapping->a_ops->update_cmtime_deferred)
-+		mapping->a_ops->update_cmtime_deferred(mapping);
-+}
-+EXPORT_SYMBOL(mapping_flush_cmtime);
-+
-+void mapping_flush_cmtime_nowb(struct address_space *mapping)
-+{
-+	/*
-+	 * We get called from munmap and msync.  Both calls can race
-+	 * with fs freezing.  If the fs is frozen after
-+	 * mapping_test_clear_cmtime but before the time update, then
-+	 * sync_filesystem will miss the cmtime update (because we
-+	 * just cleared it) and we don't be able to write (because the
-+	 * fs is frozen).  On the other hand, we can't just return if
-+	 * we're in the SB_FREEZE_PAGEFAULT state because our caller
-+	 * expects the timestamp to be synchronously updated.  So we
-+	 * get write access without blocking, at the SB_FREEZE_FS
-+	 * level.  If the fs is already fully frozen, then we already
-+	 * know we have nothing to do.
-+	 */
-+
-+	if (!mapping_test_cmtime(mapping))
-+		return;  /* Optimization: nothing to do. */
-+
-+	if (__sb_start_write(mapping->host->i_sb, SB_FREEZE_FS, false)) {
-+		mapping_flush_cmtime(mapping);
-+		__sb_end_write(mapping->host->i_sb, SB_FREEZE_FS);
-+	}
-+}
-+
- /*
-  * For address_spaces which do not use buffers nor write back.
-  */
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index 2cff0d4..3b759e7 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -429,6 +429,7 @@ static pageout_t pageout(struct page *page, struct address_space *mapping,
- 		res = mapping->a_ops->writepage(page, &wbc);
- 		if (res < 0)
- 			handle_write_error(mapping, page, res);
-+		mapping_flush_cmtime(mapping);
- 		if (res == AOP_WRITEPAGE_ACTIVATE) {
- 			ClearPageReclaim(page);
- 			return PAGE_ACTIVATE;
+ 	sb_start_pagefault(inode->i_sb);
+-	file_update_time(vma->vm_file);
+ 	/* Delalloc case is easy... */
+ 	if (test_opt(inode->i_sb, DELALLOC) &&
+ 	    !ext4_should_journal_data(inode) &&
 -- 
 1.8.3.1
+
