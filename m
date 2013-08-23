@@ -1,57 +1,58 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: crash in __jbd2_journal_file_buffer
-Date: Fri, 23 Aug 2013 21:52:54 +0200
-Message-ID: <20130823195254.GA12980@quack.suse.cz>
-References: <20130731190245.GC28018@quack.suse.cz>
- <alpine.DEB.2.00.1308091031450.17790@cobra.newdream.net>
- <20130809212425.GB1050@quack.suse.cz>
- <alpine.DEB.2.00.1308091504320.14125@cobra.newdream.net>
- <20130812125256.GB4596@quack.suse.cz>
- <alpine.DEB.2.00.1308121106320.29150@cobra.newdream.net>
- <20130813103416.GA12197@quack.suse.cz>
- <alpine.DEB.2.00.1308221633080.475@cobra.newdream.net>
- <20130823095405.GA3568@quack.suse.cz>
- <alpine.DEB.2.00.1308230759110.2967@cobra.newdream.net>
+From: Eric Whitney <enwlinux@gmail.com>
+Subject: [PATCH] xfstests: only run generic/300 on filesystems supporting
+	fallocate()
+Date: Fri, 23 Aug 2013 16:41:32 -0400
+Message-ID: <20130823204132.GB3778@wallace>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Sage Weil <sage@inktank.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:58266 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754760Ab3HWTwz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 23 Aug 2013 15:52:55 -0400
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: xfs@oss.sgi.com
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <alpine.DEB.2.00.1308230759110.2967@cobra.newdream.net>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri 23-08-13 08:02:45, Sage Weil wrote:
-> On Fri, 23 Aug 2013, Jan Kara wrote:
-> > On Thu 22-08-13 16:35:15, Sage Weil wrote:
-> > > On Tue, 13 Aug 2013, Jan Kara wrote:
-> > > > On Mon 12-08-13 11:13:06, Sage Weil wrote:
-> > > > > Full dmesg is attached.
-> > > >   Hum, nothing interesting in there...
-> > > > 
-> > > > > Our QA seems to hit this with some regularity.  Let me know if there's 
-> > > > > some combination of patches that would help shed more light!
-> > > >   If they can run with attached debug patch it could maybe sched some more
-> > > > light. Please send also your System.map file together with the dmesg of the
-> > > > kernel when the crash happens so that I can map addresses to function
-> > > > names... Thanks!
-> > > 
-> > > Okay, finally hit it again:
-> > > 
-> > > <6>[75193.192249] EXT4-fs (sda1): re-mounted. Opts: errors=remount-ro,user_xattr,user_xattr
-> > > <3>[77877.426658] Dirtying buffer without jh at 4302720297: state 218c029,jh added from 0xffffffff8127ab1d at 4302720297, removed from 0xffffffff8127b5b0 at 4302720296
-> >   Great! Can you please send me /proc/kallsyms from the machine?
-> 
-> Attached!
-  Sadly not. I think your MUA got confused by the fact that files in /proc
-have 0 length and attached empty file.
+Generic/300 fails when run on a test filesystem that does not support
+fallocate(), as in the case of an ext4 filesystem created without the
+extent feature.  It uses fio's falloc ioengine to generate part of its
+I/O load.
 
-								Honza
+Verify that the test filesystem supports fallocate() before proceeding
+with the test.  Also, delete any pre-existing test output to avoid
+confusion with old results.
+
+Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+---
+ tests/generic/300 |    3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/tests/generic/300 b/tests/generic/300
+index 7c60728..1ac763b 100755
+--- a/tests/generic/300
++++ b/tests/generic/300
+@@ -43,6 +43,9 @@ _supported_fs generic
+ _supported_os Linux
+ _need_to_be_root
+ _require_scratch
++_require_xfs_io_falloc
++
++rm -f $seqres.full
+ 
+ NUM_JOBS=$((4*LOAD_FACTOR))
+ BLK_DEV_SIZE=`blockdev --getsz $SCRATCH_DEV`
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.7.10.4
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
