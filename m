@@ -1,71 +1,180 @@
-From: Boxi Liu <boxi10liu@gmail.com>
-Subject: there is a BUG in disk full case in inlinedata feature.
-Date: Wed, 28 Aug 2013 01:09:11 +0800
-Message-ID: <CAAFszuVts-gn85SqPje=dibGFVo9GH6RKSJiOP6KtkZTgdDYNQ@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Issues with a rather unusual configured NFS server
+Date: Tue, 27 Aug 2013 14:06:55 -0400
+Message-ID: <20130827180655.GE14809@fieldses.org>
+References: <52075E01.7030506@gmx.de>
+ <20130812143640.GF4596@quack.suse.cz>
+ <20130813215313.GH17781@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "lewis.liulei" <lewis.liulei@huawei.com>
-To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Robin Dong <sanbai@taobao.com>, Theodore Tso <tytso@mit.edu>,
-	"tm@tao.ma" <tm@tao.ma>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Toralf =?utf-8?Q?F=C3=B6rster?= <toralf.foerster@gmx.de>,
+	Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+	"user-mode-linux-devel@lists.sourceforge.net"
+	<user-mode-linux-devel@lists.sourceforge.net>,
+	linux-ext4@vger.kernel.org,
+	Linux Kernel <linux-kernel@vger.kernel.org>,
+	"J. Bruce Fields" <bfields@redhat.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wi0-f178.google.com ([209.85.212.178]:63604 "EHLO
-	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751700Ab3H0RJN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Aug 2013 13:09:13 -0400
-Received: by mail-wi0-f178.google.com with SMTP id c10so1556978wiw.5
-        for <linux-ext4@vger.kernel.org>; Tue, 27 Aug 2013 10:09:11 -0700 (PDT)
+Received: from fieldses.org ([174.143.236.118]:42360 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752354Ab3H0SHG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 27 Aug 2013 14:07:06 -0400
+Content-Disposition: inline
+In-Reply-To: <20130813215313.GH17781@fieldses.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-there is a BUG in EXT4 inlinedata feature when the disk is full(0B).
-tast case:
-    step1: use the dd to make the disk full,has 0B remained.
-    step2: touch a inlinedata file
-           echo -n "123456" >> test.txt
-    step3: make the inlinedata file test.txt convert to extent block.
-           echo -n
-"123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890">>test.txt
-the step3 will write failed.and print the BUG Backtrace:
-page:c1963bc0 count:-1 mapcount:0 mapping: (null) index:0x0
-page flags:0x40000000()
-Backtrace:
-[<c004e180>] (dump_backtrace + 0x0/0x12c) from [<c07724ac>]
-(dump_stack +0x18/0x1c)
-r6:c0043a84  r5:c0bb688  r4:c1963bc0 r3:00000000
-[<c0772494>] (dump_stack + 0x0/0x1c) from [<c00f6dd4>] (bad_page + 0xbc/0x13c)
-[<c00fbd18>] (bad_page + 0x0/0x13c) from [<c00f74b80>]
-(get_page_from_freelist + 0x4cc/0xb6c)
-r7:c1963bd8 r6:c0043194 r5:c1963bc0 r4:00000001
-[<c00f6fec>] (get_page_from_freelist +0x0/0xb6c) from [<c00f8148>]
-(__alloc_pages_nodemask + 0x144/0x820)
-[<c00f8004>] (__alloc_pages_nodemask +0x0/0x820) from [<c0115250>]
-(handle_pte_fault + 0x574/0x758)
-[<c0114cdc>] (handle_pte_fault + 0x0/0x758) from [<c0115500>]
-(handle_mm_fault + 0xcc/0x110)
-[<c0115434>] (handel_mm_fault + 0x0/0x110) from [<c00521a8>]
-(do_page_fault + 0x16c/0x1f4)
-[<c005203c>] (do_page_fault + 0x0/0x1f4) from [<c00440d0>]
-(do_DataAbort + 0x40/0xac)
-[<c0044090>] (do_DataAbort + 0x0/0xac) from [<c004a064>]
-(ret_from_exception + 0x0/0x10)
+On Tue, Aug 13, 2013 at 05:53:14PM -0400, bfields wrote:
+> On Mon, Aug 12, 2013 at 04:36:40PM +0200, Jan Kara wrote:
+> > On Sun 11-08-13 11:48:49, Toralf F=C3=B6rster wrote:
+> > > so that the server either crashes (if it is a user mode linux ima=
+ge) or at least its reboot functionality got broken
+> > > - if the NFS server is hammered with scary NFS calls using a fuzz=
+y tool running at a remote NFS client under a non-privileged user id.
+> > >=20
+> > > It can re reproduced, if
+> > > 	- the NFS share is an EXT3 or EXT4 directory
+> > > 	- and it is created at file located at tempfs and mounted via lo=
+op device
+> > > 	- and the NFS server is forced to umount the NFS share
+> > > 	- and the server forced to restart the NSF service afterwards
+> > > 	- and trinity is used
+> > >=20
+> > > I could find a scenario for an automated bisect. 2 times it broug=
+ht this commit=20
+> > > commit 68a3396178e6688ad7367202cdf0af8ed03c8727
+> > > Author: J. Bruce Fields <bfields@redhat.com>
+> > > Date:   Thu Mar 21 11:21:50 2013 -0400
+> > >=20
+> > >     nfsd4: shut down more of delegation earlier
+>=20
+> Thanks for the report.  I think I see the problem--after this commit
+> nfs4_set_delegation() failures result in nfs4_put_delegation being
+> called, but nfs4_put_delegation doesn't free the nfs4_file that has
+> already been set by alloc_init_deleg().
+>=20
+> Let me think about how to fix that....
 
-And when the system reboot , the step2 data "123456" will alse lost.
-You can cat the test.txt,but there is no data in the file.
-the reason is when the inlinedata convert to extent in the limit case,
-the inlinedata read to the page,then destory the inlinedata,next step
-is to __block_write_begin,but it can't get block,return -ENOSPC. so
-the data lost.
+Sorry for the slow response--can you check whether this fixes the
+problem?
 
-there is a patch may fix the bug:
-in inline.c ext4_convert_inline_data_to_extent
+--b.
 
-         needed_blocks = ext4_writepage_trans_blocks(inode);
+commit 624a0ee0375940ce4aa36330b0b5a70af6d2b6f5
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Thu Aug 15 16:55:26 2013 -0400
 
-+        if(EXT4_C2B(sbi,percpu_counter_read_positive(&sbi->s_freeclusters_counter))
-< needed_blocks)
-+               return -ENOSPC;
-+
-         ret = ext4_get_inode_loc(inode, &iloc);
-         if (ret)
-                 return ret;
+    nfsd4: fix leak of inode reference on delegation failure
+   =20
+    This fixes a regression from 68a3396178e6688ad7367202cdf0af8ed03c87=
+27
+    "nfsd4: shut down more of delegation earlier".
+   =20
+    After that commit, nfs4_set_delegation() failures result in
+    nfs4_put_delegation being called, but nfs4_put_delegation doesn't f=
+ree
+    the nfs4_file that has already been set by alloc_init_deleg().
+   =20
+    This can result in an oops on later unmounting the exported filesys=
+tem.
+   =20
+    Note also delaying the fi_had_conflict check we're able to return a
+    better error (hence give 4.1 clients a better idea why the delegati=
+on
+    failed; though note CONFLICT isn't an exact match here, as that's
+    supposed to indicate a current conflict, but all we know here is th=
+at
+    there was one recently).
+   =20
+    Reported-by: Toralf F=C3=B6rster <toralf.foerster@gmx.de>
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index eb9cf81..0874998 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -368,11 +368,8 @@ static struct nfs4_delegation *
+ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp,=
+ struct svc_fh *current_fh)
+ {
+ 	struct nfs4_delegation *dp;
+-	struct nfs4_file *fp =3D stp->st_file;
+=20
+ 	dprintk("NFSD alloc_init_deleg\n");
+-	if (fp->fi_had_conflict)
+-		return NULL;
+ 	if (num_delegations > max_delegations)
+ 		return NULL;
+ 	dp =3D delegstateid(nfs4_alloc_stid(clp, deleg_slab));
+@@ -389,8 +386,7 @@ alloc_init_deleg(struct nfs4_client *clp, struct nf=
+s4_ol_stateid *stp, struct sv
+ 	INIT_LIST_HEAD(&dp->dl_perfile);
+ 	INIT_LIST_HEAD(&dp->dl_perclnt);
+ 	INIT_LIST_HEAD(&dp->dl_recall_lru);
+-	get_nfs4_file(fp);
+-	dp->dl_file =3D fp;
++	dp->dl_file =3D NULL;
+ 	dp->dl_type =3D NFS4_OPEN_DELEGATE_READ;
+ 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
+ 	dp->dl_time =3D 0;
+@@ -3044,22 +3040,35 @@ static int nfs4_setlease(struct nfs4_delegation=
+ *dp)
+ 	return 0;
+ }
+=20
+-static int nfs4_set_delegation(struct nfs4_delegation *dp)
++static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4=
+_file *fp)
+ {
+-	struct nfs4_file *fp =3D dp->dl_file;
++	int status;
+=20
+-	if (!fp->fi_lease)
+-		return nfs4_setlease(dp);
++	if (fp->fi_had_conflict)
++		return -EAGAIN;
++	get_nfs4_file(fp);
++	dp->dl_file =3D fp;
++	if (!fp->fi_lease) {
++		status =3D nfs4_setlease(dp);
++		if (status)
++			goto out_free;
++		return 0;
++	}
+ 	spin_lock(&recall_lock);
+ 	if (fp->fi_had_conflict) {
+ 		spin_unlock(&recall_lock);
+-		return -EAGAIN;
++		status =3D -EAGAIN;
++		goto out_free;
+ 	}
+ 	atomic_inc(&fp->fi_delegees);
+ 	list_add(&dp->dl_perfile, &fp->fi_delegations);
+ 	spin_unlock(&recall_lock);
+ 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
+ 	return 0;
++out_free:
++	put_nfs4_file(fp);
++	dp->dl_file =3D fp;
++	return status;
+ }
+=20
+ static void nfsd4_open_deleg_none_ext(struct nfsd4_open *open, int sta=
+tus)
+@@ -3134,7 +3143,7 @@ nfs4_open_delegation(struct net *net, struct svc_=
+fh *fh,
+ 	dp =3D alloc_init_deleg(oo->oo_owner.so_client, stp, fh);
+ 	if (dp =3D=3D NULL)
+ 		goto out_no_deleg;
+-	status =3D nfs4_set_delegation(dp);
++	status =3D nfs4_set_delegation(dp, stp->st_file);
+ 	if (status)
+ 		goto out_free;
+=20
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
