@@ -1,180 +1,125 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Issues with a rather unusual configured NFS server
-Date: Tue, 27 Aug 2013 14:06:55 -0400
-Message-ID: <20130827180655.GE14809@fieldses.org>
-References: <52075E01.7030506@gmx.de>
- <20130812143640.GF4596@quack.suse.cz>
- <20130813215313.GH17781@fieldses.org>
+From: =?ISO-8859-1?Q?Kevyn=2DAlexandre_Par=E9?=
+	<kevyn.alexandre.pare@gmail.com>
+Subject: Re: Unable to randomly boot rootfs (EXT3 or EXT4) from SD: MMC error
+ -110 (TIMEDOUT)
+Date: Tue, 27 Aug 2013 17:47:22 -0400
+Message-ID: <CAL1yNc+9pOWLCLfk7WpWvvsLfb01cFCJSi+4mTvnks9VrwoF1Q@mail.gmail.com>
+References: <CAL1yNcJZBSSNu4aDmL6n9uu3LkNPCOM-LbUXD2990jkPJYpLoA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Toralf =?utf-8?Q?F=C3=B6rster?= <toralf.foerster@gmx.de>,
-	Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-	"user-mode-linux-devel@lists.sourceforge.net"
-	<user-mode-linux-devel@lists.sourceforge.net>,
-	linux-ext4@vger.kernel.org,
-	Linux Kernel <linux-kernel@vger.kernel.org>,
-	"J. Bruce Fields" <bfields@redhat.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:42360 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752354Ab3H0SHG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 27 Aug 2013 14:07:06 -0400
-Content-Disposition: inline
-In-Reply-To: <20130813215313.GH17781@fieldses.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: linux-omap@vger.kernel.org, linux-mmc@vger.kernel.org
+Return-path: <linux-omap-owner@vger.kernel.org>
+In-Reply-To: <CAL1yNcJZBSSNu4aDmL6n9uu3LkNPCOM-LbUXD2990jkPJYpLoA@mail.gmail.com>
+Sender: linux-omap-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Aug 13, 2013 at 05:53:14PM -0400, bfields wrote:
-> On Mon, Aug 12, 2013 at 04:36:40PM +0200, Jan Kara wrote:
-> > On Sun 11-08-13 11:48:49, Toralf F=C3=B6rster wrote:
-> > > so that the server either crashes (if it is a user mode linux ima=
-ge) or at least its reboot functionality got broken
-> > > - if the NFS server is hammered with scary NFS calls using a fuzz=
-y tool running at a remote NFS client under a non-privileged user id.
-> > >=20
-> > > It can re reproduced, if
-> > > 	- the NFS share is an EXT3 or EXT4 directory
-> > > 	- and it is created at file located at tempfs and mounted via lo=
-op device
-> > > 	- and the NFS server is forced to umount the NFS share
-> > > 	- and the server forced to restart the NSF service afterwards
-> > > 	- and trinity is used
-> > >=20
-> > > I could find a scenario for an automated bisect. 2 times it broug=
-ht this commit=20
-> > > commit 68a3396178e6688ad7367202cdf0af8ed03c8727
-> > > Author: J. Bruce Fields <bfields@redhat.com>
-> > > Date:   Thu Mar 21 11:21:50 2013 -0400
-> > >=20
-> > >     nfsd4: shut down more of delegation earlier
->=20
-> Thanks for the report.  I think I see the problem--after this commit
-> nfs4_set_delegation() failures result in nfs4_put_delegation being
-> called, but nfs4_put_delegation doesn't free the nfs4_file that has
-> already been set by alloc_init_deleg().
->=20
-> Let me think about how to fix that....
+Hi,
+Another test with 3.4.59 with EXT4 and:
+tune2fs -o journal_data_ordered -e panic (partition)
+results in kernel panic:
 
-Sorry for the slow response--can you check whether this fixes the
-problem?
+[...]
+Waiting for root device /dev/mmcblk0p2...
+mmc0: host does not support reading read-only switch. assuming write-en=
+able.
+mmc0: new high speed SDXC card at address aaaa
+mmcblk0: mmc0:aaaa SU64G 59.4 GiB
+ mmcblk0: p1 p2
+mmc1: mmc_rescan_try_freq: trying to init card at 400000 Hz
+mmc1: new SDIO card at address 0001
+EXT4-fs (mmcblk0p2): mounted filesystem with ordered data mode. Opts: (=
+null)
+VFS: Mounted root (ext4 filesystem) on device 179:2.
+devtmpfs: mounted
+=46reeing init memory: 220K
+INIT: version 2.86 booting
+mmcblk0: error -110 sending status command, retrying
+mmcblk0: error -110 sending status command, retrying
+mmcblk0: error -110 sending status command, aborting
+end_request: I/O error, dev mmcblk0, sector 4391640
+mmcblk0: error -110 sending status command, retrying
+mmcblk0: error -110 sending status command, retrying
+mmcblk0: error -110 sending status command, aborting
+end_request: I/O error, dev mmcblk0, sector 4391640
+mmcblk0: error -110 sending status command, retrying
+mmcblk0: error -110 sending status command, retrying
+mmcblk0: error -110 sending status command, aborting
+end_request: I/O error, dev mmcblk0, sector 4391640
+mmcblk0: error -110 sending status command, retrying
+mmcblk0: error -110 sending status command, retrying
+mmcblk0: error -110 sending status command, aborting
+end_request: I/O error, dev mmcblk0, sector 4391640
+mmcblk0: error -110 sending status command, retrying
+mmcblk0: error -110 sending status command, retrying
+mmcblk0: error -110 sending status command, aborting
+end_request: I/O error, dev mmcblk0, sector 131072
+Buffer I/O error on device mmcblk0p2, logical block 0
+lost page write due to I/O error on mmcblk0p2
+EXT4-fs error (device mmcblk0p2): ext4_find_entry:932: inode #131526:
+comm rc: reading directory lblock 0
+Aborting journal on device mmcblk0p2-8.
+mmcblk0: error -110 sending status command, retrying
+mmcblk0: error -110 sending status command, retrying
+mmcblk0: error -110 sending status command, aborting
+end_request: I/O error, dev mmcblk0, sector 59113472
+Buffer I/O error on device mmcblk0p2, logical block 7372800
+lost page write due to I/O error on mmcblk0p2
+JBD2: Error -5 detected when updating journal superblock for mmcblk0p2-=
+8.
+mmcblk0: error -110 sending status command, retrying
+mmcblk0: error -110 sending status command, retrying
+mmcblk0: error -110 sending status command, aborting
+end_request: I/O error, dev mmcblk0, sector 59113472
+Buffer I/O error on device mmcblk0p2, logical block 7372800
+lost page write due to I/O error on mmcblk0p2
+JBD2: Error -5 detected when updating journal superblock for mmcblk0p2-=
+8.
+Kernel panic - not syncing: EXT4-fs (device mmcblk0p2): panic forced af=
+ter error
 
---b.
 
-commit 624a0ee0375940ce4aa36330b0b5a70af6d2b6f5
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Thu Aug 15 16:55:26 2013 -0400
+If you need specific details let me know.
 
-    nfsd4: fix leak of inode reference on delegation failure
-   =20
-    This fixes a regression from 68a3396178e6688ad7367202cdf0af8ed03c87=
-27
-    "nfsd4: shut down more of delegation earlier".
-   =20
-    After that commit, nfs4_set_delegation() failures result in
-    nfs4_put_delegation being called, but nfs4_put_delegation doesn't f=
-ree
-    the nfs4_file that has already been set by alloc_init_deleg().
-   =20
-    This can result in an oops on later unmounting the exported filesys=
-tem.
-   =20
-    Note also delaying the fi_had_conflict check we're able to return a
-    better error (hence give 4.1 clients a better idea why the delegati=
-on
-    failed; though note CONFLICT isn't an exact match here, as that's
-    supposed to indicate a current conflict, but all we know here is th=
-at
-    there was one recently).
-   =20
-    Reported-by: Toralf F=C3=B6rster <toralf.foerster@gmx.de>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+thx
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index eb9cf81..0874998 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -368,11 +368,8 @@ static struct nfs4_delegation *
- alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp,=
- struct svc_fh *current_fh)
- {
- 	struct nfs4_delegation *dp;
--	struct nfs4_file *fp =3D stp->st_file;
-=20
- 	dprintk("NFSD alloc_init_deleg\n");
--	if (fp->fi_had_conflict)
--		return NULL;
- 	if (num_delegations > max_delegations)
- 		return NULL;
- 	dp =3D delegstateid(nfs4_alloc_stid(clp, deleg_slab));
-@@ -389,8 +386,7 @@ alloc_init_deleg(struct nfs4_client *clp, struct nf=
-s4_ol_stateid *stp, struct sv
- 	INIT_LIST_HEAD(&dp->dl_perfile);
- 	INIT_LIST_HEAD(&dp->dl_perclnt);
- 	INIT_LIST_HEAD(&dp->dl_recall_lru);
--	get_nfs4_file(fp);
--	dp->dl_file =3D fp;
-+	dp->dl_file =3D NULL;
- 	dp->dl_type =3D NFS4_OPEN_DELEGATE_READ;
- 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
- 	dp->dl_time =3D 0;
-@@ -3044,22 +3040,35 @@ static int nfs4_setlease(struct nfs4_delegation=
- *dp)
- 	return 0;
- }
-=20
--static int nfs4_set_delegation(struct nfs4_delegation *dp)
-+static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4=
-_file *fp)
- {
--	struct nfs4_file *fp =3D dp->dl_file;
-+	int status;
-=20
--	if (!fp->fi_lease)
--		return nfs4_setlease(dp);
-+	if (fp->fi_had_conflict)
-+		return -EAGAIN;
-+	get_nfs4_file(fp);
-+	dp->dl_file =3D fp;
-+	if (!fp->fi_lease) {
-+		status =3D nfs4_setlease(dp);
-+		if (status)
-+			goto out_free;
-+		return 0;
-+	}
- 	spin_lock(&recall_lock);
- 	if (fp->fi_had_conflict) {
- 		spin_unlock(&recall_lock);
--		return -EAGAIN;
-+		status =3D -EAGAIN;
-+		goto out_free;
- 	}
- 	atomic_inc(&fp->fi_delegees);
- 	list_add(&dp->dl_perfile, &fp->fi_delegations);
- 	spin_unlock(&recall_lock);
- 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
- 	return 0;
-+out_free:
-+	put_nfs4_file(fp);
-+	dp->dl_file =3D fp;
-+	return status;
- }
-=20
- static void nfsd4_open_deleg_none_ext(struct nfsd4_open *open, int sta=
-tus)
-@@ -3134,7 +3143,7 @@ nfs4_open_delegation(struct net *net, struct svc_=
-fh *fh,
- 	dp =3D alloc_init_deleg(oo->oo_owner.so_client, stp, fh);
- 	if (dp =3D=3D NULL)
- 		goto out_no_deleg;
--	status =3D nfs4_set_delegation(dp);
-+	status =3D nfs4_set_delegation(dp, stp->st_file);
- 	if (status)
- 		goto out_free;
-=20
+-KA
+
+On Sun, Jul 21, 2013 at 1:07 PM, Kevyn-Alexandre Par=E9
+<kevyn.alexandre.pare@gmail.com> wrote:
+> Hi,
+>
+> I'm trying to figure out why when randomly booting our system after i=
+t =3D
+> have been hard shutdown for some time (couple of minutes to couple of=
+ =3D
+> days) doesn't boot with MMC error?=3D20
+>
+> WORKAROUND:
+> Rebooting the system most of the time remove the issue.
+>
+> I try couple of version of Kernel from stable 3.2.47 & 3.4.53 without=
+ =3D
+> success.
+> I try to change FS from EXT3 to EXT4 without success.
+> I try multiple SD..
+>
+> Any proposition of test that you think that is worth trying, I'm will=
+ing =3D
+> to try.
+>
+> Your opinions will really be appreciated,
+>
+> See below for some output of my environment,
+> http://pastebin.com/qchsr1FQ
+>
+> Thx,
+>
+> -Kevyn-Alexandre Par=3DE9
+> ps: My intention are to enable CONFIG_MMC_DEBUG? Try kernel 3.10.1?
 --
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+To unsubscribe from this list: send the line "unsubscribe linux-omap" i=
 n
 the body of a message to majordomo@vger.kernel.org
 More majordomo info at  http://vger.kernel.org/majordomo-info.html
