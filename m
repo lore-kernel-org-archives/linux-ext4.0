@@ -1,60 +1,71 @@
-From: Dave Jones <davej@redhat.com>
-Subject: Re: [PATCH 4/4] ext4: Fix lost truncate due to race with writeback
-Date: Mon, 26 Aug 2013 15:01:48 -0400
-Message-ID: <20130826190137.GA27768@redhat.com>
-References: <1375710744-29329-1-git-send-email-jack@suse.cz>
- <1375710744-29329-5-git-send-email-jack@suse.cz>
- <20130817141227.GG30769@thunk.org>
+From: Boxi Liu <boxi10liu@gmail.com>
+Subject: there is a BUG in disk full case in inlinedata feature.
+Date: Wed, 28 Aug 2013 01:09:11 +0800
+Message-ID: <CAAFszuVts-gn85SqPje=dibGFVo9GH6RKSJiOP6KtkZTgdDYNQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	Zheng Liu <gnehzuil.liu@gmail.com>,
-	Linus Torvalds <torvalds@linux-foundation.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "lewis.liulei" <lewis.liulei@huawei.com>
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Robin Dong <sanbai@taobao.com>, Theodore Tso <tytso@mit.edu>,
+	"tm@tao.ma" <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:27029 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751717Ab3HZTCE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 26 Aug 2013 15:02:04 -0400
-Content-Disposition: inline
-In-Reply-To: <20130817141227.GG30769@thunk.org>
+Received: from mail-wi0-f178.google.com ([209.85.212.178]:63604 "EHLO
+	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751700Ab3H0RJN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Aug 2013 13:09:13 -0400
+Received: by mail-wi0-f178.google.com with SMTP id c10so1556978wiw.5
+        for <linux-ext4@vger.kernel.org>; Tue, 27 Aug 2013 10:09:11 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Aug 17, 2013 at 10:12:27AM -0400, Theodore Ts'o wrote:
- > On Mon, Aug 05, 2013 at 03:52:24PM +0200, Jan Kara wrote:
- > > The following race can lead to a loss of i_disksize update from truncate
- > > thus resulting in a wrong inode size if the inode size isn't updated
- > > again before inode is reclaimed:
- > > 
- > > ext4_setattr()				mpage_map_and_submit_extent()
- > >   EXT4_I(inode)->i_disksize = attr->ia_size;
- > >   ...					  ...
- > > 					  disksize = ((loff_t)mpd->first_page) << PAGE_CACHE_SHIFT
- > > 					  /* False because i_size isn't
- > > 					   * updated yet */
- > > 					  if (disksize > i_size_read(inode))
- > > 					  /* True, because i_disksize is
- > > 					   * already truncated */
- > > 					  if (disksize > EXT4_I(inode)->i_disksize)
- > > 					    /* Overwrite i_disksize
- > > 					     * update from truncate */
- > > 					    ext4_update_i_disksize()
- > >   i_size_write(inode, attr->ia_size);
- > > 
- > > For other places updating i_disksize such race cannot happen because
- > > i_mutex prevents these races. Writeback is the only place where we do
- > > not hold i_mutex and we cannot grab it there because of lock ordering.
- > > 
- > > We fix the race by doing both i_disksize and i_size update in truncate
- > > atomically under i_data_sem and in mpage_map_and_submit_extent() we move
- > > the check against i_size under i_data_sem as well.
- > > 
- > > Signed-off-by: Jan Kara <jack@suse.cz>
- > 
- > Applied, thanks.
+there is a BUG in EXT4 inlinedata feature when the disk is full(0B).
+tast case:
+    step1: use the dd to make the disk full,has 0B remained.
+    step2: touch a inlinedata file
+           echo -n "123456" >> test.txt
+    step3: make the inlinedata file test.txt convert to extent block.
+           echo -n
+"123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890">>test.txt
+the step3 will write failed.and print the BUG Backtrace:
+page:c1963bc0 count:-1 mapcount:0 mapping: (null) index:0x0
+page flags:0x40000000()
+Backtrace:
+[<c004e180>] (dump_backtrace + 0x0/0x12c) from [<c07724ac>]
+(dump_stack +0x18/0x1c)
+r6:c0043a84  r5:c0bb688  r4:c1963bc0 r3:00000000
+[<c0772494>] (dump_stack + 0x0/0x1c) from [<c00f6dd4>] (bad_page + 0xbc/0x13c)
+[<c00fbd18>] (bad_page + 0x0/0x13c) from [<c00f74b80>]
+(get_page_from_freelist + 0x4cc/0xb6c)
+r7:c1963bd8 r6:c0043194 r5:c1963bc0 r4:00000001
+[<c00f6fec>] (get_page_from_freelist +0x0/0xb6c) from [<c00f8148>]
+(__alloc_pages_nodemask + 0x144/0x820)
+[<c00f8004>] (__alloc_pages_nodemask +0x0/0x820) from [<c0115250>]
+(handle_pte_fault + 0x574/0x758)
+[<c0114cdc>] (handle_pte_fault + 0x0/0x758) from [<c0115500>]
+(handle_mm_fault + 0xcc/0x110)
+[<c0115434>] (handel_mm_fault + 0x0/0x110) from [<c00521a8>]
+(do_page_fault + 0x16c/0x1f4)
+[<c005203c>] (do_page_fault + 0x0/0x1f4) from [<c00440d0>]
+(do_DataAbort + 0x40/0xac)
+[<c0044090>] (do_DataAbort + 0x0/0xac) from [<c004a064>]
+(ret_from_exception + 0x0/0x10)
 
-Is this queued for 3.11 ? 1k blocksize fs's are still broken in rc7.
+And when the system reboot , the step2 data "123456" will alse lost.
+You can cat the test.txt,but there is no data in the file.
+the reason is when the inlinedata convert to extent in the limit case,
+the inlinedata read to the page,then destory the inlinedata,next step
+is to __block_write_begin,but it can't get block,return -ENOSPC. so
+the data lost.
 
-	Dave
+there is a patch may fix the bug:
+in inline.c ext4_convert_inline_data_to_extent
 
+         needed_blocks = ext4_writepage_trans_blocks(inode);
+
++        if(EXT4_C2B(sbi,percpu_counter_read_positive(&sbi->s_freeclusters_counter))
+< needed_blocks)
++               return -ENOSPC;
++
+         ret = ext4_get_inode_loc(inode, &iloc);
+         if (ret)
+                 return ret;
