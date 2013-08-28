@@ -1,86 +1,92 @@
-From: Tao Ma <tm@tao.ma>
-Subject: Re: there is a BUG in disk full case in inlinedata feature.
-Date: Wed, 28 Aug 2013 09:04:50 +0800
-Message-ID: <521D4CB2.2060805@tao.ma>
-References: <CAAFszuVts-gn85SqPje=dibGFVo9GH6RKSJiOP6KtkZTgdDYNQ@mail.gmail.com>
+From: Robert Yang <liezhi.yang@windriver.com>
+Subject: [RFC 07/10] misc/util.c: set more information for inode
+Date: Wed, 28 Aug 2013 13:25:57 +0800
+Message-ID: <1377667560-20089-8-git-send-email-liezhi.yang@windriver.com>
+References: <1377667560-20089-1-git-send-email-liezhi.yang@windriver.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Robin Dong <sanbai@taobao.com>, Theodore Tso <tytso@mit.edu>,
-	"lewis.liulei" <lewis.liulei@huawei.com>
-To: Boxi Liu <boxi10liu@gmail.com>
+Content-Type: text/plain
+Cc: <tytso@mit.edu>, <dvhart@linux.intel.com>
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy9-pub.mail.unifiedlayer.com ([69.89.24.6]:35413 "HELO
-	oproxy9-pub.mail.unifiedlayer.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1753051Ab3H1BFB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 27 Aug 2013 21:05:01 -0400
-In-Reply-To: <CAAFszuVts-gn85SqPje=dibGFVo9GH6RKSJiOP6KtkZTgdDYNQ@mail.gmail.com>
+Received: from mail.windriver.com ([147.11.1.11]:63334 "EHLO
+	mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754416Ab3H1Fap (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Aug 2013 01:30:45 -0400
+In-Reply-To: <1377667560-20089-1-git-send-email-liezhi.yang@windriver.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Boxi,
-	Thanks for the detailed explanation and the bug fix. It looks good to me.
-	So would you mind send out a formal patch?
+Set the uid, gid, mode and time for inode.
 
-Thanks,
-Tao
-On 08/28/2013 01:09 AM, Boxi Liu wrote:
-> there is a BUG in EXT4 inlinedata feature when the disk is full(0B).
-> tast case:
->     step1: use the dd to make the disk full,has 0B remained.
->     step2: touch a inlinedata file
->            echo -n "123456" >> test.txt
->     step3: make the inlinedata file test.txt convert to extent block.
->            echo -n
-> "123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890">>test.txt
-> the step3 will write failed.and print the BUG Backtrace:
-> page:c1963bc0 count:-1 mapcount:0 mapping: (null) index:0x0
-> page flags:0x40000000()
-> Backtrace:
-> [<c004e180>] (dump_backtrace + 0x0/0x12c) from [<c07724ac>]
-> (dump_stack +0x18/0x1c)
-> r6:c0043a84  r5:c0bb688  r4:c1963bc0 r3:00000000
-> [<c0772494>] (dump_stack + 0x0/0x1c) from [<c00f6dd4>] (bad_page + 0xbc/0x13c)
-> [<c00fbd18>] (bad_page + 0x0/0x13c) from [<c00f74b80>]
-> (get_page_from_freelist + 0x4cc/0xb6c)
-> r7:c1963bd8 r6:c0043194 r5:c1963bc0 r4:00000001
-> [<c00f6fec>] (get_page_from_freelist +0x0/0xb6c) from [<c00f8148>]
-> (__alloc_pages_nodemask + 0x144/0x820)
-> [<c00f8004>] (__alloc_pages_nodemask +0x0/0x820) from [<c0115250>]
-> (handle_pte_fault + 0x574/0x758)
-> [<c0114cdc>] (handle_pte_fault + 0x0/0x758) from [<c0115500>]
-> (handle_mm_fault + 0xcc/0x110)
-> [<c0115434>] (handel_mm_fault + 0x0/0x110) from [<c00521a8>]
-> (do_page_fault + 0x16c/0x1f4)
-> [<c005203c>] (do_page_fault + 0x0/0x1f4) from [<c00440d0>]
-> (do_DataAbort + 0x40/0xac)
-> [<c0044090>] (do_DataAbort + 0x0/0xac) from [<c004a064>]
-> (ret_from_exception + 0x0/0x10)
-> 
-> And when the system reboot , the step2 data "123456" will alse lost.
-> You can cat the test.txt,but there is no data in the file.
-> the reason is when the inlinedata convert to extent in the limit case,
-> the inlinedata read to the page,then destory the inlinedata,next step
-> is to __block_write_begin,but it can't get block,return -ENOSPC. so
-> the data lost.
-> 
-> there is a patch may fix the bug:
-> in inline.c ext4_convert_inline_data_to_extent
-> 
->          needed_blocks = ext4_writepage_trans_blocks(inode);
-> 
-> +        if(EXT4_C2B(sbi,percpu_counter_read_positive(&sbi->s_freeclusters_counter))
-> < needed_blocks)
-> +               return -ENOSPC;
-> +
->          ret = ext4_get_inode_loc(inode, &iloc);
->          if (ret)
->                  return ret;
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Signed-off-by: Robert Yang <liezhi.yang@windriver.com>
+---
+ misc/util.c | 46 ++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 46 insertions(+)
+
+diff --git a/misc/util.c b/misc/util.c
+index 7a45120..1a0a58c 100644
+--- a/misc/util.c
++++ b/misc/util.c
+@@ -314,6 +314,41 @@ void dump_mmp_msg(struct mmp_struct *mmp, const char *msg)
+ 	}
+ }
+ 
++/* Fill the uid, gid, mode and time for the inode */
++static void fill_inode(struct ext2_inode *inode, struct stat *st)
++{
++	if (st != NULL) {
++		inode->i_uid = st->st_uid;
++		inode->i_gid = st->st_gid;
++		inode->i_mode |= st->st_mode;
++		inode->i_atime = st->st_atime;
++		inode->i_mtime = st->st_mtime;
++		inode->i_ctime = st->st_ctime;
++	}
++}
++
++/* Set the uid, gid, mode and time for the inode */
++errcode_t set_inode_extra(ext2_ino_t cwd, ext2_ino_t ino, struct stat *st)
++{
++	errcode_t		retval;
++	struct ext2_inode	inode;
++	char			*func_name = "set_inode_extra";
++
++	retval = ext2fs_read_inode(current_fs, ino, &inode);
++        if (retval) {
++		com_err(func_name, retval, "while reading inode %u", ino);
++		return retval;
++	}
++
++	fill_inode(&inode, st);
++
++	retval = ext2fs_write_inode(current_fs, ino, &inode);
++	if (retval) {
++		com_err(func_name, retval, "while writing inode %u", ino);
++		return retval;
++	}
++}
++
+ /* Make a special file which is block, character and fifo */
+ errcode_t do_mknod_internal(ext2_ino_t cwd, const char *name, struct stat *st)
+ {
+@@ -687,6 +722,17 @@ errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir)
+ 				com_err(func_name, 0,
+ 					_("ignoring entry \"%s\""), name);
+ 		}
++
++		if ((retval =  ext2fs_namei(current_fs, root, parent_ino, name, &ino))){
++			com_err(name, retval, 0);
++			return retval;
++		}
++
++		if ((retval = set_inode_extra(parent_ino, ino, &st))) {
++			com_err(func_name, retval,
++				_("while setting inode for \"%s\""), name);
++			return retval;
++		}
+ 	}
+ 	closedir(dh);
+ 	return retval;
+-- 
+1.8.1.2
 
