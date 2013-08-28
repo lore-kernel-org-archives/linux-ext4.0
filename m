@@ -1,92 +1,133 @@
 From: Robert Yang <liezhi.yang@windriver.com>
-Subject: [RFC 07/10] misc/util.c: set more information for inode
-Date: Wed, 28 Aug 2013 13:25:57 +0800
-Message-ID: <1377667560-20089-8-git-send-email-liezhi.yang@windriver.com>
+Subject: [RFC 02/10] misc/util.c: implement populate_fs()
+Date: Wed, 28 Aug 2013 13:25:52 +0800
+Message-ID: <1377667560-20089-3-git-send-email-liezhi.yang@windriver.com>
 References: <1377667560-20089-1-git-send-email-liezhi.yang@windriver.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: <tytso@mit.edu>, <dvhart@linux.intel.com>
 To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.windriver.com ([147.11.1.11]:63334 "EHLO
+Received: from mail.windriver.com ([147.11.1.11]:63250 "EHLO
 	mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754416Ab3H1Fap (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Aug 2013 01:30:45 -0400
+	with ESMTP id S1754004Ab3H1Faf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Aug 2013 01:30:35 -0400
 In-Reply-To: <1377667560-20089-1-git-send-email-liezhi.yang@windriver.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Set the uid, gid, mode and time for inode.
+Use opendir() and readdir() to read the native directory, then use
+lstat() to identify the file type and call the corresponding function to
+add the file to the filesystem, call the populate_fs() recursively if it
+is a directory.
+
+NOTE: the libext2fs doesn't support create the socket file at them
+moment.
 
 Signed-off-by: Robert Yang <liezhi.yang@windriver.com>
 ---
- misc/util.c | 46 ++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 46 insertions(+)
+ misc/util.c | 90 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 90 insertions(+)
 
 diff --git a/misc/util.c b/misc/util.c
-index 7a45120..1a0a58c 100644
+index cbc7cc0..6d87393 100644
 --- a/misc/util.c
 +++ b/misc/util.c
-@@ -314,6 +314,41 @@ void dump_mmp_msg(struct mmp_struct *mmp, const char *msg)
- 	}
- }
- 
-+/* Fill the uid, gid, mode and time for the inode */
-+static void fill_inode(struct ext2_inode *inode, struct stat *st)
-+{
-+	if (st != NULL) {
-+		inode->i_uid = st->st_uid;
-+		inode->i_gid = st->st_gid;
-+		inode->i_mode |= st->st_mode;
-+		inode->i_atime = st->st_atime;
-+		inode->i_mtime = st->st_mtime;
-+		inode->i_ctime = st->st_ctime;
-+	}
-+}
-+
-+/* Set the uid, gid, mode and time for the inode */
-+errcode_t set_inode_extra(ext2_ino_t cwd, ext2_ino_t ino, struct stat *st)
-+{
-+	errcode_t		retval;
-+	struct ext2_inode	inode;
-+	char			*func_name = "set_inode_extra";
-+
-+	retval = ext2fs_read_inode(current_fs, ino, &inode);
-+        if (retval) {
-+		com_err(func_name, retval, "while reading inode %u", ino);
-+		return retval;
-+	}
-+
-+	fill_inode(&inode, st);
-+
-+	retval = ext2fs_write_inode(current_fs, ino, &inode);
-+	if (retval) {
-+		com_err(func_name, retval, "while writing inode %u", ino);
-+		return retval;
-+	}
-+}
-+
- /* Make a special file which is block, character and fifo */
- errcode_t do_mknod_internal(ext2_ino_t cwd, const char *name, struct stat *st)
+@@ -337,4 +337,94 @@ errcode_t do_write_internal(ext2_ino_t cwd, const char *src, const char *dest)
+ /* Copy files from source_dir to fs */
+ errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir)
  {
-@@ -687,6 +722,17 @@ errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir)
- 				com_err(func_name, 0,
- 					_("ignoring entry \"%s\""), name);
- 		}
++	const char	*name;
++	DIR		*dh;
++	struct dirent	*dent;
++	struct stat	st;
++	char		ln_target[PATH_MAX];
++	char		*func_name = "populate_fs";
++	ext2_ino_t	ino;
++	errcode_t	retval;
++	int		read_cnt;
 +
-+		if ((retval =  ext2fs_namei(current_fs, root, parent_ino, name, &ino))){
-+			com_err(name, retval, 0);
-+			return retval;
-+		}
++	root = EXT2_ROOT_INO;
 +
-+		if ((retval = set_inode_extra(parent_ino, ino, &st))) {
-+			com_err(func_name, retval,
-+				_("while setting inode for \"%s\""), name);
-+			return retval;
++	if (chdir(source_dir) < 0) {
++		com_err(func_name, errno,
++			_("while changing working directory to \"%s\""), source_dir);
++		return errno;
++	}
++
++	if (!(dh = opendir("."))) {
++		com_err(func_name, errno,
++			_("while openning directory \"%s\""), source_dir);
++		return errno;
++	}
++
++	while((dent = readdir(dh))) {
++		if((!strcmp(dent->d_name, ".")) || (!strcmp(dent->d_name, "..")))
++			continue;
++		lstat(dent->d_name, &st);
++		name = dent->d_name;
++
++		switch(st.st_mode & S_IFMT) {
++			case S_IFCHR:
++			case S_IFBLK:
++			case S_IFIFO:
++				if ((retval = do_mknod_internal(parent_ino, name, &st))) {
++					com_err(func_name, retval,
++						_("while creating special file \"%s\""), name);
++					return retval;
++				}
++				break;
++			case S_IFSOCK:
++				/* FIXME: there is no make sockect function atm. */
++				com_err(func_name, 0,
++					_("ignoring sockect file\"%s\""), name);
++				break;
++			case S_IFLNK:
++				if((read_cnt = readlink(name, ln_target, sizeof(ln_target))) == -1) {
++					com_err(func_name, errno,
++						_("while trying to readlink \"%s\""), name);
++					return errno;
++				}
++				ln_target[read_cnt] = '\0';
++				if ((retval = do_symlink_internal(parent_ino, name, ln_target))) {
++					com_err(func_name, retval,
++						_("while writing symlink\"%s\""), name);
++					return retval;
++				}
++				break;
++			case S_IFREG:
++				if ((retval = do_write_internal(parent_ino, name, name))) {
++					com_err(func_name, retval,
++						_("while writing file \"%s\""), name);
++					return retval;
++				}
++				break;
++			case S_IFDIR:
++				if ((retval = do_mkdir_internal(parent_ino, name, &st))) {
++					com_err(func_name, retval,
++						_("while making dir \"%s\""), name);
++					return retval;
++				}
++				if ((retval = ext2fs_namei(current_fs, root, parent_ino, name, &ino))) {
++					com_err(name, retval, 0);
++						return retval;
++				}
++				/* Populate the dir recursively*/
++				retval = populate_fs(ino, name);
++				if (retval) {
++					com_err(func_name, retval, _("while adding dir \"%s\""), name);
++					return retval;
++				}
++				chdir("..");
++				break;
++			default:
++				com_err(func_name, 0,
++					_("ignoring entry \"%s\""), name);
 +		}
- 	}
- 	closedir(dh);
- 	return retval;
++	}
++	closedir(dh);
++	return retval;
+ }
 -- 
 1.8.1.2
 
