@@ -1,36 +1,70 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/5] ext4: Fix type declaration of
- ext4_validate_block_bitmap
-Date: Wed, 28 Aug 2013 16:01:15 -0400
-Message-ID: <20130828200115.GH27079@thunk.org>
-References: <20130719235532.24017.31896.stgit@blackbox.djwong.org>
- <20130719235546.24017.98557.stgit@blackbox.djwong.org>
- <20130724071201.GA3474@gmail.com>
- <20130726160613.GA25936@blackbox.djwong.org>
+From: Felipe Monteiro de Carvalho <felipemonteiro.carvalho@gmail.com>
+Subject: Re: Which features should I implement in my ext4 reader?
+Date: Wed, 28 Aug 2013 22:09:42 +0200
+Message-ID: <CACyNnZOXOZ-uL+TO8HOuO4DoWsBKuBOX5RLQrZzyoeG1L2a9yg@mail.gmail.com>
+References: <CACyNnZNJssSL+UWOXYmWk9xy07WRT_z+Fk9Kjwfws9JRfWoNEQ@mail.gmail.com>
+	<CACyNnZManY_k3SB1-p4mQ8Z1+9B=VAdfXU7bWsFVHDsHV6KyUQ@mail.gmail.com>
+	<20130817130204.GA30769@thunk.org>
+	<CACyNnZONOUy0+OeDriZaSt4OQrR6LzpyJz4Sj8XvMHvxr2u_Xg@mail.gmail.com>
+	<20130819050803.GA10882@gmail.com>
+	<CACyNnZN4z_mHq86+FPOaGpzjwBVmmsKNjnd45s53o2LdQjxEsg@mail.gmail.com>
+	<20130820103956.GA7846@gmail.com>
+	<CACyNnZP6m96Uv_acbVvf3K2UvcMhhqk2S2gmdZS9DG9GwqbUcg@mail.gmail.com>
+	<CACyNnZP2SFovG9YeBNeifm4KqrCzi7FU97CWVUjST0YQiqt3pQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: text/plain; charset=UTF-8
+To: Felipe Monteiro de Carvalho <felipemonteiro.carvalho@gmail.com>,
+	"Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:50835 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751961Ab3H1UBS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 28 Aug 2013 16:01:18 -0400
-Content-Disposition: inline
-In-Reply-To: <20130726160613.GA25936@blackbox.djwong.org>
+Received: from mail-pa0-f43.google.com ([209.85.220.43]:43478 "EHLO
+	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751971Ab3H1UJn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Aug 2013 16:09:43 -0400
+Received: by mail-pa0-f43.google.com with SMTP id hz10so6675115pad.30
+        for <linux-ext4@vger.kernel.org>; Wed, 28 Aug 2013 13:09:43 -0700 (PDT)
+In-Reply-To: <CACyNnZP2SFovG9YeBNeifm4KqrCzi7FU97CWVUjST0YQiqt3pQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 26, 2013 at 09:06:13AM -0700, Darrick J. Wong wrote:
-> > > @@ -352,7 +352,7 @@ static ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *sb,
-> >                                           ^^^
-> > It seems that this function also needs to be fixed.
-> 
-> Yep.  I'll get that in the next version, thank you.
+Hello,
 
-I've applied this patch with addition of a fix for s/unsigned int/ext4_group_t/
-in the ext4_valid_block_bitmap() function as well.
+Any idea where to find the extra data over 60 bytes in a very small
+file (for example 120 bytes) would be greatly appreciated ... I
+already tried the extra space after the inode but there was nothing
+useful there! =/ Or at least nothing that matched the description of
+the extended attributes. It should start with a magic number, but
+started with many zeroes =/
 
-Thanks,
+thanks,
 
-						- Ted
+Felipe Monteiro de Carvalho
+
+On Fri, Aug 23, 2013 at 2:54 PM, Felipe Monteiro de Carvalho
+<felipemonteiro.carvalho@gmail.com> wrote:
+> Hello,
+>
+> I went forward trying to implement this myself, but I am having trouble.
+>
+> Files up to 60 bytes work great, and large files too. But a file with
+> 61 bytes does not.
+>
+> Reading ignoring the inline results in zero on all bytes, which can't
+> be right, so I guess it is inlined.
+>
+> After the first 60 bytes I try to get the extended attribute, but
+> i_file_acl_lo == FData.l_i_file_acl_high == 0
+>
+> And I think that it cannot possibly have the extended attribute data
+> in block zero =/ (it contains DEADBEEF or something like that)
+>
+> Any ideas where I got this wrong or any tips about how to figure out
+> in debugfs where the data is?
+>
+> thanks,
+> --
+> Felipe Monteiro de Carvalho
+
+
+
+-- 
+Felipe Monteiro de Carvalho
