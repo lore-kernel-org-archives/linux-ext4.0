@@ -1,182 +1,54 @@
-From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
-Subject: Re: Issues with a rather unusual configured NFS server
-Date: Wed, 28 Aug 2013 19:21:16 +0200
-Message-ID: <521E318C.7040401@gmx.de>
-References: <52075E01.7030506@gmx.de> <20130812143640.GF4596@quack.suse.cz> <20130813215313.GH17781@fieldses.org> <20130827180655.GE14809@fieldses.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Unable to randomly boot rootfs (EXT3 or EXT4) from SD: MMC error
+ -110 (TIMEDOUT)
+Date: Wed, 28 Aug 2013 13:56:22 -0400
+Message-ID: <20130828175622.GA27079@thunk.org>
+References: <CAL1yNcJZBSSNu4aDmL6n9uu3LkNPCOM-LbUXD2990jkPJYpLoA@mail.gmail.com>
+ <CAL1yNc+9pOWLCLfk7WpWvvsLfb01cFCJSi+4mTvnks9VrwoF1Q@mail.gmail.com>
+ <20130827220143.GC9182@thunk.org>
+ <CAL1yNcLzXir7KFavxaQK3OWWU5hHc06tvOSLrdvWB-VoEJdXQA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=iso-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jan Kara <jack@suse.cz>,
-	Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-	"user-mode-linux-devel@lists.sourceforge.net"
-	<user-mode-linux-devel@lists.sourceforge.net>,
-	linux-ext4@vger.kernel.org,
-	Linux Kernel <linux-kernel@vger.kernel.org>,
-	"J. Bruce Fields" <bfields@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20130827180655.GE14809@fieldses.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Cc: linux-omap@vger.kernel.org, linux-mmc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, arnd@linaro.org
+To: Kevyn-Alexandre =?iso-8859-1?Q?Par=E9?=
+	<kevyn.alexandre.pare@gmail.com>
+Return-path: <linux-mmc-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <CAL1yNcLzXir7KFavxaQK3OWWU5hHc06tvOSLrdvWB-VoEJdXQA@mail.gmail.com>
+Sender: linux-mmc-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 08/27/2013 08:06 PM, J. Bruce Fields wrote:
-> On Tue, Aug 13, 2013 at 05:53:14PM -0400, bfields wrote:
->> On Mon, Aug 12, 2013 at 04:36:40PM +0200, Jan Kara wrote:
->>> On Sun 11-08-13 11:48:49, Toralf F=C3=B6rster wrote:
->>>> so that the server either crashes (if it is a user mode linux imag=
-e) or at least its reboot functionality got broken
->>>> - if the NFS server is hammered with scary NFS calls using a fuzzy=
- tool running at a remote NFS client under a non-privileged user id.
->>>>
->>>> It can re reproduced, if
->>>> 	- the NFS share is an EXT3 or EXT4 directory
->>>> 	- and it is created at file located at tempfs and mounted via loo=
-p device
->>>> 	- and the NFS server is forced to umount the NFS share
->>>> 	- and the server forced to restart the NSF service afterwards
->>>> 	- and trinity is used
->>>>
->>>> I could find a scenario for an automated bisect. 2 times it brough=
-t this commit=20
->>>> commit 68a3396178e6688ad7367202cdf0af8ed03c8727
->>>> Author: J. Bruce Fields <bfields@redhat.com>
->>>> Date:   Thu Mar 21 11:21:50 2013 -0400
->>>>
->>>>     nfsd4: shut down more of delegation earlier
->>
->> Thanks for the report.  I think I see the problem--after this commit
->> nfs4_set_delegation() failures result in nfs4_put_delegation being
->> called, but nfs4_put_delegation doesn't free the nfs4_file that has
->> already been set by alloc_init_deleg().
->>
->> Let me think about how to fix that....
+On Wed, Aug 28, 2013 at 11:22:58AM -0400, Kevyn-Alexandre Par=E9 wrote:
+> We try multiple of our system ( Different micro SD from SanDisk +
+> Overo with OMAP3) and they are all doing this with the SanDisk 64GB,
+> 32GB :
+> http://www.sandisk.com/products/memory-cards/microsd/ultra-class10-fo=
+r-android/?capacity=3D64GB
 >=20
-> Sorry for the slow response--can you check whether this fixes the
-> problem?
+> The problem seem to be easier to reproduce when we just flash the
+> micro SD (partition, format & copy rootfs) at it first boot.
+> Also, when we let the system down for a couple of days and then
+> sometimes we need to reboot the system multiple times before it fall
+> back alright.
 >=20
-Yes.
+> We found a old patch that was simply increasing the timeout of the ho=
+st:
+> http://cgit.openembedded.org/cgit.cgi/openembedded/tree/recipes/linux=
+/linux-omap-2.6.39/sakoman/0024-omap-mmc-Adjust-dto-to-eliminate-timeou=
+t-errors.patch?h=3Dorg.openembedded.dev
+>=20
+> By settings the timeout to zero I reproduce kind of the same timeout
+> error at every boot. That was expected since I don't let enough time
+> to the controller to respond...
+>=20
+> Could the mix of that MMC controller and these card is not optimal? I=
+s
+> the driver fully supporting the UHS-I speed grade?
 
-With the attached patch the problem can't be reproduced any longer with
-the prepared test case and current git kernels.
+I've cc'ed Arnd Bergman who works at Linaro; I suspect that if he
+doesn't know the answer off the top of his head, he can probably
+direct you to someone who will.
 
-> --b.
->=20
-> commit 624a0ee0375940ce4aa36330b0b5a70af6d2b6f5
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Thu Aug 15 16:55:26 2013 -0400
->=20
->     nfsd4: fix leak of inode reference on delegation failure
->    =20
->     This fixes a regression from 68a3396178e6688ad7367202cdf0af8ed03c=
-8727
->     "nfsd4: shut down more of delegation earlier".
->    =20
->     After that commit, nfs4_set_delegation() failures result in
->     nfs4_put_delegation being called, but nfs4_put_delegation doesn't=
- free
->     the nfs4_file that has already been set by alloc_init_deleg().
->    =20
->     This can result in an oops on later unmounting the exported files=
-ystem.
->    =20
->     Note also delaying the fi_had_conflict check we're able to return=
- a
->     better error (hence give 4.1 clients a better idea why the delega=
-tion
->     failed; though note CONFLICT isn't an exact match here, as that's
->     supposed to indicate a current conflict, but all we know here is =
-that
->     there was one recently).
->    =20
->     Reported-by: Toralf F=C3=B6rster <toralf.foerster@gmx.de>
->     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
->=20
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index eb9cf81..0874998 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -368,11 +368,8 @@ static struct nfs4_delegation *
->  alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *st=
-p, struct svc_fh *current_fh)
->  {
->  	struct nfs4_delegation *dp;
-> -	struct nfs4_file *fp =3D stp->st_file;
-> =20
->  	dprintk("NFSD alloc_init_deleg\n");
-> -	if (fp->fi_had_conflict)
-> -		return NULL;
->  	if (num_delegations > max_delegations)
->  		return NULL;
->  	dp =3D delegstateid(nfs4_alloc_stid(clp, deleg_slab));
-> @@ -389,8 +386,7 @@ alloc_init_deleg(struct nfs4_client *clp, struct =
-nfs4_ol_stateid *stp, struct sv
->  	INIT_LIST_HEAD(&dp->dl_perfile);
->  	INIT_LIST_HEAD(&dp->dl_perclnt);
->  	INIT_LIST_HEAD(&dp->dl_recall_lru);
-> -	get_nfs4_file(fp);
-> -	dp->dl_file =3D fp;
-> +	dp->dl_file =3D NULL;
->  	dp->dl_type =3D NFS4_OPEN_DELEGATE_READ;
->  	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
->  	dp->dl_time =3D 0;
-> @@ -3044,22 +3040,35 @@ static int nfs4_setlease(struct nfs4_delegati=
-on *dp)
->  	return 0;
->  }
-> =20
-> -static int nfs4_set_delegation(struct nfs4_delegation *dp)
-> +static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nf=
-s4_file *fp)
->  {
-> -	struct nfs4_file *fp =3D dp->dl_file;
-> +	int status;
-> =20
-> -	if (!fp->fi_lease)
-> -		return nfs4_setlease(dp);
-> +	if (fp->fi_had_conflict)
-> +		return -EAGAIN;
-> +	get_nfs4_file(fp);
-> +	dp->dl_file =3D fp;
-> +	if (!fp->fi_lease) {
-> +		status =3D nfs4_setlease(dp);
-> +		if (status)
-> +			goto out_free;
-> +		return 0;
-> +	}
->  	spin_lock(&recall_lock);
->  	if (fp->fi_had_conflict) {
->  		spin_unlock(&recall_lock);
-> -		return -EAGAIN;
-> +		status =3D -EAGAIN;
-> +		goto out_free;
->  	}
->  	atomic_inc(&fp->fi_delegees);
->  	list_add(&dp->dl_perfile, &fp->fi_delegations);
->  	spin_unlock(&recall_lock);
->  	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
->  	return 0;
-> +out_free:
-> +	put_nfs4_file(fp);
-> +	dp->dl_file =3D fp;
-> +	return status;
->  }
-> =20
->  static void nfsd4_open_deleg_none_ext(struct nfsd4_open *open, int s=
-tatus)
-> @@ -3134,7 +3143,7 @@ nfs4_open_delegation(struct net *net, struct sv=
-c_fh *fh,
->  	dp =3D alloc_init_deleg(oo->oo_owner.so_client, stp, fh);
->  	if (dp =3D=3D NULL)
->  		goto out_no_deleg;
-> -	status =3D nfs4_set_delegation(dp);
-> +	status =3D nfs4_set_delegation(dp, stp->st_file);
->  	if (status)
->  		goto out_free;
-> =20
->=20
-
-
---=20
-MfG/Sincerely
-Toralf F=C3=B6rster
-pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
+							- Ted
