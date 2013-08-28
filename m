@@ -1,175 +1,229 @@
 From: Robert Yang <liezhi.yang@windriver.com>
-Subject: [RFC 05/10] misc/util.c: copy regular file
-Date: Wed, 28 Aug 2013 13:25:55 +0800
-Message-ID: <1377667560-20089-6-git-send-email-liezhi.yang@windriver.com>
+Subject: [RFC 01/10] mke2fs.c: add an option: -d root-directory
+Date: Wed, 28 Aug 2013 13:25:51 +0800
+Message-ID: <1377667560-20089-2-git-send-email-liezhi.yang@windriver.com>
 References: <1377667560-20089-1-git-send-email-liezhi.yang@windriver.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: <tytso@mit.edu>, <dvhart@linux.intel.com>
 To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.windriver.com ([147.11.1.11]:63290 "EHLO
-	mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754393Ab3H1Fam (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Aug 2013 01:30:42 -0400
+Received: from mail1.windriver.com ([147.11.146.13]:56004 "EHLO
+	mail1.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752764Ab3H1Fae (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Aug 2013 01:30:34 -0400
 In-Reply-To: <1377667560-20089-1-git-send-email-liezhi.yang@windriver.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The do_write_internal() is used for copying file from native fs to
-target, most of the code are from debugfs/debugfs.c, the
-debugfs/debugfs.c will be modified to use this function.
+This option is used for adding the files from the root-directory to the
+filesystem, it is similiar to genext2fs, but genext2fs doesn't fully
+support ext4.
 
-NOTE: It needs further more work which is merging the sparse copy patch.
+This commit describes the skeleton of the implementation:
+* The "struct hdlink_s" will be used for saving hard links, I
+  referred this from the genext2fs.
+
+* The do_xxx_internal will be used by both mke2fs and debugfs, most of
+  their operations are similar.
 
 Signed-off-by: Robert Yang <liezhi.yang@windriver.com>
 ---
- misc/util.c | 125 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 125 insertions(+)
+ misc/mke2fs.c | 39 ++++++++++++++++++++++++++++++++++-----
+ misc/util.c   | 35 +++++++++++++++++++++++++++++++++++
+ misc/util.h   | 32 ++++++++++++++++++++++++++++++++
+ 3 files changed, 101 insertions(+), 5 deletions(-)
 
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index d96f156..6401ae0 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -44,8 +44,6 @@ extern int optind;
+ #include <errno.h>
+ #endif
+ #include <sys/ioctl.h>
+-#include <sys/types.h>
+-#include <sys/stat.h>
+ #include <libgen.h>
+ #include <limits.h>
+ #include <blkid/blkid.h>
+@@ -105,6 +103,7 @@ char *mount_dir;
+ char *journal_device;
+ int sync_kludge;	/* Set using the MKE2FS_SYNC env. option */
+ char **fs_types;
++const char *root_dir;  /* Copy files from the specified directory */
+ 
+ profile_t	profile;
+ 
+@@ -116,7 +115,8 @@ static void usage(void)
+ 	fprintf(stderr, _("Usage: %s [-c|-l filename] [-b block-size] "
+ 	"[-C cluster-size]\n\t[-i bytes-per-inode] [-I inode-size] "
+ 	"[-J journal-options]\n"
+-	"\t[-G flex-group-size] [-N number-of-inodes]\n"
++	"\t[-G flex-group-size] [-N number-of-inodes] "
++	"[-d root-directory]\n"
+ 	"\t[-m reserved-blocks-percentage] [-o creator-os]\n"
+ 	"\t[-g blocks-per-group] [-L volume-label] "
+ 	"[-M last-mounted-directory]\n\t[-O feature[,...]] "
+@@ -1386,7 +1386,7 @@ profile_error:
+ 	}
+ 
+ 	while ((c = getopt (argc, argv,
+-		    "b:cg:i:jl:m:no:qr:s:t:vC:DE:FG:I:J:KL:M:N:O:R:ST:U:V")) != EOF) {
++		    "b:cg:i:jl:m:no:qr:s:t:d:vC:DE:FG:I:J:KL:M:N:O:R:ST:U:V")) != EOF) {
+ 		switch (c) {
+ 		case 'b':
+ 			blocksize = parse_num_blocks2(optarg, -1);
+@@ -1572,6 +1572,9 @@ profile_error:
+ 		case 'U':
+ 			fs_uuid = optarg;
+ 			break;
++		case 'd':
++			root_dir = optarg;
++			break;
+ 		case 'v':
+ 			verbose = 1;
+ 			break;
+@@ -2773,7 +2776,6 @@ no_journal:
+ 		       "filesystem accounting information: "));
+ 	checkinterval = fs->super->s_checkinterval;
+ 	max_mnt_count = fs->super->s_max_mnt_count;
+-	retval = ext2fs_close(fs);
+ 	if (retval) {
+ 		fprintf(stderr,
+ 			_("\nWarning, had trouble writing out superblocks."));
+@@ -2789,5 +2791,32 @@ no_journal:
+ 	for (i=0; fs_types[i]; i++)
+ 		free(fs_types[i]);
+ 	free(fs_types);
++
++	/* Copy files from the specified directory */
++	if (root_dir) {
++		if (!quiet)
++			printf(_("Copying files into the device...\n"));
++
++		/*
++		 * Allocate memory for the hardlinks, we don't need free()
++		 * since the lifespan will be over after the fs populated.
++		 */
++		if ((hdlinks.hdl = (struct hdlink_s *)
++				malloc(hdlink_cnt * sizeof(struct hdlink_s))) == NULL) {
++			fprintf(stderr, _("\nNot enough memory"));
++			retval = ext2fs_close(fs);
++			return retval;
++		}
++
++		current_fs = fs;
++		root = EXT2_ROOT_INO;
++		retval = populate_fs(root, root_dir);
++		if (retval)
++			fprintf(stderr,
++				_("\nError while populating %s"), root_dir);
++	}
++
++	retval = ext2fs_close(fs);
++
+ 	return retval;
+ }
 diff --git a/misc/util.c b/misc/util.c
-index f6ae7ca..e35fd88 100644
+index 6c93e1c..cbc7cc0 100644
 --- a/misc/util.c
 +++ b/misc/util.c
-@@ -428,6 +428,46 @@ try_again:
+@@ -32,8 +32,18 @@
+ #include "ext2fs/ext2fs.h"
+ #include "nls-enable.h"
+ #include "blkid/blkid.h"
++
++#include <fcntl.h>
++
+ #include "util.h"
  
++int	journal_size;
++int	journal_flags;
++char	*journal_device;
++
++/* For saving the hard links */
++int hdlink_cnt = HDLINK_CNT;
++
+ #ifndef HAVE_STRCASECMP
+ int strcasecmp (char *s1, char *s2)
+ {
+@@ -303,3 +313,28 @@ void dump_mmp_msg(struct mmp_struct *mmp, const char *msg)
+ 		       ctime(&t), mmp->mmp_nodename, mmp->mmp_bdevname);
+ 	}
  }
- 
-+static errcode_t copy_file(int fd, ext2_ino_t ino)
++
++/* Make a special file which is block, character and fifo */
++errcode_t do_mknod_internal(ext2_ino_t cwd, const char *name, struct stat *st)
 +{
-+	ext2_file_t	e2_file;
-+	errcode_t	retval;
-+	int		got;
-+	unsigned int	written;
-+	char		buf[8192];
-+	char		*ptr;
-+
-+	retval = ext2fs_file_open(current_fs, ino, EXT2_FILE_WRITE, &e2_file);
-+	if (retval)
-+		return retval;
-+
-+	while (1) {
-+		got = read(fd, buf, sizeof(buf));
-+		if (got == 0)
-+			break;
-+		if (got < 0) {
-+			retval = errno;
-+			goto fail;
-+		}
-+		ptr = buf;
-+		while (got > 0) {
-+			retval = ext2fs_file_write(e2_file, ptr,
-+						   got, &written);
-+			if (retval)
-+				goto fail;
-+
-+			got -= written;
-+			ptr += written;
-+		}
-+	}
-+	retval = ext2fs_file_close(e2_file);
-+	return retval;
-+
-+fail:
-+	(void) ext2fs_file_close(e2_file);
-+	return retval;
 +}
 +
- /* Make a directory in the fs */
- errcode_t do_mkdir_internal(ext2_ino_t cwd, const char *name, struct stat *st)
- {
-@@ -436,6 +476,91 @@ errcode_t do_mkdir_internal(ext2_ino_t cwd, const char *name, struct stat *st)
- /* Copy the native file to the fs */
- errcode_t do_write_internal(ext2_ino_t cwd, const char *src, const char *dest)
- {
-+	int		fd;
-+	struct stat	statbuf;
-+	ext2_ino_t	ino;
-+	errcode_t	retval;
-+	struct		ext2_inode inode;
-+	char		*func_name = "do_write_internal";
-+	int		hdlink;
++/* Make a symlink name -> target */
++errcode_t do_symlink_internal(ext2_ino_t cwd, const char *name, char *target)
++{
++}
 +
-+	fd = open(src, O_RDONLY);
-+	if (fd < 0) {
-+		com_err(src, errno, 0);
-+		return errno;
-+	}
-+	if (fstat(fd, &statbuf) < 0) {
-+		com_err(src, errno, 0);
-+		close(fd);
-+		return errno;
-+	}
++/* Make a directory in the fs */
++errcode_t do_mkdir_internal(ext2_ino_t cwd, const char *name, struct stat *st)
++{
++}
 +
-+	retval = ext2fs_namei(current_fs, root, cwd, dest, &ino);
-+	if (retval == 0) {
-+		com_err(func_name, 0, "The file '%s' already exists\n", dest);
-+		close(fd);
-+		return errno;
-+	}
++/* Copy the native file to the fs */
++errcode_t do_write_internal(ext2_ino_t cwd, const char *src, const char *dest)
++{
++}
 +
-+	retval = ext2fs_new_inode(current_fs, cwd, 010755, 0, &ino);
-+	if (retval) {
-+		com_err(func_name, retval, 0);
-+		close(fd);
-+		return errno;
-+	}
-+	printf("Allocated inode: %u\n", ino);
-+	retval = ext2fs_link(current_fs, cwd, dest, ino, EXT2_FT_REG_FILE);
-+	if (retval == EXT2_ET_DIR_NO_SPACE) {
-+		retval = ext2fs_expand_dir(current_fs, cwd);
-+		if (retval) {
-+			com_err(func_name, retval, "while expanding directory");
-+			close(fd);
-+			return errno;
-+		}
-+		retval = ext2fs_link(current_fs, cwd, dest, ino, EXT2_FT_REG_FILE);
-+	}
-+	if (retval) {
-+		com_err(dest, retval, 0);
-+		close(fd);
-+		return errno;
-+	}
-+        if (ext2fs_test_inode_bitmap2(current_fs->inode_map, ino))
-+		com_err(func_name, 0, "Warning: inode already set");
-+	ext2fs_inode_alloc_stats2(current_fs, ino, +1, 0);
-+	memset(&inode, 0, sizeof(inode));
-+	inode.i_mode = (statbuf.st_mode & ~LINUX_S_IFMT) | LINUX_S_IFREG;
-+	inode.i_atime = inode.i_ctime = inode.i_mtime =
-+		current_fs->now ? current_fs->now : time(0);
-+	inode.i_links_count = 1;
-+	inode.i_size = statbuf.st_size;
-+	if (current_fs->super->s_feature_incompat &
-+	    EXT3_FEATURE_INCOMPAT_EXTENTS) {
-+		int i;
-+		struct ext3_extent_header *eh;
-+
-+		eh = (struct ext3_extent_header *) &inode.i_block[0];
-+		eh->eh_depth = 0;
-+		eh->eh_entries = 0;
-+		eh->eh_magic = EXT3_EXT_MAGIC;
-+		i = (sizeof(inode.i_block) - sizeof(*eh)) /
-+			sizeof(struct ext3_extent);
-+		eh->eh_max = ext2fs_cpu_to_le16(i);
-+		inode.i_flags |= EXT4_EXTENTS_FL;
-+	}
-+
-+	if ((retval = ext2fs_write_new_inode(current_fs, ino, &inode))) {
-+		com_err(func_name, retval, "while creating inode %u", ino);
-+		close(fd);
-+		return errno;
-+	}
-+	if (LINUX_S_ISREG(inode.i_mode)) {
-+		retval = copy_file(fd, ino);
-+		if (retval)
-+			com_err("copy_file", retval, 0);
-+	}
-+	close(fd);
-+
-+	return 0;
- }
++/* Copy files from source_dir to fs */
++errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir)
++{
++}
+diff --git a/misc/util.h b/misc/util.h
+index f872c38..e71caf0 100644
+--- a/misc/util.h
++++ b/misc/util.h
+@@ -14,6 +14,31 @@ extern int	 journal_size;
+ extern int	 journal_flags;
+ extern char	*journal_device;
  
- /* Copy files from source_dir to fs */
++/* For struct stat */
++#include <sys/types.h>
++#include <sys/stat.h>
++
++struct hdlink_s
++{
++	ext2_ino_t src_ino;
++	ext2_ino_t dst_ino;
++};
++
++struct hdlinks_s
++{
++	int count;
++	struct hdlink_s *hdl;
++};
++
++struct hdlinks_s hdlinks;
++
++ext2_filsys	current_fs;
++ext2_ino_t	root;
++
++/* For saving the hard links */
++#define HDLINK_CNT	4
++extern int hdlink_cnt;
++
+ #ifndef HAVE_STRCASECMP
+ extern int strcasecmp (char *s1, char *s2);
+ #endif
+@@ -25,3 +50,10 @@ extern void check_mount(const char *device, int force, const char *type);
+ extern unsigned int figure_journal_size(int size, ext2_filsys fs);
+ extern void print_check_message(int, unsigned int);
+ extern void dump_mmp_msg(struct mmp_struct *mmp, const char *msg);
++
++/* For populating the filesystem */
++extern errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir);
++extern errcode_t do_mknod_internal(ext2_ino_t cwd, const char *name, struct stat *st);
++extern errcode_t do_symlink_internal(ext2_ino_t cwd, const char *name, char *target);
++extern errcode_t do_mkdir_internal(ext2_ino_t cwd, const char *name, struct stat *st);
++extern errcode_t do_write_internal(ext2_ino_t cwd, const char *src, const char *dest);
 -- 
 1.8.1.2
 
