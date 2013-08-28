@@ -1,70 +1,49 @@
-From: =?ISO-8859-1?Q?Kevyn=2DAlexandre_Par=E9?=
-	<kevyn.alexandre.pare@gmail.com>
-Subject: Re: Unable to randomly boot rootfs (EXT3 or EXT4) from SD: MMC error
- -110 (TIMEDOUT)
-Date: Wed, 28 Aug 2013 11:22:58 -0400
-Message-ID: <CAL1yNcLzXir7KFavxaQK3OWWU5hHc06tvOSLrdvWB-VoEJdXQA@mail.gmail.com>
-References: <CAL1yNcJZBSSNu4aDmL6n9uu3LkNPCOM-LbUXD2990jkPJYpLoA@mail.gmail.com>
-	<CAL1yNc+9pOWLCLfk7WpWvvsLfb01cFCJSi+4mTvnks9VrwoF1Q@mail.gmail.com>
-	<20130827220143.GC9182@thunk.org>
+From: Tim <elatllat@gmail.com>
+Subject: resize2fs: Memory allocation failed while trying to resize
+Date: Wed, 28 Aug 2013 11:29:49 -0400
+Message-ID: <CA+3zgmtOoDGSGQrk4k3QNuAkgpoDgF+xUkFT5qY9cKKS76MiQQ@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-omap@vger.kernel.org, linux-mmc@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-mmc-owner@vger.kernel.org>
-In-Reply-To: <20130827220143.GC9182@thunk.org>
-Sender: linux-mmc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-lb0-f172.google.com ([209.85.217.172]:37368 "EHLO
+	mail-lb0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752936Ab3H1P3x (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Aug 2013 11:29:53 -0400
+Received: by mail-lb0-f172.google.com with SMTP id x18so219460lbi.31
+        for <linux-ext4@vger.kernel.org>; Wed, 28 Aug 2013 08:29:50 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+Hi,
 
-On Tue, Aug 27, 2013 at 6:01 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Tue, Aug 27, 2013 at 05:47:22PM -0400, Kevyn-Alexandre Par=E9 wrot=
-e:
->> mmcblk0: error -110 sending status command, retrying
->> mmcblk0: error -110 sending status command, retrying
->> mmcblk0: error -110 sending status command, aborting
->
-> This looks like a hardware problem; either with the MMC reader, or th=
-e
-> MMC/SD card.
+I used resize2fs to do an online grow of from 8TB to 12TB and that worked fine.
+now I'm trying to offline shrink back down to 8TB and resize2fs is
+unable to do so.
 
-That's what I thought, thanks.
+Output:
+resize2fs -M /dev/mapper/
+crypt_left
+resize2fs 1.42.5 (29-Jul-2012)
+Resizing the filesystem on /dev/mapper/crypt_left to 1885633106 (4k) blocks.
+resize2fs: Memory allocation failed while trying to resize
+/dev/mapper/crypt_left
+Please run 'e2fsck -fy /dev/mapper/crypt_left' to fix the filesystem
+after the aborted resize operation.
 
->
-> Can you try swapping out the hardware and see if the problem goes
-> away?
+I am using a raspberrypi so it's 32-bit and limited to 256MB and I
+have 2x that in swap.
 
-We try multiple of our system ( Different micro SD from SanDisk +
-Overo with OMAP3) and they are all doing this with the SanDisk 64GB,
-32GB :
-http://www.sandisk.com/products/memory-cards/microsd/ultra-class10-for-=
-android/?capacity=3D64GB
+uname -a
+Linux test 3.6.11+ #474 PREEMPT Thu Jun 13 17:14:42 BST 2013 armv6l GNU/Linux
 
-The problem seem to be easier to reproduce when we just flash the
-micro SD (partition, format & copy rootfs) at it first boot.
-Also, when we let the system down for a couple of days and then
-sometimes we need to reboot the system multiple times before it fall
-back alright.
+I was watching top and never saw it use more that 53% of the RAM but I
+may have missed the crucial moment.
+(taken during a "e2fsck -fy ")
+free
+             total used free shared buffers cached
+Mem: 237648 225440 12208 0 63240 11796
+-/+ buffers/cache: 150404 87244
+Swap: 475132 13444 461688
 
-We found a old patch that was simply increasing the timeout of the host=
-:
-http://cgit.openembedded.org/cgit.cgi/openembedded/tree/recipes/linux/l=
-inux-omap-2.6.39/sakoman/0024-omap-mmc-Adjust-dto-to-eliminate-timeout-=
-errors.patch?h=3Dorg.openembedded.dev
-
-By settings the timeout to zero I reproduce kind of the same timeout
-error at every boot. That was expected since I don't let enough time
-to the controller to respond...
-
-Could the mix of that MMC controller and these card is not optimal? Is
-the driver fully supporting the UHS-I speed grade?
-
-Regards,
-
--KA
-
->
->                                                 - Ted
+Please let me know if there is anything that would help solve this issue.
