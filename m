@@ -1,42 +1,29 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: isolate ext4_extents.h file
-Date: Wed, 28 Aug 2013 14:49:56 -0400
-Message-ID: <20130828184956.GF27079@thunk.org>
-References: <1377005893-4394-1-git-send-email-wenqing.lz@taobao.com>
+Subject: Re: jbd2: Fix endian mixing problems in the checksumming code
+Date: Wed, 28 Aug 2013 15:06:44 -0400
+Message-ID: <20130828190644.GA2161@thunk.org>
+References: <20130717020002.GA5785@blackbox.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:50789 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:50804 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754671Ab3H1St7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 28 Aug 2013 14:49:59 -0400
+	id S1753618Ab3H1TGs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 28 Aug 2013 15:06:48 -0400
 Content-Disposition: inline
-In-Reply-To: <1377005893-4394-1-git-send-email-wenqing.lz@taobao.com>
+In-Reply-To: <20130717020002.GA5785@blackbox.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 20, 2013 at 09:38:13PM +0800, Zheng Liu wrote:
-> From: Zheng Liu <wenqing.lz@taobao.com>
+On Tue, Jul 16, 2013 at 07:00:02PM -0700, Darrick J. Wong wrote:
+> In the jbd2 checksumming code, explicitly declare separate variables with
+> endianness information so that we don't get confused and screw things up again.
+> Also fixes sparse warnings.
 > 
-> After applied the commit (4a092d73), we have reduced the number of
-> source files that need to #include ext4_extents.h.  But we can do
-> better.
-> 
-> This commit defines ext4_zeroout_es() in extents.c and move
-> EXT_MAX_BLOCKS into ext4.h in order not to include ext4_extents.h in
-> indirect.c and ioctl.c.  Meanwhile we just need to include this file in
-> extent_status.c when ES_AGGRESSIVE_TEST is defined.  Otherwise, this
-> commit removes a duplicated declaration in trace/events/ext4.h.
-> 
-> After applied this patch, we just need to include ext4_extents.h file
-> in {super,migrate,move_extents,extents}.c, and it is easy for us to
-> define a new extent disk layout.
-> 
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-Applied, thanks.
+Thanks, applied.
 
 						- Ted
