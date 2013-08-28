@@ -1,111 +1,65 @@
 From: Robert Yang <liezhi.yang@windriver.com>
-Subject: [RFC 03/10] misc/util.c: create special file
-Date: Wed, 28 Aug 2013 13:25:53 +0800
-Message-ID: <1377667560-20089-4-git-send-email-liezhi.yang@windriver.com>
-References: <1377667560-20089-1-git-send-email-liezhi.yang@windriver.com>
+Subject: [RFC 00/10] e2fsprogs/mke2fs: add an option: -d root-directory
+Date: Wed, 28 Aug 2013 13:25:50 +0800
+Message-ID: <1377667560-20089-1-git-send-email-liezhi.yang@windriver.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: <tytso@mit.edu>, <dvhart@linux.intel.com>
 To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.windriver.com ([147.11.1.11]:63262 "EHLO
+Received: from mail.windriver.com ([147.11.1.11]:63240 "EHLO
 	mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754383Ab3H1Fah (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Aug 2013 01:30:37 -0400
-In-Reply-To: <1377667560-20089-1-git-send-email-liezhi.yang@windriver.com>
+	with ESMTP id S1752764Ab3H1Fac (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Aug 2013 01:30:32 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The do_mknod_internal() is used for creating special file which is
-block, character and fifo, most of the code are from debugfs/debugfs.c,
-the debugfs/debugfs.c will be modified to use this function.
+This option is used for adding the files from the root-directory to the
+filesystem, it is similiar to genext2fs, but genext2fs doesn't fully
+support ext4.
 
-Signed-off-by: Robert Yang <liezhi.yang@windriver.com>
----
- misc/util.c | 70 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 70 insertions(+)
+* Questions
+  - Is such an option acceptable ?
 
-diff --git a/misc/util.c b/misc/util.c
-index 6d87393..c793b42 100644
---- a/misc/util.c
-+++ b/misc/util.c
-@@ -317,6 +317,76 @@ void dump_mmp_msg(struct mmp_struct *mmp, const char *msg)
- /* Make a special file which is block, character and fifo */
- errcode_t do_mknod_internal(ext2_ino_t cwd, const char *name, struct stat *st)
- {
-+	ext2_ino_t		ino;
-+	errcode_t 		retval;
-+	struct ext2_inode	inode;
-+	char			*func_name = "do_mknod_internal";
-+	unsigned long		major, minor, mode;
-+	int			filetype;
-+
-+	switch(st->st_mode & S_IFMT) {
-+		case S_IFCHR:
-+			mode = LINUX_S_IFCHR;
-+			filetype = EXT2_FT_CHRDEV;
-+			break;
-+		case S_IFBLK:
-+			mode = LINUX_S_IFBLK;
-+			filetype =  EXT2_FT_BLKDEV;
-+			break;
-+		case S_IFIFO:
-+			mode = LINUX_S_IFIFO;
-+			filetype = EXT2_FT_FIFO;
-+			break;
-+	}
-+
-+	if (!(current_fs->flags & EXT2_FLAG_RW)) {
-+		com_err(func_name, 0, "Filesystem opened read/only");
-+		return -1;
-+	}
-+	retval = ext2fs_new_inode(current_fs, cwd, 010755, 0, &ino);
-+	if (retval) {
-+		com_err(func_name, retval, 0);
-+		return retval;
-+	}
-+	printf("Allocated inode: %u\n", ino);
-+	retval = ext2fs_link(current_fs, cwd, name, ino, filetype);
-+	if (retval == EXT2_ET_DIR_NO_SPACE) {
-+		retval = ext2fs_expand_dir(current_fs, cwd);
-+		if (retval) {
-+			com_err(func_name, retval, "while expanding directory");
-+			return retval;
-+		}
-+		retval = ext2fs_link(current_fs, cwd, name, ino, filetype);
-+	}
-+	if (retval) {
-+		com_err(name, retval, 0);
-+		return -1;
-+	}
-+        if (ext2fs_test_inode_bitmap2(current_fs->inode_map, ino))
-+		com_err(func_name, 0, "Warning: inode already set");
-+	ext2fs_inode_alloc_stats2(current_fs, ino, +1, 0);
-+	memset(&inode, 0, sizeof(inode));
-+	inode.i_mode = mode;
-+	inode.i_atime = inode.i_ctime = inode.i_mtime =
-+		current_fs->now ? current_fs->now : time(0);
-+
-+	major = major(st->st_rdev);
-+	minor = minor(st->st_rdev);
-+
-+	if ((major < 256) && (minor < 256)) {
-+		inode.i_block[0] = major * 256 + minor;
-+		inode.i_block[1] = 0;
-+	} else {
-+		inode.i_block[0] = 0;
-+		inode.i_block[1] = (minor & 0xff) | (major << 8) | ((minor & ~0xff) << 12);
-+	}
-+	inode.i_links_count = 1;
-+
-+	retval = ext2fs_write_new_inode(current_fs, ino, &inode);
-+	if (retval)
-+		com_err(func_name, retval, "while creating inode %u", ino);
-+
-+	return retval;
- }
- 
- /* Make a symlink name -> target */
+  - Most of the code have been in debugfs/debugfs.c already, I moved them to
+    misc/util.c and modified them to let both mke2fs and debugfs can use them,
+    maybe we should put these code in another separate file ?
+
+  - Where can I get the up-to-date development git repo, please? I think that
+    there would be conflicts with the dev git repo, I'd like to rebase it if I
+    can get the repo, currently, I'm using this one:
+
+    http://git.kernel.org/cgit/fs/ext2/e2fsprogs.git
+
+* The size impact on misc/mke2fs:
+   1,677,297 -> 1,728,110 (non stripped, about 50K increases)
+   316,968 -> 325,160 (stripped, 8K increases)
+
+Please feel free to give your comments.
+
+// Robert
+
+Robert Yang (10):
+  mke2fs.c: add an option: -d root-directory
+  misc/util.c: implement populate_fs()
+  misc/util.c: create special file
+  misc/util.c: create symlink
+  misc/util.c: copy regular file
+  misc/util.c: create directory
+  misc/util.c: set more information for inode
+  misc/util.c: handle hardlinks
+  mke2fs.8.in: update the manual for the -d option
+  debugfs: use the functions in misc/util.c
+
+ debugfs/Makefile.in |   7 +-
+ debugfs/debugfs.c   | 251 ++-----------------------
+ debugfs/debugfs.h   |   1 +
+ misc/mke2fs.8.in    |   7 +
+ misc/mke2fs.c       |  39 +++-
+ misc/util.c         | 519 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ misc/util.h         |  32 ++++
+ 7 files changed, 614 insertions(+), 242 deletions(-)
+
 -- 
 1.8.1.2
 
