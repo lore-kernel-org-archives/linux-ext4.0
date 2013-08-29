@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 4/6] e2fsprogs: Add (optional) sparse checking to the build
-Date: Wed, 28 Aug 2013 17:44:10 -0700
-Message-ID: <20130829004410.3190.37124.stgit@blackbox.djwong.org>
+Subject: [PATCH 5/6] tune2fs: Zero inode table when removing checksums
+Date: Wed, 28 Aug 2013 17:44:17 -0700
+Message-ID: <20130829004417.3190.38773.stgit@blackbox.djwong.org>
 References: <20130829004344.3190.28053.stgit@blackbox.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,309 +9,212 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:29204 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754253Ab3H2AoS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Aug 2013 20:44:18 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:27004 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754350Ab3H2AoW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Aug 2013 20:44:22 -0400
 In-Reply-To: <20130829004344.3190.28053.stgit@blackbox.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Run sparse against source files when building e2fsprogs with 'make C=1'.  If
-instead C=2, it configures basic ext2 types for bitwise checking with sparse,
-which can help find the (many many) spots where conversion errors are
-(possibly) happening.
+When disabling group checksums, we have to initialize the inode table.  Right
+now tune2fs doesn't do this; it merely punts to e2fsck to clean up the mess.
+Unfortunately, if the "uninitialized" inode table contains things that look
+like inodes (i_link_count > 0, specifically), the e2fsck tries to recover these
+inodes.  This leads to it misinterpreting i_blocks as a block map, at which
+point it needlessly resurrects phantom inodes and crosslinked file repairs.  As
+part of initializing the block bitmaps, we must also mark block group metadata
+blocks in use.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- Makefile.in             |   13 +++++++++++++
- debugfs/Makefile.in     |    2 ++
- e2fsck/Makefile.in      |    3 +++
- e2fsck/pass1.c          |    2 +-
- ext2ed/Makefile.in      |    1 +
- intl/Makefile.in        |    2 ++
- lib/blkid/Makefile.in   |    2 ++
- lib/e2p/Makefile.in     |    2 ++
- lib/et/Makefile.in      |    2 ++
- lib/ext2fs/Makefile.in  |    2 ++
- lib/ext2fs/ext2fs.h     |   22 ++++++++++++++--------
- lib/quota/Makefile.in   |    2 ++
- lib/ss/Makefile.in      |    2 ++
- lib/uuid/Makefile.in    |    2 ++
- misc/Makefile.in        |    2 ++
- resize/Makefile.in      |    2 ++
- tests/progs/Makefile.in |    2 ++
- util/Makefile.in        |    2 ++
- 18 files changed, 58 insertions(+), 9 deletions(-)
+ misc/tune2fs.c |  113 ++++++++++++++++++++++++++++++++++++++++++++++++++------
+ 1 file changed, 100 insertions(+), 13 deletions(-)
 
 
-diff --git a/Makefile.in b/Makefile.in
-index 544ed02..95cbf1b 100644
---- a/Makefile.in
-+++ b/Makefile.in
-@@ -5,6 +5,19 @@ top_builddir = .
- my_dir = .
- INSTALL = @INSTALL@
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index c38711d..ddf3259 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -614,12 +614,13 @@ static errcode_t rewrite_directory(ext2_filsys fs, ext2_ino_t dir,
+ static void rewrite_inodes(ext2_filsys fs)
+ {
+ 	int length = EXT2_INODE_SIZE(fs->super);
+-	struct ext2_inode *inode;
++	struct ext2_inode *inode, *zero;
+ 	char		*ea_buf;
+ 	ext2_inode_scan	scan;
+ 	errcode_t	retval;
+ 	ext2_ino_t	ino;
+ 	blk64_t		file_acl_block;
++	int		inode_dirty;
  
-+CHECK=sparse
-+CHECK_OPTS=-Wsparse-all -Wno-transparent-union -Wno-return-void -Wno-undef -Wno-non-pointer-null
-+ifeq ("$(C)", "2")
-+  CHECK_CMD=$(CHECK) $(CHECK_OPTS) -Wbitwise -D__CHECK_ENDIAN__
-+else
-+  ifeq ("$(C)", "1")
-+    CHECK_CMD=$(CHECK) $(CHECK_OPTS)
-+   else
-+    CHECK_CMD=@true
-+  endif
-+endif
-+export CHECK_CMD
+ 	if (fs->super->s_creator_os != EXT2_OS_LINUX)
+ 		return;
+@@ -636,6 +637,12 @@ static void rewrite_inodes(ext2_filsys fs)
+ 		exit(1);
+ 	}
+ 
++	retval = ext2fs_get_memzero(length, &zero);
++	if (retval) {
++		com_err("set_csum", retval, "while allocating memory");
++		exit(1);
++	}
 +
- @MCONFIG@
+ 	retval = ext2fs_get_mem(fs->blocksize, &ea_buf);
+ 	if (retval) {
+ 		com_err("set_csum", retval, "while allocating memory");
+@@ -650,11 +657,25 @@ static void rewrite_inodes(ext2_filsys fs)
+ 		}
+ 		if (!ino)
+ 			break;
++		if (ext2fs_test_inode_bitmap2(fs->inode_map, ino)) {
++			inode_dirty = 1;
++		} else {
++			if (memcmp(inode, zero, length) != 0) {
++				memset(inode, 0, length);
++				inode_dirty = 1;
++			} else {
++				inode_dirty = 0;
++			}
++		}
  
- % : %.sh
-diff --git a/debugfs/Makefile.in b/debugfs/Makefile.in
-index 9a86dc6..afde5ac 100644
---- a/debugfs/Makefile.in
-+++ b/debugfs/Makefile.in
-@@ -44,6 +44,8 @@ STATIC_DEPLIBS= $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBSS) \
- .c.o:
- 	$(E) "	CC $<"
- 	$(Q) $(CC) -c $(ALL_CFLAGS) $< -o $@
-+	$(E) "	SPARSE $<"
-+	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
+-		retval = ext2fs_write_inode_full(fs, ino, inode, length);
+-		if (retval) {
+-			com_err("set_csum", retval, "while writing inode");
+-			exit(1);
++		if (inode_dirty) {
++			retval = ext2fs_write_inode_full(fs, ino, inode,
++							 length);
++			if (retval) {
++				com_err("set_csum", retval, "while writing "
++					"inode");
++				exit(1);
++			}
+ 		}
  
- all:: $(PROGS) $(MANPAGES)
+ 		retval = rewrite_extents(fs, ino, inode);
+@@ -691,6 +712,7 @@ static void rewrite_inodes(ext2_filsys fs)
+ 		}
+ 	} while (ino);
  
-diff --git a/e2fsck/Makefile.in b/e2fsck/Makefile.in
-index 9c27571..a900b9b 100644
---- a/e2fsck/Makefile.in
-+++ b/e2fsck/Makefile.in
-@@ -34,10 +34,13 @@ PROFILED_DEPLIBS= $(DEPPROFILED_LIBQUOTA) $(PROFILED_LIBEXT2FS) \
- 		  $(DEPPROFILED_LIBUUID) $(DEPPROFILED_LIBE2P)
- 
- COMPILE_ET=$(top_builddir)/lib/et/compile_et --build-tree
-+CHECK=sparse
- 
- .c.o:
- 	$(E) "	CC $<"
- 	$(Q) $(CC) -c $(ALL_CFLAGS) $< -o $@
-+	$(E) "	SPARSE $<"
-+	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
- @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
- 
- #
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index ba6025b..89a7c20 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -2674,7 +2674,7 @@ static int process_bad_block(ext2_filsys fs,
- 	return 0;
++	ext2fs_free_mem(&zero);
+ 	ext2fs_free_mem(&inode);
+ 	ext2fs_free_mem(&ea_buf);
+ 	ext2fs_close_inode_scan(scan);
+@@ -704,8 +726,8 @@ static void rewrite_metadata_checksums(ext2_filsys fs)
+ 	ext2fs_init_csum_seed(fs);
+ 	for (i = 0; i < fs->group_desc_count; i++)
+ 		ext2fs_group_desc_csum_set(fs, i);
+-	rewrite_inodes(fs);
+ 	ext2fs_read_bitmaps(fs);
++	rewrite_inodes(fs);
+ 	ext2fs_mark_ib_dirty(fs);
+ 	ext2fs_mark_bb_dirty(fs);
+ 	ext2fs_mmp_update2(fs, 1);
+@@ -733,10 +755,50 @@ static void enable_uninit_bg(ext2_filsys fs)
+ 	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
  }
  
--static void new_table_block(e2fsck_t ctx, blk_t first_block, int group,
-+static void new_table_block(e2fsck_t ctx, blk64_t first_block, int group,
- 			    const char *name, int num, blk64_t *new_block)
- {
- 	ext2_filsys fs = ctx->fs;
-diff --git a/ext2ed/Makefile.in b/ext2ed/Makefile.in
-index b3b606a..290f06e 100644
---- a/ext2ed/Makefile.in
-+++ b/ext2ed/Makefile.in
-@@ -33,6 +33,7 @@ DOCS=   doc/ext2ed-design.pdf doc/user-guide.pdf doc/ext2fs-overview.pdf \
- 
- .c.o:
- 	$(CC) -c $(ALL_CFLAGS) $< -o $@
-+	$(CHECK_CMD) $(ALL_CFLAGS) $<
- 
- .SUFFIXES: .sgml .ps .pdf .html
- 
-diff --git a/intl/Makefile.in b/intl/Makefile.in
-index 9dbc84e..6555331 100644
---- a/intl/Makefile.in
-+++ b/intl/Makefile.in
-@@ -191,6 +191,8 @@ LTV_AGE=4
- .c.o:
- 	$(E) "	CC $<"
- 	$(Q) $(COMPILE) $<
-+	$(E) "	SPARSE $<"
-+	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
- 
- .y.c:
- 	$(YACC) $(YFLAGS) --output $@ $<
-diff --git a/lib/blkid/Makefile.in b/lib/blkid/Makefile.in
-index 0ec8564..ec393fe 100644
---- a/lib/blkid/Makefile.in
-+++ b/lib/blkid/Makefile.in
-@@ -55,6 +55,8 @@ DEPLIBS_BLKID=	$(DEPSTATIC_LIBBLKID) $(DEPSTATIC_LIBUUID)
- .c.o:
- 	$(E) "	CC $<"
- 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
-+	$(E) "	SPARSE $<"
-+	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
- @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
- @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
- @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
-diff --git a/lib/e2p/Makefile.in b/lib/e2p/Makefile.in
-index e2d0940..1360155 100644
---- a/lib/e2p/Makefile.in
-+++ b/lib/e2p/Makefile.in
-@@ -55,6 +55,8 @@ BSDLIB_INSTALL_DIR = $(root_libdir)
- .c.o:
- 	$(E) "	CC $<"
- 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
-+	$(E) "	SPARSE $<"
-+	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
- @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
- @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
- @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
-diff --git a/lib/et/Makefile.in b/lib/et/Makefile.in
-index 8d1ea26..9a16c80 100644
---- a/lib/et/Makefile.in
-+++ b/lib/et/Makefile.in
-@@ -43,6 +43,8 @@ BSDLIB_INSTALL_DIR = $(root_libdir)
- .c.o:
- 	$(E) "	CC $<"
- 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
-+	$(E) "	SPARSE $<"
-+	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
- @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
- @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
- @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
-diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
-index dc7b0d1..d142cf3 100644
---- a/lib/ext2fs/Makefile.in
-+++ b/lib/ext2fs/Makefile.in
-@@ -202,6 +202,8 @@ all:: ext2fs.pc
- .c.o:
- 	$(E) "	CC $<"
- 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
-+	$(E) "	SPARSE $<"
-+	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
- @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
- @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
- @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 311ceda..b078ec9 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -64,14 +64,20 @@ extern "C" {
- #include <ext2fs/ext3_extents.h>
- #endif /* EXT2_FLAT_INCLUDES */
- 
--typedef __u32		ext2_ino_t;
--typedef __u32		blk_t;
--typedef __u64		blk64_t;
--typedef __u32		dgrp_t;
--typedef __u32		ext2_off_t;
--typedef __u64		ext2_off64_t;
--typedef __s64		e2_blkcnt_t;
--typedef __u32		ext2_dirhash_t;
-+#ifdef __CHECK_ENDIAN__
-+#define __bitwise __attribute__((bitwise))
-+#else
-+#define __bitwise
-+#endif
++static errcode_t zero_empty_inodes(ext2_filsys fs)
++{
++	int length = EXT2_INODE_SIZE(fs->super);
++	struct ext2_inode *inode;
++	ext2_inode_scan	scan;
++	errcode_t	retval;
++	ext2_ino_t	ino;
 +
-+typedef __u32 __bitwise		ext2_ino_t;
-+typedef __u32 __bitwise		blk_t;
-+typedef __u64 __bitwise		blk64_t;
-+typedef __u32 __bitwise		dgrp_t;
-+typedef __u32 __bitwise		ext2_off_t;
-+typedef __u64 __bitwise		ext2_off64_t;
-+typedef __s64 __bitwise		e2_blkcnt_t;
-+typedef __u32 __bitwise		ext2_dirhash_t;
++	retval = ext2fs_open_inode_scan(fs, 0, &scan);
++	if (retval)
++		goto out;
++
++	retval = ext2fs_get_mem(length, &inode);
++	if (retval)
++		goto out;
++
++	do {
++		retval = ext2fs_get_next_inode_full(scan, &ino, inode, length);
++		if (retval)
++			goto out;
++		if (!ino)
++			break;
++		if (!ext2fs_test_inode_bitmap2(fs->inode_map, ino)) {
++			memset(inode, 0, length);
++			retval = ext2fs_write_inode_full(fs, ino, inode,
++							 length);
++			if (retval)
++				goto out;
++		}
++	} while (1);
++
++out:
++	ext2fs_free_mem(&inode);
++	ext2fs_close_inode_scan(scan);
++	return retval;
++}
++
+ static void disable_uninit_bg(ext2_filsys fs, __u32 csum_feature_flag)
+ {
+ 	struct ext2_group_desc *gd;
+ 	dgrp_t i;
++	errcode_t retval;
++	blk64_t b, c, d;
++	int has_super;
  
- #if EXT2_FLAT_INCLUDES
- #include "com_err.h"
-diff --git a/lib/quota/Makefile.in b/lib/quota/Makefile.in
-index 720befd..7ea5100 100644
---- a/lib/quota/Makefile.in
-+++ b/lib/quota/Makefile.in
-@@ -47,6 +47,8 @@ LIBDIR= quota
- .c.o:
- 	$(E) "	CC $<"
- 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
-+	$(E) "	SPARSE $<"
-+	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
- @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
- @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
- #ELF_CMT#	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
-diff --git a/lib/ss/Makefile.in b/lib/ss/Makefile.in
-index c396f2d..95834fc 100644
---- a/lib/ss/Makefile.in
-+++ b/lib/ss/Makefile.in
-@@ -34,6 +34,8 @@ MK_CMDS=_SS_DIR_OVERRIDE=. ./mk_cmds
- .c.o:
- 	$(E) "	CC $<"
- 	$(Q) $(CC) $(ALL_CFLAGS) -c $<
-+	$(E) "	SPARSE $<"
-+	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
- @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
- @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
- @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -DSHARED_ELF_LIB -fPIC -o elfshared/$*.o -c $<
-diff --git a/lib/uuid/Makefile.in b/lib/uuid/Makefile.in
-index 7329467..1d350ee 100644
---- a/lib/uuid/Makefile.in
-+++ b/lib/uuid/Makefile.in
-@@ -62,6 +62,8 @@ BSDLIB_INSTALL_DIR = $(root_libdir)
- .c.o:
- 	$(E) "	CC $<"
- 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
-+	$(E) "	SPARSE $<"
-+	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
- @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
- @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
- @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
-diff --git a/misc/Makefile.in b/misc/Makefile.in
-index 8a69855..cae1b9f 100644
---- a/misc/Makefile.in
-+++ b/misc/Makefile.in
-@@ -100,6 +100,8 @@ COMPILE_ET=$(top_builddir)/lib/et/compile_et --build-tree
- .c.o:
- 	$(E) "	CC $<"
- 	$(Q) $(CC) -c $(ALL_CFLAGS) $< -o $@
-+	$(E) "	SPARSE $<"
-+	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
- @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
+ 	/* Load bitmaps to ensure that the uninit ones get written out */
+ 	fs->super->s_feature_ro_compat |= csum_feature_flag;
+@@ -745,21 +807,46 @@ static void disable_uninit_bg(ext2_filsys fs, __u32 csum_feature_flag)
+ 	ext2fs_mark_bb_dirty(fs);
+ 	fs->super->s_feature_ro_compat &= ~csum_feature_flag;
  
- all:: profiled $(SPROGS) $(UPROGS) $(USPROGS) $(SMANPAGES) $(UMANPAGES) \
-diff --git a/resize/Makefile.in b/resize/Makefile.in
-index a06b642..e7ea302 100644
---- a/resize/Makefile.in
-+++ b/resize/Makefile.in
-@@ -38,6 +38,8 @@ DEPSTATIC_LIBS= $(STATIC_LIBE2P) $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR)
- .c.o:
- 	$(E) "	CC $<"
- 	$(Q) $(CC) -c $(ALL_CFLAGS) $< -o $@
-+	$(E) "	SPARSE $<"
-+	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
++	/* If we're only turning off uninit_bg, zero the inodes */
++	if (csum_feature_flag == EXT4_FEATURE_RO_COMPAT_GDT_CSUM) {
++		retval = zero_empty_inodes(fs);
++		if (retval) {
++			com_err("disable_uninit_bg", retval,
++				"while zeroing unused inodes");
++			request_fsck_afterwards(fs);
++		}
++	}
++
++	/* The bbitmap is zeroed; we must mark group metadata blocks in use */
+ 	for (i = 0; i < fs->group_desc_count; i++) {
+-		gd = ext2fs_group_desc(fs, fs->group_desc, i);
+-		if ((gd->bg_flags & EXT2_BG_INODE_ZEROED) == 0) {
+-			/*
+-			 * XXX what we really should do is zap
+-			 * uninitialized inode tables instead.
+-			 */
++		b = ext2fs_block_bitmap_loc(fs, i);
++		ext2fs_mark_block_bitmap2(fs->block_map, EXT2FS_B2C(fs, b));
++		b = ext2fs_inode_bitmap_loc(fs, i);
++		ext2fs_mark_block_bitmap2(fs->block_map, EXT2FS_B2C(fs, b));
++
++		retval = ext2fs_super_and_bgd_loc2(fs, i, &b, &c, &d, NULL);
++		if (retval == 0 && b)
++			ext2fs_mark_block_bitmap2(fs->block_map,
++						  EXT2FS_B2C(fs, b));
++		if (retval == 0 && c)
++			ext2fs_mark_block_bitmap2(fs->block_map,
++						  EXT2FS_B2C(fs, c));
++		if (retval == 0 && d)
++			ext2fs_mark_block_bitmap2(fs->block_map,
++						  EXT2FS_B2C(fs, d));
++		if (retval) {
++			com_err("disable_uninit_bg", retval,
++				"while initializing block bitmaps");
+ 			request_fsck_afterwards(fs);
+-			break;
+ 		}
++
++		gd = ext2fs_group_desc(fs, fs->group_desc, i);
+ 		gd->bg_itable_unused = 0;
+ 		gd->bg_flags = 0;
+ 		ext2fs_group_desc_csum_set(fs, i);
+ 	}
+ 	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
++	ext2fs_mark_super_dirty(fs);
+ }
  
- all:: $(PROGS) $(TEST_PROGS) $(MANPAGES) 
- 
-diff --git a/tests/progs/Makefile.in b/tests/progs/Makefile.in
-index e3c1ef4..6508520 100644
---- a/tests/progs/Makefile.in
-+++ b/tests/progs/Makefile.in
-@@ -27,6 +27,8 @@ DEPLIBS= $(LIBEXT2FS) $(DEPLIBSS) $(DEPLIBCOM_ERR)
- .c.o:
- 	$(E) "	CC $<"
- 	$(Q) $(CC) -c $(ALL_CFLAGS) $< -o $@
-+	$(E) "	SPARSE $<"
-+	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
- 
- all:: $(PROGS)
- 
-diff --git a/util/Makefile.in b/util/Makefile.in
-index adf0b46..8412442 100644
---- a/util/Makefile.in
-+++ b/util/Makefile.in
-@@ -16,6 +16,8 @@ SRCS = $(srcdir)/subst.c
- .c.o:
- 	$(E) "	CC $<"
- 	$(Q) $(BUILD_CC) -c $(BUILD_CFLAGS) $< -o $@
-+	$(E) "	SPARSE $<"
-+	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
- 
- PROGS=		subst symlinks
- 
+ /*
 
