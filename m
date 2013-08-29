@@ -1,458 +1,464 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 6/6] resize2fs: Convert fs to and from 64bit mode
-Date: Wed, 28 Aug 2013 17:44:23 -0700
-Message-ID: <20130829004423.3190.78720.stgit@blackbox.djwong.org>
-References: <20130829004344.3190.28053.stgit@blackbox.djwong.org>
+From: Hugh Dickins <hughd@google.com>
+Subject: Re: 3.10.9: EXT4-fs (sdb1): delayed block allocation failed for inode
+ 163315715 at logical offset 1 with max blocks 2 with error -5
+Date: Wed, 28 Aug 2013 20:12:29 -0700
+Message-ID: <CANsGZ6aX1SrHswxRpa46ywjDALyR6X-f8CTi6e9ZO0Uf8k06Rw@mail.gmail.com>
+References: <521DE3C1.8030304@gmail.com>
+	<521E0932.6000706@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu, darrick.wong@oracle.com
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+	Bjorn Helgaas <bhelgaas@google.com>,
+	"Rafael J. Wysocki" <rjw@sisk.pl>
+To: =?UTF-8?Q?Martin_MOKREJ=C5=A0?= <mmokrejs@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:27044 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754359Ab3H2Aob (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Aug 2013 20:44:31 -0400
-In-Reply-To: <20130829004344.3190.28053.stgit@blackbox.djwong.org>
+Received: from mail-qc0-f175.google.com ([209.85.216.175]:47582 "EHLO
+	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753265Ab3H2DMb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Aug 2013 23:12:31 -0400
+Received: by mail-qc0-f175.google.com with SMTP id m4so4010750qcy.34
+        for <linux-ext4@vger.kernel.org>; Wed, 28 Aug 2013 20:12:30 -0700 (PDT)
+In-Reply-To: <521E0932.6000706@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-resize2fs does its magic by loading a filesystem, duplicating the in-memory
-image of that fs, moving relevant blocks out of the way of whatever new
-metadata get created, and finally writing everything back out to disk.
-Enabling 64bit mode enlarges the group descriptors, which makes resize2fs a
-reasonable vehicle for taking care of the rest of the bookkeeping requirements,
-so add to resize2fs the ability to convert a filesystem to 64bit mode and back.
+On Wed, Aug 28, 2013 at 7:29 AM, Martin MOKREJ=C5=A0 <mmokrejs@gmail.co=
+m> wrote:
+> Hugh,
+>   looks you are right person to ask per https://lkml.org/lkml/2012/8/=
+23/9
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
----
- resize/main.c         |   22 ++++
- resize/resize2fs.8.in |   18 +++
- resize/resize2fs.c    |  264 ++++++++++++++++++++++++++++++++++++++++++++++++-
- resize/resize2fs.h    |    3 +
- 4 files changed, 300 insertions(+), 7 deletions(-)
+Sorry, Martin, I'm not at all the right person to help on this, I
+haven't a clue.
+You've already Cc'ed linux-ext4, right, someone there may have a
+suggestion for you.
+Good luck!
+Hugh
 
-
-diff --git a/resize/main.c b/resize/main.c
-index b648a15..f353351 100644
---- a/resize/main.c
-+++ b/resize/main.c
-@@ -41,7 +41,7 @@ char *program_name, *device_name, *io_options;
- static void usage (char *prog)
- {
- 	fprintf (stderr, _("Usage: %s [-d debug_flags] [-f] [-F] [-M] [-P] "
--			   "[-p] device [new_size]\n\n"), prog);
-+			   "[-p] device [-b|-s|new_size]\n\n"), prog);
- 
- 	exit (1);
- }
-@@ -199,7 +199,7 @@ int main (int argc, char ** argv)
- 	if (argc && *argv)
- 		program_name = *argv;
- 
--	while ((c = getopt (argc, argv, "d:fFhMPpS:")) != EOF) {
-+	while ((c = getopt(argc, argv, "d:fFhMPpS:bs")) != EOF) {
- 		switch (c) {
- 		case 'h':
- 			usage(program_name);
-@@ -225,6 +225,12 @@ int main (int argc, char ** argv)
- 		case 'S':
- 			use_stride = atoi(optarg);
- 			break;
-+		case 'b':
-+			flags |= RESIZE_ENABLE_64BIT;
-+			break;
-+		case 's':
-+			flags |= RESIZE_DISABLE_64BIT;
-+			break;
- 		default:
- 			usage(program_name);
- 		}
-@@ -434,7 +440,17 @@ int main (int argc, char ** argv)
- 			fs->blocksize / 1024, new_size);
- 		exit(1);
- 	}
--	if (new_size == ext2fs_blocks_count(fs->super)) {
-+	if (flags & RESIZE_DISABLE_64BIT && flags & RESIZE_ENABLE_64BIT) {
-+		fprintf(stderr, _("Cannot set and unset 64bit feature.\n"));
-+		exit(1);
-+	} else if (flags & (RESIZE_DISABLE_64BIT | RESIZE_ENABLE_64BIT)) {
-+		new_size = ext2fs_blocks_count(fs->super);
-+		if (new_size >= (1ULL << 32)) {
-+			fprintf(stderr, _("Cannot change 64bit on a filesystem"
-+				" that is larger than 2^32 blocks.\n"));
-+			exit(1);
-+		}
-+	} else if (new_size == ext2fs_blocks_count(fs->super)) {
- 		fprintf(stderr, _("The filesystem is already %llu blocks "
- 			"long.  Nothing to do!\n\n"), new_size);
- 		exit(0);
-diff --git a/resize/resize2fs.8.in b/resize/resize2fs.8.in
-index 735fc91..d6deee6 100644
---- a/resize/resize2fs.8.in
-+++ b/resize/resize2fs.8.in
-@@ -8,7 +8,7 @@ resize2fs \- ext2/ext3/ext4 file system resizer
- .SH SYNOPSIS
- .B resize2fs
- [
--.B \-fFpPM
-+.B \-fFpPMbs
- ]
- [
- .B \-d
-@@ -85,8 +85,21 @@ to shrink the size of filesystem.  Then you may use
- to shrink the size of the partition.  When shrinking the size of
- the partition, make sure you do not make it smaller than the new size
- of the ext2 filesystem!
-+.PP
-+The
-+.B \-b
-+and
-+.B \-s
-+options enable and disable the 64bit feature, respectively.  The resize2fs
-+program will, of course, take care of resizing the block group descriptors
-+and moving other data blocks out of the way, as needed.  It is not possible
-+to resize the filesystem concurrent with changing the 64bit status.
- .SH OPTIONS
- .TP
-+.B \-b
-+Turns on the 64bit feature, resizes the group descriptors as necessary, and
-+moves other metadata out of the way.
-+.TP
- .B \-d \fIdebug-flags
- Turns on various resize2fs debugging features, if they have been compiled
- into the binary.
-@@ -124,6 +137,9 @@ of what the program is doing.
- .B \-P
- Print the minimum size of the filesystem and exit.
- .TP
-+.B \-s
-+Turns off the 64bit feature and frees blocks that are no longer in use.
-+.TP
- .B \-S \fIRAID-stride
- The
- .B resize2fs
-diff --git a/resize/resize2fs.c b/resize/resize2fs.c
-index 76d7aa6..fa7f99e 100644
---- a/resize/resize2fs.c
-+++ b/resize/resize2fs.c
-@@ -53,6 +53,9 @@ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs);
- static errcode_t fix_sb_journal_backup(ext2_filsys fs);
- static errcode_t mark_table_blocks(ext2_filsys fs,
- 				   ext2fs_block_bitmap bmap);
-+static errcode_t resize_group_descriptors(ext2_resize_t rfs, blk64_t new_size);
-+static errcode_t move_bg_metadata(ext2_resize_t rfs);
-+static errcode_t zero_high_bits_in_inodes(ext2_filsys fs);
- 
- /*
-  * Some helper CPP macros
-@@ -119,13 +122,30 @@ errcode_t resize_fs(ext2_filsys fs, blk64_t *new_size, int flags,
- 	if (retval)
- 		goto errout;
- 
-+	init_resource_track(&rtrack, "resize_group_descriptors", fs->io);
-+	retval = resize_group_descriptors(rfs, *new_size);
-+	if (retval)
-+		goto errout;
-+	print_resource_track(rfs, &rtrack, fs->io);
-+
-+	init_resource_track(&rtrack, "move_bg_metadata", fs->io);
-+	retval = move_bg_metadata(rfs);
-+	if (retval)
-+		goto errout;
-+	print_resource_track(rfs, &rtrack, fs->io);
-+
-+	init_resource_track(&rtrack, "zero_high_bits_in_metadata", fs->io);
-+	retval = zero_high_bits_in_inodes(rfs->new_fs);
-+	if (retval)
-+		goto errout;
-+	print_resource_track(rfs, &rtrack, fs->io);
-+
- 	init_resource_track(&rtrack, "adjust_superblock", fs->io);
- 	retval = adjust_superblock(rfs, *new_size);
- 	if (retval)
- 		goto errout;
- 	print_resource_track(rfs, &rtrack, fs->io);
- 
--
- 	init_resource_track(&rtrack, "fix_uninit_block_bitmaps 2", fs->io);
- 	fix_uninit_block_bitmaps(rfs->new_fs);
- 	print_resource_track(rfs, &rtrack, fs->io);
-@@ -221,6 +241,241 @@ errout:
- 	return retval;
- }
- 
-+/* Toggle 64bit mode */
-+static errcode_t resize_group_descriptors(ext2_resize_t rfs, blk64_t new_size)
-+{
-+	void *o, *n, *new_group_desc;
-+	dgrp_t i;
-+	int copy_size;
-+	errcode_t retval;
-+
-+	if (!(rfs->flags & (RESIZE_DISABLE_64BIT | RESIZE_ENABLE_64BIT)))
-+		return 0;
-+
-+	if (new_size != ext2fs_blocks_count(rfs->new_fs->super) ||
-+	    ext2fs_blocks_count(rfs->new_fs->super) >= (1ULL << 32) ||
-+	    (rfs->flags & RESIZE_DISABLE_64BIT &&
-+	     rfs->flags & RESIZE_ENABLE_64BIT))
-+		return EXT2_ET_INVALID_ARGUMENT;
-+
-+	if (rfs->flags & RESIZE_DISABLE_64BIT) {
-+		rfs->new_fs->super->s_feature_incompat &=
-+				~EXT4_FEATURE_INCOMPAT_64BIT;
-+		rfs->new_fs->super->s_desc_size = EXT2_MIN_DESC_SIZE;
-+	} else if (rfs->flags & RESIZE_ENABLE_64BIT) {
-+		rfs->new_fs->super->s_feature_incompat |=
-+				EXT4_FEATURE_INCOMPAT_64BIT;
-+		rfs->new_fs->super->s_desc_size = EXT2_MIN_DESC_SIZE_64BIT;
-+	}
-+
-+	if (EXT2_DESC_SIZE(rfs->old_fs->super) ==
-+	    EXT2_DESC_SIZE(rfs->new_fs->super))
-+		return 0;
-+
-+	o = rfs->new_fs->group_desc;
-+	rfs->new_fs->desc_blocks = ext2fs_div_ceil(
-+			rfs->old_fs->group_desc_count,
-+			EXT2_DESC_PER_BLOCK(rfs->new_fs->super));
-+	retval = ext2fs_get_arrayzero(rfs->new_fs->desc_blocks,
-+				      rfs->old_fs->blocksize, &new_group_desc);
-+	if (retval)
-+		return retval;
-+
-+	n = new_group_desc;
-+
-+	if (EXT2_DESC_SIZE(rfs->old_fs->super) <=
-+	    EXT2_DESC_SIZE(rfs->new_fs->super))
-+		copy_size = EXT2_DESC_SIZE(rfs->old_fs->super);
-+	else
-+		copy_size = EXT2_DESC_SIZE(rfs->new_fs->super);
-+	for (i = 0; i < rfs->old_fs->group_desc_count; i++) {
-+		memcpy(n, o, copy_size);
-+		n += EXT2_DESC_SIZE(rfs->new_fs->super);
-+		o += EXT2_DESC_SIZE(rfs->old_fs->super);
-+	}
-+
-+	ext2fs_free_mem(&rfs->new_fs->group_desc);
-+	rfs->new_fs->group_desc = new_group_desc;
-+
-+	for (i = 0; i < rfs->old_fs->group_desc_count; i++)
-+		ext2fs_group_desc_csum_set(rfs->new_fs, i);
-+
-+	return 0;
-+}
-+
-+/* Move bitmaps/inode tables out of the way. */
-+static errcode_t move_bg_metadata(ext2_resize_t rfs)
-+{
-+	dgrp_t i;
-+	blk64_t b, c, d;
-+	ext2fs_block_bitmap old_map, new_map;
-+	int old, new;
-+	errcode_t retval;
-+	int zero = 0, one = 1;
-+
-+	if (!(rfs->flags & (RESIZE_DISABLE_64BIT | RESIZE_ENABLE_64BIT)))
-+		return 0;
-+
-+	retval = ext2fs_allocate_block_bitmap(rfs->old_fs, "oldfs", &old_map);
-+	if (retval)
-+		return retval;
-+
-+	retval = ext2fs_allocate_block_bitmap(rfs->new_fs, "newfs", &new_map);
-+	if (retval)
-+		goto out;
-+
-+	/* Construct bitmaps of super/descriptor blocks in old and new fs */
-+	for (i = 0; i < rfs->old_fs->group_desc_count; i++) {
-+		retval = ext2fs_super_and_bgd_loc2(rfs->old_fs, i, &b, &c, &d,
-+						   NULL);
-+		if (retval)
-+			goto out;
-+		ext2fs_mark_block_bitmap2(old_map, EXT2FS_B2C(rfs->old_fs, b));
-+		ext2fs_mark_block_bitmap2(old_map, EXT2FS_B2C(rfs->old_fs, c));
-+		ext2fs_mark_block_bitmap2(old_map, EXT2FS_B2C(rfs->old_fs, d));
-+
-+		retval = ext2fs_super_and_bgd_loc2(rfs->new_fs, i, &b, &c, &d,
-+						   NULL);
-+		if (retval)
-+			goto out;
-+		ext2fs_mark_block_bitmap2(new_map, EXT2FS_B2C(rfs->new_fs, b));
-+		ext2fs_mark_block_bitmap2(new_map, EXT2FS_B2C(rfs->new_fs, c));
-+		ext2fs_mark_block_bitmap2(new_map, EXT2FS_B2C(rfs->new_fs, d));
-+	}
-+
-+	/* Find changes in block allocations for bg metadata */
-+	for (b = 0; b < ext2fs_blocks_count(rfs->new_fs->super); b++) {
-+		c = EXT2FS_B2C(rfs->new_fs, b);
-+		old = ext2fs_test_block_bitmap2(old_map, c);
-+		new = ext2fs_test_block_bitmap2(new_map, c);
-+
-+		if (old && !new)
-+			ext2fs_unmark_block_bitmap2(rfs->new_fs->block_map, c);
-+		else if (!old && new)
-+			; /* empty ext2fs_mark_block_bitmap2(new_map, c); */
-+		else
-+			ext2fs_unmark_block_bitmap2(new_map, c);
-+	}
-+	/* new_map now shows blocks that have been newly allocated. */
-+
-+	/* Move any conflicting bitmaps and inode tables */
-+	for (i = 0; i < rfs->old_fs->group_desc_count; i++) {
-+		b = EXT2FS_B2C(rfs->new_fs,
-+			       ext2fs_block_bitmap_loc(rfs->new_fs, i));
-+		if (ext2fs_test_block_bitmap2(new_map, b))
-+			ext2fs_block_bitmap_loc_set(rfs->new_fs, i, 0);
-+
-+		b = EXT2FS_B2C(rfs->new_fs,
-+			       ext2fs_inode_bitmap_loc(rfs->new_fs, i));
-+		if (ext2fs_test_block_bitmap2(new_map, b))
-+			ext2fs_inode_bitmap_loc_set(rfs->new_fs, i, 0);
-+
-+		c = ext2fs_inode_table_loc(rfs->new_fs, i);
-+		for (b = 0; b < rfs->new_fs->inode_blocks_per_group; b++) {
-+			if (ext2fs_test_block_bitmap2(new_map, b + c)) {
-+				ext2fs_inode_table_loc_set(rfs->new_fs, i, 0);
-+				break;
-+			}
-+		}
-+	}
-+
-+out:
-+	if (old_map)
-+		ext2fs_free_block_bitmap(old_map);
-+	if (new_map)
-+		ext2fs_free_block_bitmap(new_map);
-+	return retval;
-+}
-+
-+/* Zero out the high bits of extent fields */
-+static errcode_t zero_high_bits_in_extents(ext2_filsys fs, ext2_ino_t ino,
-+				 struct ext2_inode *inode)
-+{
-+	ext2_extent_handle_t	handle;
-+	struct ext2fs_extent	extent;
-+	int			op = EXT2_EXTENT_ROOT;
-+	errcode_t		errcode;
-+
-+	if (!(inode->i_flags & EXT4_EXTENTS_FL))
-+		return 0;
-+
-+	errcode = ext2fs_extent_open(fs, ino, &handle);
-+	if (errcode)
-+		return errcode;
-+
-+	while (1) {
-+		errcode = ext2fs_extent_get(handle, op, &extent);
-+		if (errcode)
-+			break;
-+
-+		op = EXT2_EXTENT_NEXT_SIB;
-+
-+		extent.e_pblk &= 0xFFFFFFFF;
-+		errcode = ext2fs_extent_replace(handle, 0, &extent);
-+		if (errcode)
-+			break;
-+	}
-+
-+	/* Ok if we run off the end */
-+	if (errcode == EXT2_ET_EXTENT_NO_NEXT)
-+		errcode = 0;
-+	return errcode;
-+}
-+
-+/* Zero out the high bits of inodes. */
-+static errcode_t zero_high_bits_in_inodes(ext2_filsys fs)
-+{
-+	int length = EXT2_INODE_SIZE(fs->super);
-+	struct ext2_inode *inode = NULL;
-+	ext2_inode_scan	scan = NULL;
-+	errcode_t	retval;
-+	ext2_ino_t	ino;
-+	blk64_t		file_acl_block;
-+	__u32		sz_mask_high;
-+	int		inode_dirty;
-+
-+	if (fs->super->s_creator_os != EXT2_OS_LINUX)
-+		return 0;
-+
-+	retval = ext2fs_open_inode_scan(fs, 0, &scan);
-+	if (retval)
-+		return retval;
-+
-+	retval = ext2fs_get_mem(length, &inode);
-+	if (retval)
-+		goto out;
-+
-+	sz_mask_high = (((1ULL << 32) * EXT2_BLOCK_SIZE(fs->super)) - 1) >> 32;
-+	do {
-+		retval = ext2fs_get_next_inode_full(scan, &ino, inode, length);
-+		if (retval)
-+			goto out;
-+		if (!ino)
-+			break;
-+		if (!ext2fs_test_inode_bitmap2(fs->inode_map, ino))
-+			continue;
-+
-+		inode->i_size_high &= sz_mask_high;
-+		inode->osd2.linux2.l_i_blocks_hi = 0;
-+		inode->osd2.linux2.l_i_file_acl_high = 0;
-+
-+		retval = ext2fs_write_inode_full(fs, ino, inode,
-+						 length);
-+		if (retval)
-+			goto out;
-+
-+		retval = zero_high_bits_in_extents(fs, ino, inode);
-+		if (retval)
-+			goto out;
-+	} while (ino);
-+
-+out:
-+	if (inode)
-+		ext2fs_free_mem(&inode);
-+	if (scan)
-+		ext2fs_close_inode_scan(scan);
-+}
-+
- /*
-  * Clean up the bitmaps for unitialized bitmaps
-  */
-@@ -424,7 +679,8 @@ retry:
- 	/*
- 	 * Reallocate the group descriptors as necessary.
- 	 */
--	if (old_fs->desc_blocks != fs->desc_blocks) {
-+	if (EXT2_DESC_SIZE(old_fs->super) == EXT2_DESC_SIZE(fs->super) &&
-+	    old_fs->desc_blocks != fs->desc_blocks) {
- 		retval = ext2fs_resize_mem(old_fs->desc_blocks *
- 					   fs->blocksize,
- 					   fs->desc_blocks * fs->blocksize,
-@@ -939,7 +1195,9 @@ static errcode_t blocks_to_move(ext2_resize_t rfs)
- 		new_blocks = fs->desc_blocks + fs->super->s_reserved_gdt_blocks;
- 	}
- 
--	if (old_blocks == new_blocks) {
-+	if (EXT2_DESC_SIZE(rfs->old_fs->super) ==
-+	    EXT2_DESC_SIZE(rfs->new_fs->super) &&
-+	    old_blocks == new_blocks) {
- 		retval = 0;
- 		goto errout;
- 	}
-diff --git a/resize/resize2fs.h b/resize/resize2fs.h
-index d425491..e24319d 100644
---- a/resize/resize2fs.h
-+++ b/resize/resize2fs.h
-@@ -81,6 +81,9 @@ typedef struct ext2_sim_progress *ext2_sim_progmeter;
- #define RESIZE_PERCENT_COMPLETE		0x0100
- #define RESIZE_VERBOSE			0x0200
- 
-+#define RESIZE_ENABLE_64BIT		0x0400
-+#define RESIZE_DISABLE_64BIT		0x0800
-+
- /*
-  * This structure is used for keeping track of how much resources have
-  * been used for a particular resize2fs pass.
-
+>
+> What can I do now with my system? Is it so that for unknown reason (m=
+isinterpreted ACPI condition?)
+> /dev/sdb was stopped by SandyBridge and after an hour when shell redi=
+rects of valgrind's STDOUT
+> and STDERR to a file filled up some kernel buffers (because could not=
+ write to /mnt/external)
+> the ext4 driver choked?
+>
+> # cat /proc/sys/vm/laptop_mode
+> 0
+> #
+>
+> Have app-laptop/laptop-mode-tools-1.63-r2 on Gentoo Linux.
+>
+> Thank you,
+> Martin
+>
+> Martin MOKREJ=C5=A0 wrote:
+>> Hi,
+>>   I have been running two instances of valgrind on some application =
+on 3.10.9 kernel
+>> with a patch aiming to fix a BOS descriptor memleak (see linux-usb S=
+ubject
+>> "[RFC v2] usbcore: compare and release one bos descriptor in usb_res=
+et_and_verify_device()"
+>> but I hope it is unrelated). I enabled in the kernel some extra chec=
+ks for kernel
+>> sanity in Kernel hacking section (am looking for an answer why somet=
+hing overwrites memory
+>> of my python-based application). Hence the valgrind and attempts to =
+fortify kernel a bit
+>> more (see attached diff since last known good .config).
+>>
+>>   Below I show when I early in the morning connected the external SA=
+TA drive drive
+>> and that muich later, kernel suddenly lost ability to read/write the=
+ filesystem.
+>> I somewhat suspect that laptop-mode-tools (although configured to ig=
+nore mouse/keyboard
+>> and usb-storage devices) somehow triggered the cause. However, still=
+ I would like to see
+>> that something happened at the SATA level.
+>>
+>>
+>> Aug 28 04:41:05 vostro kernel: [  248.268202] ata6: exception Emask =
+0x10 SAct 0x0 SErr 0x4000000 action 0xe frozen
+>> Aug 28 04:41:05 vostro kernel: [  248.268205] ata6: irq_stat 0x00000=
+040, connection status changed
+>> Aug 28 04:41:05 vostro kernel: [  248.268207] ata6: SError: { DevExc=
+h }
+>> Aug 28 04:41:05 vostro kernel: [  248.268212] ata6: hard resetting l=
+ink
+>> Aug 28 04:41:06 vostro kernel: [  249.009819] ata6: SATA link up 3.0=
+ Gbps (SStatus 123 SControl 300)
+>> Aug 28 04:41:06 vostro kernel: [  249.010951] ata6.00: ATA-8: ST3000=
+VX000-1CU166, CV22, max UDMA/133
+>> Aug 28 04:41:06 vostro kernel: [  249.010963] ata6.00: 5860533168 se=
+ctors, multi 0: LBA48 NCQ (depth 31/32), AA
+>> Aug 28 04:41:06 vostro kernel: [  249.012058] ata6.00: configured fo=
+r UDMA/133
+>> Aug 28 04:41:06 vostro kernel: [  249.029823] ata6: EH complete
+>> Aug 28 04:41:06 vostro kernel: [  249.030376] scsi 5:0:0:0: Direct-A=
+ccess     ATA      ST3000VX000-1CU1 CV22 PQ: 0 ANSI: 5
+>> Aug 28 04:41:06 vostro kernel: [  249.032304] sd 5:0:0:0: [sdb] 5860=
+533168 512-byte logical blocks: (3.00 TB/2.72 TiB)
+>> Aug 28 04:41:06 vostro kernel: [  249.032306] sd 5:0:0:0: [sdb] 4096=
+-byte physical blocks
+>> Aug 28 04:41:06 vostro kernel: [  249.032623] sd 5:0:0:0: [sdb] Writ=
+e Protect is off
+>> Aug 28 04:41:06 vostro kernel: [  249.032625] sd 5:0:0:0: [sdb] Mode=
+ Sense: 00 3a 00 00
+>> Aug 28 04:41:06 vostro kernel: [  249.032755] sd 5:0:0:0: [sdb] Writ=
+e cache: enabled, read cache: enabled, doesn't support DPO or FUA
+>> Aug 28 04:41:06 vostro kernel: [  249.033850] sd 5:0:0:0: Attached s=
+csi generic sg2 type 0
+>> Aug 28 04:41:06 vostro kernel: [  249.089816]  sdb: sdb1
+>> Aug 28 04:41:06 vostro kernel: [  249.091295] sd 5:0:0:0: [sdb] Atta=
+ched SCSI disk
+>> Aug 28 04:42:51 vostro kernel: [  354.033592] EXT4-fs (sdb1): mounte=
+d filesystem with ordered data mode. Opts: (null)
+>> Aug 28 09:46:39 vostro kernel: [18604.328975] ata6: exception Emask =
+0x10 SAct 0x0 SErr 0x4090000 action 0xe frozen
+>> Aug 28 09:46:39 vostro kernel: [18604.328985] ata6: irq_stat 0x00400=
+040, connection status changed
+>> Aug 28 09:46:39 vostro kernel: [18604.328992] ata6: SError: { PHYRdy=
+Chg 10B8B DevExch }
+>> Aug 28 09:46:39 vostro kernel: [18604.329007] ata6: hard resetting l=
+ink
+>> Aug 28 09:46:39 vostro logger: ACPI event unhandled: ac_adapter AC 0=
+0000080 00000000
+>> Aug 28 09:46:39 vostro kernel: [18605.089011] ata6: SATA link down (=
+SStatus 0 SControl 300)
+>> Aug 28 09:46:40 vostro laptop-mode: Laptop mode
+>> Aug 28 09:46:40 vostro laptop-mode: enabled, active
+>> Aug 28 09:46:41 vostro logger: ACPI event unhandled: battery BAT0 00=
+000080 00000001
+>> Aug 28 09:46:41 vostro kernel: [18607.033618] ata6: hard resetting l=
+ink
+>> Aug 28 09:46:42 vostro kernel: [18607.336433] EXT4-fs (sdb1): re-mou=
+nted. Opts: commit=3D600
+>> Aug 28 09:46:42 vostro kernel: [18607.381792] ata6: SATA link down (=
+SStatus 0 SControl 300)
+>> Aug 28 09:46:42 vostro kernel: [18607.381802] ata6: limiting SATA li=
+nk speed to 1.5 Gbps
+>> Aug 28 09:46:44 vostro logger: Device 2-1.2 is blacklisted, skipping=
+ auto suspend.
+>> Aug 28 09:46:44 vostro logger: Device 2-1.2:1.0 is blacklisted, skip=
+ping auto suspend.
+>> Aug 28 09:46:45 vostro logger: Device 3-2.4 is blacklisted, skipping=
+ auto suspend.
+>> Aug 28 09:46:46 vostro logger: Device 3-2.4:1.0 is blacklisted, skip=
+ping auto suspend.
+>> Aug 28 09:46:47 vostro kernel: [18612.387982] ata6: hard resetting l=
+ink
+>> Aug 28 09:46:47 vostro kernel: [18612.738408] ata6: SATA link down (=
+SStatus 0 SControl 310)
+>> Aug 28 09:46:47 vostro kernel: [18612.738418] ata6.00: disabled
+>> Aug 28 09:46:47 vostro kernel: [18612.738435] ata6: EH complete
+>> Aug 28 09:46:47 vostro kernel: [18612.738546] ata6.00: detaching (SC=
+SI 5:0:0:0)
+>> Aug 28 09:46:47 vostro kernel: [18612.881503] sd 5:0:0:0: [sdb] Sync=
+hronizing SCSI cache
+>> Aug 28 09:46:47 vostro kernel: [18612.882157] sd 5:0:0:0: [sdb]
+>> Aug 28 09:46:47 vostro kernel: [18612.882160] Result: hostbyte=3DDID=
+_BAD_TARGET driverbyte=3DDRIVER_OK
+>> Aug 28 09:46:47 vostro kernel: [18612.882161] sd 5:0:0:0: [sdb] Stop=
+ping disk
+>> Aug 28 09:46:47 vostro kernel: [18612.882196] sd 5:0:0:0: [sdb] STAR=
+T_STOP FAILED
+>> Aug 28 09:46:47 vostro kernel: [18612.882197] sd 5:0:0:0: [sdb]
+>> Aug 28 09:46:47 vostro kernel: [18612.882198] Result: hostbyte=3DDID=
+_BAD_TARGET driverbyte=3DDRIVER_OK
+>> Aug 28 09:46:47 vostro laptop-mode: Laptop mode
+>> Aug 28 09:46:47 vostro laptop-mode: enabled, active [unchanged]
+>> Aug 28 09:47:44 vostro kernel: [18669.259990] ehci-pci 0000:00:1a.0:=
+ PME# enabled
+>> Aug 28 09:50:01 vostro cron[6478]: (root) CMD (test -x /usr/sbin/run=
+-crons && /usr/sbin/run-crons)
+>> Aug 28 09:56:08 vostro laptop-mode: Laptop mode
+>> Aug 28 09:56:08 vostro laptop-mode: enabled, active [unchanged]
+>> Aug 28 09:56:08 vostro logger: ACPI event unhandled: battery BAT0 00=
+000080 00000001
+>> Aug 28 09:56:08 vostro laptop-mode: Laptop mode
+>> Aug 28 09:56:08 vostro laptop-mode: enabled, active [unchanged]
+>> Aug 28 09:56:08 vostro laptop-mode: Laptop mode
+>> Aug 28 09:56:08 vostro laptop-mode: enabled, not active
+>> Aug 28 09:56:09 vostro kernel: [19175.537671] NMI watchdog: enabled =
+on all CPUs, permanently consumes one hw-PMU counter.
+>> Aug 28 09:56:10 vostro kernel: [19176.076583] ehci-pci 0000:00:1a.0:=
+ BAR 0: set to [mem 0xf7f08000-0xf7f083ff] (PCI address [0xf7f08000-0xf=
+7f083ff])
+>> Aug 28 09:56:10 vostro kernel: [19176.076590] ehci-pci 0000:00:1a.0:=
+ restoring config space at offset 0x3c (was 0x100, writing 0x10b)
+>> Aug 28 09:56:10 vostro kernel: [19176.076617] ehci-pci 0000:00:1a.0:=
+ restoring config space at offset 0x4 (was 0x2900000, writing 0x2900002=
+)
+>> Aug 28 09:56:10 vostro kernel: [19176.089350] ehci-pci 0000:00:1a.0:=
+ PME# disabled
+>> Aug 28 09:56:10 vostro kernel: [19176.090810] ehci-pci 0000:00:1a.0:=
+ enabling bus mastering
+>> Aug 28 09:56:10 vostro kernel: [19176.090816] ehci-pci 0000:00:1a.0:=
+ setting latency timer to 64
+>> Aug 28 09:56:10 vostro logger: ACPI event unhandled: battery BAT0 00=
+000080 00000001
+>> Aug 28 09:56:12 vostro laptop-mode: Laptop mode
+>> Aug 28 09:56:12 vostro laptop-mode: enabled, not active [unchanged]
+>> Aug 28 10:35:08 vostro laptop-mode: Laptop mode
+>> Aug 28 10:35:08 vostro laptop-mode: enabled, not active [unchanged]
+>> Aug 28 10:35:08 vostro logger: ACPI event unhandled: battery BAT0 00=
+000080 00000001
+>> Aug 28 10:35:08 vostro laptop-mode: Laptop mode
+>> Aug 28 10:35:08 vostro laptop-mode: enabled, not active [unchanged]
+>>
+>>
+>> but later on, suddenly, without any other related message in between=
+ as far as I can see:
+>>
+>> Aug 28 11:47:39 vostro kernel: [25874.121506] EXT4-fs error (device =
+sdb1): __ext4_get_inode_loc:4039: inode #163315715: block 653262880: co=
+mm memcheck-amd64-: unable to read itable block
+>> Aug 28 11:47:39 vostro kernel: [25874.121510] EXT4-fs error (device =
+sdb1) in ext4_reserve_inode_write:4973: IO failure
+>> Aug 28 11:47:39 vostro kernel: [25874.121575] EXT4-fs error (device =
+sdb1): __ext4_get_inode_loc:4039: inode #163315715: block 653262880: co=
+mm memcheck-amd64-: unable to read itable block
+>> Aug 28 11:47:39 vostro kernel: [25874.121577] EXT4-fs error (device =
+sdb1) in ext4_reserve_inode_write:4973: IO failure
+>> Aug 28 11:48:06 vostro kernel: [25901.086360] EXT4-fs error (device =
+sdb1): __ext4_get_inode_loc:4039: inode #163315715: block 653262880: co=
+mm memcheck-amd64-: unable to read itable block
+>> Aug 28 11:48:06 vostro kernel: [25901.086363] EXT4-fs error (device =
+sdb1) in ext4_reserve_inode_write:4973: IO failure
+>> Aug 28 11:48:06 vostro kernel: [25901.086423] EXT4-fs error (device =
+sdb1): __ext4_get_inode_loc:4039: inode #163315715: block 653262880: co=
+mm memcheck-amd64-: unable to read itable block
+>> Aug 28 11:48:06 vostro kernel: [25901.086425] EXT4-fs error (device =
+sdb1) in ext4_reserve_inode_write:4973: IO failure
+>> Aug 28 11:48:06 vostro kernel: [25901.204905] EXT4-fs error (device =
+sdb1): ext4_find_entry:1309: inode #163315713: comm memcheck-amd64-: re=
+ading directory lblock 0
+>> Aug 28 11:48:06 vostro kernel: [25901.207692] EXT4-fs error (device =
+sdb1): ext4_find_entry:1309: inode #163315713: comm memcheck-amd64-: re=
+ading directory lblock 0
+>> Aug 28 11:48:09 vostro kernel: [25904.225075] EXT4-fs error (device =
+sdb1): ext4_wait_block_bitmap:466: comm kworker/u8:4: Cannot read block=
+ bitmap - block_group =3D 19937, block_bitmap =3D 653262849
+>> Aug 28 11:48:09 vostro kernel: [25904.225087] EXT4-fs (sdb1): delaye=
+d block allocation failed for inode 163315715 at logical offset 1 with =
+max blocks 2 with error -5
+>> Aug 28 11:48:09 vostro kernel: [25904.225089] EXT4-fs (sdb1): This s=
+hould not happen!! Data will be lost
+>> Aug 28 11:48:12 vostro kernel: [25907.013801] EXT4-fs error (device =
+sdb1): __ext4_get_inode_loc:4039: inode #163315715: block 653262880: co=
+mm memcheck-amd64-: unable to read itable block
+>> Aug 28 11:48:12 vostro kernel: [25907.013805] EXT4-fs error (device =
+sdb1) in ext4_reserve_inode_write:4973: IO failure
+>> Aug 28 11:48:12 vostro kernel: [25907.013871] EXT4-fs error (device =
+sdb1): __ext4_get_inode_loc:4039: inode #163315715: block 653262880: co=
+mm memcheck-amd64-: unable to read itable block
+>> Aug 28 11:48:12 vostro kernel: [25907.013873] EXT4-fs error (device =
+sdb1) in ext4_reserve_inode_write:4973: IO failure
+>> Aug 28 11:48:12 vostro kernel: [25907.015685] EXT4-fs error (device =
+sdb1): __ext4_get_inode_loc:4039: inode #163315716: block 653262880: co=
+mm memcheck-amd64-: unable to read itable block
+>> Aug 28 11:48:12 vostro kernel: [25907.015687] EXT4-fs error (device =
+sdb1) in ext4_reserve_inode_write:4973: IO failure
+>> Aug 28 11:48:12 vostro kernel: [25907.015714] EXT4-fs error (device =
+sdb1): __ext4_get_inode_loc:4039: inode #163315716: block 653262880: co=
+mm memcheck-amd64-: unable to read itable block
+>> Aug 28 11:48:12 vostro kernel: [25907.015716] EXT4-fs error (device =
+sdb1) in ext4_reserve_inode_write:4973: IO failure
+>> Aug 28 11:48:12 vostro kernel: [25907.015733] EXT4-fs error (device =
+sdb1): __ext4_get_inode_loc:4039: inode #163315716: block 653262880: co=
+mm memcheck-amd64-: unable to read itable block
+>> Aug 28 11:48:12 vostro kernel: [25907.015734] EXT4-fs error (device =
+sdb1) in ext4_reserve_inode_write:4973: IO failure
+>> Aug 28 11:48:12 vostro kernel: [25907.018138] EXT4-fs error (device =
+sdb1): __ext4_get_inode_loc:4039: inode #163315716: block 653262880: co=
+mm memcheck-amd64-: unable to read itable block
+>> Aug 28 11:48:12 vostro kernel: [25907.018140] EXT4-fs error (device =
+sdb1) in ext4_reserve_inode_write:4973: IO failure
+>> Aug 28 11:48:12 vostro kernel: [25907.018157] EXT4-fs error (device =
+sdb1): __ext4_get_inode_loc:4039: inode #163315716: block 653262880: co=
+mm memcheck-amd64-: unable to read itable block
+>> Aug 28 11:48:12 vostro kernel: [25907.018159] EXT4-fs error (device =
+sdb1) in ext4_reserve_inode_write:4973: IO failure
+>> Aug 28 11:48:12 vostro kernel: [25907.018906] EXT4-fs error (device =
+sdb1): ext4_find_entry:1309: inode #163315713: comm memcheck-amd64-: re=
+ading directory lblock 0
+>> Aug 28 11:48:13 vostro kernel: [25908.368826] EXT4-fs error (device =
+sdb1): __ext4_get_inode_loc:4039: inode #163315716: block 653262880: co=
+mm memcheck-amd64-: unable to read itable block
+>> Aug 28 11:48:13 vostro kernel: [25908.368829] EXT4-fs error (device =
+sdb1) in ext4_reserve_inode_write:4973: IO failure
+>> Aug 28 11:48:13 vostro kernel: [25908.368859] EXT4-fs error (device =
+sdb1): __ext4_get_inode_loc:4039: inode #163315716: block 653262880: co=
+mm memcheck-amd64-: unable to read itable block
+>> Aug 28 11:48:13 vostro kernel: [25908.368860] EXT4-fs error (device =
+sdb1) in ext4_reserve_inode_write:4973: IO failure
+>> Aug 28 11:48:13 vostro kernel: [25908.368878] EXT4-fs error (device =
+sdb1): __ext4_get_inode_loc:4039: inode #163315716: block 653262880: co=
+mm memcheck-amd64-: unable to read itable block
+>> Aug 28 11:48:13 vostro kernel: [25908.368879] EXT4-fs error (device =
+sdb1) in ext4_reserve_inode_write:4973: IO failure
+>> Aug 28 11:48:13 vostro kernel: [25908.369287] EXT4-fs error (device =
+sdb1): __ext4_get_inode_loc:4039: inode #163315716: block 653262880: co=
+mm memcheck-amd64-: unable to read itable block
+>> Aug 28 11:48:13 vostro kernel: [25908.369290] EXT4-fs error (device =
+sdb1) in ext4_reserve_inode_write:4973: IO failure
+>> Aug 28 11:48:13 vostro kernel: [25908.369307] EXT4-fs error (device =
+sdb1): __ext4_get_inode_loc:4039: inode #163315716: block 653262880: co=
+mm memcheck-amd64-: unable to read itable block
+>> Aug 28 11:48:13 vostro kernel: [25908.369308] EXT4-fs error (device =
+sdb1) in ext4_reserve_inode_write:4973: IO failure
+>> Aug 28 11:48:13 vostro kernel: [25908.370318] EXT4-fs error (device =
+sdb1): __ext4_get_inode_loc:4039: inode #163315716: block 653262880: co=
+mm memcheck-amd64-: unable to read itable block
+>> Aug 28 11:48:13 vostro kernel: [25908.370320] EXT4-fs error (device =
+sdb1) in ext4_reserve_inode_write:4973: IO failure
+>> Aug 28 11:48:13 vostro kernel: [25908.370338] EXT4-fs error (device =
+sdb1): __ext4_get_inode_loc:4039: inode #163315716: block 653262880: co=
+mm memcheck-amd64-: unable to read itable block
+>> Aug 28 11:48:13 vostro kernel: [25908.370339] EXT4-fs error (device =
+sdb1) in ext4_reserve_inode_write:4973: IO failure
+>> Aug 28 11:48:14 vostro kernel: [25909.243747] EXT4-fs error (device =
+sdb1): ext4_wait_block_bitmap:466: comm kworker/u8:4: Cannot read block=
+ bitmap - block_group =3D 19937, block_bitmap =3D 653262849
+>> Aug 28 11:48:14 vostro kernel: [25909.243759] EXT4-fs (sdb1): delaye=
+d block allocation failed for inode 163315715 at logical offset 3 with =
+max blocks 1 with error -5
+>> Aug 28 11:48:14 vostro kernel: [25909.243761] EXT4-fs (sdb1): This s=
+hould not happen!! Data will be lost
+>> Aug 28 11:48:14 vostro kernel: [25909.641975] EXT4-fs error (device =
+sdb1): __ext4_get_inode_loc:4039: inode #163315716: block 653262880: co=
+mm memcheck-amd64-: unable to read itable block
+>> Aug 28 11:48:14 vostro kernel: [25909.641978] EXT4-fs error (device =
+sdb1) in ext4_reserve_inode_write:4973: IO failure
+>> Aug 28 11:48:14 vostro kernel: [25909.642007] EXT4-fs error (device =
+sdb1): __ext4_get_inode_loc:4039: inode #163315716: block 653262880: co=
+mm memcheck-amd64-: unable to read itable block
+>> Aug 28 11:48:14 vostro kernel: [25909.642008] EXT4-fs error (device =
+sdb1) in ext4_reserve_inode_write:4973: IO failure
+>>
+>>
+>> [cut]
+>>
+>> Aug 28 11:49:29 vostro kernel: [25984.053680] EXT4-fs error (device =
+sdb1) in ext4_reserve_inode_write:4973: IO failure
+>> Aug 28 11:49:29 vostro kernel: [25984.053757] EXT4-fs error (device =
+sdb1): __ext4_get_inode_loc:4039: inode #55836687: block 223346720: com=
+m memcheck-amd64-: unable to read itable block
+>> Aug 28 11:49:29 vostro kernel: [25984.053758] EXT4-fs error (device =
+sdb1) in ext4_reserve_inode_write:4973: IO failure
+>> Aug 28 11:49:29 vostro kernel: [25984.082439] EXT4-fs error (device =
+sdb1): ext4_wait_block_bitmap:466: comm memcheck-amd64-: Cannot read bl=
+ock bitmap - block_group =3D 19937, block_bitmap =3D 653262849
+>> Aug 28 11:49:29 vostro kernel: [25984.082452] EXT4-fs (sdb1): delaye=
+d block allocation failed for inode 55836688 at logical offset 1 with m=
+ax blocks 3 with error -5
+>> Aug 28 11:49:29 vostro kernel: [25984.082453] EXT4-fs (sdb1): This s=
+hould not happen!! Data will be lost
+>> Aug 28 11:49:29 vostro kernel: [25984.082616] EXT4-fs error (device =
+sdb1): ext4_wait_block_bitmap:466: comm memcheck-amd64-: Cannot read bl=
+ock bitmap - block_group =3D 374, block_bitmap =3D 12058630
+>> Aug 28 11:49:29 vostro kernel: [25984.082622] EXT4-fs (sdb1): delaye=
+d block allocation failed for inode 55836687 at logical offset 1 with m=
+ax blocks 243 with error -5
+>> Aug 28 11:49:29 vostro kernel: [25984.082623] EXT4-fs (sdb1): This s=
+hould not happen!! Data will be lost
+>> Aug 28 11:50:01 vostro cron[8131]: (root) CMD (test -x /usr/sbin/run=
+-crons && /usr/sbin/run-crons)
+>> Aug 28 11:57:40 vostro kernel: [26476.360211] Aborting journal on de=
+vice sdb1-8.
+>> Aug 28 11:57:40 vostro kernel: [26476.360222] Buffer I/O error on de=
+vice sdb1, logical block 365985792
+>> Aug 28 11:57:40 vostro kernel: [26476.360223] lost page write due to=
+ I/O error on sdb1
+>> Aug 28 11:57:40 vostro kernel: [26476.360226] JBD2: Error -5 detecte=
+d when updating journal superblock for sdb1-8.
+>> Aug 28 11:57:55 vostro kernel: [26491.416007] EXT4-fs error (device =
+sdb1): __ext4_journal_start_sb:62: Detected aborted journal
+>> Aug 28 11:57:55 vostro kernel: [26491.416014] EXT4-fs (sdb1): Remoun=
+ting filesystem read-only
+>> Aug 28 11:57:55 vostro kernel: [26491.416017] EXT4-fs (sdb1): ext4_d=
+a_writepages: jbd2_start: 13312 pages, ino 55836687; err -30
+>>
+>> So kernel was trying for 10 minutes before it gave up?
+>>
+>> [cut, please of these repeated messages]
+>>
+>> Aug 28 12:56:31 vostro kernel: [30013.996669] EXT4-fs warning (devic=
+e sdb1): __ext4_read_dirblock:908: error reading directory block (ino 1=
+63315713, block 0)
+>> Aug 28 12:56:33 vostro kernel: [30015.310284] EXT4-fs warning (devic=
+e sdb1): __ext4_read_dirblock:908: error reading directory block (ino 1=
+63315713, block 0)
+>> Aug 28 12:56:33 vostro kernel: [30015.526548] EXT4-fs warning (devic=
+e sdb1): __ext4_read_dirblock:908: error reading directory block (ino 1=
+63315713, block 0)
+>> Aug 28 12:56:36 vostro kernel: [30018.490206] EXT4-fs warning (devic=
+e sdb1): __ext4_read_dirblock:908: error reading directory block (ino 1=
+63315713, block 0)
+>> Aug 28 12:56:36 vostro kernel: [30018.730504] EXT4-fs warning (devic=
+e sdb1): __ext4_read_dirblock:908: error reading directory block (ino 1=
+63315713, block 0)
+>> Aug 28 12:56:36 vostro kernel: [30018.898683] EXT4-fs warning (devic=
+e sdb1): __ext4_read_dirblock:908: error reading directory block (ino 1=
+63315713, block 0)
+>> Aug 28 12:56:42 vostro kernel: [30024.101650] EXT4-fs error (device =
+sdb1): ext4_find_entry:1309: inode #163315713: comm ls: reading directo=
+ry lblock 0
+>> Aug 28 12:56:42 vostro kernel: [30024.101696] EXT4-fs error (device =
+sdb1): ext4_find_entry:1309: inode #163315713: comm ls: reading directo=
+ry lblock 0
+>> Aug 28 12:56:42 vostro kernel: [30024.101729] EXT4-fs error (device =
+sdb1): ext4_find_entry:1309: inode #163315713: comm ls: reading directo=
+ry lblock 0
+>> Aug 28 12:56:42 vostro kernel: [30024.102016] EXT4-fs error (device =
+sdb1): ext4_find_entry:1309: inode #163315713: comm ls: reading directo=
+ry lblock 0
+>> Aug 28 12:56:42 vostro kernel: [30024.102175] EXT4-fs error (device =
+sdb1): ext4_find_entry:1309: inode #163315713: comm ls: reading directo=
+ry lblock 0
+>> Aug 28 12:56:42 vostro kernel: [30024.102337] EXT4-fs error (device =
+sdb1): ext4_find_entry:1309: inode #163315713: comm ls: reading directo=
+ry lblock 0
+>> Aug 28 12:56:42 vostro kernel: [30024.102494] EXT4-fs error (device =
+sdb1): ext4_find_entry:1309: inode #163315713: comm ls: reading directo=
+ry lblock 0
+>> Aug 28 12:56:42 vostro kernel: [30024.103131] EXT4-fs warning (devic=
+e sdb1): __ext4_read_dirblock:908: error reading directory block (ino 1=
+63315713, block 0)
+>>
+>>
+>> I could imagine valgrind took too much memory and maybe overwrote so=
+me kernel structures? Or some of the new changes in .config?
+>>
+>> I ran two instances of: valgrind --leak-check=3Dfull --track-origins=
+=3Dyes --tool=3Dmemcheck --suppressions=3Dvalgrind-python.supp my_app_c=
+ompiled_by_cython_and_gcc [args]
+>>
+>> $ df -h
+>> Filesystem      Size  Used Avail Use% Mounted on
+>> /dev/root       573G  533G   12G  98% /
+>> devtmpfs        7.8G     0  7.8G   0% /dev
+>> tmpfs           1.6G  3.0M  1.6G   1% /run
+>> shm             7.8G     0  7.8G   0% /dev/shm
+>> /dev/sdb1       2.7T  1.4T  1.3T  53% /mnt/external
+>> $ ls -la  /mnt/external
+>> ls: reading directory /mnt/external: Input/output error
+>> total 0
+>> $
+>>
+>> So, the target filesystem on the external disk should not be full.
+>>
+>> Any clues what I should look at? Few days ago memtest86+ went fine t=
+hrough all 16GB of RAM (Dell Vostro 3550). I do not know if the PCI/ACP=
+I change is related or not.
+>> Thank you,
+>> Martin
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
