@@ -1,47 +1,57 @@
-From: Al Viro <viro@ZenIV.linux.org.uk>
-Subject: Re: [PATCH 0/2 v2] Fix O_SYNC AIO DIO
-Date: Fri, 30 Aug 2013 16:53:01 +0100
-Message-ID: <20130830155301.GB13318@ZenIV.linux.org.uk>
-References: <1376471456-11966-1-git-send-email-jack@suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com, Christoph Hellwig <hch@infradead.org>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:34211 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756539Ab3H3PxE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Aug 2013 11:53:04 -0400
-Content-Disposition: inline
-In-Reply-To: <1376471456-11966-1-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Michael Richardson <mcr-SWp7JaYWvAQV+D8aMU/kSg@public.gmane.org>
+Subject: Re: [uml-devel] Issues with a rather unusual configured NFS server
+Date: Fri, 30 Aug 2013 14:27:08 -0400
+Message-ID: <29555.1377887228@sandelman.ca>
+References: <52075E01.7030506@gmx.de> <20130812143640.GF4596@quack.suse.cz> <20130813215313.GH17781@fieldses.org> <20130827180655.GE14809@fieldses.org> <521E318C.7040401@gmx.de> <CAFLxGvyK5+nB9TgW1uPho9KGwQrWQHx=wEpj+o-mZcN92bWAOg@mail.gmail.com>
+Cc: =?ISO-8859-1?Q?Toralf_F=F6rster?= <toralf.foerster-Mmb7MZpHnFY@public.gmane.org>,
+	Linux NFS mailing list <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
+	"user-mode-linux-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org"
+	<user-mode-linux-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org>,
+	Linux Kernel <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+	"J. Bruce Fields" <bfields-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: richard -rw- weinberger <richard.weinberger-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <CAFLxGvyK5+nB9TgW1uPho9KGwQrWQHx=wEpj+o-mZcN92bWAOg-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Aug 14, 2013 at 11:10:54AM +0200, Jan Kara wrote:
->   Hello,
-> 
->   this is second iteration of patches to fix handling of O_SYNC AIO DIO.
-> Since previous version I've addressed Dave's comments:
->  - slightly expanded changelog of the first patch
->  - workqueue is now created with parameters allowing paralelism
->  - workqueue name contains sb->s_id
->  - workqueue is created on demand (I decided to do this to reduce the overhead
->    in unnecessary cases)
-> 
-> The patchset survives xfstests run for ext4 & xfs so it should be sane. Since
-> this touches several filesystems (although only ext4 & xfs are non-trivial),
-> the question is who should carry these patches. Maybe Al? But since xfs and
-> ext4 changes are non-trivial, I'd like to have a review from their
-> developers...
 
-Looks sane, except that I'd probably put destroying the queue after
-evict_inodes(), next to ->put_super() call.
+richard -rw- weinberger <richard.weinberger-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org> wrote:
+    >>>> Thanks for the report.  I think I see the problem--after this commit
+    >>>> nfs4_set_delegation() failures result in nfs4_put_delegation being
+    >>>> called, but nfs4_put_delegation doesn't free the nfs4_file that has
+    >>>> already been set by alloc_init_deleg().
+    >>>>
+    >>>> Let me think about how to fix that....
+    >>>
+    >>> Sorry for the slow response--can you check whether this fixes the
+    >>> problem?
+    >>>
+    >> Yes.
+    >>
+    >> With the attached patch the problem can't be reproduced any longer
+    >> with the prepared test case and current git kernels.
 
-Said that, there's another interesting problem in the code affected by that
-sucker: generic_file_aio_write() might very well sync the wrong range.
-Consider O_APPEND case; __generic_file_aio_write() will call
-generic_write_checks(), which will update its copy of pos, and proceed to
-write starting from there.  All right and proper, but then we return into
-generic_file_aio_write() and sync the range of the right length, starting
-at the *original* value of pos...
+    > BTW: Is nobody else fuzz testing NFS?  Or are these bugs just more
+    > likely to hit on UML?  This is not the first NFS issue found by Toralf
+    > using UML and Trinity.
+
+Kernel thread scheduling is likely very different on UML than other
+architectures.
+
+My guess is that there could well be be gaps where no kernel thread is
+scheduled (because another process is running), followed by resumption of a
+thread other than the one which would have been resumed on other
+virtualization.
+
+--
+]               Never tell me the odds!                 | ipv6 mesh networks [
+]   Michael Richardson, Sandelman Software Works        | network architect  [
+]     mcr-SWp7JaYWvAQV+D8aMU/kSg@public.gmane.org  http://www.sandelman.ca/        |   ruby on rails    [
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
