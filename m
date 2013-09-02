@@ -1,8 +1,8 @@
 From: Wang Shilong <wangshilong1991@gmail.com>
-Subject: Re:  [v2, 6/7] xfstest: Add test case to test multiple collapse range
-	call
+Subject: Re:  [v2, 4/7] xfsprogs: xfsio: add support FALLOC_FL_COLLAPSE_RANGE
+	for fallocate
 Date: Tue, 03 Sep 2013 00:03:29 +0800
-Message-ID: <5224b6d1.kHB8BmSmsG/UJ0Oj%wangshilong1991@gmail.com>
+Message-ID: <5224b6d1.ZoJRPU29rGaeSvHy%wangshilong1991@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -28,22 +28,15 @@ Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
 Hello, Using checkpatch.pl, i get the following warnings(errors):
-ERROR: trailing whitespace
-#97: FILE: tests/shared/317:56:
-+^I^I^Iprint $1, $2, $3; $
+ERROR: space required before the open parenthesis '('
+#79: FILE: io/prealloc.c:223:
++	if(!offset_length(argv[1], argv[2], &segment))
 
-ERROR: trailing whitespace
-#99: FILE: tests/shared/317:58:
-+^I^I}   $
+WARNING: line over 80 characters
+#104: FILE: io/prealloc.c:315:
++		_("de-allocates space and nullify the hole by shifting extents into it");
 
-ERROR: trailing whitespace
-#122: FILE: tests/shared/317:81:
-+# Collapse alternate blocks $
-
-total: 3 errors, 0 warnings, 185 lines checked
-
-NOTE: whitespace errors detected, you may wish to use scripts/cleanpatch or
-      scripts/cleanfile
+total: 1 errors, 1 warnings, 81 lines checked
 
 patch has style problems, please review.
 
