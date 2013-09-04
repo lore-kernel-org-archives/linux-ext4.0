@@ -1,133 +1,130 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH v3 0/2] ext4: increase mbcache scalability
-Date: Wed, 4 Sep 2013 14:00:44 -0600
-Message-ID: <FDD6EB21-7C40-4F4D-904C-8514535CC7C3@dilger.ca>
-References: <1374108934-50550-1-git-send-email-tmac@hp.com> <1378312756-68597-1-git-send-email-tmac@hp.com>
-Mime-Version: 1.0 (Apple Message framework v1085)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Theodore Ts'o <tytso@mit.edu>, Al Viro <viro@zeniv.linux.org.uk>,
-	"linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org Devel" <linux-fsdevel@vger.kernel.org>,
-	aswin@hp.com, Linus Torvalds <torvalds@linux-foundation.org>,
-	aswin_proj@groups.hp.com
-To: T Makphaibulchoke <tmac@hp.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1378312756-68597-1-git-send-email-tmac@hp.com>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Andy Lutomirski <luto@amacapital.net>
+Subject: Re: [PATCH v4 3/7] mm: Allow filesystems to defer cmtime updates
+Date: Wed, 4 Sep 2013 13:05:27 -0700
+Message-ID: <CALCETrXLtLbgQH-eXm7AvxyRYa2jxZ=3jR=CfvAY+drGC_O4nA@mail.gmail.com>
+References: <cover.1377193658.git.luto@amacapital.net>
+	<e1620c8e4909a65e270c8e9590e307c22fd96a44.1377193658.git.luto@amacapital.net>
+	<20130904145740.GE3996@quack.suse.cz>
+	<CALCETrUA653bw3C=XP=Es9UApqsKsDG-UAzuZ=qS1RA1LeoKYw@mail.gmail.com>
+	<20130904192048.GM3996@quack.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso@mit.edu>, Dave Hansen <dave.hansen@linux.intel.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	xfs@oss.sgi.com, Christoph Hellwig <hch@infradead.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Tim Chen <tim.c.chen@linux.intel.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <20130904192048.GM3996@quack.suse.cz>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On 2013-09-04, at 10:39 AM, T Makphaibulchoke wrote:
-> This patch intends to improve the scalability of an ext filesystem,
-> particularly ext4.
+On Wed, Sep 4, 2013 at 12:20 PM, Jan Kara <jack@suse.cz> wrote:
+> On Wed 04-09-13 10:54:50, Andy Lutomirski wrote:
+>> >> @@ -1970,6 +1988,39 @@ int write_one_page(struct page *page, int wait)
+>> >>  }
+>> >>  EXPORT_SYMBOL(write_one_page);
+>> >>
+>> >> +void mapping_flush_cmtime(struct address_space *mapping)
+>> >> +{
+>> >> +     if (mapping_test_clear_cmtime(mapping) &&
+>> >> +         mapping->a_ops->update_cmtime_deferred)
+>> >> +             mapping->a_ops->update_cmtime_deferred(mapping);
+>> >> +}
+>> >> +EXPORT_SYMBOL(mapping_flush_cmtime);
+>> >   Hum, is there a reason for update_cmtime_deferred() operation? I can
+>> > hardly imagine anyone will want to do anything else than what
+>> > inode_update_time_writable() does so why bother? You mention tmpfs & co.
+>> > don't fit into your scheme well with which I agree so let's just keep
+>> > file_update_time() in their page_mkwrite() operation. But I don't see a
+>> > real need for avoiding the deferred cmtime logic...
+>>
+>> I think there might be odd corner cases.  For example, mmap a tmpfs
+>> file, write it, and unmap it.  Then, an hour later, maybe the system
+>   If you unmap it then that will handle the update. But if you won't unmap,
+> you'd get spurious updates of timestamps which would be strange.
+>
+>> will be under memory pressure and page out the file.  This could
+>> trigger a surprising time update.  (I'm not sure this can actually
+>> happen on tmpfs, but maybe it would on some other filesystem.)
+>>
+>> Does this actually matter?  A flag to turn the feature on or off would
+>> do the trick, but I don't think there's precedent for sticking a flag
+>> in a_ops.
+>   Flag in a_ops is ugly. But you can have a flag in 'struct
+> filesystem_type' which would be reasonable.
 
-In the past, I've raised the question of whether mbcache is even
-useful on real-world systems.  Essentially, this is providing a
-"deduplication" service for ext2/3/4 xattr blocks that are identical.
-The question is how often this is actually the case in modern use?
-The original design was for allowing external ACL blocks to be
-shared between inodes, at a time when ACLs where pretty much the
-only xattrs stored on inodes.
+OK, will do.
 
-The question now is whether there are common uses where all of the
-xattrs stored on multiple inodes are identical?  If that is not the
-case, mbcache is just adding overhead and should just be disabled
-entirely instead of just adding less overhead.
+>
+>> >> +void mapping_flush_cmtime_nowb(struct address_space *mapping)
+>> >> +{
+>> >> +     /*
+>> >> +      * We get called from munmap and msync.  Both calls can race
+>> >> +      * with fs freezing.  If the fs is frozen after
+>> >> +      * mapping_test_clear_cmtime but before the time update, then
+>> >> +      * sync_filesystem will miss the cmtime update (because we
+>> >> +      * just cleared it) and we don't be able to write (because the
+>> >> +      * fs is frozen).  On the other hand, we can't just return if
+>> >> +      * we're in the SB_FREEZE_PAGEFAULT state because our caller
+>> >> +      * expects the timestamp to be synchronously updated.  So we
+>> >> +      * get write access without blocking, at the SB_FREEZE_FS
+>> >> +      * level.  If the fs is already fully frozen, then we already
+>> >> +      * know we have nothing to do.
+>> >> +      */
+>> >> +
+>> >> +     if (!mapping_test_cmtime(mapping))
+>> >> +             return;  /* Optimization: nothing to do. */
+>> >> +
+>> >> +     if (__sb_start_write(mapping->host->i_sb, SB_FREEZE_FS, false)) {
+>> >> +             mapping_flush_cmtime(mapping);
+>> >> +             __sb_end_write(mapping->host->i_sb, SB_FREEZE_FS);
+>> >> +     }
+>> >> +}
+>> >   This is wrong because SB_FREEZE_FS level is targetted for filesystem
+>> > internal use. Also it is racy. mapping_flush_cmtime() ends up calling
+>> > mark_inode_dirty() and filesystems such as ext4 or xfs will start a
+>> > transaction to store inode in the journal. This gets freeze protection at
+>> > SB_FREEZE_FS level again. If freeze_super() sets s_writers.frozen to
+>> > SB_FREEZE_FS before this second protection, things will deadlock.
+>>
+>> Whoops -- I assumed that it was safe to recursively take freeze
+>> protection at the same level.
+>>
+>> I'm worried about the following race:
+>>
+>> Thread 1 (in munmap):
+>> Check AS_CMTIME set
+>> sb_start_pagefault
+>>
+>> Thread 2 (freezing the fs):
+>> frozen = SB_FREEZE_PAGEFAULT;
+>> sync_filesystem()
+>>
+>> Thread 1 is now stuck.  It doesn't need to be, because sync_filesystem
+>> will flush out the cmtime write.  But there doesn't seem to be a clean
+>> mechanism to wait for the freeze to finish.
+>   OK, I see. Frankly, I'd rather live with msync() and munmap() blocking
+> while filesystem is frozen than trying to outsmart the freezing logic...
+> If someone comes up with a usecase where it causes trouble, we can always
+> improve the logic with some clever tricks.
 
-There aren't good statistics on the hit rate for mbcache, but it
-might be possible to generate some with systemtap or similar to
-see how often ext4_xattr_cache_find() returns NULL vs. non-NULL.
+I'll at least check that it's a shared writable mapping before doing
+the flush to avoid blocking on other types of munmap.
 
-Cheers, Andreas
+--Andy
 
-> The patch consists of two parts.  The first part introduces higher
-> degree of parallelism to the usages of the mb_cache and
-> mb_cache_entries and impacts all ext filesystems.
-> 
-> The second part of the patch further increases the scalablity of
-> an ext4 filesystem by having each ext4 fielsystem allocate and use
-> its own private mbcache structure, instead of sharing a single
-> mcache structures across all ext4 filesystems
-> 
-> Here are some of the benchmark results with the changes. 
-> 
-> On a 90 core machine:
-> 
-> Here are the performance improvements in some of the aim7 workloads,
-> 
-> ---------------------------
-> |             | % increase |
-> ---------------------------
-> | alltests    |     11.85  |
-> ---------------------------
-> | custom      |     14.42  |
-> ---------------------------
-> | fserver     |     21.36  |  
-> ---------------------------
-> | new_dbase   |      5.59 |  
-> ---------------------------
-> | new_fserver |     21.45  |  
-> ---------------------------
-> | shared      |     12.84  |  
-> ---------------------------
-> For Swingbench dss workload, with 16 GB database,
-> 
-> -------------------------------------------------------------------------------
-> | Users        | 100  | 200  | 300  | 400  | 500  | 600  | 700  | 800  | 900  |
-> -------------------------------------------------------------------------------
-> | % imprvoment | 8.46 | 8.00 | 7.35 | -.313| 1.09 | 0.69 | 0.30 | 2.18 | 5.23 |
-> -------------------------------------------------------------------------------
-> | % imprvoment |45.66 |47.62 |34.54 |25.15 |15.29 | 3.38 | -8.7 |-4.98 |-7.86 |
-> | without using|      |      |      |      |      |      |      |      |      |
-> | shared memory|      |      |      |      |      |      |      |      |      |
-> -------------------------------------------------------------------------------
-> For SPECjbb2013, composite run,
-> 
-> --------------------------------------------
-> |               | max-jOPS | critical-jOPS |
-> --------------------------------------------
-> | % improvement |   5.99   |     N/A       |
-> --------------------------------------------
-> 
-> 
-> On an 80 core machine:
-> 
-> The aim7's results for most of the workloads turn out to the same.
-> 
-> Here are the results of Swingbench dss workload,
-> 
-> -------------------------------------------------------------------------------
-> | Users        | 100  | 200  | 300  | 400  | 500  | 600  | 700  | 800  | 900  |
-> -------------------------------------------------------------------------------
-> | % imprvoment |-1.79 | 0.37 | 1.36 | 0.08 | 1.66 | 2.09 | 1.16 | 1.48 | 1.92 |
-> -------------------------------------------------------------------------------
-> 
-> The changes have been tested with ext4 xfstests to verify that no regression
-> has been introduced. 
-> 
-> Changed in v3:
-> 	- New diff summary
-> 
-> Changed in v2:
-> 	- New performance data
-> 	- New diff summary
-> 
-> T Makphaibulchoke (2):
->  mbcache: decoupling the locking of local from global data
->  ext4: each filesystem creates and uses its own mb_cache
-> 
-> fs/ext4/ext4.h          |   1 +
-> fs/ext4/super.c         |  24 ++--
-> fs/ext4/xattr.c         |  51 ++++----
-> fs/ext4/xattr.h         |   6 +-
-> fs/mbcache.c            | 306 +++++++++++++++++++++++++++++++++++-------------
-> include/linux/mbcache.h |  10 +-
-> 6 files changed, 277 insertions(+), 121 deletions(-)
-> 
-> -- 
-> 1.7.11.3
-> 
-
-
-Cheers, Andreas
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
