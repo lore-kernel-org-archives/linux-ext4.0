@@ -1,158 +1,143 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: Which features should I implement in my ext4 reader?
-Date: Wed, 4 Sep 2013 13:35:03 +0800
-Message-ID: <20130904053503.GA3518@gmail.com>
-References: <CACyNnZONOUy0+OeDriZaSt4OQrR6LzpyJz4Sj8XvMHvxr2u_Xg@mail.gmail.com>
- <20130819050803.GA10882@gmail.com>
- <CACyNnZN4z_mHq86+FPOaGpzjwBVmmsKNjnd45s53o2LdQjxEsg@mail.gmail.com>
- <20130820103956.GA7846@gmail.com>
- <CACyNnZP6m96Uv_acbVvf3K2UvcMhhqk2S2gmdZS9DG9GwqbUcg@mail.gmail.com>
- <CACyNnZP2SFovG9YeBNeifm4KqrCzi7FU97CWVUjST0YQiqt3pQ@mail.gmail.com>
- <CACyNnZOXOZ-uL+TO8HOuO4DoWsBKuBOX5RLQrZzyoeG1L2a9yg@mail.gmail.com>
- <CACyNnZNhrmcpQRU+JcqSJeUYt3YNpyTyVArW_Jrp3e43owVf5Q@mail.gmail.com>
- <20130902120718.GB1106@gmail.com>
- <CACyNnZNQf6a05zE64KfouuT=dUXaNPT7iqPe8HKT1wXKz+pK0Q@mail.gmail.com>
+From: Nikola Ciprich <nikola.ciprich@linuxbox.cz>
+Subject: Re: e2fsprogs - possible regression between 1.42.7 and 1.42.8
+Date: Wed, 4 Sep 2013 10:04:44 +0200
+Message-ID: <20130904080444.GP5953@pcnci.linuxbox.cz>
+References: <20130729083941.GG28871@pcnci.linuxbox.cz>
+ <51F694B6.90901@redhat.com>
+ <51F87075.2020508@redhat.com>
+ <51F8722D.9050707@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Felipe Monteiro de Carvalho <felipemonteiro.carvalho@gmail.com>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="I4g3zIzscEHdx6fd"
+Cc: linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f41.google.com ([209.85.160.41]:65143 "EHLO
-	mail-pb0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755788Ab3IDFeJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Sep 2013 01:34:09 -0400
-Received: by mail-pb0-f41.google.com with SMTP id rp2so7013217pbb.0
-        for <linux-ext4@vger.kernel.org>; Tue, 03 Sep 2013 22:34:08 -0700 (PDT)
+Received: from gwu.lbox.cz ([62.245.111.132]:50480 "EHLO gwu.lbox.cz"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1762130Ab3IDIQ2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 Sep 2013 04:16:28 -0400
 Content-Disposition: inline
-In-Reply-To: <CACyNnZNQf6a05zE64KfouuT=dUXaNPT7iqPe8HKT1wXKz+pK0Q@mail.gmail.com>
+In-Reply-To: <51F8722D.9050707@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Sep 02, 2013 at 02:35:31PM +0200, Felipe Monteiro de Carvalho wrote:
-> Hello,
-> 
-> Ok, I think I got it almost finished =) Just 1 last wierd thing. I
-> dumped my inode and I found that when the extended attribute is in the
-> space after the inode, then the attribute data starts 3 bytes before
-> the end of this area! But in the wiki nothing is said about this. It
-> was supposed to start at the end of the section ... not 3 bytes before
-> the end of the section
-> 
-> Here are the 3 zeroes in the end:
-> 
-> 7760 4444 4444 4444 4444 4444 4444 0a00 0000 DDDDDDDDDDDD....
-> 
-> Any idea what are those 3 zeroes in the end? I simply hardcoded in my
-> application that there exists 3 zeroes in the end, but its really
-> strange as this does not make any sense to waste 3 bytes and I didn't
-> see any such a thing in the wiki nor the xattr.h header...
-> 
-> Also wierd: This 3 last bytes do no appear when extended attributes
-> are stored in a separate block.
 
-Could you please tell me how to reproduce this problem?  I try to create
-a file with inline data, but I couldn't reproduce your problem.
+--I4g3zIzscEHdx6fd
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Thanks,
-                                                - Zheng
+Hello Eric,
 
-> 
-> Full set of dumps:
-> 
-> debugfs: stat smallfile120.txt
-> Inode: 16 Type: regular Mode: 0644 Flags: 0x10000000
-> Generation: 230499867 Version: 0x00000000:00000001
-> User: 0 Group: 0 Size: 121
-> File ACL: 0 Directory ACL: 0
-> Links: 1 Blockcount: 0
-> Fragment: Address: 0 Number: 0 Size: 0
->  ctime: 0x52149464:04e2df1c -- Wed Aug 21 06:20:20 2013
->  atime: 0x52177658:c0a4e548 -- Fri Aug 23 10:48:56 2013
->  mtime: 0x52149464:04e2df1c -- Wed Aug 21 06:20:20 2013
-> crtime: 0x52149464:04e2df1c -- Wed Aug 21 06:20:20 2013
-> Size of extra inode fields: 28
-> Extended attributes stored in inode body:
->   data = "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD\012" (61)
-> INLINE DATA:
->   The size of inline data: 121
-> 
-> More detailed information about the file with extended attribute:
-> 
-> debugfs: imap smallfile120.txt
-> Inode 16 is part of block group 0
->         located at block 65, offset 0x0f00
-> 
-> So we know that it is located in the block 0000065 with offset 0x0f00
-> = 0740 octal
-> 
-> debugfs: block_dump 65
-> .....
-> *
-> 7400 a481 0000 7900 0000 5876 1752 6494 1452 ....y...Xv.Rd..R
-> 7420 6494 1452 0000 0000 0000 0100 0000 0000 d..R............
-> 7440 0000 0010 0100 0000 4141 4141 4141 4141 ........AAAAAAAA
-> 7460 4141 4141 4141 4141 4141 4141 4141 4141 AAAAAAAAAAAAAAAA
-> 7500 4141 4141 4141 4242 4242 4242 4242 4242 AAAAAABBBBBBBBBB
-> 7520 4242 4242 4242 4242 4242 4242 4242 4242 BBBBBBBBBBBBBBBB
-> 7540 4242 4242 1b26 bd0d 0000 0000 0000 0000 BBBB.&..........
-> 7560 0000 0000 0000 0000 0000 0000 0000 0000 ................
-> 7600 1c00 0000 1cdf e204 1cdf e204 48e5 a4c0 ............H...
-> 7620 6494 1452 1cdf e204 0000 0000 0000 02ea d..R............
-> 7640 0407 2000 0000 0000 3d00 0000 0000 0000 .. .....=.......
-> 7660 6461 7461 0000 0000 0000 0000 0000 0000 data............
-> 7700 4343 4343 4343 4343 4343 4343 4343 4343 CCCCCCCCCCCCCCCC
-> 7720 4343 4343 4343 4343 4343 4343 4343 4444 CCCCCCCCCCCCCCDD
-> 7740 4444 4444 4444 4444 4444 4444 4444 4444 DDDDDDDDDDDDDDDD
-> 7760 4444 4444 4444 4444 4444 4444 0a00 0000 DDDDDDDDDDDD....
-> 
-> And thats how I got to this place.
-> 
-> thanks,
-> 
-> Felipe Monteiro de Carvalho
-> 
-> On Mon, Sep 2, 2013 at 2:07 PM, Zheng Liu <gnehzuil.liu@gmail.com> wrote:
-> > Hello,
-> >
-> > Sorry for my late reply.
-> >
-> > On Mon, Sep 02, 2013 at 11:40:15AM +0200, Felipe Monteiro de Carvalho wrote:
-> >> Hello,
-> >>
-> >> Ok, I found the extra data over 60 bytes ... it is in an extended
-> >> attribute called "data" in the space after the inode. The wiki says it
-> >> should be called "system.data" =(
-> >>
-> >> Also the wiki says here
-> >> https://ext4.wiki.kernel.org/index.php/Ext4_Disk_Layout#Extended_Attributes
-> >> that "Extended attributes, when >>>not<<<< stored after the inode,
-> >> have a header ext4_xattr_ibody_header that is 4 bytes long:"
-> >>
-> >> Which in my oppinion is false, it should be: "Extended attributes,
-> >> when stored after the inode, have a header ext4_xattr_ibody_header
-> >> that is 4 bytes long:"  without the "not"
-> >>
-> >> But I still am not sure of one thing: How can I know how many entries
-> >> of extended attributes there are? Nothing in the wiki explains this =(
-> >
-> > You need to traverse the all entries to get this value.
-> >
-> >>
-> >> Otherwise I cannot differentiate between yet another entry and simply
-> >> data from an extended attribute...
-> >
-> > You can use attribute name and name index to differentiate these
-> > entries.  You can read the comment at the front of fs/ext4/xattr.c and
-> > it might help you to understand extended attribute.
-> >
-> > Regards,
-> >                                                 - Zheng
-> 
-> 
-> 
-> -- 
-> Felipe Monteiro de Carvalho
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I'm very sorry for such a late reply, I was a bit busy with other
+projects.. Well, I don't really understand what I should do with the
+images now :) But if I understand previous discussion well, my problem
+is not caused by code regressions, but new tests which were added
+to this new version right? The problems failed tests report are related
+to filesystems with 1K block size, so unless I use such filesystems,
+I'm safe to skip tests and use this new version, especially since I've
+been using 1.42.7 till now, right?
+
+Or is there some git commit fixing those issues I should try?
+
+Thanks a lot for Your time and sorry about my lame questions..
+
+with best regards
+
+nikola ciprich
+
+
+On Tue, Jul 30, 2013 at 09:10:53PM -0500, Eric Sandeen wrote:
+> -----BEGIN PGP SIGNED MESSAGE-----
+> Hash: SHA1
+>=20
+> On 7/30/13 9:03 PM, Eric Sandeen wrote:
+> > On 7/29/13 11:13 AM, Eric Sandeen wrote:
+> >> On 7/29/13 3:39 AM, Nikola Ciprich wrote:
+> >>> Hi,
+> >=20
+> >>> trying to compile latest e2fsprogs and running check under RHEL6-comp=
+atible
+> >>> distro (centos) fails:
+> >=20
+> >>> r_1024_small_bg: ext2 1024 blocksize with small block groups: failed
+> >>> r_ext4_small_bg: ext4 1024 blocksize with small block groups: failed
+> >=20
+> >>> dunno whether this is known issue... will bisect help?
+> >=20
+> >>> with regards
+> >=20
+> >>> nik
+> >=20
+> >=20
+> >> Ted, these are the same ones I saw, plus one I think (working on getti=
+ng
+> >> all the info).
+> >=20
+> > Sorry this took a while.  Attached is a qcow image of a broken r_1024_s=
+mall_bg
+> > filesystem.  Doing resize2fs -M on it twice should corrupt it, even on =
+x86_64.
+>=20
+> Sorry - the image as attached is not broken, but 2 current resize2fs -M's=
+ break it.
+>=20
+> - -Eric
+>=20
+> > (aside: the test is a bit weird, it does:
+> >=20
+> > echo $RESIZE2FS $RESIZE2FS_OPTS -d 31 -M $TMPFILE $SIZE_2 >> $LOG 2>&1
+> >=20
+> > but specifying -M as well as a size doesn't make much sense?)
+> >=20
+> > -Eric
+> >=20
+>=20
+> -----BEGIN PGP SIGNATURE-----
+> Version: GnuPG/MacGPG2 v2.0.17 (Darwin)
+> Comment: GPGTools - http://gpgtools.org
+> Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
+>=20
+> iQIcBAEBAgAGBQJR+HIsAAoJECCuFpLhPd7gT3cP/3YLhpclAhU6UHIW4cqyKhIl
+> STIwV3ROZmic5qQb8X6l5etc8ALCs2b5LVYjhlMlZWISkN64pXOhL0lz7coSABM9
+> wnZU2y3LntcyGFEg7aEs+sXe2mXqX139NkoNwKfBBPidQ/HdwpnnTdlu4FZeTyrj
+> aDHIUGPs2YBbp2QaBhmzl5b7xwEoHCq/XtrH7v7+SHyHEGzIYTn3w96vyXqVYTjs
+> csUgeMhFFw58Hq+/03UE13Ig/Et8AqSgonnaEiG3ZKXsDIxhjFxqQPGsdD2BleGd
+> Rb/fxnkM0RKhr7xSK3CFWnLQ8LkaUtexazxvr+7BmmgRx8jyQhQj8ASYXzmUuh/S
+> RtbnZ3wioxEwCRhr3FP0ZpoOZwbkDWd/UBy407ZBblxVafjLSYbsMHDM7rPrQHoz
+> oSo1W4c7sy85pNfCgMnQYyuqik5KVDuQNk/nqEkv6tE1YOb5zXTrpDKjEFgBKYVd
+> FpLRk9f0rhoxcwyfZsIY6Wx/4h4rWKnhK6jqL5unDLJitPv405KlNfY28AoFNme4
+> ZxwDSddausNm+8u9sZON7cuyhAb70Q8N0W6ECPX8+ie8fvXwPDRSJYPpMXqOBK06
+> 35SPqxKlCpT7BGMAqr7+h8qemYdcTS0z7ag2im+MRS1t58AFSsuIyj+IirPWwTUM
+> SQRtuG3mOsWE7l93c8bc
+> =3D96jm
+> -----END PGP SIGNATURE-----
+>=20
+
+--=20
+-------------------------------------
+Ing. Nikola CIPRICH
+LinuxBox.cz, s.r.o.
+28.rijna 168, 709 00 Ostrava
+
+tel.:   +420 591 166 214
+fax:    +420 596 621 273
+mobil:  +420 777 093 799
+www.linuxbox.cz
+
+mobil servis: +420 737 238 656
+email servis: servis@linuxbox.cz
+-------------------------------------
+
+--I4g3zIzscEHdx6fd
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.14 (GNU/Linux)
+
+iEYEARECAAYFAlIm6ZwACgkQ3xdJJrLygV7/ogCgtrspZ6IqSy3VJvfK8cEwa6AC
+pq8AmwU5B32VMWjQQ+cK7rsAprl3pzU7
+=wYO7
+-----END PGP SIGNATURE-----
+
+--I4g3zIzscEHdx6fd--
