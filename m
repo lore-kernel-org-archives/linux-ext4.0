@@ -1,51 +1,149 @@
-From: Mike Snitzer <snitzer@redhat.com>
-Subject: Re: [PATCH 1/2] Revert "Revert "math64: New div64_u64_rem helper""
-Date: Wed, 4 Sep 2013 13:55:29 -0400
-Message-ID: <20130904175529.GA25526@redhat.com>
-References: <1376078164-23147-1-git-send-email-snitzer@redhat.com>
- <CAOMFOmXhoBoFrkr8bgP5qV-jZXA=6ZfXnSsg1j5fEVv_RgRAyw@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v4 3/7] mm: Allow filesystems to defer cmtime updates
+Date: Wed, 4 Sep 2013 21:20:48 +0200
+Message-ID: <20130904192048.GM3996@quack.suse.cz>
+References: <cover.1377193658.git.luto@amacapital.net>
+	<e1620c8e4909a65e270c8e9590e307c22fd96a44.1377193658.git.luto@amacapital.net>
+	<20130904145740.GE3996@quack.suse.cz>
+	<CALCETrUA653bw3C=XP=Es9UApqsKsDG-UAzuZ=qS1RA1LeoKYw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: dm-devel@redhat.com, LKML <linux-kernel@vger.kernel.org>,
-	Mikulas Patocka <mpatocka@redhat.com>,
-	Stanislaw Gruszka <sgruszka@redhat.com>,
-	Frederic Weisbecker <fweisbec@gmail.com>,
-	Ingo Molnar <mingo@kernel.org>, linux-ext4@vger.kernel.org
-To: Anatol Pomozov <anatol.pomozov@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso@mit.edu>, Dave Hansen <dave.hansen@linux.intel.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	xfs@oss.sgi.com, Christoph Hellwig <hch@infradead.org>,
+	Jan Kara <jack@suse.cz>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Tim Chen <tim.c.chen@linux.intel.com>
+To: Andy Lutomirski <luto@amacapital.net>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <CAOMFOmXhoBoFrkr8bgP5qV-jZXA=6ZfXnSsg1j5fEVv_RgRAyw@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <CALCETrUA653bw3C=XP=Es9UApqsKsDG-UAzuZ=qS1RA1LeoKYw@mail.gmail.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Sep 04 2013 at 12:11pm -0400,
-Anatol Pomozov <anatol.pomozov@gmail.com> wrote:
-
-> Hi,
+On Wed 04-09-13 10:54:50, Andy Lutomirski wrote:
+> >> @@ -1970,6 +1988,39 @@ int write_one_page(struct page *page, int wait)
+> >>  }
+> >>  EXPORT_SYMBOL(write_one_page);
+> >>
+> >> +void mapping_flush_cmtime(struct address_space *mapping)
+> >> +{
+> >> +     if (mapping_test_clear_cmtime(mapping) &&
+> >> +         mapping->a_ops->update_cmtime_deferred)
+> >> +             mapping->a_ops->update_cmtime_deferred(mapping);
+> >> +}
+> >> +EXPORT_SYMBOL(mapping_flush_cmtime);
+> >   Hum, is there a reason for update_cmtime_deferred() operation? I can
+> > hardly imagine anyone will want to do anything else than what
+> > inode_update_time_writable() does so why bother? You mention tmpfs & co.
+> > don't fit into your scheme well with which I agree so let's just keep
+> > file_update_time() in their page_mkwrite() operation. But I don't see a
+> > real need for avoiding the deferred cmtime logic...
 > 
-> On Fri, Aug 9, 2013 at 12:56 PM, Mike Snitzer <snitzer@redhat.com> wrote:
-> > This reverts commit f3002134158092178be81339ec5a22ff80e6c308.
-> >
-> > div64_u64_rem was removed because there were no other users.
+> I think there might be odd corner cases.  For example, mmap a tmpfs
+> file, write it, and unmap it.  Then, an hour later, maybe the system
+  If you unmap it then that will handle the update. But if you won't unmap,
+you'd get spurious updates of timestamps which would be strange.
+
+> will be under memory pressure and page out the file.  This could
+> trigger a surprising time update.  (I'm not sure this can actually
+> happen on tmpfs, but maybe it would on some other filesystem.)
 > 
-> In the light of this discussion https://lkml.org/lkml/2013/8/30/417 we
-> will have more users of div64_u64_rem
+> Does this actually matter?  A flag to turn the feature on or off would
+> do the trick, but I don't think there's precedent for sticking a flag
+> in a_ops.
+  Flag in a_ops is ugly. But you can have a flag in 'struct
+filesystem_type' which would be reasonable. 
+
+> >> +void mapping_flush_cmtime_nowb(struct address_space *mapping)
+> >> +{
+> >> +     /*
+> >> +      * We get called from munmap and msync.  Both calls can race
+> >> +      * with fs freezing.  If the fs is frozen after
+> >> +      * mapping_test_clear_cmtime but before the time update, then
+> >> +      * sync_filesystem will miss the cmtime update (because we
+> >> +      * just cleared it) and we don't be able to write (because the
+> >> +      * fs is frozen).  On the other hand, we can't just return if
+> >> +      * we're in the SB_FREEZE_PAGEFAULT state because our caller
+> >> +      * expects the timestamp to be synchronously updated.  So we
+> >> +      * get write access without blocking, at the SB_FREEZE_FS
+> >> +      * level.  If the fs is already fully frozen, then we already
+> >> +      * know we have nothing to do.
+> >> +      */
+> >> +
+> >> +     if (!mapping_test_cmtime(mapping))
+> >> +             return;  /* Optimization: nothing to do. */
+> >> +
+> >> +     if (__sb_start_write(mapping->host->i_sb, SB_FREEZE_FS, false)) {
+> >> +             mapping_flush_cmtime(mapping);
+> >> +             __sb_end_write(mapping->host->i_sb, SB_FREEZE_FS);
+> >> +     }
+> >> +}
+> >   This is wrong because SB_FREEZE_FS level is targetted for filesystem
+> > internal use. Also it is racy. mapping_flush_cmtime() ends up calling
+> > mark_inode_dirty() and filesystems such as ext4 or xfs will start a
+> > transaction to store inode in the journal. This gets freeze protection at
+> > SB_FREEZE_FS level again. If freeze_super() sets s_writers.frozen to
+> > SB_FREEZE_FS before this second protection, things will deadlock.
 > 
-> For example code from ext4_mb_find_by_goal() function uses function
-> do_div() with divisor sbi->s_stripe that has "unsigned long" type.
-> do_div() silently truncates the type to 32bits and do_div() returns
-> incorrect result (or crash if lower 32bits are zero). It should be
-> either replaced with div64_u64_rem() posted here or with just "a % b".
+> Whoops -- I assumed that it was safe to recursively take freeze
+> protection at the same level.
+> 
+> I'm worried about the following race:
+> 
+> Thread 1 (in munmap):
+> Check AS_CMTIME set
+> sb_start_pagefault
+> 
+> Thread 2 (freezing the fs):
+> frozen = SB_FREEZE_PAGEFAULT;
+> sync_filesystem()
+> 
+> Thread 1 is now stuck.  It doesn't need to be, because sync_filesystem
+> will flush out the cmtime write.  But there doesn't seem to be a clean
+> mechanism to wait for the freeze to finish.
+  OK, I see. Frankly, I'd rather live with msync() and munmap() blocking
+while filesystem is frozen than trying to outsmart the freezing logic...
+If someone comes up with a usecase where it causes trouble, we can always
+improve the logic with some clever tricks.
 
-Hi,
+> Is there a clean way to avoid this?  I don't want to return
+> immediately if a freeze is in progress, because userspace expects that
+> munmap will update cmtime synchronously.
+> 
+> And ugly but simple solution is:
+> 
+> if (!mapping_test_cmtime(mapping))
+>     return;  /* Optimization: nothing to do. */
+> 
+> if (__sb_start_write(mapping->host->i_sb, SB_FREEZE_FS, false)) {
+>     mapping_flush_cmtime(mapping);
+>     __sb_end_write(mapping->host->i_sb, SB_FREEZE_FS);
+> } else {
+>     /* Freeze is or was in progress.  The part of freezing from
+> SB_FREEZE_PAGEFAULT through sync_filesystem holds s_umount for write,
+> so we can wait for it to finish by taking s_umount for read. */
+>     down_read(&sb->s_umount);
+>     up_read(&sb->s_umount);
+> }
+  Yes, this would probably work but as I said above, I'd prefer the to keep
+it simple unless we have a good reason for the complex solution.
 
-As Ingo suggested, I went ahead and introduced a completely new
-div64_u64_rem, see: https://lkml.org/lkml/2013/8/21/452
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
 
-I've staged this change in linux-next for inclusion in the current 3.12
-merge (via the device-mapper tree), see:
-https://git.kernel.org/cgit/linux/kernel/git/device-mapper/linux-dm.git/commit/?h=for-next&id=eb18cba78c2b9250663021e17e1e9cc34630e92a
-
-So once this is in ext4 can make use of div64_u64_rem().
-
-Mike
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
