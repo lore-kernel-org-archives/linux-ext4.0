@@ -1,130 +1,53 @@
-From: Andy Lutomirski <luto@amacapital.net>
-Subject: Re: [PATCH v4 3/7] mm: Allow filesystems to defer cmtime updates
-Date: Wed, 4 Sep 2013 13:05:27 -0700
-Message-ID: <CALCETrXLtLbgQH-eXm7AvxyRYa2jxZ=3jR=CfvAY+drGC_O4nA@mail.gmail.com>
-References: <cover.1377193658.git.luto@amacapital.net>
-	<e1620c8e4909a65e270c8e9590e307c22fd96a44.1377193658.git.luto@amacapital.net>
-	<20130904145740.GE3996@quack.suse.cz>
-	<CALCETrUA653bw3C=XP=Es9UApqsKsDG-UAzuZ=qS1RA1LeoKYw@mail.gmail.com>
-	<20130904192048.GM3996@quack.suse.cz>
+From: Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>
+Subject: Re: [PATCH v3 0/2] ext4: increase mbcache scalability
+Date: Wed, 04 Sep 2013 15:33:50 +0000
+Message-ID: <522752DE.7090308@hp.com>
+References: <1374108934-50550-1-git-send-email-tmac@hp.com> <1378312756-68597-1-git-send-email-tmac@hp.com> <FDD6EB21-7C40-4F4D-904C-8514535CC7C3@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>, Dave Hansen <dave.hansen@linux.intel.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	xfs@oss.sgi.com, Christoph Hellwig <hch@infradead.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Tim Chen <tim.c.chen@linux.intel.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <20130904192048.GM3996@quack.suse.cz>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Cc: T Makphaibulchoke <tmac@hp.com>, Theodore Ts'o <tytso@mit.edu>,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	"linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org Devel" <linux-fsdevel@vger.kernel.org>,
+	aswin@hp.com, Linus Torvalds <torvalds@linux-foundation.org>,
+	aswin_proj@groups.hp.com
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from g4t0014.houston.hp.com ([15.201.24.17]:10395 "EHLO
+	g4t0014.houston.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932722Ab3IDVga (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Sep 2013 17:36:30 -0400
+In-Reply-To: <FDD6EB21-7C40-4F4D-904C-8514535CC7C3@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 4, 2013 at 12:20 PM, Jan Kara <jack@suse.cz> wrote:
-> On Wed 04-09-13 10:54:50, Andy Lutomirski wrote:
->> >> @@ -1970,6 +1988,39 @@ int write_one_page(struct page *page, int wait)
->> >>  }
->> >>  EXPORT_SYMBOL(write_one_page);
->> >>
->> >> +void mapping_flush_cmtime(struct address_space *mapping)
->> >> +{
->> >> +     if (mapping_test_clear_cmtime(mapping) &&
->> >> +         mapping->a_ops->update_cmtime_deferred)
->> >> +             mapping->a_ops->update_cmtime_deferred(mapping);
->> >> +}
->> >> +EXPORT_SYMBOL(mapping_flush_cmtime);
->> >   Hum, is there a reason for update_cmtime_deferred() operation? I can
->> > hardly imagine anyone will want to do anything else than what
->> > inode_update_time_writable() does so why bother? You mention tmpfs & co.
->> > don't fit into your scheme well with which I agree so let's just keep
->> > file_update_time() in their page_mkwrite() operation. But I don't see a
->> > real need for avoiding the deferred cmtime logic...
->>
->> I think there might be odd corner cases.  For example, mmap a tmpfs
->> file, write it, and unmap it.  Then, an hour later, maybe the system
->   If you unmap it then that will handle the update. But if you won't unmap,
-> you'd get spurious updates of timestamps which would be strange.
->
->> will be under memory pressure and page out the file.  This could
->> trigger a surprising time update.  (I'm not sure this can actually
->> happen on tmpfs, but maybe it would on some other filesystem.)
->>
->> Does this actually matter?  A flag to turn the feature on or off would
->> do the trick, but I don't think there's precedent for sticking a flag
->> in a_ops.
->   Flag in a_ops is ugly. But you can have a flag in 'struct
-> filesystem_type' which would be reasonable.
+On 09/04/2013 08:00 PM, Andreas Dilger wrote:
 
-OK, will do.
+> 
+> In the past, I've raised the question of whether mbcache is even
+> useful on real-world systems.  Essentially, this is providing a
+> "deduplication" service for ext2/3/4 xattr blocks that are identical.
+> The question is how often this is actually the case in modern use?
+> The original design was for allowing external ACL blocks to be
+> shared between inodes, at a time when ACLs where pretty much the
+> only xattrs stored on inodes.
+> 
+> The question now is whether there are common uses where all of the
+> xattrs stored on multiple inodes are identical?  If that is not the
+> case, mbcache is just adding overhead and should just be disabled
+> entirely instead of just adding less overhead.
+> 
+> There aren't good statistics on the hit rate for mbcache, but it
+> might be possible to generate some with systemtap or similar to
+> see how often ext4_xattr_cache_find() returns NULL vs. non-NULL.
+> 
+> Cheers, Andreas
+> 
 
->
->> >> +void mapping_flush_cmtime_nowb(struct address_space *mapping)
->> >> +{
->> >> +     /*
->> >> +      * We get called from munmap and msync.  Both calls can race
->> >> +      * with fs freezing.  If the fs is frozen after
->> >> +      * mapping_test_clear_cmtime but before the time update, then
->> >> +      * sync_filesystem will miss the cmtime update (because we
->> >> +      * just cleared it) and we don't be able to write (because the
->> >> +      * fs is frozen).  On the other hand, we can't just return if
->> >> +      * we're in the SB_FREEZE_PAGEFAULT state because our caller
->> >> +      * expects the timestamp to be synchronously updated.  So we
->> >> +      * get write access without blocking, at the SB_FREEZE_FS
->> >> +      * level.  If the fs is already fully frozen, then we already
->> >> +      * know we have nothing to do.
->> >> +      */
->> >> +
->> >> +     if (!mapping_test_cmtime(mapping))
->> >> +             return;  /* Optimization: nothing to do. */
->> >> +
->> >> +     if (__sb_start_write(mapping->host->i_sb, SB_FREEZE_FS, false)) {
->> >> +             mapping_flush_cmtime(mapping);
->> >> +             __sb_end_write(mapping->host->i_sb, SB_FREEZE_FS);
->> >> +     }
->> >> +}
->> >   This is wrong because SB_FREEZE_FS level is targetted for filesystem
->> > internal use. Also it is racy. mapping_flush_cmtime() ends up calling
->> > mark_inode_dirty() and filesystems such as ext4 or xfs will start a
->> > transaction to store inode in the journal. This gets freeze protection at
->> > SB_FREEZE_FS level again. If freeze_super() sets s_writers.frozen to
->> > SB_FREEZE_FS before this second protection, things will deadlock.
->>
->> Whoops -- I assumed that it was safe to recursively take freeze
->> protection at the same level.
->>
->> I'm worried about the following race:
->>
->> Thread 1 (in munmap):
->> Check AS_CMTIME set
->> sb_start_pagefault
->>
->> Thread 2 (freezing the fs):
->> frozen = SB_FREEZE_PAGEFAULT;
->> sync_filesystem()
->>
->> Thread 1 is now stuck.  It doesn't need to be, because sync_filesystem
->> will flush out the cmtime write.  But there doesn't seem to be a clean
->> mechanism to wait for the freeze to finish.
->   OK, I see. Frankly, I'd rather live with msync() and munmap() blocking
-> while filesystem is frozen than trying to outsmart the freezing logic...
-> If someone comes up with a usecase where it causes trouble, we can always
-> improve the logic with some clever tricks.
+Thanks Andreas for the comments.  Since I'm not familiar with systemtap, I'm thinking probably the quickest and simplest way is to re-run aim7 and swing bench with mbcache disabled for comparison. Please let me know if you have any other benchmark suggestion or if you think systemtap on ext4_xattr_cache_find() would give a more accurate measurement.
 
-I'll at least check that it's a shared writable mapping before doing
-the flush to avoid blocking on other types of munmap.
+Thanks,
+Mak.
 
---Andy
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
