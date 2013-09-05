@@ -1,80 +1,49 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [GIT PULL] Ext3, reiserfs, udf & isofs fixes
-Date: Thu, 5 Sep 2013 21:58:02 +0200
-Message-ID: <20130905195802.GA9260@quack.suse.cz>
+From: Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>
+Subject: Re: [PATCH v3 0/2] ext4: increase mbcache scalability
+Date: Thu, 05 Sep 2013 15:22:19 +0000
+Message-ID: <5228A1AB.2030308@hp.com>
+References: <1374108934-50550-1-git-send-email-tmac@hp.com> <1378312756-68597-1-git-send-email-tmac@hp.com> <FDD6EB21-7C40-4F4D-904C-8514535CC7C3@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: LKML <linux-kernel@vger.kernel.org>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: T Makphaibulchoke <tmac@hp.com>, Theodore Ts'o <tytso@mit.edu>,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	"linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org Devel" <linux-fsdevel@vger.kernel.org>,
+	aswin@hp.com, Linus Torvalds <torvalds@linux-foundation.org>,
+	aswin_proj@groups.hp.com
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
+In-Reply-To: <FDD6EB21-7C40-4F4D-904C-8514535CC7C3@dilger.ca>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-  Hello Linus,
+On 09/04/2013 08:00 PM, Andreas Dilger wrote:
+> 
+> In the past, I've raised the question of whether mbcache is even
+> useful on real-world systems.  Essentially, this is providing a
+> "deduplication" service for ext2/3/4 xattr blocks that are identical.
+> The question is how often this is actually the case in modern use?
+> The original design was for allowing external ACL blocks to be
+> shared between inodes, at a time when ACLs where pretty much the
+> only xattrs stored on inodes.
+> 
+> The question now is whether there are common uses where all of the
+> xattrs stored on multiple inodes are identical?  If that is not the
+> case, mbcache is just adding overhead and should just be disabled
+> entirely instead of just adding less overhead.
+> 
+> There aren't good statistics on the hit rate for mbcache, but it
+> might be possible to generate some with systemtap or similar to
+> see how often ext4_xattr_cache_find() returns NULL vs. non-NULL.
+> 
+> Cheers, Andreas
+> 
 
-  could you please pull from
+Looks like it's a bit harder to disable mbcache than I thought. I ended up adding code to collect the statics.
 
-git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git for_linus
+With selinux enabled, for new_fserver workload of aim7, there are a total of 0x7e05420100000000 ext4_xattr_cache_find() calls that result in a hit and 0xc100000000000000 calls that are not.  The number does not seem to favor the complete disabling of mbcache in this case.
 
-The pull contains a bunch of ext3 cleanups and minor improvements, major
-reiserfs locking changes which should hopefully fix deadlocks introduced by BKL
-removal, and udf/isofs changes to refuse mounting fs rw instead of mounting it
-ro automatically which makes eject button work as expected for all media (see
-the changelog for why userspace should be ok with this change).
-
-Top of the tree is 97a2847. The full shortlog is:
-
-Eric Sandeen (1):
-      ext3: allow specifying external journal by pathname mount option
-
-Jan Kara (4):
-      isofs: Refuse RW mount of the filesystem instead of making it RO
-      udf: Standardize return values in mount sequence
-      udf: Refuse RW mount of the filesystem instead of making it RO
-      Merge branch 'for-3.12' of git://git.kernel.org/.../jeffm/linux-reiserfs into for_next_testing
-
-Jeff Mahoney (3):
-      reiserfs: locking, push write lock out of xattr code
-      reiserfs: locking, handle nested locks properly
-      reiserfs: locking, release lock around quota operations
-
-Nathaniel Yazdani (1):
-      jbd: remove unneeded semicolon
-
-Paul Gortmaker (2):
-      jbd: relocate assert after state lock in journal_commit_transaction()
-      jbd: use a single printk for jbd_debug()
-
-The diffstat is
-
- Documentation/filesystems/ext3.txt |   7 +-
- fs/ext3/super.c                    |  43 +++++
- fs/isofs/inode.c                   |  16 +-
- fs/jbd/commit.c                    |   2 +-
- fs/jbd/journal.c                   |  18 ++
- fs/reiserfs/bitmap.c               |  22 ++-
- fs/reiserfs/dir.c                  |   7 +-
- fs/reiserfs/fix_node.c             |  26 +--
- fs/reiserfs/inode.c                | 114 ++++++-------
- fs/reiserfs/ioctl.c                |   7 +-
- fs/reiserfs/journal.c              | 104 +++++------
- fs/reiserfs/lock.c                 |  43 ++---
- fs/reiserfs/namei.c                |  24 +--
- fs/reiserfs/prints.c               |   5 +-
- fs/reiserfs/reiserfs.h             |  36 ++--
- fs/reiserfs/resize.c               |  10 +-
- fs/reiserfs/stree.c                |  74 ++++----
- fs/reiserfs/super.c                |  75 ++++----
- fs/reiserfs/xattr.c                |  46 ++---
- fs/reiserfs/xattr_acl.c            |  16 +-
- fs/udf/super.c                     | 342 ++++++++++++++++++++++---------------
- include/linux/jbd.h                |  17 +-
- 22 files changed, 609 insertions(+), 445 deletions(-)
-
-							Thanks
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Thanks,
+Mak.
