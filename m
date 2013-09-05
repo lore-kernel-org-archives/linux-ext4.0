@@ -1,46 +1,60 @@
-From: Felipe Monteiro de Carvalho <felipemonteiro.carvalho@gmail.com>
-Subject: Re: Which features should I implement in my ext4 reader?
-Date: Thu, 5 Sep 2013 09:41:53 +0200
-Message-ID: <CACyNnZMs8oHkyu2YeZ8WX1279hiESsxPzpSZpF4wwZ6a1uHPgg@mail.gmail.com>
-References: <CACyNnZONOUy0+OeDriZaSt4OQrR6LzpyJz4Sj8XvMHvxr2u_Xg@mail.gmail.com>
-	<20130819050803.GA10882@gmail.com>
-	<CACyNnZN4z_mHq86+FPOaGpzjwBVmmsKNjnd45s53o2LdQjxEsg@mail.gmail.com>
-	<20130820103956.GA7846@gmail.com>
-	<CACyNnZP6m96Uv_acbVvf3K2UvcMhhqk2S2gmdZS9DG9GwqbUcg@mail.gmail.com>
-	<CACyNnZP2SFovG9YeBNeifm4KqrCzi7FU97CWVUjST0YQiqt3pQ@mail.gmail.com>
-	<CACyNnZOXOZ-uL+TO8HOuO4DoWsBKuBOX5RLQrZzyoeG1L2a9yg@mail.gmail.com>
-	<CACyNnZNhrmcpQRU+JcqSJeUYt3YNpyTyVArW_Jrp3e43owVf5Q@mail.gmail.com>
-	<20130902120718.GB1106@gmail.com>
-	<CACyNnZNQf6a05zE64KfouuT=dUXaNPT7iqPe8HKT1wXKz+pK0Q@mail.gmail.com>
-	<20130904053503.GA3518@gmail.com>
-	<CAGW2f1FgHZsQbNMyWiD997UZz55y20qHJHryEcMsgpEwecxftA@mail.gmail.com>
-	<CACyNnZPqhBw2q78tfG1npfO5SFt57xahME30h9rZiTnvZnhM+A@mail.gmail.com>
+From: Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>
+Subject: Re: [PATCH v3 0/2] ext4: increase mbcache scalability
+Date: Thu, 05 Sep 2013 09:49:09 +0000
+Message-ID: <52285395.1070508@hp.com>
+References: <1374108934-50550-1-git-send-email-tmac@hp.com> <1378312756-68597-1-git-send-email-tmac@hp.com> <20130905023522.GA21268@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: jon ernst <jonernst07@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f47.google.com ([209.85.220.47]:54405 "EHLO
-	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757607Ab3IEHlx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Sep 2013 03:41:53 -0400
-Received: by mail-pa0-f47.google.com with SMTP id kl13so1552307pab.34
-        for <linux-ext4@vger.kernel.org>; Thu, 05 Sep 2013 00:41:53 -0700 (PDT)
-In-Reply-To: <CACyNnZPqhBw2q78tfG1npfO5SFt57xahME30h9rZiTnvZnhM+A@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: Theodore Ts'o <tytso@mit.edu>, T Makphaibulchoke <tmac@hp.com>,
+	adilger.kernel@dilger.ca, viro@zeniv.linux.org.uk,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, aswin@hp.com,
+	torvalds@linux-foundation.org, aswin_proj@groups.hp.com
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20130905023522.GA21268@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Sep 5, 2013 at 9:04 AM, Felipe Monteiro de Carvalho
-<felipemonteiro.carvalho@gmail.com> wrote:
-> Is it to make sure that the block of data starts aligned to 4-bytes?
+On 09/05/2013 02:35 AM, Theodore Ts'o wrote:
+> How did you gather these results?  The mbcache is only used if you are
+> using extended attributes, and only if the extended attributes don't
+> fit in the inode's extra space.
+> 
+> I checked aim7, and it doesn't do any extended attribute operations.
+> So why are you seeing differences?  Are you doing something like
+> deliberately using 128 byte inodes (which is not the default inode
+> size), and then enabling SELinux, or some such?
+> 
+> 						- Ted
+> 
 
-Hello,
+No, I did not do anything special, including changing an inode's size. I just used the profile data, which indicated mb_cache module as one of the bottleneck.  Please see below for perf data from one of th new_fserver run, which also shows some mb_cache activities.
 
-Ok, I just checked here experimentally and it is indeed padding to 4-bytes...
 
-Does the same padding exist if the attribute is in a block as opposed
-to being in the space after the inode?
+                        |--3.51%-- __mb_cache_entry_find
+                        |          mb_cache_entry_find_first
+                        |          ext4_xattr_cache_find
+                        |          ext4_xattr_block_set
+                        |          ext4_xattr_set_handle
+                        |          ext4_initxattrs
+                        |          security_inode_init_security
+                        |          ext4_init_security
+                        |          __ext4_new_inode
+                        |          ext4_create
+                        |          vfs_create
+                        |          lookup_open
+                        |          do_last
+                        |          path_openat
+                        |          do_filp_open
+                        |          do_sys_open
+                        |          SyS_open
+                        |          sys_creat
+                        |          system_call
+                        |          __creat_nocancel
+                        |          |
+                        |          |--16.67%-- 0x11fe2c0
+                        |          |
 
-thanks,
--- 
-Felipe Monteiro de Carvalho
+Thanks,
+Mak.
