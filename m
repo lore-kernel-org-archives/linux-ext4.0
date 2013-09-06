@@ -1,44 +1,38 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 40822] EXT4-fs error (device dm-4): ext4_lookup:1044: inode
- #3308277: comm rm: deleted inode referenced: 3058008
-Date: Fri, 06 Sep 2013 07:35:59 +0000
-Message-ID: <bug-40822-13602-hBdbfdoCtV@https.bugzilla.kernel.org/>
-References: <bug-40822-13602@https.bugzilla.kernel.org/>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [GIT PULL] Ext3, reiserfs, udf & isofs fixes
+Date: Fri, 6 Sep 2013 09:11:18 -0700
+Message-ID: <CA+55aFytAMNADORn4FfUO620OvLdiMRNVhYbVuCFnWgo4kpvjQ@mail.gmail.com>
+References: <20130905195802.GA9260@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:44518 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750717Ab3IFHgH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 6 Sep 2013 03:36:07 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 629AC201CB
-	for <linux-ext4@vger.kernel.org>; Fri,  6 Sep 2013 07:36:06 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id F06F620201
-	for <linux-ext4@vger.kernel.org>; Fri,  6 Sep 2013 07:35:59 +0000 (UTC)
-In-Reply-To: <bug-40822-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: LKML <linux-kernel@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20130905195802.GA9260@quack.suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=40822
+On Thu, Sep 5, 2013 at 12:58 PM, Jan Kara <jack@suse.cz> wrote:
+>
+> udf/isofs changes to refuse mounting fs rw instead of mounting it
+> ro automatically which makes eject button work as expected for all media (see
+> the changelog for why userspace should be ok with this change).
 
-Catalin(ux) M. BOIE <fedora@embedromix.ro> changed:
+Pulled. However, these are kind of odd.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |fedora@embedromix.ro
+For trying _remount_ something read-only, isofs returns the logical
+EROFS error code.
 
---- Comment #3 from Catalin(ux) M. BOIE <fedora@embedromix.ro> ---
-I am getting the same error.
+But for trying to mount it in the first place, it returns EACCES,
+which sounds insane. It's not a permission problem - no amount of
+permissions will ever make it work.
 
-I was running a Fedora 19 guest inside a Fedora 19 host.
-At some moment, I had 0 free space on the partition were qcow2 guest image was.
-qemu paused the machine I did press resume several times.
-I made space and some time after I got this error.
+UDF always does EACCES, regardless of mount/remount.
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Is there some fundamental reason for the insane error code? Does user
+space do the wrong thing if we were to just always return "EROFS"
+which makes much more sense?
+
+                 Linus
