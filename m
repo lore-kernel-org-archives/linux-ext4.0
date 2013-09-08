@@ -1,8 +1,8 @@
 From: Namjae Jeon <linkinjeon@gmail.com>
-Subject: [PATCH v3 0/7] fs: Introduce new flag(FALLOC_FL_COLLAPSE_RANGE) for
+Subject: [PATCH v3 1/7] fs: add new flag(FALLOC_FL_COLLAPSE_RANGE) for
 	fallocate
-Date: Sun,  8 Sep 2013 22:40:46 +0900
-Message-ID: <1378647647-2556-1-git-send-email-linkinjeon@gmail.com>
+Date: Sun,  8 Sep 2013 22:41:35 +0900
+Message-ID: <1378647695-2598-1-git-send-email-linkinjeon@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -27,53 +27,98 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Namjae Jeon <namjae.jeon@samsung.com>
 
-This patch series is in response of the following post:
-http://lwn.net/Articles/556136/
-"ext4: introduce two new ioctls"
+Add new flag(FALLOC_FL_COLLAPSE_RANGE) for fallocate.
+updated detailed semantics in comments.
 
-Dave chinner suggested that truncate_block_range (which was one of the ioctls name)
-should be an fallocate operation and not any fs specific ioctl, hence
-we add this functionality to fallocate.
+Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
+Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
+---
+ fs/open.c                   |   24 +++++++++++++++++++++---
+ include/uapi/linux/falloc.h |   17 +++++++++++++++++
+ 2 files changed, 38 insertions(+), 3 deletions(-)
 
-This patch series introduces new flag FALLOC_FL_COLLAPSE_RANGE for fallocate
-and implements it for XFS and Ext4.
-
-The semantics of this flag are following:
-1) It collapses the range lying between offset and length by removing any data
-   blocks which are present in this range and than updates all the logical
-   offsets of extents beyond "offset + len" to nullify the hole created by
-   removing blocks. In short, it does not leave a hole.
-2) It should be used exclusively. No other fallocate flag in combination.
-3) Offset and length supplied to fallocate should be fs block size aligned.
-
-This new functionality of collapsing range could be used by media editing tools
-which does non linear editing to quickly purge and edit parts of a media file.
-This will immensely improve the performance of these operations.
-The limitation of fs block size aligned offsets can be easily handled
-by media codecs which are encapsulated in a conatiner as they have to
-just change the offset to next keyframe value to match the proper alignment.
-
-Change log
-v3:
- Fix checkpatch.pl errors
-
-v2:
- Fix review points from Dave Chinner.
-  - merge adjacent extents
-  - fix journal log usage.
-  - change reasonable function name.
-  - update xfsio, xfstest, manpage
-  - etc.
-
-Namjae Jeon (7):
-  fs: add new flag(FALLOC_FL_COLLAPSE_RANGE) for fallocate
-  xfs: add new flag(FALLOC_FL_COLLAPSE_RANGE) for fallocate
-  ext4: add new flag(FALLOC_FL_COLLAPSE_RANGE) for fallocate
-  xfsprogs: xfsio: add support FALLOC_FL_COLLAPSE_RANGE for fallocate
-  xfstest: Add test case to check various corner cases for collapsing range
-  xfstest: Add test case to test multiple collapse range call
-  manpage: update FALLOC_FL_COLLAPSE_RANGE flag in fallocate
-
+diff --git a/fs/open.c b/fs/open.c
+index 7931f76..85d243a 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -225,12 +225,14 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+ {
+ 	struct inode *inode = file_inode(file);
+ 	long ret;
++	unsigned blksize_mask = (1 << inode->i_blkbits) - 1;
+ 
+ 	if (offset < 0 || len <= 0)
+ 		return -EINVAL;
+ 
+ 	/* Return error if mode is not supported */
+-	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
++	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE |
++		     FALLOC_FL_COLLAPSE_RANGE))
+ 		return -EOPNOTSUPP;
+ 
+ 	/* Punch hole must have keep size set */
+@@ -241,8 +243,12 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+ 	if (!(file->f_mode & FMODE_WRITE))
+ 		return -EBADF;
+ 
+-	/* It's not possible punch hole on append only file */
+-	if (mode & FALLOC_FL_PUNCH_HOLE && IS_APPEND(inode))
++	/*
++	 * It's not possible to punch hole or perform collapse range
++	 * on append only file
++	 */
++	if (mode & (FALLOC_FL_PUNCH_HOLE | FALLOC_FL_COLLAPSE_RANGE)
++	    && IS_APPEND(inode))
+ 		return -EPERM;
+ 
+ 	if (IS_IMMUTABLE(inode))
+@@ -270,6 +276,18 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+ 	if (((offset + len) > inode->i_sb->s_maxbytes) || ((offset + len) < 0))
+ 		return -EFBIG;
+ 
++	/*
++	 * Collapse range works only on fs block size aligned offsets.
++	 * Check if collapse range is contained within (aligned)i_size.
++	 * Collapse range can only be used exclusively.
++	 */
++	if ((mode & FALLOC_FL_COLLAPSE_RANGE) &&
++	    (offset & blksize_mask || len & blksize_mask ||
++	     mode & ~FALLOC_FL_COLLAPSE_RANGE ||
++	     (offset + len >
++	      round_up(i_size_read(inode), (blksize_mask + 1)))))
++		return -EINVAL;
++
+ 	if (!file->f_op->fallocate)
+ 		return -EOPNOTSUPP;
+ 
+diff --git a/include/uapi/linux/falloc.h b/include/uapi/linux/falloc.h
+index 990c4cc..9614b72 100644
+--- a/include/uapi/linux/falloc.h
++++ b/include/uapi/linux/falloc.h
+@@ -4,6 +4,23 @@
+ #define FALLOC_FL_KEEP_SIZE	0x01 /* default is extend size */
+ #define FALLOC_FL_PUNCH_HOLE	0x02 /* de-allocates range */
+ #define FALLOC_FL_NO_HIDE_STALE	0x04 /* reserved codepoint */
++/*
++ * FALLOC_FL_COLLAPSE_RANGE:
++ * This flag works in 2 steps.
++ * Firstly, it deallocates any data blocks present between [offset, offset+len)
++ * This step is same as punch hole and leaves a hole in the place from where
++ * the blocks are removed.
++ * Next, it eliminates the hole created by moving data blocks into it.
++ * For extent based file systems, we achieve this functionality simply by
++ * updating the starting logical offset of each extent which appears beyond
++ * the hole. As this flag works on blocks of filesystem, the offset and len
++ * provided to fallocate should be aligned with block size of filesystem.
++ * The semantics of this flag are:
++ * 1) It should be used exclusively. No other fallocate flag in combination.
++ * 2) Offset and len supplied to fallocate should be aligned with block size.
++ * 3) (offset + len) could not be greater than file size.
++ */
++#define FALLOC_FL_COLLAPSE_RANGE	0x08 /* it does not leave a hole */
+ 
+ 
+ #endif /* _UAPI_FALLOC_H_ */
 -- 
 1.7.9.5
 
