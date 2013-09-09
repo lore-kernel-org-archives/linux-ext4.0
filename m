@@ -1,32 +1,42 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 6/6] resize2fs: Convert fs to and from 64bit mode
-Date: Mon, 9 Sep 2013 13:47:22 -0400
-Message-ID: <20130909174722.GA403@thunk.org>
-References: <20130829004344.3190.28053.stgit@blackbox.djwong.org>
- <20130829004423.3190.78720.stgit@blackbox.djwong.org>
- <20130909172944.GA4547@blackbox.djwong.org>
+From: jon ernst <jonernst07@gmail.com>
+Subject: [PATCH] make new_inode call a little bit clearer.
+Date: Mon, 9 Sep 2013 20:21:21 +0000
+Message-ID: <CAGW2f1Gat4KJYOvrKmNRjuNeXcPJ75hpH2-ozzXPX7hCuo5GTg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
+To: Zheng Liu <gnehzuil.liu@gmail.com>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:57135 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755207Ab3IIRr0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 Sep 2013 13:47:26 -0400
-Content-Disposition: inline
-In-Reply-To: <20130909172944.GA4547@blackbox.djwong.org>
+Received: from mail-wi0-f175.google.com ([209.85.212.175]:58184 "EHLO
+	mail-wi0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754649Ab3IIUVX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Sep 2013 16:21:23 -0400
+Received: by mail-wi0-f175.google.com with SMTP id ez12so3947917wid.2
+        for <linux-ext4@vger.kernel.org>; Mon, 09 Sep 2013 13:21:21 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Sep 09, 2013 at 10:29:44AM -0700, Darrick J. Wong wrote:
-> Found some bugs in this; I'll repost the series (without the patches Ted just
-> merged) in a few days.
+Zheng,
+on e2fsprog pu branch,
+I know it not worth to commit this alone, maybe you combine with you
+future commit later.
 
-Patches 1 and 2 were merged into the maint branch.  I will review and
-merge patches 3-5 into the 1.43 branches (master/next), and I'll hold
-off on patch #6.
+thank you!
 
-Cheers,
+diff --git a/lib/ext2fs/inline_data.c b/lib/ext2fs/inline_data.c
+index ea3736c..4bf19c1 100644
+--- a/lib/ext2fs/inline_data.c
++++ b/lib/ext2fs/inline_data.c
+@@ -933,7 +933,7 @@ static errcode_t test_file(ext2_filsys fs)
+     char *buf, *cmpbuf;
+     int inline_size;
 
-						- Ted
+-    retval = ext2fs_new_inode(fs, 2, 010755, 0, &newfile);
++    retval = ext2fs_new_inode(fs, EXT2_ROOT_INO, 010755, 0, &newfile);
+     if (retval) {
+         com_err("test_file", retval,
+             "While creating a new file");
+
+
+
+Best,
+Jon
