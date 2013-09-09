@@ -1,74 +1,57 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: fix delayed pages writback regression.
-Date: Mon, 9 Sep 2013 15:52:21 +0200
-Message-ID: <20130909135221.GC1612@quack.suse.cz>
-References: <1378697117-5894-1-git-send-email-zheng.z.yan@intel.com>
+Subject: Re: [GIT PULL] Ext3, reiserfs, udf & isofs fixes
+Date: Mon, 9 Sep 2013 16:12:55 +0200
+Message-ID: <20130909141255.GD1612@quack.suse.cz>
+References: <20130905195802.GA9260@quack.suse.cz>
+ <CA+55aFytAMNADORn4FfUO620OvLdiMRNVhYbVuCFnWgo4kpvjQ@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, jack@suse.cz, tytso@mit.edu,
-	lkp@linux.intel.com
-To: "Yan, Zheng" <zheng.z.yan@intel.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:49864 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751770Ab3IINw1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 Sep 2013 09:52:27 -0400
+Cc: Jan Kara <jack@suse.cz>, LKML <linux-kernel@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1378697117-5894-1-git-send-email-zheng.z.yan@intel.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <CA+55aFytAMNADORn4FfUO620OvLdiMRNVhYbVuCFnWgo4kpvjQ@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-  Hello,
-
-  Thanks for testing and the report.
-
-On Mon 09-09-13 11:25:17, Yan, Zheng wrote:
-> From: "Yan, Zheng" <zheng.z.yan@intel.com>
+On Fri 06-09-13 09:11:18, Linus Torvalds wrote:
+> On Thu, Sep 5, 2013 at 12:58 PM, Jan Kara <jack@suse.cz> wrote:
+> >
+> > udf/isofs changes to refuse mounting fs rw instead of mounting it
+> > ro automatically which makes eject button work as expected for all media (see
+> > the changelog for why userspace should be ok with this change).
 > 
-> Our Linux Kernel Performance project found that commit 4e7ea81db5
-> (ext4: restructure writeback path) indroduced a read performance
-> regression. After the commit, ext4 does not merge adjacent delayed
-  Really "read performance regression"? Do you mean that the file was more
-fragmented and therefore reading got slower? Or how exactly did a change in
-writeback path cause read perfomance regression?
+> Pulled. However, these are kind of odd.
+> 
+> For trying _remount_ something read-only, isofs returns the logical
+> EROFS error code.
+> 
+> But for trying to mount it in the first place, it returns EACCES,
+> which sounds insane. It's not a permission problem - no amount of
+> permissions will ever make it work.
+> 
+> UDF always does EACCES, regardless of mount/remount.
+> 
+> Is there some fundamental reason for the insane error code? Does user
+> space do the wrong thing if we were to just always return "EROFS"
+> which makes much more sense?
+  So I personally like EROFS more as well. However blkdev_get_by_path()
+(which is what mount(2) uses) returns EACCES if the device is read-only and
+FMODE_WRITE was requested. Also the manpage for mount(2) talks about
+EACCES when RW mount of read-only device was requested and doesn't mention
+EROFS at all.
 
-Also what benchmark and HW configuration do you use for testing? And how
-big regression do you see exactly? I can try to reproduce the results...
+Now mount(8) handles both EROFS and EACCES the same way but I wanted to
+stay on the safer side in case someone uses mount(2) directly so I used
+more common EACCES.
 
-> pages during writeback. The regression is caused by the "buffer
-> mapped" check in mpage_add_bh_to_extent(), delayed dirty pages are
-> not mapped.
-  This shouldn't happen. As a comment before ext4_da_get_block_prep()
-describes, delayed allocated buffers should be marked with BH_Mapped |
-BH_New | BH_Delay. So if you can see BH_Delay buffers without BH_Mapped set
-that's a bug we should find.
+I can create a separate patch changing all EACCES return values in this
+area to EROFS but I'm not sure it is worth the possible hassle with
+userspace...
 
 								Honza
-> 
-> Signed-off-by: Yan, Zheng <zheng.z.yan@intel.com>
-> ---
->  fs/ext4/inode.c | 5 +++--
->  1 file changed, 3 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index c79fd7d..f2034cb 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -1944,8 +1944,9 @@ static bool mpage_add_bh_to_extent(struct mpage_da_data *mpd, ext4_lblk_t lblk,
->  	struct ext4_map_blocks *map = &mpd->map;
->  
->  	/* Buffer that doesn't need mapping for writeback? */
-> -	if (!buffer_dirty(bh) || !buffer_mapped(bh) ||
-> -	    (!buffer_delay(bh) && !buffer_unwritten(bh))) {
-> +	if (!buffer_dirty(bh) ||
-> +	    (!buffer_mapped(bh) &&
-> +	     !buffer_delay(bh) && !buffer_unwritten(bh))) {
->  		/* So far no extent to map => we write the buffer right away */
->  		if (map->m_len == 0)
->  			return true;
-> -- 
-> 1.8.1.4
-> 
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
