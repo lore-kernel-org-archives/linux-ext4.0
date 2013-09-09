@@ -1,57 +1,37 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [GIT PULL] Ext3, reiserfs, udf & isofs fixes
-Date: Mon, 9 Sep 2013 16:12:55 +0200
-Message-ID: <20130909141255.GD1612@quack.suse.cz>
-References: <20130905195802.GA9260@quack.suse.cz>
- <CA+55aFytAMNADORn4FfUO620OvLdiMRNVhYbVuCFnWgo4kpvjQ@mail.gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] e2fsck: don't try to stop mmp if there is no superblock
+ set up
+Date: Mon, 9 Sep 2013 10:33:48 -0400
+Message-ID: <20130909143348.GC6059@thunk.org>
+References: <520E5BF3.5090502@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, LKML <linux-kernel@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Hubert Kario <hkario@redhat.com>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:57010 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752260Ab3IIOdv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 Sep 2013 10:33:51 -0400
 Content-Disposition: inline
-In-Reply-To: <CA+55aFytAMNADORn4FfUO620OvLdiMRNVhYbVuCFnWgo4kpvjQ@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <520E5BF3.5090502@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 06-09-13 09:11:18, Linus Torvalds wrote:
-> On Thu, Sep 5, 2013 at 12:58 PM, Jan Kara <jack@suse.cz> wrote:
-> >
-> > udf/isofs changes to refuse mounting fs rw instead of mounting it
-> > ro automatically which makes eject button work as expected for all media (see
-> > the changelog for why userspace should be ok with this change).
+On Fri, Aug 16, 2013 at 12:05:55PM -0500, Eric Sandeen wrote:
+> Under some failure cases, we can get to fatal_error()
+> without even having a superblock set up.  In that case,
+> ext2fs_mmp_stop() will segfault when it tries to dereference
+> fs->super.
 > 
-> Pulled. However, these are kind of odd.
+> Check for the existence of a superblock before we go
+> down the ext2fs_mmp_stop() path to avoid this problem.
 > 
-> For trying _remount_ something read-only, isofs returns the logical
-> EROFS error code.
-> 
-> But for trying to mount it in the first place, it returns EACCES,
-> which sounds insane. It's not a permission problem - no amount of
-> permissions will ever make it work.
-> 
-> UDF always does EACCES, regardless of mount/remount.
-> 
-> Is there some fundamental reason for the insane error code? Does user
-> space do the wrong thing if we were to just always return "EROFS"
-> which makes much more sense?
-  So I personally like EROFS more as well. However blkdev_get_by_path()
-(which is what mount(2) uses) returns EACCES if the device is read-only and
-FMODE_WRITE was requested. Also the manpage for mount(2) talks about
-EACCES when RW mount of read-only device was requested and doesn't mention
-EROFS at all.
+> Reported-by: Hubert Kario <hkario@redhat.com>
+> Addresses-Red-Hat-Bugzilla: #997972
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-Now mount(8) handles both EROFS and EACCES the same way but I wanted to
-stay on the safer side in case someone uses mount(2) directly so I used
-more common EACCES.
+Thanks, applied.
 
-I can create a separate patch changing all EACCES return values in this
-area to EROFS but I'm not sure it is worth the possible hassle with
-userspace...
-
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+					- Ted
