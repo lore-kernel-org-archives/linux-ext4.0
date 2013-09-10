@@ -1,83 +1,98 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext4: Fix performance regression in writeback of random writes
-Date: Tue, 10 Sep 2013 21:40:06 +0200
-Message-ID: <1378842006-15237-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Yan Zheng <ukernel@gmail.com>,
-	Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:60751 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751680Ab3IJTkN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Sep 2013 15:40:13 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH v3 0/2] ext4: increase mbcache scalability
+Date: Tue, 10 Sep 2013 14:47:33 -0600
+Message-ID: <62D71A85-C7EE-4F5F-B481-5329F0282044@dilger.ca>
+References: <1374108934-50550-1-git-send-email-tmac@hp.com> <1378312756-68597-1-git-send-email-tmac@hp.com> <20130905023522.GA21268@thunk.org> <52285395.1070508@hp.com> <0787C579-7E2C-4864-B8F4-98816E1E50A2@dilger.ca> <5229C939.8030108@hp.com>
+Mime-Version: 1.0 (Apple Message framework v1085)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Theodore Ts'o <tytso@mit.edu>, T Makphaibulchoke <tmac@hp.com>,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	"linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org Devel" <linux-fsdevel@vger.kernel.org>,
+	aswin@hp.com, Linus Torvalds <torvalds@linux-foundation.org>,
+	aswin_proj@lists.hp.com
+To: Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <5229C939.8030108@hp.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Linux Kernel Performance project guys have reported that commit 4e7ea81db5
-introduces a performance regression for the following fio workload:
-[global]
-direct=0
-ioengine=mmap
-size=1500M
-bs=4k
-pre_read=1
-numjobs=1
-overwrite=1
-loops=5
-runtime=300
-group_reporting
-invalidate=0
-directory=/mnt/
-file_service_type=random:36
-file_service_type=random:36
+On 2013-09-06, at 6:23 AM, Thavatchai Makphaibulchoke wrote:
+> On 09/06/2013 05:10 AM, Andreas Dilger wrote:
+>> On 2013-09-05, at 3:49 AM, Thavatchai Makphaibulchoke wrote:
+>>> No, I did not do anything special, including changing an inode's size. I just used the profile data, which indicated mb_cache module as one of the bottleneck.  Please see below for perf data from one of th new_fserver run, which also shows some mb_cache activities.
+>>> 
+>>> 
+>>>                       |--3.51%-- __mb_cache_entry_find
+>>>                       |          mb_cache_entry_find_first
+>>>                       |          ext4_xattr_cache_find
+>>>                       |          ext4_xattr_block_set
+>>>                       |          ext4_xattr_set_handle
+>>>                       |          ext4_initxattrs
+>>>                       |          security_inode_init_security
+>>>                       |          ext4_init_security
+>> 
+>> Looks like this is some large security xattr, or enough smaller
+>> xattrs to exceed the ~120 bytes of in-inode xattr storage.  How
+>> big is the SELinux xattr (assuming that is what it is)?
+>> 
+>> You could try a few different things here:
+>> - disable selinux completely (boot with "selinux=0" on the kernel
+>>  command line) and see how much faster it is
 
-[job0]
-startdelay=0
-rw=randrw
-filename=data0/f1:data0/f2
+> Sorry I'm
 
-[job1]
-startdelay=0
-rw=randrw
-filename=data0/f2:data0/f1
-...
+not?
 
-[job7]
-startdelay=0
-rw=randrw
-filename=data0/f2:data0/f1
+> familiar with SELinux enough to say how big its xattr is. Anyway, I'm positive that SELinux is what is generating these xattrs.  With SELinux disabled, there seems to be no call ext4_xattr_cache_find().
 
-The culprit of the problem is that after the commit ext4_writepages()
-are more aggressive in writing back pages. Thus we have less consecutive
-dirty pages resulting in more seeking.
+What is the relative performance of your benchmark with SELinux disabled?
+While the oprofile graphs will be of passing interest to see that the
+mbcache overhead is gone, they will not show the reduction in disk IO
+from not writing/updating the external xattr blocks at all.
 
-This increased aggressivity is caused by a bug in the condition
-terminating ext4_writepages(). We start writing from the beginning of
-the file even if we should have terminated ext4_writepages() because
-wbc->nr_to_write <= 0.
+>> - format your ext4 filesystem with larger inodes (-I 512) and see
+>>  if this is an improvement or not.  That depends on the size of
+>>  the selinux xattrs and if they will fit into the extra 256 bytes
+>>  of xattr space these larger inodes will give you.  The performance
+>>  might also be worse, since there will be more data to read/write
+>>  for each inode, but it would avoid seeking to the xattr blocks.
+> 
+> Thanks for the above suggestions. Could you please clarify if we are
+> attempting to look for a workaround here? Since we agree the way
+> mb_cache uses one global spinlock is incorrect and SELinux exposes
+> the problem (which is not uncommon with Enterprise installations),
+> I believe we should look at fixing it (patch 1/2). As you also
+> mentioned, this will also impact both ext2 and ext3 filesystems.
 
-After fixing the condition the throughput of the fio workload is about 20%
-better than before writeback reorganization.
+I agree that SELinux is enabled on enterprise distributions by default,
+but I'm also interested to know how much overhead this imposes.  I would
+expect that writing large external xattrs for each file would have quite
+a significant performance overhead that should not be ignored.  Reducing
+the mbcache overhead is good, but eliminating it entirely is better.
 
-Reported-by: "Yan, Zheng" <zheng.z.yan@intel.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/inode.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Depending on how much overhead SELinux has, it might be important to
+spend more time to optimize it (not just the mbcache part), or users
+may consider disabling SELinux entirely on systems where they care
+about peak performance.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c79fd7d..7914c05 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2563,7 +2563,7 @@ retry:
- 			break;
- 	}
- 	blk_finish_plug(&plug);
--	if (!ret && !cycled) {
-+	if (!ret && !cycled && wbc->nr_to_write > 0) {
- 		cycled = 1;
- 		mpd.last_page = writeback_index - 1;
- 		mpd.first_page = 0;
--- 
-1.8.1.4
+> Anyway, please let me know if you still think any of the above
+> experiments is relevant.
 
+You have already done one of the tests that I'm interested in (the above
+test which showed that disabling SELinux removed the mbcache overhead).
+What I'm interested in is the actual performance (or relative performance
+if you are not allowed to publish the actual numbers) of your AIM7
+benchmark between SELinux enabled and SELinux disabled.
+
+Next would be a new test that has SELinux enabled, but formatting the
+filesystem with 512-byte inodes instead of the ext4 default of 256-byte
+inodes.  If this makes a significant improvement, it would potentially
+mean users and the upstream distros should use different formatting
+options along with SELinux.  This is less clearly a win, since I don't
+know enough details of how SELinux uses xattrs (I always disable it,
+so I don't have any systems to check).
+
+Cheers, Andreas
