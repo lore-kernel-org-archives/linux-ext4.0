@@ -1,114 +1,197 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH v3 0/2] ext4: increase mbcache scalability
-Date: Wed, 11 Sep 2013 11:49:43 -0500
-Message-ID: <52309F27.8060008@redhat.com>
-References: <1374108934-50550-1-git-send-email-tmac@hp.com> <1378312756-68597-1-git-send-email-tmac@hp.com> <20130905023522.GA21268@thunk.org> <52285395.1070508@hp.com> <0787C579-7E2C-4864-B8F4-98816E1E50A2@dilger.ca> <5229C939.8030108@hp.com> <62D71A85-C7EE-4F5F-B481-5329F0282044@dilger.ca> <20130910210250.GH29237@thunk.org> <522FDFCC.1070007@redhat.com> <20130911113001.GB13315@thunk.org>
+From: Jeff Mahoney <jeffm@suse.com>
+Subject: Re: [PATCH 1/2] kobject: introduce kobj_completion
+Date: Wed, 11 Sep 2013 12:53:45 -0400
+Message-ID: <5230A019.5030101@suse.com>
+References: <522F5A6A.2000201@suse.com> <20130910180627.GA4274@kroah.com> <522F65DC.1010303@suse.com> <522F6882.2070900@suse.com> <20130911045042.GA31241@kroah.com>
 Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ protocol="application/pgp-signature";
+ boundary="7EnnKGs7HwOlq6iVl5qkcesXhLxXHSfiI"
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>
+To: Greg KH <gregkh@linux.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:50827 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753002Ab3IKQx7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Sep 2013 12:53:59 -0400
+In-Reply-To: <20130911045042.GA31241@kroah.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
+
+This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
+--7EnnKGs7HwOlq6iVl5qkcesXhLxXHSfiI
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger@dilger.ca>,
-	Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>,
-	T Makphaibulchoke <tmac@hp.com>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	"linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org Devel" <linux-fsdevel@vger.kernel.org>,
-	aswin@hp.com, Linus Torvalds <torvalds@linux-foundation.org>,
-	aswin_proj@lists.hp.com
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20130911113001.GB13315@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Transfer-Encoding: quoted-printable
 
-On 9/11/13 6:30 AM, Theodore Ts'o wrote:
-> On Tue, Sep 10, 2013 at 10:13:16PM -0500, Eric Sandeen wrote:
+On 9/11/13 12:50 AM, Greg KH wrote:
+> On Tue, Sep 10, 2013 at 02:44:18PM -0400, Jeff Mahoney wrote:
+>> On 9/10/13 2:33 PM, Jeff Mahoney wrote:
+>>> On 9/10/13 2:06 PM, Greg KH wrote:
+>>>> On Tue, Sep 10, 2013 at 01:44:10PM -0400, Jeff Mahoney wrote:
+>>>>> ext4 exports per-filesystem information via sysfs. The lifetime rul=
+es
+>>>>> have historically been painful for this but the solution has been t=
+o pair
+>>>>> the kobject with a completion and call complete in the kobject's
+>>>>> release function.
+>>>>>
+>>>>> Since this is a pattern I've used in btrfs as well, it makes sense =
+to
+>>>>> turn the pairing into a convenience structure with a standard API.
+>>>>>
+>>>>> Signed-off-by: Jeff Mahoney <jeffm@suse.com>
+>>>>> ---
+>>>>>  include/linux/kobj_completion.h |   18 +++++++++++++++
+>>>>>  lib/kobject.c                   |   47 +++++++++++++++++++++++++++=
++++++++++++++
+>>>>>  2 files changed, 65 insertions(+)
+>>>>>
+>>>>> --- /dev/null	1970-01-01 00:00:00.000000000 +0000
+>>>>> +++ b/include/linux/kobj_completion.h	2013-09-10 12:58:03.530554144=
+ -0400
+>>>>> @@ -0,0 +1,18 @@
+>>>>> +#ifndef _KOBJ_COMPLETION_H_
+>>>>> +#define _KOBJ_COMPLETION_H_
+>>>>> +
+>>>>> +#include <linux/kobject.h>
+>>>>> +#include <linux/completion.h>
+>>>>> +
+>>>>> +struct kobj_completion {
+>>>>> +	struct kobject kc_kobj;
+>>>>> +	struct completion kc_unregister;
+>>>>> +};
+>>>>> +
+>>>>> +#define kobj_to_kobj_completion(kobj) \
+>>>>> +	container_of(kobj, struct kobj_completion, kc_kobj)
+>>>>> +
+>>>>> +void kobj_completion_init(struct kobj_completion *kc, struct kobj_=
+type *ktype);
+>>>>> +void kobj_completion_release(struct kobject *kobj);
+>>>>> +void kobj_completion_del_and_wait(struct kobj_completion *kc);
+>>>>> +#endif /* _KOBJ_COMPLETION_H_ */
+>>>>> --- a/lib/kobject.c	2013-09-10 12:57:54.198666613 -0400
+>>>>> +++ b/lib/kobject.c	2013-09-10 13:16:31.750607946 -0400
+>>>>> @@ -13,6 +13,7 @@
+>>>>>   */
+>>>>> =20
+>>>>>  #include <linux/kobject.h>
+>>>>> +#include <linux/kobj_completion.h>
+>>>>>  #include <linux/string.h>
+>>>>>  #include <linux/export.h>
+>>>>>  #include <linux/stat.h>
+>>>>> @@ -711,6 +712,52 @@ const struct sysfs_ops kobj_sysfs_ops =3D
+>>>>>  };
+>>>>> =20
+>>>>>  /**
+>>>>> + * kobj_completion_init - initialize a kobj_completion object.
+>>>>> + * @kc: kobj_completion
+>>>>> + * @ktype: type of kobject to initialize
+>>>>> + *
+>>>>> + * kobj_completion structures can be embedded within structures wi=
+th different
+>>>>> + * lifetime rules.  During the release of the enclosing object, we=
+ can
+>>>>> + * wait on the release of the kobject so that we don't free it whi=
+le it's
+>>>>> + * still busy.
+>>>>> + */
+>>>>> +void kobj_completion_init(struct kobj_completion *kc, struct kobj_=
+type *ktype)
+>>>>> +{
+>>>>> +	init_completion(&kc->kc_unregister);
+>>>>> +	kobject_init(&kc->kc_kobj, ktype);
+>>>>> +}
+>>>>> +EXPORT_SYMBOL_GPL(kobj_completion_init);
+>>>>> +
+>>>>> +/**
+>>>>> + * kobj_completion_release - release a kobj_completion object
+>>>>> + * @kobj: kobject embedded in kobj_completion
+>>>>> + *
+>>>>> + * Used with kobject_release to notify waiters that the kobject ha=
+s been
+>>>>> + * released.
+>>>>> + */
+>>>>> +void kobj_completion_release(struct kobject *kobj)
+>>>>> +{
+>>>>> +	struct kobj_completion *kc =3D kobj_to_kobj_completion(kobj);
+>>>>> +	complete(&kc->kc_unregister);
+>>>>> +}
+>>>>> +EXPORT_SYMBOL_GPL(kobj_completion_release);
+>>>>> +
+>>>>> +/**
+>>>>> + * kobj_completion_del_and_wait - release the kobject and wait for=
+ it
+>>>>> + * @kc: kobj_completion object to release
+>>>>> + *
+>>>>> + * Delete the kobject from sysfs and  drop the reference count. Th=
+en wait
+>>>>> + * until any outstanding references are also dropped.
+>>>>> + */
+>>>>> +void kobj_completion_del_and_wait(struct kobj_completion *kc)
+>>>>> +{
+>>>>> +	kobject_del(&kc->kc_kobj);
+>>>>> +	kobject_put(&kc->kc_kobj);
+>>>>
+>>>> Why the extra kobject_put() call?  Who added this extra reference to=
+ the
+>>>> object?
+>>>
+>>> There's an assumption that kobject_add will have been called on the
+>>> initialized kobject. If it hasn't been called, the object can just be=
+
+>>> deleted without the completion. It makes the calling code easier to
+>>> read, so would it work for you if I documented that assumption in
+>>> _del_and_wait?
 >>
->> Above doesn't tell us the prevalence of various contexts on the actual system,
->> but they are all under 100 bytes in any case.
-> 
-> OK, so in other words, on your system i_file_acl and i_file_acl_high
-> (which is where we store the block # for the external xattr block),
-> should always be zero for all inodes, yes?
+>> Actually, that's not it. The refcounting works out in my tests.
+>>
+>> The kobject's refcount is initialized to 1. kobject_add doesn't
+>> increment it and kobject_del doesn't decrement it. So we need the
+>> kobject_put to trigger the release function.
+>>
+>> Or am I missing something here?
+>=20
+> Ugh, no, you are right, this is all good as-is.  Do you want to take
+> these through the ext4 tree, or do you want me to take them?
 
-Oh, hum - ok, so that would have been the better thing to check (or at
-least an additional thing).
+I'd prefer to get this one in now and wait until Ted's available to
+discuss the ext4 change. My btrfs changes depend on this as well and I'd
+like to get those moving now.
 
-# find / -xdev -exec filefrag -x {} \; | awk -F : '{print $NF}' | sort | uniq -c
+I have a newer version with an updated comment that explains the
+lifetime a bit better that I'll send separately as a single patch.
 
-Finds quite a lot that claim to have external blocks, but it seems broken:
+Thanks.
 
-# filefrag -xv /var/lib/yum/repos/x86_64/6Server/epel
-Filesystem type is: ef53
-File size of /var/lib/yum/repos/x86_64/6Server/epel is 4096 (1 block, blocksize 4096)
- ext logical physical expected length flags
-   0       0 32212996252             100 not_aligned,inline
-/var/lib/yum/repos/x86_64/6Server/epel: 1 extent found
+-Jeff
 
-So _filefrag_ says it has a block (at a 120T physical address not on my fs!)
+--=20
+Jeff Mahoney
+SUSE Labs
 
-And yet it's a small attr:
 
-# getfattr -m - -d /var/lib/yum/repos/x86_64/6Server/epel
-getfattr: Removing leading '/' from absolute path names
-# file: var/lib/yum/repos/x86_64/6Server/epel
-security.selinux="unconfined_u:object_r:rpm_var_lib_t:s0"
+--7EnnKGs7HwOlq6iVl5qkcesXhLxXHSfiI
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
 
-And debugfs thinks it's stored within the inode:
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG/MacGPG2 v2.0.19 (Darwin)
 
-debugfs:  stat var/lib/yum/repos/x86_64/6Server/epel
-Inode: 1968466   Type: directory    Mode:  0755   Flags: 0x80000
-Generation: 2728788146    Version: 0x00000000:00000001
-User:     0   Group:     0   Size: 4096
-File ACL: 0    Directory ACL: 0
-Links: 2   Blockcount: 8
-Fragment:  Address: 0    Number: 0    Size: 0
- ctime: 0x50b4d808:cb7dd9a8 -- Tue Nov 27 09:11:04 2012
- atime: 0x522fc8fa:62eb2d90 -- Tue Sep 10 20:35:54 2013
- mtime: 0x50b4d808:cb7dd9a8 -- Tue Nov 27 09:11:04 2012
-crtime: 0x50b4d808:cb7dd9a8 -- Tue Nov 27 09:11:04 2012
-Size of extra inode fields: 28
-Extended attributes stored in inode body: 
-  selinux = "unconfined_u:object_r:rpm_var_lib_t:s0\000" (39)
-EXTENTS:
-(0): 7873422
+iQIcBAEBAgAGBQJSMKAfAAoJEB57S2MheeWyZ0wQAImQpZbfSlewxjczKKVaWUtf
+JNkvqtdRL+S1N+298S3ySZb9gwL9Z8leDsjxSlQFD6HoifhPi6xtkV71nAC9ZLV6
+sqthHOBSb2d0JVrKnW1xfY/CmV2vl47MtsSjHoDU24pXamOVMRadqk3TEWMTObIE
+7p1dxknAhWMQycRqssGmw8y5q6ZMIrrxPycqqJHTvpbc9Df6/Ai611ZZ8Bcat3Ze
+hAx+dRVbELMQuxjdVF7zbsNy6dlDVAsLgp9mVK9DRTu0kP/x+dikzXpmrPzEHKWL
+87eXTDori+Cq1yw+r40p22IA5p/3X5AK/yyqvsZBjDr7EobQWBizG+h4O+GZgdBU
+MRrTcsZlN7OV8HcGKiVnTFp8bUtBTJ3T+m3Di+IgBrvMghYm20G2MdL/Zu5MsSMG
+rL7xMhbqcgkli6hw/+fZGNuYhvTsydO+WEjK6dyoPKav/kIjM0GF7tgS20kmsoOR
+DNGdmMJEeoIap0NIbXKQlIi/PbgyDi9Bb6mabr1N9j5djizVm3RDWT3q/PVFhtq2
+KIIC2BYnGgBruFya4p+SuWXbpBOBf/0kkbH8b+vyiXghUZAMRbJKFaDDHID7f74f
+ngNKq21vlo0+0l88AQqj2955zO9o4zsfmFfUwCwjQSmk52nG6XlKluNvlTI63uNm
+FYdjyqc5HZSYqjqRpZi/
+=jjob
+-----END PGP SIGNATURE-----
 
-sooo seems like filefrag -x is buggy and can't be trusted.  :(
-
-> Thavatchai, can you check to see whether or not this is true on your
-> system?  You can use debugfs on the file system, and then use the
-> "stat" command to sample various inodes in your system.  Or I can make
-> a version of e2fsck which counts the number of inodes with external
-> xattr blocks --- it sounds like this is something we should do anyway.
-> 
-> One difference might be that Eric ran this test on RHEL 6, and
-> Thavatchai is using an upstream kernel, so maybe this is bloat has
-> been added recently?
-
-It's a userspace policy so the kernel shouldn't matter... "bloat" would
-only come from new, longer contexts (outside the kernel).
-
-> The reason why I'm pushing here is that mbcache shouldn't be showing
-> up in the profiles at all if there is no external xattr block.  And so
-> if newer versions of SELinux (like Adnreas, I've been burned by
-> SELinux too many times in the past, so I don't use SELinux on any of
-> my systems) is somehow causing mbcache to get triggered, we should
-> figure this out and understand what's really going on.
-
-selinux, from an fs allocation behavior perspective, is simply setxattr.
-
-And as I showed earlier, name+value for all of the attrs set by at least RHEL6
-selinux policy are well under 100 bytes.
-
-(Add in a bunch of other non-selinux xattrs, and you'll go out of a 256b inode,
-sure, but selinux on its own should not).
-
-> Sigh, I suppose I should figure out how to create a minimal KVM setup
-> which uses SELinux just so I can see what the heck is going on....
-
-http://fedoraproject.org/en/get-fedora ;)
-
--Eric
-
->       	  	      	     	      	 - Ted
-> 
+--7EnnKGs7HwOlq6iVl5qkcesXhLxXHSfiI--
