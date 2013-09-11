@@ -1,142 +1,95 @@
-From: Greg KH <gregkh@linux.com>
-Subject: Re: [PATCH 1/2] kobject: introduce kobj_completion
-Date: Tue, 10 Sep 2013 21:50:42 -0700
-Message-ID: <20130911045042.GA31241@kroah.com>
-References: <522F5A6A.2000201@suse.com>
- <20130910180627.GA4274@kroah.com>
- <522F65DC.1010303@suse.com>
- <522F6882.2070900@suse.com>
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Subject: Re: [PATCH] ext4: Fix performance regression in writeback of random
+ writes
+Date: Wed, 11 Sep 2013 11:45:03 +0200
+Message-ID: <52303B9F.5060507@itwm.fraunhofer.de>
+References: <1378842006-15237-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>
-To: Jeff Mahoney <jeffm@suse.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from out3-smtp.messagingengine.com ([66.111.4.27]:49367 "EHLO
-	out3-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750728Ab3IKEui (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Sep 2013 00:50:38 -0400
-Content-Disposition: inline
-In-Reply-To: <522F6882.2070900@suse.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	Yan Zheng <ukernel@gmail.com>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1378842006-15237-1-git-send-email-jack@suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Sep 10, 2013 at 02:44:18PM -0400, Jeff Mahoney wrote:
-> On 9/10/13 2:33 PM, Jeff Mahoney wrote:
-> > On 9/10/13 2:06 PM, Greg KH wrote:
-> >> On Tue, Sep 10, 2013 at 01:44:10PM -0400, Jeff Mahoney wrote:
-> >>> ext4 exports per-filesystem information via sysfs. The lifetime rules
-> >>> have historically been painful for this but the solution has been to pair
-> >>> the kobject with a completion and call complete in the kobject's
-> >>> release function.
-> >>>
-> >>> Since this is a pattern I've used in btrfs as well, it makes sense to
-> >>> turn the pairing into a convenience structure with a standard API.
-> >>>
-> >>> Signed-off-by: Jeff Mahoney <jeffm@suse.com>
-> >>> ---
-> >>>  include/linux/kobj_completion.h |   18 +++++++++++++++
-> >>>  lib/kobject.c                   |   47 ++++++++++++++++++++++++++++++++++++++++
-> >>>  2 files changed, 65 insertions(+)
-> >>>
-> >>> --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-> >>> +++ b/include/linux/kobj_completion.h	2013-09-10 12:58:03.530554144 -0400
-> >>> @@ -0,0 +1,18 @@
-> >>> +#ifndef _KOBJ_COMPLETION_H_
-> >>> +#define _KOBJ_COMPLETION_H_
-> >>> +
-> >>> +#include <linux/kobject.h>
-> >>> +#include <linux/completion.h>
-> >>> +
-> >>> +struct kobj_completion {
-> >>> +	struct kobject kc_kobj;
-> >>> +	struct completion kc_unregister;
-> >>> +};
-> >>> +
-> >>> +#define kobj_to_kobj_completion(kobj) \
-> >>> +	container_of(kobj, struct kobj_completion, kc_kobj)
-> >>> +
-> >>> +void kobj_completion_init(struct kobj_completion *kc, struct kobj_type *ktype);
-> >>> +void kobj_completion_release(struct kobject *kobj);
-> >>> +void kobj_completion_del_and_wait(struct kobj_completion *kc);
-> >>> +#endif /* _KOBJ_COMPLETION_H_ */
-> >>> --- a/lib/kobject.c	2013-09-10 12:57:54.198666613 -0400
-> >>> +++ b/lib/kobject.c	2013-09-10 13:16:31.750607946 -0400
-> >>> @@ -13,6 +13,7 @@
-> >>>   */
-> >>>  
-> >>>  #include <linux/kobject.h>
-> >>> +#include <linux/kobj_completion.h>
-> >>>  #include <linux/string.h>
-> >>>  #include <linux/export.h>
-> >>>  #include <linux/stat.h>
-> >>> @@ -711,6 +712,52 @@ const struct sysfs_ops kobj_sysfs_ops =
-> >>>  };
-> >>>  
-> >>>  /**
-> >>> + * kobj_completion_init - initialize a kobj_completion object.
-> >>> + * @kc: kobj_completion
-> >>> + * @ktype: type of kobject to initialize
-> >>> + *
-> >>> + * kobj_completion structures can be embedded within structures with different
-> >>> + * lifetime rules.  During the release of the enclosing object, we can
-> >>> + * wait on the release of the kobject so that we don't free it while it's
-> >>> + * still busy.
-> >>> + */
-> >>> +void kobj_completion_init(struct kobj_completion *kc, struct kobj_type *ktype)
-> >>> +{
-> >>> +	init_completion(&kc->kc_unregister);
-> >>> +	kobject_init(&kc->kc_kobj, ktype);
-> >>> +}
-> >>> +EXPORT_SYMBOL_GPL(kobj_completion_init);
-> >>> +
-> >>> +/**
-> >>> + * kobj_completion_release - release a kobj_completion object
-> >>> + * @kobj: kobject embedded in kobj_completion
-> >>> + *
-> >>> + * Used with kobject_release to notify waiters that the kobject has been
-> >>> + * released.
-> >>> + */
-> >>> +void kobj_completion_release(struct kobject *kobj)
-> >>> +{
-> >>> +	struct kobj_completion *kc = kobj_to_kobj_completion(kobj);
-> >>> +	complete(&kc->kc_unregister);
-> >>> +}
-> >>> +EXPORT_SYMBOL_GPL(kobj_completion_release);
-> >>> +
-> >>> +/**
-> >>> + * kobj_completion_del_and_wait - release the kobject and wait for it
-> >>> + * @kc: kobj_completion object to release
-> >>> + *
-> >>> + * Delete the kobject from sysfs and  drop the reference count. Then wait
-> >>> + * until any outstanding references are also dropped.
-> >>> + */
-> >>> +void kobj_completion_del_and_wait(struct kobj_completion *kc)
-> >>> +{
-> >>> +	kobject_del(&kc->kc_kobj);
-> >>> +	kobject_put(&kc->kc_kobj);
-> >>
-> >> Why the extra kobject_put() call?  Who added this extra reference to the
-> >> object?
-> > 
-> > There's an assumption that kobject_add will have been called on the
-> > initialized kobject. If it hasn't been called, the object can just be
-> > deleted without the completion. It makes the calling code easier to
-> > read, so would it work for you if I documented that assumption in
-> > _del_and_wait?
-> 
-> Actually, that's not it. The refcounting works out in my tests.
-> 
-> The kobject's refcount is initialized to 1. kobject_add doesn't
-> increment it and kobject_del doesn't decrement it. So we need the
-> kobject_put to trigger the release function.
-> 
-> Or am I missing something here?
+On 09/10/2013 09:40 PM, Jan Kara wrote:
+> Linux Kernel Performance project guys have reported that commit 4e7ea81db5
+> introduces a performance regression for the following fio workload:
+> [global]
+> direct=0
+> ioengine=mmap
+> size=1500M
+> bs=4k
+> pre_read=1
+> numjobs=1
+> overwrite=1
+> loops=5
+> runtime=300
+> group_reporting
+> invalidate=0
+> directory=/mnt/
+> file_service_type=random:36
+> file_service_type=random:36
+>
+> [job0]
+> startdelay=0
+> rw=randrw
+> filename=data0/f1:data0/f2
+>
+> [job1]
+> startdelay=0
+> rw=randrw
+> filename=data0/f2:data0/f1
+> ...
+>
+> [job7]
+> startdelay=0
+> rw=randrw
+> filename=data0/f2:data0/f1
+>
+> The culprit of the problem is that after the commit ext4_writepages()
+> are more aggressive in writing back pages. Thus we have less consecutive
+> dirty pages resulting in more seeking.
+>
+> This increased aggressivity is caused by a bug in the condition
+> terminating ext4_writepages(). We start writing from the beginning of
+> the file even if we should have terminated ext4_writepages() because
+> wbc->nr_to_write <= 0.
+>
+> After fixing the condition the throughput of the fio workload is about 20%
+> better than before writeback reorganization.
+>
+> Reported-by: "Yan, Zheng" <zheng.z.yan@intel.com>
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>   fs/ext4/inode.c | 2 +-
+>   1 file changed, 1 insertion(+), 1 deletion(-)
+>
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index c79fd7d..7914c05 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -2563,7 +2563,7 @@ retry:
+>   			break;
+>   	}
+>   	blk_finish_plug(&plug);
+> -	if (!ret && !cycled) {
+> +	if (!ret && !cycled && wbc->nr_to_write > 0) {
+>   		cycled = 1;
+>   		mpd.last_page = writeback_index - 1;
+>   		mpd.first_page = 0;
+>
 
-Ugh, no, you are right, this is all good as-is.  Do you want to take
-these through the ext4 tree, or do you want me to take them?
+Interesting, doesn't that mean generic_writepages (sub-sequent 
+write_cache_pages() ) and all other file systems implementing their own 
+->writepages()  should be updated?
 
-thanks,
 
-greg k-h
+
+Thanks,
+Bernd
+
