@@ -1,139 +1,45 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] e2fsprogs: add -i switch to filefrag to ignore inline data
-Date: Wed, 11 Sep 2013 16:03:42 -0500
-Message-ID: <5230DAAE.2040900@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v3 0/2] ext4: increase mbcache scalability
+Date: Wed, 11 Sep 2013 17:25:23 -0400
+Message-ID: <20130911212523.GE13397@thunk.org>
+References: <52285395.1070508@hp.com>
+ <0787C579-7E2C-4864-B8F4-98816E1E50A2@dilger.ca>
+ <5229C939.8030108@hp.com>
+ <62D71A85-C7EE-4F5F-B481-5329F0282044@dilger.ca>
+ <20130910210250.GH29237@thunk.org>
+ <522FDFCC.1070007@redhat.com>
+ <20130911113001.GB13315@thunk.org>
+ <52309F27.8060008@redhat.com>
+ <alpine.DEB.2.02.1309111325270.5862@nftneq.ynat.uz>
+ <5230D739.9010109@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: David Lang <david@lang.hm>, Andreas Dilger <adilger@dilger.ca>,
+	Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>,
+	T Makphaibulchoke <tmac@hp.com>,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	"linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org Devel" <linux-fsdevel@vger.kernel.org>,
+	aswin@hp.com, Linus Torvalds <torvalds@linux-foundation.org>,
+	aswin_proj@lists.hp.com
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:23812 "EHLO mx1.redhat.com"
+Received: from imap.thunk.org ([74.207.234.97]:58548 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756990Ab3IKVDo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Sep 2013 17:03:44 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r8BL3h82013335
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Wed, 11 Sep 2013 17:03:43 -0400
-Received: from Liberator.local (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r8BL3hXs013064
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 11 Sep 2013 17:03:43 -0400
+	id S1755432Ab3IKV07 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Sep 2013 17:26:59 -0400
+Content-Disposition: inline
+In-Reply-To: <5230D739.9010109@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Sometimes we simply want to know what blocks are allocated to
-a file.  By default, filefrag will show us inline data as well,
-printing an extent record (and extent count) whether it's inline
-or not.
+On Wed, Sep 11, 2013 at 03:48:57PM -0500, Eric Sandeen wrote:
+> 
+> So at this point I think it's up to Mak to figure out why on his system, aim7 is triggering mbcache codepaths.
+> 
 
-Add an "-i" switch to Ignore Inline data, so that when
-specified, the extent count & table output only reflects
-normally allocated blocks.
+Yes, the next thing is to see if on his systems, whether or not he's
+seeing external xattr blocks.
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
-
-diff --git a/misc/filefrag.8.in b/misc/filefrag.8.in
-index a6d7b27..6b2ce1d 100644
---- a/misc/filefrag.8.in
-+++ b/misc/filefrag.8.in
-@@ -8,7 +8,7 @@ filefrag \- report on file fragmentation
- .BI \-b blocksize
- ]
- [
--.B \-BeksvxX
-+.B \-BeiksvxX
- ]
- [
- .I files...
-@@ -43,6 +43,9 @@ is unspecified it defaults to 1024 bytes.
- .B \-e
- Print output in extent format, even for block-mapped files.
- .TP
-+.B \-i
-+Ignore all inline extent records in the extent table and counts.
-+.TP
- .BI \-k
- Use 1024\-byte blocksize for output (identical to '\-b 1024').
- .TP
-diff --git a/misc/filefrag.c b/misc/filefrag.c
-index 35b3544..4652606 100644
---- a/misc/filefrag.c
-+++ b/misc/filefrag.c
-@@ -50,6 +50,7 @@ int sync_file = 0;	/* fsync file before getting the mapping */
- int xattr_map = 0;	/* get xattr mapping */
- int force_bmap;	/* force use of FIBMAP instead of FIEMAP */
- int force_extent;	/* print output in extent format always */
-+int no_inline;		/* do not show FIEMAP_EXTENT_DATA_INLINE, only blocks */
- int logical_width = 8;
- int physical_width = 10;
- const char *ext_fmt = "%4d: %*llu..%*llu: %*llu..%*llu: %6llu: %s\n";
-@@ -135,8 +136,11 @@ static void print_extent_info(struct fiemap_extent *fm_extent, int cur_ex,
- 	char flags[256] = "";
- 
- 	/* For inline data all offsets should be in bytes, not blocks */
--	if (fm_extent->fe_flags & FIEMAP_EXTENT_DATA_INLINE)
-+	if (fm_extent->fe_flags & FIEMAP_EXTENT_DATA_INLINE) {
-+		if (no_inline)
-+			return;
- 		blk_shift = 0;
-+	}
- 
- 	ext_len = fm_extent->fe_length >> blk_shift;
- 	ext_blks = (fm_extent->fe_length - 1) >> blk_shift;
-@@ -229,6 +233,15 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents,
- 		}
- 
- 		for (i = 0; i < fiemap->fm_mapped_extents; i++) {
-+			if (fm_ext[i].fe_flags & FIEMAP_EXTENT_LAST)
-+				last = 1;
-+			/* Skip this extent if it's inline and we are ignoring */
-+			if (no_inline &&
-+			    (fm_ext[i].fe_flags & FIEMAP_EXTENT_DATA_INLINE)) {
-+				n++;
-+				continue;
-+			}
-+
- 			if (fm_ext[i].fe_logical != 0 &&
- 			    fm_ext[i].fe_physical != expected) {
- 				tot_extents++;
-@@ -242,8 +255,6 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents,
- 						  blk_shift, st);
- 
- 			expected = fm_ext[i].fe_physical + fm_ext[i].fe_length;
--			if (fm_ext[i].fe_flags & FIEMAP_EXTENT_LAST)
--				last = 1;
- 			n++;
- 		}
- 
-@@ -445,7 +456,7 @@ out_close:
- 
- static void usage(const char *progname)
- {
--	fprintf(stderr, "Usage: %s [-b{blocksize}] [-BeklsvxX] file ...\n",
-+	fprintf(stderr, "Usage: %s [-b{blocksize}] [-BeiklsvxX] file ...\n",
- 		progname);
- 	exit(1);
- }
-@@ -455,7 +466,7 @@ int main(int argc, char**argv)
- 	char **cpp;
- 	int c;
- 
--	while ((c = getopt(argc, argv, "Bb::eksvxX")) != EOF)
-+	while ((c = getopt(argc, argv, "Bb::eiksvxX")) != EOF)
- 		switch (c) {
- 		case 'B':
- 			force_bmap++;
-@@ -495,6 +506,9 @@ int main(int argc, char**argv)
- 			if (!verbose)
- 				verbose++;
- 			break;
-+		case 'i':
-+			no_inline++;
-+			break;
- 		case 'k':
- 			blocksize = 1024;
- 			break;
-
-
+					- Ted
