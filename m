@@ -1,112 +1,142 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH v3 0/2] ext4: increase mbcache scalability
-Date: Tue, 10 Sep 2013 22:13:16 -0500
-Message-ID: <522FDFCC.1070007@redhat.com>
-References: <1374108934-50550-1-git-send-email-tmac@hp.com> <1378312756-68597-1-git-send-email-tmac@hp.com> <20130905023522.GA21268@thunk.org> <52285395.1070508@hp.com> <0787C579-7E2C-4864-B8F4-98816E1E50A2@dilger.ca> <5229C939.8030108@hp.com> <62D71A85-C7EE-4F5F-B481-5329F0282044@dilger.ca> <20130910210250.GH29237@thunk.org>
+From: Greg KH <gregkh@linux.com>
+Subject: Re: [PATCH 1/2] kobject: introduce kobj_completion
+Date: Tue, 10 Sep 2013 21:50:42 -0700
+Message-ID: <20130911045042.GA31241@kroah.com>
+References: <522F5A6A.2000201@suse.com>
+ <20130910180627.GA4274@kroah.com>
+ <522F65DC.1010303@suse.com>
+ <522F6882.2070900@suse.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger@dilger.ca>,
-	Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>,
-	T Makphaibulchoke <tmac@hp.com>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	"linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org Devel" <linux-fsdevel@vger.kernel.org>,
-	aswin@hp.com, Linus Torvalds <torvalds@linux-foundation.org>,
-	aswin_proj@lists.hp.com
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20130910210250.GH29237@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>
+To: Jeff Mahoney <jeffm@suse.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from out3-smtp.messagingengine.com ([66.111.4.27]:49367 "EHLO
+	out3-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750728Ab3IKEui (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Sep 2013 00:50:38 -0400
+Content-Disposition: inline
+In-Reply-To: <522F6882.2070900@suse.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 9/10/13 4:02 PM, Theodore Ts'o wrote:
-> On Tue, Sep 10, 2013 at 02:47:33PM -0600, Andreas Dilger wrote:
->> I agree that SELinux is enabled on enterprise distributions by default,
->> but I'm also interested to know how much overhead this imposes.  I would
->> expect that writing large external xattrs for each file would have quite
->> a significant performance overhead that should not be ignored.  Reducing
->> the mbcache overhead is good, but eliminating it entirely is better.
+On Tue, Sep 10, 2013 at 02:44:18PM -0400, Jeff Mahoney wrote:
+> On 9/10/13 2:33 PM, Jeff Mahoney wrote:
+> > On 9/10/13 2:06 PM, Greg KH wrote:
+> >> On Tue, Sep 10, 2013 at 01:44:10PM -0400, Jeff Mahoney wrote:
+> >>> ext4 exports per-filesystem information via sysfs. The lifetime rules
+> >>> have historically been painful for this but the solution has been to pair
+> >>> the kobject with a completion and call complete in the kobject's
+> >>> release function.
+> >>>
+> >>> Since this is a pattern I've used in btrfs as well, it makes sense to
+> >>> turn the pairing into a convenience structure with a standard API.
+> >>>
+> >>> Signed-off-by: Jeff Mahoney <jeffm@suse.com>
+> >>> ---
+> >>>  include/linux/kobj_completion.h |   18 +++++++++++++++
+> >>>  lib/kobject.c                   |   47 ++++++++++++++++++++++++++++++++++++++++
+> >>>  2 files changed, 65 insertions(+)
+> >>>
+> >>> --- /dev/null	1970-01-01 00:00:00.000000000 +0000
+> >>> +++ b/include/linux/kobj_completion.h	2013-09-10 12:58:03.530554144 -0400
+> >>> @@ -0,0 +1,18 @@
+> >>> +#ifndef _KOBJ_COMPLETION_H_
+> >>> +#define _KOBJ_COMPLETION_H_
+> >>> +
+> >>> +#include <linux/kobject.h>
+> >>> +#include <linux/completion.h>
+> >>> +
+> >>> +struct kobj_completion {
+> >>> +	struct kobject kc_kobj;
+> >>> +	struct completion kc_unregister;
+> >>> +};
+> >>> +
+> >>> +#define kobj_to_kobj_completion(kobj) \
+> >>> +	container_of(kobj, struct kobj_completion, kc_kobj)
+> >>> +
+> >>> +void kobj_completion_init(struct kobj_completion *kc, struct kobj_type *ktype);
+> >>> +void kobj_completion_release(struct kobject *kobj);
+> >>> +void kobj_completion_del_and_wait(struct kobj_completion *kc);
+> >>> +#endif /* _KOBJ_COMPLETION_H_ */
+> >>> --- a/lib/kobject.c	2013-09-10 12:57:54.198666613 -0400
+> >>> +++ b/lib/kobject.c	2013-09-10 13:16:31.750607946 -0400
+> >>> @@ -13,6 +13,7 @@
+> >>>   */
+> >>>  
+> >>>  #include <linux/kobject.h>
+> >>> +#include <linux/kobj_completion.h>
+> >>>  #include <linux/string.h>
+> >>>  #include <linux/export.h>
+> >>>  #include <linux/stat.h>
+> >>> @@ -711,6 +712,52 @@ const struct sysfs_ops kobj_sysfs_ops =
+> >>>  };
+> >>>  
+> >>>  /**
+> >>> + * kobj_completion_init - initialize a kobj_completion object.
+> >>> + * @kc: kobj_completion
+> >>> + * @ktype: type of kobject to initialize
+> >>> + *
+> >>> + * kobj_completion structures can be embedded within structures with different
+> >>> + * lifetime rules.  During the release of the enclosing object, we can
+> >>> + * wait on the release of the kobject so that we don't free it while it's
+> >>> + * still busy.
+> >>> + */
+> >>> +void kobj_completion_init(struct kobj_completion *kc, struct kobj_type *ktype)
+> >>> +{
+> >>> +	init_completion(&kc->kc_unregister);
+> >>> +	kobject_init(&kc->kc_kobj, ktype);
+> >>> +}
+> >>> +EXPORT_SYMBOL_GPL(kobj_completion_init);
+> >>> +
+> >>> +/**
+> >>> + * kobj_completion_release - release a kobj_completion object
+> >>> + * @kobj: kobject embedded in kobj_completion
+> >>> + *
+> >>> + * Used with kobject_release to notify waiters that the kobject has been
+> >>> + * released.
+> >>> + */
+> >>> +void kobj_completion_release(struct kobject *kobj)
+> >>> +{
+> >>> +	struct kobj_completion *kc = kobj_to_kobj_completion(kobj);
+> >>> +	complete(&kc->kc_unregister);
+> >>> +}
+> >>> +EXPORT_SYMBOL_GPL(kobj_completion_release);
+> >>> +
+> >>> +/**
+> >>> + * kobj_completion_del_and_wait - release the kobject and wait for it
+> >>> + * @kc: kobj_completion object to release
+> >>> + *
+> >>> + * Delete the kobject from sysfs and  drop the reference count. Then wait
+> >>> + * until any outstanding references are also dropped.
+> >>> + */
+> >>> +void kobj_completion_del_and_wait(struct kobj_completion *kc)
+> >>> +{
+> >>> +	kobject_del(&kc->kc_kobj);
+> >>> +	kobject_put(&kc->kc_kobj);
+> >>
+> >> Why the extra kobject_put() call?  Who added this extra reference to the
+> >> object?
+> > 
+> > There's an assumption that kobject_add will have been called on the
+> > initialized kobject. If it hasn't been called, the object can just be
+> > deleted without the completion. It makes the calling code easier to
+> > read, so would it work for you if I documented that assumption in
+> > _del_and_wait?
 > 
-> I was under the impression that using a 256 byte inode (which gives a
-> bit over 100 bytes worth of xattr space) was plenty for SELinux.  If
-> it turns out that SELinux's use of xattrs have gotten especially
-> piggy, then we may need to revisit the recommended inode size for
-> those systems who insist on using SELinux...  even if we eliminate the
-> overhead associated with mbcache, the fact that files are requiring a
-> separate xattr is going to seriously degrade performance.
-
-On my RHEL6 system,
-
-# find / -xdev -exec getfattr --only-values -m security.* {} 2>/dev/null \; | wc -c
-11082179
-
-bytes of names for:
-
-# df -i /
-Filesystem            Inodes   IUsed   IFree IUse% Mounted on
-/dev/mapper/vg_bp05-lv_root
-                     3276800  280785 2996015    9% /
-
-280785 inodes used,
-
-so:
-11082179/280785 = ~39.5 bytes per value on average, plus:
-
-# echo -n "security.selinux" | wc -c
-16
-
-16 bytes for the name is only about 55-56 bytes per selinux attr on average.
-
-So nope, not "especially piggy" on average.
-
-Another way to do it is this; list all possible file contexts, and make
-a histogram of sizes:
-
-# for CONTEXT in `semanage fcontext -l | awk '{print $NF}' `; do echo -n $CONTEXT | wc -c; done | sort -n | uniq -c
-      1 7
-     33 8
-    356 26
-     14 27
-     14 28
-     37 29
-     75 30
-    237 31
-    295 32
-    425 33
-    324 34
-    445 35
-    548 36
-    229 37
-    193 38
-    181 39
-    259 40
-     81 41
-    108 42
-     96 43
-     55 44
-     55 45
-     16 46
-     41 47
-     23 48
-     28 49
-     36 50
-     10 51
-     10 52
-      5 54
-      2 57
-
-so a 57 byte value is max, but there aren't many of the larger values.
-
-Above doesn't tell us the prevalence of various contexts on the actual system,
-but they are all under 100 bytes in any case.
-
--Eric
-
-> 	       	  	   	     - Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Actually, that's not it. The refcounting works out in my tests.
 > 
+> The kobject's refcount is initialized to 1. kobject_add doesn't
+> increment it and kobject_del doesn't decrement it. So we need the
+> kobject_put to trigger the release function.
+> 
+> Or am I missing something here?
+
+Ugh, no, you are right, this is all good as-is.  Do you want to take
+these through the ext4 tree, or do you want me to take them?
+
+thanks,
+
+greg k-h
