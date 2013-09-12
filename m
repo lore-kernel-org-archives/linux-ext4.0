@@ -1,111 +1,198 @@
-From: Alexander Harrowell <a.harrowell@gmail.com>
-Subject: Fwd: Fwd: strange e2fsck magic number behaviour
-Date: Thu, 12 Sep 2013 16:56:59 +0000
-Message-ID: <CA+qGm=99UEZpm4nvess8g3n4bO+iTwehVda1UY3xyTjdeMOhrA@mail.gmail.com>
-References: <CA+qGm=-0w+gTh6=ZJhns_=4LKksJueiaYF0gxogmj=TmFN7yQg@mail.gmail.com>
-	<CA+qGm=_BBsNM6ZYYWhHucMiP7QWCfD0ApVQNa3ijN22AMN8mGw@mail.gmail.com>
-	<5231EF7D.20501@redhat.com>
-	<CA+qGm=-jHzxFmb1yHqoB9UC8c7nvJN-WVP2Bb67=G63OKE3_2Q@mail.gmail.com>
+From: Cuong Tran <cuonghuutran@gmail.com>
+Subject: Re: Java Stop-the-World GC stall induced by FS flush or many large
+ file deletions
+Date: Thu, 12 Sep 2013 09:58:29 -0700
+Message-ID: <CALQm4jg-f9iBXx8B5jnP0_6t4xqVbLGSP8AXBczLTOfT9kcDyQ@mail.gmail.com>
+References: <CALQm4jhE8aRjOsK2HpSuqNCzNqZm5RU9QOJi0q0SwgR=1JKZsQ@mail.gmail.com>
+ <C0F0BC787567C848B2C90989451123DA46E64D5D@ATLEXMBX4.ARRS.ARRISI.com>
+ <CALQm4jj-4+Fu=1WkdzDuHH5friiWUBaaPFKkvX2VyAKM6D0JTA@mail.gmail.com>
+ <C0F0BC787567C848B2C90989451123DA46E64D8C@ATLEXMBX4.ARRS.ARRISI.com>
+ <CALQm4jg=-8ae2PUa98zu+seZEnBC5oj4NmLfqeqPURRZ5t-OwA@mail.gmail.com> <C0F0BC787567C848B2C90989451123DA46E64ED2@ATLEXMBX4.ARRS.ARRISI.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+To: "Sidorov, Andrei" <Andrei.Sidorov@arrisi.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f169.google.com ([209.85.192.169]:62540 "EHLO
-	mail-pd0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754073Ab3ILQ47 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Sep 2013 12:56:59 -0400
-Received: by mail-pd0-f169.google.com with SMTP id r10so66485pdi.0
-        for <linux-ext4@vger.kernel.org>; Thu, 12 Sep 2013 09:56:59 -0700 (PDT)
-In-Reply-To: <CA+qGm=-jHzxFmb1yHqoB9UC8c7nvJN-WVP2Bb67=G63OKE3_2Q@mail.gmail.com>
+Received: from mail-ea0-f179.google.com ([209.85.215.179]:53526 "EHLO
+	mail-ea0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754073Ab3ILQ6u convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Sep 2013 12:58:50 -0400
+In-Reply-To: <C0F0BC787567C848B2C90989451123DA46E64ED2@ATLEXMBX4.ARRS.ARRISI.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
----------- Forwarded message ----------
-From: Alexander Harrowell <a.harrowell@gmail.com>
-Date: Thu, Sep 12, 2013 at 4:54 PM
-Subject: Re: Fwd: strange e2fsck magic number behaviour
-To: Eric Sandeen <sandeen@redhat.com>
+Andrei, regarding core binding, our test program has only 1 thread
+which appends to the log. I did not explicitly bind this test to any
+core. Even without core binding, would a thread already scheduled for
+the core (say due to NUMA) get stuck until the core is available or
+does the kernel migrate this poor thread?
 
+Regarding journaling, your explanation is very clear. I read that a
+record takes up 1 to multiple buffers, 4 KB each. And a journal
+default size is 128 MB, regardless of partition size. Thus a journal
+can be filled up to 32,000  records before it has to check point. Is
+this correct?
 
-It was 63GB and I just wanted to fork over 3GB of extra space from my
-Windows partition...
+Thanks again for your help.
 
-The fstab is as follows
+--Cuong
 
-/dev/sda1 SYSTEM_DRV ntfs 1.17g (boot)
-/dev/sda2 Windows7_OS ntfs 63.4G
-/dev/sda4 extended partition containing:
--- /dev/sda6 swap linux-swap 8.05G
--- /dev/sda5 /home ext4 66.14G
-/dev/sda3 Lenovo_Recovery ntfs 10.25G
-unallocated 1M
-
-that's what was intended and is what gparted reports. (however,
-weirdly, if you ask Ubuntu Disk Utility, it says /dev/sda5 is 71GB and
-/dev/sda4 is correspondingly bigger. this I have only just noticed.)
-
-kernel is 3.2.0-29-generic, machine is a ThinkPad X200s with 160GB disk.
-
-thanks for your help.
-
-
-On Thu, Sep 12, 2013 at 4:44 PM, Eric Sandeen <sandeen@redhat.com> wrote:
-> On 9/12/13 11:39 AM, Alexander Harrowell wrote:
->> I'm currently trying to recover an ext4 filesystem. Last night, during
->> a resize operation,
+On Thu, Sep 12, 2013 at 8:47 AM, Sidorov, Andrei
+<Andrei.Sidorov@arrisi.com> wrote:
+> If there are threads bound to this core, they probably won't be able =
+to
+> progress for the time of commit. I don't think scheduler would migrat=
+e
+> them to a different core immediately. So, if GC wants to talk to thes=
+e
+> threads, it would block as well.
 >
-> from what size to what size? On what kernel?
+> Of course deleting many small files is much slower than deleting sing=
+le
+> file of the same size. Number of records is roughly the number of fil=
+es
+> deleted, split at allocation group boundaries. The group size is 128M
+> unless you enabled bigalloc feature. That is in simplest case a relea=
+se
+> blocks entry for 256M file contains one record with 2 groups to free.
+> But release blocks entry for 256 1M files will contain 256 records th=
+at
+> are to be precessed separately. Before that change, commit time for
+> removing one 256M is the same as removing 256 1M files (wrt to time
+> taken to release blocks). After the change, releasing blocks of 256M
+> file would take 2 =93iterations=94 as opposed to 256.
 >
->> the system (Ubuntu 12.04 LTS on my fix-stuff usb
->> stick) locked up hard and eventually crashed. Restarting,
->> unsurprisingly, gparted offered to check the volume. e2fsck, called
->> from within gparted, replayed the journal overnight and completed the
->> resize.
+> Basically, there is no thing like =93deleting N blocks=94, unless you=
+ delete
+> a file by progressively truncating it towards zero.
 >
-> hmmm... perhaps.
+> Regards,
+> Andrei.
 >
->> however, where I was expecting a volume with about 3.5GB of free
->> space, there was now a volume with 32GB free space, a bit more than
->> 50% utilised. inevitably, trying to boot the linux that lives in there
->> dropped into grub rescue.
+> On 12.09.2013 02:08, Cuong Tran wrote:
+>> My desk top has 8 cores, including hyperthreading. Thus deleting fil=
+es
+>> would lock up one core but that should not affect GC threads if core
+>> lock-up is an issue? Would # journal records be proportional to #
+>> blocks deleted. And thus deleting N blocks, one block at a time woul=
+d
+>> create N times more journal records than deleting all N blocks in "o=
+ne
+>> shot"?
 >>
->> going back, I tried to e2fsck it. this reported large numbers of inode
->> issues and eventually reported clean. I could mount the volume, but
->> file metadata looked generally broken (lots of ?s). testdisk showed
->> the partitions were intact, although it claimed the drive was the
->> wrong size (incorrectly), and found lots of deleted files within my
->> ecryptfs home folder. It also found the backup superblocks for the
->> damaged volume.
+>> --Cuong
 >>
->> the first couple I tried were corrupt, but the third was valid. e2fsck
->> -b [superblock] -y reports fixing a lot of inode things, checksums,
->> and then restarts.  it then starts to report hunormous numbers of
->> multiply-claimed blocks.
+>> On Wed, Sep 11, 2013 at 11:02 PM, Sidorov, Andrei
+>> <Andrei.Sidorov@arrisi.com> wrote:
+>>> It would lock-up one core whichever jdb/sdaX runs on. This will usu=
+ally
+>>> happen upon commit that runs every x seconds, 5 by default (see =93=
+commit=94
+>>> mount option for ext4). I.e. deleting 5 files one by one with 1 sec=
+ond
+>>> interval in between is basically the same as deleting all of them =93=
+at once=94.
+>>>
+>>> Yes, fallocated files are the same wrt releasing blocks.
+>>>
+>>> Regards,
+>>> Andrei.
+>>>
+>>> On 12.09.2013 01:45, Cuong Tran wrote:
+>>>> Awesome fix and thanks for very speedy response. I have some
+>>>> questions. We delete files one at a time, and thus that would lock=
+ up
+>>>> one core or all cores?
+>>>>
+>>>> And in our test, we use falloc w/o writing to file. That would sti=
+ll
+>>>> cause freeing block-by-block, correct?
+>>>> --Cuong
+>>>>
+>>>> On Wed, Sep 11, 2013 at 10:32 PM, Sidorov, Andrei
+>>>> <Andrei.Sidorov@arrisi.com> wrote:
+>>>>> Hi,
+>>>>>
+>>>>> Large file deletions are likely to lock cpu for seconds if you're
+>>>>> running non-preemptible kernel < 3.10.
+>>>>> Make sure you have this change:
+>>>>> http://patchwork.ozlabs.org/patch/232172/ (available in 3.10 if I
+>>>>> remember it right).
+>>>>> Turning on preemption may be a good idea as well.
+>>>>>
+>>>>> Regards,
+>>>>> Andrei.
+>>>>>
+>>>>> On 12.09.2013 00:18, Cuong Tran wrote:
+>>>>>> We have seen GC stalls that are NOT due to memory usage of appli=
+cations.
+>>>>>>
+>>>>>> GC log reports the CPU user and system time of GC threads, which=
+ are
+>>>>>> almost 0, and stop-the-world time, which can be multiple seconds=
+=2E This
+>>>>>> indicates GC threads are waiting for IO but GC threads should be
+>>>>>> CPU-bound in user mode.
+>>>>>>
+>>>>>> We could reproduce the problems using a simple Java program that=
+ just
+>>>>>> appends to a log file via log4j. If the test just runs by itself=
+, it
+>>>>>> does not incur any GC stalls. However, if we run a script that e=
+nters
+>>>>>> a loop to create multiple large file via falloc() and then delet=
+es
+>>>>>> them, then GC stall of 1+ seconds can happen fairly predictably.
+>>>>>>
+>>>>>> We can also reproduce the problem by periodically switch the log=
+ and
+>>>>>> gzip the older log. IO device, a single disk drive, is overloade=
+d by
+>>>>>> FS flush when this happens.
+>>>>>>
+>>>>>> Our guess is GC has to acquiesce its threads and if one of the t=
+hreads
+>>>>>> is stuck in the kernel (say in non-interruptible mode). Then GC =
+has to
+>>>>>> wait until this thread unblocks. In the mean time, it already st=
+ops
+>>>>>> the world.
+>>>>>>
+>>>>>> Another test that shows similar problem is doing deferred writes=
+ to
+>>>>>> append a file. Latency of deferred writes is very fast but once =
+a
+>>>>>> while, it can last more than 1 second.
+>>>>>>
+>>>>>> We would really appreciate if you could shed some light on possi=
+ble
+>>>>>> causes? (Threads blocked because of journal check point, delayed
+>>>>>> allocation can't proceed?). We could alleviate the problem by
+>>>>>> configuring expire_centisecs and writeback_centisecs to flush mo=
+re
+>>>>>> frequently, and thus even-out the workload to the disk drive. Bu=
+t we
+>>>>>> would like to know if there  is a methodology to model the rate =
+of
+>>>>>> flush vs. rate of changes and IO throughput of the drive (SAS, 1=
+5K
+>>>>>> RPM).
+>>>>>>
+>>>>>> Many thanks.
+>>>>>> --
+>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-=
+ext4" in
+>>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.ht=
+ml
+>>>>>>
+>>>>>>
 >>
->> and now comes the interesting bit - at some point, block 16777215
->> starts to appear more and more often in the inodes, often duplicated,
->> until it starts to print out the number 16777215 in a fast loop. in
->> fact, it looks like it hits some inode and keeps printing block
->> 16777215 to the same very long line (it's generated 500MB of log)
 >
-> = 111111111111111111111111 binary.
->
-> Guessing it's maybe a bitmap block?
->
-> Resize2fs has had a lot of trouble lately it seems.  You may have just
-> been the unlucky recipient of a resize2fs bug...
->
-> -Eric
->
->> I removed the first inode containing this block via debugfs, without
->> this helping.
->>
->> It sticks out that 16777215 is a magic number (the maximum in a 48 bit
->> address space) and I google that either ext4 or e2fsck has had a bug
->> involving it before.
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
