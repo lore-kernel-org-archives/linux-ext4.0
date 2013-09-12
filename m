@@ -1,8 +1,8 @@
 From: "Sidorov, Andrei" <Andrei.Sidorov@arrisi.com>
 Subject: Re: Java Stop-the-World GC stall induced by FS flush or many large
  file deletions
-Date: Thu, 12 Sep 2013 06:01:52 +0000
-Message-ID: <C0F0BC787567C848B2C90989451123DA46E64D81@ATLEXMBX4.ARRS.ARRISI.com>
+Date: Thu, 12 Sep 2013 06:02:27 +0000
+Message-ID: <C0F0BC787567C848B2C90989451123DA46E64D8C@ATLEXMBX4.ARRS.ARRISI.com>
 References: <CALQm4jhE8aRjOsK2HpSuqNCzNqZm5RU9QOJi0q0SwgR=1JKZsQ@mail.gmail.com>
  <C0F0BC787567C848B2C90989451123DA46E64D5D@ATLEXMBX4.ARRS.ARRISI.com>
  <CALQm4jj-4+Fu=1WkdzDuHH5friiWUBaaPFKkvX2VyAKM6D0JTA@mail.gmail.com>
@@ -12,14 +12,10 @@ Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
 	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
 To: Cuong Tran <cuonghuutran@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.arrisi.com ([216.234.147.109]:43282 "EHLO mail.arrisi.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752596Ab3ILGBy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Sep 2013 02:01:54 -0400
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Language: en-US
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 It would lock-up one core whichever jdb/sdaX runs on. This will usually
 happen upon commit that runs every x seconds, 5 by default (see =93comm=
@@ -114,7 +110,7 @@ e
 >
 
 --
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
+" in
 the body of a message to majordomo@vger.kernel.org
 More majordomo info at  http://vger.kernel.org/majordomo-info.html
