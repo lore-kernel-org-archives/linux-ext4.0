@@ -1,168 +1,117 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v3 0/2] ext4: increase mbcache scalability
-Date: Thu, 12 Sep 2013 08:23:17 -0400
-Message-ID: <20130912122317.GC12918@thunk.org>
-References: <5229C939.8030108@hp.com>
- <62D71A85-C7EE-4F5F-B481-5329F0282044@dilger.ca>
- <20130910210250.GH29237@thunk.org>
- <522FDFCC.1070007@redhat.com>
- <20130911113001.GB13315@thunk.org>
- <52309F27.8060008@redhat.com>
- <alpine.DEB.2.02.1309111325270.5862@nftneq.ynat.uz>
- <5230D739.9010109@redhat.com>
- <20130911212523.GE13397@thunk.org>
- <5230D450.7000609@hp.com>
+From: Julian Andres Klode <jak@jak-linux.org>
+Subject: Please help: Is ext4 counting trims as writes, or is something
+ killing my SSD?
+Date: Thu, 12 Sep 2013 16:18:56 +0200
+Message-ID: <20130912141856.GA17640@jak-x230>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>, David Lang <david@lang.hm>,
-	Andreas Dilger <adilger@dilger.ca>,
-	T Makphaibulchoke <tmac@hp.com>,
-	"linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>,
-	aswin@hp.com, swin_proj@lists.hp.com
-To: Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="ZGiS0Q5IWpPtfppv"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:58948 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753238Ab3ILMYv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Sep 2013 08:24:51 -0400
+Received: from mail-bk0-f42.google.com ([209.85.214.42]:47074 "EHLO
+	mail-bk0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751034Ab3ILOTB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Sep 2013 10:19:01 -0400
+Received: by mail-bk0-f42.google.com with SMTP id my10so4311839bkb.1
+        for <linux-ext4@vger.kernel.org>; Thu, 12 Sep 2013 07:19:00 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <5230D450.7000609@hp.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-(I've trimmed the cc list to stop spamming people who probably don't
-care as much about this).
 
-So I've tried the following patch, and I've confirmed that for short
-xattrs (i.e., that fit inside the inode body, assuming an inode size >
-128 bytes), the mbcache paths don't trigger at all.
+--ZGiS0Q5IWpPtfppv
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Could you try this patch and see if we can figure out why mbcache code
-paths are triggering for you?
+Hi,
 
-						- Ted
+I installed my new laptop on Saturday and setup an ext4 filesystem
+on my / and /home partitions. Without me doing much file transfers,
+I noticed today:
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index c081e34..0942ae3 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -265,6 +265,8 @@ ext4_xattr_block_get(struct inode *inode, int name_index, const char *name,
- 	struct ext4_xattr_entry *entry;
- 	size_t size;
- 	int error;
-+	static DEFINE_RATELIMIT_STATE(_rs, DEFAULT_RATELIMIT_INTERVAL,
-+				      DEFAULT_RATELIMIT_BURST);
- 
- 	ea_idebug(inode, "name=%d.%s, buffer=%p, buffer_size=%ld",
- 		  name_index, name, buffer, (long)buffer_size);
-@@ -286,6 +288,11 @@ bad_block:
- 		error = -EIO;
- 		goto cleanup;
- 	}
-+	if (__ratelimit(&_rs)) {
-+		ext4_warning(inode->i_sb, "inode %lu",
-+			     (unsigned long) inode->i_ino);
-+		WARN_ON(1);
-+	}
- 	ext4_xattr_cache_insert(bh);
- 	entry = BFIRST(bh);
- 	error = ext4_xattr_find_entry(&entry, name_index, name, bh->b_size, 1);
-@@ -409,6 +416,8 @@ ext4_xattr_block_list(struct dentry *dentry, char *buffer, size_t buffer_size)
- 	struct inode *inode = dentry->d_inode;
- 	struct buffer_head *bh = NULL;
- 	int error;
-+	static DEFINE_RATELIMIT_STATE(_rs, DEFAULT_RATELIMIT_INTERVAL,
-+				      DEFAULT_RATELIMIT_BURST);
- 
- 	ea_idebug(inode, "buffer=%p, buffer_size=%ld",
- 		  buffer, (long)buffer_size);
-@@ -430,6 +439,11 @@ ext4_xattr_block_list(struct dentry *dentry, char *buffer, size_t buffer_size)
- 		error = -EIO;
- 		goto cleanup;
- 	}
-+	if (__ratelimit(&_rs)) {
-+		ext4_warning(inode->i_sb, "inode %lu",
-+			     (unsigned long) inode->i_ino);
-+		WARN_ON(1);
-+	}
- 	ext4_xattr_cache_insert(bh);
- 	error = ext4_xattr_list_entries(dentry, BFIRST(bh), buffer, buffer_size);
- 
-@@ -526,7 +540,14 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
- {
- 	struct mb_cache_entry *ce = NULL;
- 	int error = 0;
-+	static DEFINE_RATELIMIT_STATE(_rs, DEFAULT_RATELIMIT_INTERVAL,
-+				      DEFAULT_RATELIMIT_BURST);
- 
-+	if (__ratelimit(&_rs)) {
-+		ext4_warning(inode->i_sb, "inode %lu",
-+			     (unsigned long) inode->i_ino);
-+		WARN_ON(1);
-+	}
- 	ce = mb_cache_entry_get(ext4_xattr_cache, bh->b_bdev, bh->b_blocknr);
- 	error = ext4_journal_get_write_access(handle, bh);
- 	if (error)
-@@ -745,12 +766,19 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
- 	struct ext4_xattr_search *s = &bs->s;
- 	struct mb_cache_entry *ce = NULL;
- 	int error = 0;
-+	static DEFINE_RATELIMIT_STATE(_rs, DEFAULT_RATELIMIT_INTERVAL,
-+				      DEFAULT_RATELIMIT_BURST);
- 
- #define header(x) ((struct ext4_xattr_header *)(x))
- 
- 	if (i->value && i->value_len > sb->s_blocksize)
- 		return -ENOSPC;
- 	if (s->base) {
-+		if (__ratelimit(&_rs)) {
-+			ext4_warning(inode->i_sb, "inode %lu",
-+				     (unsigned long) inode->i_ino);
-+			WARN_ON(1);
-+		}
- 		ce = mb_cache_entry_get(ext4_xattr_cache, bs->bh->b_bdev,
- 					bs->bh->b_blocknr);
- 		error = ext4_journal_get_write_access(handle, bs->bh);
-@@ -769,6 +797,12 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
- 				if (!IS_LAST_ENTRY(s->first))
- 					ext4_xattr_rehash(header(s->base),
- 							  s->here);
-+				if (__ratelimit(&_rs)) {
-+					ext4_warning(inode->i_sb,
-+						     "inode %lu",
-+						(unsigned long) inode->i_ino);
-+					WARN_ON(1);
-+				}
- 				ext4_xattr_cache_insert(bs->bh);
- 			}
- 			unlock_buffer(bs->bh);
-@@ -905,6 +939,11 @@ getblk_failed:
- 			memcpy(new_bh->b_data, s->base, new_bh->b_size);
- 			set_buffer_uptodate(new_bh);
- 			unlock_buffer(new_bh);
-+			if (__ratelimit(&_rs)) {
-+				ext4_warning(inode->i_sb, "inode %lu",
-+					     (unsigned long) inode->i_ino);
-+				WARN_ON(1);
-+			}
- 			ext4_xattr_cache_insert(new_bh);
- 			error = ext4_handle_dirty_xattr_block(handle,
- 							      inode, new_bh);
-@@ -1570,10 +1609,17 @@ ext4_xattr_cache_find(struct inode *inode, struct ext4_xattr_header *header,
- {
- 	__u32 hash = le32_to_cpu(header->h_hash);
- 	struct mb_cache_entry *ce;
-+	static DEFINE_RATELIMIT_STATE(_rs, DEFAULT_RATELIMIT_INTERVAL,
-+				      DEFAULT_RATELIMIT_BURST);
- 
- 	if (!header->h_hash)
- 		return NULL;  /* never share */
- 	ea_idebug(inode, "looking for cached blocks [%x]", (int)hash);
-+	if (__ratelimit(&_rs)) {
-+		ext4_warning(inode->i_sb, "inode %lu",
-+			     (unsigned long) inode->i_ino);
-+		WARN_ON(1);
-+	}
- again:
- 	ce = mb_cache_entry_find_first(ext4_xattr_cache, inode->i_sb->s_bdev,
- 				       hash);
+jak@jak-x230:~$ cat /sys/fs/ext4/sdb3/lifetime_write_kbytes=20
+342614039
+
+This is on a 100GB partition. I used fstrim multiple times. I analysed
+the increase over some time today and issued an fstrim in between:
+
+2013-09-12 15:53 341.582.779
+2013-09-12 15:54 341.582.971
+2013-09-12 15:58 341.583.103
+2013-09-12 16:01 341.584.095
+2013-09-12 16:04 341.584.475
+2013-09-12 16:05 341.584.623	=09
+	<fstrim -v /home =3D> /home/: 1052205056 bytes were trimmed>
+2013-09-12 16:07 342.612.167
+2013-09-12 16:08 342.612.323
+2013-09-12 16:10 342.613.995
+2013-09-12 16:11 342.614.039
+2013-09-12 16:15 342.614.291
+2013-09-12 16:16 342.614.475
+
+So it seems that ext4 counts the trims as writes? I don't know how I could
+get 300GB of writes on a 100GB partition -- of which only 8 GB are occupied
+-- otherwise.
+
+My smart values for my SSD are:
+
+SMART Attributes Data Structure revision number: 1
+Vendor Specific SMART Attributes with Thresholds:
+ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  =
+WHEN_FAILED RAW_VALUE
+  1 Raw_Read_Error_Rate     0x0003   100   100   070    Pre-fail  Always   =
+    -       0
+  5 Reallocated_Sector_Ct   0x0003   100   100   000    Pre-fail  Always   =
+    -       0
+  9 Power_On_Hours          0x0002   100   100   000    Old_age   Always   =
+    -       23
+ 12 Power_Cycle_Count       0x0002   100   100   000    Old_age   Always   =
+    -       37
+177 Wear_Leveling_Count     0x0003   100   100   000    Pre-fail  Always   =
+    -       465
+178 Used_Rsvd_Blk_Cnt_Chip  0x0003   100   100   000    Pre-fail  Always   =
+    -       0
+181 Program_Fail_Cnt_Total  0x0003   100   100   000    Pre-fail  Always   =
+    -       0
+182 Erase_Fail_Count_Total  0x0003   100   100   000    Pre-fail  Always   =
+    -       0
+187 Reported_Uncorrect      0x0002   100   100   000    Old_age   Always   =
+    -       0
+192 Power-Off_Retract_Count 0x0003   100   100   000    Pre-fail  Always   =
+    -       7
+196 Reallocated_Event_Count 0x0003   100   100   000    Pre-fail  Always   =
+    -       0
+198 Offline_Uncorrectable   0x0003   100   100   000    Pre-fail  Always   =
+    -       0
+199 UDMA_CRC_Error_Count    0x0003   100   100   000    Pre-fail  Always   =
+    -       0
+232 Available_Reservd_Space 0x0003   100   100   010    Pre-fail  Always   =
+    -       0
+241 Total_LBAs_Written      0x0003   100   100   000    Pre-fail  Always   =
+    -       1494
+242 Total_LBAs_Read         0x0003   100   100   000    Pre-fail  Always   =
+    -       1308
+
+Do those still look OK?
+
+Please help,
+
+I don't know what happens here.
+--=20
+Julian Andres Klode  - Debian Developer, Ubuntu Member
+
+See http://wiki.debian.org/JulianAndresKlode and http://jak-linux.org/.
+
+--ZGiS0Q5IWpPtfppv
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.21 (GNU/Linux)
+
+iEYEABECAAYFAlIxzVAACgkQrCpf/gCCPsLEtwCdFUwjY9rFzEv3wxjo/S8cjKpT
+1l4Anjp8q+/sEHGASXUv9xiERVAJZNJ4
+=KCe7
+-----END PGP SIGNATURE-----
+
+--ZGiS0Q5IWpPtfppv--
