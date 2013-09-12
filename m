@@ -1,53 +1,56 @@
-From: Niu Yawei <yawei.niu@gmail.com>
-Subject: [PATCH] tune2fs: update i_size in ext2fs_file_write()
-Date: Thu, 12 Sep 2013 22:21:50 +0800
-Message-ID: <5231CDFE.8050206@gmail.com>
+From: Julian Andres Klode <jak@jak-linux.org>
+Subject: Re: Please help: Is ext4 counting trims as writes, or is something
+ killing my SSD?
+Date: Thu, 12 Sep 2013 16:26:10 +0200
+Message-ID: <20130912142610.GA18046@jak-x230>
+References: <20130912141856.GA17640@jak-x230>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=GB2312
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, yawei.niu@intel.com
-To: adityakali@google.com, tytso@mit.edu
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="J2SCkAp4GZ/dPZZf"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f54.google.com ([209.85.160.54]:56030 "EHLO
-	mail-pb0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752029Ab3ILOVx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Sep 2013 10:21:53 -0400
-Received: by mail-pb0-f54.google.com with SMTP id ro12so10614719pbb.13
-        for <linux-ext4@vger.kernel.org>; Thu, 12 Sep 2013 07:21:53 -0700 (PDT)
+Received: from mail-bk0-f45.google.com ([209.85.214.45]:48943 "EHLO
+	mail-bk0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752304Ab3ILO0P (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Sep 2013 10:26:15 -0400
+Received: by mail-bk0-f45.google.com with SMTP id mx11so4186232bkb.18
+        for <linux-ext4@vger.kernel.org>; Thu, 12 Sep 2013 07:26:14 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <20130912141856.GA17640@jak-x230>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext2fs_file_write() needs to update i_size on successful write,
-otherwise, ext2fs_file_read() in same open/close cycle will not
-be able to read the just written data.
 
-Which result in the the problem of quotacheck triggered on
-'tune2fs -O quota' failed to write back multiple users/groups
-accounting information.
+--J2SCkAp4GZ/dPZZf
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Niu Yawei <yawei.niu@intel.com>
----
- lib/ext2fs/fileio.c |    7 +++++++
- 1 files changed, 7 insertions(+), 0 deletions(-)
+On Thu, Sep 12, 2013 at 04:18:56PM +0200, Julian Andres Klode wrote:
+> Hi,
+>=20
+> I installed my new laptop on Saturday and setup an ext4 filesystem
+> on my / and /home partitions. Without me doing much file transfers,
+> I noticed today:
 
-diff --git a/lib/ext2fs/fileio.c b/lib/ext2fs/fileio.c
-index 1f7002c..b1b5540 100644
---- a/lib/ext2fs/fileio.c
-+++ b/lib/ext2fs/fileio.c
-@@ -304,6 +304,13 @@ errcode_t ext2fs_file_write(ext2_file_t file, const
-void *buf,
- 		ptr += c;
- 		count += c;
- 		nbytes -= c;
-+
-+		/* Update inode size */
-+		if (EXT2_I_SIZE(&file->inode) < file->pos) {
-+			retval = ext2fs_file_set_size2(file, file->pos);
-+			if (retval)
-+				goto fail;
-+		}
- 	}
+Please note that I am not subscribed to the mailing list, so please
+keep me in To or CC when answering.
 
- fail:
--- 
-1.7.1
+
+--=20
+Julian Andres Klode  - Debian Developer, Ubuntu Member
+
+See http://wiki.debian.org/JulianAndresKlode and http://jak-linux.org/.
+
+--J2SCkAp4GZ/dPZZf
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.21 (GNU/Linux)
+
+iEYEABECAAYFAlIxzwIACgkQrCpf/gCCPsJxuQCghbYdn4jWZBW0SUgCfg2P8HTD
+7rEAoJc7ATkfMltOO8TSh946M+zKkLaa
+=rjRm
+-----END PGP SIGNATURE-----
+
+--J2SCkAp4GZ/dPZZf--
