@@ -1,167 +1,73 @@
-From: "Sidorov, Andrei" <Andrei.Sidorov@arrisi.com>
-Subject: Re: Java Stop-the-World GC stall induced by FS flush or many large
- file deletions
-Date: Thu, 12 Sep 2013 15:47:33 +0000
-Message-ID: <C0F0BC787567C848B2C90989451123DA46E64ED2@ATLEXMBX4.ARRS.ARRISI.com>
-References: <CALQm4jhE8aRjOsK2HpSuqNCzNqZm5RU9QOJi0q0SwgR=1JKZsQ@mail.gmail.com>
- <C0F0BC787567C848B2C90989451123DA46E64D5D@ATLEXMBX4.ARRS.ARRISI.com>
- <CALQm4jj-4+Fu=1WkdzDuHH5friiWUBaaPFKkvX2VyAKM6D0JTA@mail.gmail.com>
- <C0F0BC787567C848B2C90989451123DA46E64D8C@ATLEXMBX4.ARRS.ARRISI.com>
- <CALQm4jg=-8ae2PUa98zu+seZEnBC5oj4NmLfqeqPURRZ5t-OwA@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Please help: Is ext4 counting trims as writes, or is something
+ killing my SSD?
+Date: Thu, 12 Sep 2013 10:52:38 -0500
+Message-ID: <5231E346.5030000@redhat.com>
+References: <20130912141856.GA17640@jak-x230> <1378997643.28638.53.camel@hp-a6734f> <5231DB33.9090104@redhat.com> <20130912153232.GA19548@jak-x230>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=Windows-1252
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-To: Cuong Tran <cuonghuutran@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Language: en-US
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: Julian Andres Klode <jak@jak-linux.org>,
+	Calvin Walton <calvin.walton@kepstin.ca>,
+	linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:25670 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753195Ab3ILPwm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 Sep 2013 11:52:42 -0400
+In-Reply-To: <20130912153232.GA19548@jak-x230>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-If there are threads bound to this core, they probably won't be able to
-progress for the time of commit. I don't think scheduler would migrate
-them to a different core immediately. So, if GC wants to talk to these
-threads, it would block as well.
+On 9/12/13 10:32 AM, Julian Andres Klode wrote:
+> On Thu, Sep 12, 2013 at 10:18:11AM -0500, Eric Sandeen wrote:
 
-Of course deleting many small files is much slower than deleting single
-file of the same size. Number of records is roughly the number of files
-deleted, split at allocation group boundaries. The group size is 128M
-unless you enabled bigalloc feature. That is in simplest case a release
-blocks entry for 256M file contains one record with 2 groups to free.
-But release blocks entry for 256 1M files will contain 256 records that
-are to be precessed separately. Before that change, commit time for
-removing one 256M is the same as removing 256 1M files (wrt to time
-taken to release blocks). After the change, releasing blocks of 256M
-file would take 2 =93iterations=94 as opposed to 256.
+...
 
-Basically, there is no thing like =93deleting N blocks=94, unless you d=
-elete
-a file by progressively truncating it towards zero.
+<note, realized that my test on loop might not be valid>
 
-Regards,
-Andrei.
+> I created a file using fallocate, deleted it (with discard option set
+> on the FS), and then sync'ed and got the following changes in sdb3:
+> 
+> jak@jak-x230:~$ diff /tmp/a /tmp/b
+> diff --git tmp/a tmp/b
+> index e0370bf..43c2fdd 100644
+> --- tmp/a
+> +++ tmp/b
+> @@ -1,7 +1,7 @@
+>     8       0 sda 1845 2122 15992 15268 6070 313375 3119314 5359680 0 85548 5391508
+>     8       1 sda1 500 0 3970 1104 4106 37774 2840016 1028656 0 29656 1046320
+> -   8      16 sdb 85114 4486 4281300 36344 143239 111626 282319450 1803288 0 101416 1839608
+> +   8      16 sdb 85114 4486 4281300 36344 143300 111658 284417426 1803492 0 101460 1839812
+>     8      17 sdb1 930 992 8152 316 2 0 2 0 0 68 316
+>     8      18 sdb2 72071 3316 3024626 29692 54309 29582 23201808 183432 0 37704 213060
+> -   8      19 sdb3 11858 175 1246458 6320 88381 82044 259117640 1619624 0 65880 1626200
+> +   8      19 sdb3 11858 175 1246458 6320 88442 82076 261215616 1619828 0 65924 1626404
+                                                        ^^^^^^^^^
+field 7 (after major/minor/device) is the number of sectors written.
 
-On 12.09.2013 02:08, Cuong Tran wrote:
-> My desk top has 8 cores, including hyperthreading. Thus deleting file=
-s
-> would lock up one core but that should not affect GC threads if core
-> lock-up is an issue? Would # journal records be proportional to #
-> blocks deleted. And thus deleting N blocks, one block at a time would
-> create N times more journal records than deleting all N blocks in "on=
-e
-> shot"?
->
-> --Cuong
->
-> On Wed, Sep 11, 2013 at 11:02 PM, Sidorov, Andrei
-> <Andrei.Sidorov@arrisi.com> wrote:
->> It would lock-up one core whichever jdb/sdaX runs on. This will usua=
-lly
->> happen upon commit that runs every x seconds, 5 by default (see =93c=
-ommit=94
->> mount option for ext4). I.e. deleting 5 files one by one with 1 seco=
-nd
->> interval in between is basically the same as deleting all of them =93=
-at once=94.
->>
->> Yes, fallocated files are the same wrt releasing blocks.
->>
->> Regards,
->> Andrei.
->>
->> On 12.09.2013 01:45, Cuong Tran wrote:
->>> Awesome fix and thanks for very speedy response. I have some
->>> questions. We delete files one at a time, and thus that would lock =
-up
->>> one core or all cores?
->>>
->>> And in our test, we use falloc w/o writing to file. That would stil=
-l
->>> cause freeing block-by-block, correct?
->>> --Cuong
->>>
->>> On Wed, Sep 11, 2013 at 10:32 PM, Sidorov, Andrei
->>> <Andrei.Sidorov@arrisi.com> wrote:
->>>> Hi,
->>>>
->>>> Large file deletions are likely to lock cpu for seconds if you're
->>>> running non-preemptible kernel < 3.10.
->>>> Make sure you have this change:
->>>> http://patchwork.ozlabs.org/patch/232172/ (available in 3.10 if I
->>>> remember it right).
->>>> Turning on preemption may be a good idea as well.
->>>>
->>>> Regards,
->>>> Andrei.
->>>>
->>>> On 12.09.2013 00:18, Cuong Tran wrote:
->>>>> We have seen GC stalls that are NOT due to memory usage of applic=
-ations.
->>>>>
->>>>> GC log reports the CPU user and system time of GC threads, which =
-are
->>>>> almost 0, and stop-the-world time, which can be multiple seconds.=
- This
->>>>> indicates GC threads are waiting for IO but GC threads should be
->>>>> CPU-bound in user mode.
->>>>>
->>>>> We could reproduce the problems using a simple Java program that =
-just
->>>>> appends to a log file via log4j. If the test just runs by itself,=
- it
->>>>> does not incur any GC stalls. However, if we run a script that en=
-ters
->>>>> a loop to create multiple large file via falloc() and then delete=
-s
->>>>> them, then GC stall of 1+ seconds can happen fairly predictably.
->>>>>
->>>>> We can also reproduce the problem by periodically switch the log =
-and
->>>>> gzip the older log. IO device, a single disk drive, is overloaded=
- by
->>>>> FS flush when this happens.
->>>>>
->>>>> Our guess is GC has to acquiesce its threads and if one of the th=
-reads
->>>>> is stuck in the kernel (say in non-interruptible mode). Then GC h=
-as to
->>>>> wait until this thread unblocks. In the mean time, it already sto=
-ps
->>>>> the world.
->>>>>
->>>>> Another test that shows similar problem is doing deferred writes =
-to
->>>>> append a file. Latency of deferred writes is very fast but once a
->>>>> while, it can last more than 1 second.
->>>>>
->>>>> We would really appreciate if you could shed some light on possib=
-le
->>>>> causes? (Threads blocked because of journal check point, delayed
->>>>> allocation can't proceed?). We could alleviate the problem by
->>>>> configuring expire_centisecs and writeback_centisecs to flush mor=
-e
->>>>> frequently, and thus even-out the workload to the disk drive. But=
- we
->>>>> would like to know if there  is a methodology to model the rate o=
-f
->>>>> flush vs. rate of changes and IO throughput of the drive (SAS, 15=
-K
->>>>> RPM).
->>>>>
->>>>> Many thanks.
->>>>> --
->>>>> To unsubscribe from this list: send the line "unsubscribe linux-e=
-xt4" in
->>>>> the body of a message to majordomo@vger.kernel.org
->>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.htm=
-l
->>>>>
->>>>>
->
+Yours moved by exactly 1G.
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+So the takeaway is; I think discards *are* included in the stats, but don't worry, it's
+not doing IO to your device.  It was added here, and it doesn't seem to have changed:
+
+commit c69d48540c201394d08cb4d48b905e001313d9b8
+Author: Jens Axboe <jens.axboe@oracle.com>
+Date:   Fri Apr 24 08:12:19 2009 +0200
+
+    block: include discard requests in IO accounting
+    
+    We currently don't do merging on discard requests, but we potentially
+    could. If we do, then we need to include discard requests in the IO
+    accounting, or merging would end up decrementing in_flight IO counters
+    for an IO which never incremented them.
+    
+    So enable accounting for discard requests.
+
+However, it seems a little odd to me that ext4 feels it necessary to issue
+discards on blocks which have been fallocated but not written to, I'll have
+to think about that part (doesn't really matter for your case, it's just a
+curiosity).
+
+Thanks,
+-Eric
