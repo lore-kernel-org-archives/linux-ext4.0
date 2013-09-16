@@ -1,54 +1,28 @@
-From: Liu Bo <bo.li.liu@oracle.com>
-Subject: [PATCH] E2fsprogs: introduce FIEMAP_EXTENT_SHARED support
-Date: Mon, 16 Sep 2013 15:41:24 +0800
-Message-ID: <1379317284-20311-1-git-send-email-bo.li.liu@oracle.com>
-Cc: linux-btrfs@vger.kernel.org, dsterba@suse.cz, jeff.liu@oracle.com
-To: linux-ext4@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Fix performance regression in writeback of random
+ writes
+Date: Mon, 16 Sep 2013 08:28:09 -0400
+Message-ID: <20130916122809.GA4159@thunk.org>
+References: <1378842006-15237-1-git-send-email-jack@suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Yan Zheng <ukernel@gmail.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:41802 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751300Ab3IPHlk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Sep 2013 03:41:40 -0400
+Received: from imap.thunk.org ([74.207.234.97]:60965 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752173Ab3IPM2M (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Sep 2013 08:28:12 -0400
+Content-Disposition: inline
+In-Reply-To: <1378842006-15237-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Filesystems, such as ocfs2 and btrfs, support shared space that is
-shared among different files, so the upstream introduces flag
-FIEMAP_EXTENT_SHARED for that.
+On Tue, Sep 10, 2013 at 09:40:06PM +0200, Jan Kara wrote:
+> Linux Kernel Performance project guys have reported that commit 4e7ea81db5
+> introduces a performance regression for the following fio workload:...
 
-With this, e2fsprogs's filefrag also support the flag.
+Applied, many thanks to Yan Zheng for finding this performance
+regression and to Jan for fixing it!
 
-Signed-off-by: Liu Bo <bo.li.liu@oracle.com>
----
- lib/ext2fs/fiemap.h |    2 ++
- misc/filefrag.c     |    2 ++
- 2 files changed, 4 insertions(+), 0 deletions(-)
-
-diff --git a/lib/ext2fs/fiemap.h b/lib/ext2fs/fiemap.h
-index 30bf555..895cd0b 100644
---- a/lib/ext2fs/fiemap.h
-+++ b/lib/ext2fs/fiemap.h
-@@ -64,5 +64,7 @@ struct fiemap {
- #define FIEMAP_EXTENT_MERGED		0x00001000 /* File does not natively
- 						    * support extents. Result
- 						    * merged for efficiency. */
-+#define FIEMAP_EXTENT_SHARED		0x00002000 /* Space shared with other
-+						    * files. */
- 
- #endif /* _LINUX_FIEMAP_H */
-diff --git a/misc/filefrag.c b/misc/filefrag.c
-index 35b3544..31dfb64 100644
---- a/misc/filefrag.c
-+++ b/misc/filefrag.c
-@@ -165,6 +165,8 @@ static void print_extent_info(struct fiemap_extent *fm_extent, int cur_ex,
- 		strcat(flags, "unwritten,");
- 	if (fm_extent->fe_flags & FIEMAP_EXTENT_MERGED)
- 		strcat(flags, "merged,");
-+	if (fm_extent->fe_flags & FIEMAP_EXTENT_SHARED)
-+		strcat(flags, "shared,");
- 
- 	if (fm_extent->fe_logical + fm_extent->fe_length >= (__u64) st->st_size)
- 		strcat(flags, "eof,");
--- 
-1.7.7
-
+	   					- Ted
