@@ -1,46 +1,49 @@
-From: Azat Khuzhin <a3at.mail@gmail.com>
-Subject: [PATCH] ext4: drop unsed reclen variable from ext4_add_dirent_to_inline()
-Date: Thu, 19 Sep 2013 00:17:30 +0400
-Message-ID: <1379535450-31253-1-git-send-email-a3at.mail@gmail.com>
-Cc: Azat Khuzhin <a3at.mail@gmail.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org (open list:EXT4 FILE SYSTEM)
-To: linux-kernel@vger.kernel.org
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 61631] New: kernel BUG at fs/ext4/super.c:818 umounting md
+ raid6 volume
+Date: Wed, 18 Sep 2013 22:05:53 +0000
+Message-ID: <bug-61631-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-la0-f43.google.com ([209.85.215.43]:54019 "EHLO
-	mail-la0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751627Ab3IRUSM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Sep 2013 16:18:12 -0400
+Received: from mail.kernel.org ([198.145.19.201]:51748 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751734Ab3IRWF5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 Sep 2013 18:05:57 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id CC933203F0
+	for <linux-ext4@vger.kernel.org>; Wed, 18 Sep 2013 22:05:56 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 219C6203E1
+	for <linux-ext4@vger.kernel.org>; Wed, 18 Sep 2013 22:05:55 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Functions that need in it, already calculate reclen from namelen by
-themselves:
-- ext4_find_dest_de()
-- ext4_insert_dentry()
+https://bugzilla.kernel.org/show_bug.cgi?id=61631
 
-Signed-off-by: Azat Khuzhin <a3at.mail@gmail.com>
----
- fs/ext4/inline.c | 2 --
- 1 file changed, 2 deletions(-)
+            Bug ID: 61631
+           Summary: kernel BUG at fs/ext4/super.c:818 umounting md raid6
+                    volume
+           Product: File System
+           Version: 2.5
+    Kernel Version: 3.11.1
+          Hardware: x86-64
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: jfaulkne@ccs.neu.edu
+        Regression: No
 
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index d9ecbf1..809f285 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -994,11 +994,9 @@ static int ext4_add_dirent_to_inline(handle_t *handle,
- 	struct inode	*dir = dentry->d_parent->d_inode;
- 	const char	*name = dentry->d_name.name;
- 	int		namelen = dentry->d_name.len;
--	unsigned short	reclen;
- 	int		err;
- 	struct ext4_dir_entry_2 *de;
- 
--	reclen = EXT4_DIR_REC_LEN(namelen);
- 	err = ext4_find_dest_de(dir, inode, iloc->bh,
- 				inline_start, inline_size,
- 				name, namelen, &de);
+Under recent kernels, including 3.11.1, I've been seeing kernel BUGs when
+umounting a large md raid6 volume.  umount itself gives me a segfault.  I will
+attach my config.gz and dmesg, which includes the BUG message.
+
 -- 
-1.8.4.rc3
-
+You are receiving this mail because:
+You are watching the assignee of the bug.
