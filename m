@@ -1,54 +1,54 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 61601] New: rootflags=noatime causes kernel panic when booting
- without initrd.
-Date: Wed, 18 Sep 2013 12:05:03 +0000
-Message-ID: <bug-61601-13602@https.bugzilla.kernel.org/>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH v3 0/2] ext4: increase mbcache scalability
+Date: Wed, 18 Sep 2013 09:19:10 -0500
+Message-ID: <5239B65E.4060202@redhat.com>
+References: <5229C939.8030108@hp.com> <62D71A85-C7EE-4F5F-B481-5329F0282044@dilger.ca> <20130910210250.GH29237@thunk.org> <522FDFCC.1070007@redhat.com> <20130911113001.GB13315@thunk.org> <52309F27.8060008@redhat.com> <alpine.DEB.2.02.1309111325270.5862@nftneq.ynat.uz> <5230D739.9010109@redhat.com> <20130911212523.GE13397@thunk.org> <5230D450.7000609@hp.com> <20130912122317.GC12918@thunk.org> <5232FF3E.7080604@hp.com> <5233609F.7060303@redhat.com> <523886CE.2070203@hp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger@dilger.ca>,
+	T Makphaibulchoke <tmac@hp.com>,
+	"linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>,
+	aswin@hp.com, aswin_proj@lists.hp.com
+To: Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:55895 "EHLO mail.kernel.org"
+Received: from mx1.redhat.com ([209.132.183.28]:34748 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752141Ab3IRMFK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Sep 2013 08:05:10 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id A995320367
-	for <linux-ext4@vger.kernel.org>; Wed, 18 Sep 2013 12:05:08 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 29EC32021B
-	for <linux-ext4@vger.kernel.org>; Wed, 18 Sep 2013 12:05:06 +0000 (UTC)
+	id S1751511Ab3IROVu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 Sep 2013 10:21:50 -0400
+In-Reply-To: <523886CE.2070203@hp.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=61601
+On 9/17/13 11:43 AM, Thavatchai Makphaibulchoke wrote:
+> On 09/13/2013 12:59 PM, Eric Sandeen wrote:
+>> 
+>> suggestions:
+>> 
+>> 1) send us dumpe2fs -h /dev/sdXX | grep "Inode size" for this
+>> filesystem 2) print out the inode number in your printk's above 3)
+>> stat one of those inodes in debugfs after the run (debugfs stat
+>> <inodenumber>) - with <> around the inode nr
+>> 
+>> -Eric
+>> 
+> 
+> I think I found out why we get into the mbcache path.  The test uses
+> ramfss, which are mounted and unmounted at the start and end of the
+> test.  Looks like a ramfs' default inode size is 128, causing all the
+> mbcaching for the xattrs.  There seems to be nothing wrong with
+> either SELinux or xattr.  Sorry for the confusion.
 
-            Bug ID: 61601
-           Summary: rootflags=noatime causes kernel panic when booting
-                    without initrd.
-           Product: File System
-           Version: 2.5
-    Kernel Version: 3.11, 3.10
-          Hardware: All
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-          Assignee: fs_ext4@kernel-bugs.osdl.org
-          Reporter: dragonn@op.pl
-        Regression: No
+smaller filesystems go back to 128 byte inodes, IIRC.
 
-I have create kernel with built in SATA drivers and ext4 filesystem. Everything
-boots fine when I launch the kernel without rootflags=noatime. When I add to
-the kernel parameters rootflags=noatime I got kernel panic direct after the
-kernel launch and try to mount the root partition. This could affect other
-filesystem too, but I didn't test it. My kernel cmdline is be default:
+That's why I asked for dumpe2fs long ago ;)
 
-root=/dev/sda4 rw acpi=noirq vga=773 logo.nologo loglevel=0 libata.force=noncq
-quiet libahci.ignore_sss=1 rootfstype=ext4.
+But glad to have the mystery solved!
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Thanks,
+-Eric
+
+> Thanks, Mak.
+> 
+
