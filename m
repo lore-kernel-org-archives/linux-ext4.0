@@ -1,25 +1,33 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [Bug 61631] kernel BUG at fs/ext4/super.c:818 umounting md raid6
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 61631] kernel BUG at fs/ext4/super.c:818 umounting md raid6
  volume
-Date: Thu, 19 Sep 2013 14:58:01 -0400
-Message-ID: <20130919185801.GA5677@thunk.org>
+Date: Thu, 19 Sep 2013 19:20:38 +0000
+Message-ID: <bug-61631-13602-09cYu5QecZ@https.bugzilla.kernel.org/>
 References: <bug-61631-13602@https.bugzilla.kernel.org/>
- <bug-61631-13602-QH4wnakS4K@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, jfaulkne@ccs.neu.edu
-To: bugzilla-daemon@bugzilla.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:34518 "EHLO imap.thunk.org"
+Received: from mail.kernel.org ([198.145.19.201]:55172 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752843Ab3ISS6F (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Sep 2013 14:58:05 -0400
-Content-Disposition: inline
-In-Reply-To: <bug-61631-13602-QH4wnakS4K@https.bugzilla.kernel.org/>
+	id S1752417Ab3ISTUl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 Sep 2013 15:20:41 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 897A220420
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Sep 2013 19:20:40 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id E86A320413
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Sep 2013 19:20:38 +0000 (UTC)
+In-Reply-To: <bug-61631-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 18, 2013 at 10:27:02PM +0000, bugzilla-daemon@bugzilla.kernel.org wrote:
+https://bugzilla.kernel.org/show_bug.cgi?id=61631
+
+--- Comment #5 from Theodore Tso <tytso@mit.edu> ---
+On Wed, Sep 18, 2013 at 10:27:02PM +0000, bugzilla-daemon@bugzilla.kernel.org
+wrote:
 > FYI, this bug only appears after some period of usage.  After a reboot, I can
 > umount without error.  After a reboot and an rsync of the gentoo portage tree
 > to the filesystem, I can still umount without error.  It seems the filesystem
@@ -49,7 +57,8 @@ empty, and then see if you can trigger the crash.
 The other thing that would be useful is to grab one of the inodes
 listed in the console, i.e.:
 
-[642473.269223]   inode md1:20289506 at ffff88000499aed0: mode 100644, nlink 0, next 20367069
+[642473.269223]   inode md1:20289506 at ffff88000499aed0: mode 100644, nlink 0,
+next 20367069
 
 ... and then run the command: "debugfs -R 'stat <20289506>' /dev/md1"
 
@@ -62,4 +71,8 @@ you are seeing this.
 
 Cheers,
 
-					- Ted
+                    - Ted
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
