@@ -1,39 +1,36 @@
-From: Prashant Shah <pshah.me@gmail.com>
-Subject: Max size of data in a bio
-Date: Fri, 20 Sep 2013 15:27:25 +0530
-Message-ID: <CAFd8dNswTyL=7VDRfZy2o0ALFJH+8iA5d4SaY4+Ap87u-JjE1Q@mail.gmail.com>
+From: Dave Jones <davej@redhat.com>
+Subject: ext4: fix memory leak in xattr code.
+Date: Fri, 20 Sep 2013 10:29:18 -0400
+Message-ID: <20130920142918.GA21988@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ie0-f194.google.com ([209.85.223.194]:47334 "EHLO
-	mail-ie0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754365Ab3ITJ5Z (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Sep 2013 05:57:25 -0400
-Received: by mail-ie0-f194.google.com with SMTP id qd12so79095ieb.1
-        for <linux-ext4@vger.kernel.org>; Fri, 20 Sep 2013 02:57:25 -0700 (PDT)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: tytso@mit.edu
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi,
+If we take the 2nd retry path in ext4_expand_extra_isize_ea, we potentionally
+return from the function without having freed these allocations.
+If we don't do the return, we over-write the previous allocation pointers, 
+so we leak either way.
 
-What is the maximum size of the data that can be read/written in a
-single bio ? I could locate two possible locations where I can
-calculate that :
+Spotted with Coverity.
 
-1.
-#define BIO_MAX_PAGES        256
-#define BIO_MAX_SIZE        (BIO_MAX_PAGES << PAGE_CACHE_SHIFT)
-#define BIO_MAX_SECTORS        (BIO_MAX_SIZE >> 9)
+Signed-off-by: Dave Jones <davej@fedoraproject.org>
 
-Max = 1048576
-
-2.
-#define UIO_MAXIOV      1024
-
-Max = 4194304
-
-Is there any other way that the bio could have been created that is
-reading/writing data in a larger size than any of the above ?
-
-Regards.
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index c081e34..f3a6220 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -1350,6 +1350,8 @@ retry:
+ 				    s_min_extra_isize) {
+ 					tried_min_extra_isize++;
+ 					new_extra_isize = s_min_extra_isize;
++					kfree(is);
++					kfree(bs);
+ 					goto retry;
+ 				}
+ 				error = -1;
