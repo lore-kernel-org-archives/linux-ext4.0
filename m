@@ -1,78 +1,39 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 61631] kernel BUG at fs/ext4/super.c:818 umounting md raid6
- volume
-Date: Thu, 19 Sep 2013 19:20:38 +0000
-Message-ID: <bug-61631-13602-09cYu5QecZ@https.bugzilla.kernel.org/>
-References: <bug-61631-13602@https.bugzilla.kernel.org/>
+From: Prashant Shah <pshah.me@gmail.com>
+Subject: Max size of data in a bio
+Date: Fri, 20 Sep 2013 15:27:25 +0530
+Message-ID: <CAFd8dNswTyL=7VDRfZy2o0ALFJH+8iA5d4SaY4+Ap87u-JjE1Q@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=ISO-8859-1
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:55172 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752417Ab3ISTUl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Sep 2013 15:20:41 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 897A220420
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Sep 2013 19:20:40 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id E86A320413
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Sep 2013 19:20:38 +0000 (UTC)
-In-Reply-To: <bug-61631-13602@https.bugzilla.kernel.org/>
+Received: from mail-ie0-f194.google.com ([209.85.223.194]:47334 "EHLO
+	mail-ie0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754365Ab3ITJ5Z (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Sep 2013 05:57:25 -0400
+Received: by mail-ie0-f194.google.com with SMTP id qd12so79095ieb.1
+        for <linux-ext4@vger.kernel.org>; Fri, 20 Sep 2013 02:57:25 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=61631
+Hi,
 
---- Comment #5 from Theodore Tso <tytso@mit.edu> ---
-On Wed, Sep 18, 2013 at 10:27:02PM +0000, bugzilla-daemon@bugzilla.kernel.org
-wrote:
-> FYI, this bug only appears after some period of usage.  After a reboot, I can
-> umount without error.  After a reboot and an rsync of the gentoo portage tree
-> to the filesystem, I can still umount without error.  It seems the filesystem
-> only fails to unmount after the filesystem has been in use for a while. 
-> However, it is quite consistent in failing to umount after several days of
-> usage.
+What is the maximum size of the data that can be read/written in a
+single bio ? I could locate two possible locations where I can
+calculate that :
 
-Hmm, can you say a bit more about what sort of files you store on the
-file system and how the file system gets used?  What looks like is
-going on is that there is a whole series of inodes that have been left
-stalled on the orpaned inode list.  By the time we reach that point in
-the unmount, the in-memory orphan list should have been cleared.
+1.
+#define BIO_MAX_PAGES        256
+#define BIO_MAX_SIZE        (BIO_MAX_PAGES << PAGE_CACHE_SHIFT)
+#define BIO_MAX_SECTORS        (BIO_MAX_SIZE >> 9)
 
-So here are a couple of things that would be really useful to try.
+Max = 1048576
 
-First of all, if you could try to reproduce the crash, and then before
-you do the umount, run "dumpe2fs -h /dev/md1 > ~/dumpe2fs.md1.save;
-sync".  Then if the system crashes with the same BUG_ON, send us the
-dumpe2fs.md1.save, along with the console output.
+2.
+#define UIO_MAXIOV      1024
 
-The thing which I am trying to determine is whether the on-disk
-orphaned inode list is set at the time of the umount.  If it is set,
-it would be interesting if you could run sync, wait for things to
-settle, check to see if dumpe2fs shows that the orphaned list is
-empty, and then see if you can trigger the crash.
+Max = 4194304
 
-The other thing that would be useful is to grab one of the inodes
-listed in the console, i.e.:
+Is there any other way that the bio could have been created that is
+reading/writing data in a larger size than any of the above ?
 
-[642473.269223]   inode md1:20289506 at ffff88000499aed0: mode 100644, nlink 0,
-next 20367069
-
-... and then run the command: "debugfs -R 'stat <20289506>' /dev/md1"
-
-What I am interested in is the inode's atime/ctime/dtime.  It would be
-interesting to see if the file was deleted right before the umount was
-attempted.
-
-Thanks for the bug report!  Hopefully we'll be able to figure out why
-you are seeing this.
-
-Cheers,
-
-                    - Ted
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Regards.
