@@ -1,32 +1,42 @@
-From: <KeithASmith@morriswatanabe.onmicrosoft.com>
-Subject: Exclusive offer, feel it for real
-Date: Fri, 20 Sep 2013 17:16:59 +0000
-Message-ID: <81691d66-9aa4-4079-8c34-bde6cd709010@DBXPR01MB095.eurprd01.prod.exchangelabs.com>
-Mime-Version: 1.1
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: Undisclosed recipients:;
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 61631] kernel BUG at fs/ext4/super.c:818 umounting md raid6
+ volume
+Date: Fri, 20 Sep 2013 22:41:39 +0000
+Message-ID: <bug-61631-13602-Dy2iDWuhjl@https.bugzilla.kernel.org/>
+References: <bug-61631-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from emea01-am1-ndr.ptr.protection.outlook.com ([157.56.116.102]:7270
-	"EHLO emea01-am1-obe.outbound.protection.outlook.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752817Ab3ITRRB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Sep 2013 13:17:01 -0400
+Received: from mail.kernel.org ([198.145.19.201]:42081 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751936Ab3ITWlo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 20 Sep 2013 18:41:44 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 650332017A
+	for <linux-ext4@vger.kernel.org>; Fri, 20 Sep 2013 22:41:43 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id E67142011D
+	for <linux-ext4@vger.kernel.org>; Fri, 20 Sep 2013 22:41:41 +0000 (UTC)
+In-Reply-To: <bug-61631-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+https://bugzilla.kernel.org/show_bug.cgi?id=61631
 
-		Dear Customer=20
+Jan Kara <jack@suse.cz> changed:
 
-Amazing Welcome Bonus offers including an incredible 100% match bonus o=
-f up to =C2=A3200.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |jack@suse.cz
 
-http://t.co/6gb7QuBxhp
+--- Comment #6 from Jan Kara <jack@suse.cz> ---
+Since the mountpoint is named /nfs, I suppose you are exporting the filesystem
+via NFS, right? There has been a bug in NFS server code leading to exactly the
+problems you are describing. Commit bf7bd3e98be5c74813bee6ad496139fb0a011b3b
+should fix the issue (in 3.12-rc1).
 
-Best Regards,=20
-	=09
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
