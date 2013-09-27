@@ -1,102 +1,50 @@
-From: Carlos Maiolino <cmaiolino@redhat.com>
-Subject: [PATCH v2] e2image: Print a warning if running over a mounted filesystem
-Date: Fri, 27 Sep 2013 12:33:45 -0300
-Message-ID: <1380296025-28937-1-git-send-email-cmaiolino@redhat.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:65432 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752155Ab3I0Pdu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 27 Sep 2013 11:33:50 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r8RFXnTj017779
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Fri, 27 Sep 2013 11:33:50 -0400
-Received: from orion.redhat.com (ovpn-113-161.phx2.redhat.com [10.3.113.161])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r8RFXmHo021162
-	for <linux-ext4@vger.kernel.org>; Fri, 27 Sep 2013 11:33:49 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Maxim Patlasov <MPatlasov@parallels.com>
+Subject: [PATCH] ext4: avoid exposure of stale data in ext4_punch_hole() -v2
+Date: Fri, 27 Sep 2013 19:54:03 +0400
+Message-ID: <20130927155329.3272.64086.stgit@dhcp-10-30-17-2.sw.ru>
+References: <20130926173113.23276.77451.stgit@dhcp-10-30-17-2.sw.ru>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org, jack@suse.cz,
+	linux-kernel@vger.kernel.org
+To: tytso@mit.edu
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20130926173113.23276.77451.stgit@dhcp-10-30-17-2.sw.ru>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Several users use to run e2image over a mounted RW filesystem, providing
-inconsistent, useless e2images for debugging purposes.
-This patch adds a warning in such cases, notifying the user and also adds a
-force option making e2image able to run in such cases.
-Also print a warning when not using qcow or raw formats but allows image
-creation to proceed, since, such images might be used for metadata backup
-purposes.
+While handling punch-hole fallocate, it's useless to truncate page cache
+before removing the range from extent tree (or block map in indirect case)
+because page cache can be re-populated (by read-ahead or read(2) or mmap-ed
+read) immediately after truncating page cache, but before updating extent
+tree (or block map). In that case the user will see stale data even after
+fallocate is completed.
 
-Signed-off-by: Carlos Maiolino <cmaiolino@redhat.com>
+Changed in v2 (Thanks to Jan Kara):
+ - Until the problem of data corruption resulting from pages backed by
+   already freed blocks is fully resolved, the simple thing we can do now
+   is to add another truncation of pagecache after punch hole is done.
+
+Signed-off-by: Maxim Patlasov <mpatlasov@parallels.com>
 ---
- misc/e2image.c | 24 ++++++++++++++++++++++--
- 1 file changed, 22 insertions(+), 2 deletions(-)
+ fs/ext4/inode.c |    6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/misc/e2image.c b/misc/e2image.c
-index 885a794..248399d 100644
---- a/misc/e2image.c
-+++ b/misc/e2image.c
-@@ -87,7 +87,7 @@ static int get_bits_from_size(size_t size)
- 
- static void usage(void)
- {
--	fprintf(stderr, _("Usage: %s [-rsIQa] device image_file\n"),
-+	fprintf(stderr, _("Usage: %s [-rsIQaf] device image_file\n"),
- 		program_name);
- 	exit (1);
- }
-@@ -1252,9 +1252,11 @@ int main (int argc, char ** argv)
- 	int open_flag = EXT2_FLAG_64BITS;
- 	int img_type = 0;
- 	int flags = 0;
-+	int mount_flags = 0;
- 	int qcow2_fd = 0;
- 	int fd = 0;
- 	int ret = 0;
-+	int ignore_rw_mount = 0;
- 	struct stat st;
- 
- #ifdef ENABLE_NLS
-@@ -1269,7 +1271,7 @@ int main (int argc, char ** argv)
- 	if (argc && *argv)
- 		program_name = *argv;
- 	add_error_table(&et_ext2_error_table);
--	while ((c = getopt(argc, argv, "rsIQa")) != EOF)
-+	while ((c = getopt(argc, argv, "rsIQaf")) != EOF)
- 		switch (c) {
- 		case 'I':
- 			flags |= E2IMAGE_INSTALL_FLAG;
-@@ -1290,6 +1292,9 @@ int main (int argc, char ** argv)
- 		case 'a':
- 			all_data = 1;
- 			break;
-+		case 'f':
-+			ignore_rw_mount = 1;
-+			break;
- 		default:
- 			usage();
- 		}
-@@ -1305,6 +1310,21 @@ int main (int argc, char ** argv)
- 	device_name = argv[optind];
- 	image_fn = argv[optind+1];
- 
-+	ext2fs_check_if_mounted(device_name, &mount_flags);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 0d424d7..2984ddf 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3621,6 +3621,12 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
+ 	up_write(&EXT4_I(inode)->i_data_sem);
+ 	if (IS_SYNC(inode))
+ 		ext4_handle_sync(handle);
 +
-+	if ((mount_flags & EXT2_MF_MOUNTED) &&
-+	   !(mount_flags & EXT2_MF_READONLY)) {
-+		fprintf(stderr, "\nWarning: Running e2image on a mounted "
-+				"RW filesystem can result in an inconsistent "
-+				"image which will not be useful for "
-+				"debugging purposes.\n");
-+		if (img_type && !ignore_rw_mount) {
-+			fprintf(stderr, "Use -f option if you really want to "
-+					"do that.\n");
-+			exit(1);
-+		}
-+	}
++	/* Now release the pages again to reduce race window */
++	if (last_block_offset > first_block_offset)
++		truncate_pagecache_range(inode, first_block_offset,
++					 last_block_offset);
 +
- 	if (flags & E2IMAGE_INSTALL_FLAG) {
- 		install_image(device_name, image_fn, img_type);
- 		exit (0);
--- 
-1.8.1.4
-
+ 	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
+ 	ext4_mark_inode_dirty(handle, inode);
+ out_stop:
