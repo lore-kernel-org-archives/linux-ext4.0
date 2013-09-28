@@ -1,29 +1,35 @@
-From: <KennethEEGGLESTON@markdanton.onmicrosoft.com>
-Subject: Buy now and feel younger!
-Date: Fri, 27 Sep 2013 22:06:27 +0000
-Message-ID: <4f0cf50a-373a-49ce-b2c5-2495eb4749a5@AMSPR04MB033.eurprd04.prod.outlook.com>
-Mime-Version: 1.1
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-To: Undisclosed recipients:;
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [PATCH v1.1 0/2] ext4: Shut down block groups when damage is detected, part 2
+Date: Fri, 27 Sep 2013 17:13:49 -0700
+Message-ID: <20130928001349.25857.76724.stgit@birch.djwong.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, gnehzuil.liu@gmail.com
+To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from emea01-am1-ndr.ptr.protection.outlook.com ([157.56.116.105]:59728
-	"EHLO emea01-am1-obe.outbound.protection.outlook.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754666Ab3I0WGa convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Sep 2013 18:06:30 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:38586 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754204Ab3I1AN6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Sep 2013 20:13:58 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+This patchset adds in a few things that weren't included in the original block
+group shutdown patches.
 
-		Dear Customer 
+The first prevents corrupt block groups from contributing to the free block
+summary count, since by definition corrupt block groups have no free blocks.
 
-Bring back your happiness! Sometimes very little is needed to make a happy life.
-No doctor visits
-Lowest price World Wide 
-Discreet Packaging
+The second patch performs a quick sanity check of bitmap and inode table block
+numbers when loading them in from disk.  These are the same checks that are
+done at mount time; this patch guards against either deliberate sabotage or
+memory corruption.  Since we're about to do a slow disk read anyway, we might
+as well take the time to double check for obvious brokenness.
 
-http://translate.googleusercontent.com/translate_c?depth=1&hl=auto&sl=de&url=www.google.com.ai&u=http://onlineshop56.yolasite.com/shop&usg=ALkJrhh3JjaMUtGSx3BnIJjj9viGsGjNxw
+This patchset has been tested (albeit lightly) against 3.12-rc2 on x64.  Zheng
+Liu contributed some comments.
 
-Best Regards,
-		
+Comments and questions are, as always, welcome.
+
+--D
