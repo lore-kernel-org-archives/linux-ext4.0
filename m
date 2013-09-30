@@ -1,41 +1,47 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH][RESEND] tests: add another test for uninit extents past
- eof
-Date: Mon, 30 Sep 2013 16:10:46 -0400
-Message-ID: <20130930201046.GC5845@thunk.org>
-References: <20130923143518.GA2464@wallace>
+Subject: Re: [PATCH] e2image: Print a warning if running over a mounted
+ filesystem
+Date: Mon, 30 Sep 2013 16:19:48 -0400
+Message-ID: <20130930201948.GD5845@thunk.org>
+References: <1380229204-32526-1-git-send-email-cmaiolino@redhat.com>
+ <20130926235658.GD6011@thunk.org>
+ <5244D3C2.4090606@redhat.com>
+ <20130927004832.GA15078@orion.maiolino.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Eric Whitney <enwlinux@gmail.com>
+To: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:40341 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:40346 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756299Ab3I3ULL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 30 Sep 2013 16:11:11 -0400
+	id S932065Ab3I3UTx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 30 Sep 2013 16:19:53 -0400
 Content-Disposition: inline
-In-Reply-To: <20130923143518.GA2464@wallace>
+In-Reply-To: <20130927004832.GA15078@orion.maiolino.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Sep 23, 2013 at 10:35:18AM -0400, Eric Whitney wrote:
-> Commit d3f32c2db8 was intended to detect extents found outside their
-> proper location in the extent tree, including invalid extents at the
-> end of an extent block.  However, it incorrectly reported legal
-> uninitialized extents created by fallocate() at the end of file with
-> the FALLOC_FL_KEEP_SIZE flag as false positives.  xfstests
-> generic/263 (among others) caught this problem, while the e2fsprogs
-> test f_uninit_ext_past_eof did not.  The latter test failed to
-> detect the problem in part because it uses a test file whose i_size
-> is 0.
+On Thu, Sep 26, 2013 at 09:48:33PM -0300, Carlos Maiolino wrote:
 > 
-> Add a test derived from the fsx-based test case in xfstests
-> generic/263 consisting of a file with non-zero length, more than
-> four extents total, and two uninitialized extents past EOF to
-> reliably reproduce commit d3f32c2db8's false positive behavior.
-> 
-> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+> I'd suggest then to need a force when using -r or -q on a RW image. In case of a
+> normal image, just a warning but continue.
 
-Applied, thanks.
+(Sorry for not repsonding earlier; I was on vacation in at Yellowstone
+/ Grand Teton National Park from Thursday through today.)
 
-						- Ted
+Yes, that's what I was suggesting.  Requiring force for the case of -r
+or -q, but just a warning otherwise.
+
+> Ted, as Eric said, I've got some useless images in the past too and just a
+> warning won't really avoid the problem IMHO since, most of users don't even read
+> what's being printed :-) so, request a force when getting at least a raw or
+> QCOW2 image is very useful IMHO.
+
+The useless images are primarily when we are trying to use -r or -q to
+get the dynamic metadata (i.e., the directory blocks and extent tree
+blocks).  That's what we generally need when are doing debugging, and
+so yes, I'm fully in agreement with requiring force in the case of
+e2image -r and e2image -q.
+
+Regards,
+
+					- Ted
