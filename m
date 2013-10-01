@@ -1,61 +1,92 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 02/31] libext2fs: Only link an inode into a directory once
-Date: Tue, 1 Oct 2013 14:11:58 -0700
-Message-ID: <20131001211158.GA25931@birch.djwong.org>
+Subject: Re: [PATCH 10/31] libext2fs: Allow callers to punch a single block
+Date: Tue, 1 Oct 2013 14:25:11 -0700
+Message-ID: <20131001212511.GB25931@birch.djwong.org>
 References: <20131001012642.28415.89353.stgit@birch.djwong.org>
- <20131001012655.28415.38313.stgit@birch.djwong.org>
- <CAGW2f1F4fgxHjNXW4WxB2et=QL39Wsu8d2fK5bqh5RTV6UvO8g@mail.gmail.com>
+ <20131001012746.28415.15964.stgit@birch.djwong.org>
+ <CAGW2f1GLd8wxUUW6YJ6iSOH-Ed7aAF2=6vMdBQYEkF7Ut9yfTw@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
 To: jon ernst <jonernst07@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:18046 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751361Ab3JAVMD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Oct 2013 17:12:03 -0400
+Received: from aserp1040.oracle.com ([141.146.126.69]:46863 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752889Ab3JAVZS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Oct 2013 17:25:18 -0400
 Content-Disposition: inline
-In-Reply-To: <CAGW2f1F4fgxHjNXW4WxB2et=QL39Wsu8d2fK5bqh5RTV6UvO8g@mail.gmail.com>
+In-Reply-To: <CAGW2f1GLd8wxUUW6YJ6iSOH-Ed7aAF2=6vMdBQYEkF7Ut9yfTw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 01, 2013 at 11:37:50AM -0400, jon ernst wrote:
-> On Mon, Sep 30, 2013 at 9:26 PM, Darrick J. Wong
+On Tue, Oct 01, 2013 at 03:09:44PM -0400, jon ernst wrote:
+> On Mon, Sep 30, 2013 at 9:27 PM, Darrick J. Wong
 > <darrick.wong@oracle.com> wrote:
-> > The ext2fs_link helper function link_proc does not check the value of ls->done,
-> > which means that if the function finds multiple empty spaces that will fit the
-> > new directory entry, it will create a directory entry in each of the spaces.
-> > Instead of doing that, check the done value and don't do anything more if we've
-> > already added the directory entry.
+> > The range of blocks to punch is treated as an inclusive range on both ends,
+> > i.e. if start=1 and end=2, both blocks 1 and 2 are punched out.  Thus, start ==
+> > end means that the caller wishes to punch a single block.  Remove the check
+> > that prevents us from punching a single block.
 > >
 > > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 > > ---
-> >  lib/ext2fs/link.c |    3 +++
-> >  1 file changed, 3 insertions(+)
+> >  lib/ext2fs/ext2fs.h |    4 ++++
+> >  lib/ext2fs/punch.c  |    5 +----
+> >  2 files changed, 5 insertions(+), 4 deletions(-)
 > >
 > >
-> > diff --git a/lib/ext2fs/link.c b/lib/ext2fs/link.c
-> > index f715067..e3ff450 100644
-> > --- a/lib/ext2fs/link.c
-> > +++ b/lib/ext2fs/link.c
-> > @@ -43,6 +43,9 @@ static int link_proc(struct ext2_dir_entry *dirent,
-> >         int ret = 0;
-> >         int csum_size = 0;
+> > diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+> > index 311ceda..c37e00b 100644
+> > --- a/lib/ext2fs/ext2fs.h
+> > +++ b/lib/ext2fs/ext2fs.h
+> > @@ -1385,6 +1385,10 @@ extern errcode_t ext2fs_check_mount_point(const char *device, int *mount_flags,
+> >                                           char *mtpt, int mtlen);
 > >
-> > +       if (ls->done)
-> > +               return 0;
-> maybe "return ret;" here to keep consistency.
+> >  /* punch.c */
+> > +/*
+> > + * NOTE: This function removes from an inode the blocks "start", "end", and
+> > + * every block in between.
+> > + */
+> >  extern errcode_t ext2fs_punch(ext2_filsys fs, ext2_ino_t ino,
+> >                               struct ext2_inode *inode,
+> >                               char *block_buf, blk64_t start,
+> > diff --git a/lib/ext2fs/punch.c b/lib/ext2fs/punch.c
+> > index 11c7668..aac1942 100644
+> > --- a/lib/ext2fs/punch.c
+> > +++ b/lib/ext2fs/punch.c
+> > @@ -315,9 +315,6 @@ extern errcode_t ext2fs_punch(ext2_filsys fs, ext2_ino_t ino,
+> >         if (start > end)
+> >                 return EINVAL;
+> >
+> > -       if (start == end)
+> > -               return 0;
+> > -
+> >         /* Read inode structure if necessary */
+> >         if (!inode) {
+> >                 retval = ext2fs_read_inode(fs, ino, &inode_buf);
+> > @@ -332,7 +329,7 @@ extern errcode_t ext2fs_punch(ext2_filsys fs, ext2_ino_t ino,
+> >
+> >                 if (start > ~0U)
+> >                         return 0;
+> > -               count = ((end - start) < ~0U) ? (end - start) : ~0U;
+> > +               count = ((end - start + 1) < ~0U) ? (end - start + 1) : ~0U;
+> can you simply put "count =  end - start + 1;" since you have checked
+> start > end case earlier.
 
-Actually, DIRENT_ABORT is more appropriate here since the iteration stops.
-I'll update the patch; thank you for pointing this out.
+No.  This statement clamps 'count' at 2^32-1 (since the highest block number in
+a non-extent file is 4294967295), which is necessary if the 'start' and 'end'
+arguments are > 32bit arguments.  That happens in the truncate case of
+ext2fs_file_set_size2().
 
-(This patch is years old now...)
+For example, if end=0x100000080 and start=0x80, end-start+1 = 1, which is not
+the behavior that we want.
+
+For the record, if end=~0ULL and start=0, this also ensures that count=~0U.
 
 --D
-> > +
-> >         rec_len = EXT2_DIR_REC_LEN(ls->namelen);
-> >
-> >         ls->err = ext2fs_get_rec_len(ls->fs, dirent, &curr_rec_len);
+
+> >                 retval = ext2fs_punch_ind(fs, inode, block_buf,
+> >                                           (blk_t) start, count);
+> >         }
 > >
 > > --
 > > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
