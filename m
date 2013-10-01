@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 10/31] libext2fs: Allow callers to punch a single block
-Date: Mon, 30 Sep 2013 18:27:46 -0700
-Message-ID: <20131001012746.28415.15964.stgit@birch.djwong.org>
+Subject: [PATCH 11/31] libext2fs: ind_punch() must not stop examining blocks
+ prematurely
+Date: Mon, 30 Sep 2013 18:27:53 -0700
+Message-ID: <20131001012753.28415.4639.stgit@birch.djwong.org>
 References: <20131001012642.28415.89353.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,48 +10,40 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:22496 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:22513 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755432Ab3JAB1v (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Sep 2013 21:27:51 -0400
+	with ESMTP id S1755345Ab3JAB16 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Sep 2013 21:27:58 -0400
 In-Reply-To: <20131001012642.28415.89353.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The range of blocks to punch is treated as an inclusive range on both ends,
-i.e. if start=1 and end=2, both blocks 1 and 2 are punched out.  Thus, start ==
-end means that the caller wishes to punch a single block.  Remove the check
-that prevents us from punching a single block.
+When we're iterating the main loop in ind_punch(), "offset" tracks how far
+we've progressed into the block map, "start" tells us where to start punching,
+and "count" tells us how many blocks we are to punch after "start".  Therefore,
+we would like to break out of the loop once the "offset" that we're looking at
+has progressed past the end of the punch range.  Unfortunately, if start !=0,
+the if-break clause in the loop causes us to break out of the loop early.
+
+Therefore, change the breakout test to terminate the loop at the correct time.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/ext2fs.h |    4 ++++
- lib/ext2fs/punch.c  |    5 +----
- 2 files changed, 5 insertions(+), 4 deletions(-)
+ lib/ext2fs/punch.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 311ceda..c37e00b 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -1385,6 +1385,10 @@ extern errcode_t ext2fs_check_mount_point(const char *device, int *mount_flags,
- 					  char *mtpt, int mtlen);
- 
- /* punch.c */
-+/*
-+ * NOTE: This function removes from an inode the blocks "start", "end", and
-+ * every block in between.
-+ */
- extern errcode_t ext2fs_punch(ext2_filsys fs, ext2_ino_t ino,
- 			      struct ext2_inode *inode,
- 			      char *block_buf, blk64_t start,
 diff --git a/lib/ext2fs/punch.c b/lib/ext2fs/punch.c
-index 11c7668..aac1942 100644
+index aac1942..0929400 100644
 --- a/lib/ext2fs/punch.c
 +++ b/lib/ext2fs/punch.c
-@@ -315,9 +315,6 @@ extern errcode_t ext2fs_punch(ext2_filsys fs, ext2_ino_t ino,
- 	if (start > end)
- 		return EINVAL;
- 
--	if (start == end)
--		return 0;
+@@ -60,7 +60,7 @@ static errcode_t ind_punch(ext2_filsys fs, struct ext2_inode *inode,
+ #endif
+ 	incr = 1 << ((EXT2_BLOCK_SIZE_BITS(fs->super)-2)*level);
+ 	for (i=0, offset=0; i < max; i++, p++, offset += incr) {
+-		if (offset > count)
++		if (offset >= start + count)
+ 			break;
+ 		if (*p == 0 || (offset+incr) <= start)
+ 			continue;
+
