@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 17/31] libext2fs: Refactor u32-list to handle 32 and 64-bit
- data types
-Date: Mon, 30 Sep 2013 18:28:31 -0700
-Message-ID: <20131001012831.28415.54890.stgit@birch.djwong.org>
+Subject: [PATCH 18/31] libext2fs: Badblocks should handle 48-bit block numbers
+ correctly
+Date: Mon, 30 Sep 2013 18:28:37 -0700
+Message-ID: <20131001012837.28415.1138.stgit@birch.djwong.org>
 References: <20131001012642.28415.89353.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,657 +10,865 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:22629 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755105Ab3JAB2f (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Sep 2013 21:28:35 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:37932 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755105Ab3JAB2m (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Sep 2013 21:28:42 -0400
 In-Reply-To: <20131001012642.28415.89353.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The curernt ext2_u32_list implementation manages a sorted sparse list of 32-bit
-numbers.  This is currently used to collect directory inodes for rehashing in
-e2fsck, and creating a list of bad blocks for mkfs.  However, block numbers are
-now 64-bit, so we need to refactor the sparse list to be able to handle both 32
-and 64-bit numbers.
+Currently, the badblocks code assumes 32-bit block numbers.  This leads to
+unfortunate results, because feeding a badblocks file to mke2fs with 64-bit
+block numbers causes libext2fs to rip off the upper 32 bits of the block number
+and then assign a truncated block number to the badblocks file.
+
+This is just as well, since the code that writes to the bb inode doesn't know
+about extents anyway.  Rather than continuing to open-code block map
+manipulation, simply use existing library functions to truncate the old bb
+inode, mark all badblocks in use, and then assign them to the badblocks file.
+We can even use extents now.
+
+(It's arguable that badblocks is a vestigial organ now, but perhaps someone is
+using it?  I use it to stress-test disk block allocation, but I might just be
+nutty.)
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/badblocks.c |  271 +++++++++++++++++++++++++++++++++++++-----------
- lib/ext2fs/ext2fs.h    |   23 +++-
- lib/ext2fs/ext2fsP.h   |   13 +-
- lib/ext2fs/inode.c     |   12 +-
- 4 files changed, 237 insertions(+), 82 deletions(-)
+ e2fsck/badblocks.c         |   28 ++---
+ lib/ext2fs/bb_inode.c      |  251 +++++++++-----------------------------------
+ lib/ext2fs/ext2fs.h        |    7 +
+ lib/ext2fs/read_bb.c       |   10 +-
+ lib/ext2fs/read_bb_file.c  |   39 ++++++-
+ lib/ext2fs/tst_badblocks.c |   42 ++++---
+ lib/ext2fs/tst_iscan.c     |    3 -
+ lib/ext2fs/write_bb_file.c |    7 +
+ misc/dumpe2fs.c            |    4 -
+ misc/mke2fs.c              |   37 +++---
+ misc/tune2fs.c             |    2 
+ resize/resize2fs.c         |    4 -
+ 12 files changed, 164 insertions(+), 270 deletions(-)
 
 
-diff --git a/lib/ext2fs/badblocks.c b/lib/ext2fs/badblocks.c
-index 0f23983..4512243 100644
---- a/lib/ext2fs/badblocks.c
-+++ b/lib/ext2fs/badblocks.c
-@@ -27,42 +27,58 @@
- #include "ext2_fs.h"
- #include "ext2fsP.h"
+diff --git a/e2fsck/badblocks.c b/e2fsck/badblocks.c
+index 71b1c56..9a456d7 100644
+--- a/e2fsck/badblocks.c
++++ b/e2fsck/badblocks.c
+@@ -14,13 +14,14 @@
+ #include <et/com_err.h>
+ #include "e2fsck.h"
  
-+static void *LIST_ITEM(struct ext2_sparse_list *bb, unsigned int i)
-+{
-+	return bb->list + (i * bb->item_size);
-+}
-+
- /*
-  * Helper function for making a badblocks list
-  */
--static errcode_t make_u32_list(int size, int num, __u32 *list,
--			       ext2_u32_list *ret)
-+static errcode_t sparse_list_make(unsigned int size, unsigned int num,
-+				  unsigned int item_size,
-+				  struct ext2_sparse_list *list,
-+				  struct ext2_sparse_list **ret)
- {
--	ext2_u32_list	bb;
-+	struct ext2_sparse_list *bb;
- 	errcode_t	retval;
- 
--	retval = ext2fs_get_mem(sizeof(struct ext2_struct_u32_list), &bb);
-+	if (list && (list->magic != EXT2_ET_MAGIC_BADBLOCKS_LIST ||
-+		     list->item_size != item_size)) {
-+		return EXT2_ET_INVALID_ARGUMENT;
-+	}
-+
-+	/* For now we only support 32 and 64bit unsigned */
-+	if (item_size != sizeof(__u32) && item_size != sizeof(__u64))
-+		return EXT2_ET_INVALID_ARGUMENT;
-+
-+	retval = ext2fs_get_mem(sizeof(struct ext2_sparse_list), &bb);
- 	if (retval)
- 		return retval;
--	memset(bb, 0, sizeof(struct ext2_struct_u32_list));
-+	memset(bb, 0, sizeof(struct ext2_sparse_list));
- 	bb->magic = EXT2_ET_MAGIC_BADBLOCKS_LIST;
- 	bb->size = size ? size : 10;
- 	bb->num = num;
--	retval = ext2fs_get_array(bb->size, sizeof(blk_t), &bb->list);
-+	bb->item_size = item_size;
-+	retval = ext2fs_get_array(bb->size, bb->item_size, &bb->list);
- 	if (retval) {
- 		ext2fs_free_mem(&bb);
- 		return retval;
- 	}
- 	if (list)
--		memcpy(bb->list, list, bb->size * sizeof(blk_t));
-+		memcpy(bb->list, list->list, bb->size * bb->item_size);
- 	else
--		memset(bb->list, 0, bb->size * sizeof(blk_t));
-+		memset(bb->list, 0, bb->size * bb->item_size);
- 	*ret = bb;
- 	return 0;
- }
+-static int check_bb_inode_blocks(ext2_filsys fs, blk_t *block_nr, int blockcnt,
+-				 void *priv_data);
++static int check_bb_inode_blocks(ext2_filsys fs, blk64_t *block_nr,
++				 e2_blkcnt_t blockcnt, blk64_t ref_blk,
++				 int ref_offset, void *priv_data);
  
 -
- /*
-  * This procedure creates an empty u32 list.
-  */
- errcode_t ext2fs_u32_list_create(ext2_u32_list *ret, int size)
+-static void invalid_block(ext2_filsys fs EXT2FS_ATTR((unused)), blk_t blk)
++static void invalid_block(ext2_filsys fs EXT2FS_ATTR((unused)), blk64_t blk,
++			  char *badmsg, void *privdata)
  {
--	return make_u32_list(size, 0, 0, ret);
-+	return sparse_list_make(size, 0, sizeof(__u32), NULL, ret);
+-	printf(_("Bad block %u out of range; ignored.\n"), blk);
++	printf(_("Bad block %llu out of range; ignored.\n"), blk);
+ 	return;
  }
  
- /*
-@@ -70,28 +86,36 @@ errcode_t ext2fs_u32_list_create(ext2_u32_list *ret, int size)
-  */
- errcode_t ext2fs_badblocks_list_create(ext2_badblocks_list *ret, int size)
- {
--	return make_u32_list(size, 0, 0, (ext2_badblocks_list *) ret);
-+	return sparse_list_make(size, 0, sizeof(blk64_t), NULL,
-+				(ext2_badblocks_list *) ret);
- }
- 
- 
- /*
-  * This procedure copies a badblocks list
-  */
--errcode_t ext2fs_u32_copy(ext2_u32_list src, ext2_u32_list *dest)
-+static errcode_t sparse_list_copy(struct ext2_sparse_list *src,
-+			   struct ext2_sparse_list **dest)
- {
- 	errcode_t	retval;
- 
--	retval = make_u32_list(src->size, src->num, src->list, dest);
-+	retval = sparse_list_make(src->size, src->num, src->item_size, src,
-+				  dest);
- 	if (retval)
- 		return retval;
- 	(*dest)->badblocks_flags = src->badblocks_flags;
- 	return 0;
- }
- 
-+errcode_t ext2fs_u32_copy(ext2_u32_list src, ext2_u32_list *dest)
-+{
-+	return sparse_list_copy(src, dest);
-+}
-+
- errcode_t ext2fs_badblocks_copy(ext2_badblocks_list src,
- 				ext2_badblocks_list *dest)
- {
--	return ext2fs_u32_copy((ext2_u32_list) src,
-+	return sparse_list_copy((ext2_u32_list) src,
- 			       (ext2_u32_list *) dest);
- }
- 
-@@ -105,64 +129,107 @@ errcode_t ext2fs_badblocks_copy(ext2_badblocks_list src,
- /*
-  * This procedure adds a block to a badblocks list.
-  */
--errcode_t ext2fs_u32_list_add(ext2_u32_list bb, __u32 blk)
-+static int compare32(const void *a, const void *b)
-+{
-+	__u32 i, j;
-+	i = *(__u32 *)a;
-+	j = *(__u32 *)b;
-+
-+	return i - j;
-+}
-+
-+static int compare64(const void *a, const void *b)
-+{
-+	__u64 i, j;
-+	i = *(__u64 *)a;
-+	j = *(__u64 *)b;
-+
-+	return i - j;
-+}
-+
-+static errcode_t sparse_list_add(struct ext2_sparse_list *bb, void *item)
- {
- 	errcode_t	retval;
--	int		i, j;
-+	int		i, j, k;
- 	unsigned long	old_size;
-+	int (*cmp)	(const void *a, const void *b);
- 
- 	EXT2_CHECK_MAGIC(bb, EXT2_ET_MAGIC_BADBLOCKS_LIST);
- 
- 	if (bb->num >= bb->size) {
--		old_size = bb->size * sizeof(__u32);
-+		old_size = bb->size * bb->item_size;
- 		bb->size += 100;
--		retval = ext2fs_resize_mem(old_size, bb->size * sizeof(__u32),
-+		retval = ext2fs_resize_mem(old_size, bb->size * bb->item_size,
- 					   &bb->list);
- 		if (retval) {
- 			bb->size -= 100;
- 			return retval;
- 		}
- 	}
--
-+	if (bb->item_size == sizeof(__u32))
-+		cmp = compare32;
-+	else if (bb->item_size == sizeof(__u64))
-+		cmp = compare64;
-+	else
-+		return EXT2_ET_INVALID_ARGUMENT;
- 	/*
- 	 * Add special case code for appending to the end of the list
+@@ -39,8 +40,8 @@ void read_bad_blocks_file(e2fsck_t ctx, const char *bad_blocks_file,
+ 	 * Make sure the bad block inode is sane.  If there are any
+ 	 * illegal blocks, clear them.
  	 */
- 	i = bb->num-1;
--	if ((bb->num != 0) && (bb->list[i] == blk))
-+	if ((bb->num != 0) && cmp(LIST_ITEM(bb, i), item) == 0)
- 		return 0;
--	if ((bb->num == 0) || (bb->list[i] < blk)) {
--		bb->list[bb->num++] = blk;
-+	if ((bb->num == 0) || cmp(LIST_ITEM(bb, i), item) < 0) {
-+		memcpy(LIST_ITEM(bb, bb->num++), item, bb->item_size);
- 		return 0;
- 	}
- 
- 	j = bb->num;
- 	for (i=0; i < bb->num; i++) {
--		if (bb->list[i] == blk)
-+		k = cmp(LIST_ITEM(bb, i), item);
-+		if (k == 0)
- 			return 0;
--		if (bb->list[i] > blk) {
-+		if (k > 0) {
- 			j = i;
- 			break;
+-	retval = ext2fs_block_iterate(fs, EXT2_BAD_INO, 0, 0,
+-				      check_bb_inode_blocks, 0);
++	retval = ext2fs_block_iterate3(fs, EXT2_BAD_INO, 0, 0,
++				       check_bb_inode_blocks, 0);
+ 	if (retval) {
+ 		com_err("ext2fs_block_iterate", retval,
+ 			_("while sanity checking the bad blocks inode"));
+@@ -84,7 +85,7 @@ void read_bad_blocks_file(e2fsck_t ctx, const char *bad_blocks_file,
+ 			goto fatal;
  		}
  	}
--	for (i=bb->num; i > j; i--)
--		bb->list[i] = bb->list[i-1];
--	bb->list[j] = blk;
-+	memmove(LIST_ITEM(bb, i + 1), LIST_ITEM(bb, i),
-+		(bb->num - j) * bb->item_size);
-+	memcpy(LIST_ITEM(bb, j), item, bb->item_size);
- 	bb->num++;
- 	return 0;
- }
- 
-+errcode_t ext2fs_u32_list_add(ext2_u32_list bb, __u32 blk)
-+{
-+	return sparse_list_add(bb, &blk);
-+}
-+
-+errcode_t ext2fs_badblocks_list_add2(ext2_badblocks_list bb, blk64_t blk)
-+{
-+	return sparse_list_add(bb, &blk);
-+}
-+
- errcode_t ext2fs_badblocks_list_add(ext2_badblocks_list bb, blk_t blk)
- {
--	return ext2fs_u32_list_add((ext2_u32_list) bb, (__u32) blk);
-+	return ext2fs_badblocks_list_add2(bb, blk);
- }
- 
- /*
-  * This procedure finds a particular block is on a badblocks
-  * list.
-  */
--int ext2fs_u32_list_find(ext2_u32_list bb, __u32 blk)
-+static int sparse_list_find(struct ext2_sparse_list *bb, void *item)
- {
--	int	low, high, mid;
-+	int	low, high, mid, k;
-+	int (*cmp)	(const void *a, const void *b);
-+
-+	if (bb->item_size == sizeof(__u32))
-+		cmp = compare32;
-+	else if (bb->item_size == sizeof(__u64))
-+		cmp = compare64;
-+	else
-+		return EXT2_ET_INVALID_ARGUMENT;
- 
- 	if (bb->magic != EXT2_ET_MAGIC_BADBLOCKS_LIST)
- 		return -1;
-@@ -172,18 +239,19 @@ int ext2fs_u32_list_find(ext2_u32_list bb, __u32 blk)
- 
- 	low = 0;
- 	high = bb->num-1;
--	if (blk == bb->list[low])
-+	if (cmp(LIST_ITEM(bb, low), item) == 0)
- 		return low;
--	if (blk == bb->list[high])
-+	if (cmp(LIST_ITEM(bb, high), item) == 0)
- 		return high;
- 
- 	while (low < high) {
- 		mid = ((unsigned)low + (unsigned)high)/2;
- 		if (mid == low || mid == high)
- 			break;
--		if (blk == bb->list[mid])
-+		k = cmp(item, LIST_ITEM(bb, mid));
-+		if (k == 0)
- 			return mid;
--		if (blk < bb->list[mid])
-+		if (k < 0)
- 			high = mid;
- 		else
- 			low = mid;
-@@ -191,13 +259,26 @@ int ext2fs_u32_list_find(ext2_u32_list bb, __u32 blk)
- 	return -1;
- }
- 
-+int ext2fs_u32_list_find(ext2_u32_list bb, __u32 blk)
-+{
-+	return sparse_list_find(bb, &blk);
-+}
-+
- /*
-  * This procedure tests to see if a particular block is on a badblocks
-  * list.
-  */
- int ext2fs_u32_list_test(ext2_u32_list bb, __u32 blk)
- {
--	if (ext2fs_u32_list_find(bb, blk) < 0)
-+	if (sparse_list_find(bb, &blk) < 0)
-+		return 0;
-+	else
-+		return 1;
-+}
-+
-+int ext2fs_badblocks_list_test2(ext2_badblocks_list bb, blk64_t blk)
-+{
-+	if (sparse_list_find(bb, &blk) < 0)
- 		return 0;
+-	retval = ext2fs_read_bb_FILE(fs, f, &bb_list, invalid_block);
++	retval = ext2fs_read_bb_FILE3(fs, f, &bb_list, NULL, invalid_block);
+ 	if (bad_blocks_file)
+ 		fclose(f);
  	else
- 		return 1;
-@@ -205,65 +286,83 @@ int ext2fs_u32_list_test(ext2_u32_list bb, __u32 blk)
+@@ -115,10 +116,9 @@ fatal:
  
- int ext2fs_badblocks_list_test(ext2_badblocks_list bb, blk_t blk)
- {
--	return ext2fs_u32_list_test((ext2_u32_list) bb, (__u32) blk);
-+	return ext2fs_badblocks_list_test2(bb, blk);
  }
  
- 
- /*
-  * Remove a block from the badblock list
-  */
--int ext2fs_u32_list_del(ext2_u32_list bb, __u32 blk)
-+static int sparse_list_del(struct ext2_sparse_list *bb, void *item)
+-static int check_bb_inode_blocks(ext2_filsys fs,
+-				 blk_t *block_nr,
+-				 int blockcnt EXT2FS_ATTR((unused)),
+-				 void *priv_data EXT2FS_ATTR((unused)))
++static int check_bb_inode_blocks(ext2_filsys fs, blk64_t *block_nr,
++				 e2_blkcnt_t blockcnt, blk64_t ref_blk,
++				 int ref_offset, void *priv_data)
  {
--	int	remloc, i;
-+	int	remloc;
- 
- 	if (bb->num == 0)
- 		return -1;
- 
--	remloc = ext2fs_u32_list_find(bb, blk);
-+	remloc = sparse_list_find(bb, item);
- 	if (remloc < 0)
- 		return -1;
- 
--	for (i = remloc ; i < bb->num-1; i++)
--		bb->list[i] = bb->list[i+1];
-+	memmove(LIST_ITEM(bb, remloc), LIST_ITEM(bb, remloc + 1),
-+		(bb->num - remloc - 1) * bb->item_size);
- 	bb->num--;
- 	return 0;
- }
- 
-+int ext2fs_u32_list_del(ext2_u32_list bb, __u32 blk)
-+{
-+	return sparse_list_del(bb, &blk);
-+}
-+
-+void ext2fs_badblocks_list_del2(ext2_u32_list bb, blk64_t blk)
-+{
-+	sparse_list_del(bb, &blk);
-+}
-+
- void ext2fs_badblocks_list_del(ext2_u32_list bb, __u32 blk)
- {
--	ext2fs_u32_list_del(bb, blk);
-+	ext2fs_badblocks_list_del(bb, blk);
- }
- 
--errcode_t ext2fs_u32_list_iterate_begin(ext2_u32_list bb,
--					ext2_u32_iterate *ret)
-+static errcode_t sparse_list_iterate_begin(struct ext2_sparse_list *bb,
-+					   struct ext2_sparse_list_iterate **r)
- {
--	ext2_u32_iterate iter;
-+	struct ext2_sparse_list_iterate *iter;
- 	errcode_t		retval;
- 
- 	EXT2_CHECK_MAGIC(bb, EXT2_ET_MAGIC_BADBLOCKS_LIST);
- 
--	retval = ext2fs_get_mem(sizeof(struct ext2_struct_u32_iterate), &iter);
-+	retval = ext2fs_get_mem(sizeof(struct ext2_sparse_list_iterate),
-+				&iter);
- 	if (retval)
- 		return retval;
- 
- 	iter->magic = EXT2_ET_MAGIC_BADBLOCKS_ITERATE;
- 	iter->bb = bb;
- 	iter->ptr = 0;
--	*ret = iter;
-+	*r = iter;
- 	return 0;
- }
- 
-+errcode_t ext2fs_u32_list_iterate_begin(ext2_u32_list bb,
-+					ext2_u32_iterate *ret)
-+{
-+	return sparse_list_iterate_begin(bb, ret);
-+}
-+
- errcode_t ext2fs_badblocks_list_iterate_begin(ext2_badblocks_list bb,
- 					      ext2_badblocks_iterate *ret)
- {
--	return ext2fs_u32_list_iterate_begin((ext2_u32_list) bb,
--					      (ext2_u32_iterate *) ret);
-+	return sparse_list_iterate_begin((ext2_u32_list) bb,
-+					 (ext2_u32_iterate *) ret);
- }
- 
- 
--int ext2fs_u32_list_iterate(ext2_u32_iterate iter, __u32 *blk)
-+static int sparse_list_iterate(struct ext2_sparse_list_iterate *iter,
-+			       void *item)
- {
--	ext2_u32_list	bb;
-+	struct ext2_sparse_list	*bb;
- 
- 	if (iter->magic != EXT2_ET_MAGIC_BADBLOCKS_ITERATE)
+ 	if (!*block_nr)
  		return 0;
-@@ -274,21 +373,35 @@ int ext2fs_u32_list_iterate(ext2_u32_iterate iter, __u32 *blk)
- 		return 0;
- 
- 	if (iter->ptr < bb->num) {
--		*blk = bb->list[iter->ptr++];
-+		memcpy(item, LIST_ITEM(bb, iter->ptr++), bb->item_size);
- 		return 1;
+@@ -128,8 +128,8 @@ static int check_bb_inode_blocks(ext2_filsys fs,
+ 	 */
+ 	if (*block_nr >= ext2fs_blocks_count(fs->super) ||
+ 	    *block_nr < fs->super->s_first_data_block) {
+-		printf(_("Warning: illegal block %u found in bad block inode.  "
+-			 "Cleared.\n"), *block_nr);
++		printf(_("Warning: illegal block %llu found in bad block "
++			 "inode.  Cleared.\n"), *block_nr);
+ 		*block_nr = 0;
+ 		return BLOCK_CHANGED;
  	}
--	*blk = 0;
-+	memset(item, 0, bb->item_size);
- 	return 0;
- }
+diff --git a/lib/ext2fs/bb_inode.c b/lib/ext2fs/bb_inode.c
+index 268eecf..1b168c4 100644
+--- a/lib/ext2fs/bb_inode.c
++++ b/lib/ext2fs/bb_inode.c
+@@ -31,26 +31,6 @@
+ #include "ext2_fs.h"
+ #include "ext2fs.h"
  
-+int ext2fs_u32_list_iterate(ext2_u32_iterate iter, __u32 *blk)
-+{
-+	return sparse_list_iterate(iter, blk);
-+}
-+
-+int ext2fs_badblocks_list_iterate2(ext2_badblocks_iterate iter, blk64_t *blk)
-+{
-+	return sparse_list_iterate(iter, blk);
-+}
-+
- int ext2fs_badblocks_list_iterate(ext2_badblocks_iterate iter, blk_t *blk)
+-struct set_badblock_record {
+-	ext2_badblocks_iterate	bb_iter;
+-	int		bad_block_count;
+-	blk_t		*ind_blocks;
+-	int		max_ind_blocks;
+-	int		ind_blocks_size;
+-	int		ind_blocks_ptr;
+-	char		*block_buf;
+-	errcode_t	err;
+-};
+-
+-static int set_bad_block_proc(ext2_filsys fs, blk_t *block_nr,
+-			      e2_blkcnt_t blockcnt,
+-			      blk_t ref_block, int ref_offset,
+-			      void *priv_data);
+-static int clear_bad_block_proc(ext2_filsys fs, blk_t *block_nr,
+-				e2_blkcnt_t blockcnt,
+-				blk_t ref_block, int ref_offset,
+-				void *priv_data);
+-
+ /*
+  * Given a bad blocks bitmap, update the bad blocks inode to reflect
+  * the map.
+@@ -58,210 +38,87 @@ static int clear_bad_block_proc(ext2_filsys fs, blk_t *block_nr,
+ errcode_t ext2fs_update_bb_inode(ext2_filsys fs, ext2_badblocks_list bb_list)
  {
--	return ext2fs_u32_list_iterate((ext2_u32_iterate) iter,
--				       (__u32 *) blk);
-+	blk64_t x;
-+	int ret;
+ 	errcode_t			retval;
+-	struct set_badblock_record 	rec;
++	ext2_badblocks_iterate		bb_iter;
+ 	struct ext2_inode		inode;
++	blk64_t				blk, bad_blocks = 0;
++	int				list_sz = 0;
+ 
+ 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
+ 
+ 	if (!fs->block_map)
+ 		return EXT2_ET_NO_BLOCK_BITMAP;
+ 
+-	memset(&rec, 0, sizeof(rec));
+-	rec.max_ind_blocks = 10;
+-	retval = ext2fs_get_array(rec.max_ind_blocks, sizeof(blk_t),
+-				&rec.ind_blocks);
+-	if (retval)
+-		return retval;
+-	memset(rec.ind_blocks, 0, rec.max_ind_blocks * sizeof(blk_t));
+-	retval = ext2fs_get_mem(fs->blocksize, &rec.block_buf);
+-	if (retval)
++	if (bb_list)
++		list_sz = ext2fs_badblocks_count(bb_list);
 +
-+	ret = ext2fs_badblocks_list_iterate2(iter, &x);
-+	*blk = x;
-+	return ret;
++	if (list_sz > 0 &&
++	    ext2fs_badblocks_get(bb_list, list_sz - 1) > ~0U &&
++	    !EXT2_HAS_INCOMPAT_FEATURE(fs->super,
++				       EXT3_FEATURE_INCOMPAT_EXTENTS)) {
++		retval = EXT2_ET_INODE_NOT_EXTENT;
+ 		goto cleanup;
+-	memset(rec.block_buf, 0, fs->blocksize);
+-	rec.err = 0;
++	}
+ 
+-	/*
+-	 * First clear the old bad blocks (while saving the indirect blocks)
+-	 */
+-	retval = ext2fs_block_iterate2(fs, EXT2_BAD_INO,
+-				       BLOCK_FLAG_DEPTH_TRAVERSE, 0,
+-				       clear_bad_block_proc, &rec);
++	retval = ext2fs_read_inode_full(fs, EXT2_BAD_INO, &inode,
++					sizeof(inode));
+ 	if (retval)
+ 		goto cleanup;
+-	if (rec.err) {
+-		retval = rec.err;
++
++	/* Truncate the file */
++	retval = ext2fs_punch(fs, EXT2_BAD_INO, &inode, 0, 0, ~0ULL);
++	if (retval)
+ 		goto cleanup;
+-	}
++	inode.i_size = 0;
++	inode.i_size_high = 0;
+ 
+-	/*
+-	 * Now set the bad blocks!
+-	 *
+-	 * First, mark the bad blocks as used.  This prevents a bad
+-	 * block from being used as an indirecto block for the bad
+-	 * block inode (!).
+-	 */
+-	if (bb_list) {
++	if (bb_list && list_sz > 0) {
++		/* Mark all bad blocks in use */
+ 		retval = ext2fs_badblocks_list_iterate_begin(bb_list,
+-							     &rec.bb_iter);
++							     &bb_iter);
+ 		if (retval)
+ 			goto cleanup;
+-		retval = ext2fs_block_iterate2(fs, EXT2_BAD_INO,
+-					       BLOCK_FLAG_APPEND, 0,
+-					       set_bad_block_proc, &rec);
+-		ext2fs_badblocks_list_iterate_end(rec.bb_iter);
++
++		while (ext2fs_badblocks_list_iterate2(bb_iter, &blk))
++			ext2fs_block_alloc_stats2(fs, blk, +1);
++		ext2fs_badblocks_list_iterate_end(bb_iter);
++
++		/* Flip the extents flag if necessary */
++		memset(&inode.i_blocks, 0, EXT2_N_BLOCKS * sizeof(__u32));
++		if (ext2fs_badblocks_get(bb_list, list_sz - 1) > ~0U)
++			inode.i_flags |= EXT4_EXTENTS_FL;
++		else
++			inode.i_flags &= ~EXT4_EXTENTS_FL;
++
++		/* Set the bad blocks */
++		retval = ext2fs_badblocks_list_iterate_begin(bb_list,
++							     &bb_iter);
+ 		if (retval)
+ 			goto cleanup;
+-		if (rec.err) {
+-			retval = rec.err;
+-			goto cleanup;
++
++		while (ext2fs_badblocks_list_iterate2(bb_iter, &blk)) {
++			retval = ext2fs_bmap2(fs, EXT2_BAD_INO, &inode, NULL,
++					      BMAP_SET | BMAP_ALLOC,
++					      bad_blocks++, NULL, &blk);
++			if (retval)
++				break;
+ 		}
++		ext2fs_badblocks_list_iterate_end(bb_iter);
++		if (retval)
++			goto cleanup;
+ 	}
+ 
+-	/*
+-	 * Update the bad block inode's mod time and block count
+-	 * field.
+-	 */
+-	retval = ext2fs_read_inode(fs, EXT2_BAD_INO, &inode);
+-	if (retval)
+-		goto cleanup;
+-
++	/* Update inode mtime */
+ 	inode.i_atime = inode.i_mtime = fs->now ? fs->now : time(0);
+ 	if (!inode.i_ctime)
+ 		inode.i_ctime = fs->now ? fs->now : time(0);
+-	ext2fs_iblk_set(fs, &inode, rec.bad_block_count);
+-	inode.i_size = rec.bad_block_count * fs->blocksize;
+-
+-	retval = ext2fs_write_inode(fs, EXT2_BAD_INO, &inode);
++	bad_blocks *= fs->blocksize;
++	inode.i_size = bad_blocks & 0xFFFFFFFF;
++	inode.i_size_high = bad_blocks >> 32;
++	retval = ext2fs_write_inode_full(fs, EXT2_BAD_INO, &inode,
++					 sizeof(inode));
+ 	if (retval)
+ 		goto cleanup;
+ 
+ cleanup:
+-	ext2fs_free_mem(&rec.ind_blocks);
+-	ext2fs_free_mem(&rec.block_buf);
+ 	return retval;
  }
- 
- 
--void ext2fs_u32_list_iterate_end(ext2_u32_iterate iter)
-+static void sparse_list_iterate_end(struct ext2_sparse_list_iterate *iter)
- {
- 	if (!iter || (iter->magic != EXT2_ET_MAGIC_BADBLOCKS_ITERATE))
- 		return;
-@@ -297,13 +410,19 @@ void ext2fs_u32_list_iterate_end(ext2_u32_iterate iter)
- 	ext2fs_free_mem(&iter);
- }
- 
-+void ext2fs_u32_list_iterate_end(ext2_u32_iterate iter)
-+{
-+	sparse_list_iterate_end(iter);
-+}
-+
- void ext2fs_badblocks_list_iterate_end(ext2_badblocks_iterate iter)
- {
--	ext2fs_u32_list_iterate_end((ext2_u32_iterate) iter);
-+	sparse_list_iterate_end(iter);
- }
- 
- 
--int ext2fs_u32_list_equal(ext2_u32_list bb1, ext2_u32_list bb2)
-+static int sparse_list_equal(struct ext2_sparse_list *bb1,
-+			     struct ext2_sparse_list *bb2)
- {
- 	EXT2_CHECK_MAGIC(bb1, EXT2_ET_MAGIC_BADBLOCKS_LIST);
- 	EXT2_CHECK_MAGIC(bb2, EXT2_ET_MAGIC_BADBLOCKS_LIST);
-@@ -311,18 +430,46 @@ int ext2fs_u32_list_equal(ext2_u32_list bb1, ext2_u32_list bb2)
- 	if (bb1->num != bb2->num)
- 		return 0;
- 
--	if (memcmp(bb1->list, bb2->list, bb1->num * sizeof(blk_t)) != 0)
-+	if (bb1->item_size != bb2->item_size)
-+		return 0;
-+
-+	if (memcmp(bb1->list, bb2->list, bb1->num * bb1->item_size) != 0)
- 		return 0;
- 	return 1;
- }
- 
-+int ext2fs_u32_list_equal(ext2_u32_list bb1, ext2_u32_list bb2)
-+{
-+	return sparse_list_equal(bb1, bb2);
-+}
-+
- int ext2fs_badblocks_equal(ext2_badblocks_list bb1, ext2_badblocks_list bb2)
- {
--	return ext2fs_u32_list_equal((ext2_u32_list) bb1,
--				     (ext2_u32_list) bb2);
-+	return sparse_list_equal(bb1, bb2);
- }
- 
--int ext2fs_u32_list_count(ext2_u32_list bb)
-+static unsigned int sparse_list_count(struct ext2_sparse_list *bb)
- {
-+	EXT2_CHECK_MAGIC(bb, EXT2_ET_MAGIC_BADBLOCKS_LIST);
- 	return bb->num;
- }
-+
-+int ext2fs_u32_list_count(ext2_u32_list bb)
-+{
-+	return sparse_list_count(bb);
-+}
-+
-+unsigned int ext2fs_badblocks_count(ext2_badblocks_list bb)
-+{
-+	return sparse_list_count(bb);
-+}
-+
-+blk64_t ext2fs_badblocks_get(ext2_badblocks_list bb, unsigned int i)
-+{
-+	blk64_t x;
-+
-+	if (i < 0 || i >= bb->num)
-+		return 0;
-+	memcpy(&x, LIST_ITEM(bb, i), bb->item_size);
-+	return x;
-+}
+-
+-/*
+- * Helper function for update_bb_inode()
+- *
+- * Clear the bad blocks in the bad block inode, while saving the
+- * indirect blocks.
+- */
+-#ifdef __TURBOC__
+- #pragma argsused
+-#endif
+-static int clear_bad_block_proc(ext2_filsys fs, blk_t *block_nr,
+-				e2_blkcnt_t blockcnt,
+-				blk_t ref_block EXT2FS_ATTR((unused)),
+-				int ref_offset EXT2FS_ATTR((unused)),
+-				void *priv_data)
+-{
+-	struct set_badblock_record *rec = (struct set_badblock_record *)
+-		priv_data;
+-	errcode_t	retval;
+-	unsigned long 	old_size;
+-
+-	if (!*block_nr)
+-		return 0;
+-
+-	/*
+-	 * If the block number is outrageous, clear it and ignore it.
+-	 */
+-	if (*block_nr >= ext2fs_blocks_count(fs->super) ||
+-	    *block_nr < fs->super->s_first_data_block) {
+-		*block_nr = 0;
+-		return BLOCK_CHANGED;
+-	}
+-
+-	if (blockcnt < 0) {
+-		if (rec->ind_blocks_size >= rec->max_ind_blocks) {
+-			old_size = rec->max_ind_blocks * sizeof(blk_t);
+-			rec->max_ind_blocks += 10;
+-			retval = ext2fs_resize_mem(old_size,
+-				   rec->max_ind_blocks * sizeof(blk_t),
+-				   &rec->ind_blocks);
+-			if (retval) {
+-				rec->max_ind_blocks -= 10;
+-				rec->err = retval;
+-				return BLOCK_ABORT;
+-			}
+-		}
+-		rec->ind_blocks[rec->ind_blocks_size++] = *block_nr;
+-	}
+-
+-	/*
+-	 * Mark the block as unused, and update accounting information
+-	 */
+-	ext2fs_block_alloc_stats2(fs, *block_nr, -1);
+-
+-	*block_nr = 0;
+-	return BLOCK_CHANGED;
+-}
+-
+-
+-/*
+- * Helper function for update_bb_inode()
+- *
+- * Set the block list in the bad block inode, using the supplied bitmap.
+- */
+-#ifdef __TURBOC__
+- #pragma argsused
+-#endif
+-static int set_bad_block_proc(ext2_filsys fs, blk_t *block_nr,
+-			      e2_blkcnt_t blockcnt,
+-			      blk_t ref_block EXT2FS_ATTR((unused)),
+-			      int ref_offset EXT2FS_ATTR((unused)),
+-			      void *priv_data)
+-{
+-	struct set_badblock_record *rec = (struct set_badblock_record *)
+-		priv_data;
+-	errcode_t	retval;
+-	blk_t		blk;
+-
+-	if (blockcnt >= 0) {
+-		/*
+-		 * Get the next bad block.
+-		 */
+-		if (!ext2fs_badblocks_list_iterate(rec->bb_iter, &blk))
+-			return BLOCK_ABORT;
+-		rec->bad_block_count++;
+-	} else {
+-		/*
+-		 * An indirect block; fetch a block from the
+-		 * previously used indirect block list.  The block
+-		 * most be not marked as used; if so, get another one.
+-		 * If we run out of reserved indirect blocks, allocate
+-		 * a new one.
+-		 */
+-	retry:
+-		if (rec->ind_blocks_ptr < rec->ind_blocks_size) {
+-			blk = rec->ind_blocks[rec->ind_blocks_ptr++];
+-			if (ext2fs_test_block_bitmap2(fs->block_map, blk))
+-				goto retry;
+-		} else {
+-			retval = ext2fs_new_block(fs, 0, 0, &blk);
+-			if (retval) {
+-				rec->err = retval;
+-				return BLOCK_ABORT;
+-			}
+-		}
+-		retval = io_channel_write_blk64(fs->io, blk, 1, rec->block_buf);
+-		if (retval) {
+-			rec->err = retval;
+-			return BLOCK_ABORT;
+-		}
+-	}
+-
+-	/*
+-	 * Update block counts
+-	 */
+-	ext2fs_block_alloc_stats2(fs, blk, +1);
+-
+-	*block_nr = blk;
+-	return BLOCK_CHANGED;
+-}
+-
+-
+-
+-
+-
+-
 diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index d5d8d03..b4ba421 100644
+index b4ba421..847b33c 100644
 --- a/lib/ext2fs/ext2fs.h
 +++ b/lib/ext2fs/ext2fs.h
-@@ -111,15 +111,15 @@ typedef struct ext2fs_struct_generic_bitmap *ext2fs_block_bitmap;
-  * Badblocks list definitions
-  */
+@@ -1486,6 +1486,13 @@ extern errcode_t ext2fs_read_bb_inode(ext2_filsys fs,
+ 				      ext2_badblocks_list *bb_list);
  
--typedef struct ext2_struct_u32_list *ext2_badblocks_list;
--typedef struct ext2_struct_u32_iterate *ext2_badblocks_iterate;
-+typedef struct ext2_sparse_list *ext2_badblocks_list;
-+typedef struct ext2_sparse_list_iterate *ext2_badblocks_iterate;
+ /* read_bb_file.c */
++extern errcode_t ext2fs_read_bb_FILE3(ext2_filsys fs, FILE *f,
++				      ext2_badblocks_list *bb_list,
++				      void *priv_data,
++				      void (*invalid)(ext2_filsys fs,
++						      blk64_t blk,
++						      char *badstr,
++						      void *priv_data));
+ extern errcode_t ext2fs_read_bb_FILE2(ext2_filsys fs, FILE *f,
+ 				      ext2_badblocks_list *bb_list,
+ 				      void *priv_data,
+diff --git a/lib/ext2fs/read_bb.c b/lib/ext2fs/read_bb.c
+index b5a0d7b..348d5a3 100644
+--- a/lib/ext2fs/read_bb.c
++++ b/lib/ext2fs/read_bb.c
+@@ -38,9 +38,9 @@ struct read_bb_record {
+ #ifdef __TURBOC__
+  #pragma argsused
+ #endif
+-static int mark_bad_block(ext2_filsys fs, blk_t *block_nr,
++static int mark_bad_block(ext2_filsys fs, blk64_t *block_nr,
+ 			  e2_blkcnt_t blockcnt EXT2FS_ATTR((unused)),
+-			  blk_t ref_block EXT2FS_ATTR((unused)),
++			  blk64_t ref_block EXT2FS_ATTR((unused)),
+ 			  int ref_offset EXT2FS_ATTR((unused)),
+ 			  void *priv_data)
+ {
+@@ -53,7 +53,7 @@ static int mark_bad_block(ext2_filsys fs, blk_t *block_nr,
+ 	    (*block_nr >= ext2fs_blocks_count(fs->super)))
+ 		return 0;	/* Ignore illegal blocks */
  
--typedef struct ext2_struct_u32_list *ext2_u32_list;
--typedef struct ext2_struct_u32_iterate *ext2_u32_iterate;
-+typedef struct ext2_sparse_list *ext2_u32_list;
-+typedef struct ext2_sparse_list_iterate *ext2_u32_iterate;
+-	rb->err = ext2fs_badblocks_list_add(rb->bb_list, *block_nr);
++	rb->err = ext2fs_badblocks_list_add2(rb->bb_list, *block_nr);
+ 	if (rb->err)
+ 		return BLOCK_ABORT;
+ 	return 0;
+@@ -67,7 +67,7 @@ errcode_t ext2fs_read_bb_inode(ext2_filsys fs, ext2_badblocks_list *bb_list)
+ 	errcode_t	retval;
+ 	struct read_bb_record rb;
+ 	struct ext2_inode inode;
+-	blk_t	numblocks;
++	blk64_t	numblocks;
  
- /* old */
--typedef struct ext2_struct_u32_list *badblocks_list;
--typedef struct ext2_struct_u32_iterate *badblocks_iterate;
-+typedef struct ext2_sparse_list *badblocks_list;
-+typedef struct ext2_sparse_list_iterate *badblocks_iterate;
+ 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
  
- #define BADBLOCKS_FLAG_DIRTY	1
+@@ -92,7 +92,7 @@ errcode_t ext2fs_read_bb_inode(ext2_filsys fs, ext2_badblocks_list *bb_list)
  
-@@ -702,6 +702,8 @@ extern int ext2fs_u32_list_iterate(ext2_u32_iterate iter, blk_t *blk);
- extern void ext2fs_u32_list_iterate_end(ext2_u32_iterate iter);
- extern errcode_t ext2fs_u32_copy(ext2_u32_list src, ext2_u32_list *dest);
- extern int ext2fs_u32_list_equal(ext2_u32_list bb1, ext2_u32_list bb2);
-+extern int ext2fs_u32_list_del(ext2_u32_list bb, __u32 blk);
-+extern int ext2fs_u32_list_count(ext2_u32_list bb);
- 
- extern errcode_t ext2fs_badblocks_list_create(ext2_badblocks_list *ret,
- 					    int size);
-@@ -709,7 +711,6 @@ extern errcode_t ext2fs_badblocks_list_add(ext2_badblocks_list bb,
- 					   blk_t blk);
- extern int ext2fs_badblocks_list_test(ext2_badblocks_list bb,
- 				    blk_t blk);
--extern int ext2fs_u32_list_del(ext2_u32_list bb, __u32 blk);
- extern void ext2fs_badblocks_list_del(ext2_u32_list bb, __u32 blk);
- extern errcode_t
- 	ext2fs_badblocks_list_iterate_begin(ext2_badblocks_list bb,
-@@ -721,7 +722,13 @@ extern errcode_t ext2fs_badblocks_copy(ext2_badblocks_list src,
- 				       ext2_badblocks_list *dest);
- extern int ext2fs_badblocks_equal(ext2_badblocks_list bb1,
- 				  ext2_badblocks_list bb2);
--extern int ext2fs_u32_list_count(ext2_u32_list bb);
-+extern errcode_t ext2fs_badblocks_list_add2(ext2_badblocks_list bb,
-+					    blk64_t blk);
-+extern int ext2fs_badblocks_list_test2(ext2_badblocks_list bb, blk64_t blk);
-+extern void ext2fs_badblocks_list_del2(ext2_u32_list bb, blk64_t blk);
-+extern int ext2fs_badblocks_list_iterate2(ext2_badblocks_iterate iter,
-+					  blk64_t *blk);
-+extern blk64_t ext2fs_badblocks_get(ext2_badblocks_list bb, unsigned int i);
- 
- /* bb_compat */
- extern errcode_t badblocks_list_create(badblocks_list *ret, int size);
-diff --git a/lib/ext2fs/ext2fsP.h b/lib/ext2fs/ext2fsP.h
-index 80d2d0a..592527c 100644
---- a/lib/ext2fs/ext2fsP.h
-+++ b/lib/ext2fs/ext2fsP.h
-@@ -16,17 +16,18 @@
+ 	rb.bb_list = *bb_list;
+ 	rb.err = 0;
+-	retval = ext2fs_block_iterate2(fs, EXT2_BAD_INO, BLOCK_FLAG_READ_ONLY,
++	retval = ext2fs_block_iterate3(fs, EXT2_BAD_INO, BLOCK_FLAG_READ_ONLY,
+ 				       0, mark_bad_block, &rb);
+ 	if (retval)
+ 		return retval;
+diff --git a/lib/ext2fs/read_bb_file.c b/lib/ext2fs/read_bb_file.c
+index 7d7bb7a..44f1cde 100644
+--- a/lib/ext2fs/read_bb_file.c
++++ b/lib/ext2fs/read_bb_file.c
+@@ -30,16 +30,16 @@
  /*
-  * Badblocks list
+  * Reads a list of bad blocks from  a FILE *
   */
--struct ext2_struct_u32_list {
-+struct ext2_sparse_list {
- 	int	magic;
--	int	num;
--	int	size;
--	__u32	*list;
-+	unsigned int	num;
-+	unsigned int	size;
-+	unsigned int	item_size;
-+	void	*list;
- 	int	badblocks_flags;
- };
+-errcode_t ext2fs_read_bb_FILE2(ext2_filsys fs, FILE *f,
++errcode_t ext2fs_read_bb_FILE3(ext2_filsys fs, FILE *f,
+ 			       ext2_badblocks_list *bb_list,
+ 			       void *priv_data,
+ 			       void (*invalid)(ext2_filsys fs,
+-					       blk_t blk,
++					       blk64_t blk,
+ 					       char *badstr,
+ 					       void *priv_data))
+ {
+ 	errcode_t	retval;
+-	blk_t		blockno;
++	blk64_t		blockno;
+ 	int		count;
+ 	char		buf[128];
  
--struct ext2_struct_u32_iterate {
-+struct ext2_sparse_list_iterate {
- 	int			magic;
--	ext2_u32_list		bb;
-+	struct ext2_sparse_list	*bb;
- 	int			ptr;
- };
- 
-diff --git a/lib/ext2fs/inode.c b/lib/ext2fs/inode.c
-index 46c1c58..6579512 100644
---- a/lib/ext2fs/inode.c
-+++ b/lib/ext2fs/inode.c
-@@ -313,8 +313,8 @@ static errcode_t check_for_inode_bad_blocks(ext2_inode_scan scan,
- 	 * is no longer the case.  If we run out of bad blocks, then
- 	 * we don't need to do any more checking!
- 	 */
--	while (blk > bb->list[scan->bad_block_ptr]) {
--		if (++scan->bad_block_ptr >= bb->num) {
-+	while (blk > ext2fs_badblocks_get(bb, scan->bad_block_ptr)) {
-+		if (++scan->bad_block_ptr >= ext2fs_badblocks_count(bb)) {
- 			scan->scan_flags &= ~EXT2_SF_CHK_BADBLOCKS;
- 			return 0;
+@@ -55,7 +55,7 @@ errcode_t ext2fs_read_bb_FILE2(ext2_filsys fs, FILE *f,
+ 	while (!feof (f)) {
+ 		if (fgets(buf, sizeof(buf), f) == NULL)
+ 			break;
+-		count = sscanf(buf, "%u", &blockno);
++		count = sscanf(buf, "%llu", &blockno);
+ 		if (count <= 0)
+ 			continue;
+ 		if (fs &&
+@@ -65,13 +65,42 @@ errcode_t ext2fs_read_bb_FILE2(ext2_filsys fs, FILE *f,
+ 				(invalid)(fs, blockno, buf, priv_data);
+ 			continue;
  		}
-@@ -328,10 +328,10 @@ static errcode_t check_for_inode_bad_blocks(ext2_inode_scan scan,
- 	 * expense of a huge expense of code complexity, and for an
- 	 * uncommon case at that.)
- 	 */
--	if (blk == bb->list[scan->bad_block_ptr]) {
-+	if (blk == ext2fs_badblocks_get(bb, scan->bad_block_ptr)) {
- 		scan->scan_flags |= EXT2_SF_BAD_INODE_BLK;
- 		*num_blocks = 1;
--		if (++scan->bad_block_ptr >= bb->num)
-+		if (++scan->bad_block_ptr >= ext2fs_badblocks_count(bb))
- 			scan->scan_flags &= ~EXT2_SF_CHK_BADBLOCKS;
- 		return 0;
+-		retval = ext2fs_badblocks_list_add(*bb_list, blockno);
++		retval = ext2fs_badblocks_list_add2(*bb_list, blockno);
+ 		if (retval)
+ 			return retval;
  	}
-@@ -342,8 +342,8 @@ static errcode_t check_for_inode_bad_blocks(ext2_inode_scan scan,
- 	 * don't read in the bad block.  (Then the next block to read
- 	 * will be the bad block, which is handled in the above case.)
- 	 */
--	if ((blk + *num_blocks) > bb->list[scan->bad_block_ptr])
--		*num_blocks = (int) (bb->list[scan->bad_block_ptr] - blk);
-+	if ((blk + *num_blocks) > ext2fs_badblocks_get(bb, scan->bad_block_ptr))
-+		*num_blocks = (int)(ext2fs_badblocks_get(bb, scan->bad_block_ptr) - blk);
- 
  	return 0;
  }
+ 
++struct read_helper2_data {
++	void (*invalid)(ext2_filsys fs, blk_t blk, char *badstr,
++			void *priv_data);
++	void *priv_data;
++};
++
++static void read_helper2(ext2_filsys fs, blk64_t blk, char *badstr,
++			 void *priv_data)
++{
++	struct read_helper2_data *d = priv_data;
++	if (d->invalid)
++		d->invalid(fs, blk, badstr, d->priv_data);
++}
++
++errcode_t ext2fs_read_bb_FILE2(ext2_filsys fs, FILE *f,
++			       ext2_badblocks_list *bb_list,
++			       void *priv_data,
++			       void (*invalid)(ext2_filsys fs,
++					       blk_t blk,
++					       char *badstr,
++					       void *priv_data))
++{
++	struct read_helper2_data d;
++
++	d.invalid = invalid;
++	d.priv_data = priv_data;
++	return ext2fs_read_bb_FILE3(fs, f, bb_list, &d, read_helper2);
++}
++
+ struct compat_struct {
+ 	void (*invalid)(ext2_filsys, blk_t);
+ };
+diff --git a/lib/ext2fs/tst_badblocks.c b/lib/ext2fs/tst_badblocks.c
+index 3b39ef1..40168b9 100644
+--- a/lib/ext2fs/tst_badblocks.c
++++ b/lib/ext2fs/tst_badblocks.c
+@@ -29,11 +29,11 @@
+ #define ADD_BLK	0x0001
+ #define DEL_BLK	0x0002
+ 
+-blk_t test1[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 0 };
+-blk_t test2[] = { 11, 10, 9, 8, 7, 6, 5, 4, 3, 3, 2, 1 };
+-blk_t test3[] = { 3, 1, 4, 5, 9, 2, 7, 10, 5, 6, 10, 8, 0 };
+-blk_t test4[] = { 20, 50, 12, 17, 13, 2, 66, 23, 56, 0 };
+-blk_t test4a[] = {
++blk64_t test1[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 0 };
++blk64_t test2[] = { 11, 10, 9, 8, 7, 6, 5, 4, 3, 3, 2, 1 };
++blk64_t test3[] = { 3, 1, 4, 5, 9, 2, 7, 10, 5, 6, 10, 8, 0 };
++blk64_t test4[] = { 20, 50, 12, 17, 13, 2, 66, 23, 56, 0 };
++blk64_t test4a[] = {
+  	20, 1,
+ 	50, 1,
+ 	3, 0,
+@@ -48,8 +48,8 @@ blk_t test4a[] = {
+ 	45, 0,
+ 	66, 1,
+ 	0 };
+-blk_t test5[] = { 31, 20, 17, 51, 23, 1, 56, 57, 0 };
+-blk_t test5a[] = {
++blk64_t test5[] = { 31, 20, 17, 51, 23, 1, 56, 57, 0 };
++blk64_t test5a[] = {
+ 	50, ADD_BLK,
+ 	51, DEL_BLK,
+ 	57, DEL_BLK,
+@@ -66,7 +66,7 @@ blk_t test5a[] = {
+ static int test_fail = 0;
+ static int test_expected_fail = 0;
+ 
+-static errcode_t create_test_list(blk_t *vec, badblocks_list *ret)
++static errcode_t create_test_list(blk64_t *vec, badblocks_list *ret)
+ {
+ 	errcode_t	retval;
+ 	badblocks_list	bb;
+@@ -78,7 +78,7 @@ static errcode_t create_test_list(blk_t *vec, badblocks_list *ret)
+ 		return retval;
+ 	}
+ 	for (i=0; vec[i]; i++) {
+-		retval = ext2fs_badblocks_list_add(bb, vec[i]);
++		retval = ext2fs_badblocks_list_add2(bb, vec[i]);
+ 		if (retval) {
+ 			com_err("create_test_list", retval,
+ 				"while adding test vector %d", i);
+@@ -94,7 +94,7 @@ static void print_list(badblocks_list bb, int verify)
+ {
+ 	errcode_t	retval;
+ 	badblocks_iterate	iter;
+-	blk_t			blk;
++	blk64_t			blk;
+ 	int			i, ok;
+ 
+ 	retval = ext2fs_badblocks_list_iterate_begin(bb, &iter);
+@@ -103,7 +103,7 @@ static void print_list(badblocks_list bb, int verify)
+ 		return;
+ 	}
+ 	ok = i = 1;
+-	while (ext2fs_badblocks_list_iterate(iter, &blk)) {
++	while (ext2fs_badblocks_list_iterate2(iter, &blk)) {
+ 		printf("%u ", blk);
+ 		if (i++ != blk)
+ 			ok = 0;
+@@ -119,12 +119,12 @@ static void print_list(badblocks_list bb, int verify)
+ 	}
+ }
+ 
+-static void validate_test_seq(badblocks_list bb, blk_t *vec)
++static void validate_test_seq(badblocks_list bb, blk64_t *vec)
+ {
+ 	int	i, match, ok;
+ 
+ 	for (i = 0; vec[i]; i += 2) {
+-		match = ext2fs_badblocks_list_test(bb, vec[i]);
++		match = ext2fs_badblocks_list_test2(bb, vec[i]);
+ 		if (match == vec[i+1])
+ 			ok = 1;
+ 		else {
+@@ -137,15 +137,15 @@ static void validate_test_seq(badblocks_list bb, blk_t *vec)
+ 	}
+ }
+ 
+-static void do_test_seq(badblocks_list bb, blk_t *vec)
++static void do_test_seq(badblocks_list bb, blk64_t *vec)
+ {
+ 	int	i, match;
+ 
+ 	for (i = 0; vec[i]; i += 2) {
+ 		switch (vec[i+1]) {
+ 		case ADD_BLK:
+-			ext2fs_badblocks_list_add(bb, vec[i]);
+-			match = ext2fs_badblocks_list_test(bb, vec[i]);
++			ext2fs_badblocks_list_add2(bb, vec[i]);
++			match = ext2fs_badblocks_list_test2(bb, vec[i]);
+ 			printf("Adding block %u --- now %s\n", vec[i],
+ 			       match ? "present" : "absent");
+ 			if (!match) {
+@@ -154,10 +154,10 @@ static void do_test_seq(badblocks_list bb, blk_t *vec)
+ 			}
+ 			break;
+ 		case DEL_BLK:
+-			ext2fs_badblocks_list_del(bb, vec[i]);
+-			match = ext2fs_badblocks_list_test(bb, vec[i]);
++			ext2fs_badblocks_list_del2(bb, vec[i]);
++			match = ext2fs_badblocks_list_test2(bb, vec[i]);
+ 			printf("Removing block %u --- now %s\n", vec[i],
+-			       ext2fs_badblocks_list_test(bb, vec[i]) ?
++			       ext2fs_badblocks_list_test2(bb, vec[i]) ?
+ 			       "present" : "absent");
+ 			if (match) {
+ 				printf("FAILURE!\n");
+@@ -188,7 +188,7 @@ int file_test(badblocks_list bb)
+ 	}
+ 
+ 	rewind(f);
+-	retval = ext2fs_read_bb_FILE2(0, f, &new_bb, 0, 0);
++	retval = ext2fs_read_bb_FILE3(0, f, &new_bb, 0, 0);
+ 	if (retval) {
+ 		com_err("file_test", retval, "while reading bad blocks");
+ 		return 1;
+@@ -204,7 +204,7 @@ int file_test(badblocks_list bb)
+ 	return 0;
+ }
+ 
+-static void invalid_proc(ext2_filsys fs, blk_t blk)
++static void invalid_proc(ext2_filsys fs, blk64_t blk)
+ {
+ 	if (blk == 34500) {
+ 		printf("Expected invalid block\n");
+diff --git a/lib/ext2fs/tst_iscan.c b/lib/ext2fs/tst_iscan.c
+index a95296c..3013d41 100644
+--- a/lib/ext2fs/tst_iscan.c
++++ b/lib/ext2fs/tst_iscan.c
+@@ -124,7 +124,8 @@ static void setup(void)
+ 		exit(1);
+ 	}
+ 	for (i=0; test_vec[i]; i++) {
+-		retval = ext2fs_badblocks_list_add(test_badblocks, test_vec[i]);
++		retval = ext2fs_badblocks_list_add2(test_badblocks,
++						    test_vec[i]);
+ 		if (retval) {
+ 			com_err("setup", retval,
+ 				"while adding test vector %d", i);
+diff --git a/lib/ext2fs/write_bb_file.c b/lib/ext2fs/write_bb_file.c
+index 5834340..aeeee82 100644
+--- a/lib/ext2fs/write_bb_file.c
++++ b/lib/ext2fs/write_bb_file.c
+@@ -20,16 +20,15 @@ errcode_t ext2fs_write_bb_FILE(ext2_badblocks_list bb_list,
+ 			       FILE *f)
+ {
+ 	badblocks_iterate	bb_iter;
+-	blk_t			blk;
++	blk64_t			blk;
+ 	errcode_t		retval;
+ 
+ 	retval = ext2fs_badblocks_list_iterate_begin(bb_list, &bb_iter);
+ 	if (retval)
+ 		return retval;
+ 
+-	while (ext2fs_badblocks_list_iterate(bb_iter, &blk)) {
+-		fprintf(f, "%u\n", blk);
+-	}
++	while (ext2fs_badblocks_list_iterate2(bb_iter, &blk))
++		fprintf(f, "%llu\n", blk);
+ 	ext2fs_badblocks_list_iterate_end(bb_iter);
+ 	return 0;
+ }
+diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
+index b139977..3035b62 100644
+--- a/misc/dumpe2fs.c
++++ b/misc/dumpe2fs.c
+@@ -293,7 +293,7 @@ static void list_bad_blocks(ext2_filsys fs, int dump)
+ {
+ 	badblocks_list		bb_list = 0;
+ 	badblocks_iterate	bb_iter;
+-	blk_t			blk;
++	blk64_t			blk;
+ 	errcode_t		retval;
+ 	const char		*header, *fmt;
+ 
+@@ -314,7 +314,7 @@ static void list_bad_blocks(ext2_filsys fs, int dump)
+ 		header =  _("Bad blocks: %u");
+ 		fmt = ", %u";
+ 	}
+-	while (ext2fs_badblocks_list_iterate(bb_iter, &blk)) {
++	while (ext2fs_badblocks_list_iterate2(bb_iter, &blk)) {
+ 		printf(header ? header : fmt, blk);
+ 		header = 0;
+ 	}
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index d96f156..d8bd5ed 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -175,9 +175,10 @@ static int parse_version_number(const char *s)
+ /*
+  * Helper function for read_bb_file and test_disk
+  */
+-static void invalid_block(ext2_filsys fs EXT2FS_ATTR((unused)), blk_t blk)
++static void invalid_block(ext2_filsys fs EXT2FS_ATTR((unused)), blk64_t blk,
++			  char *badstr, void *private_data)
+ {
+-	fprintf(stderr, _("Bad block %u out of range; ignored.\n"), blk);
++	fprintf(stderr, _("Bad block %llu out of range; ignored.\n"), blk);
+ 	return;
+ }
+ 
+@@ -196,7 +197,7 @@ static void read_bb_file(ext2_filsys fs, badblocks_list *bb_list,
+ 			_("while trying to open %s"), bad_blocks_file);
+ 		exit(1);
+ 	}
+-	retval = ext2fs_read_bb_FILE(fs, f, bb_list, invalid_block);
++	retval = ext2fs_read_bb_FILE3(fs, f, bb_list, NULL, invalid_block);
+ 	fclose (f);
+ 	if (retval) {
+ 		com_err("ext2fs_read_bb_FILE", retval,
+@@ -225,7 +226,7 @@ static void test_disk(ext2_filsys fs, badblocks_list *bb_list)
+ 			_("while trying to run '%s'"), buf);
+ 		exit(1);
+ 	}
+-	retval = ext2fs_read_bb_FILE(fs, f, bb_list, invalid_block);
++	retval = ext2fs_read_bb_FILE3(fs, f, bb_list, NULL, invalid_block);
+ 	pclose(f);
+ 	if (retval) {
+ 		com_err("ext2fs_read_bb_FILE", retval,
+@@ -237,13 +238,13 @@ static void test_disk(ext2_filsys fs, badblocks_list *bb_list)
+ static void handle_bad_blocks(ext2_filsys fs, badblocks_list bb_list)
+ {
+ 	dgrp_t			i;
+-	blk_t			j;
+-	unsigned 		must_be_good;
+-	blk_t			blk;
++	blk64_t			j;
++	blk64_t			must_be_good;
++	blk64_t			blk;
+ 	badblocks_iterate	bb_iter;
+ 	errcode_t		retval;
+-	blk_t			group_block;
+-	int			group;
++	blk64_t			group_block;
++	dgrp_t			group;
+ 	int			group_bad;
+ 
+ 	if (!bb_list)
+@@ -254,12 +255,12 @@ static void handle_bad_blocks(ext2_filsys fs, badblocks_list bb_list)
+ 	 * good; if not, abort.
+ 	 */
+ 	must_be_good = fs->super->s_first_data_block + 1 + fs->desc_blocks;
+-	for (i = fs->super->s_first_data_block; i <= must_be_good; i++) {
+-		if (ext2fs_badblocks_list_test(bb_list, i)) {
+-			fprintf(stderr, _("Block %d in primary "
+-				"superblock/group descriptor area bad.\n"), i);
+-			fprintf(stderr, _("Blocks %u through %u must be good "
+-				"in order to build a filesystem.\n"),
++	for (j = fs->super->s_first_data_block; j <= must_be_good; j++) {
++		if (ext2fs_badblocks_list_test2(bb_list, j)) {
++			fprintf(stderr, _("Block %llu in primary "
++				"superblock/group descriptor area bad.\n"), j);
++			fprintf(stderr, _("Blocks %u through %llu must be "
++				"good in order to build a filesystem.\n"),
+ 				fs->super->s_first_data_block, must_be_good);
+ 			fputs(_("Aborting....\n"), stderr);
+ 			exit(1);
+@@ -277,11 +278,11 @@ static void handle_bad_blocks(ext2_filsys fs, badblocks_list bb_list)
+ 	for (i = 1; i < fs->group_desc_count; i++) {
+ 		group_bad = 0;
+ 		for (j=0; j < fs->desc_blocks+1; j++) {
+-			if (ext2fs_badblocks_list_test(bb_list,
++			if (ext2fs_badblocks_list_test2(bb_list,
+ 						       group_block + j)) {
+ 				if (!group_bad)
+ 					fprintf(stderr,
+-_("Warning: the backup superblock/group descriptors at block %u contain\n"
++_("Warning: the backup superblock/group descriptors at block %llu contain\n"
+ "	bad blocks.\n\n"),
+ 						group_block);
+ 				group_bad++;
+@@ -303,7 +304,7 @@ _("Warning: the backup superblock/group descriptors at block %u contain\n"
+ 			_("while marking bad blocks as used"));
+ 		exit(1);
+ 	}
+-	while (ext2fs_badblocks_list_iterate(bb_iter, &blk))
++	while (ext2fs_badblocks_list_iterate2(bb_iter, &blk))
+ 		ext2fs_mark_block_bitmap2(fs->block_map, EXT2FS_B2C(fs, blk));
+ 	ext2fs_badblocks_list_iterate_end(bb_iter);
+ }
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 60d1378..835f364 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -1812,7 +1812,7 @@ static int get_move_bitmaps(ext2_filsys fs, int new_ino_blks_per_grp,
+ 				/*
+ 				 * IF the block is a bad block we fail
+ 				 */
+-				if (ext2fs_badblocks_list_test(bb_list, j)) {
++				if (ext2fs_badblocks_list_test2(bb_list, j)) {
+ 					ext2fs_badblocks_list_free(bb_list);
+ 					return ENOSPC;
+ 				}
+diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+index 76d7aa6..e9c207b 100644
+--- a/resize/resize2fs.c
++++ b/resize/resize2fs.c
+@@ -1240,8 +1240,8 @@ static errcode_t block_mover(ext2_resize_t rfs)
+ 			continue;
+ 		if (!ext2fs_test_block_bitmap2(rfs->move_blocks, blk))
+ 			continue;
+-		if (ext2fs_badblocks_list_test(badblock_list, blk)) {
+-			ext2fs_badblocks_list_del(badblock_list, blk);
++		if (ext2fs_badblocks_list_test2(badblock_list, blk)) {
++			ext2fs_badblocks_list_del2(badblock_list, blk);
+ 			bb_modified++;
+ 			continue;
+ 		}
 
