@@ -1,64 +1,80 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] e2fsprogs: allocate inode table wholly within group
-Date: Tue, 01 Oct 2013 11:29:17 -0500
-Message-ID: <524AF85D.4040100@redhat.com>
-References: <51D3269B.5080608@redhat.com> <51DB2EB9.4010903@redhat.com> <20131001015746.GF5845@thunk.org> <524AE9A5.4010309@redhat.com> <524AEBAE.1080208@redhat.com>
+From: jon ernst <jonernst07@gmail.com>
+Subject: Re: [PATCH 10/31] libext2fs: Allow callers to punch a single block
+Date: Tue, 1 Oct 2013 15:09:44 -0400
+Message-ID: <CAGW2f1GLd8wxUUW6YJ6iSOH-Ed7aAF2=6vMdBQYEkF7Ut9yfTw@mail.gmail.com>
+References: <20131001012642.28415.89353.stgit@birch.djwong.org>
+	<20131001012746.28415.15964.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:7069 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751082Ab3JAQ3U (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 1 Oct 2013 12:29:20 -0400
-In-Reply-To: <524AEBAE.1080208@redhat.com>
+Received: from mail-oa0-f46.google.com ([209.85.219.46]:38655 "EHLO
+	mail-oa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751251Ab3JATJp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Oct 2013 15:09:45 -0400
+Received: by mail-oa0-f46.google.com with SMTP id k14so5207074oag.5
+        for <linux-ext4@vger.kernel.org>; Tue, 01 Oct 2013 12:09:44 -0700 (PDT)
+In-Reply-To: <20131001012746.28415.15964.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 10/1/13 10:35 AM, Eric Sandeen wrote:
-> On 10/1/13 10:26 AM, Eric Sandeen wrote:
->> On 9/30/13 8:57 PM, Theodore Ts'o wrote:
->>> On Mon, Jul 08, 2013 at 04:27:21PM -0500, Eric Sandeen wrote:
->>>>
->>>> The actual problem seems to be that the test does successive "-M" minimal resizes, and eventually we resize into the middle of an inode table, leaving the end of the table beyond the fs.
->>>>
->>>> Point "resize2fs -M" at the attached image once or twice w/ fscks in between and you should see it.
->>>
->>> I've been going through my patch backlog, so I finally had a chance to
->>> take a very close look at your test image.  I now understand why
->>> things are failing.
->>>
->>> 1) The test image (which you said was generated on a ppc e2fsprogs?)
->>> was doing something very weird as far as the location of the
->>> allocation bitmaps and inode table:
->>
->> Yes, this was just during a fedora build, during the "make check" phase.
->>
->> https://bugzilla.redhat.com/show_bug.cgi?id=980519
->>
->> No idea why things should be coming out differently, that's a bit
->> alarming in and of itself.
->>
->> (Fedora isn't carrying any interesting patches to speak of).
-> 
-> But I am doing this:
-> 
->  %check
-> +# XXX ERS Hack for now; this bug has existed for a while,
-> +# i.e. it is not a regression in this release, but there
-> +# is no fix yet, and we need to get this package building.
-> +# See Bug 987133 - resize2fs tests failing on ppc, s390
-> +rm -rf tests/r_1024_small_bg*
-> +rm -rf tests/r_64bit_big_expand*
-> +rm -rf tests/r_bigalloc_big_expand*
-> +rm -rf tests/r_ext4_big_expand*
->  make check
-> 
-> I'll retest w/ your patches, thanks.
-
-Now all are passing on ppc64, last 3 are still failing on s390.  :(
-
--Eric
-
+On Mon, Sep 30, 2013 at 9:27 PM, Darrick J. Wong
+<darrick.wong@oracle.com> wrote:
+> The range of blocks to punch is treated as an inclusive range on both ends,
+> i.e. if start=1 and end=2, both blocks 1 and 2 are punched out.  Thus, start ==
+> end means that the caller wishes to punch a single block.  Remove the check
+> that prevents us from punching a single block.
+>
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> ---
+>  lib/ext2fs/ext2fs.h |    4 ++++
+>  lib/ext2fs/punch.c  |    5 +----
+>  2 files changed, 5 insertions(+), 4 deletions(-)
+>
+>
+> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+> index 311ceda..c37e00b 100644
+> --- a/lib/ext2fs/ext2fs.h
+> +++ b/lib/ext2fs/ext2fs.h
+> @@ -1385,6 +1385,10 @@ extern errcode_t ext2fs_check_mount_point(const char *device, int *mount_flags,
+>                                           char *mtpt, int mtlen);
+>
+>  /* punch.c */
+> +/*
+> + * NOTE: This function removes from an inode the blocks "start", "end", and
+> + * every block in between.
+> + */
+>  extern errcode_t ext2fs_punch(ext2_filsys fs, ext2_ino_t ino,
+>                               struct ext2_inode *inode,
+>                               char *block_buf, blk64_t start,
+> diff --git a/lib/ext2fs/punch.c b/lib/ext2fs/punch.c
+> index 11c7668..aac1942 100644
+> --- a/lib/ext2fs/punch.c
+> +++ b/lib/ext2fs/punch.c
+> @@ -315,9 +315,6 @@ extern errcode_t ext2fs_punch(ext2_filsys fs, ext2_ino_t ino,
+>         if (start > end)
+>                 return EINVAL;
+>
+> -       if (start == end)
+> -               return 0;
+> -
+>         /* Read inode structure if necessary */
+>         if (!inode) {
+>                 retval = ext2fs_read_inode(fs, ino, &inode_buf);
+> @@ -332,7 +329,7 @@ extern errcode_t ext2fs_punch(ext2_filsys fs, ext2_ino_t ino,
+>
+>                 if (start > ~0U)
+>                         return 0;
+> -               count = ((end - start) < ~0U) ? (end - start) : ~0U;
+> +               count = ((end - start + 1) < ~0U) ? (end - start + 1) : ~0U;
+can you simply put "count =  end - start + 1;" since you have checked
+start > end case earlier.
+>                 retval = ext2fs_punch_ind(fs, inode, block_buf,
+>                                           (blk_t) start, count);
+>         }
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
