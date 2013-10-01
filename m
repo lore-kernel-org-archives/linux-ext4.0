@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 19/31] badblocks: Use the new badblocks APIs for 64-bit block
- numbers
-Date: Mon, 30 Sep 2013 18:28:44 -0700
-Message-ID: <20131001012844.28415.98200.stgit@birch.djwong.org>
+Subject: [PATCH 20/31] e2fsprogs: Add (optional) sparse checking to the build
+Date: Mon, 30 Sep 2013 18:28:50 -0700
+Message-ID: <20131001012850.28415.63936.stgit@birch.djwong.org>
 References: <20131001012642.28415.89353.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,248 +9,276 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:37970 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:37978 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755105Ab3JAB2t (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Sep 2013 21:28:49 -0400
+	with ESMTP id S1755105Ab3JAB2y (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Sep 2013 21:28:54 -0400
 In-Reply-To: <20131001012642.28415.89353.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Run sparse against source files when building e2fsprogs with 'make C=1'.  If
+instead C=2, it configures basic ext2 types for bitwise checking with sparse,
+which can help find the (many many) spots where conversion errors are
+(possibly) happening.
+
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- misc/badblocks.c |   76 ++++++++++++++++++++++++++++--------------------------
- 1 file changed, 40 insertions(+), 36 deletions(-)
+ Makefile.in             |   13 +++++++++++++
+ debugfs/Makefile.in     |    1 +
+ e2fsck/Makefile.in      |    1 +
+ ext2ed/Makefile.in      |    1 +
+ intl/Makefile.in        |    1 +
+ lib/blkid/Makefile.in   |    1 +
+ lib/e2p/Makefile.in     |    1 +
+ lib/et/Makefile.in      |    1 +
+ lib/ext2fs/Makefile.in  |    1 +
+ lib/ext2fs/ext2fs.h     |   22 ++++++++++++++--------
+ lib/quota/Makefile.in   |    1 +
+ lib/ss/Makefile.in      |    1 +
+ lib/uuid/Makefile.in    |    1 +
+ misc/Makefile.in        |    1 +
+ resize/Makefile.in      |    1 +
+ tests/progs/Makefile.in |    1 +
+ util/Makefile.in        |    1 +
+ 17 files changed, 42 insertions(+), 8 deletions(-)
 
 
-diff --git a/misc/badblocks.c b/misc/badblocks.c
-index c9e47c7..660248e 100644
---- a/misc/badblocks.c
-+++ b/misc/badblocks.c
-@@ -105,14 +105,14 @@ static void exclusive_usage(void)
- 	exit(1);
- }
+diff --git a/Makefile.in b/Makefile.in
+index 544ed02..95cbf1b 100644
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -5,6 +5,19 @@ top_builddir = .
+ my_dir = .
+ INSTALL = @INSTALL@
  
--static blk_t currently_testing = 0;
--static blk_t num_blocks = 0;
--static blk_t num_read_errors = 0;
--static blk_t num_write_errors = 0;
--static blk_t num_corruption_errors = 0;
-+static blk64_t currently_testing = 0;
-+static blk64_t num_blocks = 0;
-+static blk64_t num_read_errors = 0;
-+static blk64_t num_write_errors = 0;
-+static blk64_t num_corruption_errors = 0;
- static ext2_badblocks_list bb_list = NULL;
- static FILE *out;
--static blk_t next_bad = 0;
-+static blk64_t next_bad = 0;
- static ext2_badblocks_iterate bb_iter = NULL;
++CHECK=sparse
++CHECK_OPTS=-Wsparse-all -Wno-transparent-union -Wno-return-void -Wno-undef -Wno-non-pointer-null
++ifeq ("$(C)", "2")
++  CHECK_CMD=$(CHECK) $(CHECK_OPTS) -Wbitwise -D__CHECK_ENDIAN__
++else
++  ifeq ("$(C)", "1")
++    CHECK_CMD=$(CHECK) $(CHECK_OPTS)
++   else
++    CHECK_CMD=@true
++  endif
++endif
++export CHECK_CMD
++
+ @MCONFIG@
  
- enum error_types { READ_ERROR, WRITE_ERROR, CORRUPTION_ERROR };
-@@ -144,17 +144,17 @@ static void *allocate_buffer(size_t size)
-  * This routine reports a new bad block.  If the bad block has already
-  * been seen before, then it returns 0; otherwise it returns 1.
-  */
--static int bb_output (blk_t bad, enum error_types error_type)
-+static int bb_output(blk64_t bad, enum error_types error_type)
- {
- 	errcode_t errcode;
+ % : %.sh
+diff --git a/debugfs/Makefile.in b/debugfs/Makefile.in
+index 9a86dc6..bf037e0 100644
+--- a/debugfs/Makefile.in
++++ b/debugfs/Makefile.in
+@@ -44,6 +44,7 @@ STATIC_DEPLIBS= $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBSS) \
+ .c.o:
+ 	$(E) "	CC $<"
+ 	$(Q) $(CC) -c $(ALL_CFLAGS) $< -o $@
++	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
  
--	if (ext2fs_badblocks_list_test(bb_list, bad))
-+	if (ext2fs_badblocks_list_test2(bb_list, bad))
- 		return 0;
+ all:: $(PROGS) $(MANPAGES)
  
- 	fprintf(out, "%lu\n", (unsigned long) bad);
- 	fflush(out);
+diff --git a/e2fsck/Makefile.in b/e2fsck/Makefile.in
+index 9c27571..6ecfcd9 100644
+--- a/e2fsck/Makefile.in
++++ b/e2fsck/Makefile.in
+@@ -38,6 +38,7 @@ COMPILE_ET=$(top_builddir)/lib/et/compile_et --build-tree
+ .c.o:
+ 	$(E) "	CC $<"
+ 	$(Q) $(CC) -c $(ALL_CFLAGS) $< -o $@
++	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
+ @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
  
--	errcode = ext2fs_badblocks_list_add (bb_list, bad);
-+	errcode = ext2fs_badblocks_list_add2(bb_list, bad);
- 	if (errcode) {
- 		com_err (program_name, errcode, "adding to in-memory bad block list");
- 		exit (1);
-@@ -165,7 +165,7 @@ static int bb_output (blk_t bad, enum error_types error_type)
- 	   an element was just added before the current iteration
- 	   position.  This should not cause next_bad to change. */
- 	if (bb_iter && bad < next_bad)
--		ext2fs_badblocks_list_iterate (bb_iter, &next_bad);
-+		ext2fs_badblocks_list_iterate2(bb_iter, &next_bad);
+ #
+diff --git a/ext2ed/Makefile.in b/ext2ed/Makefile.in
+index b3b606a..290f06e 100644
+--- a/ext2ed/Makefile.in
++++ b/ext2ed/Makefile.in
+@@ -33,6 +33,7 @@ DOCS=   doc/ext2ed-design.pdf doc/user-guide.pdf doc/ext2fs-overview.pdf \
  
- 	if (error_type == READ_ERROR) {
- 	  num_read_errors++;
-@@ -216,7 +216,7 @@ static void print_status(void)
- 	gettimeofday(&time_end, 0);
- 	len = snprintf(line_buf, sizeof(line_buf), 
- 		       _("%6.2f%% done, %s elapsed. "
--		         "(%d/%d/%d errors)"),
-+			 "(%llu/%llu/%llu errors)"),
- 		       calc_percent((unsigned long) currently_testing,
- 				    (unsigned long) num_blocks), 
- 		       time_diff_format(&time_end, &time_start, diff_buf),
-@@ -350,7 +350,7 @@ static void pattern_fill(unsigned char *buffer, unsigned int pattern,
-  *    successfully sequentially read.
-  */
- static int do_read (int dev, unsigned char * buffer, int try, int block_size,
--		    blk_t current_block)
-+		    blk64_t current_block)
- {
- 	long got;
- 	struct timeval tv1, tv2;
-@@ -469,16 +469,16 @@ static void flush_bufs(void)
- 		com_err(program_name, retval, _("during ext2fs_sync_device"));
- }
+ .c.o:
+ 	$(CC) -c $(ALL_CFLAGS) $< -o $@
++	$(CHECK_CMD) $(ALL_CFLAGS) $<
  
--static unsigned int test_ro (int dev, blk_t last_block,
--			     int block_size, blk_t first_block,
--			     unsigned int blocks_at_once)
-+static unsigned int test_ro(int dev, blk64_t last_block,
-+			    int block_size, blk64_t first_block,
-+			    unsigned int blocks_at_once)
- {
- 	unsigned char * blkbuf;
- 	int try;
- 	int got;
- 	unsigned int bb_count = 0;
- 	errcode_t errcode;
--	blk_t recover_block = ~0;
-+	blk64_t recover_block = ~0;
+ .SUFFIXES: .sgml .ps .pdf .html
  
- 	/* set up abend handler */
- 	capture_terminate(NULL);
-@@ -490,7 +490,7 @@ static unsigned int test_ro (int dev, blk_t last_block,
- 		exit (1);
- 	}
- 	do {
--		ext2fs_badblocks_list_iterate (bb_iter, &next_bad);
-+		ext2fs_badblocks_list_iterate2(bb_iter, &next_bad);
- 	} while (next_bad && next_bad < first_block);
+diff --git a/intl/Makefile.in b/intl/Makefile.in
+index 9dbc84e..bf24f63 100644
+--- a/intl/Makefile.in
++++ b/intl/Makefile.in
+@@ -191,6 +191,7 @@ LTV_AGE=4
+ .c.o:
+ 	$(E) "	CC $<"
+ 	$(Q) $(COMPILE) $<
++	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
  
- 	if (t_flag) {
-@@ -532,7 +532,8 @@ static unsigned int test_ro (int dev, blk_t last_block,
- 		if (next_bad) {
- 			if (currently_testing == next_bad) {
- 				/* fprintf (out, "%lu\n", nextbad); */
--				ext2fs_badblocks_list_iterate (bb_iter, &next_bad);
-+				ext2fs_badblocks_list_iterate2(bb_iter,
-+						&next_bad);
- 				currently_testing++;
- 				continue;
- 			}
-@@ -581,16 +582,16 @@ static unsigned int test_ro (int dev, blk_t last_block,
- 	return bb_count;
- }
+ .y.c:
+ 	$(YACC) $(YFLAGS) --output $@ $<
+diff --git a/lib/blkid/Makefile.in b/lib/blkid/Makefile.in
+index 0ec8564..3f15c67 100644
+--- a/lib/blkid/Makefile.in
++++ b/lib/blkid/Makefile.in
+@@ -55,6 +55,7 @@ DEPLIBS_BLKID=	$(DEPSTATIC_LIBBLKID) $(DEPSTATIC_LIBUUID)
+ .c.o:
+ 	$(E) "	CC $<"
+ 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
++	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
+ @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
+ @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
+ @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
+diff --git a/lib/e2p/Makefile.in b/lib/e2p/Makefile.in
+index e2d0940..d6992fc 100644
+--- a/lib/e2p/Makefile.in
++++ b/lib/e2p/Makefile.in
+@@ -55,6 +55,7 @@ BSDLIB_INSTALL_DIR = $(root_libdir)
+ .c.o:
+ 	$(E) "	CC $<"
+ 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
++	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
+ @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
+ @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
+ @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
+diff --git a/lib/et/Makefile.in b/lib/et/Makefile.in
+index 8d1ea26..fd4e6e2 100644
+--- a/lib/et/Makefile.in
++++ b/lib/et/Makefile.in
+@@ -43,6 +43,7 @@ BSDLIB_INSTALL_DIR = $(root_libdir)
+ .c.o:
+ 	$(E) "	CC $<"
+ 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
++	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
+ @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
+ @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
+ @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
+diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
+index dc7b0d1..e1e6216 100644
+--- a/lib/ext2fs/Makefile.in
++++ b/lib/ext2fs/Makefile.in
+@@ -202,6 +202,7 @@ all:: ext2fs.pc
+ .c.o:
+ 	$(E) "	CC $<"
+ 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
++	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
+ @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
+ @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
+ @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 847b33c..9fef6d3 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -64,14 +64,20 @@ extern "C" {
+ #include <ext2fs/ext3_extents.h>
+ #endif /* EXT2_FLAT_INCLUDES */
  
--static unsigned int test_rw (int dev, blk_t last_block,
--			     int block_size, blk_t first_block,
--			     unsigned int blocks_at_once)
-+static unsigned int test_rw(int dev, blk64_t last_block,
-+			    int block_size, blk64_t first_block,
-+			    unsigned int blocks_at_once)
- {
- 	unsigned char *buffer, *read_buffer;
- 	const unsigned int patterns[] = {0xaa, 0x55, 0xff, 0x00};
- 	const unsigned int *pattern;
- 	int i, try, got, nr_pattern, pat_idx;
- 	unsigned int bb_count = 0;
--	blk_t recover_block = ~0;
-+	blk64_t recover_block = ~0;
+-typedef __u32		ext2_ino_t;
+-typedef __u32		blk_t;
+-typedef __u64		blk64_t;
+-typedef __u32		dgrp_t;
+-typedef __u32		ext2_off_t;
+-typedef __u64		ext2_off64_t;
+-typedef __s64		e2_blkcnt_t;
+-typedef __u32		ext2_dirhash_t;
++#ifdef __CHECK_ENDIAN__
++#define __bitwise __attribute__((bitwise))
++#else
++#define __bitwise
++#endif
++
++typedef __u32 __bitwise		ext2_ino_t;
++typedef __u32 __bitwise		blk_t;
++typedef __u64 __bitwise		blk64_t;
++typedef __u32 __bitwise		dgrp_t;
++typedef __u32 __bitwise		ext2_off_t;
++typedef __u64 __bitwise		ext2_off64_t;
++typedef __s64 __bitwise		e2_blkcnt_t;
++typedef __u32 __bitwise		ext2_dirhash_t;
  
- 	/* set up abend handler */
- 	capture_terminate(NULL);
-@@ -716,13 +717,13 @@ static unsigned int test_rw (int dev, blk_t last_block,
- }
+ #if EXT2_FLAT_INCLUDES
+ #include "com_err.h"
+diff --git a/lib/quota/Makefile.in b/lib/quota/Makefile.in
+index 720befd..ec4f6c4 100644
+--- a/lib/quota/Makefile.in
++++ b/lib/quota/Makefile.in
+@@ -47,6 +47,7 @@ LIBDIR= quota
+ .c.o:
+ 	$(E) "	CC $<"
+ 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
++	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
+ @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
+ @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
+ #ELF_CMT#	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
+diff --git a/lib/ss/Makefile.in b/lib/ss/Makefile.in
+index c396f2d..1b23b38 100644
+--- a/lib/ss/Makefile.in
++++ b/lib/ss/Makefile.in
+@@ -34,6 +34,7 @@ MK_CMDS=_SS_DIR_OVERRIDE=. ./mk_cmds
+ .c.o:
+ 	$(E) "	CC $<"
+ 	$(Q) $(CC) $(ALL_CFLAGS) -c $<
++	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
+ @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
+ @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
+ @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -DSHARED_ELF_LIB -fPIC -o elfshared/$*.o -c $<
+diff --git a/lib/uuid/Makefile.in b/lib/uuid/Makefile.in
+index 7329467..14d08c1 100644
+--- a/lib/uuid/Makefile.in
++++ b/lib/uuid/Makefile.in
+@@ -62,6 +62,7 @@ BSDLIB_INSTALL_DIR = $(root_libdir)
+ .c.o:
+ 	$(E) "	CC $<"
+ 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
++	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
+ @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
+ @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
+ @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
+diff --git a/misc/Makefile.in b/misc/Makefile.in
+index 8a69855..a798f96 100644
+--- a/misc/Makefile.in
++++ b/misc/Makefile.in
+@@ -100,6 +100,7 @@ COMPILE_ET=$(top_builddir)/lib/et/compile_et --build-tree
+ .c.o:
+ 	$(E) "	CC $<"
+ 	$(Q) $(CC) -c $(ALL_CFLAGS) $< -o $@
++	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
+ @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
  
- struct saved_blk_record {
--	blk_t	block;
-+	blk64_t	block;
- 	int	num;
- };
+ all:: profiled $(SPROGS) $(UPROGS) $(USPROGS) $(SMANPAGES) $(UMANPAGES) \
+diff --git a/resize/Makefile.in b/resize/Makefile.in
+index a06b642..b8fb3ae 100644
+--- a/resize/Makefile.in
++++ b/resize/Makefile.in
+@@ -38,6 +38,7 @@ DEPSTATIC_LIBS= $(STATIC_LIBE2P) $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR)
+ .c.o:
+ 	$(E) "	CC $<"
+ 	$(Q) $(CC) -c $(ALL_CFLAGS) $< -o $@
++	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
  
--static unsigned int test_nd (int dev, blk_t last_block,
--			     int block_size, blk_t first_block,
--			     unsigned int blocks_at_once)
-+static unsigned int test_nd(int dev, blk64_t last_block,
-+			    int block_size, blk64_t first_block,
-+			    unsigned int blocks_at_once)
- {
- 	unsigned char *blkbuf, *save_ptr, *test_ptr, *read_ptr;
- 	unsigned char *test_base, *save_base, *read_base;
-@@ -731,7 +732,7 @@ static unsigned int test_nd (int dev, blk_t last_block,
- 	const unsigned int *pattern;
- 	int nr_pattern, pat_idx;
- 	int got, used2, written;
--	blk_t save_currently_testing;
-+	blk64_t save_currently_testing;
- 	struct saved_blk_record *test_record;
- 	/* This is static to prevent being clobbered by the longjmp */
- 	static int num_saved;
-@@ -740,7 +741,7 @@ static unsigned int test_nd (int dev, blk_t last_block,
- 	unsigned long buf_used;
- 	static unsigned int bb_count;
- 	unsigned int granularity = blocks_at_once;
--	blk_t recover_block = ~0U;
-+	blk64_t recover_block = ~0ULL;
+ all:: $(PROGS) $(TEST_PROGS) $(MANPAGES) 
  
- 	bb_count = 0;
- 	errcode = ext2fs_badblocks_list_iterate_begin(bb_list,&bb_iter);
-@@ -750,7 +751,7 @@ static unsigned int test_nd (int dev, blk_t last_block,
- 		exit (1);
- 	}
- 	do {
--		ext2fs_badblocks_list_iterate (bb_iter, &next_bad);
-+		ext2fs_badblocks_list_iterate2(bb_iter, &next_bad);
- 	} while (next_bad && next_bad < first_block);
+diff --git a/tests/progs/Makefile.in b/tests/progs/Makefile.in
+index e3c1ef4..37abf23 100644
+--- a/tests/progs/Makefile.in
++++ b/tests/progs/Makefile.in
+@@ -27,6 +27,7 @@ DEPLIBS= $(LIBEXT2FS) $(DEPLIBSS) $(DEPLIBCOM_ERR)
+ .c.o:
+ 	$(E) "	CC $<"
+ 	$(Q) $(CC) -c $(ALL_CFLAGS) $< -o $@
++	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
  
- 	blkbuf = allocate_buffer(3 * blocks_at_once * block_size);
-@@ -827,7 +828,8 @@ static unsigned int test_nd (int dev, blk_t last_block,
- 			if (next_bad) {
- 				if (currently_testing == next_bad) {
- 					/* fprintf (out, "%lu\n", nextbad); */
--					ext2fs_badblocks_list_iterate (bb_iter, &next_bad);
-+					ext2fs_badblocks_list_iterate2(bb_iter,
-+							&next_bad);
- 					currently_testing++;
- 					goto check_for_more;
- 				}
-@@ -1042,8 +1044,8 @@ int main (int argc, char ** argv)
- 	int dev;
- 	errcode_t errcode;
- 	unsigned int pattern;
--	unsigned int (*test_func)(int, blk_t,
--				  int, blk_t,
-+	unsigned int (*test_func)(int, blk64_t,
-+				  int, blk64_t,
- 				  unsigned int);
- 	int open_flag;
- 	long sysval;
-@@ -1262,14 +1264,14 @@ int main (int argc, char ** argv)
+ all:: $(PROGS)
  
- 	if (in) {
- 		for(;;) {
--			switch(fscanf (in, "%u\n", &next_bad)) {
-+			switch (fscanf(in, "%lluu\n", &next_bad)) {
- 				case 0:
- 					com_err (program_name, 0, "input file - bad format");
- 					exit (1);
- 				case EOF:
- 					break;
- 				default:
--					errcode = ext2fs_badblocks_list_add(bb_list,next_bad);
-+					errcode = ext2fs_badblocks_list_add2(bb_list, next_bad);
- 					if (errcode) {
- 						com_err (program_name, errcode, _("while adding to in-memory bad block list"));
- 						exit (1);
-@@ -1295,8 +1297,10 @@ int main (int argc, char ** argv)
+diff --git a/util/Makefile.in b/util/Makefile.in
+index adf0b46..76c3f88 100644
+--- a/util/Makefile.in
++++ b/util/Makefile.in
+@@ -16,6 +16,7 @@ SRCS = $(srcdir)/subst.c
+ .c.o:
+ 	$(E) "	CC $<"
+ 	$(Q) $(BUILD_CC) -c $(BUILD_CFLAGS) $< -o $@
++	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
  
- 		if (v_flag)
- 			fprintf(stderr,
--				_("Pass completed, %u bad blocks found. (%d/%d/%d errors)\n"),
--				bb_count, num_read_errors, num_write_errors, num_corruption_errors);
-+				_("Pass completed, %u bad blocks found. "
-+				  "(%llu/%llu/%llu errors)\n"),
-+				bb_count, num_read_errors, num_write_errors,
-+				num_corruption_errors);
- 
- 	} while (passes_clean < num_passes);
+ PROGS=		subst symlinks
  
 
