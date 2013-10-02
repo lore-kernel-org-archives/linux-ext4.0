@@ -1,64 +1,92 @@
-From: Benjamin LaHaise <bcrl@kvack.org>
-Subject: Re: [PATCH] ext4: add noorlov parameter to avoid spreading of directory inodes
-Date: Wed, 2 Oct 2013 12:52:10 -0400
-Message-ID: <20131002165210.GA16076@kvack.org>
-References: <20131001160817.GA2295@kvack.org> <20131002144759.GB32181@quack.suse.cz> <524C3574.7020106@redhat.com> <20131002153101.GE4353@kvack.org> <alpine.LFD.2.00.1310021838370.1924@localhost.localdomain>
+From: James Dingwall <james.dingwall@zynstra.com>
+Subject: Re: ext[234] data corruption (Linux 3.8, 3.9 / Xen)
+Date: Wed, 2 Oct 2013 17:51:54 +0100
+Message-ID: <524C4F2A.4010609@zynstra.com>
+References: <524314B3.3090000@zynstra.com> <5243E0C0.2090304@zynstra.com> <20130926191404.GB21811@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Eric Sandeen <sandeen@redhat.com>, Jan Kara <jack@suse.cz>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org
-To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kanga.kvack.org ([205.233.56.17]:58046 "EHLO kanga.kvack.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753810Ab3JBQwK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+Received: from mail-am1lp0016.outbound.protection.outlook.com ([213.199.154.16]:7367
+	"EHLO emea01-am1-obe.outbound.protection.outlook.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1753958Ab3JBQwK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 2 Oct 2013 12:52:10 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1310021838370.1924@localhost.localdomain>
+In-Reply-To: <20130926191404.GB21811@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 02, 2013 at 06:44:56PM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
-:
-> What is the frequency of unlink operation in comparison to file
-> creation ? There is a possible issue with the global goal cursors
-> s_mb_last_group and s_mb_last_start which might make your files
-> increasingly scattered across the disk. I've attempted to address
-> this problem with my patch
+Jan Kara wrote:
+>    Hello,
+>
+> On Thu 26-09-13 08:22:40, James Dingwall wrote:
+>>> Hi,
+>>>
+>>> We have observed a data corruption bug in a database created by
+>>> the postmap command (BDB file) under the following conditions:
+>>>
+>>> Xen domU guest kernel 3.8, 3.9 (3.5, 3.10, 3.11 don't show the
+>>> behaviour 3.6 and 3.7 are unknown)
+>>> dom0 Xen 4.2.1 / kernel 3.8 or Xen 4.3.0 / kernel 3.11
+>>> The guest has a passed through block device (phy:/ or file:/)
+>>> The filesytem on the passed through device is ext2/3/4 with a 1k
+>>> block size
+>    Thanks for report! So have you really tried with all three filesystems?
+> And don't you have EXT4_USE_FOR_EXT23 set by any chance? There were some
+> changes to ext4 writeback path and extent status tree. So for ext4 I could
+> understand the problem got introduced and fixed. But ext2/3 didn't see any
+> significant changes for a long time...
+EXT4_USE_FOR_EXT23 doesn't seem to be in use and it isn't listed in 
+/proc/config.gz, perhaps a parent option that would make it available 
+isn't set?
 
-unlink() is 1:1 with creation.  The storage on disk is essentially used=
-=20
-as an elastic buffer for the rest of the system.  That said, unlink() m=
-ay=20
-not occur for minutes, hours or days.
+# zgrep EXT[234] /proc/config.gz
+CONFIG_EXT2_FS=y
+CONFIG_EXT2_FS_XATTR=y
+CONFIG_EXT2_FS_POSIX_ACL=y
+CONFIG_EXT2_FS_SECURITY=y
+# CONFIG_EXT2_FS_XIP is not set
+CONFIG_EXT3_FS=y
+# CONFIG_EXT3_DEFAULTS_TO_ORDERED is not set
+CONFIG_EXT3_FS_XATTR=y
+CONFIG_EXT3_FS_POSIX_ACL=y
+CONFIG_EXT3_FS_SECURITY=y
+CONFIG_EXT4_FS=m
+CONFIG_EXT4_FS_POSIX_ACL=y
+CONFIG_EXT4_FS_SECURITY=y
+# CONFIG_EXT4_DEBUG is not set
 
-In terms of actual allocation pattern on disk, using fallocate() is=20
-sufficient to ensure that files on disk are usually limited to 1 extent=
-,=20
-and allocated immediately following each other.  Without fallocate(), I=
-=20
-was seeing allocations aligned to 2048 block boundaries for 9MB files,=20
-which hurt performance quite a bit.
+>>> By examining a strace of the postmap command we produced a short
+>>> piece of code (at the bottom) which demonstrates the problem.  If
+>>> this is executed in a loop such as:
+>>>
+>>> #!/bin/bash
+>>> for i in $(seq 1 5) ; do
+>>>         mount /dev/xvde1 /mnt
+>>>         pushd /mnt> /dev/null
+>>>         echo "checksums after mount"
+>>>         md5sum testcase.bin
+>>>         [ "${i}" = "1" ] && ./a.out
+>>>         echo "checksums before umount"
+>>>         md5sum testcase.bin
+>>>         popd> /dev/null
+>>>         umount /mnt
+>>> done
+>    I'll see if I can reproduce this to investigate.
+>
+> <snip output of script>
+>    Well, you can always use 'git bisect' to find the commit that fixed this.
+In the end it seemed that the problem was fixed in a 3.10 stable release 
+(I had originally tested with 3.10.10 which it may have been helpful to 
+mention:) as it does happen with a kernel built from tag v3.10.  
+Bisecting gives commit 7b2b160da7661bb2ade3f924b1bd3e3084e53341 (in 
+xen-blkfront.c) which solves the observed issue although the commit 
+message seems to indicate it is a resolution for a problem of a 
+different nature.  My knowledge of kernel internals isn't enough to 
+understand why this is the fix.  Since the commit applies cleanly to the 
+Ubuntu 3.8 LTS tree (where we found the original problem) we'll do some 
+testing and then open it as an Ubuntu bug if it looks good.
 
-> ext4: Try to better reuse recently freed space
->=20
-> What is the usual size of the files this application is creating ?
-
-It varies.  The target is 8MB, but it ranges from 5MB to 22MB.  In the=20
-worst case it can be as small as 4KB.
-
-		-ben
-
-> Thanks!
-> -Lukas
-
---=20
-"Thought is the essence of where you are now."
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+<snip test program>
