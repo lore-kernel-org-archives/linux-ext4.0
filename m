@@ -1,80 +1,163 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: add noorlov parameter to avoid spreading of
- directory inodes
-Date: Wed, 2 Oct 2013 19:09:16 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1310021907380.1924@localhost.localdomain>
-References: <20131001160817.GA2295@kvack.org> <20131002144759.GB32181@quack.suse.cz> <524C3574.7020106@redhat.com> <20131002153101.GE4353@kvack.org> <alpine.LFD.2.00.1310021838370.1924@localhost.localdomain> <20131002165210.GA16076@kvack.org>
+From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster-Mmb7MZpHnFY@public.gmane.org>
+Subject: Re: Issues with a rather unusual configured NFS server
+Date: Wed, 02 Oct 2013 22:29:47 +0200
+Message-ID: <524C823B.8020900@gmx.de>
+References: <52075E01.7030506@gmx.de> <20130812143640.GF4596@quack.suse.cz> <20130813215313.GH17781@fieldses.org> <20130827180655.GE14809@fieldses.org> <521E318C.7040401@gmx.de> <522B9010.8070902@gmx.de> <20130910140937.GD16011@fieldses.org> <523F21B5.2050305@gmx.de> <20130923174129.GA19720@fieldses.org>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-51958502-1380733759=:1924"
-Cc: Eric Sandeen <sandeen@redhat.com>, Jan Kara <jack@suse.cz>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org
-To: Benjamin LaHaise <bcrl@kvack.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:21152 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754510Ab3JBRJ0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 2 Oct 2013 13:09:26 -0400
-In-Reply-To: <20131002165210.GA16076@kvack.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
+	Linux NFS mailing list <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	"user-mode-linux-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org"
+	<user-mode-linux-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org>,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	Linux Kernel <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	"J. Bruce Fields" <bfields-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+To: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <20130923174129.GA19720-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+On 09/23/2013 07:41 PM, J. Bruce Fields wrote:
+> On Sun, Sep 22, 2013 at 06:58:29PM +0200, Toralf F=C3=B6rster wrote:
+>> On 09/10/2013 04:09 PM, J. Bruce Fields wrote:
+>>> On Sat, Sep 07, 2013 at 10:44:00PM +0200, Toralf F=C3=B6rster wrote=
+:
+>>>> Today I run latest git tree with a patched UML (this patch + one f=
+or xterm issues) and got 2 times a core dump
+>>>> when I fuzzy test an UML machine with a nearly identical scenario =
+as already described but just shutdowned
+>>>> both UML images instead of shooting one of it in the head.
+>>>
+>>> This is a slightly different test case, so for now it sounds like t=
+his
+>>> could be a preexisting problem, not a regression?
+>>>
+>> Yes, pre-existing. I'm trying to bisect it, the issue is already in =
+7d3107d.
+>>
+>> But every attempt to get the first bad commit before that commit id
+>> failed till now. I started many attempts between v3.10 and 7d3107d. =
+I
+>> could not reproduce that issue 100% in that interval. In that interv=
+al
+>> either all tested commits doesn't show the issue or the NFS client h=
+angs
+>> during the stop of NFS service infinitely - and counting that as a "=
+bad"
+>> commit doesn't work.
+>>
+>> FWIW a single test case currently takes 2 1/2 hour and even then I d=
+o
+>> not fully trust the result  (except for a bad commit, that's clear.
+>=20
+> Well, we should figure out some other way to narrow down the problem.=
+=2E..
+>=20
+> I was trying to at least work out where exactly this crash was, but I
+> don't have a commit 768c9d3.
+>=20
+> --b.
+>=20
 
---8323328-51958502-1380733759=:1924
-Content-Type: TEXT/PLAIN; charset=utf-8
-Content-Transfer-Encoding: 8BIT
+just for completeness of this thread, that issue could be bisected in
+the mean while :
 
-On Wed, 2 Oct 2013, Benjamin LaHaise wrote:
+http://thread.gmane.org/gmane.linux.kernel/1569818
 
-> Date: Wed, 2 Oct 2013 12:52:10 -0400
-> From: Benjamin LaHaise <bcrl@kvack.org>
-> To: Lukáš Czerner <lczerner@redhat.com>
-> Cc: Eric Sandeen <sandeen@redhat.com>, Jan Kara <jack@suse.cz>,
->     Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
->     linux-ext4@vger.kernel.org
-> Subject: Re: [PATCH] ext4: add noorlov parameter to avoid spreading of
->     directory inodes
-> 
-> On Wed, Oct 02, 2013 at 06:44:56PM +0200, Lukáš Czerner wrote:
-> > What is the frequency of unlink operation in comparison to file
-> > creation ? There is a possible issue with the global goal cursors
-> > s_mb_last_group and s_mb_last_start which might make your files
-> > increasingly scattered across the disk. I've attempted to address
-> > this problem with my patch
-> 
-> unlink() is 1:1 with creation.  The storage on disk is essentially used 
-> as an elastic buffer for the rest of the system.  That said, unlink() may 
-> not occur for minutes, hours or days.
-> 
-> In terms of actual allocation pattern on disk, using fallocate() is 
-> sufficient to ensure that files on disk are usually limited to 1 extent, 
-> and allocated immediately following each other.  Without fallocate(), I 
-> was seeing allocations aligned to 2048 block boundaries for 9MB files, 
-> which hurt performance quite a bit.
+>>
+>>
+>>> --b.
+>>>
+>>>>
+>>>> I'll probably need time to figure out a test case, but just as a p=
+re-info here's the back trace:
+>>>>
+>>>> tfoerste@n22 ~ $ gdb --core=3D/mnt/ramdisk/core /usr/local/bin/lin=
+ux-v3.11-7550-g768c9d3 -n -batch -ex bt
+>>>>
+>>>> warning: core file may not match specified executable file.
+>>>> [New LWP 7470]
+>>>> [New LWP 7479]
+>>>> [New LWP 7477]
+>>>> [New LWP 7478]
+>>>> Core was generated by `/usr/local/bin/linux-v3.11-7550-g768c9d3 ea=
+rlyprintk ubda=3D/home/tfoerste/virtua'.
+>>>> Program terminated with signal 6, Aborted.
+>>>> #0  0xb77be424 in __kernel_vsyscall ()
+>>>> #0  0xb77be424 in __kernel_vsyscall ()
+>>>> #1  0x083aada5 in kill ()
+>>>> #2  0x0807163d in uml_abort () at arch/um/os-Linux/util.c:93
+>>>> #3  0x08071925 in os_dump_core () at arch/um/os-Linux/util.c:138
+>>>> #4  0x080613a7 in panic_exit (self=3D0x85b1518 <panic_exit_notifie=
+r>, unused1=3D0, unused2=3D0x85e76e0 <buf.15920>) at arch/um/kernel/um_=
+arch.c:240
+>>>> #5  0x0809a398 in notifier_call_chain (nl=3D0x0, val=3D0, v=3D0x85=
+e76e0 <buf.15920>, nr_to_call=3D-2, nr_calls=3D0x0) at kernel/notifier.=
+c:93
+>>>> #6  0x0809a4e3 in __atomic_notifier_call_chain (nr_calls=3D<optimi=
+zed out>, nr_to_call=3D<optimized out>, v=3D<optimized out>, val=3D<opt=
+imized out>, nh=3D<optimized out>) at kernel/notifier.c:182
+>>>> #7  atomic_notifier_call_chain (nh=3D0x85e76c4 <panic_notifier_lis=
+t>, val=3D0, v=3D0x85e76e0 <buf.15920>) at kernel/notifier.c:191
+>>>> #8  0x08408628 in panic (fmt=3D0x0) at kernel/panic.c:128
+>>>> #9  0x081131c9 in shrink_dcache_for_umount_subtree (dentry=3D0x428=
+028f0) at fs/dcache.c:941
+>>>> #10 0x08113948 in shrink_dcache_for_umount (sb=3D0x463b8000) at fs=
+/dcache.c:1002
+>>>> #11 0x08101677 in generic_shutdown_super (sb=3D0x463b8000) at fs/s=
+uper.c:404
+>>>> #12 0x08102395 in kill_anon_super (sb=3D0x0) at fs/super.c:875
+>>>> #13 0x081d3ff8 in nfs_kill_super (s=3D0x0) at fs/nfs/super.c:2598
+>>>> #14 0x0810153a in deactivate_locked_super (s=3D0x463b8000) at fs/s=
+uper.c:294
+>>>> #15 0x081015d1 in deactivate_super (s=3D0x463b8000) at fs/super.c:=
+319
+>>>> #16 0x08119c0c in mntfree (mnt=3D<optimized out>) at fs/namespace.=
+c:891
+>>>> #17 mntput_no_expire (mnt=3D0x0) at fs/namespace.c:929
+>>>> #18 0x0811b195 in SYSC_umount (flags=3D<optimized out>, name=3D<op=
+timized out>) at fs/namespace.c:1335
+>>>> #19 SyS_umount (name=3D134633856, flags=3D2) at fs/namespace.c:130=
+5
+>>>> #20 0x080618e2 in handle_syscall (r=3D0x498be5d4) at arch/um/kerne=
+l/skas/syscall.c:35
+>>>> #21 0x08073c0d in handle_trap (local_using_sysemu=3D<optimized out=
+>, regs=3D<optimized out>, pid=3D<optimized out>) at arch/um/os-Linux/s=
+kas/process.c:198
+>>>> #22 userspace (regs=3D0x498be5d4) at arch/um/os-Linux/skas/process=
+=2Ec:431
+>>>> #23 0x0805e65c in fork_handler () at arch/um/kernel/process.c:160
+>>>> #24 0x00000000 in ?? ()
+>>>>
+>>>>
+>>>>
+>>>> --=20
+>>>> MfG/Sincerely
+>>>> Toralf F=C3=B6rster
+>>>> pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA=
+3
+>>>
+>>
+>>
+>> --=20
+>> MfG/Sincerely
+>> Toralf F=C3=B6rster
+>> pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs"=
+ in
+>> the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>=20
 
-I was not talking about internal file fragmentation but the actual
-files lying further from the ideal block group they should have been
-laid out.
 
-> 
-> > ext4: Try to better reuse recently freed space
-> > 
-> > What is the usual size of the files this application is creating ?
-> 
-> It varies.  The target is 8MB, but it ranges from 5MB to 22MB.  In the 
-> worst case it can be as small as 4KB.
-
-It means that you're indeed using stream allocation so this issue
-would affect you.
-
-> 
-> 		-ben
-> 
-> > Thanks!
-> > -Lukas
-> 
-> 
---8323328-51958502-1380733759=:1924--
+--=20
+MfG/Sincerely
+Toralf F=C3=B6rster
+pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
