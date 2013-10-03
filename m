@@ -1,163 +1,271 @@
-From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster-Mmb7MZpHnFY@public.gmane.org>
-Subject: Re: Issues with a rather unusual configured NFS server
-Date: Wed, 02 Oct 2013 22:29:47 +0200
-Message-ID: <524C823B.8020900@gmx.de>
-References: <52075E01.7030506@gmx.de> <20130812143640.GF4596@quack.suse.cz> <20130813215313.GH17781@fieldses.org> <20130827180655.GE14809@fieldses.org> <521E318C.7040401@gmx.de> <522B9010.8070902@gmx.de> <20130910140937.GD16011@fieldses.org> <523F21B5.2050305@gmx.de> <20130923174129.GA19720@fieldses.org>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH 2/2] fs/ext4/namei.c: reducing contention on
+ s_orphan_lock mmutex
+Date: Thu, 3 Oct 2013 10:05:26 +0800
+Message-ID: <20131003020526.GA22501@gmail.com>
+References: <1380728219-60784-1-git-send-email-tmac@hp.com>
+ <1380728219-60784-2-git-send-email-tmac@hp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
-	Linux NFS mailing list <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	"user-mode-linux-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org"
-	<user-mode-linux-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org>,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	Linux Kernel <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	"J. Bruce Fields" <bfields-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-To: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20130923174129.GA19720-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	aswin@hp.com, aswin_proj@lists.hp.com
+To: T Makphaibulchoke <tmac@hp.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1380728219-60784-2-git-send-email-tmac@hp.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 09/23/2013 07:41 PM, J. Bruce Fields wrote:
-> On Sun, Sep 22, 2013 at 06:58:29PM +0200, Toralf F=C3=B6rster wrote:
->> On 09/10/2013 04:09 PM, J. Bruce Fields wrote:
->>> On Sat, Sep 07, 2013 at 10:44:00PM +0200, Toralf F=C3=B6rster wrote=
-:
->>>> Today I run latest git tree with a patched UML (this patch + one f=
-or xterm issues) and got 2 times a core dump
->>>> when I fuzzy test an UML machine with a nearly identical scenario =
-as already described but just shutdowned
->>>> both UML images instead of shooting one of it in the head.
->>>
->>> This is a slightly different test case, so for now it sounds like t=
-his
->>> could be a preexisting problem, not a regression?
->>>
->> Yes, pre-existing. I'm trying to bisect it, the issue is already in =
-7d3107d.
->>
->> But every attempt to get the first bad commit before that commit id
->> failed till now. I started many attempts between v3.10 and 7d3107d. =
-I
->> could not reproduce that issue 100% in that interval. In that interv=
-al
->> either all tested commits doesn't show the issue or the NFS client h=
-angs
->> during the stop of NFS service infinitely - and counting that as a "=
-bad"
->> commit doesn't work.
->>
->> FWIW a single test case currently takes 2 1/2 hour and even then I d=
-o
->> not fully trust the result  (except for a bad commit, that's clear.
->=20
-> Well, we should figure out some other way to narrow down the problem.=
-=2E..
->=20
-> I was trying to at least work out where exactly this crash was, but I
-> don't have a commit 768c9d3.
->=20
-> --b.
->=20
+Hello,
 
-just for completeness of this thread, that issue could be bisected in
-the mean while :
+On Wed, Oct 02, 2013 at 09:36:59AM -0600, T Makphaibulchoke wrote:
+> Instead of using a single per super block mutex, s_orphan_lock, to serialize
+> all orphan list updates, a separate mutex and spinlock are used to
+> protect the on disk and in memory orphan lists respecvitely.
+> 
+> At the same time, a per inode mutex is used to serialize orphan list
+> updates of a single inode.
+> 
+> Signed-off-by: T. Makphaibulchoke <tmac@hp.com>
+> ---
+>  fs/ext4/namei.c | 139 ++++++++++++++++++++++++++++++++++++++++----------------
+>  1 file changed, 100 insertions(+), 39 deletions(-)
+> 
+> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> index 35f55a0..d7d3d0f 100644
+> --- a/fs/ext4/namei.c
+> +++ b/fs/ext4/namei.c
+> @@ -2554,12 +2554,24 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
+>  	struct super_block *sb = inode->i_sb;
+>  	struct ext4_iloc iloc;
+>  	int err = 0, rc;
+> +	struct ext4_inode_info *ext4_inode = EXT4_I(inode);
+> +	struct ext4_sb_info *ext4_sb = EXT4_SB(sb);
+> +	struct mutex *inode_orphan_mutex;
+> +	spinlock_t *orphan_lock;
+> +	struct mutex *ondisk_orphan_mutex;
+> +	struct list_head *prev;
+> +	unsigned int next_inum;
+> +	struct inode *next_inode;
+>  
+> -	if (!EXT4_SB(sb)->s_journal)
+> +	if (ext4_sb->s_journal)
+        ^^^^^^^^
+        typo: !ext4_sb->s_journal
+I am not sure whether or not this will impact the result because when
+journal is enabled the inode will not be added into orphan list.
 
-http://thread.gmane.org/gmane.linux.kernel/1569818
+Regards,
+                                                - Zheng
 
->>
->>
->>> --b.
->>>
->>>>
->>>> I'll probably need time to figure out a test case, but just as a p=
-re-info here's the back trace:
->>>>
->>>> tfoerste@n22 ~ $ gdb --core=3D/mnt/ramdisk/core /usr/local/bin/lin=
-ux-v3.11-7550-g768c9d3 -n -batch -ex bt
->>>>
->>>> warning: core file may not match specified executable file.
->>>> [New LWP 7470]
->>>> [New LWP 7479]
->>>> [New LWP 7477]
->>>> [New LWP 7478]
->>>> Core was generated by `/usr/local/bin/linux-v3.11-7550-g768c9d3 ea=
-rlyprintk ubda=3D/home/tfoerste/virtua'.
->>>> Program terminated with signal 6, Aborted.
->>>> #0  0xb77be424 in __kernel_vsyscall ()
->>>> #0  0xb77be424 in __kernel_vsyscall ()
->>>> #1  0x083aada5 in kill ()
->>>> #2  0x0807163d in uml_abort () at arch/um/os-Linux/util.c:93
->>>> #3  0x08071925 in os_dump_core () at arch/um/os-Linux/util.c:138
->>>> #4  0x080613a7 in panic_exit (self=3D0x85b1518 <panic_exit_notifie=
-r>, unused1=3D0, unused2=3D0x85e76e0 <buf.15920>) at arch/um/kernel/um_=
-arch.c:240
->>>> #5  0x0809a398 in notifier_call_chain (nl=3D0x0, val=3D0, v=3D0x85=
-e76e0 <buf.15920>, nr_to_call=3D-2, nr_calls=3D0x0) at kernel/notifier.=
-c:93
->>>> #6  0x0809a4e3 in __atomic_notifier_call_chain (nr_calls=3D<optimi=
-zed out>, nr_to_call=3D<optimized out>, v=3D<optimized out>, val=3D<opt=
-imized out>, nh=3D<optimized out>) at kernel/notifier.c:182
->>>> #7  atomic_notifier_call_chain (nh=3D0x85e76c4 <panic_notifier_lis=
-t>, val=3D0, v=3D0x85e76e0 <buf.15920>) at kernel/notifier.c:191
->>>> #8  0x08408628 in panic (fmt=3D0x0) at kernel/panic.c:128
->>>> #9  0x081131c9 in shrink_dcache_for_umount_subtree (dentry=3D0x428=
-028f0) at fs/dcache.c:941
->>>> #10 0x08113948 in shrink_dcache_for_umount (sb=3D0x463b8000) at fs=
-/dcache.c:1002
->>>> #11 0x08101677 in generic_shutdown_super (sb=3D0x463b8000) at fs/s=
-uper.c:404
->>>> #12 0x08102395 in kill_anon_super (sb=3D0x0) at fs/super.c:875
->>>> #13 0x081d3ff8 in nfs_kill_super (s=3D0x0) at fs/nfs/super.c:2598
->>>> #14 0x0810153a in deactivate_locked_super (s=3D0x463b8000) at fs/s=
-uper.c:294
->>>> #15 0x081015d1 in deactivate_super (s=3D0x463b8000) at fs/super.c:=
-319
->>>> #16 0x08119c0c in mntfree (mnt=3D<optimized out>) at fs/namespace.=
-c:891
->>>> #17 mntput_no_expire (mnt=3D0x0) at fs/namespace.c:929
->>>> #18 0x0811b195 in SYSC_umount (flags=3D<optimized out>, name=3D<op=
-timized out>) at fs/namespace.c:1335
->>>> #19 SyS_umount (name=3D134633856, flags=3D2) at fs/namespace.c:130=
-5
->>>> #20 0x080618e2 in handle_syscall (r=3D0x498be5d4) at arch/um/kerne=
-l/skas/syscall.c:35
->>>> #21 0x08073c0d in handle_trap (local_using_sysemu=3D<optimized out=
->, regs=3D<optimized out>, pid=3D<optimized out>) at arch/um/os-Linux/s=
-kas/process.c:198
->>>> #22 userspace (regs=3D0x498be5d4) at arch/um/os-Linux/skas/process=
-=2Ec:431
->>>> #23 0x0805e65c in fork_handler () at arch/um/kernel/process.c:160
->>>> #24 0x00000000 in ?? ()
->>>>
->>>>
->>>>
->>>> --=20
->>>> MfG/Sincerely
->>>> Toralf F=C3=B6rster
->>>> pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA=
-3
->>>
->>
->>
->> --=20
->> MfG/Sincerely
->> Toralf F=C3=B6rster
->> pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs"=
- in
->> the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->=20
-
-
---=20
-MfG/Sincerely
-Toralf F=C3=B6rster
-pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>  		return 0;
+>  
+> -	mutex_lock(&EXT4_SB(sb)->s_orphan_lock);
+> -	if (!list_empty(&EXT4_I(inode)->i_orphan))
+> +	inode_orphan_mutex = &ext4_inode->i_orphan_mutex;
+> +	orphan_lock = &ext4_sb->s_orphan_lock;
+> +	ondisk_orphan_mutex = &ext4_sb->s_ondisk_orphan_lock;
+> +	mutex_lock(inode_orphan_mutex);
+> +	prev = ext4_inode->i_orphan.prev;
+> +	if (prev != &ext4_inode->i_orphan)
+>  		goto out_unlock;
+>  
+>  	/*
+> @@ -2579,17 +2591,28 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
+>  	err = ext4_reserve_inode_write(handle, inode, &iloc);
+>  	if (err)
+>  		goto out_unlock;
+> +	mutex_lock(ondisk_orphan_mutex);
+>  	/*
+>  	 * Due to previous errors inode may be already a part of on-disk
+>  	 * orphan list. If so skip on-disk list modification.
+>  	 */
+>  	if (NEXT_ORPHAN(inode) && NEXT_ORPHAN(inode) <=
+> -		(le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count)))
+> +		(le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count))) {
+> +			mutex_unlock(ondisk_orphan_mutex);
+>  			goto mem_insert;
+> +	}
+>  
+>  	/* Insert this inode at the head of the on-disk orphan list... */
+> -	NEXT_ORPHAN(inode) = le32_to_cpu(EXT4_SB(sb)->s_es->s_last_orphan);
+> -	EXT4_SB(sb)->s_es->s_last_orphan = cpu_to_le32(inode->i_ino);
+> +	next_inum = le32_to_cpu(EXT4_SB(sb)->s_es->s_last_orphan);
+> +	NEXT_ORPHAN(inode) = next_inum;
+> +	next_inode = ilookup(sb, next_inum);
+> +	if (next_inode)
+> +		EXT4_I(next_inode)->i_prev_orphan = inode->i_ino;
+> +	ext4_sb->s_es->s_last_orphan = cpu_to_le32(inode->i_ino);
+> +	ext4_inode->i_prev_orphan = 0;
+> +	mutex_unlock(ondisk_orphan_mutex);
+> +	if (next_inode)
+> +		iput(next_inode);
+>  	err = ext4_handle_dirty_super(handle, sb);
+>  	rc = ext4_mark_iloc_dirty(handle, inode, &iloc);
+>  	if (!err)
+> @@ -2604,14 +2627,17 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
+>  	 * This is safe: on error we're going to ignore the orphan list
+>  	 * anyway on the next recovery. */
+>  mem_insert:
+> -	if (!err)
+> -		list_add(&EXT4_I(inode)->i_orphan, &EXT4_SB(sb)->s_orphan);
+> +	if (!err) {
+> +		spin_lock(orphan_lock);
+> +		list_add(&ext4_inode->i_orphan, &ext4_sb->s_orphan);
+> +		spin_unlock(orphan_lock);
+> +	}
+>  
+>  	jbd_debug(4, "superblock will point to %lu\n", inode->i_ino);
+>  	jbd_debug(4, "orphan inode %lu will point to %d\n",
+>  			inode->i_ino, NEXT_ORPHAN(inode));
+>  out_unlock:
+> -	mutex_unlock(&EXT4_SB(sb)->s_orphan_lock);
+> +	mutex_unlock(inode_orphan_mutex);
+>  	ext4_std_error(inode->i_sb, err);
+>  	return err;
+>  }
+> @@ -2624,71 +2650,106 @@ int ext4_orphan_del(handle_t *handle, struct inode *inode)
+>  {
+>  	struct list_head *prev;
+>  	struct ext4_inode_info *ei = EXT4_I(inode);
+> -	struct ext4_sb_info *sbi;
+> +	struct inode *i_next = NULL;
+> +	struct inode *i_prev = NULL;
+> +	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+>  	__u32 ino_next;
+> +	unsigned int ino_prev;
+>  	struct ext4_iloc iloc;
+>  	int err = 0;
+> +	struct mutex *inode_orphan_mutex;
+> +	spinlock_t *orphan_lock;
+> +	struct mutex *ondisk_orphan_mutex;
+>  
+> -	if ((!EXT4_SB(inode->i_sb)->s_journal) &&
+> -	    !(EXT4_SB(inode->i_sb)->s_mount_state & EXT4_ORPHAN_FS))
+> +	if ((!sbi->s_journal) &&
+> +	    !(sbi->s_mount_state & EXT4_ORPHAN_FS))
+>  		return 0;
+>  
+> -	mutex_lock(&EXT4_SB(inode->i_sb)->s_orphan_lock);
+> -	if (list_empty(&ei->i_orphan))
+> -		goto out;
+> -
+> -	ino_next = NEXT_ORPHAN(inode);
+> +	inode_orphan_mutex = &ei->i_orphan_mutex;
+> +	orphan_lock = &sbi->s_orphan_lock;
+> +	ondisk_orphan_mutex = &sbi->s_ondisk_orphan_lock;
+> +	mutex_lock(inode_orphan_mutex);
+>  	prev = ei->i_orphan.prev;
+> -	sbi = EXT4_SB(inode->i_sb);
+> +	if (prev == &ei->i_orphan) {
+> +		mutex_unlock(inode_orphan_mutex);
+> +		return err;
+> +	}
+>  
+>  	jbd_debug(4, "remove inode %lu from orphan list\n", inode->i_ino);
+>  
+> +	spin_lock(orphan_lock);
+>  	list_del_init(&ei->i_orphan);
+> +	spin_unlock(orphan_lock);
+>  
+>  	/* If we're on an error path, we may not have a valid
+>  	 * transaction handle with which to update the orphan list on
+>  	 * disk, but we still need to remove the inode from the linked
+>  	 * list in memory. */
+> -	if (!handle)
+> -		goto out;
+> +	if (!handle) {
+> +		mutex_unlock(inode_orphan_mutex);
+> +		return err;
+> +	}
+>  
+>  	err = ext4_reserve_inode_write(handle, inode, &iloc);
+> -	if (err)
+> +	if (err) {
+> +		mutex_unlock(inode_orphan_mutex);
+>  		goto out_err;
+> +	}
+>  
+> -	if (prev == &sbi->s_orphan) {
+> +	mutex_lock(ondisk_orphan_mutex);
+> +	ino_next = NEXT_ORPHAN(inode);
+> +	if (ino_next > 0) {
+> +		i_next = ilookup(inode->i_sb, ino_next);
+> +		assert(i_next);
+> +	}
+> +	ino_prev = ei->i_prev_orphan;
+> +	if (!ino_prev) {
+>  		jbd_debug(4, "superblock will point to %u\n", ino_next);
+>  		BUFFER_TRACE(sbi->s_sbh, "get_write_access");
+>  		err = ext4_journal_get_write_access(handle, sbi->s_sbh);
+> -		if (err)
+> -			goto out_brelse;
+> -		sbi->s_es->s_last_orphan = cpu_to_le32(ino_next);
+> -		err = ext4_handle_dirty_super(handle, inode->i_sb);
+> +		if (!err) {
+> +			sbi->s_es->s_last_orphan = cpu_to_le32(ino_next);
+> +			if (i_next)
+> +				EXT4_I(i_next)->i_prev_orphan = 0;
+> +		}
+> +		mutex_unlock(ondisk_orphan_mutex);
+> +		if (!err)
+> +			err = ext4_handle_dirty_super(handle, inode->i_sb);
+>  	} else {
+>  		struct ext4_iloc iloc2;
+> -		struct inode *i_prev =
+> -			&list_entry(prev, struct ext4_inode_info, i_orphan)->vfs_inode;
+> -
+> -		jbd_debug(4, "orphan inode %lu will point to %u\n",
+> -			  i_prev->i_ino, ino_next);
+> -		err = ext4_reserve_inode_write(handle, i_prev, &iloc2);
+> -		if (err)
+> -			goto out_brelse;
+> -		NEXT_ORPHAN(i_prev) = ino_next;
+> -		err = ext4_mark_iloc_dirty(handle, i_prev, &iloc2);
+> +		i_prev = ilookup(inode->i_sb, ino_prev);
+> +
+> +		assert(i_prev);
+> +		if (i_prev) {
+> +			jbd_debug(4, "orphan inode %lu will point to %u\n",
+> +				i_prev->i_ino, ino_next);
+> +			err = ext4_reserve_inode_write(handle, i_prev, &iloc2);
+> +		} else
+> +			err = -ENOENT;
+> +		if (!err) {
+> +			NEXT_ORPHAN(i_prev) = ino_next;
+> +			if (i_next)
+> +				EXT4_I(i_next)->i_prev_orphan = ino_prev;
+> +		}
+> +		mutex_unlock(ondisk_orphan_mutex);
+> +		if (i_prev && !err)
+> +			err = ext4_mark_iloc_dirty(handle, i_prev, &iloc2);
+>  	}
+>  	if (err)
+>  		goto out_brelse;
+>  	NEXT_ORPHAN(inode) = 0;
+> +	mutex_unlock(inode_orphan_mutex);
+>  	err = ext4_mark_iloc_dirty(handle, inode, &iloc);
+> -
+>  out_err:
+> +	if (i_next)
+> +		iput(i_next);
+> +	if (i_prev)
+> +		iput(i_prev);
+>  	ext4_std_error(inode->i_sb, err);
+> -out:
+> -	mutex_unlock(&EXT4_SB(inode->i_sb)->s_orphan_lock);
+>  	return err;
+>  
+>  out_brelse:
+> +	mutex_unlock(inode_orphan_mutex);
+>  	brelse(iloc.bh);
+>  	goto out_err;
+>  }
+> -- 
+> 1.7.11.3
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
