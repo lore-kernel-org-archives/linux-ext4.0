@@ -1,45 +1,89 @@
-From: Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>
-Subject: Re: [PATCH 0/2] fs/ext4: increase parallelism in updating ext4 orphan
- list
-Date: Thu, 03 Oct 2013 17:20:17 -0600
-Message-ID: <524DFBB1.5010101@hp.com>
-References: <y> <1380728283-61038-1-git-send-email-tmac@hp.com> <117221D9-7634-4131-95C2-7527C20F1F62@dilger.ca>
+From: Carlos Maiolino <cmaiolino@redhat.com>
+Subject: Re: ext4_wait_block_bitmap() and ext4_read_block_bitmap_nowait()
+ handle bitmap verification differently
+Date: Fri, 4 Oct 2013 11:04:08 -0300
+Message-ID: <20131004140407.GA1348@orion.maiolino.org>
+References: <CAGW2f1HsP1s+Avuiietg1BqqNeEJJ8g1MOgxHnx-8hqK57QG7Q@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: T Makphaibulchoke <tmac@hp.com>, Theodore Ts'o <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	aswin@hp.com
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <117221D9-7634-4131-95C2-7527C20F1F62@dilger.ca>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+To: "linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:2713 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754319Ab3JDOEN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 4 Oct 2013 10:04:13 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r94E4C9L002898
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Fri, 4 Oct 2013 10:04:13 -0400
+Received: from orion.maiolino.org (ovpn-113-147.phx2.redhat.com [10.3.113.147])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id r94E490h019278
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Fri, 4 Oct 2013 10:04:11 -0400
+Content-Disposition: inline
+In-Reply-To: <CAGW2f1HsP1s+Avuiietg1BqqNeEJJ8g1MOgxHnx-8hqK57QG7Q@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 10/03/2013 06:28 PM, Andreas Dilger wrote:
-> 
-> It would also be possible to have a completely contention-free orphan
-> inode list by only generating the on-disk orphan linked list in a
-> pre-commit callback hook from an efficient in-memory list.  That would
-> allow the common "add to orphan list; do something; remove from list"
-> operations within a single transaction to run with minimal contention,
-> and only the few rare cases of operations that exceed the lifetime of
-> a single transaction would need to modify the on-disk list.
-> 
-> For example, a per-cpu list would be quite efficient, or a hash table.
-> Then, a jbd2 callback run before the transaction commits could modify
-> the requisite inodes and superblock.  All of those inodes are already
-> (by definition) part of the transaction, so it won't add new buffers
-> of the transaction.
-> 
-> I'm not necessarily against the current patch, just thinking aloud about
-> how it might be improved further.
-> 
-> Cheers, Andreas
-> 
+Hi,
 
-Thanks again for the suggestion.  I'll rework this patch first and look into this possibility next.
+looks like that, with this patch, ext4_read_block_bitmap_nowait() might sleep in
+wait_on_buffer() called from ext4_wait_block_bitmap(), which is not really the
+intention of ext4_read_block_bitmap_nowait().
 
-Thanks,
-Mak.
+Am I wrong here or this might really happen?
+
+
+On Thu, Oct 03, 2013 at 10:45:06PM -0400, jon ernst wrote:
+> Hi,
+> 
+> I found that ext4_wait_block_bitmap() and
+> ext4_read_block_bitmap_nowait() handle bitmap verification
+> differently.
+> wait_block_bitmap() calls ext4_validate_block_bitmap() all the time.
+> But  read_block_bitmap_nowait() checks EXT4_BG_BLOCK_UNINIT, if it
+> meets, it will skip ext4_validate_block_bitmap()
+> 
+> In my opinion, they'd better do same thing.
+> In that way, we can also return "fail" in ext4_valid_block_bitmap()
+> method when we meet FLEX_BG.
+> 
+> 
+> 
+> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+> index dc5d572..366807a 100644
+> --- a/fs/ext4/balloc.c
+> +++ b/fs/ext4/balloc.c
+> @@ -319,7 +319,7 @@ static ext4_fsblk_t ext4_valid_block_bitmap(struct
+> super_block *sb,
+>                  * or it has to also read the block group where the bitmaps
+>                  * are located to verify they are set.
+>                  */
+> -               return 0;
+> +               return 1;
+>         }
+>         group_first_block = ext4_group_first_block_no(sb, block_group);
+> 
+> @@ -472,8 +472,12 @@ int ext4_wait_block_bitmap(struct super_block
+> *sb, ext4_group_t block_group,
+>                 return 1;
+>         }
+>         clear_buffer_new(bh);
+> -       /* Panic or remount fs read-only if block bitmap is invalid */
+> -       ext4_validate_block_bitmap(sb, desc, block_group, bh);
+> +
+> +       if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+> +        return 0;
+> +        }
+> +       /* Panic or remount fs read-only if block bitmap is invalid */
+> +       ext4_validate_block_bitmap(sb, desc, block_group, bh);
+>         /* ...but check for error just in case errors=continue. */
+>         return !buffer_verified(bh);
+>  }
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Carlos
