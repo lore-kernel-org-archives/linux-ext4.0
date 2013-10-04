@@ -1,127 +1,122 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 0/2] fs/ext4: increase parallelism in updating ext4 orphan list
-Date: Thu, 3 Oct 2013 18:28:10 -0600
-Message-ID: <117221D9-7634-4131-95C2-7527C20F1F62@dilger.ca>
-References: <y> <1380728283-61038-1-git-send-email-tmac@hp.com>
+Subject: Re: [PATCH 1/2] fs/ext4: adding and initalizing new members of ext4_inode_info and ext4_sb_info
+Date: Thu, 3 Oct 2013 18:37:14 -0600
+Message-ID: <94F53E8F-6D99-4747-97A9-4FB60DD2BED2@dilger.ca>
+References: <1380728219-60784-1-git-send-email-tmac@hp.com>
 Mime-Version: 1.0 (Apple Message framework v1085)
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 8BIT
-Cc: Theodore Ts'o <tytso@mit.edu>,
+Cc: Theodore Ts'o <tytso@mit.edu>, adilger.kernel@dilger.ca,
 	"linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>,
 	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
 	aswin@hp.com
 To: T Makphaibulchoke <tmac@hp.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f174.google.com ([209.85.192.174]:36913 "EHLO
-	mail-pd0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751374Ab3JDA2N convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Oct 2013 20:28:13 -0400
-Received: by mail-pd0-f174.google.com with SMTP id y13so3204375pdi.19
-        for <linux-ext4@vger.kernel.org>; Thu, 03 Oct 2013 17:28:12 -0700 (PDT)
-In-Reply-To: <1380728283-61038-1-git-send-email-tmac@hp.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1380728219-60784-1-git-send-email-tmac@hp.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2013-10-02, at 9:38 AM, T Makphaibulchoke wrote:
-> Instead of allowing only a single atomic update (both in memory and on disk
-> orphan lists) of an ext4's orphan list via the s_orphan_lock mutex, this patch allows multiple updates of the orphan list, while still maintaing the
-> integrity of both the in memory and on disk orphan lists of each update.
-> 
-> This is accomplished by using a per inode mutex to serialize the oprhan
-> list update of a single inode, and a mutex and a spinlock to serailize
-> the on disk and in memory orphan list respectively.
+On 2013-10-02, at 9:36 AM, T Makphaibulchoke wrote:
+> Adding new members, i_prev_oprhan to help decoupling the ondisk from the
+> in memory orphan list and i_mutex_orphan_mutex to serialize orphan list
+> updates on a single inode, to the ext4_inode_info structure.
 
-It would also be possible to have a completely contention-free orphan
-inode list by only generating the on-disk orphan linked list in a
-pre-commit callback hook from an efficient in-memory list.  That would
-allow the common "add to orphan list; do something; remove from list"
-operations within a single transaction to run with minimal contention,
-and only the few rare cases of operations that exceed the lifetime of
-a single transaction would need to modify the on-disk list.
+What do these additional fields do to the size of struct ext4_inode_info?
+I recall that Ted did a bunch of work to shrink this enough to fit nicely
+into a slab, and it would be a shame to increase the inode size to overflow
+the current packing and increase per-inode memory usage by 25-33%, for an
+improvement that is only noticeable on a 90-core machine.
 
-For example, a per-cpu list would be quite efficient, or a hash table.
-Then, a jbd2 callback run before the transaction commits could modify
-the requisite inodes and superblock.  All of those inodes are already
-(by definition) part of the transaction, so it won't add new buffers
-of the transaction.
+Is there another lock that could be shared for this that is unlikely to
+cause much contention?
 
-I'm not necessarily against the current patch, just thinking aloud about
-how it might be improved further.
+Also, it isn't clear to me why this patch is separate from 2/2, because
+all it does is add fields that are not used for anything.  I don't think
+the 8 lines of code here are so complex that they can't be part of the
+same patch that is actually using them.
 
 Cheers, Andreas
 
-> Here are some of the becnhmark results with the changes.
+> Adding a new member, s_ondisk_oprhan_lock to protect the ondisk orphan list
+> and change s_orphan_lock from mutex to spinlock in the ext4_sb_info
+> structure in fs/ext4/inode.c.
 > 
-> On a 90 core machine:
+> Adding code to initialize newly added spinlock and mutex members in
+> fs/ext4/super.c.
 > 
-> Here are the performance improvements in some of the aim7 workloads,
+> Adding code to initialize the newly added i_orphan_mutex member of an
+> ext4_inode_info
 > 
-> ---------------------------
-> |             | % increase |
-> ---------------------------
-> | alltests    |      9.56  |
-> ---------------------------
-> | custom      |     12.20  |
-> ---------------------------
-> | fserver     |     15.99  |
-> ---------------------------
-> | new_dbase   |      1.73  |
-> ---------------------------
-> | new_fserver |     17.56  |
-> ---------------------------
-> | shared      |      6.24  |
-> ---------------------------
-> For Swingbench dss workload,
+> Signed-off-by: T. Makphaibulchoke <tmac@hp.com>
+> ---
+> fs/ext4/ext4.h  | 5 ++++-
+> fs/ext4/inode.c | 1 +
+> fs/ext4/super.c | 4 +++-
+> 3 files changed, 8 insertions(+), 2 deletions(-)
 > 
-> -------------------------------------------------------------------------
-> | Users         | 100  | 200  | 300  | 400  | 500  | 600  | 700  | 800  |
-> -------------------------------------------------------------------------
-> | % imprvoment  | 7.67 | 9.43 | 7.30 | 0.58 | 0.53 |-2.62 |-3.72 | 3.77 |
-> | without using |      |      |      |      |      |      |      |      |
-> | shared memory |      |      |      |      |      |      |      |      |
-> -------------------------------------------------------------------------
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index b577e45..1b1232f 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -817,6 +817,7 @@ struct ext4_inode_info {
+> 	struct rw_semaphore xattr_sem;
 > 
-> On a 8 core machine:
+> 	struct list_head i_orphan;	/* unlinked but open inodes */
+> +	struct mutex i_orphan_mutex;
 > 
-> Here are the performance date from some of the aim7 workloads,
+> 	/*
+> 	 * i_disksize keeps track of what the inode size is ON DISK, not
+> @@ -864,6 +865,7 @@ struct ext4_inode_info {
+> 	rwlock_t i_es_lock;
+> 	struct list_head i_es_lru;
+> 	unsigned int i_es_lru_nr;	/* protected by i_es_lock */
+> +	unsigned int i_prev_orphan;	/* protected by s_ondisk_orphan_lock */
+> 	unsigned long i_touch_when;	/* jiffies of last accessing */
 > 
-> ---------------------------
-> |             | % increase |
-> ---------------------------
-> | alltests    |      3.90  |
-> ---------------------------
-> | custom      |      1.66  |
-> ---------------------------
-> | dbase       |     -2.00  |
-> ---------------------------
-> | fserver     |      1.80  |
-> ---------------------------
-> | new_dbase   |     -1.90  |
-> ---------------------------
-> | new_fserver |      2.18  |
-> ---------------------------
-> | shared      |      7.46  |
-> ---------------------------
-> For Swingbench dss workload,
+> 	/* ialloc */
+> @@ -1201,7 +1203,8 @@ struct ext4_sb_info {
+> 	/* Journaling */
+> 	struct journal_s *s_journal;
+> 	struct list_head s_orphan;
+> -	struct mutex s_orphan_lock;
+> +	spinlock_t s_orphan_lock;
+> +	struct mutex s_ondisk_orphan_lock;
+> 	unsigned long s_resize_flags;		/* Flags indicating if there
+> 						   is a resizer */
+> 	unsigned long s_commit_interval;
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index dd32a2e..3edb108 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -4061,6 +4061,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+> 	for (block = 0; block < EXT4_N_BLOCKS; block++)
+> 		ei->i_data[block] = raw_inode->i_block[block];
+> 	INIT_LIST_HEAD(&ei->i_orphan);
+> +	mutex_init(&ei->i_orphan_mutex);
 > 
-> -------------------------------------------------------------------------
-> | Users         | 100  | 200  | 300  | 400  | 500  | 600  | 700  | 800  |
-> -------------------------------------------------------------------------
-> | % imprvoment  |-1.32 | 6.45 | 1.18 |-3.13 |-1.13 | 4.68 | 5.75 |-0.37 |
-> | without using |      |      |      |      |      |      |      |      |
-> | shared memory |      |      |      |      |      |      |      |      |
-> -------------------------------------------------------------------------
+> 	/*
+> 	 * Set transaction id's of transactions that have to be committed
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 36b141e..2fecd19 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -920,6 +920,7 @@ static void init_once(void *foo)
+> 	struct ext4_inode_info *ei = (struct ext4_inode_info *) foo;
 > 
-> T Makphaibulchoke (2):
->  fs/ext4: adding and initalizing new members of ext4_inode_info and
->    ext4_sb_info
->  fs/ext4/namei.c: reducing contention on s_orphan_lock mmutex
+> 	INIT_LIST_HEAD(&ei->i_orphan);
+> +	mutex_init(&ei->i_orphan_mutex);
+> 	init_rwsem(&ei->xattr_sem);
+> 	init_rwsem(&ei->i_data_sem);
+> 	inode_init_once(&ei->vfs_inode);
+> @@ -3841,7 +3842,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+> 	memcpy(sb->s_uuid, es->s_uuid, sizeof(es->s_uuid));
 > 
-> fs/ext4/ext4.h  |   5 +-
-> fs/ext4/inode.c |   1 +
-> fs/ext4/namei.c | 139 ++++++++++++++++++++++++++++++++++++++++----------------
-> fs/ext4/super.c |   4 +-
-> 4 files changed, 108 insertions(+), 41 deletions(-)
+> 	INIT_LIST_HEAD(&sbi->s_orphan); /* unlinked but open files */
+> -	mutex_init(&sbi->s_orphan_lock);
+> +	spin_lock_init(&sbi->s_orphan_lock);
+> +	mutex_init(&sbi->s_ondisk_orphan_lock);
+> 
+> 	sb->s_root = NULL;
 > 
 > -- 
 > 1.7.11.3
@@ -129,8 +124,3 @@ Cheers, Andreas
 
 
 Cheers, Andreas
-
-
-
-
-
