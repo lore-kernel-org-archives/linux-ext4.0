@@ -1,159 +1,202 @@
 From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: ext4_wait_block_bitmap() and ext4_read_block_bitmap_nowait()
- handle bitmap verification differently
-Date: Mon, 7 Oct 2013 16:11:47 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1310071605020.1975@localhost.localdomain>
-References: <CAGW2f1HsP1s+Avuiietg1BqqNeEJJ8g1MOgxHnx-8hqK57QG7Q@mail.gmail.com> <alpine.LFD.2.00.1310071358400.1975@localhost.localdomain> <CAGW2f1G1=LE4B-BtT5oZidfW0SUO9rgN0dsKY4tLD2nLNFsYUQ@mail.gmail.com>
+Subject: Re: [PATCH 14/31] libext2fs: Fix ext2fs_open2() truncation of the
+ superblock parameter
+Date: Mon, 7 Oct 2013 16:30:39 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1310071626420.7011@localhost.localdomain>
+References: <20131001012642.28415.89353.stgit@birch.djwong.org> <20131001012812.28415.49840.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-642098078-1381155110=:1975"
-Cc: "linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>
-To: jon ernst <jonernst07@gmail.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:61935 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:57005 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754532Ab3JGOLv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 7 Oct 2013 10:11:51 -0400
-In-Reply-To: <CAGW2f1G1=LE4B-BtT5oZidfW0SUO9rgN0dsKY4tLD2nLNFsYUQ@mail.gmail.com>
+	id S1753401Ab3JGOas (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 7 Oct 2013 10:30:48 -0400
+In-Reply-To: <20131001012812.28415.49840.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+On Mon, 30 Sep 2013, Darrick J. Wong wrote:
 
---8323328-642098078-1381155110=:1975
-Content-Type: TEXT/PLAIN; charset=UTF-8
-Content-Transfer-Encoding: 8BIT
-
-On Mon, 7 Oct 2013, jon ernst wrote:
-
-> Date: Mon, 7 Oct 2013 10:03:55 -0400
-> From: jon ernst <jonernst07@gmail.com>
-> To: Lukáš Czerner <lczerner@redhat.com>
-> Cc: "linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>
-> Subject: Re: ext4_wait_block_bitmap() and ext4_read_block_bitmap_nowait()
->     handle bitmap verification differently
+> Date: Mon, 30 Sep 2013 18:28:12 -0700
+> From: Darrick J. Wong <darrick.wong@oracle.com>
+> To: tytso@mit.edu, darrick.wong@oracle.com
+> Cc: linux-ext4@vger.kernel.org
+> Subject: [PATCH 14/31] libext2fs: Fix ext2fs_open2() truncation of the
+>     superblock parameter
 > 
-> On Mon, Oct 7, 2013 at 8:45 AM, Lukáš Czerner <lczerner@redhat.com> wrote:
-> > On Thu, 3 Oct 2013, jon ernst wrote:
-> >
-> >> Date: Thu, 3 Oct 2013 22:45:06 -0400
-> >> From: jon ernst <jonernst07@gmail.com>
-> >> To: "linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>
-> >> Subject: ext4_wait_block_bitmap() and ext4_read_block_bitmap_nowait() handle
-> >>     bitmap verification differently
-> >>
-> >> Hi,
-> >
-> > Hi Jon,
-> >
-> > Btw the patch has some issues and it seems to be badly formatted, or
-> > even corrupted. You're also missing some Signed-off-by line and the
-> > subject is not good either. Please see
-> > Documentation/SubmittingPatches, use git to create patches and use
-> > email client which does not automatically wrap your lines.
-> 
-> Thanks for your instruction. I will pay attention.
-> >
-> >>
-> >> I found that ext4_wait_block_bitmap() and
-> >> ext4_read_block_bitmap_nowait() handle bitmap verification
-> >> differently.
-> >> wait_block_bitmap() calls ext4_validate_block_bitmap() all the time.
-> >> But  read_block_bitmap_nowait() checks EXT4_BG_BLOCK_UNINIT, if it
-> >> meets, it will skip ext4_validate_block_bitmap()
-> >>
-> >> In my opinion, they'd better do same thing.
-> >
-> > Why ?
-> >
-> >> In that way, we can also return "fail" in ext4_valid_block_bitmap()
-> >> method when we meet FLEX_BG.
-> >
-> > This does not make sense at all. Why do you suggest that we should
-> > "fail" in the case that we have FLEG_BG feature enabled (which is
-> > default btw) ?
-> >
-> 
-> I was thinking when we have FLEG_BG feature enabled, we actually don't
-> have valid bitmap in that block. So semantically , we don't have valid
-> block bitmap there.
+> Since it's possible for very large filesystems to store backup superblocks at
+> very large (> 2^32) block numbers, we need to be able to handle the case of a
+> caller directing us to read one of these high-numbered backups.
 
-Well, yes. We do not have a valid bitmap simply because the bitmap
-may not be there in the first place. And if there is no bitmap it
-can not be invalid. So in the case there may be no bitmap we just
-skip this one. I think that the comment in the code explains quite
-well why we return 0, so I do not think there is a problem which
-needs fixing.
+I do not think this is enough, because in ext2fs_open2() or rather
+ext2fs_open3() as you rename it we read the superblock block with
+io_channel_read_blk() which takes unsigned long as a block number
+rather than io_channel_read_blk64().
 
-Also this patch looks entirely untested. You can always use xfstests
-on the ext4 file system with your changes to make sure that it does
-not break anything.
+Having a simple test for this particular case might be useful.
 
 Thanks!
 -Lukas
 
+
+
 > 
-> >>
-> >>
-> >>
-> >> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-> >> index dc5d572..366807a 100644
-> >> --- a/fs/ext4/balloc.c
-> >> +++ b/fs/ext4/balloc.c
-> >> @@ -319,7 +319,7 @@ static ext4_fsblk_t ext4_valid_block_bitmap(struct
-> >> super_block *sb,
-> >>                  * or it has to also read the block group where the bitmaps
-> >>                  * are located to verify they are set.
-> >>                  */
-> >> -               return 0;
-> >> +               return 1;
-> >>         }
-> >>         group_first_block = ext4_group_first_block_no(sb, block_group);
-> >>
-> >> @@ -472,8 +472,12 @@ int ext4_wait_block_bitmap(struct super_block
-> >> *sb, ext4_group_t block_group,
-> >>                 return 1;
-> >>         }
-> >>         clear_buffer_new(bh);
-> >> -       /* Panic or remount fs read-only if block bitmap is invalid */
-> >> -       ext4_validate_block_bitmap(sb, desc, block_group, bh);
-> >> +
-> >> +       if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
-> >> +        return 0;
-> >
-> > This is wrong from multiple reasons. First of all you're not holding
-> > group lock so what is preventing others to actually initialize the
-> > bitmap before you return 0 ?
-> >
-> Got it.
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> ---
+>  debugfs/debugfs.c   |    4 ++--
+>  e2fsck/journal.c    |    6 +++---
+>  e2fsck/unix.c       |    8 ++++----
+>  lib/ext2fs/ext2fs.h |    4 ++++
+>  lib/ext2fs/openfs.c |   13 +++++++++++--
+>  misc/dumpe2fs.c     |    4 ++--
+>  6 files changed, 26 insertions(+), 13 deletions(-)
 > 
-> > Secondly, uninit group will never get that far, because it'll be
-> > initialized in ext4_read_block_bitmap_nowait() and we will not
-> > actually need to wait for the buffer.
-> >
 > 
-> Thank you! Very helpful information.
+> diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+> index 2660218..da44ce4 100644
+> --- a/debugfs/debugfs.c
+> +++ b/debugfs/debugfs.c
+> @@ -80,8 +80,8 @@ static void open_filesystem(char *device, int open_flags, blk64_t superblock,
+>  	if (catastrophic)
+>  		open_flags |= EXT2_FLAG_SKIP_MMP;
+>  
+> -	retval = ext2fs_open(device, open_flags, superblock, blocksize,
+> -			     unix_io_manager, &current_fs);
+> +	retval = ext2fs_open3(device, NULL, open_flags, superblock, blocksize,
+> +			      unix_io_manager, &current_fs);
+>  	if (retval) {
+>  		com_err(device, retval, "while opening filesystem");
+>  		current_fs = NULL;
+> diff --git a/e2fsck/journal.c b/e2fsck/journal.c
+> index 2509303..af35a38 100644
+> --- a/e2fsck/journal.c
+> +++ b/e2fsck/journal.c
+> @@ -967,9 +967,9 @@ int e2fsck_run_ext3_journal(e2fsck_t ctx)
+>  
+>  	ext2fs_mmp_stop(ctx->fs);
+>  	ext2fs_free(ctx->fs);
+> -	retval = ext2fs_open(ctx->filesystem_name, EXT2_FLAG_RW,
+> -			     ctx->superblock, blocksize, io_ptr,
+> -			     &ctx->fs);
+> +	retval = ext2fs_open3(ctx->filesystem_name, NULL, EXT2_FLAG_RW,
+> +			      ctx->superblock, blocksize, io_ptr,
+> +			      &ctx->fs);
+>  	if (retval) {
+>  		com_err(ctx->program_name, retval,
+>  			_("while trying to re-open %s"),
+> diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+> index 0546653..fb41ca0 100644
+> --- a/e2fsck/unix.c
+> +++ b/e2fsck/unix.c
+> @@ -1040,7 +1040,7 @@ static errcode_t try_open_fs(e2fsck_t ctx, int flags, io_manager io_ptr,
+>  
+>  	*ret_fs = NULL;
+>  	if (ctx->superblock && ctx->blocksize) {
+> -		retval = ext2fs_open2(ctx->filesystem_name, ctx->io_options,
+> +		retval = ext2fs_open3(ctx->filesystem_name, ctx->io_options,
+>  				      flags, ctx->superblock, ctx->blocksize,
+>  				      io_ptr, ret_fs);
+>  	} else if (ctx->superblock) {
+> @@ -1051,7 +1051,7 @@ static errcode_t try_open_fs(e2fsck_t ctx, int flags, io_manager io_ptr,
+>  				ext2fs_free(*ret_fs);
+>  				*ret_fs = NULL;
+>  			}
+> -			retval = ext2fs_open2(ctx->filesystem_name,
+> +			retval = ext2fs_open3(ctx->filesystem_name,
+>  					      ctx->io_options, flags,
+>  					      ctx->superblock, blocksize,
+>  					      io_ptr, ret_fs);
+> @@ -1059,7 +1059,7 @@ static errcode_t try_open_fs(e2fsck_t ctx, int flags, io_manager io_ptr,
+>  				break;
+>  		}
+>  	} else
+> -		retval = ext2fs_open2(ctx->filesystem_name, ctx->io_options,
+> +		retval = ext2fs_open3(ctx->filesystem_name, ctx->io_options,
+>  				      flags, 0, 0, io_ptr, ret_fs);
+>  
+>  	if (retval == 0)
+> @@ -1375,7 +1375,7 @@ failure:
+>  	 * don't need to update the mount count and last checked
+>  	 * fields in the backup superblock (the kernel doesn't update
+>  	 * the backup superblocks anyway).  With newer versions of the
+> -	 * library this flag is set by ext2fs_open2(), but we set this
+> +	 * library this flag is set by ext2fs_open3(), but we set this
+>  	 * here just to be sure.  (No, we don't support e2fsck running
+>  	 * with some other libext2fs than the one that it was shipped
+>  	 * with, but just in case....)
+> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+> index c37e00b..d5d8d03 100644
+> --- a/lib/ext2fs/ext2fs.h
+> +++ b/lib/ext2fs/ext2fs.h
+> @@ -1437,6 +1437,10 @@ extern errcode_t ext2fs_open2(const char *name, const char *io_options,
+>  			      int flags, int superblock,
+>  			      unsigned int block_size, io_manager manager,
+>  			      ext2_filsys *ret_fs);
+> +extern errcode_t ext2fs_open3(const char *name, const char *io_options,
+> +			      int flags, blk64_t superblock,
+> +			      unsigned int block_size, io_manager manager,
+> +			      ext2_filsys *ret_fs);
+>  extern blk64_t ext2fs_descriptor_block_loc2(ext2_filsys fs,
+>  					blk64_t group_block, dgrp_t i);
+>  extern blk_t ext2fs_descriptor_block_loc(ext2_filsys fs, blk_t group_block,
+> diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
+> index 89117f4..3c0bf14 100644
+> --- a/lib/ext2fs/openfs.c
+> +++ b/lib/ext2fs/openfs.c
+> @@ -76,6 +76,15 @@ errcode_t ext2fs_open(const char *name, int flags, int superblock,
+>  			    manager, ret_fs);
+>  }
+>  
+> +errcode_t ext2fs_open2(const char *name, const char *io_options,
+> +		       int flags, int superblock,
+> +		       unsigned int block_size, io_manager manager,
+> +		       ext2_filsys *ret_fs)
+> +{
+> +	return ext2fs_open3(name, io_options, flags, superblock, block_size,
+> +			    manager, ret_fs);
+> +}
+> +
+>  /*
+>   *  Note: if superblock is non-zero, block-size must also be non-zero.
+>   * 	Superblock and block_size can be zero to use the default size.
+> @@ -90,8 +99,8 @@ errcode_t ext2fs_open(const char *name, int flags, int superblock,
+>   *	EXT2_FLAG_64BITS - Allow 64-bit bitfields (needed for large
+>   *				filesystems)
+>   */
+> -errcode_t ext2fs_open2(const char *name, const char *io_options,
+> -		       int flags, int superblock,
+> +errcode_t ext2fs_open3(const char *name, const char *io_options,
+> +		       int flags, blk64_t superblock,
+>  		       unsigned int block_size, io_manager manager,
+>  		       ext2_filsys *ret_fs)
+>  {
+> diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
+> index ae70f70..b139977 100644
+> --- a/misc/dumpe2fs.c
+> +++ b/misc/dumpe2fs.c
+> @@ -611,7 +611,7 @@ int main (int argc, char ** argv)
+>  		for (use_blocksize = EXT2_MIN_BLOCK_SIZE;
+>  		     use_blocksize <= EXT2_MAX_BLOCK_SIZE;
+>  		     use_blocksize *= 2) {
+> -			retval = ext2fs_open (device_name, flags,
+> +			retval = ext2fs_open3(device_name, NULL, flags,
+>  					      use_superblock,
+>  					      use_blocksize, unix_io_manager,
+>  					      &fs);
+> @@ -619,7 +619,7 @@ int main (int argc, char ** argv)
+>  				break;
+>  		}
+>  	} else
+> -		retval = ext2fs_open (device_name, flags, use_superblock,
+> +		retval = ext2fs_open3(device_name, NULL, flags, use_superblock,
+>  				      use_blocksize, unix_io_manager, &fs);
+>  	if (retval) {
+>  		com_err (program_name, retval, _("while trying to open %s"),
 > 
-> Best,
-> Jon
-> 
-> > Thanks!
-> > -Lukas
-> >
-> >> +        }
-> >> +       /* Panic or remount fs read-only if block bitmap is invalid */
-> >> +       ext4_validate_block_bitmap(sb, desc, block_group, bh);
-> >>         /* ...but check for error just in case errors=continue. */
-> >>         return !buffer_verified(bh);
-> >>  }
-> >> --
-> >> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> >> the body of a message to majordomo@vger.kernel.org
-> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >>
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
---8323328-642098078-1381155110=:1975--
