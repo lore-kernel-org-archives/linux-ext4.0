@@ -1,225 +1,228 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 14/31] libext2fs: Fix ext2fs_open2() truncation of the
- superblock parameter
-Date: Mon, 7 Oct 2013 11:42:47 -0700
-Message-ID: <20131007184247.GC6860@birch.djwong.org>
+Subject: Re: [PATCH 16/31] debugfs: Handle 64bit block numbers
+Date: Mon, 7 Oct 2013 11:49:43 -0700
+Message-ID: <20131007184943.GD6860@birch.djwong.org>
 References: <20131001012642.28415.89353.stgit@birch.djwong.org>
- <20131001012812.28415.49840.stgit@birch.djwong.org>
- <alpine.LFD.2.00.1310071626420.7011@localhost.localdomain>
+ <20131001012824.28415.25821.stgit@birch.djwong.org>
+ <alpine.LFD.2.00.1310071742580.1975@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
 To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:38669 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:41936 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752384Ab3JGSm7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Oct 2013 14:42:59 -0400
+	with ESMTP id S1752477Ab3JGSt5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Oct 2013 14:49:57 -0400
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1310071626420.7011@localhost.localdomain>
+In-Reply-To: <alpine.LFD.2.00.1310071742580.1975@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 07, 2013 at 04:30:39PM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
+On Mon, Oct 07, 2013 at 05:49:45PM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
 :
 > On Mon, 30 Sep 2013, Darrick J. Wong wrote:
 >=20
-> > Date: Mon, 30 Sep 2013 18:28:12 -0700
+> > Date: Mon, 30 Sep 2013 18:28:24 -0700
 > > From: Darrick J. Wong <darrick.wong@oracle.com>
 > > To: tytso@mit.edu, darrick.wong@oracle.com
 > > Cc: linux-ext4@vger.kernel.org
-> > Subject: [PATCH 14/31] libext2fs: Fix ext2fs_open2() truncation of =
-the
-> >     superblock parameter
+> > Subject: [PATCH 16/31] debugfs: Handle 64bit block numbers
 > >=20
-> > Since it's possible for very large filesystems to store backup supe=
-rblocks at
-> > very large (> 2^32) block numbers, we need to be able to handle the=
- case of a
-> > caller directing us to read one of these high-numbered backups.
+> > debugfs should use strtoull (and equivalent wrappers) for reading b=
+lock numbers
+> > from the command line.  "unsigned long" isn't wide enough on 32bit =
+platforms.
+> >=20
+> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> > ---
+> >  debugfs/debugfs.c      |   19 ++++++++++---------
+> >  debugfs/extent_inode.c |   24 +++++++++++++-----------
+> >  debugfs/util.c         |    2 +-
+> >  3 files changed, 24 insertions(+), 21 deletions(-)
 >=20
-> I do not think this is enough, because in ext2fs_open2() or rather
-> ext2fs_open3() as you rename it we read the superblock block with
-> io_channel_read_blk() which takes unsigned long as a block number
-> rather than io_channel_read_blk64().
+> Look good, but some nitpicks bellow.
 >=20
-> Having a simple test for this particular case might be useful.
+> >=20
+> >=20
+> > diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+> > index da44ce4..60452c9 100644
+> > --- a/debugfs/debugfs.c
+> > +++ b/debugfs/debugfs.c
+> > @@ -167,8 +167,9 @@ void do_open_filesys(int argc, char **argv)
+> >  				return;
+> >  			break;
+> >  		case 's':
+> > -			superblock =3D parse_ulong(optarg, argv[0],
+> > -						 "superblock number", &err);
+> > +			superblock =3D parse_ulonglong(optarg, argv[0],
+> > +						     "superblock number",
+>=20
+> this is not really a superlock number, but rather block number.
+>=20
+> > +						     &err);
+> >  			if (err)
+> >  				return;
+> >  			break;
+> > @@ -269,8 +270,8 @@ void do_init_filesys(int argc, char **argv)
+> >  		return;
+> > =20
+> >  	memset(&param, 0, sizeof(struct ext2_super_block));
+> > -	ext2fs_blocks_count_set(&param, parse_ulong(argv[2], argv[0],
+> > -						    "blocks count", &err));
+> > +	ext2fs_blocks_count_set(&param, parse_ulonglong(argv[2], argv[0],
+> > +							"blocks count", &err));
+> >  	if (err)
+> >  		return;
+> >  	retval =3D ext2fs_initialize(argv[1], 0, &param,
+> > @@ -2050,7 +2051,7 @@ void do_bmap(int argc, char *argv[])
+> >  	ino =3D string_to_inode(argv[1]);
+> >  	if (!ino)
+> >  		return;
+> > -	blk =3D parse_ulong(argv[2], argv[0], "logical_block", &err);
+> > +	blk =3D parse_ulonglong(argv[2], argv[0], "logical_block", &err);
+>=20
+> Also I wonder whether we could use strtoblk() in cases like this ?
+> This would fix the "logical_block" string as well since it should be
+> either "logical block" or "block number".
 
-Good catch!  I've updated the patch.
+Sounds reasonable for all of these cases.  I'll update the patch.
 
 --D
+>=20
+> > =20
+> >  	errcode =3D ext2fs_bmap2(current_fs, ino, 0, 0, 0, blk, 0, &pblk)=
+;
+> >  	if (errcode) {
+> > @@ -2195,9 +2196,9 @@ void do_punch(int argc, char *argv[])
+> >  	ino =3D string_to_inode(argv[1]);
+> >  	if (!ino)
+> >  		return;
+> > -	start =3D parse_ulong(argv[2], argv[0], "logical_block", &err);
+> > +	start =3D parse_ulonglong(argv[2], argv[0], "logical_block", &err=
+);
+> >  	if (argc =3D=3D 4)
+> > -		end =3D parse_ulong(argv[3], argv[0], "logical_block", &err);
+> > +		end =3D parse_ulonglong(argv[3], argv[0], "logical_block", &err)=
+;
+> >  	else
+> >  		end =3D ~0;
+> > =20
+> > @@ -2415,8 +2416,8 @@ int main(int argc, char **argv)
+> >  						"block size", 0);
+> >  			break;
+> >  		case 's':
+> > -			superblock =3D parse_ulong(optarg, argv[0],
+> > -						 "superblock number", 0);
+> > +			superblock =3D parse_ulonglong(optarg, argv[0],
+> > +						     "superblock number", 0);
+>=20
+> same here
 >=20
 > Thanks!
 > -Lukas
 >=20
->=20
->=20
-> >=20
-> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> > ---
-> >  debugfs/debugfs.c   |    4 ++--
-> >  e2fsck/journal.c    |    6 +++---
-> >  e2fsck/unix.c       |    8 ++++----
-> >  lib/ext2fs/ext2fs.h |    4 ++++
-> >  lib/ext2fs/openfs.c |   13 +++++++++++--
-> >  misc/dumpe2fs.c     |    4 ++--
-> >  6 files changed, 26 insertions(+), 13 deletions(-)
-> >=20
-> >=20
-> > diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-> > index 2660218..da44ce4 100644
-> > --- a/debugfs/debugfs.c
-> > +++ b/debugfs/debugfs.c
-> > @@ -80,8 +80,8 @@ static void open_filesystem(char *device, int ope=
-n_flags, blk64_t superblock,
-> >  	if (catastrophic)
-> >  		open_flags |=3D EXT2_FLAG_SKIP_MMP;
+> >  			break;
+> >  		case 'c':
+> >  			catastrophic =3D 1;
+> > diff --git a/debugfs/extent_inode.c b/debugfs/extent_inode.c
+> > index 0bbc4c5..d5c4721 100644
+> > --- a/debugfs/extent_inode.c
+> > +++ b/debugfs/extent_inode.c
+> > @@ -264,7 +264,8 @@ void do_replace_node(int argc, char *argv[])
+> >  		return;
+> >  	}
 > > =20
-> > -	retval =3D ext2fs_open(device, open_flags, superblock, blocksize,
-> > -			     unix_io_manager, &current_fs);
-> > +	retval =3D ext2fs_open3(device, NULL, open_flags, superblock, blo=
-cksize,
-> > +			      unix_io_manager, &current_fs);
+> > -	extent.e_lblk =3D parse_ulong(argv[1], argv[0], "logical block", =
+&err);
+> > +	extent.e_lblk =3D parse_ulonglong(argv[1], argv[0], "logical bloc=
+k",
+> > +					&err);
+> >  	if (err)
+> >  		return;
+> > =20
+> > @@ -272,7 +273,8 @@ void do_replace_node(int argc, char *argv[])
+> >  	if (err)
+> >  		return;
+> > =20
+> > -	extent.e_pblk =3D parse_ulong(argv[3], argv[0], "logical block", =
+&err);
+> > +	extent.e_pblk =3D parse_ulonglong(argv[3], argv[0], "logical bloc=
+k",
+> > +					&err);
+> >  	if (err)
+> >  		return;
+> > =20
+> > @@ -338,8 +340,8 @@ void do_insert_node(int argc, char *argv[])
+> >  		return;
+> >  	}
+> > =20
+> > -	extent.e_lblk =3D parse_ulong(argv[1], cmd,
+> > -				    "logical block", &err);
+> > +	extent.e_lblk =3D parse_ulonglong(argv[1], cmd,
+> > +					"logical block", &err);
+> >  	if (err)
+> >  		return;
+> > =20
+> > @@ -348,8 +350,8 @@ void do_insert_node(int argc, char *argv[])
+> >  	if (err)
+> >  		return;
+> > =20
+> > -	extent.e_pblk =3D parse_ulong(argv[3], cmd,
+> > -				    "pysical block", &err);
+> > +	extent.e_pblk =3D parse_ulonglong(argv[3], cmd,
+> > +					"physical block", &err);
+> >  	if (err)
+> >  		return;
+> > =20
+> > @@ -366,8 +368,8 @@ void do_set_bmap(int argc, char **argv)
+> >  	const char	*usage =3D "[--uninit] <lblk> <pblk>";
+> >  	struct ext2fs_extent extent;
+> >  	errcode_t	retval;
+> > -	blk_t		logical;
+> > -	blk_t		physical;
+> > +	blk64_t		logical;
+> > +	blk64_t		physical;
+> >  	char		*cmd =3D argv[0];
+> >  	int		flags =3D 0;
+> >  	int		err;
+> > @@ -387,18 +389,18 @@ void do_set_bmap(int argc, char **argv)
+> >  		return;
+> >  	}
+> > =20
+> > -	logical =3D parse_ulong(argv[1], cmd,
+> > +	logical =3D parse_ulonglong(argv[1], cmd,
+> >  				    "logical block", &err);
+> >  	if (err)
+> >  		return;
+> > =20
+> > -	physical =3D parse_ulong(argv[2], cmd,
+> > +	physical =3D parse_ulonglong(argv[2], cmd,
+> >  				    "physical block", &err);
+> >  	if (err)
+> >  		return;
+> > =20
+> >  	retval =3D ext2fs_extent_set_bmap(current_handle, logical,
+> > -					(blk64_t) physical, flags);
+> > +					physical, flags);
 > >  	if (retval) {
-> >  		com_err(device, retval, "while opening filesystem");
-> >  		current_fs =3D NULL;
-> > diff --git a/e2fsck/journal.c b/e2fsck/journal.c
-> > index 2509303..af35a38 100644
-> > --- a/e2fsck/journal.c
-> > +++ b/e2fsck/journal.c
-> > @@ -967,9 +967,9 @@ int e2fsck_run_ext3_journal(e2fsck_t ctx)
+> >  		com_err(cmd, retval, 0);
+> >  		return;
+> > diff --git a/debugfs/util.c b/debugfs/util.c
+> > index cf3a6c6..245d556 100644
+> > --- a/debugfs/util.c
+> > +++ b/debugfs/util.c
+> > @@ -377,7 +377,7 @@ int common_block_args_process(int argc, char *a=
+rgv[],
+> >  	}
 > > =20
-> >  	ext2fs_mmp_stop(ctx->fs);
-> >  	ext2fs_free(ctx->fs);
-> > -	retval =3D ext2fs_open(ctx->filesystem_name, EXT2_FLAG_RW,
-> > -			     ctx->superblock, blocksize, io_ptr,
-> > -			     &ctx->fs);
-> > +	retval =3D ext2fs_open3(ctx->filesystem_name, NULL, EXT2_FLAG_RW,
-> > +			      ctx->superblock, blocksize, io_ptr,
-> > +			      &ctx->fs);
-> >  	if (retval) {
-> >  		com_err(ctx->program_name, retval,
-> >  			_("while trying to re-open %s"),
-> > diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-> > index 0546653..fb41ca0 100644
-> > --- a/e2fsck/unix.c
-> > +++ b/e2fsck/unix.c
-> > @@ -1040,7 +1040,7 @@ static errcode_t try_open_fs(e2fsck_t ctx, in=
-t flags, io_manager io_ptr,
-> > =20
-> >  	*ret_fs =3D NULL;
-> >  	if (ctx->superblock && ctx->blocksize) {
-> > -		retval =3D ext2fs_open2(ctx->filesystem_name, ctx->io_options,
-> > +		retval =3D ext2fs_open3(ctx->filesystem_name, ctx->io_options,
-> >  				      flags, ctx->superblock, ctx->blocksize,
-> >  				      io_ptr, ret_fs);
-> >  	} else if (ctx->superblock) {
-> > @@ -1051,7 +1051,7 @@ static errcode_t try_open_fs(e2fsck_t ctx, in=
-t flags, io_manager io_ptr,
-> >  				ext2fs_free(*ret_fs);
-> >  				*ret_fs =3D NULL;
-> >  			}
-> > -			retval =3D ext2fs_open2(ctx->filesystem_name,
-> > +			retval =3D ext2fs_open3(ctx->filesystem_name,
-> >  					      ctx->io_options, flags,
-> >  					      ctx->superblock, blocksize,
-> >  					      io_ptr, ret_fs);
-> > @@ -1059,7 +1059,7 @@ static errcode_t try_open_fs(e2fsck_t ctx, in=
-t flags, io_manager io_ptr,
-> >  				break;
-> >  		}
-> >  	} else
-> > -		retval =3D ext2fs_open2(ctx->filesystem_name, ctx->io_options,
-> > +		retval =3D ext2fs_open3(ctx->filesystem_name, ctx->io_options,
-> >  				      flags, 0, 0, io_ptr, ret_fs);
-> > =20
-> >  	if (retval =3D=3D 0)
-> > @@ -1375,7 +1375,7 @@ failure:
-> >  	 * don't need to update the mount count and last checked
-> >  	 * fields in the backup superblock (the kernel doesn't update
-> >  	 * the backup superblocks anyway).  With newer versions of the
-> > -	 * library this flag is set by ext2fs_open2(), but we set this
-> > +	 * library this flag is set by ext2fs_open3(), but we set this
-> >  	 * here just to be sure.  (No, we don't support e2fsck running
-> >  	 * with some other libext2fs than the one that it was shipped
-> >  	 * with, but just in case....)
-> > diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-> > index c37e00b..d5d8d03 100644
-> > --- a/lib/ext2fs/ext2fs.h
-> > +++ b/lib/ext2fs/ext2fs.h
-> > @@ -1437,6 +1437,10 @@ extern errcode_t ext2fs_open2(const char *na=
-me, const char *io_options,
-> >  			      int flags, int superblock,
-> >  			      unsigned int block_size, io_manager manager,
-> >  			      ext2_filsys *ret_fs);
-> > +extern errcode_t ext2fs_open3(const char *name, const char *io_opt=
-ions,
-> > +			      int flags, blk64_t superblock,
-> > +			      unsigned int block_size, io_manager manager,
-> > +			      ext2_filsys *ret_fs);
-> >  extern blk64_t ext2fs_descriptor_block_loc2(ext2_filsys fs,
-> >  					blk64_t group_block, dgrp_t i);
-> >  extern blk_t ext2fs_descriptor_block_loc(ext2_filsys fs, blk_t gro=
-up_block,
-> > diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
-> > index 89117f4..3c0bf14 100644
-> > --- a/lib/ext2fs/openfs.c
-> > +++ b/lib/ext2fs/openfs.c
-> > @@ -76,6 +76,15 @@ errcode_t ext2fs_open(const char *name, int flag=
-s, int superblock,
-> >  			    manager, ret_fs);
-> >  }
-> > =20
-> > +errcode_t ext2fs_open2(const char *name, const char *io_options,
-> > +		       int flags, int superblock,
-> > +		       unsigned int block_size, io_manager manager,
-> > +		       ext2_filsys *ret_fs)
-> > +{
-> > +	return ext2fs_open3(name, io_options, flags, superblock, block_si=
-ze,
-> > +			    manager, ret_fs);
-> > +}
-> > +
-> >  /*
-> >   *  Note: if superblock is non-zero, block-size must also be non-z=
-ero.
-> >   * 	Superblock and block_size can be zero to use the default size.
-> > @@ -90,8 +99,8 @@ errcode_t ext2fs_open(const char *name, int flags=
-, int superblock,
-> >   *	EXT2_FLAG_64BITS - Allow 64-bit bitfields (needed for large
-> >   *				filesystems)
-> >   */
-> > -errcode_t ext2fs_open2(const char *name, const char *io_options,
-> > -		       int flags, int superblock,
-> > +errcode_t ext2fs_open3(const char *name, const char *io_options,
-> > +		       int flags, blk64_t superblock,
-> >  		       unsigned int block_size, io_manager manager,
-> >  		       ext2_filsys *ret_fs)
-> >  {
-> > diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
-> > index ae70f70..b139977 100644
-> > --- a/misc/dumpe2fs.c
-> > +++ b/misc/dumpe2fs.c
-> > @@ -611,7 +611,7 @@ int main (int argc, char ** argv)
-> >  		for (use_blocksize =3D EXT2_MIN_BLOCK_SIZE;
-> >  		     use_blocksize <=3D EXT2_MAX_BLOCK_SIZE;
-> >  		     use_blocksize *=3D 2) {
-> > -			retval =3D ext2fs_open (device_name, flags,
-> > +			retval =3D ext2fs_open3(device_name, NULL, flags,
-> >  					      use_superblock,
-> >  					      use_blocksize, unix_io_manager,
-> >  					      &fs);
-> > @@ -619,7 +619,7 @@ int main (int argc, char ** argv)
-> >  				break;
-> >  		}
-> >  	} else
-> > -		retval =3D ext2fs_open (device_name, flags, use_superblock,
-> > +		retval =3D ext2fs_open3(device_name, NULL, flags, use_superblock=
-,
-> >  				      use_blocksize, unix_io_manager, &fs);
-> >  	if (retval) {
-> >  		com_err (program_name, retval, _("while trying to open %s"),
+> >  	if (argc > 2) {
+> > -		*count =3D parse_ulong(argv[2], argv[0], "count", &err);
+> > +		*count =3D parse_ulonglong(argv[2], argv[0], "count", &err);
+> >  		if (err)
+> >  			return 1;
+> >  	}
 > >=20
 > > --
 > > To unsubscribe from this list: send the line "unsubscribe linux-ext=
