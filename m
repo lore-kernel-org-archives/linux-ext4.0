@@ -1,72 +1,64 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 26/31] libext2fs: openfs() musn't allow bigalloc without
- EXT2_FLAGS_64BITS
-Date: Mon, 7 Oct 2013 14:50:52 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1310071450260.1975@localhost.localdomain>
-References: <20131001012642.28415.89353.stgit@birch.djwong.org> <20131001012928.28415.62086.stgit@birch.djwong.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 01/31] tune2fs: Don't convert block # to cluster # when
+ clearing uninit_bg
+Date: Mon, 7 Oct 2013 09:03:28 -0400
+Message-ID: <20131007130328.GA4540@thunk.org>
+References: <20131001012642.28415.89353.stgit@birch.djwong.org>
+ <20131001012649.28415.17225.stgit@birch.djwong.org>
+ <alpine.LFD.2.00.1310031848270.1947@localhost.localdomain>
+ <20131003190444.GA14971@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
+	linux-ext4@vger.kernel.org
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:12142 "EHLO mx1.redhat.com"
+Received: from imap.thunk.org ([74.207.234.97]:43059 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751520Ab3JGMvA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 7 Oct 2013 08:51:00 -0400
-In-Reply-To: <20131001012928.28415.62086.stgit@birch.djwong.org>
+	id S1752805Ab3JGNDd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 7 Oct 2013 09:03:33 -0400
+Content-Disposition: inline
+In-Reply-To: <20131003190444.GA14971@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 30 Sep 2013, Darrick J. Wong wrote:
+On Thu, Oct 03, 2013 at 12:04:44PM -0700, Darrick J. Wong wrote:
+> On Thu, Oct 03, 2013 at 06:53:38PM +0200, Luk=C3=A1=C5=A1 Czerner wro=
+te:
+> > On Mon, 30 Sep 2013, Darrick J. Wong wrote:
+> >=20
+> > > Date: Mon, 30 Sep 2013 18:26:49 -0700
+> > > From: Darrick J. Wong <darrick.wong@oracle.com>
+> > > To: tytso@mit.edu, darrick.wong@oracle.com
+> > > Cc: linux-ext4@vger.kernel.org
+> > > Subject: [PATCH 01/31] tune2fs: Don't convert block # to cluster =
+# when
+> > >     clearing uninit_bg
+> > >=20
+> > > When we're constructing the initial block bitmap as part of remov=
+ing the
+> > > gdt_csum (i.e. uninit_bg) feature, we mustn't convert the block n=
+umbers to
+> > > cluster numbers because ext2fs_mark_block_bitmap2() does this for=
+ us.
+> >=20
+> > I wonder if it's possible to use the old-style bitmap interface (th=
+e
+> > one which does not understand 64-bit bitmaps). If so, then you also
+> > need to fix ext2fs_mark_generic_bmap() (and others) so that we
+> > convert blocks to clusters if needed.
+>=20
+> It's possible to do this (bad thing) by not specifying EXT2_FLAG_64BI=
+TS when
+> calling ext2fs_openfs(); see patch 26 for a quick fix.
 
-> Date: Mon, 30 Sep 2013 18:29:28 -0700
-> From: Darrick J. Wong <darrick.wong@oracle.com>
-> To: tytso@mit.edu, darrick.wong@oracle.com
-> Cc: linux-ext4@vger.kernel.org
-> Subject: [PATCH 26/31] libext2fs: openfs() musn't allow bigalloc without
->     EXT2_FLAGS_64BITS
-> 
-> Currently, only the 64-bit bitmap implementation supports the block<->cluster
-> conversions that bigalloc requires.  Therefore, if we have a bigalloc
-> filesystem, require EXT2_FLAGS_64BITS be passed in to ext2fs_open().
-> 
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> ---
->  lib/ext2fs/openfs.c |   12 ++++++++++++
->  1 file changed, 12 insertions(+)
+Bigalloc requires the new-style bitmaps, so patch 26 is the right fix
+for this.
 
-Looks good.
-
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
-
-> 
-> 
-> diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
-> index 3c0bf14..f486a35 100644
-> --- a/lib/ext2fs/openfs.c
-> +++ b/lib/ext2fs/openfs.c
-> @@ -272,6 +272,18 @@ errcode_t ext2fs_open3(const char *name, const char *io_options,
->  		retval = EXT2_ET_CORRUPT_SUPERBLOCK;
->  		goto cleanup;
->  	}
-> +
-> +	/*
-> +	 * bigalloc requires cluster-aware bitfield operations, which at the
-> +	 * moment means we need EXT2_FLAG_64BITS.
-> +	 */
-> +	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-> +				       EXT4_FEATURE_RO_COMPAT_BIGALLOC) &&
-> +	    !(flags & EXT2_FLAG_64BITS)) {
-> +		retval = EXT2_ET_CANT_USE_LEGACY_BITMAPS;
-> +		goto cleanup;
-> +	}
-> +
->  	if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
->  					EXT4_FEATURE_RO_COMPAT_BIGALLOC) &&
->  	    (fs->super->s_log_block_size != fs->super->s_log_cluster_size)) {
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+						- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
