@@ -1,69 +1,93 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 06/31] e2p: Fix f[gs]etflags argument size mismatch
-Date: Mon, 7 Oct 2013 17:28:07 -0700
-Message-ID: <20131008002807.GH6860@birch.djwong.org>
-References: <20131001012642.28415.89353.stgit@birch.djwong.org>
- <20131001012721.28415.97544.stgit@birch.djwong.org>
- <20131007133304.GE4540@thunk.org>
- <20131007204055.GF6860@birch.djwong.org>
- <20131007232358.GG6860@birch.djwong.org>
- <20131008000602.GA7725@thunk.org>
+From: Niu Yawei <yawei.niu@gmail.com>
+Subject: Re: [PATCH] tune2fs: update i_size in ext2fs_file_write()
+Date: Tue, 08 Oct 2013 11:30:10 +0800
+Message-ID: <52537C42.9010808@gmail.com>
+References: <5231CDFE.8050206@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=GB2312
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, yawei.niu@intel.com,
+	andreas.dilger@intel.com
+To: adityakali@google.com, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:21455 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751639Ab3JHA2N (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Oct 2013 20:28:13 -0400
-Content-Disposition: inline
-In-Reply-To: <20131008000602.GA7725@thunk.org>
+Received: from mail-pa0-f47.google.com ([209.85.220.47]:38035 "EHLO
+	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752789Ab3JHDaX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Oct 2013 23:30:23 -0400
+Received: by mail-pa0-f47.google.com with SMTP id kp14so8167255pab.6
+        for <linux-ext4@vger.kernel.org>; Mon, 07 Oct 2013 20:30:22 -0700 (PDT)
+In-Reply-To: <5231CDFE.8050206@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 07, 2013 at 08:06:02PM -0400, Theodore Ts'o wrote:
-> On Mon, Oct 07, 2013 at 04:23:58PM -0700, Darrick J. Wong wrote:
-> > Yuck.  FUSE assumes an interface contract (the data size encoded in the ioctl
-> > number) that neither userspace nor kernel actually abide.  This has gone on for
-> > years with no problems, since both components made the same implicit assumption
-> > about data size in the same way.  Unfortunately, userspace breaks only on FUSE,
-> > so I don't know what to do.
-> 
-> I suspect we've never noticed because traditionally, FUSE has never
-> been used to front-end a file system that supports chattr/lsattr ---
-> most of thsoe file systems are available as native Linux file systems,
-> so it's probably not a common use case for FUSE.
-> 
-> Can we make the FUSE ioctl handler in fs/fuse/ioctl.c special case
-> handle the EXT2_IOC_[SG]ETFLAG ioctls.  That would it be consistent
-> with the other file systms.
+ext2fs_file_write() needs to update i_size on successful write,
+otherwise, ext2fs_file_read() in same open/close cycle will not
+be able to read the just written data.
 
-I can try changing fuse_do_ioctl() to add in the special case.  There don't
-seem to be any definitions of _IOR('f', 1, long) that aren't *_IOC_GETFLAGS
-(same for _IOW_('f', 2, long) for *_IOC_SETFLAGS) so a hack to bring FUSE in
-line with xfs/btrfs/ext*/hfs+/reiser3/nilfs/gfs2/logfs/f2fs/ubifs/cifs might be
-doable.
+This bug result in the the problem of quotacheck triggered on
+'tune2fs -O quota' failed to write back multiple users/groups
+accounting information.
 
-If not I suppose new ioctls are a slow-moving plan B.
+Signed-off-by: Niu Yawei <yawei.niu@intel.com>
+---
+ lib/ext2fs/fileio.c |    9 +++++++++
+ 1 files changed, 9 insertions(+), 0 deletions(-)
 
---D
+diff --git a/lib/ext2fs/fileio.c b/lib/ext2fs/fileio.c
+index 1f7002c..e395eb6 100644
+--- a/lib/ext2fs/fileio.c
++++ b/lib/ext2fs/fileio.c
+@@ -307,6 +307,15 @@ errcode_t ext2fs_file_write(ext2_file_t file, const
+void *buf,
+ 	}
+
+ fail:
++	/* Update inode size */
++	if (count != 0 && EXT2_I_SIZE(&file->inode) < file->pos) {
++		errcode_t	rc;
++
++		rc = ext2fs_file_set_size2(file, file->pos);
++		if (retval == 0)
++			retval = rc;
++	}
++
+ 	if (written)
+ 		*written = count;
+ 	return retval;
+-- 
+1.7.1
+
+> ext2fs_file_write() needs to update i_size on successful write,
+> otherwise, ext2fs_file_read() in same open/close cycle will not
+> be able to read the just written data.
 > 
-> > Long term I guess we could define a new pair of ioctls that work with pointers
-> > to 64-bit values and deprecate the old ones.  Or perhaps there's a better
-> > suggestion than "don't run chattr/lsattr on a FUSE"?
+> Which result in the the problem of quotacheck triggered on
+> 'tune2fs -O quota' failed to write back multiple users/groups
+> accounting information.
 > 
-> Well we can create a new pair of ioctls, and then have the userspace
-> code try the new ioctl, and if the kernel doesn't support it, try the
-> new ioctl.  But then we would have to fix up all of the file systems
-> in Linux, and it would take a while before users have a new kernel and
-> a new userspace which supports the new ioctl.
+> Signed-off-by: Niu Yawei <yawei.niu@intel.com>
+> ---
+>  lib/ext2fs/fileio.c |    7 +++++++
+>  1 files changed, 7 insertions(+), 0 deletions(-)
 > 
-> If we put the hack in fs/fuse/file.c's ioctl handler, then it only
-> requires a kernel upgrade....
+> diff --git a/lib/ext2fs/fileio.c b/lib/ext2fs/fileio.c
+> index 1f7002c..b1b5540 100644
+> --- a/lib/ext2fs/fileio.c
+> +++ b/lib/ext2fs/fileio.c
+> @@ -304,6 +304,13 @@ errcode_t ext2fs_file_write(ext2_file_t file, const
+> void *buf,
+>  		ptr += c;
+>  		count += c;
+>  		nbytes -= c;
+> +
+> +		/* Update inode size */
+> +		if (EXT2_I_SIZE(&file->inode) < file->pos) {
+> +			retval = ext2fs_file_set_size2(file, file->pos);
+> +			if (retval)
+> +				goto fail;
+> +		}
+>  	}
 > 
-> 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>  fail:
+> 
+
