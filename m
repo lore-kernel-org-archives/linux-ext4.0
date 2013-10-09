@@ -1,45 +1,53 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 62751] INFO: rcu_sched detected stalls on CPUs/tasks: { 3}
- (detected by 2, t=15107 jiffies, g=270766, c=270765, q=0)
-Date: Wed, 09 Oct 2013 20:53:49 +0000
-Message-ID: <bug-62751-13602-2unXrZLIn4@https.bugzilla.kernel.org/>
-References: <bug-62751-13602@https.bugzilla.kernel.org/>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 15/31] e2fsck: Teach EA refcounting code to handle 48bit
+ block addresses
+Date: Wed, 9 Oct 2013 14:53:39 -0700
+Message-ID: <20131009215339.GK6860@birch.djwong.org>
+References: <20131001012642.28415.89353.stgit@birch.djwong.org>
+ <20131001012818.28415.49000.stgit@birch.djwong.org>
+ <alpine.LFD.2.00.1310071717550.1975@localhost.localdomain>
+ <20131007183743.GB6860@birch.djwong.org>
+ <20131008160105.GH17896@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
+	linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:41331 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752470Ab3JIUxy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 9 Oct 2013 16:53:54 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id F0C9D202C8
-	for <linux-ext4@vger.kernel.org>; Wed,  9 Oct 2013 20:53:50 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id DBAD120138
-	for <linux-ext4@vger.kernel.org>; Wed,  9 Oct 2013 20:53:49 +0000 (UTC)
-In-Reply-To: <bug-62751-13602@https.bugzilla.kernel.org/>
+Received: from aserp1040.oracle.com ([141.146.126.69]:21760 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753532Ab3JIVxs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Oct 2013 17:53:48 -0400
+Content-Disposition: inline
+In-Reply-To: <20131008160105.GH17896@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=62751
+On Tue, Oct 08, 2013 at 12:01:05PM -0400, Theodore Ts'o wrote:
+> On Mon, Oct 07, 2013 at 11:37:43AM -0700, Darrick J. Wong wrote:
+> > > I am not sure if we really need count, size and cursor to be blk_t
+> > > let alone blk64_t. It's a bit misleading because AFAICT those
+> > > variable does not represent block numbers at all. Maybe it should be
+> > > changed to something less confusing, preferably matching the actual
+> > > xattr implementation ?
+> > 
+> > Oops, I got a little too s/blk_t/blk64_t/ happy there.  Those could be __u32, I
+> > think.  Or unsigned long.
+> 
+> __u32 should be fine, yes.  Could you send me an updated patch?
 
-Jan Kara <jack@suse.cz> changed:
+Yes, I will.  Are you planning to push e2fsprogs git to kernel.org/github soon?
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |jack@suse.cz
+I also now have eight more patches to fix various bigalloc and metadata_csum
+related bugs in resize2fs.
 
---- Comment #3 from Jan Kara <jack@suse.cz> ---
-Thanks. This looks like a problem in the shrinker for ext4 extent cache.
-Apparently we burn too much time (the longest stall is over 2 seconds)
-searching and freeing extents without giving CPU a break. Ideally we should
-make the shrinker more efficient (since I don't believe it was called with so
-many entries to free) but if that won't work out easily, we should at least
-sprinkle some cond_resched() into the shrinker code as a band aid. I'll see
-what we can do.
+--D
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+> 
+> Thanks,
+> 
+> 						- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
