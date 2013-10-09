@@ -1,93 +1,73 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 2/2] ext4: Spot-check block group sub-table locations
-Date: Wed, 9 Oct 2013 15:08:24 -0700
-Message-ID: <20131009220824.GM6860@birch.djwong.org>
-References: <20130928001349.25857.76724.stgit@birch.djwong.org>
- <20130928001404.25857.43349.stgit@birch.djwong.org>
- <20130929064400.GB10285@gmail.com>
+Subject: Re: [PATCH 01/31] tune2fs: Don't convert block # to cluster # when
+ clearing uninit_bg
+Date: Wed, 9 Oct 2013 15:10:28 -0700
+Message-ID: <20131009221028.GN6860@birch.djwong.org>
+References: <20131001012642.28415.89353.stgit@birch.djwong.org>
+ <20131001012649.28415.17225.stgit@birch.djwong.org>
+ <alpine.LFD.2.00.1310031848270.1947@localhost.localdomain>
+ <20131003190444.GA14971@birch.djwong.org>
+ <20131007130328.GA4540@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: tytso@mit.edu, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
+	linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:22422 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:23141 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752463Ab3JIWIc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Oct 2013 18:08:32 -0400
+	with ESMTP id S1752463Ab3JIWKg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Oct 2013 18:10:36 -0400
 Content-Disposition: inline
-In-Reply-To: <20130929064400.GB10285@gmail.com>
+In-Reply-To: <20131007130328.GA4540@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Sep 29, 2013 at 02:44:01PM +0800, Zheng Liu wrote:
-> On Fri, Sep 27, 2013 at 05:14:04PM -0700, Darrick J. Wong wrote:
-> > Perform a quick sanity check of bitmap and inode table block numbers when
-> > loading them, and if there's something suspicious, mark the block group
-> > corrupt.
-> > 
-> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> 
-> One comment below.  Otherwise the patch looks good to me.
-> Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
-> 
-> > ---
-> >  fs/ext4/balloc.c |    7 +++++++
-> >  fs/ext4/ext4.h   |    2 ++
-> >  fs/ext4/ialloc.c |    6 ++++++
-> >  fs/ext4/inode.c  |    9 +++++++++
-> >  fs/ext4/super.c  |   21 +++++++++++++++++++++
-> >  5 files changed, 45 insertions(+)
-> [...]
-> > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> > index 2c2e6cb..d22248e 100644
-> > --- a/fs/ext4/super.c
-> > +++ b/fs/ext4/super.c
-> > @@ -2049,6 +2049,27 @@ void ext4_group_desc_csum_set(struct super_block *sb, __u32 block_group,
-> >  	gdp->bg_checksum = ext4_group_desc_csum(EXT4_SB(sb), block_group, gdp);
-> >  }
-> >  
-> > +/* returns 1 if the location of a blockgroup data item seems sane */
-> > +int ext4_is_sane_bgdata_location(struct super_block *sb, ext4_group_t grp,
-> > +				 ext4_fsblk_t blk)
-> > +{
-> > +	struct ext4_sb_info *sbi = EXT4_SB(sb);
-> > +	ext4_fsblk_t first_block = le32_to_cpu(sbi->s_es->s_first_data_block);
-> > +	ext4_fsblk_t last_block;
-> > +
-> > +	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG))
-> > +		last_block = ext4_blocks_count(sbi->s_es) - 1;
-> > +	else {
-> > +		first_block += grp * sbi->s_blocks_per_group;
-> > +		last_block = first_block + (EXT4_BLOCKS_PER_GROUP(sb) - 1);
-> > +	}
-> > +
-> > +	if (last_block >= ext4_blocks_count(sbi->s_es))
-> > +		last_block = ext4_blocks_count(sbi->s_es) - 1;
-> > +
-> > +	return blk >= first_block && blk <= last_block;
-> > +}
-> > +
-> >  /* Called at mount-time, super-block is locked */
-> >  static int ext4_check_descriptors(struct super_block *sb,
-> >  				  ext4_group_t *first_not_zeroed)
-> 
-> FWIW, I notice that in ext4_check_descriptors() we also check the
-> location of bitmap.  So maybe we could use ext4_is_sane_bgdata_location
-> in that function.
+On Mon, Oct 07, 2013 at 09:03:28AM -0400, Theodore Ts'o wrote:
+> On Thu, Oct 03, 2013 at 12:04:44PM -0700, Darrick J. Wong wrote:
+> > On Thu, Oct 03, 2013 at 06:53:38PM +0200, Luk=C3=A1=C5=A1 Czerner w=
+rote:
+> > > On Mon, 30 Sep 2013, Darrick J. Wong wrote:
+> > >=20
+> > > > Date: Mon, 30 Sep 2013 18:26:49 -0700
+> > > > From: Darrick J. Wong <darrick.wong@oracle.com>
+> > > > To: tytso@mit.edu, darrick.wong@oracle.com
+> > > > Cc: linux-ext4@vger.kernel.org
+> > > > Subject: [PATCH 01/31] tune2fs: Don't convert block # to cluste=
+r # when
+> > > >     clearing uninit_bg
+> > > >=20
+> > > > When we're constructing the initial block bitmap as part of rem=
+oving the
+> > > > gdt_csum (i.e. uninit_bg) feature, we mustn't convert the block=
+ numbers to
+> > > > cluster numbers because ext2fs_mark_block_bitmap2() does this f=
+or us.
+> > >=20
+> > > I wonder if it's possible to use the old-style bitmap interface (=
+the
+> > > one which does not understand 64-bit bitmaps). If so, then you al=
+so
+> > > need to fix ext2fs_mark_generic_bmap() (and others) so that we
+> > > convert blocks to clusters if needed.
+> >=20
+> > It's possible to do this (bad thing) by not specifying EXT2_FLAG_64=
+BITS when
+> > calling ext2fs_openfs(); see patch 26 for a quick fix.
+>=20
+> Bigalloc requires the new-style bitmaps, so patch 26 is the right fix
+> for this.
 
-That could be done, but all we'd be doing is trading this:
-
-	block_bitmap = ext4_block_bitmap(sb, gdp);
-	if (block_bitmap < first_block || block_bitmap > last_block) {
-
-for this slightly slower code:
-
-	if (ext4_is_sane_bgdata_location(sb, gdp,
-					 ext4_block_bitmap(sb, gdb))) {
-
-I don't know if that's worth the code churn or not.  It's an easy change, but I
-don't think it adds much.  Ted -- if you want me to make the change I'll do it,
-but if you're content to leave the patch as it is, then so am I.
+Any thoughts on patch #1?  It fixes bugs in the recently-landed patch "=
+tune2fs:
+zero inode table when removing checksums".
 
 --D
-> 
->                                                 - Zheng
+>=20
+> 						- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
