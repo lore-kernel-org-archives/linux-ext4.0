@@ -1,105 +1,64 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH RESEND 2/7] xfs: add support FALLOC_FL_COLLAPSE_RANGE for
-	fallocate
-Date: Fri, 11 Oct 2013 08:23:26 +1100
-Message-ID: <20131010212326.GZ4446@dastard>
-References: <1381090388-2761-1-git-send-email-linkinjeon@gmail.com>
-	<20131010005154.GS4446@dastard>
-	<CAKYAXd8=ZKESV5Fmw7hqwL=G8L=BG6h0LQpc2cVjN9uTkj7nYw@mail.gmail.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 01/31] tune2fs: Don't convert block # to cluster # when
+ clearing uninit_bg
+Date: Thu, 10 Oct 2013 15:04:56 -0700
+Message-ID: <20131010220456.GQ6860@birch.djwong.org>
+References: <20131001012642.28415.89353.stgit@birch.djwong.org>
+ <20131001012649.28415.17225.stgit@birch.djwong.org>
+ <alpine.LFD.2.00.1310031848270.1947@localhost.localdomain>
+ <20131003190444.GA14971@birch.djwong.org>
+ <20131007130328.GA4540@thunk.org>
+ <20131009221028.GN6860@birch.djwong.org>
+ <20131010002602.GA7035@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: elder@kernel.org, tytso@mit.edu, Namjae Jeon <namjae.jeon@samsung.com>,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com, hch@infradead.org,
-	bpm@sgi.com, adilger.kernel@dilger.ca, viro@zeniv.linux.org.uk,
-	a.sangwan@samsung.com, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, mtk.manpages@gmail.com
-To: Namjae Jeon <linkinjeon@gmail.com>
-Return-path: <xfs-bounces@oss.sgi.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
+	linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:49472 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755505Ab3JJWFH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Oct 2013 18:05:07 -0400
 Content-Disposition: inline
-In-Reply-To: <CAKYAXd8=ZKESV5Fmw7hqwL=G8L=BG6h0LQpc2cVjN9uTkj7nYw@mail.gmail.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20131010002602.GA7035@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 10, 2013 at 04:00:13PM +0900, Namjae Jeon wrote:
-> >
-> > /*
-> >  * Shift extent records to the left to cover a hole.
-> >  *
-> >  * The maximum number of extents to be shifted in a single operation
-> >  * is @count, and @current_ext keeps track of the current extent
-> >  * index we have shifted. If there is no hole to shift the extents
-> >  * into, then we abort immediately.
-> >  */
-> Thanks for your help. I will change this comment instead of original one.
+On Wed, Oct 09, 2013 at 08:26:02PM -0400, Theodore Ts'o wrote:
+> On Wed, Oct 09, 2013 at 03:10:28PM -0700, Darrick J. Wong wrote:
+> > 
+> > Any thoughts on patch #1?  It fixes bugs in the recently-landed patch "tune2fs:
+> > zero inode table when removing checksums".
 > 
-> >> +int
-> >> +xfs_bmap_shift_extents(
-> >> +     struct xfs_trans        *tp,
-> >> +     struct xfs_inode        *ip,
-> >> +     int                     *done,
-> >> +     xfs_fileoff_t           start_fsb,
-> >> +     xfs_fileoff_t           shift,
-> >
-> > Shift means ...? Number of extents to shift, a length, a number of
-> > block, or something else?
-> Ah, yes, shift_len would be a more proper name
-
-I'm not sure that's a lot better. What are we shifting? We are
-shifting the offset of the blocks, right? And the unit is in fsb?
-So perhaps offset_shift_fsb, and add that to the description of the
-function above?
-
-> >> +             /*
-> >> +              * Before shifting extent into hole, make sure that the hole
-> >> +              * is large enough to accomodate the shift.
-> >> +              */
-> >> +             if (*current_ext) {
-> >> +                     state |= BMAP_LEFT_VALID;
-> >> +                     xfs_bmbt_get_all(xfs_iext_get_ext(ifp,
-> >> +                                             *current_ext - 1), &left);
-> >> +
-> >> +                     if (isnullstartblock(left.br_startblock))
-> >> +                             state |= BMAP_LEFT_DELAY;
-> >> +
-> >> +                     if (startoff < left.br_startoff + left.br_blockcount)
-> >> +                             error = XFS_ERROR(EFSCORRUPTED);
-> >
-> > Why is the filesystem corrupted if the shift we asked for is too
-> > large for the hole in the file? I haven't seen any checks before
-> > this that guarantee that the hole is big enough for the shift...
+> I haven't gotten to it yet since I've been focusing on patches which
+> apply to the maint branch (i.e., for a 1.42.x release).
 > 
-> we call xfs_free_file_space to free enough blocks for shifting.
-> If still the space is not big enough will it be considered as fs corrupted?
-> What error could we return in this case?
+> The metadata checksum patches are on the master/next branch, which
+> will be for an eventual 1.43 release.
+> 
+> What I plan to do is to get all or most of the changes which are
+> appropriate for the maint branch applied.  I'll then merge the maint
+> branch into the next branch, and then start applying the patches which
+> are specific for a future 1.43 release.
 
-Hole punching rounds inwards, and the amount of rounding is not
-necessarily the nearest filesystem block. Again it's the block size
-smaller than page size case that will trip you over here, as the
-rounding  when punching holes will be done to page size, not
-filesystem block size. Hence it's entirely possible that your
-calculated shift start and lengths don't match the size of the hole
-that was punched.
+Ok.  Do you want me to hold off on reissuing changed patches and sending out
+new patches until then?  Or should I just send 'em and we can deal with the
+blizzard later?
 
-That doesn't mean there was a corruption - just that the hole wasn't
-the size and shape that was expected....
+Patches 2, 14-16, and 22 have changed, and there are now 9 more patches, mostly
+to fix resize2fs bugs.
 
-Cheers,
+Eh, I'll move the ones you took to the start of my quilt, and hope they don't
+change too much when they get merged in.  That'll help me keep the in-review
+patches in a consecutive pile.
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+--D
+> 
+> Cheers,
+> 
+> 					- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
