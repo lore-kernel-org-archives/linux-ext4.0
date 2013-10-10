@@ -1,160 +1,45 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH RESEND 6/7] xfstest: Add test case to test multiple
-	collapse range call
-Date: Thu, 10 Oct 2013 10:58:28 +1100
-Message-ID: <20131009235828.GR4446@dastard>
-References: <1381090446-2897-1-git-send-email-linkinjeon@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 01/31] tune2fs: Don't convert block # to cluster # when
+ clearing uninit_bg
+Date: Wed, 9 Oct 2013 20:26:02 -0400
+Message-ID: <20131010002602.GA7035@thunk.org>
+References: <20131001012642.28415.89353.stgit@birch.djwong.org>
+ <20131001012649.28415.17225.stgit@birch.djwong.org>
+ <alpine.LFD.2.00.1310031848270.1947@localhost.localdomain>
+ <20131003190444.GA14971@birch.djwong.org>
+ <20131007130328.GA4540@thunk.org>
+ <20131009221028.GN6860@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: elder@kernel.org, tytso@mit.edu, Namjae Jeon <namjae.jeon@samsung.com>,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com, hch@infradead.org,
-	bpm@sgi.com, adilger.kernel@dilger.ca, viro@zeniv.linux.org.uk,
-	a.sangwan@samsung.com, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, mtk.manpages@gmail.com
-To: Namjae Jeon <linkinjeon@gmail.com>
-Return-path: <xfs-bounces@oss.sgi.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
+	linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:44321 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754088Ab3JJA0K (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 9 Oct 2013 20:26:10 -0400
 Content-Disposition: inline
-In-Reply-To: <1381090446-2897-1-git-send-email-linkinjeon@gmail.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20131009221028.GN6860@birch.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 07, 2013 at 05:14:06AM +0900, Namjae Jeon wrote:
-> From: Namjae Jeon <namjae.jeon@samsung.com>
+On Wed, Oct 09, 2013 at 03:10:28PM -0700, Darrick J. Wong wrote:
 > 
-> We execute collapse range multiple times on same file.
-> Each collapse range call collapses a single alternate block.
-> After the test execution, file will be left with 80 blocks and
-> as much number of extents.
-> We also check for file system consistency after the completion.
-.....
-> +. ./common/rc
-> +. ./common/filter
-> +
-> +# real QA test starts here
-> +_supported_fs xfs ext4
-> +_supported_os Linux
-> +
-> +_require_scratch
-> +_require_xfs_io_fiemap
-> +_require_xfs_io_falloc_collapse
-> +_do_die_on_error=y
-> +test=$SCRATCH_MNT/test
+> Any thoughts on patch #1?  It fixes bugs in the recently-landed patch "tune2fs:
+> zero inode table when removing checksums".
 
-Not used.
+I haven't gotten to it yet since I've been focusing on patches which
+apply to the maint branch (i.e., for a 1.42.x release).
 
-> +testfile=$SCRATCH_MNT/317.$$
-> +BSIZE=4096
-> +BLOCKS=10240
-> +
-> +# Filters fiemap output
-> +_filter_fiemap()
-> +{
-> +	awk --posix '
-> +		$3 ~ /hole/ {
-> +			print $1, $2, $3;
-> +			next;
-> +		}
-> +		$5 ~ /0x[[:xdigit:]]+/ {
-> +			print $1, $2, "extent";
-> +		}'
-> +}
+The metadata checksum patches are on the master/next branch, which
+will be for an eventual 1.43 release.
 
-There's already a function in common/punch of this name, and it does
-pretty much the same thing. Why not use that?
-
-> +
-> +case $FSTYP in
-> +	ext4)
-> +		export MKFS_OPTIONS="-F -b $BSIZE"
-> +		;;
-> +	xfs)
-> +		export MKFS_OPTIONS="-f -b size=$BSIZE"
-> +		;;
-> +esac
-
-_scratch_mkfs takes options on the command line - there is no need
-to do this.
-
-In fact, this test needs to run on all block sizes that filesystems
-are capable of using, not just 4k and different architectures
-exercise different code paths and so we must be able to test the
-case where block size is smaller than page size on x86-64 so when
-the code is run on an ia64 or ppc64 box with a 64k page size we know
-that it's not completely broken...
-
-Anyway, if you really need to make a 4k block size filesystem, then
-_scratch_mkfs_sized() is the generic way of doing this.
-
-> +# make filesystem on scratch with 4KB blocksize
-> +_do 'make filesystem on $SCRATCH_DEV' '_scratch_mkfs'
-> +_do 'mount filesytem' '_scratch_mount'
-
-I really dislike this "_do" wrapper. The text does not add anything
-to the test, and it makes it hard to see the command being run and
-harder to modify it when necessary. It is used only by a couple of
-old tests, and we'd do better to remove it than to propagate it
-further.  This:
-
-_scratch_mkfs >> $seqres.full 2>&1 || _fail "scratch_mkfs failed."
-_scratch_mount >> $seqres.full 2>&1 || _fail "scratch_mount failed."
-
-does everything that the _do wrapper does.
-
-> +
-> +# Write file
-> +length=$(($BLOCKS*$BSIZE))
-> +$XFS_IO_PROG -f -c "pwrite 0 $length" -c fsync $testfile > /dev/null
-> +
-> +# Collapse alternate blocks
-> +for (( i = 1; i <= 7; i++ )); do
-> +	for(( j=0 ; j < $(($BLOCKS/(2**$i))) ; j++ )); do
-> +		offset=$(($j*$BSIZE))
-> +		$XFS_IO_PROG -c "fcollapse $offset $BSIZE" $testfile > /dev/null
-> +	done
-> +done
-> +
-> +# Check if 80 extents are present
-> +$XFS_IO_PROG -c "fiemap -v" $testfile | _filter_fiemap
-
-If all you care about is that there are 80 extents, then why not
-just something like:
-
-$XFS_IO_PROG -c "fiemap -v" $testfile |grep "^ *[0-9]*:" |wc -l
-
-> +
-> +_do 'unmount $SCRATCH_DEV' 'umount $SCRATCH_DEV'
-> +_do 'repair filesystem' '_check_scratch_fs'
-
-_check_scratch_fs is all you need to call here.
-
-> index 3a69294..80ff7ec 100644
-> --- a/tests/shared/group
-> +++ b/tests/shared/group
-> @@ -12,3 +12,4 @@
->  298 auto trim
->  305 aio dangerous enospc rw stress
->  316 auto quick collapse
-> +317 auto collapse
-
-Again, I think the prealloc group is better for this.
+What I plan to do is to get all or most of the changes which are
+appropriate for the maint branch applied.  I'll then merge the maint
+branch into the next branch, and then start applying the patches which
+are specific for a future 1.43 release.
 
 Cheers,
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+					- Ted
