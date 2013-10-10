@@ -1,49 +1,178 @@
-From: Prasanna NAVARATNA <prasanna.navaratna@gmail.com>
-Subject: help with 'discard' mount option on ext4
-Date: Thu, 10 Oct 2013 08:28:20 +0000 (UTC)
-Message-ID: <loom.20131010T102704-458@post.gmane.org>
+From: Namjae Jeon <linkinjeon@gmail.com>
+Subject: Re: [PATCH RESEND 5/7] xfstest: Add test case to check various corner
+	cases for collapsing range
+Date: Thu, 10 Oct 2013 19:01:01 +0900
+Message-ID: <CAKYAXd84D8XpYTDZuaY=rUzZdyxSD0NKaV8nCkYvj_XRs_gV_Q@mail.gmail.com>
+References: <1381090432-2863-1-git-send-email-linkinjeon@gmail.com>
+	<20131009233421.GQ4446@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from plane.gmane.org ([80.91.229.3]:50082 "EHLO plane.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754775Ab3JJIfG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 10 Oct 2013 04:35:06 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
-	id 1VUBi3-0005bC-Md
-	for linux-ext4@vger.kernel.org; Thu, 10 Oct 2013 10:35:03 +0200
-Received: from 202.122.18.226 ([202.122.18.226])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Thu, 10 Oct 2013 10:35:03 +0200
-Received: from prasanna.navaratna by 202.122.18.226 with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Thu, 10 Oct 2013 10:35:03 +0200
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: elder@kernel.org, tytso@mit.edu, Namjae Jeon <namjae.jeon@samsung.com>,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com, hch@infradead.org,
+	bpm@sgi.com, adilger.kernel@dilger.ca, viro@zeniv.linux.org.uk,
+	a.sangwan@samsung.com, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, mtk.manpages@gmail.com
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <20131009233421.GQ4446@dastard>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-Hello,
+>> +#
+>> +_test_generic_collapse()
+>> +{
+>
+> This function is just a copy and paste of _test_generic_punch() with
+> all the ranges increased by a factor of 4. Why can't you simply use
+> _test_generic_punch() and pass in a different $zero_cmd?
+Yes, you're right. We can use test_generic_punch as you said.
+I will update.
+>
+>
+>>
+>> +# check that xfs_io, kernel and filesystem all support fallocate with collapse
+>> +# range
+>> +_require_xfs_io_falloc_collapse()
+>> +{
+>> +     testfile=$TEST_DIR/$$.falloc
+>> +     testio=`$XFS_IO_PROG -F -f -c "pwrite 0 20k" -c "fsync" \
+>> +             -c "fcollapse 4k 8k" $testfile 2>&1`
+>
+> No need for the -F parameter anymore.
+Okay.
 
-I'm using Hynix eMMC4.41 with Linux kernel 3.4.5.
+>
+>> +     rm -f $testfile 2>&1 > /dev/null
+>> +     echo $testio | grep -q "not found" && \
+>> +             _notrun "xfs_io fallocate collapse range support is missing"
+>> +     echo $testio | grep -q "Operation not supported" && \
+>> +             _notrun "xfs_io fallocate collapse range failed (no fs support?)"
+>> +}
+>> +
+>>  # check that xfs_io, kernel and filesystem support fiemap
+>>  _require_xfs_io_fiemap()
+>>  {
+>> diff --git a/tests/shared/316 b/tests/shared/316
+>> new file mode 100644
+>> index 0000000..66a8489
+>> --- /dev/null
+>> +++ b/tests/shared/316
+>
+> You don't need to number this 316. shared/001 is not taken, so start
+> there....
+okay.
 
-After mounting ext4 partition /userdata with 'discard' mount option enabled,
-fs triggers TRIM commands to eMMC after every file deletion. With this
-setup, for a continuous reboot test (5s awake and issue reboot and repeat)
-with 10 or 20 iterations, i see data corruption in eMMC consistently.
+>
+>> @@ -0,0 +1,70 @@
+>> +#! /bin/bash
+>> +# FS QA Test No. 316
+>> +#
+>> +# Test fallocate collapse range
+>
+> A more verbose test description is preferred. A paragraph describing
+> that the test exercises boundary conditions across different extent
+> types for the FALLOC_FL_COLLAPSE_RANGE operation would be ideal.
+Okay.
 
-mount options are :- noatime,nosuid,nodev,noauto_da_alloc,discard
-encryptable="path"
+>
+>> +trap "_cleanup ; exit \$status" 0 1 2 3 15
+>> +
+>> +# get standard environment, filters and checks
+>> +# we need to include common/punch to get defination fo filter functions
+>> +. ./common/rc
+>> +. ./common/filter
+>> +. ./common/punch
+>> +. ./common/collapse
+>> +
+>> +# real QA test starts here
+>> +_supported_fs xfs ext4
+>> +_supported_os Linux
+>> +
+>> +_require_xfs_io_falloc_punch
+>> +_require_xfs_io_falloc
+>> +_require_xfs_io_fiemap
+>> +_require_xfs_io_falloc_collapse
+>> +
+>> +testfile=$TEST_DIR/316.$$
+>
+> If you are going to use the test number to identify the file, you
+> should use $seq rather than hard coding the number....
+Okay.
 
-What am i missing here? if 'discard' mount option is removed, then no data
-corruption in eMMC for more than 200 iterations. Does TRIM needs some extra
-care? BKOPS is not enabled in eMMC (is bkops mandatory if using TRIM?)
-Are there any latest patches which address these corruption issues during
-reboot with discard option enabled?
-Please help to analyze further.
+>
+>> +# Standard collapse range tests
+>> +_test_generic_collapse falloc fcollapse fpunch fiemap _filter_hole_fiemap $testfile
+>> +
+>> +# Delayed allocation collapse range tests
+>> +_test_generic_collapse -d falloc fcollapse fpunch fiemap _filter_hole_fiemap $testfile
+>> +
+>> +# Multi collapse tests
+>> +_test_generic_collapse -k falloc fcollapse fpunch fiemap _filter_hole_fiemap $testfile
+>> +
+>> +# Delayed allocation multi collapse range tests
+>> +_test_generic_collapse -d -k falloc fcollapse fpunch fiemap _filter_hole_fiemap $testfile
+>
+> What I'd prefer is each of these is a separate unit test. i.e:
+>
+> shared/001: Standard collapse range tests
+> shared/002: Delayed allocation collapse range tests
+> shared/003: Multi collapse tests
+> shared/004: Delayed allocation multi collapse range tests
+>
+> The reason for doing this is that it means that:
+>
+>         a) we can track failures of the different types of tests
+>            independently; and
+>         b) the filesystem the tests are being run on is checked for
+>            consistency between each test
+>
+> I know, the punch tests you copied this from lump them all into the
+> one test, but I'd really like to get away from the complex tests
+> that aggregate lots of different things into a single pass/fail test
+> as it makes it hard to isolate failures and track them over the long
+> term...
+>
+Okay, I will do it as your suggestion.
 
-Thanks,
-Prasanna NAVARATNA
+>> +
+>> +status=0 ; exit
+>
+> separate lines
+>
+>> diff --git a/tests/shared/group b/tests/shared/group
+>> index 0ad640b..3a69294 100644
+>> --- a/tests/shared/group
+>> +++ b/tests/shared/group
+>> @@ -11,4 +11,4 @@
+>>  289 auto quick
+>>  298 auto trim
+>>  305 aio dangerous enospc rw stress
+>> -
+>> +316 auto quick collapse
+>
+> I'd put this in the prealloc group rather than create a new one
+> called "collapse".
+Okay.
 
+Thanks for review.
+>
+> Cheers,
+>
+> Dave.
+> --
+> Dave Chinner
+> david@fromorbit.com
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
