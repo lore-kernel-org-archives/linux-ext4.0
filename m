@@ -1,35 +1,32 @@
 From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 23/31] libext2fs: expanddir and mkjournal need not update
- the summary counts when performing an implied cluster allocation
-Date: Thu, 10 Oct 2013 18:02:32 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1310101802110.1925@localhost.localdomain>
-References: <20131001012642.28415.89353.stgit@birch.djwong.org> <20131001012909.28415.3283.stgit@birch.djwong.org>
+Subject: Re: [PATCH 24/31] libext2fs: Use ext2fs_punch() to truncate quota
+ file
+Date: Thu, 10 Oct 2013 18:06:13 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1310101805540.1925@localhost.localdomain>
+References: <20131001012642.28415.89353.stgit@birch.djwong.org> <20131001012915.28415.89982.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:17724 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:31389 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756453Ab3JJQCi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 10 Oct 2013 12:02:38 -0400
-In-Reply-To: <20131001012909.28415.3283.stgit@birch.djwong.org>
+	id S932072Ab3JJQGS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 10 Oct 2013 12:06:18 -0400
+In-Reply-To: <20131001012915.28415.89982.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 On Mon, 30 Sep 2013, Darrick J. Wong wrote:
 
-> Date: Mon, 30 Sep 2013 18:29:09 -0700
+> Date: Mon, 30 Sep 2013 18:29:15 -0700
 > From: Darrick J. Wong <darrick.wong@oracle.com>
 > To: tytso@mit.edu, darrick.wong@oracle.com
 > Cc: linux-ext4@vger.kernel.org
-> Subject: [PATCH 23/31] libext2fs: expanddir and mkjournal need not update the
->     summary counts when performing an implied cluster allocation
+> Subject: [PATCH 24/31] libext2fs: Use ext2fs_punch() to truncate quota file
 > 
-> When we're appending a block to a directory file or the journal file, and the
-> new block is part of a cluster that has already been allocated to the file
-> (implied cluster allocation), don't update the bitmap or the summary counts
-> because that was performed when the cluster was allocated.
+> Use the new ext2fs_punch() call to truncate the quota file.  This also
+> eliminates the need to fix it to work with bigalloc.
 
 Looks good.
 
@@ -38,51 +35,47 @@ Reviewed-by: Lukas Czerner <lczerner@redhat.com>
 > 
 > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 > ---
->  lib/ext2fs/expanddir.c |    2 +-
->  lib/ext2fs/mkjournal.c |    2 +-
->  2 files changed, 2 insertions(+), 2 deletions(-)
+>  lib/quota/quotaio.c |   19 +++----------------
+>  1 file changed, 3 insertions(+), 16 deletions(-)
 > 
 > 
-> diff --git a/lib/ext2fs/expanddir.c b/lib/ext2fs/expanddir.c
-> index 22558d6..09a15fa 100644
-> --- a/lib/ext2fs/expanddir.c
-> +++ b/lib/ext2fs/expanddir.c
-> @@ -55,6 +55,7 @@ static int expand_dir_proc(ext2_filsys	fs,
->  			return BLOCK_ABORT;
->  		}
->  		es->newblocks++;
-> +		ext2fs_block_alloc_stats2(fs, new_blk, +1);
+> diff --git a/lib/quota/quotaio.c b/lib/quota/quotaio.c
+> index 8ddb92a..807fabd 100644
+> --- a/lib/quota/quotaio.c
+> +++ b/lib/quota/quotaio.c
+> @@ -98,19 +98,6 @@ void update_grace_times(struct dquot *q)
 >  	}
->  	if (blockcnt > 0) {
->  		retval = ext2fs_new_dir_block(fs, 0, 0, &block);
-> @@ -82,7 +83,6 @@ static int expand_dir_proc(ext2_filsys	fs,
->  	}
->  	ext2fs_free_mem(&block);
->  	*blocknr = new_blk;
-> -	ext2fs_block_alloc_stats2(fs, new_blk, +1);
+>  }
 >  
->  	if (es->done)
->  		return (BLOCK_CHANGED | BLOCK_ABORT);
-> diff --git a/lib/ext2fs/mkjournal.c b/lib/ext2fs/mkjournal.c
-> index c636a97..dd3c35b 100644
-> --- a/lib/ext2fs/mkjournal.c
-> +++ b/lib/ext2fs/mkjournal.c
-> @@ -250,6 +250,7 @@ static int mkjournal_proc(ext2_filsys	fs,
->  			es->err = retval;
->  			return BLOCK_ABORT;
->  		}
-> +		ext2fs_block_alloc_stats2(fs, new_blk, +1);
->  		es->newblocks++;
->  	}
->  	if (blockcnt >= 0)
-> @@ -285,7 +286,6 @@ static int mkjournal_proc(ext2_filsys	fs,
->  		return BLOCK_ABORT;
->  	}
->  	*blocknr = es->goal = new_blk;
-> -	ext2fs_block_alloc_stats2(fs, new_blk, +1);
->  
->  	if (es->num_blocks == 0)
->  		return (BLOCK_CHANGED | BLOCK_ABORT);
+> -static int release_blocks_proc(ext2_filsys fs, blk64_t *blocknr,
+> -			       e2_blkcnt_t blockcnt EXT2FS_ATTR((unused)),
+> -			       blk64_t ref_block EXT2FS_ATTR((unused)),
+> -			       int ref_offset EXT2FS_ATTR((unused)),
+> -			       void *private EXT2FS_ATTR((unused)))
+> -{
+> -	blk64_t	block;
+> -
+> -	block = *blocknr;
+> -	ext2fs_block_alloc_stats2(fs, block, -1);
+> -	return 0;
+> -}
+> -
+>  static int compute_num_blocks_proc(ext2_filsys fs, blk64_t *blocknr,
+>  			       e2_blkcnt_t blockcnt EXT2FS_ATTR((unused)),
+>  			       blk64_t ref_block EXT2FS_ATTR((unused)),
+> @@ -135,9 +122,9 @@ errcode_t quota_inode_truncate(ext2_filsys fs, ext2_ino_t ino)
+>  		inode.i_dtime = fs->now ? fs->now : time(0);
+>  		if (!ext2fs_inode_has_valid_blocks2(fs, &inode))
+>  			return 0;
+> -
+> -		ext2fs_block_iterate3(fs, ino, BLOCK_FLAG_READ_ONLY, NULL,
+> -				      release_blocks_proc, NULL);
+> +		err = ext2fs_punch(fs, ino, NULL, NULL, 0, ~0ULL);
+> +		if (err)
+> +			return err;
+>  		fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
+>  		memset(&inode, 0, sizeof(struct ext2_inode));
+>  	} else {
 > 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
