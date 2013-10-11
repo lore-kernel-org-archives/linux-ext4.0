@@ -1,185 +1,345 @@
-From: Carlos Maiolino <cmaiolino@redhat.com>
-Subject: Re: A crash in ext3 on disk failure
-Date: Fri, 11 Oct 2013 11:51:13 -0300
-Message-ID: <20131011145112.GA27694@orion.maiolino.org>
-References: <alpine.LRH.2.02.1310110814280.17283@file01.intranet.prod.int.rdu2.redhat.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH v1 03/22] libext2fs: add functions to operate on extended
+ attribute
+Date: Fri, 11 Oct 2013 15:51:15 -0700
+Message-ID: <20131011225115.GA20432@birch.djwong.org>
+References: <1375436989-18948-1-git-send-email-wenqing.lz@taobao.com>
+ <1375436989-18948-4-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
+	"Theodore Ts'o" <tytso@mit.edu>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51186 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752211Ab3JKOvS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 11 Oct 2013 10:51:18 -0400
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9BEpHlL005427
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Fri, 11 Oct 2013 10:51:18 -0400
-Received: from orion.maiolino.org (ovpn-113-55.phx2.redhat.com [10.3.113.55])
-	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id r9BEpEQo030365
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 11 Oct 2013 10:51:16 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:39005 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751984Ab3JKWvZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Oct 2013 18:51:25 -0400
 Content-Disposition: inline
-In-Reply-To: <alpine.LRH.2.02.1310110814280.17283@file01.intranet.prod.int.rdu2.redhat.com>
+In-Reply-To: <1375436989-18948-4-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On Fri, Aug 02, 2013 at 05:49:30PM +0800, Zheng Liu wrote:
+> From: Zheng Liu <wenqing.lz@taobao.com>
+> 
+> We need to define some functions to operate extended attribute in order
+> to support inline data.
+> 
+> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> ---
+>  lib/ext2fs/ext2_err.et.in  |    3 +
+>  lib/ext2fs/ext2_ext_attr.h |   31 ++++++++
+>  lib/ext2fs/ext2fs.h        |    9 +++
+>  lib/ext2fs/ext_attr.c      |  186 ++++++++++++++++++++++++++++++++++++++++++++
+>  4 files changed, 229 insertions(+)
+> 
+> diff --git a/lib/ext2fs/ext2_err.et.in b/lib/ext2fs/ext2_err.et.in
+> index d20c6b7..7e6d6e5 100644
+> --- a/lib/ext2fs/ext2_err.et.in
+> +++ b/lib/ext2fs/ext2_err.et.in
+> @@ -476,4 +476,7 @@ ec	EXT2_ET_MMP_CSUM_INVALID,
+>  ec	EXT2_ET_FILE_EXISTS,
+>  	"Ext2 file already exists"
+>  
+> +ec	EXT2_ET_EXT_ATTR_CURRUPTED,
+> +	"Extended attribute currupted"
+> +
+>  	end
+> diff --git a/lib/ext2fs/ext2_ext_attr.h b/lib/ext2fs/ext2_ext_attr.h
+> index bbb0aaa..99ad849 100644
+> --- a/lib/ext2fs/ext2_ext_attr.h
+> +++ b/lib/ext2fs/ext2_ext_attr.h
+> @@ -15,6 +15,10 @@
+>  /* Maximum number of references to one attribute block */
+>  #define EXT2_EXT_ATTR_REFCOUNT_MAX	1024
+>  
+> +/* Name indexes */
+> +#define EXT4_EXT_ATTR_INDEX_SYSTEM	7
+> +#define EXT4_EXT_ATTR_SYSTEM_DATA	"data"
+> +
+>  struct ext2_ext_attr_header {
+>  	__u32	h_magic;	/* magic number for identification */
+>  	__u32	h_refcount;	/* reference count */
+> @@ -25,6 +29,10 @@ struct ext2_ext_attr_header {
+>  	__u32	h_reserved[3];	/* zero right now */
+>  };
+>  
+> +struct ext2_ext_attr_ibody_header {
+> +	__u32	h_magic;
+> +};
+> +
+>  struct ext2_ext_attr_entry {
+>  	__u8	e_name_len;	/* length of name */
+>  	__u8	e_name_index;	/* attribute name index */
+> @@ -57,6 +65,29 @@ struct ext2_ext_attr_entry {
+>  #define EXT2_XATTR_SIZE(size) \
+>  	(((size) + EXT2_EXT_ATTR_ROUND) & ~EXT2_EXT_ATTR_ROUND)
+>  
+> +#define IHDR(inode) \
+> +	((struct ext2_ext_attr_ibody_header *) \
+> +		((char *)inode + \
+> +		EXT2_GOOD_OLD_INODE_SIZE + \
+> +		inode->i_extra_isize))
+> +#define IFIRST(hdr) ((struct ext2_ext_attr_entry *)((hdr)+1))
+> +#define EXT2_ZERO_EXT_ATTR_VALUE ((void *)-1)
+> +
+> +struct ext2_ext_attr_info {
+> +	int name_index;
+> +	const char *name;
+> +	const void *value;
+> +	size_t value_len;
+> +};
+> +
+> +struct ext2_ext_attr_search {
+> +	struct ext2_ext_attr_entry *first;
+> +	void *base;
+> +	void *end;
+> +	struct ext2_ext_attr_entry *here;
+> +	int not_found;
+> +};
+> +
+>  #ifdef __KERNEL__
+>  # ifdef CONFIG_EXT2_FS_EXT_ATTR
+>  extern int ext2_get_ext_attr(struct inode *, const char *, char *, size_t, int);
+> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+> index 3346c00..8c30197 100644
+> --- a/lib/ext2fs/ext2fs.h
+> +++ b/lib/ext2fs/ext2fs.h
+> @@ -1136,6 +1136,15 @@ extern errcode_t ext2fs_adjust_ea_refcount3(ext2_filsys fs, blk64_t blk,
+>  					   char *block_buf,
+>  					   int adjust, __u32 *newcount,
+>  					   ext2_ino_t inum);
+> +extern errcode_t ext2fs_ext_attr_ibody_find(ext2_filsys fs,
+> +					    struct ext2_inode_large *inode,
+> +					    struct ext2_ext_attr_info *i,
+> +					    struct ext2_ext_attr_search *s);
+> +extern errcode_t ext2fs_ext_attr_find_entry(struct ext2_ext_attr_entry **pentry,
+> +					    int name_index, const char *name,
+> +					    size_t size, int sorted);
+> +extern errcode_t ext2fs_ext_attr_set_entry(struct ext2_ext_attr_info *i,
+> +					   struct ext2_ext_attr_search *s);
+>  
+>  /* extent.c */
+>  extern errcode_t ext2fs_extent_header_verify(void *ptr, int size);
+> diff --git a/lib/ext2fs/ext_attr.c b/lib/ext2fs/ext_attr.c
+> index 9649a14..6d55340 100644
+> --- a/lib/ext2fs/ext_attr.c
+> +++ b/lib/ext2fs/ext_attr.c
+> @@ -186,3 +186,189 @@ errcode_t ext2fs_adjust_ea_refcount(ext2_filsys fs, blk_t blk,
+>  	return ext2fs_adjust_ea_refcount2(fs, blk, block_buf, adjust,
+>  					  newcount);
+>  }
+> +
+> +static errcode_t
+> +ext2fs_ext_attr_check_names(struct ext2_ext_attr_entry *entry, void *end)
+> +{
+> +	while (!EXT2_EXT_IS_LAST_ENTRY(entry)) {
+> +		struct ext2_ext_attr_entry *next = EXT2_EXT_ATTR_NEXT(entry);
+> +		if ((void *)next >= end)
+> +			return EXT2_ET_EXT_ATTR_CURRUPTED;
+> +		entry = next;
+> +	}
+> +	return 0;
+> +}
+> +
+> +static inline errcode_t
+> +ext2fs_ext_attr_check_entry(struct ext2_ext_attr_entry *entry, size_t size)
+> +{
+> +	size_t value_size = entry->e_value_size;
+> +
+> +	if (entry->e_value_block != 0 || value_size > size ||
+> +	    entry->e_value_offs + value_size > size)
+> +		return EXT2_ET_EXT_ATTR_CURRUPTED;
+> +	return 0;
+> +}
+> +
+> +errcode_t ext2fs_ext_attr_find_entry(struct ext2_ext_attr_entry **pentry,
+> +				     int name_index, const char *name,
+> +				     size_t size, int sorted)
+> +{
+> +	struct ext2_ext_attr_entry *entry;
+> +	size_t name_len;
+> +	int cmp = 1;
+> +
+> +	if (name == NULL)
+> +		return EXT2_ET_INVALID_ARGUMENT;
+> +	name_len = strlen(name);
+> +	for (entry = *pentry; !EXT2_EXT_IS_LAST_ENTRY(entry);
+> +	     entry = EXT2_EXT_ATTR_NEXT(entry)) {
+> +		cmp = name_index - entry->e_name_index;
+> +		if (!cmp)
+> +			cmp = name_len - entry->e_name_len;
+> +		if (!cmp)
+> +			cmp = memcmp(name, EXT2_EXT_ATTR_NAME(entry),
+> +				     name_len);
+> +		if (cmp <= 0 && (sorted || cmp == 0))
+> +			break;
+> +	}
+> +	*pentry = entry;
+> +	if (!cmp && ext2fs_ext_attr_check_entry(entry, size))
+> +		return EXT2_ET_EXT_ATTR_CURRUPTED;
+> +	return cmp ? ENODATA : 0;
+> +}
+> +
+> +errcode_t ext2fs_ext_attr_ibody_find(ext2_filsys fs,
+> +				     struct ext2_inode_large *inode,
+> +				     struct ext2_ext_attr_info *i,
+> +				     struct ext2_ext_attr_search *s)
+> +{
+> +	struct ext2_ext_attr_ibody_header *header;
+> +	errcode_t error;
+> +
+> +	if (inode->i_extra_isize == 0)
+> +		return 0;
+> +	header = IHDR(inode);
+> +	s->base = s->first = IFIRST(header);
+> +	s->here = s->first;
+> +	s->end = (char *)inode + EXT2_INODE_SIZE(fs->super);
+> +
+> +	error = ext2fs_ext_attr_check_names(IFIRST(header), s->end);
+> +	if (error)
+> +		return error;
+> +	/* Find the named attribute. */
+> +	error = ext2fs_ext_attr_find_entry(&s->here, i->name_index,
+> +					   i->name, (char *)s->end -
+> +					   (char *)s->base, 0);
+> +	if (error && error != ENODATA)
+> +		return error;
+> +	s->not_found = error;
+> +	return 0;
 
-honestly I don't think this is an ext3 error, the buffer_head looks to have been
-vanished when the ndb socket has been closed, something similar happens when you
-remove an USB stick while writing the superblock.
+Huh.  It just occurred to me (yes, after three months, sorry...) that your
+patchset doesn't deal with EAs that live in a separate block.  For the purposes
+of inline_data I suppose that's sufficient, but if we're going to add an API to
+mess with EAs, we ought to be able to handle all of a file's EAs.
 
->From the filesystem side, the best it would to IMHO were to remount the fs as
-RO, but, how would you remount a FS to RO if there is no more FS?
+The implementation that I wrote for fuse2fs does this, but it has no facility
+to ensure that the inline data ends up in the ibody and not the EA block.
+Though really, they're written out in array order, so it wouldn't be difficult
+to sort before writing, or use some knapsack variant.
 
-to be honest this is a kind of panic I'd expect to see when you remove a block
-device, maybe from nbd they might want to keep some buffers around if they lost
-connection to the server? but this will make the filesystem to be stuck in
-anyway but at least will avoid the panic.
+I think I might be drifting towards the idea of attaching your patch series to
+the end of mine, but as yours is already in -pu I'm open to discussing how to
+reconcile our implementations.
 
+I _do_ like the comments you added to ext2fs_ext_attr_set_entry() though. :)
 
-On Fri, Oct 11, 2013 at 08:28:52AM -0400, Mikulas Patocka wrote:
-> Hi
-> 
-> I report this crash in the ext3 filesystem. The filesystem is mounted on 
-> nbd, the nbd server was rebooted - so the nbd client returned errors on 
-> all requests. Those errors caused kernel crash.
-> 
-> The kernel version is 3.4.62.
-> 
-> The crash happens in submit_bh when attempting to write the superblock, 
-> the condition that caused the crash is BUG_ON(!buffer_mapped(bh));
-> 
-> Mikulas
-> 
-> block nbd3: Receive control failed (result -104)
-> block nbd3: shutting down socket
-> end_request: I/O error, dev nbd3, sector 187842584
-> end_request: I/O error, dev nbd3, sector 205532832
-> end_request: I/O error, dev nbd3, sector 205532584
-> end_request: I/O error, dev nbd3, sector 205169504
-> end_request: I/O error, dev nbd3, sector 205169256
-> end_request: I/O error, dev nbd3, sector 203666336
-> end_request: I/O error, dev nbd3, sector 203666088
-> end_request: I/O error, dev nbd3, sector 207242104
-> end_request: I/O error, dev nbd3, sector 207241856
-> block nbd3: queue cleared
-> block nbd3: Attempted send on closed socket
-> end_request: I/O error, dev nbd3, sector 205532712
-> block nbd3: Attempted send on closed socket
-> end_request: I/O error, dev nbd3, sector 229789648
-> block nbd3: Attempted send on closed socket
-> end_request: I/O error, dev nbd3, sector 229789680
-> block nbd3: Attempted send on closed socket
-> end_request: I/O error, dev nbd3, sector 229789760
-> block nbd3: Attempted send on closed socket
-> end_request: I/O error, dev nbd3, sector 229789832
-> block nbd3: Attempted send on closed socket
-> end_request: I/O error, dev nbd3, sector 229789776
-> block nbd3: Attempted send on closed socket
-> end_request: I/O error, dev nbd3, sector 229785616
-> block nbd3: Attempted send on closed socket
-> end_request: I/O error, dev nbd3, sector 229785616
-> block nbd3: Attempted send on closed socket
-> end_request: I/O error, dev nbd3, sector 187842584
-> EXT3-fs error (device nbd3): ext3_find_entry: reading directory #5865482 
-> offset 0
-> block nbd3: Attempted send on closed socket
-> end_request: I/O error, dev nbd3, sector 0
-> Buffer I/O error on device nbd3, logical block 0
-> lost page write due to I/O error on nbd3
-> EXT3-fs (nbd3): I/O error while writing superblock
-> block nbd3: Attempted send on closed socket
-> end_request: I/O error, dev nbd3, sector 187842584
-> EXT3-fs error (device nbd3): ext3_find_entry: reading directory #5865482 
-> offset 0
-> block nbd3: Attempted send on closed socket
-> end_request: I/O error, dev nbd3, sector 0
-> Buffer I/O error on device nbd3, logical block 0
-> lost page write due to I/O error on nbd3
-> EXT3-fs (nbd3): I/O error while writing superblock
-> block nbd3: Attempted send on closed socket
-> end_request: I/O error, dev nbd3, sector 187842584
-> EXT3-fs error (device nbd3): ext3_find_entry: reading directory #5865482 
-> offset 0
-> ------------[ cut here ]------------
-> kernel BUG at fs/buffer.c:2880!
-> invalid opcode: 0000 [#1] PREEMPT
-> Modules linked in: speedstep_smi tun sha1_generic arc4 ecb ppp_mppe 
-> ppp_async crc_ccitt ppp_generic slhc ext3 jbd mbcache sha256_generic krng 
-> chainiv crypto_wq rng aes_generic cbc cryptomgr aead pcompress dm_crypt 
-> crypto_hash crypto_blkcipher crypto_algapi crypto dm_mod loop nbd 
-> xt_length xt_limit xt_ipfile xt_state ipt_REJECT xt_conntrack 
-> iptable_filter ipt_MASQUERADE xt_tcpudp xt_multiport iptable_nat ip_tables 
-> x_tables nf_nat_sip nf_conntrack_sip nf_nat_irc nf_conntrack_irc 
-> nf_nat_ftp nf_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_conntrack_ftp 
-> nf_conntrack af_packet cpufreq_stats cpufreq_powersave ipv6 freq_table 
-> speedstep_lib parport_pc parport 8250 serial_core apm 8139too bitrev crc32 
-> snd_maestro3 snd_ac97_codec ac97_bus snd_pcm_oss snd_mixer_oss snd_pcm 
-> uhci_hcd snd_timer microcode snd_page_alloc rtc_cmos ide_cd_mod psmouse 
-> pcspkr usbcore snd i2c_piix4 yenta_socket cdrom 3c59x pcmcia_core 
-> usb_common mii soundcore i2c_core pcmcia_rsrc intel_agp intel_gtt agpgart 
-> unix
-> 
-> Pid: 26759, comm: bash Tainted: G        W    3.4.62 #3 Dell Computer 
-> Corporation Latitude C600                   /Latitude C600
-> EIP: 0060:[<c10c8295>] EFLAGS: 00010246 CPU: 0
-> EIP is at submit_bh+0xe5/0xf0
-> EAX: 00040005 EBX: c49ab6d8 ECX: 00000000 EDX: c49ab6d8
-> ESI: 00000211 EDI: 00000211 EBP: 00000001 ESP: d6a5dccc
->  DS: 007b ES: 007b FS: 0000 GS: 0033 SS: 0068
-> CR0: 8005003b CR2: 0901e008 CR3: 10b1c000 CR4: 000006d0
-> DR0: 00000000 DR1: 00000000 DR2: 00000000 DR3: 00000000
-> DR6: ffff0ff0 DR7: 00000400
-> Process bash (pid: 26759, ti=d6a5c000 task=d79c8820 task.ti=d6a5c000)
-> Stack:
->  c49ab6d8 00000211 c590c400 c10c8e04 d0953e00 c49ab6d8 d8da2cc1 00000001
->  00000046 00000000 0196b320 d0953e00 c590c400 00000001 d8da2dbd 00000001
->  00000001 c1209e99 d0953e00 00000000 d8da2fad d8dac804 d0953f4c d8dab3b8
-> Call Trace:
->  [<c10c8e04>] ? __sync_dirty_buffer+0x34/0xa0
->  [<d8da2cc1>] ? ext3_commit_super.constprop.27+0x51/0xe0 [ext3]
->  [<d8da2dbd>] ? ext3_handle_error+0x6d/0xc0 [ext3]
->  [<c1209e99>] ? printk+0x17/0x1b
->  [<d8da2fad>] ? ext3_error+0x4d/0x60 [ext3]
->  [<d8d9ec9c>] ? ext3_find_entry+0x11c/0x590 [ext3]
->  [<c10b5fa5>] ? __d_lookup+0x125/0x1c0
->  [<c10b5fa5>] ? __d_lookup+0x125/0x1c0
->  [<d8d9f156>] ? ext3_lookup+0x46/0x100 [ext3]
->  [<c10a9843>] ? __lookup_hash+0x43/0xe0
->  [<c10ab8e4>] ? do_lookup+0x2c4/0x350
->  [<c10ace2c>] ? path_lookupat+0xfc/0x6c0
->  [<c10ad418>] ? do_path_lookup+0x28/0x80
->  [<c10c8e04>] ? __sync_dirty_buffer+0x34/0xa0
->  [<d8da2cc1>] ? ext3_commit_super.constprop.27+0x51/0xe0 [ext3]
->  [<d8da2dbd>] ? ext3_handle_error+0x6d/0xc0 [ext3]
->  [<c1209e99>] ? printk+0x17/0x1b
->  [<d8da2fad>] ? ext3_error+0x4d/0x60 [ext3]
->  [<d8d9ec9c>] ? ext3_find_entry+0x11c/0x590 [ext3]
->  [<c10b5fa5>] ? __d_lookup+0x125/0x1c0
->  [<c10b5fa5>] ? __d_lookup+0x125/0x1c0
->  [<d8d9f156>] ? ext3_lookup+0x46/0x100 [ext3]
->  [<c10a9843>] ? __lookup_hash+0x43/0xe0
->  [<c10ab8e4>] ? do_lookup+0x2c4/0x350
->  [<c10ace2c>] ? path_lookupat+0xfc/0x6c0
->  [<c10ad418>] ? do_path_lookup+0x28/0x80
->  [<c10adcf3>] ? user_path_at_empty+0x43/0x80
->  [<c10add46>] ? user_path_at+0x16/0x20
->  [<c10a44ab>] ? vfs_fstatat+0x4b/0x80
->  [<c10a4518>] ? vfs_stat+0x18/0x20
->  [<c10a492e>] ? sys_stat64+0xe/0x30
->  [<c12103d0>] ? sysenter_do_call+0x12/0x26
-> Code: ff 46 30 89 f2 89 f8 e8 fa c6 04 00 8b 5e 10 89 f0 c1 e3 18 c1 fb 1f 
-> e8 da 4c 00 00 83 e3 a1 89 d8 5b 5e 5f c3 0f 0b 0f 0b 0f 0b <0f> 0b 0f 0b 
-> 8d b4 26 00 00 00 00 53 83 fa a1 89 c3 8b 48 3c 74
-> EIP: [<c10c8295>] submit_bh+0xe5/0xf0 SS:ESP 0068:d6a5dccc
-> ---[ end trace c62efc9e706b2739 ]---
+--D
+
+> +}
+> +
+> +errcode_t ext2fs_ext_attr_set_entry(struct ext2_ext_attr_info *i,
+> +				    struct ext2_ext_attr_search *s)
+> +{
+> +	struct ext2_ext_attr_entry *last;
+> +	size_t freesize, min_offs = (char *)s->end - (char *)s->base;
+> +	size_t name_len = strlen(i->name);
+> +
+> +	/* Compute min_offs and last. */
+> +	last = s->first;
+> +	for (; !EXT2_EXT_IS_LAST_ENTRY(last); last = EXT2_EXT_ATTR_NEXT(last)) {
+> +		if (!last->e_value_block && last->e_value_size) {
+> +			size_t offs = last->e_value_offs;
+> +			if (offs < min_offs)
+> +				min_offs = offs;
+> +		}
+> +	}
+> +	freesize = min_offs - ((char *)last - (char *)s->base) - sizeof(__u32);
+> +	if (!s->not_found) {
+> +		if (!s->here->e_value_block && s->here->e_value_size) {
+> +			size_t size = s->here->e_value_size;
+> +			freesize += EXT2_EXT_ATTR_SIZE(size);
+> +		}
+> +		freesize += EXT2_EXT_ATTR_LEN(name_len);
+> +	}
+> +	if (i->value) {
+> +		if (freesize < EXT2_EXT_ATTR_SIZE(i->value_len) ||
+> +		    freesize < EXT2_EXT_ATTR_LEN(name_len) +
+> +			   EXT2_EXT_ATTR_SIZE(i->value_len))
+> +			return ENOSPC;
+> +	}
+> +
+> +	if (i->value && s->not_found) {
+> +		/* Insert the new name. */
+> +		size_t size = EXT2_EXT_ATTR_LEN(name_len);
+> +		size_t rest = (char *)last - (char *)s->here + sizeof(__u32);
+> +		memmove((char *)s->here + size, s->here, rest);
+> +		memset(s->here, 0, size);
+> +		s->here->e_name_index = i->name_index;
+> +		s->here->e_name_len = name_len;
+> +		memcpy(EXT2_EXT_ATTR_NAME(s->here), i->name, name_len);
+> +	} else {
+> +		if (!s->here->e_value_block && s->here->e_value_size) {
+> +			char *first_val = (char *) s->base + min_offs;
+> +			size_t offs = s->here->e_value_offs;
+> +			char *val = (char *)s->base + offs;
+> +			size_t size = EXT2_EXT_ATTR_SIZE(s->here->e_value_size);
+> +
+> +			if (i->value && size == EXT2_EXT_ATTR_SIZE(i->value_len)) {
+> +				/* The old and the new value have the same
+> +				 * size. Just replace. */
+> +				s->here->e_value_size = i->value_len;
+> +				if (i->value == EXT2_ZERO_EXT_ATTR_VALUE) {
+> +					memset(val, 0, size);
+> +				} else {
+> +					memset(val + size - EXT2_EXT_ATTR_PAD, 0,
+> +						EXT2_EXT_ATTR_PAD);
+> +					memcpy(val, i->value, i->value_len);
+> +				}
+> +				return 0;
+> +			}
+> +
+> +			/* Remove the old value. */
+> +			memmove(first_val + size, first_val, val - first_val);
+> +			memset(first_val, 0, size);
+> +			s->here->e_value_size = 0;
+> +			s->here->e_value_offs = 0;
+> +			min_offs += size;
+> +
+> +			/* Adjust all value offsets. */
+> +			last = s->first;
+> +			while (!EXT2_EXT_IS_LAST_ENTRY(last)) {
+> +				size_t o = last->e_value_offs;
+> +				if (!last->e_value_block &&
+> +				    last->e_value_size && o < offs)
+> +					last->e_value_offs = o + size;
+> +				last = EXT2_EXT_ATTR_NEXT(last);
+> +			}
+> +		}
+> +		if (!i->value) {
+> +			/* Remove the old name. */
+> +			size_t size = EXT2_EXT_ATTR_LEN(name_len);
+> +			last = (struct ext2_ext_attr_entry *)last - size;
+> +			memmove(s->here, (char *)s->here + size,
+> +				(char *)last - (char *)s->here + sizeof(__u32));
+> +			memset(last, 0, size);
+> +		}
+> +	}
+> +
+> +	if (i->value) {
+> +		/* Insert the new value. */
+> +		s->here->e_value_size = i->value_len;
+> +		if (i->value_len) {
+> +			size_t size = EXT2_EXT_ATTR_SIZE(i->value_len);
+> +			char *val = (char *)s->base + min_offs - size;
+> +			s->here->e_value_offs = min_offs - size;
+> +			if (i->value == EXT2_ZERO_EXT_ATTR_VALUE) {
+> +				memset(val, 0, size);
+> +			} else {
+> +				memset(val + size - EXT2_EXT_ATTR_PAD, 0,
+> +					EXT2_EXT_ATTR_PAD);
+> +				memcpy(val, i->value, i->value_len);
+> +			}
+> +		}
+> +	}
+> +	return 0;
+> +}
+> -- 
+> 1.7.9.7
 > 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Carlos
