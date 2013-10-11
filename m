@@ -1,27 +1,47 @@
-From: Jan Kara <jack@suse.cz>
+From: Carlos Maiolino <cmaiolino@redhat.com>
 Subject: Re: A crash in ext3 on disk failure
-Date: Fri, 11 Oct 2013 16:40:25 +0200
-Message-ID: <20131011144025.GA27106@quack.suse.cz>
+Date: Fri, 11 Oct 2013 11:51:13 -0300
+Message-ID: <20131011145112.GA27694@orion.maiolino.org>
 References: <alpine.LRH.2.02.1310110814280.17283@file01.intranet.prod.int.rdu2.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org
-To: Mikulas Patocka <mpatocka@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:40862 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:51186 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751932Ab3JKOk5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 11 Oct 2013 10:40:57 -0400
+	id S1752211Ab3JKOvS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 11 Oct 2013 10:51:18 -0400
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9BEpHlL005427
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Fri, 11 Oct 2013 10:51:18 -0400
+Received: from orion.maiolino.org (ovpn-113-55.phx2.redhat.com [10.3.113.55])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id r9BEpEQo030365
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Fri, 11 Oct 2013 10:51:16 -0400
 Content-Disposition: inline
 In-Reply-To: <alpine.LRH.2.02.1310110814280.17283@file01.intranet.prod.int.rdu2.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello,
+Hi,
 
-On Fri 11-10-13 08:28:52, Mikulas Patocka wrote:
+honestly I don't think this is an ext3 error, the buffer_head looks to have been
+vanished when the ndb socket has been closed, something similar happens when you
+remove an USB stick while writing the superblock.
+
+>From the filesystem side, the best it would to IMHO were to remount the fs as
+RO, but, how would you remount a FS to RO if there is no more FS?
+
+to be honest this is a kind of panic I'd expect to see when you remove a block
+device, maybe from nbd they might want to keep some buffers around if they lost
+connection to the server? but this will make the filesystem to be stuck in
+anyway but at least will avoid the panic.
+
+
+On Fri, Oct 11, 2013 at 08:28:52AM -0400, Mikulas Patocka wrote:
+> Hi
+> 
 > I report this crash in the ext3 filesystem. The filesystem is mounted on 
 > nbd, the nbd server was rebooted - so the nbd client returned errors on 
 > all requests. Those errors caused kernel crash.
@@ -30,17 +50,6 @@ On Fri 11-10-13 08:28:52, Mikulas Patocka wrote:
 > 
 > The crash happens in submit_bh when attempting to write the superblock, 
 > the condition that caused the crash is BUG_ON(!buffer_mapped(bh));
-  Hum, really !buffer_mapped(bh)? That would mean someone called
-kill_bdev() on the device with mounted filesystem (that's about the only
-way how I can imagine blkdev buffer we hold reference to can get
-invalidated). If that really happened that would be the real culprit (I
-don't think we want to harden all the places using buffers to verify
-whether the buffers weren't invalidated under them). nbd seems to have some
-ioctls which call set_blocksize() which would call kill_bdev(). And these
-don't seem to check device isn't used by someone else. So maybe that's what
-happened?
-
-								Honza
 > 
 > Mikulas
 > 
@@ -167,6 +176,10 @@ happened?
 > EIP: [<c10c8295>] submit_bh+0xe5/0xf0 SS:ESP 0068:d6a5dccc
 > ---[ end trace c62efc9e706b2739 ]---
 > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Carlos
