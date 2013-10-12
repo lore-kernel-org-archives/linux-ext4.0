@@ -1,38 +1,24 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [GIT PULL] ext4 bug fixes for 3.12
-Date: Sat, 12 Oct 2013 14:55:39 -0400
-Message-ID: <20131012185539.GA18630@thunk.org>
+From: Innocent Eleazu <ieleazv@rcc.mass.edu>
+Subject: (unknown)
+Date: Sat, 12 Oct 2013 20:31:58 +0000
+Message-ID: <EE26B29BF6A26D4BB714A67644CB9D8C639458EE__43716.3321338177$1381610759$gmane$org@RCC-EX-MB1.rcc.mass.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: torvalds@linux-foundation.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+To: unlisted-recipients:; (no To-header on input)
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from exprod6og127.obsmtp.com ([64.18.1.78]:57102 "EHLO
+	exprod6og127.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753096Ab3JLUpJ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Oct 2013 16:45:09 -0400
+Subject: 
+Content-Language: en-US
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-The following changes since commit ad4eec613536dc7e5ea0c6e59849e6edca634d8b:
+Loan offer at 3% interest rate,contact:  beverlyloanservices@outlook.com
+Note: Reply to this Email Only:  beverlyloanservices@outlook.com
+==========================================================================
 
-  ext4: allow specifying external journal by pathname mount option (2013-08-28 19:05:07 -0400)
-
-are available in the git repository at:
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus_stable
-
-for you to fetch changes up to 6e4ea8e33b2057b85d75175dd89b93f5e26de3bc:
-
-  ext4: fix memory leak in xattr (2013-10-12 14:39:49 -0400)
-
-----------------------------------------------------------------
-A bug fix and performance regression fix for ext4.
-
-----------------------------------------------------------------
-Dave Jones (1):
-      ext4: fix memory leak in xattr
-
-Jan Kara (1):
-      ext4: fix performance regression in writeback of random writes
-
- fs/ext4/inode.c | 2 +-
- fs/ext4/xattr.c | 2 ++
- 2 files changed, 3 insertions(+), 1 deletion(-)
+Darlehen Angebot bei 3% Zins, Kontakt: beverlyloanservices@outlook.com
+Hinweis: Antworten Sie auf diese E-Mail nur: beverlyloanservices@outlook.com
