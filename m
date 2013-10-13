@@ -1,33 +1,34 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 05/31] libext2fs: Add space for metadata checksum when
- unconverting a hashed directory block
-Date: Sat, 12 Oct 2013 23:16:31 -0400
-Message-ID: <20131013031631.GA22642@thunk.org>
-References: <20131001012642.28415.89353.stgit@birch.djwong.org>
- <20131001012714.28415.87579.stgit@birch.djwong.org>
+Subject: Re: [PATCH v1 01/22] libext2fs: add INLINE_DATA into
+ EXT2_LIB_SOFTSUPP_INCOMPAT
+Date: Sat, 12 Oct 2013 23:21:17 -0400
+Message-ID: <20131013032117.GB22642@thunk.org>
+References: <1375436989-18948-1-git-send-email-wenqing.lz@taobao.com>
+ <1375436989-18948-2-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:45326 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:45335 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753238Ab3JMDQd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 12 Oct 2013 23:16:33 -0400
+	id S1753077Ab3JMDVU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 12 Oct 2013 23:21:20 -0400
 Content-Disposition: inline
-In-Reply-To: <20131001012714.28415.87579.stgit@birch.djwong.org>
+In-Reply-To: <1375436989-18948-2-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Sep 30, 2013 at 06:27:14PM -0700, Darrick J. Wong wrote:
-> The ext2fs_link function has the unfortunate habit of converting hashed
-> directories into unhashed directories.  It doesn't notice that it's slicing
-> and dicing directory entries from a former dx_{root,node} block, and therefore
-> doesn't write a protective dirent into the end of the block to store the
-> checksum.  Teach it to do this.
+On Fri, Aug 02, 2013 at 05:49:28PM +0800, Zheng Liu wrote:
+> From: Zheng Liu <wenqing.lz@taobao.com>
 > 
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> EXT4_FEATURE_INCOMPAT_INLINE_DATA flag is added into
+> EXT2_LIB_SOFTSUPP_INCOMPAT due to we still need to take a long time to
+> test inline_data feature.
+> 
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 
-Thanks, applied to the next branch.
+Applied to the next branch, thanks.
 
 					- Ted
