@@ -1,95 +1,111 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH v1 04/22] libext2fs: handle inline data in dir iterator
- function
-Date: Mon, 14 Oct 2013 11:07:38 +0800
-Message-ID: <20131014030738.GC12010@gmail.com>
-References: <1375436989-18948-1-git-send-email-wenqing.lz@taobao.com>
- <1375436989-18948-5-git-send-email-wenqing.lz@taobao.com>
- <20131013225112.GA9609@thunk.org>
+From: Namjae Jeon <linkinjeon@gmail.com>
+Subject: Re: [PATCH RESEND 2/7] xfs: add support FALLOC_FL_COLLAPSE_RANGE for
+	fallocate
+Date: Mon, 14 Oct 2013 12:30:09 +0900
+Message-ID: <CAKYAXd9Z3OY1Hw3sNMVQAwZH2SwZ9au+rB=RKupwYH2MR=2+aQ@mail.gmail.com>
+References: <1381090388-2761-1-git-send-email-linkinjeon@gmail.com>
+	<20131010005154.GS4446@dastard>
+	<CAKYAXd8=ZKESV5Fmw7hqwL=G8L=BG6h0LQpc2cVjN9uTkj7nYw@mail.gmail.com>
+	<20131010212326.GZ4446@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f54.google.com ([209.85.220.54]:56194 "EHLO
-	mail-pa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751704Ab3JNDFo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 13 Oct 2013 23:05:44 -0400
-Received: by mail-pa0-f54.google.com with SMTP id kx10so7000726pab.27
-        for <linux-ext4@vger.kernel.org>; Sun, 13 Oct 2013 20:05:43 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <20131013225112.GA9609@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: elder@kernel.org, tytso@mit.edu, Namjae Jeon <namjae.jeon@samsung.com>,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com, hch@infradead.org,
+	bpm@sgi.com, adilger.kernel@dilger.ca, viro@zeniv.linux.org.uk,
+	a.sangwan@samsung.com, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, mtk.manpages@gmail.com
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <20131010212326.GZ4446@dastard>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Sun, Oct 13, 2013 at 06:51:12PM -0400, Theodore Ts'o wrote:
-> On Fri, Aug 02, 2013 at 05:49:31PM +0800, Zheng Liu wrote:
-> > +int ext2fs_process_dir_inline_data(ext2_filsys	fs,
-> > +				   char		*buf,
-> > +				   unsigned int	buf_len,
-> > +				   e2_blkcnt_t	blockcnt,
-> > +				   struct ext2_inode_large *inode,
-> > +				   void		*priv_data)
-> > +{
-> 
-> It looks like there is a lot of code in this function which is in
-> common with ext2fs_process_dir_block(), so I'd suggest refactoring out
-> the common code to reduce duplication.  This will reduce code size,
-> and more importantly, improve maintenance of the code.
-> 
-> > +errcode_t ext2fs_inline_data_iterate(ext2_filsys fs,
-> > +			       ext2_ino_t ino,
-> > +			       int flags,
-> > +			       char *block_buf,
-> > +			       int (*func)(ext2_filsys fs,
-> > +					   char *buf,
-> > +					   unsigned int buf_len,
-> > +					   e2_blkcnt_t blockcnt,
-> > +					   struct ext2_inode_large *inode,
-> > +					   void *priv_data),
-> > +			       void *priv_data)
-> 
-> This function is misnamed, which worries me a little.  First of all,
-> it only makes sense when called on directories, so some name that
-> indicates that it is meant to iterate over directories is a good idea.
-> so some name such as ext2fs_process_inline_data_dir might be a better
-> choice.
+2013/10/11 Dave Chinner <david@fromorbit.com>:
+> On Thu, Oct 10, 2013 at 04:00:13PM +0900, Namjae Jeon wrote:
+>> >
+>> > /*
+>> >  * Shift extent records to the left to cover a hole.
+>> >  *
+>> >  * The maximum number of extents to be shifted in a single operation
+>> >  * is @count, and @current_ext keeps track of the current extent
+>> >  * index we have shifted. If there is no hole to shift the extents
+>> >  * into, then we abort immediately.
+>> >  */
+>> Thanks for your help. I will change this comment instead of original one.
+>>
+>> >> +int
+>> >> +xfs_bmap_shift_extents(
+>> >> +     struct xfs_trans        *tp,
+>> >> +     struct xfs_inode        *ip,
+>> >> +     int                     *done,
+>> >> +     xfs_fileoff_t           start_fsb,
+>> >> +     xfs_fileoff_t           shift,
+>> >
+>> > Shift means ...? Number of extents to shift, a length, a number of
+>> > block, or something else?
+>> Ah, yes, shift_len would be a more proper name
+>
+> I'm not sure that's a lot better. What are we shifting? We are
+> shifting the offset of the blocks, right? And the unit is in fsb?
+> So perhaps offset_shift_fsb, and add that to the description of the
+> function above?
+Okay, I will change it as your suggestion.
 
-Yes, Darrick has pointed it out.  I will fix it in next version.
+>
+>> >> +             /*
+>> >> +              * Before shifting extent into hole, make sure that the hole
+>> >> +              * is large enough to accomodate the shift.
+>> >> +              */
+>> >> +             if (*current_ext) {
+>> >> +                     state |= BMAP_LEFT_VALID;
+>> >> +                     xfs_bmbt_get_all(xfs_iext_get_ext(ifp,
+>> >> +                                             *current_ext - 1), &left);
+>> >> +
+>> >> +                     if (isnullstartblock(left.br_startblock))
+>> >> +                             state |= BMAP_LEFT_DELAY;
+>> >> +
+>> >> +                     if (startoff < left.br_startoff + left.br_blockcount)
+>> >> +                             error = XFS_ERROR(EFSCORRUPTED);
+>> >
+>> > Why is the filesystem corrupted if the shift we asked for is too
+>> > large for the hole in the file? I haven't seen any checks before
+>> > this that guarantee that the hole is big enough for the shift...
+>>
+>> we call xfs_free_file_space to free enough blocks for shifting.
+>> If still the space is not big enough will it be considered as fs corrupted?
+>> What error could we return in this case?
+>
+> Hole punching rounds inwards, and the amount of rounding is not
+> necessarily the nearest filesystem block. Again it's the block size
+> smaller than page size case that will trip you over here, as the
+> rounding  when punching holes will be done to page size, not
+> filesystem block size. Hence it's entirely possible that your
+> calculated shift start and lengths don't match the size of the hole
+> that was punched.
+>
+> That doesn't mean there was a corruption - just that the hole wasn't
+> the size and shape that was expected....
+Right. I will consider your points.
 
-> 
-> Secondly, it would a really good idea if there was a check to make
-> sure it was passed an inode number which corresponds to an directory
-> and that the inline data flag is set.  A little paranoia is really
-> healthy thing --- if we have some application bug where this function
-> gets called accidentally on an inappropriate inode, we want to return
-> a clean error code and not stumble on until something bad happens.
-> 
-> > +	dirent.inode = (__u32)*inode->i_block;
-> 
-> I'd be much happier with:
-> 
-> 	dirent.inode = inode->i_block[0];
-> 
-> We shouldn't use casts unless absolutely necessary, and it's not
-> necessary here.
-> 
-> Also, I suspect we have some byte-swapping problems here.  It doesn't
-> appear there is any allownaces for byte swapping in the inline data
-> patches.  Currently, the ext2fs_read_inode() function will take care
-> of byte swapping i_blocks[], so that will be OK here, but in the case
-> of an inode with inline data, if we byte swap all of i_blocks[] then
-> ext2fs_read_inline_data() will malfunction since the data bytes stored
-> in the rest of i_blocks[] will be byte swapped.  And that would be
-> wrong.
-> 
-> So I think what you will need to do is to avoid byte swapping the
-> i_blocks[] array if the inode contains inline_data, and then in the
-> case where this is a directory, we will need to byte swap i_block[0]
-> if we are running on a big-endian system.
+Thanks very much for your valuable comments.
+>
+> Cheers,
+>
+> Dave.
+> --
+> Dave Chinner
+> david@fromorbit.com
 
-Yes, I have noticed that we only byte swap i_block[0], and the following
-things don't be swapped.  So I will fix it.
-
-Thanks,
-                                                - Zheng
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
