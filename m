@@ -1,146 +1,101 @@
-From: Carlos Carvalho <carlos@fisica.ufpr.br>
-Subject: Re: 3.10.10: quota problems
-Date: Tue, 15 Oct 2013 18:55:50 -0300
-Message-ID: <21085.47590.362775.313582@fisica.ufpr.br>
-References: <21080.35061.164482.975014@fisica.ufpr.br>
-	<20131015155334.GG12428@quack.suse.cz>
+From: Andrei Banu <andrei.banu@redhost.ro>
+Subject: Weird jbd2 I/O load
+Date: Wed, 16 Oct 2013 00:41:13 +0300
+Message-ID: <525DB679.4070008@redhost.ro>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fisica.ufpr.br ([200.17.209.129]:40263 "EHLO fisica.ufpr.br"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759799Ab3JOVzx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Oct 2013 17:55:53 -0400
-In-Reply-To: <20131015155334.GG12428@quack.suse.cz>
+Received: from gts6.roserve.net ([128.140.230.209]:42519 "EHLO
+	gts6.roserve.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759622Ab3JOWSA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Oct 2013 18:18:00 -0400
+Received: from 5-13-211-235.residential.rdsnet.ro ([5.13.211.235]:52932 helo=[127.0.0.1])
+	by gts6.roserve.net with esmtpsa (TLSv1:DHE-RSA-CAMELLIA256-SHA:256)
+	(Exim 4.80.1)
+	(envelope-from <andrei.banu@redhost.ro>)
+	id 1VWCMb-0006Vv-M5
+	for linux-ext4@vger.kernel.org; Wed, 16 Oct 2013 00:41:13 +0300
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Jan Kara (jack@suse.cz) wrote on 15 October 2013 17:53:
- >On Fri 11-10-13 20:25:41, Carlos Carvalho wrote:
- >> There are two problems. First, on a new filesystem with
- >> tune2fs -Q usrquota and grpquota was working fine until a power
- >> failure switched the machine off. On reboot all files seem normal
- >> but quota -v showed no limits neither usage...
- >> 
- >> I ran fsck and it said the fs was clean. Then I ran fsck -f and
- >> 
- >> Pass 5: Checking group summary information
- >> [QUOTA WARNING] Usage inconsistent for ID 577:actual (12847804416, 308767) != expected (12868194304, 308543)
- >> [QUOTA WARNING] Usage inconsistent for ID 541:actual (186360393728, 11089) != expected (186340204544, 11085)
- >> 
- >> ... etc until
- >> 
- >> Update quota info for quota type 0<y>? yes
- >> 
- >> then some more of
- >> 
- >> [QUOTA WARNING] Usage inconsistent for ID 500:actual (192918523904, 20725) != expected (192897576960, 20671)
- >> 
- >> until
- >> 
- >> Update quota info for quota type 1<y>? yes
- >> 
- >> /dev/md3: ***** FILE SYSTEM WAS MODIFIED *****
- >> 
- >> After remounting and running quota on usage for some users were back
- >> but not limits. For other users even usage is lost.
- >> 
- >> This is with 3.10.10, e2fsprogs 1.42.8 (Debian) and mount options
- >> rw,nosuid,nodev,commit=30,stripe=768,data=ordered,inode_readahead_blks=64
- >> 
- >> This was the first unclean shutdown of this machine after more than 6
- >> months of usage. The new quota method looks fragile... Is there
- >> something I can do get limits and usage back?
- >  No idea here, sorry. I will try to reproduce the problem and see what I
- >can find. I'd just note that userspace support of hidden quotas in
- >e2fsprogs is still experimental and Ted pointed out a few problems in it.
+Hello,
 
-I know. They work fine under normal operations but the broke in this
-case, so I'm reporting it.
+First off let me state that my level of knowledge and expertise is in no 
+way a match for that of the people on this list. I am not even sure if 
+what I want to ask is in any way related to my problem or it's just a 
+side effect (or even plain irrelevant).
 
- >Among others I think limits are not properly transferred from old to new
- >quota file during fsck...
+I am trying to identify the source of the problems I face with an 
+mdraid-1 built with 2 Samsung 840 Pro SSDs. The filesystem is ext-4. I 
+face many problems with this array:
 
-Not the case here. I started with a just-made empty filesystem. Limits
-are enforced, everything works fine except when a crash happens.
+- write speeds around 10MB/s and serious server overloads (loads of 20 
+to 100 - this is a quad core CPU) when copying larger files (100+ MBs):
+root [~]# time dd if=arch.tar.gz of=test4 bs=2M oflag=sync
+146+1 records in
+146+1 records out
+307191761 bytes (307 MB) copied, 23.6788 s, 13.0 MB/s
+real    0m23.680s
+user    0m0.000s
+sys     0m0.932s
 
- >But it still doesn't explain why the limits got lost after the
- >crash.
+- asymmetrical wear on the 2 SSDs (one SSD has a wear of 6% while the 
+other has a wear of 30%):
+root [~]# smartctl --attributes /dev/sda | grep -i wear
+177 Wear_Leveling_Count     0x0013   094%   094   000    Pre-fail 
+Always       -       196
+root [~]# smartctl --attributes /dev/sdb | grep -i wear
+177 Wear_Leveling_Count     0x0013   070%   070   000    Pre-fail 
+Always       -       1073
 
-Not only limits, usage was also lost.
+- very asymmetrical await, svctm and %util in iostat when copying larger 
+files (100+ MB):
+Device:         rrqm/s   wrqm/s     r/s     w/s         rsec/s 
+wsec/s       avgrq-sz   avgqu-sz   await        svctm   %util
+sda               0.00        1589.50    0.00   54.00     0.00 
+13148.00   243.48     0.60           11.17       0.46      2.50
+sdb               0.00        1627.50    0.00   16.50     0.00 
+9524.00     577.21     144.25       1439.33  60.61   100.00
+md1             0.00        0.00           0.00    0.00 0.00     
+0.00             0.00        0.00            0.00 0.00      0.00
+md2             0.00        0.00           0.00    1602     0.00 
+12816.00     8.00        0.00            0.00         0.00      0.00
+md0             0.00        0.00           0.00    0.00      0.00 
+0.00             0.00        0.00             0.00         0.00 0.00
 
- >Didn't quotacheck create visible quota files after the crash or
- >something like that?
+- asymmetrical total LBA written but much lower than the above:
+root [~]# smartctl --attributes /dev/sda | grep "Total_LBAs_Written"
+241 Total_LBAs_Written      0x0032   099   099   000    Old_age 
+Always       -       23628284668
+root [~]# smartctl --attributes /dev/sdb | grep "Total_LBAs_Written"
+241 Total_LBAs_Written      0x0032   099   099   000    Old_age 
+Always       -       25437073579
+(the gap seems to be getting narrower and narrower here though - it 
+seems some event in the past caused this)
 
-There's no quotachek with the new implementation. Everything should be
-done by fsck.
 
-So there are two problems here: one is that both usage and limits info
-is rather fragile; they didn't survive the first power loss. The
-second problem is that fsck should have recovered usage numbers, even
-if it has to crawl the whole fs like quotacheck...
+And the number one reason I am trying for help on this list:
+root # iotop -o
+Total DISK READ: 247.78 K/s | Total DISK WRITE: 495.56 K/s
+TID  PRIO  USER     DISK READ  DISK WRITE  SWAPIN     IO> COMMAND
+534 be/3 root        0.00 B/s   55.06 K/s  0.00 % 99.99 % [jbd2/md2-8]
+....
 
- >> --------------------------------------------------
- >> 
- >> The second problem is on an old filesystem with the old quota system,
- >> also with kernel 3.10.10 but another machine. Compilation is different
- >> because this one is 32bit, the other is 64bit. mount options are
- >> 
- >> defaults,strictatime,nobarrier,nosuid,nodev,commit=30,inode_readahead_blks=64,usrjquota=aquota.user,grpjquota=aquota.group,jqfmt=vfsv1
- >> 
- >> The problem here is that after removing lots of users in a row
- >> repquota -v shows many entries of removed users in numerical form, like
- >> 
- >> #42       --      32       0       0              1     0     0       
- >  OK, so we still think there is one file with 32KB allocated to the user.
- >Strange. Isn't it possible there is still some (unlinked) directory
- >existing which is pwd of some process or something like that?
+When there are problems, jbd2 seems to do 99.9%  I/O without doing any 
+apparent significant reads or writes. It seems like jbd2 just keeps the 
+devices busy.
 
-No. I modified the boot script right after the filesystem is mounted
-to do:
+What could be the reason of some of the above anomalies? Especially why 
+is jbd2 keeping the raid members busy while not doing any reads or 
+writes? Why the abysmal write speed?
 
-repquota -v /home > /root/quotas-before
-quotacheck # takes 20min :-(
-repquota -v /home > /root/quotas-after
+So far I have updated the SSDs firmware, checked the alignment which 
+seems ok (1MB boundary), checked with all 3 schedulers, the swap is on 
+an md device (so the asymmetrical use and wear again can't be 
+explained), I have looked for "hard resetting link" in dmesg but found 
+nothing so I guess it's not a cable or back plane issue). What else can 
+I check? What else can I try?
 
-Here are the real wrong entries in quota-before, that don't exist in
-quota-after:
-
-#1121     --       0       0       0              1     0     0       
-#531      --   16496       0       0             60     0     0       
-#557      --       0       0       0              1     0     0       
-#685      --       4       0       0              2     0     0       
-
-It happens after removal of about 50 users.
-
-Note also that these #uid entries are not the only problem;
-repquota-{before,after} show MANY other differences in usage of inodes
-and disk. Here are a few of
-them:
-
-                        Block limits                File limits
-User            used    soft    hard  grace    used  soft  hard  grace
-----------------------------------------------------------------------
--root      -- 22691376       0       0         248709     0     0       
-+root      -- 22691088       0       0         248632     0     0       
--user1     -- 1260088 1300000 1370000           2789     0     0       
--user2     -- 2026108 2400000 2410000          10944     0     0       
--user3     -- 135165684 750000000 750000000         115438     0     0       
--user4     -- 12010356 36000000 36000000          77662     0     0       
-+user1     -- 1260084 1300000 1370000           2783     0     0       
-+user2     -- 2026104 2400000 2410000          10943     0     0       
-+user3     -- 135164656 750000000 750000000         115427     0     0       
-
-These differences are after an uptime of about 35 days. This shows
-that quota accounting seems to miss stuff. Fortunately the relative
-error is small.
-
- >Because accounting problems in number of used inodes are rather
- >unlikely (that code is really straightforward).
-
-Strange but it's not new; I've already buggered you around 2006
-because kernels of that time had this problem. It was with reiserfs
-then, now it's with ext4. The problem disappeared but is back now.
+Kind regards!
