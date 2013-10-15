@@ -1,116 +1,178 @@
-From: Ming Lei <ming.lei@canonical.com>
-Subject: Re: [PATCH] ext4: fix checking on nr_to_write
-Date: Tue, 15 Oct 2013 10:25:53 +0800
-Message-ID: <20131015102553.22d4a018@tom-ThinkPad-T410>
-References: <1381682393-5769-1-git-send-email-ming.lei@canonical.com>
-	<20131014125858.GH19604@quack.suse.cz>
-	<CACVXFVPpkJdw_AVwd=dRpD8ju6frjaU3QhKorr_PNNGu_D0jAQ@mail.gmail.com>
-	<20131014173459.GL19604@quack.suse.cz>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 2/3 V4] debugfs.c: do sparse copy when src is a sparse
+ file
+Date: Mon, 14 Oct 2013 20:10:20 -0700
+Message-ID: <20131015031020.GZ6860@birch.djwong.org>
+References: <1377498124-25842-1-git-send-email-liezhi.yang@windriver.com>
+ <1377498124-25842-3-git-send-email-liezhi.yang@windriver.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	Ming Lei <tom.leiming@gmail.com>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, dvhart@linux.intel.com
+To: Robert Yang <liezhi.yang@windriver.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from youngberry.canonical.com ([91.189.89.112]:52005 "EHLO
-	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756975Ab3JOC0G (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Oct 2013 22:26:06 -0400
-In-Reply-To: <20131014173459.GL19604@quack.suse.cz>
+Received: from userp1040.oracle.com ([156.151.31.81]:27383 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754206Ab3JODKa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Oct 2013 23:10:30 -0400
+Content-Disposition: inline
+In-Reply-To: <1377498124-25842-3-git-send-email-liezhi.yang@windriver.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 14 Oct 2013 19:34:59 +0200
-Jan Kara <jack@suse.cz> wrote:
-
-> On Mon 14-10-13 21:50:54, Ming Lei wrote:
-> > On Mon, Oct 14, 2013 at 8:58 PM, Jan Kara <jack@suse.cz> wrote:
-> > >   Umm, I guess I see what are you pointing at. Thanks for catching that.
-> > > mpage_process_page_bufs() always adds a buffer to mpd even if nr_to_write
-> > > is already <= 0. But I would somewhat prefer not to call
-> > > mpage_prepare_extent_to_map() at all when nr_to_write <= 0. So a patch
-> > > like:
-> > >                 ret = mpage_prepare_extent_to_map(&mpd);
-> > >                 if (!ret) {
-> > > -                       if (mpd.map.m_len)
-> > > +                       if (mpd.map.m_len) {
-> > >                                 ret = mpage_map_and_submit_extent(handle, &mpd,
-> > >                                         &give_up_on_write);
-> > > -                       else {
-> > > +                               done = (wbc->nr_to_write <= 0);
-> > > +                       } else {
-> > >
-> > > Should also fix your problem, am I right?
-> > 
-> > I am afraid it can't, because we need to stop scanning page cache
-> > if end of file is reached.
->   That should be OK. mpage_process_page_bufs() won't add a buffer beyond
-> EOF so we end the extent at EOF and next time we don't add anything to the
-> extent. My change wouldn't change anything in this.
-
-I mean wbc->nr_to_write may still be positive when mpage_prepare_extent_to_map()
-returns zero, so your change will cause ext4_writepages not to break from the
-loop, then write hangs, too crazy?
-
+On Mon, Aug 26, 2013 at 02:22:03PM +0800, Robert Yang wrote:
+> Let debugfs do sparse copy when src is a sparse file, just like
+> "cp --sparse=auto"
 > 
-> > nr_to_write will become negative inside mpage_map_and_submit_extent(),
-> > that is why I fix it inside mpage_prepare_extent_to_map().
->   Yes, mpage_map_and_submit_extent() creates negative nr_to_write but only
-> because mpage_prepare_extent_to_map() asked for mapping too big extent. But
-> if I'm reading the code correctly we first ask for writing the extent of
-> just the right size (nr_to_write becomes 0) but then ext4_writepages() asks
-> mpage_prepare_extent_to_map() for another extent and it will create a single
-> page extent for mapping before it finds out nr_to_write <= 0 and
-> terminates. Am I understanding the problem correctly?
-
-Your understanding is right, and I think it is a correct fix, because
-we shouldn't add more pages to extent than nr_to_write.
-
+> * For the:
+>   #define IO_BUFSIZE 64*1024
+>   this is a suggested value from gnu coreutils:
+>   http://git.savannah.gnu.org/gitweb/?p=coreutils.git;a=blob;f=src/ioblksize.h;h=1ae93255e7d0ccf0855208c7ae5888209997bf16;hb=HEAD
 > 
-> After thinking about it again, moving the condition in
-> mpage_prepare_extent_to_map() as you did is probably better that what I
-> suggested. Just move it more up in the loop - like after page->index > end
-> condition. So that we don't unnecessarily lock the page etc.
+> * Use malloc() to allocate memory for the buffer since put 64K (or
+>   more) on the stack seems not a good idea.
+> 
+> Signed-off-by: Robert Yang <liezhi.yang@windriver.com>
+> Acked-by: Darren Hart <dvhart@linux.intel.com>
+> ---
+>  debugfs/debugfs.c | 62 +++++++++++++++++++++++++++++++++++++++++++++++++++----
+>  1 file changed, 58 insertions(+), 4 deletions(-)
+> 
+> diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+> index a6bc932..8c32eff 100644
+> --- a/debugfs/debugfs.c
+> +++ b/debugfs/debugfs.c
+> @@ -41,6 +41,16 @@ extern char *optarg;
+>  #define BUFSIZ 8192
+>  #endif
+>  
+> +/* 64KiB is the minimium blksize to best minimize system call overhead. */
+> +#ifndef IO_BUFSIZE
+> +#define IO_BUFSIZE 64*1024
+> +#endif
+> +
+> +/* Block size for `st_blocks' */
+> +#ifndef S_BLKSIZE
+> +#define S_BLKSIZE 512
+> +#endif
+> +
+>  ss_request_table *extra_cmds;
+>  const char *debug_prog_name;
+>  int sci_idx;
+> @@ -1575,22 +1585,37 @@ void do_find_free_inode(int argc, char *argv[])
+>  }
+>  
+>  #ifndef READ_ONLY
+> -static errcode_t copy_file(int fd, ext2_ino_t newfile)
+> +static errcode_t copy_file(int fd, ext2_ino_t newfile, int bufsize, int make_holes)
+>  {
+>  	ext2_file_t	e2_file;
+>  	errcode_t	retval;
+>  	int		got;
+>  	unsigned int	written;
+> -	char		buf[8192];
+> +	char		*buf;
+>  	char		*ptr;
+> +	char		*zero_buf;
+> +	int		cmp;
+>  
+>  	retval = ext2fs_file_open(current_fs, newfile,
+>  				  EXT2_FILE_WRITE, &e2_file);
+>  	if (retval)
+>  		return retval;
+>  
+> +	if (!(buf = (char *) malloc(bufsize))){
+> +		com_err("copy_file", errno, "can't allocate buffer\n");
+> +		return;
+> +	}
 
-Looks it makes sense, so how about below change?
+Ugh.  I probably could have whined about this not using ext2fs_get_mem, but
+more importantly clang whines about the undefined return value.
 
---
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 32c04ab..c32b599 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2294,7 +2294,7 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
- {
- 	struct address_space *mapping = mpd->inode->i_mapping;
- 	struct pagevec pvec;
--	unsigned int nr_pages;
-+	unsigned int nr_pages, nr_added = 0;
- 	pgoff_t index = mpd->first_page;
- 	pgoff_t end = mpd->last_page;
- 	int tag;
-@@ -2330,6 +2330,18 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
- 			if (page->index > end)
- 				goto out;
- 
-+			/*
-+			 * Accumulated enough dirty pages? This doesn't apply
-+			 * to WB_SYNC_ALL mode. For integrity sync we have to
-+			 * keep going because someone may be concurrently
-+			 * dirtying pages, and we might have synced a lot of
-+			 * newly appeared dirty pages, but have not synced all
-+			 * of the old dirty pages.
-+			 */
-+			if (mpd->wbc->sync_mode == WB_SYNC_NONE &&
-+					nr_added >= mpd->wbc->nr_to_write)
-+				goto out;
-+
- 			/* If we can't merge this page, we are done. */
- 			if (mpd->map.m_len > 0 && mpd->next_page != page->index)
- 				goto out;
-@@ -2364,19 +2376,7 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
- 			if (err <= 0)
- 				goto out;
- 			err = 0;
+I'll fix it and send out a patch with my next patchbomb.
+
+--D
+> +
+> +	/* This is used for checking whether the whole block is zero */
+> +	retval = ext2fs_get_memzero(bufsize, &zero_buf);
+> +	if (retval) {
+> +		com_err("copy_file", retval, "can't allocate buffer\n");
+> +		free(buf);
+> +		return retval;
+> +	}
+> +
+>  	while (1) {
+> -		got = read(fd, buf, sizeof(buf));
+> +		got = read(fd, buf, bufsize);
+>  		if (got == 0)
+>  			break;
+>  		if (got < 0) {
+> @@ -1598,6 +1623,21 @@ static errcode_t copy_file(int fd, ext2_ino_t newfile)
+>  			goto fail;
+>  		}
+>  		ptr = buf;
+> +
+> +		/* Sparse copy */
+> +		if (make_holes) {
+> +			/* Check whether all is zero */
+> +			cmp = memcmp(ptr, zero_buf, got);
+> +			if (cmp == 0) {
+> +				 /* The whole block is zero, make a hole */
+> +				retval = ext2fs_file_lseek(e2_file, got, EXT2_SEEK_CUR, NULL);
+> +				if (retval)
+> +					goto fail;
+> +				got = 0;
+> +			}
+> +		}
+> +
+> +		/* Normal copy */
+>  		while (got > 0) {
+>  			retval = ext2fs_file_write(e2_file, ptr,
+>  						   got, &written);
+> @@ -1608,10 +1648,14 @@ static errcode_t copy_file(int fd, ext2_ino_t newfile)
+>  			ptr += written;
+>  		}
+>  	}
+> +	free(buf);
+> +	ext2fs_free_mem(&zero_buf);
+>  	retval = ext2fs_file_close(e2_file);
+>  	return retval;
+>  
+>  fail:
+> +	free(buf);
+> +	ext2fs_free_mem(&zero_buf);
+>  	(void) ext2fs_file_close(e2_file);
+>  	return retval;
+>  }
+> @@ -1624,6 +1668,8 @@ void do_write(int argc, char *argv[])
+>  	ext2_ino_t	newfile;
+>  	errcode_t	retval;
+>  	struct ext2_inode inode;
+> +	int		bufsize = IO_BUFSIZE;
+> +	int		make_holes = 0;
+>  
+>  	if (common_args_process(argc, argv, 3, 3, "write",
+>  				"<native file> <new file>", CHECK_FS_RW))
+> @@ -1699,7 +1745,15 @@ void do_write(int argc, char *argv[])
+>  		return;
+>  	}
+>  	if (LINUX_S_ISREG(inode.i_mode)) {
+> -		retval = copy_file(fd, newfile);
+> +		if (statbuf.st_blocks < statbuf.st_size / S_BLKSIZE) {
+> +			make_holes = 1;
+> +			/*
+> +			 * Use I/O blocksize as buffer size when
+> +			 * copying sparse files.
+> +			 */
+> +			bufsize = statbuf.st_blksize;
+> +		}
+> +		retval = copy_file(fd, newfile, bufsize, make_holes);
+>  		if (retval)
+>  			com_err("copy_file", retval, 0);
+>  	}
+> -- 
+> 1.8.1.2
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
