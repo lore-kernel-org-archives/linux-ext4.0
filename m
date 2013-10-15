@@ -1,40 +1,48 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/2] ext4: Fixup kerndoc annotation of mpage_map_and_submit_extent()
-Date: Tue, 15 Oct 2013 15:32:29 +0200
-Message-ID: <1381843949-31805-2-git-send-email-jack@suse.cz>
-References: <1381843949-31805-1-git-send-email-jack@suse.cz>
-Cc: <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:47260 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932401Ab3JONcl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Oct 2013 09:32:41 -0400
-In-Reply-To: <1381843949-31805-1-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Ming Lei <ming.lei@canonical.com>
+Subject: Re: [PATCH] ext4: fix checking on nr_to_write
+Date: Tue, 15 Oct 2013 22:53:17 +0800
+Message-ID: <CACVXFVOc9tDU-vDCeWHQNi2jLX3Q_wc18hP07P=Jvm9Yiy0hnA@mail.gmail.com>
+References: <1381682393-5769-1-git-send-email-ming.lei@canonical.com>
+	<20131014125858.GH19604@quack.suse.cz>
+	<CACVXFVPpkJdw_AVwd=dRpD8ju6frjaU3QhKorr_PNNGu_D0jAQ@mail.gmail.com>
+	<20131014173459.GL19604@quack.suse.cz>
+	<20131015102553.22d4a018@tom-ThinkPad-T410>
+	<20131015103900.GB12428@quack.suse.cz>
+	<20131015191556.50c3eb03@tom-ThinkPad-T410>
+	<20131015123439.GC12428@quack.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20131015123439.GC12428@quack.suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Document give_up_on_write argument of mpage_map_and_submit_extent().
+On Tue, Oct 15, 2013 at 8:34 PM, Jan Kara <jack@suse.cz> wrote:
+> On Tue 15-10-13 19:15:56, Ming Lei wrote:
+>> >   This won't quite work because if the page is fully mapped
+>> > mpage_process_page_bufs() will immediately submit the page and decrease
+>> > nr_to_write. So now you would end up writing less than you were asked for
+>> > in some cases.
+>>
+>> Yes, your are right, so how about below?
+>>
+>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+>> index 32c04ab..3cf7abb 100644
+>> --- a/fs/ext4/inode.c
+>> +++ b/fs/ext4/inode.c
+>> @@ -2295,6 +2295,7 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
+>>       struct address_space *mapping = mpd->inode->i_mapping;
+>>       struct pagevec pvec;
+>>       unsigned int nr_pages;
+>> +     int left = mpd->wbc->nr_to_write;
+>   'long' please. Otherwise the patch looks fine. Thanks!
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/inode.c | 3 +++
- 1 file changed, 3 insertions(+)
+OK, and I will submit the formal one with you ack.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index e274e9c1171f..e7e5b3d8f002 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2178,6 +2178,9 @@ static int mpage_map_one_extent(handle_t *handle, struct mpage_da_data *mpd)
-  *
-  * @handle - handle for journal operations
-  * @mpd - extent to map
-+ * @give_up_on_write - we set this to true iff there is a fatal error and there
-+ *                     is no hope of writing the data. The caller should discard
-+ *                     dirty pages to avoid infinite loops.
-  *
-  * The function maps extent starting at mpd->lblk of length mpd->len. If it is
-  * delayed, blocks are allocated, if it is unwritten, we may need to convert
--- 
-1.8.1.4
-
+Thanks,
+--
+Ming Lei
