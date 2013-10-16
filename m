@@ -1,88 +1,58 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/2] ext4: Fix assertion in ext4_add_complete_io()
-Date: Wed, 16 Oct 2013 14:01:39 +0200
-Message-ID: <20131016120139.GA14278@quack.suse.cz>
-References: <1381843949-31805-1-git-send-email-jack@suse.cz>
- <alpine.LFD.2.00.1310151919290.1921@localhost.localdomain>
- <CAGW2f1EaVQMQn37QPmzhMZiWUD=oqLTGoFQe=ZteHUUxpQbNCw@mail.gmail.com>
+Subject: Re: [PATCH] ext3: Count journal as bsddf overhead in ext3_statfs
+Date: Wed, 16 Oct 2013 14:29:48 +0200
+Message-ID: <20131016122948.GB14278@quack.suse.cz>
+References: <525DD38D.7060705@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
-	Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>
-To: jon ernst <jonernst07@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:60800 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:33776 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753468Ab3JPMBl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 16 Oct 2013 08:01:41 -0400
+	id S932406Ab3JPM3u (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 16 Oct 2013 08:29:50 -0400
 Content-Disposition: inline
-In-Reply-To: <CAGW2f1EaVQMQn37QPmzhMZiWUD=oqLTGoFQe=ZteHUUxpQbNCw@mail.gmail.com>
+In-Reply-To: <525DD38D.7060705@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 15-10-13 15:54:18, jon ernst wrote:
-> On Tue, Oct 15, 2013 at 1:20 PM, Luk=C3=A1=C5=A1 Czerner <lczerner@re=
-dhat.com> wrote:
-> > On Tue, 15 Oct 2013, Jan Kara wrote:
-> >
-> >> Date: Tue, 15 Oct 2013 15:32:28 +0200
-> >> From: Jan Kara <jack@suse.cz>
-> >> To: Ted Tso <tytso@mit.edu>
-> >> Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-> >> Subject: [PATCH 1/2] ext4: Fix assertion in ext4_add_complete_io()
-> >>
-> >> It doesn't make sense to require io_end->handle when we are in noj=
-ournal
-> >> mode. So update the assertion accordingly to avoid false warnings =
-from
-> >> ext4_add_complete_io().
-> >
-> > Looks good.
-> >
-> > Reviewed-by: Lukas Czerner <lczerner@redhat.com>
-> >
-> >>
-> >> Reported-by: Eric Whitney <enwlinux@gmail.com>
-> >> Signed-off-by: Jan Kara <jack@suse.cz>
-> >> ---
-> >>  fs/ext4/page-io.c | 5 +++--
-> >>  1 file changed, 3 insertions(+), 2 deletions(-)
-> >>
-> >> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-> >> index d7d0c7b46ed4..d488f80ee32d 100644
-> >> --- a/fs/ext4/page-io.c
-> >> +++ b/fs/ext4/page-io.c
-> >> @@ -197,14 +197,15 @@ static void dump_completed_IO(struct inode *=
-inode, struct list_head *head)
-> >>  static void ext4_add_complete_io(ext4_io_end_t *io_end)
-> >>  {
-> >>       struct ext4_inode_info *ei =3D EXT4_I(io_end->inode);
-> >> +     struct ext4_sb_info *sbi =3D EXT4_SB(io_end->inode->i_sb);
-> >>       struct workqueue_struct *wq;
-> >>       unsigned long flags;
-> >>
-> >>       /* Only reserved conversions from writeback should enter her=
-e */
-> >>       WARN_ON(!(io_end->flag & EXT4_IO_END_UNWRITTEN));
-> >> -     WARN_ON(!io_end->handle);
-> >> +     WARN_ON(!io_end->handle && sbi->s_journal);
->=20
-> swap 2 conditions would be better in my opinion.   (for no-journal
-> case, it will be short-circuited. For journal case, no harm, no
-> difference.)
-> i know this is too picky. :)
-  OTOH you will check sbi->s_journal unnecessarily for the more common
-case when the journal is enabled. But I don't care tham much really.
+On Tue 15-10-13 18:45:17, Eric Sandeen wrote:
+> ext4 counts journal space as bsddf overhead, but ext3 does not.
+> 
+> For some reason when I patched ext4 I thought I should leave
+> ext3 alone, but frankly it makes more sense to fix it, I think.
+> 
+> Otherwise we get inconsistent behavior from ext3 under ext3.ko,
+> and ext3 under ext4.ko, which is not at all desirable...
+> 
+> This is testable by xfstests shared/289, though it will need
+> modification because it currently special-cases ext3.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+  OK, fair enough. Applied to my tree.
 
-								Honza
+							Honza
 
---=20
+> ---
+> 
+> diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+> index c50c761..37fd31e 100644
+> --- a/fs/ext3/super.c
+> +++ b/fs/ext3/super.c
+> @@ -2825,6 +2825,10 @@ static int ext3_statfs (struct dentry * dentry, struct kstatfs * buf)
+>  		 * bitmap, and an inode table.
+>  		 */
+>  		overhead += ngroups * (2 + sbi->s_itb_per_group);
+> +
+> +		/* Add the journal blocks as well */
+> +                overhead += sbi->s_journal->j_maxlen;
+> +
+>  		sbi->s_overhead_last = overhead;
+>  		smp_wmb();
+>  		sbi->s_blocks_last = le32_to_cpu(es->s_blocks_count);
+> 
+-- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
