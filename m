@@ -1,97 +1,52 @@
-From: Ming Lei <ming.lei@canonical.com>
-Subject: [PATCH] ext4: fix performance regression in ext4_writepages
-Date: Wed, 16 Oct 2013 09:18:37 +0800
-Message-ID: <1381886317-19539-1-git-send-email-ming.lei@canonical.com>
-Cc: Jan Kara <jack@suse.cz>, Ming Lei <ming.lei@canonical.com>,
-	Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-To: linux-kernel@vger.kernel.org
+From: Davidlohr Bueso <davidlohr@hp.com>
+Subject: still running into WARNING: CPU: at fs/ext4/inode.c:230
+ ext4_evict_inode+0x4a6/0x4e0
+Date: Tue, 15 Oct 2013 19:02:04 -0700
+Message-ID: <1381888924.2371.5.camel@buesod1.americas.hpqcorp.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: tytso@mit.edu, Linux Kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Commit 4e7ea81db5(ext4: restructure writeback path) introduces
-another performance regression on random write:
+Hello Jan,
 
-- one more page may be added to ext4 extent in mpage_prepare_extent_to_map,
-  and will be submitted for I/O so nr_to_write will become -1 before 'done'
-  is set
+Just wanted to let you know I hit this[1] again on Linus' latest. The
+setup/workload is *identical* to the reported one a few months ago.
 
-- the worse thing is that dirty pages may still be retrieved from page
-  cache after nr_to_write becomes negative, so lots of small chunks can be
-  submitted to block device when page writeback is catching up with write
-  path, and performance is hurted.
+[1] https://lkml.org/lkml/2013/8/1/532
 
-On one arm A15 board with sata 3.0 SSD(CPU: 1.5GHz dura core, RAM: 2GB,
-SATA controller: 3.0Gbps), this patch can improve below test's result
-from 157MB/sec to 174MB/sec(>10%):
+Here's the complete output, I hope it helps...
 
-	dd if=/dev/zero of=./z.img bs=8K count=512K
+------------[ cut here ]------------
+WARNING: CPU: 42 PID: 74607 at fs/ext4/inode.c:230 ext4_evict_inode+0x4a6/0x4e0 [ext4]()
+Modules linked in: fuse autofs4 sunrpc 8021q garp stp llc cpufreq_ondemand pcc_cpufreq ipt_REJECT nf_conntrack_ipv4 nf_defrag_ipv4 iptable_filter ip_tables ip6t_REJECT nf_conntrack_ipv6 nf_defrag_ipv6 xt_state nf_conntrack ip6table_filter ip6_tables ipv6 uinput iTCO_wdt iTCO_vendor_support ipmi_si ipmi_msghandler microcode pcspkr serio_raw lpc_ich mfd_core sg hpilo hpwdt i7core_edac edac_core netxen_nic freq_table ext4 jbd2 mbcache sr_mod cdrom sd_mod crc_t10dif crct10dif_common qla2xxx scsi_transport_fc scsi_tgt pata_acpi ata_generic ata_piix hpsa radeon ttm drm_kms_helper drm i2c_algo_bit i2c_core dm_mirror dm_region_hash dm_log dm_mod
+CPU: 42 PID: 74607 Comm: reaim Tainted: G        W    3.12.0-rc5 #40
+Hardware name: HP ProLiant DL980 G7, BIOS P66 08/31/2222
+ 00000000000000e6 ffff8908c6c59d28 ffffffff81550dd8 00000000000000e6
+ 0000000000000000 ffff8908c6c59d68 ffffffff8104e29c ffff8908c6c59d78
+ ffff880afae83500 ffff880afae83608 ffff880afae83450 ffff880afae83500
+Call Trace:
+ [<ffffffff81550dd8>] dump_stack+0x49/0x61
+ [<ffffffff8104e29c>] warn_slowpath_common+0x8c/0xc0
+ [<ffffffff8104e2ea>] warn_slowpath_null+0x1a/0x20
+ [<ffffffffa03afe16>] ext4_evict_inode+0x4a6/0x4e0 [ext4]
+ [<ffffffff81197ab7>] evict+0xa7/0x1c0
+ [<ffffffff81197cbf>] iput_final+0xef/0x190
+ [<ffffffff81197d9e>] iput+0x3e/0x50
+ [<ffffffff81195858>] d_kill+0xd8/0x110
+ [<ffffffff81195a1b>] dput+0x18b/0x1c0
+ [<ffffffff8117f588>] __fput+0x188/0x270
+ [<ffffffff8117f73e>] ____fput+0xe/0x10
+ [<ffffffff8106d0bf>] task_work_run+0x8f/0xf0
+ [<ffffffff81003a84>] do_notify_resume+0x84/0x90
+ [<ffffffff8155d9da>] int_signal+0x12/0x17
+---[ end trace ea7184a5fb48e185 ]---
 
-The above test is actually prototype of block write in bonnie++ utility.
 
-This patch makes sure no more pages than nr_to_write can be added to extent
-for mapping, so that nr_to_write won't become negative.
-
-Cc: Ted Tso <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org
-Cc: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Acked-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Ming Lei <ming.lei@canonical.com>
----
- fs/ext4/inode.c |   26 +++++++++++++-------------
- 1 file changed, 13 insertions(+), 13 deletions(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 32c04ab..32beaa4 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2295,6 +2295,7 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
- 	struct address_space *mapping = mpd->inode->i_mapping;
- 	struct pagevec pvec;
- 	unsigned int nr_pages;
-+	long left = mpd->wbc->nr_to_write;
- 	pgoff_t index = mpd->first_page;
- 	pgoff_t end = mpd->last_page;
- 	int tag;
-@@ -2330,6 +2331,17 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
- 			if (page->index > end)
- 				goto out;
- 
-+			/*
-+			 * Accumulated enough dirty pages? This doesn't apply
-+			 * to WB_SYNC_ALL mode. For integrity sync we have to
-+			 * keep going because someone may be concurrently
-+			 * dirtying pages, and we might have synced a lot of
-+			 * newly appeared dirty pages, but have not synced all
-+			 * of the old dirty pages.
-+			 */
-+			if (mpd->wbc->sync_mode == WB_SYNC_NONE && left <= 0)
-+				goto out;
-+
- 			/* If we can't merge this page, we are done. */
- 			if (mpd->map.m_len > 0 && mpd->next_page != page->index)
- 				goto out;
-@@ -2364,19 +2376,7 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
- 			if (err <= 0)
- 				goto out;
- 			err = 0;
--
--			/*
--			 * Accumulated enough dirty pages? This doesn't apply
--			 * to WB_SYNC_ALL mode. For integrity sync we have to
--			 * keep going because someone may be concurrently
--			 * dirtying pages, and we might have synced a lot of
--			 * newly appeared dirty pages, but have not synced all
--			 * of the old dirty pages.
--			 */
--			if (mpd->wbc->sync_mode == WB_SYNC_NONE &&
--			    mpd->next_page - mpd->first_page >=
--							mpd->wbc->nr_to_write)
--				goto out;
-+			left--;
- 		}
- 		pagevec_release(&pvec);
- 		cond_resched();
--- 
-1.7.9.5
+Thanks,
+Davidlohr
