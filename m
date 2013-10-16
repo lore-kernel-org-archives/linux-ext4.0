@@ -1,52 +1,68 @@
-From: Davidlohr Bueso <davidlohr@hp.com>
-Subject: still running into WARNING: CPU: at fs/ext4/inode.c:230
- ext4_evict_inode+0x4a6/0x4e0
-Date: Tue, 15 Oct 2013 19:02:04 -0700
-Message-ID: <1381888924.2371.5.camel@buesod1.americas.hpqcorp.net>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: 3.10.10: quota problems
+Date: Tue, 15 Oct 2013 22:25:48 -0400
+Message-ID: <20131016022548.GB28823@thunk.org>
+References: <21080.35061.164482.975014@fisica.ufpr.br>
+ <20131015155334.GG12428@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, Linux Kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Carlos Carvalho <carlos@fisica.ufpr.br>, linux-ext4@vger.kernel.org
 To: Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:46621 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751285Ab3JPCZ4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Oct 2013 22:25:56 -0400
+Content-Disposition: inline
+In-Reply-To: <20131015155334.GG12428@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hello Jan,
+On Tue, Oct 15, 2013 at 05:53:34PM +0200, Jan Kara wrote:
+> On Fri 11-10-13 20:25:41, Carlos Carvalho wrote:
+>   No idea here, sorry. I will try to reproduce the problem and see what I
+> can find. I'd just note that userspace support of hidden quotas in
+> e2fsprogs is still experimental and Ted pointed out a few problems in it.
+> Among others I think limits are not properly transferred from old to new
+> quota file during fsck... But it still doesn't explain why the limits got
+> lost after the crash.
 
-Just wanted to let you know I hit this[1] again on Linus' latest. The
-setup/workload is *identical* to the reported one a few months ago.
+This is a known bug, alas.  mke2fs -O quota directs the user to read:
 
-[1] https://lkml.org/lkml/2013/8/1/532
+https://ext4.wiki.kernel.org/index.php/Quota
 
-Here's the complete output, I hope it helps...
+for a list of caveats, including:
 
-------------[ cut here ]------------
-WARNING: CPU: 42 PID: 74607 at fs/ext4/inode.c:230 ext4_evict_inode+0x4a6/0x4e0 [ext4]()
-Modules linked in: fuse autofs4 sunrpc 8021q garp stp llc cpufreq_ondemand pcc_cpufreq ipt_REJECT nf_conntrack_ipv4 nf_defrag_ipv4 iptable_filter ip_tables ip6t_REJECT nf_conntrack_ipv6 nf_defrag_ipv6 xt_state nf_conntrack ip6table_filter ip6_tables ipv6 uinput iTCO_wdt iTCO_vendor_support ipmi_si ipmi_msghandler microcode pcspkr serio_raw lpc_ich mfd_core sg hpilo hpwdt i7core_edac edac_core netxen_nic freq_table ext4 jbd2 mbcache sr_mod cdrom sd_mod crc_t10dif crct10dif_common qla2xxx scsi_transport_fc scsi_tgt pata_acpi ata_generic ata_piix hpsa radeon ttm drm_kms_helper drm i2c_algo_bit i2c_core dm_mirror dm_region_hash dm_log dm_mod
-CPU: 42 PID: 74607 Comm: reaim Tainted: G        W    3.12.0-rc5 #40
-Hardware name: HP ProLiant DL980 G7, BIOS P66 08/31/2222
- 00000000000000e6 ffff8908c6c59d28 ffffffff81550dd8 00000000000000e6
- 0000000000000000 ffff8908c6c59d68 ffffffff8104e29c ffff8908c6c59d78
- ffff880afae83500 ffff880afae83608 ffff880afae83450 ffff880afae83500
-Call Trace:
- [<ffffffff81550dd8>] dump_stack+0x49/0x61
- [<ffffffff8104e29c>] warn_slowpath_common+0x8c/0xc0
- [<ffffffff8104e2ea>] warn_slowpath_null+0x1a/0x20
- [<ffffffffa03afe16>] ext4_evict_inode+0x4a6/0x4e0 [ext4]
- [<ffffffff81197ab7>] evict+0xa7/0x1c0
- [<ffffffff81197cbf>] iput_final+0xef/0x190
- [<ffffffff81197d9e>] iput+0x3e/0x50
- [<ffffffff81195858>] d_kill+0xd8/0x110
- [<ffffffff81195a1b>] dput+0x18b/0x1c0
- [<ffffffff8117f588>] __fput+0x188/0x270
- [<ffffffff8117f73e>] ____fput+0xe/0x10
- [<ffffffff8106d0bf>] task_work_run+0x8f/0xf0
- [<ffffffff81003a84>] do_notify_resume+0x84/0x90
- [<ffffffff8155d9da>] int_signal+0x12/0x17
----[ end trace ea7184a5fb48e185 ]---
+  Support for the quota feature first appeared in e2fsprogs 1.42,
+  although it is not enabled by default. It must enabled via a
+  compile-time configuration option, --enable-quota. There are bug fixes
+  which have been applied in various 1.42.x maintenance branch releases,
+  so users who wish to experiment with the quota feature are strongly
+  encouraged upgrade to the latest e2fsprogs 1.42.x maintenance
+  release. As of this writing the following bugs are still in e2fsprogs
+  1.42.7, which means use of file systems with the quota feature in
+  production can not be recommended:
 
+    * The e2fsck check of the on-disk quota inodes won't notice if
+      there is a missing uid record. (i.e., if some uid, say daemon
+      owns a bunch of files, but that uid record is not in the quota
+      inode, e2fsck won't say boo.)
 
-Thanks,
-Davidlohr
+    * If e2fsck *does* notice a discrepancy between the usage
+      information recorded in the hidden quota inodes, and the actual
+      number of blocks used by a particular user id or group id, it
+      will overwrite the user or group quota inode with all of the
+      information it has. Unfortunately, in the process it will zero
+      out all of the current quota limits set. This is unfortunate....
+
+The problem is that the person who originally contributed the code was
+working in an environment where they only needed usage tracking, and
+they weren't using quota enforcement.  So the fact that the e2fsck
+code that was submitted was incomplete wasn't something that got
+noticed right away.
+
+It's been on my todo list to fix, but I just haven't had time to get
+to it.  :-(   Part of the problem is that it requires some fairly major
+restructuring in how the quota support is handled in e2fsprogs.
+
+						- Ted
