@@ -1,85 +1,80 @@
 From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: pair trace_ext4_writepages &
- trace_ext4_writepages_result
-Date: Thu, 17 Oct 2013 15:31:34 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1310171531040.3212@localhost.localdomain>
-References: <1382012926-398-1-git-send-email-ming.lei@canonical.com>
+Subject: Re: [PATCH] ext4: don't cache out of order extents
+Date: Thu, 17 Oct 2013 15:44:35 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1310171534440.3212@localhost.localdomain>
+References: <1382002073-27862-1-git-send-email-guaneryu@gmail.com>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-kernel@vger.kernel.org, Jan Kara <jack@suse.cz>,
-	Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-To: Ming Lei <ming.lei@canonical.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1382012926-398-1-git-send-email-ming.lei@canonical.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
+To: Eryu Guan <guaneryu@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:44742 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755138Ab3JQNol (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 17 Oct 2013 09:44:41 -0400
+In-Reply-To: <1382002073-27862-1-git-send-email-guaneryu@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 17 Oct 2013, Ming Lei wrote:
+On Thu, 17 Oct 2013, Eryu Guan wrote:
 
-> Date: Thu, 17 Oct 2013 20:28:46 +0800
-> From: Ming Lei <ming.lei@canonical.com>
-> To: linux-kernel@vger.kernel.org
-> Cc: Jan Kara <jack@suse.cz>, Ming Lei <ming.lei@canonical.com>,
->     Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
->     "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-> Subject: [PATCH] ext4: pair trace_ext4_writepages &
->     trace_ext4_writepages_result
+> Date: Thu, 17 Oct 2013 17:27:53 +0800
+> From: Eryu Guan <guaneryu@gmail.com>
+> To: linux-ext4@vger.kernel.org
+> Cc: Eryu Guan <guaneryu@gmail.com>, Theodore Ts'o <tytso@mit.edu>
+> Subject: [PATCH] ext4: don't cache out of order extents
 > 
-> Pair the two trace events to make troubeshooting writepages
-> easier, and it should be more convinient to write a simple script
-> to parse the traces.
+> A corrupted ext4 may have out of order leaf extents, i.e.
 > 
-> Cc: Ted Tso <tytso@mit.edu>
-> Cc: linux-ext4@vger.kernel.org
-> Cc: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-> Cc: Jan Kara <jack@suse.cz>
-> Signed-off-by: Ming Lei <ming.lei@canonical.com>
+> extent: lblk 0--1023, len 1024, pblk 9217, flags: LEAF UNINIT
+> extent: lblk 1000--2047, len 1024, pblk 10241, flags: LEAF UNINIT
+>              ^^^^ overlap with previous extent
+> 
+> Reading such extent could hit BUG_ON() in ext4_es_cache_extent().
+> 
+> 	BUG_ON(end < lblk);
+> 
+> The problem is that __read_extent_tree_block() tries to cache holes as
+> well but assumes 'lblk' is greater than 'prev' and passes underflowed
+> length to ext4_es_cache_extent().
+> 
+> I hit this when fuzz testing ext4, and am able to reproduce it by
+> modifying the on-disk extent by hand.
+> 
+> Ran xfstests on patched ext4 and no regression.
 
-It looks good.
+So what will happen with the file system with this patch when
+presented with such corruption ?
+
+It seems to me that ext4_es_cache_extent() will happily skip this
+extent because it will find that this particular offset is already
+in the tree. Hence we'll have a gap in the status tree which really
+should not be there and I suspect that something bad will happen.
+
+I think that we should deal with this corruption immediately when we
+spot it there, not just hide it.
 
 Thanks!
+-Lukas
 
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
-
-> ---
->  fs/ext4/inode.c |   11 ++++++-----
->  1 file changed, 6 insertions(+), 5 deletions(-)
 > 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 32beaa4..0ad73d4 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -2420,16 +2420,15 @@ static int ext4_writepages(struct address_space *mapping,
->  	 * because that could violate lock ordering on umount
->  	 */
->  	if (!mapping->nrpages || !mapping_tagged(mapping, PAGECACHE_TAG_DIRTY))
-> -		return 0;
-> +		goto out_writepages;
+> Cc: "Theodore Ts'o" <tytso@mit.edu>
+> Signed-off-by: Eryu Guan <guaneryu@gmail.com>
+> ---
+>  fs/ext4/extents.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 54d52af..c9ebcb9 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -503,7 +503,7 @@ __read_extent_tree_block(const char *function, unsigned int line,
+>  			ext4_lblk_t lblk = le32_to_cpu(ex->ee_block);
+>  			int len = ext4_ext_get_actual_len(ex);
 >  
->  	if (ext4_should_journal_data(inode)) {
->  		struct blk_plug plug;
-> -		int ret;
->  
->  		blk_start_plug(&plug);
->  		ret = write_cache_pages(mapping, wbc, __writepage, mapping);
->  		blk_finish_plug(&plug);
-> -		return ret;
-> +		goto out_writepages;
->  	}
->  
->  	/*
-> @@ -2442,8 +2441,10 @@ static int ext4_writepages(struct address_space *mapping,
->  	 * *never* be called, so if that ever happens, we would want
->  	 * the stack trace.
->  	 */
-> -	if (unlikely(sbi->s_mount_flags & EXT4_MF_FS_ABORTED))
-> -		return -EROFS;
-> +	if (unlikely(sbi->s_mount_flags & EXT4_MF_FS_ABORTED)) {
-> +		ret = -EROFS;
-> +		goto out_writepages;
-> +	}
->  
->  	if (ext4_should_dioread_nolock(inode)) {
->  		/*
+> -			if (prev && (prev != lblk))
+> +			if (prev && (prev < lblk))
+>  				ext4_es_cache_extent(inode, prev,
+>  						     lblk - prev, ~0,
+>  						     EXTENT_STATUS_HOLE);
 > 
