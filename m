@@ -1,80 +1,52 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: [PATCH] ext4: don't cache out of order extents
-Date: Thu, 17 Oct 2013 15:44:35 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1310171534440.3212@localhost.localdomain>
+Date: Thu, 17 Oct 2013 10:40:44 -0400
+Message-ID: <20131017144044.GA3605@thunk.org>
 References: <1382002073-27862-1-git-send-email-guaneryu@gmail.com>
+ <alpine.LFD.2.00.1310171534440.3212@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
-To: Eryu Guan <guaneryu@gmail.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Eryu Guan <guaneryu@gmail.com>, linux-ext4@vger.kernel.org
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44742 "EHLO mx1.redhat.com"
+Received: from imap.thunk.org ([74.207.234.97]:47292 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755138Ab3JQNol (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 17 Oct 2013 09:44:41 -0400
-In-Reply-To: <1382002073-27862-1-git-send-email-guaneryu@gmail.com>
+	id S1755326Ab3JQOkr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 17 Oct 2013 10:40:47 -0400
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1310171534440.3212@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 17 Oct 2013, Eryu Guan wrote:
+On Thu, Oct 17, 2013 at 03:44:35PM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
+:
+>=20
+> So what will happen with the file system with this patch when
+> presented with such corruption ?
+>=20
+> It seems to me that ext4_es_cache_extent() will happily skip this
+> extent because it will find that this particular offset is already
+> in the tree. Hence we'll have a gap in the status tree which really
+> should not be there and I suspect that something bad will happen.
 
-> Date: Thu, 17 Oct 2013 17:27:53 +0800
-> From: Eryu Guan <guaneryu@gmail.com>
-> To: linux-ext4@vger.kernel.org
-> Cc: Eryu Guan <guaneryu@gmail.com>, Theodore Ts'o <tytso@mit.edu>
-> Subject: [PATCH] ext4: don't cache out of order extents
-> 
-> A corrupted ext4 may have out of order leaf extents, i.e.
-> 
-> extent: lblk 0--1023, len 1024, pblk 9217, flags: LEAF UNINIT
-> extent: lblk 1000--2047, len 1024, pblk 10241, flags: LEAF UNINIT
->              ^^^^ overlap with previous extent
-> 
-> Reading such extent could hit BUG_ON() in ext4_es_cache_extent().
-> 
-> 	BUG_ON(end < lblk);
-> 
-> The problem is that __read_extent_tree_block() tries to cache holes as
-> well but assumes 'lblk' is greater than 'prev' and passes underflowed
-> length to ext4_es_cache_extent().
-> 
-> I hit this when fuzz testing ext4, and am able to reproduce it by
-> modifying the on-disk extent by hand.
-> 
-> Ran xfstests on patched ext4 and no regression.
+Ah, I see what's going wrong.  __read_extent_tree_block() calls
+__ext4_ext_check() which is supposed to validate that extent tree
+block is valid.  The __ext4_ext_check() function calls
+ext4_valid_extent_entries() which is supposed to validate the
+individual entries in the extent.  However, it is not checking to make
+sure there are no overlapping extents.  We should add that check to
+ext4_valid_extent_entries(); that way, we will call ext4_error_inode()
+to mark the file system as corrupted.
 
-So what will happen with the file system with this patch when
-presented with such corruption ?
+Eryu's patch, or something like it, will still be needed so that in
+the case of errors=3Dcountinue, we don't end up calling BUG_ON().
 
-It seems to me that ext4_es_cache_extent() will happily skip this
-extent because it will find that this particular offset is already
-in the tree. Hence we'll have a gap in the status tree which really
-should not be there and I suspect that something bad will happen.
+Thanks for finding this!
 
-I think that we should deal with this corruption immediately when we
-spot it there, not just hide it.
-
-Thanks!
--Lukas
-
-> 
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Signed-off-by: Eryu Guan <guaneryu@gmail.com>
-> ---
->  fs/ext4/extents.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 54d52af..c9ebcb9 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -503,7 +503,7 @@ __read_extent_tree_block(const char *function, unsigned int line,
->  			ext4_lblk_t lblk = le32_to_cpu(ex->ee_block);
->  			int len = ext4_ext_get_actual_len(ex);
->  
-> -			if (prev && (prev != lblk))
-> +			if (prev && (prev < lblk))
->  				ext4_es_cache_extent(inode, prev,
->  						     lblk - prev, ~0,
->  						     EXTENT_STATUS_HOLE);
-> 
+						- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
