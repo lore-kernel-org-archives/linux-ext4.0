@@ -1,62 +1,46 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: don't cache out of order extents
-Date: Thu, 17 Oct 2013 11:58:25 -0400
-Message-ID: <20131017155825.GB3605@thunk.org>
-References: <1382002073-27862-1-git-send-email-guaneryu@gmail.com>
- <alpine.LFD.2.00.1310171534440.3212@localhost.localdomain>
- <20131017144044.GA3605@thunk.org>
- <alpine.LFD.2.00.1310171704300.3212@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Eryu Guan <guaneryu@gmail.com>, linux-ext4@vger.kernel.org
-To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+From: Carlos Maiolino <cmaiolino@redhat.com>
+Subject: [PATCH] ext2: Make sb magic number endianness conversion consistent
+Date: Thu, 17 Oct 2013 14:24:58 -0300
+Message-ID: <1382030698-8746-1-git-send-email-cmaiolino@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:47310 "EHLO imap.thunk.org"
+Received: from mx1.redhat.com ([209.132.183.28]:52332 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755695Ab3JQP6e (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 17 Oct 2013 11:58:34 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1310171704300.3212@localhost.localdomain>
+	id S1756706Ab3JQRZG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 17 Oct 2013 13:25:06 -0400
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9HHP3bx002560
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Thu, 17 Oct 2013 13:25:06 -0400
+Received: from orion.redhat.com (ovpn-113-158.phx2.redhat.com [10.3.113.158])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id r9HHP2fD000975
+	for <linux-ext4@vger.kernel.org>; Thu, 17 Oct 2013 13:25:02 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 17, 2013 at 05:22:58PM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
-:
->=20
-> I agree, since ext4_ext_check() should be really only used when
-> reading data from disk. That said, we might actually remove the
-> check from ext4_ext_precache() and ext4_ext_remove_space() because
-> it seems to be that the check has already been done in ext4_iget()
-> and it should be enough to check it once when reading from disk,
-> right ?
+All ext2_super_block fields are converted from le16 to cpu when checked or
+loaded into memory. Magic number check is the only field where we convert the
+magic number to le16. So, make the conversion pattern consistent with the
+remaining code
 
-Yes, since we do call ext4_ext_check() in ext4_iget() to verify the
-root node of the extent tree located in ei->i_blocks[], it's strictly
-speaking not necessary.  OTOH, there are at most four entries in
-i_blocks[] that need to be verified, and it's a bit easier for the
-contents of i_blocks[] to get corrupted by buggy code, so it's a
-toss-up whether it's really worth it to remove it from those two
-places, which aren't really hotspots.  It could be argued that are
-plenty of other places that where we're not validating the root extent
-tree node, so we might as well remove it from those two functions,
-though.
+Signed-off-by: Carlos Maiolino <cmaiolino@redhat.com>
+---
+ fs/ext2/super.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-> > Eryu's patch, or something like it, will still be needed so that in
-> > the case of errors=3Dcountinue, we don't end up calling BUG_ON().
->=20
-> Hmm shouldn't we avoid that data in the case that it's corrupted
-> rather than using it ? It seems like this is what the code would do
-> anyway even with errors=3Dcontinue when __ext4_ext_check() returns
-> error.
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index 2885349..808f99f 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -927,7 +927,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+ 		}
+ 		es = (struct ext2_super_block *) (((char *)bh->b_data) + offset);
+ 		sbi->s_es = es;
+-		if (es->s_magic != cpu_to_le16(EXT2_SUPER_MAGIC)) {
++		if (le16_to_cpu(es->s_magic) != EXT2_SUPER_MAGIC) {
+ 			ext2_msg(sb, KERN_ERR, "error: magic mismatch");
+ 			goto failed_mount;
+ 		}
+-- 
+1.8.1.4
 
-Hmm, maybe we should set a flag indicating that the inode is bad, and
-then cause attempts to read or write the contents of that inode should
-return EIO.
-
-						- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
