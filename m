@@ -1,319 +1,110 @@
 From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: add ratelimiting to ext4 messages
-Date: Fri, 18 Oct 2013 15:08:41 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1310181504550.7649@localhost.localdomain>
-References: <1382059728-29483-1-git-send-email-tytso@mit.edu>
+Subject: Re: [PATCH v2 00/25] e2fsprogs patchbomb 10/2013
+Date: Fri, 18 Oct 2013 15:13:57 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1310181512260.7649@localhost.localdomain>
+References: <20131018044854.7339.48457.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:11880 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:15932 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752545Ab3JRNIr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 18 Oct 2013 09:08:47 -0400
-In-Reply-To: <1382059728-29483-1-git-send-email-tytso@mit.edu>
+	id S1752512Ab3JRNOE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 18 Oct 2013 09:14:04 -0400
+In-Reply-To: <20131018044854.7339.48457.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 17 Oct 2013, Theodore Ts'o wrote:
+On Thu, 17 Oct 2013, Darrick J. Wong wrote:
 
-> Date: Thu, 17 Oct 2013 21:28:48 -0400
-> From: Theodore Ts'o <tytso@mit.edu>
-> To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-> Cc: Theodore Ts'o <tytso@mit.edu>
-> Subject: [PATCH] ext4: add ratelimiting to ext4 messages
-> 
-> In the case of a storage device that suddenly disappears, or in the
-> case of significant file system corruption, this can result in a huge
-> flood of messages being sent to the console.  This can overflow the
-> file system containing /var/log/messages, or if a serial console is
-> configured, this can slow down the system so much that a hardware
-> watchdog can end up triggering forcing a system reboot.
-> 
-> Google-Bug-Id: 7258357
+> Date: Thu, 17 Oct 2013 21:48:54 -0700
+> From: Darrick J. Wong <darrick.wong@oracle.com>
+> To: tytso@mit.edu, darrick.wong@oracle.com
+> Cc: linux-ext4@vger.kernel.org
+> Subject: [PATCH v2 00/25] e2fsprogs patchbomb 10/2013
 
-Looks good. Thanks!
-
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
-
-However looking at what we print out from ext4 it looks like we
-should revisit the code at some point and make a use of those
-ext4_* helpers because there are still cases out there where we
-just use printk, or combination of the ext4_* helper and printk.
-
-Also it looks like almost every file in the fs/ext4 has it's own
-debugging method, it would be nice to clean it up at some point as
-well. But that's not really a priority I guess.
+I was going to review this, but could you please include the
+information what changed since the last version of each patch (into
+the patch itself) since it'll make the review much easier.
 
 Thanks!
 -Lukas
 
 > 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  fs/ext4/ext4.h  |   6 +++
->  fs/ext4/super.c | 152 +++++++++++++++++++++++++++++++++++---------------------
->  2 files changed, 100 insertions(+), 58 deletions(-)
+> Well, here we go again.  This is the same patchbomb from a couple of
+> weeks ago, minus the patches that Ted has already accepted, plus
+> several fixes to resize2fs that weren't ready back then, and a few
+> other fixes that migrated into the other patches.  This series is
+> against -next.
 > 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index af815ea..65485ab 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -29,6 +29,7 @@
->  #include <linux/wait.h>
->  #include <linux/blockgroup_lock.h>
->  #include <linux/percpu_counter.h>
-> +#include <linux/ratelimit.h>
->  #include <crypto/hash.h>
->  #ifdef __KERNEL__
->  #include <linux/compat.h>
-> @@ -1314,6 +1315,11 @@ struct ext4_sb_info {
->  	unsigned long s_es_last_sorted;
->  	struct percpu_counter s_extent_cache_cnt;
->  	spinlock_t s_es_lru_lock ____cacheline_aligned_in_smp;
-> +
-> +	/* Ratelimit ext4 messages. */
-> +	struct ratelimit_state s_err_ratelimit_state;
-> +	struct ratelimit_state s_warning_ratelimit_state;
-> +	struct ratelimit_state s_msg_ratelimit_state;
->  };
->  
->  static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 2c2e6cb..d3a857b 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -411,20 +411,26 @@ static void ext4_handle_error(struct super_block *sb)
->  			sb->s_id);
->  }
->  
-> +#define ext4_error_ratelimit(sb)					\
-> +		___ratelimit(&(EXT4_SB(sb)->s_err_ratelimit_state),	\
-> +			     "EXT4-fs error")
-> +
->  void __ext4_error(struct super_block *sb, const char *function,
->  		  unsigned int line, const char *fmt, ...)
->  {
->  	struct va_format vaf;
->  	va_list args;
->  
-> -	va_start(args, fmt);
-> -	vaf.fmt = fmt;
-> -	vaf.va = &args;
-> -	printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: comm %s: %pV\n",
-> -	       sb->s_id, function, line, current->comm, &vaf);
-> -	va_end(args);
-> +	if (ext4_error_ratelimit(sb)) {
-> +		va_start(args, fmt);
-> +		vaf.fmt = fmt;
-> +		vaf.va = &args;
-> +		printk(KERN_CRIT
-> +		       "EXT4-fs error (device %s): %s:%d: comm %s: %pV\n",
-> +		       sb->s_id, function, line, current->comm, &vaf);
-> +		va_end(args);
-> +	}
->  	save_error_info(sb, function, line);
-> -
->  	ext4_handle_error(sb);
->  }
->  
-> @@ -438,22 +444,23 @@ void __ext4_error_inode(struct inode *inode, const char *function,
->  
->  	es->s_last_error_ino = cpu_to_le32(inode->i_ino);
->  	es->s_last_error_block = cpu_to_le64(block);
-> +	if (ext4_error_ratelimit(inode->i_sb)) {
-> +		va_start(args, fmt);
-> +		vaf.fmt = fmt;
-> +		vaf.va = &args;
-> +		if (block)
-> +			printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: "
-> +			       "inode #%lu: block %llu: comm %s: %pV\n",
-> +			       inode->i_sb->s_id, function, line, inode->i_ino,
-> +			       block, current->comm, &vaf);
-> +		else
-> +			printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: "
-> +			       "inode #%lu: comm %s: %pV\n",
-> +			       inode->i_sb->s_id, function, line, inode->i_ino,
-> +			       current->comm, &vaf);
-> +		va_end(args);
-> +	}
->  	save_error_info(inode->i_sb, function, line);
-> -	va_start(args, fmt);
-> -	vaf.fmt = fmt;
-> -	vaf.va = &args;
-> -	if (block)
-> -		printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: "
-> -		       "inode #%lu: block %llu: comm %s: %pV\n",
-> -		       inode->i_sb->s_id, function, line, inode->i_ino,
-> -		       block, current->comm, &vaf);
-> -	else
-> -		printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: "
-> -		       "inode #%lu: comm %s: %pV\n",
-> -		       inode->i_sb->s_id, function, line, inode->i_ino,
-> -		       current->comm, &vaf);
-> -	va_end(args);
-> -
->  	ext4_handle_error(inode->i_sb);
->  }
->  
-> @@ -469,27 +476,28 @@ void __ext4_error_file(struct file *file, const char *function,
->  
->  	es = EXT4_SB(inode->i_sb)->s_es;
->  	es->s_last_error_ino = cpu_to_le32(inode->i_ino);
-> +	if (ext4_error_ratelimit(inode->i_sb)) {
-> +		path = d_path(&(file->f_path), pathname, sizeof(pathname));
-> +		if (IS_ERR(path))
-> +			path = "(unknown)";
-> +		va_start(args, fmt);
-> +		vaf.fmt = fmt;
-> +		vaf.va = &args;
-> +		if (block)
-> +			printk(KERN_CRIT
-> +			       "EXT4-fs error (device %s): %s:%d: inode #%lu: "
-> +			       "block %llu: comm %s: path %s: %pV\n",
-> +			       inode->i_sb->s_id, function, line, inode->i_ino,
-> +			       block, current->comm, path, &vaf);
-> +		else
-> +			printk(KERN_CRIT
-> +			       "EXT4-fs error (device %s): %s:%d: inode #%lu: "
-> +			       "comm %s: path %s: %pV\n",
-> +			       inode->i_sb->s_id, function, line, inode->i_ino,
-> +			       current->comm, path, &vaf);
-> +		va_end(args);
-> +	}
->  	save_error_info(inode->i_sb, function, line);
-> -	path = d_path(&(file->f_path), pathname, sizeof(pathname));
-> -	if (IS_ERR(path))
-> -		path = "(unknown)";
-> -	va_start(args, fmt);
-> -	vaf.fmt = fmt;
-> -	vaf.va = &args;
-> -	if (block)
-> -		printk(KERN_CRIT
-> -		       "EXT4-fs error (device %s): %s:%d: inode #%lu: "
-> -		       "block %llu: comm %s: path %s: %pV\n",
-> -		       inode->i_sb->s_id, function, line, inode->i_ino,
-> -		       block, current->comm, path, &vaf);
-> -	else
-> -		printk(KERN_CRIT
-> -		       "EXT4-fs error (device %s): %s:%d: inode #%lu: "
-> -		       "comm %s: path %s: %pV\n",
-> -		       inode->i_sb->s_id, function, line, inode->i_ino,
-> -		       current->comm, path, &vaf);
-> -	va_end(args);
-> -
->  	ext4_handle_error(inode->i_sb);
->  }
->  
-> @@ -543,11 +551,13 @@ void __ext4_std_error(struct super_block *sb, const char *function,
->  	    (sb->s_flags & MS_RDONLY))
->  		return;
->  
-> -	errstr = ext4_decode_error(sb, errno, nbuf);
-> -	printk(KERN_CRIT "EXT4-fs error (device %s) in %s:%d: %s\n",
-> -	       sb->s_id, function, line, errstr);
-> -	save_error_info(sb, function, line);
-> +	if (ext4_error_ratelimit(sb)) {
-> +		errstr = ext4_decode_error(sb, errno, nbuf);
-> +		printk(KERN_CRIT "EXT4-fs error (device %s) in %s:%d: %s\n",
-> +		       sb->s_id, function, line, errstr);
-> +	}
->  
-> +	save_error_info(sb, function, line);
->  	ext4_handle_error(sb);
->  }
->  
-> @@ -597,6 +607,9 @@ void __ext4_msg(struct super_block *sb,
->  	struct va_format vaf;
->  	va_list args;
->  
-> +	if (!___ratelimit(&(EXT4_SB(sb)->s_msg_ratelimit_state), "EXT4-fs"))
-> +		return;
-> +
->  	va_start(args, fmt);
->  	vaf.fmt = fmt;
->  	vaf.va = &args;
-> @@ -610,6 +623,10 @@ void __ext4_warning(struct super_block *sb, const char *function,
->  	struct va_format vaf;
->  	va_list args;
->  
-> +	if (!___ratelimit(&(EXT4_SB(sb)->s_warning_ratelimit_state),
-> +			  "EXT4-fs warning"))
-> +		return;
-> +
->  	va_start(args, fmt);
->  	vaf.fmt = fmt;
->  	vaf.va = &args;
-> @@ -633,18 +650,20 @@ __acquires(bitlock)
->  	es->s_last_error_block = cpu_to_le64(block);
->  	__save_error_info(sb, function, line);
->  
-> -	va_start(args, fmt);
-> -
-> -	vaf.fmt = fmt;
-> -	vaf.va = &args;
-> -	printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: group %u, ",
-> -	       sb->s_id, function, line, grp);
-> -	if (ino)
-> -		printk(KERN_CONT "inode %lu: ", ino);
-> -	if (block)
-> -		printk(KERN_CONT "block %llu:", (unsigned long long) block);
-> -	printk(KERN_CONT "%pV\n", &vaf);
-> -	va_end(args);
-> +	if (ext4_error_ratelimit(sb)) {
-> +		va_start(args, fmt);
-> +		vaf.fmt = fmt;
-> +		vaf.va = &args;
-> +		printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: group %u, ",
-> +		       sb->s_id, function, line, grp);
-> +		if (ino)
-> +			printk(KERN_CONT "inode %lu: ", ino);
-> +		if (block)
-> +			printk(KERN_CONT "block %llu:",
-> +			       (unsigned long long) block);
-> +		printk(KERN_CONT "%pV\n", &vaf);
-> +		va_end(args);
-> +	}
->  
->  	if (test_opt(sb, ERRORS_CONT)) {
->  		ext4_commit_super(sb, 0);
-> @@ -2606,6 +2625,12 @@ EXT4_RW_ATTR_SBI_UI(mb_group_prealloc, s_mb_group_prealloc);
->  EXT4_DEPRECATED_ATTR(max_writeback_mb_bump, 128);
->  EXT4_RW_ATTR_SBI_UI(extent_max_zeroout_kb, s_extent_max_zeroout_kb);
->  EXT4_ATTR(trigger_fs_error, 0200, NULL, trigger_test_error);
-> +EXT4_RW_ATTR_SBI_UI(err_ratelimit_interval_ms, s_err_ratelimit_state.interval);
-> +EXT4_RW_ATTR_SBI_UI(err_ratelimit_burst, s_err_ratelimit_state.burst);
-> +EXT4_RW_ATTR_SBI_UI(warning_ratelimit_interval_ms, s_warning_ratelimit_state.interval);
-> +EXT4_RW_ATTR_SBI_UI(warning_ratelimit_burst, s_warning_ratelimit_state.burst);
-> +EXT4_RW_ATTR_SBI_UI(msg_ratelimit_interval_ms, s_msg_ratelimit_state.interval);
-> +EXT4_RW_ATTR_SBI_UI(msg_ratelimit_burst, s_msg_ratelimit_state.burst);
->  
->  static struct attribute *ext4_attrs[] = {
->  	ATTR_LIST(delayed_allocation_blocks),
-> @@ -2623,6 +2648,12 @@ static struct attribute *ext4_attrs[] = {
->  	ATTR_LIST(max_writeback_mb_bump),
->  	ATTR_LIST(extent_max_zeroout_kb),
->  	ATTR_LIST(trigger_fs_error),
-> +	ATTR_LIST(err_ratelimit_interval_ms),
-> +	ATTR_LIST(err_ratelimit_burst),
-> +	ATTR_LIST(warning_ratelimit_interval_ms),
-> +	ATTR_LIST(warning_ratelimit_burst),
-> +	ATTR_LIST(msg_ratelimit_interval_ms),
-> +	ATTR_LIST(msg_ratelimit_burst),
->  	NULL,
->  };
->  
-> @@ -4118,6 +4149,11 @@ no_journal:
->  	if (es->s_error_count)
->  		mod_timer(&sbi->s_err_report, jiffies + 300*HZ); /* 5 minutes */
->  
-> +	/* Enable message ratelimiting. Default is 10 messages per 5 secs. */
-> +	ratelimit_state_init(&sbi->s_err_ratelimit_state, 5 * HZ, 10);
-> +	ratelimit_state_init(&sbi->s_warning_ratelimit_state, 5 * HZ, 10);
-> +	ratelimit_state_init(&sbi->s_msg_ratelimit_state, 5 * HZ, 10);
-> +
->  	kfree(orig_data);
->  	return 0;
->  
+> Ted, since you've accepted patches into -pu, do you want me to send
+> patches against -pu as well?  Or put more bluntly, what are your
+> thoughts about revert-and-replace of patches in -pu?  Patches 2, 6,
+> 11, 23, and 24 have changed significantly since 9/30.
+> 
+> The first eight patches fix miscellaneous errors: #1 stops dirent
+> iteration after we successfully link an inode into a directory.  #2
+> fixes a bug that prohibited us from specifyinng a 64bit superblock
+> number when opening an FS.  #3 prohibits running mke2fs with -E
+> resize= and meta_bg.  #4 causes users of the badblocks code to reject
+> 64bit block numbers.  #5 fixes shift overflows errors when punching
+> the end of non-extent files.  #6 refactors all the tests for whether
+> or not we need to set the LARGE_FILE feature (because someone goofed
+> earlier).  #7 fixes a problem wherein mkfs ignored non-4096 blocksize
+> directives in the config file on a device larger than 2^32KB.  #8
+> cleans up some code in debugfs.
+> 
+> The next two patches fix some 64bit truncation bugs.
+> 
+> Regarding next five patches, I turned on bigalloc and found a number
+> of bugs relating to the fact that block_alloc_stats2() takes a block
+> number but operates on clusters.  I've fixed up all the allocation
+> errors that I found.  I also decided to make the quota code use
+> ext2fs_punch rather than try to correct its behavior wrt bigalloc.
+> There was also a bug wherein the requirement that 64-bit bitmaps be
+> enabled (via EXT2_FLAG_64BITS) for bigalloc filesystems.  There's also
+> a patch to reduce the e2fsck output verbosity when there are block
+> bitmap errors.  Note that #11 has been refactored significantly.
+> 
+> The next patch provides the ability to toggle the 64bit feature on any
+> ext4 filesystem.
+> 
+> The four patches after that fix various resize2fs bugs with bigalloc.
+> 
+> The next two patches fix bugs with metadata_csum.  There's a patch to
+> fix up some code to test if checksums are enabled instead of a
+> GDT_CSUM open-code.  Finally, there's a patch to resize2fs to rewrite
+> checksums of inodes that were relocated.
+> 
+> The next two patches add the ability to edit extended attributes and
+> add a fuse2fs driver for e2fsprogs.  I admit that the xattr editing
+> functions clash with the inline_data patches, though sadly, the inline
+> data patches don't provide an API to access EAs in a separate EA
+> block.  The fuse driver should work with the latest versions of Linux
+> fuse (2.9.2) and osxfuse (2.6.1).  I've been using the fuse driver to
+> test e2fsprogs functionality, which is how I came across most of the
+> bugs fixed above.  Both of these patches (#23 and #24) have received
+> fixes since the 9/30 posting.
+> 
+> The final patch adds my metadata checksum test program to the tests/
+> directory, along with a new metadata_check target to run a quick
+> check.  It includes substitute mount/umount commands for use with
+> fuse2fs.
+> 
+> For fuse2fs, I think it'd be useful to reintroduce journal replay too.
+> (Or cheat and call e2fsck -E journal_only...)  Also, fuse2fs doesn't
+> yet know how to read or write ACLs yet.
+> 
+> I've tested these e2fsprogs changes against the -next branch as of a
+> few days ago.  These days, I use a 2GB ramdisk and a 20T "disk" I
+> constructed out of dm-snapshot to test in an x64 VM.
+> 
+> Comments and questions are, as always, welcome.
+> 
+> --D
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
