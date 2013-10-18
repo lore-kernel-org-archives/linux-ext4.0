@@ -1,66 +1,65 @@
-From: Rich Johnston <rjohnston@sgi.com>
-Subject: Re: [PATCH RESEND 4/7] xfsprogs: xfsio: add support
-	FALLOC_FL_COLLAPSE_RANGE for fallocate
-Date: Fri, 18 Oct 2013 17:45:22 -0500
-Message-ID: <5261BA02.9050808@sgi.com>
-References: <1381090418-2829-1-git-send-email-linkinjeon@gmail.com>
-	<52616EC6.7030400@sgi.com> <20131018224404.GX4446@dastard>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: add ratelimiting to ext4 messages
+Date: Fri, 18 Oct 2013 14:59:55 -0400
+Message-ID: <20131018185955.GA7557@thunk.org>
+References: <1382059728-29483-1-git-send-email-tytso@mit.edu>
+ <526140E8.7000002@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"; Format="flowed"
-Content-Transfer-Encoding: 7bit
-Cc: Namjae Jeon <linkinjeon@gmail.com>, elder@kernel.org, tytso@mit.edu,
-	Namjae Jeon <namjae.jeon@samsung.com>,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com, hch@infradead.org,
-	bpm@sgi.com, adilger.kernel@dilger.ca, viro@zeniv.linux.org.uk,
-	a.sangwan@samsung.com, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, mtk.manpages@gmail.com
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <20131018224404.GX4446@dastard>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:47907 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750985Ab3JSHUy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 19 Oct 2013 03:20:54 -0400
+Content-Disposition: inline
+In-Reply-To: <526140E8.7000002@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Sorry if there are others please let me know.
+On Fri, Oct 18, 2013 at 09:08:40AM -0500, Eric Sandeen wrote:
+> On 10/17/13 8:28 PM, Theodore Ts'o wrote:
+> > In the case of a storage device that suddenly disappears, or in the
+> > case of significant file system corruption, this can result in a huge
+> > flood of messages being sent to the console.  This can overflow the
+> > file system containing /var/log/messages, or if a serial console is
+> > configured, this can slow down the system so much that a hardware
+> > watchdog can end up triggering forcing a system reboot.
+> 
+> Just out of curiosity, after the fs shuts down, is there still a flood
+> of messages?  Shouldn't that clamp down on the errors?
 
-On 10/18/2013 05:44 PM, Dave Chinner wrote:
-> On Fri, Oct 18, 2013 at 12:24:22PM -0500, Rich Johnston wrote:
->> This has been committed.
->>
->> Thanks
->> --Rich
->>
->> commit e64190f8440286a815060524777b435e06a7b364
->> Author: Namjae Jeon <namjae.jeon@samsung.com>
->> Date:   Sun Oct 6 20:13:38 2013 +0000
->>
->>      [RESEND, 4/7] xfsprogs: xfsio: add support
->> FALLOC_FL_COLLAPSE_RANGE for fallocate
->
-> Hi Rich,
->
-> This isn't ready for being committed into xfsprogs. The kernel code
-> is still under review, and until we actually have it in a tree to be
-> merged int eh kernel, we shoul d't be making any userspace changes
-> at all. Indeed, there's a chance (unlikely, but still there) that
-> this code may still not end up in the kernel at all...
->
-> So, it's probably best right now to revert this patch until we have
-> the fallocate API support merged into the kernel...
->
-> Cheers,
->
-> Dave.
->
+Not if we are running with errors=continue.  There are some ugly
+patches in our tree which pipes error notifications to a netlink
+socket, which allows userspace to do something intelligent with
+errors, and because there are some errors where it's safe to continue
+(especially if you are willing to shut down block allocations to the
+block group where you don't trust the allocation bitmap), we tend to
+run with errors=continue.
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+I think I mentioned the errors->netlink feature a while back, but
+there wasn't a whole lot of excitement about it, and the patches
+definitely need a lot of cleanup before they would be ready for
+upstream merging.  If people are curious, I can look into getting the
+patches sent out, since we just finished rebasing them to 3.11.
+
+> If not, shouldn't it do so?  xfs has a lot of short-circuiting if
+> the filesystem is shut down, so it (I think) won't get into paths that
+> will generate more errors.
+
+When xfs "shuts down" the file system, it doesn't allow any read or
+write accesses, right?  So it's basically an even stronger version of
+errors=remount-ro.  We should perhaps discuss whether it would be
+better to squelch errors if we've remounted the file system read-only,
+or whether we should implement a complete shutdown errors option.
+
+And of course, even if we did this, we would still need to squelch
+ext4_warning and ext4_msg output.  (Although I agree with Lukas that
+it might not be a bad idea to review some of the messages that either
+get emitted via printk, or which are issued via ext4_msg(KERN_CRIT) to
+see if we should perhaps change some of those to ext4_error.)
+
+Regards,
+
+						- Ted
