@@ -1,311 +1,62 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: add ratelimiting to ext4 messages
-Date: Fri, 18 Oct 2013 09:08:40 -0500
-Message-ID: <526140E8.7000002@redhat.com>
-References: <1382059728-29483-1-git-send-email-tytso@mit.edu>
+Subject: Re: quota: fix disabling quota, add quota tests
+Date: Fri, 18 Oct 2013 10:23:06 -0500
+Message-ID: <5261525A.9060301@redhat.com>
+References: <1358899248-22575-1-git-send-email-adilger@whamcloud.com> <20131014135528.GA4685@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc: Andreas Dilger <adilger@whamcloud.com>, linux-ext4@vger.kernel.org,
+	Niu Yawei <niu@whamcloud.com>
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:11021 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:41594 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755998Ab3JROIl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 18 Oct 2013 10:08:41 -0400
-In-Reply-To: <1382059728-29483-1-git-send-email-tytso@mit.edu>
+	id S1755660Ab3JRPXJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 18 Oct 2013 11:23:09 -0400
+In-Reply-To: <20131014135528.GA4685@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 10/17/13 8:28 PM, Theodore Ts'o wrote:
-> In the case of a storage device that suddenly disappears, or in the
-> case of significant file system corruption, this can result in a huge
-> flood of messages being sent to the console.  This can overflow the
-> file system containing /var/log/messages, or if a serial console is
-> configured, this can slow down the system so much that a hardware
-> watchdog can end up triggering forcing a system reboot.
+On 10/14/13 8:55 AM, Theodore Ts'o wrote:
+> On Tue, Jan 22, 2013 at 05:00:48PM -0700, Andreas Dilger wrote:
+>> From: Niu Yawei <niu@whamcloud.com>
+>>
+>> Update all superblock copies when disabling the quota feature.
+>>
+>> Added basic tests for the quota feature.
+>>
+>> Signed-off-by: Niu Yawei <niu@whamcloud.com>
+>> Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
+> 
+> Applied, thanks.
 
-Just out of curiosity, after the fs shuts down, is there still a flood
-of messages?  Shouldn't that clamp down on the errors?
+This actually breaks things (or seems to, I haven't chased it all
+down; quota stuff is busted, anyway):
 
-If not, shouldn't it do so?  xfs has a lot of short-circuiting if
-the filesystem is shut down, so it (I think) won't get into paths that
-will generate more errors.
+# git clone git://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
+# cd e2fsprogs
+# git checkout next
+# ./configure
+# make
+...
+make[2]: Entering directory `/tmp/e2fsprogs/e2fsck'
+...
+	CC prof_err.c
+	CC logfile.c
+	CC sigcatcher.c
+make[2]: *** No rule to make target `../lib/libquota.a', needed by `e2fsck'.  Stop.
+make[2]: Leaving directory `/tmp/e2fsprogs/e2fsck'
+make[1]: *** [all-progs-recursive] Error 1
+make[1]: Leaving directory `/tmp/e2fsprogs'
+make: *** [all] Error 2
 
-(If not, would just shutting up ext_* error message post-shutdown accomplish
-the same thing w/ fewer lines & fewer /proc configuration knobs)?
 
-Just a thought,
+"make clean" doesn't remove lib/libquota.a (nor does git clean -f -d thanks
+to .gitignore (?)) so old builds pretend to be ok.
+
+Using QUOTA_CMT on lib requirements might work but it's hacky, it'd mean
+the LIBQUOTA stuff has to be last on the line, and if we ever have more than
+1 configurable lib, then what?
 
 -Eric
-
-> Google-Bug-Id: 7258357
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  fs/ext4/ext4.h  |   6 +++
->  fs/ext4/super.c | 152 +++++++++++++++++++++++++++++++++++---------------------
->  2 files changed, 100 insertions(+), 58 deletions(-)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index af815ea..65485ab 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -29,6 +29,7 @@
->  #include <linux/wait.h>
->  #include <linux/blockgroup_lock.h>
->  #include <linux/percpu_counter.h>
-> +#include <linux/ratelimit.h>
->  #include <crypto/hash.h>
->  #ifdef __KERNEL__
->  #include <linux/compat.h>
-> @@ -1314,6 +1315,11 @@ struct ext4_sb_info {
->  	unsigned long s_es_last_sorted;
->  	struct percpu_counter s_extent_cache_cnt;
->  	spinlock_t s_es_lru_lock ____cacheline_aligned_in_smp;
-> +
-> +	/* Ratelimit ext4 messages. */
-> +	struct ratelimit_state s_err_ratelimit_state;
-> +	struct ratelimit_state s_warning_ratelimit_state;
-> +	struct ratelimit_state s_msg_ratelimit_state;
->  };
->  
->  static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 2c2e6cb..d3a857b 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -411,20 +411,26 @@ static void ext4_handle_error(struct super_block *sb)
->  			sb->s_id);
->  }
->  
-> +#define ext4_error_ratelimit(sb)					\
-> +		___ratelimit(&(EXT4_SB(sb)->s_err_ratelimit_state),	\
-> +			     "EXT4-fs error")
-> +
->  void __ext4_error(struct super_block *sb, const char *function,
->  		  unsigned int line, const char *fmt, ...)
->  {
->  	struct va_format vaf;
->  	va_list args;
->  
-> -	va_start(args, fmt);
-> -	vaf.fmt = fmt;
-> -	vaf.va = &args;
-> -	printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: comm %s: %pV\n",
-> -	       sb->s_id, function, line, current->comm, &vaf);
-> -	va_end(args);
-> +	if (ext4_error_ratelimit(sb)) {
-> +		va_start(args, fmt);
-> +		vaf.fmt = fmt;
-> +		vaf.va = &args;
-> +		printk(KERN_CRIT
-> +		       "EXT4-fs error (device %s): %s:%d: comm %s: %pV\n",
-> +		       sb->s_id, function, line, current->comm, &vaf);
-> +		va_end(args);
-> +	}
->  	save_error_info(sb, function, line);
-> -
->  	ext4_handle_error(sb);
->  }
->  
-> @@ -438,22 +444,23 @@ void __ext4_error_inode(struct inode *inode, const char *function,
->  
->  	es->s_last_error_ino = cpu_to_le32(inode->i_ino);
->  	es->s_last_error_block = cpu_to_le64(block);
-> +	if (ext4_error_ratelimit(inode->i_sb)) {
-> +		va_start(args, fmt);
-> +		vaf.fmt = fmt;
-> +		vaf.va = &args;
-> +		if (block)
-> +			printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: "
-> +			       "inode #%lu: block %llu: comm %s: %pV\n",
-> +			       inode->i_sb->s_id, function, line, inode->i_ino,
-> +			       block, current->comm, &vaf);
-> +		else
-> +			printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: "
-> +			       "inode #%lu: comm %s: %pV\n",
-> +			       inode->i_sb->s_id, function, line, inode->i_ino,
-> +			       current->comm, &vaf);
-> +		va_end(args);
-> +	}
->  	save_error_info(inode->i_sb, function, line);
-> -	va_start(args, fmt);
-> -	vaf.fmt = fmt;
-> -	vaf.va = &args;
-> -	if (block)
-> -		printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: "
-> -		       "inode #%lu: block %llu: comm %s: %pV\n",
-> -		       inode->i_sb->s_id, function, line, inode->i_ino,
-> -		       block, current->comm, &vaf);
-> -	else
-> -		printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: "
-> -		       "inode #%lu: comm %s: %pV\n",
-> -		       inode->i_sb->s_id, function, line, inode->i_ino,
-> -		       current->comm, &vaf);
-> -	va_end(args);
-> -
->  	ext4_handle_error(inode->i_sb);
->  }
->  
-> @@ -469,27 +476,28 @@ void __ext4_error_file(struct file *file, const char *function,
->  
->  	es = EXT4_SB(inode->i_sb)->s_es;
->  	es->s_last_error_ino = cpu_to_le32(inode->i_ino);
-> +	if (ext4_error_ratelimit(inode->i_sb)) {
-> +		path = d_path(&(file->f_path), pathname, sizeof(pathname));
-> +		if (IS_ERR(path))
-> +			path = "(unknown)";
-> +		va_start(args, fmt);
-> +		vaf.fmt = fmt;
-> +		vaf.va = &args;
-> +		if (block)
-> +			printk(KERN_CRIT
-> +			       "EXT4-fs error (device %s): %s:%d: inode #%lu: "
-> +			       "block %llu: comm %s: path %s: %pV\n",
-> +			       inode->i_sb->s_id, function, line, inode->i_ino,
-> +			       block, current->comm, path, &vaf);
-> +		else
-> +			printk(KERN_CRIT
-> +			       "EXT4-fs error (device %s): %s:%d: inode #%lu: "
-> +			       "comm %s: path %s: %pV\n",
-> +			       inode->i_sb->s_id, function, line, inode->i_ino,
-> +			       current->comm, path, &vaf);
-> +		va_end(args);
-> +	}
->  	save_error_info(inode->i_sb, function, line);
-> -	path = d_path(&(file->f_path), pathname, sizeof(pathname));
-> -	if (IS_ERR(path))
-> -		path = "(unknown)";
-> -	va_start(args, fmt);
-> -	vaf.fmt = fmt;
-> -	vaf.va = &args;
-> -	if (block)
-> -		printk(KERN_CRIT
-> -		       "EXT4-fs error (device %s): %s:%d: inode #%lu: "
-> -		       "block %llu: comm %s: path %s: %pV\n",
-> -		       inode->i_sb->s_id, function, line, inode->i_ino,
-> -		       block, current->comm, path, &vaf);
-> -	else
-> -		printk(KERN_CRIT
-> -		       "EXT4-fs error (device %s): %s:%d: inode #%lu: "
-> -		       "comm %s: path %s: %pV\n",
-> -		       inode->i_sb->s_id, function, line, inode->i_ino,
-> -		       current->comm, path, &vaf);
-> -	va_end(args);
-> -
->  	ext4_handle_error(inode->i_sb);
->  }
->  
-> @@ -543,11 +551,13 @@ void __ext4_std_error(struct super_block *sb, const char *function,
->  	    (sb->s_flags & MS_RDONLY))
->  		return;
->  
-> -	errstr = ext4_decode_error(sb, errno, nbuf);
-> -	printk(KERN_CRIT "EXT4-fs error (device %s) in %s:%d: %s\n",
-> -	       sb->s_id, function, line, errstr);
-> -	save_error_info(sb, function, line);
-> +	if (ext4_error_ratelimit(sb)) {
-> +		errstr = ext4_decode_error(sb, errno, nbuf);
-> +		printk(KERN_CRIT "EXT4-fs error (device %s) in %s:%d: %s\n",
-> +		       sb->s_id, function, line, errstr);
-> +	}
->  
-> +	save_error_info(sb, function, line);
->  	ext4_handle_error(sb);
->  }
->  
-> @@ -597,6 +607,9 @@ void __ext4_msg(struct super_block *sb,
->  	struct va_format vaf;
->  	va_list args;
->  
-> +	if (!___ratelimit(&(EXT4_SB(sb)->s_msg_ratelimit_state), "EXT4-fs"))
-> +		return;
-> +
->  	va_start(args, fmt);
->  	vaf.fmt = fmt;
->  	vaf.va = &args;
-> @@ -610,6 +623,10 @@ void __ext4_warning(struct super_block *sb, const char *function,
->  	struct va_format vaf;
->  	va_list args;
->  
-> +	if (!___ratelimit(&(EXT4_SB(sb)->s_warning_ratelimit_state),
-> +			  "EXT4-fs warning"))
-> +		return;
-> +
->  	va_start(args, fmt);
->  	vaf.fmt = fmt;
->  	vaf.va = &args;
-> @@ -633,18 +650,20 @@ __acquires(bitlock)
->  	es->s_last_error_block = cpu_to_le64(block);
->  	__save_error_info(sb, function, line);
->  
-> -	va_start(args, fmt);
-> -
-> -	vaf.fmt = fmt;
-> -	vaf.va = &args;
-> -	printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: group %u, ",
-> -	       sb->s_id, function, line, grp);
-> -	if (ino)
-> -		printk(KERN_CONT "inode %lu: ", ino);
-> -	if (block)
-> -		printk(KERN_CONT "block %llu:", (unsigned long long) block);
-> -	printk(KERN_CONT "%pV\n", &vaf);
-> -	va_end(args);
-> +	if (ext4_error_ratelimit(sb)) {
-> +		va_start(args, fmt);
-> +		vaf.fmt = fmt;
-> +		vaf.va = &args;
-> +		printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: group %u, ",
-> +		       sb->s_id, function, line, grp);
-> +		if (ino)
-> +			printk(KERN_CONT "inode %lu: ", ino);
-> +		if (block)
-> +			printk(KERN_CONT "block %llu:",
-> +			       (unsigned long long) block);
-> +		printk(KERN_CONT "%pV\n", &vaf);
-> +		va_end(args);
-> +	}
->  
->  	if (test_opt(sb, ERRORS_CONT)) {
->  		ext4_commit_super(sb, 0);
-> @@ -2606,6 +2625,12 @@ EXT4_RW_ATTR_SBI_UI(mb_group_prealloc, s_mb_group_prealloc);
->  EXT4_DEPRECATED_ATTR(max_writeback_mb_bump, 128);
->  EXT4_RW_ATTR_SBI_UI(extent_max_zeroout_kb, s_extent_max_zeroout_kb);
->  EXT4_ATTR(trigger_fs_error, 0200, NULL, trigger_test_error);
-> +EXT4_RW_ATTR_SBI_UI(err_ratelimit_interval_ms, s_err_ratelimit_state.interval);
-> +EXT4_RW_ATTR_SBI_UI(err_ratelimit_burst, s_err_ratelimit_state.burst);
-> +EXT4_RW_ATTR_SBI_UI(warning_ratelimit_interval_ms, s_warning_ratelimit_state.interval);
-> +EXT4_RW_ATTR_SBI_UI(warning_ratelimit_burst, s_warning_ratelimit_state.burst);
-> +EXT4_RW_ATTR_SBI_UI(msg_ratelimit_interval_ms, s_msg_ratelimit_state.interval);
-> +EXT4_RW_ATTR_SBI_UI(msg_ratelimit_burst, s_msg_ratelimit_state.burst);
->  
->  static struct attribute *ext4_attrs[] = {
->  	ATTR_LIST(delayed_allocation_blocks),
-> @@ -2623,6 +2648,12 @@ static struct attribute *ext4_attrs[] = {
->  	ATTR_LIST(max_writeback_mb_bump),
->  	ATTR_LIST(extent_max_zeroout_kb),
->  	ATTR_LIST(trigger_fs_error),
-> +	ATTR_LIST(err_ratelimit_interval_ms),
-> +	ATTR_LIST(err_ratelimit_burst),
-> +	ATTR_LIST(warning_ratelimit_interval_ms),
-> +	ATTR_LIST(warning_ratelimit_burst),
-> +	ATTR_LIST(msg_ratelimit_interval_ms),
-> +	ATTR_LIST(msg_ratelimit_burst),
->  	NULL,
->  };
->  
-> @@ -4118,6 +4149,11 @@ no_journal:
->  	if (es->s_error_count)
->  		mod_timer(&sbi->s_err_report, jiffies + 300*HZ); /* 5 minutes */
->  
-> +	/* Enable message ratelimiting. Default is 10 messages per 5 secs. */
-> +	ratelimit_state_init(&sbi->s_err_ratelimit_state, 5 * HZ, 10);
-> +	ratelimit_state_init(&sbi->s_warning_ratelimit_state, 5 * HZ, 10);
-> +	ratelimit_state_init(&sbi->s_msg_ratelimit_state, 5 * HZ, 10);
-> +
->  	kfree(orig_data);
->  	return 0;
->  
-> 
-
