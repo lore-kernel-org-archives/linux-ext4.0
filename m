@@ -1,206 +1,213 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 02/25] libext2fs: fix ext2fs_open2() truncation of the
- superblock parameter
-Date: Fri, 18 Oct 2013 11:32:04 -0700
-Message-ID: <20131018183204.GB19188@birch.djwong.org>
+Subject: Re: [PATCH 09/25] e2fsck: teach EA refcounting code to handle 64bit
+ block addresses
+Date: Fri, 18 Oct 2013 11:37:00 -0700
+Message-ID: <20131018183700.GC19188@birch.djwong.org>
 References: <20131018044854.7339.48457.stgit@birch.djwong.org>
- <20131018044907.7339.17710.stgit@birch.djwong.org>
+ <20131018044955.7339.72152.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:25517 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756000Ab3JRScJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Oct 2013 14:32:09 -0400
+Received: from aserp1040.oracle.com ([141.146.126.69]:45257 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756517Ab3JRShF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Oct 2013 14:37:05 -0400
 Content-Disposition: inline
-In-Reply-To: <20131018044907.7339.17710.stgit@birch.djwong.org>
+In-Reply-To: <20131018044955.7339.72152.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 17, 2013 at 09:49:07PM -0700, Darrick J. Wong wrote:
-> Since it's possible for very large filesystems to store backup
-> superblocks at very large (> 2^32) block numbers, we need to be able
-> to handle the case of a caller directing us to read one of these
-> high-numbered backups.
+On Thu, Oct 17, 2013 at 09:49:55PM -0700, Darrick J. Wong wrote:
+> The extended attribute refcounting code only accepts blk_t, which is
+> dangerous because EA blocks can exist at high addresses (> 2^32) as
+> well.  Therefore, widen the block fields to 64 bits.
 > 
 > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 > ---
->  debugfs/debugfs.c   |    4 ++--
->  e2fsck/journal.c    |    6 +++---
->  e2fsck/unix.c       |    8 ++++----
->  lib/ext2fs/ext2fs.h |    4 ++++
->  lib/ext2fs/openfs.c |   21 +++++++++++++++------
->  misc/dumpe2fs.c     |    4 ++--
->  6 files changed, 30 insertions(+), 17 deletions(-)
+>  e2fsck/e2fsck.h      |   12 ++++++------
+>  e2fsck/ea_refcount.c |   36 ++++++++++++++++++------------------
+>  2 files changed, 24 insertions(+), 24 deletions(-)
 > 
 > 
-> diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-> index 8c32eff..4f6108d 100644
-> --- a/debugfs/debugfs.c
-> +++ b/debugfs/debugfs.c
-> @@ -94,8 +94,8 @@ static void open_filesystem(char *device, int open_flags, blk64_t superblock,
->  	if (catastrophic)
->  		open_flags |= EXT2_FLAG_SKIP_MMP;
+> diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
+> index 13d70f1..f1df525 100644
+> --- a/e2fsck/e2fsck.h
+> +++ b/e2fsck/e2fsck.h
+> @@ -432,17 +432,17 @@ extern struct dx_dir_info *e2fsck_dx_dir_info_iter(e2fsck_t ctx, int *control);
+>  /* ea_refcount.c */
+>  extern errcode_t ea_refcount_create(int size, ext2_refcount_t *ret);
+>  extern void ea_refcount_free(ext2_refcount_t refcount);
+> -extern errcode_t ea_refcount_fetch(ext2_refcount_t refcount, blk_t blk,
+> +extern errcode_t ea_refcount_fetch(ext2_refcount_t refcount, blk64_t blk,
+>  				   int *ret);
+>  extern errcode_t ea_refcount_increment(ext2_refcount_t refcount,
+> -				       blk_t blk, int *ret);
+> +				       blk64_t blk, int *ret);
+>  extern errcode_t ea_refcount_decrement(ext2_refcount_t refcount,
+> -				       blk_t blk, int *ret);
+> +				       blk64_t blk, int *ret);
+>  extern errcode_t ea_refcount_store(ext2_refcount_t refcount,
+> -				   blk_t blk, int count);
+> -extern blk_t ext2fs_get_refcount_size(ext2_refcount_t refcount);
+> +				   blk64_t blk, int count);
+> +extern blk64_t ext2fs_get_refcount_size(ext2_refcount_t refcount);
+>  extern void ea_refcount_intr_begin(ext2_refcount_t refcount);
+> -extern blk_t ea_refcount_intr_next(ext2_refcount_t refcount, int *ret);
+> +extern blk64_t ea_refcount_intr_next(ext2_refcount_t refcount, int *ret);
 >  
-> -	retval = ext2fs_open(device, open_flags, superblock, blocksize,
-> -			     unix_io_manager, &current_fs);
-> +	retval = ext2fs_open3(device, NULL, open_flags, superblock, blocksize,
-> +			      unix_io_manager, &current_fs);
->  	if (retval) {
->  		com_err(device, retval, "while opening filesystem");
->  		current_fs = NULL;
-> diff --git a/e2fsck/journal.c b/e2fsck/journal.c
-> index 2509303..af35a38 100644
-> --- a/e2fsck/journal.c
-> +++ b/e2fsck/journal.c
-> @@ -967,9 +967,9 @@ int e2fsck_run_ext3_journal(e2fsck_t ctx)
->  
->  	ext2fs_mmp_stop(ctx->fs);
->  	ext2fs_free(ctx->fs);
-> -	retval = ext2fs_open(ctx->filesystem_name, EXT2_FLAG_RW,
-> -			     ctx->superblock, blocksize, io_ptr,
-> -			     &ctx->fs);
-> +	retval = ext2fs_open3(ctx->filesystem_name, NULL, EXT2_FLAG_RW,
-> +			      ctx->superblock, blocksize, io_ptr,
-> +			      &ctx->fs);
->  	if (retval) {
->  		com_err(ctx->program_name, retval,
->  			_("while trying to re-open %s"),
-> diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-> index 0546653..fb41ca0 100644
-> --- a/e2fsck/unix.c
-> +++ b/e2fsck/unix.c
-> @@ -1040,7 +1040,7 @@ static errcode_t try_open_fs(e2fsck_t ctx, int flags, io_manager io_ptr,
->  
->  	*ret_fs = NULL;
->  	if (ctx->superblock && ctx->blocksize) {
-> -		retval = ext2fs_open2(ctx->filesystem_name, ctx->io_options,
-> +		retval = ext2fs_open3(ctx->filesystem_name, ctx->io_options,
->  				      flags, ctx->superblock, ctx->blocksize,
->  				      io_ptr, ret_fs);
->  	} else if (ctx->superblock) {
-> @@ -1051,7 +1051,7 @@ static errcode_t try_open_fs(e2fsck_t ctx, int flags, io_manager io_ptr,
->  				ext2fs_free(*ret_fs);
->  				*ret_fs = NULL;
->  			}
-> -			retval = ext2fs_open2(ctx->filesystem_name,
-> +			retval = ext2fs_open3(ctx->filesystem_name,
->  					      ctx->io_options, flags,
->  					      ctx->superblock, blocksize,
->  					      io_ptr, ret_fs);
-> @@ -1059,7 +1059,7 @@ static errcode_t try_open_fs(e2fsck_t ctx, int flags, io_manager io_ptr,
->  				break;
->  		}
->  	} else
-> -		retval = ext2fs_open2(ctx->filesystem_name, ctx->io_options,
-> +		retval = ext2fs_open3(ctx->filesystem_name, ctx->io_options,
->  				      flags, 0, 0, io_ptr, ret_fs);
->  
->  	if (retval == 0)
-> @@ -1375,7 +1375,7 @@ failure:
->  	 * don't need to update the mount count and last checked
->  	 * fields in the backup superblock (the kernel doesn't update
->  	 * the backup superblocks anyway).  With newer versions of the
-> -	 * library this flag is set by ext2fs_open2(), but we set this
-> +	 * library this flag is set by ext2fs_open3(), but we set this
->  	 * here just to be sure.  (No, we don't support e2fsck running
->  	 * with some other libext2fs than the one that it was shipped
->  	 * with, but just in case....)
-> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-> index 67876ad..1ef4d67 100644
-> --- a/lib/ext2fs/ext2fs.h
-> +++ b/lib/ext2fs/ext2fs.h
-> @@ -1443,6 +1443,10 @@ extern errcode_t ext2fs_open2(const char *name, const char *io_options,
->  			      int flags, int superblock,
->  			      unsigned int block_size, io_manager manager,
->  			      ext2_filsys *ret_fs);
-> +extern errcode_t ext2fs_open3(const char *name, const char *io_options,
-> +			      int flags, blk64_t superblock,
-> +			      unsigned int block_size, io_manager manager,
-> +			      ext2_filsys *ret_fs);
->  extern blk64_t ext2fs_descriptor_block_loc2(ext2_filsys fs,
->  					blk64_t group_block, dgrp_t i);
->  extern blk_t ext2fs_descriptor_block_loc(ext2_filsys fs, blk_t group_block,
-> diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
-> index 2ad9114..b046d6c 100644
-> --- a/lib/ext2fs/openfs.c
-> +++ b/lib/ext2fs/openfs.c
-> @@ -76,6 +76,15 @@ errcode_t ext2fs_open(const char *name, int flags, int superblock,
->  			    manager, ret_fs);
->  }
->  
-> +errcode_t ext2fs_open2(const char *name, const char *io_options,
-> +		       int flags, int superblock,
-> +		       unsigned int block_size, io_manager manager,
-> +		       ext2_filsys *ret_fs)
-> +{
-> +	return ext2fs_open3(name, io_options, flags, superblock, block_size,
-> +			    manager, ret_fs);
-> +}
-> +
->  /*
->   *  Note: if superblock is non-zero, block-size must also be non-zero.
->   * 	Superblock and block_size can be zero to use the default size.
-> @@ -90,8 +99,8 @@ errcode_t ext2fs_open(const char *name, int flags, int superblock,
->   *	EXT2_FLAG_64BITS - Allow 64-bit bitfields (needed for large
->   *				filesystems)
+>  /* ehandler.c */
+>  extern const char *ehandler_operation(const char *op);
+> diff --git a/e2fsck/ea_refcount.c b/e2fsck/ea_refcount.c
+> index e66e636..6f376a3 100644
+> --- a/e2fsck/ea_refcount.c
+> +++ b/e2fsck/ea_refcount.c
+> @@ -25,14 +25,14 @@
+>   * checked, its bit is set in the block_ea_map bitmap.
 >   */
-> -errcode_t ext2fs_open2(const char *name, const char *io_options,
-> -		       int flags, int superblock,
-> +errcode_t ext2fs_open3(const char *name, const char *io_options,
-> +		       int flags, blk64_t superblock,
->  		       unsigned int block_size, io_manager manager,
->  		       ext2_filsys *ret_fs)
->  {
-> @@ -189,8 +198,8 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
->  		if (retval)
->  			goto cleanup;
->  	}
-> -	retval = io_channel_read_blk(fs->io, superblock, -SUPERBLOCK_SIZE,
-> -				     fs->super);
-> +	retval = io_channel_read_blk64(fs->io, superblock, -SUPERBLOCK_SIZE,
-> +				       fs->super);
->  	if (retval)
->  		goto cleanup;
->  	if (fs->orig_super)
-> @@ -380,8 +389,8 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
->  	else
->  		first_meta_bg = fs->desc_blocks;
->  	if (first_meta_bg) {
-> -		retval = io_channel_read_blk(fs->io, group_block+1,
-> -					     first_meta_bg, dest);
-> +		retval = io_channel_read_blk64(fs->io, group_block+1,
-> +					       first_meta_bg, dest);
+>  struct ea_refcount_el {
+> -	blk_t	ea_blk;
+> +	blk64_t	ea_blk;
+>  	int	ea_count;
+>  };
+>  
+>  struct ea_refcount {
+> -	blk_t		count;
+> -	blk_t		size;
+> -	blk_t		cursor;
+> +	unsigned long		count;
+> +	unsigned long		size;
+> +	unsigned long		cursor;
 
-The only change to this patch is the use of *read_blk64 in these two hunks.
+This (unsigned long instead of blk_t) is the only thing that changed since last
+time.
 
 --D
 
->  		if (retval)
->  			goto cleanup;
->  #ifdef WORDS_BIGENDIAN
-> diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
-> index ae70f70..b139977 100644
-> --- a/misc/dumpe2fs.c
-> +++ b/misc/dumpe2fs.c
-> @@ -611,7 +611,7 @@ int main (int argc, char ** argv)
->  		for (use_blocksize = EXT2_MIN_BLOCK_SIZE;
->  		     use_blocksize <= EXT2_MAX_BLOCK_SIZE;
->  		     use_blocksize *= 2) {
-> -			retval = ext2fs_open (device_name, flags,
-> +			retval = ext2fs_open3(device_name, NULL, flags,
->  					      use_superblock,
->  					      use_blocksize, unix_io_manager,
->  					      &fs);
-> @@ -619,7 +619,7 @@ int main (int argc, char ** argv)
->  				break;
->  		}
->  	} else
-> -		retval = ext2fs_open (device_name, flags, use_superblock,
-> +		retval = ext2fs_open3(device_name, NULL, flags, use_superblock,
->  				      use_blocksize, unix_io_manager, &fs);
->  	if (retval) {
->  		com_err (program_name, retval, _("while trying to open %s"),
+>  	struct ea_refcount_el	*list;
+>  };
+>  
+> @@ -111,11 +111,11 @@ static void refcount_collapse(ext2_refcount_t refcount)
+>   * 	specified position.
+>   */
+>  static struct ea_refcount_el *insert_refcount_el(ext2_refcount_t refcount,
+> -						 blk_t blk, int pos)
+> +						 blk64_t blk, int pos)
+>  {
+>  	struct ea_refcount_el 	*el;
+>  	errcode_t		retval;
+> -	blk_t			new_size = 0;
+> +	blk64_t			new_size = 0;
+>  	int			num;
+>  
+>  	if (refcount->count >= refcount->size) {
+> @@ -153,7 +153,7 @@ static struct ea_refcount_el *insert_refcount_el(ext2_refcount_t refcount,
+>   * 	and we can't find an entry, create one in the sorted list.
+>   */
+>  static struct ea_refcount_el *get_refcount_el(ext2_refcount_t refcount,
+> -					      blk_t blk, int create)
+> +					      blk64_t blk, int create)
+>  {
+>  	int	low, high, mid;
+>  
+> @@ -206,7 +206,7 @@ retry:
+>  	return 0;
+>  }
+>  
+> -errcode_t ea_refcount_fetch(ext2_refcount_t refcount, blk_t blk,
+> +errcode_t ea_refcount_fetch(ext2_refcount_t refcount, blk64_t blk,
+>  				int *ret)
+>  {
+>  	struct ea_refcount_el	*el;
+> @@ -220,7 +220,7 @@ errcode_t ea_refcount_fetch(ext2_refcount_t refcount, blk_t blk,
+>  	return 0;
+>  }
+>  
+> -errcode_t ea_refcount_increment(ext2_refcount_t refcount, blk_t blk, int *ret)
+> +errcode_t ea_refcount_increment(ext2_refcount_t refcount, blk64_t blk, int *ret)
+>  {
+>  	struct ea_refcount_el	*el;
+>  
+> @@ -234,7 +234,7 @@ errcode_t ea_refcount_increment(ext2_refcount_t refcount, blk_t blk, int *ret)
+>  	return 0;
+>  }
+>  
+> -errcode_t ea_refcount_decrement(ext2_refcount_t refcount, blk_t blk, int *ret)
+> +errcode_t ea_refcount_decrement(ext2_refcount_t refcount, blk64_t blk, int *ret)
+>  {
+>  	struct ea_refcount_el	*el;
+>  
+> @@ -249,7 +249,7 @@ errcode_t ea_refcount_decrement(ext2_refcount_t refcount, blk_t blk, int *ret)
+>  	return 0;
+>  }
+>  
+> -errcode_t ea_refcount_store(ext2_refcount_t refcount, blk_t blk, int count)
+> +errcode_t ea_refcount_store(ext2_refcount_t refcount, blk64_t blk, int count)
+>  {
+>  	struct ea_refcount_el	*el;
+>  
+> @@ -263,7 +263,7 @@ errcode_t ea_refcount_store(ext2_refcount_t refcount, blk_t blk, int count)
+>  	return 0;
+>  }
+>  
+> -blk_t ext2fs_get_refcount_size(ext2_refcount_t refcount)
+> +blk64_t ext2fs_get_refcount_size(ext2_refcount_t refcount)
+>  {
+>  	if (!refcount)
+>  		return 0;
+> @@ -277,7 +277,7 @@ void ea_refcount_intr_begin(ext2_refcount_t refcount)
+>  }
+>  
+>  
+> -blk_t ea_refcount_intr_next(ext2_refcount_t refcount,
+> +blk64_t ea_refcount_intr_next(ext2_refcount_t refcount,
+>  				int *ret)
+>  {
+>  	struct ea_refcount_el	*list;
+> @@ -370,7 +370,7 @@ int main(int argc, char **argv)
+>  	int	i = 0;
+>  	ext2_refcount_t refcount;
+>  	int		size, arg;
+> -	blk_t		blk;
+> +	blk64_t		blk;
+>  	errcode_t	retval;
+>  
+>  	while (1) {
+> @@ -394,7 +394,7 @@ int main(int argc, char **argv)
+>  			printf("Freeing refcount\n");
+>  			break;
+>  		case BCODE_STORE:
+> -			blk = (blk_t) bcode_program[i++];
+> +			blk = (blk64_t) bcode_program[i++];
+>  			arg = bcode_program[i++];
+>  			printf("Storing blk %u with value %d\n", blk, arg);
+>  			retval = ea_refcount_store(refcount, blk, arg);
+> @@ -403,7 +403,7 @@ int main(int argc, char **argv)
+>  					"while storing blk %u", blk);
+>  			break;
+>  		case BCODE_FETCH:
+> -			blk = (blk_t) bcode_program[i++];
+> +			blk = (blk64_t) bcode_program[i++];
+>  			retval = ea_refcount_fetch(refcount, blk, &arg);
+>  			if (retval)
+>  				com_err("ea_refcount_fetch", retval,
+> @@ -413,7 +413,7 @@ int main(int argc, char **argv)
+>  				       blk, arg);
+>  			break;
+>  		case BCODE_INCR:
+> -			blk = (blk_t) bcode_program[i++];
+> +			blk = (blk64_t) bcode_program[i++];
+>  			retval = ea_refcount_increment(refcount, blk, &arg);
+>  			if (retval)
+>  				com_err("ea_refcount_increment", retval,
+> @@ -423,7 +423,7 @@ int main(int argc, char **argv)
+>  				       blk, arg);
+>  			break;
+>  		case BCODE_DECR:
+> -			blk = (blk_t) bcode_program[i++];
+> +			blk = (blk64_t) bcode_program[i++];
+>  			retval = ea_refcount_decrement(refcount, blk, &arg);
+>  			if (retval)
+>  				com_err("ea_refcount_decrement", retval,
 > 
