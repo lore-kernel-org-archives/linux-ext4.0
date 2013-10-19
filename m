@@ -1,90 +1,60 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: add ratelimiting to ext4 messages
-Date: Sat, 19 Oct 2013 18:04:55 -0500
-Message-ID: <52631017.6010001@redhat.com>
-References: <1382059728-29483-1-git-send-email-tytso@mit.edu> <526140E8.7000002@redhat.com> <20131018185955.GA7557@thunk.org>
+Subject: Re: [PATCH v3 0/2] ext4: increase mbcache scalability
+Date: Sat, 19 Oct 2013 18:06:27 -0500
+Message-ID: <52631073.3060503@redhat.com>
+References: <52309F27.8060008@redhat.com> <alpine.DEB.2.02.1309111325270.5862@nftneq.ynat.uz> <5230D739.9010109@redhat.com> <20130911212523.GE13397@thunk.org> <5230D450.7000609@hp.com> <20130912122317.GC12918@thunk.org> <5232FF3E.7080604@hp.com> <5233609F.7060303@redhat.com> <523886CE.2070203@hp.com> <5239B65E.4060202@redhat.com> <20130921185304.GB8606@thunk.org> <D59BF31F-934D-4DE6-9E5C-F92014F09C68@dilger.ca> <52432EB5.1090706@hp.com> <DDE42D4A-C3E4-4E63-ADDF-B45A7C7B1A7D@dilger.ca> <52612CE6.9080609@hp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	"linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>,
+	"Chandramouleeswaran, Aswin" <aswin@hp.com>,
+	Linus Torvalds <torvalds@linux-foundation.org>
+To: Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:31568 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:2497 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750780Ab3JSXE7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 19 Oct 2013 19:04:59 -0400
-In-Reply-To: <20131018185955.GA7557@thunk.org>
+	id S1750767Ab3JSXGy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 19 Oct 2013 19:06:54 -0400
+In-Reply-To: <52612CE6.9080609@hp.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 10/18/13 1:59 PM, Theodore Ts'o wrote:
-> On Fri, Oct 18, 2013 at 09:08:40AM -0500, Eric Sandeen wrote:
->> On 10/17/13 8:28 PM, Theodore Ts'o wrote:
->>> In the case of a storage device that suddenly disappears, or in the
->>> case of significant file system corruption, this can result in a huge
->>> flood of messages being sent to the console.  This can overflow the
->>> file system containing /var/log/messages, or if a serial console is
->>> configured, this can slow down the system so much that a hardware
->>> watchdog can end up triggering forcing a system reboot.
+On 10/18/13 7:43 AM, Thavatchai Makphaibulchoke wrote:
+> On 10/03/2013 09:22 PM, Andreas Dilger wrote:
+> 
 >>
->> Just out of curiosity, after the fs shuts down, is there still a flood
->> of messages?  Shouldn't that clamp down on the errors?
+>> This is a pretty significant price to pay for SELinux in any case.
+>> I guess it is probably lower overhead with 256-byte inodes, but
+>> anything that adds 5-25% overhead shouldn't be taken for granted.
+>>
+>> Cheers, Andreas
+>>
 > 
-> Not if we are running with errors=continue.
-
-Maybe the ratelimit should depend on that then?  I'm just concerned about
-the possibility of filtering messages that, rather than being a nuisance,
-are vital to figuring out what went wrong.
-
-(granted, it's probably the first error or two that matters)
-
-Or maybe it's only relevant with errors=continue, and errors=remount-ro
-will be self-limiting in any case.
-
-> There are some ugly
-> patches in our tree which pipes error notifications to a netlink
-> socket, which allows userspace to do something intelligent with
-> errors, and because there are some errors where it's safe to continue
-> (especially if you are willing to shut down block allocations to the
-> block group where you don't trust the allocation bitmap), we tend to
-> run with errors=continue.
-
-hm... :)
-
-> I think I mentioned the errors->netlink feature a while back, but
-> there wasn't a whole lot of excitement about it, and the patches
-> definitely need a lot of cleanup before they would be ready for
-> upstream merging.  If people are curious, I can look into getting the
-> patches sent out, since we just finished rebasing them to 3.11.
+> So far we have determined that,
 > 
->> If not, shouldn't it do so?  xfs has a lot of short-circuiting if
->> the filesystem is shut down, so it (I think) won't get into paths that
->> will generate more errors.
+> - With SELinux enabled a ramdisk filesytem, with default node size of 128 bytes, extended xattr is generated
+> - In one of the aim7 workload, mbcache has a hit ratio of about 65%
 > 
-> When xfs "shuts down" the file system, it doesn't allow any read or
-> write accesses, right?  So it's basically an even stronger version of
-> errors=remount-ro.  We should perhaps discuss whether it would be
-> better to squelch errors if we've remounted the file system read-only,
-> or whether we should implement a complete shutdown errors option.
+> Seems like mbcache itself and the mbcache lock optimization attempt
+> by the patch could actually improve performance for a real word
+> system where extended xattr is employed. I believe the patch should
+> go in if there isn't any concern.
 
-Yeah, there is no errors=continue type option, that is probably too
-dangerous in general for the majority of users.
+But the 128-byte inode size is not common, so in general, mbcache isn't
+exercised that often.
 
-I'd guess that w/ default remount-ro, the error flood isn't a risk.
+(still, it is there, and if there's a nice scalability patch for it,
+it's probably worth it).
 
-> And of course, even if we did this, we would still need to squelch
-> ext4_warning and ext4_msg output.  (Although I agree with Lukas that
-> it might not be a bad idea to review some of the messages that either
-> get emitted via printk, or which are issued via ext4_msg(KERN_CRIT) to
-> see if we should perhaps change some of those to ext4_error.)
-
-*nod*
-
-Thanks,
 -Eric
 
-> Regards,
+> Please let me know if there is any comment or concern about the patch.
 > 
-> 						- Ted
+> Thanks,
+> Mak.
+> 
+> 
 > 
 
