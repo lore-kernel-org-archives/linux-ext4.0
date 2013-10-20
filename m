@@ -1,37 +1,40 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: linux ext filesystem errors
-Date: Sun, 20 Oct 2013 11:24:37 -0400
-Message-ID: <20131020152437.GA21285@thunk.org>
-References: <l40job$n86$1@ger.gmane.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 61631] kernel BUG at fs/ext4/super.c:818 umounting md raid6
+ volume
+Date: Sun, 20 Oct 2013 22:32:31 +0000
+Message-ID: <bug-61631-13602-r49JckoQXb@https.bugzilla.kernel.org/>
+References: <bug-61631-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Markus Moeller <huaraz@moeller.plus.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:48233 "EHLO imap.thunk.org"
+Received: from mail.kernel.org ([198.145.19.201]:35826 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751061Ab3JTPYn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 20 Oct 2013 11:24:43 -0400
-Content-Disposition: inline
-In-Reply-To: <l40job$n86$1@ger.gmane.org>
+	id S1751868Ab3JTWch (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 20 Oct 2013 18:32:37 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 9A60120386
+	for <linux-ext4@vger.kernel.org>; Sun, 20 Oct 2013 22:32:36 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 332152031C
+	for <linux-ext4@vger.kernel.org>; Sun, 20 Oct 2013 22:32:35 +0000 (UTC)
+In-Reply-To: <bug-61631-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-It's not clear how or why e2fsck is getting killed, so it's hard to
-say.  It could be bug in e2fsck; or it could be any number of things.
-If you're willing to compile your own version of e2fsprogs, it would
-be great to download the latest e2fsprogs git tree, use the maint
-branch, and then build the latest version of e2fsck, which by default
-will come with debugging enabled, and see if you can replicate the
-failure using the latest version of e2fsck.  (1.42.6 is a bit old, so
-it might not be applicable with the latest version; I also don't know
-how your distro might have compiled e2fsprogs).
+https://bugzilla.kernel.org/show_bug.cgi?id=61631
 
-If you can still get it to fail, it would be good to run it under gdb
-so we can see the stack trace when it got killed.  Also, if you can
-grab a raw e2image dump while the file system is unmounted, that could
-be useful for us to try to debug what is going on.
+Jan Kara <jack@suse.cz> changed:
 
-Regards,
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+             Status|NEW                         |RESOLVED
+         Resolution|---                         |CODE_FIX
 
-						- Ted
+--- Comment #16 from Jan Kara <jack@suse.cz> ---
+Thanks for confirmation.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
