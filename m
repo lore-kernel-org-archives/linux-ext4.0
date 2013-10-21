@@ -1,41 +1,53 @@
-From: jon ernst <jonernst07@gmail.com>
-Subject: Re: fix the ext4_read_inline_dir return value
-Date: Mon, 21 Oct 2013 13:35:58 -0400
-Message-ID: <CAGW2f1EdwAJTkqDPrRdfqGArw6nWp9bTZpnQWF5pwPP98omFkA@mail.gmail.com>
-References: <CAAFszuV7tXpGA5GVWtLzzHZayPgN-M+n_W4LN67i=ueicfZb+Q@mail.gmail.com>
+From: Andrei Banu <andrei.banu@redhost.ro>
+Subject: Re: Weird jbd2 I/O load
+Date: Mon, 21 Oct 2013 20:42:50 +0300
+Message-ID: <5265679A.4050600@redhost.ro>
+References: <525DB679.4070008@redhost.ro> <20131021135338.GA3392@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>
-To: Boxi Liu <boxi10liu@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org, Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qc0-f176.google.com ([209.85.216.176]:52269 "EHLO
-	mail-qc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751486Ab3JURf7 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Oct 2013 13:35:59 -0400
-Received: by mail-qc0-f176.google.com with SMTP id s19so3224761qcw.21
-        for <linux-ext4@vger.kernel.org>; Mon, 21 Oct 2013 10:35:58 -0700 (PDT)
-In-Reply-To: <CAAFszuV7tXpGA5GVWtLzzHZayPgN-M+n_W4LN67i=ueicfZb+Q@mail.gmail.com>
+Received: from gts6.roserve.net ([128.140.230.209]:46584 "EHLO
+	gts6.roserve.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751140Ab3JURmx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Oct 2013 13:42:53 -0400
+In-Reply-To: <20131021135338.GA3392@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-what's ur point adding "ret =3D 0;" after "goto out;"
-maybe before "goto"?
+Hi,
 
-Best,
+Meantime I've created another md device (just 5GB) and I've redone the 
+tests. I believe
+this is easier and less risky than remounting an used md device.
 
+root [/home2]# mount -l | grep md3
+/dev/md3 on /home2 type ext4 (rw,barrier=0)
 
-On Mon, Oct 21, 2013 at 12:33 PM, Boxi Liu <boxi10liu@gmail.com> wrote:
-> hi=EF=BC=8C
-> there may be a bug in ext4_read_inline_dir() function with inline_dat=
-a feature.
-> when I recursion call a sys_old_readdir to read a direntry's
-> sub_dentry,I find that the ext4_read_inline_dir return the len of the
-> inline_data ,but in the no inline_data case,it will return 0.It is
-> inconsistent.
-> So I try to make a patch to fix it.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+root [/home2]# dd bs=2M count=64 if=/dev/zero of=test6 conv=fdatasync
+64+0 records in
+64+0 records out
+134217728 bytes (134 MB) copied, 12.3287 s, 10.9 MB/s
+
+So the speed issue is still with us I believe.
+
+Is there some way to check the barrier is really set to 0?
+
+Thanks a lot!
+
+On 10/21/2013 4:53 PM, Zheng Liu wrote:
+> Hi Andrei,
+>
+> Could you please disable barrier for ext4 and try your 'dd' test again?
+>    $ sudo mount -t ext4 -o remount,barrier=0 ${DEV} ${MNT}
+>
+> *WARNING: you could lost your data with barrier=0 when you get a power
+> failure or cold reset.*
+>
+> We have met a similar problem that is because some SSDs couldn't handle
+> barrier command properly.
+>
+> Regards,
+>                                                  - Zheng
+
