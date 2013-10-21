@@ -1,120 +1,64 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
+From: Andrei Banu <andrei.banu@redhost.ro>
 Subject: Re: Weird jbd2 I/O load
-Date: Mon, 21 Oct 2013 21:53:38 +0800
-Message-ID: <20131021135338.GA3392@gmail.com>
-References: <525DB679.4070008@redhost.ro>
+Date: Mon, 21 Oct 2013 17:24:45 +0300
+Message-ID: <5265392D.1020500@redhost.ro>
+References: <525DB679.4070008@redhost.ro> <20131021135338.GA3392@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Andrei Banu <andrei.banu@redhost.ro>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f53.google.com ([209.85.160.53]:61609 "EHLO
-	mail-pb0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752616Ab3JUNve (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Oct 2013 09:51:34 -0400
-Received: by mail-pb0-f53.google.com with SMTP id up15so7043906pbc.12
-        for <linux-ext4@vger.kernel.org>; Mon, 21 Oct 2013 06:51:34 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <525DB679.4070008@redhost.ro>
+Received: from gts6.roserve.net ([128.140.230.209]:59900 "EHLO
+	gts6.roserve.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753200Ab3JUOZC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Oct 2013 10:25:02 -0400
+Received: from 5-13-211-235.residential.rdsnet.ro ([5.13.211.235]:65389 helo=[127.0.0.1])
+	by gts6.roserve.net with esmtpsa (TLSv1:DHE-RSA-CAMELLIA256-SHA:256)
+	(Exim 4.80.1)
+	(envelope-from <andrei.banu@redhost.ro>)
+	id 1VYGPg-00075l-21
+	for linux-ext4@vger.kernel.org; Mon, 21 Oct 2013 17:24:56 +0300
+In-Reply-To: <20131021135338.GA3392@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Andrei,
+Hi Zheng,
 
-Could you please disable barrier for ext4 and try your 'dd' test again?
-  $ sudo mount -t ext4 -o remount,barrier=0 ${DEV} ${MNT}
+Thank you for your reply. We can make this test and if it doesn't help 
+we'll re-enable
+the barrier but first I need to ask a few questions:
 
-*WARNING: you could lost your data with barrier=0 when you get a power
-failure or cold reset.*
+1. /dev/md2 is mounted on /. So your command should look like this?
 
-We have met a similar problem that is because some SSDs couldn't handle
-barrier command properly.
+$ mount -t ext4 -o remount,barrier=0    /dev/md2    /
 
-Regards,
-                                                - Zheng
+In /etc/fstab I have other parameters as well: 
+noatime,usrjquota=quota.user,jqfmt=vfsv0
+Do I also add these like this:
 
-On Wed, Oct 16, 2013 at 12:41:13AM +0300, Andrei Banu wrote:
-> Hello,
-> 
-> First off let me state that my level of knowledge and expertise is
-> in no way a match for that of the people on this list. I am not even
-> sure if what I want to ask is in any way related to my problem or
-> it's just a side effect (or even plain irrelevant).
-> 
-> I am trying to identify the source of the problems I face with an
-> mdraid-1 built with 2 Samsung 840 Pro SSDs. The filesystem is ext-4.
-> I face many problems with this array:
-> 
-> - write speeds around 10MB/s and serious server overloads (loads of
-> 20 to 100 - this is a quad core CPU) when copying larger files (100+
-> MBs):
-> root [~]# time dd if=arch.tar.gz of=test4 bs=2M oflag=sync
-> 146+1 records in
-> 146+1 records out
-> 307191761 bytes (307 MB) copied, 23.6788 s, 13.0 MB/s
-> real    0m23.680s
-> user    0m0.000s
-> sys     0m0.932s
-> 
-> - asymmetrical wear on the 2 SSDs (one SSD has a wear of 6% while
-> the other has a wear of 30%):
-> root [~]# smartctl --attributes /dev/sda | grep -i wear
-> 177 Wear_Leveling_Count     0x0013   094%   094   000    Pre-fail
-> Always       -       196
-> root [~]# smartctl --attributes /dev/sdb | grep -i wear
-> 177 Wear_Leveling_Count     0x0013   070%   070   000    Pre-fail
-> Always       -       1073
-> 
-> - very asymmetrical await, svctm and %util in iostat when copying
-> larger files (100+ MB):
-> Device:         rrqm/s   wrqm/s     r/s     w/s         rsec/s
-> wsec/s       avgrq-sz   avgqu-sz   await        svctm   %util
-> sda               0.00        1589.50    0.00   54.00     0.00
-> 13148.00   243.48     0.60           11.17       0.46      2.50
-> sdb               0.00        1627.50    0.00   16.50     0.00
-> 9524.00     577.21     144.25       1439.33  60.61   100.00
-> md1             0.00        0.00           0.00    0.00 0.00
-> 0.00             0.00        0.00            0.00 0.00      0.00
-> md2             0.00        0.00           0.00    1602     0.00
-> 12816.00     8.00        0.00            0.00         0.00      0.00
-> md0             0.00        0.00           0.00    0.00      0.00
-> 0.00             0.00        0.00             0.00         0.00 0.00
-> 
-> - asymmetrical total LBA written but much lower than the above:
-> root [~]# smartctl --attributes /dev/sda | grep "Total_LBAs_Written"
-> 241 Total_LBAs_Written      0x0032   099   099   000    Old_age
-> Always       -       23628284668
-> root [~]# smartctl --attributes /dev/sdb | grep "Total_LBAs_Written"
-> 241 Total_LBAs_Written      0x0032   099   099   000    Old_age
-> Always       -       25437073579
-> (the gap seems to be getting narrower and narrower here though - it
-> seems some event in the past caused this)
-> 
-> 
-> And the number one reason I am trying for help on this list:
-> root # iotop -o
-> Total DISK READ: 247.78 K/s | Total DISK WRITE: 495.56 K/s
-> TID  PRIO  USER     DISK READ  DISK WRITE  SWAPIN     IO> COMMAND
-> 534 be/3 root        0.00 B/s   55.06 K/s  0.00 % 99.99 % [jbd2/md2-8]
-> ....
-> 
-> When there are problems, jbd2 seems to do 99.9%  I/O without doing
-> any apparent significant reads or writes. It seems like jbd2 just
-> keeps the devices busy.
-> 
-> What could be the reason of some of the above anomalies? Especially
-> why is jbd2 keeping the raid members busy while not doing any reads
-> or writes? Why the abysmal write speed?
-> 
-> So far I have updated the SSDs firmware, checked the alignment which
-> seems ok (1MB boundary), checked with all 3 schedulers, the swap is
-> on an md device (so the asymmetrical use and wear again can't be
-> explained), I have looked for "hard resetting link" in dmesg but
-> found nothing so I guess it's not a cable or back plane issue). What
-> else can I check? What else can I try?
-> 
-> Kind regards!
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+$ mount -t ext4 -o 
+remount,barrier=0,noatime,usrjquota=quota.user,jqfmt=vfsv0 /dev/md2     /
+
+2. Can the command above be run on an active (very active) cPanel server?
+
+3. How do I re-enable the barrier?
+
+4. What is the probability of data loss in case of cold reboot?
+
+Thanks!
+
+On 10/21/2013 4:53 PM, Zheng Liu wrote:
+> Hi Andrei,
+>
+> Could you please disable barrier for ext4 and try your 'dd' test again?
+>    $ sudo mount -t ext4 -o remount,barrier=0 ${DEV} ${MNT}
+>
+> *WARNING: you could lost your data with barrier=0 when you get a power
+> failure or cold reset.*
+>
+> We have met a similar problem that is because some SSDs couldn't handle
+> barrier command properly.
+>
+> Regards,
+>                                                  - Zheng
+
