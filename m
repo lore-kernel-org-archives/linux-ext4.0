@@ -1,73 +1,120 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: process hangs in ext4_sync_file
-Date: Mon, 21 Oct 2013 20:57:58 +0800
-Message-ID: <20131021125758.GA3253@gmail.com>
-References: <CAEfL3KniKZNzehPH1Z4eWhhNF_RHrE4vHoRTHDPrfYj4t_2LtA@mail.gmail.com>
+Subject: Re: Weird jbd2 I/O load
+Date: Mon, 21 Oct 2013 21:53:38 +0800
+Message-ID: <20131021135338.GA3392@gmail.com>
+References: <525DB679.4070008@redhost.ro>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Sandeep Joshi <sanjos100@gmail.com>
+To: Andrei Banu <andrei.banu@redhost.ro>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f170.google.com ([209.85.192.170]:61882 "EHLO
-	mail-pd0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753347Ab3JUMz7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Oct 2013 08:55:59 -0400
-Received: by mail-pd0-f170.google.com with SMTP id v10so2263772pde.29
-        for <linux-ext4@vger.kernel.org>; Mon, 21 Oct 2013 05:55:58 -0700 (PDT)
+Received: from mail-pb0-f53.google.com ([209.85.160.53]:61609 "EHLO
+	mail-pb0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752616Ab3JUNve (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Oct 2013 09:51:34 -0400
+Received: by mail-pb0-f53.google.com with SMTP id up15so7043906pbc.12
+        for <linux-ext4@vger.kernel.org>; Mon, 21 Oct 2013 06:51:34 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <CAEfL3KniKZNzehPH1Z4eWhhNF_RHrE4vHoRTHDPrfYj4t_2LtA@mail.gmail.com>
+In-Reply-To: <525DB679.4070008@redhost.ro>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Sandeep,
+Hi Andrei,
 
-On Mon, Oct 21, 2013 at 06:09:02PM +0530, Sandeep Joshi wrote:
-> I am seeing a problem reported 4 years earlier
-> https://lkml.org/lkml/2009/3/12/226
-> (same stack as seen by Alexander)
-> 
-> The problem is reproducible.  Let me know if you need any info in
-> addition to that seen below.
-> 
-> I have multiple threads in a process doing heavy IO on a ext4
-> filesystem mounted with (discard, noatime) on a SSD or HDD.
-> 
-> This is on Linux 3.8.0-29-generic #42~precise1-Ubuntu SMP Wed Aug 14
-> 16:19:23 UTC 2013 x86_64 x86_64 x86_64 GNU/Linux
-> 
-> For upto minutes at a time, one of the threads seems to hang in sync to disk.
-> 
-> When I check the thread stack in /proc, I find that the stack is one
-> of the following two
-> 
-> <ffffffff81134a4e>] sleep_on_page+0xe/0x20
-> [<ffffffff81134c88>] wait_on_page_bit+0x78/0x80
-> [<ffffffff81134d9c>] filemap_fdatawait_range+0x10c/0x1a0
-> [<ffffffff811367d8>] filemap_write_and_wait_range+0x68/0x80
-> [<ffffffff81236a4f>] ext4_sync_file+0x6f/0x2b0
-> [<ffffffff811cba9b>] vfs_fsync+0x2b/0x40
-> [<ffffffff81168fb3>] sys_msync+0x143/0x1d0
-> [<ffffffff816fc8dd>] system_call_fastpath+0x1a/0x1f
-> [<ffffffffffffffff>] 0xffffffffffffffff
-> 
-> 
-> OR
-> 
-> 
-> [<ffffffff812947f5>] jbd2_log_wait_commit+0xb5/0x130
-> [<ffffffff81297213>] jbd2_complete_transaction+0x53/0x90
-> [<ffffffff81236bcd>] ext4_sync_file+0x1ed/0x2b0
-> [<ffffffff811cba9b>] vfs_fsync+0x2b/0x40
-> [<ffffffff81168fb3>] sys_msync+0x143/0x1d0
-> [<ffffffff816fc8dd>] system_call_fastpath+0x1a/0x1f
-> [<ffffffffffffffff>] 0xffffffffffffffff
-> 
-> Any clues?
+Could you please disable barrier for ext4 and try your 'dd' test again?
+  $ sudo mount -t ext4 -o remount,barrier=0 ${DEV} ${MNT}
 
-Thanks for reporting this.  Could you please try your test in latest
-mainline kernel?  Further, could you please run the following command?
-  'echo w >/proc/sysrq-trigger'
-After running this command, system will dump all blocked tasks in dmesg.
+*WARNING: you could lost your data with barrier=0 when you get a power
+failure or cold reset.*
+
+We have met a similar problem that is because some SSDs couldn't handle
+barrier command properly.
 
 Regards,
                                                 - Zheng
+
+On Wed, Oct 16, 2013 at 12:41:13AM +0300, Andrei Banu wrote:
+> Hello,
+> 
+> First off let me state that my level of knowledge and expertise is
+> in no way a match for that of the people on this list. I am not even
+> sure if what I want to ask is in any way related to my problem or
+> it's just a side effect (or even plain irrelevant).
+> 
+> I am trying to identify the source of the problems I face with an
+> mdraid-1 built with 2 Samsung 840 Pro SSDs. The filesystem is ext-4.
+> I face many problems with this array:
+> 
+> - write speeds around 10MB/s and serious server overloads (loads of
+> 20 to 100 - this is a quad core CPU) when copying larger files (100+
+> MBs):
+> root [~]# time dd if=arch.tar.gz of=test4 bs=2M oflag=sync
+> 146+1 records in
+> 146+1 records out
+> 307191761 bytes (307 MB) copied, 23.6788 s, 13.0 MB/s
+> real    0m23.680s
+> user    0m0.000s
+> sys     0m0.932s
+> 
+> - asymmetrical wear on the 2 SSDs (one SSD has a wear of 6% while
+> the other has a wear of 30%):
+> root [~]# smartctl --attributes /dev/sda | grep -i wear
+> 177 Wear_Leveling_Count     0x0013   094%   094   000    Pre-fail
+> Always       -       196
+> root [~]# smartctl --attributes /dev/sdb | grep -i wear
+> 177 Wear_Leveling_Count     0x0013   070%   070   000    Pre-fail
+> Always       -       1073
+> 
+> - very asymmetrical await, svctm and %util in iostat when copying
+> larger files (100+ MB):
+> Device:         rrqm/s   wrqm/s     r/s     w/s         rsec/s
+> wsec/s       avgrq-sz   avgqu-sz   await        svctm   %util
+> sda               0.00        1589.50    0.00   54.00     0.00
+> 13148.00   243.48     0.60           11.17       0.46      2.50
+> sdb               0.00        1627.50    0.00   16.50     0.00
+> 9524.00     577.21     144.25       1439.33  60.61   100.00
+> md1             0.00        0.00           0.00    0.00 0.00
+> 0.00             0.00        0.00            0.00 0.00      0.00
+> md2             0.00        0.00           0.00    1602     0.00
+> 12816.00     8.00        0.00            0.00         0.00      0.00
+> md0             0.00        0.00           0.00    0.00      0.00
+> 0.00             0.00        0.00             0.00         0.00 0.00
+> 
+> - asymmetrical total LBA written but much lower than the above:
+> root [~]# smartctl --attributes /dev/sda | grep "Total_LBAs_Written"
+> 241 Total_LBAs_Written      0x0032   099   099   000    Old_age
+> Always       -       23628284668
+> root [~]# smartctl --attributes /dev/sdb | grep "Total_LBAs_Written"
+> 241 Total_LBAs_Written      0x0032   099   099   000    Old_age
+> Always       -       25437073579
+> (the gap seems to be getting narrower and narrower here though - it
+> seems some event in the past caused this)
+> 
+> 
+> And the number one reason I am trying for help on this list:
+> root # iotop -o
+> Total DISK READ: 247.78 K/s | Total DISK WRITE: 495.56 K/s
+> TID  PRIO  USER     DISK READ  DISK WRITE  SWAPIN     IO> COMMAND
+> 534 be/3 root        0.00 B/s   55.06 K/s  0.00 % 99.99 % [jbd2/md2-8]
+> ....
+> 
+> When there are problems, jbd2 seems to do 99.9%  I/O without doing
+> any apparent significant reads or writes. It seems like jbd2 just
+> keeps the devices busy.
+> 
+> What could be the reason of some of the above anomalies? Especially
+> why is jbd2 keeping the raid members busy while not doing any reads
+> or writes? Why the abysmal write speed?
+> 
+> So far I have updated the SSDs firmware, checked the alignment which
+> seems ok (1MB boundary), checked with all 3 schedulers, the swap is
+> on an md device (so the asymmetrical use and wear again can't be
+> explained), I have looked for "hard resetting link" in dmesg but
+> found nothing so I guess it's not a cable or back plane issue). What
+> else can I check? What else can I try?
+> 
+> Kind regards!
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
