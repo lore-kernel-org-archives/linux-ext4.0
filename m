@@ -1,106 +1,231 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 63511] New: EXT4-fs warning (device sdc):
- ext4_da_update_reserve_space:362: ino 75159523, allocated 1 with only 0
- reserved metadata blocks (releasing 162 blocks with reserved 162 data blocks)
-Date: Tue, 22 Oct 2013 17:38:02 +0000
-Message-ID: <bug-63511-13602@https.bugzilla.kernel.org/>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] e2fsprogs: fix build w/o quota
+Date: Tue, 22 Oct 2013 12:46:46 -0500
+Message-ID: <5266BA06.1060807@redhat.com>
+References: <52615CC0.7010007@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:54434 "EHLO mail.kernel.org"
+Received: from mx1.redhat.com ([209.132.183.28]:60471 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754354Ab3JVRiH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 22 Oct 2013 13:38:07 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 9E9FE2049D
-	for <linux-ext4@vger.kernel.org>; Tue, 22 Oct 2013 17:38:05 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id A11A0203F4
-	for <linux-ext4@vger.kernel.org>; Tue, 22 Oct 2013 17:38:03 +0000 (UTC)
+	id S1752822Ab3JVRqt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 22 Oct 2013 13:46:49 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9MHklPm012033
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Tue, 22 Oct 2013 13:46:48 -0400
+Received: from Liberator.local (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r9MHkkYT004779
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 22 Oct 2013 13:46:47 -0400
+In-Reply-To: <52615CC0.7010007@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=63511
+On 10/18/13 11:07 AM, Eric Sandeen wrote:
+> The next branch fails a few ways if quota isn't enabled;
+> for starters, libquota build was turned off after commit
+> 
+> 43075b4 quota: fix disabling quota, add quota tests
 
-            Bug ID: 63511
-           Summary: EXT4-fs warning (device sdc):
-                    ext4_da_update_reserve_space:362: ino 75159523,
-                    allocated 1 with only 0 reserved metadata blocks
-                    (releasing 162 blocks with reserved 162 data blocks)
-           Product: File System
-           Version: 2.5
-    Kernel Version: 3.11.6
-          Hardware: All
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-          Assignee: fs_ext4@kernel-bugs.osdl.org
-          Reporter: mikhail.v.gavrilov@gmail.com
-        Regression: No
+> because now we don't build libquota, but still depend on it.
 
-[ 2847.405452] EXT4-fs warning (device sdc): ext4_da_update_reserve_space:362:
-ino 75159523, allocated 1 with only 0 reserved metadata blocks (releasing 162
-blocks with reserved 162 data blocks)
-[ 2847.405455] ------------[ cut here ]------------
-[ 2847.405460] WARNING: CPU: 2 PID: 108 at fs/ext4/inode.c:363
-ext4_da_update_reserve_space+0x2c4/0x330()
-[ 2847.405461] Modules linked in: fuse nf_conntrack_netbios_ns
-nf_conntrack_broadcast ipt_MASQUERADE ip6t_REJECT xt_conntrack ebtable_nat
-ebtable_broute bridge stp llc ebtable_filter ebtables ip6table_nat
-nf_conntrack_ipv6 nf_defrag_ipv6 nf_nat_ipv6 ip6table_mangle ip6table_security
-ip6table_raw ip6table_filter ip6_tables iptable_nat nf_conntrack_ipv4
-nf_defrag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack iptable_mangle iptable_security
-iptable_raw bnep iTCO_wdt iTCO_vendor_support ppdev x86_pkg_temp_thermal
-coretemp kvm_intel kvm crc32_pclmul crc32c_intel ghash_clmulni_intel microcode
-btusb bluetooth rfkill serio_raw snd_hda_codec_realtek snd_hda_codec_hdmi
-snd_emu10k1 i2c_i801 snd_util_mem snd_rawmidi snd_ac97_codec snd_hda_intel
-ac97_bus snd_hda_codec snd_hwdep snd_seq snd_seq_device emu10k1_gp gameport
-[ 2847.405485]  snd_pcm r8169 mii lpc_ich mfd_core mei_me snd_page_alloc mei
-shpchp snd_timer snd soundcore parport_pc parport acpi_cpufreq mperf
-binfmt_misc nfsd auth_rpcgss nfs_acl lockd sunrpc usb_storage hid_logitech_dj
-i915 firewire_ohci firewire_core i2c_algo_bit crc_itu_t drm_kms_helper drm
-sata_sil24 i2c_core video
-[ 2847.405503] CPU: 2 PID: 108 Comm: kworker/u16:3 Tainted: G        W   
-3.11.6-300.fc20.x86_64+debug #1
-[ 2847.405504] Hardware name: Gigabyte Technology Co., Ltd. Z87M-D3H/Z87M-D3H,
-BIOS F8 08/03/2013
-[ 2847.405507] Workqueue: writeback bdi_writeback_workfn (flush-8:32)
-[ 2847.405509]  0000000000000009 ffff88080d08f7a8 ffffffff81728a1c
-0000000000000000
-[ 2847.405512]  ffff88080d08f7e0 ffffffff8107458d 00000000000000a2
-0000000000000001
-[ 2847.405514]  ffff8801ad613020 ffff8807ee0037b0 ffff88080d08fa78
-ffff88080d08f7f0
-[ 2847.405516] Call Trace:
-[ 2847.405520]  [<ffffffff81728a1c>] dump_stack+0x54/0x74
-[ 2847.405523]  [<ffffffff8107458d>] warn_slowpath_common+0x7d/0xa0
-[ 2847.405525]  [<ffffffff8107466a>] warn_slowpath_null+0x1a/0x20
-[ 2847.405527]  [<ffffffff81285154>] ext4_da_update_reserve_space+0x2c4/0x330
-[ 2847.405530]  [<ffffffff812b2377>] ext4_ext_map_blocks+0xe27/0x12a0
-[ 2847.405532]  [<ffffffff812854ad>] ext4_map_blocks+0x2ed/0x560
-[ 2847.405534]  [<ffffffff81288867>] ext4_writepages+0x677/0x1100
-[ 2847.405537]  [<ffffffff810f67fb>] ? __module_address+0xab/0x130
-[ 2847.405543]  [<ffffffff811854b1>] do_writepages+0x21/0x50
-[ 2847.405545]  [<ffffffff81220420>] __writeback_single_inode+0x40/0x5a0
-[ 2847.405546]  [<ffffffff81220be5>] writeback_sb_inodes+0x265/0x520
-[ 2847.405548]  [<ffffffff81220f3f>] __writeback_inodes_wb+0x9f/0xd0
-[ 2847.405549]  [<ffffffff81221293>] wb_writeback+0x323/0x550
-[ 2847.405551]  [<ffffffff81221dae>] bdi_writeback_workfn+0x32e/0x680
-[ 2847.405554]  [<ffffffff81096cf1>] process_one_work+0x211/0x6e0
-[ 2847.405556]  [<ffffffff81096c85>] ? process_one_work+0x1a5/0x6e0
-[ 2847.405558]  [<ffffffff810972dd>] worker_thread+0x11d/0x3a0
-[ 2847.405560]  [<ffffffff810971c0>] ? process_one_work+0x6e0/0x6e0
-[ 2847.405565]  [<ffffffff8109fe6d>] kthread+0xed/0x100
-[ 2847.405568]  [<ffffffff8109fd80>] ? insert_kthread_work+0x80/0x80
-[ 2847.405577]  [<ffffffff8173bcac>] ret_from_fork+0x7c/0xb0
-[ 2847.405580]  [<ffffffff8109fd80>] ? insert_kthread_work+0x80/0x80
-[ 2847.405581] ---[ end trace 07f881d6e2978ecc ]---
+Any thoughts on this?  Would be super-great to have the git tree
+buildable again.  ;)
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+-Eric
+ 
+> Using @QUOTA_CMT@ to comment out those libs fixes things
+> as far as deps, but then all calls to quota functions fail,
+> of course.
+> 
+> So this is a very quick & dirty stab at providing stubs
+> for those functions when quota is disabled.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> ---
+> 
+> Note - Compile-tested only, with & without quota.
+> 
+> diff --git a/MCONFIG.in b/MCONFIG.in
+> index fa2b03e..e6be05c 100644
+> --- a/MCONFIG.in
+> +++ b/MCONFIG.in
+> @@ -93,13 +93,13 @@ LIBCOM_ERR = $(LIB)/libcom_err@LIB_EXT@ @PRIVATE_LIBS_CMT@ @SEM_INIT_LIB@
+>  LIBE2P = $(LIB)/libe2p@LIB_EXT@
+>  LIBEXT2FS = $(LIB)/libext2fs@LIB_EXT@
+>  LIBUUID = @LIBUUID@ @SOCKET_LIB@
+> -LIBQUOTA = @STATIC_LIBQUOTA@
+> +@QUOTA_CMT@LIBQUOTA = @STATIC_LIBQUOTA@
+>  LIBBLKID = @LIBBLKID@ @PRIVATE_LIBS_CMT@ $(LIBUUID)
+>  LIBINTL = @LIBINTL@
+>  DEPLIBSS = $(LIB)/libss@LIB_EXT@
+>  DEPLIBCOM_ERR = $(LIB)/libcom_err@LIB_EXT@
+>  DEPLIBUUID = @DEPLIBUUID@
+> -DEPLIBQUOTA = @DEPSTATIC_LIBQUOTA@
+> +@QUOTA_CMT@DEPLIBQUOTA = @DEPSTATIC_LIBQUOTA@
+>  DEPLIBBLKID = @DEPLIBBLKID@ @PRIVATE_LIBS_CMT@ $(DEPLIBUUID)
+>  
+>  STATIC_LIBSS = $(LIB)/libss@STATIC_LIB_EXT@ @DLOPEN_LIB@
+> @@ -107,12 +107,12 @@ STATIC_LIBCOM_ERR = $(LIB)/libcom_err@STATIC_LIB_EXT@ @SEM_INIT_LIB@
+>  STATIC_LIBE2P = $(LIB)/libe2p@STATIC_LIB_EXT@
+>  STATIC_LIBEXT2FS = $(LIB)/libext2fs@STATIC_LIB_EXT@
+>  STATIC_LIBUUID = @STATIC_LIBUUID@ @SOCKET_LIB@
+> -STATIC_LIBQUOTA = @STATIC_LIBQUOTA@
+> +@QUOTA_CMT@STATIC_LIBQUOTA = @STATIC_LIBQUOTA@
+>  STATIC_LIBBLKID = @STATIC_LIBBLKID@ $(STATIC_LIBUUID)
+>  DEPSTATIC_LIBSS = $(LIB)/libss@STATIC_LIB_EXT@
+>  DEPSTATIC_LIBCOM_ERR = $(LIB)/libcom_err@STATIC_LIB_EXT@
+>  DEPSTATIC_LIBUUID = @DEPSTATIC_LIBUUID@
+> -DEPSTATIC_LIBQUOTA = @DEPSTATIC_LIBQUOTA@
+> +@QUOTA_CMT@DEPSTATIC_LIBQUOTA = @DEPSTATIC_LIBQUOTA@
+>  DEPSTATIC_LIBBLKID = @DEPSTATIC_LIBBLKID@ $(DEPSTATIC_LIBUUID)
+>  
+>  PROFILED_LIBSS = $(LIB)/libss@PROFILED_LIB_EXT@ @DLOPEN_LIB@
+> @@ -120,12 +120,12 @@ PROFILED_LIBCOM_ERR = $(LIB)/libcom_err@PROFILED_LIB_EXT@ @SEM_INIT_LIB@
+>  PROFILED_LIBE2P = $(LIB)/libe2p@PROFILED_LIB_EXT@
+>  PROFILED_LIBEXT2FS = $(LIB)/libext2fs@PROFILED_LIB_EXT@
+>  PROFILED_LIBUUID = @PROFILED_LIBUUID@ @SOCKET_LIB@
+> -PROFILED_LIBQUOTA = @PROFILED_LIBQUOTA@
+> +@QUOTA_CMT@PROFILED_LIBQUOTA = @PROFILED_LIBQUOTA@
+>  PROFILED_LIBBLKID = @PROFILED_LIBBLKID@ $(PROFILED_LIBUUID)
+>  DEPPROFILED_LIBSS = $(LIB)/libss@PROFILED_LIB_EXT@
+>  DEPPROFILED_LIBCOM_ERR = $(LIB)/libcom_err@PROFILED_LIB_EXT@
+>  DEPPROFILED_LIBUUID = @PROFILED_LIBUUID@
+> -DEPPROFILED_LIBQUOTA = @PROFILED_LIBQUOTA@
+> +@QUOTA_CMT@DEPPROFILED_LIBQUOTA = @PROFILED_LIBQUOTA@
+>  DEPPROFILED_LIBBLKID = @PROFILED_LIBBLKID@ $(DEPPROFILED_LIBUUID)
+>  
+>  #
+> diff --git a/lib/quota/mkquota.h b/lib/quota/mkquota.h
+> index ee15071..2d5d927 100644
+> --- a/lib/quota/mkquota.h
+> +++ b/lib/quota/mkquota.h
+> @@ -43,6 +43,7 @@ struct quota_ctx {
+>  };
+>  
+>  /* In mkquota.c */
+> +#ifdef CONFIG_QUOTA
+>  errcode_t quota_init_context(quota_ctx_t *qctx, ext2_filsys fs, int qtype);
+>  void quota_data_inodes(quota_ctx_t qctx, struct ext2_inode *inode, ext2_ino_t ino,
+>  		int adjust);
+> @@ -60,5 +61,81 @@ int quota_file_exists(ext2_filsys fs, int qtype, int fmt);
+>  void quota_set_sb_inum(ext2_filsys fs, ext2_ino_t ino, int qtype);
+>  errcode_t quota_compare_and_update(quota_ctx_t qctx, int qtype,
+>  				   int *usage_inconsistent);
+> +#else
+> +static inline
+> +errcode_t quota_init_context(quota_ctx_t *qctx, ext2_filsys fs, int qtype)
+> +{
+> +	return 0;
+> +}
+>  
+> +static inline
+> +void quota_data_inodes(quota_ctx_t qctx, struct ext2_inode *inode, ext2_ino_t ino,
+> +		int adjust)
+> +{
+> +	return; 
+> +}
+> +
+> +static inline
+> +void quota_data_add(quota_ctx_t qctx, struct ext2_inode *inode, ext2_ino_t ino,
+> +		    qsize_t space)
+> +{
+> +	return;
+> +}
+> +
+> +static inline
+> +void quota_data_sub(quota_ctx_t qctx, struct ext2_inode *inode, ext2_ino_t ino,
+> +		    qsize_t space)
+> +{
+> +	return;
+> +}
+> +
+> +static inline
+> +errcode_t quota_write_inode(quota_ctx_t qctx, int qtype)
+> +{
+> +	return 0;
+> +}
+> +
+> +static inline
+> +errcode_t quota_update_limits(quota_ctx_t qctx, ext2_ino_t qf_ino, int type)
+> +{
+> +	return 0;
+> +}
+> +
+> +static inline
+> +errcode_t quota_compute_usage(quota_ctx_t qctx)
+> +{
+> +	return 0;
+> +}
+> +
+> +static inline
+> +void quota_release_context(quota_ctx_t *qctx)
+> +{
+> +	return;
+> +}
+> +
+> +static inline
+> +errcode_t quota_remove_inode(ext2_filsys fs, int qtype)
+> +{
+> +	return 0;
+> +}
+> +
+> +static inline
+> +int quota_file_exists(ext2_filsys fs, int qtype, int fmt)
+> +{
+> +	return 0;
+> +}
+> +
+> +static inline
+> +void quota_set_sb_inum(ext2_filsys fs, ext2_ino_t ino, int qtype)
+> +{
+> +	return;
+> +}
+> +
+> +static inline
+> +errcode_t quota_compare_and_update(quota_ctx_t qctx, int qtype,
+> +				   int *usage_inconsistent)
+> +{
+> +	return 0;
+> +}
+> +#endif
+>  #endif  /* __QUOTA_QUOTAIO_H__ */
+> diff --git a/lib/quota/quotaio.h b/lib/quota/quotaio.h
+> index 1c062f1..c2d7a41 100644
+> --- a/lib/quota/quotaio.h
+> +++ b/lib/quota/quotaio.h
+> @@ -158,8 +158,24 @@ void update_grace_times(struct dquot *q);
+>     than maxlen of extensions[] and fmtnames[] (plus 2) found in quotaio.c */
+>  #define QUOTA_NAME_LEN 16
+>  
+> +#ifdef CONFIG_QUOTA
+>  const char *quota_get_qf_name(int type, int fmt, char *buf);
+>  const char *quota_get_qf_path(const char *mntpt, int qtype, int fmt,
+>  			      char *path_buf, size_t path_buf_size);
+> +#else
+> +static inline
+> +const char *quota_get_qf_name(int type, int fmt, char *buf)
+> +{
+> +	return NULL;
+> +}
+> +
+> +static inline
+> +const char *quota_get_qf_path(const char *mntpt, int qtype, int fmt,
+> +			      char *path_buf, size_t path_buf_size)
+> +{
+> +	return NULL;
+> +}
+> +#endif
+> +
+>  
+>  #endif /* GUARD_QUOTAIO_H */
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
