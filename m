@@ -1,85 +1,76 @@
-From: Sandeep Joshi <sanjos100@gmail.com>
-Subject: Re: process hangs in ext4_sync_file
-Date: Wed, 23 Oct 2013 20:28:22 +0530
-Message-ID: <CAEfL3KnUhETAWeh-OoRYTR5GxYL26TjaT=j_WDZeW5xa3vAdeg@mail.gmail.com>
-References: <CAEfL3KniKZNzehPH1Z4eWhhNF_RHrE4vHoRTHDPrfYj4t_2LtA@mail.gmail.com>
-	<20131023102042.GE1275@quack.suse.cz>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH 03/25] mke2fs: don't let resize= turn on resize_inode
+ when meta_bg is set
+Date: Wed, 23 Oct 2013 17:08:53 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1310231653590.1918@localhost.localdomain>
+References: <20131018044854.7339.48457.stgit@birch.djwong.org> <20131018044915.7339.15471.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ve0-f174.google.com ([209.85.128.174]:38085 "EHLO
-	mail-ve0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751229Ab3JWO6Y (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Oct 2013 10:58:24 -0400
-Received: by mail-ve0-f174.google.com with SMTP id pa12so98127veb.5
-        for <linux-ext4@vger.kernel.org>; Wed, 23 Oct 2013 07:58:23 -0700 (PDT)
-In-Reply-To: <20131023102042.GE1275@quack.suse.cz>
+Received: from mx1.redhat.com ([209.132.183.28]:59297 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751238Ab3JWPJA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 23 Oct 2013 11:09:00 -0400
+In-Reply-To: <20131018044915.7339.15471.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 23, 2013 at 3:50 PM, Jan Kara <jack@suse.cz> wrote:
-> On Mon 21-10-13 18:09:02, Sandeep Joshi wrote:
->> I am seeing a problem reported 4 years earlier
->> https://lkml.org/lkml/2009/3/12/226
->> (same stack as seen by Alexander)
->>
->> The problem is reproducible.  Let me know if you need any info in
->> addition to that seen below.
->>
->> I have multiple threads in a process doing heavy IO on a ext4
->> filesystem mounted with (discard, noatime) on a SSD or HDD.
->>
->> This is on Linux 3.8.0-29-generic #42~precise1-Ubuntu SMP Wed Aug 14
->> 16:19:23 UTC 2013 x86_64 x86_64 x86_64 GNU/Linux
->>
->> For upto minutes at a time, one of the threads seems to hang in sync to disk.
->>
->> When I check the thread stack in /proc, I find that the stack is one
->> of the following two
->>
->> <ffffffff81134a4e>] sleep_on_page+0xe/0x20
->> [<ffffffff81134c88>] wait_on_page_bit+0x78/0x80
->> [<ffffffff81134d9c>] filemap_fdatawait_range+0x10c/0x1a0
->> [<ffffffff811367d8>] filemap_write_and_wait_range+0x68/0x80
->> [<ffffffff81236a4f>] ext4_sync_file+0x6f/0x2b0
->> [<ffffffff811cba9b>] vfs_fsync+0x2b/0x40
->> [<ffffffff81168fb3>] sys_msync+0x143/0x1d0
->> [<ffffffff816fc8dd>] system_call_fastpath+0x1a/0x1f
->> [<ffffffffffffffff>] 0xffffffffffffffff
->>
->>
->> OR
->>
->>
->> [<ffffffff812947f5>] jbd2_log_wait_commit+0xb5/0x130
->> [<ffffffff81297213>] jbd2_complete_transaction+0x53/0x90
->> [<ffffffff81236bcd>] ext4_sync_file+0x1ed/0x2b0
->> [<ffffffff811cba9b>] vfs_fsync+0x2b/0x40
->> [<ffffffff81168fb3>] sys_msync+0x143/0x1d0
->> [<ffffffff816fc8dd>] system_call_fastpath+0x1a/0x1f
->> [<ffffffffffffffff>] 0xffffffffffffffff
->>
->> Any clues?
->   We are waiting for IO to complete. As the first thing, try to remount
-> your filesystem without 'discard' mount option. That is often causing
-> problems.
->
->                                                                 Honza
+On Thu, 17 Oct 2013, Darrick J. Wong wrote:
+
+> Date: Thu, 17 Oct 2013 21:49:16 -0700
+> From: Darrick J. Wong <darrick.wong@oracle.com>
+> To: tytso@mit.edu, darrick.wong@oracle.com
+> Cc: linux-ext4@vger.kernel.org
+> Subject: [PATCH 03/25] mke2fs: don't let resize= turn on resize_inode when
+>     meta_bg is set
+> 
+> Passing the "-E resize=NNN" option to mke2fs sets the resize_inode
+> feature.  However, resize_inode and meta_bg are mutually exclusive
+> (and the feature flag parser enforces this); therefore, we shouldn't
+> allow resize_inode to sneak in the back door like this.
+> 
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> ---
+>  misc/mke2fs.c |   11 +++++++++++
+>  1 file changed, 11 insertions(+)
+> 
+> 
+> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+> index 6e709b9..ce3c696 100644
+> --- a/misc/mke2fs.c
+> +++ b/misc/mke2fs.c
+> @@ -2448,6 +2448,17 @@ int main (int argc, char *argv[])
+>  	}
+>  	fs->progress_ops = &ext2fs_numeric_progress_ops;
+>  
+> +	/* We can't have resize_inode sneak in via resize= on a meta_bg fs. */
+> +	if (!quiet &&
+
+It means that this will only be checked when user does _not_ run
+with quiet mode, so it'll still be possible when run with -q. I
+assume this is not what you wanted.
+
+Thanks!
+-Lukas
 
 
-Thanks Jan,  I will remove it and see what happens.
-I was also planning to switch to ext2 and see if the failure continues.
-I added the discard option because the filesystem was initially
-supposed to be on an SSD
-
-is there any document which tells me what to look for in the output of
-"echo w > /proc/sysrq-trigger" ?
-
--Sandeep
-
->
+> +	    EXT2_HAS_INCOMPAT_FEATURE(fs->super,
+> +				      EXT2_FEATURE_INCOMPAT_META_BG) &&
+> +	    fs->super->s_reserved_gdt_blocks > 0) {
+> +		printf(_("Reserving GDT blocks (resize_inode) is not possible "
+> +			 "with the meta_bg feature.\nThey cannot be enabled "
+> +			 "simultaneously.\n"));
+> +		exit(1);
+> +	}
+> +
+>  	/* Check the user's mkfs options for metadata checksumming */
+>  	if (!quiet &&
+>  	    EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+> 
 > --
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
