@@ -1,19 +1,33 @@
-From: Diasy Bali <diasybali@hotmail.com>
-Subject: hello dearest
-Date: Tue, 22 Oct 2013 12:01:00 -0700 (PDT)
-Message-ID: <1382468460.9401.YahooMailBasic__5142.8981511437$1382468701$gmane$org@web161806.mail.bf1.yahoo.com>
-Reply-To: diasybali@yahoo.com
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 63471] Please add a "quit" command to the e2fsck interactive
+ mode
+Date: Wed, 23 Oct 2013 02:07:23 +0000
+Message-ID: <bug-63471-13602-U4Yr6FIdS1@https.bugzilla.kernel.org/>
+References: <bug-63471-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: undisclosed recipients:;
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from nm32.bullet.mail.ne1.yahoo.com ([98.138.229.25]:26168 "HELO
-	nm32.bullet.mail.ne1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1753584Ab3JVTEs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 22 Oct 2013 15:04:48 -0400
+Received: from mail.kernel.org ([198.145.19.201]:39102 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754260Ab3JWCH1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 22 Oct 2013 22:07:27 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id C0A0520494
+	for <linux-ext4@vger.kernel.org>; Wed, 23 Oct 2013 02:07:26 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 74B9420396
+	for <linux-ext4@vger.kernel.org>; Wed, 23 Oct 2013 02:07:25 +0000 (UTC)
+In-Reply-To: <bug-63471-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+https://bugzilla.kernel.org/show_bug.cgi?id=63471
 
-Hello,How are you,I hope you're well,my name is Diasy Bali,I'm medium height and fair in complexion,i love,caring and I decided to contact you.I really want to have a good relationship with you.Next I have a special something I want to discuss with you,and tell you more about my self.Hope hear from you soon.age is not matter for our relationship,I need your love and affection.I will give my best. Yours Miss Diasy Bali.
+--- Comment #1 from unforgettableid@gmail.com ---
+Actually, please call the command "Quit Safely".
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
