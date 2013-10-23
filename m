@@ -1,76 +1,50 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 03/25] mke2fs: don't let resize= turn on resize_inode
- when meta_bg is set
-Date: Wed, 23 Oct 2013 17:08:53 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1310231653590.1918@localhost.localdomain>
-References: <20131018044854.7339.48457.stgit@birch.djwong.org> <20131018044915.7339.15471.stgit@birch.djwong.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] e2fsprogs: fix build w/o quota
+Date: Wed, 23 Oct 2013 11:22:51 -0400
+Message-ID: <20131023152251.GC21448@thunk.org>
+References: <52615CC0.7010007@redhat.com>
+ <20131023125147.GA31449@orion.maiolino.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59297 "EHLO mx1.redhat.com"
+Received: from imap.thunk.org ([74.207.234.97]:49711 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751238Ab3JWPJA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 23 Oct 2013 11:09:00 -0400
-In-Reply-To: <20131018044915.7339.15471.stgit@birch.djwong.org>
+	id S1751230Ab3JWPWz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 23 Oct 2013 11:22:55 -0400
+Content-Disposition: inline
+In-Reply-To: <20131023125147.GA31449@orion.maiolino.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 17 Oct 2013, Darrick J. Wong wrote:
+On Wed, Oct 23, 2013 at 10:51:48AM -0200, Carlos Maiolino wrote:
+> Hey Eric,
+> 
+> I did a test here building the e2fsprogs -next tree without quota support and I
+> didn't have any problems configuring and compiling it. Can you share the test
+> you did and failed?
+> 
 
-> Date: Thu, 17 Oct 2013 21:49:16 -0700
-> From: Darrick J. Wong <darrick.wong@oracle.com>
-> To: tytso@mit.edu, darrick.wong@oracle.com
-> Cc: linux-ext4@vger.kernel.org
-> Subject: [PATCH 03/25] mke2fs: don't let resize= turn on resize_inode when
->     meta_bg is set
-> 
-> Passing the "-E resize=NNN" option to mke2fs sets the resize_inode
-> feature.  However, resize_inode and meta_bg are mutually exclusive
-> (and the feature flag parser enforces this); therefore, we shouldn't
-> allow resize_inode to sneak in the back door like this.
-> 
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> ---
->  misc/mke2fs.c |   11 +++++++++++
->  1 file changed, 11 insertions(+)
-> 
-> 
-> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> index 6e709b9..ce3c696 100644
-> --- a/misc/mke2fs.c
-> +++ b/misc/mke2fs.c
-> @@ -2448,6 +2448,17 @@ int main (int argc, char *argv[])
->  	}
->  	fs->progress_ops = &ext2fs_numeric_progress_ops;
->  
-> +	/* We can't have resize_inode sneak in via resize= on a meta_bg fs. */
-> +	if (!quiet &&
+I've been able to replicate the problem. You may need to rm -rf your
+build directory and then run from scratch to see it.
 
-It means that this will only be checked when user does _not_ run
-with quiet mode, so it'll still be possible when run with -q. I
-assume this is not what you wanted.
+Sorry for not responding sooner; I'm in Edinburgh this week and in
+conference mode.
 
-Thanks!
--Lukas
+The reason why we have continud building libquota even when libsupport
+is not defined is because the plan is to rename libquota to libsupport
+once 1.42.x is released.  Libquota/libsupport is desinged to never be
+built as a shared library, and the idea is to move things like
+e2fsck/profile.c which is used by e2fsck and mke2fs, into libsupport.
+The rational for that is that the functions in libquota are already
+horribly e2fsprogs specific and aren't really set up to be usable as a
+generic quota support library.  So we might as well make it be a
+standardized place for internal support functions used by multiple
+e2fsprogs programs.
 
+I'll try to find a fix that minimizes deltas between the maint branch
+and the next branch.
 
-> +	    EXT2_HAS_INCOMPAT_FEATURE(fs->super,
-> +				      EXT2_FEATURE_INCOMPAT_META_BG) &&
-> +	    fs->super->s_reserved_gdt_blocks > 0) {
-> +		printf(_("Reserving GDT blocks (resize_inode) is not possible "
-> +			 "with the meta_bg feature.\nThey cannot be enabled "
-> +			 "simultaneously.\n"));
-> +		exit(1);
-> +	}
-> +
->  	/* Check the user's mkfs options for metadata checksumming */
->  	if (!quiet &&
->  	    EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Cheers,
+
+					- Ted
