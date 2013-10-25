@@ -1,37 +1,72 @@
-From: Andrew Bradford <andrew@bradfordembedded.com>
-Subject: e2fsprogs: Why __uint64_t in unix_discard() in lib/ext2fs/unix_io.c?
-Date: Fri, 25 Oct 2013 09:54:36 -0400
-Message-ID: <526A781C.9090904@bradfordembedded.com>
+From: Carlos Maiolino <cmaiolino@redhat.com>
+Subject: Re: [PATCH][RESEND] mke2fs: fix force option to create filesystem on
+ mounted device
+Date: Fri, 25 Oct 2013 13:30:31 -0200
+Message-ID: <20131025152957.GA14944@orion.maiolino.org>
+References: <526A2E83.5050102@sx.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from out4-smtp.messagingengine.com ([66.111.4.28]:36867 "EHLO
-	out4-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752573Ab3JYNyj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 25 Oct 2013 09:54:39 -0400
-Received: from brick.omni-id.com (unknown [173.225.52.244])
-	by mail.messagingengine.com (Postfix) with ESMTPA id EA12AC00E84
-	for <linux-ext4@vger.kernel.org>; Fri, 25 Oct 2013 09:54:36 -0400 (EDT)
+Received: from mx1.redhat.com ([209.132.183.28]:20948 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751524Ab3JYPan (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 25 Oct 2013 11:30:43 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9PFUZdX022118
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Fri, 25 Oct 2013 11:30:36 -0400
+Received: from orion.maiolino.org (ovpn-113-27.phx2.redhat.com [10.3.113.27])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id r9PFUWqO005101
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Fri, 25 Oct 2013 11:30:34 -0400
+Content-Disposition: inline
+In-Reply-To: <526A2E83.5050102@sx.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In e2fsprogs commit e90a59ed434d6c5e38dd148aa4ba5b22b8f7eb24 the
-unix_discard() function was implemented.  Sorry, I was not subscribed
-when that patch went to the list or I would have replied to it.
+Looks good,
 
-In unix_discard() in e2fsprogs lib/ext2fs/unix_io.c, starting at line
-922 on the current git master branch HEAD, the __uint64_t type is used
-for the range[] array which is used to perform an ioctl().
-But, the BLKDISCARD ioctl() in the kernel uses uint64_t types to specify
-the range.
+Reviewed-by: Carlos Maiolino <cmaiolino@redhat.com>
 
-Why is __uint64_t used in e2fsprogs's unix_discard() function?  It's not
-clear to me.  This is the only use of __uint64_t in all of e2fsprogs.
+On Fri, Oct 25, 2013 at 05:40:35PM +0900, Kazuya Mio wrote:
+> According to mke2fs man, we can create a filesystem on the mounted device
+> when -FF option is specified.
+> However, currently we have to specify -F option third to force mke2fs.
+> This patch fixes the problem.
+> 
+> Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
+> Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
+> ---
+>  misc/util.c |    4 ++--
+>  1 files changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/misc/util.c b/misc/util.c
+> index 6c93e1c..40c8858 100644
+> --- a/misc/util.c
+> +++ b/misc/util.c
+> @@ -150,7 +150,7 @@ void check_mount(const char *device, int force, const char *type)
+>  	}
+>  	if (mount_flags & EXT2_MF_MOUNTED) {
+>  		fprintf(stderr, _("%s is mounted; "), device);
+> -		if (force > 2) {
+> +		if (force >= 2) {
+>  			fputs(_("mke2fs forced anyway.  Hope /etc/mtab is "
+>  				"incorrect.\n"), stderr);
+>  			return;
+> @@ -162,7 +162,7 @@ void check_mount(const char *device, int force, const char *type)
+>  	if (mount_flags & EXT2_MF_BUSY) {
+>  		fprintf(stderr, _("%s is apparently in use by the system; "),
+>  			device);
+> -		if (force > 2) {
+> +		if (force >= 2) {
+>  			fputs(_("mke2fs forced anyway.\n"), stderr);
+>  			return;
+>  		}
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Why wouldn't uint64_t work here?
-
-Thanks,
-Andrew
+-- 
+Carlos
