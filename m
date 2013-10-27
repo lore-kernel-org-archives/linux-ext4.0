@@ -1,77 +1,68 @@
-From: Jakob Haufe <sur5r@sur5r.net>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: online resize of ext4 hung (3.2.51 / 1.42.5)
-Date: Sat, 26 Oct 2013 22:51:24 +0200
-Message-ID: <20131026225124.5fcfd7b0@samsa>
+Date: Sun, 27 Oct 2013 02:08:12 -0400
+Message-ID: <20131027060812.GB12361@thunk.org>
 References: <20131025220632.62b4f9b3@samsa>
-	<20131025235745.GA2448@thunk.org>
+ <20131025235745.GA2448@thunk.org>
+ <20131026225124.5fcfd7b0@samsa>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA512; protocol="application/pgp-signature"; boundary="=_libri-29752-1382820690-0001-2"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Jakob Haufe <sur5r@sur5r.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from libri.sur5r.net ([217.8.49.41]:59660 "EHLO libri.sur5r.net"
+Received: from imap.thunk.org ([74.207.234.97]:51234 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753150Ab3JZUvc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 26 Oct 2013 16:51:32 -0400
-Received: from samsa (localhost [127.0.0.1])
-	by samsa (Postfix) with ESMTP id CE18FA8598D
-	for <linux-ext4@vger.kernel.org>; Sat, 26 Oct 2013 22:51:28 +0200 (CEST)
-In-Reply-To: <20131025235745.GA2448@thunk.org>
+	id S1750993Ab3J0GIS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 27 Oct 2013 02:08:18 -0400
+Content-Disposition: inline
+In-Reply-To: <20131026225124.5fcfd7b0@samsa>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is a MIME-formatted message.  If you see this text it means that your
-E-mail software does not support MIME-formatted messages.
+On Sat, Oct 26, 2013 at 10:51:24PM +0200, Jakob Haufe wrote:
+> On Fri, 25 Oct 2013 19:57:45 -0400
+> Theodore Ts'o <tytso@mit.edu> wrote:
+> 
+> > Can you run "echo t > /proc/sysrq-trigger" and send the output from
+> > the console (or from dmesg)?  Or otherwise trigger sysrq-t?  This will
+> > show the stacks of all of the processes, which would be useful to
+> > figure out what might be happening.
+> 
+> As the log was most probably too big to pass majordomo, i've put it here:
+> 
+> http://permalink.sur5r.net/1/linux-3.2.51-resize2fs-1.42.5-hung-sysrq-t.log
 
---=_libri-29752-1382820690-0001-2
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+(Sorry for the delay in responding, a number of us have been attending
+a conference in Edinburgh, and I'm currently on vacation in Dublin.)
 
-On Fri, 25 Oct 2013 19:57:45 -0400
-Theodore Ts'o <tytso@mit.edu> wrote:
+>From looking at the sysrq-t which you sent, what looks like is going
+on is that resize2fs is stuck in jbd2_journal_lock_updates().  That
+function has incremented j_barrier_count, so all new attempts to start
+a transaction handle are blocked, which explains the rest of the
+processes stuck in start_this_handle().  Meanwhile,
+jbd2_journal_lock_updates is waiting for the outstanding transactions
+handles that have already been started against the handle to go to
+zero --- and for some reason, this never happens.
 
-> Can you run "echo t > /proc/sysrq-trigger" and send the output from
-> the console (or from dmesg)?  Or otherwise trigger sysrq-t?  This will
-> show the stacks of all of the processes, which would be useful to
-> figure out what might be happening.
+One thing which I'm trying to figure out is why the resize2fs ioctl
+needs to use the whole sequence of:
 
-As the log was most probably too big to pass majordomo, i've put it here:
+		jbd2_journal_lock_updates(EXT4_SB(sb)->s_journal);
+		err2 = jbd2_journal_flush(EXT4_SB(sb)->s_journal);
+		jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
 
-http://permalink.sur5r.net/1/linux-3.2.51-resize2fs-1.42.5-hung-sysrq-t.log
+anyway.  This flushes out the journal, but it's not obvious to me why
+it's necessary --- and removing it would speed a file system resize
+significantly.
 
-Please tell me whether you need anything beyond that (ssh access would be
-possible) or whether I can put that machine back to production.
+In any case, I think it should be safe for you to reboot your file
+system, and after an fsck -f, I think your file system should be OK.
 
-After a forced reboot, will an "fsck -f" be sufficient or should I create a
-new filesystem? It was a newly set up backup target so I could scrap it if
-necessary.
+			    	     	      - Ted
 
-Cheers,
-Jakob
-
---=20
-ceterum censeo microsoftem esse delendam.
-
---=_libri-29752-1382820690-0001-2
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.20 (GNU/Linux)
-
-iQIcBAEBCgAGBQJSbCtPAAoJEEzyshj1Ta49Hh0P/3KPtXJ7ZMet5X80E8s7jw2N
-s6lM7ipQ8jtH0V3RkxPB6SwxwTGl6ZOZVrsVGx1HYNCPijiQNlTZMRtAkq1xxcli
-jzbHCRHF59fIndKeh2wJJGjbqhGaMEIAnytslkLZV9PbEgIOFt8i9pxSUA+lVsDS
-+VhMERXAEZfJQHoU9pnyFU5jHjEsCXw+twaxJxHbLRvNgjCyMRXAsb72qM/01DfT
-P6hKPVK6TJ4m4G+ZNrQplOrI1QepaXHMjPQDlyeYWA4B/o/24ObWMMa+R6fixq54
-SOoYxcI7fKDnvWSW1LBgjLMgRPP9NDFNKZXJ9JfjJU759d1ozA7oJUBDSM6o6urY
-iUTg0a4D/9bX+cGmJBLT9V312LlfzlRsC8O8Whd0AGnbQRf4/Spcef3j5nfk7nLL
-ew+Y3IZtES8I5z71nvqerTihcfJBzU7CL5aUqo6MlKhMvSpP8kxZ6LKI5/wQ9CPd
-t0Am1M/KjzzRdOl0FLR0bFCTB9g3D3lSd39RyykSqGGzPjMI8JWmX8bcbVL67DFv
-sRu/jZ41RfaOlKEM4kdPd+b3f63zCS7wD1etHiByDHRgUtxUSycibYs3H0Mt8bBz
-PDcYnD/80o3Ob7plcBj9dq81H4LI5piQ5gbVGy3FYXcMWOxm4/tisLU/5+evJqmv
-lK6XQ5XIGKnoXSE+IJKt
-=4M7B
------END PGP SIGNATURE-----
-
---=_libri-29752-1382820690-0001-2--
+P.S.  To ext4 developers, please note that the kernel involved,
+v3.2.52 does _not_ have Jan Kara's reserved handles changes, which
+were added in commit 8f7d89f36829.  I at first thought it might have
+been related to changes involving how jbd2_journal_lock_updates()
+waits for j_reserved_credits to go to zero, but that was a blind
+alley.
