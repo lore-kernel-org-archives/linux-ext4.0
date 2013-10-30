@@ -1,97 +1,50 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v3 1/2] mbcache: decoupling the locking of local from
- global data
-Date: Wed, 30 Oct 2013 09:27:10 -0400
-Message-ID: <20131030132710.GA3305@thunk.org>
-References: <1374108934-50550-1-git-send-email-tmac@hp.com>
- <1378312756-68597-1-git-send-email-tmac@hp.com>
- <1378312756-68597-2-git-send-email-tmac@hp.com>
+Subject: Re: [PATCH 2/2] ext4: Spot-check block group sub-table locations
+Date: Wed, 30 Oct 2013 12:45:07 -0400
+Message-ID: <20131030164507.GC13343@thunk.org>
+References: <20130928001349.25857.76724.stgit@birch.djwong.org>
+ <20130928001404.25857.43349.stgit@birch.djwong.org>
+ <20130929064400.GB10285@gmail.com>
+ <20131009220824.GM6860@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: adilger.kernel@dilger.ca, viro@zeniv.linux.org.uk,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, aswin@hp.com,
-	torvalds@linux-foundation.org, aswin_proj@groups.hp.com
-To: T Makphaibulchoke <tmac@hp.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:52493 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751330Ab3J3Qu7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 30 Oct 2013 12:50:59 -0400
 Content-Disposition: inline
-In-Reply-To: <1378312756-68597-2-git-send-email-tmac@hp.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20131009220824.GM6860@birch.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 04, 2013 at 10:39:15AM -0600, T Makphaibulchoke wrote:
-> The patch increases the parallelism of mb_cache_entry utilization by
-> replacing list_head with hlist_bl_node for the implementation of both the
-> block and index hash tables.  Each hlist_bl_node contains a built-in lock
-> used to protect mb_cache's local block and index hash chains. The global
-> data mb_cache_lru_list and mb_cache_list continue to be protected by the
-> global mb_cache_spinlock.
+On Wed, Oct 09, 2013 at 03:08:24PM -0700, Darrick J. Wong wrote:
+> > FWIW, I notice that in ext4_check_descriptors() we also check the
+> > location of bitmap.  So maybe we could use ext4_is_sane_bgdata_location
+> > in that function.
+> 
+> That could be done, but all we'd be doing is trading this:
+> 
+> 	block_bitmap = ext4_block_bitmap(sb, gdp);
+> 	if (block_bitmap < first_block || block_bitmap > last_block) {
+> 
+> for this slightly slower code:
+> 
+> 	if (ext4_is_sane_bgdata_location(sb, gdp,
+> 					 ext4_block_bitmap(sb, gdb))) {
+> 
+> I don't know if that's worth the code churn or not.  It's an easy change, but I
+> don't think it adds much.  Ted -- if you want me to make the change I'll do it,
+> but if you're content to leave the patch as it is, then so am I.
 
-In the process of applying this patch to the ext4 tree, I had to
-rework one of the patches to account for a change upstream to the
-shrinker interface (which modified mb_cache_shrink_fn() to be
-mb_cache_shrink_scan()).
+The question I have is if we are checking to make sure all of the
+block and inode bitmaps are sane at mount time, how much is it worth
+it to check to make sure that they are sane each time we need to load
+the bitmap?  This is especially true since for ext4 file systems with
+flex_bg, the only real check we can do is to is whether the block
+number is out of range, which will almost certainly cause a device
+error.
 
-Can you verify that the changes I made look sane?
-
-Thanks,
-
-					- Ted
-
-diff --git a/fs/mbcache.c b/fs/mbcache.c
-index 1f90cd0..44e7153 100644
---- a/fs/mbcache.c
-+++ b/fs/mbcache.c
-@@ -200,25 +200,38 @@ forget:
- static unsigned long
- mb_cache_shrink_scan(struct shrinker *shrink, struct shrink_control *sc)
- {
--	LIST_HEAD(free_list);
--	struct mb_cache_entry *entry, *tmp;
- 	int nr_to_scan = sc->nr_to_scan;
- 	gfp_t gfp_mask = sc->gfp_mask;
- 	unsigned long freed = 0;
- 
- 	mb_debug("trying to free %d entries", nr_to_scan);
--	spin_lock(&mb_cache_spinlock);
--	while (nr_to_scan-- && !list_empty(&mb_cache_lru_list)) {
--		struct mb_cache_entry *ce =
--			list_entry(mb_cache_lru_list.next,
--				   struct mb_cache_entry, e_lru_list);
--		list_move_tail(&ce->e_lru_list, &free_list);
--		__mb_cache_entry_unhash(ce);
--		freed++;
--	}
--	spin_unlock(&mb_cache_spinlock);
--	list_for_each_entry_safe(entry, tmp, &free_list, e_lru_list) {
--		__mb_cache_entry_forget(entry, gfp_mask);
-+	while (nr_to_scan > 0) {
-+		struct mb_cache_entry *ce;
-+
-+		spin_lock(&mb_cache_spinlock);
-+		if (list_empty(&mb_cache_lru_list)) {
-+			spin_unlock(&mb_cache_spinlock);
-+			break;
-+		}
-+		ce = list_entry(mb_cache_lru_list.next,
-+			struct mb_cache_entry, e_lru_list);
-+		list_del_init(&ce->e_lru_list);
-+		spin_unlock(&mb_cache_spinlock);
-+
-+		hlist_bl_lock(ce->e_block_hash_p);
-+		hlist_bl_lock(ce->e_index_hash_p);
-+		if (!(ce->e_used || ce->e_queued)) {
-+			__mb_cache_entry_unhash_index(ce);
-+			hlist_bl_unlock(ce->e_index_hash_p);
-+			__mb_cache_entry_unhash_block(ce);
-+			hlist_bl_unlock(ce->e_block_hash_p);
-+			__mb_cache_entry_forget(ce, gfp_mask);
-+			--nr_to_scan;
-+			freed++;
-+		} else {
-+			hlist_bl_unlock(ce->e_index_hash_p);
-+			hlist_bl_unlock(ce->e_block_hash_p);
-+		}
- 	}
- 	return freed;
- }
+						- Ted
