@@ -1,71 +1,92 @@
-From: Tao Ma <tm@tao.ma>
-Subject: Re: fix the ext4_read_inline_dir return value
-Date: Thu, 31 Oct 2013 10:34:31 +0800
-Message-ID: <5271C1B7.8040009@tao.ma>
-References: <CAAFszuV7tXpGA5GVWtLzzHZayPgN-M+n_W4LN67i=ueicfZb+Q@mail.gmail.com> <5265DE93.8060406@tao.ma> <20131030121341.GB12186@thunk.org>
+From: Carlos Maiolino <cmaiolino@redhat.com>
+Subject: Re: [PATCH] ext4: check incompatible mount options when mounting
+ ext2/3 [V2]
+Date: Thu, 31 Oct 2013 12:00:41 -0200
+Message-ID: <20131031140040.GD14337@orion.maiolino.org>
+References: <1351798331-14456-1-git-send-email-cmaiolino@redhat.com>
+ <1358870878-7369-1-git-send-email-cmaiolino@redhat.com>
+ <20130123103917.GD9821@quack.suse.cz>
+ <20130123122249.GA1423@localhost.localdomain>
+ <20130123130037.GA23741@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Boxi Liu <boxi10liu@gmail.com>,
-	"lewis.liulei" <lewis.liulei@huawei.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Robin Dong <sanbai@taobao.com>
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from server.coly.li ([162.144.45.48]:57952 "EHLO server.coly.li"
+Received: from mx1.redhat.com ([209.132.183.28]:60624 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751408Ab3JaCfY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 30 Oct 2013 22:35:24 -0400
-In-Reply-To: <20131030121341.GB12186@thunk.org>
+	id S1754302Ab3JaOAt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 31 Oct 2013 10:00:49 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9VE0lWl004251
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Thu, 31 Oct 2013 10:00:47 -0400
+Received: from orion.maiolino.org (ovpn-113-27.phx2.redhat.com [10.3.113.27])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r9VE0fFV009192
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 31 Oct 2013 10:00:44 -0400
+Content-Disposition: inline
+In-Reply-To: <20130123130037.GA23741@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 10/30/2013 08:13 PM, Theodore Ts'o wrote:
-> Applied, thanks.
-> 
-> On Tue, Oct 22, 2013 at 10:10:27AM +0800, Tao Ma wrote:
->> But next time please generate the patch with git format-patch and send
->> it using git send-email.
-> 
-> Yes, please.  :-)
-> 
-> I've reworded the commit description a little.
-> 
->     In ext4_read_inline_dir(), if there is inline data, the successful
->     return value is the return value of ext4_read_inline_data().  Howewer,
->     this is used by ext4_readdir(), and while it seems harmless to return
->     a positive value on success, it's inconsistent, since historically
->     we've always return 0 on success.
->     
-> 
-> BTW, it looks like it would simplify the code a bit to change
-> ext4_read_inline_page() and ext4_read_line_data() to return 0 on
-> success, since it looks like the positive value on success isn't
-> needed anywhere, and this would allow us to remove lines such as this:
-> 
->        return ret >= 0 ? 0 : ret;
-> 
-> as well as the forced ret = 0; in this commit.
-> 
-> Could you take a look and verify that this is true, and I haven't
-> missed anything?
-sure, I will look into it.
-> 
-> Also, it would be nice if the functions in fs/ext4/inline.c documented
-> what the return values are for each of the functions, one way or
-> another.
-OK, I will try to generate a patch for it.
+Hi guys, my apologies to have not touched this conversation for a while, got
+busy with other stuff.
 
-Thanks,
+So, let me continue this.
 
-Tao
+On Wed, Jan 23, 2013 at 02:00:37PM +0100, Jan Kara wrote:
+> On Wed 23-01-13 07:22:49, Carlos Maiolino wrote:
+> > On Wed, Jan 23, 2013 at 11:39:17AM +0100, Jan Kara wrote:
+> > > On Tue 22-01-13 11:07:58, Carlos Maiolino wrote:
+> > > > This checks for incompatible mounting options when using ext4 module to mount
+> > > > ext3 or ext2 filesystems.
+> > > > 
+> > > > Sets two new flags to group ext4 mount options that are incompatible with ext2
+> > > > and ext3, and then add two functions -- check_ext2/3_incompat_mount() -- to
+> > > > check and warn/fail mount, if any of these options are being used.
+> > > > 
+> > > > I believe, some options like those expecting an argument needs to be checked
+> > > > during parsing time.
+> > > > 
+> > > > barrier mount, although it has a flag, when mounting an ext2fs, where
+> > > > barriers are not supported (afaik), should also be checked during parse
+> > > > time, otherwise the BARRIER mount flag will be set.
+> > > > 
+> > > > I didn't add all mount options I believe to need to raise a warning, just
+> > > > those with a flag set on superblock, another flags should be added after a
+> > > > discussion to reach a concensus of all ext2/3 options that should be rejected by
+> > > > ext4 mount.
+> > >   Thinking about it a bit more I'm not sure if restricting mount options is
+> > > the right thing to start with.  IMHO what we should restrict is mounting
+> > > filesystem with certain *features* as ext3/ext2. So e.g. filesystem with
+> > > EXT4_FEATURE_INCOMPAT_EXTENTS cannot be mounted as ext2 or ext3. Similarly
+> > > as currently we forbid mounting ext3 filesystem with
+> > > EXT3_FEATURE_INCOMPAT_RECOVER as ext2... This should avoid the confusion
+> > > which could arise when someone reports problems with "ext3" filesystem but
+> > > actually has some of the ext4 features enabled.
+> > > 
+> > This is interesting, but I wonder if not restricting mount options, but
+> > features, would open a 'window' to let users change their filesystem on-disk
+> > format without know what they are doing, but I might be wrong.
+>   If there are mount options that enable features, then these should be
+> disallowed for ext2/ext3 mounts. But I think we already got rid of these
+> traps on users...
 > 
-> Thanks!!
-> 
-> 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+> 								Honza
+> -- 
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
 
+Jan, I agree with the idea of check for incompat features and I can work on that
+with no problem, but I still think we need to also ensure some mount options are
+not allowed to be used with some specific ExtFS versions wheter it change the
+disk format (we probably got rid of these as you said) or not. Not sure if my
+previous (V2) to restrict mount options lacks something or need to be reworked
+in some way (of course now it should to fit new kernel versions).
+
+As an example, commit=<secs> option doesn't make sense to be used on ext2
+filesystems, but you can mount an ext2 FS with this option with no problem.
+
+
+-- 
+Carlos
