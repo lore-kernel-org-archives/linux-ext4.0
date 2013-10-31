@@ -1,91 +1,119 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH] mmp: fix 64-bit handling of s_mmp_block
-Date: Thu, 31 Oct 2013 15:01:00 -0600
-Message-ID: <1383253260-22873-1-git-send-email-adilger@dilger.ca>
-Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
-To: tytso@mit.edu
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] ext4: remove unreachable code after ext4_can_extents_be_merged()
+Date: Thu, 31 Oct 2013 16:18:33 -0500
+Message-ID: <5272C929.80303@redhat.com>
+References: <5272C4E3.5040206@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out-03.shaw.ca ([64.59.136.139]:34393 "EHLO
-	smtp-out-02.shaw.ca" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752693Ab3JaVKp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Oct 2013 17:10:45 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:46302 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752503Ab3JaVSe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 31 Oct 2013 17:18:34 -0400
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9VLIY5I028469
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Thu, 31 Oct 2013 17:18:34 -0400
+Received: from Liberator.local (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r9VLIXct024194
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 31 Oct 2013 17:18:34 -0400
+In-Reply-To: <5272C4E3.5040206@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fix the checking of s_mmp_block in e2fsck_pass1() and
-ext2fs_mmp_read() to handle the high 32 bits of s_blocks_count.
-Remove redundant check of s_mmp_block in do_dump_mmp() right before
-ext2fs_mmp_read() is called.
+commit
+ec22ba8e ext4: disable merging of uninitialized extents
+ 
+ensured that if either extent under consideration is uninit,
+we decline to merge, and ext4_can_extents_be_merged() returns false.
 
-Also fix s_blocks_count_hi in check_backup_super_block(), since it
-cannot use the ext2fs_blocks_count() helper easily.
+So there is no need for the caller to then test whether the
+extent under consideration is unitialized; if it were, we
+wouldn't have gotten that far.
 
-Signed-off-by: Andreas Dilger <adilger@dilger.ca>
+The comments were also inaccurate; ext4_can_extents_be_merged()
+no longer XORs the states, it fails if *either* is uninit.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
- debugfs/debugfs.c |    7 +------
- e2fsck/pass1.c    |    4 ++--
- e2fsck/super.c    |    1 +
- lib/ext2fs/mmp.c  |    2 +-
- 4 files changed, 5 insertions(+), 9 deletions(-)
 
-diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-index 5590295..5502570 100644
---- a/debugfs/debugfs.c
-+++ b/debugfs/debugfs.c
-@@ -2311,12 +2311,7 @@ void do_dump_mmp(int argc EXT2FS_ATTR((unused)), char *argv[])
- 	if (check_fs_open(argv[0]))
- 		return;
+Disclaimer: compile-tested only.
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index de6d467..35f65cf 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -1715,7 +1715,6 @@ static int ext4_ext_try_to_merge_right(struct inode *inode,
+ 	struct ext4_extent_header *eh;
+ 	unsigned int depth, len;
+ 	int merge_done = 0;
+-	int uninitialized = 0;
  
--	sb  = current_fs->super;
--	if (sb->s_mmp_block <= sb->s_first_data_block ||
--	    sb->s_mmp_block >= ext2fs_blocks_count(sb)) {
--		com_err(argv[0], EXT2_ET_MMP_BAD_BLOCK, "while dumping it.\n");
--		return;
--	}
-+	sb = current_fs->super;
+ 	depth = ext_depth(inode);
+ 	BUG_ON(path[depth].p_hdr == NULL);
+@@ -1725,12 +1724,8 @@ static int ext4_ext_try_to_merge_right(struct inode *inode,
+ 		if (!ext4_can_extents_be_merged(inode, ex, ex + 1))
+ 			break;
+ 		/* merge with next extent! */
+-		if (ext4_ext_is_uninitialized(ex))
+-			uninitialized = 1;
+ 		ex->ee_len = cpu_to_le16(ext4_ext_get_actual_len(ex)
+ 				+ ext4_ext_get_actual_len(ex + 1));
+-		if (uninitialized)
+-			ext4_ext_mark_uninitialized(ex);
  
- 	if (current_fs->mmp_buf == NULL) {
- 		retval = ext2fs_get_mem(current_fs->blocksize,
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 311706e..13028b2 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -716,8 +716,8 @@ void e2fsck_pass1(e2fsck_t ctx)
- 		busted_fs_time = 1;
+ 		if (ex + 1 < EXT_LAST_EXTENT(eh)) {
+ 			len = (EXT_LAST_EXTENT(eh) - ex - 1)
+@@ -1885,7 +1880,6 @@ int ext4_ext_insert_extent(handle_t *handle, struct inode *inode,
+ 	struct ext4_ext_path *npath = NULL;
+ 	int depth, len, err;
+ 	ext4_lblk_t next;
+-	unsigned uninitialized = 0;
+ 	int mb_flags = 0;
  
- 	if ((fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_MMP) &&
--	    !(fs->super->s_mmp_block <= fs->super->s_first_data_block ||
--	      fs->super->s_mmp_block >= fs->super->s_blocks_count))
-+	    fs->super->s_mmp_block > fs->super->s_first_data_block &&
-+	    fs->super->s_mmp_block < ext2fs_blocks_count(fs->super))
- 		ext2fs_mark_block_bitmap2(ctx->block_found_map,
- 					  fs->super->s_mmp_block);
+ 	if (unlikely(ext4_ext_get_actual_len(newext) == 0)) {
+@@ -1937,18 +1931,8 @@ int ext4_ext_insert_extent(handle_t *handle, struct inode *inode,
+ 			if (err)
+ 				return err;
  
-diff --git a/e2fsck/super.c b/e2fsck/super.c
-index 352f16d..db3e63a 100644
---- a/e2fsck/super.c
-+++ b/e2fsck/super.c
-@@ -956,6 +956,7 @@ int check_backup_super_block(e2fsck_t ctx)
- 		    SUPER_INCOMPAT_DIFFERENT(s_feature_incompat) ||
- 		    SUPER_RO_COMPAT_DIFFERENT(s_feature_ro_compat) ||
- 		    SUPER_DIFFERENT(s_blocks_count) ||
-+		    SUPER_DIFFERENT(s_blocks_count_hi) ||
- 		    SUPER_DIFFERENT(s_inodes_count) ||
- 		    memcmp(fs->super->s_uuid, backup_sb->s_uuid,
- 			   sizeof(fs->super->s_uuid)))
-diff --git a/lib/ext2fs/mmp.c b/lib/ext2fs/mmp.c
-index 98562e7..fb266d1 100644
---- a/lib/ext2fs/mmp.c
-+++ b/lib/ext2fs/mmp.c
-@@ -37,7 +37,7 @@ errcode_t ext2fs_mmp_read(ext2_filsys fs, blk64_t mmp_blk, void *buf)
- 	errcode_t retval = 0;
+-			/*
+-			 * ext4_can_extents_be_merged should have checked
+-			 * that either both extents are uninitialized, or
+-			 * both aren't. Thus we need to check only one of
+-			 * them here.
+-			 */
+-			if (ext4_ext_is_uninitialized(ex))
+-				uninitialized = 1;
+ 			ex->ee_len = cpu_to_le16(ext4_ext_get_actual_len(ex)
+ 					+ ext4_ext_get_actual_len(newext));
+-			if (uninitialized)
+-				ext4_ext_mark_uninitialized(ex);
+ 			eh = path[depth].p_hdr;
+ 			nearex = ex;
+ 			goto merge;
+@@ -1971,20 +1955,10 @@ prepend:
+ 			if (err)
+ 				return err;
  
- 	if ((mmp_blk <= fs->super->s_first_data_block) ||
--	    (mmp_blk >= fs->super->s_blocks_count))
-+	    (mmp_blk >= ext2fs_blocks_count(fs->super)))
- 		return EXT2_ET_MMP_BAD_BLOCK;
- 
- 	/* ext2fs_open() reserves fd0,1,2 to avoid stdio collision, so checking
--- 
-1.7.3.4
+-			/*
+-			 * ext4_can_extents_be_merged should have checked
+-			 * that either both extents are uninitialized, or
+-			 * both aren't. Thus we need to check only one of
+-			 * them here.
+-			 */
+-			if (ext4_ext_is_uninitialized(ex))
+-				uninitialized = 1;
+ 			ex->ee_block = newext->ee_block;
+ 			ext4_ext_store_pblock(ex, ext4_ext_pblock(newext));
+ 			ex->ee_len = cpu_to_le16(ext4_ext_get_actual_len(ex)
+ 					+ ext4_ext_get_actual_len(newext));
+-			if (uninitialized)
+-				ext4_ext_mark_uninitialized(ex);
+ 			eh = path[depth].p_hdr;
+ 			nearex = ex;
+ 			goto merge;
+
 
