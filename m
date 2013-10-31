@@ -1,92 +1,60 @@
-From: Carlos Maiolino <cmaiolino@redhat.com>
-Subject: Re: [PATCH] ext4: check incompatible mount options when mounting
- ext2/3 [V2]
-Date: Thu, 31 Oct 2013 12:00:41 -0200
-Message-ID: <20131031140040.GD14337@orion.maiolino.org>
-References: <1351798331-14456-1-git-send-email-cmaiolino@redhat.com>
- <1358870878-7369-1-git-send-email-cmaiolino@redhat.com>
- <20130123103917.GD9821@quack.suse.cz>
- <20130123122249.GA1423@localhost.localdomain>
- <20130123130037.GA23741@quack.suse.cz>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] ext4: remove unreachable code in ext4_can_extents_be_merged()
+Date: Thu, 31 Oct 2013 16:00:19 -0500
+Message-ID: <5272C4E3.5040206@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60624 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:10848 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754302Ab3JaOAt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 31 Oct 2013 10:00:49 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9VE0lWl004251
+	id S1751215Ab3JaVAV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 31 Oct 2013 17:00:21 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9VL0KTT008679
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Thu, 31 Oct 2013 10:00:47 -0400
-Received: from orion.maiolino.org (ovpn-113-27.phx2.redhat.com [10.3.113.27])
-	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r9VE0fFV009192
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 31 Oct 2013 10:00:44 -0400
-Content-Disposition: inline
-In-Reply-To: <20130123130037.GA23741@quack.suse.cz>
+	for <linux-ext4@vger.kernel.org>; Thu, 31 Oct 2013 17:00:20 -0400
+Received: from Liberator.local (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id r9VL0JHV030705
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 31 Oct 2013 17:00:20 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi guys, my apologies to have not touched this conversation for a while, got
-busy with other stuff.
+commit
+ec22ba8e ext4: disable merging of uninitialized extents
 
-So, let me continue this.
+ensured that if either extent under consideration is uninit,
+we decline to merge, and immediately return.
 
-On Wed, Jan 23, 2013 at 02:00:37PM +0100, Jan Kara wrote:
-> On Wed 23-01-13 07:22:49, Carlos Maiolino wrote:
-> > On Wed, Jan 23, 2013 at 11:39:17AM +0100, Jan Kara wrote:
-> > > On Tue 22-01-13 11:07:58, Carlos Maiolino wrote:
-> > > > This checks for incompatible mounting options when using ext4 module to mount
-> > > > ext3 or ext2 filesystems.
-> > > > 
-> > > > Sets two new flags to group ext4 mount options that are incompatible with ext2
-> > > > and ext3, and then add two functions -- check_ext2/3_incompat_mount() -- to
-> > > > check and warn/fail mount, if any of these options are being used.
-> > > > 
-> > > > I believe, some options like those expecting an argument needs to be checked
-> > > > during parsing time.
-> > > > 
-> > > > barrier mount, although it has a flag, when mounting an ext2fs, where
-> > > > barriers are not supported (afaik), should also be checked during parse
-> > > > time, otherwise the BARRIER mount flag will be set.
-> > > > 
-> > > > I didn't add all mount options I believe to need to raise a warning, just
-> > > > those with a flag set on superblock, another flags should be added after a
-> > > > discussion to reach a concensus of all ext2/3 options that should be rejected by
-> > > > ext4 mount.
-> > >   Thinking about it a bit more I'm not sure if restricting mount options is
-> > > the right thing to start with.  IMHO what we should restrict is mounting
-> > > filesystem with certain *features* as ext3/ext2. So e.g. filesystem with
-> > > EXT4_FEATURE_INCOMPAT_EXTENTS cannot be mounted as ext2 or ext3. Similarly
-> > > as currently we forbid mounting ext3 filesystem with
-> > > EXT3_FEATURE_INCOMPAT_RECOVER as ext2... This should avoid the confusion
-> > > which could arise when someone reports problems with "ext3" filesystem but
-> > > actually has some of the ext4 features enabled.
-> > > 
-> > This is interesting, but I wonder if not restricting mount options, but
-> > features, would open a 'window' to let users change their filesystem on-disk
-> > format without know what they are doing, but I might be wrong.
->   If there are mount options that enable features, then these should be
-> disallowed for ext2/ext3 mounts. But I think we already got rid of these
-> traps on users...
-> 
-> 								Honza
-> -- 
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
+But right after that test, we test again for an uninit
+extent; we can never hit this.  So just remove the impossible
+test and associated variable.
 
-Jan, I agree with the idea of check for incompat features and I can work on that
-with no problem, but I still think we need to also ensure some mount options are
-not allowed to be used with some specific ExtFS versions wheter it change the
-disk format (we probably got rid of these as you said) or not. Not sure if my
-previous (V2) to restrict mount options lacks something or need to be reworked
-in some way (of course now it should to fit new kernel versions).
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-As an example, commit=<secs> option doesn't make sense to be used on ext2
-filesystems, but you can mount an ext2 FS with this option with no problem.
+Disclosure: compile-tested only.
 
-
--- 
-Carlos
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 54d52af..de6d467 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -1666,7 +1666,7 @@ int
+ ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
+ 				struct ext4_extent *ex2)
+ {
+-	unsigned short ext1_ee_len, ext2_ee_len, max_len;
++	unsigned short ext1_ee_len, ext2_ee_len;
+ 
+ 	/*
+ 	 * Make sure that both extents are initialized. We don't merge
+@@ -1677,11 +1677,6 @@ ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
+ 	if (ext4_ext_is_uninitialized(ex1) || ext4_ext_is_uninitialized(ex2))
+ 		return 0;
+ 
+-	if (ext4_ext_is_uninitialized(ex1))
+-		max_len = EXT_UNINIT_MAX_LEN;
+-	else
+-		max_len = EXT_INIT_MAX_LEN;
