@@ -1,81 +1,78 @@
-From: "Dilger, Andreas" <andreas.dilger@intel.com>
-Subject: Re: "make check" broken on maint branch?
-Date: Fri, 1 Nov 2013 18:24:09 +0000
-Message-ID: <CE98BD77.7C15F%andreas.dilger@intel.com>
-References: <20131101032115.GA14263@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga01.intel.com ([192.55.52.88]:20515 "EHLO mga01.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751693Ab3KASYQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Nov 2013 14:24:16 -0400
-In-Reply-To: <20131101032115.GA14263@thunk.org>
-Content-Language: en-US
-Content-ID: <874A209423A8FB4EA7A5B608C76EE1A5@intel.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Cody P Schafer <cody@linux.vnet.ibm.com>
+Subject: [PATCH 6/8] fs/ext3: use rbtree postorder iteration helper instead of opencoding
+Date: Fri,  1 Nov 2013 15:38:50 -0700
+Message-ID: <1383345566-25087-6-git-send-email-cody@linux.vnet.ibm.com>
+References: <1383345566-25087-1-git-send-email-cody@linux.vnet.ibm.com>
+Cc: Cody P Schafer <cody@linux.vnet.ibm.com>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1383345566-25087-1-git-send-email-cody@linux.vnet.ibm.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2013/10/31 9:21 PM, "Theodore Ts'o" <tytso@mit.edu> wrote:
+Use rbtree_postorder_for_each_entry_safe() to destroy the rbtree instead
+of opencoding an alternate postorder iteration that modifies the tree
 
->On Fri, Nov 01, 2013 at 10:35:56AM +0800, Zheng Liu wrote:
->> Hi Andreas,
->> 
->> On Thu, Oct 31, 2013 at 09:35:25PM +0000, Dilger, Andreas wrote:
->> > I tried to add in a "truncate -s $SIZE_2 $TMPFILE", but it complains
->>that
->> > it isn't able to truncate the file in /tmp to 2TB:
->> > 
->> >   truncating `/tmp/e2fsprogs-tmp.OGxb09' at 2199023255552 bytes: File
->>too
->> > large
->> > 
->> > Testing manually, it seems I'm not allowed to create a file in tmpfs
->>larger
->> > than 256GB.  How large does this file need to be for this test to be
->>valid?
->> > 
->> > Anyone else seen these problems, or do I need to dig in further?
->> 
->> Yes, I also can see these problems.
->
->Hmm.... it works for me.  Run while r_64bit_big_expand is running:
->
->% ls -l tmp
->...
->24896 -rw-r--r--. 1 tytso      tytso      2199023255552 Oct 31 23:17
->e2fsprogs-tmp.pkOcCc
->...
->
->% df /tmp
->Filesystem     1K-blocks  Used Available Use% Mounted on
->tmpfs            3216420 26008   3190412   1% /tmp
->
->What version of the kernel are you running?  I am using 3.12-rc5 plus
->the ext4 dev tree, so I'm using a pretty recent kernel.
+Signed-off-by: Cody P Schafer <cody@linux.vnet.ibm.com>
+---
+ fs/ext3/dir.c | 36 +++++-------------------------------
+ 1 file changed, 5 insertions(+), 31 deletions(-)
 
-It was in the original email - the failing systems are both RHEL6,
-2.6.32-358.11.1.el6 (w/4GB RAM) and 2.6.32-279.5.1.el6 (w/ 2GB RAM).
-Both fail to create files in tmpfs larger than 256GB.
-
-
->Maybe this is a relatively new feature of tmpfs?  If so, I should
->probably change the test so that it's a bit more portable on people
->using older kernels.
-
-Looking at the s_maxbytes value in current kernels shows me that it was
-changed in v3.0-7280-g285b2c4 and has not been backported to the RHEL 6
-kernel that I'm using at least.
-
-
-Cheers, Andreas
+diff --git a/fs/ext3/dir.c b/fs/ext3/dir.c
+index bafdd48..a331ad1 100644
+--- a/fs/ext3/dir.c
++++ b/fs/ext3/dir.c
+@@ -309,43 +309,17 @@ struct fname {
+  */
+ static void free_rb_tree_fname(struct rb_root *root)
+ {
+-	struct rb_node	*n = root->rb_node;
+-	struct rb_node	*parent;
+-	struct fname	*fname;
+-
+-	while (n) {
+-		/* Do the node's children first */
+-		if (n->rb_left) {
+-			n = n->rb_left;
+-			continue;
+-		}
+-		if (n->rb_right) {
+-			n = n->rb_right;
+-			continue;
+-		}
+-		/*
+-		 * The node has no children; free it, and then zero
+-		 * out parent's link to it.  Finally go to the
+-		 * beginning of the loop and try to free the parent
+-		 * node.
+-		 */
+-		parent = rb_parent(n);
+-		fname = rb_entry(n, struct fname, rb_hash);
++	struct fname *fname, *next;
++
++	rbtree_postorder_for_each_entry_safe(fname, next, root, rb_hash)
+ 		while (fname) {
+ 			struct fname * old = fname;
+ 			fname = fname->next;
+ 			kfree (old);
+ 		}
+-		if (!parent)
+-			*root = RB_ROOT;
+-		else if (parent->rb_left == n)
+-			parent->rb_left = NULL;
+-		else if (parent->rb_right == n)
+-			parent->rb_right = NULL;
+-		n = parent;
+-	}
+-}
+ 
++	*root = RB_ROOT;
++}
+ 
+ static struct dir_private_info *ext3_htree_create_dir_info(struct file *filp,
+ 							   loff_t pos)
 -- 
-Andreas Dilger
-
-Lustre Software Architect
-Intel High Performance Data Division
-
-
+1.8.4.2
