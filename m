@@ -1,35 +1,39 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH] ext4: remove unreachable code in
+Subject: Re: [PATCH] ext4: remove unreachable code after
  ext4_can_extents_be_merged()
-Date: Fri, 1 Nov 2013 11:05:25 +0800
-Message-ID: <20131101030525.GA7314@gmail.com>
+Date: Fri, 1 Nov 2013 11:09:19 +0800
+Message-ID: <20131101030919.GB7314@gmail.com>
 References: <5272C4E3.5040206@redhat.com>
+ <5272C929.80303@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: ext4 development <linux-ext4@vger.kernel.org>
 To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f47.google.com ([209.85.220.47]:41059 "EHLO
-	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754021Ab3KADDJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Oct 2013 23:03:09 -0400
-Received: by mail-pa0-f47.google.com with SMTP id lf10so3397145pab.6
-        for <linux-ext4@vger.kernel.org>; Thu, 31 Oct 2013 20:03:08 -0700 (PDT)
+Received: from mail-pa0-f51.google.com ([209.85.220.51]:63259 "EHLO
+	mail-pa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755088Ab3KADHG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Oct 2013 23:07:06 -0400
+Received: by mail-pa0-f51.google.com with SMTP id ld10so3399866pab.24
+        for <linux-ext4@vger.kernel.org>; Thu, 31 Oct 2013 20:07:05 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <5272C4E3.5040206@redhat.com>
+In-Reply-To: <5272C929.80303@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 31, 2013 at 04:00:19PM -0500, Eric Sandeen wrote:
+On Thu, Oct 31, 2013 at 04:18:33PM -0500, Eric Sandeen wrote:
 > commit
 > ec22ba8e ext4: disable merging of uninitialized extents
-> 
+>  
 > ensured that if either extent under consideration is uninit,
-> we decline to merge, and immediately return.
+> we decline to merge, and ext4_can_extents_be_merged() returns false.
 > 
-> But right after that test, we test again for an uninit
-> extent; we can never hit this.  So just remove the impossible
-> test and associated variable.
+> So there is no need for the caller to then test whether the
+> extent under consideration is unitialized; if it were, we
+> wouldn't have gotten that far.
+> 
+> The comments were also inaccurate; ext4_can_extents_be_merged()
+> no longer XORs the states, it fails if *either* is uninit.
 > 
 > Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
@@ -41,42 +45,82 @@ Thanks,
 
 > ---
 > 
-> Disclosure: compile-tested only.
+> Disclaimer: compile-tested only.
 > 
 > diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 54d52af..de6d467 100644
+> index de6d467..35f65cf 100644
 > --- a/fs/ext4/extents.c
 > +++ b/fs/ext4/extents.c
-> @@ -1666,7 +1666,7 @@ int
->  ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
->  				struct ext4_extent *ex2)
->  {
-> -	unsigned short ext1_ee_len, ext2_ee_len, max_len;
-> +	unsigned short ext1_ee_len, ext2_ee_len;
+> @@ -1715,7 +1715,6 @@ static int ext4_ext_try_to_merge_right(struct inode *inode,
+>  	struct ext4_extent_header *eh;
+>  	unsigned int depth, len;
+>  	int merge_done = 0;
+> -	int uninitialized = 0;
 >  
->  	/*
->  	 * Make sure that both extents are initialized. We don't merge
-> @@ -1677,11 +1677,6 @@ ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
->  	if (ext4_ext_is_uninitialized(ex1) || ext4_ext_is_uninitialized(ex2))
->  		return 0;
+>  	depth = ext_depth(inode);
+>  	BUG_ON(path[depth].p_hdr == NULL);
+> @@ -1725,12 +1724,8 @@ static int ext4_ext_try_to_merge_right(struct inode *inode,
+>  		if (!ext4_can_extents_be_merged(inode, ex, ex + 1))
+>  			break;
+>  		/* merge with next extent! */
+> -		if (ext4_ext_is_uninitialized(ex))
+> -			uninitialized = 1;
+>  		ex->ee_len = cpu_to_le16(ext4_ext_get_actual_len(ex)
+>  				+ ext4_ext_get_actual_len(ex + 1));
+> -		if (uninitialized)
+> -			ext4_ext_mark_uninitialized(ex);
 >  
-> -	if (ext4_ext_is_uninitialized(ex1))
-> -		max_len = EXT_UNINIT_MAX_LEN;
-> -	else
-> -		max_len = EXT_INIT_MAX_LEN;
-> -
->  	ext1_ee_len = ext4_ext_get_actual_len(ex1);
->  	ext2_ee_len = ext4_ext_get_actual_len(ex2);
+>  		if (ex + 1 < EXT_LAST_EXTENT(eh)) {
+>  			len = (EXT_LAST_EXTENT(eh) - ex - 1)
+> @@ -1885,7 +1880,6 @@ int ext4_ext_insert_extent(handle_t *handle, struct inode *inode,
+>  	struct ext4_ext_path *npath = NULL;
+>  	int depth, len, err;
+>  	ext4_lblk_t next;
+> -	unsigned uninitialized = 0;
+>  	int mb_flags = 0;
 >  
-> @@ -1694,7 +1689,7 @@ ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
->  	 * as an RO_COMPAT feature, refuse to merge to extents if
->  	 * this can result in the top bit of ee_len being set.
->  	 */
-> -	if (ext1_ee_len + ext2_ee_len > max_len)
-> +	if (ext1_ee_len + ext2_ee_len > EXT_INIT_MAX_LEN)
->  		return 0;
->  #ifdef AGGRESSIVE_TEST
->  	if (ext1_ee_len >= 4)
+>  	if (unlikely(ext4_ext_get_actual_len(newext) == 0)) {
+> @@ -1937,18 +1931,8 @@ int ext4_ext_insert_extent(handle_t *handle, struct inode *inode,
+>  			if (err)
+>  				return err;
+>  
+> -			/*
+> -			 * ext4_can_extents_be_merged should have checked
+> -			 * that either both extents are uninitialized, or
+> -			 * both aren't. Thus we need to check only one of
+> -			 * them here.
+> -			 */
+> -			if (ext4_ext_is_uninitialized(ex))
+> -				uninitialized = 1;
+>  			ex->ee_len = cpu_to_le16(ext4_ext_get_actual_len(ex)
+>  					+ ext4_ext_get_actual_len(newext));
+> -			if (uninitialized)
+> -				ext4_ext_mark_uninitialized(ex);
+>  			eh = path[depth].p_hdr;
+>  			nearex = ex;
+>  			goto merge;
+> @@ -1971,20 +1955,10 @@ prepend:
+>  			if (err)
+>  				return err;
+>  
+> -			/*
+> -			 * ext4_can_extents_be_merged should have checked
+> -			 * that either both extents are uninitialized, or
+> -			 * both aren't. Thus we need to check only one of
+> -			 * them here.
+> -			 */
+> -			if (ext4_ext_is_uninitialized(ex))
+> -				uninitialized = 1;
+>  			ex->ee_block = newext->ee_block;
+>  			ext4_ext_store_pblock(ex, ext4_ext_pblock(newext));
+>  			ex->ee_len = cpu_to_le16(ext4_ext_get_actual_len(ex)
+>  					+ ext4_ext_get_actual_len(newext));
+> -			if (uninitialized)
+> -				ext4_ext_mark_uninitialized(ex);
+>  			eh = path[depth].p_hdr;
+>  			nearex = ex;
+>  			goto merge;
+> 
 > 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
