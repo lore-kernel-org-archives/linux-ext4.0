@@ -1,85 +1,84 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: "make check" broken on maint branch?
-Date: Fri, 1 Nov 2013 10:35:56 +0800
-Message-ID: <20131101023556.GA28605@gmail.com>
-References: <CE98293A.7BB07%andreas.dilger@intel.com>
+Subject: Re: [PATCH] ext4: remove unreachable code in
+ ext4_can_extents_be_merged()
+Date: Fri, 1 Nov 2013 11:05:25 +0800
+Message-ID: <20131101030525.GA7314@gmail.com>
+References: <5272C4E3.5040206@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "tytso@mit.edu" <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "Dilger, Andreas" <andreas.dilger@intel.com>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f170.google.com ([209.85.192.170]:40759 "EHLO
-	mail-pd0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751978Ab3KACdk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Oct 2013 22:33:40 -0400
-Received: by mail-pd0-f170.google.com with SMTP id v10so3227980pde.15
-        for <linux-ext4@vger.kernel.org>; Thu, 31 Oct 2013 19:33:40 -0700 (PDT)
+Received: from mail-pa0-f47.google.com ([209.85.220.47]:41059 "EHLO
+	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754021Ab3KADDJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Oct 2013 23:03:09 -0400
+Received: by mail-pa0-f47.google.com with SMTP id lf10so3397145pab.6
+        for <linux-ext4@vger.kernel.org>; Thu, 31 Oct 2013 20:03:08 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <CE98293A.7BB07%andreas.dilger@intel.com>
+In-Reply-To: <5272C4E3.5040206@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Andreas,
+On Thu, Oct 31, 2013 at 04:00:19PM -0500, Eric Sandeen wrote:
+> commit
+> ec22ba8e ext4: disable merging of uninitialized extents
+> 
+> ensured that if either extent under consideration is uninit,
+> we decline to merge, and immediately return.
+> 
+> But right after that test, we test again for an uninit
+> extent; we can never hit this.  So just remove the impossible
+> test and associated variable.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-On Thu, Oct 31, 2013 at 09:35:25PM +0000, Dilger, Andreas wrote:
-> It seems that the current e2fsprogs "maint" branch has broken tests?
-> At least on two different systems I tried this on had the same problem:
-> 
->   r_64bit_big_expand: very large fs growth using ext4 w/64bit: failed
->   r_bigalloc_big_expand: ext4 with bigalloc: failed
->   r_ext4_big_expand: very large fs growth using ext4: failed
-> 
-> The test logs show:
-> 
->   /tmp/e2fsprogs-tmp.VitAZy: 13/32768 files (7.7% non-contiguous),
-> 6870/131072 blocks
->   ../resize/resize2fs -d 31 /tmp/e2fsprogs-tmp.VitAZy 2T
->   resize2fs 1.42.8 (20-Jun-2013)
->   The containing partition (or device) is only 131072 (4k) blocks.
->   You requested a new size of 536870912 blocks.
-> 
-> 
-> I tried to add in a "truncate -s $SIZE_2 $TMPFILE", but it complains that
-> it
-> isn't able to truncate the file in /tmp to 2TB:
-> 
->   truncating `/tmp/e2fsprogs-tmp.OGxb09' at 2199023255552 bytes: File too
-> large
-> 
-> Testing manually, it seems I'm not allowed to create a file in tmpfs larger
-> than 256GB.  How large does this file need to be for this test to be valid?
-> 
-> 
-> I'm also seeing a consistent test failure in f_extent_oobounds on ONE of
-> the
-> two systems, though I can't see why the results are inconsistent since they
-> have the same GCC, glibc and almost the same kernel (RHEL
-> 2.6.32-358.11.1.el6
-> and 2.6.32-279.5.1.el6, not that it should make any difference).
-> 
->   more f_extent*.failed
->   --- f_extent_oobounds/expect.1  2013-10-31 20:01:06.299616314 +0000
->   +++ f_extent_oobounds.1.log     2013-10-31 21:16:21.008616804 +0000
->   @@ -1,24 +1,20 @@
->    Pass 1: Checking inodes, blocks, and sizes
->   -Inode 12, end of extent exceeds allowed value
->   -       (logical block 15, physical block 200, len 30)
->   -Clear? yes
->   -
->   -Inode 12, i_blocks is 154, should be 94.  Fix? yes
->   +Inode 12, i_blocks is 154, should be 0.  Fix? yes
-> 
-> This is still true after "make distclean" and rebuilding the whole tree.
-> It seems that e2fsck isn't detecting the new PR_1_EXTENT_END_OUT_OF_BOUNDS
-> problem on this system for some reason?  Usually this kind of inconsistency
-> is due to some uninitialized stack variable being used that is different
-> on the two systems.
-> 
-> 
-> Anyone else seen these problems, or do I need to dig in further?
-
-Yes, I also can see these problems.
+Looks good to me.
+Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
 
 Thanks,
                                                 - Zheng
+
+> ---
+> 
+> Disclosure: compile-tested only.
+> 
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 54d52af..de6d467 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -1666,7 +1666,7 @@ int
+>  ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
+>  				struct ext4_extent *ex2)
+>  {
+> -	unsigned short ext1_ee_len, ext2_ee_len, max_len;
+> +	unsigned short ext1_ee_len, ext2_ee_len;
+>  
+>  	/*
+>  	 * Make sure that both extents are initialized. We don't merge
+> @@ -1677,11 +1677,6 @@ ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
+>  	if (ext4_ext_is_uninitialized(ex1) || ext4_ext_is_uninitialized(ex2))
+>  		return 0;
+>  
+> -	if (ext4_ext_is_uninitialized(ex1))
+> -		max_len = EXT_UNINIT_MAX_LEN;
+> -	else
+> -		max_len = EXT_INIT_MAX_LEN;
+> -
+>  	ext1_ee_len = ext4_ext_get_actual_len(ex1);
+>  	ext2_ee_len = ext4_ext_get_actual_len(ex2);
+>  
+> @@ -1694,7 +1689,7 @@ ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
+>  	 * as an RO_COMPAT feature, refuse to merge to extents if
+>  	 * this can result in the top bit of ee_len being set.
+>  	 */
+> -	if (ext1_ee_len + ext2_ee_len > max_len)
+> +	if (ext1_ee_len + ext2_ee_len > EXT_INIT_MAX_LEN)
+>  		return 0;
+>  #ifdef AGGRESSIVE_TEST
+>  	if (ext1_ee_len >= 4)
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
