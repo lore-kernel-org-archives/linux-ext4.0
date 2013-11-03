@@ -1,209 +1,58 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH RFC] fs: add FIEMAP_FLAG_DISCARD support
-Date: Sat,  2 Nov 2013 19:45:30 -0400
-Message-ID: <1383435930-29295-1-git-send-email-tytso@mit.edu>
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH RFC] fs: add FIEMAP_FLAG_DISCARD support
+Date: Mon, 4 Nov 2013 10:14:42 +1100
+Message-ID: <20131103231442.GM6188@dastard>
+References: <1383435930-29295-1-git-send-email-tytso@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:29594 "EHLO
+	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752438Ab3KCXOt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 3 Nov 2013 18:14:49 -0500
+Content-Disposition: inline
+In-Reply-To: <1383435930-29295-1-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Add the ability for a user who has write access to a file to issue a
-discard request for blocks belonging to a file.  This can be done via
-a new flag to the FIEMAP ioctl, or via the BLKDISCARD ioctl (which
-previously only worked on block devices).
+On Sat, Nov 02, 2013 at 07:45:30PM -0400, Theodore Ts'o wrote:
+> Add the ability for a user who has write access to a file to issue a
+> discard request for blocks belonging to a file.  This can be done via
+> a new flag to the FIEMAP ioctl, or via the BLKDISCARD ioctl (which
+> previously only worked on block devices).
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/extents.c           |  3 +-
- fs/ioctl.c                  | 99 +++++++++++++++++++++++++++++++++++++++++++++
- include/linux/fs.h          |  3 ++
- include/uapi/linux/fiemap.h |  4 +-
- 4 files changed, 107 insertions(+), 2 deletions(-)
+FIEMAP is not the correct interface for data modifying operations.
+It is an interface that returns information about file metadata (i.e
+the layout of a file) - it is not an interface for modifying the
+contents of the file.
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index c639f51..1e0744f 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4797,7 +4797,8 @@ static int ext4_find_delayed_extent(struct inode *inode,
- 	return next_del;
- }
- /* fiemap flags we can handle specified here */
--#define EXT4_FIEMAP_FLAGS	(FIEMAP_FLAG_SYNC|FIEMAP_FLAG_XATTR)
-+#define EXT4_FIEMAP_FLAGS	(FIEMAP_FLAG_SYNC | FIEMAP_FLAG_XATTR |\
-+				 FIEMAP_FLAG_CACHE | FIEMAP_FLAG_DISCARD)
- 
- static int ext4_xattr_fiemap(struct inode *inode,
- 				struct fiemap_extent_info *fieinfo)
-diff --git a/fs/ioctl.c b/fs/ioctl.c
-index fd507fb..d7698d1 100644
---- a/fs/ioctl.c
-+++ b/fs/ioctl.c
-@@ -15,6 +15,7 @@
- #include <linux/writeback.h>
- #include <linux/buffer_head.h>
- #include <linux/falloc.h>
-+#include <linux/blkdev.h>
- 
- #include <asm/ioctls.h>
- 
-@@ -64,6 +65,57 @@ static int ioctl_fibmap(struct file *filp, int __user *p)
- 	return put_user(res, p);
- }
- 
-+/*
-+ * fiemap_discuard - handle the FIEMAP_FLAG_DISCARD flagg
-+ */
-+static int fiemap_discard(struct fiemap_extent_info *fieinfo, u64 logical,
-+			  u64 phys, u64 len, u32 flags)
-+{
-+	struct super_block *sb = fieinfo->fi_sb;
-+	int	align;
-+
-+	/* pr_notice("fiemap_discard: %llu %llu %llu\n", logical, phys, len); */
-+	if (flags & (FIEMAP_EXTENT_UNKNOWN |
-+		     FIEMAP_EXTENT_ENCODED |
-+		     FIEMAP_EXTENT_DATA_ENCRYPTED |
-+		     FIEMAP_EXTENT_DELALLOC |
-+		     FIEMAP_EXTENT_DATA_TAIL |
-+		     FIEMAP_EXTENT_DATA_INLINE |
-+		     FIEMAP_EXTENT_NOT_ALIGNED |
-+		     FIEMAP_EXTENT_SHARED))
-+		return 0;
-+
-+	if (logical < fieinfo->fi_logical_start) {
-+		u64 d = fieinfo->fi_logical_start - logical;
-+		if (d > len)
-+			return 0;
-+		logical += d;
-+		phys += d;
-+		len -= d;
-+	}
-+
-+	if (logical + len > fieinfo->fi_logical_end)
-+		len -= logical + len - fieinfo->fi_logical_end;
-+
-+	align = logical & (sb->s_blocksize - 1);
-+	if ((phys < align) || (len < align))
-+		return 0;
-+	logical -= align;
-+	phys -= align;
-+	len -= align;
-+	len &= ~(sb->s_blocksize - 1);
-+	if (len == 0)
-+		return 0;
-+
-+	/* pr_notice("fiemap_discard adjusted: %llu %llu %llu\n", logical, phys, len); */
-+	/* pr_notice("Issuing discard: %llu %llu\n", phys >> sb->s_blocksize_bits,
-+		     len >> sb->s_blocksize_bits); */
-+
-+	return sb_issue_discard(sb, phys >> sb->s_blocksize_bits,
-+				len >> sb->s_blocksize_bits,
-+				GFP_KERNEL, 0);
-+}
-+
- /**
-  * fiemap_fill_next_extent - Fiemap helper function
-  * @fieinfo:	Fiemap context passed into ->fiemap
-@@ -88,6 +140,12 @@ int fiemap_fill_next_extent(struct fiemap_extent_info *fieinfo, u64 logical,
- 	struct fiemap_extent extent;
- 	struct fiemap_extent __user *dest = fieinfo->fi_extents_start;
- 
-+	if (fieinfo->fi_flags & FIEMAP_FLAG_DISCARD) {
-+		int r = fiemap_discard(fieinfo, logical, phys, len, flags);
-+		if (r)
-+			return r;
-+	}
-+
- 	/* only count the extents */
- 	if (fieinfo->fi_extents_max == 0) {
- 		fieinfo->fi_extents_mapped++;
-@@ -197,6 +255,13 @@ static int ioctl_fiemap(struct file *filp, unsigned long arg)
- 	fieinfo.fi_flags = fiemap.fm_flags;
- 	fieinfo.fi_extents_max = fiemap.fm_extent_count;
- 	fieinfo.fi_extents_start = ufiemap->fm_extents;
-+	fieinfo.fi_sb = sb;
-+	fieinfo.fi_logical_start = fiemap.fm_start;
-+	fieinfo.fi_logical_end = fiemap.fm_start + len;
-+
-+	if ((fiemap.fm_flags & FIEMAP_FLAG_DISCARD) &&
-+	    !(filp->f_mode & FMODE_WRITE))
-+		return -EBADF;
- 
- 	if (fiemap.fm_extent_count != 0 &&
- 	    !access_ok(VERIFY_WRITE, fieinfo.fi_extents_start,
-@@ -588,6 +653,40 @@ int do_vfs_ioctl(struct file *filp, unsigned int fd, unsigned int cmd,
- 	case FS_IOC_FIEMAP:
- 		return ioctl_fiemap(filp, arg);
- 
-+	case BLKDISCARD: {
-+		struct fiemap_extent_info fieinfo = { 0, };
-+		struct inode *inode = file_inode(filp);
-+		struct super_block *sb = inode->i_sb;
-+		uint64_t range[2];
-+		u64 len;
-+		int error;
-+
-+		if (!inode->i_op->fiemap)
-+			return -EOPNOTSUPP;
-+
-+		if (!(filp->f_mode & FMODE_WRITE))
-+			return -EBADF;
-+
-+		if (copy_from_user(range, (void __user *)arg, sizeof(range)))
-+			return -EFAULT;
-+
-+		error = fiemap_check_ranges(sb, range[0], range[1], &len);
-+		if (error) {
-+			if (error == -EBADF)
-+				error = -ENOTTY;
-+			return error;
-+		}
-+
-+		fieinfo.fi_flags = FIEMAP_FLAG_DISCARD;
-+		fieinfo.fi_extents_max = 0;
-+		fieinfo.fi_extents_start = NULL;
-+		fieinfo.fi_sb = inode->i_sb;
-+		fieinfo.fi_logical_start = range[0];
-+		fieinfo.fi_logical_end = range[0] + len;
-+
-+		error = inode->i_op->fiemap(inode, &fieinfo, range[0], len);
-+	}
-+
- 	case FIGETBSZ:
- 		return put_user(inode->i_sb->s_blocksize, argp);
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 3f40547..fec07ee 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1480,6 +1480,9 @@ struct fiemap_extent_info {
- 	unsigned int fi_flags;		/* Flags as passed from user */
- 	unsigned int fi_extents_mapped;	/* Number of mapped extents */
- 	unsigned int fi_extents_max;	/* Size of fiemap_extent array */
-+	struct super_block *fi_sb;
-+	u64 fi_logical_start;
-+	u64 fi_logical_end;
- 	struct fiemap_extent __user *fi_extents_start; /* Start of
- 							fiemap_extent array */
- };
-diff --git a/include/uapi/linux/fiemap.h b/include/uapi/linux/fiemap.h
-index 0c51d61..849d57f 100644
---- a/include/uapi/linux/fiemap.h
-+++ b/include/uapi/linux/fiemap.h
-@@ -41,8 +41,10 @@ struct fiemap {
- #define FIEMAP_FLAG_SYNC	0x00000001 /* sync file data before map */
- #define FIEMAP_FLAG_XATTR	0x00000002 /* map extended attribute tree */
- #define FIEMAP_FLAG_CACHE	0x00000004 /* request caching of the extents */
-+#define FIEMAP_FLAG_DISCARD	0x00000008 /* issue discard */
- 
--#define FIEMAP_FLAGS_COMPAT	(FIEMAP_FLAG_SYNC | FIEMAP_FLAG_XATTR)
-+#define FIEMAP_FLAGS_COMPAT	(FIEMAP_FLAG_SYNC | FIEMAP_FLAG_XATTR |\
-+				 FIEMAP_FLAG_CACHE | FIEMAP_FLAG_DISCARD)
- 
- #define FIEMAP_EXTENT_LAST		0x00000001 /* Last extent in file. */
- #define FIEMAP_EXTENT_UNKNOWN		0x00000002 /* Data location unknown. */
+fallocate() is the interface used to modify file layout and
+manipulate the data within it and hence, IMO, is much better aligned
+to this operation. And to tell the truth, I'd much prefer such an
+interface is guaranteed to return zeros to users rather than rely on
+whether the underlying device supports discard or whatever they
+return after a discard. i.e. if the user is asking to destroy the
+data in the file, we better be able to ensure the data in the file
+is in a known state at the filesystem level regardless of the
+underlying storage capabilities....
+
+For example, XFS already has a XFS_IOC_ZERO operation which is used
+to return allocated blocks to unwritten state (i.e. always return
+zeros) and could easily be extended to issue discards on the blocks
+if the underlying device supports discards-to-zero or WRITE_SAME.
+I've previously proposed this interface for fallocate() - old patch
+here:
+
+http://permalink.gmane.org/gmane.linux.file-systems/62449
+
+Cheers,
+
+Dave.
 -- 
-1.7.12.rc0.22.gcdd159b
-
+Dave Chinner
+david@fromorbit.com
