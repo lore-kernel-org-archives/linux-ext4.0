@@ -1,43 +1,91 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 62751] INFO: rcu_sched detected stalls on CPUs/tasks: { 3}
- (detected by 2, t=15107 jiffies, g=270766, c=270765, q=0)
-Date: Mon, 04 Nov 2013 11:53:01 +0000
-Message-ID: <bug-62751-13602-v8iI8NrTkb@https.bugzilla.kernel.org/>
-References: <bug-62751-13602@https.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 6/8] fs/ext3: use rbtree postorder iteration helper
+ instead of opencoding
+Date: Mon, 4 Nov 2013 15:26:38 +0100
+Message-ID: <20131104142638.GD8566@quack.suse.cz>
+References: <1383345566-25087-1-git-send-email-cody@linux.vnet.ibm.com>
+ <1383345566-25087-6-git-send-email-cody@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:54347 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750808Ab3KDLxF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 4 Nov 2013 06:53:05 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 8AA6A20554
-	for <linux-ext4@vger.kernel.org>; Mon,  4 Nov 2013 11:53:02 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 5C30E2054D
-	for <linux-ext4@vger.kernel.org>; Mon,  4 Nov 2013 11:53:01 +0000 (UTC)
-In-Reply-To: <bug-62751-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Cody P Schafer <cody@linux.vnet.ibm.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1383345566-25087-6-git-send-email-cody@linux.vnet.ibm.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=62751
+On Fri 01-11-13 15:38:50, Cody P Schafer wrote:
+> Use rbtree_postorder_for_each_entry_safe() to destroy the rbtree instead
+> of opencoding an alternate postorder iteration that modifies the tree
+  Thanks. I've merged the patch into my tree.
 
-Alan <alan@lxorguk.ukuu.org.uk> changed:
+								Honza
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |alan@lxorguk.ukuu.org.uk
-     Kernel Version|3.11.6-031106-generic       |3.11.6
-
---- Comment #7 from Alan <alan@lxorguk.ukuu.org.uk> ---
-Jan - its on a vmware virtual platform so it could just be that vmware ran off
-with the CPU. Can you duplicate this on a native platform, and if you disable
-the NMI watchdog does the kernel hang or merely stall for a moment in this
-situation ?
-
+> Signed-off-by: Cody P Schafer <cody@linux.vnet.ibm.com>
+> ---
+>  fs/ext3/dir.c | 36 +++++-------------------------------
+>  1 file changed, 5 insertions(+), 31 deletions(-)
+> 
+> diff --git a/fs/ext3/dir.c b/fs/ext3/dir.c
+> index bafdd48..a331ad1 100644
+> --- a/fs/ext3/dir.c
+> +++ b/fs/ext3/dir.c
+> @@ -309,43 +309,17 @@ struct fname {
+>   */
+>  static void free_rb_tree_fname(struct rb_root *root)
+>  {
+> -	struct rb_node	*n = root->rb_node;
+> -	struct rb_node	*parent;
+> -	struct fname	*fname;
+> -
+> -	while (n) {
+> -		/* Do the node's children first */
+> -		if (n->rb_left) {
+> -			n = n->rb_left;
+> -			continue;
+> -		}
+> -		if (n->rb_right) {
+> -			n = n->rb_right;
+> -			continue;
+> -		}
+> -		/*
+> -		 * The node has no children; free it, and then zero
+> -		 * out parent's link to it.  Finally go to the
+> -		 * beginning of the loop and try to free the parent
+> -		 * node.
+> -		 */
+> -		parent = rb_parent(n);
+> -		fname = rb_entry(n, struct fname, rb_hash);
+> +	struct fname *fname, *next;
+> +
+> +	rbtree_postorder_for_each_entry_safe(fname, next, root, rb_hash)
+>  		while (fname) {
+>  			struct fname * old = fname;
+>  			fname = fname->next;
+>  			kfree (old);
+>  		}
+> -		if (!parent)
+> -			*root = RB_ROOT;
+> -		else if (parent->rb_left == n)
+> -			parent->rb_left = NULL;
+> -		else if (parent->rb_right == n)
+> -			parent->rb_right = NULL;
+> -		n = parent;
+> -	}
+> -}
+>  
+> +	*root = RB_ROOT;
+> +}
+>  
+>  static struct dir_private_info *ext3_htree_create_dir_info(struct file *filp,
+>  							   loff_t pos)
+> -- 
+> 1.8.4.2
+> 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
