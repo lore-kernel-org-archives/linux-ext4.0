@@ -1,86 +1,45 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH RFC] fs: add FIEMAP_FLAG_DISCARD support
-Date: Tue, 5 Nov 2013 15:36:25 +1100
-Message-ID: <20131105043625.GZ6188@dastard>
-References: <1383435930-29295-1-git-send-email-tytso@mit.edu>
- <20131104100343.GA10004@infradead.org>
- <20131105005146.GA26249@thunk.org>
+From: Cody P Schafer <cody@linux.vnet.ibm.com>
+Subject: Re: [PATCH 1/2] rbtree: fix postorder iteration when the rb_node
+ is not the first element in an entry
+Date: Tue, 05 Nov 2013 02:05:44 -0800
+Message-ID: <5278C2F8.3050805@linux.vnet.ibm.com>
+References: <52784ADF.1040104@linux.vnet.ibm.com> <1383615602-1784-1-git-send-email-cody@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:26236 "EHLO
-	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753850Ab3KEEg3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Nov 2013 23:36:29 -0500
-Content-Disposition: inline
-In-Reply-To: <20131105005146.GA26249@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	LKML <linux-kernel@vger.kernel.org>,
+	EXT4 <linux-ext4@vger.kernel.org>,
+	Cody P Schafer <cody@linux.vnet.ibm.com>
+To: Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1383615602-1784-1-git-send-email-cody@linux.vnet.ibm.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Nov 04, 2013 at 07:51:46PM -0500, Theodore Ts'o wrote:
-> On Mon, Nov 04, 2013 at 02:03:43AM -0800, Christoph Hellwig wrote:
-> > 
-> > Besides that I really miss an explanation what the intended use cases
-> > are.  What does this buy us over punching a hole on an actual real
-> > workload?  Where is the overhead?  Is it our shitty discard
-> > implementation? If so there's tons of low hanging fruit to fix there
-> > anyway that we shouldn't work around by interfaces taking shortcuts.
-> > Is it problems in ext4's extent management on hole punch?  Is the
-> > bit of metadata created when doing an actual hole punch too much for
-> > that very specific workload?
-> 
-> The an application in question wants to treat a large file as if it
-> were a block device --- that's hardly unprecedented; enterprise
-> databases tend to prefer using raw block devices (at least for
-> benchmarking purposes), but system administrators like to
-> administrative convenience of using a file system.
-> 
-> The goal here is get the performace as close to a raw block device as
-> possible.  Especially if you are using fast flash, the overhead of
-> deallocating blocks using punch, only to reallocate the blocks when we
-> later write into them, is just unnecessary overhead.  Also, if you
-> deallocate the blocks, they could end up getting grabbed by some other
-> block allocation, which means the file can end up getting very
-> fragmented --- which doesn't matter that much for flash, I suppose,
-> but it means the extent tree could end up growing and getting nasty
-> over time.  The bottom line is why bother doing extra work when it's
-> not necessary?
+On 11/04/2013 05:40 PM, Cody P Schafer wrote:
+> Provide a new helper called rb_next_postorder_entry() to perform NULL
+> checks and container_of() coversions and use it in
+> rbtree_for_each_entry_safe() to fix oopses that occur when rb_node is
+> not the first element in the entry.
 
-commit 447223520520b17d3b6d0631aa4838fbaf8eddb4
-Author: Dave Chinner <dchinner@redhat.com>
-Date:   Tue Aug 24 12:02:11 2010 +1000
+On second thought, it appears I was a bit to hasty with this, and this patch actually breaks things.
 
-    xfs: Introduce XFS_IOC_ZERO_RANGE
-    
-    XFS_IOC_ZERO_RANGE is the equivalent of an atomic XFS_IOC_UNRESVSP/
-    XFS_IOC_RESVSP call pair. It enabled ranges of written data to be
-    turned into zeroes without requiring IO or having to free and
-    reallocate the extents in the range given as would occur if we had
-    to punch and then preallocate them separately.  This enables
-    applications to zero parts of files very quickly without changing
-    the layout of the files in any way.
-    
-    Signed-off-by: Dave Chinner <dchinner@redhat.com>
-    Reviewed-by: Christoph Hellwig <hch@lst.de>
+On 11/04/2013 04:45 PM, Jan Kara wrote:> On Mon 04-11-13 15:26:38, Jan Kara wrote:
+>> On Fri 01-11-13 15:38:50, Cody P Schafer wrote:
+>>> Use rbtree_postorder_for_each_entry_safe() to destroy the rbtree instead
+>>> of opencoding an alternate postorder iteration that modifies the tree
+>>    Thanks. I've merged the patch into my tree.
+>    Hum, except that the kernel oopses with this patch. And I think the
+> problem is in rbtree_postorder_for_each_entry_safe(). How are those tests
+> for NULL supposed to work? For example if the tree is empty, 'pos' will be
+> NULL and you'll call rb_next_postorder(&NULL->field) which is pretty much
+> guaranteed to oops if 'field' doesn't have offset 0 in the structure...
 
-Sounds pretty much like the same reasons to me. IOWs, we did this
-more than 3 years ago on XFS but discard was not a requirement for
-the cloudy guy who asked for it so we simply didn't implement it.
+No, it shouldn't oops because pos won't be NULL, &pos->field will be.
 
-I agree that per-file discard is useful, but it needs to have well
-defined byte-range semantics and prevent stale data exposure to
-unprivileged users. FALLOC_FL_ZERO_RANGE has those semantics, while
-FALLOC_FL_ZERO_RANGE|FALLOC_FL_NO_HIDE_STALE gives google the
-trigger to issue discards without caring about what you get back
-from the discards....
+pos is only assigned via an rb_entry(rb_first_postorder()) or rb_entry(rb_next_postorder()). rb_next_postorder() and rb_first_postorder() can return NULL. That NULL then is munged by rb_entry to be (NULL - offset_of_field). Causing (&pos->field == NULL == (pos + offset_of_field)).
 
-Cheers,
+That is, unless I've screwed something up (very possible, as this overly hurried patchset shows).
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+I expect it's more likely that my adaptation of this to ext3's usage is buggy. Could you tell me what you did to cause the oops? And/Or post it?
