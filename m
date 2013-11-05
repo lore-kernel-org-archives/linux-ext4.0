@@ -1,83 +1,58 @@
-From: "Mrs. Mary Saleh Saville" <pattersonjwilliam@yahoo.com>
-Subject: Donation Project
-Date: Wed, 6 Nov 2013 01:42:15 +0800
-Message-ID: <201311050334.rA53YJuP021289__24934.0950548232$1383673636$gmane$org@tx.cpta.com.cn>
-Reply-To: <mary_saleh@europemail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/2] rbtree: fix postorder iteration when the rb_node is
+ not the first element in an entry
+Date: Tue, 5 Nov 2013 22:57:55 +0100
+Message-ID: <20131105215755.GB9236@quack.suse.cz>
+References: <52784ADF.1040104@linux.vnet.ibm.com>
+ <1383615602-1784-1-git-send-email-cody@linux.vnet.ibm.com>
+ <5278C2F8.3050805@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="Windows-1251"
-Content-Transfer-Encoding: 7bit
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [114.255.29.133] ([114.255.29.133]:53428 "EHLO tx.cpta.com.cn"
-	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754482Ab3KERqw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 5 Nov 2013 12:46:52 -0500
-To: <linuxdicas@yahoogroups.com.br>
-To: <linxlunx@yahoogroups.com>
-To: <linuxvadapav@yahoogroups.com>
-To: <linuxtechbiz@yahoogroups.com>
-To: <linuxindo@yahoogroups.com>
-To: <linuxhubli@yahoogroups.com>
-To: <lioc_farrerab@yahoo.es>
-To: <linux-sparse@vger.kernel.org>
-To: <linux-securitymodule@vger.kernel.org>
-To: <linux-scsi@vger.kernel.org>
-To: <linux-rtusers@vger.kernel.org>
-To: <linux-raid@vger.kernel.org>
-To: <linuxnewbie@vger.kernel.org>
-To: <linux-net@vger.kernel.org>
-To: <linux-msdos@vger.kernel.org>
-To: <linux-m68k@vger.kernel.org>
-To: <linuxkernel@vger.kernel.org>
-To: <linux-ide@vger.kernel.org>
-To: <linux-ia64@vger.kernel.org>
-To: <linuxhams@vger.kernel.org>
-To: <linux-fsdevel@vger.kernel.org>
-To: <linux-ext4@vger.kernel.org>
-To: <linuxcrypto@vger.kernel.org>
-To: <linux-btrace@vger.kernel.org>
-To: <linux-fai-devel@rrz.unikoeln.de>
-To: <linux-fai@rrz.uni-koeln.de>
-To: <lio@pd.jaring.my>
-To: <linuxppc-embedded@ozlabs.org>
-To: <linux-streams@openss7.org>
-To: <linuxutf8@nl.linux.org>
-To: <linuxers@mm.glug-bom.org>
-To: <linuxwacom-discuss@lists.sourceforge.net>
-To: <linux-usbusers@lists.sourceforge.net>
-To: <linux-usb-devel@lists.sourceforge.net>
-To: <linux-karma-devel@lists.sourceforge.net>
-To: <linux-india-help@lists.sourceforge.net>
-To: <linux-indiageneral@lists.sourceforge.net>
-To: <linuxr3000@lists.pcxperience.com>
-To: <linux-ha-dev@lists.linux-ha.org>
-To: <linux-pcmcia@lists.infradead.org>
-To: <linux-uvc-devel@lists.berlios.de>
-To: <linux-nantes@listes.univ-nantes.fr>
-To: <linuxchix@linuxchix.org.br>
-To: <linux-plug@linux.org.pe>
-To: <linux-programming@linux.or.id>
-To: <lio@kecegroup.com>
-To: <linux-users@it.canterbury.ac.nz>
-To: <linux-il@cs.huji.ac.il>
-To: <linviawin@bellpac.po.my>
-To: <linviani@aneka-infokom.co.id>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	LKML <linux-kernel@vger.kernel.org>,
+	EXT4 <linux-ext4@vger.kernel.org>
+To: Cody P Schafer <cody@linux.vnet.ibm.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <5278C2F8.3050805@linux.vnet.ibm.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hello,
+On Tue 05-11-13 02:05:44, Cody P Schafer wrote:
+> On 11/04/2013 05:40 PM, Cody P Schafer wrote:
+> > Provide a new helper called rb_next_postorder_entry() to perform NULL
+> > checks and container_of() coversions and use it in
+> > rbtree_for_each_entry_safe() to fix oopses that occur when rb_node is
+> > not the first element in the entry.
+> 
+> On second thought, it appears I was a bit to hasty with this, and this patch actually breaks things.
+> 
+> On 11/04/2013 04:45 PM, Jan Kara wrote:> On Mon 04-11-13 15:26:38, Jan Kara wrote:
+> >> On Fri 01-11-13 15:38:50, Cody P Schafer wrote:
+> >>> Use rbtree_postorder_for_each_entry_safe() to destroy the rbtree instead
+> >>> of opencoding an alternate postorder iteration that modifies the tree
+> >>    Thanks. I've merged the patch into my tree.
+> >    Hum, except that the kernel oopses with this patch. And I think the
+> > problem is in rbtree_postorder_for_each_entry_safe(). How are those tests
+> > for NULL supposed to work? For example if the tree is empty, 'pos' will be
+> > NULL and you'll call rb_next_postorder(&NULL->field) which is pretty much
+> > guaranteed to oops if 'field' doesn't have offset 0 in the structure...
+> 
+> No, it shouldn't oops because pos won't be NULL, &pos->field will be.
+> 
+> pos is only assigned via an rb_entry(rb_first_postorder()) or
+> rb_entry(rb_next_postorder()). rb_next_postorder() and
+> rb_first_postorder() can return NULL. That NULL then is munged by
+> rb_entry to be (NULL - offset_of_field). Causing (&pos->field == NULL ==
+> (pos + offset_of_field)).
+  OK, so I had a second look. And the compiler thinks differently than you
+:) The thing is that my gcc (4.3.4) apparently assumes pointer underflow is
+undefined and thus optimizes your test &pos->field to 1. I've asked our gcc
+guys for a definitive answer but clearly your code will need some way to
+avoid pointer underflows...
 
-I am Mrs. Mary Saleh Saville an ageing widow suffering from long time illness. I have some funds I inherited from my late husband, the sum of US$3,500,000.00 and I am in need of a very honest and God fearing person that will use the fund for God's work to help the less privileged out there.
-
-I have mapped out$1,200.000.00 for your personal use in this work. While the rest will be for the work.Please if you would be able to use the funds for the Lord's work kindly reply for further details.
-
-Your full name:
-Your full address:
-Your telephone/mobile number:
-Your fax Number:
-Your full company name:
-Your age:
-
-Thanks and God bless.
-
-Mrs. Mary Saleh Saville
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
