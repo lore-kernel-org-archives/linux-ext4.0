@@ -1,139 +1,86 @@
-From: Andiry Xu <andiry@gmail.com>
-Subject: Re: [BUG][ext2] XIP does not work on ext2
-Date: Mon, 4 Nov 2013 18:37:40 -0800
-Message-ID: <CAOvWMLZ6_boRgQi2L9kqR_bWcnLDHY+uFo9g4DP=zxeGtT+dag@mail.gmail.com>
-References: <CAOvWMLZ-ezykR6TkFAoZ1UW20QF6XMOKeZH8R-FdFJkXjAP9nA@mail.gmail.com>
-	<20131105003733.GA24531@quack.suse.cz>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH RFC] fs: add FIEMAP_FLAG_DISCARD support
+Date: Tue, 5 Nov 2013 15:36:25 +1100
+Message-ID: <20131105043625.GZ6188@dastard>
+References: <1383435930-29295-1-git-send-email-tytso@mit.edu>
+ <20131104100343.GA10004@infradead.org>
+ <20131105005146.GA26249@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Wang Shilong <wangsl-fnst@cn.fujitsu.com>,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Andiry Xu <andiry.xu@gmail.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20131105003733.GA24531@quack.suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:26236 "EHLO
+	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753850Ab3KEEg3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Nov 2013 23:36:29 -0500
+Content-Disposition: inline
+In-Reply-To: <20131105005146.GA26249@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Jan,
+On Mon, Nov 04, 2013 at 07:51:46PM -0500, Theodore Ts'o wrote:
+> On Mon, Nov 04, 2013 at 02:03:43AM -0800, Christoph Hellwig wrote:
+> > 
+> > Besides that I really miss an explanation what the intended use cases
+> > are.  What does this buy us over punching a hole on an actual real
+> > workload?  Where is the overhead?  Is it our shitty discard
+> > implementation? If so there's tons of low hanging fruit to fix there
+> > anyway that we shouldn't work around by interfaces taking shortcuts.
+> > Is it problems in ext4's extent management on hole punch?  Is the
+> > bit of metadata created when doing an actual hole punch too much for
+> > that very specific workload?
+> 
+> The an application in question wants to treat a large file as if it
+> were a block device --- that's hardly unprecedented; enterprise
+> databases tend to prefer using raw block devices (at least for
+> benchmarking purposes), but system administrators like to
+> administrative convenience of using a file system.
+> 
+> The goal here is get the performace as close to a raw block device as
+> possible.  Especially if you are using fast flash, the overhead of
+> deallocating blocks using punch, only to reallocate the blocks when we
+> later write into them, is just unnecessary overhead.  Also, if you
+> deallocate the blocks, they could end up getting grabbed by some other
+> block allocation, which means the file can end up getting very
+> fragmented --- which doesn't matter that much for flash, I suppose,
+> but it means the extent tree could end up growing and getting nasty
+> over time.  The bottom line is why bother doing extra work when it's
+> not necessary?
 
-On Mon, Nov 4, 2013 at 4:37 PM, Jan Kara <jack@suse.cz> wrote:
->   Hello,
->
-> On Mon 04-11-13 14:31:34, Andiry Xu wrote:
->> When I'm trying XIP on ext2, I find that xip does not work on ext2
->> with latest kernel.
->>
->> Reproduce steps:
->> Compile kernel with following configs:
->> CONFIG_BLK_DEV_XIP=y
->> CONFIG_EXT2_FS_XIP=y
->>
->> And run following commands:
->> # mke2fs -b 4096 /dev/ram0
->> # mount -t ext2 -o xip /dev/ram0 /mnt/ramdisk/
->> # dd if=/dev/zero of=/mnt/ramdisk/test1 bs=1M count=16
->>
->> And it shows:
->> dd: writing `/mnt/ramdisk/test1': No space left on device
->>
->> df also shows /mnt/ramdisk is 100% full. Its default size is 64MB so a
->> 16MB write should only occupy 1/4 capacity.
->>
->> Criminal commit:
->> After git bisect, it points to the following commit:
->> 8e3dffc651cb668e1ff4d8b89cc1c3dde7540d3b
->> Ext2: mark inode dirty after the function dquot_free_block_nodirty is called
->   Thanks for report and the bisection!
->
->> Particularly, the following code:
->> @@ -1412,9 +1415,11 @@ allocated:
->> *errp = 0;
->> brelse(bitmap_bh);
->> -    dquot_free_block_nodirty(inode, *count-num);
->> -    mark_inode_dirty(inode);
->> -    *count = num;
->> +    if (num < *count) {
->> +        dquot_free_block_nodirty(inode, *count-num);
->> +        mark_inode_dirty(inode);
->> +        *count = num;
->> +    }
->>       return ret_block;
->>
->> Not mark_inode_dirty() is called only when num is less than *count.
->> However, I've seen
->> with the dd command, there is case where num >= *count.
->>
->> Fix:
->> I've verified that the following patch fixes the issue:
->> diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
->> index 9f9992b..5446a52 100644
->> --- a/fs/ext2/balloc.c
->> +++ b/fs/ext2/balloc.c
->> @@ -1406,11 +1406,10 @@ allocated:
->>
->>         *errp = 0;
->>         brelse(bitmap_bh);
->> -       if (num < *count) {
->> +       if (num <= *count)
->>                 dquot_free_block_nodirty(inode, *count-num);
->> -               mark_inode_dirty(inode);
->> -               *count = num;
->> -       }
->> +       mark_inode_dirty(inode);
->> +       *count = num;
->>         return ret_block;
->>
->>  io_error:
->>
->> However, I'm not familiar with ext2 source code and cannot tell if
->> this is the correct fix. At least it fixes my issue.
->   With this, you have essentially reverted a hunk from commit
-> 8e3dffc651cb668e1ff4d8b89cc1c3dde7540d3b. But I don't see a reason why it
-> should be reverted. num should never ever be greater than *count and when
-> num == count, we the code inside if doesn't do anything useful.
->
-> I've looked into the code and I think I see the problem. It is a long
-> standing bug in __ext2_get_block() in fs/ext2/xip.c. It calls
-> ext2_get_block() asking for 0 blocks to map (while we really want 1 block).
-> ext2_get_block() just passes that request and ext2_get_blocks() actually
-> allocates 1 block. And that's were the commit you have identified makes a
-> difference because previously we returned that 1 block was allocated while
-> now we return that 0 blocks were allocated and thus allocation is repeated
-> until all free blocks are exhaused.
->
-> Attached patch should fix the problem.
->
+commit 447223520520b17d3b6d0631aa4838fbaf8eddb4
+Author: Dave Chinner <dchinner@redhat.com>
+Date:   Tue Aug 24 12:02:11 2010 +1000
 
-Thanks for the reply. I've verified that your patch fixes my issue.
-And it's absolutely better than my solution.
+    xfs: Introduce XFS_IOC_ZERO_RANGE
+    
+    XFS_IOC_ZERO_RANGE is the equivalent of an atomic XFS_IOC_UNRESVSP/
+    XFS_IOC_RESVSP call pair. It enabled ranges of written data to be
+    turned into zeroes without requiring IO or having to free and
+    reallocate the extents in the range given as would occur if we had
+    to punch and then preallocate them separately.  This enables
+    applications to zero parts of files very quickly without changing
+    the layout of the files in any way.
+    
+    Signed-off-by: Dave Chinner <dchinner@redhat.com>
+    Reviewed-by: Christoph Hellwig <hch@lst.de>
 
-Tested-by: Andiry Xu <andiry.xu@gmail.com>
+Sounds pretty much like the same reasons to me. IOWs, we did this
+more than 3 years ago on XFS but discard was not a requirement for
+the cloudy guy who asked for it so we simply didn't implement it.
 
-I have another question about ext2 XIP performance, although it's not
-quite related to this thread.
+I agree that per-file discard is useful, but it needs to have well
+defined byte-range semantics and prevent stale data exposure to
+unprivileged users. FALLOC_FL_ZERO_RANGE has those semantics, while
+FALLOC_FL_ZERO_RANGE|FALLOC_FL_NO_HIDE_STALE gives google the
+trigger to issue discards without caring about what you get back
+from the discards....
 
-I'm testing xip with ext2 on a ram disk drive, the driver is brd.c.
-The RAM disk size is 2GB and I pre-fill it to guarantee that all pages
-reside in main memory.
-Then I use two different applications to write to the ram disk. One is
-open() with O_DIRECT flag, and writing with Posix write(). Another is
-open() with O_DIRECT, mmap() it to user space, then use memcpy() to
-write data. I use different request size to write data, from 512 bytes
-to 64MB.
+Cheers,
 
-In my understanding, the mmap version bypasses the file system and
-does not go to kernel space, hence it should have better performance
-than the Posix-write version. However, my test result shows it's not
-always true: when the request size is between 8KB and 1MB, the
-Posix-write() version has bandwidth about 7GB/s and mmap version only
-has 5GB/s. The test is performed on a i7-3770K machine with 8GB
-memory, kernel 3.12. Also I have tested on kernel 3.2, in which mmap
-has really bad performance, only 2GB/s for all request sizes.
-
-Do you know the reason why write() outperforms mmap() in some cases? I
-know it's not related the thread but I really appreciate if you can
-answer my question.
-
-Thanks,
-Andiry
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
