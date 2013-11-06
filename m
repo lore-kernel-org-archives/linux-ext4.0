@@ -1,132 +1,167 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/2] rbtree: fix postorder iteration when the rb_node is
- not the first element in an entry
-Date: Tue, 5 Nov 2013 23:56:19 +0100
-Message-ID: <20131105225619.GC9236@quack.suse.cz>
-References: <52784ADF.1040104@linux.vnet.ibm.com>
- <1383615602-1784-1-git-send-email-cody@linux.vnet.ibm.com>
- <5278C2F8.3050805@linux.vnet.ibm.com>
- <20131105215755.GB9236@quack.suse.cz>
+From: Andiry Xu <andiry@gmail.com>
+Subject: Re: [BUG][ext2] XIP does not work on ext2
+Date: Tue, 5 Nov 2013 17:28:35 -0800
+Message-ID: <CAOvWMLY9HAeQTsEwCchKNjL+1=-grBQrDO6-KCYcS-mxMYyRpw@mail.gmail.com>
+References: <CAOvWMLZ-ezykR6TkFAoZ1UW20QF6XMOKeZH8R-FdFJkXjAP9nA@mail.gmail.com>
+	<20131105003733.GA24531@quack.suse.cz>
+	<CAOvWMLZ6_boRgQi2L9kqR_bWcnLDHY+uFo9g4DP=zxeGtT+dag@mail.gmail.com>
+	<20131105143221.GA30006@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="IS0zKkzwUGydFO0o"
-Cc: Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	LKML <linux-kernel@vger.kernel.org>,
-	EXT4 <linux-ext4@vger.kernel.org>
-To: Cody P Schafer <cody@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Wang Shilong <wangsl-fnst@cn.fujitsu.com>,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Andiry Xu <andiry.xu@gmail.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20131105215755.GB9236@quack.suse.cz>
+In-Reply-To: <20131105143221.GA30006@quack.suse.cz>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+Hi,
 
---IS0zKkzwUGydFO0o
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+On Tue, Nov 5, 2013 at 6:32 AM, Jan Kara <jack@suse.cz> wrote:
+>   Hello,
+>
+> On Mon 04-11-13 18:37:40, Andiry Xu wrote:
+>> On Mon, Nov 4, 2013 at 4:37 PM, Jan Kara <jack@suse.cz> wrote:
+>> >   Hello,
+>> >
+>> > On Mon 04-11-13 14:31:34, Andiry Xu wrote:
+>> >> When I'm trying XIP on ext2, I find that xip does not work on ext2
+>> >> with latest kernel.
+>> >>
+>> >> Reproduce steps:
+>> >> Compile kernel with following configs:
+>> >> CONFIG_BLK_DEV_XIP=y
+>> >> CONFIG_EXT2_FS_XIP=y
+>> >>
+>> >> And run following commands:
+>> >> # mke2fs -b 4096 /dev/ram0
+>> >> # mount -t ext2 -o xip /dev/ram0 /mnt/ramdisk/
+>> >> # dd if=/dev/zero of=/mnt/ramdisk/test1 bs=1M count=16
+>> >>
+>> >> And it shows:
+>> >> dd: writing `/mnt/ramdisk/test1': No space left on device
+>> >>
+>> >> df also shows /mnt/ramdisk is 100% full. Its default size is 64MB so a
+>> >> 16MB write should only occupy 1/4 capacity.
+>> >>
+>> >> Criminal commit:
+>> >> After git bisect, it points to the following commit:
+>> >> 8e3dffc651cb668e1ff4d8b89cc1c3dde7540d3b
+>> >> Ext2: mark inode dirty after the function dquot_free_block_nodirty is called
+>> >   Thanks for report and the bisection!
+>> >
+>> >> Particularly, the following code:
+>> >> @@ -1412,9 +1415,11 @@ allocated:
+>> >> *errp = 0;
+>> >> brelse(bitmap_bh);
+>> >> -    dquot_free_block_nodirty(inode, *count-num);
+>> >> -    mark_inode_dirty(inode);
+>> >> -    *count = num;
+>> >> +    if (num < *count) {
+>> >> +        dquot_free_block_nodirty(inode, *count-num);
+>> >> +        mark_inode_dirty(inode);
+>> >> +        *count = num;
+>> >> +    }
+>> >>       return ret_block;
+>> >>
+>> >> Not mark_inode_dirty() is called only when num is less than *count.
+>> >> However, I've seen
+>> >> with the dd command, there is case where num >= *count.
+>> >>
+>> >> Fix:
+>> >> I've verified that the following patch fixes the issue:
+>> >> diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
+>> >> index 9f9992b..5446a52 100644
+>> >> --- a/fs/ext2/balloc.c
+>> >> +++ b/fs/ext2/balloc.c
+>> >> @@ -1406,11 +1406,10 @@ allocated:
+>> >>
+>> >>         *errp = 0;
+>> >>         brelse(bitmap_bh);
+>> >> -       if (num < *count) {
+>> >> +       if (num <= *count)
+>> >>                 dquot_free_block_nodirty(inode, *count-num);
+>> >> -               mark_inode_dirty(inode);
+>> >> -               *count = num;
+>> >> -       }
+>> >> +       mark_inode_dirty(inode);
+>> >> +       *count = num;
+>> >>         return ret_block;
+>> >>
+>> >>  io_error:
+>> >>
+>> >> However, I'm not familiar with ext2 source code and cannot tell if
+>> >> this is the correct fix. At least it fixes my issue.
+>> >   With this, you have essentially reverted a hunk from commit
+>> > 8e3dffc651cb668e1ff4d8b89cc1c3dde7540d3b. But I don't see a reason why it
+>> > should be reverted. num should never ever be greater than *count and when
+>> > num == count, we the code inside if doesn't do anything useful.
+>> >
+>> > I've looked into the code and I think I see the problem. It is a long
+>> > standing bug in __ext2_get_block() in fs/ext2/xip.c. It calls
+>> > ext2_get_block() asking for 0 blocks to map (while we really want 1 block).
+>> > ext2_get_block() just passes that request and ext2_get_blocks() actually
+>> > allocates 1 block. And that's were the commit you have identified makes a
+>> > difference because previously we returned that 1 block was allocated while
+>> > now we return that 0 blocks were allocated and thus allocation is repeated
+>> > until all free blocks are exhaused.
+>> >
+>> > Attached patch should fix the problem.
+>> >
+>>
+>> Thanks for the reply. I've verified that your patch fixes my issue.
+>> And it's absolutely better than my solution.
+>>
+>> Tested-by: Andiry Xu <andiry.xu@gmail.com>
+>   Thanks for testing!
+>
+>> I have another question about ext2 XIP performance, although it's not
+>> quite related to this thread.
+>>
+>> I'm testing xip with ext2 on a ram disk drive, the driver is brd.c.
+>> The RAM disk size is 2GB and I pre-fill it to guarantee that all pages
+>> reside in main memory.
+>> Then I use two different applications to write to the ram disk. One is
+>> open() with O_DIRECT flag, and writing with Posix write(). Another is
+>> open() with O_DIRECT, mmap() it to user space, then use memcpy() to
+>> write data. I use different request size to write data, from 512 bytes
+>> to 64MB.
+>>
+>> In my understanding, the mmap version bypasses the file system and
+>> does not go to kernel space, hence it should have better performance
+>> than the Posix-write version. However, my test result shows it's not
+>> always true: when the request size is between 8KB and 1MB, the
+>> Posix-write() version has bandwidth about 7GB/s and mmap version only
+>> has 5GB/s. The test is performed on a i7-3770K machine with 8GB
+>> memory, kernel 3.12. Also I have tested on kernel 3.2, in which mmap
+>> has really bad performance, only 2GB/s for all request sizes.
+>>
+>> Do you know the reason why write() outperforms mmap() in some cases? I
+>> know it's not related the thread but I really appreciate if you can
+>> answer my question.
+>   Well, I'm not completely sure. mmap()ed memory always works on page-by-page
+> basis - you first access the page, it gets faulted in and you can further
+> access it. So for small (sub page size) accesses this is a win because you
+> don't have an overhead of syscall and fs write path. For accesses larger
+> than page size the overhead of syscall and some initial checks is well
+> hidden by other things. I guess write() ends up being more efficient
+> because write path taken for each page is somewhat lighter than full page
+> fault. But you'd need to look into perf data to get some hard numbers on
+> where the time is spent.
+>
 
-On Tue 05-11-13 22:57:55, Jan Kara wrote:
-> On Tue 05-11-13 02:05:44, Cody P Schafer wrote:
-> > On 11/04/2013 05:40 PM, Cody P Schafer wrote:
-> > > Provide a new helper called rb_next_postorder_entry() to perform NULL
-> > > checks and container_of() coversions and use it in
-> > > rbtree_for_each_entry_safe() to fix oopses that occur when rb_node is
-> > > not the first element in the entry.
-> > 
-> > On second thought, it appears I was a bit to hasty with this, and this patch actually breaks things.
-> > 
-> > On 11/04/2013 04:45 PM, Jan Kara wrote:> On Mon 04-11-13 15:26:38, Jan Kara wrote:
-> > >> On Fri 01-11-13 15:38:50, Cody P Schafer wrote:
-> > >>> Use rbtree_postorder_for_each_entry_safe() to destroy the rbtree instead
-> > >>> of opencoding an alternate postorder iteration that modifies the tree
-> > >>    Thanks. I've merged the patch into my tree.
-> > >    Hum, except that the kernel oopses with this patch. And I think the
-> > > problem is in rbtree_postorder_for_each_entry_safe(). How are those tests
-> > > for NULL supposed to work? For example if the tree is empty, 'pos' will be
-> > > NULL and you'll call rb_next_postorder(&NULL->field) which is pretty much
-> > > guaranteed to oops if 'field' doesn't have offset 0 in the structure...
-> > 
-> > No, it shouldn't oops because pos won't be NULL, &pos->field will be.
-> > 
-> > pos is only assigned via an rb_entry(rb_first_postorder()) or
-> > rb_entry(rb_next_postorder()). rb_next_postorder() and
-> > rb_first_postorder() can return NULL. That NULL then is munged by
-> > rb_entry to be (NULL - offset_of_field). Causing (&pos->field == NULL ==
-> > (pos + offset_of_field)).
->   OK, so I had a second look. And the compiler thinks differently than you
-> :) The thing is that my gcc (4.3.4) apparently assumes pointer underflow is
-> undefined and thus optimizes your test &pos->field to 1. I've asked our gcc
-> guys for a definitive answer but clearly your code will need some way to
-> avoid pointer underflows...
-  I've just now checked how e.g. hlist iterators solve similar problem and
-modified the rbtree iterator accordingly. The patch is attached and with it
-and your ext3 patch my test machine is able to boot again.
+Thanks for the reply. However I have filled up the whole RAM disk
+before doing the test, i.e. asked the brd driver to allocate all the
+pages initially. Moreover I have done the test on PMFS, a file system
+for persistent memory, and the result is the same. PMFS reserves some
+physical memory during system boot and then use it to emulate the
+persistent memory device, so there shouldn't be any page fault. I
+think there should be some other reason.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+I will try to look into the perf data and see what happens. Thanks for
+the advice.
 
---IS0zKkzwUGydFO0o
-Content-Type: text/x-patch; charset=us-ascii
-Content-Disposition: attachment; filename="0001-rbtree-Fix-rbtree_postorder_for_each_entry_safe-i.patch"
-
->From d51a16626d241ded8913768d6f24484b1d4335ba Mon Sep 17 00:00:00 2001
-From: Jan Kara <jack@suse.cz>
-Date: Tue, 5 Nov 2013 21:39:48 +0100
-Subject: [PATCH] rbtree: Fix rbtree_postorder_for_each_entry_safe() iterator
-
-The iterator rbtree_postorder_for_each_entry_safe() relies on pointer
-underflow behavior when testing for loop termination. In particular
-it expects that
-  &rb_entry(NULL, type, field)->field
-is NULL. But the result of this expression is not defined by a C standard
-and some gcc versions (e.g. 4.3.4) assume the above expression can never
-be equal to NULL. The net result is an oops because the iteration is not
-properly terminated.
-
-Fix the problem by modifying the iterator to avoid pointer underflows.
-
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- include/linux/rbtree.h |   16 +++++++++-------
- 1 files changed, 9 insertions(+), 7 deletions(-)
-
-diff --git a/include/linux/rbtree.h b/include/linux/rbtree.h
-index aa870a4..57e75ae 100644
---- a/include/linux/rbtree.h
-+++ b/include/linux/rbtree.h
-@@ -85,6 +85,11 @@ static inline void rb_link_node(struct rb_node * node, struct rb_node * parent,
- 	*rb_link = node;
- }
- 
-+#define rb_entry_safe(ptr, type, member) \
-+	({ typeof(ptr) ____ptr = (ptr); \
-+	   ____ptr ? rb_entry(____ptr, type, member) : NULL; \
-+	})
-+
- /**
-  * rbtree_postorder_for_each_entry_safe - iterate over rb_root in post order of
-  * given type safe against removal of rb_node entry
-@@ -95,12 +100,9 @@ static inline void rb_link_node(struct rb_node * node, struct rb_node * parent,
-  * @field:	the name of the rb_node field within 'type'.
-  */
- #define rbtree_postorder_for_each_entry_safe(pos, n, root, field) \
--	for (pos = rb_entry(rb_first_postorder(root), typeof(*pos), field),\
--		n = rb_entry(rb_next_postorder(&pos->field), \
--			typeof(*pos), field); \
--	     &pos->field; \
--	     pos = n, \
--		n = rb_entry(rb_next_postorder(&pos->field), \
--			typeof(*pos), field))
-+	for (pos = rb_entry_safe(rb_first_postorder(root), typeof(*pos), field); \
-+	     pos && ({ n = rb_entry_safe(rb_next_postorder(&pos->field), \
-+			typeof(*pos), field); 1; }); \
-+	     pos = n)
- 
- #endif	/* _LINUX_RBTREE_H */
--- 
-1.6.0.2
-
-
---IS0zKkzwUGydFO0o--
+Thanks,
+Andiry
