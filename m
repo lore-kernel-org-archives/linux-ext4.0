@@ -1,91 +1,59 @@
-From: "Mrs. Nkoana Maite Mashabane" <pesa_san@yahoo.gr>
-Subject: INVESTMENT PARTNERSHIP
-Date: Wed, 6 Nov 2013 13:30:25 +0800
-Message-ID: <201311051522.rA5FMPuP032011@tx.cpta.com.cn>
-Reply-To: <nkoa_mashabane@safrica.com>
-Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="Windows-1251"
-Content-Transfer-Encoding: 7bit
+From: Andreas Dilger <andreas.dilger@intel.com>
+Subject: [PATCH] ext4: return non-zero st_blocks for inline data
+Date: Wed,  6 Nov 2013 03:42:32 -0700
+Message-ID: <1383734552-12991-1-git-send-email-andreas.dilger@intel.com>
+Cc: linux-ext4@vger.kernel.org,
+	Andreas Dilger <andreas.dilger@intel.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [114.255.29.133] ([114.255.29.133]:42781 "EHLO tx.cpta.com.cn"
-	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1750802Ab3KFFfn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 6 Nov 2013 00:35:43 -0500
-To: <linuxdicas@yahoogroups.com.br>
-To: <linxlunx@yahoogroups.com>
-To: <linuxvadapav@yahoogroups.com>
-To: <linuxtechbiz@yahoogroups.com>
-To: <linuxindo@yahoogroups.com>
-To: <linuxhubli@yahoogroups.com>
-To: <lioc_farrerab@yahoo.es>
-To: <linux-sparse@vger.kernel.org>
-To: <linux-securitymodule@vger.kernel.org>
-To: <linux-scsi@vger.kernel.org>
-To: <linux-rtusers@vger.kernel.org>
-To: <linux-raid@vger.kernel.org>
-To: <linuxnewbie@vger.kernel.org>
-To: <linux-net@vger.kernel.org>
-To: <linux-msdos@vger.kernel.org>
-To: <linux-m68k@vger.kernel.org>
-To: <linuxkernel@vger.kernel.org>
-To: <linux-ide@vger.kernel.org>
-To: <linux-ia64@vger.kernel.org>
-To: <linuxhams@vger.kernel.org>
-To: <linux-fsdevel@vger.kernel.org>
-To: <linux-ext4@vger.kernel.org>
-To: <linuxcrypto@vger.kernel.org>
-To: <linux-btrace@vger.kernel.org>
-To: <linux-fai-devel@rrz.unikoeln.de>
-To: <linux-fai@rrz.uni-koeln.de>
-To: <lio@pd.jaring.my>
-To: <linuxppc-embedded@ozlabs.org>
-To: <linux-streams@openss7.org>
-To: <linuxutf8@nl.linux.org>
-To: <linuxers@mm.glug-bom.org>
-To: <linuxwacom-discuss@lists.sourceforge.net>
-To: <linux-usbusers@lists.sourceforge.net>
-To: <linux-usb-devel@lists.sourceforge.net>
-To: <linux-karma-devel@lists.sourceforge.net>
-To: <linux-india-help@lists.sourceforge.net>
-To: <linux-indiageneral@lists.sourceforge.net>
-To: <linuxr3000@lists.pcxperience.com>
-To: <linux-ha-dev@lists.linux-ha.org>
-To: <linux-pcmcia@lists.infradead.org>
-To: <linux-uvc-devel@lists.berlios.de>
-To: <linux-nantes@listes.univ-nantes.fr>
-To: <linuxchix@linuxchix.org.br>
-To: <linux-plug@linux.org.pe>
-To: <linux-programming@linux.or.id>
-To: <lio@kecegroup.com>
-To: <linux-users@it.canterbury.ac.nz>
-To: <linux-il@cs.huji.ac.il>
-To: <linviawin@bellpac.po.my>
-To: <linviani@aneka-infokom.co.id>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:57514 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756383Ab3KFKwK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Nov 2013 05:52:10 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
+Return a non-zero st_blocks to userspace for statfs() and friends.
+Some versions of tar will assume that files with st_blocks == 0
+do not contain any data and will skip reading them entirely.
 
-I am Mrs. Maite Nkoana Mashabane, am the Minister of International Relations and Cooperation of South Africa, Please view my profile. http://www.gcis.gov.za/gcis/gcis_profile.jsp?id=1480.
+Signed-off-by: Andreas Dilger <andreas.dilger@intel.com>
+---
+ fs/ext4/inode.c |   13 +++++++++++--
+ 1 files changed, 11 insertions(+), 2 deletions(-)
 
-I would like you to indicate your interest to receive the transfer of $3.5 Million. I will like you to stand as the beneficiary of the said fund.
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index cbfe13b..e832a6a 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4532,6 +4532,15 @@ int ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
+ 	generic_fillattr(inode, stat);
+ 
+ 	/*
++	 * If there is inline data in the inode, the inode will normally not
++	 * have data blocks allocated (it may have an external xattr block).
++	 * Report at least one sector for such files, so tools like tar, rsync,
++	 * others doen't incorrectly think the file is completely sparse.
++	 */
++	if (unlikely(ext4_has_inline_data(inode)))
++		stat->blocks += (stat->size + 511) >> 9;
++
++	/*
+ 	 * We can't update i_blocks if the block allocation is delayed
+ 	 * otherwise in the case of system crash before the real block
+ 	 * allocation is done, we will have i_blocks inconsistent with
+@@ -4542,9 +4551,9 @@ int ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
+ 	 * blocks for this file.
+ 	 */
+ 	delalloc_blocks = EXT4_C2B(EXT4_SB(inode->i_sb),
+-				EXT4_I(inode)->i_reserved_data_blocks);
++				   EXT4_I(inode)->i_reserved_data_blocks);
++	stat->blocks += delalloc_blocks << (inode->i_sb->s_blocksize_bits - 9);
+ 
+-	stat->blocks += (delalloc_blocks << inode->i_sb->s_blocksize_bits)>>9;
+ 	return 0;
+ }
+ 
+-- 
+1.7.3.4
 
-However, I will be resigning soon and want to establish any type of machinery tools devices or agriculture or even real estate under my own registered company. I have the sum to invest. How can I come in contact with you in partnership/investment transaction?
-
-I want you to assist me in investing the money in your country.
-
-I will also like you to send me the following information below:
-
-(1)Full names:
-(2)Private phone number:
-(3)Current residential address:
-(4)Your Country:
-(5)Occupation:
-(6)Age and Sex:
-
-Please I do not need to remind you of the need for absolute Confidentiality if this transaction must succeed. YOU MUST NOT CALL ME! If you do not feel comfortable with this transaction, do not hesitate to discontinue.
-
-I will give you more detail's as soon as you confirm your willingness to assisting me.
-
-Mrs. Nkoana Maite Mashabane
