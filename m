@@ -1,143 +1,103 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v2 07/11] fs/ext4: use rbtree postorder iteration helper
- instead of opencoding
-Date: Thu, 7 Nov 2013 10:28:01 +0100
-Message-ID: <20131107092801.GB28464@quack.suse.cz>
+From: Michel Lespinasse <walken@google.com>
+Subject: Re: [PATCH v2 01/11] rbtree: Fix rbtree_postorder_for_each_entry_safe()
+ iterator
+Date: Thu, 7 Nov 2013 03:51:04 -0800
+Message-ID: <CANN689EhajVC4cq_oz2zaxOmMyYBZvGrKVsYYwkGH_C9jPGKag@mail.gmail.com>
 References: <1383788572-25938-1-git-send-email-cody@linux.vnet.ibm.com>
- <1383788572-25938-8-git-send-email-cody@linux.vnet.ibm.com>
+	<1383788572-25938-2-git-send-email-cody@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1
 Cc: Andrew Morton <akpm@linux-foundation.org>,
 	EXT4 <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>,
-	rostedt@goodmis.org, Andreas Dilger <adilger.kernel@dilger.ca>,
-	Theodore Ts'o <tytso@mit.edu>,
+	rostedt@goodmis.org, Seth Jennings <sjenning@linux.vnet.ibm.com>,
 	LKML <linux-kernel@vger.kernel.org>
 To: Cody P Schafer <cody@linux.vnet.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:41160 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752856Ab3KGJ2F (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 7 Nov 2013 04:28:05 -0500
-Content-Disposition: inline
-In-Reply-To: <1383788572-25938-8-git-send-email-cody@linux.vnet.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1383788572-25938-2-git-send-email-cody@linux.vnet.ibm.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed 06-11-13 17:42:36, Cody P Schafer wrote:
-> Use rbtree_postorder_for_each_entry_safe() to destroy the rbtree instead
-> of opencoding an alternate postorder iteration that modifies the tree
-  The patch looks good. You can add:
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
-> 
+On Wed, Nov 6, 2013 at 5:42 PM, Cody P Schafer <cody@linux.vnet.ibm.com> wrote:
+> From: Jan Kara <jack@suse.cz>
+>
+> The iterator rbtree_postorder_for_each_entry_safe() relies on pointer
+> underflow behavior when testing for loop termination. In particular
+> it expects that
+>   &rb_entry(NULL, type, field)->field
+> is NULL. But the result of this expression is not defined by a C standard
+> and some gcc versions (e.g. 4.3.4) assume the above expression can never
+> be equal to NULL. The net result is an oops because the iteration is not
+> properly terminated.
+>
+> Fix the problem by modifying the iterator to avoid pointer underflows.
+>
+> Signed-off-by: Jan Kara <jack@suse.cz>
 > Signed-off-by: Cody P Schafer <cody@linux.vnet.ibm.com>
 > ---
->  fs/ext4/block_validity.c | 33 ++++-----------------------------
->  fs/ext4/dir.c            | 35 +++++------------------------------
->  2 files changed, 9 insertions(+), 59 deletions(-)
-> 
-> diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
-> index 3f11656..41eb9dc 100644
-> --- a/fs/ext4/block_validity.c
-> +++ b/fs/ext4/block_validity.c
-> @@ -180,37 +180,12 @@ int ext4_setup_system_zone(struct super_block *sb)
->  /* Called when the filesystem is unmounted */
->  void ext4_release_system_zone(struct super_block *sb)
->  {
-> -	struct rb_node	*n = EXT4_SB(sb)->system_blks.rb_node;
-> -	struct rb_node	*parent;
-> -	struct ext4_system_zone	*entry;
-> +	struct ext4_system_zone	*entry, *n;
->  
-> -	while (n) {
-> -		/* Do the node's children first */
-> -		if (n->rb_left) {
-> -			n = n->rb_left;
-> -			continue;
-> -		}
-> -		if (n->rb_right) {
-> -			n = n->rb_right;
-> -			continue;
-> -		}
-> -		/*
-> -		 * The node has no children; free it, and then zero
-> -		 * out parent's link to it.  Finally go to the
-> -		 * beginning of the loop and try to free the parent
-> -		 * node.
-> -		 */
-> -		parent = rb_parent(n);
-> -		entry = rb_entry(n, struct ext4_system_zone, node);
-> +	rbtree_postorder_for_each_entry_safe(entry, n,
-> +			&EXT4_SB(sb)->system_blks, node)
->  		kmem_cache_free(ext4_system_zone_cachep, entry);
-> -		if (!parent)
-> -			EXT4_SB(sb)->system_blks = RB_ROOT;
-> -		else if (parent->rb_left == n)
-> -			parent->rb_left = NULL;
-> -		else if (parent->rb_right == n)
-> -			parent->rb_right = NULL;
-> -		n = parent;
-> -	}
-> +
->  	EXT4_SB(sb)->system_blks = RB_ROOT;
+>  include/linux/rbtree.h | 16 +++++++++-------
+>  1 file changed, 9 insertions(+), 7 deletions(-)
+>
+> diff --git a/include/linux/rbtree.h b/include/linux/rbtree.h
+> index aa870a4..57e75ae 100644
+> --- a/include/linux/rbtree.h
+> +++ b/include/linux/rbtree.h
+> @@ -85,6 +85,11 @@ static inline void rb_link_node(struct rb_node * node, struct rb_node * parent,
+>         *rb_link = node;
 >  }
->  
-> diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-> index 680bb33..d638c57 100644
-> --- a/fs/ext4/dir.c
-> +++ b/fs/ext4/dir.c
-> @@ -353,41 +353,16 @@ struct fname {
+>
+> +#define rb_entry_safe(ptr, type, member) \
+> +       ({ typeof(ptr) ____ptr = (ptr); \
+> +          ____ptr ? rb_entry(____ptr, type, member) : NULL; \
+> +       })
+> +
+>  /**
+>   * rbtree_postorder_for_each_entry_safe - iterate over rb_root in post order of
+>   * given type safe against removal of rb_node entry
+> @@ -95,12 +100,9 @@ static inline void rb_link_node(struct rb_node * node, struct rb_node * parent,
+>   * @field:     the name of the rb_node field within 'type'.
 >   */
->  static void free_rb_tree_fname(struct rb_root *root)
->  {
-> -	struct rb_node	*n = root->rb_node;
-> -	struct rb_node	*parent;
-> -	struct fname	*fname;
-> -
-> -	while (n) {
-> -		/* Do the node's children first */
-> -		if (n->rb_left) {
-> -			n = n->rb_left;
-> -			continue;
-> -		}
-> -		if (n->rb_right) {
-> -			n = n->rb_right;
-> -			continue;
-> -		}
-> -		/*
-> -		 * The node has no children; free it, and then zero
-> -		 * out parent's link to it.  Finally go to the
-> -		 * beginning of the loop and try to free the parent
-> -		 * node.
-> -		 */
-> -		parent = rb_parent(n);
-> -		fname = rb_entry(n, struct fname, rb_hash);
-> +	struct fname *fname, *next;
-> +
-> +	rbtree_postorder_for_each_entry_safe(fname, next, root, rb_hash)
->  		while (fname) {
->  			struct fname *old = fname;
->  			fname = fname->next;
->  			kfree(old);
->  		}
-> -		if (!parent)
-> -			*root = RB_ROOT;
-> -		else if (parent->rb_left == n)
-> -			parent->rb_left = NULL;
-> -		else if (parent->rb_right == n)
-> -			parent->rb_right = NULL;
-> -		n = parent;
-> -	}
-> +
-> +	*root = RB_ROOT;
->  }
->  
->  
-> -- 
+>  #define rbtree_postorder_for_each_entry_safe(pos, n, root, field) \
+> -       for (pos = rb_entry(rb_first_postorder(root), typeof(*pos), field),\
+> -               n = rb_entry(rb_next_postorder(&pos->field), \
+> -                       typeof(*pos), field); \
+> -            &pos->field; \
+> -            pos = n, \
+> -               n = rb_entry(rb_next_postorder(&pos->field), \
+> -                       typeof(*pos), field))
+> +       for (pos = rb_entry_safe(rb_first_postorder(root), typeof(*pos), field); \
+> +            pos && ({ n = rb_entry_safe(rb_next_postorder(&pos->field), \
+> +                       typeof(*pos), field); 1; }); \
+> +            pos = n)
+>
+>  #endif /* _LINUX_RBTREE_H */
+> --
 > 1.8.4.2
-> 
+
+Well, this really isn't pretty, and I'm not sure that
+rbtree_postorder_for_each_entry_safe() is a good idea in the first
+place. Note that we have never had or needed such a macro for the
+common case of in-order iteration; why would we need it for the
+less-common case of postorder iteration ?
+
+I think it's just as well to have clients write something like
+struct rb_node *rb_node = rb_first_postorder(root);
+while (rb_node) {
+    struct rb_node *rb_next_node = rb_next_postorder(rb_node);
+    struct mystruct node = rb_entry(rb_node, struct mystruct,
+mystruct_rb_field);
+    .... do whatever, possibly destroying node ...
+    rb_node = rb_next_node;
+}
+
+That said, there is some precedent for this kind of API in
+hlist_for_each_entry_safe, so I guess that's acceptable if there will
+be enough users of this macro - but it seems very strange to me that
+we would need it for the postorder traversal while we don't for the
+in-order traversal. I would prefer keeping rbtree.h minimal if that is
+possible.
+
+Thanks,
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Michel "Walken" Lespinasse
+A program is never fully debugged until the last user dies.
