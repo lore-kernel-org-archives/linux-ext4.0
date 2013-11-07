@@ -1,29 +1,17 @@
 From: Cody P Schafer <cody@linux.vnet.ibm.com>
-Subject: [PATCH v2 06/11] fs/ubifs: use rbtree postorder iteration helper
- instead of opencoding
-Date: Wed,  6 Nov 2013 17:42:35 -0800
-Message-ID: <1383788572-25938-7-git-send-email-cody@linux.vnet.ibm.com>
+Subject: [PATCH v2 07/11] fs/ext4: use rbtree postorder iteration helper instead of opencoding
+Date: Wed,  6 Nov 2013 17:42:36 -0800
+Message-ID: <1383788572-25938-8-git-send-email-cody@linux.vnet.ibm.com>
 References: <1383788572-25938-1-git-send-email-cody@linux.vnet.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-mtd@lists.infradead.org, Cody P Schafer <cody@linux.vnet.ibm.com>,
- LKML <linux-kernel@vger.kernel.org>
+Cc: LKML <linux-kernel@vger.kernel.org>,
+	Cody P Schafer <cody@linux.vnet.ibm.com>
 To: Andrew Morton <akpm@linux-foundation.org>,
- EXT4 <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>,
- rostedt@goodmis.org, Adrian Hunter <adrian.hunter@intel.com>,
- Artem Bityutskiy <dedekind1@gmail.com>
-Return-path: <linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org>
+	EXT4 <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>,
+	rostedt@goodmis.org, Andreas Dilger <adilger.kernel@dilger.ca>,
+	"Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <1383788572-25938-1-git-send-email-cody@linux.vnet.ibm.com>
-List-Unsubscribe: <http://lists.infradead.org/mailman/options/linux-mtd>,
- <mailto:linux-mtd-request@lists.infradead.org?subject=unsubscribe>
-List-Archive: <http://lists.infradead.org/pipermail/linux-mtd/>
-List-Post: <mailto:linux-mtd@lists.infradead.org>
-List-Help: <mailto:linux-mtd-request@lists.infradead.org?subject=help>
-List-Subscribe: <http://lists.infradead.org/mailman/listinfo/linux-mtd>,
- <mailto:linux-mtd-request@lists.infradead.org?subject=subscribe>
-Sender: "linux-mtd" <linux-mtd-bounces@lists.infradead.org>
-Errors-To: linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 Use rbtree_postorder_for_each_entry_safe() to destroy the rbtree instead
@@ -31,227 +19,106 @@ of opencoding an alternate postorder iteration that modifies the tree
 
 Signed-off-by: Cody P Schafer <cody@linux.vnet.ibm.com>
 ---
- fs/ubifs/debug.c    | 22 +++-------------------
- fs/ubifs/log.c      | 21 ++-------------------
- fs/ubifs/orphan.c   | 21 ++-------------------
- fs/ubifs/recovery.c | 21 +++------------------
- fs/ubifs/super.c    | 24 ++++--------------------
- fs/ubifs/tnc.c      | 22 +++-------------------
- 6 files changed, 17 insertions(+), 114 deletions(-)
+ fs/ext4/block_validity.c | 33 ++++-----------------------------
+ fs/ext4/dir.c            | 35 +++++------------------------------
+ 2 files changed, 9 insertions(+), 59 deletions(-)
 
-diff --git a/fs/ubifs/debug.c b/fs/ubifs/debug.c
-index 6e025e0..378c179 100644
---- a/fs/ubifs/debug.c
-+++ b/fs/ubifs/debug.c
-@@ -2118,26 +2118,10 @@ out_free:
-  */
- static void free_inodes(struct fsck_data *fsckd)
+diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
+index 3f11656..41eb9dc 100644
+--- a/fs/ext4/block_validity.c
++++ b/fs/ext4/block_validity.c
+@@ -180,37 +180,12 @@ int ext4_setup_system_zone(struct super_block *sb)
+ /* Called when the filesystem is unmounted */
+ void ext4_release_system_zone(struct super_block *sb)
  {
--	struct rb_node *this = fsckd->inodes.rb_node;
--	struct fsck_inode *fscki;
-+	struct fsck_inode *fscki, *n;
+-	struct rb_node	*n = EXT4_SB(sb)->system_blks.rb_node;
+-	struct rb_node	*parent;
+-	struct ext4_system_zone	*entry;
++	struct ext4_system_zone	*entry, *n;
  
--	while (this) {
--		if (this->rb_left)
--			this = this->rb_left;
--		else if (this->rb_right)
--			this = this->rb_right;
--		else {
--			fscki = rb_entry(this, struct fsck_inode, rb);
--			this = rb_parent(this);
--			if (this) {
--				if (this->rb_left == &fscki->rb)
--					this->rb_left = NULL;
--				else
--					this->rb_right = NULL;
--			}
--			kfree(fscki);
+-	while (n) {
+-		/* Do the node's children first */
+-		if (n->rb_left) {
+-			n = n->rb_left;
+-			continue;
 -		}
+-		if (n->rb_right) {
+-			n = n->rb_right;
+-			continue;
+-		}
+-		/*
+-		 * The node has no children; free it, and then zero
+-		 * out parent's link to it.  Finally go to the
+-		 * beginning of the loop and try to free the parent
+-		 * node.
+-		 */
+-		parent = rb_parent(n);
+-		entry = rb_entry(n, struct ext4_system_zone, node);
++	rbtree_postorder_for_each_entry_safe(entry, n,
++			&EXT4_SB(sb)->system_blks, node)
+ 		kmem_cache_free(ext4_system_zone_cachep, entry);
+-		if (!parent)
+-			EXT4_SB(sb)->system_blks = RB_ROOT;
+-		else if (parent->rb_left == n)
+-			parent->rb_left = NULL;
+-		else if (parent->rb_right == n)
+-			parent->rb_right = NULL;
+-		n = parent;
 -	}
-+	rbtree_postorder_for_each_entry_safe(fscki, n, &fsckd->inodes, rb)
-+		kfree(fscki);
- }
- 
- /**
-diff --git a/fs/ubifs/log.c b/fs/ubifs/log.c
-index 36bd4ef..a902c59 100644
---- a/fs/ubifs/log.c
-+++ b/fs/ubifs/log.c
-@@ -574,27 +574,10 @@ static int done_already(struct rb_root *done_tree, int lnum)
-  */
- static void destroy_done_tree(struct rb_root *done_tree)
- {
--	struct rb_node *this = done_tree->rb_node;
--	struct done_ref *dr;
-+	struct done_ref *dr, *n;
- 
--	while (this) {
--		if (this->rb_left) {
--			this = this->rb_left;
--			continue;
--		} else if (this->rb_right) {
--			this = this->rb_right;
--			continue;
--		}
--		dr = rb_entry(this, struct done_ref, rb);
--		this = rb_parent(this);
--		if (this) {
--			if (this->rb_left == &dr->rb)
--				this->rb_left = NULL;
--			else
--				this->rb_right = NULL;
--		}
-+	rbtree_postorder_for_each_entry_safe(dr, n, done_tree, rb)
- 		kfree(dr);
--	}
- }
- 
- /**
-diff --git a/fs/ubifs/orphan.c b/fs/ubifs/orphan.c
-index ba32da3..f1c3e5a1 100644
---- a/fs/ubifs/orphan.c
-+++ b/fs/ubifs/orphan.c
-@@ -815,27 +815,10 @@ static int dbg_find_check_orphan(struct rb_root *root, ino_t inum)
- 
- static void dbg_free_check_tree(struct rb_root *root)
- {
--	struct rb_node *this = root->rb_node;
--	struct check_orphan *o;
-+	struct check_orphan *o, *n;
- 
--	while (this) {
--		if (this->rb_left) {
--			this = this->rb_left;
--			continue;
--		} else if (this->rb_right) {
--			this = this->rb_right;
--			continue;
--		}
--		o = rb_entry(this, struct check_orphan, rb);
--		this = rb_parent(this);
--		if (this) {
--			if (this->rb_left == &o->rb)
--				this->rb_left = NULL;
--			else
--				this->rb_right = NULL;
--		}
-+	rbtree_postorder_for_each_entry_safe(o, n, root, rb)
- 		kfree(o);
--	}
- }
- 
- static int dbg_orphan_check(struct ubifs_info *c, struct ubifs_zbranch *zbr,
-diff --git a/fs/ubifs/recovery.c b/fs/ubifs/recovery.c
-index 065096e..c14adb2 100644
---- a/fs/ubifs/recovery.c
-+++ b/fs/ubifs/recovery.c
-@@ -1335,29 +1335,14 @@ static void remove_ino(struct ubifs_info *c, ino_t inum)
-  */
- void ubifs_destroy_size_tree(struct ubifs_info *c)
- {
--	struct rb_node *this = c->size_tree.rb_node;
--	struct size_entry *e;
-+	struct size_entry *e, *n;
- 
--	while (this) {
--		if (this->rb_left) {
--			this = this->rb_left;
--			continue;
--		} else if (this->rb_right) {
--			this = this->rb_right;
--			continue;
--		}
--		e = rb_entry(this, struct size_entry, rb);
-+	rbtree_postorder_for_each_entry_safe(e, n, &c->size_tree, rb) {
- 		if (e->inode)
- 			iput(e->inode);
--		this = rb_parent(this);
--		if (this) {
--			if (this->rb_left == &e->rb)
--				this->rb_left = NULL;
--			else
--				this->rb_right = NULL;
--		}
- 		kfree(e);
- 	}
 +
- 	c->size_tree = RB_ROOT;
+ 	EXT4_SB(sb)->system_blks = RB_ROOT;
  }
  
-diff --git a/fs/ubifs/super.c b/fs/ubifs/super.c
-index 3e4aa72..14a5891 100644
---- a/fs/ubifs/super.c
-+++ b/fs/ubifs/super.c
-@@ -873,26 +873,10 @@ static void free_orphans(struct ubifs_info *c)
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index 680bb33..d638c57 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -353,41 +353,16 @@ struct fname {
   */
- static void free_buds(struct ubifs_info *c)
+ static void free_rb_tree_fname(struct rb_root *root)
  {
--	struct rb_node *this = c->buds.rb_node;
--	struct ubifs_bud *bud;
+-	struct rb_node	*n = root->rb_node;
+-	struct rb_node	*parent;
+-	struct fname	*fname;
 -
--	while (this) {
--		if (this->rb_left)
--			this = this->rb_left;
--		else if (this->rb_right)
--			this = this->rb_right;
--		else {
--			bud = rb_entry(this, struct ubifs_bud, rb);
--			this = rb_parent(this);
--			if (this) {
--				if (this->rb_left == &bud->rb)
--					this->rb_left = NULL;
--				else
--					this->rb_right = NULL;
--			}
--			kfree(bud);
--		}
--	}
-+	struct ubifs_bud *bud, *n;
-+
-+	rbtree_postorder_for_each_entry_safe(bud, n, &c->buds, rb)
-+		kfree(bud);
- }
- 
- /**
-diff --git a/fs/ubifs/tnc.c b/fs/ubifs/tnc.c
-index 349f31a..9083bc7 100644
---- a/fs/ubifs/tnc.c
-+++ b/fs/ubifs/tnc.c
-@@ -178,27 +178,11 @@ static int ins_clr_old_idx_znode(struct ubifs_info *c,
-  */
- void destroy_old_idx(struct ubifs_info *c)
- {
--	struct rb_node *this = c->old_idx.rb_node;
--	struct ubifs_old_idx *old_idx;
-+	struct ubifs_old_idx *old_idx, *n;
- 
--	while (this) {
--		if (this->rb_left) {
--			this = this->rb_left;
--			continue;
--		} else if (this->rb_right) {
--			this = this->rb_right;
+-	while (n) {
+-		/* Do the node's children first */
+-		if (n->rb_left) {
+-			n = n->rb_left;
 -			continue;
 -		}
--		old_idx = rb_entry(this, struct ubifs_old_idx, rb);
--		this = rb_parent(this);
--		if (this) {
--			if (this->rb_left == &old_idx->rb)
--				this->rb_left = NULL;
--			else
--				this->rb_right = NULL;
+-		if (n->rb_right) {
+-			n = n->rb_right;
+-			continue;
 -		}
-+	rbtree_postorder_for_each_entry_safe(old_idx, n, &c->old_idx, rb)
- 		kfree(old_idx);
+-		/*
+-		 * The node has no children; free it, and then zero
+-		 * out parent's link to it.  Finally go to the
+-		 * beginning of the loop and try to free the parent
+-		 * node.
+-		 */
+-		parent = rb_parent(n);
+-		fname = rb_entry(n, struct fname, rb_hash);
++	struct fname *fname, *next;
++
++	rbtree_postorder_for_each_entry_safe(fname, next, root, rb_hash)
+ 		while (fname) {
+ 			struct fname *old = fname;
+ 			fname = fname->next;
+ 			kfree(old);
+ 		}
+-		if (!parent)
+-			*root = RB_ROOT;
+-		else if (parent->rb_left == n)
+-			parent->rb_left = NULL;
+-		else if (parent->rb_right == n)
+-			parent->rb_right = NULL;
+-		n = parent;
 -	}
 +
- 	c->old_idx = RB_ROOT;
++	*root = RB_ROOT;
  }
+ 
  
 -- 
 1.8.4.2
-
-
-______________________________________________________
-Linux MTD discussion mailing list
-http://lists.infradead.org/mailman/listinfo/linux-mtd/
