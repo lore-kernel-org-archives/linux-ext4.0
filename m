@@ -1,117 +1,123 @@
-From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: [PATCH V4] mke2fs: disallow creating FS on a loop mounted file with
- no option
-Date: Thu, 07 Nov 2013 15:18:05 +0900
-Message-ID: <527B309D.4090706@sx.jp.nec.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>, tytso@mit.edu
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: [PATCH] tests: check backing filesystem can handle large file
+Date: Wed,  6 Nov 2013 23:35:04 -0700
+Message-ID: <1383806104-26239-1-git-send-email-adilger@dilger.ca>
+Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO200.gate.nec.co.jp ([202.32.8.215]:42162 "EHLO
-	tyo200.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750966Ab3KGG0y (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Nov 2013 01:26:54 -0500
-Received: from tyo201.gate.nec.co.jp ([10.7.69.201])
-	by tyo200.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id rA76QqJH009541
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 7 Nov 2013 15:26:52 +0900 (JST)
+Received: from smtp-out-02.shaw.ca ([64.59.136.138]:59524 "EHLO
+	smtp-out-02.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755020Ab3KGGfH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Nov 2013 01:35:07 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When /etc/mtab is a symlink of /proc/mounts, mke2fs without -FF option
-can create a filesystem on the image file that is mounted.
-According to mke2fs man page, we should specify -FF option in this case.
+The new resize tests create 2TB test files, but tmpfs in kernels
+before 3.1 have a max file size of 256GB.  Ext3 may also have
+a size limit for smaller blocksize filesystems.
 
-This patch protects filesystem from unintended mke2fs caused by human error.
+Fix the resize_test script to verify that $TMPFILE can be resized
+to the final test size, and if that fails try creating the file on
+the local filesystem instead of in $TMPDIR.  If that cannot hold
+the large filesystem, skip the test.
 
-How to reproduce:
-  # mke2fs -t ext4 -Fq fs.img
-  # mount -o loop fs.img /mnt/mp1
-  # mke2fs -t ext4 -Fq fs.img && echo "mke2fs success"
-  mke2fs success
-
-Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
+Signed-off-by: Andreas Dilger <adilger@dilger.ca>
 ---
- configure.in           |    1 +
- lib/ext2fs/ismounted.c |   41 +++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 42 insertions(+)
-diff --git a/configure.in b/configure.in
-index 049dc11..fef8d9b 100644
---- a/configure.in
-+++ b/configure.in
-@@ -920,6 +920,7 @@ AC_CHECK_HEADERS(m4_flatten([
- 	linux/falloc.h
- 	linux/fd.h
- 	linux/major.h
-+	linux/loop.h
- 	net/if_dl.h
- 	netinet/in.h
- 	sys/disklabel.h
-diff --git a/lib/ext2fs/ismounted.c b/lib/ext2fs/ismounted.c
-index 2c1bd75..6c6ecff 100644
---- a/lib/ext2fs/ismounted.c
-+++ b/lib/ext2fs/ismounted.c
-@@ -21,6 +21,13 @@
- #ifdef HAVE_LINUX_FD_H
- #include <linux/fd.h>
- #endif
-+#ifdef HAVE_LINUX_LOOP_H
-+#include <linux/loop.h>
-+#include <sys/ioctl.h>
-+#ifdef HAVE_LINUX_MAJOR_H
-+#include <linux/major.h>
-+#endif /* HAVE_LINUX_MAJOR_H */
-+#endif /* HAVE_LINUX_LOOP_H */
- #ifdef HAVE_MNTENT_H
- #include <mntent.h>
- #endif
-@@ -35,6 +42,36 @@
- #include "ext2_fs.h"
- #include "ext2fs.h"
+ tests/r_64bit_big_expand/script    |    8 ++++++--
+ tests/r_bigalloc_big_expand/script |    8 ++++++--
+ tests/r_ext4_big_expand/script     |    8 ++++++--
+ tests/scripts/resize_test          |   15 +++++++++++++++
+ 4 files changed, 33 insertions(+), 6 deletions(-)
+
+diff --git a/tests/r_64bit_big_expand/script b/tests/r_64bit_big_expand/script
+index 3b34a62..51f36e9 100644
+--- a/tests/r_64bit_big_expand/script
++++ b/tests/r_64bit_big_expand/script
+@@ -10,10 +10,14 @@ E2FSCK=../e2fsck/e2fsck
  
-+/*
-+ * Check to see if a regular file is mounted.
-+ * If /etc/mtab/ is a symlink of /proc/mounts, you will need the following check
-+ * because the name in /proc/mounts is a loopback device not a regular file.
-+ */
-+static int check_loop_mounted(const char *mnt_fsname, dev_t mnt_rdev,
-+				dev_t file_dev, ino_t file_ino)
-+{
-+#if defined(HAVE_LINUX_LOOP_H) && defined(HAVE_LINUX_MAJOR_H)
-+	struct loop_info64 loopinfo;
-+	int loop_fd, ret;
+ . $cmd_dir/scripts/resize_test
+ 
+-if resize_test
+-then
++resize_test
++RC=$?
++if [ $RC -eq 0 ]; then
+ 	echo "$test_name: $test_description: ok"
+ 	touch $test_name.ok
++elif [ $RC -eq 111 ]; then
++	echo "$test_name: $test_description: skipped"
++	touch $test_name.ok
+ else
+ 	echo "$test_name: $test_description: failed"
+ 	touch $test_name.failed
+diff --git a/tests/r_bigalloc_big_expand/script b/tests/r_bigalloc_big_expand/script
+index 2b9cc63..56c8c15 100644
+--- a/tests/r_bigalloc_big_expand/script
++++ b/tests/r_bigalloc_big_expand/script
+@@ -10,10 +10,14 @@ RESIZE2FS_OPTS=-f
+ 
+ . $cmd_dir/scripts/resize_test
+ 
+-if resize_test
+-then
++resize_test
++RC=$?
++if [ $RC -eq 0 ]; then
+ 	echo "$test_name: $test_description: ok"
+ 	touch $test_name.ok
++elif [ $RC -eq 111 ]; then
++	echo "$test_name: $test_description: skipped"
++	touch $test_name.ok
+ else
+ 	echo "$test_name: $test_description: failed"
+ 	touch $test_name.failed
+diff --git a/tests/r_ext4_big_expand/script b/tests/r_ext4_big_expand/script
+index fb31d7a..a4f8fe6 100644
+--- a/tests/r_ext4_big_expand/script
++++ b/tests/r_ext4_big_expand/script
+@@ -10,10 +10,14 @@ E2FSCK=../e2fsck/e2fsck
+ 
+ . $cmd_dir/scripts/resize_test
+ 
+-if resize_test
+-then
++resize_test
++RC=$?
++if [ $RC -eq 0 ]; then
+ 	echo "$test_name: $test_description: ok"
+ 	touch $test_name.ok
++elif [ $RC -eq 111 ]; then
++	echo "$test_name: $test_description: skipped"
++	touch $test_name.ok
+ else
+ 	echo "$test_name: $test_description: failed"
+ 	touch $test_name.failed
+diff --git a/tests/scripts/resize_test b/tests/scripts/resize_test
+index 964150e..30532a5 100755
+--- a/tests/scripts/resize_test
++++ b/tests/scripts/resize_test
+@@ -4,6 +4,21 @@ resize_test () {
+ 
+ rm -f $TMPFILE
+ touch $TMPFILE
 +
-+	if (major(mnt_rdev) == LOOP_MAJOR) {
-+		loop_fd = open(mnt_fsname, O_RDONLY);
-+		if (loop_fd < 0)
-+			return -1;
++# Verify that the $TMP filesystem handles $SIZE_2 sparse files.
++# If that fails, try the local filesystem instead.
++if truncate -s $SIZE_2 $TMPFILE 2> /dev/null; then
++        > $TMPFILE
++else
++	rm $TMPFILE
++	export TMPFILE=$(TMPDIR=. mktemp -t $test_name.XXXXXX.tmp)
++	touch $TMPFILE
++	if ! truncate -s $SIZE_2 $TMPFILE 2> /dev/null; then
++		rm $TMPFILE
++		return 111
++	fi
++fi
 +
-+		ret = ioctl(loop_fd, LOOP_GET_STATUS64, &loopinfo);
-+		close(loop_fd);
-+		if (ret < 0)
-+			return -1;
-+
-+		if (file_dev == loopinfo.lo_device &&
-+				file_ino == loopinfo.lo_inode)
-+			return 1;
-+	}
-+#endif /* defined(HAVE_LINUX_LOOP_H) && defined(HAVE_LINUX_MAJOR_H) */
-+	return 0;
-+}
-+
- #ifdef HAVE_SETMNTENT
- /*
-  * Helper function which checks a file in /etc/mtab format to see if a
-@@ -82,6 +119,10 @@ static errcode_t check_mntent_file(const char *mtab_file, const char *file,
- #ifndef __GNU__
- 				if (file_rdev && (file_rdev == st_buf.st_rdev))
- 					break;
-+				if (check_loop_mounted(mnt->mnt_fsname,
-+						st_buf.st_rdev, file_dev,
-+						file_ino) == 1)
-+					break;
- #endif	/* __GNU__ */
- 			} else {
- 				if (file_dev && ((file_dev == st_buf.st_dev) &&
+ echo $MKE2FS $FEATURES -qF $TMPFILE $SIZE_1 > $LOG
+ $MKE2FS $FEATURES -qF $TMPFILE $SIZE_1 >> $LOG
+ 
+-- 
+1.7.3.4
+
