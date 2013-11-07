@@ -1,98 +1,52 @@
-From: Andiry Xu <andiry@gmail.com>
-Subject: Re: [BUG][ext2] XIP does not work on ext2
-Date: Thu, 7 Nov 2013 13:50:09 -0800
-Message-ID: <CAOvWMLYXUcYUnnzPzMTJZF8iZ73a+BuC+YRePjRZhY_WtL5Jfw@mail.gmail.com>
-References: <CAOvWMLZ-ezykR6TkFAoZ1UW20QF6XMOKeZH8R-FdFJkXjAP9nA@mail.gmail.com>
-	<20131105003733.GA24531@quack.suse.cz>
-	<CAOvWMLZ6_boRgQi2L9kqR_bWcnLDHY+uFo9g4DP=zxeGtT+dag@mail.gmail.com>
-	<20131105143221.GA30006@quack.suse.cz>
-	<CAOvWMLY9HAeQTsEwCchKNjL+1=-grBQrDO6-KCYcS-mxMYyRpw@mail.gmail.com>
-	<20131106211858.GB20477@quack.suse.cz>
-	<CAOvWMLa38zOigzVkcF78ivtszd6F02aNKsB28=Sd58OMeqb9sQ@mail.gmail.com>
-	<20131107210715.GA20104@quack.suse.cz>
+From: Cody P Schafer <cody@linux.vnet.ibm.com>
+Subject: Re: [PATCH v2 01/11] rbtree: Fix rbtree_postorder_for_each_entry_safe()
+ iterator
+Date: Thu, 07 Nov 2013 13:58:15 -0800
+Message-ID: <527C0CF7.705@linux.vnet.ibm.com>
+References: <1383788572-25938-1-git-send-email-cody@linux.vnet.ibm.com> <1383788572-25938-2-git-send-email-cody@linux.vnet.ibm.com> <20131107133800.c779b2f2b2ec73c91cd25f47@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Wang Shilong <wangsl-fnst@cn.fujitsu.com>,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Andiry Xu <andiry.xu@gmail.com>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: EXT4 <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>,
+	rostedt@goodmis.org, Seth Jennings <sjennings@variantweb.net>,
+	LKML <linux-kernel@vger.kernel.org>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ie0-f178.google.com ([209.85.223.178]:47242 "EHLO
-	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754074Ab3KGVuK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Nov 2013 16:50:10 -0500
-In-Reply-To: <20131107210715.GA20104@quack.suse.cz>
+Received: from e35.co.us.ibm.com ([32.97.110.153]:59649 "EHLO
+	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752751Ab3KGV6Y (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Nov 2013 16:58:24 -0500
+Received: from /spool/local
+	by e35.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <cody@linux.vnet.ibm.com>;
+	Thu, 7 Nov 2013 14:58:23 -0700
+In-Reply-To: <20131107133800.c779b2f2b2ec73c91cd25f47@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 7, 2013 at 1:07 PM, Jan Kara <jack@suse.cz> wrote:
-> On Thu 07-11-13 12:14:13, Andiry Xu wrote:
->> On Wed, Nov 6, 2013 at 1:18 PM, Jan Kara <jack@suse.cz> wrote:
->> > On Tue 05-11-13 17:28:35, Andiry Xu wrote:
->> >> >> Do you know the reason why write() outperforms mmap() in some cases? I
->> >> >> know it's not related the thread but I really appreciate if you can
->> >> >> answer my question.
->> >> >   Well, I'm not completely sure. mmap()ed memory always works on page-by-page
->> >> > basis - you first access the page, it gets faulted in and you can further
->> >> > access it. So for small (sub page size) accesses this is a win because you
->> >> > don't have an overhead of syscall and fs write path. For accesses larger
->> >> > than page size the overhead of syscall and some initial checks is well
->> >> > hidden by other things. I guess write() ends up being more efficient
->> >> > because write path taken for each page is somewhat lighter than full page
->> >> > fault. But you'd need to look into perf data to get some hard numbers on
->> >> > where the time is spent.
->> >> >
->> >>
->> >> Thanks for the reply. However I have filled up the whole RAM disk
->> >> before doing the test, i.e. asked the brd driver to allocate all the
->> >> pages initially.
->> >   Well, pages in ramdisk are always present, that's not an issue. But you
->> > will get a page fault to map a particular physical page in process'
->> > virtual address space when you first access that virtual address in the
->> > mapping from the process. The cost of setting up this virtual->physical
->> > mapping is what I'm talking about.
->> >
+On 11/07/2013 01:38 PM, Andrew Morton wrote:
+> On Wed,  6 Nov 2013 17:42:30 -0800 Cody P Schafer <cody@linux.vnet.ibm.com> wrote:
+>
+>> The iterator rbtree_postorder_for_each_entry_safe() relies on pointer
+>> underflow behavior when testing for loop termination. In particular
+>> it expects that
+>>    &rb_entry(NULL, type, field)->field
+>> is NULL. But the result of this expression is not defined by a C standard
+>> and some gcc versions (e.g. 4.3.4) assume the above expression can never
+>> be equal to NULL. The net result is an oops because the iteration is not
+>> properly terminated.
 >>
->> Yes, you are right, there are page faults observed with perf. I
->> misunderstood page fault as copying pages between backing store and
->> physical memory.
->>
->> > If you had a process which first mmaps the file and writes to all pages in
->> > the mapping and *then* measure the cost of another round of writing to the
->> > mapping, I would expect you should see speeds close to those of memory bus.
->> >
->>
->> I've tried this as well. mmap() performance improves but still not as
->> good as write().
->> I used the perf report to compare write() and mmap() applications. For
->> write() version, top of perf report shows as:
->> 33.33%  __copy_user_nocache
->> 4.72%    ext2_get_blocks
->> 4.42%    mutex_unlock
->> 3.59%    __find_get_block
->>
->> which looks reasonable.
->>
->> However, for mmap() version, the perf report looks strange:
->> 94.98% libc-2.15.so       [.] 0x000000000014698d
->> 2.25%   page_fault
->> 0.18%   handle_mm_fault
->>
->> I don't know what the first item is but it took the majority of cycles.
->   The first item means that it's some userspace code in libc. My guess
-> would be that it's libc's memcpy() function (or whatever you use to write
-> to mmap). How do you access the mmap?
+>> Fix the problem by modifying the iterator to avoid pointer underflows.
+>
+> So the sole caller is in zswap.c.  Is that code actually generating oopses?
+
+I can't reproduce the oopses (at all) with my build/gcc version, but Jan 
+has reported seeing them (not in zswap, however).
+
+>
+> IOW, is there any need to fix this in 3.12 or earlier?
 >
 
-Like this:
+The zswap usage change showed up in 3.12.
+In my opinion, it is probably a good idea to apply the fix to 3.12.
 
-fd = open(file_name, O_CREAT | O_RDWR | O_DIRECT, 0755);
-dest = (char *)mmap(NULL, FILE_SIZE, PROT_WRITE, MAP_SHARED, fd, 0);
-for (i = 0; i < count; i++)
-{
-       memcpy(dest, src, request_size);
-       dest += request_size;
-}
-
-Thanks,
-Andiry
