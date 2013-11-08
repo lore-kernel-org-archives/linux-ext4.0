@@ -1,33 +1,71 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: return non-zero st_blocks for inline data
-Date: Thu, 7 Nov 2013 22:45:04 -0500
-Message-ID: <20131108034504.GC11668@thunk.org>
-References: <1383734552-12991-1-git-send-email-andreas.dilger@intel.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <andreas.dilger@intel.com>
+Subject: [PATCH] ext4: use prandom_u32() instead of get_random_bytes()
+Date: Fri,  8 Nov 2013 00:15:36 -0500
+Message-ID: <1383887736-6272-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:55546 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:55573 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750884Ab3KHDpI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 7 Nov 2013 22:45:08 -0500
-Content-Disposition: inline
-In-Reply-To: <1383734552-12991-1-git-send-email-andreas.dilger@intel.com>
+	id S1750828Ab3KHFPk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 8 Nov 2013 00:15:40 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 06, 2013 at 03:42:32AM -0700, Andreas Dilger wrote:
-> @@ -4542,9 +4551,9 @@ int ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
->  	 * blocks for this file.
->  	 */
->  	delalloc_blocks = EXT4_C2B(EXT4_SB(inode->i_sb),
-> -				EXT4_I(inode)->i_reserved_data_blocks);
-> +				   EXT4_I(inode)->i_reserved_data_blocks);
-> +	stat->blocks += delalloc_blocks << (inode->i_sb->s_blocksize_bits - 9);
->  
-> -	stat->blocks += (delalloc_blocks << inode->i_sb->s_blocksize_bits)>>9;
+Many of the uses of get_random_bytes() do not actually need
+cryptographically secure random numbers.  Replace those uses with a
+call to prandom_u32(), which is faster and which doesn't consume
+entropy from the /dev/random driver.
 
-Why this change to the calculation to stat->blocks?
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/ialloc.c | 2 +-
+ fs/ext4/mmp.c    | 2 +-
+ fs/ext4/super.c  | 7 ++-----
+ 3 files changed, 4 insertions(+), 7 deletions(-)
 
-    	 	       		      - Ted
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 137193f..0ee59a6 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -432,7 +432,7 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
+ 			ext4fs_dirhash(qstr->name, qstr->len, &hinfo);
+ 			grp = hinfo.hash;
+ 		} else
+-			get_random_bytes(&grp, sizeof(grp));
++			grp = prandom_u32();
+ 		parent_group = (unsigned)grp % ngroups;
+ 		for (i = 0; i < ngroups; i++) {
+ 			g = (parent_group + i) % ngroups;
+diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
+index 214461e..04434ad 100644
+--- a/fs/ext4/mmp.c
++++ b/fs/ext4/mmp.c
+@@ -259,7 +259,7 @@ static unsigned int mmp_new_seq(void)
+ 	u32 new_seq;
+ 
+ 	do {
+-		get_random_bytes(&new_seq, sizeof(u32));
++		new_seq = prandom_u32();
+ 	} while (new_seq > EXT4_MMP_SEQ_MAX);
+ 
+ 	return new_seq;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index d3a857b..c977f4e 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3068,7 +3068,6 @@ static struct ext4_li_request *ext4_li_request_new(struct super_block *sb,
+ {
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct ext4_li_request *elr;
+-	unsigned long rnd;
+ 
+ 	elr = kzalloc(sizeof(*elr), GFP_KERNEL);
+ 	if (!elr)
+@@ -3083,10 +3082,8 @@ static struct ext4_li_request *ext4_li_request_new(struct super_block *sb,
+ 	 * spread the inode table initialization requests
+ 	 * better.
+ 	 */
+-	get_random_bytes(&rnd, sizeof(rnd));
+-	elr->lr_next_sched = jiffies + (unsigned long)rnd %
+-			     (EXT4_DEF_LI_MAX_START_DELAY * HZ);
