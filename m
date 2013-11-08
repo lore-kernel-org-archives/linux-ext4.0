@@ -1,71 +1,49 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: use prandom_u32() instead of get_random_bytes()
-Date: Fri,  8 Nov 2013 00:15:36 -0500
-Message-ID: <1383887736-6272-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH v3] ext4: Fix reading of extended tv_sec (bug 23732)
+Date: Fri, 8 Nov 2013 00:17:57 -0500
+Message-ID: <20131108051757.GE11668@thunk.org>
+References: <1383808590.23882.13.camel@chiang>
+ <20131107160341.GA3850@quack.suse.cz>
+ <1383864864.23882.33.camel@chiang>
+ <20131107231445.GG2054@quack.suse.cz>
+ <1383866807.23882.41.camel@chiang>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+To: David Turner <novalis@novalis.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:55573 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:55579 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750828Ab3KHFPk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 8 Nov 2013 00:15:40 -0500
+	id S1750801Ab3KHFSC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 8 Nov 2013 00:18:02 -0500
+Content-Disposition: inline
+In-Reply-To: <1383866807.23882.41.camel@chiang>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Many of the uses of get_random_bytes() do not actually need
-cryptographically secure random numbers.  Replace those uses with a
-call to prandom_u32(), which is faster and which doesn't consume
-entropy from the /dev/random driver.
+On Thu, Nov 07, 2013 at 06:26:47PM -0500, David Turner wrote:
+> In ext4, the bottom two bits of {a,c,m}time_extra are used to extend
+> the {a,c,m}time fields, deferring the year 2038 problem to the year
+> 2446.  The representation (which this patch does not alter) is a bit
+> hackish, in that the most-significant bit is no longer (alone)
+> sufficient to indicate the sign.  That's because we're representing an
+> asymmetric range, with seven times as many positive values as
+> negative.
+> 
+> When decoding these extended fields, for times whose bottom 32 bits
+> would represent a negative number, sign extension causes the 64-bit
+> extended timestamp to be negative as well, which is not what's
+> intended.  This patch corrects that issue, so that the only negative
+> {a,c,m}times are those between 1901 and 1970 (as per 32-bit signed
+> timestamps).
+> 
+> Signed-off-by: David Turner <novalis@novalis.org>
+> Reported-by: Mark Harris <mh8928@yahoo.com>
+> Bugzilla: https://bugzilla.kernel.org/show_bug.cgi?id=23732
+> Reviewed-by: Jan Kara <jack@suse.cz>
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/ialloc.c | 2 +-
- fs/ext4/mmp.c    | 2 +-
- fs/ext4/super.c  | 7 ++-----
- 3 files changed, 4 insertions(+), 7 deletions(-)
+Thanks, applied.
 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 137193f..0ee59a6 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -432,7 +432,7 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
- 			ext4fs_dirhash(qstr->name, qstr->len, &hinfo);
- 			grp = hinfo.hash;
- 		} else
--			get_random_bytes(&grp, sizeof(grp));
-+			grp = prandom_u32();
- 		parent_group = (unsigned)grp % ngroups;
- 		for (i = 0; i < ngroups; i++) {
- 			g = (parent_group + i) % ngroups;
-diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
-index 214461e..04434ad 100644
---- a/fs/ext4/mmp.c
-+++ b/fs/ext4/mmp.c
-@@ -259,7 +259,7 @@ static unsigned int mmp_new_seq(void)
- 	u32 new_seq;
- 
- 	do {
--		get_random_bytes(&new_seq, sizeof(u32));
-+		new_seq = prandom_u32();
- 	} while (new_seq > EXT4_MMP_SEQ_MAX);
- 
- 	return new_seq;
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index d3a857b..c977f4e 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3068,7 +3068,6 @@ static struct ext4_li_request *ext4_li_request_new(struct super_block *sb,
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	struct ext4_li_request *elr;
--	unsigned long rnd;
- 
- 	elr = kzalloc(sizeof(*elr), GFP_KERNEL);
- 	if (!elr)
-@@ -3083,10 +3082,8 @@ static struct ext4_li_request *ext4_li_request_new(struct super_block *sb,
- 	 * spread the inode table initialization requests
- 	 * better.
- 	 */
--	get_random_bytes(&rnd, sizeof(rnd));
--	elr->lr_next_sched = jiffies + (unsigned long)rnd %
--			     (EXT4_DEF_LI_MAX_START_DELAY * HZ);
+					- Ted
