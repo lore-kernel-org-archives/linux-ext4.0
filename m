@@ -1,60 +1,58 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: VMs are pausing with ENOSPC
-Date: Mon, 11 Nov 2013 13:22:49 +0100
-Message-ID: <20131111122249.GA22408@quack.suse.cz>
-References: <1383912032.27016.4.camel@pc.interlinx.bc.ca>
- <20131111094329.GF28264@stefanha-thinkpad.redhat.com>
+Subject: [GIT PULL] ext[23], udf & quota fix
+Date: Mon, 11 Nov 2013 15:34:33 +0100
+Message-ID: <20131111143433.GA24867@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, kvm@vger.kernel.org,
-	"Brian J. Murrell" <brian@interlinx.bc.ca>
-To: Stefan Hajnoczi <stefanha@gmail.com>
-Return-path: <kvm-owner@vger.kernel.org>
+Cc: LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:36821 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753098Ab3KKOeg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 Nov 2013 09:34:36 -0500
 Content-Disposition: inline
-In-Reply-To: <20131111094329.GF28264@stefanha-thinkpad.redhat.com>
-Sender: kvm-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 11-11-13 10:43:29, Stefan Hajnoczi wrote:
-> On Fri, Nov 08, 2013 at 07:00:32AM -0500, Brian J. Murrell wrote:
-> > On RHEL 6.4 I have a number of kvms using qemu raw disks.  They are all
-> > on a filesystem which has reached 500G (of 1TB) of usage.  None of the
-> > qemu images are full as reported by qemu-img info.  Yet my VMs are all
-> > pausing with:
-> > 
-> > block I/O error in device 'drive-virtio-disk0': No space left on device (28)
-> > 
-> > in their logs
-> > i.e.: # qemu-img info /var/lib/libvirt/images/mgmt1-disk0 
-> > image: /var/lib/libvirt/images/mgmt1-disk0
-> > file format: raw
-> > virtual size: 120G (128849018880 bytes)
-> > disk size: 52G
-> > 
-> > and:
-> > 
-> > # df -h /var/lib/libvirt/images/
-> > Filesystem Size Used Avail Use% Mounted on
-> > /dev/mapper/vg_00-virt--images 1.0T 500G 473G 52% /var/lib/libvirt/images
-> 
-> Added linux-ext4 mailing list and more info from an IRC debugging
-> session with Brian:
-> 
-> The image file is on an ext4 file system.  The QEMU userspace process is
-> performing a pwritev() system call that fails with ENOSPC.
-> 
-> The particular pwritev() that failed had ~600 iovecs covering about 2.4
-> MB of data.  The file is opened O_DIRECT.
-> 
-> The VMs are all hitting ENOSPC when they write to the file system but
-> df(1) shows there should still be 48% (~473 GB) available.
-> 
-> Any ideas why writes produce ENOSPC on an ext4 file system with
-> sufficient space free?
-  OK, likely a bug in RHEL 6.4 kernel. But since that is 2.6.32 with lots
-of patches, I suggest you contact RHEL support to debug that further.
+  Hello Linus,
 
+  could you please pull from
+
+git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git for_linus
+
+to get assorted fixes in quota, ext2, ext3 & udf. Probably the most
+important is a fix of fs corruption issue in ext2 XIP support (OTOH xip is
+rarely used).
+
+Top of the tree is 7ba3ec5749dd. The full shortlog is:
+
+Dan Carpenter (1):
+      quota: info leak in quota_getquota()
+
+Eric Sandeen (1):
+      ext3: Count journal as bsddf overhead in ext3_statfs
+
+Jan Kara (2):
+      jbd: Revert "jbd: remove dependency on __GFP_NOFAIL"
+      ext2: Fix fs corruption in ext2_get_xip_mem()
+
+Peter A. Felvegi (1):
+      udf: fix for pathetic mount times in case of invalid file system
+
+The diffstat is
+
+ fs/ext2/inode.c      |  2 ++
+ fs/ext2/xip.c        |  1 +
+ fs/ext3/super.c      |  4 ++++
+ fs/jbd/transaction.c |  8 ++++----
+ fs/quota/quota.c     |  1 +
+ fs/udf/super.c       | 45 ++++++++++++++++++++++++++++++++++++---------
+ 6 files changed, 48 insertions(+), 13 deletions(-)
+
+							Thanks
 								Honza
+
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
