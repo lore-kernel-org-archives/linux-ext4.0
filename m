@@ -1,71 +1,56 @@
-From: David Turner <novalis@novalis.org>
-Subject: Re: [PATCH] ext4: explain encoding of 34-bit a,c,mtime values
-Date: Sun, 10 Nov 2013 02:56:54 -0500
-Message-ID: <1384070214.8994.47.camel@chiang>
-References: <1383808590.23882.13.camel@chiang>
-	 <20131107160341.GA3850@quack.suse.cz> <1383864864.23882.33.camel@chiang>
-	 <20131107231445.GG2054@quack.suse.cz> <1383866807.23882.41.camel@chiang>
-	 <D8C465B6-15A7-473A-BA26-8037AF9CE739@dilger.ca>
-	 <1383981551.8994.27.camel@chiang>
-	 <CADQUmxULoLgXRyoPpJJMJLqJPsZ8M4oPP8ScGxWp+Np8-efq3g@mail.gmail.com>
+From: Stefan Hajnoczi <stefanha@gmail.com>
+Subject: Re: VMs are pausing with ENOSPC
+Date: Mon, 11 Nov 2013 10:43:29 +0100
+Message-ID: <20131111094329.GF28264@stefanha-thinkpad.redhat.com>
+References: <1383912032.27016.4.camel@pc.interlinx.bc.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@dilger.ca>, Jan Kara <jack@suse.cz>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>
-To: Mark Harris <mhlk@osj.us>
+Content-Type: text/plain; charset=us-ascii
+Cc: kvm@vger.kernel.org, "Brian J. Murrell" <brian@interlinx.bc.ca>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from caiajhbdcaid.dreamhost.com ([208.97.132.83]:48812 "EHLO
-	homiemail-a21.g.dreamhost.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1750769Ab3KJH44 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 10 Nov 2013 02:56:56 -0500
-In-Reply-To: <CADQUmxULoLgXRyoPpJJMJLqJPsZ8M4oPP8ScGxWp+Np8-efq3g@mail.gmail.com>
+Received: from mail-ea0-f180.google.com ([209.85.215.180]:49038 "EHLO
+	mail-ea0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752831Ab3KKJnd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Nov 2013 04:43:33 -0500
+Content-Disposition: inline
+In-Reply-To: <1383912032.27016.4.camel@pc.interlinx.bc.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, 2013-11-09 at 15:51 -0800, Mark Harris wrote:
+On Fri, Nov 08, 2013 at 07:00:32AM -0500, Brian J. Murrell wrote:
+> On RHEL 6.4 I have a number of kvms using qemu raw disks.  They are all
+> on a filesystem which has reached 500G (of 1TB) of usage.  None of the
+> qemu images are full as reported by qemu-img info.  Yet my VMs are all
+> pausing with:
 > 
-> The problem with the existing encoding is that pre-1970 dates are
-> encoded with extra bits 1,1 in 64-bit kernels with ext4, but on 32-bit
-> kernels and inodes that were originally written as ext3 the extra bits
-> will be 0,0.  Currently, both are decoded as pre-1970 dates.
+> block I/O error in device 'drive-virtio-disk0': No space left on device (28)
 > 
-> With your patch, only the 1,1 format used by 64-bit ext4 will decode
-> as a pre-1970 date.  Dates previously written by ext3 or a 32-bit
-> kernel will no longer be decoded as expected.  Also the patch does
-> not update ext4_encode_extra_time to use this format for pre-1970
-> dates in 32-bit mode.
+> in their logs
+> i.e.: # qemu-img info /var/lib/libvirt/images/mgmt1-disk0 
+> image: /var/lib/libvirt/images/mgmt1-disk0
+> file format: raw
+> virtual size: 120G (128849018880 bytes)
+> disk size: 52G
+> 
+> and:
+> 
+> # df -h /var/lib/libvirt/images/
+> Filesystem Size Used Avail Use% Mounted on
+> /dev/mapper/vg_00-virt--images 1.0T 500G 473G 52% /var/lib/libvirt/images
 
-You're right -- I missed the complexity here.
+Added linux-ext4 mailing list and more info from an IRC debugging
+session with Brian:
 
-> Possible solutions were discussed here, but no decision was made:
-> http://thread.gmane.org/gmane.comp.file-systems.ext4/26087/focus=26406
+The image file is on an ext4 file system.  The QEMU userspace process is
+performing a pwritev() system call that fails with ENOSPC.
 
-To summarize, the previous discussion offered four possible solutions,
-of which two were thought good:
+The particular pwritev() that failed had ~600 iovecs covering about 2.4
+MB of data.  The file is opened O_DIRECT.
 
-b. Use Andreas's encoding, which is incompatible with pre-1970 files
-written on 64-bit systems.
+The VMs are all hitting ENOSPC when they write to the file system but
+df(1) shows there should still be 48% (~473 GB) available.
 
-c. Use an encoding which is compatible with all pre-1970 files, but
-incompatible with 64-bit post-2038 files, and which encodes a smaller
-range of time and is more complicated. 
+Any ideas why writes produce ENOSPC on an ext4 file system with
+sufficient space free?
 
--------
-I don't care about currently-existing post-2038 files, because I believe
-that nobody has a valid reason to have such files.  However, I do
-believe that pre-1970 files are probably important to someone.
-
-Despite this, I prefer option (b), because I think the simplicity is
-valuable, and because I hate to give up date ranges (even ones that I
-think we'll "never" need). Option (b) is not actually lossy, because we
-could correct pre-1970 files with e2fsck; under Andreas's encoding,
-their dates would be in the far future (and thus cannot be legitimate).
-
-Would a patch that does (b) be accepted?  I would accompany it with a
-patch to e2fsck (which I assume would also go to the ext4 developers
-mailing list?).
-
+Stefan
