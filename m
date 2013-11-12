@@ -1,84 +1,56 @@
-From: Gordon Messmer <gordon.messmer@gmail.com>
-Subject: kernel panic using external journal and snapshots
-Date: Mon, 11 Nov 2013 20:03:47 -0800
-Message-ID: <5281A8A3.80604@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: explain encoding of 34-bit a,c,mtime values
+Date: Mon, 11 Nov 2013 19:30:18 -0500
+Message-ID: <20131112003018.GA30281@thunk.org>
+References: <1383808590.23882.13.camel@chiang>
+ <20131107160341.GA3850@quack.suse.cz>
+ <1383864864.23882.33.camel@chiang>
+ <20131107231445.GG2054@quack.suse.cz>
+ <1383866807.23882.41.camel@chiang>
+ <D8C465B6-15A7-473A-BA26-8037AF9CE739@dilger.ca>
+ <1383981551.8994.27.camel@chiang>
+ <CADQUmxULoLgXRyoPpJJMJLqJPsZ8M4oPP8ScGxWp+Np8-efq3g@mail.gmail.com>
+ <1384070214.8994.47.camel@chiang>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Mark Harris <mhlk@osj.us>, Andreas Dilger <adilger@dilger.ca>,
+	Jan Kara <jack@suse.cz>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+To: David Turner <novalis@novalis.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f51.google.com ([209.85.160.51]:45956 "EHLO
-	mail-pb0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751427Ab3KLEEu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Nov 2013 23:04:50 -0500
-Received: by mail-pb0-f51.google.com with SMTP id xa7so6246322pbc.38
-        for <linux-ext4@vger.kernel.org>; Mon, 11 Nov 2013 20:04:50 -0800 (PST)
-Received: from ascension.private.dragonsdawn.net (50-199-12-33-static.hfc.comcastbusiness.net. [50.199.12.33])
-        by mx.google.com with ESMTPSA id pl1sm34294247pbb.20.2013.11.11.20.04.48
-        for <linux-ext4@vger.kernel.org>
-        (version=TLSv1.1 cipher=RC4-SHA bits=128/128);
-        Mon, 11 Nov 2013 20:04:49 -0800 (PST)
+Received: from imap.thunk.org ([74.207.234.97]:57027 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752657Ab3KLMnZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Nov 2013 07:43:25 -0500
+Content-Disposition: inline
+In-Reply-To: <1384070214.8994.47.camel@chiang>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I'm developing backup infrastructure for Linux using snapshots.  One of 
-the supported configurations is EXT4 on LVM, but I think I've come 
-across a bug.
+On Sun, Nov 10, 2013 at 02:56:54AM -0500, David Turner wrote:
+> b. Use Andreas's encoding, which is incompatible with pre-1970 files
+> written on 64-bit systems.
+>
+> I don't care about currently-existing post-2038 files, because I believe
+> that nobody has a valid reason to have such files.  However, I do
+> believe that pre-1970 files are probably important to someone.
+> 
+> Despite this, I prefer option (b), because I think the simplicity is
+> valuable, and because I hate to give up date ranges (even ones that I
+> think we'll "never" need). Option (b) is not actually lossy, because we
+> could correct pre-1970 files with e2fsck; under Andreas's encoding,
+> their dates would be in the far future (and thus cannot be legitimate).
+> 
+> Would a patch that does (b) be accepted?  I would accompany it with a
+> patch to e2fsck (which I assume would also go to the ext4 developers
+> mailing list?).
 
-I'm currently testing on CentOS 6, with kernel 2.6.32-358.6.1.el6.x86_64
+I agree, I think this is the best way to go.  I'm going to drop your
+earlier patch, and wait for an updated patch from you.  It may miss
+this merge window, but as Andreas has pointed out, we still have a few
+years to get this right.  :-)
 
-If I create a snapshot of a filesystem with an external journal, and 
-mount that snapshot while the original filesystem is mounted, the system 
-will usually kernel panic.  If it does not panic, then the kernel will 
-later refuse to mount it because "External journal has more than one 
-user."  So, the first bug seems to be that ext4 doesn't check the 
-external journal before mounting the new snapshot to ensure that the 
-journal is not in use.  Expected behavior is that the kernel would 
-refuse to mount a filesystem whose journal already has a "user" in order 
-to prevent a kernel panic.
+Thanks!!
 
-If that were the extent of the problem, I probably wouldn't bother 
-reporting the issue.  However, the kernel will STILL panic if I use 
-tune2fs to remove the journal, and even if I use tune2fs to create a new 
-internal journal.  The second bug, then, seems to be that once an ext4 
-filesystem has an external journal, that journal will continue to be 
-used after it has been removed, and even if it is replaced with an 
-internal journal.
-
-The following commands were used to test the problem.  These are 
-basically the commands run by the "snapshot" application.  It sets a 
-minimum snapshot size of 10% of the volume size, then reads the size of 
-the volume and the size remaining in the volume group.  It creates a 
-uuid for the snapshot name, then creates the new snapshot.  I use 
-tune2fs first to verify that there is a journal device recorded, then 
-remove the journal.  Afterward, I read the value again and find no 
-external journal recorded.  When the filesystem is mounted, the kernel 
-will usually panic.
-
-Is this a known bug?  I haven't yet built a newer system to test the 
-effects on the current kernel version.
-
-min_size=10
-lvsize=$(lvs --noheadings --units m --nosuffix -o lv_size 
-"VolGroup/lv_var" | cut -f1 -d.)
-vgfree=$(vgs --noheadings --units m --nosuffix -o vg_free 
-"/dev/VolGroup" | cut -f1 -d.)
-test "$vgfree" -gt $(( $lvsize * $min_size / 100 )) || echo Not enough 
-free space on "/dev/VolGroup" for snapshot
-uuid=$(uuidgen)
-lvcreate -s -n "lv_var-snap-${uuid}" -L "$(( $lvsize * $min_size / 100 
-))"m "VolGroup/lv_var"
-	  Rounding up size to full physical extent 128.00 MiB
-	  Logical volume
-	"lv_var-snap-66c41691-21c0-4db2-8af2-09a13d87a881" created
-tune2fs -l "/dev/VolGroup/lv_var-snap-${uuid}" | grep "^Journal device:"
-	Journal device:              0xfd04
-tune2fs -O ^has_journal "/dev/VolGroup/lv_var-snap-${uuid}"
-	tune2fs 1.41.12 (17-May-2010)
-	Journal removed
-tune2fs -l "/dev/VolGroup/lv_var-snap-${uuid}" | grep "^Journal device:"
-mount "/dev/VolGroup/lv_var-snap-${uuid}" /mnt
-	* kernel panic *
-
-
-https://bitbucket.org/gordonmessmer/dragonsdawn-snapshot
+					- Ted
