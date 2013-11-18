@@ -1,98 +1,90 @@
-From: Lubomir Rintel <lkundrak@v3.sk>
-Subject: Re: [PATCH] jbd: Lower severity of aborted journal from EMERG to
- CRIT
-Date: Mon, 18 Nov 2013 18:06:35 +0100
-Message-ID: <1384794395.28980.14.camel@hobbes.kokotovo>
-References: <1384527412-23349-1-git-send-email-lkundrak@v3.sk>
-	 <20131118164533.GF3921@quack.suse.cz>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Filesystem writes on RAID5 too slow
+Date: Mon, 18 Nov 2013 12:28:21 -0600
+Message-ID: <528A5C45.4080906@redhat.com>
+References: <CACtJ3HZxp6xEjY_wOucCcqX4scNzEGuiAsovQYObJS9whtYJsQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from shell.v3.sk ([195.168.3.45]:41091 "EHLO shell.v3.sk"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751300Ab3KRRGp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 Nov 2013 12:06:45 -0500
-In-Reply-To: <20131118164533.GF3921@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: xfs-oss <xfs@oss.sgi.com>,
+	"Kernel.org-Linux-EXT4" <linux-ext4@vger.kernel.org>
+To: Martin Boutin <martboutin@gmail.com>,
+	"Kernel.org-Linux-RAID" <linux-raid@vger.kernel.org>
+Return-path: <linux-raid-owner@vger.kernel.org>
+In-Reply-To: <CACtJ3HZxp6xEjY_wOucCcqX4scNzEGuiAsovQYObJS9whtYJsQ@mail.gmail.com>
+Sender: linux-raid-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 2013-11-18 at 17:45 +0100, Jan Kara wrote:
-> On Fri 15-11-13 15:56:52, Lubomir Rintel wrote:
-> > According to Documentation/kernel-parameters.txt, KERN_EMERG is reserved for
-> > events that render system unusable.
-> > 
-> > This is hardly the case in case of flash memory stick hardware removal without
-> > umounting. Syslog is often configured to forward messages with EMERG severity
-> > to all logged-in terminals, often causing unnecessary noise.
->   The logic behind using KERN_EMERG in that place is that the filesystem is
-> dead. If it was an important filesystem in your system, the whole system is
-> unusable. In kernel, we don't know whether the filesystem was important or
-> not. So KERN_EMERG isn't adequate in all the cases but KERN_CRIT is
-> neither. What if we made that message print also device name (it would be
-> more useful anyway in that case) and you could then filter out messages for
-> unimportant devices in syslogd?
+On 11/18/13, 10:02 AM, Martin Boutin wrote:
+> Dear list,
+> 
+> I am writing about an apparent issue (or maybe it is normal, that's my
+> question) regarding filesystem write speed in in a linux raid device.
+> More specifically, I have linux-3.10.10 running in an Intel Haswell
+> embedded system with 3 HDDs in a RAID-5 configuration.
+> The hard disks have 4k physical sectors which are reported as 512
+> logical size. I made sure the partitions underlying the raid device
+> start at sector 2048.
 
-In case there's a failure on a filesystem, there are other better means
-in place to communicate the issue than a message in message buffer; in
-such case the accesses to the filesystem will result in EIO (that is for
-important filesystems; for the memory sticks that disappear from system
-I presume userspace would just umount them).
+(fixed cc: to xfs list)
 
-Therefore I don't think it makes sense to differentiate between
-important and less important file systems in this particular place and I
-can't think of a good way do do that either. Even if there were devices
-for which EMERG level here would make sense I don't think replacing the
-stock syslog configurations with a quirk for this particular message is
-feasible; and to my knowledge at least rsyslog is not able to understand
-structured logs it the way journald does.
+> The RAID device has version 1.2 metadata and 4k (bytes) of data
+> offset, therefore the data should also be 4k aligned. The raid chunk
+> size is 512K.
+> 
+> I have the md0 raid device formatted as ext3 with a 4k block size, and
+> stride and stripes correctly chosen to match the raid chunk size, that
+> is, stride=128,stripe-width=256.
+> 
+> While I was working in a small university project, I just noticed that
+> the write speeds when using a filesystem over raid are *much* slower
+> than when writing directly to the raid device (or even compared to
+> filesystem read speeds).
+> 
+> The command line for measuring filesystem read and write speeds was:
+> 
+> $ dd if=/tmp/diskmnt/filerd.zero of=/dev/null bs=1M count=1000 iflag=direct
+> $ dd if=/dev/zero of=/tmp/diskmnt/filewr.zero bs=1M count=1000 oflag=direct
+> 
+> The command line for measuring raw read and write speeds was:
+> 
+> $ dd if=/dev/md0 of=/dev/null bs=1M count=1000 iflag=direct
+> $ dd if=/dev/zero of=/dev/md0 bs=1M count=1000 oflag=direct
+> 
+> Here are some speed measures using dd (an average of 20 runs).:
+> 
+> device       raw/fs  mode   speed (MB/s)    slowdown (%)
+> /dev/md0    raw    read    207
+> /dev/md0    raw    write    209
+> /dev/md1    raw    read    214
+> /dev/md1    raw    write    212
+> 
+> /dev/md0    xfs    read    188    9
+> /dev/md0    xfs    write    35    83
+> 
+> /dev/md1    ext3    read    199    7
+> /dev/md1    ext3    write    36    83
+> 
+> /dev/md0    ufs    read    212    0
+> /dev/md0    ufs    write    53    75
+> 
+> /dev/md0    ext2    read    202    2
+> /dev/md0    ext2    write    34    84
+> 
+> Is it possible that the filesystem has such enormous impact in the
+> write speed? We are talking about a slowdown of 80%!!! Even a
+> filesystem as simple as ufs has a slowdown of 75%! What am I missing?
 
-That said I don't mind replacing the printk(KERN_*) with dev_*() (maybe
-even other occurrences, checkpatch.pl suggests that anyway and it seems
-rather useful) but I'd still like it to be kern_crit().
+One thing you're missing is enough info to debug this.
 
-What do you think about that?
+/proc/mdstat, kernel version, xfs_info output, mkfs commandlines used,
+partition table details, etc.
 
-Lubo
+If something is misaligned and you are doing RMW for these IOs it could
+hurt a lot.
 
-> > Signed-off-by: Lubomir Rintel <lkundrak@v3.sk>
-> > ---
-> >  fs/jbd/journal.c  |    2 +-
-> >  fs/jbd2/journal.c |    2 +-
-> >  2 files changed, 2 insertions(+), 2 deletions(-)
-> > 
-> > diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-> > index 2d04f9a..9dbc1b6 100644
-> > --- a/fs/jbd/journal.c
-> > +++ b/fs/jbd/journal.c
-> > @@ -605,7 +605,7 @@ out_unlock:
-> >  	spin_unlock(&journal->j_state_lock);
-> >  
-> >  	if (unlikely(is_journal_aborted(journal))) {
-> > -		printk(KERN_EMERG "journal commit I/O error\n");
-> > +		printk(KERN_CRIT "journal commit I/O error\n");
-> >  		err = -EIO;
-> >  	}
-> >  	return err;
-> > diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> > index 5203264..2d1f53c 100644
-> > --- a/fs/jbd2/journal.c
-> > +++ b/fs/jbd2/journal.c
-> > @@ -719,7 +719,7 @@ int jbd2_log_wait_commit(journal_t *journal, tid_t tid)
-> >  	read_unlock(&journal->j_state_lock);
-> >  
-> >  	if (unlikely(is_journal_aborted(journal))) {
-> > -		printk(KERN_EMERG "journal commit I/O error\n");
-> > +		printk(KERN_CRIT "journal commit I/O error\n");
-> >  		err = -EIO;
-> >  	}
-> >  	return err;
-> > -- 
-> > 1.7.1
-> > 
+-Eric
 
+> Thank you,
+> 
 
