@@ -1,65 +1,58 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: noacl and nouser_xattr
-Date: Mon, 18 Nov 2013 12:31:24 -0600
-Message-ID: <528A5CFC.1060706@redhat.com>
-References: <528A2397.8030402@me.umn.edu>
+From: Roman Mamedov <rm@romanrm.net>
+Subject: Re: Filesystem writes on RAID5 too slow
+Date: Tue, 19 Nov 2013 00:41:40 +0600
+Message-ID: <20131119004140.3fea96df@natsu>
+References: <CACtJ3HZxp6xEjY_wOucCcqX4scNzEGuiAsovQYObJS9whtYJsQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-To: Paul FM <paulfm@me.umn.edu>, linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:9493 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751420Ab3KRSbo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 Nov 2013 13:31:44 -0500
-In-Reply-To: <528A2397.8030402@me.umn.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/x4nyDRcD=BOV5KkYrQUcxCe"; protocol="application/pgp-signature"
+Cc: "Kernel.org-Linux-RAID" <linux-raid@vger.kernel.org>,
+	"Kernel.org-Linux-XFS" <linux-xfs@vger.kernel.org>,
+	"Kernel.org-Linux-EXT4" <linux-ext4@vger.kernel.org>
+To: Martin Boutin <martboutin@gmail.com>
+Return-path: <linux-raid-owner@vger.kernel.org>
+In-Reply-To: <CACtJ3HZxp6xEjY_wOucCcqX4scNzEGuiAsovQYObJS9whtYJsQ@mail.gmail.com>
+Sender: linux-raid-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 11/18/13, 8:26 AM, Paul FM wrote:
-> 
-> Yes - I need noacl and nouser_xattr
-> 
-> How about documenting your intent to remove them in the man pages.
-> 
-> acl support and user_xattr support need to be off on the / and /usr
-> filesystems to simplify security. Actually I want a way to turn off
-> ALL extended attribute support on any filesystem.  How about noxattr
-> (which would turn off ALL extended attribute support including acls).
-> I also use nosuid on filesystems that shouldn't have any suid files.
-> 
-> This is to follow the security principal - "If you aren't using it
-> and don't need it - turn it off".
+--Sig_/x4nyDRcD=BOV5KkYrQUcxCe
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-FWIW, it still can be disabled at build time via CONFIG_EXT3_FS_POSIX_ACL
+On Mon, 18 Nov 2013 11:02:15 -0500
+Martin Boutin <martboutin@gmail.com> wrote:
 
-But if you are using a distro kernel that turns that on, I see
-your point about noacl.
+> I have the md0 raid device formatted as ext3 with a 4k block size, and
+> stride and stripes correctly chosen to match the raid chunk size, that
+> is, stride=3D128,stripe-width=3D256.
 
-However, I'm not sure how nouser_xattr comes into the argument?
-xattrs by themselves are just metadata; they don't impact security
-control unless they are a special kind of xattrs (i.e. acls).
+What is your stripe cache size?
+http://peterkieser.com/2009/11/29/raid-mdraid-stripe_cache_size-vs-write-tr=
+ansfer/
 
-Thanks,
--Eric
+> The command line for measuring filesystem read and write speeds was:
+>=20
+> $ dd if=3D/tmp/diskmnt/filerd.zero of=3D/dev/null bs=3D1M count=3D1000 if=
+lag=3Ddirect
+> $ dd if=3D/dev/zero of=3D/tmp/diskmnt/filewr.zero bs=3D1M count=3D1000 of=
+lag=3Ddirect
 
-> The simple Posix/Unix permissions are more than enough security
-> control in almost every situation I have run into (only wish I could
-> use them in Windows).
-> 
-> Having worked extensively with ACLS on Windows (and some older Main
-> Frame OSes) - I note that ACL's add a level of complexity to security
-> that actually makes for less security.  I see the need to support
-> them in Unix/Linux - but they should be OFF unless someone
-> specifically wants to use them (at least don't make them hard to turn
-> off).
-> 
-> Just try auditing the security of a windows filesystem if you don't
-> think ACL's add extreme complexity (I gave up - I just forcibily set
-> all the ACL's myself by script using the unix Owner,Group,Other
-> concepts as a model to simplify what I am setting).
-> 
-> 
-> 
-> 
+Try testing with "fdatasync" instead of "direct" here.
 
+--=20
+With respect,
+Roman
+
+--Sig_/x4nyDRcD=BOV5KkYrQUcxCe
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.12 (GNU/Linux)
+
+iEYEARECAAYFAlKKX2QACgkQTLKSvz+PZwh1mwCgjuGOIMIxOqMQRP79r1fKVx+f
+1f0AnR9v0sYECiXgCFZoXoUzhVdBmPwO
+=kJZ2
+-----END PGP SIGNATURE-----
+
+--Sig_/x4nyDRcD=BOV5KkYrQUcxCe--
