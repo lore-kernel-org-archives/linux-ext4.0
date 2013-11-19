@@ -1,31 +1,36 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] jbd: Lower severity of aborted journal from EMERG to CRIT
-Date: Tue, 19 Nov 2013 02:26:30 -0800
-Message-ID: <20131119102630.GB5107@infradead.org>
-References: <1384527412-23349-1-git-send-email-lkundrak@v3.sk>
- <20131118164533.GF3921@quack.suse.cz>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [BUG] ext2/3/4: dio reads stale data when we do some append dio
+ writes
+Date: Tue, 19 Nov 2013 18:45:08 +0800
+Message-ID: <20131119104508.GA4630@gmail.com>
+References: <20131119095302.GA4534@gmail.com>
+ <20131119102235.GA5010@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Lubomir Rintel <lkundrak@v3.sk>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pd0-f171.google.com ([209.85.192.171]:48887 "EHLO
+	mail-pd0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751990Ab3KSKm1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Nov 2013 05:42:27 -0500
 Content-Disposition: inline
-In-Reply-To: <20131118164533.GF3921@quack.suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20131119102235.GA5010@infradead.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 18, 2013 at 05:45:33PM +0100, Jan Kara wrote:
-> dead. If it was an important filesystem in your system, the whole system is
-> unusable. In kernel, we don't know whether the filesystem was important or
-> not. So KERN_EMERG isn't adequate in all the cases but KERN_CRIT is
-> neither. What if we made that message print also device name (it would be
-> more useful anyway in that case) and you could then filter out messages for
-> unimportant devices in syslogd?
+On Tue, Nov 19, 2013 at 02:22:35AM -0800, Christoph Hellwig wrote:
+> On Tue, Nov 19, 2013 at 05:53:03PM +0800, Zheng Liu wrote:
+> > code snippet:
+> 
+> Can you please wire this up as a regression test for xfstests?
+> 
 
-What is important or unimportant?  In todays world I don't think a fs
-dying is nessecarily criticial.  A root filesystem might be, but so
-might be any devices that is a single point of failure required for
-operation.
+No problem.  I am happy to do that.
+
+BTW, that would be great if you could give me some comments about this
+problem itself.  Is it a generic problem in vfs?  Or just a feature by
+design?
+
+Thanks,
+                                                - Zheng
