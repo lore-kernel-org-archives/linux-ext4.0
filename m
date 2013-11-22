@@ -1,95 +1,101 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: kernel panic using external journal and snapshots
-Date: Fri, 22 Nov 2013 15:11:45 +0800
-Message-ID: <20131122071145.GA5936@gmail.com>
-References: <5281A8A3.80604@gmail.com>
+From: "Akira Fujita" <a-fujita@rs.jp.nec.com>
+Subject: RE: [PATCH] mke2fs: Fix block bitmaps initalization with -O ^resize_inode
+Date: Fri, 22 Nov 2013 17:03:56 +0900
+Message-ID: <001c01cee759$64b67db0$2e237910$@rs.jp.nec.com>
+References: <52662BBA.70503@rs.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Gordon Messmer <gordon.messmer@gmail.com>
+Content-Type: text/plain;
+	charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: "'Theodore Tso'" <tytso@mit.edu>,
+	"'ext4 development'" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f180.google.com ([209.85.192.180]:48585 "EHLO
-	mail-pd0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750887Ab3KVHJC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Nov 2013 02:09:02 -0500
-Received: by mail-pd0-f180.google.com with SMTP id q10so870079pdj.25
-        for <linux-ext4@vger.kernel.org>; Thu, 21 Nov 2013 23:09:01 -0800 (PST)
-Content-Disposition: inline
-In-Reply-To: <5281A8A3.80604@gmail.com>
+Received: from TYO200.gate.nec.co.jp ([202.32.8.215]:42779 "EHLO
+	tyo200.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752113Ab3KVIKR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Nov 2013 03:10:17 -0500
+Received: from tyo202.gate.nec.co.jp ([10.7.69.202])
+	by tyo200.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id rAM8AGCJ004070
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Fri, 22 Nov 2013 17:10:16 +0900 (JST)
+In-Reply-To: <52662BBA.70503@rs.jp.nec.com>
+Content-Language: ja
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Gordon,
+Hi Ted,
 
-On Mon, Nov 11, 2013 at 08:03:47PM -0800, Gordon Messmer wrote:
-> I'm developing backup infrastructure for Linux using snapshots.  One
-> of the supported configurations is EXT4 on LVM, but I think I've
-> come across a bug.
-> 
-> I'm currently testing on CentOS 6, with kernel 2.6.32-358.6.1.el6.x86_64
-> 
-> If I create a snapshot of a filesystem with an external journal, and
-> mount that snapshot while the original filesystem is mounted, the
-> system will usually kernel panic.  If it does not panic, then the
-> kernel will later refuse to mount it because "External journal has
-> more than one user."  So, the first bug seems to be that ext4
-> doesn't check the external journal before mounting the new snapshot
-> to ensure that the journal is not in use.  Expected behavior is that
-> the kernel would refuse to mount a filesystem whose journal already
-> has a "user" in order to prevent a kernel panic.
-> 
-> If that were the extent of the problem, I probably wouldn't bother
-> reporting the issue.  However, the kernel will STILL panic if I use
-> tune2fs to remove the journal, and even if I use tune2fs to create a
-> new internal journal.  The second bug, then, seems to be that once
-> an ext4 filesystem has an external journal, that journal will
-> continue to be used after it has been removed, and even if it is
-> replaced with an internal journal.
-> 
-> The following commands were used to test the problem.  These are
-> basically the commands run by the "snapshot" application.  It sets a
-> minimum snapshot size of 10% of the volume size, then reads the size
-> of the volume and the size remaining in the volume group.  It
-> creates a uuid for the snapshot name, then creates the new snapshot.
-> I use tune2fs first to verify that there is a journal device
-> recorded, then remove the journal.  Afterward, I read the value
-> again and find no external journal recorded.  When the filesystem is
-> mounted, the kernel will usually panic.
-> 
-> Is this a known bug?  I haven't yet built a newer system to test the
-> effects on the current kernel version.
-> 
-> min_size=10
-> lvsize=$(lvs --noheadings --units m --nosuffix -o lv_size
-> "VolGroup/lv_var" | cut -f1 -d.)
-> vgfree=$(vgs --noheadings --units m --nosuffix -o vg_free
-> "/dev/VolGroup" | cut -f1 -d.)
-> test "$vgfree" -gt $(( $lvsize * $min_size / 100 )) || echo Not
-> enough free space on "/dev/VolGroup" for snapshot
-> uuid=$(uuidgen)
-> lvcreate -s -n "lv_var-snap-${uuid}" -L "$(( $lvsize * $min_size /
-> 100 ))"m "VolGroup/lv_var"
-> 	  Rounding up size to full physical extent 128.00 MiB
-> 	  Logical volume
-> 	"lv_var-snap-66c41691-21c0-4db2-8af2-09a13d87a881" created
-> tune2fs -l "/dev/VolGroup/lv_var-snap-${uuid}" | grep "^Journal device:"
-> 	Journal device:              0xfd04
-> tune2fs -O ^has_journal "/dev/VolGroup/lv_var-snap-${uuid}"
-> 	tune2fs 1.41.12 (17-May-2010)
-> 	Journal removed
-> tune2fs -l "/dev/VolGroup/lv_var-snap-${uuid}" | grep "^Journal device:"
-> mount "/dev/VolGroup/lv_var-snap-${uuid}" /mnt
-> 	* kernel panic *
-> 
-> 
-> https://bitbucket.org/gordonmessmer/dragonsdawn-snapshot
+Could you review this patch?
 
-For the first question, I haven't a LVM device on my hand.  Hence I am
-not sure whether there is a bug or not.
+Best,
+Akira Fujita
 
-For the second one, I do a test on my sand box against Linux-3.12-rc5,
-and it works well.  So I think maybe you can try it again on a newer
-kernel.
+>-----Original Message-----
+>From: linux-ext4-owner@vger.kernel.org [mailto:linux-ext4-owner@vger.kernel.org] On Behalf Of
+>Akira Fujita
+>Sent: Tuesday, October 22, 2013 4:40 PM
+>To: Theodore Tso; ext4 development
+>Subject: [PATCH] mke2fs: Fix block bitmaps initalization with -O ^resize_inode
+>
+>If we create ext4 filesystem without resize_inode feature, mke2fs command does not initialize
+block
+>groups which have backup superblock and/or group descriptor block (With meta_bg feature,
+backup
+>superblock and group descriptor block are located separately).
+>So we have to fix block bitmaps when we run "e2fsck -b superblock device".
+>This patch fixes the issue by initializing block bitmaps correctly.
+>
+>Steps to reproduce:
+>1. mke2fs -t ext4 -b 4096 -O ^resize_inode device 2. e2fsck -b 32768 DEV
+>  <snip>
+>  Pass 1: Checking inodes, blocks, and sizes
+>  Pass 2: Checking directory structure
+>  Pass 3: Checking directory connectivity
+>  Pass 4: Checking reference counts
+>  Pass 5: Checking group summary information
+>  Block bitmap differences:  +(32768--32769) +(98304--98305) +(163840--163841)
+>  Fix<y>?
+>
+>Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
+>---
+> lib/ext2fs/alloc_sb.c |   10 ++++++----
+> 1 file changed, 6 insertions(+), 4 deletions(-) diff --git a/lib/ext2fs/alloc_sb.c
+>b/lib/ext2fs/alloc_sb.c index 223ec51..5419d0d 100644
+>--- a/lib/ext2fs/alloc_sb.c
+>+++ b/lib/ext2fs/alloc_sb.c
+>@@ -58,23 +58,25 @@ int ext2fs_reserve_super_and_bgd(ext2_filsys fs,
+> 		old_desc_blocks =
+> 			fs->desc_blocks + fs->super->s_reserved_gdt_blocks;
+>
+>-	if (super_blk || (group == 0))
+>+	if (super_blk || (group == 0)) {
+>+		ext2fs_bg_flags_clear(fs, group, EXT2_BG_BLOCK_UNINIT);
+> 		ext2fs_mark_block_bitmap2(bmap, super_blk);
+>+	}
+> 	if ((group == 0) && (fs->blocksize == 1024) &&
+> 	    EXT2FS_CLUSTER_RATIO(fs) > 1)
+> 		ext2fs_mark_block_bitmap2(bmap, 0);
+>
+> 	if (old_desc_blk) {
+>-		if (fs->super->s_reserved_gdt_blocks && fs->block_map == bmap)
+>-			ext2fs_bg_flags_clear(fs, group, EXT2_BG_BLOCK_UNINIT);
+> 		num_blocks = old_desc_blocks;
+> 		if (old_desc_blk + num_blocks >= ext2fs_blocks_count(fs->super))
+> 			num_blocks = ext2fs_blocks_count(fs->super) -
+> 				old_desc_blk;
+> 		ext2fs_mark_block_bitmap_range2(bmap, old_desc_blk, num_blocks);
+> 	}
+>-	if (new_desc_blk)
+>+	if (new_desc_blk) {
+>+		ext2fs_bg_flags_clear(fs, group, EXT2_BG_BLOCK_UNINIT);
+> 		ext2fs_mark_block_bitmap2(bmap, new_desc_blk);
+>+	}
+>
+> 	num_blocks = ext2fs_group_blocks_count(fs, group);
+> 	num_blocks -= 2 + fs->inode_blocks_per_group + used_blks;
+>
+>--
+>To unsubscribe from this list: send the line "unsubscribe linux-ext4" in the body of a message
+to
+>majordomo@vger.kernel.org More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Regards,
-                                                - Zheng
