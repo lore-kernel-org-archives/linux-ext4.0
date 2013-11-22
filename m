@@ -1,109 +1,95 @@
-From: Carlos Maiolino <cmaiolino@redhat.com>
-Subject: Re: [PATCH] ext4: check incompatible mount options when mounting
- ext2/3 [V2]
-Date: Thu, 21 Nov 2013 23:43:59 -0200
-Message-ID: <20131122014358.GA7134@orion.maiolino.org>
-References: <1351798331-14456-1-git-send-email-cmaiolino@redhat.com>
- <1358870878-7369-1-git-send-email-cmaiolino@redhat.com>
- <20130123103917.GD9821@quack.suse.cz>
- <20130123122249.GA1423@localhost.localdomain>
- <20130123130037.GA23741@quack.suse.cz>
- <20131031140040.GD14337@orion.maiolino.org>
- <20131119183923.GA29056@orion.maiolino.org>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: kernel panic using external journal and snapshots
+Date: Fri, 22 Nov 2013 15:11:45 +0800
+Message-ID: <20131122071145.GA5936@gmail.com>
+References: <5281A8A3.80604@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: jack@suse.cz
-To: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+To: Gordon Messmer <gordon.messmer@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:64953 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753118Ab3KVBoI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Nov 2013 20:44:08 -0500
+Received: from mail-pd0-f180.google.com ([209.85.192.180]:48585 "EHLO
+	mail-pd0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750887Ab3KVHJC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Nov 2013 02:09:02 -0500
+Received: by mail-pd0-f180.google.com with SMTP id q10so870079pdj.25
+        for <linux-ext4@vger.kernel.org>; Thu, 21 Nov 2013 23:09:01 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <20131119183923.GA29056@orion.maiolino.org>
+In-Reply-To: <5281A8A3.80604@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Nevermind, I noticed Ted committed a patch with a different approach of this
-issue.
+Hi Gordon,
 
-
-On Tue, Nov 19, 2013 at 04:39:28PM -0200, Carlos Maiolino wrote:
-> Ping?
+On Mon, Nov 11, 2013 at 08:03:47PM -0800, Gordon Messmer wrote:
+> I'm developing backup infrastructure for Linux using snapshots.  One
+> of the supported configurations is EXT4 on LVM, but I think I've
+> come across a bug.
 > 
-> On Thu, Oct 31, 2013 at 12:00:41PM -0200, Carlos Maiolino wrote:
-> > Hi guys, my apologies to have not touched this conversation for a while, got
-> > busy with other stuff.
-> > 
-> > So, let me continue this.
-> > 
-> > On Wed, Jan 23, 2013 at 02:00:37PM +0100, Jan Kara wrote:
-> > > On Wed 23-01-13 07:22:49, Carlos Maiolino wrote:
-> > > > On Wed, Jan 23, 2013 at 11:39:17AM +0100, Jan Kara wrote:
-> > > > > On Tue 22-01-13 11:07:58, Carlos Maiolino wrote:
-> > > > > > This checks for incompatible mounting options when using ext4 module to mount
-> > > > > > ext3 or ext2 filesystems.
-> > > > > > 
-> > > > > > Sets two new flags to group ext4 mount options that are incompatible with ext2
-> > > > > > and ext3, and then add two functions -- check_ext2/3_incompat_mount() -- to
-> > > > > > check and warn/fail mount, if any of these options are being used.
-> > > > > > 
-> > > > > > I believe, some options like those expecting an argument needs to be checked
-> > > > > > during parsing time.
-> > > > > > 
-> > > > > > barrier mount, although it has a flag, when mounting an ext2fs, where
-> > > > > > barriers are not supported (afaik), should also be checked during parse
-> > > > > > time, otherwise the BARRIER mount flag will be set.
-> > > > > > 
-> > > > > > I didn't add all mount options I believe to need to raise a warning, just
-> > > > > > those with a flag set on superblock, another flags should be added after a
-> > > > > > discussion to reach a concensus of all ext2/3 options that should be rejected by
-> > > > > > ext4 mount.
-> > > > >   Thinking about it a bit more I'm not sure if restricting mount options is
-> > > > > the right thing to start with.  IMHO what we should restrict is mounting
-> > > > > filesystem with certain *features* as ext3/ext2. So e.g. filesystem with
-> > > > > EXT4_FEATURE_INCOMPAT_EXTENTS cannot be mounted as ext2 or ext3. Similarly
-> > > > > as currently we forbid mounting ext3 filesystem with
-> > > > > EXT3_FEATURE_INCOMPAT_RECOVER as ext2... This should avoid the confusion
-> > > > > which could arise when someone reports problems with "ext3" filesystem but
-> > > > > actually has some of the ext4 features enabled.
-> > > > > 
-> > > > This is interesting, but I wonder if not restricting mount options, but
-> > > > features, would open a 'window' to let users change their filesystem on-disk
-> > > > format without know what they are doing, but I might be wrong.
-> > >   If there are mount options that enable features, then these should be
-> > > disallowed for ext2/ext3 mounts. But I think we already got rid of these
-> > > traps on users...
-> > > 
-> > > 								Honza
-> > > -- 
-> > > Jan Kara <jack@suse.cz>
-> > > SUSE Labs, CR
-> > 
-> > Jan, I agree with the idea of check for incompat features and I can work on that
-> > with no problem, but I still think we need to also ensure some mount options are
-> > not allowed to be used with some specific ExtFS versions wheter it change the
-> > disk format (we probably got rid of these as you said) or not. Not sure if my
-> > previous (V2) to restrict mount options lacks something or need to be reworked
-> > in some way (of course now it should to fit new kernel versions).
-> > 
-> > As an example, commit=<secs> option doesn't make sense to be used on ext2
-> > filesystems, but you can mount an ext2 FS with this option with no problem.
-> > 
-> > 
-> > -- 
-> > Carlos
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> I'm currently testing on CentOS 6, with kernel 2.6.32-358.6.1.el6.x86_64
 > 
-> -- 
-> Carlos
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> If I create a snapshot of a filesystem with an external journal, and
+> mount that snapshot while the original filesystem is mounted, the
+> system will usually kernel panic.  If it does not panic, then the
+> kernel will later refuse to mount it because "External journal has
+> more than one user."  So, the first bug seems to be that ext4
+> doesn't check the external journal before mounting the new snapshot
+> to ensure that the journal is not in use.  Expected behavior is that
+> the kernel would refuse to mount a filesystem whose journal already
+> has a "user" in order to prevent a kernel panic.
+> 
+> If that were the extent of the problem, I probably wouldn't bother
+> reporting the issue.  However, the kernel will STILL panic if I use
+> tune2fs to remove the journal, and even if I use tune2fs to create a
+> new internal journal.  The second bug, then, seems to be that once
+> an ext4 filesystem has an external journal, that journal will
+> continue to be used after it has been removed, and even if it is
+> replaced with an internal journal.
+> 
+> The following commands were used to test the problem.  These are
+> basically the commands run by the "snapshot" application.  It sets a
+> minimum snapshot size of 10% of the volume size, then reads the size
+> of the volume and the size remaining in the volume group.  It
+> creates a uuid for the snapshot name, then creates the new snapshot.
+> I use tune2fs first to verify that there is a journal device
+> recorded, then remove the journal.  Afterward, I read the value
+> again and find no external journal recorded.  When the filesystem is
+> mounted, the kernel will usually panic.
+> 
+> Is this a known bug?  I haven't yet built a newer system to test the
+> effects on the current kernel version.
+> 
+> min_size=10
+> lvsize=$(lvs --noheadings --units m --nosuffix -o lv_size
+> "VolGroup/lv_var" | cut -f1 -d.)
+> vgfree=$(vgs --noheadings --units m --nosuffix -o vg_free
+> "/dev/VolGroup" | cut -f1 -d.)
+> test "$vgfree" -gt $(( $lvsize * $min_size / 100 )) || echo Not
+> enough free space on "/dev/VolGroup" for snapshot
+> uuid=$(uuidgen)
+> lvcreate -s -n "lv_var-snap-${uuid}" -L "$(( $lvsize * $min_size /
+> 100 ))"m "VolGroup/lv_var"
+> 	  Rounding up size to full physical extent 128.00 MiB
+> 	  Logical volume
+> 	"lv_var-snap-66c41691-21c0-4db2-8af2-09a13d87a881" created
+> tune2fs -l "/dev/VolGroup/lv_var-snap-${uuid}" | grep "^Journal device:"
+> 	Journal device:              0xfd04
+> tune2fs -O ^has_journal "/dev/VolGroup/lv_var-snap-${uuid}"
+> 	tune2fs 1.41.12 (17-May-2010)
+> 	Journal removed
+> tune2fs -l "/dev/VolGroup/lv_var-snap-${uuid}" | grep "^Journal device:"
+> mount "/dev/VolGroup/lv_var-snap-${uuid}" /mnt
+> 	* kernel panic *
+> 
+> 
+> https://bitbucket.org/gordonmessmer/dragonsdawn-snapshot
 
--- 
-Carlos
+For the first question, I haven't a LVM device on my hand.  Hence I am
+not sure whether there is a bug or not.
+
+For the second one, I do a test on my sand box against Linux-3.12-rc5,
+and it works well.  So I think maybe you can try it again on a newer
+kernel.
+
+Regards,
+                                                - Zheng
