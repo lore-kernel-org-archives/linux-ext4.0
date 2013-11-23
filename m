@@ -1,123 +1,92 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] mke2fs: Fix block bitmaps initalization with -O
- ^resize_inode
-Date: Fri, 22 Nov 2013 17:33:36 -0800
-Message-ID: <20131123013336.GD10269@birch.djwong.org>
-References: <52662BBA.70503@rs.jp.nec.com>
+From: NeilBrown <neilb@suse.de>
+Subject: Re: bio_add_page rw mode check by merge_bvec_fn
+Date: Sat, 23 Nov 2013 16:12:34 +1100
+Message-ID: <20131123161234.20ae4f9d@notabene.brown>
+References: <528E4A50.7040609@itwm.fraunhofer.de>
+	<528E4C19.70507@itwm.fraunhofer.de>
+	<20131122153618.GB15143@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Akira Fujita <a-fujita@rs.jp.nec.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:21675 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932155Ab3KWBdp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Nov 2013 20:33:45 -0500
+Content-Type: multipart/mixed; boundary="===============0646379520130984605=="
+Cc: Jens Axboe <axboe@kernel.dk>, xfs@oss.sgi.com,
+	Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+	Kent Overstreet <kmo@daterainc.com>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <20131122153618.GB15143@infradead.org>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
+
+--===============0646379520130984605==
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/kJU+Y90G7.7Isi0HWk6i/YX"; protocol="application/pgp-signature"
+
+--Sig_/kJU+Y90G7.7Isi0HWk6i/YX
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
+
+On Fri, 22 Nov 2013 07:36:18 -0800 Christoph Hellwig <hch@infradead.org>
+wrote:
+
+> While this is trivial to fix it's also fairly unexpected and easy
+> to get wrong for new callers.  Neil, can you explain why you
+> desperately need it?
+
+Desperately?  Not at all?
+Need?  Not really.  This is just in RAID5 and merge_bvec_fn is purely an
+optimisation for RAID5.
+Limiting read BIOs to one chunk allows us to bypass the stripe-cache, so can
+be good.
+Limiting write BIOs is completely unnecessary so we currently don't bother.
+
+So I have no objection to bvm->bi_rw being removed.
+
+Thanks,
+NeilBrown
+
+--Sig_/kJU+Y90G7.7Isi0HWk6i/YX
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBUpA5Qjnsnt1WYoG5AQJ0PQ//Tc7Z87QuBtjhXmEq8zwwumqR/Jzfg+ok
+Q3VZBYu6kgpR2QZCoi94cdHo9vbmfHYcbrJT8DsheKvljqFOOb5uUsarbLmSI95P
+FuUbSmUvmHMhh7N1dCovviFmiCuNwdFgsUbA3VpKsk/3LToypu2k/4jHP+WbbViW
+7wTBjqSpM2XxZOLsPwJtBnRxJ/wiZ9tIgYk+8YYWnno/rmjPS2k12YOX6spCiKOs
+ndB2NXyToMgBEJHRXXsIZrfnW3r9jGZEEbgcbiHrDyHWNPtwmSfIjI3D1iZZXAtw
+Ip/mLaQDqKrwNdIO10rokNHJ8WFGEOuRMPgoH+GzmIrF59ONWkIdj/OX85Ruw9GR
+CU8cKfaQFp4xQRflo5BZLycA7sRUixnCRUEaAUi4MkHKZRXQcc51bD3NYO5aqVty
+OJGkQ1PQc3iUMkEpd8TDOk1AgNHJCvfla5brMKWWIxaraxzRt58wnSryh3KySInY
+zGF9LU/16pkCKedTtkLfUYNkKvjYfYNu/TACDmfz+xKxnf1OcQQSyi1RQ5vvAXIj
+bwxDsXRU6x4eeqoNuz5lOU5W9gjSd9gpsublcJLXQqfCneg9OG87s1bs0F16mDfm
+q5hOjXikfpWGC8JhAtejfteW9sa4T021z1ircSCG4RhS9EQKNIwHn/dbEM3X4saS
+vZMgRHYPECc=
+=/BWO
+-----END PGP SIGNATURE-----
+
+--Sig_/kJU+Y90G7.7Isi0HWk6i/YX--
+
+
+--===============0646379520130984605==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Content-Disposition: inline
-In-Reply-To: <52662BBA.70503@rs.jp.nec.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 22, 2013 at 04:39:38PM +0900, Akira Fujita wrote:
-> If we create ext4 filesystem without resize_inode feature,
-> mke2fs command does not initialize block groups
-> which have backup superblock and/or group descriptor block
-> (With meta_bg feature, backup superblock and group descriptor block
-> are located separately).
-> So we have to fix block bitmaps when we run "e2fsck -b superblock device".
-> This patch fixes the issue by initializing block bitmaps correctly.
-> 
-> Steps to reproduce:
-> 1. mke2fs -t ext4 -b 4096 -O ^resize_inode device
-> 2. e2fsck -b 32768 DEV 
->   <snip>
->   Pass 1: Checking inodes, blocks, and sizes
->   Pass 2: Checking directory structure
->   Pass 3: Checking directory connectivity
->   Pass 4: Checking reference counts
->   Pass 5: Checking group summary information
->   Block bitmap differences:  +(32768--32769) +(98304--98305) +(163840--163841)
->   Fix<y>? 
-> 
-> Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
-> ---
->  lib/ext2fs/alloc_sb.c |   10 ++++++----
->  1 file changed, 6 insertions(+), 4 deletions(-)
-> diff --git a/lib/ext2fs/alloc_sb.c b/lib/ext2fs/alloc_sb.c
-> index 223ec51..5419d0d 100644
-> --- a/lib/ext2fs/alloc_sb.c
-> +++ b/lib/ext2fs/alloc_sb.c
-> @@ -58,23 +58,25 @@ int ext2fs_reserve_super_and_bgd(ext2_filsys fs,
->  		old_desc_blocks =
->  			fs->desc_blocks + fs->super->s_reserved_gdt_blocks;
->  
-> -	if (super_blk || (group == 0))
-> +	if (super_blk || (group == 0)) {
-> +		ext2fs_bg_flags_clear(fs, group, EXT2_BG_BLOCK_UNINIT);
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
 
-I'm not sure I agree with clearing the uninit flag unconditionally.  Consider
-the case where bmap != fs->block_map, which happens in mark_table_blocks()
-(e2fsck pass1) and ext2fs_check_desc (libext2fs).  In these two cases, the
-function will mark superblock and group descriptor blocks in a separate bitmap,
-leaving everything under fs alone.  IOW: It doesn't make sense to mess with the
-fs' uninit flags if we're not marking the fs' bitmap.
-
-As you point out, however, if we /are/ being called with fs->block_bitmap ==
-bmap, then we're probably initializing the fs and it makes sense to clear the
-uninit flags.
-
-Maybe something like this, just after the call to ext2fs_super_and_bgd_loc2?
-
-if (fs->block_map == bmap && (new_desc_block || old_desc_block || super_blk))
-	ext2fs_bg_flags_clear(fs, group, EXT2_BG_BLOCK_UNINIT);
-
-<shrug>
-
-I've been wondering for a while -- if we have a FS with meta_bg and
-s_first_meta_bg > 0, does that mean we have "old" style group descriptor
-layouts up to whatever block group s_first_meta_bg points to?  And why do we
-set old_desc_blocks to s_first_meta_bg, since the former is used as a block
-length offset for old_desc_blk for block groups beneath s_first_meta_bg?  
-Group descriptors aren't the same size as a block.
-
-This all seems kinda moot since the only initialization I can find for
-s_first_meta_bg sets it to zero.
-
-<confused>
-
->  		ext2fs_mark_block_bitmap2(bmap, super_blk);
-> +	}
->  	if ((group == 0) && (fs->blocksize == 1024) &&
->  	    EXT2FS_CLUSTER_RATIO(fs) > 1)
->  		ext2fs_mark_block_bitmap2(bmap, 0);
->  
->  	if (old_desc_blk) {
-> -		if (fs->super->s_reserved_gdt_blocks && fs->block_map == bmap)
-> -			ext2fs_bg_flags_clear(fs, group, EXT2_BG_BLOCK_UNINIT);
-
-Why remove this?
-
->  		num_blocks = old_desc_blocks;
->  		if (old_desc_blk + num_blocks >= ext2fs_blocks_count(fs->super))
->  			num_blocks = ext2fs_blocks_count(fs->super) -
->  				old_desc_blk;
->  		ext2fs_mark_block_bitmap_range2(bmap, old_desc_blk, num_blocks);
->  	}
-> -	if (new_desc_blk)
-> +	if (new_desc_blk) {
-> +		ext2fs_bg_flags_clear(fs, group, EXT2_BG_BLOCK_UNINIT);
-
-Same comment here as that first chunk of reply.
-
---D
->  		ext2fs_mark_block_bitmap2(bmap, new_desc_blk);
-> +	}
->  
->  	num_blocks = ext2fs_group_blocks_count(fs, group);
->  	num_blocks -= 2 + fs->inode_blocks_per_group + used_blks;
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--===============0646379520130984605==--
