@@ -1,92 +1,57 @@
-From: NeilBrown <neilb@suse.de>
-Subject: Re: bio_add_page rw mode check by merge_bvec_fn
-Date: Sat, 23 Nov 2013 16:12:34 +1100
-Message-ID: <20131123161234.20ae4f9d@notabene.brown>
-References: <528E4A50.7040609@itwm.fraunhofer.de>
-	<528E4C19.70507@itwm.fraunhofer.de>
-	<20131122153618.GB15143@infradead.org>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: Filesystem writes on RAID5 too slow
+Date: Sat, 23 Nov 2013 00:41:06 -0800
+Message-ID: <20131123084106.GA19088@infradead.org>
+References: <CACtJ3HZxp6xEjY_wOucCcqX4scNzEGuiAsovQYObJS9whtYJsQ@mail.gmail.com>
+ <528A5C45.4080906@redhat.com>
+ <20131119005740.GY6188@dastard>
+ <CACtJ3Ha3C7JNi5VZRnNMn+-okNheygmbj=j9AnUMvfzfZjNwug@mail.gmail.com>
+ <20131121092606.GU11434@dastard>
+ <CACtJ3HZAsOtmLArMWraygfQxpGymtZjr+a_reXv8o6LJzoMbvw@mail.gmail.com>
+ <CACtJ3Ha5P2Heu4qiEEk6c4g+tKyR=RrD-4E-Cqj+bP8YDjKQ6w@mail.gmail.com>
+ <20131121234116.GD6502@dastard>
+ <20131122092136.GD32568@infradead.org>
+ <20131122224038.GH6502@dastard>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0646379520130984605=="
-Cc: Jens Axboe <axboe@kernel.dk>, xfs@oss.sgi.com,
-	Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-	Kent Overstreet <kmo@daterainc.com>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <20131122153618.GB15143@infradead.org>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
-
---===============0646379520130984605==
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/kJU+Y90G7.7Isi0HWk6i/YX"; protocol="application/pgp-signature"
-
---Sig_/kJU+Y90G7.7Isi0HWk6i/YX
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
-
-On Fri, 22 Nov 2013 07:36:18 -0800 Christoph Hellwig <hch@infradead.org>
-wrote:
-
-> While this is trivial to fix it's also fairly unexpected and easy
-> to get wrong for new callers.  Neil, can you explain why you
-> desperately need it?
-
-Desperately?  Not at all?
-Need?  Not really.  This is just in RAID5 and merge_bvec_fn is purely an
-optimisation for RAID5.
-Limiting read BIOs to one chunk allows us to bypass the stripe-cache, so can
-be good.
-Limiting write BIOs is completely unnecessary so we currently don't bother.
-
-So I have no objection to bvm->bi_rw being removed.
-
-Thanks,
-NeilBrown
-
---Sig_/kJU+Y90G7.7Isi0HWk6i/YX
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBUpA5Qjnsnt1WYoG5AQJ0PQ//Tc7Z87QuBtjhXmEq8zwwumqR/Jzfg+ok
-Q3VZBYu6kgpR2QZCoi94cdHo9vbmfHYcbrJT8DsheKvljqFOOb5uUsarbLmSI95P
-FuUbSmUvmHMhh7N1dCovviFmiCuNwdFgsUbA3VpKsk/3LToypu2k/4jHP+WbbViW
-7wTBjqSpM2XxZOLsPwJtBnRxJ/wiZ9tIgYk+8YYWnno/rmjPS2k12YOX6spCiKOs
-ndB2NXyToMgBEJHRXXsIZrfnW3r9jGZEEbgcbiHrDyHWNPtwmSfIjI3D1iZZXAtw
-Ip/mLaQDqKrwNdIO10rokNHJ8WFGEOuRMPgoH+GzmIrF59ONWkIdj/OX85Ruw9GR
-CU8cKfaQFp4xQRflo5BZLycA7sRUixnCRUEaAUi4MkHKZRXQcc51bD3NYO5aqVty
-OJGkQ1PQc3iUMkEpd8TDOk1AgNHJCvfla5brMKWWIxaraxzRt58wnSryh3KySInY
-zGF9LU/16pkCKedTtkLfUYNkKvjYfYNu/TACDmfz+xKxnf1OcQQSyi1RQ5vvAXIj
-bwxDsXRU6x4eeqoNuz5lOU5W9gjSd9gpsublcJLXQqfCneg9OG87s1bs0F16mDfm
-q5hOjXikfpWGC8JhAtejfteW9sa4T021z1ircSCG4RhS9EQKNIwHn/dbEM3X4saS
-vZMgRHYPECc=
-=/BWO
------END PGP SIGNATURE-----
-
---Sig_/kJU+Y90G7.7Isi0HWk6i/YX--
-
-
---===============0646379520130984605==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Martin Boutin <martboutin@gmail.com>,
+	"Kernel.org-Linux-RAID" <linux-raid@vger.kernel.org>,
+	Eric Sandeen <sandeen@redhat.com>,
+	"Kernel.org-Linux-EXT4" <linux-ext4@vger.kernel.org>,
+	xfs-oss <xfs@oss.sgi.com>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from bombadil.infradead.org ([198.137.202.9]:57387 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751311Ab3KWIlI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 23 Nov 2013 03:41:08 -0500
 Content-Disposition: inline
+In-Reply-To: <20131122224038.GH6502@dastard>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+On Sat, Nov 23, 2013 at 09:40:38AM +1100, Dave Chinner wrote:
+> > geometry, and we already have it wired to to large sector size
+> > testing in xfstests.
+> 
+> We don't need to screw around with the sector size - that is
+> irrelevant to the problem, and we have an allocation alignment
+> test that is supposed to catch these issues: generic/223.
 
---===============0646379520130984605==--
+It didn't imply we need large sector sizes, but the same mechanism
+to expodse a large sector size can also be used to present large
+stripe units/width.
+
+> As I said, I have seen occasional failures of that test (once a
+> month, on average) as a result of this bug. It was simply not often
+> enough - running in a hard loop didn't increase the frequency of
+> failures - to be able debug it or to reach my "there's a regression
+> I need to look at" threshold. Perhaps we need to revisit that test
+> and see if we can make it more likely to trigger failures...
+
+Seems like 233 should have cought it regularly with the explicit
+alignment options on mkfs time.  Maybe we also need a test mirroring
+the plain dd more closely?
+
+I've not seen 233 fail for a long time..
