@@ -1,215 +1,123 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 10/25] debugfs: handle 64bit block numbers
-Date: Mon, 25 Nov 2013 09:49:46 -0800
-Message-ID: <20131125174946.GA22238@birch.djwong.org>
+Subject: Re: [PATCH 06/25] libext2fs: fix tests that set LARGE_FILE
+Date: Mon, 25 Nov 2013 09:57:28 -0800
+Message-ID: <20131125175728.GB22238@birch.djwong.org>
 References: <20131018044854.7339.48457.stgit@birch.djwong.org>
- <20131018045001.7339.74218.stgit@birch.djwong.org>
- <20131125083249.GE5964@gmail.com>
+ <20131018044935.7339.68127.stgit@birch.djwong.org>
+ <20131125070902.GA5964@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 To: tytso@mit.edu, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:47571 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754522Ab3KYRty (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Nov 2013 12:49:54 -0500
+Received: from aserp1040.oracle.com ([141.146.126.69]:16450 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754433Ab3KYR5c (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Nov 2013 12:57:32 -0500
 Content-Disposition: inline
-In-Reply-To: <20131125083249.GE5964@gmail.com>
+In-Reply-To: <20131125070902.GA5964@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 25, 2013 at 04:33:02PM +0800, Zheng Liu wrote:
-> On Thu, Oct 17, 2013 at 09:50:01PM -0700, Darrick J. Wong wrote:
-> > debugfs should use strtoull wrappers for reading block numbers from
-> > the command line.  "unsigned long" isn't wide enough to handle block
-> > numbers on 32bit platforms.
+On Mon, Nov 25, 2013 at 03:09:02PM +0800, Zheng Liu wrote:
+> On Thu, Oct 17, 2013 at 09:49:35PM -0700, Darrick J. Wong wrote:
+> > For each site where we test for a large file (> 2GB) and set the
+> > LARGE_FILE feature, use a helper function to make the size test
+> > consistent with the test that's in e2fsck.  This fixes the fsck
+> > complaints when we try to create a 2GB journal (not so hard with 64k
+> > block size) and fixes the incorrect test in fileio.c.
 > > 
 > > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> > ---
-> >  debugfs/debugfs.c      |   33 ++++++++++++++++++++++-----------
-> >  debugfs/extent_inode.c |   22 +++++++++-------------
-> >  debugfs/util.c         |    2 +-
-> >  3 files changed, 32 insertions(+), 25 deletions(-)
-> > 
-> > 
-> > diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-> > index d3db356..46fcd07 100644
-> > --- a/debugfs/debugfs.c
-> > +++ b/debugfs/debugfs.c
-> > @@ -181,8 +181,7 @@ void do_open_filesys(int argc, char **argv)
-> >  				return;
-> >  			break;
-> >  		case 's':
-> > -			superblock = parse_ulong(optarg, argv[0],
-> > -						 "superblock number", &err);
-> > +			err = strtoblk(argv[0], optarg, &superblock);
-> >  			if (err)
-> >  				return;
-> >  			break;
-> > @@ -277,14 +276,17 @@ void do_init_filesys(int argc, char **argv)
-> >  	struct ext2_super_block param;
-> >  	errcode_t	retval;
-> >  	int		err;
-> > +	blk64_t		blocks;
-> >  
-> >  	if (common_args_process(argc, argv, 3, 3, "initialize",
-> >  				"<device> <blocksize>", CHECK_FS_NOTOPEN))
->                                            ^^^^^^^^^
-> To be honest, I never use this command in debugfs.  I am a little
-> confused.  If I understand correctly, we should pass a parameter as the
-> number of blocks.  But obviously here the usage tells us that we should
-> pass a parameter as the block size.  Do we need to fix it?
-
-Yup.  That help text is incorrect.  I'll add it to my stack.
-
---D
+> 
+> In e2fsck/pass2.c there is also a place that needs to be fixed.
+> Otherwise the patch looks good to me.
+> Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
 > 
 >                                                 - Zheng
 > 
-> >  		return;
-> >  
-> >  	memset(&param, 0, sizeof(struct ext2_super_block));
-> > -	ext2fs_blocks_count_set(&param, parse_ulong(argv[2], argv[0],
-> > -						    "blocks count", &err));
-> > +	err = strtoblk(argv[0], argv[2], &blocks);
-> > +	if (err)
-> > +		return;
-> > +	ext2fs_blocks_count_set(&param, blocks);
-> >  	if (err)
-> >  		return;
-> >  	retval = ext2fs_initialize(argv[1], 0, &param,
-> > @@ -2109,7 +2111,9 @@ void do_bmap(int argc, char *argv[])
-> >  	ino = string_to_inode(argv[1]);
-> >  	if (!ino)
-> >  		return;
-> > -	blk = parse_ulong(argv[2], argv[0], "logical_block", &err);
-> > +	err = strtoblk(argv[0], argv[2], &blk);
-> > +	if (err)
-> > +		return;
-> >  
-> >  	errcode = ext2fs_bmap2(current_fs, ino, 0, 0, 0, blk, 0, &pblk);
-> >  	if (errcode) {
-> > @@ -2254,10 +2258,14 @@ void do_punch(int argc, char *argv[])
-> >  	ino = string_to_inode(argv[1]);
-> >  	if (!ino)
-> >  		return;
-> > -	start = parse_ulong(argv[2], argv[0], "logical_block", &err);
-> > -	if (argc == 4)
-> > -		end = parse_ulong(argv[3], argv[0], "logical_block", &err);
-> > -	else
-> > +	err = strtoblk(argv[0], argv[2], &start);
-> > +	if (err)
-> > +		return;
-> > +	if (argc == 4) {
-> > +		err = strtoblk(argv[0], argv[3], &end);
-> > +		if (err)
-> > +			return;
-> > +	} else
-> >  		end = ~0;
-> >  
-> >  	errcode = ext2fs_punch(current_fs, ino, 0, 0, start, end);
-> > @@ -2474,8 +2482,11 @@ int main(int argc, char **argv)
-> >  						"block size", 0);
-> >  			break;
-> >  		case 's':
-> > -			superblock = parse_ulong(optarg, argv[0],
-> > -						 "superblock number", 0);
-> > +			retval = strtoblk(argv[0], optarg, &superblock);
-> > +			if (retval) {
-> > +				com_err(argv[0], retval, 0, debug_prog_name);
-> > +				return 1;
-> > +			}
-> >  			break;
-> >  		case 'c':
-> >  			catastrophic = 1;
-> > diff --git a/debugfs/extent_inode.c b/debugfs/extent_inode.c
-> > index 0bbc4c5..75e328c 100644
-> > --- a/debugfs/extent_inode.c
-> > +++ b/debugfs/extent_inode.c
-> > @@ -264,7 +264,7 @@ void do_replace_node(int argc, char *argv[])
-> >  		return;
+> diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+> index 3c0bf49..66ed665 100644
+> --- a/e2fsck/pass2.c
+> +++ b/e2fsck/pass2.c
+> @@ -1318,7 +1318,8 @@ static void deallocate_inode(e2fsck_t ctx, ext2_ino_t ino, char* block_buf)
+>  	if (!ext2fs_inode_has_valid_blocks2(fs, &inode))
+>  		goto clear_inode;
+>  
+> -	if (LINUX_S_ISREG(inode.i_mode) && EXT2_I_SIZE(&inode) >= 0x80000000UL)
+> +	if (LINUX_S_ISREG(inode.i_mode) &&
+> +	    ext2fs_needs_large_file_feature(EXT2_I_SIZE(&inode)))
+>  		ctx->large_files--;
+>  
+>  	del_block.ctx = ctx;
+
+Good catch!  Thank you; I'll update the patch.
+
+--D
+> 
+> > ---
+> >  e2fsck/pass1.c         |    3 ++-
+> >  lib/ext2fs/ext2fs.h    |    6 ++++++
+> >  lib/ext2fs/fileio.c    |    2 +-
+> >  lib/ext2fs/mkjournal.c |    2 +-
+> >  4 files changed, 10 insertions(+), 3 deletions(-)
+> > 
+> > 
+> > diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+> > index ab23e42..8c18a93 100644
+> > --- a/e2fsck/pass1.c
+> > +++ b/e2fsck/pass1.c
+> > @@ -2281,7 +2281,8 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
+> >  		}
+> >  		pctx->num = 0;
 > >  	}
+> > -	if (LINUX_S_ISREG(inode->i_mode) && EXT2_I_SIZE(inode) >= 0x80000000UL)
+> > +	if (LINUX_S_ISREG(inode->i_mode) &&
+> > +	    ext2fs_needs_large_file_feature(EXT2_I_SIZE(inode)))
+> >  		ctx->large_files++;
+> >  	if ((pb.num_blocks != ext2fs_inode_i_blocks(fs, inode)) ||
+> >  	    ((fs->super->s_feature_ro_compat &
+> > diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+> > index 1ef4d67..8f82dae 100644
+> > --- a/lib/ext2fs/ext2fs.h
+> > +++ b/lib/ext2fs/ext2fs.h
+> > @@ -646,6 +646,12 @@ static inline int ext2fs_has_group_desc_csum(ext2_filsys fs)
+> >  			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM);
+> >  }
 > >  
-> > -	extent.e_lblk = parse_ulong(argv[1], argv[0], "logical block", &err);
-> > +	err = strtoblk(argv[0], argv[1], &extent.e_lblk);
-> >  	if (err)
-> >  		return;
+> > +/* The LARGE_FILE feature should be set if we have stored files 2GB+ in size */
+> > +static inline int ext2fs_needs_large_file_feature(unsigned long long file_size)
+> > +{
+> > +	return file_size >= 0x80000000ULL;
+> > +}
+> > +
+> >  /* alloc.c */
+> >  extern errcode_t ext2fs_new_inode(ext2_filsys fs, ext2_ino_t dir, int mode,
+> >  				  ext2fs_inode_bitmap map, ext2_ino_t *ret);
+> > diff --git a/lib/ext2fs/fileio.c b/lib/ext2fs/fileio.c
+> > index 02e6263..6b213b5 100644
+> > --- a/lib/ext2fs/fileio.c
+> > +++ b/lib/ext2fs/fileio.c
+> > @@ -400,7 +400,7 @@ errcode_t ext2fs_file_set_size2(ext2_file_t file, ext2_off64_t size)
 > >  
-> > @@ -272,7 +272,7 @@ void do_replace_node(int argc, char *argv[])
-> >  	if (err)
-> >  		return;
-> >  
-> > -	extent.e_pblk = parse_ulong(argv[3], argv[0], "logical block", &err);
-> > +	err = strtoblk(argv[0], argv[3], &extent.e_pblk);
-> >  	if (err)
-> >  		return;
-> >  
-> > @@ -338,8 +338,7 @@ void do_insert_node(int argc, char *argv[])
-> >  		return;
-> >  	}
-> >  
-> > -	extent.e_lblk = parse_ulong(argv[1], cmd,
-> > -				    "logical block", &err);
-> > +	err = strtoblk(cmd, argv[1], &extent.e_lblk);
-> >  	if (err)
-> >  		return;
-> >  
-> > @@ -348,8 +347,7 @@ void do_insert_node(int argc, char *argv[])
-> >  	if (err)
-> >  		return;
-> >  
-> > -	extent.e_pblk = parse_ulong(argv[3], cmd,
-> > -				    "pysical block", &err);
-> > +	err = strtoblk(cmd, argv[3], &extent.e_pblk);
-> >  	if (err)
-> >  		return;
-> >  
-> > @@ -366,8 +364,8 @@ void do_set_bmap(int argc, char **argv)
-> >  	const char	*usage = "[--uninit] <lblk> <pblk>";
-> >  	struct ext2fs_extent extent;
-> >  	errcode_t	retval;
-> > -	blk_t		logical;
-> > -	blk_t		physical;
-> > +	blk64_t		logical;
-> > +	blk64_t		physical;
-> >  	char		*cmd = argv[0];
-> >  	int		flags = 0;
-> >  	int		err;
-> > @@ -387,18 +385,16 @@ void do_set_bmap(int argc, char **argv)
-> >  		return;
-> >  	}
-> >  
-> > -	logical = parse_ulong(argv[1], cmd,
-> > -				    "logical block", &err);
-> > +	err = strtoblk(cmd, argv[1], &logical);
-> >  	if (err)
-> >  		return;
-> >  
-> > -	physical = parse_ulong(argv[2], cmd,
-> > -				    "physical block", &err);
-> > +	err = strtoblk(cmd, argv[2], &physical);
-> >  	if (err)
-> >  		return;
-> >  
-> >  	retval = ext2fs_extent_set_bmap(current_handle, logical,
-> > -					(blk64_t) physical, flags);
-> > +					physical, flags);
-> >  	if (retval) {
-> >  		com_err(cmd, retval, 0);
-> >  		return;
-> > diff --git a/debugfs/util.c b/debugfs/util.c
-> > index cf3a6c6..09088e0 100644
-> > --- a/debugfs/util.c
-> > +++ b/debugfs/util.c
-> > @@ -377,7 +377,7 @@ int common_block_args_process(int argc, char *argv[],
-> >  	}
-> >  
-> >  	if (argc > 2) {
-> > -		*count = parse_ulong(argv[2], argv[0], "count", &err);
-> > +		err = strtoblk(argv[0], argv[2], count);
-> >  		if (err)
-> >  			return 1;
-> >  	}
+> >  	/* If we're writing a large file, set the large_file flag */
+> >  	if (LINUX_S_ISREG(file->inode.i_mode) &&
+> > -	    EXT2_I_SIZE(&file->inode) > 0x7FFFFFFULL &&
+> > +	    ext2fs_needs_large_file_feature(EXT2_I_SIZE(&file->inode)) &&
+> >  	    (!EXT2_HAS_RO_COMPAT_FEATURE(file->fs->super,
+> >  					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE) ||
+> >  	     file->fs->super->s_rev_level == EXT2_GOOD_OLD_REV)) {
+> > diff --git a/lib/ext2fs/mkjournal.c b/lib/ext2fs/mkjournal.c
+> > index c636a97..2afd3b7 100644
+> > --- a/lib/ext2fs/mkjournal.c
+> > +++ b/lib/ext2fs/mkjournal.c
+> > @@ -378,7 +378,7 @@ static errcode_t write_journal_inode(ext2_filsys fs, ext2_ino_t journal_ino,
+> >  	inode_size = (unsigned long long)fs->blocksize * num_blocks;
+> >  	inode.i_size = inode_size & 0xFFFFFFFF;
+> >  	inode.i_size_high = (inode_size >> 32) & 0xFFFFFFFF;
+> > -	if (inode.i_size_high)
+> > +	if (ext2fs_needs_large_file_feature(inode_size))
+> >  		fs->super->s_feature_ro_compat |=
+> >  			EXT2_FEATURE_RO_COMPAT_LARGE_FILE;
+> >  	ext2fs_iblk_add_blocks(fs, &inode, es.newblocks);
 > > 
 > > --
 > > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
