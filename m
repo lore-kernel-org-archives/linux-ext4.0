@@ -1,34 +1,75 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 65701] oops: fs/ext4/ext4_jbd2.c
-Date: Mon, 25 Nov 2013 09:39:00 +0000
-Message-ID: <bug-65701-13602-3dsR8uyN9z@https.bugzilla.kernel.org/>
-References: <bug-65701-13602@https.bugzilla.kernel.org/>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH 14/25] e2fsck: only release clusters when shortening a
+ directory during a rehash
+Date: Mon, 25 Nov 2013 19:09:33 +0800
+Message-ID: <20131125110933.GA15056@gmail.com>
+References: <20131018044854.7339.48457.stgit@birch.djwong.org>
+ <20131018045027.7339.9686.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:38926 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750811Ab3KYJjL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 25 Nov 2013 04:39:11 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 7463C20265
-	for <linux-ext4@vger.kernel.org>; Mon, 25 Nov 2013 09:39:06 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 1E3532022F
-	for <linux-ext4@vger.kernel.org>; Mon, 25 Nov 2013 09:39:01 +0000 (UTC)
-In-Reply-To: <bug-65701-13602@https.bugzilla.kernel.org/>
+Received: from mail-pb0-f51.google.com ([209.85.160.51]:41841 "EHLO
+	mail-pb0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753156Ab3KYLGq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Nov 2013 06:06:46 -0500
+Received: by mail-pb0-f51.google.com with SMTP id up15so5526744pbc.10
+        for <linux-ext4@vger.kernel.org>; Mon, 25 Nov 2013 03:06:46 -0800 (PST)
+Content-Disposition: inline
+In-Reply-To: <20131018045027.7339.9686.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=65701
+On Thu, Oct 17, 2013 at 09:50:27PM -0700, Darrick J. Wong wrote:
+> When the rehash process is running on a bigalloc filesystem, it
+> compresses all the directory entries and hash structures into the
+> beginning of the directory file and then uses block_iterate3() to free
+> the blocks off the end of the file.  It seems to call
+> ext2fs_block_alloc_stats2() for every block in a cluster, which is
+> unfortunate because this function allocates and frees entire clusters
+> (and updates the summary counts accordingly).  In this case e2fsck
+> writes out incorrect summary counts.
+> 
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 
---- Comment #2 from Dmitry Monakhov <dmonakhov@openvz.org> ---
-Created attachment 115861
-  --> https://bugzilla.kernel.org/attachment.cgi?id=115861&action=edit
-this patch should fix an issue
+Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+                                                - Zheng
+
+> ---
+>  e2fsck/rehash.c |   14 +++++++++++---
+>  1 file changed, 11 insertions(+), 3 deletions(-)
+> 
+> 
+> diff --git a/e2fsck/rehash.c b/e2fsck/rehash.c
+> index 6ef3568..29da9a1 100644
+> --- a/e2fsck/rehash.c
+> +++ b/e2fsck/rehash.c
+> @@ -719,10 +719,18 @@ static int write_dir_block(ext2_filsys fs,
+>  		/* We don't need this block, so release it */
+>  		e2fsck_read_bitmaps(wd->ctx);
+>  		blk = *block_nr;
+> -		ext2fs_unmark_block_bitmap2(wd->ctx->block_found_map, blk);
+> -		ext2fs_block_alloc_stats2(fs, blk, -1);
+> +		/*
+> +		 * In theory, we only release blocks from the end of the
+> +		 * directory file, so it's fine to clobber a whole cluster at
+> +		 * once.
+> +		 */
+> +		if (blk % EXT2FS_CLUSTER_RATIO(fs) == 0) {
+> +			ext2fs_unmark_block_bitmap2(wd->ctx->block_found_map,
+> +						    blk);
+> +			ext2fs_block_alloc_stats2(fs, blk, -1);
+> +			wd->cleared++;
+> +		}
+>  		*block_nr = 0;
+> -		wd->cleared++;
+>  		return BLOCK_CHANGED;
+>  	}
+>  
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
