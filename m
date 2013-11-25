@@ -1,15 +1,17 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] jbd: Revise KERN_EMERG error messages
-Date: Mon, 25 Nov 2013 23:59:16 +0100
-Message-ID: <1385420357-30944-1-git-send-email-jack@suse.cz>
+Subject: [PATCH] jbd2: Revise KERN_EMERG error messages
+Date: Mon, 25 Nov 2013 23:59:17 +0100
+Message-ID: <1385420357-30944-2-git-send-email-jack@suse.cz>
+References: <1385420357-30944-1-git-send-email-jack@suse.cz>
 Cc: Lubomir Rintel <lkundrak@v3.sk>, Ted Tso <tytso@mit.edu>,
 	Jan Kara <jack@suse.cz>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:47997 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:48006 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751115Ab3KYW7d (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 25 Nov 2013 17:59:33 -0500
+	id S1751147Ab3KYW7h (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 Nov 2013 17:59:37 -0500
+In-Reply-To: <1385420357-30944-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -21,30 +23,26 @@ message.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd/journal.c     | 8 +++-----
- fs/jbd/transaction.c | 4 ++--
- 2 files changed, 5 insertions(+), 7 deletions(-)
+ fs/jbd2/journal.c     |  8 +++-----
+ fs/jbd2/transaction.c | 10 +++++-----
+ 2 files changed, 8 insertions(+), 10 deletions(-)
 
- I plan to add this patch to my tree unless someone objects.
-
-								Honza
-
-diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-index 2d04f9afafd7..06fe11e0abfa 100644
---- a/fs/jbd/journal.c
-+++ b/fs/jbd/journal.c
-@@ -573,7 +573,7 @@ int log_wait_commit(journal_t *journal, tid_t tid)
- #ifdef CONFIG_JBD_DEBUG
- 	spin_lock(&journal->j_state_lock);
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 52032647dd4a..f66faedce6f0 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -702,7 +702,7 @@ int jbd2_log_wait_commit(journal_t *journal, tid_t tid)
+ 	read_lock(&journal->j_state_lock);
+ #ifdef CONFIG_JBD2_DEBUG
  	if (!tid_geq(journal->j_commit_request, tid)) {
 -		printk(KERN_EMERG
 +		printk(KERN_ERR
  		       "%s: error: j_commit_request=%d, tid=%d\n",
  		       __func__, journal->j_commit_request, tid);
  	}
-@@ -604,10 +604,8 @@ int log_wait_commit(journal_t *journal, tid_t tid)
- out_unlock:
- 	spin_unlock(&journal->j_state_lock);
+@@ -718,10 +718,8 @@ int jbd2_log_wait_commit(journal_t *journal, tid_t tid)
+ 	}
+ 	read_unlock(&journal->j_state_lock);
  
 -	if (unlikely(is_journal_aborted(journal))) {
 -		printk(KERN_EMERG "journal commit I/O error\n");
@@ -54,21 +52,21 @@ index 2d04f9afafd7..06fe11e0abfa 100644
  	return err;
  }
  
-@@ -2136,7 +2134,7 @@ static void __exit journal_exit(void)
- #ifdef CONFIG_JBD_DEBUG
+@@ -2645,7 +2643,7 @@ static void __exit journal_exit(void)
+ #ifdef CONFIG_JBD2_DEBUG
  	int n = atomic_read(&nr_journal_heads);
  	if (n)
--		printk(KERN_EMERG "JBD: leaked %d journal_heads!\n", n);
-+		printk(KERN_ERR "JBD: leaked %d journal_heads!\n", n);
+-		printk(KERN_EMERG "JBD2: leaked %d journal_heads!\n", n);
++		printk(KERN_ERR "JBD2: leaked %d journal_heads!\n", n);
  #endif
- 	jbd_remove_debugfs_entry();
- 	journal_destroy_caches();
-diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
-index aa603e017d22..1695ba8334a2 100644
---- a/fs/jbd/transaction.c
-+++ b/fs/jbd/transaction.c
-@@ -675,7 +675,7 @@ repeat:
- 					jbd_alloc(jh2bh(jh)->b_size,
+ 	jbd2_remove_jbd_stats_proc_entry();
+ 	jbd2_journal_destroy_caches();
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 7aa9a32573bb..5b1b809da131 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -932,7 +932,7 @@ repeat:
+ 					jbd2_alloc(jh2bh(jh)->b_size,
  							 GFP_NOFS);
  				if (!frozen_buffer) {
 -					printk(KERN_EMERG
@@ -76,15 +74,42 @@ index aa603e017d22..1695ba8334a2 100644
  					       "%s: OOM for frozen_buffer\n",
  					       __func__);
  					JBUFFER_TRACE(jh, "oom!");
-@@ -898,7 +898,7 @@ repeat:
+@@ -1166,7 +1166,7 @@ repeat:
  	if (!jh->b_committed_data) {
- 		committed_data = jbd_alloc(jh2bh(jh)->b_size, GFP_NOFS);
+ 		committed_data = jbd2_alloc(jh2bh(jh)->b_size, GFP_NOFS);
  		if (!committed_data) {
 -			printk(KERN_EMERG "%s: No memory for committed data\n",
 +			printk(KERN_ERR "%s: No memory for committed data\n",
  				__func__);
  			err = -ENOMEM;
  			goto out;
+@@ -1305,7 +1305,7 @@ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
+ 		JBUFFER_TRACE(jh, "fastpath");
+ 		if (unlikely(jh->b_transaction !=
+ 			     journal->j_running_transaction)) {
+-			printk(KERN_EMERG "JBD: %s: "
++			printk(KERN_ERR "JBD: %s: "
+ 			       "jh->b_transaction (%llu, %p, %u) != "
+ 			       "journal->j_running_transaction (%p, %u)",
+ 			       journal->j_devname,
+@@ -1332,7 +1332,7 @@ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
+ 		JBUFFER_TRACE(jh, "already on other transaction");
+ 		if (unlikely(jh->b_transaction !=
+ 			     journal->j_committing_transaction)) {
+-			printk(KERN_EMERG "JBD: %s: "
++			printk(KERN_ERR "JBD: %s: "
+ 			       "jh->b_transaction (%llu, %p, %u) != "
+ 			       "journal->j_committing_transaction (%p, %u)",
+ 			       journal->j_devname,
+@@ -1345,7 +1345,7 @@ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
+ 			ret = -EINVAL;
+ 		}
+ 		if (unlikely(jh->b_next_transaction != transaction)) {
+-			printk(KERN_EMERG "JBD: %s: "
++			printk(KERN_ERR "JBD: %s: "
+ 			       "jh->b_next_transaction (%llu, %p, %u) != "
+ 			       "transaction (%p, %u)",
+ 			       journal->j_devname,
 -- 
 1.8.1.4
 
