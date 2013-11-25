@@ -1,42 +1,45 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: Invalid filesystem option set: inline_data
-Date: Mon, 25 Nov 2013 10:37:20 +0800
-Message-ID: <20131125023720.GA11713@gmail.com>
-References: <CAM16AnBtv5UE0LN_hzsUjWRV33Pd_TuXkgLxmQRAFjS86MY9-g@mail.gmail.com>
+Subject: Re: kernel panic using external journal and snapshots
+Date: Mon, 25 Nov 2013 11:32:16 +0800
+Message-ID: <20131125033216.GA20772@gmail.com>
+References: <5281A8A3.80604@gmail.com>
+ <20131122071145.GA5936@gmail.com>
+ <52911078.40207@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: d lopez <dlopezzz63@gmail.com>
+To: Gordon Messmer <gordon.messmer@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f173.google.com ([209.85.192.173]:62224 "EHLO
-	mail-pd0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753280Ab3KYCee (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 24 Nov 2013 21:34:34 -0500
-Received: by mail-pd0-f173.google.com with SMTP id p10so4509642pdj.18
-        for <linux-ext4@vger.kernel.org>; Sun, 24 Nov 2013 18:34:33 -0800 (PST)
+Received: from mail-pd0-f178.google.com ([209.85.192.178]:36587 "EHLO
+	mail-pd0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753431Ab3KYD32 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 24 Nov 2013 22:29:28 -0500
+Received: by mail-pd0-f178.google.com with SMTP id y10so4612857pdj.9
+        for <linux-ext4@vger.kernel.org>; Sun, 24 Nov 2013 19:29:28 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <CAM16AnBtv5UE0LN_hzsUjWRV33Pd_TuXkgLxmQRAFjS86MY9-g@mail.gmail.com>
+In-Reply-To: <52911078.40207@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
-
-On Sun, Nov 24, 2013 at 06:19:06PM +0100, d lopez wrote:
-> Hello,
+On Sat, Nov 23, 2013 at 12:30:48PM -0800, Gordon Messmer wrote:
+> On 11/21/2013 11:11 PM, Zheng Liu wrote:
+> >For the first question, I haven't a LVM device on my hand.  Hence I am
+> >not sure whether there is a bug or not.
+> >
+> >For the second one, I do a test on my sand box against Linux-3.12-rc5,
+> >and it works well.  So I think maybe you can try it again on a newer
+> >kernel.
 > 
-> I'm trying to use inline_data with kernel 3.11.9, but it doesn't seem to
-> work.
-> 
-> # mkfs.ext4 -O inline_data -m 0 -v  /dev/sdb12
-> mke2fs 1.42.8 (20-Jun-2013)
-> Invalid filesystem option set: inline_data
+> The problem manifests when a filesystem which uses external journal
+> and its snapshot are simultaneously mounted.  If you don't have an
+> LVM device with which to create a snapshot, I'm not sure what you're
+> testing.  Could you clarify?
 
-Please use e2fsprogs/pu branch.  All patches with inline_data support
-are on this branch.  You can use the following commands to get the
-latest source code of e2fsprogs.
+Ah, sorry, I don't clarify my test.  I just split two partitions on a
+hard disk and create a ext4 file system with external journal.  Then I
+use tune2fs with '-O ^has_journal' to remove external journal.  After
+that I try to mount this file system on 3.12-rc5, and it work well.
+That's all I have done.
 
-% git clone git://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
-% git checkout -b pu origin/pu
-
-Regards,
+Thanks,
                                                 - Zheng
