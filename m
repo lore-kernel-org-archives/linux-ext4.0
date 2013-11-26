@@ -1,94 +1,163 @@
-From: Matthew Rahtz <mrahtz@rapitasystems.com>
-Subject: warning in ext4_journal_start_sb on filesystem freeze
-Date: Tue, 26 Nov 2013 08:20:51 +0000 (GMT)
-Message-ID: <1697998867.143517.1385454051031.JavaMail.zimbra@rapitasystems.com>
-References: <217983071.143460.1385453196946.JavaMail.zimbra@rapitasystems.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 0/3] Extended file stat functions [ver #2]
+Date: Tue, 26 Nov 2013 11:40:34 +0100
+Message-ID: <20131126104034.GA4854@quack.suse.cz>
+References: <20100630011656.18960.4255.stgit@warthog.procyon.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.rapitasystems.com ([81.149.227.87]:1795 "EHLO
-	mail.rapitasystems.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752383Ab3KZIaE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Nov 2013 03:30:04 -0500
-Received: from localhost (localhost [127.0.0.1])
-	by mail.rapitasystems.com (Postfix) with ESMTP id 9C52FB40488
-	for <linux-ext4@vger.kernel.org>; Tue, 26 Nov 2013 08:20:52 +0000 (GMT)
-Received: from mail.rapitasystems.com ([127.0.0.1])
-	by localhost (mail.rapitasystems.com [127.0.0.1]) (amavisd-new, port 10032)
-	with ESMTP id 9ahrpU3VCEkh for <linux-ext4@vger.kernel.org>;
-	Tue, 26 Nov 2013 08:20:51 +0000 (GMT)
-Received: from localhost (localhost [127.0.0.1])
-	by mail.rapitasystems.com (Postfix) with ESMTP id A8CFAB4048D
-	for <linux-ext4@vger.kernel.org>; Tue, 26 Nov 2013 08:20:51 +0000 (GMT)
-Received: from mail.rapitasystems.com ([127.0.0.1])
-	by localhost (mail.rapitasystems.com [127.0.0.1]) (amavisd-new, port 10026)
-	with ESMTP id tRbtzEgpPm6A for <linux-ext4@vger.kernel.org>;
-	Tue, 26 Nov 2013 08:20:51 +0000 (GMT)
-Received: from mail.rapitasystems.com (localhost [127.0.0.1])
-	by mail.rapitasystems.com (Postfix) with ESMTP id 5B256B40488
-	for <linux-ext4@vger.kernel.org>; Tue, 26 Nov 2013 08:20:51 +0000 (GMT)
-In-Reply-To: <217983071.143460.1385453196946.JavaMail.zimbra@rapitasystems.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: viro@ZenIV.linux.org.uk, smfrench@gmail.com, jlayton@redhat.com,
+	mcao@us.ibm.com, aneesh.kumar@linux.vnet.ibm.com,
+	linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, samba-technical@lists.samba.org,
+	sjayaraman@suse.de, linux-ext4@vger.kernel.org
+To: David Howells <dhowells@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20100630011656.18960.4255.stgit@warthog.procyon.org.uk>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hello, 
+  Hello,
 
-We're using qemu's guest agent daemon, qemu-ga, to freeze ext4 filesystems in guest virtual machines before taking an LVM snapshot of the disk volume in the host. However, in the guests' dmesg, we're consistently seeing warnings like: 
+On Wed 30-06-10 02:16:56, David Howells wrote:
+> Implement a pair of new system calls to provide extended and further extensible
+> stat functions.
+> 
+> The third of the associated patches provides these new system calls:
+> 
+> 	struct xstat_dev {
+> 		unsigned int	major;
+> 		unsigned int	minor;
+> 	};
+> 
+> 	struct xstat_time {
+> 		unsigned long long	tv_sec;
+> 		unsigned long long	tv_nsec;
+> 	};
+> 
+> 	struct xstat {
+> 		unsigned int		struct_version;
+> 	#define XSTAT_STRUCT_VERSION	0
+> 		unsigned int		st_mode;
+> 		unsigned int		st_nlink;
+> 		unsigned int		st_uid;
+> 		unsigned int		st_gid;
+> 		unsigned int		st_blksize;
+> 		struct xstat_dev	st_rdev;
+> 		struct xstat_dev	st_dev;
+> 		unsigned long long	st_ino;
+> 		unsigned long long	st_size;
+> 		struct xstat_time	st_atime;
+> 		struct xstat_time	st_mtime;
+> 		struct xstat_time	st_ctime;
+> 		struct xstat_time	st_btime;
+> 		unsigned long long	st_blocks;
+  When we are doing this, can we please also change 'st_blocks' to
+'st_bytes'? We track space usage in kernel in bytes for a long time so it
+would be nice to propagate it to userspace via stat instead of a special
+ioctl (at least quotacheck(8) needs to know the exact value).
 
-[1246478.632936] WARNING: at /build/buildd/linux-lts-raring-3.8.0/fs/ext4/super.c:339 ext4_journal_start_sb+0x159/0x160() 
-
-Looking at the source at https://github.com/torvalds/linux/blob/v3.8/fs/ext4/super.c#L339, this warning seems to be generated if the function is reached despite the filesystem being marked as frozen:
-
-WARN_ON(sb->s_writers.frozen == SB_FREEZE_COMPLETE);
-
-In 3.12, this has been moved to https://github.com/torvalds/linux/blob/v3.12/fs/ext4/ext4_jbd2.c#L48.
-
-Is this something we should be concerned about? The process that seems to be responsible for triggering it is mysqld, so we're concerned the databases in our snapshots have a higher possibility of being corrupt. (Taking online snapshots of databases like this is always risky, of course, but this just makes us a little more nervous :) ) Full kernel warning is attached below.
-
-Thank you!
-
-
-[1246478.632930] ------------[ cut here ]------------
-[1246478.632936] WARNING: at /build/buildd/linux-lts-raring-3.8.0/fs/ext4/super.c:339 ext4_journal_start_sb+0x159/0x160()
-[1246478.632938] Hardware name: Bochs
-[1246478.632939] Modules linked in: cirrus(F) ttm(F) drm_kms_helper(F) drm(F) sysimgblt(F) psmouse(F) sysfillrect(F) serio_raw(F) syscopyarea(F) microcode(F) virtio_console(F) lp(F) virtio_balloon(F) mac_hid(F) i2c_piix4(F) ext2(F) parport(F) floppy(F) e1000(F)
-[1246478.632973] Pid: 2856, comm: mysqld Tainted: GF       W    3.8.0-33-generic #48~precise1-Ubuntu
-[1246478.632975] Call Trace:
-[1246478.632981]  [<ffffffff81059b6f>] warn_slowpath_common+0x7f/0xc0
-[1246478.632985]  [<ffffffff81059bca>] warn_slowpath_null+0x1a/0x20
-[1246478.632989]  [<ffffffff8125eb59>] ext4_journal_start_sb+0x159/0x160
-[1246478.632993]  [<ffffffff8123f1c8>] ? _ext4_get_block+0x138/0x170
-[1246478.632997]  [<ffffffff8123f1c8>] _ext4_get_block+0x138/0x170
-[1246478.633002]  [<ffffffff8104e070>] ? get_user_pages_fast+0xe0/0x1a0
-[1246478.633006]  [<ffffffff8123f263>] ext4_get_block_write+0x13/0x20
-[1246478.633009]  [<ffffffff811d6d3a>] get_more_blocks+0x6a/0xa0
-[1246478.633013]  [<ffffffff811d7a7e>] do_direct_IO+0x4be/0x1530
-[1246478.633018]  [<ffffffff8107f9ab>] ? bit_waitqueue+0x1b/0xc0
-[1246478.633022]  [<ffffffff81186221>] ? kmem_cache_alloc+0x31/0x140
-[1246478.633026]  [<ffffffff811d8f22>] do_blockdev_direct_IO+0x432/0x13e0
-[1246478.633030]  [<ffffffff8123f250>] ? noalloc_get_block_write+0x30/0x30
-[1246478.633035]  [<ffffffff811d9f25>] __blockdev_direct_IO+0x55/0x60
-[1246478.633039]  [<ffffffff8123f250>] ? noalloc_get_block_write+0x30/0x30
-[1246478.633042]  [<ffffffff8123ab30>] ? ext4_journalled_invalidatepage+0x30/0x30
-[1246478.633046]  [<ffffffff8123bcd0>] ext4_ext_direct_IO+0x130/0x250
-[1246478.633050]  [<ffffffff8123f250>] ? noalloc_get_block_write+0x30/0x30
-[1246478.633053]  [<ffffffff8123ab30>] ? ext4_journalled_invalidatepage+0x30/0x30
-[1246478.633057]  [<ffffffff8123c1ad>] ext4_direct_IO+0x1ad/0x230
-[1246478.633061]  [<ffffffff8108e3ca>] ? finish_task_switch+0x4a/0xf0
-[1246478.633065]  [<ffffffff811368d6>] generic_file_direct_write+0xc6/0x180
-[1246478.633068]  [<ffffffff81136c6d>] __generic_file_aio_write+0x2dd/0x3b0
-[1246478.633072]  [<ffffffff816e5848>] ext4_file_dio_write+0x243/0x320
-[1246478.633076]  [<ffffffff810b81b2>] ? unqueue_me+0x52/0x80
-[1246478.633079]  [<ffffffff81236ed8>] ext4_file_write+0xc8/0xe0
-[1246478.633084]  [<ffffffff8119b333>] do_sync_write+0xa3/0xe0
-[1246478.633089]  [<ffffffff8119b9d3>] vfs_write+0xb3/0x180
-[1246478.633093]  [<ffffffff8119be9a>] sys_pwrite64+0x9a/0xa0
-[1246478.633097]  [<ffffffff816fd15d>] system_call_fastpath+0x1a/0x1f
-[1246478.633099] ---[ end trace f37019187d44de90 ]---
-Please Note: Rapita Systems has a new address and telephone number.
-Telephone: +44 1904 413945
-Address: Rapita Systems Ltd, Atlas House,
-          Osbaldwick Link Road, YORK, YO10 3JB
-          United Kingdom
+								Honza
+  
+> 		unsigned long long	st_gen;
+> 		unsigned long long	st_data_version;
+> 		unsigned long long	query_flags;
+> 	#define XSTAT_QUERY_SIZE		0x00000001ULL
+> 	#define XSTAT_QUERY_NLINK		0x00000002ULL
+> 	#define XSTAT_QUERY_AMC_TIMES		0x00000004ULL
+> 	#define XSTAT_QUERY_CREATION_TIME	0x00000008ULL
+> 	#define XSTAT_QUERY_BLOCKS		0x00000010ULL
+> 	#define XSTAT_QUERY_INODE_GENERATION	0x00000020ULL
+> 	#define XSTAT_QUERY_DATA_VERSION	0x00000040ULL
+> 	#define XSTAT_QUERY__ORDINARY_SET	0x00000017ULL
+> 	#define XSTAT_QUERY__GET_ANYWAY		0x0000007fULL
+> 	#define XSTAT_QUERY__DEFINED_SET	0x0000007fULL
+> 		unsigned long long	extra_results[0];
+> 	};
+> 
+> 	ssize_t ret = xstat(int dfd,
+> 			    const char *filename,
+> 			    unsigned atflag,
+> 			    struct xstat *buffer,
+> 			    size_t buflen);
+> 
+> 	ssize_t ret = fxstat(int fd,
+> 			     struct xstat *buffer,
+> 			     size_t buflen);
+> 
+> which are more fully documented in that patch's description.
+> 
+> The bonuses of these new stat functions are:
+> 
+>  (1) The fields in the xstat struct are cleaned up.  There are no split or
+>      duplicated fields.
+> 
+>  (2) Some extra information is made available (file creation time, inode
+>      generation number and data version number) where provided by the
+>      underlying filesystem.
+> 
+>      These are implemented here for Ext4 and AFS, but could also be provided
+>      for CIFS, NTFS and BtrFS and probably others.
+> 
+>  (3) The structure is versioned and extensible, meaning that further new system
+>      calls shouldn't be required.
+> 
+> Note that no lstat() equivalent is required as that can be implemented through
+> xstat() with atflag == 0.
+> 
+> 
+> The first patch makes const a bunch of system call userspace string/buffer
+> arguments.  I can then make sys_xstat()'s filename pointer const too (though
+> the entire first patch is not required for that).
+> 
+> The second patch makes the AFS filesystem use i_generation for the vnode ID
+> uniquifier rather than i_version, and assigns i_version to hold the AFS data
+> version number, making them more logical for when I want to get at them from
+> afs_getattr().
+> 
+> There's a test program attached to the description for patch 3.  It can be run
+> as follows:
+> 
+> 	[root@andromeda ~]# /tmp/xstat /afs/archive/linuxdev/fedora9/i386/repodata/
+> 	xstat(/afs/archive/linuxdev/fedora9/i386/repodata/) = 152
+> 	sv=0 qf=77 cr=0.0 iv=7a5 dv=5
+> 	  Size: 2048            Blocks: 0          IO Block: 4096    directory
+> 	Device: 00:15           Inode: 83          Links: 2
+> 	Access: (0755/drwxr-xr-x)  Uid: 75338   Gid: 0
+> 	Access: 2008-11-05 20:00:12.000000000+0000
+> 	Modify: 2008-11-05 20:00:12.000000000+0000
+> 	Change: 2008-11-05 20:00:12.000000000+0000
+> 	Inode version: 7a5h
+> 	Data version: 5h
+> 
+> 
+> Things that need consideration:
+> 
+>  (1) Is it worth retaining the ability to arbitrarily add extra bits onto the
+>      end of the stat buffer?  And what's the best way to do this?
+> 
+>      I've defined a way that from userspace involves assigning bits in
+>      query_flags to extra results that you might want.  But this could instead
+>      be done, say, by just upping the struct version number any time we want to
+>      pass back more information.  Alternatively, we could go for a tagged data
+>      method, perhaps using the same format as the recvmsg() control message
+>      field.
+> 
+>      If we use tagged data then rather than being selective, we could just
+>      return as many tagged data items as we feel the user might want and we can
+>      cram into the buffer.  That could be rather slow, though.
+> 
+>  (2) What extra bits of information might we like to see available through the
+>      stat interface?  Security labels?  NFS file IDs?  Xattrs?
+> 
+>      If we went for a tagged data method, xstat() could be modified to take a
+>      list of tags as an argument, and could then return arbitrarily-sized
+>      tagged results, including fs-specific stuff.
+> 
+>  (3) Does st_blksize really need to be 64 bits on a 64-bit system?  Or can it
+>      be 32-bits?  Are we really likely to see something with a 4Gb+ blocksize?
+> 
+>  (4) Should the inode number and data version number fields be 128-bit?
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
