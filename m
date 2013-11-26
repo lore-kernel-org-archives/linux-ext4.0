@@ -1,142 +1,94 @@
-From: "Akira Fujita" <a-fujita@rs.jp.nec.com>
-Subject: RE: [PATCH] mke2fs: Fix block bitmaps initalization with -O ^resize_inode
-Date: Tue, 26 Nov 2013 17:10:56 +0900
-Message-ID: <003101ceea7f$08d3fda0$1a7bf8e0$@rs.jp.nec.com>
-References: <52662BBA.70503@rs.jp.nec.com> <20131123013336.GD10269@birch.djwong.org> <20131126012706.GF10269@birch.djwong.org>
+From: Matthew Rahtz <mrahtz@rapitasystems.com>
+Subject: warning in ext4_journal_start_sb on filesystem freeze
+Date: Tue, 26 Nov 2013 08:20:51 +0000 (GMT)
+Message-ID: <1697998867.143517.1385454051031.JavaMail.zimbra@rapitasystems.com>
+References: <217983071.143460.1385453196946.JavaMail.zimbra@rapitasystems.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: 7bit
-Cc: "'Theodore Tso'" <tytso@mit.edu>,
-	"'ext4 development'" <linux-ext4@vger.kernel.org>
-To: "'Darrick J. Wong'" <darrick.wong@oracle.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO200.gate.nec.co.jp ([202.32.8.215]:61724 "EHLO
-	tyo200.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751652Ab3KZIRd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Nov 2013 03:17:33 -0500
-Received: from tyo202.gate.nec.co.jp ([10.7.69.202])
-	by tyo200.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id rAQ8HVS0004758
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 26 Nov 2013 17:17:31 +0900 (JST)
-In-Reply-To: <20131126012706.GF10269@birch.djwong.org>
-Content-Language: ja
+Received: from mail.rapitasystems.com ([81.149.227.87]:1795 "EHLO
+	mail.rapitasystems.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752383Ab3KZIaE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Nov 2013 03:30:04 -0500
+Received: from localhost (localhost [127.0.0.1])
+	by mail.rapitasystems.com (Postfix) with ESMTP id 9C52FB40488
+	for <linux-ext4@vger.kernel.org>; Tue, 26 Nov 2013 08:20:52 +0000 (GMT)
+Received: from mail.rapitasystems.com ([127.0.0.1])
+	by localhost (mail.rapitasystems.com [127.0.0.1]) (amavisd-new, port 10032)
+	with ESMTP id 9ahrpU3VCEkh for <linux-ext4@vger.kernel.org>;
+	Tue, 26 Nov 2013 08:20:51 +0000 (GMT)
+Received: from localhost (localhost [127.0.0.1])
+	by mail.rapitasystems.com (Postfix) with ESMTP id A8CFAB4048D
+	for <linux-ext4@vger.kernel.org>; Tue, 26 Nov 2013 08:20:51 +0000 (GMT)
+Received: from mail.rapitasystems.com ([127.0.0.1])
+	by localhost (mail.rapitasystems.com [127.0.0.1]) (amavisd-new, port 10026)
+	with ESMTP id tRbtzEgpPm6A for <linux-ext4@vger.kernel.org>;
+	Tue, 26 Nov 2013 08:20:51 +0000 (GMT)
+Received: from mail.rapitasystems.com (localhost [127.0.0.1])
+	by mail.rapitasystems.com (Postfix) with ESMTP id 5B256B40488
+	for <linux-ext4@vger.kernel.org>; Tue, 26 Nov 2013 08:20:51 +0000 (GMT)
+In-Reply-To: <217983071.143460.1385453196946.JavaMail.zimbra@rapitasystems.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Darrick,
+Hello, 
 
-With your patch, e2fsck can't fix the filesystem created with existing mke2fs without
-resize_inode.
-Because "fs->block_map == bmap" condition is in ext2fs_reserve_super_and_bgd().
+We're using qemu's guest agent daemon, qemu-ga, to freeze ext4 filesystems in guest virtual machines before taking an LVM snapshot of the disk volume in the host. However, in the guests' dmesg, we're consistently seeing warnings like: 
 
-But if the condition removed (like my previous patch) we can detect and
-fix filesystem inconsistency as follows.
+[1246478.632936] WARNING: at /build/buildd/linux-lts-raring-3.8.0/fs/ext4/super.c:339 ext4_journal_start_sb+0x159/0x160() 
 
-1.Create filesystem with existing mke2fs command
-# mke2fs -t ext4 -O ^resize_inode DEVICE
+Looking at the source at https://github.com/torvalds/linux/blob/v3.8/fs/ext4/super.c#L339, this warning seems to be generated if the function is reached despite the filesystem being marked as frozen:
 
-2. (With my patch) e2fsck removes uninit_bg flag then fixes metadata inconsistency
-# ./e2fsck/e2fsck -f DEVICE
-e2fsck 1.43-WIP (8-Jul-2013)
-One or more block group descriptor checksums are invalid.  Fix<y>? yes
-Group descriptor 1 checksum is 0x0343, should be 0xc4ba.  FIXED.
-Group descriptor 3 checksum is 0x17f2, should be 0xd00b.  FIXED.
-Group descriptor 5 checksum is 0xf36c, should be 0x3495.  FIXED.
-Group descriptor 7 checksum is 0x3e90, should be 0xf969.  FIXED.
-Group descriptor 9 checksum is 0xa31e, should be 0x64e7.  FIXED.
-Group descriptor 25 checksum is 0x165a, should be 0xd1a3.  FIXED.
-Group descriptor 27 checksum is 0xce4c, should be 0x09b5.  FIXED.
-Group descriptor 49 checksum is 0x502b, should be 0x97d2.  FIXED.
-Pass 1: Checking inodes, blocks, and sizes
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-Block bitmap differences:  +(32768--32769) +(98304--98305) +(163840--163841) +(229376--229377)
-+(294912--294913) +(819200--819201) +(884736--884737) +(1605632--1605633)
-Fix<y>? yes
+WARN_ON(sb->s_writers.frozen == SB_FREEZE_COMPLETE);
 
-/dev/loop0: ***** FILE SYSTEM WAS MODIFIED *****
-/dev/loop0: 11/656640 files (0.0% non-contiguous), 73991/2621440 blocks
+In 3.12, this has been moved to https://github.com/torvalds/linux/blob/v3.12/fs/ext4/ext4_jbd2.c#L48.
 
-Regards,
-Akira Fujita
+Is this something we should be concerned about? The process that seems to be responsible for triggering it is mysqld, so we're concerned the databases in our snapshots have a higher possibility of being corrupt. (Taking online snapshots of databases like this is always risky, of course, but this just makes us a little more nervous :) ) Full kernel warning is attached below.
 
->-----Original Message-----
->From: Darrick J. Wong [mailto:darrick.wong@oracle.com]
->Sent: Tuesday, November 26, 2013 10:27 AM
->To: Akira Fujita
->Cc: Theodore Tso; ext4 development
->Subject: Re: [PATCH] mke2fs: Fix block bitmaps initalization with -O ^resize_inode
->
->Does the following patch fix your error?  I think I've started to hit it too, now that I added
->^resize_inode,^meta_bg to the mix.
->
->--D
->
->libext2fs: clear BLOCK_UNINIT any time a group has metadata blocks
->
->If ext2fs_reserve_super_and_bgd() is called with the filesystem's block bitmap, we clear the
-group's
->BLOCK_UNINIT flag if the group has an old-style (pre-metabg) group descriptor block with
-reserved
->descriptor blocks prior to marking the old-style descriptor blocks in use.
->
->Unfortunately, this is not sufficient -- if the group has no reserved blocks yet isn't a
-meta_bg
->filesystem (^resize_inode,^meta_bg), we forget to clear the flag, so the filesystem thinks all
->blocks are free, which is disastrous.
->
->Therefore, if we know that we're going to mark any of the bitmaps, make sure that we clear
->BLOCK_UNINIT.
->
->This is based on an earlier patch by Akira Fujita.
->
->> Steps to reproduce:
->> 1. mke2fs -t ext4 -b 4096 -O ^resize_inode device 2. e2fsck -b 32768
->> DEV
->>   <snip>
->>   Pass 1: Checking inodes, blocks, and sizes
->>   Pass 2: Checking directory structure
->>   Pass 3: Checking directory connectivity
->>   Pass 4: Checking reference counts
->>   Pass 5: Checking group summary information
->>   Block bitmap differences:  +(32768--32769) +(98304--98305) +(163840--163841)
->>   Fix<y>?
->
->Reported-by: Akira Fujita <a-fujita@rs.jp.nec.com>
->Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
->---
-> lib/ext2fs/alloc_sb.c |   11 +++++++++--
-> 1 file changed, 9 insertions(+), 2 deletions(-)
->
->diff --git a/lib/ext2fs/alloc_sb.c b/lib/ext2fs/alloc_sb.c index 223ec51..f1898df 100644
->--- a/lib/ext2fs/alloc_sb.c
->+++ b/lib/ext2fs/alloc_sb.c
->@@ -52,6 +52,15 @@ int ext2fs_reserve_super_and_bgd(ext2_filsys fs,
-> 	ext2fs_super_and_bgd_loc2(fs, group, &super_blk,
-> 				  &old_desc_blk, &new_desc_blk, &used_blks);
->
->+	/*
->+	 * If we're marking blocks in the main block bitmap, be sure that we
->+	 * clear the group's BLOCK_UNINIT flag if this group has metadata
->+	 * blocks allocated.
->+	 */
->+	if (fs->block_map == bmap &&
->+	    (new_desc_blk || old_desc_blk || super_blk || (group == 0)))
->+		ext2fs_bg_flags_clear(fs, group, EXT2_BG_BLOCK_UNINIT);
->+
-> 	if (fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG)
-> 		old_desc_blocks = fs->super->s_first_meta_bg;
-> 	else
->@@ -65,8 +74,6 @@ int ext2fs_reserve_super_and_bgd(ext2_filsys fs,
-> 		ext2fs_mark_block_bitmap2(bmap, 0);
->
-> 	if (old_desc_blk) {
->-		if (fs->super->s_reserved_gdt_blocks && fs->block_map == bmap)
->-			ext2fs_bg_flags_clear(fs, group, EXT2_BG_BLOCK_UNINIT);
-> 		num_blocks = old_desc_blocks;
-> 		if (old_desc_blk + num_blocks >= ext2fs_blocks_count(fs->super))
-> 			num_blocks = ext2fs_blocks_count(fs->super) -
+Thank you!
 
+
+[1246478.632930] ------------[ cut here ]------------
+[1246478.632936] WARNING: at /build/buildd/linux-lts-raring-3.8.0/fs/ext4/super.c:339 ext4_journal_start_sb+0x159/0x160()
+[1246478.632938] Hardware name: Bochs
+[1246478.632939] Modules linked in: cirrus(F) ttm(F) drm_kms_helper(F) drm(F) sysimgblt(F) psmouse(F) sysfillrect(F) serio_raw(F) syscopyarea(F) microcode(F) virtio_console(F) lp(F) virtio_balloon(F) mac_hid(F) i2c_piix4(F) ext2(F) parport(F) floppy(F) e1000(F)
+[1246478.632973] Pid: 2856, comm: mysqld Tainted: GF       W    3.8.0-33-generic #48~precise1-Ubuntu
+[1246478.632975] Call Trace:
+[1246478.632981]  [<ffffffff81059b6f>] warn_slowpath_common+0x7f/0xc0
+[1246478.632985]  [<ffffffff81059bca>] warn_slowpath_null+0x1a/0x20
+[1246478.632989]  [<ffffffff8125eb59>] ext4_journal_start_sb+0x159/0x160
+[1246478.632993]  [<ffffffff8123f1c8>] ? _ext4_get_block+0x138/0x170
+[1246478.632997]  [<ffffffff8123f1c8>] _ext4_get_block+0x138/0x170
+[1246478.633002]  [<ffffffff8104e070>] ? get_user_pages_fast+0xe0/0x1a0
+[1246478.633006]  [<ffffffff8123f263>] ext4_get_block_write+0x13/0x20
+[1246478.633009]  [<ffffffff811d6d3a>] get_more_blocks+0x6a/0xa0
+[1246478.633013]  [<ffffffff811d7a7e>] do_direct_IO+0x4be/0x1530
+[1246478.633018]  [<ffffffff8107f9ab>] ? bit_waitqueue+0x1b/0xc0
+[1246478.633022]  [<ffffffff81186221>] ? kmem_cache_alloc+0x31/0x140
+[1246478.633026]  [<ffffffff811d8f22>] do_blockdev_direct_IO+0x432/0x13e0
+[1246478.633030]  [<ffffffff8123f250>] ? noalloc_get_block_write+0x30/0x30
+[1246478.633035]  [<ffffffff811d9f25>] __blockdev_direct_IO+0x55/0x60
+[1246478.633039]  [<ffffffff8123f250>] ? noalloc_get_block_write+0x30/0x30
+[1246478.633042]  [<ffffffff8123ab30>] ? ext4_journalled_invalidatepage+0x30/0x30
+[1246478.633046]  [<ffffffff8123bcd0>] ext4_ext_direct_IO+0x130/0x250
+[1246478.633050]  [<ffffffff8123f250>] ? noalloc_get_block_write+0x30/0x30
+[1246478.633053]  [<ffffffff8123ab30>] ? ext4_journalled_invalidatepage+0x30/0x30
+[1246478.633057]  [<ffffffff8123c1ad>] ext4_direct_IO+0x1ad/0x230
+[1246478.633061]  [<ffffffff8108e3ca>] ? finish_task_switch+0x4a/0xf0
+[1246478.633065]  [<ffffffff811368d6>] generic_file_direct_write+0xc6/0x180
+[1246478.633068]  [<ffffffff81136c6d>] __generic_file_aio_write+0x2dd/0x3b0
+[1246478.633072]  [<ffffffff816e5848>] ext4_file_dio_write+0x243/0x320
+[1246478.633076]  [<ffffffff810b81b2>] ? unqueue_me+0x52/0x80
+[1246478.633079]  [<ffffffff81236ed8>] ext4_file_write+0xc8/0xe0
+[1246478.633084]  [<ffffffff8119b333>] do_sync_write+0xa3/0xe0
+[1246478.633089]  [<ffffffff8119b9d3>] vfs_write+0xb3/0x180
+[1246478.633093]  [<ffffffff8119be9a>] sys_pwrite64+0x9a/0xa0
+[1246478.633097]  [<ffffffff816fd15d>] system_call_fastpath+0x1a/0x1f
+[1246478.633099] ---[ end trace f37019187d44de90 ]---
+Please Note: Rapita Systems has a new address and telephone number.
+Telephone: +44 1904 413945
+Address: Rapita Systems Ltd, Atlas House,
+          Osbaldwick Link Road, YORK, YO10 3JB
+          United Kingdom
