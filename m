@@ -1,550 +1,988 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 16/25] resize2fs: convert fs to and from 64bit mode
-Date: Wed, 27 Nov 2013 10:21:59 +0800
-Message-ID: <20131127022159.GA1016@gmail.com>
+Subject: Re: [PATCH 23/25] libext2fs: support modifying arbitrary extended
+ attributes
+Date: Wed, 27 Nov 2013 10:52:32 +0800
+Message-ID: <20131127025232.GB1016@gmail.com>
 References: <20131018044854.7339.48457.stgit@birch.djwong.org>
- <20131018045042.7339.21953.stgit@birch.djwong.org>
- <20131126064445.GA20867@gmail.com>
- <20131126183920.GA3068@birch.djwong.org>
+ <20131018045134.7339.30673.stgit@birch.djwong.org>
+ <20131126072115.GA22136@gmail.com>
+ <20131126195547.GB3068@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f170.google.com ([209.85.192.170]:64206 "EHLO
-	mail-pd0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754156Ab3K0CTI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Nov 2013 21:19:08 -0500
-Received: by mail-pd0-f170.google.com with SMTP id g10so8947315pdj.15
-        for <linux-ext4@vger.kernel.org>; Tue, 26 Nov 2013 18:19:07 -0800 (PST)
+Received: from mail-pd0-f174.google.com ([209.85.192.174]:63297 "EHLO
+	mail-pd0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754105Ab3K0Ctl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Nov 2013 21:49:41 -0500
+Received: by mail-pd0-f174.google.com with SMTP id y13so8959191pdi.19
+        for <linux-ext4@vger.kernel.org>; Tue, 26 Nov 2013 18:49:41 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <20131126183920.GA3068@birch.djwong.org>
+In-Reply-To: <20131126195547.GB3068@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 26, 2013 at 10:39:20AM -0800, Darrick J. Wong wrote:
-> On Tue, Nov 26, 2013 at 02:44:45PM +0800, Zheng Liu wrote:
-> > On Thu, Oct 17, 2013 at 09:50:42PM -0700, Darrick J. Wong wrote:
-> > > resize2fs does its magic by loading a filesystem, duplicating the
-> > > in-memory image of that fs, moving relevant blocks out of the way of
-> > > whatever new metadata get created, and finally writing everything back
-> > > out to disk.  Enabling 64bit mode enlarges the group descriptors,
-> > > which makes resize2fs a reasonable vehicle for taking care of the rest
-> > > of the bookkeeping requirements, so add to resize2fs the ability to
-> > > convert a filesystem to 64bit mode and back.
+On Tue, Nov 26, 2013 at 11:55:47AM -0800, Darrick J. Wong wrote:
+> On Tue, Nov 26, 2013 at 03:21:16PM +0800, Zheng Liu wrote:
+> > On Thu, Oct 17, 2013 at 09:51:34PM -0700, Darrick J. Wong wrote:
+> > > Add functions to allow clients to get, set, and remove extended
+> > > attributes from any file.  It also supports modifying EAs living in
+> > > i_file_acl.
+> > > 
+> > > v2: Put the header declarations in the correct part of ext2fs.h,
+> > > provide a function to release an EA block from an inode, and check
+> > > i_extra_isize to make sure we actually have space for in-inode EAs.
 > > 
-> > Sorry, I don't get your point why we need to add these arguments to
-> > enable/disable 64bit mode.  If I understand correctly, we don't disable
-> > 64bit mode for a file system which is larger than 2^32 blocks.  So that
-> > means that we just disable it for a file system which 64bit shouldn't be
-> > enabled.  Is it worth doing this?
+> > Is this the latest version?  I am working on inline data patch set for
+> > e2fsprogs, and I want to use these API to manipulate the EA.  So that
+> > would be great if you could point out which one is the latest version.
+> > Thanks in advance.  Otherwise some nits below.
 > 
-> Are you questioning the entire conversion, or just the 64->32 direction?
-> 
-> 32->64 has two benefits: You can resize (somewhat) past 16T (256T I think?);
-> and you get full 32-bit bitmap checksums.
-> 
-> I agree that 64->32 isn't terribly useful, but dislike one-way conversions.
+> Oh!  I was just about to start working on pulling your patches into my monster
+> patchset. :)
 
-Thanks for your explanation.  Now it makes sense to me.  Enabling 64bit
-mode makes us break the limitation of 16T.  Absolutely it is useful for
-us.
+Wow!  Sorry for my late.  If you just begin to work on inline data
+patchset.  Would you mind sending your latest monster patchset without
+my inline data patchset first?  That gives me a chance to take a closer
+look at them.  In general, I will send my patch set asap.
+
+> 
+> I changed the extended attribute API a little bit -- the function pointer to
+> ext2fs_xattrs_iterate() takes a value length; lengths are now specified in
+> size_t; and the ext2fs_xattrs_count() call is new.  I removed
+> ext2fs_xattrs_expand() since it's an internal call.
+> 
+> This is the current set of APIs:
+> 
+> errcode_t ext2fs_xattrs_write(struct ext2_xattr_handle *handle);
+> errcode_t ext2fs_xattrs_read(struct ext2_xattr_handle *handle);
+> errcode_t ext2fs_xattrs_iterate(struct ext2_xattr_handle *h,
+>                                int (*func)(char *name, char *value,
+>                                            size_t value_len, void *data),
+>                                void *data);
+> errcode_t ext2fs_xattr_get(struct ext2_xattr_handle *h, const char *key,
+>                           void **value, size_t *value_len);
+> errcode_t ext2fs_xattr_set(struct ext2_xattr_handle *handle,
+>                           const char *key,
+>                           const void *value,
+>                           size_t value_len);
+> errcode_t ext2fs_xattr_remove(struct ext2_xattr_handle *handle,
+>                              const char *key);
+> errcode_t ext2fs_xattrs_open(ext2_filsys fs, ext2_ino_t ino,
+>                             struct ext2_xattr_handle **handle);
+> errcode_t ext2fs_xattrs_close(struct ext2_xattr_handle **handle);
+> errcode_t ext2fs_free_ext_attr(ext2_filsys fs, ext2_ino_t ino,
+>                               struct ext2_inode_large *inode);
+> size_t ext2fs_xattrs_count(struct ext2_xattr_handle *handle);
+
+That would be great if you could send a latest patch to me, and it seems
+that I don't need to adjust my patch too much. :)
+
+> 
+> I was planning a couple of modifications to support inline_data -- since we can
+> rewrite the inode-ea and ea-block arbitrarily, ext2fs_xattrs_write() ought to
+> ensure that the inlinedata EA gets written into i_blocks and the beginning of
+> the inode-ea area.
+
+It makes no sense to me because we should ensure a function just does
+one thing.  Hence, ext2fs_xattrs_write() just needs to write data into
+ea area, and it doesn't need to care about the content of these data.
+
+> 
+> Should the attributes be sorted before writing?  I was thinking that the
+> desirable(?) order might be inline_data, security attributes, "everything
+> else", then user attributes?  Or we could simply maintain FCFS order as is done
+> now.
+
+At the front of fs/ext4/xattr.c file:
+
+ * The header is followed by multiple entry descriptors. In disk blocks, the
+ * entry descriptors are kept sorted. In inodes, they are unsorted. The
+ * attribute values are aligned to the end of the block in no specific order.
+
+If I understand correctly, we just need to sort the entries.
+
+> 
+> The other change was to ext2fs_xattr_set() to return
+> EXT2_ET_INLINE_DATA_NO_SPACE if it figures out that there's not enough space in
+> i_blocks + inode-ea to fit the inline data.
+
+As I said above, ext2fs_xattr_set() don't need to handle i_blocks.  But
+I think it quite needs to add a parameter to indicate whether we want to
+allocate a block to store these ea data.
 
 Thanks,
                                                 - Zheng
 
 > 
-> > Otherwise one nit below.
-> > 
-> >                                                 - Zheng
-> > 
 > > > 
 > > > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 > > > ---
-> > >  resize/main.c         |   40 ++++++-
-> > >  resize/resize2fs.8.in |   18 +++
-> > >  resize/resize2fs.c    |  282 ++++++++++++++++++++++++++++++++++++++++++++++++-
-> > >  resize/resize2fs.h    |    3 +
-> > >  4 files changed, 336 insertions(+), 7 deletions(-)
+> > >  lib/ext2fs/ext2_err.et.in |   18 +
+> > >  lib/ext2fs/ext2fs.h       |   28 ++
+> > >  lib/ext2fs/ext_attr.c     |  761 +++++++++++++++++++++++++++++++++++++++++++++
+> > >  3 files changed, 807 insertions(+)
 > > > 
 > > > 
-> > > diff --git a/resize/main.c b/resize/main.c
-> > > index 1394ae1..ad0c946 100644
-> > > --- a/resize/main.c
-> > > +++ b/resize/main.c
-> > > @@ -41,7 +41,7 @@ char *program_name, *device_name, *io_options;
-> > >  static void usage (char *prog)
-> > >  {
-> > >  	fprintf (stderr, _("Usage: %s [-d debug_flags] [-f] [-F] [-M] [-P] "
-> > > -			   "[-p] device [new_size]\n\n"), prog);
-> > > +			   "[-p] device [-b|-s|new_size]\n\n"), prog);
+> > > diff --git a/lib/ext2fs/ext2_err.et.in b/lib/ext2fs/ext2_err.et.in
+> > > index 9cc1bd1..b819a90 100644
+> > > --- a/lib/ext2fs/ext2_err.et.in
+> > > +++ b/lib/ext2fs/ext2_err.et.in
+> > > @@ -482,4 +482,22 @@ ec	EXT2_ET_BLOCK_BITMAP_CSUM_INVALID,
+> > >  ec	EXT2_ET_INLINE_DATA_CANT_ITERATE,
+> > >  	"Cannot block iterate on an inode containing inline data"
 > > >  
-> > >  	exit (1);
-> > >  }
-> > > @@ -199,7 +199,7 @@ int main (int argc, char ** argv)
-> > >  	if (argc && *argv)
-> > >  		program_name = *argv;
-> > >  
-> > > -	while ((c = getopt (argc, argv, "d:fFhMPpS:")) != EOF) {
-> > > +	while ((c = getopt(argc, argv, "d:fFhMPpS:bs")) != EOF) {
-> > >  		switch (c) {
-> > >  		case 'h':
-> > >  			usage(program_name);
-> > > @@ -225,6 +225,12 @@ int main (int argc, char ** argv)
-> > >  		case 'S':
-> > >  			use_stride = atoi(optarg);
-> > >  			break;
-> > > +		case 'b':
-> > > +			flags |= RESIZE_ENABLE_64BIT;
-> > > +			break;
-> > > +		case 's':
-> > > +			flags |= RESIZE_DISABLE_64BIT;
-> > > +			break;
-> > >  		default:
-> > >  			usage(program_name);
-> > >  		}
-> > > @@ -383,6 +389,10 @@ int main (int argc, char ** argv)
-> > >  		if (sys_page_size > fs->blocksize)
-> > >  			new_size &= ~((sys_page_size / fs->blocksize)-1);
-> > >  	}
-> > > +	/* If changing 64bit, don't change the filesystem size. */
-> > > +	if (flags & (RESIZE_DISABLE_64BIT | RESIZE_ENABLE_64BIT)) {
-> > > +		new_size = ext2fs_blocks_count(fs->super);
-> > > +	}
-> > >  	if (!EXT2_HAS_INCOMPAT_FEATURE(fs->super,
-> > >  				       EXT4_FEATURE_INCOMPAT_64BIT)) {
-> > >  		/* Take 16T down to 2^32-1 blocks */
-> > > @@ -434,7 +444,31 @@ int main (int argc, char ** argv)
-> > >  			fs->blocksize / 1024, new_size);
-> > >  		exit(1);
-> > >  	}
-> > > -	if (new_size == ext2fs_blocks_count(fs->super)) {
-> > > +	if (flags & RESIZE_DISABLE_64BIT && flags & RESIZE_ENABLE_64BIT) {
-> >             ^^^^^
-> > Coding style problem:
-> >         if ((flags & RESIZE_ENABLE_64BIT) && (flags & RESIZE_ENABLE_64BIT))
-> 
-> Yes, thank you for catching this.
-> 
-> --D
-> 
-> > 
-> > > +		fprintf(stderr, _("Cannot set and unset 64bit feature.\n"));
-> > > +		exit(1);
-> > > +	} else if (flags & (RESIZE_DISABLE_64BIT | RESIZE_ENABLE_64BIT)) {
-> > > +		new_size = ext2fs_blocks_count(fs->super);
-> > > +		if (new_size >= (1ULL << 32)) {
-> > > +			fprintf(stderr, _("Cannot change the 64bit feature "
-> > > +				"on a filesystem that is larger than "
-> > > +				"2^32 blocks.\n"));
-> > > +			exit(1);
-> > > +		}
-> > > +		if (mount_flags & EXT2_MF_MOUNTED) {
-> > > +			fprintf(stderr, _("Cannot change the 64bit feature "
-> > > +				"while the filesystem is mounted.\n"));
-> > > +			exit(1);
-> > > +		}
-> > > +		if (flags & RESIZE_ENABLE_64BIT &&
-> >                     ^^^^
-> >                     ditto
-> > 
-> > > +		    !EXT2_HAS_INCOMPAT_FEATURE(fs->super,
-> > > +				EXT3_FEATURE_INCOMPAT_EXTENTS)) {
-> > > +			fprintf(stderr, _("Please enable the extents feature "
-> > > +				"with tune2fs before enabling the 64bit "
-> > > +				"feature.\n"));
-> > > +			exit(1);
-> > > +		}
-> > > +	} else if (new_size == ext2fs_blocks_count(fs->super)) {
-> > >  		fprintf(stderr, _("The filesystem is already %llu blocks "
-> > >  			"long.  Nothing to do!\n\n"), new_size);
-> > >  		exit(0);
-> > > diff --git a/resize/resize2fs.8.in b/resize/resize2fs.8.in
-> > > index a1f3099..1c75816 100644
-> > > --- a/resize/resize2fs.8.in
-> > > +++ b/resize/resize2fs.8.in
-> > > @@ -8,7 +8,7 @@ resize2fs \- ext2/ext3/ext4 file system resizer
-> > >  .SH SYNOPSIS
-> > >  .B resize2fs
-> > >  [
-> > > -.B \-fFpPM
-> > > +.B \-fFpPMbs
-> > >  ]
-> > >  [
-> > >  .B \-d
-> > > @@ -85,8 +85,21 @@ to shrink the size of filesystem.  Then you may use
-> > >  to shrink the size of the partition.  When shrinking the size of
-> > >  the partition, make sure you do not make it smaller than the new size
-> > >  of the ext2 filesystem!
-> > > +.PP
-> > > +The
-> > > +.B \-b
-> > > +and
-> > > +.B \-s
-> > > +options enable and disable the 64bit feature, respectively.  The resize2fs
-> > > +program will, of course, take care of resizing the block group descriptors
-> > > +and moving other data blocks out of the way, as needed.  It is not possible
-> > > +to resize the filesystem concurrent with changing the 64bit status.
-> > >  .SH OPTIONS
-> > >  .TP
-> > > +.B \-b
-> > > +Turns on the 64bit feature, resizes the group descriptors as necessary, and
-> > > +moves other metadata out of the way.
-> > > +.TP
-> > >  .B \-d \fIdebug-flags
-> > >  Turns on various resize2fs debugging features, if they have been compiled
-> > >  into the binary.
-> > > @@ -126,6 +139,9 @@ of what the program is doing.
-> > >  .B \-P
-> > >  Print the minimum size of the filesystem and exit.
-> > >  .TP
-> > > +.B \-s
-> > > +Turns off the 64bit feature and frees blocks that are no longer in use.
-> > > +.TP
-> > >  .B \-S \fIRAID-stride
-> > >  The
-> > >  .B resize2fs
-> > > diff --git a/resize/resize2fs.c b/resize/resize2fs.c
-> > > index 0feff0f..05ba6e1 100644
-> > > --- a/resize/resize2fs.c
-> > > +++ b/resize/resize2fs.c
-> > > @@ -53,6 +53,9 @@ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs);
-> > >  static errcode_t fix_sb_journal_backup(ext2_filsys fs);
-> > >  static errcode_t mark_table_blocks(ext2_filsys fs,
-> > >  				   ext2fs_block_bitmap bmap);
-> > > +static errcode_t resize_group_descriptors(ext2_resize_t rfs, blk64_t new_size);
-> > > +static errcode_t move_bg_metadata(ext2_resize_t rfs);
-> > > +static errcode_t zero_high_bits_in_inodes(ext2_resize_t rfs);
+> > > +ec	EXT2_ET_EA_BAD_NAME_LEN,
+> > > +	"Extended attribute has an invalid name length"
+> > > +
+> > > +ec	EXT2_ET_EA_BAD_VALUE_SIZE,
+> > > +	"Extended attribute has an invalid value length"
+> > > +
+> > > +ec	EXT2_ET_BAD_EA_HASH,
+> > > +	"Extended attribute has an incorrect hash"
+> > > +
+> > > +ec	EXT2_ET_BAD_EA_HEADER,
+> > > +	"Extended attribute block has a bad header"
+> > > +
+> > > +ec	EXT2_ET_EA_KEY_NOT_FOUND,
+> > > +	"Extended attribute key not found"
+> > > +
+> > > +ec	EXT2_ET_EA_NO_SPACE,
+> > > +	"Insufficient space to store extended attribute data"
+> > > +
+> > >  	end
+> > > diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+> > > index 5247922..93adae8 100644
+> > > --- a/lib/ext2fs/ext2fs.h
+> > > +++ b/lib/ext2fs/ext2fs.h
+> > > @@ -637,6 +637,13 @@ typedef struct stat ext2fs_struct_stat;
+> > >  #define EXT2_FLAG_FLUSH_NO_SYNC          1
 > > >  
 > > >  /*
-> > >   * Some helper CPP macros
-> > > @@ -119,13 +122,30 @@ errcode_t resize_fs(ext2_filsys fs, blk64_t *new_size, int flags,
-> > >  	if (retval)
-> > >  		goto errout;
+> > > + * Modify and iterate extended attributes
+> > > + */
+> > > +struct ext2_xattr_handle;
+> > > +#define XATTR_ABORT	1
+> > > +#define XATTR_CHANGED	2
+> > > +
+> > > +/*
+> > >   * function prototypes
+> > >   */
+> > >  static inline int ext2fs_has_group_desc_csum(ext2_filsys fs)
+> > > @@ -1151,6 +1158,27 @@ extern errcode_t ext2fs_adjust_ea_refcount3(ext2_filsys fs, blk64_t blk,
+> > >  					   char *block_buf,
+> > >  					   int adjust, __u32 *newcount,
+> > >  					   ext2_ino_t inum);
+> > > +errcode_t ext2fs_xattrs_expand(struct ext2_xattr_handle *h,
+> > > +			       unsigned int expandby);
+> > > +errcode_t ext2fs_xattrs_write(struct ext2_xattr_handle *handle);
+> > > +errcode_t ext2fs_xattrs_read(struct ext2_xattr_handle *handle);
+> > > +errcode_t ext2fs_xattrs_iterate(struct ext2_xattr_handle *h,
+> > > +				int (*func)(char *name, char *value,
+> > > +					    void *data),
+> > > +				void *data);
+> > > +errcode_t ext2fs_xattr_get(struct ext2_xattr_handle *h, const char *key,
+> > > +			   void **value, unsigned int *value_len);
+> > > +errcode_t ext2fs_xattr_set(struct ext2_xattr_handle *handle,
+> > > +			   const char *key,
+> > > +			   const void *value,
+> > > +			   unsigned int value_len);
+> > > +errcode_t ext2fs_xattr_remove(struct ext2_xattr_handle *handle,
+> > > +			      const char *key);
+> > > +errcode_t ext2fs_xattrs_open(ext2_filsys fs, ext2_ino_t ino,
+> > > +			     struct ext2_xattr_handle **handle);
+> > > +errcode_t ext2fs_xattrs_close(struct ext2_xattr_handle **handle);
+> > > +errcode_t ext2fs_free_ext_attr(ext2_filsys fs, ext2_ino_t ino,
+> > > +			       struct ext2_inode_large *inode);
 > > >  
-> > > +	init_resource_track(&rtrack, "resize_group_descriptors", fs->io);
-> > > +	retval = resize_group_descriptors(rfs, *new_size);
-> > > +	if (retval)
-> > > +		goto errout;
-> > > +	print_resource_track(rfs, &rtrack, fs->io);
-> > > +
-> > > +	init_resource_track(&rtrack, "move_bg_metadata", fs->io);
-> > > +	retval = move_bg_metadata(rfs);
-> > > +	if (retval)
-> > > +		goto errout;
-> > > +	print_resource_track(rfs, &rtrack, fs->io);
-> > > +
-> > > +	init_resource_track(&rtrack, "zero_high_bits_in_metadata", fs->io);
-> > > +	retval = zero_high_bits_in_inodes(rfs);
-> > > +	if (retval)
-> > > +		goto errout;
-> > > +	print_resource_track(rfs, &rtrack, fs->io);
-> > > +
-> > >  	init_resource_track(&rtrack, "adjust_superblock", fs->io);
-> > >  	retval = adjust_superblock(rfs, *new_size);
-> > >  	if (retval)
-> > >  		goto errout;
-> > >  	print_resource_track(rfs, &rtrack, fs->io);
-> > >  
-> > > -
-> > >  	init_resource_track(&rtrack, "fix_uninit_block_bitmaps 2", fs->io);
-> > >  	fix_uninit_block_bitmaps(rfs->new_fs);
-> > >  	print_resource_track(rfs, &rtrack, fs->io);
-> > > @@ -221,6 +241,259 @@ errout:
-> > >  	return retval;
+> > >  /* extent.c */
+> > >  extern errcode_t ext2fs_extent_header_verify(void *ptr, int size);
+> > > diff --git a/lib/ext2fs/ext_attr.c b/lib/ext2fs/ext_attr.c
+> > > index 9649a14..2a1e5e7 100644
+> > > --- a/lib/ext2fs/ext_attr.c
+> > > +++ b/lib/ext2fs/ext_attr.c
+> > > @@ -186,3 +186,764 @@ errcode_t ext2fs_adjust_ea_refcount(ext2_filsys fs, blk_t blk,
+> > >  	return ext2fs_adjust_ea_refcount2(fs, blk, block_buf, adjust,
+> > >  					  newcount);
 > > >  }
-> > >  
-> > > +/* Toggle 64bit mode */
-> > > +static errcode_t resize_group_descriptors(ext2_resize_t rfs, blk64_t new_size)
+> > > +
+> > > +/* Manipulate the contents of extended attribute regions */
+> > > +struct ext2_xattr {
+> > > +	char *name;
+> > > +	void *value;
+> > > +	unsigned int value_len;
+> > > +};
+> > > +
+> > > +struct ext2_xattr_handle {
+> > > +	ext2_filsys fs;
+> > > +	struct ext2_xattr *attrs;
+> > > +	unsigned int length;
+> > > +	ext2_ino_t ino;
+> > > +	int dirty;
+> > > +};
+> > > +
+> > > +errcode_t ext2fs_xattrs_expand(struct ext2_xattr_handle *h,
+> > > +			       unsigned int expandby)
 > > > +{
-> > > +	void *o, *n, *new_group_desc;
-> > > +	dgrp_t i;
-> > > +	int copy_size;
-> > > +	errcode_t retval;
+> > > +	struct ext2_xattr *new_attrs;
+> > > +	errcode_t err;
 > > > +
-> > > +	if (!(rfs->flags & (RESIZE_DISABLE_64BIT | RESIZE_ENABLE_64BIT)))
-> > > +		return 0;
+> > > +	err = ext2fs_get_arrayzero(h->length + expandby,
+> > > +				   sizeof(struct ext2_xattr), &new_attrs);
+> > > +	if (err)
+> > > +		return err;
 > > > +
-> > > +	if (new_size != ext2fs_blocks_count(rfs->new_fs->super) ||
-> > > +	    ext2fs_blocks_count(rfs->new_fs->super) >= (1ULL << 32) ||
-> > > +	    (rfs->flags & RESIZE_DISABLE_64BIT &&
-> > > +	     rfs->flags & RESIZE_ENABLE_64BIT))
-> > > +		return EXT2_ET_INVALID_ARGUMENT;
-> > > +
-> > > +	if (rfs->flags & RESIZE_DISABLE_64BIT) {
-> > > +		rfs->new_fs->super->s_feature_incompat &=
-> > > +				~EXT4_FEATURE_INCOMPAT_64BIT;
-> > > +		rfs->new_fs->super->s_desc_size = EXT2_MIN_DESC_SIZE;
-> > > +	} else if (rfs->flags & RESIZE_ENABLE_64BIT) {
-> > > +		rfs->new_fs->super->s_feature_incompat |=
-> > > +				EXT4_FEATURE_INCOMPAT_64BIT;
-> > > +		rfs->new_fs->super->s_desc_size = EXT2_MIN_DESC_SIZE_64BIT;
-> > > +	}
-> > > +
-> > > +	if (EXT2_DESC_SIZE(rfs->old_fs->super) ==
-> > > +	    EXT2_DESC_SIZE(rfs->new_fs->super))
-> > > +		return 0;
-> > > +
-> > > +	o = rfs->new_fs->group_desc;
-> > > +	rfs->new_fs->desc_blocks = ext2fs_div_ceil(
-> > > +			rfs->old_fs->group_desc_count,
-> > > +			EXT2_DESC_PER_BLOCK(rfs->new_fs->super));
-> > > +	retval = ext2fs_get_arrayzero(rfs->new_fs->desc_blocks,
-> > > +				      rfs->old_fs->blocksize, &new_group_desc);
-> > > +	if (retval)
-> > > +		return retval;
-> > > +
-> > > +	n = new_group_desc;
-> > > +
-> > > +	if (EXT2_DESC_SIZE(rfs->old_fs->super) <=
-> > > +	    EXT2_DESC_SIZE(rfs->new_fs->super))
-> > > +		copy_size = EXT2_DESC_SIZE(rfs->old_fs->super);
-> > > +	else
-> > > +		copy_size = EXT2_DESC_SIZE(rfs->new_fs->super);
-> > > +	for (i = 0; i < rfs->old_fs->group_desc_count; i++) {
-> > > +		memcpy(n, o, copy_size);
-> > > +		n += EXT2_DESC_SIZE(rfs->new_fs->super);
-> > > +		o += EXT2_DESC_SIZE(rfs->old_fs->super);
-> > > +	}
-> > > +
-> > > +	ext2fs_free_mem(&rfs->new_fs->group_desc);
-> > > +	rfs->new_fs->group_desc = new_group_desc;
-> > > +
-> > > +	for (i = 0; i < rfs->old_fs->group_desc_count; i++)
-> > > +		ext2fs_group_desc_csum_set(rfs->new_fs, i);
+> > > +	memcpy(new_attrs, h->attrs, h->length * sizeof(struct ext2_xattr));
+> > > +	ext2fs_free_mem(&h->attrs);
+> > > +	h->length += expandby;
+> > > +	h->attrs = new_attrs;
 > > > +
 > > > +	return 0;
 > > > +}
 > > > +
-> > > +/* Move bitmaps/inode tables out of the way. */
-> > > +static errcode_t move_bg_metadata(ext2_resize_t rfs)
-> > > +{
-> > > +	dgrp_t i;
-> > > +	blk64_t b, c, d;
-> > > +	ext2fs_block_bitmap old_map, new_map;
-> > > +	int old, new;
-> > > +	errcode_t retval;
-> > > +	int zero = 0, one = 1;
+> > > +struct ea_name_index {
+> > > +	int index;
+> > > +	const char *name;
+> > > +};
 > > > +
-> > > +	if (!(rfs->flags & (RESIZE_DISABLE_64BIT | RESIZE_ENABLE_64BIT)))
+> > > +static struct ea_name_index ea_names[] = {
+> > > +	{1, "user."},
+> > > +	{2, "system.posix_acl_access"},
+> > > +	{3, "system.posix_acl_default"},
+> > > +	{4, "trusted."},
+> > > +	{6, "security."},
+> > > +	{7, "system."},
+> > 
+> > It seems that we also have a _RICHACL name here.
+> > 
+> > > +	{0, NULL},
+> > > +};
+> > > +
+> > > +static const char *find_ea_prefix(int index)
+> > > +{
+> > > +	struct ea_name_index *e;
+> > > +
+> > > +	for (e = ea_names; e->name; e++)
+> > > +		if (e->index == index)
+> > > +			return e->name;
+> > > +
+> > > +	return NULL;
+> > > +}
+> > > +
+> > > +static int find_ea_index(const char *fullname, char **name, int *index)
+> > > +{
+> > > +	struct ea_name_index *e;
+> > > +
+> > > +	for (e = ea_names; e->name; e++)
+> > 
+> > Coding style problem:
+> >        for (e = ea_names; e->name; e++) {
+> >                ...
+> >        }
+> 
+> Ok I'll change it.
+> 
+> --D
+> 
+> > Thanks,
+> >                                                 - Zheng
+> > 
+> > > +		if (memcmp(fullname, e->name, strlen(e->name)) == 0) {
+> > > +			*name = (char *)fullname + strlen(e->name);
+> > > +			*index = e->index;
+> > > +			return 1;
+> > > +		}
+> > > +	return 0;
+> > > +}
+> > > +
+> > > +errcode_t ext2fs_free_ext_attr(ext2_filsys fs, ext2_ino_t ino,
+> > > +			       struct ext2_inode_large *inode)
+> > > +{
+> > > +	struct ext2_ext_attr_header *header;
+> > > +	void *block_buf = NULL;
+> > > +	dgrp_t grp;
+> > > +	blk64_t blk, goal;
+> > > +	errcode_t err;
+> > > +	struct ext2_inode_large i;
+> > > +
+> > > +	/* Read inode? */
+> > > +	if (inode == NULL) {
+> > > +		err = ext2fs_read_inode_full(fs, ino, (struct ext2_inode *)&i,
+> > > +					     sizeof(struct ext2_inode_large));
+> > > +		if (err)
+> > > +			return err;
+> > > +		inode = &i;
+> > > +	}
+> > > +
+> > > +	/* Do we already have an EA block? */
+> > > +	blk = ext2fs_file_acl_block(fs, (struct ext2_inode *)inode);
+> > > +	if (blk == 0)
 > > > +		return 0;
 > > > +
-> > > +	retval = ext2fs_allocate_block_bitmap(rfs->old_fs, "oldfs", &old_map);
-> > > +	if (retval)
-> > > +		return retval;
+> > > +	/* Find block, zero it, write back */
+> > > +	if ((blk < fs->super->s_first_data_block) ||
+> > > +	    (blk >= ext2fs_blocks_count(fs->super))) {
+> > > +		err = EXT2_ET_BAD_EA_BLOCK_NUM;
+> > > +		goto out;
+> > > +	}
 > > > +
-> > > +	retval = ext2fs_allocate_block_bitmap(rfs->new_fs, "newfs", &new_map);
-> > > +	if (retval)
+> > > +	err = ext2fs_get_mem(fs->blocksize, &block_buf);
+> > > +	if (err)
 > > > +		goto out;
 > > > +
-> > > +	/* Construct bitmaps of super/descriptor blocks in old and new fs */
-> > > +	for (i = 0; i < rfs->old_fs->group_desc_count; i++) {
-> > > +		retval = ext2fs_super_and_bgd_loc2(rfs->old_fs, i, &b, &c, &d,
-> > > +						   NULL);
-> > > +		if (retval)
-> > > +			goto out;
-> > > +		ext2fs_mark_block_bitmap2(old_map, b);
-> > > +		ext2fs_mark_block_bitmap2(old_map, c);
-> > > +		ext2fs_mark_block_bitmap2(old_map, d);
+> > > +	err = ext2fs_read_ext_attr3(fs, blk, block_buf, ino);
+> > > +	if (err)
+> > > +		goto out2;
 > > > +
-> > > +		retval = ext2fs_super_and_bgd_loc2(rfs->new_fs, i, &b, &c, &d,
-> > > +						   NULL);
-> > > +		if (retval)
-> > > +			goto out;
-> > > +		ext2fs_mark_block_bitmap2(new_map, b);
-> > > +		ext2fs_mark_block_bitmap2(new_map, c);
-> > > +		ext2fs_mark_block_bitmap2(new_map, d);
+> > > +	header = (struct ext2_ext_attr_header *) block_buf;
+> > > +	if (header->h_magic != EXT2_EXT_ATTR_MAGIC) {
+> > > +		err = EXT2_ET_BAD_EA_HEADER;
+> > > +		goto out2;
 > > > +	}
 > > > +
-> > > +	/* Find changes in block allocations for bg metadata */
-> > > +	for (b = 0;
-> > > +	     b < ext2fs_blocks_count(rfs->new_fs->super);
-> > > +	     b += EXT2FS_CLUSTER_RATIO(rfs->new_fs)) {
-> > > +		old = ext2fs_test_block_bitmap2(old_map, b);
-> > > +		new = ext2fs_test_block_bitmap2(new_map, b);
+> > > +	header->h_refcount--;
+> > > +	err = ext2fs_write_ext_attr3(fs, blk, block_buf, ino);
+> > > +	if (err)
+> > > +		goto out2;
 > > > +
-> > > +		if (old && !new)
-> > > +			ext2fs_unmark_block_bitmap2(rfs->new_fs->block_map, b);
-> > > +		else if (!old && new)
-> > > +			; /* empty ext2fs_mark_block_bitmap2(new_map, b); */
-> > > +		else
-> > > +			ext2fs_unmark_block_bitmap2(new_map, b);
-> > > +	}
-> > > +	/* new_map now shows blocks that have been newly allocated. */
+> > > +	/* Erase link to block */
+> > > +	ext2fs_file_acl_block_set(fs, (struct ext2_inode *)inode, 0);
+> > > +	if (header->h_refcount == 0)
+> > > +		ext2fs_block_alloc_stats2(fs, blk, -1);
 > > > +
-> > > +	/* Move any conflicting bitmaps and inode tables */
-> > > +	for (i = 0; i < rfs->old_fs->group_desc_count; i++) {
-> > > +		b = ext2fs_block_bitmap_loc(rfs->new_fs, i);
-> > > +		if (ext2fs_test_block_bitmap2(new_map, b))
-> > > +			ext2fs_block_bitmap_loc_set(rfs->new_fs, i, 0);
-> > > +
-> > > +		b = ext2fs_inode_bitmap_loc(rfs->new_fs, i);
-> > > +		if (ext2fs_test_block_bitmap2(new_map, b))
-> > > +			ext2fs_inode_bitmap_loc_set(rfs->new_fs, i, 0);
-> > > +
-> > > +		c = ext2fs_inode_table_loc(rfs->new_fs, i);
-> > > +		for (b = 0; b < rfs->new_fs->inode_blocks_per_group; b++) {
-> > > +			if (ext2fs_test_block_bitmap2(new_map, b + c)) {
-> > > +				ext2fs_inode_table_loc_set(rfs->new_fs, i, 0);
-> > > +				break;
-> > > +			}
-> > > +		}
+> > > +	/* Write inode? */
+> > > +	if (inode == &i) {
+> > > +		err = ext2fs_write_inode_full(fs, ino, (struct ext2_inode *)&i,
+> > > +					      sizeof(struct ext2_inode_large));
+> > > +		if (err)
+> > > +			goto out2;
 > > > +	}
 > > > +
+> > > +out2:
+> > > +	ext2fs_free_mem(&block_buf);
 > > > +out:
-> > > +	if (old_map)
-> > > +		ext2fs_free_block_bitmap(old_map);
-> > > +	if (new_map)
-> > > +		ext2fs_free_block_bitmap(new_map);
-> > > +	return retval;
+> > > +	return err;
 > > > +}
 > > > +
-> > > +/* Zero out the high bits of extent fields */
-> > > +static errcode_t zero_high_bits_in_extents(ext2_filsys fs, ext2_ino_t ino,
-> > > +				 struct ext2_inode *inode)
+> > > +static errcode_t prep_ea_block_for_write(ext2_filsys fs, ext2_ino_t ino,
+> > > +					 struct ext2_inode_large *inode)
 > > > +{
-> > > +	ext2_extent_handle_t	handle;
-> > > +	struct ext2fs_extent	extent;
-> > > +	int			op = EXT2_EXTENT_ROOT;
-> > > +	errcode_t		errcode;
+> > > +	struct ext2_ext_attr_header *header;
+> > > +	void *block_buf = NULL;
+> > > +	dgrp_t grp;
+> > > +	blk64_t blk, goal;
+> > > +	errcode_t err;
 > > > +
-> > > +	if (!(inode->i_flags & EXT4_EXTENTS_FL))
-> > > +		return 0;
-> > > +
-> > > +	errcode = ext2fs_extent_open(fs, ino, &handle);
-> > > +	if (errcode)
-> > > +		return errcode;
-> > > +
-> > > +	while (1) {
-> > > +		errcode = ext2fs_extent_get(handle, op, &extent);
-> > > +		if (errcode)
-> > > +			break;
-> > > +
-> > > +		op = EXT2_EXTENT_NEXT_SIB;
-> > > +
-> > > +		if (extent.e_pblk > (1ULL << 32)) {
-> > > +			extent.e_pblk &= (1ULL << 32) - 1;
-> > > +			errcode = ext2fs_extent_replace(handle, 0, &extent);
-> > > +			if (errcode)
-> > > +				break;
+> > > +	/* Do we already have an EA block? */
+> > > +	blk = ext2fs_file_acl_block(fs, (struct ext2_inode *)inode);
+> > > +	if (blk != 0) {
+> > > +		if ((blk < fs->super->s_first_data_block) ||
+> > > +		    (blk >= ext2fs_blocks_count(fs->super))) {
+> > > +			err = EXT2_ET_BAD_EA_BLOCK_NUM;
+> > > +			goto out;
 > > > +		}
+> > > +
+> > > +		err = ext2fs_get_mem(fs->blocksize, &block_buf);
+> > > +		if (err)
+> > > +			goto out;
+> > > +
+> > > +		err = ext2fs_read_ext_attr3(fs, blk, block_buf, ino);
+> > > +		if (err)
+> > > +			goto out2;
+> > > +
+> > > +		header = (struct ext2_ext_attr_header *) block_buf;
+> > > +		if (header->h_magic != EXT2_EXT_ATTR_MAGIC) {
+> > > +			err = EXT2_ET_BAD_EA_HEADER;
+> > > +			goto out2;
+> > > +		}
+> > > +
+> > > +		/* Single-user block.  We're done here. */
+> > > +		if (header->h_refcount == 1)
+> > > +			return 0;
+> > > +
+> > > +		/* We need to CoW the block. */
+> > > +		header->h_refcount--;
+> > > +		err = ext2fs_write_ext_attr3(fs, blk, block_buf, ino);
+> > > +		if (err)
+> > > +			goto out2;
+> > > +	} else {
+> > > +		/* No block, we must increment i_blocks */
+> > > +		err = ext2fs_iblk_add_blocks(fs, (struct ext2_inode *)inode,
+> > > +					     1);
+> > > +		if (err)
+> > > +			goto out;
 > > > +	}
 > > > +
-> > > +	/* Ok if we run off the end */
-> > > +	if (errcode == EXT2_ET_EXTENT_NO_NEXT)
-> > > +		errcode = 0;
-> > > +	return errcode;
+> > > +	/* Allocate a block */
+> > > +	grp = ext2fs_group_of_ino(fs, ino);
+> > > +	goal = ext2fs_inode_table_loc(fs, grp);
+> > > +	err = ext2fs_alloc_block2(fs, goal, NULL, &blk);
+> > > +	if (err)
+> > > +		return err;
+> > > +	ext2fs_file_acl_block_set(fs, (struct ext2_inode *)inode, blk);
+> > > +out2:
+> > > +	ext2fs_free_mem(&block_buf);
+> > > +out:
+> > > +	return err;
 > > > +}
 > > > +
-> > > +/* Zero out the high bits of inodes. */
-> > > +static errcode_t zero_high_bits_in_inodes(ext2_resize_t rfs)
+> > > +
+> > > +static errcode_t write_xattrs_to_buffer(struct ext2_xattr_handle *handle,
+> > > +					struct ext2_xattr **pos,
+> > > +					void *entries_start,
+> > > +					unsigned int storage_size,
+> > > +					unsigned int value_offset_correction)
 > > > +{
-> > > +	ext2_filsys	fs = rfs->new_fs;
-> > > +	int length = EXT2_INODE_SIZE(fs->super);
-> > > +	struct ext2_inode *inode = NULL;
-> > > +	ext2_inode_scan	scan = NULL;
-> > > +	errcode_t	retval;
-> > > +	ext2_ino_t	ino;
-> > > +	blk64_t		file_acl_block;
-> > > +	int		inode_dirty;
+> > > +	struct ext2_xattr *x = *pos;
+> > > +	struct ext2_ext_attr_entry *e = entries_start;
+> > > +	void *end = entries_start + storage_size;
+> > > +	char *shortname;
+> > > +	unsigned int entry_size, value_size;
+> > > +	int idx, ret;
 > > > +
-> > > +	if (!(rfs->flags & (RESIZE_DISABLE_64BIT | RESIZE_ENABLE_64BIT)))
-> > > +		return 0;
-> > > +
-> > > +	if (fs->super->s_creator_os != EXT2_OS_LINUX)
-> > > +		return 0;
-> > > +
-> > > +	retval = ext2fs_open_inode_scan(fs, 0, &scan);
-> > > +	if (retval)
-> > > +		return retval;
-> > > +
-> > > +	retval = ext2fs_get_mem(length, &inode);
-> > > +	if (retval)
-> > > +		goto out;
-> > > +
-> > > +	do {
-> > > +		retval = ext2fs_get_next_inode_full(scan, &ino, inode, length);
-> > > +		if (retval)
-> > > +			goto out;
-> > > +		if (!ino)
-> > > +			break;
-> > > +		if (!ext2fs_test_inode_bitmap2(fs->inode_map, ino))
+> > > +	/* For all remaining x...  */
+> > > +	for (; x < handle->attrs + handle->length; x++) {
+> > > +		if (!x->name)
 > > > +			continue;
 > > > +
+> > > +		/* Calculate index and shortname position */
+> > > +		shortname = x->name;
+> > > +		ret = find_ea_index(x->name, &shortname, &idx);
+> > > +
+> > > +		/* Calculate entry and value size */
+> > > +		entry_size = (sizeof(*e) + strlen(shortname) +
+> > > +			      EXT2_EXT_ATTR_PAD - 1) &
+> > > +			     ~(EXT2_EXT_ATTR_PAD - 1);
+> > > +		value_size = ((x->value_len + EXT2_EXT_ATTR_PAD - 1) /
+> > > +			      EXT2_EXT_ATTR_PAD) * EXT2_EXT_ATTR_PAD;
+> > > +
 > > > +		/*
-> > > +		 * Here's how we deal with high block number fields:
-> > > +		 *
-> > > +		 *  - i_size_high has been been written out with i_size_lo
-> > > +		 *    since the ext2 days, so no conversion is needed.
-> > > +		 *
-> > > +		 *  - i_blocks_hi is guarded by both the huge_file feature and
-> > > +		 *    inode flags and has always been written out with
-> > > +		 *    i_blocks_lo if the feature is set.  The field is only
-> > > +		 *    ever read if both feature and inode flag are set, so
-> > > +		 *    we don't need to zero it now.
-> > > +		 *
-> > > +		 *  - i_file_acl_high can be uninitialized, so zero it if
-> > > +		 *    it isn't already.
+> > > +		 * Would entry collide with value?
+> > > +		 * Note that we must leave sufficient room for a (u32)0 to
+> > > +		 * mark the end of the entries.
 > > > +		 */
-> > > +		if (inode->osd2.linux2.l_i_file_acl_high) {
-> > > +			inode->osd2.linux2.l_i_file_acl_high = 0;
-> > > +			retval = ext2fs_write_inode_full(fs, ino, inode,
-> > > +							 length);
-> > > +			if (retval)
-> > > +				goto out;
-> > > +		}
+> > > +		if ((void *)e + entry_size + sizeof(__u32) > end - value_size)
+> > > +			break;
 > > > +
-> > > +		retval = zero_high_bits_in_extents(fs, ino, inode);
-> > > +		if (retval)
-> > > +			goto out;
-> > > +	} while (ino);
+> > > +		/* Fill out e appropriately */
+> > > +		e->e_name_len = strlen(shortname);
+> > > +		e->e_name_index = (ret ? idx : 0);
+> > > +		e->e_value_offs = end - value_size - (void *)entries_start +
+> > > +				value_offset_correction;
+> > > +		e->e_value_block = 0;
+> > > +		e->e_value_size = x->value_len;
 > > > +
-> > > +out:
-> > > +	if (inode)
-> > > +		ext2fs_free_mem(&inode);
-> > > +	if (scan)
-> > > +		ext2fs_close_inode_scan(scan);
-> > > +	return retval;
+> > > +		/* Store name and value */
+> > > +		end -= value_size;
+> > > +		memcpy((void *)e + sizeof(*e), shortname, e->e_name_len);
+> > > +		memcpy(end, x->value, e->e_value_size);
+> > > +
+> > > +		e->e_hash = ext2fs_ext_attr_hash_entry(e, end);
+> > > +
+> > > +		e = EXT2_EXT_ATTR_NEXT(e);
+> > > +		*(__u32 *)e = 0;
+> > > +	}
+> > > +	*pos = x;
+> > > +
+> > > +	return 0;
 > > > +}
 > > > +
-> > >  /*
-> > >   * Clean up the bitmaps for unitialized bitmaps
-> > >   */
-> > > @@ -424,7 +697,8 @@ retry:
-> > >  	/*
-> > >  	 * Reallocate the group descriptors as necessary.
-> > >  	 */
-> > > -	if (old_fs->desc_blocks != fs->desc_blocks) {
-> > > +	if (EXT2_DESC_SIZE(old_fs->super) == EXT2_DESC_SIZE(fs->super) &&
-> > > +	    old_fs->desc_blocks != fs->desc_blocks) {
-> > >  		retval = ext2fs_resize_mem(old_fs->desc_blocks *
-> > >  					   fs->blocksize,
-> > >  					   fs->desc_blocks * fs->blocksize,
-> > > @@ -949,7 +1223,9 @@ static errcode_t blocks_to_move(ext2_resize_t rfs)
-> > >  		new_blocks = fs->desc_blocks + fs->super->s_reserved_gdt_blocks;
-> > >  	}
-> > >  
-> > > -	if (old_blocks == new_blocks) {
-> > > +	if (EXT2_DESC_SIZE(rfs->old_fs->super) ==
-> > > +	    EXT2_DESC_SIZE(rfs->new_fs->super) &&
-> > > +	    old_blocks == new_blocks) {
-> > >  		retval = 0;
-> > >  		goto errout;
-> > >  	}
-> > > diff --git a/resize/resize2fs.h b/resize/resize2fs.h
-> > > index 52319b5..5a1c5dc 100644
-> > > --- a/resize/resize2fs.h
-> > > +++ b/resize/resize2fs.h
-> > > @@ -82,6 +82,9 @@ typedef struct ext2_sim_progress *ext2_sim_progmeter;
-> > >  #define RESIZE_PERCENT_COMPLETE		0x0100
-> > >  #define RESIZE_VERBOSE			0x0200
-> > >  
-> > > +#define RESIZE_ENABLE_64BIT		0x0400
-> > > +#define RESIZE_DISABLE_64BIT		0x0800
+> > > +errcode_t ext2fs_xattrs_write(struct ext2_xattr_handle *handle)
+> > > +{
+> > > +	struct ext2_xattr *x;
+> > > +	struct ext2_inode_large *inode;
+> > > +	void *start, *block_buf = NULL;
+> > > +	struct ext2_ext_attr_header *header;
+> > > +	__u32 ea_inode_magic;
+> > > +	blk64_t blk;
+> > > +	unsigned int storage_size;
+> > > +	unsigned int i, written;
+> > > +	errcode_t err;
 > > > +
-> > >  /*
-> > >   * This structure is used for keeping track of how much resources have
-> > >   * been used for a particular resize2fs pass.
+> > > +	if (!EXT2_HAS_COMPAT_FEATURE(handle->fs->super,
+> > > +				     EXT2_FEATURE_COMPAT_EXT_ATTR))
+> > > +		return 0;
+> > > +
+> > > +	i = EXT2_INODE_SIZE(handle->fs->super);
+> > > +	if (i < sizeof(*inode))
+> > > +		i = sizeof(*inode);
+> > > +	err = ext2fs_get_memzero(i, &inode);
+> > > +	if (err)
+> > > +		return err;
+> > > +
+> > > +	err = ext2fs_read_inode_full(handle->fs, handle->ino,
+> > > +				     (struct ext2_inode *)inode,
+> > > +				     EXT2_INODE_SIZE(handle->fs->super));
+> > > +	if (err)
+> > > +		goto out;
+> > > +
+> > > +	x = handle->attrs;
+> > > +	/* Does the inode have size for EA? */
+> > > +	if (EXT2_INODE_SIZE(handle->fs->super) <= EXT2_GOOD_OLD_INODE_SIZE +
+> > > +						  inode->i_extra_isize +
+> > > +						  sizeof(__u32))
+> > > +		goto write_ea_block;
+> > > +
+> > > +	/* Write the inode EA */
+> > > +	ea_inode_magic = EXT2_EXT_ATTR_MAGIC;
+> > > +	memcpy(((char *) inode) + EXT2_GOOD_OLD_INODE_SIZE +
+> > > +	       inode->i_extra_isize, &ea_inode_magic, sizeof(__u32));
+> > > +	storage_size = EXT2_INODE_SIZE(handle->fs->super) -
+> > > +		EXT2_GOOD_OLD_INODE_SIZE - inode->i_extra_isize -
+> > > +		sizeof(__u32);
+> > > +	start = ((char *) inode) + EXT2_GOOD_OLD_INODE_SIZE +
+> > > +		inode->i_extra_isize + sizeof(__u32);
+> > > +
+> > > +	err = write_xattrs_to_buffer(handle, &x, start, storage_size, 0);
+> > > +	if (err)
+> > > +		goto out;
+> > > +
+> > > +	/* Are we done? */
+> > > +	if (x == handle->attrs + handle->length)
+> > > +		goto skip_ea_block;
+> > > +
+> > > +write_ea_block:
+> > > +	/* Write the EA block */
+> > > +	err = ext2fs_get_mem(handle->fs->blocksize, &block_buf);
+> > > +	if (err)
+> > > +		goto out;
+> > > +
+> > > +	storage_size = handle->fs->blocksize -
+> > > +		sizeof(struct ext2_ext_attr_header);
+> > > +	start = block_buf + sizeof(struct ext2_ext_attr_header);
+> > > +
+> > > +	err = write_xattrs_to_buffer(handle, &x, start, storage_size,
+> > > +				     (void *)start - block_buf);
+> > > +	if (err)
+> > > +		goto out2;
+> > > +
+> > > +	if (x < handle->attrs + handle->length) {
+> > > +		err = EXT2_ET_EA_NO_SPACE;
+> > > +		goto out2;
+> > > +	}
+> > > +
+> > > +	if (block_buf) {
+> > > +		/* Write a header on the EA block */
+> > > +		header = block_buf;
+> > > +		header->h_magic = EXT2_EXT_ATTR_MAGIC;
+> > > +		header->h_refcount = 1;
+> > > +		header->h_blocks = 1;
+> > > +
+> > > +		/* Get a new block for writing */
+> > > +		err = prep_ea_block_for_write(handle->fs, handle->ino, inode);
+> > > +		if (err)
+> > > +			goto out2;
+> > > +
+> > > +		/* Finally, write the new EA block */
+> > > +		blk = ext2fs_file_acl_block(handle->fs,
+> > > +					    (struct ext2_inode *)inode);
+> > > +		err = ext2fs_write_ext_attr3(handle->fs, blk, block_buf,
+> > > +					     handle->ino);
+> > > +		if (err)
+> > > +			goto out2;
+> > > +	}
+> > > +
+> > > +skip_ea_block:
+> > > +	blk = ext2fs_file_acl_block(handle->fs, (struct ext2_inode *)inode);
+> > > +	if (!block_buf && blk) {
+> > > +		/* xattrs shrunk, free the block */
+> > > +		ext2fs_file_acl_block_set(handle->fs,
+> > > +					  (struct ext2_inode *)inode, 0);
+> > > +		err = ext2fs_iblk_sub_blocks(handle->fs,
+> > > +					     (struct ext2_inode *)inode, 1);
+> > > +		if (err)
+> > > +			goto out;
+> > > +		ext2fs_block_alloc_stats2(handle->fs, blk, -1);
+> > > +	}
+> > > +
+> > > +	/* Write the inode */
+> > > +	err = ext2fs_write_inode_full(handle->fs, handle->ino,
+> > > +				      (struct ext2_inode *)inode,
+> > > +				      EXT2_INODE_SIZE(handle->fs->super));
+> > > +	if (err)
+> > > +		goto out2;
+> > > +
+> > > +out2:
+> > > +	ext2fs_free_mem(&block_buf);
+> > > +out:
+> > > +	ext2fs_free_mem(&inode);
+> > > +	handle->dirty = 0;
+> > > +	return err;
+> > > +}
+> > > +
+> > > +static errcode_t read_xattrs_from_buffer(struct ext2_xattr_handle *handle,
+> > > +					 struct ext2_ext_attr_entry *entries,
+> > > +					 unsigned int storage_size,
+> > > +					 void *value_start)
+> > > +{
+> > > +	struct ext2_xattr *x;
+> > > +	struct ext2_ext_attr_entry *entry;
+> > > +	const char *prefix;
+> > > +	void *ptr;
+> > > +	unsigned int remain, prefix_len;
+> > > +	errcode_t err;
+> > > +
+> > > +	x = handle->attrs;
+> > > +	while (x->name)
+> > > +		x++;
+> > > +
+> > > +	entry = entries;
+> > > +	while (!EXT2_EXT_IS_LAST_ENTRY(entry)) {
+> > > +		__u32 hash;
+> > > +
+> > > +		/* header eats this space */
+> > > +		remain -= sizeof(struct ext2_ext_attr_entry);
+> > > +
+> > > +		/* is attribute name valid? */
+> > > +		if (EXT2_EXT_ATTR_SIZE(entry->e_name_len) > remain)
+> > > +			return EXT2_ET_EA_BAD_NAME_LEN;
+> > > +
+> > > +		/* attribute len eats this space */
+> > > +		remain -= EXT2_EXT_ATTR_SIZE(entry->e_name_len);
+> > > +
+> > > +		/* check value size */
+> > > +		if (entry->e_value_size > remain)
+> > > +			return EXT2_ET_EA_BAD_VALUE_SIZE;
+> > > +
+> > > +		/* e_value_block must be 0 in inode's ea */
+> > > +		if (entry->e_value_block != 0)
+> > > +			return EXT2_ET_BAD_EA_BLOCK_NUM;
+> > > +
+> > > +		hash = ext2fs_ext_attr_hash_entry(entry, value_start +
+> > > +							 entry->e_value_offs);
+> > > +
+> > > +		/* e_hash may be 0 in older inode's ea */
+> > > +		if (entry->e_hash != 0 && entry->e_hash != hash)
+> > > +			return EXT2_ET_BAD_EA_HASH;
+> > > +
+> > > +		remain -= entry->e_value_size;
+> > > +
+> > > +		/* Allocate space for more attrs? */
+> > > +		if (x == handle->attrs + handle->length) {
+> > > +			err = ext2fs_xattrs_expand(handle, 4);
+> > > +			if (err)
+> > > +				return err;
+> > > +			x = handle->attrs + handle->length - 4;
+> > > +		}
+> > > +
+> > > +		/* Extract name/value */
+> > > +		prefix = find_ea_prefix(entry->e_name_index);
+> > > +		prefix_len = (prefix ? strlen(prefix) : 0);
+> > > +		err = ext2fs_get_memzero(entry->e_name_len + prefix_len + 1,
+> > > +					 &x->name);
+> > > +		if (err)
+> > > +			return err;
+> > > +		if (prefix)
+> > > +			memcpy(x->name, prefix, prefix_len);
+> > > +		if (entry->e_name_len)
+> > > +			memcpy(x->name + prefix_len,
+> > > +			       (void *)entry + sizeof(*entry),
+> > > +			       entry->e_name_len);
+> > > +
+> > > +		err = ext2fs_get_mem(entry->e_value_size, &x->value);
+> > > +		if (err)
+> > > +			return err;
+> > > +		x->value_len = entry->e_value_size;
+> > > +		memcpy(x->value, value_start + entry->e_value_offs,
+> > > +		       entry->e_value_size);
+> > > +		x++;
+> > > +		entry = EXT2_EXT_ATTR_NEXT(entry);
+> > > +	}
+> > > +
+> > > +	return 0;
+> > > +}
+> > > +
+> > > +errcode_t ext2fs_xattrs_read(struct ext2_xattr_handle *handle)
+> > > +{
+> > > +	struct ext2_xattr *attrs = NULL, *x;
+> > > +	unsigned int attrs_len;
+> > > +	struct ext2_inode_large *inode;
+> > > +	struct ext2_ext_attr_header *header;
+> > > +	__u32 ea_inode_magic;
+> > > +	unsigned int storage_size;
+> > > +	void *start, *block_buf = NULL;
+> > > +	blk64_t blk;
+> > > +	int i;
+> > > +	errcode_t err;
+> > > +
+> > > +	if (!EXT2_HAS_COMPAT_FEATURE(handle->fs->super,
+> > > +				     EXT2_FEATURE_COMPAT_EXT_ATTR))
+> > > +		return 0;
+> > > +
+> > > +	i = EXT2_INODE_SIZE(handle->fs->super);
+> > > +	if (i < sizeof(*inode))
+> > > +		i = sizeof(*inode);
+> > > +	err = ext2fs_get_memzero(i, &inode);
+> > > +	if (err)
+> > > +		return err;
+> > > +
+> > > +	err = ext2fs_read_inode_full(handle->fs, handle->ino,
+> > > +				     (struct ext2_inode *)inode,
+> > > +				     EXT2_INODE_SIZE(handle->fs->super));
+> > > +	if (err)
+> > > +		goto out;
+> > > +
+> > > +	/* Does the inode have size for EA? */
+> > > +	if (EXT2_INODE_SIZE(handle->fs->super) <= EXT2_GOOD_OLD_INODE_SIZE +
+> > > +						  inode->i_extra_isize +
+> > > +						  sizeof(__u32))
+> > > +		goto read_ea_block;
+> > > +
+> > > +	/* Look for EA in the inode */
+> > > +	memcpy(&ea_inode_magic, ((char *) inode) + EXT2_GOOD_OLD_INODE_SIZE +
+> > > +	       inode->i_extra_isize, sizeof(__u32));
+> > > +	if (ea_inode_magic == EXT2_EXT_ATTR_MAGIC) {
+> > > +		storage_size = EXT2_INODE_SIZE(handle->fs->super) -
+> > > +			EXT2_GOOD_OLD_INODE_SIZE - inode->i_extra_isize -
+> > > +			sizeof(__u32);
+> > > +		start = ((char *) inode) + EXT2_GOOD_OLD_INODE_SIZE +
+> > > +			inode->i_extra_isize + sizeof(__u32);
+> > > +
+> > > +		err = read_xattrs_from_buffer(handle, start, storage_size,
+> > > +					      start);
+> > > +		if (err)
+> > > +			goto out;
+> > > +	}
+> > > +
+> > > +read_ea_block:
+> > > +	/* Look for EA in a separate EA block */
+> > > +	blk = ext2fs_file_acl_block(handle->fs, (struct ext2_inode *)inode);
+> > > +	if (blk != 0) {
+> > > +		if ((blk < handle->fs->super->s_first_data_block) ||
+> > > +		    (blk >= ext2fs_blocks_count(handle->fs->super))) {
+> > > +			err = EXT2_ET_BAD_EA_BLOCK_NUM;
+> > > +			goto out;
+> > > +		}
+> > > +
+> > > +		err = ext2fs_get_mem(handle->fs->blocksize, &block_buf);
+> > > +		if (err)
+> > > +			goto out;
+> > > +
+> > > +		err = ext2fs_read_ext_attr3(handle->fs, blk, block_buf,
+> > > +					    handle->ino);
+> > > +		if (err)
+> > > +			goto out3;
+> > > +
+> > > +		header = (struct ext2_ext_attr_header *) block_buf;
+> > > +		if (header->h_magic != EXT2_EXT_ATTR_MAGIC) {
+> > > +			err = EXT2_ET_BAD_EA_HEADER;
+> > > +			goto out3;
+> > > +		}
+> > > +
+> > > +		if (header->h_blocks != 1) {
+> > > +			err = EXT2_ET_BAD_EA_HEADER;
+> > > +			goto out3;
+> > > +		}
+> > > +
+> > > +		/* Read EAs */
+> > > +		storage_size = handle->fs->blocksize -
+> > > +			sizeof(struct ext2_ext_attr_header);
+> > > +		start = block_buf + sizeof(struct ext2_ext_attr_header);
+> > > +		err = read_xattrs_from_buffer(handle, start, storage_size,
+> > > +					      block_buf);
+> > > +		if (err)
+> > > +			goto out3;
+> > > +
+> > > +		ext2fs_free_mem(&block_buf);
+> > > +	}
+> > > +
+> > > +	ext2fs_free_mem(&block_buf);
+> > > +	ext2fs_free_mem(&inode);
+> > > +	return 0;
+> > > +
+> > > +out3:
+> > > +	ext2fs_free_mem(&block_buf);
+> > > +out:
+> > > +	ext2fs_free_mem(&inode);
+> > > +	return err;
+> > > +}
+> > > +
+> > > +#define XATTR_ABORT	1
+> > > +#define XATTR_CHANGED	2
+> > > +errcode_t ext2fs_xattrs_iterate(struct ext2_xattr_handle *h,
+> > > +				int (*func)(char *name, char *value,
+> > > +					    void *data),
+> > > +				void *data)
+> > > +{
+> > > +	struct ext2_xattr *x;
+> > > +	errcode_t err;
+> > > +	int ret;
+> > > +
+> > > +	for (x = h->attrs; x < h->attrs + h->length; x++) {
+> > > +		if (!x->name)
+> > > +			continue;
+> > > +
+> > > +		ret = func(x->name, x->value, data);
+> > > +		if (ret & XATTR_CHANGED)
+> > > +			h->dirty = 1;
+> > > +		if (ret & XATTR_ABORT)
+> > > +			return 0;
+> > > +	}
+> > > +
+> > > +	return 0;
+> > > +}
+> > > +
+> > > +errcode_t ext2fs_xattr_get(struct ext2_xattr_handle *h, const char *key,
+> > > +			   void **value, unsigned int *value_len)
+> > > +{
+> > > +	struct ext2_xattr *x;
+> > > +	void *val;
+> > > +	errcode_t err;
+> > > +
+> > > +	for (x = h->attrs; x < h->attrs + h->length; x++) {
+> > > +		if (!x->name)
+> > > +			continue;
+> > > +
+> > > +		if (strcmp(x->name, key) == 0) {
+> > > +			err = ext2fs_get_mem(x->value_len, &val);
+> > > +			if (err)
+> > > +				return err;
+> > > +			memcpy(val, x->value, x->value_len);
+> > > +			*value = val;
+> > > +			*value_len = x->value_len;
+> > > +			return 0;
+> > > +		}
+> > > +	}
+> > > +
+> > > +	return EXT2_ET_EA_KEY_NOT_FOUND;
+> > > +}
+> > > +
+> > > +errcode_t ext2fs_xattr_set(struct ext2_xattr_handle *handle,
+> > > +			   const char *key,
+> > > +			   const void *value,
+> > > +			   unsigned int value_len)
+> > > +{
+> > > +	struct ext2_xattr *x, *last_empty;
+> > > +	char *new_value;
+> > > +	errcode_t err;
+> > > +
+> > > +	last_empty = NULL;
+> > > +	for (x = handle->attrs; x < handle->attrs + handle->length; x++) {
+> > > +		if (!x->name) {
+> > > +			last_empty = x;
+> > > +			continue;
+> > > +		}
+> > > +
+> > > +		/* Replace xattr */
+> > > +		if (strcmp(x->name, key) == 0) {
+> > > +			err = ext2fs_get_mem(value_len, &new_value);
+> > > +			if (err)
+> > > +				return err;
+> > > +			memcpy(new_value, value, value_len);
+> > > +			ext2fs_free_mem(&x->value);
+> > > +			x->value = new_value;
+> > > +			x->value_len = value_len;
+> > > +			handle->dirty = 1;
+> > > +			return 0;
+> > > +		}
+> > > +	}
+> > > +
+> > > +	/* Add attr to empty slot */
+> > > +	if (last_empty) {
+> > > +		err = ext2fs_get_mem(strlen(key) + 1, &last_empty->name);
+> > > +		if (err)
+> > > +			return err;
+> > > +		strcpy(last_empty->name, key);
+> > > +
+> > > +		err = ext2fs_get_mem(value_len, &last_empty->value);
+> > > +		if (err)
+> > > +			return err;
+> > > +		memcpy(last_empty->value, value, value_len);
+> > > +		last_empty->value_len = value_len;
+> > > +		handle->dirty = 1;
+> > > +		return 0;
+> > > +	}
+> > > +
+> > > +	/* Expand array, append slot */
+> > > +	err = ext2fs_xattrs_expand(handle, 4);
+> > > +	if (err)
+> > > +		return err;
+> > > +
+> > > +	x = handle->attrs + handle->length - 4;
+> > > +	err = ext2fs_get_mem(strlen(key) + 1, &x->name);
+> > > +	if (err)
+> > > +		return err;
+> > > +	strcpy(x->name, key);
+> > > +
+> > > +	err = ext2fs_get_mem(value_len, &x->value);
+> > > +	if (err)
+> > > +		return err;
+> > > +	memcpy(x->value, value, value_len);
+> > > +	x->value_len = value_len;
+> > > +	handle->dirty = 1;
+> > > +	return 0;
+> > > +}
+> > > +
+> > > +errcode_t ext2fs_xattr_remove(struct ext2_xattr_handle *handle,
+> > > +			      const char *key)
+> > > +{
+> > > +	struct ext2_xattr *x;
+> > > +	errcode_t err;
+> > > +
+> > > +	for (x = handle->attrs; x < handle->attrs + handle->length; x++) {
+> > > +		if (!x->name)
+> > > +			continue;
+> > > +
+> > > +		if (strcmp(x->name, key) == 0) {
+> > > +			ext2fs_free_mem(&x->name);
+> > > +			ext2fs_free_mem(&x->value);
+> > > +			x->value_len = 0;
+> > > +			handle->dirty = 1;
+> > > +			return 0;
+> > > +		}
+> > > +	}
+> > > +
+> > > +	return EXT2_ET_EA_KEY_NOT_FOUND;
+> > > +}
+> > > +
+> > > +errcode_t ext2fs_xattrs_open(ext2_filsys fs, ext2_ino_t ino,
+> > > +			     struct ext2_xattr_handle **handle)
+> > > +{
+> > > +	struct ext2_xattr_handle *h;
+> > > +	errcode_t err;
+> > > +
+> > > +	err = ext2fs_get_memzero(sizeof(*h), &h);
+> > > +	if (err)
+> > > +		return err;
+> > > +
+> > > +	h->length = 4;
+> > > +	err = ext2fs_get_arrayzero(h->length, sizeof(struct ext2_xattr),
+> > > +				   &h->attrs);
+> > > +	if (err) {
+> > > +		ext2fs_free_mem(&h);
+> > > +		return err;
+> > > +	}
+> > > +	h->ino = ino;
+> > > +	h->fs = fs;
+> > > +	*handle = h;
+> > > +	return 0;
+> > > +}
+> > > +
+> > > +errcode_t ext2fs_xattrs_close(struct ext2_xattr_handle **handle)
+> > > +{
+> > > +	unsigned int i;
+> > > +	struct ext2_xattr_handle *h = *handle;
+> > > +	struct ext2_xattr *a = h->attrs;
+> > > +	errcode_t err;
+> > > +
+> > > +	if (h->dirty) {
+> > > +		err = ext2fs_xattrs_write(h);
+> > > +		if (err)
+> > > +			return err;
+> > > +	}
+> > > +
+> > > +	for (i = 0; i < h->length; i++) {
+> > > +		if (a[i].name)
+> > > +			ext2fs_free_mem(&a[i].name);
+> > > +		if (a[i].value)
+> > > +			ext2fs_free_mem(&a[i].value);
+> > > +	}
+> > > +
+> > > +	ext2fs_free_mem(&h->attrs);
+> > > +	ext2fs_free_mem(handle);
+> > > +	return 0;
+> > > +}
 > > > 
 > > > --
 > > > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
