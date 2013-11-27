@@ -1,67 +1,93 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 23/25] libext2fs: support modifying arbitrary extended
- attributes
-Date: Wed, 27 Nov 2013 19:36:19 +0800
-Message-ID: <20131127113619.GA13435@gmail.com>
-References: <20131018044854.7339.48457.stgit@birch.djwong.org>
- <20131018045134.7339.30673.stgit@birch.djwong.org>
- <20131126072115.GA22136@gmail.com>
- <20131126195547.GB3068@birch.djwong.org>
- <20131127025232.GB1016@gmail.com>
- <20131127031318.GH10269@birch.djwong.org>
+From: Geert Uytterhoeven <geert@linux-m68k.org>
+Subject: CONFIG_EXT4_USE_FOR_EXT23 no space left on device
+Date: Wed, 27 Nov 2013 16:50:14 +0100
+Message-ID: <CAMuHMdWgMrNQqq84AK+CGF6VFnLs38O-vyye4MFKNUO7b8iFMw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f53.google.com ([209.85.160.53]:33548 "EHLO
-	mail-pb0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752780Ab3K0Ld3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Nov 2013 06:33:29 -0500
-Received: by mail-pb0-f53.google.com with SMTP id ma3so10231985pbc.12
-        for <linux-ext4@vger.kernel.org>; Wed, 27 Nov 2013 03:33:28 -0800 (PST)
-Content-Disposition: inline
-In-Reply-To: <20131127031318.GH10269@birch.djwong.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-ext4@vger.kernel.org,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Nov 26, 2013 at 07:13:18PM -0800, Darrick J. Wong wrote:
-> On Wed, Nov 27, 2013 at 10:52:32AM +0800, Zheng Liu wrote:
-> > On Tue, Nov 26, 2013 at 11:55:47AM -0800, Darrick J. Wong wrote:
-> > > On Tue, Nov 26, 2013 at 03:21:16PM +0800, Zheng Liu wrote:
-> > > > On Thu, Oct 17, 2013 at 09:51:34PM -0700, Darrick J. Wong wrote:
-> > > > > Add functions to allow clients to get, set, and remove extended
-> > > > > attributes from any file.  It also supports modifying EAs living in
-> > > > > i_file_acl.
-> > > > > 
-> > > > > v2: Put the header declarations in the correct part of ext2fs.h,
-> > > > > provide a function to release an EA block from an inode, and check
-> > > > > i_extra_isize to make sure we actually have space for in-inode EAs.
-> > > > 
-> > > > Is this the latest version?  I am working on inline data patch set for
-> > > > e2fsprogs, and I want to use these API to manipulate the EA.  So that
-> > > > would be great if you could point out which one is the latest version.
-> > > > Thanks in advance.  Otherwise some nits below.
-> > > 
-> > > Oh!  I was just about to start working on pulling your patches into my monster
-> > > patchset. :)
-> > 
-> > Wow!  Sorry for my late.  If you just begin to work on inline data
-> > patchset.  Would you mind sending your latest monster patchset without
-> > my inline data patchset first?  That gives me a chance to take a closer
-> > look at them.  In general, I will send my patch set asap.
-> 
-> Don't worry about the timing.  I've been busy with a lot of other things.
-> Every time I think I'm done and can start on inline_data, I find another weird
-> test case that breaks things, so I have to go back and figure out what went
-> wrong.
-> 
-> The patchbomb lives here: https://djwong.org/docs/e2fsprogs-patches/ 
-> 
-> Patch 22 is the end of my last (Oct. 2013) patchbomb.  I think the relevant
-> ones you want are #20 and #24-32.  You can skip #26-27 if you don't care about
-> fuse2fs.
+To reduce kernel size, I disabled both CONFIG_EXT2_FS and
+CONFIG_EXT3_FS, and enabled CONFIG_EXT4_USE_FOR_EXT23.
 
-Got it.  Thanks for your help. :)
+Unfortunately the system behaves badly afterwards. It seems the file system
+is considered full: new files can be created, but no data can be written.
+Note that the file system is almost full, but root can still write more data
+using the real ext3 filesystem driver.
 
-                                                - Zheng
+This is a v3.13-rc1-ish kernel.
+
+Diff of dmesg and output of a few operations below:
+
+--- /tmp/good 2013-11-27 16:47:28.000000000 +0100
++++ /tmp/bad 2013-11-27 16:47:31.000000000 +0100
+@@ -1,11 +1,13 @@
+-kjournald starting.  Commit interval 5 seconds
+-EXT3-fs (hda1): mounted filesystem with writeback data mode
++
++EXT4-fs (hda1): mounting ext3 file system using the ext4 subsystem
++EXT4-fs (hda1): mounted filesystem with ordered data mode. Opts: (null)
+ VFS: Mounted root (ext3 filesystem) readonly on device 3:1.
+-Freeing unused kernel memory: 152K (0039d000 - 003c3000)
++Freeing unused kernel memory: 152K (0037f000 - 003a5000)
+ random: nonblocking pool is initialized
+ Adding 137800k swap on /dev/hda2.  Priority:-1 extents:1 across:137800k
+-EXT3-fs (hda1): using internal journal
+-Unknown key: scancode = 0 ($00), keycode = 'numlock' ($12c)
++EXT4-fs (hda1): re-mounted. Opts:
++EXT4-fs (hda1): re-mounted. Opts: errors=remount-ro
++EXT4-fs (hda1): re-mounted. Opts:
+ write cmd 0xE0 (STANDBY IMMEDIATE) not supported
+ hda: task_no_data_intr: status=0x41 { DriveReady Error }
+ hda: task_no_data_intr: error=0x04 { DriveStatusError }
+@@ -22,16 +24,9 @@ hda: possibly failed opcode: 0xe0
+ reboot: Power down
+
+ atari:~# mount
+-/dev/hda1 on / type ext3 (rw,errors=remount-ro)
+-tmpfs on /lib/init/rw type tmpfs (rw,nosuid,mode=0755)
+-proc on /proc type proc (rw,noexec,nosuid,nodev)
+-sysfs on /sys type sysfs (rw,noexec,nosuid,nodev)
+-tmpfs on /dev/shm type tmpfs (rw,nosuid,nodev)
+-devpts on /dev/pts type devpts (rw,noexec,nosuid,gid=5,mode=620)
+-rpc_pipefs on /var/lib/nfs/rpc_pipefs type rpc_pipefs (rw)
+-atari:~# cat /proc/mounts
++atari:~# cat /proc/mounts
+ rootfs / rootfs rw 0 0
+-/dev/root / ext3 rw,relatime,errors=remount-ro,barrier=1,data=writeback 0 0
++/dev/root / ext3 rw,relatime,errors=remount-ro,data=ordered 0 0
+ tmpfs /lib/init/rw tmpfs rw,nosuid,relatime,mode=755 0 0
+ proc /proc proc rw,nosuid,nodev,noexec,relatime 0 0
+ sysfs /sys sysfs rw,nosuid,nodev,noexec,relatime 0 0
+@@ -40,13 +35,9 @@ devpts /dev/pts devpts rw,nosuid,noexec,
+ rpc_pipefs /var/lib/nfs/rpc_pipefs rpc_pipefs rw,relatime 0 0
+ atari:~# touch /tmp/x
+ atari:~# echo hello > /tmp/x
+-atari:~# cat /tmp/x
+-hello
++-bash: echo: write error: No space left on device
+ atari:~# df -h
+-Filesystem            Size  Used Avail Use% Mounted on
+-/dev/hda1             870M  862M     0 100% /
+-tmpfs                 132M     0  132M   0% /lib/init/rw
+-tmpfs                 132M  4.0K  132M   1% /dev/shm
++df: cannot read table of mounted file systems
+ atari:~# ls -l /etc/mtab
+--rw-r--r-- 1 root root 331 Nov 27 16:35 /etc/mtab
++-rw-r--r-- 1 root root 0 Oct 27 15:32 /etc/mtab
+ atari:~# poweroff
+
+Gr{oetje,eeting}s,
+
+                        Geert
+
+--
+Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
+
+In personal conversations with technical people, I call myself a hacker. But
+when I'm talking to journalists I just say "programmer" or something like that.
+                                -- Linus Torvalds
