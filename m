@@ -1,117 +1,113 @@
-From: Kit Westneat <kwestneat@ddn.com>
-Subject: [PATCH] e2image: double free when restoring image
-Date: Wed, 27 Nov 2013 16:32:38 -0500
-Message-ID: <529664F6.3040103@ddn.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: CONFIG_EXT4_USE_FOR_EXT23 no space left on device
+Date: Wed, 27 Nov 2013 23:23:45 +0100
+Message-ID: <20131127222345.GB27330@quack.suse.cz>
+References: <CAMuHMdWgMrNQqq84AK+CGF6VFnLs38O-vyye4MFKNUO7b8iFMw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"Dilger, Andreas" <andreas.dilger@intel.com>
-To: "tytso@mit.edu" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+To: Geert Uytterhoeven <geert@linux-m68k.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from legacy.ddn.com ([64.47.133.206]:55383 "EHLO legacy.ddn.com"
+Received: from cantor2.suse.de ([195.135.220.15]:43990 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754584Ab3K0Vhq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Nov 2013 16:37:46 -0500
+	id S1754595Ab3K0WXr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Nov 2013 17:23:47 -0500
+Content-Disposition: inline
+In-Reply-To: <CAMuHMdWgMrNQqq84AK+CGF6VFnLs38O-vyye4MFKNUO7b8iFMw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
+On Wed 27-11-13 16:50:14, Geert Uytterhoeven wrote:
+> To reduce kernel size, I disabled both CONFIG_EXT2_FS and
+> CONFIG_EXT3_FS, and enabled CONFIG_EXT4_USE_FOR_EXT23.
+> 
+> Unfortunately the system behaves badly afterwards. It seems the file system
+> is considered full: new files can be created, but no data can be written.
+> Note that the file system is almost full, but root can still write more data
+> using the real ext3 filesystem driver.
+> 
+> This is a v3.13-rc1-ish kernel.
+> 
+> Diff of dmesg and output of a few operations below:
+  Thanks for report. Maybe the easiest would be if you gathered fs metadata
+using "e2image -r <fs-device>", compressed it and made it available for
+download. We can then debug ourselves where the accounting goes wrong.
 
-I've been running into a double free when trying to apply an e2image to a
-loopback device:
-
-# e2image /dev/sda1 sda1.img
-e2image 1.43-WIP (8-Jul-2013)
-# dd if=/dev/zero of=./lofile bs=1M seek=1k count=1
-1+0 records in
-1+0 records out
-1048576 bytes (1.0 MB) copied, 0.00131481 s, 798 MB/s
-# losetup /dev/loop0 ./lofile
-# e2image -I /dev/loop0 ./sda1.img
-e2image 1.43-WIP (8-Jul-2013)
-*** glibc detected *** e2image: double free or corruption (!prev): 
-0x00000000011c3fd0 ***
-======= Backtrace: =========
-/lib64/libc.so.6(+0x75296)[0x7f107bf62296]
-e2image[0x4125ab]
-e2image[0x408674]
-e2image[0x40448c]
-/lib64/libc.so.6(__libc_start_main+0xfd)[0x7f107bf0bcdd]
-e2image[0x401ce9]
-======= Memory map: ========
-00400000-00425000 r-xp 00000000 fd:00 8907                               
-/sbin/e2image
-00625000-00626000 rw-p 00025000 fd:00 8907                               
-/sbin/e2image
-011b1000-011f3000 rw-p 00000000 00:00 0                                  
-[heap]
-7f1075e46000-7f1075e5c000 r-xp 00000000 fd:00 50                         
-/lib64/libgcc_s-4.4.6-20110824.so.1
-7f1075e5c000-7f107605b000 ---p 00016000 fd:00 50                         
-/lib64/libgcc_s-4.4.6-20110824.so.1
-7f107605b000-7f107605c000 rw-p 00015000 fd:00 50                         
-/lib64/libgcc_s-4.4.6-20110824.so.1
-7f107605c000-7f107beed000 r--p 00000000 fd:00 3172                       
-/usr/lib/locale/locale-archive
-7f107beed000-7f107c073000 r-xp 00000000 fd:00 3189                       
-/lib64/libc-2.12.so
-7f107c073000-7f107c273000 ---p 00186000 fd:00 3189                       
-/lib64/libc-2.12.so
-7f107c273000-7f107c277000 r--p 00186000 fd:00 3189                       
-/lib64/libc-2.12.so
-7f107c277000-7f107c278000 rw-p 0018a000 fd:00 3189                       
-/lib64/libc-2.12.so
-7f107c278000-7f107c27d000 rw-p 00000000 00:00 0
-7f107c27d000-7f107c294000 r-xp 00000000 fd:00 3213                       
-/lib64/libpthread-2.12.so
-7f107c294000-7f107c493000 ---p 00017000 fd:00 3213                       
-/lib64/libpthread-2.12.so
-7f107c493000-7f107c494000 r--p 00016000 fd:00 3213                       
-/lib64/libpthread-2.12.so
-7f107c494000-7f107c495000 rw-p 00017000 fd:00 3213                       
-/lib64/libpthread-2.12.so
-7f107c495000-7f107c499000 rw-p 00000000 00:00 0
-7f107c499000-7f107c4b9000 r-xp 00000000 fd:00 3182                       
-/lib64/ld-2.12.so
-7f107c6ad000-7f107c6b0000 rw-p 00000000 00:00 0
-7f107c6b6000-7f107c6b8000 rw-p 00000000 00:00 0
-7f107c6b8000-7f107c6b9000 r--p 0001f000 fd:00 3182                       
-/lib64/ld-2.12.so
-7f107c6b9000-7f107c6ba000 rw-p 00020000 fd:00 3182                       
-/lib64/ld-2.12.so
-7f107c6ba000-7f107c6bb000 rw-p 00000000 00:00 0
-7fffa93b9000-7fffa93ce000 rw-p 00000000 00:00 0                          
-[stack]
-7fffa93ff000-7fffa9400000 r-xp 00000000 00:00 0                          
-[vdso]
-ffffffffff600000-ffffffffff601000 r-xp 00000000 00:00 0                  
-[vsyscall]
-Aborted
-
-It appears to be due to a mismatch between the IO channel block size and 
-the FS
-block size. ext2fs_rewrite_to_io is resetting the fs->io to be the IO 
-channel of
-the new device, but that device still has the default unix IO channel 
-block size
-of 1k. I have included a patch to copy the old IO block size into the new IO
-blocksize, which seems to solve the double free.
-
-Thanks,
-Kit
-
-diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
-index 2ad9114..69660ff 100644
---- a/lib/ext2fs/openfs.c
-+++ b/lib/ext2fs/openfs.c
-@@ -479,6 +479,7 @@ errcode_t ext2fs_rewrite_to_io(ext2_filsys fs, 
-io_channel new_io)
-  {
-      if ((fs->flags & EXT2_FLAG_IMAGE_FILE) == 0)
-          return EXT2_ET_NOT_IMAGE_FILE;
-+    new_io->block_size = fs->io->block_size;
-      fs->io = fs->image_io = new_io;
-      fs->flags |= EXT2_FLAG_DIRTY | EXT2_FLAG_RW |
-          EXT2_FLAG_BB_DIRTY | EXT2_FLAG_IB_DIRTY;
-
+									Honza
+> 
+> --- /tmp/good 2013-11-27 16:47:28.000000000 +0100
+> +++ /tmp/bad 2013-11-27 16:47:31.000000000 +0100
+> @@ -1,11 +1,13 @@
+> -kjournald starting.  Commit interval 5 seconds
+> -EXT3-fs (hda1): mounted filesystem with writeback data mode
+> +
+> +EXT4-fs (hda1): mounting ext3 file system using the ext4 subsystem
+> +EXT4-fs (hda1): mounted filesystem with ordered data mode. Opts: (null)
+>  VFS: Mounted root (ext3 filesystem) readonly on device 3:1.
+> -Freeing unused kernel memory: 152K (0039d000 - 003c3000)
+> +Freeing unused kernel memory: 152K (0037f000 - 003a5000)
+>  random: nonblocking pool is initialized
+>  Adding 137800k swap on /dev/hda2.  Priority:-1 extents:1 across:137800k
+> -EXT3-fs (hda1): using internal journal
+> -Unknown key: scancode = 0 ($00), keycode = 'numlock' ($12c)
+> +EXT4-fs (hda1): re-mounted. Opts:
+> +EXT4-fs (hda1): re-mounted. Opts: errors=remount-ro
+> +EXT4-fs (hda1): re-mounted. Opts:
+>  write cmd 0xE0 (STANDBY IMMEDIATE) not supported
+>  hda: task_no_data_intr: status=0x41 { DriveReady Error }
+>  hda: task_no_data_intr: error=0x04 { DriveStatusError }
+> @@ -22,16 +24,9 @@ hda: possibly failed opcode: 0xe0
+>  reboot: Power down
+> 
+>  atari:~# mount
+> -/dev/hda1 on / type ext3 (rw,errors=remount-ro)
+> -tmpfs on /lib/init/rw type tmpfs (rw,nosuid,mode=0755)
+> -proc on /proc type proc (rw,noexec,nosuid,nodev)
+> -sysfs on /sys type sysfs (rw,noexec,nosuid,nodev)
+> -tmpfs on /dev/shm type tmpfs (rw,nosuid,nodev)
+> -devpts on /dev/pts type devpts (rw,noexec,nosuid,gid=5,mode=620)
+> -rpc_pipefs on /var/lib/nfs/rpc_pipefs type rpc_pipefs (rw)
+> -atari:~# cat /proc/mounts
+> +atari:~# cat /proc/mounts
+>  rootfs / rootfs rw 0 0
+> -/dev/root / ext3 rw,relatime,errors=remount-ro,barrier=1,data=writeback 0 0
+> +/dev/root / ext3 rw,relatime,errors=remount-ro,data=ordered 0 0
+>  tmpfs /lib/init/rw tmpfs rw,nosuid,relatime,mode=755 0 0
+>  proc /proc proc rw,nosuid,nodev,noexec,relatime 0 0
+>  sysfs /sys sysfs rw,nosuid,nodev,noexec,relatime 0 0
+> @@ -40,13 +35,9 @@ devpts /dev/pts devpts rw,nosuid,noexec,
+>  rpc_pipefs /var/lib/nfs/rpc_pipefs rpc_pipefs rw,relatime 0 0
+>  atari:~# touch /tmp/x
+>  atari:~# echo hello > /tmp/x
+> -atari:~# cat /tmp/x
+> -hello
+> +-bash: echo: write error: No space left on device
+>  atari:~# df -h
+> -Filesystem            Size  Used Avail Use% Mounted on
+> -/dev/hda1             870M  862M     0 100% /
+> -tmpfs                 132M     0  132M   0% /lib/init/rw
+> -tmpfs                 132M  4.0K  132M   1% /dev/shm
+> +df: cannot read table of mounted file systems
+>  atari:~# ls -l /etc/mtab
+> --rw-r--r-- 1 root root 331 Nov 27 16:35 /etc/mtab
+> +-rw-r--r-- 1 root root 0 Oct 27 15:32 /etc/mtab
+>  atari:~# poweroff
+> 
+> Gr{oetje,eeting}s,
+> 
+>                         Geert
+> 
+> --
+> Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
+> 
+> In personal conversations with technical people, I call myself a hacker. But
+> when I'm talking to journalists I just say "programmer" or something like that.
+>                                 -- Linus Torvalds
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
