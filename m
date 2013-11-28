@@ -1,57 +1,83 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: CONFIG_EXT4_USE_FOR_EXT23 no space left on device
-Date: Thu, 28 Nov 2013 12:33:01 +0100
-Message-ID: <20131128113301.GC31516@quack.suse.cz>
-References: <CAMuHMdWgMrNQqq84AK+CGF6VFnLs38O-vyye4MFKNUO7b8iFMw@mail.gmail.com>
- <20131127222345.GB27330@quack.suse.cz>
- <CAMuHMdWNvnKhJSBmR68EEMZHUuhzkAgWSLz=6eruhcfYKk2Y2A@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: Geert Uytterhoeven <geert@linux-m68k.org>
+Subject: [PATCH] ext4: Do not reserve clusters when fs doesn't support extents
+Date: Thu, 28 Nov 2013 12:42:45 +0100
+Message-ID: <1385638965-14674-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org,
+	Geert Uytterhoeven <geert@linux-m68k.org>,
+	Jan Kara <jack@suse.cz>, Lukas Czerner <lczerner@redhat.com>
+To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:39857 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:40439 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751653Ab3K1LdD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 Nov 2013 06:33:03 -0500
-Content-Disposition: inline
-In-Reply-To: <CAMuHMdWNvnKhJSBmR68EEMZHUuhzkAgWSLz=6eruhcfYKk2Y2A@mail.gmail.com>
+	id S1758561Ab3K1Lm7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 28 Nov 2013 06:42:59 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 28-11-13 11:15:57, Geert Uytterhoeven wrote:
-> On Wed, Nov 27, 2013 at 11:23 PM, Jan Kara <jack@suse.cz> wrote:
-> > On Wed 27-11-13 16:50:14, Geert Uytterhoeven wrote:
-> >> To reduce kernel size, I disabled both CONFIG_EXT2_FS and
-> >> CONFIG_EXT3_FS, and enabled CONFIG_EXT4_USE_FOR_EXT23.
-> >>
-> >> Unfortunately the system behaves badly afterwards. It seems the file system
-> >> is considered full: new files can be created, but no data can be written.
-> >> Note that the file system is almost full, but root can still write more data
-> >> using the real ext3 filesystem driver.
-> >>
-> >> This is a v3.13-rc1-ish kernel.
-> >>
-> >> Diff of dmesg and output of a few operations below:
-> >   Thanks for report. Maybe the easiest would be if you gathered fs metadata
-> > using "e2image -r <fs-device>", compressed it and made it available for
-> > download. We can then debug ourselves where the accounting goes wrong.
-> 
-> Dump from the live image, so it needs journal recovery:
-> 
-> http://users.telenet.be/geertu/Download/hda1.e2i.bz2
-  Thanks. So I had a look and the difference is in ext4 block reservation
-logic. ext4 stores away some blocks as reserved so that it can use them
-as a safety pool in case it really needs to finish some metadata operations
-and there isn't enough free space (see commit
-27dd43854227bb0e6ab70129bd21b60d396db2e7 for detailed description).
+When filesystem doesn't support extents (like in ext2/3 compatibility
+modes), there is no need to reserve any clusters. Space estimates for
+writing are exact, hole punching doesn't need new metadata, and there
+are no unwritten extents to convert.
 
-However this block reservation isn't really needed when fs doesn't support
-extents. So I'll send a patch in a moment which fixes the problem for me.
+This fixes a problem when filesystem still having some free space when
+accessed with a native ext2/3 driver suddently reports ENOSPC when
+accessed with ext4 driver.
 
-								Honza
+Reported-by: Geert Uytterhoeven <geert@linux-m68k.org>
+CC: Lukas Czerner <lczerner@redhat.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/super.c | 17 +++++++++++++----
+ 1 file changed, 13 insertions(+), 4 deletions(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index c977f4e4e63b..0561713cd6d8 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3316,11 +3316,19 @@ int ext4_calculate_overhead(struct super_block *sb)
+ }
+ 
+ 
+-static ext4_fsblk_t ext4_calculate_resv_clusters(struct ext4_sb_info *sbi)
++static ext4_fsblk_t ext4_calculate_resv_clusters(struct super_block *sb)
+ {
+ 	ext4_fsblk_t resv_clusters;
+ 
+ 	/*
++	 * There's no need to reserve anything when we aren't using extents.
++	 * The space estimates are exact, there are no unwritten extents,
++	 * hole punching doesn't need new metadata... This is needed especially
++	 * to keep ext2/3 backward compatibility.
++	 */
++	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS))
++		return 0;
++	/*
+ 	 * By default we reserve 2% or 4096 clusters, whichever is smaller.
+ 	 * This should cover the situations where we can not afford to run
+ 	 * out of space like for example punch hole, or converting
+@@ -3328,7 +3336,8 @@ static ext4_fsblk_t ext4_calculate_resv_clusters(struct ext4_sb_info *sbi)
+ 	 * allocation would require 1, or 2 blocks, higher numbers are
+ 	 * very rare.
+ 	 */
+-	resv_clusters = ext4_blocks_count(sbi->s_es) >> sbi->s_cluster_bits;
++	resv_clusters = ext4_blocks_count(EXT4_SB(sb)->s_es) >>
++			EXT4_SB(sb)->s_cluster_bits;
+ 
+ 	do_div(resv_clusters, 50);
+ 	resv_clusters = min_t(ext4_fsblk_t, resv_clusters, 4096);
+@@ -4071,10 +4080,10 @@ no_journal:
+ 			 "available");
+ 	}
+ 
+-	err = ext4_reserve_clusters(sbi, ext4_calculate_resv_clusters(sbi));
++	err = ext4_reserve_clusters(sbi, ext4_calculate_resv_clusters(sb));
+ 	if (err) {
+ 		ext4_msg(sb, KERN_ERR, "failed to reserve %llu clusters for "
+-			 "reserved pool", ext4_calculate_resv_clusters(sbi));
++			 "reserved pool", ext4_calculate_resv_clusters(sb));
+ 		goto failed_mount4a;
+ 	}
+ 
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.8.1.4
+
