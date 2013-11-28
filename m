@@ -1,51 +1,34 @@
-From: Geert Uytterhoeven <geert@linux-m68k.org>
-Subject: Re: [PATCH] ext4: Do not reserve clusters when fs doesn't support extents
-Date: Thu, 28 Nov 2013 13:47:04 +0100
-Message-ID: <CAMuHMdWFsK0pfuigxPbhptz8myGqGMHPT8adRXnweQX_=gu5DQ@mail.gmail.com>
-References: <1385638965-14674-1-git-send-email-jack@suse.cz>
+From: "Martin K. Petersen" <martin.petersen@oracle.com>
+Subject: Re: 3.12.0: sda2: WRITE SAME failed. Manually zeroing. with 3w-xxxx driver
+Date: Thu, 28 Nov 2013 07:59:53 -0500
+Message-ID: <yq1iovclm0m.fsf@sermon.lab.mkp.net>
+References: <CAO9zADw-k+Qghk79yzwzaiYiPSoQnKwjjTBwrhcOrJxTWc-fOQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Lukas Czerner <lczerner@redhat.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f174.google.com ([209.85.192.174]:55790 "EHLO
-	mail-pd0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750841Ab3K1MrF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Nov 2013 07:47:05 -0500
-Received: by mail-pd0-f174.google.com with SMTP id y13so11981744pdi.19
-        for <linux-ext4@vger.kernel.org>; Thu, 28 Nov 2013 04:47:04 -0800 (PST)
-In-Reply-To: <1385638965-14674-1-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain
+Cc: open list <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, linux-scsi@vger.kernel.org
+To: Justin Piszcz <jpiszcz@lucidpixels.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <CAO9zADw-k+Qghk79yzwzaiYiPSoQnKwjjTBwrhcOrJxTWc-fOQ@mail.gmail.com>
+	(Justin Piszcz's message of "Mon, 25 Nov 2013 17:01:12 -0500")
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Jan,
+>>>>> "Justin" == Justin Piszcz <jpiszcz@lucidpixels.com> writes:
 
-On Thu, Nov 28, 2013 at 12:42 PM, Jan Kara <jack@suse.cz> wrote:
-> When filesystem doesn't support extents (like in ext2/3 compatibility
-> modes), there is no need to reserve any clusters. Space estimates for
-> writing are exact, hole punching doesn't need new metadata, and there
-> are no unwritten extents to convert.
->
-> This fixes a problem when filesystem still having some free space when
-> accessed with a native ext2/3 driver suddently reports ENOSPC when
-> accessed with ext4 driver.
+Justin> Relevant logs: [178339.353519] 3w-sas: scsi0: ERROR:
+Justin> (0x03:0x0101): Invalid command opcode:opcode=0x41.
+Justin> [178339.353565] sda2: WRITE SAME failed. Manually zeroing.
 
-Thanks, fixed!
+Justin> Is this something I should be worried about? 
 
-> Reported-by: Geert Uytterhoeven <geert@linux-m68k.org>
-> CC: Lukas Czerner <lczerner@redhat.com>
-> Signed-off-by: Jan Kara <jack@suse.cz>
+No, it just means that your 3ware controller does not handle the WRITE
+SAME command and we fall back to manually writing out zeroes.
 
-Tested-by: Geert Uytterhoeven <geert@linux-m68k.org>
+I posted a patch a while back that prevents WRITE SAME being issued for
+controllers that do not pass the commands through to disk directly:
 
-Gr{oetje,eeting}s,
+	http://marc.info/?l=linux-scsi&m=138252394614920&w=2
 
-                        Geert
-
---
-Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
-
-In personal conversations with technical people, I call myself a hacker. But
-when I'm talking to journalists I just say "programmer" or something like that.
-                                -- Linus Torvalds
+-- 
+Martin K. Petersen	Oracle Linux Engineering
