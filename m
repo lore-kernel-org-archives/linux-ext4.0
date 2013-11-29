@@ -1,99 +1,102 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: Do not reserve clusters when fs doesn't support
- extents
-Date: Fri, 29 Nov 2013 13:01:36 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1311291300500.2088@localhost.localdomain>
-References: <1385638965-14674-1-git-send-email-jack@suse.cz>
+From: "Dilger, Andreas" <andreas.dilger@intel.com>
+Subject: Re: [PATCH] e2image: double free when restoring image
+Date: Fri, 29 Nov 2013 17:45:21 +0000
+Message-ID: <2536F444-3B5C-4A73-94A1-9464F89B29CD@intel.com>
+References: <529664F6.3040103@ddn.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Geert Uytterhoeven <geert@linux-m68k.org>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+Cc: "tytso@mit.edu" <tytso@mit.edu>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Kit Westneat <kwestneat@ddn.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35366 "EHLO mx1.redhat.com"
+Received: from mga02.intel.com ([134.134.136.20]:47982 "EHLO mga02.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751240Ab3K2MBq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 29 Nov 2013 07:01:46 -0500
-In-Reply-To: <1385638965-14674-1-git-send-email-jack@suse.cz>
+	id S1751690Ab3K2RpZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Nov 2013 12:45:25 -0500
+In-Reply-To: <529664F6.3040103@ddn.com>
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 28 Nov 2013, Jan Kara wrote:
+Kit, thanks for sending the patch to the list. 
 
-> Date: Thu, 28 Nov 2013 12:42:45 +0100
-> From: Jan Kara <jack@suse.cz>
-> To: Ted Tso <tytso@mit.edu>
-> Cc: linux-ext4@vger.kernel.org, Geert Uytterhoeven <geert@linux-m68k.org>,
->     Jan Kara <jack@suse.cz>, Lukas Czerner <lczerner@redhat.com>
-> Subject: [PATCH] ext4: Do not reserve clusters when fs doesn't support extents
-> 
-> When filesystem doesn't support extents (like in ext2/3 compatibility
-> modes), there is no need to reserve any clusters. Space estimates for
-> writing are exact, hole punching doesn't need new metadata, and there
-> are no unwritten extents to convert.
-> 
-> This fixes a problem when filesystem still having some free space when
-> accessed with a native ext2/3 driver suddently reports ENOSPC when
-> accessed with ext4 driver.
+You'll need to add a Signed-off-by: line. You can also add Reviewed-by: from me as well. 
 
-Right, I forgot about that. Thanks!
+Cheers, Andreas
 
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+On 2013-11-27, at 14:33, "Kit Westneat" <kwestneat@ddn.com> wrote:
 
+> Hello,
 > 
-> Reported-by: Geert Uytterhoeven <geert@linux-m68k.org>
-> CC: Lukas Czerner <lczerner@redhat.com>
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/ext4/super.c | 17 +++++++++++++----
->  1 file changed, 13 insertions(+), 4 deletions(-)
+> I've been running into a double free when trying to apply an e2image to a
+> loopback device:
 > 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index c977f4e4e63b..0561713cd6d8 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -3316,11 +3316,19 @@ int ext4_calculate_overhead(struct super_block *sb)
->  }
->  
->  
-> -static ext4_fsblk_t ext4_calculate_resv_clusters(struct ext4_sb_info *sbi)
-> +static ext4_fsblk_t ext4_calculate_resv_clusters(struct super_block *sb)
->  {
->  	ext4_fsblk_t resv_clusters;
->  
->  	/*
-> +	 * There's no need to reserve anything when we aren't using extents.
-> +	 * The space estimates are exact, there are no unwritten extents,
-> +	 * hole punching doesn't need new metadata... This is needed especially
-> +	 * to keep ext2/3 backward compatibility.
-> +	 */
-> +	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS))
-> +		return 0;
-> +	/*
->  	 * By default we reserve 2% or 4096 clusters, whichever is smaller.
->  	 * This should cover the situations where we can not afford to run
->  	 * out of space like for example punch hole, or converting
-> @@ -3328,7 +3336,8 @@ static ext4_fsblk_t ext4_calculate_resv_clusters(struct ext4_sb_info *sbi)
->  	 * allocation would require 1, or 2 blocks, higher numbers are
->  	 * very rare.
->  	 */
-> -	resv_clusters = ext4_blocks_count(sbi->s_es) >> sbi->s_cluster_bits;
-> +	resv_clusters = ext4_blocks_count(EXT4_SB(sb)->s_es) >>
-> +			EXT4_SB(sb)->s_cluster_bits;
->  
->  	do_div(resv_clusters, 50);
->  	resv_clusters = min_t(ext4_fsblk_t, resv_clusters, 4096);
-> @@ -4071,10 +4080,10 @@ no_journal:
->  			 "available");
->  	}
->  
-> -	err = ext4_reserve_clusters(sbi, ext4_calculate_resv_clusters(sbi));
-> +	err = ext4_reserve_clusters(sbi, ext4_calculate_resv_clusters(sb));
->  	if (err) {
->  		ext4_msg(sb, KERN_ERR, "failed to reserve %llu clusters for "
-> -			 "reserved pool", ext4_calculate_resv_clusters(sbi));
-> +			 "reserved pool", ext4_calculate_resv_clusters(sb));
->  		goto failed_mount4a;
->  	}
->  
+> # e2image /dev/sda1 sda1.img
+> e2image 1.43-WIP (8-Jul-2013)
+> # dd if=/dev/zero of=./lofile bs=1M seek=1k count=1
+> 1+0 records in
+> 1+0 records out
+> 1048576 bytes (1.0 MB) copied, 0.00131481 s, 798 MB/s
+> # losetup /dev/loop0 ./lofile
+> # e2image -I /dev/loop0 ./sda1.img
+> e2image 1.43-WIP (8-Jul-2013)
+> *** glibc detected *** e2image: double free or corruption (!prev): 0x00000000011c3fd0 ***
+> ======= Backtrace: =========
+> /lib64/libc.so.6(+0x75296)[0x7f107bf62296]
+> e2image[0x4125ab]
+> e2image[0x408674]
+> e2image[0x40448c]
+> /lib64/libc.so.6(__libc_start_main+0xfd)[0x7f107bf0bcdd]
+> e2image[0x401ce9]
+> ======= Memory map: ========
+> 00400000-00425000 r-xp 00000000 fd:00 8907                               /sbin/e2image
+> 00625000-00626000 rw-p 00025000 fd:00 8907                               /sbin/e2image
+> 011b1000-011f3000 rw-p 00000000 00:00 0                                  [heap]
+> 7f1075e46000-7f1075e5c000 r-xp 00000000 fd:00 50                         /lib64/libgcc_s-4.4.6-20110824.so.1
+> 7f1075e5c000-7f107605b000 ---p 00016000 fd:00 50                         /lib64/libgcc_s-4.4.6-20110824.so.1
+> 7f107605b000-7f107605c000 rw-p 00015000 fd:00 50                         /lib64/libgcc_s-4.4.6-20110824.so.1
+> 7f107605c000-7f107beed000 r--p 00000000 fd:00 3172                       /usr/lib/locale/locale-archive
+> 7f107beed000-7f107c073000 r-xp 00000000 fd:00 3189                       /lib64/libc-2.12.so
+> 7f107c073000-7f107c273000 ---p 00186000 fd:00 3189                       /lib64/libc-2.12.so
+> 7f107c273000-7f107c277000 r--p 00186000 fd:00 3189                       /lib64/libc-2.12.so
+> 7f107c277000-7f107c278000 rw-p 0018a000 fd:00 3189                       /lib64/libc-2.12.so
+> 7f107c278000-7f107c27d000 rw-p 00000000 00:00 0
+> 7f107c27d000-7f107c294000 r-xp 00000000 fd:00 3213                       /lib64/libpthread-2.12.so
+> 7f107c294000-7f107c493000 ---p 00017000 fd:00 3213                       /lib64/libpthread-2.12.so
+> 7f107c493000-7f107c494000 r--p 00016000 fd:00 3213                       /lib64/libpthread-2.12.so
+> 7f107c494000-7f107c495000 rw-p 00017000 fd:00 3213                       /lib64/libpthread-2.12.so
+> 7f107c495000-7f107c499000 rw-p 00000000 00:00 0
+> 7f107c499000-7f107c4b9000 r-xp 00000000 fd:00 3182                       /lib64/ld-2.12.so
+> 7f107c6ad000-7f107c6b0000 rw-p 00000000 00:00 0
+> 7f107c6b6000-7f107c6b8000 rw-p 00000000 00:00 0
+> 7f107c6b8000-7f107c6b9000 r--p 0001f000 fd:00 3182                       /lib64/ld-2.12.so
+> 7f107c6b9000-7f107c6ba000 rw-p 00020000 fd:00 3182                       /lib64/ld-2.12.so
+> 7f107c6ba000-7f107c6bb000 rw-p 00000000 00:00 0
+> 7fffa93b9000-7fffa93ce000 rw-p 00000000 00:00 0                          [stack]
+> 7fffa93ff000-7fffa9400000 r-xp 00000000 00:00 0                          [vdso]
+> ffffffffff600000-ffffffffff601000 r-xp 00000000 00:00 0                  [vsyscall]
+> Aborted
+> 
+> It appears to be due to a mismatch between the IO channel block size and the FS
+> block size. ext2fs_rewrite_to_io is resetting the fs->io to be the IO channel of
+> the new device, but that device still has the default unix IO channel block size
+> of 1k. I have included a patch to copy the old IO block size into the new IO
+> blocksize, which seems to solve the double free.
+> 
+> Thanks,
+> Kit
+> 
+> diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
+> index 2ad9114..69660ff 100644
+> --- a/lib/ext2fs/openfs.c
+> +++ b/lib/ext2fs/openfs.c
+> @@ -479,6 +479,7 @@ errcode_t ext2fs_rewrite_to_io(ext2_filsys fs, io_channel new_io)
+> {
+>     if ((fs->flags & EXT2_FLAG_IMAGE_FILE) == 0)
+>         return EXT2_ET_NOT_IMAGE_FILE;
+> +    new_io->block_size = fs->io->block_size;
+>     fs->io = fs->image_io = new_io;
+>     fs->flags |= EXT2_FLAG_DIRTY | EXT2_FLAG_RW |
+>         EXT2_FLAG_BB_DIRTY | EXT2_FLAG_IB_DIRTY;
 > 
