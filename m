@@ -1,300 +1,60 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] mke2fs: Fix block bitmaps initalization with -O
- ^resize_inode
-Date: Sat, 30 Nov 2013 12:06:24 -0800
-Message-ID: <20131130200624.GA9541@birch.djwong.org>
-References: <52662BBA.70503@rs.jp.nec.com>
- <20131123013336.GD10269@birch.djwong.org>
- <20131126012706.GF10269@birch.djwong.org>
- <003101ceea7f$08d3fda0$1a7bf8e0$@rs.jp.nec.com>
- <20131127005505.GG10269@birch.djwong.org>
- <00d301ceec16$de11fec0$9a35fc40$@rs.jp.nec.com>
+Subject: Re: [PATCH 23/25] libext2fs: support modifying arbitrary extended
+ attributes
+Date: Sat, 30 Nov 2013 12:24:36 -0800
+Message-ID: <20131130202436.GB9541@birch.djwong.org>
+References: <20131018044854.7339.48457.stgit@birch.djwong.org>
+ <20131018045134.7339.30673.stgit@birch.djwong.org>
+ <20131126072115.GA22136@gmail.com>
+ <20131127015617.GC3068@birch.djwong.org>
+ <20131129053013.GA25516@gmail.com>
+ <20131129081707.GD23954@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "'ext4 development'" <linux-ext4@vger.kernel.org>
-To: "'Theodore Tso'" <tytso@mit.edu>,
-	Akira Fujita <a-fujita@rs.jp.nec.com>
+Cc: Zheng Liu <gnehzuil.liu@gmail.com>, tytso@mit.edu,
+	linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:38947 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:40455 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751056Ab3K3UGe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 30 Nov 2013 15:06:34 -0500
+	with ESMTP id S1750817Ab3K3UYo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 30 Nov 2013 15:24:44 -0500
 Content-Disposition: inline
-In-Reply-To: <00d301ceec16$de11fec0$9a35fc40$@rs.jp.nec.com>
+In-Reply-To: <20131129081707.GD23954@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted, I was hoping you might resolve a question for us:
+On Fri, Nov 29, 2013 at 09:17:07AM +0100, Jan Kara wrote:
+> On Fri 29-11-13 13:30:13, Zheng Liu wrote:
+> > On Tue, Nov 26, 2013 at 05:56:17PM -0800, Darrick J. Wong wrote:
+> > [...]
+> > > > > +static struct ea_name_index ea_names[] = {
+> > > > > +	{1, "user."},
+> > > > > +	{2, "system.posix_acl_access"},
+> > > > > +	{3, "system.posix_acl_default"},
+> > > > > +	{4, "trusted."},
+> > > > > +	{6, "security."},
+> > > > > +	{7, "system."},
+> > > > 
+> > > > It seems that we also have a _RICHACL name here.
+> > > 
+> > > Yes.  Do you know what it's used for?  EXT4_XATTR_INDEX_RICHACL isn't used as
+> > > of 3.13-rc1.
+> > 
+> > Sorry, I just look at this mail.  If I remember correctly, this flag is
+> > added by Jan Kara because he want to reserve this flag for rich acl
+> > which has been implemented out of upstream kernel tree.
+>   Yes, SUSE kernels use EXT4_XATTR_INDEX_RICHACL to store Samba acls.
 
-(please scroll down a bit)
+Just to confirm, the prefix is 'system.richacl'?
 
-On Thu, Nov 28, 2013 at 05:50:19PM +0900, Akira Fujita wrote:
-> >On Tue, Nov 26, 2013 at 05:10:56PM +0900, Akira Fujita wrote:
-> >> Hi Darrick,
-> >>
-> >> With your patch, e2fsck can't fix the filesystem created with existing
-> >> mke2fs without resize_inode.
-> >> Because "fs->block_map == bmap" condition is in ext2fs_reserve_super_and_bgd().
-> >
-> >Hmm, I think I see what's going on here.
-> >
-> >First, I think you're arguing that BLOCK_UNINIT should only be set on a group if it's
-> completely
-> >empty.  I think you're also arguing that even if the group contains only its own superblocks,
-> group
-> >descriptors, bitmaps, or inode tables, BLOCK_UNINIT should not be set.  Let's call that
-> condition
-> >(block group contains only group data, but BLOCK_UNINIT is set) "(1)".
-> >
-> >Note: If a group contains some other group's metadata, BLOCK_UNINIT should not (and does not
-> seem
-> >to) be set.
-> >
-> >(If I'm wrong, please let me know.)
-> 
-> Yes. Current ext4, it seems to me that BLOCK_UNINIT is set under the following rules:
-> 
-> 1 sb(backup sb)/gdt/bitmap/itable exist  (e.g. #BG0)   -> BLOCK_UNINIT off
-> 2 backup sb/gdt exist                    (e.g. #BG5)   -> BLOCK_UNINIT off
-> 3 bitmap/itable exist                    (e.g. #BG16)   -> BLOCK_UNINIT off
-> 4 Completely empty                       (e.g. #BG6)   -> BLOCK_UNINIT on
->                             Note: #BGN is in ext4 created by default option
-> 
-> And there is a bug that block group which has backup super block
-> and group descriptor block are not write out to device in wrtie_bitmaps()
-> when BLOCK_UNINIT is set.
-> So at this time, I attempted to fix this by cleaning BLOCK_UNIIT.
+Also, does anyone know if the value 5 maps to anything?
 
-Is it the case that a group should only have BLOCK_UNINIT set if the group is
-totally empty (no group metadata, no blocks allocated to files) as Akira says?
-
-Or is it the case that a group can have BLOCK_UNINIT set if the group contains
-group metadata but no blocks are allocated to files?
-
-The kernel and e2fsck contain code to construct bitmaps at run time with the
-group metadata blocks marked in-use (thus handling case #2).  Unfortunately,
-libext2fs does not do this; it stuffs in a zeroed bitmap any time it sees
-BLOCK_UNINIT (case #1).
-
-It seems that you can mkfs -O ^resize_inode and it'll produce an fs containing
-groups that have superblocks/group descriptors but BLOCK_UNINIT set.  The
-kernel handles it correctly, but things like debugfs report that every block in
-that group is free.
-
-For sure I'd like to fix libext2fs to ensure that it marks the group metadata
-blocks in-use in the in-memory bitmap when it's loading the block bitmap for a
-BLOCK_UNINIT group.
-
-As for whether or not a group can contain group data and have BLOCK_UNINIT set,
-well, I defer to you. :)
+/me adds the attribute name index map to the wiki page.
 
 --D
-
 > 
-> 
-> >The kernel, when it needs to load a bitmap, checks for BLOCK_UNINIT; if set, it calls
-> >ext4_init_block_bitmap() to zero the bitmap and mark the relevant sb/gdt/bmap/table bits, if
-> >necessary.  That takes care of (1) in the kernel.
-> >
-> >e2fsck pass5 also checks for BLOCK_UNINIT; if it's set, then it first compares block_found_map
-> >against a zeroed bitmap (which falls back to no_optimize mode), and then it secondly compares
-> each
-> >block individually against the ranges that ext2fs_super_and_bgd_loc2(), ext2fs_*_bitmap_loc(),
-> and
-> >ext2fs_inode_table_loc() return.  That takes care of (1) in e2fsck.
-> >
-> >libext2fs, however, checks for BLOCK_UNINIT; if it's set, it zeroes that part of the bitmap
-> and
-> >moves on without bothering to mark the sb/gdt/bmap/table bits.  This does NOT take care of
-> (1),
-> >and opens a window where callers can allocate blocks that already hold group metadata!  (Let's
-> call
-> >this (2).)
-> >
-> >The fuse2fs bug that I was seeing was that if (2) happens, then fuse2fs sees a zero bitmap and
-> blindly
-> >hands away group metadata, which is broken.  With yesterday's patch, (1) doesn't happen and
-> all
-> >seems ok.
-> >
-> >I think in your e2fsck test, e2fsck tests block_found_map against a correctly constructed
-> bitmap
-> >(with ext2fs_super_and_bgd_loc2) if BLOCK_UNINIT is set, which is why it can't fix (1) unless
-> e2fsck
-> >is fed a backup superblock (or there's a corrupt a group descriptor checksum), either of which
-> clears
-> >BLOCK_UNINIT before pass5).
-> >
-> >So I'm wondering, is there more to the bug report than just "I ran mkfs and prodded e2fsck
-> into
-> >reporting errors"?
-> 
-> I guess there is another bug.
-> 
-> >Given that both the kernel and e2fsck know how to calculate the proper block bitmap when
-> BLOCK_UNINIT
-> >is set, it doesn't seem to be an error case if BLOCK_UNINIT is set on a group that contains
-> superblocks,
-> >group descriptors, bitmaps, or inode tables.  It seems to me that if we can calculate a
-> bitmap,
-> >then there's no need to record it, and we can use BLOCK_UNINIT.
-> >
-> >What do you think of this solution: Change read_bitmaps to mark the location of
-> sb/gdt/bmap/inode
-> >blocks in the in-core block bitmap for BLOCK_UNINIT groups.
-> >This fixes the problem that fs->block_bitmap doesn't accurately reflect the real state of the
-> >filesystem (as evidenced by dumpe2fs/debugfs reporting more free blocks than the summar.  I
-> think
-> >we can also eliminate the skip_group code from the block bitmap check in pass5.  That should
-> speed
-> >up pass5 since we can also use the fast bitmap compare.
-> 
-> Speeding up bitmap check in pass5 sounds nice,
-> but setting BLOCK_UNINIT for block groups which have metadata means
-> we'll change the definition of BLOCK_UNIIT... :s
-> 
-> Regards,
-> Akira Fujita
-> 
-> >I'll send out a test patch.
-> >
-> >Of course, the tests seem coded to pass things like:
-> >
-> >> Group 2: (Blocks 16385-24576) [INODE_UNINIT, BLOCK_UNINIT, ITABLE_ZEROED]
-> >>   Block bitmap at 16385 (+0), Inode bitmap at 16386 (+1)
-> >                    ^^^^^                       ^^^^^
-> >>   Inode table at 16387-16642 (+2)
-> >                   ^^^^^^^^^^^
-> >>   7934 free blocks, 2048 free inodes, 0 directories, 2048 unused inodes
-> >>   Free blocks: 16385-24576
-> >                 ^^^^^
-> >>   Free inodes: 4097-6144
-> >
-> ><grumble>
-> >
-> >--D
-> >
-> >> But if the condition removed (like my previous patch) we can detect
-> >> and fix filesystem inconsistency as follows.
-> >>
-> >> 1.Create filesystem with existing mke2fs command # mke2fs -t ext4 -O
-> >> ^resize_inode DEVICE
-> >>
-> >> 2. (With my patch) e2fsck removes uninit_bg flag then fixes metadata
-> >> inconsistency # ./e2fsck/e2fsck -f DEVICE e2fsck 1.43-WIP (8-Jul-2013)
-> >> One or more block group descriptor checksums are invalid.  Fix<y>? yes
-> >> Group descriptor 1 checksum is 0x0343, should be 0xc4ba.  FIXED.
-> >> Group descriptor 3 checksum is 0x17f2, should be 0xd00b.  FIXED.
-> >> Group descriptor 5 checksum is 0xf36c, should be 0x3495.  FIXED.
-> >> Group descriptor 7 checksum is 0x3e90, should be 0xf969.  FIXED.
-> >> Group descriptor 9 checksum is 0xa31e, should be 0x64e7.  FIXED.
-> >> Group descriptor 25 checksum is 0x165a, should be 0xd1a3.  FIXED.
-> >> Group descriptor 27 checksum is 0xce4c, should be 0x09b5.  FIXED.
-> >> Group descriptor 49 checksum is 0x502b, should be 0x97d2.  FIXED.
-> >> Pass 1: Checking inodes, blocks, and sizes Pass 2: Checking directory
-> >> structure Pass 3: Checking directory connectivity Pass 4: Checking
-> >> reference counts Pass 5: Checking group summary information Block
-> >> bitmap differences:  +(32768--32769) +(98304--98305) +(163840--163841)
-> >> +(229376--229377)
-> >> +(294912--294913) +(819200--819201) +(884736--884737)
-> >> ++(1605632--1605633)
-> >> Fix<y>? yes
-> >>
-> >> /dev/loop0: ***** FILE SYSTEM WAS MODIFIED *****
-> >> /dev/loop0: 11/656640 files (0.0% non-contiguous), 73991/2621440
-> >> blocks
-> >>
-> >> Regards,
-> >> Akira Fujita
-> >>
-> >> >-----Original Message-----
-> >> >From: Darrick J. Wong [mailto:darrick.wong@oracle.com]
-> >> >Sent: Tuesday, November 26, 2013 10:27 AM
-> >> >To: Akira Fujita
-> >> >Cc: Theodore Tso; ext4 development
-> >> >Subject: Re: [PATCH] mke2fs: Fix block bitmaps initalization with -O
-> >> >^resize_inode
-> >> >
-> >> >Does the following patch fix your error?  I think I've started to hit
-> >> >it too, now that I added ^resize_inode,^meta_bg to the mix.
-> >> >
-> >> >--D
-> >> >
-> >> >libext2fs: clear BLOCK_UNINIT any time a group has metadata blocks
-> >> >
-> >> >If ext2fs_reserve_super_and_bgd() is called with the filesystem's
-> >> >block bitmap, we clear the
-> >> group's
-> >> >BLOCK_UNINIT flag if the group has an old-style (pre-metabg) group
-> >> >descriptor block with
-> >> reserved
-> >> >descriptor blocks prior to marking the old-style descriptor blocks in use.
-> >> >
-> >> >Unfortunately, this is not sufficient -- if the group has no reserved
-> >> >blocks yet isn't a
-> >> meta_bg
-> >> >filesystem (^resize_inode,^meta_bg), we forget to clear the flag, so
-> >> >the filesystem thinks all blocks are free, which is disastrous.
-> >> >
-> >> >Therefore, if we know that we're going to mark any of the bitmaps,
-> >> >make sure that we clear BLOCK_UNINIT.
-> >> >
-> >> >This is based on an earlier patch by Akira Fujita.
-> >> >
-> >> >> Steps to reproduce:
-> >> >> 1. mke2fs -t ext4 -b 4096 -O ^resize_inode device 2. e2fsck -b
-> >> >> 32768 DEV
-> >> >>   <snip>
-> >> >>   Pass 1: Checking inodes, blocks, and sizes
-> >> >>   Pass 2: Checking directory structure
-> >> >>   Pass 3: Checking directory connectivity
-> >> >>   Pass 4: Checking reference counts
-> >> >>   Pass 5: Checking group summary information
-> >> >>   Block bitmap differences:  +(32768--32769) +(98304--98305) +(163840--163841)
-> >> >>   Fix<y>?
-> >> >
-> >> >Reported-by: Akira Fujita <a-fujita@rs.jp.nec.com>
-> >> >Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> >> >---
-> >> > lib/ext2fs/alloc_sb.c |   11 +++++++++--
-> >> > 1 file changed, 9 insertions(+), 2 deletions(-)
-> >> >
-> >> >diff --git a/lib/ext2fs/alloc_sb.c b/lib/ext2fs/alloc_sb.c index
-> >> >223ec51..f1898df 100644
-> >> >--- a/lib/ext2fs/alloc_sb.c
-> >> >+++ b/lib/ext2fs/alloc_sb.c
-> >> >@@ -52,6 +52,15 @@ int ext2fs_reserve_super_and_bgd(ext2_filsys fs,
-> >> > 	ext2fs_super_and_bgd_loc2(fs, group, &super_blk,
-> >> > 				  &old_desc_blk, &new_desc_blk, &used_blks);
-> >> >
-> >> >+	/*
-> >> >+	 * If we're marking blocks in the main block bitmap, be sure that we
-> >> >+	 * clear the group's BLOCK_UNINIT flag if this group has metadata
-> >> >+	 * blocks allocated.
-> >> >+	 */
-> >> >+	if (fs->block_map == bmap &&
-> >> >+	    (new_desc_blk || old_desc_blk || super_blk || (group == 0)))
-> >> >+		ext2fs_bg_flags_clear(fs, group, EXT2_BG_BLOCK_UNINIT);
-> >> >+
-> >> > 	if (fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG)
-> >> > 		old_desc_blocks = fs->super->s_first_meta_bg;
-> >> > 	else
-> >> >@@ -65,8 +74,6 @@ int ext2fs_reserve_super_and_bgd(ext2_filsys fs,
-> >> > 		ext2fs_mark_block_bitmap2(bmap, 0);
-> >> >
-> >> > 	if (old_desc_blk) {
-> >> >-		if (fs->super->s_reserved_gdt_blocks && fs->block_map == bmap)
-> >> >-			ext2fs_bg_flags_clear(fs, group, EXT2_BG_BLOCK_UNINIT);
-> >> > 		num_blocks = old_desc_blocks;
-> >> > 		if (old_desc_blk + num_blocks >= ext2fs_blocks_count(fs->super))
-> >> > 			num_blocks = ext2fs_blocks_count(fs->super) -
-> >>
-> >> --
-> >> To unsubscribe from this list: send the line "unsubscribe linux-ext4"
-> >> in the body of a message to majordomo@vger.kernel.org More majordomo
-> >> info at  http://vger.kernel.org/majordomo-info.html
-> >--
-> >To unsubscribe from this list: send the line "unsubscribe linux-ext4" in the body of a message
-> to
-> >majordomo@vger.kernel.org More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+> 								Honza
+> -- 
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
