@@ -1,7 +1,8 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: [PATCH 00/18] Consolidate Posix ACL implementation
-Date: Sun, 01 Dec 2013 03:59:03 -0800
-Message-ID: <20131201115903.910559036@bombadil.infradead.org>
+Subject: [PATCH 02/18] fs: add get_acl helper
+Date: Sun, 01 Dec 2013 03:59:05 -0800
+Message-ID: <20131201120653.841554822@bombadil.infradead.org>
+References: <20131201115903.910559036@bombadil.infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -13,6 +14,7 @@ Cc: xfs@oss.sgi.com, Mark Fasheh <mfasheh@suse.com>,
  linux-nfs@vger.kernel.org, linux-btrfs@vger.kernel.org
 To: viro@zeniv.linux.org.uk
 Return-path: <linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org>
+Content-Disposition: inline; filename=0002-fs-add-get_acl-helper.patch
 List-Unsubscribe: <http://lists.infradead.org/mailman/options/linux-mtd>,
  <mailto:linux-mtd-request@lists.infradead.org?subject=unsubscribe>
 List-Archive: <http://lists.infradead.org/pipermail/linux-mtd/>
@@ -24,28 +26,97 @@ Sender: "linux-mtd" <linux-mtd-bounces@lists.infradead.org>
 Errors-To: linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org
 List-Id: linux-ext4.vger.kernel.org
 
+Factor out the code to get an ACL either from the inode or disk from
+check_acl, so that it can be used elsewhere later on.
 
-This series consolidates the various cut'n'pasted Posix ACL implementations
-into a single common one based on the ->get_acl method Linus added a while
-ago and a new ->set_acl counterpart.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/namei.c                |   24 +++---------------------
+ fs/posix_acl.c            |   23 +++++++++++++++++++++++
+ include/linux/posix_acl.h |    2 ++
+ 3 files changed, 28 insertions(+), 21 deletions(-)
 
-This 1600 lines of code and provides a single place to implement various
-nasty little gems of the semantics.
+diff --git a/fs/namei.c b/fs/namei.c
+index c53d3a9..8acd1e8 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -235,27 +235,9 @@ static int check_acl(struct inode *inode, int mask)
+ 	        return posix_acl_permission(inode, acl, mask & ~MAY_NOT_BLOCK);
+ 	}
+ 
+-	acl = get_cached_acl(inode, ACL_TYPE_ACCESS);
+-
+-	/*
+-	 * A filesystem can force a ACL callback by just never filling the
+-	 * ACL cache. But normally you'd fill the cache either at inode
+-	 * instantiation time, or on the first ->get_acl call.
+-	 *
+-	 * If the filesystem doesn't have a get_acl() function at all, we'll
+-	 * just create the negative cache entry.
+-	 */
+-	if (acl == ACL_NOT_CACHED) {
+-	        if (inode->i_op->get_acl) {
+-			acl = inode->i_op->get_acl(inode, ACL_TYPE_ACCESS);
+-			if (IS_ERR(acl))
+-				return PTR_ERR(acl);
+-		} else {
+-		        set_cached_acl(inode, ACL_TYPE_ACCESS, NULL);
+-		        return -EAGAIN;
+-		}
+-	}
+-
++	acl = get_acl(inode, ACL_TYPE_ACCESS);
++	if (IS_ERR(acl))
++		return PTR_ERR(acl);
+ 	if (acl) {
+ 	        int error = posix_acl_permission(inode, acl, mask);
+ 	        posix_acl_release(acl);
+diff --git a/fs/posix_acl.c b/fs/posix_acl.c
+index 8bd2135..9dd03e0 100644
+--- a/fs/posix_acl.c
++++ b/fs/posix_acl.c
+@@ -418,3 +418,26 @@ posix_acl_chmod(struct posix_acl **acl, gfp_t gfp, umode_t mode)
+ 	return err;
+ }
+ EXPORT_SYMBOL(posix_acl_chmod);
++
++struct posix_acl *get_acl(struct inode *inode, int type)
++{
++	struct posix_acl *acl;
++
++	acl = get_cached_acl(inode, type);
++	if (acl != ACL_NOT_CACHED)
++		return acl;
++
++	/*
++	 * A filesystem can force a ACL callback by just never filling the
++	 * ACL cache. But normally you'd fill the cache either at inode
++	 * instantiation time, or on the first ->get_acl call.
++	 *
++	 * If the filesystem doesn't have a get_acl() function at all, we'll
++	 * just create the negative cache entry.
++	 */
++        if (!inode->i_op->get_acl) {
++	        set_cached_acl(inode, type, NULL);
++	        return ERR_PTR(-EAGAIN);
++	}
++	return inode->i_op->get_acl(inode, type);
++}
+diff --git a/include/linux/posix_acl.h b/include/linux/posix_acl.h
+index 7931efe..a8d9918 100644
+--- a/include/linux/posix_acl.h
++++ b/include/linux/posix_acl.h
+@@ -175,4 +175,6 @@ static inline void cache_no_acl(struct inode *inode)
+ #endif
+ }
+ 
++struct posix_acl *get_acl(struct inode *inode, int type);
++
+ #endif  /* __LINUX_POSIX_ACL_H */
+-- 
+1.7.10.4
 
-Unfortunately the 9p code is still left out - it implements the ACLs
-in two very weird ways, one using the common code but on the client only,
-and one pasing things straight through to the server.  We could easily
-convert it to the new code on the write side if ->set_acl took a dentry,
-but there's no cance to do that on the ->get_acl side.  Ideas how to
-handle it welcome.
 
-After that we'd be ready to never go into the fs for the ACL attributes
-and branch straight to the ACL code below the syscall, repairing the
-old API braindamage of overloading ACLs onto the xattrs.
-
-Btw, I'd be almost tempted to do that for all system.* attrs.  Besides
-Posix ACLs we only have CIFS and NFSv4 ACL variants, weird advice crap
-in f2fs, and the magic mushroom proto name on sockets.
 
 ______________________________________________________
 Linux MTD discussion mailing list
