@@ -1,124 +1,72 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 01/18] reiserfs: prefix ACL symbols with reiserfs_
-Date: Mon, 2 Dec 2013 21:15:15 +0100
-Message-ID: <20131202201515.GC12253@quack.suse.cz>
-References: <20131201115903.910559036@bombadil.infradead.org>
- <20131201120653.694912626@bombadil.infradead.org>
+From: Kit Westneat <kwestneat@ddn.com>
+Subject: [PATCH] e2fsck: blk64_t to blk_t truncation
+Date: Mon, 2 Dec 2013 15:47:36 -0500
+Message-ID: <529CF1E8.3010003@ddn.com>
+References: <529CF0D2.2010707@ddn.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-mtd@lists.infradead.org, Mark Fasheh <mfasheh@suse.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
-	jfs-discussion@lists.sourceforge.net, cluster-devel@redhat.com,
-	linux-nfs@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20131201120653.694912626@bombadil.infradead.org>
-Sender: linux-btrfs-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"Dilger, Andreas" <andreas.dilger@intel.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from legacy.ddn.com ([64.47.133.206]:34478 "EHLO legacy.ddn.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756979Ab3LBUrk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 Dec 2013 15:47:40 -0500
+In-Reply-To: <529CF0D2.2010707@ddn.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun 01-12-13 03:59:04, Christoph Hellwig wrote:
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-  Looks good. You can add:
-Reviewed-by: Jan Kara <jack@suse.cz>
+Hello,
 
-								Honza
+We recently ran into an issue where e2fsck was claiming to clear 
+deleted/unused inodes, but was not actually doing it. We tracked it down 
+to a bad blk64_t to blk_t conversion in pass2 where 
+ext2fs_write_dir_block is being called instead of 
+ext2fs_write_dir_block3. There is another similar call in 
+allocate_dir_block. These appear to be fixed in master as part of the 
+move to adding checksums to the end of directory leaf nodes, but it's 
+still an issue on maint.
 
-> ---
->  fs/reiserfs/xattr_acl.c |   20 ++++++++++----------
->  1 file changed, 10 insertions(+), 10 deletions(-)
-> 
-> diff --git a/fs/reiserfs/xattr_acl.c b/fs/reiserfs/xattr_acl.c
-> index 06c04f7..6f721ea 100644
-> --- a/fs/reiserfs/xattr_acl.c
-> +++ b/fs/reiserfs/xattr_acl.c
-> @@ -16,7 +16,7 @@ static int reiserfs_set_acl(struct reiserfs_transaction_handle *th,
->  			    struct posix_acl *acl);
->  
->  static int
-> -posix_acl_set(struct dentry *dentry, const char *name, const void *value,
-> +reiserfs_posix_acl_set(struct dentry *dentry, const char *name, const void *value,
->  		size_t size, int flags, int type)
->  {
->  	struct inode *inode = dentry->d_inode;
-> @@ -65,7 +65,7 @@ posix_acl_set(struct dentry *dentry, const char *name, const void *value,
->  }
->  
->  static int
-> -posix_acl_get(struct dentry *dentry, const char *name, void *buffer,
-> +reiserfs_posix_acl_get(struct dentry *dentry, const char *name, void *buffer,
->  		size_t size, int type)
->  {
->  	struct posix_acl *acl;
-> @@ -88,7 +88,7 @@ posix_acl_get(struct dentry *dentry, const char *name, void *buffer,
->  /*
->   * Convert from filesystem to in-memory representation.
->   */
-> -static struct posix_acl *posix_acl_from_disk(const void *value, size_t size)
-> +static struct posix_acl *reiserfs_posix_acl_from_disk(const void *value, size_t size)
->  {
->  	const char *end = (char *)value + size;
->  	int n, count;
-> @@ -158,7 +158,7 @@ static struct posix_acl *posix_acl_from_disk(const void *value, size_t size)
->  /*
->   * Convert from in-memory to filesystem representation.
->   */
-> -static void *posix_acl_to_disk(const struct posix_acl *acl, size_t * size)
-> +static void *reiserfs_posix_acl_to_disk(const struct posix_acl *acl, size_t * size)
->  {
->  	reiserfs_acl_header *ext_acl;
->  	char *e;
-> @@ -257,7 +257,7 @@ struct posix_acl *reiserfs_get_acl(struct inode *inode, int type)
->  	} else if (retval < 0) {
->  		acl = ERR_PTR(retval);
->  	} else {
-> -		acl = posix_acl_from_disk(value, retval);
-> +		acl = reiserfs_posix_acl_from_disk(value, retval);
->  	}
->  	if (!IS_ERR(acl))
->  		set_cached_acl(inode, type, acl);
-> @@ -307,7 +307,7 @@ reiserfs_set_acl(struct reiserfs_transaction_handle *th, struct inode *inode,
->  	}
->  
->  	if (acl) {
-> -		value = posix_acl_to_disk(acl, &size);
-> +		value = reiserfs_posix_acl_to_disk(acl, &size);
->  		if (IS_ERR(value))
->  			return (int)PTR_ERR(value);
->  	}
-> @@ -499,8 +499,8 @@ static size_t posix_acl_access_list(struct dentry *dentry, char *list,
->  const struct xattr_handler reiserfs_posix_acl_access_handler = {
->  	.prefix = POSIX_ACL_XATTR_ACCESS,
->  	.flags = ACL_TYPE_ACCESS,
-> -	.get = posix_acl_get,
-> -	.set = posix_acl_set,
-> +	.get = reiserfs_posix_acl_get,
-> +	.set = reiserfs_posix_acl_set,
->  	.list = posix_acl_access_list,
->  };
->  
-> @@ -519,7 +519,7 @@ static size_t posix_acl_default_list(struct dentry *dentry, char *list,
->  const struct xattr_handler reiserfs_posix_acl_default_handler = {
->  	.prefix = POSIX_ACL_XATTR_DEFAULT,
->  	.flags = ACL_TYPE_DEFAULT,
-> -	.get = posix_acl_get,
-> -	.set = posix_acl_set,
-> +	.get = reiserfs_posix_acl_get,
-> +	.set = reiserfs_posix_acl_set,
->  	.list = posix_acl_default_list,
->  };
-> -- 
-> 1.7.10.4
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+I ran gcc with -Wconversion and found a number of other places that have 
+blk64_t to blk_t truncations, but I'm not sure how many of them are 
+actually problems. For example in block_iterate_ind, block_nr is blk_t 
+but it seems to be a specific choice, since there is also the blk64 
+variable. Another instance is with the EA refcounting, which is all 
+32-bit. In expand_dir_proc in pass3.c, it uses the 32-bit 
+ext2fs_write_dir_block. Against 1.42.7, gcc reports 103 blk64_t to blk_t 
+conversions, so this is just a small sample.
+
+I'm sure most of these are not problems, but I thought I'd raise the 
+issue since we did run into problems with deleted/unused inodes.
+
+Signed-off-by: Kit Westneat <kwestneat@ddn.com>
+
+
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index 78740c0..e8d0b47 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -1216,7 +1216,7 @@ out_htree:
+  		}
+  	}
+  	if (dir_modified) {
+-		cd->pctx.errcode = ext2fs_write_dir_block(fs, block_nr, buf);
++		cd->pctx.errcode = ext2fs_write_dir_block3(fs, block_nr, buf, 0);
+  		if (cd->pctx.errcode) {
+  			if (!fix_problem(ctx, PR_2_WRITE_DIRBLOCK,
+  					 &cd->pctx))
+@@ -1595,7 +1595,7 @@ static int allocate_dir_block(e2fsck_t ctx,
+  		return 1;
+  	}
+
+-	pctx->errcode = ext2fs_write_dir_block(fs, blk, block);
++	pctx->errcode = ext2fs_write_dir_block3(fs, blk, block, 0);
+  	ext2fs_free_mem(&block);
+  	if (pctx->errcode) {
+  		pctx->str = "ext2fs_write_dir_block";
+
+---
+Kit Westneat
+L3 Lustre Support, DDN
