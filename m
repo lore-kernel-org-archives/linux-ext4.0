@@ -1,84 +1,56 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: enable punch hole for bigalloc
-Date: Mon, 2 Dec 2013 12:29:32 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1312021225080.3930@localhost.localdomain>
-References: <1385820218-4673-1-git-send-email-wenqing.lz@taobao.com>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	"Theodore Ts'o" <tytso@mit.edu>, Zheng Liu <wenqing.lz@taobao.com>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40303 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753257Ab3LBL3l (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 Dec 2013 06:29:41 -0500
-In-Reply-To: <1385820218-4673-1-git-send-email-wenqing.lz@taobao.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 1/2] ext4: call ext4_error_inode() if jbd2_journal_dirty_metadata() fails
+Date: Mon,  2 Dec 2013 09:45:01 -0500
+Message-ID: <1385995502-8344-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <stable-owner@vger.kernel.org>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sat, 30 Nov 2013, Zheng Liu wrote:
+While it's true that errors can only happen if there is a bug in
+jbd2_journal_dirty_metadata(), if a bug does happen, we need to halt
+the kernel or remount the file system read-only in order to avoid
+further data loss.  The ext4_journal_abort_handle() function doesn't
+do any of this, and while it's likely that this call (since it doesn't
+adjust refcounts) will likely result in the file system eventually
+deadlocking since the current transaction will never be able to close,
+it's much cleaner to call let ext4's error handling system deal with
+this situation.
 
-> Date: Sat, 30 Nov 2013 22:03:38 +0800
-> From: Zheng Liu <gnehzuil.liu@gmail.com>
-> To: linux-ext4@vger.kernel.org
-> Cc: Andreas Dilger <adilger.kernel@dilger.ca>, Theodore Ts'o <tytso@mit.edu>,
->     Lukas Czerner <lczerner@redhat.com>, Zheng Liu <wenqing.lz@taobao.com>
-> Subject: [PATCH] ext4: enable punch hole for bigalloc
-> 
-> From: Zheng Liu <wenqing.lz@taobao.com>
-> 
-> After applied this commit (d23142c6), ext4 has supported punch hole for
-> a file system with bigalloc feature.  But we forgot to enable it.  This
-> commit fixes it.
+There's a separate bug here which is that if certain jbd2 errors
+errors occur and file system is mounted errors=continue, the file
+system will probably eventually end grind to a halt as described
+above.  But things have been this way in a long time, and usually when
+we have these sorts of errors it's pretty much a disaster --- and
+that's why the jbd2 layer aggressively retries memory allocations,
+which is the most likely cause of these jbd2 errors.
 
-Hi,
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: stable@vger.kernel.org
+---
+ fs/ext4/ext4_jbd2.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
-I actually send out this patch as a part of the series which
-implemented it and it even got review for Jan Kara
-
-http://www.spinics.net/lists/linux-ext4/msg37914.html
-
-however Ted noticed that xfstest shared/298 failed, but that was not
-due to bug in the code,but rather the problem with the test itself,
-see:
-
-https://lkml.org/lkml/2013/6/18/329
-
-So I am not sure why it was not merged a long time ago. Ted probably
-just overlooked my response.
-
-Ted can we have my or this patch (they are the same) merged ?
-Thanks!
-
--Lukas
-
-
-
-> 
-> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Lukas Czerner <lczerner@redhat.com>
-> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-> ---
->  fs/ext4/inode.c |    5 -----
->  1 file changed, 5 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 0757634..2d73587 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -3513,11 +3513,6 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
->  	if (!S_ISREG(inode->i_mode))
->  		return -EOPNOTSUPP;
->  
-> -	if (EXT4_SB(sb)->s_cluster_ratio > 1) {
-> -		/* TODO: Add support for bigalloc file systems */
-> -		return -EOPNOTSUPP;
-> -	}
-> -
->  	trace_ext4_punch_hole(inode, offset, length);
->  
->  	/*
-> 
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index 17ac112..3fe29de 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -259,6 +259,15 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
+ 		if (WARN_ON_ONCE(err)) {
+ 			ext4_journal_abort_handle(where, line, __func__, bh,
+ 						  handle, err);
++			ext4_error_inode(inode, where, line,
++					 bh->b_blocknr,
++					 "journal_dirty_metadata failed: "
++					 "handle type %u started at line %u, "
++					 "credits %u/%u, errcode %d",
++					 handle->h_type,
++					 handle->h_line_no,
++					 handle->h_requested_credits,
++					 handle->h_buffer_credits, err);
+ 		}
+ 	} else {
+ 		if (inode)
+-- 
+1.8.5.rc3.362.gdf10213
