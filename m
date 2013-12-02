@@ -1,55 +1,60 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/3] e2image: pass the correct size write_header
-Date: Mon,  2 Dec 2013 14:55:23 -0500
-Message-ID: <1386014125-13664-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 3/3] libext2fs: fix some memory leaks with image file handling
+Date: Mon,  2 Dec 2013 14:55:25 -0500
+Message-ID: <1386014125-13664-3-git-send-email-tytso@mit.edu>
 References: <20131202182606.GA11204@thunk.org>
+ <1386014125-13664-1-git-send-email-tytso@mit.edu>
 Cc: kwestneat@ddn.com, Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:35706 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:35711 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752593Ab3LBTzx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1752831Ab3LBTzx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Mon, 2 Dec 2013 14:55:53 -0500
-In-Reply-To: <20131202182606.GA11204@thunk.org>
+In-Reply-To: <1386014125-13664-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Commit bf0449b1a654, which added the ability to write qcow2 files,
-generalized the write_header() file to take the size of the header
-structure which it writes out.  Unfortunately, it changed the call
-which supported original e2image format to pass in fs->blocksize,
-instead of the actual size of the e2image header structure (which is
-substantially smaller than fs->blocksize).  This meant that we copied
-in stack garbage into the e2image file, and it made valgrind quite
-unhappy.
+These memory leaks were discovered by using "valgrind
+--leak-check=full" while running "e2image -I bar.img foo.e2i"
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- misc/e2image.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ lib/ext2fs/freefs.c | 2 ++
+ lib/ext2fs/openfs.c | 7 +++++++
+ 2 files changed, 9 insertions(+)
 
-diff --git a/misc/e2image.c b/misc/e2image.c
-index 4a5bb22..aa363fb 100644
---- a/misc/e2image.c
-+++ b/misc/e2image.c
-@@ -165,7 +165,7 @@ static void write_image_file(ext2_filsys fs, int fd)
- 	struct stat		st;
- 	errcode_t		retval;
+diff --git a/lib/ext2fs/freefs.c b/lib/ext2fs/freefs.c
+index 28c4132..1ad2d91 100644
+--- a/lib/ext2fs/freefs.c
++++ b/lib/ext2fs/freefs.c
+@@ -43,6 +43,8 @@ void ext2fs_free(ext2_filsys fs)
+ 		ext2fs_free_block_bitmap(fs->block_map);
+ 	if (fs->inode_map)
+ 		ext2fs_free_inode_bitmap(fs->inode_map);
++	if (fs->image_header)
++		ext2fs_free_mem(&fs->image_header);
  
--	write_header(fd, NULL, fs->blocksize, fs->blocksize);
-+	write_header(fd, NULL, sizeof(struct ext2_image_hdr), fs->blocksize);
- 	memset(&hdr, 0, sizeof(struct ext2_image_hdr));
- 
- 	hdr.offset_super = ext2fs_llseek(fd, 0, SEEK_CUR);
-@@ -214,7 +214,7 @@ static void write_image_file(ext2_filsys fs, int fd)
- 	memcpy(hdr.fs_uuid, fs->super->s_uuid, sizeof(hdr.fs_uuid));
- 
- 	hdr.image_time = time(0);
--	write_header(fd, &hdr, fs->blocksize, fs->blocksize);
-+	write_header(fd, &hdr, sizeof(struct ext2_image_hdr), fs->blocksize);
- }
- 
- /*
+ 	if (fs->badblocks)
+ 		ext2fs_badblocks_list_free(fs->badblocks);
+diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
+index c38b586..4cdbde1 100644
+--- a/lib/ext2fs/openfs.c
++++ b/lib/ext2fs/openfs.c
+@@ -458,6 +458,13 @@ errcode_t ext2fs_rewrite_to_io(ext2_filsys fs, io_channel new_io)
+ 	err = io_channel_set_blksize(new_io, fs->blocksize);
+ 	if (err)
+ 		return err;
++	if ((new_io == fs->image_io) || (new_io == fs->io))
++		return 0;
++	if ((fs->image_io != fs->io) &&
++	    fs->image_io)
++		io_channel_close(fs->image_io);
++	if (fs->io)
++		io_channel_close(fs->io);
+ 	fs->io = fs->image_io = new_io;
+ 	fs->flags |= EXT2_FLAG_DIRTY | EXT2_FLAG_RW |
+ 		EXT2_FLAG_BB_DIRTY | EXT2_FLAG_IB_DIRTY;
 -- 
 1.8.5.rc3.362.gdf10213
 
