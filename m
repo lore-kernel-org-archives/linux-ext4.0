@@ -1,72 +1,73 @@
-From: Kit Westneat <kwestneat@ddn.com>
-Subject: [PATCH] e2fsck: blk64_t to blk_t truncation
-Date: Mon, 2 Dec 2013 15:47:36 -0500
-Message-ID: <529CF1E8.3010003@ddn.com>
-References: <529CF0D2.2010707@ddn.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 03/18] fs: add a set_acl inode operation
+Date: Mon, 2 Dec 2013 21:57:44 +0100
+Message-ID: <20131202205744.GD12253@quack.suse.cz>
+References: <20131201115903.910559036@bombadil.infradead.org>
+	<20131201120654.027611567@bombadil.infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"Dilger, Andreas" <andreas.dilger@intel.com>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from legacy.ddn.com ([64.47.133.206]:34478 "EHLO legacy.ddn.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756979Ab3LBUrk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 Dec 2013 15:47:40 -0500
-In-Reply-To: <529CF0D2.2010707@ddn.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: xfs@oss.sgi.com, Mark Fasheh <mfasheh@suse.com>,
+	reiserfs-devel@vger.kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
+	linux-mtd@lists.infradead.org, viro@zeniv.linux.org.uk,
+	jfs-discussion@lists.sourceforge.net,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-nfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	Joel Becker <jlbec@evilplan.org>
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <xfs-bounces@oss.sgi.com>
+Content-Disposition: inline
+In-Reply-To: <20131201120654.027611567@bombadil.infradead.org>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-Hello,
+On Sun 01-12-13 03:59:06, Christoph Hellwig wrote:
+> This will allow moving all the Posix ACL handling into the VFS and clean
+> up tons of cruft in the filesystems.
+  Looks good. Btw I'd merge this with the following patch... Anyway:
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-We recently ran into an issue where e2fsck was claiming to clear 
-deleted/unused inodes, but was not actually doing it. We tracked it down 
-to a bad blk64_t to blk_t conversion in pass2 where 
-ext2fs_write_dir_block is being called instead of 
-ext2fs_write_dir_block3. There is another similar call in 
-allocate_dir_block. These appear to be fixed in master as part of the 
-move to adding checksums to the end of directory leaf nodes, but it's 
-still an issue on maint.
+								Honza
+> 
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> ---
+>  include/linux/fs.h |    1 +
+>  1 file changed, 1 insertion(+)
+> 
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 121f11f..09f553c 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -1580,6 +1580,7 @@ struct inode_operations {
+>  			   struct file *, unsigned open_flag,
+>  			   umode_t create_mode, int *opened);
+>  	int (*tmpfile) (struct inode *, struct dentry *, umode_t);
+> +	int (*set_acl)(struct inode *, struct posix_acl *, int);
+>  } ____cacheline_aligned;
+>  
+>  ssize_t rw_copy_check_uvector(int type, const struct iovec __user * uvector,
+> -- 
+> 1.7.10.4
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
 
-I ran gcc with -Wconversion and found a number of other places that have 
-blk64_t to blk_t truncations, but I'm not sure how many of them are 
-actually problems. For example in block_iterate_ind, block_nr is blk_t 
-but it seems to be a specific choice, since there is also the blk64 
-variable. Another instance is with the EA refcounting, which is all 
-32-bit. In expand_dir_proc in pass3.c, it uses the 32-bit 
-ext2fs_write_dir_block. Against 1.42.7, gcc reports 103 blk64_t to blk_t 
-conversions, so this is just a small sample.
-
-I'm sure most of these are not problems, but I thought I'd raise the 
-issue since we did run into problems with deleted/unused inodes.
-
-Signed-off-by: Kit Westneat <kwestneat@ddn.com>
-
-
-diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
-index 78740c0..e8d0b47 100644
---- a/e2fsck/pass2.c
-+++ b/e2fsck/pass2.c
-@@ -1216,7 +1216,7 @@ out_htree:
-  		}
-  	}
-  	if (dir_modified) {
--		cd->pctx.errcode = ext2fs_write_dir_block(fs, block_nr, buf);
-+		cd->pctx.errcode = ext2fs_write_dir_block3(fs, block_nr, buf, 0);
-  		if (cd->pctx.errcode) {
-  			if (!fix_problem(ctx, PR_2_WRITE_DIRBLOCK,
-  					 &cd->pctx))
-@@ -1595,7 +1595,7 @@ static int allocate_dir_block(e2fsck_t ctx,
-  		return 1;
-  	}
-
--	pctx->errcode = ext2fs_write_dir_block(fs, blk, block);
-+	pctx->errcode = ext2fs_write_dir_block3(fs, blk, block, 0);
-  	ext2fs_free_mem(&block);
-  	if (pctx->errcode) {
-  		pctx->str = "ext2fs_write_dir_block";
-
----
-Kit Westneat
-L3 Lustre Support, DDN
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
