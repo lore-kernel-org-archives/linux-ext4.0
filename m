@@ -1,48 +1,77 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: enable punch hole for bigalloc
-Date: Mon, 2 Dec 2013 10:01:19 -0500
-Message-ID: <20131202150119.GE25294@thunk.org>
-References: <1385820218-4673-1-git-send-email-wenqing.lz@taobao.com>
- <alpine.LFD.2.00.1312021225080.3930@localhost.localdomain>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/2] ext4: call ext4_error_inode() if
+ jbd2_journal_dirty_metadata() fails
+Date: Mon, 2 Dec 2013 16:30:50 +0100
+Message-ID: <20131202153050.GA11721@quack.suse.cz>
+References: <1385995502-8344-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Zheng Liu <gnehzuil.liu@gmail.com>, linux-ext4@vger.kernel.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Zheng Liu <wenqing.lz@taobao.com>
-To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:35640 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751545Ab3LBPBZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 Dec 2013 10:01:25 -0500
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	stable@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <stable-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1312021225080.3930@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1385995502-8344-1-git-send-email-tytso@mit.edu>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Dec 02, 2013 at 12:29:32PM +0100, Luk=C3=A1=C5=A1 Czerner wrote=
-:
-> I actually send out this patch as a part of the series which
-> implemented it and it even got review for Jan Kara
->=20
-> http://www.spinics.net/lists/linux-ext4/msg37914.html
->=20
-> however Ted noticed that xfstest shared/298 failed, but that was not
-> due to bug in the code,but rather the problem with the test itself,
-> see:
->=20
-> https://lkml.org/lkml/2013/6/18/329
->=20
-> So I am not sure why it was not merged a long time ago. Ted probably
-> just overlooked my response.
+On Mon 02-12-13 09:45:01, Ted Tso wrote:
+> While it's true that errors can only happen if there is a bug in
+> jbd2_journal_dirty_metadata(), if a bug does happen, we need to halt
+> the kernel or remount the file system read-only in order to avoid
+> further data loss.  The ext4_journal_abort_handle() function doesn't
+> do any of this, and while it's likely that this call (since it doesn't
+> adjust refcounts) will likely result in the file system eventually
+> deadlocking since the current transaction will never be able to close,
+> it's much cleaner to call let ext4's error handling system deal with
+> this situation.
+> 
+> There's a separate bug here which is that if certain jbd2 errors
+> errors occur and file system is mounted errors=continue, the file
+> system will probably eventually end grind to a halt as described
+> above.  But things have been this way in a long time, and usually when
+> we have these sorts of errors it's pretty much a disaster --- and
+> that's why the jbd2 layer aggressively retries memory allocations,
+> which is the most likely cause of these jbd2 errors.
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: stable@vger.kernel.org
+  The patch looks good. You can add:
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-Sorry, I did see your response, but I then forgot to get your original
-patch.  Thanks, applied.
+								Honza
 
-						- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> ---
+>  fs/ext4/ext4_jbd2.c | 9 +++++++++
+>  1 file changed, 9 insertions(+)
+> 
+> diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+> index 17ac112..3fe29de 100644
+> --- a/fs/ext4/ext4_jbd2.c
+> +++ b/fs/ext4/ext4_jbd2.c
+> @@ -259,6 +259,15 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
+>  		if (WARN_ON_ONCE(err)) {
+>  			ext4_journal_abort_handle(where, line, __func__, bh,
+>  						  handle, err);
+> +			ext4_error_inode(inode, where, line,
+> +					 bh->b_blocknr,
+> +					 "journal_dirty_metadata failed: "
+> +					 "handle type %u started at line %u, "
+> +					 "credits %u/%u, errcode %d",
+> +					 handle->h_type,
+> +					 handle->h_line_no,
+> +					 handle->h_requested_credits,
+> +					 handle->h_buffer_credits, err);
+>  		}
+>  	} else {
+>  		if (inode)
+> -- 
+> 1.8.5.rc3.362.gdf10213
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
