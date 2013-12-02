@@ -1,56 +1,70 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/2] ext4: call ext4_error_inode() if jbd2_journal_dirty_metadata() fails
-Date: Mon,  2 Dec 2013 09:45:01 -0500
-Message-ID: <1385995502-8344-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
+Subject: [PATCH 2/2] jbd2: return ENOSPC in journal_dirty_metadata if a handle runs out of space
+Date: Mon,  2 Dec 2013 09:45:02 -0500
+Message-ID: <1385995502-8344-2-git-send-email-tytso@mit.edu>
+References: <1385995502-8344-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>, ocfs2-devel@oss.oracle.com
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <stable-owner@vger.kernel.org>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:35621 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751438Ab3LBOpK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 Dec 2013 09:45:10 -0500
+In-Reply-To: <1385995502-8344-1-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-While it's true that errors can only happen if there is a bug in
-jbd2_journal_dirty_metadata(), if a bug does happen, we need to halt
-the kernel or remount the file system read-only in order to avoid
-further data loss.  The ext4_journal_abort_handle() function doesn't
-do any of this, and while it's likely that this call (since it doesn't
-adjust refcounts) will likely result in the file system eventually
-deadlocking since the current transaction will never be able to close,
-it's much cleaner to call let ext4's error handling system deal with
-this situation.
+If a handle runs out of space, we currently stop the kernel with a
+BUG.  This makes it hard to figure out what might be going on.  So
+return an error of ENOSPC, so we can let the file system layer figure
+out what is going on, to make it more likely we can get useful
+debugging information).  This should make it easier to debug problems
+such as the one which was reported by:
 
-There's a separate bug here which is that if certain jbd2 errors
-errors occur and file system is mounted errors=continue, the file
-system will probably eventually end grind to a halt as described
-above.  But things have been this way in a long time, and usually when
-we have these sorts of errors it's pretty much a disaster --- and
-that's why the jbd2 layer aggressively retries memory allocations,
-which is the most likely cause of these jbd2 errors.
+    https://bugzilla.kernel.org/show_bug.cgi?id=44731
+
+The only two callers of this function are ext4_handle_dirty_metadata()
+and ocfs2_journal_dirty().  The ocfs2 function will trigger a
+BUG_ON(), which means there will be no change in behavior.  The ext4
+function will call ext4_error_inode() which will print the useful
+debugging information and then handle the situation using ext4's error
+handling mechanisms (i.e., which might mean halting the kernel or
+remounting the file system read-only).
+
+Also, since both file systems already call WARN_ON(), drop the WARN_ON
+from jbd2_journal_dirty_metadata() to avoid two stack traces from
+being displayed.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: stable@vger.kernel.org
+Cc: ocfs2-devel@oss.oracle.com
 ---
- fs/ext4/ext4_jbd2.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+ fs/jbd2/transaction.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index 17ac112..3fe29de 100644
---- a/fs/ext4/ext4_jbd2.c
-+++ b/fs/ext4/ext4_jbd2.c
-@@ -259,6 +259,15 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
- 		if (WARN_ON_ONCE(err)) {
- 			ext4_journal_abort_handle(where, line, __func__, bh,
- 						  handle, err);
-+			ext4_error_inode(inode, where, line,
-+					 bh->b_blocknr,
-+					 "journal_dirty_metadata failed: "
-+					 "handle type %u started at line %u, "
-+					 "credits %u/%u, errcode %d",
-+					 handle->h_type,
-+					 handle->h_line_no,
-+					 handle->h_requested_credits,
-+					 handle->h_buffer_credits, err);
- 		}
- 	} else {
- 		if (inode)
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 7aa9a32..b0b74e5 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -1290,7 +1290,10 @@ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
+ 		 * once a transaction -bzzz
+ 		 */
+ 		jh->b_modified = 1;
+-		J_ASSERT_JH(jh, handle->h_buffer_credits > 0);
++		if (handle->h_buffer_credits <= 0) {
++			ret = -ENOSPC;
++			goto out_unlock_bh;
++		}
+ 		handle->h_buffer_credits--;
+ 	}
+ 
+@@ -1373,7 +1376,6 @@ out_unlock_bh:
+ 	jbd2_journal_put_journal_head(jh);
+ out:
+ 	JBUFFER_TRACE(jh, "exit");
+-	WARN_ON(ret);	/* All errors are bugs, so dump the stack */
+ 	return ret;
+ }
+ 
 -- 
 1.8.5.rc3.362.gdf10213
+
