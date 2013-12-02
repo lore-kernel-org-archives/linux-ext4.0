@@ -1,87 +1,193 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] e2fsck: blk64_t to blk_t truncation
-Date: Mon, 2 Dec 2013 13:48:56 -0800
-Message-ID: <20131202214856.GB9535@birch.djwong.org>
-References: <529CF0D2.2010707@ddn.com>
- <529CF1E8.3010003@ddn.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"Dilger, Andreas" <andreas.dilger@intel.com>
-To: Kit Westneat <kwestneat@ddn.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:48675 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752130Ab3LBVtH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Dec 2013 16:49:07 -0500
-Content-Disposition: inline
-In-Reply-To: <529CF1E8.3010003@ddn.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] fs: fix iversion handling
+Date: Mon, 2 Dec 2013 15:05:07 -0700
+Message-ID: <8E57B1B6-E650-4A1A-AF78-0A9C9593A3E3@dilger.ca>
+References: <20131119151707.GA13412@infradead.org>
+	<20131202173636.GA17724@infradead.org>
+Mime-Version: 1.0 (Mac OS X Mail 7.0 \(1822\))
+Content-Type: multipart/mixed; boundary="===============5136026106792554506=="
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <20131202173636.GA17724@infradead.org>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Dec 02, 2013 at 03:47:36PM -0500, Kit Westneat wrote:
-> Hello,
-> 
-> We recently ran into an issue where e2fsck was claiming to clear
-> deleted/unused inodes, but was not actually doing it. We tracked it
-> down to a bad blk64_t to blk_t conversion in pass2 where
-> ext2fs_write_dir_block is being called instead of
-> ext2fs_write_dir_block3. There is another similar call in
-> allocate_dir_block. These appear to be fixed in master as part of
-> the move to adding checksums to the end of directory leaf nodes, but
-> it's still an issue on maint.
-> 
-> I ran gcc with -Wconversion and found a number of other places that
-> have blk64_t to blk_t truncations, but I'm not sure how many of them
-> are actually problems. For example in block_iterate_ind, block_nr is
-> blk_t but it seems to be a specific choice, since there is also the
-> blk64 variable. Another instance is with the EA refcounting, which
-> is all 32-bit. In expand_dir_proc in pass3.c, it uses the 32-bit
-> ext2fs_write_dir_block. Against 1.42.7, gcc reports 103 blk64_t to
-> blk_t conversions, so this is just a small sample.
-> 
-> I'm sure most of these are not problems, but I thought I'd raise the
-> issue since we did run into problems with deleted/unused inodes.
-> 
-> Signed-off-by: Kit Westneat <kwestneat@ddn.com>
 
-Looks fine to me, so you can add
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+--===============5136026106792554506==
+Content-Type: multipart/signed; boundary="Apple-Mail=_7D8628FB-B316-4644-8F5D-7B988D7E3343"; protocol="application/pgp-signature"; micalg=pgp-sha1
 
-I wonder how many more of these kinds of errors I inadvertently fixed
-and neglected to patch maint... :/
 
---D
-> 
-> 
-> diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
-> index 78740c0..e8d0b47 100644
-> --- a/e2fsck/pass2.c
-> +++ b/e2fsck/pass2.c
-> @@ -1216,7 +1216,7 @@ out_htree:
->  		}
->  	}
->  	if (dir_modified) {
-> -		cd->pctx.errcode = ext2fs_write_dir_block(fs, block_nr, buf);
-> +		cd->pctx.errcode = ext2fs_write_dir_block3(fs, block_nr, buf, 0);
->  		if (cd->pctx.errcode) {
->  			if (!fix_problem(ctx, PR_2_WRITE_DIRBLOCK,
->  					 &cd->pctx))
-> @@ -1595,7 +1595,7 @@ static int allocate_dir_block(e2fsck_t ctx,
->  		return 1;
->  	}
-> 
-> -	pctx->errcode = ext2fs_write_dir_block(fs, blk, block);
-> +	pctx->errcode = ext2fs_write_dir_block3(fs, blk, block, 0);
->  	ext2fs_free_mem(&block);
->  	if (pctx->errcode) {
->  		pctx->str = "ext2fs_write_dir_block";
-> 
-> ---
-> Kit Westneat
-> L3 Lustre Support, DDN
+--Apple-Mail=_7D8628FB-B316-4644-8F5D-7B988D7E3343
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
+
+On Dec 2, 2013, at 10:36 AM, Christoph Hellwig <hch@infradead.org> =
+wrote:
+> ping?
+
+Added linux-ext4 to the CC list.
+
+I'm happy to see this cleanup.  You can add my
+
+  Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+
+for the ext4 part, one question inline for the btrfs change (someone =
+with more
+btrfs knowledge needs to comment if that is important or not.
+
+Cheers, Andreas
+
+> On Tue, Nov 19, 2013 at 07:17:07AM -0800, Christoph Hellwig wrote:
+>> Currently notify_change directly updates i_version for size updates,
+>> which not only is counter to how all other fields are updated through
+>> struct iattr, but also breaks XFS, which need inode updates to happen
+>> under its own lock, and synchronized to the structure that gets =
+written
+>> to the log.
+>>=20
+>> Remove the update in the common code, and it to btrfs and ext4,
+>> XFS already does a proper updaste internally and currently gets a
+>> double update with the existing code.
+>>=20
+>> IMHO this is 3.13 and -stable material and should go in through the =
+XFS
+>> tree.
+>>=20
+>> Signed-off-by: Christoph Hellwig <hch@lst.de>
+>>=20
+>> Index: xfs/fs/attr.c
+>> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+>> --- xfs.orig/fs/attr.c	2013-11-19 16:08:42.275415189 +0100
+>> +++ xfs/fs/attr.c	2013-11-19 16:08:51.803414994 +0100
+>> @@ -182,11 +182,6 @@ int notify_change(struct dentry * dentry
+>> 			return -EPERM;
+>> 	}
+>>=20
+>> -	if ((ia_valid & ATTR_SIZE) && IS_I_VERSION(inode)) {
+>> -		if (attr->ia_size !=3D inode->i_size)
+>> -			inode_inc_iversion(inode);
+>> -	}
+>> -
+>> 	if ((ia_valid & ATTR_MODE)) {
+>> 		umode_t amode =3D attr->ia_mode;
+>> 		/* Flag setting protected by i_mutex */
+>> Index: xfs/fs/btrfs/inode.c
+>> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+>> --- xfs.orig/fs/btrfs/inode.c	2013-11-19 16:08:42.275415189 =
++0100
+>> +++ xfs/fs/btrfs/inode.c	2013-11-19 16:08:51.803414994 +0100
+>> @@ -4345,8 +4345,12 @@ static int btrfs_setsize(struct inode *i
+>> 	 * these flags set.  For all other operations the VFS set these =
+flags
+>> 	 * explicitly if it wants a timestamp update.
+>> 	 */
+>> -	if (newsize !=3D oldsize && (!(mask & (ATTR_CTIME | =
+ATTR_MTIME))))
+>> -		inode->i_ctime =3D inode->i_mtime =3D =
+current_fs_time(inode->i_sb);
+>> +	if (newsize !=3D oldsize) {
+>> +		inode_inc_iversion(inode);
+
+Should this be conditional on IS_I_VERSION(inode)?
+
+>> +		if (!(mask & (ATTR_CTIME | ATTR_MTIME)))
+>> +			inode->i_ctime =3D inode->i_mtime =3D
+>> +				current_fs_time(inode->i_sb);
+>> +	}
+>>=20
+>> 	if (newsize > oldsize) {
+>> 		truncate_pagecache(inode, newsize);
+>> Index: xfs/fs/ext4/inode.c
+>> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+>> --- xfs.orig/fs/ext4/inode.c	2013-11-19 16:08:42.275415189 +0100
+>> +++ xfs/fs/ext4/inode.c	2013-11-19 16:08:51.803414994 +0100
+>> @@ -4594,6 +4594,10 @@ int ext4_setattr(struct dentry *dentry,
+>> 			if (attr->ia_size > sbi->s_bitmap_maxbytes)
+>> 				return -EFBIG;
+>> 		}
+>> +
+>> +		if (IS_I_VERSION(inode) && attr->ia_size !=3D =
+inode->i_size)
+>> +			inode_inc_iversion(inode);
+>> +
+>> 		if (S_ISREG(inode->i_mode) &&
+>> 		    (attr->ia_size < inode->i_size)) {
+>> 			if (ext4_should_order_data(inode)) {
+>>=20
+>> _______________________________________________
+>> xfs mailing list
+>> xfs@oss.sgi.com
+>> http://oss.sgi.com/mailman/listinfo/xfs
+> ---end quoted text---
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> To unsubscribe from this list: send the line "unsubscribe =
+linux-fsdevel" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_7D8628FB-B316-4644-8F5D-7B988D7E3343
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIVAwUBUp0EE3Kl2rkXzB/gAQIzLRAAq6brTcMpky/57cXpzlHi98YjCuAd2PYU
+wkW/nIY9jjGuvIZtaARixtxhpjhpoMMqk3ioID16PzXLyuzqHb02RquLqWD9BILA
+Tv+6FfiD2s7IwkQdxR1VH/Fpxzrqg7s4VKI7FuJN7MGCG23AseJY+99M/KModnWh
+ClEUdvuaNzMoQQonvq/Q+bxooBnkpTgQa470WjFlwXQlmaRMw4pfFQZKxqqD7iAi
+q9X5KDsnR5fswvsJ3yus89k0BaFSSkgFhGm7FG7wqjecxTWZ9KWCXySvPvsjuG4x
+vqd/PAXGCMrE7DQaETCE4pU7Ay6KOdfrKmve6TsGaDeaN7TynChNLT9/E2ETXqSc
+X9hUxLCwE/U80dxEOekIDnCa/W/V4seUpJrbYCSRv5Qz2zH3kVXBZYCxcrwbGPmb
+NLF9zzAuJoAVmGWP3OBWQGcVU88gBFQV4QbfKo6C9FCw6Su83O9/PsMXgJFK0+zw
+Ybv2iKZZIPreLvVN09HGcwrUcKeQW4MY9zAzx4OIkDiwn7Ri6le6yjtKqy9TOFBi
+JDSAIFrd0BsHbzajU3IM1nGo+lHFcqd4Hl+JbZmqNg/VVk4VnlD5mMuAbkVLJjJM
+uyjQXZOhmfSMn4aVOVNTejlGHZ+RU/Eo3zprKjVd8Wo2G7SDs7zC8s96R1/zbqTd
+bypDBX0MeaU=
+=JE2+
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_7D8628FB-B316-4644-8F5D-7B988D7E3343--
+
+
+--===============5136026106792554506==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
+
+--===============5136026106792554506==--
