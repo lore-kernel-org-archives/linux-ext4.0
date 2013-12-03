@@ -1,88 +1,220 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH v2 27/28] libext2fs: export inode cahce creation function
-Date: Tue,  3 Dec 2013 20:11:54 +0800
-Message-ID: <1386072715-9869-28-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH v2 22/28] e2fsck: check inline_data in pass1
+Date: Tue,  3 Dec 2013 20:11:49 +0800
+Message-ID: <1386072715-9869-23-git-send-email-wenqing.lz@taobao.com>
 References: <1386072715-9869-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Theodore Ts'o <tytso@mit.edu>,
 	"Darrick J. Wong" <darrick.wong@oracle.com>,
 	Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f50.google.com ([209.85.220.50]:60115 "EHLO
-	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753866Ab3LCMKI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Dec 2013 07:10:08 -0500
-Received: by mail-pa0-f50.google.com with SMTP id kl14so2838193pab.23
-        for <linux-ext4@vger.kernel.org>; Tue, 03 Dec 2013 04:10:08 -0800 (PST)
+Received: from mail-pd0-f176.google.com ([209.85.192.176]:60136 "EHLO
+	mail-pd0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753798Ab3LCMJ4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Dec 2013 07:09:56 -0500
+Received: by mail-pd0-f176.google.com with SMTP id w10so19860457pde.21
+        for <linux-ext4@vger.kernel.org>; Tue, 03 Dec 2013 04:09:56 -0800 (PST)
 In-Reply-To: <1386072715-9869-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-Currently we have already exported inode cache flush and free functions
-for users.  This commit exports inode cache creation function.  Later
-we will use this function to initialize inode cache and do some unit
-tests for inline data.
-
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- lib/ext2fs/ext2fs.h |    1 +
- lib/ext2fs/inode.c  |    8 ++++----
- 2 files changed, 5 insertions(+), 4 deletions(-)
+ e2fsck/pass1.c          |   62 +++++++++++++++++++++++++++++++++++++++++++----
+ lib/ext2fs/dblist_dir.c |   16 ++++++++++--
+ 2 files changed, 71 insertions(+), 7 deletions(-)
 
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index bf0ef26..a47bb40 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -1369,6 +1369,7 @@ extern errcode_t ext2fs_get_memalign(unsigned long size,
- 				     unsigned long align, void *ptr);
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index 56411f1..d5dca9d 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -177,7 +177,8 @@ int e2fsck_pass1_check_symlink(ext2_filsys fs, ext2_ino_t ino,
+ 	struct ext2fs_extent	extent;
  
- /* inode.c */
-+extern errcode_t ext2fs_create_inode_cache(ext2_filsys fs, int cache_size);
- extern void ext2fs_free_inode_cache(struct ext2_inode_cache *icache);
- extern errcode_t ext2fs_flush_icache(ext2_filsys fs);
- extern errcode_t ext2fs_get_next_inode_full(ext2_inode_scan scan,
-diff --git a/lib/ext2fs/inode.c b/lib/ext2fs/inode.c
-index 46c1c58..8cf76b0 100644
---- a/lib/ext2fs/inode.c
-+++ b/lib/ext2fs/inode.c
-@@ -91,7 +91,7 @@ void ext2fs_free_inode_cache(struct ext2_inode_cache *icache)
- 	ext2fs_free_mem(&icache);
+ 	if ((inode->i_size_high || inode->i_size == 0) ||
+-	    (inode->i_flags & EXT2_INDEX_FL))
++	    (inode->i_flags & EXT2_INDEX_FL) ||
++	    (inode->i_flags & EXT4_INLINE_DATA_FL))
+ 		return 0;
+ 
+ 	if (inode->i_flags & EXT4_EXTENTS_FL) {
+@@ -407,6 +408,7 @@ static void check_is_really_dir(e2fsck_t ctx, struct problem_context *pctx,
+ 	blk64_t			blk;
+ 	unsigned int		i, rec_len, not_device = 0;
+ 	int			extent_fs;
++	int			inlinedata_fs;
+ 
+ 	/*
+ 	 * If the mode looks OK, we believe it.  If the first block in
+@@ -434,11 +436,23 @@ static void check_is_really_dir(e2fsck_t ctx, struct problem_context *pctx,
+ 	 * For extent mapped files, we don't do any sanity checking:
+ 	 * just try to get the phys block of logical block 0 and run
+ 	 * with it.
++	 *
++	 * For inline data files, we just try to get the size of inline
++	 * data.  If it's true, we will treat it as a directory.
+ 	 */
+ 
+ 	extent_fs = (ctx->fs->super->s_feature_incompat &
+ 		     EXT3_FEATURE_INCOMPAT_EXTENTS);
+-	if (extent_fs && (inode->i_flags & EXT4_EXTENTS_FL)) {
++	inlinedata_fs = (ctx->fs->super->s_feature_incompat &
++			 EXT4_FEATURE_INCOMPAT_INLINE_DATA);
++	if (inlinedata_fs && (inode->i_flags & EXT4_INLINE_DATA_FL)) {
++		unsigned int size;
++
++		if (ext2fs_inline_data_size(ctx->fs, pctx->ino, &size))
++			return;
++		/* device files never have a "system.data" entry */
++		goto isdir;
++	} else if (extent_fs && (inode->i_flags & EXT4_EXTENTS_FL)) {
+ 		/* extent mapped */
+ 		if  (ext2fs_bmap2(ctx->fs, pctx->ino, inode, 0, 0, 0, 0,
+ 				 &blk))
+@@ -501,6 +515,7 @@ static void check_is_really_dir(e2fsck_t ctx, struct problem_context *pctx,
+ 	    (rec_len % 4))
+ 		return;
+ 
++isdir:
+ 	if (fix_problem(ctx, PR_1_TREAT_AS_DIRECTORY, pctx)) {
+ 		inode->i_mode = (inode->i_mode & 07777) | LINUX_S_IFDIR;
+ 		e2fsck_write_inode_full(ctx, pctx->ino, inode,
+@@ -1194,7 +1209,8 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 			ctx->fs_sockets_count++;
+ 		} else
+ 			mark_inode_bad(ctx, ino);
+-		if (!(inode->i_flags & EXT4_EXTENTS_FL)) {
++		if (!(inode->i_flags & EXT4_EXTENTS_FL) &&
++		    !(inode->i_flags & EXT4_INLINE_DATA_FL)) {
+ 			if (inode->i_block[EXT2_IND_BLOCK])
+ 				ctx->fs_ind_count++;
+ 			if (inode->i_block[EXT2_DIND_BLOCK])
+@@ -1203,6 +1219,7 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 				ctx->fs_tind_count++;
+ 		}
+ 		if (!(inode->i_flags & EXT4_EXTENTS_FL) &&
++		    !(inode->i_flags & EXT4_INLINE_DATA_FL) &&
+ 		    (inode->i_block[EXT2_IND_BLOCK] ||
+ 		     inode->i_block[EXT2_DIND_BLOCK] ||
+ 		     inode->i_block[EXT2_TIND_BLOCK] ||
+@@ -2132,6 +2149,26 @@ static void check_blocks_extents(e2fsck_t ctx, struct problem_context *pctx,
  }
  
--static errcode_t create_icache(ext2_filsys fs)
-+errcode_t ext2fs_create_inode_cache(ext2_filsys fs, int cache_size)
- {
- 	int		i;
- 	errcode_t	retval;
-@@ -109,7 +109,7 @@ static errcode_t create_icache(ext2_filsys fs)
+ /*
++ * In fact we don't need to check blocks for an inode with inline data
++ * because this inode doesn't have any blocks.  In this function all
++ * we need to do is add this inode into dblist when it is a directory.
++ */
++static void check_blocks_inline_data(e2fsck_t ctx, struct problem_context *pctx,
++				     struct process_block_struct *pb)
++{
++	if (!pb->is_dir)
++		return;
++
++	pctx->errcode = ext2fs_add_dir_block2(ctx->fs->dblist, pb->ino, 0, 0);
++	if (pctx->errcode) {
++		pctx->blk = 0;
++		pctx->num = 0;
++		fix_problem(ctx, PR_1_ADD_DBLOCK, pctx);
++		ctx->flags |= E2F_FLAG_ABORT;
++	}
++}
++
++/*
+  * This subroutine is called on each inode to account for all of the
+  * blocks used by that inode.
+  */
+@@ -2145,6 +2182,7 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
+ 	int		bad_size = 0;
+ 	int		dirty_inode = 0;
+ 	int		extent_fs;
++	int		inlinedata_fs;
+ 	__u64		size;
  
- 	fs->icache->buffer_blk = 0;
- 	fs->icache->cache_last = -1;
--	fs->icache->cache_size = 4;
-+	fs->icache->cache_size = cache_size;
- 	fs->icache->refcount = 1;
- 	retval = ext2fs_get_array(fs->icache->cache_size,
- 				  sizeof(struct ext2_inode_cache_ent),
-@@ -596,7 +596,7 @@ errcode_t ext2fs_read_inode_full(ext2_filsys fs, ext2_ino_t ino,
- 		return EXT2_ET_BAD_INODE_NUM;
- 	/* Create inode cache if not present */
- 	if (!fs->icache) {
--		retval = create_icache(fs);
-+		retval = ext2fs_create_inode_cache(fs, 4);
- 		if (retval)
- 			return retval;
- 	}
-@@ -732,7 +732,7 @@ errcode_t ext2fs_write_inode_full(ext2_filsys fs, ext2_ino_t ino,
- 			}
+ 	pb.ino = ino;
+@@ -2168,6 +2206,8 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
+ 
+ 	extent_fs = (ctx->fs->super->s_feature_incompat &
+                      EXT3_FEATURE_INCOMPAT_EXTENTS);
++	inlinedata_fs = (ctx->fs->super->s_feature_incompat &
++			 EXT4_FEATURE_INCOMPAT_INLINE_DATA);
+ 
+ 	if (inode->i_flags & EXT2_COMPRBLK_FL) {
+ 		if (fs->super->s_feature_incompat &
+@@ -2201,6 +2241,10 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
+ 			 */
+ 			pb.last_init_lblock = pb.last_block;
  		}
- 	} else {
--		retval = create_icache(fs);
-+		retval = ext2fs_create_inode_cache(fs, 4);
- 		if (retval)
- 			goto errout;
++	} else {
++		/* check inline data */
++		if (inlinedata_fs && (inode->i_flags & EXT4_INLINE_DATA_FL))
++			check_blocks_inline_data(ctx, pctx, &pb);
  	}
+ 	end_problem_latch(ctx, PR_LATCH_BLOCK);
+ 	end_problem_latch(ctx, PR_LATCH_TOOBIG);
+@@ -2233,7 +2277,8 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
+ 		}
+ 	}
+ 
+-	if (!pb.num_blocks && pb.is_dir) {
++	if (!pb.num_blocks && pb.is_dir &&
++	    !(inode->i_flags & EXT4_INLINE_DATA_FL)) {
+ 		if (fix_problem(ctx, PR_1_ZERO_LENGTH_DIR, pctx)) {
+ 			e2fsck_clear_inode(ctx, ino, inode, 0, "check_blocks");
+ 			ctx->fs_directory_count--;
+@@ -2259,7 +2304,14 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
+ #endif
+ 	if (pb.is_dir) {
+ 		int nblock = inode->i_size >> EXT2_BLOCK_SIZE_BITS(fs->super);
+-		if (inode->i_size & (fs->blocksize - 1))
++		if (inode->i_flags & EXT4_INLINE_DATA_FL) {
++			size_t size;
++
++			if (ext2fs_inline_data_size(ctx->fs, pctx->ino, &size))
++				bad_size = 5;
++			if (size != inode->i_size)
++				bad_size = 5;
++		} else if (inode->i_size & (fs->blocksize - 1))
+ 			bad_size = 5;
+ 		else if (nblock > (pb.last_block + 1))
+ 			bad_size = 1;
+diff --git a/lib/ext2fs/dblist_dir.c b/lib/ext2fs/dblist_dir.c
+index d4d5111..1e36584 100644
+--- a/lib/ext2fs/dblist_dir.c
++++ b/lib/ext2fs/dblist_dir.c
+@@ -65,6 +65,7 @@ errcode_t ext2fs_dblist_dir_iterate(ext2_dblist dblist,
+ static int db_dir_proc(ext2_filsys fs, struct ext2_db_entry2 *db_info,
+ 		       void *priv_data)
+ {
++	struct ext2_inode	inode;
+ 	struct dir_context	*ctx;
+ 	int			ret;
+ 
+@@ -72,8 +73,19 @@ static int db_dir_proc(ext2_filsys fs, struct ext2_db_entry2 *db_info,
+ 	ctx->dir = db_info->ino;
+ 	ctx->errcode = 0;
+ 
+-	ret = ext2fs_process_dir_block(fs, &db_info->blk,
+-				       db_info->blockcnt, 0, 0, priv_data);
++	ctx->errcode = ext2fs_read_inode(fs, ctx->dir, &inode);
++	if (ctx->errcode)
++		return DBLIST_ABORT;
++	if (inode.i_flags & EXT4_INLINE_DATA_FL) {
++		ctx->flags = DIRENT_FLAG_INCLUDE_INLINE_DATA;
++		ext2fs_inline_data_dir_iterate(fs, ctx->dir,
++					       ext2fs_process_dir_block,
++					       ctx);
++	} else {
++		ret = ext2fs_process_dir_block(fs, &db_info->blk,
++					       db_info->blockcnt, 0, 0,
++					       priv_data);
++	}
+ 	if ((ret & BLOCK_ABORT) && !ctx->errcode)
+ 		return DBLIST_ABORT;
+ 	return 0;
 -- 
 1.7.9.7
 
