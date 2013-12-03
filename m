@@ -1,30 +1,53 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] fs: fix iversion handling
-Date: Tue, 3 Dec 2013 01:39:44 -0800
-Message-ID: <20131203093944.GA4906@infradead.org>
-References: <20131119151707.GA13412@infradead.org>
- <20131202173636.GA17724@infradead.org>
- <8E57B1B6-E650-4A1A-AF78-0A9C9593A3E3@dilger.ca>
+Subject: Re: [PATCH 12/18] ocfs2: use generic posix ACL infrastructure
+Date: Tue, 3 Dec 2013 02:48:54 -0800
+Message-ID: <20131203104854.GA3223@infradead.org>
+References: <20131201115903.910559036@bombadil.infradead.org>
+ <20131201120655.852590677@bombadil.infradead.org>
+ <20131202230007.GK12253@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>, xfs@oss.sgi.com,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: cluster-devel@redhat.com, xfs@oss.sgi.com, Mark Fasheh <mfasheh@suse.com>,
+ reiserfs-devel@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+ Christoph Hellwig <hch@infradead.org>, linux-mtd@lists.infradead.org,
+ viro@zeniv.linux.org.uk, jfs-discussion@lists.sourceforge.net,
+ linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+ linux-nfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
+ Joel Becker <jlbec@evilplan.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org>
 Content-Disposition: inline
-In-Reply-To: <8E57B1B6-E650-4A1A-AF78-0A9C9593A3E3@dilger.ca>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <20131202230007.GK12253@quack.suse.cz>
+List-Unsubscribe: <http://lists.infradead.org/mailman/options/linux-mtd>,
+ <mailto:linux-mtd-request@lists.infradead.org?subject=unsubscribe>
+List-Archive: <http://lists.infradead.org/pipermail/linux-mtd/>
+List-Post: <mailto:linux-mtd@lists.infradead.org>
+List-Help: <mailto:linux-mtd-request@lists.infradead.org?subject=help>
+List-Subscribe: <http://lists.infradead.org/mailman/listinfo/linux-mtd>,
+ <mailto:linux-mtd-request@lists.infradead.org?subject=subscribe>
+Sender: "linux-mtd" <linux-mtd-bounces@lists.infradead.org>
+Errors-To: linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Dec 02, 2013 at 03:05:07PM -0700, Andreas Dilger wrote:
-> >> 	 */
-> >> -	if (newsize != oldsize && (!(mask & (ATTR_CTIME | ATTR_MTIME))))
-> >> -		inode->i_ctime = inode->i_mtime = current_fs_time(inode->i_sb);
-> >> +	if (newsize != oldsize) {
-> >> +		inode_inc_iversion(inode);
-> 
-> Should this be conditional on IS_I_VERSION(inode)?
+On Tue, Dec 03, 2013 at 12:00:07AM +0100, Jan Kara wrote:
+>   Hum, this changes the cluster locking. Previously ocfs2_acl_get() used
+> from ocfs2_acl_chmod() grabbed cluster wide inode lock. Now getting of ACL
+> isn't protected by the inode lock. That being said the cluster locking
+> around setattr looks fishy anyway - if two processes on different
+> nodes are changing attributes of the same file, changing ACLs post fact
+> after dropping inode lock could cause interesting effects. Also I'm
+> wondering how inode_change_ok() can ever be safe without holding inode
+> lock... Until we grab that other node is free to change e.g. owner of the
+> inode thus leading even to security implications. But maybe I'm missing
+> something. Mark, Joel?
 
-btrfs sets MS_I_VERSION unconditionally.
+Hmm, indeed.  How does ocfs2_iop_get_acl get away without that lock?
 
+Btw, ocfs2 changes will need careful testing as I couldn't find any easy
+way to run xfstests on ocfs2 out of the box.
+
+
+______________________________________________________
+Linux MTD discussion mailing list
+http://lists.infradead.org/mailman/listinfo/linux-mtd/
