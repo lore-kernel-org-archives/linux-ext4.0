@@ -1,98 +1,101 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH v2 27/28] libext2fs: export inode cahce creation function
-Date: Tue, 3 Dec 2013 14:22:49 -0800
-Message-ID: <20131203222249.GG9535@birch.djwong.org>
+Subject: Re: [PATCH v2 20/28] tune2fs: add inline_data feature in tune2fs
+Date: Tue, 3 Dec 2013 14:29:46 -0800
+Message-ID: <20131203222946.GH9535@birch.djwong.org>
 References: <1386072715-9869-1-git-send-email-wenqing.lz@taobao.com>
- <1386072715-9869-28-git-send-email-wenqing.lz@taobao.com>
+ <1386072715-9869-21-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
 	Zheng Liu <wenqing.lz@taobao.com>
 To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:41317 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:44180 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754476Ab3LCWW6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Dec 2013 17:22:58 -0500
+	with ESMTP id S1755143Ab3LCW3y (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Dec 2013 17:29:54 -0500
 Content-Disposition: inline
-In-Reply-To: <1386072715-9869-28-git-send-email-wenqing.lz@taobao.com>
+In-Reply-To: <1386072715-9869-21-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 03, 2013 at 08:11:54PM +0800, Zheng Liu wrote:
+On Tue, Dec 03, 2013 at 08:11:47PM +0800, Zheng Liu wrote:
 > From: Zheng Liu <wenqing.lz@taobao.com>
 > 
-> Currently we have already exported inode cache flush and free functions
-> for users.  This commit exports inode cache creation function.  Later
-> we will use this function to initialize inode cache and do some unit
-> tests for inline data.
+> Inline_data can be enabled without ext_attr.  Hence we don't check it.
+> As doing in mke2fs we need to check inode size.
 > 
+> Now this feature only can be enabled because we may be out of space when
+> disabling it.  If this feature is disabled, we need to allocate a block
+> for every file and directory, and it might exhaust all space.
+
+Could we at least try to turn off inlinedata and decline to clear the flag if
+we ENOSPC?
+
+(Yes, that's more of a TODO feature request...)
+
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 > Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 > ---
->  lib/ext2fs/ext2fs.h |    1 +
->  lib/ext2fs/inode.c  |    8 ++++----
->  2 files changed, 5 insertions(+), 4 deletions(-)
+>  misc/tune2fs.8.in |    5 +++++
+>  misc/tune2fs.c    |   16 +++++++++++++++-
+>  2 files changed, 20 insertions(+), 1 deletion(-)
 > 
-> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-> index bf0ef26..a47bb40 100644
-> --- a/lib/ext2fs/ext2fs.h
-> +++ b/lib/ext2fs/ext2fs.h
-> @@ -1369,6 +1369,7 @@ extern errcode_t ext2fs_get_memalign(unsigned long size,
->  				     unsigned long align, void *ptr);
->  
->  /* inode.c */
-> +extern errcode_t ext2fs_create_inode_cache(ext2_filsys fs, int cache_size);
->  extern void ext2fs_free_inode_cache(struct ext2_inode_cache *icache);
->  extern errcode_t ext2fs_flush_icache(ext2_filsys fs);
->  extern errcode_t ext2fs_get_next_inode_full(ext2_inode_scan scan,
-> diff --git a/lib/ext2fs/inode.c b/lib/ext2fs/inode.c
-> index 46c1c58..8cf76b0 100644
-> --- a/lib/ext2fs/inode.c
-> +++ b/lib/ext2fs/inode.c
-> @@ -91,7 +91,7 @@ void ext2fs_free_inode_cache(struct ext2_inode_cache *icache)
->  	ext2fs_free_mem(&icache);
->  }
->  
-> -static errcode_t create_icache(ext2_filsys fs)
-> +errcode_t ext2fs_create_inode_cache(ext2_filsys fs, int cache_size)
+> diff --git a/misc/tune2fs.8.in b/misc/tune2fs.8.in
+> index 55c6dd9..78f965b 100644
+> --- a/misc/tune2fs.8.in
+> +++ b/misc/tune2fs.8.in
+> @@ -531,6 +531,11 @@ Setting the filesystem feature is equivalent to using the
+>  .B \-j
+>  option.
+>  .TP
+> +.B inline_data
+> +Allow data to be stored in the inode and extented attribute area.
 
-cache_size should unsigned int; there's not much point in letting people pass
-us a negative size.
-
-Possibly ext2_inode_cache.cache_size should be unsigned too...
+"extended"
 
 --D
 
->  {
->  	int		i;
->  	errcode_t	retval;
-> @@ -109,7 +109,7 @@ static errcode_t create_icache(ext2_filsys fs)
+> +.B Tune2fs
+> +only supports setting this filesystem feature.
+> +.TP
+>  .B large_file
+>  Filesystem can contain files that are greater than 2GB.  (Modern kernels
+>  set this feature automatically when a file > 2GB is created.)
+> diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+> index 95c1886..1952081 100644
+> --- a/misc/tune2fs.c
+> +++ b/misc/tune2fs.c
+> @@ -140,7 +140,8 @@ static __u32 ok_features[3] = {
+>  	EXT2_FEATURE_INCOMPAT_FILETYPE |
+>  		EXT3_FEATURE_INCOMPAT_EXTENTS |
+>  		EXT4_FEATURE_INCOMPAT_FLEX_BG |
+> -		EXT4_FEATURE_INCOMPAT_MMP,
+> +		EXT4_FEATURE_INCOMPAT_MMP |
+> +		EXT4_FEATURE_INCOMPAT_INLINE_DATA,
+>  	/* R/O compat */
+>  	EXT2_FEATURE_RO_COMPAT_LARGE_FILE |
+>  		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
+> @@ -1083,6 +1084,19 @@ mmp_error:
+>  		disable_uninit_bg(fs,
+>  				EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
 >  
->  	fs->icache->buffer_blk = 0;
->  	fs->icache->cache_last = -1;
-> -	fs->icache->cache_size = 4;
-> +	fs->icache->cache_size = cache_size;
->  	fs->icache->refcount = 1;
->  	retval = ext2fs_get_array(fs->icache->cache_size,
->  				  sizeof(struct ext2_inode_cache_ent),
-> @@ -596,7 +596,7 @@ errcode_t ext2fs_read_inode_full(ext2_filsys fs, ext2_ino_t ino,
->  		return EXT2_ET_BAD_INODE_NUM;
->  	/* Create inode cache if not present */
->  	if (!fs->icache) {
-> -		retval = create_icache(fs);
-> +		retval = ext2fs_create_inode_cache(fs, 4);
->  		if (retval)
->  			return retval;
->  	}
-> @@ -732,7 +732,7 @@ errcode_t ext2fs_write_inode_full(ext2_filsys fs, ext2_ino_t ino,
->  			}
->  		}
->  	} else {
-> -		retval = create_icache(fs);
-> +		retval = ext2fs_create_inode_cache(fs, 4);
->  		if (retval)
->  			goto errout;
->  	}
+> +	if (FEATURE_ON(E2P_FEATURE_INCOMPAT,
+> +		       EXT4_FEATURE_INCOMPAT_INLINE_DATA)) {
+> +		/*
+> +		 * Check inode size.  If inode size is 128, tell user that
+> +		 * inline data is useless.
+> +		 */
+> +		if (EXT2_INODE_SIZE(fs->super) == EXT2_GOOD_OLD_INODE_SIZE) {
+> +			fputs(_("The inode size is too small to "
+> +				"store inline data.\n"), stderr);
+> +			return 1;
+> +		}
+> +	}
+> +
+>  	if (FEATURE_ON(E2P_FEATURE_RO_INCOMPAT,
+>  				EXT4_FEATURE_RO_COMPAT_QUOTA)) {
+>  		/*
 > -- 
 > 1.7.9.7
 > 
