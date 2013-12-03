@@ -1,234 +1,146 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 02/10] e2fsck: use errcode_t to suppress some -Wconversion warnings
-Date: Tue,  3 Dec 2013 00:10:10 -0500
-Message-ID: <1386047418-32431-3-git-send-email-tytso@mit.edu>
+Subject: [PATCH 01/10] e2fsck: use problem_t to suppress some -Wconversion warnings
+Date: Tue,  3 Dec 2013 00:10:09 -0500
+Message-ID: <1386047418-32431-2-git-send-email-tytso@mit.edu>
 References: <20131203002503.GA18601@thunk.org>
  <1386047418-32431-1-git-send-email-tytso@mit.edu>
 Cc: Kit Westneat <kwestneat@ddn.com>, Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:35874 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:35875 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751245Ab3LCFKb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751362Ab3LCFKb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 3 Dec 2013 00:10:31 -0500
 In-Reply-To: <1386047418-32431-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We need to store some error codes using an int to keep recovery.c as
-close as possible to the recovery.c source file in the kernel.
+All code which stores a problem code should use the problem_t type.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- e2fsck/e2fsck.h  |  4 ++--
- e2fsck/journal.c | 20 ++++++++++----------
- e2fsck/pass1b.c  |  8 ++++----
- e2fsck/rehash.c  |  2 +-
- e2fsck/unix.c    |  2 +-
- e2fsck/util.c    |  8 ++++----
- 6 files changed, 22 insertions(+), 22 deletions(-)
+ e2fsck/pass1.c |  8 ++++----
+ e2fsck/pass2.c | 12 ++++++------
+ e2fsck/pass5.c |  8 +++++---
+ 3 files changed, 15 insertions(+), 13 deletions(-)
 
-diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
-index e3ad78d..3c4f832 100644
---- a/e2fsck/e2fsck.h
-+++ b/e2fsck/e2fsck.h
-@@ -452,8 +452,8 @@ extern const char *ehandler_operation(const char *op);
- extern void ehandler_init(io_channel channel);
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index 311706e..3cf4aac 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -276,7 +276,7 @@ static void check_ea_in_inode(e2fsck_t ctx, struct problem_context *pctx)
+ 	struct ext2_ext_attr_entry *entry;
+ 	char *start;
+ 	unsigned int storage_size, remain;
+-	int problem = 0;
++	problem_t problem = 0;
  
- /* journal.c */
--extern int e2fsck_check_ext3_journal(e2fsck_t ctx);
--extern int e2fsck_run_ext3_journal(e2fsck_t ctx);
-+extern errcode_t e2fsck_check_ext3_journal(e2fsck_t ctx);
-+extern errcode_t e2fsck_run_ext3_journal(e2fsck_t ctx);
- extern void e2fsck_move_ext3_journal(e2fsck_t ctx);
- extern int e2fsck_fix_ext3_journal_hint(e2fsck_t ctx);
- 
-diff --git a/e2fsck/journal.c b/e2fsck/journal.c
-index 0cbdb7b..ff11f22 100644
---- a/e2fsck/journal.c
-+++ b/e2fsck/journal.c
-@@ -62,7 +62,7 @@ int journal_bmap(journal_t *journal, blk64_t block, unsigned long long *phys)
- 	retval= ext2fs_bmap2(inode->i_ctx->fs, inode->i_ino,
- 			     &inode->i_ext2, NULL, 0, block, 0, &pblk);
- 	*phys = pblk;
--	return (retval);
-+	return (int) retval;
- #endif
- }
- 
-@@ -108,7 +108,7 @@ void sync_blockdev(kdev_t kdev)
- 
- void ll_rw_block(int rw, int nr, struct buffer_head *bhp[])
- {
--	int retval;
-+	errcode_t retval;
- 	struct buffer_head *bh;
- 
- 	for (; nr > 0; --nr) {
-@@ -123,7 +123,7 @@ void ll_rw_block(int rw, int nr, struct buffer_head *bhp[])
- 				com_err(bh->b_ctx->device_name, retval,
- 					"while reading block %llu\n",
- 					bh->b_blocknr);
--				bh->b_err = retval;
-+				bh->b_err = (int) retval;
- 				continue;
+ 	inode = (struct ext2_inode_large *) pctx->inode;
+ 	storage_size = EXT2_INODE_SIZE(ctx->fs->super) - EXT2_GOOD_OLD_INODE_SIZE -
+@@ -950,7 +950,7 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 							inode_size, "pass1");
  			}
- 			bh->b_uptodate = 1;
-@@ -138,7 +138,7 @@ void ll_rw_block(int rw, int nr, struct buffer_head *bhp[])
- 				com_err(bh->b_ctx->device_name, retval,
- 					"while writing block %llu\n",
- 					bh->b_blocknr);
--				bh->b_err = retval;
-+				bh->b_err = (int) retval;
- 				continue;
- 			}
- 			bh->b_dirty = 0;
-@@ -340,7 +340,7 @@ static errcode_t e2fsck_get_journal(e2fsck_t ctx, journal_t **ret_journal)
- #else
- 		journal->j_inode = j_inode;
- 		ctx->journal_io = ctx->fs->io;
--		if ((retval = journal_bmap(journal, 0, &start)) != 0)
-+		if ((retval = (errcode_t) journal_bmap(journal, 0, &start)) != 0)
- 			goto errout;
- #endif
- 	} else {
-@@ -705,7 +705,7 @@ static void e2fsck_journal_release(e2fsck_t ctx, journal_t *journal,
-  * This function makes sure that the superblock fields regarding the
-  * journal are consistent.
-  */
--int e2fsck_check_ext3_journal(e2fsck_t ctx)
-+errcode_t e2fsck_check_ext3_journal(e2fsck_t ctx)
- {
- 	struct ext2_super_block *sb = ctx->fs->super;
- 	journal_t *journal;
-@@ -714,7 +714,7 @@ int e2fsck_check_ext3_journal(e2fsck_t ctx)
- 	struct problem_context pctx;
- 	problem_t problem;
- 	int reset = 0, force_fsck = 0;
--	int retval;
-+	errcode_t retval;
+ 		} else if (ino < EXT2_FIRST_INODE(fs->super)) {
+-			int	problem = 0;
++			problem_t problem = 0;
  
- 	/* If we don't have any journal features, don't do anything more */
- 	if (!(sb->s_feature_compat & EXT3_FEATURE_COMPAT_HAS_JOURNAL) &&
-@@ -838,7 +838,7 @@ static errcode_t recover_ext3_journal(e2fsck_t ctx)
+ 			ext2fs_mark_inode_bitmap2(ctx->inode_used_map, ino);
+ 			if (ino == EXT2_BOOT_LOADER_INO) {
+@@ -1769,7 +1769,7 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
+ 	e2_blkcnt_t		blockcnt;
+ 	unsigned int		i;
+ 	int			is_dir, is_leaf;
+-	errcode_t		problem;
++	problem_t		problem;
+ 	struct ext2_extent_info	info;
+ 
+ 	pctx->errcode = ext2fs_extent_get_info(ehandle, &info);
+@@ -2255,7 +2255,7 @@ static int process_block(ext2_filsys fs,
+ 	struct problem_context *pctx;
+ 	blk64_t	blk = *block_nr;
+ 	int	ret_code = 0;
+-	int	problem = 0;
++	problem_t	problem = 0;
+ 	e2fsck_t	ctx;
+ 
+ 	p = (struct process_block_struct *) priv_data;
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index f2ac2dd..6ef17d3 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -351,9 +351,9 @@ static int check_dot(e2fsck_t ctx,
  {
+ 	struct ext2_dir_entry *nextdir;
+ 	unsigned int	rec_len, new_len;
+-	int	status = 0;
+-	int	created = 0;
+-	int	problem = 0;
++	int		status = 0;
++	int		created = 0;
++	problem_t	problem = 0;
+ 
+ 	if (!dirent->inode)
+ 		problem = PR_2_MISSING_DOT;
+@@ -410,7 +410,7 @@ static int check_dotdot(e2fsck_t ctx,
+ 			struct ext2_dir_entry *dirent,
+ 			ext2_ino_t ino, struct problem_context *pctx)
+ {
+-	int		problem = 0;
++	problem_t	problem = 0;
+ 	unsigned int	rec_len;
+ 
+ 	if (!dirent->inode)
+@@ -727,7 +727,7 @@ static int check_dir_block(ext2_filsys fs,
+ 	struct check_dir_struct	*cd;
+ 	char 			*buf;
+ 	e2fsck_t		ctx;
+-	int			problem;
++	problem_t		problem;
+ 	struct ext2_dx_root_info *root;
+ 	struct ext2_dx_countlimit *limit;
+ 	static dict_t de_dict;
+@@ -1268,7 +1268,7 @@ extern int e2fsck_process_bad_inode(e2fsck_t ctx, ext2_ino_t dir,
+ 	int			not_fixed = 0;
+ 	unsigned char		*frag, *fsize;
  	struct problem_context	pctx;
- 	journal_t *journal;
--	int retval;
-+	errcode_t retval;
+-	int	problem = 0;
++	problem_t		problem = 0;
  
- 	clear_problem_context(&pctx);
+ 	e2fsck_read_inode(ctx, ino, &inode, "process_bad_inode");
  
-@@ -873,7 +873,7 @@ errout:
- 	return retval;
- }
+diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
+index fce0f6e..feaa83e 100644
+--- a/e2fsck/pass5.c
++++ b/e2fsck/pass5.c
+@@ -151,7 +151,7 @@ static void e2fsck_discard_inodes(e2fsck_t ctx, dgrp_t group,
  
--int e2fsck_run_ext3_journal(e2fsck_t ctx)
-+errcode_t e2fsck_run_ext3_journal(e2fsck_t ctx)
+ #define NO_BLK ((blk64_t) -1)
+ 
+-static void print_bitmap_problem(e2fsck_t ctx, int problem,
++static void print_bitmap_problem(e2fsck_t ctx, problem_t problem,
+ 			    struct problem_context *pctx)
  {
- 	io_manager io_ptr = ctx->fs->io->manager;
- 	int blocksize = ctx->fs->blocksize;
-@@ -920,7 +920,7 @@ int e2fsck_run_ext3_journal(e2fsck_t ctx)
- 	ctx->fs->super->s_kbytes_written += kbytes_written;
- 
- 	/* Set the superblock flags */
--	e2fsck_clear_recover(ctx, recover_retval);
-+	e2fsck_clear_recover(ctx, recover_retval != 0);
- 
- 	/*
- 	 * Do one last sanity check, and propagate journal->s_errno to
-diff --git a/e2fsck/pass1b.c b/e2fsck/pass1b.c
-index cd6c883..a3b880c 100644
---- a/e2fsck/pass1b.c
-+++ b/e2fsck/pass1b.c
-@@ -88,8 +88,8 @@ static int process_pass1b_block(ext2_filsys fs, blk64_t	*blocknr,
- 				int ref_offset, void *priv_data);
- static void delete_file(e2fsck_t ctx, ext2_ino_t ino,
- 			struct dup_inode *dp, char *block_buf);
--static int clone_file(e2fsck_t ctx, ext2_ino_t ino,
--		      struct dup_inode *dp, char* block_buf);
-+static errcode_t clone_file(e2fsck_t ctx, ext2_ino_t ino,
-+			    struct dup_inode *dp, char* block_buf);
- static int check_if_fs_block(e2fsck_t ctx, blk64_t test_block);
- static int check_if_fs_cluster(e2fsck_t ctx, blk64_t cluster);
- 
-@@ -779,8 +779,8 @@ static int clone_file_block(ext2_filsys fs,
- 	return 0;
- }
- 
--static int clone_file(e2fsck_t ctx, ext2_ino_t ino,
--		      struct dup_inode *dp, char* block_buf)
-+static errcode_t clone_file(e2fsck_t ctx, ext2_ino_t ino,
-+			    struct dup_inode *dp, char* block_buf)
- {
- 	ext2_filsys fs = ctx->fs;
+ 	switch (problem) {
+@@ -203,7 +203,8 @@ static void check_block_bitmaps(e2fsck_t ctx)
+ 	unsigned int	group_free = 0;
+ 	int	actual, bitmap;
+ 	struct problem_context	pctx;
+-	int	problem, save_problem, fixit, had_problem;
++	problem_t	problem, save_problem;
++	int		fixit, had_problem;
  	errcode_t	retval;
-diff --git a/e2fsck/rehash.c b/e2fsck/rehash.c
-index 9dbdb3b..ac0ff31 100644
---- a/e2fsck/rehash.c
-+++ b/e2fsck/rehash.c
-@@ -55,7 +55,7 @@
- struct fill_dir_struct {
- 	char *buf;
- 	struct ext2_inode *inode;
--	int err;
-+	errcode_t err;
- 	e2fsck_t ctx;
- 	struct hash_entry *harray;
- 	int max_array, num_array;
-diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-index 1ed8fc5..bacb86a 100644
---- a/e2fsck/unix.c
-+++ b/e2fsck/unix.c
-@@ -1071,7 +1071,7 @@ static errcode_t try_open_fs(e2fsck_t ctx, int flags, io_manager io_ptr,
- static const char *my_ver_string = E2FSPROGS_VERSION;
- static const char *my_ver_date = E2FSPROGS_DATE;
- 
--static int e2fsck_check_mmp(ext2_filsys fs, e2fsck_t ctx)
-+static errcode_t e2fsck_check_mmp(ext2_filsys fs, e2fsck_t ctx)
- {
- 	struct mmp_struct *mmp_s;
- 	unsigned int mmp_check_interval;
-diff --git a/e2fsck/util.c b/e2fsck/util.c
-index d361a51..c9e2ca1 100644
---- a/e2fsck/util.c
-+++ b/e2fsck/util.c
-@@ -439,7 +439,7 @@ void print_resource_track(e2fsck_t ctx, const char *desc,
- void e2fsck_read_inode(e2fsck_t ctx, unsigned long ino,
- 			      struct ext2_inode * inode, const char *proc)
- {
--	int retval;
-+	errcode_t retval;
- 
- 	retval = ext2fs_read_inode(ctx->fs, ino, inode);
- 	if (retval) {
-@@ -453,7 +453,7 @@ void e2fsck_read_inode_full(e2fsck_t ctx, unsigned long ino,
- 			    struct ext2_inode *inode, int bufsize,
- 			    const char *proc)
- {
--	int retval;
-+	errcode_t retval;
- 
- 	retval = ext2fs_read_inode_full(ctx->fs, ino, inode, bufsize);
- 	if (retval) {
-@@ -467,7 +467,7 @@ extern void e2fsck_write_inode_full(e2fsck_t ctx, unsigned long ino,
- 			       struct ext2_inode * inode, int bufsize,
- 			       const char *proc)
- {
--	int retval;
-+	errcode_t retval;
- 
- 	retval = ext2fs_write_inode_full(ctx->fs, ino, inode, bufsize);
- 	if (retval) {
-@@ -480,7 +480,7 @@ extern void e2fsck_write_inode_full(e2fsck_t ctx, unsigned long ino,
- extern void e2fsck_write_inode(e2fsck_t ctx, unsigned long ino,
- 			       struct ext2_inode * inode, const char *proc)
- {
--	int retval;
-+	errcode_t retval;
- 
- 	retval = ext2fs_write_inode(ctx->fs, ino, inode);
- 	if (retval) {
+ 	int		csum_flag;
+ 	int		skip_group = 0;
+@@ -542,7 +543,8 @@ static void check_inode_bitmaps(e2fsck_t ctx)
+ 	int		actual, bitmap;
+ 	errcode_t	retval;
+ 	struct problem_context	pctx;
+-	int		problem, save_problem, fixit, had_problem;
++	problem_t	problem, save_problem;
++	int		fixit, had_problem;
+ 	int		csum_flag;
+ 	int		skip_group = 0;
+ 	int		redo_flag = 0;
 -- 
 1.8.5.rc3.362.gdf10213
 
