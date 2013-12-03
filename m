@@ -1,63 +1,142 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH v2 05/28] libext2fs: fix block leak when releasing xattr block
-Date: Tue,  3 Dec 2013 20:11:32 +0800
-Message-ID: <1386072715-9869-6-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH v2 08/28] debugfs: dump all extended attributes
+Date: Tue,  3 Dec 2013 20:11:35 +0800
+Message-ID: <1386072715-9869-9-git-send-email-wenqing.lz@taobao.com>
 References: <1386072715-9869-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Theodore Ts'o <tytso@mit.edu>,
 	"Darrick J. Wong" <darrick.wong@oracle.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f169.google.com ([209.85.192.169]:55911 "EHLO
-	mail-pd0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752443Ab3LCMJT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Dec 2013 07:09:19 -0500
-Received: by mail-pd0-f169.google.com with SMTP id v10so20038110pde.0
-        for <linux-ext4@vger.kernel.org>; Tue, 03 Dec 2013 04:09:19 -0800 (PST)
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:33214 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753430Ab3LCMJZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Dec 2013 07:09:25 -0500
+Received: by mail-pb0-f46.google.com with SMTP id md12so20720752pbc.5
+        for <linux-ext4@vger.kernel.org>; Tue, 03 Dec 2013 04:09:24 -0800 (PST)
 In-Reply-To: <1386072715-9869-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
 
-If in the process of writing EAs to an inode we discover that we no
-longer need the EA block, use the helper function to decrement the
-block's usage count and release it, instead of (brokenly) open-coding
-it.  Also we need to decrement i_blocks when freeing the EA block.
+Use the new extended attribute APIs to display all extended attributes
+(current code does not look in the EA block) and display full names
+(current code ignores name index too).
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/ext_attr.c |    9 ++++-----
- 1 file changed, 4 insertions(+), 5 deletions(-)
+ debugfs/debugfs.c           |   68 +++++++++++++++++++++++++------------------
+ tests/r_inline_xattr/expect |    6 ++--
+ 2 files changed, 42 insertions(+), 32 deletions(-)
 
-diff --git a/lib/ext2fs/ext_attr.c b/lib/ext2fs/ext_attr.c
-index 94bc89b..3e09d58 100644
---- a/lib/ext2fs/ext_attr.c
-+++ b/lib/ext2fs/ext_attr.c
-@@ -315,6 +315,9 @@ errcode_t ext2fs_free_ext_attr(ext2_filsys fs, ext2_ino_t ino,
- 	ext2fs_file_acl_block_set(fs, (struct ext2_inode *)inode, 0);
- 	if (header->h_refcount == 0)
- 		ext2fs_block_alloc_stats2(fs, blk, -1);
-+	err = ext2fs_iblk_sub_blocks(fs, (struct ext2_inode *)inode, 1);
-+	if (err)
-+		goto out2;
- 
- 	/* Write inode? */
- 	if (inode == &i) {
-@@ -549,13 +552,9 @@ skip_ea_block:
- 	blk = ext2fs_file_acl_block(handle->fs, (struct ext2_inode *)inode);
- 	if (!block_buf && blk) {
- 		/* xattrs shrunk, free the block */
--		ext2fs_file_acl_block_set(handle->fs,
--					  (struct ext2_inode *)inode, 0);
--		err = ext2fs_iblk_sub_blocks(handle->fs,
--					     (struct ext2_inode *)inode, 1);
-+		err = ext2fs_free_ext_attr(handle->fs, handle->ino, inode);
- 		if (err)
- 			goto out;
--		ext2fs_block_alloc_stats2(handle->fs, blk, -1);
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index 8c32eff..e489f62 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -540,34 +540,45 @@ static void internal_dump_inode_extra(FILE *out,
+ 				inode->i_extra_isize);
+ 		return;
  	}
+-	storage_size = EXT2_INODE_SIZE(current_fs->super) -
+-			EXT2_GOOD_OLD_INODE_SIZE -
+-			inode->i_extra_isize;
+-	magic = (__u32 *)((char *)inode + EXT2_GOOD_OLD_INODE_SIZE +
+-			inode->i_extra_isize);
+-	if (*magic == EXT2_EXT_ATTR_MAGIC) {
+-		fprintf(out, "Extended attributes stored in inode body: \n");
+-		end = (char *) inode + EXT2_INODE_SIZE(current_fs->super);
+-		start = (char *) magic + sizeof(__u32);
+-		entry = (struct ext2_ext_attr_entry *) start;
+-		while (!EXT2_EXT_IS_LAST_ENTRY(entry)) {
+-			struct ext2_ext_attr_entry *next =
+-				EXT2_EXT_ATTR_NEXT(entry);
+-			if (entry->e_value_size > storage_size ||
+-					(char *) next >= end) {
+-				fprintf(out, "invalid EA entry in inode\n");
+-				return;
+-			}
+-			fprintf(out, "  ");
+-			dump_xattr_string(out, EXT2_EXT_ATTR_NAME(entry),
+-					  entry->e_name_len);
+-			fprintf(out, " = \"");
+-			dump_xattr_string(out, start + entry->e_value_offs,
+-						entry->e_value_size);
+-			fprintf(out, "\" (%u)\n", entry->e_value_size);
+-			entry = next;
+-		}
+-	}
++}
++
++/* Dump extended attributes */
++static int dump_attr(char *name, char *value, size_t value_len, void *data)
++{
++	FILE *out = data;
++
++	fprintf(out, "  ");
++	dump_xattr_string(out, name, strlen(name));
++	fprintf(out, " = \"");
++	dump_xattr_string(out, value, value_len);
++	fprintf(out, "\" (%zu)\n", value_len);
++
++	return 0;
++}
++
++static void dump_inode_attributes(FILE *out, ext2_ino_t ino)
++{
++	struct ext2_xattr_handle *h;
++	errcode_t err;
++
++	err = ext2fs_xattrs_open(current_fs, ino, &h);
++	if (err)
++		return;
++
++	err = ext2fs_xattrs_read(h);
++	if (err)
++		goto out;
++
++	if (ext2fs_xattrs_count(h) == 0)
++		goto out;
++
++	fprintf(out, "Extended attributes:\n");
++	err = ext2fs_xattrs_iterate(h, dump_attr, out);
++	if (err)
++		goto out;
++
++out:
++	err = ext2fs_xattrs_close(&h);
+ }
  
- 	/* Write the inode */
+ static void dump_blocks(FILE *f, const char *prefix, ext2_ino_t inode)
+@@ -815,6 +826,7 @@ void internal_dump_inode(FILE *out, const char *prefix,
+ 	if (EXT2_INODE_SIZE(current_fs->super) > EXT2_GOOD_OLD_INODE_SIZE)
+ 		internal_dump_inode_extra(out, prefix, inode_num,
+ 					  (struct ext2_inode_large *) inode);
++	dump_inode_attributes(out, inode_num);
+ 	if (current_fs->super->s_creator_os == EXT2_OS_LINUX &&
+ 	    current_fs->super->s_feature_ro_compat &
+ 		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) {
+diff --git a/tests/r_inline_xattr/expect b/tests/r_inline_xattr/expect
+index 9e71264..c7aa088 100644
+--- a/tests/r_inline_xattr/expect
++++ b/tests/r_inline_xattr/expect
+@@ -1,8 +1,7 @@
+ resize2fs test
+ debugfs -R ''stat file'' test.img 2>&1 | grep ''^Inode\|in inode body\|name = ''
+ Inode: 1550   Type: regular    Mode:  0644   Flags: 0x0
+-Extended attributes stored in inode body: 
+-  name = "propervalue" (11)
++  user.name = "propervalue" (11)
+ Exit status is 0
+ resize2fs test.img 5M
+ Resizing the filesystem on test.img to 5120 (1k) blocks.
+@@ -11,6 +10,5 @@ The filesystem on test.img is now 5120 blocks long.
+ Exit status is 0
+ debugfs -R ''stat file'' test.img 2>&1 | grep ''^Inode\|in inode body\|name = ''
+ Inode: 12   Type: regular    Mode:  0644   Flags: 0x0
+-Extended attributes stored in inode body: 
+-  name = "propervalue" (11)
++  user.name = "propervalue" (11)
+ Exit status is 0
 -- 
 1.7.9.7
 
