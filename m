@@ -1,132 +1,134 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH v2 02/28] libext2fs: various tweaks to the xattr editor APIs
-Date: Tue,  3 Dec 2013 20:11:29 +0800
-Message-ID: <1386072715-9869-3-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH v2 03/28] libext2fs: extend xattr api to query number of attrs
+Date: Tue,  3 Dec 2013 20:11:30 +0800
+Message-ID: <1386072715-9869-4-git-send-email-wenqing.lz@taobao.com>
 References: <1386072715-9869-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Theodore Ts'o <tytso@mit.edu>,
 	"Darrick J. Wong" <darrick.wong@oracle.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f53.google.com ([209.85.160.53]:40187 "EHLO
-	mail-pb0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752443Ab3LCMJN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Dec 2013 07:09:13 -0500
-Received: by mail-pb0-f53.google.com with SMTP id ma3so20940861pbc.12
-        for <linux-ext4@vger.kernel.org>; Tue, 03 Dec 2013 04:09:13 -0800 (PST)
+Received: from mail-pa0-f47.google.com ([209.85.220.47]:62417 "EHLO
+	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752485Ab3LCMJP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Dec 2013 07:09:15 -0500
+Received: by mail-pa0-f47.google.com with SMTP id kq14so2873282pab.34
+        for <linux-ext4@vger.kernel.org>; Tue, 03 Dec 2013 04:09:15 -0800 (PST)
 In-Reply-To: <1386072715-9869-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
 
-A few tweaks to the extended attribute editing APIs:
-
- * Use size_t, not unsigned int, in the new extended attribute editing
-   API.
-
- * Don't expose the _expand() call since there should be no external
-   users.
-
- * Add a function to return the number of attributes.
+Add another API to query the number of extended attributes.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/ext2fs.h   |    8 +++-----
- lib/ext2fs/ext_attr.c |   16 ++++++++--------
- 2 files changed, 11 insertions(+), 13 deletions(-)
+ lib/ext2fs/ext2fs.h   |    1 +
+ lib/ext2fs/ext_attr.c |   19 +++++++++++++++----
+ 2 files changed, 16 insertions(+), 4 deletions(-)
 
 diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 30bd4cf..57db793 100644
+index 57db793..e251435 100644
 --- a/lib/ext2fs/ext2fs.h
 +++ b/lib/ext2fs/ext2fs.h
-@@ -1149,20 +1149,18 @@ extern errcode_t ext2fs_adjust_ea_refcount3(ext2_filsys fs, blk64_t blk,
- 					   char *block_buf,
- 					   int adjust, __u32 *newcount,
- 					   ext2_ino_t inum);
--errcode_t ext2fs_xattrs_expand(struct ext2_xattr_handle *h,
--			       unsigned int expandby);
- errcode_t ext2fs_xattrs_write(struct ext2_xattr_handle *handle);
- errcode_t ext2fs_xattrs_read(struct ext2_xattr_handle *handle);
- errcode_t ext2fs_xattrs_iterate(struct ext2_xattr_handle *h,
- 				int (*func)(char *name, char *value,
--					    void *data),
-+					    size_t value_len, void *data),
- 				void *data);
- errcode_t ext2fs_xattr_get(struct ext2_xattr_handle *h, const char *key,
--			   void **value, unsigned int *value_len);
-+			   void **value, size_t *value_len);
- errcode_t ext2fs_xattr_set(struct ext2_xattr_handle *handle,
- 			   const char *key,
- 			   const void *value,
--			   unsigned int value_len);
-+			   size_t value_len);
- errcode_t ext2fs_xattr_remove(struct ext2_xattr_handle *handle,
- 			      const char *key);
- errcode_t ext2fs_xattrs_open(ext2_filsys fs, ext2_ino_t ino,
+@@ -1168,6 +1168,7 @@ errcode_t ext2fs_xattrs_open(ext2_filsys fs, ext2_ino_t ino,
+ errcode_t ext2fs_xattrs_close(struct ext2_xattr_handle **handle);
+ errcode_t ext2fs_free_ext_attr(ext2_filsys fs, ext2_ino_t ino,
+ 			       struct ext2_inode_large *inode);
++size_t ext2fs_xattrs_count(struct ext2_xattr_handle *handle);
+ 
+ /* extent.c */
+ extern errcode_t ext2fs_extent_header_verify(void *ptr, int size);
 diff --git a/lib/ext2fs/ext_attr.c b/lib/ext2fs/ext_attr.c
-index 4d40149..bfe95f4 100644
+index bfe95f4..2fae516 100644
 --- a/lib/ext2fs/ext_attr.c
 +++ b/lib/ext2fs/ext_attr.c
-@@ -191,19 +191,19 @@ errcode_t ext2fs_adjust_ea_refcount(ext2_filsys fs, blk_t blk,
- struct ext2_xattr {
- 	char *name;
- 	void *value;
--	unsigned int value_len;
-+	size_t value_len;
- };
- 
+@@ -197,7 +197,7 @@ struct ext2_xattr {
  struct ext2_xattr_handle {
  	ext2_filsys fs;
  	struct ext2_xattr *attrs;
--	unsigned int length;
-+	size_t length;
+-	size_t length;
++	size_t length, count;
  	ext2_ino_t ino;
  	int dirty;
  };
- 
--errcode_t ext2fs_xattrs_expand(struct ext2_xattr_handle *h,
--			       unsigned int expandby)
-+static errcode_t ext2fs_xattrs_expand(struct ext2_xattr_handle *h,
-+				      unsigned int expandby)
- {
- 	struct ext2_xattr *new_attrs;
- 	errcode_t err;
-@@ -759,7 +759,7 @@ out:
- #define XATTR_CHANGED	2
- errcode_t ext2fs_xattrs_iterate(struct ext2_xattr_handle *h,
- 				int (*func)(char *name, char *value,
--					    void *data),
-+					    size_t value_len, void *data),
- 				void *data)
+@@ -575,7 +575,8 @@ out:
+ static errcode_t read_xattrs_from_buffer(struct ext2_xattr_handle *handle,
+ 					 struct ext2_ext_attr_entry *entries,
+ 					 unsigned int storage_size,
+-					 void *value_start)
++					 void *value_start,
++					 size_t *nr_read)
  {
  	struct ext2_xattr *x;
-@@ -770,7 +770,7 @@ errcode_t ext2fs_xattrs_iterate(struct ext2_xattr_handle *h,
- 		if (!x->name)
- 			continue;
+ 	struct ext2_ext_attr_entry *entry;
+@@ -648,6 +649,7 @@ static errcode_t read_xattrs_from_buffer(struct ext2_xattr_handle *handle,
+ 		memcpy(x->value, value_start + entry->e_value_offs,
+ 		       entry->e_value_size);
+ 		x++;
++		(*nr_read)++;
+ 		entry = EXT2_EXT_ATTR_NEXT(entry);
+ 	}
  
--		ret = func(x->name, x->value, data);
-+		ret = func(x->name, x->value, x->value_len, data);
- 		if (ret & XATTR_CHANGED)
- 			h->dirty = 1;
- 		if (ret & XATTR_ABORT)
-@@ -781,7 +781,7 @@ errcode_t ext2fs_xattrs_iterate(struct ext2_xattr_handle *h,
+@@ -697,7 +699,7 @@ errcode_t ext2fs_xattrs_read(struct ext2_xattr_handle *handle)
+ 			inode->i_extra_isize + sizeof(__u32);
+ 
+ 		err = read_xattrs_from_buffer(handle, start, storage_size,
+-					      start);
++					      start, &handle->count);
+ 		if (err)
+ 			goto out;
+ 	}
+@@ -737,7 +739,7 @@ read_ea_block:
+ 			sizeof(struct ext2_ext_attr_header);
+ 		start = block_buf + sizeof(struct ext2_ext_attr_header);
+ 		err = read_xattrs_from_buffer(handle, start, storage_size,
+-					      block_buf);
++					      block_buf, &handle->count);
+ 		if (err)
+ 			goto out3;
+ 
+@@ -848,6 +850,7 @@ errcode_t ext2fs_xattr_set(struct ext2_xattr_handle *handle,
+ 		memcpy(last_empty->value, value, value_len);
+ 		last_empty->value_len = value_len;
+ 		handle->dirty = 1;
++		handle->count++;
+ 		return 0;
+ 	}
+ 
+@@ -868,6 +871,7 @@ errcode_t ext2fs_xattr_set(struct ext2_xattr_handle *handle,
+ 	memcpy(x->value, value, value_len);
+ 	x->value_len = value_len;
+ 	handle->dirty = 1;
++	handle->count++;
+ 	return 0;
  }
  
- errcode_t ext2fs_xattr_get(struct ext2_xattr_handle *h, const char *key,
--			   void **value, unsigned int *value_len)
-+			   void **value, size_t *value_len)
- {
- 	struct ext2_xattr *x;
- 	void *val;
-@@ -808,7 +808,7 @@ errcode_t ext2fs_xattr_get(struct ext2_xattr_handle *h, const char *key,
- errcode_t ext2fs_xattr_set(struct ext2_xattr_handle *handle,
- 			   const char *key,
- 			   const void *value,
--			   unsigned int value_len)
-+			   size_t value_len)
- {
- 	struct ext2_xattr *x, *last_empty;
- 	char *new_value;
+@@ -886,6 +890,7 @@ errcode_t ext2fs_xattr_remove(struct ext2_xattr_handle *handle,
+ 			ext2fs_free_mem(&x->value);
+ 			x->value_len = 0;
+ 			handle->dirty = 1;
++			handle->count--;
+ 			return 0;
+ 		}
+ 	}
+@@ -910,6 +915,7 @@ errcode_t ext2fs_xattrs_open(ext2_filsys fs, ext2_ino_t ino,
+ 		ext2fs_free_mem(&h);
+ 		return err;
+ 	}
++	h->count = 0;
+ 	h->ino = ino;
+ 	h->fs = fs;
+ 	*handle = h;
+@@ -940,3 +946,8 @@ errcode_t ext2fs_xattrs_close(struct ext2_xattr_handle **handle)
+ 	ext2fs_free_mem(handle);
+ 	return 0;
+ }
++
++size_t ext2fs_xattrs_count(struct ext2_xattr_handle *handle)
++{
++	return handle->count;
++}
 -- 
 1.7.9.7
 
