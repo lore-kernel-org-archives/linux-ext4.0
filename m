@@ -1,55 +1,85 @@
-From: Davidlohr Bueso <davidlohr@hp.com>
-Subject: Re: still running into WARNING: CPU: at fs/ext4/inode.c:230
- ext4_evict_inode+0x4a6/0x4e0
-Date: Tue, 03 Dec 2013 10:58:46 -0800
-Message-ID: <1386097126.2741.1.camel@buesod1.americas.hpqcorp.net>
-References: <1381888924.2371.5.camel@buesod1.americas.hpqcorp.net>
-	 <20131016125004.GC14278@quack.suse.cz>
-	 <1381938967.4324.0.camel@buesod1.americas.hpqcorp.net>
-	 <20131016183807.GA1405@quack.suse.cz>
-	 <20131129073702.GA23954@quack.suse.cz>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 05/10] libext2fs: add explicit casts to ext2fs.h
+Date: Tue, 3 Dec 2013 11:16:08 -0800
+Message-ID: <20131203191608.GC9535@birch.djwong.org>
+References: <20131203002503.GA18601@thunk.org>
+ <1386047418-32431-1-git-send-email-tytso@mit.edu>
+ <1386047418-32431-6-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, Linux Kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Kit Westneat <kwestneat@ddn.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from g6t0187.atlanta.hp.com ([15.193.32.64]:14215 "EHLO
-	g6t0187.atlanta.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754082Ab3LCS6t (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Dec 2013 13:58:49 -0500
-In-Reply-To: <20131129073702.GA23954@quack.suse.cz>
+Received: from aserp1040.oracle.com ([141.146.126.69]:51656 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753548Ab3LCTQT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Dec 2013 14:16:19 -0500
+Content-Disposition: inline
+In-Reply-To: <1386047418-32431-6-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 2013-11-29 at 08:37 +0100, Jan Kara wrote:
-> On Wed 16-10-13 20:38:07, Jan Kara wrote:
-> > On Wed 16-10-13 08:56:07, Davidlohr Bueso wrote:
-> > > On Wed, 2013-10-16 at 14:50 +0200, Jan Kara wrote:
-> > > > On Tue 15-10-13 19:02:04, Davidlohr Bueso wrote:
-> > > > > Hello Jan,
-> > > > > 
-> > > > > Just wanted to let you know I hit this[1] again on Linus' latest. The
-> > > > > setup/workload is *identical* to the reported one a few months ago.
-> > > > > 
-> > > > > [1] https://lkml.org/lkml/2013/8/1/532
-> > > > > 
-> > > > > Here's the complete output, I hope it helps...
-> > > >   Thanks for the headup. Last time I wasn't able to reproduce this and
-> > > > eventually forgot about the problem. Can I send you a debug patch and you
-> > > > would run a kernel with it? Thanks.
-> > > 
-> > > Sure.
-> >   OK, attached is the debug patch. Please apply it and send dmesg when the
-> > problem reproduces. Also please attach System.map so that I can map the
-> > 'created at' addresses to symbols. Thanks.
->   Ping? Any luck with the debug patch?
+On Tue, Dec 03, 2013 at 12:10:13AM -0500, Theodore Ts'o wrote:
+> Add some explicit casts to silence some -Wconversion noise.
+>=20
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> ---
+>  lib/ext2fs/ext2fs.h | 10 +++++-----
+>  1 file changed, 5 insertions(+), 5 deletions(-)
+>=20
+> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+> index b7a784e..eb1901e 100644
+> --- a/lib/ext2fs/ext2fs.h
+> +++ b/lib/ext2fs/ext2fs.h
+> @@ -1673,14 +1673,14 @@ _INLINE_ int ext2fs_test_bb_dirty(ext2_filsys=
+ fs)
+>  /*
+>   * Return the group # of a block
+>   */
+> -_INLINE_ int ext2fs_group_of_blk(ext2_filsys fs, blk_t blk)
+> +_INLINE_ dgrp_t ext2fs_group_of_blk(ext2_filsys fs, blk_t blk)
 
-Sorry for the delay, I haven't had much time to look into this. I do
-remember applying the patch and getting a panic - I don't have any more
-data at the moment, hopefully I can get back soon with details.
+The function prototypes up around line 1604 need to be updated:
 
-Thanks,
-Davidlohr
+In file included from inline.c:38:0:
+ext2fs.h:1810:17: error: conflicting types for =E2=80=98ext2fs_group_of=
+_blk=E2=80=99
+ext2fs.h:1604:12: note: previous declaration of =E2=80=98ext2fs_group_o=
+f_blk=E2=80=99 was here
+ext2fs.h:1817:17: error: conflicting types for =E2=80=98ext2fs_group_of=
+_ino=E2=80=99
+ext2fs.h:1605:12: note: previous declaration of =E2=80=98ext2fs_group_o=
+f_ino=E2=80=99 was here
 
+--D
+
+---
+libext2fs: fix function declarations to match definition
+
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ lib/ext2fs/ext2fs.h |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index f9b795a..898ad0c 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -1601,8 +1601,8 @@ extern void ext2fs_mark_ib_dirty(ext2_filsys fs);
+ extern void ext2fs_mark_bb_dirty(ext2_filsys fs);
+ extern int ext2fs_test_ib_dirty(ext2_filsys fs);
+ extern int ext2fs_test_bb_dirty(ext2_filsys fs);
+-extern int ext2fs_group_of_blk(ext2_filsys fs, blk_t blk);
+-extern int ext2fs_group_of_ino(ext2_filsys fs, ext2_ino_t ino);
++extern dgrp_t ext2fs_group_of_blk(ext2_filsys fs, blk_t blk);
++extern dgrp_t ext2fs_group_of_ino(ext2_filsys fs, ext2_ino_t ino);
+ extern blk_t ext2fs_group_first_block(ext2_filsys fs, dgrp_t group);
+ extern blk_t ext2fs_group_last_block(ext2_filsys fs, dgrp_t group);
+ extern blk_t ext2fs_inode_data_blocks(ext2_filsys fs,
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
