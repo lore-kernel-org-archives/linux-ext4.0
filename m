@@ -1,53 +1,46 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 12/18] ocfs2: use generic posix ACL infrastructure
-Date: Tue, 3 Dec 2013 02:48:54 -0800
-Message-ID: <20131203104854.GA3223@infradead.org>
-References: <20131201115903.910559036@bombadil.infradead.org>
- <20131201120655.852590677@bombadil.infradead.org>
- <20131202230007.GK12253@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: cluster-devel@redhat.com, xfs@oss.sgi.com, Mark Fasheh <mfasheh@suse.com>,
- reiserfs-devel@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
- Christoph Hellwig <hch@infradead.org>, linux-mtd@lists.infradead.org,
- viro@zeniv.linux.org.uk, jfs-discussion@lists.sourceforge.net,
- linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
- linux-nfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
- Joel Becker <jlbec@evilplan.org>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org>
-Content-Disposition: inline
-In-Reply-To: <20131202230007.GK12253@quack.suse.cz>
-List-Unsubscribe: <http://lists.infradead.org/mailman/options/linux-mtd>,
- <mailto:linux-mtd-request@lists.infradead.org?subject=unsubscribe>
-List-Archive: <http://lists.infradead.org/pipermail/linux-mtd/>
-List-Post: <mailto:linux-mtd@lists.infradead.org>
-List-Help: <mailto:linux-mtd-request@lists.infradead.org?subject=help>
-List-Subscribe: <http://lists.infradead.org/mailman/listinfo/linux-mtd>,
- <mailto:linux-mtd-request@lists.infradead.org?subject=subscribe>
-Sender: "linux-mtd" <linux-mtd-bounces@lists.infradead.org>
-Errors-To: linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org
-List-Id: linux-ext4.vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] ext2: Fix oops in ext2_get_block() called from ext2_quota_write()
+Date: Tue,  3 Dec 2013 12:57:05 +0100
+Message-ID: <1386071825-10915-1-git-send-email-jack@suse.cz>
+Cc: Christoph Hellwig <hch@infradead.org>, Jan Kara <jack@suse.cz>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:57183 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753382Ab3LCL5M (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 3 Dec 2013 06:57:12 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 03, 2013 at 12:00:07AM +0100, Jan Kara wrote:
->   Hum, this changes the cluster locking. Previously ocfs2_acl_get() used
-> from ocfs2_acl_chmod() grabbed cluster wide inode lock. Now getting of ACL
-> isn't protected by the inode lock. That being said the cluster locking
-> around setattr looks fishy anyway - if two processes on different
-> nodes are changing attributes of the same file, changing ACLs post fact
-> after dropping inode lock could cause interesting effects. Also I'm
-> wondering how inode_change_ok() can ever be safe without holding inode
-> lock... Until we grab that other node is free to change e.g. owner of the
-> inode thus leading even to security implications. But maybe I'm missing
-> something. Mark, Joel?
+ext2_quota_write() doesn't properly setup bh it passes to
+ext2_get_block() and thus we hit assertion BUG_ON(maxblocks == 0) in
+ext2_get_blocks() (or we could actually ask for mapping arbitrary number
+of blocks depending on whatever value was on stack).
 
-Hmm, indeed.  How does ocfs2_iop_get_acl get away without that lock?
+Fix ext2_quota_write() to properly fill in number of blocks to map.
 
-Btw, ocfs2 changes will need careful testing as I couldn't find any easy
-way to run xfstests on ocfs2 out of the box.
+Reported-by: Christoph Hellwig <hch@infradead.org>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext2/super.c | 1 +
+ 1 file changed, 1 insertion(+)
 
+  I plan to send this patch to Linus soon.
 
-______________________________________________________
-Linux MTD discussion mailing list
-http://lists.infradead.org/mailman/listinfo/linux-mtd/
+								Honza
+
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index 288534920fe5..20d6697bd638 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -1493,6 +1493,7 @@ static ssize_t ext2_quota_write(struct super_block *sb, int type,
+ 				sb->s_blocksize - offset : towrite;
+ 
+ 		tmp_bh.b_state = 0;
++		tmp_bh.b_size = sb->s_blocksize;
+ 		err = ext2_get_block(inode, blk, &tmp_bh, 1);
+ 		if (err < 0)
+ 			goto out;
+-- 
+1.8.1.4
+
