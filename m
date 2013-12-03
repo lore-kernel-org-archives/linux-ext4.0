@@ -1,143 +1,176 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 08/10] e2fsck: add support for 64-bit extended attribute block refcounting
-Date: Tue,  3 Dec 2013 00:10:16 -0500
-Message-ID: <1386047418-32431-9-git-send-email-tytso@mit.edu>
+Subject: [PATCH 09/10] e2fsck: use dgrp_t for block group numbers
+Date: Tue,  3 Dec 2013 00:10:17 -0500
+Message-ID: <1386047418-32431-10-git-send-email-tytso@mit.edu>
 References: <20131203002503.GA18601@thunk.org>
  <1386047418-32431-1-git-send-email-tytso@mit.edu>
 Cc: Kit Westneat <kwestneat@ddn.com>, Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:35859 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:35856 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751042Ab3LCFK1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1750998Ab3LCFK1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 3 Dec 2013 00:10:27 -0500
 In-Reply-To: <1386047418-32431-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If we have a 64-bit file system with extended attribute blocks, e2fsck
-would not correctly handle EA blocks that were located beyond the
-32-bit block number boundary.  Fix this by teaching
-e2fsck/ea_refcount.c to use 64-bit block numbers.
+Make e2fsck consistently use dgrp_t for bloc group numbers to avoid
+-Wconveresion noise.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- e2fsck/e2fsck.h      | 11 +++++------
- e2fsck/ea_refcount.c | 18 +++++++++---------
- 2 files changed, 14 insertions(+), 15 deletions(-)
+ e2fsck/journal.c |  3 ++-
+ e2fsck/message.c |  2 +-
+ e2fsck/pass1.c   |  8 +++++---
+ e2fsck/pass2.c   |  2 +-
+ e2fsck/pass4.c   |  2 +-
+ e2fsck/pass5.c   | 16 ++++++++--------
+ e2fsck/problem.h |  2 +-
+ 7 files changed, 19 insertions(+), 16 deletions(-)
 
-diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
-index 3c4f832..913a596 100644
---- a/e2fsck/e2fsck.h
-+++ b/e2fsck/e2fsck.h
-@@ -435,17 +435,16 @@ extern struct dx_dir_info *e2fsck_dx_dir_info_iter(e2fsck_t ctx, int *control);
- /* ea_refcount.c */
- extern errcode_t ea_refcount_create(int size, ext2_refcount_t *ret);
- extern void ea_refcount_free(ext2_refcount_t refcount);
--extern errcode_t ea_refcount_fetch(ext2_refcount_t refcount, blk_t blk,
--				   int *ret);
-+extern errcode_t ea_refcount_fetch(ext2_refcount_t refcount, blk64_t blk, int *ret);
- extern errcode_t ea_refcount_increment(ext2_refcount_t refcount,
--				       blk_t blk, int *ret);
-+				       blk64_t blk, int *ret);
- extern errcode_t ea_refcount_decrement(ext2_refcount_t refcount,
--				       blk_t blk, int *ret);
-+				       blk64_t blk, int *ret);
- extern errcode_t ea_refcount_store(ext2_refcount_t refcount,
--				   blk_t blk, int count);
-+				   blk64_t blk, int count);
- extern blk_t ext2fs_get_refcount_size(ext2_refcount_t refcount);
- extern void ea_refcount_intr_begin(ext2_refcount_t refcount);
--extern blk_t ea_refcount_intr_next(ext2_refcount_t refcount, int *ret);
-+extern blk64_t ea_refcount_intr_next(ext2_refcount_t refcount, int *ret);
- 
- /* ehandler.c */
- extern const char *ehandler_operation(const char *op);
-diff --git a/e2fsck/ea_refcount.c b/e2fsck/ea_refcount.c
-index e66e636..3836c5d 100644
---- a/e2fsck/ea_refcount.c
-+++ b/e2fsck/ea_refcount.c
-@@ -25,7 +25,7 @@
-  * checked, its bit is set in the block_ea_map bitmap.
-  */
- struct ea_refcount_el {
--	blk_t	ea_blk;
-+	blk64_t	ea_blk;
- 	int	ea_count;
- };
- 
-@@ -111,7 +111,7 @@ static void refcount_collapse(ext2_refcount_t refcount)
-  * 	specified position.
-  */
- static struct ea_refcount_el *insert_refcount_el(ext2_refcount_t refcount,
--						 blk_t blk, int pos)
-+						 blk64_t blk, int pos)
- {
- 	struct ea_refcount_el 	*el;
+diff --git a/e2fsck/journal.c b/e2fsck/journal.c
+index bd2c9a1..eb891ca 100644
+--- a/e2fsck/journal.c
++++ b/e2fsck/journal.c
+@@ -945,7 +945,8 @@ void e2fsck_move_ext3_journal(e2fsck_t ctx)
+ 	ext2_ino_t		ino;
  	errcode_t		retval;
-@@ -153,7 +153,7 @@ static struct ea_refcount_el *insert_refcount_el(ext2_refcount_t refcount,
-  * 	and we can't find an entry, create one in the sorted list.
-  */
- static struct ea_refcount_el *get_refcount_el(ext2_refcount_t refcount,
--					      blk_t blk, int create)
-+					      blk64_t blk, int create)
- {
- 	int	low, high, mid;
+ 	const char * const *	cpp;
+-	int			group, mount_flags;
++	dgrp_t			group;
++	int			mount_flags;
  
-@@ -206,7 +206,7 @@ retry:
+ 	clear_problem_context(&pctx);
+ 
+diff --git a/e2fsck/message.c b/e2fsck/message.c
+index 80af1af..7b2cb62 100644
+--- a/e2fsck/message.c
++++ b/e2fsck/message.c
+@@ -450,7 +450,7 @@ static _INLINE_ void expand_percent_expression(FILE *f, ext2_filsys fs,
+ 		fprintf(f, "%*u", width, ctx->dir);
+ 		break;
+ 	case 'g':
+-		fprintf(f, "%*d", width, ctx->group);
++		fprintf(f, "%*u", width, ctx->group);
+ 		break;
+ 	case 'i':
+ 		fprintf(f, "%*u", width, ctx->ino);
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index 3cf4aac..a853413 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -2004,7 +2004,7 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
+ 	struct process_block_struct pb;
+ 	ext2_ino_t	ino = pctx->ino;
+ 	struct ext2_inode *inode = pctx->inode;
+-	int		bad_size = 0;
++	unsigned	bad_size = 0;
+ 	int		dirty_inode = 0;
+ 	int		extent_fs;
+ 	__u64		size;
+@@ -2566,14 +2566,16 @@ static int process_bad_block(ext2_filsys fs,
  	return 0;
  }
  
--errcode_t ea_refcount_fetch(ext2_refcount_t refcount, blk_t blk,
-+errcode_t ea_refcount_fetch(ext2_refcount_t refcount, blk64_t blk,
- 				int *ret)
+-static void new_table_block(e2fsck_t ctx, blk64_t first_block, int group,
++static void new_table_block(e2fsck_t ctx, blk64_t first_block, dgrp_t group,
+ 			    const char *name, int num, blk64_t *new_block)
  {
- 	struct ea_refcount_el	*el;
-@@ -220,7 +220,7 @@ errcode_t ea_refcount_fetch(ext2_refcount_t refcount, blk_t blk,
- 	return 0;
- }
+ 	ext2_filsys fs = ctx->fs;
+ 	dgrp_t		last_grp;
+ 	blk64_t		old_block = *new_block;
+ 	blk64_t		last_block;
+-	int		i, is_flexbg, flexbg, flexbg_size;
++	dgrp_t		flexbg;
++	unsigned	flexbg_size;
++	int		i, is_flexbg;
+ 	char		*buf;
+ 	struct problem_context	pctx;
  
--errcode_t ea_refcount_increment(ext2_refcount_t refcount, blk_t blk, int *ret)
-+errcode_t ea_refcount_increment(ext2_refcount_t refcount, blk64_t blk, int *ret)
- {
- 	struct ea_refcount_el	*el;
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index 6ef17d3..65d8de4 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -844,7 +844,7 @@ out_htree:
+ 	dict_init(&de_dict, DICTCOUNT_T_MAX, dict_de_cmp);
+ 	prev = 0;
+ 	do {
+-		int group;
++		dgrp_t group;
+ 		ext2_ino_t first_unused_inode;
  
-@@ -234,7 +234,7 @@ errcode_t ea_refcount_increment(ext2_refcount_t refcount, blk_t blk, int *ret)
- 	return 0;
- }
+ 		problem = 0;
+diff --git a/e2fsck/pass4.c b/e2fsck/pass4.c
+index 2d55180..21d93f0 100644
+--- a/e2fsck/pass4.c
++++ b/e2fsck/pass4.c
+@@ -99,7 +99,7 @@ void e2fsck_pass4(e2fsck_t ctx)
+ 	struct problem_context	pctx;
+ 	__u16	link_count, link_counted;
+ 	char	*buf = 0;
+-	int	group, maxgroup;
++	dgrp_t	group, maxgroup;
  
--errcode_t ea_refcount_decrement(ext2_refcount_t refcount, blk_t blk, int *ret)
-+errcode_t ea_refcount_decrement(ext2_refcount_t refcount, blk64_t blk, int *ret)
- {
- 	struct ea_refcount_el	*el;
+ 	init_resource_track(&rtrack, ctx->fs->io);
  
-@@ -249,7 +249,7 @@ errcode_t ea_refcount_decrement(ext2_refcount_t refcount, blk_t blk, int *ret)
- 	return 0;
- }
+diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
+index feaa83e..d4bdbd8 100644
+--- a/e2fsck/pass5.c
++++ b/e2fsck/pass5.c
+@@ -196,7 +196,7 @@ static void check_block_bitmaps(e2fsck_t ctx)
+ 	ext2_filsys fs = ctx->fs;
+ 	blk64_t	i;
+ 	unsigned int	*free_array;
+-	int	group = 0;
++	dgrp_t		g, group = 0;
+ 	unsigned int	blocks = 0;
+ 	blk64_t	free_blocks = 0;
+ 	blk64_t first_free = ext2fs_blocks_count(fs->super);
+@@ -498,15 +498,15 @@ redo_counts:
+ 	} else if (fixit == 0)
+ 		ext2fs_unmark_valid(fs);
  
--errcode_t ea_refcount_store(ext2_refcount_t refcount, blk_t blk, int count)
-+errcode_t ea_refcount_store(ext2_refcount_t refcount, blk64_t blk, int count)
- {
- 	struct ea_refcount_el	*el;
+-	for (i = 0; i < fs->group_desc_count; i++) {
+-		if (free_array[i] != ext2fs_bg_free_blocks_count(fs, i)) {
+-			pctx.group = i;
+-			pctx.blk = ext2fs_bg_free_blocks_count(fs, i);
+-			pctx.blk2 = free_array[i];
++	for (g = 0; g < fs->group_desc_count; g++) {
++		if (free_array[g] != ext2fs_bg_free_blocks_count(fs, g)) {
++			pctx.group = g;
++			pctx.blk = ext2fs_bg_free_blocks_count(fs, g);
++			pctx.blk2 = free_array[g];
  
-@@ -277,7 +277,7 @@ void ea_refcount_intr_begin(ext2_refcount_t refcount)
- }
- 
- 
--blk_t ea_refcount_intr_next(ext2_refcount_t refcount,
-+blk64_t ea_refcount_intr_next(ext2_refcount_t refcount,
- 				int *ret)
- {
- 	struct ea_refcount_el	*list;
-@@ -370,7 +370,7 @@ int main(int argc, char **argv)
- 	int	i = 0;
- 	ext2_refcount_t refcount;
- 	int		size, arg;
--	blk_t		blk;
-+	blk64_t		blk;
- 	errcode_t	retval;
- 
- 	while (1) {
+ 			if (fix_problem(ctx, PR_5_FREE_BLOCK_COUNT_GROUP,
+ 					&pctx)) {
+-				ext2fs_bg_free_blocks_count_set(fs, i, free_array[i]);
++				ext2fs_bg_free_blocks_count_set(fs, g, free_array[g]);
+ 				ext2fs_mark_super_dirty(fs);
+ 			} else
+ 				ext2fs_unmark_valid(fs);
+@@ -536,7 +536,7 @@ static void check_inode_bitmaps(e2fsck_t ctx)
+ 	unsigned int	free_inodes = 0;
+ 	int		group_free = 0;
+ 	int		dirs_count = 0;
+-	int		group = 0;
++	dgrp_t		group = 0;
+ 	unsigned int	inodes = 0;
+ 	ext2_ino_t	*free_array;
+ 	ext2_ino_t	*dir_array;
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index 4e7c9cd..6cb09cf 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -18,7 +18,7 @@ struct problem_context {
+ 	struct ext2_dir_entry *dirent;
+ 	blk64_t	blk, blk2;
+ 	e2_blkcnt_t	blkcount;
+-	int		group;
++	dgrp_t		group;
+ 	__u32		csum1, csum2;
+ 	__u64	num;
+ 	const char *str;
 -- 
 1.8.5.rc3.362.gdf10213
 
