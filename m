@@ -1,249 +1,249 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH v2 13/28] debugfs: make mkdir command support inline data
-Date: Tue,  3 Dec 2013 20:11:40 +0800
-Message-ID: <1386072715-9869-14-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH v2 12/28] debugfs: make expand command support inline data
+Date: Tue,  3 Dec 2013 20:11:39 +0800
+Message-ID: <1386072715-9869-13-git-send-email-wenqing.lz@taobao.com>
 References: <1386072715-9869-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Theodore Ts'o <tytso@mit.edu>,
 	"Darrick J. Wong" <darrick.wong@oracle.com>,
 	Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f177.google.com ([209.85.192.177]:33373 "EHLO
-	mail-pd0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753762Ab3LCMJg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Dec 2013 07:09:36 -0500
-Received: by mail-pd0-f177.google.com with SMTP id q10so19674558pdj.8
-        for <linux-ext4@vger.kernel.org>; Tue, 03 Dec 2013 04:09:36 -0800 (PST)
+Received: from mail-pa0-f41.google.com ([209.85.220.41]:33387 "EHLO
+	mail-pa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753678Ab3LCMJe (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Dec 2013 07:09:34 -0500
+Received: by mail-pa0-f41.google.com with SMTP id lf10so2891969pab.14
+        for <linux-ext4@vger.kernel.org>; Tue, 03 Dec 2013 04:09:34 -0800 (PST)
 In-Reply-To: <1386072715-9869-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-This commit tries to make mkdir command in debugfs support inline data.
+This commit defines a ext2fs_inline_data_expand() to expand an inode with
+inline data.
 
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- lib/ext2fs/ext2fs.h      |    2 ++
+ lib/ext2fs/expanddir.c   |    2 +
  lib/ext2fs/ext2fsP.h     |    1 +
- lib/ext2fs/inline_data.c |   10 ++++++
- lib/ext2fs/mkdir.c       |   77 +++++++++++++++++++++++++++++++++-------------
- lib/ext2fs/newdir.c      |   25 +++++++++++++++
- 5 files changed, 93 insertions(+), 22 deletions(-)
+ lib/ext2fs/inline_data.c |  183 ++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 186 insertions(+)
 
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index c5b73fd..1481a3d 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -1444,6 +1444,8 @@ int ext2fs_native_flag(void);
- /* newdir.c */
- extern errcode_t ext2fs_new_dir_block(ext2_filsys fs, ext2_ino_t dir_ino,
- 				ext2_ino_t parent_ino, char **block);
-+extern errcode_t ext2fs_new_dir_inline_data(ext2_filsys fs, ext2_ino_t dir_ino,
-+				ext2_ino_t parent_ino, __u32 *iblock);
+diff --git a/lib/ext2fs/expanddir.c b/lib/ext2fs/expanddir.c
+index 22558d6..baad782 100644
+--- a/lib/ext2fs/expanddir.c
++++ b/lib/ext2fs/expanddir.c
+@@ -116,6 +116,8 @@ errcode_t ext2fs_expand_dir(ext2_filsys fs, ext2_ino_t dir)
  
- /* mkdir.c */
- extern errcode_t ext2fs_mkdir(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t inum,
+ 	retval = ext2fs_block_iterate3(fs, dir, BLOCK_FLAG_APPEND,
+ 				       0, expand_dir_proc, &es);
++	if (retval == EXT2_ET_INLINE_DATA_CANT_ITERATE)
++		return ext2fs_inline_data_expand(fs, dir);
+ 
+ 	if (es.err)
+ 		return es.err;
 diff --git a/lib/ext2fs/ext2fsP.h b/lib/ext2fs/ext2fsP.h
-index 4dfa983..b2da21a 100644
+index aae55b9..4dfa983 100644
 --- a/lib/ext2fs/ext2fsP.h
 +++ b/lib/ext2fs/ext2fsP.h
-@@ -88,6 +88,7 @@ extern int ext2fs_process_dir_block(ext2_filsys  	fs,
- 				    int			ref_offset,
- 				    void		*priv_data);
+@@ -90,6 +90,7 @@ extern int ext2fs_process_dir_block(ext2_filsys  	fs,
  
-+extern errcode_t ext2fs_inline_data_init(ext2_filsys fs, ext2_ino_t ino);
  extern errcode_t ext2fs_inline_data_size(ext2_filsys fs, ext2_ino_t ino,
  					 size_t *size);
- extern errcode_t ext2fs_inline_data_expand(ext2_filsys fs, ext2_ino_t ino);
++extern errcode_t ext2fs_inline_data_expand(ext2_filsys fs, ext2_ino_t ino);
+ extern errcode_t ext2fs_inline_data_dir_iterate(ext2_filsys fs,
+ 				      ext2_ino_t ino,
+ 				      int (*func)(ext2_filsys fs,
 diff --git a/lib/ext2fs/inline_data.c b/lib/ext2fs/inline_data.c
-index 02bb470..527a52d 100644
+index 7dc3f24..02bb470 100644
 --- a/lib/ext2fs/inline_data.c
 +++ b/lib/ext2fs/inline_data.c
-@@ -77,6 +77,16 @@ err:
- 	return retval;
+@@ -196,3 +196,186 @@ out:
+ 	retval |= BLOCK_ERROR;
+ 	return retval & BLOCK_ERROR ? ctx->errcode : 0;
  }
- 
-+errcode_t ext2fs_inline_data_init(ext2_filsys fs, ext2_ino_t ino)
-+{
-+	struct ext2_inline_data data;
 +
-+	data.fs = fs;
-+	data.ino = ino;
-+	data.ea_size = 0;
-+	data.ea_data = "";
-+	return ext2fs_inline_data_ea_set(&data);
++static errcode_t ext2fs_inline_data_ea_remove(ext2_filsys fs, ext2_ino_t ino)
++{
++	struct ext2_xattr_handle *handle;
++	errcode_t retval;
++
++	retval = ext2fs_xattrs_open(fs, ino, &handle);
++	if (retval)
++		return retval;
++
++	retval = ext2fs_xattrs_read(handle);
++	if (retval)
++		goto err;
++
++	retval = ext2fs_xattr_remove(handle, "system.data");
++	if (retval)
++		goto err;
++
++	retval = ext2fs_xattrs_write(handle);
++
++err:
++	(void) ext2fs_xattrs_close(&handle);
++	return retval;
 +}
- 
- errcode_t ext2fs_inline_data_size(ext2_filsys fs, ext2_ino_t ino, size_t *size)
- {
-diff --git a/lib/ext2fs/mkdir.c b/lib/ext2fs/mkdir.c
-index 4a85439..06c2c7e 100644
---- a/lib/ext2fs/mkdir.c
-+++ b/lib/ext2fs/mkdir.c
-@@ -41,10 +41,20 @@ errcode_t ext2fs_mkdir(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t inum,
- 	ext2_ino_t		scratch_ino;
- 	blk64_t			blk;
- 	char			*block = 0;
-+	int			inline_data = 0;
- 
- 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
- 
- 	/*
-+	 * Create a new dir with inline data iff this feature is enabled
-+	 * and ino >= EXT2_FIRST_INO.
-+	 */
-+	if ((!ino || ino >= EXT2_FIRST_INO(fs->super)) &&
-+	    EXT2_HAS_INCOMPAT_FEATURE(fs->super,
-+				      EXT4_FEATURE_INCOMPAT_INLINE_DATA))
-+		inline_data = 1;
++
++static errcode_t ext2fs_inline_data_convert_dir(ext2_filsys fs, ext2_ino_t ino,
++						char *bbuf, char *ibuf, int size)
++{
++	struct ext2_dir_entry *dir, *dir2;
++	struct ext2_dir_entry_tail *t;
++	errcode_t retval;
++	unsigned int offset;
++	int csum_size = 0;
++	int filetype = 0;
++	int rec_len;
++
++	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		csum_size = sizeof(struct ext2_dir_entry_tail);
++
++	/* Create '.' and '..' */
++	if (EXT2_HAS_INCOMPAT_FEATURE(fs->super,
++				      EXT2_FEATURE_INCOMPAT_FILETYPE))
++		filetype = EXT2_FT_DIR << 8;
 +
 +	/*
- 	 * Allocate an inode, if necessary
- 	 */
- 	if (!ino) {
-@@ -57,14 +67,21 @@ errcode_t ext2fs_mkdir(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t inum,
- 	/*
- 	 * Allocate a data block for the directory
- 	 */
--	retval = ext2fs_new_block2(fs, 0, 0, &blk);
--	if (retval)
--		goto cleanup;
-+	if (!inline_data) {
-+		retval = ext2fs_new_block2(fs, 0, 0, &blk);
-+		if (retval)
-+			goto cleanup;
-+	}
- 
- 	/*
- 	 * Create a scratch template for the directory
- 	 */
--	retval = ext2fs_new_dir_block(fs, ino, parent, &block);
-+	memset(&inode, 0, sizeof(struct ext2_inode));
-+	if (inline_data)
-+		retval = ext2fs_new_dir_inline_data(fs, ino, parent,
-+						    inode.i_block);
-+	else
-+		retval = ext2fs_new_dir_block(fs, ino, parent, &block);
- 	if (retval)
- 		goto cleanup;
- 
-@@ -81,16 +98,21 @@ errcode_t ext2fs_mkdir(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t inum,
- 	/*
- 	 * Create the inode structure....
- 	 */
--	memset(&inode, 0, sizeof(struct ext2_inode));
- 	inode.i_mode = LINUX_S_IFDIR | (0777 & ~fs->umask);
- 	inode.i_uid = inode.i_gid = 0;
--	ext2fs_iblk_set(fs, &inode, 1);
--	if (fs->super->s_feature_incompat & EXT3_FEATURE_INCOMPAT_EXTENTS)
--		inode.i_flags |= EXT4_EXTENTS_FL;
--	else
--		inode.i_block[0] = blk;
-+	if (inline_data) {
-+		inode.i_flags |= EXT4_INLINE_DATA_FL;
-+		inode.i_size = EXT4_MIN_INLINE_DATA_SIZE;
-+	} else {
-+		if (fs->super->s_feature_incompat &
-+		    EXT3_FEATURE_INCOMPAT_EXTENTS)
-+			inode.i_flags |= EXT4_EXTENTS_FL;
-+		else
-+			inode.i_block[0] = blk;
-+		inode.i_size = fs->blocksize;
-+		ext2fs_iblk_set(fs, &inode, 1);
-+	}
- 	inode.i_links_count = 2;
--	inode.i_size = fs->blocksize;
- 
- 	/*
- 	 * Write out the inode and inode data block.  The inode generation
-@@ -100,18 +122,24 @@ errcode_t ext2fs_mkdir(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t inum,
- 	retval = ext2fs_write_new_inode(fs, ino, &inode);
- 	if (retval)
- 		goto cleanup;
--	retval = ext2fs_write_dir_block4(fs, blk, block, 0, ino);
--	if (retval)
--		goto cleanup;
--
--	if (fs->super->s_feature_incompat & EXT3_FEATURE_INCOMPAT_EXTENTS) {
--		retval = ext2fs_extent_open2(fs, ino, &inode, &handle);
--		if (retval)
--			goto cleanup;
--		retval = ext2fs_extent_set_bmap(handle, 0, blk, 0);
--		ext2fs_extent_free(handle);
-+	if (inline_data) {
-+		/* init "system.data" for new dir */
-+		retval = ext2fs_inline_data_init(fs, ino);
-+	} else {
-+		retval = ext2fs_write_dir_block4(fs, blk, block, 0, ino);
- 		if (retval)
- 			goto cleanup;
++	 * Set up entry for '.'
++	 */
++	dir = (struct ext2_dir_entry *) bbuf;
++	dir->inode = ino;
++	ext2fs_dirent_set_name_len(dir, 1);
++	ext2fs_dirent_set_file_type(dir, filetype);
++	dir->name[0] = '.';
++	rec_len = (fs->blocksize - csum_size) - EXT2_DIR_REC_LEN(1);
++	dir->rec_len = EXT2_DIR_REC_LEN(1);
 +
-+		if (fs->super->s_feature_incompat &
-+		    EXT3_FEATURE_INCOMPAT_EXTENTS) {
-+			retval = ext2fs_extent_open2(fs, ino, &inode, &handle);
-+			if (retval)
-+				goto cleanup;
-+			retval = ext2fs_extent_set_bmap(handle, 0, blk, 0);
-+			ext2fs_extent_free(handle);
-+			if (retval)
-+				goto cleanup;
-+		}
- 	}
- 
- 	/*
-@@ -136,6 +164,10 @@ errcode_t ext2fs_mkdir(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t inum,
- 	 * Update parent inode's counts
- 	 */
- 	if (parent != ino) {
-+		/* reload parent inode due to inline data */
-+		retval = ext2fs_read_inode(fs, parent, &parent_inode);
-+		if (retval)
-+			goto cleanup;
- 		parent_inode.i_links_count++;
- 		retval = ext2fs_write_inode(fs, parent, &parent_inode);
- 		if (retval)
-@@ -145,7 +177,8 @@ errcode_t ext2fs_mkdir(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t inum,
- 	/*
- 	 * Update accounting....
- 	 */
--	ext2fs_block_alloc_stats2(fs, blk, +1);
-+	if (!inline_data)
-+		ext2fs_block_alloc_stats2(fs, blk, +1);
- 	ext2fs_inode_alloc_stats2(fs, ino, +1, 1);
- 
- cleanup:
-diff --git a/lib/ext2fs/newdir.c b/lib/ext2fs/newdir.c
-index d134bdf..5358c74 100644
---- a/lib/ext2fs/newdir.c
-+++ b/lib/ext2fs/newdir.c
-@@ -89,3 +89,28 @@ errcode_t ext2fs_new_dir_block(ext2_filsys fs, ext2_ino_t dir_ino,
- 	*block = buf;
- 	return 0;
- }
++	/*
++	 * Set up entry for '..'
++	 */
++	dir = (struct ext2_dir_entry *) (bbuf + dir->rec_len);
++	dir->rec_len = EXT2_DIR_REC_LEN(2);
++	dir->inode = ext2fs_le32_to_cpu(((__u32 *)ibuf)[0]);
++	ext2fs_dirent_set_name_len(dir, 2);
++	ext2fs_dirent_set_file_type(dir, filetype);
++	dir->name[0] = '.';
++	dir->name[1] = '.';
 +
-+/*
-+ * Create new directory on inline data
-+ */
-+errcode_t ext2fs_new_dir_inline_data(ext2_filsys fs, ext2_ino_t dir_ino,
-+				     ext2_ino_t parent_ino, __u32 *iblock)
++	/*
++	 * Ajust the last rec_len
++	 */
++	offset = EXT2_DIR_REC_LEN(1) + EXT2_DIR_REC_LEN(2);
++	dir = (struct ext2_dir_entry *) (bbuf + offset);
++	memcpy(bbuf + offset, ibuf + EXT4_INLINE_DATA_DOTDOT_SIZE,
++	       size - EXT4_INLINE_DATA_DOTDOT_SIZE);
++
++	do {
++		dir2 = dir;
++		retval = ext2fs_get_rec_len(fs, dir, &rec_len);
++		if (retval)
++			goto err;
++		offset += rec_len;
++		dir = (struct ext2_dir_entry *) (bbuf + offset);
++	} while (offset < size);
++	rec_len += fs->blocksize - csum_size - offset;
++	retval = ext2fs_set_rec_len(fs, rec_len, dir2);
++	if (retval)
++		goto err;
++
++	if (csum_size) {
++		t = EXT2_DIRENT_TAIL(bbuf, fs->blocksize);
++		ext2fs_initialize_dirent_tail(fs, t);
++	}
++
++err:
++	return retval;
++}
++
++errcode_t ext2fs_inline_data_expand(ext2_filsys fs, ext2_ino_t ino)
 +{
-+	struct ext2_dir_entry 	*dir = NULL;
-+	errcode_t		retval;
-+	char			*buf;
-+	int			rec_len;
-+	int			filetype = 0;
++	struct ext2_inode inode;
++	struct ext2_inline_data data;
++	errcode_t retval;
++	blk64_t blk;
++	char *inline_buf = 0;
++	char *blk_buf = 0;
 +
 +	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
 +
-+	iblock[0] = ext2fs_cpu_to_le32(parent_ino);
++	retval = ext2fs_read_inode(fs, ino, &inode);
++	if (retval)
++		return retval;
 +
-+	dir = (struct ext2_dir_entry *)((char *)iblock +
-+					EXT4_INLINE_DATA_DOTDOT_SIZE);
-+	dir->inode = 0;
-+	rec_len = EXT4_MIN_INLINE_DATA_SIZE - EXT4_INLINE_DATA_DOTDOT_SIZE;
-+	retval = ext2fs_set_rec_len(fs, rec_len, dir);
++	if (!(inode.i_flags & EXT4_INLINE_DATA_FL))
++		return EXT2_ET_NO_INLINE_DATA;
 +
++	/* Get inline data first */
++	data.fs = fs;
++	data.ino = ino;
++	retval = ext2fs_inline_data_ea_get(&data);
++	if (retval)
++		return retval;
++	retval = ext2fs_get_mem(EXT4_MIN_INLINE_DATA_SIZE + data.ea_size,
++				&inline_buf);
++	if (retval)
++		goto errout;
++
++	memcpy(inline_buf, (void *)inode.i_block, EXT4_MIN_INLINE_DATA_SIZE);
++	if (data.ea_size > 0) {
++		memcpy(inline_buf + EXT4_MIN_INLINE_DATA_SIZE,
++		       data.ea_data, data.ea_size);
++	}
++
++	memset((void *)inode.i_block, 0, EXT4_MIN_INLINE_DATA_SIZE);
++	retval = ext2fs_inline_data_ea_remove(fs, ino);
++	if (retval)
++		goto errout;
++
++	retval = ext2fs_get_mem(fs->blocksize, &blk_buf);
++	if (retval)
++		goto errout;
++
++	/* Adjust the rec_len */
++	retval = ext2fs_inline_data_convert_dir(fs, ino, blk_buf, inline_buf,
++						EXT4_MIN_INLINE_DATA_SIZE +
++							data.ea_size);
++	if (retval)
++		goto errout;
++
++	/* Allocate a new block */
++	retval = ext2fs_new_block2(fs, 0, 0, &blk);
++	if (retval)
++		goto errout;
++	if (EXT2_HAS_INCOMPAT_FEATURE(fs->super, EXT3_FEATURE_INCOMPAT_EXTENTS))
++		inode.i_flags |= EXT4_EXTENTS_FL;
++	else
++		inode.i_block[0] = blk;
++	inode.i_flags &= ~EXT4_INLINE_DATA_FL;
++	ext2fs_iblk_set(fs, &inode, 1);
++	inode.i_size = fs->blocksize;
++	retval = ext2fs_write_inode(fs, ino, &inode);
++	if (retval)
++		goto errout;
++	retval = ext2fs_write_dir_block4(fs, blk, blk_buf, 0, ino);
++	if (retval)
++		goto errout;
++	if (EXT2_HAS_INCOMPAT_FEATURE(fs->super, EXT3_FEATURE_INCOMPAT_EXTENTS)) {
++		ext2_extent_handle_t handle;
++
++		retval = ext2fs_extent_open2(fs, ino, &inode, &handle);
++		if (retval)
++			goto errout;
++		retval = ext2fs_extent_set_bmap(handle, 0, blk, 0);
++		ext2fs_extent_free(handle);
++	}
++
++errout:
++	if (blk_buf)
++		ext2fs_free_mem(&blk_buf);
++	if (inline_buf)
++		ext2fs_free_mem(&inline_buf);
++	ext2fs_free_mem(&data.ea_data);
 +	return retval;
 +}
 -- 
