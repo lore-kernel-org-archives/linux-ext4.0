@@ -1,31 +1,139 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] ext2: Fix oops in ext2_get_block() called from
- ext2_quota_write()
-Date: Wed, 4 Dec 2013 03:01:41 -0800
-Message-ID: <20131204110141.GB3263@infradead.org>
-References: <1386071825-10915-1-git-send-email-jack@suse.cz>
+From: Steven Whitehouse <swhiteho@redhat.com>
+Subject: Re: [Cluster-devel] [PATCH 16/18] gfs2: use generic posix ACL
+	infrastructure
+Date: Wed, 04 Dec 2013 12:12:37 +0000
+Message-ID: <1386159157.2711.11.camel@menhir>
+References: <20131201115903.910559036@bombadil.infradead.org>
+	<20131201120656.539995924@bombadil.infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Christoph Hellwig <hch@infradead.org>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:43542 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755482Ab3LDLBm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Dec 2013 06:01:42 -0500
-Content-Disposition: inline
-In-Reply-To: <1386071825-10915-1-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: jfs-discussion@lists.sourceforge.net, linux-ext4@vger.kernel.org,
+	reiserfs-devel@vger.kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
+	linux-mtd@lists.infradead.org, viro@zeniv.linux.org.uk,
+	linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
+	linux-nfs@vger.kernel.org, linux-btrfs@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <20131201120656.539995924@bombadil.infradead.org>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Dec 03, 2013 at 12:57:05PM +0100, Jan Kara wrote:
-> ext2_quota_write() doesn't properly setup bh it passes to
-> ext2_get_block() and thus we hit assertion BUG_ON(maxblocks == 0) in
-> ext2_get_blocks() (or we could actually ask for mapping arbitrary number
-> of blocks depending on whatever value was on stack).
+Hi,
+
+On Sun, 2013-12-01 at 03:59 -0800, Christoph Hellwig wrote:
+> plain text document attachment
+> (0016-gfs2-use-generic-posix-ACL-infrastructure.patch)
+> This contains some major refactoring for the create path so that
+> inodes are created with the right mode to start with instead of
+> fixing it up later.
 > 
-> Fix ext2_quota_write() to properly fill in number of blocks to map.
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> ---
+>  fs/gfs2/acl.c   |  229 +++++++------------------------------------------------
+>  fs/gfs2/acl.h   |    4 +-
+>  fs/gfs2/inode.c |   33 ++++++--
+>  fs/gfs2/xattr.c |    4 +-
+>  4 files changed, 61 insertions(+), 209 deletions(-)
+> 
+Looks very good. I'd really like to be able to do something similar with
+the security xattrs, in terms of the refactoring that at inode creation
+to give the xattrs ahead of the inode allocation itself. That way it
+should be possible to allocate the xattr blocks at the same time as the
+inode, rather than as an after thought.
 
-Looks good,
+Some more comments below....
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+> diff --git a/fs/gfs2/acl.c b/fs/gfs2/acl.c
+> index e82e4ac..e6c7a2c 100644
+> --- a/fs/gfs2/acl.c
+> +++ b/fs/gfs2/acl.c
+[snip]
+> -
+> -static int gfs2_xattr_system_set(struct dentry *dentry, const char *name,
+> -				 const void *value, size_t size, int flags,
+> -				 int xtype)
+> -{
+> -	struct inode *inode = dentry->d_inode;
+> -	struct gfs2_sbd *sdp = GFS2_SB(inode);
+> -	struct posix_acl *acl = NULL;
+> -	int error = 0, type;
+> -
+> -	if (!sdp->sd_args.ar_posix_acl)
+> -		return -EOPNOTSUPP;
+> -
+> -	type = gfs2_acl_type(name);
+> -	if (type < 0)
+> -		return type;
+> -	if (flags & XATTR_CREATE)
+> -		return -EINVAL;
+> -	if (type == ACL_TYPE_DEFAULT && !S_ISDIR(inode->i_mode))
+> -		return value ? -EACCES : 0;
+> -	if (!uid_eq(current_fsuid(), inode->i_uid) && !capable(CAP_FOWNER))
+> -		return -EPERM;
+> -	if (S_ISLNK(inode->i_mode))
+> -		return -EOPNOTSUPP;
+> -
+> -	if (!value)
+> -		goto set_acl;
+>  
+> -	acl = posix_acl_from_xattr(&init_user_ns, value, size);
+> -	if (!acl) {
+> -		/*
+> -		 * acl_set_file(3) may request that we set default ACLs with
+> -		 * zero length -- defend (gracefully) against that here.
+> -		 */
+> -		goto out;
+> -	}
+> -	if (IS_ERR(acl)) {
+> -		error = PTR_ERR(acl);
+> -		goto out;
+> -	}
+> -
+> -	error = posix_acl_valid(acl);
+> -	if (error)
+> -		goto out_release;
+> -
+> -	error = -EINVAL;
+>  	if (acl->a_count > GFS2_ACL_MAX_ENTRIES)
+> -		goto out_release;
+> +		return -EINVAL;
+>  
+>  	if (type == ACL_TYPE_ACCESS) {
+>  		umode_t mode = inode->i_mode;
+> +
+>  		error = posix_acl_equiv_mode(acl, &mode);
+> +		if (error < 0)
+>  
+Andy Price has pointed out a missing "return error;" here
+
+> -		if (error <= 0) {
+> -			posix_acl_release(acl);
+> +		if (error == 0)
+>  			acl = NULL;
+>  
+> -			if (error < 0)
+> -				return error;
+> -		}
+> -
+
+Also, there seems to be a white space error in the xfs patch around line
+170 in fs/xfs/xfs_iops.c where there is an added "if (default_acl)" with
+a space before the tab,
+
+Steve.
+
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
