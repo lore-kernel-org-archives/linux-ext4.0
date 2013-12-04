@@ -1,100 +1,49 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH v2 09/28] libext2fs: handle inline data in dir iterator
- function
-Date: Wed, 4 Dec 2013 14:21:42 +0800
-Message-ID: <20131204062142.GB26103@gmail.com>
-References: <1386072715-9869-1-git-send-email-wenqing.lz@taobao.com>
- <1386072715-9869-10-git-send-email-wenqing.lz@taobao.com>
- <20131203221349.GF9535@birch.djwong.org>
- <20131204045736.GF20409@gmail.com>
- <20131204051025.GF9541@birch.djwong.org>
- <20131204052619.GH20409@gmail.com>
- <20131204060742.GQ9535@birch.djwong.org>
+From: Al Viro <viro@ZenIV.linux.org.uk>
+Subject: [PATCH] fix del_timer() misuse for ->s_err_report
+Date: Wed, 4 Dec 2013 07:29:26 +0000
+Message-ID: <20131204072926.GK10323@ZenIV.linux.org.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	Zheng Liu <wenqing.lz@taobao.com>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f170.google.com ([209.85.192.170]:40017 "EHLO
-	mail-pd0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751400Ab3LDGSt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Dec 2013 01:18:49 -0500
-Received: by mail-pd0-f170.google.com with SMTP id g10so21873927pdj.1
-        for <linux-ext4@vger.kernel.org>; Tue, 03 Dec 2013 22:18:48 -0800 (PST)
+Received: from zeniv.linux.org.uk ([195.92.253.2]:59285 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752077Ab3LDH32 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Dec 2013 02:29:28 -0500
 Content-Disposition: inline
-In-Reply-To: <20131204060742.GQ9535@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 03, 2013 at 10:07:42PM -0800, Darrick J. Wong wrote:
-> On Wed, Dec 04, 2013 at 01:26:19PM +0800, Zheng Liu wrote:
-> > On Tue, Dec 03, 2013 at 09:10:25PM -0800, Darrick J. Wong wrote:
-> > > On Wed, Dec 04, 2013 at 12:57:36PM +0800, Zheng Liu wrote:
-> > > > On Tue, Dec 03, 2013 at 02:13:49PM -0800, Darrick J. Wong wrote:
-> > > > > On Tue, Dec 03, 2013 at 08:11:36PM +0800, Zheng Liu wrote:
-> > > > > > From: Zheng Liu <wenqing.lz@taobao.com>
-> > > > > > 
-> > > > > > Inline_data is handled in dir iterator because a lot of commands use
-> > > > > > this function to traverse directory entries in debugfs.  We need to
-> > > > > > handle inline_data individually because inline_data is saved in two
-> > > > > > places.  One is in i_block, and another is in ibody extended attribute.
-> > > > > > 
-> > > > > > After applied this commit, the following commands in debugfs can
-> > > > > > support the inline_data feature:
-> > > > > > 	- cd
-> > > > > > 	- chroot
-> > > > > > 	- link*
-> > > > > > 	- ls
-> > > > > > 	- ncheck
-> > > > > > 	- pwd
-> > > > > > 	- unlink
-> > > > > > 
-> > > > > > * TODO: Inline_data doesn't expand to ibody extended attribute because
-> > > > > >   link command doesn't handle DIR_NO_SPACE error until now.  But if we
-> > > > > >   have already expanded inline data to ibody ea area, link command can
-> > > > > >   occupy this space.
-> > > > > 
-> > > > > A patch for this TODO is coming, right?
-> > > > 
-> > > > TBH, I don't have a patch for this because I don't know why ext2fs_link
-> > > > doesn't handle DIR_NO_SPACE error.  So I will try to fix it later.
-> > > 
-> > > Yeah, it's sort of annoying that it doesn't do that.  You might notice that
-> > > fuse2fs will detect that error code, call ext2fs_expand_dir(), and try again.
-> > > On the other hand, none of the other programs do that...
-> > > 
-> > > ...it's not difficult to change ext2fs_link() to do that, though.
-> > > 
-> > > again:
-> > > 
-> > > /* link_proc magic... */
-> > > 
-> > > if (!ls.done && !not_again) {
-> > > 	ext2fs_expand_dir(fs, dir...);
-> > > 	not_again = 1;
-> > > 	goto again;
-> > > }
-> > > 
-> > > Hmm.  That /is/ easy to fix.  I might as well fix that.
-> > 
-> > I don't think we should fix it in ext2fs_link because I am afraid that
-> > we could break the client that has handled this problem.  So I am plan
-> > to fix it in make_link().  What do you think?
-> 
-> I think the clients will be fine.  Most likely, if the dir can't be expanded,
-> then ext2fs_link will return ext2fs_expand_directory's failure code.
-> 
-> On the off chance there's a weird bug somewhere such that we successfully
-> expand the dir but _link's built-in retry fails again, then the client will see
-> the "no dir space" error, expand the dir (again!), and retry the link, which
-> will again fail.  Assuming the client doesn't madly retry in a loop, all that
-> means is that we bang our heads against the wall a few more times than we need
-> to.
-> 
-> Luckily, most of the _link clients in the e2fsprogs source are too stupid even
-> to expand-and-retry.
+	That thing should be del_timer_sync(); consider what happens
+if ext4_put_super() call of del_timer() happens to come just as it's
+getting run on another CPU.  Since that timer reschedules itself
+to run next day, you are pretty much guaranteed that you'll end up
+with kfree'd scheduled timer, with usual fun consequences.  AFAICS,
+that's -stable fodder all way back to 2010... [the second del_timer_sync()
+is almost certainly not needed, but it doesn't hurt either]
 
-OK.  So let me fix it. :)
-
-                                                - Zheng
+Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
+---
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index c977f4e..9d70c0c 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -792,7 +792,7 @@ static void ext4_put_super(struct super_block *sb)
+ 	}
+ 
+ 	ext4_es_unregister_shrinker(sbi);
+-	del_timer(&sbi->s_err_report);
++	del_timer_sync(&sbi->s_err_report);
+ 	ext4_release_system_zone(sb);
+ 	ext4_mb_release(sb);
+ 	ext4_ext_release(sb);
+@@ -4184,7 +4184,7 @@ failed_mount_wq:
+ 	}
+ failed_mount3:
+ 	ext4_es_unregister_shrinker(sbi);
+-	del_timer(&sbi->s_err_report);
++	del_timer_sync(&sbi->s_err_report);
+ 	if (sbi->s_flex_groups)
+ 		ext4_kvfree(sbi->s_flex_groups);
+ 	percpu_counter_destroy(&sbi->s_freeclusters_counter);
