@@ -1,34 +1,62 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] mmp: fix 64-bit handling of s_mmp_block
-Date: Tue, 3 Dec 2013 20:07:49 -0500
-Message-ID: <20131204010749.GA15658@thunk.org>
-References: <1376085723-4314-1-git-send-email-adilger@dilger.ca>
+Subject: [PATCH v3] ext4: check for overlapping extents in
+ ext4_valid_extent_entries()
+Date: Tue, 3 Dec 2013 21:36:00 -0500
+Message-ID: <20131204023600.GB15658@thunk.org>
+References: <1382002073-27862-1-git-send-email-guaneryu@gmail.com>
+ <1382275647-4616-1-git-send-email-guaneryu@gmail.com>
+ <alpine.LFD.2.00.1310211751370.1983@localhost.localdomain>
+ <20131022184030.GC2708@dhcp-13-216.nay.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
+	linux-ext4@vger.kernel.org
+To: Eryu Guan <guaneryu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:36223 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:36242 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753549Ab3LDBHw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 3 Dec 2013 20:07:52 -0500
+	id S1754853Ab3LDCgG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 3 Dec 2013 21:36:06 -0500
 Content-Disposition: inline
-In-Reply-To: <1376085723-4314-1-git-send-email-adilger@dilger.ca>
+In-Reply-To: <20131022184030.GC2708@dhcp-13-216.nay.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 09, 2013 at 04:02:03PM -0600, Andreas Dilger wrote:
-> Fix the checking of s_mmp_block in e2fsck_pass1() and
-> ext2fs_mmp_read() to handle the high 32 bits of s_blocks_count.
-> Remove redundant check of s_mmp_block in do_dump_mmp() right before
-> ext2fs_mmp_read() is called.
-> 
-> Also fix s_blocks_count_hi in check_backup_super_block(), since it
-> cannot use the ext2fs_blocks_count() helper easily.
-> 
-> Signed-off-by: Andreas Dilger <adilger@dilger.ca>
+On Wed, Oct 23, 2013 at 02:40:30AM +0800, Eryu Guan wrote:
+> A corrupted ext4 may have out of order leaf extents, i.e.
+>=20
+> extent: lblk 0--1023, len 1024, pblk 9217, flags: LEAF UNINIT
+> extent: lblk 1000--2047, len 1024, pblk 10241, flags: LEAF UNINIT
+>              ^^^^ overlap with previous extent
+>=20
+> Reading such extent could hit BUG_ON() in ext4_es_cache_extent().
+>=20
+> 	BUG_ON(end < lblk);
+>=20
+> The problem is that __read_extent_tree_block() tries to cache holes a=
+s
+> well but assumes 'lblk' is greater than 'prev' and passes underflowed
+> length to ext4_es_cache_extent(). Fix it by checking for overlapping
+> extents in ext4_valid_extent_entries().
+>=20
+> I hit this when fuzz testing ext4, and am able to reproduce it by
+> modifying the on-disk extent by hand.
+>=20
+> Also add the check for (ee_block + len - 1) in ext4_valid_extent() to
+> make sure the value is not overflow.
+>=20
+> Ran xfstests on patched ext4 and no regression.
+>=20
+> Cc: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: Luk=C3=A1=C5=A1 Czerner <lczerner@redhat.com>
+> Signed-off-by: Eryu Guan <guaneryu@gmail.com>
 
-Applied, thanks.  (Sorry for letting this fall through the cracks for
-so long.  Patchwork.ozlabs.org is my friend.  :-)
+Thanks, applied.
 
-   	  		       	     	      - Ted
+						- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
