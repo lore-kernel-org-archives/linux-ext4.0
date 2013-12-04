@@ -1,142 +1,74 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH v2 20/28] tune2fs: add inline_data feature in tune2fs
-Date: Wed, 4 Dec 2013 13:27:58 +0800
-Message-ID: <20131204052758.GI20409@gmail.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH v2 19/28] mke2fs: add inline_data support in mke2fs
+Date: Tue, 3 Dec 2013 21:26:08 -0800
+Message-ID: <20131204052608.GO9535@birch.djwong.org>
 References: <1386072715-9869-1-git-send-email-wenqing.lz@taobao.com>
- <1386072715-9869-21-git-send-email-wenqing.lz@taobao.com>
- <20131203222946.GH9535@birch.djwong.org>
- <20131204035536.GD20409@gmail.com>
- <20131204040300.GL9535@birch.djwong.org>
+ <1386072715-9869-20-git-send-email-wenqing.lz@taobao.com>
+ <20131203223026.GI9535@birch.djwong.org>
+ <20131204032757.GB11238@gmail.com>
+ <20131204040819.GM9535@birch.djwong.org>
+ <20131204052150.GG20409@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+To: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
 	Zheng Liu <wenqing.lz@taobao.com>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f171.google.com ([209.85.192.171]:36480 "EHLO
-	mail-pd0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750809Ab3LDFZC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Dec 2013 00:25:02 -0500
-Received: by mail-pd0-f171.google.com with SMTP id z10so21578701pdj.2
-        for <linux-ext4@vger.kernel.org>; Tue, 03 Dec 2013 21:25:01 -0800 (PST)
+Received: from userp1040.oracle.com ([156.151.31.81]:20660 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751103Ab3LDFbQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Dec 2013 00:31:16 -0500
 Content-Disposition: inline
-In-Reply-To: <20131204040300.GL9535@birch.djwong.org>
+In-Reply-To: <20131204052150.GG20409@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 03, 2013 at 08:03:00PM -0800, Darrick J. Wong wrote:
-> On Wed, Dec 04, 2013 at 11:55:36AM +0800, Zheng Liu wrote:
-> > On Tue, Dec 03, 2013 at 02:29:46PM -0800, Darrick J. Wong wrote:
-> > > On Tue, Dec 03, 2013 at 08:11:47PM +0800, Zheng Liu wrote:
-> > > > From: Zheng Liu <wenqing.lz@taobao.com>
+On Wed, Dec 04, 2013 at 01:21:50PM +0800, Zheng Liu wrote:
+> On Tue, Dec 03, 2013 at 08:08:19PM -0800, Darrick J. Wong wrote:
+> > On Wed, Dec 04, 2013 at 11:27:57AM +0800, Zheng Liu wrote:
+> > > On Tue, Dec 03, 2013 at 02:30:26PM -0800, Darrick J. Wong wrote:
+> > > [...]
+> > > > > +		 * notify users that inline data will never be useful.
+> > > > > +		 */
+> > > > > +		if ((fs_param.s_feature_incompat &
+> > > > > +		     EXT4_FEATURE_INCOMPAT_INLINE_DATA) &&
+> > > > > +		    inode_size == EXT2_GOOD_OLD_INODE_SIZE) {
 > > > > 
-> > > > Inline_data can be enabled without ext_attr.  Hence we don't check it.
-> > > > As doing in mke2fs we need to check inode size.
-> > > > 
-> > > > Now this feature only can be enabled because we may be out of space when
-> > > > disabling it.  If this feature is disabled, we need to allocate a block
-> > > > for every file and directory, and it might exhaust all space.
+> > > > Perhaps I'm missing something here, but why is it impossible to use i_blocks
+> > > > for inline data even if there's no space for EAs?
 > > > 
-> > > Could we at least try to turn off inlinedata and decline to clear the flag if
-> > > we ENOSPC?
+> > > If I understand correctly, on kernel side, we determine an inode has
+> > > inline data according to whether we have 'system.data' xattr entry on
+> > > inode extended attribute space.  If an inode doesn't have enough space
+> > > to store an entry with 'system.data', we just think this inode doesn't
+> > > has inline data.  So that is why I add this sanity check.
 > > 
-> > If we want to turn off inline_data, that means that we need to scan all
-> > used inodes and try to expand it.  It isn't hard but I am wondering if
-> > someone really want to disable this feature.  In my opinion, I really
-> > want to enable inline_data feature by default when we believe it is very
-> > stable because it will benefit for all desktop and Android users.
-> 
-> I guess that really depends on our testers -- on the one hand, I do most of my
-> testing with scratch filesystems so on a practical level I will never need the
-> ability to "undo" these sorts of things.
-> 
-> On the other hand, there's the argument that more people will test code if they
-> think they can go back to the old system if the new one turns out to be a mess.
-> 
-> Same sort of reasoning applies to "why did you implement converting 64bit ->
-> 32bit filesystems?" :)
-
-Fair enough.  You convince me. :)
-
-                                                - Zheng
-
-> 
-> --D
+> > Ok.  I was curious.  Small inode => no inline data seems like an unfortunate
+> > restriction to me, but oh well, it's your feature.  I don't plan to go back to
+> > 128 byte inodes ever. :)
 > > 
-> >                                                 - Zheng
+> > Also, we could store four more bytes if we created a new e_name_index value (5?
+> > 9?) to represent "system.data".  Any thoughts about that?
+> 
+> Sorry, I don't get your point.  Do you want to create a new e_name_index?
+> Any reason lets you want to do this?
+
+Yep, that's exactly what I propose to do, so we can cram four more bytes into
+the inline data.
+
+--D
+> 
+>                                                 - Zheng
+> 
+> > 
+> > --D
 > > 
 > > > 
-> > > (Yes, that's more of a TODO feature request...)
-> > > 
-> > > > Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> > > > Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-> > > > ---
-> > > >  misc/tune2fs.8.in |    5 +++++
-> > > >  misc/tune2fs.c    |   16 +++++++++++++++-
-> > > >  2 files changed, 20 insertions(+), 1 deletion(-)
-> > > > 
-> > > > diff --git a/misc/tune2fs.8.in b/misc/tune2fs.8.in
-> > > > index 55c6dd9..78f965b 100644
-> > > > --- a/misc/tune2fs.8.in
-> > > > +++ b/misc/tune2fs.8.in
-> > > > @@ -531,6 +531,11 @@ Setting the filesystem feature is equivalent to using the
-> > > >  .B \-j
-> > > >  option.
-> > > >  .TP
-> > > > +.B inline_data
-> > > > +Allow data to be stored in the inode and extented attribute area.
-> > > 
-> > > "extended"
-> > > 
-> > > --D
-> > > 
-> > > > +.B Tune2fs
-> > > > +only supports setting this filesystem feature.
-> > > > +.TP
-> > > >  .B large_file
-> > > >  Filesystem can contain files that are greater than 2GB.  (Modern kernels
-> > > >  set this feature automatically when a file > 2GB is created.)
-> > > > diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-> > > > index 95c1886..1952081 100644
-> > > > --- a/misc/tune2fs.c
-> > > > +++ b/misc/tune2fs.c
-> > > > @@ -140,7 +140,8 @@ static __u32 ok_features[3] = {
-> > > >  	EXT2_FEATURE_INCOMPAT_FILETYPE |
-> > > >  		EXT3_FEATURE_INCOMPAT_EXTENTS |
-> > > >  		EXT4_FEATURE_INCOMPAT_FLEX_BG |
-> > > > -		EXT4_FEATURE_INCOMPAT_MMP,
-> > > > +		EXT4_FEATURE_INCOMPAT_MMP |
-> > > > +		EXT4_FEATURE_INCOMPAT_INLINE_DATA,
-> > > >  	/* R/O compat */
-> > > >  	EXT2_FEATURE_RO_COMPAT_LARGE_FILE |
-> > > >  		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
-> > > > @@ -1083,6 +1084,19 @@ mmp_error:
-> > > >  		disable_uninit_bg(fs,
-> > > >  				EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
-> > > >  
-> > > > +	if (FEATURE_ON(E2P_FEATURE_INCOMPAT,
-> > > > +		       EXT4_FEATURE_INCOMPAT_INLINE_DATA)) {
-> > > > +		/*
-> > > > +		 * Check inode size.  If inode size is 128, tell user that
-> > > > +		 * inline data is useless.
-> > > > +		 */
-> > > > +		if (EXT2_INODE_SIZE(fs->super) == EXT2_GOOD_OLD_INODE_SIZE) {
-> > > > +			fputs(_("The inode size is too small to "
-> > > > +				"store inline data.\n"), stderr);
-> > > > +			return 1;
-> > > > +		}
-> > > > +	}
-> > > > +
-> > > >  	if (FEATURE_ON(E2P_FEATURE_RO_INCOMPAT,
-> > > >  				EXT4_FEATURE_RO_COMPAT_QUOTA)) {
-> > > >  		/*
-> > > > -- 
-> > > > 1.7.9.7
-> > > > 
-> > > > --
-> > > > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > > > the body of a message to majordomo@vger.kernel.org
-> > > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > > Regards,
+> > >                                                 - Zheng
+> > > --
+> > > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > > the body of a message to majordomo@vger.kernel.org
+> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > > --
 > > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > > the body of a message to majordomo@vger.kernel.org
