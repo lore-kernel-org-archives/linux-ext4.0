@@ -1,77 +1,97 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH v2 19/28] mke2fs: add inline_data support in mke2fs
-Date: Tue, 3 Dec 2013 22:02:24 -0800
-Message-ID: <20131204060224.GP9535@birch.djwong.org>
+Subject: Re: [PATCH v2 09/28] libext2fs: handle inline data in dir iterator
+ function
+Date: Tue, 3 Dec 2013 22:07:42 -0800
+Message-ID: <20131204060742.GQ9535@birch.djwong.org>
 References: <1386072715-9869-1-git-send-email-wenqing.lz@taobao.com>
- <1386072715-9869-20-git-send-email-wenqing.lz@taobao.com>
- <20131203223026.GI9535@birch.djwong.org>
- <20131204032757.GB11238@gmail.com>
- <20131204040819.GM9535@birch.djwong.org>
- <20131204052150.GG20409@gmail.com>
- <20131204052608.GO9535@birch.djwong.org>
- <20131204055051.GA25689@gmail.com>
+ <1386072715-9869-10-git-send-email-wenqing.lz@taobao.com>
+ <20131203221349.GF9535@birch.djwong.org>
+ <20131204045736.GF20409@gmail.com>
+ <20131204051025.GF9541@birch.djwong.org>
+ <20131204052619.GH20409@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 To: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
-	Zheng Liu <wenqing.lz@taobao.com>, Tao Ma <tm@tao.ma>
+	Zheng Liu <wenqing.lz@taobao.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:20435 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753867Ab3LDGCe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Dec 2013 01:02:34 -0500
+Received: from userp1040.oracle.com ([156.151.31.81]:31408 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753817Ab3LDGHt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Dec 2013 01:07:49 -0500
 Content-Disposition: inline
-In-Reply-To: <20131204055051.GA25689@gmail.com>
+In-Reply-To: <20131204052619.GH20409@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Dec 04, 2013 at 01:50:52PM +0800, Zheng Liu wrote:
-> [Cc Tao to get some comments]
-> 
-> On Tue, Dec 03, 2013 at 09:26:08PM -0800, Darrick J. Wong wrote:
-> > On Wed, Dec 04, 2013 at 01:21:50PM +0800, Zheng Liu wrote:
-> > > On Tue, Dec 03, 2013 at 08:08:19PM -0800, Darrick J. Wong wrote:
-> > > > On Wed, Dec 04, 2013 at 11:27:57AM +0800, Zheng Liu wrote:
-> > > > > On Tue, Dec 03, 2013 at 02:30:26PM -0800, Darrick J. Wong wrote:
-> > > > > [...]
-> > > > > > > +		 * notify users that inline data will never be useful.
-> > > > > > > +		 */
-> > > > > > > +		if ((fs_param.s_feature_incompat &
-> > > > > > > +		     EXT4_FEATURE_INCOMPAT_INLINE_DATA) &&
-> > > > > > > +		    inode_size == EXT2_GOOD_OLD_INODE_SIZE) {
-> > > > > > 
-> > > > > > Perhaps I'm missing something here, but why is it impossible to use i_blocks
-> > > > > > for inline data even if there's no space for EAs?
+On Wed, Dec 04, 2013 at 01:26:19PM +0800, Zheng Liu wrote:
+> On Tue, Dec 03, 2013 at 09:10:25PM -0800, Darrick J. Wong wrote:
+> > On Wed, Dec 04, 2013 at 12:57:36PM +0800, Zheng Liu wrote:
+> > > On Tue, Dec 03, 2013 at 02:13:49PM -0800, Darrick J. Wong wrote:
+> > > > On Tue, Dec 03, 2013 at 08:11:36PM +0800, Zheng Liu wrote:
+> > > > > From: Zheng Liu <wenqing.lz@taobao.com>
 > > > > > 
-> > > > > If I understand correctly, on kernel side, we determine an inode has
-> > > > > inline data according to whether we have 'system.data' xattr entry on
-> > > > > inode extended attribute space.  If an inode doesn't have enough space
-> > > > > to store an entry with 'system.data', we just think this inode doesn't
-> > > > > has inline data.  So that is why I add this sanity check.
+> > > > > Inline_data is handled in dir iterator because a lot of commands use
+> > > > > this function to traverse directory entries in debugfs.  We need to
+> > > > > handle inline_data individually because inline_data is saved in two
+> > > > > places.  One is in i_block, and another is in ibody extended attribute.
+> > > > > 
+> > > > > After applied this commit, the following commands in debugfs can
+> > > > > support the inline_data feature:
+> > > > > 	- cd
+> > > > > 	- chroot
+> > > > > 	- link*
+> > > > > 	- ls
+> > > > > 	- ncheck
+> > > > > 	- pwd
+> > > > > 	- unlink
+> > > > > 
+> > > > > * TODO: Inline_data doesn't expand to ibody extended attribute because
+> > > > >   link command doesn't handle DIR_NO_SPACE error until now.  But if we
+> > > > >   have already expanded inline data to ibody ea area, link command can
+> > > > >   occupy this space.
 > > > > 
-> > > > Ok.  I was curious.  Small inode => no inline data seems like an unfortunate
-> > > > restriction to me, but oh well, it's your feature.  I don't plan to go back to
-> > > > 128 byte inodes ever. :)
-> > > > 
-> > > > Also, we could store four more bytes if we created a new e_name_index value (5?
-> > > > 9?) to represent "system.data".  Any thoughts about that?
+> > > > A patch for this TODO is coming, right?
 > > > 
-> > > Sorry, I don't get your point.  Do you want to create a new e_name_index?
-> > > Any reason lets you want to do this?
+> > > TBH, I don't have a patch for this because I don't know why ext2fs_link
+> > > doesn't handle DIR_NO_SPACE error.  So I will try to fix it later.
 > > 
-> > Yep, that's exactly what I propose to do, so we can cram four more bytes into
-> > the inline data.
+> > Yeah, it's sort of annoying that it doesn't do that.  You might notice that
+> > fuse2fs will detect that error code, call ext2fs_expand_dir(), and try again.
+> > On the other hand, none of the other programs do that...
+> > 
+> > ...it's not difficult to change ext2fs_link() to do that, though.
+> > 
+> > again:
+> > 
+> > /* link_proc magic... */
+> > 
+> > if (!ls.done && !not_again) {
+> > 	ext2fs_expand_dir(fs, dir...);
+> > 	not_again = 1;
+> > 	goto again;
+> > }
+> > 
+> > Hmm.  That /is/ easy to fix.  I might as well fix that.
 > 
-> Agree.  I believe it is fine.  But I am wondering if it will break the
-> file system that inline data has been enabled.
+> I don't think we should fix it in ext2fs_link because I am afraid that
+> we could break the client that has handled this problem.  So I am plan
+> to fix it in make_link().  What do you think?
 
-There's a fair amount of work needed for fs/ext4/inline.c.  My e2fsprogs thing
-should handle it fine, though I think the inlinedata_max_size function
-somewhere in your patchset might also be broken.
+I think the clients will be fine.  Most likely, if the dir can't be expanded,
+then ext2fs_link will return ext2fs_expand_directory's failure code.
 
-I suspect a lot depends on how widely deployed inlinedata is inside Taobao, or
-anyone else who's actually running it right now.
+On the off chance there's a weird bug somewhere such that we successfully
+expand the dir but _link's built-in retry fails again, then the client will see
+the "no dir space" error, expand the dir (again!), and retry the link, which
+will again fail.  Assuming the client doesn't madly retry in a loop, all that
+means is that we bang our heads against the wall a few more times than we need
+to.
+
+Luckily, most of the _link clients in the e2fsprogs source are too stupid even
+to expand-and-retry.
 
 --D
+
 > 
 >                                                 - Zheng
 > --
