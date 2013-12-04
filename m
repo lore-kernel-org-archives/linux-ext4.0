@@ -1,33 +1,42 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 66161] many application blocked
-Date: Wed, 04 Dec 2013 13:21:39 +0000
-Message-ID: <bug-66161-13602-NEfuTrSmEC@https.bugzilla.kernel.org/>
-References: <bug-66161-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v2 01/28] libext2fs: support modifying arbitrary extended
+ attributes
+Date: Wed, 4 Dec 2013 09:53:43 -0500
+Message-ID: <20131204145343.GC17008@thunk.org>
+References: <1386072715-9869-1-git-send-email-wenqing.lz@taobao.com>
+ <1386072715-9869-2-git-send-email-wenqing.lz@taobao.com>
+ <20131203195457.GD9535@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Zheng Liu <gnehzuil.liu@gmail.com>, linux-ext4@vger.kernel.org,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:50564 "EHLO mail.kernel.org"
+Received: from imap.thunk.org ([74.207.234.97]:36515 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753679Ab3LDNVp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 Dec 2013 08:21:45 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 1E06B203A9
-	for <linux-ext4@vger.kernel.org>; Wed,  4 Dec 2013 13:21:44 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 4282120373
-	for <linux-ext4@vger.kernel.org>; Wed,  4 Dec 2013 13:21:40 +0000 (UTC)
-In-Reply-To: <bug-66161-13602@https.bugzilla.kernel.org/>
+	id S932254Ab3LDOxt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 Dec 2013 09:53:49 -0500
+Content-Disposition: inline
+In-Reply-To: <20131203195457.GD9535@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=66161
+On Tue, Dec 03, 2013 at 11:54:57AM -0800, Darrick J. Wong wrote:
+> Ok, so inline_data implies ext_attr.  I think we should change the test to
+> check for either feature flag, because with no test, we could accidentally
+> read/write EAs on a FS with ^ext_attr,^inline_data.  Or maybe provide a helper
+> predicate to hide those details.
+> 
+> Also, I'd ask you to send broken out changes to my patches... but I haven't
+> posted my monster patchset recently. :)
+> 
+> (I think I might work up the courage to patchbomb the mailing list tonight.)
 
---- Comment #3 from Alexander Osipenko <korvin2000@gmail.com> ---
-i upgrade to Linux lineage.m3x.org 3.13.0-rc2 #1 SMP Sat Nov 30 01:58:21 EET
-2013 x86_64 GNU/Linux and not have problem this time
+Zheng's patchset includes some of your patches.  Does it include all
+of them?  If you are going to patchbomb the mailing list, do you have
+any suggestions for the best way for me to figure out which patches
+I should take from him and which from you?
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Thanks,
+
+					- Ted
