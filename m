@@ -1,55 +1,79 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH v2 19/28] mke2fs: add inline_data support in mke2fs
-Date: Tue, 3 Dec 2013 20:08:19 -0800
-Message-ID: <20131204040819.GM9535@birch.djwong.org>
-References: <1386072715-9869-1-git-send-email-wenqing.lz@taobao.com>
- <1386072715-9869-20-git-send-email-wenqing.lz@taobao.com>
- <20131203223026.GI9535@birch.djwong.org>
- <20131204032757.GB11238@gmail.com>
+Subject: Re: [PATCH 05/25] libext2fs: don't overflow when punching indirect
+ blocks with large blocks
+Date: Tue, 3 Dec 2013 20:40:27 -0800
+Message-ID: <20131204044027.GN9535@birch.djwong.org>
+References: <20131018044854.7339.48457.stgit@birch.djwong.org>
+ <20131018044928.7339.30260.stgit@birch.djwong.org>
+ <20131024000834.GE31400@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
-	Zheng Liu <wenqing.lz@taobao.com>
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:32923 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:40125 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752098Ab3LDEIc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Dec 2013 23:08:32 -0500
+	with ESMTP id S1754225Ab3LDEkd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Dec 2013 23:40:33 -0500
 Content-Disposition: inline
-In-Reply-To: <20131204032757.GB11238@gmail.com>
+In-Reply-To: <20131024000834.GE31400@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Dec 04, 2013 at 11:27:57AM +0800, Zheng Liu wrote:
-> On Tue, Dec 03, 2013 at 02:30:26PM -0800, Darrick J. Wong wrote:
-> [...]
-> > > +		 * notify users that inline data will never be useful.
-> > > +		 */
-> > > +		if ((fs_param.s_feature_incompat &
-> > > +		     EXT4_FEATURE_INCOMPAT_INLINE_DATA) &&
-> > > +		    inode_size == EXT2_GOOD_OLD_INODE_SIZE) {
-> > 
-> > Perhaps I'm missing something here, but why is it impossible to use i_blocks
-> > for inline data even if there's no space for EAs?
+On Wed, Oct 23, 2013 at 08:08:34PM -0400, Theodore Ts'o wrote:
+> On Thu, Oct 17, 2013 at 09:49:28PM -0700, Darrick J. Wong wrote:
+> > On a FS with a rather large blockize (> 4K), the old block map
+> > structure can construct a fat enough "tree" (or whatever we call that
+> > lopsided thing) that (at least in theory) one could create mappings
+> > for logical blocks higher than 32 bits.  In practice this doesn't
+> > happen, but the 'max' and 'iter' variables that the punch helpers use
+> > will overflow because the BLOCK_SIZE_BITS shifts are too large to fit
+> > a 32-bit variable.  This causes punch to fail on TIND-mapped blocks
+> > even if the file is < 16T.  So enlarge the fields to fit.
 > 
-> If I understand correctly, on kernel side, we determine an inode has
-> inline data according to whether we have 'system.data' xattr entry on
-> inode extended attribute space.  If an inode doesn't have enough space
-> to store an entry with 'system.data', we just think this inode doesn't
-> has inline data.  So that is why I add this sanity check.
+> Hmm.... this brings up the question of whether we should support
+> inodes that have indirect block maps that result in mappings for
+> logical blocks > 32-bits.  There is probably a lot of code that
+> assumes that the logical block number is 32-bits that will break
+> horribly.
 
-Ok.  I was curious.  Small inode => no inline data seems like an unfortunate
-restriction to me, but oh well, it's your feature.  I don't plan to go back to
-128 byte inodes ever. :)
+I'm not sure.  The way I noticed this brokeness was by creating a FS with 64k
+blocks, sparse-writing a range of blocks at lblk 268451854 (to force it to
+create a tind map) and then try to punch it.  The file itself had a size of
+just under 16T.  e2fsck seemed fine with the file, and as you can see the lblk
+number was nowhere close to 2^32.
 
-Also, we could store four more bytes if we created a new e_name_index value (5?
-9?) to represent "system.data".  Any thoughts about that?
+I think the problem is that the punch code is using two variables max and incr
+as upper limits on how many blocks it should try to punch for a given level.
+Since the variables aren't wide enough, they overflow (effectively becoming
+zero) and then things like (offset + incr(0) <= start) become true and so it
+quits early.
+
+---
+
+If I use fuse2fs to create a non-extent file that exceeds 2^32 blocks (and
+blocksize > 4k), fsck doesn't complain.
+
+If the blocksize is 4k or less, the kernel refuses to write the file, but
+fuse2fs creates a garbled filesystem (with enormous i_size but no blocks
+mapped) and fsck complains.  Hmm, I'll look into that.
 
 --D
 
 > 
-> Regards,
->                                                 - Zheng
+> So things brings up a couple of different questions.
+> 
+> #1) Does e2fsck notice, and does it complain if it trips against one
+> of these.
+> 
+> #2) What should e2fsprogs do when it comes across one of these inodes.
+> It may be that simply returning an error is enough, once we notice
+> that it hsa blocks larger than this.  Would it be cleaner and more
+> efficient for the punch code to simply make sure that it stops before
+> the logical block number overflows?  64-bit variables have a cost,
+> especially on 32-bit machines.
+> 
+> 					- Ted
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
