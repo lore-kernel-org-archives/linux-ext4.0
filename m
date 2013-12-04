@@ -1,139 +1,40 @@
-From: Steven Whitehouse <swhiteho@redhat.com>
-Subject: Re: [Cluster-devel] [PATCH 16/18] gfs2: use generic posix ACL
-	infrastructure
-Date: Wed, 04 Dec 2013 12:12:37 +0000
-Message-ID: <1386159157.2711.11.camel@menhir>
-References: <20131201115903.910559036@bombadil.infradead.org>
-	<20131201120656.539995924@bombadil.infradead.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 66161] many application blocked
+Date: Wed, 04 Dec 2013 13:11:00 +0000
+Message-ID: <bug-66161-13602-ycPeHblkHI@https.bugzilla.kernel.org/>
+References: <bug-66161-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: jfs-discussion@lists.sourceforge.net, linux-ext4@vger.kernel.org,
-	reiserfs-devel@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
-	linux-mtd@lists.infradead.org, viro@zeniv.linux.org.uk,
-	linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
-	linux-nfs@vger.kernel.org, linux-btrfs@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <20131201120656.539995924@bombadil.infradead.org>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.19.201]:50267 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932270Ab3LDNLH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 Dec 2013 08:11:07 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 407382021F
+	for <linux-ext4@vger.kernel.org>; Wed,  4 Dec 2013 13:11:06 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 82FB0203B4
+	for <linux-ext4@vger.kernel.org>; Wed,  4 Dec 2013 13:11:00 +0000 (UTC)
+In-Reply-To: <bug-66161-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+https://bugzilla.kernel.org/show_bug.cgi?id=66161
 
-On Sun, 2013-12-01 at 03:59 -0800, Christoph Hellwig wrote:
-> plain text document attachment
-> (0016-gfs2-use-generic-posix-ACL-infrastructure.patch)
-> This contains some major refactoring for the create path so that
-> inodes are created with the right mode to start with instead of
-> fixing it up later.
-> 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->  fs/gfs2/acl.c   |  229 +++++++------------------------------------------------
->  fs/gfs2/acl.h   |    4 +-
->  fs/gfs2/inode.c |   33 ++++++--
->  fs/gfs2/xattr.c |    4 +-
->  4 files changed, 61 insertions(+), 209 deletions(-)
-> 
-Looks very good. I'd really like to be able to do something similar with
-the security xattrs, in terms of the refactoring that at inode creation
-to give the xattrs ahead of the inode allocation itself. That way it
-should be possible to allocate the xattr blocks at the same time as the
-inode, rather than as an after thought.
+Jan Kara <jack@suse.cz> changed:
 
-Some more comments below....
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |jack@suse.cz
+             Status|NEW                         |NEEDINFO
 
-> diff --git a/fs/gfs2/acl.c b/fs/gfs2/acl.c
-> index e82e4ac..e6c7a2c 100644
-> --- a/fs/gfs2/acl.c
-> +++ b/fs/gfs2/acl.c
-[snip]
-> -
-> -static int gfs2_xattr_system_set(struct dentry *dentry, const char *name,
-> -				 const void *value, size_t size, int flags,
-> -				 int xtype)
-> -{
-> -	struct inode *inode = dentry->d_inode;
-> -	struct gfs2_sbd *sdp = GFS2_SB(inode);
-> -	struct posix_acl *acl = NULL;
-> -	int error = 0, type;
-> -
-> -	if (!sdp->sd_args.ar_posix_acl)
-> -		return -EOPNOTSUPP;
-> -
-> -	type = gfs2_acl_type(name);
-> -	if (type < 0)
-> -		return type;
-> -	if (flags & XATTR_CREATE)
-> -		return -EINVAL;
-> -	if (type == ACL_TYPE_DEFAULT && !S_ISDIR(inode->i_mode))
-> -		return value ? -EACCES : 0;
-> -	if (!uid_eq(current_fsuid(), inode->i_uid) && !capable(CAP_FOWNER))
-> -		return -EPERM;
-> -	if (S_ISLNK(inode->i_mode))
-> -		return -EOPNOTSUPP;
-> -
-> -	if (!value)
-> -		goto set_acl;
->  
-> -	acl = posix_acl_from_xattr(&init_user_ns, value, size);
-> -	if (!acl) {
-> -		/*
-> -		 * acl_set_file(3) may request that we set default ACLs with
-> -		 * zero length -- defend (gracefully) against that here.
-> -		 */
-> -		goto out;
-> -	}
-> -	if (IS_ERR(acl)) {
-> -		error = PTR_ERR(acl);
-> -		goto out;
-> -	}
-> -
-> -	error = posix_acl_valid(acl);
-> -	if (error)
-> -		goto out_release;
-> -
-> -	error = -EINVAL;
->  	if (acl->a_count > GFS2_ACL_MAX_ENTRIES)
-> -		goto out_release;
-> +		return -EINVAL;
->  
->  	if (type == ACL_TYPE_ACCESS) {
->  		umode_t mode = inode->i_mode;
-> +
->  		error = posix_acl_equiv_mode(acl, &mode);
-> +		if (error < 0)
->  
-Andy Price has pointed out a missing "return error;" here
+--- Comment #2 from Jan Kara <jack@suse.cz> ---
+Yeah, is this reproducible? If yes, can you do 'echo w >/proc/sysrq-trigger'
+and attach full kernel log here (output of dmesg command) please? Thanks.
 
-> -		if (error <= 0) {
-> -			posix_acl_release(acl);
-> +		if (error == 0)
->  			acl = NULL;
->  
-> -			if (error < 0)
-> -				return error;
-> -		}
-> -
-
-Also, there seems to be a white space error in the xfs patch around line
-170 in fs/xfs/xfs_iops.c where there is an added "if (default_acl)" with
-a space before the tab,
-
-Steve.
-
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
