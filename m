@@ -1,8 +1,8 @@
 From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: [PATCH] mke2fs: Fix block bitmaps initalization with -O
  ^resize_inode
-Date: Wed, 4 Dec 2013 21:03:40 -0500
-Message-ID: <20131205020340.GA8404@thunk.org>
+Date: Wed, 4 Dec 2013 21:09:40 -0500
+Message-ID: <20131205020939.GB8404@thunk.org>
 References: <52662BBA.70503@rs.jp.nec.com>
  <20131123013336.GD10269@birch.djwong.org>
  <20131126012706.GF10269@birch.djwong.org>
@@ -18,47 +18,48 @@ Cc: Akira Fujita <a-fujita@rs.jp.nec.com>,
 	'ext4 development' <linux-ext4@vger.kernel.org>
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:36652 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:36659 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933040Ab3LECDq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 Dec 2013 21:03:46 -0500
+	id S1756261Ab3LECJm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 Dec 2013 21:09:42 -0500
 Content-Disposition: inline
 In-Reply-To: <20131205012210.GC10150@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 On Wed, Dec 04, 2013 at 05:22:10PM -0800, Darrick J. Wong wrote:
-> > 2) The IETF rule of "be conservative in what you send, and liberal in
-> > what you accept" applies.
+> Right now, e2fsck and resize2fs take care of (B) on their own.
 > 
-> I'm not convinced that we /need/ Akira's patch to clear BLOCK_UNINIT on any
-> group containing its own metadata, but I doubt it'd harm anything other than
-> make e2fsck slower.
+> One of my patches fixes everything else (debugfs, dumpe2fs, fuse2fs, tune2fs)
+> to take care of (B) by doing it in the library.  I can't think of a scenario
+> where it'd be useful to run around with something like this:
 > 
-> It would certainly be the conservative-send route though.
+> # mke2fs -t ext4 /dev/vda -O ^resize_inode,meta_bg
+> # dumpe2fs /dev/vda
+> <snip>
+> Group 1: (Blocks 32768-65535) [INODE_UNINIT, BLOCK_UNINIT]
+>   Checksum 0xa85c, unused inodes 8192
+>   Backup superblock at 32768, Group descriptor at 32769
+>                        ^^^^^                      ^^^^^
+>   Block bitmap at 3 (bg #0 + 3), Inode bitmap at 19 (bg #0 + 19)
+>   Inode table at 546-1057 (bg #0 + 546)
+>   32766 free blocks, 8192 free inodes, 0 directories, 8192 unused inodes
+>   Free blocks: 32768-65535
+>                ^^^^^ <------------------ HEY!
+>   Free inodes: 8193-16384
+>
+> <snip>
+> # debugfs /dev/vda -R 'testb 32768'
+> Block 32768 not in use
 
-The place where we are being conserviative what we send is that we
-clear BLOCK_UNINIT for block groups that don't have any data blocks,
-but which has metadata blocks belonging to *other* block groups,
-because there were some kernel implementations in the past that didn't
-handle this correctly.
+I'm not that concerned about dumpe2fs and debugfs, since that's just a
+display issue.  What's more important is that lib/ext2fs/alloc.c
+correctly handles allocations --- see check_block_uninit() and
+check_inode_uninit() in lib/ext2fs/alloc.c.  We do take care of
+initializing the portion of the allocation bitmap.
 
-But if you have a block group that has only its metadata, that's
-perfectly fine.  And that's easy to test; if you create a file system
-like this:
-
-     touch /tmp/foo.img
-     mke2fs -t ext2 -O uninit_bg /tmp/foo.img 1800000
-
-... then by definition every single block group has its own metadata,
-and if there were problems with block groups that had its own metadata
-blocks, we wouldn't be able to set BLOCK_UNINIT on any block group at
-all.
-
-It looks like we are currently clearing BLOCK_UNINIT for block groups
-that contain superblocks and backup superblocs.  To be honest, I don't
-remember why we are currently doing this.  I *think* the kernel and
-all modern e2fsprogs should be able to do the right thing, if we set
-BLOCK_UNINIT on all block groups.
+This is good, because it means that e2tools will do the right thing
+when it writes files to an ext4 file system that has BLOCK_UNINIT set
+in a block group.
 
 				- Ted
