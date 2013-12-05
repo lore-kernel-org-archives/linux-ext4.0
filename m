@@ -1,8 +1,8 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: [PATCH] mke2fs: Fix block bitmaps initalization with -O
  ^resize_inode
-Date: Wed, 4 Dec 2013 17:22:10 -0800
-Message-ID: <20131205012210.GC10150@birch.djwong.org>
+Date: Wed, 4 Dec 2013 21:03:40 -0500
+Message-ID: <20131205020340.GA8404@thunk.org>
 References: <52662BBA.70503@rs.jp.nec.com>
  <20131123013336.GD10269@birch.djwong.org>
  <20131126012706.GF10269@birch.djwong.org>
@@ -11,125 +11,54 @@ References: <52662BBA.70503@rs.jp.nec.com>
  <00d301ceec16$de11fec0$9a35fc40$@rs.jp.nec.com>
  <20131130200624.GA9541@birch.djwong.org>
  <20131204234435.GF19914@thunk.org>
+ <20131205012210.GC10150@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Akira Fujita <a-fujita@rs.jp.nec.com>,
-	"'ext4 development'" <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+	'ext4 development' <linux-ext4@vger.kernel.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:28590 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756424Ab3LEBWS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Dec 2013 20:22:18 -0500
+Received: from imap.thunk.org ([74.207.234.97]:36652 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933040Ab3LECDq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 Dec 2013 21:03:46 -0500
 Content-Disposition: inline
-In-Reply-To: <20131204234435.GF19914@thunk.org>
+In-Reply-To: <20131205012210.GC10150@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted, thank you for providing some historical context. :)
-
-On Wed, Dec 04, 2013 at 06:44:35PM -0500, Theodore Ts'o wrote:
-> On Sat, Nov 30, 2013 at 12:06:24PM -0800, Darrick J. Wong wrote:
-> > Hi Ted, I was hoping you might resolve a question for us:
-> > > And there is a bug that block group which has backup super block
-> > > and group descriptor block are not write out to device in wrtie_bitmaps()
-> > > when BLOCK_UNINIT is set.
-> > > So at this time, I attempted to fix this by cleaning BLOCK_UNIIT.
-> > 
-> > Is it the case that a group should only have BLOCK_UNINIT set if the group is
-> > totally empty (no group metadata, no blocks allocated to files) as Akira says?
-> > 
-> > Or is it the case that a group can have BLOCK_UNINIT set if the group contains
-> > group metadata but no blocks are allocated to files?
+On Wed, Dec 04, 2013 at 05:22:10PM -0800, Darrick J. Wong wrote:
+> > 2) The IETF rule of "be conservative in what you send, and liberal in
+> > what you accept" applies.
 > 
-> The meaning of BLOCK_UNINIT is that the contents of that block group's
-> block allocation bitmap is not initialized.  This causes libext2fs to
-> skip writing the block allocation bitmap, and to also skip reading the
-> block allocation bitmap (which is why it substitutes all zero's
-> instead of reading the allocation bitmap block).
+> I'm not convinced that we /need/ Akira's patch to clear BLOCK_UNINIT on any
+> group containing its own metadata, but I doubt it'd harm anything other than
+> make e2fsck slower.
 > 
-> Before allocating a block from a block group that has the BLOCK_UNINIT
-> flag set, it is important that the kernel or the userspace library
-> first initialize the block allocation bitmap and clear the
-> BLOCK_UNINIT flag.
-> 
-> When allocating blocks, implementations MUST be able to initiaize the
-> allocation bitmap for block groups which has the block group's own
-> metadata blocks (backup superblock and bg descriptor blocks if any,
-> reserved bg blocks, the allocation bitmaps, and inode table blocks) in
-> use.
+> It would certainly be the conservative-send route though.
 
-I'll call this ^^^^^ (B).
+The place where we are being conserviative what we send is that we
+clear BLOCK_UNINIT for block groups that don't have any data blocks,
+but which has metadata blocks belonging to *other* block groups,
+because there were some kernel implementations in the past that didn't
+handle this correctly.
 
-> Implementations SHOULD be able to initialize bitmaps for block groups
-> that have metadata blocks from other block groups if the case of
-> flex_bg.  However, historically there were some implementations that
-> didn't handle this correctly, which is why mke2fs initializes the
-> block bitmap and clears BLOCK_UNINIT in block groups that have
-> metadata blocks for other block groups.
-> 
-> Optionally, implementations MAY set the BLOCK_UNINIT bit after data
-> blocks have been deallocated from a block group such that the only
-> blocks in use are the block group's metadata groups.
+But if you have a block group that has only its metadata, that's
+perfectly fine.  And that's easy to test; if you create a file system
+like this:
 
-For the record, neither e2fsprogs nor the kernel do this -- the only code that
-sets BLOCK_UNINIT is the fs grow code in resize2fs.
+     touch /tmp/foo.img
+     mke2fs -t ext2 -O uninit_bg /tmp/foo.img 1800000
 
-> Also, some implementations MAY clear the BLOCK_UNINIT bit and
-> initialize the block allocation bitmap early --- for example, when
-> allocating an inode in the block group.  This shouldn't be required,
-> however, and so implementations SHOULD correctly handle a situation
-> where an inode has been allocated in the inode table, but BLOCK_UNINIT
-> is set.
->
-> All of this basically boils down to the two rules of thumb:
-> 
-> 1) The BLOCK_UNINIT bit is fundamentally about whether the block
-> allocation bitmap is valid, and whether mke2fs can skip needing to
-> initialize the block, and whether e2fsck, dumpe2fs, debugfs, etc. can
-> skip reading said allocation bitmap.
+... then by definition every single block group has its own metadata,
+and if there were problems with block groups that had its own metadata
+blocks, we wouldn't be able to set BLOCK_UNINIT on any block group at
+all.
 
-Right now, e2fsck and resize2fs take care of (B) on their own.
+It looks like we are currently clearing BLOCK_UNINIT for block groups
+that contain superblocks and backup superblocs.  To be honest, I don't
+remember why we are currently doing this.  I *think* the kernel and
+all modern e2fsprogs should be able to do the right thing, if we set
+BLOCK_UNINIT on all block groups.
 
-One of my patches fixes everything else (debugfs, dumpe2fs, fuse2fs, tune2fs)
-to take care of (B) by doing it in the library.  I can't think of a scenario
-where it'd be useful to run around with something like this:
-
-# mke2fs -t ext4 /dev/vda -O ^resize_inode,meta_bg
-# dumpe2fs /dev/vda
-<snip>
-Group 1: (Blocks 32768-65535) [INODE_UNINIT, BLOCK_UNINIT]
-  Checksum 0xa85c, unused inodes 8192
-  Backup superblock at 32768, Group descriptor at 32769
-                       ^^^^^                      ^^^^^
-  Block bitmap at 3 (bg #0 + 3), Inode bitmap at 19 (bg #0 + 19)
-  Inode table at 546-1057 (bg #0 + 546)
-  32766 free blocks, 8192 free inodes, 0 directories, 8192 unused inodes
-  Free blocks: 32768-65535
-               ^^^^^ <------------------ HEY!
-  Free inodes: 8193-16384
-<snip>
-# debugfs /dev/vda -R 'testb 32768'
-Block 32768 not in use
-
-Notice that blocks 32768-32769 are claimed by the group, but fs->block_map
-thinks those blocks are free.  ext2fs_open() hands back to client programs a fs
-handle in which the block bitmap is in that broken state.
-
-> 2) The IETF rule of "be conservative in what you send, and liberal in
-> what you accept" applies.
-
-I'm not convinced that we /need/ Akira's patch to clear BLOCK_UNINIT on any
-group containing its own metadata, but I doubt it'd harm anything other than
-make e2fsck slower.
-
-It would certainly be the conservative-send route though.
-
---D
-
-> 
-> Does that help?
-> 
-> Thanks,
-> 
-> 					- Ted
+				- Ted
