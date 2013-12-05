@@ -1,51 +1,93 @@
-From: Andreas Gruenbacher <andreas.gruenbacher@linbit.com>
-Subject: Re: [PATCH 00/18] Consolidate Posix ACL implementation
-Date: Thu, 5 Dec 2013 18:57:14 +0100 (CET)
-Message-ID: <279325185.39210.1386266234086.JavaMail.zimbra@linbit.com>
-References: <20131201115903.910559036@bombadil.infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: xfs@oss.sgi.com, Mark Fasheh <mfasheh@suse.com>,
-	reiserfs-devel@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
-	linux-mtd@lists.infradead.org, viro@zeniv.linux.org.uk,
-	jfs-discussion@lists.sourceforge.net,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-nfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	Joel Becker <jlbec@evilplan.org>
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <20131201115903.910559036@bombadil.infradead.org>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: [PATCH v2 1/4] Fix XIP fault vs truncate race
+Date: Thu,  5 Dec 2013 13:02:45 -0700
+Message-ID: <1386273769-12828-2-git-send-email-ross.zwisler@linux.intel.com>
+References: <1386273769-12828-1-git-send-email-ross.zwisler@linux.intel.com>
+To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	carsteno@de.ibm.com, matthew.r.wilcox@intel.com,
+	andreas.dilger@intel.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mga09.intel.com ([134.134.136.24]:60450 "EHLO mga09.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751725Ab3LEUC7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 Dec 2013 15:02:59 -0500
+In-Reply-To: <1386273769-12828-1-git-send-email-ross.zwisler@linux.intel.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Christoph,
+From: Matthew Wilcox <matthew.r.wilcox@intel.com>
 
-nice work, and a pretty diffstat.
+Pagecache faults recheck i_size after taking the page lock to ensure that
+the fault didn't race against a truncate.  We don't have a page to lock
+in the XIP case, so use the i_mmap_mutex instead.  It is locked in the
+truncate path in unmap_mapping_range() after updating i_size.  So while
+we hold it in the fault path, we are guaranteed that either i_size has
+already been updated in the truncate path, or that the truncate will
+subsequently call zap_page_range_single() and so remove the mapping we
+have just inserted.
 
-I see that get_acl and set_acl are being defined in some but not all symlink inode operations (for example, btrfs them while ext4 does not), and that posix_acl_xattr_set() doesn't check if set_acl is defined.  Symlinks cannot have ACLs, so set_acl should either never be defined for symlinks (and a NULL check is then needed in posix_acl_xattr_set()), or it is defined in all inode operations, and S_ISNLNK() check is needed in posix_acl_xattr_set().  That latter check should probably be added in any case to be on the safe side.
+There is a window of time in which i_size has been reduced and the
+thread has a mapping to a page which will be removed from the file,
+but this is harmless as the page will not be allocated to a different
+purpose before the thread's access to it is revoked.
 
-  Test case:
+Signed-off-by: Matthew Wilcox <matthew.r.wilcox@intel.com>
+---
+ mm/filemap_xip.c |   24 ++++++++++++++++++++++--
+ 1 file changed, 22 insertions(+), 2 deletions(-)
 
-  setfattr -h -n system.posix_acl_access \
-           -v 0sAgAAAAEABgD/////AgAGABMEAAAEAAYA/////xAABgD/////IAAEAP////8= \
-           symlink
+diff --git a/mm/filemap_xip.c b/mm/filemap_xip.c
+index d8d9fe3..c8d23e9 100644
+--- a/mm/filemap_xip.c
++++ b/mm/filemap_xip.c
+@@ -260,8 +260,17 @@ again:
+ 		__xip_unmap(mapping, vmf->pgoff);
+ 
+ found:
++		/* We must recheck i_size under i_mmap_mutex */
++		mutex_lock(&mapping->i_mmap_mutex);
++		size = (i_size_read(inode) + PAGE_CACHE_SIZE - 1) >>
++							PAGE_CACHE_SHIFT;
++		if (unlikely(vmf->pgoff >= size)) {
++			mutex_unlock(&mapping->i_mmap_mutex);
++			return VM_FAULT_SIGBUS;
++		}
+ 		err = vm_insert_mixed(vma, (unsigned long)vmf->virtual_address,
+ 							xip_pfn);
++		mutex_unlock(&mapping->i_mmap_mutex);
+ 		if (err == -ENOMEM)
+ 			return VM_FAULT_OOM;
+ 		/*
+@@ -285,16 +294,27 @@ found:
+ 		}
+ 		if (error != -ENODATA)
+ 			goto out;
++
++		/* We must recheck i_size under i_mmap_mutex */
++		mutex_lock(&mapping->i_mmap_mutex);
++		size = (i_size_read(inode) + PAGE_CACHE_SIZE - 1) >>
++							PAGE_CACHE_SHIFT;
++		if (unlikely(vmf->pgoff >= size)) {
++			ret = VM_FAULT_SIGBUS;
++			goto unlock;
++		}
+ 		/* not shared and writable, use xip_sparse_page() */
+ 		page = xip_sparse_page();
+ 		if (!page)
+-			goto out;
++			goto unlock;
+ 		err = vm_insert_page(vma, (unsigned long)vmf->virtual_address,
+ 							page);
+ 		if (err == -ENOMEM)
+-			goto out;
++			goto unlock;
+ 
+ 		ret = VM_FAULT_NOPAGE;
++unlock:
++		mutex_unlock(&mapping->i_mmap_mutex);
+ out:
+ 		write_seqcount_end(&xip_sparse_seq);
+ 		mutex_unlock(&xip_sparse_mutex);
+-- 
+1.7.10.4
 
-Patch 6 also declares posix_acl_prepare() but this function is never introduced; this must be a leftover from a previous version.
-
-Thanks,
-Andreas
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
