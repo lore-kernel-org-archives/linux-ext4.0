@@ -1,93 +1,95 @@
-From: "Dilger, Andreas" <andreas.dilger@intel.com>
-Subject: Re: [PATCH v2 2/4] ext4: Add XIP functionality
-Date: Fri, 6 Dec 2013 20:58:50 +0000
-Message-ID: <CEC778F7.84365%andreas.dilger@intel.com>
-References: <1386273769-12828-1-git-send-email-ross.zwisler@linux.intel.com>
- <1386273769-12828-3-git-send-email-ross.zwisler@linux.intel.com>
- <20131206031354.GS10988@dastard>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH v3 09/30] libext2fs: check inline_data in
+ ext2fs_xattrs_read/write
+Date: Fri, 6 Dec 2013 13:38:26 -0800
+Message-ID: <20131206213826.GB10143@birch.djwong.org>
+References: <1386323897-2354-1-git-send-email-wenqing.lz@taobao.com>
+ <1386323897-2354-10-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"carsteno@de.ibm.com" <carsteno@de.ibm.com>,
-	"Wilcox, Matthew R" <matthew.r.wilcox@intel.com>
-To: Dave Chinner <david@fromorbit.com>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga14.intel.com ([143.182.124.37]:58093 "EHLO mga14.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754797Ab3LFU6w convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Dec 2013 15:58:52 -0500
-In-Reply-To: <20131206031354.GS10988@dastard>
-Content-Language: en-US
-Content-ID: <93C904CA3292754E9844C239940530CD@intel.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:26217 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754730Ab3LFVif (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Dec 2013 16:38:35 -0500
+Content-Disposition: inline
+In-Reply-To: <1386323897-2354-10-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2013/12/05 8:13 PM, "Dave Chinner" <david@fromorbit.com> wrote:
+On Fri, Dec 06, 2013 at 05:57:56PM +0800, Zheng Liu wrote:
+> From: Zheng Liu <wenqing.lz@taobao.com>
+> 
+> Now on kernel side we can enable inline data even without ext_attr.  So
+> we need to adjust sanity check on ext2fs_xattrs_read/write to let we
+> access extended attribute when filesystem is create with '-O ^ext_attr,
+> inline_data'.
 
->On Thu, Dec 05, 2013 at 01:02:46PM -0700, Ross Zwisler wrote:
->> This is a port of the XIP functionality found in the current version of
->> ext2.  This patch set is intended to achieve feature parity with XIP in
->> ext2 rather than non-XIP in ext4.  In particular, it lacks support for
->> splice and AIO.  We'll be submitting patches in the future to add that
->> functionality, but we think this is a good start.
->> 
->> The motivation behind this work is that we believe that the XIP feature
->> will begin to find new uses as various persistent memory devices and
->> technologies come on to the market.  Having direct, byte-addressable
->> access to persistent memory without having an additional copy in the
->> page cache can be a win in terms of I/O latency and overall memory
->> usage.
->> 
->> This patch applies cleanly to v3.13-rc2, and was tested using brd as our
->> block driver.
->
->I think I see a significant problem here with XIP write support:
->unwritten extents.
->
->xip_file_write() has no concept of post IO completion processing -
->it assumes that all that is necessary is to memcpy() the data into
->the backing memory obtained by ->get_xip_mem(), and that's all it
->needs to do.
->
->For ext4 (and other filesystems that use unwritten extents) they
->need a callback - normally done from bio completion - to run
->transactions to convert extent status from unwritten to written, or
->run other post-IO completion operations.
->
->I don't see any hooks into ext4 to turn off preallocation (e.g.
->fallocate is explicitly hooked up for XIP) when XIP is in use, so I
->can't see how XIP can work with such filesystem requirements without
->further infrastructure being added. i.e. bypassing the need for the
->page cache does not remove the need to post-IO completion
->notification to the filesystem...
+Oops, I removed both of those checks in favor of looking for ext_attr or
+inline_data in ext2fs_xattrs_open().  Oh well, sorry about the
+miscommunication.
 
-In the short term (at least until it is possible to convert the extent
-after it is modified) should it be an error to try and map an unwritten
-extent?  That would still allow the ext4 XIP patch to land and be safely
-used for regular files while the mechanism for doing the conversion is
-worked out.
+--D
 
->Indeed, for making filesystems like XFS be able to use XIP, we're
->going to need such facilities to be provided by the XIP
->infrastructure....
->
->Cheers,
->
->Dave.
->-- 
->Dave Chinner
->david@fromorbit.com
->
-
-
-Cheers, Andreas
--- 
-Andreas Dilger
-
-Lustre Software Architect
-Intel High Performance Data Division
-
-
+> 
+> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+> ---
+>  lib/ext2fs/ext_attr.c |   28 ++++++++++++++++++++++------
+>  1 file changed, 22 insertions(+), 6 deletions(-)
+> 
+> diff --git a/lib/ext2fs/ext_attr.c b/lib/ext2fs/ext_attr.c
+> index 09e13b2..e5e0fa9 100644
+> --- a/lib/ext2fs/ext_attr.c
+> +++ b/lib/ext2fs/ext_attr.c
+> @@ -469,9 +469,17 @@ errcode_t ext2fs_xattrs_write(struct ext2_xattr_handle *handle)
+>  	unsigned int i;
+>  	errcode_t err;
+>  
+> -	if (!EXT2_HAS_COMPAT_FEATURE(handle->fs->super,
+> -				     EXT2_FEATURE_COMPAT_EXT_ATTR))
+> -		return 0;
+> +	/*
+> +	 * If inline_data is enabled, we don't check ext_attr because
+> +	 * inline_data needs to read/write extended attribute even
+> +	 * without ext_attr.
+> +	 */
+> +	if (!EXT2_HAS_INCOMPAT_FEATURE(handle->fs->super,
+> +				       EXT4_FEATURE_INCOMPAT_INLINE_DATA)) {
+> +		if (!EXT2_HAS_COMPAT_FEATURE(handle->fs->super,
+> +					     EXT2_FEATURE_COMPAT_EXT_ATTR))
+> +			return 0;
+> +	}
+>  
+>  	i = EXT2_INODE_SIZE(handle->fs->super);
+>  	if (i < sizeof(*inode))
+> @@ -684,9 +692,17 @@ errcode_t ext2fs_xattrs_read(struct ext2_xattr_handle *handle)
+>  	int i;
+>  	errcode_t err;
+>  
+> -	if (!EXT2_HAS_COMPAT_FEATURE(handle->fs->super,
+> -				     EXT2_FEATURE_COMPAT_EXT_ATTR))
+> -		return 0;
+> +	/*
+> +	 * If inline_data is enabled, we don't check ext_attr because
+> +	 * inline_data needs to read/write extended attribute even
+> +	 * without ext_attr.
+> +	 */
+> +	if (!EXT2_HAS_INCOMPAT_FEATURE(handle->fs->super,
+> +				       EXT4_FEATURE_INCOMPAT_INLINE_DATA)) {
+> +		if (!EXT2_HAS_COMPAT_FEATURE(handle->fs->super,
+> +					     EXT2_FEATURE_COMPAT_EXT_ATTR))
+> +			return 0;
+> +	}
+>  
+>  	i = EXT2_INODE_SIZE(handle->fs->super);
+>  	if (i < sizeof(*inode))
+> -- 
+> 1.7.9.7
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
