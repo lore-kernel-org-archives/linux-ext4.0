@@ -1,143 +1,103 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH v3 08/30] debugfs: dump all extended attributes
-Date: Fri,  6 Dec 2013 17:57:55 +0800
-Message-ID: <1386323897-2354-9-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH v3 06/30] libext2fs: remove redundant code
+Date: Fri,  6 Dec 2013 17:57:53 +0800
+Message-ID: <1386323897-2354-7-git-send-email-wenqing.lz@taobao.com>
 References: <1386323897-2354-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Theodore Ts'o <tytso@mit.edu>,
 	"Darrick J. Wong" <darrick.wong@oracle.com>,
 	Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f181.google.com ([209.85.192.181]:51705 "EHLO
-	mail-pd0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756253Ab3LFJzm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Dec 2013 04:55:42 -0500
-Received: by mail-pd0-f181.google.com with SMTP id p10so740432pdj.40
-        for <linux-ext4@vger.kernel.org>; Fri, 06 Dec 2013 01:55:41 -0800 (PST)
+Received: from mail-pd0-f177.google.com ([209.85.192.177]:42004 "EHLO
+	mail-pd0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757460Ab3LFJzh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Dec 2013 04:55:37 -0500
+Received: by mail-pd0-f177.google.com with SMTP id q10so742083pdj.22
+        for <linux-ext4@vger.kernel.org>; Fri, 06 Dec 2013 01:55:37 -0800 (PST)
 In-Reply-To: <1386323897-2354-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
 
-Use the new extended attribute APIs to display all extended attributes
-(current code does not look in the EA block) and display full names
-(current code ignores name index too).
-
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- debugfs/debugfs.c           |   68 +++++++++++++++++++++++++------------------
- tests/r_inline_xattr/expect |    6 ++--
- 2 files changed, 42 insertions(+), 32 deletions(-)
+ lib/ext2fs/ext_attr.c |   39 +++++++++++++++++----------------------
+ 1 file changed, 17 insertions(+), 22 deletions(-)
 
-diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-index 8c32eff..e489f62 100644
---- a/debugfs/debugfs.c
-+++ b/debugfs/debugfs.c
-@@ -540,34 +540,45 @@ static void internal_dump_inode_extra(FILE *out,
- 				inode->i_extra_isize);
- 		return;
+diff --git a/lib/ext2fs/ext_attr.c b/lib/ext2fs/ext_attr.c
+index 81f60ca..1b65c4b 100644
+--- a/lib/ext2fs/ext_attr.c
++++ b/lib/ext2fs/ext_attr.c
+@@ -466,7 +466,7 @@ errcode_t ext2fs_xattrs_write(struct ext2_xattr_handle *handle)
+ 	__u32 ea_inode_magic;
+ 	blk64_t blk;
+ 	unsigned int storage_size;
+-	unsigned int i, written;
++	unsigned int i;
+ 	errcode_t err;
+ 
+ 	if (!EXT2_HAS_COMPAT_FEATURE(handle->fs->super,
+@@ -531,26 +531,24 @@ write_ea_block:
+ 		goto out2;
  	}
--	storage_size = EXT2_INODE_SIZE(current_fs->super) -
--			EXT2_GOOD_OLD_INODE_SIZE -
--			inode->i_extra_isize;
--	magic = (__u32 *)((char *)inode + EXT2_GOOD_OLD_INODE_SIZE +
--			inode->i_extra_isize);
--	if (*magic == EXT2_EXT_ATTR_MAGIC) {
--		fprintf(out, "Extended attributes stored in inode body: \n");
--		end = (char *) inode + EXT2_INODE_SIZE(current_fs->super);
--		start = (char *) magic + sizeof(__u32);
--		entry = (struct ext2_ext_attr_entry *) start;
--		while (!EXT2_EXT_IS_LAST_ENTRY(entry)) {
--			struct ext2_ext_attr_entry *next =
--				EXT2_EXT_ATTR_NEXT(entry);
--			if (entry->e_value_size > storage_size ||
--					(char *) next >= end) {
--				fprintf(out, "invalid EA entry in inode\n");
--				return;
--			}
--			fprintf(out, "  ");
--			dump_xattr_string(out, EXT2_EXT_ATTR_NAME(entry),
--					  entry->e_name_len);
--			fprintf(out, " = \"");
--			dump_xattr_string(out, start + entry->e_value_offs,
--						entry->e_value_size);
--			fprintf(out, "\" (%u)\n", entry->e_value_size);
--			entry = next;
--		}
+ 
+-	if (block_buf) {
+-		/* Write a header on the EA block */
+-		header = block_buf;
+-		header->h_magic = EXT2_EXT_ATTR_MAGIC;
+-		header->h_refcount = 1;
+-		header->h_blocks = 1;
++	/* Write a header on the EA block */
++	header = block_buf;
++	header->h_magic = EXT2_EXT_ATTR_MAGIC;
++	header->h_refcount = 1;
++	header->h_blocks = 1;
+ 
+-		/* Get a new block for writing */
+-		err = prep_ea_block_for_write(handle->fs, handle->ino, inode);
+-		if (err)
+-			goto out2;
++	/* Get a new block for writing */
++	err = prep_ea_block_for_write(handle->fs, handle->ino, inode);
++	if (err)
++		goto out2;
+ 
+-		/* Finally, write the new EA block */
+-		blk = ext2fs_file_acl_block(handle->fs,
+-					    (struct ext2_inode *)inode);
+-		err = ext2fs_write_ext_attr3(handle->fs, blk, block_buf,
+-					     handle->ino);
+-		if (err)
+-			goto out2;
 -	}
-+}
-+
-+/* Dump extended attributes */
-+static int dump_attr(char *name, char *value, size_t value_len, void *data)
-+{
-+	FILE *out = data;
-+
-+	fprintf(out, "  ");
-+	dump_xattr_string(out, name, strlen(name));
-+	fprintf(out, " = \"");
-+	dump_xattr_string(out, value, value_len);
-+	fprintf(out, "\" (%zu)\n", value_len);
-+
-+	return 0;
-+}
-+
-+static void dump_inode_attributes(FILE *out, ext2_ino_t ino)
-+{
-+	struct ext2_xattr_handle *h;
-+	errcode_t err;
-+
-+	err = ext2fs_xattrs_open(current_fs, ino, &h);
++	/* Finally, write the new EA block */
++	blk = ext2fs_file_acl_block(handle->fs,
++				    (struct ext2_inode *)inode);
++	err = ext2fs_write_ext_attr3(handle->fs, blk, block_buf,
++				     handle->ino);
 +	if (err)
-+		return;
-+
-+	err = ext2fs_xattrs_read(h);
-+	if (err)
-+		goto out;
-+
-+	if (ext2fs_xattrs_count(h) == 0)
-+		goto out;
-+
-+	fprintf(out, "Extended attributes:\n");
-+	err = ext2fs_xattrs_iterate(h, dump_attr, out);
-+	if (err)
-+		goto out;
-+
-+out:
-+	err = ext2fs_xattrs_close(&h);
++		goto out2;
+ 
+ skip_ea_block:
+ 	blk = ext2fs_file_acl_block(handle->fs, (struct ext2_inode *)inode);
+@@ -663,7 +661,6 @@ static errcode_t read_xattrs_from_buffer(struct ext2_xattr_handle *handle,
+ errcode_t ext2fs_xattrs_read(struct ext2_xattr_handle *handle)
+ {
+ 	struct ext2_xattr *attrs = NULL, *x;
+-	unsigned int attrs_len;
+ 	struct ext2_inode_large *inode;
+ 	struct ext2_ext_attr_header *header;
+ 	__u32 ea_inode_magic;
+@@ -765,8 +762,6 @@ out:
+ 	return err;
  }
  
- static void dump_blocks(FILE *f, const char *prefix, ext2_ino_t inode)
-@@ -815,6 +826,7 @@ void internal_dump_inode(FILE *out, const char *prefix,
- 	if (EXT2_INODE_SIZE(current_fs->super) > EXT2_GOOD_OLD_INODE_SIZE)
- 		internal_dump_inode_extra(out, prefix, inode_num,
- 					  (struct ext2_inode_large *) inode);
-+	dump_inode_attributes(out, inode_num);
- 	if (current_fs->super->s_creator_os == EXT2_OS_LINUX &&
- 	    current_fs->super->s_feature_ro_compat &
- 		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) {
-diff --git a/tests/r_inline_xattr/expect b/tests/r_inline_xattr/expect
-index 9e71264..c7aa088 100644
---- a/tests/r_inline_xattr/expect
-+++ b/tests/r_inline_xattr/expect
-@@ -1,8 +1,7 @@
- resize2fs test
- debugfs -R ''stat file'' test.img 2>&1 | grep ''^Inode\|in inode body\|name = ''
- Inode: 1550   Type: regular    Mode:  0644   Flags: 0x0
--Extended attributes stored in inode body: 
--  name = "propervalue" (11)
-+  user.name = "propervalue" (11)
- Exit status is 0
- resize2fs test.img 5M
- Resizing the filesystem on test.img to 5120 (1k) blocks.
-@@ -11,6 +10,5 @@ The filesystem on test.img is now 5120 blocks long.
- Exit status is 0
- debugfs -R ''stat file'' test.img 2>&1 | grep ''^Inode\|in inode body\|name = ''
- Inode: 12   Type: regular    Mode:  0644   Flags: 0x0
--Extended attributes stored in inode body: 
--  name = "propervalue" (11)
-+  user.name = "propervalue" (11)
- Exit status is 0
+-#define XATTR_ABORT	1
+-#define XATTR_CHANGED	2
+ errcode_t ext2fs_xattrs_iterate(struct ext2_xattr_handle *h,
+ 				int (*func)(char *name, char *value,
+ 					    size_t value_len, void *data),
 -- 
 1.7.9.7
 
