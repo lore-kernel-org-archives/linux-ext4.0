@@ -1,98 +1,143 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH v3 10/30] libext2fs: define new dirent_swab interfaces for inline data
-Date: Fri,  6 Dec 2013 17:57:57 +0800
-Message-ID: <1386323897-2354-11-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH v3 08/30] debugfs: dump all extended attributes
+Date: Fri,  6 Dec 2013 17:57:55 +0800
+Message-ID: <1386323897-2354-9-git-send-email-wenqing.lz@taobao.com>
 References: <1386323897-2354-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Theodore Ts'o <tytso@mit.edu>,
 	"Darrick J. Wong" <darrick.wong@oracle.com>,
 	Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f53.google.com ([209.85.160.53]:48998 "EHLO
-	mail-pb0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757597Ab3LFJzr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Dec 2013 04:55:47 -0500
-Received: by mail-pb0-f53.google.com with SMTP id ma3so778654pbc.26
-        for <linux-ext4@vger.kernel.org>; Fri, 06 Dec 2013 01:55:46 -0800 (PST)
+Received: from mail-pd0-f181.google.com ([209.85.192.181]:51705 "EHLO
+	mail-pd0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756253Ab3LFJzm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Dec 2013 04:55:42 -0500
+Received: by mail-pd0-f181.google.com with SMTP id p10so740432pdj.40
+        for <linux-ext4@vger.kernel.org>; Fri, 06 Dec 2013 01:55:41 -0800 (PST)
 In-Reply-To: <1386323897-2354-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
 
-Later we will use ext2fs_dirent_swab_in/out to handle big-endian problem
-for inline data.  Now interfaces assume that it handles a block, but it
-is not true after adding inline data.  So this commit defines a new
-interface for inline data.
+Use the new extended attribute APIs to display all extended attributes
+(current code does not look in the EA block) and display full names
+(current code ignores name index too).
 
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/ext2fs.h |    4 ++++
- lib/ext2fs/swapfs.c |   16 ++++++++++++++--
- 2 files changed, 18 insertions(+), 2 deletions(-)
+ debugfs/debugfs.c           |   68 +++++++++++++++++++++++++------------------
+ tests/r_inline_xattr/expect |    6 ++--
+ 2 files changed, 42 insertions(+), 32 deletions(-)
 
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index e251435..1d5b80c 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -1524,7 +1524,11 @@ extern errcode_t ext2fs_read_bb_FILE(ext2_filsys fs, FILE *f,
- extern errcode_t ext2fs_create_resize_inode(ext2_filsys fs);
- 
- /* swapfs.c */
-+extern errcode_t ext2fs_dirent_swab_in2(ext2_filsys fs, char *buf, size_t size,
-+					int flags);
- extern errcode_t ext2fs_dirent_swab_in(ext2_filsys fs, char *buf, int flags);
-+extern errcode_t ext2fs_dirent_swab_out2(ext2_filsys fs, char *buf, size_t size,
-+					 int flags);
- extern errcode_t ext2fs_dirent_swab_out(ext2_filsys fs, char *buf, int flags);
- extern void ext2fs_swap_ext_attr(char *to, char *from, int bufsize,
- 				 int has_header);
-diff --git a/lib/ext2fs/swapfs.c b/lib/ext2fs/swapfs.c
-index 1295e81..8dfdcc9 100644
---- a/lib/ext2fs/swapfs.c
-+++ b/lib/ext2fs/swapfs.c
-@@ -354,13 +354,19 @@ void ext2fs_swap_mmp(struct mmp_struct *mmp)
- 
- errcode_t ext2fs_dirent_swab_in(ext2_filsys fs, char *buf, int flags)
- {
-+	return ext2fs_dirent_swab_in(fs, buf, fs->blocksize, flags);
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index 8c32eff..e489f62 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -540,34 +540,45 @@ static void internal_dump_inode_extra(FILE *out,
+ 				inode->i_extra_isize);
+ 		return;
+ 	}
+-	storage_size = EXT2_INODE_SIZE(current_fs->super) -
+-			EXT2_GOOD_OLD_INODE_SIZE -
+-			inode->i_extra_isize;
+-	magic = (__u32 *)((char *)inode + EXT2_GOOD_OLD_INODE_SIZE +
+-			inode->i_extra_isize);
+-	if (*magic == EXT2_EXT_ATTR_MAGIC) {
+-		fprintf(out, "Extended attributes stored in inode body: \n");
+-		end = (char *) inode + EXT2_INODE_SIZE(current_fs->super);
+-		start = (char *) magic + sizeof(__u32);
+-		entry = (struct ext2_ext_attr_entry *) start;
+-		while (!EXT2_EXT_IS_LAST_ENTRY(entry)) {
+-			struct ext2_ext_attr_entry *next =
+-				EXT2_EXT_ATTR_NEXT(entry);
+-			if (entry->e_value_size > storage_size ||
+-					(char *) next >= end) {
+-				fprintf(out, "invalid EA entry in inode\n");
+-				return;
+-			}
+-			fprintf(out, "  ");
+-			dump_xattr_string(out, EXT2_EXT_ATTR_NAME(entry),
+-					  entry->e_name_len);
+-			fprintf(out, " = \"");
+-			dump_xattr_string(out, start + entry->e_value_offs,
+-						entry->e_value_size);
+-			fprintf(out, "\" (%u)\n", entry->e_value_size);
+-			entry = next;
+-		}
+-	}
 +}
 +
-+errcode_t ext2fs_dirent_swab_in2(ext2_filsys fs, char *buf,
-+				 size_t size, int flags)
++/* Dump extended attributes */
++static int dump_attr(char *name, char *value, size_t value_len, void *data)
 +{
- 	errcode_t	retval;
- 	char		*p, *end;
- 	struct ext2_dir_entry *dirent;
- 	unsigned int	name_len, rec_len;
- 
- 	p = (char *) buf;
--	end = (char *) buf + fs->blocksize;
-+	end = (char *) buf + size;
- 	while (p < end-8) {
- 		dirent = (struct ext2_dir_entry *) p;
- 		dirent->inode = ext2fs_swab32(dirent->inode);
-@@ -385,13 +391,19 @@ errcode_t ext2fs_dirent_swab_in(ext2_filsys fs, char *buf, int flags)
- 
- errcode_t ext2fs_dirent_swab_out(ext2_filsys fs, char *buf, int flags)
- {
-+	return ext2fs_dirent_swab_out2(fs, buf, fs->blocksize, flags);
++	FILE *out = data;
++
++	fprintf(out, "  ");
++	dump_xattr_string(out, name, strlen(name));
++	fprintf(out, " = \"");
++	dump_xattr_string(out, value, value_len);
++	fprintf(out, "\" (%zu)\n", value_len);
++
++	return 0;
 +}
 +
-+errcode_t ext2fs_dirent_swab_out2(ext2_filsys fs, char *buf,
-+				  size_t size, int flags)
++static void dump_inode_attributes(FILE *out, ext2_ino_t ino)
 +{
- 	errcode_t	retval;
- 	char		*p, *end;
- 	unsigned int	rec_len;
- 	struct ext2_dir_entry *dirent;
++	struct ext2_xattr_handle *h;
++	errcode_t err;
++
++	err = ext2fs_xattrs_open(current_fs, ino, &h);
++	if (err)
++		return;
++
++	err = ext2fs_xattrs_read(h);
++	if (err)
++		goto out;
++
++	if (ext2fs_xattrs_count(h) == 0)
++		goto out;
++
++	fprintf(out, "Extended attributes:\n");
++	err = ext2fs_xattrs_iterate(h, dump_attr, out);
++	if (err)
++		goto out;
++
++out:
++	err = ext2fs_xattrs_close(&h);
+ }
  
- 	p = buf;
--	end = buf + fs->blocksize;
-+	end = buf + size;
- 	while (p < end) {
- 		dirent = (struct ext2_dir_entry *) p;
- 		retval = ext2fs_get_rec_len(fs, dirent, &rec_len);
+ static void dump_blocks(FILE *f, const char *prefix, ext2_ino_t inode)
+@@ -815,6 +826,7 @@ void internal_dump_inode(FILE *out, const char *prefix,
+ 	if (EXT2_INODE_SIZE(current_fs->super) > EXT2_GOOD_OLD_INODE_SIZE)
+ 		internal_dump_inode_extra(out, prefix, inode_num,
+ 					  (struct ext2_inode_large *) inode);
++	dump_inode_attributes(out, inode_num);
+ 	if (current_fs->super->s_creator_os == EXT2_OS_LINUX &&
+ 	    current_fs->super->s_feature_ro_compat &
+ 		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) {
+diff --git a/tests/r_inline_xattr/expect b/tests/r_inline_xattr/expect
+index 9e71264..c7aa088 100644
+--- a/tests/r_inline_xattr/expect
++++ b/tests/r_inline_xattr/expect
+@@ -1,8 +1,7 @@
+ resize2fs test
+ debugfs -R ''stat file'' test.img 2>&1 | grep ''^Inode\|in inode body\|name = ''
+ Inode: 1550   Type: regular    Mode:  0644   Flags: 0x0
+-Extended attributes stored in inode body: 
+-  name = "propervalue" (11)
++  user.name = "propervalue" (11)
+ Exit status is 0
+ resize2fs test.img 5M
+ Resizing the filesystem on test.img to 5120 (1k) blocks.
+@@ -11,6 +10,5 @@ The filesystem on test.img is now 5120 blocks long.
+ Exit status is 0
+ debugfs -R ''stat file'' test.img 2>&1 | grep ''^Inode\|in inode body\|name = ''
+ Inode: 12   Type: regular    Mode:  0644   Flags: 0x0
+-Extended attributes stored in inode body: 
+-  name = "propervalue" (11)
++  user.name = "propervalue" (11)
+ Exit status is 0
 -- 
 1.7.9.7
 
