@@ -1,72 +1,84 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH] debugfs: print missing argument in usage for open, filefrag and ls
-Date: Sat,  7 Dec 2013 15:11:45 +0800
-Message-ID: <1386400305-16757-1-git-send-email-wenqing.lz@taobao.com>
-Cc: Theodore Ts'o <tytso@mit.edu>, Zheng Liu <wenqing.lz@taobao.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 62751] INFO: rcu_sched detected stalls on CPUs/tasks: { 3}
+ (detected by 2, t=15107 jiffies, g=270766, c=270765, q=0)
+Date: Sat, 07 Dec 2013 10:08:16 +0000
+Message-ID: <bug-62751-13602-lZWhRkeGnY@https.bugzilla.kernel.org/>
+References: <bug-62751-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f52.google.com ([209.85.160.52]:61550 "EHLO
-	mail-pb0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751381Ab3LGHIv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 7 Dec 2013 02:08:51 -0500
-Received: by mail-pb0-f52.google.com with SMTP id uo5so2355128pbc.11
-        for <linux-ext4@vger.kernel.org>; Fri, 06 Dec 2013 23:08:51 -0800 (PST)
+Received: from mail.kernel.org ([198.145.19.201]:39652 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752838Ab3LGKIT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 7 Dec 2013 05:08:19 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id D9C9620426
+	for <linux-ext4@vger.kernel.org>; Sat,  7 Dec 2013 10:08:17 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 077A420395
+	for <linux-ext4@vger.kernel.org>; Sat,  7 Dec 2013 10:08:17 +0000 (UTC)
+In-Reply-To: <bug-62751-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+https://bugzilla.kernel.org/show_bug.cgi?id=62751
 
-This commit prints missing argument in usage for open, filefrag and ls
-commands, which might help us to use debugfs tool.
+Zheng Liu <gnehzuil.liu@gmail.com> changed:
 
-Cc: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
----
- debugfs/debugfs.c  |    3 ++-
- debugfs/filefrag.c |    2 +-
- debugfs/ls.c       |    2 +-
- 3 files changed, 4 insertions(+), 3 deletions(-)
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |gnehzuil.liu@gmail.com
 
-diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-index 8c32eff..4dd5ba9 100644
---- a/debugfs/debugfs.c
-+++ b/debugfs/debugfs.c
-@@ -201,7 +201,8 @@ void do_open_filesys(int argc, char **argv)
- 	return;
- 
- print_usage:
--	fprintf(stderr, "%s: Usage: open [-s superblock] [-b blocksize] [-c] "
-+	fprintf(stderr, "%s: Usage: open [-s superblock] [-b blocksize] "
-+		"[d image_filename] [-c] [-i] [-f] [-e] [-D] "
- #ifndef READ_ONLY
- 		"[-w] "
- #endif
-diff --git a/debugfs/filefrag.c b/debugfs/filefrag.c
-index e82d133..6219d7c 100644
---- a/debugfs/filefrag.c
-+++ b/debugfs/filefrag.c
-@@ -289,7 +289,7 @@ void do_filefrag(int argc, char *argv[])
- 
- 	if (argc > optind+1) {
- 	print_usage:
--		com_err(0, 0, "Usage: filefrag [-dv] file");
-+		com_err(0, 0, "Usage: filefrag [-dvr] file");
- 		return;
- 	}
- 
-diff --git a/debugfs/ls.c b/debugfs/ls.c
-index 69c7897..3603e46 100644
---- a/debugfs/ls.c
-+++ b/debugfs/ls.c
-@@ -167,7 +167,7 @@ void do_list_dir(int argc, char *argv[])
- 
- 	if (argc > optind+1) {
- 	print_usage:
--		com_err(0, 0, "Usage: ls [-l] [-d] [-p] file");
-+		com_err(0, 0, "Usage: ls [-l] [-d] [-p] [-c] file");
- 		return;
- 	}
- 
+--- Comment #10 from Zheng Liu <gnehzuil.liu@gmail.com> ---
+Hi Loris,
+
+Sorry for my late reply.  I haven't had a chance to take a closer look at this
+problem until now.
+
+(In reply to Loris Luise from comment #8)
+> Hello,
+> 
+> what can I do on my side?
+
+I am not sure whether you use 'delalloc' on your system.  I don't see these
+details from the log that you pasted.  So now only I could suggest is that you
+can try to turn off the delalloc.  The step is as below:
+
+ % sudo mount -t ext4 -o remount,nodelalloc ${DEV} ${MNT}
+
+After this, it won't track the delayed entry on extent status tree.  So it will
+avoid es shrinker to take too much time to scan delayed entries that couldn't
+be reclaimed.
+
+Then I will try to reproduce this problem on my sand box and think about how to
+improve es shrinker.
+
+Thanks,
+- Zheng
+
+> 
+> I've done the following modifications:
+> 
+> 1) Installed latest mainline kernel 3.12
+> 
+> 2) Replaced SCSI drivers from vmw_pvsci to LSI Logic SAS (mptsas)
+> 
+> 3) reduced number of CPUs from 8 to 4
+> 
+> 4) enabled on ESXi (4.1) setting for this machine "CPU Hot add" feature
+> 
+> The issue is still affecting ths machine... other 2 almost equals machine
+> running on this host (same kernel) but with XFS on root are not affected and
+> very
+> stable.
+> 
+> I reattached another info file (bug-20131118084007.txt) which contains a lot
+> of infos.
+> 
+> Thanks.
+
 -- 
-1.7.9.7
-
+You are receiving this mail because:
+You are watching the assignee of the bug.
