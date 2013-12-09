@@ -1,184 +1,267 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: FAST paper on ffsck
-Date: Mon, 9 Dec 2013 13:01:49 -0500
-Message-ID: <20131209180149.GA6096@thunk.org>
+From: Uri Corin <uri.corin@gmail.com>
+Subject: [PATCH] e2fsprogs: mke2fs manpage updates
+Date: Mon, 9 Dec 2013 21:10:21 +0200
+Message-ID: <CAO+X6OgDR91sa8eN9EqUFbyFeHDM4NcaYe3KDa19-KmJAC5P4Q@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:38195 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752057Ab3LISBy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 Dec 2013 13:01:54 -0500
-Content-Disposition: inline
+Received: from mail-vc0-f170.google.com ([209.85.220.170]:41843 "EHLO
+	mail-vc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761399Ab3LITKY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Dec 2013 14:10:24 -0500
+Received: by mail-vc0-f170.google.com with SMTP id la4so701642vcb.29
+        for <linux-ext4@vger.kernel.org>; Mon, 09 Dec 2013 11:10:22 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas brought up on today's conference call Kirk McKusick's recent
-changes[1] to try to improve fsck times for FFS, in response to the
-recent FAST paper covering fsck speed ups for ext3, "ffsck: The Fast
-Filesystem Checker"[2]
+Hi,
 
-[1] http://www.mckusick.com/publications/faster_fsck.pdf
-[2] https://www.usenix.org/system/files/conference/fast13/fast13-final52_0.pdf
+I've added documentation for all available filesystem features
+settable by mke2fs.
+* Features now include the kernel constant attached to the function.
+* Some pre-existing feature explanations have been expanded based on
+ext4.wiki.kernel.org.
 
-All of the changes which Kirk outlined are ones which we had done
-several years ago, in the early days of ext4 development.  I talked
-about some of these in some blog entries, "Fast ext4 fsck times"[3], and
-"Fast ext4 fsck times, revisited"[4]
+Regards,
+Uri Corin
+uri.corin@gmail.com
 
-[3] http://thunk.org/tytso/blog/2008/08/08/fast-ext4-fsck-times/
-[4] http://thunk.org/tytso/blog/2009/02/26/fast-ext4-fsck-times-revisited/
+---
 
-(Apologies for the really bad formatting; I recovered my blog from
-backups a few months ago, installed onto a brand-new Wordpress
-installation --- since the old one was security bug ridden and
-horribly obsolete --- and I haven't had a chance to fix up some of the
-older blog entries that had explicit HTML for tables to work with the
-new theme.)
-
-One further observation from reading the ffsck paper.  Their method of
-introducing heavy file system fragmentation resulted in a file system
-where most of the files had external extent tree blocks; that is, the
-trees had a depth > 1.  I have not observed this in file systems under
-normal load, since most files are written once and not rewritten, and
-those that are rewritten (i.e., database files) are not the common
-case, and even then, generally aren't written in a random append
-workload where there are hundreds of files in the same directory which
-are appended to in random order.  So looking at at a couple file
-systems' fsck -v output, I find results such as this:
-
-             Extent depth histogram: 1229346/569/3
-             Extent depth histogram: 332256/141
-             Extent depth histogram: 23253/456
-
-... where the first number is the number of inode where all of the
-extent information stored in the inode, and the second number is the
-number of inodes with a single level of external extent tree blocks,
-and so on.
-
-As a result, I'm not seeing the fsck time degradation resulting from
-file system aging, because with at leat my workloads, the file system
-isn't getting fragmented in enough to result in a large number of
-inodes with external extent tree blocks.
-
-We could implement schemes to optimize fsck performance for heavily
-fragmented file systems; a few which could be done using just e2fsck
-optimizations, and some which would require file system format
-changes.  However, it's not clear to me that it's worth it.
-
-If folks would like help run some experiments, it would be useful to
-run a test e2fsck on a partition: "e2fsck -Fnfvtt /dev/sdb1" and look
-at the extent depth histogram and the I/O rates for the various e2fsck
-passes (see below for an example).
-
-If you have examples where the file system has a very large number of
-inodes with extent tree depths > 1, it would be useful to see these
-numbers, with a description of how old the file system has been, and
-what sort of workload might have contributed to its aging.
-
-Thanks, regards,
-
-					- Ted
-
-e2fsck 1.42.8 (20-Jun-2013)
-Pass 1: Checking inodes, blocks, and sizes
-Pass 1: Memory used: 668k/7692k (575k/94k), time:  0.92/ 0.42/ 0.02
-Pass 1: I/O read: 11MB, write: 0MB, rate: 11.95MB/s
-Pass 2: Checking directory structure
-Pass 2: Memory used: 784k/15196k (466k/319k), time:  0.44/ 0.03/ 0.00
-Pass 2: I/O read: 10MB, write: 0MB, rate: 22.76MB/s
-Pass 3: Checking directory connectivity
-Peak memory: Memory used: 784k/15196k (466k/319k), time:  1.60/ 0.63/ 0.02
-Pass 3: Memory used: 784k/15196k (439k/346k), time:  0.00/ 0.00/ 0.00
-Pass 3: I/O read: 1MB, write: 0MB, rate: 2793.30MB/s
-Pass 4: Checking reference counts
-Pass 4: Memory used: 784k/188k (432k/353k), time:  0.63/ 0.63/ 0.00
-Pass 4: I/O read: 0MB, write: 0MB, rate: 0.00MB/s
-Pass 5: Checking group summary information
-Pass 5: Memory used: 784k/188k (426k/359k), time:  4.95/ 0.16/ 0.10
-Pass 5: I/O read: 19MB, write: 0MB, rate: 3.84MB/s
-
-       13825 inodes used (0.03%, out of 47906816)
-        1425 non-contiguous files (10.3%)
-          11 non-contiguous directories (0.1%)
-             # of inodes with ind/dind/tind blocks: 0/0/0
-             Extent depth histogram: 12986/831
-   141525383 blocks used (73.85%, out of 191627264)
-           0 bad blocks
-           4 large files
-
-       11537 regular files
-        2279 directories
-           0 character device files
-           0 block device files
-           0 fifos
-           0 links
-           0 symbolic links (0 fast symbolic links)
-           0 sockets
-------------
-       13816 files
-Memory used: 784k/188k (426k/359k), time:  7.19/ 1.42/ 0.12
-I/O read: 39MB, write: 0MB, rate: 5.43MB/s
-
-Note: the reason why this file system has so many files with large
-extents is because there are some video files which large enough that
-even when contiguous, they will require an external extent block, e.g:
-
-File size of 01 Yankee White.m4v is 499375730 (121918 blocks of 4096 bytes)
- ext:     logical_offset:        physical_offset: length:   expected: flags:
-   0:        0..       0:   19802112..  19802112:      1:            
-   1:        2..     315:   19802114..  19802427:    314:   19802113:
-   2:      543..   14335:   19802655..  19816447:  13793:   19802428:
-   3:    14336..   47103:   19830784..  19863551:  32768:   19816448:
-   4:    47104..   73727:   19896320..  19922943:  26624:   19863552:
-   5:    73728..   79871:   19955712..  19961855:   6144:   19922944:
-   6:    79872..  112639:   19994624..  20027391:  32768:   19961856:
-   7:   112640..  121917:   20060160..  20069437:   9278:   20027392: eof
-01 Yankee White.m4v: 8 extents found
-
-BTW, looking at the output of filefrag -v on large files, it does look
-like there is some work we can do to improve the block allocation
-hueristics.  These files were written w/o the benefit of fallocate,
-but with delayed allocation, and apparently we aren't automatically
-figuring out that we should be in stream mode from the get-go.  This
-pattern is reproduced in most of the files in the directory:
-
-File size of 02 Hung Out to Dry.m4v is 552382434 (134859 blocks of 4096 bytes)
- ext:     logical_offset:        physical_offset: length:   expected: flags:
-   0:        0..       0:   19816448..  19816448:      1:            
-   1:        2..     314:   19816450..  19816762:    313:   19816449:
-   2:      542..   14335:   19816990..  19830783:  13794:   19816763:
-   3:    14336..   47103:   19863552..  19896319:  32768:   19830784:
-   4:    47104..   79871:   19961856..  19994623:  32768:   19896320:
-   5:    79872..  112639:   20027392..  20060159:  32768:   19994624:
-   6:   112640..  134858:   20070400..  20092618:  22219:   20060160: eof
-02 Hung Out to Dry.m4v: 7 extents found
-
-File size of 03 Sea Dog.m4v is 553146161 (135046 blocks of 4096 bytes)
- ext:     logical_offset:        physical_offset: length:   expected: flags:
-   0:        0..       0:   20092928..  20092928:      1:            
-   1:        2..     159:   20092930..  20093087:    158:   20092929:
-   2:      161..     306:   20093089..  20093234:    146:   20093088:
-   3:      534..   14335:   20093462..  20107263:  13802:   20093235:
-   4:    14336..   47103:   20121600..  20154367:  32768:   20107264:
-   5:    47104..   79871:   20187136..  20219903:  32768:   20154368:
-   6:    79872..  112639:   20252672..  20285439:  32768:   20219904:
-   7:   112640..  135045:   20318208..  20340613:  22406:   20285440: eof
-03 Sea Dog.m4v: 8 extents found
-
-File size of 04 The Immortals.m4v is 516091162 (125999 blocks of 4096 bytes)
- ext:     logical_offset:        physical_offset: length:   expected: flags:
-   0:        0..       0:   20107264..  20107264:      1:            
-   1:        2..     162:   20107266..  20107426:    161:   20107265:
-   2:      164..     312:   20107428..  20107576:    149:   20107427:
-   3:      540..   14335:   20107804..  20121599:  13796:   20107577:
-   4:    14336..   47103:   20154368..  20187135:  32768:   20121600:
-   5:    47104..   79871:   20219904..  20252671:  32768:   20187136:
-   6:    79872..  112639:   20285440..  20318207:  32768:   20252672:
-   7:   112640..  125998:   20340736..  20354094:  13359:   20318208: eof
-04 The Immortals.m4v: 8 extents found
-
-Looking at all of these files, actually, if we had managed to allocate
-them using contiguous 32768 block extents, these 45 minute TV episodes
-would have just fit inside the in-inode's 4 extent slots.
+diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
+index 7b89296..dc76936 100644
+--- a/misc/mke2fs.8.in
++++ b/misc/mke2fs.8.in
+@@ -532,11 +532,24 @@ section of the configuration file.
+ .sp
+ The filesystem feature set is comprised of a list of features, separated
+ by commas, that are to be enabled.  To disable a feature, simply
+-prefix the feature name with a  caret ('^') character.  The
+-pseudo-filesystem feature "none" will clear all filesystem features.
++prefix the feature name with a  caret ('^') or a minus ('-') character.
++Features with dependents will not be removed successfully.
++The pseudo-filesystem feature "none" will clear all filesystem features.
+ .RS 1.2i
+ .TP
++.B 64bit
++.br
++Constant EXT4_FEATURE_INCOMPAT_64BIT.
++.br
++Enable a filesystem size of 2^64 blocks.
++.TP
+ .B bigalloc
++.br
++Constant EXT4_FEATURE_RO_COMPAT_BIGALLOC.
++.br
++Requires
++.B extents
++.br
+ This feature enables clustered allocation, so that the unit of
+ allocation is a power of two number of blocks.  That is, each bit in the
+ what had traditionally been known as the block allocation bitmap now
+@@ -550,21 +563,53 @@ for large files.  The size can be specified using the
+ The bigalloc feature is still under development, and may not be fully
+ supported with your kernel or may have various bugs.  Please see the web
+ page http://ext4.wiki.kernel.org/index.php/Bigalloc for details.
++May clash with delayed allocation (see
++.BR nodelalloc mount option).
+ .TP
+ .B dir_index
++.br
++Constant EXT2_FEATURE_COMPAT_DIR_INDEX.
++.br
+ Use hashed b-trees to speed up lookups in large directories.
+ .TP
+-.B extents
++.B dir_nlink
++.br
++Constant EXT4_FEATURE_RO_COMPAT_DIR_NLINK.
++.br
++Allow more than 65000 subdirectories per directory.
++.TP
++.B extent, extents
++.br
++Constant EXT3_FEATURE_INCOMPAT_EXTENTS.
++.br
+ Instead of using the indirect block scheme for storing the location of
+ data blocks in an inode, use extents instead.  This is a much more
+ efficient encoding which speeds up filesystem access, especially for
+ large files.  (Note: both extent and extents are accepted for
+ historical/backwards compatibility reasons.)
+ .TP
++.B extra_isize
++.br
++Constant EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE.
++.br
++Nanosecond timestamps and creation time.
++.TP
++.B ext_attr
++.br
++Constant EXT2_FEATURE_COMPAT_EXT_ATTR.
++.br
++Extended attribute blocks.
++.TP
+ .B filetype
++.br
++Constant EXT2_FEATURE_INCOMPAT_FILETYPE.
++.br
+ Store file type information in directory entries.
+ .TP
+ .B flex_bg
++.br
++Constant EXT4_FEATURE_INCOMPAT_FLEX_BG.
++.br
+ Allow the per-block group metadata (allocation bitmaps and inode tables)
+ to be placed anywhere on the storage media.  In addition,
+ .B mke2fs
+@@ -575,28 +620,98 @@ can be specified using the
+ option.
+ .TP
+ .B has_journal
+-Create an ext3 journal (as if using the
++.br
++Constant EXT3_FEATURE_COMPAT_HAS_JOURNAL.
++.br
++Create a journal to ensure filesystem consistency even across unclean
+shutdowns.
++Setting the filesystem feature is equivalent to using the
+ .B \-j
+-option).
+-@JDEV@.TP
+-@JDEV@.B journal_dev
+-@JDEV@Create an external ext3 journal on the given device
++option.
++.TP
++.B huge_file
++.br
++Constant EXT4_FEATURE_RO_COMPAT_HUGE_FILE.
++.br
++Allows files larger than 2TiB in size.
++.TP
++.B journal_dev
++.br
++Constant EXT3_FEATURE_INCOMPAT_JOURNAL_DEV.
++.br
++Device is to be used as an external journal by other filesystems.
++.br
++@JDEV@Creates an external ext3 journal on the given device
+ @JDEV@instead of a regular ext2 filesystem.
+ @JDEV@Note that
+ @JDEV@.I external-journal
+ @JDEV@must be created with the same
+ @JDEV@block size as the filesystems that will be using it.
++.br
++Once ready, use
++.BR mke2fs (8)
++or
++.BR tune2fs(8)
++with
++.B \-J
++.BR device= <external-device>
++to direct a filesystem to the journaling device (see journal-options).
+ .TP
+ .B large_file
+-Filesystem can contain files that are greater than 2GB.  (Modern kernels
+-set this feature automatically when a file > 2GB is created.)
+-@QUOTA_MAN_COMMENT@.TP
+-@QUOTA_MAN_COMMENT@.B quota
++.br
++Constant EXT2_FEATURE_RO_COMPAT_LARGE_FILE.
++.br
++Filesystem can contain files that are greater than 2GiB.  (Modern kernels
++set this feature automatically when a file > 2GiB is created.)
++.TP
++.B metadata_csum
++.br
++Constant EXT4_FEATURE_RO_COMPAT_METADATA_CSUM.
++.br
++Filesystem supports metadata checksumming.
++.br
++Implies
++.B uninit_bg
++though it must be omitted.
++.br
++.B Future feature, available in e2fsprogs 1.43-WIP
++.TP
++.B meta_bg
++.br
++Constant EXT2_FEATURE_INCOMPAT_META_BG.
++.br
++Reduced block group backups.
++.TP
++.B mmp
++.br
++Constant EXT4_FEATURE_INCOMPAT_MMP.
++.br
++Multiple mount protection (MMP) feature.  MMP helps to
++protect the filesystem from being multiply mounted and is useful in
++shared storage environments.
++.TP
++.B quota
++.br
++Constant EXT4_FEATURE_RO_COMPAT_QUOTA.
++.br
+ @QUOTA_MAN_COMMENT@Create quota inodes (inode# 3 for userquota and
+inode# 4 for group quota) and
+ @QUOTA_MAN_COMMENT@set them in the superblock.  With this feature,
+the quotas will be enabled
+ @QUOTA_MAN_COMMENT@automatically when the filesystem is mounted.
++.br
++Causes the quota files (i.e., user.quota and group.quota which
+existed in the older quota design) to be hidden inodes.
++.br
++.B Not defined by default,
++see https://ext4.wiki.kernel.org/index.php/Quota
+ .TP
+ .B resize_inode
++.br
++Constant EXT2_FEATURE_COMPAT_RESIZE_INODE
++.br
++Requires
++.B sparse_super
++.br
++Sets
++.B large_file
++.br
+ Reserve space so the block group descriptor table may grow in the future.
+ Useful for online resizing using
+ .BR resize2fs .
+@@ -609,18 +724,27 @@ using the
+ extended option.
+ .TP
+ .B sparse_super
++.br
++Constant EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER.
++.br
+ Create a filesystem with fewer superblock backup copies
+ (saves space on large filesystems).
+ .TP
+-.B uninit_bg
+-Create a filesystem without initializing all of the block groups.  This
+-feature also enables checksums and highest-inode-used statistics in each
+-blockgroup.  This feature can
+-speed up filesystem creation time noticeably (if lazy_itable_init is
+-enabled), and can also reduce
+-.BR e2fsck
+-time dramatically.  It is only supported by the ext4 filesystem in
+-recent Linux kernels.
++.B uninit_bg, uninit_groups
++.br
++Constant EXT4_FEATURE_RO_COMPAT_GDT_CSUM.
++.br
++Create a filesystem without initializing all of the block groups.
++.br
++Allows the kernel to initialize bitmaps and inode tables and keep a high
++watermark for the unused inodes in a filesystem, to reduce
++.BR e2fsck (8)
++time.  Can speed up filesystem creation time noticeably (if
+lazy_itable_init is enabled).
++.br
++This first e2fsck run after enabling this feature will take the
++full time, but subsequent e2fsck runs will take only a fraction of the
++original time, depending on how full the file system is.
++It is only supported by the ext4 filesystem in recent Linux kernels.
+ .RE
+ .TP
+ .B \-q
