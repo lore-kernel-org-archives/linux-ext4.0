@@ -1,161 +1,184 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: Ext4 projects for 2014
-Date: Mon, 9 Dec 2013 14:50:31 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1312091448540.2143@localhost.localdomain>
-References: <20131209014330.GA9195@thunk.org> <alpine.LFD.2.00.1312091335440.2143@localhost.localdomain>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: FAST paper on ffsck
+Date: Mon, 9 Dec 2013 13:01:49 -0500
+Message-ID: <20131209180149.GA6096@thunk.org>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-567540897-1386597033=:2143"
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:30522 "EHLO mx1.redhat.com"
+Received: from imap.thunk.org ([74.207.234.97]:38195 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932440Ab3LINug (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 Dec 2013 08:50:36 -0500
-In-Reply-To: <alpine.LFD.2.00.1312091335440.2143@localhost.localdomain>
+	id S1752057Ab3LISBy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 Dec 2013 13:01:54 -0500
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+Andreas brought up on today's conference call Kirk McKusick's recent
+changes[1] to try to improve fsck times for FFS, in response to the
+recent FAST paper covering fsck speed ups for ext3, "ffsck: The Fast
+Filesystem Checker"[2]
 
---8323328-567540897-1386597033=:2143
-Content-Type: TEXT/PLAIN; charset=ISO-8859-15
-Content-Transfer-Encoding: 8BIT
+[1] http://www.mckusick.com/publications/faster_fsck.pdf
+[2] https://www.usenix.org/system/files/conference/fast13/fast13-final52_0.pdf
 
-On Mon, 9 Dec 2013, Luká¨ Czerner wrote:
+All of the changes which Kirk outlined are ones which we had done
+several years ago, in the early days of ext4 development.  I talked
+about some of these in some blog entries, "Fast ext4 fsck times"[3], and
+"Fast ext4 fsck times, revisited"[4]
 
-> Date: Mon, 9 Dec 2013 14:20:31 +0100 (CET)
-> From: Luká¨ Czerner <lczerner@redhat.com>
-> To: Theodore Ts'o <tytso@mit.edu>
-> Cc: linux-ext4@vger.kernel.org
-> Subject: Re: Ext4 projects for 2014
-> 
-> On Sun, 8 Dec 2013, Theodore Ts'o wrote:
-> 
-> > Date: Sun, 8 Dec 2013 20:43:30 -0500
-> > From: Theodore Ts'o <tytso@mit.edu>
-> > To: linux-ext4@vger.kernel.org
-> > Subject: Ext4 projects for 2014
-> > 
-> > Unfortunately, I forgot my notes from our last conference call before
-> > heading off to the airport.  My fault for taking the notes on paper
-> > instead of electronically in the first place.  :-(
-> > 
-> > This is my best reconstruction of some of the ext4 projects for 2014.
-> > Please let me know if I've forgotten anything.
+[3] http://thunk.org/tytso/blog/2008/08/08/fast-ext4-fsck-times/
+[4] http://thunk.org/tytso/blog/2009/02/26/fast-ext4-fsck-times-revisited/
 
-Btw I think that what is lacking in this list is:
+(Apologies for the really bad formatting; I recovered my blog from
+backups a few months ago, installed onto a brand-new Wordpress
+installation --- since the old one was security bug ridden and
+horribly obsolete --- and I haven't had a chance to fix up some of the
+older blog entries that had explicit HTML for tables to work with the
+new theme.)
 
-- XIP support (even though we have some patches with some
-  functionality)
-- range locking (Jan Kara was working on this, but I am not sure
-  what is the status of his work)
+One further observation from reading the ffsck paper.  Their method of
+introducing heavy file system fragmentation resulted in a file system
+where most of the files had external extent tree blocks; that is, the
+trees had a depth > 1.  I have not observed this in file systems under
+normal load, since most files are written once and not rewritten, and
+those that are rewritten (i.e., database files) are not the common
+case, and even then, generally aren't written in a random append
+workload where there are hundreds of files in the same directory which
+are appended to in random order.  So looking at at a couple file
+systems' fsck -v output, I find results such as this:
 
-> > 
-> > 1)  Support for Shingled (SMR) Drives
-> > 
-> > 2)  Data block compression -- Lukas
-> 
-> I think you meant data block checksums ?
-> 
-> I was thinking about this a little bit and the best way seems to be
-> to create a new checksum tree with pointers to extent tree and add
-> pointers from extent tree into the checksum tree.
-> 
-> Other possibility would not require any additional tree - checksum
-> would be sored directly in the blocks itself, with additional
-> information making data block self describing which would be great
-> for file system resilience, repair, misplaced writes and all sorts
-> of other failures. However this would make the file system with
-> checksum support unreadable by older version of the ext4.
-> 
-> I am interested to know what people thinks about that.
-> 
-> > 3)  reflink support --- Mingming
-> >        block-level snapshot support
-> >        Use case:  (a) VM guest images which are mostly derived from
-> >        	   	      the same common master image
-> 
-> I think this will be very useful functionality, however I think that
-> ext4 design is not really prepared for this kind of functionality
-> so we should be looking at how to enable this without actually
-> bending ext4 to do this on it's own.
-> 
-> The first idea I've had was to use device mapper for that. Simply
-> design a interface where we can tell block layer (DM) to create
-> snapshots from provided list of extents. That way we could use it
-> by other file system as well. However there might be some
-> shortcomings like for example the fact that DM thinp target is
-> operating of larger blocks of data (chunk size) then is the size of
-> the block.
-> 
-> We could always configure smaller chunk size for the thinp target
-> however that might be suboptimal as DM is not really designed for
-> fast and effective metadata processing since they usually do not
-> have that much metadata. But it's still a possibility with the
-> advantage to be generic solution for all file system and if the
-> major usecase for this would be databases or VM images (big files)
-> then the negatives of this approach might be negligible.
-> 
-> 
-> There is also other possibility. Alasdair mentioned to be that they
-> are planning to create deduplication target which should be fairly
-> easy to create. This might be very useful when implementing reflink
-> support for any file system. We would only need to pass down the tag
-> saying that we're writing duplicate data so the target does not
-> actually need to write anything.
-> 
-> 
-> > 
-> > 4)  Subvolume quotas (aka project quotas) -- Zheng
-> > 
-> > 5)  block improvements -- raid support / flash block size
-> > 
-> > 6)  Better support for non-rotating media
-> >        Differences between thinp and flash?
-> >        General problem: how do we measure improvements in the
-> >        block allocator?
-> 
-> This is obviously a big problem since the "improvement" is
-> inherently bound to "workload". So the main question might be what
-> "workload" do we test this on ?
-> 
-> Having a set of micro benchmarks each for different aspect of the
-> allocator might be useful, however in reality allocator will not
-> have ideal condition to make its decisions and often than not the real
-> workload is a combination of different things.
-> 
-> The other important thing when talking about testing block
-> allocator is to age the file system, because we really need to know
-> how well the allocator (or the file system itself) will do in the
-> long run, but just immediately after mkfs. This is especially true
-> for block allocation since its decisions are driven by the
-> fragmentation of the free space.
-> 
-> Thanks!
-> -Lukas
-> 
-> > 
-> > Other more minor todo items:
-> > 
-> > A)  Finish integration of inline support in e2fsprogs
-> > 
-> > B)  Dioread nolock cleanup
-> > 
-> > C)  Extent status tree shrinker
-> > 
-> > 
-> > 						- Ted
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
---8323328-567540897-1386597033=:2143--
+             Extent depth histogram: 1229346/569/3
+             Extent depth histogram: 332256/141
+             Extent depth histogram: 23253/456
+
+... where the first number is the number of inode where all of the
+extent information stored in the inode, and the second number is the
+number of inodes with a single level of external extent tree blocks,
+and so on.
+
+As a result, I'm not seeing the fsck time degradation resulting from
+file system aging, because with at leat my workloads, the file system
+isn't getting fragmented in enough to result in a large number of
+inodes with external extent tree blocks.
+
+We could implement schemes to optimize fsck performance for heavily
+fragmented file systems; a few which could be done using just e2fsck
+optimizations, and some which would require file system format
+changes.  However, it's not clear to me that it's worth it.
+
+If folks would like help run some experiments, it would be useful to
+run a test e2fsck on a partition: "e2fsck -Fnfvtt /dev/sdb1" and look
+at the extent depth histogram and the I/O rates for the various e2fsck
+passes (see below for an example).
+
+If you have examples where the file system has a very large number of
+inodes with extent tree depths > 1, it would be useful to see these
+numbers, with a description of how old the file system has been, and
+what sort of workload might have contributed to its aging.
+
+Thanks, regards,
+
+					- Ted
+
+e2fsck 1.42.8 (20-Jun-2013)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 1: Memory used: 668k/7692k (575k/94k), time:  0.92/ 0.42/ 0.02
+Pass 1: I/O read: 11MB, write: 0MB, rate: 11.95MB/s
+Pass 2: Checking directory structure
+Pass 2: Memory used: 784k/15196k (466k/319k), time:  0.44/ 0.03/ 0.00
+Pass 2: I/O read: 10MB, write: 0MB, rate: 22.76MB/s
+Pass 3: Checking directory connectivity
+Peak memory: Memory used: 784k/15196k (466k/319k), time:  1.60/ 0.63/ 0.02
+Pass 3: Memory used: 784k/15196k (439k/346k), time:  0.00/ 0.00/ 0.00
+Pass 3: I/O read: 1MB, write: 0MB, rate: 2793.30MB/s
+Pass 4: Checking reference counts
+Pass 4: Memory used: 784k/188k (432k/353k), time:  0.63/ 0.63/ 0.00
+Pass 4: I/O read: 0MB, write: 0MB, rate: 0.00MB/s
+Pass 5: Checking group summary information
+Pass 5: Memory used: 784k/188k (426k/359k), time:  4.95/ 0.16/ 0.10
+Pass 5: I/O read: 19MB, write: 0MB, rate: 3.84MB/s
+
+       13825 inodes used (0.03%, out of 47906816)
+        1425 non-contiguous files (10.3%)
+          11 non-contiguous directories (0.1%)
+             # of inodes with ind/dind/tind blocks: 0/0/0
+             Extent depth histogram: 12986/831
+   141525383 blocks used (73.85%, out of 191627264)
+           0 bad blocks
+           4 large files
+
+       11537 regular files
+        2279 directories
+           0 character device files
+           0 block device files
+           0 fifos
+           0 links
+           0 symbolic links (0 fast symbolic links)
+           0 sockets
+------------
+       13816 files
+Memory used: 784k/188k (426k/359k), time:  7.19/ 1.42/ 0.12
+I/O read: 39MB, write: 0MB, rate: 5.43MB/s
+
+Note: the reason why this file system has so many files with large
+extents is because there are some video files which large enough that
+even when contiguous, they will require an external extent block, e.g:
+
+File size of 01 Yankee White.m4v is 499375730 (121918 blocks of 4096 bytes)
+ ext:     logical_offset:        physical_offset: length:   expected: flags:
+   0:        0..       0:   19802112..  19802112:      1:            
+   1:        2..     315:   19802114..  19802427:    314:   19802113:
+   2:      543..   14335:   19802655..  19816447:  13793:   19802428:
+   3:    14336..   47103:   19830784..  19863551:  32768:   19816448:
+   4:    47104..   73727:   19896320..  19922943:  26624:   19863552:
+   5:    73728..   79871:   19955712..  19961855:   6144:   19922944:
+   6:    79872..  112639:   19994624..  20027391:  32768:   19961856:
+   7:   112640..  121917:   20060160..  20069437:   9278:   20027392: eof
+01 Yankee White.m4v: 8 extents found
+
+BTW, looking at the output of filefrag -v on large files, it does look
+like there is some work we can do to improve the block allocation
+hueristics.  These files were written w/o the benefit of fallocate,
+but with delayed allocation, and apparently we aren't automatically
+figuring out that we should be in stream mode from the get-go.  This
+pattern is reproduced in most of the files in the directory:
+
+File size of 02 Hung Out to Dry.m4v is 552382434 (134859 blocks of 4096 bytes)
+ ext:     logical_offset:        physical_offset: length:   expected: flags:
+   0:        0..       0:   19816448..  19816448:      1:            
+   1:        2..     314:   19816450..  19816762:    313:   19816449:
+   2:      542..   14335:   19816990..  19830783:  13794:   19816763:
+   3:    14336..   47103:   19863552..  19896319:  32768:   19830784:
+   4:    47104..   79871:   19961856..  19994623:  32768:   19896320:
+   5:    79872..  112639:   20027392..  20060159:  32768:   19994624:
+   6:   112640..  134858:   20070400..  20092618:  22219:   20060160: eof
+02 Hung Out to Dry.m4v: 7 extents found
+
+File size of 03 Sea Dog.m4v is 553146161 (135046 blocks of 4096 bytes)
+ ext:     logical_offset:        physical_offset: length:   expected: flags:
+   0:        0..       0:   20092928..  20092928:      1:            
+   1:        2..     159:   20092930..  20093087:    158:   20092929:
+   2:      161..     306:   20093089..  20093234:    146:   20093088:
+   3:      534..   14335:   20093462..  20107263:  13802:   20093235:
+   4:    14336..   47103:   20121600..  20154367:  32768:   20107264:
+   5:    47104..   79871:   20187136..  20219903:  32768:   20154368:
+   6:    79872..  112639:   20252672..  20285439:  32768:   20219904:
+   7:   112640..  135045:   20318208..  20340613:  22406:   20285440: eof
+03 Sea Dog.m4v: 8 extents found
+
+File size of 04 The Immortals.m4v is 516091162 (125999 blocks of 4096 bytes)
+ ext:     logical_offset:        physical_offset: length:   expected: flags:
+   0:        0..       0:   20107264..  20107264:      1:            
+   1:        2..     162:   20107266..  20107426:    161:   20107265:
+   2:      164..     312:   20107428..  20107576:    149:   20107427:
+   3:      540..   14335:   20107804..  20121599:  13796:   20107577:
+   4:    14336..   47103:   20154368..  20187135:  32768:   20121600:
+   5:    47104..   79871:   20219904..  20252671:  32768:   20187136:
+   6:    79872..  112639:   20285440..  20318207:  32768:   20252672:
+   7:   112640..  125998:   20340736..  20354094:  13359:   20318208: eof
+04 The Immortals.m4v: 8 extents found
+
+Looking at all of these files, actually, if we had managed to allocate
+them using contiguous 32768 block extents, these 45 minute TV episodes
+would have just fit inside the in-inode's 4 extent slots.
