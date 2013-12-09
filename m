@@ -1,29 +1,33 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: fix del_timer() misuse for ->s_err_report
-Date: Sun, 8 Dec 2013 20:56:28 -0500
-Message-ID: <20131209015628.GA12883@thunk.org>
-References: <20131204072926.GK10323@ZenIV.linux.org.uk>
+Subject: Re: debugfs: print missing argument in usage for open, filefrag and
+ ls
+Date: Sun, 8 Dec 2013 21:09:15 -0500
+Message-ID: <20131209020915.GA17967@thunk.org>
+References: <1386400305-16757-1-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:37887 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759129Ab3LICJR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 8 Dec 2013 21:09:17 -0500
 Content-Disposition: inline
-In-Reply-To: <20131204072926.GK10323@ZenIV.linux.org.uk>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1386400305-16757-1-git-send-email-wenqing.lz@taobao.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Dec 04, 2013 at 07:29:26AM +0000, Al Viro wrote:
-> That thing should be del_timer_sync(); consider what happens
-> if ext4_put_super() call of del_timer() happens to come just as it's
-> getting run on another CPU.  Since that timer reschedules itself
-> to run next day, you are pretty much guaranteed that you'll end up
-> with kfree'd scheduled timer, with usual fun consequences.  AFAICS,
-> that's -stable fodder all way back to 2010... [the second del_timer_sync()
-> is almost certainly not needed, but it doesn't hurt either]
-> 
-> Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
+I've commited the first two hunks of this patch to the maint branch,
+and fixed up a missing hyphen:
 
-Nice catch.  Thanks, applied.
+>  print_usage:
+> -	fprintf(stderr, "%s: Usage: open [-s superblock] [-b blocksize] [-c] "
+> +	fprintf(stderr, "%s: Usage: open [-s superblock] [-b blocksize] "
+> +		"[d image_filename] [-c] [-i] [-f] [-e] [-D] "
 
-						- Ted
+
+I'll add the final commit to the master/next branch, which is where
+the ls -c option was added without updating the usage message.
+
+       	  	     	   	   	    - Ted
