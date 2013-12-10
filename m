@@ -1,44 +1,47 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Reproducible block structure
-Date: Tue, 10 Dec 2013 08:42:55 -0500
-Message-ID: <20131210134255.GA31214@thunk.org>
-References: <CAO_9QQcOSgUA84ewb=PANikU+MzeTmmeHnPeLd2SHQ_46sUi8Q@mail.gmail.com>
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 6/9] Use %pd in Ext4
+Date: Tue, 10 Dec 2013 15:26:55 +0000
+Message-ID: <20131210152655.4916.77232.stgit@warthog.procyon.org.uk>
+References: <20131210152612.4916.80435.stgit@warthog.procyon.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Jitesh Shah <jitesh.1337@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:38593 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753109Ab3LJNnB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Dec 2013 08:43:01 -0500
-Content-Disposition: inline
-In-Reply-To: <CAO_9QQcOSgUA84ewb=PANikU+MzeTmmeHnPeLd2SHQ_46sUi8Q@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: dhowells@redhat.com, "Theodore Ts'o" <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-fsdevel@vger.kernel.org
+To: viro@zeniv.linux.org.uk
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20131210152612.4916.80435.stgit@warthog.procyon.org.uk>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Dec 09, 2013 at 09:03:23PM -0800, Jitesh Shah wrote:
-> 
-> Now, if the script is ran in the SAME way for all 5 HDDs, is it
-> guaranteed that these HDDs will be same at the block level too? (i.e.
-> block allocation/deallocation will follow the same pattern). Assume
-> single-core system with only one process modifying the HDD in
-> predetermined order.
+Use the new %pd printk() specifier in Ext4 to replace passing of dentry name or
+dentry name and name length * 2 with just passing the dentry.
 
-Nope, there's no way to guarantee this.  There are a few places where
-the algorithms are non-deterministic by design.  It would be possible
-to make some changes to guarantee this, but I'm not sure it's really
-worth it --- in real life, assuming a single core system with a single
-process which is also single threaded is generally not a realisstic
-scenario.
+Signed-off-by: David Howells <dhowells@redhat.com>
+cc: "Theodore Ts'o" <tytso@mit.edu>
+cc: Andreas Dilger <adilger.kernel@dilger.ca>
+cc: linux-ext4@vger.kernel.org
+---
 
-> Why do I ask -> I am tinkering with the idea of block level
-> verification of images. If the above guarantees can be provided, I can
-> easily hash the raw HDD for verification purposes.
+ fs/ext4/namei.c |    5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-If you want to do a block level verification of the image, why not
-also do block level update of the image as well?
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 5a0408d7b114..3e9e70663233 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1425,9 +1425,8 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, unsi
+ 			return ERR_PTR(-EIO);
+ 		}
+ 		if (unlikely(ino == dir->i_ino)) {
+-			EXT4_ERROR_INODE(dir, "'%.*s' linked to parent dir",
+-					 dentry->d_name.len,
+-					 dentry->d_name.name);
++			EXT4_ERROR_INODE(dir, "'%pd' linked to parent dir",
++					 dentry);
+ 			return ERR_PTR(-EIO);
+ 		}
+ 		inode = ext4_iget(dir->i_sb, ino);
 
-Regards,
-
-						- Ted
