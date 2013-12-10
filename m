@@ -1,92 +1,111 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: 3.11.4: kernel BUG at fs/buffer.c:1268
-Date: Tue, 10 Dec 2013 17:21:46 +0100
-Message-ID: <20131210162146.GF1543@quack.suse.cz>
-References: <20131128153420.GA21176@quack.suse.cz>
- <20131210093528.23399.qmail@science.horizon.com>
- <20131210152701.GE1543@quack.suse.cz>
+From: Matthew Wilcox <matthew@wil.cx>
+Subject: Re: [PATCH v2 2/4] ext4: Add XIP functionality
+Date: Tue, 10 Dec 2013 09:22:31 -0700
+Message-ID: <20131210162231.GA11237@parisc-linux.org>
+References: <1386273769-12828-1-git-send-email-ross.zwisler@linux.intel.com> <1386273769-12828-3-git-send-email-ross.zwisler@linux.intel.com> <20131206031354.GS10988@dastard> <1386558964.6872.14.camel@gala> <20131209081940.GW10988@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: jack@suse.cz, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	tytso@mit.edu, viro@ZenIV.linux.org.uk,
-	linux-crypto@vger.kernel.org, x86@kernel.org
-To: George Spelvin <linux@horizon.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	carsteno@de.ibm.com, matthew.r.wilcox@intel.com,
+	andreas.dilger@intel.com
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from palinux.external.hp.com ([192.25.206.14]:60594 "EHLO
+	mail.parisc-linux.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752710Ab3LJQWd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Dec 2013 11:22:33 -0500
 Content-Disposition: inline
-In-Reply-To: <20131210152701.GE1543@quack.suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20131209081940.GW10988@dastard>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 10-12-13 16:27:01, Jan Kara wrote:
-> On Tue 10-12-13 04:35:28, George Spelvin wrote:
-> > One of those additional WARN_ON tests tripped, hooray!
-> > And it turned out to be in the ext4 metadata checksumming.  To be
-> > precise, ext4_block_bitmap_csum_set() returned with irqs disabled,
-> > and kaboom.
->   Ha, great. Thanks for the persistence in testing.
+On Mon, Dec 09, 2013 at 07:19:40PM +1100, Dave Chinner wrote:
+> Set up the generic XIP infrastructure in a way that allows the
+> filesystem to set up post-IO callbacks at submission time and call
+> them on IO completion.  We manage to do this for both buffered data
+> IO and direct IO, and I don't see how XIP IO is any different from
+> this perspective. XIP still costs time and latency to execute, and
+> if we start to think about hardware offload of large memcpy()s (say
+> like the SGI Altix machines could do years ago) asychronous
+> processing in the XIP IO path is quite likely to be used in the
+> near future.
+
+While I agree there's nothing inherently synchronous about the XIP
+path, I don't know that there's a real advantage to a hardware offload.
+These days, memory controllers are in the CPUs, so the putative hardware
+is also going to have to be in the CPU and it's going to have to bring
+cachelines in from oe memory location and write them out to another
+location.  Add in setup costs and it's going to have to be a pretty
+damn large write() / read() to get any kind of advantage out of it.
+I might try to con somebody into estimating where the break-even point
+would be on a current CPU.  I bet it's large ... and if it's past 2GB,
+we run into Linus' rule about not permitting I/Os larger than that.
+
+I would bet our hardware people would just say something like "would
+you like this hardware or two more completely generic cores?"  And I
+know what the answer to that is.
+
+> So, it's pretty clear to me that XIP needs to look like a normal IO
+> path from a filesystem perspective - it's not necessarily
+> synchronous, we need concurrent read and write support (i.e. the
+> equivalent of current direct IO capabilities on XFS where we can
+> already do millions of mixed read and write IOPS to the same file
+> on a ram based block device), and so on. XIP doesn't fundamentally
+> change the way filesystems work, and so we shoul dbe treating XIP in
+> a similar fashion to how we treat buffered and direct IO.
+
+I don't disagree with any of that.
+
+> Indeed, the direct IO model is probably the best one to use here -
+> it allows the filesystem to attach it's own private data structure
+> to the kiocb, and it gets an IO completion callback with the kiocb,
+> the offset and size of the IO, and we can pull the filesystem
+> private data off the iocb and then pass it into existing normal IO
+> completion paths.
+
+Um, you're joking, right?  The direct IO model is pretty universally
+hated.  It's ridiculously complex.  Maybe you meant "this aspect" of
+direct IO, but I would never point anybody at the direct IO path as an
+example of good programming practice.
+
+> > For writes, I think that we need to potentially split the unwritten
+> > extent in to up to three extents (two unwritten, one written), in the
+> > spirit of the ext4_split_unwritten_extents().
 > 
-> > Since I have this experimental feature turned on and most people don't,
-> > this explains why I'm finding it and World+Dog aren't.
-> > 
-> > I appear to be the designated finder of ext4 metadata_csum bugs, so tytso
-> > notified on general principles.  I dropped the generic linux-fsdevel
-> > list from the Cc: list.
-> > 
-> > But looking at the code, it just calls into the linux-crypto layer and
-> > Tim Chen's SSE CRC32C implementation which uses kernel_fpu_begin()
-> > and kernel_fpu_end() if the block is large enough.
->   Yup, that code was also my last hope but I can't say I see any problem in
-> there either.
-  BTW, given you always see the problem when ext4_truncate() gets called 
-as a response to application catching a deadly signal and thus
-task_work_run() gets called, I think there's something in irq_fpu_usable()
-which isn't exactly right. But I know nothing about the logic there. Or
-maybe the signal is caught in some unlucky moment when FPU is in some
-strange state?
-
-								Honza
-
-> > I was going to add and Herbert Xu and Tim Chen and all those mailing
-> > lists, but looking at the code, it sure *looks* like they're Doing The
-> > right Thing, so I'm holding off for a bit.
-> > 
-> > I'm not sure quite where to pass th buck on this one.
-> > 
-> > Relevant platform info:
-> > - Intel i7-2700K processor, with SSE4.2 and thus the CRC32C instruction.
-> > - CONFIG_PREEMPT_VOLUNTARY=y
-> > - # CONFIG_PREEMPT_NONE is not set
-> > - CONFIG_PREEMPT_VOLUNTARY=y
-> > - # CONFIG_PREEMPT is not set
-> > - CONFIG_PREEMPT_COUNT=y
-> > - CONFIG_DEBUG_ATOMIC_SLEEP=y
-> > - CONFIG_DEBUG_BUGVERBOSE=y
-> > 
-> ...
-> > 
-> > === Discussion ===
-> > desc.shash.tfm is filled in from sbi->s_chksum_driver, which is filled in at
-> > ext4_fill_super() time by crypto_alloc_shash("crc32c", 0, 0).
-> > 
-> > Thus, shash->update should turn into a call to crypto/crc32c.c:chksum_update(),
-> > which calls lib/crc32.c:__crc32c_le().
-> > 
-> > Now, I happen to be running an i7-2700k which has sse4_2, and thus calls
-> > into the x86 specific code, and apparently for large blocks it uses PCLMULQDQ,
-> > which requires kernel_fpu_begin/end.
-> > 
-> > At least that makes some degree of sense.  The low level code, though
-> > uses the functions in a very simple way that I can't see how it could fail
-> > to unlock at the end.
->   Hum, can you try disabling the HW support of CRC32C implementation
-> (CRYPTO_CRC32C_INTEL)? If the problem disappears, we know there's some
-> problem in the HW support code...
+> You don't need to touch anything that deep in ext4 to make this
+> work. What you need to do is make the XIP infrastructure allow ext4
+> to track it's own IO (as it already does for direct IO and call
+> ext4_put_io_end() appropriately on IO completion. XFS will use
+> exactly the same mechanism, so will btrfs and every other filesystem
+> we might want to add support for XIP to...
 > 
-> 								Honza
-> -- 
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
+> > For reads, I think we will probably have to zero the extent, mark it as
+> > written, and then return the data normally.
+> 
+> Right now we have a "buffer_unwritten(bh)" flag that makes all the
+> code treat it like a hole. You don't need to convert it to written
+> until someone actually writes to it - all you need to do is
+> guarantee reads return zero for that page. IOWs, for users of
+> read(2) system calls, you can just zero their pages if the
+> underlying region spans a hole or unwritten extent.
+> 
+> Again, this is infrastructure we already have in the page cache - we
+> should not be using a different mechanism for XIP.
+
+The XIP code already handles holes just fine.  Reads call __clear_user()
+if it finds a hole.  Mmap load faults do some bizarre stuff to map in
+a zero page that I think needs fixing, but that'll be the subject of a
+future fight.
+
+I don't actually understand what the problem is here.  ext4_get_xip_mem()
+calls ext4_get_block() with the 'create' flag set or clear, depending
+if it needs the page to be instantiated, or it can live with the hole.
+It seems that ext4_get_xip_mem() needs to check BH_Unwritten, but other
+than that things should be working the way you seem to want them to.
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Matthew Wilcox				Intel Open Source Technology Centre
+"Bill, look, we understand that you're interested in selling us this
+operating system, but compare it to ours.  We can't possibly take such
+a retrograde step."
