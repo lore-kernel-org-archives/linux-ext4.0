@@ -1,107 +1,75 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: Fix deadlock when writing in ENOSPC conditions
-Date: Tue, 10 Dec 2013 11:56:01 +0100
-Message-ID: <20131210105601.GB1543@quack.suse.cz>
-References: <1386670181-2151-1-git-send-email-jack@suse.cz>
+From: Carlos Maiolino <cmaiolino@redhat.com>
+Subject: Re: Reproducible block structure
+Date: Tue, 10 Dec 2013 11:32:02 -0200
+Message-ID: <20131210133159.GA28136@orion.maiolino.org>
+References: <CAO_9QQcOSgUA84ewb=PANikU+MzeTmmeHnPeLd2SHQ_46sUi8Q@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Akira Fujita <a-fujita@rs.jp.nec.com>,
-	Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+To: Jitesh Shah <jitesh.1337@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:35511 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:36663 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751522Ab3LJK4D (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Dec 2013 05:56:03 -0500
+	id S1751905Ab3LJNcN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Dec 2013 08:32:13 -0500
 Content-Disposition: inline
-In-Reply-To: <1386670181-2151-1-git-send-email-jack@suse.cz>
+In-Reply-To: <CAO_9QQcOSgUA84ewb=PANikU+MzeTmmeHnPeLd2SHQ_46sUi8Q@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Please ignore the below patch. It is part of the larger series I've
-submitted a bit later...
+On Mon, Dec 09, 2013 at 09:03:23PM -0800, Jitesh Shah wrote:
+> Hello all,
+> Assuming I have the latest ext4 system, I have a question ->
+> Scenario -> I have 5 HDDs on which I burn the same block image on.
+> These HDDs are usually mounted RO when used in production. For
+> upgrading, I connect each one to an isolated machine, mount it as RW
+> and run a script to update files (basically add, delete, modify
+> files).
+> 
+> Now, if the script is ran in the SAME way for all 5 HDDs, is it
+> guaranteed that these HDDs will be same at the block level too? (i.e.
+> block allocation/deallocation will follow the same pattern). Assume
+> single-core system with only one process modifying the HDD in
+> predetermined order.
+> 
+No, you can't assume it, although ext4 might do the same write patterns, the
+caches behind the scenes might change the way you'll be writing the data there.
 
-								Honza
+> If there is no way to provide such a guarantee in a default ext4
+> install, is there an ext4 option (ordered?) which can provide this
+> guarantee?
+>
+ordered option for journal will guarantee journal ordering but not what you're
+aiming for.
 
-On Tue 10-12-13 11:09:41, Jan Kara wrote:
-> Akira-san has been reporting rare deadlocks of his machine when running
-> xfstests test 269 on ext4 filesystem. The problem turned out to be in
-> ext4_da_reserve_metadata() and ext4_da_reserve_space() which called
-> ext4_should_retry_alloc() while holding i_data_sem. Since
-> ext4_should_retry_alloc() can force a transaction commit, this is a
-> lock ordering violation and leads to deadlocks.
+> Why do I ask -> I am tinkering with the idea of block level
+> verification of images. If the above guarantees can be provided, I can
+> easily hash the raw HDD for verification purposes.
+>
+
+I'm not sure if you'll be able to do it, different HDDs, even from the same
+vendor might have slightly differences which might change the write patterns.
+There are also some performance improvements like delalloc and mballoc that
+might not have the same allocation result in all your HDDs.
+
+Maybe (although I'm not the best person to ensure it), you can have success on
+that if you disable HDDs write caches and use a filesystem less optimized and
+with no journal, like ext2, or maybe use synchronous writes with ext4 but even
+with sync writes, I'm not sure if you'll be able to have exactly the same
+situation on all hdds, due the journal and the dynamic allocation algorithms
+
+> Thanks,
+> Jitesh
 > 
-> Fix the problem by just removing the retry loops. These functions should
-> just report ENOSPC to the caller (e.g. ext4_da_write_begin()) and that
-> function must take care of retrying after dropping all necessary locks.
-> 
-> Reported-and-tested-by: Akira Fujita <a-fujita@rs.jp.nec.com>
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/ext4/inode.c | 12 ------------
->  1 file changed, 12 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 075763474118..61d49ff22c81 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -1206,7 +1206,6 @@ static int ext4_journalled_write_end(struct file *file,
->   */
->  static int ext4_da_reserve_metadata(struct inode *inode, ext4_lblk_t lblock)
->  {
-> -	int retries = 0;
->  	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
->  	struct ext4_inode_info *ei = EXT4_I(inode);
->  	unsigned int md_needed;
-> @@ -1218,7 +1217,6 @@ static int ext4_da_reserve_metadata(struct inode *inode, ext4_lblk_t lblock)
->  	 * in order to allocate nrblocks
->  	 * worse case is one extent per block
->  	 */
-> -repeat:
->  	spin_lock(&ei->i_block_reservation_lock);
->  	/*
->  	 * ext4_calc_metadata_amount() has side effects, which we have
-> @@ -1238,10 +1236,6 @@ repeat:
->  		ei->i_da_metadata_calc_len = save_len;
->  		ei->i_da_metadata_calc_last_lblock = save_last_lblock;
->  		spin_unlock(&ei->i_block_reservation_lock);
-> -		if (ext4_should_retry_alloc(inode->i_sb, &retries)) {
-> -			cond_resched();
-> -			goto repeat;
-> -		}
->  		return -ENOSPC;
->  	}
->  	ei->i_reserved_meta_blocks += md_needed;
-> @@ -1255,7 +1249,6 @@ repeat:
->   */
->  static int ext4_da_reserve_space(struct inode *inode, ext4_lblk_t lblock)
->  {
-> -	int retries = 0;
->  	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
->  	struct ext4_inode_info *ei = EXT4_I(inode);
->  	unsigned int md_needed;
-> @@ -1277,7 +1270,6 @@ static int ext4_da_reserve_space(struct inode *inode, ext4_lblk_t lblock)
->  	 * in order to allocate nrblocks
->  	 * worse case is one extent per block
->  	 */
-> -repeat:
->  	spin_lock(&ei->i_block_reservation_lock);
->  	/*
->  	 * ext4_calc_metadata_amount() has side effects, which we have
-> @@ -1297,10 +1289,6 @@ repeat:
->  		ei->i_da_metadata_calc_len = save_len;
->  		ei->i_da_metadata_calc_last_lblock = save_last_lblock;
->  		spin_unlock(&ei->i_block_reservation_lock);
-> -		if (ext4_should_retry_alloc(inode->i_sb, &retries)) {
-> -			cond_resched();
-> -			goto repeat;
-> -		}
->  		dquot_release_reservation_block(inode, EXT4_C2B(sbi, 1));
->  		return -ENOSPC;
->  	}
-> -- 
-> 1.8.1.4
-> 
+> PS: I am not subscribed to the mailing list, so please include my id
+> in the response if your email client does not put it there already!
+
+Please, subscribe to maillist. This help to keep the talk in the maillist and
+avoid to take a look if somebody already answered you
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Carlos
