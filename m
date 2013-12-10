@@ -1,86 +1,107 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/3] ext4: Standardize error handling in ext4_da_write_inline_data_begin()
-Date: Tue, 10 Dec 2013 11:13:59 +0100
-Message-ID: <1386670440-3158-3-git-send-email-jack@suse.cz>
-References: <1386670440-3158-1-git-send-email-jack@suse.cz>
-Cc: Akira Fujita <a-fujita@rs.jp.nec.com>, linux-ext4@vger.kernel.org,
+Subject: Re: [PATCH] ext4: Fix deadlock when writing in ENOSPC conditions
+Date: Tue, 10 Dec 2013 11:56:01 +0100
+Message-ID: <20131210105601.GB1543@quack.suse.cz>
+References: <1386670181-2151-1-git-send-email-jack@suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Akira Fujita <a-fujita@rs.jp.nec.com>,
 	Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:34161 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:35511 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752817Ab3LJKOF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Dec 2013 05:14:05 -0500
-In-Reply-To: <1386670440-3158-1-git-send-email-jack@suse.cz>
+	id S1751522Ab3LJK4D (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Dec 2013 05:56:03 -0500
+Content-Disposition: inline
+In-Reply-To: <1386670181-2151-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The function has a bit non-standard (for ext4) error recovery in that it
-used a mix of 'out' labels and testing for 'handle' being NULL. There
-isn't a good reason for that in the function so clean it up a bit.
+  Please ignore the below patch. It is part of the larger series I've
+submitted a bit later...
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/inline.c | 11 ++++-------
- 1 file changed, 4 insertions(+), 7 deletions(-)
+								Honza
 
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index ed6e71fe5e9d..c417e52d194e 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -859,7 +859,6 @@ retry_journal:
- 	handle = ext4_journal_start(inode, EXT4_HT_INODE, 1);
- 	if (IS_ERR(handle)) {
- 		ret = PTR_ERR(handle);
--		handle = NULL;
- 		goto out;
- 	}
- 
-@@ -869,7 +868,7 @@ retry_journal:
- 	if (inline_size >= pos + len) {
- 		ret = ext4_prepare_inline_data(handle, inode, pos + len);
- 		if (ret && ret != -ENOSPC)
--			goto out;
-+			goto out_journal;
- 	}
- 
- 	if (ret == -ENOSPC) {
-@@ -878,7 +877,6 @@ retry_journal:
- 							    flags,
- 							    fsdata);
- 		ext4_journal_stop(handle);
--		handle = NULL;
- 		if (ret == -ENOSPC &&
- 		    ext4_should_retry_alloc(inode->i_sb, &retries))
- 			goto retry_journal;
-@@ -894,7 +892,7 @@ retry_journal:
- 	page = grab_cache_page_write_begin(mapping, 0, flags);
- 	if (!page) {
- 		ret = -ENOMEM;
--		goto out;
-+		goto out_journal;
- 	}
- 
- 	down_read(&EXT4_I(inode)->xattr_sem);
-@@ -911,16 +909,15 @@ retry_journal:
- 
- 	up_read(&EXT4_I(inode)->xattr_sem);
- 	*pagep = page;
--	handle = NULL;
- 	brelse(iloc.bh);
- 	return 1;
- out_release_page:
- 	up_read(&EXT4_I(inode)->xattr_sem);
- 	unlock_page(page);
- 	page_cache_release(page);
-+out_journal:
-+	ext4_journal_stop(handle);
- out:
--	if (handle)
--		ext4_journal_stop(handle);
- 	brelse(iloc.bh);
- 	return ret;
- }
+On Tue 10-12-13 11:09:41, Jan Kara wrote:
+> Akira-san has been reporting rare deadlocks of his machine when running
+> xfstests test 269 on ext4 filesystem. The problem turned out to be in
+> ext4_da_reserve_metadata() and ext4_da_reserve_space() which called
+> ext4_should_retry_alloc() while holding i_data_sem. Since
+> ext4_should_retry_alloc() can force a transaction commit, this is a
+> lock ordering violation and leads to deadlocks.
+> 
+> Fix the problem by just removing the retry loops. These functions should
+> just report ENOSPC to the caller (e.g. ext4_da_write_begin()) and that
+> function must take care of retrying after dropping all necessary locks.
+> 
+> Reported-and-tested-by: Akira Fujita <a-fujita@rs.jp.nec.com>
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/ext4/inode.c | 12 ------------
+>  1 file changed, 12 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 075763474118..61d49ff22c81 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -1206,7 +1206,6 @@ static int ext4_journalled_write_end(struct file *file,
+>   */
+>  static int ext4_da_reserve_metadata(struct inode *inode, ext4_lblk_t lblock)
+>  {
+> -	int retries = 0;
+>  	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+>  	struct ext4_inode_info *ei = EXT4_I(inode);
+>  	unsigned int md_needed;
+> @@ -1218,7 +1217,6 @@ static int ext4_da_reserve_metadata(struct inode *inode, ext4_lblk_t lblock)
+>  	 * in order to allocate nrblocks
+>  	 * worse case is one extent per block
+>  	 */
+> -repeat:
+>  	spin_lock(&ei->i_block_reservation_lock);
+>  	/*
+>  	 * ext4_calc_metadata_amount() has side effects, which we have
+> @@ -1238,10 +1236,6 @@ repeat:
+>  		ei->i_da_metadata_calc_len = save_len;
+>  		ei->i_da_metadata_calc_last_lblock = save_last_lblock;
+>  		spin_unlock(&ei->i_block_reservation_lock);
+> -		if (ext4_should_retry_alloc(inode->i_sb, &retries)) {
+> -			cond_resched();
+> -			goto repeat;
+> -		}
+>  		return -ENOSPC;
+>  	}
+>  	ei->i_reserved_meta_blocks += md_needed;
+> @@ -1255,7 +1249,6 @@ repeat:
+>   */
+>  static int ext4_da_reserve_space(struct inode *inode, ext4_lblk_t lblock)
+>  {
+> -	int retries = 0;
+>  	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+>  	struct ext4_inode_info *ei = EXT4_I(inode);
+>  	unsigned int md_needed;
+> @@ -1277,7 +1270,6 @@ static int ext4_da_reserve_space(struct inode *inode, ext4_lblk_t lblock)
+>  	 * in order to allocate nrblocks
+>  	 * worse case is one extent per block
+>  	 */
+> -repeat:
+>  	spin_lock(&ei->i_block_reservation_lock);
+>  	/*
+>  	 * ext4_calc_metadata_amount() has side effects, which we have
+> @@ -1297,10 +1289,6 @@ repeat:
+>  		ei->i_da_metadata_calc_len = save_len;
+>  		ei->i_da_metadata_calc_last_lblock = save_last_lblock;
+>  		spin_unlock(&ei->i_block_reservation_lock);
+> -		if (ext4_should_retry_alloc(inode->i_sb, &retries)) {
+> -			cond_resched();
+> -			goto repeat;
+> -		}
+>  		dquot_release_reservation_block(inode, EXT4_C2B(sbi, 1));
+>  		return -ENOSPC;
+>  	}
+> -- 
+> 1.8.1.4
+> 
 -- 
-1.8.1.4
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
