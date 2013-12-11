@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 60/74] libext2fs: ensure that inline data is always written to
- ibody
-Date: Tue, 10 Dec 2013 17:24:58 -0800
-Message-ID: <20131211012458.30655.66423.stgit@birch.djwong.org>
+Subject: [PATCH 61/74] libext2fs: fix ext2fs_open2() truncation of the
+ superblock parameter
+Date: Tue, 10 Dec 2013 17:25:05 -0800
+Message-ID: <20131211012505.30655.11118.stgit@birch.djwong.org>
 References: <20131211011813.30655.39624.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,60 +10,192 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:43815 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751429Ab3LKBZF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Dec 2013 20:25:05 -0500
+Received: from aserp1040.oracle.com ([141.146.126.69]:27433 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751429Ab3LKBZL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Dec 2013 20:25:11 -0500
 In-Reply-To: <20131211011813.30655.39624.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When writing xattrs to disk, move the inline_data attribute to the
-front of the list so that inline data always ends up in the inode body
-(and not a separate EA block).
+Since it's possible for very large filesystems to store backup
+superblocks at very large (> 2^32) block numbers, we need to be able
+to handle the case of a caller directing us to read one of these
+high-numbered backups.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/ext_attr.c |   20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
+ debugfs/debugfs.c   |    4 ++--
+ e2fsck/journal.c    |    6 +++---
+ e2fsck/unix.c       |    8 ++++----
+ lib/ext2fs/ext2fs.h |    4 ++++
+ lib/ext2fs/openfs.c |   23 ++++++++++++++++-------
+ misc/dumpe2fs.c     |    4 ++--
+ 6 files changed, 31 insertions(+), 18 deletions(-)
 
 
-diff --git a/lib/ext2fs/ext_attr.c b/lib/ext2fs/ext_attr.c
-index e69275e..50f7300 100644
---- a/lib/ext2fs/ext_attr.c
-+++ b/lib/ext2fs/ext_attr.c
-@@ -238,6 +238,24 @@ static struct ea_name_index ea_names[] = {
- 	{0, NULL},
- };
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index e37d3f5..f9eb578 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -94,8 +94,8 @@ static void open_filesystem(char *device, int open_flags, blk64_t superblock,
+ 	if (catastrophic)
+ 		open_flags |= EXT2_FLAG_SKIP_MMP;
  
-+static void move_inline_data_to_front(struct ext2_xattr_handle *h)
+-	retval = ext2fs_open(device, open_flags, superblock, blocksize,
+-			     unix_io_manager, &current_fs);
++	retval = ext2fs_open3(device, NULL, open_flags, superblock, blocksize,
++			      unix_io_manager, &current_fs);
+ 	if (retval) {
+ 		com_err(device, retval, "while opening filesystem");
+ 		current_fs = NULL;
+diff --git a/e2fsck/journal.c b/e2fsck/journal.c
+index 22f06e7..a7a714f 100644
+--- a/e2fsck/journal.c
++++ b/e2fsck/journal.c
+@@ -966,9 +966,9 @@ errcode_t e2fsck_run_ext3_journal(e2fsck_t ctx)
+ 
+ 	ext2fs_mmp_stop(ctx->fs);
+ 	ext2fs_free(ctx->fs);
+-	retval = ext2fs_open(ctx->filesystem_name, EXT2_FLAG_RW,
+-			     ctx->superblock, blocksize, io_ptr,
+-			     &ctx->fs);
++	retval = ext2fs_open3(ctx->filesystem_name, NULL, EXT2_FLAG_RW,
++			      ctx->superblock, blocksize, io_ptr,
++			      &ctx->fs);
+ 	if (retval) {
+ 		com_err(ctx->program_name, retval,
+ 			_("while trying to re-open %s"),
+diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+index 7a8fce2..261b84b 100644
+--- a/e2fsck/unix.c
++++ b/e2fsck/unix.c
+@@ -1042,7 +1042,7 @@ static errcode_t try_open_fs(e2fsck_t ctx, int flags, io_manager io_ptr,
+ 
+ 	*ret_fs = NULL;
+ 	if (ctx->superblock && ctx->blocksize) {
+-		retval = ext2fs_open2(ctx->filesystem_name, ctx->io_options,
++		retval = ext2fs_open3(ctx->filesystem_name, ctx->io_options,
+ 				      flags, ctx->superblock, ctx->blocksize,
+ 				      io_ptr, ret_fs);
+ 	} else if (ctx->superblock) {
+@@ -1053,7 +1053,7 @@ static errcode_t try_open_fs(e2fsck_t ctx, int flags, io_manager io_ptr,
+ 				ext2fs_free(*ret_fs);
+ 				*ret_fs = NULL;
+ 			}
+-			retval = ext2fs_open2(ctx->filesystem_name,
++			retval = ext2fs_open3(ctx->filesystem_name,
+ 					      ctx->io_options, flags,
+ 					      ctx->superblock, blocksize,
+ 					      io_ptr, ret_fs);
+@@ -1061,7 +1061,7 @@ static errcode_t try_open_fs(e2fsck_t ctx, int flags, io_manager io_ptr,
+ 				break;
+ 		}
+ 	} else
+-		retval = ext2fs_open2(ctx->filesystem_name, ctx->io_options,
++		retval = ext2fs_open3(ctx->filesystem_name, ctx->io_options,
+ 				      flags, 0, 0, io_ptr, ret_fs);
+ 
+ 	if (retval == 0)
+@@ -1377,7 +1377,7 @@ failure:
+ 	 * don't need to update the mount count and last checked
+ 	 * fields in the backup superblock (the kernel doesn't update
+ 	 * the backup superblocks anyway).  With newer versions of the
+-	 * library this flag is set by ext2fs_open2(), but we set this
++	 * library this flag is set by ext2fs_open3(), but we set this
+ 	 * here just to be sure.  (No, we don't support e2fsck running
+ 	 * with some other libext2fs than the one that it was shipped
+ 	 * with, but just in case....)
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index d94fdd4..ba5c388 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -1480,6 +1480,10 @@ extern errcode_t ext2fs_open2(const char *name, const char *io_options,
+ 			      int flags, int superblock,
+ 			      unsigned int block_size, io_manager manager,
+ 			      ext2_filsys *ret_fs);
++extern errcode_t ext2fs_open3(const char *name, const char *io_options,
++			      int flags, blk64_t superblock,
++			      unsigned int block_size, io_manager manager,
++			      ext2_filsys *ret_fs);
+ /*
+  * The dgrp_t argument to these two functions is not actually a group number
+  * but a block number offset within a group table!  Convert with the formula
+diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
+index 5cf6ae4..2639ae5 100644
+--- a/lib/ext2fs/openfs.c
++++ b/lib/ext2fs/openfs.c
+@@ -94,6 +94,15 @@ errcode_t ext2fs_open(const char *name, int flags, int superblock,
+ 			    manager, ret_fs);
+ }
+ 
++errcode_t ext2fs_open2(const char *name, const char *io_options,
++		       int flags, int superblock,
++		       unsigned int block_size, io_manager manager,
++		       ext2_filsys *ret_fs)
 +{
-+	struct ext2_xattr *x;
-+	struct ext2_xattr tmp;
-+
-+	for (x = h->attrs + 1; x < h->attrs + h->length; x++) {
-+		if (!x->name)
-+			continue;
-+
-+		if (strcmp(x->name, "system.data") == 0) {
-+			memcpy(&tmp, x, sizeof(tmp));
-+			memcpy(x, h->attrs, sizeof(tmp));
-+			memcpy(h->attrs, &tmp, sizeof(tmp));
-+			return;
-+		}
-+	}
++	return ext2fs_open3(name, io_options, flags, superblock, block_size,
++			    manager, ret_fs);
 +}
 +
- static const char *find_ea_prefix(int index)
+ /*
+  *  Note: if superblock is non-zero, block-size must also be non-zero.
+  * 	Superblock and block_size can be zero to use the default size.
+@@ -108,8 +117,8 @@ errcode_t ext2fs_open(const char *name, int flags, int superblock,
+  *	EXT2_FLAG_64BITS - Allow 64-bit bitfields (needed for large
+  *				filesystems)
+  */
+-errcode_t ext2fs_open2(const char *name, const char *io_options,
+-		       int flags, int superblock,
++errcode_t ext2fs_open3(const char *name, const char *io_options,
++		       int flags, blk64_t superblock,
+ 		       unsigned int block_size, io_manager manager,
+ 		       ext2_filsys *ret_fs)
  {
- 	struct ea_name_index *e;
-@@ -484,6 +502,8 @@ errcode_t ext2fs_xattrs_write(struct ext2_xattr_handle *handle)
- 	if (err)
- 		goto out;
- 
-+	move_inline_data_to_front(handle);
-+
- 	x = handle->attrs;
- 	/* Does the inode have size for EA? */
- 	if (EXT2_INODE_SIZE(handle->fs->super) <= EXT2_GOOD_OLD_INODE_SIZE +
+@@ -208,8 +217,8 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
+ 		if (retval)
+ 			goto cleanup;
+ 	}
+-	retval = io_channel_read_blk(fs->io, superblock, -SUPERBLOCK_SIZE,
+-				     fs->super);
++	retval = io_channel_read_blk64(fs->io, superblock, -SUPERBLOCK_SIZE,
++				       fs->super);
+ 	if (retval)
+ 		goto cleanup;
+ 	if (fs->orig_super)
+@@ -410,9 +419,9 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
+ 	else
+ 		first_meta_bg = fs->desc_blocks;
+ 	if (first_meta_bg) {
+-		retval = io_channel_read_blk(fs->io, group_block +
+-					     group_zero_adjust + 1,
+-					     first_meta_bg, dest);
++		retval = io_channel_read_blk64(fs->io, group_block +
++					       group_zero_adjust + 1,
++					       first_meta_bg, dest);
+ 		if (retval)
+ 			goto cleanup;
+ #ifdef WORDS_BIGENDIAN
+diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
+index 3dbfcb9..0446f7f 100644
+--- a/misc/dumpe2fs.c
++++ b/misc/dumpe2fs.c
+@@ -621,7 +621,7 @@ int main (int argc, char ** argv)
+ 		for (use_blocksize = EXT2_MIN_BLOCK_SIZE;
+ 		     use_blocksize <= EXT2_MAX_BLOCK_SIZE;
+ 		     use_blocksize *= 2) {
+-			retval = ext2fs_open (device_name, flags,
++			retval = ext2fs_open3(device_name, NULL, flags,
+ 					      use_superblock,
+ 					      use_blocksize, unix_io_manager,
+ 					      &fs);
+@@ -629,7 +629,7 @@ int main (int argc, char ** argv)
+ 				break;
+ 		}
+ 	} else
+-		retval = ext2fs_open (device_name, flags, use_superblock,
++		retval = ext2fs_open3(device_name, NULL, flags, use_superblock,
+ 				      use_blocksize, unix_io_manager, &fs);
+ 	if (retval) {
+ 		com_err (program_name, retval, _("while trying to open %s"),
 
