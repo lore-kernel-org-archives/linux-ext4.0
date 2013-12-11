@@ -1,56 +1,68 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: Filesystem writes on RAID5 too slow
-Date: Wed, 11 Dec 2013 11:27:53 +1100
-Message-ID: <20131211002753.GD10988@dastard>
-References: <CACtJ3HZxp6xEjY_wOucCcqX4scNzEGuiAsovQYObJS9whtYJsQ@mail.gmail.com>
- <528A5C45.4080906@redhat.com>
- <20131119005740.GY6188@dastard>
- <CACtJ3Ha3C7JNi5VZRnNMn+-okNheygmbj=j9AnUMvfzfZjNwug@mail.gmail.com>
- <20131121092606.GU11434@dastard>
- <CACtJ3HZAsOtmLArMWraygfQxpGymtZjr+a_reXv8o6LJzoMbvw@mail.gmail.com>
- <CACtJ3Ha5P2Heu4qiEEk6c4g+tKyR=RrD-4E-Cqj+bP8YDjKQ6w@mail.gmail.com>
- <20131121234116.GD6502@dastard>
- <20131210191803.GA31162@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Martin Boutin <martboutin@gmail.com>,
-	"Kernel.org-Linux-RAID" <linux-raid@vger.kernel.org>,
-	Eric Sandeen <sandeen@redhat.com>,
-	"Kernel.org-Linux-EXT4" <linux-ext4@vger.kernel.org>,
-	xfs-oss <xfs@oss.sgi.com>
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-raid-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20131210191803.GA31162@infradead.org>
-Sender: linux-raid-owner@vger.kernel.org
+From: "George Spelvin" <linux@horizon.com>
+Subject: Re: 3.11.4: kernel BUG at fs/buffer.c:1268
+Date: 10 Dec 2013 19:57:51 -0500
+Message-ID: <20131211005751.9957.qmail@science.horizon.com>
+References: <20131210152701.GE1543@quack.suse.cz>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, tytso@mit.edu,
+	viro@ZenIV.linux.org.uk
+To: jack@suse.cz, linux@horizon.com
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20131210152701.GE1543@quack.suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Dec 10, 2013 at 11:18:03AM -0800, Christoph Hellwig wrote:
-> > xfs: align initial file allocations correctly.
-> > 
-> > From: Dave Chinner <dchinner@redhat.com>
-> > 
-> > The function xfs_bmap_isaeof() is used to indicate that an
-> > allocation is occurring at or past the end of file, and as such
-> > should be aligned to the underlying storage geometry if possible.
-> > 
-> > Commit 27a3f8f ("xfs: introduce xfs_bmap_last_extent") changed the
-> > behaviour of this function for empty files - it turned off
-> > allocation alignment for this case accidentally. Hence large initial
-> > allocations from direct IO are not getting correctly aligned to the
-> > underlying geometry, and that is cause write performance to drop in
-> > alignment sensitive configurations.
-> > 
-> > Fix it by considering allocation into empty files as requiring
-> > aligned allocation again.
-> 
-> Seems like this one didn't get picked up yet?
+>  Hum, can you try disabling the HW support of CRC32C implementation
+> (CRYPTO_CRC32C_INTEL)? If the problem disappears, we know there's some
+> problem in the HW support code...
 
-I'm about to resend all my outstanding patches...
+To isolate it even better, I left in the hardware support, but commented
+out the CLMUL code.  I could have just upped the threshold, but opted
+for commenting it out completely.
 
-Cheers,
+commit 8ebf85f2c151e4568d948bda29f39396ccc11096
+Author: George Spelvin <linux@horizon.com>
+Date:   Tue Dec 10 21:06:40 2013 +0000
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+    Disable Intel crc32c PCLMULQ usage
+    
+    It's a great hack, but uses the FPU, and that appears to cause problems.
+
+diff --git a/arch/x86/crypto/crc32c-intel_glue.c b/arch/x86/crypto/crc32c-intel_glue.c
+index 0c8b502..e7b44fd 100644
+--- a/arch/x86/crypto/crc32c-intel_glue.c
++++ b/arch/x86/crypto/crc32c-intel_glue.c
+@@ -183,11 +183,11 @@ static int crc32c_pcl_intel_update(struct shash_desc *desc, const u8 *data,
+ 	 * use faster PCL version if datasize is large enough to
+ 	 * overcome kernel fpu state save/restore overhead
+ 	 */
+-	if (len >= crc32c_pcl_breakeven && irq_fpu_usable()) {
+-		kernel_fpu_begin();
+-		*crcp = crc_pcl(data, len, *crcp);
+-		kernel_fpu_end();
+-	} else
++//	if (len >= crc32c_pcl_breakeven && irq_fpu_usable()) {
++//		kernel_fpu_begin();
++//		*crcp = crc_pcl(data, len, *crcp);
++//		kernel_fpu_end();
++//	} else
+ 		*crcp = crc32c_intel_le_hw(*crcp, data, len);
+ 	return 0;
+ }
+@@ -195,11 +195,11 @@ static int crc32c_pcl_intel_update(struct shash_desc *desc, const u8 *data,
+ static int __crc32c_pcl_intel_finup(u32 *crcp, const u8 *data, unsigned int len,
+ 				u8 *out)
+ {
+-	if (len >= crc32c_pcl_breakeven && irq_fpu_usable()) {
+-		kernel_fpu_begin();
+-		*(__le32 *)out = ~cpu_to_le32(crc_pcl(data, len, *crcp));
+-		kernel_fpu_end();
+-	} else
++//	if (len >= crc32c_pcl_breakeven && irq_fpu_usable()) {
++//		kernel_fpu_begin();
++//		*(__le32 *)out = ~cpu_to_le32(crc_pcl(data, len, *crcp));
++//		kernel_fpu_end();
++//	} else
+ 		*(__le32 *)out =
+ 			~cpu_to_le32(crc32c_intel_le_hw(*crcp, data, len));
+ 	return 0;
