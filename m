@@ -1,101 +1,95 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH v3 00/74] e2fsprogs patchbomb 12/2013
-Date: Tue, 10 Dec 2013 17:18:14 -0800
-Message-ID: <20131211011813.30655.39624.stgit@birch.djwong.org>
+Subject: [PATCH 01/74] libext2fs: don't overflow when punching indirect blocks
+ with large blocks
+Date: Tue, 10 Dec 2013 17:18:21 -0800
+Message-ID: <20131211011821.30655.67004.stgit@birch.djwong.org>
+References: <20131211011813.30655.39624.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:41986 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751513Ab3LKBSV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Dec 2013 20:18:21 -0500
+Received: from aserp1040.oracle.com ([141.146.126.69]:25760 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751243Ab3LKBS2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Dec 2013 20:18:28 -0500
+In-Reply-To: <20131211011813.30655.39624.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Yikes.  This patch series has sprawled quite a lot since October.
+On a FS with a rather large blockize (> 4K), the old block map
+structure can construct a fat enough "tree" (or whatever we call that
+lopsided thing) that (at least in theory) one could create mappings
+for logical blocks higher than 32 bits.  In practice this doesn't
+happen, but the 'max' and 'iter' variables that the punch helpers use
+will overflow because the BLOCK_SIZE_BITS shifts are too large to fit
+a 32-bit variable.  The current variable declarations also cause punch
+to fail on TIND-mapped blocks even if the file is < 16T.  So enlarge
+the fields to fit.
 
-The first 15 patches are miscellaneous fixes.  Half of these are the
-same patches from October, but there are a few new ones to tweak
-wording, cap the number of logical blocks in a file to limits that the
-library can handle, and a patch to disable changing the UUID on a
-mounted checksumming filesystem because tune2fs and the kernel can
-race to write out new (non-identical) GDT checksums, leading to fs
-corruption.  There's also a patch to prevent mapping blocks into files
-at too high addresses, a fix to make big symlinks safe for extents and
-64bit block numbers, fixes for resize2fs moving inodes on checksumming
-filesystems, and a bunch of other 64-bit safety fixes.
+Yes this is an obscure corner case, but it seems a little silly if we
+can't punch a file's block 300,000,000 on a 64k-block filesystem.
 
-Patches 16-30 fix some problems that the Coverity scanner found.  Most
-of these are resource handling errors -- file descriptors that don't
-get freed, memory that doesn't get freed in error paths (or is
-incorrectly freed), etc.  It's true that in many cases the resource
-leaks happen on the way towards exit()/abort(), but this isn't always
-true, and a little defensive programming never hurt anyone.
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ lib/ext2fs/punch.c |   15 ++++++++-------
+ 1 file changed, 8 insertions(+), 7 deletions(-)
 
-Patches 31-35 fix some library problems that running xfstests atop
-fuse2fs exposed.  There are still problems with the fileio calls
-returning stale data, and an extent tree corruption bug hiding
-somewhere in libext2fs, but I decided to work on that after pushing
-out this patch set.
 
-Patches 36-37 fix some problems I encountered when creating 1k-block
-bigalloc filesystems.  The kernel still complains of block group
-corruption, but I will address those separately.
+diff --git a/lib/ext2fs/punch.c b/lib/ext2fs/punch.c
+index 4471f46..790a0ad8 100644
+--- a/lib/ext2fs/punch.c
++++ b/lib/ext2fs/punch.c
+@@ -50,15 +50,16 @@ static errcode_t ind_punch(ext2_filsys fs, struct ext2_inode *inode,
+ 			   blk_t start, blk_t count, int max)
+ {
+ 	errcode_t	retval;
+-	blk_t		b, offset;
+-	int		i, incr;
++	blk_t		b;
++	int		i;
++	blk64_t		offset, incr;
+ 	int		freed = 0;
+ 
+ #ifdef PUNCH_DEBUG
+ 	printf("Entering ind_punch, level %d, start %u, count %u, "
+ 	       "max %d\n", level, start, count, max);
+ #endif
+-	incr = 1 << ((EXT2_BLOCK_SIZE_BITS(fs->super)-2)*level);
++	incr = 1ULL << ((EXT2_BLOCK_SIZE_BITS(fs->super)-2)*level);
+ 	for (i=0, offset=0; i < max; i++, p++, offset += incr) {
+ 		if (offset >= start + count)
+ 			break;
+@@ -87,7 +88,7 @@ static errcode_t ind_punch(ext2_filsys fs, struct ext2_inode *inode,
+ 				continue;
+ 		}
+ #ifdef PUNCH_DEBUG
+-		printf("Freeing block %u (offset %d)\n", b, offset);
++		printf("Freeing block %u (offset %llu)\n", b, offset);
+ #endif
+ 		ext2fs_block_alloc_stats(fs, b, -1);
+ 		*p = 0;
+@@ -108,7 +109,7 @@ static errcode_t ext2fs_punch_ind(ext2_filsys fs, struct ext2_inode *inode,
+ 	int			num = EXT2_NDIR_BLOCKS;
+ 	blk_t			*bp = inode->i_block;
+ 	blk_t			addr_per_block;
+-	blk_t			max = EXT2_NDIR_BLOCKS;
++	blk64_t			max = EXT2_NDIR_BLOCKS;
+ 
+ 	if (!block_buf) {
+ 		retval = ext2fs_get_array(3, fs->blocksize, &buf);
+@@ -119,10 +120,10 @@ static errcode_t ext2fs_punch_ind(ext2_filsys fs, struct ext2_inode *inode,
+ 
+ 	addr_per_block = (blk_t) fs->blocksize >> 2;
+ 
+-	for (level=0; level < 4; level++, max *= addr_per_block) {
++	for (level = 0; level < 4; level++, max *= (blk64_t)addr_per_block) {
+ #ifdef PUNCH_DEBUG
+ 		printf("Main loop level %d, start %u count %u "
+-		       "max %d num %d\n", level, start, count, max, num);
++		       "max %llu num %d\n", level, start, count, max, num);
+ #endif
+ 		if (start < max) {
+ 			retval = ind_punch(fs, inode, block_buf, bp, level,
 
-Patches 38-41 address the BLOCK_UNINIT discussion that I've been
-having with Akira Fujita and Ted.  It shifts responsibility for
-calculating the block bitmap for a BLOCK_UNINIT group out of the block
-allocation routines into the bitmap loading routines.  With this in
-place, the testb command in debugfs (and therefore the
-ext2fs_test_block_bitmap() function) return correct results.
-
-Patches 42-48 fix some more bigalloc bugs.  These are the same patches
-from October, plus an additional fix to e2fsck and some resize2fs
-cluster handling fixes.
-
-Patch 49 enables block_validity for new filesystems.  See patch 77 for
-a performance microbenchmark.
-
-Patches 50-51 enhance ext2fs_bmap2() to allow the creation of
-uninitialized extents.  The functionality is already there; really it
-just adds a flag to indicate uninitialized.  There's also a patch to
-the fileio routines to handle uninitialized extents.  fuse2fs will use
-this for fallocate.
-
-Patches 52-54 add to resize2fs the ability to convert a filesystem to
-and from 64bit mode.  These patches are mostly unchanged from October.
-
-Patches 55-60 implement a new API to iterate and edit extended
-attributes.  The inline_data and fuse2fs patchsets both use this
-feature.  For those who have been watching the inline_data patchset, I
-rolled the minor bugfix patches into the first patch.
-
-Patch 61 extends ext2fs_open() to support 64bit superblock numbers.
-Ted wondered (back in October) if anyone else wanted to add anything
-to that call.  I can't think of anything, and nobody else has spoken
-up.
-
-Patches 62-65 implement fuse2fs, a FUSE server based on libext2fs.
-Primarily I've been using it to shake out bugs in the library via
-xfstests and the metadata checksumming test program.  It can also be
-used to mount ext4 on any OS supporting FUSE, and it can also mount
-64k-block filesystems on x86, though I'd be wary of using rw mode.
-fuse2fs depends on these new APIs: xattr editing, uninit extent
-handling, and the 64-bit openfs call.
-
-Patches 66-74 provide the metadata checksumming test script.  Its
-primary advantage over 'make check' is that it allows one to specify a 
-variety of different mkfs and mount options.  It's also growing more
-tests as a result of fuse2fs exercise.
-
-I've tested these e2fsprogs changes against the -next branch as of
-12/9.  These days, I use an 8GB ramdisk and a 20T "disk" I constructed
-out of dm-snapshot to test in an x64 VM.  The make check tests should
-pass.
-
-Comments and questions are, as always, welcome.
-
---D
