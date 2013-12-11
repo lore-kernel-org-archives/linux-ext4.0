@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 20/74] mke2fs: don't leak memory
-Date: Tue, 10 Dec 2013 17:20:33 -0800
-Message-ID: <20131211012033.30655.20463.stgit@birch.djwong.org>
+Subject: [PATCH 21/74] e4defrag: don't crash if umounts the filesystem races
+ with us
+Date: Tue, 10 Dec 2013 17:20:40 -0800
+Message-ID: <20131211012040.30655.381.stgit@birch.djwong.org>
 References: <20131211011813.30655.39624.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,62 +10,35 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:42601 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:42639 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751523Ab3LKBUj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Dec 2013 20:20:39 -0500
+	with ESMTP id S1751523Ab3LKBUq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Dec 2013 20:20:46 -0500
 In-Reply-To: <20131211011813.30655.39624.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+If someone umounts the filesystem between statfs64 and the getmntent()
+iteration, we can exit the loop having never set mnt_type, and strcmp
+can crash.  Fix the potential NULL deref.
+
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- misc/mke2fs.c |   11 ++++++++---
- 1 file changed, 8 insertions(+), 3 deletions(-)
+ misc/e4defrag.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 19b6e85..c1cbcaa 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -93,7 +93,7 @@ gid_t	root_gid;
- int	journal_size;
- int	journal_flags;
- int	lazy_itable_init;
--char	*bad_blocks_filename;
-+char	*bad_blocks_filename = NULL;
- __u32	fs_stride;
- int	quotatype = -1;  /* Initialize both user and group quotas by default */
- 
-@@ -1139,6 +1139,7 @@ static char **parse_fs_type(const char *fs_type,
- 
- 	parse_str = malloc(strlen(usage_types)+1);
- 	if (!parse_str) {
-+		free(profile_type);
- 		free(list.list);
- 		return 0;
- 	}
-@@ -1509,7 +1510,8 @@ profile_error:
- 			discard = 0;
- 			break;
- 		case 'l':
--			bad_blocks_filename = malloc(strlen(optarg)+1);
-+			bad_blocks_filename = realloc(bad_blocks_filename,
-+						      strlen(optarg) + 1);
- 			if (!bad_blocks_filename) {
- 				com_err(program_name, ENOMEM,
- 					_("in malloc for bad_blocks_filename"));
-@@ -2262,8 +2264,11 @@ static int mke2fs_setup_tdb(const char *name, io_manager *io_ptr)
+diff --git a/misc/e4defrag.c b/misc/e4defrag.c
+index 4b31d03..b6e2e31 100644
+--- a/misc/e4defrag.c
++++ b/misc/e4defrag.c
+@@ -374,7 +374,7 @@ static int is_ext4(const char *file, char *devname)
  	}
  
- 	if (!strcmp(tdb_dir, "none") || (tdb_dir[0] == 0) ||
--	    access(tdb_dir, W_OK))
-+	    access(tdb_dir, W_OK)) {
-+		if (free_tdb_dir)
-+			free(tdb_dir);
+ 	endmntent(fp);
+-	if (strcmp(mnt_type, FS_EXT4) == 0) {
++	if (mnt_type && strcmp(mnt_type, FS_EXT4) == 0) {
+ 		FREE(mnt_type);
  		return 0;
-+	}
- 
- 	tmp_name = strdup(name);
- 	if (!tmp_name)
+ 	} else {
 
