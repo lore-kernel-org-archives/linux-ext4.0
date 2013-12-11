@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 72/74] Subject: [PATCH] tests: enable using fuse2fs with
- metadata checksum test
-Date: Tue, 10 Dec 2013 17:26:25 -0800
-Message-ID: <20131211012625.30655.79568.stgit@birch.djwong.org>
+Subject: [PATCH 73/74] tests: add large symlink test
+Date: Tue, 10 Dec 2013 17:26:31 -0800
+Message-ID: <20131211012631.30655.22099.stgit@birch.djwong.org>
 References: <20131211011813.30655.39624.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,79 +9,55 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:44182 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:44223 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751424Ab3LKB0b (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Dec 2013 20:26:31 -0500
+	with ESMTP id S1751424Ab3LKB0h (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Dec 2013 20:26:37 -0500
 In-Reply-To: <20131211011813.30655.39624.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Create custom mount/umount commands so that we can run the metadata
-checksumming tests against fuse2fs.
+Test the creation and reading of a large symlink.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- tests/fuse2fs/mount  |   22 ++++++++++++++++++++++
- tests/fuse2fs/umount |   21 +++++++++++++++++++++
- 2 files changed, 43 insertions(+)
- create mode 100755 tests/fuse2fs/mount
- create mode 100755 tests/fuse2fs/umount
+ tests/metadata-checksum-test.sh |   24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
 
 
-diff --git a/tests/fuse2fs/mount b/tests/fuse2fs/mount
-new file mode 100755
-index 0000000..96a89b7
---- /dev/null
-+++ b/tests/fuse2fs/mount
-@@ -0,0 +1,22 @@
-+#!/bin/bash
+diff --git a/tests/metadata-checksum-test.sh b/tests/metadata-checksum-test.sh
+index 4e353e1..d34985b 100755
+--- a/tests/metadata-checksum-test.sh
++++ b/tests/metadata-checksum-test.sh
+@@ -3277,6 +3277,30 @@ ${E2FSPROGS}/debugfs/debugfs -R 'stat /bigfile' "${DEV}" | grep -c "Size: ${FILE
+ ${E2FSPROGS}/debugfs/debugfs -R 'stat /bigfile2' "${DEV}" | grep -c "Size: ${FILE_SIZE}"
+ }
+ 
++##########################
++function big_symlink_test {
++msg "big_symlink_test"
 +
-+# Mount ext4 via fuse.  Put tests/fuse2fs/ at the start of PATH if you want
-+# to run the metadata checksumming tests with fuse2fs.
++$VALGRIND ${E2FSPROGS}/misc/mke2fs -T ext4icsum $MKFS_OPTS $MKFS_FEATURES -F "${DEV}"
++test -z "$NO_CSUM" && $VALGRIND ${E2FSPROGS}/misc/tune2fs -O metadata_csum $DEV
++${E2FSPROGS}/misc/dumpe2fs -h $DEV 2> /dev/null | egrep -q "^Filesystem state:[ ]*clean$" || ${fsck_cmd} -fDy $DEV || true
 +
-+for arg in "$@"; do
-+	if [ -b "${arg}" ]; then
-+		DEV="${arg}"
-+	elif [ -d "${arg}" ]; then
-+		MNT="${arg}"
-+	fi
-+done
++set +x
++LINK_TARGET="/$(printf "x%.0s" {1..1000})"
++set -x
++${mount_cmd} ${MOUNT_OPTS} "${DEV}" "${MNT}" -t ext4 -o journal_checksum
++ln -s "${LINK_TARGET}" "${MNT}/biglink"
++umount "${MNT}"
++${E2FSPROGS}/debugfs/debugfs -R 'stat /biglink' "${DEV}" | cat -
++${fsck_cmd} -C0 -f -n "${DEV}"
 +
-+if [ -z "${DEV}" -o -z "${MNT}" ]; then
-+	echo "Please specify a device and a mountpoint."
-+fi
++${mount_cmd} ${MOUNT_OPTS} "${DEV}" "${MNT}" -t ext4 -o journal_checksum
++LINK_NOW="$(readlink "${MNT}/biglink")"
++umount "${MNT}"
 +
-+DIR="$(readlink -f "$(dirname "$0")")"
-+"${DIR}/../../misc/fuse2fs" "${DEV}" "${MNT}"
-+ERR=$?
-+sleep 1
-+exit "${ERR}"
-diff --git a/tests/fuse2fs/umount b/tests/fuse2fs/umount
-new file mode 100755
-index 0000000..715bee1
---- /dev/null
-+++ b/tests/fuse2fs/umount
-@@ -0,0 +1,21 @@
-+#!/bin/bash
++test "${LINK_NOW}" = "${LINK_TARGET}"
++}
 +
-+# unmount a filesystem
-+sync
-+sync
-+sync
-+
-+N=1
-+if [ -x /bin/umount ]; then
-+	/bin/umount "$@"
-+	ERR=$?
-+elif [ -x /sbin/umount ]; then
-+	/sbin/umount "$@"
-+	ERR=$?
-+else
-+	echo "Where is umount?"
-+	exit 5
-+fi
-+sleep 1
-+
-+exit "${ERR}"
+ # This test should be the last one (before speed tests, anyway)
+ 
+ #### ALL SPEED TESTS GO AT THE END
 
