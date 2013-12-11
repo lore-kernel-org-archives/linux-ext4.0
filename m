@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 12/74] libext2fs: make symlinks safe for 64bit blocks and
- extents
-Date: Tue, 10 Dec 2013 17:19:41 -0800
-Message-ID: <20131211011941.30655.52101.stgit@birch.djwong.org>
+Subject: [PATCH 13/74] debugfs: handle 64bit block numbers
+Date: Tue, 10 Dec 2013 17:19:48 -0800
+Message-ID: <20131211011948.30655.17965.stgit@birch.djwong.org>
 References: <20131211011813.30655.39624.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,100 +9,190 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:42342 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751243Ab3LKBTr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Dec 2013 20:19:47 -0500
+Received: from aserp1040.oracle.com ([141.146.126.69]:26127 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751664Ab3LKBTy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Dec 2013 20:19:54 -0500
 In-Reply-To: <20131211011813.30655.39624.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If we have to create a big symlink (i.e. one that doesn't fit into
-i_block[]), we are not 64bit block safe and the namei code does not
-handle extents at all.  Fix both.
+debugfs should use strtoull wrappers for reading block numbers from
+the command line.  "unsigned long" isn't wide enough to handle block
+numbers on 32bit platforms.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/namei.c   |    9 +++++++--
- lib/ext2fs/symlink.c |   20 ++++++--------------
- 2 files changed, 13 insertions(+), 16 deletions(-)
+ debugfs/debugfs.c      |   33 ++++++++++++++++++++++-----------
+ debugfs/extent_inode.c |   22 +++++++++-------------
+ debugfs/util.c         |    2 +-
+ 3 files changed, 32 insertions(+), 25 deletions(-)
 
 
-diff --git a/lib/ext2fs/namei.c b/lib/ext2fs/namei.c
-index efcc02b..307aecc 100644
---- a/lib/ext2fs/namei.c
-+++ b/lib/ext2fs/namei.c
-@@ -34,6 +34,7 @@ static errcode_t follow_link(ext2_filsys fs, ext2_ino_t root, ext2_ino_t dir,
- 	char *buffer = 0;
- 	errcode_t retval;
- 	struct ext2_inode ei;
-+	blk64_t blk;
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index c5f8a1f..578d577 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -181,8 +181,7 @@ void do_open_filesys(int argc, char **argv)
+ 				return;
+ 			break;
+ 		case 's':
+-			superblock = parse_ulong(optarg, argv[0],
+-						 "superblock number", &err);
++			err = strtoblk(argv[0], optarg, &superblock);
+ 			if (err)
+ 				return;
+ 			break;
+@@ -278,14 +277,17 @@ void do_init_filesys(int argc, char **argv)
+ 	struct ext2_super_block param;
+ 	errcode_t	retval;
+ 	int		err;
++	blk64_t		blocks;
  
- #ifdef NAMEI_DEBUG
- 	printf("follow_link: root=%lu, dir=%lu, inode=%lu, lc=%d\n",
-@@ -49,12 +50,16 @@ static errcode_t follow_link(ext2_filsys fs, ext2_ino_t root, ext2_ino_t dir,
- 	if (link_count++ >= EXT2FS_MAX_NESTED_LINKS)
- 		return EXT2_ET_SYMLINK_LOOP;
+ 	if (common_args_process(argc, argv, 3, 3, "initialize",
+ 				"<device> <blocks>", CHECK_FS_NOTOPEN))
+ 		return;
  
--	/* FIXME-64: Actually, this is FIXME EXTENTS */
- 	if (ext2fs_inode_data_blocks(fs,&ei)) {
-+		retval = ext2fs_bmap2(fs, inode, &ei, NULL, 0, 0, NULL, &blk);
-+		if (retval)
-+			return retval;
-+
- 		retval = ext2fs_get_mem(fs->blocksize, &buffer);
- 		if (retval)
- 			return retval;
--		retval = io_channel_read_blk(fs->io, ei.i_block[0], 1, buffer);
-+
-+		retval = io_channel_read_blk64(fs->io, blk, 1, buffer);
- 		if (retval) {
- 			ext2fs_free_mem(&buffer);
- 			return retval;
-diff --git a/lib/ext2fs/symlink.c b/lib/ext2fs/symlink.c
-index e943412..ad80444 100644
---- a/lib/ext2fs/symlink.c
-+++ b/lib/ext2fs/symlink.c
-@@ -91,14 +91,12 @@ errcode_t ext2fs_symlink(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t ino,
- 		memset(block_buf, 0, fs->blocksize);
- 		strcpy(block_buf, target);
- 		if (fs->super->s_feature_incompat &
--		   EXT3_FEATURE_INCOMPAT_EXTENTS) {
-+		    EXT3_FEATURE_INCOMPAT_EXTENTS) {
- 			/*
- 			 * The extent bmap is setup after the inode and block
- 			 * have been written out below.
- 			 */
- 			inode.i_flags |= EXT4_EXTENTS_FL;
--		} else {
--			inode.i_block[0] = blk;
- 		}
+ 	memset(&param, 0, sizeof(struct ext2_super_block));
+-	ext2fs_blocks_count_set(&param, parse_ulong(argv[2], argv[0],
+-						    "blocks count", &err));
++	err = strtoblk(argv[0], argv[2], &blocks);
++	if (err)
++		return;
++	ext2fs_blocks_count_set(&param, blocks);
+ 	if (err)
+ 		return;
+ 	retval = ext2fs_initialize(argv[1], 0, &param,
+@@ -2110,7 +2112,9 @@ void do_bmap(int argc, char *argv[])
+ 	ino = string_to_inode(argv[1]);
+ 	if (!ino)
+ 		return;
+-	blk = parse_ulong(argv[2], argv[0], "logical_block", &err);
++	err = strtoblk(argv[0], argv[2], &blk);
++	if (err)
++		return;
+ 
+ 	errcode = ext2fs_bmap2(current_fs, ino, 0, 0, 0, blk, 0, &pblk);
+ 	if (errcode) {
+@@ -2255,10 +2259,14 @@ void do_punch(int argc, char *argv[])
+ 	ino = string_to_inode(argv[1]);
+ 	if (!ino)
+ 		return;
+-	start = parse_ulong(argv[2], argv[0], "logical_block", &err);
+-	if (argc == 4)
+-		end = parse_ulong(argv[3], argv[0], "logical_block", &err);
+-	else
++	err = strtoblk(argv[0], argv[2], &start);
++	if (err)
++		return;
++	if (argc == 4) {
++		err = strtoblk(argv[0], argv[3], &end);
++		if (err)
++			return;
++	} else
+ 		end = ~0;
+ 
+ 	errcode = ext2fs_punch(current_fs, ino, 0, 0, start, end);
+@@ -2470,8 +2478,11 @@ int main(int argc, char **argv)
+ 						"block size", 0);
+ 			break;
+ 		case 's':
+-			superblock = parse_ulong(optarg, argv[0],
+-						 "superblock number", 0);
++			retval = strtoblk(argv[0], optarg, &superblock);
++			if (retval) {
++				com_err(argv[0], retval, 0, debug_prog_name);
++				return 1;
++			}
+ 			break;
+ 		case 'c':
+ 			catastrophic = 1;
+diff --git a/debugfs/extent_inode.c b/debugfs/extent_inode.c
+index 0bbc4c5..75e328c 100644
+--- a/debugfs/extent_inode.c
++++ b/debugfs/extent_inode.c
+@@ -264,7 +264,7 @@ void do_replace_node(int argc, char *argv[])
+ 		return;
  	}
  
-@@ -112,20 +110,14 @@ errcode_t ext2fs_symlink(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t ino,
- 		goto cleanup;
+-	extent.e_lblk = parse_ulong(argv[1], argv[0], "logical block", &err);
++	err = strtoblk(argv[0], argv[1], &extent.e_lblk);
+ 	if (err)
+ 		return;
  
- 	if (!fastlink) {
--		retval = io_channel_write_blk(fs->io, blk, 1, block_buf);
-+		retval = ext2fs_bmap2(fs, ino, &inode, NULL, BMAP_SET, 0, NULL,
-+				      &blk);
- 		if (retval)
- 			goto cleanup;
+@@ -272,7 +272,7 @@ void do_replace_node(int argc, char *argv[])
+ 	if (err)
+ 		return;
  
--		if (fs->super->s_feature_incompat &
--		    EXT3_FEATURE_INCOMPAT_EXTENTS) {
--			retval = ext2fs_extent_open2(fs, ino, &inode, &handle);
--			if (retval)
--				goto cleanup;
--			retval = ext2fs_extent_set_bmap(handle, 0, blk, 0);
--			ext2fs_extent_free(handle);
--			if (retval)
--				goto cleanup;
--		}
-+		retval = io_channel_write_blk64(fs->io, blk, 1, block_buf);
-+		if (retval)
-+			goto cleanup;
+-	extent.e_pblk = parse_ulong(argv[3], argv[0], "logical block", &err);
++	err = strtoblk(argv[0], argv[3], &extent.e_pblk);
+ 	if (err)
+ 		return;
+ 
+@@ -338,8 +338,7 @@ void do_insert_node(int argc, char *argv[])
+ 		return;
  	}
  
- 	/*
+-	extent.e_lblk = parse_ulong(argv[1], cmd,
+-				    "logical block", &err);
++	err = strtoblk(cmd, argv[1], &extent.e_lblk);
+ 	if (err)
+ 		return;
+ 
+@@ -348,8 +347,7 @@ void do_insert_node(int argc, char *argv[])
+ 	if (err)
+ 		return;
+ 
+-	extent.e_pblk = parse_ulong(argv[3], cmd,
+-				    "pysical block", &err);
++	err = strtoblk(cmd, argv[3], &extent.e_pblk);
+ 	if (err)
+ 		return;
+ 
+@@ -366,8 +364,8 @@ void do_set_bmap(int argc, char **argv)
+ 	const char	*usage = "[--uninit] <lblk> <pblk>";
+ 	struct ext2fs_extent extent;
+ 	errcode_t	retval;
+-	blk_t		logical;
+-	blk_t		physical;
++	blk64_t		logical;
++	blk64_t		physical;
+ 	char		*cmd = argv[0];
+ 	int		flags = 0;
+ 	int		err;
+@@ -387,18 +385,16 @@ void do_set_bmap(int argc, char **argv)
+ 		return;
+ 	}
+ 
+-	logical = parse_ulong(argv[1], cmd,
+-				    "logical block", &err);
++	err = strtoblk(cmd, argv[1], &logical);
+ 	if (err)
+ 		return;
+ 
+-	physical = parse_ulong(argv[2], cmd,
+-				    "physical block", &err);
++	err = strtoblk(cmd, argv[2], &physical);
+ 	if (err)
+ 		return;
+ 
+ 	retval = ext2fs_extent_set_bmap(current_handle, logical,
+-					(blk64_t) physical, flags);
++					physical, flags);
+ 	if (retval) {
+ 		com_err(cmd, retval, 0);
+ 		return;
+diff --git a/debugfs/util.c b/debugfs/util.c
+index cf3a6c6..09088e0 100644
+--- a/debugfs/util.c
++++ b/debugfs/util.c
+@@ -377,7 +377,7 @@ int common_block_args_process(int argc, char *argv[],
+ 	}
+ 
+ 	if (argc > 2) {
+-		*count = parse_ulong(argv[2], argv[0], "count", &err);
++		err = strtoblk(argv[0], argv[2], count);
+ 		if (err)
+ 			return 1;
+ 	}
 
