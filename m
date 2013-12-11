@@ -1,27 +1,72 @@
-From: David Howells <dhowells@redhat.com>
-Subject: Re: [PATCH 6/9] Use %pd in Ext4
-Date: Wed, 11 Dec 2013 12:10:04 +0000
-Message-ID: <1218.1386763804@warthog.procyon.org.uk>
-References: <20131210155818.GA1700@thunk.org> <20131210152612.4916.80435.stgit@warthog.procyon.org.uk> <20131210152655.4916.77232.stgit@warthog.procyon.org.uk>
-Cc: dhowells@redhat.com, viro@zeniv.linux.org.uk,
-	linux-ext4@vger.kernel.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-fsdevel@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44337 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751380Ab3LKMKR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Dec 2013 07:10:17 -0500
-In-Reply-To: <20131210155818.GA1700@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Ben Myers <bpm@sgi.com>
+Subject: Re: Filesystem writes on RAID5 too slow
+Date: Wed, 11 Dec 2013 13:09:45 -0600
+Message-ID: <20131211190945.GF1935@sgi.com>
+References: <CACtJ3HZxp6xEjY_wOucCcqX4scNzEGuiAsovQYObJS9whtYJsQ@mail.gmail.com>
+	<528A5C45.4080906@redhat.com> <20131119005740.GY6188@dastard>
+	<CACtJ3Ha3C7JNi5VZRnNMn+-okNheygmbj=j9AnUMvfzfZjNwug@mail.gmail.com>
+	<20131121092606.GU11434@dastard>
+	<CACtJ3HZAsOtmLArMWraygfQxpGymtZjr+a_reXv8o6LJzoMbvw@mail.gmail.com>
+	<CACtJ3Ha5P2Heu4qiEEk6c4g+tKyR=RrD-4E-Cqj+bP8YDjKQ6w@mail.gmail.com>
+	<20131121234116.GD6502@dastard>
+	<20131210191803.GA31162@infradead.org>
+	<20131211002753.GD10988@dastard>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Martin Boutin <martboutin@gmail.com>,
+	"Kernel.org-Linux-RAID" <linux-raid@vger.kernel.org>,
+	Eric Sandeen <sandeen@redhat.com>, xfs-oss <xfs@oss.sgi.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	"Kernel.org-Linux-EXT4" <linux-ext4@vger.kernel.org>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+Content-Disposition: inline
+In-Reply-To: <20131211002753.GD10988@dastard>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-Theodore Ts'o <tytso@mit.edu> wrote:
+Hi,
 
-> Do you want to have Al take this, or I'm happy to carry this in the
-> ext4 tree.
+On Wed, Dec 11, 2013 at 11:27:53AM +1100, Dave Chinner wrote:
+> On Tue, Dec 10, 2013 at 11:18:03AM -0800, Christoph Hellwig wrote:
+> > > xfs: align initial file allocations correctly.
+> > > 
+> > > From: Dave Chinner <dchinner@redhat.com>
+> > > 
+> > > The function xfs_bmap_isaeof() is used to indicate that an
+> > > allocation is occurring at or past the end of file, and as such
+> > > should be aligned to the underlying storage geometry if possible.
+> > > 
+> > > Commit 27a3f8f ("xfs: introduce xfs_bmap_last_extent") changed the
+> > > behaviour of this function for empty files - it turned off
+> > > allocation alignment for this case accidentally. Hence large initial
+> > > allocations from direct IO are not getting correctly aligned to the
+> > > underlying geometry, and that is cause write performance to drop in
+> > > alignment sensitive configurations.
+> > > 
+> > > Fix it by considering allocation into empty files as requiring
+> > > aligned allocation again.
+> > 
+> > Seems like this one didn't get picked up yet?
+> 
+> I'm about to resend all my outstanding patches...
 
-Can you take the Ext4 bit through your tree?
+Sorry I didn't see that one.  If you stick the keyword 'patch' in the subject I
+tend to do a bit better.
 
-David
+Regards,
+	Ben
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
