@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 43/74] libext2fs: don't update the summary counts when doing
- implied cluster allocation
-Date: Tue, 10 Dec 2013 17:23:06 -0800
-Message-ID: <20131211012306.30655.51172.stgit@birch.djwong.org>
+Subject: [PATCH 44/74] e2fsck: only release clusters when shortening a
+ directory during a rehash
+Date: Tue, 10 Dec 2013 17:23:12 -0800
+Message-ID: <20131211012312.30655.85205.stgit@birch.djwong.org>
 References: <20131211011813.30655.39624.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,66 +10,54 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:26957 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751476Ab3LKBXO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Dec 2013 20:23:14 -0500
+Received: from userp1040.oracle.com ([156.151.31.81]:43329 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751802Ab3LKBXX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Dec 2013 20:23:23 -0500
 In-Reply-To: <20131211011813.30655.39624.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When we're appending a block to a directory file or the journal file,
-and the new block is part of a cluster that has already been allocated
-to the file (implied cluster allocation), don't update the bitmap or
-the summary counts because that was performed when the cluster was
-allocated.
+When the rehash process is running on a bigalloc filesystem, it
+compresses all the directory entries and hash structures into the
+beginning of the directory file and then uses block_iterate3() to free
+the blocks off the end of the file.  It seems to call
+ext2fs_block_alloc_stats2() for every block in a cluster, which is
+unfortunate because this function allocates and frees entire clusters
+(and updates the summary counts accordingly).  In this case e2fsck
+writes out incorrect summary counts.
 
 Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/expanddir.c |    2 +-
- lib/ext2fs/mkjournal.c |    2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ e2fsck/rehash.c |   14 +++++++++++---
+ 1 file changed, 11 insertions(+), 3 deletions(-)
 
 
-diff --git a/lib/ext2fs/expanddir.c b/lib/ext2fs/expanddir.c
-index 22558d6..09a15fa 100644
---- a/lib/ext2fs/expanddir.c
-+++ b/lib/ext2fs/expanddir.c
-@@ -55,6 +55,7 @@ static int expand_dir_proc(ext2_filsys	fs,
- 			return BLOCK_ABORT;
- 		}
- 		es->newblocks++;
-+		ext2fs_block_alloc_stats2(fs, new_blk, +1);
+diff --git a/e2fsck/rehash.c b/e2fsck/rehash.c
+index 20704a9..9b90353 100644
+--- a/e2fsck/rehash.c
++++ b/e2fsck/rehash.c
+@@ -719,10 +719,18 @@ static int write_dir_block(ext2_filsys fs,
+ 		/* We don't need this block, so release it */
+ 		e2fsck_read_bitmaps(wd->ctx);
+ 		blk = *block_nr;
+-		ext2fs_unmark_block_bitmap2(wd->ctx->block_found_map, blk);
+-		ext2fs_block_alloc_stats2(fs, blk, -1);
++		/*
++		 * In theory, we only release blocks from the end of the
++		 * directory file, so it's fine to clobber a whole cluster at
++		 * once.
++		 */
++		if (blk % EXT2FS_CLUSTER_RATIO(fs) == 0) {
++			ext2fs_unmark_block_bitmap2(wd->ctx->block_found_map,
++						    blk);
++			ext2fs_block_alloc_stats2(fs, blk, -1);
++			wd->cleared++;
++		}
+ 		*block_nr = 0;
+-		wd->cleared++;
+ 		return BLOCK_CHANGED;
  	}
- 	if (blockcnt > 0) {
- 		retval = ext2fs_new_dir_block(fs, 0, 0, &block);
-@@ -82,7 +83,6 @@ static int expand_dir_proc(ext2_filsys	fs,
- 	}
- 	ext2fs_free_mem(&block);
- 	*blocknr = new_blk;
--	ext2fs_block_alloc_stats2(fs, new_blk, +1);
  
- 	if (es->done)
- 		return (BLOCK_CHANGED | BLOCK_ABORT);
-diff --git a/lib/ext2fs/mkjournal.c b/lib/ext2fs/mkjournal.c
-index 69ac135..d09c458 100644
---- a/lib/ext2fs/mkjournal.c
-+++ b/lib/ext2fs/mkjournal.c
-@@ -250,6 +250,7 @@ static int mkjournal_proc(ext2_filsys	fs,
- 			es->err = retval;
- 			return BLOCK_ABORT;
- 		}
-+		ext2fs_block_alloc_stats2(fs, new_blk, +1);
- 		es->newblocks++;
- 	}
- 	if (blockcnt >= 0)
-@@ -285,7 +286,6 @@ static int mkjournal_proc(ext2_filsys	fs,
- 		return BLOCK_ABORT;
- 	}
- 	*blocknr = es->goal = new_blk;
--	ext2fs_block_alloc_stats2(fs, new_blk, +1);
- 
- 	if (es->num_blocks == 0)
- 		return (BLOCK_CHANGED | BLOCK_ABORT);
 
