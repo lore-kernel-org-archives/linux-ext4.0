@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 38/74] libext2fs: mark group data blocks when loading block
- bitmap
-Date: Tue, 10 Dec 2013 17:22:33 -0800
-Message-ID: <20131211012233.30655.1041.stgit@birch.djwong.org>
+Subject: [PATCH 39/74] e2fsck: remove uninit block bitmap calculation
+Date: Tue, 10 Dec 2013 17:22:39 -0800
+Message-ID: <20131211012239.30655.16666.stgit@birch.djwong.org>
 References: <20131211011813.30655.39624.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,158 +9,179 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:43147 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751280Ab3LKBWj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Dec 2013 20:22:39 -0500
+Received: from aserp1040.oracle.com ([141.146.126.69]:26840 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751423Ab3LKBWp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Dec 2013 20:22:45 -0500
 In-Reply-To: <20131211011813.30655.39624.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The kernel[1] and e2fsck[2] both react to a BLOCK_UNINIT group by
-calculating the block bitmap that's needed to show all the group
-blocks for that group (if any) and using that.  However, when reading
-bitmaps from disk, libext2fs simply imports a block of zeroes into the
-bitmap, without bothering to check for group blocks.  This erroneous
-behavior results in the filesystem having a block bitmap that does not
-accurately reflect disk contents, and worse yet makes it seem as
-though superblocks, group descriptors, bitmaps, and inode tables are
-"free" space on disk.
-
-So, fix the block bitmap loading routines to calculate the correct
-block bitmap for all groups and load it into the main fs block bitmap.
-
-This also fixes bogus debugfs output such as:
-
-Group 1: (Blocks 8193-16384) [INODE_UNINIT, BLOCK_UNINIT]
-  Checksum 0x1310, unused inodes 512
-  Backup superblock at 8193, Group descriptors at 8194-8217
-  Reserved GDT blocks at 8218-8473
-  Block bitmap at 283 (bg #0 + 282), Inode bitmap at 299 (bg #0 + 298)
-  Inode table at 442-569 (bg #0 + 441)
-  7911 free blocks, 512 free inodes, 0 directories, 512 unused inodes
-  Free blocks: 8193-16384
-  Free inodes: 513-1024
-
-Notice how the "free blocks" range includes the backup sb & GDT area
-and doesn't match the free block count.
-
-Worse yet, debugfs' testb command will report those group descriptor
-blocks as not being in use unless the user also instructs debugfs to
-find a free block first.  That is a rather surprising result:
-
-debugfs:  testb 8194
-Block 8194 not in use
-debugfs:  ffb 1 16380
-Free blocks found: 16380
-debugfs:  testb 8194
-Block 8194 marked in use
-
-Also, remove the part of check_block_uninit() that "fixes" the bitmap
-since we're doing that at bitmap load time now.
-
-[1] kernel git 717d50e4971b81b96c0199c91cdf0039a8cb181a
-    "Ext4: Uninitialized Block Groups"
-[2] e2fsprogs git f5fa20078bfc05b554294fe9c5505375d7913e8c
-    "Add support for EXT2_FEATURE_COMPAT_LAZY_BG"
+Since libext2fs now detects a BLOCK_UNINIT group and calculates the
+group's block bitmap, we no longer need to emulate this behavior in
+e2fsck.  We can simply compare the found block map against the
+filesystem's, and proceed from there.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/alloc.c      |   17 +----------------
- lib/ext2fs/rw_bitmaps.c |   45 +++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 46 insertions(+), 16 deletions(-)
+ e2fsck/pass5.c |  103 +++++++-------------------------------------------------
+ 1 file changed, 12 insertions(+), 91 deletions(-)
 
 
-diff --git a/lib/ext2fs/alloc.c b/lib/ext2fs/alloc.c
-index ce72ffe..39ef24f 100644
---- a/lib/ext2fs/alloc.c
-+++ b/lib/ext2fs/alloc.c
-@@ -51,23 +51,8 @@ static void check_block_uninit(ext2_filsys fs, ext2fs_block_bitmap map,
- 	else
- 		old_desc_blocks = fs->desc_blocks + fs->super->s_reserved_gdt_blocks;
+diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
+index 498c041..6d7b968 100644
+--- a/e2fsck/pass5.c
++++ b/e2fsck/pass5.c
+@@ -326,7 +326,6 @@ static void check_block_bitmaps(e2fsck_t ctx)
+ 	int		fixit, had_problem;
+ 	errcode_t	retval;
+ 	int		csum_flag;
+-	int		skip_group = 0;
+ 	int	old_desc_blocks = 0;
+ 	int	count = 0;
+ 	int	cmp_block = 0;
+@@ -378,9 +377,6 @@ redo_counts:
+ 	had_problem = 0;
+ 	save_problem = 0;
+ 	pctx.blk = pctx.blk2 = NO_BLK;
+-	if (csum_flag &&
+-	    (ext2fs_bg_flags_test(fs, group, EXT2_BG_BLOCK_UNINIT)))
+-		skip_group++;
+ 	for (i = B2C(fs->super->s_first_data_block);
+ 	     i < ext2fs_blocks_count(fs->super);
+ 	     i += EXT2FS_CLUSTER_RATIO(fs)) {
+@@ -411,15 +407,11 @@ redo_counts:
+ 				actual_buf);
+ 		if (retval)
+ 			goto no_optimize;
+-		if (ext2fs_bg_flags_test(fs, group, EXT2_BG_BLOCK_UNINIT))
+-			memset(bitmap_buf, 0, nbytes);
+-		else {
+-			retval = ext2fs_get_block_bitmap_range2(fs->block_map,
+-					B2C(i), fs->super->s_clusters_per_group,
+-					bitmap_buf);
+-			if (retval)
+-				goto no_optimize;
+-		}
++		retval = ext2fs_get_block_bitmap_range2(fs->block_map,
++				B2C(i), fs->super->s_clusters_per_group,
++				bitmap_buf);
++		if (retval)
++			goto no_optimize;
+ 		if (memcmp(actual_buf, bitmap_buf, nbytes) != 0)
+ 			goto no_optimize;
+ 		n = ext2fs_bitcount(actual_buf, nbytes);
+@@ -429,73 +421,7 @@ redo_counts:
+ 		goto next_group;
+ 	no_optimize:
  
--	for (i=0; i < fs->super->s_blocks_per_group; i++, blk++)
--		ext2fs_fast_unmark_block_bitmap2(map, blk);
-+	/* uninit block bitmaps are now initialized in read_bitmaps() */
+-		if (skip_group) {
+-			if (first_block_in_bg) {
+-				super_blk = 0;
+-				old_desc_blk = 0;
+-				new_desc_blk = 0;
+-				ext2fs_super_and_bgd_loc2(fs, group, &super_blk,
+-					 &old_desc_blk, &new_desc_blk, 0);
+-
+-				if (fs->super->s_feature_incompat &
+-						EXT2_FEATURE_INCOMPAT_META_BG)
+-					old_desc_blocks =
+-						fs->super->s_first_meta_bg;
+-				else
+-					old_desc_blocks = fs->desc_blocks +
+-					fs->super->s_reserved_gdt_blocks;
+-
+-				count = 0;
+-				cmp_block = fs->super->s_clusters_per_group;
+-				if (group == (int)fs->group_desc_count - 1)
+-					cmp_block = EXT2FS_NUM_B2C(fs,
+-						    ext2fs_group_blocks_count(fs, group));
+-			}
+-
+-			bitmap = 0;
+-			if (EQ_CLSTR(i, super_blk) ||
+-			    (old_desc_blk && old_desc_blocks &&
+-			     GE_CLSTR(i, old_desc_blk) &&
+-			     LE_CLSTR(i, old_desc_blk + old_desc_blocks-1)) ||
+-			    (new_desc_blk && EQ_CLSTR(i, new_desc_blk)) ||
+-			    EQ_CLSTR(i, ext2fs_block_bitmap_loc(fs, group)) ||
+-			    EQ_CLSTR(i, ext2fs_inode_bitmap_loc(fs, group)) ||
+-			    (GE_CLSTR(i, ext2fs_inode_table_loc(fs, group)) &&
+-			     LE_CLSTR(i, (ext2fs_inode_table_loc(fs, group) +
+-					  fs->inode_blocks_per_group - 1)))) {
+-				bitmap = 1;
+-				actual = (actual != 0);
+-				count++;
+-				cmp_block--;
+-			} else if ((EXT2FS_B2C(fs, i) - count -
+-				    EXT2FS_B2C(fs, fs->super->s_first_data_block)) %
+-				   fs->super->s_clusters_per_group == 0) {
+-				/*
+-				 * When the compare data blocks in block bitmap
+-				 * are 0, count the free block,
+-				 * skip the current block group.
+-				 */
+-				if (ext2fs_test_block_bitmap_range2(
+-					    ctx->block_found_map,
+-					    EXT2FS_B2C(fs, i),
+-					    cmp_block)) {
+-					/*
+-					 * -1 means to skip the current block
+-					 * group.
+-					 */
+-					blocks = fs->super->s_clusters_per_group - 1;
+-					group_free = cmp_block;
+-					free_blocks += cmp_block;
+-					/*
+-					 * The current block group's last block
+-					 * is set to i.
+-					 */
+-					i += EXT2FS_C2B(fs, cmp_block - 1);
+-					bitmap = 1;
+-					goto do_counts;
+-				}
+-			}
+-		} else if (redo_flag)
++		if (redo_flag)
+ 			bitmap = actual;
+ 		else
+ 			bitmap = ext2fs_fast_test_block_bitmap2(fs->block_map, i);
+@@ -514,14 +440,15 @@ redo_counts:
+ 			 */
+ 			problem = PR_5_BLOCK_USED;
  
--	blk = ext2fs_group_first_block2(fs, group);
--	for (i=0; i < fs->super->s_blocks_per_group; i++, blk++) {
--		if ((blk == super_blk) ||
--		    (old_desc_blk && old_desc_blocks &&
--		     (blk >= old_desc_blk) &&
--		     (blk < old_desc_blk + old_desc_blocks)) ||
--		    (new_desc_blk && (blk == new_desc_blk)) ||
--		    (blk == ext2fs_block_bitmap_loc(fs, group)) ||
--		    (blk == ext2fs_inode_bitmap_loc(fs, group)) ||
--		    (blk >= ext2fs_inode_table_loc(fs, group) &&
--		     (blk < ext2fs_inode_table_loc(fs, group)
--		      + fs->inode_blocks_per_group)))
--			ext2fs_fast_mark_block_bitmap2(map, blk);
--	}
- 	ext2fs_bg_flags_clear(fs, group, EXT2_BG_BLOCK_UNINIT);
- 	ext2fs_group_desc_csum_set(fs, group);
- 	ext2fs_mark_super_dirty(fs);
-diff --git a/lib/ext2fs/rw_bitmaps.c b/lib/ext2fs/rw_bitmaps.c
-index 386cbeb..ad6cfc1 100644
---- a/lib/ext2fs/rw_bitmaps.c
-+++ b/lib/ext2fs/rw_bitmaps.c
-@@ -156,6 +156,43 @@ errout:
- 	return retval;
- }
- 
-+static errcode_t mark_uninit_bg_group_blocks(ext2_filsys fs)
-+{
-+	dgrp_t			i;
-+	blk64_t			blk;
-+	ext2fs_block_bitmap	bmap = fs->block_map;
-+
-+	for (i = 0; i < fs->group_desc_count; i++) {
-+		if (!ext2fs_bg_flags_test(fs, i, EXT2_BG_BLOCK_UNINIT))
-+			continue;
-+
-+		ext2fs_reserve_super_and_bgd(fs, i, bmap);
-+
-+		/*
-+		 * Mark the blocks used for the inode table
-+		 */
-+		blk = ext2fs_inode_table_loc(fs, i);
-+		if (blk)
-+			ext2fs_mark_block_bitmap_range2(bmap, blk,
-+						fs->inode_blocks_per_group);
-+
-+		/*
-+		 * Mark block used for the block bitmap
-+		 */
-+		blk = ext2fs_block_bitmap_loc(fs, i);
-+		if (blk)
-+			ext2fs_mark_block_bitmap2(bmap, blk);
-+
-+		/*
-+		 * Mark block used for the inode bitmap
-+		 */
-+		blk = ext2fs_inode_bitmap_loc(fs, i);
-+		if (blk)
-+			ext2fs_mark_block_bitmap2(bmap, blk);
-+	}
-+	return 0;
-+}
-+
- static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block)
- {
- 	dgrp_t i;
-@@ -320,6 +357,14 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block)
- 			ino_itr += inode_nbytes << 3;
+-			if (skip_group) {
++			if (ext2fs_bg_flags_test(fs, group,
++						 EXT2_BG_BLOCK_UNINIT)) {
+ 				struct problem_context pctx2;
+ 				pctx2.blk = i;
+ 				pctx2.group = group;
+-				if (fix_problem(ctx, PR_5_BLOCK_UNINIT,&pctx2)){
+-					ext2fs_bg_flags_clear(fs, group, EXT2_BG_BLOCK_UNINIT);
+-					skip_group = 0;
+-				}
++				if (fix_problem(ctx, PR_5_BLOCK_UNINIT,
++						&pctx2))
++					ext2fs_bg_flags_clear(fs, group,
++							EXT2_BG_BLOCK_UNINIT);
+ 			}
+ 		}
+ 		if (pctx.blk == NO_BLK) {
+@@ -575,16 +502,10 @@ redo_counts:
+ 			group ++;
+ 			blocks = 0;
+ 			group_free = 0;
+-			skip_group = 0;
+ 			if (ctx->progress)
+ 				if ((ctx->progress)(ctx, 5, group,
+ 						    fs->group_desc_count*2))
+ 					goto errout;
+-			if (csum_flag &&
+-			    (i != ext2fs_blocks_count(fs->super)-1) &&
+-			    ext2fs_bg_flags_test(fs, group, 
+-						EXT2_BG_BLOCK_UNINIT))
+-				skip_group++;
  		}
  	}
-+
-+	/* Mark group blocks for any BLOCK_UNINIT groups */
-+	if (do_block) {
-+		retval = mark_uninit_bg_group_blocks(fs);
-+		if (retval)
-+			goto cleanup;
-+	}
-+
- success_cleanup:
- 	if (inode_bitmap)
- 		ext2fs_free_mem(&inode_bitmap);
+ 	if (pctx.blk != NO_BLK)
 
