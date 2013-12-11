@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 03/74] mke2fs: load configfile blocksize setting before 64bit
- checks
-Date: Tue, 10 Dec 2013 17:18:37 -0800
-Message-ID: <20131211011837.30655.67812.stgit@birch.djwong.org>
+Subject: [PATCH 04/74] libext2fs: use ext2fs_punch() to truncate quota file
+Date: Tue, 10 Dec 2013 17:18:43 -0800
+Message-ID: <20131211011843.30655.22033.stgit@birch.djwong.org>
 References: <20131211011813.30655.39624.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,185 +9,49 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:25830 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751859Ab3LKBSp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Dec 2013 20:18:45 -0500
+Received: from userp1040.oracle.com ([156.151.31.81]:42112 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751797Ab3LKBSx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Dec 2013 20:18:53 -0500
 In-Reply-To: <20131211011813.30655.39624.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-mke2fs has a series of checks to ensure that we don't create a
-filesystem too big for its blocksize -- if auto-64bit is on, then it
-turns on 64bit; otherwise it complains.  Unfortunately, it performs
-these checks before looking in mke2fs.conf for a blocksize, which
-means that the checks are incorrect if the user specifies a non-4096
-blocksize in the config file and says nothing on the command line.
-The bug also has the effect of mandating a 4k block size on any block
-device larger than 4T in that situation.  Therefore, read the block
-size from the config file before performing the 64bit checks.
+Use the new ext2fs_punch() call to truncate the quota file.  This also
+eliminates the need to fix it to work with bigalloc.
 
 Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- misc/mke2fs.c |  134 +++++++++++++++++++++++++++++++--------------------------
- 1 file changed, 72 insertions(+), 62 deletions(-)
+ lib/quota/quotaio.c |   19 +++----------------
+ 1 file changed, 3 insertions(+), 16 deletions(-)
 
 
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 67c9225..19b6e85 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -1298,6 +1298,21 @@ static void PRS(int argc, char *argv[])
- 	char *		fs_type = 0;
- 	char *		usage_types = 0;
- 	blk64_t		dev_size;
-+	/*
-+	 * NOTE: A few words about fs_blocks_count and blocksize:
-+	 *
-+	 * Initially, blocksize is set to zero, which implies 1024.
-+	 * If -b is specified, blocksize is updated to the user's value.
-+	 *
-+	 * Next, the device size or the user's "blocks" command line argument
-+	 * is used to set fs_blocks_count; the units are blocksize.
-+	 *
-+	 * Later, if blocksize hasn't been set and the profile specifies a
-+	 * blocksize, then blocksize is updated and fs_blocks_count is scaled
-+	 * appropriately.  Note the change in units!
-+	 *
-+	 * Finally, we complain about fs_blocks_count > 2^32 on a non-64bit fs.
-+	 */
- 	blk64_t		fs_blocks_count = 0;
- #ifdef __linux__
- 	struct 		utsname ut;
-@@ -1780,15 +1795,67 @@ profile_error:
- 		}
+diff --git a/lib/quota/quotaio.c b/lib/quota/quotaio.c
+index 8ddb92a..1bdcba6 100644
+--- a/lib/quota/quotaio.c
++++ b/lib/quota/quotaio.c
+@@ -98,19 +98,6 @@ void update_grace_times(struct dquot *q)
  	}
+ }
  
-+	/* Get the hardware sector sizes, if available */
-+	retval = ext2fs_get_device_sectsize(device_name, &lsector_size);
-+	if (retval) {
-+		com_err(program_name, retval,
-+			_("while trying to determine hardware sector size"));
-+		exit(1);
-+	}
-+	retval = ext2fs_get_device_phys_sectsize(device_name, &psector_size);
-+	if (retval) {
-+		com_err(program_name, retval,
-+			_("while trying to determine physical sector size"));
-+		exit(1);
-+	}
-+
-+	tmp = getenv("MKE2FS_DEVICE_SECTSIZE");
-+	if (tmp != NULL)
-+		lsector_size = atoi(tmp);
-+	tmp = getenv("MKE2FS_DEVICE_PHYS_SECTSIZE");
-+	if (tmp != NULL)
-+		psector_size = atoi(tmp);
-+
-+	/* Older kernels may not have physical/logical distinction */
-+	if (!psector_size)
-+		psector_size = lsector_size;
-+
-+	if (blocksize <= 0) {
-+		use_bsize = get_int_from_profile(fs_types, "blocksize", 4096);
-+
-+		if (use_bsize == -1) {
-+			use_bsize = sys_page_size;
-+			if ((linux_version_code < (2*65536 + 6*256)) &&
-+			    (use_bsize > 4096))
-+				use_bsize = 4096;
-+		}
-+		if (lsector_size && use_bsize < lsector_size)
-+			use_bsize = lsector_size;
-+		if ((blocksize < 0) && (use_bsize < (-blocksize)))
-+			use_bsize = -blocksize;
-+		blocksize = use_bsize;
-+		fs_blocks_count /= (blocksize / 1024);
-+	} else {
-+		if (blocksize < lsector_size) {			/* Impossible */
-+			com_err(program_name, EINVAL,
-+				_("while setting blocksize; too small "
-+				  "for device\n"));
-+			exit(1);
-+		} else if ((blocksize < psector_size) &&
-+			   (psector_size <= sys_page_size)) {	/* Suboptimal */
-+			fprintf(stderr, _("Warning: specified blocksize %d is "
-+				"less than device physical sectorsize %d\n"),
-+				blocksize, psector_size);
-+		}
-+	}
-+
-+	fs_param.s_log_block_size =
-+		int_log2(blocksize >> EXT2_MIN_BLOCK_LOG_SIZE);
-+
- 	/*
- 	 * We now need to do a sanity check of fs_blocks_count for
- 	 * 32-bit vs 64-bit block number support.
- 	 */
--	if ((fs_blocks_count > MAX_32_NUM) && (blocksize == 0)) {
--		fs_blocks_count /= 4; /* Try using a 4k blocksize */
--		blocksize = 4096;
--		fs_param.s_log_block_size = 2;
--	}
- 	if ((fs_blocks_count > MAX_32_NUM) &&
- 	    !(fs_param.s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT) &&
- 	    get_bool_from_profile(fs_types, "auto_64-bit_support", 0)) {
-@@ -1880,63 +1947,6 @@ profile_error:
- 	if ((fs_param.s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG) &&
- 	    ((tmp = getenv("MKE2FS_FIRST_META_BG"))))
- 		fs_param.s_first_meta_bg = atoi(tmp);
+-static int release_blocks_proc(ext2_filsys fs, blk64_t *blocknr,
+-			       e2_blkcnt_t blockcnt EXT2FS_ATTR((unused)),
+-			       blk64_t ref_block EXT2FS_ATTR((unused)),
+-			       int ref_offset EXT2FS_ATTR((unused)),
+-			       void *private EXT2FS_ATTR((unused)))
+-{
+-	blk64_t	block;
 -
--	/* Get the hardware sector sizes, if available */
--	retval = ext2fs_get_device_sectsize(device_name, &lsector_size);
--	if (retval) {
--		com_err(program_name, retval,
--			_("while trying to determine hardware sector size"));
--		exit(1);
--	}
--	retval = ext2fs_get_device_phys_sectsize(device_name, &psector_size);
--	if (retval) {
--		com_err(program_name, retval,
--			_("while trying to determine physical sector size"));
--		exit(1);
--	}
+-	block = *blocknr;
+-	ext2fs_block_alloc_stats2(fs, block, -1);
+-	return 0;
+-}
 -
--	if ((tmp = getenv("MKE2FS_DEVICE_SECTSIZE")) != NULL)
--		lsector_size = atoi(tmp);
--	if ((tmp = getenv("MKE2FS_DEVICE_PHYS_SECTSIZE")) != NULL)
--		psector_size = atoi(tmp);
--
--	/* Older kernels may not have physical/logical distinction */
--	if (!psector_size)
--		psector_size = lsector_size;
--
--	if (blocksize <= 0) {
--		use_bsize = get_int_from_profile(fs_types, "blocksize", 4096);
--
--		if (use_bsize == -1) {
--			use_bsize = sys_page_size;
--			if ((linux_version_code < (2*65536 + 6*256)) &&
--			    (use_bsize > 4096))
--				use_bsize = 4096;
--		}
--		if (lsector_size && use_bsize < lsector_size)
--			use_bsize = lsector_size;
--		if ((blocksize < 0) && (use_bsize < (-blocksize)))
--			use_bsize = -blocksize;
--		blocksize = use_bsize;
--		ext2fs_blocks_count_set(&fs_param,
--					ext2fs_blocks_count(&fs_param) /
--					(blocksize / 1024));
--	} else {
--		if (blocksize < lsector_size) {			/* Impossible */
--			com_err(program_name, EINVAL,
--				_("while setting blocksize; too small "
--				  "for device\n"));
--			exit(1);
--		} else if ((blocksize < psector_size) &&
--			   (psector_size <= sys_page_size)) {	/* Suboptimal */
--			fprintf(stderr, _("Warning: specified blocksize %d is "
--				"less than device physical sectorsize %d\n"),
--				blocksize, psector_size);
--		}
--	}
+ static int compute_num_blocks_proc(ext2_filsys fs, blk64_t *blocknr,
+ 			       e2_blkcnt_t blockcnt EXT2FS_ATTR((unused)),
+ 			       blk64_t ref_block EXT2FS_ATTR((unused)),
+@@ -135,9 +122,9 @@ errcode_t quota_inode_truncate(ext2_filsys fs, ext2_ino_t ino)
+ 		inode.i_dtime = fs->now ? fs->now : time(0);
+ 		if (!ext2fs_inode_has_valid_blocks2(fs, &inode))
+ 			return 0;
