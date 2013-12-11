@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 17/74] debugfs: don't leak mmp_s memory
-Date: Tue, 10 Dec 2013 17:20:14 -0800
-Message-ID: <20131211012014.30655.58647.stgit@birch.djwong.org>
+Subject: [PATCH 18/74] e2fsck: fix memory leaks
+Date: Tue, 10 Dec 2013 17:20:20 -0800
+Message-ID: <20131211012020.30655.57874.stgit@birch.djwong.org>
 References: <20131211011813.30655.39624.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,66 +9,93 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:26257 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751808Ab3LKBUU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Dec 2013 20:20:20 -0500
+Received: from userp1040.oracle.com ([156.151.31.81]:42545 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751801Ab3LKBU1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Dec 2013 20:20:27 -0500
 In-Reply-To: <20131211011813.30655.39624.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext2fs_free_mem() takes a pointer to a pointer, similar to
-ext2fs_get_mem().  Improve the documentation, and fix debugfs.
-
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- debugfs/set_fields.c |    2 +-
- lib/ext2fs/ext2fs.h  |    6 +++---
- 2 files changed, 4 insertions(+), 4 deletions(-)
+ e2fsck/journal.c |    4 +++-
+ e2fsck/pass3.c   |    5 +++--
+ e2fsck/profile.c |    2 ++
+ e2fsck/unix.c    |    2 ++
+ 4 files changed, 10 insertions(+), 3 deletions(-)
 
 
-diff --git a/debugfs/set_fields.c b/debugfs/set_fields.c
-index aad1cd8..1e57277 100644
---- a/debugfs/set_fields.c
-+++ b/debugfs/set_fields.c
-@@ -805,7 +805,7 @@ void do_set_mmp_value(int argc, char *argv[])
- 		if (retval) {
- 			com_err(argv[0], retval, "reading MMP block %llu.\n",
- 				(long long)current_fs->super->s_mmp_block);
--			ext2fs_free_mem(mmp_s);
-+			ext2fs_free_mem(&mmp_s);
- 			return;
- 		}
- 		current_fs->mmp_buf = mmp_s;
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 64e498f..0624350 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -1608,7 +1608,7 @@ _INLINE_ void ext2fs_init_csum_seed(ext2_filsys fs)
- #ifndef EXT2_CUSTOM_MEMORY_ROUTINES
- #include <string.h>
- /*
-- *  Allocate memory
-+ *  Allocate memory.  The 'ptr' arg must point to a pointer.
-  */
- _INLINE_ errcode_t ext2fs_get_mem(unsigned long size, void *ptr)
- {
-@@ -1655,7 +1655,7 @@ _INLINE_ errcode_t ext2fs_get_arrayzero(unsigned long count,
- }
+diff --git a/e2fsck/journal.c b/e2fsck/journal.c
+index e3f80bc..22f06e7 100644
+--- a/e2fsck/journal.c
++++ b/e2fsck/journal.c
+@@ -1139,8 +1139,10 @@ int e2fsck_fix_ext3_journal_hint(e2fsck_t ctx)
+ 	if (!journal_name)
+ 		return 0;
  
- /*
-- * Free memory
-+ * Free memory.  The 'ptr' arg must point to a pointer.
-  */
- _INLINE_ errcode_t ext2fs_free_mem(void *ptr)
- {
-@@ -1669,7 +1669,7 @@ _INLINE_ errcode_t ext2fs_free_mem(void *ptr)
- }
+-	if (stat(journal_name, &st) < 0)
++	if (stat(journal_name, &st) < 0) {
++		free(journal_name);
+ 		return 0;
++	}
  
- /*
-- *  Resize memory
-+ *  Resize memory.  The 'ptr' arg must point to a pointer.
-  */
- _INLINE_ errcode_t ext2fs_resize_mem(unsigned long EXT2FS_ATTR((unused)) old_size,
- 				     unsigned long size, void *ptr)
+ 	if (st.st_rdev != sb->s_journal_dev) {
+ 		clear_problem_context(&pctx);
+diff --git a/e2fsck/pass3.c b/e2fsck/pass3.c
+index fbaadcf..6989f17 100644
+--- a/e2fsck/pass3.c
++++ b/e2fsck/pass3.c
+@@ -53,7 +53,7 @@ static ext2fs_inode_bitmap inode_done_map = 0;
+ void e2fsck_pass3(e2fsck_t ctx)
+ {
+ 	ext2_filsys fs = ctx->fs;
+-	struct dir_info_iter *iter;
++	struct dir_info_iter *iter = NULL;
+ #ifdef RESOURCE_TRACK
+ 	struct resource_track	rtrack;
+ #endif
+@@ -108,7 +108,6 @@ void e2fsck_pass3(e2fsck_t ctx)
+ 			if (check_directory(ctx, dir->ino, &pctx))
+ 				goto abort_exit;
+ 	}
+-	e2fsck_dir_info_iter_end(ctx, iter);
+ 
+ 	/*
+ 	 * Force the creation of /lost+found if not present
+@@ -123,6 +122,8 @@ void e2fsck_pass3(e2fsck_t ctx)
+ 	e2fsck_rehash_directories(ctx);
+ 
+ abort_exit:
++	if (iter)
++		e2fsck_dir_info_iter_end(ctx, iter);
+ 	e2fsck_free_dir_info(ctx);
+ 	if (inode_loop_detect) {
+ 		ext2fs_free_inode_bitmap(inode_loop_detect);
+diff --git a/e2fsck/profile.c b/e2fsck/profile.c
+index 019c6f5..92aa893 100644
+--- a/e2fsck/profile.c
++++ b/e2fsck/profile.c
+@@ -318,6 +318,8 @@ profile_init(const char **files, profile_t *ret_profile)
+         /* if the filenames list is not specified return an empty profile */
+         if ( files ) {
+ 	    for (fs = files; !PROFILE_LAST_FILESPEC(*fs); fs++) {
++		if (array)
++			free_list(array);
+ 		retval = get_dirlist(*fs, &array);
+ 		if (retval == 0) {
+ 			if (!array)
+diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+index a6c8d25..7a8fce2 100644
+--- a/e2fsck/unix.c
++++ b/e2fsck/unix.c
+@@ -869,6 +869,8 @@ static errcode_t PRS(int argc, char *argv[], e2fsck_t *ret_ctx)
+ 		case 'L':
+ 			replace_bad_blocks++;
+ 		case 'l':
++			if (bad_blocks_file)
++				free(bad_blocks_file);
+ 			bad_blocks_file = string_copy(ctx, optarg, 0);
+ 			break;
+ 		case 'd':
 
