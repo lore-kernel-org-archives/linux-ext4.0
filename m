@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 28/74] libext2fs: check return values
-Date: Tue, 10 Dec 2013 17:21:28 -0800
-Message-ID: <20131211012128.30655.44051.stgit@birch.djwong.org>
+Subject: [PATCH 29/74] libext2fs: fix memory leaks
+Date: Tue, 10 Dec 2013 17:21:34 -0800
+Message-ID: <20131211012134.30655.87393.stgit@birch.djwong.org>
 References: <20131211011813.30655.39624.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,109 +9,151 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:26537 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751260Ab3LKBVd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Dec 2013 20:21:33 -0500
+Received: from userp1040.oracle.com ([156.151.31.81]:42861 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751417Ab3LKBVk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Dec 2013 20:21:40 -0500
 In-Reply-To: <20131211011813.30655.39624.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fix up a few places where we ignore return values.
-
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/flushb.c    |    2 +-
- lib/ext2fs/icount.c    |    2 ++
- lib/ext2fs/imager.c    |    7 ++++++-
- lib/ext2fs/mkjournal.c |    4 +++-
- lib/ext2fs/punch.c     |    7 +++++++
- 5 files changed, 19 insertions(+), 3 deletions(-)
+ lib/ext2fs/gen_bitmap64.c |    2 ++
+ lib/ext2fs/mkjournal.c    |   13 ++++++++-----
+ lib/ext2fs/newdir.c       |    8 ++++++--
+ lib/ext2fs/qcow2.c        |   14 ++++++++++----
+ 4 files changed, 26 insertions(+), 11 deletions(-)
 
 
-diff --git a/lib/ext2fs/flushb.c b/lib/ext2fs/flushb.c
-index ac8923c..98821fc 100644
---- a/lib/ext2fs/flushb.c
-+++ b/lib/ext2fs/flushb.c
-@@ -70,7 +70,7 @@ errcode_t ext2fs_sync_device(int fd, int flushb)
- #warning BLKFLSBUF not defined
- #endif
- #ifdef FDFLUSH
--		ioctl (fd, FDFLUSH, 0);   /* In case this is a floppy */
-+		return ioctl(fd, FDFLUSH, 0);   /* In case this is a floppy */
- #elif defined(__linux__)
- #warning FDFLUSH not defined
- #endif
-diff --git a/lib/ext2fs/icount.c b/lib/ext2fs/icount.c
-index 84b74a9..c5ebf74 100644
---- a/lib/ext2fs/icount.c
-+++ b/lib/ext2fs/icount.c
-@@ -193,6 +193,8 @@ errcode_t ext2fs_create_icount_tdb(ext2_filsys fs, char *tdb_dir,
- 	uuid_unparse(fs->super->s_uuid, uuid);
- 	sprintf(fn, "%s/%s-icount-XXXXXX", tdb_dir, uuid);
- 	fd = mkstemp(fn);
-+	if (fd < 0)
-+		return fd;
- 
- 	/*
- 	 * This is an overestimate of the size that we will need; the
-diff --git a/lib/ext2fs/imager.c b/lib/ext2fs/imager.c
-index 7f3b25b..378a3c8 100644
---- a/lib/ext2fs/imager.c
-+++ b/lib/ext2fs/imager.c
-@@ -66,6 +66,7 @@ errcode_t ext2fs_image_inode_write(ext2_filsys fs, int fd, int flags)
- 	blk64_t		blk;
- 	ssize_t		actual;
- 	errcode_t	retval;
-+	off_t		r;
- 
- 	buf = malloc(fs->blocksize * BUF_BLOCKS);
- 	if (!buf)
-@@ -97,7 +98,11 @@ errcode_t ext2fs_image_inode_write(ext2_filsys fs, int fd, int flags)
- 					blk++;
- 					left--;
- 					cp += fs->blocksize;
--					lseek(fd, fs->blocksize, SEEK_CUR);
-+					r = lseek(fd, fs->blocksize, SEEK_CUR);
-+					if (r < 0) {
-+						retval = errno;
-+						goto errout;
-+					}
- 					continue;
- 				}
- 				/* Find non-zero blocks */
+diff --git a/lib/ext2fs/gen_bitmap64.c b/lib/ext2fs/gen_bitmap64.c
+index 2880afa..36e0240 100644
+--- a/lib/ext2fs/gen_bitmap64.c
++++ b/lib/ext2fs/gen_bitmap64.c
+@@ -128,6 +128,7 @@ errcode_t ext2fs_alloc_generic_bmap(ext2_filsys fs, errcode_t magic,
+ 	if (gettimeofday(&bitmap->stats.created,
+ 			 (struct timezone *) NULL) == -1) {
+ 		perror("gettimeofday");
++		ext2fs_free_mem(&bitmap);
+ 		return 1;
+ 	}
+ 	bitmap->stats.type = type;
+@@ -300,6 +301,7 @@ errcode_t ext2fs_copy_generic_bmap(ext2fs_generic_bitmap src,
+ 	if (gettimeofday(&new_bmap->stats.created,
+ 			 (struct timezone *) NULL) == -1) {
+ 		perror("gettimeofday");
++		ext2fs_free_mem(&new_bmap);
+ 		return 1;
+ 	}
+ 	new_bmap->stats.type = src->stats.type;
 diff --git a/lib/ext2fs/mkjournal.c b/lib/ext2fs/mkjournal.c
-index 2afd3b7..1d5b1a7 100644
+index 1d5b1a7..09ca412 100644
 --- a/lib/ext2fs/mkjournal.c
 +++ b/lib/ext2fs/mkjournal.c
-@@ -520,8 +520,10 @@ errcode_t ext2fs_add_journal_inode(ext2_filsys fs, blk_t num_blocks, int flags)
- #if HAVE_EXT2_IOCTLS
- 		fd = open(jfile, O_RDONLY);
- 		if (fd >= 0) {
--			ioctl(fd, EXT2_IOC_SETFLAGS, &f);
-+			retval = ioctl(fd, EXT2_IOC_SETFLAGS, &f);
- 			close(fd);
-+			if (retval)
-+				return retval;
- 		}
- #endif
- #endif
-diff --git a/lib/ext2fs/punch.c b/lib/ext2fs/punch.c
-index 790a0ad8..ceec336 100644
---- a/lib/ext2fs/punch.c
-+++ b/lib/ext2fs/punch.c
-@@ -192,6 +192,13 @@ static errcode_t ext2fs_punch_extent(ext2_filsys fs, ext2_ino_t ino,
- 	retval = ext2fs_extent_open2(fs, ino, inode, &handle);
- 	if (retval)
+@@ -312,13 +312,15 @@ static errcode_t write_journal_inode(ext2_filsys fs, ext2_ino_t journal_ino,
  		return retval;
-+	/*
-+	 * Find the extent closest to the start of the punch range.  We don't
-+	 * check the return value because _goto() sets the current node to the
-+	 * next-lowest extent if 'start' is in a hole, and doesn't set a
-+	 * current node if there was a real error reading the extent tree.
-+	 * In that case, _get() will error out.
-+	 */
- 	ext2fs_extent_goto(handle, start);
- 	retval = ext2fs_extent_get(handle, EXT2_EXTENT_CURRENT, &extent);
- 	if (retval)
+ 
+ 	if ((retval = ext2fs_read_bitmaps(fs)))
+-		return retval;
++		goto out2;
+ 
+ 	if ((retval = ext2fs_read_inode(fs, journal_ino, &inode)))
+-		return retval;
++		goto out2;
+ 
+-	if (inode.i_blocks > 0)
+-		return EEXIST;
++	if (inode.i_blocks > 0) {
++		retval = EEXIST;
++		goto out2;
++	}
+ 
+ 	es.num_blocks = num_blocks;
+ 	es.newblocks = 0;
+@@ -330,7 +332,7 @@ static errcode_t write_journal_inode(ext2_filsys fs, ext2_ino_t journal_ino,
+ 	if (fs->super->s_feature_incompat & EXT3_FEATURE_INCOMPAT_EXTENTS) {
+ 		inode.i_flags |= EXT4_EXTENTS_FL;
+ 		if ((retval = ext2fs_write_inode(fs, journal_ino, &inode)))
+-			return retval;
++			goto out2;
+ 	}
+ 
+ 	/*
+@@ -398,6 +400,7 @@ static errcode_t write_journal_inode(ext2_filsys fs, ext2_ino_t journal_ino,
+ 
+ errout:
+ 	ext2fs_zero_blocks2(0, 0, 0, 0, 0);
++out2:
+ 	ext2fs_free_mem(&buf);
+ 	return retval;
+ }
+diff --git a/lib/ext2fs/newdir.c b/lib/ext2fs/newdir.c
+index d134bdf..44e4ca9 100644
+--- a/lib/ext2fs/newdir.c
++++ b/lib/ext2fs/newdir.c
+@@ -50,8 +50,10 @@ errcode_t ext2fs_new_dir_block(ext2_filsys fs, ext2_ino_t dir_ino,
+ 		csum_size = sizeof(struct ext2_dir_entry_tail);
+ 
+ 	retval = ext2fs_set_rec_len(fs, fs->blocksize - csum_size, dir);
+-	if (retval)
++	if (retval) {
++		ext2fs_free_mem(&buf);
+ 		return retval;
++	}
+ 
+ 	if (dir_ino) {
+ 		if (fs->super->s_feature_incompat &
+@@ -72,8 +74,10 @@ errcode_t ext2fs_new_dir_block(ext2_filsys fs, ext2_ino_t dir_ino,
+ 		 */
+ 		dir = (struct ext2_dir_entry *) (buf + dir->rec_len);
+ 		retval = ext2fs_set_rec_len(fs, rec_len, dir);
+-		if (retval)
++		if (retval) {
++			ext2fs_free_mem(&buf);
+ 			return retval;
++		}
+ 		dir->inode = parent_ino;
+ 		ext2fs_dirent_set_name_len(dir, 2);
+ 		ext2fs_dirent_set_file_type(dir, filetype);
+diff --git a/lib/ext2fs/qcow2.c b/lib/ext2fs/qcow2.c
+index 8394270..547edc0 100644
+--- a/lib/ext2fs/qcow2.c
++++ b/lib/ext2fs/qcow2.c
+@@ -60,8 +60,10 @@ struct ext2_qcow2_hdr *qcow2_read_header(int fd)
+ 		return NULL;
+ 	memset(buffer, 0, sizeof(struct ext2_qcow2_hdr));
+ 
+-	if (ext2fs_llseek(fd, 0, SEEK_SET < 0))
++	if (ext2fs_llseek(fd, 0, SEEK_SET < 0)) {
++		ext2fs_free_mem(&buffer);
+ 		return NULL;
++	}
+ 
+ 	size = read(fd, buffer, sizeof(struct ext2_qcow2_hdr));
+ 	if (size != sizeof(struct ext2_qcow2_hdr)) {
+@@ -91,8 +93,10 @@ static int qcow2_read_l1_table(struct ext2_qcow2_image *img)
+ 	if (ret)
+ 		return ret;
+ 
+-	if (ext2fs_llseek(fd, img->l1_offset, SEEK_SET) < 0)
++	if (ext2fs_llseek(fd, img->l1_offset, SEEK_SET) < 0) {
++		ext2fs_free_mem(&table);
+ 		return errno;
++	}
+ 
+ 	size = read(fd, table, l1_size);
+ 	if (size != l1_size) {
+@@ -236,8 +240,10 @@ int qcow2_write_raw_image(int qcow2_fd, int raw_fd,
+ 
+ 	((char *)copy_buf)[0] = 0;
+ 	size = write(raw_fd, copy_buf, 1);
+-	if (size != 1)
+-		return errno;
++	if (size != 1) {
++		ret = errno;
++		goto out;
++	}
+ 
+ out:
+ 	if (copy_buf)
 
