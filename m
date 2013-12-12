@@ -1,67 +1,48 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: FAST paper on ffsck
-Date: Thu, 12 Dec 2013 16:30:47 +1100
-Message-ID: <20131212053047.GI31386@dastard>
-References: <20131209180149.GA6096@thunk.org>
+From: Vyacheslav Dubeyko <slava@dubeyko.com>
+Subject: Re: Ext4 projects for 2014
+Date: Thu, 12 Dec 2013 10:08:49 +0400
+Message-ID: <1386828529.3972.6.camel@slavad-ubuntu>
+References: <20131209014330.GA9195@thunk.org>
+	 <20131212050002.GH31386@dastard>
+Reply-To: slava@dubeyko.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, xfs@oss.sgi.com
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-In-Reply-To: <20131209180149.GA6096@thunk.org>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from alt-proxy11.mail.unifiedlayer.com ([74.220.211.241]:59524 "HELO
+	alt-proxy11.mail.unifiedlayer.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1751270Ab3LLGPj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 Dec 2013 01:15:39 -0500
+In-Reply-To: <20131212050002.GH31386@dastard>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Dec 09, 2013 at 01:01:49PM -0500, Theodore Ts'o wrote:
-> Andreas brought up on today's conference call Kirk McKusick's recent
-> changes[1] to try to improve fsck times for FFS, in response to the
-> recent FAST paper covering fsck speed ups for ext3, "ffsck: The Fast
-> Filesystem Checker"[2]
+On Thu, 2013-12-12 at 16:00 +1100, Dave Chinner wrote:
+> On Sun, Dec 08, 2013 at 08:43:30PM -0500, Theodore Ts'o wrote:
+> > Unfortunately, I forgot my notes from our last conference call before
+> > heading off to the airport.  My fault for taking the notes on paper
+> > instead of electronically in the first place.  :-(
+> > 
+> > This is my best reconstruction of some of the ext4 projects for 2014.
+> > Please let me know if I've forgotten anything.
+> > 
+> > 1)  Support for Shingled (SMR) Drives
 > 
-> [1] http://www.mckusick.com/publications/faster_fsck.pdf
-> [2] https://www.usenix.org/system/files/conference/fast13/fast13-final52_0.pdf
+> Do you have any specific plans on how you are going to support these
+> drives? I'm curious, because the differences affect all fielsystems
+> so maybe there's some common solutions there...
+> 
 
-Interesting - it's all about trying to lay out data to get
-sequential disk access patterns during scanning (i.e. minimise disk
-seeks) to reduce fsck runtime. Fine in principle, but I think that
-it's a dead end you don't want to go down.
+Yes, it's really interesting question. Because I know about trying to
+use Log-structured File System or likewise approaches for the case of
+Shingled (SMR) drives. But ext4 is another case. :)
 
-Why? Because it's the exact opposite of what you need for SSD based
-filesystems.  What fsck really needs is to be able to saturate the
-IOPS capability of the underlying device rather than optimising for
-bandwidth, and that means driving deep IO queue depths.
+So, what preliminary vision of such support in ext4?
 
-e.g I've dropped xfs_repair times on a 100TB test filesystem with 50
-million inodes from 25 minutes to 5 minutes simply by adding gobs of
-additional concurrency and ignoring sequential IO optimisations.
-It's driving bandwidth rates of 200-250MB/s simply due to the IOPS
-rate it is acheiving, not because I'm optimising IO patterns for
-sequential IO.
+Thanks,
+Vyacheslav Dubeyko.
 
-In fact, it dispatches so much IO now that the limitation is not the
-60,000 IOPS that it is pulling from the underlying SSDs, but
-mmap_sem contention caused by 30-odd threads doing concurrent memory
-allocation to cache and store all the information that is being read
-from disk...
 
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
