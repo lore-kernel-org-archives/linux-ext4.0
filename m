@@ -1,112 +1,133 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 17/74] debugfs: don't leak mmp_s memory
-Date: Thu, 12 Dec 2013 14:44:38 -0800
-Message-ID: <20131212224438.GF10143@birch.djwong.org>
+Subject: Re: [PATCH 03/74] mke2fs: load configfile blocksize setting before
+ 64bit checks
+Date: Thu, 12 Dec 2013 15:13:25 -0800
+Message-ID: <20131212231325.GG10143@birch.djwong.org>
 References: <20131211011813.30655.39624.stgit@birch.djwong.org>
- <20131211012014.30655.58647.stgit@birch.djwong.org>
- <7848C189-25A5-43FA-9F55-12299217E3A6@dilger.ca>
+ <20131211011837.30655.67812.stgit@birch.djwong.org>
+ <2EB0A146-8AAA-4F4A-9B11-29ED1D2B42F2@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Zheng Liu <wenqing.lz@taobao.com>
 To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:51650 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751278Ab3LLWop (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Dec 2013 17:44:45 -0500
+Received: from userp1040.oracle.com ([156.151.31.81]:46664 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751915Ab3LLXNf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Dec 2013 18:13:35 -0500
 Content-Disposition: inline
-In-Reply-To: <7848C189-25A5-43FA-9F55-12299217E3A6@dilger.ca>
+In-Reply-To: <2EB0A146-8AAA-4F4A-9B11-29ED1D2B42F2@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 12, 2013 at 03:33:12PM -0700, Andreas Dilger wrote:
-> On Dec 10, 2013, at 6:20 PM, Darrick J. Wong <darrick.wong@oracle.com> wrote:
-> > ext2fs_free_mem() takes a pointer to a pointer, similar to
-> > ext2fs_get_mem().  Improve the documentation, and fix debugfs.
-> > 
-> > diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-> > index 64e498f..0624350 100644
-> > --- a/lib/ext2fs/ext2fs.h
-> > +++ b/lib/ext2fs/ext2fs.h
-> > @@ -1608,7 +1608,7 @@ _INLINE_ void ext2fs_init_csum_seed(ext2_filsys fs)
-> > #ifndef EXT2_CUSTOM_MEMORY_ROUTINES
-> > #include <string.h>
-> > /*
-> > - *  Allocate memory
-> > + *  Allocate memory.  The 'ptr' arg must point to a pointer.
-> >  */
-> > _INLINE_ errcode_t ext2fs_get_mem(unsigned long size, void *ptr)
-> > {
+On Thu, Dec 12, 2013 at 03:28:14PM -0700, Andreas Dilger wrote:
 > 
-> Would that imply the second argument in all of these functions is "void **ptr"?
-> Does GCC handle that correctly?  Do other compilers?  Am I just clueless?
+> On Dec 10, 2013, at 6:18 PM, Darrick J. Wong <darrick.wong@oracle.com> wrote:
+> 
+> > mke2fs has a series of checks to ensure that we don't create a
+> > filesystem too big for its blocksize -- if auto-64bit is on, then it
+> > turns on 64bit; otherwise it complains.  Unfortunately, it performs
+> > these checks before looking in mke2fs.conf for a blocksize, which
+> > means that the checks are incorrect if the user specifies a non-4096
+> > blocksize in the config file and says nothing on the command line.
+> > The bug also has the effect of mandating a 4k block size on any block
+> > device larger than 4T in that situation.  Therefore, read the block
+> > size from the config file before performing the 64bit checks.
+> > 
+> > Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
+> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> > ---
+> > misc/mke2fs.c |  134 +++++++++++++++++++++++++++++++--------------------------
+> > 1 file changed, 72 insertions(+), 62 deletions(-)
+> > 
+> > 
+> > diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+> > index 67c9225..19b6e85 100644
+> > --- a/misc/mke2fs.c
+> > +++ b/misc/mke2fs.c
+> > @@ -1780,15 +1795,67 @@ profile_error:
+> > 		}
+> > 	}
+> > 
+> > +	/* Get the hardware sector sizes, if available */
+> > +	retval = ext2fs_get_device_sectsize(device_name, &lsector_size);
+> > +	if (retval) {
+> > +		com_err(program_name, retval,
+> > +			_("while trying to determine hardware sector size"));
+> > +		exit(1);
+> > +	}
+> > +	retval = ext2fs_get_device_phys_sectsize(device_name, &psector_size);
+> > +	if (retval) {
+> > +		com_err(program_name, retval,
+> > +			_("while trying to determine physical sector size"));
+> > +		exit(1);
+> > +	}
+> > +
+> > +	tmp = getenv("MKE2FS_DEVICE_SECTSIZE");
+> > +	if (tmp != NULL)
+> > +		lsector_size = atoi(tmp);
+> > +	tmp = getenv("MKE2FS_DEVICE_PHYS_SECTSIZE");
+> > +	if (tmp != NULL)
+> > +		psector_size = atoi(tmp);
+> > +
+> > +	/* Older kernels may not have physical/logical distinction */
+> > +	if (!psector_size)
+> > +		psector_size = lsector_size;
+> > +
+> > +	if (blocksize <= 0) {
+> > +		use_bsize = get_int_from_profile(fs_types, "blocksize", 4096);
+> > +
+> > +		if (use_bsize == -1) {
+> > +			use_bsize = sys_page_size;
+> > +			if ((linux_version_code < (2*65536 + 6*256)) &&
+> 
+> Would be nice to have a helper to compute the linux_version_code comparison,
+> the above is a bit too much detail for this code.
 
-In the first function, pp is a pointer to malloc()'d memory, and we copy the
-contents of pp into wherever ptr points to.  In the second function, we free p,
-set p to NULL, then copy that NULL into wherever ptr points to.  In both cases,
-ptr has to point to a pointer.
+Hmm, yes, that would be a nice cleanup.
 
-So, yes, the second argument is a pointer to a pointer.  I'm not sure why the
-declarations are so strange here, since it seems to promote confusion and
-broken code.
+Yikes, there's a test for pre-2.2 kernels elsewhere in mke2fs.c.
 
-Frankly I was tempted just to fix the declarations, since anybody passing a
-pointer (not a pointer-pointer) to these functions has never not been broken
-anyway.  However, maybe Ted knows of some reason why things are this way?
+How many people still run on Linux 2.0? :D
 
-(That said, the programming errors mostly seem to be on the free end.)
+> 
+> > +			    (use_bsize > 4096))
+> > +				use_bsize = 4096;
+> > +		}
+> > +		if (lsector_size && use_bsize < lsector_size)
+> > +			use_bsize = lsector_size;
+> > +		if ((blocksize < 0) && (use_bsize < (-blocksize)))
+> > +			use_bsize = -blocksize;
+> > +		blocksize = use_bsize;
+> > +		fs_blocks_count /= (blocksize / 1024);
+> > +	} else {
+> > +		if (blocksize < lsector_size) {			/* Impossible */
+> > +			com_err(program_name, EINVAL,
+> > +				_("while setting blocksize; too small "
+> > +				  "for device\n"));
+> > +			exit(1);
+> > +		} else if ((blocksize < psector_size) &&
+> > +			   (psector_size <= sys_page_size)) {	/* Suboptimal */
+> > +			fprintf(stderr, _("Warning: specified blocksize %d is "
+> > +				"less than device physical sectorsize %d\n"),
+> > +				blocksize, psector_size);
+> > +		}
+> > +	}
+> > +
+> > +	fs_param.s_log_block_size =
+> > +		int_log2(blocksize >> EXT2_MIN_BLOCK_LOG_SIZE);
+> 
+> Does it make sense to wrap this whole block size guessing dance into a small
+> helper routine, like "figure_fs_blocksize()" or similar?
 
-_INLINE_ errcode_t ext2fs_get_mem(unsigned long size, void *ptr)
-{
-	void *pp;
-
-	pp = malloc(size);
-	if (!pp)
-		return EXT2_ET_NO_MEMORY;
-	memcpy(ptr, &pp, sizeof (pp));
-	return 0;
-}
-
-_INLINE_ errcode_t ext2fs_free_mem(void *ptr)
-{
-	void *p;
-
-	memcpy(&p, ptr, sizeof(p));
-	free(p);
-	p = 0;
-	memcpy(ptr, &p, sizeof(p));
-	return 0;
-}
+I suppose it could be cut out into its own helper function, to shrink PRS() a
+bit.  I'd have to pass in pointers all the variables that it touches
+(blocksize, fs_blocks_count, fs_param, psector_size), which made doing that
+less attractive.
 
 --D
-
-> 
-> Cheers, Andreas
-> 
-> > @@ -1655,7 +1655,7 @@ _INLINE_ errcode_t ext2fs_get_arrayzero(unsigned long count,
-> > }
-> > 
-> > /*
-> > - * Free memory
-> > + * Free memory.  The 'ptr' arg must point to a pointer.
-> >  */
-> > _INLINE_ errcode_t ext2fs_free_mem(void *ptr)
-> > {
-> > @@ -1669,7 +1669,7 @@ _INLINE_ errcode_t ext2fs_free_mem(void *ptr)
-> > }
-> > 
-> > /*
-> > - *  Resize memory
-> > + *  Resize memory.  The 'ptr' arg must point to a pointer.
-> >  */
-> > _INLINE_ errcode_t ext2fs_resize_mem(unsigned long EXT2FS_ATTR((unused)) old_size,
-> > 				     unsigned long size, void *ptr)
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
 > 
 > Cheers, Andreas
