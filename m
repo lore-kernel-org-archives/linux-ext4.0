@@ -1,106 +1,135 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 0/4 v3] fiemap: introduce EXTENT_DATA_COMPRESSED flag
-Date: Thu, 12 Dec 2013 15:22:20 -0700
-Message-ID: <6CAFB777-F514-4DD9-BD8B-95E7525FD534@dilger.ca>
-References: <cover.1386778302.git.dsterba@suse.cz>
+Subject: Re: [PATCH 03/74] mke2fs: load configfile blocksize setting before 64bit checks
+Date: Thu, 12 Dec 2013 15:28:14 -0700
+Message-ID: <2EB0A146-8AAA-4F4A-9B11-29ED1D2B42F2@dilger.ca>
+References: <20131211011813.30655.39624.stgit@birch.djwong.org> <20131211011837.30655.67812.stgit@birch.djwong.org>
 Mime-Version: 1.0 (Mac OS X Mail 7.0 \(1822\))
-Content-Type: multipart/mixed; boundary="===============4312633308741788932=="
-Cc: linux-nilfs@vger.kernel.org, Mark Fasheh <mfasheh@suse.com>,
-	"linux-btrfs@vger.kernel.org Btrfs" <linux-btrfs@vger.kernel.org>,
-	xfs@oss.sgi.com, Christoph Hellwig <hch@infradead.org>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+Content-Type: multipart/signed; boundary="Apple-Mail=_E6D3804D-E844-4DFA-B59A-6AE03D78AD39"; protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: Theodore Ts'o <tytso@mit.edu>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	ocfs2-devel@oss.oracle.com
-To: David Sterba <dsterba@suse.cz>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <cover.1386778302.git.dsterba@suse.cz>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+	Zheng Liu <wenqing.lz@taobao.com>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pd0-f177.google.com ([209.85.192.177]:53381 "EHLO
+	mail-pd0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751345Ab3LLW2U (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Dec 2013 17:28:20 -0500
+Received: by mail-pd0-f177.google.com with SMTP id q10so1274837pdj.22
+        for <linux-ext4@vger.kernel.org>; Thu, 12 Dec 2013 14:28:20 -0800 (PST)
+In-Reply-To: <20131211011837.30655.67812.stgit@birch.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 
---===============4312633308741788932==
-Content-Type: multipart/signed; boundary="Apple-Mail=_37EDDF86-D75C-4C7B-BD07-C6E3524E7CCC"; protocol="application/pgp-signature"; micalg=pgp-sha1
-
-
---Apple-Mail=_37EDDF86-D75C-4C7B-BD07-C6E3524E7CCC
+--Apple-Mail=_E6D3804D-E844-4DFA-B59A-6AE03D78AD39
 Content-Transfer-Encoding: quoted-printable
 Content-Type: text/plain;
 	charset=us-ascii
 
-On Dec 12, 2013, at 8:25 AM, David Sterba <dsterba@suse.cz> wrote:
-> The original FIEMAP patch did not define this bit, btrfs will make use =
-of
-> it.  The defined constant maintains the same value as originally =
-proposed.
->=20
-> Currently, the 'filefrag' utility has no way to recognize and denote a
-> compressed extent. As implemented in btrfs right now, the compression =
-step
-> splits a big extent into smaller chunks and this is reported as a =
-heavily
-> fragmented file. Adding the flag to filefrag will at least give some
-> explanation why, this has been confusing users for some time already.
 
-The whole series looks good to me (one minor nit if it needs to be =
-resubmitted
-for some reason).  You can add my:
+On Dec 10, 2013, at 6:18 PM, Darrick J. Wong <darrick.wong@oracle.com> =
+wrote:
 
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+> mke2fs has a series of checks to ensure that we don't create a
+> filesystem too big for its blocksize -- if auto-64bit is on, then it
+> turns on 64bit; otherwise it complains.  Unfortunately, it performs
+> these checks before looking in mke2fs.conf for a blocksize, which
+> means that the checks are incorrect if the user specifies a non-4096
+> blocksize in the config file and says nothing on the command line.
+> The bug also has the effect of mandating a 4k block size on any block
+> device larger than 4T in that situation.  Therefore, read the block
+> size from the config file before performing the 64bit checks.
+>=20
+> Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> ---
+> misc/mke2fs.c |  134 =
++++++++++++++++++++++++++++++++--------------------------
+> 1 file changed, 72 insertions(+), 62 deletions(-)
+>=20
+>=20
+> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+> index 67c9225..19b6e85 100644
+> --- a/misc/mke2fs.c
+> +++ b/misc/mke2fs.c
+> @@ -1780,15 +1795,67 @@ profile_error:
+> 		}
+> 	}
+>=20
+> +	/* Get the hardware sector sizes, if available */
+> +	retval =3D ext2fs_get_device_sectsize(device_name, =
+&lsector_size);
+> +	if (retval) {
+> +		com_err(program_name, retval,
+> +			_("while trying to determine hardware sector =
+size"));
+> +		exit(1);
+> +	}
+> +	retval =3D ext2fs_get_device_phys_sectsize(device_name, =
+&psector_size);
+> +	if (retval) {
+> +		com_err(program_name, retval,
+> +			_("while trying to determine physical sector =
+size"));
+> +		exit(1);
+> +	}
+> +
+> +	tmp =3D getenv("MKE2FS_DEVICE_SECTSIZE");
+> +	if (tmp !=3D NULL)
+> +		lsector_size =3D atoi(tmp);
+> +	tmp =3D getenv("MKE2FS_DEVICE_PHYS_SECTSIZE");
+> +	if (tmp !=3D NULL)
+> +		psector_size =3D atoi(tmp);
+> +
+> +	/* Older kernels may not have physical/logical distinction */
+> +	if (!psector_size)
+> +		psector_size =3D lsector_size;
+> +
+> +	if (blocksize <=3D 0) {
+> +		use_bsize =3D get_int_from_profile(fs_types, =
+"blocksize", 4096);
+> +
+> +		if (use_bsize =3D=3D -1) {
+> +			use_bsize =3D sys_page_size;
+> +			if ((linux_version_code < (2*65536 + 6*256)) &&
 
-> V3:
-> Based on feedback from Andreas, implement #1 from V2, current users of
-> fiemap_fill_next_extent (fs/, ext4, gfs2, ocfs2, nilfs2, xfs) updated
-> accordingly, no functional change.
->=20
-> V2:
-> Based on feedback from Andreas, the fiemap_extent is now able to hold =
-the
-> physical extent length, to be filled by the filesystem callback.
->=20
-> The filesystems do not have access to the structure that is passed =
-back to
-> userspace and are supposed to call fiemap_fill_next_extent, there's no =
-direct
-> way to fill fe_phys_length. There are two ways to pass it:
->=20
-> 1) extend fiemap_fill_next_extent to take phys_length and update all
->   users (ext4, gfs2, ocfs2, nilfs2, xfs)
->=20
-> 2) add new function that takes arguments for all the fiemap_extent =
-items,
->   newly added phys_length compared to fiemap_fill_next_extent
->=20
-> David Sterba (4):
->  fiemap: fix comment at EXTENT_DATA_ENCRYPTED
->  fiemap: add EXTENT_DATA_COMPRESSED flag
->  btrfs: set FIEMAP_EXTENT_DATA_COMPRESSED for compressed extents
->  Documentation/fiemap: Document the DATA_COMPRESSED flag
->=20
-> Documentation/filesystems/fiemap.txt |   17 +++++++++++++----
-> fs/btrfs/extent_io.c                 |    9 +++++++--
-> fs/ext4/extents.c                    |    3 ++-
-> fs/ext4/inline.c                     |    2 +-
-> fs/gfs2/inode.c                      |    2 +-
-> fs/ioctl.c                           |   18 ++++++++++++------
-> fs/nilfs2/inode.c                    |    8 +++++---
-> fs/ocfs2/extent_map.c                |    4 ++--
-> fs/xfs/xfs_iops.c                    |    2 +-
-> include/linux/fs.h                   |    2 +-
-> include/uapi/linux/fiemap.h          |    8 ++++++--
-> 11 files changed, 51 insertions(+), 24 deletions(-)
->=20
-> --=20
-> 1.7.9
->=20
+Would be nice to have a helper to compute the linux_version_code =
+comparison,
+the above is a bit too much detail for this code.
+
+> +			    (use_bsize > 4096))
+> +				use_bsize =3D 4096;
+> +		}
+> +		if (lsector_size && use_bsize < lsector_size)
+> +			use_bsize =3D lsector_size;
+> +		if ((blocksize < 0) && (use_bsize < (-blocksize)))
+> +			use_bsize =3D -blocksize;
+> +		blocksize =3D use_bsize;
+> +		fs_blocks_count /=3D (blocksize / 1024);
+> +	} else {
+> +		if (blocksize < lsector_size) {			/* =
+Impossible */
+> +			com_err(program_name, EINVAL,
+> +				_("while setting blocksize; too small "
+> +				  "for device\n"));
+> +			exit(1);
+> +		} else if ((blocksize < psector_size) &&
+> +			   (psector_size <=3D sys_page_size)) {	/* =
+Suboptimal */
+> +			fprintf(stderr, _("Warning: specified blocksize =
+%d is "
+> +				"less than device physical sectorsize =
+%d\n"),
+> +				blocksize, psector_size);
+> +		}
+> +	}
+> +
+> +	fs_param.s_log_block_size =3D
+> +		int_log2(blocksize >> EXT2_MIN_BLOCK_LOG_SIZE);
+
+Does it make sense to wrap this whole block size guessing dance into a =
+small
+helper routine, like "figure_fs_blocksize()" or similar?
 
 
 Cheers, Andreas
@@ -110,7 +139,7 @@ Cheers, Andreas
 
 
 
---Apple-Mail=_37EDDF86-D75C-4C7B-BD07-C6E3524E7CCC
+--Apple-Mail=_E6D3804D-E844-4DFA-B59A-6AE03D78AD39
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
 	filename=signature.asc
@@ -121,33 +150,19 @@ Content-Description: Message signed with OpenPGP using GPGMail
 -----BEGIN PGP SIGNATURE-----
 Comment: GPGTools - http://gpgtools.org
 
-iQIVAwUBUqo3HHKl2rkXzB/gAQKWWRAAkzM1fzS2F2wXEcHndEmzBZJf9PVrBgsH
-T47p/DxSVlMzFAu6hVxvJcbl4iDIfzJOXd7e60ptbIKce/IBRQU6Lg0XHISfN/8x
-EpdiDd8xySqcLuG8JZ66L+/7PSyO2aQYVNJnsNZjxEG7sJylC3NWPhnKZAi775lN
-gnInYAHsgl2Dvc8NDUylvIcvQHOVkZ/o3cr/m8WPuxNTYGqwpw1HvMwEfqD5pfod
-8QQyyqA0AGleubSpE0cB8KvzInBeE0ujw2gt/88mtV4Qd2xjrh3XEKbTI1QLbO1M
-9NAXYkjXhHtU7xQNbSaMpVZ77Sv97v3NueDAVnZnvDGob4sjDFwIPokoqUbskLuw
-CYQKuToqbRWpS/cdX159luWr8cCH5wFTfmkfQJRlsFFKrYU67OFwBO4AZSL+4l9+
-NUXlQuMY3Gb+BVV0qq4faw+gWHbhinOYA0TzNxb5uX/nhr8EkbxwBaY1o9Ml+bYO
-26g+IERx8WO1+/rvKM5cguPaWHOyppr8ggkkpCSmcGVro9HfagMeqZ+FHpZY7MsW
-OXmcG7/h85862m0JrJRuZuvwH40PMEkk8Mo74Elr3nBJypcsX/OTZA8yb1d30XTR
-EbdFbXZTnoqrbOz8hoEcpYzHa7xF2OBti7SNKU01T5D/vJja0jV4ZZCbWbfiaZGX
-PDICGt1rRxQ=
-=eiV9
+iQIVAwUBUqo4f3Kl2rkXzB/gAQL0sw/5AYJTplYW0M1dAtaQwVIpgONzT3oAMwLY
+aTJKs9Yk67Kod7UfBHKYF4Hmi+pucxNx9yxbLKKtvN9Bw3hod8SYSK5yERNlJJeC
+uXcdv5Su1yzd/EWeQ86lKB7EzdXQquM/xIqr4Sc0uAIHLJU5Mni1NfkqYjzWDzfK
+ugi+qyucSAO2PRRCLH83c+PWzFCS0oxpzG07v+1eV5LedqtidP952ZwEjlp9Qlrd
+lDS0pGmgRgiGlieLlD0hlVCNjFHQkxnprHLfJ4D0kPhDL0jjQDOL/0AvZ4u+c2fx
+oI1556r1HOzlcgy0nTgrBl9UbwMOu3YHmr5ao42StHDGGzdf+r3F25tMUgI7tIla
+zr8VapG9m+oRNsQgewSM7ju+E5uYp1MYey2wpqTZpLkY0PClLNbg9Adx3wDvEjx0
+5TMFZHakBSu6Ci8bP6hS0MS/ii5qvu/qyABlzRrQQ3BsYU1x99FbAXRAs2olR4Jf
+ylpY6gU6D2rE8yQAA3qddBtCjUu6+pSo1btAvrfpU7RbsfgLyvjisbkp4QUihhYI
+oDzbrMZrJPESCq0M6KVbAmnJwKGYGo1fgbUB8FkojdKDjww+fN/g+yiooxDFOEEf
+C2bGDHEsgFOUYYTYK106RiqctCCggJ1/dL3AeW+116HU4CyZRkCOqZRIHmnOfKvS
+VBf7qmQUW4Y=
+=H+aA
 -----END PGP SIGNATURE-----
 
---Apple-Mail=_37EDDF86-D75C-4C7B-BD07-C6E3524E7CCC--
-
-
---===============4312633308741788932==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
-
---===============4312633308741788932==--
+--Apple-Mail=_E6D3804D-E844-4DFA-B59A-6AE03D78AD39--
