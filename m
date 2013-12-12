@@ -1,43 +1,51 @@
-From: Andreas Gruenbacher <andreas.gruenbacher@linbit.com>
-Subject: Re: [PATCH 16/18] gfs2: use generic posix ACL infrastructure
-Date: Thu, 12 Dec 2013 20:08:38 +0100 (CET)
-Message-ID: <966512490.69128.1386875318581.JavaMail.zimbra@linbit.com>
-References: <20131211104243.148113893@bombadil.infradead.org>
-	<20131211104529.142731540@bombadil.infradead.org>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 04/74] libext2fs: use ext2fs_punch() to truncate quota
+ file
+Date: Thu, 12 Dec 2013 12:07:09 -0800
+Message-ID: <20131212200709.GG10150@birch.djwong.org>
+References: <20131211011813.30655.39624.stgit@birch.djwong.org>
+ <20131211011843.30655.22033.stgit@birch.djwong.org>
+ <20131212172840.GD13547@thunk.org>
+ <20131212173634.GE13547@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: xfs@oss.sgi.com, Mark Fasheh <mfasheh@suse.com>,
-	reiserfs-devel@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
-	linux-mtd@lists.infradead.org, viro@zeniv.linux.org.uk,
-	jfs-discussion@lists.sourceforge.net,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-nfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	Joel Becker <jlbec@evilplan.org>
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <20131211104529.142731540@bombadil.infradead.org>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:42860 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751856Ab3LLUHT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Dec 2013 15:07:19 -0500
+Content-Disposition: inline
+In-Reply-To: <20131212173634.GE13547@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Christoph,
+On Thu, Dec 12, 2013 at 12:36:34PM -0500, Theodore Ts'o wrote:
+> On Thu, Dec 12, 2013 at 12:28:40PM -0500, Theodore Ts'o wrote:
+> > On Tue, Dec 10, 2013 at 05:18:43PM -0800, Darrick J. Wong wrote:
+> > > Use the new ext2fs_punch() call to truncate the quota file.  This also
+> > > eliminates the need to fix it to work with bigalloc.
+> > > 
+> > > Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
+> > > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> > 
+> > Thanks, applied.
+> 
+> Hmm, I spoke too soon.  This is causing a test failure when applied
+> against the maint branch.  I know that you developed this versus the
+> next branch, so it's possible the bug in ext2fs_punch() was fixed
+> next.  I'm going to drop this from the maint branch for now, I'll take
+> a closer look at this after going through the rest of the bug fix
+> patches, and see whether it works when applied against next (in which
+> case I'll have to see which bug fix we need to apply to backport the
+> fix to the maint branch).
 
-gfs2 has a left-over get_acl callback in gfs2_symlink_iops in
-fs/gfs2/inode.c, from a long time ago, which should be removed
-as well.
+Hmm, I'll try to reproduce it here; which test is failing?
 
-Andreas
+It's possible that I fubar'd the ordering when I resorted the patches just
+prior to sending them out. :/
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+--D
+> 
+> 					- Ted
