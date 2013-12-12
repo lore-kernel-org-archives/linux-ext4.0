@@ -1,100 +1,79 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 1/3] ext4: Retry allocation when inline->extent
- conversion failed
-Date: Thu, 12 Dec 2013 18:30:20 +0800
-Message-ID: <20131212103020.GA3239@gmail.com>
-References: <1386670440-3158-1-git-send-email-jack@suse.cz>
- <1386670440-3158-2-git-send-email-jack@suse.cz>
- <20131212064422.GA16199@gmail.com>
- <20131212093936.GA1886@quack.suse.cz>
+From: David Sterba <dsterba@suse.cz>
+Subject: [PATCH 0/4 v3] fiemap: introduce EXTENT_DATA_COMPRESSED flag
+Date: Thu, 12 Dec 2013 16:25:57 +0100
+Message-ID: <cover.1386778302.git.dsterba@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ted Tso <tytso@mit.edu>, Akira Fujita <a-fujita@rs.jp.nec.com>,
-	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f180.google.com ([209.85.192.180]:45752 "EHLO
-	mail-pd0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751406Ab3LLK1Q (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Dec 2013 05:27:16 -0500
-Received: by mail-pd0-f180.google.com with SMTP id q10so271462pdj.39
-        for <linux-ext4@vger.kernel.org>; Thu, 12 Dec 2013 02:27:16 -0800 (PST)
-Content-Disposition: inline
-In-Reply-To: <20131212093936.GA1886@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: adilger@dilger.ca, linux-nilfs@vger.kernel.org, mfasheh@suse.com,
+	David Sterba <dsterba@suse.cz>, xfs@oss.sgi.com,
+	hch@infradead.org, linux-btrfs@vger.kernel.org,
+	viro@zeniv.linux.org.uk, linux-ext4@vger.kernel.org,
+	ocfs2-devel@oss.oracle.com
+To: linux-fsdevel@vger.kernel.org
+Return-path: <xfs-bounces@oss.sgi.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Dec 12, 2013 at 10:39:36AM +0100, Jan Kara wrote:
-> On Thu 12-12-13 14:44:22, Zheng Liu wrote:
-> > Hi Jan,
-> > 
-> > On Tue, Dec 10, 2013 at 11:13:58AM +0100, Jan Kara wrote:
-> > > Similarly as other ->write_begin functions in ext4, also
-> > > ext4_da_write_inline_data_begin() should retry allocation if the
-> > > conversion failed because of ENOSPC. This avoids returning ENOSPC
-> > > prematurely because of uncommitted block deletions.
-> > 
-> > I don't see why we need to try again here.  If there is no enough space
-> > in inline data, ext4_da_convert_inline_data_to_extent() just read the
-> > inline data into a page and clear EXT4_STATE_MAY_INLINE_DATA flag.  If
-> > we try again, we will encounter an ENOSPC error again.  So why do we
-> > need to retry allocation?
->   Umm, I don't think so. ext4_da_convert_inline_data_to_extent() calls
-> ext4_da_get_block_prep() and that can falsely fail with ENOSPC if there are
-> blocks freed in currently running transaction. So we call
-> ext4_should_retry_alloc() which forces commit of the current transaction
-> and then we retry the allocation.
+The original FIEMAP patch did not define this bit, btrfs will make use of
+it.  The defined constant maintains the same value as originally proposed.
 
-Ah, I see.  Thanks for your explanation.
+Currently, the 'filefrag' utility has no way to recognize and denote a
+compressed extent. As implemented in btrfs right now, the compression step
+splits a big extent into smaller chunks and this is reported as a heavily
+fragmented file. Adding the flag to filefrag will at least give some
+explanation why, this has been confusing users for some time already.
 
-                                                - Zheng
+V3:
+Based on feedback from Andreas, implement #1 from V2, current users of
+fiemap_fill_next_extent (fs/, ext4, gfs2, ocfs2, nilfs2, xfs) updated
+accordingly, no functional change.
 
-> 
-> 								Honza
-> 
-> > > 
-> > > Signed-off-by: Jan Kara <jack@suse.cz>
-> > > ---
-> > >  fs/ext4/inline.c | 7 +++++++
-> > >  1 file changed, 7 insertions(+)
-> > > 
-> > > diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-> > > index bae987549dc3..ed6e71fe5e9d 100644
-> > > --- a/fs/ext4/inline.c
-> > > +++ b/fs/ext4/inline.c
-> > > @@ -849,11 +849,13 @@ int ext4_da_write_inline_data_begin(struct address_space *mapping,
-> > >  	handle_t *handle;
-> > >  	struct page *page;
-> > >  	struct ext4_iloc iloc;
-> > > +	int retries;
-> > >  
-> > >  	ret = ext4_get_inode_loc(inode, &iloc);
-> > >  	if (ret)
-> > >  		return ret;
-> > >  
-> > > +retry_journal:
-> > >  	handle = ext4_journal_start(inode, EXT4_HT_INODE, 1);
-> > >  	if (IS_ERR(handle)) {
-> > >  		ret = PTR_ERR(handle);
-> > > @@ -875,6 +877,11 @@ int ext4_da_write_inline_data_begin(struct address_space *mapping,
-> > >  							    inode,
-> > >  							    flags,
-> > >  							    fsdata);
-> > > +		ext4_journal_stop(handle);
-> > > +		handle = NULL;
-> > > +		if (ret == -ENOSPC &&
-> > > +		    ext4_should_retry_alloc(inode->i_sb, &retries))
-> > > +			goto retry_journal;
-> > >  		goto out;
-> > >  	}
-> > >  
-> > > -- 
-> > > 1.8.1.4
-> > > 
-> > > --
-> > > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > > the body of a message to majordomo@vger.kernel.org
-> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> -- 
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
+V2:
+Based on feedback from Andreas, the fiemap_extent is now able to hold the
+physical extent length, to be filled by the filesystem callback.
+
+The filesystems do not have access to the structure that is passed back to
+userspace and are supposed to call fiemap_fill_next_extent, there's no direct
+way to fill fe_phys_length. There are two ways to pass it:
+
+1) extend fiemap_fill_next_extent to take phys_length and update all
+   users (ext4, gfs2, ocfs2, nilfs2, xfs)
+
+2) add new function that takes arguments for all the fiemap_extent items,
+   newly added phys_length compared to fiemap_fill_next_extent
+
+David Sterba (4):
+  fiemap: fix comment at EXTENT_DATA_ENCRYPTED
+  fiemap: add EXTENT_DATA_COMPRESSED flag
+  btrfs: set FIEMAP_EXTENT_DATA_COMPRESSED for compressed extents
+  Documentation/fiemap: Document the DATA_COMPRESSED flag
+
+ Documentation/filesystems/fiemap.txt |   17 +++++++++++++----
+ fs/btrfs/extent_io.c                 |    9 +++++++--
+ fs/ext4/extents.c                    |    3 ++-
+ fs/ext4/inline.c                     |    2 +-
+ fs/gfs2/inode.c                      |    2 +-
+ fs/ioctl.c                           |   18 ++++++++++++------
+ fs/nilfs2/inode.c                    |    8 +++++---
+ fs/ocfs2/extent_map.c                |    4 ++--
+ fs/xfs/xfs_iops.c                    |    2 +-
+ include/linux/fs.h                   |    2 +-
+ include/uapi/linux/fiemap.h          |    8 ++++++--
+ 11 files changed, 51 insertions(+), 24 deletions(-)
+
+-- 
+1.7.9
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
