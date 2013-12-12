@@ -1,31 +1,64 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 35/74] libext2fs: zero block contents past EOF when
- setting size
-Date: Thu, 12 Dec 2013 13:40:37 -0500
-Message-ID: <20131212184037.GF13547@thunk.org>
-References: <20131211011813.30655.39624.stgit@birch.djwong.org>
- <20131211012213.30655.39040.stgit@birch.djwong.org>
+From: Andreas Gruenbacher <andreas.gruenbacher@linbit.com>
+Subject: Re: [PATCH 02/18] fs: add get_acl helper
+Date: Thu, 12 Dec 2013 20:06:09 +0100 (CET)
+Message-ID: <1724169901.69108.1386875169382.JavaMail.zimbra@linbit.com>
+References: <20131211104243.148113893@bombadil.infradead.org>
+	<20131211104526.648135334@bombadil.infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:39464 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751346Ab3LLSkm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Dec 2013 13:40:42 -0500
-Content-Disposition: inline
-In-Reply-To: <20131211012213.30655.39040.stgit@birch.djwong.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: xfs@oss.sgi.com, Jan Kara <jack@suse.cz>, Mark Fasheh <mfasheh@suse.com>,
+	reiserfs-devel@vger.kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
+	linux-mtd@lists.infradead.org, viro@zeniv.linux.org.uk,
+	jfs-discussion@lists.sourceforge.net,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-nfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	Joel Becker <jlbec@evilplan.org>
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <20131211104526.648135334@bombadil.infradead.org>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Dec 10, 2013 at 05:22:13PM -0800, Darrick J. Wong wrote:
-> When we set the file size, find the block containing EOF, and zero
-> everything in that block past EOF so that we can't return stale data
-> if we ever use fallocate or truncate to lengthen the file.
-> 
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Christoph,
 
-Thanks, applied.
+> +struct posix_acl *get_acl(struct inode *inode, int type)
+> +{
+> +	struct posix_acl *acl;
+> +
+> +	acl = get_cached_acl(inode, type);
+> +	if (acl != ACL_NOT_CACHED)
+> +		return acl;
+> +
+> +	if (!IS_POSIXACL(inode))
+> +		return NULL;
+> +
+> +	/*
+> +	 * A filesystem can force a ACL callback by just never filling the
+> +	 * ACL cache. But normally you'd fill the cache either at inode
+> +	 * instantiation time, or on the first ->get_acl call.
+> +	 *
+> +	 * If the filesystem doesn't have a get_acl() function at all, we'll
+> +	 * just create the negative cache entry.
+> +	 */
+> +	if (!inode->i_op->get_acl) {
+> +		set_cached_acl(inode, type, NULL);
+> +		return ERR_PTR(-EAGAIN);
 
-					- Ted
+The function should return NULL here.
+
+Andreas
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
