@@ -1,48 +1,84 @@
-From: Vyacheslav Dubeyko <slava@dubeyko.com>
-Subject: Re: Ext4 projects for 2014
-Date: Thu, 12 Dec 2013 10:08:49 +0400
-Message-ID: <1386828529.3972.6.camel@slavad-ubuntu>
-References: <20131209014330.GA9195@thunk.org>
-	 <20131212050002.GH31386@dastard>
-Reply-To: slava@dubeyko.com
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH 1/3] ext4: Retry allocation when inline->extent
+ conversion failed
+Date: Thu, 12 Dec 2013 14:44:22 +0800
+Message-ID: <20131212064422.GA16199@gmail.com>
+References: <1386670440-3158-1-git-send-email-jack@suse.cz>
+ <1386670440-3158-2-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ted Tso <tytso@mit.edu>, Akira Fujita <a-fujita@rs.jp.nec.com>,
+	linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from alt-proxy11.mail.unifiedlayer.com ([74.220.211.241]:59524 "HELO
-	alt-proxy11.mail.unifiedlayer.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1751270Ab3LLGPj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Dec 2013 01:15:39 -0500
-In-Reply-To: <20131212050002.GH31386@dastard>
+Received: from mail-pb0-f50.google.com ([209.85.160.50]:60134 "EHLO
+	mail-pb0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751198Ab3LLGlO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Dec 2013 01:41:14 -0500
+Received: by mail-pb0-f50.google.com with SMTP id rr13so11564037pbb.9
+        for <linux-ext4@vger.kernel.org>; Wed, 11 Dec 2013 22:41:13 -0800 (PST)
+Content-Disposition: inline
+In-Reply-To: <1386670440-3158-2-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 2013-12-12 at 16:00 +1100, Dave Chinner wrote:
-> On Sun, Dec 08, 2013 at 08:43:30PM -0500, Theodore Ts'o wrote:
-> > Unfortunately, I forgot my notes from our last conference call before
-> > heading off to the airport.  My fault for taking the notes on paper
-> > instead of electronically in the first place.  :-(
-> > 
-> > This is my best reconstruction of some of the ext4 projects for 2014.
-> > Please let me know if I've forgotten anything.
-> > 
-> > 1)  Support for Shingled (SMR) Drives
-> 
-> Do you have any specific plans on how you are going to support these
-> drives? I'm curious, because the differences affect all fielsystems
-> so maybe there's some common solutions there...
-> 
+Hi Jan,
 
-Yes, it's really interesting question. Because I know about trying to
-use Log-structured File System or likewise approaches for the case of
-Shingled (SMR) drives. But ext4 is another case. :)
+On Tue, Dec 10, 2013 at 11:13:58AM +0100, Jan Kara wrote:
+> Similarly as other ->write_begin functions in ext4, also
+> ext4_da_write_inline_data_begin() should retry allocation if the
+> conversion failed because of ENOSPC. This avoids returning ENOSPC
+> prematurely because of uncommitted block deletions.
 
-So, what preliminary vision of such support in ext4?
+I don't see why we need to try again here.  If there is no enough space
+in inline data, ext4_da_convert_inline_data_to_extent() just read the
+inline data into a page and clear EXT4_STATE_MAY_INLINE_DATA flag.  If
+we try again, we will encounter an ENOSPC error again.  So why do we
+need to retry allocation?
 
 Thanks,
-Vyacheslav Dubeyko.
+                                                - Zheng
 
-
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/ext4/inline.c | 7 +++++++
+>  1 file changed, 7 insertions(+)
+> 
+> diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+> index bae987549dc3..ed6e71fe5e9d 100644
+> --- a/fs/ext4/inline.c
+> +++ b/fs/ext4/inline.c
+> @@ -849,11 +849,13 @@ int ext4_da_write_inline_data_begin(struct address_space *mapping,
+>  	handle_t *handle;
+>  	struct page *page;
+>  	struct ext4_iloc iloc;
+> +	int retries;
+>  
+>  	ret = ext4_get_inode_loc(inode, &iloc);
+>  	if (ret)
+>  		return ret;
+>  
+> +retry_journal:
+>  	handle = ext4_journal_start(inode, EXT4_HT_INODE, 1);
+>  	if (IS_ERR(handle)) {
+>  		ret = PTR_ERR(handle);
+> @@ -875,6 +877,11 @@ int ext4_da_write_inline_data_begin(struct address_space *mapping,
+>  							    inode,
+>  							    flags,
+>  							    fsdata);
+> +		ext4_journal_stop(handle);
+> +		handle = NULL;
+> +		if (ret == -ENOSPC &&
+> +		    ext4_should_retry_alloc(inode->i_sb, &retries))
+> +			goto retry_journal;
+>  		goto out;
+>  	}
+>  
+> -- 
+> 1.8.1.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
