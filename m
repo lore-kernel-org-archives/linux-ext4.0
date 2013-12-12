@@ -1,26 +1,24 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 26/74] libss: fix memory handling errors
-Date: Thu, 12 Dec 2013 13:13:15 -0500
-Message-ID: <20131212181315.GW13547@thunk.org>
+Subject: Re: [PATCH 27/74] libquota: fix memory leak
+Date: Thu, 12 Dec 2013 13:14:18 -0500
+Message-ID: <20131212181418.GX13547@thunk.org>
 References: <20131211011813.30655.39624.stgit@birch.djwong.org>
- <20131211012115.30655.51030.stgit@birch.djwong.org>
+ <20131211012121.30655.38835.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:39433 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:39436 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751585Ab3LLSNS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Dec 2013 13:13:18 -0500
+	id S1750840Ab3LLSOU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 Dec 2013 13:14:20 -0500
 Content-Disposition: inline
-In-Reply-To: <20131211012115.30655.51030.stgit@birch.djwong.org>
+In-Reply-To: <20131211012121.30655.38835.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 10, 2013 at 05:21:15PM -0800, Darrick J. Wong wrote:
-> Fix memory allocation calculations and check for NULL pointer returns.
-> 
+On Tue, Dec 10, 2013 at 05:21:21PM -0800, Darrick J. Wong wrote:
 > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 
 Thanks, applied.
