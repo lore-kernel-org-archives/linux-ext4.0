@@ -1,135 +1,83 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 03/74] mke2fs: load configfile blocksize setting before 64bit checks
-Date: Thu, 12 Dec 2013 15:28:14 -0700
-Message-ID: <2EB0A146-8AAA-4F4A-9B11-29ED1D2B42F2@dilger.ca>
-References: <20131211011813.30655.39624.stgit@birch.djwong.org> <20131211011837.30655.67812.stgit@birch.djwong.org>
+Subject: Re: [PATCH 17/74] debugfs: don't leak mmp_s memory
+Date: Thu, 12 Dec 2013 15:33:12 -0700
+Message-ID: <7848C189-25A5-43FA-9F55-12299217E3A6@dilger.ca>
+References: <20131211011813.30655.39624.stgit@birch.djwong.org> <20131211012014.30655.58647.stgit@birch.djwong.org>
 Mime-Version: 1.0 (Mac OS X Mail 7.0 \(1822\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_E6D3804D-E844-4DFA-B59A-6AE03D78AD39"; protocol="application/pgp-signature"; micalg=pgp-sha1
+Content-Type: multipart/signed; boundary="Apple-Mail=_11F70E16-4401-44CC-A270-760EBF1AC0EF"; protocol="application/pgp-signature"; micalg=pgp-sha1
 Cc: Theodore Ts'o <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Zheng Liu <wenqing.lz@taobao.com>
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f177.google.com ([209.85.192.177]:53381 "EHLO
-	mail-pd0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751345Ab3LLW2U (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Dec 2013 17:28:20 -0500
-Received: by mail-pd0-f177.google.com with SMTP id q10so1274837pdj.22
-        for <linux-ext4@vger.kernel.org>; Thu, 12 Dec 2013 14:28:20 -0800 (PST)
-In-Reply-To: <20131211011837.30655.67812.stgit@birch.djwong.org>
+Received: from mail-pb0-f44.google.com ([209.85.160.44]:63998 "EHLO
+	mail-pb0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751615Ab3LLWdT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Dec 2013 17:33:19 -0500
+Received: by mail-pb0-f44.google.com with SMTP id rq2so1327882pbb.3
+        for <linux-ext4@vger.kernel.org>; Thu, 12 Dec 2013 14:33:18 -0800 (PST)
+In-Reply-To: <20131211012014.30655.58647.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
---Apple-Mail=_E6D3804D-E844-4DFA-B59A-6AE03D78AD39
+--Apple-Mail=_11F70E16-4401-44CC-A270-760EBF1AC0EF
 Content-Transfer-Encoding: quoted-printable
 Content-Type: text/plain;
 	charset=us-ascii
 
-
-On Dec 10, 2013, at 6:18 PM, Darrick J. Wong <darrick.wong@oracle.com> =
+On Dec 10, 2013, at 6:20 PM, Darrick J. Wong <darrick.wong@oracle.com> =
 wrote:
-
-> mke2fs has a series of checks to ensure that we don't create a
-> filesystem too big for its blocksize -- if auto-64bit is on, then it
-> turns on 64bit; otherwise it complains.  Unfortunately, it performs
-> these checks before looking in mke2fs.conf for a blocksize, which
-> means that the checks are incorrect if the user specifies a non-4096
-> blocksize in the config file and says nothing on the command line.
-> The bug also has the effect of mandating a 4k block size on any block
-> device larger than 4T in that situation.  Therefore, read the block
-> size from the config file before performing the 64bit checks.
+> ext2fs_free_mem() takes a pointer to a pointer, similar to
+> ext2fs_get_mem().  Improve the documentation, and fix debugfs.
 >=20
-> Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> ---
-> misc/mke2fs.c |  134 =
-+++++++++++++++++++++++++++++++--------------------------
-> 1 file changed, 72 insertions(+), 62 deletions(-)
->=20
->=20
-> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> index 67c9225..19b6e85 100644
-> --- a/misc/mke2fs.c
-> +++ b/misc/mke2fs.c
-> @@ -1780,15 +1795,67 @@ profile_error:
-> 		}
-> 	}
->=20
-> +	/* Get the hardware sector sizes, if available */
-> +	retval =3D ext2fs_get_device_sectsize(device_name, =
-&lsector_size);
-> +	if (retval) {
-> +		com_err(program_name, retval,
-> +			_("while trying to determine hardware sector =
-size"));
-> +		exit(1);
-> +	}
-> +	retval =3D ext2fs_get_device_phys_sectsize(device_name, =
-&psector_size);
-> +	if (retval) {
-> +		com_err(program_name, retval,
-> +			_("while trying to determine physical sector =
-size"));
-> +		exit(1);
-> +	}
-> +
-> +	tmp =3D getenv("MKE2FS_DEVICE_SECTSIZE");
-> +	if (tmp !=3D NULL)
-> +		lsector_size =3D atoi(tmp);
-> +	tmp =3D getenv("MKE2FS_DEVICE_PHYS_SECTSIZE");
-> +	if (tmp !=3D NULL)
-> +		psector_size =3D atoi(tmp);
-> +
-> +	/* Older kernels may not have physical/logical distinction */
-> +	if (!psector_size)
-> +		psector_size =3D lsector_size;
-> +
-> +	if (blocksize <=3D 0) {
-> +		use_bsize =3D get_int_from_profile(fs_types, =
-"blocksize", 4096);
-> +
-> +		if (use_bsize =3D=3D -1) {
-> +			use_bsize =3D sys_page_size;
-> +			if ((linux_version_code < (2*65536 + 6*256)) &&
+> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+> index 64e498f..0624350 100644
+> --- a/lib/ext2fs/ext2fs.h
+> +++ b/lib/ext2fs/ext2fs.h
+> @@ -1608,7 +1608,7 @@ _INLINE_ void ext2fs_init_csum_seed(ext2_filsys =
+fs)
+> #ifndef EXT2_CUSTOM_MEMORY_ROUTINES
+> #include <string.h>
+> /*
+> - *  Allocate memory
+> + *  Allocate memory.  The 'ptr' arg must point to a pointer.
+>  */
+> _INLINE_ errcode_t ext2fs_get_mem(unsigned long size, void *ptr)
+> {
 
-Would be nice to have a helper to compute the linux_version_code =
-comparison,
-the above is a bit too much detail for this code.
+Would that imply the second argument in all of these functions is "void =
+**ptr"?
+Does GCC handle that correctly?  Do other compilers?  Am I just =
+clueless?
 
-> +			    (use_bsize > 4096))
-> +				use_bsize =3D 4096;
-> +		}
-> +		if (lsector_size && use_bsize < lsector_size)
-> +			use_bsize =3D lsector_size;
-> +		if ((blocksize < 0) && (use_bsize < (-blocksize)))
-> +			use_bsize =3D -blocksize;
-> +		blocksize =3D use_bsize;
-> +		fs_blocks_count /=3D (blocksize / 1024);
-> +	} else {
-> +		if (blocksize < lsector_size) {			/* =
-Impossible */
-> +			com_err(program_name, EINVAL,
-> +				_("while setting blocksize; too small "
-> +				  "for device\n"));
-> +			exit(1);
-> +		} else if ((blocksize < psector_size) &&
-> +			   (psector_size <=3D sys_page_size)) {	/* =
-Suboptimal */
-> +			fprintf(stderr, _("Warning: specified blocksize =
-%d is "
-> +				"less than device physical sectorsize =
-%d\n"),
-> +				blocksize, psector_size);
-> +		}
-> +	}
-> +
-> +	fs_param.s_log_block_size =3D
-> +		int_log2(blocksize >> EXT2_MIN_BLOCK_LOG_SIZE);
+Cheers, Andreas
 
-Does it make sense to wrap this whole block size guessing dance into a =
-small
-helper routine, like "figure_fs_blocksize()" or similar?
+> @@ -1655,7 +1655,7 @@ _INLINE_ errcode_t ext2fs_get_arrayzero(unsigned =
+long count,
+> }
+>=20
+> /*
+> - * Free memory
+> + * Free memory.  The 'ptr' arg must point to a pointer.
+>  */
+> _INLINE_ errcode_t ext2fs_free_mem(void *ptr)
+> {
+> @@ -1669,7 +1669,7 @@ _INLINE_ errcode_t ext2fs_free_mem(void *ptr)
+> }
+>=20
+> /*
+> - *  Resize memory
+> + *  Resize memory.  The 'ptr' arg must point to a pointer.
+>  */
+> _INLINE_ errcode_t ext2fs_resize_mem(unsigned long =
+EXT2FS_ATTR((unused)) old_size,
+> 				     unsigned long size, void *ptr)
+>=20
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 
 Cheers, Andreas
@@ -139,7 +87,7 @@ Cheers, Andreas
 
 
 
---Apple-Mail=_E6D3804D-E844-4DFA-B59A-6AE03D78AD39
+--Apple-Mail=_11F70E16-4401-44CC-A270-760EBF1AC0EF
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
 	filename=signature.asc
@@ -150,19 +98,19 @@ Content-Description: Message signed with OpenPGP using GPGMail
 -----BEGIN PGP SIGNATURE-----
 Comment: GPGTools - http://gpgtools.org
 
-iQIVAwUBUqo4f3Kl2rkXzB/gAQL0sw/5AYJTplYW0M1dAtaQwVIpgONzT3oAMwLY
-aTJKs9Yk67Kod7UfBHKYF4Hmi+pucxNx9yxbLKKtvN9Bw3hod8SYSK5yERNlJJeC
-uXcdv5Su1yzd/EWeQ86lKB7EzdXQquM/xIqr4Sc0uAIHLJU5Mni1NfkqYjzWDzfK
-ugi+qyucSAO2PRRCLH83c+PWzFCS0oxpzG07v+1eV5LedqtidP952ZwEjlp9Qlrd
-lDS0pGmgRgiGlieLlD0hlVCNjFHQkxnprHLfJ4D0kPhDL0jjQDOL/0AvZ4u+c2fx
-oI1556r1HOzlcgy0nTgrBl9UbwMOu3YHmr5ao42StHDGGzdf+r3F25tMUgI7tIla
-zr8VapG9m+oRNsQgewSM7ju+E5uYp1MYey2wpqTZpLkY0PClLNbg9Adx3wDvEjx0
-5TMFZHakBSu6Ci8bP6hS0MS/ii5qvu/qyABlzRrQQ3BsYU1x99FbAXRAs2olR4Jf
-ylpY6gU6D2rE8yQAA3qddBtCjUu6+pSo1btAvrfpU7RbsfgLyvjisbkp4QUihhYI
-oDzbrMZrJPESCq0M6KVbAmnJwKGYGo1fgbUB8FkojdKDjww+fN/g+yiooxDFOEEf
-C2bGDHEsgFOUYYTYK106RiqctCCggJ1/dL3AeW+116HU4CyZRkCOqZRIHmnOfKvS
-VBf7qmQUW4Y=
-=H+aA
+iQIVAwUBUqo5qXKl2rkXzB/gAQK5QRAAuMEzZSTeyVwtaJdhn7aKFdGLk3DPg1vh
+GXWKMN3tHC0knFlXLBK8ZFw4hd0tg77uq10epRkUsgJPgZ0/7WmYO0AGCfV04ATu
+XDJF0HQYqD9V5mK6EXUIdrV87snlF3mbi2AOW+oDU2t1+XMYTr+wjV9iu+28/FnK
+gXXiQuN2sHAh/wuQzWysCTlJkNzMgIvWUnkAtogFW1PBk/T9jCBi7rszL367gYEd
+vYowb4YKdXD0nxJpRKSE3+MXDh+1gLy3k6igPE3q07m9fM5eg3vHdmU9Nb0VBMke
+KFJSfcoDbvmsSgWpeuFvA+jDMdsPvK77e1ieh70CIyHA5TLS8WtgkcMd/SJm6zjg
+GnPmgl/ISoBLDox6L/lTGta3lP+v4PidUkSTLKVaW8zeO+bjpKSjjRZy+dESk1sh
+ODuLVDpkJu4yvKmWVTgX9Aw6YmXIlXvD43sxMsgc9QBITLVINVIFHzZ79BW7ysdn
+BnyAu68qjZXOzNpLHQPyK6KqLbvt1MuaPBctm4uLT1ZOG0ZL0G9dUrmMeW+NIbGV
+O9oW2jxl+a/MPyeSPResmi9wTV/K3pIiZ9tuae6Be1XeBg0QB2OGkMA0bT+wyT8D
+2ycJ7XRKtiww/GJ8Jt4CR3DPnybVgcsjzgJuAjTbY/tAlY6WFvkNb42Ahh8Q+wgb
++2VVEYMyafk=
+=SOBR
 -----END PGP SIGNATURE-----
 
---Apple-Mail=_E6D3804D-E844-4DFA-B59A-6AE03D78AD39--
+--Apple-Mail=_11F70E16-4401-44CC-A270-760EBF1AC0EF--
