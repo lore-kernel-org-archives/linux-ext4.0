@@ -1,118 +1,104 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH] mke2fs: clean up kernel version tests
-Date: Thu, 12 Dec 2013 15:14:51 -0800
-Message-ID: <20131212231451.GH10143@birch.djwong.org>
-References: <20131211011813.30655.39624.stgit@birch.djwong.org>
- <20131211011837.30655.67812.stgit@birch.djwong.org>
- <2EB0A146-8AAA-4F4A-9B11-29ED1D2B42F2@dilger.ca>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 2/4 v3] fiemap: add EXTENT_DATA_COMPRESSED flag
+Date: Fri, 13 Dec 2013 10:24:43 +1100
+Message-ID: <20131212232443.GL31386@dastard>
+References: <cover.1386778302.git.dsterba@suse.cz>
+	<4f8d5dc5b51a43efaf16c39398c23a6276e40a30.1386778303.git.dsterba@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Zheng Liu <wenqing.lz@taobao.com>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:25752 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751915Ab3LLXO6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Dec 2013 18:14:58 -0500
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: adilger@dilger.ca, linux-nilfs@vger.kernel.org, mfasheh@suse.com,
+	xfs@oss.sgi.com, hch@infradead.org, ocfs2-devel@oss.oracle.com,
+	viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org
+To: David Sterba <dsterba@suse.cz>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <2EB0A146-8AAA-4F4A-9B11-29ED1D2B42F2@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <4f8d5dc5b51a43efaf16c39398c23a6276e40a30.1386778303.git.dsterba@suse.cz>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-Refactor the running kernel version checks to hide the details of
-version code checking, etc.
+On Thu, Dec 12, 2013 at 04:25:59PM +0100, David Sterba wrote:
+> This flag was not accepted when fiemap was proposed [2] due to lack of
+> in-kernel users. Btrfs has compression for a long time and we'd like to
+> see that an extent is compressed in the output of 'filefrag' utility
+> once it's taught about it.
+> 
+> For that purpose, a reserved field from fiemap_extent is used to let the
+> filesystem store along the physcial extent length when the flag is set.
+> This keeps compatibility with applications that use FIEMAP.
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
----
- misc/mke2fs.c |   40 +++++++++++++++++++++++++---------------
- 1 file changed, 25 insertions(+), 15 deletions(-)
+I'd prefer to just see the new physical length field always filled
+out, regardless of whether it is a compressed extent or not. In
+terms of backwards compatibility to userspace, it makes no
+difference because the value of reserved/unused fields is undefined
+by the API. Yes, the implementation zeros them, but there's nothing
+in the documentation that says "reserved fields must be zero".
+Hence I think we should just set it for every extent.
 
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index c1cbcaa..a76ebe6 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -27,6 +27,7 @@
- #include <time.h>
- #ifdef __linux__
- #include <sys/utsname.h>
-+#include <linux/version.h>
- #endif
- #ifdef HAVE_GETOPT_H
- #include <getopt.h>
-@@ -109,7 +110,6 @@ char **fs_types;
- profile_t	profile;
- 
- int sys_page_size = 4096;
--int linux_version_code = 0;
- 
- static void usage(void)
- {
-@@ -168,7 +168,28 @@ static int parse_version_number(const char *s)
- 	rev = strtol(cp, &endptr, 10);
- 	if (cp == endptr)
- 		return 0;
--	return ((((major * 256) + minor) * 256) + rev);
-+	return KERNEL_VERSION(major, minor, rev);
-+}
-+
-+static int is_before_linux_ver(unsigned int major, unsigned int minor)
-+{
-+	struct		utsname ut;
-+	int		linux_version_code = 0;
-+
-+	if (uname(&ut)) {
-+		perror("uname");
-+		exit(1);
-+	}
-+	linux_version_code = parse_version_number(ut.release);
-+	if (linux_version_code == 0)
-+		return 0;
-+
-+	return linux_version_code < KERNEL_VERSION(major, minor, 0);
-+}
-+#else
-+static int is_before_linux_ver(unsigned int major, unsigned int minor)
-+{
-+	return 0;
- }
- #endif
- 
-@@ -1315,9 +1336,6 @@ static void PRS(int argc, char *argv[])
- 	 * Finally, we complain about fs_blocks_count > 2^32 on a non-64bit fs.
- 	 */
- 	blk64_t		fs_blocks_count = 0;
--#ifdef __linux__
--	struct 		utsname ut;
--#endif
- 	long		sysval;
- 	int		s_opt = -1, r_opt = -1;
- 	char		*fs_features = 0;
-@@ -1382,15 +1400,8 @@ profile_error:
- 	memset(&fs_param, 0, sizeof(struct ext2_super_block));
- 	fs_param.s_rev_level = 1;  /* Create revision 1 filesystems now */
- 
--#ifdef __linux__
--	if (uname(&ut)) {
--		perror("uname");
--		exit(1);
--	}
--	linux_version_code = parse_version_number(ut.release);
--	if (linux_version_code && linux_version_code < (2*65536 + 2*256))
-+	if (is_before_linux_ver(2, 2))
- 		fs_param.s_rev_level = 0;
--#endif
- 
- 	if (argc && *argv) {
- 		program_name = get_progname(*argv);
-@@ -1827,8 +1838,7 @@ profile_error:
- 
- 		if (use_bsize == -1) {
- 			use_bsize = sys_page_size;
--			if ((linux_version_code < (2*65536 + 6*256)) &&
--			    (use_bsize > 4096))
-+			if (is_before_linux_ver(2, 6) && use_bsize > 4096)
- 				use_bsize = 4096;
- 		}
- 		if (lsector_size && use_bsize < lsector_size)
+>From the point of view of the kernel API (fiemap_fill_next_extent),
+passing the physical extent size in the "len" parameter for normal
+extents, then passing 0 for the "physical length" makes absolutely
+no sense.
+
+IOWs, what you have created is a distinction between the extent's
+"logical length" and it's "physical length". For uncompressed
+extents, they are both equal and they should both be passed to
+fiemap_fill_next_extent as the same value. Extents where they are
+different (i.e.  encoded extents) is when they can be different.
+Perhaps fiemap_fill_next_extent() should check and warn about
+mismatches when they differ and the relevant flags are not set...
+
+> diff --git a/include/uapi/linux/fiemap.h b/include/uapi/linux/fiemap.h
+> index 93abfcd..0e32cae 100644
+> --- a/include/uapi/linux/fiemap.h
+> +++ b/include/uapi/linux/fiemap.h
+> @@ -19,7 +19,9 @@ struct fiemap_extent {
+>  	__u64 fe_physical; /* physical offset in bytes for the start
+>  			    * of the extent from the beginning of the disk */
+>  	__u64 fe_length;   /* length in bytes for this extent */
+> -	__u64 fe_reserved64[2];
+> +	__u64 fe_phys_length; /* physical length in bytes, undefined if
+> +			       * DATA_COMPRESSED not set */
+> +	__u64 fe_reserved64;
+>  	__u32 fe_flags;    /* FIEMAP_EXTENT_* flags for this extent */
+>  	__u32 fe_reserved[3];
+>  };
+
+The comment for fe_length needs to change, too, because it needs to
+indicate that it is the logical extent length and that it may be
+different to the fe_phys_length depending on the flags that are set
+on the extent.
+
+And, FWIW, I wouldn't mention specific flags in the comment here,
+but do it at the definition of the flags that indicate there is
+a difference between physical and logical extent lengths....
+
+> @@ -50,6 +52,8 @@ struct fiemap {
+>  						    * Sets EXTENT_UNKNOWN. */
+>  #define FIEMAP_EXTENT_ENCODED		0x00000008 /* Data can not be read
+>  						    * while fs is unmounted */
+> +#define FIEMAP_EXTENT_DATA_COMPRESSED	0x00000040 /* Data is compressed by fs.
+> +						    * Sets EXTENT_ENCODED */
+
+i.e. here.
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
