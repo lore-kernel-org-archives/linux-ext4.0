@@ -1,49 +1,166 @@
 From: Phillip Susi <psusi@ubuntu.com>
-Subject: Re: [PATCH 2/4] e2image: perform in-place move
-Date: Mon, 16 Dec 2013 11:30:56 -0500
-Message-ID: <52AF2AC0.2030103@ubuntu.com>
-References: <1381247792-22508-1-git-send-email-psusi@ubuntu.com> <1381247792-22508-3-git-send-email-psusi@ubuntu.com> <20131216043338.GD28536@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+Subject: [PATCH 1/4] e2image: add offset switches
+Date: Mon, 16 Dec 2013 11:32:39 -0500
+Message-ID: <1387211559-25743-1-git-send-email-psusi@ubuntu.com>
+References: <52AF2A8E.8030207@ubuntu.com>
 Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+To: ttytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:37386 "EHLO
-	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754143Ab3LPQa5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Dec 2013 11:30:57 -0500
-In-Reply-To: <20131216043338.GD28536@thunk.org>
+Received: from rrcs-67-78-168-186.se.biz.rr.com ([67.78.168.186]:35651 "EHLO
+	iriserv.iradimed.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754466Ab3LPQmK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Dec 2013 11:42:10 -0500
+In-Reply-To: <52AF2A8E.8030207@ubuntu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
------BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA1
+Add -o and -O switches to specify the offset where the source
+and destination filesystems start.  This is useful if you have
+an image of a partitioned disk or wish to create one.
 
-On 12/15/2013 11:33 PM, Theodore Ts'o wrote:
-> On Tue, Oct 08, 2013 at 11:56:30AM -0400, Phillip Susi wrote:
->> If given at least one offset and only one file, assume source and
->> dest are the same, and do an in place move.
->> 
->> Signed-off-by: Phillip Susi <psusi@ubuntu.com>
-> 
-> You **really** only want to allow move_mode if you are in raw
-> mode. In particular, the safe move isn't even implemented in the
-> other mods (nor does it make any sense), and if the user simply
-> forgot to specify -r, it would be a shame if it ended up destroying
-> the user's file system.  :-(
+Signed-off-by: Phillip Susi <psusi@ubuntu.com>
+---
+ misc/e2image.8.in | 36 ++++++++++++++++++++++++++++++++++++
+ misc/e2image.c    | 30 ++++++++++++++++++++++++------
+ 2 files changed, 60 insertions(+), 6 deletions(-)
 
-Good point, also only with -a.  Fixed.
+diff --git a/misc/e2image.8.in b/misc/e2image.8.in
+index 84b9729..86d3dfc 100644
+--- a/misc/e2image.8.in
++++ b/misc/e2image.8.in
+@@ -10,6 +10,14 @@ e2image \- Save critical ext2/ext3/ext4 filesystem metadata to a file
+ [
+ .B \-rsIQa
+ ]
++[
++.B \-o
++.I source_offset
++]
++[
++.B \-O
++.I dest_offset
++]
+ .I device
+ .I image-file
+ .SH DESCRIPTION
+@@ -191,6 +199,34 @@ give an image that is suitable to use to clone the entire FS or
+ for backup purposes.  Note that this option only works with the
+ raw or QCOW2 formats.
+ .PP
++.SH OFFSETS
++Normally a filesystem starts at the beginning of a partition, and
++.B e2image
++is run on the partition.  When working with image files, you don't
++have the option of using the partition device, so you can specify
++the offset where the filesystem starts directly with the
++.B \-o
++option.  Similarly the
++.B \-O
++option specifies the offset that should be seeked to in the destination
++before writing the filesystem.
++.PP
++For example, if you have a
++.B dd
++image of a whole hard drive that contains an ext2 fs in a partition
++starting at 1 MiB, you can clone that fs with:
++.PP
++.br
++\	\fBe2image \-aro 1048576 img /dev/sda1\fR
++.br
++.PP
++Or you can clone a fs into an image file, leaving room in the first
++MiB for a partition table with:
++.PP
++.br
++\	\fBe2image -arO 1048576 /dev/sda1 img\fR
++.br
++.PP
+ .SH AUTHOR
+ .B e2image
+ was written by Theodore Ts'o (tytso@mit.edu).
+diff --git a/misc/e2image.c b/misc/e2image.c
+index 885a794..f7f2e90 100644
+--- a/misc/e2image.c
++++ b/misc/e2image.c
+@@ -55,6 +55,7 @@ char * device_name = NULL;
+ char all_data;
+ char output_is_blk;
+ /* writing to blk device: don't skip zeroed blocks */
++blk64_t source_offset, dest_offset;
+ 
+ static void lseek_error_and_exit(int errnum)
+ {
+@@ -87,7 +88,7 @@ static int get_bits_from_size(size_t size)
+ 
+ static void usage(void)
+ {
+-	fprintf(stderr, _("Usage: %s [-rsIQa] device image_file\n"),
++	fprintf(stderr, _("Usage: %s [-rsIQa] [-o source_offset] [-O dest_offset] device image_file\n"),
+ 		program_name);
+ 	exit (1);
+ }
+@@ -1269,7 +1270,7 @@ int main (int argc, char ** argv)
+ 	if (argc && *argv)
+ 		program_name = *argv;
+ 	add_error_table(&et_ext2_error_table);
+-	while ((c = getopt(argc, argv, "rsIQa")) != EOF)
++	while ((c = getopt(argc, argv, "rsIQao:O:")) != EOF)
+ 		switch (c) {
+ 		case 'I':
+ 			flags |= E2IMAGE_INSTALL_FLAG;
+@@ -1290,6 +1291,12 @@ int main (int argc, char ** argv)
+ 		case 'a':
+ 			all_data = 1;
+ 			break;
++		case 'o':
++			source_offset = strtoull(optarg, NULL, 0);
++			break;
++		case 'O':
++			dest_offset = strtoull(optarg, NULL, 0);
++			break;
+ 		default:
+ 			usage();
+ 		}
+@@ -1301,7 +1308,11 @@ int main (int argc, char ** argv)
+ 					 "with raw or QCOW2 images.");
+ 		exit(1);
+ 	}
+-
++	if ((source_offset || dest_offset) && img_type != E2IMAGE_RAW) {
++		com_err(program_name, 0,
++			"Offsets are only allowed with raw images.");
++		exit(1);
++	}
+ 	device_name = argv[optind];
+ 	image_fn = argv[optind+1];
+ 
+@@ -1317,9 +1328,11 @@ int main (int argc, char ** argv)
+ 			goto skip_device;
+ 		}
+ 	}
+-
+-	retval = ext2fs_open (device_name, open_flag, 0, 0,
+-			      unix_io_manager, &fs);
++	char *options;
++	asprintf (&options, "offset=%llu", source_offset);
++	retval = ext2fs_open2 (device_name, options, open_flag, 0, 0,
++			       unix_io_manager, &fs);
++	free (options);
+         if (retval) {
+ 		com_err (program_name, retval, _("while trying to open %s"),
+ 			 device_name);
+@@ -1338,6 +1351,11 @@ skip_device:
+ 			exit(1);
+ 		}
+ 	}
++	if (dest_offset)
++		if (ext2fs_llseek (fd, dest_offset, SEEK_SET) < 0) {
++			perror("ext2fs_llseek");
++			exit(1);
++		}
+ 
+ 	if ((img_type & E2IMAGE_QCOW2) && (fd == 1)) {
+ 		com_err(program_name, 0, "QCOW2 image can not be written to "
+-- 
+1.8.3.2
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.17 (MingW32)
-Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
-
-iQEcBAEBAgAGBQJSryrAAAoJEI5FoCIzSKrwOicH/25obbcwApT1fMCZx3ZESYyg
-q2zOgJafZCZfe4cx6Knn8TDZ+gk66229IslTMi3oXDTXkPXQXdc5oAtcuAs8iKNN
-/bIgT+JKrwhvUsP8rL4F4oIfq1gzx9//YgS5awgyKV7653qGSmtXUdp5TZhSD8KU
-f8dz66pWz/jnapv072qdqJOIXRndIGTSNWfR7M/GC0DVAKn+vRJVjXYRQ1Woov2m
-tkzM5glZIFW5PUVngmckkUHLwxbdVHSQPQJE+Jib44ZOLmqYtcAfxfsrUxjbc/Ur
-jWFUZOHBoDlNEmeHafDhudw3dC3yyutW+uTFKrg9dy85g5tobZ9NICZK4XgiJfw=
-=/KYA
------END PGP SIGNATURE-----
