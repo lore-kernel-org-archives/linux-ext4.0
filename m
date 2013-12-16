@@ -1,115 +1,90 @@
-From: Carlos Maiolino <cmaiolino@redhat.com>
-Subject: Re: [Bug 66951] New: filesystems should reserve inodes for root as
- they do disk space
-Date: Mon, 16 Dec 2013 11:14:36 -0200
-Message-ID: <20131216131434.GA18255@orion.maiolino.org>
-References: <bug-66951-13602@https.bugzilla.kernel.org/>
+From: Lars Noschinski <lars@public.noschinski.de>
+Subject: Recover files from a broken ext3 partition
+Date: Mon, 16 Dec 2013 15:46:43 +0100
+Message-ID: <52AF1253.1000608@public.noschinski.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41856 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753692Ab3LPNOr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Dec 2013 08:14:47 -0500
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id rBGDEl0j016283
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Dec 2013 08:14:47 -0500
-Received: from orion.maiolino.org (ovpn-113-110.phx2.redhat.com [10.3.113.110])
-	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id rBGDEc5G010743
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Dec 2013 08:14:45 -0500
-Content-Disposition: inline
-In-Reply-To: <bug-66951-13602@https.bugzilla.kernel.org/>
+Received: from smtprelay03.ispgateway.de ([80.67.29.28]:60054 "EHLO
+	smtprelay03.ispgateway.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753762Ab3LPOwy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Dec 2013 09:52:54 -0500
+Received: from [131.159.46.89]
+	by smtprelay03.ispgateway.de with esmtpsa (TLSv1:AES256-SHA:256)
+	(Exim 4.68)
+	(envelope-from <lars@public.noschinski.de>)
+	id 1VsZRW-00009E-6u
+	for linux-ext4@vger.kernel.org; Mon, 16 Dec 2013 15:46:46 +0100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-On Sat, Dec 14, 2013 at 12:09:19AM +0000, bugzilla-daemon@bugzilla.kernel.org wrote:
-> https://bugzilla.kernel.org/show_bug.cgi?id=66951
-> 
->             Bug ID: 66951
->            Summary: filesystems should reserve inodes for root as they do
->                     disk space
->            Product: File System
->            Version: 2.5
->     Kernel Version: 3.11.10
->           Hardware: All
->                 OS: Linux
->               Tree: Mainline
->             Status: NEW
->           Severity: enhancement
->           Priority: P1
->          Component: ext4
->           Assignee: fs_ext4@kernel-bugs.osdl.org
->           Reporter: kernelbugs@tecnopolis.ca
->         Regression: No
-> 
-> I had a runaway non-root user process (Opera browser actually) exhaust all of
-> the inodes on my / (root) filesystem (ext4) by creating millions of 10 to 50
-> byte cache files in /home (which is not a separate partition on my system). 
-> Linux & ext4 happily allowed this program to cripple the whole system until I
-> figured out a) inodes were exhausted and b) what app was causing it and where
-> they all were, and c) rm -rf them all.
-> 
-> We all know filesystems like ext2/3/4 reserve a (tunable) amount of space for
-> root use only if a disk fills beyond a certain threshold.  I find it shocking
-> that a similar mechanism does not exist for inodes.  Most *NIX geeks I know
-> also can't believe it.  Do you find it shocking too?
-> 
-Yes, having an inode amount reserved for root might be good to avoid these
-cases.
+[Please tell me if this message is not appropriate here, but the
+ext3-users ML seems to be dead since a few months]
 
-> One could argue I should have /home on a separate partition, but this is a
-> non-solution because all it takes is one user-writable directory in / (root)
-> such as /var/tmp.  Sure, then you could say /var should be a separate
-> partition, but let's be realistic: 95%+ of systems out there will not have a
-> separate /home or /var partition (let alone both).  Also, no distros by default
-> create separate partitions for all of these.
-> 
-Sorry, but you're wrong here.
+Hi everyone,
 
-Almost all good system administrators knows the importance of keep directories
-like /home and /var in different filesystems, for simply 2 reasons: 
-- Keep system data separated from user data
-- /var will store logs, and this might be HUGE in some cases.
+I have got a hard disk which was damaged by a fall and would like to
+recover a few files from that. (There is a backup for most of the
+data, but a handful of recent files are missing. These are important
+enough to spend some time on them, but not for paying a professional
+data recovery service).
 
-And also, most distros I know of keeps /var and /home separated in their default
-installations.
+Using GNU ddrescue I was able to read 99.8% of an ext3(or 4?)
+partition, so there's hope the data is still there. Unfortunately,
+some key parts of the file system seem to be damaged, so e2fsck fails:
 
-So, there is no excuse to keep /home and /var in different filesystems. Even if
-you have just a single user, keep a separate /home filesystem is always
-recommended.
+- ------------------------------
+% ddrescuelog -l- -b4096 sdd5.ddrescue.log > badblocks.sdd5.4096
+% e2fsck -b 20480000 -v -f -L badblocks.sdd5.4096 sdd5
+[...]
+Pass 1: Checking inodes, blocks, and sizes
+Block 1 in the primary group descriptors is on the bad block list
 
-> One could argue you should have your inode capacity be set so large it would be
-> impossible to exhaust it before you run out of disk space.  That point is moot
-> because a program could create 0 byte files, thus allowing exhaustion of inodes
-> before free space (which would remain unchanged).  Besides, one should be
-> allowed to tune their inodes at fs creation time to suit their usage habits as
-> monitored over the years (such as looking at their usual NBPI and adding a 2 or
-> 4X safety margin).
-> 
-I agree that change the inode capacity wouldn't make the system behave any
-better.
+If the block is really bad, the filesystem can not be fixed.
+You can remove this block from the bad block list and hope
+that the block is really OK.  But there are no guarantees.
+- ------------------------------
+[at 20480000 there seems to be an intact superblock; got the number
+(and the block size) from 'mke2fs -n']
 
-> One could argue you could use quotas, but that seems unreasonable for the
-> average guy (like myself) to do on their home desktop computer that only they
-> use.
-> 
-Agreed indeed.
 
-> Can ext2/3/4 and the kernel be modified to reserve a (tunable) number of inodes
-> for root just as it does for disk space?
-> 
-I'm not sure how feasible it is or if is there any kind of job being done or
-already done in this area, but is a good idea and I just added it to my TODO
-list.
+The files I am interested in are located under /home/$USER/Desktop and
+/home/$USER/Dokumente; so I tried accessing them with debugfs.
+Unfortunately, /home/$USER seems to be corrupted:
 
-In the meantime, this isn't just a matter of how ext4 behaves regarding the
-amount of inode, but looks like a BUG in your browser, or maybe you're accessing
-a site which creates thousands of inodes?
+- ------------------------------
+% LESS=FSRX debugfs -s 20480000 -b 4096 sdd5
+debugfs 1.42.8 (20-Jun-2013)
+debugfs:  cd /home/$USER
+debugfs:  ls
 
--- 
-Carlos
+EXT2 directory corrupted
+- ------------------------------
+
+So, any hints for me how to proceed? Is there a way to access the
+Desktop and Dokumente subdirectories (provided they are themselves
+undamaged)?
+
+Also, I interrupted ddrescue for my access attempt (because it takes
+really long to get all the still-good sectors from a 200GB partition).
+Can debugfs show me where on the disk /home/$USER is located? This
+would allow me to instruct ddrescue to concentrate on these parts.
+
+  Best regards, Lars
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.15 (GNU/Linux)
+Comment: Using GnuPG with Icedove - http://www.enigmail.net/
+
+iQEcBAEBAgAGBQJSrxJTAAoJEOUX5T7UhMS6WbEIAN1FUBc2U9o9Vrad0jtMbZDM
+xD7tkr5+Z/dxefW/kQQk3eh4f+oqIKQgx8nCVOD84/Of7Oc9JHvKmROj4KBcf0C1
+APa04JiYfa5RY+6wGAeKS896/C8qABCV6toHJ5ko1ZxgLTFTiiWeIlepsW77cPJ4
+5jYLdjI0V4qHbPOxRE3aRABk57fe20YNoiNtdKU7scgz6Vbd8JwL/5D1tH0+5l2r
+kRMModB7+kWl2e/Q7vy9721clXRnkyAr03Q+eg/n/h8P39qee1B+fhnwhWWJvZWt
+yAdNtLKDc/rJ7Sths0fJqSiNo220j0FSSD/YCBJVe3XehwHRIo0RYHn/RrVqo3M=
+=yfSt
+-----END PGP SIGNATURE-----
