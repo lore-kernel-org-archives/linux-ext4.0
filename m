@@ -1,50 +1,66 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Recover files from a broken ext3 partition
-Date: Mon, 16 Dec 2013 09:59:20 -0500
-Message-ID: <20131216145920.GA6991@thunk.org>
-References: <52AF1253.1000608@public.noschinski.de>
+From: Srivatsan Canchivaram <crsrivatstechnical@gmail.com>
+Subject: Re: Segmentation fault in mke2fs
+Date: Mon, 16 Dec 2013 11:17:09 -0500
+Message-ID: <CAO_L5k_UsqLhYqHeN-3mZL2RCp09sdpAL4xV0dhXAOqE_ScTaw@mail.gmail.com>
+References: <CAO_L5k9iSm88wrs9W_yNCD1i8sy0SXfXJdbCwL840Hnn6Ef-0g@mail.gmail.com>
+	<CAO_L5k_cLUdXNOhsAP6TkxtTHWv5hafx1dTmruaZnVmyGG0oKg@mail.gmail.com>
+	<20131214065950.GB24998@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1
 Cc: linux-ext4@vger.kernel.org
-To: Lars Noschinski <lars@public.noschinski.de>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:40631 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753920Ab3LPO7Y (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Dec 2013 09:59:24 -0500
-Content-Disposition: inline
-In-Reply-To: <52AF1253.1000608@public.noschinski.de>
+Received: from mail-pa0-f44.google.com ([209.85.220.44]:38303 "EHLO
+	mail-pa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754143Ab3LPQRJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Dec 2013 11:17:09 -0500
+Received: by mail-pa0-f44.google.com with SMTP id fa1so3156514pad.3
+        for <linux-ext4@vger.kernel.org>; Mon, 16 Dec 2013 08:17:09 -0800 (PST)
+In-Reply-To: <20131214065950.GB24998@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Dec 16, 2013 at 03:46:43PM +0100, Lars Noschinski wrote:
-> I have got a hard disk which was damaged by a fall and would like to
-> recover a few files from that. (There is a backup for most of the
-> data, but a handful of recent files are missing. These are important
-> enough to spend some time on them, but not for paying a professional
-> data recovery service).
-> 
-> Using GNU ddrescue I was able to read 99.8% of an ext3(or 4?)
-> partition, so there's hope the data is still there. Unfortunately,
-> some key parts of the file system seem to be damaged, so e2fsck fails:
-> 
-> - ------------------------------
-> % ddrescuelog -l- -b4096 sdd5.ddrescue.log > badblocks.sdd5.4096
-> % e2fsck -b 20480000 -v -f -L badblocks.sdd5.4096 sdd5
-> [...]
-> Pass 1: Checking inodes, blocks, and sizes
-> Block 1 in the primary group descriptors is on the bad block list
-> 
-> If the block is really bad, the filesystem can not be fixed.
-> You can remove this block from the bad block list and hope
-> that the block is really OK.  But there are no guarantees.
-> - ------------------------------
-> [at 20480000 there seems to be an intact superblock; got the number
-> (and the block size) from 'mke2fs -n']
+Hi Ted,
 
-What I'd suggest doing is making a complete copy of the disk using
-ddrescue to a known good disk, and then run e2fsck on that.  It's
-going to be simplest, most foolproof way to recover the data.  Yes it
-will take a while, but you can let it run overnight...
+The hardware is a stable product that has been in use for a while.
+We have experienced a number of issues with the toolchain that we
+received from the vendor.
+They are about to release a new, official version this week.
 
-     	    	       	       	   - Ted
+So, I will try this test again with the new toolchain at some point soon.
+
+Thanks to you and Eric for the replies.
+
+Best,
+Sri
+
+On Sat, Dec 14, 2013 at 1:59 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+> On Fri, Dec 13, 2013 at 06:33:22PM -0500, Srivatsan Canchivaram wrote:
+>> Hello,
+>>
+>> I found that the segmentation fault occurs in optimized code (-O2). It
+>> does not happen when optimization is turned off. I am not sure what
+>> exactly happened but mke2fs is now able to get past that point.
+>
+> This is really starting to smell like a compiler bug.  Are you sure
+> you are using a stable version of gcc?
+>
+>> The command now fails at a different point:
+>>
+>> ext2fs_mkdir: EXT2 directory corrupted while creating /lost+found
+>>
+>> Tracing from the ext2fs_mkdir() function, I found that the code
+>> returns an error here:
+>> ext2fs_read_dir_block3(): returns EXT2_ET_DIR_CORRUPTED
+>
+> The mke2fs program has just created the root directory, and when it is
+> trying to link the newly created lost+found directory to the root
+> directory, when it reads in the just-created root directory, when it
+> tries to byte-swap the directory block, the values found the root
+> directory were insane.
+>
+> Combined with the fact that the other failure was someplace completely
+> diferent, I'm at this point deeply suspicious about your compiler tool
+> chain and/or your hardware where you are conducting your tests.
+>
+>                                          - Ted
