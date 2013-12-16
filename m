@@ -1,33 +1,45 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/4] e2image: perform in-place move
-Date: Sun, 15 Dec 2013 23:33:38 -0500
-Message-ID: <20131216043338.GD28536@thunk.org>
-References: <1381247792-22508-1-git-send-email-psusi@ubuntu.com>
- <1381247792-22508-3-git-send-email-psusi@ubuntu.com>
+Subject: Re: [PATCH 42/74] libext2fs: only punch complete clusters
+Date: Sun, 15 Dec 2013 23:52:59 -0500
+Message-ID: <20131216045259.GE28536@thunk.org>
+References: <20131211011813.30655.39624.stgit@birch.djwong.org>
+ <20131211012259.30655.62502.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Phillip Susi <psusi@ubuntu.com>
+Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:40356 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:40361 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752512Ab3LPEdk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 15 Dec 2013 23:33:40 -0500
+	id S1752240Ab3LPExE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 15 Dec 2013 23:53:04 -0500
 Content-Disposition: inline
-In-Reply-To: <1381247792-22508-3-git-send-email-psusi@ubuntu.com>
+In-Reply-To: <20131211012259.30655.62502.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 08, 2013 at 11:56:30AM -0400, Phillip Susi wrote:
-> If given at least one offset and only one file, assume source
-> and dest are the same, and do an in place move.
+On Tue, Dec 10, 2013 at 05:22:59PM -0800, Darrick J. Wong wrote:
+> When bigalloc is enabled, using ext2fs_block_alloc_stats2() to free
+> any block in a cluster has the effect of freeing the entire cluster.
+> This is problematic if a caller instructs us to punch, say, blocks
+> 12-15 of a 16-block cluster, because blocks 0-11 now point to a "free"
+> cluster.
 > 
-> Signed-off-by: Phillip Susi <psusi@ubuntu.com>
+> The naive way to solve this problem is to see if any of the other
+> blocks in this logical cluster map to a physical cluster.  If so, then
+> we know that the cluster is still in use and it mustn't be freed.
+> Otherwise, we are punching the last mapped block in this cluster, so
+> we can free the cluster.
+> 
+> The implementation given only does the rigorous checks for the partial
+> clusters at the beginning and end of the punching range.
+> 
+> v2: Refactor the block free code into a separate helper function that
+> should be more efficient.
+> 
+> Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-You **really** only want to allow move_mode if you are in raw mode.
-In particular, the safe move isn't even implemented in the other mods
-(nor does it make any sense), and if the user simply forgot to specify
--r, it would be a shame if it ended up destroying the user's file
-system.  :-(
+Thanks, applied.
 
 						- Ted
