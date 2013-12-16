@@ -1,66 +1,47 @@
-From: Srivatsan Canchivaram <crsrivatstechnical@gmail.com>
-Subject: Re: Segmentation fault in mke2fs
-Date: Mon, 16 Dec 2013 11:17:09 -0500
-Message-ID: <CAO_L5k_UsqLhYqHeN-3mZL2RCp09sdpAL4xV0dhXAOqE_ScTaw@mail.gmail.com>
-References: <CAO_L5k9iSm88wrs9W_yNCD1i8sy0SXfXJdbCwL840Hnn6Ef-0g@mail.gmail.com>
-	<CAO_L5k_cLUdXNOhsAP6TkxtTHWv5hafx1dTmruaZnVmyGG0oKg@mail.gmail.com>
-	<20131214065950.GB24998@thunk.org>
+From: Phillip Susi <psusi@ubuntu.com>
+Subject: Re: [PATCH 1/4] e2image: add offset switches
+Date: Mon, 16 Dec 2013 11:30:06 -0500
+Message-ID: <52AF2A8E.8030207@ubuntu.com>
+References: <1381247792-22508-1-git-send-email-psusi@ubuntu.com> <1381247792-22508-2-git-send-email-psusi@ubuntu.com> <20131216043228.GC28536@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f44.google.com ([209.85.220.44]:38303 "EHLO
-	mail-pa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754143Ab3LPQRJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Dec 2013 11:17:09 -0500
-Received: by mail-pa0-f44.google.com with SMTP id fa1so3156514pad.3
-        for <linux-ext4@vger.kernel.org>; Mon, 16 Dec 2013 08:17:09 -0800 (PST)
-In-Reply-To: <20131214065950.GB24998@thunk.org>
+Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:62460 "EHLO
+	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754520Ab3LPQaJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Dec 2013 11:30:09 -0500
+In-Reply-To: <20131216043228.GC28536@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-The hardware is a stable product that has been in use for a while.
-We have experienced a number of issues with the toolchain that we
-received from the vendor.
-They are about to release a new, official version this week.
+On 12/15/2013 11:32 PM, Theodore Ts'o wrote:
+> On Tue, Oct 08, 2013 at 11:56:29AM -0400, Phillip Susi wrote:
+>> Add -o and -O switches to specify the offset where the source and
+>> destination filesystems start.  This is useful if you have an
+>> image of a partitioned disk or wish to create one.
+>> 
+>> Signed-off-by: Phillip Susi <psusi@ubuntu.com>
+> 
+> Specifying a dest_offset only makes sense in raw mode, no?
 
-So, I will try this test again with the new toolchain at some point soon.
+I think it makes sense in qcow2 mode, but it seems it doesn't work and
+isn't trivial to fix, so I'll disable it for now.
 
-Thanks to you and Eric for the replies.
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.17 (MingW32)
+Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
 
-Best,
-Sri
-
-On Sat, Dec 14, 2013 at 1:59 AM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Fri, Dec 13, 2013 at 06:33:22PM -0500, Srivatsan Canchivaram wrote:
->> Hello,
->>
->> I found that the segmentation fault occurs in optimized code (-O2). It
->> does not happen when optimization is turned off. I am not sure what
->> exactly happened but mke2fs is now able to get past that point.
->
-> This is really starting to smell like a compiler bug.  Are you sure
-> you are using a stable version of gcc?
->
->> The command now fails at a different point:
->>
->> ext2fs_mkdir: EXT2 directory corrupted while creating /lost+found
->>
->> Tracing from the ext2fs_mkdir() function, I found that the code
->> returns an error here:
->> ext2fs_read_dir_block3(): returns EXT2_ET_DIR_CORRUPTED
->
-> The mke2fs program has just created the root directory, and when it is
-> trying to link the newly created lost+found directory to the root
-> directory, when it reads in the just-created root directory, when it
-> tries to byte-swap the directory block, the values found the root
-> directory were insane.
->
-> Combined with the fact that the other failure was someplace completely
-> diferent, I'm at this point deeply suspicious about your compiler tool
-> chain and/or your hardware where you are conducting your tests.
->
->                                          - Ted
+iQEcBAEBAgAGBQJSryqNAAoJEI5FoCIzSKrwJi0H/jA0887Dku5kMrpga3fTJCf+
+rjGe93qHoqf6DOprj+2XI4cTJOY572729QrxKqbtlicY5F7lbB/9JKXn4VNcFJEk
+6+1iQHh5mmFMP9g2hWxQPgfm93UAUYlC/pWyQvwTeUjKBp+EPYmoUtrDIZYpc79S
+eFIsFt2TwduQ3zcwwLLOx2knQNyic9e3mwPF0NeIXbByfAW6hhPHLh1eg4zbTcJH
+GYQqNyjk0vS0qmW+CBfAxyH4eYk6JgXtmg8c+8eePwlQLpbIoYW84cs6+yWbAu1y
+1tVeqi2YTuYk+kU0t5DEj5sHoYzSXTZCukO8G/cThrhEMVnG1pwNRH8egjoyyYo=
+=Ty8d
+-----END PGP SIGNATURE-----
