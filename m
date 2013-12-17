@@ -1,88 +1,55 @@
 From: Matthew Wilcox <matthew.r.wilcox@intel.com>
-Subject: [PATCH v3 1/3] Fix XIP fault vs truncate race
-Date: Tue, 17 Dec 2013 14:18:26 -0500
-Message-ID: <80f716b02d8e1bb90bf5bdc4e52cbd4c40909945.1387307259.git.matthew.r.wilcox@intel.com>
-References: <cover.1387307259.git.matthew.r.wilcox@intel.com>
+Subject: [PATCH v3 0/3] Add XIP support to ext4
+Date: Tue, 17 Dec 2013 14:18:25 -0500
+Message-ID: <cover.1387307259.git.matthew.r.wilcox@intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 Cc: Matthew Wilcox <matthew.r.wilcox@intel.com>
 To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <cover.1387307259.git.matthew.r.wilcox@intel.com>
-In-Reply-To: <cover.1387307259.git.matthew.r.wilcox@intel.com>
-References: <cover.1387307259.git.matthew.r.wilcox@intel.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mga02.intel.com ([134.134.136.20]:51440 "EHLO mga02.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751884Ab3LQTSj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Dec 2013 14:18:39 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Pagecache faults recheck i_size after taking the page lock to ensure that
-the fault didn't race against a truncate.  We don't have a page to lock
-in the XIP case, so use the i_mmap_mutex instead.  It is locked in the
-truncate path in unmap_mapping_range() after updating i_size.  So while
-we hold it in the fault path, we are guaranteed that either i_size has
-already been updated in the truncate path, or that the truncate will
-subsequently call zap_page_range_single() and so remove the mapping we
-have just inserted.
+For v3, we've addressed the problem with unwritten extents that Dave
+Chinner pointed out.  Rather than testing bh_unwritten() as he suggested,
+I opted for checking !buffer_mapped() as block_read_full_page() in
+fs/buffer.c does.  While I'm in that function I renamed the buffer_head
+from 'tmp' to 'bh' to follow normal usage.
 
-There is a window of time in which i_size has been reduced and the
-thread has a mapping to a page which will be removed from the file,
-but this is harmless as the page will not be allocated to a different
-purpose before the thread's access to it is revoked.
+I also folded the "ext4: Add xip hole punching" patch into the main
+"Add XIP functionality" patch since otherwise we're introducing broken
+functionality in the middle of the series.
 
-Signed-off-by: Matthew Wilcox <matthew.r.wilcox@intel.com>
----
- mm/filemap_xip.c | 24 ++++++++++++++++++++++--
- 1 file changed, 22 insertions(+), 2 deletions(-)
+Matthew Wilcox (2):
+  Fix XIP fault vs truncate race
+  xip: Add xip_zero_page_range
 
-diff --git a/mm/filemap_xip.c b/mm/filemap_xip.c
-index d8d9fe3..c8d23e9 100644
---- a/mm/filemap_xip.c
-+++ b/mm/filemap_xip.c
-@@ -260,8 +260,17 @@ again:
- 		__xip_unmap(mapping, vmf->pgoff);
- 
- found:
-+		/* We must recheck i_size under i_mmap_mutex */
-+		mutex_lock(&mapping->i_mmap_mutex);
-+		size = (i_size_read(inode) + PAGE_CACHE_SIZE - 1) >>
-+							PAGE_CACHE_SHIFT;
-+		if (unlikely(vmf->pgoff >= size)) {
-+			mutex_unlock(&mapping->i_mmap_mutex);
-+			return VM_FAULT_SIGBUS;
-+		}
- 		err = vm_insert_mixed(vma, (unsigned long)vmf->virtual_address,
- 							xip_pfn);
-+		mutex_unlock(&mapping->i_mmap_mutex);
- 		if (err == -ENOMEM)
- 			return VM_FAULT_OOM;
- 		/*
-@@ -285,16 +294,27 @@ found:
- 		}
- 		if (error != -ENODATA)
- 			goto out;
-+
-+		/* We must recheck i_size under i_mmap_mutex */
-+		mutex_lock(&mapping->i_mmap_mutex);
-+		size = (i_size_read(inode) + PAGE_CACHE_SIZE - 1) >>
-+							PAGE_CACHE_SHIFT;
-+		if (unlikely(vmf->pgoff >= size)) {
-+			ret = VM_FAULT_SIGBUS;
-+			goto unlock;
-+		}
- 		/* not shared and writable, use xip_sparse_page() */
- 		page = xip_sparse_page();
- 		if (!page)
--			goto out;
-+			goto unlock;
- 		err = vm_insert_page(vma, (unsigned long)vmf->virtual_address,
- 							page);
- 		if (err == -ENOMEM)
--			goto out;
-+			goto unlock;
- 
- 		ret = VM_FAULT_NOPAGE;
-+unlock:
-+		mutex_unlock(&mapping->i_mmap_mutex);
- out:
- 		write_seqcount_end(&xip_sparse_seq);
- 		mutex_unlock(&xip_sparse_mutex);
+Ross Zwisler (1):
+  ext4: Add XIP functionality
+
+ Documentation/filesystems/ext4.txt |  2 +
+ Documentation/filesystems/xip.txt  |  3 ++
+ fs/Kconfig                         |  2 +-
+ fs/ext4/Kconfig                    | 11 +++++
+ fs/ext4/Makefile                   |  1 +
+ fs/ext4/ext4.h                     |  4 +-
+ fs/ext4/file.c                     | 17 ++++++++
+ fs/ext4/inode.c                    | 86 +++++++++++++++++++++++++++-----------
+ fs/ext4/namei.c                    | 11 ++++-
+ fs/ext4/super.c                    | 36 +++++++++++++++-
+ fs/ext4/xip.c                      | 78 ++++++++++++++++++++++++++++++++++
+ fs/ext4/xip.h                      | 24 +++++++++++
+ include/linux/fs.h                 |  8 ++++
+ mm/filemap_xip.c                   | 55 ++++++++++++++++--------
+ 14 files changed, 289 insertions(+), 49 deletions(-)
+ create mode 100644 fs/ext4/xip.c
+ create mode 100644 fs/ext4/xip.h
+
 -- 
 1.8.4.rc3
 
