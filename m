@@ -1,43 +1,88 @@
-From: Rich Johnston <rjohnston@sgi.com>
-Subject: Re: [PATCH v4 4/10] xfsprog: xfsio: Add support
-	FALLOC_FL_COLLAPSE_RANGE for fallocate
-Date: Tue, 17 Dec 2013 11:05:10 -0600
-Message-ID: <52B08446.3080102@sgi.com>
-References: <1386511890-3794-1-git-send-email-linkinjeon@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"; Format="flowed"
-Content-Transfer-Encoding: 7bit
-Cc: Namjae Jeon <namjae.jeon@samsung.com>, linux-kernel@vger.kernel.org,
-	xfs@oss.sgi.com, Ashish Sangwan <a.sangwan@samsung.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Namjae Jeon <linkinjeon@gmail.com>, <viro@zeniv.linux.org.uk>,
-	<david@fromorbit.com>, <bpm@sgi.com>, <tytso@mit.edu>,
-	<adilger.kernel@dilger.ca>, <jack@suse.cz>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <1386511890-3794-1-git-send-email-linkinjeon@gmail.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+From: Matthew Wilcox <matthew.r.wilcox@intel.com>
+Subject: [PATCH v3 1/3] Fix XIP fault vs truncate race
+Date: Tue, 17 Dec 2013 14:18:26 -0500
+Message-ID: <80f716b02d8e1bb90bf5bdc4e52cbd4c40909945.1387307259.git.matthew.r.wilcox@intel.com>
+References: <cover.1387307259.git.matthew.r.wilcox@intel.com>
+Cc: Matthew Wilcox <matthew.r.wilcox@intel.com>
+To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <cover.1387307259.git.matthew.r.wilcox@intel.com>
+In-Reply-To: <cover.1387307259.git.matthew.r.wilcox@intel.com>
+References: <cover.1387307259.git.matthew.r.wilcox@intel.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This patch stands alone and has been committed.
+Pagecache faults recheck i_size after taking the page lock to ensure that
+the fault didn't race against a truncate.  We don't have a page to lock
+in the XIP case, so use the i_mmap_mutex instead.  It is locked in the
+truncate path in unmap_mapping_range() after updating i_size.  So while
+we hold it in the fault path, we are guaranteed that either i_size has
+already been updated in the truncate path, or that the truncate will
+subsequently call zap_page_range_single() and so remove the mapping we
+have just inserted.
 
-Thanks
---Rich
+There is a window of time in which i_size has been reduced and the
+thread has a mapping to a page which will be removed from the file,
+but this is harmless as the page will not be allocated to a different
+purpose before the thread's access to it is revoked.
 
-commit ca692f162d36c871c9c1b6169136b2c70503f2d8
-Author: Namjae Jeon <namjae.jeon@samsung.com>
-Date:   Sun Dec 8 14:11:30 2013 +0000
+Signed-off-by: Matthew Wilcox <matthew.r.wilcox@intel.com>
+---
+ mm/filemap_xip.c | 24 ++++++++++++++++++++++--
+ 1 file changed, 22 insertions(+), 2 deletions(-)
 
-     xfsprog: xfsio: Add support FALLOC_FL_COLLAPSE_RANGE for fallocate
+diff --git a/mm/filemap_xip.c b/mm/filemap_xip.c
+index d8d9fe3..c8d23e9 100644
+--- a/mm/filemap_xip.c
++++ b/mm/filemap_xip.c
+@@ -260,8 +260,17 @@ again:
+ 		__xip_unmap(mapping, vmf->pgoff);
+ 
+ found:
++		/* We must recheck i_size under i_mmap_mutex */
++		mutex_lock(&mapping->i_mmap_mutex);
++		size = (i_size_read(inode) + PAGE_CACHE_SIZE - 1) >>
++							PAGE_CACHE_SHIFT;
++		if (unlikely(vmf->pgoff >= size)) {
++			mutex_unlock(&mapping->i_mmap_mutex);
++			return VM_FAULT_SIGBUS;
++		}
+ 		err = vm_insert_mixed(vma, (unsigned long)vmf->virtual_address,
+ 							xip_pfn);
++		mutex_unlock(&mapping->i_mmap_mutex);
+ 		if (err == -ENOMEM)
+ 			return VM_FAULT_OOM;
+ 		/*
+@@ -285,16 +294,27 @@ found:
+ 		}
+ 		if (error != -ENODATA)
+ 			goto out;
++
++		/* We must recheck i_size under i_mmap_mutex */
++		mutex_lock(&mapping->i_mmap_mutex);
++		size = (i_size_read(inode) + PAGE_CACHE_SIZE - 1) >>
++							PAGE_CACHE_SHIFT;
++		if (unlikely(vmf->pgoff >= size)) {
++			ret = VM_FAULT_SIGBUS;
++			goto unlock;
++		}
+ 		/* not shared and writable, use xip_sparse_page() */
+ 		page = xip_sparse_page();
+ 		if (!page)
+-			goto out;
++			goto unlock;
+ 		err = vm_insert_page(vma, (unsigned long)vmf->virtual_address,
+ 							page);
+ 		if (err == -ENOMEM)
+-			goto out;
++			goto unlock;
+ 
+ 		ret = VM_FAULT_NOPAGE;
++unlock:
++		mutex_unlock(&mapping->i_mmap_mutex);
+ out:
+ 		write_seqcount_end(&xip_sparse_seq);
+ 		mutex_unlock(&xip_sparse_mutex);
+-- 
+1.8.4.rc3
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
