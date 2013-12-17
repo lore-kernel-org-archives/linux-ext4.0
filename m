@@ -1,104 +1,106 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH 3/4] filefrag: reserve fields and new extent flags
-Date: Mon, 16 Dec 2013 18:05:30 -0700
-Message-ID: <1387242331-29227-3-git-send-email-adilger@dilger.ca>
-References: <1387242331-29227-1-git-send-email-adilger@dilger.ca>
-Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
-To: tytso@mit.edu
+From: Eric Whitney <enwlinux@gmail.com>
+Subject: [PATCH] e2fsck: fix printf conversion specs in ea_refcount.c
+Date: Mon, 16 Dec 2013 21:36:39 -0500
+Message-ID: <20131217023639.GB2173@wallace>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out-04.shaw.ca ([64.59.134.12]:58496 "EHLO
-	smtp-out-04.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752304Ab3LQBPL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Dec 2013 20:15:11 -0500
-In-Reply-To: <1387242331-29227-1-git-send-email-adilger@dilger.ca>
+Received: from mail-qe0-f42.google.com ([209.85.128.42]:62097 "EHLO
+	mail-qe0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752502Ab3LQCgo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Dec 2013 21:36:44 -0500
+Received: by mail-qe0-f42.google.com with SMTP id b4so4719267qen.29
+        for <linux-ext4@vger.kernel.org>; Mon, 16 Dec 2013 18:36:43 -0800 (PST)
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Reserve the FIEMAP_EXTENT_DATA_COMPRESSED flag to allow reporting
-extents with physical length different than logical length.  This
-also sets the FIEMAP_EXTENT_ENCODED flag to indicate that the data
-cannot be accessed directly.  This adds a new fe_phys_length field
-to struct fiemap_extent which specifies the physical extent length
-in bytes when DATA_COMPRESSED is set.  Linux 3.14 and later kernels
-will fill out the fe_phys_length field, but in older kernels the
-contents are undefined (though typically zero).
+Commit 130e961a6fb9d38997c83c6397cf9ddb5ed2491f changed the type
+used to represent block numbers in ea_refcount.c from blk_t to blk64_t
+to add support for 64 bit extended attribute refcounting.  We also
+need to adjust printf conversion specs that now don't match their new
+blk64_t arguments.  This will silence compiler warnings seen when
+"make check" is run and will avoid truncation of printed values.
 
-Reserve the FIEMAP_EXTENT_NET flag, which indicates that the data
-is on a network filesystem.  This also sets FIEMAP_EXTENT_ENCODED
-flag to indicate the data cannot be accessed directly.
-
-Print out these flags in filefrag if detected.
-
-Signed-off-by: Andreas Dilger <adilger@dilger.ca>
+Signed-off-by: Eric Whitney <enwlinux@gmail.com>
 ---
- lib/ext2fs/fiemap.h |   14 ++++++++++----
- misc/filefrag.c     |    2 ++
- 2 files changed, 12 insertions(+), 4 deletions(-)
+ e2fsck/ea_refcount.c | 21 +++++++++++----------
+ 1 file changed, 11 insertions(+), 10 deletions(-)
 
-diff --git a/lib/ext2fs/fiemap.h b/lib/ext2fs/fiemap.h
-index 30bf555..df973da 100644
---- a/lib/ext2fs/fiemap.h
-+++ b/lib/ext2fs/fiemap.h
-@@ -17,15 +17,17 @@ struct fiemap_extent {
- 	__u64 fe_physical; /* physical offset in bytes for the start
- 			    * of the extent from the beginning of the disk */
- 	__u64 fe_length;   /* length in bytes for this extent */
--	__u64 fe_reserved64[2];
-+	__u64 fe_phys_length; /* physical length in bytes for this extent,
-+			       * undefined if DATA_COMPRESSED not set */
-+	__u64 fe_reserved64;
- 	__u32 fe_flags;    /* FIEMAP_EXTENT_* flags for this extent */
- 	__u32 fe_reserved[3];
- };
- 
- struct fiemap {
--	__u64 fm_start;		/* logical offset (inclusive) at
-+	__u64 fm_start;		/* logical offset in bytes (inclusive) at
- 				 * which to start mapping (in) */
--	__u64 fm_length;	/* logical length of mapping which
-+	__u64 fm_length;	/* logical length in bytes of mapping which
- 				 * userspace wants (in) */
- 	__u32 fm_flags;		/* FIEMAP_FLAG_* flags for request (in/out) */
- 	__u32 fm_mapped_extents;/* number of extents that were mapped (out) */
-@@ -51,8 +53,10 @@ struct fiemap {
- 						    * Sets EXTENT_UNKNOWN. */
- #define FIEMAP_EXTENT_ENCODED		0x00000008 /* Data can not be read
- 						    * while fs is unmounted */
-+#define FIEMAP_EXTENT_DATA_COMPRESSED	0x00000040 /* Data is compressed by fs.
-+						    * Sets EXTENT_ENCODED. */
- #define FIEMAP_EXTENT_DATA_ENCRYPTED	0x00000080 /* Data is encrypted by fs.
--						    * Sets EXTENT_NO_BYPASS. */
-+						    * Sets EXTENT_ENCODED. */
- #define FIEMAP_EXTENT_NOT_ALIGNED	0x00000100 /* Extent offsets may not be
- 						    * block aligned. */
- #define FIEMAP_EXTENT_DATA_INLINE	0x00000200 /* Data mixed with metadata.
-@@ -64,5 +68,7 @@ struct fiemap {
- #define FIEMAP_EXTENT_MERGED		0x00001000 /* File does not natively
- 						    * support extents. Result
- 						    * merged for efficiency. */
-+#define FIEMAP_EXTENT_NET		0x80000000 /* Data stored remotely.
-+						    * Sets EXTENT_ENCODED. */
- 
- #endif /* _LINUX_FIEMAP_H */
-diff --git a/misc/filefrag.c b/misc/filefrag.c
-index 6289899..7096abb 100644
---- a/misc/filefrag.c
-+++ b/misc/filefrag.c
-@@ -158,12 +158,14 @@ static void print_extent_info(struct fiemap_extent *fm_extent, int cur_ex,
- 
- 	print_flag(&flags, FIEMAP_EXTENT_UNKNOWN, buf, "unknown,");
- 	print_flag(&flags, FIEMAP_EXTENT_DELALLOC, buf, "delalloc,");
-+	print_flag(&flags, FIEMAP_EXTENT_DATA_COMPRESSED, buf, "compressed,");
- 	print_flag(&flags, FIEMAP_EXTENT_DATA_ENCRYPTED, buf, "encrypted,");
- 	print_flag(&flags, FIEMAP_EXTENT_NOT_ALIGNED, buf, "not_aligned,");
- 	print_flag(&flags, FIEMAP_EXTENT_DATA_INLINE, buf, "inline,");
- 	print_flag(&flags, FIEMAP_EXTENT_DATA_TAIL, buf, "tail_packed,");
- 	print_flag(&flags, FIEMAP_EXTENT_UNWRITTEN, buf, "unwritten,");
- 	print_flag(&flags, FIEMAP_EXTENT_MERGED, buf, "merged,");
-+	print_flag(&flags, FIEMAP_EXTENT_NET, buf, "net,");
- 	print_flag(&flags, FIEMAP_EXTENT_LAST, buf, "last,");
- 	/* Print unknown flags in hex format.  Known flags are already printed
- 	 * above and will have their bit cleared from "flags". */
+diff --git a/e2fsck/ea_refcount.c b/e2fsck/ea_refcount.c
+index 3836c5d..fcfaf49 100644
+--- a/e2fsck/ea_refcount.c
++++ b/e2fsck/ea_refcount.c
+@@ -310,7 +310,8 @@ errcode_t ea_refcount_validate(ext2_refcount_t refcount, FILE *out)
+ 	}
+ 	for (i=1; i < refcount->count; i++) {
+ 		if (refcount->list[i-1].ea_blk >= refcount->list[i].ea_blk) {
+-			fprintf(out, "%s: list[%d].blk=%u, list[%d].blk=%u\n",
++			fprintf(out,
++				"%s: list[%d].blk=%llu, list[%d].blk=%llu\n",
+ 				bad, i-1, refcount->list[i-1].ea_blk,
+ 				i, refcount->list[i].ea_blk);
+ 			ret = EXT2_ET_INVALID_ARGUMENT;
+@@ -396,20 +397,20 @@ int main(int argc, char **argv)
+ 		case BCODE_STORE:
+ 			blk = (blk_t) bcode_program[i++];
+ 			arg = bcode_program[i++];
+-			printf("Storing blk %u with value %d\n", blk, arg);
++			printf("Storing blk %llu with value %d\n", blk, arg);
+ 			retval = ea_refcount_store(refcount, blk, arg);
+ 			if (retval)
+ 				com_err("ea_refcount_store", retval,
+-					"while storing blk %u", blk);
++					"while storing blk %llu", blk);
+ 			break;
+ 		case BCODE_FETCH:
+ 			blk = (blk_t) bcode_program[i++];
+ 			retval = ea_refcount_fetch(refcount, blk, &arg);
+ 			if (retval)
+ 				com_err("ea_refcount_fetch", retval,
+-					"while fetching blk %u", blk);
++					"while fetching blk %llu", blk);
+ 			else
+-				printf("bcode_fetch(%u) returns %d\n",
++				printf("bcode_fetch(%llu) returns %d\n",
+ 				       blk, arg);
+ 			break;
+ 		case BCODE_INCR:
+@@ -417,9 +418,9 @@ int main(int argc, char **argv)
+ 			retval = ea_refcount_increment(refcount, blk, &arg);
+ 			if (retval)
+ 				com_err("ea_refcount_increment", retval,
+-					"while incrementing blk %u", blk);
++					"while incrementing blk %llu", blk);
+ 			else
+-				printf("bcode_increment(%u) returns %d\n",
++				printf("bcode_increment(%llu) returns %d\n",
+ 				       blk, arg);
+ 			break;
+ 		case BCODE_DECR:
+@@ -427,9 +428,9 @@ int main(int argc, char **argv)
+ 			retval = ea_refcount_decrement(refcount, blk, &arg);
+ 			if (retval)
+ 				com_err("ea_refcount_decrement", retval,
+-					"while decrementing blk %u", blk);
++					"while decrementing blk %llu", blk);
+ 			else
+-				printf("bcode_decrement(%u) returns %d\n",
++				printf("bcode_decrement(%llu) returns %d\n",
+ 				       blk, arg);
+ 			break;
+ 		case BCODE_VALIDATE:
+@@ -446,7 +447,7 @@ int main(int argc, char **argv)
+ 				blk = ea_refcount_intr_next(refcount, &arg);
+ 				if (!blk)
+ 					break;
+-				printf("\tblk=%u, count=%d\n", blk, arg);
++				printf("\tblk=%llu, count=%d\n", blk, arg);
+ 			}
+ 			break;
+ 		case BCODE_COLLAPSE:
 -- 
-1.7.3.4
+1.8.3.2
 
