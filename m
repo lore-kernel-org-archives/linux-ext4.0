@@ -1,119 +1,80 @@
-From: Dave Chinner <david@fromorbit.com>
+From: Matthew Wilcox <matthew@wil.cx>
 Subject: Re: [PATCH v3 0/3] Add XIP support to ext4
-Date: Wed, 18 Dec 2013 23:33:19 +1100
-Message-ID: <20131218123319.GH31386@dastard>
-References: <cover.1387307259.git.matthew.r.wilcox@intel.com>
- <20131217223050.GB20579@dastard>
- <20131218023143.GA24491@parisc-linux.org>
+Date: Wed, 18 Dec 2013 07:27:49 -0700
+Message-ID: <20131218142749.GA9207@parisc-linux.org>
+References: <cover.1387307259.git.matthew.r.wilcox@intel.com> <20131217223050.GB20579@dastard> <20131218023143.GA24491@parisc-linux.org> <20131218050127.GA15289@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Matthew Wilcox <matthew.r.wilcox@intel.com>,
+Cc: Dave Chinner <david@fromorbit.com>,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>,
 	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Matthew Wilcox <matthew@wil.cx>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from palinux.external.hp.com ([192.25.206.14]:48316 "EHLO
+	mail.parisc-linux.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754301Ab3LRO1w (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Dec 2013 09:27:52 -0500
 Content-Disposition: inline
-In-Reply-To: <20131218023143.GA24491@parisc-linux.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20131218050127.GA15289@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 17, 2013 at 07:31:43PM -0700, Matthew Wilcox wrote:
-> On Wed, Dec 18, 2013 at 09:30:50AM +1100, Dave Chinner wrote:
-> > On Tue, Dec 17, 2013 at 02:18:25PM -0500, Matthew Wilcox wrote:
-> > > For v3, we've addressed the problem with unwritten extents that Dave
-> > > Chinner pointed out. 
+On Wed, Dec 18, 2013 at 12:01:27AM -0500, Theodore Ts'o wrote:
+> On Tue, Dec 17, 2013 at 07:31:43PM -0700, Matthew Wilcox wrote:
+> > On Wed, Dec 18, 2013 at 09:30:50AM +1100, Dave Chinner wrote:
+> > > No, you haven't addressed the problem. There is nothing in this
+> > > patch set that converts an unwritten extent after it is written to.
+> > > Hence on every subsequent read will return zeros because the block
+> > > is still marked as unwritten.
 > > 
-> > No, you haven't addressed the problem. There is nothing in this
-> > patch set that converts an unwritten extent after it is written to.
-> > Hence on every subsequent read will return zeros because the block
-> > is still marked as unwritten.
+> > I don't understand.  Here's the path as I understand it:
+> > 
+> > xip_file_write -> __xip_file_write -> ext4_get_xip_mem(create=0),
+> > returns -ENODATA.  So we call ext4_get_xip_mem again, this time with
+> > create=1 which causes ext4_get_block() to allocate blocks.
 > 
-> I don't understand.  Here's the path as I understand it:
-> 
-> xip_file_write -> __xip_file_write -> ext4_get_xip_mem(create=0),
-> returns -ENODATA.  So we call ext4_get_xip_mem again, this time with
-> create=1 which causes ext4_get_block() to allocate blocks.
+> When Dave says that the extent is unwritten, what he means is that the
+> block as been allocated, but it is marked as being uninitialized.
+> Since the block is uninitialized we must not read from that block;
+> instead, if the user issues a read request to an uninitialized block,
+> we must return all zero's for that block (lest we reveal stale data).
+> And if we try to write to an uninitialized block, *after* we write to
+> the data block, we have to clear the uninitalized block, which in some
+> cases might mean splitting the extent --- if we have an extent which
+> maps logical blocks 0 to 5 to physical blocks 100 to 105, and we write
+> to block #2, will need to change that single uninitialized extent to
+> three extents --- one covering blocks logical blocks 0-1, one covering
+> logical block 2, and one covering logical blocks 3-5, where the first
+> and third would be marked uninitialized, and the second would be
+> marked initialized.  Since we potentially need to convert one extent
+> to three extents, this might involve an extent tree node split.
 
-Ted has already answered this, so I'll skip it.
+So I think we do all that.  If xip_file_read() sees a block which is
+!buffer_mapped, it fills with zeroes.  If xip_file_write() sees a block
+which is !buffer_mapped, it asks ext4_get_block to map it by passing
+in create=1.  Part of the patch includes zeroing the newly allocated
+block under i_data_sem before calling ext4_es_insert_extent(), which I
+think is enough to prevent reading stale data.
 
-> > Also, you haven't address the read vs truncate races I pointed out.
-> > That is, buffered read currently serialises against truncate via a
-> > combination of inode size checks and page locks. i.e. after each
-> > page is locked, it is checked to see if it is beyond EOF before
-> > the read proceeds into that page. the XIP path does not have any
-> > page locks, nor read IO locks, and so is not in any way serialised
-> > against a truncate changing the size of the inode while the read is
-> > in progress.
-> 
-> Umm ... what do you think patch 1/3 does?  If you think it doesn't fix
-> the race, I need you to explain why.
+> You keep talking about allocated vs unallocated, and create=0 and
+> create=1, but even for an allocated block, that block may be marked
+> initialized or uninitialized --- and if it is marked uninitialized,
+> xip_file_write must call a file system-specific callback to allow this
+> conversion to take place.
 
-That's something that happens with a mmap page fault. I'm talking
-about read(2) calls which end up in xip_file_read() ->
-do_xip_mapping_read().
+Could you take pity on me and tell me what flags I need to check in the
+buffer_head to determine this state of affairs?
 
-do_xip_mapping_read() samples the inode size before the copy loop,
-and then never looks at it again. The read doesn't hold any locks,
-because the way it's wired up it jumps straight from the .read
-method, so it goes:
+> In other words, suppose somone calls fallocate on a 2GB region on an
+> XIP mounted file system.  Would you be happy forcing 2GB's worth of
+> writes at fallocate time(), just because we don't want to deal with
+> adding a file system callback in xip_file_write()?
 
-vfs_read()
-  xip_file_read()
-    do_xip_mapping_read().
+I think there is a callback in xip_file_write(), and it's get_xip_mem().
+>From what you're saying, it sounds like it's just not doing enough.
 
-No locks are held, so we can race with a truncate at any point in
-time. That will change the inode size, and because
-do_xip_mapping_read() is not serialised in any way nor does it
-check the inode size on each loop, it never detects that the inode
-size has changed and so can be reading from beyond the new EOF.
-
-Now, I have no idea what ext4 does when asked to map blocks beyond
-EOF, but that will define the behaviour that do_xip_mapping_read()
-has when a truncate race occurs(*). But it the behaviour is most
-definitely filesystem dependent, and that is most definitely wrong.
-
-There needs to be serialisation against truncate provided in some
-way, and that's what the page cache page locks provide non-XIP
-buffered read paths. We don't have them in the XIP infrastructure,
-and so there's a problem here.
-
-Holding the i_mutex is not sufficient, as the locks that need to be
-held to provide this serialisation are owned by the filesystems, not
-the generic code. Hence XIP needs to use the normal .aio_read path
-and have the filesystems call do_xip_mapping_read() when the
-appropriate locks have been gained.
-
-And, in fact, the XIP write(2) path needs to go through filesystems
-to be locked correctly just like the read path. Buffered writes need
-to be serialised against reads and other filesystem operations, and
-holding the i_mutex is not sufficient for that purpose - again, the
-locks tha tneed to be held are defined by the filesystem, not the
-XIP infrastructure....
-
-The only saving grace is that XIP is so old it doesn't use the
-multi-block mapping code that all filesystems now provide to
-mpage_readpages(), and so once the blocks have been removed from the
-inode the mapping.
-
-Like I said, the XIP code is needs a heap of infrastructure work
-before we can hook a modern filesystem up to it in a sane way.
-
-(*) As a side issue, the XIP ext4 block mapping code now has a call
-chain that looks like:
-
-ext4_xip_get_mem
-  __ext4_get_block
-    ext4_get_block
-      _ext4_get_block
-        ....
-
-You might want to have a think about some of the names and
-abstractions being used, because naming like that is going to make
-reading stack traces from kernels compiled without frame pointers
-a nightmare....
-
-Cheers,
-
-Dave.
 -- 
-Dave Chinner
-david@fromorbit.com
+Matthew Wilcox				Intel Open Source Technology Centre
+"Bill, look, we understand that you're interested in selling us this
+operating system, but compare it to ours.  We can't possibly take such
+a retrograde step."
