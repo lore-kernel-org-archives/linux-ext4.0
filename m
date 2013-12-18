@@ -1,68 +1,50 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: current e2fsprogs maint branch test results
-Date: Tue, 17 Dec 2013 18:43:13 -0500
-Message-ID: <20131217234313.GA2183@wallace>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] mke2fs: further updates for mke2fs(8) man page
+Date: Tue, 17 Dec 2013 20:52:27 -0500
+Message-ID: <20131218015227.GC19261@thunk.org>
+References: <1387268271-8285-1-git-send-email-adilger@dilger.ca>
+ <52B06996.5090005@redhat.com>
+ <83B3938A-DEF8-4C05-9511-BA830DCCD692@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, darrick.wong@oracle.com
-To: linux-ext4@vger.kernel.org
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Uri Corin <uri.corin@gmail.com>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qe0-f45.google.com ([209.85.128.45]:42701 "EHLO
-	mail-qe0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750991Ab3LQXnR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 17 Dec 2013 18:43:17 -0500
-Received: by mail-qe0-f45.google.com with SMTP id 6so5980379qea.32
-        for <linux-ext4@vger.kernel.org>; Tue, 17 Dec 2013 15:43:16 -0800 (PST)
+Received: from imap.thunk.org ([74.207.234.97]:41128 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751910Ab3LRBww (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Dec 2013 20:52:52 -0500
 Content-Disposition: inline
+In-Reply-To: <83B3938A-DEF8-4C05-9511-BA830DCCD692@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I've built the contents of the current e2fsprogs maint branch (4727c67dc2)
-and run make check on both a Pandaboard (ARM) and an x86-64 VM. In each
-case I used the following arguments to configure: --disable-uuidd
---disable-libuuid --disable-libblkid.
+On Tue, Dec 17, 2013 at 03:22:15PM -0700, Andreas Dilger wrote:
+> 
+> Actually, the comments about metadata checksums is commented out in
+> the man page.  That isn't obvious at first glance.  I had just seen
+> it in the previous page, and the old description "a superset of the
+> uninit_bg feature" wasn't very useful.
 
-Both the ARM and x86-64 runs produced warnings when compiling ea_refcount.c
-during make check.  I posted a patch yesterday (e2fsck: fix printf
-conversion specs in ea_refcount.c) that clears those up for me on both
-platforms.
+It's commented out because the changes are going into the maint
+branch, which does not yet have metadata_csum support.  Once things
+settle down, I'll uncomment the text on the next/master branch, but I
+didn't want to do that until we were done editing the man pages, to
+avoid merge headaches.
 
-The ARM build and make check were otherwise clean.
+I guess most people aren't as conversant with nroff macros any more
+--- it was pretty obvious to me they were commented out.  TeX and
+LibreOffice has ruined us all.  :-)
 
-The x86-64 build and make check contained one more problem - a warning while
-compiling debugfs.c:
-../../debugfs/debugfs.c:2462:5: warning: too many arguments for format
- [-Wformat-extra-args]
+> As with anything, no complaints about the previous patch - it definitely
+> improved the old content, and there is much more that needs to be done
+> to document the metadata checksum feature (tune2fs, e2fsck, etc).
 
-This code (commit fe56188b07) is part of that used to check superblock block
-numbers specified on the command line, and the error reporting has become
-a little fuzzy relative to what we had previously.
+Yes, and many thanks Uri for working on improving the documentation.
+It's something that has been badly needed for some time.
 
-Before:
+Cheers,
 
-root@debug1:~# debugfs -s 327b /dev/vdc
-debugfs 1.42.8 (20-Jun-2013)
-debugfs: Bad superblock number - 327b
-
-After:
-
-root@debug1:~# debugfs -s 327b /dev/vdc
-debugfs 1.42.8 (20-Jun-2013)
-debugfs: Bad block number - 327b
-debugfs: Invalid block number: 327b
-debugfs: Operation not permitted 
-
-Both strtoblk() and parseulonglong() (which it calls) output error messages
-for bad/invalid block numbers, which is redundant in this case.  The last
-(erroneous) error message is output by the call to com_err() which also 
-causes the warning noted above.
-
-It seems to me that the call to com_err() ought to be deleted, and maybe
-the immediately preceding call to strtoblk() ought to be converted to a call
-to parseulonglong() to restore the original messaging.  I'd like to post a
-patch, but there are a number of other calls to strtoblk() in debugfs now
-that will produce two messages on errors, and the intent isn't clear to me.
-Is this just an area that needed a little more polish?
-
-Thanks,
-Eric
+					- Ted
