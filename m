@@ -1,50 +1,78 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] mke2fs: further updates for mke2fs(8) man page
-Date: Tue, 17 Dec 2013 20:52:27 -0500
-Message-ID: <20131218015227.GC19261@thunk.org>
-References: <1387268271-8285-1-git-send-email-adilger@dilger.ca>
- <52B06996.5090005@redhat.com>
- <83B3938A-DEF8-4C05-9511-BA830DCCD692@dilger.ca>
+From: Matthew Wilcox <matthew@wil.cx>
+Subject: Re: [PATCH v3 0/3] Add XIP support to ext4
+Date: Tue, 17 Dec 2013 19:31:43 -0700
+Message-ID: <20131218023143.GA24491@parisc-linux.org>
+References: <cover.1387307259.git.matthew.r.wilcox@intel.com> <20131217223050.GB20579@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Uri Corin <uri.corin@gmail.com>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:41128 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751910Ab3LRBww (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Dec 2013 20:52:52 -0500
+Cc: Matthew Wilcox <matthew.r.wilcox@intel.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <83B3938A-DEF8-4C05-9511-BA830DCCD692@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20131217223050.GB20579@dastard>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Dec 17, 2013 at 03:22:15PM -0700, Andreas Dilger wrote:
+On Wed, Dec 18, 2013 at 09:30:50AM +1100, Dave Chinner wrote:
+> On Tue, Dec 17, 2013 at 02:18:25PM -0500, Matthew Wilcox wrote:
+> > For v3, we've addressed the problem with unwritten extents that Dave
+> > Chinner pointed out. 
 > 
-> Actually, the comments about metadata checksums is commented out in
-> the man page.  That isn't obvious at first glance.  I had just seen
-> it in the previous page, and the old description "a superset of the
-> uninit_bg feature" wasn't very useful.
+> No, you haven't addressed the problem. There is nothing in this
+> patch set that converts an unwritten extent after it is written to.
+> Hence on every subsequent read will return zeros because the block
+> is still marked as unwritten.
 
-It's commented out because the changes are going into the maint
-branch, which does not yet have metadata_csum support.  Once things
-settle down, I'll uncomment the text on the next/master branch, but I
-didn't want to do that until we were done editing the man pages, to
-avoid merge headaches.
+I don't understand.  Here's the path as I understand it:
 
-I guess most people aren't as conversant with nroff macros any more
---- it was pretty obvious to me they were commented out.  TeX and
-LibreOffice has ruined us all.  :-)
+xip_file_write -> __xip_file_write -> ext4_get_xip_mem(create=0),
+returns -ENODATA.  So we call ext4_get_xip_mem again, this time with
+create=1 which causes ext4_get_block() to allocate blocks.
 
-> As with anything, no complaints about the previous patch - it definitely
-> improved the old content, and there is much more that needs to be done
-> to document the metadata checksum feature (tune2fs, e2fsck, etc).
+> Further, write page faults won't do unwritten extent conversion or
+> block allocation, either, because:
+> 
+> You wire .mmap up to xip_file_mmap, which wires up .page_mkwrite
+> like this:
+> 
+> static const struct vm_operations_struct xip_file_vm_ops = {
+>         .fault  = xip_file_fault,
+>         .page_mkwrite   = filemap_page_mkwrite,
+>         .remap_pages = generic_file_remap_pages,
+> };
+> 
+> and filemap_page_mkwrite() does none of the special stuff that
+> ext4_page_mkwrite() does for handling unwritten extents, allocating
+> blocks for faults over holes in files, etc.
 
-Yes, and many thanks Uri for working on improving the documentation.
-It's something that has been badly needed for some time.
+Again, I don't think that's a problem.  The first time we take a page
+fault, we call xip_file_fault() which installs a PFN map if there's
+no hole.  If there is a hole, and the mapping is writable, it calls
+get_xip_mem with create=1 again, causing the extent to be allocated,
+so we never get an unwritten extent mapped to userspace.
 
-Cheers,
+> We actually have an xfstests test that test whether mmap and
+> unwritten extents work correctly - xfs/166 - but there's nothing
+> XFS specific about it anymore. it could easily be made generic
+> simply by replacing xfs_bmap with the xfs_io fiemap command....
 
-					- Ted
+Thanks.  I'll put that on the increasingly-long todo list ...
+
+> Also, you haven't address the read vs truncate races I pointed out.
+> That is, buffered read currently serialises against truncate via a
+> combination of inode size checks and page locks. i.e. after each
+> page is locked, it is checked to see if it is beyond EOF before
+> the read proceeds into that page. the XIP path does not have any
+> page locks, nor read IO locks, and so is not in any way serialised
+> against a truncate changing the size of the inode while the read is
+> in progress.
+
+Umm ... what do you think patch 1/3 does?  If you think it doesn't fix
+the race, I need you to explain why.
+
+-- 
+Matthew Wilcox				Intel Open Source Technology Centre
+"Bill, look, we understand that you're interested in selling us this
+operating system, but compare it to ours.  We can't possibly take such
+a retrograde step."
