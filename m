@@ -1,41 +1,55 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v3 0/3] Add XIP support to ext4
-Date: Thu, 19 Dec 2013 12:18:48 -0500
-Message-ID: <20131219171848.GC9130@thunk.org>
-References: <20131217223050.GB20579@dastard>
- <20131218023143.GA24491@parisc-linux.org>
- <20131218050127.GA15289@thunk.org>
- <20131218142749.GA9207@parisc-linux.org>
- <20131219020759.GA27469@thunk.org>
- <20131219041240.GA19166@parisc-linux.org>
- <20131219054303.GA4391@thunk.org>
- <20131219152049.GB19166@parisc-linux.org>
- <20131219161728.GA9130@thunk.org>
- <20131219171201.GD19166@parisc-linux.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dave Chinner <david@fromorbit.com>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Matthew Wilcox <matthew@wil.cx>
+Subject: [PATCH] e2fsck: read only parameter incorrectly compared
+Date: Thu, 19 Dec 2013 16:31:43 -0500
+Message-ID: <1387488703-18595-1-git-send-email-tytso@mit.edu>
+Cc: Johan Erlandsson <johan.erlandsson@sonyericsson.com>,
+	"Theodore Ts'o" <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:41746 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:41792 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753793Ab3LSRSy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Dec 2013 12:18:54 -0500
-Content-Disposition: inline
-In-Reply-To: <20131219171201.GD19166@parisc-linux.org>
+	id S1756566Ab3LSVbw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 Dec 2013 16:31:52 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 19, 2013 at 10:12:02AM -0700, Matthew Wilcox wrote:
-> 
-> ... I think it'll actually be ext4_get_block_fault, not _write, and it
-> will include code to zero the returned blocks if they're uninitialised.
+From: Johan Erlandsson <johan.erlandsson@sonyericsson.com>
 
-I assume what you mean here is if we see that the blocks are
-uninitialized, we don't need to read from the persistent memory at
-all; we can just map in a zeroed page, hopefully one from our stock of
-pre-zeroed pages.  Yes?
+Don't check for lost+found in read only mode.
 
-						- Ted
+[Note: this patch was originally made against 1.41.14 version of
+e2fsprogs found as part of the AOSP (Android Open Source Program)
+tree.  My Signed-off-by relies on the fact that the original patch
+author would have had to have filed a contribution agreement with Open
+Handset Alliance before this commit before this commit was allowed
+into the AOSP tree. -- tytso]
+
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+
+Note: This patch was original authored on August 2, 2012.  It would have
+been nice if had been sent directly to upstream earlier, but oh, well.
+(This patch was sent to me via Google's Android team.)
+
+I will apply it against the maint branch and it will be in the 1.42.9
+release.
+
+ e2fsck/pass3.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/e2fsck/pass3.c b/e2fsck/pass3.c
+index d87bd79..32c05b5 100644
+--- a/e2fsck/pass3.c
++++ b/e2fsck/pass3.c
+@@ -112,7 +112,7 @@ void e2fsck_pass3(e2fsck_t ctx)
+ 	/*
+ 	 * Force the creation of /lost+found if not present
+ 	 */
+-	if ((ctx->flags & E2F_OPT_READONLY) == 0)
++	if ((ctx->options & E2F_OPT_READONLY) == 0)
+ 		e2fsck_get_lost_and_found(ctx, 1);
+ 
+ 	/*
+-- 
+1.8.5.rc3.362.gdf10213
+
