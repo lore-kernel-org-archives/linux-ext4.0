@@ -1,88 +1,116 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 1/2] misc: fix resource leaks in e2fsprogs
-Date: Wed, 18 Dec 2013 17:15:22 -0800
-Message-ID: <20131219011522.16794.68027.stgit@birch.djwong.org>
+Subject: [PATCH 2/2] mke2fs: clean up kernel version tests
+Date: Wed, 18 Dec 2013 17:15:29 -0800
+Message-ID: <20131219011529.16794.73664.stgit@birch.djwong.org>
+References: <20131219011522.16794.68027.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:21711 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752227Ab3LSBP2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Dec 2013 20:15:28 -0500
+Received: from userp1040.oracle.com ([156.151.31.81]:50435 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751273Ab3LSBPg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Dec 2013 20:15:36 -0500
+In-Reply-To: <20131219011522.16794.68027.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fix leaked resources and an unnecessary error check created by earlier
-cleanup patches.
+Refactor the running kernel version checks to hide the details of
+version code checking, etc.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- debugfs/debugfs.c   |    2 --
- e2fsck/profile.c    |    4 +++-
- lib/ext2fs/icount.c |    5 ++++-
- lib/ss/invocation.c |    1 +
- 4 files changed, 8 insertions(+), 4 deletions(-)
+ misc/mke2fs.c |   40 +++++++++++++++++++++++++---------------
+ 1 file changed, 25 insertions(+), 15 deletions(-)
 
 
-diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-index f9eb578..e09d8c0 100644
---- a/debugfs/debugfs.c
-+++ b/debugfs/debugfs.c
-@@ -288,8 +288,6 @@ void do_init_filesys(int argc, char **argv)
- 	if (err)
- 		return;
- 	ext2fs_blocks_count_set(&param, blocks);
--	if (err)
--		return;
- 	retval = ext2fs_initialize(argv[1], 0, &param,
- 				   unix_io_manager, &current_fs);
- 	if (retval) {
-diff --git a/e2fsck/profile.c b/e2fsck/profile.c
-index 92aa893..50a9ad9 100644
---- a/e2fsck/profile.c
-+++ b/e2fsck/profile.c
-@@ -318,8 +318,10 @@ profile_init(const char **files, profile_t *ret_profile)
-         /* if the filenames list is not specified return an empty profile */
-         if ( files ) {
- 	    for (fs = files; !PROFILE_LAST_FILESPEC(*fs); fs++) {
--		if (array)
-+		if (array) {
- 			free_list(array);
-+			array = NULL;
-+		}
- 		retval = get_dirlist(*fs, &array);
- 		if (retval == 0) {
- 			if (!array)
-diff --git a/lib/ext2fs/icount.c b/lib/ext2fs/icount.c
-index c5ebf74..e51be73 100644
---- a/lib/ext2fs/icount.c
-+++ b/lib/ext2fs/icount.c
-@@ -193,8 +193,11 @@ errcode_t ext2fs_create_icount_tdb(ext2_filsys fs, char *tdb_dir,
- 	uuid_unparse(fs->super->s_uuid, uuid);
- 	sprintf(fn, "%s/%s-icount-XXXXXX", tdb_dir, uuid);
- 	fd = mkstemp(fn);
--	if (fd < 0)
-+	if (fd < 0) {
-+		ext2fs_free_mem(&fn);
-+		ext2fs_free_icount(icount);
- 		return fd;
-+	}
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index 4075099..0b32172 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -27,6 +27,7 @@
+ #include <time.h>
+ #ifdef __linux__
+ #include <sys/utsname.h>
++#include <linux/version.h>
+ #endif
+ #ifdef HAVE_GETOPT_H
+ #include <getopt.h>
+@@ -109,7 +110,6 @@ char **fs_types;
+ profile_t	profile;
  
- 	/*
- 	 * This is an overestimate of the size that we will need; the
-diff --git a/lib/ss/invocation.c b/lib/ss/invocation.c
-index 08b66f2..8294a02 100644
---- a/lib/ss/invocation.c
-+++ b/lib/ss/invocation.c
-@@ -49,6 +49,7 @@ int ss_create_invocation(subsystem_name, version_string, info_ptr,
- 				     ((unsigned)sci_idx+2)*size);
- 	if (table == NULL) {
- 		*code_ptr = errno;
-+		free(new_table);
+ int sys_page_size = 4096;
+-int linux_version_code = 0;
+ 
+ static void usage(void)
+ {
+@@ -168,7 +168,28 @@ static int parse_version_number(const char *s)
+ 	rev = strtol(cp, &endptr, 10);
+ 	if (cp == endptr)
  		return 0;
- 	}
- 	table[sci_idx+1] = (ss_data *) NULL;
+-	return ((((major * 256) + minor) * 256) + rev);
++	return KERNEL_VERSION(major, minor, rev);
++}
++
++static int is_before_linux_ver(unsigned int major, unsigned int minor)
++{
++	struct		utsname ut;
++	int		linux_version_code = 0;
++
++	if (uname(&ut)) {
++		perror("uname");
++		exit(1);
++	}
++	linux_version_code = parse_version_number(ut.release);
++	if (linux_version_code == 0)
++		return 0;
++
++	return linux_version_code < KERNEL_VERSION(major, minor, 0);
++}
++#else
++static int is_before_linux_ver(unsigned int major, unsigned int minor)
++{
++	return 0;
+ }
+ #endif
+ 
+@@ -1315,9 +1336,6 @@ static void PRS(int argc, char *argv[])
+ 	 * Finally, we complain about fs_blocks_count > 2^32 on a non-64bit fs.
+ 	 */
+ 	blk64_t		fs_blocks_count = 0;
+-#ifdef __linux__
+-	struct 		utsname ut;
+-#endif
+ 	long		sysval;
+ 	int		s_opt = -1, r_opt = -1;
+ 	char		*fs_features = 0;
+@@ -1383,15 +1401,8 @@ profile_error:
+ 	memset(&fs_param, 0, sizeof(struct ext2_super_block));
+ 	fs_param.s_rev_level = 1;  /* Create revision 1 filesystems now */
+ 
+-#ifdef __linux__
+-	if (uname(&ut)) {
+-		perror("uname");
+-		exit(1);
+-	}
+-	linux_version_code = parse_version_number(ut.release);
+-	if (linux_version_code && linux_version_code < (2*65536 + 2*256))
++	if (is_before_linux_ver(2, 2))
+ 		fs_param.s_rev_level = 0;
+-#endif
+ 
+ 	if (argc && *argv) {
+ 		program_name = get_progname(*argv);
+@@ -1829,8 +1840,7 @@ profile_error:
+ 
+ 		if (use_bsize == -1) {
+ 			use_bsize = sys_page_size;
+-			if ((linux_version_code < (2*65536 + 6*256)) &&
+-			    (use_bsize > 4096))
++			if (is_before_linux_ver(2, 6) && use_bsize > 4096)
+ 				use_bsize = 4096;
+ 		}
+ 		if (lsector_size && use_bsize < lsector_size)
 
