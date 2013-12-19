@@ -1,307 +1,88 @@
-From: Matthew Wilcox <matthew@wil.cx>
-Subject: Re: [PATCH v3 0/3] Add XIP support to ext4
-Date: Wed, 18 Dec 2013 18:05:31 -0700
-Message-ID: <20131219010530.GA17545@parisc-linux.org>
-References: <cover.1387307259.git.matthew.r.wilcox@intel.com> <20131217223050.GB20579@dastard> <20131218023143.GA24491@parisc-linux.org> <20131218123319.GH31386@dastard> <20131218152234.GB9207@parisc-linux.org> <20131219004831.GU31386@dastard>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [PATCH 1/2] misc: fix resource leaks in e2fsprogs
+Date: Wed, 18 Dec 2013 17:15:22 -0800
+Message-ID: <20131219011522.16794.68027.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20131219004831.GU31386@dastard>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu, darrick.wong@oracle.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:21711 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752227Ab3LSBP2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Dec 2013 20:15:28 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 19, 2013 at 11:48:31AM +1100, Dave Chinner wrote:
-> We already have a model for handling non page cache based IO paths:
-> Direct IO has to handle this read/truncate race condition without
-> page lock serialisation, and it works just fine. Go and look at
-> inode_dio_wait() rather than reinventing the wheel.
+Fix leaked resources and an unnecessary error check created by earlier
+cleanup patches.
 
-I've spent most of today looking at that code.  Here's where I'm at
-right now.  It doesn't even compile.
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ debugfs/debugfs.c   |    2 --
+ e2fsck/profile.c    |    4 +++-
+ lib/ext2fs/icount.c |    5 ++++-
+ lib/ss/invocation.c |    1 +
+ 4 files changed, 8 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext2/xip.h b/fs/ext2/xip.h
-index 18b34d2..29be737 100644
---- a/fs/ext2/xip.h
-+++ b/fs/ext2/xip.h
-@@ -16,9 +16,7 @@ static inline int ext2_use_xip (struct super_block *sb)
- }
- int ext2_get_xip_mem(struct address_space *, pgoff_t, int,
- 				void **, unsigned long *);
--#define mapping_is_xip(map) unlikely(map->a_ops->get_xip_mem)
- #else
--#define mapping_is_xip(map)			0
- #define ext2_xip_verify_sb(sb)			do { } while (0)
- #define ext2_use_xip(sb)			0
- #define ext2_clear_xip_target(inode, chain)	0
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index b9499b2..66d2b35 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -190,7 +190,8 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
- 		}
- 	}
- 
--	if (unlikely(iocb->ki_filp->f_flags & O_DIRECT))
-+	if (unlikely(iocb->ki_filp->f_flags & O_DIRECT) ||
-+	    (mapping_is_xip(inode->i_mapping)))
- 		ret = ext4_file_dio_write(iocb, iov, nr_segs, pos);
- 	else
- 		ret = generic_file_aio_write(iocb, iov, nr_segs, pos);
-@@ -612,8 +613,10 @@ const struct file_operations ext4_file_operations = {
- #ifdef CONFIG_EXT4_FS_XIP
- const struct file_operations ext4_xip_file_operations = {
- 	.llseek		= ext4_llseek,
--	.read		= xip_file_read,
--	.write		= xip_file_write,
-+	.read		= do_sync_read,
-+	.write		= do_sync_write,
-+	.aio_read	= generic_file_aio_read,
-+	.aio_write	= ext4_file_write,
- 	.unlocked_ioctl = ext4_ioctl,
- #ifdef CONFIG_COMPAT
- 	.compat_ioctl	= ext4_compat_ioctl,
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index 594009f..ae760d9 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -686,15 +686,22 @@ retry:
- 			inode_dio_done(inode);
- 			goto locked;
- 		}
--		ret = __blockdev_direct_IO(rw, iocb, inode,
--				 inode->i_sb->s_bdev, iov,
--				 offset, nr_segs,
--				 ext4_get_block, NULL, NULL, 0);
-+		if (mapping_is_xip(file->f_mapping))
-+			ret = xip_io(rw, iocb, inode, iov, offset, nr_segs,
-+					ext4_get_block, NULL, 0);
-+		else
-+			ret = __blockdev_direct_IO(rw, iocb, inode,
-+					inode->i_sb->s_bdev, iov, offset,
-+					nr_segs, ext4_get_block, NULL, NULL, 0);
- 		inode_dio_done(inode);
- 	} else {
- locked:
--		ret = blockdev_direct_IO(rw, iocb, inode, iov,
--				 offset, nr_segs, ext4_get_block);
-+		if (mapping_is_xip(file->f_mapping))
-+			ret = xip_io(rw, iocb, inode, iov, offset, nr_segs,
-+					ext4_get_block, NULL, 0);
-+		else
-+			ret = blockdev_direct_IO(rw, iocb, inode, iov,
-+					offset, nr_segs, ext4_get_block);
- 
- 		if (unlikely((rw & WRITE) && ret < 0)) {
- 			loff_t isize = i_size_read(inode);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 7b50832..0303412 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3170,13 +3170,14 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
- 		get_block_func = ext4_get_block_write;
- 		dio_flags = DIO_LOCKING;
- 	}
--	ret = __blockdev_direct_IO(rw, iocb, inode,
--				   inode->i_sb->s_bdev, iov,
--				   offset, nr_segs,
--				   get_block_func,
--				   ext4_end_io_dio,
--				   NULL,
--				   dio_flags);
-+	if (mapping_is_xip(file->f_mapping))
-+		ret = xip_io(rw, iocb, inode, iov, offset, nr_segs,
-+			     get_block_func, ext4_end_io_dio, dio_flags);
-+	else
-+		ret = __blockdev_direct_IO(rw, iocb, inode,
-+					   inode->i_sb->s_bdev, iov, offset,
-+					   nr_segs, get_block_func,
-+					   ext4_end_io_dio, NULL, dio_flags);
+
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index f9eb578..e09d8c0 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -288,8 +288,6 @@ void do_init_filesys(int argc, char **argv)
+ 	if (err)
+ 		return;
+ 	ext2fs_blocks_count_set(&param, blocks);
+-	if (err)
+-		return;
+ 	retval = ext2fs_initialize(argv[1], 0, &param,
+ 				   unix_io_manager, &current_fs);
+ 	if (retval) {
+diff --git a/e2fsck/profile.c b/e2fsck/profile.c
+index 92aa893..50a9ad9 100644
+--- a/e2fsck/profile.c
++++ b/e2fsck/profile.c
+@@ -318,8 +318,10 @@ profile_init(const char **files, profile_t *ret_profile)
+         /* if the filenames list is not specified return an empty profile */
+         if ( files ) {
+ 	    for (fs = files; !PROFILE_LAST_FILESPEC(*fs); fs++) {
+-		if (array)
++		if (array) {
+ 			free_list(array);
++			array = NULL;
++		}
+ 		retval = get_dirlist(*fs, &array);
+ 		if (retval == 0) {
+ 			if (!array)
+diff --git a/lib/ext2fs/icount.c b/lib/ext2fs/icount.c
+index c5ebf74..e51be73 100644
+--- a/lib/ext2fs/icount.c
++++ b/lib/ext2fs/icount.c
+@@ -193,8 +193,11 @@ errcode_t ext2fs_create_icount_tdb(ext2_filsys fs, char *tdb_dir,
+ 	uuid_unparse(fs->super->s_uuid, uuid);
+ 	sprintf(fn, "%s/%s-icount-XXXXXX", tdb_dir, uuid);
+ 	fd = mkstemp(fn);
+-	if (fd < 0)
++	if (fd < 0) {
++		ext2fs_free_mem(&fn);
++		ext2fs_free_icount(icount);
+ 		return fd;
++	}
  
  	/*
- 	 * Put our reference to io_end. This can free the io_end structure e.g.
-@@ -3291,6 +3292,7 @@ static const struct address_space_operations ext4_aops = {
- const struct address_space_operations ext4_xip_aops = {
- 	.bmap			= ext4_bmap,
- 	.get_xip_mem		= ext4_get_xip_mem,
-+	.direct_IO		= ext4_direct_IO,
- };
- 
- static const struct address_space_operations ext4_journalled_aops = {
-diff --git a/fs/ext4/xip.h b/fs/ext4/xip.h
-index af0d553..b279dae 100644
---- a/fs/ext4/xip.h
-+++ b/fs/ext4/xip.h
-@@ -15,9 +15,7 @@ static inline int ext4_use_xip(struct super_block *sb)
- }
- int ext4_get_xip_mem(struct address_space *, pgoff_t, int,
- 				void **, unsigned long *);
--#define mapping_is_xip(map) unlikely(map->a_ops->get_xip_mem)
- #else
--#define mapping_is_xip(map)			0
- #define ext4_use_xip(sb)			0
- #define ext4_clear_xip_target(inode, chain)	0
- #define ext4_get_xip_mem			NULL
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index a063bff..94a8e50 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2511,6 +2511,14 @@ extern ssize_t xip_file_write(struct file *filp, const char __user *buf,
- extern int xip_truncate_page(struct address_space *mapping, loff_t from);
- extern int xip_zero_page_range(struct address_space *, loff_t from,
- 			       unsigned length);
-+extern ssize_t xip_io(int rw, struct kiocb *, struct inode *,
-+			const struct iovec *, loff_t, unsigned segs,
-+			get_block_t, dio_iodone_t, int flags);
-+
-+static inline bool mapping_is_xip(struct address_space *mapping)
-+{
-+	return mapping->a_ops->get_xip_mem != NULL;
-+}
- #else
- static inline int xip_truncate_page(struct address_space *mapping, loff_t from)
- {
-@@ -2522,6 +2530,18 @@ static inline int xip_zero_page_range(struct address_space *mapping,
- {
- 	return 0;
- }
-+
-+static inline bool mapping_is_xip(struct address_space *mapping)
-+{
-+	return false;
-+}
-+
-+static inline ssize_t xip_io(int rw, struct kiocb *iocb, struct inode *inode,
-+		const struct iovec *iov, loff_t offset, unsigned nr_segs,
-+		get_block_t get_block, dio_iodone_t end_io, int flags)
-+{
-+	return -ENOTTY;
-+}
- #endif
- 
- #ifdef CONFIG_BLOCK
-diff --git a/mm/filemap_xip.c b/mm/filemap_xip.c
-index d808b72..38caad3 100644
---- a/mm/filemap_xip.c
-+++ b/mm/filemap_xip.c
-@@ -8,6 +8,7 @@
-  *
-  */
- 
-+#include <linux/buffer_head.h>
- #include <linux/fs.h>
- #include <linux/pagemap.h>
- #include <linux/export.h>
-@@ -41,6 +42,103 @@ static struct page *xip_sparse_page(void)
- 	return __xip_sparse_page;
- }
- 
-+static ssize_t __xip_io(int rw, struct inode *inode, const struct iovec *iov,
-+		loff_t offset, loff_t end, unsigned nr_segs,
-+		get_block_t get_block, struct buffer_head *bh)
-+{
-+	ssize_t retval;
-+	unsigned seg = 0;
-+	unsigned len;
-+	unsigned copied = 0;
-+	loff_t max = offset;
-+
-+	while (offset < end) {
-+		void __user *buf = iov[seg].iov_base + copied;
-+		bool hole;
-+
-+		if (max == offset) {
-+			sector_t block = offset >> inode->i_blkbits;
-+			memset(bh, 0, sizeof(*bh));
-+			bh->b_size = ALIGN(end - offset, PAGE_SIZE);
-+			retval = get_block(inode, block, bh, 0);
-+			if (retval)
-+				break;
-+			if (buffer_mapped(bh))
-+				hole = false;
-+			else
-+				hole = true;
-+			if (rw == WRITE && hole) {
-+				bh->b_size = ALIGN(end - offset, PAGE_SIZE);
-+				retval = get_block(inode, block, bh, 1);
-+				if (retval)
-+					break;
-+			} 
-+			max = offset + bh->b_size;
-+		}
-+
-+		len = min_t(unsigned, iov[seg].iov_len - copied, max - offset);
-+
-+		if (rw == WRITE)
-+			len -= __copy_from_user_nocache(addr, buf, len);
-+		else if (!hole)
-+			len -= __copy_to_user(buf, addr, len);
-+		else
-+			len -= __clear_user(buf, len);
-+
-+		offset += len;
-+		copied += len;
-+		if (copied == iov[seg].iov_len) {
-+			seg++;
-+			copied = 0;
-+		}
-+	}
-+
-+	return retval;
-+}
-+
-+/*
-+ * Perform I/O to an XIP file.  We follow the same rules as
-+ * __blockdev_direct_IO with respect to locking
-+ */
-+ssize_t xip_io(int rw, struct kiocb *iocb, struct inode *inode,
-+		const struct iovec *iov, loff_t offset, unsigned nr_segs,
-+		get_block_t get_block, dio_iodone_t end_io, int flags)
-+{
-+	struct buffer_head bh;
-+	unsigned seg;
-+	ssize_t retval = -EINVAL;
-+	loff_t end = offset;
-+
-+	for (seg = 0; seg < nr_segs; seg++)
-+		end += iov[seg].iov_len;
-+
-+	if ((flags & DIO_LOCKING) && (rw == READ)) {
-+		struct address_space *mapping = inode->i_mapping;
-+		mutex_lock(&inode->i_mutex);
-+		retval = filemap_write_and_wait_range(mapping, offset, end - 1);
-+		if (retval) {
-+			mutex_unlock(&inode->i_mutex);
-+			goto out;
-+		}
-+	}
-+
-+	/* Protects against truncate */
-+	atomic_inc(&inode->i_dio_count);
-+
-+	retval = __xip_io(rw, inode, iov, offset, end, nr_segs, get_block, &bh);
-+
-+	if ((flags & DIO_LOCKING) && (rw == READ))
-+		mutex_unlock(&inode->i_mutex);
-+
-+	inode_dio_done(inode);
-+
-+	if (end_io)
-+		end_io(iocb, offset, transferred, bh.b_private);
-+ out:
-+	return retval;
-+}
-+EXPORT_SYMBOL_GPL(xip_io);
-+
- /*
-  * This is a file read routine for execute in place files, and uses
-  * the mapping->a_ops->get_xip_mem() function for the actual low-level
+ 	 * This is an overestimate of the size that we will need; the
+diff --git a/lib/ss/invocation.c b/lib/ss/invocation.c
+index 08b66f2..8294a02 100644
+--- a/lib/ss/invocation.c
++++ b/lib/ss/invocation.c
+@@ -49,6 +49,7 @@ int ss_create_invocation(subsystem_name, version_string, info_ptr,
+ 				     ((unsigned)sci_idx+2)*size);
+ 	if (table == NULL) {
+ 		*code_ptr = errno;
++		free(new_table);
+ 		return 0;
+ 	}
+ 	table[sci_idx+1] = (ss_data *) NULL;
 
--- 
-Matthew Wilcox				Intel Open Source Technology Centre
-"Bill, look, we understand that you're interested in selling us this
-operating system, but compare it to ours.  We can't possibly take such
-a retrograde step."
