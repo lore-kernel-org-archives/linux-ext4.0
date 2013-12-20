@@ -1,193 +1,247 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: add explicit casks when masking cluster sizes
-Date: Fri, 20 Dec 2013 02:02:24 -0500
-Message-ID: <1387522944-10923-1-git-send-email-tytso@mit.edu>
-Cc: re.emese@gmail.com, Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: [RFC PATCH 0/2] ext4: extents status tree shrinker improvement
+Date: Fri, 20 Dec 2013 18:42:43 +0800
+Message-ID: <1387536165-15956-1-git-send-email-wenqing.lz@taobao.com>
+Cc: Zheng Liu <wenqing.lz@taobao.com>, "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:41917 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751904Ab3LTHCa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 20 Dec 2013 02:02:30 -0500
+Received: from mail-pb0-f41.google.com ([209.85.160.41]:35016 "EHLO
+	mail-pb0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755820Ab3LTKjb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Dec 2013 05:39:31 -0500
+Received: by mail-pb0-f41.google.com with SMTP id jt11so2445606pbb.14
+        for <linux-ext4@vger.kernel.org>; Fri, 20 Dec 2013 02:39:30 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The missing casts can cause the high 64-bits of the physical blocks to
-be lost.  Set up new macros which allows us to make sure the right
-thing happen, even if at some point we end up supporting larger
-logical block numbers.
+Hi all,
 
-Thanks to the Emese Revfy and the PaX security team for reporting this
-issue.
+I still have some ideas for improving the extents status tree shrinker.
+But before doing that, I think I should send out these patches for
+discussion so that I want to be sure that I am on the right way.  I
+describe my work below, which contains four parts.  The first part
+describes my work of improvment for the shrinker.  In second part I
+describe the test case for measurement.  In third part I measure the
+performance and compare my work with current implememtation on mainline
+kernel.  The last part is TODO list.  I describe some ideas that might
+improve the performance of extents status tree shrinker.
 
-Reported-by: PaX Team <pageexec@freemail.hu>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/ext4.h    | 10 ++++++++++
- fs/ext4/extents.c | 26 ++++++++++++--------------
- fs/ext4/mballoc.c |  6 +++---
- 3 files changed, 25 insertions(+), 17 deletions(-)
+Improvement
+===========
+According to this bug report [1], the extents status tree shrinker might
+causes excessive time stall under heavy memory pressure.  Due to lacking
+some details from this report, I am not sure whether the delalloc is
+enabled or not.  But if I remember correctly Andreas has mentioned that
+he also notices that es shrinker takes too much time to try to reclaim
+some entries from extents status tree, and he observes that the app does
+a lot of buffered writes.  So I suspect that the root cause is that
+currently es shrinker has to scan a lot of delayed entries that don't be
+reclaimed under some workloads.  Hence it burns too much cpu time.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index e618503..ece5556 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -268,6 +268,16 @@ struct ext4_io_submit {
- /* Translate # of blks to # of clusters */
- #define EXT4_NUM_B2C(sbi, blks)	(((blks) + (sbi)->s_cluster_ratio - 1) >> \
- 				 (sbi)->s_cluster_bits)
-+/* Mask out the low bits to get the starting block of the cluster */
-+#define EXT4_PBLK_CMASK(s, pblk) ((pblk) &				\
-+				  ~((ext4_fsblk_t) (s)->s_cluster_ratio - 1))
-+#define EXT4_LBLK_CMASK(s, lblk) ((lblk) &				\
-+				  ~((ext4_lblk_t) (s)->s_cluster_ratio - 1))
-+/* Get the cluster offset */
-+#define EXT4_PBLK_COFF(s, pblk) ((pblk) &				\
-+				 ((ext4_fsblk_t) (s)->s_cluster_ratio - 1))
-+#define EXT4_LBLK_COFF(s, lblk) ((lblk) &				\
-+				 ((ext4_lblk_t) (s)->s_cluster_ratio - 1))
- 
- /*
-  * Structure of a blocks group descriptor
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 267c9fb..4410cc3 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -1851,8 +1851,7 @@ static unsigned int ext4_ext_check_overlap(struct ext4_sb_info *sbi,
- 	depth = ext_depth(inode);
- 	if (!path[depth].p_ext)
- 		goto out;
--	b2 = le32_to_cpu(path[depth].p_ext->ee_block);
--	b2 &= ~(sbi->s_cluster_ratio - 1);
-+	b2 = EXT4_LBLK_CMASK(sbi, le32_to_cpu(path[depth].p_ext->ee_block));
- 
- 	/*
- 	 * get the next allocated block if the extent in the path
-@@ -1862,7 +1861,7 @@ static unsigned int ext4_ext_check_overlap(struct ext4_sb_info *sbi,
- 		b2 = ext4_ext_next_allocated_block(path);
- 		if (b2 == EXT_MAX_BLOCKS)
- 			goto out;
--		b2 &= ~(sbi->s_cluster_ratio - 1);
-+		b2 = EXT4_LBLK_CMASK(sbi, b2);
- 	}
- 
- 	/* check for wrap through zero on extent logical start block*/
-@@ -2521,7 +2520,7 @@ static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
- 		 * extent, we have to mark the cluster as used (store negative
- 		 * cluster number in partial_cluster).
- 		 */
--		unaligned = pblk & (sbi->s_cluster_ratio - 1);
-+		unaligned = EXT4_PBLK_COFF(sbi, pblk);
- 		if (unaligned && (ee_len == num) &&
- 		    (*partial_cluster != -((long long)EXT4_B2C(sbi, pblk))))
- 			*partial_cluster = EXT4_B2C(sbi, pblk);
-@@ -2615,7 +2614,7 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
- 			 * accidentally freeing it later on
- 			 */
- 			pblk = ext4_ext_pblock(ex);
--			if (pblk & (sbi->s_cluster_ratio - 1))
-+			if (EXT4_PBLK_COFF(sbi, pblk))
- 				*partial_cluster =
- 					-((long long)EXT4_B2C(sbi, pblk));
- 			ex--;
-@@ -3770,7 +3769,7 @@ int ext4_find_delalloc_cluster(struct inode *inode, ext4_lblk_t lblk)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	ext4_lblk_t lblk_start, lblk_end;
--	lblk_start = lblk & (~(sbi->s_cluster_ratio - 1));
-+	lblk_start = EXT4_LBLK_CMASK(sbi, lblk);
- 	lblk_end = lblk_start + sbi->s_cluster_ratio - 1;
- 
- 	return ext4_find_delalloc_range(inode, lblk_start, lblk_end);
-@@ -3829,9 +3828,9 @@ get_reserved_cluster_alloc(struct inode *inode, ext4_lblk_t lblk_start,
- 	trace_ext4_get_reserved_cluster_alloc(inode, lblk_start, num_blks);
- 
- 	/* Check towards left side */
--	c_offset = lblk_start & (sbi->s_cluster_ratio - 1);
-+	c_offset = EXT4_LBLK_COFF(sbi, lblk_start);
- 	if (c_offset) {
--		lblk_from = lblk_start & (~(sbi->s_cluster_ratio - 1));
-+		lblk_from = EXT4_LBLK_CMASK(sbi, lblk_start);
- 		lblk_to = lblk_from + c_offset - 1;
- 
- 		if (ext4_find_delalloc_range(inode, lblk_from, lblk_to))
-@@ -3839,7 +3838,7 @@ get_reserved_cluster_alloc(struct inode *inode, ext4_lblk_t lblk_start,
- 	}
- 
- 	/* Now check towards right. */
--	c_offset = (lblk_start + num_blks) & (sbi->s_cluster_ratio - 1);
-+	c_offset = EXT4_LBLK_COFF(sbi, lblk_start + num_blks);
- 	if (allocated_clusters && c_offset) {
- 		lblk_from = lblk_start + num_blks;
- 		lblk_to = lblk_from + (sbi->s_cluster_ratio - c_offset) - 1;
-@@ -4047,7 +4046,7 @@ static int get_implied_cluster_alloc(struct super_block *sb,
- 				     struct ext4_ext_path *path)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
--	ext4_lblk_t c_offset = map->m_lblk & (sbi->s_cluster_ratio-1);
-+	ext4_lblk_t c_offset = EXT4_LBLK_COFF(sbi, map->m_lblk);
- 	ext4_lblk_t ex_cluster_start, ex_cluster_end;
- 	ext4_lblk_t rr_cluster_start;
- 	ext4_lblk_t ee_block = le32_to_cpu(ex->ee_block);
-@@ -4065,8 +4064,7 @@ static int get_implied_cluster_alloc(struct super_block *sb,
- 	    (rr_cluster_start == ex_cluster_start)) {
- 		if (rr_cluster_start == ex_cluster_end)
- 			ee_start += ee_len - 1;
--		map->m_pblk = (ee_start & ~(sbi->s_cluster_ratio - 1)) +
--			c_offset;
-+		map->m_pblk = EXT4_PBLK_CMASK(sbi, ee_start) + c_offset;
- 		map->m_len = min(map->m_len,
- 				 (unsigned) sbi->s_cluster_ratio - c_offset);
- 		/*
-@@ -4220,7 +4218,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	 */
- 	map->m_flags &= ~EXT4_MAP_FROM_CLUSTER;
- 	newex.ee_block = cpu_to_le32(map->m_lblk);
--	cluster_offset = map->m_lblk & (sbi->s_cluster_ratio-1);
-+	cluster_offset = EXT4_LBLK_CMASK(sbi, map->m_lblk);
- 
- 	/*
- 	 * If we are doing bigalloc, check to see if the extent returned
-@@ -4288,7 +4286,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	 * needed so that future calls to get_implied_cluster_alloc()
- 	 * work correctly.
- 	 */
--	offset = map->m_lblk & (sbi->s_cluster_ratio - 1);
-+	offset = EXT4_LBLK_COFF(sbi, map->m_lblk);
- 	ar.len = EXT4_NUM_B2C(sbi, offset+allocated);
- 	ar.goal -= offset;
- 	ar.logical -= offset;
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 04766d9..04a5c75 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4126,7 +4126,7 @@ ext4_mb_initialize_context(struct ext4_allocation_context *ac,
- 	ext4_get_group_no_and_offset(sb, goal, &group, &block);
- 
- 	/* set up allocation goals */
--	ac->ac_b_ex.fe_logical = ar->logical & ~(sbi->s_cluster_ratio - 1);
-+	ac->ac_b_ex.fe_logical = EXT4_LBLK_CMASK(sbi, ar->logical);
- 	ac->ac_status = AC_STATUS_CONTINUE;
- 	ac->ac_sb = sb;
- 	ac->ac_inode = ar->inode;
-@@ -4668,7 +4668,7 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 	 * blocks at the beginning or the end unless we are explicitly
- 	 * requested to avoid doing so.
- 	 */
--	overflow = block & (sbi->s_cluster_ratio - 1);
-+	overflow = EXT4_PBLK_COFF(sbi, block);
- 	if (overflow) {
- 		if (flags & EXT4_FREE_BLOCKS_NOFREE_FIRST_CLUSTER) {
- 			overflow = sbi->s_cluster_ratio - overflow;
-@@ -4682,7 +4682,7 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 			count += overflow;
- 		}
- 	}
--	overflow = count & (sbi->s_cluster_ratio - 1);
-+	overflow = EXT4_LBLK_COFF(sbi, count);
- 	if (overflow) {
- 		if (flags & EXT4_FREE_BLOCKS_NOFREE_LAST_CLUSTER) {
- 			if (count > overflow)
+1. https://bugzilla.kernel.org/show_bug.cgi?id=62751
+
+Why don't we discard delayed entry from extents status tree?  Now we need
+to use delayed entry in extents status tree to reserve delayed space for
+delayed allocation, and support seek_data/hole.  So we couldn't discard
+these delayed entries.
+
+In this patch series, it contains two patches.  Patch 1 just improves the
+trace point in extents status tree.  Later I will use them to calculate
+the latency of every function.  This is a trival patch.  So feel free to
+pick it up.
+
+Patch 2 tries to make es shrinker avoid scanning delayed entry.  It adds
+a evictable list in order to track all reclaimable objects.  Meanwhile
+a hlist_node structure is defined in 'extent_status' structure.  The
+defect of using hlist_node is that it costs extra 1/3 memory space.  On
+64bits platform, extent_status structure occupies 48 bytes.  After that
+it will take 64 bytes.  Then the es shrinker can traverse on this list.
+It shouldn't encounter any delayed entry.  So it reduces the time taking
+sbi->s_es_lru_lock and ei->i_es_lock due to it don't need to scan all
+delayed extries.
+
+Workload
+========
+For comparing the improvement, I use fio to generate a workload that
+could cause some fragmented files.  For getting a extreme fragmented
+tree, I hack the code in ext4_es_can_be_merge() to always return 0.
+That means we don't try to merge any entry in extents status tree.
+Meanwhile vm.dirty_ratio, vm.dirty_background_ratio are adjusted to 80
+and 60 on my machine.  The purpose of doing this is to accumulate more
+delayed entries on extents status tree.  The configure file of fio is
+like below:
+
+  [global]
+  ioengine=psync
+  bs=4k
+  directory=/mnt/sda1
+  thread
+  group_reporting
+  fallocate=0
+  direct=0
+  filesize=10g
+  size=20g
+  runtime=300
+  
+  [io]
+  rw=randwrite:32
+  rw_sequencer=sequential
+  numjobs=25
+  nrfiles=10
+
+sysctl settings:
+
+  #!/bin/bash
+  #
+  # This script is used to adjust sysctl parameter to increase the memory
+  # pressure and accumluate some delayed entries.
+  
+  sudo sysctl vm.dirty_ratio=80
+  sudo sysctl vm.dirty_background_ratio=60
+
+Using this workload, the extents status tree will look like this:
+[0, 1)[1, 2)...[31, 32)[32, 51)[51, 52)[52, 53)...[101, 102)...[111, 112)
+[ D  ][ D  ]...[  D   ][  H   ][  D   ][  D   ]...[    W   ]...[    U   ]
+
+D: Delayed entry
+H: Hole entry
+W: Written entry
+U: Unwritten entry
+
+*NOTE*
+This workload couldn't reproduce the problem that is reported by [1].
+
+I run this workload on my desktop, which has a Intel Core Duo CPU @ 3.0
+GHz, 4G memeory and a HDD.  I will run the same workload on a server to
+measure the result of improvement.
+
+Comparison
+===========
+
+slabtop
+-------
+slabtop is used to measure memory space which the slab of extent_status
+occupies.  The following is the result of $(slabtop -o)
+
+vanilla:
+718890 688677  95%    0.04K   7730       93     30920K ext4_extent_status
+patched:
+718420 675933  94%    0.05K  10565       68     42260K ext4_extent_status
+
+                   vanilla        patched        +/- (%)
+ext4_extent_status 30920k         42260k         36.68
+
+As I said above, adding hlist_node adds ~1/3 extra memory space.
+
+perf record -g
+--------------
+The following is the result of $(perf diff), which compares the result
+of $(perf record -g).  Here I cut all *_es_* functions and paste them
+here.
+
+# Event 'cycles'
+#
+# Baseline    Delta       Shared Object                                        Symbol
+# ........  .......  ..................  ............................................
+#
+     1.82%   +0.04%  [ext4]              [k] ext4_es_lookup_extent                   
+     0.55%   +0.01%  [ext4]              [k] __es_tree_search                        
+     0.39%   -0.05%  [ext4]              [k] __es_insert_extent                      
+     0.10%   +0.02%  [ext4]              [k] ext4_es_insert_extent                   
+     0.08%   +0.01%  [ext4]              [k] __es_remove_extent                      
+     0.07%   +0.01%  [ext4]              [k] ext4_es_lru_add                         
+     0.01%   -0.01%  [ext4]              [k] __es_try_to_reclaim_extents             
+     0.00%           [ext4]              [k] ext4_es_free_extent                     
+     0.00%           [ext4]              [k] ext4_es_cache_extent                    
+
+perf lock record -g
+-------------------
+Here is the result of $(perf lock report -k wait_max).
+
+                Name   acquired  contended   avg wait (ns) total wait (ns)   max wait (ns)   min wait (ns)
+vanilla:
+&(&sbi->s_es_lru...        152          1           87275           87275           87275           87275
+patched:
+&(&sbi->s_es_lru...        148          0               0               0               0               0
+
+'sbi->s_es_lru_lock' protects the entire lru list of inodes which have
+reclaimable entries.  When es shrinker tries to reclaim some entries,
+this lock will be taken during this process.  From the result we can see
+that the improvement can reduce the waiting time.
+
+latency
+-------
+Here I calculate the latency of the following operations from the
+result of trace points. (Unit: *us*)
+
+- es_find_delayed_extent_range -
+x vanilla
++ patched
+    N           Min           Max        Median           Avg        Stddev
+x 4425             0            54             1     1.0280226     1.0898311
++ 7063             0           140             1     1.0127425     1.8662003
+
+- es_insert_extent -
+x vanilla
++ patched
+    N           Min           Max        Median           Avg        Stddev
+x 26995             1          1270             2     4.1053899      20.26818
++ 26559             1           440             2     3.0948454     7.6911348
+
+- es_lookup_extent -
+x vanilla
++ patched
+    N           Min           Max        Median           Avg        Stddev
+x 32025             0           104             1     1.6082748      1.385739
++ 31433             0           168             1     1.6219578     1.4846153
+
+- es_shrink_scan -
+x vanilla
++ patched
+    N           Min           Max        Median           Avg        Stddev
+x 1219            24          1872           171     278.35603      275.8815
++ 1405            17           339            86     95.057651     33.216144
+
+The result of latency shows that the patch can reduce the latency when es
+shrinker tries to reclaim the entry.  Meanwhile other operations don't be
+impacted too much.
+
+TODO list
+=========
+
+Numa-aware shrinker
+-------------------
+Now the shrinker has been numa-aware.  But the es shrinker doesn't
+support it.  So an improvement is to make es shrinker numa-aware.  The
+key issue is that extent_status objects might not be on the same node
+with its inode.  So that means we need to use lru_list on ext4_sb_info in
+order to make s_es_lru list numa-aware, and use lru_list on ext4_es_tree
+for making evictable list numa-aware.  I am not sure it is worthwhile.
+
+rcu-skiplist
+------------
+Chris Mason has sent out a rcu-skiplist patch set.  So an potential
+improvement here is to use rcu-skiplist in extents status tree to track
+all entries.  Now we use rb-tree to do the same thing.  But the defect
+of using rb-tree here is that we need to rotate the subtree when a node
+is inserted or removed.  That means that rb-tree couldn't provide a very
+stable latency when it tries to balance the subtree.  The skiplist does
+not need to do this.  So I suspect that it would provide more smooth
+latency.
+
+Regards,
+						- Zheng
+
+Zheng Liu (2):
+  ext4: improve extents status tree trace point
+  ext4: improve extents status tree shrinker to avoid scanning delayed entries
+
+ fs/ext4/extents_status.c    |   53 +++++++++++++++++++++++--------------------
+ fs/ext4/extents_status.h    |    2 ++
+ include/trace/events/ext4.h |   46 +++++++++++++++++++++++++++++++++----
+ 3 files changed, 71 insertions(+), 30 deletions(-)
+
 -- 
-1.8.5.rc3.362.gdf10213
+1.7.9.7
 
