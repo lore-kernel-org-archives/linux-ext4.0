@@ -1,20 +1,20 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Subject: Fwd: [RESEND PATCH 1/2] ext4: fix a typo in extents.c
-Date: Fri, 20 Dec 2013 13:11:38 +0800
-Message-ID: <CAGBYx2bJKzNU9qQEbQjWKk3c=DzBEHu_5waa=2uShHwX3JbpYQ@mail.gmail.com>
-References: <1387515880-10185-1-git-send-email-yangyongqiang01@baidu.com> <CAGBYx2buHtAYoRMAoJZqRHKAK2LQy68uPswWUP_oGWom1BYwbg@mail.gmail.com>
+Date: Fri, 20 Dec 2013 13:11:03 +0800
+Message-ID: <CAGBYx2buHtAYoRMAoJZqRHKAK2LQy68uPswWUP_oGWom1BYwbg@mail.gmail.com>
+References: <1387515880-10185-1-git-send-email-yangyongqiang01@baidu.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 To: "Theodore Ts'o" <tytso@mit.edu>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ea0-f170.google.com ([209.85.215.170]:43634 "EHLO
-	mail-ea0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753982Ab3LTFL7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Dec 2013 00:11:59 -0500
-Received: by mail-ea0-f170.google.com with SMTP id k10so812014eaj.15
-        for <linux-ext4@vger.kernel.org>; Thu, 19 Dec 2013 21:11:58 -0800 (PST)
-In-Reply-To: <CAGBYx2buHtAYoRMAoJZqRHKAK2LQy68uPswWUP_oGWom1BYwbg@mail.gmail.com>
+Received: from mail-ea0-f171.google.com ([209.85.215.171]:41612 "EHLO
+	mail-ea0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751232Ab3LTFLZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Dec 2013 00:11:25 -0500
+Received: by mail-ea0-f171.google.com with SMTP id h10so810843eak.2
+        for <linux-ext4@vger.kernel.org>; Thu, 19 Dec 2013 21:11:24 -0800 (PST)
+In-Reply-To: <1387515880-10185-1-git-send-email-yangyongqiang01@baidu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
