@@ -1,19 +1,17 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: [PATCH 14/21] reiserfs: use generic posix ACL
-	infrastructure
-Date: Fri, 20 Dec 2013 05:16:49 -0800
-Message-ID: <20131220132523.607012323@bombadil.infradead.org>
+Subject: [PATCH 20/21] nfsd: use get_acl and ->set_acl
+Date: Fri, 20 Dec 2013 05:16:55 -0800
+Message-ID: <20131220132524.724702292@bombadil.infradead.org>
 References: <20131220131635.650823732@bombadil.infradead.org>
 Cc: Andreas Gruenbacher <andreas.gruenbacher@linbit.com>, xfs@oss.sgi.com,
-        Jan Kara <jack@suse.cz>, reiserfs-devel@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
-        linux-mtd@lists.infradead.org, jfs-discussion@lists.sourceforge.net,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-btrfs@vger.kernel.org
+        reiserfs-devel@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        cluster-devel@redhat.com, linux-mtd@lists.infradead.org,
+        jfs-discussion@lists.sourceforge.net, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-btrfs@vger.kernel.org
 To: viro@zeniv.linux.org.uk
 Return-path: <cluster-devel-bounces@redhat.com>
-Content-Disposition: inline;
-	filename=0014-reiserfs-use-generic-posix-ACL-infrastructure.patch
+Content-Disposition: inline; filename=0020-nfsd-use-get_acl-and-set_acl.patch
 List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
 	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
 List-Archive: <https://www.redhat.com/archives/cluster-devel>
@@ -25,368 +23,769 @@ Sender: cluster-devel-bounces@redhat.com
 Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-Also don't bother to set up a .get_acl method for symlinks as we do not
-support access control (ACLs or even mode bits) for symlinks in Linux.
+Remove the boilerplate code to marshall and unmarhall ACL objects into
+xattrs and operate on the posix_acl objects directly.  Also move all
+the ACL handling code into nfs?acl.c where it belongs.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/reiserfs/acl.h       |    4 +-
- fs/reiserfs/file.c      |    1 +
- fs/reiserfs/namei.c     |    4 +-
- fs/reiserfs/xattr.c     |    5 +-
- fs/reiserfs/xattr_acl.c |  182 +++++++----------------------------------------
- 5 files changed, 35 insertions(+), 161 deletions(-)
+ fs/nfsd/acl.h      |   16 ++--
+ fs/nfsd/nfs2acl.c  |   72 +++++++++-------
+ fs/nfsd/nfs3acl.c  |   62 +++++++-------
+ fs/nfsd/nfs4acl.c  |  120 ++++++++++++++++++++------
+ fs/nfsd/nfs4proc.c |    1 +
+ fs/nfsd/vfs.c      |  241 ----------------------------------------------------
+ fs/nfsd/vfs.h      |    8 --
+ 7 files changed, 173 insertions(+), 347 deletions(-)
 
-diff --git a/fs/reiserfs/acl.h b/fs/reiserfs/acl.h
-index f096b80..4a211f5 100644
---- a/fs/reiserfs/acl.h
-+++ b/fs/reiserfs/acl.h
-@@ -48,18 +48,18 @@ static inline int reiserfs_acl_count(size_t size)
+diff --git a/fs/nfsd/acl.h b/fs/nfsd/acl.h
+index 8b186a4..8b68218 100644
+--- a/fs/nfsd/acl.h
++++ b/fs/nfsd/acl.h
+@@ -35,7 +35,9 @@
+ #ifndef LINUX_NFS4_ACL_H
+ #define LINUX_NFS4_ACL_H
  
- #ifdef CONFIG_REISERFS_FS_POSIX_ACL
- struct posix_acl *reiserfs_get_acl(struct inode *inode, int type);
-+int reiserfs_set_acl(struct inode *inode, struct posix_acl *acl, int type);
- int reiserfs_acl_chmod(struct inode *inode);
- int reiserfs_inherit_default_acl(struct reiserfs_transaction_handle *th,
- 				 struct inode *dir, struct dentry *dentry,
- 				 struct inode *inode);
- int reiserfs_cache_default_acl(struct inode *dir);
--extern const struct xattr_handler reiserfs_posix_acl_default_handler;
--extern const struct xattr_handler reiserfs_posix_acl_access_handler;
+-#include <linux/posix_acl.h>
++struct nfs4_acl;
++struct svc_fh;
++struct svc_rqst;
  
- #else
+ /* Maximum ACL we'll accept from client; chosen (somewhat arbitrarily) to
+  * fit in a page: */
+@@ -45,13 +47,9 @@ struct nfs4_acl *nfs4_acl_new(int);
+ int nfs4_acl_get_whotype(char *, u32);
+ int nfs4_acl_write_who(int who, char *p);
  
- #define reiserfs_cache_default_acl(inode) 0
- #define reiserfs_get_acl NULL
-+#define reiserfs_set_acl NULL
- 
- static inline int reiserfs_acl_chmod(struct inode *inode)
- {
-diff --git a/fs/reiserfs/file.c b/fs/reiserfs/file.c
-index dcaafcf..ed58d84 100644
---- a/fs/reiserfs/file.c
-+++ b/fs/reiserfs/file.c
-@@ -260,4 +260,5 @@ const struct inode_operations reiserfs_file_inode_operations = {
- 	.removexattr = reiserfs_removexattr,
- 	.permission = reiserfs_permission,
- 	.get_acl = reiserfs_get_acl,
-+	.set_acl = reiserfs_set_acl,
- };
-diff --git a/fs/reiserfs/namei.c b/fs/reiserfs/namei.c
-index dc5236f..e825f8b 100644
---- a/fs/reiserfs/namei.c
-+++ b/fs/reiserfs/namei.c
-@@ -1522,6 +1522,7 @@ const struct inode_operations reiserfs_dir_inode_operations = {
- 	.removexattr = reiserfs_removexattr,
- 	.permission = reiserfs_permission,
- 	.get_acl = reiserfs_get_acl,
-+	.set_acl = reiserfs_set_acl,
- };
- 
- /*
-@@ -1538,8 +1539,6 @@ const struct inode_operations reiserfs_symlink_inode_operations = {
- 	.listxattr = reiserfs_listxattr,
- 	.removexattr = reiserfs_removexattr,
- 	.permission = reiserfs_permission,
--	.get_acl = reiserfs_get_acl,
+-#define NFS4_ACL_TYPE_DEFAULT	0x01
+-#define NFS4_ACL_DIR		0x02
+-#define NFS4_ACL_OWNER		0x04
 -
- };
+-struct nfs4_acl *nfs4_acl_posix_to_nfsv4(struct posix_acl *,
+-				struct posix_acl *, unsigned int flags);
+-int nfs4_acl_nfsv4_to_posix(struct nfs4_acl *, struct posix_acl **,
+-				struct posix_acl **, unsigned int flags);
++int nfsd4_get_nfs4_acl(struct svc_rqst *rqstp, struct dentry *dentry,
++		struct nfs4_acl **acl);
++__be32 nfsd4_set_nfs4_acl(struct svc_rqst *rqstp, struct svc_fh *fhp,
++		struct nfs4_acl *acl);
  
- /*
-@@ -1553,4 +1552,5 @@ const struct inode_operations reiserfs_special_inode_operations = {
- 	.removexattr = reiserfs_removexattr,
- 	.permission = reiserfs_permission,
- 	.get_acl = reiserfs_get_acl,
-+	.set_acl = reiserfs_set_acl,
- };
-diff --git a/fs/reiserfs/xattr.c b/fs/reiserfs/xattr.c
-index 8a9e2dc..5cdfbd6 100644
---- a/fs/reiserfs/xattr.c
-+++ b/fs/reiserfs/xattr.c
-@@ -50,6 +50,7 @@
- #include <linux/stat.h>
- #include <linux/quotaops.h>
- #include <linux/security.h>
-+#include <linux/posix_acl_xattr.h>
- 
- #define PRIVROOT_NAME ".reiserfs_priv"
- #define XAROOT_NAME   "xattrs"
-@@ -904,8 +905,8 @@ static const struct xattr_handler *reiserfs_xattr_handlers[] = {
- 	&reiserfs_xattr_security_handler,
- #endif
- #ifdef CONFIG_REISERFS_FS_POSIX_ACL
--	&reiserfs_posix_acl_access_handler,
--	&reiserfs_posix_acl_default_handler,
-+	&posix_acl_access_xattr_handler,
-+	&posix_acl_default_xattr_handler,
- #endif
- 	NULL
- };
-diff --git a/fs/reiserfs/xattr_acl.c b/fs/reiserfs/xattr_acl.c
-index d95c959..a6ce532 100644
---- a/fs/reiserfs/xattr_acl.c
-+++ b/fs/reiserfs/xattr_acl.c
-@@ -11,35 +11,19 @@
- #include "acl.h"
- #include <asm/uaccess.h>
- 
--static int reiserfs_set_acl(struct reiserfs_transaction_handle *th,
-+static int __reiserfs_set_acl(struct reiserfs_transaction_handle *th,
- 			    struct inode *inode, int type,
- 			    struct posix_acl *acl);
- 
--static int
--reiserfs_posix_acl_set(struct dentry *dentry, const char *name, const void *value,
--		size_t size, int flags, int type)
-+
-+int
-+reiserfs_set_acl(struct inode *inode, struct posix_acl *acl, int type)
+ #endif /* LINUX_NFS4_ACL_H */
+diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
+index 95d76dc..11c1fba 100644
+--- a/fs/nfsd/nfs2acl.c
++++ b/fs/nfsd/nfs2acl.c
+@@ -30,8 +30,9 @@ nfsacld_proc_null(struct svc_rqst *rqstp, void *argp, void *resp)
+ static __be32 nfsacld_proc_getacl(struct svc_rqst * rqstp,
+ 		struct nfsd3_getaclargs *argp, struct nfsd3_getaclres *resp)
  {
--	struct inode *inode = dentry->d_inode;
--	struct posix_acl *acl;
- 	int error, error2;
- 	struct reiserfs_transaction_handle th;
- 	size_t jcreate_blocks;
--	if (!reiserfs_posixacl(inode->i_sb))
--		return -EOPNOTSUPP;
--	if (!inode_owner_or_capable(inode))
--		return -EPERM;
--
--	if (value) {
--		acl = posix_acl_from_xattr(&init_user_ns, value, size);
--		if (IS_ERR(acl)) {
--			return PTR_ERR(acl);
--		} else if (acl) {
--			error = posix_acl_valid(acl);
--			if (error)
--				goto release_and_out;
--		}
--	} else
--		acl = NULL;
-+	int size = acl ? posix_acl_xattr_size(acl->a_count) : 0;
-+
+-	svc_fh *fh;
+ 	struct posix_acl *acl;
++	struct inode *inode;
++	svc_fh *fh;
+ 	__be32 nfserr = 0;
  
- 	/* Pessimism: We can't assume that anything from the xattr root up
- 	 * has been created. */
-@@ -51,7 +35,7 @@ reiserfs_posix_acl_set(struct dentry *dentry, const char *name, const void *valu
- 	error = journal_begin(&th, inode->i_sb, jcreate_blocks);
- 	reiserfs_write_unlock(inode->i_sb);
- 	if (error == 0) {
--		error = reiserfs_set_acl(&th, inode, type, acl);
-+		error = __reiserfs_set_acl(&th, inode, type, acl);
- 		reiserfs_write_lock(inode->i_sb);
- 		error2 = journal_end(&th, inode->i_sb, jcreate_blocks);
- 		reiserfs_write_unlock(inode->i_sb);
-@@ -59,29 +43,6 @@ reiserfs_posix_acl_set(struct dentry *dentry, const char *name, const void *valu
- 			error = error2;
+ 	dprintk("nfsd: GETACL(2acl)   %s\n", SVCFH_fmt(&argp->fh));
+@@ -41,6 +42,8 @@ static __be32 nfsacld_proc_getacl(struct svc_rqst * rqstp,
+ 	if (nfserr)
+ 		RETURN_STATUS(nfserr);
+ 
++	inode = fh->fh_dentry->d_inode;
++
+ 	if (argp->mask & ~(NFS_ACL|NFS_ACLCNT|NFS_DFACL|NFS_DFACLCNT))
+ 		RETURN_STATUS(nfserr_inval);
+ 	resp->mask = argp->mask;
+@@ -50,21 +53,13 @@ static __be32 nfsacld_proc_getacl(struct svc_rqst * rqstp,
+ 		goto fail;
+ 
+ 	if (resp->mask & (NFS_ACL|NFS_ACLCNT)) {
+-		acl = nfsd_get_posix_acl(fh, ACL_TYPE_ACCESS);
++		acl = get_acl(inode, ACL_TYPE_ACCESS);
+ 		if (IS_ERR(acl)) {
+-			int err = PTR_ERR(acl);
+-
+-			if (err == -ENODATA || err == -EOPNOTSUPP)
+-				acl = NULL;
+-			else {
+-				nfserr = nfserrno(err);
+-				goto fail;
+-			}
++			nfserr = nfserrno(PTR_ERR(acl));
++			goto fail;
+ 		}
+ 		if (acl == NULL) {
+ 			/* Solaris returns the inode's minimum ACL. */
+-
+-			struct inode *inode = fh->fh_dentry->d_inode;
+ 			acl = posix_acl_from_mode(inode->i_mode, GFP_KERNEL);
+ 		}
+ 		resp->acl_access = acl;
+@@ -72,17 +67,10 @@ static __be32 nfsacld_proc_getacl(struct svc_rqst * rqstp,
+ 	if (resp->mask & (NFS_DFACL|NFS_DFACLCNT)) {
+ 		/* Check how Solaris handles requests for the Default ACL
+ 		   of a non-directory! */
+-
+-		acl = nfsd_get_posix_acl(fh, ACL_TYPE_DEFAULT);
++		acl = get_acl(inode, ACL_TYPE_DEFAULT);
+ 		if (IS_ERR(acl)) {
+-			int err = PTR_ERR(acl);
+-
+-			if (err == -ENODATA || err == -EOPNOTSUPP)
+-				acl = NULL;
+-			else {
+-				nfserr = nfserrno(err);
+-				goto fail;
+-			}
++			nfserr = nfserrno(PTR_ERR(acl));
++			goto fail;
+ 		}
+ 		resp->acl_default = acl;
+ 	}
+@@ -103,31 +91,51 @@ static __be32 nfsacld_proc_setacl(struct svc_rqst * rqstp,
+ 		struct nfsd3_setaclargs *argp,
+ 		struct nfsd_attrstat *resp)
+ {
++	struct inode *inode;
+ 	svc_fh *fh;
+ 	__be32 nfserr = 0;
++	int error;
+ 
+ 	dprintk("nfsd: SETACL(2acl)   %s\n", SVCFH_fmt(&argp->fh));
+ 
+ 	fh = fh_copy(&resp->fh, &argp->fh);
+ 	nfserr = fh_verify(rqstp, &resp->fh, 0, NFSD_MAY_SATTR);
++	if (nfserr)
++		goto out;
+ 
+-	if (!nfserr) {
+-		nfserr = nfserrno( nfsd_set_posix_acl(
+-			fh, ACL_TYPE_ACCESS, argp->acl_access) );
+-	}
+-	if (!nfserr) {
+-		nfserr = nfserrno( nfsd_set_posix_acl(
+-			fh, ACL_TYPE_DEFAULT, argp->acl_default) );
+-	}
+-	if (!nfserr) {
+-		nfserr = fh_getattr(fh, &resp->stat);
++	inode = fh->fh_dentry->d_inode;
++	if (!IS_POSIXACL(inode) || !inode->i_op->set_acl) {
++		error = -EOPNOTSUPP;
++		goto out_errno;
  	}
  
--      release_and_out:
--	posix_acl_release(acl);
++	error = fh_want_write(fh);
++	if (error)
++		goto out_errno;
++
++	error = inode->i_op->set_acl(inode, argp->acl_access, ACL_TYPE_ACCESS);
++	if (error)
++		goto out_drop_write;
++	error = inode->i_op->set_acl(inode, argp->acl_default,
++				     ACL_TYPE_DEFAULT);
++	if (error)
++		goto out_drop_write;
++
++	fh_drop_write(fh);
++
++	nfserr = fh_getattr(fh, &resp->stat);
++
++out:
+ 	/* argp->acl_{access,default} may have been allocated in
+ 	   nfssvc_decode_setaclargs. */
+ 	posix_acl_release(argp->acl_access);
+ 	posix_acl_release(argp->acl_default);
+ 	return nfserr;
++out_drop_write:
++	fh_drop_write(fh);
++out_errno:
++	nfserr = nfserrno(error);
++	goto out;
+ }
+ 
+ /*
+diff --git a/fs/nfsd/nfs3acl.c b/fs/nfsd/nfs3acl.c
+index 9cbc1a8..adc5f1b 100644
+--- a/fs/nfsd/nfs3acl.c
++++ b/fs/nfsd/nfs3acl.c
+@@ -29,8 +29,9 @@ nfsd3_proc_null(struct svc_rqst *rqstp, void *argp, void *resp)
+ static __be32 nfsd3_proc_getacl(struct svc_rqst * rqstp,
+ 		struct nfsd3_getaclargs *argp, struct nfsd3_getaclres *resp)
+ {
+-	svc_fh *fh;
+ 	struct posix_acl *acl;
++	struct inode *inode;
++	svc_fh *fh;
+ 	__be32 nfserr = 0;
+ 
+ 	fh = fh_copy(&resp->fh, &argp->fh);
+@@ -38,26 +39,20 @@ static __be32 nfsd3_proc_getacl(struct svc_rqst * rqstp,
+ 	if (nfserr)
+ 		RETURN_STATUS(nfserr);
+ 
++	inode = fh->fh_dentry->d_inode;
++
+ 	if (argp->mask & ~(NFS_ACL|NFS_ACLCNT|NFS_DFACL|NFS_DFACLCNT))
+ 		RETURN_STATUS(nfserr_inval);
+ 	resp->mask = argp->mask;
+ 
+ 	if (resp->mask & (NFS_ACL|NFS_ACLCNT)) {
+-		acl = nfsd_get_posix_acl(fh, ACL_TYPE_ACCESS);
++		acl = get_acl(inode, ACL_TYPE_ACCESS);
+ 		if (IS_ERR(acl)) {
+-			int err = PTR_ERR(acl);
+-
+-			if (err == -ENODATA || err == -EOPNOTSUPP)
+-				acl = NULL;
+-			else {
+-				nfserr = nfserrno(err);
+-				goto fail;
+-			}
++			nfserr = nfserrno(PTR_ERR(acl));
++			goto fail;
+ 		}
+ 		if (acl == NULL) {
+ 			/* Solaris returns the inode's minimum ACL. */
+-
+-			struct inode *inode = fh->fh_dentry->d_inode;
+ 			acl = posix_acl_from_mode(inode->i_mode, GFP_KERNEL);
+ 		}
+ 		resp->acl_access = acl;
+@@ -65,17 +60,10 @@ static __be32 nfsd3_proc_getacl(struct svc_rqst * rqstp,
+ 	if (resp->mask & (NFS_DFACL|NFS_DFACLCNT)) {
+ 		/* Check how Solaris handles requests for the Default ACL
+ 		   of a non-directory! */
+-
+-		acl = nfsd_get_posix_acl(fh, ACL_TYPE_DEFAULT);
++		acl = get_acl(inode, ACL_TYPE_DEFAULT);
+ 		if (IS_ERR(acl)) {
+-			int err = PTR_ERR(acl);
+-
+-			if (err == -ENODATA || err == -EOPNOTSUPP)
+-				acl = NULL;
+-			else {
+-				nfserr = nfserrno(err);
+-				goto fail;
+-			}
++			nfserr = nfserrno(PTR_ERR(acl));
++			goto fail;
+ 		}
+ 		resp->acl_default = acl;
+ 	}
+@@ -96,21 +84,37 @@ static __be32 nfsd3_proc_setacl(struct svc_rqst * rqstp,
+ 		struct nfsd3_setaclargs *argp,
+ 		struct nfsd3_attrstat *resp)
+ {
++	struct inode *inode;
+ 	svc_fh *fh;
+ 	__be32 nfserr = 0;
++	int error;
+ 
+ 	fh = fh_copy(&resp->fh, &argp->fh);
+ 	nfserr = fh_verify(rqstp, &resp->fh, 0, NFSD_MAY_SATTR);
++	if (nfserr)
++		goto out;
+ 
+-	if (!nfserr) {
+-		nfserr = nfserrno( nfsd_set_posix_acl(
+-			fh, ACL_TYPE_ACCESS, argp->acl_access) );
+-	}
+-	if (!nfserr) {
+-		nfserr = nfserrno( nfsd_set_posix_acl(
+-			fh, ACL_TYPE_DEFAULT, argp->acl_default) );
++	inode = fh->fh_dentry->d_inode;
++	if (!IS_POSIXACL(inode) || !inode->i_op->set_acl) {
++		error = -EOPNOTSUPP;
++		goto out_errno;
+ 	}
+ 
++	error = fh_want_write(fh);
++	if (error)
++		goto out_errno;
++
++	error = inode->i_op->set_acl(inode, argp->acl_access, ACL_TYPE_ACCESS);
++	if (error)
++		goto out_drop_write;
++	error = inode->i_op->set_acl(inode, argp->acl_default,
++				     ACL_TYPE_DEFAULT);
++
++out_drop_write:
++	fh_drop_write(fh);
++out_errno:
++	nfserr = nfserrno(error);
++out:
+ 	/* argp->acl_{access,default} may have been allocated in
+ 	   nfs3svc_decode_setaclargs. */
+ 	posix_acl_release(argp->acl_access);
+diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
+index 8a50b3c..649ad7c 100644
+--- a/fs/nfsd/nfs4acl.c
++++ b/fs/nfsd/nfs4acl.c
+@@ -37,8 +37,13 @@
+ #include <linux/slab.h>
+ #include <linux/nfs_fs.h>
+ #include <linux/export.h>
++#include "nfsfh.h"
+ #include "acl.h"
++#include "vfs.h"
+ 
++#define NFS4_ACL_TYPE_DEFAULT	0x01
++#define NFS4_ACL_DIR		0x02
++#define NFS4_ACL_OWNER		0x04
+ 
+ /* mode bit translations: */
+ #define NFS4_READ_MODE (NFS4_ACE_READ_DATA)
+@@ -130,36 +135,50 @@ static short ace2type(struct nfs4_ace *);
+ static void _posix_to_nfsv4_one(struct posix_acl *, struct nfs4_acl *,
+ 				unsigned int);
+ 
+-struct nfs4_acl *
+-nfs4_acl_posix_to_nfsv4(struct posix_acl *pacl, struct posix_acl *dpacl,
+-			unsigned int flags)
++int
++nfsd4_get_nfs4_acl(struct svc_rqst *rqstp, struct dentry *dentry,
++		struct nfs4_acl **acl)
+ {
+-	struct nfs4_acl *acl;
++	struct inode *inode = dentry->d_inode;
++	int error = 0;
++	struct posix_acl *pacl = NULL, *dpacl = NULL;
++	unsigned int flags = 0;
+ 	int size = 0;
+ 
+-	if (pacl) {
+-		if (posix_acl_valid(pacl) < 0)
+-			return ERR_PTR(-EINVAL);
+-		size += 2*pacl->a_count;
++	pacl = get_acl(inode, ACL_TYPE_ACCESS);
++	if (!pacl) {
++		pacl = posix_acl_from_mode(inode->i_mode, GFP_KERNEL);
++		if (IS_ERR(pacl))
++			return PTR_ERR(pacl);
++		/* allocate for worst case: one (deny, allow) pair each: */
++		size += 2 * pacl->a_count;
+ 	}
+-	if (dpacl) {
+-		if (posix_acl_valid(dpacl) < 0)
+-			return ERR_PTR(-EINVAL);
+-		size += 2*dpacl->a_count;
++
++	if (S_ISDIR(inode->i_mode)) {
++		flags = NFS4_ACL_DIR;
++		dpacl = get_acl(inode, ACL_TYPE_DEFAULT);
++		if (dpacl)
++			size += 2 * dpacl->a_count;
++	} else {
++		dpacl = NULL;
+ 	}
+ 
+-	/* Allocate for worst case: one (deny, allow) pair each: */
+-	acl = nfs4_acl_new(size);
+-	if (acl == NULL)
+-		return ERR_PTR(-ENOMEM);
++	*acl = nfs4_acl_new(size);
++	if (*acl == NULL) {
++		error = -ENOMEM;
++		goto out;
++	}
+ 
+ 	if (pacl)
+-		_posix_to_nfsv4_one(pacl, acl, flags & ~NFS4_ACL_TYPE_DEFAULT);
++		_posix_to_nfsv4_one(pacl, *acl, flags & ~NFS4_ACL_TYPE_DEFAULT);
+ 
+ 	if (dpacl)
+-		_posix_to_nfsv4_one(dpacl, acl, flags | NFS4_ACL_TYPE_DEFAULT);
++		_posix_to_nfsv4_one(dpacl, *acl, flags | NFS4_ACL_TYPE_DEFAULT);
+ 
+-	return acl;
++ out:
++	posix_acl_release(pacl);
++	posix_acl_release(dpacl);
++	return error;
+ }
+ 
+ struct posix_acl_summary {
+@@ -719,8 +738,9 @@ static void process_one_v4_ace(struct posix_acl_state *state,
+ 	}
+ }
+ 
+-int nfs4_acl_nfsv4_to_posix(struct nfs4_acl *acl, struct posix_acl **pacl,
+-			    struct posix_acl **dpacl, unsigned int flags)
++static int nfs4_acl_nfsv4_to_posix(struct nfs4_acl *acl,
++		struct posix_acl **pacl, struct posix_acl **dpacl,
++		unsigned int flags)
+ {
+ 	struct posix_acl_state effective_acl_state, default_acl_state;
+ 	struct nfs4_ace *ace;
+@@ -780,6 +800,57 @@ out_estate:
+ 	return ret;
+ }
+ 
++__be32
++nfsd4_set_nfs4_acl(struct svc_rqst *rqstp, struct svc_fh *fhp,
++		struct nfs4_acl *acl)
++{
++	__be32 error;
++	int host_error;
++	struct dentry *dentry;
++	struct inode *inode;
++	struct posix_acl *pacl = NULL, *dpacl = NULL;
++	unsigned int flags = 0;
++
++	/* Get inode */
++	error = fh_verify(rqstp, fhp, 0, NFSD_MAY_SATTR);
++	if (error)
++		return error;
++
++	dentry = fhp->fh_dentry;
++	inode = dentry->d_inode;
++
++	if (!inode->i_op->set_acl || !IS_POSIXACL(inode))
++		return nfserr_attrnotsupp;
++
++	if (S_ISDIR(inode->i_mode))
++		flags = NFS4_ACL_DIR;
++
++	host_error = nfs4_acl_nfsv4_to_posix(acl, &pacl, &dpacl, flags);
++	if (host_error == -EINVAL)
++		return nfserr_attrnotsupp;
++	if (host_error < 0)
++		goto out_nfserr;
++
++	host_error = inode->i_op->set_acl(inode, pacl, ACL_TYPE_ACCESS);
++	if (host_error < 0)
++		goto out_release;
++
++	if (S_ISDIR(inode->i_mode)) {
++		host_error = inode->i_op->set_acl(inode, dpacl,
++						  ACL_TYPE_DEFAULT);
++	}
++
++out_release:
++	posix_acl_release(pacl);
++	posix_acl_release(dpacl);
++out_nfserr:
++	if (host_error == -EOPNOTSUPP)
++		return nfserr_attrnotsupp;
++	else
++		return nfserrno(host_error);
++}
++
++
+ static short
+ ace2type(struct nfs4_ace *ace)
+ {
+@@ -798,9 +869,6 @@ ace2type(struct nfs4_ace *ace)
+ 	return -1;
+ }
+ 
+-EXPORT_SYMBOL(nfs4_acl_posix_to_nfsv4);
+-EXPORT_SYMBOL(nfs4_acl_nfsv4_to_posix);
+-
+ struct nfs4_acl *
+ nfs4_acl_new(int n)
+ {
+@@ -862,7 +930,3 @@ nfs4_acl_write_who(int who, char *p)
+ 	BUG();
+ 	return -1;
+ }
+-
+-EXPORT_SYMBOL(nfs4_acl_new);
+-EXPORT_SYMBOL(nfs4_acl_get_whotype);
+-EXPORT_SYMBOL(nfs4_acl_write_who);
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 419572f..825b8a9 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -41,6 +41,7 @@
+ #include "vfs.h"
+ #include "current_stateid.h"
+ #include "netns.h"
++#include "acl.h"
+ 
+ #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+ #include <linux/security.h>
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 7eea63c..1426eb6 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -468,158 +468,7 @@ out:
+ 	return err;
+ }
+ 
+-#if defined(CONFIG_NFSD_V2_ACL) || \
+-    defined(CONFIG_NFSD_V3_ACL) || \
+-    defined(CONFIG_NFSD_V4)
+-static ssize_t nfsd_getxattr(struct dentry *dentry, char *key, void **buf)
+-{
+-	ssize_t buflen;
+-	ssize_t ret;
+-
+-	buflen = vfs_getxattr(dentry, key, NULL, 0);
+-	if (buflen <= 0)
+-		return buflen;
+-
+-	*buf = kmalloc(buflen, GFP_KERNEL);
+-	if (!*buf)
+-		return -ENOMEM;
+-
+-	ret = vfs_getxattr(dentry, key, *buf, buflen);
+-	if (ret < 0)
+-		kfree(*buf);
+-	return ret;
+-}
+-#endif
+-
+ #if defined(CONFIG_NFSD_V4)
+-static int
+-set_nfsv4_acl_one(struct dentry *dentry, struct posix_acl *pacl, char *key)
+-{
+-	int len;
+-	size_t buflen;
+-	char *buf = NULL;
+-	int error = 0;
+-
+-	buflen = posix_acl_xattr_size(pacl->a_count);
+-	buf = kmalloc(buflen, GFP_KERNEL);
+-	error = -ENOMEM;
+-	if (buf == NULL)
+-		goto out;
+-
+-	len = posix_acl_to_xattr(&init_user_ns, pacl, buf, buflen);
+-	if (len < 0) {
+-		error = len;
+-		goto out;
+-	}
+-
+-	error = vfs_setxattr(dentry, key, buf, len, 0);
+-out:
+-	kfree(buf);
 -	return error;
 -}
 -
--static int
--reiserfs_posix_acl_get(struct dentry *dentry, const char *name, void *buffer,
--		size_t size, int type)
+-__be32
+-nfsd4_set_nfs4_acl(struct svc_rqst *rqstp, struct svc_fh *fhp,
+-    struct nfs4_acl *acl)
 -{
--	struct posix_acl *acl;
--	int error;
+-	__be32 error;
+-	int host_error;
+-	struct dentry *dentry;
+-	struct inode *inode;
+-	struct posix_acl *pacl = NULL, *dpacl = NULL;
+-	unsigned int flags = 0;
 -
--	if (!reiserfs_posixacl(dentry->d_sb))
--		return -EOPNOTSUPP;
--
--	acl = reiserfs_get_acl(dentry->d_inode, type);
--	if (IS_ERR(acl))
--		return PTR_ERR(acl);
--	if (acl == NULL)
--		return -ENODATA;
--	error = posix_acl_to_xattr(&init_user_ns, acl, buffer, size);
--	posix_acl_release(acl);
--
- 	return error;
- }
- 
-@@ -221,10 +182,6 @@ struct posix_acl *reiserfs_get_acl(struct inode *inode, int type)
- 	int size;
- 	int retval;
- 
--	acl = get_cached_acl(inode, type);
--	if (acl != ACL_NOT_CACHED)
--		return acl;
--
- 	switch (type) {
- 	case ACL_TYPE_ACCESS:
- 		name = POSIX_ACL_XATTR_ACCESS;
-@@ -273,7 +230,7 @@ struct posix_acl *reiserfs_get_acl(struct inode *inode, int type)
-  * BKL held [before 2.5.x]
-  */
- static int
--reiserfs_set_acl(struct reiserfs_transaction_handle *th, struct inode *inode,
-+__reiserfs_set_acl(struct reiserfs_transaction_handle *th, struct inode *inode,
- 		 int type, struct posix_acl *acl)
- {
- 	char *name;
-@@ -281,9 +238,6 @@ reiserfs_set_acl(struct reiserfs_transaction_handle *th, struct inode *inode,
- 	size_t size = 0;
- 	int error;
- 
--	if (S_ISLNK(inode->i_mode))
--		return -EOPNOTSUPP;
--
- 	switch (type) {
- 	case ACL_TYPE_ACCESS:
- 		name = POSIX_ACL_XATTR_ACCESS;
-@@ -343,7 +297,7 @@ reiserfs_inherit_default_acl(struct reiserfs_transaction_handle *th,
- 			     struct inode *dir, struct dentry *dentry,
- 			     struct inode *inode)
- {
--	struct posix_acl *acl;
-+	struct posix_acl *default_acl, *acl;
- 	int err = 0;
- 
- 	/* ACLs only get applied to files and directories */
-@@ -363,37 +317,28 @@ reiserfs_inherit_default_acl(struct reiserfs_transaction_handle *th,
- 		goto apply_umask;
- 	}
- 
--	acl = reiserfs_get_acl(dir, ACL_TYPE_DEFAULT);
--	if (IS_ERR(acl))
--		return PTR_ERR(acl);
-+	err = posix_acl_create(dir, &inode->i_mode, &default_acl, &acl);
-+	if (err)
-+		return err;
- 
-+	if (default_acl) {
-+		err = __reiserfs_set_acl(th, inode, ACL_TYPE_DEFAULT,
-+					 default_acl);
-+		posix_acl_release(default_acl);
-+	}
- 	if (acl) {
--		/* Copy the default ACL to the default ACL of a new directory */
--		if (S_ISDIR(inode->i_mode)) {
--			err = reiserfs_set_acl(th, inode, ACL_TYPE_DEFAULT,
--					       acl);
--			if (err)
--				goto cleanup;
--		}
--
--		/* Now we reconcile the new ACL and the mode,
--		   potentially modifying both */
--		err = __posix_acl_create(&acl, GFP_NOFS, &inode->i_mode);
--		if (err < 0)
--			return err;
--
--		/* If we need an ACL.. */
--		if (err > 0)
--			err = reiserfs_set_acl(th, inode, ACL_TYPE_ACCESS, acl);
--	      cleanup:
-+		if (!err)
-+			err = __reiserfs_set_acl(th, inode, ACL_TYPE_ACCESS,
-+						 acl);
- 		posix_acl_release(acl);
--	} else {
--	      apply_umask:
--		/* no ACL, apply umask */
--		inode->i_mode &= ~current_umask();
- 	}
- 
- 	return err;
-+
-+      apply_umask:
-+	/* no ACL, apply umask */
-+	inode->i_mode &= ~current_umask();
-+	return err;
- }
- 
- /* This is used to cache the default acl before a new object is created.
-@@ -442,84 +387,11 @@ int reiserfs_cache_default_acl(struct inode *inode)
-  */
- int reiserfs_acl_chmod(struct inode *inode)
- {
--	struct reiserfs_transaction_handle th;
--	struct posix_acl *acl;
--	size_t size;
--	int error;
--
- 	if (IS_PRIVATE(inode))
- 		return 0;
--
--	if (S_ISLNK(inode->i_mode))
--		return -EOPNOTSUPP;
--
- 	if (get_inode_sd_version(inode) == STAT_DATA_V1 ||
--	    !reiserfs_posixacl(inode->i_sb)) {
-+	    !reiserfs_posixacl(inode->i_sb))
- 		return 0;
--	}
- 
--	acl = reiserfs_get_acl(inode, ACL_TYPE_ACCESS);
--	if (!acl)
--		return 0;
--	if (IS_ERR(acl))
--		return PTR_ERR(acl);
--	error = __posix_acl_chmod(&acl, GFP_NOFS, inode->i_mode);
+-	/* Get inode */
+-	error = fh_verify(rqstp, fhp, 0, NFSD_MAY_SATTR);
 -	if (error)
 -		return error;
 -
--	size = reiserfs_xattr_nblocks(inode, reiserfs_acl_size(acl->a_count));
--	reiserfs_write_lock(inode->i_sb);
--	error = journal_begin(&th, inode->i_sb, size * 2);
--	reiserfs_write_unlock(inode->i_sb);
--	if (!error) {
--		int error2;
--		error = reiserfs_set_acl(&th, inode, ACL_TYPE_ACCESS, acl);
--		reiserfs_write_lock(inode->i_sb);
--		error2 = journal_end(&th, inode->i_sb, size * 2);
--		reiserfs_write_unlock(inode->i_sb);
--		if (error2)
--			error = error2;
+-	dentry = fhp->fh_dentry;
+-	inode = dentry->d_inode;
+-	if (S_ISDIR(inode->i_mode))
+-		flags = NFS4_ACL_DIR;
+-
+-	host_error = nfs4_acl_nfsv4_to_posix(acl, &pacl, &dpacl, flags);
+-	if (host_error == -EINVAL) {
+-		return nfserr_attrnotsupp;
+-	} else if (host_error < 0)
+-		goto out_nfserr;
+-
+-	host_error = set_nfsv4_acl_one(dentry, pacl, POSIX_ACL_XATTR_ACCESS);
+-	if (host_error < 0)
+-		goto out_release;
+-
+-	if (S_ISDIR(inode->i_mode))
+-		host_error = set_nfsv4_acl_one(dentry, dpacl, POSIX_ACL_XATTR_DEFAULT);
+-
+-out_release:
+-	posix_acl_release(pacl);
+-	posix_acl_release(dpacl);
+-out_nfserr:
+-	if (host_error == -EOPNOTSUPP)
+-		return nfserr_attrnotsupp;
+-	else
+-		return nfserrno(host_error);
+-}
+-
+-static struct posix_acl *
+-_get_posix_acl(struct dentry *dentry, char *key)
+-{
+-	void *buf = NULL;
+-	struct posix_acl *pacl = NULL;
+-	int buflen;
+-
+-	buflen = nfsd_getxattr(dentry, key, &buf);
+-	if (!buflen)
+-		buflen = -ENODATA;
+-	if (buflen <= 0)
+-		return ERR_PTR(buflen);
+-
+-	pacl = posix_acl_from_xattr(&init_user_ns, buf, buflen);
+-	kfree(buf);
+-	return pacl;
+-}
+-
+-int
+-nfsd4_get_nfs4_acl(struct svc_rqst *rqstp, struct dentry *dentry, struct nfs4_acl **acl)
+-{
+-	struct inode *inode = dentry->d_inode;
+-	int error = 0;
+-	struct posix_acl *pacl = NULL, *dpacl = NULL;
+-	unsigned int flags = 0;
+-
+-	pacl = _get_posix_acl(dentry, POSIX_ACL_XATTR_ACCESS);
+-	if (IS_ERR(pacl) && PTR_ERR(pacl) == -ENODATA)
+-		pacl = posix_acl_from_mode(inode->i_mode, GFP_KERNEL);
+-	if (IS_ERR(pacl)) {
+-		error = PTR_ERR(pacl);
+-		pacl = NULL;
+-		goto out;
 -	}
--	posix_acl_release(acl);
+-
+-	if (S_ISDIR(inode->i_mode)) {
+-		dpacl = _get_posix_acl(dentry, POSIX_ACL_XATTR_DEFAULT);
+-		if (IS_ERR(dpacl) && PTR_ERR(dpacl) == -ENODATA)
+-			dpacl = NULL;
+-		else if (IS_ERR(dpacl)) {
+-			error = PTR_ERR(dpacl);
+-			dpacl = NULL;
+-			goto out;
+-		}
+-		flags = NFS4_ACL_DIR;
+-	}
+-
+-	*acl = nfs4_acl_posix_to_nfsv4(pacl, dpacl, flags);
+-	if (IS_ERR(*acl)) {
+-		error = PTR_ERR(*acl);
+-		*acl = NULL;
+-	}
+- out:
+-	posix_acl_release(pacl);
+-	posix_acl_release(dpacl);
 -	return error;
 -}
 -
--static size_t posix_acl_access_list(struct dentry *dentry, char *list,
--				    size_t list_size, const char *name,
--				    size_t name_len, int type)
--{
--	const size_t size = sizeof(POSIX_ACL_XATTR_ACCESS);
--	if (!reiserfs_posixacl(dentry->d_sb))
--		return 0;
--	if (list && size <= list_size)
--		memcpy(list, POSIX_ACL_XATTR_ACCESS, size);
--	return size;
-+	return posix_acl_chmod(inode, inode->i_mode);
+ /*
+  * NFS junction information is stored in an extended attribute.
+  */
+@@ -2284,93 +2133,3 @@ out_nomem:
+ 	nfsd_racache_shutdown();
+ 	return -ENOMEM;
  }
 -
--const struct xattr_handler reiserfs_posix_acl_access_handler = {
--	.prefix = POSIX_ACL_XATTR_ACCESS,
--	.flags = ACL_TYPE_ACCESS,
--	.get = reiserfs_posix_acl_get,
--	.set = reiserfs_posix_acl_set,
--	.list = posix_acl_access_list,
--};
--
--static size_t posix_acl_default_list(struct dentry *dentry, char *list,
--				     size_t list_size, const char *name,
--				     size_t name_len, int type)
+-#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
+-struct posix_acl *
+-nfsd_get_posix_acl(struct svc_fh *fhp, int type)
 -{
--	const size_t size = sizeof(POSIX_ACL_XATTR_DEFAULT);
--	if (!reiserfs_posixacl(dentry->d_sb))
--		return 0;
--	if (list && size <= list_size)
--		memcpy(list, POSIX_ACL_XATTR_DEFAULT, size);
--	return size;
+-	struct inode *inode = fhp->fh_dentry->d_inode;
+-	char *name;
+-	void *value = NULL;
+-	ssize_t size;
+-	struct posix_acl *acl;
+-
+-	if (!IS_POSIXACL(inode))
+-		return ERR_PTR(-EOPNOTSUPP);
+-
+-	switch (type) {
+-	case ACL_TYPE_ACCESS:
+-		name = POSIX_ACL_XATTR_ACCESS;
+-		break;
+-	case ACL_TYPE_DEFAULT:
+-		name = POSIX_ACL_XATTR_DEFAULT;
+-		break;
+-	default:
+-		return ERR_PTR(-EOPNOTSUPP);
+-	}
+-
+-	size = nfsd_getxattr(fhp->fh_dentry, name, &value);
+-	if (size < 0)
+-		return ERR_PTR(size);
+-
+-	acl = posix_acl_from_xattr(&init_user_ns, value, size);
+-	kfree(value);
+-	return acl;
 -}
 -
--const struct xattr_handler reiserfs_posix_acl_default_handler = {
--	.prefix = POSIX_ACL_XATTR_DEFAULT,
--	.flags = ACL_TYPE_DEFAULT,
--	.get = reiserfs_posix_acl_get,
--	.set = reiserfs_posix_acl_set,
--	.list = posix_acl_default_list,
--};
+-int
+-nfsd_set_posix_acl(struct svc_fh *fhp, int type, struct posix_acl *acl)
+-{
+-	struct inode *inode = fhp->fh_dentry->d_inode;
+-	char *name;
+-	void *value = NULL;
+-	size_t size;
+-	int error;
+-
+-	if (!IS_POSIXACL(inode) ||
+-	    !inode->i_op->setxattr || !inode->i_op->removexattr)
+-		return -EOPNOTSUPP;
+-	switch(type) {
+-		case ACL_TYPE_ACCESS:
+-			name = POSIX_ACL_XATTR_ACCESS;
+-			break;
+-		case ACL_TYPE_DEFAULT:
+-			name = POSIX_ACL_XATTR_DEFAULT;
+-			break;
+-		default:
+-			return -EOPNOTSUPP;
+-	}
+-
+-	if (acl && acl->a_count) {
+-		size = posix_acl_xattr_size(acl->a_count);
+-		value = kmalloc(size, GFP_KERNEL);
+-		if (!value)
+-			return -ENOMEM;
+-		error = posix_acl_to_xattr(&init_user_ns, acl, value, size);
+-		if (error < 0)
+-			goto getout;
+-		size = error;
+-	} else
+-		size = 0;
+-
+-	error = fh_want_write(fhp);
+-	if (error)
+-		goto getout;
+-	if (size)
+-		error = vfs_setxattr(fhp->fh_dentry, name, value, size, 0);
+-	else {
+-		if (!S_ISDIR(inode->i_mode) && type == ACL_TYPE_DEFAULT)
+-			error = 0;
+-		else {
+-			error = vfs_removexattr(fhp->fh_dentry, name);
+-			if (error == -ENODATA)
+-				error = 0;
+-		}
+-	}
+-	fh_drop_write(fhp);
+-
+-getout:
+-	kfree(value);
+-	return error;
+-}
+-#endif  /* defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL) */
+diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+index a4be2e3..1bc1d44 100644
+--- a/fs/nfsd/vfs.h
++++ b/fs/nfsd/vfs.h
+@@ -52,9 +52,6 @@ __be32		nfsd_setattr(struct svc_rqst *, struct svc_fh *,
+ 				struct iattr *, int, time_t);
+ int nfsd_mountpoint(struct dentry *, struct svc_export *);
+ #ifdef CONFIG_NFSD_V4
+-__be32          nfsd4_set_nfs4_acl(struct svc_rqst *, struct svc_fh *,
+-                    struct nfs4_acl *);
+-int             nfsd4_get_nfs4_acl(struct svc_rqst *, struct dentry *, struct nfs4_acl **);
+ __be32          nfsd4_set_nfs4_label(struct svc_rqst *, struct svc_fh *,
+ 		    struct xdr_netobj *);
+ #endif /* CONFIG_NFSD_V4 */
+@@ -101,11 +98,6 @@ __be32		nfsd_statfs(struct svc_rqst *, struct svc_fh *,
+ __be32		nfsd_permission(struct svc_rqst *, struct svc_export *,
+ 				struct dentry *, int);
+ 
+-#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
+-struct posix_acl *nfsd_get_posix_acl(struct svc_fh *, int);
+-int nfsd_set_posix_acl(struct svc_fh *, int, struct posix_acl *);
+-#endif
+-
+ static inline int fh_want_write(struct svc_fh *fh)
+ {
+ 	int ret = mnt_want_write(fh->fh_export->ex_path.mnt);
 -- 
 1.7.10.4
