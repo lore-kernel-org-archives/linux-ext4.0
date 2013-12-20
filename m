@@ -1,8 +1,8 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: [PATCH 12/21] jffs2: use generic posix ACL
-	infrastructure
-Date: Fri, 20 Dec 2013 05:16:47 -0800
-Message-ID: <20131220132523.241669904@bombadil.infradead.org>
+Subject: [PATCH 02/21] fs: merge xattr_acl.c into
+	posix_acl.c
+Date: Fri, 20 Dec 2013 05:16:37 -0800
+Message-ID: <20131220132521.330228004@bombadil.infradead.org>
 References: <20131220131635.650823732@bombadil.infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -17,7 +17,7 @@ Cc: Andreas Gruenbacher <andreas.gruenbacher@linbit.com>, xfs@oss.sgi.com,
 To: viro@zeniv.linux.org.uk
 Return-path: <jfs-discussion-bounces@lists.sourceforge.net>
 Content-Disposition: inline;
-	filename=0012-jffs2-use-generic-posix-ACL-infrastructure.patch
+	filename=0002-fs-merge-xattr_acl.c-into-posix_acl.c.patch
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
 	<mailto:jfs-discussion-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=jfs-discussion>
@@ -28,318 +28,415 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
 Errors-To: jfs-discussion-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-Also don't bother to set up a .get_acl method for symlinks as we do not
-support access control (ACLs or even mode bits) for symlinks in Linux.
-
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/jffs2/acl.c     |  141 ++++------------------------------------------------
- fs/jffs2/acl.h     |    7 +--
- fs/jffs2/dir.c     |    1 +
- fs/jffs2/file.c    |    1 +
- fs/jffs2/fs.c      |    7 +--
- fs/jffs2/symlink.c |    1 -
- fs/jffs2/xattr.c   |    9 ++--
- 7 files changed, 24 insertions(+), 143 deletions(-)
+ fs/Makefile    |    2 +-
+ fs/posix_acl.c |  180 +++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ fs/xattr_acl.c |  180 --------------------------------------------------------
+ 3 files changed, 174 insertions(+), 188 deletions(-)
+ delete mode 100644 fs/xattr_acl.c
 
-diff --git a/fs/jffs2/acl.c b/fs/jffs2/acl.c
-index 4d6e31b..009ec0b 100644
---- a/fs/jffs2/acl.c
-+++ b/fs/jffs2/acl.c
-@@ -178,10 +178,6 @@ struct posix_acl *jffs2_get_acl(struct inode *inode, int type)
- 	char *value = NULL;
- 	int rc, xprefix;
+diff --git a/fs/Makefile b/fs/Makefile
+index 4fe6df3..f2c1843 100644
+--- a/fs/Makefile
++++ b/fs/Makefile
+@@ -42,7 +42,7 @@ obj-$(CONFIG_BINFMT_SOM)	+= binfmt_som.o
+ obj-$(CONFIG_BINFMT_FLAT)	+= binfmt_flat.o
  
--	acl = get_cached_acl(inode, type);
--	if (acl != ACL_NOT_CACHED)
--		return acl;
--
- 	switch (type) {
- 	case ACL_TYPE_ACCESS:
- 		xprefix = JFFS2_XPREFIX_ACL_ACCESS;
-@@ -232,13 +228,10 @@ static int __jffs2_set_acl(struct inode *inode, int xprefix, struct posix_acl *a
- 	return rc;
- }
+ obj-$(CONFIG_FS_MBCACHE)	+= mbcache.o
+-obj-$(CONFIG_FS_POSIX_ACL)	+= posix_acl.o xattr_acl.o
++obj-$(CONFIG_FS_POSIX_ACL)	+= posix_acl.o
+ obj-$(CONFIG_NFS_COMMON)	+= nfs_common/
+ obj-$(CONFIG_GENERIC_ACL)	+= generic_acl.o
+ obj-$(CONFIG_COREDUMP)		+= coredump.o
+diff --git a/fs/posix_acl.c b/fs/posix_acl.c
+index 8bd2135..359d70b 100644
+--- a/fs/posix_acl.c
++++ b/fs/posix_acl.c
+@@ -1,10 +1,8 @@
+ /*
+- * linux/fs/posix_acl.c
++ * Copyright (C) 2002,2003 by Andreas Gruenbacher <a.gruenbacher@computer.org>
+  *
+- *  Copyright (C) 2002 by Andreas Gruenbacher <a.gruenbacher@computer.org>
+- *
+- *  Fixes from William Schumacher incorporated on 15 March 2001.
+- *     (Reported by Charles Bertsch, <CBertsch@microtest.com>).
++ * Fixes from William Schumacher incorporated on 15 March 2001.
++ *    (Reported by Charles Bertsch, <CBertsch@microtest.com>).
+  */
  
--static int jffs2_set_acl(struct inode *inode, int type, struct posix_acl *acl)
-+int jffs2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
- {
- 	int rc, xprefix;
- 
--	if (S_ISLNK(inode->i_mode))
--		return -EOPNOTSUPP;
--
- 	switch (type) {
- 	case ACL_TYPE_ACCESS:
- 		xprefix = JFFS2_XPREFIX_ACL_ACCESS;
-@@ -277,30 +270,21 @@ static int jffs2_set_acl(struct inode *inode, int type, struct posix_acl *acl)
- 
- int jffs2_init_acl_pre(struct inode *dir_i, struct inode *inode, umode_t *i_mode)
- {
--	struct posix_acl *acl;
-+	struct posix_acl *default_acl, *acl;
- 	int rc;
- 
- 	cache_no_acl(inode);
- 
--	if (S_ISLNK(*i_mode))
--		return 0;	/* Symlink always has no-ACL */
--
--	acl = jffs2_get_acl(dir_i, ACL_TYPE_DEFAULT);
--	if (IS_ERR(acl))
--		return PTR_ERR(acl);
--
--	if (!acl) {
--		*i_mode &= ~current_umask();
--	} else {
--		if (S_ISDIR(*i_mode))
--			set_cached_acl(inode, ACL_TYPE_DEFAULT, acl);
--
--		rc = __posix_acl_create(&acl, GFP_KERNEL, i_mode);
--		if (rc < 0)
--			return rc;
--		if (rc > 0)
--			set_cached_acl(inode, ACL_TYPE_ACCESS, acl);
-+	rc = posix_acl_create(dir_i, i_mode, &default_acl, &acl);
-+	if (rc)
-+		return rc;
- 
-+	if (default_acl) {
-+		set_cached_acl(inode, ACL_TYPE_DEFAULT, default_acl);
-+		posix_acl_release(default_acl);
-+	}
-+	if (acl) {
-+		set_cached_acl(inode, ACL_TYPE_ACCESS, acl);
- 		posix_acl_release(acl);
- 	}
- 	return 0;
-@@ -324,106 +308,3 @@ int jffs2_init_acl_post(struct inode *inode)
- 
- 	return 0;
- }
--
--int jffs2_acl_chmod(struct inode *inode)
--{
--	struct posix_acl *acl;
--	int rc;
--
--	if (S_ISLNK(inode->i_mode))
--		return -EOPNOTSUPP;
--	acl = jffs2_get_acl(inode, ACL_TYPE_ACCESS);
--	if (IS_ERR(acl) || !acl)
--		return PTR_ERR(acl);
--	rc = __posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
--	if (rc)
--		return rc;
--	rc = jffs2_set_acl(inode, ACL_TYPE_ACCESS, acl);
--	posix_acl_release(acl);
--	return rc;
--}
--
--static size_t jffs2_acl_access_listxattr(struct dentry *dentry, char *list,
--		size_t list_size, const char *name, size_t name_len, int type)
--{
--	const int retlen = sizeof(POSIX_ACL_XATTR_ACCESS);
--
--	if (list && retlen <= list_size)
--		strcpy(list, POSIX_ACL_XATTR_ACCESS);
--	return retlen;
--}
--
--static size_t jffs2_acl_default_listxattr(struct dentry *dentry, char *list,
--		size_t list_size, const char *name, size_t name_len, int type)
--{
--	const int retlen = sizeof(POSIX_ACL_XATTR_DEFAULT);
--
--	if (list && retlen <= list_size)
--		strcpy(list, POSIX_ACL_XATTR_DEFAULT);
--	return retlen;
--}
--
--static int jffs2_acl_getxattr(struct dentry *dentry, const char *name,
--		void *buffer, size_t size, int type)
--{
--	struct posix_acl *acl;
--	int rc;
--
--	if (name[0] != '\0')
--		return -EINVAL;
--
--	acl = jffs2_get_acl(dentry->d_inode, type);
--	if (IS_ERR(acl))
--		return PTR_ERR(acl);
--	if (!acl)
--		return -ENODATA;
--	rc = posix_acl_to_xattr(&init_user_ns, acl, buffer, size);
--	posix_acl_release(acl);
--
--	return rc;
--}
--
--static int jffs2_acl_setxattr(struct dentry *dentry, const char *name,
--		const void *value, size_t size, int flags, int type)
--{
--	struct posix_acl *acl;
--	int rc;
--
--	if (name[0] != '\0')
--		return -EINVAL;
--	if (!inode_owner_or_capable(dentry->d_inode))
--		return -EPERM;
--
--	if (value) {
--		acl = posix_acl_from_xattr(&init_user_ns, value, size);
--		if (IS_ERR(acl))
--			return PTR_ERR(acl);
--		if (acl) {
--			rc = posix_acl_valid(acl);
--			if (rc)
--				goto out;
--		}
--	} else {
--		acl = NULL;
--	}
--	rc = jffs2_set_acl(dentry->d_inode, type, acl);
-- out:
--	posix_acl_release(acl);
--	return rc;
--}
--
--const struct xattr_handler jffs2_acl_access_xattr_handler = {
--	.prefix	= POSIX_ACL_XATTR_ACCESS,
--	.flags	= ACL_TYPE_DEFAULT,
--	.list	= jffs2_acl_access_listxattr,
--	.get	= jffs2_acl_getxattr,
--	.set	= jffs2_acl_setxattr,
--};
--
--const struct xattr_handler jffs2_acl_default_xattr_handler = {
--	.prefix	= POSIX_ACL_XATTR_DEFAULT,
--	.flags	= ACL_TYPE_DEFAULT,
--	.list	= jffs2_acl_default_listxattr,
--	.get	= jffs2_acl_getxattr,
--	.set	= jffs2_acl_setxattr,
--};
-diff --git a/fs/jffs2/acl.h b/fs/jffs2/acl.h
-index 9b47724..2e2b574 100644
---- a/fs/jffs2/acl.h
-+++ b/fs/jffs2/acl.h
-@@ -27,17 +27,14 @@ struct jffs2_acl_header {
- #ifdef CONFIG_JFFS2_FS_POSIX_ACL
- 
- struct posix_acl *jffs2_get_acl(struct inode *inode, int type);
--extern int jffs2_acl_chmod(struct inode *);
-+int jffs2_set_acl(struct inode *inode, struct posix_acl *acl, int type);
- extern int jffs2_init_acl_pre(struct inode *, struct inode *, umode_t *);
- extern int jffs2_init_acl_post(struct inode *);
- 
--extern const struct xattr_handler jffs2_acl_access_xattr_handler;
--extern const struct xattr_handler jffs2_acl_default_xattr_handler;
--
- #else
- 
- #define jffs2_get_acl				(NULL)
--#define jffs2_acl_chmod(inode)			(0)
-+#define jffs2_set_acl				(NULL)
- #define jffs2_init_acl_pre(dir_i,inode,mode)	(0)
- #define jffs2_init_acl_post(inode)		(0)
- 
-diff --git a/fs/jffs2/dir.c b/fs/jffs2/dir.c
-index e3aac22..9385560 100644
---- a/fs/jffs2/dir.c
-+++ b/fs/jffs2/dir.c
-@@ -59,6 +59,7 @@ const struct inode_operations jffs2_dir_inode_operations =
- 	.mknod =	jffs2_mknod,
- 	.rename =	jffs2_rename,
- 	.get_acl =	jffs2_get_acl,
-+	.set_acl =	jffs2_set_acl,
- 	.setattr =	jffs2_setattr,
- 	.setxattr =	jffs2_setxattr,
- 	.getxattr =	jffs2_getxattr,
-diff --git a/fs/jffs2/file.c b/fs/jffs2/file.c
-index 1506673..256cd19 100644
---- a/fs/jffs2/file.c
-+++ b/fs/jffs2/file.c
-@@ -66,6 +66,7 @@ const struct file_operations jffs2_file_operations =
- const struct inode_operations jffs2_file_inode_operations =
- {
- 	.get_acl =	jffs2_get_acl,
-+	.set_acl =	jffs2_set_acl,
- 	.setattr =	jffs2_setattr,
- 	.setxattr =	jffs2_setxattr,
- 	.getxattr =	jffs2_getxattr,
-diff --git a/fs/jffs2/fs.c b/fs/jffs2/fs.c
-index 09b3ed4..a69e426 100644
---- a/fs/jffs2/fs.c
-+++ b/fs/jffs2/fs.c
-@@ -190,15 +190,16 @@ int jffs2_do_setattr (struct inode *inode, struct iattr *iattr)
- 
- int jffs2_setattr(struct dentry *dentry, struct iattr *iattr)
- {
-+	struct inode *inode = dentry->d_inode;
- 	int rc;
- 
--	rc = inode_change_ok(dentry->d_inode, iattr);
-+	rc = inode_change_ok(inode, iattr);
- 	if (rc)
- 		return rc;
- 
--	rc = jffs2_do_setattr(dentry->d_inode, iattr);
-+	rc = jffs2_do_setattr(inode, iattr);
- 	if (!rc && (iattr->ia_valid & ATTR_MODE))
--		rc = jffs2_acl_chmod(dentry->d_inode);
-+		rc = posix_acl_chmod(inode, inode->i_mode);
- 
- 	return rc;
- }
-diff --git a/fs/jffs2/symlink.c b/fs/jffs2/symlink.c
-index 6e56333..c7c77b0 100644
---- a/fs/jffs2/symlink.c
-+++ b/fs/jffs2/symlink.c
-@@ -22,7 +22,6 @@ const struct inode_operations jffs2_symlink_inode_operations =
- {
- 	.readlink =	generic_readlink,
- 	.follow_link =	jffs2_follow_link,
--	.get_acl =	jffs2_get_acl,
- 	.setattr =	jffs2_setattr,
- 	.setxattr =	jffs2_setxattr,
- 	.getxattr =	jffs2_getxattr,
-diff --git a/fs/jffs2/xattr.c b/fs/jffs2/xattr.c
-index 3034e97..ad0f2e2 100644
---- a/fs/jffs2/xattr.c
-+++ b/fs/jffs2/xattr.c
-@@ -22,6 +22,7 @@
- #include <linux/crc32.h>
- #include <linux/jffs2.h>
- #include <linux/xattr.h>
+ /*
+@@ -18,9 +16,9 @@
+ #include <linux/fs.h>
+ #include <linux/sched.h>
+ #include <linux/posix_acl.h>
 +#include <linux/posix_acl_xattr.h>
- #include <linux/mtd/mtd.h>
- #include "nodelist.h"
- /* -------- xdatum related functions ----------------
-@@ -921,8 +922,8 @@ const struct xattr_handler *jffs2_xattr_handlers[] = {
- 	&jffs2_security_xattr_handler,
- #endif
- #ifdef CONFIG_JFFS2_FS_POSIX_ACL
--	&jffs2_acl_access_xattr_handler,
--	&jffs2_acl_default_xattr_handler,
-+	&posix_acl_access_xattr_handler,
-+	&posix_acl_default_xattr_handler,
- #endif
- 	&jffs2_trusted_xattr_handler,
- 	NULL
-@@ -942,10 +943,10 @@ static const struct xattr_handler *xprefix_to_handler(int xprefix) {
- #endif
- #ifdef CONFIG_JFFS2_FS_POSIX_ACL
- 	case JFFS2_XPREFIX_ACL_ACCESS:
--		ret = &jffs2_acl_access_xattr_handler;
-+		ret = &posix_acl_access_xattr_handler;
- 		break;
- 	case JFFS2_XPREFIX_ACL_DEFAULT:
--		ret = &jffs2_acl_default_xattr_handler;
-+		ret = &posix_acl_default_xattr_handler;
- 		break;
- #endif
- 	case JFFS2_XPREFIX_TRUSTED:
+ #include <linux/export.h>
+-
+-#include <linux/errno.h>
++#include <linux/user_namespace.h>
+ 
+ EXPORT_SYMBOL(posix_acl_init);
+ EXPORT_SYMBOL(posix_acl_alloc);
+@@ -418,3 +416,171 @@ posix_acl_chmod(struct posix_acl **acl, gfp_t gfp, umode_t mode)
+ 	return err;
+ }
+ EXPORT_SYMBOL(posix_acl_chmod);
++
++/*
++ * Fix up the uids and gids in posix acl extended attributes in place.
++ */
++static void posix_acl_fix_xattr_userns(
++	struct user_namespace *to, struct user_namespace *from,
++	void *value, size_t size)
++{
++	posix_acl_xattr_header *header = (posix_acl_xattr_header *)value;
++	posix_acl_xattr_entry *entry = (posix_acl_xattr_entry *)(header+1), *end;
++	int count;
++	kuid_t uid;
++	kgid_t gid;
++
++	if (!value)
++		return;
++	if (size < sizeof(posix_acl_xattr_header))
++		return;
++	if (header->a_version != cpu_to_le32(POSIX_ACL_XATTR_VERSION))
++		return;
++
++	count = posix_acl_xattr_count(size);
++	if (count < 0)
++		return;
++	if (count == 0)
++		return;
++
++	for (end = entry + count; entry != end; entry++) {
++		switch(le16_to_cpu(entry->e_tag)) {
++		case ACL_USER:
++			uid = make_kuid(from, le32_to_cpu(entry->e_id));
++			entry->e_id = cpu_to_le32(from_kuid(to, uid));
++			break;
++		case ACL_GROUP:
++			gid = make_kgid(from, le32_to_cpu(entry->e_id));
++			entry->e_id = cpu_to_le32(from_kgid(to, gid));
++			break;
++		default:
++			break;
++		}
++	}
++}
++
++void posix_acl_fix_xattr_from_user(void *value, size_t size)
++{
++	struct user_namespace *user_ns = current_user_ns();
++	if (user_ns == &init_user_ns)
++		return;
++	posix_acl_fix_xattr_userns(&init_user_ns, user_ns, value, size);
++}
++
++void posix_acl_fix_xattr_to_user(void *value, size_t size)
++{
++	struct user_namespace *user_ns = current_user_ns();
++	if (user_ns == &init_user_ns)
++		return;
++	posix_acl_fix_xattr_userns(user_ns, &init_user_ns, value, size);
++}
++
++/*
++ * Convert from extended attribute to in-memory representation.
++ */
++struct posix_acl *
++posix_acl_from_xattr(struct user_namespace *user_ns,
++		     const void *value, size_t size)
++{
++	posix_acl_xattr_header *header = (posix_acl_xattr_header *)value;
++	posix_acl_xattr_entry *entry = (posix_acl_xattr_entry *)(header+1), *end;
++	int count;
++	struct posix_acl *acl;
++	struct posix_acl_entry *acl_e;
++
++	if (!value)
++		return NULL;
++	if (size < sizeof(posix_acl_xattr_header))
++		 return ERR_PTR(-EINVAL);
++	if (header->a_version != cpu_to_le32(POSIX_ACL_XATTR_VERSION))
++		return ERR_PTR(-EOPNOTSUPP);
++
++	count = posix_acl_xattr_count(size);
++	if (count < 0)
++		return ERR_PTR(-EINVAL);
++	if (count == 0)
++		return NULL;
++	
++	acl = posix_acl_alloc(count, GFP_NOFS);
++	if (!acl)
++		return ERR_PTR(-ENOMEM);
++	acl_e = acl->a_entries;
++	
++	for (end = entry + count; entry != end; acl_e++, entry++) {
++		acl_e->e_tag  = le16_to_cpu(entry->e_tag);
++		acl_e->e_perm = le16_to_cpu(entry->e_perm);
++
++		switch(acl_e->e_tag) {
++			case ACL_USER_OBJ:
++			case ACL_GROUP_OBJ:
++			case ACL_MASK:
++			case ACL_OTHER:
++				break;
++
++			case ACL_USER:
++				acl_e->e_uid =
++					make_kuid(user_ns,
++						  le32_to_cpu(entry->e_id));
++				if (!uid_valid(acl_e->e_uid))
++					goto fail;
++				break;
++			case ACL_GROUP:
++				acl_e->e_gid =
++					make_kgid(user_ns,
++						  le32_to_cpu(entry->e_id));
++				if (!gid_valid(acl_e->e_gid))
++					goto fail;
++				break;
++
++			default:
++				goto fail;
++		}
++	}
++	return acl;
++
++fail:
++	posix_acl_release(acl);
++	return ERR_PTR(-EINVAL);
++}
++EXPORT_SYMBOL (posix_acl_from_xattr);
++
++/*
++ * Convert from in-memory to extended attribute representation.
++ */
++int
++posix_acl_to_xattr(struct user_namespace *user_ns, const struct posix_acl *acl,
++		   void *buffer, size_t size)
++{
++	posix_acl_xattr_header *ext_acl = (posix_acl_xattr_header *)buffer;
++	posix_acl_xattr_entry *ext_entry = ext_acl->a_entries;
++	int real_size, n;
++
++	real_size = posix_acl_xattr_size(acl->a_count);
++	if (!buffer)
++		return real_size;
++	if (real_size > size)
++		return -ERANGE;
++	
++	ext_acl->a_version = cpu_to_le32(POSIX_ACL_XATTR_VERSION);
++
++	for (n=0; n < acl->a_count; n++, ext_entry++) {
++		const struct posix_acl_entry *acl_e = &acl->a_entries[n];
++		ext_entry->e_tag  = cpu_to_le16(acl_e->e_tag);
++		ext_entry->e_perm = cpu_to_le16(acl_e->e_perm);
++		switch(acl_e->e_tag) {
++		case ACL_USER:
++			ext_entry->e_id =
++				cpu_to_le32(from_kuid(user_ns, acl_e->e_uid));
++			break;
++		case ACL_GROUP:
++			ext_entry->e_id =
++				cpu_to_le32(from_kgid(user_ns, acl_e->e_gid));
++			break;
++		default:
++			ext_entry->e_id = cpu_to_le32(ACL_UNDEFINED_ID);
++			break;
++		}
++	}
++	return real_size;
++}
++EXPORT_SYMBOL (posix_acl_to_xattr);
+diff --git a/fs/xattr_acl.c b/fs/xattr_acl.c
+deleted file mode 100644
+index 9fbea87..0000000
+--- a/fs/xattr_acl.c
++++ /dev/null
+@@ -1,180 +0,0 @@
+-/*
+- * linux/fs/xattr_acl.c
+- *
+- * Almost all from linux/fs/ext2/acl.c:
+- * Copyright (C) 2001 by Andreas Gruenbacher, <a.gruenbacher@computer.org>
+- */
+-
+-#include <linux/export.h>
+-#include <linux/fs.h>
+-#include <linux/posix_acl_xattr.h>
+-#include <linux/gfp.h>
+-#include <linux/user_namespace.h>
+-
+-/*
+- * Fix up the uids and gids in posix acl extended attributes in place.
+- */
+-static void posix_acl_fix_xattr_userns(
+-	struct user_namespace *to, struct user_namespace *from,
+-	void *value, size_t size)
+-{
+-	posix_acl_xattr_header *header = (posix_acl_xattr_header *)value;
+-	posix_acl_xattr_entry *entry = (posix_acl_xattr_entry *)(header+1), *end;
+-	int count;
+-	kuid_t uid;
+-	kgid_t gid;
+-
+-	if (!value)
+-		return;
+-	if (size < sizeof(posix_acl_xattr_header))
+-		return;
+-	if (header->a_version != cpu_to_le32(POSIX_ACL_XATTR_VERSION))
+-		return;
+-
+-	count = posix_acl_xattr_count(size);
+-	if (count < 0)
+-		return;
+-	if (count == 0)
+-		return;
+-
+-	for (end = entry + count; entry != end; entry++) {
+-		switch(le16_to_cpu(entry->e_tag)) {
+-		case ACL_USER:
+-			uid = make_kuid(from, le32_to_cpu(entry->e_id));
+-			entry->e_id = cpu_to_le32(from_kuid(to, uid));
+-			break;
+-		case ACL_GROUP:
+-			gid = make_kgid(from, le32_to_cpu(entry->e_id));
+-			entry->e_id = cpu_to_le32(from_kgid(to, gid));
+-			break;
+-		default:
+-			break;
+-		}
+-	}
+-}
+-
+-void posix_acl_fix_xattr_from_user(void *value, size_t size)
+-{
+-	struct user_namespace *user_ns = current_user_ns();
+-	if (user_ns == &init_user_ns)
+-		return;
+-	posix_acl_fix_xattr_userns(&init_user_ns, user_ns, value, size);
+-}
+-
+-void posix_acl_fix_xattr_to_user(void *value, size_t size)
+-{
+-	struct user_namespace *user_ns = current_user_ns();
+-	if (user_ns == &init_user_ns)
+-		return;
+-	posix_acl_fix_xattr_userns(user_ns, &init_user_ns, value, size);
+-}
+-
+-/*
+- * Convert from extended attribute to in-memory representation.
+- */
+-struct posix_acl *
+-posix_acl_from_xattr(struct user_namespace *user_ns,
+-		     const void *value, size_t size)
+-{
+-	posix_acl_xattr_header *header = (posix_acl_xattr_header *)value;
+-	posix_acl_xattr_entry *entry = (posix_acl_xattr_entry *)(header+1), *end;
+-	int count;
+-	struct posix_acl *acl;
+-	struct posix_acl_entry *acl_e;
+-
+-	if (!value)
+-		return NULL;
+-	if (size < sizeof(posix_acl_xattr_header))
+-		 return ERR_PTR(-EINVAL);
+-	if (header->a_version != cpu_to_le32(POSIX_ACL_XATTR_VERSION))
+-		return ERR_PTR(-EOPNOTSUPP);
+-
+-	count = posix_acl_xattr_count(size);
+-	if (count < 0)
+-		return ERR_PTR(-EINVAL);
+-	if (count == 0)
+-		return NULL;
+-	
+-	acl = posix_acl_alloc(count, GFP_NOFS);
+-	if (!acl)
+-		return ERR_PTR(-ENOMEM);
+-	acl_e = acl->a_entries;
+-	
+-	for (end = entry + count; entry != end; acl_e++, entry++) {
+-		acl_e->e_tag  = le16_to_cpu(entry->e_tag);
+-		acl_e->e_perm = le16_to_cpu(entry->e_perm);
+-
+-		switch(acl_e->e_tag) {
+-			case ACL_USER_OBJ:
+-			case ACL_GROUP_OBJ:
+-			case ACL_MASK:
+-			case ACL_OTHER:
+-				break;
+-
+-			case ACL_USER:
+-				acl_e->e_uid =
+-					make_kuid(user_ns,
+-						  le32_to_cpu(entry->e_id));
+-				if (!uid_valid(acl_e->e_uid))
+-					goto fail;
+-				break;
+-			case ACL_GROUP:
+-				acl_e->e_gid =
+-					make_kgid(user_ns,
+-						  le32_to_cpu(entry->e_id));
+-				if (!gid_valid(acl_e->e_gid))
+-					goto fail;
+-				break;
+-
+-			default:
+-				goto fail;
+-		}
+-	}
+-	return acl;
+-
+-fail:
+-	posix_acl_release(acl);
+-	return ERR_PTR(-EINVAL);
+-}
+-EXPORT_SYMBOL (posix_acl_from_xattr);
+-
+-/*
+- * Convert from in-memory to extended attribute representation.
+- */
+-int
+-posix_acl_to_xattr(struct user_namespace *user_ns, const struct posix_acl *acl,
+-		   void *buffer, size_t size)
+-{
+-	posix_acl_xattr_header *ext_acl = (posix_acl_xattr_header *)buffer;
+-	posix_acl_xattr_entry *ext_entry = ext_acl->a_entries;
+-	int real_size, n;
+-
+-	real_size = posix_acl_xattr_size(acl->a_count);
+-	if (!buffer)
+-		return real_size;
+-	if (real_size > size)
+-		return -ERANGE;
+-	
+-	ext_acl->a_version = cpu_to_le32(POSIX_ACL_XATTR_VERSION);
+-
+-	for (n=0; n < acl->a_count; n++, ext_entry++) {
+-		const struct posix_acl_entry *acl_e = &acl->a_entries[n];
+-		ext_entry->e_tag  = cpu_to_le16(acl_e->e_tag);
+-		ext_entry->e_perm = cpu_to_le16(acl_e->e_perm);
+-		switch(acl_e->e_tag) {
+-		case ACL_USER:
+-			ext_entry->e_id =
+-				cpu_to_le32(from_kuid(user_ns, acl_e->e_uid));
+-			break;
+-		case ACL_GROUP:
+-			ext_entry->e_id =
+-				cpu_to_le32(from_kgid(user_ns, acl_e->e_gid));
+-			break;
+-		default:
+-			ext_entry->e_id = cpu_to_le32(ACL_UNDEFINED_ID);
+-			break;
+-		}
+-	}
+-	return real_size;
+-}
+-EXPORT_SYMBOL (posix_acl_to_xattr);
 -- 
 1.7.10.4
 
