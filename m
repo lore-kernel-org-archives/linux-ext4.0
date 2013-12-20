@@ -1,43 +1,31 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Fwd: [RESEND PATCH 1/2] ext4: fix a typo in extents.c
-Date: Fri, 20 Dec 2013 13:11:03 +0800
-Message-ID: <CAGBYx2buHtAYoRMAoJZqRHKAK2LQy68uPswWUP_oGWom1BYwbg@mail.gmail.com>
-References: <1387515880-10185-1-git-send-email-yangyongqiang01@baidu.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: possible unintended integer truncation in
+ fs/ext4/extents.c:get_implied_cluster_alloc
+Date: Fri, 20 Dec 2013 00:12:56 -0500
+Message-ID: <20131220051256.GD23508@thunk.org>
+References: <52ACDBBE.32014.145F911E@pageexec.freemail.hu>
+ <20131220045920.GB23508@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, re.emese@gmail.com
+To: PaX Team <pageexec@freemail.hu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ea0-f171.google.com ([209.85.215.171]:41612 "EHLO
-	mail-ea0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751232Ab3LTFLZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Dec 2013 00:11:25 -0500
-Received: by mail-ea0-f171.google.com with SMTP id h10so810843eak.2
-        for <linux-ext4@vger.kernel.org>; Thu, 19 Dec 2013 21:11:24 -0800 (PST)
-In-Reply-To: <1387515880-10185-1-git-send-email-yangyongqiang01@baidu.com>
+Received: from imap.thunk.org ([74.207.234.97]:41878 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752502Ab3LTFM7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 20 Dec 2013 00:12:59 -0500
+Content-Disposition: inline
+In-Reply-To: <20131220045920.GB23508@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+On Thu, Dec 19, 2013 at 11:59:20PM -0500, Theodore Ts'o wrote:
+> So C's integer promotion and sign extension rules are very obscure and
+> confusing, and that may be a reason why we should put in an explicit
+> cast, but it looks like the right thing is happening here.  Here's a
+> test program --- what am I missing?
 
-Signed-off-by: Yongqiang Yang <yangyongqiang01@baidu.com>
----
- fs/ext4/extents.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Never mind, I see the problem.  It works if cr is a short, but not if
+it is an unsigned int.  Sigh...
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 54d52af..3654dac 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3492,7 +3492,7 @@ static int
-ext4_ext_convert_to_initialized(handle_t *handle,
-        WARN_ON(map->m_lblk < ee_block);
-        /*
-         * It is safe to convert extent to initialized via explicit
--        * zeroout only if extent is fully insde i_size or new_size.
-+        * zeroout only if extent is fully inside i_size or new_size.
-         */
-        split_flag |= ee_block + ee_len <= eof_block ? EXT4_EXT_MAY_ZEROOUT : 0;
-
---
-1.8.5.2
+ 					- Ted
