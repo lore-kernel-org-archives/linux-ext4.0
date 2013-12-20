@@ -1,50 +1,34 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH] ext4: Find the group descriptors on a 1k-block
- bigalloc,meta_bg filesystem
-Date: Thu, 19 Dec 2013 16:15:42 -0800
-Message-ID: <20131220001541.GA10189@birch.djwong.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 2/2] ext4: ext4_inode_is_fast_symlink should use cluster
+ size
+Date: Thu, 19 Dec 2013 23:22:46 -0500
+Message-ID: <20131220042246.GA23508@thunk.org>
+References: <1387435099-11163-1-git-send-email-yangyongqiang01@baidu.com>
+ <CAGBYx2a1w+REq6634mOpSZhWWSVuYMuXy48LhAJq7q4kB5Wdew@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Yongqiang Yang <yangyongqiang01@baidu.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:38991 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756672Ab3LTAPu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Dec 2013 19:15:50 -0500
+Received: from imap.thunk.org ([74.207.234.97]:41859 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753926Ab3LTEWw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 Dec 2013 23:22:52 -0500
 Content-Disposition: inline
+In-Reply-To: <CAGBYx2a1w+REq6634mOpSZhWWSVuYMuXy48LhAJq7q4kB5Wdew@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On a filesystem with a 1k block size, the group descriptors live in
-block 2, not block 1.  If the filesystem has bigalloc,meta_bg set,
-however, the calculation of the group descriptor table location does
-not take this into account and returns the wrong block number.  Fix
-the calculation to return the correct value for this case.
+On Thu, Dec 19, 2013 at 02:40:42PM +0800, Yongqiang Yang wrote:
+> can be reproduced by xfstests 62 with  bigalloc and 128bit size inode.
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
----
- fs/ext4/super.c |   10 ++++++++++
- 1 file changed, 10 insertions(+)
+Hi Yongqiang,
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 7f52a54..d968c64 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2420,6 +2420,16 @@ static ext4_fsblk_t descriptor_loc(struct super_block *sb,
- 	if (ext4_bg_has_super(sb, bg))
- 		has_super = 1;
- 
-+	/*
-+	 * If we have a meta_bg fs with 1k blocks, group 0's GDT is at
-+	 * block 2, not 1.  If s_first_data_block == 0 (bigalloc is enabled
-+	 * on modern mke2fs or blksize > 1k on older mke2fs) then we must
-+	 * compensate.
-+	 */
-+	if (sb->s_blocksize == 1024 && nr == 0 &&
-+	    le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block) == 0)
-+		has_super++;
-+
- 	return (has_super + ext4_group_first_block_no(sb, bg));
- }
- 
+I can't find the original message you were replying.  I can
+reconstruct the 2/2 patch, but is there a 1/2 patch that you had meant
+to send to the linux-ext4 list?
+
+Many thanks,
+
+					- Ted
