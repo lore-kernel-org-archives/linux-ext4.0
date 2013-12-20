@@ -1,34 +1,59 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/2] ext4: ext4_inode_is_fast_symlink should use cluster
- size
-Date: Thu, 19 Dec 2013 23:22:46 -0500
-Message-ID: <20131220042246.GA23508@thunk.org>
-References: <1387435099-11163-1-git-send-email-yangyongqiang01@baidu.com>
- <CAGBYx2a1w+REq6634mOpSZhWWSVuYMuXy48LhAJq7q4kB5Wdew@mail.gmail.com>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: Re: [PATCH 1/2] ext4: fix a typo in extents.c
+Date: Fri, 20 Dec 2013 12:56:43 +0800
+Message-ID: <CAGBYx2bx1_ojsnW4OEWtagkKsOry8xqk_xzGqcy-0BfnTyTa3w@mail.gmail.com>
+References: <1387434983-8137-1-git-send-email-yangyongqiang01@baidu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Yongqiang Yang <yangyongqiang01@baidu.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	"Theodore Ts'o" <tytso@mit.edu>
+To: Yongqiang Yang <yangyongqiang01@baidu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:41859 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753926Ab3LTEWw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Dec 2013 23:22:52 -0500
-Content-Disposition: inline
-In-Reply-To: <CAGBYx2a1w+REq6634mOpSZhWWSVuYMuXy48LhAJq7q4kB5Wdew@mail.gmail.com>
+Received: from mail-ee0-f52.google.com ([74.125.83.52]:61943 "EHLO
+	mail-ee0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750895Ab3LTE5F (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Dec 2013 23:57:05 -0500
+Received: by mail-ee0-f52.google.com with SMTP id d17so803722eek.39
+        for <linux-ext4@vger.kernel.org>; Thu, 19 Dec 2013 20:57:03 -0800 (PST)
+In-Reply-To: <1387434983-8137-1-git-send-email-yangyongqiang01@baidu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 19, 2013 at 02:40:42PM +0800, Yongqiang Yang wrote:
-> can be reproduced by xfstests 62 with  bigalloc and 128bit size inode.
+Hi Ted,
 
-Hi Yongqiang,
+   Here is the 1st patch.
 
-I can't find the original message you were replying.  I can
-reconstruct the 2/2 patch, but is there a 1/2 patch that you had meant
-to send to the linux-ext4 list?
+Thanks,
+Yongqiang.
 
-Many thanks,
+On Thu, Dec 19, 2013 at 2:36 PM, Yongqiang Yang
+<yangyongqiang01@baidu.com> wrote:
+> From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+>
+> Signed-off-by: Yongqiang Yang <yangyongqiang01@baidu.com>
+> ---
+>  fs/ext4/extents.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+>
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 54d52af..3654dac 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -3492,7 +3492,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>         WARN_ON(map->m_lblk < ee_block);
+>         /*
+>          * It is safe to convert extent to initialized via explicit
+> -        * zeroout only if extent is fully insde i_size or new_size.
+> +        * zeroout only if extent is fully inside i_size or new_size.
+>          */
+>         split_flag |= ee_block + ee_len <= eof_block ? EXT4_EXT_MAY_ZEROOUT : 0;
+>
+> --
+> 1.8.5.2
+>
 
-					- Ted
+
+
+-- 
+Best Wishes
+Yongqiang Yang
