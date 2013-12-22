@@ -1,7 +1,7 @@
 From: Matthew Wilcox <matthew.r.wilcox@intel.com>
-Subject: [PATCH v4 06/22] Treat XIP like O_DIRECT
-Date: Sun, 22 Dec 2013 16:49:33 -0500
-Message-ID: <5da122eae4be15c9bae7f3c2933b6e9549292a2e.1387748521.git.matthew.r.wilcox@intel.com>
+Subject: [PATCH v4 05/22] Introduce IS_XIP(inode)
+Date: Sun, 22 Dec 2013 16:49:32 -0500
+Message-ID: <6d0bc5641877d08b254ae8eb4165ab98a8d4c0f6.1387748521.git.matthew.r.wilcox@intel.com>
 References: <cover.1387748521.git.matthew.r.wilcox@intel.com>
 Cc: Matthew Wilcox <matthew.r.wilcox@intel.com>
 To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
@@ -12,532 +12,96 @@ References: <cover.1387748521.git.matthew.r.wilcox@intel.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Instead of separate read and write methods, use the generic AIO
-infrastructure.  In addition to giving us support for AIO, this adds
-the mising locking between read() and truncate() that was missing.
+Use an inode flag to tag inodes which should avoid using the page cache.
+Convert ext2 to use it instead of mapping_is_xip or (when appropriate)
+ext2_use_xip.
 
 Signed-off-by: Matthew Wilcox <matthew.r.wilcox@intel.com>
 ---
- fs/Makefile        |   1 +
- fs/ext2/file.c     |   6 +-
- fs/ext2/inode.c    |   7 +-
- fs/xip.c           | 141 ++++++++++++++++++++++++++++++++
- include/linux/fs.h |  13 +++
- mm/filemap.c       |   6 +-
- mm/filemap_xip.c   | 231 -----------------------------------------------------
- 7 files changed, 167 insertions(+), 238 deletions(-)
- create mode 100644 fs/xip.c
+ fs/ext2/inode.c    | 9 ++++++---
+ fs/ext2/xip.h      | 2 --
+ include/linux/fs.h | 6 ++++++
+ 3 files changed, 12 insertions(+), 5 deletions(-)
 
-diff --git a/fs/Makefile b/fs/Makefile
-index 4fe6df3..96061f2 100644
---- a/fs/Makefile
-+++ b/fs/Makefile
-@@ -29,6 +29,7 @@ obj-$(CONFIG_SIGNALFD)		+= signalfd.o
- obj-$(CONFIG_TIMERFD)		+= timerfd.o
- obj-$(CONFIG_EVENTFD)		+= eventfd.o
- obj-$(CONFIG_AIO)               += aio.o
-+obj-$(CONFIG_FS_XIP)		+= xip.o
- obj-$(CONFIG_FILE_LOCKING)      += locks.o
- obj-$(CONFIG_COMPAT)		+= compat.o compat_ioctl.o
- obj-$(CONFIG_BINFMT_AOUT)	+= binfmt_aout.o
-diff --git a/fs/ext2/file.c b/fs/ext2/file.c
-index a5b3a5d..b0eb1d4 100644
---- a/fs/ext2/file.c
-+++ b/fs/ext2/file.c
-@@ -81,8 +81,10 @@ const struct file_operations ext2_file_operations = {
- #ifdef CONFIG_EXT2_FS_XIP
- const struct file_operations ext2_xip_file_operations = {
- 	.llseek		= generic_file_llseek,
--	.read		= xip_file_read,
--	.write		= xip_file_write,
-+	.read		= do_sync_read,
-+	.write		= do_sync_write,
-+	.aio_read	= generic_file_aio_read,
-+	.aio_write	= generic_file_aio_write,
- 	.unlocked_ioctl = ext2_ioctl,
- #ifdef CONFIG_COMPAT
- 	.compat_ioctl	= ext2_compat_ioctl,
 diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index 0e18d1e..a3f708f 100644
+index 8a33764..0e18d1e 100644
 --- a/fs/ext2/inode.c
 +++ b/fs/ext2/inode.c
-@@ -858,7 +858,11 @@ ext2_direct_IO(int rw, struct kiocb *iocb, const struct iovec *iov,
- 	struct inode *inode = mapping->host;
- 	ssize_t ret;
+@@ -731,7 +731,7 @@ static int ext2_get_blocks(struct inode *inode,
+ 		goto cleanup;
+ 	}
  
--	ret = blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
+-	if (ext2_use_xip(inode->i_sb)) {
++	if (IS_XIP(inode)) {
+ 		/*
+ 		 * we need to clear the block
+ 		 */
+@@ -1201,7 +1201,7 @@ static int ext2_setsize(struct inode *inode, loff_t newsize)
+ 
+ 	inode_dio_wait(inode);
+ 
+-	if (mapping_is_xip(inode->i_mapping))
 +	if (IS_XIP(inode))
-+		ret = xip_do_io(rw, iocb, inode, iov, offset, nr_segs,
-+				ext2_get_block, NULL, DIO_LOCKING);
-+	else
-+		ret = blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
- 				 ext2_get_block);
- 	if (ret < 0 && (rw & WRITE))
- 		ext2_write_failed(mapping, offset + iov_length(iov, nr_segs));
-@@ -888,6 +892,7 @@ const struct address_space_operations ext2_aops = {
- const struct address_space_operations ext2_aops_xip = {
- 	.bmap			= ext2_bmap,
- 	.get_xip_mem		= ext2_get_xip_mem,
-+	.direct_IO		= ext2_direct_IO,
- };
+ 		error = xip_truncate_page(inode->i_mapping, newsize);
+ 	else if (test_opt(inode->i_sb, NOBH))
+ 		error = nobh_truncate_page(inode->i_mapping,
+@@ -1273,7 +1273,8 @@ void ext2_set_inode_flags(struct inode *inode)
+ {
+ 	unsigned int flags = EXT2_I(inode)->i_flags;
  
- const struct address_space_operations ext2_nobh_aops = {
-diff --git a/fs/xip.c b/fs/xip.c
-new file mode 100644
-index 0000000..fcb6ffd
---- /dev/null
-+++ b/fs/xip.c
-@@ -0,0 +1,141 @@
-+/*
-+ * fs/xip.c - Execute In Place filesystem code
-+ * Copyright (c) 2013 Intel Corporation
-+ * Author: Matthew Wilcox <matthew.r.wilcox@intel.com>
-+ *
-+ * This program is free software; you can redistribute it and/or modify it
-+ * under the terms and conditions of the GNU General Public License,
-+ * version 2, as published by the Free Software Foundation.
-+ *
-+ * This program is distributed in the hope it will be useful, but WITHOUT
-+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-+ * more details.
-+ */
-+
-+#include <linux/atomic.h>
-+#include <linux/blkdev.h>
-+#include <linux/buffer_head.h>
-+#include <linux/fs.h>
-+#include <linux/genhd.h>
-+#include <linux/mutex.h>
-+#include <linux/uio.h>
-+
-+static long xip_get_addr(struct inode *inode, struct buffer_head *bh,
-+								void **addr)
-+{
-+	struct block_device *bdev = bh->b_bdev;
-+	const struct block_device_operations *ops = bdev->bd_disk->fops;
-+	unsigned long pfn;
-+	sector_t sector = bh->b_blocknr << (inode->i_blkbits - 9);
-+	return ops->direct_access(bdev, sector, addr, &pfn, bh->b_size);
-+}
-+
-+static ssize_t xip_io(int rw, struct inode *inode, const struct iovec *iov,
-+		loff_t start, loff_t end, unsigned nr_segs,
-+		get_block_t get_block, struct buffer_head *bh)
-+{
-+	ssize_t retval;
-+	unsigned seg = 0;
-+	unsigned len;
-+	unsigned copied = 0;
-+	loff_t offset = start;
-+	loff_t max = start;
-+	void *addr;
-+
-+	while (offset < end) {
-+		void __user *buf = iov[seg].iov_base + copied;
-+		bool hole;
-+
-+		if (max == offset) {
-+			sector_t block = offset >> inode->i_blkbits;
-+			long size;
-+			memset(bh, 0, sizeof(*bh));
-+			bh->b_size = ALIGN(end - offset, PAGE_SIZE);
-+			retval = get_block(inode, block, bh, rw == WRITE);
-+			if (retval)
-+				break;
-+			if (buffer_mapped(bh)) {
-+				hole = false;
-+				retval = xip_get_addr(inode, bh, &addr);
-+				if (retval < 0)
-+					break;
-+				size = retval;
-+			} else {
-+				if (rw == WRITE) {
-+					retval = -EIO;
-+					break;
-+				}
-+				hole = true;
-+				size = bh->b_size;
-+				addr = NULL;
-+			}
-+			max = offset + size;
-+		}
-+
-+		len = min_t(unsigned, iov[seg].iov_len - copied, max - offset);
-+
-+		if (rw == WRITE)
-+			len -= __copy_from_user_nocache(addr, buf, len);
-+		else if (!hole)
-+			len -= __copy_to_user(buf, addr, len);
-+		else
-+			len -= __clear_user(buf, len);
-+
-+		if (!len)
-+			break;
-+
-+		offset += len;
-+		copied += len;
-+		if (copied == iov[seg].iov_len) {
-+			seg++;
-+			copied = 0;
-+		}
-+	}
-+
-+	return (offset == start) ? retval : offset - start;
-+}
-+
-+/*
-+ * Perform I/O to an XIP file.  We follow the same rules as
-+ * __blockdev_direct_IO with respect to locking
-+ */
-+ssize_t xip_do_io(int rw, struct kiocb *iocb, struct inode *inode,
-+		const struct iovec *iov, loff_t offset, unsigned nr_segs,
-+		get_block_t get_block, dio_iodone_t end_io, int flags)
-+{
-+	struct buffer_head bh;
-+	unsigned seg;
-+	ssize_t retval = -EINVAL;
-+	loff_t end = offset;
-+
-+	for (seg = 0; seg < nr_segs; seg++)
-+		end += iov[seg].iov_len;
-+
-+	if ((flags & DIO_LOCKING) && (rw == READ)) {
-+		struct address_space *mapping = inode->i_mapping;
-+		mutex_lock(&inode->i_mutex);
-+		retval = filemap_write_and_wait_range(mapping, offset, end - 1);
-+		if (retval) {
-+			mutex_unlock(&inode->i_mutex);
-+			goto out;
-+		}
-+	}
-+
-+	/* Protects against truncate */
-+	atomic_inc(&inode->i_dio_count);
-+
-+	retval = xip_io(rw, inode, iov, offset, end, nr_segs, get_block, &bh);
-+
-+	if ((flags & DIO_LOCKING) && (rw == READ))
-+		mutex_unlock(&inode->i_mutex);
-+
-+	inode_dio_done(inode);
-+
-+	if ((retval > 0) && end_io)
-+		end_io(iocb, offset, retval, bh.b_private);
-+ out:
-+	return retval;
-+}
-+EXPORT_SYMBOL_GPL(xip_do_io);
-+
+-	inode->i_flags &= ~(S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC);
++	inode->i_flags &= ~(S_SYNC | S_APPEND | S_IMMUTABLE | S_NOATIME |
++				S_DIRSYNC | S_XIP);
+ 	if (flags & EXT2_SYNC_FL)
+ 		inode->i_flags |= S_SYNC;
+ 	if (flags & EXT2_APPEND_FL)
+@@ -1284,6 +1285,8 @@ void ext2_set_inode_flags(struct inode *inode)
+ 		inode->i_flags |= S_NOATIME;
+ 	if (flags & EXT2_DIRSYNC_FL)
+ 		inode->i_flags |= S_DIRSYNC;
++	if (ext2_use_xip(inode->i_sb))
++		inode->i_flags |= S_XIP;
+ }
+ 
+ /* Propagate flags from i_flags to EXT2_I(inode)->i_flags */
+diff --git a/fs/ext2/xip.h b/fs/ext2/xip.h
+index 18b34d2..29be737 100644
+--- a/fs/ext2/xip.h
++++ b/fs/ext2/xip.h
+@@ -16,9 +16,7 @@ static inline int ext2_use_xip (struct super_block *sb)
+ }
+ int ext2_get_xip_mem(struct address_space *, pgoff_t, int,
+ 				void **, unsigned long *);
+-#define mapping_is_xip(map) unlikely(map->a_ops->get_xip_mem)
+ #else
+-#define mapping_is_xip(map)			0
+ #define ext2_xip_verify_sb(sb)			do { } while (0)
+ #define ext2_use_xip(sb)			0
+ #define ext2_clear_xip_target(inode, chain)	0
 diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 80cfb42..26e9095 100644
+index 121f11f..80cfb42 100644
 --- a/include/linux/fs.h
 +++ b/include/linux/fs.h
-@@ -2515,11 +2515,19 @@ extern int xip_file_mmap(struct file * file, struct vm_area_struct * vma);
- extern ssize_t xip_file_write(struct file *filp, const char __user *buf,
- 			      size_t len, loff_t *ppos);
- extern int xip_truncate_page(struct address_space *mapping, loff_t from);
-+ssize_t xip_do_io(int rw, struct kiocb *, struct inode *, const struct iovec *,
-+		loff_t, unsigned segs, get_block_t, dio_iodone_t, int flags);
- #else
- static inline int xip_truncate_page(struct address_space *mapping, loff_t from)
- {
- 	return 0;
- }
-+static inline ssize_t xip_do_io(int rw, struct kiocb *iocb, struct inode *inode,
-+		const struct iovec *iov, loff_t offset, unsigned nr_segs,
-+		get_block_t get_block, dio_iodone_t end_io, int flags)
-+{
-+	return -ENOTTY;
-+}
- #endif
+@@ -1639,6 +1639,7 @@ struct super_operations {
+ #define S_IMA		1024	/* Inode has an associated IMA struct */
+ #define S_AUTOMOUNT	2048	/* Automount/referral quasi-directory */
+ #define S_NOSEC		4096	/* no suid or xattr security attributes */
++#define S_XIP		8192	/* Avoid using the page cache */
  
- #ifdef CONFIG_BLOCK
-@@ -2669,6 +2677,11 @@ extern int generic_show_options(struct seq_file *m, struct dentry *root);
- extern void save_mount_options(struct super_block *sb, char *options);
- extern void replace_mount_options(struct super_block *sb, char *options);
- 
-+static inline bool io_is_direct(struct file *filp)
-+{
-+	return (filp->f_flags & O_DIRECT) || IS_XIP(file_inode(filp));
-+}
-+
- static inline ino_t parent_ino(struct dentry *dentry)
- {
- 	ino_t res;
-diff --git a/mm/filemap.c b/mm/filemap.c
-index b7749a9..61a31f0 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -1417,8 +1417,7 @@ generic_file_aio_read(struct kiocb *iocb, const struct iovec *iov,
- 	if (retval)
- 		return retval;
- 
--	/* coalesce the iovecs and go direct-to-BIO for O_DIRECT */
--	if (filp->f_flags & O_DIRECT) {
-+	if (io_is_direct(filp)) {
- 		loff_t size;
- 		struct address_space *mapping;
- 		struct inode *inode;
-@@ -2470,8 +2469,7 @@ ssize_t __generic_file_aio_write(struct kiocb *iocb, const struct iovec *iov,
- 	if (err)
- 		goto out;
- 
--	/* coalesce the iovecs and go direct-to-BIO for O_DIRECT */
--	if (unlikely(file->f_flags & O_DIRECT)) {
-+	if (io_is_direct(file)) {
- 		loff_t endbyte;
- 		ssize_t written_buffered;
- 
-diff --git a/mm/filemap_xip.c b/mm/filemap_xip.c
-index cb088a6..bea0980 100644
---- a/mm/filemap_xip.c
-+++ b/mm/filemap_xip.c
-@@ -27,119 +27,6 @@
-  */
- static DEFINE_MUTEX(xip_sparse_mutex);
- 
--/*
-- * This is a file read routine for execute in place files, and uses
-- * the mapping->a_ops->get_xip_mem() function for the actual low-level
-- * stuff.
-- *
-- * Note the struct file* is not used at all.  It may be NULL.
-- */
--static ssize_t
--do_xip_mapping_read(struct address_space *mapping,
--		    struct file_ra_state *_ra,
--		    struct file *filp,
--		    char __user *buf,
--		    size_t len,
--		    loff_t *ppos)
--{
--	struct inode *inode = mapping->host;
--	pgoff_t index, end_index;
--	unsigned long offset;
--	loff_t isize, pos;
--	size_t copied = 0, error = 0;
--
--	BUG_ON(!mapping->a_ops->get_xip_mem);
--
--	pos = *ppos;
--	index = pos >> PAGE_CACHE_SHIFT;
--	offset = pos & ~PAGE_CACHE_MASK;
--
--	isize = i_size_read(inode);
--	if (!isize)
--		goto out;
--
--	end_index = (isize - 1) >> PAGE_CACHE_SHIFT;
--	do {
--		unsigned long nr, left;
--		void *xip_mem;
--		unsigned long xip_pfn;
--		int zero = 0;
--
--		/* nr is the maximum number of bytes to copy from this page */
--		nr = PAGE_CACHE_SIZE;
--		if (index >= end_index) {
--			if (index > end_index)
--				goto out;
--			nr = ((isize - 1) & ~PAGE_CACHE_MASK) + 1;
--			if (nr <= offset) {
--				goto out;
--			}
--		}
--		nr = nr - offset;
--		if (nr > len - copied)
--			nr = len - copied;
--
--		error = mapping->a_ops->get_xip_mem(mapping, index, 0,
--							&xip_mem, &xip_pfn);
--		if (unlikely(error)) {
--			if (error == -ENODATA) {
--				/* sparse */
--				zero = 1;
--			} else
--				goto out;
--		}
--
--		/* If users can be writing to this page using arbitrary
--		 * virtual addresses, take care about potential aliasing
--		 * before reading the page on the kernel side.
--		 */
--		if (mapping_writably_mapped(mapping))
--			/* address based flush */ ;
--
--		/*
--		 * Ok, we have the mem, so now we can copy it to user space...
--		 *
--		 * The actor routine returns how many bytes were actually used..
--		 * NOTE! This may not be the same as how much of a user buffer
--		 * we filled up (we may be padding etc), so we can only update
--		 * "pos" here (the actor routine has to update the user buffer
--		 * pointers and the remaining count).
--		 */
--		if (!zero)
--			left = __copy_to_user(buf+copied, xip_mem+offset, nr);
--		else
--			left = __clear_user(buf + copied, nr);
--
--		if (left) {
--			error = -EFAULT;
--			goto out;
--		}
--
--		copied += (nr - left);
--		offset += (nr - left);
--		index += offset >> PAGE_CACHE_SHIFT;
--		offset &= ~PAGE_CACHE_MASK;
--	} while (copied < len);
--
--out:
--	*ppos = pos + copied;
--	if (filp)
--		file_accessed(filp);
--
--	return (copied ? copied : error);
--}
--
--ssize_t
--xip_file_read(struct file *filp, char __user *buf, size_t len, loff_t *ppos)
--{
--	if (!access_ok(VERIFY_WRITE, buf, len))
--		return -EFAULT;
--
--	return do_xip_mapping_read(filp->f_mapping, &filp->f_ra, filp,
--			    buf, len, ppos);
--}
--EXPORT_SYMBOL_GPL(xip_file_read);
--
- static inline void copy_user_highdest(struct page *to, void *vfrom,
- 					unsigned long vaddr)
- {
-@@ -226,124 +113,6 @@ int xip_file_mmap(struct file * file, struct vm_area_struct * vma)
- }
- EXPORT_SYMBOL_GPL(xip_file_mmap);
- 
--static ssize_t
--__xip_file_write(struct file *filp, const char __user *buf,
--		  size_t count, loff_t pos, loff_t *ppos)
--{
--	struct address_space * mapping = filp->f_mapping;
--	const struct address_space_operations *a_ops = mapping->a_ops;
--	struct inode 	*inode = mapping->host;
--	long		status = 0;
--	size_t		bytes;
--	ssize_t		written = 0;
--
--	BUG_ON(!mapping->a_ops->get_xip_mem);
--
--	do {
--		unsigned long index;
--		unsigned long offset;
--		size_t copied;
--		void *xip_mem;
--		unsigned long xip_pfn;
--
--		offset = (pos & (PAGE_CACHE_SIZE -1)); /* Within page */
--		index = pos >> PAGE_CACHE_SHIFT;
--		bytes = PAGE_CACHE_SIZE - offset;
--		if (bytes > count)
--			bytes = count;
--
--		status = a_ops->get_xip_mem(mapping, index, 0,
--						&xip_mem, &xip_pfn);
--		if (status == -ENODATA) {
--			/* we allocate a new page unmap it */
--			mutex_lock(&xip_sparse_mutex);
--			status = a_ops->get_xip_mem(mapping, index, 1,
--							&xip_mem, &xip_pfn);
--			mutex_unlock(&xip_sparse_mutex);
--		}
--
--		if (status)
--			break;
--
--		copied = bytes -
--			__copy_from_user_nocache(xip_mem + offset, buf, bytes);
--
--		if (likely(copied > 0)) {
--			status = copied;
--
--			if (status >= 0) {
--				written += status;
--				count -= status;
--				pos += status;
--				buf += status;
--			}
--		}
--		if (unlikely(copied != bytes))
--			if (status >= 0)
--				status = -EFAULT;
--		if (status < 0)
--			break;
--	} while (count);
--	*ppos = pos;
--	/*
--	 * No need to use i_size_read() here, the i_size
--	 * cannot change under us because we hold i_mutex.
--	 */
--	if (pos > inode->i_size) {
--		i_size_write(inode, pos);
--		mark_inode_dirty(inode);
--	}
--
--	return written ? written : status;
--}
--
--ssize_t
--xip_file_write(struct file *filp, const char __user *buf, size_t len,
--	       loff_t *ppos)
--{
--	struct address_space *mapping = filp->f_mapping;
--	struct inode *inode = mapping->host;
--	size_t count;
--	loff_t pos;
--	ssize_t ret;
--
--	mutex_lock(&inode->i_mutex);
--
--	if (!access_ok(VERIFY_READ, buf, len)) {
--		ret=-EFAULT;
--		goto out_up;
--	}
--
--	pos = *ppos;
--	count = len;
--
--	/* We can write back this queue in page reclaim */
--	current->backing_dev_info = mapping->backing_dev_info;
--
--	ret = generic_write_checks(filp, &pos, &count, S_ISBLK(inode->i_mode));
--	if (ret)
--		goto out_backing;
--	if (count == 0)
--		goto out_backing;
--
--	ret = file_remove_suid(filp);
--	if (ret)
--		goto out_backing;
--
--	ret = file_update_time(filp);
--	if (ret)
--		goto out_backing;
--
--	ret = __xip_file_write (filp, buf, count, pos, ppos);
--
-- out_backing:
--	current->backing_dev_info = NULL;
-- out_up:
--	mutex_unlock(&inode->i_mutex);
--	return ret;
--}
--EXPORT_SYMBOL_GPL(xip_file_write);
--
  /*
-  * truncate a page used for execute in place
-  * functionality is analog to block_truncate_page but does use get_xip_mem
+  * Note that nosuid etc flags are inode-specific: setting some file-system
+@@ -1676,6 +1677,11 @@ struct super_operations {
+ #define IS_IMA(inode)		((inode)->i_flags & S_IMA)
+ #define IS_AUTOMOUNT(inode)	((inode)->i_flags & S_AUTOMOUNT)
+ #define IS_NOSEC(inode)		((inode)->i_flags & S_NOSEC)
++#ifdef CONFIG_FS_XIP
++#define IS_XIP(inode)		((inode)->i_flags & S_XIP)
++#else
++#define IS_XIP(inode)		0
++#endif
+ 
+ /*
+  * Inode state bits.  Protected by inode->i_lock
 -- 
 1.8.4.rc3
 
