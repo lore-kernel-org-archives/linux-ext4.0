@@ -1,7 +1,7 @@
 From: Matthew Wilcox <matthew.r.wilcox@intel.com>
-Subject: [PATCH v4 18/22] ext4: Make ext4_block_zero_page_range static
-Date: Sun, 22 Dec 2013 16:49:45 -0500
-Message-ID: <c8c026fd49ad1c77f8de317ec1eca5666ebd4ff3.1387748521.git.matthew.r.wilcox@intel.com>
+Subject: [PATCH v4 16/22] ext2: Remove ext2_aops_xip
+Date: Sun, 22 Dec 2013 16:49:43 -0500
+Message-ID: <db667327eb3eab7361c3a7e607eed59fb54ac40d.1387748521.git.matthew.r.wilcox@intel.com>
 References: <cover.1387748521.git.matthew.r.wilcox@intel.com>
 Cc: Matthew Wilcox <matthew.r.wilcox@intel.com>
 To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
@@ -12,95 +12,74 @@ References: <cover.1387748521.git.matthew.r.wilcox@intel.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-It's only called within inode.c, so make it static, remove its prototype
-from ext4.h and move it above all of its callers so it doesn't need a
-prototype within inode.c.
+We shouldn't need a special address_space_operations any more
 
 Signed-off-by: Matthew Wilcox <matthew.r.wilcox@intel.com>
 ---
- fs/ext4/ext4.h  |  2 --
- fs/ext4/inode.c | 42 +++++++++++++++++++++---------------------
- 2 files changed, 21 insertions(+), 23 deletions(-)
+ fs/ext2/ext2.h  | 1 -
+ fs/ext2/inode.c | 7 +------
+ fs/ext2/namei.c | 4 ++--
+ 3 files changed, 3 insertions(+), 9 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index e618503..a48d367 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2121,8 +2121,6 @@ extern int ext4_writepage_trans_blocks(struct inode *);
- extern int ext4_chunk_trans_blocks(struct inode *, int nrblocks);
- extern int ext4_block_truncate_page(handle_t *handle,
- 		struct address_space *mapping, loff_t from);
--extern int ext4_block_zero_page_range(handle_t *handle,
--		struct address_space *mapping, loff_t from, loff_t length);
- extern int ext4_zero_partial_blocks(handle_t *handle, struct inode *inode,
- 			     loff_t lstart, loff_t lend);
- extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 0757634..c767666 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3324,33 +3324,13 @@ void ext4_set_aops(struct inode *inode)
- }
+diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
+index d9a17d0..f39599e 100644
+--- a/fs/ext2/ext2.h
++++ b/fs/ext2/ext2.h
+@@ -789,7 +789,6 @@ extern const struct file_operations ext2_xip_file_operations;
  
- /*
-- * ext4_block_truncate_page() zeroes out a mapping from file offset `from'
-- * up to the end of the block which corresponds to `from'.
-- * This required during truncate. We need to physically zero the tail end
-- * of that block so it doesn't yield old data if the file is later grown.
-- */
--int ext4_block_truncate_page(handle_t *handle,
--		struct address_space *mapping, loff_t from)
--{
--	unsigned offset = from & (PAGE_CACHE_SIZE-1);
--	unsigned length;
--	unsigned blocksize;
--	struct inode *inode = mapping->host;
--
--	blocksize = inode->i_sb->s_blocksize;
--	length = blocksize - (offset & (blocksize - 1));
--
--	return ext4_block_zero_page_range(handle, mapping, from, length);
--}
--
--/*
-  * ext4_block_zero_page_range() zeros out a mapping of length 'length'
-  * starting from file offset 'from'.  The range to be zero'd must
-  * be contained with in one block.  If the specified range exceeds
-  * the end of the block it will be shortened to end of the block
-  * that cooresponds to 'from'
-  */
--int ext4_block_zero_page_range(handle_t *handle,
-+static int ext4_block_zero_page_range(handle_t *handle,
- 		struct address_space *mapping, loff_t from, loff_t length)
- {
- 	ext4_fsblk_t index = from >> PAGE_CACHE_SHIFT;
-@@ -3440,6 +3420,26 @@ unlock:
- 	return err;
- }
+ /* inode.c */
+ extern const struct address_space_operations ext2_aops;
+-extern const struct address_space_operations ext2_aops_xip;
+ extern const struct address_space_operations ext2_nobh_aops;
  
-+/*
-+ * ext4_block_truncate_page() zeroes out a mapping from file offset `from'
-+ * up to the end of the block which corresponds to `from'.
-+ * This required during truncate. We need to physically zero the tail end
-+ * of that block so it doesn't yield old data if the file is later grown.
-+ */
-+int ext4_block_truncate_page(handle_t *handle,
-+		struct address_space *mapping, loff_t from)
-+{
-+	unsigned offset = from & (PAGE_CACHE_SIZE-1);
-+	unsigned length;
-+	unsigned blocksize;
-+	struct inode *inode = mapping->host;
-+
-+	blocksize = inode->i_sb->s_blocksize;
-+	length = blocksize - (offset & (blocksize - 1));
-+
-+	return ext4_block_zero_page_range(handle, mapping, from, length);
-+}
-+
- int ext4_zero_partial_blocks(handle_t *handle, struct inode *inode,
- 			     loff_t lstart, loff_t length)
- {
+ /* namei.c */
+diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+index af0fa94..9eadd78 100644
+--- a/fs/ext2/inode.c
++++ b/fs/ext2/inode.c
+@@ -890,11 +890,6 @@ const struct address_space_operations ext2_aops = {
+ 	.error_remove_page	= generic_error_remove_page,
+ };
+ 
+-const struct address_space_operations ext2_aops_xip = {
+-	.bmap			= ext2_bmap,
+-	.direct_IO		= ext2_direct_IO,
+-};
+-
+ const struct address_space_operations ext2_nobh_aops = {
+ 	.readpage		= ext2_readpage,
+ 	.readpages		= ext2_readpages,
+@@ -1393,7 +1388,7 @@ struct inode *ext2_iget (struct super_block *sb, unsigned long ino)
+ 	if (S_ISREG(inode->i_mode)) {
+ 		inode->i_op = &ext2_file_inode_operations;
+ 		if (test_opt(inode->i_sb, XIP)) {
+-			inode->i_mapping->a_ops = &ext2_aops_xip;
++			inode->i_mapping->a_ops = &ext2_aops;
+ 			inode->i_fop = &ext2_xip_file_operations;
+ 		} else if (test_opt(inode->i_sb, NOBH)) {
+ 			inode->i_mapping->a_ops = &ext2_nobh_aops;
+diff --git a/fs/ext2/namei.c b/fs/ext2/namei.c
+index 76d33b9..2fc20ca 100644
+--- a/fs/ext2/namei.c
++++ b/fs/ext2/namei.c
+@@ -105,7 +105,7 @@ static int ext2_create (struct inode * dir, struct dentry * dentry, umode_t mode
+ 
+ 	inode->i_op = &ext2_file_inode_operations;
+ 	if (test_opt(inode->i_sb, XIP)) {
+-		inode->i_mapping->a_ops = &ext2_aops_xip;
++		inode->i_mapping->a_ops = &ext2_aops;
+ 		inode->i_fop = &ext2_xip_file_operations;
+ 	} else if (test_opt(inode->i_sb, NOBH)) {
+ 		inode->i_mapping->a_ops = &ext2_nobh_aops;
+@@ -126,7 +126,7 @@ static int ext2_tmpfile(struct inode *dir, struct dentry *dentry, umode_t mode)
+ 
+ 	inode->i_op = &ext2_file_inode_operations;
+ 	if (test_opt(inode->i_sb, XIP)) {
+-		inode->i_mapping->a_ops = &ext2_aops_xip;
++		inode->i_mapping->a_ops = &ext2_aops;
+ 		inode->i_fop = &ext2_xip_file_operations;
+ 	} else if (test_opt(inode->i_sb, NOBH)) {
+ 		inode->i_mapping->a_ops = &ext2_nobh_aops;
 -- 
 1.8.4.rc3
 
