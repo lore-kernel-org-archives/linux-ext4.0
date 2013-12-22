@@ -1,104 +1,92 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [RFC] directory quota survey on xfs
-Date: Sun, 22 Dec 2013 17:59:29 +0800
-Message-ID: <20131222095929.GA11444@gmail.com>
+From: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Subject: Re: [PATCH 21/21] hfsplus: remove can_set_xattr
+Date: Sun, 22 Dec 2013 11:28:18 -0800
+Message-ID: <20131222192818.GA32565@infradead.org>
+References: <20131220131635.650823732@bombadil.infradead.org>
+ <20131220132524.900291394@bombadil.infradead.org>
+ <636E01BC-12FD-452B-8B1C-320B6EADAEFD@dubeyko.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>, xfs@oss.sgi.com, Ben Myers <bpm@sgi.com>,
-	Dmitry Monakhov <dmonakhov@openvz.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>
-To: linux-ext4@vger.kernel.org
-Return-path: <xfs-bounces@oss.sgi.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-f2fs-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
+	linux-mtd-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, Mark Fasheh <mfasheh-IBi9RG/b67k@public.gmane.org>,
+	Joel Becker <jlbec-aKy9MeLSZ9dg9hUCZPvPmw@public.gmane.org>,
+	reiserfs-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org,
+	jfs-discussion-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
+	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	Andreas Gruenbacher <andreas.gruenbacher-63ez5xqkn6DQT0dZR+AlfA@public.gmane.org>
+To: Vyacheslav Dubeyko <slava-yeENwD64cLxBDgjK7y7TUQ@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+In-Reply-To: <636E01BC-12FD-452B-8B1C-320B6EADAEFD-yeENwD64cLxBDgjK7y7TUQ@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi all,
+On Sat, Dec 21, 2013 at 08:07:51PM +0300, Vyacheslav Dubeyko wrote:
+> > -static int can_set_xattr(struct inode *inode, const char *name,
+> > -				const void *value, size_t value_len)
+> 
+> This function works for all handlers. So, I don't think that it makes sense
+> to delete it.
 
-As discussed with ext4 folks, I will try to make ext4 file system support
-directory quota (a.k.a., project id in xfs).  For keeping consistency
-with xfs's implementation, I did some tests on xfs, and I summarized the
-result as following.  This will help us understand what we can do and
-what we can't do.  Please correct me if I miss doing some tests or mis-
-understand something.
+It "works" in a minimal sense that it won't crash or actively cause
+harm.  But it also is useless except for the check that we can abuse
+the osx namespace to set an attribute in another namespace, which we
+still do in the proper way after my patch.
 
-I just do some tests about rename/hardlink because they are the key
-issue from our discussion.
+> > -	if (!strncmp(name, XATTR_MAC_OSX_PREFIX, XATTR_MAC_OSX_PREFIX_LEN)) {
+> > -		/*
+> > -		 * This makes sure that we aren't trying to set an
+> > -		 * attribute in a different namespace by prefixing it
+> > -		 * with "osx."
+> > -		 */
+> > -		if (is_known_namespace(name + XATTR_MAC_OSX_PREFIX_LEN))
+> > -			return -EOPNOTSUPP;
+> 
+> I think that this check is important. It forbids such combinations as "osx.system.*" or
+> "osx.trusted.*", for example. Because "osx.*" is virtual namespace for xattrs that
+> it can be under Mac OS X. If you want to set xattr from "system.*" namespace, for example,
+> then you need to use another handler. And such namespace should be without
+> addition of "osx." prefix.
 
-+ unaccounted dir
-x accounted dir
+Right, and we keep exactly the check, just in a different place.
 
-rename(mv)
-==========
+> The __hfsplus_setxattr() is common method for all handlers. So, removing
+> this call means that we don't check validity of namespace. I don't think
+> that such modification is a right way.
 
-+ -> +: ok
+The generic code already checks for the validity of the namespace for
+you. xattr_resolve_name in fs/xattr.c makes sure only attributes for a
+namespace that the filesystem registered can be set or modified.
 
-+ -> x: ok
+> > @@ -841,10 +761,6 @@ int hfsplus_removexattr(struct dentry *dentry, const char *name)
+> > 	if (!HFSPLUS_SB(inode->i_sb)->attr_tree)
+> > 		return -EOPNOTSUPP;
+> > 
+> > -	err = can_set_xattr(inode, name, NULL, 0);
+> 
+> Ditto. Moreover, it is used namely hfsplus_removexattr() and not
+> __hfsplus_setxattr() for removing xattrs in hfsplus driver. So, removing
+> this check is not good way.
 
-I use strace(1) to lookup which syscall is used, and I found that xfs
-will return EXDEV when mv(1) tries to use rename(2) to move a dir from
-a unaccounted dir to a accounted dir.  Then mv uses creat(2)/read(2)/
-write(2) syscalls to move this dir.
+Oh, I just noticed that hfsplus does not use the xattr handlers for
+removing, while it does for getting and setting xattrs.  That's a really
+bad a confusing design, and we'll indeed need to fix that as well.
 
-x -> +: wrong (design by feature?) 
+> > 	if (len > HFSPLUS_ATTR_MAX_STRLEN)
+> > 		return -EOPNOTSUPP;
+> > 
+> > +	if (is_known_namespace(name))
+> > +		return -EOPNOTSUPP;
+> 
+> If common check in __hfsplus_setxattr() will be on the same place then
+> this addition doesn't make sense.
 
-If we move a dir from a accounted dir to a unaccounted dir, the quota is
-still accounted.  It seems that xfs don't remove project id from this
-dir and its subdirs/files on this case.
+Having both does indeed not make sense, but this is the better place to
+have it.
 
-x -> x: ok
-
-Xfs returns EXDEV error when mv(1) uses rename(2) to move a dir from a
-accounted dir to another accounted dir (These dirs have different
-project ids).  Then mv(1) uses creat(1)/read(1)/write(1) syscalls to
-move this dir.
-
-summary:
-rename        +        x
-+             ok       ok (EXDEV)
-x             wrong    ok (EXDEV)
-
-hardlink(ln)
-========
-
-+ -> +: ok
-
-+ -> x: error
-
-Xfs also returns EXDEV error to forbid this operation.  So that means
-that we don't allow users to do a hardlink for a file from a unaccount
-dir to a accounted dir.
-
-x -> +: ok
-
-This operation can be executed and no any error is reported.  After that
-the quota doesn't be changed.  When both of two hardlinks are removed,
-the quota will be discharged.
-
-x -> x: error
-
-Xfs returns EXDEV error to forbid this operation.
-
-summary:
-hardlink        +        x
-+               ok       error (EXDEV)
-x               ok       error (EXDEV)
-
-As always, any comment or idea are welcome.
-
-Thanks,
-						- Zheng
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
