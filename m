@@ -1,7 +1,7 @@
 From: Matthew Wilcox <matthew.r.wilcox@intel.com>
-Subject: [PATCH v4 12/22] ext2: Remove ext2_xip_verify_sb()
-Date: Sun, 22 Dec 2013 16:49:39 -0500
-Message-ID: <420c65acb96a434bf21448ce29c9de75d6051cd9.1387748521.git.matthew.r.wilcox@intel.com>
+Subject: [PATCH v4 14/22] ext2: Remove xip.c and xip.h
+Date: Sun, 22 Dec 2013 16:49:41 -0500
+Message-ID: <e96ad9ffa0a739c1b6f2e33b9b27145102bc54e1.1387748521.git.matthew.r.wilcox@intel.com>
 References: <cover.1387748521.git.matthew.r.wilcox@intel.com>
 Cc: Matthew Wilcox <matthew.r.wilcox@intel.com>
 To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
@@ -12,128 +12,108 @@ References: <cover.1387748521.git.matthew.r.wilcox@intel.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Jan Kara pointed out that calling ext2_xip_verify_sb() in ext2_remount()
-doesn't make sense, since changing the XIP option on remount isn't
-allowed.  It also doesn't make sense to re-check whether blocksize is
-supported since it can't change between mounts.
-
-Replace the call to ext2_xip_verify_sb() in ext2_fill_super() with the
-equivalent check and delete the definition.
+These files are now empty, so delete them
 
 Signed-off-by: Matthew Wilcox <matthew.r.wilcox@intel.com>
 ---
- fs/ext2/super.c | 33 ++++++++++++---------------------
- fs/ext2/xip.c   | 12 ------------
- fs/ext2/xip.h   |  2 --
- 3 files changed, 12 insertions(+), 35 deletions(-)
+ fs/ext2/Makefile |  1 -
+ fs/ext2/inode.c  |  1 -
+ fs/ext2/namei.c  |  1 -
+ fs/ext2/super.c  |  1 -
+ fs/ext2/xip.c    | 15 ---------------
+ fs/ext2/xip.h    | 16 ----------------
+ 6 files changed, 35 deletions(-)
+ delete mode 100644 fs/ext2/xip.c
+ delete mode 100644 fs/ext2/xip.h
 
+diff --git a/fs/ext2/Makefile b/fs/ext2/Makefile
+index f42af45..445b0e9 100644
+--- a/fs/ext2/Makefile
++++ b/fs/ext2/Makefile
+@@ -10,4 +10,3 @@ ext2-y := balloc.o dir.o file.o ialloc.o inode.o \
+ ext2-$(CONFIG_EXT2_FS_XATTR)	 += xattr.o xattr_user.o xattr_trusted.o
+ ext2-$(CONFIG_EXT2_FS_POSIX_ACL) += acl.o
+ ext2-$(CONFIG_EXT2_FS_SECURITY)	 += xattr_security.o
+-ext2-$(CONFIG_EXT2_FS_XIP)	 += xip.o
+diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+index 9d6f2e1..af0fa94 100644
+--- a/fs/ext2/inode.c
++++ b/fs/ext2/inode.c
+@@ -34,7 +34,6 @@
+ #include <linux/aio.h>
+ #include "ext2.h"
+ #include "acl.h"
+-#include "xip.h"
+ #include "xattr.h"
+ 
+ static int __ext2_write_inode(struct inode *inode, int do_sync);
+diff --git a/fs/ext2/namei.c b/fs/ext2/namei.c
+index 0a7697a..76d33b9 100644
+--- a/fs/ext2/namei.c
++++ b/fs/ext2/namei.c
+@@ -35,7 +35,6 @@
+ #include "ext2.h"
+ #include "xattr.h"
+ #include "acl.h"
+-#include "xip.h"
+ 
+ static inline int ext2_add_nondir(struct dentry *dentry, struct inode *inode)
+ {
 diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index 2885349..caf3f62 100644
+index caf3f62..fd62082 100644
 --- a/fs/ext2/super.c
 +++ b/fs/ext2/super.c
-@@ -868,9 +868,6 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
- 		((EXT2_SB(sb)->s_mount_opt & EXT2_MOUNT_POSIX_ACL) ?
- 		 MS_POSIXACL : 0);
- 
--	ext2_xip_verify_sb(sb); /* see if bdev supports xip, unset
--				    EXT2_MOUNT_XIP if not */
--
- 	if (le32_to_cpu(es->s_rev_level) == EXT2_GOOD_OLD_REV &&
- 	    (EXT2_HAS_COMPAT_FEATURE(sb, ~0U) ||
- 	     EXT2_HAS_RO_COMPAT_FEATURE(sb, ~0U) ||
-@@ -900,11 +897,17 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
- 
- 	blocksize = BLOCK_SIZE << le32_to_cpu(sbi->s_es->s_log_block_size);
- 
--	if (ext2_use_xip(sb) && blocksize != PAGE_SIZE) {
--		if (!silent)
-+	if (sbi->s_mount_opt & EXT2_MOUNT_XIP) {
-+		if (blocksize != PAGE_SIZE) {
- 			ext2_msg(sb, KERN_ERR,
--				"error: unsupported blocksize for xip");
--		goto failed_mount;
-+					"error: unsupported blocksize for xip");
-+			goto failed_mount;
-+		}
-+		if (!sb->s_bdev->bd_disk->fops->direct_access) {
-+			ext2_msg(sb, KERN_ERR,
-+					"error: device does not support xip");
-+			goto failed_mount;
-+		}
- 	}
- 
- 	/* If the blocksize doesn't match, re-read the thing.. */
-@@ -1249,7 +1252,6 @@ static int ext2_remount (struct super_block * sb, int * flags, char * data)
- {
- 	struct ext2_sb_info * sbi = EXT2_SB(sb);
- 	struct ext2_super_block * es;
--	unsigned long old_mount_opt = sbi->s_mount_opt;
- 	struct ext2_mount_options old_opts;
- 	unsigned long old_sb_flags;
- 	int err;
-@@ -1273,22 +1275,11 @@ static int ext2_remount (struct super_block * sb, int * flags, char * data)
- 	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
- 		((sbi->s_mount_opt & EXT2_MOUNT_POSIX_ACL) ? MS_POSIXACL : 0);
- 
--	ext2_xip_verify_sb(sb); /* see if bdev supports xip, unset
--				    EXT2_MOUNT_XIP if not */
--
--	if ((ext2_use_xip(sb)) && (sb->s_blocksize != PAGE_SIZE)) {
--		ext2_msg(sb, KERN_WARNING,
--			"warning: unsupported blocksize for xip");
--		err = -EINVAL;
--		goto restore_opts;
--	}
--
- 	es = sbi->s_es;
--	if ((sbi->s_mount_opt ^ old_mount_opt) & EXT2_MOUNT_XIP) {
-+	if ((sbi->s_mount_opt ^ old_opts.s_mount_opt) & EXT2_MOUNT_XIP) {
- 		ext2_msg(sb, KERN_WARNING, "warning: refusing change of "
- 			 "xip flag with busy inodes while remounting");
--		sbi->s_mount_opt &= ~EXT2_MOUNT_XIP;
--		sbi->s_mount_opt |= old_mount_opt & EXT2_MOUNT_XIP;
-+		sbi->s_mount_opt ^= EXT2_MOUNT_XIP;
- 	}
- 	if ((*flags & MS_RDONLY) == (sb->s_flags & MS_RDONLY)) {
- 		spin_unlock(&sbi->s_lock);
-diff --git a/fs/ext2/xip.c b/fs/ext2/xip.c
-index 132d4da..66ca113 100644
---- a/fs/ext2/xip.c
-+++ b/fs/ext2/xip.c
-@@ -13,15 +13,3 @@
+@@ -35,7 +35,6 @@
  #include "ext2.h"
- #include "xip.h"
+ #include "xattr.h"
+ #include "acl.h"
+-#include "xip.h"
  
--void ext2_xip_verify_sb(struct super_block *sb)
+ static void ext2_sync_super(struct super_block *sb,
+ 			    struct ext2_super_block *es, int wait);
+diff --git a/fs/ext2/xip.c b/fs/ext2/xip.c
+deleted file mode 100644
+index 66ca113..0000000
+--- a/fs/ext2/xip.c
++++ /dev/null
+@@ -1,15 +0,0 @@
+-/*
+- *  linux/fs/ext2/xip.c
+- *
+- * Copyright (C) 2005 IBM Corporation
+- * Author: Carsten Otte (cotte@de.ibm.com)
+- */
+-
+-#include <linux/mm.h>
+-#include <linux/fs.h>
+-#include <linux/genhd.h>
+-#include <linux/buffer_head.h>
+-#include <linux/blkdev.h>
+-#include "ext2.h"
+-#include "xip.h"
+-
+diff --git a/fs/ext2/xip.h b/fs/ext2/xip.h
+deleted file mode 100644
+index 87eeb04..0000000
+--- a/fs/ext2/xip.h
++++ /dev/null
+@@ -1,16 +0,0 @@
+-/*
+- *  linux/fs/ext2/xip.h
+- *
+- * Copyright (C) 2005 IBM Corporation
+- * Author: Carsten Otte (cotte@de.ibm.com)
+- */
+-
+-#ifdef CONFIG_EXT2_FS_XIP
+-static inline int ext2_use_xip (struct super_block *sb)
 -{
 -	struct ext2_sb_info *sbi = EXT2_SB(sb);
--
--	if ((sbi->s_mount_opt & EXT2_MOUNT_XIP) &&
--	    !sb->s_bdev->bd_disk->fops->direct_access) {
--		sbi->s_mount_opt &= (~EXT2_MOUNT_XIP);
--		ext2_msg(sb, KERN_WARNING,
--			     "warning: ignoring xip option - "
--			     "not supported by bdev");
--	}
+-	return (sbi->s_mount_opt & EXT2_MOUNT_XIP);
 -}
-diff --git a/fs/ext2/xip.h b/fs/ext2/xip.h
-index e7b9f0a..87eeb04 100644
---- a/fs/ext2/xip.h
-+++ b/fs/ext2/xip.h
-@@ -6,13 +6,11 @@
-  */
- 
- #ifdef CONFIG_EXT2_FS_XIP
--extern void ext2_xip_verify_sb (struct super_block *);
- static inline int ext2_use_xip (struct super_block *sb)
- {
- 	struct ext2_sb_info *sbi = EXT2_SB(sb);
- 	return (sbi->s_mount_opt & EXT2_MOUNT_XIP);
- }
- #else
--#define ext2_xip_verify_sb(sb)			do { } while (0)
- #define ext2_use_xip(sb)			0
- #endif
+-#else
+-#define ext2_use_xip(sb)			0
+-#endif
 -- 
 1.8.4.rc3
 
