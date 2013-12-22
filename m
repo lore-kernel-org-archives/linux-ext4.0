@@ -1,139 +1,84 @@
 From: Matthew Wilcox <matthew.r.wilcox@intel.com>
-Subject: [PATCH v4 15/22] Remove CONFIG_EXT2_FS_XIP
-Date: Sun, 22 Dec 2013 16:49:42 -0500
-Message-ID: <aba4917514396131444b4ad2b30890b537dd237b.1387748521.git.matthew.r.wilcox@intel.com>
-References: <cover.1387748521.git.matthew.r.wilcox@intel.com>
+Subject: [PATCH v4 00/22] Add XIP support to ext4
+Date: Sun, 22 Dec 2013 16:49:27 -0500
+Message-ID: <cover.1387748521.git.matthew.r.wilcox@intel.com>
 Cc: Matthew Wilcox <matthew.r.wilcox@intel.com>
 To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <cover.1387748521.git.matthew.r.wilcox@intel.com>
-In-Reply-To: <cover.1387748521.git.matthew.r.wilcox@intel.com>
-References: <cover.1387748521.git.matthew.r.wilcox@intel.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-The fewer Kconfig options we have the better.  Use the generic CONFIG_FS_XIP
-to enable XIP support in ext2 as well as in the core.
+... or, as it should probably be called now "Complete rewrite of everything
+XIP related".  It's only compile-tested; before I get too much further down
+this path, I wanted to get some opinions on the approach.
 
-Signed-off-by: Matthew Wilcox <matthew.r.wilcox@intel.com>
----
- fs/Kconfig      | 21 ++++++++++++++-------
- fs/ext2/Kconfig | 11 -----------
- fs/ext2/file.c  |  6 +++++-
- fs/ext2/super.c |  4 ++--
- 4 files changed, 21 insertions(+), 21 deletions(-)
+Matthew Wilcox (21):
+  Fix XIP fault vs truncate race
+  Simplify COW of XIP mappings
+  axonram: Fix bug in direct_access
+  Change direct_access calling convention
+  Introduce IS_XIP(inode)
+  Treat XIP like O_DIRECT
+  Rewrite XIP page fault handling
+  Change xip_truncate_page to take a get_block parameter
+  Remove mm/filemap_xip.c
+  Remove get_xip_mem
+  Replace ext2_clear_xip_target with xip_clear_blocks
+  ext2: Remove ext2_xip_verify_sb()
+  ext2: Remove ext2_use_xip
+  ext2: Remove xip.c and xip.h
+  Remove CONFIG_EXT2_FS_XIP
+  ext2: Remove ext2_aops_xip
+  xip: Add xip_zero_page_range
+  ext4: Make ext4_block_zero_page_range static
+  ext4: Fix typos
+  Add support for pmd_faults
+  xip: Add reporting of major faults
 
-diff --git a/fs/Kconfig b/fs/Kconfig
-index c229f82..1e01dda 100644
---- a/fs/Kconfig
-+++ b/fs/Kconfig
-@@ -13,13 +13,6 @@ if BLOCK
- source "fs/ext2/Kconfig"
- source "fs/ext3/Kconfig"
- source "fs/ext4/Kconfig"
--
--config FS_XIP
--# execute in place
--	bool
--	depends on EXT2_FS_XIP
--	default y
--
- source "fs/jbd/Kconfig"
- source "fs/jbd2/Kconfig"
- 
-@@ -40,6 +33,20 @@ source "fs/ocfs2/Kconfig"
- source "fs/btrfs/Kconfig"
- source "fs/nilfs2/Kconfig"
- 
-+config FS_XIP
-+	bool "Execute in place support"
-+	depends on MMU
-+	help
-+	  Execute in place (XIP) can be used on memory-backed block devices.
-+	  If the block device supports XIP and the filesystem supports XIP,
-+	  then you can avoid using the pagecache to buffer I/Os.  Turning
-+	  on this option will compile in support for XIP; you will need to
-+	  mount the filesystem using the -o xip option.
-+
-+	  If you do not have a block device that is capable of using this,
-+	  or if unsure, say N.  Saying Y will increase the size of the kernel
-+	  by about 2kB.
-+
- endif # BLOCK
- 
- # Posix ACL utility routines
-diff --git a/fs/ext2/Kconfig b/fs/ext2/Kconfig
-index 14a6780..c634874e 100644
---- a/fs/ext2/Kconfig
-+++ b/fs/ext2/Kconfig
-@@ -42,14 +42,3 @@ config EXT2_FS_SECURITY
- 
- 	  If you are not using a security module that requires using
- 	  extended attributes for file security labels, say N.
--
--config EXT2_FS_XIP
--	bool "Ext2 execute in place support"
--	depends on EXT2_FS && MMU
--	help
--	  Execute in place can be used on memory-backed block devices. If you
--	  enable this option, you can select to mount block devices which are
--	  capable of this feature without using the page cache.
--
--	  If you do not use a block device that is capable of using this,
--	  or if unsure, say N.
-diff --git a/fs/ext2/file.c b/fs/ext2/file.c
-index 47a0b1d..6e6e803 100644
---- a/fs/ext2/file.c
-+++ b/fs/ext2/file.c
-@@ -25,6 +25,7 @@
- #include "xattr.h"
- #include "acl.h"
- 
-+#ifdef CONFIG_FS_XIP
- static int ext2_xip_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
- {
- 	return xip_fault(vma, vmf, ext2_get_block);
-@@ -45,6 +46,9 @@ static int ext2_file_mmap(struct file *file, struct vm_area_struct *vma)
- 	vma->vm_flags |= VM_MIXEDMAP;
- 	return 0;
- }
-+#else
-+#define ext2_file_mmap	generic_file_mmap
-+#endif
- 
- /*
-  * Called when filp is released. This happens when all file descriptors
-@@ -99,7 +103,7 @@ const struct file_operations ext2_file_operations = {
- 	.splice_write	= generic_file_splice_write,
- };
- 
--#ifdef CONFIG_EXT2_FS_XIP
-+#ifdef CONFIG_FS_XIP
- const struct file_operations ext2_xip_file_operations = {
- 	.llseek		= generic_file_llseek,
- 	.read		= do_sync_read,
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index fd62082..9a203a9 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -287,7 +287,7 @@ static int ext2_show_options(struct seq_file *seq, struct dentry *root)
- 		seq_puts(seq, ",grpquota");
- #endif
- 
--#if defined(CONFIG_EXT2_FS_XIP)
-+#if defined(CONFIG_FS_XIP)
- 	if (sbi->s_mount_opt & EXT2_MOUNT_XIP)
- 		seq_puts(seq, ",xip");
- #endif
-@@ -549,7 +549,7 @@ static int parse_options(char *options, struct super_block *sb)
- 			break;
- #endif
- 		case Opt_xip:
--#ifdef CONFIG_EXT2_FS_XIP
-+#ifdef CONFIG_FS_XIP
- 			set_opt (sbi->s_mount_opt, XIP);
- #else
- 			ext2_msg(sb, KERN_INFO, "xip option not supported");
+Ross Zwisler (1):
+  ext4: Add XIP functionality
+
+ Documentation/filesystems/Locking  |   3 -
+ Documentation/filesystems/ext4.txt |   2 +
+ Documentation/filesystems/xip.txt  | 119 ++++-----
+ arch/powerpc/sysdev/axonram.c      |   8 +-
+ drivers/block/brd.c                |   8 +-
+ drivers/s390/block/dcssblk.c       |  19 +-
+ fs/Kconfig                         |  21 +-
+ fs/Makefile                        |   1 +
+ fs/exofs/inode.c                   |   1 -
+ fs/ext2/Kconfig                    |  11 -
+ fs/ext2/Makefile                   |   1 -
+ fs/ext2/ext2.h                     |   1 -
+ fs/ext2/file.c                     |  44 +++-
+ fs/ext2/inode.c                    |  35 +--
+ fs/ext2/namei.c                    |   9 +-
+ fs/ext2/super.c                    |  38 ++-
+ fs/ext2/xip.c                      |  91 -------
+ fs/ext2/xip.h                      |  26 --
+ fs/ext4/ext4.h                     |   4 +-
+ fs/ext4/file.c                     |  54 ++++-
+ fs/ext4/indirect.c                 |  19 +-
+ fs/ext4/inode.c                    | 106 +++++---
+ fs/ext4/namei.c                    |  10 +-
+ fs/ext4/super.c                    |  39 ++-
+ fs/open.c                          |   5 +-
+ fs/xip.c                           | 432 +++++++++++++++++++++++++++++++++
+ include/linux/blkdev.h             |   4 +-
+ include/linux/fs.h                 |  48 +++-
+ include/linux/mm.h                 |   6 +
+ mm/Makefile                        |   1 -
+ mm/fadvise.c                       |   6 +-
+ mm/filemap.c                       |   6 +-
+ mm/filemap_xip.c                   | 483 -------------------------------------
+ mm/madvise.c                       |   2 +-
+ mm/memory.c                        |  69 +++++-
+ 35 files changed, 901 insertions(+), 831 deletions(-)
+ delete mode 100644 fs/ext2/xip.c
+ delete mode 100644 fs/ext2/xip.h
+ create mode 100644 fs/xip.c
+ delete mode 100644 mm/filemap_xip.c
+
 -- 
 1.8.4.rc3
 
