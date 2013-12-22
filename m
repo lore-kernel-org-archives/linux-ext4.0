@@ -1,55 +1,104 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/2] procfs: Add function to lookup a subdirectory name
-Date: Sat, 21 Dec 2013 20:20:09 -0500
-Message-ID: <20131222012009.GA27304@thunk.org>
-References: <1387580357-28440-1-git-send-email-abbas_raza@mentor.com>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: [RFC] directory quota survey on xfs
+Date: Sun, 22 Dec 2013 17:59:29 +0800
+Message-ID: <20131222095929.GA11444@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Alexander Viro <viro@zeniv.linux.org.uk>
-To: Abbas Raza <abbas_raza@mentor.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:42312 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755151Ab3LVBUP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 21 Dec 2013 20:20:15 -0500
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso@mit.edu>, xfs@oss.sgi.com, Ben Myers <bpm@sgi.com>,
+	Dmitry Monakhov <dmonakhov@openvz.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+To: linux-ext4@vger.kernel.org
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <1387580357-28440-1-git-send-email-abbas_raza@mentor.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Sat, Dec 21, 2013 at 03:59:16AM +0500, Abbas Raza wrote:
->  /*
-> + * Lookup if a subdirectory is present in the given directory by name
-> + */
-> +int proc_lookup_subdir_by_name(struct proc_dir_entry *dir, const char *name)
-> +{
+Hi all,
 
-I'm not sure this is the best way to solve the problem you are trying
-to get at in patch 2/2.  First of all, this solution is fundamentally
-racy; the moment you release proc_subdir_lock, there's always a chance
-that some other process will come in and create the proc file in the
-subdirectory.  Sure, it's not likely in the case of the ext4 use case,
-but as a generic function to be added to fs/proc/generic.c, I suspent
-Al is going to NACK this.
+As discussed with ext4 folks, I will try to make ext4 file system support
+directory quota (a.k.a., project id in xfs).  For keeping consistency
+with xfs's implementation, I did some tests on xfs, and I summarized the
+result as following.  This will help us understand what we can do and
+what we can't do.  Please correct me if I miss doing some tests or mis-
+understand something.
 
-Secondly, there is a bigger problem that this is papering over, which
-is we don't have a good way of dealing with an unclean eject.  If the
-the system was in the middle of reading or writing to the file system
-at the time of the unclean eject, there will be all sorts of warnings
-and file system errors that will be logged.  That's because we don't
-have a way for the block device layer to let the file system know that
-the block device has disappeared, and we need to revoke open file
-descriptors, and accept the fact that any dirty pages in the cache
-cache need to be deleted, lest it clog the system memory forever.
+I just do some tests about rename/hardlink because they are the key
+issue from our discussion.
 
-Given the larger problem, I have to admit it's hard for me to get
-excited about trying to suppress this particular warning message.  If
-we are going to do this, it may be better to simply add a new
-proc_mkdir_flags() interface which extends proc_mkdir_data() with a
-new integer flags parameter, for which we define a new flag, which
-suppresses the warning.
++ unaccounted dir
+x accounted dir
 
-Regards,
+rename(mv)
+==========
 
-					- Ted
++ -> +: ok
+
++ -> x: ok
+
+I use strace(1) to lookup which syscall is used, and I found that xfs
+will return EXDEV when mv(1) tries to use rename(2) to move a dir from
+a unaccounted dir to a accounted dir.  Then mv uses creat(2)/read(2)/
+write(2) syscalls to move this dir.
+
+x -> +: wrong (design by feature?) 
+
+If we move a dir from a accounted dir to a unaccounted dir, the quota is
+still accounted.  It seems that xfs don't remove project id from this
+dir and its subdirs/files on this case.
+
+x -> x: ok
+
+Xfs returns EXDEV error when mv(1) uses rename(2) to move a dir from a
+accounted dir to another accounted dir (These dirs have different
+project ids).  Then mv(1) uses creat(1)/read(1)/write(1) syscalls to
+move this dir.
+
+summary:
+rename        +        x
++             ok       ok (EXDEV)
+x             wrong    ok (EXDEV)
+
+hardlink(ln)
+========
+
++ -> +: ok
+
++ -> x: error
+
+Xfs also returns EXDEV error to forbid this operation.  So that means
+that we don't allow users to do a hardlink for a file from a unaccount
+dir to a accounted dir.
+
+x -> +: ok
+
+This operation can be executed and no any error is reported.  After that
+the quota doesn't be changed.  When both of two hardlinks are removed,
+the quota will be discharged.
+
+x -> x: error
+
+Xfs returns EXDEV error to forbid this operation.
+
+summary:
+hardlink        +        x
++               ok       error (EXDEV)
+x               ok       error (EXDEV)
+
+As always, any comment or idea are welcome.
+
+Thanks,
+						- Zheng
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
