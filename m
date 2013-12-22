@@ -1,107 +1,176 @@
 From: Matthew Wilcox <matthew.r.wilcox@intel.com>
-Subject: [PATCH v4 22/22] xip: Add reporting of major faults
-Date: Sun, 22 Dec 2013 16:49:49 -0500
-Message-ID: <1bca6add4731223107b3440f045d4c4c37dc21ad.1387748521.git.matthew.r.wilcox@intel.com>
+Subject: [PATCH v4 11/22] Replace ext2_clear_xip_target with xip_clear_blocks
+Date: Sun, 22 Dec 2013 16:49:38 -0500
+Message-ID: <6742a54f678aefa7550a16ab023e233aac99a89e.1387748521.git.matthew.r.wilcox@intel.com>
 References: <cover.1387748521.git.matthew.r.wilcox@intel.com>
 Cc: Matthew Wilcox <matthew.r.wilcox@intel.com>
 To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga02.intel.com ([134.134.136.20]:27948 "EHLO mga02.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756675Ab3LVVup (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 22 Dec 2013 16:50:45 -0500
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <cover.1387748521.git.matthew.r.wilcox@intel.com>
 In-Reply-To: <cover.1387748521.git.matthew.r.wilcox@intel.com>
 References: <cover.1387748521.git.matthew.r.wilcox@intel.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-If we have to call get_block with the create argument set to 1, then
-the filesystem almost certainly had to zero the block. which is an I/O,
-which should be reported as a major fault.
+This is practically generic code; other filesystems will want to call
+it from other places, but there's nothing ext2-specific about it.
 
-Note that major faults on XIP files happen for different reasons than
-major faults on non-XIP files.  XIP files behave as if everything except
-file holes is already cached.  That's all the more reason to report
-major faults when we do have to do I/O; it may be a valuable resource
-for sysadmins trying to diagnose performance problems.
+Make it a little more generic by allowing it to take a count of the number
+of bytes to zero rather than fixing it to a single page.  Thanks to Dave
+Hansen for suggesting that I need to call cond_resched() if zeroing more
+than one page.
 
 Signed-off-by: Matthew Wilcox <matthew.r.wilcox@intel.com>
 ---
- fs/xip.c | 14 ++++++++++++--
- 1 file changed, 12 insertions(+), 2 deletions(-)
+ fs/ext2/inode.c    |  8 +++++---
+ fs/ext2/xip.c      | 23 -----------------------
+ fs/ext2/xip.h      |  3 ---
+ fs/xip.c           | 34 ++++++++++++++++++++++++++++++++++
+ include/linux/fs.h |  6 ++++++
+ 5 files changed, 45 insertions(+), 29 deletions(-)
 
+diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+index cc60c23..5a2cb24 100644
+--- a/fs/ext2/inode.c
++++ b/fs/ext2/inode.c
+@@ -733,10 +733,12 @@ static int ext2_get_blocks(struct inode *inode,
+ 
+ 	if (IS_XIP(inode)) {
+ 		/*
+-		 * we need to clear the block
++		 * block must be initialised before we put it in the tree
++		 * so that it's not found by another thread before it's
++		 * initialised
+ 		 */
+-		err = ext2_clear_xip_target (inode,
+-			le32_to_cpu(chain[depth-1].key));
++		err = xip_clear_blocks(inode, le32_to_cpu(chain[depth-1].key),
++						count << inode->i_blkbits);
+ 		if (err) {
+ 			mutex_unlock(&ei->truncate_mutex);
+ 			goto cleanup;
+diff --git a/fs/ext2/xip.c b/fs/ext2/xip.c
+index ca745ff..132d4da 100644
+--- a/fs/ext2/xip.c
++++ b/fs/ext2/xip.c
+@@ -13,29 +13,6 @@
+ #include "ext2.h"
+ #include "xip.h"
+ 
+-static inline long __inode_direct_access(struct inode *inode, sector_t block,
+-				void **kaddr, unsigned long *pfn, long size)
+-{
+-	struct block_device *bdev = inode->i_sb->s_bdev;
+-	const struct block_device_operations *ops = bdev->bd_disk->fops;
+-	sector_t sector = block * (PAGE_SIZE / 512);
+-	return ops->direct_access(bdev, sector, kaddr, pfn, size);
+-}
+-
+-int
+-ext2_clear_xip_target(struct inode *inode, sector_t block)
+-{
+-	void *kaddr;
+-	unsigned long pfn;
+-	long size;
+-
+-	size = __inode_direct_access(inode, block, &kaddr, &pfn, PAGE_SIZE);
+-	if (size < 0)
+-		return size;
+-	clear_page(kaddr);
+-	return 0;
+-}
+-
+ void ext2_xip_verify_sb(struct super_block *sb)
+ {
+ 	struct ext2_sb_info *sbi = EXT2_SB(sb);
+diff --git a/fs/ext2/xip.h b/fs/ext2/xip.h
+index 0fa8b7f..e7b9f0a 100644
+--- a/fs/ext2/xip.h
++++ b/fs/ext2/xip.h
+@@ -7,8 +7,6 @@
+ 
+ #ifdef CONFIG_EXT2_FS_XIP
+ extern void ext2_xip_verify_sb (struct super_block *);
+-extern int ext2_clear_xip_target (struct inode *, sector_t);
+-
+ static inline int ext2_use_xip (struct super_block *sb)
+ {
+ 	struct ext2_sb_info *sbi = EXT2_SB(sb);
+@@ -17,5 +15,4 @@ static inline int ext2_use_xip (struct super_block *sb)
+ #else
+ #define ext2_xip_verify_sb(sb)			do { } while (0)
+ #define ext2_use_xip(sb)			0
+-#define ext2_clear_xip_target(inode, chain)	0
+ #endif
 diff --git a/fs/xip.c b/fs/xip.c
-index d032838..4eb4596 100644
+index 0c5026f..991a705 100644
 --- a/fs/xip.c
 +++ b/fs/xip.c
-@@ -19,10 +19,12 @@
- #include <linux/fs.h>
- #include <linux/genhd.h>
+@@ -21,8 +21,42 @@
  #include <linux/highmem.h>
-+#include <linux/memcontrol.h>
  #include <linux/mm.h>
  #include <linux/mutex.h>
- #include <linux/sched.h>
++#include <linux/sched.h>
  #include <linux/uio.h>
-+#include <linux/vmstat.h>
  
- int xip_clear_blocks(struct inode *inode, sector_t block, long size)
++int xip_clear_blocks(struct inode *inode, sector_t block, long size)
++{
++	struct block_device *bdev = inode->i_sb->s_bdev;
++	const struct block_device_operations *ops = bdev->bd_disk->fops;
++	sector_t sector = block << (inode->i_blkbits - 9);
++	unsigned long pfn;
++
++	might_sleep();
++	do {
++		void *addr;
++		long count = ops->direct_access(bdev, sector, &addr, &pfn,
++									size);
++		if (count < 0)
++			return count;
++		while (count >= PAGE_SIZE) {
++			clear_page(addr);
++			addr += PAGE_SIZE;
++			size -= PAGE_SIZE;
++			count -= PAGE_SIZE;
++			sector += PAGE_SIZE / 512;
++			cond_resched();
++		}
++		if (count > 0) {
++			memset(addr, 0, count);
++			sector += count / 512;
++			size -= count;
++		}
++	} while (size);
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(xip_clear_blocks);
++
+ static long xip_get_addr(struct inode *inode, struct buffer_head *bh,
+ 								void **addr)
  {
-@@ -213,6 +215,7 @@ static int do_xip_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
- 	pgoff_t size;
- 	unsigned long pfn;
- 	int error;
-+	int major = 0;
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 197c3c6..a0c6812 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2508,11 +2508,17 @@ extern int generic_file_open(struct inode * inode, struct file * filp);
+ extern int nonseekable_open(struct inode * inode, struct file * filp);
  
- 	size = (i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT;
- 	if (vmf->pgoff >= size)
-@@ -226,6 +229,9 @@ static int do_xip_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
- 	/* Don't allocate backing store if we're going to COW a hole */
- 	if (!error && !buffer_mapped(&bh) && !vmf->cow_page) {
- 		error = get_block(inode, block, &bh, 1);
-+		count_vm_event(PGMAJFAULT);
-+		mem_cgroup_count_vm_event(vma->vm_mm, PGMAJFAULT);
-+		major = VM_FAULT_MAJOR;
- 	}
- 
- 	if (error)
-@@ -255,7 +261,7 @@ static int do_xip_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
- 	/* -EBUSY is fine, somebody else faulted on the same PTE */
- 	if (error != -EBUSY)
- 		BUG_ON(error);
--	return VM_FAULT_NOPAGE;
-+	return VM_FAULT_NOPAGE | major;
- }
- 
- int xip_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
-@@ -297,6 +303,7 @@ static int do_xip_pmd_fault(struct vm_area_struct *vma, unsigned long address,
- 	pgoff_t size, pgoff;
- 	sector_t block;
- 	unsigned long pfn;
-+	int major = 0;
- 
- 	/* Fall back to PTEs if we're going to COW */
- 	if ((flags & FAULT_FLAG_WRITE) && !(vma->vm_flags & VM_SHARED))
-@@ -324,6 +331,9 @@ static int do_xip_pmd_fault(struct vm_area_struct *vma, unsigned long address,
- 	/* Next, try to allocate the whole thing */
- 	bh.b_size = PMD_SIZE;
- 	length = get_block(inode, block, &bh, 1);
-+	count_vm_event(PGMAJFAULT);
-+	mem_cgroup_count_vm_event(vma->vm_mm, PGMAJFAULT);
-+	major = VM_FAULT_MAJOR;
- 	if (length)
- 		return VM_FAULT_SIGBUS;
- 	if (bh.b_size == PMD_SIZE)
-@@ -356,7 +366,7 @@ static int do_xip_pmd_fault(struct vm_area_struct *vma, unsigned long address,
- 	/* -EBUSY is fine, somebody else faulted on the same PMD */
- 	if (length != -EBUSY)
- 		BUG_ON(length);
--	return VM_FAULT_NOPAGE;
-+	return VM_FAULT_NOPAGE | major;
- }
- 
- int xip_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+ #ifdef CONFIG_FS_XIP
++int xip_clear_blocks(struct inode *, sector_t block, long size);
+ int xip_truncate_page(struct inode *, loff_t from, get_block_t);
+ ssize_t xip_do_io(int rw, struct kiocb *, struct inode *, const struct iovec *,
+ 		loff_t, unsigned segs, get_block_t, dio_iodone_t, int flags);
+ int xip_fault(struct vm_area_struct *, struct vm_fault *, get_block_t);
+ #else
++static inline int xip_clear_blocks(struct inode *i, sector_t blk, long sz)
++{
++	return 0;
++}
++
+ static inline int xip_truncate_page(struct inode *i, loff_t frm, get_block_t gb)
+ {
+ 	return 0;
 -- 
 1.8.4.rc3
 
