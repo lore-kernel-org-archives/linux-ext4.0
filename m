@@ -1,75 +1,220 @@
 From: Robert Yang <liezhi.yang@windriver.com>
-Subject: [PATCH 06/10] misc/create_inode.c: create directory
-Date: Mon, 23 Dec 2013 07:09:56 -0500
-Message-ID: <1387800600-13718-7-git-send-email-liezhi.yang@windriver.com>
+Subject: [PATCH 08/10] misc/create_inode.c: handle hardlinks
+Date: Mon, 23 Dec 2013 07:09:58 -0500
+Message-ID: <1387800600-13718-9-git-send-email-liezhi.yang@windriver.com>
 References: <1387800600-13718-1-git-send-email-liezhi.yang@windriver.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: <linux-ext4@vger.kernel.org>
 To: <tytso@mit.edu>, <dvhart@linux.intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail1.windriver.com ([147.11.146.13]:54354 "EHLO
+Received: from mail1.windriver.com ([147.11.146.13]:54361 "EHLO
 	mail1.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757239Ab3LWMKP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Dec 2013 07:10:15 -0500
+	with ESMTP id S1757272Ab3LWMKS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Dec 2013 07:10:18 -0500
 In-Reply-To: <1387800600-13718-1-git-send-email-liezhi.yang@windriver.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The do_mkdir_internal() is used for making dir on the target fs, most of
-the code are from debugfs/debugfs.c, the debugfs/debugfs.c will be
-modified to use this function.
+Create the inode and save the native inode number when we meet the hard
+link (st_nlink > 1) at the first time, use ext2fs_link() to link the
+name to the target inode number when we meet the same native inode
+number again.
+
+This algorithm is referred this from the genext2fs.
 
 Signed-off-by: Robert Yang <liezhi.yang@windriver.com>
 ---
- misc/create_inode.c |   34 ++++++++++++++++++++++++++++++++++
- 1 file changed, 34 insertions(+)
+ misc/create_inode.c |   88 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ misc/create_inode.h |   18 +++++++++++
+ misc/mke2fs.c       |   11 +++++++
+ 3 files changed, 117 insertions(+)
 
 diff --git a/misc/create_inode.c b/misc/create_inode.c
-index 718d499..95acffe 100644
+index afe8567..d21a808 100644
 --- a/misc/create_inode.c
 +++ b/misc/create_inode.c
-@@ -130,6 +130,40 @@ try_again:
- /* Make a directory in the fs */
- errcode_t do_mkdir_internal(ext2_ino_t cwd, const char *name, struct stat *st)
- {
-+	char			*cp;
-+	ext2_ino_t		parent_ino, ino;
-+	errcode_t		retval;
+@@ -10,6 +10,45 @@
+ #define S_BLKSIZE 512
+ #endif
+ 
++/* For saving the hard links */
++int hdlink_cnt = HDLINK_CNT;
++
++/* Link an inode number to a directory */
++static errcode_t add_link(ext2_ino_t parent_ino, ext2_ino_t ino, const char *name)
++{
 +	struct ext2_inode	inode;
-+	char			*func_name = "do_mkdir_internal";
++	errcode_t		retval;
++	char			*func_name = "add_to_dir";
 +
-+
-+	cp = strrchr(name, '/');
-+	if (cp) {
-+		*cp = 0;
-+		if ((retval =  ext2fs_namei(current_fs, root, cwd, name, &parent_ino))){
-+			com_err(name, retval, 0);
-+			return retval;
-+		}
-+		name = cp+1;
-+	} else {
-+		parent_ino = cwd;
-+		name = name;
++	retval = ext2fs_read_inode(current_fs, ino, &inode);
++        if (retval) {
++		com_err(func_name, retval, "while reading inode %u", ino);
++		return retval;
 +	}
 +
-+try_again:
-+	retval = ext2fs_mkdir(current_fs, parent_ino, 0, name);
++	retval = ext2fs_link(current_fs, parent_ino, name, ino, inode.i_flags);
 +	if (retval == EXT2_ET_DIR_NO_SPACE) {
 +		retval = ext2fs_expand_dir(current_fs, parent_ino);
 +		if (retval) {
 +			com_err(func_name, retval, "while expanding directory");
 +			return retval;
 +		}
-+		goto try_again;
++		retval = ext2fs_link(current_fs, parent_ino, name, ino, inode.i_flags);
 +	}
 +	if (retval) {
-+		com_err("ext2fs_mkdir", retval, 0);
++		com_err(func_name, retval, "while linking %s", name);
 +		return retval;
 +	}
++
++	inode.i_links_count++;
++
++	retval = ext2fs_write_inode(current_fs, ino, &inode);
++	if (retval)
++		com_err(func_name, retval, "while writing inode %u", ino);
++
++	return retval;
++}
++
+ /* Fill the uid, gid, mode and time for the inode */
+ static void fill_inode(struct ext2_inode *inode, struct stat *st)
+ {
+@@ -277,6 +316,17 @@ fail:
+ 	return retval;
  }
  
- static errcode_t copy_file(int fd, ext2_ino_t newfile, int bufsize, int make_holes)
++int is_hardlink(ext2_ino_t ino)
++{
++	int i;
++
++	for(i = 0; i < hdlinks.count; i++) {
++		if(hdlinks.hdl[i].src_ino == ino)
++			return i;
++	}
++	return -1;
++}
++
+ /* Copy the native file to the fs */
+ errcode_t do_write_internal(ext2_ino_t cwd, const char *src, const char *dest)
+ {
+@@ -388,10 +438,12 @@ errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir)
+ 	struct dirent	*dent;
+ 	struct stat	st;
+ 	char		ln_target[PATH_MAX];
++	unsigned int	save_inode = 0;
+ 	char		*func_name = "populate_fs";
+ 	ext2_ino_t	ino;
+ 	errcode_t	retval;
+ 	int		read_cnt;
++	int		hdlink;
+ 
+ 	root = EXT2_ROOT_INO;
+ 
+@@ -413,6 +465,21 @@ errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir)
+ 		lstat(dent->d_name, &st);
+ 		name = dent->d_name;
+ 
++		/* Check for hardlinks */
++		if (!S_ISDIR(st.st_mode) && !S_ISLNK(st.st_mode) && st.st_nlink > 1) {
++			hdlink = is_hardlink(st.st_ino);
++			if (hdlink >= 0) {
++				retval = add_link(parent_ino,
++						hdlinks.hdl[hdlink].dst_ino, name);
++				if (retval) {
++					com_err(func_name, retval, "while linking %s", name);
++					return retval;
++				}
++				continue;
++			} else
++				save_inode = 1;
++		}
++
+ 		switch(st.st_mode & S_IFMT) {
+ 			case S_IFCHR:
+ 			case S_IFBLK:
+@@ -481,6 +548,27 @@ errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir)
+ 				_("while setting inode for \"%s\""), name);
+ 			return retval;
+ 		}
++
++		/* Save the hardlink ino */
++		if (save_inode) {
++			/*
++			 * Check whether need more memory, and we don't need
++			 * free() since the lifespan will be over after the fs
++			 * populated.
++			 */
++			if (hdlinks.count == hdlink_cnt) {
++				if ((hdlinks.hdl = realloc (hdlinks.hdl,
++						(hdlink_cnt + HDLINK_CNT) *
++						sizeof (struct hdlink_s))) == NULL) {
++					com_err(name, errno, "Not enough memory");
++					return errno;
++				}
++				hdlink_cnt += HDLINK_CNT;
++			}
++			hdlinks.hdl[hdlinks.count].src_ino = st.st_ino;
++			hdlinks.hdl[hdlinks.count].dst_ino = ino;
++			hdlinks.count++;
++		}
+ 	}
+ 	closedir(dh);
+ 	return retval;
+diff --git a/misc/create_inode.h b/misc/create_inode.h
+index 9fc97fa..2b6d429 100644
+--- a/misc/create_inode.h
++++ b/misc/create_inode.h
+@@ -6,9 +6,27 @@
+ #include "ext2fs/ext2fs.h"
+ #include "nls-enable.h"
+ 
++struct hdlink_s
++{
++	ext2_ino_t src_ino;
++	ext2_ino_t dst_ino;
++};
++
++struct hdlinks_s
++{
++	int count;
++	struct hdlink_s *hdl;
++};
++
++struct hdlinks_s hdlinks;
++
+ ext2_filsys    current_fs;
+ ext2_ino_t     root;
+ 
++/* For saving the hard links */
++#define HDLINK_CNT     4
++extern int hdlink_cnt;
++
+ /* For populating the filesystem */
+ extern errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir);
+ extern errcode_t do_mknod_internal(ext2_ino_t cwd, const char *name, struct stat *st);
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index eab5463..0f734cc 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -2802,6 +2802,17 @@ no_journal:
+ 		if (!quiet)
+ 			printf("%s", _("Copying files into the device: "));
+ 
++		/*
++		 * Allocate memory for the hardlinks, we don't need free()
++		 * since the lifespan will be over after the fs populated.
++		 */
++		if ((hdlinks.hdl = (struct hdlink_s *)
++				malloc(hdlink_cnt * sizeof(struct hdlink_s))) == NULL) {
++			fprintf(stderr, "%s", _("\nNot enough memory\n"));
++			retval = ext2fs_close(fs);
++			return retval;
++		}
++
+ 		current_fs = fs;
+ 		root = EXT2_ROOT_INO;
+ 		retval = populate_fs(root, root_dir);
 -- 
 1.7.10.4
 
