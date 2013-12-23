@@ -1,9 +1,10 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC PATCH 1/2] ext4: improve extents status tree trace point
-Date: Mon, 23 Dec 2013 09:39:03 +0100
-Message-ID: <20131223083903.GA9199@quack.suse.cz>
+Subject: Re: [RFC PATCH 2/2] ext4: improve extents status tree shrinker to
+ avoid scanning delayed entries
+Date: Mon, 23 Dec 2013 09:54:19 +0100
+Message-ID: <20131223085419.GB9199@quack.suse.cz>
 References: <1387536165-15956-1-git-send-email-wenqing.lz@taobao.com>
- <1387536165-15956-2-git-send-email-wenqing.lz@taobao.com>
+ <1387536165-15956-3-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
@@ -11,28 +12,46 @@ Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
 	Zheng Liu <wenqing.lz@taobao.com>
 To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:52106 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:52225 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750730Ab3LWIjE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Dec 2013 03:39:04 -0500
+	id S1750877Ab3LWIyT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Dec 2013 03:54:19 -0500
 Content-Disposition: inline
-In-Reply-To: <1387536165-15956-2-git-send-email-wenqing.lz@taobao.com>
+In-Reply-To: <1387536165-15956-3-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 20-12-13 18:42:44, Zheng Liu wrote:
+On Fri 20-12-13 18:42:45, Zheng Liu wrote:
 > From: Zheng Liu <wenqing.lz@taobao.com>
 > 
-> This commit improves the trace point of extents status tree.  For
-> improving the shrinker, we need to collect more details from trace
-> point.  First we put more enter/exit pairs in insertion, deletion,
-> and caching code path in order to collect the latency of these code
-> path.  Then we rename trace_ext4_es_shrink_enter in ext4_es_count()
-> because it is also used in ext4_es_scan() and we don't identify
-> them from the result.
-  Umm, I think you can use a generic 'function trace' infrastructure to
-trace entry & exit into arbitrary functions in kernel. So there shouldn't
-be a need to introduce extra entry & exit tracepoints.
+> The extents status tree shrinker will scan all inodes on sbi->s_es_lru
+> under heavy memory pressure, and try to reclaim the entry from extents
+> status tree.  During this process it couldn't reclaim the delayed entry
+> because ext4 needs to use these entries to do delayed allocation space
+> reservation, seek_data/hole, etc....  So if a system has done a huge
+> number of writes and these dirty pages don't be written out.  There will
+> be a lot of delayed entries on extents status tree.  If shrinker tries
+> to reclaim memory from the tree, it will burn some CPU time to iterate
+> on these non-reclaimable entries.  At some circumstances it could cause
+> excessive stall time.
+> 
+> In this commit a new list is used to track reclaimable entries of extent
+> status tree (e.g. written/unwritten/hole entries).  The shrinker will
+> scan reclaimable entry on this list.  So it won't encouter any delayed
+> entry and don't need to take too much time to spin.  But the defect is
+> that we need to cost extra 1/3 memory space for one entry.  Before this
+> commit, 'struct extent_status' occupies 48 bytes on a 64bits platform.
+> After that it will occupy 64 bytes. :(
+  This looks sensible. I was just wondering about one thing: One incorrect
+thing the old extent shrinker does is that it tries to reclaim 'nr_to_scan'
+objects. That is wrong - it should *scan* 'nr_to_scan' objects and reclaim
+objects it can find. Now we shouldn't always start scanning at the end of
+the LRU because if delayed extents accumulate there we would never reclaim
+anything. Rather we should cycle through the list of entries we have. But
+that doesn't play well with the fact we have LRU list and thus want to
+reclaim from the end of the list. In the end what you do might be the best
+we can do but I wanted to mention the above just in case someone has some
+idea.
 
 								Honza
 
@@ -40,179 +59,122 @@ be a need to introduce extra entry & exit tracepoints.
 > Cc: Andreas Dilger <adilger.kernel@dilger.ca>
 > Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 > ---
->  fs/ext4/extents_status.c    |   15 ++++++++------
->  include/trace/events/ext4.h |   46 ++++++++++++++++++++++++++++++++++++++-----
->  2 files changed, 50 insertions(+), 11 deletions(-)
+>  fs/ext4/extents_status.c |   38 +++++++++++++++++++-------------------
+>  fs/ext4/extents_status.h |    2 ++
+>  2 files changed, 21 insertions(+), 19 deletions(-)
 > 
 > diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-> index 3981ff7..e842d74 100644
+> index e842d74..11bdb2f 100644
 > --- a/fs/ext4/extents_status.c
 > +++ b/fs/ext4/extents_status.c
-> @@ -660,7 +660,7 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
->  	newes.es_len = len;
->  	ext4_es_store_pblock(&newes, pblk);
->  	ext4_es_store_status(&newes, status);
-> -	trace_ext4_es_insert_extent(inode, &newes);
-> +	trace_ext4_es_insert_extent_enter(inode, &newes);
->  
->  	ext4_es_insert_extent_check(inode, &newes);
->  
-> @@ -678,6 +678,7 @@ retry:
->  
->  error:
->  	write_unlock(&EXT4_I(inode)->i_es_lock);
-> +	trace_ext4_es_insert_extent_exit(inode, &newes);
->  
->  	ext4_es_print_tree(inode);
->  
-> @@ -701,7 +702,7 @@ void ext4_es_cache_extent(struct inode *inode, ext4_lblk_t lblk,
->  	newes.es_len = len;
->  	ext4_es_store_pblock(&newes, pblk);
->  	ext4_es_store_status(&newes, status);
-> -	trace_ext4_es_cache_extent(inode, &newes);
-> +	trace_ext4_es_cache_extent_enter(inode, &newes);
->  
->  	if (!len)
->  		return;
-> @@ -714,6 +715,7 @@ void ext4_es_cache_extent(struct inode *inode, ext4_lblk_t lblk,
->  	if (!es || es->es_lblk > end)
->  		__es_insert_extent(inode, &newes);
->  	write_unlock(&EXT4_I(inode)->i_es_lock);
-> +	trace_ext4_es_cache_extent_exit(inode, &newes);
+> @@ -169,6 +169,7 @@ void ext4_exit_es(void)
+>  void ext4_es_init_tree(struct ext4_es_tree *tree)
+>  {
+>  	tree->root = RB_ROOT;
+> +	INIT_HLIST_HEAD(&tree->evictable_list);
+>  	tree->cache_es = NULL;
 >  }
 >  
->  /*
-> @@ -887,7 +889,7 @@ int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
->  	ext4_lblk_t end;
->  	int err = 0;
+> @@ -300,10 +301,14 @@ static struct extent_status *
+>  ext4_es_alloc_extent(struct inode *inode, ext4_lblk_t lblk, ext4_lblk_t len,
+>  		     ext4_fsblk_t pblk)
+>  {
+> +	struct ext4_inode_info *ei = EXT4_I(inode);
+>  	struct extent_status *es;
+> +
+>  	es = kmem_cache_alloc(ext4_es_cachep, GFP_ATOMIC);
+>  	if (es == NULL)
+>  		return NULL;
+> +
+> +	INIT_HLIST_NODE(&es->es_list);
+>  	es->es_lblk = lblk;
+>  	es->es_len = len;
+>  	es->es_pblk = pblk;
+> @@ -312,8 +317,9 @@ ext4_es_alloc_extent(struct inode *inode, ext4_lblk_t lblk, ext4_lblk_t len,
+>  	 * We don't count delayed extent because we never try to reclaim them
+>  	 */
+>  	if (!ext4_es_is_delayed(es)) {
+> -		EXT4_I(inode)->i_es_lru_nr++;
+> +		ei->i_es_lru_nr++;
+>  		percpu_counter_inc(&EXT4_SB(inode->i_sb)->s_extent_cache_cnt);
+> +		hlist_add_head(&es->es_list, &ei->i_es_tree.evictable_list);
+>  	}
 >  
-> -	trace_ext4_es_remove_extent(inode, lblk, len);
-> +	trace_ext4_es_remove_extent_enter(inode, lblk, len);
->  	es_debug("remove [%u/%u) from extent status tree of inode %lu\n",
->  		 lblk, len, inode->i_ino);
+>  	return es;
+> @@ -321,10 +327,12 @@ ext4_es_alloc_extent(struct inode *inode, ext4_lblk_t lblk, ext4_lblk_t len,
 >  
-> @@ -901,6 +903,7 @@ int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
->  	err = __es_remove_extent(inode, lblk, end);
->  	write_unlock(&EXT4_I(inode)->i_es_lock);
->  	ext4_es_print_tree(inode);
-> +	trace_ext4_es_remove_extent_exit(inode, lblk, len);
->  	return err;
->  }
+>  static void ext4_es_free_extent(struct inode *inode, struct extent_status *es)
+>  {
+> +	struct ext4_inode_info *ei = EXT4_I(inode);
+> +
+>  	/* Decrease the lru counter when this es is not delayed */
+>  	if (!ext4_es_is_delayed(es)) {
+> -		BUG_ON(EXT4_I(inode)->i_es_lru_nr == 0);
+> -		EXT4_I(inode)->i_es_lru_nr--;
+> +		BUG_ON(ei->i_es_lru_nr-- == 0);
+> +		hlist_del_init(&es->es_list);
+>  		percpu_counter_dec(&EXT4_SB(inode->i_sb)->s_extent_cache_cnt);
+>  	}
 >  
-> @@ -1017,7 +1020,7 @@ static unsigned long ext4_es_count(struct shrinker *shrink,
+> @@ -1092,8 +1100,8 @@ static int __es_try_to_reclaim_extents(struct ext4_inode_info *ei,
+>  {
+>  	struct inode *inode = &ei->vfs_inode;
+>  	struct ext4_es_tree *tree = &ei->i_es_tree;
+> -	struct rb_node *node;
+>  	struct extent_status *es;
+> +	struct hlist_node *tmp;
+>  	unsigned long nr_shrunk = 0;
+>  	static DEFINE_RATELIMIT_STATE(_rs, DEFAULT_RATELIMIT_INTERVAL,
+>  				      DEFAULT_RATELIMIT_BURST);
+> @@ -1105,21 +1113,13 @@ static int __es_try_to_reclaim_extents(struct ext4_inode_info *ei,
+>  	    __ratelimit(&_rs))
+>  		ext4_warning(inode->i_sb, "forced shrink of precached extents");
 >  
->  	sbi = container_of(shrink, struct ext4_sb_info, s_es_shrinker);
->  	nr = percpu_counter_read_positive(&sbi->s_extent_cache_cnt);
-> -	trace_ext4_es_shrink_enter(sbi->s_sb, sc->nr_to_scan, nr);
-> +	trace_ext4_es_shrink_count(sbi->s_sb, sc->nr_to_scan, nr);
->  	return nr;
->  }
->  
-> @@ -1030,14 +1033,14 @@ static unsigned long ext4_es_scan(struct shrinker *shrink,
->  	int ret, nr_shrunk;
->  
->  	ret = percpu_counter_read_positive(&sbi->s_extent_cache_cnt);
-> -	trace_ext4_es_shrink_enter(sbi->s_sb, nr_to_scan, ret);
-> +	trace_ext4_es_shrink_scan_enter(sbi->s_sb, nr_to_scan, ret);
->  
->  	if (!nr_to_scan)
->  		return ret;
->  
->  	nr_shrunk = __ext4_es_shrink(sbi, nr_to_scan, NULL);
->  
-> -	trace_ext4_es_shrink_exit(sbi->s_sb, nr_shrunk, ret);
-> +	trace_ext4_es_shrink_scan_exit(sbi->s_sb, nr_shrunk, ret);
+> -	node = rb_first(&tree->root);
+> -	while (node != NULL) {
+> -		es = rb_entry(node, struct extent_status, rb_node);
+> -		node = rb_next(&es->rb_node);
+> -		/*
+> -		 * We can't reclaim delayed extent from status tree because
+> -		 * fiemap, bigallic, and seek_data/hole need to use it.
+> -		 */
+> -		if (!ext4_es_is_delayed(es)) {
+> -			rb_erase(&es->rb_node, &tree->root);
+> -			ext4_es_free_extent(inode, es);
+> -			nr_shrunk++;
+> -			if (--nr_to_scan == 0)
+> -				break;
+> -		}
+> +	hlist_for_each_entry_safe(es, tmp, &tree->evictable_list, es_list) {
+> +		BUG_ON(ext4_es_is_delayed(es));
+> +		rb_erase(&es->rb_node, &tree->root);
+> +		ext4_es_free_extent(inode, es);
+> +		nr_shrunk++;
+> +		if (--nr_to_scan == 0)
+> +			break;
+>  	}
+>  	tree->cache_es = NULL;
 >  	return nr_shrunk;
->  }
+> diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
+> index 167f4ab8..38ca83e 100644
+> --- a/fs/ext4/extents_status.h
+> +++ b/fs/ext4/extents_status.h
+> @@ -54,6 +54,7 @@ struct ext4_extent;
 >  
-> diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-> index 197d312..8b3ff82 100644
-> --- a/include/trace/events/ext4.h
-> +++ b/include/trace/events/ext4.h
-> @@ -2221,19 +2221,31 @@ DECLARE_EVENT_CLASS(ext4__es_extent,
->  		  __entry->pblk, show_extent_status(__entry->status))
->  );
+>  struct extent_status {
+>  	struct rb_node rb_node;
+> +	struct hlist_node es_list;
+>  	ext4_lblk_t es_lblk;	/* first logical block extent covers */
+>  	ext4_lblk_t es_len;	/* length of extent in block */
+>  	ext4_fsblk_t es_pblk;	/* first physical block */
+> @@ -61,6 +62,7 @@ struct extent_status {
 >  
-> -DEFINE_EVENT(ext4__es_extent, ext4_es_insert_extent,
-> +DEFINE_EVENT(ext4__es_extent, ext4_es_insert_extent_enter,
->  	TP_PROTO(struct inode *inode, struct extent_status *es),
+>  struct ext4_es_tree {
+>  	struct rb_root root;
+> +	struct hlist_head evictable_list;
+>  	struct extent_status *cache_es;	/* recently accessed extent */
+>  };
 >  
->  	TP_ARGS(inode, es)
->  );
->  
-> -DEFINE_EVENT(ext4__es_extent, ext4_es_cache_extent,
-> +DEFINE_EVENT(ext4__es_extent, ext4_es_insert_extent_exit,
->  	TP_PROTO(struct inode *inode, struct extent_status *es),
->  
->  	TP_ARGS(inode, es)
->  );
->  
-> -TRACE_EVENT(ext4_es_remove_extent,
-> +DEFINE_EVENT(ext4__es_extent, ext4_es_cache_extent_enter,
-> +	TP_PROTO(struct inode *inode, struct extent_status *es),
-> +
-> +	TP_ARGS(inode, es)
-> +);
-> +
-> +DEFINE_EVENT(ext4__es_extent, ext4_es_cache_extent_exit,
-> +	TP_PROTO(struct inode *inode, struct extent_status *es),
-> +
-> +	TP_ARGS(inode, es)
-> +);
-> +
-> +DECLARE_EVENT_CLASS(ext4__es_remove_extent,
->  	TP_PROTO(struct inode *inode, ext4_lblk_t lblk, ext4_lblk_t len),
->  
->  	TP_ARGS(inode, lblk, len),
-> @@ -2258,6 +2270,18 @@ TRACE_EVENT(ext4_es_remove_extent,
->  		  __entry->lblk, __entry->len)
->  );
->  
-> +DEFINE_EVENT(ext4__es_remove_extent, ext4_es_remove_extent_enter,
-> +	TP_PROTO(struct inode *inode, ext4_lblk_t lblk, ext4_lblk_t len),
-> +
-> +	TP_ARGS(inode, lblk, len)
-> +);
-> +
-> +DEFINE_EVENT(ext4__es_remove_extent, ext4_es_remove_extent_exit,
-> +	TP_PROTO(struct inode *inode, ext4_lblk_t lblk, ext4_lblk_t len),
-> +
-> +	TP_ARGS(inode, lblk, len)
-> +);
-> +
->  TRACE_EVENT(ext4_es_find_delayed_extent_range_enter,
->  	TP_PROTO(struct inode *inode, ext4_lblk_t lblk),
->  
-> @@ -2366,7 +2390,7 @@ TRACE_EVENT(ext4_es_lookup_extent_exit,
->  		  show_extent_status(__entry->found ? __entry->status : 0))
->  );
->  
-> -TRACE_EVENT(ext4_es_shrink_enter,
-> +DECLARE_EVENT_CLASS(ext4__es_shrink_enter,
->  	TP_PROTO(struct super_block *sb, int nr_to_scan, int cache_cnt),
->  
->  	TP_ARGS(sb, nr_to_scan, cache_cnt),
-> @@ -2388,7 +2412,19 @@ TRACE_EVENT(ext4_es_shrink_enter,
->  		  __entry->nr_to_scan, __entry->cache_cnt)
->  );
->  
-> -TRACE_EVENT(ext4_es_shrink_exit,
-> +DEFINE_EVENT(ext4__es_shrink_enter, ext4_es_shrink_count,
-> +	TP_PROTO(struct super_block *sb, int nr_to_scan, int cache_cnt),
-> +
-> +	TP_ARGS(sb, nr_to_scan, cache_cnt)
-> +);
-> +
-> +DEFINE_EVENT(ext4__es_shrink_enter, ext4_es_shrink_scan_enter,
-> +	TP_PROTO(struct super_block *sb, int nr_to_scan, int cache_cnt),
-> +
-> +	TP_ARGS(sb, nr_to_scan, cache_cnt)
-> +);
-> +
-> +TRACE_EVENT(ext4_es_shrink_scan_exit,
->  	TP_PROTO(struct super_block *sb, int shrunk_nr, int cache_cnt),
->  
->  	TP_ARGS(sb, shrunk_nr, cache_cnt),
 > -- 
 > 1.7.9.7
 > 
