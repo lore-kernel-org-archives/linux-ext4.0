@@ -1,57 +1,92 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/2] debugfs, e2fsck: fix s_desc_size handling
-Date: Mon, 23 Dec 2013 16:07:50 -0500
-Message-ID: <20131223210749.GC11299@thunk.org>
-References: <1387268344-8320-1-git-send-email-adilger@dilger.ca>
- <1387268344-8320-2-git-send-email-adilger@dilger.ca>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [RFC] directory quota survey on xfs
+Date: Tue, 24 Dec 2013 10:43:56 +1100
+Message-ID: <20131223234355.GK3220@dastard>
+References: <20131222095929.GA11444@gmail.com>
+ <20131223014222.GC3220@dastard>
+ <201312231012.19204.arekm@maven.pl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Dmitry Monakhov <dmonakhov@openvz.org>, Ben Myers <bpm@sgi.com>
+To: Arkadiusz =?utf-8?Q?Mi=C5=9Bkiewicz?= <arekm@maven.pl>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:42883 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752573Ab3LWVO6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Dec 2013 16:14:58 -0500
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:1350 "EHLO
+	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753066Ab3LWXoE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Dec 2013 18:44:04 -0500
 Content-Disposition: inline
-In-Reply-To: <1387268344-8320-2-git-send-email-adilger@dilger.ca>
+In-Reply-To: <201312231012.19204.arekm@maven.pl>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 17, 2013 at 01:19:04AM -0700, Andreas Dilger wrote:
-> The s_desc_size in the superblock specifies the group descriptor
-> size in bytes, but in various places the EXT4_FEATURE_INCOMPAT_64BIT
-> flag implies that the descriptor size is EXT2_MIN_DESC_SIZE_64BIT
-> (64 bytes) instead of checking the actual size.  In other places,
-> the s_desc_size field is used without checking for INCOMPAT_64BIT.
-> 
-> In the case of ext2fs_group_desc() the s_desc_size was being ignored,
-> and assumed to be sizeof(struct ext4_group_desc), which would result
-> in garbage for any but the first group descriptor.  Similarly, in
-> ext2fs_group_desc_csum() and print_csum() they assumed that the
-> maximum group descriptor size was sizeof(struct ext4_group_desc).
-> Fix these functions to use the actual superblock s_desc_size if
-> INCOMPAT_64BIT.
-> 
-> Conversely, in ext2fs_swap_group_desc2() s_desc_size was used
-> without checking for INCOMPAT_64BIT being set.
-> 
-> The e2fsprogs behaviour is different than that of the kernel,
-> which always checks INCOMPAT_64BIT, and only uses s_desc_size to
-> determine the offset of group descriptors and what range of bytes
-> to checksum.
-> 
-> Allow specifying the s_desc_size field at mke2fs time with the
-> "-E desc_size=NNN" option.  Allow a power-of-two s_desc_size
-> value up to s_blocksize if INCOMPAT_64BIT is specified.  This
-> is not expected to be used by regular users at this time, so it
-> is not currently documented in the mke2fs usage or man page.
-> 
-> Add m_desc_size_128, f_desc_size_128, and f_desc_bad test cases to
-> verify mke2fs and e2fsck handling of larger group descriptor sizes.
-> 
-> Signed-off-by: Andreas Dilger <adilger@dilger.ca>
+On Mon, Dec 23, 2013 at 10:12:19AM +0100, Arkadiusz Mi=C5=9Bkiewicz wro=
+te:
+> On Monday 23 of December 2013, Dave Chinner wrote:
+>=20
+> > > As always, any comment or idea are welcome.
+> >=20
+> > I'd suggest that you implement project quotas, not directory quotas=
+=2E
+> > They are way more flexible than pure directory quotas, but with onl=
+y
+> > a few lines of code and a special directory flag they can be used t=
+o
+> > > implement directory subtree quotas....
+>=20
+> Would be also nice to allow a file to belong to more than one project=
+=2E
 
-Thanks, applied.
+Not possible. Apart from there only being a single project ID to an
+inode, having to account an inode ot mulitple project quotas
+effectively makes every transaction in XFS have to modify an unbound
+number of dquots. We don't have the infrastructure to do that, we
+can't reserve log space for unbound sized transactions, etc.
 
-						- Ted
+> Let say I want to have
+>=20
+> /projects/ with 10GB quota
+> and
+> /projects/projectA/ with 1GB quota
+> /projects/projectB/ with 2GB quota
+> and so on that's still limited by /projects/ 10GB quota limit.
+
+What you get is exclusive accounting - the 10GB limit on /projects/
+excludes the limits set on /projects/projectA/ and
+/projects/projectB/.
+
+Think about it for a minute - if we make subtrees nest like you
+suggest, then:
+
+/projects/ with 10GB quota
+/projects/projectA/ with 5GB quota
+/projects/projectA/subproj1 with 3GB quota
+/projects/projectA/subproj1/ssp2 with 2GB quota
+/projects/projectA/subproj1/ssp2/sssp3 with 1GB quota
+
+if we modify a file in ..../sssp3/, then we have 5 project quotas we
+have to check for limit enforcement, reserve blocks on and then
+transactionally modify (plus user and group for the file itself).
+
+That's exceedingly complex because we don't have pointers to all
+the inodes in the path back up to the root, so just to find that we
+have nested project quotas requires a reverse path walk to find the
+directory inodes to get their project IDs to look up the dquots we'd
+need to modify. The complexity and performance overhead of recursive
+project quota accounting simply isn't worth it.
+
+Cheers,
+
+Dave.
+--=20
+Dave Chinner
+david@fromorbit.com
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
