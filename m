@@ -1,93 +1,94 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: Re: current e2fsprogs maint branch test results
-Date: Sun, 22 Dec 2013 21:50:44 -0500
-Message-ID: <20131223025044.GB2396@wallace>
-References: <20131217234313.GA2183@wallace>
- <20131218213657.GA25946@birch.djwong.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH v3 0/3] Add XIP support to ext4
+Date: Mon, 23 Dec 2013 14:16:16 +1100
+Message-ID: <20131223031616.GE3220@dastard>
+References: <20131218050127.GA15289@thunk.org>
+ <20131218142749.GA9207@parisc-linux.org>
+ <20131219020759.GA27469@thunk.org>
+ <20131219041240.GA19166@parisc-linux.org>
+ <20131219054303.GA4391@thunk.org>
+ <20131219152049.GB19166@parisc-linux.org>
+ <20131219161728.GA9130@thunk.org>
+ <20131219171201.GD19166@parisc-linux.org>
+ <20131219171848.GC9130@thunk.org>
+ <20131220181731.GG19166@parisc-linux.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org,
-	tytso@mit.edu
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Matthew Wilcox <matthew@wil.cx>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qe0-f46.google.com ([209.85.128.46]:44923 "EHLO
-	mail-qe0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756399Ab3LWCut (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 22 Dec 2013 21:50:49 -0500
-Received: by mail-qe0-f46.google.com with SMTP id a11so4570249qen.19
-        for <linux-ext4@vger.kernel.org>; Sun, 22 Dec 2013 18:50:48 -0800 (PST)
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:7365 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756797Ab3LWDQU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 22 Dec 2013 22:16:20 -0500
 Content-Disposition: inline
-In-Reply-To: <20131218213657.GA25946@birch.djwong.org>
+In-Reply-To: <20131220181731.GG19166@parisc-linux.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-* Darrick J. Wong <darrick.wong@oracle.com>:
-> On Tue, Dec 17, 2013 at 06:43:13PM -0500, Eric Whitney wrote:
-> > I've built the contents of the current e2fsprogs maint branch (4727c67dc2)
-> > and run make check on both a Pandaboard (ARM) and an x86-64 VM. In each
-> > case I used the following arguments to configure: --disable-uuidd
-> > --disable-libuuid --disable-libblkid.
+On Fri, Dec 20, 2013 at 11:17:31AM -0700, Matthew Wilcox wrote:
+> On Thu, Dec 19, 2013 at 12:18:48PM -0500, Theodore Ts'o wrote:
+> > On Thu, Dec 19, 2013 at 10:12:02AM -0700, Matthew Wilcox wrote:
+> > > 
+> > > ... I think it'll actually be ext4_get_block_fault, not _write, and it
+> > > will include code to zero the returned blocks if they're uninitialised.
 > > 
-> > Both the ARM and x86-64 runs produced warnings when compiling ea_refcount.c
-> > during make check.  I posted a patch yesterday (e2fsck: fix printf
-> > conversion specs in ea_refcount.c) that clears those up for me on both
-> > platforms.
-> > 
-> > The ARM build and make check were otherwise clean.
-> > 
-> > The x86-64 build and make check contained one more problem - a warning while
-> > compiling debugfs.c:
-> > ../../debugfs/debugfs.c:2462:5: warning: too many arguments for format
-> >  [-Wformat-extra-args]
-> > 
-> > This code (commit fe56188b07) is part of that used to check superblock block
-> > numbers specified on the command line, and the error reporting has become
-> > a little fuzzy relative to what we had previously.
-> > 
-> > Before:
-> > 
-> > root@debug1:~# debugfs -s 327b /dev/vdc
-> > debugfs 1.42.8 (20-Jun-2013)
-> > debugfs: Bad superblock number - 327b
-> > 
-> > After:
-> > 
-> > root@debug1:~# debugfs -s 327b /dev/vdc
-> > debugfs 1.42.8 (20-Jun-2013)
-> > debugfs: Bad block number - 327b
-> > debugfs: Invalid block number: 327b
-> > debugfs: Operation not permitted 
-> > 
-> > Both strtoblk() and parseulonglong() (which it calls) output error messages
-> > for bad/invalid block numbers, which is redundant in this case.  The last
-> > (erroneous) error message is output by the call to com_err() which also 
-> > causes the warning noted above.
-> > 
-> > It seems to me that the call to com_err() ought to be deleted, and maybe
-> > the immediately preceding call to strtoblk() ought to be converted to a call
-> > to parseulonglong() to restore the original messaging.  I'd like to post a
-> > patch, but there are a number of other calls to strtoblk() in debugfs now
-> > that will produce two messages on errors, and the intent isn't clear to me.
-> > Is this just an area that needed a little more polish?
+> > I assume what you mean here is if we see that the blocks are
+> > uninitialized, we don't need to read from the persistent memory at
+> > all; we can just map in a zeroed page, hopefully one from our stock of
+> > pre-zeroed pages.  Yes?
 > 
-> Back in October, I wrote a patch[1] that did a straight conversion to
-> parse_ulonglong for 64bit support, but Lukas suggested using strtoblk instead.
-> So I changed it, and that's what's in there now... uglified.  Sorry about that.
-> I should have argued more strongly against strtoblk. :(
-> 
-> I don't have a problem with changing it to parse_ulonglong.
-> 
-> [1] http://patchwork.ozlabs.org/patch/279295/
-> 
+> Maybe.  We have a tension here between wanting to avoid unnecessary
+> writes to the media (as you say, wear is going to be important for some
+> media, if not all) and wanting to not fragment files (both for extent
+> tree compactness and so that we can use PMD or even PGD mappings if the
+> stars align).  It'll be up to the filesystem whether it chooses to satisfy
+> the get_block request with something prezeroed, or something that aligns
+> nicely.  Ideally, it'll be able to find a block of storage that does both!
 
-Thanks for the background.  Since Ted accepted the strtoblk() changes, maybe
-he's ok with the changed error reporting.  For now, since I think he's
-interested in getting the next e2fsprogs maint release out the door, I posted
-a simple patch just to address the compile-time warning and that last broken
-error message.  There are enough strtoblk() call sites that it's probably
-better to address them all and apply a common solution or not address any of
-them rather than to address just one.
+Yes, XFS with it's per-file extent size hints does that already.
+Like I've said previously - this is a solved problem and all we need
+is the IO completion callbacks to make sub-extent size IOs convert
+the allocated unwritten regions appropriately...
 
-Thanks,
-Eric
+> Actually, I now see a second way to read what you wrote.  If you meant
+> "we can map in ZERO_PAGE or one of its analogs", then no.  The amount
+> of cruft that optimisation added to the filemap_xip code is horrendous.
+> I don't think it's a particularly common workload (mmap a holey file,
+> read lots of zeroes out of it without ever writing to it), so I think
+> it's far better to allocate a page of storage and zero it.
 
+Happens far more often than you think in scientific calculations.
+Sparse matrices are extremely common, and it's a valid optimistion
+to walk then with mmap and have all the uninitialised vectors simply
+return zero without having storage space allocated. In this sort of
+situation, you really don't want to be allocating and zeroing
+persistent memory just because a terabyte sized sparse identity
+matrix was mmapped and read in it's entirity during a calculation....
+
+Persistent memory needs to handle sparse files efficiently. I'd
+suggest that we already have very well tested mechanism to do
+that: the mapping tree on each inode. use the radix tree to index
+the space, mapping either a zero page into each hole index that is
+mapped read only, and replace it with an allocated, zeroed mapping
+at page_mkwrite() time. i.e. use the mapping radix tree to point at
+all the pages we've mapped from the backing device rather than just
+mapping an anonymous memory address from the backing device
+into userspace.
+
+That also opens the door for easily retrofitting buffered writes
+into persistent memory if we need them (e.g. mmap() of encrypted
+persistent memory).
+
+Once again, we don't need to re-invent the wheel because we already
+have one designed specifically for this purpose....
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
