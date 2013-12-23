@@ -1,62 +1,51 @@
 From: Darren Hart <dvhart@linux.intel.com>
-Subject: Re: [PATCH 04/10] misc/create_inode.c: create symlink
-Date: Mon, 23 Dec 2013 11:27:16 -0800
-Message-ID: <1387826836.5088.65.camel@dvhart-mobl4.amr.corp.intel.com>
+Subject: Re: [PATCH 05/10] misc/create_inode.c: copy regular file
+Date: Mon, 23 Dec 2013 11:32:19 -0800
+Message-ID: <1387827139.5088.69.camel@dvhart-mobl4.amr.corp.intel.com>
 References: <1387800600-13718-1-git-send-email-liezhi.yang@windriver.com>
-	 <1387800600-13718-5-git-send-email-liezhi.yang@windriver.com>
+	 <1387800600-13718-6-git-send-email-liezhi.yang@windriver.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
 Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
 To: Robert Yang <liezhi.yang@windriver.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga09.intel.com ([134.134.136.24]:16441 "EHLO mga09.intel.com"
+Received: from mga09.intel.com ([134.134.136.24]:53961 "EHLO mga09.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755395Ab3LWT10 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Dec 2013 14:27:26 -0500
-In-Reply-To: <1387800600-13718-5-git-send-email-liezhi.yang@windriver.com>
+	id S1757468Ab3LWTcq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Dec 2013 14:32:46 -0500
+In-Reply-To: <1387800600-13718-6-git-send-email-liezhi.yang@windriver.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 On Mon, 2013-12-23 at 07:09 -0500, Robert Yang wrote:
-> The do_symlink_internal() is used for creating symlinks, most of the
-> code are from debugfs/debugfs.c, the debugfs/debugfs.c will be modified
-> to use this function.
+> The do_write_internal() is used for copying file from native fs to
+> target, most of the code are from debugfs/debugfs.c, the
+> debugfs/debugfs.c will be modified to use this function.
 > 
 > Signed-off-by: Robert Yang <liezhi.yang@windriver.com>
 > ---
->  misc/create_inode.c |   34 ++++++++++++++++++++++++++++++++++
->  1 file changed, 34 insertions(+)
+>  misc/create_inode.c |  184 +++++++++++++++++++++++++++++++++++++++++++++++++++
+>  1 file changed, 184 insertions(+)
 > 
-> diff --git a/misc/create_inode.c b/misc/create_inode.c
-> index 62a40de..45c8a87 100644
-> --- a/misc/create_inode.c
-> +++ b/misc/create_inode.c
-> @@ -81,6 +81,40 @@ errcode_t do_mknod_internal(ext2_ino_t cwd, const char *name, struct stat *st)
->  /* Make a symlink name -> target */
->  errcode_t do_symlink_internal(ext2_ino_t cwd, const char *name, char *target)
->  {
-> +	char			*cp;
-> +	ext2_ino_t		parent_ino;
-> +	errcode_t		retval;
-> +	struct ext2_inode	inode;
-> +	struct stat		st;
-> +
-> +	cp = strrchr(name, '/');
-> +	if (cp) {
-> +		*cp = 0;
-> +		if ((retval =  ext2fs_namei(current_fs, root, cwd, name, &parent_ino))){
-> +			com_err(name, retval, 0);
-> +			return retval;
-> +		}
-> +		name = cp+1;
-> +	} else {
-> +		parent_ino = cwd;
-> +		name = name;
 
-What is the intent of this assignment to self? It appears to be a
-conversion artifact from the debugfs do_symlink() function, and could be
-dropped.
+
+> +
+>  /* Copy the native file to the fs */
+>  errcode_t do_write_internal(ext2_ino_t cwd, const char *src, const char *dest)
+>  {
+> +	int		fd;
+> +	struct stat	statbuf;
+> +	ext2_ino_t	newfile;
+> +	errcode_t	retval;
+> +	struct ext2_inode inode;
+> +	int		bufsize = IO_BUFSIZE;
+> +	int		make_holes = 0;
+> +	char		*func_name = "do_write_internal";
+
+Does __FUNCTION__ not provide this same functionality in this context?
+No need to store this explicitly is there?
+
 
 -- 
 Darren Hart
