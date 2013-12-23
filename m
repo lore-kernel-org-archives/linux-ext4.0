@@ -1,57 +1,56 @@
-From: "Kirill A. Shutemov" <kirill@shutemov.name>
-Subject: Re: [PATCH v4 21/22] Add support for pmd_faults
-Date: Mon, 23 Dec 2013 17:11:45 +0200
-Message-ID: <20131223151145.GA15839@node.dhcp.inet.fi>
-References: <cover.1387748521.git.matthew.r.wilcox@intel.com>
- <e944917f571781b46ca4dbb789ae8a86c5166059.1387748521.git.matthew.r.wilcox@intel.com>
- <20131223134113.GA14806@node.dhcp.inet.fi>
- <20131223145031.GB11091@parisc-linux.org>
- <20131223150408.GC11091@parisc-linux.org>
+From: Chris Mason <clm@fb.com>
+Subject: Re: [PATCH 00/21] Consolidate Posix ACL implementation V3
+Date: Mon, 23 Dec 2013 16:57:58 +0000
+Message-ID: <1387817904.8080.4.camel@ret.masoncoding.com>
+References: <20131220131635.650823732@bombadil.infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Matthew Wilcox <matthew@wil.cx>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20131223150408.GC11091@parisc-linux.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: "andreas.gruenbacher@linbit.com" <andreas.gruenbacher@linbit.com>,
+ "jfs-discussion@lists.sourceforge.net"
+ <jfs-discussion@lists.sourceforge.net>,
+ "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+ "mfasheh@suse.com" <mfasheh@suse.com>,
+ "reiserfs-devel@vger.kernel.org" <reiserfs-devel@vger.kernel.org>,
+ "xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+ "cluster-devel@redhat.com" <cluster-devel@redhat.com>,
+ "linux-mtd@lists.infradead.org" <linux-mtd@lists.infradead.org>,
+ "jlbec@evilplan.org" <jlbec@evilplan.org>,
+ "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+ "linux-f2fs-devel@lists.sourceforge.net"
+ <linux-f2fs-devel@lists.sourceforge.net>,
+ "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+ "linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
+ "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>
+To: "hch@infradead.org" <hch@infradead.org>
+Return-path: <linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org>
+In-Reply-To: <20131220131635.650823732@bombadil.infradead.org>
+Content-Language: en-US
+Content-ID: <55F48838A946C644AC50A45C770BFE71@fb.com>
+List-Unsubscribe: <http://lists.infradead.org/mailman/options/linux-mtd>,
+ <mailto:linux-mtd-request@lists.infradead.org?subject=unsubscribe>
+List-Archive: <http://lists.infradead.org/pipermail/linux-mtd/>
+List-Post: <mailto:linux-mtd@lists.infradead.org>
+List-Help: <mailto:linux-mtd-request@lists.infradead.org?subject=help>
+List-Subscribe: <http://lists.infradead.org/mailman/listinfo/linux-mtd>,
+ <mailto:linux-mtd-request@lists.infradead.org?subject=subscribe>
+Sender: "linux-mtd" <linux-mtd-bounces@lists.infradead.org>
+Errors-To: linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Dec 23, 2013 at 08:04:09AM -0700, Matthew Wilcox wrote:
-> On Mon, Dec 23, 2013 at 07:50:31AM -0700, Matthew Wilcox wrote:
-> > > > +	pgoff = ((address - vma->vm_start) >> PAGE_SHIFT) + vma->vm_pgoff;
-> > > > +	size = (i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT;
-> > > > +	if (pgoff >= size)
-> > > > +		return VM_FAULT_SIGBUS;
-> > > > +	if ((pgoff | PG_PMD_COLOUR) >= size)
-> > > > +		return VM_FAULT_FALLBACK;
-> > > 
-> > > I don't think it's necessary to fallback in this case.
-> > > Do you care about SIGBUS behaviour or what?
-> > 
-> > I'm looking to preserve the same behaviour we see with PTE mappings.  I mean,
-> > it's supposed to be _transparent_ huge pages, right?
+On Fri, 2013-12-20 at 05:16 -0800, Christoph Hellwig wrote:
+> This series consolidates the various cut'n'pasted Posix ACL implementations
+> into a single common one based on the ->get_acl method Linus added a while
+> ago and a new ->set_acl counterpart.
 > 
-> Speaking of which ... we also need to check if the PMD is entirely within
-> the VMA.  So, this is needed:
-> 
-> @@ -308,6 +308,11 @@ static int do_xip_pmd_fault(struct vm_area_struct *vma, uns
->         /* Fall back to PTEs if we're going to COW */
->         if ((flags & FAULT_FLAG_WRITE) && !(vma->vm_flags & VM_SHARED))
->                 return VM_FAULT_FALLBACK;
-> +       /* Fall back to PTEs if the mapping would extend outside the VMA */
-> +       if ((address & ~PMD_MASK) < vma->vm_start)
-> +               return VM_FAULT_FALLBACK;
-> +       if (ALIGN(address, PMD_SIZE) >= vma->vm_end)
-> +               return VM_FAULT_FALLBACK;
->  
->         pgoff = ((address - vma->vm_start) >> PAGE_SHIFT) + vma->vm_pgoff;
->         size = (i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT;
-> 
-> I'll fold that into the next round of patches.
+> This remove ~1800 lines of code and provides a single place to implement
+> various nasty little gems of the semantics.
 
-Agree with this part.
+Is this in a git tree somewhere?  I'll pull in and test the btrfs bits.
 
--- 
- Kirill A. Shutemov
+-chris
+
+
+______________________________________________________
+Linux MTD discussion mailing list
+http://lists.infradead.org/mailman/listinfo/linux-mtd/
