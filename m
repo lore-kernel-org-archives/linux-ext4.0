@@ -1,58 +1,70 @@
-From: "hch@infradead.org" <hch@infradead.org>
-Subject: Re: [PATCH 00/21] Consolidate Posix ACL implementation V3
-Date: Mon, 23 Dec 2013 09:01:03 -0800
-Message-ID: <20131223170103.GA14856@infradead.org>
-References: <20131220131635.650823732@bombadil.infradead.org>
- <1387817904.8080.4.camel@ret.masoncoding.com>
+From: Matthew Wilcox <matthew@wil.cx>
+Subject: Re: [PATCH v4 21/22] Add support for pmd_faults
+Date: Mon, 23 Dec 2013 11:42:22 -0700
+Message-ID: <20131223184222.GE11091@parisc-linux.org>
+References: <cover.1387748521.git.matthew.r.wilcox@intel.com> <e944917f571781b46ca4dbb789ae8a86c5166059.1387748521.git.matthew.r.wilcox@intel.com> <20131223134113.GA14806@node.dhcp.inet.fi> <20131223145031.GB11091@parisc-linux.org> <20131223151003.GA15744@node.dhcp.inet.fi>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: "andreas.gruenbacher@linbit.com" <andreas.gruenbacher@linbit.com>,
- "jfs-discussion@lists.sourceforge.net"
- <jfs-discussion@lists.sourceforge.net>,
- "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
- "mfasheh@suse.com" <mfasheh@suse.com>,
- "reiserfs-devel@vger.kernel.org" <reiserfs-devel@vger.kernel.org>,
- "xfs@oss.sgi.com" <xfs@oss.sgi.com>, "hch@infradead.org" <hch@infradead.org>,
- "cluster-devel@redhat.com" <cluster-devel@redhat.com>,
- "linux-mtd@lists.infradead.org" <linux-mtd@lists.infradead.org>,
- "jlbec@evilplan.org" <jlbec@evilplan.org>,
- "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
- "linux-f2fs-devel@lists.sourceforge.net"
- <linux-f2fs-devel@lists.sourceforge.net>,
- "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
- "linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
- "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>
-To: Chris Mason <clm@fb.com>
-Return-path: <linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Matthew Wilcox <matthew.r.wilcox@intel.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-mm@kvack.org, Andrea Arcangeli <aarcange@redhat.com>
+To: "Kirill A. Shutemov" <kirill@shutemov.name>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from palinux.external.hp.com ([192.25.206.14]:56230 "EHLO
+	mail.parisc-linux.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751447Ab3LWSmY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Dec 2013 13:42:24 -0500
 Content-Disposition: inline
-In-Reply-To: <1387817904.8080.4.camel@ret.masoncoding.com>
-List-Unsubscribe: <http://lists.infradead.org/mailman/options/linux-mtd>,
- <mailto:linux-mtd-request@lists.infradead.org?subject=unsubscribe>
-List-Archive: <http://lists.infradead.org/pipermail/linux-mtd/>
-List-Post: <mailto:linux-mtd@lists.infradead.org>
-List-Help: <mailto:linux-mtd-request@lists.infradead.org?subject=help>
-List-Subscribe: <http://lists.infradead.org/mailman/listinfo/linux-mtd>,
- <mailto:linux-mtd-request@lists.infradead.org?subject=subscribe>
-Sender: "linux-mtd" <linux-mtd-bounces@lists.infradead.org>
-Errors-To: linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20131223151003.GA15744@node.dhcp.inet.fi>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Dec 23, 2013 at 04:57:58PM +0000, Chris Mason wrote:
-> On Fri, 2013-12-20 at 05:16 -0800, Christoph Hellwig wrote:
-> > This series consolidates the various cut'n'pasted Posix ACL implementations
-> > into a single common one based on the ->get_acl method Linus added a while
-> > ago and a new ->set_acl counterpart.
+On Mon, Dec 23, 2013 at 05:10:03PM +0200, Kirill A. Shutemov wrote:
+> On Mon, Dec 23, 2013 at 07:50:31AM -0700, Matthew Wilcox wrote:
+> > On Mon, Dec 23, 2013 at 03:41:13PM +0200, Kirill A. Shutemov wrote:
+> > > > +	/* Fall back to PTEs if we're going to COW */
+> > > > +	if ((flags & FAULT_FLAG_WRITE) && !(vma->vm_flags & VM_SHARED))
+> > > > +		return VM_FAULT_FALLBACK;
+> > > 
+> > > Why?
 > > 
-> > This remove ~1800 lines of code and provides a single place to implement
-> > various nasty little gems of the semantics.
+> > If somebody mmaps a file with MAP_PRIVATE and changes a single byte, I
+> > think we should allocate a single page to hold that change, not a PMD's
+> > worth of pages.
 > 
-> Is this in a git tree somewhere?
+> We try allocate new huge page in the same situation for AnonTHP. I don't
+> see a reason why not to do the same here. It would be much harder (if
+> possible) to collapse small page into a huge one later.
 
-Only on my box.  Given how shitty kernel.org is to use these days I
-don't bother with it anymore.
+OK, I'll look at what AnonTHP does here.  There may be good reasons to
+do it differently, but in the absence of data, we should probably handle
+the two cases the same.
 
+> > > > +	if ((pgoff | PG_PMD_COLOUR) >= size)
+> > > > +		return VM_FAULT_FALLBACK;
+> > > 
+> > > I don't think it's necessary to fallback in this case.
+> > > Do you care about SIGBUS behaviour or what?
+> > 
+> > I'm looking to preserve the same behaviour we see with PTE mappings.  I mean,
+> > it's supposed to be _transparent_ huge pages, right?
+> 
+> We can't be totally transparent. At least from performance point of view.
+> 
+> The question is whether it's critical to preserve SIGBUS beheviour. I
+> would prefer to map last page in mapping with huge pages too, if it's
+> possible.
+> 
+> Do you know anyone who relay on SIGBUS for correctness?
 
-______________________________________________________
-Linux MTD discussion mailing list
-http://lists.infradead.org/mailman/listinfo/linux-mtd/
+Oh, I remember the real reason now.  If we install a PMD that hangs off
+the end of the file then by reading past i_size, we can read the blocks of
+whatever happens to be in storage after the end of the file, which could
+be another file's data.  This doesn't happen for the PTE case because the
+existing code only works for filesystems with a block size == PAGE_SIZE.
+
+-- 
+Matthew Wilcox				Intel Open Source Technology Centre
+"Bill, look, we understand that you're interested in selling us this
+operating system, but compare it to ours.  We can't possibly take such
+a retrograde step."
