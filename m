@@ -1,24 +1,39 @@
-From: Matthew Wilcox <matthew@wil.cx>
+From: "Kirill A. Shutemov" <kirill@shutemov.name>
 Subject: Re: [PATCH v4 21/22] Add support for pmd_faults
-Date: Mon, 23 Dec 2013 08:04:09 -0700
-Message-ID: <20131223150408.GC11091@parisc-linux.org>
-References: <cover.1387748521.git.matthew.r.wilcox@intel.com> <e944917f571781b46ca4dbb789ae8a86c5166059.1387748521.git.matthew.r.wilcox@intel.com> <20131223134113.GA14806@node.dhcp.inet.fi> <20131223145031.GB11091@parisc-linux.org>
+Date: Mon, 23 Dec 2013 17:10:03 +0200
+Message-ID: <20131223151003.GA15744@node.dhcp.inet.fi>
+References: <cover.1387748521.git.matthew.r.wilcox@intel.com>
+ <e944917f571781b46ca4dbb789ae8a86c5166059.1387748521.git.matthew.r.wilcox@intel.com>
+ <20131223134113.GA14806@node.dhcp.inet.fi>
+ <20131223145031.GB11091@parisc-linux.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: "Kirill A. Shutemov" <kirill@shutemov.name>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from palinux.external.hp.com ([192.25.206.14]:49610 "EHLO
-	mail.parisc-linux.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752235Ab3LWPEL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Dec 2013 10:04:11 -0500
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-mm@kvack.org, Andrea Arcangeli <aarcange@redhat.com>
+To: Matthew Wilcox <matthew@wil.cx>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
 In-Reply-To: <20131223145031.GB11091@parisc-linux.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
 On Mon, Dec 23, 2013 at 07:50:31AM -0700, Matthew Wilcox wrote:
+> On Mon, Dec 23, 2013 at 03:41:13PM +0200, Kirill A. Shutemov wrote:
+> > > +	/* Fall back to PTEs if we're going to COW */
+> > > +	if ((flags & FAULT_FLAG_WRITE) && !(vma->vm_flags & VM_SHARED))
+> > > +		return VM_FAULT_FALLBACK;
+> > 
+> > Why?
+> 
+> If somebody mmaps a file with MAP_PRIVATE and changes a single byte, I
+> think we should allocate a single page to hold that change, not a PMD's
+> worth of pages.
+
+We try allocate new huge page in the same situation for AnonTHP. I don't
+see a reason why not to do the same here. It would be much harder (if
+possible) to collapse small page into a huge one later.
+
 > > > +	pgoff = ((address - vma->vm_start) >> PAGE_SHIFT) + vma->vm_pgoff;
 > > > +	size = (i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT;
 > > > +	if (pgoff >= size)
@@ -32,26 +47,45 @@ On Mon, Dec 23, 2013 at 07:50:31AM -0700, Matthew Wilcox wrote:
 > I'm looking to preserve the same behaviour we see with PTE mappings.  I mean,
 > it's supposed to be _transparent_ huge pages, right?
 
-Speaking of which ... we also need to check if the PMD is entirely within
-the VMA.  So, this is needed:
+We can't be totally transparent. At least from performance point of view.
 
-@@ -308,6 +308,11 @@ static int do_xip_pmd_fault(struct vm_area_struct *vma, uns
-        /* Fall back to PTEs if we're going to COW */
-        if ((flags & FAULT_FLAG_WRITE) && !(vma->vm_flags & VM_SHARED))
-                return VM_FAULT_FALLBACK;
-+       /* Fall back to PTEs if the mapping would extend outside the VMA */
-+       if ((address & ~PMD_MASK) < vma->vm_start)
-+               return VM_FAULT_FALLBACK;
-+       if (ALIGN(address, PMD_SIZE) >= vma->vm_end)
-+               return VM_FAULT_FALLBACK;
- 
-        pgoff = ((address - vma->vm_start) >> PAGE_SHIFT) + vma->vm_pgoff;
-        size = (i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT;
+The question is whether it's critical to preserve SIGBUS beheviour. I
+would prefer to map last page in mapping with huge pages too, if it's
+possible.
 
-I'll fold that into the next round of patches.
+Do you know anyone who relay on SIGBUS for correctness?
+
+> 
+> > > + insert:
+> > > +	length = xip_get_pfn(inode, &bh, &pfn);
+> > > +	if (length < 0)
+> > > +		return VM_FAULT_SIGBUS;
+> > > +	if (length < PMD_SIZE)
+> > > +		return VM_FAULT_FALLBACK;
+> > > +	if (pfn & PG_PMD_COLOUR)
+> > > +		return VM_FAULT_FALLBACK;	/* not aligned */
+> > 
+> > Without assistance from get_unmapped_area() you will hit this all the time
+> > (511 of 512 on x86_64).
+> 
+> Yes ... I thought you were working on that part for your transparent huge
+> page cache patchset?
+
+Yeah, I have patch for x86-64. Just a side note.
+
+> 
+> > And the check should be moved before get_block(), I think.
+> 
+> Can't.  The PFN we're checking is the PFN of the storage.  We have to
+> call get_block() to find out where it's going to be.
+
+I see.
 
 -- 
-Matthew Wilcox				Intel Open Source Technology Centre
-"Bill, look, we understand that you're interested in selling us this
-operating system, but compare it to ours.  We can't possibly take such
-a retrograde step."
+ Kirill A. Shutemov
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
