@@ -1,92 +1,506 @@
 From: Robert Yang <liezhi.yang@windriver.com>
-Subject: [PATCH 07/10] misc/create_inode.c: set owner/mode/time for the inode
-Date: Mon, 23 Dec 2013 07:09:57 -0500
-Message-ID: <1387800600-13718-8-git-send-email-liezhi.yang@windriver.com>
+Subject: [PATCH 09/10] debugfs: use the functions in misc/create_inode.c
+Date: Mon, 23 Dec 2013 07:09:59 -0500
+Message-ID: <1387800600-13718-10-git-send-email-liezhi.yang@windriver.com>
 References: <1387800600-13718-1-git-send-email-liezhi.yang@windriver.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: <linux-ext4@vger.kernel.org>
 To: <tytso@mit.edu>, <dvhart@linux.intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.windriver.com ([147.11.1.11]:52665 "EHLO
+Received: from mail.windriver.com ([147.11.1.11]:52675 "EHLO
 	mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757272Ab3LWMKR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Dec 2013 07:10:17 -0500
+	with ESMTP id S1757285Ab3LWMKU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Dec 2013 07:10:20 -0500
 In-Reply-To: <1387800600-13718-1-git-send-email-liezhi.yang@windriver.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Set the uid, gid, mode and time for inode.
+* Use the functions in misc/create_inode.c, and remove the duplicated
+  code.
+
+* The CREATE_INODE_DEPS in the debugfs/Makefile.in is used for recording
+  create_inode.o's depends which is from misc/Makefile.in, we have to
+  recompile create_inode.o because we need it to print more messages when
+  it is used by debugfs, just like we recompile e2freefrag.o, but it seems
+  that the e2freefrag.o's depends in debugfs/Makefile.in is incorrect, it
+  would not rebuild when its depends (e.g.: lib/config.h) is changed,
+  which would cause unexpected errors. Make duplicated code in
+  debugfs/Makefile.in and misc/Makefile.in is not a good idea, maybe we'd
+  better define CREATE_INODE_DEPS in the top Makefile, I'd like to send
+  another patch and fix the e2freefrag if you are fine with it.
 
 Signed-off-by: Robert Yang <liezhi.yang@windriver.com>
 ---
- misc/create_inode.c |   46 ++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 46 insertions(+)
+ debugfs/Makefile.in |   17 ++-
+ debugfs/debugfs.c   |  305 +++------------------------------------------------
+ debugfs/debugfs.h   |    1 +
+ 3 files changed, 31 insertions(+), 292 deletions(-)
 
-diff --git a/misc/create_inode.c b/misc/create_inode.c
-index 95acffe..afe8567 100644
---- a/misc/create_inode.c
-+++ b/misc/create_inode.c
-@@ -10,6 +10,41 @@
- #define S_BLKSIZE 512
+diff --git a/debugfs/Makefile.in b/debugfs/Makefile.in
+index bf037e0..f51b78e 100644
+--- a/debugfs/Makefile.in
++++ b/debugfs/Makefile.in
+@@ -18,7 +18,7 @@ MK_CMDS=	_SS_DIR_OVERRIDE=../lib/ss ../lib/ss/mk_cmds
+ 
+ DEBUG_OBJS= debug_cmds.o debugfs.o util.o ncheck.o icheck.o ls.o \
+ 	lsdel.o dump.o set_fields.o logdump.o htree.o unused.o e2freefrag.o \
+-	filefrag.o extent_cmds.o extent_inode.o zap.o
++	filefrag.o extent_cmds.o extent_inode.o zap.o create_inode.o
+ 
+ RO_DEBUG_OBJS= ro_debug_cmds.o ro_debugfs.o util.o ncheck.o icheck.o ls.o \
+ 	lsdel.o logdump.o htree.o e2freefrag.o filefrag.o extent_cmds.o \
+@@ -28,7 +28,13 @@ SRCS= debug_cmds.c $(srcdir)/debugfs.c $(srcdir)/util.c $(srcdir)/ls.c \
+ 	$(srcdir)/ncheck.c $(srcdir)/icheck.c $(srcdir)/lsdel.c \
+ 	$(srcdir)/dump.c $(srcdir)/set_fields.c ${srcdir}/logdump.c \
+ 	$(srcdir)/htree.c $(srcdir)/unused.c ${srcdir}/../misc/e2freefrag.c \
+-	$(srcdir)/filefrag.c $(srcdir)/extent_inode.c $(srcdir)/zap.c
++	$(srcdir)/filefrag.c $(srcdir)/extent_inode.c $(srcdir)/zap.c \
++	$(srcdir)/../misc/create_inode.c
++
++CREATE_INODE_DEPS= $(srcdir)/../misc/create_inode.h \
++	$(srcdir)/../misc/create_inode.c $(top_builddir)/lib/config.h \
++	$(srcdir)/../lib/ext2fs/ext2fs.h $(srcdir)/../lib/et/com_err.h \
++	$(srcdir)/../lib/e2p/e2p.h $(srcdir)/../misc/nls-enable.h
+ 
+ LIBS= $(LIBEXT2FS) $(LIBE2P) $(LIBSS) $(LIBCOM_ERR) $(LIBBLKID) \
+ 	$(LIBUUID)
+@@ -81,6 +87,11 @@ e2freefrag.o: $(srcdir)/../misc/e2freefrag.c
+ 	$(E) "	CC $@"
+ 	$(Q) $(CC) -c $(ALL_CFLAGS) -I$(srcdir) $< -DDEBUGFS -o $@
+ 
++create_inode.o: $(CREATE_INODE_DEPS)
++	$(E) "	CC $@"
++	$(Q) $(CC) -c $(ALL_CFLAGS) -I$(srcdir) \
++		 $(srcdir)/../misc/create_inode.c -DDEBUGFS -o $@
++
+ debugfs.8: $(DEP_SUBSTITUTE) $(srcdir)/debugfs.8.in
+ 	$(E) "	SUBST $@"
+ 	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/debugfs.8.in debugfs.8
+@@ -142,7 +153,7 @@ debugfs.o: $(srcdir)/debugfs.c $(top_srcdir)/lib/et/com_err.h \
+  $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
+  $(top_srcdir)/lib/e2p/e2p.h $(top_srcdir)/version.h $(srcdir)/jfs_user.h \
+  $(top_srcdir)/lib/ext2fs/kernel-jbd.h $(top_srcdir)/lib/ext2fs/jfs_compat.h \
+- $(top_srcdir)/lib/ext2fs/kernel-list.h
++ $(top_srcdir)/lib/ext2fs/kernel-list.h $(top_srcdir)/misc/util.h
+ util.o: $(srcdir)/util.c $(srcdir)/debugfs.h \
+  $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
+  $(top_srcdir)/lib/ext2fs/ext2fs.h $(top_srcdir)/lib/ext2fs/ext3_extents.h \
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index 578d577..f5ff7fd 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -25,8 +25,6 @@ extern char *optarg;
+ #include <errno.h>
+ #endif
+ #include <fcntl.h>
+-#include <sys/types.h>
+-#include <sys/stat.h>
+ 
+ #include "debugfs.h"
+ #include "uuid/uuid.h"
+@@ -41,22 +39,11 @@ extern char *optarg;
+ #define BUFSIZ 8192
  #endif
  
-+/* Fill the uid, gid, mode and time for the inode */
-+static void fill_inode(struct ext2_inode *inode, struct stat *st)
-+{
-+	if (st != NULL) {
-+		inode->i_uid = st->st_uid;
-+		inode->i_gid = st->st_gid;
-+		inode->i_mode |= st->st_mode;
-+		inode->i_atime = st->st_atime;
-+		inode->i_mtime = st->st_mtime;
-+		inode->i_ctime = st->st_ctime;
-+	}
-+}
-+
-+/* Set the uid, gid, mode and time for the inode */
-+errcode_t set_inode_extra(ext2_ino_t cwd, ext2_ino_t ino, struct stat *st)
-+{
-+	errcode_t		retval;
-+	struct ext2_inode	inode;
-+	char			*func_name = "set_inode_extra";
-+
-+	retval = ext2fs_read_inode(current_fs, ino, &inode);
-+        if (retval) {
-+		com_err(func_name, retval, "while reading inode %u", ino);
-+		return retval;
-+	}
-+
-+	fill_inode(&inode, st);
-+
-+	retval = ext2fs_write_inode(current_fs, ino, &inode);
-+	if (retval) {
-+		com_err(func_name, retval, "while writing inode %u", ino);
-+		return retval;
-+	}
-+}
-+
- /* Make a special file which is block, character and fifo */
- errcode_t do_mknod_internal(ext2_ino_t cwd, const char *name, struct stat *st)
+-/* 64KiB is the minimium blksize to best minimize system call overhead. */
+-#ifndef IO_BUFSIZE
+-#define IO_BUFSIZE 64*1024
+-#endif
+-
+-/* Block size for `st_blocks' */
+-#ifndef S_BLKSIZE
+-#define S_BLKSIZE 512
+-#endif
+-
+ ss_request_table *extra_cmds;
+ const char *debug_prog_name;
+ int sci_idx;
+ 
+-ext2_filsys	current_fs = NULL;
+-ext2_ino_t	root, cwd;
++ext2_ino_t	cwd;
+ 
+ static void open_filesystem(char *device, int open_flags, blk64_t superblock,
+ 			    blk64_t blocksize, int catastrophic,
+@@ -1588,189 +1575,24 @@ void do_find_free_inode(int argc, char *argv[])
+ }
+ 
+ #ifndef READ_ONLY
+-static errcode_t copy_file(int fd, ext2_ino_t newfile, int bufsize, int make_holes)
+-{
+-	ext2_file_t	e2_file;
+-	errcode_t	retval;
+-	int		got;
+-	unsigned int	written;
+-	char		*buf;
+-	char		*ptr;
+-	char		*zero_buf;
+-	int		cmp;
+-
+-	retval = ext2fs_file_open(current_fs, newfile,
+-				  EXT2_FILE_WRITE, &e2_file);
+-	if (retval)
+-		return retval;
+-
+-	retval = ext2fs_get_mem(bufsize, &buf);
+-	if (retval) {
+-		com_err("copy_file", retval, "can't allocate buffer\n");
+-		return retval;
+-	}
+-
+-	/* This is used for checking whether the whole block is zero */
+-	retval = ext2fs_get_memzero(bufsize, &zero_buf);
+-	if (retval) {
+-		com_err("copy_file", retval, "can't allocate buffer\n");
+-		ext2fs_free_mem(&buf);
+-		return retval;
+-	}
+-
+-	while (1) {
+-		got = read(fd, buf, bufsize);
+-		if (got == 0)
+-			break;
+-		if (got < 0) {
+-			retval = errno;
+-			goto fail;
+-		}
+-		ptr = buf;
+-
+-		/* Sparse copy */
+-		if (make_holes) {
+-			/* Check whether all is zero */
+-			cmp = memcmp(ptr, zero_buf, got);
+-			if (cmp == 0) {
+-				 /* The whole block is zero, make a hole */
+-				retval = ext2fs_file_lseek(e2_file, got, EXT2_SEEK_CUR, NULL);
+-				if (retval)
+-					goto fail;
+-				got = 0;
+-			}
+-		}
+-
+-		/* Normal copy */
+-		while (got > 0) {
+-			retval = ext2fs_file_write(e2_file, ptr,
+-						   got, &written);
+-			if (retval)
+-				goto fail;
+-
+-			got -= written;
+-			ptr += written;
+-		}
+-	}
+-	ext2fs_free_mem(&buf);
+-	ext2fs_free_mem(&zero_buf);
+-	retval = ext2fs_file_close(e2_file);
+-	return retval;
+-
+-fail:
+-	ext2fs_free_mem(&buf);
+-	ext2fs_free_mem(&zero_buf);
+-	(void) ext2fs_file_close(e2_file);
+-	return retval;
+-}
+-
+-
+ void do_write(int argc, char *argv[])
  {
-@@ -435,6 +470,17 @@ errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir)
- 				com_err(func_name, 0,
- 					_("ignoring entry \"%s\""), name);
- 		}
-+
-+		if ((retval =  ext2fs_namei(current_fs, root, parent_ino, name, &ino))){
-+			com_err(name, retval, 0);
-+			return retval;
-+		}
-+
-+		if ((retval = set_inode_extra(parent_ino, ino, &st))) {
-+			com_err(func_name, retval,
-+				_("while setting inode for \"%s\""), name);
-+			return retval;
-+		}
+-	int		fd;
+-	struct stat	statbuf;
+-	ext2_ino_t	newfile;
+ 	errcode_t	retval;
+-	struct ext2_inode inode;
+-	int		bufsize = IO_BUFSIZE;
+-	int		make_holes = 0;
+ 
+ 	if (common_args_process(argc, argv, 3, 3, "write",
+ 				"<native file> <new file>", CHECK_FS_RW))
+ 		return;
+ 
+-	fd = open(argv[1], O_RDONLY);
+-	if (fd < 0) {
+-		com_err(argv[1], errno, 0);
+-		return;
+-	}
+-	if (fstat(fd, &statbuf) < 0) {
+-		com_err(argv[1], errno, 0);
+-		close(fd);
+-		return;
+-	}
+-
+-	retval = ext2fs_namei(current_fs, root, cwd, argv[2], &newfile);
+-	if (retval == 0) {
+-		com_err(argv[0], 0, "The file '%s' already exists\n", argv[2]);
+-		close(fd);
+-		return;
+-	}
+-
+-	retval = ext2fs_new_inode(current_fs, cwd, 010755, 0, &newfile);
+-	if (retval) {
++	if ((retval = do_write_internal(cwd, argv[1], argv[2])))
+ 		com_err(argv[0], retval, 0);
+-		close(fd);
+-		return;
+-	}
+-	printf("Allocated inode: %u\n", newfile);
+-	retval = ext2fs_link(current_fs, cwd, argv[2], newfile,
+-			     EXT2_FT_REG_FILE);
+-	if (retval == EXT2_ET_DIR_NO_SPACE) {
+-		retval = ext2fs_expand_dir(current_fs, cwd);
+-		if (retval) {
+-			com_err(argv[0], retval, "while expanding directory");
+-			close(fd);
+-			return;
+-		}
+-		retval = ext2fs_link(current_fs, cwd, argv[2], newfile,
+-				     EXT2_FT_REG_FILE);
+-	}
+-	if (retval) {
+-		com_err(argv[2], retval, 0);
+-		close(fd);
+-		return;
+-	}
+-        if (ext2fs_test_inode_bitmap2(current_fs->inode_map,newfile))
+-		com_err(argv[0], 0, "Warning: inode already set");
+-	ext2fs_inode_alloc_stats2(current_fs, newfile, +1, 0);
+-	memset(&inode, 0, sizeof(inode));
+-	inode.i_mode = (statbuf.st_mode & ~LINUX_S_IFMT) | LINUX_S_IFREG;
+-	inode.i_atime = inode.i_ctime = inode.i_mtime =
+-		current_fs->now ? current_fs->now : time(0);
+-	inode.i_links_count = 1;
+-	inode.i_size = statbuf.st_size;
+-	if (current_fs->super->s_feature_incompat &
+-	    EXT3_FEATURE_INCOMPAT_EXTENTS) {
+-		int i;
+-		struct ext3_extent_header *eh;
+-
+-		eh = (struct ext3_extent_header *) &inode.i_block[0];
+-		eh->eh_depth = 0;
+-		eh->eh_entries = 0;
+-		eh->eh_magic = EXT3_EXT_MAGIC;
+-		i = (sizeof(inode.i_block) - sizeof(*eh)) /
+-			sizeof(struct ext3_extent);
+-		eh->eh_max = ext2fs_cpu_to_le16(i);
+-		inode.i_flags |= EXT4_EXTENTS_FL;
+-	}
+-	if (debugfs_write_new_inode(newfile, &inode, argv[0])) {
+-		close(fd);
+-		return;
+-	}
+-	if (LINUX_S_ISREG(inode.i_mode)) {
+-		if (statbuf.st_blocks < statbuf.st_size / S_BLKSIZE) {
+-			make_holes = 1;
+-			/*
+-			 * Use I/O blocksize as buffer size when
+-			 * copying sparse files.
+-			 */
+-			bufsize = statbuf.st_blksize;
+-		}
+-		retval = copy_file(fd, newfile, bufsize, make_holes);
+-		if (retval)
+-			com_err("copy_file", retval, 0);
+-	}
+-	close(fd);
+ }
+ 
+ void do_mknod(int argc, char *argv[])
+ {
+ 	unsigned long	mode, major, minor;
+-	ext2_ino_t	newfile;
+ 	errcode_t 	retval;
+-	struct ext2_inode inode;
+ 	int		filetype, nr;
++	struct stat	st;
+ 
+ 	if (check_fs_open(argv[0]))
+ 		return;
+@@ -1779,115 +1601,50 @@ void do_mknod(int argc, char *argv[])
+ 		com_err(argv[0], 0, "Usage: mknod <name> [p| [c|b] <major> <minor>]");
+ 		return;
  	}
- 	closedir(dh);
- 	return retval;
++
+ 	mode = minor = major = 0;
+ 	switch (argv[2][0]) {
+ 		case 'p':
+-			mode = LINUX_S_IFIFO;
+-			filetype = EXT2_FT_FIFO;
++			st.st_mode = S_IFIFO;
+ 			nr = 3;
+ 			break;
+ 		case 'c':
+-			mode = LINUX_S_IFCHR;
+-			filetype = EXT2_FT_CHRDEV;
++			st.st_mode = S_IFCHR;
+ 			nr = 5;
+ 			break;
+ 		case 'b':
+-			mode = LINUX_S_IFBLK;
+-			filetype = EXT2_FT_BLKDEV;
++			st.st_mode = S_IFBLK;
+ 			nr = 5;
+ 			break;
+ 		default:
+-			filetype = 0;
+ 			nr = 0;
+ 	}
++
+ 	if (nr == 5) {
+ 		major = strtoul(argv[3], argv+3, 0);
+ 		minor = strtoul(argv[4], argv+4, 0);
+ 		if (major > 65535 || minor > 65535 || argv[3][0] || argv[4][0])
+ 			nr = 0;
+ 	}
++
+ 	if (argc != nr)
+ 		goto usage;
+-	if (check_fs_read_write(argv[0]))
+-		return;
+-	retval = ext2fs_new_inode(current_fs, cwd, 010755, 0, &newfile);
+-	if (retval) {
++
++	st.st_rdev = makedev(major, minor);
++	if ((retval = do_mknod_internal(cwd, argv[1], &st)))
+ 		com_err(argv[0], retval, 0);
+-		return;
+-	}
+-	printf("Allocated inode: %u\n", newfile);
+-	retval = ext2fs_link(current_fs, cwd, argv[1], newfile, filetype);
+-	if (retval == EXT2_ET_DIR_NO_SPACE) {
+-		retval = ext2fs_expand_dir(current_fs, cwd);
+-		if (retval) {
+-			com_err(argv[0], retval, "while expanding directory");
+-			return;
+-		}
+-		retval = ext2fs_link(current_fs, cwd, argv[1], newfile,
+-				     filetype);
+-	}
+-	if (retval) {
+-		com_err(argv[1], retval, 0);
+-		return;
+-	}
+-        if (ext2fs_test_inode_bitmap2(current_fs->inode_map,newfile))
+-		com_err(argv[0], 0, "Warning: inode already set");
+-	ext2fs_inode_alloc_stats2(current_fs, newfile, +1, 0);
+-	memset(&inode, 0, sizeof(inode));
+-	inode.i_mode = mode;
+-	inode.i_atime = inode.i_ctime = inode.i_mtime =
+-		current_fs->now ? current_fs->now : time(0);
+-	if ((major < 256) && (minor < 256)) {
+-		inode.i_block[0] = major*256+minor;
+-		inode.i_block[1] = 0;
+-	} else {
+-		inode.i_block[0] = 0;
+-		inode.i_block[1] = (minor & 0xff) | (major << 8) | ((minor & ~0xff) << 12);
+-	}
+-	inode.i_links_count = 1;
+-	if (debugfs_write_new_inode(newfile, &inode, argv[0]))
+-		return;
+ }
+ 
+ void do_mkdir(int argc, char *argv[])
+ {
+-	char	*cp;
+-	ext2_ino_t	parent;
+-	char	*name;
+ 	errcode_t retval;
+ 
+ 	if (common_args_process(argc, argv, 2, 2, "mkdir",
+ 				"<filename>", CHECK_FS_RW))
+ 		return;
+ 
+-	cp = strrchr(argv[1], '/');
+-	if (cp) {
+-		*cp = 0;
+-		parent = string_to_inode(argv[1]);
+-		if (!parent) {
+-			com_err(argv[1], ENOENT, 0);
+-			return;
+-		}
+-		name = cp+1;
+-	} else {
+-		parent = cwd;
+-		name = argv[1];
+-	}
+-
+-try_again:
+-	retval = ext2fs_mkdir(current_fs, parent, 0, name);
+-	if (retval == EXT2_ET_DIR_NO_SPACE) {
+-		retval = ext2fs_expand_dir(current_fs, parent);
+-		if (retval) {
+-			com_err(argv[0], retval, "while expanding directory");
+-			return;
+-		}
+-		goto try_again;
+-	}
+-	if (retval) {
+-		com_err("ext2fs_mkdir", retval, 0);
+-		return;
+-	}
++	if ((retval = do_mkdir_internal(cwd, argv[1], NULL)))
++		com_err(argv[0], retval, 0);
+ 
+ }
+ 
+@@ -2282,44 +2039,14 @@ void do_punch(int argc, char *argv[])
+ 
+ void do_symlink(int argc, char *argv[])
+ {
+-	char		*cp;
+-	ext2_ino_t	parent;
+-	char		*name, *target;
+ 	errcode_t	retval;
+ 
+ 	if (common_args_process(argc, argv, 3, 3, "symlink",
+ 				"<filename> <target>", CHECK_FS_RW))
+ 		return;
+ 
+-	cp = strrchr(argv[1], '/');
+-	if (cp) {
+-		*cp = 0;
+-		parent = string_to_inode(argv[1]);
+-		if (!parent) {
+-			com_err(argv[1], ENOENT, 0);
+-			return;
+-		}
+-		name = cp+1;
+-	} else {
+-		parent = cwd;
+-		name = argv[1];
+-	}
+-	target = argv[2];
+-
+-try_again:
+-	retval = ext2fs_symlink(current_fs, parent, 0, name, target);
+-	if (retval == EXT2_ET_DIR_NO_SPACE) {
+-		retval = ext2fs_expand_dir(current_fs, parent);
+-		if (retval) {
+-			com_err(argv[0], retval, "while expanding directory");
+-			return;
+-		}
+-		goto try_again;
+-	}
+-	if (retval) {
+-		com_err("ext2fs_symlink", retval, 0);
+-		return;
+-	}
++	if ((retval = do_symlink_internal(cwd, argv[1], argv[2])))
++		com_err(argv[0], retval, 0);
+ 
+ }
+ 
+diff --git a/debugfs/debugfs.h b/debugfs/debugfs.h
+index 45175cf..457700f 100644
+--- a/debugfs/debugfs.h
++++ b/debugfs/debugfs.h
+@@ -5,6 +5,7 @@
+ #include "ss/ss.h"
+ #include "ext2fs/ext2_fs.h"
+ #include "ext2fs/ext2fs.h"
++#include "../misc/create_inode.h"
+ 
+ #ifdef __STDC__
+ #define NOARGS void
 -- 
 1.7.10.4
 
