@@ -1,39 +1,75 @@
-From: "Kirill A. Shutemov" <kirill@shutemov.name>
-Subject: Re: [PATCH v4 21/22] Add support for pmd_faults
-Date: Mon, 23 Dec 2013 20:54:33 +0200
-Message-ID: <20131223185433.GA18067@node.dhcp.inet.fi>
-References: <cover.1387748521.git.matthew.r.wilcox@intel.com>
- <e944917f571781b46ca4dbb789ae8a86c5166059.1387748521.git.matthew.r.wilcox@intel.com>
- <20131223134113.GA14806@node.dhcp.inet.fi>
- <20131223145031.GB11091@parisc-linux.org>
- <20131223151003.GA15744@node.dhcp.inet.fi>
- <20131223184222.GE11091@parisc-linux.org>
+From: Darren Hart <dvhart@linux.intel.com>
+Subject: Re: [PATCH 00/10] e2fsprogs/mke2fs: add an option: -d root-directory
+Date: Mon, 23 Dec 2013 11:05:28 -0800
+Message-ID: <1387825528.5088.59.camel@dvhart-mobl4.amr.corp.intel.com>
+References: <1387800600-13718-1-git-send-email-liezhi.yang@windriver.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-mm@kvack.org, Andrea Arcangeli <aarcange@redhat.com>
-To: Matthew Wilcox <matthew@wil.cx>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Robert Yang <liezhi.yang@windriver.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mta-out.inet.fi ([195.156.147.13]:50546 "EHLO jenni1.inet.fi"
+Received: from mga02.intel.com ([134.134.136.20]:27082 "EHLO mga02.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753085Ab3LWSyp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Dec 2013 13:54:45 -0500
-Content-Disposition: inline
-In-Reply-To: <20131223184222.GE11091@parisc-linux.org>
+	id S1757468Ab3LWTFa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Dec 2013 14:05:30 -0500
+In-Reply-To: <1387800600-13718-1-git-send-email-liezhi.yang@windriver.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Dec 23, 2013 at 11:42:22AM -0700, Matthew Wilcox wrote:
-> > Do you know anyone who relay on SIGBUS for correctness?
+On Mon, 2013-12-23 at 07:09 -0500, Robert Yang wrote:
+> Hi Ted,
 > 
-> Oh, I remember the real reason now.  If we install a PMD that hangs off
-> the end of the file then by reading past i_size, we can read the blocks of
-> whatever happens to be in storage after the end of the file, which could
-> be another file's data.  This doesn't happen for the PTE case because the
-> existing code only works for filesystems with a block size == PAGE_SIZE.
+> I'm very sorry for the late response, I've fixed the problems which you 
+> pointed out in the RFC patches, and now the "make check" works well.
+> 
+> * Changes from the RFC patches:
+>   - Move the common code of debugfs and mke2fs to misc/create_inode.c to
+>     avoid bloating the tune2fs binary
 
-I see. It's valid reason. Probably, it's better to add comment there.
+Hi Robert,
+
+Can you include a size report before and after the changes. With the
+concern over code size, we should document the impact.
+
+--
+Darren
+
+>   - Fix the error of "make check"
+>   - Rebase to the up to date master branch
+> 
+> Merry Christmas and Happy New Year!
+> 
+> // Robert
+> 
+> Robert Yang (10):
+>   mke2fs.c: add an option: -d root-directory
+>   misc/create_inode.c: copy files recursively
+>   misc/create_inode.c: create special file
+>   misc/create_inode.c: create symlink
+>   misc/create_inode.c: copy regular file
+>   misc/create_inode.c: create directory
+>   misc/create_inode.c: set owner/mode/time for the inode
+>   misc/create_inode.c: handle hardlinks
+>   debugfs: use the functions in misc/create_inode.c
+>   mke2fs.8.in: update the manual for the -d option
+> 
+>  debugfs/Makefile.in |   17 +-
+>  debugfs/debugfs.c   |  305 ++-------------------------
+>  debugfs/debugfs.h   |    1 +
+>  misc/Makefile.in    |   13 +-
+>  misc/create_inode.c |  575 +++++++++++++++++++++++++++++++++++++++++++++++++++
+>  misc/create_inode.h |   35 ++++
+>  misc/mke2fs.8.in    |    7 +
+>  misc/mke2fs.c       |   43 +++-
+>  8 files changed, 691 insertions(+), 305 deletions(-)
+>  create mode 100644 misc/create_inode.c
+>  create mode 100644 misc/create_inode.h
+> 
 
 -- 
- Kirill A. Shutemov
+Darren Hart
+Intel Open Source Technology Center
+Yocto Project - Linux Kernel
+
+
