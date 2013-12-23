@@ -1,54 +1,38 @@
-From: Carlos Maiolino <cmaiolino@redhat.com>
-Subject: Re: Fwd: [RESEND PATCH 1/2] ext4: fix a typo in extents.c
-Date: Mon, 23 Dec 2013 10:17:30 -0200
-Message-ID: <20131223121729.GB4284@orion.maiolino.org>
-References: <1387515880-10185-1-git-send-email-yangyongqiang01@baidu.com>
- <CAGBYx2buHtAYoRMAoJZqRHKAK2LQy68uPswWUP_oGWom1BYwbg@mail.gmail.com>
- <CAGBYx2bJKzNU9qQEbQjWKk3c=DzBEHu_5waa=2uShHwX3JbpYQ@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 36632] CPU load one and repeating kernel warnings after
+ underlying block device disappeared
+Date: Mon, 23 Dec 2013 13:42:48 +0000
+Message-ID: <bug-36632-13602-k5wRwrXThl@https.bugzilla.kernel.org/>
+References: <bug-36632-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:17414 "EHLO mx1.redhat.com"
+Received: from mail.kernel.org ([198.145.19.201]:36509 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757325Ab3LWMRf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Dec 2013 07:17:35 -0500
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id rBNCHZ6p011175
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Mon, 23 Dec 2013 07:17:35 -0500
-Received: from orion.maiolino.org (ovpn-113-60.phx2.redhat.com [10.3.113.60])
-	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id rBNCHVs3016214
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 23 Dec 2013 07:17:34 -0500
-Content-Disposition: inline
-In-Reply-To: <CAGBYx2bJKzNU9qQEbQjWKk3c=DzBEHu_5waa=2uShHwX3JbpYQ@mail.gmail.com>
+	id S1752138Ab3LWNmx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Dec 2013 08:42:53 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id B893020741
+	for <linux-ext4@vger.kernel.org>; Mon, 23 Dec 2013 13:42:51 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 2B5EA20734
+	for <linux-ext4@vger.kernel.org>; Mon, 23 Dec 2013 13:42:49 +0000 (UTC)
+In-Reply-To: <bug-36632-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 20, 2013 at 01:11:38PM +0800, Yongqiang Yang wrote:
-> From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-> 
-> Signed-off-by: Yongqiang Yang <yangyongqiang01@baidu.com>
-> ---
->  fs/ext4/extents.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 54d52af..3654dac 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -3492,7 +3492,7 @@ static int
-> ext4_ext_convert_to_initialized(handle_t *handle,
->         WARN_ON(map->m_lblk < ee_block);
->         /*
->          * It is safe to convert extent to initialized via explicit
-> -        * zeroout only if extent is fully insde i_size or new_size.
-> +        * zeroout only if extent is fully inside i_size or new_size.
->          */
->         split_flag |= ee_block + ee_len <= eof_block ? EXT4_EXT_MAY_ZEROOUT : 0;
-> 
-Looks good
-Reviewed-by: Carlos Maiolino <cmaiolino@redhat.com>
+https://bugzilla.kernel.org/show_bug.cgi?id=36632
+
+Alan <alan@lxorguk.ukuu.org.uk> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+             Status|NEW                         |RESOLVED
+                 CC|                            |alan@lxorguk.ukuu.org.uk
+         Resolution|---                         |OBSOLETE
+
 -- 
-Carlos
+You are receiving this mail because:
+You are watching the assignee of the bug.
