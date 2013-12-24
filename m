@@ -1,32 +1,108 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] e2fsck: fix printf conversion specs in ea_refcount.c
-Date: Tue, 24 Dec 2013 02:00:44 -0500
-Message-ID: <20131224070044.GC26944@thunk.org>
-References: <20131217023639.GB2173@wallace>
+From: Robert Yang <liezhi.yang@windriver.com>
+Subject: [PATCH V2 01/11] mke2fs: add the ability to copy files from a given directory
+Date: Tue, 24 Dec 2013 03:47:17 -0500
+Message-ID: <1387874847-4922-2-git-send-email-liezhi.yang@windriver.com>
+References: <1387874847-4922-1-git-send-email-liezhi.yang@windriver.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Eric Whitney <enwlinux@gmail.com>
+Content-Type: text/plain
+Cc: <linux-ext4@vger.kernel.org>
+To: <tytso@mit.edu>, <dvhart@linux.intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:42968 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750816Ab3LXHAr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 Dec 2013 02:00:47 -0500
-Content-Disposition: inline
-In-Reply-To: <20131217023639.GB2173@wallace>
+Received: from mail1.windriver.com ([147.11.146.13]:51125 "EHLO
+	mail1.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751577Ab3LXIre (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Dec 2013 03:47:34 -0500
+In-Reply-To: <1387874847-4922-1-git-send-email-liezhi.yang@windriver.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Dec 16, 2013 at 09:36:39PM -0500, Eric Whitney wrote:
-> Commit 130e961a6fb9d38997c83c6397cf9ddb5ed2491f changed the type
-> used to represent block numbers in ea_refcount.c from blk_t to blk64_t
-> to add support for 64 bit extended attribute refcounting.  We also
-> need to adjust printf conversion specs that now don't match their new
-> blk64_t arguments.  This will silence compiler warnings seen when
-> "make check" is run and will avoid truncation of printed values.
-> 
-> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+We will add a -d option which will be used for adding the files from a
+given directory to the filesystem, it is similiar to genext2fs, but
+genext2fs doesn't fully support ext4.
 
-Thanks, applied.
+* We already have the basic operations in debugfs:
+  - Copy regular file
+  - Create directory
+  - Create symlink
+  - Create special file
 
-					- Ted
+  We will move these operations into create_inode.h and create_inode.c,
+  then let both mke2fs and debugfs use them.
+
+* What we need to do are:
+  - Copy the given directory recursively, this will be done by the
+    populate_fs()
+  - Set the owner, mode and other informations
+  - Handle the hard links
+
+TODO:
+  - The libext2fs can't create the socket file (S_IFSOCK), do we have a
+    plan to support it ?
+
+Signed-off-by: Robert Yang <liezhi.yang@windriver.com>
+Reviewed-by: Darren Hart <dvhart@linux.intel.com>
+---
+ misc/create_inode.c |   26 ++++++++++++++++++++++++++
+ misc/create_inode.h |   17 +++++++++++++++++
+ 2 files changed, 43 insertions(+)
+ create mode 100644 misc/create_inode.c
+ create mode 100644 misc/create_inode.h
+
+diff --git a/misc/create_inode.c b/misc/create_inode.c
+new file mode 100644
+index 0000000..46aaa60
+--- /dev/null
++++ b/misc/create_inode.c
+@@ -0,0 +1,26 @@
++#include "create_inode.h"
++
++/* Make a special file which is block, character and fifo */
++errcode_t do_mknod_internal(ext2_ino_t cwd, const char *name, struct stat *st)
++{
++}
++
++/* Make a symlink name -> target */
++errcode_t do_symlink_internal(ext2_ino_t cwd, const char *name, char *target)
++{
++}
++
++/* Make a directory in the fs */
++errcode_t do_mkdir_internal(ext2_ino_t cwd, const char *name, struct stat *st)
++{
++}
++
++/* Copy the native file to the fs */
++errcode_t do_write_internal(ext2_ino_t cwd, const char *src, const char *dest)
++{
++}
++
++/* Copy files from source_dir to fs */
++errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir)
++{
++}
+diff --git a/misc/create_inode.h b/misc/create_inode.h
+new file mode 100644
+index 0000000..9fc97fa
+--- /dev/null
++++ b/misc/create_inode.h
+@@ -0,0 +1,17 @@
++#include <sys/types.h>
++#include <sys/stat.h>
++#include <fcntl.h>
++#include "et/com_err.h"
++#include "e2p/e2p.h"
++#include "ext2fs/ext2fs.h"
++#include "nls-enable.h"
++
++ext2_filsys    current_fs;
++ext2_ino_t     root;
++
++/* For populating the filesystem */
++extern errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir);
++extern errcode_t do_mknod_internal(ext2_ino_t cwd, const char *name, struct stat *st);
++extern errcode_t do_symlink_internal(ext2_ino_t cwd, const char *name, char *target);
++extern errcode_t do_mkdir_internal(ext2_ino_t cwd, const char *name, struct stat *st);
++extern errcode_t do_write_internal(ext2_ino_t cwd, const char *src, const char *dest);
+-- 
+1.7.10.4
+
