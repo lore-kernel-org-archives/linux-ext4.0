@@ -1,241 +1,32 @@
-From: Vyacheslav Dubeyko <slava@dubeyko.com>
-Subject: Re: [PATCH 21/21] hfsplus: remove can_set_xattr
-Date: Tue, 24 Dec 2013 10:41:44 +0400
-Message-ID: <1387867304.3974.21.camel@slavad-ubuntu>
-References: <20131220131635.650823732@bombadil.infradead.org>
-	 <20131220132524.900291394@bombadil.infradead.org>
-	 <636E01BC-12FD-452B-8B1C-320B6EADAEFD@dubeyko.com>
-	 <20131222192818.GA32565@infradead.org>
-	 <1387780809.3991.21.camel@slavad-ubuntu>
-	 <20131223143706.GA8235@infradead.org>
-Reply-To: slava@dubeyko.com
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] e2fsck: fix printf conversion specs in ea_refcount.c
+Date: Tue, 24 Dec 2013 02:00:44 -0500
+Message-ID: <20131224070044.GC26944@thunk.org>
+References: <20131217023639.GB2173@wallace>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-mtd@lists.infradead.org, Mark Fasheh <mfasheh@suse.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
-	jfs-discussion@lists.sourceforge.net, cluster-devel@redhat.com,
-	linux-nfs@vger.kernel.org,
-	Andreas Gruenbacher <andreas.gruenbacher@linbit.com>
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Eric Whitney <enwlinux@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from alt-proxy11.mail.unifiedlayer.com ([74.220.211.241]:37118 "HELO
-	alt-proxy11.mail.unifiedlayer.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1750914Ab3LXGmW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 Dec 2013 01:42:22 -0500
-In-Reply-To: <20131223143706.GA8235@infradead.org>
+Received: from imap.thunk.org ([74.207.234.97]:42968 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750816Ab3LXHAr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 Dec 2013 02:00:47 -0500
+Content-Disposition: inline
+In-Reply-To: <20131217023639.GB2173@wallace>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 2013-12-23 at 06:37 -0800, Christoph Hellwig wrote:
-> On Mon, Dec 23, 2013 at 10:40:09AM +0400, Vyacheslav Dubeyko wrote:
-> > Maybe I missed something, but I can see that this check is removed only.
-> > Could you point out the code in your patch that it checks and forbids
-> > such combination as "osx.security.*", "osx.trusted.*" and so on?
+On Mon, Dec 16, 2013 at 09:36:39PM -0500, Eric Whitney wrote:
+> Commit 130e961a6fb9d38997c83c6397cf9ddb5ed2491f changed the type
+> used to represent block numbers in ea_refcount.c from blk_t to blk64_t
+> to add support for 64 bit extended attribute refcounting.  We also
+> need to adjust printf conversion specs that now don't match their new
+> blk64_t arguments.  This will silence compiler warnings seen when
+> "make check" is run and will avoid truncation of printed values.
 > 
-> @@ -941,6 +857,9 @@ static int hfsplus_osx_setxattr(struct dentry
-> *dentry, const char *name,
->         if (len > HFSPLUS_ATTR_MAX_STRLEN)
-> 		return -EOPNOTSUPP;
-> 
-> +       if (is_known_namespace(name))
-> +               return -EOPNOTSUPP;
-> +
-> 
+> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
 
-Yes, now I've realized your approach. You are right. It's my
-misunderstanding. So, comments are really necessary for describing the
-goal of this check. Thank you for adding it in the last version of
-reworked patch.
+Thanks, applied.
 
-> 
-> > So, if it needs to use xattr handler only for removing then it needs to
-> > make some refactoring of using __hfsplus_setxattr() and
-> > hfsplus_removexattr() or merging these two functions into one. And I
-> > think that merging is better idea.
-> 
-> I've not done the full merge, but below is an updated patch to make
-> sure hfsplus uses the handlers for the remove case, and making sure
-> the adding/striping of the prefix for the osv handlers is more
-> transparent:
-> 
-
-As far as I can judge, changing from hfsplus_removexattr() to
-generic_removexattr() is made correctly.
-
-> diff --git a/fs/hfsplus/dir.c b/fs/hfsplus/dir.c
-> index 9ee6298..bdec665 100644
-> --- a/fs/hfsplus/dir.c
-> +++ b/fs/hfsplus/dir.c
-> @@ -529,7 +529,7 @@ const struct inode_operations hfsplus_dir_inode_operations = {
->  	.setxattr		= generic_setxattr,
->  	.getxattr		= generic_getxattr,
->  	.listxattr		= hfsplus_listxattr,
-> -	.removexattr		= hfsplus_removexattr,
-> +	.removexattr		= generic_removexattr,
->  #ifdef CONFIG_HFSPLUS_FS_POSIX_ACL
->  	.get_acl		= hfsplus_get_posix_acl,
->  	.set_acl		= hfsplus_set_posix_acl,
-> diff --git a/fs/hfsplus/inode.c b/fs/hfsplus/inode.c
-> index 2e10993..83c9166 100644
-> --- a/fs/hfsplus/inode.c
-> +++ b/fs/hfsplus/inode.c
-> @@ -390,7 +390,7 @@ static const struct inode_operations hfsplus_file_inode_operations = {
->  	.setxattr	= generic_setxattr,
->  	.getxattr	= generic_getxattr,
->  	.listxattr	= hfsplus_listxattr,
-> -	.removexattr	= hfsplus_removexattr,
-> +	.removexattr	= generic_removexattr,
->  #ifdef CONFIG_HFSPLUS_FS_POSIX_ACL
->  	.get_acl	= hfsplus_get_posix_acl,
->  	.set_acl	= hfsplus_set_posix_acl,
-> diff --git a/fs/hfsplus/xattr.c b/fs/hfsplus/xattr.c
-> index bf88baa..c838b84 100644
-> --- a/fs/hfsplus/xattr.c
-> +++ b/fs/hfsplus/xattr.c
-> @@ -11,6 +11,8 @@
->  #include "xattr.h"
->  #include "acl.h"
->  
-> +static int hfsplus_removexattr(struct inode *inode, const char *name);
-> +
->  const struct xattr_handler *hfsplus_xattr_handlers[] = {
->  	&hfsplus_xattr_osx_handler,
->  	&hfsplus_xattr_user_handler,
-> @@ -52,82 +54,6 @@ static inline int is_known_namespace(const char *name)
->  	return true;
->  }
->  
-> -static int can_set_system_xattr(struct inode *inode, const char *name,
-> -				const void *value, size_t size)
-> -{
-> -#ifdef CONFIG_HFSPLUS_FS_POSIX_ACL
-> -	struct posix_acl *acl;
-> -	int err;
-> -
-> -	if (!inode_owner_or_capable(inode))
-> -		return -EPERM;
-> -
-> -	/*
-> -	 * POSIX_ACL_XATTR_ACCESS is tied to i_mode
-> -	 */
-> -	if (strcmp(name, POSIX_ACL_XATTR_ACCESS) == 0) {
-> -		acl = posix_acl_from_xattr(&init_user_ns, value, size);
-> -		if (IS_ERR(acl))
-> -			return PTR_ERR(acl);
-> -		if (acl) {
-> -			err = posix_acl_equiv_mode(acl, &inode->i_mode);
-> -			posix_acl_release(acl);
-> -			if (err < 0)
-> -				return err;
-> -			mark_inode_dirty(inode);
-> -		}
-> -		/*
-> -		 * We're changing the ACL.  Get rid of the cached one
-> -		 */
-> -		forget_cached_acl(inode, ACL_TYPE_ACCESS);
-> -
-> -		return 0;
-> -	} else if (strcmp(name, POSIX_ACL_XATTR_DEFAULT) == 0) {
-> -		acl = posix_acl_from_xattr(&init_user_ns, value, size);
-> -		if (IS_ERR(acl))
-> -			return PTR_ERR(acl);
-> -		posix_acl_release(acl);
-> -
-> -		/*
-> -		 * We're changing the default ACL.  Get rid of the cached one
-> -		 */
-> -		forget_cached_acl(inode, ACL_TYPE_DEFAULT);
-> -
-> -		return 0;
-> -	}
-> -#endif /* CONFIG_HFSPLUS_FS_POSIX_ACL */
-> -	return -EOPNOTSUPP;
-> -}
-> -
-> -static int can_set_xattr(struct inode *inode, const char *name,
-> -				const void *value, size_t value_len)
-> -{
-> -	if (!strncmp(name, XATTR_SYSTEM_PREFIX, XATTR_SYSTEM_PREFIX_LEN))
-> -		return can_set_system_xattr(inode, name, value, value_len);
-> -
-> -	if (!strncmp(name, XATTR_MAC_OSX_PREFIX, XATTR_MAC_OSX_PREFIX_LEN)) {
-> -		/*
-> -		 * This makes sure that we aren't trying to set an
-> -		 * attribute in a different namespace by prefixing it
-> -		 * with "osx."
-> -		 */
-> -		if (is_known_namespace(name + XATTR_MAC_OSX_PREFIX_LEN))
-> -			return -EOPNOTSUPP;
-> -
-> -		return 0;
-> -	}
-> -
-> -	/*
-> -	 * Don't allow setting an attribute in an unknown namespace.
-> -	 */
-> -	if (strncmp(name, XATTR_TRUSTED_PREFIX, XATTR_TRUSTED_PREFIX_LEN) &&
-> -	    strncmp(name, XATTR_SECURITY_PREFIX, XATTR_SECURITY_PREFIX_LEN) &&
-> -	    strncmp(name, XATTR_USER_PREFIX, XATTR_USER_PREFIX_LEN))
-> -		return -EOPNOTSUPP;
-> -
-> -	return 0;
-> -}
-> -
->  static void hfsplus_init_header_node(struct inode *attr_file,
->  					u32 clump_size,
->  					char *buf, u16 node_size)
-> @@ -350,18 +276,8 @@ int __hfsplus_setxattr(struct inode *inode, const char *name,
->  				HFSPLUS_IS_RSRC(inode))
->  		return -EOPNOTSUPP;
->  
-> -	err = can_set_xattr(inode, name, value, size);
-> -	if (err)
-> -		return err;
-> -
-> -	if (strncmp(name, XATTR_MAC_OSX_PREFIX,
-> -				XATTR_MAC_OSX_PREFIX_LEN) == 0)
-> -		name += XATTR_MAC_OSX_PREFIX_LEN;
-
-Removing this skipping of virtual "osx." prefix means that you save it
-on volume. But such action means volume corruption really. Because HFS+
-volume hasn't such prefixes for xattrs in AttributesFile. Usually,
-special xattrs has prefix "com.apple.*" but others haven't any prefix
-and can be named as you want. So, I think that it is not correct
-modification.
-
-> -
-> -	if (value == NULL) {
-> -		value = "";
-> -		size = 0;
-> -	}
-> +	if (value == NULL)
-> +		return hfsplus_removexattr(inode, name);
->  
->  	err = hfs_find_init(HFSPLUS_SB(inode->i_sb)->cat_tree, &cat_fd);
->  	if (err) {
-> @@ -577,18 +493,6 @@ ssize_t __hfsplus_getxattr(struct inode *inode, const char *name,
->  				HFSPLUS_IS_RSRC(inode))
->  		return -EOPNOTSUPP;
->  
-> -	if (strncmp(name, XATTR_MAC_OSX_PREFIX,
-> -				XATTR_MAC_OSX_PREFIX_LEN) == 0) {
-> -		/* skip "osx." prefix */
-> -		name += XATTR_MAC_OSX_PREFIX_LEN;
-
-Ditto. This skipping is made because virtual prefix was added by user or
-on listxattr phase. But we should use for searching on a volume the name
-without "osx." prefix. Otherwise, how do you get
-"com.apple.system.Security" xattr from volume, for example? You will
-search "osx.com.apple.system.Security" that doesn't exist on HFS+
-volume.
-
-Thanks,
-Vyacheslav Dubeyko.
-
-
+					- Ted
