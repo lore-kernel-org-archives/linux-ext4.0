@@ -1,218 +1,290 @@
-From: Matthew Wilcox <matthew@wil.cx>
-Subject: Re: [PATCH v3 0/3] Add XIP support to ext4
-Date: Tue, 24 Dec 2013 09:27:14 -0700
-Message-ID: <20131224162713.GG11091@parisc-linux.org>
-References: <20131218142749.GA9207@parisc-linux.org> <20131219020759.GA27469@thunk.org> <20131219041240.GA19166@parisc-linux.org> <20131219054303.GA4391@thunk.org> <20131219152049.GB19166@parisc-linux.org> <20131219161728.GA9130@thunk.org> <20131219171201.GD19166@parisc-linux.org> <20131219171848.GC9130@thunk.org> <20131220181731.GG19166@parisc-linux.org> <20131223031616.GE3220@dastard>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] e2fsprogs: dumpe2fs manpage updates
+Date: Tue, 24 Dec 2013 14:20:12 -0500
+Message-ID: <20131224192012.GD11299@thunk.org>
+References: <CAO+X6Oiq5PLxjcGkjNi=D3qr=hB_zaCkgQfNcNjBQJaVjsNKBQ@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
+Cc: linux-ext4@vger.kernel.org
+To: Uri Corin <uri.corin@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from palinux.external.hp.com ([192.25.206.14]:57118 "EHLO
-	mail.parisc-linux.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751992Ab3LXQ1Q (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Dec 2013 11:27:16 -0500
+Received: from imap.thunk.org ([74.207.234.97]:43126 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752246Ab3LXTUQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 Dec 2013 14:20:16 -0500
 Content-Disposition: inline
-In-Reply-To: <20131223031616.GE3220@dastard>
+In-Reply-To: <CAO+X6Oiq5PLxjcGkjNi=D3qr=hB_zaCkgQfNcNjBQJaVjsNKBQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Dec 23, 2013 at 02:16:16PM +1100, Dave Chinner wrote:
-> > Actually, I now see a second way to read what you wrote.  If you meant
-> > "we can map in ZERO_PAGE or one of its analogs", then no.  The amount
-> > of cruft that optimisation added to the filemap_xip code is horrendous.
-> > I don't think it's a particularly common workload (mmap a holey file,
-> > read lots of zeroes out of it without ever writing to it), so I think
-> > it's far better to allocate a page of storage and zero it.
-> 
-> Happens far more often than you think in scientific calculations.
-> Sparse matrices are extremely common, and it's a valid optimistion
-> to walk then with mmap and have all the uninitialised vectors simply
-> return zero without having storage space allocated. In this sort of
-> situation, you really don't want to be allocating and zeroing
-> persistent memory just because a terabyte sized sparse identity
-> matrix was mmapped and read in it's entirity during a calculation....
+On Tue, Dec 17, 2013 at 04:49:49PM +0200, Uri Corin wrote:
+> I've added documentation for all defined features, including legacy
+> and work in progress.
+> * Some pre-existing feature explanations have been expanded based on
+> ext4.wiki.kernel.org.
+> * Future features (dirdata, ea_inode and metadata_csum) are commented out
 
-It turns out not to be too bad.  I think the real problem with the old
-XIP code was that they tried to microoptimise by using a single zero
-page for every hole rather than doing what the generic pagecache code
-does and use a page per hole.  Patch at the end of this mail.
+It doesn't make sense to try to document the file system features in
+both the man pags for mke2fs and dumpe2fs.  So what I've done is to
+create a man page, ext4.5, which we can use to document file system
+features.
 
-> Persistent memory needs to handle sparse files efficiently. I'd
-> suggest that we already have very well tested mechanism to do
-> that: the mapping tree on each inode. use the radix tree to index
-> the space, mapping either a zero page into each hole index that is
-> mapped read only, and replace it with an allocated, zeroed mapping
-> at page_mkwrite() time. i.e. use the mapping radix tree to point at
-> all the pages we've mapped from the backing device rather than just
-> mapping an anonymous memory address from the backing device
-> into userspace.
+						- Ted
 
-We could reuse the radix tree for things that aren't pages, like
-swp_to_radix_entry() does.  I don't see what that will give us over
-the current system.
+.\" -*- nroff -*-
+.\" Copyright 1993, 1994, 1995 by Theodore Ts'o.  All Rights Reserved.
+.\" This file may be copied under the terms of the GNU Public License.
+.\"
+.TH EXT4 5 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "E2fsprogs version @E2FSPROGS_VERSION@"
+.SH NAME
+ext2 \- the second extended file system
+.br
+ext2 \- the third extended file system
+.br
+ext4 \- the fourth extended file system
+.SH DESCRIPTION
+The second, third, and fourth extended file systems, or ext2, ext3, and
+ext4 as they are commonly known, are Linux file systems that have
+historically been the default file system for many Linux distributions.
+They are general purpose file systems that have been designed for
+extensibility and backwards compatibility.  In particular, file systems
+previously intended for use with the ext2 and ext3 file systems can be
+mounted using the ext4 file system driver, and indeed in many modern
+Linux distributions, the ext4 file system driver has been configured
+handle mount requests for ext2 and ext3 file systems.
+.SH FILE SYSTEM FEATURES
+A file system formated for ext2, ext3, or ext4 can be have some
+collection of the follow file system feature flags enabled.  Some of
+these features are not supported by all implementations of the ext2,
+ext3, and ext4 file system drivers, depending on Linux kernel version in
+use.  On other operating systems, such as the GNU/HURD or FreeBSD, only
+a very restrictive set of file system features may be supported in their
+implementations of ext2.
+.RS 1.2i
+.TP
+.B 64bit
+.br
+Enables the file system to be larger than 2^32 blocks.  This feature is set
+automatically, as needed, but it can be useful to specify this feature
+explicitly if the file system might need to be resized larger than 2^32
+blocks, even if it was smaller than that threshold when it was
+originally created.  Note that some older kernels and older versions
+of e2fsprogs will not support file systems with this ext4 feature enabled.
+.TP
+.B bigalloc
+.br
+This ext4 feature enables clustered block allocation, so that the unit of
+allocation is a power of two number of blocks.  That is, each bit in the
+what had traditionally been known as the block allocation bitmap now
+indicates whether a cluster is in use or not, where a cluster is by
+default composed of 16 blocks.  This feature can decrease the time
+spent on doing block allocation and brings smaller fragmentation, especially
+for large files.  The size can be specified using the
+.B \-C option.
+.IP
+.B Warning:
+The bigalloc feature is still under development, and may not be fully
+supported with your kernel or may have various bugs.  Please see the web
+page http://ext4.wiki.kernel.org/index.php/Bigalloc for details.
+May clash with delayed allocation (see
+.BR nodelalloc mount option).
+.IP
+This feature requires that the
+.B extent
+features be enabled.
+.TP
+.B dir_index
+.br
+Use hashed b-trees to speed up name lookups in large directories.  This
+feature is supported by ext3 and ext4 file systems, and is ignored by
+ext2 file systems.
+.TP
+.B dir_nlink
+.br
+This ext4 feature allows more than 65000 subdirectories per directory.
+.TP
+.B extent
+.br
+This ext4 feature allows the mapping of logical block numbers for a
+particular inode to physical blocks on the storage device to be stored
+using an extent tree, which is a more efficient data structure than the
+traditional indirect block scheme used by the ext2 and ext3 file
+systems.  The use of the extent tree decreases metadata block overhead,
+improves file system performance, and decreases the needed to run
+.BR e2fsck (8)
+on the file system.
+(Note: both
+.B extent
+and
+.B extents
+are accepted as valid names for this feature for
+historical/backwards compatibility reasons.)
+.TP
+.B extra_isize
+.br
+This ext4 feature reserves a specific amount of space in each inode for
+extended metadata such as nanosecond timestamps and file creation time,
+even if the current kernel does not current need to reserve this much
+space.  Without this feature, the kernel will reserve the amount of
+space for features currently it currently needs, and the rest may be
+consumed by extended attributes.
 
-> That also opens the door for easily retrofitting buffered writes
-> into persistent memory if we need them (e.g. mmap() of encrypted
-> persistent memory).
-
-I don't see why we'd do it that way.  If we're layering software
-encryption between the app and the storage then it's no longer direct
-access.  It's no longer XIP.  You'd just use the normal bio paths.
-
-Optimisation for reading sparse pages:
-
-diff --git a/fs/ext2/file.c b/fs/ext2/file.c
-index 7d6e492..b28bc6f 100644
---- a/fs/ext2/file.c
-+++ b/fs/ext2/file.c
-@@ -31,6 +31,11 @@ static int ext2_xip_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
- 	return xip_fault(vma, vmf, ext2_get_block);
- }
- 
-+static int ext2_xip_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
-+{
-+	return xip_mkwrite(vma, vmf, ext2_get_block);
-+}
-+
- static int ext2_xip_pmd_fault(struct vm_area_struct *vma, unsigned long addr,
- 						pmd_t *pmd, unsigned int flags)
- {
-@@ -40,6 +45,7 @@ static int ext2_xip_pmd_fault(struct vm_area_struct *vma, unsigned long addr,
- static const struct vm_operations_struct ext2_xip_vm_ops = {
- 	.fault		= ext2_xip_fault,
- 	.pmd_fault	= ext2_xip_pmd_fault,
-+	.page_mkwrite	= ext2_xip_mkwrite,
- 	.remap_pages	= generic_file_remap_pages,
- };
- 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 6211f56..4eea421 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -211,9 +211,15 @@ static int ext4_xip_pmd_fault(struct vm_area_struct *vma, unsigned long addr,
- 	return xip_pmd_fault(vma, addr, pmd, flags, ext4_get_block);
- }
- 
-+static int ext4_xip_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
-+{
-+	return xip_mkwrite(vma, vmf, ext4_get_block);
-+}
-+
- static const struct vm_operations_struct ext4_xip_vm_ops = {
- 	.fault		= ext4_xip_fault,
- 	.pmd_fault	= ext4_xip_pmd_fault,
-+	.page_mkwrite	= ext4_xip_mkwrite,
- 	.remap_pages	= generic_file_remap_pages,
- };
- #else
-diff --git a/fs/xip.c b/fs/xip.c
-index b6a8e0c..8049703 100644
---- a/fs/xip.c
-+++ b/fs/xip.c
-@@ -187,7 +202,26 @@ ssize_t xip_do_io(int rw, struct kiocb *iocb, struct inode *inode,
- }
- EXPORT_SYMBOL_GPL(xip_do_io);
- 
-+static int xip_read_hole(struct address_space *mapping, struct vm_fault *vmf)
-+{
-+	unsigned long size;
-+	struct inode *inode = mapping->host;
-+	struct page *page = find_or_create_page(mapping, vmf->pgoff,
-+						GFP_KERNEL | __GFP_ZERO);
-+	if (!page)
-+		return VM_FAULT_OOM;
-+	size = (i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT;
-+	if (vmf->pgoff >= size) {
-+		unlock_page(page);
-+		page_cache_release(page);
-+		return VM_FAULT_SIGBUS;
-+	}
-+
-+	vmf->page = page;
-+	return VM_FAULT_LOCKED;
-+}
-+
- static void copy_user_bh(struct page *to, struct inode *inode,
- 				struct buffer_head *bh, unsigned long vaddr)
- {
-@@ -226,12 +252,14 @@ static int do_xip_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
- 	bh.b_size = PAGE_SIZE;
- 	error = get_block(inode, block, &bh, 0);
- 
--	/* Don't allocate backing store if we're going to COW a hole */
- 	if (!error && !buffer_mapped(&bh) && !vmf->cow_page) {
--		error = get_block(inode, block, &bh, 1);
--		count_vm_event(PGMAJFAULT);
--		mem_cgroup_count_vm_event(vma->vm_mm, PGMAJFAULT);
--		major = VM_FAULT_MAJOR;
-+		if (vmf->flags & FAULT_FLAG_WRITE) {
-+			error = get_block(inode, block, &bh, 1);
-+			count_vm_event(PGMAJFAULT);
-+			mem_cgroup_count_vm_event(vma->vm_mm, PGMAJFAULT);
-+			major = VM_FAULT_MAJOR;
-+		} else
-+			return xip_read_hole(mapping, vmf);
- 	}
- 
- 	if (error)
-@@ -279,19 +316,45 @@ int xip_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
- }
- EXPORT_SYMBOL_GPL(xip_fault);
- 
-+/**
-+ * xip_mkwrite - convert a read-only page to read-write in an XIP file
-+ * @vma: The virtual memory area where the fault occurred
-+ * @vmf: The description of the fault
-+ * @get_block: The filesystem method used to translate file offsets to blocks
-+ *
-+ * XIP handles reads of holes by adding pages full of zeroes into the
-+ * mapping.  If the page is subsequenty written to, we have to allocate
-+ * the page on media and free the page that was in the cache.
-+ */
-+int xip_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
-+			get_block_t get_block)
-+{
-+	int result;
-+	struct super_block *sb = file_inode(vma->vm_file)->i_sb;
-+
-+	sb_start_pagefault(sb);
-+	file_update_time(vma->vm_file);
-+	result = do_xip_fault(vma, vmf, get_block);
-+	sb_end_pagefault(sb);
-+
-+	if (!(result & VM_FAULT_ERROR)) {
-+		struct page *page = vmf->page;
-+		unmap_mapping_range(page->mapping,
-+					(loff_t)page->index << PAGE_CACHE_SHIFT,
-+					PAGE_CACHE_SIZE, 0);
-+		delete_from_page_cache(page);
-+	}
-+
-+	return result;
-+}
-+EXPORT_SYMBOL_GPL(xip_mkwrite);
-+
- /*
-  * The 'colour' (ie low bits) within a PMD of a page offset.  This comes up
-  * more often than one might expect in the below function.
-diff --git a/mm/memory.c b/mm/memory.c
-index 0d332cf..2a9cfb2 100644
---- a/mm/memory.c
-+++ b/mm/memory.c
-@@ -2708,6 +2708,7 @@ static int do_wp_page(struct mm_struct *mm, struct vm_area_struct *vma,
- 			vmf.pgoff = old_page->index;
- 			vmf.flags = FAULT_FLAG_WRITE|FAULT_FLAG_MKWRITE;
- 			vmf.page = old_page;
-+			vmf.cow_page = NULL;
- 
- 			/*
- 			 * Notify the address space that the page is about to
-
--- 
-Matthew Wilcox				Intel Open Source Technology Centre
-"Bill, look, we understand that you're interested in selling us this
-operating system, but compare it to ours.  We can't possibly take such
-a retrograde step."
+For this feature to be useful the inode size must be 256 bytes in size
+or larger.
+.TP
+.B ext_attr
+.br
+This feature enables the use of extended attributes.  This feature is
+supported by ext2, ext3, and ext4.
+.TP
+.B filetype
+.br
+This feature enables the storage file type information in directory
+entries.  This feature is supported by ext2, ext3, and ext4.
+.TP
+.TP
+.B flex_bg
+.br
+This ext4 feature allows the per-block group metadata (allocation
+bitmaps
+and inode tables)
+to be placed anywhere on the storage media.  In addition,
+.B mke2fs
+will place the per-block group metadata together starting at the first
+block group of each "flex_bg group".   The size of the flex_bg group
+can be specified using the 
+.B \-G
+option.
+.TP
+.B has_journal
+.br
+Create a journal to ensure filesystem consistency even across unclean
+shutdowns.  Setting the filesystem feature is equivalent to using the
+.B \-j
+option.  This feature is supported by ext3 and ext4, and ignored by the
+ext2 file system driver.
+.TP
+.B huge_file
+.br
+This ext4 feature allows files to be larger than 2 terabytes in size.
+.TP
+.B journal_dev
+.br
+This feature is enabled on the superblock found on an external journal
+device.  The block size for the external journal must be the same as the
+file system which uses it.
+.IP
+The external journal device can be used by a file system by specifying
+the
+.B \-J
+.BR device= <external-device>
+option to
+.BR mke2fs (8)
+or
+.BR tune2fs(8).
+.TP
+.B large_file
+.br
+This feature flag is set automatically by modern kernels when a file
+larger than 2 gigabytes is created.  Very old kernels could not
+handle large files, so this feature flag was used to prohibit those
+kernels from mounting file systems that they could not understand.
+.\" .TP
+.\" .B metadata_csum
+.\" .br
+.\" This ext4 feature enables metadata checksumming.  This feature stores
+.\" checksums for all of the filesystem metadata (superblock, group
+.\" descriptor blocks, inode and block bitmaps, directories, and
+.\" extent tree blocks).  The checksum algorithm used for the metadata
+.\" blocks is different than the one used for group descriptors with the
+.\" .B uninit_bg
+.\" feature, these two features are incompatible and
+.\" .B metadata_csum
+.\" will be used preferentially instead of
+.\" .BR uninit_bg .
+.\" .br
+.\" .B Future feature, available in e2fsprogs 1.43-WIP
+.TP
+.B meta_bg
+.br
+This ext4 feature allows file systems to be resized on-line without explicitly
+needing to reserve space for growth in the size of the block group
+descriptors.  This scheme is also used to resize file systems which are
+larger than 2^32 blocks.  It is not recommended that this feature be set
+when a file system is created, since this alternate method of storing
+the block group descriptor will slow down the time needed to mount the
+file system, and newer kernels can automatically set this feature as
+necessary when doing an online resize and no more reserved space is
+available in the resize inode.
+.TP
+.B mmp
+.br
+This ext4 feature provides multiple mount protection (MMP).  MMP helps to
+protect the filesystem from being multiply mounted and is useful in
+shared storage environments.
+@QUOTA_MAN_COMMENT@.TP
+@QUOTA_MAN_COMMENT@.B quota
+@QUOTA_MAN_COMMENT@.br
+@QUOTA_MAN_COMMENT@Create quota inodes (inode #3 for userquota and inode
+@QUOTA_MAN_COMMENT@#4 for group quota) and set them in the superblock.
+@QUOTA_MAN_COMMENT@With this feature, the quotas will be enabled
+@QUOTA_MAN_COMMENT@automatically when the filesystem is mounted.
+@QUOTA_MAN_COMMENT@.IP
+@QUOTA_MAN_COMMENT@Causes the quota files (i.e., user.quota and
+@QUOTA_MAN_COMMENT@group.quota which existed
+@QUOTA_MAN_COMMENT@in the older quota design) to be hidden inodes.
+@QUOTA_MAN_COMMENT@.IP
+@QUOTA_MAN_COMMENT@.B Warning: 
+@QUOTA_MAN_COMMENT@The quota feature is still under development, 
+@QUOTA_MAN_COMMENT@and may not be fully supported with your kernel
+@QUOTA_MAN_COMMENT@or may have various bugs.  
+@QUOTA_MAN_COMMENT@Please see https://ext4.wiki.kernel.org/index.php/Quota
+@QUOTA_MAN_COMMENT@for more details.
+.TP
+.B resize_inode
+.br
+This file system feature indicates that space has been reserved so
+the block group descriptor table can be extended by the file system is
+resized while the file system is mounted.  The online resize operation
+is carried out by the kernel, triggered, by
+.BR resize2fs (8).
+By default
+.B mke2fs
+will attempt to reserve enough space so that the
+filesystem may grow to 1024 times its initial size.  This can be changed
+using the
+.B resize
+extended option.
+.IP
+This feature requires that the
+.B sparse_super
+feature be enabled.
+.TP
+.B sparse_super
+.br
+This file system feature is set on all modern ext2, ext3, and ext4 file
+system.  It indicates that backup copies of the superblock and block
+group descriptors be present only on a few block groups, and not all of
+them.
+.TP
+.B uninit_bg
+.br
+This ext4 file system feature indicates that the block group descriptors
+will be protected using checksums, making it safe for
+.BR mke2fs (8)
+to create a file system without initializing all of the block groups.
+The kernel will keep a high watermark of unused inodes, and initialize
+inode tables and block lazily.  This feature speeds up the time to check
+the file system using
+.BR e2fsck (8),
+and it also speeds up the time required for
+.BR mke2fs (8)
+to create the file system.
+.RE
+.SH SEE ALSO
+.BR mke2fs (8),
+.BR mke2fs.conf (5),
+.BR e2fsck (8),
+.BR dumpe2fs (8),
+.BR tune2fs (8),
+.BR debugfs (8)
