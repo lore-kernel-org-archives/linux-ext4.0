@@ -1,230 +1,300 @@
-From: Robert Yang <liezhi.yang@windriver.com>
-Subject: Re: [PATCH V2 09/11] misc/create_inode.c: handle hardlinks
-Date: Wed, 25 Dec 2013 11:14:05 +0800
-Message-ID: <52BA4D7D.1020803@windriver.com>
-References: <1387874847-4922-1-git-send-email-liezhi.yang@windriver.com> <1387874847-4922-10-git-send-email-liezhi.yang@windriver.com>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [RFC PATCH 0/2] ext4: extents status tree shrinker improvement
+Date: Wed, 25 Dec 2013 11:21:04 +0800
+Message-ID: <20131225032103.GA23505@gmail.com>
+References: <1387536165-15956-1-git-send-email-wenqing.lz@taobao.com>
+ <20131223090334.GC9199@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: <linux-ext4@vger.kernel.org>
-To: Robert Yang <liezhi.yang@windriver.com>, <tytso@mit.edu>,
-	<dvhart@linux.intel.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.windriver.com ([147.11.1.11]:46813 "EHLO
-	mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751720Ab3LYDOL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Dec 2013 22:14:11 -0500
-In-Reply-To: <1387874847-4922-10-git-send-email-liezhi.yang@windriver.com>
+Received: from mail-pb0-f41.google.com ([209.85.160.41]:60262 "EHLO
+	mail-pb0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751305Ab3LYDRk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Dec 2013 22:17:40 -0500
+Received: by mail-pb0-f41.google.com with SMTP id jt11so7041710pbb.0
+        for <linux-ext4@vger.kernel.org>; Tue, 24 Dec 2013 19:17:40 -0800 (PST)
+Content-Disposition: inline
+In-Reply-To: <20131223090334.GC9199@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Sorry, this patch should be updated a little, please see my comments inline ...
+On Mon, Dec 23, 2013 at 10:03:34AM +0100, Jan Kara wrote:
+> On Fri 20-12-13 18:42:43, Zheng Liu wrote:
+> > Hi all,
+> > 
+> > I still have some ideas for improving the extents status tree shrinker.
+> > But before doing that, I think I should send out these patches for
+> > discussion so that I want to be sure that I am on the right way.  I
+> > describe my work below, which contains four parts.  The first part
+> > describes my work of improvment for the shrinker.  In second part I
+> > describe the test case for measurement.  In third part I measure the
+> > performance and compare my work with current implememtation on mainline
+> > kernel.  The last part is TODO list.  I describe some ideas that might
+> > improve the performance of extents status tree shrinker.
+> > 
+> > Improvement
+> > ===========
+> > According to this bug report [1], the extents status tree shrinker might
+> > causes excessive time stall under heavy memory pressure.  Due to lacking
+> > some details from this report, I am not sure whether the delalloc is
+> > enabled or not.  But if I remember correctly Andreas has mentioned that
+> > he also notices that es shrinker takes too much time to try to reclaim
+> > some entries from extents status tree, and he observes that the app does
+> > a lot of buffered writes.  So I suspect that the root cause is that
+> > currently es shrinker has to scan a lot of delayed entries that don't be
+> > reclaimed under some workloads.  Hence it burns too much cpu time.
+> > 
+> > 1. https://bugzilla.kernel.org/show_bug.cgi?id=62751
+> > 
+> > Why don't we discard delayed entry from extents status tree?  Now we need
+> > to use delayed entry in extents status tree to reserve delayed space for
+> > delayed allocation, and support seek_data/hole.  So we couldn't discard
+> > these delayed entries.
+> > 
+> > In this patch series, it contains two patches.  Patch 1 just improves the
+> > trace point in extents status tree.  Later I will use them to calculate
+> > the latency of every function.  This is a trival patch.  So feel free to
+> > pick it up.
+> > 
+> > Patch 2 tries to make es shrinker avoid scanning delayed entry.  It adds
+> > a evictable list in order to track all reclaimable objects.  Meanwhile
+> > a hlist_node structure is defined in 'extent_status' structure.  The
+> > defect of using hlist_node is that it costs extra 1/3 memory space.  On
+> > 64bits platform, extent_status structure occupies 48 bytes.  After that
+> > it will take 64 bytes.  Then the es shrinker can traverse on this list.
+> > It shouldn't encounter any delayed entry.  So it reduces the time taking
+> > sbi->s_es_lru_lock and ei->i_es_lock due to it don't need to scan all
+> > delayed extries.
+> > 
+> > Workload
+> > ========
+> > For comparing the improvement, I use fio to generate a workload that
+> > could cause some fragmented files.  For getting a extreme fragmented
+> > tree, I hack the code in ext4_es_can_be_merge() to always return 0.
+> > That means we don't try to merge any entry in extents status tree.
+> > Meanwhile vm.dirty_ratio, vm.dirty_background_ratio are adjusted to 80
+> > and 60 on my machine.  The purpose of doing this is to accumulate more
+> > delayed entries on extents status tree.  The configure file of fio is
+> > like below:
+> > 
+> >   [global]
+> >   ioengine=psync
+> >   bs=4k
+> >   directory=/mnt/sda1
+> >   thread
+> >   group_reporting
+> >   fallocate=0
+> >   direct=0
+> >   filesize=10g
+> >   size=20g
+> >   runtime=300
+> >   
+> >   [io]
+> >   rw=randwrite:32
+> >   rw_sequencer=sequential
+> >   numjobs=25
+> >   nrfiles=10
+>   Well, my suspicion is the stall can be caused when we have lots of
+> relatively small files and we go through all the pain of scanning inode
+> list, then resorting it, and scanning again. Your workload doesn't
+> excercise this path at all if I understand right.
 
-On 12/24/2013 04:47 PM, Robert Yang wrote:
-> Create the inode and save the native inode number when we meet the hard
-> link (st_nlink > 1) at the first time, use ext2fs_link() to link the
-> name to the target inode number when we meet the same native inode
-> number again.
->
-> This algorithm is referred this from the genext2fs.
->
-> Signed-off-by: Robert Yang <liezhi.yang@windriver.com>
-> Reviewed-by: Darren Hart <dvhart@linux.intel.com>
-> ---
->   misc/create_inode.c |   87 +++++++++++++++++++++++++++++++++++++++++++++++++++
->   misc/create_inode.h |   18 +++++++++++
->   misc/mke2fs.c       |   12 +++++++
->   3 files changed, 117 insertions(+)
->
-> diff --git a/misc/create_inode.c b/misc/create_inode.c
-> index f1af6a9..7462413 100644
-> --- a/misc/create_inode.c
-> +++ b/misc/create_inode.c
-> @@ -10,6 +10,44 @@
->   #define S_BLKSIZE 512
->   #endif
->
-> +/* For saving the hard links */
-> +int hdlink_cnt = HDLINK_CNT;
-> +
-> +/* Link an inode number to a directory */
-> +static errcode_t add_link(ext2_ino_t parent_ino, ext2_ino_t ino, const char *name)
-> +{
-> +	struct ext2_inode	inode;
-> +	errcode_t		retval;
-> +
-> +	retval = ext2fs_read_inode(current_fs, ino, &inode);
-> +        if (retval) {
-> +		com_err(__FUNCTION__, retval, "while reading inode %u", ino);
-> +		return retval;
-> +	}
-> +
-> +	retval = ext2fs_link(current_fs, parent_ino, name, ino, inode.i_flags);
-> +	if (retval == EXT2_ET_DIR_NO_SPACE) {
-> +		retval = ext2fs_expand_dir(current_fs, parent_ino);
-> +		if (retval) {
-> +			com_err(__FUNCTION__, retval, "while expanding directory");
-> +			return retval;
-> +		}
-> +		retval = ext2fs_link(current_fs, parent_ino, name, ino, inode.i_flags);
-> +	}
-> +	if (retval) {
-> +		com_err(__FUNCTION__, retval, "while linking %s", name);
-> +		return retval;
-> +	}
-> +
-> +	inode.i_links_count++;
-> +
-> +	retval = ext2fs_write_inode(current_fs, ino, &inode);
-> +	if (retval)
-> +		com_err(__FUNCTION__, retval, "while writing inode %u", ino);
-> +
-> +	return retval;
-> +}
-> +
->   /* Fill the uid, gid, mode and time for the inode */
->   static void fill_inode(struct ext2_inode *inode, struct stat *st)
->   {
-> @@ -270,6 +308,17 @@ fail:
->   	return retval;
->   }
->
-> +int is_hardlink(ext2_ino_t ino)
-> +{
-> +	int i;
-> +
-> +	for(i = 0; i < hdlinks.count; i++) {
-> +		if(hdlinks.hdl[i].src_ino == ino)
-> +			return i;
-> +	}
-> +	return -1;
-> +}
-> +
->   /* Copy the native file to the fs */
->   errcode_t do_write_internal(ext2_ino_t cwd, const char *src, const char *dest)
->   {
-> @@ -380,9 +429,11 @@ errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir)
->   	struct dirent	*dent;
->   	struct stat	st;
->   	char		ln_target[PATH_MAX];
-> +	unsigned int	save_inode = 0;
+You are right.  My workload doesn't excercise your suspicion.  But I am
+happy to create this workload and try again to look at the result of
+improvement.
 
-The save_inode = 0 should be set before read each file (inside the while
-loop), otherwise it will be 1 for other files after we meet the first
-hardlink.
+> 
+> > sysctl settings:
+> > 
+> >   #!/bin/bash
+> >   #
+> >   # This script is used to adjust sysctl parameter to increase the memory
+> >   # pressure and accumluate some delayed entries.
+> >   
+> >   sudo sysctl vm.dirty_ratio=80
+> >   sudo sysctl vm.dirty_background_ratio=60
+> > 
+> > Using this workload, the extents status tree will look like this:
+> > [0, 1)[1, 2)...[31, 32)[32, 51)[51, 52)[52, 53)...[101, 102)...[111, 112)
+> > [ D  ][ D  ]...[  D   ][  H   ][  D   ][  D   ]...[    W   ]...[    U   ]
+> > 
+> > D: Delayed entry
+> > H: Hole entry
+> > W: Written entry
+> > U: Unwritten entry
+> > 
+> > *NOTE*
+> > This workload couldn't reproduce the problem that is reported by [1].
+> > 
+> > I run this workload on my desktop, which has a Intel Core Duo CPU @ 3.0
+> > GHz, 4G memeory and a HDD.  I will run the same workload on a server to
+> > measure the result of improvement.
+> > 
+> > Comparison
+> > ===========
+> > 
+> > slabtop
+> > -------
+> > slabtop is used to measure memory space which the slab of extent_status
+> > occupies.  The following is the result of $(slabtop -o)
+> > 
+> > vanilla:
+> > 718890 688677  95%    0.04K   7730       93     30920K ext4_extent_status
+> > patched:
+> > 718420 675933  94%    0.05K  10565       68     42260K ext4_extent_status
+> > 
+> >                    vanilla        patched        +/- (%)
+> > ext4_extent_status 30920k         42260k         36.68
+> > 
+> > As I said above, adding hlist_node adds ~1/3 extra memory space.
+> > 
+> > perf record -g
+> > --------------
+> > The following is the result of $(perf diff), which compares the result
+> > of $(perf record -g).  Here I cut all *_es_* functions and paste them
+> > here.
+> > 
+> > # Event 'cycles'
+> > #
+> > # Baseline    Delta       Shared Object                                        Symbol
+> > # ........  .......  ..................  ............................................
+> > #
+> >      1.82%   +0.04%  [ext4]              [k] ext4_es_lookup_extent                   
+> >      0.55%   +0.01%  [ext4]              [k] __es_tree_search                        
+> >      0.39%   -0.05%  [ext4]              [k] __es_insert_extent                      
+> >      0.10%   +0.02%  [ext4]              [k] ext4_es_insert_extent                   
+> >      0.08%   +0.01%  [ext4]              [k] __es_remove_extent                      
+> >      0.07%   +0.01%  [ext4]              [k] ext4_es_lru_add                         
+> >      0.01%   -0.01%  [ext4]              [k] __es_try_to_reclaim_extents             
+> >      0.00%           [ext4]              [k] ext4_es_free_extent                     
+> >      0.00%           [ext4]              [k] ext4_es_cache_extent                    
+> > 
+> > perf lock record -g
+> > -------------------
+> > Here is the result of $(perf lock report -k wait_max).
+> > 
+> >                 Name   acquired  contended   avg wait (ns) total wait (ns)   max wait (ns)   min wait (ns)
+> > vanilla:
+> > &(&sbi->s_es_lru...        152          1           87275           87275           87275           87275
+> > patched:
+> > &(&sbi->s_es_lru...        148          0               0               0               0               0
+> > 
+> > 'sbi->s_es_lru_lock' protects the entire lru list of inodes which have
+> > reclaimable entries.  When es shrinker tries to reclaim some entries,
+> > this lock will be taken during this process.  From the result we can see
+> > that the improvement can reduce the waiting time.
+> 
+> Well, this doesn't say too much. During the whole run there was exactly one
+> case where we contended for the s_es_lru_lock. It may be just luck you
+> didn't hit the contention in the 'patched' kernel.
+> 
+> Also without having a reproducer it's a bit hard to judge whether we are
+> indeed improving a thing which needs improvement - i.e., whether the gain
+> in latency is worth the cost in memory usage.
 
-// Robert
+Yes, I am also afraid of this issue.  But to be honest, it is diffculty
+for us to create a very similar workload before we can get more details.
+So maybe we can create some workloads to test different corner cases,
+and make sure that this improvement can bring benifits for all cases.
+Now we have two cases to measure two locks in es shrinker.
 
->   	ext2_ino_t	ino;
->   	errcode_t	retval;
->   	int		read_cnt;
-> +	int		hdlink;
->
->   	root = EXT2_ROOT_INO;
->
-> @@ -404,6 +455,21 @@ errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir)
->   		lstat(dent->d_name, &st);
->   		name = dent->d_name;
->
-> +		/* Check for hardlinks */
-> +		if (!S_ISDIR(st.st_mode) && !S_ISLNK(st.st_mode) && st.st_nlink > 1) {
-> +			hdlink = is_hardlink(st.st_ino);
-> +			if (hdlink >= 0) {
-> +				retval = add_link(parent_ino,
-> +						hdlinks.hdl[hdlink].dst_ino, name);
-> +				if (retval) {
-> +					com_err(__FUNCTION__, retval, "while linking %s", name);
-> +					return retval;
-> +				}
-> +				continue;
-> +			} else
-> +				save_inode = 1;
-> +		}
-> +
->   		switch(st.st_mode & S_IFMT) {
->   			case S_IFCHR:
->   			case S_IFBLK:
-> @@ -472,6 +538,27 @@ errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir)
->   				_("while setting inode for \"%s\""), name);
->   			return retval;
->   		}
-> +
-> +		/* Save the hardlink ino */
-> +		if (save_inode) {
-> +			/*
-> +			 * Check whether need more memory, and we don't need
-> +			 * free() since the lifespan will be over after the fs
-> +			 * populated.
-> +			 */
-> +			if (hdlinks.count == hdlink_cnt) {
-> +				if ((hdlinks.hdl = realloc (hdlinks.hdl,
-> +						(hdlink_cnt + HDLINK_CNT) *
-> +						sizeof (struct hdlink_s))) == NULL) {
-> +					com_err(name, errno, "Not enough memory");
-> +					return errno;
-> +				}
-> +				hdlink_cnt += HDLINK_CNT;
-> +			}
-> +			hdlinks.hdl[hdlinks.count].src_ino = st.st_ino;
-> +			hdlinks.hdl[hdlinks.count].dst_ino = ino;
-> +			hdlinks.count++;
-> +		}
->   	}
->   	closedir(dh);
->   	return retval;
-> diff --git a/misc/create_inode.h b/misc/create_inode.h
-> index 9fc97fa..2b6d429 100644
-> --- a/misc/create_inode.h
-> +++ b/misc/create_inode.h
-> @@ -6,9 +6,27 @@
->   #include "ext2fs/ext2fs.h"
->   #include "nls-enable.h"
->
-> +struct hdlink_s
-> +{
-> +	ext2_ino_t src_ino;
-> +	ext2_ino_t dst_ino;
-> +};
-> +
-> +struct hdlinks_s
-> +{
-> +	int count;
-> +	struct hdlink_s *hdl;
-> +};
-> +
-> +struct hdlinks_s hdlinks;
-> +
->   ext2_filsys    current_fs;
->   ext2_ino_t     root;
->
-> +/* For saving the hard links */
-> +#define HDLINK_CNT     4
-> +extern int hdlink_cnt;
-> +
->   /* For populating the filesystem */
->   extern errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir);
->   extern errcode_t do_mknod_internal(ext2_ino_t cwd, const char *name, struct stat *st);
-> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> index eab5463..10cdfd2 100644
-> --- a/misc/mke2fs.c
-> +++ b/misc/mke2fs.c
-> @@ -2802,6 +2802,18 @@ no_journal:
->   		if (!quiet)
->   			printf("%s", _("Copying files into the device: "));
->
-> +		/*
-> +		 * Allocate memory for the hardlinks, we don't need free()
-> +		 * since the lifespan will be over after the fs populated.
-> +		 */
-> +		if ((hdlinks.hdl = (struct hdlink_s *)
-> +				malloc(hdlink_cnt * sizeof(struct hdlink_s))) == NULL) {
-> +			fprintf(stderr, "%s", _("\nNot enough memory\n"));
-> +			retval = ext2fs_close(fs);
-> +			return retval;
-> +		}
-> +
-> +		hdlinks.count = 0;
->   		current_fs = fs;
->   		root = EXT2_ROOT_INO;
->   		retval = populate_fs(root, root_dir);
->
+1. create some big file that have a lot of delayed extents
+2. caeate a huge number of small files that have a few extents
+
+The first case can measure the overhead of s_es_lru_lock and i_es_lock.
+The second one can measure the overhead of s_es_lru_lock.  More cases
+are welcome.
+
+Thanks,
+                                                - Zheng
+
+> 
+> 
+> 								Honza
+> 
+> > latency
+> > -------
+> > Here I calculate the latency of the following operations from the
+> > result of trace points. (Unit: *us*)
+> > 
+> > - es_find_delayed_extent_range -
+> > x vanilla
+> > + patched
+> >     N           Min           Max        Median           Avg        Stddev
+> > x 4425             0            54             1     1.0280226     1.0898311
+> > + 7063             0           140             1     1.0127425     1.8662003
+> > 
+> > - es_insert_extent -
+> > x vanilla
+> > + patched
+> >     N           Min           Max        Median           Avg        Stddev
+> > x 26995             1          1270             2     4.1053899      20.26818
+> > + 26559             1           440             2     3.0948454     7.6911348
+> > 
+> > - es_lookup_extent -
+> > x vanilla
+> > + patched
+> >     N           Min           Max        Median           Avg        Stddev
+> > x 32025             0           104             1     1.6082748      1.385739
+> > + 31433             0           168             1     1.6219578     1.4846153
+> > 
+> > - es_shrink_scan -
+> > x vanilla
+> > + patched
+> >     N           Min           Max        Median           Avg        Stddev
+> > x 1219            24          1872           171     278.35603      275.8815
+> > + 1405            17           339            86     95.057651     33.216144
+> > 
+> > The result of latency shows that the patch can reduce the latency when es
+> > shrinker tries to reclaim the entry.  Meanwhile other operations don't be
+> > impacted too much.
+> > 
+> > TODO list
+> > =========
+> > 
+> > Numa-aware shrinker
+> > -------------------
+> > Now the shrinker has been numa-aware.  But the es shrinker doesn't
+> > support it.  So an improvement is to make es shrinker numa-aware.  The
+> > key issue is that extent_status objects might not be on the same node
+> > with its inode.  So that means we need to use lru_list on ext4_sb_info in
+> > order to make s_es_lru list numa-aware, and use lru_list on ext4_es_tree
+> > for making evictable list numa-aware.  I am not sure it is worthwhile.
+> > 
+> > rcu-skiplist
+> > ------------
+> > Chris Mason has sent out a rcu-skiplist patch set.  So an potential
+> > improvement here is to use rcu-skiplist in extents status tree to track
+> > all entries.  Now we use rb-tree to do the same thing.  But the defect
+> > of using rb-tree here is that we need to rotate the subtree when a node
+> > is inserted or removed.  That means that rb-tree couldn't provide a very
+> > stable latency when it tries to balance the subtree.  The skiplist does
+> > not need to do this.  So I suspect that it would provide more smooth
+> > latency.
+> > 
+> > Regards,
+> > 						- Zheng
+> > 
+> > Zheng Liu (2):
+> >   ext4: improve extents status tree trace point
+> >   ext4: improve extents status tree shrinker to avoid scanning delayed entries
+> > 
+> >  fs/ext4/extents_status.c    |   53 +++++++++++++++++++++++--------------------
+> >  fs/ext4/extents_status.h    |    2 ++
+> >  include/trace/events/ext4.h |   46 +++++++++++++++++++++++++++++++++----
+> >  3 files changed, 71 insertions(+), 30 deletions(-)
+> > 
+> > -- 
+> > 1.7.9.7
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> -- 
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
