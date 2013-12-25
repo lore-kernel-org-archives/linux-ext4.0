@@ -1,290 +1,230 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] e2fsprogs: dumpe2fs manpage updates
-Date: Tue, 24 Dec 2013 14:20:12 -0500
-Message-ID: <20131224192012.GD11299@thunk.org>
-References: <CAO+X6Oiq5PLxjcGkjNi=D3qr=hB_zaCkgQfNcNjBQJaVjsNKBQ@mail.gmail.com>
+From: Robert Yang <liezhi.yang@windriver.com>
+Subject: Re: [PATCH V2 09/11] misc/create_inode.c: handle hardlinks
+Date: Wed, 25 Dec 2013 11:14:05 +0800
+Message-ID: <52BA4D7D.1020803@windriver.com>
+References: <1387874847-4922-1-git-send-email-liezhi.yang@windriver.com> <1387874847-4922-10-git-send-email-liezhi.yang@windriver.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Uri Corin <uri.corin@gmail.com>
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: <linux-ext4@vger.kernel.org>
+To: Robert Yang <liezhi.yang@windriver.com>, <tytso@mit.edu>,
+	<dvhart@linux.intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:43126 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752246Ab3LXTUQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 Dec 2013 14:20:16 -0500
-Content-Disposition: inline
-In-Reply-To: <CAO+X6Oiq5PLxjcGkjNi=D3qr=hB_zaCkgQfNcNjBQJaVjsNKBQ@mail.gmail.com>
+Received: from mail.windriver.com ([147.11.1.11]:46813 "EHLO
+	mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751720Ab3LYDOL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Dec 2013 22:14:11 -0500
+In-Reply-To: <1387874847-4922-10-git-send-email-liezhi.yang@windriver.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 17, 2013 at 04:49:49PM +0200, Uri Corin wrote:
-> I've added documentation for all defined features, including legacy
-> and work in progress.
-> * Some pre-existing feature explanations have been expanded based on
-> ext4.wiki.kernel.org.
-> * Future features (dirdata, ea_inode and metadata_csum) are commented out
+Sorry, this patch should be updated a little, please see my comments inline ...
 
-It doesn't make sense to try to document the file system features in
-both the man pags for mke2fs and dumpe2fs.  So what I've done is to
-create a man page, ext4.5, which we can use to document file system
-features.
+On 12/24/2013 04:47 PM, Robert Yang wrote:
+> Create the inode and save the native inode number when we meet the hard
+> link (st_nlink > 1) at the first time, use ext2fs_link() to link the
+> name to the target inode number when we meet the same native inode
+> number again.
+>
+> This algorithm is referred this from the genext2fs.
+>
+> Signed-off-by: Robert Yang <liezhi.yang@windriver.com>
+> Reviewed-by: Darren Hart <dvhart@linux.intel.com>
+> ---
+>   misc/create_inode.c |   87 +++++++++++++++++++++++++++++++++++++++++++++++++++
+>   misc/create_inode.h |   18 +++++++++++
+>   misc/mke2fs.c       |   12 +++++++
+>   3 files changed, 117 insertions(+)
+>
+> diff --git a/misc/create_inode.c b/misc/create_inode.c
+> index f1af6a9..7462413 100644
+> --- a/misc/create_inode.c
+> +++ b/misc/create_inode.c
+> @@ -10,6 +10,44 @@
+>   #define S_BLKSIZE 512
+>   #endif
+>
+> +/* For saving the hard links */
+> +int hdlink_cnt = HDLINK_CNT;
+> +
+> +/* Link an inode number to a directory */
+> +static errcode_t add_link(ext2_ino_t parent_ino, ext2_ino_t ino, const char *name)
+> +{
+> +	struct ext2_inode	inode;
+> +	errcode_t		retval;
+> +
+> +	retval = ext2fs_read_inode(current_fs, ino, &inode);
+> +        if (retval) {
+> +		com_err(__FUNCTION__, retval, "while reading inode %u", ino);
+> +		return retval;
+> +	}
+> +
+> +	retval = ext2fs_link(current_fs, parent_ino, name, ino, inode.i_flags);
+> +	if (retval == EXT2_ET_DIR_NO_SPACE) {
+> +		retval = ext2fs_expand_dir(current_fs, parent_ino);
+> +		if (retval) {
+> +			com_err(__FUNCTION__, retval, "while expanding directory");
+> +			return retval;
+> +		}
+> +		retval = ext2fs_link(current_fs, parent_ino, name, ino, inode.i_flags);
+> +	}
+> +	if (retval) {
+> +		com_err(__FUNCTION__, retval, "while linking %s", name);
+> +		return retval;
+> +	}
+> +
+> +	inode.i_links_count++;
+> +
+> +	retval = ext2fs_write_inode(current_fs, ino, &inode);
+> +	if (retval)
+> +		com_err(__FUNCTION__, retval, "while writing inode %u", ino);
+> +
+> +	return retval;
+> +}
+> +
+>   /* Fill the uid, gid, mode and time for the inode */
+>   static void fill_inode(struct ext2_inode *inode, struct stat *st)
+>   {
+> @@ -270,6 +308,17 @@ fail:
+>   	return retval;
+>   }
+>
+> +int is_hardlink(ext2_ino_t ino)
+> +{
+> +	int i;
+> +
+> +	for(i = 0; i < hdlinks.count; i++) {
+> +		if(hdlinks.hdl[i].src_ino == ino)
+> +			return i;
+> +	}
+> +	return -1;
+> +}
+> +
+>   /* Copy the native file to the fs */
+>   errcode_t do_write_internal(ext2_ino_t cwd, const char *src, const char *dest)
+>   {
+> @@ -380,9 +429,11 @@ errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir)
+>   	struct dirent	*dent;
+>   	struct stat	st;
+>   	char		ln_target[PATH_MAX];
+> +	unsigned int	save_inode = 0;
 
-						- Ted
+The save_inode = 0 should be set before read each file (inside the while
+loop), otherwise it will be 1 for other files after we meet the first
+hardlink.
 
-.\" -*- nroff -*-
-.\" Copyright 1993, 1994, 1995 by Theodore Ts'o.  All Rights Reserved.
-.\" This file may be copied under the terms of the GNU Public License.
-.\"
-.TH EXT4 5 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "E2fsprogs version @E2FSPROGS_VERSION@"
-.SH NAME
-ext2 \- the second extended file system
-.br
-ext2 \- the third extended file system
-.br
-ext4 \- the fourth extended file system
-.SH DESCRIPTION
-The second, third, and fourth extended file systems, or ext2, ext3, and
-ext4 as they are commonly known, are Linux file systems that have
-historically been the default file system for many Linux distributions.
-They are general purpose file systems that have been designed for
-extensibility and backwards compatibility.  In particular, file systems
-previously intended for use with the ext2 and ext3 file systems can be
-mounted using the ext4 file system driver, and indeed in many modern
-Linux distributions, the ext4 file system driver has been configured
-handle mount requests for ext2 and ext3 file systems.
-.SH FILE SYSTEM FEATURES
-A file system formated for ext2, ext3, or ext4 can be have some
-collection of the follow file system feature flags enabled.  Some of
-these features are not supported by all implementations of the ext2,
-ext3, and ext4 file system drivers, depending on Linux kernel version in
-use.  On other operating systems, such as the GNU/HURD or FreeBSD, only
-a very restrictive set of file system features may be supported in their
-implementations of ext2.
-.RS 1.2i
-.TP
-.B 64bit
-.br
-Enables the file system to be larger than 2^32 blocks.  This feature is set
-automatically, as needed, but it can be useful to specify this feature
-explicitly if the file system might need to be resized larger than 2^32
-blocks, even if it was smaller than that threshold when it was
-originally created.  Note that some older kernels and older versions
-of e2fsprogs will not support file systems with this ext4 feature enabled.
-.TP
-.B bigalloc
-.br
-This ext4 feature enables clustered block allocation, so that the unit of
-allocation is a power of two number of blocks.  That is, each bit in the
-what had traditionally been known as the block allocation bitmap now
-indicates whether a cluster is in use or not, where a cluster is by
-default composed of 16 blocks.  This feature can decrease the time
-spent on doing block allocation and brings smaller fragmentation, especially
-for large files.  The size can be specified using the
-.B \-C option.
-.IP
-.B Warning:
-The bigalloc feature is still under development, and may not be fully
-supported with your kernel or may have various bugs.  Please see the web
-page http://ext4.wiki.kernel.org/index.php/Bigalloc for details.
-May clash with delayed allocation (see
-.BR nodelalloc mount option).
-.IP
-This feature requires that the
-.B extent
-features be enabled.
-.TP
-.B dir_index
-.br
-Use hashed b-trees to speed up name lookups in large directories.  This
-feature is supported by ext3 and ext4 file systems, and is ignored by
-ext2 file systems.
-.TP
-.B dir_nlink
-.br
-This ext4 feature allows more than 65000 subdirectories per directory.
-.TP
-.B extent
-.br
-This ext4 feature allows the mapping of logical block numbers for a
-particular inode to physical blocks on the storage device to be stored
-using an extent tree, which is a more efficient data structure than the
-traditional indirect block scheme used by the ext2 and ext3 file
-systems.  The use of the extent tree decreases metadata block overhead,
-improves file system performance, and decreases the needed to run
-.BR e2fsck (8)
-on the file system.
-(Note: both
-.B extent
-and
-.B extents
-are accepted as valid names for this feature for
-historical/backwards compatibility reasons.)
-.TP
-.B extra_isize
-.br
-This ext4 feature reserves a specific amount of space in each inode for
-extended metadata such as nanosecond timestamps and file creation time,
-even if the current kernel does not current need to reserve this much
-space.  Without this feature, the kernel will reserve the amount of
-space for features currently it currently needs, and the rest may be
-consumed by extended attributes.
+// Robert
 
-For this feature to be useful the inode size must be 256 bytes in size
-or larger.
-.TP
-.B ext_attr
-.br
-This feature enables the use of extended attributes.  This feature is
-supported by ext2, ext3, and ext4.
-.TP
-.B filetype
-.br
-This feature enables the storage file type information in directory
-entries.  This feature is supported by ext2, ext3, and ext4.
-.TP
-.TP
-.B flex_bg
-.br
-This ext4 feature allows the per-block group metadata (allocation
-bitmaps
-and inode tables)
-to be placed anywhere on the storage media.  In addition,
-.B mke2fs
-will place the per-block group metadata together starting at the first
-block group of each "flex_bg group".   The size of the flex_bg group
-can be specified using the 
-.B \-G
-option.
-.TP
-.B has_journal
-.br
-Create a journal to ensure filesystem consistency even across unclean
-shutdowns.  Setting the filesystem feature is equivalent to using the
-.B \-j
-option.  This feature is supported by ext3 and ext4, and ignored by the
-ext2 file system driver.
-.TP
-.B huge_file
-.br
-This ext4 feature allows files to be larger than 2 terabytes in size.
-.TP
-.B journal_dev
-.br
-This feature is enabled on the superblock found on an external journal
-device.  The block size for the external journal must be the same as the
-file system which uses it.
-.IP
-The external journal device can be used by a file system by specifying
-the
-.B \-J
-.BR device= <external-device>
-option to
-.BR mke2fs (8)
-or
-.BR tune2fs(8).
-.TP
-.B large_file
-.br
-This feature flag is set automatically by modern kernels when a file
-larger than 2 gigabytes is created.  Very old kernels could not
-handle large files, so this feature flag was used to prohibit those
-kernels from mounting file systems that they could not understand.
-.\" .TP
-.\" .B metadata_csum
-.\" .br
-.\" This ext4 feature enables metadata checksumming.  This feature stores
-.\" checksums for all of the filesystem metadata (superblock, group
-.\" descriptor blocks, inode and block bitmaps, directories, and
-.\" extent tree blocks).  The checksum algorithm used for the metadata
-.\" blocks is different than the one used for group descriptors with the
-.\" .B uninit_bg
-.\" feature, these two features are incompatible and
-.\" .B metadata_csum
-.\" will be used preferentially instead of
-.\" .BR uninit_bg .
-.\" .br
-.\" .B Future feature, available in e2fsprogs 1.43-WIP
-.TP
-.B meta_bg
-.br
-This ext4 feature allows file systems to be resized on-line without explicitly
-needing to reserve space for growth in the size of the block group
-descriptors.  This scheme is also used to resize file systems which are
-larger than 2^32 blocks.  It is not recommended that this feature be set
-when a file system is created, since this alternate method of storing
-the block group descriptor will slow down the time needed to mount the
-file system, and newer kernels can automatically set this feature as
-necessary when doing an online resize and no more reserved space is
-available in the resize inode.
-.TP
-.B mmp
-.br
-This ext4 feature provides multiple mount protection (MMP).  MMP helps to
-protect the filesystem from being multiply mounted and is useful in
-shared storage environments.
-@QUOTA_MAN_COMMENT@.TP
-@QUOTA_MAN_COMMENT@.B quota
-@QUOTA_MAN_COMMENT@.br
-@QUOTA_MAN_COMMENT@Create quota inodes (inode #3 for userquota and inode
-@QUOTA_MAN_COMMENT@#4 for group quota) and set them in the superblock.
-@QUOTA_MAN_COMMENT@With this feature, the quotas will be enabled
-@QUOTA_MAN_COMMENT@automatically when the filesystem is mounted.
-@QUOTA_MAN_COMMENT@.IP
-@QUOTA_MAN_COMMENT@Causes the quota files (i.e., user.quota and
-@QUOTA_MAN_COMMENT@group.quota which existed
-@QUOTA_MAN_COMMENT@in the older quota design) to be hidden inodes.
-@QUOTA_MAN_COMMENT@.IP
-@QUOTA_MAN_COMMENT@.B Warning: 
-@QUOTA_MAN_COMMENT@The quota feature is still under development, 
-@QUOTA_MAN_COMMENT@and may not be fully supported with your kernel
-@QUOTA_MAN_COMMENT@or may have various bugs.  
-@QUOTA_MAN_COMMENT@Please see https://ext4.wiki.kernel.org/index.php/Quota
-@QUOTA_MAN_COMMENT@for more details.
-.TP
-.B resize_inode
-.br
-This file system feature indicates that space has been reserved so
-the block group descriptor table can be extended by the file system is
-resized while the file system is mounted.  The online resize operation
-is carried out by the kernel, triggered, by
-.BR resize2fs (8).
-By default
-.B mke2fs
-will attempt to reserve enough space so that the
-filesystem may grow to 1024 times its initial size.  This can be changed
-using the
-.B resize
-extended option.
-.IP
-This feature requires that the
-.B sparse_super
-feature be enabled.
-.TP
-.B sparse_super
-.br
-This file system feature is set on all modern ext2, ext3, and ext4 file
-system.  It indicates that backup copies of the superblock and block
-group descriptors be present only on a few block groups, and not all of
-them.
-.TP
-.B uninit_bg
-.br
-This ext4 file system feature indicates that the block group descriptors
-will be protected using checksums, making it safe for
-.BR mke2fs (8)
-to create a file system without initializing all of the block groups.
-The kernel will keep a high watermark of unused inodes, and initialize
-inode tables and block lazily.  This feature speeds up the time to check
-the file system using
-.BR e2fsck (8),
-and it also speeds up the time required for
-.BR mke2fs (8)
-to create the file system.
-.RE
-.SH SEE ALSO
-.BR mke2fs (8),
-.BR mke2fs.conf (5),
-.BR e2fsck (8),
-.BR dumpe2fs (8),
-.BR tune2fs (8),
-.BR debugfs (8)
+>   	ext2_ino_t	ino;
+>   	errcode_t	retval;
+>   	int		read_cnt;
+> +	int		hdlink;
+>
+>   	root = EXT2_ROOT_INO;
+>
+> @@ -404,6 +455,21 @@ errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir)
+>   		lstat(dent->d_name, &st);
+>   		name = dent->d_name;
+>
+> +		/* Check for hardlinks */
+> +		if (!S_ISDIR(st.st_mode) && !S_ISLNK(st.st_mode) && st.st_nlink > 1) {
+> +			hdlink = is_hardlink(st.st_ino);
+> +			if (hdlink >= 0) {
+> +				retval = add_link(parent_ino,
+> +						hdlinks.hdl[hdlink].dst_ino, name);
+> +				if (retval) {
+> +					com_err(__FUNCTION__, retval, "while linking %s", name);
+> +					return retval;
+> +				}
+> +				continue;
+> +			} else
+> +				save_inode = 1;
+> +		}
+> +
+>   		switch(st.st_mode & S_IFMT) {
+>   			case S_IFCHR:
+>   			case S_IFBLK:
+> @@ -472,6 +538,27 @@ errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir)
+>   				_("while setting inode for \"%s\""), name);
+>   			return retval;
+>   		}
+> +
+> +		/* Save the hardlink ino */
+> +		if (save_inode) {
+> +			/*
+> +			 * Check whether need more memory, and we don't need
+> +			 * free() since the lifespan will be over after the fs
+> +			 * populated.
+> +			 */
+> +			if (hdlinks.count == hdlink_cnt) {
+> +				if ((hdlinks.hdl = realloc (hdlinks.hdl,
+> +						(hdlink_cnt + HDLINK_CNT) *
+> +						sizeof (struct hdlink_s))) == NULL) {
+> +					com_err(name, errno, "Not enough memory");
+> +					return errno;
+> +				}
+> +				hdlink_cnt += HDLINK_CNT;
+> +			}
+> +			hdlinks.hdl[hdlinks.count].src_ino = st.st_ino;
+> +			hdlinks.hdl[hdlinks.count].dst_ino = ino;
+> +			hdlinks.count++;
+> +		}
+>   	}
+>   	closedir(dh);
+>   	return retval;
+> diff --git a/misc/create_inode.h b/misc/create_inode.h
+> index 9fc97fa..2b6d429 100644
+> --- a/misc/create_inode.h
+> +++ b/misc/create_inode.h
+> @@ -6,9 +6,27 @@
+>   #include "ext2fs/ext2fs.h"
+>   #include "nls-enable.h"
+>
+> +struct hdlink_s
+> +{
+> +	ext2_ino_t src_ino;
+> +	ext2_ino_t dst_ino;
+> +};
+> +
+> +struct hdlinks_s
+> +{
+> +	int count;
+> +	struct hdlink_s *hdl;
+> +};
+> +
+> +struct hdlinks_s hdlinks;
+> +
+>   ext2_filsys    current_fs;
+>   ext2_ino_t     root;
+>
+> +/* For saving the hard links */
+> +#define HDLINK_CNT     4
+> +extern int hdlink_cnt;
+> +
+>   /* For populating the filesystem */
+>   extern errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir);
+>   extern errcode_t do_mknod_internal(ext2_ino_t cwd, const char *name, struct stat *st);
+> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+> index eab5463..10cdfd2 100644
+> --- a/misc/mke2fs.c
+> +++ b/misc/mke2fs.c
+> @@ -2802,6 +2802,18 @@ no_journal:
+>   		if (!quiet)
+>   			printf("%s", _("Copying files into the device: "));
+>
+> +		/*
+> +		 * Allocate memory for the hardlinks, we don't need free()
+> +		 * since the lifespan will be over after the fs populated.
+> +		 */
+> +		if ((hdlinks.hdl = (struct hdlink_s *)
+> +				malloc(hdlink_cnt * sizeof(struct hdlink_s))) == NULL) {
+> +			fprintf(stderr, "%s", _("\nNot enough memory\n"));
+> +			retval = ext2fs_close(fs);
+> +			return retval;
+> +		}
+> +
+> +		hdlinks.count = 0;
+>   		current_fs = fs;
+>   		root = EXT2_ROOT_INO;
+>   		retval = populate_fs(root, root_dir);
+>
