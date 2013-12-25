@@ -1,221 +1,199 @@
-From: Robert Yang <liezhi.yang@windriver.com>
-Subject: [PATCH V3 09/11] misc/create_inode.c: handle hardlinks
-Date: Tue, 24 Dec 2013 22:21:08 -0500
-Message-ID: <1387941668-7679-1-git-send-email-liezhi.yang@windriver.com>
-References: <1387874847-4922-10-git-send-email-liezhi.yang@windriver.com>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [RFC PATCH 2/2] ext4: improve extents status tree shrinker to
+ avoid scanning delayed entries
+Date: Wed, 25 Dec 2013 11:34:48 +0800
+Message-ID: <20131225033448.GC23505@gmail.com>
+References: <1387536165-15956-1-git-send-email-wenqing.lz@taobao.com>
+ <1387536165-15956-3-git-send-email-wenqing.lz@taobao.com>
+ <20131223085419.GB9199@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: <linux-ext4@vger.kernel.org>
-To: <tytso@mit.edu>, <dvhart@linux.intel.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.windriver.com ([147.11.1.11]:47458 "EHLO
-	mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751305Ab3LYDVP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Dec 2013 22:21:15 -0500
-In-Reply-To: <1387874847-4922-10-git-send-email-liezhi.yang@windriver.com>
+Received: from mail-pa0-f49.google.com ([209.85.220.49]:56626 "EHLO
+	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752953Ab3LYDbX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Dec 2013 22:31:23 -0500
+Received: by mail-pa0-f49.google.com with SMTP id kx10so7040548pab.36
+        for <linux-ext4@vger.kernel.org>; Tue, 24 Dec 2013 19:31:23 -0800 (PST)
+Content-Disposition: inline
+In-Reply-To: <20131223085419.GB9199@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Create the inode and save the native inode number when we meet the hard
-link (st_nlink > 1) at the first time, use ext2fs_link() to link the
-name to the target inode number when we meet the same native inode
-number again.
+On Mon, Dec 23, 2013 at 09:54:19AM +0100, Jan Kara wrote:
+> On Fri 20-12-13 18:42:45, Zheng Liu wrote:
+> > From: Zheng Liu <wenqing.lz@taobao.com>
+> > 
+> > The extents status tree shrinker will scan all inodes on sbi->s_es_lru
+> > under heavy memory pressure, and try to reclaim the entry from extents
+> > status tree.  During this process it couldn't reclaim the delayed entry
+> > because ext4 needs to use these entries to do delayed allocation space
+> > reservation, seek_data/hole, etc....  So if a system has done a huge
+> > number of writes and these dirty pages don't be written out.  There will
+> > be a lot of delayed entries on extents status tree.  If shrinker tries
+> > to reclaim memory from the tree, it will burn some CPU time to iterate
+> > on these non-reclaimable entries.  At some circumstances it could cause
+> > excessive stall time.
+> > 
+> > In this commit a new list is used to track reclaimable entries of extent
+> > status tree (e.g. written/unwritten/hole entries).  The shrinker will
+> > scan reclaimable entry on this list.  So it won't encouter any delayed
+> > entry and don't need to take too much time to spin.  But the defect is
+> > that we need to cost extra 1/3 memory space for one entry.  Before this
+> > commit, 'struct extent_status' occupies 48 bytes on a 64bits platform.
+> > After that it will occupy 64 bytes. :(
+>   This looks sensible. I was just wondering about one thing: One incorrect
+> thing the old extent shrinker does is that it tries to reclaim 'nr_to_scan'
+> objects. That is wrong - it should *scan* 'nr_to_scan' objects and reclaim
+> objects it can find. Now we shouldn't always start scanning at the end of
+> the LRU because if delayed extents accumulate there we would never reclaim
+> anything. Rather we should cycle through the list of entries we have. But
+> that doesn't play well with the fact we have LRU list and thus want to
+> reclaim from the end of the list. In the end what you do might be the best
+> we can do but I wanted to mention the above just in case someone has some
+> idea.
 
-This algorithm is referred this from the genext2fs.
+Ah, thanks for pointing it out.  So maybe we can fix this issue before
+we are sure that the new improvement is acceptable because it makes us
+avoid scanning too many objects.  What do you think?
 
-Signed-off-by: Robert Yang <liezhi.yang@windriver.com>
-Reviewed-by: Darren Hart <dvhart@linux.intel.com>
----
- misc/create_inode.c |   88 +++++++++++++++++++++++++++++++++++++++++++++++++++
- misc/create_inode.h |   18 +++++++++++
- misc/mke2fs.c       |   12 +++++++
- 3 files changed, 118 insertions(+)
+Regards,
+                                                - Zheng
 
-diff --git a/misc/create_inode.c b/misc/create_inode.c
-index f1af6a9..6ff041d 100644
---- a/misc/create_inode.c
-+++ b/misc/create_inode.c
-@@ -10,6 +10,44 @@
- #define S_BLKSIZE 512
- #endif
- 
-+/* For saving the hard links */
-+int hdlink_cnt = HDLINK_CNT;
-+
-+/* Link an inode number to a directory */
-+static errcode_t add_link(ext2_ino_t parent_ino, ext2_ino_t ino, const char *name)
-+{
-+	struct ext2_inode	inode;
-+	errcode_t		retval;
-+
-+	retval = ext2fs_read_inode(current_fs, ino, &inode);
-+        if (retval) {
-+		com_err(__FUNCTION__, retval, "while reading inode %u", ino);
-+		return retval;
-+	}
-+
-+	retval = ext2fs_link(current_fs, parent_ino, name, ino, inode.i_flags);
-+	if (retval == EXT2_ET_DIR_NO_SPACE) {
-+		retval = ext2fs_expand_dir(current_fs, parent_ino);
-+		if (retval) {
-+			com_err(__FUNCTION__, retval, "while expanding directory");
-+			return retval;
-+		}
-+		retval = ext2fs_link(current_fs, parent_ino, name, ino, inode.i_flags);
-+	}
-+	if (retval) {
-+		com_err(__FUNCTION__, retval, "while linking %s", name);
-+		return retval;
-+	}
-+
-+	inode.i_links_count++;
-+
-+	retval = ext2fs_write_inode(current_fs, ino, &inode);
-+	if (retval)
-+		com_err(__FUNCTION__, retval, "while writing inode %u", ino);
-+
-+	return retval;
-+}
-+
- /* Fill the uid, gid, mode and time for the inode */
- static void fill_inode(struct ext2_inode *inode, struct stat *st)
- {
-@@ -270,6 +308,17 @@ fail:
- 	return retval;
- }
- 
-+int is_hardlink(ext2_ino_t ino)
-+{
-+	int i;
-+
-+	for(i = 0; i < hdlinks.count; i++) {
-+		if(hdlinks.hdl[i].src_ino == ino)
-+			return i;
-+	}
-+	return -1;
-+}
-+
- /* Copy the native file to the fs */
- errcode_t do_write_internal(ext2_ino_t cwd, const char *src, const char *dest)
- {
-@@ -380,9 +429,11 @@ errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir)
- 	struct dirent	*dent;
- 	struct stat	st;
- 	char		ln_target[PATH_MAX];
-+	unsigned int	save_inode;
- 	ext2_ino_t	ino;
- 	errcode_t	retval;
- 	int		read_cnt;
-+	int		hdlink;
- 
- 	root = EXT2_ROOT_INO;
- 
-@@ -404,6 +455,22 @@ errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir)
- 		lstat(dent->d_name, &st);
- 		name = dent->d_name;
- 
-+		/* Check for hardlinks */
-+		save_inode = 0;
-+		if (!S_ISDIR(st.st_mode) && !S_ISLNK(st.st_mode) && st.st_nlink > 1) {
-+			hdlink = is_hardlink(st.st_ino);
-+			if (hdlink >= 0) {
-+				retval = add_link(parent_ino,
-+						hdlinks.hdl[hdlink].dst_ino, name);
-+				if (retval) {
-+					com_err(__FUNCTION__, retval, "while linking %s", name);
-+					return retval;
-+				}
-+				continue;
-+			} else
-+				save_inode = 1;
-+		}
-+
- 		switch(st.st_mode & S_IFMT) {
- 			case S_IFCHR:
- 			case S_IFBLK:
-@@ -472,6 +539,27 @@ errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir)
- 				_("while setting inode for \"%s\""), name);
- 			return retval;
- 		}
-+
-+		/* Save the hardlink ino */
-+		if (save_inode) {
-+			/*
-+			 * Check whether need more memory, and we don't need
-+			 * free() since the lifespan will be over after the fs
-+			 * populated.
-+			 */
-+			if (hdlinks.count == hdlink_cnt) {
-+				if ((hdlinks.hdl = realloc (hdlinks.hdl,
-+						(hdlink_cnt + HDLINK_CNT) *
-+						sizeof (struct hdlink_s))) == NULL) {
-+					com_err(name, errno, "Not enough memory");
-+					return errno;
-+				}
-+				hdlink_cnt += HDLINK_CNT;
-+			}
-+			hdlinks.hdl[hdlinks.count].src_ino = st.st_ino;
-+			hdlinks.hdl[hdlinks.count].dst_ino = ino;
-+			hdlinks.count++;
-+		}
- 	}
- 	closedir(dh);
- 	return retval;
-diff --git a/misc/create_inode.h b/misc/create_inode.h
-index 9fc97fa..2b6d429 100644
---- a/misc/create_inode.h
-+++ b/misc/create_inode.h
-@@ -6,9 +6,27 @@
- #include "ext2fs/ext2fs.h"
- #include "nls-enable.h"
- 
-+struct hdlink_s
-+{
-+	ext2_ino_t src_ino;
-+	ext2_ino_t dst_ino;
-+};
-+
-+struct hdlinks_s
-+{
-+	int count;
-+	struct hdlink_s *hdl;
-+};
-+
-+struct hdlinks_s hdlinks;
-+
- ext2_filsys    current_fs;
- ext2_ino_t     root;
- 
-+/* For saving the hard links */
-+#define HDLINK_CNT     4
-+extern int hdlink_cnt;
-+
- /* For populating the filesystem */
- extern errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir);
- extern errcode_t do_mknod_internal(ext2_ino_t cwd, const char *name, struct stat *st);
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index eab5463..10cdfd2 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -2802,6 +2802,18 @@ no_journal:
- 		if (!quiet)
- 			printf("%s", _("Copying files into the device: "));
- 
-+		/*
-+		 * Allocate memory for the hardlinks, we don't need free()
-+		 * since the lifespan will be over after the fs populated.
-+		 */
-+		if ((hdlinks.hdl = (struct hdlink_s *)
-+				malloc(hdlink_cnt * sizeof(struct hdlink_s))) == NULL) {
-+			fprintf(stderr, "%s", _("\nNot enough memory\n"));
-+			retval = ext2fs_close(fs);
-+			return retval;
-+		}
-+
-+		hdlinks.count = 0;
- 		current_fs = fs;
- 		root = EXT2_ROOT_INO;
- 		retval = populate_fs(root, root_dir);
--- 
-1.7.10.4
-
+> 
+> 								Honza
+> 
+> > Cc: "Theodore Ts'o" <tytso@mit.edu>
+> > Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+> > Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+> > ---
+> >  fs/ext4/extents_status.c |   38 +++++++++++++++++++-------------------
+> >  fs/ext4/extents_status.h |    2 ++
+> >  2 files changed, 21 insertions(+), 19 deletions(-)
+> > 
+> > diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+> > index e842d74..11bdb2f 100644
+> > --- a/fs/ext4/extents_status.c
+> > +++ b/fs/ext4/extents_status.c
+> > @@ -169,6 +169,7 @@ void ext4_exit_es(void)
+> >  void ext4_es_init_tree(struct ext4_es_tree *tree)
+> >  {
+> >  	tree->root = RB_ROOT;
+> > +	INIT_HLIST_HEAD(&tree->evictable_list);
+> >  	tree->cache_es = NULL;
+> >  }
+> >  
+> > @@ -300,10 +301,14 @@ static struct extent_status *
+> >  ext4_es_alloc_extent(struct inode *inode, ext4_lblk_t lblk, ext4_lblk_t len,
+> >  		     ext4_fsblk_t pblk)
+> >  {
+> > +	struct ext4_inode_info *ei = EXT4_I(inode);
+> >  	struct extent_status *es;
+> > +
+> >  	es = kmem_cache_alloc(ext4_es_cachep, GFP_ATOMIC);
+> >  	if (es == NULL)
+> >  		return NULL;
+> > +
+> > +	INIT_HLIST_NODE(&es->es_list);
+> >  	es->es_lblk = lblk;
+> >  	es->es_len = len;
+> >  	es->es_pblk = pblk;
+> > @@ -312,8 +317,9 @@ ext4_es_alloc_extent(struct inode *inode, ext4_lblk_t lblk, ext4_lblk_t len,
+> >  	 * We don't count delayed extent because we never try to reclaim them
+> >  	 */
+> >  	if (!ext4_es_is_delayed(es)) {
+> > -		EXT4_I(inode)->i_es_lru_nr++;
+> > +		ei->i_es_lru_nr++;
+> >  		percpu_counter_inc(&EXT4_SB(inode->i_sb)->s_extent_cache_cnt);
+> > +		hlist_add_head(&es->es_list, &ei->i_es_tree.evictable_list);
+> >  	}
+> >  
+> >  	return es;
+> > @@ -321,10 +327,12 @@ ext4_es_alloc_extent(struct inode *inode, ext4_lblk_t lblk, ext4_lblk_t len,
+> >  
+> >  static void ext4_es_free_extent(struct inode *inode, struct extent_status *es)
+> >  {
+> > +	struct ext4_inode_info *ei = EXT4_I(inode);
+> > +
+> >  	/* Decrease the lru counter when this es is not delayed */
+> >  	if (!ext4_es_is_delayed(es)) {
+> > -		BUG_ON(EXT4_I(inode)->i_es_lru_nr == 0);
+> > -		EXT4_I(inode)->i_es_lru_nr--;
+> > +		BUG_ON(ei->i_es_lru_nr-- == 0);
+> > +		hlist_del_init(&es->es_list);
+> >  		percpu_counter_dec(&EXT4_SB(inode->i_sb)->s_extent_cache_cnt);
+> >  	}
+> >  
+> > @@ -1092,8 +1100,8 @@ static int __es_try_to_reclaim_extents(struct ext4_inode_info *ei,
+> >  {
+> >  	struct inode *inode = &ei->vfs_inode;
+> >  	struct ext4_es_tree *tree = &ei->i_es_tree;
+> > -	struct rb_node *node;
+> >  	struct extent_status *es;
+> > +	struct hlist_node *tmp;
+> >  	unsigned long nr_shrunk = 0;
+> >  	static DEFINE_RATELIMIT_STATE(_rs, DEFAULT_RATELIMIT_INTERVAL,
+> >  				      DEFAULT_RATELIMIT_BURST);
+> > @@ -1105,21 +1113,13 @@ static int __es_try_to_reclaim_extents(struct ext4_inode_info *ei,
+> >  	    __ratelimit(&_rs))
+> >  		ext4_warning(inode->i_sb, "forced shrink of precached extents");
+> >  
+> > -	node = rb_first(&tree->root);
+> > -	while (node != NULL) {
+> > -		es = rb_entry(node, struct extent_status, rb_node);
+> > -		node = rb_next(&es->rb_node);
+> > -		/*
+> > -		 * We can't reclaim delayed extent from status tree because
+> > -		 * fiemap, bigallic, and seek_data/hole need to use it.
+> > -		 */
+> > -		if (!ext4_es_is_delayed(es)) {
+> > -			rb_erase(&es->rb_node, &tree->root);
+> > -			ext4_es_free_extent(inode, es);
+> > -			nr_shrunk++;
+> > -			if (--nr_to_scan == 0)
+> > -				break;
+> > -		}
+> > +	hlist_for_each_entry_safe(es, tmp, &tree->evictable_list, es_list) {
+> > +		BUG_ON(ext4_es_is_delayed(es));
+> > +		rb_erase(&es->rb_node, &tree->root);
+> > +		ext4_es_free_extent(inode, es);
+> > +		nr_shrunk++;
+> > +		if (--nr_to_scan == 0)
+> > +			break;
+> >  	}
+> >  	tree->cache_es = NULL;
+> >  	return nr_shrunk;
+> > diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
+> > index 167f4ab8..38ca83e 100644
+> > --- a/fs/ext4/extents_status.h
+> > +++ b/fs/ext4/extents_status.h
+> > @@ -54,6 +54,7 @@ struct ext4_extent;
+> >  
+> >  struct extent_status {
+> >  	struct rb_node rb_node;
+> > +	struct hlist_node es_list;
+> >  	ext4_lblk_t es_lblk;	/* first logical block extent covers */
+> >  	ext4_lblk_t es_len;	/* length of extent in block */
+> >  	ext4_fsblk_t es_pblk;	/* first physical block */
+> > @@ -61,6 +62,7 @@ struct extent_status {
+> >  
+> >  struct ext4_es_tree {
+> >  	struct rb_root root;
+> > +	struct hlist_head evictable_list;
+> >  	struct extent_status *cache_es;	/* recently accessed extent */
+> >  };
+> >  
+> > -- 
+> > 1.7.9.7
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> -- 
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
