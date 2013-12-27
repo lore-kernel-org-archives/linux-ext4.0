@@ -1,56 +1,79 @@
 From: Robert Yang <liezhi.yang@windriver.com>
-Subject: Re: [PATCH 05/10] misc/create_inode.c: copy regular file
-Date: Fri, 27 Dec 2013 09:48:04 +0800
-Message-ID: <52BCDC54.9000109@windriver.com>
-References: <1387800600-13718-1-git-send-email-liezhi.yang@windriver.com> <1387800600-13718-6-git-send-email-liezhi.yang@windriver.com> <1387827139.5088.69.camel@dvhart-mobl4.amr.corp.intel.com> <20131226160335.GA23928@thunk.org>
+Subject: [PATCH V3 00/11] e2fsprogs/mke2fs: add an option: -d root-directory
+Date: Fri, 27 Dec 2013 04:08:54 -0500
+Message-ID: <1388135345-2006-1-git-send-email-liezhi.yang@windriver.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain
 Cc: <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Darren Hart <dvhart@linux.intel.com>
+To: <tytso@mit.edu>, <dvhart@linux.intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail1.windriver.com ([147.11.146.13]:59905 "EHLO
+Received: from mail1.windriver.com ([147.11.146.13]:36196 "EHLO
 	mail1.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753920Ab3L0BsK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Dec 2013 20:48:10 -0500
-In-Reply-To: <20131226160335.GA23928@thunk.org>
+	with ESMTP id S1754119Ab3L0JJL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Dec 2013 04:09:11 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+* Changes of V3:
+  - __FUNCTION__ -> __func__
+  - Rebase to the up to date master branch
+  - Created a PULL on the github, so that I can update the patch easily.
 
-Hi Ted,
+* Changes of V2:
+  - Add the "-d" option when the code is ready rather than add it in the
+    first commit.
+  - Remove "name = name"
+  - func_name -> __FUNCTION__
+  - The size impact on mke2fs:
+    a) Not stripped:
+       1,837,440 -> 1,903,522 (64K increased)
+    b) Stripped:
+       329,464 -> 321,272 (8K increased) 
+    No impact on tune2fs
 
-Thanks for the reply, I will update it.
+* Changes from the RFC patches:
+  - Move the common code of debugfs and mke2fs to misc/create_inode.c to
+    avoid bloating the tune2fs binary
+  - Fix the error of "make check"
+  - Rebase to the up to date master branch
 
 // Robert
 
-On 12/27/2013 12:03 AM, Theodore Ts'o wrote:
-> On Mon, Dec 23, 2013 at 11:32:19AM -0800, Darren Hart wrote:
->>
->> Does __FUNCTION__ not provide this same functionality in this context?
->> No need to store this explicitly is there?
->
-> Note: __func__ (which is specified by C99, and supported by newer
-> GCC's) is preferred over __FUNCTION__.
->
-> If we really care about supporting older versions of GCC, we could do
-> this:
->
->       #if __STDC_VERSION__ < 199901L
->       # if __GNUC__ >= 2
->       #  define __func__ __FUNCTION__
->       # else
->       #  define __func__ "<unknown>"
->       # endif
->       #endif
->
-> Cheers,
->
-> 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
+The following changes since commit 2ffccc82c4b9ed935e45118e325896b70e9e3eb0:
+
+  Merge branch 'maint' into next (2013-12-26 00:30:56 -0500)
+
+are available in the git repository at: 
+
+
+  https://github.com/robertlinux/e2fsprogs.git master
+
+for you to fetch changes up to 77449096c06dade289a582c34da1c21389c15725:
+
+  mke2fs.8.in: update the manual for the -d option (2013-12-27 03:36:01 -0500)
+
+----------------------------------------------------------------
+Robert Yang (11):
+      mke2fs: add the ability to copy files from a given directory
+      misc/create_inode.c: copy files recursively
+      misc/create_inode.c: create special file
+      misc/create_inode.c: create symlink
+      misc/create_inode.c: copy regular file
+      misc/create_inode.c: create directory
+      misc/create_inode.c: set owner/mode/time for the inode
+      mke2fs.c: add an option: -d root-directory
+      misc/create_inode.c: handle hardlinks
+      debugfs: use the functions in misc/create_inode.c
+      mke2fs.8.in: update the manual for the -d option
+
+ debugfs/Makefile.in |   17 ++++-
+ debugfs/debugfs.c   |  305 +++++---------------------------------------------------------------------------------
+ debugfs/debugfs.h   |    1 + 
+ misc/Makefile.in    |   13 ++--
+ misc/create_inode.c |  574 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ misc/create_inode.h |   35 ++++++++++
+ misc/mke2fs.8.in    |    7 ++
+ misc/mke2fs.c       |   44 ++++++++++---
+ 8 files changed, 691 insertions(+), 305 deletions(-)
+ create mode 100644 misc/create_inode.c
+ create mode 100644 misc/create_inode.h
