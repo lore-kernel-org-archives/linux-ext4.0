@@ -1,146 +1,73 @@
 From: Robert Yang <liezhi.yang@windriver.com>
-Subject: [PATCH V3 02/11] misc/create_inode.c: copy files recursively
-Date: Fri, 27 Dec 2013 04:08:56 -0500
-Message-ID: <1388135345-2006-3-git-send-email-liezhi.yang@windriver.com>
+Subject: [PATCH V3 06/11] misc/create_inode.c: create directory
+Date: Fri, 27 Dec 2013 04:09:00 -0500
+Message-ID: <1388135345-2006-7-git-send-email-liezhi.yang@windriver.com>
 References: <1388135345-2006-1-git-send-email-liezhi.yang@windriver.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: <linux-ext4@vger.kernel.org>
 To: <tytso@mit.edu>, <dvhart@linux.intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail1.windriver.com ([147.11.146.13]:36202 "EHLO
+Received: from mail1.windriver.com ([147.11.146.13]:36215 "EHLO
 	mail1.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754230Ab3L0JJN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Dec 2013 04:09:13 -0500
+	with ESMTP id S1754230Ab3L0JJU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Dec 2013 04:09:20 -0500
 In-Reply-To: <1388135345-2006-1-git-send-email-liezhi.yang@windriver.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Use opendir() and readdir() to read the native directory, then use
-lstat() to identify the file type and call the corresponding function to
-add the file to the filesystem, call the populate_fs() recursively if it
-is a directory.
-
-NOTE: the libext2fs can't create the socket file.
+The do_mkdir_internal() is used for making dir on the target fs, most of
+the code are from debugfs/debugfs.c, the debugfs/debugfs.c will be
+modified to use this function.
 
 Signed-off-by: Robert Yang <liezhi.yang@windriver.com>
 Reviewed-by: Darren Hart <dvhart@linux.intel.com>
 ---
- misc/create_inode.c |   97 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 97 insertions(+)
+ misc/create_inode.c |   31 +++++++++++++++++++++++++++++++
+ 1 file changed, 31 insertions(+)
 
 diff --git a/misc/create_inode.c b/misc/create_inode.c
-index 46aaa60..7f98499 100644
+index cea0109..15d0f17 100644
 --- a/misc/create_inode.c
 +++ b/misc/create_inode.c
-@@ -1,5 +1,13 @@
- #include "create_inode.h"
- 
-+#if __STDC_VERSION__ < 199901L
-+# if __GNUC__ >= 2
-+#  define __func__ __FUNCTION__
-+# else
-+#  define __func__ "<unknown>"
-+# endif
-+#endif
-+
- /* Make a special file which is block, character and fifo */
- errcode_t do_mknod_internal(ext2_ino_t cwd, const char *name, struct stat *st)
+@@ -135,6 +135,37 @@ try_again:
+ /* Make a directory in the fs */
+ errcode_t do_mkdir_internal(ext2_ino_t cwd, const char *name, struct stat *st)
  {
-@@ -23,4 +31,93 @@ errcode_t do_write_internal(ext2_ino_t cwd, const char *src, const char *dest)
- /* Copy files from source_dir to fs */
- errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir)
- {
-+	const char	*name;
-+	DIR		*dh;
-+	struct dirent	*dent;
-+	struct stat	st;
-+	char		ln_target[PATH_MAX];
-+	ext2_ino_t	ino;
-+	errcode_t	retval;
-+	int		read_cnt;
++	char			*cp;
++	ext2_ino_t		parent_ino, ino;
++	errcode_t		retval;
++	struct ext2_inode	inode;
 +
-+	root = EXT2_ROOT_INO;
 +
-+	if (chdir(source_dir) < 0) {
-+		com_err(__func__, errno,
-+			_("while changing working directory to \"%s\""), source_dir);
-+		return errno;
-+	}
-+
-+	if (!(dh = opendir("."))) {
-+		com_err(__func__, errno,
-+			_("while openning directory \"%s\""), source_dir);
-+		return errno;
-+	}
-+
-+	while((dent = readdir(dh))) {
-+		if((!strcmp(dent->d_name, ".")) || (!strcmp(dent->d_name, "..")))
-+			continue;
-+		lstat(dent->d_name, &st);
-+		name = dent->d_name;
-+
-+		switch(st.st_mode & S_IFMT) {
-+			case S_IFCHR:
-+			case S_IFBLK:
-+			case S_IFIFO:
-+				if ((retval = do_mknod_internal(parent_ino, name, &st))) {
-+					com_err(__func__, retval,
-+						_("while creating special file \"%s\""), name);
-+					return retval;
-+				}
-+				break;
-+			case S_IFSOCK:
-+				/* FIXME: there is no make socket function atm. */
-+				com_err(__func__, 0,
-+					_("ignoring socket file\"%s\""), name);
-+				break;
-+			case S_IFLNK:
-+				if((read_cnt = readlink(name, ln_target, sizeof(ln_target))) == -1) {
-+					com_err(__func__, errno,
-+						_("while trying to readlink \"%s\""), name);
-+					return errno;
-+				}
-+				ln_target[read_cnt] = '\0';
-+				if ((retval = do_symlink_internal(parent_ino, name, ln_target))) {
-+					com_err(__func__, retval,
-+						_("while writing symlink\"%s\""), name);
-+					return retval;
-+				}
-+				break;
-+			case S_IFREG:
-+				if ((retval = do_write_internal(parent_ino, name, name))) {
-+					com_err(__func__, retval,
-+						_("while writing file \"%s\""), name);
-+					return retval;
-+				}
-+				break;
-+			case S_IFDIR:
-+				if ((retval = do_mkdir_internal(parent_ino, name, &st))) {
-+					com_err(__func__, retval,
-+						_("while making dir \"%s\""), name);
-+					return retval;
-+				}
-+				if ((retval = ext2fs_namei(current_fs, root, parent_ino, name, &ino))) {
-+					com_err(name, retval, 0);
-+						return retval;
-+				}
-+				/* Populate the dir recursively*/
-+				retval = populate_fs(ino, name);
-+				if (retval) {
-+					com_err(__func__, retval, _("while adding dir \"%s\""), name);
-+					return retval;
-+				}
-+				chdir("..");
-+				break;
-+			default:
-+				com_err(__func__, 0,
-+					_("ignoring entry \"%s\""), name);
++	cp = strrchr(name, '/');
++	if (cp) {
++		*cp = 0;
++		if ((retval =  ext2fs_namei(current_fs, root, cwd, name, &parent_ino))){
++			com_err(name, retval, 0);
++			return retval;
 +		}
++		name = cp+1;
++	} else
++		parent_ino = cwd;
++
++try_again:
++	retval = ext2fs_mkdir(current_fs, parent_ino, 0, name);
++	if (retval == EXT2_ET_DIR_NO_SPACE) {
++		retval = ext2fs_expand_dir(current_fs, parent_ino);
++		if (retval) {
++			com_err(__func__, retval, "while expanding directory");
++			return retval;
++		}
++		goto try_again;
 +	}
-+	closedir(dh);
-+	return retval;
++	if (retval) {
++		com_err("ext2fs_mkdir", retval, 0);
++		return retval;
++	}
  }
+ 
+ static errcode_t copy_file(int fd, ext2_ino_t newfile, int bufsize, int make_holes)
 -- 
 1.7.10.4
 
