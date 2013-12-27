@@ -1,114 +1,146 @@
 From: Robert Yang <liezhi.yang@windriver.com>
-Subject: [PATCH V3 03/11] misc/create_inode.c: create special file
-Date: Fri, 27 Dec 2013 04:08:57 -0500
-Message-ID: <1388135345-2006-4-git-send-email-liezhi.yang@windriver.com>
+Subject: [PATCH V3 02/11] misc/create_inode.c: copy files recursively
+Date: Fri, 27 Dec 2013 04:08:56 -0500
+Message-ID: <1388135345-2006-3-git-send-email-liezhi.yang@windriver.com>
 References: <1388135345-2006-1-git-send-email-liezhi.yang@windriver.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: <linux-ext4@vger.kernel.org>
 To: <tytso@mit.edu>, <dvhart@linux.intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.windriver.com ([147.11.1.11]:55089 "EHLO
-	mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754259Ab3L0JJP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Dec 2013 04:09:15 -0500
+Received: from mail1.windriver.com ([147.11.146.13]:36202 "EHLO
+	mail1.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754230Ab3L0JJN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Dec 2013 04:09:13 -0500
 In-Reply-To: <1388135345-2006-1-git-send-email-liezhi.yang@windriver.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The do_mknod_internal() is used for creating special file which is
-block, character and fifo, most of the code are from debugfs/debugfs.c,
-the debugfs/debugfs.c will be modified to use this function.
+Use opendir() and readdir() to read the native directory, then use
+lstat() to identify the file type and call the corresponding function to
+add the file to the filesystem, call the populate_fs() recursively if it
+is a directory.
+
+NOTE: the libext2fs can't create the socket file.
 
 Signed-off-by: Robert Yang <liezhi.yang@windriver.com>
 Reviewed-by: Darren Hart <dvhart@linux.intel.com>
 ---
- misc/create_inode.c |   72 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 72 insertions(+)
+ misc/create_inode.c |   97 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 97 insertions(+)
 
 diff --git a/misc/create_inode.c b/misc/create_inode.c
-index 7f98499..cea37c9 100644
+index 46aaa60..7f98499 100644
 --- a/misc/create_inode.c
 +++ b/misc/create_inode.c
-@@ -11,6 +11,78 @@
+@@ -1,5 +1,13 @@
+ #include "create_inode.h"
+ 
++#if __STDC_VERSION__ < 199901L
++# if __GNUC__ >= 2
++#  define __func__ __FUNCTION__
++# else
++#  define __func__ "<unknown>"
++# endif
++#endif
++
  /* Make a special file which is block, character and fifo */
  errcode_t do_mknod_internal(ext2_ino_t cwd, const char *name, struct stat *st)
  {
-+	ext2_ino_t		ino;
-+	errcode_t 		retval;
-+	struct ext2_inode	inode;
-+	unsigned long		major, minor, mode;
-+	int			filetype;
+@@ -23,4 +31,93 @@ errcode_t do_write_internal(ext2_ino_t cwd, const char *src, const char *dest)
+ /* Copy files from source_dir to fs */
+ errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir)
+ {
++	const char	*name;
++	DIR		*dh;
++	struct dirent	*dent;
++	struct stat	st;
++	char		ln_target[PATH_MAX];
++	ext2_ino_t	ino;
++	errcode_t	retval;
++	int		read_cnt;
 +
-+	switch(st->st_mode & S_IFMT) {
-+		case S_IFCHR:
-+			mode = LINUX_S_IFCHR;
-+			filetype = EXT2_FT_CHRDEV;
-+			break;
-+		case S_IFBLK:
-+			mode = LINUX_S_IFBLK;
-+			filetype =  EXT2_FT_BLKDEV;
-+			break;
-+		case S_IFIFO:
-+			mode = LINUX_S_IFIFO;
-+			filetype = EXT2_FT_FIFO;
-+			break;
++	root = EXT2_ROOT_INO;
++
++	if (chdir(source_dir) < 0) {
++		com_err(__func__, errno,
++			_("while changing working directory to \"%s\""), source_dir);
++		return errno;
 +	}
 +
-+	if (!(current_fs->flags & EXT2_FLAG_RW)) {
-+		com_err(__func__, 0, "Filesystem opened read/only");
-+		return -1;
-+	}
-+	retval = ext2fs_new_inode(current_fs, cwd, 010755, 0, &ino);
-+	if (retval) {
-+		com_err(__func__, retval, 0);
-+		return retval;
++	if (!(dh = opendir("."))) {
++		com_err(__func__, errno,
++			_("while openning directory \"%s\""), source_dir);
++		return errno;
 +	}
 +
-+#ifdef DEBUGFS
-+	printf("Allocated inode: %u\n", ino);
-+#endif
-+	retval = ext2fs_link(current_fs, cwd, name, ino, filetype);
-+	if (retval == EXT2_ET_DIR_NO_SPACE) {
-+		retval = ext2fs_expand_dir(current_fs, cwd);
-+		if (retval) {
-+			com_err(__func__, retval, "while expanding directory");
-+			return retval;
++	while((dent = readdir(dh))) {
++		if((!strcmp(dent->d_name, ".")) || (!strcmp(dent->d_name, "..")))
++			continue;
++		lstat(dent->d_name, &st);
++		name = dent->d_name;
++
++		switch(st.st_mode & S_IFMT) {
++			case S_IFCHR:
++			case S_IFBLK:
++			case S_IFIFO:
++				if ((retval = do_mknod_internal(parent_ino, name, &st))) {
++					com_err(__func__, retval,
++						_("while creating special file \"%s\""), name);
++					return retval;
++				}
++				break;
++			case S_IFSOCK:
++				/* FIXME: there is no make socket function atm. */
++				com_err(__func__, 0,
++					_("ignoring socket file\"%s\""), name);
++				break;
++			case S_IFLNK:
++				if((read_cnt = readlink(name, ln_target, sizeof(ln_target))) == -1) {
++					com_err(__func__, errno,
++						_("while trying to readlink \"%s\""), name);
++					return errno;
++				}
++				ln_target[read_cnt] = '\0';
++				if ((retval = do_symlink_internal(parent_ino, name, ln_target))) {
++					com_err(__func__, retval,
++						_("while writing symlink\"%s\""), name);
++					return retval;
++				}
++				break;
++			case S_IFREG:
++				if ((retval = do_write_internal(parent_ino, name, name))) {
++					com_err(__func__, retval,
++						_("while writing file \"%s\""), name);
++					return retval;
++				}
++				break;
++			case S_IFDIR:
++				if ((retval = do_mkdir_internal(parent_ino, name, &st))) {
++					com_err(__func__, retval,
++						_("while making dir \"%s\""), name);
++					return retval;
++				}
++				if ((retval = ext2fs_namei(current_fs, root, parent_ino, name, &ino))) {
++					com_err(name, retval, 0);
++						return retval;
++				}
++				/* Populate the dir recursively*/
++				retval = populate_fs(ino, name);
++				if (retval) {
++					com_err(__func__, retval, _("while adding dir \"%s\""), name);
++					return retval;
++				}
++				chdir("..");
++				break;
++			default:
++				com_err(__func__, 0,
++					_("ignoring entry \"%s\""), name);
 +		}
-+		retval = ext2fs_link(current_fs, cwd, name, ino, filetype);
 +	}
-+	if (retval) {
-+		com_err(name, retval, 0);
-+		return -1;
-+	}
-+        if (ext2fs_test_inode_bitmap2(current_fs->inode_map, ino))
-+		com_err(__func__, 0, "Warning: inode already set");
-+	ext2fs_inode_alloc_stats2(current_fs, ino, +1, 0);
-+	memset(&inode, 0, sizeof(inode));
-+	inode.i_mode = mode;
-+	inode.i_atime = inode.i_ctime = inode.i_mtime =
-+		current_fs->now ? current_fs->now : time(0);
-+
-+	major = major(st->st_rdev);
-+	minor = minor(st->st_rdev);
-+
-+	if ((major < 256) && (minor < 256)) {
-+		inode.i_block[0] = major * 256 + minor;
-+		inode.i_block[1] = 0;
-+	} else {
-+		inode.i_block[0] = 0;
-+		inode.i_block[1] = (minor & 0xff) | (major << 8) | ((minor & ~0xff) << 12);
-+	}
-+	inode.i_links_count = 1;
-+
-+	retval = ext2fs_write_new_inode(current_fs, ino, &inode);
-+	if (retval)
-+		com_err(__func__, retval, "while creating inode %u", ino);
-+
++	closedir(dh);
 +	return retval;
  }
- 
- /* Make a symlink name -> target */
 -- 
 1.7.10.4
 
