@@ -1,235 +1,178 @@
 From: Robert Yang <liezhi.yang@windriver.com>
-Subject: [PATCH V3 05/11] misc/create_inode.c: copy regular file
-Date: Fri, 27 Dec 2013 04:08:59 -0500
-Message-ID: <1388135345-2006-6-git-send-email-liezhi.yang@windriver.com>
+Subject: [PATCH V3 08/11] mke2fs.c: add an option: -d root-directory
+Date: Fri, 27 Dec 2013 04:09:02 -0500
+Message-ID: <1388135345-2006-9-git-send-email-liezhi.yang@windriver.com>
 References: <1388135345-2006-1-git-send-email-liezhi.yang@windriver.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: <linux-ext4@vger.kernel.org>
 To: <tytso@mit.edu>, <dvhart@linux.intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.windriver.com ([147.11.1.11]:55102 "EHLO
+Received: from mail.windriver.com ([147.11.1.11]:55138 "EHLO
 	mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754225Ab3L0JJS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Dec 2013 04:09:18 -0500
+	with ESMTP id S1754299Ab3L0JJY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Dec 2013 04:09:24 -0500
 In-Reply-To: <1388135345-2006-1-git-send-email-liezhi.yang@windriver.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The do_write_internal() is used for copying file from native fs to
-target, most of the code are from debugfs/debugfs.c, the
-debugfs/debugfs.c will be modified to use this function.
+This option is used for adding the files from a given directory (the
+root-directory) to the filesystem, it is similiar to genext2fs, but
+genext2fs doesn't fully support ext4.
 
 Signed-off-by: Robert Yang <liezhi.yang@windriver.com>
 Reviewed-by: Darren Hart <dvhart@linux.intel.com>
 ---
- misc/create_inode.c |  183 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 183 insertions(+)
+ misc/Makefile.in |   13 +++++++++----
+ misc/mke2fs.c    |   32 +++++++++++++++++++++++---------
+ 2 files changed, 32 insertions(+), 13 deletions(-)
 
-diff --git a/misc/create_inode.c b/misc/create_inode.c
-index 20bfb80..cea0109 100644
---- a/misc/create_inode.c
-+++ b/misc/create_inode.c
-@@ -8,6 +8,16 @@
- # endif
+diff --git a/misc/Makefile.in b/misc/Makefile.in
+index 553c361..15860dd 100644
+--- a/misc/Makefile.in
++++ b/misc/Makefile.in
+@@ -42,7 +42,7 @@ LPROGS=		@E2INITRD_PROG@
+ 
+ TUNE2FS_OBJS=	tune2fs.o util.o
+ MKLPF_OBJS=	mklost+found.o
+-MKE2FS_OBJS=	mke2fs.o util.o profile.o prof_err.o default_profile.o
++MKE2FS_OBJS=	mke2fs.o util.o profile.o prof_err.o default_profile.o create_inode.o
+ CHATTR_OBJS=	chattr.o
+ LSATTR_OBJS=	lsattr.o
+ UUIDGEN_OBJS=	uuidgen.o
+@@ -60,7 +60,8 @@ E2FREEFRAG_OBJS= e2freefrag.o
+ PROFILED_TUNE2FS_OBJS=	profiled/tune2fs.o profiled/util.o
+ PROFILED_MKLPF_OBJS=	profiled/mklost+found.o
+ PROFILED_MKE2FS_OBJS=	profiled/mke2fs.o profiled/util.o profiled/profile.o \
+-			profiled/prof_err.o profiled/default_profile.o
++			profiled/prof_err.o profiled/default_profile.o \
++			profiled/create_inode.o
+ PROFILED_CHATTR_OBJS=	profiled/chattr.o
+ PROFILED_LSATTR_OBJS=	profiled/lsattr.o
+ PROFILED_UUIDGEN_OBJS=	profiled/uuidgen.o
+@@ -82,7 +83,7 @@ SRCS=	$(srcdir)/tune2fs.c $(srcdir)/mklost+found.c $(srcdir)/mke2fs.c \
+ 		$(srcdir)/uuidgen.c $(srcdir)/blkid.c $(srcdir)/logsave.c \
+ 		$(srcdir)/filefrag.c $(srcdir)/base_device.c \
+ 		$(srcdir)/ismounted.c $(srcdir)/../e2fsck/profile.c \
+-		$(srcdir)/e2undo.c $(srcdir)/e2freefrag.c
++		$(srcdir)/e2undo.c $(srcdir)/e2freefrag.c $(srcdir)/create_inode.c
+ 
+ LIBS= $(LIBEXT2FS) $(LIBCOM_ERR) 
+ DEPLIBS= $(LIBEXT2FS) $(DEPLIBCOM_ERR)
+@@ -630,7 +631,7 @@ mke2fs.o: $(srcdir)/mke2fs.c $(top_builddir)/lib/config.h \
+  $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
+  $(top_srcdir)/lib/e2p/e2p.h $(top_srcdir)/lib/ext2fs/ext2fs.h \
+  $(srcdir)/util.h profile.h prof_err.h $(top_srcdir)/version.h \
+- $(srcdir)/nls-enable.h $(top_srcdir)/lib/quota/mkquota.h \
++ $(srcdir)/nls-enable.h $(top_srcdir)/lib/quota/mkquota.h $(srcdir)/create_inode.h\
+  $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
+  $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h
+ chattr.o: $(srcdir)/chattr.c $(top_builddir)/lib/config.h \
+@@ -710,3 +711,7 @@ e2freefrag.o: $(srcdir)/e2freefrag.c $(top_builddir)/lib/config.h \
+  $(top_srcdir)/lib/ext2fs/ext2_io.h $(top_builddir)/lib/ext2fs/ext2_err.h \
+  $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
+  $(srcdir)/e2freefrag.h
++create_inode.o: $(srcdir)/create_inode.h $(srcdir)/create_inode.c \
++ $(top_builddir)/lib/config.h $(top_srcdir)/lib/ext2fs/ext2fs.h \
++ $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/e2p/e2p.h \
++ $(srcdir)/nls-enable.h
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index 64d5a46..5a908d1 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -22,7 +22,6 @@
+ #include <stdio.h>
+ #include <string.h>
+ #include <strings.h>
+-#include <fcntl.h>
+ #include <ctype.h>
+ #include <time.h>
+ #ifdef __linux__
+@@ -44,24 +43,19 @@ extern int optind;
+ #include <errno.h>
  #endif
+ #include <sys/ioctl.h>
+-#include <sys/types.h>
+-#include <sys/stat.h>
+ #include <libgen.h>
+ #include <limits.h>
+ #include <blkid/blkid.h>
  
-+/* 64KiB is the minimium blksize to best minimize system call overhead. */
-+#ifndef IO_BUFSIZE
-+#define IO_BUFSIZE 64*1024
-+#endif
-+
-+/* Block size for `st_blocks' */
-+#ifndef S_BLKSIZE
-+#define S_BLKSIZE 512
-+#endif
-+
- /* Make a special file which is block, character and fifo */
- errcode_t do_mknod_internal(ext2_ino_t cwd, const char *name, struct stat *st)
- {
-@@ -127,9 +137,182 @@ errcode_t do_mkdir_internal(ext2_ino_t cwd, const char *name, struct stat *st)
- {
- }
+ #include "ext2fs/ext2_fs.h"
+ #include "ext2fs/ext2fsP.h"
+-#include "et/com_err.h"
+ #include "uuid/uuid.h"
+-#include "e2p/e2p.h"
+-#include "ext2fs/ext2fs.h"
+ #include "util.h"
+ #include "profile.h"
+ #include "prof_err.h"
+ #include "../version.h"
+-#include "nls-enable.h"
+ #include "quota/mkquota.h"
++#include "create_inode.h"
  
-+static errcode_t copy_file(int fd, ext2_ino_t newfile, int bufsize, int make_holes)
-+{
-+	ext2_file_t	e2_file;
-+	errcode_t	retval;
-+	int		got;
-+	unsigned int	written;
-+	char		*buf;
-+	char		*ptr;
-+	char		*zero_buf;
-+	int		cmp;
-+
-+	retval = ext2fs_file_open(current_fs, newfile,
-+				  EXT2_FILE_WRITE, &e2_file);
-+	if (retval)
-+		return retval;
-+
-+	retval = ext2fs_get_mem(bufsize, &buf);
-+	if (retval) {
-+		com_err("copy_file", retval, "can't allocate buffer\n");
-+		return retval;
-+	}
-+
-+	/* This is used for checking whether the whole block is zero */
-+	retval = ext2fs_get_memzero(bufsize, &zero_buf);
-+	if (retval) {
-+		com_err("copy_file", retval, "can't allocate buffer\n");
-+		ext2fs_free_mem(&buf);
-+		return retval;
-+	}
-+
-+	while (1) {
-+		got = read(fd, buf, bufsize);
-+		if (got == 0)
+ #define STRIDE_LENGTH 8
+ 
+@@ -105,6 +99,7 @@ static char *mount_dir;
+ char *journal_device;
+ static int sync_kludge;	/* Set using the MKE2FS_SYNC env. option */
+ static char **fs_types;
++const char *root_dir;  /* Copy files from the specified directory */
+ 
+ static profile_t	profile;
+ 
+@@ -116,7 +111,8 @@ static void usage(void)
+ 	fprintf(stderr, _("Usage: %s [-c|-l filename] [-b block-size] "
+ 	"[-C cluster-size]\n\t[-i bytes-per-inode] [-I inode-size] "
+ 	"[-J journal-options]\n"
+-	"\t[-G flex-group-size] [-N number-of-inodes]\n"
++	"\t[-G flex-group-size] [-N number-of-inodes] "
++	"[-d root-directory]\n"
+ 	"\t[-m reserved-blocks-percentage] [-o creator-os]\n"
+ 	"\t[-g blocks-per-group] [-L volume-label] "
+ 	"[-M last-mounted-directory]\n\t[-O feature[,...]] "
+@@ -1434,7 +1430,7 @@ profile_error:
+ 	}
+ 
+ 	while ((c = getopt (argc, argv,
+-		    "b:cg:i:jl:m:no:qr:s:t:vC:DE:FG:I:J:KL:M:N:O:R:ST:U:V")) != EOF) {
++		    "b:cg:i:jl:m:no:qr:s:t:d:vC:DE:FG:I:J:KL:M:N:O:R:ST:U:V")) != EOF) {
+ 		switch (c) {
+ 		case 'b':
+ 			blocksize = parse_num_blocks2(optarg, -1);
+@@ -1622,6 +1618,9 @@ profile_error:
+ 		case 'U':
+ 			fs_uuid = optarg;
+ 			break;
++		case 'd':
++			root_dir = optarg;
 +			break;
-+		if (got < 0) {
-+			retval = errno;
-+			goto fail;
-+		}
-+		ptr = buf;
-+
-+		/* Sparse copy */
-+		if (make_holes) {
-+			/* Check whether all is zero */
-+			cmp = memcmp(ptr, zero_buf, got);
-+			if (cmp == 0) {
-+				 /* The whole block is zero, make a hole */
-+				retval = ext2fs_file_lseek(e2_file, got, EXT2_SEEK_CUR, NULL);
-+				if (retval)
-+					goto fail;
-+				got = 0;
-+			}
-+		}
-+
-+		/* Normal copy */
-+		while (got > 0) {
-+			retval = ext2fs_file_write(e2_file, ptr,
-+						   got, &written);
-+			if (retval)
-+				goto fail;
-+
-+			got -= written;
-+			ptr += written;
-+		}
-+	}
-+	ext2fs_free_mem(&buf);
-+	ext2fs_free_mem(&zero_buf);
-+	retval = ext2fs_file_close(e2_file);
-+	return retval;
-+
-+fail:
-+	ext2fs_free_mem(&buf);
-+	ext2fs_free_mem(&zero_buf);
-+	(void) ext2fs_file_close(e2_file);
-+	return retval;
-+}
-+
- /* Copy the native file to the fs */
- errcode_t do_write_internal(ext2_ino_t cwd, const char *src, const char *dest)
- {
-+	int		fd;
-+	struct stat	statbuf;
-+	ext2_ino_t	newfile;
-+	errcode_t	retval;
-+	struct ext2_inode inode;
-+	int		bufsize = IO_BUFSIZE;
-+	int		make_holes = 0;
-+
-+	fd = open(src, O_RDONLY);
-+	if (fd < 0) {
-+		com_err(src, errno, 0);
-+		return errno;
-+	}
-+	if (fstat(fd, &statbuf) < 0) {
-+		com_err(src, errno, 0);
-+		close(fd);
-+		return errno;
-+	}
-+
-+	retval = ext2fs_namei(current_fs, root, cwd, dest, &newfile);
-+	if (retval == 0) {
-+		com_err(__func__, 0, "The file '%s' already exists\n", dest);
-+		close(fd);
-+		return errno;
-+	}
-+
-+	retval = ext2fs_new_inode(current_fs, cwd, 010755, 0, &newfile);
-+	if (retval) {
-+		com_err(__func__, retval, 0);
-+		close(fd);
-+		return errno;
-+	}
-+#ifdef DEBUGFS
-+	printf("Allocated inode: %u\n", newfile);
-+#endif
-+	retval = ext2fs_link(current_fs, cwd, dest, newfile,
-+				EXT2_FT_REG_FILE);
-+	if (retval == EXT2_ET_DIR_NO_SPACE) {
-+		retval = ext2fs_expand_dir(current_fs, cwd);
-+		if (retval) {
-+			com_err(__func__, retval, "while expanding directory");
-+			close(fd);
-+			return errno;
-+		}
-+		retval = ext2fs_link(current_fs, cwd, dest, newfile,
-+					EXT2_FT_REG_FILE);
-+	}
-+	if (retval) {
-+		com_err(dest, retval, 0);
-+		close(fd);
-+		return errno;
-+	}
-+        if (ext2fs_test_inode_bitmap2(current_fs->inode_map, newfile))
-+		com_err(__func__, 0, "Warning: inode already set");
-+	ext2fs_inode_alloc_stats2(current_fs, newfile, +1, 0);
-+	memset(&inode, 0, sizeof(inode));
-+	inode.i_mode = (statbuf.st_mode & ~LINUX_S_IFMT) | LINUX_S_IFREG;
-+	inode.i_atime = inode.i_ctime = inode.i_mtime =
-+		current_fs->now ? current_fs->now : time(0);
-+	inode.i_links_count = 1;
-+	inode.i_size = statbuf.st_size;
-+	if (current_fs->super->s_feature_incompat &
-+	    EXT3_FEATURE_INCOMPAT_EXTENTS) {
-+		int i;
-+		struct ext3_extent_header *eh;
-+
-+		eh = (struct ext3_extent_header *) &inode.i_block[0];
-+		eh->eh_depth = 0;
-+		eh->eh_entries = 0;
-+		eh->eh_magic = ext2fs_cpu_to_le16(EXT3_EXT_MAGIC);
-+		i = (sizeof(inode.i_block) - sizeof(*eh)) /
-+			sizeof(struct ext3_extent);
-+		eh->eh_max = ext2fs_cpu_to_le16(i);
-+		inode.i_flags |= EXT4_EXTENTS_FL;
-+	}
-+
-+	if ((retval = ext2fs_write_new_inode(current_fs, newfile, &inode))) {
-+		com_err(__func__, retval, "while creating inode %u", newfile);
-+		close(fd);
-+		return errno;
-+	}
-+	if (LINUX_S_ISREG(inode.i_mode)) {
-+		if (statbuf.st_blocks < statbuf.st_size / S_BLKSIZE) {
-+			make_holes = 1;
-+			/*
-+			 * Use I/O blocksize as buffer size when
-+			 * copying sparse files.
-+			 */
-+			bufsize = statbuf.st_blksize;
-+		}
-+		retval = copy_file(fd, newfile, bufsize, make_holes);
-+		if (retval)
-+			com_err("copy_file", retval, 0);
-+	}
-+	close(fd);
-+
-+	return 0;
- }
+ 		case 'v':
+ 			verbose = 1;
+ 			break;
+@@ -2829,6 +2828,21 @@ no_journal:
+ 				       EXT4_FEATURE_RO_COMPAT_QUOTA))
+ 		create_quota_inodes(fs);
  
- /* Copy files from source_dir to fs */
++	/* Copy files from the specified directory */
++	if (root_dir) {
++		if (!quiet)
++			printf("%s", _("Copying files into the device: "));
++
++		current_fs = fs;
++		root = EXT2_ROOT_INO;
++		retval = populate_fs(root, root_dir);
++		if (retval)
++			fprintf(stderr, "%s",
++				_("\nError while populating %s"), root_dir);
++		else if (!quiet)
++			printf("%s", _("done\n"));
++	}
++
+ 	if (!quiet)
+ 		printf("%s", _("Writing superblocks and "
+ 		       "filesystem accounting information: "));
 -- 
 1.7.10.4
 
