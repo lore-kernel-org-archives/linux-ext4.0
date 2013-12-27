@@ -1,221 +1,235 @@
 From: Robert Yang <liezhi.yang@windriver.com>
-Subject: [PATCH V3 09/11] misc/create_inode.c: handle hardlinks
-Date: Fri, 27 Dec 2013 04:09:03 -0500
-Message-ID: <1388135345-2006-10-git-send-email-liezhi.yang@windriver.com>
+Subject: [PATCH V3 05/11] misc/create_inode.c: copy regular file
+Date: Fri, 27 Dec 2013 04:08:59 -0500
+Message-ID: <1388135345-2006-6-git-send-email-liezhi.yang@windriver.com>
 References: <1388135345-2006-1-git-send-email-liezhi.yang@windriver.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: <linux-ext4@vger.kernel.org>
 To: <tytso@mit.edu>, <dvhart@linux.intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail1.windriver.com ([147.11.146.13]:36230 "EHLO
-	mail1.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754326Ab3L0JJZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Dec 2013 04:09:25 -0500
+Received: from mail.windriver.com ([147.11.1.11]:55102 "EHLO
+	mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754225Ab3L0JJS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Dec 2013 04:09:18 -0500
 In-Reply-To: <1388135345-2006-1-git-send-email-liezhi.yang@windriver.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Create the inode and save the native inode number when we meet the hard
-link (st_nlink > 1) at the first time, use ext2fs_link() to link the
-name to the target inode number when we meet the same native inode
-number again.
-
-This algorithm is referred this from the genext2fs.
+The do_write_internal() is used for copying file from native fs to
+target, most of the code are from debugfs/debugfs.c, the
+debugfs/debugfs.c will be modified to use this function.
 
 Signed-off-by: Robert Yang <liezhi.yang@windriver.com>
 Reviewed-by: Darren Hart <dvhart@linux.intel.com>
 ---
- misc/create_inode.c |   88 +++++++++++++++++++++++++++++++++++++++++++++++++++
- misc/create_inode.h |   18 +++++++++++
- misc/mke2fs.c       |   12 +++++++
- 3 files changed, 118 insertions(+)
+ misc/create_inode.c |  183 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 183 insertions(+)
 
 diff --git a/misc/create_inode.c b/misc/create_inode.c
-index 78d868f..d6e77a8 100644
+index 20bfb80..cea0109 100644
 --- a/misc/create_inode.c
 +++ b/misc/create_inode.c
-@@ -18,6 +18,44 @@
- #define S_BLKSIZE 512
+@@ -8,6 +8,16 @@
+ # endif
  #endif
  
-+/* For saving the hard links */
-+int hdlink_cnt = HDLINK_CNT;
++/* 64KiB is the minimium blksize to best minimize system call overhead. */
++#ifndef IO_BUFSIZE
++#define IO_BUFSIZE 64*1024
++#endif
 +
-+/* Link an inode number to a directory */
-+static errcode_t add_link(ext2_ino_t parent_ino, ext2_ino_t ino, const char *name)
-+{
-+	struct ext2_inode	inode;
-+	errcode_t		retval;
++/* Block size for `st_blocks' */
++#ifndef S_BLKSIZE
++#define S_BLKSIZE 512
++#endif
 +
-+	retval = ext2fs_read_inode(current_fs, ino, &inode);
-+        if (retval) {
-+		com_err(__func__, retval, "while reading inode %u", ino);
-+		return retval;
-+	}
-+
-+	retval = ext2fs_link(current_fs, parent_ino, name, ino, inode.i_flags);
-+	if (retval == EXT2_ET_DIR_NO_SPACE) {
-+		retval = ext2fs_expand_dir(current_fs, parent_ino);
-+		if (retval) {
-+			com_err(__func__, retval, "while expanding directory");
-+			return retval;
-+		}
-+		retval = ext2fs_link(current_fs, parent_ino, name, ino, inode.i_flags);
-+	}
-+	if (retval) {
-+		com_err(__func__, retval, "while linking %s", name);
-+		return retval;
-+	}
-+
-+	inode.i_links_count++;
-+
-+	retval = ext2fs_write_inode(current_fs, ino, &inode);
-+	if (retval)
-+		com_err(__func__, retval, "while writing inode %u", ino);
-+
-+	return retval;
-+}
-+
- /* Fill the uid, gid, mode and time for the inode */
- static void fill_inode(struct ext2_inode *inode, struct stat *st)
+ /* Make a special file which is block, character and fifo */
+ errcode_t do_mknod_internal(ext2_ino_t cwd, const char *name, struct stat *st)
  {
-@@ -278,6 +316,17 @@ fail:
- 	return retval;
+@@ -127,9 +137,182 @@ errcode_t do_mkdir_internal(ext2_ino_t cwd, const char *name, struct stat *st)
+ {
  }
  
-+int is_hardlink(ext2_ino_t ino)
++static errcode_t copy_file(int fd, ext2_ino_t newfile, int bufsize, int make_holes)
 +{
-+	int i;
++	ext2_file_t	e2_file;
++	errcode_t	retval;
++	int		got;
++	unsigned int	written;
++	char		*buf;
++	char		*ptr;
++	char		*zero_buf;
++	int		cmp;
 +
-+	for(i = 0; i < hdlinks.count; i++) {
-+		if(hdlinks.hdl[i].src_ino == ino)
-+			return i;
++	retval = ext2fs_file_open(current_fs, newfile,
++				  EXT2_FILE_WRITE, &e2_file);
++	if (retval)
++		return retval;
++
++	retval = ext2fs_get_mem(bufsize, &buf);
++	if (retval) {
++		com_err("copy_file", retval, "can't allocate buffer\n");
++		return retval;
 +	}
-+	return -1;
++
++	/* This is used for checking whether the whole block is zero */
++	retval = ext2fs_get_memzero(bufsize, &zero_buf);
++	if (retval) {
++		com_err("copy_file", retval, "can't allocate buffer\n");
++		ext2fs_free_mem(&buf);
++		return retval;
++	}
++
++	while (1) {
++		got = read(fd, buf, bufsize);
++		if (got == 0)
++			break;
++		if (got < 0) {
++			retval = errno;
++			goto fail;
++		}
++		ptr = buf;
++
++		/* Sparse copy */
++		if (make_holes) {
++			/* Check whether all is zero */
++			cmp = memcmp(ptr, zero_buf, got);
++			if (cmp == 0) {
++				 /* The whole block is zero, make a hole */
++				retval = ext2fs_file_lseek(e2_file, got, EXT2_SEEK_CUR, NULL);
++				if (retval)
++					goto fail;
++				got = 0;
++			}
++		}
++
++		/* Normal copy */
++		while (got > 0) {
++			retval = ext2fs_file_write(e2_file, ptr,
++						   got, &written);
++			if (retval)
++				goto fail;
++
++			got -= written;
++			ptr += written;
++		}
++	}
++	ext2fs_free_mem(&buf);
++	ext2fs_free_mem(&zero_buf);
++	retval = ext2fs_file_close(e2_file);
++	return retval;
++
++fail:
++	ext2fs_free_mem(&buf);
++	ext2fs_free_mem(&zero_buf);
++	(void) ext2fs_file_close(e2_file);
++	return retval;
 +}
 +
  /* Copy the native file to the fs */
  errcode_t do_write_internal(ext2_ino_t cwd, const char *src, const char *dest)
  {
-@@ -388,9 +437,11 @@ errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir)
- 	struct dirent	*dent;
- 	struct stat	st;
- 	char		ln_target[PATH_MAX];
-+	unsigned int	save_inode;
- 	ext2_ino_t	ino;
- 	errcode_t	retval;
- 	int		read_cnt;
-+	int		hdlink;
- 
- 	root = EXT2_ROOT_INO;
- 
-@@ -412,6 +463,22 @@ errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir)
- 		lstat(dent->d_name, &st);
- 		name = dent->d_name;
- 
-+		/* Check for hardlinks */
-+		save_inode = 0;
-+		if (!S_ISDIR(st.st_mode) && !S_ISLNK(st.st_mode) && st.st_nlink > 1) {
-+			hdlink = is_hardlink(st.st_ino);
-+			if (hdlink >= 0) {
-+				retval = add_link(parent_ino,
-+						hdlinks.hdl[hdlink].dst_ino, name);
-+				if (retval) {
-+					com_err(__func__, retval, "while linking %s", name);
-+					return retval;
-+				}
-+				continue;
-+			} else
-+				save_inode = 1;
++	int		fd;
++	struct stat	statbuf;
++	ext2_ino_t	newfile;
++	errcode_t	retval;
++	struct ext2_inode inode;
++	int		bufsize = IO_BUFSIZE;
++	int		make_holes = 0;
++
++	fd = open(src, O_RDONLY);
++	if (fd < 0) {
++		com_err(src, errno, 0);
++		return errno;
++	}
++	if (fstat(fd, &statbuf) < 0) {
++		com_err(src, errno, 0);
++		close(fd);
++		return errno;
++	}
++
++	retval = ext2fs_namei(current_fs, root, cwd, dest, &newfile);
++	if (retval == 0) {
++		com_err(__func__, 0, "The file '%s' already exists\n", dest);
++		close(fd);
++		return errno;
++	}
++
++	retval = ext2fs_new_inode(current_fs, cwd, 010755, 0, &newfile);
++	if (retval) {
++		com_err(__func__, retval, 0);
++		close(fd);
++		return errno;
++	}
++#ifdef DEBUGFS
++	printf("Allocated inode: %u\n", newfile);
++#endif
++	retval = ext2fs_link(current_fs, cwd, dest, newfile,
++				EXT2_FT_REG_FILE);
++	if (retval == EXT2_ET_DIR_NO_SPACE) {
++		retval = ext2fs_expand_dir(current_fs, cwd);
++		if (retval) {
++			com_err(__func__, retval, "while expanding directory");
++			close(fd);
++			return errno;
 +		}
++		retval = ext2fs_link(current_fs, cwd, dest, newfile,
++					EXT2_FT_REG_FILE);
++	}
++	if (retval) {
++		com_err(dest, retval, 0);
++		close(fd);
++		return errno;
++	}
++        if (ext2fs_test_inode_bitmap2(current_fs->inode_map, newfile))
++		com_err(__func__, 0, "Warning: inode already set");
++	ext2fs_inode_alloc_stats2(current_fs, newfile, +1, 0);
++	memset(&inode, 0, sizeof(inode));
++	inode.i_mode = (statbuf.st_mode & ~LINUX_S_IFMT) | LINUX_S_IFREG;
++	inode.i_atime = inode.i_ctime = inode.i_mtime =
++		current_fs->now ? current_fs->now : time(0);
++	inode.i_links_count = 1;
++	inode.i_size = statbuf.st_size;
++	if (current_fs->super->s_feature_incompat &
++	    EXT3_FEATURE_INCOMPAT_EXTENTS) {
++		int i;
++		struct ext3_extent_header *eh;
 +
- 		switch(st.st_mode & S_IFMT) {
- 			case S_IFCHR:
- 			case S_IFBLK:
-@@ -480,6 +547,27 @@ errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir)
- 				_("while setting inode for \"%s\""), name);
- 			return retval;
- 		}
++		eh = (struct ext3_extent_header *) &inode.i_block[0];
++		eh->eh_depth = 0;
++		eh->eh_entries = 0;
++		eh->eh_magic = ext2fs_cpu_to_le16(EXT3_EXT_MAGIC);
++		i = (sizeof(inode.i_block) - sizeof(*eh)) /
++			sizeof(struct ext3_extent);
++		eh->eh_max = ext2fs_cpu_to_le16(i);
++		inode.i_flags |= EXT4_EXTENTS_FL;
++	}
 +
-+		/* Save the hardlink ino */
-+		if (save_inode) {
++	if ((retval = ext2fs_write_new_inode(current_fs, newfile, &inode))) {
++		com_err(__func__, retval, "while creating inode %u", newfile);
++		close(fd);
++		return errno;
++	}
++	if (LINUX_S_ISREG(inode.i_mode)) {
++		if (statbuf.st_blocks < statbuf.st_size / S_BLKSIZE) {
++			make_holes = 1;
 +			/*
-+			 * Check whether need more memory, and we don't need
-+			 * free() since the lifespan will be over after the fs
-+			 * populated.
++			 * Use I/O blocksize as buffer size when
++			 * copying sparse files.
 +			 */
-+			if (hdlinks.count == hdlink_cnt) {
-+				if ((hdlinks.hdl = realloc (hdlinks.hdl,
-+						(hdlink_cnt + HDLINK_CNT) *
-+						sizeof (struct hdlink_s))) == NULL) {
-+					com_err(name, errno, "Not enough memory");
-+					return errno;
-+				}
-+				hdlink_cnt += HDLINK_CNT;
-+			}
-+			hdlinks.hdl[hdlinks.count].src_ino = st.st_ino;
-+			hdlinks.hdl[hdlinks.count].dst_ino = ino;
-+			hdlinks.count++;
++			bufsize = statbuf.st_blksize;
 +		}
- 	}
- 	closedir(dh);
- 	return retval;
-diff --git a/misc/create_inode.h b/misc/create_inode.h
-index 9fc97fa..2b6d429 100644
---- a/misc/create_inode.h
-+++ b/misc/create_inode.h
-@@ -6,9 +6,27 @@
- #include "ext2fs/ext2fs.h"
- #include "nls-enable.h"
++		retval = copy_file(fd, newfile, bufsize, make_holes);
++		if (retval)
++			com_err("copy_file", retval, 0);
++	}
++	close(fd);
++
++	return 0;
+ }
  
-+struct hdlink_s
-+{
-+	ext2_ino_t src_ino;
-+	ext2_ino_t dst_ino;
-+};
-+
-+struct hdlinks_s
-+{
-+	int count;
-+	struct hdlink_s *hdl;
-+};
-+
-+struct hdlinks_s hdlinks;
-+
- ext2_filsys    current_fs;
- ext2_ino_t     root;
- 
-+/* For saving the hard links */
-+#define HDLINK_CNT     4
-+extern int hdlink_cnt;
-+
- /* For populating the filesystem */
- extern errcode_t populate_fs(ext2_ino_t parent_ino, const char *source_dir);
- extern errcode_t do_mknod_internal(ext2_ino_t cwd, const char *name, struct stat *st);
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 5a908d1..3229d39 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -2833,6 +2833,18 @@ no_journal:
- 		if (!quiet)
- 			printf("%s", _("Copying files into the device: "));
- 
-+		/*
-+		 * Allocate memory for the hardlinks, we don't need free()
-+		 * since the lifespan will be over after the fs populated.
-+		 */
-+		if ((hdlinks.hdl = (struct hdlink_s *)
-+				malloc(hdlink_cnt * sizeof(struct hdlink_s))) == NULL) {
-+			fprintf(stderr, "%s", _("\nNot enough memory\n"));
-+			retval = ext2fs_close(fs);
-+			return retval;
-+		}
-+
-+		hdlinks.count = 0;
- 		current_fs = fs;
- 		root = EXT2_ROOT_INO;
- 		retval = populate_fs(root, root_dir);
+ /* Copy files from source_dir to fs */
 -- 
 1.7.10.4
 
