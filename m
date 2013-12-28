@@ -1,22 +1,22 @@
-From: "mr.sinzoganchabi" <valter.ciavattella@tin.it>
-Subject: I want to transfer an abandoned
-Date: Sat, 28 Dec 2013 13:20:18 +0100 (CET)
-Message-ID: <1433925db72.valter.ciavattella@tin.it>
-Reply-To: mr.sinzoganchabi11@gmail.com
+From: "LEUNG CHEUNG" <info@hotmail.com>
+Subject: Hello
+Date: Sun, 29 Dec 2013 03:15:36 +0530
+Message-ID: <20131228214356.C551A1314345__31791.458084672$1388267734$gmane$org@z-saopaulo.tjrn.jus.br>
+Reply-To: mr.leungcheng25@hotmail.com
 Mime-Version: 1.0
-Content-Type: text/plain;charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: unlisted-recipients:; (no To-header on input)
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+To: Recipients <info@hotmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp3web.tin.it ([212.216.176.237]:56049 "EHLO smtp3web.tin.it"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755313Ab3L1M16 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 28 Dec 2013 07:27:58 -0500
+Received: from smtp.tjrn.jus.br ([186.209.102.50]:48700 "EHLO
+	z-cairo.tjrn.jus.br" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751210Ab3L1Vy7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 28 Dec 2013 16:54:59 -0500
+Received: from z-cairo.tjrn.jus.br (localhost [127.0.0.1])
+	by z-cairo.tjrn.jus.br (Postfix) with ESMTP id 1D76A356F3C
+	for <linux-ext4@vger.kernel.org>; Sat, 28 Dec 2013 18:46:25 -0300 (BRT)
+Content-Description: Mail message body
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi friend I am a banker in IDB BANK. I want to transfer an abandoned 
-USD5.5Million to your Bank account. 40/percent will be your share. No 
-risk involved but keep it as secret.Contact me for more details.Please 
-I will like you to reply.
-thank you,mr.sinzogan  chabi. 
+I need your assistance to transfer $22,500,000.00 Dollars from Hong Kong
