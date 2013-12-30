@@ -1,45 +1,71 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [Lsf-pc] [LSF/MM ATTEND] Persistent Memory
-Date: Mon, 30 Dec 2013 22:04:04 +0100
-Message-ID: <20131230210404.GB5457@quack.suse.cz>
-References: <1387907056.2487.18.camel@vverma7-desk1.amr.corp.intel.com>
+Subject: Re: [RFC PATCH 2/2] ext4: improve extents status tree shrinker to
+ avoid scanning delayed entries
+Date: Mon, 30 Dec 2013 22:09:17 +0100
+Message-ID: <20131230210917.GD5457@quack.suse.cz>
+References: <1387536165-15956-1-git-send-email-wenqing.lz@taobao.com>
+ <1387536165-15956-3-git-send-email-wenqing.lz@taobao.com>
+ <20131223085419.GB9199@quack.suse.cz>
+ <20131225033448.GC23505@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "lsf-pc@lists.linux-foundation.org"
-	<lsf-pc@lists.linux-foundation.org>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: "Verma, Vishal L" <vishal.l.verma@intel.com>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:44308 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:44344 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932218Ab3L3VEH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 30 Dec 2013 16:04:07 -0500
+	id S932303Ab3L3VJU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 30 Dec 2013 16:09:20 -0500
 Content-Disposition: inline
-In-Reply-To: <1387907056.2487.18.camel@vverma7-desk1.amr.corp.intel.com>
+In-Reply-To: <20131225033448.GC23505@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Added some relevant lists to CC (please don't forget about this).
+On Wed 25-12-13 11:34:48, Zheng Liu wrote:
+> On Mon, Dec 23, 2013 at 09:54:19AM +0100, Jan Kara wrote:
+> > On Fri 20-12-13 18:42:45, Zheng Liu wrote:
+> > > From: Zheng Liu <wenqing.lz@taobao.com>
+> > > 
+> > > The extents status tree shrinker will scan all inodes on sbi->s_es_lru
+> > > under heavy memory pressure, and try to reclaim the entry from extents
+> > > status tree.  During this process it couldn't reclaim the delayed entry
+> > > because ext4 needs to use these entries to do delayed allocation space
+> > > reservation, seek_data/hole, etc....  So if a system has done a huge
+> > > number of writes and these dirty pages don't be written out.  There will
+> > > be a lot of delayed entries on extents status tree.  If shrinker tries
+> > > to reclaim memory from the tree, it will burn some CPU time to iterate
+> > > on these non-reclaimable entries.  At some circumstances it could cause
+> > > excessive stall time.
+> > > 
+> > > In this commit a new list is used to track reclaimable entries of extent
+> > > status tree (e.g. written/unwritten/hole entries).  The shrinker will
+> > > scan reclaimable entry on this list.  So it won't encouter any delayed
+> > > entry and don't need to take too much time to spin.  But the defect is
+> > > that we need to cost extra 1/3 memory space for one entry.  Before this
+> > > commit, 'struct extent_status' occupies 48 bytes on a 64bits platform.
+> > > After that it will occupy 64 bytes. :(
+> >   This looks sensible. I was just wondering about one thing: One incorrect
+> > thing the old extent shrinker does is that it tries to reclaim 'nr_to_scan'
+> > objects. That is wrong - it should *scan* 'nr_to_scan' objects and reclaim
+> > objects it can find. Now we shouldn't always start scanning at the end of
+> > the LRU because if delayed extents accumulate there we would never reclaim
+> > anything. Rather we should cycle through the list of entries we have. But
+> > that doesn't play well with the fact we have LRU list and thus want to
+> > reclaim from the end of the list. In the end what you do might be the best
+> > we can do but I wanted to mention the above just in case someone has some
+> > idea.
+> 
+> Ah, thanks for pointing it out.  So maybe we can fix this issue before
+> we are sure that the new improvement is acceptable because it makes us
+> avoid scanning too many objects.  What do you think?
+  I'm sorry but I'm not sure I understand.  By 'fix this issue' do you mean
+using your patch or somehow fixing the problem that we try to reclaim
+'nr_to_scan' objects instead of just trying to scan that many objects?
 
-On Tue 24-12-13 17:44:35, Verma, Vishal L wrote:
-> I would like to attend LSF/MM 2014 - I am especially interested in
-> discussions around persistent memory. I have been studying EXT4 and
-> researching on what we'd have to do to best enable it for
-> byte-addressable persistent memory.
-  Do you have some concrete suggestions or observations regarding this?
-Because discussing abstract ideas without actually trying something out
-beforehand doesn't usually result in a useful discussion...
- 
-> I am relatively new in the Linux kernel world, and my previous
-> experience has been with device driver work - I wrote a SCSI SG_IO
-> translation layer for the NVMe driver. I also contributed to PMFS -
-> https://github.com/linux-pmfs/pmfs which was our go-to route for
-> enabling PM in the kernel before we decided EXT4 would be a better
-> choice.
-  I would be interested what were your reasons for the decision. Can you
-elaborate a bit (that's just my personal curiosity)?
-
-							Honza
+								Honza
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
