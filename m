@@ -1,242 +1,44 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: [PATCH] debugfs: restore and tweak original error messaging
-Date: Sun, 29 Dec 2013 22:47:54 -0500
-Message-ID: <20131230034754.GA3599@wallace>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: Fwd: [PATCH] mkfs: default ipg exceeds blocksize * 8 in 64K bigalloc
+Date: Mon, 30 Dec 2013 16:02:01 +0800
+Message-ID: <CAGBYx2aKccYzUov41aHuPXF3p_wKvRSOb=wHpDdH=sZd+MuQHw@mail.gmail.com>
+References: <1388390067-1276-1-git-send-email-yangyongqiang01@baidu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	"Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qe0-f46.google.com ([209.85.128.46]:56759 "EHLO
-	mail-qe0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753454Ab3L3Dr6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 29 Dec 2013 22:47:58 -0500
-Received: by mail-qe0-f46.google.com with SMTP id a11so11151482qen.33
-        for <linux-ext4@vger.kernel.org>; Sun, 29 Dec 2013 19:47:57 -0800 (PST)
-Content-Disposition: inline
+Received: from mail-ee0-f41.google.com ([74.125.83.41]:34127 "EHLO
+	mail-ee0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751621Ab3L3ICW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Dec 2013 03:02:22 -0500
+Received: by mail-ee0-f41.google.com with SMTP id t10so4973824eei.0
+        for <linux-ext4@vger.kernel.org>; Mon, 30 Dec 2013 00:02:21 -0800 (PST)
+In-Reply-To: <1388390067-1276-1-git-send-email-yangyongqiang01@baidu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In response to reviewer comments, commit fe56188b07 included changes
-that modified some of the code used to output error messages when
-checking user-supplied block numbers.  These changes converted calls
-to parse_ulonglong() to calls to strtoblk().  Because strtoblk() calls
-parse_ulonglong(), and both output error messages, two redundant and
-relatively generic messages were output on each error.
+If bigalloc is used and the cluster size is set to 64KB, then
+default inodes per group exceeds blocksize * 8, this patch simply
+fixes it. I am not sure if the fix is reasonable.
 
-Fix this by removing the error message output from strtoblk(), and
-extending it to accept an optional error message argument that it
-supplies in lieu of a default to parse_ulonglong().  Also, revert to
-the more descriptive original error messages with mods per reviewer
-comments, and fix an error message in do_replace_node().
-
-Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
- debugfs/debugfs.c      | 15 +++++++++------
- debugfs/debugfs.h      |  3 ++-
- debugfs/extent_inode.c | 19 +++++++++----------
- debugfs/icheck.c       |  2 +-
- debugfs/util.c         | 17 ++++++++++-------
- 5 files changed, 31 insertions(+), 25 deletions(-)
+ lib/ext2fs/initialize.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-index cf7670b..998af33 100644
---- a/debugfs/debugfs.c
-+++ b/debugfs/debugfs.c
-@@ -181,7 +181,8 @@ void do_open_filesys(int argc, char **argv)
- 				return;
- 			break;
- 		case 's':
--			err = strtoblk(argv[0], optarg, &superblock);
-+			err = strtoblk(argv[0], optarg,
-+				       "superblock block number", &superblock);
- 			if (err)
- 				return;
- 			break;
-@@ -284,7 +285,7 @@ void do_init_filesys(int argc, char **argv)
- 		return;
- 
- 	memset(&param, 0, sizeof(struct ext2_super_block));
--	err = strtoblk(argv[0], argv[2], &blocks);
-+	err = strtoblk(argv[0], argv[2], "blocks count", &blocks);
- 	if (err)
- 		return;
- 	ext2fs_blocks_count_set(&param, blocks);
-@@ -2100,7 +2101,7 @@ void do_bmap(int argc, char *argv[])
- 	ino = string_to_inode(argv[1]);
- 	if (!ino)
- 		return;
--	err = strtoblk(argv[0], argv[2], &blk);
-+	err = strtoblk(argv[0], argv[2], "logical block", &blk);
- 	if (err)
- 		return;
- 
-@@ -2247,11 +2248,11 @@ void do_punch(int argc, char *argv[])
- 	ino = string_to_inode(argv[1]);
- 	if (!ino)
- 		return;
--	err = strtoblk(argv[0], argv[2], &start);
-+	err = strtoblk(argv[0], argv[2], "logical block", &start);
- 	if (err)
- 		return;
- 	if (argc == 4) {
--		err = strtoblk(argv[0], argv[3], &end);
-+		err = strtoblk(argv[0], argv[3], "logical block", &end);
- 		if (err)
- 			return;
- 	} else
-@@ -2457,7 +2458,9 @@ int main(int argc, char **argv)
- 						"block size", 0);
- 			break;
- 		case 's':
--			retval = strtoblk(argv[0], optarg, &superblock);
-+			retval = strtoblk(argv[0], optarg,
-+					  "superblock block number",
-+					  &superblock);
- 			if (retval)
- 				return 1;
- 			break;
-diff --git a/debugfs/debugfs.h b/debugfs/debugfs.h
-index 6b4f6ef..33389fa 100644
---- a/debugfs/debugfs.h
-+++ b/debugfs/debugfs.h
-@@ -39,7 +39,8 @@ extern unsigned long parse_ulong(const char *str, const char *cmd,
- 				 const char *descr, int *err);
- extern unsigned long long parse_ulonglong(const char *str, const char *cmd,
- 					  const char *descr, int *err);
--extern int strtoblk(const char *cmd, const char *str, blk64_t *ret);
-+extern int strtoblk(const char *cmd, const char *str, const char *errmsg,
-+		    blk64_t *ret);
- extern int common_args_process(int argc, char *argv[], int min_argc,
- 			       int max_argc, const char *cmd,
- 			       const char *usage, int flags);
-diff --git a/debugfs/extent_inode.c b/debugfs/extent_inode.c
-index b3c55f9..8b22f5e 100644
---- a/debugfs/extent_inode.c
-+++ b/debugfs/extent_inode.c
-@@ -264,15 +264,15 @@ void do_replace_node(int argc, char *argv[])
- 		return;
- 	}
- 
--	err = strtoblk(argv[0], argv[1], &extent.e_lblk);
-+	err = strtoblk(argv[0], argv[1], "logical block", &extent.e_lblk);
- 	if (err)
- 		return;
- 
--	extent.e_len = parse_ulong(argv[2], argv[0], "logical block", &err);
-+	extent.e_len = parse_ulong(argv[2], argv[0], "length", &err);
- 	if (err)
- 		return;
- 
--	err = strtoblk(argv[0], argv[3], &extent.e_pblk);
-+	err = strtoblk(argv[0], argv[3], "physical block", &extent.e_pblk);
- 	if (err)
- 		return;
- 
-@@ -338,16 +338,15 @@ void do_insert_node(int argc, char *argv[])
- 		return;
- 	}
- 
--	err = strtoblk(cmd, argv[1], &extent.e_lblk);
-+	err = strtoblk(cmd, argv[1], "logical block", &extent.e_lblk);
- 	if (err)
- 		return;
- 
--	extent.e_len = parse_ulong(argv[2], cmd,
--				    "length", &err);
-+	extent.e_len = parse_ulong(argv[2], cmd, "length", &err);
- 	if (err)
- 		return;
- 
--	err = strtoblk(cmd, argv[3], &extent.e_pblk);
-+	err = strtoblk(cmd, argv[3], "physical block", &extent.e_pblk);
- 	if (err)
- 		return;
- 
-@@ -385,11 +384,11 @@ void do_set_bmap(int argc, char **argv)
- 		return;
- 	}
- 
--	err = strtoblk(cmd, argv[1], &logical);
-+	err = strtoblk(cmd, argv[1], "logical block", &logical);
- 	if (err)
- 		return;
- 
--	err = strtoblk(cmd, argv[2], &physical);
-+	err = strtoblk(cmd, argv[2], "physical block", &physical);
- 	if (err)
- 		return;
- 
-@@ -516,7 +515,7 @@ void do_goto_block(int argc, char **argv)
- 				       "block [level]", 0))
- 		return;
- 
--	if (strtoblk(argv[0], argv[1], &blk))
-+	if (strtoblk(argv[0], argv[1], NULL, &blk))
- 		return;
- 
- 	if (argc == 3) {
-diff --git a/debugfs/icheck.c b/debugfs/icheck.c
-index 48f432a..3b9bd14 100644
---- a/debugfs/icheck.c
-+++ b/debugfs/icheck.c
-@@ -86,7 +86,7 @@ void do_icheck(int argc, char **argv)
- 	}
- 
- 	for (i=1; i < argc; i++) {
--		if (strtoblk(argv[0], argv[i], &bw.barray[i-1].blk))
-+		if (strtoblk(argv[0], argv[i], NULL, &bw.barray[i-1].blk))
- 			goto error_out;
- 	}
- 
-diff --git a/debugfs/util.c b/debugfs/util.c
-index aafbc56..21991cf 100644
---- a/debugfs/util.c
-+++ b/debugfs/util.c
-@@ -301,17 +301,20 @@ unsigned long long parse_ulonglong(const char *str, const char *cmd,
- 
- /*
-  * This function will convert a string to a block number.  It returns
-- * 0 on success, 1 on failure.
-+ * 0 on success, 1 on failure.  On failure, it outputs either an optionally
-+ * specified error message or a default.
-  */
--int strtoblk(const char *cmd, const char *str, blk64_t *ret)
-+int strtoblk(const char *cmd, const char *str, const char *errmsg,
-+	     blk64_t *ret)
- {
- 	blk64_t	blk;
- 	int	err;
- 
--	blk = parse_ulonglong(str, cmd, "block number", &err);
-+	if (errmsg == NULL)
-+		blk = parse_ulonglong(str, cmd, "block number", &err);
-+	else
-+		blk = parse_ulonglong(str, cmd, errmsg, &err);
- 	*ret = blk;
--	if (err)
--		com_err(cmd, 0, "Invalid block number: %s", str);
- 	return err;
- }
- 
-@@ -369,7 +372,7 @@ int common_block_args_process(int argc, char *argv[],
- 				"<block> [count]", CHECK_FS_BITMAPS))
- 		return 1;
- 
--	if (strtoblk(argv[0], argv[1], block))
-+	if (strtoblk(argv[0], argv[1], NULL, block))
- 		return 1;
- 	if (*block == 0) {
- 		com_err(argv[0], 0, "Invalid block number 0");
-@@ -377,7 +380,7 @@ int common_block_args_process(int argc, char *argv[],
- 	}
- 
- 	if (argc > 2) {
--		err = strtoblk(argv[0], argv[2], count);
-+		err = strtoblk(argv[0], argv[2], "count", count);
- 		if (err)
- 			return 1;
- 	}
--- 
-1.8.3.2
-
+diff --git a/lib/ext2fs/initialize.c b/lib/ext2fs/initialize.c
+index 62a19b3..916c12c 100644
+--- a/lib/ext2fs/initialize.c
++++ b/lib/ext2fs/initialize.c
+@@ -308,6 +308,8 @@ retry:
+                                                ext2fs_blocks_count(param));
+                        super->s_clusters_per_group = super->s_blocks_per_group;
+                        goto retry;
++               } else if (bigalloc_flag) {
++                       ipg = fs->blocksize * 8;
+                } else {
+                        retval = EXT2_ET_TOO_MANY_INODES;
+                        goto cleanup;
+--
+1.8.5.2
