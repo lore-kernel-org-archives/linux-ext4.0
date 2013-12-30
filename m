@@ -1,34 +1,45 @@
-From: Markus Trippelsdorf <markus@trippelsdorf.de>
-Subject: Re: Strange "rm -fr" issue
-Date: Mon, 30 Dec 2013 09:10:14 +0100
-Message-ID: <20131230081014.GA392@x4>
-References: <20131229142406.GA393@x4>
- <59DA49F7-C44D-4C50-A9C8-55C0BB78F29C@dilger.ca>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [Lsf-pc] [LSF/MM ATTEND] Persistent Memory
+Date: Mon, 30 Dec 2013 22:04:04 +0100
+Message-ID: <20131230210404.GB5457@quack.suse.cz>
+References: <1387907056.2487.18.camel@vverma7-desk1.amr.corp.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+Cc: "lsf-pc@lists.linux-foundation.org"
+	<lsf-pc@lists.linux-foundation.org>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: "Verma, Vishal L" <vishal.l.verma@intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ud10.udmedia.de ([194.117.254.50]:58149 "EHLO
-	mail.ud10.udmedia.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751857Ab3L3IKR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Dec 2013 03:10:17 -0500
+Received: from cantor2.suse.de ([195.135.220.15]:44308 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932218Ab3L3VEH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 30 Dec 2013 16:04:07 -0500
 Content-Disposition: inline
-In-Reply-To: <59DA49F7-C44D-4C50-A9C8-55C0BB78F29C@dilger.ca>
+In-Reply-To: <1387907056.2487.18.camel@vverma7-desk1.amr.corp.intel.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2013.12.29 at 11:47 -0700, Andreas Dilger wrote:
-> If you are able to reproduce this issue (extract the same tree and
-> then try "rm -fr" again) please run this under strace to see how many
-> entries are returned during readdir from the kernel.
-> 
-> It could be a bug in the ext4 readdir code or it could be a bug in
-> glibc or coreutils. 
+  Added some relevant lists to CC (please don't forget about this).
 
-Unfortunately the issue is not reproducible and therefore impossible to
-debug. I just thought to post it nevertheless, just to see if perhaps
-someone else encounters the same problem.
+On Tue 24-12-13 17:44:35, Verma, Vishal L wrote:
+> I would like to attend LSF/MM 2014 - I am especially interested in
+> discussions around persistent memory. I have been studying EXT4 and
+> researching on what we'd have to do to best enable it for
+> byte-addressable persistent memory.
+  Do you have some concrete suggestions or observations regarding this?
+Because discussing abstract ideas without actually trying something out
+beforehand doesn't usually result in a useful discussion...
+ 
+> I am relatively new in the Linux kernel world, and my previous
+> experience has been with device driver work - I wrote a SCSI SG_IO
+> translation layer for the NVMe driver. I also contributed to PMFS -
+> https://github.com/linux-pmfs/pmfs which was our go-to route for
+> enabling PM in the kernel before we decided EXT4 would be a better
+> choice.
+  I would be interested what were your reasons for the decision. Can you
+elaborate a bit (that's just my personal curiosity)?
 
+							Honza
 -- 
-Markus
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
