@@ -1,111 +1,99 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: ext4 filesystem bad extent error review
-Date: Thu, 2 Jan 2014 13:42:11 -0500
-Message-ID: <20140102184211.GC10870@thunk.org>
-References: <AE39A478622CF340ABEC2418D74074F61FC567864C@SGPMBX05.APAC.bosch.com>
+Subject: Re: ext4 goes into read only mode on using discard with
+ htree_dirblock_to_tree ... bad entry in directory
+Date: Thu, 2 Jan 2014 13:55:07 -0500
+Message-ID: <20140102185507.GD10870@thunk.org>
+References: <CAHy4Ox1fjTbOxiTqcqyhihYkRs2po7Xs4EWxsFVP+HHyJWpSfg@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"Juergens Dirk (CM-AI/PJ-CF32)" <Dirk.Juergens@de.bosch.com>
-To: "Huang Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>
+Cc: linux-ext4@vger.kernel.org,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+To: Ritesh Khadgaray <khadgaray@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:45450 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:45456 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752309AbaABSmV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 2 Jan 2014 13:42:21 -0500
+	id S1751755AbaABSzK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 2 Jan 2014 13:55:10 -0500
 Content-Disposition: inline
-In-Reply-To: <AE39A478622CF340ABEC2418D74074F61FC567864C@SGPMBX05.APAC.bosch.com>
+In-Reply-To: <CAHy4Ox1fjTbOxiTqcqyhihYkRs2po7Xs4EWxsFVP+HHyJWpSfg@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 02, 2014 at 12:59:52PM +0800, Huang Weller (CM/ESW12-CN) wrote:
+On Thu, Jan 02, 2014 at 10:49:56AM +0530, Ritesh Khadgaray wrote:
 > 
-> We did more test which we backup the journal blocks  before we mount the test partition.
-> Actually, before we mount the test partition, we use fsck.ext4 with -n option to verify whether there is any  bad extents issues available. The fsck.ext4 never found any such kind issue. And we can prove that the bad extents issue is happened after journaling replay.
-
-Ok, so that implies that the failure is almost certainly due to
-corrupted blocks in the journal.  Hence, when we replay the journal,
-it causes the the file system to become corrupted, because the "newer"
-(and presumably, "more correct") metadata blocks found in the blocks
-recorded in the journal are in fact corrupted.
-
-BTW, you can use the logdump command in the debugfs program to look at
-the journal.  The debugfs man page documents it, but once you know the
-block that was corrupted, which in your case appears to be block 525:
-
-debugfs: logdump -b 525 -c
-
-Or to see the contents of all of the blocks logged in the journal:
-
-debugfs: logdump -ac
-
+> description:
+> ext4 goes into read-only mode, when building libreoffice or doing a large
+> amount of IO (rsync of over ~250gb ) with discard option enabled. Worst
+> case, partition table corruption.
 > 
-> We  searched such error on internet, there are some one also has such issue. But there is no solution.
-> This issue maybe not a big issue which it can be repaired by fsck.ext4 easily. But we have below questions:
-> 1. whether this issue already been fixed in the latest kernel version?
-> 2. based on the information I provided in this mail, can you help to solve this issue ?
+> from dmesg
+> [11822.935891] EXT4-fs error (device dm-1): htree_dirblock_to_tree:920:
+> inode #53629599: block 214443464: comm rm: bad entry in directory: rec_len
+> % 4 != 0 - offset=0(0), inode=1667681412, rec_len=45654, name_len=39
+> [11822.935896] Aborting journal on device dm-1-8.
+> [11822.935998] EXT4-fs (dm-1): Remounting filesystem read-only
+> 
+> $ uname -a
+> Linux K43SA.local 3.13.0-999-generic #201312200414 SMP Fri Dec 20 09:16:44
+> UTC 2013 x86_64 x86_64 x86_64 GNU/Linux
+> 
+> 
+> WORKAROUND: Disable discard option - /dev/mapper/volumegroup-root / ext4
+> discard,noatime,nodiratime,errors=remount-ro 0 1
 
-Well, the question is how did the journal get corrupted?  It's
-possible that it's caused by a kernel bug, although I'm not aware of
-any such bugs being reported.
+This is a hardware bug, unfortunately.  And it's also the reason why
+discard is not on by default.
 
-In my mind, the most likely cause is that the SD card is ignoring the
-CACHE FLUSH command, or is not properly saving the SD card's Flash
-Translation Layer (FTL) metadata on a power drop.  Here are some
-examples some investigation into lousy SSD's that have this bug ---
-and historically, SD cards have been **worse** than SSD's, because the
-manufacturers have a much lower per-unit cost, so they tend to put in
-even cheaper and crappier FTL systems on SD and eMMC flash.
+These days, what I normally tell people is to not use the discard
+mount option at all, and instead use the fstrim program, run out of
+cron maybe once a week or even every night if you are anal.  (But for
+most workloads, once a week is plenty.)  The main place where the
+discard option makes sense is if you are using a very expensive PCIe
+attached flash device.  Those devices are much more likely to have a
+competently implemented DISCARD command, and they generally don't
+destroy performance forcing a queue flush for every single DISCARD
+request.
 
+However, in your case, if discard commands are causing on-disk
+corruption, I'm not sure I can even in good conscience recommend using
+fstrim.
+
+> Device Model: Crucial_CT960M500SSD1
+> Serial Number: 1335094BE7CA
+> LU WWN Device Id: 5 00a075 1094be7ca
+> Firmware Version: MU03
+
+Instead, all I can do is suggest that you consider whether you should
+replace your SSD.  Historically, I've stuck with Intel SSD's because
+they are the ones that have tended to be the most reliable.  Intel has
+unfortunately, been slow to market because they insist on testing
+their products extensively and only releasing them when they are
+solid, which has cost them market share.  Unfortuantely, the market
+doesn't always reward quality.  More recently, I've started using
+Samsung SSD's.  I have a Samsung 840 PRO and the Intel 525 240GB mSATA
+SSD's in my laptop, and so far, I've not had any problems with either.
+They are definitely not the cheapest nor the most performant devices
+in head-to-head testing, but that's not the only dimension that I care
+about....
+
+More (somewhat depressing) investigations about the quality of SSD's
+these days:
+
+https://plus.google.com/+MarcMERLIN/posts/Us8yjK9SPs6
 http://lkcl.net/reports/ssd_analysis.html
-
 https://www.usenix.org/conference/fast13/understanding-robustness-ssds-under-power-fault
 
-What I tell people who are using flash devices is before they start
-using any flash device, to do power drop testing on a raw device,
-without any file system present.  The simplest way to do this is to
-write a program that writes consecutive 4k blocks that contain a
-timestamp, a sequence number, some random data, and a CRC-32 checksum
-over the contents of the timestamp, sequence number, a flags word, and
-random data.  As the program writes such 4k block, it rolls the dice
-and once every 64 blocks or so (i.e., pick a random number, and see if
-it is divisible by 64), then set a bit in the flags word indicating
-that this block was forced out using a cache flush, and then when
-writing this block, follow up the write with a CACHE FLUSH command.
-It's also best if the test program prints the blocks which have been
-written with CACHE FLUSH to the serial console, and that this is saved
-by your test rig.
+						- Ted
 
-(This is what ext4's journal does before and after writing the commit
-block in the journal, and it guarantees that (a) all of the data in
-the journal written up to the commit block will be available after a
-power drop, and (b) that the commit block has been written to the
-storage device and again, will be available after a power drop.)
-
-Once you've written this program, set up a test rig which boots your
-test board, runs the program, and then drops power to the test board
-randomly.  After the power drop, examine the flash device and make
-sure that all of the blocks written up to the last "commit block" are
-in fact valid.
-
-You will find that a surprising number of SD cards will fail this
-test.  In fact, the really lousy cards will become unreadable after a
-power drop.  (A fact many wedding photographers discover the hard way
-they drop their camera and the SD card flies out, and then they find
-all of that their priceless, once-in-a-lifetime photos are lost forwever.)
-
-I ****strongly**** recommend that if you are not testing your SD cards
-in this way from your parts supplier, you do so immediately, and
-reject any model that is not able to guarantee that data survives a
-power drop.
-
-Good luck, and I hope this is helpful,
-
-					- Ted
-
-P.S.  If you do write such a program, please consider making it
-available under an open source license.  If more companies did this,
-it would apply pressure to the flash manufacturers to stop making such
-crappy products, and while it might raise the BOM cost of products by
-a penny or two, the net result would be better for everyone in the
-industry.
+P.S.  Some really crappy SSD devices have brick'ed themselves when
+they are given a heavy discard load, particularly one which is mixed
+with other traffic, and this is what the "discard" mount option
+provides.  Note that if the fstrim command is executed while you are
+also trying to put the device under heavy read/write workloads, it
+could also result in the same kind of corruption and/or brick'ing of
+the SSD.  Which is why I hesitate to recommend switching to fstrim for
+a device which is known to mishandle the DISCARD command, and to
+suggest simply not using the DISCARD feature at all --- and if this
+results in increased performance lost or increased write wear, to just
+replace the SSD as an inferior quality product before it does any
+further damage to your data.
