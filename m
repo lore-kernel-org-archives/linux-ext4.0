@@ -1,112 +1,60 @@
 From: Baruch Siach <baruch@tkos.co.il>
-Subject: [PATCH] e4defrag: choose the best available posix_fadvise variant
-Date: Thu,  2 Jan 2014 08:43:54 +0200
-Message-ID: <23c2b99441922fe311235e241eca52e9701e54d4.1388645034.git.baruch@tkos.co.il>
+Subject: Re: [PATCH] e4defrag: fix build when posix_fadvise is missing
+Date: Thu, 2 Jan 2014 08:49:00 +0200
+Message-ID: <20140102064900.GJ6589@tarshish>
+References: <33245e3808058c72b66931ac14aea8d5dc6d1ba5.1388572103.git.baruch@tkos.co.il>
+ <20140101172205.GC17519@thunk.org>
+ <20140101173146.GM4470@tarshish>
+ <20140101173744.GD17519@thunk.org>
+ <20140101190800.GA6589@tarshish>
+ <20140101204650.GE17519@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org, Baruch Siach <baruch@tkos.co.il>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from guitar.tcltek.co.il ([192.115.133.116]:43927 "EHLO
+Received: from guitar.tcltek.co.il ([192.115.133.116]:43933 "EHLO
 	mx.tkos.co.il" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750711AbaABGoD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 2 Jan 2014 01:44:03 -0500
+	id S1750927AbaABGtD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 2 Jan 2014 01:49:03 -0500
+Content-Disposition: inline
+In-Reply-To: <20140101204650.GE17519@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Use posix_fadvise64() when available. This allows 64bit offsets on 32bi=
-t
-systems.
+Hi Ted,
 
-Rename the internal posix_fadvise() implementation to avoid collision w=
-ith the
-C library signature that is sometimes present event when the implementa=
-tion
-itself is not. This fixes build errors like:
+On Wed, Jan 01, 2014 at 03:46:50PM -0500, Theodore Ts'o wrote:
+> On Wed, Jan 01, 2014 at 09:08:00PM +0200, Baruch Siach wrote:
+> > Yes. uClibc does provide posix_fadvise64() when __NR_fadvise64_64 is 
+> > available.
+> > 
+> > > Maybe the better fix would be to try to use posix_fadvise64 if it is exists, 
+> > > with posix_fadvise() and the locally defined posix_fadvise() as fallbacks.
+> > 
+> > OK. So you suggest to add another autoconf test for posix_fadvise64 and use 
+> > that as a fall back before trying direct syscall()?
+> 
+> Yes, I think that's the more general and hence the more correct
+> answer.  In fact what we have right now is arguably wrong, since on a
+> 32-bit platform where off_t is 32-bits, and which defines
+> posix_fadvise, we wouldn't correctly handle files that are larger than
+> 2GB.  So if posix_fadvise64 exists, we should be using in preference
+> to posix_fadvise(), even if both are provided by the C library.
+> 
+> Would you mind sending such a revised patch?
 
-e4defrag.c:189:2: warning: #warning Using locally defined posix_fadvise=
- interface. [-Wcpp
-e4defrag.c:203:12: error: conflicting types for =E2=80=98posix_fadvise=E2=
-=80=99
+Just sent. Thanks for reviewing.
 
-Signed-off-by: Baruch Siach <baruch@tkos.co.il>
----
- configure.in    |  1 +
- misc/e4defrag.c | 27 +++++++++++++++++++++------
- 2 files changed, 22 insertions(+), 6 deletions(-)
+Turns out that this is actually an uClibc bug. There used to be a 
+posix_fadvise definition for xtensa as a wrapper around the __NR_fadvise64_64 
+system call. This broke with uClibc commit ee84b8b400 (linux: posix_fadvise: 
+use new SYSCALL_ALIGN_64BIT). The patch I have sent can be used as a 
+workaround for now. I'll send a separate patch for uClibc later.
 
-diff --git a/configure.in b/configure.in
-index fef8d9b7b935..9f13a46ac8ae 100644
---- a/configure.in
-+++ b/configure.in
-@@ -1102,6 +1102,7 @@ AC_CHECK_FUNCS(m4_flatten([
- 	open64
- 	pathconf
- 	posix_fadvise
-+	posix_fadvise64
- 	posix_memalign
- 	prctl
- 	secure_getenv
-diff --git a/misc/e4defrag.c b/misc/e4defrag.c
-index c6a5f0daef96..b28c26538bfc 100644
---- a/misc/e4defrag.c
-+++ b/misc/e4defrag.c
-@@ -183,13 +183,27 @@ static ext4_fsblk_t	files_block_count;
- static struct frag_statistic_ino	frag_rank[SHOW_FRAG_FILES];
-=20
-=20
--/* Local definitions of some syscalls glibc may not yet have */
-+/* Local definitions of some syscalls glibc may not yet have
-+ *
-+ * We prefer posix_fadvise64 when available, as it allows 64bit offset=
- on
-+ * 32bit systems
-+ */
-+
-+#if defined(HAVE_POSIX_FADVISE64)
-+#define posix_fadvise	posix_fadvise64
-+#elif defined(__NR_fadvise64_64)
-+#define FADVISE_SYSCALL_NR	__NR_fadvise64_64
-+#elif defined(HAVE_POSIX_FADVISE)
-+#define posix_fadvise	posix_fadvise
-+#elif defined(__NR_fadvise64)
-+#define FADVISE_SYSCALL_NR	__NR_fadvise64
-+#endif
-=20
--#ifndef HAVE_POSIX_FADVISE
-+#ifndef posix_fadvise
- #warning Using locally defined posix_fadvise interface.
-=20
--#ifndef __NR_fadvise64_64
--#error Your kernel headers dont define __NR_fadvise64_64
-+#ifndef FADVISE_SYSCALL_NR
-+#error Your kernel headers dont define __NR_fadvise64_64 or __NR_fadvi=
-se64
- #endif
-=20
- /*
-@@ -200,9 +214,10 @@ static struct frag_statistic_ino	frag_rank[SHOW_FR=
-AG_FILES];
-  * @len:		area length.
-  * @advise:		process flag.
-  */
--static int posix_fadvise(int fd, loff_t offset, size_t len, int advise=
-)
-+#define posix_fadvise	__posix_fadvise
-+static int __posix_fadvise(int fd, loff_t offset, size_t len, int advi=
-se)
- {
--	return syscall(__NR_fadvise64_64, fd, offset, len, advise);
-+	return syscall(FADVISE_SYSCALL_NR, fd, offset, len, advise);
- }
- #endif /* ! HAVE_FADVISE64_64 */
-=20
---=20
-1.8.5.2
+baruch
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+     http://baruch.siach.name/blog/                  ~. .~   Tk Open Systems
+=}------------------------------------------------ooO--U--Ooo------------{=
+   - baruch@tkos.co.il - tel: +972.2.679.5364, http://www.tkos.co.il -
