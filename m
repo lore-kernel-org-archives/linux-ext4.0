@@ -1,98 +1,81 @@
-From: Robert Yang <liezhi.yang@windriver.com>
-Subject: [PATCH 2/2] populate-extfs.sh: espace the space in the filename
-Date: Fri, 3 Jan 2014 04:15:41 -0500
-Message-ID: <1388740541-28123-3-git-send-email-liezhi.yang@windriver.com>
-References: <1388740541-28123-1-git-send-email-liezhi.yang@windriver.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: ext4 filesystem bad extent error review
+Date: Fri, 3 Jan 2014 10:48:46 -0500
+Message-ID: <20140103154846.GB31411@thunk.org>
+References: <AE39A478622CF340ABEC2418D74074F61FC567864C@SGPMBX05.APAC.bosch.com>
+ <20140102184211.GC10870@thunk.org>
+ <AE39A478622CF340ABEC2418D74074F61FC59AC406@SGPMBX05.APAC.bosch.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: <linux-ext4@vger.kernel.org>
-To: <tytso@mit.edu>, <sgh@sgh.dk>
+Content-Type: text/plain; charset=us-ascii
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"Juergens Dirk (CM-AI/ECO2)" <Dirk.Juergens@de.bosch.com>
+To: "Huang Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail1.windriver.com ([147.11.146.13]:55016 "EHLO
-	mail1.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751085AbaACJP5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Jan 2014 04:15:57 -0500
-In-Reply-To: <1388740541-28123-1-git-send-email-liezhi.yang@windriver.com>
+Received: from imap.thunk.org ([74.207.234.97]:45649 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752638AbaACPsv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 3 Jan 2014 10:48:51 -0500
+Content-Disposition: inline
+In-Reply-To: <AE39A478622CF340ABEC2418D74074F61FC59AC406@SGPMBX05.APAC.bosch.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-=46rom: S=C3=B8ren Holm <sgh@sgh.dk>
+On Fri, Jan 03, 2014 at 11:16:02AM +0800, Huang Weller (CM/ESW12-CN) wrote:
+> 
+> It sounds like the barrier test. We wrote such kind test tool
+> before, the test program used ioctl(fd, BLKFLSBUF, 0) to set a
+> barrier before next write operation.  Do you think this ioctl is
+> enough ? Because I saw the ext4 use it. I will do the test with that
+> tool and then let you know the result.
 
-The filename which contains space would not get into the final
-ext2/3/4 filsystem without this patch
+The BLKFLSBUF ioctl does __not__ send a CACHE FLUSH command to the
+hardware device.  It forces all of the dirty buffers in memory to the
+storage device, and then it invalidates all the buffer cache, but it
+does not send a CACHE FLUSH command to the hardware.  Hence, the
+hardware is free to write it to its on-disk cache, and not necessarily
+guarantee that the data is written to stable store.  (For an example
+use case of BLKFLSBUF, we use it in e2fsck to drop the buffer cache
+for benchmarking purposes.)
 
-Signed-off-by: S=C3=B8ren Holm <sgh@sgh.dk>
-Signed-off-by: Robert Yang <liezhi.yang@windriver.com>
----
- contrib/populate-extfs.sh |   20 ++++++++++----------
- 1 file changed, 10 insertions(+), 10 deletions(-)
- mode change 100755 =3D> 100644 contrib/populate-extfs.sh
+If you want to force a CACHE FLUSH (or barrier, depending on the
+underlying transport different names may be given to this operation),
+you need to call fsync() on the file descriptor open to the block
+device.
 
-diff --git a/contrib/populate-extfs.sh b/contrib/populate-extfs.sh
-old mode 100755
-new mode 100644
-index b1d3d1f..a84ec74
---- a/contrib/populate-extfs.sh
-+++ b/contrib/populate-extfs.sh
-@@ -44,7 +44,7 @@ fi
- 		fi
-=20
- 		# Only stat once since stat is a time consuming command
--		STAT=3D$(stat -c "TYPE=3D\"%F\";DEVNO=3D\"0x%t 0x%T\";MODE=3D\"%f\";=
-U=3D\"%u\";G=3D\"%g\"" $FILE)
-+		STAT=3D$(stat -c "TYPE=3D\"%F\";DEVNO=3D\"0x%t 0x%T\";MODE=3D\"%f\";=
-U=3D\"%u\";G=3D\"%g\"" "$FILE")
- 		eval $STAT
-=20
- 		case $TYPE in
-@@ -52,20 +52,20 @@ fi
- 			echo "mkdir $TGT"
- 			;;
- 		"regular file" | "regular empty file")
--			echo "write $FILE $TGT"
-+			echo "write \"$FILE\" \"$TGT\""
- 			;;
- 		"symbolic link")
--			LINK_TGT=3D$(readlink $FILE)
--			echo "symlink $TGT $LINK_TGT"
-+			LINK_TGT=3D$(readlink "$FILE")
-+			echo "symlink \"$TGT\" \"$LINK_TGT\""
- 			;;
- 		"block special file")
--			echo "mknod $TGT b $DEVNO"
-+			echo "mknod \"$TGT\" b $DEVNO"
- 			;;
- 		"character special file")
--			echo "mknod $TGT c $DEVNO"
-+			echo "mknod \"$TGT\" c $DEVNO"
- 			;;
- 		"fifo")
--			echo "mknod $TGT p"
-+			echo "mknod \"$TGT\" p"
- 			;;
- 		*)
- 			echo "Unknown/unhandled file type '$TYPE' file: $FILE" 1>&2
-@@ -73,11 +73,11 @@ fi
- 		esac
-=20
- 		# Set the file mode
--		echo "sif $TGT mode 0x$MODE"
-+		echo "sif \"$TGT\" mode 0x$MODE"
-=20
- 		# Set uid and gid
--		echo "sif $TGT uid $U"
--		echo "sif $TGT gid $G"
-+		echo "sif \"$TGT\" uid $U"
-+		echo "sif \"$TGT\" gid $G"
- 	done
-=20
- 	# Handle the hard links.
---=20
-1.7.10.4
+> More information about journal block which caused the bad extents
+> error: We enabled the mount option journal_checksum in our test.  We
+> reproduced the same problem and the journal checksum is correct
+> because the journal block will not be replayed if checksum is error.
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+How did you enable the journal_checksum option?  Note that this is not
+safe in general, which is why we don't enable it or the async_commit
+mount option by default.  The problem is that currently the journal
+replay stops when it hits a bad checksum, and this can leave the file
+system in a worse case than it currently is in.  There is a way we
+could fix it, by adding per-block checksums to the journal, so we can
+skip just the bad block, and then force an efsck afterwards, but that
+isn't something we've implemented yet.
+
+That being said, if the journal checksum was valid, and so the
+corrupted block was replayed, it does seem to argue against
+hardware-induced corruption.
+
+Hmm....  I'm stumped, for the moment.  The journal layer is quite
+stable, and we haven't had any problems like this reported in many,
+many years.
+
+Let's take this back to first principles.  How reliably can you
+reproduce the problem?  How often does it fail?  Is it something where
+you can characterize the workload leading to this failure?  Secondly,
+is a power drop involved in the reproduction at all, or is this
+something that can be reproduced by running some kind of workload, and
+then doing a soft reset (i.e., force a kernel reboot, but _not_ do it
+via a power drop)?
+
+The other thing to ask is when did this problem first start appearing?
+With a kernel upgrade?  A compiler/toolchain upgrade?  Or has it
+always been there?  
+
+Regards,
+
+							- Ted
