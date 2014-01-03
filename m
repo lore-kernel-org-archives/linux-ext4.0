@@ -1,56 +1,77 @@
-From: "Verma, Vishal L" <vishal.l.verma@intel.com>
-Subject: Re: [Lsf-pc] [LSF/MM ATTEND] Persistent Memory
-Date: Fri, 3 Jan 2014 17:45:10 +0000
-Message-ID: <1388771105.2487.40.camel@vverma7-desk1.amr.corp.intel.com>
-References: <1387907056.2487.18.camel@vverma7-desk1.amr.corp.intel.com>
-	 <20131230210404.GB5457@quack.suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: ext4 filesystem bad extent error review
+Date: Fri, 3 Jan 2014 12:51:11 -0500
+Message-ID: <20140103175111.GA4336@thunk.org>
+References: <AE39A478622CF340ABEC2418D74074F61FC567864C@SGPMBX05.APAC.bosch.com>
+ <20140102184211.GC10870@thunk.org>
+ <AE39A478622CF340ABEC2418D74074F61FC59AC406@SGPMBX05.APAC.bosch.com>
+ <20140103154846.GB31411@thunk.org>
+ <52C6F22A.4040202@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"matthew@wil.cx" <matthew@wil.cx>,
-	"lsf-pc@lists.linux-foundation.org"
-	<lsf-pc@lists.linux-foundation.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-To: "jack@suse.cz" <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20131230210404.GB5457@quack.suse.cz>
-Content-Language: en-US
-Content-ID: <3F3970D7E117354795A92AA379E7F40A@intel.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: "Huang Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"Juergens Dirk (CM-AI/ECO2)" <Dirk.Juergens@de.bosch.com>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:45674 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751139AbaACRvT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 3 Jan 2014 12:51:19 -0500
+Content-Disposition: inline
+In-Reply-To: <52C6F22A.4040202@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-T24gTW9uLCAyMDEzLTEyLTMwIGF0IDIyOjA0ICswMTAwLCBKYW4gS2FyYSB3cm90ZToNCj4gICBB
-ZGRlZCBzb21lIHJlbGV2YW50IGxpc3RzIHRvIENDIChwbGVhc2UgZG9uJ3QgZm9yZ2V0IGFib3V0
-IHRoaXMpLg0KVGhhbmtzLCBJIHdhc24ndCBzdXJlIEkgaGFkIG5lZWRlZCB0bywgZm9yIGFuIGF0
-dGVuZCByZXF1ZXN0LCBidXQgaXQNCm1ha2VzIHNlbnNlIG5vdy4NCj4gDQo+IE9uIFR1ZSAyNC0x
-Mi0xMyAxNzo0NDozNSwgVmVybWEsIFZpc2hhbCBMIHdyb3RlOg0KPiA+IEkgd291bGQgbGlrZSB0
-byBhdHRlbmQgTFNGL01NIDIwMTQgLSBJIGFtIGVzcGVjaWFsbHkgaW50ZXJlc3RlZCBpbg0KPiA+
-IGRpc2N1c3Npb25zIGFyb3VuZCBwZXJzaXN0ZW50IG1lbW9yeS4gSSBoYXZlIGJlZW4gc3R1ZHlp
-bmcgRVhUNCBhbmQNCj4gPiByZXNlYXJjaGluZyBvbiB3aGF0IHdlJ2QgaGF2ZSB0byBkbyB0byBi
-ZXN0IGVuYWJsZSBpdCBmb3INCj4gPiBieXRlLWFkZHJlc3NhYmxlIHBlcnNpc3RlbnQgbWVtb3J5
-Lg0KPiAgIERvIHlvdSBoYXZlIHNvbWUgY29uY3JldGUgc3VnZ2VzdGlvbnMgb3Igb2JzZXJ2YXRp
-b25zIHJlZ2FyZGluZyB0aGlzPw0KPiBCZWNhdXNlIGRpc2N1c3NpbmcgYWJzdHJhY3QgaWRlYXMg
-d2l0aG91dCBhY3R1YWxseSB0cnlpbmcgc29tZXRoaW5nIG91dA0KPiBiZWZvcmVoYW5kIGRvZXNu
-J3QgdXN1YWxseSByZXN1bHQgaW4gYSB1c2VmdWwgZGlzY3Vzc2lvbi4uLg0KDQpJJ3ZlIHN0YXJ0
-ZWQgbG9va2luZyBpbnRvIHRoZSBFWFQ0IGxheW91dCB0byBzZWUgaWYgd2UnZCBuZWVkIGFueQ0K
-Y2hhbmdlcyB0aGVyZSwgZXNwZWNpYWxseSBmb3Igb3B0aW1pemluZyBodWdlIHBhZ2UgbWFwcGlu
-Z3MuIFRoaXMgaXMNCnJlYWxseSBhIHdvcmsgaW4gcHJvZ3Jlc3MsIGFuZCBJIGRvbid0IHlldCBo
-YXZlIGFueSBvYnNlcnZhdGlvbnMuIEkgd2FzDQpob3BpbmcgdG8gYmUgaW52b2x2ZWQgaW4gdGhl
-IGRpc2N1c3Npb25zIE1hdHRoZXcgcHJvcG9zZWQgaGVyZToNCmh0dHA6Ly90aHJlYWQuZ21hbmUu
-b3JnL2dtYW5lLmxpbnV4LmZpbGUtc3lzdGVtcy84MDk2NQ0KPiAgDQo+ID4gSSBhbSByZWxhdGl2
-ZWx5IG5ldyBpbiB0aGUgTGludXgga2VybmVsIHdvcmxkLCBhbmQgbXkgcHJldmlvdXMNCj4gPiBl
-eHBlcmllbmNlIGhhcyBiZWVuIHdpdGggZGV2aWNlIGRyaXZlciB3b3JrIC0gSSB3cm90ZSBhIFND
-U0kgU0dfSU8NCj4gPiB0cmFuc2xhdGlvbiBsYXllciBmb3IgdGhlIE5WTWUgZHJpdmVyLiBJIGFs
-c28gY29udHJpYnV0ZWQgdG8gUE1GUyAtDQo+ID4gaHR0cHM6Ly9naXRodWIuY29tL2xpbnV4LXBt
-ZnMvcG1mcyB3aGljaCB3YXMgb3VyIGdvLXRvIHJvdXRlIGZvcg0KPiA+IGVuYWJsaW5nIFBNIGlu
-IHRoZSBrZXJuZWwgYmVmb3JlIHdlIGRlY2lkZWQgRVhUNCB3b3VsZCBiZSBhIGJldHRlcg0KPiA+
-IGNob2ljZS4NCj4gICBJIHdvdWxkIGJlIGludGVyZXN0ZWQgd2hhdCB3ZXJlIHlvdXIgcmVhc29u
-cyBmb3IgdGhlIGRlY2lzaW9uLiBDYW4geW91DQo+IGVsYWJvcmF0ZSBhIGJpdCAodGhhdCdzIGp1
-c3QgbXkgcGVyc29uYWwgY3VyaW9zaXR5KT8NCg0KQ2VydGFpbmx5LiBUaGUgY3J1eCBvZiBpdCB3
-YXMgdGhhdCB3ZSdkIGhhdmUgdG8gc3BlbmQgYSBsb3QgbW9yZSB0aW1lDQpnZXR0aW5nIHRoaW5n
-cyByZWxhdGVkIHRvIGZpbGUgc3lzdGVtICdjb3JyZWN0bmVzcycgZml4ZWQsIHN1Y2ggYXMNCmxv
-Y2tpbmcgaW4gdGhlIGpvdXJuYWxpbmcgY29kZSwgdGhhdCBvdGhlciBmaWxlIHN5c3RlbXMgYWxy
-ZWFkeSBoYXZlDQpmaWd1cmVkIG91dC4gRVhUNCBpcyBhbHJlYWR5ICd0cnVzdGVkJywgYW5kIHNv
-bWV0aGluZyBjb21wbGV0ZWx5IG5ldw0Kd291bGQgdGFrZSBhIGxvbmcgdGltZSBmb3IgYWRvcHRp
-b24uDQoNCi1WaXNoYWwNCg==
+On Fri, Jan 03, 2014 at 11:23:54AM -0600, Eric Sandeen wrote:
+> > The BLKFLSBUF ioctl does __not__ send a CACHE FLUSH command to the
+> > hardware device.  It forces all of the dirty buffers in memory to the
+> > storage device, and then it invalidates all the buffer cache, but it
+> > does not send a CACHE FLUSH command to the hardware.  Hence, the
+> > hardware is free to write it to its on-disk cache, and not necessarily
+> > guarantee that the data is written to stable store.  (For an example
+> > use case of BLKFLSBUF, we use it in e2fsck to drop the buffer cache
+> > for benchmarking purposes.)
+> 
+> Are you sure?  for a bdev w/ ext4 on it:
+> 
+> BLKFLSBUF
+> 	fsync_bdev
+> 		sync_filesystem
+> 			sync_fs
+> 				ext4_sync_fs
+> 					blkdev_issue_flush
+
+This call chain only happens if the block device is mounted.
+
+If you only have the block device opened, and doing read and writes
+directly to the block device, then BLKFLSBUF will not result in
+blkdev_issue_flush() being called.
+
+Actually, BLKFLSBUF is really a bit of a mess, and it's because it
+conflates multiple meanins of the word "flush" (which is ambiguous).
+For ram disks, it actually destroys the ram disk (due to a
+implementation detail about how the original ramdisk driver was
+implemented).  The original meaning of the ioctl was to safely remove
+all of the buffers from the buffer cache --- for example, to deal with
+a 5.25" floppy disk being replaced, since there's no way for the
+hardware to signal this to the OS, or for benchmarking purposes.
+
+Adding things like the call to sync_fs() has made the BLKFLSBUF ioctl
+more and more confused, and arguably we should add some new ioctl's
+which separate out some of these use cases.  For example, there is
+currently no way to force all dirty buffers for an unmounted block
+devicein the buffer cache to be written to disk, without actually
+dropping all of the clean buffers from the buffer cache (as would be
+the case with BLKFLSBUF), and without causing a forced CACHE_FLUSH
+command (as would be the case if you called fsync).
+
+The main reason why we haven't is that it's rare that people would
+want to do these things in isolation, but the real problem is that
+exactly what the semantics are for BLKFLSBUF are a bit confused, and
+hence confusing.  It's not even well documented --- I had to go diving
+into the kernel sources to be sure, and even then, as you've pointed
+out, what happens is variable depending on whether the block device is
+mounted or not.
+
+					- Ted
