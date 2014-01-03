@@ -1,47 +1,56 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: AW: ext4 filesystem bad extent error review
-Date: Fri, 03 Jan 2014 11:25:30 -0600
-Message-ID: <52C6F28A.6060706@redhat.com>
-References: <AE39A478622CF340ABEC2418D74074F61FC567864C@SGPMBX05.APAC.bosch.com> <20140102184211.GC10870@thunk.org> <B8A948099C53E0408BDBCE749AAECA9A2A80C78543@SI-MBX10.de.bosch.com>
+From: "Verma, Vishal L" <vishal.l.verma@intel.com>
+Subject: Re: [Lsf-pc] [LSF/MM ATTEND] Persistent Memory
+Date: Fri, 3 Jan 2014 17:45:10 +0000
+Message-ID: <1388771105.2487.40.camel@vverma7-desk1.amr.corp.intel.com>
+References: <1387907056.2487.18.camel@vverma7-desk1.amr.corp.intel.com>
+	 <20131230210404.GB5457@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "Juergens Dirk (CM-AI/ECO2)" <Dirk.Juergens@de.bosch.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	"Huang Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:42904 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751099AbaACRZj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 3 Jan 2014 12:25:39 -0500
-In-Reply-To: <B8A948099C53E0408BDBCE749AAECA9A2A80C78543@SI-MBX10.de.bosch.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"matthew@wil.cx" <matthew@wil.cx>,
+	"lsf-pc@lists.linux-foundation.org"
+	<lsf-pc@lists.linux-foundation.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+To: "jack@suse.cz" <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20131230210404.GB5457@quack.suse.cz>
+Content-Language: en-US
+Content-ID: <3F3970D7E117354795A92AA379E7F40A@intel.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 1/3/14, 10:29 AM, Juergens Dirk (CM-AI/ECO2) wrote:
-> So, I think there _might_ be a kernel bug, but it could be also a problem 
-> related to the particular type of eMMC. We did not observe the same issue
-> in previous tests with another type of eMMC from another supplier, but this
-> was with an older kernel patch level and with another HW design.
-> 
-> Regarding a possible kernel bug: Is there any chance that the invalid 
-> ee_len or ee_start are returned by, e.g., the block allocator ?
-> If so, can we try to instrument the code to get suitable traces ?
-> Just to see or to exclude that the corrupted inode is really written
-> to the eMMC ?
-
->From your description it does sound possible that it's a kernel bug.
-Adding testcases to the code to catch it before it hits the journal
-might be helpful - but then maybe this is something getting overwritten
-after the fact - hard to say.
-
-Can you share more details of the test you are running?  Or maybe even
-the test itself?
-
-I've used a test framework in the past to simulate resets w/o needing
-to reset the box, and do many journal replays very quickly.  It'd be
-interesting to run it using your testcase.
-
-Thanks,
--Eric
+T24gTW9uLCAyMDEzLTEyLTMwIGF0IDIyOjA0ICswMTAwLCBKYW4gS2FyYSB3cm90ZToNCj4gICBB
+ZGRlZCBzb21lIHJlbGV2YW50IGxpc3RzIHRvIENDIChwbGVhc2UgZG9uJ3QgZm9yZ2V0IGFib3V0
+IHRoaXMpLg0KVGhhbmtzLCBJIHdhc24ndCBzdXJlIEkgaGFkIG5lZWRlZCB0bywgZm9yIGFuIGF0
+dGVuZCByZXF1ZXN0LCBidXQgaXQNCm1ha2VzIHNlbnNlIG5vdy4NCj4gDQo+IE9uIFR1ZSAyNC0x
+Mi0xMyAxNzo0NDozNSwgVmVybWEsIFZpc2hhbCBMIHdyb3RlOg0KPiA+IEkgd291bGQgbGlrZSB0
+byBhdHRlbmQgTFNGL01NIDIwMTQgLSBJIGFtIGVzcGVjaWFsbHkgaW50ZXJlc3RlZCBpbg0KPiA+
+IGRpc2N1c3Npb25zIGFyb3VuZCBwZXJzaXN0ZW50IG1lbW9yeS4gSSBoYXZlIGJlZW4gc3R1ZHlp
+bmcgRVhUNCBhbmQNCj4gPiByZXNlYXJjaGluZyBvbiB3aGF0IHdlJ2QgaGF2ZSB0byBkbyB0byBi
+ZXN0IGVuYWJsZSBpdCBmb3INCj4gPiBieXRlLWFkZHJlc3NhYmxlIHBlcnNpc3RlbnQgbWVtb3J5
+Lg0KPiAgIERvIHlvdSBoYXZlIHNvbWUgY29uY3JldGUgc3VnZ2VzdGlvbnMgb3Igb2JzZXJ2YXRp
+b25zIHJlZ2FyZGluZyB0aGlzPw0KPiBCZWNhdXNlIGRpc2N1c3NpbmcgYWJzdHJhY3QgaWRlYXMg
+d2l0aG91dCBhY3R1YWxseSB0cnlpbmcgc29tZXRoaW5nIG91dA0KPiBiZWZvcmVoYW5kIGRvZXNu
+J3QgdXN1YWxseSByZXN1bHQgaW4gYSB1c2VmdWwgZGlzY3Vzc2lvbi4uLg0KDQpJJ3ZlIHN0YXJ0
+ZWQgbG9va2luZyBpbnRvIHRoZSBFWFQ0IGxheW91dCB0byBzZWUgaWYgd2UnZCBuZWVkIGFueQ0K
+Y2hhbmdlcyB0aGVyZSwgZXNwZWNpYWxseSBmb3Igb3B0aW1pemluZyBodWdlIHBhZ2UgbWFwcGlu
+Z3MuIFRoaXMgaXMNCnJlYWxseSBhIHdvcmsgaW4gcHJvZ3Jlc3MsIGFuZCBJIGRvbid0IHlldCBo
+YXZlIGFueSBvYnNlcnZhdGlvbnMuIEkgd2FzDQpob3BpbmcgdG8gYmUgaW52b2x2ZWQgaW4gdGhl
+IGRpc2N1c3Npb25zIE1hdHRoZXcgcHJvcG9zZWQgaGVyZToNCmh0dHA6Ly90aHJlYWQuZ21hbmUu
+b3JnL2dtYW5lLmxpbnV4LmZpbGUtc3lzdGVtcy84MDk2NQ0KPiAgDQo+ID4gSSBhbSByZWxhdGl2
+ZWx5IG5ldyBpbiB0aGUgTGludXgga2VybmVsIHdvcmxkLCBhbmQgbXkgcHJldmlvdXMNCj4gPiBl
+eHBlcmllbmNlIGhhcyBiZWVuIHdpdGggZGV2aWNlIGRyaXZlciB3b3JrIC0gSSB3cm90ZSBhIFND
+U0kgU0dfSU8NCj4gPiB0cmFuc2xhdGlvbiBsYXllciBmb3IgdGhlIE5WTWUgZHJpdmVyLiBJIGFs
+c28gY29udHJpYnV0ZWQgdG8gUE1GUyAtDQo+ID4gaHR0cHM6Ly9naXRodWIuY29tL2xpbnV4LXBt
+ZnMvcG1mcyB3aGljaCB3YXMgb3VyIGdvLXRvIHJvdXRlIGZvcg0KPiA+IGVuYWJsaW5nIFBNIGlu
+IHRoZSBrZXJuZWwgYmVmb3JlIHdlIGRlY2lkZWQgRVhUNCB3b3VsZCBiZSBhIGJldHRlcg0KPiA+
+IGNob2ljZS4NCj4gICBJIHdvdWxkIGJlIGludGVyZXN0ZWQgd2hhdCB3ZXJlIHlvdXIgcmVhc29u
+cyBmb3IgdGhlIGRlY2lzaW9uLiBDYW4geW91DQo+IGVsYWJvcmF0ZSBhIGJpdCAodGhhdCdzIGp1
+c3QgbXkgcGVyc29uYWwgY3VyaW9zaXR5KT8NCg0KQ2VydGFpbmx5LiBUaGUgY3J1eCBvZiBpdCB3
+YXMgdGhhdCB3ZSdkIGhhdmUgdG8gc3BlbmQgYSBsb3QgbW9yZSB0aW1lDQpnZXR0aW5nIHRoaW5n
+cyByZWxhdGVkIHRvIGZpbGUgc3lzdGVtICdjb3JyZWN0bmVzcycgZml4ZWQsIHN1Y2ggYXMNCmxv
+Y2tpbmcgaW4gdGhlIGpvdXJuYWxpbmcgY29kZSwgdGhhdCBvdGhlciBmaWxlIHN5c3RlbXMgYWxy
+ZWFkeSBoYXZlDQpmaWd1cmVkIG91dC4gRVhUNCBpcyBhbHJlYWR5ICd0cnVzdGVkJywgYW5kIHNv
+bWV0aGluZyBjb21wbGV0ZWx5IG5ldw0Kd291bGQgdGFrZSBhIGxvbmcgdGltZSBmb3IgYWRvcHRp
+b24uDQoNCi1WaXNoYWwNCg==
