@@ -1,164 +1,76 @@
-From: "Huang Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>
-Subject: RE: ext4 filesystem bad extent error review
-Date: Fri, 3 Jan 2014 11:16:02 +0800
-Message-ID: <AE39A478622CF340ABEC2418D74074F61FC59AC406@SGPMBX05.APAC.bosch.com>
-References: <AE39A478622CF340ABEC2418D74074F61FC567864C@SGPMBX05.APAC.bosch.com>
- <20140102184211.GC10870@thunk.org>
+From: Baruch Siach <baruch@tkos.co.il>
+Subject: Re: [PATCH] e4defrag: choose the best available posix_fadvise variant
+Date: Fri, 3 Jan 2014 06:57:48 +0200
+Message-ID: <20140103045747.GM6589@tarshish>
+References: <23c2b99441922fe311235e241eca52e9701e54d4.1388645034.git.baruch@tkos.co.il>
+ <20140103004710.GA31411@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"Juergens Dirk (CM-AI/ECO2)" <Dirk.Juergens@de.bosch.com>
+Cc: linux-ext4@vger.kernel.org
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp6-v.fe.bosch.de ([139.15.237.11]:38407 "EHLO
-	smtp6-v.fe.bosch.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751864AbaACDQK convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Jan 2014 22:16:10 -0500
-In-Reply-To: <20140102184211.GC10870@thunk.org>
-Content-Language: en-US
+Received: from guitar.tcltek.co.il ([192.115.133.116]:44936 "EHLO
+	mx.tkos.co.il" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750790AbaACE5x (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 2 Jan 2014 23:57:53 -0500
+Content-Disposition: inline
+In-Reply-To: <20140103004710.GA31411@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
-
 Hi Ted,
 
->What I tell people who are using flash devices is before they start
->using any flash device, to do power drop testing on a raw device,
->without any file system present.  The simplest way to do this is to
->write a program that writes consecutive 4k blocks that contain a
->timestamp, a sequence number, some random data, and a CRC-32 checksum
->over the contents of the timestamp, sequence number, a flags word, and
->random data.  As the program writes such 4k block, it rolls the dice
->and once every 64 blocks or so (i.e., pick a random number, and see if
->it is divisible by 64), .....
-
-It sounds like the barrier test. We wrote such kind test tool before, t=
-he test program used ioctl(fd, BLKFLSBUF, 0) to set a barrier before ne=
-xt write operation.
-Do you think this ioctl is enough ? Because I saw the ext4 use it. I wi=
-ll do the test with that tool and then let you know the result.=20
-
-More information about journal block which caused the bad extents error=
-:
-We enabled the mount option journal_checksum in our test.  We reproduce=
-d the same problem and the journal checksum is correct because the jour=
-nal block will not be replayed if checksum is error.
-
-Best Regards / Mit freundlichen Gr=FC=DFen
-
-Huang weiliang
-
------Original Message-----
-=46rom: Theodore Ts'o [mailto:tytso@mit.edu]=20
-Sent: Friday, January 03, 2014 2:42 AM
-To: Huang Weller (CM/ESW12-CN)
-Cc: linux-ext4@vger.kernel.org; Juergens Dirk (CM-AI/ECO2)
-Subject: Re: ext4 filesystem bad extent error review
-
-On Thu, Jan 02, 2014 at 12:59:52PM +0800, Huang Weller (CM/ESW12-CN) wr=
-ote:
+On Thu, Jan 02, 2014 at 07:47:10PM -0500, Theodore Ts'o wrote:
+> On Thu, Jan 02, 2014 at 08:43:54AM +0200, Baruch Siach wrote:
+> > Use posix_fadvise64() when available. This allows 64bit offsets on =
+32bit
+> > systems.
+> >=20
+> > Rename the internal posix_fadvise() implementation to avoid collisi=
+on with the
+> > C library signature that is sometimes present event when the implem=
+entation
+> > itself is not. This fixes build errors like:
+> >=20
+> > e4defrag.c:189:2: warning: #warning Using locally defined posix_fad=
+vise interface. [-Wcpp
+> > e4defrag.c:203:12: error: conflicting types for =E2=80=98posix_fadv=
+ise=E2=80=99
+> >=20
+> > Signed-off-by: Baruch Siach <baruch@tkos.co.il>
 >=20
-> We did more test which we backup the journal blocks  before we mount =
-the test partition.
-> Actually, before we mount the test partition, we use fsck.ext4 with -=
-n option to verify whether there is any  bad extents issues available. =
-The fsck.ext4 never found any such kind issue. And we can prove that th=
-e bad extents issue is happened after journaling replay.
+> Thanks, applied.
 
-Ok, so that implies that the failure is almost certainly due to
-corrupted blocks in the journal.  Hence, when we replay the journal,
-it causes the the file system to become corrupted, because the "newer"
-(and presumably, "more correct") metadata blocks found in the blocks
-recorded in the journal are in fact corrupted.
+Thanks. You seem to have applied v1 of this patch without the #else com=
+ment=20
+fix. I'll fix this up in a follow up patch. Please push your tree so I =
+can=20
+reference this commit in the log.
 
-BTW, you can use the logdump command in the debugfs program to look at
-the journal.  The debugfs man page documents it, but once you know the
-block that was corrupted, which in your case appears to be block 525:
+Another problem with this patch is that it doesn't takes into account t=
+he=20
+problem of passing 64bit values on 32bit architectures. See the discuss=
+ion=20
+under NOTES in the syscall(2) man page for more information on that. I'=
+ll try=20
+to address this in another patch if you think it's worth it. The soluti=
+on is=20
+likely to look quite ugly when taking the arch specific alignment requi=
+rements=20
+also into account. The alternative is to require C library support for=20
+fadvise64_64 on 32bit architectures.
 
-debugfs: logdump -b 525 -c
+What do you think?
 
-Or to see the contents of all of the blocks logged in the journal:
+baruch
 
-debugfs: logdump -ac
-
->=20
-> We  searched such error on internet, there are some one also has such=
- issue. But there is no solution.
-> This issue maybe not a big issue which it can be repaired by fsck.ext=
-4 easily. But we have below questions:
-> 1. whether this issue already been fixed in the latest kernel version=
-?
-> 2. based on the information I provided in this mail, can you help to =
-solve this issue ?
-
-Well, the question is how did the journal get corrupted?  It's
-possible that it's caused by a kernel bug, although I'm not aware of
-any such bugs being reported.
-
-In my mind, the most likely cause is that the SD card is ignoring the
-CACHE FLUSH command, or is not properly saving the SD card's Flash
-Translation Layer (FTL) metadata on a power drop.  Here are some
-examples some investigation into lousy SSD's that have this bug ---
-and historically, SD cards have been **worse** than SSD's, because the
-manufacturers have a much lower per-unit cost, so they tend to put in
-even cheaper and crappier FTL systems on SD and eMMC flash.
-
-http://lkcl.net/reports/ssd_analysis.html
-
-https://www.usenix.org/conference/fast13/understanding-robustness-ssds-=
-under-power-fault
-
-What I tell people who are using flash devices is before they start
-using any flash device, to do power drop testing on a raw device,
-without any file system present.  The simplest way to do this is to
-write a program that writes consecutive 4k blocks that contain a
-timestamp, a sequence number, some random data, and a CRC-32 checksum
-over the contents of the timestamp, sequence number, a flags word, and
-random data.  As the program writes such 4k block, it rolls the dice
-and once every 64 blocks or so (i.e., pick a random number, and see if
-it is divisible by 64), then set a bit in the flags word indicating
-that this block was forced out using a cache flush, and then when
-writing this block, follow up the write with a CACHE FLUSH command.
-It's also best if the test program prints the blocks which have been
-written with CACHE FLUSH to the serial console, and that this is saved
-by your test rig.
-
-(This is what ext4's journal does before and after writing the commit
-block in the journal, and it guarantees that (a) all of the data in
-the journal written up to the commit block will be available after a
-power drop, and (b) that the commit block has been written to the
-storage device and again, will be available after a power drop.)
-
-Once you've written this program, set up a test rig which boots your
-test board, runs the program, and then drops power to the test board
-randomly.  After the power drop, examine the flash device and make
-sure that all of the blocks written up to the last "commit block" are
-in fact valid.
-
-You will find that a surprising number of SD cards will fail this
-test.  In fact, the really lousy cards will become unreadable after a
-power drop.  (A fact many wedding photographers discover the hard way
-they drop their camera and the SD card flies out, and then they find
-all of that their priceless, once-in-a-lifetime photos are lost forweve=
-r.)
-
-I ****strongly**** recommend that if you are not testing your SD cards
-in this way from your parts supplier, you do so immediately, and
-reject any model that is not able to guarantee that data survives a
-power drop.
-
-Good luck, and I hope this is helpful,
-
-					- Ted
-
-P.S.  If you do write such a program, please consider making it
-available under an open source license.  If more companies did this,
-it would apply pressure to the flash manufacturers to stop making such
-crappy products, and while it might raise the BOM cost of products by
-a penny or two, the net result would be better for everyone in the
-industry.
+--=20
+     http://baruch.siach.name/blog/                  ~. .~   Tk Open Sy=
+stems
+=3D}------------------------------------------------ooO--U--Ooo--------=
+----{=3D
+   - baruch@tkos.co.il - tel: +972.2.679.5364, http://www.tkos.co.il -
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
