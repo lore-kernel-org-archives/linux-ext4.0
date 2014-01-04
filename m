@@ -1,42 +1,57 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/2] e2fsck: fix possible double free when searching for config file
-Date: Fri,  3 Jan 2014 18:12:28 -0500
-Message-ID: <1388790748-18973-2-git-send-email-tytso@mit.edu>
-References: <1388790748-18973-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Bernd Schubert <bernd.schubert@fastmail.fm>
+Subject: Re: ext4 goes into read only mode on using discard with htree_dirblock_to_tree
+ ... bad entry in directory
+Date: Sat, 04 Jan 2014 15:35:31 +0100
+Message-ID: <52C81C33.2030300@fastmail.fm>
+References: <CAHy4Ox1fjTbOxiTqcqyhihYkRs2po7Xs4EWxsFVP+HHyJWpSfg@mail.gmail.com> <20140102185507.GD10870@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+To: Ritesh Khadgaray <khadgaray@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:45737 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753666AbaACXMg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 3 Jan 2014 18:12:36 -0500
-In-Reply-To: <1388790748-18973-1-git-send-email-tytso@mit.edu>
+Received: from out2-smtp.messagingengine.com ([66.111.4.26]:49632 "EHLO
+	out2-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753270AbaADOfd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 4 Jan 2014 09:35:33 -0500
+Received: from compute5.internal (compute5.nyi.mail.srv.osa [10.202.2.45])
+	by gateway1.nyi.mail.srv.osa (Postfix) with ESMTP id 919C920BD5
+	for <linux-ext4@vger.kernel.org>; Sat,  4 Jan 2014 09:35:32 -0500 (EST)
+In-Reply-To: <20140102185507.GD10870@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This happens if there is an error while scanning a directory for
-config file fragments.  This is rarely used, which is why we didn't
-notice this.
 
-Addresses-Coverity-Bug: #1138576
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- e2fsck/profile.c | 1 +
- 1 file changed, 1 insertion(+)
+On 01/02/2014 07:55 PM, Theodore Ts'o wrote:
+> On Thu, Jan 02, 2014 at 10:49:56AM +0530, Ritesh Khadgaray wrote:
 
-diff --git a/e2fsck/profile.c b/e2fsck/profile.c
-index 92aa893..9cfab37 100644
---- a/e2fsck/profile.c
-+++ b/e2fsck/profile.c
-@@ -320,6 +320,7 @@ profile_init(const char **files, profile_t *ret_profile)
- 	    for (fs = files; !PROFILE_LAST_FILESPEC(*fs); fs++) {
- 		if (array)
- 			free_list(array);
-+		array = NULL;
- 		retval = get_dirlist(*fs, &array);
- 		if (retval == 0) {
- 			if (!array)
--- 
-1.8.5.rc3.362.gdf10213
+> 
+> However, in your case, if discard commands are causing on-disk
+> corruption, I'm not sure I can even in good conscience recommend using
+> fstrim.
+> 
+>> Device Model: Crucial_CT960M500SSD1
+>> Serial Number: 1335094BE7CA
+>> LU WWN Device Id: 5 00a075 1094be7ca
+>> Firmware Version: MU03
+> 
 
+If this is not a production system you can try to switch to another 
+provisioning mode. I.e. Intel510 drives cause data corruption with 
+write-same-10, but unmap works fine.
+
+cat /sys/class/scsi_disk/H\:C\:I\:L/provisioning_mode 
+
+and
+
+echo -n {writesame_16,unmap} > /sys/class/scsi_disk/H\:C\:I\:L/provisioning_mode
+
+
+(lsscsi can provide the H:C:I:L tuplet)
+
+
+
+Cheers,
+Bernd
