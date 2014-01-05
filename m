@@ -1,41 +1,54 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 4/4] libblkid: fix memory overrun in probe_lvm2
-Date: Sun,  5 Jan 2014 01:26:43 -0500
-Message-ID: <1388903203-5067-4-git-send-email-tytso@mit.edu>
-References: <1388903203-5067-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 1/4] libss: fix potential memory leak on realloc() failure
+Date: Sun,  5 Jan 2014 01:26:40 -0500
+Message-ID: <1388903203-5067-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@google.com>, "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:46015 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:46014 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750830AbaAEG0r (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 5 Jan 2014 01:26:47 -0500
-In-Reply-To: <1388903203-5067-1-git-send-email-tytso@mit.edu>
+	id S1750826AbaAEG0q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 5 Jan 2014 01:26:46 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Theodore Ts'o <tytso@google.com>
 
-Addresses-Coverity-ID: #1049167
+Addresses-Coverity-ID: #295143
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- lib/blkid/probe.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ lib/ss/invocation.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/lib/blkid/probe.c b/lib/blkid/probe.c
-index 6f74bd4..dd3604e 100644
---- a/lib/blkid/probe.c
-+++ b/lib/blkid/probe.c
-@@ -1360,7 +1360,7 @@ static int probe_lvm2(struct blkid_probe *probe,
- 		return 1;
- 	}
+diff --git a/lib/ss/invocation.c b/lib/ss/invocation.c
+index 61c2e35..924427a 100644
+--- a/lib/ss/invocation.c
++++ b/lib/ss/invocation.c
+@@ -28,7 +28,7 @@ int ss_create_invocation(const char *subsystem_name, const char *version_string,
+ {
+ 	register int sci_idx;
+ 	register ss_data *new_table;
+-	register ss_data **table;
++	register ss_data **table, **rt;
  
--	for (i=0, b=1, p=uuid, q= (char *) label->pv_uuid; i <= 32;
-+	for (i=0, b=1, p=uuid, q= (char *) label->pv_uuid; i < LVM2_ID_LEN;
- 	     i++, b <<= 1) {
- 		if (b & 0x4444440)
- 			*p++ = '-';
+ 	*code_ptr = 0;
+ 	table = _ss_table;
+@@ -42,10 +42,10 @@ int ss_create_invocation(const char *subsystem_name, const char *version_string,
+ 
+ 	for (sci_idx = 1; table[sci_idx] != (ss_data *)NULL; sci_idx++)
+ 		;
+-	table = (ss_data **) realloc((char *)table,
+-				     ((unsigned)sci_idx+2)*size);
+-	if (table == NULL) {
+-		*code_ptr = errno;
++	rt = (ss_data **) realloc((char *)table, ((unsigned)sci_idx+2)*size);
++	if (rt == NULL) {
++		*code_ptr = ENOMEM;
++		free(table);
+ 		return 0;
+ 	}
+ 	table[sci_idx+1] = (ss_data *) NULL;
 -- 
 1.8.5.rc3.362.gdf10213
 
