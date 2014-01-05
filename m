@@ -1,46 +1,41 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/4] libext2fs: fix potential memory leak in qcow2_write_raw_image()
-Date: Sun,  5 Jan 2014 01:26:41 -0500
-Message-ID: <1388903203-5067-2-git-send-email-tytso@mit.edu>
+Subject: [PATCH 4/4] libblkid: fix memory overrun in probe_lvm2
+Date: Sun,  5 Jan 2014 01:26:43 -0500
+Message-ID: <1388903203-5067-4-git-send-email-tytso@mit.edu>
 References: <1388903203-5067-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@google.com>, "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:46012 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:46015 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750798AbaAEG0q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 5 Jan 2014 01:26:46 -0500
+	id S1750830AbaAEG0r (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 5 Jan 2014 01:26:47 -0500
 In-Reply-To: <1388903203-5067-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Theodore Ts'o <tytso@google.com>
 
-Addresses-Coverity-ID: #1049179
-Addresses-Coverity-ID: #1049180
+Addresses-Coverity-ID: #1049167
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- lib/ext2fs/qcow2.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+ lib/blkid/probe.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/lib/ext2fs/qcow2.c b/lib/ext2fs/qcow2.c
-index 547edc0..c7cdbee 100644
---- a/lib/ext2fs/qcow2.c
-+++ b/lib/ext2fs/qcow2.c
-@@ -235,8 +235,10 @@ int qcow2_write_raw_image(int qcow2_fd, int raw_fd,
+diff --git a/lib/blkid/probe.c b/lib/blkid/probe.c
+index 6f74bd4..dd3604e 100644
+--- a/lib/blkid/probe.c
++++ b/lib/blkid/probe.c
+@@ -1360,7 +1360,7 @@ static int probe_lvm2(struct blkid_probe *probe,
+ 		return 1;
  	}
  
- 	/* Resize the output image to the filesystem size */
--	if (ext2fs_llseek(raw_fd, img.image_size - 1, SEEK_SET) < 0)
--		return errno;
-+	if (ext2fs_llseek(raw_fd, img.image_size - 1, SEEK_SET) < 0) {
-+		ret = errno;
-+		goto out;
-+	}
- 
- 	((char *)copy_buf)[0] = 0;
- 	size = write(raw_fd, copy_buf, 1);
+-	for (i=0, b=1, p=uuid, q= (char *) label->pv_uuid; i <= 32;
++	for (i=0, b=1, p=uuid, q= (char *) label->pv_uuid; i < LVM2_ID_LEN;
+ 	     i++, b <<= 1) {
+ 		if (b & 0x4444440)
+ 			*p++ = '-';
 -- 
 1.8.5.rc3.362.gdf10213
 
