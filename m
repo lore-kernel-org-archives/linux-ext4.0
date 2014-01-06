@@ -1,35 +1,31 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: process hangs in ext4_sync_file
-Date: Mon, 6 Jan 2014 09:32:03 -0500
-Message-ID: <20140106143203.GA13648@thunk.org>
-References: <CAEfL3KniKZNzehPH1Z4eWhhNF_RHrE4vHoRTHDPrfYj4t_2LtA@mail.gmail.com>
- <CAEfL3K=vEaZ+-pj=QCogJvcvf0xgsEsAT9DX8eExMjSiNmcNLQ@mail.gmail.com>
+Subject: Re: [PATCH 6/9] Use %pd in Ext4
+Date: Mon, 6 Jan 2014 09:43:31 -0500
+Message-ID: <20140106144331.GB13648@thunk.org>
+References: <20131210155818.GA1700@thunk.org>
+ <20131210152612.4916.80435.stgit@warthog.procyon.org.uk>
+ <20131210152655.4916.77232.stgit@warthog.procyon.org.uk>
+ <1218.1386763804@warthog.procyon.org.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Sandeep Joshi <sanjos100@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:46264 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753888AbaAFOcG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 6 Jan 2014 09:32:06 -0500
+Cc: viro@zeniv.linux.org.uk, linux-ext4@vger.kernel.org,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-fsdevel@vger.kernel.org
+To: David Howells <dhowells@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <CAEfL3K=vEaZ+-pj=QCogJvcvf0xgsEsAT9DX8eExMjSiNmcNLQ@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1218.1386763804@warthog.procyon.org.uk>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jan 06, 2014 at 03:58:58PM +0530, Sandeep Joshi wrote:
-> I reported a problem with process hanging in ext4 sync on a SSD a few weeks ago
-> See this thread http://www.spinics.net/lists/linux-ext4/msg40369.html
+On Wed, Dec 11, 2013 at 12:10:04PM +0000, David Howells wrote:
+> Theodore Ts'o <tytso@mit.edu> wrote:
 > 
-> That was on a SSD with discard option enabled.  I was asked to turn
-> that off which I did and never hit the issue again.
+> > Do you want to have Al take this, or I'm happy to carry this in the
+> > ext4 tree.
 > 
-> Today I saw the same problem on an ext4 filesystem mounted on a loop
-> device.  The stack is *identical*.
+> Can you take the Ext4 bit through your tree?
 
-What model SSD are you using?  This looks like the we're just waiting
-for the SSD to acknowledge that the write has been completed.  This
-really smells like a case of a crappy SSD....
+Thanks, applied to the ext4 tree.
 
 					- Ted
