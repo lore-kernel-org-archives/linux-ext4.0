@@ -1,31 +1,32 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 6/9] Use %pd in Ext4
-Date: Mon, 6 Jan 2014 09:43:31 -0500
-Message-ID: <20140106144331.GB13648@thunk.org>
-References: <20131210155818.GA1700@thunk.org>
- <20131210152612.4916.80435.stgit@warthog.procyon.org.uk>
- <20131210152655.4916.77232.stgit@warthog.procyon.org.uk>
- <1218.1386763804@warthog.procyon.org.uk>
+Subject: Re: Fwd: [RESEND PATCH 2/2] ext4: ext4_inode_is_fast_symlink should
+ use cluster size
+Date: Mon, 6 Jan 2014 09:51:45 -0500
+Message-ID: <20140106145145.GC13648@thunk.org>
+References: <1387515880-10185-1-git-send-email-yangyongqiang01@baidu.com>
+ <1387515880-10185-2-git-send-email-yangyongqiang01@baidu.com>
+ <CAGBYx2Zx7jnK-DmM7=RCCVwz4N0FfE_-=eETO8OkLt5McCXttg@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: viro@zeniv.linux.org.uk, linux-ext4@vger.kernel.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-fsdevel@vger.kernel.org
-To: David Howells <dhowells@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:46277 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751341AbaAFOvr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 6 Jan 2014 09:51:47 -0500
 Content-Disposition: inline
-In-Reply-To: <1218.1386763804@warthog.procyon.org.uk>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <CAGBYx2Zx7jnK-DmM7=RCCVwz4N0FfE_-=eETO8OkLt5McCXttg@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Dec 11, 2013 at 12:10:04PM +0000, David Howells wrote:
-> Theodore Ts'o <tytso@mit.edu> wrote:
+On Fri, Dec 20, 2013 at 01:13:33PM +0800, Yongqiang Yang wrote:
+> From: Yongqiang Yang <xiaoqiangnk@gmail.com>
 > 
-> > Do you want to have Al take this, or I'm happy to carry this in the
-> > ext4 tree.
+> can be reproduced by xfstests 62 with  bigalloc and 128bit size inode.
 > 
-> Can you take the Ext4 bit through your tree?
+> Signed-off-by: Yongqiang Yang <yangyongqiang01@baidu.com>
 
-Thanks, applied to the ext4 tree.
+Thanks, applied.
 
-					- Ted
+						- Ted
