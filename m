@@ -1,86 +1,72 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] e4defrag: choose the best available posix_fadvise variant
-Date: Sun, 5 Jan 2014 09:00:49 -0500
-Message-ID: <20140105140049.GB5849@thunk.org>
-References: <23c2b99441922fe311235e241eca52e9701e54d4.1388645034.git.baruch@tkos.co.il>
- <20140103004710.GA31411@thunk.org>
- <20140103045747.GM6589@tarshish>
- <20140103162344.GD31411@thunk.org>
- <20140105061233.GA5849@thunk.org>
- <20140105064631.GC5316@tarshish>
+Subject: Re: maintain badblocks list on the fly
+Date: Sun, 5 Jan 2014 20:27:32 -0500
+Message-ID: <20140106012732.GA21107@thunk.org>
+References: <52C92DC9.7030806@rempel-privat.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Baruch Siach <baruch@tkos.co.il>
+To: Oleksij Rempel <linux@rempel-privat.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:46092 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:46147 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751139AbaAEOAx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 5 Jan 2014 09:00:53 -0500
+	id S1751460AbaAFB1h (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 5 Jan 2014 20:27:37 -0500
 Content-Disposition: inline
-In-Reply-To: <20140105064631.GC5316@tarshish>
+In-Reply-To: <52C92DC9.7030806@rempel-privat.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jan 05, 2014 at 08:46:31AM +0200, Baruch Siach wrote:
-> >     Rename the internal posix_fadvise() implementation to avoid collision with the
-> >     C library signature that is sometimes present event when the implementation
-> >     itself is not. This fixes build errors like:
+On Sun, Jan 05, 2014 at 11:02:49AM +0100, Oleksij Rempel wrote:
 > 
-> This paragraph is not needed anymore, since the internal posix_fadvise is 
-> completely removed.
+> after some googling i didn't found answer to my question, so i set it
+> directly here: do it makes sense and is it possible to maintain bad
+> block list of ext4 on fly? I mean, if ext4 get error from, for example
+> from ata subsystem, and it will mark block as bad or may be better as
+> "probably bad"?
 
-Good point, thanks.  I'll remove it.
+Figuring out what to do in case of an error is tricky.  Sometimes
+errors are transient.  For example, losing a connection (perhaps
+briefly) to a disk connected via fiber channel).
 
-> > +	fadvise64
-> 
-> There is no such symbol in any C library that I know of (unlike fallocate64). 
-> Where have you see this?
+Also, with most hard drives, if you rewrite a block which has reported
+a read error, the hard drive will usually remap the block to one of
+the blocks in the spare pool.  So one strategy is when you get a read
+error is not to avoid using the block forever, but to simply write all
+zero's to the block, and then see if the block is now valid.  But now
+combine this with the "some errors are transient" problem --- if you
+do a forced rewrite, you might lose data that you could get back i you
+try rereading the block later.  So it's rare file system author that
+is willing to do an automated forced rewrite when getting a read
+error.
 
-Dietlibc has it.  It's a little moot since at the moment e4defrag uses
-a number of other functions which aren't supported by dietlibc.
-(Including nftw64 and FTW_MOUNT/FTW_PHYS; nftw64 isn't a part of any
-standard, but FTW_MOUNT and FTW_PHYS is guaranteed by the Single Unix
-Specification. We could rewrite nftw64 in terms of nftw and stat64,
-which would be supported by dietlibc, but that still leaves FTW_MOUNT
-and FTW_PHYS.  But since that's missing standards-compliant
-functionality, and it shouldn't be that hard to implement, I'm hopeful
-the dietlibc maintianer will accept a patch to fix this at some point.)
+For a write error, it's safer to try rewriting the block, but most of
+the time the hard drive will have tried rewriting the block already,
+unless it's due to a connection problem between the file system and
+the storage device.  For example, suppose the file system is accessing
+an iSCSI block device which where the transport layer between computer
+and the storage device is a TCP connection...
 
-The main reason why I like dietlibc is because it allows me to build a
-stripped e2fsck.static in 433k on x86_64, instead of 1312k doing a
-static build using glibc.  It's also useful as a convenient
-"mini-libc", which makes it much more likely that e2fsprogs can be
-compiled on non-glibc libc's, such as uClibc and Android's Bionic.
-(I'd consider patches to the build system for other mini-libc's, but
-dietlibc has the advantage of being available on almost all Debian
-architectures, and it is very convenient for me to use.)
+So the problem with automated error recovery is that it's highly
+dependent on the storage device (is it a RAID; a hard drive; an iSCSI
+device, etc.) and the application / what are you storing.
 
-The other benefit of dietlibc, along with work such as Andreas' test
-builds e2fsprogs on MacOS X, is that it helps ensure e2fsprogs's
-portability across other operating systems.  So for example, although
-I don't do any testing trying to build e2fsprogs for use with
-Android/Cyanogen, I was pleased to find out that 1.42.9 built cleanly
-against Bionic.
+For example, if the file system is on a direct connected HDD as the
+back end for a cluster file system such as hadoopfs or the Google File
+System, where the cluster file system is storing every chunk of its
+file replicated on multiple file servers, and/or using some kind of
+Reed Solomon encoding, when you detect a read error on data block, the
+best thing to do might be to delete file (relying on the fact that the
+next time you write to the bad block, the HDD will remap the block to
+one of the blocks in the spare pool), and then informing the cluster
+file system that it should do a Reed Solomon reconstruction or to
+otherwise reshard that portion of the file.
 
-It turns out dietlibc support was silently broken a while back due to
-changes in autoconf, so there were a couple fix ups I needed to make
-e2fsprogs work well on dietlibc again.
-
-> > - * fadvise() -		Give advice about file access.
-> > +/* Local definitions of some syscalls glibc may not yet have
-> 
-> This comment becomes redundant. We now rely on the C library to provide the 
-> system call.
-
-Good point, I'll remove it.
-
-> > +#define posix_fadvise	posix_fadvise
-> 
-> Also not needed.
-
-Yup, will fix.
-
-Thanks for the review!
+At one point I toyed with trying to get something upstream where the
+bad block notification would get sent via a netlink channel.  That way
+userspace can do something appropriate, instead of trying to encode
+what can potentially extremely complicated policy decisions into the
+kernel.  I never had the time to get the design and interface clean
+enough for upstream, though.
 
 						- Ted
