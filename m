@@ -1,85 +1,89 @@
 From: "Huang Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>
-Subject: =?utf-8?B?W0F0dGFjaG1lbnQgaGFzIGJlZW4gcmVtb3ZlZF1SRTog?=
-	=?utf-8?B?QVc6IGV4dDQgZmlsZXN5c3RlbSBiYWQgZXh0ZW50IGVycm9yIHJldmll?=
-	=?utf-8?B?dw==?=
-Date: Mon, 6 Jan 2014 13:10:46 +0800
-Message-ID: <AE39A478622CF340ABEC2418D74074F61FC59ACC76@SGPMBX05.APAC.bosch.com>
+Subject: RE: AW: ext4 filesystem bad extent error review
+Date: Mon, 6 Jan 2014 13:17:37 +0800
+Message-ID: <AE39A478622CF340ABEC2418D74074F61FC59ACC8A@SGPMBX05.APAC.bosch.com>
 References: <AE39A478622CF340ABEC2418D74074F61FC567864C@SGPMBX05.APAC.bosch.com>
  <20140102184211.GC10870@thunk.org>
  <B8A948099C53E0408BDBCE749AAECA9A2A80C78543@SI-MBX10.de.bosch.com>
  <52C6F28A.6060706@redhat.com>
+ <B8A948099C53E0408BDBCE749AAECA9A2A80C78551@SI-MBX10.de.bosch.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="_002_AE39A478622CF340ABEC2418D74074F61FC59ACC76SGPMBX05APACb_"
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
 Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>,
-	"Juergens Dirk (CM-AI/ECO2)" <Dirk.Juergens@de.bosch.com>,
+To: "Juergens Dirk (CM-AI/ECO2)" <Dirk.Juergens@de.bosch.com>,
+	Eric Sandeen <sandeen@redhat.com>,
 	Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp6-v.fe.bosch.de ([139.15.237.11]:59264 "EHLO
+Received: from smtp6-v.fe.bosch.de ([139.15.237.11]:59348 "EHLO
 	smtp6-v.fe.bosch.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751723AbaAFFLB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Jan 2014 00:11:01 -0500
-In-Reply-To: <52C6F28A.6060706@redhat.com>
+	with ESMTP id S1752037AbaAFFRu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Jan 2014 00:17:50 -0500
+In-Reply-To: <B8A948099C53E0408BDBCE749AAECA9A2A80C78551@SI-MBX10.de.bosch.com>
 Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---_002_AE39A478622CF340ABEC2418D74074F61FC59ACC76SGPMBX05APACb_
-Content-Type: text/plain;
-	charset="utf-8"
-Content-Transfer-Encoding: base64
 
-VGhlIGUtbWFpbCBzZW50IHRvIHlvdSBjb250YWluZWQgYW4gYXR0YWNobWVudCB3aXRoIGEgbm90
-IGFsbG93ZWQgZmlsZXR5cGUuDQpQbGVhc2UgaW5mb3JtIHRoZSBzZW5kZXIgdG8gcGFjayB0aGlz
-IHR5cGUgb2YgYXR0YWNobWVudCBpbnRvIGENCnBhc3N3b3JkIHByb3RlY3RlZCBaSVAtYXJjaGl2
-ZS4NCg0KRWluZSBhbiBTaWUgZ2VzZW5kZXRlIEUtTWFpbCBlbnRoaWVsdCBlaW5lbiBuaWNodCBl
-cmxhdWJ0ZW4gRGF0ZWlhbmhhbmcuDQpCaXR0ZSBpbmZvcm1pZXJlbiBTaWUgZGVuIEFic2VuZGVy
-LCBkaWVzZSBBcnQgdm9uIEFuaGFuZyBrYW5uIG51cg0KYWxzIFBhc3N3b3J0IGdlc2Now7x0enRl
-cyBaSVAtQXJjaGl2IHZlcnNlbmRldCB3ZXJkZW4uDQoNCkRldGFpbHM6DQoNClNlbmRlcjogV2Vs
-bGVyLkh1YW5nQGNuLmJvc2NoLmNvbQ0KUmVjaXBpZW50czogdHl0c29AbWl0LmVkdTtzYW5kZWVu
-QHJlZGhhdC5jb207bGludXgtZXh0NEB2Z2VyLmtlcm5lbC5vcmcNClN1YmplY3Q6ICJSRTogQVc6
-IGV4dDQgZmlsZXN5c3RlbSBiYWQgZXh0ZW50IGVycm9yIHJldmlldyINClRpbWU6IE1vbiBKYW4g
-IDYgMDY6MTA6NTUgMjAxNA0KRmlsZTogY29kZV9vdXRfcGMudGFyDQoNClRoZSBjbGVhbmVkIG1l
-c3NhZ2UgYm9keSBpcyBiZWxvdyB0aGlzIGxpbmUgb3IgaW4gdGhlIGF0dGFjaGVkIGUtbWFpbC4N
-CkRpZSBiZXJlaW5pZ3RlIEUtTWFpbCBpc3QgdW50ZXIgZGVyIGZvbGdlbmRlbiBMaW5pZSBvZGVy
-IGluIGJlaWdlZsO8Z3RlbSBBdHRhY2htZW50Lg0KLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCg0K
-Pk9uIDEvMy8xNCwgMTA6MjkgQU0sIEp1ZXJnZW5zIERpcmsgKENNLUFJL0VDTzIpIHdyb3RlOg0K
-Pj4gU28sIEkgdGhpbmsgdGhlcmUgX21pZ2h0XyBiZSBhIGtlcm5lbCBidWcsIGJ1dCBpdCBjb3Vs
-ZCBiZSBhbHNvIGEgcHJvYmxlbSANCj4+IHJlbGF0ZWQgdG8gdGhlIHBhcnRpY3VsYXIgdHlwZSBv
-ZiBlTU1DLiBXZSBkaWQgbm90IG9ic2VydmUgdGhlIHNhbWUgaXNzdWUNCj4+IGluIHByZXZpb3Vz
-IHRlc3RzIHdpdGggYW5vdGhlciB0eXBlIG9mIGVNTUMgZnJvbSBhbm90aGVyIHN1cHBsaWVyLCBi
-dXQgdGhpcw0KPj4gd2FzIHdpdGggYW4gb2xkZXIga2VybmVsIHBhdGNoIGxldmVsIGFuZCB3aXRo
-IGFub3RoZXIgSFcgZGVzaWduLg0KPj4gDQo+PiBSZWdhcmRpbmcgYSBwb3NzaWJsZSBrZXJuZWwg
-YnVnOiBJcyB0aGVyZSBhbnkgY2hhbmNlIHRoYXQgdGhlIGludmFsaWQgDQo+PiBlZV9sZW4gb3Ig
-ZWVfc3RhcnQgYXJlIHJldHVybmVkIGJ5LCBlLmcuLCB0aGUgYmxvY2sgYWxsb2NhdG9yID8NCj4+
-IElmIHNvLCBjYW4gd2UgdHJ5IHRvIGluc3RydW1lbnQgdGhlIGNvZGUgdG8gZ2V0IHN1aXRhYmxl
-IHRyYWNlcyA/DQo+PiBKdXN0IHRvIHNlZSBvciB0byBleGNsdWRlIHRoYXQgdGhlIGNvcnJ1cHRl
-ZCBpbm9kZSBpcyByZWFsbHkgd3JpdHRlbg0KPj4gdG8gdGhlIGVNTUMgPw0KDQo+RnJvbSB5b3Vy
-IGRlc2NyaXB0aW9uIGl0IGRvZXMgc291bmQgcG9zc2libGUgdGhhdCBpdCdzIGEga2VybmVsIGJ1
-Zy4NCj5BZGRpbmcgdGVzdGNhc2VzIHRvIHRoZSBjb2RlIHRvIGNhdGNoIGl0IGJlZm9yZSBpdCBo
-aXRzIHRoZSBqb3VybmFsDQo+bWlnaHQgYmUgaGVscGZ1bCAtIGJ1dCB0aGVuIG1heWJlIHRoaXMg
-aXMgc29tZXRoaW5nIGdldHRpbmcgb3ZlcndyaXR0ZW4NCj5hZnRlciB0aGUgZmFjdCAtIGhhcmQg
-dG8gc2F5Lg0KDQo+Q2FuIHlvdSBzaGFyZSBtb3JlIGRldGFpbHMgb2YgdGhlIHRlc3QgeW91IGFy
-ZSBydW5uaW5nPyAgT3IgbWF5YmUgZXZlbg0KPnRoZSB0ZXN0IGl0c2VsZj8NCg0KPkkndmUgdXNl
-ZCBhIHRlc3QgZnJhbWV3b3JrIGluIHRoZSBwYXN0IHRvIHNpbXVsYXRlIHJlc2V0cyB3L28gbmVl
-ZGluZw0KPnRvIHJlc2V0IHRoZSBib3gsIGFuZCBkbyBtYW55IGpvdXJuYWwgcmVwbGF5cyB2ZXJ5
-IHF1aWNrbHkuICBJdCdkIGJlDQo+aW50ZXJlc3RpbmcgdG8gcnVuIGl0IHVzaW5nIHlvdXIgdGVz
-dGNhc2UuDQoNClBsZWFzZSBnZXQgY29kZV9vdXQudGFyLmd6IGZyb20gbXkgYW5vdGhlciBtYWls
-Lg0KQWJvdXQgdGhlIFBDIHNpZGUsIEkgd3JpdGUgYSB3aW4zMiBhcHBsaWNhdGlvbiB3aGljaCBj
-YW4gc2VuZCBjb21tYW5kcyB2aWEgdWFydCB0byBUT0UgcG93ZXIgc3VwcGxpZXIodGhlIHBvd2Vy
-IHN1cHBsaWVyIGhhcyByZW1vdGUgY29udHJvbCBtb2RlIHdoaWNoIGl0IGNhbiBhY2NlcHQgY29t
-bWFuZCBmcm9tIGl0cyB1YXJ0IGludGVyZmFjZSkuDQpUaGUgUHV0dHkgc3JjLCBJIG9ubHkgbW9k
-aWZpZWQgdGhlIHdpbnNlci5jIHdoaWNoIGluY2x1ZGUgaW4gdGhlIGF0dGFjaG1lbnQgb2YgdGhp
-cyBtYWlsLiBUaGVyZSBpcyBhbHNvIGEgcmVhZG1lLnR4dCB0byBpbnRyb2R1Y2UgdGhlIHBhY2th
-Z2UuDQpJZiB5b3Ugd2FudCB0byB1c2UgbXkgdGVzdCBlbnZpcm9ubWVudCAsIEkgdGhpbmsgeW91
-IGp1c3QgbmVlZCBtb2RpZnkgdGhlIHB1dHR5X3RvZS5iYXQgd2l0aCB5b3Vycy4gIEl0IGlzIGVh
-c3kgdG8gdW5kZXJzdGFuZCB0aGUgY29tbWFuZHMgaW4gdGhpcyBzY3JpcHQuIFlvdSBjYW4gcmVw
-bGFjZSB0aGUgY29tbWFuZCB0byBjb250cm9sIHRoZSBwb3dlciBjb250cm9sbGVyIHdpdGggeW91
-cnMuDQpQbGVhc2UgZmVlbCBmcmVlIHRvIGxldCBtZSBrbm93IGlmIHlvdSBoYXZlIGFueSBpc3N1
-ZSBhYm91dCB0aGUgZW52aXJvbm1lbnQgc2V0dXAuDQoNClRoYW5rcw0KSHVhbmcgd2VsbGVyDQoN
-Cg0K
 
---_002_AE39A478622CF340ABEC2418D74074F61FC59ACC76SGPMBX05APACb_--
+>On Thu, Jan 03, 2014 at 19:24, Eric Sandeen wrote
+>> 
+>> On 1/3/14, 10:29 AM, Juergens Dirk (CM-AI/ECO2) wrote:
+>> > So, I think there _might_ be a kernel bug, but it could be also a
+>> problem
+>> > related to the particular type of eMMC. We did not observe the same
+>> issue
+>> > in previous tests with another type of eMMC from another supplier,
+>> but this
+>> > was with an older kernel patch level and with another HW design.
+>> >
+>> > Regarding a possible kernel bug: Is there any chance that the invalid
+>> > ee_len or ee_start are returned by, e.g., the block allocator ?
+>> > If so, can we try to instrument the code to get suitable traces ?
+>> > Just to see or to exclude that the corrupted inode is really written
+>> > to the eMMC ?
+>> 
+>> From your description it does sound possible that it's a kernel bug.
+>> Adding testcases to the code to catch it before it hits the journal
+>> might be helpful - but then maybe this is something getting overwritten
+>> after the fact - hard to say.
+>> 
+>> Can you share more details of the test you are running?  Or maybe even
+>> the test itself?
 
+>Yes, for sure, we can. Weller, please provide additional details
+>or corrections. 
+
+>In short:
+>Basically we use an automated cyclic test writing many small 
+> (some kBytes) files with CRC checksums for easy consistency check
+>into a separate test partition. Files also contain meta information
+>like filename,  sequence number and a random number to allow to identify 
+>from block device image dumps, if we just see a fragment of an old
+>deleted file or a still valid one. 
+
+>Each test loop looks like this:
+>1) Boot the device after power on or reset
+>2) Do fsck -n BEFORE mounting
+>2 a) (optional) binary dump of the journal 
+>3) Mount test partition
+>4) File content check for all files from prev. loop
+>5) erase all files from previous loop
+>6) start writing hundreds/thousands of test files 
+>   in multiple directories with several threads
+>7) after random time cut the power or do soft reset
+
+>If 2), 3), 4) or 5) fails, stop test.
+
+>We are running the test usually with kind of transaction
+>safe handling, i.e. use fsync/rename, to avoid zero length files
+>or file fragments.
+
+Yes, Dirk's description is right.
+And You also can get the detail of my test in the package code_out.tar.gz in another mail.  There is a document to introduce my test tool and test case.
+And also the test scripts.
+
+
+Thanks.
+
+Huang weller
