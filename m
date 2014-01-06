@@ -1,34 +1,34 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix bigalloc regression
-Date: Mon, 6 Jan 2014 15:07:05 -0500
-Message-ID: <20140106200705.GD28490@thunk.org>
-References: <20140106184619.GB2211@wallace>
+Subject: [GIT PULL] ext4 fixes for 3.13
+Date: Mon, 6 Jan 2014 15:07:52 -0500
+Message-ID: <20140106200752.GA31360@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Eric Whitney <enwlinux@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:46353 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755401AbaAFUHH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 6 Jan 2014 15:07:07 -0500
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: torvalds@linux-foundation.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20140106184619.GB2211@wallace>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jan 06, 2014 at 01:46:19PM -0500, Eric Whitney wrote:
-> Commit f5a44db5d2 introduced a regression on filesystems created with
-> the bigalloc feature (cluster size > blocksize).  It causes xfstests
-> generic/006 and /013 to fail with an unexpected JBD2 failure and
-> transaction abort that leaves the test file system in a read only state.
-> Other xfstests run on bigalloc file systems are likely to fail as well.
-> 
-> The cause is the accidental use of a cluster mask where a cluster
-> offset was needed in ext4_ext_map_blocks().
-> 
-> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+The following changes since commit f5a44db5d2d677dfbf12deee461f85e9ec633961:
 
-Thanks, applied.
+  ext4: add explicit casts when masking cluster sizes (2013-12-20 09:29:35 -0500)
 
-					- Ted
+are available in the git repository at:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus_stable
+
+for you to fetch changes up to d0abafac8c9162f39c4f6b2f8141b772a09b3770:
+
+  ext4: fix bigalloc regression (2014-01-06 14:00:23 -0500)
+
+----------------------------------------------------------------
+Fix a regression introduced in v3.13-rc6
+
+----------------------------------------------------------------
+Eric Whitney (1):
+      ext4: fix bigalloc regression
+
+ fs/ext4/extents.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
