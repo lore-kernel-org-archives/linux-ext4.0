@@ -1,137 +1,90 @@
 From: "Huang Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>
 Subject: RE: ext4 filesystem bad extent error review
-Date: Mon, 6 Jan 2014 10:23:17 +0800
-Message-ID: <AE39A478622CF340ABEC2418D74074F61FC59ACAC4@SGPMBX05.APAC.bosch.com>
+Date: Mon, 6 Jan 2014 11:53:36 +0800
+Message-ID: <AE39A478622CF340ABEC2418D74074F61FC59ACBC9@SGPMBX05.APAC.bosch.com>
 References: <AE39A478622CF340ABEC2418D74074F61FC567864C@SGPMBX05.APAC.bosch.com>
  <20140102184211.GC10870@thunk.org>
  <AE39A478622CF340ABEC2418D74074F61FC59AC406@SGPMBX05.APAC.bosch.com>
- <20140103154846.GB31411@thunk.org>
- <B8A948099C53E0408BDBCE749AAECA9A2A80C78545@SI-MBX10.de.bosch.com>
+ <20140103154846.GB31411@thunk.org> <52C6F22A.4040202@redhat.com>
+ <20140103175111.GA4336@thunk.org> <52C6F944.4030605@redhat.com>
+ <20140103180654.GC4336@thunk.org>
+ <B8A948099C53E0408BDBCE749AAECA9A2A80C7854F@SI-MBX10.de.bosch.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
 Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 To: "Juergens Dirk (CM-AI/ECO2)" <Dirk.Juergens@de.bosch.com>,
-	Theodore Ts'o <tytso@mit.edu>
+	Theodore Ts'o <tytso@mit.edu>,
+	Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp6-v.fe.bosch.de ([139.15.237.11]:57368 "EHLO
+Received: from smtp6-v.fe.bosch.de ([139.15.237.11]:58464 "EHLO
 	smtp6-v.fe.bosch.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751956AbaAFCXa convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 5 Jan 2014 21:23:30 -0500
-In-Reply-To: <B8A948099C53E0408BDBCE749AAECA9A2A80C78545@SI-MBX10.de.bosch.com>
+	with ESMTP id S1752507AbaAFDyL convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 5 Jan 2014 22:54:11 -0500
+In-Reply-To: <B8A948099C53E0408BDBCE749AAECA9A2A80C7854F@SI-MBX10.de.bosch.com>
 Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
-
->On Thu, Jan 03, 2014 at 17:30, Theodore Ts'o [mailto:tytso@mit.edu]
+>On Thu, Jan 03, 2014 at 19:07, Theodore Ts'o [mailto:tytso@mit.edu]
 >wrote:
->>=20
->> On Fri, Jan 03, 2014 at 11:16:02AM +0800, Huang Weller (CM/ESW12-CN)
->> wrote:
+>> 
+>>> On Fri, Jan 03, 2014 at 11:54:12AM -0600, Eric Sandeen wrote:
+> > >
+>> > > This call chain only happens if the block device is mounted.
 >> >
->> > It sounds like the barrier test. We wrote such kind test tool
->> > before, the test program used ioctl(fd, BLKFLSBUF, 0) to set a
->> > barrier before next write operation.  Do you think this ioctl is
->> > enough ? Because I saw the ext4 use it. I will do the test with th=
-at
->> > tool and then let you know the result.
->>=20
->> The BLKFLSBUF ioctl does __not__ send a CACHE FLUSH command to the
->> hardware device.  It forces all of the dirty buffers in memory to th=
-e
->> storage device, and then it invalidates all the buffer cache, but it
->> does not send a CACHE FLUSH command to the hardware.  Hence, the
->> hardware is free to write it to its on-disk cache, and not necessari=
-ly
->> guarantee that the data is written to stable store.  (For an example
->> use case of BLKFLSBUF, we use it in e2fsck to drop the buffer cache
->> for benchmarking purposes.)
->>=20
->> If you want to force a CACHE FLUSH (or barrier, depending on the
->> underlying transport different names may be given to this operation)=
-,
->> you need to call fsync() on the file descriptor open to the block
->> device.
->>=20
->> > More information about journal block which caused the bad extents
->> > error: We enabled the mount option journal_checksum in our test.  =
-We
->> > reproduced the same problem and the journal checksum is correct
->> > because the journal block will not be replayed if checksum is erro=
-r.
->>=20
->> How did you enable the journal_checksum option?  Note that this is n=
-ot
->> safe in general, which is why we don't enable it or the async_commit
->> mount option by default.  The problem is that currently the journal
->> replay stops when it hits a bad checksum, and this can leave the fil=
-e
->> system in a worse case than it currently is in.  There is a way we
->> could fix it, by adding per-block checksums to the journal, so we ca=
-n
->> skip just the bad block, and then force an efsck afterwards, but tha=
-t
->> isn't something we've implemented yet.
->>=20
->> That being said, if the journal checksum was valid, and so the
->> corrupted block was replayed, it does seem to argue against
->> hardware-induced corruption.
+>> > Sure, but I thought that's what they were doing.  Maybe I misread.
+>> >
+>> 
+>> I thought this was in relation to doing what they called a "barrier
+>> test", where you are writing to flash device and then drop power, and
+>> then see if the CACHE FLUSH request was actually honored.  (And
+>> whether or not the FTL got corrupted so badly that the device brick's
+>> itself, as does happen for some of the crappier cheap flash out
+>> there.)
+>> 
+>> But I'm not sure precisely how they implemented their test.  It's
+>> possible it was done with the file system mounted.  My suggestion was
+>> to make sure that the flash was proof against power drops by doing
+>> this using a raw block device, to remove the variable of the file
+>> system.
+>> 
 
->Yes, this was also our feeling. Please see my other mail just sent
->some minutes ago. We know about the possible problems with=20
->journal_checksum, but we thought that it is a good option in our case
->to identify if this is a HW- or SW-induced issue.
+>Just as a quick reply for today:
+>If I remember right, Weller has done the barrier test w/o file system
+>mounted. Weller can give more details when he is back in office.
+>However, these tests were done some while ago with another type of
+>eMMC.  
 
->>=20
->> Hmm....  I'm stumped, for the moment.  The journal layer is quite
->> stable, and we haven't had any problems like this reported in many,
->> many years.
->>=20
->> Let's take this back to first principles.  How reliably can you
->> reproduce the problem?  How often does it fail? =20
+My previous block device barrier test is like this:
+0. power on
+1. run the test program:  generate a map file on local fs. This file include a header and the many random block numbers.
+2. test program pick up a block number from the map file offset N
+3. generate new buffer with commit ID and random string. Write this buffer to the block(from last step).
+4. set barrier.(previous use the ioctl BLKFLSBUF, it will be change to fsync later)
+5.backup the buffer which generated on step 3: write it to block 0.
+6. set barrier like step5. N++
+7. jump to step2
 
->With kernel 3.5.7.23 about once per overnight long term test.
+The power loss or sw-reset would happen between step2 and 7 randomly.   
 
->> Is it something where
->> you can characterize the workload leading to this failure?  Secondly=
-,
->> is a power drop involved in the reproduction at all, or is this
->> something that can be reproduced by running some kind of workload, a=
-nd
->> then doing a soft reset (i.e., force a kernel reboot, but _not_ do i=
-t
->> via a power drop)?
+Below is the step to check the test results:
+1. load map file. Load block number 0 to get the last commit ID and last block number.
+2. search the last block number in the map file. i.e: get the last block number at map[N].
+3.get the block number from map[0] to map[N-1], check the contents of these blocks. If there is a block contents error among these blocks, we can say there are some problems.
 
->As I stated in my other mail, it is also reproduced with soft resets.
->Weller can give more details about the test setup.
-=20
-My test case is like this:
-1. left about 700M empty space for the test
-2. most of test with stress(some test without stress but we also reprod=
-uced the issue)
-3. power loss and CPU WDT reset both happened during file write operati=
-ons.
-
->=20
-> The other thing to ask is when did this problem first start appearing=
-?
-> With a kernel upgrade?  A compiler/toolchain upgrade?  Or has it
-> always been there?
->=20
-> Regards,
->=20
-> 							- Ted
+As I remember I didn't see any problem of the test at that time. But I can do same test on the same brand eMMC which we found the bad extents issue later.
+Please let us know if there is any problem on our test concept. 
+Thanks.
+                                  -Huang weller
 
 
-Mit freundlichen Gr=FC=DFen / Best regards
 
-Dr. rer. nat.  Dirk Juergens
+>> Given that they've since reported that they can repro the problem
+>> using soft resets, it doesn't sound like the problem is related to
+>> flash devices not handling powe drops correctly 
 
-Robert Bosch Car Multimedia GmbH
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>I think so as well, for the same reason and also because our tests with
+>journal_checksum show the same problem w/o any checksum error.
+
