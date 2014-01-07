@@ -1,43 +1,48 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: don't pass freed handle to ext4_walk_page_buffers
-Date: Tue,  7 Jan 2014 13:08:59 -0500
-Message-ID: <1389118139-19784-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 08/10] debugfs: remove dead code
+Date: Tue, 7 Jan 2014 10:58:35 -0800
+Message-ID: <20140107185835.GB9229@birch.djwong.org>
+References: <1389106394-31898-1-git-send-email-tytso@mit.edu>
+ <1389106394-31898-8-git-send-email-tytso@mit.edu>
+ <52CC35FF.8000302@redhat.com>
+ <20140107172548.GE2822@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:46665 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753215AbaAGSJG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 7 Jan 2014 13:09:06 -0500
+Received: from userp1040.oracle.com ([156.151.31.81]:20108 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750892AbaAGS6k (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jan 2014 13:58:40 -0500
+Content-Disposition: inline
+In-Reply-To: <20140107172548.GE2822@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is harmless, since ext4_walk_page_buffers only passes the handle
-onto the callback function, and in this call site the function in
-question, bput_one(), doesn't actually use the handle.  But there's no
-point passing in an invalid handle, and it creates a Coverity warning,
-so let's just clean it up.
+On Tue, Jan 07, 2014 at 12:25:48PM -0500, Theodore Ts'o wrote:
+> On Tue, Jan 07, 2014 at 11:14:39AM -0600, Eric Sandeen wrote:
+> > 
+> > Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+> > 
+> > FWIW, Darrick had already sent this as part of
+> > 
+> > "[PATCH 1/2] misc: fix resource leaks in e2fsprogs"
+> > 
+> > - but I suppose small targeted patches are better.
+> 
+> Whoops, I somehow managed to lose this patch in my inbox.  I see it in
+> patchwork, though.  I'll have to double check which of the other fixes
+> in his patch are still needed.
 
-Addresses-Coverity-Id: #1091168
+As far as coverity bugs go, I put my name on all the bugs that I fixed, and
+left the rest alone.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/inode.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 8454ebe..f33b4eb 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1772,7 +1772,7 @@ static int __ext4_journalled_writepage(struct page *page,
- 		ret = err;
- 
- 	if (!ext4_has_inline_data(inode))
--		ext4_walk_page_buffers(handle, page_bufs, 0, len,
-+		ext4_walk_page_buffers(NULL, page_bufs, 0, len,
- 				       NULL, bput_one);
- 	ext4_set_inode_state(inode, EXT4_STATE_JDATA);
- out:
--- 
-1.8.5.rc3.362.gdf10213
-
+--D
+> 
+> 						- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
