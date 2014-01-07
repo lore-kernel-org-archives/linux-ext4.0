@@ -1,77 +1,91 @@
-From: Baruch Siach <baruch@tkos.co.il>
-Subject: [PATCH] e4defrag: remove local sync_file_range and fallocate
-Date: Tue,  7 Jan 2014 10:29:52 +0200
-Message-ID: <f2848e6c0e067d62a4ee672f18364b20d4c901d9.1389083392.git.baruch@tkos.co.il>
-Cc: linux-ext4@vger.kernel.org, Baruch Siach <baruch@tkos.co.il>
-To: Theodore Ts'o <tytso@mit.edu>
+From: "Huang Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>
+Subject: =?utf-8?B?W0F0dGFjaG1lbnQgaGFzIGJlZW4gcmVtb3ZlZF1SRTog?=
+	=?utf-8?B?QVc6IGV4dDQgZmlsZXN5c3RlbSBiYWQgZXh0ZW50IGVycm9yIHJldmll?=
+	=?utf-8?B?dw==?=
+Date: Tue, 7 Jan 2014 17:10:40 +0800
+Message-ID: <AE39A478622CF340ABEC2418D74074F61FC5AA2465@SGPMBX05.APAC.bosch.com>
+References: <AE39A478622CF340ABEC2418D74074F61FC567864C@SGPMBX05.APAC.bosch.com>
+ <20140102184211.GC10870@thunk.org>
+ <B8A948099C53E0408BDBCE749AAECA9A2A80C78543@SI-MBX10.de.bosch.com>
+ <52C6F28A.6060706@redhat.com>
+Mime-Version: 1.0
+Content-Type: multipart/mixed;
+	boundary="_002_AE39A478622CF340ABEC2418D74074F61FC5AA2465SGPMBX05APACb_"
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>,
+	"Juergens Dirk (CM-AI/ECO2)" <Dirk.Juergens@de.bosch.com>,
+	Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from guitar.tcltek.co.il ([192.115.133.116]:48312 "EHLO
-	mx.tkos.co.il" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754647AbaAGIae (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 7 Jan 2014 03:30:34 -0500
+Received: from smtp6-v.fe.bosch.de ([139.15.237.11]:32707 "EHLO
+	smtp6-v.fe.bosch.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751929AbaAGJLP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jan 2014 04:11:15 -0500
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The locally defined versions of both sync_file_range and fallocate are broken
-on 32bit systems. On these systems two 32bit registers are needed for each
-64bit parameter. Also, sync_file_range on MIPS32 needs a dummy parameters
-after the fd parameter. Just leave all these subtleties to the C library.
+--_002_AE39A478622CF340ABEC2418D74074F61FC5AA2465SGPMBX05APACb_
+Content-Type: text/plain;
+	charset="utf-8"
+Content-Transfer-Encoding: base64
 
-Signed-off-by: Baruch Siach <baruch@tkos.co.il>
----
- misc/e4defrag.c | 50 +++-----------------------------------------------
- 1 file changed, 3 insertions(+), 47 deletions(-)
+VGhlIGUtbWFpbCBzZW50IHRvIHlvdSBjb250YWluZWQgYW4gYXR0YWNobWVudCB3aXRoIGEgbm90
+IGFsbG93ZWQgZmlsZXR5cGUuDQpQbGVhc2UgaW5mb3JtIHRoZSBzZW5kZXIgdG8gcGFjayB0aGlz
+IHR5cGUgb2YgYXR0YWNobWVudCBpbnRvIGENCnBhc3N3b3JkIHByb3RlY3RlZCBaSVAtYXJjaGl2
+ZS4NCg0KRWluZSBhbiBTaWUgZ2VzZW5kZXRlIEUtTWFpbCBlbnRoaWVsdCBlaW5lbiBuaWNodCBl
+cmxhdWJ0ZW4gRGF0ZWlhbmhhbmcuDQpCaXR0ZSBpbmZvcm1pZXJlbiBTaWUgZGVuIEFic2VuZGVy
+LCBkaWVzZSBBcnQgdm9uIEFuaGFuZyBrYW5uIG51cg0KYWxzIFBhc3N3b3J0IGdlc2Now7x0enRl
+cyBaSVAtQXJjaGl2IHZlcnNlbmRldCB3ZXJkZW4uDQoNCkRldGFpbHM6DQoNClNlbmRlcjogV2Vs
+bGVyLkh1YW5nQGNuLmJvc2NoLmNvbQ0KUmVjaXBpZW50czogdHl0c29AbWl0LmVkdTtzYW5kZWVu
+QHJlZGhhdC5jb207bGludXgtZXh0NEB2Z2VyLmtlcm5lbC5vcmcNClN1YmplY3Q6ICJSRTogQVc6
+IGV4dDQgZmlsZXN5c3RlbSBiYWQgZXh0ZW50IGVycm9yIHJldmlldyINClRpbWU6IFR1ZSBKYW4g
+IDcgMTA6MTE6MDkgMjAxNA0KRmlsZTogY29kZV9vdXRfcGMudGFyLmd6X18NCg0KVGhlIGNsZWFu
+ZWQgbWVzc2FnZSBib2R5IGlzIGJlbG93IHRoaXMgbGluZSBvciBpbiB0aGUgYXR0YWNoZWQgZS1t
+YWlsLg0KRGllIGJlcmVpbmlndGUgRS1NYWlsIGlzdCB1bnRlciBkZXIgZm9sZ2VuZGVuIExpbmll
+IG9kZXIgaW4gYmVpZ2Vmw7xndGVtIEF0dGFjaG1lbnQuDQotLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LQ0KDQo+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+IEZyb206IEh1YW5nIFdlbGxlciAo
+Q00vRVNXMTItQ04pDQo+IFNlbnQ6IE1vbmRheSwgSmFudWFyeSAwNiwgMjAxNCAxOjExIFBNDQo+
+IFRvOiAnRXJpYyBTYW5kZWVuJzsgSnVlcmdlbnMgRGlyayAoQ00tQUkvRUNPMik7IFRoZW9kb3Jl
+IFRzJ28NCj4gQ2M6IGxpbnV4LWV4dDRAdmdlci5rZXJuZWwub3JnDQo+IFN1YmplY3Q6IFJFOiBB
+VzogZXh0NCBmaWxlc3lzdGVtIGJhZCBleHRlbnQgZXJyb3IgcmV2aWV3DQo+IA0KPiANCj4gPk9u
+IDEvMy8xNCwgMTA6MjkgQU0sIEp1ZXJnZW5zIERpcmsgKENNLUFJL0VDTzIpIHdyb3RlOg0KPiA+
+PiBTbywgSSB0aGluayB0aGVyZSBfbWlnaHRfIGJlIGEga2VybmVsIGJ1ZywgYnV0IGl0IGNvdWxk
+IGJlIGFsc28gYSBwcm9ibGVtDQo+ID4+IHJlbGF0ZWQgdG8gdGhlIHBhcnRpY3VsYXIgdHlwZSBv
+ZiBlTU1DLiBXZSBkaWQgbm90IG9ic2VydmUgdGhlIHNhbWUgaXNzdWUNCj4gPj4gaW4gcHJldmlv
+dXMgdGVzdHMgd2l0aCBhbm90aGVyIHR5cGUgb2YgZU1NQyBmcm9tIGFub3RoZXIgc3VwcGxpZXIs
+IGJ1dCB0aGlzDQo+ID4+IHdhcyB3aXRoIGFuIG9sZGVyIGtlcm5lbCBwYXRjaCBsZXZlbCBhbmQg
+d2l0aCBhbm90aGVyIEhXIGRlc2lnbi4NCj4gPj4NCj4gPj4gUmVnYXJkaW5nIGEgcG9zc2libGUg
+a2VybmVsIGJ1ZzogSXMgdGhlcmUgYW55IGNoYW5jZSB0aGF0IHRoZSBpbnZhbGlkDQo+ID4+IGVl
+X2xlbiBvciBlZV9zdGFydCBhcmUgcmV0dXJuZWQgYnksIGUuZy4sIHRoZSBibG9jayBhbGxvY2F0
+b3IgPw0KPiA+PiBJZiBzbywgY2FuIHdlIHRyeSB0byBpbnN0cnVtZW50IHRoZSBjb2RlIHRvIGdl
+dCBzdWl0YWJsZSB0cmFjZXMgPw0KPiA+PiBKdXN0IHRvIHNlZSBvciB0byBleGNsdWRlIHRoYXQg
+dGhlIGNvcnJ1cHRlZCBpbm9kZSBpcyByZWFsbHkgd3JpdHRlbg0KPiA+PiB0byB0aGUgZU1NQyA/
+DQo+IA0KPiA+RnJvbSB5b3VyIGRlc2NyaXB0aW9uIGl0IGRvZXMgc291bmQgcG9zc2libGUgdGhh
+dCBpdCdzIGEga2VybmVsIGJ1Zy4NCj4gPkFkZGluZyB0ZXN0Y2FzZXMgdG8gdGhlIGNvZGUgdG8g
+Y2F0Y2ggaXQgYmVmb3JlIGl0IGhpdHMgdGhlIGpvdXJuYWwNCj4gPm1pZ2h0IGJlIGhlbHBmdWwg
+LSBidXQgdGhlbiBtYXliZSB0aGlzIGlzIHNvbWV0aGluZyBnZXR0aW5nIG92ZXJ3cml0dGVuDQo+
+ID5hZnRlciB0aGUgZmFjdCAtIGhhcmQgdG8gc2F5Lg0KPiANCj4gPkNhbiB5b3Ugc2hhcmUgbW9y
+ZSBkZXRhaWxzIG9mIHRoZSB0ZXN0IHlvdSBhcmUgcnVubmluZz8gIE9yIG1heWJlIGV2ZW4NCj4g
+PnRoZSB0ZXN0IGl0c2VsZj8NCj4gDQo+ID5JJ3ZlIHVzZWQgYSB0ZXN0IGZyYW1ld29yayBpbiB0
+aGUgcGFzdCB0byBzaW11bGF0ZSByZXNldHMgdy9vIG5lZWRpbmcNCj4gPnRvIHJlc2V0IHRoZSBi
+b3gsIGFuZCBkbyBtYW55IGpvdXJuYWwgcmVwbGF5cyB2ZXJ5IHF1aWNrbHkuICBJdCdkIGJlDQo+
+ID5pbnRlcmVzdGluZyB0byBydW4gaXQgdXNpbmcgeW91ciB0ZXN0Y2FzZS4NCj4gDQo+IFBsZWFz
+ZSBnZXQgY29kZV9vdXQudGFyLmd6IGZyb20gbXkgYW5vdGhlciBtYWlsLg0KPiBBYm91dCB0aGUg
+UEMgc2lkZSwgSSB3cml0ZSBhIHdpbjMyIGFwcGxpY2F0aW9uIHdoaWNoIGNhbiBzZW5kIGNvbW1h
+bmRzIHZpYSB1YXJ0DQo+IHRvIFRPRSBwb3dlciBzdXBwbGllcih0aGUgcG93ZXIgc3VwcGxpZXIg
+aGFzIHJlbW90ZSBjb250cm9sIG1vZGUgd2hpY2ggaXQgY2FuDQo+IGFjY2VwdCBjb21tYW5kIGZy
+b20gaXRzIHVhcnQgaW50ZXJmYWNlKS4NCj4gVGhlIFB1dHR5IHNyYywgSSBvbmx5IG1vZGlmaWVk
+IHRoZSB3aW5zZXIuYyB3aGljaCBpbmNsdWRlIGluIHRoZSBhdHRhY2htZW50IG9mIHRoaXMNCj4g
+bWFpbC4gVGhlcmUgaXMgYWxzbyBhIHJlYWRtZS50eHQgdG8gaW50cm9kdWNlIHRoZSBwYWNrYWdl
+Lg0KPiBJZiB5b3Ugd2FudCB0byB1c2UgbXkgdGVzdCBlbnZpcm9ubWVudCAsIEkgdGhpbmsgeW91
+IGp1c3QgbmVlZCBtb2RpZnkgdGhlDQo+IHB1dHR5X3RvZS5iYXQgd2l0aCB5b3Vycy4gIEl0IGlz
+IGVhc3kgdG8gdW5kZXJzdGFuZCB0aGUgY29tbWFuZHMgaW4gdGhpcyBzY3JpcHQuDQo+IFlvdSBj
+YW4gcmVwbGFjZSB0aGUgY29tbWFuZCB0byBjb250cm9sIHRoZSBwb3dlciBjb250cm9sbGVyIHdp
+dGggeW91cnMuDQo+IFBsZWFzZSBmZWVsIGZyZWUgdG8gbGV0IG1lIGtub3cgaWYgeW91IGhhdmUg
+YW55IGlzc3VlIGFib3V0IHRoZSBlbnZpcm9ubWVudCBzZXR1cC4NCj4gDQo+IFRoYW5rcw0KPiBI
+dWFuZyB3ZWxsZXINCj4gDQoNClJlc2VuZCB0aGlzIG1haWwgYmVjYXVzZSB0aGUgYXR0YWNoZWQg
+ZmlsZSB3YXMgcmVtb3ZlZC4NCg0K
 
-diff --git a/misc/e4defrag.c b/misc/e4defrag.c
-index c2695e825d6b..620f4e7981c8 100644
---- a/misc/e4defrag.c
-+++ b/misc/e4defrag.c
-@@ -39,7 +39,6 @@
- #include <sys/mman.h>
- #include <sys/stat.h>
- #include <sys/statfs.h>
--#include <sys/syscall.h>
- #include <sys/vfs.h>
- 
- /* A relatively new ioctl interface ... */
-@@ -194,56 +193,13 @@ static struct frag_statistic_ino	frag_rank[SHOW_FRAG_FILES];
- #error posix_fadvise not available!
- #endif
- 
--/*
-- * Local definitions of some syscalls glibc may not yet have
-- */
- #ifndef HAVE_SYNC_FILE_RANGE
--#warning Using locally defined sync_file_range interface.
--
--#ifndef __NR_sync_file_range
--#ifndef __NR_sync_file_range2 /* ppc */
--#error Your kernel headers dont define __NR_sync_file_range
--#endif
--#endif
--
--/*
-- * sync_file_range() -	Sync file region.
-- *
-- * @fd:			defrag target file's descriptor.
-- * @offset:		file offset.
-- * @length:		area length.
-- * @flag:		process flag.
-- */
--int sync_file_range(int fd, loff_t offset, loff_t length, unsigned int flag)
--{
--#ifdef __NR_sync_file_range
--	return syscall(__NR_sync_file_range, fd, offset, length, flag);
--#else
--	return syscall(__NR_sync_file_range2, fd, flag, offset, length);
--#endif
--}
-+#error sync_file_range not available!
- #endif /* ! HAVE_SYNC_FILE_RANGE */
- 
- #ifndef HAVE_FALLOCATE64
--#warning Using locally defined fallocate syscall interface.
--
--#ifndef __NR_fallocate
--#error Your kernel headers dont define __NR_fallocate
--#endif
+--_002_AE39A478622CF340ABEC2418D74074F61FC5AA2465SGPMBX05APACb_--
+
