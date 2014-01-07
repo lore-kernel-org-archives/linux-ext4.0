@@ -1,71 +1,40 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 10/10] libss: fix memory leak if realloc() fails in ss_parse()
-Date: Tue,  7 Jan 2014 09:53:14 -0500
-Message-ID: <1389106394-31898-10-git-send-email-tytso@mit.edu>
+Subject: [PATCH 09/10] badblocks: print warning if set_o_direct() fails
+Date: Tue,  7 Jan 2014 09:53:13 -0500
+Message-ID: <1389106394-31898-9-git-send-email-tytso@mit.edu>
 References: <1389106394-31898-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:46606 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:46605 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751640AbaAGOxW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751642AbaAGOxW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 7 Jan 2014 09:53:22 -0500
 In-Reply-To: <1389106394-31898-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Addresses-Coverity-Id: #709491
+Addresses-Coverity-Id: #1049148
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- lib/ss/parse.c | 18 +++++++++++++-----
- 1 file changed, 13 insertions(+), 5 deletions(-)
+ misc/badblocks.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/lib/ss/parse.c b/lib/ss/parse.c
-index e2928e2..45a2de0 100644
---- a/lib/ss/parse.c
-+++ b/lib/ss/parse.c
-@@ -45,7 +45,7 @@ enum parse_mode { WHITESPACE, TOKEN, QUOTED_STRING };
- 
- char **ss_parse(int sci_idx, register char *line_ptr, int *argc_ptr)
- {
--    register char **argv, *cp;
-+    register char **argv, **new_argv, *cp;
-     register int argc;
-     register enum parse_mode parse_mode;
- 
-@@ -78,7 +78,13 @@ char **ss_parse(int sci_idx, register char *line_ptr, int *argc_ptr)
- 		/* go to quoted-string mode */
- 		parse_mode = QUOTED_STRING;
- 		cp = line_ptr++;
--		argv = NEW_ARGV (argv, argc);
-+		new_argv = NEW_ARGV (argv, argc);
-+		if (new_argv == NULL) {
-+			free(argv);
-+			*argc_ptr = 0;
-+			return NULL;
-+		}
-+		argv = new_argv;
- 		argv[argc++] = cp;
- 		argv[argc] = NULL;
- 	    }
-@@ -86,11 +92,13 @@ char **ss_parse(int sci_idx, register char *line_ptr, int *argc_ptr)
- 		/* random-token mode */
- 		parse_mode = TOKEN;
- 		cp = line_ptr;
--		argv = NEW_ARGV (argv, argc);
-+		new_argv = NEW_ARGV (argv, argc);
- 		if (argv == NULL) {
--			*argc_ptr = errno;
--			return argv;
-+			free(argv);
-+			*argc_ptr = 0;
-+			return NULL;
+diff --git a/misc/badblocks.c b/misc/badblocks.c
+index 912ef28..e5024f6 100644
+--- a/misc/badblocks.c
++++ b/misc/badblocks.c
+@@ -300,7 +300,8 @@ static void set_o_direct(int dev, unsigned char *buffer, size_t size,
+ 		flag = fcntl(dev, F_GETFL);
+ 		if (flag > 0) {
+ 			flag = (flag & ~O_DIRECT) | new_flag;
+-			fcntl(dev, F_SETFL, flag);
++			if (fcntl(dev, F_SETFL, flag) < 0)
++				perror("set_o_direct");
  		}
-+		argv = new_argv;
- 		argv[argc++] = line_ptr;
- 		argv[argc] = NULL;
- 	    }
+ 		current_O_DIRECT = new_flag;
+ 	}
 -- 
 1.8.5.rc3.362.gdf10213
 
