@@ -1,36 +1,49 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 08/10] debugfs: remove dead code
-Date: Tue, 7 Jan 2014 12:25:48 -0500
-Message-ID: <20140107172548.GE2822@thunk.org>
-References: <1389106394-31898-1-git-send-email-tytso@mit.edu>
- <1389106394-31898-8-git-send-email-tytso@mit.edu>
- <52CC35FF.8000302@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] ext4: avoid clearing beyond i_blocks when truncating an inline data file
+Date: Tue,  7 Jan 2014 12:57:17 -0500
+Message-ID: <1389117437-12060-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:46649 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:46656 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752388AbaAGRZv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 7 Jan 2014 12:25:51 -0500
-Content-Disposition: inline
-In-Reply-To: <52CC35FF.8000302@redhat.com>
+	id S1753725AbaAGR5Z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 7 Jan 2014 12:57:25 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 07, 2014 at 11:14:39AM -0600, Eric Sandeen wrote:
-> 
-> Reviewed-by: Eric Sandeen <sandeen@redhat.com>
-> 
-> FWIW, Darrick had already sent this as part of
-> 
-> "[PATCH 1/2] misc: fix resource leaks in e2fsprogs"
-> 
-> - but I suppose small targeted patches are better.
+A missing cast means that when we are truncating a file which is less
+than 60 bytes, we don't trunate the wrong area of memory, and in fact
+we can end up truncating the next inode in the inode table, or worse
+yet, some other kernel data structure.
 
-Whoops, I somehow managed to lose this patch in my inbox.  I see it in
-patchwork, though.  I'll have to double check which of the other fixes
-in his patch are still needed.
+Addresses-Coverity-Id: #751987
 
-						- Ted
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: stable@vger.kernel.org
+---
+ fs/ext4/inline.c | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index c417e52..ed29e72 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -1928,9 +1928,11 @@ void ext4_inline_data_truncate(struct inode *inode, int *has_inline)
+ 		}
+ 
+ 		/* Clear the content within i_blocks. */
+-		if (i_size < EXT4_MIN_INLINE_DATA_SIZE)
+-			memset(ext4_raw_inode(&is.iloc)->i_block + i_size, 0,
+-					EXT4_MIN_INLINE_DATA_SIZE - i_size);
++		if (i_size < EXT4_MIN_INLINE_DATA_SIZE) {
++			void *p = (void *) ext4_raw_inode(&is.iloc)->i_block;
++			memset(p + i_size, 0,
++			       EXT4_MIN_INLINE_DATA_SIZE - i_size);
++		}
+ 
+ 		EXT4_I(inode)->i_inline_size = i_size <
+ 					EXT4_MIN_INLINE_DATA_SIZE ?
+-- 
+1.8.5.rc3.362.gdf10213
+
