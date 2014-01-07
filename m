@@ -1,58 +1,58 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 07/10] libext2fs: fix memory leaks on error paths in ext2fs_create_icount_tdb
-Date: Tue,  7 Jan 2014 09:53:11 -0500
-Message-ID: <1389106394-31898-7-git-send-email-tytso@mit.edu>
+Subject: [PATCH 06/10] libquota: add error checking to quota_remove_inode
+Date: Tue,  7 Jan 2014 09:53:10 -0500
+Message-ID: <1389106394-31898-6-git-send-email-tytso@mit.edu>
 References: <1389106394-31898-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:46597 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:46603 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751462AbaAGOxW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 7 Jan 2014 09:53:22 -0500
+	id S1751551AbaAGOxV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 7 Jan 2014 09:53:21 -0500
 In-Reply-To: <1389106394-31898-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Addresses-Coverity-Id: #1138575
+Addresses-Coverity-Id: #709475
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- lib/ext2fs/icount.c | 23 +++++++++++------------
- 1 file changed, 11 insertions(+), 12 deletions(-)
+ lib/quota/mkquota.c | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
 
-diff --git a/lib/ext2fs/icount.c b/lib/ext2fs/icount.c
-index c5ebf74..80085e1 100644
---- a/lib/ext2fs/icount.c
-+++ b/lib/ext2fs/icount.c
-@@ -192,10 +192,12 @@ errcode_t ext2fs_create_icount_tdb(ext2_filsys fs, char *tdb_dir,
- 		goto errout;
- 	uuid_unparse(fs->super->s_uuid, uuid);
- 	sprintf(fn, "%s/%s-icount-XXXXXX", tdb_dir, uuid);
-+	icount->tdb_fn = fn;
- 	fd = mkstemp(fn);
--	if (fd < 0)
--		return fd;
--
-+	if (fd < 0) {
-+		retval = errno;
-+		goto errout;
-+	}
- 	/*
- 	 * This is an overestimate of the size that we will need; the
- 	 * ideal value is the number of used inodes with a count
-@@ -206,18 +208,15 @@ errcode_t ext2fs_create_icount_tdb(ext2_filsys fs, char *tdb_dir,
- 	 */
- 	num_inodes = fs->super->s_inodes_count - fs->super->s_free_inodes_count;
+diff --git a/lib/quota/mkquota.c b/lib/quota/mkquota.c
+index b920f27..9883216 100644
+--- a/lib/quota/mkquota.c
++++ b/lib/quota/mkquota.c
+@@ -89,8 +89,13 @@ void quota_set_sb_inum(ext2_filsys fs, ext2_ino_t ino, int qtype)
+ errcode_t quota_remove_inode(ext2_filsys fs, int qtype)
+ {
+ 	ext2_ino_t qf_ino;
++	errcode_t	retval;
  
--	icount->tdb_fn = fn;
- 	icount->tdb = tdb_open(fn, num_inodes, TDB_NOLOCK | TDB_NOSYNC,
- 			       O_RDWR | O_CREAT | O_TRUNC, 0600);
--	if (icount->tdb) {
--		close(fd);
--		*ret = icount;
--		return 0;
--	}
--
--	retval = errno;
- 	close(fd);
+-	ext2fs_read_bitmaps(fs);
++	retval = ext2fs_read_bitmaps(fs);
++	if (retval) {
++		log_err("Couldn't read bitmaps: %s", error_message(retval));
++		return retval;
++	}
+ 	qf_ino = (qtype == USRQUOTA) ? fs->super->s_usr_quota_inum :
+ 		fs->super->s_grp_quota_inum;
+ 	quota_set_sb_inum(fs, 0, qtype);
+@@ -100,7 +105,11 @@ errcode_t quota_remove_inode(ext2_filsys fs, int qtype)
+ 
+ 	ext2fs_mark_super_dirty(fs);
+ 	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
+-	ext2fs_write_bitmaps(fs);
++	retval = ext2fs_write_bitmaps(fs);
++	if (retval) {
++		log_err("Couldn't write bitmaps: %s", error_message(retval));
++		return retval;
++	}
+ 	return 0;
+ }
+ 
+-- 
+1.8.5.rc3.362.gdf10213
+
