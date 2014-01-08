@@ -1,52 +1,52 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Please summarize state of ext4 resize >16TB
-Date: Wed, 8 Jan 2014 15:04:38 -0500
-Message-ID: <20140108200438.GB17750@thunk.org>
-References: <BBC8F4C34A7B5A4DB487459885025E7F018A0BAE0391@EXCLUSTER.iomegacorp.com>
- <20140108193018.GF9229@birch.djwong.org>
+From: "Dr. Musa Hamed" <drmusahamed01@gmail.com>
+Subject: I have a very lucrative Business
+Date: Wed, 8 Jan 2014 21:47:31 +0100
+Message-ID: <CALS90i9nMs6jMoH2O5S68sPF=juYOV2sfMAwaBekL8ccz3eSOQ__46612.1298297823$1389215746$gmane$org@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Ryan, Michael" <Michael.Ryan2@lenovoemc.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
+To: undisclosed-recipients:;
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:46912 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752653AbaAHUEo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 8 Jan 2014 15:04:44 -0500
-Content-Disposition: inline
-In-Reply-To: <20140108193018.GF9229@birch.djwong.org>
+Received: from mail-we0-f194.google.com ([74.125.82.194]:49153 "EHLO
+	mail-we0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932204AbaAHVPd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Jan 2014 16:15:33 -0500
+Received: by mail-we0-f194.google.com with SMTP id t60so81041wes.1
+        for <linux-ext4@vger.kernel.org>; Wed, 08 Jan 2014 13:15:32 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jan 08, 2014 at 11:30:18AM -0800, Darrick J. Wong wrote:
-> 
-> In most cases it's necessary to turn on 64bit (the feature flag) to cross the
-> 16T boundary.  I've had patches against resize2fs to add this ability--it
-> involves moving data blocks and rewriting group descriptors--on the list for a
-> few months, but I don't know of Ted's plans to put them in a release.  Probably
-> post-1.43, is my guess.
+ATTN: Dear,
 
-It's something that should eventually hit the master/next branch, so
-it should be in an eventual 1.43 release.  Of course, I don't
-currently have a timeline for when a 1.43 release would come out.  :-)
+I am Dr. Musa Hamed Executive Director of the Bank of Africa
+Plc B.O.A,Cotonou Benin Rep. I have a very lucrative Business proposal
+worth of 21,500,000.00 USD.
 
-Probably in a few months if I had to guess, though.  The 1.42.x
-release is pretty much locked down for all but the most trivial new
-features, so I will be shortly switching my e2fsprogs focus to testing
-and merging in the new features for the 1.43 release.
+An Iraqi named Hamadi Hashem a business man made a fixed deposit of
+21,500,000.00 USD . Upon maturity several notices was sent to him,
+even during the war,eleven years ago (2003) up till this date. Again
+after the war another notification was sent and still no response came
+from him. it has been found out that Hamadi Hashem and his family had
+been killed during the war in bomb blast that hit their home at
+Mukaradeeb where his personal oil well was. I am prepared to split the
+funds with you 50%:50%.By placing you as the NEXT OF KIN to his
+deposit.
 
-> I don't have any kernel patches to turn on 64bit, and I haven't any current
-> plans to make any.
+Should you be interested in doing this deal with me, please send me
+the following information:
 
-Turning on 64-bit requires rewriting the block group descriptors, and
-searching the inodes to relocate data blocks to make room for the
-expanded block group descriptors.  As such, I don't expect that we
-would ever support on-line enablement of the 64-bit feature.  If
-you've created a file system without the 64-bit feature, or have a
-legacy file system that was created previously, you will have to
-unmount the file system in order to set the 64-bit feature.
+(1) Your Name
+(2) Resident Address
+(3) Your Occupation
+(4) Your Phone Number
+(5) Date of Birth
+(6) Resident Country
+
+And I will prefer you to reach me privately and securely on my personal
+email address: dr.musahamed30@yahoo.fr
+Tel: +229-988-400-97
+
+I will provide you with further information as soon as I hear
+positively from you.
 
 Regards,
-
-						- Ted
+Dr. Musa Hamed
