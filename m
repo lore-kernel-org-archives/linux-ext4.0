@@ -1,52 +1,64 @@
-From: "Dr. Musa Hamed" <drmusahamed01@gmail.com>
-Subject: I have a very lucrative Business
-Date: Wed, 8 Jan 2014 21:47:31 +0100
-Message-ID: <CALS90i9nMs6jMoH2O5S68sPF=juYOV2sfMAwaBekL8ccz3eSOQ__46612.1298297823$1389215746$gmane$org@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: avoid clearing beyond i_blocks when truncating an
+ inline data file
+Date: Wed, 8 Jan 2014 22:46:40 +0100
+Message-ID: <20140108214640.GA21663@quack.suse.cz>
+References: <1389117437-12060-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: undisclosed-recipients:;
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-we0-f194.google.com ([74.125.82.194]:49153 "EHLO
-	mail-we0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932204AbaAHVPd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Jan 2014 16:15:33 -0500
-Received: by mail-we0-f194.google.com with SMTP id t60so81041wes.1
-        for <linux-ext4@vger.kernel.org>; Wed, 08 Jan 2014 13:15:32 -0800 (PST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	stable@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <stable-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1389117437-12060-1-git-send-email-tytso@mit.edu>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-ATTN: Dear,
+On Tue 07-01-14 12:57:17, Ted Tso wrote:
+> A missing cast means that when we are truncating a file which is less
+> than 60 bytes, we don't trunate the wrong area of memory, and in fact
+> we can end up truncating the next inode in the inode table, or worse
+> yet, some other kernel data structure.
+  Looks good (after updating the changelog as you suggested). You can add:
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-I am Dr. Musa Hamed Executive Director of the Bank of Africa
-Plc B.O.A,Cotonou Benin Rep. I have a very lucrative Business proposal
-worth of 21,500,000.00 USD.
-
-An Iraqi named Hamadi Hashem a business man made a fixed deposit of
-21,500,000.00 USD . Upon maturity several notices was sent to him,
-even during the war,eleven years ago (2003) up till this date. Again
-after the war another notification was sent and still no response came
-from him. it has been found out that Hamadi Hashem and his family had
-been killed during the war in bomb blast that hit their home at
-Mukaradeeb where his personal oil well was. I am prepared to split the
-funds with you 50%:50%.By placing you as the NEXT OF KIN to his
-deposit.
-
-Should you be interested in doing this deal with me, please send me
-the following information:
-
-(1) Your Name
-(2) Resident Address
-(3) Your Occupation
-(4) Your Phone Number
-(5) Date of Birth
-(6) Resident Country
-
-And I will prefer you to reach me privately and securely on my personal
-email address: dr.musahamed30@yahoo.fr
-Tel: +229-988-400-97
-
-I will provide you with further information as soon as I hear
-positively from you.
-
-Regards,
-Dr. Musa Hamed
+								Honza
+> 
+> Addresses-Coverity-Id: #751987
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: stable@vger.kernel.org
+> ---
+>  fs/ext4/inline.c | 8 +++++---
+>  1 file changed, 5 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+> index c417e52..ed29e72 100644
+> --- a/fs/ext4/inline.c
+> +++ b/fs/ext4/inline.c
+> @@ -1928,9 +1928,11 @@ void ext4_inline_data_truncate(struct inode *inode, int *has_inline)
+>  		}
+>  
+>  		/* Clear the content within i_blocks. */
+> -		if (i_size < EXT4_MIN_INLINE_DATA_SIZE)
+> -			memset(ext4_raw_inode(&is.iloc)->i_block + i_size, 0,
+> -					EXT4_MIN_INLINE_DATA_SIZE - i_size);
+> +		if (i_size < EXT4_MIN_INLINE_DATA_SIZE) {
+> +			void *p = (void *) ext4_raw_inode(&is.iloc)->i_block;
+> +			memset(p + i_size, 0,
+> +			       EXT4_MIN_INLINE_DATA_SIZE - i_size);
+> +		}
+>  
+>  		EXT4_I(inode)->i_inline_size = i_size <
+>  					EXT4_MIN_INLINE_DATA_SIZE ?
+> -- 
+> 1.8.5.rc3.362.gdf10213
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
