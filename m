@@ -1,67 +1,123 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: xfstests failures in v3.13-rc7
-Date: Wed, 8 Jan 2014 12:53:09 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1401081248030.2257@localhost.localdomain>
-References: <1389063428.2169.12.camel@ancientdefender.lm.intel.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: A proposal for making ext4's journal more SMR (and flash)
+ friendly
+Date: Wed, 8 Jan 2014 10:20:37 -0500
+Message-ID: <20140108152037.GA25639@thunk.org>
+References: <nsxfvozavl2.fsf@lambda.thunk.org>
+ <alpine.LFD.2.00.1401081212370.2257@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"matthew@wil.cx" <matthew@wil.cx>
-To: "Verma, Vishal L" <vishal.l.verma@intel.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54072 "EHLO mx1.redhat.com"
+Received: from imap.thunk.org ([74.207.234.97]:46864 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755205AbaAHLxN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 8 Jan 2014 06:53:13 -0500
-In-Reply-To: <1389063428.2169.12.camel@ancientdefender.lm.intel.com>
+	id S1756795AbaAHPUm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 8 Jan 2014 10:20:42 -0500
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1401081212370.2257@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 7 Jan 2014, Verma, Vishal L wrote:
+On Wed, Jan 08, 2014 at 12:43:35PM +0100, Luk=C3=A1=C5=A1 Czerner wrote=
+:
+>So it means that we would have to have bigger journal which is
+>multiple zones (or bands) of size long, right ? However I assume that
+>the optimal journal size in this case will be very much dependent
+>on the workload used - for example small file workload or other metada=
+ta
+>heavy workloads would need bigger journal. Could we possibly make jour=
+nal
+>size variable ?
 
-> Date: Tue, 7 Jan 2014 02:57:13 +0000
-> From: "Verma, Vishal L" <vishal.l.verma@intel.com>
-> To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-> Cc: "matthew@wil.cx" <matthew@wil.cx>
-> Subject: xfstests failures in v3.13-rc7
-> 
-> Hi,
-> 
-> I have been running xfstests with ext4 on a ramdisk (brd), and noticed a
-> few tests were failing with an inconsistent file system at the end of
-> the test.
-> 
-> The following fail for v3.13-rc7:
-> generic/013
-> generic/083
-> generic/269
-> generic/321 (this one is not inconsistent fs, see log)
-> generic/322
+The journal size is already variable, e.g., "mke2fs -J size=3D512M".
+But yes, the optimal journal size will be highly variable. =20
 
-Hi,
+> > The journal is not truncated when the file system is unmounted, and=
+ so
+> > there is no difference between mounting a file system which has bee=
+n
+> > cleanly unmounted or after a system crash.
+>=20
+> I would maybe argue that clean unmount might be the right time for
+> checkpoint and resetting journal head back to the beginning because
+> I do not see it as a performance sensitive operation. This would in
+> turn help us on subsequent mount and run.
 
-Unfortunately you have not provided *.full logs, but I believe that
-at least 013, 083 and 269 failures are caused by bug in e2fsprogs
-which was fixed with:
+Yes, maybe.  It depends on how the the SMR drive handles random
+writes.  I suspect that most of the time, if the zones are close to
+the 256MB to 512MB rather than 32MB, the SMR drive is not going to
+rewrite the entire block just to handle a couple of random writes.  If
+we are doing an unmount, and so we don't care about performance for
+these random writes, if there is a way for us to hint to the SMR drive
+that no, really, it really should do a full zone rewrite, even if we
+are only updating a dozen blocks out of the 256MB zone, then sure,
+this might be a good thing to do.
 
-085757fcc22a86168ee6793dfad9a95d88fb09db e2fsck: don't report uninit
-extents past EOF invalid
+But if the SMR drive takes these random metadata writes and writes
+them to some staging area, then it might not improve performance after
+we reboot and remount the file system --- indeed, depending on the
+location and nature of the staging area, it might make things worse.
 
-which is present in the lates e2fsprogs release 1.42.9.
+I think we will need to do some experiments, and perhaps get some
+input from SMR drive vendors.  They probably won't be willing to
+release detailed design information without our being under NDA, but
+we can probably explain the design, and watch how their faces grin or
+twitch or scowl.  :-)
 
-Please retest with that.
+BTW, even if we do have NDA information from one vendor, it might not
+necessarily follow that other vendors use the same tradeoffs.  So even
+if some of us has NDA'ed information from one or two vendors, I'm a
+bit hesitant about hard-coding the design based on what they tell us.
+Besides the risk that one of the vendor might do things differently,
+there is also the concern that future versions of the drive might use
+different schemes for managing the logical->physical translation
+layer.  So we will probably want to keep our implementation and design
+flexible.
 
-Thanks!
--Lukas
+> While this helps a lot to avoid random writes it could possibly
+> result in much higher seek rates especially with bigger journals.
+> We're trying hard to keep data and associated metadata close
+> together and this would very much break that. This might be
+> especially bad with SMR devices because those are designed to be much
+> bigger in size. But of course this is a trade-off which makes it
+> very important to have good benchmark.
 
-> 
-> The output of xfstests for these failures is also attached.
-> 
-> It looks like generic/013 should be resolved by:
-> http://thread.gmane.org/gmane.comp.file-systems.ext4/42032
-> Are any of the others known failures, especially for brd?
-> 
-> Thanks,
-> 	-Vishal
-> 
-> 
+While the file system is mounted, if the metadata block is being
+referenced frequently, it will be in kept in memory, so the fact that
+it would have to seek to some random journal location if we need to
+read that metadata block might not be a big deal.  (This is similar to
+the argument used by log-structured file systems which claims that if
+we have enough memory, the fact that the metadata is badly fragmented
+doesn't matter.  Yes, if we are under heavy memory pressure, it might
+not work out.)
+
+> I assume that the information about the newest commits for
+> particular metadata blocks would be kept in memory ? Otherwise it
+> would be quite expensive operation. But it seems unavoidable on
+> mount time, so it might really be better to clear the journal at
+> unmount when we should have all this information already in memory ?
+
+Information about all commits and what blocks are still associated
+with them is alreaady being kept in memory.  Currently this is being
+done via a jh/bh; we'd want to do this differently, since we wouldn't
+necessarily enforce that all blocks which are in the journal must be
+in the buffer cache.  (Although if we did keep all blocks in the
+journal in the buffer cache, it would address the issue you raised
+above, at the expense of using a large amount of memory --- more
+memory than we would be comfortable using, although I'd bet is still
+less memory than, say, ZFS requires. :-)
+
+       	      	    	      	      	     	- Ted
+
+P.S.  One other benefit of this design which I forgot to mention in
+this version of the draft.  Using this scheme would also allow us to
+implement true read-only mounts and file system checks, without
+requiring that we modify the file system by replaying the journal
+before proceeding with the mount or e2fsck run.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
