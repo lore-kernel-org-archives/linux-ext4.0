@@ -1,64 +1,71 @@
-From: franklinbuthelezi1@yahoo.com
-Subject: =?UTF-8?Q?DiePresse.com_Mein_Freund,_der_Fahrradh=C3=A4ndler?=
-Date: Fri, 10 Jan 2014 13:34:30 +0100 (CET)
-Message-ID: <235420657.1389357270535.JavaMail.root@dpoportal4.diepresse.apa.net>
-Reply-To: franklinbuthelezi1@yahoo.com
+From: Carlos Maiolino <cmaiolino-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [PATCH] Update ext3/4 mount options
+Date: Fri, 10 Jan 2014 10:57:07 -0200
+Message-ID: <20140110125706.GA14692@orion.maiolino.org>
+References: <1389288890-17282-1-git-send-email-cmaiolino@redhat.com>
+ <1389299455.29292.68757293.7B539718@webmail.messagingengine.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from dpocron.diepresse.apa.net ([194.232.102.6]:42143 "EHLO
-	dpocron.diepresse.apa.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752897AbaAJMol convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Jan 2014 07:44:41 -0500
-Received: from dpoportal4.diepresse.apa.net (dpoportal4.diepresse.local [192.168.0.20])
-	by dpocron.diepresse.apa.net (Postfix) with ESMTP id 85988446EF
-	for <linux-ext4@vger.kernel.org>; Fri, 10 Jan 2014 13:34:30 +0100 (CET)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+To: util-linux-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Return-path: <util-linux-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <1389299455.29292.68757293.7B539718-2RFepEojUI2N1INw9kWLP6GC3tUn3ZHUQQ4Iyu8u01E@public.gmane.org>
+Sender: util-linux-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-=46olgender Artikel auf http://diepresse.com wird Ihnen von Franklin Bu=
-thelezi empfohlen:
+Hi Benno,
 
-Mein Freund, der Fahrradh=C3=A4ndler
-Manche Dinge ver=C3=A4ndern sich =C3=BCber die langen Wintermonate hinw=
-eg.=20
+thanks for the fixes, despite the journal line, where 'abort the journal' is the
+correct meaning, I'm going to apply the other fixes.
 
-http://diepresse.com/home/leben/mode/kolumnezumtag/548717/index.do
+On Thu, Jan 09, 2014 at 09:30:55PM +0100, Benno Schulenberg wrote:
+> 
+> On Thu, Jan 9, 2014, at 18:34, Carlos Maiolino wrote:
+> > -have changed, this option allows the user to specify
+> > +have changed, these options allows the user to specify
+> 
+> s/allows/allow/
+> 
+> > +identified through euther its new major/minor numbers encoded
+> > +in devnum, or via a path to the device.
+> 
+> s/through euther/either through/
+> (swapped, otherwise the "via" needs to be dropped)
+> 
+> > +Abort the journal if an error occurs in a file data buffer in ordered mode.
+> 
+> "Abort loading the journal..." maybe?
+> 
+> > +The lazy itable init code will wait n times the number of milliseconds it took
+> > +to zero out the previous block group's inode table. This minimizes the impact on
+> > +the system performance while filesystem's inode table is being initialized.
+> 
+> s/the system/system/
+> s/while/while the/
+> 
+> > +useful in memory constrained environments, where a very large directory can
+> 
+> better: memory-constrained
+> 
+> > +cause severe performance problems or even provoke the Out Of Memory killer. (For
+> > +example, if there is only 512mb memory available, a 176mb directory may
+> > +seriously cramp the system's style).
+> 
+> s/)./.)/
+> 
+> Benno
+> 
+> -- 
+> http://www.fastmail.fm - Choose from over 50 domains or use your own
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Notiz:
-Dear friend,
-=20
-I am the international operations manager of ABSA bank South Africa. My=
- name is Franklin Buthelezi. I have a sensitive and private offer from =
-the top executive to seek your partnership in re-profiling some offshor=
-e investment funds worth 11.5M U.S.D (Eleven Million five hundred thous=
-and United States Dollars) I am constrained however to withhold most of=
- the details for now. This is a legitimate transaction.=20
-=20
-If we agree on the terms you will be given 15% of the total funds, if y=
-ou are interested please write back via email providing me your persona=
-l details and phone number for further directives.
-=20
-If you are interested and willing to render your assistance please resp=
-ond via my private email address stated below.
-=20
-I look forward to your response.
-=20
-Best regards
-=46ranklin Buthelezi
-Email: franklinbuthelezi1@yahoo.com
-
-
-------------------------------------
-DiePresse.com =C3=BCbernimmt keine Haftung f=C3=BCr den Inhalt der pers=
-=C3=B6nlichen Nachricht.
-
-=C2=A9 DiePresse.com - http://diepresse.com
-
+-- 
+Carlos
 --
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
+To unsubscribe from this list: send the line "unsubscribe util-linux" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 More majordomo info at  http://vger.kernel.org/majordomo-info.html
