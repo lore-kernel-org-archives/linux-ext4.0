@@ -1,48 +1,70 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: A proposal for making ext4's journal more SMR (and flash) friendly
-Date: Fri, 10 Jan 2014 01:14:36 -0700
-Message-ID: <BCE18F0F-D8C9-41F3-A252-2E68C9A1421D@dilger.ca>
-References: <nsxfvozavl2.fsf@lambda.thunk.org> <22006ACD-BC60-4462-B000-CB121DC26FBE@dilger.ca> <20140109134102.GA18972@thunk.org>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: RE: [PATCH 40/74] libext2fs: no need to clear BLOCK_UNINIT during
+ ext2fs_reserve_super_and_bgd
+Date: Fri, 10 Jan 2014 08:17:56 +0000
+Message-ID: <28989C0C9F1C0A428470D967B5FCED3723FABD@BPXM22GP.gisp.nec.co.jp>
+References: <20131211011813.30655.39624.stgit@birch.djwong.org>
+ <20131211012246.30655.88212.stgit@birch.djwong.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: Akira Fujita <a-fujita@rs.jp.nec.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>,
+	"tytso@mit.edu" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ig0-f178.google.com ([209.85.213.178]:38123 "EHLO
-	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750989AbaAJIOl convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Jan 2014 03:14:41 -0500
-Received: by mail-ig0-f178.google.com with SMTP id ut6so9908251igb.5
-        for <linux-ext4@vger.kernel.org>; Fri, 10 Jan 2014 00:14:40 -0800 (PST)
-In-Reply-To: <20140109134102.GA18972@thunk.org>
+Received: from TYO200.gate.nec.co.jp ([202.32.8.215]:65165 "EHLO
+	tyo200.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751329AbaAJIXW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Jan 2014 03:23:22 -0500
+Received: from tyo202.gate.nec.co.jp ([10.7.69.202])
+	by tyo200.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id s0A8NKJK018126
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Fri, 10 Jan 2014 17:23:20 +0900 (JST)
+In-Reply-To: <20131211012246.30655.88212.stgit@birch.djwong.org>
+Content-Language: ja-JP
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Jan 9, 2014, at 6:41, Theodore Ts'o <tytso@mit.edu> wrote:
-> [Another design tangent: with SMR drives, it's clear that atime
-> updates are going to be a big deal.  So the question is how much will
-> our users really care about atime.  Can we just simply say, "use
-> noatime", or should we think about some way of handling atime updates
-> specially?  (For example, we could track atime updates separately, and
-> periodically include in the journal a list of inode numbers and their
-> real atimes.)  This is not something we should do early on --- it's
-> another later optional enhancement --- but it is something to think
-> about.
-
-We already have noatime and relatime, since atime hurts on
-spinning disks as well.  It wouldn't be impossible to do the atime updates in
-the journal initially, and only write the inodes to their final resting place after
-enough have been accumulated. 
-
-I think when there are many atime updates together (e.g. "grep -r") it
-will be reasonable to checkpoint them to the filesystem, and when
-there are only a few those inodes could be rewritten to the journal.
-
-I'm thinking the same could be done with data journaling for small files. 
-It makes sense to write a small file's data to the journal, but write large
-file data directly to its final resting place. 
-
-Cheers, Andreas
-
+SGksDQoNCj5Ob3cgdGhhdCB3ZSd2ZSB0cmFpbmVkIGxpYmV4dDJmcyB0byBoYXZlIHRoaXMgc2Ft
+ZSBiZWhhdmlvciB3aGVuZXZlcg0KPml0J3MgbG9hZGluZyBhIGJsb2NrIGJpdG1hcCwgd2Ugbm8g
+bG9uZ2VyIG5lZWQgdG8gdW5zZXQgQkxPQ0tfVU5JTklUDQo+Zm9yIGEgZ3JvdXAgdGhhdCBjb250
+YWlucyBvbmx5IGl0cyBvd24gZ3JvdXAgbWV0YWRhdGEgLS0ga2VybmVsLA0KPmUyZnNjaywgYW5k
+IGUyZnNwcm9ncyB3aWxsIGhhbmRsZSB0aGlzIGNvcnJlY3RseS4NCg0KSXQgc2VlbXMgdG8gbWUg
+dGhhdCB0aGUgcHJvYmxlbSAoKikgSSByZXBvcnRlZCBpcyBub3QgZml4ZWQNCmFmdGVyIGFwcGx5
+aW5nIHlvdXIgMzgtNDEgcGF0Y2hlcy4gRG8gd2UgbmVlZCBleHRyYSBwYXRjaCBmb3IgdGhpcz8N
+Cg0KKCopDQpodHRwOi8vbWFyYy5pbmZvLz9sPWxpbnV4LWV4dDQmbT0xMzgyNDI3OTY5MTU1MTgm
+dz0yDQoNClJlZ2FyZHMsDQpBa2lyYSBGdWppdGENCg0KPkZyb206IERhcnJpY2sgSi4gV29uZyBb
+bWFpbHRvOmRhcnJpY2sud29uZ0BvcmFjbGUuY29tXQ0KPlNlbnQ6IFdlZG5lc2RheSwgRGVjZW1i
+ZXIgMTEsIDIwMTMgMTA6MjMgQU0NCj5UbzogdHl0c29AbWl0LmVkdTsgZGFycmljay53b25nQG9y
+YWNsZS5jb20NCj5DYzogQWtpcmEgRnVqaXRhOyBsaW51eC1leHQ0QHZnZXIua2VybmVsLm9yZw0K
+PlN1YmplY3Q6IFtQQVRDSCA0MC83NF0gbGliZXh0MmZzOiBubyBuZWVkIHRvIGNsZWFyIEJMT0NL
+X1VOSU5JVCBkdXJpbmcgZXh0MmZzX3Jlc2VydmVfc3VwZXJfYW5kX2JnZA0KPg0KPlNpbmNlIHRo
+ZSBiZWdpbm5pbmcgb2YgdGhlIHVuaW5pdF9iZyBmZWF0dXJlLCB0aGUga2VybmVsWzFdIGFuZA0K
+PmUyZnNja1syXSBoYXZlIGFsd2F5cyBiZWVuIGNhcmVmdWwgdG8gZGV0ZWN0IHRoZSBwcmVzZW5j
+ZSBvZiB0aGUNCj5CTE9DS19VTklOSVQgZmxhZywgYW5kIGNvbXB1dGUgYSBibG9jayBiaXRtYXAg
+d2l0aCBhbnkgZ3JvdXAgbWV0YWRhdGENCj5ibG9ja3MgbWFya2VkIGluIHRoYXQgYml0bWFwLiAg
+V2l0aCB0aGF0IGluIG1pbmQsIEkgdGhpbmsgaXQncyBzYWZlIHRvDQo+c2F5IHRoYXQgdGhpcyBp
+cyBhIGRlc2lnbiBmZWF0dXJlIG9mIHVuaW5pdF9iZy4NCj4NCj5Ob3cgdGhhdCB3ZSd2ZSB0cmFp
+bmVkIGxpYmV4dDJmcyB0byBoYXZlIHRoaXMgc2FtZSBiZWhhdmlvciB3aGVuZXZlcg0KPml0J3Mg
+bG9hZGluZyBhIGJsb2NrIGJpdG1hcCwgd2Ugbm8gbG9uZ2VyIG5lZWQgdG8gdW5zZXQgQkxPQ0tf
+VU5JTklUDQo+Zm9yIGEgZ3JvdXAgdGhhdCBjb250YWlucyBvbmx5IGl0cyBvd24gZ3JvdXAgbWV0
+YWRhdGEgLS0ga2VybmVsLA0KPmUyZnNjaywgYW5kIGUyZnNwcm9ncyB3aWxsIGhhbmRsZSB0aGlz
+IGNvcnJlY3RseS4NCj4NCj5bMV0ga2VybmVsIGdpdCA3MTdkNTBlNDk3MWI4MWI5NmMwMTk5Yzkx
+Y2RmMDAzOWE4Y2IxODFhDQo+ICAgICJFeHQ0OiBVbmluaXRpYWxpemVkIEJsb2NrIEdyb3VwcyIN
+Cj5bMl0gZTJmc3Byb2dzIGdpdCBmNWZhMjAwNzhiZmMwNWI1NTQyOTRmZTljNTUwNTM3NWQ3OTEz
+ZThjDQo+ICAgICJBZGQgc3VwcG9ydCBmb3IgRVhUMl9GRUFUVVJFX0NPTVBBVF9MQVpZX0JHIg0K
+Pg0KPlJlcG9ydGVkLWJ5OiBBa2lyYSBGdWppdGEgPGEtZnVqaXRhQHJzLmpwLm5lYy5jb20+DQo+
+U2lnbmVkLW9mZi1ieTogRGFycmljayBKLiBXb25nIDxkYXJyaWNrLndvbmdAb3JhY2xlLmNvbT4N
+Cj4tLS0NCj4gbGliL2V4dDJmcy9hbGxvY19zYi5jIHwgICAgMiAtLQ0KPiAxIGZpbGUgY2hhbmdl
+ZCwgMiBkZWxldGlvbnMoLSkNCj4NCj4NCj5kaWZmIC0tZ2l0IGEvbGliL2V4dDJmcy9hbGxvY19z
+Yi5jIGIvbGliL2V4dDJmcy9hbGxvY19zYi5jDQo+aW5kZXggMjIzZWM1MS4uODc4OGMwMCAxMDA2
+NDQNCj4tLS0gYS9saWIvZXh0MmZzL2FsbG9jX3NiLmMNCj4rKysgYi9saWIvZXh0MmZzL2FsbG9j
+X3NiLmMNCj5AQCAtNjUsOCArNjUsNiBAQCBpbnQgZXh0MmZzX3Jlc2VydmVfc3VwZXJfYW5kX2Jn
+ZChleHQyX2ZpbHN5cyBmcywNCj4gCQlleHQyZnNfbWFya19ibG9ja19iaXRtYXAyKGJtYXAsIDAp
+Ow0KPg0KPiAJaWYgKG9sZF9kZXNjX2Jsaykgew0KPi0JCWlmIChmcy0+c3VwZXItPnNfcmVzZXJ2
+ZWRfZ2R0X2Jsb2NrcyAmJiBmcy0+YmxvY2tfbWFwID09IGJtYXApDQo+LQkJCWV4dDJmc19iZ19m
+bGFnc19jbGVhcihmcywgZ3JvdXAsIEVYVDJfQkdfQkxPQ0tfVU5JTklUKTsNCj4gCQludW1fYmxv
+Y2tzID0gb2xkX2Rlc2NfYmxvY2tzOw0KPiAJCWlmIChvbGRfZGVzY19ibGsgKyBudW1fYmxvY2tz
+ID49IGV4dDJmc19ibG9ja3NfY291bnQoZnMtPnN1cGVyKSkNCj4gCQkJbnVtX2Jsb2NrcyA9IGV4
+dDJmc19ibG9ja3NfY291bnQoZnMtPnN1cGVyKSAtDQoNCg==
