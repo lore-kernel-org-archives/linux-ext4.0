@@ -1,34 +1,53 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: deleted "set but not used" variables
-Date: Sat, 11 Jan 2014 13:27:54 -0500
-Message-ID: <20140111182754.GA1582@thunk.org>
-References: <CAGW2f1H1nj9YMUYZ+Fe5knzNQLNzFUk_7eZi2YrkE=J0c1R-cg@mail.gmail.com>
+Subject: Re: [1/1] handle e2image offset value better
+Date: Sat, 11 Jan 2014 13:43:43 -0500
+Message-ID: <20140111184343.GA20583@thunk.org>
+References: <CAGW2f1ES7Gji4hXEeMzCSdH3VabXU7SeD-4cg4GL6K9ArugwHw@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
+Cc: "linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>
 To: jon ernst <jonernst07@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:47548 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:47554 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751073AbaAKS2C (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 11 Jan 2014 13:28:02 -0500
+	id S1751629AbaAKSnw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 11 Jan 2014 13:43:52 -0500
 Content-Disposition: inline
-In-Reply-To: <CAGW2f1H1nj9YMUYZ+Fe5knzNQLNzFUk_7eZi2YrkE=J0c1R-cg@mail.gmail.com>
+In-Reply-To: <CAGW2f1ES7Gji4hXEeMzCSdH3VabXU7SeD-4cg4GL6K9ArugwHw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jul 08, 2013 at 05:23:49AM +0000, jon ernst wrote:
-> to delete "set but not used" variables
+On Sun, Jan 05, 2014 at 04:42:42AM +0000, jon ernst wrote:
+> current e2image cannot handle offset value as 0.
 > 
-> Signed-off-by: Jon Ernst <jonernst07@gmail.com>
+> For example,
+> e2image -aro   0 /dev/sda7 ~/e2image7
+> will return usage()
+> but
+> e2image -aro   1 /dev/sda7 ~/e2image7
+> is fine.
 
-Thanks for your patch!
+I'm not seeing a problem;
 
-My apologies for the delay in processing this patch; it fell through
-the cracks and I found it while going through my backlog.  The set but
-not used variable in ext4_ext_truncate() has since been addressed by
-actually checking the error returns, but the set but not used
-variables in ioctl.c and inline.c were still applicable, and I've
-applied those portions of the patch to the ext4 tree.
+    cp /dev/null /tmp/foo.img
+    mke2fs -t ext4 -F /tmp/foo.img 100
+    e2image -aro 0 /tmp/foo.img /tmp/bar.img
 
-	      	       	      	       - Ted
+Is working just fine for me.
+
+Looking at your patch, I don't think it's correct.  We only want to go
+into "move mode" when the user has specified a single argument, and
+either the source or destination is non-zero, and of course this
+really only makes sense when we are in raw mode.
+
+That's what the code is currently doing.  If I were going to make any
+changes, I'd probably change the criteria so that we check to see if
+the source and destination offset is identical (since then it's just a
+no-op), and we should probably enforce the restriction that we only
+allow move mode when the user has specified both the -a and the -r
+option.  (Otherwise, they will destroy the data on their file system,
+which is probably not the result they were looking for.)
+
+Regards,
+
+						- Ted
