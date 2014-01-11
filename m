@@ -1,74 +1,55 @@
-From: jon ernst <jonernst07@gmail.com>
-Subject: Re: [1/1] handle e2image offset value better
-Date: Sat, 11 Jan 2014 20:08:29 +0000
-Message-ID: <CAGW2f1FTQss1JcWiajsJQ4_XK8rbKRrghvQP8s970gTX21g-Vw@mail.gmail.com>
-References: <CAGW2f1ES7Gji4hXEeMzCSdH3VabXU7SeD-4cg4GL6K9ArugwHw@mail.gmail.com>
-	<20140111184343.GA20583@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: xfstests failures in v3.13-rc7
+Date: Sat, 11 Jan 2014 16:58:09 -0500
+Message-ID: <20140111215809.GA10995@thunk.org>
+References: <1389063428.2169.12.camel@ancientdefender.lm.intel.com>
+ <CAGW2f1Hdv42u=yHoFVhmx72z88gyNUC4MbQQ0UGk8BceNNEbGA@mail.gmail.com>
+ <1389233388.12789.11.camel@vverma7-desk1-amr-corp-intel-com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: "jonernst07@gmail.com" <jonernst07@gmail.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"matthew@wil.cx" <matthew@wil.cx>
+To: "Verma, Vishal L" <vishal.l.verma@intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qa0-f53.google.com ([209.85.216.53]:44856 "EHLO
-	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751274AbaAKUIa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 11 Jan 2014 15:08:30 -0500
-Received: by mail-qa0-f53.google.com with SMTP id cm18so4616452qab.40
-        for <linux-ext4@vger.kernel.org>; Sat, 11 Jan 2014 12:08:30 -0800 (PST)
-In-Reply-To: <20140111184343.GA20583@thunk.org>
+Received: from imap.thunk.org ([74.207.234.97]:47604 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750790AbaAKV6P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 11 Jan 2014 16:58:15 -0500
+Content-Disposition: inline
+In-Reply-To: <1389233388.12789.11.camel@vverma7-desk1-amr-corp-intel-com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Jan 11, 2014 at 6:43 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Sun, Jan 05, 2014 at 04:42:42AM +0000, jon ernst wrote:
->> current e2image cannot handle offset value as 0.
->>
->> For example,
->> e2image -aro   0 /dev/sda7 ~/e2image7
->> will return usage()
->> but
->> e2image -aro   1 /dev/sda7 ~/e2image7
->> is fine.
->
-> I'm not seeing a problem;
->
->     cp /dev/null /tmp/foo.img
->     mke2fs -t ext4 -F /tmp/foo.img 100
->     e2image -aro 0 /tmp/foo.img /tmp/bar.img
->
-Yes, agree. Actually I meant to send test like this:
+On Thu, Jan 09, 2014 at 02:09:52AM +0000, Verma, Vishal L wrote:
+> As an aside, when I installed e2fsprogs using simply 'make install', it
+> replaced /sbin/blkid with it's own version (1.0.0), down from what I had
+> (2.x). Reinstalling the util-linux-ng package brings me back up...
+> (I had to modify the check script in xfstests to use the -p option in
+> blkid to actually read superblock since ramdisks don't seem to make it
+> into /etc/blkid/blkid.tab, and this wasn't there in blkid v1.0.0).
+> 
+> I quickly searched for a bit of history on the topic, and sounds like I
+> should be using --disable-libblkid for configure. Tried that, and got
+> some errors, the same as seen here:
+> http://patchwork.ozlabs.org/patch/36491/
 
-e2image -aro 0 /tmp/foo.img
+Did you do a full "make distclean" after you reran the configure
+script?  This was caused by a left over header file, if memory serves
+correctly.
 
-This will return usage(). As you mentioned, only "non-zero" argument
-makes sense. I agree too.
+If you used a separate build directory (i.e., "mkdir build ; cd build
+; ../configure --enable-...") then just rm -rf the build directory and
+then start from scratch.  If you used git, you can do "git clean
+-xdq".  If neither of these apply, you may need to delete the full
+source tree and then unpack the source tarfile again.
 
+I'm open to patches to make this the transition between one set of
+configure options to another more smooth, but given that I tend to
+just do things like have multiple build directories, for things like
+"build-coverity", "build-quota", "build-dietlibc", etc., it's not high
+on my priority list to figure out why someone who fails to run "make
+distclean", or deletes the full build tree, before running configure
+with a different set of options, is losing.
 
-
-
-
-> Is working just fine for me.
->
-> Looking at your patch, I don't think it's correct.  We only want to go
-> into "move mode" when the user has specified a single argument, and
-> either the source or destination is non-zero, and of course this
-> really only makes sense when we are in raw mode.
->
-> That's what the code is currently doing.  If I were going to make any
-> changes, I'd probably change the criteria so that we check to see if
-> the source and destination offset is identical (since then it's just a
-> no-op), and we should probably enforce the restriction that we only
-> allow move mode when the user has specified both the -a and the -r
-> option.  (Otherwise, they will destroy the data on their file system,
-> which is probably not the result they were looking for.)
-
-I tested, this restriction is there.
-
-Thank you for your response.
-Sorry for useless patch.
-
-Jon
->
-> Regards,
->
->                                                 - Ted
+					- Ted
