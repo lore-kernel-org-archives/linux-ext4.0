@@ -1,48 +1,78 @@
-From: Benjamin LaHaise <bcrl@kvack.org>
-Subject: high write latency bug in ext3 / jbd in 3.4
-Date: Mon, 13 Jan 2014 15:13:20 -0500
-Message-ID: <20140113201320.GD1214@kvack.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH RFC] Add support for new compat feature "one_backup_sb"
+Date: Mon, 13 Jan 2014 13:41:27 -0700
+Message-ID: <0EBF5E18-D8DD-4602-BE97-9B7E9092052F@dilger.ca>
+References: <1389497029-10488-1-git-send-email-tytso@mit.edu> <20140113132707.GA22358@orion.maiolino.org> <20140113140645.GC18029@thunk.org> <20140113161949.GB22541@thunk.org>
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Content-Type: multipart/signed; boundary="Apple-Mail=_9F36B331-9F63-418B-A8C3-829BE30F7BCF"; protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kanga.kvack.org ([205.233.56.17]:45904 "EHLO kanga.kvack.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750962AbaAMUNW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 13 Jan 2014 15:13:22 -0500
-Content-Disposition: inline
+Received: from mail-pa0-f48.google.com ([209.85.220.48]:52067 "EHLO
+	mail-pa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751518AbaAMUld (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Jan 2014 15:41:33 -0500
+Received: by mail-pa0-f48.google.com with SMTP id lf10so5808001pab.21
+        for <linux-ext4@vger.kernel.org>; Mon, 13 Jan 2014 12:41:33 -0800 (PST)
+In-Reply-To: <20140113161949.GB22541@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello all,
 
-I've recently encountered a bug in ext3 where the occasional write is 
-showing extremely high latency, on the order of 2.2 to 11 seconds compared 
-to a more typical 200-300ms.  This is happening on a 3.4.67 kernel.  When 
-this occurs, the system is writing to disk somewhere between 290-330MB/s.  
-The test takes anywhere from 3 to 12 minutes into a run to trigger the 
-high latency write.  During one of these high latency writes, vmstat reports 
-0 blocks being written to disk.  The disk array being written to is able to 
-write quite a bit faster (about ~770MB/s).
+--Apple-Mail=_9F36B331-9F63-418B-A8C3-829BE30F7BCF
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain;
+	charset=us-ascii
 
-The setup is a bit complicated, but is completely reproducible.  The 
-workload consists of about 8 worker threads creating and then writing out 
-spool files that are a little under 8MB in size.  After each write, the file 
-and the directory it is in are then fsync()d.  The latency measured is from 
-the beginning open() of a spool file until the final fsync() completes.
+On Jan 13, 2014, at 9:19 AM, Theodore Ts'o <tytso@mit.edu> wrote:
 
-Poking around the system with latencytop shows that sleep_on_buffer() is 
-where all the latency is coming from, leading to log_wait_commit() showing 
-the very high latency for the fsync()s.  This leads me to believe that jbd 
-is somehow not properly flushing a buffer being waited on in a timely 
-fashion.  Changing elevator in use has no effect.
+> On Mon, Jan 13, 2014 at 09:06:45AM -0500, Theodore Ts'o wrote:
+>> I'm just not entirely sure it's worth the extra hair, either way.  I'm
+>> curious to hear what other people think.
+> 
+> After the ext4 concall this morning, I've been convinced by Carlos's
+> and Andreas' arguments that we should add a superblock at the end of
+> the disk.  So I'll rework the patches to do that.
 
-Does anyone have any ideas on where to look in ext3 or jbd for something 
-that might be causing this behaviour?  If I use ext4 to mount the ext3 
-filesystem being tested, the problem goes away.  Testing on newer kernels 
-is not very easy to do (the system has other dependencyies on the 3.4 
-kernel).  Thoughts?
+Instead of adding a new location for the backup superblock at the
+"end" of the disk (which is subject to change if the filesystem is
+resized), what about using the last group that would otherwise have
+a backup superblock with the "sparse_super" feature?  That means
+resizing the filesystem by some amount won't change the location of
+the backup, and avoids the need to change all of the documentation
+for how to find superblocks.
 
-		-ben
--- 
-"Thought is the essence of where you are now."
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_9F36B331-9F63-418B-A8C3-829BE30F7BCF
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIVAwUBUtRPeHKl2rkXzB/gAQLBhQ/+IH+IOhmh05B6GdZIRfN2izUJ1EzrXJIF
+qefAktD/ML6UEpMGez2pSTRaaohZtWPb811MgqHpXtpgCGnJMLgJh/LhkFpwjSnA
+NAzkAwZQXXkJsTzsE6Xteb9XcWPJ46IGqtvtOzsolsugqeBajfRATKr1FInAM7NI
+Iki5VOpccHmwz7tSFUrJSwQ7PINKlaWqCkPyQrgO4lUYVdpr7x2LDbpsEmeAaPHi
+brgG2t2/dv3ivVbEAUdy5INiAX1hKawCKlaL1+8wlDEslUTjl6aZLQnKQitxi4nX
+04HhOayJS5SIBT9vLSHzNCpF29kZ7v8D5mq5cZJywboRQYNG/lm6b7i0Le1vaCIy
+Yr9RJuMmSjEMCVGmpNecovQi/9ahMKv3on4UeQ6vb5zrt5wlu3LtzN8nfp3mBwvB
+vR0PAWh5Av2s0ZioKxc9PFZv2SaUuHYB0xXle/U2AMne8t9raTRxIbqsBl2kf7Ap
+kAjwBWy+KzSSe+AMm/va+z8lLZHn5svSTGYqeo1b6tAG7NVZpRjpYAz754Y6vYCu
+FEd5Q+h3mB76CI0t1iGUCXhRcqO7+W8WUoWifr735PhjULG3QnckhupzEaaGuHv2
+pBr1hwEaD8rGf3AlmAJZJHCI/GrianRRM+y0u4XsiQ6jX5XpNcbqrwsd3ko3xtAA
+FzEaNx5bbu8=
+=cavH
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_9F36B331-9F63-418B-A8C3-829BE30F7BCF--
