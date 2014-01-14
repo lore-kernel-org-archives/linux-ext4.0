@@ -1,45 +1,59 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: high write latency bug in ext3 / jbd in 3.4
-Date: Mon, 13 Jan 2014 22:52:37 -0500
-Message-ID: <20140114035237.GA27083@thunk.org>
-References: <20140113201320.GD1214@kvack.org>
- <99F82313-71DA-43E6-A071-05507183D481@dilger.ca>
- <20140113211610.GE1214@kvack.org>
- <20140113225219.GD11207@thunk.org>
- <20140114012121.GF1214@kvack.org>
+From: "Verma, Vishal L" <vishal.l.verma@intel.com>
+Subject: Re: xfstests failures in v3.13-rc7
+Date: Tue, 14 Jan 2014 04:02:06 +0000
+Message-ID: <1389672128.5830.1.camel@vverma7-desk1-amr-corp-intel-com>
+References: <1389063428.2169.12.camel@ancientdefender.lm.intel.com>
+	 <CAGW2f1Hdv42u=yHoFVhmx72z88gyNUC4MbQQ0UGk8BceNNEbGA@mail.gmail.com>
+	 <1389233388.12789.11.camel@vverma7-desk1-amr-corp-intel-com>
+	 <20140111215809.GA10995@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@dilger.ca>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Benjamin LaHaise <bcrl@kvack.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: "jonernst07@gmail.com" <jonernst07@gmail.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"matthew@wil.cx" <matthew@wil.cx>
+To: "tytso@mit.edu" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:48197 "EHLO imap.thunk.org"
+Received: from mga11.intel.com ([192.55.52.93]:47124 "EHLO mga11.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751536AbaANDwk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 13 Jan 2014 22:52:40 -0500
-Content-Disposition: inline
-In-Reply-To: <20140114012121.GF1214@kvack.org>
+	id S1751739AbaANECI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 13 Jan 2014 23:02:08 -0500
+In-Reply-To: <20140111215809.GA10995@thunk.org>
+Content-Language: en-US
+Content-ID: <B1F79B58E50AD74E8EC35CBACFF62A94@intel.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jan 13, 2014 at 08:21:21PM -0500, Benjamin LaHaise wrote:
-> Another reason for not being able to migrate to extents is that it breaks 
-> the ability of our system to be downgraded smoothly.  The previous kernel 
-> being used was of 2.6.18 vintage, so this is the first version of our 
-> product that supports using ext4.  There were also concerns about testing 
-> both the extent and non-extent code paths as well -- regression tests take 
-> months to complete, so adding a times 2 multiplier to everything is a hard 
-> sell.
-
-Well, you can use ext4 without enabling extents; at that point the
-major performance improvement is those related to delayed allocation.
-That should address your large latency associated with file system
-commits.  That's because we don't allocate blocks until right before
-we allocate them.  Hence, we don't have to force those blocks out to
-the journal in order to guarantee the data=ordered guarantees.
-
-You can probably also avoid the huge latency spikes you are seeing by
-using data=writeback, BTW, but of course then you risk stale data
-issues after a crash.
-
-						- Ted
+T24gU2F0LCAyMDE0LTAxLTExIGF0IDE2OjU4IC0wNTAwLCBUaGVvZG9yZSBUcydvIHdyb3RlOg0K
+PiBPbiBUaHUsIEphbiAwOSwgMjAxNCBhdCAwMjowOTo1MkFNICswMDAwLCBWZXJtYSwgVmlzaGFs
+IEwgd3JvdGU6DQo+ID4gQXMgYW4gYXNpZGUsIHdoZW4gSSBpbnN0YWxsZWQgZTJmc3Byb2dzIHVz
+aW5nIHNpbXBseSAnbWFrZSBpbnN0YWxsJywgaXQNCj4gPiByZXBsYWNlZCAvc2Jpbi9ibGtpZCB3
+aXRoIGl0J3Mgb3duIHZlcnNpb24gKDEuMC4wKSwgZG93biBmcm9tIHdoYXQgSSBoYWQNCj4gPiAo
+Mi54KS4gUmVpbnN0YWxsaW5nIHRoZSB1dGlsLWxpbnV4LW5nIHBhY2thZ2UgYnJpbmdzIG1lIGJh
+Y2sgdXAuLi4NCj4gPiAoSSBoYWQgdG8gbW9kaWZ5IHRoZSBjaGVjayBzY3JpcHQgaW4geGZzdGVz
+dHMgdG8gdXNlIHRoZSAtcCBvcHRpb24gaW4NCj4gPiBibGtpZCB0byBhY3R1YWxseSByZWFkIHN1
+cGVyYmxvY2sgc2luY2UgcmFtZGlza3MgZG9uJ3Qgc2VlbSB0byBtYWtlIGl0DQo+ID4gaW50byAv
+ZXRjL2Jsa2lkL2Jsa2lkLnRhYiwgYW5kIHRoaXMgd2Fzbid0IHRoZXJlIGluIGJsa2lkIHYxLjAu
+MCkuDQo+ID4gDQo+ID4gSSBxdWlja2x5IHNlYXJjaGVkIGZvciBhIGJpdCBvZiBoaXN0b3J5IG9u
+IHRoZSB0b3BpYywgYW5kIHNvdW5kcyBsaWtlIEkNCj4gPiBzaG91bGQgYmUgdXNpbmcgLS1kaXNh
+YmxlLWxpYmJsa2lkIGZvciBjb25maWd1cmUuIFRyaWVkIHRoYXQsIGFuZCBnb3QNCj4gPiBzb21l
+IGVycm9ycywgdGhlIHNhbWUgYXMgc2VlbiBoZXJlOg0KPiA+IGh0dHA6Ly9wYXRjaHdvcmsub3ps
+YWJzLm9yZy9wYXRjaC8zNjQ5MS8NCj4gDQo+IERpZCB5b3UgZG8gYSBmdWxsICJtYWtlIGRpc3Rj
+bGVhbiIgYWZ0ZXIgeW91IHJlcmFuIHRoZSBjb25maWd1cmUNCj4gc2NyaXB0PyAgVGhpcyB3YXMg
+Y2F1c2VkIGJ5IGEgbGVmdCBvdmVyIGhlYWRlciBmaWxlLCBpZiBtZW1vcnkgc2VydmVzDQo+IGNv
+cnJlY3RseS4NCj4gDQo+IElmIHlvdSB1c2VkIGEgc2VwYXJhdGUgYnVpbGQgZGlyZWN0b3J5IChp
+LmUuLCAibWtkaXIgYnVpbGQgOyBjZCBidWlsZA0KPiA7IC4uL2NvbmZpZ3VyZSAtLWVuYWJsZS0u
+Li4iKSB0aGVuIGp1c3Qgcm0gLXJmIHRoZSBidWlsZCBkaXJlY3RvcnkgYW5kDQo+IHRoZW4gc3Rh
+cnQgZnJvbSBzY3JhdGNoLiAgSWYgeW91IHVzZWQgZ2l0LCB5b3UgY2FuIGRvICJnaXQgY2xlYW4N
+Cj4gLXhkcSIuICBJZiBuZWl0aGVyIG9mIHRoZXNlIGFwcGx5LCB5b3UgbWF5IG5lZWQgdG8gZGVs
+ZXRlIHRoZSBmdWxsDQo+IHNvdXJjZSB0cmVlIGFuZCB0aGVuIHVucGFjayB0aGUgc291cmNlIHRh
+cmZpbGUgYWdhaW4uDQo+IA0KVGhhbmtzISBBIGdpdCBjbGVhbiBkaWQgc29sdmUgdGhlIHByb2Js
+ZW0uDQoNCj4gSSdtIG9wZW4gdG8gcGF0Y2hlcyB0byBtYWtlIHRoaXMgdGhlIHRyYW5zaXRpb24g
+YmV0d2VlbiBvbmUgc2V0IG9mDQo+IGNvbmZpZ3VyZSBvcHRpb25zIHRvIGFub3RoZXIgbW9yZSBz
+bW9vdGgsIGJ1dCBnaXZlbiB0aGF0IEkgdGVuZCB0bw0KPiBqdXN0IGRvIHRoaW5ncyBsaWtlIGhh
+dmUgbXVsdGlwbGUgYnVpbGQgZGlyZWN0b3JpZXMsIGZvciB0aGluZ3MgbGlrZQ0KPiAiYnVpbGQt
+Y292ZXJpdHkiLCAiYnVpbGQtcXVvdGEiLCAiYnVpbGQtZGlldGxpYmMiLCBldGMuLCBpdCdzIG5v
+dCBoaWdoDQo+IG9uIG15IHByaW9yaXR5IGxpc3QgdG8gZmlndXJlIG91dCB3aHkgc29tZW9uZSB3
+aG8gZmFpbHMgdG8gcnVuICJtYWtlDQo+IGRpc3RjbGVhbiIsIG9yIGRlbGV0ZXMgdGhlIGZ1bGwg
+YnVpbGQgdHJlZSwgYmVmb3JlIHJ1bm5pbmcgY29uZmlndXJlDQo+IHdpdGggYSBkaWZmZXJlbnQg
+c2V0IG9mIG9wdGlvbnMsIGlzIGxvc2luZy4NCj4gDQo+IAkJCQkJLSBUZWQNCg0K
