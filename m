@@ -1,18 +1,17 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Ext4 (and xfs and btrfs?) meetings around LSF
-Date: Wed, 15 Jan 2014 11:20:31 -0500
-Message-ID: <52D6B54F.6030600@redhat.com>
-References: <20140110115834.GK26378@quack.suse.cz>
-	<20140111180520.GA1557@thunk.org>
-	<20140113054528.GA3837@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"; Format="flowed"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-btrfs <linux-btrfs@vger.kernel.org>,
-	xfs@oss.sgi.com
-To: Jan Kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [RFC] directory quota survey on xfs
+Date: Wed, 15 Jan 2014 11:03:22 -0700
+Message-ID: <5966C533-EF18-4804-8C83-DFBD607D9BE6@dilger.ca>
+References: <20131222095929.GA11444@gmail.com> <20131223014222.GC3220@dastard>
+	<20140115081201.GA3820@gmail.com>
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Content-Type: multipart/mixed; boundary="===============2441794138102024739=="
+Cc: Theodore Ts'o <tytso@mit.edu>, xfs@oss.sgi.com, Ben Myers <bpm@sgi.com>,
+	Dmitry Monakhov <dmonakhov@openvz.org>, Li Xi <pkuelelixi@gmail.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <20140113054528.GA3837@quack.suse.cz>
+In-Reply-To: <20140115081201.GA3820@gmail.com>
 List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
 	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
 List-Archive: <http://oss.sgi.com/pipermail/xfs>
@@ -24,30 +23,87 @@ Errors-To: xfs-bounces@oss.sgi.com
 Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On 01/13/2014 12:45 AM, Jan Kara wrote:
->    Hello,
->
-> On Sat 11-01-14 13:05:20, Ted Tso wrote:
->> On Fri, Jan 10, 2014 at 12:58:34PM +0100, Jan Kara wrote:
->>>    do you plan to organize an ext4 meeting around LSF? And do you plan it
->>> during Collab summit or on Sunday before LSF? Thanks for answer in advance.
->> Yes, the plan is to have it during the week, after the LSF during the
->> Collab Summit.
->>
->> We'd love to have you there!
->    Yeah, I'm planning the travel so I was asking before booking plane
-> tickets. I want to take part in the meeting.
->
-> 								Honza
 
-Taking time to do this for ext4 (and xfs and btrfs) during the collab summit 
-would be great. I would definitely push to get our Red Hat people there.
+--===============2441794138102024739==
+Content-Type: multipart/signed; boundary="Apple-Mail=_FD255228-C0D0-4E7D-8F9D-F4FA9F697630"; protocol="application/pgp-signature"; micalg=pgp-sha1
 
-Thanks!
 
-Ric
+--Apple-Mail=_FD255228-C0D0-4E7D-8F9D-F4FA9F697630
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain;
+	charset=us-ascii
+
+On Jan 15, 2014, at 1:12 AM, Zheng Liu <gnehzuil.liu@gmail.com> wrote:
+> On Mon, Dec 23, 2013 at 12:42:22PM +1100, Dave Chinner wrote:
+>> I'd also strongly suggest that you use the XFS userspace quota API
+>> for managing project quotas, so that we can use the same management
+>> tools and tests to verify that they behave the same. Please don't
+>> invent a new version of the quota API to implement this - everything
+>> you need ifor managing project/directory quotas is already there in
+>> xfs_quota.....
+> 
+> Frankly, I don't like this, really.  Now we have quota-tool to manage
+> the quota in ext4.  So IMHO we'd better go on using this tool because it
+> is natural for ext4 users.  I still couldn't accept this fact that I
+> need to install xfsprogs for using a feature of ext4.  Further, it could
+> make users puzzled because they use quota to control user/group quota in
+> ext4, but it uses xfs_quota to control project quota.  It could bring
+> some troubles for the ext4 users who have written some scripts to manage
+> their machines.
+
+Please see Li Xi's recent email "Directory/Project quota supports" on
+the linux-ext4 list.  He has already added some prototype support for
+project quotas to quota-tools.
+
+I think it might make sense to keep the same API as XFS for the ext4
+quotas (to keep compatibility for existing XFS deployments), but add
+support into quota-tools so that it is usable by all filesystems.
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_FD255228-C0D0-4E7D-8F9D-F4FA9F697630
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIVAwUBUtbNanKl2rkXzB/gAQLZChAAs615Gzxprw9+mALw7ohMsxmdFGqRfSYw
+czhBA9Rl82oOD2Cq9lvtGzAawE35Y3xDe4cPz+DPlq+ul5Du7VBRL0VfCYBDAg4T
+mBzp84iFqijD10umZzaSERXK9uFLs+MZCp6n2V5ooYgzWw+gymBnEJU7zIX+D0Vf
+uGOz7MxfhCcDOmvDnjgulHTTQhh0dne0wE/9DmfmCSxNZuOjzx+ESXgKT2L7xf3o
+pAopF7Q5ppE1M5RYyfGTkqxCAlJ7QbnAw4Mj5nXKWfFVtYeep9VmCGm++szrzkFy
+zUOtf3p3BmKubSyLdab4QdU+1Umc1s7+00T45DMgrR2xm8FhpRFrjX9dV61xrg0P
+TGs4146xwXYTxwqv4XnOWfbnLJ/B5clX+lC6ZRdyEE/pqGf9DKP0PzbP/5LVnUq+
+VthdCOoCvB7Gk0pGRvwuupCvXJX31+7nLUf9R66kUgg7s5I6SlZiGsUwrvEIPJLJ
+mypRUaiLzB//6ClTWifNMLS0KON7EGHCnh37Jg82WiZ+vgxej7gvhQOdhCew3axI
+G9mWx3fnA0iEobVD0/RzQgtRZ0CqenZ4/XOrmHLplq/hi7+mIuuWeH8kRXnVygim
+Qh4I5IALZsttK7L0HQSOHH+v8YVocilDzSZNzGg9pQS+/X1wYXoHiXHCU9lSHe+m
+SygajQdk7Lo=
+=Ymkx
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_FD255228-C0D0-4E7D-8F9D-F4FA9F697630--
+
+
+--===============2441794138102024739==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 _______________________________________________
 xfs mailing list
 xfs@oss.sgi.com
 http://oss.sgi.com/mailman/listinfo/xfs
+
+--===============2441794138102024739==--
