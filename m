@@ -1,109 +1,64 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [RFC] directory quota survey on xfs
-Date: Wed, 15 Jan 2014 11:03:22 -0700
-Message-ID: <5966C533-EF18-4804-8C83-DFBD607D9BE6@dilger.ca>
-References: <20131222095929.GA11444@gmail.com> <20131223014222.GC3220@dastard>
-	<20140115081201.GA3820@gmail.com>
-Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Content-Type: multipart/mixed; boundary="===============2441794138102024739=="
-Cc: Theodore Ts'o <tytso@mit.edu>, xfs@oss.sgi.com, Ben Myers <bpm@sgi.com>,
-	Dmitry Monakhov <dmonakhov@openvz.org>, Li Xi <pkuelelixi@gmail.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <20140115081201.GA3820@gmail.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
-
-
---===============2441794138102024739==
-Content-Type: multipart/signed; boundary="Apple-Mail=_FD255228-C0D0-4E7D-8F9D-F4FA9F697630"; protocol="application/pgp-signature"; micalg=pgp-sha1
-
-
---Apple-Mail=_FD255228-C0D0-4E7D-8F9D-F4FA9F697630
-Content-Transfer-Encoding: 7bit
-Content-Type: text/plain;
-	charset=us-ascii
-
-On Jan 15, 2014, at 1:12 AM, Zheng Liu <gnehzuil.liu@gmail.com> wrote:
-> On Mon, Dec 23, 2013 at 12:42:22PM +1100, Dave Chinner wrote:
->> I'd also strongly suggest that you use the XFS userspace quota API
->> for managing project quotas, so that we can use the same management
->> tools and tests to verify that they behave the same. Please don't
->> invent a new version of the quota API to implement this - everything
->> you need ifor managing project/directory quotas is already there in
->> xfs_quota.....
-> 
-> Frankly, I don't like this, really.  Now we have quota-tool to manage
-> the quota in ext4.  So IMHO we'd better go on using this tool because it
-> is natural for ext4 users.  I still couldn't accept this fact that I
-> need to install xfsprogs for using a feature of ext4.  Further, it could
-> make users puzzled because they use quota to control user/group quota in
-> ext4, but it uses xfs_quota to control project quota.  It could bring
-> some troubles for the ext4 users who have written some scripts to manage
-> their machines.
-
-Please see Li Xi's recent email "Directory/Project quota supports" on
-the linux-ext4 list.  He has already added some prototype support for
-project quotas to quota-tools.
-
-I think it might make sense to keep the same API as XFS for the ext4
-quotas (to keep compatibility for existing XFS deployments), but add
-support into quota-tools so that it is usable by all filesystems.
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_FD255228-C0D0-4E7D-8F9D-F4FA9F697630
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIVAwUBUtbNanKl2rkXzB/gAQLZChAAs615Gzxprw9+mALw7ohMsxmdFGqRfSYw
-czhBA9Rl82oOD2Cq9lvtGzAawE35Y3xDe4cPz+DPlq+ul5Du7VBRL0VfCYBDAg4T
-mBzp84iFqijD10umZzaSERXK9uFLs+MZCp6n2V5ooYgzWw+gymBnEJU7zIX+D0Vf
-uGOz7MxfhCcDOmvDnjgulHTTQhh0dne0wE/9DmfmCSxNZuOjzx+ESXgKT2L7xf3o
-pAopF7Q5ppE1M5RYyfGTkqxCAlJ7QbnAw4Mj5nXKWfFVtYeep9VmCGm++szrzkFy
-zUOtf3p3BmKubSyLdab4QdU+1Umc1s7+00T45DMgrR2xm8FhpRFrjX9dV61xrg0P
-TGs4146xwXYTxwqv4XnOWfbnLJ/B5clX+lC6ZRdyEE/pqGf9DKP0PzbP/5LVnUq+
-VthdCOoCvB7Gk0pGRvwuupCvXJX31+7nLUf9R66kUgg7s5I6SlZiGsUwrvEIPJLJ
-mypRUaiLzB//6ClTWifNMLS0KON7EGHCnh37Jg82WiZ+vgxej7gvhQOdhCew3axI
-G9mWx3fnA0iEobVD0/RzQgtRZ0CqenZ4/XOrmHLplq/hi7+mIuuWeH8kRXnVygim
-Qh4I5IALZsttK7L0HQSOHH+v8YVocilDzSZNzGg9pQS+/X1wYXoHiXHCU9lSHe+m
-SygajQdk7Lo=
-=Ymkx
------END PGP SIGNATURE-----
-
---Apple-Mail=_FD255228-C0D0-4E7D-8F9D-F4FA9F697630--
-
-
---===============2441794138102024739==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
+From: Benjamin LaHaise <bcrl@kvack.org>
+Subject: ext4: indirect block allocations not sequential in 3.4.67 and 3.11.7
+Date: Wed, 15 Jan 2014 14:28:02 -0500
+Message-ID: <20140115192802.GK21295@kvack.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from kanga.kvack.org ([205.233.56.17]:44872 "EHLO kanga.kvack.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751592AbaAOT2D (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 15 Jan 2014 14:28:03 -0500
 Content-Disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+Hi folks,
 
---===============2441794138102024739==--
+As a follow on to my previous issue with ext3, it's looking like the 
+indirect block allocator in ext4 is not doing a very good job of making 
+block allocations sequential.  On a 1GB test filesystem, I'm getting 
+the following allocation results for 10MB files (written out with a single 
+10MB write()):
+
+debugfs:  stat testfile.0
+Inode: 12   Type: regular    Mode:  0600   Flags: 0x0   Generation: 2584871807
+User:     0   Group:     0   Size: 10485760
+File ACL: 0    Directory ACL: 0
+Links: 1   Blockcount: 20512
+Fragment:  Address: 0    Number: 0    Size: 0
+ctime: 0x52d6de73 -- Wed Jan 15 14:16:03 2014
+atime: 0x52d6de27 -- Wed Jan 15 14:14:47 2014
+mtime: 0x52d6de73 -- Wed Jan 15 14:16:03 2014
+BLOCKS:
+(0-11):24576-24587, (IND):8797, (12-1035):24588-25611, (DIND):8798, (IND):8799, 
+(1036-2059):25612-26635, (IND):10248, (2060-2559):26636-27135
+TOTAL: 2564
+
+debugfs:  stat testfile.1
+Inode: 15   Type: regular    Mode:  0600   Flags: 0x0   Generation: 1625569093
+User:     0   Group:     0   Size: 10485760
+File ACL: 0    Directory ACL: 0
+Links: 1   Blockcount: 20512
+Fragment:  Address: 0    Number: 0    Size: 0
+ctime: 0x52d6df0f -- Wed Jan 15 14:18:39 2014
+atime: 0x52d6df0f -- Wed Jan 15 14:18:39 2014
+mtime: 0x52d6df0f -- Wed Jan 15 14:18:39 2014
+BLOCKS:
+(0-11):12288-12299, (IND):8787, (12-1035):12300-13323, (DIND):8790, (IND):8791, 
+(1036-2059):13324-14347, (IND):8789, (2060-2559):14348-14847
+TOTAL: 2564
+
+debugfs:
+
+To give folks an idea about how significant an impact on performance this 
+is, using ext4 to mount my ext3 filesystem and create files is resulting 
+in a 10-15% reduction in speed when data is being read back into memory.  
+I also tested 3.11.7 and see the same poor allocation layout.  I also 
+tried turning off delalloc, but there was no change in the layout of the 
+data blocks.  Has anyone got any ideas what's going on here?  Cheers,
+
+		-ben
+-- 
+"Thought is the essence of where you are now."
