@@ -1,53 +1,98 @@
-From: Benjamin LaHaise <bcrl@kvack.org>
-Subject: Re: ext4: indirect block allocations not sequential in 3.4.67 and 3.11.7
-Date: Wed, 15 Jan 2014 15:32:05 -0500
-Message-ID: <20140115203205.GA12751@kvack.org>
-References: <20140115192802.GK21295@kvack.org> <20140115202214.GH9229@birch.djwong.org>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 36/74] libext2fs: detect
+Date: Wed, 15 Jan 2014 13:00:09 -0800
+Message-ID: <20140115210009.GI9229@birch.djwong.org>
+References: <20131211011813.30655.39624.stgit@birch.djwong.org>
+ <20131211012220.30655.26226.stgit@birch.djwong.org>
+ <20131213043938.GF23888@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kanga.kvack.org ([205.233.56.17]:45190 "EHLO kanga.kvack.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751562AbaAOUcG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 15 Jan 2014 15:32:06 -0500
+Received: from userp1040.oracle.com ([156.151.31.81]:29982 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750898AbaAOVAP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Jan 2014 16:00:15 -0500
 Content-Disposition: inline
-In-Reply-To: <20140115202214.GH9229@birch.djwong.org>
+In-Reply-To: <20131213043938.GF23888@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jan 15, 2014 at 12:22:14PM -0800, Darrick J. Wong wrote:
-> A dumpe2fs would be nice, but I think I have enough here to speculate:
+On Thu, Dec 12, 2013 at 11:39:38PM -0500, Theodore Ts'o wrote:
+> It looks like the subject line for this commit was truncated --- I
+> could try to make something up, but could you suggest something?
 
-It's trivial to reproduce.  Just create a 1GB file, run mkfs.ext3, then 
-mount with ext4 and dd a 10MB file onto the filesystem.
+I have no recollection if I ever sent a reply to this, but the subject line
+should be:
 
-> The data blocks are all sequential, which looks like what one would expect from
-> mballoc.  Is your complaint is that the *IND blocks are not inline with the
-> data blocks, like what ext3 did?
+"libext2fs: detect superblock when jumping ahead trying to read gdt"
 
-The problem is that the indirect blocks are nowhere near where the file's 
-data is.  It'd be perfectly okay if they were at the beginning of the range 
-of blocks used for the file's data.
-
-> FWIW, ext3 did something like this:
-> (0-11):6144-6155, (IND):6156, (12-1035):6157-7180, (DIND):7181, (IND):7182,
-> (1036-2059):7183-8206, (IND):8207, (2060-2559):8208-8707
+--D
 > 
-> I think the behavior that you're seeing is ext4 trying to keep the mapping
-> blocks close to the inode table to avoid fragmenting the file -- see
-> ext4_find_near() in indirect.c.  There's an XXX comment in ext4_find_goal()
-> that implies that someone might have wanted to tie in with mballoc, which I
-> suppose you could use to restore the ext3 behavior... but there's no way to do
-> that.
-...
-
-I tried a few tests setting goal to different things, but evidently I'm 
-not managing to convince mballoc to put the file's data close to my goal 
-block, something in that mess of complicated logic is making it ignore 
-the goal value I'm passing in.
-
-		-ben
--- 
-"Thought is the essence of where you are now."
+> Thanks!!
+> 
+> 				- Ted
+> 
+> 
+> On Tue, Dec 10, 2013 at 05:22:20PM -0800, Darrick J. Wong wrote:
+> > If ext2fs_descriptor_block_loc2() is called with a meta_bg filesystem
+> > and group_block is not the normal value, the function will return the
+> > location of the backup group descriptor block in the next block group.
+> > Unfortunately, it fails to account for the possibility that the backup
+> > group contains a backup superblock but the regular superblock does
+> > not.  This is the case with block groups 48-49 on a meta_bg fs with 1k
+> > blocks; in this case, libext2fs will fail to open the filesystem.
+> > 
+> > Therefore, teach the function to adjust for superblocks in the backup
+> > group, if necessary.
+> > 
+> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> > ---
+> >  lib/ext2fs/openfs.c |   19 +++++++++++++++----
+> >  1 file changed, 15 insertions(+), 4 deletions(-)
+> > 
+> > 
+> > diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
+> > index b2a8abb..92d9e40 100644
+> > --- a/lib/ext2fs/openfs.c
+> > +++ b/lib/ext2fs/openfs.c
+> > @@ -47,7 +47,7 @@ blk64_t ext2fs_descriptor_block_loc2(ext2_filsys fs, blk64_t group_block,
+> >  	bg = EXT2_DESC_PER_BLOCK(fs->super) * i;
+> >  	if (ext2fs_bg_has_super(fs, bg))
+> >  		has_super = 1;
+> > -	ret_blk = ext2fs_group_first_block2(fs, bg) + has_super;
+> > +	ret_blk = ext2fs_group_first_block2(fs, bg);
+> >  	/*
+> >  	 * If group_block is not the normal value, we're trying to use
+> >  	 * the backup group descriptors and superblock --- so use the
+> > @@ -57,10 +57,21 @@ blk64_t ext2fs_descriptor_block_loc2(ext2_filsys fs, blk64_t group_block,
+> >  	 * have the infrastructure in place to do that.
+> >  	 */
+> >  	if (group_block != fs->super->s_first_data_block &&
+> > -	    ((ret_blk + fs->super->s_blocks_per_group) <
+> > -	     ext2fs_blocks_count(fs->super)))
+> > +	    ((ret_blk + has_super + fs->super->s_blocks_per_group) <
+> > +	     ext2fs_blocks_count(fs->super))) {
+> >  		ret_blk += fs->super->s_blocks_per_group;
+> > -	return ret_blk;
+> > +
+> > +		/*
+> > +		 * If we're going to jump forward a block group, make sure
+> > +		 * that we adjust has_super to account for the next group's
+> > +		 * backup superblock (or lack thereof).
+> > +		 */
+> > +		if (ext2fs_bg_has_super(fs, bg + 1))
+> > +			has_super = 1;
+> > +		else
+> > +			has_super = 0;
+> > +	}
+> > +	return ret_blk + has_super;
+> >  }
+> >  
+> >  blk_t ext2fs_descriptor_block_loc(ext2_filsys fs, blk_t group_block, dgrp_t i)
+> > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
