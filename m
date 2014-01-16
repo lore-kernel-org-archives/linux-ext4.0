@@ -1,115 +1,96 @@
-From: Oleksij Rempel <linux@rempel-privat.de>
-Subject: Re: maintain badblocks list on the fly
-Date: Thu, 16 Jan 2014 10:50:01 +0100
-Message-ID: <52D7AB49.2090907@rempel-privat.de>
-References: <52C92DC9.7030806@rempel-privat.de> <20140106012732.GA21107@thunk.org>
+From: Subranshu Patel <spatel.ml@gmail.com>
+Subject: Dumpe2fs output with primary and backup superblock are different?
+Date: Thu, 16 Jan 2014 16:14:14 +0530
+Message-ID: <CAEUQcegq-ZmgJ2Cr+jqr=1HiOK+NqnvBoxH0JQ3fTYXOd+Z83g@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha256;
- protocol="application/pgp-signature";
- boundary="doWlSEJi7F7qnwTA7rB85Aqk7ssBmG1Qw"
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=UTF-8
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mout.gmx.net ([212.227.17.20]:50834 "EHLO mout.gmx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751513AbaAPJuN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 Jan 2014 04:50:13 -0500
-Received: from [192.168.1.221] ([93.218.75.192]) by mail.gmx.com (mrgmx003)
- with ESMTPSA (Nemesis) id 0M7YF5-1V6YxI3aMB-00xINX for
- <linux-ext4@vger.kernel.org>; Thu, 16 Jan 2014 10:50:11 +0100
-In-Reply-To: <20140106012732.GA21107@thunk.org>
+Received: from mail-we0-f171.google.com ([74.125.82.171]:48796 "EHLO
+	mail-we0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751520AbaAPKuC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Jan 2014 05:50:02 -0500
+Received: by mail-we0-f171.google.com with SMTP id w61so3034223wes.30
+        for <linux-ext4@vger.kernel.org>; Thu, 16 Jan 2014 02:50:01 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
---doWlSEJi7F7qnwTA7rB85Aqk7ssBmG1Qw
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
+I am using dumpe2fs command using primary superblock (default) and
+backup superblock. In both the cases the output is different.
 
-Am 06.01.2014 02:27, schrieb Theodore Ts'o:
-> On Sun, Jan 05, 2014 at 11:02:49AM +0100, Oleksij Rempel wrote:
->>
->> after some googling i didn't found answer to my question, so i set it
->> directly here: do it makes sense and is it possible to maintain bad
->> block list of ext4 on fly? I mean, if ext4 get error from, for example=
+ I followed the following steps:
 
->> from ata subsystem, and it will mark block as bad or may be better as
->> "probably bad"?
->=20
-> Figuring out what to do in case of an error is tricky.  Sometimes
-> errors are transient.  For example, losing a connection (perhaps
-> briefly) to a disk connected via fiber channel).
->=20
-> Also, with most hard drives, if you rewrite a block which has reported
-> a read error, the hard drive will usually remap the block to one of
-> the blocks in the spare pool.  So one strategy is when you get a read
-> error is not to avoid using the block forever, but to simply write all
-> zero's to the block, and then see if the block is now valid.  But now
-> combine this with the "some errors are transient" problem --- if you
-> do a forced rewrite, you might lose data that you could get back i you
-> try rereading the block later.  So it's rare file system author that
-> is willing to do an automated forced rewrite when getting a read
-> error.
->=20
-> For a write error, it's safer to try rewriting the block, but most of
-> the time the hard drive will have tried rewriting the block already,
-> unless it's due to a connection problem between the file system and
-> the storage device.  For example, suppose the file system is accessing
-> an iSCSI block device which where the transport layer between computer
-> and the storage device is a TCP connection...
->=20
-> So the problem with automated error recovery is that it's highly
-> dependent on the storage device (is it a RAID; a hard drive; an iSCSI
-> device, etc.) and the application / what are you storing.
->=20
-> For example, if the file system is on a direct connected HDD as the
-> back end for a cluster file system such as hadoopfs or the Google File
-> System, where the cluster file system is storing every chunk of its
-> file replicated on multiple file servers, and/or using some kind of
-> Reed Solomon encoding, when you detect a read error on data block, the
-> best thing to do might be to delete file (relying on the fact that the
-> next time you write to the bad block, the HDD will remap the block to
-> one of the blocks in the spare pool), and then informing the cluster
-> file system that it should do a Reed Solomon reconstruction or to
-> otherwise reshard that portion of the file.
->=20
-> At one point I toyed with trying to get something upstream where the
-> bad block notification would get sent via a netlink channel.  That way
-> userspace can do something appropriate, instead of trying to encode
-> what can potentially extremely complicated policy decisions into the
-> kernel.  I never had the time to get the design and interface clean
-> enough for upstream, though.
+1. Create EXT4 filesystem of 4TiB
 
-Good point,
-back to this drive. It appears to be one of drive which report error but
-do not remember it in SMART. One day of testing caused SMART to report 2
-pending corrupt blocks. After reboot, there was 0 pending and relocated
-blocks. It means there is no way to detect hardware degradation with SMAR=
-T.
-It reports no error on write, only some times on read and there is no
-guaranty that readed data is not corrupt.
-If i see correctly, mostly affected are consumer devices like laptops
-and PCs. They do not have RAID, mostly no backups and if they would have
-some primitive backup option, it wont really help find and restore
-corrupt files.
+2. Run dumpe2fs (unmounted filesyetm) using default parameters #
+dumpe2fs /dev/mapper/my_vg-dup >file1
 
---=20
-Regards,
-Oleksij
+ 3. Run dumpe2fs (unmounted filesystem) using backup superblock #
+dumpe2fs -o superblock=32768 /dev/mapper/my_vg-dup >file2
+
+4. The output of step-2 and step-3 are different
+
+For example:
+
+ # diff -Nrup file1 file2
+
+ ------------------8<-------------------------------
+
+Group 0: (Blocks 0-32767) [ITABLE_ZEROED]
+
+-  Checksum 0xd85a, unused inodes 8181
+
++  Checksum 0x405c, unused inodes 0
+
+   Primary superblock at 0, Group descriptors at 1-64
+
+   Reserved GDT blocks at 65-1024
+
+   Block bitmap at 1025 (+1025), Inode bitmap at 1041 (+1041)
+
+   Inode table at 1057-1568 (+1057)
+
+-  23513 free blocks, 8181 free inodes, 2 directories, 8181 unused inodes
+
++  23513 free blocks, 8181 free inodes, 2 directories
+
+   Free blocks: 9255-32767
+
+   Free inodes: 12-8192
 
 
---doWlSEJi7F7qnwTA7rB85Aqk7ssBmG1Qw
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
+-Group 1: (Blocks 32768-65535) [INODE_UNINIT, ITABLE_ZEROED]
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.15 (GNU/Linux)
-Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
+-  Checksum 0xa883, unused inodes 8192
 
-iF4EAREIAAYFAlLXq1IACgkQHwImuRkmbWmumwD/d2tdcZ2UhXz4PymdWNajNUOA
-6IEALo+DXMyfTBIv7F0A/RNryNoDZnfAOKYHaQMdaVsGWIIaEBw11QMuCN5BC2XQ
-=6Izk
------END PGP SIGNATURE-----
++Group 1: (Blocks 32768-65535) [ITABLE_ZEROED]
 
---doWlSEJi7F7qnwTA7rB85Aqk7ssBmG1Qw--
++  Checksum 0xb37f, unused inodes 0
+
+   Backup superblock at 32768, Group descriptors at 32769-32832
+
+   Reserved GDT blocks at 32833-33792
+
+   Block bitmap at 1026 (+4294935554), Inode bitmap at 1042 (+4294935570)
+
+   Inode table at 1569-2080 (+4294936097)
+
+-  31743 free blocks, 8192 free inodes, 0 directories, 8192 unused inodes
+
++  31743 free blocks, 8192 free inodes, 0 directories
+
+   Free blocks: 33793-65535
+
+-  Free inodes: 8193-16384
+
+------------------8<-------------------------------
+
+Here we can see that there are difference between the two outputs.
+
+For example, in Group 0, with primary superblock it shows that unused
+inodes is 8181. With backup superblock unused inodes is 0.
+
+ Why there is a difference in the output. Shouldn't it should same
+output with both primary and secondary superblock?
+
+(E2progfs verison is 1.41.12)
