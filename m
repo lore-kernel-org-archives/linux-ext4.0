@@ -1,7 +1,7 @@
 From: Matthew Wilcox <matthew.r.wilcox@intel.com>
-Subject: [PATCH v5 22/22] XIP: Add support for unwritten extents
-Date: Wed, 15 Jan 2014 20:24:40 -0500
-Message-ID: <21d60639d747cdd683831ce57e7c753c9fa29ac1.1389779962.git.matthew.r.wilcox@intel.com>
+Subject: [PATCH v5 12/22] ext2: Remove ext2_xip_verify_sb()
+Date: Wed, 15 Jan 2014 20:24:30 -0500
+Message-ID: <9657da1fc1494c2f63d96063439e9389b400ad9e.1389779962.git.matthew.r.wilcox@intel.com>
 References: <cover.1389779961.git.matthew.r.wilcox@intel.com>
 Cc: Matthew Wilcox <matthew.r.wilcox@intel.com>
 To: linux-kernel@vger.kernel.org,
@@ -15,124 +15,128 @@ References: <cover.1389779961.git.matthew.r.wilcox@intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-For read() and pagefault, we treat unwritten extents as holes.
-For write(), we have to zero parts of the block that we're not going to
-write to.  For holepunches, something's gone quite strangely wrong if we
-get an unwritten extent from get_block, considering that the filesystem's
-calling us to write zeroes to a partially written extent ...
+Jan Kara pointed out that calling ext2_xip_verify_sb() in ext2_remount()
+doesn't make sense, since changing the XIP option on remount isn't
+allowed.  It also doesn't make sense to re-check whether blocksize is
+supported since it can't change between mounts.
+
+Replace the call to ext2_xip_verify_sb() in ext2_fill_super() with the
+equivalent check and delete the definition.
 
 Signed-off-by: Matthew Wilcox <matthew.r.wilcox@intel.com>
 ---
- Documentation/filesystems/xip.txt |  7 +++----
- fs/xip.c                          | 44 +++++++++++++++++++++++++++------------
- 2 files changed, 34 insertions(+), 17 deletions(-)
+ fs/ext2/super.c | 33 ++++++++++++---------------------
+ fs/ext2/xip.c   | 12 ------------
+ fs/ext2/xip.h   |  2 --
+ 3 files changed, 12 insertions(+), 35 deletions(-)
 
-diff --git a/Documentation/filesystems/xip.txt b/Documentation/filesystems/xip.txt
-index b158de6..5e9a0c76 100644
---- a/Documentation/filesystems/xip.txt
-+++ b/Documentation/filesystems/xip.txt
-@@ -60,10 +60,9 @@ Filesystem support consists of
-   truncates and page faults
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index 2885349..caf3f62 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -868,9 +868,6 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+ 		((EXT2_SB(sb)->s_mount_opt & EXT2_MOUNT_POSIX_ACL) ?
+ 		 MS_POSIXACL : 0);
  
- The get_block() callback passed to xip_do_io(), xip_fault(), xip_mkwrite()
--and xip_truncate_page() must not return uninitialised extents.  It must zero
--any blocks that it returns, and it must ensure that simultaneous calls to
--get_block() (for example by a page-fault racing with a read() or a write())
--work correctly.
-+and xip_truncate_page() may return uninitialised extents.  If it does, it
-+must ensure that simultaneous calls to get_block() (for example by a
-+page-fault racing with a read() or a write()) work correctly.
+-	ext2_xip_verify_sb(sb); /* see if bdev supports xip, unset
+-				    EXT2_MOUNT_XIP if not */
+-
+ 	if (le32_to_cpu(es->s_rev_level) == EXT2_GOOD_OLD_REV &&
+ 	    (EXT2_HAS_COMPAT_FEATURE(sb, ~0U) ||
+ 	     EXT2_HAS_RO_COMPAT_FEATURE(sb, ~0U) ||
+@@ -900,11 +897,17 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
  
- These filesystems may be used for inspiration:
- - ext2: the second extended filesystem, see Documentation/filesystems/ext2.txt
-diff --git a/fs/xip.c b/fs/xip.c
-index 88a516b..d160320 100644
---- a/fs/xip.c
-+++ b/fs/xip.c
-@@ -79,6 +79,12 @@ static long xip_get_pfn(struct inode *inode, struct buffer_head *bh,
- 	return ops->direct_access(bdev, sector, &addr, pfn, bh->b_size);
- }
+ 	blocksize = BLOCK_SIZE << le32_to_cpu(sbi->s_es->s_log_block_size);
  
-+/* true if a buffer_head represents written data */
-+static bool buffer_written(struct buffer_head *bh)
-+{
-+	return buffer_mapped(bh) && !buffer_unwritten(bh);
-+}
-+
- static ssize_t xip_io(int rw, struct inode *inode, const struct iovec *iov,
- 			loff_t start, loff_t end, unsigned nr_segs,
- 			get_block_t get_block, struct buffer_head *bh)
-@@ -103,21 +109,29 @@ static ssize_t xip_io(int rw, struct inode *inode, const struct iovec *iov,
- 			retval = get_block(inode, block, bh, rw == WRITE);
- 			if (retval)
- 				break;
--			if (buffer_mapped(bh)) {
--				retval = xip_get_addr(inode, bh, &addr);
--				if (retval < 0)
--					break;
--				addr += offset - (block << inode->i_blkbits);
--				hole = false;
--				size = retval;
--			} else {
--				if (rw == WRITE) {
-+			if (rw == WRITE) {
-+				if (!buffer_mapped(bh)) {
- 					retval = -EIO;
- 					break;
- 				}
-+				hole = false;
-+			} else {
-+				hole = !buffer_written(bh);
-+			}
-+
-+			if (hole) {
- 				addr = NULL;
--				hole = true;
- 				size = bh->b_size;
-+			} else {
-+				unsigned first;
-+				retval = xip_get_addr(inode, bh, &addr);
-+				if (retval < 0)
-+					break;
-+				size = retval;
-+				first = offset - (block << inode->i_blkbits);
-+				if (buffer_unwritten(bh))
-+					memset(addr, 0, first);
-+				addr += first;
- 			}
- 			max = offset + size;
- 		}
-@@ -265,7 +279,7 @@ static int do_xip_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
- 	if (error || bh.b_size < PAGE_SIZE)
- 		return VM_FAULT_SIGBUS;
- 
--	if (!buffer_mapped(&bh) && !vmf->cow_page) {
-+	if (!buffer_written(&bh) && !vmf->cow_page) {
- 		if (vmf->flags & FAULT_FLAG_WRITE) {
- 			error = get_block(inode, block, &bh, 1);
- 			count_vm_event(PGMAJFAULT);
-@@ -286,7 +300,7 @@ static int do_xip_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
- 		return VM_FAULT_SIGBUS;
+-	if (ext2_use_xip(sb) && blocksize != PAGE_SIZE) {
+-		if (!silent)
++	if (sbi->s_mount_opt & EXT2_MOUNT_XIP) {
++		if (blocksize != PAGE_SIZE) {
+ 			ext2_msg(sb, KERN_ERR,
+-				"error: unsupported blocksize for xip");
+-		goto failed_mount;
++					"error: unsupported blocksize for xip");
++			goto failed_mount;
++		}
++		if (!sb->s_bdev->bd_disk->fops->direct_access) {
++			ext2_msg(sb, KERN_ERR,
++					"error: device does not support xip");
++			goto failed_mount;
++		}
  	}
- 	if (vmf->cow_page) {
--		if (buffer_mapped(&bh))
-+		if (buffer_written(&bh))
- 			copy_user_bh(vmf->cow_page, inode, &bh, vaddr);
- 		else
- 			clear_user_highpage(vmf->cow_page, vaddr);
-@@ -397,7 +411,11 @@ int xip_zero_page_range(struct inode *inode, loff_t from, unsigned length,
- 	err = get_block(inode, index, &bh, 0);
- 	if (err < 0)
- 		return err;
--	if (buffer_mapped(&bh)) {
-+	if (buffer_written(&bh)) {
-+		/*
-+		 * Should this be BUG_ON(!buffer_mapped)?  Surely we should
-+		 * never be called for an unmapped block ...
-+		 */
- 		void *addr;
- 		err = xip_get_addr(inode, &bh, &addr);
- 		if (err)
+ 
+ 	/* If the blocksize doesn't match, re-read the thing.. */
+@@ -1249,7 +1252,6 @@ static int ext2_remount (struct super_block * sb, int * flags, char * data)
+ {
+ 	struct ext2_sb_info * sbi = EXT2_SB(sb);
+ 	struct ext2_super_block * es;
+-	unsigned long old_mount_opt = sbi->s_mount_opt;
+ 	struct ext2_mount_options old_opts;
+ 	unsigned long old_sb_flags;
+ 	int err;
+@@ -1273,22 +1275,11 @@ static int ext2_remount (struct super_block * sb, int * flags, char * data)
+ 	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
+ 		((sbi->s_mount_opt & EXT2_MOUNT_POSIX_ACL) ? MS_POSIXACL : 0);
+ 
+-	ext2_xip_verify_sb(sb); /* see if bdev supports xip, unset
+-				    EXT2_MOUNT_XIP if not */
+-
+-	if ((ext2_use_xip(sb)) && (sb->s_blocksize != PAGE_SIZE)) {
+-		ext2_msg(sb, KERN_WARNING,
+-			"warning: unsupported blocksize for xip");
+-		err = -EINVAL;
+-		goto restore_opts;
+-	}
+-
+ 	es = sbi->s_es;
+-	if ((sbi->s_mount_opt ^ old_mount_opt) & EXT2_MOUNT_XIP) {
++	if ((sbi->s_mount_opt ^ old_opts.s_mount_opt) & EXT2_MOUNT_XIP) {
+ 		ext2_msg(sb, KERN_WARNING, "warning: refusing change of "
+ 			 "xip flag with busy inodes while remounting");
+-		sbi->s_mount_opt &= ~EXT2_MOUNT_XIP;
+-		sbi->s_mount_opt |= old_mount_opt & EXT2_MOUNT_XIP;
++		sbi->s_mount_opt ^= EXT2_MOUNT_XIP;
+ 	}
+ 	if ((*flags & MS_RDONLY) == (sb->s_flags & MS_RDONLY)) {
+ 		spin_unlock(&sbi->s_lock);
+diff --git a/fs/ext2/xip.c b/fs/ext2/xip.c
+index 132d4da..66ca113 100644
+--- a/fs/ext2/xip.c
++++ b/fs/ext2/xip.c
+@@ -13,15 +13,3 @@
+ #include "ext2.h"
+ #include "xip.h"
+ 
+-void ext2_xip_verify_sb(struct super_block *sb)
+-{
+-	struct ext2_sb_info *sbi = EXT2_SB(sb);
+-
+-	if ((sbi->s_mount_opt & EXT2_MOUNT_XIP) &&
+-	    !sb->s_bdev->bd_disk->fops->direct_access) {
+-		sbi->s_mount_opt &= (~EXT2_MOUNT_XIP);
+-		ext2_msg(sb, KERN_WARNING,
+-			     "warning: ignoring xip option - "
+-			     "not supported by bdev");
+-	}
+-}
+diff --git a/fs/ext2/xip.h b/fs/ext2/xip.h
+index e7b9f0a..87eeb04 100644
+--- a/fs/ext2/xip.h
++++ b/fs/ext2/xip.h
+@@ -6,13 +6,11 @@
+  */
+ 
+ #ifdef CONFIG_EXT2_FS_XIP
+-extern void ext2_xip_verify_sb (struct super_block *);
+ static inline int ext2_use_xip (struct super_block *sb)
+ {
+ 	struct ext2_sb_info *sbi = EXT2_SB(sb);
+ 	return (sbi->s_mount_opt & EXT2_MOUNT_XIP);
+ }
+ #else
+-#define ext2_xip_verify_sb(sb)			do { } while (0)
+ #define ext2_use_xip(sb)			0
+ #endif
 -- 
 1.8.5.2
 
