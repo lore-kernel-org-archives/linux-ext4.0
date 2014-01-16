@@ -1,144 +1,195 @@
-From: Matthew Wilcox <matthew.r.wilcox@intel.com>
-Subject: [PATCH v5 12/22] ext2: Remove ext2_xip_verify_sb()
-Date: Wed, 15 Jan 2014 20:24:30 -0500
-Message-ID: <9657da1fc1494c2f63d96063439e9389b400ad9e.1389779962.git.matthew.r.wilcox@intel.com>
-References: <cover.1389779961.git.matthew.r.wilcox@intel.com>
-Cc: Matthew Wilcox <matthew.r.wilcox@intel.com>
-To: linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-ext4@vger.kernel.org
+From: Randy Dunlap <rdunlap@infradead.org>
+Subject: Re: [PATCH v5 10/22] Remove get_xip_mem
+Date: Wed, 15 Jan 2014 17:46:28 -0800
+Message-ID: <52D739F4.8060108@infradead.org>
+References: <cover.1389779961.git.matthew.r.wilcox@intel.com> <557203b474f633a59f32fee1f624a5239effcab7.1389779961.git.matthew.r.wilcox@intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: Matthew Wilcox <matthew.r.wilcox@intel.com>,
+ linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-mm@kvack.org, linux-ext4@vger.kernel.org
 Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <cover.1389779961.git.matthew.r.wilcox@intel.com>
-In-Reply-To: <cover.1389779961.git.matthew.r.wilcox@intel.com>
-References: <cover.1389779961.git.matthew.r.wilcox@intel.com>
+In-Reply-To: <557203b474f633a59f32fee1f624a5239effcab7.1389779961.git.matthew.r.wilcox@intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Jan Kara pointed out that calling ext2_xip_verify_sb() in ext2_remount()
-doesn't make sense, since changing the XIP option on remount isn't
-allowed.  It also doesn't make sense to re-check whether blocksize is
-supported since it can't change between mounts.
+On 01/15/2014 05:24 PM, Matthew Wilcox wrote:
+> All callers of get_xip_mem() are now gone.  Remove checks for it,
+> initialisers of it, documentation of it and the only implementation of it.
+> 
+> Add documentation for the new way of writing an XIP filesystem.
+> 
+> Signed-off-by: Matthew Wilcox <matthew.r.wilcox@intel.com>
+> ---
+>  Documentation/filesystems/Locking |   3 -
+>  Documentation/filesystems/xip.txt | 116 +++++++++++++++++++++-----------------
+>  fs/exofs/inode.c                  |   1 -
+>  fs/ext2/inode.c                   |   1 -
+>  fs/ext2/xip.c                     |  37 ------------
+>  fs/ext2/xip.h                     |   3 -
+>  fs/open.c                         |   5 +-
+>  include/linux/fs.h                |   2 -
+>  mm/fadvise.c                      |   6 +-
+>  mm/madvise.c                      |   2 +-
+>  10 files changed, 70 insertions(+), 106 deletions(-)
+> 
+> diff --git a/Documentation/filesystems/xip.txt b/Documentation/filesystems/xip.txt
+> index b62eabf..520e73a 100644
+> --- a/Documentation/filesystems/xip.txt
+> +++ b/Documentation/filesystems/xip.txt
+> @@ -3,69 +3,81 @@ Execute-in-place for file mappings
+>  
+>  Motivation
+>  ----------
+> -File mappings are performed by mapping page cache pages to userspace. In
+> -addition, read&write type file operations also transfer data from/to the page
+> -cache.
+> -
+> -For memory backed storage devices that use the block device interface, the page
+> -cache pages are in fact copies of the original storage. Various approaches
+> -exist to work around the need for an extra copy. The ramdisk driver for example
+> -does read the data into the page cache, keeps a reference, and discards the
+> -original data behind later on.
+> -
+> -Execute-in-place solves this issue the other way around: instead of keeping
+> -data in the page cache, the need to have a page cache copy is eliminated
+> -completely. With execute-in-place, read&write type operations are performed
+> -directly from/to the memory backed storage device. For file mappings, the
+> -storage device itself is mapped directly into userspace.
+> -
+> -This implementation was initially written for shared memory segments between
+> -different virtual machines on s390 hardware to allow multiple machines to
+> -share the same binaries and libraries.
+> -
+> -Implementation
+> ---------------
+> -Execute-in-place is implemented in three steps: block device operation,
+> -address space operation, and file operations.
+> -
+> -A block device operation named direct_access is used to translate the
+> -block device sector number to a page frame number (pfn) that identifies
+> -the physical page for the memory.  It also returns a kernel virtual
+> -address that can be used to access the memory.
+> +
+> +File mappings are usually performed by mapping page cache pages to
+> +userspace.  In addition, read & write file operations also transfer data
+> +between the page cache and storage.
+> +
+> +For memory backed storage devices that use the block device interface,
+> +the page cache pages are just copies of the original storage.  The
+> +execute-in-place code removes the extra copy by performing reads and
+> +writes directly on the memory backed storage device.  For file mappings,
+> +the storage device itself is mapped directly into userspace.
+> +
+> +
+> +Implementation Tips for Block Driver Writers
+> +--------------------------------------------
+> +
+> +To support XIP in your block driver, implement the 'direct_access'
+> +block device operation.  It is used to translate the sector number
+> +(expressed in units of 512-byte sectors) to a page frame number (pfn)
+> +that identifies the physical page for the memory.  It also returns a
+> +kernel virtual address that can be used to access the memory.
+>  
+>  The direct_access method takes a 'size' parameter that indicates the
+>  number of bytes being requested.  The function should return the number
+>  of bytes that it can provide, although it must not exceed the number of
+>  bytes requested.  It may also return a negative errno if an error occurs.
+>  
+> -The block device operation is optional, these block devices support it as of
+> -today:
+> +In order to support this method, the storage must be byte-accessable by
 
-Replace the call to ext2_xip_verify_sb() in ext2_fill_super() with the
-equivalent check and delete the definition.
+                                                        byte-accessible
 
-Signed-off-by: Matthew Wilcox <matthew.r.wilcox@intel.com>
----
- fs/ext2/super.c | 33 ++++++++++++---------------------
- fs/ext2/xip.c   | 12 ------------
- fs/ext2/xip.h   |  2 --
- 3 files changed, 12 insertions(+), 35 deletions(-)
+> +the CPU at all times.  If your device uses paging techniques to expose
+> +a large amount of memory through a smaller window, then you cannot
+> +implement direct_access.  Equally, if your device can occasionally
+> +stall the CPU for an extended period, you should also not attempt to
+> +implement direct_access.
+> +
+> +These block devices may be used for inspiration:
+> +- axonram: Axon DDR2 device driver
+> +- brd: RAM backed block device driver
+>  - dcssblk: s390 dcss block device driver
+>  
+> -An address space operation named get_xip_mem is used to retrieve references
+> -to a page frame number and a kernel address. To obtain these values a reference
+> -to an address_space is provided. This function assigns values to the kmem and
+> -pfn parameters. The third argument indicates whether the function should allocate
+> -blocks if needed.
+>  
+> -This address space operation is mutually exclusive with readpage&writepage that
+> -do page cache read/write operations.
+> -The following filesystems support it as of today:
+> -- ext2: the second extended filesystem, see Documentation/filesystems/ext2.txt
+> +Implementation Tips for Filesystem Writers
+> +------------------------------------------
+> +
+> +Filesystem support consists of
+> +- adding support to mark inodes as being XIP by setting the S_XIP flag in
+> +  i_flags
+> +- implementing the direct_IO address space operation, and calling
+> +  xip_do_io() instead of blockdev_direct_IO() if S_XIP is set
+> +- implementing an mmap file operation for XIP files which sets the
+> +  VM_MIXEDMAP flag on the VMA, and setting the vm_ops to include handlers
+> +  for fault and page_mkwrite (which should probably call xip_fault() and
+> +  xip_mkwrite(), passing the appropriate get_block() callback)
+> +- calling xip_truncate_page() instead of block_truncate_page() for XIP files
+> +- ensuring that there is sufficient locking between reads, writes,
+> +  truncates and page faults
 
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index 2885349..caf3f62 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -868,9 +868,6 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
- 		((EXT2_SB(sb)->s_mount_opt & EXT2_MOUNT_POSIX_ACL) ?
- 		 MS_POSIXACL : 0);
- 
--	ext2_xip_verify_sb(sb); /* see if bdev supports xip, unset
--				    EXT2_MOUNT_XIP if not */
--
- 	if (le32_to_cpu(es->s_rev_level) == EXT2_GOOD_OLD_REV &&
- 	    (EXT2_HAS_COMPAT_FEATURE(sb, ~0U) ||
- 	     EXT2_HAS_RO_COMPAT_FEATURE(sb, ~0U) ||
-@@ -900,11 +897,17 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
- 
- 	blocksize = BLOCK_SIZE << le32_to_cpu(sbi->s_es->s_log_block_size);
- 
--	if (ext2_use_xip(sb) && blocksize != PAGE_SIZE) {
--		if (!silent)
-+	if (sbi->s_mount_opt & EXT2_MOUNT_XIP) {
-+		if (blocksize != PAGE_SIZE) {
- 			ext2_msg(sb, KERN_ERR,
--				"error: unsupported blocksize for xip");
--		goto failed_mount;
-+					"error: unsupported blocksize for xip");
-+			goto failed_mount;
-+		}
-+		if (!sb->s_bdev->bd_disk->fops->direct_access) {
-+			ext2_msg(sb, KERN_ERR,
-+					"error: device does not support xip");
-+			goto failed_mount;
-+		}
- 	}
- 
- 	/* If the blocksize doesn't match, re-read the thing.. */
-@@ -1249,7 +1252,6 @@ static int ext2_remount (struct super_block * sb, int * flags, char * data)
- {
- 	struct ext2_sb_info * sbi = EXT2_SB(sb);
- 	struct ext2_super_block * es;
--	unsigned long old_mount_opt = sbi->s_mount_opt;
- 	struct ext2_mount_options old_opts;
- 	unsigned long old_sb_flags;
- 	int err;
-@@ -1273,22 +1275,11 @@ static int ext2_remount (struct super_block * sb, int * flags, char * data)
- 	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
- 		((sbi->s_mount_opt & EXT2_MOUNT_POSIX_ACL) ? MS_POSIXACL : 0);
- 
--	ext2_xip_verify_sb(sb); /* see if bdev supports xip, unset
--				    EXT2_MOUNT_XIP if not */
--
--	if ((ext2_use_xip(sb)) && (sb->s_blocksize != PAGE_SIZE)) {
--		ext2_msg(sb, KERN_WARNING,
--			"warning: unsupported blocksize for xip");
--		err = -EINVAL;
--		goto restore_opts;
--	}
--
- 	es = sbi->s_es;
--	if ((sbi->s_mount_opt ^ old_mount_opt) & EXT2_MOUNT_XIP) {
-+	if ((sbi->s_mount_opt ^ old_opts.s_mount_opt) & EXT2_MOUNT_XIP) {
- 		ext2_msg(sb, KERN_WARNING, "warning: refusing change of "
- 			 "xip flag with busy inodes while remounting");
--		sbi->s_mount_opt &= ~EXT2_MOUNT_XIP;
--		sbi->s_mount_opt |= old_mount_opt & EXT2_MOUNT_XIP;
-+		sbi->s_mount_opt ^= EXT2_MOUNT_XIP;
- 	}
- 	if ((*flags & MS_RDONLY) == (sb->s_flags & MS_RDONLY)) {
- 		spin_unlock(&sbi->s_lock);
-diff --git a/fs/ext2/xip.c b/fs/ext2/xip.c
-index 132d4da..66ca113 100644
---- a/fs/ext2/xip.c
-+++ b/fs/ext2/xip.c
-@@ -13,15 +13,3 @@
- #include "ext2.h"
- #include "xip.h"
- 
--void ext2_xip_verify_sb(struct super_block *sb)
--{
--	struct ext2_sb_info *sbi = EXT2_SB(sb);
--
--	if ((sbi->s_mount_opt & EXT2_MOUNT_XIP) &&
--	    !sb->s_bdev->bd_disk->fops->direct_access) {
--		sbi->s_mount_opt &= (~EXT2_MOUNT_XIP);
--		ext2_msg(sb, KERN_WARNING,
--			     "warning: ignoring xip option - "
--			     "not supported by bdev");
--	}
--}
-diff --git a/fs/ext2/xip.h b/fs/ext2/xip.h
-index e7b9f0a..87eeb04 100644
---- a/fs/ext2/xip.h
-+++ b/fs/ext2/xip.h
-@@ -6,13 +6,11 @@
-  */
- 
- #ifdef CONFIG_EXT2_FS_XIP
--extern void ext2_xip_verify_sb (struct super_block *);
- static inline int ext2_use_xip (struct super_block *sb)
- {
- 	struct ext2_sb_info *sbi = EXT2_SB(sb);
- 	return (sbi->s_mount_opt & EXT2_MOUNT_XIP);
- }
- #else
--#define ext2_xip_verify_sb(sb)			do { } while (0)
- #define ext2_use_xip(sb)			0
- #endif
+     truncates, and
+but that's up to you and your editor/proofreader etc.  :)
+
+> +
+> +The get_block() callback passed to xip_do_io(), xip_fault(), xip_mkwrite()
+> +and xip_truncate_page() must not return uninitialised extents.  It must zero
+> +any blocks that it returns, and it must ensure that simultaneous calls to
+> +get_block() (for example by a page-fault racing with a read() or a write())
+> +work correctly.
+>  
+> -A set of file operations that do utilize get_xip_page can be found in
+> -mm/filemap_xip.c . The following file operation implementations are provided:
+> -- aio_read/aio_write
+> -- readv/writev
+> -- sendfile
+> +These filesystems may be used for inspiration:
+> +- ext2: the second extended filesystem, see Documentation/filesystems/ext2.txt
+>  
+> -The generic file operations do_sync_read/do_sync_write can be used to implement
+> -classic synchronous IO calls.
+>  
+>  Shortcomings
+>  ------------
+> -This implementation is limited to storage devices that are cpu addressable at
+> -all times (no highmem or such). It works well on rom/ram, but enhancements are
+> -needed to make it work with flash in read+write mode.
+> -Putting the Linux kernel and/or its modules on a xip filesystem does not mean
+> -they are not copied.
+> +
+> +Even if the kernel or its modules are stored on an filesystem that supports
+
+                                                   a
+
+> +XIP on a block device that supports XIP, they will still be copied into RAM.
+> +
+> +Calling get_user_pages() on a range of user memory that has been mmaped
+> +from an XIP file will fail as there are no 'struct page' to describe
+> +those pages.  This problem is being worked on.  That means that O_DIRECT
+> +reads/writes to those memory ranges from a non-XIP file will fail (note
+> +that O_DIRECT reads/writes _of an XIP file_ do work, it is the memory
+> +that is being accessed that is key here).  Other things that will not
+> +work include RDMA, sendfile() and splice().
+
+                      sendfile(),
+same comment as above.
+
+
+
 -- 
-1.8.5.2
+~Randy
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
