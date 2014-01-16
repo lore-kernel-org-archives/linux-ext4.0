@@ -1,130 +1,114 @@
 From: Matthew Wilcox <matthew.r.wilcox@intel.com>
-Subject: [PATCH v5 15/22] Remove CONFIG_EXT2_FS_XIP
-Date: Wed, 15 Jan 2014 20:24:33 -0500
-Message-ID: <60722af77e7717463464cc6b2d7b6b2967c742f1.1389779962.git.matthew.r.wilcox@intel.com>
+Subject: [PATCH v5 18/22] ext4: Make ext4_block_zero_page_range static
+Date: Wed, 15 Jan 2014 20:24:36 -0500
+Message-ID: <5b1f71d2a3659e8977990eba11f4aca50fbb5bf7.1389779962.git.matthew.r.wilcox@intel.com>
 References: <cover.1389779961.git.matthew.r.wilcox@intel.com>
 Cc: Matthew Wilcox <matthew.r.wilcox@intel.com>
-To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org, linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+To: linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-ext4@vger.kernel.org
+Return-path: <owner-linux-mm@kvack.org>
 In-Reply-To: <cover.1389779961.git.matthew.r.wilcox@intel.com>
 In-Reply-To: <cover.1389779961.git.matthew.r.wilcox@intel.com>
 References: <cover.1389779961.git.matthew.r.wilcox@intel.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-The fewer Kconfig options we have the better.  Use the generic CONFIG_FS_XIP
-to enable XIP support in ext2 as well as in the core.
+It's only called within inode.c, so make it static, remove its prototype
+from ext4.h and move it above all of its callers so it doesn't need a
+prototype within inode.c.
 
 Signed-off-by: Matthew Wilcox <matthew.r.wilcox@intel.com>
 ---
- fs/Kconfig      | 21 ++++++++++++++-------
- fs/ext2/Kconfig | 11 -----------
- fs/ext2/file.c  |  4 ++--
- fs/ext2/super.c |  4 ++--
- 4 files changed, 18 insertions(+), 22 deletions(-)
+ fs/ext4/ext4.h  |  2 --
+ fs/ext4/inode.c | 42 +++++++++++++++++++++---------------------
+ 2 files changed, 21 insertions(+), 23 deletions(-)
 
-diff --git a/fs/Kconfig b/fs/Kconfig
-index c229f82..1e01dda 100644
---- a/fs/Kconfig
-+++ b/fs/Kconfig
-@@ -13,13 +13,6 @@ if BLOCK
- source "fs/ext2/Kconfig"
- source "fs/ext3/Kconfig"
- source "fs/ext4/Kconfig"
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index e618503..a48d367 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2121,8 +2121,6 @@ extern int ext4_writepage_trans_blocks(struct inode *);
+ extern int ext4_chunk_trans_blocks(struct inode *, int nrblocks);
+ extern int ext4_block_truncate_page(handle_t *handle,
+ 		struct address_space *mapping, loff_t from);
+-extern int ext4_block_zero_page_range(handle_t *handle,
+-		struct address_space *mapping, loff_t from, loff_t length);
+ extern int ext4_zero_partial_blocks(handle_t *handle, struct inode *inode,
+ 			     loff_t lstart, loff_t lend);
+ extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 0757634..c767666 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3324,33 +3324,13 @@ void ext4_set_aops(struct inode *inode)
+ }
+ 
+ /*
+- * ext4_block_truncate_page() zeroes out a mapping from file offset `from'
+- * up to the end of the block which corresponds to `from'.
+- * This required during truncate. We need to physically zero the tail end
+- * of that block so it doesn't yield old data if the file is later grown.
+- */
+-int ext4_block_truncate_page(handle_t *handle,
+-		struct address_space *mapping, loff_t from)
+-{
+-	unsigned offset = from & (PAGE_CACHE_SIZE-1);
+-	unsigned length;
+-	unsigned blocksize;
+-	struct inode *inode = mapping->host;
 -
--config FS_XIP
--# execute in place
--	bool
--	depends on EXT2_FS_XIP
--	default y
+-	blocksize = inode->i_sb->s_blocksize;
+-	length = blocksize - (offset & (blocksize - 1));
 -
- source "fs/jbd/Kconfig"
- source "fs/jbd2/Kconfig"
- 
-@@ -40,6 +33,20 @@ source "fs/ocfs2/Kconfig"
- source "fs/btrfs/Kconfig"
- source "fs/nilfs2/Kconfig"
- 
-+config FS_XIP
-+	bool "Execute in place support"
-+	depends on MMU
-+	help
-+	  Execute in place (XIP) can be used on memory-backed block devices.
-+	  If the block device supports XIP and the filesystem supports XIP,
-+	  then you can avoid using the pagecache to buffer I/Os.  Turning
-+	  on this option will compile in support for XIP; you will need to
-+	  mount the filesystem using the -o xip option.
-+
-+	  If you do not have a block device that is capable of using this,
-+	  or if unsure, say N.  Saying Y will increase the size of the kernel
-+	  by about 2kB.
-+
- endif # BLOCK
- 
- # Posix ACL utility routines
-diff --git a/fs/ext2/Kconfig b/fs/ext2/Kconfig
-index 14a6780..c634874e 100644
---- a/fs/ext2/Kconfig
-+++ b/fs/ext2/Kconfig
-@@ -42,14 +42,3 @@ config EXT2_FS_SECURITY
- 
- 	  If you are not using a security module that requires using
- 	  extended attributes for file security labels, say N.
+-	return ext4_block_zero_page_range(handle, mapping, from, length);
+-}
 -
--config EXT2_FS_XIP
--	bool "Ext2 execute in place support"
--	depends on EXT2_FS && MMU
--	help
--	  Execute in place can be used on memory-backed block devices. If you
--	  enable this option, you can select to mount block devices which are
--	  capable of this feature without using the page cache.
--
--	  If you do not use a block device that is capable of using this,
--	  or if unsure, say N.
-diff --git a/fs/ext2/file.c b/fs/ext2/file.c
-index 9e88388..8cf2c5f 100644
---- a/fs/ext2/file.c
-+++ b/fs/ext2/file.c
-@@ -25,7 +25,7 @@
- #include "xattr.h"
- #include "acl.h"
- 
--#ifdef CONFIG_EXT2_FS_XIP
-+#ifdef CONFIG_FS_XIP
- static int ext2_xip_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+-/*
+  * ext4_block_zero_page_range() zeros out a mapping of length 'length'
+  * starting from file offset 'from'.  The range to be zero'd must
+  * be contained with in one block.  If the specified range exceeds
+  * the end of the block it will be shortened to end of the block
+  * that cooresponds to 'from'
+  */
+-int ext4_block_zero_page_range(handle_t *handle,
++static int ext4_block_zero_page_range(handle_t *handle,
+ 		struct address_space *mapping, loff_t from, loff_t length)
  {
- 	return xip_fault(vma, vmf, ext2_get_block);
-@@ -109,7 +109,7 @@ const struct file_operations ext2_file_operations = {
- 	.splice_write	= generic_file_splice_write,
- };
+ 	ext4_fsblk_t index = from >> PAGE_CACHE_SHIFT;
+@@ -3440,6 +3420,26 @@ unlock:
+ 	return err;
+ }
  
--#ifdef CONFIG_EXT2_FS_XIP
-+#ifdef CONFIG_FS_XIP
- const struct file_operations ext2_xip_file_operations = {
- 	.llseek		= generic_file_llseek,
- 	.read		= do_sync_read,
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index fd62082..a2caffd 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -287,7 +287,7 @@ static int ext2_show_options(struct seq_file *seq, struct dentry *root)
- 		seq_puts(seq, ",grpquota");
- #endif
- 
--#if defined(CONFIG_EXT2_FS_XIP)
-+#ifdef CONFIG_FS_XIP
- 	if (sbi->s_mount_opt & EXT2_MOUNT_XIP)
- 		seq_puts(seq, ",xip");
- #endif
-@@ -549,7 +549,7 @@ static int parse_options(char *options, struct super_block *sb)
- 			break;
- #endif
- 		case Opt_xip:
--#ifdef CONFIG_EXT2_FS_XIP
-+#ifdef CONFIG_FS_XIP
- 			set_opt (sbi->s_mount_opt, XIP);
- #else
- 			ext2_msg(sb, KERN_INFO, "xip option not supported");
++/*
++ * ext4_block_truncate_page() zeroes out a mapping from file offset `from'
++ * up to the end of the block which corresponds to `from'.
++ * This required during truncate. We need to physically zero the tail end
++ * of that block so it doesn't yield old data if the file is later grown.
++ */
++int ext4_block_truncate_page(handle_t *handle,
++		struct address_space *mapping, loff_t from)
++{
++	unsigned offset = from & (PAGE_CACHE_SIZE-1);
++	unsigned length;
++	unsigned blocksize;
++	struct inode *inode = mapping->host;
++
++	blocksize = inode->i_sb->s_blocksize;
++	length = blocksize - (offset & (blocksize - 1));
++
++	return ext4_block_zero_page_range(handle, mapping, from, length);
++}
++
+ int ext4_zero_partial_blocks(handle_t *handle, struct inode *inode,
+ 			     loff_t lstart, loff_t length)
+ {
 -- 
 1.8.5.2
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
