@@ -1,129 +1,168 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 05/12] libext2fs: optimize find_first_{zero,set}() for red-black tree based bitmaps
-Date: Mon, 20 Jan 2014 00:54:07 -0500
-Message-ID: <1390197254-14583-6-git-send-email-tytso@mit.edu>
+Subject: [PATCH 02/12] libext2fs: clean up generic handling of ext2fs_find_first_{set,zero}_*()
+Date: Mon, 20 Jan 2014 00:54:04 -0500
+Message-ID: <1390197254-14583-3-git-send-email-tytso@mit.edu>
 References: <1390197254-14583-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:49970 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:49968 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751210AbaATFy3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751128AbaATFy3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Mon, 20 Jan 2014 00:54:29 -0500
 In-Reply-To: <1390197254-14583-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Move the error checking into the the generic bitmap code, and add
+support for bitmaps with cluster_bits set.
+
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- lib/ext2fs/blkmap64_rb.c | 89 ++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 89 insertions(+)
+ lib/ext2fs/blkmap64_ba.c  |  6 -----
+ lib/ext2fs/gen_bitmap64.c | 66 ++++++++++++++++++++++++++---------------------
+ 2 files changed, 36 insertions(+), 36 deletions(-)
 
-diff --git a/lib/ext2fs/blkmap64_rb.c b/lib/ext2fs/blkmap64_rb.c
-index 0e0a217..148f856 100644
---- a/lib/ext2fs/blkmap64_rb.c
-+++ b/lib/ext2fs/blkmap64_rb.c
-@@ -809,6 +809,93 @@ static void rb_clear_bmap(ext2fs_generic_bitmap bitmap)
- 	check_tree(&bp->root, __func__);
+diff --git a/lib/ext2fs/blkmap64_ba.c b/lib/ext2fs/blkmap64_ba.c
+index 8eddde9..284236d 100644
+--- a/lib/ext2fs/blkmap64_ba.c
++++ b/lib/ext2fs/blkmap64_ba.c
+@@ -328,12 +328,6 @@ static errcode_t ba_find_first_zero(ext2fs_generic_bitmap bitmap,
+ 	const unsigned char *pos;
+ 	unsigned long max_loop_count, i;
+ 
+-	if (start < bitmap->start || end > bitmap->end || start > end)
+-		return EINVAL;
+-
+-	if (bitmap->cluster_bits)
+-		return EINVAL;
+-
+ 	/* scan bits until we hit a byte boundary */
+ 	while ((bitpos & 0x7) != 0 && count > 0) {
+ 		if (!ext2fs_test_bit64(bitpos, bp->bitarray)) {
+diff --git a/lib/ext2fs/gen_bitmap64.c b/lib/ext2fs/gen_bitmap64.c
+index fcf63ad..9615f1e 100644
+--- a/lib/ext2fs/gen_bitmap64.c
++++ b/lib/ext2fs/gen_bitmap64.c
+@@ -801,17 +801,14 @@ errcode_t ext2fs_find_first_zero_generic_bmap(ext2fs_generic_bitmap bitmap,
+ 					      __u64 start, __u64 end, __u64 *out)
+ {
+ 	int b;
++	__u64 cstart, cend, cout;
++	errcode_t retval;
+ 
+ 	if (!bitmap)
+ 		return EINVAL;
+ 
+-	if (EXT2FS_IS_64_BITMAP(bitmap) && bitmap->bitmap_ops->find_first_zero)
+-		return bitmap->bitmap_ops->find_first_zero(bitmap, start,
+-							   end, out);
+-
+ 	if (EXT2FS_IS_32_BITMAP(bitmap)) {
+ 		blk_t blk = 0;
+-		errcode_t retval;
+ 
+ 		if (((start) & ~0xffffffffULL) ||
+ 		    ((end) & ~0xffffffffULL)) {
+@@ -829,23 +826,29 @@ errcode_t ext2fs_find_first_zero_generic_bmap(ext2fs_generic_bitmap bitmap,
+ 	if (!EXT2FS_IS_64_BITMAP(bitmap))
+ 		return EINVAL;
+ 
+-	start >>= bitmap->cluster_bits;
+-	end >>= bitmap->cluster_bits;
++	cstart = start >> bitmap->cluster_bits;
++	cend = end >> bitmap->cluster_bits;
+ 
+-	if (start < bitmap->start || end > bitmap->end || start > end) {
++	if (cstart < bitmap->start || cend > bitmap->end || start > end) {
+ 		warn_bitmap(bitmap, EXT2FS_TEST_ERROR, start);
+ 		return EINVAL;
+ 	}
+ 
+-	while (start <= end) {
+-		b = bitmap->bitmap_ops->test_bmap(bitmap, start);
+-		if (!b) {
+-			*out = start << bitmap->cluster_bits;
+-			return 0;
+-		}
+-		start++;
++	if (bitmap->bitmap_ops->find_first_zero) {
++		retval = bitmap->bitmap_ops->find_first_zero(bitmap, cstart,
++							     cend, &cout);
++		if (retval)
++			return retval;
++	found:
++		cout <<= bitmap->cluster_bits;
++		*out = (cout >= start) ? cout : start;
++		return 0;
+ 	}
+ 
++	for (cout = cstart; cout <= cend; cout++)
++		if (!bitmap->bitmap_ops->test_bmap(bitmap, cout))
++			goto found;
++
+ 	return ENOENT;
  }
  
-+static errcode_t rb_find_first_zero(ext2fs_generic_bitmap bitmap,
-+				   __u64 start, __u64 end, __u64 *out)
-+{
-+	struct rb_node *parent = NULL, **n;
-+	struct rb_node *node, *next;
-+	struct ext2fs_rb_private *bp;
-+	struct bmap_rb_extent *ext;
-+	int retval = 1;
-+
-+	bp = (struct ext2fs_rb_private *) bitmap->private;
-+	n = &bp->root.rb_node;
-+	start -= bitmap->start;
-+	end -= bitmap->start;
-+
-+	if (start > end)
-+		return EINVAL;
-+
-+	if (EXT2FS_RB_EMPTY_ROOT(&bp->root))
-+		return ENOENT;
-+
-+	while (*n) {
-+		parent = *n;
-+		ext = node_to_extent(parent);
-+		if (start < ext->start) {
-+			n = &(*n)->rb_left;
-+		} else if (start >= (ext->start + ext->count)) {
-+			n = &(*n)->rb_right;
-+		} else if (ext->start + ext->count <= end) {
-+			*out = ext->start + ext->count + bitmap->start;
-+			return 0;
-+		} else
-+			return ENOENT;
-+	}
-+
-+	*out = start + bitmap->start;
-+	return 0;
-+}
-+
-+static errcode_t rb_find_first_set(ext2fs_generic_bitmap bitmap,
-+				   __u64 start, __u64 end, __u64 *out)
-+{
-+	struct rb_node *parent = NULL, **n;
-+	struct rb_node *node, *next;
-+	struct ext2fs_rb_private *bp;
-+	struct bmap_rb_extent *ext;
-+	int retval = 1;
-+
-+	bp = (struct ext2fs_rb_private *) bitmap->private;
-+	n = &bp->root.rb_node;
-+	start -= bitmap->start;
-+	end -= bitmap->start;
-+
-+	if (start > end)
-+		return EINVAL;
-+
-+	if (EXT2FS_RB_EMPTY_ROOT(&bp->root))
-+		return ENOENT;
-+
-+	while (*n) {
-+		parent = *n;
-+		ext = node_to_extent(parent);
-+		if (start < ext->start) {
-+			n = &(*n)->rb_left;
-+		} else if (start >= (ext->start + ext->count)) {
-+			n = &(*n)->rb_right;
-+		} else {
-+			/* The start bit is set */
-+			*out = start + bitmap->start;
-+			return 0;
-+		}
-+	}
-+
-+	node = parent;
-+	ext = node_to_extent(node);
-+	if (ext->start < start) {
-+		node = ext2fs_rb_next(node);
-+		if (node == NULL)
-+			return ENOENT;
-+		ext = node_to_extent(node);
-+	}
-+	if (ext->start <= end) {
-+		*out = ext->start + bitmap->start;
-+		return 0;
-+	}
-+	return ENOENT;
-+}
-+
- #ifdef BMAP_STATS
- static void rb_print_stats(ext2fs_generic_bitmap bitmap)
+@@ -853,17 +856,14 @@ errcode_t ext2fs_find_first_set_generic_bmap(ext2fs_generic_bitmap bitmap,
+ 					     __u64 start, __u64 end, __u64 *out)
  {
-@@ -890,4 +977,6 @@ struct ext2_bitmap_ops ext2fs_blkmap64_rbtree = {
- 	.get_bmap_range = rb_get_bmap_range,
- 	.clear_bmap = rb_clear_bmap,
- 	.print_stats = rb_print_stats,
-+	.find_first_zero = rb_find_first_zero,
-+	.find_first_set = rb_find_first_set,
- };
+ 	int b;
++	__u64 cstart, cend, cout;
++	errcode_t retval;
+ 
+ 	if (!bitmap)
+ 		return EINVAL;
+ 
+-	if (EXT2FS_IS_64_BITMAP(bitmap) && bitmap->bitmap_ops->find_first_set)
+-		return bitmap->bitmap_ops->find_first_set(bitmap, start,
+-							  end, out);
+-
+ 	if (EXT2FS_IS_32_BITMAP(bitmap)) {
+ 		blk_t blk = 0;
+-		errcode_t retval;
+ 
+ 		if (((start) & ~0xffffffffULL) ||
+ 		    ((end) & ~0xffffffffULL)) {
+@@ -881,22 +881,28 @@ errcode_t ext2fs_find_first_set_generic_bmap(ext2fs_generic_bitmap bitmap,
+ 	if (!EXT2FS_IS_64_BITMAP(bitmap))
+ 		return EINVAL;
+ 
+-	start >>= bitmap->cluster_bits;
+-	end >>= bitmap->cluster_bits;
++	cstart = start >> bitmap->cluster_bits;
++	cend = end >> bitmap->cluster_bits;
+ 
+-	if (start < bitmap->start || end > bitmap->end || start > end) {
++	if (cstart < bitmap->start || cend > bitmap->end || start > end) {
+ 		warn_bitmap(bitmap, EXT2FS_TEST_ERROR, start);
+ 		return EINVAL;
+ 	}
+ 
+-	while (start <= end) {
+-		b = bitmap->bitmap_ops->test_bmap(bitmap, start);
+-		if (b) {
+-			*out = start << bitmap->cluster_bits;
+-			return 0;
+-		}
+-		start++;
++	if (bitmap->bitmap_ops->find_first_set) {
++		retval = bitmap->bitmap_ops->find_first_set(bitmap, cstart,
++							    cend, &cout);
++		if (retval)
++			return retval;
++	found:
++		cout <<= bitmap->cluster_bits;
++		*out = (cout >= start) ? cout : start;
++		return 0;
+ 	}
+ 
++	for (cout = cstart; cout <= cend; cout++)
++		if (bitmap->bitmap_ops->test_bmap(bitmap, cout))
++			goto found;
++
+ 	return ENOENT;
+ }
 -- 
 1.8.5.rc3.362.gdf10213
 
