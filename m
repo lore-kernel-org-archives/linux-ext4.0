@@ -1,73 +1,117 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 08/12] libext2fs: optimize ext2fs_allocate_group_table()
-Date: Mon, 20 Jan 2014 00:54:10 -0500
-Message-ID: <1390197254-14583-9-git-send-email-tytso@mit.edu>
-References: <1390197254-14583-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Baruch Siach <baruch@tkos.co.il>
+Subject: Re: [PATCH] e4defrag: remove local sync_file_range and fallocate
+Date: Mon, 20 Jan 2014 09:31:23 +0200
+Message-ID: <20140120073123.GM12751@tarshish>
+References: <f2848e6c0e067d62a4ee672f18364b20d4c901d9.1389083392.git.baruch@tkos.co.il>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:49979 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752293AbaATFye (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 20 Jan 2014 00:54:34 -0500
-In-Reply-To: <1390197254-14583-1-git-send-email-tytso@mit.edu>
+Received: from guitar.tcltek.co.il ([192.115.133.116]:33232 "EHLO
+	mx.tkos.co.il" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750726AbaATHb2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 20 Jan 2014 02:31:28 -0500
+Content-Disposition: inline
+In-Reply-To: <f2848e6c0e067d62a4ee672f18364b20d4c901d9.1389083392.git.baruch@tkos.co.il>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-By using ext2fs_mark_block_bitmap_range2 and/or
-ext2fs_block_alloc_stats_range(), we can significantly speed up the
-time needed by mke2fs to allocate the inode table.
+Hi Ted,
 
-For example, the CPU time needed to run the command "mke2fs -t ext4
-/tmp/foo.img 32T" (where tmpfs was mounted on /tmp) was decreased from
-21.7 CPU seconds down to under 1.7 seconds.
+On Tue, Jan 07, 2014 at 10:29:52AM +0200, Baruch Siach wrote:
+> The locally defined versions of both sync_file_range and fallocate are broken
+> on 32bit systems. On these systems two 32bit registers are needed for each
+> 64bit parameter. Also, sync_file_range on MIPS32 needs a dummy parameters
+> after the fd parameter. Just leave all these subtleties to the C library.
+> 
+> Signed-off-by: Baruch Siach <baruch@tkos.co.il>
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- lib/ext2fs/alloc_tables.c | 22 +++++++---------------
- 1 file changed, 7 insertions(+), 15 deletions(-)
+Ping? Any alternatives?
 
-diff --git a/lib/ext2fs/alloc_tables.c b/lib/ext2fs/alloc_tables.c
-index 9f3d4e0..fec9003 100644
---- a/lib/ext2fs/alloc_tables.c
-+++ b/lib/ext2fs/alloc_tables.c
-@@ -83,9 +83,8 @@ static blk64_t flexbg_offset(ext2_filsys fs, dgrp_t group, blk64_t start_blk,
- errcode_t ext2fs_allocate_group_table(ext2_filsys fs, dgrp_t group,
- 				      ext2fs_block_bitmap bmap)
- {
--	unsigned int	j;
- 	errcode_t	retval;
--	blk64_t		group_blk, start_blk, last_blk, new_blk, blk;
-+	blk64_t		group_blk, start_blk, last_blk, new_blk;
- 	dgrp_t		last_grp = 0;
- 	int		rem_grps = 0, flexbg_size = 0;
- 
-@@ -205,19 +204,12 @@ errcode_t ext2fs_allocate_group_table(ext2_filsys fs, dgrp_t group,
- 						bmap, &new_blk);
- 		if (retval)
- 			return retval;
--		for (j=0, blk = new_blk;
--		     j < fs->inode_blocks_per_group;
--		     j++, blk++) {
--			ext2fs_mark_block_bitmap2(bmap, blk);
--			if (flexbg_size) {
--				dgrp_t gr = ext2fs_group_of_blk2(fs, blk);
--				ext2fs_bg_free_blocks_count_set(fs, gr, ext2fs_bg_free_blocks_count(fs, gr) - 1);
--				ext2fs_free_blocks_count_add(fs->super, -1);
--				ext2fs_bg_flags_clear(fs, gr,
--						     EXT2_BG_BLOCK_UNINIT);
--				ext2fs_group_desc_csum_set(fs, gr);
--			}
--		}
-+		if (flexbg_size)
-+			ext2fs_block_alloc_stats_range(fs, new_blk,
-+				       fs->inode_blocks_per_group, +1);
-+		else
-+			ext2fs_mark_block_bitmap_range2(fs->block_map,
-+					new_blk, fs->inode_blocks_per_group);
- 		ext2fs_inode_table_loc_set(fs, group, new_blk);
- 	}
- 	ext2fs_group_desc_csum_set(fs, group);
+baruch
+
+> ---
+>  misc/e4defrag.c | 50 +++-----------------------------------------------
+>  1 file changed, 3 insertions(+), 47 deletions(-)
+> 
+> diff --git a/misc/e4defrag.c b/misc/e4defrag.c
+> index c2695e825d6b..620f4e7981c8 100644
+> --- a/misc/e4defrag.c
+> +++ b/misc/e4defrag.c
+> @@ -39,7 +39,6 @@
+>  #include <sys/mman.h>
+>  #include <sys/stat.h>
+>  #include <sys/statfs.h>
+> -#include <sys/syscall.h>
+>  #include <sys/vfs.h>
+>  
+>  /* A relatively new ioctl interface ... */
+> @@ -194,56 +193,13 @@ static struct frag_statistic_ino	frag_rank[SHOW_FRAG_FILES];
+>  #error posix_fadvise not available!
+>  #endif
+>  
+> -/*
+> - * Local definitions of some syscalls glibc may not yet have
+> - */
+>  #ifndef HAVE_SYNC_FILE_RANGE
+> -#warning Using locally defined sync_file_range interface.
+> -
+> -#ifndef __NR_sync_file_range
+> -#ifndef __NR_sync_file_range2 /* ppc */
+> -#error Your kernel headers dont define __NR_sync_file_range
+> -#endif
+> -#endif
+> -
+> -/*
+> - * sync_file_range() -	Sync file region.
+> - *
+> - * @fd:			defrag target file's descriptor.
+> - * @offset:		file offset.
+> - * @length:		area length.
+> - * @flag:		process flag.
+> - */
+> -int sync_file_range(int fd, loff_t offset, loff_t length, unsigned int flag)
+> -{
+> -#ifdef __NR_sync_file_range
+> -	return syscall(__NR_sync_file_range, fd, offset, length, flag);
+> -#else
+> -	return syscall(__NR_sync_file_range2, fd, flag, offset, length);
+> -#endif
+> -}
+> +#error sync_file_range not available!
+>  #endif /* ! HAVE_SYNC_FILE_RANGE */
+>  
+>  #ifndef HAVE_FALLOCATE64
+> -#warning Using locally defined fallocate syscall interface.
+> -
+> -#ifndef __NR_fallocate
+> -#error Your kernel headers dont define __NR_fallocate
+> -#endif
+> -
+> -/*
+> - * fallocate64() -	Manipulate file space.
+> - *
+> - * @fd:			defrag target file's descriptor.
+> - * @mode:		process flag.
+> - * @offset:		file offset.
+> - * @len:		file size.
+> - */
+> -static int fallocate64(int fd, int mode, loff_t offset, loff_t len)
+> -{
+> -	return syscall(__NR_fallocate, fd, mode, offset, len);
+> -}
+> -#endif /* ! HAVE_FALLOCATE */
+> +#error fallocate64 not available!
+> +#endif /* ! HAVE_FALLOCATE64 */
+>  
+>  /*
+>   * get_mount_point() -	Get device's mount point.
+> -- 
+> 1.8.5.2
+> 
+
 -- 
-1.8.5.rc3.362.gdf10213
-
+     http://baruch.siach.name/blog/                  ~. .~   Tk Open Systems
+=}------------------------------------------------ooO--U--Ooo------------{=
+   - baruch@tkos.co.il - tel: +972.2.679.5364, http://www.tkos.co.il -
