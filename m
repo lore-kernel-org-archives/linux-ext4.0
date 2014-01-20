@@ -1,120 +1,96 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 04/12] libext: optimize find_first_set() for bitarray-based bitmaps
-Date: Mon, 20 Jan 2014 00:54:06 -0500
-Message-ID: <1390197254-14583-5-git-send-email-tytso@mit.edu>
+Subject: [PATCH 07/12] libext2fs: add ext2fs_block_alloc_stats_range()
+Date: Mon, 20 Jan 2014 00:54:09 -0500
+Message-ID: <1390197254-14583-8-git-send-email-tytso@mit.edu>
 References: <1390197254-14583-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:49948 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:49952 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750710AbaATFyY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1750711AbaATFyY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Mon, 20 Jan 2014 00:54:24 -0500
 In-Reply-To: <1390197254-14583-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Basically just a trivial adaption of the find_first_zero() function
-for bitarray-based bitmaps.
+This function is more efficient than using ext2fs_block_alloc_stats2()
+for each block in a range.  The efficiencies come from being able to
+set a block range in the block bitmap at once, and from being update
+the block group descriptors once per block group.  Especially now that
+we are checksuming the block group descriptors, and we are using red
+black trees for the allocation bitmaps, these changes can make a huge
+difference in the CPU time used by mke2fs when creating very large
+file systems.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- lib/ext2fs/blkmap64_ba.c | 77 +++++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 76 insertions(+), 1 deletion(-)
+ lib/ext2fs/alloc_stats.c | 41 +++++++++++++++++++++++++++++++++++++++++
+ lib/ext2fs/ext2fs.h      |  2 ++
+ 2 files changed, 43 insertions(+)
 
-diff --git a/lib/ext2fs/blkmap64_ba.c b/lib/ext2fs/blkmap64_ba.c
-index 284236d..894293a 100644
---- a/lib/ext2fs/blkmap64_ba.c
-+++ b/lib/ext2fs/blkmap64_ba.c
-@@ -391,6 +391,80 @@ static errcode_t ba_find_first_zero(ext2fs_generic_bitmap bitmap,
- 	return ENOENT;
- }
+diff --git a/lib/ext2fs/alloc_stats.c b/lib/ext2fs/alloc_stats.c
+index adec363..7919c09 100644
+--- a/lib/ext2fs/alloc_stats.c
++++ b/lib/ext2fs/alloc_stats.c
+@@ -106,3 +106,44 @@ void ext2fs_set_block_alloc_stats_callback(ext2_filsys fs,
  
-+/* Find the first one bit between start and end, inclusive. */
-+static errcode_t ba_find_first_set(ext2fs_generic_bitmap bitmap,
-+				    __u64 start, __u64 end, __u64 *out)
+ 	fs->block_alloc_stats = func;
+ }
++
++void ext2fs_block_alloc_stats_range(ext2_filsys fs, blk64_t blk,
++				    blk_t num, int inuse)
 +{
-+	ext2fs_ba_private bp = (ext2fs_ba_private)bitmap->private;
-+	unsigned long bitpos = start - bitmap->start;
-+	unsigned long count = end - start + 1;
-+	int byte_found = 0; /* whether a != 0xff byte has been found */
-+	const unsigned char *pos;
-+	unsigned long max_loop_count, i;
-+
-+	/* scan bits until we hit a byte boundary */
-+	while ((bitpos & 0x7) != 0 && count > 0) {
-+		if (ext2fs_test_bit64(bitpos, bp->bitarray)) {
-+			*out = bitpos + bitmap->start;
-+			return 0;
-+		}
-+		bitpos++;
-+		count--;
++#ifndef OMIT_COM_ERR
++	if (blk + num >= ext2fs_blocks_count(fs->super)) {
++		com_err("ext2fs_block_alloc_stats_range", 0,
++			"Illegal block range: %llu (%u) ",
++			(unsigned long long) blk, num);
++		return;
 +	}
-+
-+	if (!count)
-+		return ENOENT;
-+
-+	pos = ((unsigned char *)bp->bitarray) + (bitpos >> 3);
-+	/* scan bytes until 8-byte (64-bit) aligned */
-+	while (count >= 8 && (((unsigned long)pos) & 0x07)) {
-+		if (*pos != 0) {
-+			byte_found = 1;
-+			break;
-+		}
-+		pos++;
-+		count -= 8;
-+		bitpos += 8;
++#endif
++	if (inuse == 0)
++		return;
++	if (inuse > 0) {
++		ext2fs_mark_block_bitmap_range2(fs->block_map, blk, num);
++		inuse = 1;
++	} else {
++		ext2fs_unmark_block_bitmap_range2(fs->block_map, blk, num);
++		inuse = -1;
 +	}
++	while (num) {
++		int group = ext2fs_group_of_blk2(fs, blk);
++		blk64_t last_blk = ext2fs_group_last_block2(fs, group);
++		blk_t n = num;
 +
-+	if (!byte_found) {
-+		max_loop_count = count >> 6; /* 8-byte blocks */
-+		i = max_loop_count;
-+		while (i) {
-+			if (*((const __u64 *)pos) != 0)
-+				break;
-+			pos += 8;
-+			i--;
-+		}
-+		count -= 64 * (max_loop_count - i);
-+		bitpos += 64 * (max_loop_count - i);
++		if (blk + num > last_blk)
++			n = last_blk - blk + 1;
 +
-+		max_loop_count = count >> 3;
-+		i = max_loop_count;
-+		while (i) {
-+			if (*pos != 0) {
-+				byte_found = 1;
-+				break;
-+			}
-+			pos++;
-+			i--;
-+		}
-+		count -= 8 * (max_loop_count - i);
-+		bitpos += 8 * (max_loop_count - i);
++		ext2fs_bg_free_blocks_count_set(fs, group,
++			ext2fs_bg_free_blocks_count(fs, group) -
++			inuse*n/EXT2FS_CLUSTER_RATIO(fs));
++		ext2fs_bg_flags_clear(fs, group, EXT2_BG_BLOCK_UNINIT);
++		ext2fs_group_desc_csum_set(fs, group);
++		ext2fs_free_blocks_count_add(fs->super, -inuse * n);
++		blk += n;
++		num -= n;
 +	}
-+
-+	/* Here either count < 8 or byte_found == 1. */
-+	while (count-- > 0) {
-+		if (ext2fs_test_bit64(bitpos, bp->bitarray)) {
-+			*out = bitpos + bitmap->start;
-+			return 0;
-+		}
-+		bitpos++;
-+	}
-+
-+	return ENOENT;
++	ext2fs_mark_super_dirty(fs);
++	ext2fs_mark_bb_dirty(fs);
 +}
-+
- struct ext2_bitmap_ops ext2fs_blkmap64_bitarray = {
- 	.type = EXT2FS_BMAP64_BITARRAY,
- 	.new_bmap = ba_new_bmap,
-@@ -407,5 +481,6 @@ struct ext2_bitmap_ops ext2fs_blkmap64_bitarray = {
- 	.get_bmap_range = ba_get_bmap_range,
- 	.clear_bmap = ba_clear_bmap,
- 	.print_stats = ba_print_stats,
--	.find_first_zero = ba_find_first_zero
-+	.find_first_zero = ba_find_first_zero,
-+	.find_first_set = ba_find_first_set
- };
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 1e07f88..47340dd 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -683,6 +683,8 @@ void ext2fs_inode_alloc_stats2(ext2_filsys fs, ext2_ino_t ino,
+ 			       int inuse, int isdir);
+ void ext2fs_block_alloc_stats(ext2_filsys fs, blk_t blk, int inuse);
+ void ext2fs_block_alloc_stats2(ext2_filsys fs, blk64_t blk, int inuse);
++void ext2fs_block_alloc_stats_range(ext2_filsys fs, blk64_t blk,
++				    blk_t num, int inuse);
+ 
+ /* alloc_tables.c */
+ extern errcode_t ext2fs_allocate_tables(ext2_filsys fs);
 -- 
 1.8.5.rc3.362.gdf10213
 
