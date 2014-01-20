@@ -1,73 +1,76 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 00/12] e2fsprogs mke2fs optimizations and new features
-Date: Mon, 20 Jan 2014 00:54:02 -0500
-Message-ID: <1390197254-14583-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 01/12] libext2fs: fix off-by-one bug in ext2fs_extent_insert()
+Date: Mon, 20 Jan 2014 00:54:03 -0500
+Message-ID: <1390197254-14583-2-git-send-email-tytso@mit.edu>
+References: <1390197254-14583-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:49966 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:49962 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751031AbaATFy2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1750868AbaATFy2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Mon, 20 Jan 2014 00:54:28 -0500
+In-Reply-To: <1390197254-14583-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Here is the latest version of the patches I've been working on optimize
-creating very large file systems, and allowing the file system to be
-created with the metadata blocks located at the beginning of the device,
-so the data block area can be made maximally contiguous.
+When inserting the first extent into an empty inode, the
+ext2fs_extent_insert() leaves path->left set to 1 instead of 0.  Since
+path->curr is pointing at the last (only) extent in the file,
+path->left should be 0.
 
-An example of the optimizations and new features added in this patch
-set:
+This is mostly harmless, and gets corrected fairly quickly if the
+calling applicaton jumps to a different part of the extent tree ---
+for example, by calling ext2fs_extent_goto(), or calling
+ext2fs_extent_get with the flags argument set to EXT2_EXTENT_ROOT.
+Which is why we hadn't noticed this problem until now.
+
+However, if you insert four extents using ext2fs_extent_insert, the
+fourth insert will end up copying too many bytes in the i_block[]
+array, since path->left is one larger than it should be.  This results
+in the inode fields i_generation, i_file_acl, and i_size_high getting
+zeroed out.
+
+This problem can be replicated as follows:
 
 % cp /dev/null /tmp/foo.img
-% mke2fs -F -t ext4 -O sparse_super2 -E num_backup_sb=0,packed_meta_blocks /tmp/foo.img 64T
+% mke2fs -F -t ext4 /tmp/foo.img 100
+% debugfs -w /tmp/foo.img
+debugfs: write /dev/null foo
+debugfs: set_inode_field foo i_size_hi 1
+debugfs: stat foo
+ <----- note that the inode's size is 4294967296
+debugfs: extent_open foo
+debugfs (extent ino 12): insert --after 0 1 100
+debugfs (extent ino 12): insert --after 1 1 101
+debugfs (extent ino 12): insert --after 2 1 102
+debugfs (extent ino 12): insert --after 3 1 103
+debugfs (extent ino 12): extent_close
+debugfs: stat foo
+ <----- note that the inode's size is now 0
+debugfs: quit
 
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ lib/ext2fs/extent.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-Theodore Ts'o (12):
-  libext2fs: fix off-by-one bug in ext2fs_extent_insert()
-  libext2fs: clean up generic handling of
-    ext2fs_find_first_{set,zero}_*()
-  libext2fs: build tst_bitmaps with rep invariants checking enabled
-  libext: optimize find_first_set() for bitarray-based bitmaps
-  libext2fs: optimize find_first_{zero,set}() for red-black tree based
-    bitmaps
-  libext2fs: further clean up and rename check_block_uninit
-  libext2fs: add ext2fs_block_alloc_stats_range()
-  libext2fs: optimize ext2fs_allocate_group_table()
-  libext2: optimize ext2fs_new_block2()
-  mke2fs: optimize fix_cluster_bg_counts()
-  Add support for new compat feature "sparse_super2"
-  mke2fs: allow metadata blocks to be at the beginning of the file
-    system
-
- debugfs/set_fields.c        |   2 +
- lib/e2p/feature.c           |   2 +
- lib/e2p/ls.c                |   8 ++
- lib/ext2fs/Makefile.in      |   7 +-
- lib/ext2fs/alloc.c          |  65 +++++-----------
- lib/ext2fs/alloc_stats.c    |  41 ++++++++++
- lib/ext2fs/alloc_tables.c   |  22 ++----
- lib/ext2fs/blkmap64_ba.c    |  83 ++++++++++++++++++--
- lib/ext2fs/blkmap64_rb.c    | 103 ++++++++++++++++++++++++-
- lib/ext2fs/closefs.c        |  12 ++-
- lib/ext2fs/ext2_fs.h        |   4 +-
- lib/ext2fs/ext2fs.h         |   6 +-
- lib/ext2fs/extent.c         |   4 +-
- lib/ext2fs/gen_bitmap64.c   |  66 ++++++++--------
- lib/ext2fs/initialize.c     |   2 +
- lib/ext2fs/mkjournal.c      |   5 +-
- lib/ext2fs/res_gdt.c        |  13 ++++
- lib/ext2fs/swapfs.c         |   2 +
- lib/ext2fs/tst_super_size.c |   3 +-
- misc/ext4.5.in              |  11 +++
- misc/mke2fs.8.in            |  20 +++++
- misc/mke2fs.c               | 136 ++++++++++++++++++++++++++++-----
- misc/mke2fs.conf.5.in       |   9 +++
- resize/online.c             |   8 ++
- resize/resize2fs.c          | 182 +++++++++++++++++++++++++++++++++++++++++++-
- 25 files changed, 688 insertions(+), 128 deletions(-)
-
+diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
+index 5cdc2e4..6f4f1d2 100644
+--- a/lib/ext2fs/extent.c
++++ b/lib/ext2fs/extent.c
+@@ -1092,8 +1092,10 @@ errcode_t ext2fs_extent_insert(ext2_extent_handle_t handle, int flags,
+ 			ix++;
+ 			path->left--;
+ 		}
+-	} else
++	} else {
+ 		ix = EXT_FIRST_INDEX(eh);
++		path->left = -1;
++	}
+ 
+ 	path->curr = ix;
+ 
 -- 
 1.8.5.rc3.362.gdf10213
 
