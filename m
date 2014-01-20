@@ -1,703 +1,104 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 11/12] Add support for new compat feature "sparse_super2"
-Date: Mon, 20 Jan 2014 14:49:59 -0700
-Message-ID: <0AEEAC46-F486-4EDA-B0CB-3EF4B7A1B4E7@dilger.ca>
-References: <1390197254-14583-1-git-send-email-tytso@mit.edu> <1390197254-14583-12-git-send-email-tytso@mit.edu>
+Subject: Re: [PATCH 09/12] libext2: optimize ext2fs_new_block2()
+Date: Mon, 20 Jan 2014 14:52:43 -0700
+Message-ID: <85FC5E41-56C5-43A4-8514-CEADC36FE5C3@dilger.ca>
+References: <1390197254-14583-1-git-send-email-tytso@mit.edu> <1390197254-14583-10-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_C72BA719-33B6-4210-A706-C61F13FBB42C"; protocol="application/pgp-signature"; micalg=pgp-sha1
+Content-Type: multipart/signed; boundary="Apple-Mail=_FF5CB66E-152B-46E0-AAC3-26CDA3ADE1B8"; protocol="application/pgp-signature"; micalg=pgp-sha1
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f44.google.com ([209.85.160.44]:54361 "EHLO
-	mail-pb0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750743AbaATVuH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Jan 2014 16:50:07 -0500
-Received: by mail-pb0-f44.google.com with SMTP id rq2so7527628pbb.3
-        for <linux-ext4@vger.kernel.org>; Mon, 20 Jan 2014 13:50:07 -0800 (PST)
-In-Reply-To: <1390197254-14583-12-git-send-email-tytso@mit.edu>
+Received: from mail-pd0-f180.google.com ([209.85.192.180]:49715 "EHLO
+	mail-pd0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752487AbaATVws (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Jan 2014 16:52:48 -0500
+Received: by mail-pd0-f180.google.com with SMTP id x10so6046333pdj.39
+        for <linux-ext4@vger.kernel.org>; Mon, 20 Jan 2014 13:52:47 -0800 (PST)
+In-Reply-To: <1390197254-14583-10-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
---Apple-Mail=_C72BA719-33B6-4210-A706-C61F13FBB42C
+--Apple-Mail=_FF5CB66E-152B-46E0-AAC3-26CDA3ADE1B8
 Content-Transfer-Encoding: quoted-printable
 Content-Type: text/plain;
 	charset=us-ascii
 
 On Jan 19, 2014, at 10:54 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> In practice, it is **extremely** rare for users to try to use more
-> than the first backup superblock located at the beginning of block
-> group #1.  (i.e., at block number 32768 for file systems with a 4k
-> block size).  This new compat feature restricts the backup superblock
-> to block group #1 and the last block group in the file system.
+> If there are hundreds of thousands of blocks which are in use before
+> the first free block, it is much, MUCH faster to use
+> ext2fs_find_first_zero_block_bitmap2() instead of searching the
+> allocation bitmap bit by bit.
 
-This description is no longer completely accurate.  The actual locations
-of the backup groups are stored in the superblock.  I'm not totally
-against that, but it would mean the backups are harder to find if they
-are not in the typical default groups (e.g. #1, #3, #5, etc).  It might
-make sense to add that to the man page?
+Excellent.  The libext2fs block allocator has typically been unusable
+for filesystems with allocated blocks, so it is good to see this.
 
-Otherwise, this looks good to me.
+This could be further improved by skipping full groups entirely, but
+that doesn't detract from the benefits of this patch.
 
 Cheers, Andreas
 
-> Aside from reducing the overhead of the file system by a small number
-> of blocks, by eliminating the rest of the backup superblocks, it
-> allows us to have a much more flexible metadata layout.  For example,
-> we can force all of the allocation bitmaps and inode table blocks to
-> the beginning of the disk, which allows most of the disk to be
-> exclusively used for contiguous data blocks.
->=20
-> This simplifies taking advantage of certain HDD specific features,
-> such as Shingled Magnetic Recording (aka Shingled Drives), and the
-> TCG's OPAL Storage Specification where having a simple mapping between
-> LBA block ranges and the data blocks used by the file system can make
-> life much simpler.
->=20
 > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 > ---
-> debugfs/set_fields.c        |   2 +
-> lib/e2p/feature.c           |   2 +
-> lib/e2p/ls.c                |   8 ++
-> lib/ext2fs/closefs.c        |  12 ++-
-> lib/ext2fs/ext2_fs.h        |   4 +-
-> lib/ext2fs/ext2fs.h         |   3 +-
-> lib/ext2fs/initialize.c     |   2 +
-> lib/ext2fs/res_gdt.c        |  13 ++++
-> lib/ext2fs/swapfs.c         |   2 +
-> lib/ext2fs/tst_super_size.c |   3 +-
-> misc/ext4.5.in              |  11 +++
-> misc/mke2fs.8.in            |   6 ++
-> misc/mke2fs.c               |  30 +++++++-
-> misc/mke2fs.conf.5.in       |   5 ++
-> resize/online.c             |   8 ++
-> resize/resize2fs.c          | 182 =
-+++++++++++++++++++++++++++++++++++++++++++-
-> 16 files changed, 284 insertions(+), 9 deletions(-)
+> lib/ext2fs/alloc.c | 34 +++++++++++++++++-----------------
+> 1 file changed, 17 insertions(+), 17 deletions(-)
 >=20
-> diff --git a/debugfs/set_fields.c b/debugfs/set_fields.c
-> index 9c3b000..ffbda74 100644
-> --- a/debugfs/set_fields.c
-> +++ b/debugfs/set_fields.c
-> @@ -150,6 +150,8 @@ static struct field_set_info super_fields[] =3D {
-> 	{ "usr_quota_inum", &set_sb.s_usr_quota_inum, NULL, 4, =
-parse_uint },
-> 	{ "grp_quota_inum", &set_sb.s_grp_quota_inum, NULL, 4, =
-parse_uint },
-> 	{ "overhead_blocks", &set_sb.s_overhead_blocks, NULL, 4, =
-parse_uint },
-> +	{ "backup_bgs", &set_sb.s_backup_bgs[0], NULL, 4, parse_uint,
-> +	  FLAG_ARRAY, 2 },
-> 	{ "checksum", &set_sb.s_checksum, NULL, 4, parse_uint },
-> 	{ 0, 0, 0, 0 }
-> };
-> diff --git a/lib/e2p/feature.c b/lib/e2p/feature.c
-> index 9691263..1d3e689 100644
-> --- a/lib/e2p/feature.c
-> +++ b/lib/e2p/feature.c
-> @@ -43,6 +43,8 @@ static struct feature feature_list[] =3D {
-> 			"lazy_bg" },
-> 	{	E2P_FEATURE_COMPAT, EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP,
-> 			"snapshot_bitmap" },
-> +	{	E2P_FEATURE_COMPAT, EXT4_FEATURE_COMPAT_SPARSE_SUPER2,
-> +			"sparse_super2" },
->=20
-> 	{	E2P_FEATURE_RO_INCOMPAT, =
-EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER,
-> 			"sparse_super" },
-> diff --git a/lib/e2p/ls.c b/lib/e2p/ls.c
-> index 5b3d3c8..6f741c0 100644
-> --- a/lib/e2p/ls.c
-> +++ b/lib/e2p/ls.c
-> @@ -368,6 +368,14 @@ void list_super2(struct ext2_super_block * sb, =
-FILE *f)
-> 			fprintf(f, "type %u\n", sb->s_jnl_backup_type);
-> 		}
-> 	}
-> +	if (sb->s_backup_bgs[0] || sb->s_backup_bgs[1]) {
-> +		fprintf(f, "Backup block groups:      ");
-> +		if (sb->s_backup_bgs[0])
-> +			fprintf(f, "%u ", sb->s_backup_bgs[0]);
-> +		if (sb->s_backup_bgs[1])
-> +			fprintf(f, "%u ", sb->s_backup_bgs[1]);
-> +		fputc('\n', f);
-> +	}
-> 	if (sb->s_snapshot_inum) {
-> 		fprintf(f, "Snapshot inode:           %u\n",
-> 			sb->s_snapshot_inum);
-> diff --git a/lib/ext2fs/closefs.c b/lib/ext2fs/closefs.c
-> index 3e4af7f..4e91778 100644
-> --- a/lib/ext2fs/closefs.c
-> +++ b/lib/ext2fs/closefs.c
-> @@ -35,8 +35,16 @@ static int test_root(unsigned int a, unsigned int =
-b)
->=20
-> int ext2fs_bg_has_super(ext2_filsys fs, dgrp_t group)
+> diff --git a/lib/ext2fs/alloc.c b/lib/ext2fs/alloc.c
+> index 91637dd..7dcfd3c 100644
+> --- a/lib/ext2fs/alloc.c
+> +++ b/lib/ext2fs/alloc.c
+> @@ -137,8 +137,8 @@ errcode_t ext2fs_new_inode(ext2_filsys fs, =
+ext2_ino_t dir,
+> errcode_t ext2fs_new_block2(ext2_filsys fs, blk64_t goal,
+> 			   ext2fs_block_bitmap map, blk64_t *ret)
 > {
-> -	if (!(fs->super->s_feature_ro_compat &
-> -	      EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER) || group <=3D 1)
-> +	if (group =3D=3D 0)
-> +		return 1;
-> +	if (fs->super->s_feature_compat & =
-EXT4_FEATURE_COMPAT_SPARSE_SUPER2) {
-> +		if (group =3D=3D fs->super->s_backup_bgs[0] ||
-> +		    group =3D=3D fs->super->s_backup_bgs[1])
-> +			return 1;
-> +		return 0;
-> +	}
-> +	if ((group <=3D 1) || !(fs->super->s_feature_ro_compat &
-> +			      EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER))
-> 		return 1;
-> 	if (!(group & 1))
-> 		return 0;
-> diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-> index 930c2a3..d9e14d7 100644
-> --- a/lib/ext2fs/ext2_fs.h
-> +++ b/lib/ext2fs/ext2_fs.h
-> @@ -645,7 +645,8 @@ struct ext2_super_block {
-> 	__u32	s_usr_quota_inum;	/* inode number of user quota =
-file */
-> 	__u32	s_grp_quota_inum;	/* inode number of group quota =
-file */
-> 	__u32	s_overhead_blocks;	/* overhead blocks/clusters in =
-fs */
-> -	__u32   s_reserved[108];        /* Padding to the end of the =
-block */
-> +	__u32	s_backup_bgs[2];	/* If sparse_super2 enabled */
-> +	__u32   s_reserved[106];        /* Padding to the end of the =
-block */
-> 	__u32	s_checksum;		/* crc32c(superblock) */
-> };
+> -	blk64_t	i;
+> -	int	c_ratio;
+> +	errcode_t retval;
+> +	blk64_t	b;
 >=20
-> @@ -696,6 +697,7 @@ struct ext2_super_block {
-> #define EXT2_FEATURE_COMPAT_LAZY_BG		0x0040
-> /* #define EXT2_FEATURE_COMPAT_EXCLUDE_INODE	0x0080 not used, legacy =
-*/
-> #define EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP	0x0100
-> +#define EXT4_FEATURE_COMPAT_SPARSE_SUPER2	0x0200
+> 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
 >=20
->=20
-> #define EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
-> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-> index 47340dd..efe0964 100644
-> --- a/lib/ext2fs/ext2fs.h
-> +++ b/lib/ext2fs/ext2fs.h
-> @@ -550,7 +550,8 @@ typedef struct ext2_icount *ext2_icount_t;
-> 					 =
-EXT3_FEATURE_COMPAT_HAS_JOURNAL|\
-> 					 =
-EXT2_FEATURE_COMPAT_RESIZE_INODE|\
-> 					 EXT2_FEATURE_COMPAT_DIR_INDEX|\
-> -					 EXT2_FEATURE_COMPAT_EXT_ATTR)
-> +					 EXT2_FEATURE_COMPAT_EXT_ATTR|\
-> +					 =
-EXT4_FEATURE_COMPAT_SPARSE_SUPER2)
->=20
-> /* This #ifdef is temporary until compression is fully supported */
-> #ifdef ENABLE_COMPRESSION
-> diff --git a/lib/ext2fs/initialize.c b/lib/ext2fs/initialize.c
-> index 2db8b3c..dc6c419 100644
-> --- a/lib/ext2fs/initialize.c
-> +++ b/lib/ext2fs/initialize.c
-> @@ -173,6 +173,8 @@ errcode_t ext2fs_initialize(const char *name, int =
-flags,
-> 	set_field(s_raid_stripe_width, 0);	/* default stripe width: =
-0 */
-> 	set_field(s_log_groups_per_flex, 0);
-> 	set_field(s_flags, 0);
-> +	assign_field(s_backup_bgs[0]);
-> +	assign_field(s_backup_bgs[1]);
-> 	if (super->s_feature_incompat & ~EXT2_LIB_FEATURE_INCOMPAT_SUPP) =
-{
-> 		retval =3D EXT2_ET_UNSUPP_FEATURE;
-> 		goto cleanup;
-> diff --git a/lib/ext2fs/res_gdt.c b/lib/ext2fs/res_gdt.c
-> index 6449228..e61c330 100644
-> --- a/lib/ext2fs/res_gdt.c
-> +++ b/lib/ext2fs/res_gdt.c
-> @@ -31,6 +31,19 @@ static unsigned int list_backups(ext2_filsys fs, =
-unsigned int *three,
-> 	int mult =3D 3;
-> 	unsigned int ret;
->=20
-> +	if (fs->super->s_feature_compat & =
-EXT4_FEATURE_COMPAT_SPARSE_SUPER2) {
-> +		if (*min =3D=3D 1) {
-> +			*min +=3D 1;
-> +			if (fs->super->s_backup_bgs[0])
-> +				return fs->super->s_backup_bgs[0];
-> +		}
-> +		if (*min =3D=3D 2) {
-> +			*min +=3D 1;
-> +			if (fs->super->s_backup_bgs[1])
-> +				return fs->super->s_backup_bgs[1];
-> +		}
-> +		return fs->group_desc_count;
-> +	}
-> 	if (!(fs->super->s_feature_ro_compat &
-> 	      EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER)) {
-> 		ret =3D *min;
-> diff --git a/lib/ext2fs/swapfs.c b/lib/ext2fs/swapfs.c
-> index 56c66cc..2a7b768 100644
-> --- a/lib/ext2fs/swapfs.c
-> +++ b/lib/ext2fs/swapfs.c
-> @@ -99,6 +99,8 @@ void ext2fs_swap_super(struct ext2_super_block * sb)
-> 	}
-> 	for (; i < 17; i++)
-> 		sb->s_jnl_blocks[i] =3D =
-ext2fs_swab32(sb->s_jnl_blocks[i]);
-> +	sb->s_backup_bgs[0] =3D ext2fs_swab32(sb->s_backup_bgs[0]);
-> +	sb->s_backup_bgs[1] =3D ext2fs_swab32(sb->s_backup_bgs[1]);
-> }
->=20
-> void ext2fs_swap_group_desc2(ext2_filsys fs, struct ext2_group_desc =
-*gdp)
-> diff --git a/lib/ext2fs/tst_super_size.c b/lib/ext2fs/tst_super_size.c
-> index 85d87e1..f9cec8a 100644
-> --- a/lib/ext2fs/tst_super_size.c
-> +++ b/lib/ext2fs/tst_super_size.c
-> @@ -135,7 +135,8 @@ int main(int argc, char **argv)
-> 	check_field(s_usr_quota_inum, 4);
-> 	check_field(s_grp_quota_inum, 4);
-> 	check_field(s_overhead_blocks, 4);
-> -	check_field(s_reserved, 108 * 4);
-> +	check_field(s_backup_bgs, 8);
-> +	check_field(s_reserved, 106 * 4);
-> 	check_field(s_checksum, 4);
-> 	do_field("Superblock end", 0, 0, cur_offset, 1024);
-> #endif
-> diff --git a/misc/ext4.5.in b/misc/ext4.5.in
-> index fab1139..5ec39f5 100644
-> --- a/misc/ext4.5.in
-> +++ b/misc/ext4.5.in
-> @@ -171,6 +171,17 @@ kernels from mounting file systems that they =
-could not understand.
-> .\" .br
-> .\" .B Future feature, available in e2fsprogs 1.43-WIP
-> .TP
-> +.B sparse_super2
-> +.br
-> +This feature indicates that there will only at most two backup
-> +superblock and block group descriptors.  The block groups used to =
-store
-> +the backup superblock and blockgroup descriptors are stored in the
-> +superblock, but typically, one will be located at the beginning of =
-block
-> +group #1, and one in the last block group in the file system.  This =
-is
-> +feature is essentially a more extreme version of sparse_super and is
-> +designed to allow the a much larger percentage of the disk to have
-> +contiguous blocks available for data files.
-> +.TP
-> .B meta_bg
-> .br
-> This ext4 feature allows file systems to be resized on-line without =
-explicitly
-> diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
-> index 67ddbf8..483fb1c 100644
-> --- a/misc/mke2fs.8.in
-> +++ b/misc/mke2fs.8.in
-> @@ -274,6 +274,12 @@ small risk if the system crashes before the =
-journal has been overwritten
-> entirely one time.  If the option value is omitted, it defaults to 1 =
-to
-> enable lazy journal inode zeroing.
-> .TP
-> +.BI num_backup_sb=3D <0|1|2>
-> +If the
-> +.B sparse_super2
-> +file system feature is enabled this option controls whether there =
-will
-> +be 0, 1, or 2 backup superblocks created in the file system.
-> +.TP
-> .BI root_owner [=3Duid:gid]
-> Specify the numeric user and group ID of the root directory.  If no =
-UID:GID
-> is specified, use the user and group ID of the user running =
-\fBmke2fs\fR.
-> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> index 7daa87e..efb068a 100644
-> --- a/misc/mke2fs.c
-> +++ b/misc/mke2fs.c
-> @@ -88,6 +88,7 @@ static int	discard =3D 1;	/* attempt to discard =
-device before fs creation */
-> static int	direct_io;
-> static int	force;
-> static int	noaction;
-> +static int	num_backups =3D 2; /* number of backup bg's for =
-sparse_super2 */
-> static uid_t	root_uid;
-> static gid_t	root_gid;
-> int	journal_size;
-> @@ -738,6 +739,21 @@ static void parse_extended_opts(struct =
-ext2_super_block *param,
-> 				r_usage++;
-> 				continue;
-> 			}
-> +		} else if (strcmp(token, "num_backup_sb") =3D=3D 0) {
-> +			if (!arg) {
-> +				r_usage++;
-> +				badopt =3D token;
-> +				continue;
-> +			}
-> +			num_backups =3D strtoul(arg, &p, 0);
-> +			if (*p || num_backups > 2) {
-> +				fprintf(stderr,
-> +					_("Invalid # of backup "
-> +					  "superbocks: %s\n"),
-> +					arg);
-> +				r_usage++;
-> +				continue;
-> +			}
-> 		} else if (strcmp(token, "stride") =3D=3D 0) {
-> 			if (!arg) {
-> 				r_usage++;
-> @@ -894,6 +910,7 @@ static void parse_extended_opts(struct =
-ext2_super_block *param,
-> 			"\tis set off by an equals ('=3D') sign.\n\n"
-> 			"Valid extended options are:\n"
-> 			"\tmmp_update_interval=3D<interval>\n"
-> +			"\tnum_backup_sb=3D<0|1|2>\n"
-> 			"\tstride=3D<RAID per-disk data chunk in =
-blocks>\n"
-> 			"\tstripe-width=3D<RAID stride * data disks in =
-blocks>\n"
-> 			"\toffset=3D<offset to create the file =
-system>\n"
-> @@ -924,7 +941,8 @@ static __u32 ok_features[3] =3D {
-> 	EXT3_FEATURE_COMPAT_HAS_JOURNAL |
-> 		EXT2_FEATURE_COMPAT_RESIZE_INODE |
-> 		EXT2_FEATURE_COMPAT_DIR_INDEX |
-> -		EXT2_FEATURE_COMPAT_EXT_ATTR,
-> +		EXT2_FEATURE_COMPAT_EXT_ATTR |
-> +		EXT4_FEATURE_COMPAT_SPARSE_SUPER2,
-> 	/* Incompat */
-> 	EXT2_FEATURE_INCOMPAT_FILETYPE|
-> 		EXT3_FEATURE_INCOMPAT_EXTENTS|
-> @@ -1974,6 +1992,8 @@ profile_error:
-> 	}
-> #endif
->=20
-> +	num_backups =3D get_int_from_profile(fs_types, "num_backup_sb", =
-2);
+> @@ -148,21 +148,21 @@ errcode_t ext2fs_new_block2(ext2_filsys fs, =
+blk64_t goal,
+> 		return EXT2_ET_NO_BLOCK_BITMAP;
+> 	if (!goal || (goal >=3D ext2fs_blocks_count(fs->super)))
+> 		goal =3D fs->super->s_first_data_block;
+> -	i =3D goal;
+> -	c_ratio =3D 1 << ext2fs_get_bitmap_granularity(map);
+> -	if (c_ratio > 1)
+> -		goal &=3D ~EXT2FS_CLUSTER_MASK(fs);
+> -	do {
+> -		if (!ext2fs_fast_test_block_bitmap2(map, i)) {
+> -			clear_block_uninit(fs, ext2fs_group_of_blk2(fs, =
+i));
+> -			*ret =3D i;
+> -			return 0;
+> -		}
+> -		i =3D (i + c_ratio) & ~(c_ratio - 1);
+> -		if (i >=3D ext2fs_blocks_count(fs->super))
+> -			i =3D fs->super->s_first_data_block;
+> -	} while (i !=3D goal);
+> -	return EXT2_ET_BLOCK_ALLOC_FAIL;
+> +	goal &=3D ~EXT2FS_CLUSTER_MASK(fs);
 > +
-> 	blocksize =3D EXT2_BLOCK_SIZE(&fs_param);
->=20
-> 	/*
-> @@ -2593,8 +2613,14 @@ int main (int argc, char *argv[])
-> 		read_bb_file(fs, &bb_list, bad_blocks_filename);
-> 	if (cflag)
-> 		test_disk(fs, &bb_list);
-> -
-> 	handle_bad_blocks(fs, bb_list);
-> +
-> +	if (fs->super->s_feature_compat & =
-EXT4_FEATURE_COMPAT_SPARSE_SUPER2) {
-> +		if (fs->group_desc_count > 1 && num_backups >=3D 1)
-> +			fs->super->s_backup_bgs[0] =3D 1;
-> +		if (fs->group_desc_count > 2 && num_backups >=3D 2)
-> +			fs->super->s_backup_bgs[1] =3D =
-fs->group_desc_count - 1;
-> +	}
-> 	fs->stride =3D fs_stride =3D fs->super->s_raid_stride;
-> 	if (!quiet)
-> 		printf("%s", _("Allocating group tables: "));
-> diff --git a/misc/mke2fs.conf.5.in b/misc/mke2fs.conf.5.in
-> index 0625d0e..43bb91e 100644
-> --- a/misc/mke2fs.conf.5.in
-> +++ b/misc/mke2fs.conf.5.in
-> @@ -357,6 +357,11 @@ initialization noticeably, but it requires the =
-kernel to finish
-> initializing the filesystem in the background when the filesystem is
-> first mounted.
-> .TP
-> +.I num_backup_sb
-> +This relation indicates whether file systems with the
-> +.B sparse_super2
-> +feature enabled should be created with 0, 1, or 2 backup superblocks.
-> +.TP
-> .I inode_ratio
-> This relation specifies the default inode ratio if the user does not
-> specify one on the command line.
-> diff --git a/resize/online.c b/resize/online.c
-> index defcac1..46d86b0 100644
-> --- a/resize/online.c
-> +++ b/resize/online.c
-> @@ -76,6 +76,14 @@ errcode_t online_resize_fs(ext2_filsys fs, const =
-char *mtpt,
-> 			no_resize_ioctl =3D 1;
-> 	}
->=20
-> +	if (EXT2_HAS_COMPAT_FEATURE(fs->super,
-> +				    EXT4_FEATURE_COMPAT_SPARSE_SUPER2) =
-&&
-> +	    (access("/sys/fs/ext4/features/sparse_super2", R_OK) !=3D =
-0)) {
-> +		com_err(program_name, 0, _("kernel does not support =
-online "
-> +					   "resize with =
-sparse_super2"));
-> +		exit(1);
-> +	}
-> +
-> 	printf(_("Filesystem at %s is mounted on %s; "
-> 		 "on-line resizing required\n"), fs->device_name, mtpt);
->=20
-> diff --git a/resize/resize2fs.c b/resize/resize2fs.c
-> index c4c2517..b0c4b5e 100644
-> --- a/resize/resize2fs.c
-> +++ b/resize/resize2fs.c
-> @@ -53,6 +53,9 @@ static errcode_t =
-ext2fs_calculate_summary_stats(ext2_filsys fs);
-> static errcode_t fix_sb_journal_backup(ext2_filsys fs);
-> static errcode_t mark_table_blocks(ext2_filsys fs,
-> 				   ext2fs_block_bitmap bmap);
-> +static errcode_t clear_sparse_super2_last_group(ext2_resize_t rfs);
-> +static errcode_t reserve_sparse_super2_last_group(ext2_resize_t rfs,
-> +						 ext2fs_block_bitmap =
-meta_bmap);
->=20
-> /*
->  * Some helper CPP macros
-> @@ -191,6 +194,10 @@ errcode_t resize_fs(ext2_filsys fs, blk64_t =
-*new_size, int flags,
-> 		goto errout;
-> 	print_resource_track(rfs, &rtrack, fs->io);
->=20
-> +	retval =3D clear_sparse_super2_last_group(rfs);
-> +	if (retval)
-> +		goto errout;
-> +
-> 	rfs->new_fs->super->s_state &=3D ~EXT2_ERROR_FS;
-> 	rfs->new_fs->flags &=3D ~EXT2_FLAG_MASTER_SB_ONLY;
->=20
-> @@ -460,6 +467,33 @@ retry:
-> 	}
->=20
-> 	/*
-> +	 * Update the location of the backup superblocks if the
-> +	 * sparse_super2 feature is enabled.
-> +	 */
-> +	if (fs->super->s_feature_compat & =
-EXT4_FEATURE_COMPAT_SPARSE_SUPER2) {
-> +		dgrp_t last_bg =3D fs->group_desc_count - 1;
-> +		dgrp_t old_last_bg =3D old_fs->group_desc_count - 1;
-> +
-> +		if (last_bg > old_last_bg) {
-> +			if (old_fs->group_desc_count =3D=3D 1)
-> +				fs->super->s_backup_bgs[0] =3D 1;
-> +			if (old_fs->group_desc_count =3D=3D 1 &&
-> +			    fs->super->s_backup_bgs[0])
-> +				fs->super->s_backup_bgs[0] =3D last_bg;
-> +			else if (fs->super->s_backup_bgs[1])
-> +				fs->super->s_backup_bgs[1] =3D last_bg;
-> +		} else if (last_bg < old_last_bg) {
-> +			if (fs->super->s_backup_bgs[0] > last_bg)
-> +				fs->super->s_backup_bgs[0] =3D 0;
-> +			if (fs->super->s_backup_bgs[1] > last_bg)
-> +				fs->super->s_backup_bgs[1] =3D 0;
-> +			if (last_bg > 1 &&
-> +			    old_fs->super->s_backup_bgs[1] =3D=3D =
-old_last_bg)
-> +				fs->super->s_backup_bgs[1] =3D last_bg;
-> +		}
-> +	}
-> +
-> +	/*
-> 	 * If we are shrinking the number of block groups, we're done
-> 	 * and can exit now.
-> 	 */
-> @@ -615,14 +649,13 @@ errout:
->  */
-> static errcode_t adjust_superblock(ext2_resize_t rfs, blk64_t =
-new_size)
-> {
-> -	ext2_filsys fs;
-> +	ext2_filsys	fs =3D rfs->new_fs;
-> 	int		adj =3D 0;
-> 	errcode_t	retval;
-> 	blk64_t		group_block;
-> 	unsigned long	i;
-> 	unsigned long	max_group;
->=20
-> -	fs =3D rfs->new_fs;
-> 	ext2fs_mark_super_dirty(fs);
-> 	ext2fs_mark_bb_dirty(fs);
-> 	ext2fs_mark_ib_dirty(fs);
-> @@ -952,6 +985,10 @@ static errcode_t blocks_to_move(ext2_resize_t =
-rfs)
-> 		new_blocks =3D fs->desc_blocks + =
-fs->super->s_reserved_gdt_blocks;
-> 	}
->=20
-> +	retval =3D reserve_sparse_super2_last_group(rfs, meta_bmap);
-> +	if (retval)
-> +		goto errout;
-> +
-> 	if (old_blocks =3D=3D new_blocks) {
-> 		retval =3D 0;
-> 		goto errout;
-> @@ -1840,6 +1877,147 @@ errout:
-> }
->=20
-> /*
-> + * This function is used when expanding a file system.  It frees the
-> + * superblock and block group descriptor blocks from the block group
-> + * which is no longer the last block group.
-> + */
-> +static errcode_t clear_sparse_super2_last_group(ext2_resize_t rfs)
-> +{
-> +	ext2_filsys	fs =3D rfs->new_fs;
-> +	ext2_filsys	old_fs =3D rfs->old_fs;
-> +	errcode_t	retval;
-> +	dgrp_t		old_last_bg =3D rfs->old_fs->group_desc_count - =
-1;
-> +	dgrp_t		last_bg =3D fs->group_desc_count - 1;
-> +	blk64_t		sb, old_desc;
-> +	blk_t		num;
-> +
-> +	if (!(fs->super->s_feature_compat & =
-EXT4_FEATURE_COMPAT_SPARSE_SUPER2))
-> +		return 0;
-> +
-> +	if (last_bg <=3D old_last_bg)
-> +		return 0;
-> +
-> +	if (fs->super->s_backup_bgs[0] =3D=3D =
-old_fs->super->s_backup_bgs[0] &&
-> +	    fs->super->s_backup_bgs[1] =3D=3D =
-old_fs->super->s_backup_bgs[1])
-> +		return 0;
-> +
-> +	if (old_fs->super->s_backup_bgs[0] !=3D old_last_bg &&
-> +	    old_fs->super->s_backup_bgs[1] !=3D old_last_bg)
-> +		return 0;
-> +
-> +	if (fs->super->s_backup_bgs[0] =3D=3D old_last_bg ||
-> +	    fs->super->s_backup_bgs[1] =3D=3D old_last_bg)
-> +		return 0;
-> +
-> +	retval =3D ext2fs_super_and_bgd_loc2(rfs->old_fs, old_last_bg,
-> +					   &sb, &old_desc, NULL, &num);
+> +	retval =3D ext2fs_find_first_zero_block_bitmap2(map,
+> +			goal, ext2fs_blocks_count(fs->super) - 1, &b);
+> +	if ((retval =3D=3D ENOENT) && (goal !=3D =
+fs->super->s_first_data_block))
+> +		retval =3D ext2fs_find_first_zero_block_bitmap2(map,
+> +			fs->super->s_first_data_block, goal - 1, &b);
+> +	if (retval =3D=3D ENOENT)
+> +		return EXT2_ET_BLOCK_ALLOC_FAIL;
 > +	if (retval)
 > +		return retval;
 > +
-> +	if (sb)
-> +		ext2fs_unmark_block_bitmap2(fs->block_map, sb);
-> +	if (old_desc)
-> +		ext2fs_unmark_block_bitmap_range2(fs->block_map, =
-old_desc, num);
+> +	clear_block_uninit(fs, ext2fs_group_of_blk2(fs, b));
+> +	*ret =3D b;
 > +	return 0;
-> +}
-> +
-> +/*
-> + * This function is used when shrinking a file system.  We need to
-> + * utilize blocks from what will be the new last block group for the
-> + * backup superblock and block group descriptor blocks.
-> + * Unfortunately, those blocks may be used by other files or fs
-> + * metadata blocks.  We need to mark them as being in use.
-> + */
-> +static errcode_t reserve_sparse_super2_last_group(ext2_resize_t rfs,
-> +						 ext2fs_block_bitmap =
-meta_bmap)
-> +{
-> +	ext2_filsys	fs =3D rfs->new_fs;
-> +	ext2_filsys	old_fs =3D rfs->old_fs;
-> +	errcode_t	retval;
-> +	dgrp_t		old_last_bg =3D rfs->old_fs->group_desc_count - =
-1;
-> +	dgrp_t		last_bg =3D fs->group_desc_count - 1;
-> +	dgrp_t		g;
-> +	blk64_t		blk, sb, old_desc;
-> +	blk_t		i, num;
-> +	int		realloc =3D 0;
-> +
-> +	if (!(fs->super->s_feature_compat & =
-EXT4_FEATURE_COMPAT_SPARSE_SUPER2))
-> +		return 0;
-> +
-> +	if (last_bg >=3D old_last_bg)
-> +		return 0;
-> +
-> +	if (fs->super->s_backup_bgs[0] =3D=3D =
-old_fs->super->s_backup_bgs[0] &&
-> +	    fs->super->s_backup_bgs[1] =3D=3D =
-old_fs->super->s_backup_bgs[1])
-> +		return 0;
-> +
-> +	if (fs->super->s_backup_bgs[0] !=3D last_bg &&
-> +	    fs->super->s_backup_bgs[1] !=3D last_bg)
-> +		return 0;
-> +
-> +	if (old_fs->super->s_backup_bgs[0] =3D=3D last_bg ||
-> +	    old_fs->super->s_backup_bgs[1] =3D=3D last_bg)
-> +		return 0;
-> +
-> +	retval =3D ext2fs_super_and_bgd_loc2(rfs->new_fs, last_bg,
-> +					   &sb, &old_desc, NULL, &num);
-> +	if (retval)
-> +		return retval;
-> +
-> +	if (!sb) {
-> +		fputs(_("Should never happen!  No sb in last =
-super_sparse bg?\n"),
-> +		      stderr);
-> +		exit(1);
-> +	}
-> +	if (old_desc !=3D sb+1) {
-> +		fputs(_("Should never happen!  Unexpected old_desc in "
-> +			"super_sparse bg?\n"),
-> +		      stderr);
-> +		exit(1);
-> +	}
-> +	num =3D (old_desc) ? num : 1;
-> +
-> +	/* Reserve the backup blocks */
-> +	ext2fs_mark_block_bitmap_range2(fs->block_map, sb, num);
-> +
-> +	for (g =3D 0; g < fs->group_desc_count; g++) {
-> +		blk64_t mb;
-> +
-> +		mb =3D ext2fs_block_bitmap_loc(fs, g);
-> +		if ((mb >=3D sb) && (mb < sb + num)) {
-> +			ext2fs_block_bitmap_loc_set(fs, g, 0);
-> +			realloc =3D 1;
-> +		}
-> +		mb =3D ext2fs_inode_bitmap_loc(fs, g);
-> +		if ((mb >=3D sb) && (mb < sb + num)) {
-> +			ext2fs_inode_bitmap_loc_set(fs, g, 0);
-> +			realloc =3D 1;
-> +		}
-> +		mb =3D ext2fs_inode_table_loc(fs, g);
-> +		if ((mb < sb + num) &&
-> +		    (sb < mb + fs->inode_blocks_per_group)) {
-> +			ext2fs_inode_table_loc_set(fs, g, 0);
-> +			realloc =3D 1;
-> +		}
-> +		if (realloc) {
-> +			retval =3D ext2fs_allocate_group_table(fs, g, =
-0);
-> +			if (retval)
-> +				return retval;
-> +		}
-> +	}
-> +
-> +	for (blk =3D sb, i =3D 0; i < num; blk++, i++) {
-> +		if (ext2fs_test_block_bitmap2(old_fs->block_map, blk) &&
-> +		    !ext2fs_test_block_bitmap2(meta_bmap, blk)) {
-> +			ext2fs_mark_block_bitmap2(rfs->move_blocks, =
-blk);
-> +			rfs->needed_blocks++;
-> +		}
-> +		ext2fs_mark_block_bitmap2(rfs->reserve_blocks, blk);
-> +	}
-> +	return 0;
-> +}
-> +
-> +/*
->  * Fix the resize inode
->  */
-> static errcode_t fix_resize_inode(ext2_filsys fs)
+> }
+>=20
+> errcode_t ext2fs_new_block(ext2_filsys fs, blk_t goal,
 > --=20
 > 1.8.5.rc3.362.gdf10213
 >=20
@@ -715,7 +116,7 @@ Cheers, Andreas
 
 
 
---Apple-Mail=_C72BA719-33B6-4210-A706-C61F13FBB42C
+--Apple-Mail=_FF5CB66E-152B-46E0-AAC3-26CDA3ADE1B8
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
 	filename=signature.asc
@@ -726,19 +127,19 @@ Content-Description: Message signed with OpenPGP using GPGMail
 -----BEGIN PGP SIGNATURE-----
 Comment: GPGTools - http://gpgtools.org
 
-iQIVAwUBUt2aCHKl2rkXzB/gAQI6sQ//XZ56OZytGOxS6AZlQn38oVcUGcut/AIp
-0K9QGpS5hefglwpWsAa6qWv+/WqYS/87FB4aAFDokgegewIpTi5KjxHypgu3xG9P
-MUDUcBTapTMpD8yX3daa60cMtPbxpIs/I0SodxqqDeCC5B/hJxRCtWnTgfABTBB4
-XjxN9GP0VsJaDGEDaldvLgHAOkpV4jh0gOz2TY0wP1+3rcSKYEdseslH2xVRU0rD
-y1pnHtqdiZTu6o8fWkR/2Nvd6c6Al4roY14cIrhdo46n40wgleElw0v3DRL0kWS/
-ntTIcIoabP3O5puRSAxEFXcMDNc9fl+MAWKCM6NZ0dsGIJQCZ5/gVBsnlnBzH4D+
-nJ3wV7EsXQ+2/Jb7rIvh1LoPKEtyu0l0A4wPw0vJnQ/WhVhXW8gcH0QYjI353/ty
-UY37DnkdpnVZCiJsrOwOVg75M46QBqc+GjRLGaOoyxEd33Q/dj5IZaWQ5+b3j17W
-H4Yoh5CWH6gQlgilIitO9/aBAp6m+xla4Mqdge4QbjXSA/s4RPWY8AA9Lqi+4xXs
-36I3QkhlgBLwSFmCYBh1vVIoR9sqypgBlW7VJAYGXvrE7Q7D9jGx7VsHaWi2wanf
-yiMHeeJ4nH+qV0XYUNICzzOj0uOY1e4grwXzmv9rLJ9n6P1mh01C9xolqDg5BF2R
-RWYdNySzPRs=
-=8r2X
+iQIVAwUBUt2arHKl2rkXzB/gAQISIg//WY+rUN8QN861sN6n+h9VFD2hVJNvklcf
+I6XnBieaXMZQ7W0Muzf1JBOWJz8whffR0OZA1atvuYsmODYyo3/QOKNglDHNh3/+
+Zdco1/xB3g4YieN7G+2LacK8rDL+FOFPWgkYJaWd38bUG100XJf/2151pq15h7NT
+HyCyOuvIHYBo+zOHZvKw2Obly/GTHe086mCtlQfyZppLPjkXK4GlOb3cDUeDdSl/
+MmrCiIMqP3lRNCNgS9qsPdIbmDVgj+/ClhmvRKib6vvYRvTvciEevh7gjSkk80Cu
+GUkLuQZaXwsCG72HkZxRFA43vx/bYbB9COHi6x69+qFpgcYf3cHwz04ATwmeGFu8
+cKc7ZdtqloWN/WzuxMxek3Gc5VAj96jqjJ7JLRJY/Je+275N6uiDiTLWAeN/TDK0
+QtxDpRBfry7+REO82JiWfJhQ65CXXDJhTIfINKo1nK3sDN3/1n7NiUx6xIFCwtQ+
+hGScbdmEKGPt1GzEQL5vukRMvjSzNx0qXQL+JSrxfoNGpOhBsKBRUDobpcfnJ35P
+pbMmAyoEorwo88KcpQprXdOwSrdfKO125KthRnwMYF50+K5vOycL0n74nVLiMN6i
+DMIlTv0pSovHfgAmlkPEpCWbFRWCSCzkbvy6Johr8RbI/VeElEKLfqaXVgvNh3+y
+4IR7li/k2P8=
+=4Q5h
 -----END PGP SIGNATURE-----
 
---Apple-Mail=_C72BA719-33B6-4210-A706-C61F13FBB42C--
+--Apple-Mail=_FF5CB66E-152B-46E0-AAC3-26CDA3ADE1B8--
