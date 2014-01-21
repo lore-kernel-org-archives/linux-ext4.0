@@ -1,40 +1,46 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 0/6] miscellaneous e2fsprogs fixes
-Date: Mon, 20 Jan 2014 22:21:38 -0800
-Message-ID: <20140121062138.20507.60259.stgit@birch.djwong.org>
+Subject: [PATCH 1/6] misc: fix resource leaks in e2fsprogs
+Date: Mon, 20 Jan 2014 22:21:45 -0800
+Message-ID: <20140121062145.20507.54068.stgit@birch.djwong.org>
+References: <20140121062138.20507.60259.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:34429 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750820AbaAUGVn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Jan 2014 01:21:43 -0500
+Received: from userp1040.oracle.com ([156.151.31.81]:20465 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751105AbaAUGVu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Jan 2014 01:21:50 -0500
+In-Reply-To: <20140121062138.20507.60259.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Here are a few miscellaneous fixes for e2fsprogs-next.  Eventually
-they'll end up in the patchbomb rollup, though for now I'm taking a
-break on messing with e2fsprogs outside of pushing the rest of the
-patchbomb into upstream.
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ lib/ext2fs/icount.c |    2 ++
+ 1 file changed, 2 insertions(+)
 
-The first couple of patches fix resource leaks and cleans up the Linux
-kernel tests in mke2fs.
 
-The next two patches fix some more errors in the punch routines that
-resulted in premature exiting from the punch routine, or extent tree
-breakage.
+diff --git a/lib/ext2fs/icount.c b/lib/ext2fs/icount.c
+index a3b20f0..7d1b3d5 100644
+--- a/lib/ext2fs/icount.c
++++ b/lib/ext2fs/icount.c
+@@ -198,6 +198,7 @@ errcode_t ext2fs_create_icount_tdb(ext2_filsys fs, char *tdb_dir,
+ 	fd = mkstemp(fn);
+ 	if (fd < 0) {
+ 		retval = errno;
++		ext2fs_free_mem(&fn);
+ 		goto errout;
+ 	}
+ 	umask(save_umask);
+@@ -216,6 +217,7 @@ errcode_t ext2fs_create_icount_tdb(ext2_filsys fs, char *tdb_dir,
+ 	close(fd);
+ 	if (icount->tdb == NULL) {
+ 		retval = errno;
++		ext2fs_free_mem(&fn);
+ 		goto errout;
+ 	}
+ 	*ret = icount;
 
-The final two patches deals with extent tree truncation problems when
-there is an error while splitting an extent into three parts.
-
-I've tested these e2fsprogs changes against the -next branch as of
-1/16.  These days, I use an 8GB ramdisk and a 20T "disk" I constructed
-out of dm-snapshot to test in an x64 VM.  The make check tests should
-pass.
-
-Comments and questions are, as always, welcome.
-
---D
