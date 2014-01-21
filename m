@@ -1,91 +1,57 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 6/6] libext2fs: try to roll back when splitting an extent fails
-Date: Mon, 20 Jan 2014 22:22:17 -0800
-Message-ID: <20140121062217.20507.51789.stgit@birch.djwong.org>
-References: <20140121062138.20507.60259.stgit@birch.djwong.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 12/12] mke2fs: allow metadata blocks to be at the
+ beginning of the file system
+Date: Tue, 21 Jan 2014 01:23:51 -0500
+Message-ID: <20140121062351.GA23185@thunk.org>
+References: <1390197254-14583-1-git-send-email-tytso@mit.edu>
+ <1390197254-14583-13-git-send-email-tytso@mit.edu>
+ <ACF77779-7A44-4ED7-BC49-7658A8DF8514@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu, darrick.wong@oracle.com
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:20892 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750943AbaAUGWX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Jan 2014 01:22:23 -0500
-In-Reply-To: <20140121062138.20507.60259.stgit@birch.djwong.org>
+Received: from imap.thunk.org ([74.207.234.97]:50279 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750803AbaAUGXx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 21 Jan 2014 01:23:53 -0500
+Content-Disposition: inline
+In-Reply-To: <ACF77779-7A44-4ED7-BC49-7658A8DF8514@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If a client asks us to remap a block in the middle of an extent, we
-potentially have to allocate a fair number of blocks to handle extent
-tree splits.  A failure in either of the ext2fs_extent_insert calls
-leaves us with an extent tree that no longer maps the logical block in
-question and everything that came after it!  Therefore, try to roll
-back the extent tree changes before returning an error code.
+On Mon, Jan 20, 2014 at 04:25:23PM -0700, Andreas Dilger wrote:
+> The "packed_meta_blocks" appears to be equivalent to setting flex_bg
+> to some large enough factor that all the block and inode bitmaps are
+> at the start of the filesystem?
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
----
- lib/ext2fs/extent.c |   25 ++++++++++++++++++++++---
- 1 file changed, 22 insertions(+), 3 deletions(-)
+It's not the same thing, unfortunately, because of how we make room
+for the file system to grow and so require extra room for potential
+new block groups.  Try running "mke2fs -t ext4 -G 262144 /tmp/foo.img
+1T" and look at the gaps between the allocation bitmaps and the inode
+table using dumpe2fs.
 
+> It would probably be better to align
+> the inode and block bitmaps and inode table on a multiple of
+> s_raid_stride (will this be used to align on SMR erase blocks?) so
+> that rewrites are at least somewhat efficient and aligned?  That would
+> also allow reserving some room in the flex_bg packing to allow for
+> filesystem resizing.
 
-diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
-index 2928695..87921e6 100644
---- a/lib/ext2fs/extent.c
-+++ b/lib/ext2fs/extent.c
-@@ -1438,13 +1438,17 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
- 			goto done;
- 	} else {
- 		__u32	orig_length;
-+		blk64_t	orig_lblk;
-+		struct ext2fs_extent orig_extent;
-+		errcode_t r2;
- 
- #ifdef DEBUG
- 		printf("(re/un)mapping in middle of extent\n");
- #endif
- 		/* need to split this extent; later */
--
-+		orig_lblk = extent.e_lblk;
- 		orig_length = extent.e_len;
-+		orig_extent = extent;
- 
- 		/* shorten pre-split extent */
- 		extent.e_len = (logical - extent.e_lblk);
-@@ -1456,8 +1460,13 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
- 			/* insert new extent after current */
- 			retval = ext2fs_extent_insert(handle,
- 					EXT2_EXTENT_INSERT_AFTER, &newextent);
--			if (retval)
-+			if (retval) {
-+				r2 = ext2fs_extent_goto(handle, orig_lblk);
-+				if (r2 == 0)
-+					ext2fs_extent_replace(handle, 0,
-+							      &orig_extent);
- 				goto done;
-+			}
- 		}
- 		/* add post-split extent */
- 		extent.e_pblk += extent.e_len + 1;
-@@ -1465,8 +1474,18 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
- 		extent.e_len = orig_length - extent.e_len - 1;
- 		retval = ext2fs_extent_insert(handle,
- 				EXT2_EXTENT_INSERT_AFTER, &extent);
--		if (retval)
-+		if (retval) {
-+			if (physical) {
-+				r2 = ext2fs_extent_goto(handle,
-+							newextent.e_lblk);
-+				if (r2 == 0)
-+					ext2fs_extent_delete(handle, 0);
-+			}
-+			r2 = ext2fs_extent_goto(handle, orig_lblk);
-+			if (r2 == 0)
-+				ext2fs_extent_replace(handle, 0, &orig_extent);
- 			goto done;
-+		}
- 	}
- 
- done:
+Given these blocks are written using random 4k writes, I don't think
+any kind of alignment is going to be worth it.
 
+> It would also be useful to allow setting the journal goal block
+> directly, instead of journal_location_front only allowing to specify
+> goal == 0 (i.e. add "-E journal_start_goal=N" instead of adding
+> "-E journal_location_front", which implied by packed_meta_blocks).
+> I've wanted to be able to do this for a long time, but the stumbling
+> block is that write_journal_inode() doesn't have any parameter to
+> specify the goal journal block without storing it in the superblock.
+> I suppose it would be possible to pass the journal goal block in
+> s_jnl_blocks[0..1] or something?
+
+Hmm, yes, adding a flag which indicates that the starting block should
+be passed in s_jnl_blocks[0] is a good idea.
+
+					- Ted
