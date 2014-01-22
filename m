@@ -1,60 +1,77 @@
-From: Carlos Maiolino <cmaiolino@redhat.com>
-Subject: Re: [PATCH -v3] Add support for new compat feature "sparse_super2"
-Date: Wed, 22 Jan 2014 14:57:03 -0200
-Message-ID: <20140122165701.GA4351@orion.maiolino.org>
-References: <1389999248-11960-1-git-send-email-tytso@mit.edu>
- <20140122133813.GA21687@orion.maiolino.org>
- <20140122165103.GA11233@thunk.org>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH v5 22/22] XIP: Add support for unwritten extents
+Date: Wed, 22 Jan 2014 15:51:56 -0700 (MST)
+Message-ID: <alpine.OSX.2.00.1401221546240.70541@scrumpy>
+References: <cover.1389779961.git.matthew.r.wilcox@intel.com> <CEFD7DAD.22F65%matthew.r.wilcox@intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:14078 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752282AbaAVQ5I (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 22 Jan 2014 11:57:08 -0500
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s0MGv8gB032499
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Wed, 22 Jan 2014 11:57:08 -0500
-Received: from orion.maiolino.org (ovpn-113-96.phx2.redhat.com [10.3.113.96])
-	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s0MGv4Qq009662
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 22 Jan 2014 11:57:07 -0500
-Content-Disposition: inline
-In-Reply-To: <20140122165103.GA11233@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+    linux-mm@kvack.org, linux-ext4@vger.kernel.org
+To: Matthew Wilcox <matthew.r.wilcox@intel.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <CEFD7DAD.22F65%matthew.r.wilcox@intel.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Kk,
+On Wed, 15 Jan 2014, Matthew Wilcox wrote:
 
-On Wed, Jan 22, 2014 at 11:51:03AM -0500, Theodore Ts'o wrote:
-> On Wed, Jan 22, 2014 at 11:38:13AM -0200, Carlos Maiolino wrote:
-> > Hi Ted, in which tree you based this patch?
-> 
-> This was based on the maint branch, since I wanted to make sure that
-> if we release a 1.42.10, that e2fsck can deal with file systems with
-> this compat feature.
-> 
-> I need to get an updated maint branch published, since I have a number
-> of fixes in my tree.  I had been busy cleaning up a lot of patches,
-> which I had been doing on the maint branch in my local tree.  What I
-> need to do is to figure out which ones I'm ready to cast into
-> concrete, and then move the rest into a dev brach.  I'll try to get
-> that done in the next day or two.
-> 
+>  static ssize_t xip_io(int rw, struct inode *inode, const struct iovec
+> *iov,
+>  			loff_t start, loff_t end, unsigned nr_segs,
+>  			get_block_t get_block, struct buffer_head *bh)
+> @@ -103,21 +109,29 @@ static ssize_t xip_io(int rw, struct inode *inode,
+> const struct iovec *iov,
+>  			retval = get_block(inode, block, bh, rw == WRITE);
+>  			if (retval)
+>  				break;
+> -			if (buffer_mapped(bh)) {
+> -				retval = xip_get_addr(inode, bh, &addr);
+> -				if (retval < 0)
+> -					break;
+> -				addr += offset - (block << inode->i_blkbits);
+> -				hole = false;
+> -				size = retval;
+> -			} else {
+> -				if (rw == WRITE) {
+> +			if (rw == WRITE) {
+> +				if (!buffer_mapped(bh)) {
+>  					retval = -EIO;
+>  					break;
+>  				}
+> +				hole = false;
+> +			} else {
+> +				hole = !buffer_written(bh);
+> +			}
+> +
+> +			if (hole) {
+>  				addr = NULL;
+> -				hole = true;
+>  				size = bh->b_size;
+> +			} else {
+> +				unsigned first;
+> +				retval = xip_get_addr(inode, bh, &addr);
+> +				if (retval < 0)
+> +					break;
+> +				size = retval;
+> +				first = offset - (block << inode->i_blkbits);
+> +				if (buffer_unwritten(bh))
+> +					memset(addr, 0, first);
+> +				addr += first;
 
-Don't worry, I was just wondering if I was doing something wrong here, while
-reviewing the patch.
++                               size -= first;
 
-take your time.
-Cheers,
+This is needed so that we don't overrun the XIP buffer we are given in the
+event that our user buffer >= our XIP buffer and the start of our I/O isn't
+block aligned.
 
-> 				- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+You can add my 
+Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com> 
 
--- 
-Carlos
+Thanks,
+- Ross
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
