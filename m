@@ -1,89 +1,188 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [RFC] directory quota survey on xfs
-Date: Thu, 23 Jan 2014 16:06:29 -0800
-Message-ID: <20140124000629.GB8973@birch.djwong.org>
-References: <20131222095929.GA11444@gmail.com>
- <20131223014222.GC3220@dastard>
- <20140115081201.GA3820@gmail.com>
- <5966C533-EF18-4804-8C83-DFBD607D9BE6@dilger.ca>
- <20140115213207.GJ3431@dastard>
- <20140121070706.GA1819@gmail.com>
- <20140123223205.GJ27606@dastard>
+Subject: Re: [PATCH] mke2fs: add make_hugefile feature
+Date: Thu, 23 Jan 2014 17:37:21 -0800
+Message-ID: <20140124013721.GC8973@birch.djwong.org>
+References: <1390285023-23133-1-git-send-email-tytso@mit.edu>
+ <24F1EAE7-6E6D-4411-9092-D159E0BE3A9C@dilger.ca>
+ <20140121213943.GE31769@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Andreas Dilger <adilger@dilger.ca>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Dmitry Monakhov <dmonakhov@openvz.org>,
-	Ben Myers <bpm@sgi.com>, xfs@oss.sgi.com,
-	Li Xi <pkuelelixi@gmail.com>
-To: Dave Chinner <david@fromorbit.com>
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:37569 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751001AbaAXAHC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Jan 2014 19:07:02 -0500
+Received: from aserp1040.oracle.com ([141.146.126.69]:33658 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750820AbaAXBh2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Jan 2014 20:37:28 -0500
 Content-Disposition: inline
-In-Reply-To: <20140123223205.GJ27606@dastard>
+In-Reply-To: <20140121213943.GE31769@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jan 24, 2014 at 09:32:05AM +1100, Dave Chinner wrote:
-> On Tue, Jan 21, 2014 at 03:07:06PM +0800, Zheng Liu wrote:
-> > Hi Dave,
+On Tue, Jan 21, 2014 at 04:39:43PM -0500, Theodore Ts'o wrote:
+> On Tue, Jan 21, 2014 at 11:45:17AM -0700, Andreas Dilger wrote:
+> > > Then "mke2fs -T hugefile /dev/sdXX" will create as many 1G files
+> > > needed to fill the file system.
 > > 
-> > On Thu, Jan 16, 2014 at 08:32:07AM +1100, Dave Chinner wrote:
-> > > On Wed, Jan 15, 2014 at 11:03:22AM -0700, Andreas Dilger wrote:
-> > > > quotas (to keep compatibility for existing XFS deployments), but add
-> > > > support into quota-tools so that it is usable by all filesystems.
-> > > 
-> > > Well, yes. If you are writing a generic quota tool, then it needs to
-> > > support all filesystems. We already have a fully featured quota API
-> > > that can provide this support - it's the API that XFS has been using
-> > > since it was ported to Linux.  We have the opportunity to unify the
-> > > quota APIs that ext4 and XFS, so we should take the opportunity
-> > > while it is here.  Don't create a new API for ext4 simply because of
-> > > NIH syndrome.
-> > 
-> > These days I was thinking about your comment that uses quotactl API to
-> > communicate the userspace tool with the kernel.  But I am still
-> > confusing about your comment that unifies the quota API between ext4 and
-> > XFS.
-> > 
-> > Now we have two flag sets in quotactl(2).  One (Q_QUOTAON, Q_GETQUOTA,
-> > etc...) is used by extN file system (I am not sure whether other file
-> > systems use these flags or not), and another (Q_XQUOTAON, Q_XGETQSTAT,
-> > etc...) is used by XFS.
+> > How is this different from using fallocate to allocate the files?
 > 
-> I'm talking about making ext4 be able to use Q_XQUOTAON,
-> Q_XGETQSTAT, etc.
+> There are a couple of differences.  One is that currently using
+> fallocate to allocate the file results in an embarassingly bad extent
+> tree:
 > 
-> > In xfs_quota it uses an ioctl(2) to get/set/check project id,
+>  ext:     logical_offset:        physical_offset: length:   expected: flags:
+>    0:        0..    2047:      34816..     36863:   2048:             unwritten
+>    1:     2048..    4095:      36864..     38911:   2048:             unwritten
+>    2:     4096..    6143:      38912..     40959:   2048:             unwritten
+>    3:     6144..    8191:      40960..     43007:   2048:             unwritten
+>    4:     8192..   10239:      43008..     45055:   2048:             unwritten
+>    5:    10240..   12287:      45056..     47103:   2048:             unwritten
+>    6:    12288..   14335:      47104..     49151:   2048:             unwritten
+> ....
 > 
-> Right, because that's a filesystem specific operation that has no
-> equivalent in any other filesystem at this point in time. Same for
-> the project inheritence inode flag.
+> (This we came from running "fallocate -o 0 -l 512M /mnt/foo" on a
+> freshly formatted file system, running Linux 3.12.)
 > 
-> You're going to need to add such an interface to ext4 to do this, so
-> add a generic ioctl and wire XFS up to it as well. This is kind
-> of why I want a generic xattr namespace for inode flags/attribute
-> at the VFS - so we don't have to keep inventing new
-> ioctl/fcntl interfaces to make this sort of functionality common
-> between different filesystems - we just define a new attribute
-> string and values and let individual filesystems handle how they
-> store them.
+> Compare and contrast that with "mke2fs -T hugefile /tmp/foo.img 1G"
+> creates:
+> 
+>  ext:     logical_offset:        physical_offset: length:   expected: flags:
+>    0:        0..   32767:      24904..     57671:  32768:            
+>    1:    32768..   65535:      57672..     90439:  32768:            
+>    2:    65536..   98303:      90440..    123207:  32768:            
+>    3:    98304..  131071:     123208..    155975:  32768:            
+> 
+> This is a bug in how fallocate and mballoc are working together that
+> we should fix, of course. :-) And come to think of it, I'm really
+> surprised that the extent merging code isn't papering over the fact
+> that mballoc is only handing back block allocations 2048 blocks at a
+> time.
 
-I wonder, do you have an opinion on my patches to do just that?  Since it was
-an RFC I only wired up ext4; first with string-based xattrs[1] and again as a
-(namespace, flags) integer tuple[2].  Jan disliked juggling strings around
-(they don't bring me oodles of happiness either), Christoph doesn't like the
-magic xattrs, and Ted seemed lukewarm so I'm inclined to fix up the other FSes
-a la [2].
+Does the following still apply for why ext4_can_extents_be_merged() refuses to
+allow uninit extents to be merged?
 
-(...and please everybody don't co-opt this thread for inode flags any more than
-I have.)
+"Make sure that both extents are initialized. We don't merge
+uninitialized extents so that we can be sure that end_io code has
+the extent that was written properly split out and conversion to
+initialized is trivial."
+
+I removed the bits that prevent successful merging of uninit extents and each
+2048 block allocation was (sometimes) appended to the prevous extent, but I
+didn't check against conversion races.  I'll include the patch at the foot.
+
+> The other difference is the obvious one from the filefrag output,
+> which is the data blocks are marked as initialized, instead of
+> unwritten.  Yes, this brings up the whole controversy over the
+> NO_HIDE_STALE flag, but if you are creating the fresh file system, the
+> security issues hopefully not as severe --- and I will eventually add
+> support for zero'ing the files, or using discard to zero the data
+> blocks, even if at work we really don't care about this because we
+> trust the userspace programs that would be using these huge files.
+
+It wouldn't be difficult to have some flags to mark the extent uninit and/or
+zero the blocks.  Certainly mke2fs could just zero everything to make life
+easier.
+
+> Finally, to help eventually support eventual userspace SMR aware
+> applicaitons, one reason why it's useful to have mke2fs support
+> creating the huge file is that it's much easier to make sure the file
+> is appropriate aligned to begin at an SMR zone boundary.  This is not
+> something we currently have any kernel/userspace interfaces to do, in
+> terms of telling fallocate that you want to constrain the starting
+> block number for the data blocks that you are asking it to
+> fallocate(2) for you.
+
+That seems like it would be useful...
+
+> > Is this just to create a test image for e2fsck or similar?
+> 
+> It is certainly useful for that, but the mk_hugefiles feature is one
+> that I expect we would be using on production systems.
+> 
+> It is definitely the case that writing this code has exposed all sorts
+> of interesting bugs and performance shortcomings in libext2fs and
+> e2fsprogs in general, so just creating this functionality as part of
+> mke2fs it was certainly a useful exercise in and of itself.  :-)
+> 
+> >  It might make sense to include f_hugefiles/script and expect.1 for it?
+> 
+> Oh, certainly.  This patch was much more of an RFC than anything else.
+> And as I said, I'm still trying to figure out whether or not it makes
+> sense to push this code upstream, or leave it as a Google internal
+> enhancement.
+
+<shrug> fuse2fs would use it, but I don't know that anyone cares about fuse2fs.
+
+Well, here's a patch for all to enjoy.  xfstests didn't blow up when I ran it.
 
 --D
+From: Darrick J. Wong <darrick.wong@oracle.com>
+Subject: [PATCH] ext4: merge uninitialized extents
 
-[1] http://lkml.org/lkml/2014/1/6/1059 (fs: xattr-based FS_IOC_[GS]ETFLAGS interface)
-[2] http://lkml.org/lkml/2014/1/7/534 (fs: new FS_IOC_[GS]ETFLAGS2 interface)
+Allow for merging uninitialized extents.
+
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ fs/ext4/extents.c |   21 +++++++++++++++++----
+ 1 file changed, 17 insertions(+), 4 deletions(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 3384dc4..7f0132d 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -1691,7 +1691,7 @@ ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
+ 	 * the extent that was written properly split out and conversion to
+ 	 * initialized is trivial.
+ 	 */
+-	if (ext4_ext_is_uninitialized(ex1) || ext4_ext_is_uninitialized(ex2))
++	if (ext4_ext_is_uninitialized(ex1) != ext4_ext_is_uninitialized(ex2))
+ 		return 0;
+ 
+ 	ext1_ee_len = ext4_ext_get_actual_len(ex1);
+@@ -1708,6 +1708,11 @@ ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
+ 	 */
+ 	if (ext1_ee_len + ext2_ee_len > EXT_INIT_MAX_LEN)
+ 		return 0;
++	if (ext4_ext_is_uninitialized(ex1) &&
++	    (ext4_test_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN) ||
++	     atomic_read(&EXT4_I(inode)->i_unwritten) ||
++	     (ext1_ee_len + ext2_ee_len > EXT_UNINIT_MAX_LEN)))
++		return 0;
+ #ifdef AGGRESSIVE_TEST
+ 	if (ext1_ee_len >= 4)
+ 		return 0;
+@@ -1731,7 +1736,7 @@ static int ext4_ext_try_to_merge_right(struct inode *inode,
+ {
+ 	struct ext4_extent_header *eh;
+ 	unsigned int depth, len;
+-	int merge_done = 0;
++	int merge_done = 0, uninit;
+ 
+ 	depth = ext_depth(inode);
+ 	BUG_ON(path[depth].p_hdr == NULL);
+@@ -1741,8 +1746,11 @@ static int ext4_ext_try_to_merge_right(struct inode *inode,
+ 		if (!ext4_can_extents_be_merged(inode, ex, ex + 1))
+ 			break;
+ 		/* merge with next extent! */
++		uninit = ext4_ext_is_uninitialized(ex);
+ 		ex->ee_len = cpu_to_le16(ext4_ext_get_actual_len(ex)
+ 				+ ext4_ext_get_actual_len(ex + 1));
++		if (uninit)
++			ext4_ext_mark_uninitialized(ex);
+ 
+ 		if (ex + 1 < EXT_LAST_EXTENT(eh)) {
+ 			len = (EXT_LAST_EXTENT(eh) - ex - 1)
+@@ -1896,7 +1904,7 @@ int ext4_ext_insert_extent(handle_t *handle, struct inode *inode,
+ 	struct ext4_ext_path *npath = NULL;
+ 	int depth, len, err;
+ 	ext4_lblk_t next;
+-	int mb_flags = 0;
++	int mb_flags = 0, uninit;
+ 
+ 	if (unlikely(ext4_ext_get_actual_len(newext) == 0)) {
+ 		EXT4_ERROR_INODE(inode, "ext4_ext_get_actual_len(newext) == 0");
+@@ -1946,9 +1954,11 @@ int ext4_ext_insert_extent(handle_t *handle, struct inode *inode,
+ 						  path + depth);
+ 			if (err)
+ 				return err;
