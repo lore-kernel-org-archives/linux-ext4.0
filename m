@@ -1,33 +1,106 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: inline_data feature
-Date: Fri, 24 Jan 2014 11:21:13 -0500
-Message-ID: <20140124162113.GA11421@thunk.org>
-References: <loom.20140122T171340-153@post.gmane.org>
- <loom.20140124T170451-340@post.gmane.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Ian Nartowicz <claws@nartowicz.co.uk>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:51317 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751592AbaAXQVR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 24 Jan 2014 11:21:17 -0500
-Content-Disposition: inline
-In-Reply-To: <loom.20140124T170451-340@post.gmane.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: T Makphaibulchoke <tmac@hp.com>
+Subject: [PATCH v4 0/3] ext4: increase mbcache scalability
+Date: Fri, 24 Jan 2014 11:31:25 -0700
+Message-ID: <1390588288-66930-1-git-send-email-tmac@hp.com>
+References: <1377186876-57291-1-git-send-email-tmac@hp.com>
+Cc: aswin@hp.com, T Makphaibulchoke <tmac@hp.com>
+To: viro@zeniv.linux.org.uk, tytso@mit.edu, adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1377186876-57291-1-git-send-email-tmac@hp.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jan 24, 2014 at 04:05:48PM +0000, Ian Nartowicz wrote:
-> > I have been trying to test the inline_data feature of EXT4.  I am using
-> > kernel 3.9.5 and have compiled e2fsprogs from the pu branch.  I am able to
-> > set the feature and apparently to use the filesystem, but I get a lot of
-> > warnings from the kernel and fsck reports several errors and then crashes.
-> 
-> Seems like fsck is the culprit.  No errors until I try to check the filesystem.
+The patch consists of three parts.
 
-Can you send us the fsck transcript?
+The first part changes the implementation of both the block and hash chains of
+an mb_cache from list_head to hlist_bl_head and also introduces new members,
+including a spinlock to mb_cache_entry, as required by the second part.
 
-Thanks,
+The second part introduces higher degree of parallelism to the usages of the
+mb_cache and mb_cache_entries and impacts all ext filesystems.
 
-					- Ted
+The third part of the patch further increases the scalablity of an ext4
+filesystem by having each ext4 fielsystem allocate and use its own private
+mbcache structure, instead of sharing a single mcache structures across all
+ext4 filesystems, and increases the size of its mbcache hash tables.
+
+Here are some of the benchmark results with the changes.
+
+Using ram disk, there seems to be no peformance differences with aim7 for all
+workloads on all platforms tested.
+
+With regular disk filesystems with inode size of 128 bytes, forcing the uses
+of external xattr, there seems to be some good peformance increases with
+some of the aim7's workloads on all platforms tested.
+
+Here are some of the performance improvement on aim7 with 2000 users.
+
+On a 60 core machine:
+
+---------------------------
+|             | % increase |
+---------------------------
+| alltests    |     30.97  |
+---------------------------
+| custom      |     41.18  |
+---------------------------
+| dbase       |     32.06  |
+---------------------------
+| disk        |    125.02  |
+---------------------------
+| fserver     |     10.23  |
+---------------------------
+| new_dbase   |     14.58  |
+---------------------------
+| new_fserve  |      9.62  |
+---------------------------
+| shared      |     52.56  |
+---------------------------
+
+On an 40 core machine:
+
+---------------------------
+|             | % increase |
+---------------------------
+| custom      |     63.45  |
+---------------------------
+| disk        |     133.25  |
+---------------------------
+| fserver     |     78.29  |
+---------------------------
+| new_fserver |     80.66  |
+---------------------------
+| shared      |     56.34  |
+---------------------------
+
+The changes have been tested with ext4 xfstests to verify that no regression
+has been introduced.
+
+Changed in v4:
+        - New performance data
+	- New diff summary
+	- New patch architecture
+
+Changed in v3:
+	- New idff summary
+
+Changed in v2:
+        - New performance data
+	- New diff summary
+T Makphaibulchoke (3):
+  fs/mbcache.c change block and index hash chain to hlist_bl_node
+  mbcache: decoupling the locking of local from global data
+  ext4: each filesystem creates and uses its own mc_cache
+
+ fs/ext4/ext4.h          |   1 +
+ fs/ext4/super.c         |  24 ++-
+ fs/ext4/xattr.c         |  51 ++---
+ fs/ext4/xattr.h         |   6 +-
+ fs/mbcache.c            | 491 ++++++++++++++++++++++++++++++++++--------------
+ include/linux/mbcache.h |  11 +-
+ 6 files changed, 402 insertions(+), 182 deletions(-)
+
+-- 
+1.7.11.3
