@@ -1,118 +1,118 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: [ANNOUNCE] xfstests updated to 197f773
-Date: Fri, 24 Jan 2014 13:58:46 +1100
-Message-ID: <20140124025846.GL27606@dastard>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: [PATCH] e2fsprogs: Disallow tune2fs enabling sparse_super with ext4
+ meta_bg enabled
+Date: Fri, 24 Jan 2014 02:55:57 +0000
+Message-ID: <28989C0C9F1C0A428470D967B5FCED3727189D@BPXM22GP.gisp.nec.co.jp>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org
-To: xfs@oss.sgi.com
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="iso-2022-jp"
+Content-Transfer-Encoding: 8BIT
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from TYO200.gate.nec.co.jp ([202.32.8.215]:39548 "EHLO
+	tyo200.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752047AbaAXDBb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Jan 2014 22:01:31 -0500
+Received: from tyo202.gate.nec.co.jp ([10.7.69.202])
+	by tyo200.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id s0O31UOO018057
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Fri, 24 Jan 2014 12:01:30 +0900 (JST)
+Content-Language: ja-JP
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi all,
+When meta_bg feature is enabled, group descriptor block is allocated
+every 128 block group (or every 64 block group if 64bit feature is enabled).
 
-The xfstests repository at git://oss.sgi.com/xfs/cmds/xfstests has
-just been updated. Patches often get missed, so please check if your
-outstanding patches were in this update. If they have not been in
-this update, please resubmit them to xfs@oss.sgi.com so they can be
-picked up in the next update.
+In such situation, files in block group more than #128 will be removed
+if sparse_super feature is enabled with tune2fs and
+afterwards necessary e2fsck running.
 
-The new head of the master branch is commit:
+Because tune2fs does not reallocate group descriptor blocks
+but just set sparse_super feature.
+If ext4 has sparse_super, ext2fs_descriptor_block_loc2() called
+by e2fsck thinks the block group (e.g. #128) that it has group descriptor block
+at the head offset. But that offset is used as backup super block before.
+So e2fsck fixes ext4 based on invalid group descriptor blocks and this
+cause data lost.
 
-197f773 xfstests: define $seqres in btrfs/026-029
+The patch avoids this problem simply by disallow tune2fs enabling
+sparse_super if meta_bg is enabled.
 
-New Commits:
+Steps to reproduce:
 
-Dave Chinner (7):
-      [ea0b6eb] xfs: test scratch device mkfs features
-      [b9b5d74] xfs: New _require_* tests for CRC enabled filesystems
-      [86e91cc] xfs: add fsstress/recovery test
-      [5b524ee] xfs/073, 208: remove .full output before starting the test
-      [b04b0fd] xfs: support xfs_metadump with external logs
-      [3ed573e] xfs/104: use fixed log size
-      [7657a10] generic/204: use fixed log size for XFS
+1. Create ext4 which has meta_bg, ^sparse_super and 129+ block groups.
+# mke2fs -t ext4 -O meta_bg,^resize_inode,^sparse_super DEV 17G
+# mount DEV /MP
 
-David Sterba (3):
-      [80622a6] xfstests: don't suggest to run full diff when DIFF_LENGTH is 0
-      [586a06c] xfstests: use value of FSTYP if defined externally
-      [1ed9046] xfstests: clean command names in btrfs tests
+2. Create direcotry and files which use block group #128's metadata.
+# echo $((8192*128+1)) > /sys/fs/ext4/DEV/inode_goal
+# mkdir /MP/DIR
+# for i in $(seq 1 100); do dd if=/dev/urandom of=/MP/DIR/file$i bs=1024 count=10; done
 
-Eric Sandeen (1):
-      [a93b1dd] ext4: regression test for ext4 resize with non-extent files
-
-Filipe David Borba Manana (1):
-      [8c427eb] xfstests: add test for btrfs incremental send infinite loop issue
-
-Koen De Wit (2):
-      [0c58766] xfstests: btrfs: cross-subvolume sparse copy
-      [197f773] xfstests: define $seqres in btrfs/026-029
+3. Enable sparse_super with tune2fs then execute e2fsck.
+   Data in block group #128 will be lost!!
+# umount DEV
+# tune2fs -O sparse_super DEV
+# e2fsck/e2fsck -yf DEV
 
 
-Code Diffstat:
+Signed-off-by: Akira Fujita <a-fujita@rs.jp.ne.cocm>
+---
+misc/tune2fs.c | 27 ++++++++++++++++++++++++---
+ 1 file changed, 24 insertions(+), 3 deletions(-)
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 0eddf6d..51a4478 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -919,6 +919,19 @@ static int update_feature_set(ext2_filsys fs, char *features)
+ 				return 1;
+ 		}
+ 	}
++
++	if (FEATURE_ON(E2P_FEATURE_RO_INCOMPAT,
++		EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER)) {
++		if (sb->s_feature_incompat &
++			EXT2_FEATURE_INCOMPAT_META_BG) {
++			fputs(_("Setting filesystem feature 'sparse_super' "
++				"not supported\nfor filesystems with "
++				"the meta_bg feature enabled.\n"),
++				stderr);
++			return 1;
++		}
++	}
++
+ 	if (FEATURE_ON(E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_MMP)) {
+ 		int error;
+ 
+@@ -2568,10 +2581,18 @@ retry_open:
+ 	}
+ 	if (s_flag == 1) {
+ 		if (sb->s_feature_ro_compat &
+-		    EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER)
++		    EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER) {
+ 			fputs(_("\nThe filesystem already has sparse "
+ 				"superblocks.\n"), stderr);
+-		else {
++		} else if (sb->s_feature_incompat &
++			EXT2_FEATURE_INCOMPAT_META_BG) {
++			fputs(_("\nSetting the sparse super flag not "
++				"supported\nfor filesystems with "
++				"the meta_bg feature enabled.\n"),
++				stderr);
++			rc = 1;
++			goto closefs;
++		} else {
+ 			sb->s_feature_ro_compat |=
+ 				EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER;
+ 			sb->s_state &= ~EXT2_VALID_FS;
+@@ -2581,7 +2602,7 @@ retry_open:
+ 		}
+ 	}
+ 	if (s_flag == 0) {
+-		fputs(_("\nClearing the sparse superflag not supported.\n"),
++		fputs(_("\nClearing the sparse super flag not supported.\n"),
+ 		      stderr);
+ 		rc = 1;
+ 		goto closefs;
 
- README              |   3 ++
- check               |  13 ++---
- common/attr         |   6 +++
- common/rc           | 122 +++++++++++++++++++++++++++---------------
- tests/btrfs/003     |   2 +-
- tests/btrfs/004     |   2 +-
- tests/btrfs/007     |   4 +-
- tests/btrfs/008     |  12 ++---
- tests/btrfs/009     |   6 +--
- tests/btrfs/013     |   2 +-
- tests/btrfs/014     |   6 +--
- tests/btrfs/015     |   2 +-
- tests/btrfs/016     |  14 ++---
- tests/btrfs/017     |   2 +-
- tests/btrfs/019     |  14 ++---
- tests/btrfs/022     |   6 +--
- tests/btrfs/024     |   2 +-
- tests/btrfs/025     |   4 +-
- tests/btrfs/026     |   1 +
- tests/btrfs/027     |   1 +
- tests/btrfs/028     |   1 +
- tests/btrfs/029     |   1 +
- tests/btrfs/030     | 149 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/btrfs/030.out |   1 +
- tests/btrfs/031     | 138 ++++++++++++++++++++++++++++++++++++++++++++++++
- tests/btrfs/031.out |  48 +++++++++++++++++
- tests/btrfs/group   |   2 +
- tests/ext4/306      |  82 +++++++++++++++++++++++++++++
- tests/ext4/306.out  |  13 +++++
- tests/ext4/group    |   1 +
- tests/generic/204   |   4 ++
- tests/generic/208   |   2 +
- tests/shared/298    |   2 +-
- tests/xfs/073       |   2 +
- tests/xfs/104       |   2 +-
- tests/xfs/186       |   1 +
- tests/xfs/187       |  32 ++++++-----
- tests/xfs/244       |   1 +
- tests/xfs/253       |   3 +-
- tests/xfs/278       |   1 +
- tests/xfs/287       |   3 +-
- tests/xfs/291       |   4 +-
- tests/xfs/306       | 105 ++++++++++++++++++++++++++++++++++++
- tests/xfs/306.out   |   2 +
- tests/xfs/group     |   1 +
- 45 files changed, 716 insertions(+), 109 deletions(-)
-
--- 
-Dave Chinner
-david@fromorbit.com
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
