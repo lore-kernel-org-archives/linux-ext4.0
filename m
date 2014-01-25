@@ -1,46 +1,43 @@
-From: Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>
-Subject: Re: [PATCH v4 0/3] ext4: increase mbcache scalability
-Date: Fri, 24 Jan 2014 18:13:14 -0700
-Message-ID: <52E30FAA.500@hp.com>
-References: <1377186876-57291-1-git-send-email-tmac@hp.com>	<1390588288-66930-1-git-send-email-tmac@hp.com> <87fvodcb65.fsf@tassilo.jf.intel.com>
+From: Ian Nartowicz <claws@nartowicz.co.uk>
+Subject: Re: =?utf-8?b?aW5saW5lX2RhdGE=?= feature
+Date: Sat, 25 Jan 2014 20:22:56 +0000 (UTC)
+Message-ID: <loom.20140125T212226-499@post.gmane.org>
+References: <loom.20140122T171340-153@post.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-Cc: viro@zeniv.linux.org.uk, tytso@mit.edu, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, aswin@hp.com
-To: Andi Kleen <andi@firstfloor.org>, T Makphaibulchoke <tmac@hp.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from g1t0029.austin.hp.com ([15.216.28.36]:47620 "EHLO
-	g1t0029.austin.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751157AbaAYHVj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 25 Jan 2014 02:21:39 -0500
-In-Reply-To: <87fvodcb65.fsf@tassilo.jf.intel.com>
+Received: from plane.gmane.org ([80.91.229.3]:35453 "EHLO plane.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755549AbaAYUX6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 25 Jan 2014 15:23:58 -0500
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
+	id 1W79lT-0007T3-KM
+	for linux-ext4@vger.kernel.org; Sat, 25 Jan 2014 21:23:39 +0100
+Received: from cpc65391-bagu13-2-0-cust595.1-3.cable.virginmedia.com ([81.103.170.84])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Sat, 25 Jan 2014 21:23:39 +0100
+Received: from claws by cpc65391-bagu13-2-0-cust595.1-3.cable.virginmedia.com with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Sat, 25 Jan 2014 21:23:39 +0100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 01/24/2014 02:38 PM, Andi Kleen wrote:
-> T Makphaibulchoke <tmac@hp.com> writes:
-> 
->> The patch consists of three parts.
->>
->> The first part changes the implementation of both the block and hash chains of
->> an mb_cache from list_head to hlist_bl_head and also introduces new members,
->> including a spinlock to mb_cache_entry, as required by the second part.
-> 
-> spinlock per entry is usually overkill for larger hash tables.
-> 
-> Can you use a second smaller lock table that just has locks and is 
-> indexed by a subset of the hash key. Most likely a very small 
-> table is good enough.
-> 
-> Also I would be good to have some data on the additional memory consumption.
-> 
-> -Andi
-> 
+Ian Nartowicz <claws <at> nartowicz.co.uk> writes:
 
-Thanks Andi for the comments.  Will look into that.
+> 
+> I have been trying to test the inline_data feature of EXT4.  I am using
+> kernel 3.9.5 and have compiled e2fsprogs from the pu branch.  I am able to
+> set the feature and apparently to use the filesystem, but I get a lot of
+> warnings from the kernel and fsck reports several errors and then crashes.
+> 
+I wonder if I might have compiled against the wrong (clib?) headers?  Are
+you aware of any version dependencies in the pu branch tools?
 
-Thanks,
-Mak.
+--ian
+
+
 
