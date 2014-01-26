@@ -1,48 +1,26 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: inline_data feature
-Date: Sat, 25 Jan 2014 22:29:09 -0500
-Message-ID: <20140126032909.GA24834@thunk.org>
-References: <loom.20140122T171340-153@post.gmane.org>
- <loom.20140125T212226-499@post.gmane.org>
+From: Abdul Nasser <nasser500@justin.ddo.jp>
+Subject: Kind Regards
+Date: Sun, 26 Jan 2014 21:31:04 +0000
+Message-ID: <SECEXCHANGEu1g8mZEl0000392e@mail.standardelectronics.com>
+Reply-To: s.abdulnasser@yahoo.com.hk
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Ian Nartowicz <claws@nartowicz.co.uk>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+To: Recipients <nasser500@justin.ddo.jp>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:51539 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752104AbaAZD3M (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 25 Jan 2014 22:29:12 -0500
-Content-Disposition: inline
-In-Reply-To: <loom.20140125T212226-499@post.gmane.org>
+Received: from mail.standardelectronics.com ([74.92.67.124]:55350 "EHLO
+	mail.standardelectronics.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753577AbaAZXjU convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 26 Jan 2014 18:39:20 -0500
+Content-Description: Mail message body
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Jan 25, 2014 at 08:22:56PM +0000, Ian Nartowicz wrote:
-> Ian Nartowicz <claws <at> nartowicz.co.uk> writes:
-> 
-> > 
-> > I have been trying to test the inline_data feature of EXT4.  I am using
-> > kernel 3.9.5 and have compiled e2fsprogs from the pu branch.  I am able to
-> > set the feature and apparently to use the filesystem, but I get a lot of
-> > warnings from the kernel and fsck reports several errors and then crashes.
-> > 
-> I wonder if I might have compiled against the wrong (clib?) headers?  Are
-> you aware of any version dependencies in the pu branch tools?
+Greetings,
+My name is Abdul Nasser Sokariah and I am writing you from Syria, I choose to contact you directly as I need a reliable person to trust who can help me handle my huge deposit  with a vault company in EUROPE, and based on my present situation in Syria, I need you urgently to take possession of everything and further modalities/directives will follow.Please reply to my private  Email: nasserabdul190@yahoo.com
 
-I doubt it; this looks like a straightforward memory bug of some kind
-(i.e., use after free, etc.)
+I wait for your response.
 
-Could you try running e2fsck under valgrind?  And could you also
-confirm the git commit ID of the e2fsprogs pu branch that you used to
-compile it?
-
-A compressed raw e2image file would be useful as well, but one problem
-with inline data is that a raw e2image file will have some amount of
-file data (for the small files that are using inline data) in the
-e2image file.  We should probably look at teaching e2image to can zero
-out the contents of inline data files....
-
-Many thanks,
-
-					- Ted
+Yours truly,
+Abdul Nasser Sokariah
