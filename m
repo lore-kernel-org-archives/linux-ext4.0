@@ -1,45 +1,106 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: How many files to create in one directory?
-Date: Mon, 27 Jan 2014 13:48:29 -0600
-Message-ID: <52E6B80D.7060807@redhat.com>
-References: <52E607B1.2060206@jprs.co.jp> <52E69F3F.2000104@redhat.com> <20140127193950.GA20411@thunk.org>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH v5 22/22] XIP: Add support for unwritten extents
+Date: Mon, 27 Jan 2014 16:32:07 -0700 (MST)
+Message-ID: <alpine.OSX.2.00.1401271617570.9254@scrumpy>
+References: <cover.1389779961.git.matthew.r.wilcox@intel.com> <CEFD7DAD.22F65%matthew.r.wilcox@intel.com> <alpine.OSX.2.00.1401221546240.70541@scrumpy> <CF0C370C.235F1%willy@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Masato Minda <minmin@jprs.co.jp>, linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:5935 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753781AbaA0Tsf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 27 Jan 2014 14:48:35 -0500
-In-Reply-To: <20140127193950.GA20411@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+    Matthew Wilcox <matthew.r.wilcox@intel.com>, linux-kernel@vger.kernel.org,
+    linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+    linux-ext4@vger.kernel.org
+To: Matthew Wilcox <willy@linux.intel.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <CF0C370C.235F1%willy@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 1/27/14, 1:39 PM, Theodore Ts'o wrote:
->> It will depend on the length of the filenames.  But by my calculations,
->> for average 28-char filenames, it's closer to 30 million.
+On Thu, 23 Jan 2014, Matthew Wilcox wrote:
+> On Wed, Jan 22, 2014 at 03:51:56PM -0700, Ross Zwisler wrote:
+> > > +			if (hole) {
+> > >  				addr = NULL;
+> > > -				hole = true;
+> > >  				size = bh->b_size;
+> > > +			} else {
+> > > +				unsigned first;
+> > > +				retval = xip_get_addr(inode, bh, &addr);
+> > > +				if (retval < 0)
+> > > +					break;
+> > > +				size = retval;
+> > > +				first = offset - (block << inode->i_blkbits);
+> > > +				if (buffer_unwritten(bh))
+> > > +					memset(addr, 0, first);
+> > > +				addr += first;
+> > 
+> > +                               size -= first;
+> > 
+> > This is needed so that we don't overrun the XIP buffer we are given in the
+> > event that our user buffer >= our XIP buffer and the start of our I/O isn't
+> > block aligned.
 > 
-> Note that there will be some very significant performance problems
-> well before a directory gets that big.  For example, just simply doing
-> a readdir + stat on all of the files in that directory (or a readdir +
-> unlink, etc.) will very likely result in extremely unacceptable
-> performance.
-
-Yep, that's the max possible, not the max useable.  ;)
-
-(Although, I'm not sure in practice what max useable looks like, TBH).
-
--Eric
-
-> So if you can find some other way of avoiding allowing the file system
-> that big (i.e., using a real database instead of trying to use a file
-> system as a database, etc.), I'd strongly suggest that you consider
-> those alternatives.
+> You're right!  Thank you!  However, we also need it for the hole ==
+> true case, don't we?  So maybe something like this, incrementally on top of
+> patch 22/22:
 > 
-> Regards,
+> P.S. Can someone come up with a better name for this variable than 'first'?
+> I'd usually use 'offset', but that's already taken.  'annoying_bit' seems a
+> bit judgemental.  'misaligned', maybe?  'skip' or 'seek' like dd uses?
 > 
-> 					- Ted
-> 
+> diff --git a/fs/xip.c b/fs/xip.c
+> index 92157ff..1ae00db 100644
+> --- a/fs/xip.c
+> +++ b/fs/xip.c
+> @@ -103,6 +103,7 @@ static ssize_t xip_io(int rw, struct inode *inode, const
+> struct iovec *iov,
+>  
+>  		if (max == offset) {
+>  			sector_t block = offset >> inode->i_blkbits;
+> +			unsigned first = offset - (block << inode->i_blkbits);
+>  			long size;
+>  			memset(bh, 0, sizeof(*bh));
+>  			bh->b_size = ALIGN(end - offset, PAGE_SIZE);
+> @@ -121,14 +122,12 @@ static ssize_t xip_io(int rw, struct inode *inode,
+> const struct iovec *iov,
+>  
+>  			if (hole) {
+>  				addr = NULL;
+> -				size = bh->b_size;
+> +				size = bh->b_size - first;
 
+It looks like we have an additional bit of complexity with the hole case.  The
+issue is that for holes, bh->b_size is just the full size of the write as set
+earlier in the function:
+
+                        bh->b_size = ALIGN(end - offset, PAGE_SIZE);
+
+>From this code it seems like you hoped the call into get_block() would adjust
+bh->b_size to the size of the hole, allowing you to zero just the hole space
+in the user buffer.  It doesn't look like it does, though, at least for ext4.
+In looking at the direct I/O case (do_direct_IO()), they deal with holes on a
+per FS block basis, and don't ever look at bh->b_size once they've figured out
+the buffer is unmapped.
+
+The result of this is that when you get a read that starts at a hole but moves
+into real data, the read will just see a hole and return data of all zeros.
+
+To just assume the current FS block is a hole, we can do something like this:
+
+diff --git a/fs/xip.c b/fs/xip.c
+index 35e401e..e902593 100644
+--- a/fs/xip.c
++++ b/fs/xip.c
+@@ -122,7 +122,7 @@ static ssize_t xip_io(int rw, struct inode *inode, const struct
+ 
+                        if (hole) {
+                                addr = NULL;
+-                               size = bh->b_size - first;
++                               size = (1 << inode->i_blkbits) - first;
+                        } else {
+                                retval = xip_get_addr(inode, bh, &addr);
+                                if (retval < 0)
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
