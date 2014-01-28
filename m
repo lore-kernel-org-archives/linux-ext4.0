@@ -1,73 +1,69 @@
-From: Masato Minda <minmin@jprs.co.jp>
-Subject: Re: How many files to create in one directory?
-Date: Tue, 28 Jan 2014 11:53:08 +0900
-Message-ID: <52E71B94.4000406@jprs.co.jp>
-References: <52E607B1.2060206@jprs.co.jp> <52E69F3F.2000104@redhat.com> <20140127193950.GA20411@thunk.org> <52E6B80D.7060807@redhat.com>
+From: Matthew Wilcox <matthew@wil.cx>
+Subject: Re: [PATCH v5 22/22] XIP: Add support for unwritten extents
+Date: Mon, 27 Jan 2014 20:49:00 -0700
+Message-ID: <20140128034859.GC20939@parisc-linux.org>
+References: <cover.1389779961.git.matthew.r.wilcox@intel.com> <CEFD7DAD.22F65%matthew.r.wilcox@intel.com> <alpine.OSX.2.00.1401221546240.70541@scrumpy> <CF0C370C.235F1%willy@linux.intel.com> <alpine.OSX.2.00.1401271617570.9254@scrumpy>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from off-send01.tyo.jprs.co.jp ([202.11.16.150]:54457 "EHLO
-	off-send01.tyo.jprs.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753347AbaA1CxR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Jan 2014 21:53:17 -0500
-In-Reply-To: <52E6B80D.7060807@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Matthew Wilcox <willy@linux.intel.com>,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org, linux-ext4@vger.kernel.org
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <alpine.OSX.2.00.1401271617570.9254@scrumpy>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Eric-san, Ted-san;
-
-Thank you very much. I am happy now.
-
-On 2014/01/28 3:02, Eric Sandeen wrote:
->
-> It will depend on the length of the filenames.  But by my calculations,
-> for average 28-char filenames, it's closer to 30 million.
+On Mon, Jan 27, 2014 at 04:32:07PM -0700, Ross Zwisler wrote:
+> It looks like we have an additional bit of complexity with the hole case.  The
+> issue is that for holes, bh->b_size is just the full size of the write as set
+> earlier in the function:
 > 
-> There are (4096-32)/8 indices per block, or 508.
-> There are 2 levels, so 508*508=258064 leaf blocks.
-> The length of each record for 28 char names would be 32 bytes.
-> So you can fit 4096/32 = 128 entries per leaf block.
-> 258064 leaf blocks * 128 entries/bock is 33,032,192 entries.
-
-I understand.
-
-> I recently made a spreadsheet to calculate this.
-> I'm not sure if I am doing google docs sharing and protection
-> correctly, but this might work:
+>                         bh->b_size = ALIGN(end - offset, PAGE_SIZE);
 > 
-> https://docs.google.com/spreadsheet/ccc?key=0AtdHTZsZ8XoYdE1IUXlDb1RXQkdPM3F4YWpfNGhMbFE&usp=sharing#gid=0
+> >From this code it seems like you hoped the call into get_block() would adjust
+> bh->b_size to the size of the hole, allowing you to zero just the hole space
+> in the user buffer.  It doesn't look like it does, though, at least for ext4.
 
-Great! It is useful for us.
+Argh.  I got confused.  ext4 *has* this information, it just doesn't
+propagate it into the bh if it's a hole!  Should it?  The comments in
+the direct IO code imply that it *may*, but doesn't *have* to.  What it's
+doing now (not touching it) is probably wrong.
 
-On 2014/01/28 4:39, Theodore Ts'o wrote:
->
-> Note that there will be some very significant performance problems
-> well before a directory gets that big.  For example, just simply doing
-> a readdir + stat on all of the files in that directory (or a readdir +
-> unlink, etc.) will very likely result in extremely unacceptable
-> performance.
+> To just assume the current FS block is a hole, we can do something like this:
 
-Of course, I know that issue. But we have already this directory.
+Yes, this should fix things on an interim basis.  Bit inefficient,
+but it'll work.
 
-	$ \ls -f | wc
-	1933497 1933497 14968002
-
-This is for mail archive. :-(
-
-On 2014/01/28 4:48, Eric Sandeen wrote:
+> diff --git a/fs/xip.c b/fs/xip.c
+> index 35e401e..e902593 100644
+> --- a/fs/xip.c
+> +++ b/fs/xip.c
+> @@ -122,7 +122,7 @@ static ssize_t xip_io(int rw, struct inode *inode, const struct
+>  
+>                         if (hole) {
+>                                 addr = NULL;
+> -                               size = bh->b_size - first;
+> +                               size = (1 << inode->i_blkbits) - first;
+>                         } else {
+>                                 retval = xip_get_addr(inode, bh, &addr);
+>                                 if (retval < 0)
 > 
-> Yep, that's the max possible, not the max useable.  ;)
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Yes, I wanted to know the limitation.
-
-Again, Thank you very much.
-
-Best Regards,
+-- 
+Matthew Wilcox				Intel Open Source Technology Centre
+"Bill, look, we understand that you're interested in selling us this
+operating system, but compare it to ours.  We can't possibly take such
+a retrograde step."
 
 --
-Masato minmin Minda <minmin@jprs.co.jp>
-Japan Registry Services Co., Ltd. (JPRS)
-
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
