@@ -1,28 +1,23 @@
-From: Zhi Yong Wu <zwu.kernel@gmail.com>
+From: Rohan Puri <rohan.puri15@gmail.com>
 Subject: Re: SMR Project List
-Date: Tue, 28 Jan 2014 14:45:09 +0800
-Message-ID: <CAEH94LhhbK6kwQ5CrOefTptcGA3C4Gx049qwSSzS7z5S_CwoTQ@mail.gmail.com>
+Date: Tue, 28 Jan 2014 13:25:07 +0530
+Message-ID: <CALJfu6NbS44Ha5iTYy0nHoiadc0Kkj72vc7QLyZgfThu=8B6Dw@mail.gmail.com>
 References: <nsxbnyxii32.fsf@closure.home.lan>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+Cc: Linux FS Devel <linux-fsdevel@vger.kernel.org>,
 	linux-ext4@vger.kernel.org
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ob0-f177.google.com ([209.85.214.177]:44008 "EHLO
-	mail-ob0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752568AbaA1GpK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Jan 2014 01:45:10 -0500
+Received: from mail-lb0-f180.google.com ([209.85.217.180]:44211 "EHLO
+	mail-lb0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751249AbaA1HzJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Jan 2014 02:55:09 -0500
 In-Reply-To: <nsxbnyxii32.fsf@closure.home.lan>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-HI,
-
-Can you please add my account to the list? thanks.
-zwu.kernel@gmail.com
-
-On Mon, Jan 27, 2014 at 11:02 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+On Mon, Jan 27, 2014 at 8:32 PM, Theodore Ts'o <tytso@mit.edu> wrote:
 > I've been putting together a list of potential work items that would
 > help improve Linux's support for SMR drives.
 >
@@ -44,9 +39,9 @@ On Mon, Jan 27, 2014 at 11:02 PM, Theodore Ts'o <tytso@mit.edu> wrote:
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
+Hi Ted,
 
+Can you please add rohan.puri15@gmail.com ?
 
--- 
-Regards,
-
-Zhi Yong Wu
+Thanks,
+Rohan
