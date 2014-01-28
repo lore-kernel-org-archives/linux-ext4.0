@@ -1,40 +1,64 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH v5 00/22] Rewrite XIP code and add XIP support to ext4
-Date: Tue, 28 Jan 2014 17:06:52 +1100
-Message-ID: <20140128060652.GZ13997@dastard>
-References: <cover.1389779961.git.matthew.r.wilcox@intel.com>
- <20140123090133.GR13997@dastard>
- <100D68C7BA14664A8938383216E40DE04061DF33@FMSMSX114.amr.corp.intel.com>
+From: Jaegeuk Kim <jaegeuk.kim@samsung.com>
+Subject: Re: SMR Project List
+Date: Tue, 28 Jan 2014 15:17:43 +0900
+Message-ID: <1390889863.25542.58.camel@kjgkr>
+References: <nsxbnyxii32.fsf@closure.home.lan>
+Reply-To: jaegeuk.kim@samsung.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"linux-mm@kvack.org" <linux-mm@kvack.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "Wilcox, Matthew R" <matthew.r.wilcox@intel.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <100D68C7BA14664A8938383216E40DE04061DF33@FMSMSX114.amr.corp.intel.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mailout1.samsung.com ([203.254.224.24]:23335 "EHLO
+	mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750893AbaA1GTL convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Jan 2014 01:19:11 -0500
+In-reply-to: <nsxbnyxii32.fsf@closure.home.lan>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 23, 2014 at 12:12:43PM +0000, Wilcox, Matthew R wrote:
-> Are you hitting the same problems with ext4 fsck that we did?  Version 1.42.8 reports spurious corruption.  From the 1.42.9 changelog:
-> 
->   * Fixed a regression introduced in 1.42.8 which would cause e2fsck to
->     erroneously report uninitialized extents past i_size to be invalid.
+2014-01-27 (=EC=9B=94), 10:02 -0500, Theodore Ts'o:
+> I've been putting together a list of potential work items that would
+> help improve Linux's support for SMR drives.
+>=20
+> Currently it's for brain storming purposes only, but later on we migh=
+t
+> use this so we can better coordinate efforts across engineers at
+> different companies, in terms of avoiding duplicating work and making
+> sure we understand dependencies and gaps.
+>=20
+> My intention is to have this to be a community-edited document.  If y=
+ou
+> are interested in making any changes, please let me know and send me =
+a
+> Google account id (i.e., GMail address, etc.).  Anyone can make comme=
+nts
+> on the spreadsheet, so if you'd like to do that, feel free.
+>=20
+> Cheers!
+>=20
+>                                                 - Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdev=
+el" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Don't think so - I'm running 1.42.9 on my test VM.
+Hi Ted,
 
-Cheers,
+Could you please add my account to the list?
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+jaegeuk.kim@gmail.com
+
+Thank you~
+
+--=20
+Jaegeuk Kim
+Samsung
 
 --
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
