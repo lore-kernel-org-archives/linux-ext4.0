@@ -1,89 +1,77 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [Lsf-pc] [LSF/MM TOPIC] Use generic FS in virtual environments
- challenges and solutions
-Date: Wed, 29 Jan 2014 16:37:46 +0100
-Message-ID: <20140129153746.GA14526@quack.suse.cz>
-References: <87zjmekgdh.fsf@openvz.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: same ext4 file system corruption on different machines
+Date: Wed, 29 Jan 2014 12:38:26 -0500
+Message-ID: <20140129173826.GA30419@thunk.org>
+References: <1390999955.2601.22.camel@snow.station>
+ <1391000743.2601.26.camel@snow.station>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: lsf-pc@lists.linux-foundation.org, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	Konstantin Khorenko <khorenko@parallels.com>,
-	Pavel Emelianov <xemul@parallels.com>
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:53585 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751867AbaA2Phu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 29 Jan 2014 10:37:50 -0500
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Luca Ognibene <luca.ognibene@gmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <87zjmekgdh.fsf@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1391000743.2601.26.camel@snow.station>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-  Hello,
+On Wed, Jan 29, 2014 at 02:05:43PM +0100, Luca Ognibene wrote:
+> I say "same ext4 file system corruption" because e2fsck reports errors
+> on inodes around 127233 on all file systems.a I'm not sure about the
+> syslog errors because i have syslog logs for only the latest faulty
+> partition.
 
-On Wed 29-01-14 18:32:58, Dmitry Monakhov wrote:
-> Number of virtual environment/container solutions are grow rapidly, here
-> is just small list of well known names (qemu/kvm, VMware, openvz, LXC,
-> etc) There are two main challenges any VE solution should overcome: 1)
-> Minimize Guest OS modification (ideally run unmodified binaries) 2)
-> Resource sharing between several VE contexts (mem,cpu,disk) There are
-> plenty of advanced algorithms for CPU and memory sharing between VEs.
-> There are no many effective virtualization schemes for disk at the
-> moment.
-> 
-> OpenVZ project has interesting experience in fs/disk virtualization.
-> I want to propose three topics about fs/disk virtualization:
-> 
-> 1) Effective space allocation scheme aka "Thin provision" [1]
->    Generic filesystem tries to spawn all it's data across whole disk.
->    In case of virtual images this result continuous VImage growth
->    during FS activity even if actual FS disk usage is low.
-> 
->    We have done some research and modified ext4 block allocator
->    which allow us to reduce VImage swelling effect, I would like to
->    discuss our finding's.
-  That is interesting. Generally some of that work might be of general
-interest because it might reduce free space fragmentation. OTOH there's a
-question whether it doesn't introduce more file fragmentation... I'd also
-note that we can naturally communicate to the host that we don't need some
-blocks anymore using FSTRIM framework and the host can punch unnecessary
-blocks from the image file. So that would be a solution to growing image
-files not requiring fs modifiction.
+The e2fsck output shows that all of the inodes in a tight sequential
+range around 127233 are getting corrupted.  That implies that a
+specific block is getting corrupted.  You can see which block by using
+the imap command in debugfs:
 
-> 2) Space reclamation FS/disk shrinking
->    FS/disk growth is relatively simple operation most disk images and FS allow
->    online grow [2], but shrink is very heavyweight operation. I would like
->    to discuss some tricks how to make offline/online shrink less intrusive.
-> 
-> 3) Filesystem error detection and correction
->    At this moment most filesystem may detect internal errors and perform
->    basic actions(panic,remount_ro) but this reaction is not suitable
->    for virtual environment because HardwareNode should continue to
->    operate and fix dedicated VE as soon as possible.
->    For this purpose it is reasonable to:
->    A) Implement fs event notification API similar to UEVENTs for devices or
->       quota event API. I would like to discuss this API.
-  It was you or someone else who already raised this at linux-fsdevel
-mailing list?
+# debugfs -R "imap <12345>" /dev/sda3
+debugfs 1.42.9 (28-Dec-2013)
+Inode 12345 is part of block group 1
+      located at block 1828, offset 0x0800
 
->    B) Reduce fsck time. Theodore Tso have announced initiative to implement
->       ffck for ext4 [3]. I want to discuss perspectives of design and
->       implementation online fsck for ext4.
-  Well, this comes up every once in a while and the answer is always the
-same. Checking might be reasonably doable but comes almost for free when
-using LVM snapshots and doing fsck on the snapshot. Fixing read-write
-filesystem - good luck.
+The fact that the corruption is so consistenth is highly suspicious.
+It tends to rule out hardware errrors, but it tends to also rule out
+most kernel bugs.  If it's caused by some race condition, or wild
+pointer dereference, it's highly unlikely it would result in the same
+block getting overwritten with garbage.
 
-> Footnotes: 
-> [1]  http://en.wikipedia.org/wiki/Thin_provisioning
-> 
-> [2]  http://openvz.org/Ploop
-> 
-> [3]  http://marc.info/?l=linux-ext4&m=138661211607779&w=2
+It might be worthwhile to try using the block_dump command, but that's
+not in the 1.42 version of e2fsprogs.  You'd have to upgrade to a
+newer version of e2fsprogs, or find some other block editor that
+understands 4k block numbers.  For example:
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+502# debugfs /dev/sda3
+debugfs 1.42.9 (28-Dec-2013)
+debugfs:  imap <11>
+Inode 11 is part of block group 0
+      located at block 1057, offset 0x0a00
+debugfs:  bd 1057
+0000  0000 0000 0000 0000 3650 6951 3650 6951  ........6PiQ6PiQ
+0020  3650 6951 0000 0000 0000 0000 0000 0000  6PiQ............
+0040  0000 0000 0000 0000 0000 0000 0000 0000  ................
+*
+0400  ed41 0000 0010 0000 76f5 e852 2797 e252  .A......v..R'..R
+0420  2797 e252 0000 0000 0000 2400 0800 0000  '..R......$.....
+0440  0000 0800 4201 0000 0af3 0100 0400 0000  ....B...........
+0460  0000 0000 0000 0000 0100 0000 2124 0000  ............!$..
+0500  0000 0000 0000 0000 0000 0000 0000 0000  ................
+*
+0600  1c00 0000 d08b 1ed0 d08b 1ed0 f426 f411  .............&..
+0620  3650 6951 0000 0000 0000 0000 0000 02ea  6PiQ............
+0640  0706 4400 0000 0000 1c00 0000 0000 0000  ..D.............
+0660  7365 6c69 6e75 7800 0000 0000 0000 0000  selinux.........
+0700  0000 0000 0000 0000 0000 0000 0000 0000  ................
+*
+0740  0000 0000 7379 7374 656d 5f75 3a6f 626a  ....system_u:obj
+0760  6563 745f 723a 726f 6f74 5f74 3a73 3000  ect_r:root_t:s0.
+1000  0000 0000 0000 0000 0000 0000 0000 0000  ................
+ ...
+
+Do this *before* you allow e2fsck to fix the file system.  It may be
+that you'll see something that will identify the source of where the
+data which is corrupting the inode table.
+
+Cheers,
+
+					- Ted
