@@ -1,52 +1,45 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: [PATCH] xfstests: avoid ext4/306 failures caused by incompatible
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] xfstests: avoid ext4/306 failures caused by incompatible
  mount options
-Date: Wed, 29 Jan 2014 15:45:02 -0500
-Message-ID: <20140129204502.GC2165@wallace>
+Date: Wed, 29 Jan 2014 16:38:38 -0500
+Message-ID: <20140129213838.GF30419@thunk.org>
+References: <20140129204502.GC2165@wallace>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: xfs@oss.sgi.com
+Cc: xfs@oss.sgi.com, linux-ext4@vger.kernel.org, esandeen@redhat.com
+To: Eric Whitney <enwlinux@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qc0-f173.google.com ([209.85.216.173]:49119 "EHLO
-	mail-qc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751166AbaA2UpI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 29 Jan 2014 15:45:08 -0500
-Received: by mail-qc0-f173.google.com with SMTP id i8so3591353qcq.18
-        for <linux-ext4@vger.kernel.org>; Wed, 29 Jan 2014 12:45:08 -0800 (PST)
+Received: from imap.thunk.org ([74.207.234.97]:52588 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751268AbaA2Vit (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 29 Jan 2014 16:38:49 -0500
 Content-Disposition: inline
+In-Reply-To: <20140129204502.GC2165@wallace>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext4/306 will fail when mounting the ext3 file system it creates if an
-ext3-incompatible mount option is applied by _scratch_mount.  This can
-happen if EXT_MOUNT_OPTIONS is defined appropriately in the test
-environment.  For example, the block_validity option is commonly used
-to enhance ext4 testing, and it is not supported by ext3.  Fix this by
-not including any mount options defined by the test environment.
+On Wed, Jan 29, 2014 at 03:45:02PM -0500, Eric Whitney wrote:
+> ext4/306 will fail when mounting the ext3 file system it creates if an
+> ext3-incompatible mount option is applied by _scratch_mount.  This can
+> happen if EXT_MOUNT_OPTIONS is defined appropriately in the test
+> environment.  For example, the block_validity option is commonly used
+> to enhance ext4 testing, and it is not supported by ext3.  Fix this by
+> not including any mount options defined by the test environment.
 
-Signed-off-by: Eric Whitney <enwlinux@gmail.com>
----
- tests/ext4/306 | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+I'm not sure I understand why the test is insisting that the file
+system be mounted using ext3.  If the file system is created without
+the extents flag, all of the files will be created using indirect
+blocks, and fundamentally what this test is getting at is that after
+we grow the file system using resize2fs, the new blocks are available
+to be allocated and attached to an indirect block file.
 
-diff --git a/tests/ext4/306 b/tests/ext4/306
-index 398c4c0..e59c8ed 100755
---- a/tests/ext4/306
-+++ b/tests/ext4/306
-@@ -52,9 +52,10 @@ grep -q ext3 /proc/filesystems || _notrun "This test requires ext3 support"
- 
- rm -f $seqres.full
- 
--# Make a small ext3 fs, (extents disabled) & mount it
-+# Make a small ext3 fs, (extents disabled)
- yes | mkfs.ext3 $SCRATCH_DEV 512m >> $seqres.full 2>&1
--_scratch_mount -t ext3 || _fail "couldn't mount fs as ext3"
-+# Mount it without _scratch_mount to avoid any ext3-incompatible mount options
-+_mount -t ext3 $SCRATCH_DEV $SCRATCH_MNT || _fail "couldn't mount fs as ext3"
- # Create a small non-extent-based file
- echo "Create 1m testfile1"
- $XFS_IO_PROG -f $SCRATCH_MNT/testfile1 -c "pwrite 0 1m" | _filter_xfs_io
--- 
-1.8.3.2
+We can do this by using ext4; I'm not sure why this test is trying to
+use ext3 to set up the test flie system.  It might be better to get
+rid of the requirement to create the file system using ext3, since it
+will make the test runnable even if the ext3 file system hasn't been
+configured into the system and CONFIG_EXT23_AS_EXT4 is not enabled.
 
+IIRC, Eric Sandeen wrote this test --- Eric, am I missing some reason
+why it was necessary to use ext3 here?
+
+					- Ted
