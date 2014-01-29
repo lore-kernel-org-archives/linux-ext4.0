@@ -1,189 +1,60 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC] A draft for making ext4 support project quota
-Date: Wed, 29 Jan 2014 11:53:51 +0100
-Message-ID: <20140129105351.GA8749@quack.suse.cz>
-References: <20140128064248.GA8653@gmail.com>
- <20140128143514.GB13676@quack.suse.cz>
- <20140129034824.GA12757@gmail.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [LSF/MM TOPIC] Use generic FS in virtual environments challenges and solutions
+Date: Wed, 29 Jan 2014 18:32:58 +0400
+Message-ID: <87zjmekgdh.fsf@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>, xfs@oss.sgi.com,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Dmitry Monakhov <dmonakhov@openvz.org>,
-	Li Xi <pkuelelixi@gmail.com>,
-	Dave Chinner <david@fromorbit.com>, Ben Myers <bpm@sgi.com>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:47148 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751231AbaA2Kxy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 29 Jan 2014 05:53:54 -0500
-Content-Disposition: inline
-In-Reply-To: <20140129034824.GA12757@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Pavel Emelianov <xemul@parallels.com>,
+	Konstantin Khorenko <khorenko@parallels.com>
+To: lsf-pc@lists.linux-foundation.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed 29-01-14 11:48:25, Zheng Liu wrote:
-> On Tue, Jan 28, 2014 at 03:35:14PM +0100, Jan Kara wrote:
-> > On Tue 28-01-14 14:42:49, Zheng Liu wrote:
-> > > Hi all,
-> > > 
-> > > Here is a draft about ext4 project quota.  After discussed in another
-> > > thread [1], I believe that we have reached a consensus for supporting
-> > > project quota in ext4 and keep consistency with xfs.  Thus I write this
-> > > draft.  As always, comments, suggestions and ideas are welcome.
-> > > 
-> > > 1. http://www.spinics.net/lists/linux-ext4/msg41275.html
-> > > 
-> > >                    Ext4 Project Quota (ver. 0.10)
-> > > 
-> > > Goal
-> > > ====
-> > > 
-> > > The goal is to make ext4 support project quota which keeps the same
-> > > behaviour with xfs.  After adding this new feature, we can support
-> > > directory quota based on it.
-> > > 
-> > > Background
-> > > ==========
-> > > 
-> > > The project quota is a quota mechanism can be used to implement a form
-> > > of directory tree quota, where a specified directory and all of the
-> > > files and subdirectories below it (i.e. a tree) can be restricted to
-> > > using a subset of the available space in the filesystem [2].
-> > > 
-> > > *Note*
-> > > Project quota is not directory quota.  Project quota is an aggregation
-> > > of unrelated inodes with the same id (e.g. project id).  That means that
-> > > some directories without the common parent directory could have the same
-> > > id and are accounted as the same quota.
-> > > 
-> > > Currently xfs has supported project quota several years, and has a mature
-> > > interface to manage project quota on kernel and userspace side.  After
-> > > discusstion we believe that we should use the same quota API for project
-> > > quota on ext4.  Now xfs_quota (userspace tool for managing xfs quota) is
-> > > used to get/set/check project id, which communicates with kernel via
-> > > ioctl(2).  For quota management, xfs_quota uses Q_X* via quotactl(2) to
-> > > manipulate quota.  A XFS_DIFLAG_PROJINHERIT flag is defined in xfs to
-> > > mark a directory that new file and direcotry created in this directory
-> > > will get marked with this flag.
-> > > 
-> > > For project quota, the key issue is how to handle link(2)/rename(2).  We
-> > > summarize the behaviour in xfs as following.
-> > > 
-> > > *Note*
-> > > + unaccounted dir
-> > > x accounted dir
-> > > 
-> > > link(2)
-> > > -------
-> > > 		+		x
-> > > +		ok		error (EXDEV)
-> > > x		ok		error (EXDEV)
-> > > 
-> > > rename(2)
-> > > ---------
-> > > 		+		x
-> > > +		ok		ok
-> > > x		wrong		ok
-> >   So moving unaccounted file/dir into an accounted dir would be OK? How is
-> > that?
-> 
-> Actually xfs will return EXDEV error when we try to move unaccounted
-> file/dir into an accounted dir.  Then userspace tools (e.g. mv(1)) will
-> use create(2)/read(2)/write(2) syscalls to create these files/dirs from
-> scratch, and get the same id from their parent.  So from the result we
-> can see it is ok.  Quote from Dave Chinner's comment: "that quota is
-> accounted for when moving *into* an accounted directory tree, not when
-> moving out of a directory tree."
-  OK, so if we return EXDEV then I'm fine with it. Letting rename succeed
-would be messy (as it would break the tree inheritance of project id).
 
-> > > 2. http://xfs.org/index.php/XFS_FAQ#Q:_Quota:_What.27s_project_quota.3F
-> > > 
-> > > Design
-> > > ======
-> > > 
-> > > Project id
-> > > ----------
-> > > We have two options to store project id in inode.  a) define a new member
-> > > in ext4_inode structure; b) store project id in xattr.
-> > > 
-> > > Option a)
-> > > Pros:
-> > >   * Only need 4 bytes if we use a '__le32' type to store it
-> > > 
-> > > Cons:
-> > >   * Needs to change disk layout of ext4 inode
-> > > 
-> > > Option b)
-> > > Pros:
-> > >   * Don't need to change disk layout
-> > > 
-> > > Cons:
-> > >   * Take 24 bytes
-> >   Cons of the b) is also that it's somewhat messier to get / set project id
-> > from kernel. So I'm more in favor of a). I even think we could introduce
-> > the additional id rather seamlessly using i_extra_i_size but I have to have
-> > a look into details. Anyway I guess we can talk about the options at LSF.
-> 
-> I don't have a bias against both of two options.  It seems that we can
-> introduce a new id seamlessly using i_extra_isize.
-> 
-> 1) old kernel + new disk layout
-> We can read/write new inode because new id doesn't be changed.
-  old kernel + new disk layout will have to be read-only mount. Similarly
-to other quota features.
+Number of virtual environment/container solutions are grow rapidly, here is just
+small list of well known names (qemu/kvm, VMware, openvz, LXC, etc)
+There are two main challenges any VE solution should overcome:
+1) Minimize Guest OS modification (ideally run unmodified binaries)
+2) Resource sharing between several VE contexts (mem,cpu,disk)
+There are plenty of advanced algorithms for CPU and memory sharing
+between VEs. There are no many effective virtualization schemes for
+disk at the moment.
 
-> 2) new kernel + old disk layout
-> We can use EXT4_FITS_IN_INODE to check whether new id can fit into an
-> inode or not.  We will check and report error when we try to enable
-> project quota on a file system with old disk layout in ext4_fill_super().
-  I expect tune2fs will be used to enable project quota feature. So it can
-refuse to enable the feature when inode isn't large enough to allow it.
+OpenVZ project has interesting experience in fs/disk virtualization.
+I want to propose three topics about fs/disk virtualization:
 
-> > > Here I propose to use option *b)* because it is easy for us to support
-> > > project id and we don't need to worry about changing disk layout.  But
-> > > I raise another issue here.  Now inline_data feature has been applied.
-> > > After waiting inline_data feature stable, we'd better enable inline_data
-> > > feature by default when we create a new ext4 file system.  Now the inode
-> > > size is 256 bytes by default, we have 72 bytes extra size to store
-> > > inline data:
-> > >   256 (default inode size) -
-> > > 	156 (ext4_inode) + 4 (ext4_xattr_ibody_header) +
-> > > 	20 (ext4_xattr_entry) + 4 (value) = 72
-> > > 
-> > > If we store project id in xattr, we just leave 48 bytes for inline data.
-> > > I am not sure whether or not it is too small for some users.
-> > > 
-> > > When we store project id in xattr, we will use {get,set}fattr to get/set
-> > > project id.  Thus we don't need to change userspace tool to manipulate
-> > > project id.  Meanwhile a _INHERENT flag for inode needs to be defined to
-> > > indicate that new directory creating in a directory with this flag will
-> > > get the same project id and get marked with this flag.  
-> > > 
-> > > Project quota API
-> > > -----------------
-> > > For keeping consistency with xfs, here I propose to use Q_X* flag to
-> > > communicate with kernel via quotactl(2) as we discussed.  Due to this we
-> > > need to define some callback functions to support Q_X* flag.  That means
-> > > that ext4 will support two quota flag sets for being compatible with
-> > > legacy userspace tools and use the same quotactl API to communicate with
-> > > kernel for project id like xfs.
-> >   We can as well extend current VFS API to cover also project quotas. That
-> > would make things somewhat more logical from userspace POV. 
-> 
-> Your meaning is that we support Q_* flag and Q_X* flag simultaneously?
-  Well, kernel quota interface does support both sets of flags. It calls
-different callbacks for e.g. Q_GETQUOTA and Q_XGETQUOTA though. And for
-ext4 it is more natural to have the callback for Q_GETQUOTA called since
-that's what it uses for user and group quotas. So I meant we can extend
-e.g. Q_GETQUOTA to also handle project quotas, not only user and group
-quotas.
+1) Effective space allocation scheme aka "Thin provision" [1]
+   Generic filesystem tries to spawn all it's data across whole disk.
+   In case of virtual images this result continuous VImage growth
+   during FS activity even if actual FS disk usage is low.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+   We have done some research and modified ext4 block allocator
+   which allow us to reduce VImage swelling effect, I would like to
+   discuss our finding's.
+
+2) Space reclamation FS/disk shrinking
+   FS/disk growth is relatively simple operation most disk images and FS allow
+   online grow [2], but shrink is very heavyweight operation. I would like
+   to discuss some tricks how to make offline/online shrink less intrusive.
+
+3) Filesystem error detection and correction
+   At this moment most filesystem may detect internal errors and perform
+   basic actions(panic,remount_ro) but this reaction is not suitable
+   for virtual environment because HardwareNode should continue to
+   operate and fix dedicated VE as soon as possible.
+   For this purpose it is reasonable to:
+   A) Implement fs event notification API similar to UEVENTs for devices or
+      quota event API. I would like to discuss this API.
+   B) Reduce fsck time. Theodore Tso have announced initiative to implement
+      ffck for ext4 [3]. I want to discuss perspectives of design and
+      implementation online fsck for ext4.
+
+Footnotes: 
+[1]  http://en.wikipedia.org/wiki/Thin_provisioning
+
+[2]  http://openvz.org/Ploop
+
+[3]  http://marc.info/?l=linux-ext4&m=138661211607779&w=2
+
