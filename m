@@ -1,85 +1,68 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
+From: Azat Khuzhin <a3at.mail@gmail.com>
 Subject: Re: FAST paper on ffsck
-Date: Wed, 29 Jan 2014 11:45:38 -0800
-Message-ID: <20140129194538.GC8798@birch.djwong.org>
+Date: Thu, 30 Jan 2014 00:09:07 +0400
+Message-ID: <CAG5DWogJ5kjKJ8-B8DLWUU7Kp-vWdFxoQSdGOgcsh1OJMDNxSA@mail.gmail.com>
 References: <20131209180149.GA6096@thunk.org>
- <20131212053047.GI31386@dastard>
+	<20140129185741.GA8798@birch.djwong.org>
+	<CAG5DWogJ5SiBfpK6k-_4gB-Roea-F+KWTnDm8xRF1Sf-vmOFFw@mail.gmail.com>
+	<20140129194022.GC30419@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com
-To: Dave Chinner <david@fromorbit.com>
+Content-Type: text/plain; charset=UTF-8
+Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
+	"open list:EXT4 FILE SYSTEM" <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:27553 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750851AbaA2Tpq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 29 Jan 2014 14:45:46 -0500
-Content-Disposition: inline
-In-Reply-To: <20131212053047.GI31386@dastard>
+Received: from mail-qc0-f180.google.com ([209.85.216.180]:59267 "EHLO
+	mail-qc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751267AbaA2UJI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 29 Jan 2014 15:09:08 -0500
+Received: by mail-qc0-f180.google.com with SMTP id i17so3597058qcy.11
+        for <linux-ext4@vger.kernel.org>; Wed, 29 Jan 2014 12:09:08 -0800 (PST)
+In-Reply-To: <20140129194022.GC30419@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 12, 2013 at 04:30:47PM +1100, Dave Chinner wrote:
-> On Mon, Dec 09, 2013 at 01:01:49PM -0500, Theodore Ts'o wrote:
-> > Andreas brought up on today's conference call Kirk McKusick's recent
-> > changes[1] to try to improve fsck times for FFS, in response to the
-> > recent FAST paper covering fsck speed ups for ext3, "ffsck: The Fast
-> > Filesystem Checker"[2]
-> > 
-> > [1] http://www.mckusick.com/publications/faster_fsck.pdf
-> > [2] https://www.usenix.org/system/files/conference/fast13/fast13-final52_0.pdf
-> 
-> Interesting - it's all about trying to lay out data to get
-> sequential disk access patterns during scanning (i.e. minimise disk
-> seeks) to reduce fsck runtime. Fine in principle, but I think that
-> it's a dead end you don't want to go down.
-> 
-> Why? Because it's the exact opposite of what you need for SSD based
-> filesystems.  What fsck really needs is to be able to saturate the
-> IOPS capability of the underlying device rather than optimising for
-> bandwidth, and that means driving deep IO queue depths.
-> 
-> e.g I've dropped xfs_repair times on a 100TB test filesystem with 50
-> million inodes from 25 minutes to 5 minutes simply by adding gobs of
-> additional concurrency and ignoring sequential IO optimisations.
-> It's driving bandwidth rates of 200-250MB/s simply due to the IOPS
-> rate it is acheiving, not because I'm optimising IO patterns for
-> sequential IO.
-> 
-> In fact, it dispatches so much IO now that the limitation is not the
-> 60,000 IOPS that it is pulling from the underlying SSDs, but
-> mmap_sem contention caused by 30-odd threads doing concurrent memory
-> allocation to cache and store all the information that is being read
-> from disk...
+On Wed, Jan 29, 2014 at 11:40 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+> On Wed, Jan 29, 2014 at 11:21:07PM +0400, Azat Khuzhin wrote:
+>>
+>> Workload: there are _many_ files that don't deleted, append/full
+>> rewrite/create only, lifetime 1-2 years:
+>>
+>>      8988871 inodes used (2.09%, out of 429817856)
+>>      1012499 non-contiguous files (1.7%)
+>>         2039 non-contiguous directories (0.0%)
+>>              # of inodes with ind/dind/tind blocks: 0/0/0
+>>              Extent depth histogram: 8616444/372389/30
+>> # about 99% blocks in use wrong information, I shrinked fs before
+>> this, to minimal size
+>
+>
+> Shrinking the file system is known to result in really horrible
+> fragmentation.  Part of this is because resize2fs has a really stupid
+> block allocator, but if you're going to shrink the file system to
+> minimal size the results can be truly catastrophic from a file
+> fragmentation point of view.  (Imagine my horror when I was told that
+> Fedora was creating bootable CD-ROM's by creating a large file system
+> image, and then using resize2fs -M to shink it to minimal size.  Not
+> only would the file layout be definitely non-optimal, but worse,
+> CD-ROM drives are not know for fast seek times!)
 
-I've created a couple of experimental patches to speed up e2fsck.  The first
-patch creates a new IO manager that mmap()s the device and simply memcpy()s
-buffers in and out to do IO.  The second patch spawns a bunch of threads that
-split up the work of scanning each block group in the hopes of faulting in all
-the metadata off the disk ahead of the main e2fsck thread.
+Thanks, good to know.
+Anyway, that fs already not used, it was once for migration,
+and on new fs most of files already rewritten.
 
-The upside is that on a cold system, the patches reduce e2fsck running time on
-HDD RAIDs and SSDs by 30-40%.  On a warm system there's not much advantage.
-The downside is that fsck tends to crash when it writes anything out.  I've
-been meaning to send this out after I fix the write crash, but I've been
-occupied with other things at work. :/
+>
+> We can probably make resize2fs smarter in the case where we are
+> shrinking the file system slightly (say, to make room for LVM /thinp
+> metadata when coverting a whole disk file system to one which is being
+> managed via LVM).  But I'm not sure it's ever going to be worth it
+> making resize2fs -M generate an optimal, minimally fragmented file
+> system image.
+>
+>                                          - Ted
 
-There's also a horrible case where on a disk where can_queue = 1, the disk
-mostly just thrashes like mad and takes several times longer than regular fsck.
-I could be wrong about that; I don't know if it's really can_queue = 1 or
-simply having only one disk head that's the cause.
 
-<shrug> I'll clean 'em up and send an RFC.
 
---D
-> 
-> Cheers,
-> 
-> Dave.
-> -- 
-> Dave Chinner
-> david@fromorbit.com
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Respectfully
+Azat Khuzhin
