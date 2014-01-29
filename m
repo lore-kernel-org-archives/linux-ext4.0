@@ -1,60 +1,40 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [LSF/MM TOPIC] Use generic FS in virtual environments challenges and solutions
-Date: Wed, 29 Jan 2014 18:32:58 +0400
-Message-ID: <87zjmekgdh.fsf@openvz.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 69571] size overflow detected in function
+ set_flexbg_block_bitmap
+Date: Wed, 29 Jan 2014 15:00:18 +0000
+Message-ID: <bug-69571-13602-Dg1Qwy4fHm@https.bugzilla.kernel.org/>
+References: <bug-69571-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Pavel Emelianov <xemul@parallels.com>,
-	Konstantin Khorenko <khorenko@parallels.com>
-To: lsf-pc@lists.linux-foundation.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.19.201]:41448 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752435AbaA2PAZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 29 Jan 2014 10:00:25 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id BBEBE201BA
+	for <linux-ext4@vger.kernel.org>; Wed, 29 Jan 2014 15:00:20 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 81C912017E
+	for <linux-ext4@vger.kernel.org>; Wed, 29 Jan 2014 15:00:18 +0000 (UTC)
+In-Reply-To: <bug-69571-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+https://bugzilla.kernel.org/show_bug.cgi?id=69571
 
-Number of virtual environment/container solutions are grow rapidly, here is just
-small list of well known names (qemu/kvm, VMware, openvz, LXC, etc)
-There are two main challenges any VE solution should overcome:
-1) Minimize Guest OS modification (ideally run unmodified binaries)
-2) Resource sharing between several VE contexts (mem,cpu,disk)
-There are plenty of advanced algorithms for CPU and memory sharing
-between VEs. There are no many effective virtualization schemes for
-disk at the moment.
+Alan <alan@lxorguk.ukuu.org.uk> changed:
 
-OpenVZ project has interesting experience in fs/disk virtualization.
-I want to propose three topics about fs/disk virtualization:
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |alan@lxorguk.ukuu.org.uk
+          Component|Scheduler                   |ext4
+           Assignee|mingo@elte.hu               |fs_ext4@kernel-bugs.osdl.or
+                   |                            |g
+            Product|Process Management          |File System
 
-1) Effective space allocation scheme aka "Thin provision" [1]
-   Generic filesystem tries to spawn all it's data across whole disk.
-   In case of virtual images this result continuous VImage growth
-   during FS activity even if actual FS disk usage is low.
-
-   We have done some research and modified ext4 block allocator
-   which allow us to reduce VImage swelling effect, I would like to
-   discuss our finding's.
-
-2) Space reclamation FS/disk shrinking
-   FS/disk growth is relatively simple operation most disk images and FS allow
-   online grow [2], but shrink is very heavyweight operation. I would like
-   to discuss some tricks how to make offline/online shrink less intrusive.
-
-3) Filesystem error detection and correction
-   At this moment most filesystem may detect internal errors and perform
-   basic actions(panic,remount_ro) but this reaction is not suitable
-   for virtual environment because HardwareNode should continue to
-   operate and fix dedicated VE as soon as possible.
-   For this purpose it is reasonable to:
-   A) Implement fs event notification API similar to UEVENTs for devices or
-      quota event API. I would like to discuss this API.
-   B) Reduce fsck time. Theodore Tso have announced initiative to implement
-      ffck for ext4 [3]. I want to discuss perspectives of design and
-      implementation online fsck for ext4.
-
-Footnotes: 
-[1]  http://en.wikipedia.org/wiki/Thin_provisioning
-
-[2]  http://openvz.org/Ploop
-
-[3]  http://marc.info/?l=linux-ext4&m=138661211607779&w=2
-
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
