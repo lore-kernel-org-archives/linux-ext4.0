@@ -1,119 +1,113 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH v5 00/22] Rewrite XIP code and add XIP support to ext4
-Date: Thu, 30 Jan 2014 17:42:30 +1100
-Message-ID: <20140130064230.GG13997@dastard>
-References: <cover.1389779961.git.matthew.r.wilcox@intel.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [Lsf-pc] [LSF/MM TOPIC] Use generic FS in virtual environments challenges and solutions
+Date: Thu, 30 Jan 2014 11:51:20 +0400
+Message-ID: <87wqhhkivb.fsf@openvz.org>
+References: <87zjmekgdh.fsf@openvz.org> <20140129153746.GA14526@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org, linux-ext4@vger.kernel.org
-To: Matthew Wilcox <matthew.r.wilcox@intel.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <cover.1389779961.git.matthew.r.wilcox@intel.com>
-Sender: owner-linux-mm@kvack.org
+Cc: lsf-pc@lists.linux-foundation.org, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	Konstantin Khorenko <khorenko@parallels.com>,
+	Pavel Emelianov <xemul@parallels.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20140129153746.GA14526@quack.suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jan 15, 2014 at 08:24:18PM -0500, Matthew Wilcox wrote:
-> This series of patches add support for XIP to ext4.  Unfortunately,
-> it turns out to be necessary to rewrite the existing XIP support code
-> first due to races that are unfixable in the current design.
+On Wed, 29 Jan 2014 16:37:46 +0100, Jan Kara <jack@suse.cz> wrote:
+>   Hello,
 > 
-> Since v4 of this patchset, I've improved the documentation, fixed a
-> couple of warnings that a newer version of gcc emitted, and fixed a
-> bug where we would read/write the wrong address for I/Os that were not
-> aligned to PAGE_SIZE.
+> On Wed 29-01-14 18:32:58, Dmitry Monakhov wrote:
+> > Number of virtual environment/container solutions are grow rapidly, here
+> > is just small list of well known names (qemu/kvm, VMware, openvz, LXC,
+> > etc) There are two main challenges any VE solution should overcome: 1)
+> > Minimize Guest OS modification (ideally run unmodified binaries) 2)
+> > Resource sharing between several VE contexts (mem,cpu,disk) There are
+> > plenty of advanced algorithms for CPU and memory sharing between VEs.
+> > There are no many effective virtualization schemes for disk at the
+> > moment.
+> > 
+> > OpenVZ project has interesting experience in fs/disk virtualization.
+> > I want to propose three topics about fs/disk virtualization:
+> > 
+> > 1) Effective space allocation scheme aka "Thin provision" [1]
+> >    Generic filesystem tries to spawn all it's data across whole disk.
+> >    In case of virtual images this result continuous VImage growth
+> >    during FS activity even if actual FS disk usage is low.
+> > 
+> >    We have done some research and modified ext4 block allocator
+> >    which allow us to reduce VImage swelling effect, I would like to
+> >    discuss our finding's.
+>   That is interesting. Generally some of that work might be of general
+> interest because it might reduce free space fragmentation. OTOH there's a
+> question whether it doesn't introduce more file fragmentation... I'd also
+That was main question at the beginning. I have tried to implement
+virtual alloc scheme according to number of basic principles:
+Group availability for allocation are depends on:
+ a) current fs data/mdata usage
+ b) allocation request size
+ c) virtual image internal block size.
+ d) virtual image allocation map
+> note that we can naturally communicate to the host that we don't need some
+> blocks anymore using FSTRIM framework and the host can punch unnecessary
+> blocks from the image file. So that would be a solution to growing image
+> files not requiring fs modifiction.
+Yes, ploop already support that, feature is called pcompact. But we have
+discovered that it is not always efficient because small files was
+placed to different virtual blocks in virtual image. I.e. each fs-block
+consumes one image block. This makes (c) very important aspect because
+for most VImage implementations it is relatively big 1-4Mb and
+it can not be reduced because of performance reasons.
+ext4 with modified allocator have shown some promising numbers for
+compilebench workload. 
+> 
+> > 2) Space reclamation FS/disk shrinking
+> >    FS/disk growth is relatively simple operation most disk images and FS allow
+> >    online grow [2], but shrink is very heavyweight operation. I would like
+> >    to discuss some tricks how to make offline/online shrink less intrusive.
+> > 
+> > 3) Filesystem error detection and correction
+> >    At this moment most filesystem may detect internal errors and perform
+> >    basic actions(panic,remount_ro) but this reaction is not suitable
+> >    for virtual environment because HardwareNode should continue to
+> >    operate and fix dedicated VE as soon as possible.
+> >    For this purpose it is reasonable to:
+> >    A) Implement fs event notification API similar to UEVENTs for devices or
+> >       quota event API. I would like to discuss this API.
+>   It was you or someone else who already raised this at linux-fsdevel
+> mailing list?
+Yes. I hope quick brain storm will helps to make it better.
+> 
+> >    B) Reduce fsck time. Theodore Tso have announced initiative to implement
+> >       ffck for ext4 [3]. I want to discuss perspectives of design and
+> >       implementation online fsck for ext4.
+>   Well, this comes up every once in a while and the answer is always the
+> same. Checking might be reasonably doable but comes almost for free when
+> using LVM snapshots and doing fsck on the snapshot. Fixing read-write
+> filesystem - good luck.
+But. What what about merging data from fixed snapshot back to original image?
 
-Looks like there's something fundamentally broken with the patch set
-as it stands. I get this same data corruption on both ext4 and XFS
-with XIP using fsx. It's as basic as it gets - the first read after
-a mmapped write fails to see the data written by mmap:
-
-$ sudo mkfs.xfs -f /dev/ram0
-meta-data=/dev/ram0              isize=256    agcount=4, agsize=256000 blks
-         =                       sectsz=512   attr=2, projid32bit=1
-         =                       crc=0
-data     =                       bsize=4096   blocks=1024000, imaxpct=25
-         =                       sunit=0      swidth=0 blks
-naming   =version 2              bsize=4096   ascii-ci=0 ftype=0
-log      =internal log           bsize=4096   blocks=12800, version=2
-         =                       sectsz=512   sunit=0 blks, lazy-count=1
-realtime =none                   extsz=4096   blocks=0, rtextents=0
-$ sudo mount -o xip /dev/ram0 /mnt/scr
-$ sudo chmod 777 /mnt/scr
-$ ltp/fsx -d -N 1000 -S 0 /mnt/scr/fsx
-Seed set to 3774
-1 mapwrite      0x3db39 thru    0x3ffff (0x24c7 bytes)
-2 mapread       0x2e947 thru    0x33163 (0x481d bytes)
-3 read  0x2e836 thru    0x3cba1 (0xe36c bytes)
-4 punch from 0x2e7 to 0x5c43, (0x595c bytes)
-5 mapwrite      0xcaea thru     0x13ba9 (0x70c0 bytes)
-6 punch from 0x31645 to 0x38d1d, (0x76d8 bytes)
-7 falloc        from 0x24f92 to 0x2f2b7 (0xa325 bytes)
-fallocating to largest ever: 0x171ac
-8 falloc        from 0xbcf1 to 0x171ac (0xb4bb bytes)
-9 read  0x126f thru     0x11136 (0xfec8 bytes)
-READ BAD DATA: offset = 0x126f, size = 0xfec8, fname = /mnt/scr/fsx
-OFFSET  GOOD    BAD     RANGE
-0x caea 0x05f9  0x0000  0x    0
-operation# (mod 256) for the bad data unknown, check HOLE and EXTEND ops
-0x caeb 0xf905  0x0000  0x    1
-operation# (mod 256) for the bad data unknown, check HOLE and EXTEND ops
-0x caec 0x0599  0x0000  0x    2
-operation# (mod 256) for the bad data unknown, check HOLE and EXTEND ops
-0x caed 0x9905  0x0000  0x    3
-operation# (mod 256) for the bad data unknown, check HOLE and EXTEND ops
-0x caee 0x05e8  0x0000  0x    4
-operation# (mod 256) for the bad data unknown, check HOLE and EXTEND ops
-0x caef 0xe805  0x0000  0x    5
-operation# (mod 256) for the bad data unknown, check HOLE and EXTEND ops
-0x caf0 0x0580  0x0000  0x    6
-operation# (mod 256) for the bad data unknown, check HOLE and EXTEND ops
-0x caf1 0x8005  0x0000  0x    7
-operation# (mod 256) for the bad data unknown, check HOLE and EXTEND ops
-0x caf2 0x056c  0x0000  0x    8
-operation# (mod 256) for the bad data unknown, check HOLE and EXTEND ops
-0x caf3 0x6c05  0x0000  0x    9
-operation# (mod 256) for the bad data unknown, check HOLE and EXTEND ops
-0x caf4 0x05ad  0x0000  0x    a
-operation# (mod 256) for the bad data unknown, check HOLE and EXTEND ops
-0x caf5 0xad05  0x0000  0x    b
-operation# (mod 256) for the bad data unknown, check HOLE and EXTEND ops
-0x caf6 0x0539  0x0000  0x    c
-operation# (mod 256) for the bad data unknown, check HOLE and EXTEND ops
-0x caf7 0x3905  0x0000  0x    d
-operation# (mod 256) for the bad data unknown, check HOLE and EXTEND ops
-0x caf8 0x05db  0x0000  0x    e
-operation# (mod 256) for the bad data unknown, check HOLE and EXTEND ops
-0x caf9 0xdb05  0x0000  0x    f
-operation# (mod 256) for the bad data unknown, check HOLE and EXTEND ops
-LOG DUMP (9 total operations):
-1(  1 mod 256): MAPWRITE 0x3db39 thru 0x3ffff   (0x24c7 bytes)
-2(  2 mod 256): MAPREAD  0x2e947 thru 0x33163   (0x481d bytes)
-3(  3 mod 256): READ     0x2e836 thru 0x3cba1   (0xe36c bytes)
-4(  4 mod 256): PUNCH    0x2e7 thru 0x5c42      (0x595c bytes)
-5(  5 mod 256): MAPWRITE 0xcaea thru 0x13ba9    (0x70c0 bytes)  ******WWWW
-6(  6 mod 256): PUNCH    0x31645 thru 0x38d1c   (0x76d8 bytes)
-7(  7 mod 256): FALLOC   0x24f92 thru 0x2f2b7   (0xa325 bytes) INTERIOR
-8(  8 mod 256): FALLOC   0xbcf1 thru 0x171ac    (0xb4bb bytes) INTERIOR ******FFFF
-9(  9 mod 256): READ     0x126f thru 0x11136    (0xfec8 bytes)  ***RRRR***
-Correct content saved for comparison
-(maybe hexdump "/mnt/scr/fsx" vs "/mnt/scr/fsx.fsxgood")
-
-XFS gives a good indication that we aren't doing something correctly
-w.r.t. mapped XIP writes, as trying to fiemap the file ASSERT fails
-with a delayed allocation extent somewhere inside the file after a
-sync. I shall keep digging.
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+---time-axis------------------------------------------------->
+FS0----[Error]---[write-new-data]----------------->X????
+         |                                         |
+FS0-snap \-----[start fsck]-----[errors corrected]-/
+Obviously there are no way how we can merge fixed snapshot to modified filesystem
+So the only option we have after we have discovered error on FS0-snap is
+to umount FS0 and run fsck on it. As result we double disk load, and
+still have big downtime, but what if error was relatively simple (wrong
+group stats, or wrong i_blocks for inode) it is possible to fix it
+online. My proposal is to start a discussion about list issues which can be
+fixed online.
+> 
+> > Footnotes: 
+> > [1]  http://en.wikipedia.org/wiki/Thin_provisioning
+> > 
+> > [2]  http://openvz.org/Ploop
+> > 
+> > [3]  http://marc.info/?l=linux-ext4&m=138661211607779&w=2
+> 
+> 								Honza
+> -- 
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
