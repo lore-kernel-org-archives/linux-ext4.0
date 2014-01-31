@@ -1,88 +1,77 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/2] libext2fs/e2fsck: implement metadata prefetching
-Date: Fri, 31 Jan 2014 08:53:25 -0500
-Message-ID: <20140131135325.GF7118@thunk.org>
-References: <20140130235044.31064.38113.stgit@birch.djwong.org>
- <20140130235058.31064.21096.stgit@birch.djwong.org>
- <45DEEA58-69FD-42EF-BB51-1A8D80000469@dilger.ca>
+From: Eric Whitney <enwlinux@gmail.com>
+Subject: Re: [PATCH] xfstests: avoid ext4/306 failures caused by incompatible
+	mount options
+Date: Fri, 31 Jan 2014 10:47:51 -0500
+Message-ID: <20140131154750.GA2385@wallace>
+References: <20140129204502.GC2165@wallace> <20140129213838.GF30419@thunk.org>
+	<52E9761F.7070903@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:53077 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754151AbaAaNx2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 31 Jan 2014 08:53:28 -0500
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, xfs@oss.sgi.com, Theodore Ts'o <tytso@mit.edu>,
+	Eric Whitney <enwlinux@gmail.com>
+To: sandeen@redhat.com
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <45DEEA58-69FD-42EF-BB51-1A8D80000469@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <52E9761F.7070903@redhat.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jan 31, 2014 at 03:10:00AM -0700, Andreas Dilger wrote:
-> We implemented something like this for a metadata scanning tool called
-> "e2scan".  At the time, the fastest method of prefetching data was
-> posix_fadvise(POSIX_FADV_WILLNEED). We also tried the readahead() syscall. 
+* Eric Sandeen <esandeen@redhat.com>:
+> On 1/29/14, 3:38 PM, Theodore Ts'o wrote:
+> > On Wed, Jan 29, 2014 at 03:45:02PM -0500, Eric Whitney wrote:
+> >> ext4/306 will fail when mounting the ext3 file system it creates if an
+> >> ext3-incompatible mount option is applied by _scratch_mount.  This can
+> >> happen if EXT_MOUNT_OPTIONS is defined appropriately in the test
+> >> environment.  For example, the block_validity option is commonly used
+> >> to enhance ext4 testing, and it is not supported by ext3.  Fix this by
+> >> not including any mount options defined by the test environment.
+> > 
+> > I'm not sure I understand why the test is insisting that the file
+> > system be mounted using ext3.  If the file system is created without
+> > the extents flag, all of the files will be created using indirect
+> > blocks, and fundamentally what this test is getting at is that after
+> > we grow the file system using resize2fs, the new blocks are available
+> > to be allocated and attached to an indirect block file.
+> > 
+> > We can do this by using ext4; I'm not sure why this test is trying to
+> > use ext3 to set up the test flie system.  It might be better to get
+> > rid of the requirement to create the file system using ext3, since it
+> > will make the test runnable even if the ext3 file system hasn't been
+> > configured into the system and CONFIG_EXT23_AS_EXT4 is not enabled.
+> > 
+> > IIRC, Eric Sandeen wrote this test --- Eric, am I missing some reason
+> > why it was necessary to use ext3 here?
+> 
+> Nope.  Tomayto, tomahto - I think the original report had trouble with
+> an ext3 filesystem, so that's how I wrote the testcase.
+> 
+> It could be fixed either way, I think.
+> 
 
-I think using posix_fadvise() and readahead() is probably the best way
-to go, at least initially.  If we can avoid needing to add an extra
-I/O manager, I think that would be better.
+If using ext3 doesn't add any additional value to the test, using ext4
+instead certainly simplifies it.  I'll post a V2 shortly.
 
-As far as a single HDD prefetching its brains out, it would be good if
-we can figure out a way to enable the right amount of prefetching
-automatically.  Something that might be worth trying is to instrument
-unix_io so we can measure the time waiting for disk I/O, and then
-compare that to the wall clock time running on a single disk file
-system, without doing any prefetching.
+Thanks,
+Eric
 
-If there isn't any delta, then the only way prefetching could help us
-is if we can optimize the head motion and remove some seeks (i.e., if
-we know that we will need block #23 in the future, and we get a
-request for block #24, we can read both at one go).  If we measure the
-difference between time spent for disk I/O during each e2fsck pass,
-and wall clock time during each I/O, we'll also know which e2fsck pass
-would benefit the most from smarter prefetching.
 
-What that might imply is that for HDD's --- which is where we would
-want something like this the most --- what we might want to do is to
-create a list of blocks that e2fsck knows it will need next (for
-example, during pass 1, we are collecting the blocks for directories,
-so we could use that to populate the prefetch list for pass 2.
+> -Eric
+> 
+> > 
+> > 					- Ted
+> > 
+> 
 
-Something that we might need to go to in the future is instead of
-using mmap(), to maintain our own explicit buffer cache inside
-unix_io, and use direct I/O to avoid caching the disk blocks twice.
-Then when we use a single-threaded disk prefetcher, managed by the
-unix_io, it will know when a particular I/O request has completed, and
-more importantly, if there is a synchronous read request coming in
-from main body of the program, it can stop prefetching and allow the
-higher priority read to complete.  We can also experiment with how
-many threads might make sense --- even with an HDD, using multiple
-threads so that we can take advantage of NCQ might still be a win.
-
-One other thought.  The location of the dynamic metadata blocks (i.e.,
-directory and extent tree blocks) is a hint that we could potentially
-store in the file system.  Since it is only for optimization purposes,
-e2fsck can try to find it in the file system, and if it is there, and
-it looks valid it can use it.  If the file system is too corrupted, or
-the data looks suspect, it can always ignore the cached hints.
-
-Finally, if we are managing our own buffer cache, we should consider
-adding a bforget method to the I/O manager.  That way e2fsck can give
-hints to the caching layer that a block isn't needed any more.  If it
-is in the cache, it can be dropped, to free memory, and if it is still
-on the to-be-prefetched list it should also be dropped.  (Of course,
-if a block is on the to-be-prefetched list, and a synchronous read
-request comes in for that block, we should have dropped it from the
-to-be-prefetched list at that point.)  The main use for having a
-bforget method is for the most part, once we are done scanning a
-non-directory extent tree block, we won't be needing it again.  
-
-Slightly more complex (so it might not be worth it), we could also
-drop inode table blocks from our buffer cache that do not contain any
-directory inodes once we are done scanning them in pass 1.
-
-Cheers,
-
-						- Ted
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
