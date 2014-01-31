@@ -1,77 +1,65 @@
 From: Eric Whitney <enwlinux@gmail.com>
-Subject: Re: [PATCH] xfstests: avoid ext4/306 failures caused by incompatible
-	mount options
-Date: Fri, 31 Jan 2014 10:47:51 -0500
-Message-ID: <20140131154750.GA2385@wallace>
-References: <20140129204502.GC2165@wallace> <20140129213838.GF30419@thunk.org>
-	<52E9761F.7070903@redhat.com>
+Subject: [PATCH v2] xfstests: avoid ext4/306 failures caused by incompatible
+ mount options
+Date: Fri, 31 Jan 2014 10:53:32 -0500
+Message-ID: <20140131155332.GB2385@wallace>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, xfs@oss.sgi.com, Theodore Ts'o <tytso@mit.edu>,
-	Eric Whitney <enwlinux@gmail.com>
-To: sandeen@redhat.com
-Return-path: <xfs-bounces@oss.sgi.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: xfs@oss.sgi.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qc0-f171.google.com ([209.85.216.171]:64620 "EHLO
+	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753976AbaAaPxf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 31 Jan 2014 10:53:35 -0500
+Received: by mail-qc0-f171.google.com with SMTP id n7so7395084qcx.30
+        for <linux-ext4@vger.kernel.org>; Fri, 31 Jan 2014 07:53:35 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <52E9761F.7070903@redhat.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-* Eric Sandeen <esandeen@redhat.com>:
-> On 1/29/14, 3:38 PM, Theodore Ts'o wrote:
-> > On Wed, Jan 29, 2014 at 03:45:02PM -0500, Eric Whitney wrote:
-> >> ext4/306 will fail when mounting the ext3 file system it creates if an
-> >> ext3-incompatible mount option is applied by _scratch_mount.  This can
-> >> happen if EXT_MOUNT_OPTIONS is defined appropriately in the test
-> >> environment.  For example, the block_validity option is commonly used
-> >> to enhance ext4 testing, and it is not supported by ext3.  Fix this by
-> >> not including any mount options defined by the test environment.
-> > 
-> > I'm not sure I understand why the test is insisting that the file
-> > system be mounted using ext3.  If the file system is created without
-> > the extents flag, all of the files will be created using indirect
-> > blocks, and fundamentally what this test is getting at is that after
-> > we grow the file system using resize2fs, the new blocks are available
-> > to be allocated and attached to an indirect block file.
-> > 
-> > We can do this by using ext4; I'm not sure why this test is trying to
-> > use ext3 to set up the test flie system.  It might be better to get
-> > rid of the requirement to create the file system using ext3, since it
-> > will make the test runnable even if the ext3 file system hasn't been
-> > configured into the system and CONFIG_EXT23_AS_EXT4 is not enabled.
-> > 
-> > IIRC, Eric Sandeen wrote this test --- Eric, am I missing some reason
-> > why it was necessary to use ext3 here?
-> 
-> Nope.  Tomayto, tomahto - I think the original report had trouble with
-> an ext3 filesystem, so that's how I wrote the testcase.
-> 
-> It could be fixed either way, I think.
-> 
+ext4/306 will fail when mounting the ext3 file system it creates if an
+ext3-incompatible mount option is applied by _scratch_mount.  This can
+happen if EXT_MOUNT_OPTIONS is defined appropriately in the test
+environment.  For example, the block_validity option is commonly used
+to enhance ext4 testing, and it is not supported by ext3.
 
-If using ext3 doesn't add any additional value to the test, using ext4
-instead certainly simplifies it.  I'll post a V2 shortly.
+Fix this by instead creating an ext4 file system without extents as a
+functionally equivalent substitute.  This will also eliminate a
+dependency for ext3 support on the test system.
 
-Thanks,
-Eric
+Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+---
+ tests/ext4/306 | 21 +++++++--------------
+ 1 file changed, 7 insertions(+), 14 deletions(-)
 
-
-> -Eric
-> 
-> > 
-> > 					- Ted
-> > 
-> 
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+diff --git a/tests/ext4/306 b/tests/ext4/306
+index 398c4c0..9559cf2 100755
+--- a/tests/ext4/306
++++ b/tests/ext4/306
+@@ -45,29 +45,22 @@ _supported_os Linux
+ 
+ _require_scratch
+ 
+-# This needs to mount ext3; might require ext3 driver, or ext4
+-# might handle it itself.  Find out if we have it one way or another.
+-modprobe ext3 > /dev/null 2>&1
+-grep -q ext3 /proc/filesystems || _notrun "This test requires ext3 support"
+-
+ rm -f $seqres.full
+ 
+-# Make a small ext3 fs, (extents disabled) & mount it
+-yes | mkfs.ext3 $SCRATCH_DEV 512m >> $seqres.full 2>&1
+-_scratch_mount -t ext3 || _fail "couldn't mount fs as ext3"
++# Make a small ext4 fs with extents disabled & mount it
++yes | mkfs.ext4 -O ^extents $SCRATCH_DEV 512m >> $seqres.full 2>&1
++_scratch_mount || _fail "couldn't mount fs"
++
+ # Create a small non-extent-based file
+ echo "Create 1m testfile1"
+ $XFS_IO_PROG -f $SCRATCH_MNT/testfile1 -c "pwrite 0 1m" | _filter_xfs_io
++
++# Create a large non-extent-based file filling the fs; this will run out & fail
+ echo "Create testfile2 to fill the fs"
+-# A large non-extent-based file filling the fs; this will run out & fail
+ $XFS_IO_PROG -f $SCRATCH_MNT/testfile2 -c "pwrite 0 512m" | _filter_xfs_io
