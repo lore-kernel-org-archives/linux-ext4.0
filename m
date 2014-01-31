@@ -1,36 +1,114 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 56091] kernel oops when copying data to ext4 fs
-Date: Sat, 01 Feb 2014 01:01:56 +0000
-Message-ID: <bug-56091-13602-wfgksN0hzz@https.bugzilla.kernel.org/>
-References: <bug-56091-13602@https.bugzilla.kernel.org/>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH v5 00/22] Rewrite XIP code and add XIP support to ext4
+Date: Sat, 1 Feb 2014 00:04:22 +1100
+Message-ID: <20140131130422.GL13997@dastard>
+References: <cover.1389779961.git.matthew.r.wilcox@intel.com>
+ <20140130064230.GG13997@dastard>
+ <20140130092537.GH13997@dastard>
+ <20140131030652.GK13997@dastard>
+ <alpine.OSX.2.00.1401302227450.29315@scrumpy>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:33247 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932767AbaBABB6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 31 Jan 2014 20:01:58 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id D124C2026C
-	for <linux-ext4@vger.kernel.org>; Sat,  1 Feb 2014 01:01:57 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 7913E20263
-	for <linux-ext4@vger.kernel.org>; Sat,  1 Feb 2014 01:01:56 +0000 (UTC)
-In-Reply-To: <bug-56091-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Matthew Wilcox <matthew.r.wilcox@intel.com>,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org, linux-ext4@vger.kernel.org
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <alpine.OSX.2.00.1401302227450.29315@scrumpy>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=56091
+On Thu, Jan 30, 2014 at 10:45:26PM -0700, Ross Zwisler wrote:
+> On Fri, 31 Jan 2014, Dave Chinner wrote:
+> > The read/write path is broken, Willy. We can't map arbitrary byte
+> > ranges to the DIO subsystem. I'm now certain that the data
+> > corruptions I'm seeing are in sub-sector regions from unaligned IOs
+> > from userspace. We still need to use the buffered IO path for non
+> > O_DIRECT IO to avoid these problems. I think I've worked out a way
+> > to short-circuit page cache lookups for the buffered IO path, so
+> > stay tuned....
+> 
+> Hi Dave,
+> 
+> I found an issue that would cause reads to return bad data earlier this week,
+> and sent a response to "[PATCH v5 22/22] XIP: Add support for unwritten
+> extents".  Just wanted to make sure you're not running into that issue.  
 
---- Comment #3 from shakilk1729@gmail.com <shakilk1729@gmail.com> ---
-Not able to reproduce this in kernel 3.13. Does this mean we have to still fix
-this in 3.8.5
+After having a couple of good strong bourbons, It came to me about
+15 minutes ago that I've had a case of forest, trees and bears
+today. What I said above is most likely wrong and I think there's
+probably a simple reason for the bug I'm seeing: xip_io() does
+not handle the buffer_new(bh) case correctly. i.e. this case:
 
-Regards
-Shakil
 
+	  newly allocated buffer
+	+-------------------------------+
+	+-zero-+----user data----+-zero-+
+
+i.e. it doesn't zero the partial head and tail of the block
+correctly if the block has just been allocated. If the block has
+just been allocated, get_block() is supposed to return the bh marked
+as buffer_new() to indicate to the caller it needs to have regions
+that aren't covered with data zeroed.
+
+Yes, makes fsx run for more than 36 operations. But it only makes it
+to 79 operations, and then....
+
+# xfs_io -tf -c "truncate 18k" -c "pwrite 19k 21k" -c "pread -v 18k 2k" -c "bmap -vp" /mnt/scr/foo
+....
+EXT: FILE-OFFSET      BLOCK-RANGE      AG AG-OFFSET        TOTAL FLAGS
+   0: [0..31]:         hole                                    32
+   1: [32..39]:        120..127          0 (120..127)           8 10000
+   2: [40..71]:        128..159          0 (128..159)          32 00000
+   3: [72..79]:        216..223          0 (216..223)           8 00000
+
+Ok, it's leaving an unwritten extent where it shouldn't be. That
+explains the zeros instead of data. I'll look further at it in the
+morning now I think I'm on the right track...
+
+> I'm also currently chasing a write corruption where we lose the data that we
+> had just written because ext4 thinks the portion of the extent we had just
+> written needs to be converted from an unwritten extent to a written extent, so
+> it clears the data to all zeros via:
+> 
+> 	xip_clear_blocks+0x53/0xd7
+> 	ext4_map_blocks+0x306/0x3d9 [ext4]
+> 	jbd2__journal_start+0xbd/0x188 [jbd2]
+> 	ext4_convert_unwritten_extents+0xf9/0x1ac [ext4]
+> 	ext4_direct_IO+0x2ca/0x3a5 [ext4]
+> 
+> This bug can be easily reproduced by fallocating an empty file up to a page,
+> and then writing into that page.  The first write is essentially lost, and the
+> page remains all zeros.  Subsequent writes succeed.
+
+I don't think that's what I'm seeing. As it is, ext4 should not
+be zeroing the block during unwritten extent conversion. This looks
+to have been added
+to make the xip_fault() path work, but I think it's wrong. What I
+had to do for XFS in the xip_fault() path to ensure that we returned
+allocated, zeroed blocks from xfs_get_blocks_xip() was:
+
+	allocate as unwritten
+	xip_clear_blocks
+	mark extent as written
+
+so that it behaves like the direct IO path in terms of the
+"allocate, write data, mark unwritten" process. But for direct IO,
+xip_io() needs to be doing the block zeroing in response to
+get_blocks setting buffer_new(bh) after allocating the unwritten
+extent. Then it can copy in the data and call endio to convert it to
+written....
+
+Cheers,
+
+Dave.
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Dave Chinner
+david@fromorbit.com
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
