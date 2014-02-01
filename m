@@ -1,56 +1,175 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [RFC PATCH v2 0/3] e2fsck metadata prefetch
-Date: Sat, 01 Feb 2014 02:37:21 -0800
-Message-ID: <20140201103721.9011.5971.stgit@birch.djwong.org>
+Subject: [PATCH 1/3] ext2fs: add readahead method to improve scanning
+Date: Sat, 01 Feb 2014 02:37:27 -0800
+Message-ID: <20140201103727.9011.91402.stgit@birch.djwong.org>
+References: <20140201103721.9011.5971.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org,
+	Andreas Dilger <andreas.dilger@intel.com>
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:37322 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:37333 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751413AbaBAKh0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 1 Feb 2014 05:37:26 -0500
+	with ESMTP id S1751413AbaBAKhe (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 1 Feb 2014 05:37:34 -0500
+In-Reply-To: <20140201103721.9011.5971.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is the second go at a patchset that tries to reduce e2fsck run
-times by pre-loading ext4 metadata concurrent with e2fsck execution.
-The first patch is Andreas Dilger's patch to add a readahead method to
-the IO manager interface.  The second patch extends libext2fs with a
-function call to invoke readahead on a list of blocks, and a second
-call that invokes readahead on the bitmaps and inode tables of a bunch
-of groups.  The third patch enhances e2fsck to start threads that call
-the readahead functions.
+=46r=C3=B8m: Andreas Dilger <adilger@whamcloud.com>
 
-Crude testing has been done via:
-# echo 3 > /proc/sys/vm/drop_caches
-# READAHEAD=1 /usr/bin/time ./e2fsck/e2fsck -Fnfvtt /dev/XXX
+Add a readahead method for prefetching ranges of disk blocks.
+This is useful for inode table scanning, and other large
+contiguous ranges of blocks, and may also prove useful for
+random block prefetch, since it will allow reordering of the
+IO without waiting synchronously for the reads to complete.
 
-So far in my crude testing on a cold system, I've seen about a ~20%
-speedup on a SSD, a ~40% speedup on a 3x RAID1 SATA array, and maybe
-a 5% speedup on a single-spindle SATA disk.  On a single-queue USB
-HDD, performance doesn't change much.  It looks as though in general,
-single-spindle HDDs will not benefit, which doesn't surprise me.  The
-SSD numbers are harder to quantify since they're already fast.
+It is currently using the posix_fadvise(POSIX_FADV_WILLNEED)
+interface, as this proved most efficient during our testing
 
-This second version of the patch uses posix_fadvise to hint to the
-kernel that it really wants to have the blocks loaded in the page
-cache ready to go.  This is much easier to manage, because all we need
-to do is throw a list of blocks at it and let it go... and if we're
-careful not to change any FS state, we can easily offload the
-readahead work to a thread without weird crashes.
+[darrick.wong@oracle.com]
+Make the arguments to the readahead function take the same
+ULL values as the other IO functions, and return an
+appropriate error code when fadvise isn't available.
 
-Note that this draft code does little to prevent page cache thrashing.
-It doesn't hold back from issuing a large flood of IO.  It's not clear
-if it's better to try to constrain how far the prefetcher gets ahead
-of the checker code, or better to let the kernel sort it out.
+Signed-off-by: Andreas Dilger <andreas.dilger@intel.com>
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ lib/ext2fs/ext2_io.h    |    4 ++++
+ lib/ext2fs/io_manager.c |    9 +++++++++
+ lib/ext2fs/unix_io.c    |   28 +++++++++++++++++++++++++---
+ 3 files changed, 38 insertions(+), 3 deletions(-)
 
-I've tested these e2fsprogs changes against the -next branch as of
-1/31.  These days, I use an 8GB ramdisk and whatever hardware I have
-lying around.  The make check tests should pass.
 
-Comments and questions are, as always, welcome.
+diff --git a/lib/ext2fs/ext2_io.h b/lib/ext2fs/ext2_io.h
+index 1894fb8..00e22e0 100644
+--- a/lib/ext2fs/ext2_io.h
++++ b/lib/ext2fs/ext2_io.h
+@@ -90,6 +90,8 @@ struct struct_io_manager {
+ 					int count, const void *data);
+ 	errcode_t (*discard)(io_channel channel, unsigned long long block,
+ 			     unsigned long long count);
++	errcode_t (*readahead)(io_channel channel, unsigned long long block,
++			       unsigned long long count);
+ 	long	reserved[16];
+ };
+=20
+@@ -124,6 +126,8 @@ extern errcode_t io_channel_discard(io_channel chan=
+nel,
+ 				    unsigned long long count);
+ extern errcode_t io_channel_alloc_buf(io_channel channel,
+ 				      int count, void *ptr);
++extern errcode_t io_channel_readahead(io_channel io, unsigned long lon=
+g block,
++				      unsigned long long count);
+=20
+ /* unix_io.c */
+ extern io_manager unix_io_manager;
+diff --git a/lib/ext2fs/io_manager.c b/lib/ext2fs/io_manager.c
+index 34e4859..1acbb1d 100644
+--- a/lib/ext2fs/io_manager.c
++++ b/lib/ext2fs/io_manager.c
+@@ -128,3 +128,12 @@ errcode_t io_channel_alloc_buf(io_channel io, int =
+count, void *ptr)
+ 	else
+ 		return ext2fs_get_mem(size, ptr);
+ }
++
++errcode_t io_channel_readahead(io_channel io, unsigned long long block=
+,
++			       unsigned long long count)
++{
++	if (!io->manager->readahead)
++		return EXT2_ET_OP_NOT_SUPPORTED;
++
++	return io->manager->readahead(io, block, nblocks);
++}
+diff --git a/lib/ext2fs/unix_io.c b/lib/ext2fs/unix_io.c
+index 0cc0f52..bc4490c 100644
+--- a/lib/ext2fs/unix_io.c
++++ b/lib/ext2fs/unix_io.c
+@@ -15,6 +15,9 @@
+  * %End-Header%
+  */
+=20
++#define _XOPEN_SOURCE 600
++#define _DARWIN_C_SOURCE
++#define _FILE_OFFSET_BITS 64
+ #define _LARGEFILE_SOURCE
+ #define _LARGEFILE64_SOURCE
+ #ifndef _GNU_SOURCE
+@@ -35,6 +38,9 @@
+ #ifdef __linux__
+ #include <sys/utsname.h>
+ #endif
++#if HAVE_SYS_TYPES_H
++#include <sys/types.h>
++#endif
+ #ifdef HAVE_SYS_IOCTL_H
+ #include <sys/ioctl.h>
+ #endif
+@@ -44,9 +50,6 @@
+ #if HAVE_SYS_STAT_H
+ #include <sys/stat.h>
+ #endif
+-#if HAVE_SYS_TYPES_H
+-#include <sys/types.h>
+-#endif
+ #if HAVE_SYS_RESOURCE_H
+ #include <sys/resource.h>
+ #endif
+@@ -119,6 +122,8 @@ static errcode_t unix_write_blk64(io_channel channe=
+l, unsigned long long block,
+ 				int count, const void *data);
+ static errcode_t unix_discard(io_channel channel, unsigned long long b=
+lock,
+ 			      unsigned long long count);
++static errcode_t unix_readahead(io_channel channel, unsigned long long=
+ block,
++				unsigned long long count);
+=20
+ static struct struct_io_manager struct_unix_manager =3D {
+ 	EXT2_ET_MAGIC_IO_MANAGER,
+@@ -135,6 +140,7 @@ static struct struct_io_manager struct_unix_manager=
+ =3D {
+ 	unix_read_blk64,
+ 	unix_write_blk64,
+ 	unix_discard,
++	unix_readahead,
+ };
+=20
+ io_manager unix_io_manager =3D &struct_unix_manager;
+@@ -828,6 +834,22 @@ static errcode_t unix_write_blk64(io_channel chann=
+el, unsigned long long block,
+ #endif /* NO_IO_CACHE */
+ }
+=20
++static errcode_t unix_readahead(io_channel channel, unsigned long long=
+ block,
++				unsigned long long count)
++{
++#ifdef POSIX_FADV_WILLNEED
++	struct unix_private_data *data;
++
++	data =3D (struct unix_private_data *)channel->private_data;
++	posix_fadvise(data->dev, (ext2_loff_t)block * channel->block_size,
++		      (ext2_loff_t)count * channel->block_size,
++		      POSIX_FADV_WILLNEED);
++	return 0;
++#else
++	return EXT2_ET_OP_NOT_SUPPORTED;
++#endif
++}
++
+ static errcode_t unix_write_blk(io_channel channel, unsigned long bloc=
+k,
+ 				int count, const void *buf)
+ {
 
---D
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
