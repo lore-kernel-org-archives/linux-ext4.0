@@ -1,92 +1,36 @@
-From: Eric Sandeen <sandeen@sandeen.net>
-Subject: Re: [PATCH v2] xfstests: avoid ext4/306 failures caused by
-	incompatible mount options
-Date: Fri, 31 Jan 2014 14:42:01 -0600
-Message-ID: <52EC0A99.8080702@sandeen.net>
-References: <20140131155332.GB2385@wallace>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 56091] kernel oops when copying data to ext4 fs
+Date: Sat, 01 Feb 2014 01:01:56 +0000
+Message-ID: <bug-56091-13602-wfgksN0hzz@https.bugzilla.kernel.org/>
+References: <bug-56091-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Eric Whitney <enwlinux@gmail.com>, xfs@oss.sgi.com
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <20140131155332.GB2385@wallace>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.19.201]:33247 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932767AbaBABB6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 31 Jan 2014 20:01:58 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id D124C2026C
+	for <linux-ext4@vger.kernel.org>; Sat,  1 Feb 2014 01:01:57 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 7913E20263
+	for <linux-ext4@vger.kernel.org>; Sat,  1 Feb 2014 01:01:56 +0000 (UTC)
+In-Reply-To: <bug-56091-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 1/31/14, 9:53 AM, Eric Whitney wrote:
-> ext4/306 will fail when mounting the ext3 file system it creates if an
-> ext3-incompatible mount option is applied by _scratch_mount.  This can
-> happen if EXT_MOUNT_OPTIONS is defined appropriately in the test
-> environment.  For example, the block_validity option is commonly used
-> to enhance ext4 testing, and it is not supported by ext3.
-> 
-> Fix this by instead creating an ext4 file system without extents as a
-> functionally equivalent substitute.  This will also eliminate a
-> dependency for ext3 support on the test system.
-> 
-> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+https://bugzilla.kernel.org/show_bug.cgi?id=56091
 
-Looks good, thanks for double checking the old kernel.
+--- Comment #3 from shakilk1729@gmail.com <shakilk1729@gmail.com> ---
+Not able to reproduce this in kernel 3.13. Does this mean we have to still fix
+this in 3.8.5
 
-Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+Regards
+Shakil
 
-> ---
->  tests/ext4/306 | 21 +++++++--------------
->  1 file changed, 7 insertions(+), 14 deletions(-)
-> 
-> diff --git a/tests/ext4/306 b/tests/ext4/306
-> index 398c4c0..9559cf2 100755
-> --- a/tests/ext4/306
-> +++ b/tests/ext4/306
-> @@ -45,29 +45,22 @@ _supported_os Linux
->  
->  _require_scratch
->  
-> -# This needs to mount ext3; might require ext3 driver, or ext4
-> -# might handle it itself.  Find out if we have it one way or another.
-> -modprobe ext3 > /dev/null 2>&1
-> -grep -q ext3 /proc/filesystems || _notrun "This test requires ext3 support"
-> -
->  rm -f $seqres.full
->  
-> -# Make a small ext3 fs, (extents disabled) & mount it
-> -yes | mkfs.ext3 $SCRATCH_DEV 512m >> $seqres.full 2>&1
-> -_scratch_mount -t ext3 || _fail "couldn't mount fs as ext3"
-> +# Make a small ext4 fs with extents disabled & mount it
-> +yes | mkfs.ext4 -O ^extents $SCRATCH_DEV 512m >> $seqres.full 2>&1
-> +_scratch_mount || _fail "couldn't mount fs"
-> +
->  # Create a small non-extent-based file
->  echo "Create 1m testfile1"
->  $XFS_IO_PROG -f $SCRATCH_MNT/testfile1 -c "pwrite 0 1m" | _filter_xfs_io
-> +
-> +# Create a large non-extent-based file filling the fs; this will run out & fail
->  echo "Create testfile2 to fill the fs"
-> -# A large non-extent-based file filling the fs; this will run out & fail
->  $XFS_IO_PROG -f $SCRATCH_MNT/testfile2 -c "pwrite 0 512m" | _filter_xfs_io
-> -
-> -# Remount as ext4
-> -_scratch_unmount
-> -_scratch_mount -t ext4 || _fail "couldn't remount fs as ext4"
->  df -h $SCRATCH_MNT >> $seqres.full
->  
-> -# Grow it by 512m
-> +# Grow fs by 512m
->  echo "Resize to 1g"
->  resize2fs $SCRATCH_DEV 1g >> $seqres.full 2>&1 || _fail "Could not resize to 1g"
->  df -h $SCRATCH_MNT >> $seqres.full
-> 
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
