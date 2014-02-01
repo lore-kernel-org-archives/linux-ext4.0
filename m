@@ -1,114 +1,125 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH v5 00/22] Rewrite XIP code and add XIP support to ext4
-Date: Sat, 1 Feb 2014 00:04:22 +1100
-Message-ID: <20140131130422.GL13997@dastard>
-References: <cover.1389779961.git.matthew.r.wilcox@intel.com>
- <20140130064230.GG13997@dastard>
- <20140130092537.GH13997@dastard>
- <20140131030652.GK13997@dastard>
- <alpine.OSX.2.00.1401302227450.29315@scrumpy>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 2/2] libext2fs/e2fsck: implement metadata prefetching
+Date: Sat, 1 Feb 2014 00:16:46 -0800
+Message-ID: <20140201081646.GF8798@birch.djwong.org>
+References: <20140130235044.31064.38113.stgit@birch.djwong.org>
+ <20140130235058.31064.21096.stgit@birch.djwong.org>
+ <45DEEA58-69FD-42EF-BB51-1A8D80000469@dilger.ca>
+ <20140131135325.GF7118@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org, linux-ext4@vger.kernel.org
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:37764 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751283AbaBAIQ4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 1 Feb 2014 03:16:56 -0500
 Content-Disposition: inline
-In-Reply-To: <alpine.OSX.2.00.1401302227450.29315@scrumpy>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20140131135325.GF7118@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 30, 2014 at 10:45:26PM -0700, Ross Zwisler wrote:
-> On Fri, 31 Jan 2014, Dave Chinner wrote:
-> > The read/write path is broken, Willy. We can't map arbitrary byte
-> > ranges to the DIO subsystem. I'm now certain that the data
-> > corruptions I'm seeing are in sub-sector regions from unaligned IOs
-> > from userspace. We still need to use the buffered IO path for non
-> > O_DIRECT IO to avoid these problems. I think I've worked out a way
-> > to short-circuit page cache lookups for the buffered IO path, so
-> > stay tuned....
+On Fri, Jan 31, 2014 at 08:53:25AM -0500, Theodore Ts'o wrote:
+> On Fri, Jan 31, 2014 at 03:10:00AM -0700, Andreas Dilger wrote:
+> > We implemented something like this for a metadata scanning tool called
+> > "e2scan".  At the time, the fastest method of prefetching data was
+> > posix_fadvise(POSIX_FADV_WILLNEED). We also tried the readahead() syscall. 
+
+Thanks, Andreas! :)
+
+Hmm.  I pulled in that patch and rewrites the prefetcher routines to
+spawn a single thread to try to pull in the bitmaps and itable via
+posix_fadvise.  I also noticed that e2fsck pass1 creates a list of
+directory blocks to scan in pass2, so I restructured the prefetch code
+to prefetch an arbitrary dblist.  The bitmap/itable prefetcher now
+simply creates a dblist and hands it off to the dblist fetch routine.
+It's also smart enough to do find contiguous runs of blocks and
+fadvise the whole thing in with a single call.
+
+The initial naive e2fsck implementation starts separate threads to
+prefetch everything without caring if it blows out the cache.  This
+seems to reduce e2fsck run times on SSD and RAIDs by 20-40%.
+
+On the plus side the code became much easier, and fsck seems able to
+repair a broken filesystem without crashing.  Welp, I guess that
+teaches me not to go overboard with complexity until it's needed.
+
+I made a few changes to Andreas' patch -- first, I changed the
+parameters to ULL types to be consistent with the other IO manager
+function prototypes; second, I made it a bit more robust for IO
+managers that don't provide a readahead function.  (Does anyone still
+build this on NT?)
+
+> I think using posix_fadvise() and readahead() is probably the best way
+> to go, at least initially.  If we can avoid needing to add an extra
+> I/O manager, I think that would be better.
+
+Agreed.  I will send new patches shortly.
+
+> As far as a single HDD prefetching its brains out, it would be good if
+> we can figure out a way to enable the right amount of prefetching
+> automatically.  Something that might be worth trying is to instrument
+> unix_io so we can measure the time waiting for disk I/O, and then
+> compare that to the wall clock time running on a single disk file
+> system, without doing any prefetching.
+
+Changing to this fadvise mechanism seems to have eliminated the
+horrible blowout on USB HDDs.  There's a slight speed decrease.
+
+> If there isn't any delta, then the only way prefetching could help us
+> is if we can optimize the head motion and remove some seeks (i.e., if
+> we know that we will need block #23 in the future, and we get a
+> request for block #24, we can read both at one go).  If we measure the
+> difference between time spent for disk I/O during each e2fsck pass,
+> and wall clock time during each I/O, we'll also know which e2fsck pass
+> would benefit the most from smarter prefetching.
 > 
-> Hi Dave,
+> What that might imply is that for HDD's --- which is where we would
+> want something like this the most --- what we might want to do is to
+> create a list of blocks that e2fsck knows it will need next (for
+> example, during pass 1, we are collecting the blocks for directories,
+> so we could use that to populate the prefetch list for pass 2.
 > 
-> I found an issue that would cause reads to return bad data earlier this week,
-> and sent a response to "[PATCH v5 22/22] XIP: Add support for unwritten
-> extents".  Just wanted to make sure you're not running into that issue.  
-
-After having a couple of good strong bourbons, It came to me about
-15 minutes ago that I've had a case of forest, trees and bears
-today. What I said above is most likely wrong and I think there's
-probably a simple reason for the bug I'm seeing: xip_io() does
-not handle the buffer_new(bh) case correctly. i.e. this case:
-
-
-	  newly allocated buffer
-	+-------------------------------+
-	+-zero-+----user data----+-zero-+
-
-i.e. it doesn't zero the partial head and tail of the block
-correctly if the block has just been allocated. If the block has
-just been allocated, get_block() is supposed to return the bh marked
-as buffer_new() to indicate to the caller it needs to have regions
-that aren't covered with data zeroed.
-
-Yes, makes fsx run for more than 36 operations. But it only makes it
-to 79 operations, and then....
-
-# xfs_io -tf -c "truncate 18k" -c "pwrite 19k 21k" -c "pread -v 18k 2k" -c "bmap -vp" /mnt/scr/foo
-....
-EXT: FILE-OFFSET      BLOCK-RANGE      AG AG-OFFSET        TOTAL FLAGS
-   0: [0..31]:         hole                                    32
-   1: [32..39]:        120..127          0 (120..127)           8 10000
-   2: [40..71]:        128..159          0 (128..159)          32 00000
-   3: [72..79]:        216..223          0 (216..223)           8 00000
-
-Ok, it's leaving an unwritten extent where it shouldn't be. That
-explains the zeros instead of data. I'll look further at it in the
-morning now I think I'm on the right track...
-
-> I'm also currently chasing a write corruption where we lose the data that we
-> had just written because ext4 thinks the portion of the extent we had just
-> written needs to be converted from an unwritten extent to a written extent, so
-> it clears the data to all zeros via:
+> Something that we might need to go to in the future is instead of
+> using mmap(), to maintain our own explicit buffer cache inside
+> unix_io, and use direct I/O to avoid caching the disk blocks twice.
+> Then when we use a single-threaded disk prefetcher, managed by the
+> unix_io, it will know when a particular I/O request has completed, and
+> more importantly, if there is a synchronous read request coming in
+> from main body of the program, it can stop prefetching and allow the
+> higher priority read to complete.  We can also experiment with how
+> many threads might make sense --- even with an HDD, using multiple
+> threads so that we can take advantage of NCQ might still be a win.
 > 
-> 	xip_clear_blocks+0x53/0xd7
-> 	ext4_map_blocks+0x306/0x3d9 [ext4]
-> 	jbd2__journal_start+0xbd/0x188 [jbd2]
-> 	ext4_convert_unwritten_extents+0xf9/0x1ac [ext4]
-> 	ext4_direct_IO+0x2ca/0x3a5 [ext4]
+> One other thought.  The location of the dynamic metadata blocks (i.e.,
+> directory and extent tree blocks) is a hint that we could potentially
+> store in the file system.  Since it is only for optimization purposes,
+> e2fsck can try to find it in the file system, and if it is there, and
+> it looks valid it can use it.  If the file system is too corrupted, or
+> the data looks suspect, it can always ignore the cached hints.
 > 
-> This bug can be easily reproduced by fallocating an empty file up to a page,
-> and then writing into that page.  The first write is essentially lost, and the
-> page remains all zeros.  Subsequent writes succeed.
+> Finally, if we are managing our own buffer cache, we should consider
+> adding a bforget method to the I/O manager.  That way e2fsck can give
+> hints to the caching layer that a block isn't needed any more.  If it
+> is in the cache, it can be dropped, to free memory, and if it is still
+> on the to-be-prefetched list it should also be dropped.  (Of course,
+> if a block is on the to-be-prefetched list, and a synchronous read
+> request comes in for that block, we should have dropped it from the
+> to-be-prefetched list at that point.)  The main use for having a
+> bforget method is for the most part, once we are done scanning a
+> non-directory extent tree block, we won't be needing it again.  
+> 
+> Slightly more complex (so it might not be worth it), we could also
+> drop inode table blocks from our buffer cache that do not contain any
+> directory inodes once we are done scanning them in pass 1.
 
-I don't think that's what I'm seeing. As it is, ext4 should not
-be zeroing the block during unwritten extent conversion. This looks
-to have been added
-to make the xip_fault() path work, but I think it's wrong. What I
-had to do for XFS in the xip_fault() path to ensure that we returned
-allocated, zeroed blocks from xfs_get_blocks_xip() was:
+Let's play around with my silly prefetch patches and decide if we need
+this extra complexity.
 
-	allocate as unwritten
-	xip_clear_blocks
-	mark extent as written
+I thought about prefetching the extent tree too, but I'm not sure if
+that's worth the trouble.  It might be worth it to go for the ETBs
+that the inode points to directly, since that's more or less free.
 
-so that it behaves like the direct IO path in terms of the
-"allocate, write data, mark unwritten" process. But for direct IO,
-xip_io() needs to be doing the block zeroing in response to
-get_blocks setting buffer_new(bh) after allocating the unwritten
-extent. Then it can copy in the data and call endio to convert it to
-written....
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+--D
