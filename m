@@ -1,18 +1,21 @@
-From: Namjae Jeon <linkinjeon@gmail.com>
-Subject: [PATCH RESEND 10/10] manpage: update FALLOC_FL_COLLAPSE_RANGE flag in
-	fallocate
-Date: Sun,  2 Feb 2014 14:47:38 +0900
-Message-ID: <1391320058-3448-1-git-send-email-linkinjeon@gmail.com>
+From: Matthew Wilcox <matthew@wil.cx>
+Subject: Re: [PATCH RESEND 0/10] fs: Introduce new
+	flag(FALLOC_FL_COLLAPSE_RANGE) for fallocate
+Date: Sun, 2 Feb 2014 08:16:24 -0700
+Message-ID: <20140202151624.GK20939@parisc-linux.org>
+References: <1391319694-3089-1-git-send-email-linkinjeon@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Namjae Jeon <linkinjeon@gmail.com>, Namjae Jeon <namjae.jeon@samsung.com>,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
-	Ashish Sangwan <a.sangwan@samsung.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: viro@zeniv.linux.org.uk, david@fromorbit.com, bpm@sgi.com, tytso@mit.edu,
-	adilger.kernel@dilger.ca, jack@suse.cz, mtk.manpages@gmail.com
+Cc: tytso@mit.edu, Namjae Jeon <namjae.jeon@samsung.com>,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com, bpm@sgi.com,
+	adilger.kernel@dilger.ca, viro@zeniv.linux.org.uk,
+	linux-fsdevel@vger.kernel.org, jack@suse.cz,
+	linux-ext4@vger.kernel.org, mtk.manpages@gmail.com
+To: Namjae Jeon <linkinjeon@gmail.com>
 Return-path: <xfs-bounces@oss.sgi.com>
+Content-Disposition: inline
+In-Reply-To: <1391319694-3089-1-git-send-email-linkinjeon@gmail.com>
 List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
 	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
 List-Archive: <http://oss.sgi.com/pipermail/xfs>
@@ -24,63 +27,27 @@ Errors-To: xfs-bounces@oss.sgi.com
 Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-From: Namjae Jeon <namjae.jeon@samsung.com>
+On Sun, Feb 02, 2014 at 02:41:34PM +0900, Namjae Jeon wrote:
+> The semantics of this flag are following:
+> 1) It collapses the range lying between offset and length by removing any data
+>    blocks which are present in this range and than updates all the logical
+>    offsets of extents beyond "offset + len" to nullify the hole created by
+>    removing blocks. In short, it does not leave a hole.
+> 2) It should be used exclusively. No other fallocate flag in combination.
+> 3) Offset and length supplied to fallocate should be fs block size aligned
+>    in case of xfs and ext4.
+> 4) Collaspe range does not work beyond i_size.
 
-Update FALLOC_FL_COLLAPSE_RANGE flag in fallocate.
+What if the file is mmaped at the time somebody issues this command?
+Seems to me we should drop pagecache pages that overlap with the
+removed blocks.  If the removed range is not a multiple of PAGE_SIZE,
+then we should also drop any pagecache pages after the removed range.
 
-Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
----
- man2/fallocate.2 |   21 +++++++++++++++++++++
- 1 file changed, 21 insertions(+)
-
-diff --git a/man2/fallocate.2 b/man2/fallocate.2
-index ec9011c..69a4dbd 100644
---- a/man2/fallocate.2
-+++ b/man2/fallocate.2
-@@ -1,5 +1,6 @@
- .\" Copyright (c) 2007 Silicon Graphics, Inc. All Rights Reserved
- .\" Written by Dave Chinner <dgc@sgi.com>
-+.\" Updated by Namjae Jeon <namjae.jeon@samsung.com>
- .\"
- .\" %%%LICENSE_START(GPLv2_ONELINE)
- .\" May be distributed as per GNU General Public License version 2.
-@@ -7,6 +8,7 @@
- .\"
- .\" 2011-09-19: Added FALLOC_FL_PUNCH_HOLE
- .\" 2011-09-19: Substantial restructuring of the page
-+.\" 2013-11-10: Added FALLOC_FL_COLLAPSE_RANGE
- .\"
- .TH FALLOCATE 2 2013-11-08 "Linux" "Linux Programmer's Manual"
- .SH NAME
-@@ -113,6 +115,25 @@ does not change.
- Not all filesystems support
- .BR FALLOC_FL_PUNCH_HOLE ;
- if a filesystem doesn't support the operation, an error is returned.
-+.SS Collapsing file space
-+Specifiying the
-+.BR FALLOC_FL_COLLAPSE_RANGE
-+flag in
-+.I mode
-+collpse space in the byte range starting at
-+.I offset
-+and continuing for
-+.I len
-+bytes. Within the specified range, it first de-allocates blocks and eliminates
-+the hole created in this process by shifting data blocks into the hole.
-+
-+Different filesystem may implement different limitatios on the granularity of
-+the operation. Most filesystem will limit operations to filesystem block size
-+boundaries, but this boundary may be larger or smaller depending
-+on the filesystem and/or the configuration of the filesystem or file.
-+
-+If filesystem has such limitation on granularity, It will return error(EINVAL).
-+
- .SH RETURN VALUE
- On success,
- .BR fallocate ()
 -- 
-1.7.9.5
+Matthew Wilcox				Intel Open Source Technology Centre
+"Bill, look, we understand that you're interested in selling us this
+operating system, but compare it to ours.  We can't possibly take such
+a retrograde step."
 
 _______________________________________________
 xfs mailing list
