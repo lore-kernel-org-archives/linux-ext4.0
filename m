@@ -1,7 +1,8 @@
 From: Namjae Jeon <linkinjeon@gmail.com>
-Subject: [PATCH RESEND 7/10] xfstest: shared/003: Multi collapse range tests
-Date: Sun,  2 Feb 2014 14:46:36 +0900
-Message-ID: <1391319996-3345-1-git-send-email-linkinjeon@gmail.com>
+Subject: [PATCH RESEND 8/10] xfstest: shared/004: Delayed allocation multi
+	collapse
+Date: Sun,  2 Feb 2014 14:46:58 +0900
+Message-ID: <1391320018-3379-1-git-send-email-linkinjeon@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -25,29 +26,30 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Namjae Jeon <namjae.jeon@samsung.com>
 
-This testcase(003) tries to test various corner cases with pre-existing holes
-for fcollapse range functionality over different type of extents.
+This testcase(004) tries to test various corner cases with delayed extents and
+pre-existing holes for fcollapse range functionality
+over different type of extents.
 
 Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
 Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
 ---
- tests/shared/003     |   65 ++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/shared/003.out |   53 ++++++++++++++++++++++++++++++++++++++++
+ tests/shared/004     |   65 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/shared/004.out |   53 ++++++++++++++++++++++++++++++++++++++++
  tests/shared/group   |    1 +
  3 files changed, 119 insertions(+)
- create mode 100755 tests/shared/003
- create mode 100644 tests/shared/003.out
+ create mode 100755 tests/shared/004
+ create mode 100644 tests/shared/004.out
 
-diff --git a/tests/shared/003 b/tests/shared/003
+diff --git a/tests/shared/004 b/tests/shared/004
 new file mode 100755
-index 0000000..7b7f2df
+index 0000000..5902b9f
 --- /dev/null
-+++ b/tests/shared/003
++++ b/tests/shared/004
 @@ -0,0 +1,65 @@
 +#! /bin/bash
-+# FS QA Test No. 3
++# FS QA Test No. 4
 +#
-+# Multi collapse range tests
++# Delayed allocation multi collapse range tests
 +# This testcase is one of the 4 testcases (shared 001 - 004) which tries to
 +# test various corner cases for fcollapse range functionality over different
 +# type of extents. These tests are based on generic/255 test case.
@@ -104,18 +106,18 @@ index 0000000..7b7f2df
 +
 +testfile=$TEST_DIR/$seq.$$
 +
-+_test_generic_punch -k falloc fpunch fcollapse fiemap _filter_hole_fiemap $testfile
++_test_generic_punch -d -k falloc fpunch fcollapse fiemap _filter_hole_fiemap $testfile
 +_check_test_fs
 +
 +status=0
 +exit
-diff --git a/tests/shared/003.out b/tests/shared/003.out
+diff --git a/tests/shared/004.out b/tests/shared/004.out
 new file mode 100644
-index 0000000..545304e
+index 0000000..a7d0f52
 --- /dev/null
-+++ b/tests/shared/003.out
++++ b/tests/shared/004.out
 @@ -0,0 +1,53 @@
-+QA output created by 003
++QA output created by 004
 +	1. into a hole
 +f4f35d60b3cc18aaa6d8d92f0cd3708a
 +	2. into allocated space
@@ -169,14 +171,14 @@ index 0000000..545304e
 +0: [0..95]: extent
 +f1894a71ac539f6f90426d98a4990a47
 diff --git a/tests/shared/group b/tests/shared/group
-index 7230b28..9226032 100644
+index 9226032..fb1d6d0 100644
 --- a/tests/shared/group
 +++ b/tests/shared/group
-@@ -5,6 +5,7 @@
- #
+@@ -6,6 +6,7 @@
  001 auto prealloc
  002 auto prealloc
-+003 auto prealloc
+ 003 auto prealloc
++004 auto prealloc
  032 mkfs auto quick
  051 acl udf auto quick
  218 auto fsr quick
