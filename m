@@ -1,24 +1,14 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH RESEND 0/10] fs: Introduce new
-	flag(FALLOC_FL_COLLAPSE_RANGE) for fallocate
-Date: Mon, 3 Feb 2014 09:03:46 +1100
-Message-ID: <20140202220346.GU2212@dastard>
-References: <1391319694-3089-1-git-send-email-linkinjeon@gmail.com>
-	<20140202151624.GK20939@parisc-linux.org>
-	<20140202152106.GL20939@parisc-linux.org>
+Subject: [ANNOUCE] xfstests: updated to ad969ca
+Date: Mon, 3 Feb 2014 10:49:52 +1100
+Message-ID: <20140202234952.GO13997@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Namjae Jeon <linkinjeon@gmail.com>, tytso@mit.edu,
-	Namjae Jeon <namjae.jeon@samsung.com>,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com, bpm@sgi.com,
-	adilger.kernel@dilger.ca, viro@zeniv.linux.org.uk,
-	linux-fsdevel@vger.kernel.org, jack@suse.cz,
-	linux-ext4@vger.kernel.org, mtk.manpages@gmail.com
-To: Matthew Wilcox <matthew@wil.cx>
+Cc: linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org
+To: xfs@oss.sgi.com
 Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <20140202152106.GL20939@parisc-linux.org>
 List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
 	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
 List-Archive: <http://oss.sgi.com/pipermail/xfs>
@@ -30,48 +20,61 @@ Errors-To: xfs-bounces@oss.sgi.com
 Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun, Feb 02, 2014 at 08:21:06AM -0700, Matthew Wilcox wrote:
-> On Sun, Feb 02, 2014 at 08:16:24AM -0700, Matthew Wilcox wrote:
-> > On Sun, Feb 02, 2014 at 02:41:34PM +0900, Namjae Jeon wrote:
-> > > The semantics of this flag are following:
-> > > 1) It collapses the range lying between offset and length by removing any data
-> > >    blocks which are present in this range and than updates all the logical
-> > >    offsets of extents beyond "offset + len" to nullify the hole created by
-> > >    removing blocks. In short, it does not leave a hole.
-> > > 2) It should be used exclusively. No other fallocate flag in combination.
-> > > 3) Offset and length supplied to fallocate should be fs block size aligned
-> > >    in case of xfs and ext4.
-> > > 4) Collaspe range does not work beyond i_size.
-> > 
-> > What if the file is mmaped at the time somebody issues this command?
-> > Seems to me we should drop pagecache pages that overlap with the
-> > removed blocks.  If the removed range is not a multiple of PAGE_SIZE,
-> > then we should also drop any pagecache pages after the removed range.
-> 
-> Oops, forgot to add "and if it is a multiple of page size, then we need
-> to update the offsets of any pages after the removed page". 
+Hi folks,
 
-Yup, that's what the XFS implementation does when it punches the
-hole out of the file before shifting the extents down. Check
-xfs_free_file_space():
+The xfstests repository at git://oss.sgi.com/xfs/cmds/xfstests has
+just been updated. Patches often get missed, so please check if your
+outstanding patches were in this update. If they have not been in
+this update, please resubmit them to xfs@oss.sgi.com so they can be
+picked up in the next update.
 
-1275         /* wait for the completion of any pending DIOs */
-1276         inode_dio_wait(VFS_I(ip));
-1277
-1278         rounding = max_t(xfs_off_t, 1 << mp->m_sb.sb_blocklog, PAGE_CACHE_SIZE);
-1279         ioffset = offset & ~(rounding - 1);
-1280         error = -filemap_write_and_wait_range(VFS_I(ip)->i_mapping,
-1281                                               ioffset, -1);
-1282         if (error)
-1283                 goto out;
-1284         truncate_pagecache_range(VFS_I(ip), ioffset, -1);
+The new head of the master branch is commit:
 
-Bonus points for working out why the XFS code doesn't just use
-PAGE_CACHE_SIZE for rounding here....
+ad969ca btrfs/030: add more test cases
 
-Cheers,
+New Commits:
 
-Dave.
+Brian Foster (2):
+      [20641b8] xfs: remove spurious line continuation from _require_xfs_crc
+      [710281f] generic/313: initialise TEST_DIR before use
+
+Eric Whitney (1):
+      [138ea5c] ext4/306: avoid failures caused by incompatible mount options
+
+Filipe David Borba Manana (2):
+      [fd7a8e8] btrfs/025: make test more robust
+      [ad969ca] btrfs/030: add more test cases
+
+Josef Bacik (2):
+      [78d86b9] btrfs/029: filter mkfs and cp output
+      [8ebabf7] generic/299: truncate can fail with ENOSPC
+
+Wang Shilong (2):
+      [6717b24] Btrfs: add regression test for transaction abortion when remounting
+      [cd86825] Btrfs: add regression test for iterating backrefs
+
+
+Code Diffstat:
+
+ common/rc           |  2 +-
+ tests/btrfs/025     | 34 ++++++++++-----------
+ tests/btrfs/025.out | 12 --------
+ tests/btrfs/029     |  6 ++--
+ tests/btrfs/029.out |  4 +--
+ tests/btrfs/030     | 86 ++++++++++++++++++++++++++++++++++++++++-------------
+ tests/btrfs/032     | 57 +++++++++++++++++++++++++++++++++++
+ tests/btrfs/032.out |  3 ++
+ tests/btrfs/033     | 71 +++++++++++++++++++++++++++++++++++++++++++
+ tests/btrfs/033.out |  2 ++
+ tests/btrfs/group   |  2 ++
+ tests/ext4/306      | 21 +++++--------
+ tests/generic/299   |  2 +-
+ tests/generic/313   |  3 +-
+ 14 files changed, 233 insertions(+), 72 deletions(-)
+ create mode 100755 tests/btrfs/032
+ create mode 100644 tests/btrfs/032.out
+ create mode 100755 tests/btrfs/033
+ create mode 100644 tests/btrfs/033.out
 -- 
 Dave Chinner
 david@fromorbit.com
