@@ -1,121 +1,82 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH RESEND 5/10] xfstest: shared/001: Standard collapse range
-	tests
-Date: Tue, 4 Feb 2014 10:17:37 +1100
-Message-ID: <20140203231737.GV13997@dastard>
-References: <1391319958-3275-1-git-send-email-linkinjeon@gmail.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 2/3] libext2fs: allow clients to read-ahead metadata
+Date: Mon, 3 Feb 2014 15:26:36 -0800
+Message-ID: <20140203232636.GB9176@birch.djwong.org>
+References: <20140201103721.9011.5971.stgit@birch.djwong.org>
+ <20140201103735.9011.14433.stgit@birch.djwong.org>
+ <0E88D038-7509-435F-BBAF-6A8416749785@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, Namjae Jeon <namjae.jeon@samsung.com>,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com, bpm@sgi.com,
-	adilger.kernel@dilger.ca, mtk.manpages@gmail.com,
-	Ashish Sangwan <a.sangwan@samsung.com>,
-	linux-fsdevel@vger.kernel.org, jack@suse.cz,
-	linux-ext4@vger.kernel.org, viro@zeniv.linux.org.uk
-To: Namjae Jeon <linkinjeon@gmail.com>
-Return-path: <xfs-bounces@oss.sgi.com>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:38762 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751322AbaBCX0l convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Feb 2014 18:26:41 -0500
 Content-Disposition: inline
-In-Reply-To: <1391319958-3275-1-git-send-email-linkinjeon@gmail.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <0E88D038-7509-435F-BBAF-6A8416749785@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Feb 02, 2014 at 02:45:58PM +0900, Namjae Jeon wrote:
-> From: Namjae Jeon <namjae.jeon@samsung.com>
+On Mon, Feb 03, 2014 at 02:32:45PM -0700, Andreas Dilger wrote:
+> On Feb 1, 2014, at 3:37 AM, Darrick J. Wong <darrick.wong@oracle.com> wrote:
+> > This patch adds to libext2fs the ability to pre-fetch metadata
+> > into the page cache in the hopes of speeding up libext2fs' clients.
+> > There are two new library functions -- the first allows a client to
+> > readahead a list of blocks, and the second is a helper function that
+> > uses that first mechanism to load group data (bitmaps, inode tables).
+> > 
+> > e2fsck will employ both of these methods to speed itself up.
+> > 
+> > diff --git a/lib/ext2fs/readahead.c b/lib/ext2fs/readahead.c
+> > new file mode 100644
+> > index 0000000..05f6135
+> > --- /dev/null
+> > +++ b/lib/ext2fs/readahead.c
+> > +errcode_t ext2fs_readahead(ext2_filsys fs, int flags, dgrp_t start,
+> > +			   dgrp_t ngroups)
+> > +{
+> > +
+> > +	for (i = start; i < end; i++) {
+> > +		if ((flags & EXT2FS_READ_ITABLE) &&
+> > +		    ext2fs_bg_free_inodes_count(fs, i) <
+> > +				fs->super->s_inodes_per_group) {
+> > +			super = ext2fs_inode_table_loc(fs, i);
+> > +			err = ext2fs_add_dir_block2(dblist, 0, super,
+> > +					fs->inode_blocks_per_group);
 > 
-> This testcase(001) tries to test various corner cases
-> for fcollapse range functionality over different type of extents.
+> This prefetches all of the inode table blocks, when it could instead
+> just prefetch the in-use blocks using:
 > 
-> Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-> Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
+> 		if ((flags & EXT2FS_READ_ITABLE) &&
+> 		    ext2fs_bg_itable_unused(fs, i) <
+> 		    fs->inode_blocks_per_group))
+> 			err = ext2fs_add_dir_block2(dblist, 0, super,
+> 					fs->inode_blocks_per_group - 
+> 					ext2fs_bg_itable_unused(fs, i));
 
-Couple of things:
+I think you need to convert ext2fs_bg_itable_unused() to blocks there, but
+point taken.  Actually, the first insane-o patch had this, but I forgot it when
+writing up the second version.
 
->  			-c "$map_cmd -v" $testfile | $filter_cmd
->  		[ $? -ne 0 ] && die_now
->  		_md5_checksum $testfile
-> @@ -415,10 +425,10 @@ _test_generic_punch()
->  		if [ "$remove_testfile" ]; then
->  			rm -f $testfile
->  		fi
-> -		$XFS_IO_PROG -f -c "truncate 20k" \
-> -			-c "$alloc_cmd 0 8k" \
-> -			-c "pwrite 8k 8k" $sync_cmd \
-> -			-c "$zero_cmd 4k 8k" \
-> +		$XFS_IO_PROG -f -c "truncate $(($multiple * 20))k" \
-> +			-c "$alloc_cmd 0 $(($multiple * 8))k" \
-> +			-c "pwrite $(($multiple * 8))k $(($multiple * 8))k" $sync_cmd \
-> +			-c "$zero_cmd $(($multiple * 4))k $(($multiple * 8))k" \
->  			-c "$map_cmd -v" $testfile | $filter_cmd
+> If there is corruption in the filesystem and the "unused" blocks need
+> to be read later it is probably more than offset by not reading those
+> actually unused blocks for the rest of the time.
 
-This is unreadable, and therefore I'd consider that these changes
-render _test_generic_punch unmaintainable.
+<shrug> I'm not particularly concerned about less than optimal IO throughput on
+broken filesystems.
 
-Either it needs tobe factored to be more readable, or we need a more
-readable way of representing the offsets and sizes if we want them
-to be variable. For example:
+--D
+> 
+> 
+> Cheers, Andreas
+> 
+> 
+> 
+> 
+> 
 
-_4k="$((multiple * 4))k"
-_8k="$((multiple * 8))k"
-_20k="$((multiple * 20))k"
 
-leads to:
-
-		$XFS_IO_PROG -f -c "truncate $_20k" \
-			-c "$alloc_cmd 0 $_8k" \
-			-c "pwrite $_8k $_8k" $sync_cmd \
-			-c "$zero_cmd $_4k $_8k" \
-			-c "$map_cmd -v" $testfile | $filter_cmd
-
-which is still readable and allows us to arbitrarily scale the
-parameters. It even allows us to handle different filesystem block
-sizes if we really want to....
-
->  		-c "$map_cmd -v" $testfile | $filter_cmd
->  	[ $? -ne 0 ] && die_now
->  	_md5_checksum $testfile
->  
-> +	# If zero_cmd is fcollpase, don't check unaligned offsets
-> +	if [ "$zero_cmd" == "fcollapse" ]; then
-> +		if [ "$remove_testfile" ]; then
-> +			rm -f $testfile
-> +			rm -f $testfile.2
-> +		fi
-> +		return
-> +	fi
-
-No need to remove the test files here - we remove them at
-test startup to ensure we have a known initial state....
-
-> +0: [0..63]: extent
-> +bb7df04e1b0a2570657527a7e108ae23
-> +	13. data -> unwritten -> data
-> +0: [0..63]: extent
-> +0f0151cbed83e4bf6e5bde26e82ab115
-> +	14. data -> hole @ EOF
-> +fallocate: Invalid argument
-> +0: [0..159]: extent
-
-This error appears in all the golden outputs. If it's correct, then
-perhaps it should be filtered out or commented somewhere to explain
-why it is expected.
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
