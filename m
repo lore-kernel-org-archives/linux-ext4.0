@@ -1,24 +1,32 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [Bug 53951] race condition on mounting local disks with autofs
-Date: Wed, 5 Feb 2014 12:49:17 -0500
-Message-ID: <20140205174917.GH11667@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 53951] race condition on mounting local disks with autofs
+Date: Wed, 05 Feb 2014 17:49:24 +0000
+Message-ID: <bug-53951-13602-jI6vSidJeg@https.bugzilla.kernel.org/>
 References: <bug-53951-13602@https.bugzilla.kernel.org/>
- <bug-53951-13602-54xc3ri31k@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, autofs@vger.kernel.org
-To: bugzilla-daemon@bugzilla.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:54428 "EHLO imap.thunk.org"
+Received: from mail.kernel.org ([198.145.19.201]:33929 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753029AbaBERtV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 5 Feb 2014 12:49:21 -0500
-Content-Disposition: inline
-In-Reply-To: <bug-53951-13602-54xc3ri31k@https.bugzilla.kernel.org/>
+	id S1753029AbaBERt2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 5 Feb 2014 12:49:28 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id D13FC2016C
+	for <linux-ext4@vger.kernel.org>; Wed,  5 Feb 2014 17:49:25 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 563F320163
+	for <linux-ext4@vger.kernel.org>; Wed,  5 Feb 2014 17:49:24 +0000 (UTC)
+In-Reply-To: <bug-53951-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Feb 05, 2014 at 05:03:53PM +0000, bugzilla-daemon@bugzilla.kernel.org wrote:
+https://bugzilla.kernel.org/show_bug.cgi?id=53951
+
+--- Comment #2 from Theodore Tso <tytso@mit.edu> ---
+On Wed, Feb 05, 2014 at 05:03:53PM +0000, bugzilla-daemon@bugzilla.kernel.org
+wrote:
 > https://bugzilla.kernel.org/show_bug.cgi?id=53951
 > 
 > --- Comment #1 from Harald Dunkel <harri@afaics.de> ---
@@ -39,7 +47,7 @@ right people.
 
 I've cc'ed the autofs folks; hopefully they can help you out.
 
-     	       	      	     	       - Ted
+                                              - Ted
 
 
 Original bug report, from https://bugzilla.kernel.org/show_bug.cgi?id=53951:
@@ -84,7 +92,12 @@ data7   -fstype=auto,noatime    :/dev/disk/by-label/data7
 data8   -fstype=auto,noatime    :/dev/disk/by-label/data8
 
 
-The problem is reproducible, as it seems. Please mail if I can help to track this down.
+The problem is reproducible, as it seems. Please mail if I can help to track
+this down.
 
 Regards
 Harri
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
