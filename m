@@ -1,38 +1,38 @@
-From: Ahmed Tamrawi <ahmedtamrawi@gmail.com>
-Subject: mutex_unlock is missed in function (swap_inode_boot_loader) in file (linux-3.13/fs/ext4/ioctl.c)
-Date: Wed, 5 Feb 2014 13:39:06 -0600
-Message-ID: <CAFZT-j+KqKfx5sEr3G9JbesUNgp60vi9Zn_tT=78S-WrVmmxKw@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: Tuxera test suite failure for setfacl
+Date: Wed, 5 Feb 2014 21:08:01 +0100
+Message-ID: <20140205200801.GA31318@quack.suse.cz>
+References: <87mwi69jas.fsf@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ve0-f171.google.com ([209.85.128.171]:45867 "EHLO
-	mail-ve0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750994AbaBETjH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Feb 2014 14:39:07 -0500
-Received: by mail-ve0-f171.google.com with SMTP id pa12so695059veb.2
-        for <linux-ext4@vger.kernel.org>; Wed, 05 Feb 2014 11:39:07 -0800 (PST)
+Received: from cantor2.suse.de ([195.135.220.15]:58688 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755333AbaBEUIE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 5 Feb 2014 15:08:04 -0500
+Content-Disposition: inline
+In-Reply-To: <87mwi69jas.fsf@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi there!
+  Hello,
 
-Bug Report Filed: https://bugzilla.kernel.org/show_bug.cgi?id=70091
-Linux Version [3.13]
-Configuration: Default configuration for x86
+On Wed 05-02-14 11:45:39, Aneesh Kumar K.V wrote:
+> With commit c6ac12a6159c802ae8b757dd13563564e64333df we are modifying
+> the ctime of the file when changing file's permission by setfacl. The
+> commit says that is correct as per spec. But we do have a test in tuxera
+> http://tuxera.com/sw/qa/pjd-fstest-20090130-RC.tgz test/xacl/00.t 45
+> which expect the ctime to be not changed across setfacl.
+> 
+> I haven't looked at the spec myself. Can you double check and make sure
+> it is ok to change the ctime across setfacl ?
+  Well, it would be really strange if changing permissions via chmod(1)
+changed ctime but via setfacl(1) did not, don't you think?
 
-
-In function (swap_inode_boot_loader) in file (linux-3.13/fs/ext4/ioctl.c):
-
-The structures: (inode->i_mutex) and (inode_bl->i_mutex) gets
-successfully locked at line (133) by (lock_two_nondirectories(inode,
-inode_bl), but both are not unlocked when the function returns after
-line (147), however they got unlocked only at line (208) by
-(unlock_two_nondirectories(inode, inode_bl)).
-
-A possible solution is to call (unlock_two_nondirectories(inode,
-inode_bl)) before line (147).
-
-
-Thanks,
-Ahmed
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
