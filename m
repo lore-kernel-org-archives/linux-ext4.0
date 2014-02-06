@@ -1,118 +1,56 @@
-From: Eric Sandeen <sandeen@redhat.com>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
 Subject: Re: Filesystem testing
-Date: Wed, 05 Feb 2014 21:31:29 -0600
-Message-ID: <52F30211.2070705@redhat.com>
-References: <1391642427.40742.YahooMailNeo@web141002.mail.bf1.yahoo.com> <52F2ECD9.90909@redhat.com> <1391656365.52699.YahooMailNeo@web141005.mail.bf1.yahoo.com>
+Date: Thu, 6 Feb 2014 10:45:46 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1402061040010.2248@localhost.localdomain>
+References: <1391642427.40742.YahooMailNeo@web141002.mail.bf1.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: Mark Brown <ntdeveloper2002@yahoo.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-625132164-1391679948=:2248"
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Mark Brown <ntdeveloper2002@yahoo.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44190 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:9265 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752403AbaBFDbc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 5 Feb 2014 22:31:32 -0500
-In-Reply-To: <1391656365.52699.YahooMailNeo@web141005.mail.bf1.yahoo.com>
+	id S1755915AbaBFJpu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 6 Feb 2014 04:45:50 -0500
+In-Reply-To: <1391642427.40742.YahooMailNeo@web141002.mail.bf1.yahoo.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2/5/14, 9:12 PM, Mark Brown wrote:
-> Thanks Eric.
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
+
+--8323328-625132164-1391679948=:2248
+Content-Type: TEXT/PLAIN; charset=iso-8859-1
+Content-Transfer-Encoding: 8BIT
+
+On Wed, 5 Feb 2014, Mark Brown wrote:
+
+> Date: Wed, 5 Feb 2014 15:20:27 -0800 (PST)
+> From: Mark Brown <ntdeveloper2002@yahoo.com>
+> To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+> Subject: Filesystem testing
 > 
-> I am looking at the README here:
-> http://oss.sgi.com/cgi-bin/gitweb.cgi?p=xfs/cmds/xfstests.git;a=blob_plain;f=README;hb=HEAD
+> Hello all,
+> What are the most common testing tools used for stress testing ext4(or any file system..), and making sure the data (and metadata) that was written is correctly read back, operations that were done(whether usual R/W, but also others like truncate, stat,link, f* operations etc) did not cause problems or corruptions, do fscks if needed etc?
 > 
-> 
-> Is this what you are referring to? It doesnt seem to have much information about the tests.
+> Also, are there tools that can cause aborts underneath the file system, basically something in the mid layer that randomly drops IOs or something along those lines?
 
-Well, no, that's true.  There's no great summary of the tests; buit each test in tests/*/???
-should have at least a brief description at the top.
+Yes, there is device mapper target dm-flakey (see
+Documentation/device-mapper/dm-flakey.txt in linux kernel sources).
+Xfstests does have infrastructure to use this target in its tests
+(see tests 311, 321 and 322).
 
-There's also a tests/*/group file which has keywords for each test, so you can do
-i.e. ./check -g stress to run all tests tagged with "stress"
-
-> Should I look here?
-> http://oss.sgi.com/cgi-bin/gitweb.cgi?p=xfs/cmds/xfstests.git;a=tree;f=tests;h=a8535b21d5b45a7653bc0f4e2774d3b94871ba2e;hb=HEAD
-
-well, there you can see the entire history of changes, so ... sure!  :)
+-Lukas
 
 > 
-> I did have some questions:-)
+> I am looking for tests which can fully stress the system exercising the file system and also check for corruption. 
 > 
-> 1. Do the tests do operations other than the POSIX operations? I see
-> different directories for xfs etc, which would imply it does some
-> filesys specific calls?
-
-yes; it's just a test harness, it can test whatever we like.
-
-Some of the xfs tests do test xfs-specific operations.  Ditto for ext4 tests.
-Other tests are more generic.
-
-> 2. There are some other test tools like Iozone which have similar
-> functionality. Wanted to understand what the differences would be, in
-> using xfstests as opposed to them?
-
-iozone is a benchmark, not a test suite.  It measures performance, not correctness.
-
-> 3. is xfstests more of a test suite geared for developers? Is it something a QA org can use
-
-Our QA organization makes good use of it, as do others.  So, sure.
-
-And best of all it's open source so if your organization comes across
-a bug, you can submit a testcase, and the bug should never(tm) happen again.
-
-> 4. What I am looking for is a tool which I can use to stress the file
-> system a lot, do different operations etc, and make sure the data
-> written and metadata and the filesys itself is consistent by
-> verifying it at the end. You mentioned testing IO failures as well
-> and consistency is checked at the end. If you can point me to a few
-> tests that do the stress test and IO failures for the generic case,
-> that would really help, just to make sure i dont misunderstand the
-> tests when I am looking through the sources.
-
-Start by reading the tests themselves; for example, tests/generic/311:
-
-# Run various fsync tests with dm flakey in freeze() mode and non freeze()
-# mode. The idea is that we do random writes and randomly fsync and verify that
-# after a fsync() followed by a freeze()+failure or just failure that the file
-# is correct.  We remount the file system after the failure so that the file
-# system can do whatever cleanup it needs to and md5sum the file to make sure
-# it matches hat it was before the failure.  We also fsck to make sure the file
-# system is consistent.
-
--Eric
-
-> Thanks:-)
+> As an aside, I looked at xfstests, from what I could gather, it was started only for xfs, but there is ongoing work to make it work with ext4(and thus other posix FS?). If someone can point me to the documentation for xfstests and what it does, that would help. I could not find much.
 > 
->  
-> 
-> 
-> 
-> On Wednesday, February 5, 2014 6:01 PM, Eric Sandeen <sandeen@redhat.com> wrote:
-> On 2/5/14, 5:20 PM, Mark Brown wrote:
->> As an aside, I looked at xfstests, from what I could gather, it was
->> started only for xfs, but there is ongoing work to make it work with
->> ext4(and thus other posix FS?). If someone can point me to the
->> documentation for xfstests and what it does, that would help. I could
->> not find much.
-> 
-> xfstests has gone pretty far beyond just xfs at this point - it's seen
-> heavy use on ext2/3/4 as well as btrfs in the past several years.
-> 
-> There is a README in the git repo; did you have specific questions?
-> 
-> We have a lot of tests in there; some are general stress tests, some
-> are specific regression tests, and the body of tests is always growing.
-> 
-> Some test IO failures, as well.  File system consistency is checked after
-> each test.  Etc...
-> 
-> -Eric
-> 
+> Thanks in advance.
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
-
+--8323328-625132164-1391679948=:2248--
