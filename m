@@ -1,43 +1,52 @@
-From: Mark Brown <ntdeveloper2002@yahoo.com>
-Subject: Filesystem testing
-Date: Wed, 5 Feb 2014 15:20:27 -0800 (PST)
-Message-ID: <1391642427.40742.YahooMailNeo@web141002.mail.bf1.yahoo.com>
-Reply-To: Mark Brown <ntdeveloper2002@yahoo.com>
+From: Ian Kent <raven@themaw.net>
+Subject: Re: [Bug 53951] race condition on mounting local disks with autofs
+Date: Thu, 06 Feb 2014 08:18:49 +0800
+Message-ID: <1391645929.2608.17.camel@perseus.fritz.box>
+References: <bug-53951-13602@https.bugzilla.kernel.org/>
+	 <bug-53951-13602-54xc3ri31k@https.bugzilla.kernel.org/>
+	 <20140205174917.GH11667@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from nm4.bullet.mail.bf1.yahoo.com ([98.139.212.163]:29385 "EHLO
-	nm4.bullet.mail.bf1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751632AbaBEX0U convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 5 Feb 2014 18:26:20 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: bugzilla-daemon@bugzilla.kernel.org, linux-ext4@vger.kernel.org,
+	autofs@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
+To: harri@afaics.de
+Return-path: <autofs-owner@vger.kernel.org>
+In-Reply-To: <20140205174917.GH11667@thunk.org>
+Sender: autofs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hello all,
-What are the most common testing tools used for stress testing ext4(or =
-any file system..), and making sure the data (and metadata) that was wr=
-itten is correctly read back, operations that were done(whether usual R=
-/W, but also others like truncate, stat,link, f* operations etc) did no=
-t cause problems or corruptions, do fscks if needed etc?
+On Wed, 2014-02-05 at 12:49 -0500, Theodore Ts'o wrote:
+> Original bug report, from https://bugzilla.kernel.org/show_bug.cgi?id=53951:
+> 
+> Harald Dunkel 2013-02-16 15:55:40 UTC
+> 
+> I am using autofs to mount a local disk to /misc/data6 on
+> request. Problem: It seems that the first access silently fails, if
+> the disk is not yet mounted.
 
-Also, are there tools that can cause aborts underneath the file system,=
- basically something in the mid layer that randomly drops IOs or someth=
-ing along those lines?
+Does it!
 
-I am looking for tests which can fully stress the system exercising the=
- file system and also check for corruption.=A0
+Or is it the mix of system calls that are made, some of which won't
+trigger the mount and others that will. I know from experience that
+find(1) does a fairly unusual mix of these calls.
 
-As an aside, I looked at xfstests, from what I could gather, it was sta=
-rted only for xfs, but there is ongoing work to make it work with ext4(=
-and thus other posix FS?). If someone can point me to the documentation=
- for xfstests and what it does, that would help. I could not find much.
+Does it still happen if you append a "/" to /misc/data6.
 
-Thanks in advance.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Since there are a number of system calls that won't trigger mounts,
+which is required to avoid mount storms, there needs to be some way to
+selectively force mount triggering and appending a "/" to a path is the
+way it's done (at least it should function that way).
+
+Mind you the mix of calls won't matter if the automount is mounted
+"nobrowse" since mount point directories that don't yet exist should
+trigger a mount on any access.
+
+The default installed autofs configuration sets this but if you wiped
+out the configuration and didn't retain that setting then the automount
+will be mounted "browse", the internal program default.
+
+What are you using for that setting?
+
+Ian
+
