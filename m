@@ -1,56 +1,58 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: Filesystem testing
-Date: Thu, 6 Feb 2014 10:45:46 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1402061040010.2248@localhost.localdomain>
-References: <1391642427.40742.YahooMailNeo@web141002.mail.bf1.yahoo.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 70121] New: Increasing efficiency of full data journaling
+Date: Thu, 06 Feb 2014 10:38:04 +0000
+Message-ID: <bug-70121-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-625132164-1391679948=:2248"
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Mark Brown <ntdeveloper2002@yahoo.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:9265 "EHLO mx1.redhat.com"
+Received: from mail.kernel.org ([198.145.19.201]:38022 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755915AbaBFJpu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 6 Feb 2014 04:45:50 -0500
-In-Reply-To: <1391642427.40742.YahooMailNeo@web141002.mail.bf1.yahoo.com>
+	id S1755954AbaBFKiH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 6 Feb 2014 05:38:07 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id CFC7A20154
+	for <linux-ext4@vger.kernel.org>; Thu,  6 Feb 2014 10:38:06 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id A01CE20145
+	for <linux-ext4@vger.kernel.org>; Thu,  6 Feb 2014 10:38:04 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+https://bugzilla.kernel.org/show_bug.cgi?id=70121
 
---8323328-625132164-1391679948=:2248
-Content-Type: TEXT/PLAIN; charset=iso-8859-1
-Content-Transfer-Encoding: 8BIT
+            Bug ID: 70121
+           Summary: Increasing efficiency of full data journaling
+           Product: File System
+           Version: 2.5
+    Kernel Version: 3.13.1
+          Hardware: All
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: enhancement
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: sworddragon2@aol.com
+        Regression: No
 
-On Wed, 5 Feb 2014, Mark Brown wrote:
+Full data journaling provides the ability that it is guaranteed that a file
+will never be saved visible for the user in a damaged state (except a hardware
+defect appears afterwards). But this has the disadvantage that the writing
+througput is ~halfed as all files are written 2 times.
 
-> Date: Wed, 5 Feb 2014 15:20:27 -0800 (PST)
-> From: Mark Brown <ntdeveloper2002@yahoo.com>
-> To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-> Subject: Filesystem testing
-> 
-> Hello all,
-> What are the most common testing tools used for stress testing ext4(or any file system..), and making sure the data (and metadata) that was written is correctly read back, operations that were done(whether usual R/W, but also others like truncate, stat,link, f* operations etc) did not cause problems or corruptions, do fscks if needed etc?
-> 
-> Also, are there tools that can cause aborts underneath the file system, basically something in the mid layer that randomly drops IOs or something along those lines?
+Here comes the idea: From a logical view to achieve this safety it is not
+needed to write the file 2 times. A simple committing should achieve the same
+level of safety. Here is an example: The filesystem could store a value for the
+file which is reflecting its state. It is initialized as empty value indicating
+the file has not successfully be written. As soon as the file has been written
+it is set to 1. This would avoid writing the file 2 times and still guarantee
+that the file will never be visible for te user in a damaged state on a crash
+as the filesystem check would see that the file state is unequal to 1 and
+correct the problem.
 
-Yes, there is device mapper target dm-flakey (see
-Documentation/device-mapper/dm-flakey.txt in linux kernel sources).
-Xfstests does have infrastructure to use this target in its tests
-(see tests 311, 321 and 322).
-
--Lukas
-
-> 
-> I am looking for tests which can fully stress the system exercising the file system and also check for corruption. 
-> 
-> As an aside, I looked at xfstests, from what I could gather, it was started only for xfs, but there is ongoing work to make it work with ext4(and thus other posix FS?). If someone can point me to the documentation for xfstests and what it does, that would help. I could not find much.
-> 
-> Thanks in advance.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
---8323328-625132164-1391679948=:2248--
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
