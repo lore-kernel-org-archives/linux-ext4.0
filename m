@@ -1,165 +1,151 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Filesystem testing
-Date: Thu, 06 Feb 2014 22:48:41 -0600
-Message-ID: <52F465A9.5030004@redhat.com>
-References: <1391642427.40742.YahooMailNeo@web141002.mail.bf1.yahoo.com> <52F2ECD9.90909@redhat.com> <1391656365.52699.YahooMailNeo@web141005.mail.bf1.yahoo.com> <52F30211.2070705@redhat.com> <1391728596.39450.YahooMailNeo@web141003.mail.bf1.yahoo.com>
+From: "Ulrich Windl" <Ulrich.Windl@rz.uni-regensburg.de>
+Subject: Wtrlt: Re: Re: Slow to add 1 million items
+Date: Fri, 07 Feb 2014 08:24:33 +0100
+Message-ID: <52F49841020000A100014463@gwsmtp1.uni-regensburg.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Mark Brown <ntdeveloper2002@yahoo.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 8BIT
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:26557 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750752AbaBGEsn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 6 Feb 2014 23:48:43 -0500
-In-Reply-To: <1391728596.39450.YahooMailNeo@web141003.mail.bf1.yahoo.com>
+Received: from rrzmta2.uni-regensburg.de ([194.94.155.52]:41332 "EHLO
+	rrzmta2.uni-regensburg.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751356AbaBGHaY convert rfc822-to-8bit (ORCPT
+	<rfc822;groupwise-linux-ext4@vger.kernel.org:1:1>);
+	Fri, 7 Feb 2014 02:30:24 -0500
+Received: from rrzmta2.uni-regensburg.de (localhost [127.0.0.1])
+	by localhost (Postfix) with SMTP id 9570944E87
+	for <linux-ext4@vger.kernel.org>; Fri,  7 Feb 2014 08:24:35 +0100 (CET)
+Received: from gwsmtp1.uni-regensburg.de (gwsmtp1.uni-regensburg.de [132.199.5.51])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(Client CN "gwsmtp.uni-regensburg.de", Issuer "Uni Regensburg CA - G01" (not verified))
+	by rrzmta2.uni-regensburg.de (Postfix) with ESMTPS id 6DF1344E30
+	for <linux-ext4@vger.kernel.org>; Fri,  7 Feb 2014 08:24:35 +0100 (CET)
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2/6/14, 5:16 PM, Mark Brown wrote:
-> Thanks for all the answers Eric:-)
-> 
-> I did have one question, and this was more related to ext3, and possible to xfstests.
-> 
-> Is there a test suite for ext3 that tests the various corruption
-> issues, bugs that have been detected, and has other tests as well?
-> Kind of a suite that is run everytime a change is made. I know its a
-> question about a very old filesys, if I should direct my question
-> elsewhere, do let me know. Maybe the generic in xfstests is enough
-> for that, I couldnt find ext3 specific tests for the harness anywhere
-> else. Is there a separate Redhat test suite (assuming ext3 was being
-> maintained by RH)?
-> 
-> Is xfstests for ext4 basically used for ext4 for the question I asked
-> about ext3 above?
+Hi!
 
-we do still support & help with ext3, yes - and xfstests is still useful
-for that.   It does not cover every bugfix, but the generic/shared
-xfstests still have fairly decent generic ext3 coverage.
+(I'm surprised that ext2/ext3/ext4 all use the same mailing list ;-)
 
-One could always write more tests if interested.  :)
+Maybe some of you find there performance data interesting. Personally I found them surprising (expecting ext4 to outperform ext2 and ext3)...
 
--Eric
+>>> Andrew Eross <eross@locatrix.com> schrieb am 06.02.2014 um 16:59 in Nachricht
+<CAL_tfFdS4suKqn7ZFSkFGQ1rE7qEhsyyGOs0RqV_Ow71J_Ri8Q@mail.gmail.com>:
+> Hi guys,
+> 
+> Ulrich - thanks for the suggestions - btrfs in particular is certainly
+> worth a shot.
+> 
+> Quanah - very cool to hear about the 12.04 kernel and ext2 suggestions.
+> thanks!
+> 
+> I've just run some new tests on a similar machine with 12.04.4 LTS and a
+> newly installed 3.11.0-15-generic x86_64 kernel.
+> 
+> Exact same testing method as before, 10K records, etc:
+> 
+> Running on an ext4 partition:
+> 
+> Base-line, no extra options: 5m14s
+> With "writemap" enabled: 9m40s
+> With "writemap+mapasync" enabled: 4m35s
+> 
+> Overall, about the same as 10.04 for me.
+> 
+> I created a new ext2 partition to give that a shot on the 12.04 box.
+> 
+> Base-line, no extra options: 1m31s
+> With "writemap" enabled: 1m33s
+> With "writemap+mapasync" enabled: 1m41s
+> 
+> Ahah! I'd say that's the killer answer.
+> 
+> Summary for future generations who may see this thread:
+> 
+> 1) Using ext2 for your db directory (on Ubuntu at least) is waay faster
+> than ext4 (~2-3x as fast according to my tests). This is the secret as far
+> as I'm concerned since you can use this while still using the most
+> conservative DB options that don't risk your data.
+> 2) Using "dbnosync+checkpoint" with mdb is the absolute fastest method, but
+> at the cost of risking data loss
+> 
+> Cheers,
+> Andrew
+> 
+> 
+> On Thu, Feb 6, 2014 at 5:08 AM, Ulrich Windl <
+> Ulrich.Windl@rz.uni-regensburg.de> wrote:
+> 
+>> >>> Andrew Eross <eross@locatrix.com> schrieb am 05.02.2014 um 16:30 in
+>> Nachricht
+>> <CAL_tfFf2qW5BcT=Xs4uFOSUO=wL0AN=9CyfS+D-XYPLitMZ_aw@mail.gmail.com>:
+>> > Hi Quanah,
+>> >
+>> > Ubuntu 10.04 LTS
+>> > Linux 2.6.32-43-generic-pae #97-Ubuntu SMP Wed Sep 5 16:59:17 UTC 2012
+>> i686
+>> > GNU/Linux
+>> > The latest OpenLDAP 2.4.39
+>> > All of those tests done with the mdb backend, of course, and the actual
+>> > file system is ext4
+>>
+>> Did you try btrfs? I'd guess it could be faster for massive random writes.
+>>
+>> >
+>> > It's a fairly stock 10.04 system, no special config/kernel changes.
+>> >
+>> > Cheers,
+>> > Andrew
+>> >
+>> > On Wed, Feb 5, 2014 at 1:26 PM, Quanah Gibson-Mount <quanah@zimbra.com 
+>> >wrote:
+>> >
+>> >> --On Tuesday, February 04, 2014 6:52 PM -0200 Andrew Eross <
+>> >> eross@locatrix.com> wrote:
+>> >>
+>> >>
+>> >>>
+>> >>> Thanks, Dieter, Quanah.
+>> >>>
+>> >>>
+>> >>> I've been doing some experimenting with those mdb options.
+>> >>>
+>> >>>
+>> >>> I ran a few tests with inserting 10,000 records, wiping the DB in
+>> >>> between, and changing just the one option at a time:
+>> >>>
+>> >>>
+>> >>> Base-line, no extra options: 4m8sWith "writemap" enabled: 8m55s
+>> >>>
+>> >>> With "writemap+mapasync" enabled: 5m12s
+>> >>> With "dbnosync+checkpoint 0kb/1min": 0m14s
+>> >>>
+>> >>
+>> >> I know you answered some of this before, but please update with:
+>> >>
+>> >> What kernel?
+>> >> What OpenLDAP version?
+>> >> What Ubuntu release?
+>> >> What filesystem for the LDAP DB?
+>> >>
+>> >> Thanks,
+>> >>
+>> >> Quanah
+>> >>
+>> >>
+>> >> --
+>> >>
+>> >> Quanah Gibson-Mount
+>> >> Architect - Server
+>> >> Zimbra, Inc.
+>> >> --------------------
+>> >> Zimbra ::  the leader in open source messaging and collaboration
+>> >>
+>>
+>>
+>>
+>>
 
-> Thanks.
-> 
-> 
-> 
-> 
-> 
-> 
-> 
-> 
-> On Wednesday, February 5, 2014 7:31 PM, Eric Sandeen <sandeen@redhat.com> wrote:
-> On 2/5/14, 9:12 PM, Mark Brown wrote:
->> Thanks Eric.
->>
->> I am looking at the README here:
->> http://oss.sgi.com/cgi-bin/gitweb.cgi?p=xfs/cmds/xfstests.git;a=blob_plain;f=README;hb=HEAD
->>
->>
->> Is this what you are referring to? It doesnt seem to have much information about the tests.
-> 
-> Well, no, that's true.  There's no great summary of the tests; buit each test in tests/*/???
-> should have at least a brief description at the top.
-> 
-> There's also a tests/*/group file which has keywords for each test, so you can do
-> i.e. ./check -g stress to run all tests tagged with "stress"
-> 
->> Should I look here?
->> http://oss.sgi.com/cgi-bin/gitweb.cgi?p=xfs/cmds/xfstests.git;a=tree;f=tests;h=a8535b21d5b45a7653bc0f4e2774d3b94871ba2e;hb=HEAD
-> 
-> well, there you can see the entire history of changes, so ... sure!  :)
-> 
->>
->> I did have some questions:-)
->>
->> 1. Do the tests do operations other than the POSIX operations? I see
->> different directories for xfs etc, which would imply it does some
->> filesys specific calls?
-> 
-> yes; it's just a test harness, it can test whatever we like.
-> 
-> Some of the xfs tests do test xfs-specific operations.  Ditto for ext4 tests.
-> Other tests are more generic.
-> 
->> 2. There are some other test tools like Iozone which have similar
->> functionality. Wanted to understand what the differences would be, in
->> using xfstests as opposed to them?
-> 
-> iozone is a benchmark, not a test suite.  It measures performance, not correctness.
-> 
->> 3. is xfstests more of a test suite geared for developers? Is it something a QA org can use
-> 
-> Our QA organization makes good use of it, as do others.  So, sure.
-> 
-> And best of all it's open source so if your organization comes across
-> a bug, you can submit a testcase, and the bug should never(tm) happen again.
-> 
->> 4. What I am looking for is a tool which I can use to stress the file
->> system a lot, do different operations etc, and make sure the data
->> written and metadata and the filesys itself is consistent by
->> verifying it at the end. You mentioned testing IO failures as well
->> and consistency is checked at the end. If you can point me to a few
->> tests that do the stress test and IO failures for the generic case,
->> that would really help, just to make sure i dont misunderstand the
->> tests when I am looking through the sources.
-> 
-> Start by reading the tests themselves; for example, tests/generic/311:
-> 
-> # Run various fsync tests with dm flakey in freeze() mode and non freeze()
-> # mode. The idea is that we do random writes and randomly fsync and verify that
-> # after a fsync() followed by a freeze()+failure or just failure that the file
-> # is correct.  We remount the file system after the failure so that the file
-> # system can do whatever cleanup it needs to and md5sum the file to make sure
-> # it matches hat it was before the failure.  We also fsck to make sure the file
-> # system is consistent.
-> 
-> -Eric
-> 
->> Thanks:-)
->>
->>   
->>
->>
->>
->> On Wednesday, February 5, 2014 6:01 PM, Eric Sandeen <sandeen@redhat.com> wrote:
->> On 2/5/14, 5:20 PM, Mark Brown wrote:
->>> As an aside, I looked at xfstests, from what I could gather, it was
->>> started only for xfs, but there is ongoing work to make it work with
->>> ext4(and thus other posix FS?). If someone can point me to the
->>> documentation for xfstests and what it does, that would help. I could
->>> not find much.
->>
->> xfstests has gone pretty far beyond just xfs at this point - it's seen
->> heavy use on ext2/3/4 as well as btrfs in the past several years.
->>
->> There is a README in the git repo; did you have specific questions?
->>
->> We have a lot of tests in there; some are general stress tests, some
->> are specific regression tests, and the body of tests is always growing.
->>
->> Some test IO failures, as well.  File system consistency is checked after
->> each test.  Etc...
->>
->> -Eric
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
->>
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+
 
