@@ -1,18 +1,35 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Design document for data checks for ext4
-Date: Fri, 07 Feb 2014 17:58:06 -0500
-Message-ID: <nsxlhxma5ts.fsf@closure.thunk.org>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: Design document for data checks for ext4
+Date: Sat, 8 Feb 2014 04:59:14 -0500 (EST)
+Message-ID: <140327162.37710.1391853554778.JavaMail.zimbra@redhat.com>
+References: <nsxlhxma5ts.fsf@closure.thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
-To: lczerner@redhat.com
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:55281 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751125AbaBGW6K (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 7 Feb 2014 17:58:10 -0500
+Received: from mx3-phx2.redhat.com ([209.132.183.24]:48180 "EHLO
+	mx3-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750841AbaBHJ7S (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 8 Feb 2014 04:59:18 -0500
+In-Reply-To: <nsxlhxma5ts.fsf@closure.thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
+
+Hi Ted,
+
+sorry about the delay. I've been quite busy with other things so I have not had a time to prepare design document yet even though I've been looking into it. I'll try to put something together for the next week and we can discuss it on ext4 call. Hopefully I'll get things moving again soon :)
+
+Regards,
+-Lukas
+
+----- Original Message -----
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: lczerner@redhat.com
+Cc: linux-ext4@vger.kernel.org
+Sent: Friday, February 7, 2014 11:58:06 PM
+Subject: Design document for data checks for ext4
 
 Hi Lukas,
 
