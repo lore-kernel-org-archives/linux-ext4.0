@@ -1,7 +1,7 @@
 From: Rashika Kheria <rashika.kheria@gmail.com>
-Subject: [PATCH 08/21] fs: Mark function as static in ext3/dir.c
-Date: Sun, 9 Feb 2014 18:36:27 +0530
-Message-ID: <999693f220bb65e2a07c4450548d99ea3ceac9d2.1391949868.git.rashika.kheria@gmail.com>
+Subject: [PATCH 09/21] fs: Mark function as static in ext3/xattr_security.c
+Date: Sun, 9 Feb 2014 18:39:11 +0530
+Message-ID: <bcf66d9631e4094a46e539950331f79289e4d85a.1391949868.git.rashika.kheria@gmail.com>
 References: <b572932c3e016c55e596686283036316a1aacd2f.1391949868.git.rashika.kheria@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=utf-8
@@ -16,35 +16,36 @@ In-Reply-To: <b572932c3e016c55e596686283036316a1aacd2f.1391949868.git.rashika.kh
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Mark function as static in ext3/dir.c because it is not used outside
-this file.
+Mark function as static in ext3/xattr_security.c because it is not used
+outside this file.
 
-This also eliminates the following warning in ext3/dir.c:
-fs/ext3/dir.c:278:8: warning: no previous prototype for =E2=80=98ext3_d=
-ir_llseek=E2=80=99 [-Wmissing-prototypes]
+This eliminates the following warning in ext3/xattr_security.c:
+fs/ext3/xattr_security.c:46:5: warning: no previous prototype for =E2=80=
+=98ext3_initxattrs=E2=80=99 [-Wmissing-prototypes]
 
 Signed-off-by: Rashika Kheria <rashika.kheria@gmail.com>
 Reviewed-by: Josh Triplett <josh@joshtriplett.org>
 ---
- fs/ext3/dir.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ext3/xattr_security.c |    5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext3/dir.c b/fs/ext3/dir.c
-index e66e480..17742ee 100644
---- a/fs/ext3/dir.c
-+++ b/fs/ext3/dir.c
-@@ -275,7 +275,7 @@ static inline loff_t ext3_get_htree_eof(struct file=
- *filp)
-  * NOTE: offsets obtained *before* ext3_set_inode_flag(dir, EXT3_INODE=
-_INDEX)
-  *       will be invalid once the directory was converted into a dx di=
-rectory
-  */
--loff_t ext3_dir_llseek(struct file *file, loff_t offset, int whence)
-+static loff_t ext3_dir_llseek(struct file *file, loff_t offset, int wh=
-ence)
+diff --git a/fs/ext3/xattr_security.c b/fs/ext3/xattr_security.c
+index 3387664..722c2bf 100644
+--- a/fs/ext3/xattr_security.c
++++ b/fs/ext3/xattr_security.c
+@@ -43,8 +43,9 @@ ext3_xattr_security_set(struct dentry *dentry, const =
+char *name,
+ 			      name, value, size, flags);
+ }
+=20
+-int ext3_initxattrs(struct inode *inode, const struct xattr *xattr_arr=
+ay,
+-		    void *fs_info)
++static int ext3_initxattrs(struct inode *inode,
++			   const struct xattr *xattr_array,
++			   void *fs_info)
  {
- 	struct inode *inode =3D file->f_mapping->host;
- 	int dx_dir =3D is_dx_dir(inode);
+ 	const struct xattr *xattr;
+ 	handle_t *handle =3D fs_info;
 --=20
 1.7.9.5
