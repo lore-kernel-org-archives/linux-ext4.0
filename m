@@ -1,14 +1,13 @@
 From: Rashika Kheria <rashika.kheria@gmail.com>
-Subject: [PATCH 09/21] fs: Mark function as static in ext3/xattr_security.c
-Date: Sun, 9 Feb 2014 18:39:11 +0530
-Message-ID: <bcf66d9631e4094a46e539950331f79289e4d85a.1391949868.git.rashika.kheria@gmail.com>
+Subject: [PATCH 11/21] fs: Mark functions as static in jbd2/journal.c
+Date: Sun, 9 Feb 2014 18:41:21 +0530
+Message-ID: <b13f571ff87a2ee1942578a97b00823373e9bd79.1391949868.git.rashika.kheria@gmail.com>
 References: <b572932c3e016c55e596686283036316a1aacd2f.1391949868.git.rashika.kheria@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, josh@joshtriplett.org
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	josh@joshtriplett.org
 To: linux-kernel@vger.kernel.org
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
@@ -16,36 +15,59 @@ In-Reply-To: <b572932c3e016c55e596686283036316a1aacd2f.1391949868.git.rashika.kh
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Mark function as static in ext3/xattr_security.c because it is not used
+Mark functions as static in jbd2/journal.c because they are not used
 outside this file.
 
-This eliminates the following warning in ext3/xattr_security.c:
-fs/ext3/xattr_security.c:46:5: warning: no previous prototype for =E2=80=
-=98ext3_initxattrs=E2=80=99 [-Wmissing-prototypes]
+This eliminates the following warning in jbd2/journal.c:
+fs/jbd2/journal.c:125:5: warning: no previous prototype for =E2=80=98jb=
+d2_verify_csum_type=E2=80=99 [-Wmissing-prototypes]
+fs/jbd2/journal.c:146:5: warning: no previous prototype for =E2=80=98jb=
+d2_superblock_csum_verify=E2=80=99 [-Wmissing-prototypes]
+fs/jbd2/journal.c:154:6: warning: no previous prototype for =E2=80=98jb=
+d2_superblock_csum_set=E2=80=99 [-Wmissing-prototypes]
 
 Signed-off-by: Rashika Kheria <rashika.kheria@gmail.com>
 Reviewed-by: Josh Triplett <josh@joshtriplett.org>
 ---
- fs/ext3/xattr_security.c |    5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ fs/jbd2/journal.c |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext3/xattr_security.c b/fs/ext3/xattr_security.c
-index 3387664..722c2bf 100644
---- a/fs/ext3/xattr_security.c
-+++ b/fs/ext3/xattr_security.c
-@@ -43,8 +43,9 @@ ext3_xattr_security_set(struct dentry *dentry, const =
-char *name,
- 			      name, value, size, flags);
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 5fa344a..244b6f6 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -122,7 +122,7 @@ EXPORT_SYMBOL(__jbd2_debug);
+ #endif
+=20
+ /* Checksumming functions */
+-int jbd2_verify_csum_type(journal_t *j, journal_superblock_t *sb)
++static int jbd2_verify_csum_type(journal_t *j, journal_superblock_t *s=
+b)
+ {
+ 	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
+ 		return 1;
+@@ -143,7 +143,7 @@ static __be32 jbd2_superblock_csum(journal_t *j, jo=
+urnal_superblock_t *sb)
+ 	return cpu_to_be32(csum);
  }
 =20
--int ext3_initxattrs(struct inode *inode, const struct xattr *xattr_arr=
-ay,
--		    void *fs_info)
-+static int ext3_initxattrs(struct inode *inode,
-+			   const struct xattr *xattr_array,
-+			   void *fs_info)
+-int jbd2_superblock_csum_verify(journal_t *j, journal_superblock_t *sb=
+)
++static int jbd2_superblock_csum_verify(journal_t *j, journal_superbloc=
+k_t *sb)
  {
- 	const struct xattr *xattr;
- 	handle_t *handle =3D fs_info;
+ 	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
+ 		return 1;
+@@ -151,7 +151,7 @@ int jbd2_superblock_csum_verify(journal_t *j, journ=
+al_superblock_t *sb)
+ 	return sb->s_checksum =3D=3D jbd2_superblock_csum(j, sb);
+ }
+=20
+-void jbd2_superblock_csum_set(journal_t *j, journal_superblock_t *sb)
++static void jbd2_superblock_csum_set(journal_t *j, journal_superblock_=
+t *sb)
+ {
+ 	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
+ 		return;
 --=20
 1.7.9.5
