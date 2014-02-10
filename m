@@ -1,89 +1,111 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: inline_data feature
-Date: Mon, 10 Feb 2014 11:47:00 +0800
-Message-ID: <20140210034700.GA11434@gmail.com>
-References: <loom.20140122T171340-153@post.gmane.org>
- <loom.20140209T163201-264@post.gmane.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Ian Nartowicz <claws@nartowicz.co.uk>
+From: Azat Khuzhin <a3at.mail@gmail.com>
+Subject: [PATCH] ext4: initialize multi-block allocator before checking block descriptors
+Date: Mon, 10 Feb 2014 14:25:07 +0400
+Message-ID: <1392027907-25924-1-git-send-email-a3at.mail@gmail.com>
+Cc: Azat Khuzhin <a3at.mail@gmail.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-kernel@vger.kernel.org (open list)
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f169.google.com ([209.85.192.169]:46802 "EHLO
-	mail-pd0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752387AbaBJDmE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 9 Feb 2014 22:42:04 -0500
-Received: by mail-pd0-f169.google.com with SMTP id v10so5573012pde.0
-        for <linux-ext4@vger.kernel.org>; Sun, 09 Feb 2014 19:42:04 -0800 (PST)
-Content-Disposition: inline
-In-Reply-To: <loom.20140209T163201-264@post.gmane.org>
+Received: from mail-lb0-f181.google.com ([209.85.217.181]:47290 "EHLO
+	mail-lb0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751831AbaBJKZU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Feb 2014 05:25:20 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Feb 09, 2014 at 03:45:12PM +0000, Ian Nartowicz wrote:
-> Ian Nartowicz <claws <at> nartowicz.co.uk> writes:
-> 
-> > 
-> > I have been trying to test the inline_data feature of EXT4.  I am using
-> > kernel 3.9.5 and have compiled e2fsprogs from the pu branch.  I am able to
-> > set the feature and apparently to use the filesystem, but I get a lot of
-> > warnings from the kernel and fsck reports several errors and then crashes.
-> > 
-> > Typical kernel warnings from dmesg:
-> > EXT4-fs warning (device sda10): ext4_rmdir:2714: empty directory has too
-> > many links (9)
-> > EXT4-fs error (device sda10): empty_inline_dir:1650: inode #26263: block
-> > 1924: comm pool: bad entry in directory: directory entry across range -
-> > offset=40(40), inode=26270, rec_len=8020, name_len=2
-> > EXT4-fs warning (device sda10): empty_inline_dir:1657: bad inline directory
-> > (dir #26263) - inode 26270, rec_len 8020, name_len 2inline size 60
-> > 
-> > Data does appear to be correctly written and read from the filesystem
-> > without corruption.  Small directories appear with size 60 bytes or 132
-> > bytes rather than 4.1kB so everything seems to work.
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo <at> vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
-> > 
-> 
-> I have built with the latest patchset and fsck is now a happy bunny, at
-> least on my first pass.
+with EXT4FS_DEBUG ext4_count_free_clusters() will call
+ext4_read_block_bitmap() without s_group_info initialized.
 
-I'd appreciate your testing.
+Here is bt:
+(gdb) bt
+ #0  ext4_get_group_info (group=0, sb=0xffff880079a10000) at ext4.h:2430
+ #1  ext4_validate_block_bitmap (sb=sb@entry=0xffff880079a10000, desc=desc@entry=0xffff880056510000, block_group=block_group@entry=0,
+     bh=bh@entry=0xffff88007bf2b2d8) at balloc.c:358
+ #2  0xffffffff81232202 in ext4_wait_block_bitmap (sb=sb@entry=0xffff880079a10000, block_group=block_group@entry=0,
+     bh=bh@entry=0xffff88007bf2b2d8) at balloc.c:476
+ #3  0xffffffff81232eaf in ext4_read_block_bitmap (sb=sb@entry=0xffff880079a10000, block_group=block_group@entry=0) at balloc.c:489
+ #4  0xffffffff81232fc0 in ext4_count_free_clusters (sb=sb@entry=0xffff880079a10000) at balloc.c:665
+ #5  0xffffffff81259ffa in ext4_check_descriptors (first_not_zeroed=<synthetic pointer>, sb=0xffff880079a10000) at super.c:2143
+ #6  ext4_fill_super (sb=sb@entry=0xffff880079a10000, data=<optimized out>, data@entry=0x0 <irq_stack_union>, silent=silent@entry=0)
+     at super.c:3851
+ #7  0xffffffff811b8340 in mount_bdev (fs_type=<optimized out>, flags=0, dev_name=<optimized out>, data=0x0 <irq_stack_union>,
+     fill_super=fill_super@entry=0xffffffff812589c0 <ext4_fill_super>) at super.c:987
+ #8  0xffffffff8124ec35 in ext4_mount (fs_type=<optimized out>, flags=<optimized out>, dev_name=<optimized out>, data=<optimized out>)
+     at super.c:5365
+ #9  0xffffffff811b8cf9 in mount_fs (type=type@entry=0xffffffff81c71840 <ext4_fs_type>, flags=flags@entry=0,
+     name=name@entry=0xffff880077a80c70 "/dev/loop4", data=data@entry=0x0 <irq_stack_union>) at super.c:1090
+ #10 0xffffffff811d2ff3 in vfs_kern_mount (type=type@entry=0xffffffff81c71840 <ext4_fs_type>, flags=0,
+     name=name@entry=0xffff880077a80c70 "/dev/loop4", data=data@entry=0x0 <irq_stack_union>) at namespace.c:813
+ #11 0xffffffff811d55de in do_new_mount (data=0x0 <irq_stack_union>, name=0xffff880077a80c70 "/dev/loop4", mnt_flags=32,
+     flags=<optimized out>, fstype=0xffff880077a80ca0 "ext4-insane", path=0xffff88007a5b1ed0) at namespace.c:2068
+ #12 do_mount (dev_name=0xffff880077a80c70 "/dev/loop4", dir_name=<optimized out>, type_page=0xffff880077a80ca0 "ext4-insane",
+     flags=<optimized out>, flags@entry=3236757504, data_page=0x0 <irq_stack_union>) at namespace.c:2392
+ #13 0xffffffff811d6183 in SYSC_mount (data=0x0 <irq_stack_union>, flags=3236757504, type=<optimized out>, dir_name=<optimized out>,
+     dev_name=0x7ffad9649c20 "/dev/loop4") at namespace.c:2586
+ #14 SyS_mount (dev_name=140715365800992, dir_name=<optimized out>, type=<optimized out>, flags=3236757504, data=0) at namespace.c:2559
 
-> 
-> However there is a different problem, possibly not with fsck.  For my tests
-> I copied the contents of /home onto the new partition.  fsck reports, and
-> other utilities confirm, that symlinks with targets of 60 characters or
-> longer were corrupted by the copy.  For example, a truncated symlink:
-> All That You Can't Leave Behind.m3u -> /data/cd/U2/All That You Can't Leave
-> Behind/playlist.flac.m
-> 
-> If I create the same symlink with ln, it appears OK until I unmount and
-> mount the partition, then it shows truncated.  fsck doesn't like it but is
-> unable to correct it.
+Signed-off-by: Azat Khuzhin <a3at.mail@gmail.com>
+---
+ fs/ext4/super.c | 22 +++++++++++-----------
+ 1 file changed, 11 insertions(+), 11 deletions(-)
 
-That would be great if you can provide some steps to reproduce this
-issue.  I write a simple script to try to reproduce it, but I couldn't
-hit the problem.  Am I missing something?
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 1f7784d..7e8c5e4 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3838,6 +3838,14 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 
+ 	bgl_lock_init(sbi->s_blockgroup_lock);
+ 
++	ext4_ext_init(sb);
++	err = ext4_mb_init(sb);
++	if (err) {
++		ext4_msg(sb, KERN_ERR, "failed to initialize mballoc (%d)",
++			 err);
++		goto failed_mount;
++	}
++
+ 	for (i = 0; i < db_count; i++) {
+ 		block = descriptor_loc(sb, logical_sb_block, i);
+ 		sbi->s_group_desc[i] = sb_bread(sb, block);
+@@ -4094,14 +4102,6 @@ no_journal:
+ 		goto failed_mount4a;
+ 	}
+ 
+-	ext4_ext_init(sb);
+-	err = ext4_mb_init(sb);
+-	if (err) {
+-		ext4_msg(sb, KERN_ERR, "failed to initialize mballoc (%d)",
+-			 err);
+-		goto failed_mount5;
+-	}
+-
+ 	err = ext4_register_li_request(sb, first_not_zeroed);
+ 	if (err)
+ 		goto failed_mount6;
+@@ -4175,9 +4175,6 @@ failed_mount8:
+ failed_mount7:
+ 	ext4_unregister_li_request(sb);
+ failed_mount6:
+-	ext4_mb_release(sb);
+-failed_mount5:
+-	ext4_ext_release(sb);
+ 	ext4_release_system_zone(sb);
+ failed_mount4a:
+ 	dput(sb->s_root);
+@@ -4207,7 +4204,10 @@ failed_mount2:
+ 	for (i = 0; i < db_count; i++)
+ 		brelse(sbi->s_group_desc[i]);
+ 	ext4_kvfree(sbi->s_group_desc);
++
++	ext4_mb_release(sb);
+ failed_mount:
++	ext4_ext_release(sb);
+ 	if (sbi->s_chksum_driver)
+ 		crypto_free_shash(sbi->s_chksum_driver);
+ 	if (sbi->s_proc) {
+-- 
+1.8.5.2
 
-  #!/bin/bash
-  
-  mkdir test
-  cd test
-  filename="ALL-That-You-Can't-Leave-Behind.m3u"
-  
-  echo "hello" > $filename
-  ln -s $filename symlinkfile
-  readlink symlinkfile
-  
-  newdir="data/cd"
-  mkdir -p $newdir
-  cp -d symlinkfile $newdir
-  readlink $newdir/symlinkfile
-  
-Thanks,
-                                                - Zheng
