@@ -1,50 +1,41 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH RESEND 1/10] fs: Add new flag(FALLOC_FL_COLLAPSE_RANGE)
-	for fallocate
-Date: Tue, 11 Feb 2014 09:12:59 +1100
-Message-ID: <20140210221259.GW13647@dastard>
-References: <1391319821-3135-1-git-send-email-linkinjeon@gmail.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: Ext4 meeting around LSF
+Date: Mon, 10 Feb 2014 15:19:17 -0800
+Message-ID: <20140210231917.GE9176@birch.djwong.org>
+References: <20140110115834.GK26378@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, Namjae Jeon <namjae.jeon@samsung.com>,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com, bpm@sgi.com,
-	adilger.kernel@dilger.ca, mtk.manpages@gmail.com,
-	Ashish Sangwan <a.sangwan@samsung.com>,
-	linux-fsdevel@vger.kernel.org, jack@suse.cz,
-	linux-ext4@vger.kernel.org, viro@zeniv.linux.org.uk
-To: Namjae Jeon <linkinjeon@gmail.com>
-Return-path: <xfs-bounces@oss.sgi.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: tytso@mit.edu
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:29843 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752124AbaBJXTZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Feb 2014 18:19:25 -0500
 Content-Disposition: inline
-In-Reply-To: <1391319821-3135-1-git-send-email-linkinjeon@gmail.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20140110115834.GK26378@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Feb 02, 2014 at 02:43:41PM +0900, Namjae Jeon wrote:
-> From: Namjae Jeon <namjae.jeon@samsung.com>
+Has the date of the ext4 meeting been settled?  I can attend as long as it's
+not on Thursday, March 27th.
+
+(Sorry, I've been on vacation for the past week or so.  Well, still am. ;))
+
+--D
+
+On Fri, Jan 10, 2014 at 12:58:34PM +0100, Jan Kara wrote:
+>   Hello Ted,
 > 
-> Add new flag(FALLOC_FL_COLLAPSE_RANGE) for fallocate.
-> updated detailed semantics in comments.
+>   do you plan to organize an ext4 meeting around LSF? And do you plan it
+> during Collab summit or on Sunday before LSF? Thanks for answer in advance.
 > 
-> Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-> Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
-
-Looks OK to me.
-
-Reviewed-by: Dave Chinner <dchinner@redhat.com>
--- 
-Dave Chinner
-david@fromorbit.com
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+> 								Honza
+> 
+> -- 
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
