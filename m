@@ -1,64 +1,50 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: [PATCH] ext4: fix xfstest generic/299 block validity failures
-Date: Mon, 10 Feb 2014 15:04:14 -0500
-Message-ID: <20140210200414.GA2155@wallace>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH RESEND 1/10] fs: Add new flag(FALLOC_FL_COLLAPSE_RANGE)
+	for fallocate
+Date: Tue, 11 Feb 2014 09:12:59 +1100
+Message-ID: <20140210221259.GW13647@dastard>
+References: <1391319821-3135-1-git-send-email-linkinjeon@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qc0-f179.google.com ([209.85.216.179]:38267 "EHLO
-	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752877AbaBJUEf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Feb 2014 15:04:35 -0500
-Received: by mail-qc0-f179.google.com with SMTP id e16so11291250qcx.38
-        for <linux-ext4@vger.kernel.org>; Mon, 10 Feb 2014 12:04:35 -0800 (PST)
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: tytso@mit.edu, Namjae Jeon <namjae.jeon@samsung.com>,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com, bpm@sgi.com,
+	adilger.kernel@dilger.ca, mtk.manpages@gmail.com,
+	Ashish Sangwan <a.sangwan@samsung.com>,
+	linux-fsdevel@vger.kernel.org, jack@suse.cz,
+	linux-ext4@vger.kernel.org, viro@zeniv.linux.org.uk
+To: Namjae Jeon <linkinjeon@gmail.com>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1391319821-3135-1-git-send-email-linkinjeon@gmail.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-Commit a115f749c1 (ext4: remove wait for unwritten extent conversion from
-ext4_truncate) exposed a bug in ext4_ext_handle_uninitialized_extents().
-It can be triggered by xfstest generic/299 when run on a test file
-system created without a journal.  This test continuously fallocates and
-truncates files to which random dio/aio writes are simultaneously
-performed by a separate process.  The test completes successfully, but
-if the test filesystem is mounted with the block_validity option, a
-warning message stating that a logical block has been mapped to an
-illegal physical block is posted in the kernel log.
+On Sun, Feb 02, 2014 at 02:43:41PM +0900, Namjae Jeon wrote:
+> From: Namjae Jeon <namjae.jeon@samsung.com>
+> 
+> Add new flag(FALLOC_FL_COLLAPSE_RANGE) for fallocate.
+> updated detailed semantics in comments.
+> 
+> Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
+> Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
 
-The bug occurs when an extent is being converted to the written state
-by ext4_end_io_dio() and ext4_ext_handle_uninitialized_extents()
-discovers a mapping for an existing uninitialized extent. Although it
-sets EXT4_MAP_MAPPED in map->m_flags, it fails to set map->m_pblk to
-the discovered physical block number.  Because map->m_pblk is not
-otherwise initialized or set by this function or its callers, its
-uninitialized value is returned to ext4_map_blocks(), where it is
-stored as a bogus mapping in the extent status tree.
+Looks OK to me.
 
-Since map->m_pblk can accidentally contain illegal values that are
-larger than the physical size of the file system,  calls to
-check_block_validity() in ext4_map_blocks() that are enabled if the
-block_validity mount option is used can fail, resulting in the logged
-warning message.
-
-Signed-off-by: Eric Whitney <enwlinux@gmail.com>
----
- fs/ext4/extents.c | 1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 10cff47..74bc2d5 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3906,6 +3906,7 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
- 		} else
- 			err = ret;
- 		map->m_flags |= EXT4_MAP_MAPPED;
-+		map->m_pblk = newblock;
- 		if (allocated > map->m_len)
- 			allocated = map->m_len;
- 		map->m_len = allocated;
+Reviewed-by: Dave Chinner <dchinner@redhat.com>
 -- 
-1.8.3.2
+Dave Chinner
+david@fromorbit.com
 
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
