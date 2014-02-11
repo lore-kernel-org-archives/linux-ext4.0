@@ -1,156 +1,197 @@
-From: Azat Khuzhin <a3at.mail@gmail.com>
-Subject: [PATCH v3] ext4: initialize multi-block allocator before checking block descriptors
-Date: Tue, 11 Feb 2014 18:24:12 +0400
-Message-ID: <1392128652-6882-1-git-send-email-a3at.mail@gmail.com>
-Cc: Azat Khuzhin <a3at.mail@gmail.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-kernel@vger.kernel.org (open list)
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Jinshan Xiong <jinshan.xiong@intel.com>
+Subject: [PATCH] staging/lustre/llite: remove lustre_generic_file_{read,write}
+Date: Tue, 11 Feb 2014 12:19:57 -0800
+Message-ID: <1392149997-85597-1-git-send-email-jinshan.xiong@intel.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Jinshan Xiong <jinshan.xiong@intel.com>
+To: tytso@mit.edu, viro@ZenIV.linux.org.uk
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-With EXT4FS_DEBUG ext4_count_free_clusters() will call
-ext4_read_block_bitmap() without s_group_info initialized, so we need to
-initialize multi-block allocator before.
+It looks like lustre_generic_file_{read,write} are a holdover from
+2.6.19 where generic_file_aio_read() replaced generic_file_readv()
+and cross-kernel interoperability was required for some period of
+time. Lustre has since removed support for those older kernels, but
+it looks like the wrappers were not deleted at that time. This patch
+will delete them.
 
-And we can't initialize multi-block allocator without group descriptors,
-since it use them.
-Also we need to install s_op before initializing multi-block allocator,
-because in ext4_mb_init_backend() new inode is created.
+Pass &iocb->ki_pos as the last argument for these functions instead
+of crw_pos, since this is the convention for other callers.  Verify
+that this is the same as the current crw_pos argument.  This code can
+likely be cleaned up further in a later patch.
 
-Here is bt:
-(gdb) bt
- #0  ext4_get_group_info (group=0, sb=0xffff880079a10000) at ext4.h:2430
- #1  ext4_validate_block_bitmap (sb=sb@entry=0xffff880079a10000, desc=desc@entry=0xffff880056510000, block_group=block_group@entry=0,
-     bh=bh@entry=0xffff88007bf2b2d8) at balloc.c:358
- #2  0xffffffff81232202 in ext4_wait_block_bitmap (sb=sb@entry=0xffff880079a10000, block_group=block_group@entry=0,
-     bh=bh@entry=0xffff88007bf2b2d8) at balloc.c:476
- #3  0xffffffff81232eaf in ext4_read_block_bitmap (sb=sb@entry=0xffff880079a10000, block_group=block_group@entry=0) at balloc.c:489
- #4  0xffffffff81232fc0 in ext4_count_free_clusters (sb=sb@entry=0xffff880079a10000) at balloc.c:665
- #5  0xffffffff81259ffa in ext4_check_descriptors (first_not_zeroed=<synthetic pointer>, sb=0xffff880079a10000) at super.c:2143
- #6  ext4_fill_super (sb=sb@entry=0xffff880079a10000, data=<optimized out>, data@entry=0x0 <irq_stack_union>, silent=silent@entry=0)
-     at super.c:3851
- #7  0xffffffff811b8340 in mount_bdev (fs_type=<optimized out>, flags=0, dev_name=<optimized out>, data=0x0 <irq_stack_union>,
-     fill_super=fill_super@entry=0xffffffff812589c0 <ext4_fill_super>) at super.c:987
- #8  0xffffffff8124ec35 in ext4_mount (fs_type=<optimized out>, flags=<optimized out>, dev_name=<optimized out>, data=<optimized out>)
-     at super.c:5365
- #9  0xffffffff811b8cf9 in mount_fs (type=type@entry=0xffffffff81c71840 <ext4_fs_type>, flags=flags@entry=0,
-     name=name@entry=0xffff880077a80c70 "/dev/loop4", data=data@entry=0x0 <irq_stack_union>) at super.c:1090
- #10 0xffffffff811d2ff3 in vfs_kern_mount (type=type@entry=0xffffffff81c71840 <ext4_fs_type>, flags=0,
-     name=name@entry=0xffff880077a80c70 "/dev/loop4", data=data@entry=0x0 <irq_stack_union>) at namespace.c:813
- #11 0xffffffff811d55de in do_new_mount (data=0x0 <irq_stack_union>, name=0xffff880077a80c70 "/dev/loop4", mnt_flags=32,
-     flags=<optimized out>, fstype=0xffff880077a80ca0 "ext4-insane", path=0xffff88007a5b1ed0) at namespace.c:2068
- #12 do_mount (dev_name=0xffff880077a80c70 "/dev/loop4", dir_name=<optimized out>, type_page=0xffff880077a80ca0 "ext4-insane",
-     flags=<optimized out>, flags@entry=3236757504, data_page=0x0 <irq_stack_union>) at namespace.c:2392
- #13 0xffffffff811d6183 in SYSC_mount (data=0x0 <irq_stack_union>, flags=3236757504, type=<optimized out>, dir_name=<optimized out>,
-     dev_name=0x7ffad9649c20 "/dev/loop4") at namespace.c:2586
- #14 SyS_mount (dev_name=140715365800992, dir_name=<optimized out>, type=<optimized out>, flags=3236757504, data=0) at namespace.c:2559
-
-Signed-off-by: Azat Khuzhin <a3at.mail@gmail.com>
+Signed-off-by: Jinshan Xiong <jinshan.xiong@intel.com>
 ---
-v2: ext4: initialize multi-block allocator after group descriptors loaded
-v3: ext4: set s_op before initializing multi-block allocator
+ drivers/staging/lustre/lustre/include/lclient.h    |  2 +-
+ drivers/staging/lustre/lustre/llite/file.c         |  4 ---
+ .../staging/lustre/lustre/llite/llite_internal.h   | 12 +--------
+ drivers/staging/lustre/lustre/llite/rw.c           |  2 +-
+ drivers/staging/lustre/lustre/llite/vvp_io.c       | 31 ++++++++--------------
+ 5 files changed, 14 insertions(+), 37 deletions(-)
 
- fs/ext4/super.c | 44 +++++++++++++++++++++++---------------------
- 1 file changed, 23 insertions(+), 21 deletions(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 1f7784d..fc42ee0 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3848,16 +3848,34 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 			goto failed_mount2;
+diff --git a/drivers/staging/lustre/lustre/include/lclient.h b/drivers/staging/lustre/lustre/include/lclient.h
+index 27316f7..de8f82c 100644
+--- a/drivers/staging/lustre/lustre/include/lclient.h
++++ b/drivers/staging/lustre/lustre/include/lclient.h
+@@ -118,7 +118,7 @@ struct ccc_io {
+ };
+ 
+ /**
+- * True, if \a io is a normal io, False for other (sendfile, splice*).
++ * True, if \a io is a normal io, False for splice_{read,write}.
+  * must be impementated in arch specific code.
+  */
+ int cl_is_normalio(const struct lu_env *env, const struct cl_io *io);
+diff --git a/drivers/staging/lustre/lustre/llite/file.c b/drivers/staging/lustre/lustre/llite/file.c
+index c12821a..6f8a4cf 100644
+--- a/drivers/staging/lustre/lustre/llite/file.c
++++ b/drivers/staging/lustre/lustre/llite/file.c
+@@ -1092,10 +1092,6 @@ restart:
+ 				down_read(&lli->lli_trunc_sem);
+ 			}
+ 			break;
+-		case IO_SENDFILE:
+-			vio->u.sendfile.cui_actor = args->u.sendfile.via_actor;
+-			vio->u.sendfile.cui_target = args->u.sendfile.via_target;
+-			break;
+ 		case IO_SPLICE:
+ 			vio->u.splice.cui_pipe = args->u.splice.via_pipe;
+ 			vio->u.splice.cui_flags = args->u.splice.via_flags;
+diff --git a/drivers/staging/lustre/lustre/llite/llite_internal.h b/drivers/staging/lustre/lustre/llite/llite_internal.h
+index 7ee5c02..9949036 100644
+--- a/drivers/staging/lustre/lustre/llite/llite_internal.h
++++ b/drivers/staging/lustre/lustre/llite/llite_internal.h
+@@ -919,8 +919,6 @@ void vvp_write_complete(struct ccc_object *club, struct ccc_page *page);
+ enum vvp_io_subtype {
+ 	/** normal IO */
+ 	IO_NORMAL,
+-	/** io called from .sendfile */
+-	IO_SENDFILE,
+ 	/** io started from splice_{read|write} */
+ 	IO_SPLICE
+ };
+@@ -932,10 +930,6 @@ struct vvp_io {
+ 
+ 	union {
+ 		struct {
+-			read_actor_t      cui_actor;
+-			void	     *cui_target;
+-		} sendfile;
+-		struct {
+ 			struct pipe_inode_info *cui_pipe;
+ 			unsigned int	    cui_flags;
+ 		} splice;
+@@ -981,7 +975,7 @@ struct vvp_io {
+  * IO arguments for various VFS I/O interfaces.
+  */
+ struct vvp_io_args {
+-	/** normal/sendfile/splice */
++	/** normal/splice */
+ 	enum vvp_io_subtype via_io_subtype;
+ 
+ 	union {
+@@ -991,10 +985,6 @@ struct vvp_io_args {
+ 			unsigned long      via_nrsegs;
+ 		} normal;
+ 		struct {
+-			read_actor_t       via_actor;
+-			void	      *via_target;
+-		} sendfile;
+-		struct {
+ 			struct pipe_inode_info  *via_pipe;
+ 			unsigned int       via_flags;
+ 		} splice;
+diff --git a/drivers/staging/lustre/lustre/llite/rw.c b/drivers/staging/lustre/lustre/llite/rw.c
+index e9ba38a..ca8fa4e 100644
+--- a/drivers/staging/lustre/lustre/llite/rw.c
++++ b/drivers/staging/lustre/lustre/llite/rw.c
+@@ -135,7 +135,7 @@ static struct ll_cl_context *ll_cl_init(struct file *file,
  		}
- 	}
-+
-+	/*
-+	 * set up enough so that it can read an inode
-+	 */
-+	if (!test_opt(sb, NOLOAD) &&
-+	    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL))
-+		sb->s_op = &ext4_sops;
-+	else
-+		sb->s_op = &ext4_nojournal_sops;
-+
-+	ext4_ext_init(sb);
-+	err = ext4_mb_init(sb);
-+	if (err) {
-+		ext4_msg(sb, KERN_ERR, "failed to initialize mballoc (%d)",
-+			 err);
-+		goto failed_mount2;
-+	}
-+
- 	if (!ext4_check_descriptors(sb, &first_not_zeroed)) {
- 		ext4_msg(sb, KERN_ERR, "group descriptors corrupted!");
--		goto failed_mount2;
-+		goto failed_mount2a;
- 	}
- 	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG))
- 		if (!ext4_fill_flex_info(sb)) {
- 			ext4_msg(sb, KERN_ERR,
- 			       "unable to initialize "
- 			       "flex_bg meta info!");
--			goto failed_mount2;
-+			goto failed_mount2a;
- 		}
  
- 	sbi->s_gdb_count = db_count;
-@@ -3895,14 +3913,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	sbi->s_stripe = ext4_get_stripe_size(sbi);
- 	sbi->s_extent_max_zeroout_kb = 32;
+ 		/*
+-		 * Loop-back driver calls ->prepare_write() and ->sendfile()
++		 * Loop-back driver calls ->prepare_write().
+ 		 * methods directly, bypassing file system ->write() operation,
+ 		 * so cl_io has to be created here.
+ 		 */
+diff --git a/drivers/staging/lustre/lustre/llite/vvp_io.c b/drivers/staging/lustre/lustre/llite/vvp_io.c
+index 93cbfbb..50383d3 100644
+--- a/drivers/staging/lustre/lustre/llite/vvp_io.c
++++ b/drivers/staging/lustre/lustre/llite/vvp_io.c
+@@ -51,7 +51,7 @@ static struct vvp_io *cl2vvp_io(const struct lu_env *env,
+ 				const struct cl_io_slice *slice);
  
--	/*
--	 * set up enough so that it can read an inode
--	 */
--	if (!test_opt(sb, NOLOAD) &&
--	    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL))
--		sb->s_op = &ext4_sops;
--	else
--		sb->s_op = &ext4_nojournal_sops;
- 	sb->s_export_op = &ext4_export_ops;
- 	sb->s_xattr = ext4_xattr_handlers;
- #ifdef CONFIG_QUOTA
-@@ -4094,14 +4104,6 @@ no_journal:
- 		goto failed_mount4a;
- 	}
+ /**
+- * True, if \a io is a normal io, False for sendfile() / splice_{read|write}
++ * True, if \a io is a normal io, False for splice_{read,write}
+  */
+ int cl_is_normalio(const struct lu_env *env, const struct cl_io *io)
+ {
+@@ -474,20 +474,6 @@ static void vvp_io_setattr_fini(const struct lu_env *env,
+ 	vvp_io_fini(env, ios);
+ }
  
--	ext4_ext_init(sb);
--	err = ext4_mb_init(sb);
--	if (err) {
--		ext4_msg(sb, KERN_ERR, "failed to initialize mballoc (%d)",
--			 err);
--		goto failed_mount5;
--	}
+-static ssize_t lustre_generic_file_read(struct file *file,
+-					struct ccc_io *vio, loff_t *ppos)
+-{
+-	return generic_file_aio_read(vio->cui_iocb, vio->cui_iov,
+-				     vio->cui_nrsegs, *ppos);
+-}
 -
- 	err = ext4_register_li_request(sb, first_not_zeroed);
- 	if (err)
- 		goto failed_mount6;
-@@ -4175,9 +4177,6 @@ failed_mount8:
- failed_mount7:
- 	ext4_unregister_li_request(sb);
- failed_mount6:
--	ext4_mb_release(sb);
--failed_mount5:
--	ext4_ext_release(sb);
- 	ext4_release_system_zone(sb);
- failed_mount4a:
- 	dput(sb->s_root);
-@@ -4203,11 +4202,14 @@ failed_mount3:
- 	percpu_counter_destroy(&sbi->s_extent_cache_cnt);
- 	if (sbi->s_mmp_tsk)
- 		kthread_stop(sbi->s_mmp_tsk);
-+failed_mount2a:
-+	ext4_mb_release(sb);
- failed_mount2:
- 	for (i = 0; i < db_count; i++)
- 		brelse(sbi->s_group_desc[i]);
- 	ext4_kvfree(sbi->s_group_desc);
- failed_mount:
-+	ext4_ext_release(sb);
- 	if (sbi->s_chksum_driver)
- 		crypto_free_shash(sbi->s_chksum_driver);
- 	if (sbi->s_proc) {
+-static ssize_t lustre_generic_file_write(struct file *file,
+-					struct ccc_io *vio, loff_t *ppos)
+-{
+-	return generic_file_aio_write(vio->cui_iocb, vio->cui_iov,
+-				      vio->cui_nrsegs, *ppos);
+-}
+-
+ static int vvp_io_read_start(const struct lu_env *env,
+ 			     const struct cl_io_slice *ios)
+ {
+@@ -540,8 +526,11 @@ static int vvp_io_read_start(const struct lu_env *env,
+ 	file_accessed(file);
+ 	switch (vio->cui_io_subtype) {
+ 	case IO_NORMAL:
+-		 result = lustre_generic_file_read(file, cio, &pos);
+-		 break;
++		LASSERT(cio->cui_iocb->ki_pos == pos);
++		result = generic_file_aio_read(cio->cui_iocb,
++					       cio->cui_iov, cio->cui_nrsegs,
++					       cio->cui_iocb->ki_pos);
++		break;
+ 	case IO_SPLICE:
+ 		result = generic_file_splice_read(file, &pos,
+ 				vio->u.splice.cui_pipe, cnt,
+@@ -586,7 +575,6 @@ static int vvp_io_write_start(const struct lu_env *env,
+ 	struct cl_io       *io    = ios->cis_io;
+ 	struct cl_object   *obj   = io->ci_obj;
+ 	struct inode       *inode = ccc_object_inode(obj);
+-	struct file	*file  = cio->cui_fd->fd_file;
+ 	ssize_t result = 0;
+ 	loff_t pos = io->u.ci_wr.wr.crw_pos;
+ 	size_t cnt = io->u.ci_wr.wr.crw_count;
+@@ -601,6 +589,8 @@ static int vvp_io_write_start(const struct lu_env *env,
+ 		 */
+ 		pos = io->u.ci_wr.wr.crw_pos = i_size_read(inode);
+ 		cio->cui_iocb->ki_pos = pos;
++	} else {
++		LASSERT(cio->cui_iocb->ki_pos == pos);
+ 	}
+ 
+ 	CDEBUG(D_VFSTRACE, "write: [%lli, %lli)\n", pos, pos + (long long)cnt);
+@@ -608,8 +598,9 @@ static int vvp_io_write_start(const struct lu_env *env,
+ 	if (cio->cui_iov == NULL) /* from a temp io in ll_cl_init(). */
+ 		result = 0;
+ 	else
+-		result = lustre_generic_file_write(file, cio, &pos);
+-
++		result = generic_file_aio_write(cio->cui_iocb,
++						cio->cui_iov, cio->cui_nrsegs,
++						cio->cui_iocb->ki_pos);
+ 	if (result > 0) {
+ 		if (result < cnt)
+ 			io->ci_continue = 0;
 -- 
-1.8.5.3
+1.8.3.4 (Apple Git-47)
+
