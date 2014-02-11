@@ -1,63 +1,79 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 09/21] fs: Mark function as static in
- ext3/xattr_security.c
-Date: Tue, 11 Feb 2014 21:49:16 +0100
-Message-ID: <20140211204916.GE22835@quack.suse.cz>
-References: <b572932c3e016c55e596686283036316a1aacd2f.1391949868.git.rashika.kheria@gmail.com>
- <bcf66d9631e4094a46e539950331f79289e4d85a.1391949868.git.rashika.kheria@gmail.com>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH v5 19/22] ext4: Add XIP functionality
+Date: Tue, 11 Feb 2014 16:12:11 -0700 (MST)
+Message-ID: <alpine.OSX.2.00.1402111536290.55274@scrumpy>
+References: <cover.1389779961.git.matthew.r.wilcox@intel.com> <CF1FF3EB.24114%matthew.r.wilcox@intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-kernel@vger.kernel.org, Jan Kara <jack@suse.cz>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, josh@joshtriplett.org
-To: Rashika Kheria <rashika.kheria@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <bcf66d9631e4094a46e539950331f79289e4d85a.1391949868.git.rashika.kheria@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org, linux-ext4@vger.kernel.org,
+	Ross Zwisler <ross.zwisler@linux.intel.com>
+To: Matthew Wilcox <matthew.r.wilcox@intel.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mga11.intel.com ([192.55.52.93]:48333 "EHLO mga11.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750978AbaBKXMG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 11 Feb 2014 18:12:06 -0500
+In-Reply-To: <CF1FF3EB.24114%matthew.r.wilcox@intel.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun 09-02-14 18:39:11, Rashika Kheria wrote:
-> Mark function as static in ext3/xattr_security.c because it is not us=
-ed
-> outside this file.
->=20
-> This eliminates the following warning in ext3/xattr_security.c:
-> fs/ext3/xattr_security.c:46:5: warning: no previous prototype for =E2=
-=80=98ext3_initxattrs=E2=80=99 [-Wmissing-prototypes]
->=20
-> Signed-off-by: Rashika Kheria <rashika.kheria@gmail.com>
-> Reviewed-by: Josh Triplett <josh@joshtriplett.org>
-  Thanks. I've merged the patch.
+On Wed, 15 Jan 2014, Matthew Wilcox wrote:
+> From: Ross Zwisler <ross.zwisler@linux.intel.com>
+> 
+> This is a port of the XIP functionality found in the current version of
+> ext2.
+> 
+> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+> Reviewed-by: Andreas Dilger <andreas.dilger@intel.com>
+> [heavily tweaked]
+> Signed-off-by: Matthew Wilcox <matthew.r.wilcox@intel.com>
 
-								Honza
-> ---
->  fs/ext3/xattr_security.c |    5 +++--
->  1 file changed, 3 insertions(+), 2 deletions(-)
->=20
-> diff --git a/fs/ext3/xattr_security.c b/fs/ext3/xattr_security.c
-> index 3387664..722c2bf 100644
-> --- a/fs/ext3/xattr_security.c
-> +++ b/fs/ext3/xattr_security.c
-> @@ -43,8 +43,9 @@ ext3_xattr_security_set(struct dentry *dentry, cons=
-t char *name,
->  			      name, value, size, flags);
->  }
-> =20
-> -int ext3_initxattrs(struct inode *inode, const struct xattr *xattr_a=
-rray,
-> -		    void *fs_info)
-> +static int ext3_initxattrs(struct inode *inode,
-> +			   const struct xattr *xattr_array,
-> +			   void *fs_info)
->  {
->  	const struct xattr *xattr;
->  	handle_t *handle =3D fs_info;
-> --=20
-> 1.7.9.5
->=20
---=20
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+...
+
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index c767666..8b73d77 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -663,6 +663,18 @@ found:
+>  			WARN_ON(1);
+>  		}
+>  
+> +		/* this is probably wrong for ext4.  unlike ext2, ext4 supports
+> +		 * uninitialised extents, so we should probably be hooking
+> +		 * into the "make it initialised" code instead. */
+> +		if (IS_XIP(inode)) {
+
+With the very first version of this patch the above logic seemed to work
+correctly, zeroing blocks as we allocated them.  With the current XIP
+infrastructure based tightly on direct IO this ends up being wrong because in
+some cases we can call ext4_map_blocks() twice for a given block.  
+
+A quick userland test program that creates a new file, truncates it up to 4k
+and then does a partial block write will end up giving you a file filled with
+all zeros.  This is because we zero the data before the write, do the write,
+and then zero again, overwriting the data.  The second call to
+ext4_map_blocks() happens via ext4_ext_direct_IO =>
+ext4_convert_unwritten_extents() => ext4_map_blocks().
+
+We can know in ext4_map_blocks() that we are being called after a write has
+already completed by looking at the flags.  One solution to get around this
+double-zeroing would be to change the above test to:
+
++                 if (IS_XIP(inode) && !(flags & EXT4_GET_BLOCKS_CONVERT)) {
+
+This fixes the tests I've been able to come up with, but I'm not certain it's
+the correct fix for the long term.  It seems wasteful to zero the blocks we're
+allocating, just to have the zeros overwritten immediately by a write.  Maybe
+a cleaner way would be to try and zero the unwritten bits inside of
+ext4_convert_unwritten_extents(), or somewhere similar?
+
+It's worth noting that I don't think the direct I/O path has this kind of
+logic because they don't allow partial block writes.  The regular I/O path
+knows to zero unwritten space based on the BH_New flag, as set via the
+set_buffer_new() call in ext4_da_map_blocks().  This is a pretty different I/O
+path, though, so I'm not sure how much we can borrow for the XIP code.
+
+Thoughts on the correct fix?
+
+- Ross
