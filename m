@@ -1,50 +1,156 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: Ext4 meeting around LSF
-Date: Tue, 11 Feb 2014 14:28:40 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1402111428030.2225@localhost.localdomain>
-References: <20140110115834.GK26378@quack.suse.cz> <20140210231917.GE9176@birch.djwong.org> <20140210233453.GB25308@thunk.org>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:12408 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750862AbaBKN2t (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 11 Feb 2014 08:28:49 -0500
-In-Reply-To: <20140210233453.GB25308@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Azat Khuzhin <a3at.mail@gmail.com>
+Subject: [PATCH v3] ext4: initialize multi-block allocator before checking block descriptors
+Date: Tue, 11 Feb 2014 18:24:12 +0400
+Message-ID: <1392128652-6882-1-git-send-email-a3at.mail@gmail.com>
+Cc: Azat Khuzhin <a3at.mail@gmail.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-kernel@vger.kernel.org (open list)
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi,
+With EXT4FS_DEBUG ext4_count_free_clusters() will call
+ext4_read_block_bitmap() without s_group_info initialized, so we need to
+initialize multi-block allocator before.
 
-I am actually leaving Friday morning, so everything other than
-Friday 28th works for me.
+And we can't initialize multi-block allocator without group descriptors,
+since it use them.
+Also we need to install s_op before initializing multi-block allocator,
+because in ext4_mb_init_backend() new inode is created.
 
-Thanks!
--Lukas
+Here is bt:
+(gdb) bt
+ #0  ext4_get_group_info (group=0, sb=0xffff880079a10000) at ext4.h:2430
+ #1  ext4_validate_block_bitmap (sb=sb@entry=0xffff880079a10000, desc=desc@entry=0xffff880056510000, block_group=block_group@entry=0,
+     bh=bh@entry=0xffff88007bf2b2d8) at balloc.c:358
+ #2  0xffffffff81232202 in ext4_wait_block_bitmap (sb=sb@entry=0xffff880079a10000, block_group=block_group@entry=0,
+     bh=bh@entry=0xffff88007bf2b2d8) at balloc.c:476
+ #3  0xffffffff81232eaf in ext4_read_block_bitmap (sb=sb@entry=0xffff880079a10000, block_group=block_group@entry=0) at balloc.c:489
+ #4  0xffffffff81232fc0 in ext4_count_free_clusters (sb=sb@entry=0xffff880079a10000) at balloc.c:665
+ #5  0xffffffff81259ffa in ext4_check_descriptors (first_not_zeroed=<synthetic pointer>, sb=0xffff880079a10000) at super.c:2143
+ #6  ext4_fill_super (sb=sb@entry=0xffff880079a10000, data=<optimized out>, data@entry=0x0 <irq_stack_union>, silent=silent@entry=0)
+     at super.c:3851
+ #7  0xffffffff811b8340 in mount_bdev (fs_type=<optimized out>, flags=0, dev_name=<optimized out>, data=0x0 <irq_stack_union>,
+     fill_super=fill_super@entry=0xffffffff812589c0 <ext4_fill_super>) at super.c:987
+ #8  0xffffffff8124ec35 in ext4_mount (fs_type=<optimized out>, flags=<optimized out>, dev_name=<optimized out>, data=<optimized out>)
+     at super.c:5365
+ #9  0xffffffff811b8cf9 in mount_fs (type=type@entry=0xffffffff81c71840 <ext4_fs_type>, flags=flags@entry=0,
+     name=name@entry=0xffff880077a80c70 "/dev/loop4", data=data@entry=0x0 <irq_stack_union>) at super.c:1090
+ #10 0xffffffff811d2ff3 in vfs_kern_mount (type=type@entry=0xffffffff81c71840 <ext4_fs_type>, flags=0,
+     name=name@entry=0xffff880077a80c70 "/dev/loop4", data=data@entry=0x0 <irq_stack_union>) at namespace.c:813
+ #11 0xffffffff811d55de in do_new_mount (data=0x0 <irq_stack_union>, name=0xffff880077a80c70 "/dev/loop4", mnt_flags=32,
+     flags=<optimized out>, fstype=0xffff880077a80ca0 "ext4-insane", path=0xffff88007a5b1ed0) at namespace.c:2068
+ #12 do_mount (dev_name=0xffff880077a80c70 "/dev/loop4", dir_name=<optimized out>, type_page=0xffff880077a80ca0 "ext4-insane",
+     flags=<optimized out>, flags@entry=3236757504, data_page=0x0 <irq_stack_union>) at namespace.c:2392
+ #13 0xffffffff811d6183 in SYSC_mount (data=0x0 <irq_stack_union>, flags=3236757504, type=<optimized out>, dir_name=<optimized out>,
+     dev_name=0x7ffad9649c20 "/dev/loop4") at namespace.c:2586
+ #14 SyS_mount (dev_name=140715365800992, dir_name=<optimized out>, type=<optimized out>, flags=3236757504, data=0) at namespace.c:2559
 
-On Mon, 10 Feb 2014, Theodore Ts'o wrote:
+Signed-off-by: Azat Khuzhin <a3at.mail@gmail.com>
+---
+v2: ext4: initialize multi-block allocator after group descriptors loaded
+v3: ext4: set s_op before initializing multi-block allocator
 
-> Date: Mon, 10 Feb 2014 18:34:53 -0500
-> From: Theodore Ts'o <tytso@mit.edu>
-> To: Darrick J. Wong <darrick.wong@oracle.com>
-> Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-> Subject: Re: Ext4 meeting around LSF
-> 
-> On Mon, Feb 10, 2014 at 03:19:17PM -0800, Darrick J. Wong wrote:
-> > Has the date of the ext4 meeting been settled?  I can attend as long as it's
-> > not on Thursday, March 27th.
-> 
-> We're curently negotiating the date.  Eric can't make Friday, and for
-> some reason Craig isn't all that enthused about Thursday.  We may end
-> up having to do it on Wendesday.  Is there some Oracle-related meeting
-> on Thursday that would make it impossible for you and Mingming to attend?
-> 
->    	    	       	       		      - Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+ fs/ext4/super.c | 44 +++++++++++++++++++++++---------------------
+ 1 file changed, 23 insertions(+), 21 deletions(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 1f7784d..fc42ee0 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3848,16 +3848,34 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 			goto failed_mount2;
+ 		}
+ 	}
++
++	/*
++	 * set up enough so that it can read an inode
++	 */
++	if (!test_opt(sb, NOLOAD) &&
++	    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL))
++		sb->s_op = &ext4_sops;
++	else
++		sb->s_op = &ext4_nojournal_sops;
++
++	ext4_ext_init(sb);
++	err = ext4_mb_init(sb);
++	if (err) {
++		ext4_msg(sb, KERN_ERR, "failed to initialize mballoc (%d)",
++			 err);
++		goto failed_mount2;
++	}
++
+ 	if (!ext4_check_descriptors(sb, &first_not_zeroed)) {
+ 		ext4_msg(sb, KERN_ERR, "group descriptors corrupted!");
+-		goto failed_mount2;
++		goto failed_mount2a;
+ 	}
+ 	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG))
+ 		if (!ext4_fill_flex_info(sb)) {
+ 			ext4_msg(sb, KERN_ERR,
+ 			       "unable to initialize "
+ 			       "flex_bg meta info!");
+-			goto failed_mount2;
++			goto failed_mount2a;
+ 		}
+ 
+ 	sbi->s_gdb_count = db_count;
+@@ -3895,14 +3913,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	sbi->s_stripe = ext4_get_stripe_size(sbi);
+ 	sbi->s_extent_max_zeroout_kb = 32;
+ 
+-	/*
+-	 * set up enough so that it can read an inode
+-	 */
+-	if (!test_opt(sb, NOLOAD) &&
+-	    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL))
+-		sb->s_op = &ext4_sops;
+-	else
+-		sb->s_op = &ext4_nojournal_sops;
+ 	sb->s_export_op = &ext4_export_ops;
+ 	sb->s_xattr = ext4_xattr_handlers;
+ #ifdef CONFIG_QUOTA
+@@ -4094,14 +4104,6 @@ no_journal:
+ 		goto failed_mount4a;
+ 	}
+ 
+-	ext4_ext_init(sb);
+-	err = ext4_mb_init(sb);
+-	if (err) {
+-		ext4_msg(sb, KERN_ERR, "failed to initialize mballoc (%d)",
+-			 err);
+-		goto failed_mount5;
+-	}
+-
+ 	err = ext4_register_li_request(sb, first_not_zeroed);
+ 	if (err)
+ 		goto failed_mount6;
+@@ -4175,9 +4177,6 @@ failed_mount8:
+ failed_mount7:
+ 	ext4_unregister_li_request(sb);
+ failed_mount6:
+-	ext4_mb_release(sb);
+-failed_mount5:
+-	ext4_ext_release(sb);
+ 	ext4_release_system_zone(sb);
+ failed_mount4a:
+ 	dput(sb->s_root);
+@@ -4203,11 +4202,14 @@ failed_mount3:
+ 	percpu_counter_destroy(&sbi->s_extent_cache_cnt);
+ 	if (sbi->s_mmp_tsk)
+ 		kthread_stop(sbi->s_mmp_tsk);
++failed_mount2a:
++	ext4_mb_release(sb);
+ failed_mount2:
+ 	for (i = 0; i < db_count; i++)
+ 		brelse(sbi->s_group_desc[i]);
+ 	ext4_kvfree(sbi->s_group_desc);
+ failed_mount:
++	ext4_ext_release(sb);
+ 	if (sbi->s_chksum_driver)
+ 		crypto_free_shash(sbi->s_chksum_driver);
+ 	if (sbi->s_proc) {
+-- 
+1.8.5.3
