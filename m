@@ -1,79 +1,58 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH v5 19/22] ext4: Add XIP functionality
-Date: Tue, 11 Feb 2014 16:12:11 -0700 (MST)
-Message-ID: <alpine.OSX.2.00.1402111536290.55274@scrumpy>
-References: <cover.1389779961.git.matthew.r.wilcox@intel.com> <CF1FF3EB.24114%matthew.r.wilcox@intel.com>
+From: Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>
+Subject: Re: [PATCH v4 0/3] ext4: increase mbcache scalability
+Date: Tue, 11 Feb 2014 11:47:10 -0700
+Message-ID: <52FA702E.7020503@hp.com>
+References: <20140128122623.26029.qmail@science.horizon.com> <848E47EB-5FDF-4DB9-9800-4B1F4B1FA71C@dilger.ca>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org, linux-ext4@vger.kernel.org,
-	Ross Zwisler <ross.zwisler@linux.intel.com>
-To: Matthew Wilcox <matthew.r.wilcox@intel.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga11.intel.com ([192.55.52.93]:48333 "EHLO mga11.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750978AbaBKXMG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 11 Feb 2014 18:12:06 -0500
-In-Reply-To: <CF1FF3EB.24114%matthew.r.wilcox@intel.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: T Makphaibulchoke <tmac@hp.com>, Andi Kleen <andi@firstfloor.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>,
+	George Spelvin <linux@horizon.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <848E47EB-5FDF-4DB9-9800-4B1F4B1FA71C@dilger.ca>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 15 Jan 2014, Matthew Wilcox wrote:
-> From: Ross Zwisler <ross.zwisler@linux.intel.com>
+On 01/28/2014 02:09 PM, Andreas Dilger wrote:
+> On Jan 28, 2014, at 5:26 AM, George Spelvin <linux@horizon.com> wrote:
+>>> The third part of the patch further increases the scalablity of an ext4
+>>> filesystem by having each ext4 fielsystem allocate and use its own private
+>>> mbcache structure, instead of sharing a single mcache structures across all
+>>> ext4 filesystems, and increases the size of its mbcache hash tables.
+>>
+>> Are you sure this helps?  The idea behind having one large mbcache is
+>> that one large hash table will always be at least as well balanced as
+>> multiple separate tables, if the total size is the same.
+>>
+>> If you have two size 2^n hash tables, the chance of collision is equal to
+>> one size  2^(n+1) table if they're equally busy, and if they're unequally
+>> busy. the latter is better.  The busier file system will take less time
+>> per search, and since it's searched more often than the less-busy one,
+>> net win.
+>>
+>> How does it compare with just increasing the hash table size but leaving
+>> them combined?
 > 
-> This is a port of the XIP functionality found in the current version of
-> ext2.
+> Except that having one mbcache per block device would avoid the need
+> to store the e_bdev pointer in thousands/millions of entries.  Since
+> the blocks are never shared between different block devices, there
+> is no caching benefit even if the same block is on two block devices.
 > 
-> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> Reviewed-by: Andreas Dilger <andreas.dilger@intel.com>
-> [heavily tweaked]
-> Signed-off-by: Matthew Wilcox <matthew.r.wilcox@intel.com>
+> Cheers, Andreas
+> 
 
-...
+On all 3 systems, with 80, 60 and 20 cores, that I ran aim7 on, spreading test files across 4 ext4 filesystems, there seems to be no different in performance either with a single large hash table or a smaller one per filesystem.
 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index c767666..8b73d77 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -663,6 +663,18 @@ found:
->  			WARN_ON(1);
->  		}
->  
-> +		/* this is probably wrong for ext4.  unlike ext2, ext4 supports
-> +		 * uninitialised extents, so we should probably be hooking
-> +		 * into the "make it initialised" code instead. */
-> +		if (IS_XIP(inode)) {
+Having said that, I still believe that having a separate hash table for each filesystem should scale better, as the size of a larger single hash table would be very arbitrary. As Andres mentioned above, with an mbcache per filesystem we would be able to remove the e_bdev member from the mb_cache_entry. It would also work well and also result in less mb_cache_entry lock contention, if we are to use the blockgroup locks, which are also on a per filesystem base, to implement the mb_cache_entry lock as suggested by Andreas.  
 
-With the very first version of this patch the above logic seemed to work
-correctly, zeroing blocks as we allocated them.  With the current XIP
-infrastructure based tightly on direct IO this ends up being wrong because in
-some cases we can call ext4_map_blocks() twice for a given block.  
+Please let me know if you have any further comment or concerns.
 
-A quick userland test program that creates a new file, truncates it up to 4k
-and then does a partial block write will end up giving you a file filled with
-all zeros.  This is because we zero the data before the write, do the write,
-and then zero again, overwriting the data.  The second call to
-ext4_map_blocks() happens via ext4_ext_direct_IO =>
-ext4_convert_unwritten_extents() => ext4_map_blocks().
+Thanks,
+Mak.
 
-We can know in ext4_map_blocks() that we are being called after a write has
-already completed by looking at the flags.  One solution to get around this
-double-zeroing would be to change the above test to:
+ 
 
-+                 if (IS_XIP(inode) && !(flags & EXT4_GET_BLOCKS_CONVERT)) {
-
-This fixes the tests I've been able to come up with, but I'm not certain it's
-the correct fix for the long term.  It seems wasteful to zero the blocks we're
-allocating, just to have the zeros overwritten immediately by a write.  Maybe
-a cleaner way would be to try and zero the unwritten bits inside of
-ext4_convert_unwritten_extents(), or somewhere similar?
-
-It's worth noting that I don't think the direct I/O path has this kind of
-logic because they don't allow partial block writes.  The regular I/O path
-knows to zero unwritten space based on the BH_New flag, as set via the
-set_buffer_new() call in ext4_da_map_blocks().  This is a pretty different I/O
-path, though, so I'm not sure how much we can borrow for the XIP code.
-
-Thoughts on the correct fix?
-
-- Ross
