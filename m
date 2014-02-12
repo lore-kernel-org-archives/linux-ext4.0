@@ -1,69 +1,64 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: clean up error handling in swap_inode_boot_loader()
-Date: Wed, 12 Feb 2014 11:56:51 -0500
-Message-ID: <1392224211-23834-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: don't try to modify s_flags if the the file system is read-only
+Date: Wed, 12 Feb 2014 12:17:49 -0500
+Message-ID: <1392225469-5163-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:57120 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:57131 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752529AbaBLQ4y (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 12 Feb 2014 11:56:54 -0500
+	id S1752988AbaBLRRx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 12 Feb 2014 12:17:53 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Tighten up the code to make the code easier to read and maintain.
+If an ext4 file system is created by some tool other than mke2fs
+(perhaps by someone who has a pathalogical fear of the GPL) that
+doesn't set one or the other of the EXT2_FLAGS_{UN}SIGNED_HASH flags,
+and that file system is then mounted read-only, don't try to modify
+the s_flags field.  Otherwise, if dm_verity is in use, the superblock
+will change, causing an dm_verity failure.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: stable@vger.kernel.org
 ---
- fs/ext4/ioctl.c | 24 ++++++------------------
- 1 file changed, 6 insertions(+), 18 deletions(-)
+ fs/ext4/super.c | 20 +++++++++++++-------
+ 1 file changed, 13 insertions(+), 7 deletions(-)
 
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index a2a837f..0f2252e 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -104,21 +104,15 @@ static long swap_inode_boot_loader(struct super_block *sb,
- 	struct ext4_inode_info *ei_bl;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 
--	if (inode->i_nlink != 1 || !S_ISREG(inode->i_mode)) {
--		err = -EINVAL;
--		goto swap_boot_out;
--	}
-+	if (inode->i_nlink != 1 || !S_ISREG(inode->i_mode))
-+		return -EINVAL;
- 
--	if (!inode_owner_or_capable(inode) || !capable(CAP_SYS_ADMIN)) {
--		err = -EPERM;
--		goto swap_boot_out;
--	}
-+	if (!inode_owner_or_capable(inode) || !capable(CAP_SYS_ADMIN))
-+		return -EPERM;
- 
- 	inode_bl = ext4_iget(sb, EXT4_BOOT_LOADER_INO);
--	if (IS_ERR(inode_bl)) {
--		err = PTR_ERR(inode_bl);
--		goto swap_boot_out;
--	}
-+	if (IS_ERR(inode_bl))
-+		return PTR_ERR(inode_bl);
- 	ei_bl = EXT4_I(inode_bl);
- 
- 	filemap_flush(inode->i_mapping);
-@@ -193,20 +187,14 @@ static long swap_inode_boot_loader(struct super_block *sb,
- 			ext4_mark_inode_dirty(handle, inode);
- 		}
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 0491c81..8161c28 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3695,16 +3695,22 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	for (i = 0; i < 4; i++)
+ 		sbi->s_hash_seed[i] = le32_to_cpu(es->s_hash_seed[i]);
+ 	sbi->s_def_hash_version = es->s_def_hash_version;
+-	i = le32_to_cpu(es->s_flags);
+-	if (i & EXT2_FLAGS_UNSIGNED_HASH)
+-		sbi->s_hash_unsigned = 3;
+-	else if ((i & EXT2_FLAGS_SIGNED_HASH) == 0) {
++	if (EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_DIR_INDEX)) {
++		i = le32_to_cpu(es->s_flags);
++		if (i & EXT2_FLAGS_UNSIGNED_HASH)
++			sbi->s_hash_unsigned = 3;
++		else if ((i & EXT2_FLAGS_SIGNED_HASH) == 0) {
+ #ifdef __CHAR_UNSIGNED__
+-		es->s_flags |= cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH);
+-		sbi->s_hash_unsigned = 3;
++			if (sb->s_flags & MS_RDONLY)
++				es->s_flags |=
++					cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH);
++			sbi->s_hash_unsigned = 3;
+ #else
+-		es->s_flags |= cpu_to_le32(EXT2_FLAGS_SIGNED_HASH);
++			if (sb->s_flags & MS_RDONLY)
++				es->s_flags |=
++					cpu_to_le32(EXT2_FLAGS_SIGNED_HASH);
+ #endif
++		}
  	}
--
- 	ext4_journal_stop(handle);
--
- 	ext4_double_up_write_data_sem(inode, inode_bl);
  
- journal_err_out:
- 	ext4_inode_resume_unlocked_dio(inode);
- 	ext4_inode_resume_unlocked_dio(inode_bl);
--
- 	unlock_two_nondirectories(inode, inode_bl);
--
- 	iput(inode_bl);
+ 	/* Handle clustersize */
+-- 
+1.8.5.rc3.362.gdf10213
+
