@@ -1,36 +1,66 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 11/21] fs: Mark functions as static in jbd2/journal.c
-Date: Wed, 12 Feb 2014 12:36:07 -0500
-Message-ID: <20140212173607.GH14520@thunk.org>
-References: <b572932c3e016c55e596686283036316a1aacd2f.1391949868.git.rashika.kheria@gmail.com>
- <b13f571ff87a2ee1942578a97b00823373e9bd79.1391949868.git.rashika.kheria@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	josh@joshtriplett.org
-To: Rashika Kheria <rashika.kheria@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <b13f571ff87a2ee1942578a97b00823373e9bd79.1391949868.git.rashika.kheria@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Subject: [PATCH -v2] ext4: don't try to modify s_flags if the the file system is read-only
+Date: Wed, 12 Feb 2014 17:25:22 -0500
+Message-ID: <1392243922-14660-1-git-send-email-tytso@mit.edu>
+References: <1392225469-5163-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:57241 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753123AbaBLWZ2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 12 Feb 2014 17:25:28 -0500
+In-Reply-To: <1392225469-5163-1-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Feb 09, 2014 at 06:41:21PM +0530, Rashika Kheria wrote:
-> Mark functions as static in jbd2/journal.c because they are not used
-> outside this file.
->=20
-> This eliminates the following warning in jbd2/journal.c:
-> fs/jbd2/journal.c:125:5: warning: no previous prototype for =E2=80=98=
-jbd2_verify_csum_type=E2=80=99 [-Wmissing-prototypes]
-> fs/jbd2/journal.c:146:5: warning: no previous prototype for =E2=80=98=
-jbd2_superblock_csum_verify=E2=80=99 [-Wmissing-prototypes]
-> fs/jbd2/journal.c:154:6: warning: no previous prototype for =E2=80=98=
-jbd2_superblock_csum_set=E2=80=99 [-Wmissing-prototypes]
->=20
-> Signed-off-by: Rashika Kheria <rashika.kheria@gmail.com>
-> Reviewed-by: Josh Triplett <josh@joshtriplett.org>
+If an ext4 file system is created by some tool other than mke2fs
+(perhaps by someone who has a pathalogical fear of the GPL) that
+doesn't set one or the other of the EXT2_FLAGS_{UN}SIGNED_HASH flags,
+and that file system is then mounted read-only, don't try to modify
+the s_flags field.  Otherwise, if dm_verity is in use, the superblock
+will change, causing an dm_verity failure.
 
-Thanks, applied to the ext4 tree.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: stable@vger.kernel.org
+---
+ fs/ext4/super.c | 20 +++++++++++++-------
+ 1 file changed, 13 insertions(+), 7 deletions(-)
 
-					- Ted
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 0491c81..f5c13b8 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3695,16 +3695,22 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	for (i = 0; i < 4; i++)
+ 		sbi->s_hash_seed[i] = le32_to_cpu(es->s_hash_seed[i]);
+ 	sbi->s_def_hash_version = es->s_def_hash_version;
+-	i = le32_to_cpu(es->s_flags);
+-	if (i & EXT2_FLAGS_UNSIGNED_HASH)
+-		sbi->s_hash_unsigned = 3;
+-	else if ((i & EXT2_FLAGS_SIGNED_HASH) == 0) {
++	if (EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_DIR_INDEX)) {
++		i = le32_to_cpu(es->s_flags);
++		if (i & EXT2_FLAGS_UNSIGNED_HASH)
++			sbi->s_hash_unsigned = 3;
++		else if ((i & EXT2_FLAGS_SIGNED_HASH) == 0) {
+ #ifdef __CHAR_UNSIGNED__
+-		es->s_flags |= cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH);
+-		sbi->s_hash_unsigned = 3;
++			if (!(sb->s_flags & MS_RDONLY))
++				es->s_flags |=
++					cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH);
++			sbi->s_hash_unsigned = 3;
+ #else
+-		es->s_flags |= cpu_to_le32(EXT2_FLAGS_SIGNED_HASH);
++			if (!(sb->s_flags & MS_RDONLY))
++				es->s_flags |=
++					cpu_to_le32(EXT2_FLAGS_SIGNED_HASH);
+ #endif
++		}
+ 	}
+ 
+ 	/* Handle clustersize */
+-- 
+1.8.5.rc3.362.gdf10213
+
