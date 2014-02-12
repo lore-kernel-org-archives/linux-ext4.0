@@ -1,66 +1,153 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH -v2] ext4: don't try to modify s_flags if the the file system is read-only
-Date: Wed, 12 Feb 2014 17:25:22 -0500
-Message-ID: <1392243922-14660-1-git-send-email-tytso@mit.edu>
-References: <1392225469-5163-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:57241 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753123AbaBLWZ2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 12 Feb 2014 17:25:28 -0500
-In-Reply-To: <1392225469-5163-1-git-send-email-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH v5 06/22] Treat XIP like O_DIRECT
+Date: Wed, 12 Feb 2014 16:53:53 -0700 (MST)
+Message-ID: <alpine.OSX.2.00.1402121640310.60058@scrumpy>
+References: <cover.1389779961.git.matthew.r.wilcox@intel.com> <CF215477.24281%matthew.r.wilcox@intel.com>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+    linux-mm@kvack.org, linux-ext4@vger.kernel.org
+To: Matthew Wilcox <matthew.r.wilcox@intel.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <CF215477.24281%matthew.r.wilcox@intel.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-If an ext4 file system is created by some tool other than mke2fs
-(perhaps by someone who has a pathalogical fear of the GPL) that
-doesn't set one or the other of the EXT2_FLAGS_{UN}SIGNED_HASH flags,
-and that file system is then mounted read-only, don't try to modify
-the s_flags field.  Otherwise, if dm_verity is in use, the superblock
-will change, causing an dm_verity failure.
+On Wed, 15 Jan 2014, Matthew Wilcox wrote:
+> Instead of separate read and write methods, use the generic AIO
+> infrastructure.  In addition to giving us support for AIO, this adds
+> the locking between read() and truncate() that was missing.
+> 
+> Signed-off-by: Matthew Wilcox <matthew.r.wilcox@intel.com>
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: stable@vger.kernel.org
----
- fs/ext4/super.c | 20 +++++++++++++-------
- 1 file changed, 13 insertions(+), 7 deletions(-)
+...
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 0491c81..f5c13b8 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3695,16 +3695,22 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	for (i = 0; i < 4; i++)
- 		sbi->s_hash_seed[i] = le32_to_cpu(es->s_hash_seed[i]);
- 	sbi->s_def_hash_version = es->s_def_hash_version;
--	i = le32_to_cpu(es->s_flags);
--	if (i & EXT2_FLAGS_UNSIGNED_HASH)
--		sbi->s_hash_unsigned = 3;
--	else if ((i & EXT2_FLAGS_SIGNED_HASH) == 0) {
-+	if (EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_DIR_INDEX)) {
-+		i = le32_to_cpu(es->s_flags);
-+		if (i & EXT2_FLAGS_UNSIGNED_HASH)
-+			sbi->s_hash_unsigned = 3;
-+		else if ((i & EXT2_FLAGS_SIGNED_HASH) == 0) {
- #ifdef __CHAR_UNSIGNED__
--		es->s_flags |= cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH);
--		sbi->s_hash_unsigned = 3;
-+			if (!(sb->s_flags & MS_RDONLY))
-+				es->s_flags |=
-+					cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH);
-+			sbi->s_hash_unsigned = 3;
- #else
--		es->s_flags |= cpu_to_le32(EXT2_FLAGS_SIGNED_HASH);
-+			if (!(sb->s_flags & MS_RDONLY))
-+				es->s_flags |=
-+					cpu_to_le32(EXT2_FLAGS_SIGNED_HASH);
- #endif
-+		}
- 	}
+> +static ssize_t xip_io(int rw, struct inode *inode, const struct iovec
+> *iov,
+> +			loff_t start, loff_t end, unsigned nr_segs,
+> +			get_block_t get_block, struct buffer_head *bh)
+> +{
+> +	ssize_t retval = 0;
+> +	unsigned seg = 0;
+> +	unsigned len;
+> +	unsigned copied = 0;
+> +	loff_t offset = start;
+> +	loff_t max = start;
+> +	void *addr;
+> +	bool hole = false;
+> +
+> +	while (offset < end) {
+> +		void __user *buf = iov[seg].iov_base + copied;
+> +
+> +		if (max == offset) {
+> +			sector_t block = offset >> inode->i_blkbits;
+> +			long size;
+> +			memset(bh, 0, sizeof(*bh));
+> +			bh->b_size = ALIGN(end - offset, PAGE_SIZE);
+> +			retval = get_block(inode, block, bh, rw == WRITE);
+> +			if (retval)
+> +				break;
+> +			if (buffer_mapped(bh)) {
+> +				retval = xip_get_addr(inode, bh, &addr);
+> +				if (retval < 0)
+> +					break;
+> +				addr += offset - (block << inode->i_blkbits);
+> +				hole = false;
+> +				size = retval;
+> +			} else {
+> +				if (rw == WRITE) {
+> +					retval = -EIO;
+> +					break;
+> +				}
+> +				addr = NULL;
+> +				hole = true;
+> +				size = bh->b_size;
+> +			}
+> +			max = offset + size;
+> +		}
+> +
+> +		len = min_t(unsigned, iov[seg].iov_len - copied, max - offset);
+> +
+> +		if (rw == WRITE)
+> +			len -= __copy_from_user_nocache(addr, buf, len);
+> +		else if (!hole)
+> +			len -= __copy_to_user(buf, addr, len);
+> +		else
+> +			len -= __clear_user(buf, len);
+> +
+> +		if (!len)
+> +			break;
+> +
+> +		offset += len;
+> +		copied += len;
+> +		if (copied == iov[seg].iov_len) {
+> +			seg++;
+> +			copied = 0;
+> +		}
+> +	}
+> +
+> +	return (offset == start) ? retval : offset - start;
+> +}
+
+xip_io() as it is currently written has an issue where reads can go beyond
+inode->i_size.  A quick test to show this issue is:
+
+	create a new file
+	write to the file for 1/2 a block
+	seek back to 0
+	read for a full block
+
+The read in this case will return 4096, the length of the full block that was
+requested.  It should return 2048, reading just the data that was written.
+
+The issue is that we do have a full block allocated in ext4, we do have it
+available via XIP via xip_get_addr(), and the only extra check that we
+currently have is a check against iov_len.  iov_len in this case is 4096, so
+no one stops us from doing a full block read.
+
+Here is a quick patch that fixes this issue:
+
+diff --git a/fs/xip.c b/fs/xip.c
+index e902593..1608f29 100644
+--- a/fs/xip.c
++++ b/fs/xip.c
+@@ -91,13 +91,16 @@ static ssize_t xip_io(int rw, struct inode *inode, const struct
+ {
+        ssize_t retval = 0;
+        unsigned seg = 0;
+-       unsigned len;
++       unsigned len, total_len;
+        unsigned copied = 0;
+        loff_t offset = start;
+        loff_t max = start;
+        void *addr;
+        bool hole = false;
  
- 	/* Handle clustersize */
--- 
-1.8.5.rc3.362.gdf10213
++       end = min(end, inode->i_size);
++       total_len = end - start;
++
+        while (offset < end) {
+                void __user *buf = iov[seg].iov_base + copied;
+ 
+@@ -136,6 +139,7 @@ static ssize_t xip_io(int rw, struct inode *inode, const struct
+                }
+ 
+                len = min_t(unsigned, iov[seg].iov_len - copied, max - offset);
++               len = min(len, total_len);
+ 
+                if (rw == WRITE)
+                        len -= __copy_from_user_nocache(addr, buf, len);
+@@ -149,6 +153,7 @@ static ssize_t xip_io(int rw, struct inode *inode, const struct
+ 
+                offset += len;
+                copied += len;
++               total_len -= len;
+                if (copied == iov[seg].iov_len) {
+                        seg++;
+                        copied = 0;
 
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
