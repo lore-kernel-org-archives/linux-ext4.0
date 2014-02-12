@@ -1,23 +1,30 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/1] ext4: Add __init macro to init_inodecache
-Date: Wed, 12 Feb 2014 11:20:30 -0500
-Message-ID: <20140212162030.GC14520@thunk.org>
-References: <20140201191007.59012c84446860984e6c4a76@skynet.be>
+Subject: Re: [PATCH v3] ext4: initialize multi-block allocator before
+ checking block descriptors
+Date: Wed, 12 Feb 2014 11:29:04 -0500
+Message-ID: <20140212162904.GD14520@thunk.org>
+References: <1392128652-6882-1-git-send-email-a3at.mail@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org
-To: Fabian Frederick <fabf@skynet.be>
+Cc: linux-ext4@vger.kernel.org,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	open list <linux-kernel@vger.kernel.org>
+To: Azat Khuzhin <a3at.mail@gmail.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20140201191007.59012c84446860984e6c4a76@skynet.be>
+In-Reply-To: <1392128652-6882-1-git-send-email-a3at.mail@gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sat, Feb 01, 2014 at 07:10:07PM +0800, Fabian Frederick wrote:
-> init_inodecache is only called by __init init_ext4_fs.
+On Tue, Feb 11, 2014 at 06:24:12PM +0400, Azat Khuzhin wrote:
+> With EXT4FS_DEBUG ext4_count_free_clusters() will call
+> ext4_read_block_bitmap() without s_group_info initialized, so we need to
+> initialize multi-block allocator before.
 > 
-> Signed-off-by: Fabian Frederick <fabf@skynet.be>
+> And we can't initialize multi-block allocator without group descriptors,
+> since it use them.
+> Also we need to install s_op before initializing multi-block allocator,
+> because in ext4_mb_init_backend() new inode is created.
 
 Applied, thanks.
 
