@@ -1,33 +1,36 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: chattr: improve the description for 'j' option in manpage
-Date: Wed, 12 Feb 2014 12:29:23 -0500
-Message-ID: <20140212172923.GA12218@thunk.org>
-References: <1391053576-31308-1-git-send-email-wenqing.lz@taobao.com>
+Subject: Re: [PATCH 11/21] fs: Mark functions as static in jbd2/journal.c
+Date: Wed, 12 Feb 2014 12:36:07 -0500
+Message-ID: <20140212173607.GH14520@thunk.org>
+References: <b572932c3e016c55e596686283036316a1aacd2f.1391949868.git.rashika.kheria@gmail.com>
+ <b13f571ff87a2ee1942578a97b00823373e9bd79.1391949868.git.rashika.kheria@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:57142 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751492AbaBLR3a (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 12 Feb 2014 12:29:30 -0500
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	josh@joshtriplett.org
+To: Rashika Kheria <rashika.kheria@gmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1391053576-31308-1-git-send-email-wenqing.lz@taobao.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <b13f571ff87a2ee1942578a97b00823373e9bd79.1391949868.git.rashika.kheria@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jan 30, 2014 at 11:46:16AM +0800, Zheng Liu wrote:
-> From: Zheng Liu <wenqing.lz@taobao.com>
-> 
-> Ext4 file system also supports to set/clear 'j' attribute, but it just
-> say that this option is only useful for ext3 in manpage.  This commit
-> fixes it.
-> 
-> Cc: Theodore Ts'o <tytso@mit.edu>
-> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-> Reviewed-by: Carlos Maiolino <cmaiolino@redhat.com>
+On Sun, Feb 09, 2014 at 06:41:21PM +0530, Rashika Kheria wrote:
+> Mark functions as static in jbd2/journal.c because they are not used
+> outside this file.
+>=20
+> This eliminates the following warning in jbd2/journal.c:
+> fs/jbd2/journal.c:125:5: warning: no previous prototype for =E2=80=98=
+jbd2_verify_csum_type=E2=80=99 [-Wmissing-prototypes]
+> fs/jbd2/journal.c:146:5: warning: no previous prototype for =E2=80=98=
+jbd2_superblock_csum_verify=E2=80=99 [-Wmissing-prototypes]
+> fs/jbd2/journal.c:154:6: warning: no previous prototype for =E2=80=98=
+jbd2_superblock_csum_set=E2=80=99 [-Wmissing-prototypes]
+>=20
+> Signed-off-by: Rashika Kheria <rashika.kheria@gmail.com>
+> Reviewed-by: Josh Triplett <josh@joshtriplett.org>
 
-Thanks, applied.
+Thanks, applied to the ext4 tree.
 
 					- Ted
