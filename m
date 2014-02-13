@@ -1,119 +1,135 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 07/12] libext2fs: add ext2fs_block_alloc_stats_range()
-Date: Thu, 13 Feb 2014 13:50:29 -0800
-Message-ID: <20140213215029.GG9176@birch.djwong.org>
-References: <1390197254-14583-1-git-send-email-tytso@mit.edu>
- <1390197254-14583-8-git-send-email-tytso@mit.edu>
+From: Eric Whitney <enwlinux@gmail.com>
+Subject: Re: 3.14-rc1 regression - xfstests failures on bigalloc
+Date: Thu, 13 Feb 2014 17:39:07 -0500
+Message-ID: <20140213223904.GB11924@wallace>
+References: <20140205184705.GA2157@wallace>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Eric Whitney <enwlinux@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:27282 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751252AbaBMVuf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Feb 2014 16:50:35 -0500
+Received: from mail-qc0-f176.google.com ([209.85.216.176]:54923 "EHLO
+	mail-qc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751537AbaBMWjM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Feb 2014 17:39:12 -0500
+Received: by mail-qc0-f176.google.com with SMTP id e16so18954259qcx.35
+        for <linux-ext4@vger.kernel.org>; Thu, 13 Feb 2014 14:39:11 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <1390197254-14583-8-git-send-email-tytso@mit.edu>
+In-Reply-To: <20140205184705.GA2157@wallace>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jan 20, 2014 at 12:54:09AM -0500, Theodore Ts'o wrote:
-> This function is more efficient than using ext2fs_block_alloc_stats2()
-> for each block in a range.  The efficiencies come from being able to
-> set a block range in the block bitmap at once, and from being update
-> the block group descriptors once per block group.  Especially now that
-> we are checksuming the block group descriptors, and we are using red
-> black trees for the allocation bitmaps, these changes can make a huge
-> difference in the CPU time used by mke2fs when creating very large
-> file systems.
+* Eric Whitney <enwlinux@gmail.com>:
+> I'm seeing a number of xfstests failures while running on a test file system
+> created with the bigalloc feature (xfstest-bld's bigalloc scenario).  This
+> is a regression since 3.13 final.
 > 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  lib/ext2fs/alloc_stats.c | 41 +++++++++++++++++++++++++++++++++++++++++
->  lib/ext2fs/ext2fs.h      |  2 ++
->  2 files changed, 43 insertions(+)
+> For example, generic/013 fails at high frequency (>80% of trials) when
+> e2fsck discovers file system damage after the core fsstress workload
+> completes:
 > 
-> diff --git a/lib/ext2fs/alloc_stats.c b/lib/ext2fs/alloc_stats.c
-> index adec363..7919c09 100644
-> --- a/lib/ext2fs/alloc_stats.c
-> +++ b/lib/ext2fs/alloc_stats.c
-> @@ -106,3 +106,44 @@ void ext2fs_set_block_alloc_stats_callback(ext2_filsys fs,
->  
->  	fs->block_alloc_stats = func;
->  }
-> +
-> +void ext2fs_block_alloc_stats_range(ext2_filsys fs, blk64_t blk,
-> +				    blk_t num, int inuse)
-> +{
-> +#ifndef OMIT_COM_ERR
-> +	if (blk + num >= ext2fs_blocks_count(fs->super)) {
-> +		com_err("ext2fs_block_alloc_stats_range", 0,
-> +			"Illegal block range: %llu (%u) ",
-> +			(unsigned long long) blk, num);
-> +		return;
-> +	}
-> +#endif
-> +	if (inuse == 0)
-> +		return;
-> +	if (inuse > 0) {
-> +		ext2fs_mark_block_bitmap_range2(fs->block_map, blk, num);
-> +		inuse = 1;
-> +	} else {
-> +		ext2fs_unmark_block_bitmap_range2(fs->block_map, blk, num);
-> +		inuse = -1;
-> +	}
-> +	while (num) {
-> +		int group = ext2fs_group_of_blk2(fs, blk);
-> +		blk64_t last_blk = ext2fs_group_last_block2(fs, group);
-> +		blk_t n = num;
-> +
-> +		if (blk + num > last_blk)
-> +			n = last_blk - blk + 1;
-> +
-> +		ext2fs_bg_free_blocks_count_set(fs, group,
-> +			ext2fs_bg_free_blocks_count(fs, group) -
-> +			inuse*n/EXT2FS_CLUSTER_RATIO(fs));
-> +		ext2fs_bg_flags_clear(fs, group, EXT2_BG_BLOCK_UNINIT);
-> +		ext2fs_group_desc_csum_set(fs, group);
-> +		ext2fs_free_blocks_count_add(fs->super, -inuse * n);
-
-When I use this function, e2fsck complains:
-"Free blocks count wrong (124554823344, counted=771760)."
-
-It looks like "-inuse * n" is an 32bit quantity that isn't correctly
-sign-extended to the blk64_t that ext2fs_free_blocks_count_add() requires.
-A trivial fix is to change n to blk64_t to force a conversion.
-
-Will send a patch soon.
-
-(gcc 4.6.3, Ubuntu 12.04)
-
---D
-
-> +		blk += n;
-> +		num -= n;
-> +	}
-> +	ext2fs_mark_super_dirty(fs);
-> +	ext2fs_mark_bb_dirty(fs);
-> +}
-> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-> index 1e07f88..47340dd 100644
-> --- a/lib/ext2fs/ext2fs.h
-> +++ b/lib/ext2fs/ext2fs.h
-> @@ -683,6 +683,8 @@ void ext2fs_inode_alloc_stats2(ext2_filsys fs, ext2_ino_t ino,
->  			       int inuse, int isdir);
->  void ext2fs_block_alloc_stats(ext2_filsys fs, blk_t blk, int inuse);
->  void ext2fs_block_alloc_stats2(ext2_filsys fs, blk64_t blk, int inuse);
-> +void ext2fs_block_alloc_stats_range(ext2_filsys fs, blk64_t blk,
-> +				    blk_t num, int inuse);
->  
->  /* alloc_tables.c */
->  extern errcode_t ext2fs_allocate_tables(ext2_filsys fs);
-> -- 
-> 1.8.5.rc3.362.gdf10213
+> _check_generic filesystem: filesystem on /dev/vdd is inconsistent
+> *** fsck.ext4 output ***
+> fsck 1.43-WIP (28-Dec-2013)
+> e2fsck 1.43-WIP (28-Dec-2013)
+> Pass 1: Checking inodes, blocks, and sizes
+> Inode 318, i_blocks is 896, should be 1024.  Fix? no
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Inode 852, i_blocks is 1024, should be 1152.  Fix? no
+> 
+> 
+> Running additional passes to resolve blocks claimed by more than one inode...
+> Pass 1B: Rescanning for multiply-claimed blocks
+> Multiply-claimed block(s) in inode 828: 610640 610641 610642 610643 610644 610645 610646 610647 610648 610649 610650 610651 610652 610653 610654 610655
+> Multiply-claimed block(s) in inode 852: 610650 610651 610652 610653 610654 610655
+> Pass 1C: Scanning directories for inodes with multiply-claimed blocks
+> Pass 1D: Reconciling multiply-claimed blocks
+> (There are 2 inodes containing multiply-claimed blocks.)
+> 
+> File /fsstress.3033.2/p5/d3XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/d19XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/d55X/f50XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX (inode #828, mod time Wed Feb  5 13:10:07 2014) 
+>   has 1 multiply-claimed block(s), shared with 1 file(s):
+> 	/fsstress.3033.2/p0/d2X/f2b (inode #852, mod time Wed Feb  5 13:10:07 2014)
+> Clone multiply-claimed blocks? no
+> 
+> Delete file? no
+> 
+> File /fsstress.3033.2/p0/d2X/f2b (inode #852, mod time Wed Feb  5 13:10:07 2014) 
+>   has 1 multiply-claimed block(s), shared with 1 file(s):
+> 	/fsstress.3033.2/p5/d3XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/d19XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/d55X/f50XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX (inode #828, mod time Wed Feb  5 13:10:07 2014)
+> Clone multiply-claimed blocks? no
+> 
+> Delete file? no
+> 
+> Pass 2: Checking directory structure
+> Pass 3: Checking directory connectivity
+> Pass 4: Checking reference counts
+> Pass 5: Checking group summary information
+> Block bitmap differences:  +574112 +643936
+> Fix? no
+> 
+> 
+> /dev/vdd: ********** WARNING: Filesystem still has errors **********
+> 
+> /dev/vdd: 3880/86400 files (13.0% non-contiguous), 176096/1382400 blocks
+> *** end fsck.ext4 output
+> *** mount output ***
+> /dev/vda1 on / type ext4 (rw,errors=remount-ro)
+> proc on /proc type proc (rw,noexec,nosuid,nodev)
+> sysfs on /sys type sysfs (rw,noexec,nosuid,nodev)
+> none on /sys/fs/cgroup type tmpfs (rw)
+> none on /sys/fs/fuse/connections type fusectl (rw)
+> none on /sys/kernel/debug type debugfs (rw)
+> none on /sys/kernel/security type securityfs (rw)
+> udev on /dev type devtmpfs (rw,mode=0755)
+> devpts on /dev/pts type devpts (rw,noexec,nosuid,gid=5,mode=0620)
+> tmpfs on /run type tmpfs (rw,noexec,nosuid,size=10%,mode=0755)
+> none on /run/lock type tmpfs (rw,noexec,nosuid,nodev,size=5242880)
+> none on /run/shm type tmpfs (rw,nosuid,nodev)
+> none on /run/user type tmpfs (rw,noexec,nosuid,nodev,size=104857600,mode=0755)
+> none on /sys/fs/pstore type pstore (rw)
+> systemd on /sys/fs/cgroup/systemd type cgroup (rw,noexec,nosuid,nodev,none,name=systemd)
+> /dev/vdc on /vdc type ext4 (rw,acl,user_xattr,block_validity)
+> 
+> 
+> I've also seen generic/068 and generic/075 fail, but have not tried to go
+> further into the test sequence.
+> 
+> Reverting 9cb00419fa (ext4: enable punch hole for bigalloc) on 3.14-rc1
+> eliminates the regressions.  It's clear this patch isn't the root cause, but
+> presumably it's exposing some code paths we haven't been exercising.
+> 
+> Separately (I think), I'm seeing the following in dmesg during bigalloc runs
+> from time to time.  Although this sometimes appears when generic/013 is run,
+> it generally doesn't, and sometimes appears when tests do not fail:
+> 
+> EXT4-fs error (device vdd): mb_free_blocks:1433: group 1, block 573360:freeing already freed block (bit 3067); block bitmap corrupt.
+> EXT4-fs error (device vdd): ext4_mb_generate_buddy:756: group 1, 28570 clusters in bitmap, 28571 in gd; block bitmap corrupt.
+> 
+> This is new in 3.14-rc1, and does not disappear when reverting 9cb00419fa.  I
+> haven't had a chance to bisect that yet;  I'm currently working on some
+> other bug fixes.
+> 
+
+Here's an update:
+
+These problems remain in 3.14-rc2.
+
+The good news is that reverting 6ae06ff51eab (ext4: optimize starting extent
+in ext4_ext_rm_leaf()) eliminates the generic/013 and 075 failures described
+above in the first xfstest-bld bigalloc test run I've made (generic/068 was
+accidentally blacklisted).  The test results for the complete bigalloc run
+were comparable to those I've got for 3.13 on the same test configuration in
+terms of test success and failure.  Shared/298 did fail fsck after the core
+of the test completed, and that was new since 3.13.
+
+However, another problem may remain (especially given the fsck failure for
+shared/298). Messages like the following appeared in the kernel log in a
+couple of instances:
+
+EXT4-fs error (device vdd): ext4_mb_free_metadata:4554: group 1, block 754704:Block already on to-be-freed list
+
+Shared/298 generated most of these, while generic/311 generated one.
+Generic/311 failed, as it did in 3.13.
+
+Thanks,
+Eric
