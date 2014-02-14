@@ -1,62 +1,52 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: [PATCH] ext4: fix error return from
- ext4_ext_handle_uninitialized_extents()
-Date: Thu, 13 Feb 2014 17:54:30 -0500
-Message-ID: <20140213225430.GC11924@wallace>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu
-To: linux-ext4@vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: kernel bug at fs/ext4/resize.c:409
+Date: Thu, 13 Feb 2014 20:13:33 -0700
+Message-ID: <6E255D1A-534A-4039-9102-CF8CBE2FBE25@dilger.ca>
+References: <20140203182634.GA28811@shaniqua> <20140203185633.GA22856@thunk.org> <20140206210844.GA4335@helmut> <87sirnp2m3.fsf@openvz.org> <20140213145323.GA6296@helmut> <20140213211831.GA11480@thunk.org>
+Mime-Version: 1.0 (1.0)
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qc0-f175.google.com ([209.85.216.175]:42563 "EHLO
-	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751778AbaBMWyd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Feb 2014 17:54:33 -0500
-Received: by mail-qc0-f175.google.com with SMTP id x13so19074217qcv.34
-        for <linux-ext4@vger.kernel.org>; Thu, 13 Feb 2014 14:54:33 -0800 (PST)
-Content-Disposition: inline
+Received: from mail-pb0-f52.google.com ([209.85.160.52]:52149 "EHLO
+	mail-pb0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751050AbaBNDNd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Feb 2014 22:13:33 -0500
+Received: by mail-pb0-f52.google.com with SMTP id jt11so11737704pbb.39
+        for <linux-ext4@vger.kernel.org>; Thu, 13 Feb 2014 19:13:33 -0800 (PST)
+In-Reply-To: <20140213211831.GA11480@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Commit 3779473246 breaks the return of error codes from
-ext4_ext_handle_uninitialized_extents() in ext4_ext_map_blocks().  A
-portion of the patch assigns that function's signed integer return
-value to an unsigned int.  Consequently, negatively valued error codes
-are lost and can be treated as a bogus allocated block count.
+On Feb 13, 2014, at 14:18, Theodore Ts'o <tytso@mit.edu> wrote:
+> one question: was there a deliberate reason
+> why the file system was created with parameters which allocate 32,752
+> inodes per block group?  That means that a bit over 8 megabytes of
+> inode table are being reserved for every 128 megabyte (32768 4k
+> blocks) block group, and that you have more inodes reserved than could
+> be used if the average file size is 4k or less.
 
-Signed-off-by: Eric Whitney <enwlinux@gmail.com>
----
- fs/ext4/extents.c | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
+This is fairly normal for Lustre metadata targets, where the
+inodes typically do not have any data blocks. We typically format the
+MDT filesystem with an average of 2KB per inode. 
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 74bc2d5..9875fd0 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4128,7 +4128,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	struct ext4_extent newex, *ex, *ex2;
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	ext4_fsblk_t newblock = 0;
--	int free_on_err = 0, err = 0, depth;
-+	int free_on_err = 0, err = 0, depth, ret;
- 	unsigned int allocated = 0, offset = 0;
- 	unsigned int allocated_clusters = 0;
- 	struct ext4_allocation_request ar;
-@@ -4189,9 +4189,13 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 			if (!ext4_ext_is_uninitialized(ex))
- 				goto out;
- 
--			allocated = ext4_ext_handle_uninitialized_extents(
-+			ret = ext4_ext_handle_uninitialized_extents(
- 				handle, inode, map, path, flags,
- 				allocated, newblock);
-+			if (ret < 0)
-+				err = ret;
-+			else
-+				allocated = ret;
- 			goto out3;
- 		}
- 	}
--- 
-1.8.3.2
+>  In fact, the only way
+> you could run out of inodes is if you had huge numbers of devices,
+> sockets, small symlinks, or zero-length files in your file system.
+> This seems to be a bit of a waste of space, in all liklihood.
+> 
+> Don't get me wrong; we should be able to handle this case correctly,
+> and not trigger a BUG_ON, but this is why most people aren't seeing
+> this particular fault --- it requires a far greater number of inodes
+> than mke2fs would ever create by default, or that most system
+> administrators would try to deliberately specify, when creating the
+> file system.
 
+That said, Lustre also doesn't allow online resize yet (no way to pass
+the ioctl() from userspace to the underlying ext4 filesystem), so
+we haven't hit this yet. 
+
+Cheers, Andreas
