@@ -1,144 +1,44 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: fix online resize with very large inode tables
-Date: Sat, 15 Feb 2014 21:35:07 -0500
-Message-ID: <1392518107-19900-1-git-send-email-tytso@mit.edu>
-References: <20140203182634.GA28811@shaniqua>
-Cc: Jon Bernard <jbernard@tuxion.com>, Theodore Ts'o <tytso@mit.edu>,
-	stable@vger.kernel.org
+Subject: [PATCH] ext4: fix online resize with a non-standard blocks per group setting
+Date: Sat, 15 Feb 2014 22:42:44 -0500
+Message-ID: <1392522164-28841-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:58451 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:58461 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752503AbaBPCfX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 15 Feb 2014 21:35:23 -0500
-In-Reply-To: <20140203182634.GA28811@shaniqua>
+	id S1752587AbaBPDmu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 15 Feb 2014 22:42:50 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If a file system has a large number of inodes per block group, all of
-the metadata blocks in a flex_bg may be larger than what can fit in a
-single block group.  Unfortunately, ext4_alloc_group_tables() in
-resize.c was never tested to see if it would handle this case
-correctly, and there were a large number of bugs which caused the
-following sequence to result in a BUG_ON:
+The set_flexbg_block_bitmap() function assumed that the number of
+blocks in a blockgroup was sb->blocksize * 8, which is normally true,
+but not always!  Use EXT4_BLOCKS_PER_GROUP(sb) instead, to fix block
+bitmap corruption after:
 
-kernel bug at fs/ext4/resize.c:409!
-   ...
-call trace:
- [<ffffffff81256768>] ext4_flex_group_add+0x1448/0x1830
- [<ffffffff81257de2>] ext4_resize_fs+0x7b2/0xe80
- [<ffffffff8123ac50>] ext4_ioctl+0xbf0/0xf00
- [<ffffffff811c111d>] do_vfs_ioctl+0x2dd/0x4b0
- [<ffffffff811b9df2>] ? final_putname+0x22/0x50
- [<ffffffff811c1371>] sys_ioctl+0x81/0xa0
- [<ffffffff81676aa9>] system_call_fastpath+0x16/0x1b
-code: c8 4c 89 df e8 41 96 f8 ff 44 89 e8 49 01 c4 44 29 6d d4 0
-rip  [<ffffffff81254fa1>] set_flexbg_block_bitmap+0x171/0x180
-
-
-This can be reproduced with the following command sequence:
-
-   mke2fs -t ext4 -i 4096 /dev/vdd 1G
-   mount -t ext4 /dev/vdd /vdd
-   resize2fs /dev/vdd 8G
-
-To fix this, we need to make sure the right thing happens when a block
-group's inode table straddles two block groups, which means the
-following bugs had to be fixed:
-
-1) Not clearing the BLOCK_UNINIT flag in the second block group in
-   ext4_alloc_group_tables --- the was proximate cause of the BUG_ON.
-
-2) Incorrectly determining how many block groups contained contiguous
-   free blocks in ext4_alloc_group_tables().
-
-3) Incorrectly setting the start of the next block range to be marked
-   in use after a discontinuity in setup_new_flex_group_blocks().
+mke2fs -t ext4 -g 3072 -i 4096 /dev/vdd 1G
+mount -t ext4 /dev/vdd /vdd
+resize2fs /dev/vdd 8G
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Cc: stable@vger.kernel.org
 ---
- fs/ext4/resize.c | 32 ++++++++++++++++++++------------
- 1 file changed, 20 insertions(+), 12 deletions(-)
+ fs/ext4/resize.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index c5adbb3..69a6261 100644
+index 69a6261..f3b84cd 100644
 --- a/fs/ext4/resize.c
 +++ b/fs/ext4/resize.c
-@@ -243,6 +243,7 @@ static int ext4_alloc_group_tables(struct super_block *sb,
- 	ext4_group_t group;
- 	ext4_group_t last_group;
- 	unsigned overhead;
-+	__u16 uninit_mask = (flexbg_size > 1) ? ~EXT4_BG_BLOCK_UNINIT : ~0;
+@@ -409,7 +409,7 @@ static int set_flexbg_block_bitmap(struct super_block *sb, handle_t *handle,
+ 		start = ext4_group_first_block_no(sb, group);
+ 		group -= flex_gd->groups[0].group;
  
- 	BUG_ON(flex_gd->count == 0 || group_data == NULL);
- 
-@@ -266,7 +267,7 @@ next_group:
- 	src_group++;
- 	for (; src_group <= last_group; src_group++) {
- 		overhead = ext4_group_overhead_blocks(sb, src_group);
--		if (overhead != 0)
-+		if (overhead == 0)
- 			last_blk += group_data[src_group - group].blocks_count;
- 		else
- 			break;
-@@ -280,8 +281,7 @@ next_group:
- 		group = ext4_get_group_number(sb, start_blk - 1);
- 		group -= group_data[0].group;
- 		group_data[group].free_blocks_count--;
--		if (flexbg_size > 1)
--			flex_gd->bg_flags[group] &= ~EXT4_BG_BLOCK_UNINIT;
-+		flex_gd->bg_flags[group] &= uninit_mask;
- 	}
- 
- 	/* Allocate inode bitmaps */
-@@ -292,22 +292,30 @@ next_group:
- 		group = ext4_get_group_number(sb, start_blk - 1);
- 		group -= group_data[0].group;
- 		group_data[group].free_blocks_count--;
--		if (flexbg_size > 1)
--			flex_gd->bg_flags[group] &= ~EXT4_BG_BLOCK_UNINIT;
-+		flex_gd->bg_flags[group] &= uninit_mask;
- 	}
- 
- 	/* Allocate inode tables */
- 	for (; it_index < flex_gd->count; it_index++) {
--		if (start_blk + EXT4_SB(sb)->s_itb_per_group > last_blk)
-+		unsigned int itb = EXT4_SB(sb)->s_itb_per_group;
-+		ext4_fsblk_t next_group_start;
-+
-+		if (start_blk + itb > last_blk)
- 			goto next_group;
- 		group_data[it_index].inode_table = start_blk;
--		group = ext4_get_group_number(sb, start_blk - 1);
-+		group = ext4_get_group_number(sb, start_blk);
-+		next_group_start = ext4_group_first_block_no(sb, group + 1);
- 		group -= group_data[0].group;
--		group_data[group].free_blocks_count -=
--					EXT4_SB(sb)->s_itb_per_group;
--		if (flexbg_size > 1)
--			flex_gd->bg_flags[group] &= ~EXT4_BG_BLOCK_UNINIT;
- 
-+		if (start_blk + itb > next_group_start) {
-+			flex_gd->bg_flags[group + 1] &= uninit_mask;
-+			overhead = start_blk + itb - next_group_start;
-+			group_data[group + 1].free_blocks_count -= overhead;
-+			itb -= overhead;
-+		}
-+
-+		group_data[group].free_blocks_count -= itb;
-+		flex_gd->bg_flags[group] &= uninit_mask;
- 		start_blk += EXT4_SB(sb)->s_itb_per_group;
- 	}
- 
-@@ -620,7 +628,7 @@ handle_ib:
- 			if (err)
- 				goto out;
- 			count = group_table_count[j];
--			start = group_data[i].block_bitmap;
-+			start = (&group_data[i].block_bitmap)[j];
- 			block = start;
- 		}
+-		count2 = sb->s_blocksize * 8 - (block - start);
++		count2 = EXT4_BLOCKS_PER_GROUP(sb) - (block - start);
+ 		if (count2 > count)
+ 			count2 = count;
  
 -- 
 1.8.5.rc3.362.gdf10213
