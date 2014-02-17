@@ -1,174 +1,209 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 1/6] ext4: Update inode i_size after the preallocation
-Date: Mon, 17 Feb 2014 16:08:18 +0100
-Message-ID: <1392649703-10772-2-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 2/6] ext4: refactor ext4_fallocate code
+Date: Mon, 17 Feb 2014 16:08:19 +0100
+Message-ID: <1392649703-10772-3-git-send-email-lczerner@redhat.com>
 References: <1392649703-10772-1-git-send-email-lczerner@redhat.com>
 Cc: tytso@mit.edu, linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
 	Lukas Czerner <lczerner@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:24723 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:36318 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751086AbaBQPIf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 17 Feb 2014 10:08:35 -0500
+	id S1753765AbaBQPIg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 17 Feb 2014 10:08:36 -0500
 In-Reply-To: <1392649703-10772-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently in ext4_fallocate we would update inode size, c_time and sync
-the file with every partial allocation which is entirely unnecessary. It
-is true that if the crash happens in the middle of truncate we might end
-up with unchanged i size, or c_time which I do not think is really a
-problem - it does not mean file system corruption in any way. Note that
-xfs is doing things the same way e.g. update all of the mentioned after
-the allocation is done.
-
-This commit moves all the updates after the allocation is done. In
-addition we also need to change m_time as not only inode has been change
-bot also data regions might have changed (unwritten extents). Also we do
-not need to be paranoid about changing the c_time and m_time only if the
-actual allocation have happened, we can change it even if we try to
-allocate only to find out that there are already block allocated. It's
-not really a big deal and it will save us some additional complexity.
-
-Also use ext4_debug, instead of ext4_warning in #ifdef EXT4FS_DEBUG
-section.
+Move block allocation out of the ext4_fallocate into separate function
+called ext4_alloc_file_blocks(). This will allow us to use the same
+allocation code for other allocation operations such as zero range which
+is commit in the next patch.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
- fs/ext4/extents.c | 86 +++++++++++++++++++++----------------------------------
- 1 file changed, 32 insertions(+), 54 deletions(-)
+ fs/ext4/extents.c | 127 +++++++++++++++++++++++++++++++-----------------------
+ 1 file changed, 73 insertions(+), 54 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 10cff47..6a52851 100644
+index 6a52851..2d68a46 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -4513,36 +4513,6 @@ retry:
+@@ -4513,6 +4513,64 @@ retry:
  	ext4_std_error(inode->i_sb, err);
  }
  
--static void ext4_falloc_update_inode(struct inode *inode,
--				int mode, loff_t new_size, int update_ctime)
--{
--	struct timespec now;
--
--	if (update_ctime) {
--		now = current_fs_time(inode->i_sb);
--		if (!timespec_equal(&inode->i_ctime, &now))
--			inode->i_ctime = now;
--	}
--	/*
--	 * Update only when preallocation was requested beyond
--	 * the file size.
--	 */
--	if (!(mode & FALLOC_FL_KEEP_SIZE)) {
--		if (new_size > i_size_read(inode))
--			i_size_write(inode, new_size);
--		if (new_size > EXT4_I(inode)->i_disksize)
--			ext4_update_i_disksize(inode, new_size);
--	} else {
--		/*
--		 * Mark that we allocate beyond EOF so the subsequent truncate
--		 * can proceed even if the new size is the same as i_size.
--		 */
--		if (new_size > i_size_read(inode))
--			ext4_set_inode_flag(inode, EXT4_INODE_EOFBLOCKS);
--	}
--
--}
--
- /*
-  * preallocate space for a file. This implements ext4's fallocate file
-  * operation, which gets called from sys_fallocate system call.
-@@ -4554,7 +4524,7 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
- {
- 	struct inode *inode = file_inode(file);
- 	handle_t *handle;
--	loff_t new_size;
-+	loff_t new_size = 0;
- 	unsigned int max_blocks;
- 	int ret = 0;
- 	int ret2 = 0;
-@@ -4594,12 +4564,15 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
- 	 */
- 	credits = ext4_chunk_trans_blocks(inode, max_blocks);
- 	mutex_lock(&inode->i_mutex);
--	ret = inode_newsize_ok(inode, (len + offset));
--	if (ret) {
--		mutex_unlock(&inode->i_mutex);
--		trace_ext4_fallocate_exit(inode, offset, max_blocks, ret);
--		return ret;
++int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
++			   ext4_lblk_t len, int flags, int mode)
++{
++	struct inode *inode = file_inode(file);
++	handle_t *handle;
++	int ret = 0;
++	int ret2 = 0;
++	int retries = 0;
++	struct ext4_map_blocks map;
++	unsigned int credits;
 +
-+	if (!(mode & FALLOC_FL_KEEP_SIZE) &&
-+	     offset + len > i_size_read(inode)) {
-+		new_size = offset + len;
-+		ret = inode_newsize_ok(inode, new_size);
-+		if (ret)
-+			goto out;
- 	}
++	map.m_lblk = offset;
++	/*
++	 * Don't normalize the request if it can fit in one extent so
++	 * that it doesn't get unnecessarily split into multiple
++	 * extents.
++	 */
++	if (len <= EXT_UNINIT_MAX_LEN)
++		flags |= EXT4_GET_BLOCKS_NO_NORMALIZE;
 +
- 	flags = EXT4_GET_BLOCKS_CREATE_UNINIT_EXT;
- 	if (mode & FALLOC_FL_KEEP_SIZE)
- 		flags |= EXT4_GET_BLOCKS_KEEP_SIZE;
-@@ -4623,28 +4596,14 @@ retry:
- 		}
- 		ret = ext4_map_blocks(handle, inode, &map, flags);
- 		if (ret <= 0) {
--#ifdef EXT4FS_DEBUG
--			ext4_warning(inode->i_sb,
--				     "inode #%lu: block %u: len %u: "
--				     "ext4_ext_map_blocks returned %d",
--				     inode->i_ino, map.m_lblk,
--				     map.m_len, ret);
--#endif
++	/*
++	 * credits to insert 1 extent into extent tree
++	 */
++	credits = ext4_chunk_trans_blocks(inode, len);
++
++retry:
++	while (ret >= 0 && ret < len) {
++		map.m_lblk = map.m_lblk + ret;
++		map.m_len = len = len - ret;
++		handle = ext4_journal_start(inode, EXT4_HT_MAP_BLOCKS,
++					    credits);
++		if (IS_ERR(handle)) {
++			ret = PTR_ERR(handle);
++			break;
++		}
++		ret = ext4_map_blocks(handle, inode, &map, flags);
++		if (ret <= 0) {
 +			ext4_debug("inode #%lu: block %u: len %u: "
 +				   "ext4_ext_map_blocks returned %d",
 +				   inode->i_ino, map.m_lblk,
 +				   map.m_len, ret);
- 			ext4_mark_inode_dirty(handle, inode);
- 			ret2 = ext4_journal_stop(handle);
- 			break;
- 		}
--		if ((map.m_lblk + ret) >= (EXT4_BLOCK_ALIGN(offset + len,
--						blkbits) >> blkbits))
--			new_size = offset + len;
--		else
--			new_size = ((loff_t) map.m_lblk + ret) << blkbits;
--
--		ext4_falloc_update_inode(inode, mode, new_size,
--					 (map.m_flags & EXT4_MAP_NEW));
--		ext4_mark_inode_dirty(handle, inode);
--		if ((file->f_flags & O_SYNC) && ret >= max_blocks)
--			ext4_handle_sync(handle);
- 		ret2 = ext4_journal_stop(handle);
- 		if (ret2)
- 			break;
-@@ -4654,6 +4613,25 @@ retry:
- 		ret = 0;
- 		goto retry;
- 	}
-+
-+	handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
-+	if (IS_ERR(handle))
-+		goto out;
-+
-+	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
-+
-+	if (ret > 0 && new_size) {
-+		if (new_size > i_size_read(inode))
-+			i_size_write(inode, new_size);
-+		if (new_size > EXT4_I(inode)->i_disksize)
-+			ext4_update_i_disksize(inode, new_size);
++			ext4_mark_inode_dirty(handle, inode);
++			ret2 = ext4_journal_stop(handle);
++			break;
++		}
++		ret2 = ext4_journal_stop(handle);
++		if (ret2)
++			break;
 +	}
-+	ext4_mark_inode_dirty(handle, inode);
-+	if (file->f_flags & O_SYNC)
-+		ext4_handle_sync(handle);
++	if (ret == -ENOSPC &&
++			ext4_should_retry_alloc(inode->i_sb, &retries)) {
++		ret = 0;
++		goto retry;
++	}
 +
-+	ext4_journal_stop(handle);
-+out:
++	return ret > 0 ? ret2 : ret;
++}
++
+ /*
+  * preallocate space for a file. This implements ext4's fallocate file
+  * operation, which gets called from sys_fallocate system call.
+@@ -4527,11 +4585,9 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+ 	loff_t new_size = 0;
+ 	unsigned int max_blocks;
+ 	int ret = 0;
+-	int ret2 = 0;
+-	int retries = 0;
+ 	int flags;
+-	struct ext4_map_blocks map;
+-	unsigned int credits, blkbits = inode->i_blkbits;
++	ext4_lblk_t lblk;
++	unsigned int blkbits = inode->i_blkbits;
+ 
+ 	/* Return error if mode is not supported */
+ 	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
+@@ -4552,17 +4608,18 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+ 		return -EOPNOTSUPP;
+ 
+ 	trace_ext4_fallocate_enter(inode, offset, len, mode);
+-	map.m_lblk = offset >> blkbits;
++	lblk = offset >> blkbits;
+ 	/*
+ 	 * We can't just convert len to max_blocks because
+ 	 * If blocksize = 4096 offset = 3072 and len = 2048
+ 	 */
+ 	max_blocks = (EXT4_BLOCK_ALIGN(len + offset, blkbits) >> blkbits)
+-		- map.m_lblk;
+-	/*
+-	 * credits to insert 1 extent into extent tree
+-	 */
+-	credits = ext4_chunk_trans_blocks(inode, max_blocks);
++		- lblk;
++
++	flags = EXT4_GET_BLOCKS_CREATE_UNINIT_EXT;
++	if (mode & FALLOC_FL_KEEP_SIZE)
++		flags |= EXT4_GET_BLOCKS_KEEP_SIZE;
++
+ 	mutex_lock(&inode->i_mutex);
+ 
+ 	if (!(mode & FALLOC_FL_KEEP_SIZE) &&
+@@ -4573,46 +4630,9 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+ 			goto out;
+ 	}
+ 
+-	flags = EXT4_GET_BLOCKS_CREATE_UNINIT_EXT;
+-	if (mode & FALLOC_FL_KEEP_SIZE)
+-		flags |= EXT4_GET_BLOCKS_KEEP_SIZE;
+-	/*
+-	 * Don't normalize the request if it can fit in one extent so
+-	 * that it doesn't get unnecessarily split into multiple
+-	 * extents.
+-	 */
+-	if (len <= EXT_UNINIT_MAX_LEN << blkbits)
+-		flags |= EXT4_GET_BLOCKS_NO_NORMALIZE;
+-
+-retry:
+-	while (ret >= 0 && ret < max_blocks) {
+-		map.m_lblk = map.m_lblk + ret;
+-		map.m_len = max_blocks = max_blocks - ret;
+-		handle = ext4_journal_start(inode, EXT4_HT_MAP_BLOCKS,
+-					    credits);
+-		if (IS_ERR(handle)) {
+-			ret = PTR_ERR(handle);
+-			break;
+-		}
+-		ret = ext4_map_blocks(handle, inode, &map, flags);
+-		if (ret <= 0) {
+-			ext4_debug("inode #%lu: block %u: len %u: "
+-				   "ext4_ext_map_blocks returned %d",
+-				   inode->i_ino, map.m_lblk,
+-				   map.m_len, ret);
+-			ext4_mark_inode_dirty(handle, inode);
+-			ret2 = ext4_journal_stop(handle);
+-			break;
+-		}
+-		ret2 = ext4_journal_stop(handle);
+-		if (ret2)
+-			break;
+-	}
+-	if (ret == -ENOSPC &&
+-			ext4_should_retry_alloc(inode->i_sb, &retries)) {
+-		ret = 0;
+-		goto retry;
+-	}
++	ret = ext4_alloc_file_blocks(file, lblk, max_blocks, flags, mode);
++	if (ret)
++		goto out;
+ 
+ 	handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
+ 	if (IS_ERR(handle))
+@@ -4620,7 +4640,7 @@ retry:
+ 
+ 	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
+ 
+-	if (ret > 0 && new_size) {
++	if (!ret && new_size) {
+ 		if (new_size > i_size_read(inode))
+ 			i_size_write(inode, new_size);
+ 		if (new_size > EXT4_I(inode)->i_disksize)
+@@ -4633,9 +4653,8 @@ retry:
+ 	ext4_journal_stop(handle);
+ out:
  	mutex_unlock(&inode->i_mutex);
- 	trace_ext4_fallocate_exit(inode, offset, max_blocks,
- 				ret > 0 ? ret2 : ret);
+-	trace_ext4_fallocate_exit(inode, offset, max_blocks,
+-				ret > 0 ? ret2 : ret);
+-	return ret > 0 ? ret2 : ret;
++	trace_ext4_fallocate_exit(inode, offset, max_blocks, ret);
++	return ret;
+ }
+ 
+ /*
 -- 
 1.8.3.1
 
