@@ -1,37 +1,40 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: ext4 info leak in creation times in latest mainline
-Date: Sun, 16 Feb 2014 19:01:17 -0500
-Message-ID: <20140217000117.GC12947@thunk.org>
-References: <5300DEC5.2080908@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Kalpak Shah <kalpak@clusterfs.com>,
-	Andreas Dilger <adilger@clusterfs.com>,
-	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
-To: Vegard Nossum <vegard.nossum@oracle.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <5300DEC5.2080908@oracle.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Subject: [PATCH] ext4: don't leave i_crtime.tv_sec uninitialized
+Date: Sun, 16 Feb 2014 19:31:22 -0500
+Message-ID: <1392597082-7483-1-git-send-email-tytso@mit.edu>
+Cc: Vegard Nossum <vegard.nossum@oracle.com>,
+	Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:58719 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752322AbaBQAbf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 16 Feb 2014 19:31:35 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Feb 16, 2014 at 04:52:37PM +0100, Vegard Nossum wrote:
-> There seems to be a bug in ext4 where the i_crtime of struct
-> ext4_inode_info is not initialised, so (some) creation times contain
-> essentially random values....
-> 
-> I don't know if it's relevant, but the filesystem is actually ext3
-> mounted using ext4. It's 100% reproducible for me, so I can test
-> patches.
+If the i_crtime field is not present in the inode, don't leave the
+field uninitialized.
 
-Thanks for the bug report.  I see the problem; it was indeed relevant
-that this was an ext3 file systmem mounted as ext4.  The first time
-when an ext3 inode is read by ext4, i_extra_isize is too small, and so
-there is no i_crtime field.  The bug is in EXT4_EINODE_GET_XTIME() (in
-ext4.h, where it is leaving ei->i_crtime.tv_sec uninitialized.
+Reported-by: Vegard Nossum <vegard.nossum@oracle.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/ext4.h | 2 ++
+ 1 file changed, 2 insertions(+)
 
-It's an easy fix.  I'll send out a patch shortly.
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index ece5556..d3a534f 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -771,6 +771,8 @@ do {									       \
+ 	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime))		       \
+ 		(einode)->xtime.tv_sec = 				       \
+ 			(signed)le32_to_cpu((raw_inode)->xtime);	       \
++	else								       \
++		(einode)->xtime.tv_sec = 0;				       \
+ 	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime ## _extra))	       \
+ 		ext4_decode_extra_time(&(einode)->xtime,		       \
+ 				       raw_inode->xtime ## _extra);	       \
+-- 
+1.9.0
 
-Cheers,
-
-						- Ted
