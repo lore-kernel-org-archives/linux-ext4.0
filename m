@@ -1,59 +1,58 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 0/6][RFC] Introduce FALLOC_FL_ZERO_RANGE flag for
- fallocate
-Date: Tue, 18 Feb 2014 09:23:05 -0500
-Message-ID: <20140218142305.GN26580@thunk.org>
-References: <1392649703-10772-1-git-send-email-lczerner@redhat.com>
- <20140218010138.GE13997@dastard>
- <20140218083324.GB28666@dastard>
- <alpine.LFD.2.00.1402181006250.2216@localhost.localdomain>
- <20140218094142.GC28666@dastard>
- <alpine.LFD.2.00.1402181302230.2216@localhost.localdomain>
+Subject: Re: [PATCH RESEND 3/10] ext4: Add support FALLOC_FL_COLLAPSE_RANGE
+	for fallocate
+Date: Tue, 18 Feb 2014 09:30:05 -0500
+Message-ID: <20140218143005.GO26580@thunk.org>
+References: <1391319874-3203-1-git-send-email-linkinjeon@gmail.com>
+	<alpine.LFD.2.00.1402111209450.2225@localhost.localdomain>
+	<CAKYAXd-bD6ZZgpc9E8V1kD9Dj2wrCkbi1i6drNBdUAwsMiv5gg@mail.gmail.com>
+	<alpine.LFD.2.00.1402181001530.2216@localhost.localdomain>
+	<CAKYAXd_xpWg-=T_1PghL_u9wDKTX_Ey5mJxbgVVKth8NoexQQg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
-To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:59518 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754917AbaBROXL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 18 Feb 2014 09:23:11 -0500
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: jack@suse.cz, Namjae Jeon <namjae.jeon@samsung.com>,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com, bpm@sgi.com,
+	adilger.kernel@dilger.ca, viro@zeniv.linux.org.uk,
+	Ashish Sangwan <a.sangwan@samsung.com>, linux-fsdevel@vger.kernel.org,
+	=?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
+	linux-ext4@vger.kernel.org, mtk.manpages@gmail.com
+To: Namjae Jeon <linkinjeon@gmail.com>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1402181302230.2216@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <CAKYAXd_xpWg-=T_1PghL_u9wDKTX_Ey5mJxbgVVKth8NoexQQg@mail.gmail.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Feb 18, 2014 at 01:04:24PM +0100, Luk=C3=A1=C5=A1 Czerner wrote=
-:
+Namjae,
+
+Did you respond to Matthew Wilcox's comments/question from Feb. 2nd?
+
+> > What if the file is mmaped at the time somebody issues this command?
+> > Seems to me we should drop pagecache pages that overlap with the
+> > removed blocks.  If the removed range is not a multiple of PAGE_SIZE,
+> > then we should also drop any pagecache pages after the removed range.
 >
-> > Ok, so it's a "fallocate" test group, then?
->=20
-> More like "fsx_fsstress" group, which might sound as a terrible name
-> for the group but it explains it quite well. So if you do not have
-> anything against that I'll call the new group "fsx_fsstress"
+> Oops, forgot to add "and if it is a multiple of page size, then we need
+> to update the offsets of any pages after the removed page".
 
-How about "block_map" group?  I like Dave's suggestion about naming
-the group after what it is trying to test, as opposed to how it does
-that testing.  This is also consistent with how the other tests groups
-are named in xfstests.
+Dave responded that XFS does the right thing when doing a punch hole
+operation, but it wasn't obvious to me whether FL_COLLAPSE_RANGE does
+the right thing with ext4.
 
-However, extents are an implementation strategy, and you might just as
-easily use this test to verify whether or not the punch hole
-functionality for indirect block maps worked correctly.
+Thanks,
 
-What I think using fsx and fstress together have in common is that
-it's a great way of stress testing whatever the file system uses for
-creating and maintaining the translation map between (inode, logical
-block) to physical block, so that's why perhaps "block_map" might be a
-good test group name.
+					- Ted
 
-Regards,
-
-						- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
