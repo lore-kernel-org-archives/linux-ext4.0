@@ -1,32 +1,113 @@
-From: "Dr. Pius Okagba" <renato.ardigo@alice.it>
-Subject: Dear
-Date: Tue, 18 Feb 2014 12:36:17 +0100 (CET)
-Message-ID: <14444c83cd8.renato.ardigo__45017.7123806954$1392723645$gmane$org@alice.it>
-Reply-To: franklinb1@barid.com
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH 0/6][RFC] Introduce FALLOC_FL_ZERO_RANGE flag for
+ fallocate
+Date: Tue, 18 Feb 2014 13:04:24 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1402181302230.2216@localhost.localdomain>
+References: <1392649703-10772-1-git-send-email-lczerner@redhat.com> <20140218010138.GE13997@dastard> <20140218083324.GB28666@dastard> <alpine.LFD.2.00.1402181006250.2216@localhost.localdomain> <20140218094142.GC28666@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain;charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: unlisted-recipients:; (no To-header on input)
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp303.alice.it ([82.57.200.119]:16073 "EHLO smtp303.alice.it"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752047AbaBRLke (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 18 Feb 2014 06:40:34 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-863531103-1392725067=:2216"
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu,
+	linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20140218094142.GC28666@dastard>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Attention:
-Regarding the transaction made so far, I waited for your message as you told 
-me
-with none received. Remember, I supposed to have traveled last night 
-but the
-weather is too bad. I will be leaving to Paraguay tomorrow for estate project.
-Meanwhile, contact the Bank manager with below address, i have kept the cheque
-worth of USD2.5M. They will either mail it to you or remit it for transfer
-depending on how you want it; Here is Bank contact information:
- 
-Name Of Manager: Mr. Franklin Barnard
-MAIL: (franklinb1@barid.com,
-okagbapius1@live.com
-Thank you
-UN Office.
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
+
+--8323328-863531103-1392725067=:2216
+Content-Type: TEXT/PLAIN; charset=utf-8
+Content-Transfer-Encoding: 8BIT
+
+On Tue, 18 Feb 2014, Dave Chinner wrote:
+
+> Date: Tue, 18 Feb 2014 20:41:42 +1100
+> From: Dave Chinner <david@fromorbit.com>
+> To: Lukáš Czerner <lczerner@redhat.com>
+> Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, linux-fsdevel@vger.kernel.org,
+>     xfs@oss.sgi.com
+> Subject: Re: [PATCH 0/6][RFC] Introduce FALLOC_FL_ZERO_RANGE flag for
+>     fallocate
+> 
+> On Tue, Feb 18, 2014 at 10:09:48AM +0100, Lukáš Czerner wrote:
+> > On Tue, 18 Feb 2014, Dave Chinner wrote:
+> > 
+> > > Date: Tue, 18 Feb 2014 19:33:24 +1100
+> > > From: Dave Chinner <david@fromorbit.com>
+> > > To: Lukas Czerner <lczerner@redhat.com>
+> > > Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, linux-fsdevel@vger.kernel.org,
+> > >     xfs@oss.sgi.com
+> > > Subject: Re: [PATCH 0/6][RFC] Introduce FALLOC_FL_ZERO_RANGE flag for
+> > >     fallocate
+> > > 
+> > > On Tue, Feb 18, 2014 at 12:01:38PM +1100, Dave Chinner wrote:
+> > > > On Mon, Feb 17, 2014 at 04:08:17PM +0100, Lukas Czerner wrote:
+> > > > > Introduce new FALLOC_FL_ZERO_RANGE flag for fallocate. This has the same
+> > > > > functionality as xfs ioctl XFS_IOC_ZERO_RANGE.
+> > > > > 
+> > > > > It can be used to convert a range of file to zeros preferably without
+> > > > > issuing data IO. Blocks should be preallocated for the regions that span
+> > > > > holes in the file, and the entire range is preferable converted to
+> > > > > unwritten extents - even though file system may choose to zero out the
+> > > > > extent or do whatever which will result in reading zeros from the range
+> > > > > while the range remains allocated for the file.
+> > > > > 
+> > > > > This can be also used to preallocate blocks past EOF in the same way as
+> > > > > with fallocate. Flag FALLOC_FL_KEEP_SIZE which should cause the inode
+> > > > > size to remain the same.
+> > > > > 
+> > > > > You can test this feature yourself using xfstests, of fallocate(1) however
+> > > > > you'll need patches for util_linux, xfsprogs and xfstests which you
+> > > > > can find here:
+> > > > > 
+> > > > > http://people.redhat.com/lczerner/zero_range/
+> > > > > 
+> > > > > I'll post the patches after we agree and merge the kernel functionality.
+> > > > > 
+> > > > > I tested this mostly with a subset of xfstests using fsx and fsstress and
+> > > > > even with new generic/290 which is just a copy of xfs/290 usinz fzero
+> > > > > command for xfs_io instead of zero (which uses ioctl). I was testing on
+> > > > > x86_64 and ppc64 with block sizes of 1024, 2048 and 4096.
+> > > > 
+> > > > You also want to convert xfs/242 to be a generic test - it uses the
+> > > > _generic_test_punch helper to test all the corner cases across
+> > > > different extent type transitions.
+> > 
+> > That was the plan originally, however it uses xfs bmap which is not
+> > supported for other file systems. But I can take a better look and
+> > possibly port it to generic as well.
+> 
+> Simply pass fiemap rather than "bmap -v" like all the other falloc
+> tests do. The output of the xfs_io fiemap and bmap commands is
+> pretty much identical so this shouldn't be an issue.
+
+ok, will do.
+
+> 
+> > > > > ./check generic/076 generic/232 generic/013 generic/070 generic/269 generic/083 generic/117 generic/068 generic/231 generic/127 generic/091 generic/075 generic/112 generic/263 generic/091 generic/075 generic/256 generic/255 generic/316 generic/300 generic/290;
+> > > 
+> > > FWIW. if that's a group of tests you consider good for testing
+> > > extent tree modifications, then can you create a test group for
+> > > these by adding "extent" to each of the tests in the group file?
+> > 
+> > I've made patches adding support for FALLOC_FL_ZERO_RANGE into fsx
+> > and fsstress so those tests are mostly tests which are using fsx and
+> > fsstress.
+> 
+> Ok, so it's a "fallocate" test group, then?
+
+More like "fsx_fsstress" group, which might sound as a terrible name
+for the group but it explains it quite well. So if you do not have
+anything against that I'll call the new group "fsx_fsstress"
+
+Thanks!
+-Lukas
+
+> 
+> Cheers,
+> 
+> Dave.
+> 
+--8323328-863531103-1392725067=:2216--
