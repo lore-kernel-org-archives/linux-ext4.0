@@ -1,66 +1,86 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH RFC] block: use discard if possible in
- blkdev_issue_discard()
-Date: Mon, 17 Feb 2014 21:17:47 -0500
-Message-ID: <20140218021747.GG26580@thunk.org>
-References: <20140214043256.GA5145@thunk.org>
- <yq1ioshobul.fsf@sermon.lab.mkp.net>
- <20140215012901.GA28307@thunk.org>
- <yq161odofis.fsf@sermon.lab.mkp.net>
- <20140217191901.GC16660@thunk.org>
- <yq11tz1p5o9.fsf@sermon.lab.mkp.net>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 4/6] fs: Introduce FALLOC_FL_ZERO_RANGE flag for fallocate
+Date: Tue, 18 Feb 2014 13:51:12 +1100
+Message-ID: <20140218025112.GH13997@dastard>
+References: <1392649703-10772-1-git-send-email-lczerner@redhat.com>
+	<1392649703-10772-5-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, Jens Axboe <axboe@kernel.dk>,
-	linux-ext4@vger.kernel.org
-To: "Martin K. Petersen" <martin.petersen@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:59253 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751221AbaBRCRx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 17 Feb 2014 21:17:53 -0500
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, tytso@mit.edu,
+	xfs@oss.sgi.com
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <yq11tz1p5o9.fsf@sermon.lab.mkp.net>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1392649703-10772-5-git-send-email-lczerner@redhat.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Feb 17, 2014 at 08:31:50PM -0500, Martin K. Petersen wrote:
+On Mon, Feb 17, 2014 at 04:08:21PM +0100, Lukas Czerner wrote:
+> Introduce new FALLOC_FL_ZERO_RANGE flag for fallocate. This has the same
+> functionality as xfs ioctl XFS_IOC_ZERO_RANGE.
 > 
-> Your variant seems to land somewhere in-between. You want a
-> blkdev_issue_clear() that zeroes a block range and it's then up to the
-> storage device to decide whether to provision or deprovision the space
-> as long as you are guaranteed to get zeroes back for each block in the
-> range on a subsequent read. Is that a correct interpretation?
+> It can be used to convert a range of file to zeros preferably without
+> issuing data IO. Blocks should be preallocated for the regions that span
+> holes in the file, and the entire range is preferable converted to
+> unwritten extents - even though file system may choose to zero out the
+> extent or do whatever which will result in reading zeros from the range
+> while the range remains allocated for the file.
+> 
+> This can be also used to preallocate blocks past EOF in the same way as
+> with fallocate. Flag FALLOC_FL_KEEP_SIZE which should cause the inode
+> size to remain the same.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> ---
+>  fs/open.c                   | 7 ++++++-
+>  include/uapi/linux/falloc.h | 1 +
+>  2 files changed, 7 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/open.c b/fs/open.c
+> index 4b3e1ed..6dc46c1 100644
+> --- a/fs/open.c
+> +++ b/fs/open.c
+> @@ -231,7 +231,12 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+>  		return -EINVAL;
+>  
+>  	/* Return error if mode is not supported */
+> -	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
+> +	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE |
+> +		     FALLOC_FL_ZERO_RANGE))
+> +		return -EOPNOTSUPP;
+> +
+> +	/* Punch hole and zero range are mutually exclusive */
+> +	if (mode & FALLOC_FL_PUNCH_HOLE && mode & FALLOC_FL_ZERO_RANGE)
 
-Ultimately the storage device (or host OS) can always decide to
-deprovision the space if it is given a write of all zeroes; there's
-nothing in the specs that say anything at all about performance
-considerations, or what the back-end storage decides to do in order to
-handle a particular write command, so long as a subsequent read
-returns the correct data.
+I would have expected gcc to throw a warning on this. Even if it
+doesn't, it's so easy to mix up & an && and & it needs parenthesis
+around it to make it obvious what you actually meant and it doesn't
+have a && where an & should be or vice versa.  Better, IMO, is this:
 
-So what I want is a way in which the guest (kernel, file system, etc)
-should be able to request that the space be deprovisioned.  So it's a
-hint insofar ultimately, the host can always decide whether or not
-whether or not to honor the deprovision request (or the host could
-decide to deprovision a block even if it's not explicitly requested).
+	/* Punch hole and zero range are mutually exclusive */
+	if ((mode & (FALLOC_FL_PUNCH_HOLE | FALLOC_FL_ZERO_RANGE)) ==
+		    (FALLOC_FL_PUNCH_HOLE | FALLOC_FL_ZERO_RANGE))
+		return -EOPNOTSUPP;
 
-However, I don't want it to be a hint insofar that a subsequent read
-is *guaranteed* to return all zeros after this "blkdev_issue_clear()"
-command has been successfully sent to the device.
+because it's obvious what the intent is and easy to spot typos.
 
-Does that make sense?
+Cheers,
 
-> I'm trying to pin down your exact use case because it can get very murky
-> between the SCSI and ATA variants. And the fact that the same knobs are
-> used for both over and under-provisioned devices. SCSI also has an
-> additional state: Blocks can be either mapped, anchored or deallocated.
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
 
-What does "anchored" mean?  Does is it the equivalent of using
-fallocate() to allocate the block, but it's marked uninitialized so
-any attempt to read it returns zeroes?  If so, that certainly sounds
-like useful functionality that would be great if KVM exposed via
-virt-scsi.
-
-						- Ted
-
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
