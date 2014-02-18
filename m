@@ -1,34 +1,42 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: address a benign compiler warning
-Date: Mon, 17 Feb 2014 20:43:54 -0500
-Message-ID: <20140218014354.GE26580@thunk.org>
-References: <CA+C-WL9ARNvOqeA4n5Abnja+99O4F1VdMDUPjuRCcXiVsMTc7A@mail.gmail.com>
- <1392264724-10542-1-git-send-email-patrick@parcs.ath.cx>
+Subject: Re: [RFC][PATCH] ext4: handle fast symlink properly with inline_data
+Date: Mon, 17 Feb 2014 20:52:31 -0500
+Message-ID: <20140218015231.GF26580@thunk.org>
+References: <1392275237-6998-1-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-kernel@vger.kernel.org, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org, joe@perches.com
-To: Patrick Palka <patrick@parcs.ath.cx>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Ian Nartowicz <claws@nartowicz.co.uk>,
+	Tao Ma <tm@tao.ma>, Andreas Dilger <adilger.kernel@dilger.ca>,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:59245 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752154AbaBRBwj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 17 Feb 2014 20:52:39 -0500
 Content-Disposition: inline
-In-Reply-To: <1392264724-10542-1-git-send-email-patrick@parcs.ath.cx>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1392275237-6998-1-git-send-email-wenqing.lz@taobao.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Feb 12, 2014 at 11:12:04PM -0500, Patrick Palka wrote:
-> When !defined(CONFIG_EXT4_DEBUG), mb_debug() should be defined as a
-> no_printk() statement instead of an empty statement in order to suppr=
-ess
-> the following compiler warning:
->=20
-> fs/ext4/mballoc.c: In function =E2=80=98ext4_mb_cleanup_pa=E2=80=99:
-> fs/ext4/mballoc.c:2659:47: warning: suggest braces around empty body =
-in an =E2=80=98if=E2=80=99 statement [-Wempty-body]
->    mb_debug(1, "mballoc: %u PAs left\n", count);
->=20
-> Signed-off-by: Patrick Palka <patrick@parcs.ath.cx>
+On Thu, Feb 13, 2014 at 03:07:17PM +0800, Zheng Liu wrote:
+> 
+> I am not sure whether or not we need to enable inline_data for a fast
+> symlink inode.  Obviously, it brings a benefit that after enabling
+> inline_data feature for a fast symlink we can get more space to store
+> the path.  But it seems that the original patch doesn't want to do this
+> Another solution for fixing this bug is to disable inline_data for a
+> fast symlink.  Any comment?
 
-Thanks, applied.
+Well, if we are using inline data, and we have a symlink which is
+longer than 60 bytes, but less than extra space available for an
+inline data, it seems like a good thing to support.
 
-					- Ted
+The downside is that it is a bit more complication to add the kernel's
+code in both the kernel as well as e2fsprogs, but it doesn't seem that
+bad.
+
+So I don't have any objections to adding this functionality.  What do
+other folks think?
+
+						- Ted
