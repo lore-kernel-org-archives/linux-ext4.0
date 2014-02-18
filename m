@@ -1,33 +1,70 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Ext4 Developer's Workshop in Napa
-Date: Mon, 17 Feb 2014 18:59:51 -0500
-Message-ID: <nsxr47147ew.fsf@closure.thunk.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 0/6][RFC] Introduce FALLOC_FL_ZERO_RANGE flag for
+ fallocate
+Date: Tue, 18 Feb 2014 12:01:38 +1100
+Message-ID: <20140218010138.GE13997@dastard>
+References: <1392649703-10772-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu,
+	linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:59201 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751221AbaBQX7y (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 17 Feb 2014 18:59:54 -0500
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:13344 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751005AbaBRBBn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 17 Feb 2014 20:01:43 -0500
+Content-Disposition: inline
+In-Reply-To: <1392649703-10772-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Mon, Feb 17, 2014 at 04:08:17PM +0100, Lukas Czerner wrote:
+> Introduce new FALLOC_FL_ZERO_RANGE flag for fallocate. This has the same
+> functionality as xfs ioctl XFS_IOC_ZERO_RANGE.
+> 
+> It can be used to convert a range of file to zeros preferably without
+> issuing data IO. Blocks should be preallocated for the regions that span
+> holes in the file, and the entire range is preferable converted to
+> unwritten extents - even though file system may choose to zero out the
+> extent or do whatever which will result in reading zeros from the range
+> while the range remains allocated for the file.
+> 
+> This can be also used to preallocate blocks past EOF in the same way as
+> with fallocate. Flag FALLOC_FL_KEEP_SIZE which should cause the inode
+> size to remain the same.
+> 
+> You can test this feature yourself using xfstests, of fallocate(1) however
+> you'll need patches for util_linux, xfsprogs and xfstests which you
+> can find here:
+> 
+> http://people.redhat.com/lczerner/zero_range/
+> 
+> I'll post the patches after we agree and merge the kernel functionality.
+> 
+> I tested this mostly with a subset of xfstests using fsx and fsstress and
+> even with new generic/290 which is just a copy of xfs/290 usinz fzero
+> command for xfs_io instead of zero (which uses ioctl). I was testing on
+> x86_64 and ppc64 with block sizes of 1024, 2048 and 4096.
 
-The ext4 developer's workshop will be in held in Napa, California as
-part of the Linux Foundation's Collaboration Summit.  It will be a
-half-day meeting on Wednesday (we haven't been told whether we will get
-the room for the morning or the afternoon yet), overlapping with the
-plenary presentations.
+You also want to convert xfs/242 to be a generic test - it uses the
+_generic_test_punch helper to test all the corner cases across
+different extent type transitions.
 
-If you did not receive information about the registration URL for the
-event, and you are interested in attending, please let me know.  Space
-is somewhat limited due to room size, but it should be big enough given
-size of the active ext4 development community.
+> ./check generic/076 generic/232 generic/013 generic/070 generic/269 generic/083 generic/117 generic/068 generic/231 generic/127 generic/091 generic/075 generic/112 generic/263 generic/091 generic/075 generic/256 generic/255 generic/316 generic/300 generic/290;
+> 
+> Note that there is a work in progress on FALLOC_FL_COLLAPSE_RANGE which
+> touches the same area as this pach set does, so we should figure out
+> which one should go first and modify the other on top of it.
+
+I was going to push the FALLOC_FL_COLLAPSE_RANGE stuff through
+the XFS tree once it was done - perhaps you and Namjae can get
+together and work out which order the patch series should go.
 
 Cheers,
 
-                                        - Ted
-
-
-
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
