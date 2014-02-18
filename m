@@ -1,89 +1,72 @@
-From: Namjae Jeon <linkinjeon@gmail.com>
-Subject: [PATCH v5 10/10] manpage: update FALLOC_FL_COLLAPSE_RANGE flag in
-	fallocate
-Date: Wed, 19 Feb 2014 01:39:53 +0900
-Message-ID: <1392741594-20335-1-git-send-email-linkinjeon@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [GIT PULL] ext4 fixes for 3.14
+Date: Tue, 18 Feb 2014 11:54:26 -0500
+Message-ID: <20140218165426.GA1482@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Namjae Jeon <linkinjeon@gmail.com>, Namjae Jeon <namjae.jeon@samsung.com>,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
-	Ashish Sangwan <a.sangwan@samsung.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: viro@zeniv.linux.org.uk, david@fromorbit.com, bpm@sgi.com, tytso@mit.edu,
-	adilger.kernel@dilger.ca, jack@suse.cz, mtk.manpages@gmail.com,
-	lczerner@redhat.com
-Return-path: <xfs-bounces@oss.sgi.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: torvalds@linux-foundation.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:59605 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752055AbaBRQyd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 18 Feb 2014 11:54:33 -0500
+Content-Disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Namjae Jeon <namjae.jeon@samsung.com>
+The following changes since commit b28a960c42fcd9cfc987441fa6d1c1a471f0f9ed:
 
-Update FALLOC_FL_COLLAPSE_RANGE flag in fallocate.
+  Linux 3.14-rc2 (2014-02-09 18:15:47 -0800)
 
-Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
----
- man2/fallocate.2 |   21 +++++++++++++++++++++
- 1 file changed, 21 insertions(+)
+are available in the git repository at:
 
-diff --git a/man2/fallocate.2 b/man2/fallocate.2
-index b31bbde..06a0b0c 100644
---- a/man2/fallocate.2
-+++ b/man2/fallocate.2
-@@ -1,5 +1,6 @@
- .\" Copyright (c) 2007 Silicon Graphics, Inc. All Rights Reserved
- .\" Written by Dave Chinner <dgc@sgi.com>
-+.\" Updated by Namjae Jeon <namjae.jeon@samsung.com>
- .\"
- .\" %%%LICENSE_START(GPLv2_ONELINE)
- .\" May be distributed as per GNU General Public License version 2.
-@@ -7,6 +8,7 @@
- .\"
- .\" 2011-09-19: Added FALLOC_FL_PUNCH_HOLE
- .\" 2011-09-19: Substantial restructuring of the page
-+.\" 2014-02-19: Added FALLOC_FL_COLLAPSE_RANGE
- .\"
- .TH FALLOCATE 2 2014-01-24 "Linux" "Linux Programmer's Manual"
- .SH NAME
-@@ -124,6 +126,25 @@ Btrfs (since Linux 3.7)
- .IP *
- tmpfs (since Linux 3.5)
- .\" commit 83e4fa9c16e4af7122e31be3eca5d57881d236fe
-+.SS Collapsing file space
-+Specifiying the
-+.BR FALLOC_FL_COLLAPSE_RANGE
-+flag in
-+.I mode
-+collpse space in the byte range starting at
-+.I offset
-+and continuing for
-+.I len
-+bytes. Within the specified range, it first de-allocates blocks and eliminates
-+the hole created in this process by shifting data blocks into the hole.
-+
-+Different filesystem may implement different limitatios on the granularity of
-+the operation. Most filesystem will limit operations to filesystem block size
-+boundaries, but this boundary may be larger or smaller depending
-+on the filesystem and/or the configuration of the filesystem or file.
-+
-+If filesystem has such limitation on granularity, It will return error(EINVAL).
-+
- .SH RETURN VALUE
- On success,
- .BR fallocate ()
--- 
-1.7.9.5
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus_stable
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+for you to fetch changes up to 37b0791e6a396e9cda060531d3ffb863d93882f9:
+
+  ext4: address a benign compiler warning (2014-02-17 20:50:59 -0500)
+
+----------------------------------------------------------------
+Miscellaneous ext4 bug fixes for v3.14
+
+----------------------------------------------------------------
+Azat Khuzhin (1):
+      ext4: initialize multi-block allocator before checking block descriptors
+
+Dan Carpenter (2):
+      jbd2: fix use after free in jbd2_journal_start_reserved()
+      ext4: remove an unneeded check in mext_page_mkuptodate()
+
+Eric Whitney (1):
+      ext4: fix xfstest generic/299 block validity failures
+
+Fabian Frederick (1):
+      ext4: Add __init marking to init_inodecache
+
+Patrick Palka (1):
+      ext4: address a benign compiler warning
+
+Rashika Kheria (1):
+      jbd2: mark file-local functions as static
+
+Theodore Ts'o (5):
+      ext4: don't try to modify s_flags if the the file system is read-only
+      ext4: fix online resize with very large inode tables
+      ext4: fix online resize with a non-standard blocks per group setting
+      ext4: don't leave i_crtime.tv_sec uninitialized
+      ext4: clean up error handling in swap_inode_boot_loader()
+
+Zheng Liu (1):
+      ext4: fix error paths in swap_inode_boot_loader()
+
+ fs/ext4/ext4.h        |  2 ++
+ fs/ext4/extents.c     |  1 +
+ fs/ext4/ioctl.c       | 27 ++++++---------------
+ fs/ext4/mballoc.h     |  2 +-
+ fs/ext4/move_extent.c |  3 +--
+ fs/ext4/resize.c      | 34 ++++++++++++++++----------
+ fs/ext4/super.c       | 70 +++++++++++++++++++++++++++++------------------------
+ fs/jbd2/journal.c     |  6 ++---
+ fs/jbd2/transaction.c |  6 +++--
+ 9 files changed, 80 insertions(+), 71 deletions(-)
