@@ -1,88 +1,32 @@
-From: Namjae Jeon <linkinjeon@gmail.com>
-Subject: Re: [PATCH RESEND 3/10] ext4: Add support FALLOC_FL_COLLAPSE_RANGE
-	for fallocate
-Date: Tue, 18 Feb 2014 18:50:54 +0900
-Message-ID: <CAKYAXd_xpWg-=T_1PghL_u9wDKTX_Ey5mJxbgVVKth8NoexQQg@mail.gmail.com>
-References: <1391319874-3203-1-git-send-email-linkinjeon@gmail.com>
-	<alpine.LFD.2.00.1402111209450.2225@localhost.localdomain>
-	<CAKYAXd-bD6ZZgpc9E8V1kD9Dj2wrCkbi1i6drNBdUAwsMiv5gg@mail.gmail.com>
-	<alpine.LFD.2.00.1402181001530.2216@localhost.localdomain>
+From: "Dr. Pius Okagba" <renato.ardigo@alice.it>
+Subject: Dear
+Date: Tue, 18 Feb 2014 12:36:17 +0100 (CET)
+Message-ID: <14444c83cd8.renato.ardigo__45017.7123806954$1392723645$gmane$org@alice.it>
+Reply-To: franklinb1@barid.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: tytso@mit.edu, Namjae Jeon <namjae.jeon@samsung.com>,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com, bpm@sgi.com,
-	adilger.kernel@dilger.ca, viro@zeniv.linux.org.uk,
-	Ashish Sangwan <a.sangwan@samsung.com>,
-	linux-fsdevel@vger.kernel.org, jack@suse.cz,
-	linux-ext4@vger.kernel.org, mtk.manpages@gmail.com
-To: =?UTF-8?B?THVrw6HFoSBDemVybmVy?= <lczerner@redhat.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <alpine.LFD.2.00.1402181001530.2216@localhost.localdomain>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain;charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: unlisted-recipients:; (no To-header on input)
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp303.alice.it ([82.57.200.119]:16073 "EHLO smtp303.alice.it"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752047AbaBRLke (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 18 Feb 2014 06:40:34 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-MjAxNC0wMi0xOCAxODowNSBHTVQrMDk6MDAsIEx1a8OhxaEgQ3plcm5lciA8bGN6ZXJuZXJAcmVk
-aGF0LmNvbT46Cj4gT24gV2VkLCAxMiBGZWIgMjAxNCwgTmFtamFlIEplb24gd3JvdGU6Cj4KPj4g
-RGF0ZTogV2VkLCAxMiBGZWIgMjAxNCAxMToyODozNSArMDkwMAo+PiBGcm9tOiBOYW1qYWUgSmVv
-biA8bGlua2luamVvbkBnbWFpbC5jb20+Cj4+IFRvOiBMdWvDocWhIEN6ZXJuZXIgPGxjemVybmVy
-QHJlZGhhdC5jb20+Cj4+IENjOiB2aXJvQHplbml2LmxpbnV4Lm9yZy51aywgZGF2aWRAZnJvbW9y
-Yml0LmNvbSwgYnBtQHNnaS5jb20sCj4+IHR5dHNvQG1pdC5lZHUsCj4+ICAgICBhZGlsZ2VyLmtl
-cm5lbEBkaWxnZXIuY2EsIGphY2tAc3VzZS5jeiwgbXRrLm1hbnBhZ2VzQGdtYWlsLmNvbSwKPj4g
-ICAgIGxpbnV4LWZzZGV2ZWxAdmdlci5rZXJuZWwub3JnLCB4ZnNAb3NzLnNnaS5jb20sCj4+ICAg
-ICBsaW51eC1leHQ0QHZnZXIua2VybmVsLm9yZywgbGludXgta2VybmVsQHZnZXIua2VybmVsLm9y
-ZywKPj4gICAgIE5hbWphZSBKZW9uIDxuYW1qYWUuamVvbkBzYW1zdW5nLmNvbT4sCj4+ICAgICBB
-c2hpc2ggU2FuZ3dhbiA8YS5zYW5nd2FuQHNhbXN1bmcuY29tPgo+PiBTdWJqZWN0OiBSZTogW1BB
-VENIIFJFU0VORCAzLzEwXSBleHQ0OiBBZGQgc3VwcG9ydAo+PiBGQUxMT0NfRkxfQ09MTEFQU0Vf
-UkFOR0UKPj4gICAgIGZvciBmYWxsb2NhdGUKPj4KPj4gMjAxNC0wMi0xMSAyMDo1OSBHTVQrMDk6
-MDAsIEx1a8OhxaEgQ3plcm5lciA8bGN6ZXJuZXJAcmVkaGF0LmNvbT46Cj4+ID4gT24gU3VuLCAy
-IEZlYiAyMDE0LCBOYW1qYWUgSmVvbiB3cm90ZToKPj4gPgo+PiA+PiBEYXRlOiBTdW4sICAyIEZl
-YiAyMDE0IDE0OjQ0OjM0ICswOTAwCj4+ID4+IEZyb206IE5hbWphZSBKZW9uIDxsaW5raW5qZW9u
-QGdtYWlsLmNvbT4KPj4gPj4gVG86IHZpcm9AemVuaXYubGludXgub3JnLnVrLCBkYXZpZEBmcm9t
-b3JiaXQuY29tLCBicG1Ac2dpLmNvbSwKPj4gPj4gdHl0c29AbWl0LmVkdSwKPj4gPj4gICAgIGFk
-aWxnZXIua2VybmVsQGRpbGdlci5jYSwgamFja0BzdXNlLmN6LCBtdGsubWFucGFnZXNAZ21haWwu
-Y29tCj4+ID4+IENjOiBsaW51eC1mc2RldmVsQHZnZXIua2VybmVsLm9yZywgeGZzQG9zcy5zZ2ku
-Y29tLAo+PiA+PiAgICAgbGludXgtZXh0NEB2Z2VyLmtlcm5lbC5vcmcsIGxpbnV4LWtlcm5lbEB2
-Z2VyLmtlcm5lbC5vcmcsCj4+ID4+ICAgICBOYW1qYWUgSmVvbiA8bGlua2luamVvbkBnbWFpbC5j
-b20+LCBOYW1qYWUgSmVvbgo+PiA+PiA8bmFtamFlLmplb25Ac2Ftc3VuZy5jb20+LAo+PiA+PiAg
-ICAgQXNoaXNoIFNhbmd3YW4gPGEuc2FuZ3dhbkBzYW1zdW5nLmNvbT4KPj4gPj4gU3ViamVjdDog
-W1BBVENIIFJFU0VORCAzLzEwXSBleHQ0OiBBZGQgc3VwcG9ydAo+PiA+PiBGQUxMT0NfRkxfQ09M
-TEFQU0VfUkFOR0UKPj4gPj4gZm9yCj4+ID4+ICAgICBmYWxsb2NhdGUKPj4gPj4KPj4gPj4gRnJv
-bTogTmFtamFlIEplb24gPG5hbWphZS5qZW9uQHNhbXN1bmcuY29tPgo+PiA+Pgo+PiA+PiBBZGQg
-c3VwcG9ydCBGQUxMT0NfRkxfQ09MTEFQU0VfUkFOR0UgZm9yIGZhbGxvY2F0ZQo+PiBIaSBMdWth
-cy4KPj4gPgo+PiA+IERlc2NyaXB0aW9uIGlzIG1pc3NpbmcgaGVyZSwgcGxlYXNlIHByb3ZpZGUg
-RkFMTE9DX0ZMX0NPTExBUFNFX1JBTkdFCj4+ID4gZGVzY3JpcHRpb24gc28gcGVvcGxlIGtub3cg
-d2hhdCBpdCdzIHN1cHBvc2VkIHRvIGJlIGRvaW5nLgo+PiA+Cj4+ID4gbW9yZSBjb21tZW50cyBi
-ZWxsb3cuCj4+IE9rYXksIEkgd2lsbCB1ZHBhdGUuCj4+ID4KPj4gPiBUaGFua3MhCj4+ID4gLUx1
-a2FzCj4KPiBIaSwKSGkgTHVrYXMuCj4KPiB5b3UgbWF5IGhhdmUgbm90aWNlZCBteSBwYXRjaGVz
-IGZvciBuZXcgRkFMTE9DX0ZMX1pFUk9fUkFOR0UKPiBmYWxsb2NhdGUgZmxhZy4gVGhpcyBjaGFu
-Z2VzIHRoaW5ncyBhcm91bmQgdGhlIHNhbWUgYXJlYSBhcyB5b3VyCj4gcGF0Y2hlcyBkb2VzIHNv
-IHdlIHNob3VsZCBwcm9iYWJseSBmaWd1cmUgb3V0IHdoaWNoIGFyZSBnb2luZyB0bwo+IGxhbmQg
-aW4gZmlyc3QgYW5kIHRoZW4gcmViYXNlIHRoZSBvdGhlciBvbiB0b3Agb2YgdGhhdC4KWWVzLCBJ
-IGhhdmUgc2VlbiB5b3VyIHBhdGNoZXMuIEkgdGhpbmsgdGhhdCBWRlMgKyBYRlMgcGF0Y2hlcyBm
-b3IKRkFMTE9DX0ZMX0NPTExBUFNFX1JBTkdFIGhhdmUgZ290IGEgZmFpciBhbW91bnQgb2YgcmV2
-aWV3IGZyb20gRGF2ZS4KU28gdGhleSBhcmUgYWxtb3N0IHJlYWR5LiBJIHdpbGwgcG9zdCBjb2xs
-YXBzZSByYW5nZSB2NSBwYXRjaGVzIGFmdGVyCmZpeGluZyBzb21lIG1pbm9yIGNvbW1lbnRzIHRv
-bmlnaHQgb3IgdG9tbW9yb3cuCklmIHRoZXJlIHdpbGwgYmUgbm8gbW9yZSBjb21tZW50cyBmb3Ig
-WEZTIHBhdGNoLCBWRlMgKyBYRlMgcGF0Y2hlcyBjYW4KZ28gdGhyb3VnaCB0byB4ZnMgdHJlZSBi
-eSBEYXZlLgpJIHRoaW5rIHRoYXQgRXh0NCBjb2xsYXBzZSByYW5nZSBjb3VsZCBnbyBhdCBhIGxh
-dGVyIHRpbWUuKE5lZWQgeW91cgpyZXZpZXdlZC1ieSB0YWcpCklmIHN0aWxsIHRoZXJlIGFyZSBj
-b21tZW50cyBmb3IgeGZzIHBhdGNoLCBJIHdpbGwgcmViYXNlIG9uIHRvcCBvZiB5b3VyIHBhdGNo
-Lgo+Cj4gT25lIGNvbmNlcm4gSSBoYXZlIGlzIHRoYXQgSSBoYXZlIG5vdCBzZWVuIGFueSB0ZXN0
-cyBwcm92aWRlZCB0bwo+IHZlcmlmeSB0aGUgZmVhdHVyZS4gQnV0IEkganVzdCBtYXkgaGF2ZSBt
-aXNzZWQgaXQuIERvIHlvdSBoYXZlIGFueQo+IHhmc3Rlc3RzIHRlc3Qgb3IgYXQgbGVhc3QgZnN4
-IGFuZCBmc3N0cmVzcyBwYXRjaGVzIHRvIHByb3ZpZGUKPiBzdXBwb3J0IGZvciB0ZXN0aW5nIEZB
-TExPQ19GTF9DT0xMQVBTRV9SQU5HRSA/IFBhdGNoZXMgZm9yCj4gdXRpbF9saW51eCBtaWdodCBh
-bHNvIGJlIGhhbmR5LgpZZXMsIFRoZXJlIGFyZSA1IG5ldyB4ZnN0ZXN0cyBjYXNlcyBpbiB0aGlz
-IHBhdGNoLXNldC4gdGhlc2Ugd2lsbCBhbHNvCmJlIHBvc3RlZCB3aXRoIGNvbGxhcHNlIHJhbmdl
-IHBhdGNoLXNldCBzb29uLgoKVGhhbmtzIDopCj4KPiBUaGFua3MhCj4gLUx1a2FzCgpfX19fX19f
-X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fXwp4ZnMgbWFpbGluZyBsaXN0
-Cnhmc0Bvc3Muc2dpLmNvbQpodHRwOi8vb3NzLnNnaS5jb20vbWFpbG1hbi9saXN0aW5mby94ZnMK
+Attention:
+Regarding the transaction made so far, I waited for your message as you told 
+me
+with none received. Remember, I supposed to have traveled last night 
+but the
+weather is too bad. I will be leaving to Paraguay tomorrow for estate project.
+Meanwhile, contact the Bank manager with below address, i have kept the cheque
+worth of USD2.5M. They will either mail it to you or remit it for transfer
+depending on how you want it; Here is Bank contact information:
+ 
+Name Of Manager: Mr. Franklin Barnard
+MAIL: (franklinb1@barid.com,
+okagbapius1@live.com
+Thank you
+UN Office.
