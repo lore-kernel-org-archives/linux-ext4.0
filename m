@@ -1,83 +1,75 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 0/6][RFC] Introduce FALLOC_FL_ZERO_RANGE flag for
- fallocate
-Date: Tue, 18 Feb 2014 15:42:10 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1402181536110.2216@localhost.localdomain>
-References: <1392649703-10772-1-git-send-email-lczerner@redhat.com> <20140218010138.GE13997@dastard> <20140218083324.GB28666@dastard> <alpine.LFD.2.00.1402181006250.2216@localhost.localdomain> <20140218094142.GC28666@dastard> <alpine.LFD.2.00.1402181302230.2216@localhost.localdomain>
- <20140218142305.GN26580@thunk.org>
+From: Namjae Jeon <linkinjeon@gmail.com>
+Subject: [PATCH v5 0/10] fs: Introduce new flag(FALLOC_FL_COLLAPSE_RANGE) for
+	fallocate
+Date: Wed, 19 Feb 2014 01:37:16 +0900
+Message-ID: <1392741436-19995-1-git-send-email-linkinjeon@gmail.com>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1047372552-1392734533=:2216"
-Cc: Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20140218142305.GN26580@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Namjae Jeon <linkinjeon@gmail.com>, Namjae Jeon <namjae.jeon@samsung.com>,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: viro@zeniv.linux.org.uk, david@fromorbit.com, bpm@sgi.com, tytso@mit.edu,
+	adilger.kernel@dilger.ca, jack@suse.cz, mtk.manpages@gmail.com,
+	lczerner@redhat.com
+Return-path: <xfs-bounces@oss.sgi.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+From: Namjae Jeon <namjae.jeon@samsung.com>
 
---8323328-1047372552-1392734533=:2216
-Content-Type: TEXT/PLAIN; charset=utf-8
-Content-Transfer-Encoding: 8BIT
+This patch series is in response of the following post:
+http://lwn.net/Articles/556136/
+"ext4: introduce two new ioctls"
 
-On Tue, 18 Feb 2014, Theodore Ts'o wrote:
+Dave chinner suggested that truncate_block_range
+(which was one of the ioctls name) should be an fallocate operation
+and not any fs specific ioctl, hence we add this functionality to fallocate.
 
-> Date: Tue, 18 Feb 2014 09:23:05 -0500
-> From: Theodore Ts'o <tytso@mit.edu>
-> To: Lukáš Czerner <lczerner@redhat.com>
-> Cc: Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
->     linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
-> Subject: Re: [PATCH 0/6][RFC] Introduce FALLOC_FL_ZERO_RANGE flag for
->     fallocate
-> 
-> On Tue, Feb 18, 2014 at 01:04:24PM +0100, Lukáš Czerner wrote:
-> >
-> > > Ok, so it's a "fallocate" test group, then?
-> > 
-> > More like "fsx_fsstress" group, which might sound as a terrible name
-> > for the group but it explains it quite well. So if you do not have
-> > anything against that I'll call the new group "fsx_fsstress"
-> 
-> How about "block_map" group?  I like Dave's suggestion about naming
-> the group after what it is trying to test, as opposed to how it does
-> that testing.  This is also consistent with how the other tests groups
-> are named in xfstests.
-> 
-> However, extents are an implementation strategy, and you might just as
-> easily use this test to verify whether or not the punch hole
-> functionality for indirect block maps worked correctly.
+This patch series introduces new flag FALLOC_FL_COLLAPSE_RANGE for fallocate
+and implements it for XFS and Ext4.
 
-(it does not :) But I am still having trouble deciphering Al Viro
-code ;)
+The semantics of this flag are following:
+1) It collapses the range lying between offset and length by removing any data
+   blocks which are present in this range and than updates all the logical
+   offsets of extents beyond "offset + len" to nullify the hole created by
+   removing blocks. In short, it does not leave a hole.
+2) It should be used exclusively. No other fallocate flag in combination.
+3) Offset and length supplied to fallocate should be fs block size aligned
+   in case of xfs and ext4.
+4) Collaspe range does not work beyond i_size.
 
-> 
-> What I think using fsx and fstress together have in common is that
-> it's a great way of stress testing whatever the file system uses for
-> creating and maintaining the translation map between (inode, logical
-> block) to physical block, so that's why perhaps "block_map" might be a
-> good test group name.
+This new functionality of collapsing range could be used by media editing tools
+which does non linear editing to quickly purge and edit parts of a media file.
+This will immensely improve the performance of these operations.
+The limitation of fs block size aligned offsets can be easily handled
+by media codecs which are encapsulated in a conatiner as they have to
+just change the offset to next keyframe value to match the proper alignment.
 
-To be honest "block_map" group name does not mean anything to me.
+Namjae Jeon (10):
+  fs: Add new flag(FALLOC_FL_COLLAPSE_RANGE) for fallocate
+  xfs: Add support FALLOC_FL_COLLAPSE_RANGE for fallocate
+  ext4: Add support FALLOC_FL_COLLAPSE_RANGE for fallocate
+  xfsprog: xfsio: Add support FALLOC_FL_COLLAPSE_RANGE for fallocate
+  xfstest: shared/001: Standard collapse range tests
+  xfstest: shared/002: Delayed allocation collapse range
+  xfstest: shared/003: Multi collapse range tests
+  xfstest: shared/004: Delayed allocation multi collapse
+  xfstest: shared/005: Test multiple fallocate collapse
+  manpage: update FALLOC_FL_COLLAPSE_RANGE flag in fallocate
+-- 
+1.7.11-rc0
 
-- "fallocate" is not really the right name as it does much more than
-  that
-- "extents" is not the right name as there is not really anything
-  extents specific.
-- "fsx_fsstress" while this gives information about how it is tested
-  it's not immediately clear what it is good for.
 
-So I do not know and frankly I do not care very much about the name
-of this group so if anyone has a strong opinion about the name feel
-free to create such group.
-
-Thanks!
--Lukas
-
-> 
-> Regards,
-> 
-> 						- Ted
-> 
---8323328-1047372552-1392734533=:2216--
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
