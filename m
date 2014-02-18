@@ -1,54 +1,83 @@
-From: "Martin K. Petersen" <martin.petersen@oracle.com>
-Subject: Re: [PATCH RFC] block: use discard if possible in blkdev_issue_discard()
-Date: Mon, 17 Feb 2014 22:44:47 -0500
-Message-ID: <yq1ob25nky8.fsf@sermon.lab.mkp.net>
-References: <20140214043256.GA5145@thunk.org>
-	<yq1ioshobul.fsf@sermon.lab.mkp.net>
-	<20140215012901.GA28307@thunk.org>
-	<yq161odofis.fsf@sermon.lab.mkp.net>
-	<20140217191901.GC16660@thunk.org>
-	<yq11tz1p5o9.fsf@sermon.lab.mkp.net>
-	<20140218021747.GG26580@thunk.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 6/6] xfs: Add support for FALLOC_FL_ZERO_RANGE
+Date: Tue, 18 Feb 2014 15:51:38 +1100
+Message-ID: <20140218045138.GI13997@dastard>
+References: <1392649703-10772-1-git-send-email-lczerner@redhat.com>
+	<1392649703-10772-7-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "Martin K. Petersen" <martin.petersen@oracle.com>,
-	linux-fsdevel@vger.kernel.org, Jens Axboe <axboe@kernel.dk>,
-	linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20140218021747.GG26580@thunk.org> (Theodore Ts'o's message of
-	"Mon, 17 Feb 2014 21:17:47 -0500")
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, tytso@mit.edu,
+	xfs@oss.sgi.com
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+Content-Disposition: inline
+In-Reply-To: <1392649703-10772-7-git-send-email-lczerner@redhat.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
->>>>> "Ted" == Theodore Ts'o <tytso@mit.edu> writes:
+On Mon, Feb 17, 2014 at 04:08:23PM +0100, Lukas Czerner wrote:
+> Introduce new FALLOC_FL_ZERO_RANGE flag for fallocate. This has the same
+> functionality as xfs ioctl XFS_IOC_ZERO_RANGE.
+> 
+> We can also preallocate blocks past EOF in the same was as with
+> fallocate. Flag FALLOC_FL_KEEP_SIZE will cause the inode size to remain
+> the same even if we preallocate blocks past EOF.
+> 
+> It uses the same code to zero range as it is used by the
+> XFS_IOC_ZERO_RANGE ioctl.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> ---
+>  fs/xfs/xfs_file.c | 10 +++++++---
+>  1 file changed, 7 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+> index 64b48ea..aec5f64 100644
+> --- a/fs/xfs/xfs_file.c
+> +++ b/fs/xfs/xfs_file.c
+> @@ -823,7 +823,8 @@ xfs_file_fallocate(
+>  
+>  	if (!S_ISREG(inode->i_mode))
+>  		return -EINVAL;
+> -	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
+> +	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE |
+> +		     FALLOC_FL_ZERO_RANGE))
+>  		return -EOPNOTSUPP;
+>  
+>  	xfs_ilock(ip, XFS_IOLOCK_EXCL);
+> @@ -840,8 +841,11 @@ xfs_file_fallocate(
+>  				goto out_unlock;
+>  		}
+>  
+> -		error = xfs_alloc_file_space(ip, offset, len,
+> -					     XFS_BMAPI_PREALLOC);
+> +		if (mode & FALLOC_FL_ZERO_RANGE)
+> +			error = xfs_zero_file_space(ip, offset, len);
+> +		else
+> +			error = xfs_alloc_file_space(ip, offset, len,
+> +						     XFS_BMAPI_PREALLOC);
+>  		if (error)
+>  			goto out_unlock;
+>  	}
 
-Ted> Ultimately the storage device (or host OS) can always decide to
-Ted> deprovision the space if it is given a write of all zeroes; there's
-Ted> nothing in the specs that say anything at all about performance
-Ted> considerations, or what the back-end storage decides to do in order
-Ted> to handle a particular write command, so long as a subsequent read
-Ted> returns the correct data.
+Looks OK.
 
-Well, that has changed a bit with the logical block provisioning bits in
-SCSI. That's why I brought up the allocation/deallocation assumptions in
-the existing two blkdev_issue_foo() calls.
-
-Ted> Does that make sense?
-
-Yeah. So deprovision with guaranteed zero on read is what you're
-after. I'll chew on that a bit tomorrow.
-
-Ted> What does "anchored" mean?  Does is it the equivalent of using
-Ted> fallocate() to allocate the block, but it's marked uninitialized so
-Ted> any attempt to read it returns zeroes?
-
-It means that any allocations internal to the storage device which are
-required to subsequently perform a write to that block have been
-made. So it's a way to reserve space without actually writing the
-blocks. Whether reading an anchored block returns zeroes or something
-else depends on the usual twisted maze of conflicting and confusing
-flags.
+Reviewed-by: Dave Chinner <dchinner@redhat.com>
 
 -- 
-Martin K. Petersen	Oracle Linux Engineering
+Dave Chinner
+david@fromorbit.com
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
