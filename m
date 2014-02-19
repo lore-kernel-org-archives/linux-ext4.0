@@ -1,66 +1,87 @@
-From: "Martin K. Petersen" <martin.petersen@oracle.com>
-Subject: Re: [PATCH RFC] block: use discard if possible in blkdev_issue_discard()
-Date: Tue, 18 Feb 2014 21:20:30 -0500
-Message-ID: <yq1lhx7n8r5.fsf@sermon.lab.mkp.net>
-References: <20140214043256.GA5145@thunk.org>
-	<yq1ioshobul.fsf@sermon.lab.mkp.net>
-	<20140215012901.GA28307@thunk.org>
-	<yq161odofis.fsf@sermon.lab.mkp.net>
-	<20140217191901.GC16660@thunk.org>
-	<yq11tz1p5o9.fsf@sermon.lab.mkp.net>
-	<20140218021747.GG26580@thunk.org>
-	<yq1ob25nky8.fsf@sermon.lab.mkp.net>
-	<20140218054707.GI26580@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "Martin K. Petersen" <martin.petersen@oracle.com>,
-	linux-fsdevel@vger.kernel.org, Jens Axboe <axboe@kernel.dk>,
-	linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20140218054707.GI26580@thunk.org> (Theodore Ts'o's message of
-	"Tue, 18 Feb 2014 00:47:07 -0500")
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [RHEL5.11 PATCH 2/3] ext3: validate directory entry data before use
+Date: Wed, 19 Feb 2014 09:56:55 +0100
+Message-ID: <1392800216-7828-2-git-send-email-lczerner@redhat.com>
+References: <1392800216-7828-1-git-send-email-lczerner@redhat.com>
+Cc: Duane Griffin <duaneg@dghda.com>, <linux-ext4@vger.kernel.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>
+To: rhkernel-list@redhat.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:56525 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753138AbaBSI5L (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 19 Feb 2014 03:57:11 -0500
+In-Reply-To: <1392800216-7828-1-git-send-email-lczerner@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
->>>>> "Ted" == Theodore Ts'o <tytso@mit.edu> writes:
+From: Duane Griffin <duaneg@dghda.com>
 
-Ted,
+BZ 1065434
+https://bugzilla.redhat.com/show_bug.cgi?id=1065434
 
-Ted> Is it a fair assumption that the reason why T10 added these bits is
-Ted> mainly so that clients of thin-provisioned storage devices can
-Ted> guarantee that a subseq uent write won't fail? 
+BREW 7074551
+https://brewweb.devel.redhat.com/taskinfo?taskID=7074551
 
-Yes. It's a way to lock down blocks for future use without having to
-actually write them.
+Upstream commit 275c0a8f1253a7542ad9726956c918d8a1f694c4
 
-Ted> Figuring out when it's better to use fstrim, or doing it at unlink
-Ted> time, etc., is something that's better done automatically instead
-Ted> of manually, but this is I fear answering questions like this in a
-Ted> reliable fashion is going to be a very hard problem
+ext3_dx_find_entry uses ext3_next_entry without verifying that the entry
+is valid.  If its rec_len == 0 this causes an infinite loop.  Refactor the
+loop to check the validity of entries before checking whether they match
+and moving onto the next one.
 
-We'll quickly get back to the problem we had with the other I/O hints.
-Namely the device vendor having to provide an honest indicator of their
-performance characteristics.
+There are other uses of ext3_next_entry in this file which also look
+problematic.  They should be reviewed and fixed if/when we have a
+test-case that triggers them.
 
-Recent SCSI has a way to communicate maximum values for processing
-various types of commands. Going forward we can use those values to tune
-our request timeouts. But as far as the normal processing time is
-concerned it's hard to see a vendor putting anything in there other than
-"this one goes to 11".
+This patch fixes the first case (image hdb.25.softlockup.gz) reported in
+http://bugzilla.kernel.org/show_bug.cgi?id=10882.
 
-Over time we may be able to switch to online discards by default. But at
-this stage drives with queued trim support are just starting to roll
-out. And some thin-provisioned arrays were evidently also designed with
-a monthly Norton SpeedDisk run in mind.
+Signed-off-by: Duane Griffin <duaneg@dghda.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+---
+ fs/ext3/namei.c | 22 ++++++++++++----------
+ 1 file changed, 12 insertions(+), 10 deletions(-)
 
-However, I'm open to having a prefer_online_discards flag that dedicated
-PCIe SSD drivers could set. It's not until we enter SCSI/ATA territory
-that things get murky.
-
-On the topic of reliable discards: Apparently there are some amendments
-being discussed in T10/T13 right now that may help us. Still
-investigating...
-
+diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
+index 8bc0198..69c0540 100644
+--- a/fs/ext3/namei.c
++++ b/fs/ext3/namei.c
+@@ -994,19 +994,21 @@ static struct buffer_head * ext3_dx_find_entry(struct dentry *dentry,
+ 		de = (struct ext3_dir_entry_2 *) bh->b_data;
+ 		top = (struct ext3_dir_entry_2 *) ((char *) de + sb->s_blocksize -
+ 				       EXT3_DIR_REC_LEN(0));
+-		for (; de < top; de = ext3_next_entry(de))
+-		if (ext3_match (namelen, name, de)) {
+-			if (!ext3_check_dir_entry("ext3_find_entry",
+-						  dir, de, bh,
+-				  (block<<EXT3_BLOCK_SIZE_BITS(sb))
+-					  +((char *)de - bh->b_data))) {
+-				brelse (bh);
++		for (; de < top; de = ext3_next_entry(de)) {
++			int off = (block << EXT3_BLOCK_SIZE_BITS(sb))
++				  + ((char *) de - bh->b_data);
++
++			if (!ext3_check_dir_entry(__func__, dir, de, bh, off)) {
++				brelse(bh);
+ 				*err = ERR_BAD_DX_DIR;
+ 				goto errout;
+ 			}
+-			*res_dir = de;
+-			dx_release (frames);
+-			return bh;
++
++			if (ext3_match(namelen, name, de)) {
++				*res_dir = de;
++				dx_release(frames);
++				return bh;
++			}
+ 		}
+ 		brelse (bh);
+ 		/* Check to see if we should continue to search */
 -- 
-Martin K. Petersen	Oracle Linux Engineering
+1.8.3.1
+
