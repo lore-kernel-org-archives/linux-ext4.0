@@ -1,126 +1,260 @@
-From: Dongsu Park <dongsu.park@profitbricks.com>
-Subject: Re: [PATCH 0/6][RFC] Introduce FALLOC_FL_ZERO_RANGE flag for fallocate
-Date: Wed, 19 Feb 2014 16:51:23 +0100
-Message-ID: <CANWERqOyv3dP-4x2OVO9-1q+LaGh7aQDY-WtZRFkc9opWudHZA@mail.gmail.com>
-References: <1392649703-10772-1-git-send-email-lczerner@redhat.com>
-	<20140219145239.GA14849@gmail.com>
-	<alpine.LFD.2.00.1402191609550.9903@localhost.localdomain>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] e2fsprogs: make ext2fs_free() to set the pointer to NULL
+Date: Wed, 19 Feb 2014 10:49:56 -0600
+Message-ID: <5304E0B4.3000005@redhat.com>
+References: <1392810496-9090-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>, tytso <tytso@mit.edu>,
-	xfs <xfs@oss.sgi.com>
-To: =?ISO-8859-2?Q?Luk=E1=B9_Czerner?= <lczerner@redhat.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <alpine.LFD.2.00.1402191609550.9903@localhost.localdomain>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: tytso@mit.edu
+To: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:5993 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753833AbaBSQuB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 19 Feb 2014 11:50:01 -0500
+In-Reply-To: <1392810496-9090-1-git-send-email-lczerner@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-T24gV2VkLCBGZWIgMTksIDIwMTQgYXQgNDoxOCBQTSwgTHVrw6HFoSBDemVybmVyIDxsY3plcm5l
-ckByZWRoYXQuY29tPiB3cm90ZToKPiBPbiBXZWQsIDE5IEZlYiAyMDE0LCBEb25nc3UgUGFyayB3
-cm90ZToKPiBBcmUgeW91IGFibGUgdG8gcmVwcm9kdWNlIGl0ID8gQ2FuIHlvdSB0ZWxsIG1lIHRo
-ZSBzdGVwcyB0bwo+IHJlcHJvZHVjZSB0aGlzID8gVGhlIHByb2JsZW0gaXMgdGhhdCB0aGUgZXh0
-ZW50IHdlJ3JlIHRyeWluZyB0byBtYXJrCj4gYXMgdW5pbml0aWFsaXplZCBoYXMgemVybyBsZW5n
-dGguLi4uCj4KPiBBaC4uLkkgY2FuIHByb2JhYmx5IHNlZSB3aGF0IGlzIGdvaW5nIG9uLiBGb3Ig
-c29tZSBpbmV4cGxpY2FibGUKPiByZWFzb24gSSBhbSBmb3JnZXR0aW5nIHRvIHRha2UgaV9kYXRh
-X3NlbSB3aGljaCBtZWFucyB0aGF0IHdlJ3JlCj4gcHJvYmFibHkgcmFjaW5nIHdpdGggdHJ1bmNh
-dGUgb3Igc29tZXRoaW5nIGVsc2UuCj4KPiBUaGFua3MgYSBsb3QgZm9yIGxldHRpbmcgbWUga25v
-dyBhbmQgSWYgeW91IGNhbiBwbGVhc2Ugc2VuZCBtZSBhCj4gcmVwcm9kdWNlciBmb3IgeW91ciBj
-YXNlIGJlY2F1c2UgYXMgSSBzYWlkIEkgaGF2ZSBub3Qgc2VlbiB0aGlzCj4gYmVmb3JlLgoKWWVz
-LCBpdCdzIHJlbGlhYmx5IHJlcHJvZHVjaWJsZS4KV2hhdCBJJ20gZG9pbmcgZm9yIHRlc3Rpbmcg
-aXMgcXVpdGUgc2ltcGxlLCBqdXN0IGxpa2UgdGhhdDoKKC9kZXYvdmRiIGlzIGEgdGVzdCBibG9j
-ayBkZXZpY2UsIDE2R2lCIGluIHNpemUpCgojIG1rZTJmcyAtdCBleHQ0IC9kZXYvdmRiCiMgbWtk
-aXIgLXAgL21udC90ZXN0MQojIG1vdW50IC10IGV4dDQgLW8gZGlzY2FyZCAvZGV2L3ZkYiAvbW50
-L3Rlc3QxCiMgZGQgaWY9L2Rldi91cmFuZG9tIG9mPS9tbnQvdGVzdDEvZmlsZTEgYnM9MkcgY291
-bnQ9MQojIGZhbGxvY2F0ZSAteiAtbCAyRyAvbW50L3Rlc3QxL2ZpbGUxCgpUaGVuIGtlcm5lbCBj
-cmFzaGVzIGltbWVkaWF0ZWx5LgoKQ2hlZXJzLApEb25nc3UKCj4gVGhhbmtzIQo+IC1MdWthcwo+
-Cj4gPgo+ID4gLS0tLS0tLS0tLS0tWyBjdXQgaGVyZSBdLS0tLS0tLS0tLS0tCj4gPiBrZXJuZWwg
-QlVHIGF0IGZzL2V4dDQvZXh0NF9leHRlbnRzLmg6MTkzIQo+ID4gaW52YWxpZCBvcGNvZGU6IDAw
-MDAgWyMxXSBTTVAKPiA+IE1vZHVsZXMgbGlua2VkIGluOiA5cG5ldF92aXJ0aW8gdmlydGlvX25l
-dCA5cG5ldCB2aXJ0aW9fYmxrIHZpcnRpb19wY2kKPiA+IHZpcnRpb19yaW5nIHZpcnRpbwo+ID4g
-Q1BVOiAyIFBJRDogMjk1OSBDb21tOiBmYWxsb2NhdGUgTm90IHRhaW50ZWQgMy4xNC4wLXJjMysg
-IzM0Cj4gPiBIYXJkd2FyZSBuYW1lOiBCb2NocyBCb2NocywgQklPUyBCb2NocyAwMS8wMS8yMDEx
-Cj4gPiB0YXNrOiBmZmZmODgwMGRhOTdkYTEwIHRpOiBmZmZmODgwMTE5MDY4MDAwIHRhc2sudGk6
-IGZmZmY4ODAxMTkwNjgwMDAKPiA+IFJJUDogMDAxMDpbPGZmZmZmZmZmODEzNjk0Yzk+XSAgWzxm
-ZmZmZmZmZjgxMzY5NGM5Pl0KPiA+IGV4dDRfZXh0X21hcF9ibG9ja3MrMHgyODk5LzB4Mjk0MAo+
-ID4gUlNQOiAwMDE4OmZmZmY4ODAxMTkwNjljNTAgIEVGTEFHUzogMDAwMTAyMDIKPiA+IFJBWDog
-MDAwMDAwMDAwMDAwMDAwMyBSQlg6IGZmZmY4ODAwMzZmYTg0NzAgUkNYOiAwMDAwMDAwMDAwMDAw
-MDAyCj4gPiBSRFg6IDAwMDAwMDAwMDAwMDAwMDAgUlNJOiAwMDAwMDAwMDAwMDAwMDAxIFJESTog
-ZmZmZmZmZmY4MjEyMGU5OAo+ID4gUkJQOiBmZmZmODgwMTE5MDY5ZDMwIFIwODogZmZmZjg4MDEx
-OTc1ZDkwMCBSMDk6IDAxMWFkMTU2MTgwODAwMDAKPiA+IFIxMDogZmVjNzJlZjA5YzRkODYwMiBS
-MTE6IDAwMDAwMDAwMDAwMDgwMDAgUjEyOiBmZmZmODgwMTE5MDY5ZGQwCj4gPiBSMTM6IDAwMDAw
-MDAwMDAwMDA0MDMgUjE0OiAwMDAwMDAwMDAwMDAwMDAxIFIxNTogZmZmZjg4MDExOGM2NzAwYwo+
-ID4gRlM6ICAwMDAwN2ZhNTRhMGJhNzQwKDAwMDApIEdTOmZmZmY4ODAxMWZjNDAwMDAoMDAwMCkK
-PiA+IGtubEdTOjAwMDAwMDAwMDAwMDAwMDAKPiA+IENTOiAgMDAxMCBEUzogMDAwMCBFUzogMDAw
-MCBDUjA6IDAwMDAwMDAwODAwNTAwMzMKPiA+IENSMjogMDAwMDAwM2NkYmY2ZjdlMCBDUjM6IDAw
-MDAwMDAxMTkwNzcwMDAgQ1I0OiAwMDAwMDAwMDAwMDAwNmUwCj4gPiBTdGFjazoKPiA+ICAwMDAw
-MDAwMDAwMDAwMDAwIDAwMDAwMDAwMDAwMDgwMDAgZmZmZjg4MDAzNmZhODZjOCAwMDAwMDAwMDAw
-MDAwMDAwCj4gPiAgZmZmZjg4MDEwMDAwMDAwMCAwMDAwODAwMDgxMzg0ZGVlIDAwMDAwMDAwMDAw
-MDAwMDEgZmZmZjg4MDAwMDAwMDAwMAo+ID4gIDAwMDAwMDAwMDAwMDg4MDAgMDAwMDAwMDAwMDAw
-MDAwMCBmZmZmODgwMDM2ZjZmMDAwIGZmZmY4ODAxMTk3NWQ5MDAKPiA+IENhbGwgVHJhY2U6Cj4g
-PiAgWzxmZmZmZmZmZjgxMzg1YmFhPl0gPyBleHQ0X2VzX2luc2VydF9leHRlbnQrMHgxNWEvMHgy
-NDAKPiA+ICBbPGZmZmZmZmZmODEzNjY5YWU+XSA/IGV4dDRfZmluZF9kZWxhbGxvY19yYW5nZSsw
-eDFlLzB4YjAKPiA+ICBbPGZmZmZmZmZmODEzMjJkM2Y+XSBleHQ0X21hcF9ibG9ja3MrMHgyNWYv
-MHg4MzAKPiA+ICBbPGZmZmZmZmZmODEzNjk3NjQ+XSA/IGV4dDRfYWxsb2NfZmlsZV9ibG9ja3Mr
-MHhjNC8weDFlMAo+ID4gIFs8ZmZmZmZmZmY4MTM2OTdkYT5dIGV4dDRfYWxsb2NfZmlsZV9ibG9j
-a3MrMHgxM2EvMHgxZTAKPiA+ICBbPGZmZmZmZmZmODEzNjllOWY+XSBleHQ0X3plcm9fcmFuZ2Ur
-MHg2MWYvMHg4NzAKPiA+ICBbPGZmZmZmZmZmODEzNmE1ZDM+XSBleHQ0X2ZhbGxvY2F0ZSsweDRl
-My8weDZjMAo+ID4gIFs8ZmZmZmZmZmY4MTIzOTY3NT5dID8gX19zYl9zdGFydF93cml0ZSsweDE0
-NS8weDFhMAo+ID4gIFs8ZmZmZmZmZmY4MTIwZWYwMD5dID8ga21lbV9jYWNoZV9mcmVlKzB4MmYw
-LzB4M2YwCj4gPiAgWzxmZmZmZmZmZjgxMjQ2Y2EwPl0gPyBmaW5hbF9wdXRuYW1lKzB4MzAvMHg2
-MAo+ID4gIFs8ZmZmZmZmZmY4MTIzMjZhNz5dIGRvX2ZhbGxvY2F0ZSsweDFlNy8weDI5MAo+ID4g
-IFs8ZmZmZmZmZmY4MTIzMjdjOT5dIFN5U19mYWxsb2NhdGUrMHg3OS8weGMwCj4gPiAgWzxmZmZm
-ZmZmZjgxYWU3ZGU5Pl0gc3lzdGVtX2NhbGxfZmFzdHBhdGgrMHgxNi8weDFiCj4gPiBDb2RlOiBi
-YSBkYyAwNSAwMCAwMCA0OCBjNyBjNiBiMCA5MSBjNyA4MSA0OCA4OSBkZiA4OSAwNCAyNCAzMSBj
-MCBlOCA5OQo+ID4gODMgZmUgZmYgZTkgZjUgZjggZmYgZmYgNDggODMgMDUgMzQgYjMgZjUgMDAg
-MDEgZTkgMGEgZGIgZmYgZmYgPDBmPiAwYgo+ID4gMGYgMGIgMGYgMGIgMGYgMGIgNDUgODkgZDEg
-NDkgYzcgYzAgNDggMjIgZTUgODEgMzEKPiA+IFJJUCAgWzxmZmZmZmZmZjgxMzY5NGM5Pl0gZXh0
-NF9leHRfbWFwX2Jsb2NrcysweDI4OTkvMHgyOTQwCj4gPiAgUlNQIDxmZmZmODgwMTE5MDY5YzUw
-Pgo+ID4gLS0tWyBlbmQgdHJhY2UgYmEyMTIwNGEzYTk4ZmJkYyBdLS0tCj4gPgo+ID4gUmVnYXJk
-cywKPiA+IERvbmdzdQo+ID4KPiA+ID4gSSdsbCBwb3N0IHRoZSBwYXRjaGVzIGFmdGVyIHdlIGFn
-cmVlIGFuZCBtZXJnZSB0aGUga2VybmVsIGZ1bmN0aW9uYWxpdHkuCj4gPiA+Cj4gPiA+IEkgdGVz
-dGVkIHRoaXMgbW9zdGx5IHdpdGggYSBzdWJzZXQgb2YgeGZzdGVzdHMgdXNpbmcgZnN4IGFuZCBm
-c3N0cmVzcyBhbmQKPiA+ID4gZXZlbiB3aXRoIG5ldyBnZW5lcmljLzI5MCB3aGljaCBpcyBqdXN0
-IGEgY29weSBvZiB4ZnMvMjkwIHVzaW56IGZ6ZXJvCj4gPiA+IGNvbW1hbmQgZm9yIHhmc19pbyBp
-bnN0ZWFkIG9mIHplcm8gKHdoaWNoIHVzZXMgaW9jdGwpLiBJIHdhcyB0ZXN0aW5nIG9uCj4gPiA+
-IHg4Nl82NCBhbmQgcHBjNjQgd2l0aCBibG9jayBzaXplcyBvZiAxMDI0LCAyMDQ4IGFuZCA0MDk2
-Lgo+ID4gPgo+ID4gPiAuL2NoZWNrIGdlbmVyaWMvMDc2IGdlbmVyaWMvMjMyIGdlbmVyaWMvMDEz
-IGdlbmVyaWMvMDcwIGdlbmVyaWMvMjY5IGdlbmVyaWMvMDgzIGdlbmVyaWMvMTE3IGdlbmVyaWMv
-MDY4IGdlbmVyaWMvMjMxIGdlbmVyaWMvMTI3IGdlbmVyaWMvMDkxIGdlbmVyaWMvMDc1IGdlbmVy
-aWMvMTEyIGdlbmVyaWMvMjYzIGdlbmVyaWMvMDkxIGdlbmVyaWMvMDc1IGdlbmVyaWMvMjU2IGdl
-bmVyaWMvMjU1IGdlbmVyaWMvMzE2IGdlbmVyaWMvMzAwIGdlbmVyaWMvMjkwOwo+ID4gPgo+ID4g
-PiBOb3RlIHRoYXQgdGhlcmUgaXMgYSB3b3JrIGluIHByb2dyZXNzIG9uIEZBTExPQ19GTF9DT0xM
-QVBTRV9SQU5HRSB3aGljaAo+ID4gPiB0b3VjaGVzIHRoZSBzYW1lIGFyZWEgYXMgdGhpcyBwYWNo
-IHNldCBkb2VzLCBzbyB3ZSBzaG91bGQgZmlndXJlIG91dAo+ID4gPiB3aGljaCBvbmUgc2hvdWxk
-IGdvIGZpcnN0IGFuZCBtb2RpZnkgdGhlIG90aGVyIG9uIHRvcCBvZiBpdC4KPiA+ID4KPiA+ID4g
-VGhhbmtzIQo+ID4gPiAtTHVrYXMKPiA+ID4KPiA+ID4gLS0KPiA+ID4gW1BBVENIIDEvNl0gZXh0
-NDogVXBkYXRlIGlub2RlIGlfc2l6ZSBhZnRlciB0aGUgcHJlYWxsb2NhdGlvbgo+ID4gPiBbUEFU
-Q0ggMi82XSBleHQ0OiByZWZhY3RvciBleHQ0X2ZhbGxvY2F0ZSBjb2RlCj4gPiA+IFtQQVRDSCAz
-LzZdIGV4dDQ6IHRyYW5zbGF0ZSBmYWxsb2NhdGUgbW9kZSBiaXRzIHRvIHN0cmluZ3MKPiA+ID4g
-W1BBVENIIDQvNl0gZnM6IEludHJvZHVjZSBGQUxMT0NfRkxfWkVST19SQU5HRSBmbGFnIGZvciBm
-YWxsb2NhdGUKPiA+ID4gW1BBVENIIDUvNl0gZXh0NDogSW50cm9kdWNlIEZBTExPQ19GTF9aRVJP
-X1JBTkdFIGZsYWcgZm9yIGZhbGxvY2F0ZQo+ID4gPiBbUEFUQ0ggNi82XSB4ZnM6IEFkZCBzdXBw
-b3J0IGZvciBGQUxMT0NfRkxfWkVST19SQU5HRQo+ID4gPgo+ID4gPiAgZnMvZXh0NC9leHQ0Lmgg
-ICAgICAgICAgICAgIHwgICAzICsKPiA+ID4gIGZzL2V4dDQvZXh0ZW50cy5jICAgICAgICAgICB8
-IDQzMCArKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
-LS0tLS0tLS0tLS0tLS0tLQo+ID4gPiAgZnMvZXh0NC9pbm9kZS5jICAgICAgICAgICAgIHwgIDE3
-ICsrLQo+ID4gPiAgZnMvb3Blbi5jICAgICAgICAgICAgICAgICAgIHwgICA3ICstCj4gPiA+ICBm
-cy94ZnMveGZzX2ZpbGUuYyAgICAgICAgICAgfCAgMTAgKy0KPiA+ID4gIGluY2x1ZGUvdHJhY2Uv
-ZXZlbnRzL2V4dDQuaCB8ICA2NyArKysrKystLS0tLQo+ID4gPiAgaW5jbHVkZS91YXBpL2xpbnV4
-L2ZhbGxvYy5oIHwgICAxICsKPiA+ID4gIDcgZmlsZXMgY2hhbmdlZCwgMzkzIGluc2VydGlvbnMo
-KyksIDE0MiBkZWxldGlvbnMoLSkKPiA+ID4gLS0KPiA+ID4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0
-aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LWZzZGV2ZWwiIGluCj4g
-PiA+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnCj4g
-PiA+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jk
-b21vLWluZm8uaHRtbAo+ID4KCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fX19fCnhmcyBtYWlsaW5nIGxpc3QKeGZzQG9zcy5zZ2kuY29tCmh0dHA6Ly9vc3Muc2dp
-LmNvbS9tYWlsbWFuL2xpc3RpbmZvL3hmcwo=
+On 2/19/14, 5:48 AM, Lukas Czerner wrote:
+> Currently someone uses ext2fs_free() to free the ext2_filsys structure,
+> he is also responsible to set the pointer to that structure to NULL,
+> because ext2fs_free() is not able to do that.
+> 
+> This however is in contrast with ext2fs_free_mem() which requires as an
+> argument pointer to the pointer and it will in fact set the pointer to
+> NULL for us. This is probably the reason why majority of places where we
+> use ext2fs_free() does not set the pointer to NULL afterwards.
+> 
+> Fix this by changing function ext2fs_free() so that it'll require
+> pointer to the ext2_filsys as an argument and will be able to set the
+> pointer to NULL for us.
+> 
+> I do not currently have any way to trigger the issue in recent
+> e2fsprogs. Part of the reason is that there are some fixes which just
+> obfuscates the real problem (for example
+> 7ff040f30f0ff3bf5e2c832da3cb577e00a52d60) and the other part might be
+> just coincidence.
+
+Hrmph, sorry for obfuscating.  ;)
+
+I agree that this seems like a good change, especially to make it
+more consistent with the NULL assignment that ext2fs_free_mem does.
+
+Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+
+Thanks Lukas!
+
+> I was however able to reproduce this with e2fsprogs 1.42.9 using the
+> image in bug https://bugzilla.redhat.com/show_bug.cgi?id=997982. With
+> this patch it fixes it. However I am not sure why it got fixed in the
+> recent e2fsprogs since git bisect lands into the merge commit - however
+> I think it's just a coincidence rather than targeted fix.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> ---
+>  e2fsck/journal.c        |  2 +-
+>  e2fsck/unix.c           | 12 ++++--------
+>  lib/ext2fs/closefs.c    |  2 +-
+>  lib/ext2fs/dupfs.c      |  2 +-
+>  lib/ext2fs/ext2fs.h     |  2 +-
+>  lib/ext2fs/freefs.c     | 10 ++++++++--
+>  lib/ext2fs/initialize.c |  2 +-
+>  lib/ext2fs/openfs.c     |  7 +++----
+>  misc/tune2fs.c          |  2 +-
+>  resize/online.c         |  2 +-
+>  resize/resize2fs.c      |  4 ++--
+>  11 files changed, 24 insertions(+), 23 deletions(-)
+> 
+> diff --git a/e2fsck/journal.c b/e2fsck/journal.c
+> index a7b1150..ef964a0 100644
+> --- a/e2fsck/journal.c
+> +++ b/e2fsck/journal.c
+> @@ -965,7 +965,7 @@ errcode_t e2fsck_run_ext3_journal(e2fsck_t ctx)
+>  		kbytes_written = stats->bytes_written >> 10;
+>  
+>  	ext2fs_mmp_stop(ctx->fs);
+> -	ext2fs_free(ctx->fs);
+> +	ext2fs_free(&ctx->fs);
+>  	retval = ext2fs_open(ctx->filesystem_name, EXT2_FLAG_RW,
+>  			     ctx->superblock, blocksize, io_ptr,
+>  			     &ctx->fs);
+> diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+> index 429f1cd..b4d23de 100644
+> --- a/e2fsck/unix.c
+> +++ b/e2fsck/unix.c
+> @@ -1051,10 +1051,8 @@ static errcode_t try_open_fs(e2fsck_t ctx, int flags, io_manager io_ptr,
+>  		int blocksize;
+>  		for (blocksize = EXT2_MIN_BLOCK_SIZE;
+>  		     blocksize <= EXT2_MAX_BLOCK_SIZE; blocksize *= 2) {
+> -			if (*ret_fs) {
+> -				ext2fs_free(*ret_fs);
+> -				*ret_fs = NULL;
+> -			}
+> +			if (*ret_fs)
+> +				ext2fs_free(ret_fs);
+>  			retval = ext2fs_open2(ctx->filesystem_name,
+>  					      ctx->io_options, flags,
+>  					      ctx->superblock, blocksize,
+> @@ -1292,10 +1290,8 @@ restart:
+>  			retval = retval2;
+>  			goto failure;
+>  		}
+> -		if (fs->flags & EXT2_FLAG_NOFREE_ON_ERROR) {
+> -			ext2fs_free(fs);
+> -			fs = NULL;
+> -		}
+> +		if (fs->flags & EXT2_FLAG_NOFREE_ON_ERROR)
+> +			ext2fs_free(&fs);
+>  		if (!fs || (fs->group_desc_count > 1)) {
+>  			log_out(ctx, _("%s: %s trying backup blocks...\n"),
+>  				ctx->program_name,
+> diff --git a/lib/ext2fs/closefs.c b/lib/ext2fs/closefs.c
+> index c2eaec1..b0e515d 100644
+> --- a/lib/ext2fs/closefs.c
+> +++ b/lib/ext2fs/closefs.c
+> @@ -490,7 +490,7 @@ errcode_t ext2fs_close2(ext2_filsys fs, int flags)
+>  	if (retval)
+>  		return retval;
+>  
+> -	ext2fs_free(fs);
+> +	ext2fs_free(&fs);
+>  	return 0;
+>  }
+>  
+> diff --git a/lib/ext2fs/dupfs.c b/lib/ext2fs/dupfs.c
+> index 02721e1..7568d89 100644
+> --- a/lib/ext2fs/dupfs.c
+> +++ b/lib/ext2fs/dupfs.c
+> @@ -115,7 +115,7 @@ errcode_t ext2fs_dup_handle(ext2_filsys src, ext2_filsys *dest)
+>  	*dest = fs;
+>  	return 0;
+>  errout:
+> -	ext2fs_free(fs);
+> +	ext2fs_free(&fs);
+>  	return retval;
+>  
+>  }
+> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+> index 7f7fd1f..a084888 100644
+> --- a/lib/ext2fs/ext2fs.h
+> +++ b/lib/ext2fs/ext2fs.h
+> @@ -1213,7 +1213,7 @@ extern char *ext2fs_find_block_device(dev_t device);
+>  extern errcode_t ext2fs_sync_device(int fd, int flushb);
+>  
+>  /* freefs.c */
+> -extern void ext2fs_free(ext2_filsys fs);
+> +extern void ext2fs_free(ext2_filsys *fs);
+>  extern void ext2fs_free_dblist(ext2_dblist dblist);
+>  extern void ext2fs_badblocks_list_free(ext2_badblocks_list bb);
+>  extern void ext2fs_u32_list_free(ext2_u32_list bb);
+> diff --git a/lib/ext2fs/freefs.c b/lib/ext2fs/freefs.c
+> index 89a157b..be7c677 100644
+> --- a/lib/ext2fs/freefs.c
+> +++ b/lib/ext2fs/freefs.c
+> @@ -18,8 +18,14 @@
+>  #include "ext2_fs.h"
+>  #include "ext2fsP.h"
+>  
+> -void ext2fs_free(ext2_filsys fs)
+> +/*
+> + * Free ext2_filsys.  The 'fs_ptr' arg must point to a ext2_filsys
+> + * which is the pointer to struct_ext2_filsys.
+> + */
+> +void ext2fs_free(ext2_filsys *fs_ptr)
+>  {
+> +	ext2_filsys fs = *fs_ptr;
+> +
+>  	if (!fs || (fs->magic != EXT2_ET_MAGIC_EXT2FS_FILSYS))
+>  		return;
+>  	if (fs->image_io != fs->io) {
+> @@ -61,7 +67,7 @@ void ext2fs_free(ext2_filsys fs)
+>  
+>  	fs->magic = 0;
+>  
+> -	ext2fs_free_mem(&fs);
+> +	ext2fs_free_mem(fs_ptr);
+>  }
+>  
+>  /*
+> diff --git a/lib/ext2fs/initialize.c b/lib/ext2fs/initialize.c
+> index 75fbf8e..72ff090 100644
+> --- a/lib/ext2fs/initialize.c
+> +++ b/lib/ext2fs/initialize.c
+> @@ -530,6 +530,6 @@ ipg_retry:
+>  	return 0;
+>  cleanup:
+>  	free(buf);
+> -	ext2fs_free(fs);
+> +	ext2fs_free(&fs);
+>  	return retval;
+>  }
+> diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
+> index aba8a50..6a49083 100644
+> --- a/lib/ext2fs/openfs.c
+> +++ b/lib/ext2fs/openfs.c
+> @@ -476,10 +476,9 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
+>  
+>  	return 0;
+>  cleanup:
+> -	if (flags & EXT2_FLAG_NOFREE_ON_ERROR)
+> -		*ret_fs = fs;
+> -	else
+> -		ext2fs_free(fs);
+> +	if (!(flags & EXT2_FLAG_NOFREE_ON_ERROR))
+> +		ext2fs_free(&fs);
+> +	*ret_fs = fs;
+>  	return retval;
+>  }
+>  
+> diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+> index 8ff47d2..5a3f6db 100644
+> --- a/misc/tune2fs.c
+> +++ b/misc/tune2fs.c
+> @@ -2471,7 +2471,7 @@ retry_open:
+>  			fprintf(stderr, "%s",
+>  			     _("Couldn't find valid filesystem superblock.\n"));
+>  
+> -		ext2fs_free(fs);
+> +		ext2fs_free(&fs);
+>  		exit(1);
+>  	}
+>  	fs->default_bitmap_type = EXT2FS_BMAP64_RBTREE;
+> diff --git a/resize/online.c b/resize/online.c
+> index 46d86b0..afd5bb6 100644
+> --- a/resize/online.c
+> +++ b/resize/online.c
+> @@ -290,7 +290,7 @@ errcode_t online_resize_fs(ext2_filsys fs, const char *mtpt,
+>  		}
+>  	}
+>  
+> -	ext2fs_free(new_fs);
+> +	ext2fs_free(&new_fs);
+>  	close(fd);
+>  
+>  	return 0;
+> diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+> index 498cf99..6f19528 100644
+> --- a/resize/resize2fs.c
+> +++ b/resize/resize2fs.c
+> @@ -208,7 +208,7 @@ errcode_t resize_fs(ext2_filsys fs, blk64_t *new_size, int flags,
+>  
+>  	rfs->flags = flags;
+>  
+> -	ext2fs_free(rfs->old_fs);
+> +	ext2fs_free(&rfs->old_fs);
+>  	if (rfs->itable_buf)
+>  		ext2fs_free_mem(&rfs->itable_buf);
+>  	if (rfs->reserve_blocks)
+> @@ -221,7 +221,7 @@ errcode_t resize_fs(ext2_filsys fs, blk64_t *new_size, int flags,
+>  
+>  errout:
+>  	if (rfs->new_fs)
+> -		ext2fs_free(rfs->new_fs);
+> +		ext2fs_free(&rfs->new_fs);
+>  	if (rfs->itable_buf)
+>  		ext2fs_free_mem(&rfs->itable_buf);
+>  	ext2fs_free_mem(&rfs);
+> 
+
