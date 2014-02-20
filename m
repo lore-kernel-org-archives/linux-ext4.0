@@ -1,97 +1,67 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: add ext4_es_store_pblock_status()
-Date: Wed, 19 Feb 2014 20:28:37 -0500
-Message-ID: <1392859717-23439-1-git-send-email-tytso@mit.edu>
-References: <20140220012604.GB18781@thunk.org>
+Subject: [PATCH] ext4: don't calculate total xattr header size unless needed
+Date: Wed, 19 Feb 2014 20:29:11 -0500
+Message-ID: <1392859751-23513-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:60226 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:60230 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751717AbaBTB2o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 19 Feb 2014 20:28:44 -0500
-In-Reply-To: <20140220012604.GB18781@thunk.org>
+	id S1751717AbaBTB3P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 19 Feb 2014 20:29:15 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Avoid false positives by static code analysis tools such as sparse and
-coverity caused by the fact that we set the physical block, and then
-the status in the extent_status structure.  It is also more efficient
-to set both of these values at once.
+The function ext4_expand_extra_isize_ea() doesn't need the size of all
+of the extended attribute headers.  So if we don't calculate it when
+it is unneeded, it we can skip some undeeded memory references, and as
+a bonus, we eliminate some kvetching by static code analysis tools.
 
-Addresses-Coverity-Id: #989077
-Addresses-Coverity-Id: #989078
-Addresses-Coverity-Id: #1080722
+Addresses-Coverity-Id: #741291
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/extents_status.c | 15 +++++++--------
- fs/ext4/extents_status.h |  9 +++++++++
- 2 files changed, 16 insertions(+), 8 deletions(-)
+ fs/ext4/xattr.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 3981ff7..0578b6b 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -658,8 +658,7 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
- 
- 	newes.es_lblk = lblk;
- 	newes.es_len = len;
--	ext4_es_store_pblock(&newes, pblk);
--	ext4_es_store_status(&newes, status);
-+	ext4_es_store_pblock_status(&newes, status, pblk);
- 	trace_ext4_es_insert_extent(inode, &newes);
- 
- 	ext4_es_insert_extent_check(inode, &newes);
-@@ -699,8 +698,7 @@ void ext4_es_cache_extent(struct inode *inode, ext4_lblk_t lblk,
- 
- 	newes.es_lblk = lblk;
- 	newes.es_len = len;
--	ext4_es_store_pblock(&newes, pblk);
--	ext4_es_store_status(&newes, status);
-+	ext4_es_store_pblock_status(&newes, pblk, status);
- 	trace_ext4_es_cache_extent(inode, &newes);
- 
- 	if (!len)
-@@ -812,13 +810,14 @@ retry:
- 
- 			newes.es_lblk = end + 1;
- 			newes.es_len = len2;
-+			block = 0x7FDEADBEEF;
- 			if (ext4_es_is_written(&orig_es) ||
--			    ext4_es_is_unwritten(&orig_es)) {
-+			    ext4_es_is_unwritten(&orig_es))
- 				block = ext4_es_pblock(&orig_es) +
- 					orig_es.es_len - len2;
--				ext4_es_store_pblock(&newes, block);
--			}
--			ext4_es_store_status(&newes, ext4_es_status(&orig_es));
-+			ext4_es_store_pblock_status(&newes,
-+						    ext4_es_status(&orig_es),
-+						    block);
- 			err = __es_insert_extent(inode, &newes);
- 			if (err) {
- 				es->es_lblk = orig_es.es_lblk;
-diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-index 167f4ab8..f1b62a4 100644
---- a/fs/ext4/extents_status.h
-+++ b/fs/ext4/extents_status.h
-@@ -129,6 +129,15 @@ static inline void ext4_es_store_status(struct extent_status *es,
- 		       (es->es_pblk & ~ES_MASK));
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index e175e94..185066f 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -567,12 +567,13 @@ static size_t ext4_xattr_free_space(struct ext4_xattr_entry *last,
+ 				    size_t *min_offs, void *base, int *total)
+ {
+ 	for (; !IS_LAST_ENTRY(last); last = EXT4_XATTR_NEXT(last)) {
+-		*total += EXT4_XATTR_LEN(last->e_name_len);
+ 		if (!last->e_value_block && last->e_value_size) {
+ 			size_t offs = le16_to_cpu(last->e_value_offs);
+ 			if (offs < *min_offs)
+ 				*min_offs = offs;
+ 		}
++		if (total)
++			*total += EXT4_XATTR_LEN(last->e_name_len);
+ 	}
+ 	return (*min_offs - ((void *)last - base) - sizeof(__u32));
  }
- 
-+static inline void ext4_es_store_pblock_status(struct extent_status *es,
-+					       ext4_fsblk_t pb,
-+					       unsigned int status)
-+{
-+	es->es_pblk = (((ext4_fsblk_t)
-+			(status & EXTENT_STATUS_FLAGS) << ES_SHIFT) |
-+		       (pb & ~ES_MASK));
-+}
-+
- extern void ext4_es_register_shrinker(struct ext4_sb_info *sbi);
- extern void ext4_es_unregister_shrinker(struct ext4_sb_info *sbi);
- extern void ext4_es_lru_add(struct inode *inode);
+@@ -1228,7 +1229,7 @@ int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
+ 	struct ext4_xattr_block_find *bs = NULL;
+ 	char *buffer = NULL, *b_entry_name = NULL;
+ 	size_t min_offs, free;
+-	int total_ino, total_blk;
++	int total_ino;
+ 	void *base, *start, *end;
+ 	int extra_isize = 0, error = 0, tried_min_extra_isize = 0;
+ 	int s_min_extra_isize = le16_to_cpu(EXT4_SB(inode->i_sb)->s_es->s_min_extra_isize);
+@@ -1286,8 +1287,7 @@ retry:
+ 		first = BFIRST(bh);
+ 		end = bh->b_data + bh->b_size;
+ 		min_offs = end - base;
+-		free = ext4_xattr_free_space(first, &min_offs, base,
+-					     &total_blk);
++		free = ext4_xattr_free_space(first, &min_offs, base, NULL);
+ 		if (free < new_extra_isize) {
+ 			if (!tried_min_extra_isize && s_min_extra_isize) {
+ 				tried_min_extra_isize++;
 -- 
 1.9.0
 
