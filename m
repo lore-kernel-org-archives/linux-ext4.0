@@ -1,68 +1,88 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: avoid possible overflow in ext4_map_blocks()
-Date: Thu, 20 Feb 2014 00:50:54 -0500
-Message-ID: <1392875454-4281-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] ext4: avoid possible overflow in ext4_map_blocks()
+Date: Wed, 19 Feb 2014 22:11:34 -0800
+Message-ID: <143F882D-0091-4F04-9A2D-882581305CC8@dilger.ca>
+References: <1392875454-4281-1-git-send-email-tytso@mit.edu>
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Content-Type: multipart/signed; boundary="Apple-Mail=_2EF0D92A-A194-40AD-9A85-DB896763238B"; protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:60277 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750705AbaBTFvB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 20 Feb 2014 00:51:01 -0500
+Received: from mail-pa0-f51.google.com ([209.85.220.51]:35978 "EHLO
+	mail-pa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751238AbaBTGLk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Feb 2014 01:11:40 -0500
+Received: by mail-pa0-f51.google.com with SMTP id ld10so1477599pab.38
+        for <linux-ext4@vger.kernel.org>; Wed, 19 Feb 2014 22:11:39 -0800 (PST)
+In-Reply-To: <1392875454-4281-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The ext4_map_blocks() function returns the number of blocks which
-satisfying the caller's request.  This number of blocks requested by
-the caller is specified by an unsigned integer, but the return value
-of ext4_map_blocks() is a signed integer (to accomodate error codes
-per the kernel's standard error signalling convention).
 
-Historically, overflows could never happen since mballoc() will refuse
-to allocate more than 2048 blocks at a time (which is something we
-should fix), and if the blocks were already allocated, the fact that
-there would be some number of intervening metadata blocks pretty much
-guaranteed that there could never be a contiguous region of data
-blocks that was greater than 2**31 blocks.
+--Apple-Mail=_2EF0D92A-A194-40AD-9A85-DB896763238B
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-However, this is now possible if there is a file system which is a bit
-bigger than 8TB, and is created using the new mke2fs hugeblock
-feature, which can create a perfectly contiguous file.  In that case,
-if a userspace program attempted to call fallocate() on this already
-fully allocated file, it's possible that ext4_map_blocks() could
-return a number large enough that it would overflow a signed integer,
-resultimg in a ext4 thinking that the ext4_map_blocks() call had
-failed with some strange error code.
 
-Since ext4_map_blocks() is always free to return a smaller number of
-blocks than what was requested by the caller, fix this by capping the
-number of blocks that ext4_map_blocks() will ever try to map to 2**31
-- 1.  In practice this should never get hit, except by someone
-deliberately trying to provke the above-described bug.
+On Feb 19, 2014, at 9:50 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+> The ext4_map_blocks() function returns the number of blocks which
+> satisfying the caller's request.  This number of blocks requested by
+> the caller is specified by an unsigned integer, but the return value
+> of ext4_map_blocks() is a signed integer (to accomodate error codes
+> per the kernel's standard error signalling convention).
 
-Thanks to the PaX team for asking whethre this could possibly happen
-in some off-line discussions about using some static code checking
-technology they are developing to find bugs in kernel code.
+[snip]
+> return a number large enough that it would overflow a signed integer,
+> resultimg in a ext4 thinking that the ext4_map_blocks() call had
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/inode.c | 3 +++
- 1 file changed, 3 insertions(+)
+(typo) s/resultimg/resulting/
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 6e39895..e81244d 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -514,6 +514,9 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 		  "logical block %lu\n", inode->i_ino, flags, map->m_len,
- 		  (unsigned long) map->m_lblk);
- 
-+	if (map->m_len >= (1UL << 31))
-+		map->m_len = (1UL << 31) - 1;
-+
- 	/* Lookup extent status tree firstly */
- 	if (ext4_es_lookup_extent(inode, map->m_lblk, &es)) {
- 		ext4_es_lru_add(inode);
--- 
-1.9.0
+> @@ -514,6 +514,9 @@ int ext4_map_blocks(handle_t *handle, struct inode =
+*inode,
+> 		  "logical block %lu\n", inode->i_ino, flags, =
+map->m_len,
+> 		  (unsigned long) map->m_lblk);
+>=20
+> +	if (map->m_len >=3D (1UL << 31))
+> +		map->m_len =3D (1UL << 31) - 1;
+> +
 
+Should this instead be INT_MAX?  That makes it more clear why the limit
+is here, and in theory on a platform with 64-bit int it would work
+properly with a value over (2^31 - 1).
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_2EF0D92A-A194-40AD-9A85-DB896763238B
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIVAwUBUwWclnKl2rkXzB/gAQJaPw/+KgaFHq6366C85st3lOe1RLvNNBMbv8gv
+T6vp8AFtyawALQHbgOeMzJ1bSwuw61OELGVImtF4+BNs2Julve0QKw/SU8GYJf12
+Fn9DR1TWDeNp1Dtzd9eNuY3wvAuN4pXOlJHHHLoHjsHAdcfDHmeyvUQb1YajcxYk
+wjAM70CiF0fd2dN4CxDFzQyGt45dcY9MHjtc4rV87aHZt9jnIc2HokAX+eju4/jt
+nzYLICvYkiH0qOsNQXxACB0g+hTaHWH2BFQkX032yH5FKiKAS6VhENUApJDoAYK5
+2MDL2tWUcTUNGcdeyRVaMswvBENizrV/cyA42h+1H+aStAz6XOvftPDPO47Ukm7Z
+6ZXloCicr8wqmHV4KqcU72sSX1v8UqC5RS5lIyi2iAIgzFV2H8KWvGsyxf6vcrNM
+FIR3tDYZ66YL45A4L4S+F4IicyDOUrgPmYSdb9BfXKEGf2R2aJffQz4NEul24ASm
+ze/wXyFVPdoraXjOeN6PS94Pm5KtuMTT8yL1uHreBMCpmn20qUM5+UQquol4XtN/
+9TFbVzt1vlLAtEEoFfPuyVhPXtluvnh1uZdpgTT7km/noXDOOdKGfjtEfCc9KPRR
+z58nZQyit90DBSkCCO4FuoHaMSjv5yGMqGLahsblu6KhZVhzogOUJhBQE+a+f/ax
+YLYB7P2VaNg=
+=0g4f
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_2EF0D92A-A194-40AD-9A85-DB896763238B--
