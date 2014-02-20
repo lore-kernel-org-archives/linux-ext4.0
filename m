@@ -1,73 +1,109 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH -v2] ext4: avoid possible overflow in ext4_map_blocks()
-Date: Thu, 20 Feb 2014 12:59:27 -0500
-Message-ID: <1392919167-1282-1-git-send-email-tytso@mit.edu>
-References: <143F882D-0091-4F04-9A2D-882581305CC8@dilger.ca>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:60521 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753098AbaBTR7e (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 20 Feb 2014 12:59:34 -0500
-In-Reply-To: <143F882D-0091-4F04-9A2D-882581305CC8@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: T Makphaibulchoke <tmac@hp.com>
+Subject: [PATCH V5 0/3] ext4: increase mbcache scalability
+Date: Thu, 20 Feb 2014 11:37:39 -0700
+Message-ID: <1392921462-75500-1-git-send-email-tmac@hp.com>
+References: <1374108934-50550-1-git-send-email-tmac@hp.com>
+Cc: aswin@hp.com, T Makphaibulchoke <tmac@hp.com>
+To: tytso@mit.edu, adilger.kernel@dilger.ca, viro@zeniv.linux.org.uk,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1374108934-50550-1-git-send-email-tmac@hp.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-The ext4_map_blocks() function returns the number of blocks which
-satisfying the caller's request.  This number of blocks requested by
-the caller is specified by an unsigned integer, but the return value
-of ext4_map_blocks() is a signed integer (to accomodate error codes
-per the kernel's standard error signalling convention).
+The patch consists of three parts.
 
-Historically, overflows could never happen since mballoc() will refuse
-to allocate more than 2048 blocks at a time (which is something we
-should fix), and if the blocks were already allocated, the fact that
-there would be some number of intervening metadata blocks pretty much
-guaranteed that there could never be a contiguous region of data
-blocks that was greater than 2**31 blocks.
+The first part changes the implementation of both the block and hash chains of
+an mb_cache from list_head to hlist_bl_head and also introduces new members,
+including a spinlock to mb_cache_entry, as required by the second part.
 
-However, this is now possible if there is a file system which is a bit
-bigger than 8TB, and is created using the new mke2fs hugeblock
-feature, which can create a perfectly contiguous file.  In that case,
-if a userspace program attempted to call fallocate() on this already
-fully allocated file, it's possible that ext4_map_blocks() could
-return a number large enough that it would overflow a signed integer,
-resulting in a ext4 thinking that the ext4_map_blocks() call had
-failed with some strange error code.
+The second part introduces higher degree of parallelism to the usages of the
+mb_cache and mb_cache_entries and impacts all ext filesystems.
 
-Since ext4_map_blocks() is always free to return a smaller number of
-blocks than what was requested by the caller, fix this by capping the
-number of blocks that ext4_map_blocks() will ever try to map to 2**31
-- 1.  In practice this should never get hit, except by someone
-deliberately trying to provke the above-described bug.
+The third part of the patch further increases the scalablity of an ext4
+filesystem by having each ext4 fielsystem allocate and use its own private
+mbcache structure, instead of sharing a single mcache structures across all
+ext4 filesystems, and increases the size of its mbcache hash tables.
 
-Thanks to the PaX team for asking whethre this could possibly happen
-in some off-line discussions about using some static code checking
-technology they are developing to find bugs in kernel code.
+Here are some of the benchmark results with the changes.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/inode.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+Using ram disk, there seems to be no peformance differences with aim7 for all
+workloads on all platforms tested.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 6e39895..113458c 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -514,6 +514,12 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 		  "logical block %lu\n", inode->i_ino, flags, map->m_len,
- 		  (unsigned long) map->m_lblk);
- 
-+	/*
-+	 * ext4_map_blocks returns an int, and m_len is an unsigned int
-+	 */
-+	if (unlikely(map->m_len > INT_MAX))
-+		map->m_len = INT_MAX;
-+
- 	/* Lookup extent status tree firstly */
- 	if (ext4_es_lookup_extent(inode, map->m_lblk, &es)) {
- 		ext4_es_lru_add(inode);
+With regular disk filesystems with inode size of 128 bytes, forcing the uses
+of external xattr, there seems to be some good peformance increases with
+some of the aim7's workloads on all platforms tested.
+
+Here are some of the performance improvement on aim7 with 2000 users.
+
+On a 20 core macine, there is no performance differences.
+
+On a 60 core machine:
+
+---------------------------
+|             | % increase |
+---------------------------
+| alltests    |     74.69  |
+---------------------------
+| custom      |     77.1   |
+---------------------------
+| disk        |    125.02  |
+---------------------------
+| fserver     |    113.22  |
+---------------------------
+| new_dbase   |     21.17  |
+---------------------------
+| new_fserve  |     70.31  |
+---------------------------
+| shared      |     52.56  |
+---------------------------
+
+On a 80 core machine:
+
+---------------------------
+|             | % increase |
+---------------------------
+| custom      |     74.29  |
+---------------------------
+| disk        |     61.01  |
+---------------------------
+| fserver     |     11.59  |
+---------------------------
+| new_fserver |     32.76  |
+---------------------------
+
+The changes have been tested with ext4 xfstests to verify that no regression
+has been introduced.
+
+Changed in v5:
+        - New performance data
+	- New diff summary
+
+Changed in v4:
+        - New performance data
+	- New diff summary
+	- New patch architecture
+
+Changed in v3:
+	- New idff summary
+
+Changed in v2:
+        - New performance data
+	- New diff summary
+
+T Makphaibulchoke (3):
+  fs/mbcache.c change block and index hash chain to hlist_bl_node
+  mbcache: decoupling the locking of local from global data
+  ext4: each filesystem creates and uses its own mb_cache
+
+ fs/ext4/ext4.h          |   1 +
+ fs/ext4/super.c         |  24 ++-
+ fs/ext4/xattr.c         |  51 ++---
+ fs/ext4/xattr.h         |   6 +-
+ fs/mbcache.c            | 540 ++++++++++++++++++++++++++++++++++--------------
+ include/linux/mbcache.h |  12 +-
+ 6 files changed, 441 insertions(+), 193 deletions(-)
+
 -- 
-1.9.0
-
+1.7.11.3
