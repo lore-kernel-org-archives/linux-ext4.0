@@ -1,446 +1,476 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] e2fsprogs: introduce ext2fs_close_free() helper
-Date: Thu, 20 Feb 2014 16:02:29 +0100
-Message-ID: <1392908549-32318-1-git-send-email-lczerner@redhat.com>
-Cc: tytso@mit.edu, Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:7103 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754100AbaBTPCm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 20 Feb 2014 10:02:42 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Namjae Jeon <linkinjeon@gmail.com>
+Subject: [PATCH v6] ext4: Add support FALLOC_FL_COLLAPSE_RANGE for fallocate
+Date: Fri, 21 Feb 2014 00:07:41 +0900
+Message-ID: <1392908861-3563-1-git-send-email-linkinjeon@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Namjae Jeon <linkinjeon@gmail.com>, Namjae Jeon <namjae.jeon@samsung.com>,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
+	Ashish Sangwan <a.sangwan@samsung.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: viro@zeniv.linux.org.uk, david@fromorbit.com, bpm@sgi.com, tytso@mit.edu,
+	adilger.kernel@dilger.ca, jack@suse.cz, mtk.manpages@gmail.com,
+	lczerner@redhat.com
+Return-path: <xfs-bounces@oss.sgi.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-Currently there are many uses of ext2fs_close() which might be wrong.
-First of all ext2fs_close() does not set the ext2_filsys pointer to NULL
-so the caller is responsible for clearing it, however there are some
-cases there we do not do it.
+From: Namjae Jeon <namjae.jeon@samsung.com>
 
-Second of all very small number of users of ext2fs_close() actually
-check the return value. If there is a problem in ext2fs_close() it will
-not even free the ext2_filsys structure, but majority of users expect it
-to do so.
+This patch implements fallocate's FALLOC_FL_COLLAPSE_RANGE for Ext4.
 
-To fix both problems this commit introduces a new helper
-ext2fs_close_free() which will not only check for the return value and
-free the ext2_filsys structure if the call to ext2fs_close2() failed,
-but it will also set the ext2_filsys pointer to NULL.
+The semantics of this flag are following:
+1) It collapses the range lying between offset and length by removing any data
+   blocks which are present in this range and than updates all the logical
+   offsets of extents beyond "offset + len" to nullify the hole created by
+   removing blocks. In short, it does not leave a hole.
+2) It should be used exclusively. No other fallocate flag in combination.
+3) Offset and length supplied to fallocate should be fs block size aligned
+   in case of xfs and ext4.
+4) Collaspe range does not work beyond i_size.
 
-Replace every use of ext2fs_close() in e2fsprogs tools with
-ext2fs_close_free() - there is no real reason to keep using
-ext2fs_close().
-
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
+Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
+Tested-by: Dongsu Park <dongsu.park@profitbricks.com>
 ---
- debugfs/debugfs.c        |  6 ++----
- e2fsck/scantest.c        |  2 +-
- e2fsck/unix.c            | 20 ++++++++------------
- e2fsck/util.c            |  2 +-
- lib/ext2fs/closefs.c     | 12 ++++++++++++
- lib/ext2fs/ext2fs.h      |  1 +
- lib/ext2fs/mkjournal.c   |  2 +-
- lib/ext2fs/tst_bitmaps.c | 12 ++++--------
- misc/dumpe2fs.c          |  6 +++---
- misc/e2freefrag.c        |  2 +-
- misc/e2image.c           |  4 ++--
- misc/e4defrag.c          |  2 +-
- misc/mke2fs.c            |  8 ++++----
- misc/tune2fs.c           |  6 +++---
- resize/main.c            |  2 +-
- resize/resize2fs.c       |  2 +-
- 16 files changed, 46 insertions(+), 43 deletions(-)
 
-diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-index d8d6d76..7db6bda 100644
---- a/debugfs/debugfs.c
-+++ b/debugfs/debugfs.c
-@@ -131,10 +131,9 @@ static void open_filesystem(char *device, int open_flags, blk64_t superblock,
- 	return;
+Changelog
+v6:
+ - Fix compile error issue.
+
+v5: Fix review comments from Lukas Czerner.
+- Added checks for immutable files and swap files.
+- Move inode flag checks under imutex.
+- Remove an obsolete checking.
+- truncate_pagecache_range can work on page size aligned byte offsets
+  so alignment is not required.
+
+v4:
+- move block size aligned check from VFS layer to FS specific layer.
+
+v3:
+- fix checkpatch.pl warning
+
+v2:
+- Added check to make sure before shifting that the hole is big enough to
+  contian the shift.
+- Added code to make merging of extent where possible.
+- Change semantics of collapse range and contain it within EOF.
+
+ fs/ext4/ext4.h              |   3 +
+ fs/ext4/extents.c           | 304 +++++++++++++++++++++++++++++++++++++++++++-
+ fs/ext4/move_extent.c       |   2 +-
+ include/trace/events/ext4.h |  25 ++++
+ 4 files changed, 332 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index ece5556..ca9b115 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2755,6 +2755,7 @@ extern int ext4_find_delalloc_cluster(struct inode *inode, ext4_lblk_t lblk);
+ extern int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+ 			__u64 start, __u64 len);
+ extern int ext4_ext_precache(struct inode *inode);
++extern int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len);
  
- errout:
--	retval = ext2fs_close(current_fs);
-+	retval = ext2fs_close_free(&current_fs);
- 	if (retval)
- 		com_err(device, retval, "while trying to close filesystem");
--	current_fs = NULL;
- }
+ /* move_extent.c */
+ extern void ext4_double_down_write_data_sem(struct inode *first,
+@@ -2764,6 +2765,8 @@ extern void ext4_double_up_write_data_sem(struct inode *orig_inode,
+ extern int ext4_move_extents(struct file *o_filp, struct file *d_filp,
+ 			     __u64 start_orig, __u64 start_donor,
+ 			     __u64 len, __u64 *moved_len);
++extern int mext_next_extent(struct inode *inode, struct ext4_ext_path *path,
++			    struct ext4_extent **extent);
  
- void do_open_filesys(int argc, char **argv)
-@@ -238,10 +237,9 @@ static void close_filesystem(NOARGS)
- 		if (retval)
- 			com_err("ext2fs_write_block_bitmap", retval, 0);
- 	}
--	retval = ext2fs_close(current_fs);
-+	retval = ext2fs_close_free(&current_fs);
- 	if (retval)
- 		com_err("ext2fs_close", retval, 0);
--	current_fs = NULL;
- 	return;
- }
+ /* page-io.c */
+ extern int __init ext4_init_pageio(void);
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 74bc2d5..db0ebe4 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4565,12 +4565,16 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+ 	unsigned int credits, blkbits = inode->i_blkbits;
  
-diff --git a/e2fsck/scantest.c b/e2fsck/scantest.c
-index 16380b3..6131141 100644
---- a/e2fsck/scantest.c
-+++ b/e2fsck/scantest.c
-@@ -133,7 +133,7 @@ int main (int argc, char *argv[])
- 	}
+ 	/* Return error if mode is not supported */
+-	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
++	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE |
++		     FALLOC_FL_COLLAPSE_RANGE))
+ 		return -EOPNOTSUPP;
  
+ 	if (mode & FALLOC_FL_PUNCH_HOLE)
+ 		return ext4_punch_hole(inode, offset, len);
  
--	ext2fs_close(fs);
-+	ext2fs_close_free(&fs);
- 
- 	print_resource_track(&global_rtrack);
- 
-diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-index 429f1cd..593106b 100644
---- a/e2fsck/unix.c
-+++ b/e2fsck/unix.c
-@@ -451,8 +451,7 @@ static void check_if_skip(e2fsck_t ctx)
- 	}
- 	log_out(ctx, "\n");
- skip:
--	ext2fs_close(fs);
--	ctx->fs = NULL;
-+	ext2fs_close_free(&fs);
- 	e2fsck_free_context(ctx);
- 	exit(FSCK_OK);
- }
-@@ -1304,12 +1303,12 @@ restart:
- 			orig_superblock = ctx->superblock;
- 			get_backup_sb(ctx, fs, ctx->filesystem_name, io_ptr);
- 			if (fs)
--				ext2fs_close(fs);
-+				ext2fs_close_free(&fs);
- 			orig_retval = retval;
- 			retval = try_open_fs(ctx, flags, io_ptr, &fs);
- 			if ((orig_retval == 0) && retval != 0) {
- 				if (fs)
--					ext2fs_close(fs);
-+					ext2fs_close_free(&fs);
- 				log_out(ctx, _("%s: %s while using the "
- 					       "backup blocks"),
- 					ctx->program_name,
-@@ -1403,7 +1402,7 @@ failure:
- 		 * reopen the filesystem after we get the device size.
- 		 */
- 		if (pctx.errcode == EBUSY) {
--			ext2fs_close(fs);
-+			ext2fs_close_free(&fs);
- 			need_restart++;
- 			pctx.errcode =
- 				ext2fs_get_device_size2(ctx->filesystem_name,
-@@ -1460,8 +1459,7 @@ failure:
- 		/*
- 		 * Restart in order to reopen fs but this time start mmp.
- 		 */
--		ext2fs_close(fs);
--		ctx->fs = NULL;
-+		ext2fs_close_free(&fs);
- 		flags &= ~EXT2_FLAG_SKIP_MMP;
- 		goto restart;
- 	}
-@@ -1511,8 +1509,7 @@ failure:
- 					ctx->device_name);
- 				fatal_error(ctx, 0);
- 			}
--			ext2fs_close(ctx->fs);
--			ctx->fs = 0;
-+			ext2fs_close_free(&ctx->fs);
- 			ctx->flags |= E2F_FLAG_RESTARTED;
- 			goto restart;
- 		}
-@@ -1691,7 +1688,7 @@ no_journal:
- 				_("while resetting context"));
- 			fatal_error(ctx, 0);
- 		}
--		ext2fs_close(fs);
-+		ext2fs_close_free(&fs);
- 		goto restart;
- 	}
- 	if (run_result & E2F_FLAG_CANCEL) {
-@@ -1773,8 +1770,7 @@ no_journal:
- 	io_channel_flush(ctx->fs->io);
- 	print_resource_track(ctx, NULL, &ctx->global_rtrack, ctx->fs->io);
- 
--	ext2fs_close(fs);
--	ctx->fs = NULL;
-+	ext2fs_close_free(&fs);
- 	free(ctx->journal_name);
- 
- 	e2fsck_free_context(ctx);
-diff --git a/e2fsck/util.c b/e2fsck/util.c
-index e7e8704..784577f 100644
---- a/e2fsck/util.c
-+++ b/e2fsck/util.c
-@@ -321,7 +321,7 @@ void preenhalt(e2fsck_t ctx)
- 	if (fs != NULL) {
- 		fs->super->s_state |= EXT2_ERROR_FS;
- 		ext2fs_mark_super_dirty(fs);
--		ext2fs_close(fs);
-+		ext2fs_close_free(&fs);
- 	}
- 	exit(FSCK_UNCORRECTED);
- }
-diff --git a/lib/ext2fs/closefs.c b/lib/ext2fs/closefs.c
-index c2eaec1..e7ec0ae 100644
---- a/lib/ext2fs/closefs.c
-+++ b/lib/ext2fs/closefs.c
-@@ -450,6 +450,18 @@ errout:
- 	return retval;
- }
- 
-+errcode_t ext2fs_close_free(ext2_filsys *fs_ptr)
-+{
-+	errcode_t ret;
-+	ext2_filsys fs = *fs_ptr;
++	if (mode & FALLOC_FL_COLLAPSE_RANGE)
++		return ext4_collapse_range(inode, offset, len);
 +
-+	ret = ext2fs_close2(fs, 0);
-+	if (ret)
-+		ext2fs_free(fs);
-+	*fs_ptr = NULL;
+ 	ret = ext4_convert_inline_data(inode);
+ 	if (ret)
+ 		return ret;
+@@ -4869,3 +4873,301 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+ 	ext4_es_lru_add(inode);
+ 	return error;
+ }
++
++/*
++ * ext4_access_path:
++ * Function to access the path buffer for marking it dirty.
++ * It also checks if there are sufficient credits left in the journal handle
++ * to update path.
++ */
++static int
++ext4_access_path(handle_t *handle, struct inode *inode,
++		struct ext4_ext_path *path)
++{
++	int credits, err;
++
++	/*
++	 * Check if need to extend journal credits
++	 * 3 for leaf, sb, and inode plus 2 (bmap and group
++	 * descriptor) for each block group; assume two block
++	 * groups
++	 */
++	if (handle->h_buffer_credits < 7) {
++		credits = ext4_writepage_trans_blocks(inode);
++		err = ext4_ext_truncate_extend_restart(handle, inode, credits);
++		/* EAGAIN is success */
++		if (err && err != -EAGAIN)
++			return err;
++	}
++
++	err = ext4_ext_get_access(handle, inode, path);
++	return err;
++}
++
++/*
++ * ext4_ext_shift_path_extents:
++ * Shift the extents of a path structure lying between path[depth].p_ext
++ * and EXT_LAST_EXTENT(path[depth].p_hdr) downwards, by subtracting shift
++ * from starting block for each extent.
++ */
++static int
++ext4_ext_shift_path_extents(struct ext4_ext_path *path, ext4_lblk_t shift,
++			    struct inode *inode, handle_t *handle,
++			    ext4_lblk_t *start)
++{
++	int depth, err = 0;
++	struct ext4_extent *ex_start, *ex_last;
++	bool update = 0;
++	depth = path->p_depth;
++
++	while (depth >= 0) {
++		if (depth == path->p_depth) {
++			ex_start = path[depth].p_ext;
++			if (!ex_start)
++				return -EIO;
++
++			ex_last = EXT_LAST_EXTENT(path[depth].p_hdr);
++			if (!ex_last)
++				return -EIO;
++
++			err = ext4_access_path(handle, inode, path + depth);
++			if (err)
++				goto out;
++
++			if (ex_start == EXT_FIRST_EXTENT(path[depth].p_hdr))
++				update = 1;
++
++			*start = ex_last->ee_block +
++				ext4_ext_get_actual_len(ex_last);
++
++			while (ex_start <= ex_last) {
++				ex_start->ee_block -= shift;
++				if (ex_start >
++					EXT_FIRST_EXTENT(path[depth].p_hdr)) {
++					if (ext4_ext_try_to_merge_right(inode,
++						path, ex_start - 1))
++						ex_last--;
++				}
++				ex_start++;
++			}
++			err = ext4_ext_dirty(handle, inode, path + depth);
++			if (err)
++				goto out;
++
++			if (--depth < 0 || !update)
++				break;
++		}
++
++		/* Update index too */
++		err = ext4_access_path(handle, inode, path + depth);
++		if (err)
++			goto out;
++
++		path[depth].p_idx->ei_block -= shift;
++		err = ext4_ext_dirty(handle, inode, path + depth);
++		if (err)
++			goto out;
++
++		/* we are done if current index is not a starting index */
++		if (path[depth].p_idx != EXT_FIRST_INDEX(path[depth].p_hdr))
++			break;
++
++		depth--;
++	}
++
++out:
++	return err;
++}
++
++/*
++ * ext4_ext_shift_extents:
++ * All the extents which lies in the range from start to the last allocated
++ * block for the file are shifted downwards by shift blocks.
++ * On success, 0 is returned, error otherwise.
++ */
++static int
++ext4_ext_shift_extents(struct inode *inode, handle_t *handle,
++		       ext4_lblk_t start, ext4_lblk_t shift)
++{
++	struct ext4_ext_path *path;
++	int ret = 0, depth;
++	struct ext4_extent *extent;
++	ext4_lblk_t stop_block, current_block;
++	ext4_lblk_t ex_start, ex_end;
++
++	/* Let path point to the last extent */
++	path = ext4_ext_find_extent(inode, EXT_MAX_BLOCKS - 1, NULL, 0);
++	if (IS_ERR(path))
++		return PTR_ERR(path);
++
++	depth = path->p_depth;
++	extent = path[depth].p_ext;
++	if (!extent) {
++		ext4_ext_drop_refs(path);
++		kfree(path);
++		return ret;
++	}
++
++	stop_block = extent->ee_block + ext4_ext_get_actual_len(extent);
++	ext4_ext_drop_refs(path);
++	kfree(path);
++
++	/* Nothing to shift, if hole is at the end of file */
++	if (start >= stop_block)
++		return ret;
++
++	/*
++	 * Don't start shifting extents until we make sure the hole is big
++	 * enough to accomodate the shift.
++	 */
++	path = ext4_ext_find_extent(inode, start - 1, NULL, 0);
++	depth = path->p_depth;
++	extent =  path[depth].p_ext;
++	ex_start = extent->ee_block;
++	ex_end = extent->ee_block + ext4_ext_get_actual_len(extent);
++	ext4_ext_drop_refs(path);
++	kfree(path);
++
++	if ((start == ex_start && shift > ex_start) ||
++	    (shift > start - ex_end))
++		return -EINVAL;
++
++	/* Its safe to start updating extents */
++	while (start < stop_block) {
++		path = ext4_ext_find_extent(inode, start, NULL, 0);
++		if (IS_ERR(path))
++			return PTR_ERR(path);
++		depth = path->p_depth;
++		extent = path[depth].p_ext;
++		current_block = extent->ee_block;
++		if (start > current_block) {
++			/* Hole, move to the next extent */
++			ret = mext_next_extent(inode, path, &extent);
++			if (ret != 0) {
++				ext4_ext_drop_refs(path);
++				kfree(path);
++				if (ret == 1)
++					ret = 0;
++				break;
++			}
++		}
++		ret = ext4_ext_shift_path_extents(path, shift, inode,
++				handle, &start);
++		ext4_ext_drop_refs(path);
++		kfree(path);
++		if (ret)
++			break;
++	}
++
 +	return ret;
 +}
 +
- errcode_t ext2fs_close(ext2_filsys fs)
++/*
++ * ext4_collapse_range:
++ * This implements the fallocate's collapse range functionality for ext4
++ * Returns: 0 and non-zero on error.
++ */
++int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
++{
++	struct super_block *sb = inode->i_sb;
++	ext4_lblk_t punch_start, punch_stop;
++	handle_t *handle;
++	unsigned int credits;
++	loff_t new_size;
++	int ret;
++
++	BUG_ON(offset + len > i_size_read(inode));
++
++	/* Collapse range works only on fs block size aligned offsets. */
++	if (offset & (EXT4_BLOCK_SIZE(sb) - 1) ||
++	    len & (EXT4_BLOCK_SIZE(sb) - 1))
++		return -EINVAL;
++
++	if (!S_ISREG(inode->i_mode))
++		return -EOPNOTSUPP;
++
++	trace_ext4_collapse_range(inode, offset, len);
++
++	punch_start = offset >> EXT4_BLOCK_SIZE_BITS(sb);
++	punch_stop = (offset + len) >> EXT4_BLOCK_SIZE_BITS(sb);
++
++	/* Write out all dirty pages */
++	ret = filemap_write_and_wait_range(inode->i_mapping, offset, -1);
++	if (ret)
++		return ret;
++
++	/* Take mutex lock */
++	mutex_lock(&inode->i_mutex);
++
++	/* It's not possible punch hole on append only file */
++	if (IS_APPEND(inode) || IS_IMMUTABLE(inode)) {
++		ret = -EPERM;
++		goto out_mutex;
++	}
++
++	if (IS_SWAPFILE(inode)) {
++		ret = -ETXTBSY;
++		goto out_mutex;
++	}
++
++	/* Currently just for extent based files */
++	if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
++		ret = -EOPNOTSUPP;
++		goto out_mutex;
++	}
++
++	truncate_pagecache_range(inode, offset, -1);
++
++	/* Wait for existing dio to complete */
++	ext4_inode_block_unlocked_dio(inode);
++	inode_dio_wait(inode);
++
++	credits = ext4_writepage_trans_blocks(inode);
++	handle = ext4_journal_start(inode, EXT4_HT_TRUNCATE, credits);
++	if (IS_ERR(handle)) {
++		ret = PTR_ERR(handle);
++		goto out_dio;
++	}
++
++	down_write(&EXT4_I(inode)->i_data_sem);
++	ext4_discard_preallocations(inode);
++
++	ret = ext4_es_remove_extent(inode, punch_start,
++				    EXT_MAX_BLOCKS - punch_start - 1);
++	if (ret) {
++		up_write(&EXT4_I(inode)->i_data_sem);
++		goto out_stop;
++	}
++
++	ret = ext4_ext_remove_space(inode, punch_start, punch_stop - 1);
++	if (ret) {
++		up_write(&EXT4_I(inode)->i_data_sem);
++		goto out_stop;
++	}
++
++	ret = ext4_ext_shift_extents(inode, handle, punch_stop,
++				     punch_stop - punch_start);
++	if (ret) {
++		up_write(&EXT4_I(inode)->i_data_sem);
++		goto out_stop;
++	}
++
++	new_size = i_size_read(inode) - len;
++	i_size_write(inode, new_size);
++	EXT4_I(inode)->i_disksize = new_size;
++
++	ext4_discard_preallocations(inode);
++	up_write(&EXT4_I(inode)->i_data_sem);
++	if (IS_SYNC(inode))
++		ext4_handle_sync(handle);
++	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
++	ext4_mark_inode_dirty(handle, inode);
++
++out_stop:
++	ext4_journal_stop(handle);
++out_dio:
++	ext4_inode_resume_unlocked_dio(inode);
++out_mutex:
++	mutex_unlock(&inode->i_mutex);
++	return ret;
++}
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index f39a88a..58ee7dc 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -76,7 +76,7 @@ copy_extent_status(struct ext4_extent *src, struct ext4_extent *dest)
+  * ext4_ext_path structure refers to the last extent, or a negative error
+  * value on failure.
+  */
+-static int
++int
+ mext_next_extent(struct inode *inode, struct ext4_ext_path *path,
+ 		      struct ext4_extent **extent)
  {
- 	return ext2fs_close2(fs, 0);
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 7f7fd1f..253244d 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -945,6 +945,7 @@ extern errcode_t ext2fs_check_desc(ext2_filsys fs);
- /* closefs.c */
- extern errcode_t ext2fs_close(ext2_filsys fs);
- extern errcode_t ext2fs_close2(ext2_filsys fs, int flags);
-+extern errcode_t ext2fs_close_free(ext2_filsys *fs);
- extern errcode_t ext2fs_flush(ext2_filsys fs);
- extern errcode_t ext2fs_flush2(ext2_filsys fs, int flags);
- extern int ext2fs_bg_has_super(ext2_filsys fs, dgrp_t group_block);
-diff --git a/lib/ext2fs/mkjournal.c b/lib/ext2fs/mkjournal.c
-index 884d9c0..2331e9e 100644
---- a/lib/ext2fs/mkjournal.c
-+++ b/lib/ext2fs/mkjournal.c
-@@ -642,7 +642,7 @@ main(int argc, char **argv)
- 	if (retval) {
- 		printf("Warning, had trouble writing out superblocks.\n");
- 	}
--	ext2fs_close(fs);
-+	ext2fs_close_free(&fs);
- 	exit(0);
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index 197d312..90e2f71 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -2410,6 +2410,31 @@ TRACE_EVENT(ext4_es_shrink_exit,
+ 		  __entry->shrunk_nr, __entry->cache_cnt)
+ );
  
- }
-diff --git a/lib/ext2fs/tst_bitmaps.c b/lib/ext2fs/tst_bitmaps.c
-index 4e02ade..574fb7a 100644
---- a/lib/ext2fs/tst_bitmaps.c
-+++ b/lib/ext2fs/tst_bitmaps.c
-@@ -187,8 +187,7 @@ static void setup_filesystem(const char *name,
- 	return;
++TRACE_EVENT(ext4_collapse_range,
++	TP_PROTO(struct inode *inode, loff_t offset, loff_t len),
++
++	TP_ARGS(inode, offset, len),
++
++	TP_STRUCT__entry(
++		__field(dev_t,	dev)
++		__field(ino_t,	ino)
++		__field(loff_t,	offset)
++		__field(loff_t, len)
++	),
++
++	TP_fast_assign(
++		__entry->dev	= inode->i_sb->s_dev;
++		__entry->ino	= inode->i_ino;
++		__entry->offset	= offset;
++		__entry->len	= len;
++	),
++
++	TP_printk("dev %d,%d ino %lu offset %lld len %lld",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  (unsigned long) __entry->ino,
++		  __entry->offset, __entry->len)
++);
++
+ #endif /* _TRACE_EXT4_H */
  
- errout:
--	ext2fs_close(test_fs);
--	test_fs = 0;
-+	ext2fs_close_free(&test_fs);
- }
- 
- void setup_cmd(int argc, char **argv)
-@@ -199,10 +198,8 @@ void setup_cmd(int argc, char **argv)
- 	unsigned int	type = EXT2FS_BMAP64_BITARRAY;
- 	int		flags = EXT2_FLAG_64BITS;
- 
--	if (test_fs) {
--		ext2fs_close(test_fs);
--		test_fs = 0;
--	}
-+	if (test_fs)
-+		ext2fs_close_free(&test_fs);
- 
- 	reset_getopt();
- 	while ((c = getopt(argc, argv, "b:i:lt:")) != EOF) {
-@@ -242,8 +239,7 @@ void close_cmd(int argc, char **argv)
- 	if (check_fs_open(argv[0]))
- 		return;
- 
--	ext2fs_close(test_fs);
--	test_fs = 0;
-+	ext2fs_close_free(&test_fs);
- }
- 
- 
-diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
-index ae54f8a..f2f62bf 100644
---- a/misc/dumpe2fs.c
-+++ b/misc/dumpe2fs.c
-@@ -651,7 +651,7 @@ int main (int argc, char ** argv)
- 		if (fs->super->s_feature_incompat &
- 		      EXT3_FEATURE_INCOMPAT_JOURNAL_DEV) {
- 			print_journal_information(fs);
--			ext2fs_close(fs);
-+			ext2fs_close_free(&fs);
- 			exit(0);
- 		}
- 		if ((fs->super->s_feature_compat &
-@@ -660,7 +660,7 @@ int main (int argc, char ** argv)
- 			print_inline_journal_information(fs);
- 		list_bad_blocks(fs, 0);
- 		if (header_only) {
--			ext2fs_close (fs);
-+			ext2fs_close_free(&fs);
- 			exit (0);
- 		}
- 		retval = ext2fs_read_bitmaps (fs);
-@@ -671,7 +671,7 @@ int main (int argc, char ** argv)
- 			       error_message(retval));
- 		}
- 	}
--	ext2fs_close (fs);
-+	ext2fs_close_free(&fs);
- 	remove_error_table(&et_ext2_error_table);
- 	exit (0);
- }
-diff --git a/misc/e2freefrag.c b/misc/e2freefrag.c
-index 612ca44..bb72c70 100644
---- a/misc/e2freefrag.c
-+++ b/misc/e2freefrag.c
-@@ -215,7 +215,7 @@ static errcode_t get_chunk_info(ext2_filsys fs, struct chunk_info *info,
- 
- static void close_device(char *device_name, ext2_filsys fs)
- {
--	int retval = ext2fs_close(fs);
-+	int retval = ext2fs_close_free(&fs);
- 
- 	if (retval)
- 		com_err(device_name, retval, "while closing the filesystem.\n");
-diff --git a/misc/e2image.c b/misc/e2image.c
-index b768826..f8457ab 100644
---- a/misc/e2image.c
-+++ b/misc/e2image.c
-@@ -1415,7 +1415,7 @@ static void install_image(char *device, char *image_fn, int type)
- 	}
- 
- 	close(fd);
--	ext2fs_close (fs);
-+	ext2fs_close_free(&fs);
- }
- 
- static struct ext2_qcow2_hdr *check_qcow2_image(int *fd, char *name)
-@@ -1648,7 +1648,7 @@ skip_device:
- 	else
- 		write_image_file(fs, fd);
- 
--	ext2fs_close (fs);
-+	ext2fs_close_free(&fs);
- 	if (check)
- 		printf(_("%d blocks already contained the data to be copied.\n"),
- 		       skipped_blocks);
-diff --git a/misc/e4defrag.c b/misc/e4defrag.c
-index c2695e8..89bdfb9 100644
---- a/misc/e4defrag.c
-+++ b/misc/e4defrag.c
-@@ -1852,7 +1852,7 @@ int main(int argc, char *argv[])
- 			feature_incompat = fs->super->s_feature_incompat;
- 			log_groups_per_flex = fs->super->s_log_groups_per_flex;
- 
--			ext2fs_close(fs);
-+			ext2fs_close_free(&fs);
- 		}
- 
- 		switch (arg_type) {
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index facbe4c..90c214e 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -1774,7 +1774,7 @@ profile_error:
- 		printf(_("Using journal device's blocksize: %d\n"), blocksize);
- 		fs_param.s_log_block_size =
- 			int_log2(blocksize >> EXT2_MIN_BLOCK_LOG_SIZE);
--		ext2fs_close(jfs);
-+		ext2fs_close_free(&jfs);
- 	}
- 
- 	if (optind < argc) {
-@@ -2789,7 +2789,7 @@ int main (int argc, char *argv[])
- 	if (fs->super->s_feature_incompat &
- 	    EXT3_FEATURE_INCOMPAT_JOURNAL_DEV) {
- 		create_journal_dev(fs);
--		exit(ext2fs_close(fs) ? 1 : 0);
-+		exit(ext2fs_close_free(&fs) ? 1 : 0);
- 	}
- 
- 	if (bad_blocks_filename)
-@@ -2909,7 +2909,7 @@ int main (int argc, char *argv[])
- 		}
- 		if (!quiet)
- 			printf("%s", _("done\n"));
--		ext2fs_close(jfs);
-+		ext2fs_close_free(&jfs);
- 		free(journal_device);
- 	} else if ((journal_size) ||
- 		   (fs_param.s_feature_compat &
-@@ -2973,7 +2973,7 @@ no_journal:
- 		       "filesystem accounting information: "));
- 	checkinterval = fs->super->s_checkinterval;
- 	max_mnt_count = fs->super->s_max_mnt_count;
--	retval = ext2fs_close(fs);
-+	retval = ext2fs_close_free(&fs);
- 	if (retval) {
- 		fprintf(stderr, "%s",
- 			_("\nWarning, had trouble writing out superblocks."));
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 8ff47d2..c651d55 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -1205,7 +1205,7 @@ static int add_journal(ext2_filsys fs)
- 		fflush(stdout);
- 
- 		retval = ext2fs_add_journal_device(fs, jfs);
--		ext2fs_close(jfs);
-+		ext2fs_close_free(&jfs);
- 		if (retval) {
- 			com_err(program_name, retval,
- 				_("while adding filesystem to journal on %s"),
-@@ -2512,7 +2512,7 @@ retry_open:
- 			goto closefs;
- 		}
- 		if (io_ptr != io_ptr_orig) {
--			ext2fs_close(fs);
-+			ext2fs_close_free(&fs);
- 			goto retry_open;
- 		}
- 	}
-@@ -2805,5 +2805,5 @@ closefs:
- 		exit(1);
- 	}
- 
--	return (ext2fs_close(fs) ? 1 : 0);
-+	return (ext2fs_close_free(&fs) ? 1 : 0);
- }
-diff --git a/resize/main.c b/resize/main.c
-index 2b7abff..c575220 100644
---- a/resize/main.c
-+++ b/resize/main.c
-@@ -468,7 +468,7 @@ int main (int argc, char ** argv)
- 			_("Please run 'e2fsck -fy %s' to fix the filesystem\n"
- 			  "after the aborted resize operation.\n"),
- 			device_name);
--		ext2fs_close(fs);
-+		ext2fs_close_free(&fs);
- 		exit(1);
- 	}
- 	printf(_("The filesystem on %s is now %llu blocks long.\n\n"),
-diff --git a/resize/resize2fs.c b/resize/resize2fs.c
-index 8353338..9a51733 100644
---- a/resize/resize2fs.c
-+++ b/resize/resize2fs.c
-@@ -202,7 +202,7 @@ errcode_t resize_fs(ext2_filsys fs, blk64_t *new_size, int flags,
- 	rfs->new_fs->flags &= ~EXT2_FLAG_MASTER_SB_ONLY;
- 
- 	print_resource_track(rfs, &overall_track, fs->io);
--	retval = ext2fs_close(rfs->new_fs);
-+	retval = ext2fs_close_free(&rfs->new_fs);
- 	if (retval)
- 		goto errout;
- 
+ /* This part must be outside protection */
 -- 
-1.8.3.1
+1.7.11-rc0
 
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
