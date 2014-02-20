@@ -1,88 +1,92 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] ext4: avoid possible overflow in ext4_map_blocks()
-Date: Wed, 19 Feb 2014 22:11:34 -0800
-Message-ID: <143F882D-0091-4F04-9A2D-882581305CC8@dilger.ca>
-References: <1392875454-4281-1-git-send-email-tytso@mit.edu>
-Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_2EF0D92A-A194-40AD-9A85-DB896763238B"; protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH] e2fsprogs: make ext2fs_free() to set the pointer to
+ NULL
+Date: Thu, 20 Feb 2014 12:05:44 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1402201200450.2245@localhost.localdomain>
+References: <1392810496-9090-1-git-send-email-lczerner@redhat.com> <20140219175713.GA21436@thunk.org>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f51.google.com ([209.85.220.51]:35978 "EHLO
-	mail-pa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751238AbaBTGLk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Feb 2014 01:11:40 -0500
-Received: by mail-pa0-f51.google.com with SMTP id ld10so1477599pab.38
-        for <linux-ext4@vger.kernel.org>; Wed, 19 Feb 2014 22:11:39 -0800 (PST)
-In-Reply-To: <1392875454-4281-1-git-send-email-tytso@mit.edu>
+Received: from mx1.redhat.com ([209.132.183.28]:14733 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751353AbaBTLFt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 20 Feb 2014 06:05:49 -0500
+In-Reply-To: <20140219175713.GA21436@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Wed, 19 Feb 2014, Theodore Ts'o wrote:
 
---Apple-Mail=_2EF0D92A-A194-40AD-9A85-DB896763238B
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+> Date: Wed, 19 Feb 2014 12:57:14 -0500
+> From: Theodore Ts'o <tytso@mit.edu>
+> To: Lukas Czerner <lczerner@redhat.com>
+> Cc: linux-ext4@vger.kernel.org
+> Subject: Re: [PATCH] e2fsprogs: make ext2fs_free() to set the pointer to NULL
+> 
+> On Wed, Feb 19, 2014 at 12:48:16PM +0100, Lukas Czerner wrote:
+> > Currently someone uses ext2fs_free() to free the ext2_filsys structure,
+> > he is also responsible to set the pointer to that structure to NULL,
+> > because ext2fs_free() is not able to do that.
+> > 
+> > This however is in contrast with ext2fs_free_mem() which requires as an
+> > argument pointer to the pointer and it will in fact set the pointer to
+> > NULL for us. This is probably the reason why majority of places where we
+> > use ext2fs_free() does not set the pointer to NULL afterwards.
+> > 
+> > Fix this by changing function ext2fs_free() so that it'll require
+> > pointer to the ext2_filsys as an argument and will be able to set the
+> > pointer to NULL for us.
+> > 
+> > I do not currently have any way to trigger the issue in recent
+> > e2fsprogs. Part of the reason is that there are some fixes which just
+> > obfuscates the real problem (for example
+> > 7ff040f30f0ff3bf5e2c832da3cb577e00a52d60) and the other part might be
+> > just coincidence.
+> > 
+> > I was however able to reproduce this with e2fsprogs 1.42.9 using the
+> > image in bug https://bugzilla.redhat.com/show_bug.cgi?id=997982. With
+> > this patch it fixes it. However I am not sure why it got fixed in the
+> > recent e2fsprogs since git bisect lands into the merge commit - however
+> > I think it's just a coincidence rather than targeted fix.
+> > 
+> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> 
+> This results in an ABI change, so if there are any userspace programs
+> which are linked against the libext2fs shared library, it would break.
+> 
+> So we have two choices:
+> 
+> 1) Audit all of the callers of ext2fs_freefs to see if it's necessary
+> to clear the pointer.  If the pointer is about to be overwritten, or
+> it's on a stack-allocated variable that will disappear as soon as you
+> return, it's not a problem.  Given that your patch had to change every
+> single ext2fs_free() call stack, it's relatively easy to make sure we
+> don't miss any.  :-)
+> 
+> 2)  Define a new ext2fs_freefs2() which takes the changed interface.
+> 
+> I'm not entirely convinced that (2) is worth it, but certainly (1)
+> would be a good thing to do.
 
+I though that having the solution (2) would save us future problems
+that is why I went this one. But If you really think it's not worth it,
+I am fine with the (1) as well.
 
-On Feb 19, 2014, at 9:50 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> The ext4_map_blocks() function returns the number of blocks which
-> satisfying the caller's request.  This number of blocks requested by
-> the caller is specified by an unsigned integer, but the return value
-> of ext4_map_blocks() is a signed integer (to accomodate error codes
-> per the kernel's standard error signalling convention).
+I'll send a patch.
 
-[snip]
-> return a number large enough that it would overflow a signed integer,
-> resultimg in a ext4 thinking that the ext4_map_blocks() call had
+Thanks!
+-Lukas
 
-(typo) s/resultimg/resulting/
-
-> @@ -514,6 +514,9 @@ int ext4_map_blocks(handle_t *handle, struct inode =
-*inode,
-> 		  "logical block %lu\n", inode->i_ino, flags, =
-map->m_len,
-> 		  (unsigned long) map->m_lblk);
->=20
-> +	if (map->m_len >=3D (1UL << 31))
-> +		map->m_len =3D (1UL << 31) - 1;
-> +
-
-Should this instead be INT_MAX?  That makes it more clear why the limit
-is here, and in theory on a platform with 64-bit int it would work
-properly with a value over (2^31 - 1).
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_2EF0D92A-A194-40AD-9A85-DB896763238B
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIVAwUBUwWclnKl2rkXzB/gAQJaPw/+KgaFHq6366C85st3lOe1RLvNNBMbv8gv
-T6vp8AFtyawALQHbgOeMzJ1bSwuw61OELGVImtF4+BNs2Julve0QKw/SU8GYJf12
-Fn9DR1TWDeNp1Dtzd9eNuY3wvAuN4pXOlJHHHLoHjsHAdcfDHmeyvUQb1YajcxYk
-wjAM70CiF0fd2dN4CxDFzQyGt45dcY9MHjtc4rV87aHZt9jnIc2HokAX+eju4/jt
-nzYLICvYkiH0qOsNQXxACB0g+hTaHWH2BFQkX032yH5FKiKAS6VhENUApJDoAYK5
-2MDL2tWUcTUNGcdeyRVaMswvBENizrV/cyA42h+1H+aStAz6XOvftPDPO47Ukm7Z
-6ZXloCicr8wqmHV4KqcU72sSX1v8UqC5RS5lIyi2iAIgzFV2H8KWvGsyxf6vcrNM
-FIR3tDYZ66YL45A4L4S+F4IicyDOUrgPmYSdb9BfXKEGf2R2aJffQz4NEul24ASm
-ze/wXyFVPdoraXjOeN6PS94Pm5KtuMTT8yL1uHreBMCpmn20qUM5+UQquol4XtN/
-9TFbVzt1vlLAtEEoFfPuyVhPXtluvnh1uZdpgTT7km/noXDOOdKGfjtEfCc9KPRR
-z58nZQyit90DBSkCCO4FuoHaMSjv5yGMqGLahsblu6KhZVhzogOUJhBQE+a+f/ax
-YLYB7P2VaNg=
-=0g4f
------END PGP SIGNATURE-----
-
---Apple-Mail=_2EF0D92A-A194-40AD-9A85-DB896763238B--
+> 
+> It may be that the problem you couldn't replicate in the latest
+> version of e2fsprogs was one that was fixed either when I did my
+> periodic valgrind test runs, or as a result of reviewing all of the
+> coverity warnings.
+> 
+> Cheers,
+> 
+> 							- Ted
+> 
+> 
