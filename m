@@ -1,285 +1,166 @@
 From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] e2fsprogs: make ext2fs_free() to set the pointer to
- NULL
-Date: Thu, 20 Feb 2014 12:07:30 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1402201205520.2245@localhost.localdomain>
-References: <1392810496-9090-1-git-send-email-lczerner@redhat.com> <20140219233917.GJ9176@birch.djwong.org>
+Subject: Re: [PATCH 0/6][RFC] Introduce FALLOC_FL_ZERO_RANGE flag for
+ fallocate
+Date: Thu, 20 Feb 2014 12:16:26 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1402201207410.2245@localhost.localdomain>
+References: <1392649703-10772-1-git-send-email-lczerner@redhat.com> <20140219145239.GA14849@gmail.com> <alpine.LFD.2.00.1402191609550.9903@localhost.localdomain> <CANWERqOyv3dP-4x2OVO9-1q+LaGh7aQDY-WtZRFkc9opWudHZA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:5838 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752814AbaBTLHg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 20 Feb 2014 06:07:36 -0500
-In-Reply-To: <20140219233917.GJ9176@birch.djwong.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-416043165-1392894989=:2245"
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>, tytso <tytso@mit.edu>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	xfs <xfs@oss.sgi.com>
+To: Dongsu Park <dongsu.park@profitbricks.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <CANWERqOyv3dP-4x2OVO9-1q+LaGh7aQDY-WtZRFkc9opWudHZA@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 19 Feb 2014, Darrick J. Wong wrote:
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-> Date: Wed, 19 Feb 2014 15:39:17 -0800
-> From: Darrick J. Wong <darrick.wong@oracle.com>
-> To: Lukas Czerner <lczerner@redhat.com>
-> Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-> Subject: Re: [PATCH] e2fsprogs: make ext2fs_free() to set the pointer to NULL
+--8323328-416043165-1392894989=:2245
+Content-Type: TEXT/PLAIN; charset=UTF-8
+Content-Transfer-Encoding: 8BIT
+
+On Wed, 19 Feb 2014, Dongsu Park wrote:
+
+> Date: Wed, 19 Feb 2014 16:51:23 +0100
+> From: Dongsu Park <dongsu.park@profitbricks.com>
+> To: Lukáš Czerner <lczerner@redhat.com>
+> Cc: linux-ext4 <linux-ext4@vger.kernel.org>, tytso <tytso@mit.edu>,
+>     linux-fsdevel <linux-fsdevel@vger.kernel.org>, xfs <xfs@oss.sgi.com>
+> Subject: Re: [PATCH 0/6][RFC] Introduce FALLOC_FL_ZERO_RANGE flag for
+>     fallocate
 > 
-> On Wed, Feb 19, 2014 at 12:48:16PM +0100, Lukas Czerner wrote:
-> > Currently someone uses ext2fs_free() to free the ext2_filsys structure,
-> > he is also responsible to set the pointer to that structure to NULL,
-> > because ext2fs_free() is not able to do that.
-> > 
-> > This however is in contrast with ext2fs_free_mem() which requires as an
-> > argument pointer to the pointer and it will in fact set the pointer to
-> > NULL for us. This is probably the reason why majority of places where we
-> > use ext2fs_free() does not set the pointer to NULL afterwards.
-> > 
-> > Fix this by changing function ext2fs_free() so that it'll require
-> > pointer to the ext2_filsys as an argument and will be able to set the
-> > pointer to NULL for us.
-> > 
-> > I do not currently have any way to trigger the issue in recent
-> > e2fsprogs. Part of the reason is that there are some fixes which just
-> > obfuscates the real problem (for example
-> > 7ff040f30f0ff3bf5e2c832da3cb577e00a52d60) and the other part might be
-> > just coincidence.
-> > 
-> > I was however able to reproduce this with e2fsprogs 1.42.9 using the
-> > image in bug https://bugzilla.redhat.com/show_bug.cgi?id=997982. With
-> > this patch it fixes it. However I am not sure why it got fixed in the
-> > recent e2fsprogs since git bisect lands into the merge commit - however
-> > I think it's just a coincidence rather than targeted fix.
-> > 
-> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> > ---
-> >  e2fsck/journal.c        |  2 +-
-> >  e2fsck/unix.c           | 12 ++++--------
-> >  lib/ext2fs/closefs.c    |  2 +-
-> >  lib/ext2fs/dupfs.c      |  2 +-
-> >  lib/ext2fs/ext2fs.h     |  2 +-
-> >  lib/ext2fs/freefs.c     | 10 ++++++++--
-> >  lib/ext2fs/initialize.c |  2 +-
-> >  lib/ext2fs/openfs.c     |  7 +++----
-> >  misc/tune2fs.c          |  2 +-
-> >  resize/online.c         |  2 +-
-> >  resize/resize2fs.c      |  4 ++--
-> >  11 files changed, 24 insertions(+), 23 deletions(-)
-> > 
-> > diff --git a/e2fsck/journal.c b/e2fsck/journal.c
-> > index a7b1150..ef964a0 100644
-> > --- a/e2fsck/journal.c
-> > +++ b/e2fsck/journal.c
-> > @@ -965,7 +965,7 @@ errcode_t e2fsck_run_ext3_journal(e2fsck_t ctx)
-> >  		kbytes_written = stats->bytes_written >> 10;
-> >  
-> >  	ext2fs_mmp_stop(ctx->fs);
-> > -	ext2fs_free(ctx->fs);
-> > +	ext2fs_free(&ctx->fs);
-> >  	retval = ext2fs_open(ctx->filesystem_name, EXT2_FLAG_RW,
-> >  			     ctx->superblock, blocksize, io_ptr,
-> >  			     &ctx->fs);
-> > diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-> > index 429f1cd..b4d23de 100644
-> > --- a/e2fsck/unix.c
-> > +++ b/e2fsck/unix.c
-> > @@ -1051,10 +1051,8 @@ static errcode_t try_open_fs(e2fsck_t ctx, int flags, io_manager io_ptr,
-> >  		int blocksize;
-> >  		for (blocksize = EXT2_MIN_BLOCK_SIZE;
-> >  		     blocksize <= EXT2_MAX_BLOCK_SIZE; blocksize *= 2) {
-> > -			if (*ret_fs) {
-> > -				ext2fs_free(*ret_fs);
-> > -				*ret_fs = NULL;
-> > -			}
-> > +			if (*ret_fs)
-> > +				ext2fs_free(ret_fs);
-> >  			retval = ext2fs_open2(ctx->filesystem_name,
-> >  					      ctx->io_options, flags,
-> >  					      ctx->superblock, blocksize,
-> > @@ -1292,10 +1290,8 @@ restart:
-> >  			retval = retval2;
-> >  			goto failure;
-> >  		}
-> > -		if (fs->flags & EXT2_FLAG_NOFREE_ON_ERROR) {
-> > -			ext2fs_free(fs);
-> > -			fs = NULL;
-> > -		}
-> > +		if (fs->flags & EXT2_FLAG_NOFREE_ON_ERROR)
-> > +			ext2fs_free(&fs);
-> >  		if (!fs || (fs->group_desc_count > 1)) {
-> >  			log_out(ctx, _("%s: %s trying backup blocks...\n"),
-> >  				ctx->program_name,
-> > diff --git a/lib/ext2fs/closefs.c b/lib/ext2fs/closefs.c
-> > index c2eaec1..b0e515d 100644
-> > --- a/lib/ext2fs/closefs.c
-> > +++ b/lib/ext2fs/closefs.c
-> > @@ -490,7 +490,7 @@ errcode_t ext2fs_close2(ext2_filsys fs, int flags)
-> >  	if (retval)
-> >  		return retval;
-> >  
-> > -	ext2fs_free(fs);
-> > +	ext2fs_free(&fs);
+> On Wed, Feb 19, 2014 at 4:18 PM, Lukáš Czerner <lczerner@redhat.com> wrote:
+> > On Wed, 19 Feb 2014, Dongsu Park wrote:
+> > Are you able to reproduce it ? Can you tell me the steps to
+> > reproduce this ? The problem is that the extent we're trying to mark
+> > as uninitialized has zero length....
+> >
+> > Ah...I can probably see what is going on. For some inexplicable
+> > reason I am forgetting to take i_data_sem which means that we're
+> > probably racing with truncate or something else.
+> >
+> > Thanks a lot for letting me know and If you can please send me a
+> > reproducer for your case because as I said I have not seen this
+> > before.
 > 
-> Doesn't this change also require ext2fs_close2() take a (ext2_filsys *)?
-
->From the quick look it seems that users of ext2fs_close2 (or
-ext2fs_close) are doing the right thing when needed and setting the
-pointer to NULL afterwards. But i will need careful auditing as
-well. Thanks for pointing that out.
-
+> Yes, it's reliably reproducible.
+> What I'm doing for testing is quite simple, just like that:
+> (/dev/vdb is a test block device, 16GiB in size)
 > 
-> If you're going to make an ABI change, you might as well fix the get/free_mem
-> ABIs to take (void **) since that's what they've been doing all along anyway.
+> # mke2fs -t ext4 /dev/vdb
+> # mkdir -p /mnt/test1
+> # mount -t ext4 -o discard /dev/vdb /mnt/test1
+> # dd if=/dev/urandom of=/mnt/test1/file1 bs=2G count=1
+> # fallocate -z -l 2G /mnt/test1/file1
+> 
+> Then kernel crashes immediately.
 
-See my response to Ted, I'd like to avoid ABI change.
+Oh, now I know where the problem really is. It's not about the
+locking at all. Initialized and Uninitialized extents have different
+maximum size.
 
-Thanks!
+So we can not convert initialized extent of a maximum size to a
+uninitialized extent right away. We have to split.
+
+Thank you, your testing is very useful!
+
 -Lukas
 
 > 
-> --D
+> Cheers,
+> Dongsu
 > 
-> >  	return 0;
-> >  }
-> >  
-> > diff --git a/lib/ext2fs/dupfs.c b/lib/ext2fs/dupfs.c
-> > index 02721e1..7568d89 100644
-> > --- a/lib/ext2fs/dupfs.c
-> > +++ b/lib/ext2fs/dupfs.c
-> > @@ -115,7 +115,7 @@ errcode_t ext2fs_dup_handle(ext2_filsys src, ext2_filsys *dest)
-> >  	*dest = fs;
-> >  	return 0;
-> >  errout:
-> > -	ext2fs_free(fs);
-> > +	ext2fs_free(&fs);
-> >  	return retval;
-> >  
-> >  }
-> > diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-> > index 7f7fd1f..a084888 100644
-> > --- a/lib/ext2fs/ext2fs.h
-> > +++ b/lib/ext2fs/ext2fs.h
-> > @@ -1213,7 +1213,7 @@ extern char *ext2fs_find_block_device(dev_t device);
-> >  extern errcode_t ext2fs_sync_device(int fd, int flushb);
-> >  
-> >  /* freefs.c */
-> > -extern void ext2fs_free(ext2_filsys fs);
-> > +extern void ext2fs_free(ext2_filsys *fs);
-> >  extern void ext2fs_free_dblist(ext2_dblist dblist);
-> >  extern void ext2fs_badblocks_list_free(ext2_badblocks_list bb);
-> >  extern void ext2fs_u32_list_free(ext2_u32_list bb);
-> > diff --git a/lib/ext2fs/freefs.c b/lib/ext2fs/freefs.c
-> > index 89a157b..be7c677 100644
-> > --- a/lib/ext2fs/freefs.c
-> > +++ b/lib/ext2fs/freefs.c
-> > @@ -18,8 +18,14 @@
-> >  #include "ext2_fs.h"
-> >  #include "ext2fsP.h"
-> >  
-> > -void ext2fs_free(ext2_filsys fs)
-> > +/*
-> > + * Free ext2_filsys.  The 'fs_ptr' arg must point to a ext2_filsys
-> > + * which is the pointer to struct_ext2_filsys.
-> > + */
-> > +void ext2fs_free(ext2_filsys *fs_ptr)
-> >  {
-> > +	ext2_filsys fs = *fs_ptr;
-> > +
-> >  	if (!fs || (fs->magic != EXT2_ET_MAGIC_EXT2FS_FILSYS))
-> >  		return;
-> >  	if (fs->image_io != fs->io) {
-> > @@ -61,7 +67,7 @@ void ext2fs_free(ext2_filsys fs)
-> >  
-> >  	fs->magic = 0;
-> >  
-> > -	ext2fs_free_mem(&fs);
-> > +	ext2fs_free_mem(fs_ptr);
-> >  }
-> >  
-> >  /*
-> > diff --git a/lib/ext2fs/initialize.c b/lib/ext2fs/initialize.c
-> > index 75fbf8e..72ff090 100644
-> > --- a/lib/ext2fs/initialize.c
-> > +++ b/lib/ext2fs/initialize.c
-> > @@ -530,6 +530,6 @@ ipg_retry:
-> >  	return 0;
-> >  cleanup:
-> >  	free(buf);
-> > -	ext2fs_free(fs);
-> > +	ext2fs_free(&fs);
-> >  	return retval;
-> >  }
-> > diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
-> > index aba8a50..6a49083 100644
-> > --- a/lib/ext2fs/openfs.c
-> > +++ b/lib/ext2fs/openfs.c
-> > @@ -476,10 +476,9 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
-> >  
-> >  	return 0;
-> >  cleanup:
-> > -	if (flags & EXT2_FLAG_NOFREE_ON_ERROR)
-> > -		*ret_fs = fs;
-> > -	else
-> > -		ext2fs_free(fs);
-> > +	if (!(flags & EXT2_FLAG_NOFREE_ON_ERROR))
-> > +		ext2fs_free(&fs);
-> > +	*ret_fs = fs;
-> >  	return retval;
-> >  }
-> >  
-> > diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-> > index 8ff47d2..5a3f6db 100644
-> > --- a/misc/tune2fs.c
-> > +++ b/misc/tune2fs.c
-> > @@ -2471,7 +2471,7 @@ retry_open:
-> >  			fprintf(stderr, "%s",
-> >  			     _("Couldn't find valid filesystem superblock.\n"));
-> >  
-> > -		ext2fs_free(fs);
-> > +		ext2fs_free(&fs);
-> >  		exit(1);
-> >  	}
-> >  	fs->default_bitmap_type = EXT2FS_BMAP64_RBTREE;
-> > diff --git a/resize/online.c b/resize/online.c
-> > index 46d86b0..afd5bb6 100644
-> > --- a/resize/online.c
-> > +++ b/resize/online.c
-> > @@ -290,7 +290,7 @@ errcode_t online_resize_fs(ext2_filsys fs, const char *mtpt,
-> >  		}
-> >  	}
-> >  
-> > -	ext2fs_free(new_fs);
-> > +	ext2fs_free(&new_fs);
-> >  	close(fd);
-> >  
-> >  	return 0;
-> > diff --git a/resize/resize2fs.c b/resize/resize2fs.c
-> > index 498cf99..6f19528 100644
-> > --- a/resize/resize2fs.c
-> > +++ b/resize/resize2fs.c
-> > @@ -208,7 +208,7 @@ errcode_t resize_fs(ext2_filsys fs, blk64_t *new_size, int flags,
-> >  
-> >  	rfs->flags = flags;
-> >  
-> > -	ext2fs_free(rfs->old_fs);
-> > +	ext2fs_free(&rfs->old_fs);
-> >  	if (rfs->itable_buf)
-> >  		ext2fs_free_mem(&rfs->itable_buf);
-> >  	if (rfs->reserve_blocks)
-> > @@ -221,7 +221,7 @@ errcode_t resize_fs(ext2_filsys fs, blk64_t *new_size, int flags,
-> >  
-> >  errout:
-> >  	if (rfs->new_fs)
-> > -		ext2fs_free(rfs->new_fs);
-> > +		ext2fs_free(&rfs->new_fs);
-> >  	if (rfs->itable_buf)
-> >  		ext2fs_free_mem(&rfs->itable_buf);
-> >  	ext2fs_free_mem(&rfs);
-> > -- 
-> > 1.8.3.1
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > Thanks!
+> > -Lukas
+> >
+> > >
+> > > ------------[ cut here ]------------
+> > > kernel BUG at fs/ext4/ext4_extents.h:193!
+> > > invalid opcode: 0000 [#1] SMP
+> > > Modules linked in: 9pnet_virtio virtio_net 9pnet virtio_blk virtio_pci
+> > > virtio_ring virtio
+> > > CPU: 2 PID: 2959 Comm: fallocate Not tainted 3.14.0-rc3+ #34
+> > > Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+> > > task: ffff8800da97da10 ti: ffff880119068000 task.ti: ffff880119068000
+> > > RIP: 0010:[<ffffffff813694c9>]  [<ffffffff813694c9>]
+> > > ext4_ext_map_blocks+0x2899/0x2940
+> > > RSP: 0018:ffff880119069c50  EFLAGS: 00010202
+> > > RAX: 0000000000000003 RBX: ffff880036fa8470 RCX: 0000000000000002
+> > > RDX: 0000000000000000 RSI: 0000000000000001 RDI: ffffffff82120e98
+> > > RBP: ffff880119069d30 R08: ffff88011975d900 R09: 011ad15618080000
+> > > R10: fec72ef09c4d8602 R11: 0000000000008000 R12: ffff880119069dd0
+> > > R13: 0000000000000403 R14: 0000000000000001 R15: ffff880118c6700c
+> > > FS:  00007fa54a0ba740(0000) GS:ffff88011fc40000(0000)
+> > > knlGS:0000000000000000
+> > > CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> > > CR2: 0000003cdbf6f7e0 CR3: 0000000119077000 CR4: 00000000000006e0
+> > > Stack:
+> > >  0000000000000000 0000000000008000 ffff880036fa86c8 0000000000000000
+> > >  ffff880100000000 0000800081384dee 0000000000000001 ffff880000000000
+> > >  0000000000008800 0000000000000000 ffff880036f6f000 ffff88011975d900
+> > > Call Trace:
+> > >  [<ffffffff81385baa>] ? ext4_es_insert_extent+0x15a/0x240
+> > >  [<ffffffff813669ae>] ? ext4_find_delalloc_range+0x1e/0xb0
+> > >  [<ffffffff81322d3f>] ext4_map_blocks+0x25f/0x830
+> > >  [<ffffffff81369764>] ? ext4_alloc_file_blocks+0xc4/0x1e0
+> > >  [<ffffffff813697da>] ext4_alloc_file_blocks+0x13a/0x1e0
+> > >  [<ffffffff81369e9f>] ext4_zero_range+0x61f/0x870
+> > >  [<ffffffff8136a5d3>] ext4_fallocate+0x4e3/0x6c0
+> > >  [<ffffffff81239675>] ? __sb_start_write+0x145/0x1a0
+> > >  [<ffffffff8120ef00>] ? kmem_cache_free+0x2f0/0x3f0
+> > >  [<ffffffff81246ca0>] ? final_putname+0x30/0x60
+> > >  [<ffffffff812326a7>] do_fallocate+0x1e7/0x290
+> > >  [<ffffffff812327c9>] SyS_fallocate+0x79/0xc0
+> > >  [<ffffffff81ae7de9>] system_call_fastpath+0x16/0x1b
+> > > Code: ba dc 05 00 00 48 c7 c6 b0 91 c7 81 48 89 df 89 04 24 31 c0 e8 99
+> > > 83 fe ff e9 f5 f8 ff ff 48 83 05 34 b3 f5 00 01 e9 0a db ff ff <0f> 0b
+> > > 0f 0b 0f 0b 0f 0b 45 89 d1 49 c7 c0 48 22 e5 81 31
+> > > RIP  [<ffffffff813694c9>] ext4_ext_map_blocks+0x2899/0x2940
+> > >  RSP <ffff880119069c50>
+> > > ---[ end trace ba21204a3a98fbdc ]---
+> > >
+> > > Regards,
+> > > Dongsu
+> > >
+> > > > I'll post the patches after we agree and merge the kernel functionality.
+> > > >
+> > > > I tested this mostly with a subset of xfstests using fsx and fsstress and
+> > > > even with new generic/290 which is just a copy of xfs/290 usinz fzero
+> > > > command for xfs_io instead of zero (which uses ioctl). I was testing on
+> > > > x86_64 and ppc64 with block sizes of 1024, 2048 and 4096.
+> > > >
+> > > > ./check generic/076 generic/232 generic/013 generic/070 generic/269 generic/083 generic/117 generic/068 generic/231 generic/127 generic/091 generic/075 generic/112 generic/263 generic/091 generic/075 generic/256 generic/255 generic/316 generic/300 generic/290;
+> > > >
+> > > > Note that there is a work in progress on FALLOC_FL_COLLAPSE_RANGE which
+> > > > touches the same area as this pach set does, so we should figure out
+> > > > which one should go first and modify the other on top of it.
+> > > >
+> > > > Thanks!
+> > > > -Lukas
+> > > >
+> > > > --
+> > > > [PATCH 1/6] ext4: Update inode i_size after the preallocation
+> > > > [PATCH 2/6] ext4: refactor ext4_fallocate code
+> > > > [PATCH 3/6] ext4: translate fallocate mode bits to strings
+> > > > [PATCH 4/6] fs: Introduce FALLOC_FL_ZERO_RANGE flag for fallocate
+> > > > [PATCH 5/6] ext4: Introduce FALLOC_FL_ZERO_RANGE flag for fallocate
+> > > > [PATCH 6/6] xfs: Add support for FALLOC_FL_ZERO_RANGE
+> > > >
+> > > >  fs/ext4/ext4.h              |   3 +
+> > > >  fs/ext4/extents.c           | 430 ++++++++++++++++++++++++++++++++++++++++++++++++++++----------------
+> > > >  fs/ext4/inode.c             |  17 ++-
+> > > >  fs/open.c                   |   7 +-
+> > > >  fs/xfs/xfs_file.c           |  10 +-
+> > > >  include/trace/events/ext4.h |  67 ++++++-----
+> > > >  include/uapi/linux/falloc.h |   1 +
+> > > >  7 files changed, 393 insertions(+), 142 deletions(-)
+> > > > --
+> > > > To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> > > > the body of a message to majordomo@vger.kernel.org
+> > > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > >
 > 
+--8323328-416043165-1392894989=:2245--
