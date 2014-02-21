@@ -1,113 +1,43 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH -v3] ext4: add ext4_es_store_pblock_status()
-Date: Fri, 21 Feb 2014 16:10:56 +0800
-Message-ID: <20140221081056.GA31798@gmail.com>
-References: <1392859717-23439-1-git-send-email-tytso@mit.edu>
- <1392947996-7630-1-git-send-email-tytso@mit.edu>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] e2fsprogs: small .de translation fix
+Date: Fri, 21 Feb 2014 03:12:28 -0500
+Message-ID: <20140221081228.GE31047@thunk.org>
+References: <52C704EC.8000501@redhat.com>
+ <5306D3D9.4040303@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: ext4 development <linux-ext4@vger.kernel.org>, pth@suse.de
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f172.google.com ([209.85.192.172]:38883 "EHLO
-	mail-pd0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750884AbaBUIFq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Feb 2014 03:05:46 -0500
-Received: by mail-pd0-f172.google.com with SMTP id p10so2975609pdj.17
-        for <linux-ext4@vger.kernel.org>; Fri, 21 Feb 2014 00:05:46 -0800 (PST)
+Received: from imap.thunk.org ([74.207.234.97]:60723 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753113AbaBUIMe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 21 Feb 2014 03:12:34 -0500
 Content-Disposition: inline
-In-Reply-To: <1392947996-7630-1-git-send-email-tytso@mit.edu>
+In-Reply-To: <5306D3D9.4040303@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Feb 20, 2014 at 08:59:56PM -0500, Theodore Ts'o wrote:
-> Avoid false positives by static code analysis tools such as sparse and
-> coverity caused by the fact that we set the physical block, and then
-> the status in the extent_status structure.  It is also more efficient
-> to set both of these values at once.
+On Thu, Feb 20, 2014 at 10:19:37PM -0600, Eric Sandeen wrote:
+> On 1/3/14, 12:43 PM, Eric Sandeen wrote:
+> > This was reported in RH bugzilla.  I think my German is good enough
+> > that the fix is correct, but I don't mind a double-check.  :)
+> > 
+> > Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 > 
-> Addresses-Coverity-Id: #989077
-> Addresses-Coverity-Id: #989078
-> Addresses-Coverity-Id: #1080722
+> ping on this one, while it seems that Ted is processing old patches :)
 > 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> But maybe this one is for Philipp...
 
-Thanks for fixing this.  It looks good to me.
-Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
+Yeah, I usually let the fixes for the translations come through the
+Translation Project, for which Philipp is on the translation team.
 
-                                                - Zheng
+Philipp, while you're at it, could you also take a look at these two
+Debian bugs?
 
-> ---
->  fs/ext4/extents_status.c | 14 ++++++--------
->  fs/ext4/extents_status.h |  9 +++++++++
->  2 files changed, 15 insertions(+), 8 deletions(-)
-> 
-> diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-> index 3981ff7..a900004 100644
-> --- a/fs/ext4/extents_status.c
-> +++ b/fs/ext4/extents_status.c
-> @@ -658,8 +658,7 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
->  
->  	newes.es_lblk = lblk;
->  	newes.es_len = len;
-> -	ext4_es_store_pblock(&newes, pblk);
-> -	ext4_es_store_status(&newes, status);
-> +	ext4_es_store_pblock_status(&newes, pblk, status);
->  	trace_ext4_es_insert_extent(inode, &newes);
->  
->  	ext4_es_insert_extent_check(inode, &newes);
-> @@ -699,8 +698,7 @@ void ext4_es_cache_extent(struct inode *inode, ext4_lblk_t lblk,
->  
->  	newes.es_lblk = lblk;
->  	newes.es_len = len;
-> -	ext4_es_store_pblock(&newes, pblk);
-> -	ext4_es_store_status(&newes, status);
-> +	ext4_es_store_pblock_status(&newes, pblk, status);
->  	trace_ext4_es_cache_extent(inode, &newes);
->  
->  	if (!len)
-> @@ -812,13 +810,13 @@ retry:
->  
->  			newes.es_lblk = end + 1;
->  			newes.es_len = len2;
-> +			block = 0x7FDEADBEEF;
->  			if (ext4_es_is_written(&orig_es) ||
-> -			    ext4_es_is_unwritten(&orig_es)) {
-> +			    ext4_es_is_unwritten(&orig_es))
->  				block = ext4_es_pblock(&orig_es) +
->  					orig_es.es_len - len2;
-> -				ext4_es_store_pblock(&newes, block);
-> -			}
-> -			ext4_es_store_status(&newes, ext4_es_status(&orig_es));
-> +			ext4_es_store_pblock_status(&newes, block,
-> +						    ext4_es_status(&orig_es));
->  			err = __es_insert_extent(inode, &newes);
->  			if (err) {
->  				es->es_lblk = orig_es.es_lblk;
-> diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-> index 167f4ab8..f1b62a4 100644
-> --- a/fs/ext4/extents_status.h
-> +++ b/fs/ext4/extents_status.h
-> @@ -129,6 +129,15 @@ static inline void ext4_es_store_status(struct extent_status *es,
->  		       (es->es_pblk & ~ES_MASK));
->  }
->  
-> +static inline void ext4_es_store_pblock_status(struct extent_status *es,
-> +					       ext4_fsblk_t pb,
-> +					       unsigned int status)
-> +{
-> +	es->es_pblk = (((ext4_fsblk_t)
-> +			(status & EXTENT_STATUS_FLAGS) << ES_SHIFT) |
-> +		       (pb & ~ES_MASK));
-> +}
-> +
->  extern void ext4_es_register_shrinker(struct ext4_sb_info *sbi);
->  extern void ext4_es_unregister_shrinker(struct ext4_sb_info *sbi);
->  extern void ext4_es_lru_add(struct inode *inode);
-> -- 
-> 1.9.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+       https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=703048
+       https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=737800
+
+Many thanks!!
+
+						- Ted
