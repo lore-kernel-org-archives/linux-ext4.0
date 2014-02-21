@@ -1,43 +1,47 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] e2fsprogs: small .de translation fix
-Date: Fri, 21 Feb 2014 03:12:28 -0500
-Message-ID: <20140221081228.GE31047@thunk.org>
-References: <52C704EC.8000501@redhat.com>
- <5306D3D9.4040303@redhat.com>
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Subject: [patch] ext3: remove unneeded check in ext3_ordered_writepage()
+Date: Fri, 21 Feb 2014 11:58:54 +0300
+Message-ID: <20140221085854.GC13185@elgon.mountain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>, pth@suse.de
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:60723 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753113AbaBUIMe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 21 Feb 2014 03:12:34 -0500
+Received: from userp1040.oracle.com ([156.151.31.81]:27998 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754240AbaBUI7C (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Feb 2014 03:59:02 -0500
 Content-Disposition: inline
-In-Reply-To: <5306D3D9.4040303@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Feb 20, 2014 at 10:19:37PM -0600, Eric Sandeen wrote:
-> On 1/3/14, 12:43 PM, Eric Sandeen wrote:
-> > This was reported in RH bugzilla.  I think my German is good enough
-> > that the fix is correct, but I don't mind a double-check.  :)
-> > 
-> > Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> 
-> ping on this one, while it seems that Ted is processing old patches :)
-> 
-> But maybe this one is for Philipp...
+We already know "ret" is zero so there is no need to do:
 
-Yeah, I usually let the fixes for the translations come through the
-Translation Project, for which Philipp is on the translation team.
+		if (!ret)
+			ret = err;
 
-Philipp, while you're at it, could you also take a look at these two
-Debian bugs?
+We can just assign ret directly instead.
 
-       https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=703048
-       https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=737800
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
 
-Many thanks!!
-
-						- Ted
+diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+index 384b6ebb655f..491f022c476a 100644
+--- a/fs/ext3/inode.c
++++ b/fs/ext3/inode.c
+@@ -1673,12 +1673,9 @@ static int ext3_ordered_writepage(struct page *page,
+ 	 * block_write_full_page() succeeded.  Otherwise they are unmapped,
+ 	 * and generally junk.
+ 	 */
+-	if (ret == 0) {
+-		err = walk_page_buffers(handle, page_bufs, 0, PAGE_CACHE_SIZE,
++	if (ret == 0)
++		ret = walk_page_buffers(handle, page_bufs, 0, PAGE_CACHE_SIZE,
+ 					NULL, journal_dirty_data_fn);
+-		if (!ret)
+-			ret = err;
+-	}
+ 	walk_page_buffers(handle, page_bufs, 0,
+ 			PAGE_CACHE_SIZE, NULL, bput_one);
+ 	err = ext3_journal_stop(handle);
