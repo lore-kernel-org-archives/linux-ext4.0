@@ -1,22 +1,23 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH v5 2/10] xfs: Add support FALLOC_FL_COLLAPSE_RANGE for
+Subject: Re: [PATCH v5 1/10] fs: Add new flag(FALLOC_FL_COLLAPSE_RANGE) for
 	fallocate
-Date: Mon, 24 Feb 2014 08:22:31 +1100
-Message-ID: <20140223212231.GD4317@dastard>
-References: <1392741475-20063-1-git-send-email-linkinjeon@gmail.com>
+Date: Mon, 24 Feb 2014 08:36:06 +1100
+Message-ID: <20140223213606.GE4317@dastard>
+References: <1392741464-20029-1-git-send-email-linkinjeon@gmail.com>
+	<20140222140625.GD26637@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, Namjae Jeon <namjae.jeon@samsung.com>,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com, bpm@sgi.com,
-	adilger.kernel@dilger.ca, mtk.manpages@gmail.com,
-	Ashish Sangwan <a.sangwan@samsung.com>, lczerner@redhat.com,
-	linux-fsdevel@vger.kernel.org, jack@suse.cz,
-	linux-ext4@vger.kernel.org, viro@zeniv.linux.org.uk
-To: Namjae Jeon <linkinjeon@gmail.com>
+To: Theodore Ts'o <tytso@mit.edu>, Namjae Jeon <linkinjeon@gmail.com>,
+	viro@zeniv.linux.org.uk, bpm@sgi.com, adilger.kernel@dilger.ca,
+	jack@suse.cz, mtk.manpages@gmail.com, lczerner@redhat.com,
+	linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Namjae Jeon <namjae.jeon@samsung.com>,
+	Ashish Sangwan <a.sangwan@samsung.com>
 Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <1392741475-20063-1-git-send-email-linkinjeon@gmail.com>
+In-Reply-To: <20140222140625.GD26637@thunk.org>
 List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
 	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
 List-Archive: <http://oss.sgi.com/pipermail/xfs>
@@ -28,39 +29,25 @@ Errors-To: xfs-bounces@oss.sgi.com
 Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Feb 19, 2014 at 01:37:55AM +0900, Namjae Jeon wrote:
-> From: Namjae Jeon <namjae.jeon@samsung.com>
+On Sat, Feb 22, 2014 at 09:06:25AM -0500, Theodore Ts'o wrote:
+> On Wed, Feb 19, 2014 at 01:37:43AM +0900, Namjae Jeon wrote:
+> > +	/*
+> > +	 * There is no need to overlap collapse range with EOF, in which case
+> > +	 * it is effectively a truncate operation
+> > +	 */
+> > +	if ((mode & FALLOC_FL_COLLAPSE_RANGE) &&
+> > +	    (offset + len >= i_size_read(inode)))
+> > +		return -EINVAL;
+> > +
 > 
-> This patch implements fallocate's FALLOC_FL_COLLAPSE_RANGE for XFS.
-> 
-> The semantics of this flag are following:
-> 1) It collapses the range lying between offset and length by removing any data
->    blocks which are present in this range and than updates all the logical
->    offsets of extents beyond "offset + len" to nullify the hole created by
->    removing blocks. In short, it does not leave a hole.
-> 2) It should be used exclusively. No other fallocate flag in combination.
-> 3) Offset and length supplied to fallocate should be fs block size aligned
->    in case of xfs and ext4.
-> 4) Collaspe range does not work beyond i_size.
-> 
-> Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-> Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
-.....
-> +	while (!error && !done) {
-> +		tp = xfs_trans_alloc(mp, XFS_TRANS_DIOSTRAT);
-> +		tp->t_flags |= XFS_TRANS_RESERVE;
+> I wonder if we should just translate a collapse range that is
+> equivalent to a truncate operation to, in fact, be a truncate
+> operation?
 
-This probably shouldn't use XFS_TRANS_RESERVE. If we are at ENOSPC,
-then the operation simply fails. Yes, we've already punched the
-hole, so we shouldn't get ENOSPC here, but I don't think it's worth
-dipping into the reserve pool as it has much more important uses...
-
-You don' tneed to resent the entire patch for this - I can remove it
-directly myself....
-
-Otherwise it looks good, so consider it
-
-Reviewed-by: Dave Chinner <dchinner@redhat.com>
+Trying to collapse a range that extends beyond EOF, IMO, is likely
+to only happen if the DVR/NLE application is buggy. Hence I think
+that telling the application it is doing something that is likely to
+be wrong is better than silently truncating the file....
 
 Cheers,
 
