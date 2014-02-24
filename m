@@ -1,69 +1,70 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 0/6][RFC] Introduce FALLOC_FL_ZERO_RANGE flag for fallocate
-Date: Mon, 24 Feb 2014 12:07:14 +1100
-Message-ID: <20140224010714.GI4317@dastard>
-References: <1392649703-10772-1-git-send-email-lczerner@redhat.com>
+From: Namjae Jeon <linkinjeon@gmail.com>
+Subject: Re: [PATCH v5 2/10] xfs: Add support FALLOC_FL_COLLAPSE_RANGE for fallocate
+Date: Mon, 24 Feb 2014 10:12:34 +0900
+Message-ID: <CAKYAXd_iesKTqpAH8wPE6HVjNcXBRsor0SzRVbo3Jyr-YiTdPg@mail.gmail.com>
+References: <1392741475-20063-1-git-send-email-linkinjeon@gmail.com>
+	<20140223212231.GD4317@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, tytso@mit.edu,
-	xfs@oss.sgi.com
-To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-In-Reply-To: <1392649703-10772-1-git-send-email-lczerner@redhat.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+Content-Type: text/plain; charset=UTF-8
+Cc: viro@zeniv.linux.org.uk, bpm@sgi.com, tytso@mit.edu,
+	adilger.kernel@dilger.ca, jack@suse.cz, mtk.manpages@gmail.com,
+	lczerner@redhat.com, linux-fsdevel@vger.kernel.org,
+	xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Namjae Jeon <namjae.jeon@samsung.com>,
+	Ashish Sangwan <a.sangwan@samsung.com>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20140223212231.GD4317@dastard>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Feb 17, 2014 at 04:08:17PM +0100, Lukas Czerner wrote:
-> Introduce new FALLOC_FL_ZERO_RANGE flag for fallocate. This has the same
-> functionality as xfs ioctl XFS_IOC_ZERO_RANGE.
-> 
-> It can be used to convert a range of file to zeros preferably without
-> issuing data IO. Blocks should be preallocated for the regions that span
-> holes in the file, and the entire range is preferable converted to
-> unwritten extents - even though file system may choose to zero out the
-> extent or do whatever which will result in reading zeros from the range
-> while the range remains allocated for the file.
-> 
-> This can be also used to preallocate blocks past EOF in the same way as
-> with fallocate. Flag FALLOC_FL_KEEP_SIZE which should cause the inode
-> size to remain the same.
-> 
-> You can test this feature yourself using xfstests, of fallocate(1) however
-> you'll need patches for util_linux, xfsprogs and xfstests which you
-> can find here:
-> 
-> http://people.redhat.com/lczerner/zero_range/
-> 
-> I'll post the patches after we agree and merge the kernel functionality.
-
-Lukas, can you post the xfstests and xfs_io changes so that they can
-be reviewed? Once I can verify the behaviour is the same as
-XFS_IOC_ZERO_RANGE, I'm ahppy to commit the VFS and XFS kernel
-changes along with the xfsprogs and xfstests changes like I've just
-done for the FALLOC_FL_COLLAPSE_RANGE changes.
-
-I'd like to get all the changes to the VFS into the XFS tree so that
-you can handle the ext4 integration of the two pieces of
-functionilty as you and Ted see fit....
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+2014-02-24 6:22 GMT+09:00, Dave Chinner <david@fromorbit.com>:
+> On Wed, Feb 19, 2014 at 01:37:55AM +0900, Namjae Jeon wrote:
+>> From: Namjae Jeon <namjae.jeon@samsung.com>
+>>
+>> This patch implements fallocate's FALLOC_FL_COLLAPSE_RANGE for XFS.
+>>
+>> The semantics of this flag are following:
+>> 1) It collapses the range lying between offset and length by removing any
+>> data
+>>    blocks which are present in this range and than updates all the
+>> logical
+>>    offsets of extents beyond "offset + len" to nullify the hole created
+>> by
+>>    removing blocks. In short, it does not leave a hole.
+>> 2) It should be used exclusively. No other fallocate flag in combination.
+>> 3) Offset and length supplied to fallocate should be fs block size
+>> aligned
+>>    in case of xfs and ext4.
+>> 4) Collaspe range does not work beyond i_size.
+>>
+>> Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
+>> Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
+> .....
+>> +	while (!error && !done) {
+>> +		tp = xfs_trans_alloc(mp, XFS_TRANS_DIOSTRAT);
+>> +		tp->t_flags |= XFS_TRANS_RESERVE;
+>
+Hi Dave.
+> This probably shouldn't use XFS_TRANS_RESERVE. If we are at ENOSPC,
+> then the operation simply fails. Yes, we've already punched the
+> hole, so we shouldn't get ENOSPC here, but I don't think it's worth
+> dipping into the reserve pool as it has much more important uses...
+Okay.
+>
+> You don' tneed to resent the entire patch for this - I can remove it
+> directly myself....
+Thanks very much for your help!!
+>
+> Otherwise it looks good, so consider it
+>
+> Reviewed-by: Dave Chinner <dchinner@redhat.com>
+>
+> Cheers,
+>
+> Dave.
+> --
+> Dave Chinner
+> david@fromorbit.com
+>
