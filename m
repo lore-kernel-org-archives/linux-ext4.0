@@ -1,29 +1,30 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 58/74] libext2fs: free key/value pairs before reading
-Date: Sun, 23 Feb 2014 23:10:26 -0500
-Message-ID: <20140224041025.GF23946@thunk.org>
+Subject: Re: [PATCH 59/74] debugfs: dump all extended attributes
+Date: Sun, 23 Feb 2014 23:10:37 -0500
+Message-ID: <20140224041037.GG23946@thunk.org>
 References: <20131211011813.30655.39624.stgit@birch.djwong.org>
- <20131211012445.30655.26989.stgit@birch.djwong.org>
+ <20131211012452.30655.26956.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:33268 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:33272 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751538AbaBXEK1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 23 Feb 2014 23:10:27 -0500
+	id S1751538AbaBXEKj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 23 Feb 2014 23:10:39 -0500
 Content-Disposition: inline
-In-Reply-To: <20131211012445.30655.26989.stgit@birch.djwong.org>
+In-Reply-To: <20131211012452.30655.26956.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 10, 2013 at 05:24:45PM -0800, Darrick J. Wong wrote:
-> Before loading extended attributes, free any key/value pairs that
-> might already be associated with the file.
+On Tue, Dec 10, 2013 at 05:24:52PM -0800, Darrick J. Wong wrote:
+> Use the new extended attribute APIs to display all extended attributes
+> (current code does not look in the EA block) and display full names
+> (current code ignores name index too).
 > 
 > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 
 Applied, thanks.
 
-					- Ted
+						- Ted
