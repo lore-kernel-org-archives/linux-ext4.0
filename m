@@ -1,98 +1,68 @@
-From: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
-Subject: Re: warning in ext4_journal_start_sb on filesystem freeze
-Date: Mon, 24 Feb 2014 10:45:32 -0500
-Message-ID: <20140224154532.GB11992@fieldses.org>
-References: <217983071.143460.1385453196946.JavaMail.zimbra@rapitasystems.com>
- <1697998867.143517.1385454051031.JavaMail.zimbra@rapitasystems.com>
- <20131126125826.GA4503@quack.suse.cz>
- <622177618.727.1393062606061.JavaMail.zimbra@rapitasystems.com>
- <20140224095525.GA20532@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Matthew Rahtz <mrahtz-lFL+a/sBLVi/3pe1ocb+swC/G2K4zDHf@public.gmane.org>,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20140224095525.GA20532-+0h/O2h83AeN3ZZ/Hiejyg@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH 1/2] mke2fs: Add revision to the is_before_linux_ver()
+Date: Mon, 24 Feb 2014 18:41:05 +0100
+Message-ID: <1393263666-21246-1-git-send-email-lczerner@redhat.com>
+Cc: tytso@mit.edu, Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:59466 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752846AbaBXRlO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 24 Feb 2014 12:41:14 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 24, 2014 at 10:55:25AM +0100, Jan Kara wrote:
-> On Sat 22-02-14 09:50:06, Matthew Rahtz wrote:
-> > Thanks for your help Jan,
-> >=20
-> > A few months later, we've noticed the issue is actually still there=
-=2E
-> > Using 3.11.0-17-generic on Ubuntu 12.04, we=E2=80=99re seeing this =
-in the kernel
-> > logs:
-> >=20
-> > [29243.606215] WARNING: CPU: 0 PID: 1785 at
-> > /build/buildd/linux-lts-saucy-3.11.0/fs/ext4/ext4_jbd2.c:48
-> > ext4_journal_check_start+0x83/0x90()
-> >=20
-> > Having a look at the Ubuntu source package for that version, it
-> > definitely does include commit 03d95eb2f2578083a3f6286262e1cb5d88a0=
-0c02,
-> > and the line generating the warning is still:
-> >=20
-> > WARN_ON(sb->s_writers.frozen =3D=3D SB_FREEZE_COMPLETE);
-> >=20
-> > Are there any other obvious possibilities for what may be causing t=
-his?
-> > There seem to be some users of Oracle Linux experiencing similar pr=
-oblems
-> > at https://community.oracle.com/thread/2617418, which was apparentl=
-y
-> > fixed in Oracle's kernel version '3.8.13-26.el6uek'. Any word on wh=
-en
-> > this might be integrated into the official kernel?
-> >=20
-> > Full call trace included below.
->   Looking at the trace below, now the problem seems to be in the NFS =
-server
-> code. NFS should get protection against the filesystem being frozen (=
-or
-> remounted read-only for that matter) via mnt_want_write() before call=
-ing
-> into notify_change() (actually before calling fh_lock() because of lo=
-ck
-> ordering).  Similarly to what we do e.g. in fchownat(). Bruce?
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ misc/mke2fs.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
 
-Like this?
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index facbe4c..957b4b6 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -177,7 +177,8 @@ static int parse_version_number(const char *s)
+ 	return KERNEL_VERSION(major, minor, rev);
+ }
+ 
+-static int is_before_linux_ver(unsigned int major, unsigned int minor)
++static int is_before_linux_ver(unsigned int major, unsigned int minor,
++			       unsigned int rev)
+ {
+ 	struct		utsname ut;
+ 	static int	linux_version_code = -1;
+@@ -191,10 +192,11 @@ static int is_before_linux_ver(unsigned int major, unsigned int minor)
+ 	if (linux_version_code == 0)
+ 		return 0;
+ 
+-	return linux_version_code < KERNEL_VERSION(major, minor, 0);
++	return linux_version_code < KERNEL_VERSION(major, minor, rev);
+ }
+ #else
+-static int is_before_linux_ver(unsigned int major, unsigned int minor)
++static int is_before_linux_ver(unsigned int major, unsigned int minor,
++			       unsigned int rev)
+ {
+ 	return 0;
+ }
+@@ -1513,7 +1515,7 @@ profile_error:
+ 	memset(&fs_param, 0, sizeof(struct ext2_super_block));
+ 	fs_param.s_rev_level = 1;  /* Create revision 1 filesystems now */
+ 
+-	if (is_before_linux_ver(2, 2))
++	if (is_before_linux_ver(2, 2, 0))
+ 		fs_param.s_rev_level = 0;
+ 
+ 	if (argc && *argv) {
+@@ -1952,7 +1954,7 @@ profile_error:
+ 
+ 		if (use_bsize == -1) {
+ 			use_bsize = sys_page_size;
+-			if (is_before_linux_ver(2, 6) && use_bsize > 4096)
++			if (is_before_linux_ver(2, 6, 0) && use_bsize > 4096)
+ 				use_bsize = 4096;
+ 		}
+ 		if (lsector_size && use_bsize < lsector_size)
+-- 
+1.8.3.1
 
-But I wonder why this is just popping up now--as far as I can tell we'v=
-e
-had the bug since those write counts were introduced.
-
---b.
-
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 6d7be3f..d573b61 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -445,12 +445,16 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_f=
-h *fhp, struct iattr *iap,
- 		err =3D nfserr_notsync;
- 		goto out_put_write_access;
- 	}
-+	host_err =3D fh_want_write(fhp);
-+	if (host_err)
-+		goto out_nfserr;
-=20
- 	fh_lock(fhp);
- 	host_err =3D notify_change(dentry, iap, NULL);
- 	fh_unlock(fhp);
-+	fh_drop_write(fhp);
-+out_nfserr:
- 	err =3D nfserrno(host_err);
--
- out_put_write_access:
- 	if (size_change)
- 		put_write_access(inode);
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
