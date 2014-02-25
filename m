@@ -1,113 +1,49 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] xfs_io: add fzero command for zeroing range via fallocate
-Date: Tue, 25 Feb 2014 20:15:33 +0100
-Message-ID: <1393355733-12099-1-git-send-email-lczerner@redhat.com>
-Cc: xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org,
-	Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH] util-linux/fallocate: introduce an option -c to support
+ FALLOC_FL_COLLAPSE_RANGE
+Date: Wed, 26 Feb 2014 06:31:01 +1100
+Message-ID: <20140225193101.GW13647@dastard>
+References: <alpine.LFD.2.00.1402181001530.2216@localhost.localdomain>
+ <1393355305-12009-1-git-send-email-dongsu.park@profitbricks.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Namjae Jeon <linkinjeon@gmail.com>, linux-fsdevel@vger.kernel.org,
+	xfs@oss.sgi.com, linux-ext4@vger.kernel.org, tytso@mit.edu,
+	Lukas Czerner <lczerner@redhat.com>,
+	Namjae Jeon <namjae.jeon@samsung.com>,
+	Ashish Sangwan <a.sangwan@samsung.com>
+To: Dongsu Park <dongsu.park@profitbricks.com>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1393355305-12009-1-git-send-email-dongsu.park@profitbricks.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Add fzero command which zeroes a range of the file using
-fallocate FALLOC_FL_ZERO_RANGE flag.
+On Tue, Feb 25, 2014 at 08:08:25PM +0100, Dongsu Park wrote:
+> Introduce a new option -c (or --collapse-range) to support a new flag
+> FALLOC_FL_COLLAPSE_RANGE for fallocate(2). It will nullify a particular
+> range [offset, offset+len] by shifting extents beyond the range to the
+> beginning of the hole.
+> 
+> To test that, it's necessary to apply kernel patches in the patchset
+> "fs: Introduce new flag (FALLOC_FL_COLLAPSE_RANGE) for fallocate" [1],
+> as well as "[PATCH v6] ext4: Add support FALLOC_FL_COLLAPSE_RANGE for
+> fallocate". [2]
+> 
+> As discussed in the thread "[PATCH RESEND 3/10] ext4: Add support
+> FALLOC_FL_COLLAPSE_RANGE for fallocate", [3] this patch to util-linux
+> will be useful for testing collapse-range inside xfstests.
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- io/prealloc.c     | 42 +++++++++++++++++++++++++++++++++++++++++-
- man/man8/xfs_io.8 |  5 +++++
- 2 files changed, 46 insertions(+), 1 deletion(-)
+FYI, we've already got support in xfs_io for collapse-range tests
+inside xfstests.
 
-diff --git a/io/prealloc.c b/io/prealloc.c
-index d697f82..71ca877 100644
---- a/io/prealloc.c
-+++ b/io/prealloc.c
-@@ -33,6 +33,10 @@
- #define FALLOC_FL_COLLAPSE_RANGE 0x08
- #endif
- 
-+#ifndef FALLOC_FL_ZERO_RANGE
-+#define FALLOC_FL_ZERO_RANGE 0x10
-+#endif
-+
- static cmdinfo_t allocsp_cmd;
- static cmdinfo_t freesp_cmd;
- static cmdinfo_t resvsp_cmd;
-@@ -42,6 +46,7 @@ static cmdinfo_t zero_cmd;
- static cmdinfo_t falloc_cmd;
- static cmdinfo_t fpunch_cmd;
- static cmdinfo_t fcollapse_cmd;
-+static cmdinfo_t fzero_cmd;
- #endif
- 
- static int
-@@ -230,6 +235,31 @@ fcollapse_f(
- 	}
- 	return 0;
- }
-+
-+static int
-+fzero_f(
-+	int		argc,
-+	char		**argv)
-+{
-+	xfs_flock64_t	segment;
-+	int		mode = FALLOC_FL_ZERO_RANGE;
-+	int		index = 1;
-+
-+	if (strncmp(argv[index], "-k", 3) == 0) {
-+		mode |= FALLOC_FL_KEEP_SIZE;
-+		index++;
-+	}
-+
-+	if (!offset_length(argv[index], argv[index + 1], &segment))
-+		return 0;
-+
-+	if (fallocate(file->fd, mode,
-+			segment.l_start, segment.l_len)) {
-+		perror("fallocate");
-+		return 0;
-+	}
-+	return 0;
-+}
- #endif	/* HAVE_FALLOCATE */
- 
- void
-@@ -312,7 +342,17 @@ prealloc_init(void)
- 	fcollapse_cmd.flags = CMD_NOMAP_OK | CMD_FOREIGN_OK;
- 	fcollapse_cmd.args = _("off len");
- 	fcollapse_cmd.oneline =
--	_("de-allocates space and eliminates the hole by shifting extents");
-+		_("de-allocates space and eliminates the hole by shifting extents");
- 	add_command(&fcollapse_cmd);
-+
-+	fzero_cmd.name = "fzero";
-+	fzero_cmd.cfunc = fzero_f;
-+	fzero_cmd.argmin = 2;
-+	fzero_cmd.argmax = 3;
-+	fzero_cmd.flags = CMD_NOMAP_OK | CMD_FOREIGN_OK;
-+	fzero_cmd.args = _("[-k] off len");
-+	fzero_cmd.oneline =
-+		_("zeroes space and eliminates holes by preallocating");
-+	add_command(&fzero_cmd);
- #endif	/* HAVE_FALLOCATE */
- }
-diff --git a/man/man8/xfs_io.8 b/man/man8/xfs_io.8
-index 9543b20..e95cf70 100644
---- a/man/man8/xfs_io.8
-+++ b/man/man8/xfs_io.8
-@@ -392,6 +392,11 @@ the FALLOC_FL_PUNCH_HOLE flag as described in the
- .BR fallocate (2)
- manual page.
- .TP
-+.BI fzero " offset length"
-+Call fallocate with FALLOC_FL_ZERO_RANGE flag as described in the
-+.BR fallocate (2)
-+manual page to allocate and zero blocks within the range.
-+.TP
- .BI truncate " offset"
- Truncates the current file at the given offset using
- .BR ftruncate (2).
+http://oss.sgi.com/cgi-bin/gitweb.cgi?p=xfs/cmds/xfsprogs.git;a=commit;h=ca692f162d36c871c9c1b6169136b2c70503f2d8
+
+There are already several tests that use it.
+
+Cheers,
+
+Dave.
 -- 
-1.8.3.1
-
+Dave Chinner
+david@fromorbit.com
