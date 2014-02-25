@@ -1,93 +1,61 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH v5 0/10] fs: Introduce new
- flag(FALLOC_FL_COLLAPSE_RANGE) for fallocate
-Date: Tue, 25 Feb 2014 15:41:28 -0800
-Message-ID: <20140225154128.947a2de83a2d0dc21763ccf9@linux-foundation.org>
-References: <1392741436-19995-1-git-send-email-linkinjeon@gmail.com>
-	<20140224005710.GH4317@dastard>
-	<20140225141601.358f6e3df2660d4af44da876@canb.auug.org.au>
-	<20140225041346.GA29907@dastard>
-	<alpine.LSU.2.11.1402251217030.2380@eggly.anvils>
+From: Hugh Dickins <hughd@google.com>
+Subject: Re: [PATCH v5 1/10] fs: Add new flag(FALLOC_FL_COLLAPSE_RANGE) for
+ fallocate
+Date: Tue, 25 Feb 2014 15:41:20 -0800 (PST)
+Message-ID: <alpine.LSU.2.11.1402251525370.2380@eggly.anvils>
+References: <1392741464-20029-1-git-send-email-linkinjeon@gmail.com> <20140222140625.GD26637@thunk.org> <20140223213606.GE4317@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Namjae Jeon <linkinjeon@gmail.com>, Matthew Wilcox <matthew@wil.cx>,
- "Theodore Ts'o" <tytso@mit.edu>, Dave Chinner <david@fromorbit.com>,
- Stephen Rothwell <sfr@canb.auug.org.au>, viro@zeniv.linux.org.uk,
- bpm@sgi.com, adilger.kernel@dilger.ca, jack@suse.cz,
- mtk.manpages@gmail.com, lczerner@redhat.com, linux-fsdevel@vger.kernel.org,
- xfs@oss.sgi.com, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
- linux-mm@kvack.org, Namjae Jeon <namjae.jeon@samsung.com>
-To: Hugh Dickins <hughd@google.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Andrew Morton <akpm@linux-foundation.org>, Theodore Ts'o <tytso@mit.edu>,
+    Namjae Jeon <linkinjeon@gmail.com>, viro@zeniv.linux.org.uk, bpm@sgi.com,
+    adilger.kernel@dilger.ca, jack@suse.cz, mtk.manpages@gmail.com,
+    lczerner@redhat.com, linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
+    linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+    linux-mm@kvack.org, Namjae Jeon <namjae.jeon@samsung.com>,
+    Ashish Sangwan <a.sangwan@samsung.com>
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <alpine.LSU.2.11.1402251217030.2380@eggly.anvils>
+In-Reply-To: <20140223213606.GE4317@dastard>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 25 Feb 2014 15:23:35 -0800 (PST) Hugh Dickins <hughd@google.com> wrote:
-
-> On Tue, 25 Feb 2014, Dave Chinner wrote:
-> > On Tue, Feb 25, 2014 at 02:16:01PM +1100, Stephen Rothwell wrote:
-> > > On Mon, 24 Feb 2014 11:57:10 +1100 Dave Chinner <david@fromorbit.com> wrote:
-> > > >
-> > > > > Namjae Jeon (10):
-> > > > >   fs: Add new flag(FALLOC_FL_COLLAPSE_RANGE) for fallocate
-> > > > >   xfs: Add support FALLOC_FL_COLLAPSE_RANGE for fallocate
-> > > > 
-> > > > I've pushed these to the following branch:
-> > > > 
-> > > > 	git://oss.sgi.com/xfs/xfs.git xfs-collapse-range
-> > > > 
-> > > > And so they'll be in tomorrow's linux-next tree.
-> > > > 
-> > > > >   ext4: Add support FALLOC_FL_COLLAPSE_RANGE for fallocate
-> > > > 
-> > > > I've left this one alone for the ext4 guys to sort out.
-> > > 
-> > > So presumably that xfs tree branch is now completely stable and so Ted
-> > > could just merge that branch into the ext4 tree as well and put the ext4
-> > > part on top of that in his tree.
+On Mon, 24 Feb 2014, Dave Chinner wrote:
+> On Sat, Feb 22, 2014 at 09:06:25AM -0500, Theodore Ts'o wrote:
+> > On Wed, Feb 19, 2014 at 01:37:43AM +0900, Namjae Jeon wrote:
+> > > +	/*
+> > > +	 * There is no need to overlap collapse range with EOF, in which case
+> > > +	 * it is effectively a truncate operation
+> > > +	 */
+> > > +	if ((mode & FALLOC_FL_COLLAPSE_RANGE) &&
+> > > +	    (offset + len >= i_size_read(inode)))
+> > > +		return -EINVAL;
+> > > +
 > > 
-> > Well, for some definition of stable. Right now it's just a topic
-> > branch that is merged into the for-next branch, so in theory it is
-> > still just a set of pending changes in a branch in a repo that has
-> > been pushed to linux-next for testing.
-> > 
-> > That said, I don't see that branch changing unless we find bugs in
-> > the code or a problem with the API needs fixing, at which point I
-> > would add more commits to it and rebase the for-next branch that you
-> > are pulling into the linux-next tree.
-> > 
-> > Realistically, I'm waiting for Lukas to repost his other pending
-> > fallocate changes (the zero range changes) so I can pull the VFS and
-> > XFS bits of that into the XFS tree and I can test them together
-> > before I'll call the xfs-collapse-range stable and ready to be
-> > merged into some other tree...
->
-> ...
->
-> Emphasis on "might": I expect it's impossible, given your current
-> approach, but something to be on guard against is unmap_mapping_range()
-> failing to find and unmap a pte, because the page is mapped at the
-> "wrong" place in the vma, resulting in BUG_ON(page_mapped(page))
-> in __delete_from_page_cache().
+> > I wonder if we should just translate a collapse range that is
+> > equivalent to a truncate operation to, in fact, be a truncate
+> > operation?
+> 
+> Trying to collapse a range that extends beyond EOF, IMO, is likely
+> to only happen if the DVR/NLE application is buggy. Hence I think
+> that telling the application it is doing something that is likely to
+> be wrong is better than silently truncating the file....
 
-It should be well tested with non-linear mappings please.  It *should*
-be OK, but...
+I do agree with Ted on this point.  This is not an xfs ioctl added
+for one DVR/NLE application, it's a mode of a Linux system call.
 
->
-> ...
->
-> FALLOC_FL_COLLAPSE_RANGE: I'm a little sad at the name COLLAPSE,
-> but probably seven months too late to object.  It surprises me that
-> you're doing all this work to deflate a part of the file, without
-> the obvious complementary work to inflate it - presumably all those
-> advertisers whose ads you're cutting out, will come back to us soon
-> to ask for inflation, so that they have somewhere to reinsert them ;)
+We do not usually reject with an error when one system call happens
+to ask for something which can already be accomplished another way;
+nor nanny our callers.
 
-Yes, I was wondering that.  Why not simply "move these blocks from here
-to there".
+It seems natural to me that COLLAPSE_RANGE should support beyond EOF;
+unless that adds significantly to implementation difficulties?
 
+Actually, is it even correct to fail at EOF?  What if fallocation
+with FALLOC_FL_KEEP_SIZE was used earlier, to allocate beyond EOF:
+shouldn't it be possible to shift that allocation down, along with
+the EOF, rather than leave it behind as a stranded island?
+
+Hugh
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
