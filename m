@@ -1,99 +1,155 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 6/6] ext4/242: Add ext4 specific test for fallocate zero
- range
-Date: Tue, 25 Feb 2014 22:27:40 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1402252226580.12444@localhost.localdomain>
-References: <1393355728-12056-1-git-send-email-lczerner@redhat.com> <1393355728-12056-6-git-send-email-lczerner@redhat.com> <20140225205349.GD13647@dastard> <alpine.LFD.2.00.1402252156290.12444@localhost.localdomain>
+From: Hugh Dickins <hughd@google.com>
+Subject: Re: [PATCH v5 0/10] fs: Introduce new flag(FALLOC_FL_COLLAPSE_RANGE)
+ for fallocate
+Date: Tue, 25 Feb 2014 15:23:35 -0800 (PST)
+Message-ID: <alpine.LSU.2.11.1402251217030.2380@eggly.anvils>
+References: <1392741436-19995-1-git-send-email-linkinjeon@gmail.com> <20140224005710.GH4317@dastard> <20140225141601.358f6e3df2660d4af44da876@canb.auug.org.au> <20140225041346.GA29907@dastard>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-150801687-1393363663=:12444"
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	xfs@oss.sgi.com
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:25292 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750941AbaBYWEg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 25 Feb 2014 17:04:36 -0500
-In-Reply-To: <alpine.LFD.2.00.1402252156290.12444@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Andrew Morton <akpm@linux-foundation.org>, Matthew Wilcox <matthew@wil.cx>,
+    Theodore Ts'o <tytso@mit.edu>, Dave Chinner <david@fromorbit.com>,
+    Stephen Rothwell <sfr@canb.auug.org.au>, viro@zeniv.linux.org.uk,
+    bpm@sgi.com, adilger.kernel@dilger.ca, jack@suse.cz,
+    mtk.manpages@gmail.com, lczerner@redhat.com, linux-fsdevel@vger.kernel.org,
+    xfs@oss.sgi.com, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+    linux-mm@kvack.org, Namjae Jeon <namjae.jeon@samsung.com>
+To: Namjae Jeon <linkinjeon@gmail.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20140225041346.GA29907@dastard>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+On Tue, 25 Feb 2014, Dave Chinner wrote:
+> On Tue, Feb 25, 2014 at 02:16:01PM +1100, Stephen Rothwell wrote:
+> > On Mon, 24 Feb 2014 11:57:10 +1100 Dave Chinner <david@fromorbit.com> wrote:
+> > >
+> > > > Namjae Jeon (10):
+> > > >   fs: Add new flag(FALLOC_FL_COLLAPSE_RANGE) for fallocate
+> > > >   xfs: Add support FALLOC_FL_COLLAPSE_RANGE for fallocate
+> > > 
+> > > I've pushed these to the following branch:
+> > > 
+> > > 	git://oss.sgi.com/xfs/xfs.git xfs-collapse-range
+> > > 
+> > > And so they'll be in tomorrow's linux-next tree.
+> > > 
+> > > >   ext4: Add support FALLOC_FL_COLLAPSE_RANGE for fallocate
+> > > 
+> > > I've left this one alone for the ext4 guys to sort out.
+> > 
+> > So presumably that xfs tree branch is now completely stable and so Ted
+> > could just merge that branch into the ext4 tree as well and put the ext4
+> > part on top of that in his tree.
+> 
+> Well, for some definition of stable. Right now it's just a topic
+> branch that is merged into the for-next branch, so in theory it is
+> still just a set of pending changes in a branch in a repo that has
+> been pushed to linux-next for testing.
+> 
+> That said, I don't see that branch changing unless we find bugs in
+> the code or a problem with the API needs fixing, at which point I
+> would add more commits to it and rebase the for-next branch that you
+> are pulling into the linux-next tree.
+> 
+> Realistically, I'm waiting for Lukas to repost his other pending
+> fallocate changes (the zero range changes) so I can pull the VFS and
+> XFS bits of that into the XFS tree and I can test them together
+> before I'll call the xfs-collapse-range stable and ready to be
+> merged into some other tree...
 
---8323328-150801687-1393363663=:12444
-Content-Type: TEXT/PLAIN; charset=ISO-8859-15
-Content-Transfer-Encoding: 8BIT
+Thank you, Namjae and Dave, for driving this; and thank you, Ted and
+Matthew, for raising appropriate mmap concerns (2013-7-31 and 2014-2-2).
+I was aware of this work in progress, but only now found time to look.
 
-On Tue, 25 Feb 2014, Luká¨ Czerner wrote:
+I've not studied the implementation, knowing too little of ext4 and
+xfs; but it sounds like the approach you've taken, writing out dirties
+and truncating all pagecache from the critical offset onwards, is the
+sensible approach for now - lame, and leaves me wondering whether an
+offline tool wouldn't be more appropriate; but a safe place to start
+if we suppose it will be extended to handle pagecache better in future.
 
-> Date: Tue, 25 Feb 2014 22:01:06 +0100 (CET)
-> From: Luká¨ Czerner <lczerner@redhat.com>
-> To: Dave Chinner <david@fromorbit.com>
-> Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
-> Subject: Re: [PATCH 6/6] ext4/242: Add ext4 specific test for fallocate zero
->     range
-> 
-> On Wed, 26 Feb 2014, Dave Chinner wrote:
-> 
-> > Date: Wed, 26 Feb 2014 07:53:49 +1100
-> > From: Dave Chinner <david@fromorbit.com>
-> > To: Lukas Czerner <lczerner@redhat.com>
-> > Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
-> > Subject: Re: [PATCH 6/6] ext4/242: Add ext4 specific test for fallocate zero
-> >     range
-> > 
-> > On Tue, Feb 25, 2014 at 08:15:28PM +0100, Lukas Czerner wrote:
-> > > This is copy of xfs/242. However it's better to make it file system
-> > > specific because the range can be zeroes either directly by writing
-> > > zeroes, or converting to unwritten extent, so the actual result might
-> > > differ from file system to file system.
-> > 
-> > You could say the same thing about preallocation using unwritten
-> > extents. Yet, funnily enough, we have generic tests for them because
-> > all filesystems currently use unwritten extents for preallocation
-> > and behave identically....
-> > 
-> > This test is no different - all filesystems currently use unwritten
-> > extents, and so this test should be generic because all existing
-> > filesystems *should* behave the same.
-> > 
-> > When we get a filesystem that zeros rather uses unwritten extents,
-> > we can add a new *generic* test that tests for zeroed data extents
-> > rather than unwritten extents. All that we will need is a method of
-> > checking what behaviour the filesystem has and adding that to a
-> > _requires directive to ensure the correct generic fallocate tests
-> > are run...
-> 
-> Currently xfs/242 fails on xfs for me and it does behave differently
-> than ext4. Also I had to change to 242.out a bit because ext4 was
-> a little different. It seems to me that it was expected that when
-> the extent is small enough it would be overwritten by zeroes rather
-> than converted to unwritten, but I have not looked into
-> implementation.
-> 
-> Btw this kind of optimization is actually something I've been
-> thinking of as well for ext4. Rather than going though the hassle of
-> changing extents around it might be worth in some situation to zero
-> out. But that's an optimization I have not implemented yet.
+Of course I'm interested in the possibility of extending it to tmpfs;
+which may not be a worthwhile exercise in itself, except that it would
+force us to face and solve any pagecache/radixtree issues, if possible,
+thereby enhancing the support for disk-based filesystems.
 
-Oops, I am taking it back. It's just too late and apparently I've
-overlooked something.
+I doubt we should look into that before Jan Kara's range locking mods
+arrive, or are rejected.  As I understand it, you're going ahead with
+this, knowing that there can be awkward races with concurrent faults -
+more likely to cause trinity fuzzer reports, than interfere with daily
+usage (trinity seems to be good at faulting into holes being punched).
 
--Lukas
+That's probably the right pragmatic decision; but I'm a little worried
+that it's justfied by saying we already have such races in hole-punch.
+Collapse is significantly more challenging than either hole-punch or
+truncation: the shifting of pages from one offset to another is new,
+and might present nastier bugs.
 
-> 
-> -Lukas
-> 
-> 
-> > 
-> > Cheers,
-> > 
-> > Dave.
-> > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
---8323328-150801687-1393363663=:12444--
+Emphasis on "might": I expect it's impossible, given your current
+approach, but something to be on guard against is unmap_mapping_range()
+failing to find and unmap a pte, because the page is mapped at the
+"wrong" place in the vma, resulting in BUG_ON(page_mapped(page))
+in __delete_from_page_cache().
+
+One thing that is slightly wrong in what you have right now, is your
+use of truncate_pagecache_range(): you'll need to add an "even_cows"
+arg to that (or make it a wrapper to a __truncate_pagecache_range()
+taking additional "even_cows" arg).  That arg governs what is done
+with anonymous COW'ed pages in a MAP_PRIVATE mmap of the file.
+
+Truncation is required by spec to unmap them; hole punching was up
+to us to spec, did not unmap them originally (because there was no
+preliminary call to unmap_mapping_range(), so it happened to rely
+on the inefficient fallback within truncate_inode_page()), and that
+seemed fine because, why discard a user's data unnecessarily?
+
+But your case is different: collapse is much closer to truncation,
+and if you do not unmap the private COW'ed pages, then pages left
+behind beyond the EOF will break the spec that requires SIGBUS when
+touching there, and pages within EOF will be confusingly derived
+from file data now belonging to another offset or none (move these
+pages within the user address space? no, I don't think anon_vmas
+would allow that, and there may be no right place to move them).
+
+It's clear that the right and easy thing to do is just to unmap
+them (all of them, from critical offset to EOF), in the rare case
+of there being any such pages.  Whether this detail needs to be
+mentioned in the man page (I don't like throwing away a user's
+data without warning) I'm not sure, Michael can judge.
+
+FALLOC_FL_COLLAPSE_RANGE: I'm a little sad at the name COLLAPSE,
+but probably seven months too late to object.  It surprises me that
+you're doing all this work to deflate a part of the file, without
+the obvious complementary work to inflate it - presumably all those
+advertisers whose ads you're cutting out, will come back to us soon
+to ask for inflation, so that they have somewhere to reinsert them ;)
+
+But you have the good precedent of "truncate" being used to extend
+files, so I suppose "collapse" can one day be enhanced to inflate a
+file when given negative len.  Or perhaps, like truncate, that would
+lead to too much "if (bigger) do_one_thing() else something_else()",
+and a separate FALLOC_FL_ would prove better.  Certainly there's no
+requirement that you should implement this, I was just a little
+surprised that you had not.
+
+I should mention that when "we" implemented this thirty years ago,
+we had a strong conviction that the system call should be idempotent:
+that is, the len argument should indicate the final i_size, not the
+amount being removed from it.  Now, I don't remember the grounds for
+that conviction: maybe it was just an idealistic preference for how
+to design a good system call.  I can certainly see that defining it
+that way round would surprise many app programmers.  Just mentioning
+this in case anyone on these lists sees a practical advantage to
+doing it that way instead.
+
+I see you've included xfstests and xfs_io updates, nice.  Did you
+realize that util-linux has a /usr/bin/fallocate?  I hope someone
+will update that too.
+
+Hugh
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
