@@ -1,44 +1,99 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 5/6] xfstests: Define fallocate flags locally in fsx
-Date: Tue, 25 Feb 2014 13:56:16 -0800
-Message-ID: <20140225215616.GA29752@infradead.org>
-References: <1393355728-12056-1-git-send-email-lczerner@redhat.com>
- <1393355728-12056-5-git-send-email-lczerner@redhat.com>
- <20140225203922.GC13647@dastard>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH 6/6] ext4/242: Add ext4 specific test for fallocate zero
+ range
+Date: Tue, 25 Feb 2014 22:27:40 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1402252226580.12444@localhost.localdomain>
+References: <1393355728-12056-1-git-send-email-lczerner@redhat.com> <1393355728-12056-6-git-send-email-lczerner@redhat.com> <20140225205349.GD13647@dastard> <alpine.LFD.2.00.1402252156290.12444@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-150801687-1393363663=:12444"
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	xfs@oss.sgi.com
 To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20140225203922.GC13647@dastard>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:25292 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750941AbaBYWEg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 Feb 2014 17:04:36 -0500
+In-Reply-To: <alpine.LFD.2.00.1402252156290.12444@localhost.localdomain>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Feb 26, 2014 at 07:39:22AM +1100, Dave Chinner wrote:
-> > index b3c30db..331257e 100644
-> > --- a/ltp/fsx.c
-> > +++ b/ltp/fsx.c
-> > @@ -35,8 +35,13 @@
-> >  #endif
-> >  #ifdef FALLOCATE
-> >  #include <linux/falloc.h>
-> > +#ifndef FALLOC_FL_PUNCH_HOLE
-> > +#define FALLOC_FL_PUNCH_HOLE    0x02 /* de-allocates range */
-> > +#endif
-> > +#ifndef FALLOC_FL_ZERO_RANGE
-> > +#define FALLOC_FL_ZERO_RANGE    0x10 /* zeroes range */
-> > +#endif
-> >  #endif
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
+
+--8323328-150801687-1393363663=:12444
+Content-Type: TEXT/PLAIN; charset=ISO-8859-15
+Content-Transfer-Encoding: 8BIT
+
+On Tue, 25 Feb 2014, Luká¨ Czerner wrote:
+
+> Date: Tue, 25 Feb 2014 22:01:06 +0100 (CET)
+> From: Luká¨ Czerner <lczerner@redhat.com>
+> To: Dave Chinner <david@fromorbit.com>
+> Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
+> Subject: Re: [PATCH 6/6] ext4/242: Add ext4 specific test for fallocate zero
+>     range
 > 
-> This pattern is appearing all over the place in xfstests now.  I'd
-> suggest that this should really be handled by autoconf,
-> include/config.h and src/globals.h....
+> On Wed, 26 Feb 2014, Dave Chinner wrote:
+> 
+> > Date: Wed, 26 Feb 2014 07:53:49 +1100
+> > From: Dave Chinner <david@fromorbit.com>
+> > To: Lukas Czerner <lczerner@redhat.com>
+> > Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
+> > Subject: Re: [PATCH 6/6] ext4/242: Add ext4 specific test for fallocate zero
+> >     range
+> > 
+> > On Tue, Feb 25, 2014 at 08:15:28PM +0100, Lukas Czerner wrote:
+> > > This is copy of xfs/242. However it's better to make it file system
+> > > specific because the range can be zeroes either directly by writing
+> > > zeroes, or converting to unwritten extent, so the actual result might
+> > > differ from file system to file system.
+> > 
+> > You could say the same thing about preallocation using unwritten
+> > extents. Yet, funnily enough, we have generic tests for them because
+> > all filesystems currently use unwritten extents for preallocation
+> > and behave identically....
+> > 
+> > This test is no different - all filesystems currently use unwritten
+> > extents, and so this test should be generic because all existing
+> > filesystems *should* behave the same.
+> > 
+> > When we get a filesystem that zeros rather uses unwritten extents,
+> > we can add a new *generic* test that tests for zeroed data extents
+> > rather than unwritten extents. All that we will need is a method of
+> > checking what behaviour the filesystem has and adding that to a
+> > _requires directive to ensure the correct generic fallocate tests
+> > are run...
+> 
+> Currently xfs/242 fails on xfs for me and it does behave differently
+> than ext4. Also I had to change to 242.out a bit because ext4 was
+> a little different. It seems to me that it was expected that when
+> the extent is small enough it would be overwritten by zeroes rather
+> than converted to unwritten, but I have not looked into
+> implementation.
+> 
+> Btw this kind of optimization is actually something I've been
+> thinking of as well for ext4. Rather than going though the hassle of
+> changing extents around it might be worth in some situation to zero
+> out. But that's an optimization I have not implemented yet.
 
-Can we handle this nicely using autoconf, especially in the case of O_
-flags that might be different for different architectures?
+Oops, I am taking it back. It's just too late and apparently I've
+overlooked something.
 
-Either way having a single header for the various flags that might not
-be present in the system headers sounds like a good plan.
+-Lukas
 
+> 
+> -Lukas
+> 
+> 
+> > 
+> > Cheers,
+> > 
+> > Dave.
+> > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+--8323328-150801687-1393363663=:12444--
