@@ -1,82 +1,36 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH v5 0/10] fs: Introduce new flag(FALLOC_FL_COLLAPSE_RANGE)
-	for fallocate
-Date: Tue, 25 Feb 2014 15:13:46 +1100
-Message-ID: <20140225041346.GA29907@dastard>
-References: <1392741436-19995-1-git-send-email-linkinjeon@gmail.com>
-	<20140224005710.GH4317@dastard>
-	<20140225141601.358f6e3df2660d4af44da876@canb.auug.org.au>
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Subject: [patch] ext3: remove an unneeded check in ext3_new_blocks()
+Date: Tue, 25 Feb 2014 11:39:45 +0300
+Message-ID: <20140225083945.GC5023@elgon.mountain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Namjae Jeon <linkinjeon@gmail.com>, tytso@mit.edu,
-	Namjae Jeon <namjae.jeon@samsung.com>,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com, bpm@sgi.com,
-	adilger.kernel@dilger.ca, viro@zeniv.linux.org.uk,
-	lczerner@redhat.com, linux-fsdevel@vger.kernel.org, jack@suse.cz,
-	linux-ext4@vger.kernel.org, mtk.manpages@gmail.com
-To: Stephen Rothwell <sfr@canb.auug.org.au>
-Return-path: <xfs-bounces@oss.sgi.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <kernel-janitors-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20140225141601.358f6e3df2660d4af44da876@canb.auug.org.au>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+Sender: kernel-janitors-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Feb 25, 2014 at 02:16:01PM +1100, Stephen Rothwell wrote:
-> Hi Dave,
-> 
-> On Mon, 24 Feb 2014 11:57:10 +1100 Dave Chinner <david@fromorbit.com> wrote:
-> >
-> > > Namjae Jeon (10):
-> > >   fs: Add new flag(FALLOC_FL_COLLAPSE_RANGE) for fallocate
-> > >   xfs: Add support FALLOC_FL_COLLAPSE_RANGE for fallocate
-> > 
-> > I've pushed these to the following branch:
-> > 
-> > 	git://oss.sgi.com/xfs/xfs.git xfs-collapse-range
-> > 
-> > And so they'll be in tomorrow's linux-next tree.
-> > 
-> > >   ext4: Add support FALLOC_FL_COLLAPSE_RANGE for fallocate
-> > 
-> > I've left this one alone for the ext4 guys to sort out.
-> 
-> So presumably that xfs tree branch is now completely stable and so Ted
-> could just merge that branch into the ext4 tree as well and put the ext4
-> part on top of that in his tree.
+We know "fatal" is zero here.  The code can be simplified a bit by
+assigning directly.
 
-Well, for some definition of stable. Right now it's just a topic
-branch that is merged into the for-next branch, so in theory it is
-still just a set of pending changes in a branch in a repo that has
-been pushed to linux-next for testing.
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
 
-That said, I don't see that branch changing unless we find bugs in
-the code or a problem with the API needs fixing, at which point I
-would add more commits to it and rebase the for-next branch that you
-are pulling into the linux-next tree.
-
-Realistically, I'm waiting for Lukas to repost his other pending
-fallocate changes (the zero range changes) so I can pull the VFS and
-XFS bits of that into the XFS tree and I can test them together
-before I'll call the xfs-collapse-range stable and ready to be
-merged into some other tree...
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
+index 22548f56197b..158b5d4ce067 100644
+--- a/fs/ext3/balloc.c
++++ b/fs/ext3/balloc.c
+@@ -1727,10 +1727,7 @@ allocated:
+ 	percpu_counter_sub(&sbi->s_freeblocks_counter, num);
+ 
+ 	BUFFER_TRACE(gdp_bh, "journal_dirty_metadata for group descriptor");
+-	err = ext3_journal_dirty_metadata(handle, gdp_bh);
+-	if (!fatal)
+-		fatal = err;
+-
++	fatal = ext3_journal_dirty_metadata(handle, gdp_bh);
+ 	if (fatal)
+ 		goto out;
+ 
