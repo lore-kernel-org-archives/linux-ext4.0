@@ -1,106 +1,169 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: Re: warning in ext4_journal_start_sb on filesystem freeze
-Date: Tue, 25 Feb 2014 11:21:26 +0100
-Message-ID: <20140225102126.GB1669@quack.suse.cz>
-References: <217983071.143460.1385453196946.JavaMail.zimbra@rapitasystems.com>
- <1697998867.143517.1385454051031.JavaMail.zimbra@rapitasystems.com>
- <20131126125826.GA4503@quack.suse.cz>
- <622177618.727.1393062606061.JavaMail.zimbra@rapitasystems.com>
- <20140224095525.GA20532@quack.suse.cz>
- <20140224154532.GB11992@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Matthew Rahtz <mrahtz-lFL+a/sBLVi/3pe1ocb+swC/G2K4zDHf@public.gmane.org>,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20140224154532.GB11992-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+From: Dongsu Park <dongsu.park@profitbricks.com>
+Subject: [PATCH] util-linux/fallocate: introduce an option -c to support FALLOC_FL_COLLAPSE_RANGE
+Date: Tue, 25 Feb 2014 20:08:25 +0100
+Message-ID: <1393355305-12009-1-git-send-email-dongsu.park@profitbricks.com>
+References: <alpine.LFD.2.00.1402181001530.2216@localhost.localdomain>
+Cc: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org, tytso@mit.edu,
+	Dongsu Park <dongsu.park@profitbricks.com>,
+	Lukas Czerner <lczerner@redhat.com>,
+	Namjae Jeon <namjae.jeon@samsung.com>,
+	Ashish Sangwan <a.sangwan@samsung.com>
+To: Namjae Jeon <linkinjeon@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-bk0-f51.google.com ([209.85.214.51]:41511 "EHLO
+	mail-bk0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752422AbaBYTIj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Feb 2014 14:08:39 -0500
+Received: by mail-bk0-f51.google.com with SMTP id 6so379797bkj.24
+        for <linux-ext4@vger.kernel.org>; Tue, 25 Feb 2014 11:08:37 -0800 (PST)
+In-Reply-To: <alpine.LFD.2.00.1402181001530.2216@localhost.localdomain>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 24-02-14 10:45:32, J. Bruce Fields wrote:
-> On Mon, Feb 24, 2014 at 10:55:25AM +0100, Jan Kara wrote:
-> > On Sat 22-02-14 09:50:06, Matthew Rahtz wrote:
-> > > Thanks for your help Jan,
-> > >=20
-> > > A few months later, we've noticed the issue is actually still the=
-re.
-> > > Using 3.11.0-17-generic on Ubuntu 12.04, we=E2=80=99re seeing thi=
-s in the kernel
-> > > logs:
-> > >=20
-> > > [29243.606215] WARNING: CPU: 0 PID: 1785 at
-> > > /build/buildd/linux-lts-saucy-3.11.0/fs/ext4/ext4_jbd2.c:48
-> > > ext4_journal_check_start+0x83/0x90()
-> > >=20
-> > > Having a look at the Ubuntu source package for that version, it
-> > > definitely does include commit 03d95eb2f2578083a3f6286262e1cb5d88=
-a00c02,
-> > > and the line generating the warning is still:
-> > >=20
-> > > WARN_ON(sb->s_writers.frozen =3D=3D SB_FREEZE_COMPLETE);
-> > >=20
-> > > Are there any other obvious possibilities for what may be causing=
- this?
-> > > There seem to be some users of Oracle Linux experiencing similar =
-problems
-> > > at https://community.oracle.com/thread/2617418, which was apparen=
-tly
-> > > fixed in Oracle's kernel version '3.8.13-26.el6uek'. Any word on =
-when
-> > > this might be integrated into the official kernel?
-> > >=20
-> > > Full call trace included below.
-> >   Looking at the trace below, now the problem seems to be in the NF=
-S server
-> > code. NFS should get protection against the filesystem being frozen=
- (or
-> > remounted read-only for that matter) via mnt_want_write() before ca=
-lling
-> > into notify_change() (actually before calling fh_lock() because of =
-lock
-> > ordering).  Similarly to what we do e.g. in fchownat(). Bruce?
->=20
-> Like this?
-  Yup, that looks right.
+Introduce a new option -c (or --collapse-range) to support a new flag
+FALLOC_FL_COLLAPSE_RANGE for fallocate(2). It will nullify a particular
+range [offset, offset+len] by shifting extents beyond the range to the
+beginning of the hole.
 
-> But I wonder why this is just popping up now--as far as I can tell we=
-'ve
-> had the bug since those write counts were introduced.
-  Yeah, I'm wondering as well. NFS server on ext4 should have been
-complaining for a long time.
+To test that, it's necessary to apply kernel patches in the patchset
+"fs: Introduce new flag (FALLOC_FL_COLLAPSE_RANGE) for fallocate" [1],
+as well as "[PATCH v6] ext4: Add support FALLOC_FL_COLLAPSE_RANGE for
+fallocate". [2]
 
-								Honza
+As discussed in the thread "[PATCH RESEND 3/10] ext4: Add support
+FALLOC_FL_COLLAPSE_RANGE for fallocate", [3] this patch to util-linux
+will be useful for testing collapse-range inside xfstests.
 
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index 6d7be3f..d573b61 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -445,12 +445,16 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc=
-_fh *fhp, struct iattr *iap,
->  		err =3D nfserr_notsync;
->  		goto out_put_write_access;
->  	}
-> +	host_err =3D fh_want_write(fhp);
-> +	if (host_err)
-> +		goto out_nfserr;
-> =20
->  	fh_lock(fhp);
->  	host_err =3D notify_change(dentry, iap, NULL);
->  	fh_unlock(fhp);
-> +	fh_drop_write(fhp);
-> +out_nfserr:
->  	err =3D nfserrno(host_err);
-> -
->  out_put_write_access:
->  	if (size_change)
->  		put_write_access(inode);
---=20
-Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-SUSE Labs, CR
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+[1] https://lkml.org/lkml/2014/2/18/374
+[2] https://lkml.org/lkml/2014/2/20/318
+[3] https://lkml.org/lkml/2014/2/18/83
+
+Cc: Lukas Czerner <lczerner@redhat.com>
+Cc: Namjae Jeon <namjae.jeon@samsung.com>
+Cc: Ashish Sangwan <a.sangwan@samsung.com>
+Signed-off-by: Dongsu Park <dongsu.park@profitbricks.com>
+---
+ sys-utils/fallocate.1 |  7 +++++++
+ sys-utils/fallocate.c | 45 ++++++++++++++++++++++++++++-----------------
+ 2 files changed, 35 insertions(+), 17 deletions(-)
+
+diff --git a/sys-utils/fallocate.1 b/sys-utils/fallocate.1
+index 8a3aa4f..634c595 100644
+--- a/sys-utils/fallocate.1
++++ b/sys-utils/fallocate.1
+@@ -6,6 +6,7 @@ fallocate \- preallocate or deallocate space to a file
+ .B fallocate
+ .RB [ \-n ]
+ .RB [ \-p ]
++.RB [ \-c ]
+ .RB [ \-o
+ .IR offset ]
+ .B \-l
+@@ -54,6 +55,12 @@ implied.
+ .IP
+ You can think of this as doing a "\fBcp --sparse\fP" and
+ renaming the dest file as the original, without the need for extra disk space.
++.IP "\fB\-c, \-\-collapse-range\fP"
++Collapse a particular file range to nullify the hole. Extents beyond the range
++[offset, offset+length] will be shifted to the beginning of hole. Hence this
++command does not leave a hole, while \fI\-\-punch-hole\fP leaves a hole
++instead of shifting extents. Both offset and length should be aligned to
++the block size of filesystem.
+ .IP "\fB\-o, \-\-offset\fP \fIoffset\fP
+ Specifies the beginning offset of the allocation, in bytes.
+ .IP "\fB\-l, \-\-length\fP \fIlength\fP
+diff --git a/sys-utils/fallocate.c b/sys-utils/fallocate.c
+index d8a74bf..3c8a8d2 100644
+--- a/sys-utils/fallocate.c
++++ b/sys-utils/fallocate.c
+@@ -39,7 +39,8 @@
+ #endif
+ 
+ #if defined(HAVE_LINUX_FALLOC_H) && \
+-    (!defined(FALLOC_FL_KEEP_SIZE) || !defined(FALLOC_FL_PUNCH_HOLE))
++    (!defined(FALLOC_FL_KEEP_SIZE) || !defined(FALLOC_FL_PUNCH_HOLE) || \
++     !defined(FALLOC_FL_COLLAPSE_RANGE))
+ # include <linux/falloc.h>	/* non-libc fallback for FALLOC_FL_* flags */
+ #endif
+ 
+@@ -51,6 +52,10 @@
+ # define FALLOC_FL_PUNCH_HOLE 2
+ #endif
+ 
++#ifndef FALLOC_FL_COLLAPSE_RANGE
++# define FALLOC_FL_COLLAPSE_RANGE 8
++#endif
++
+ #include "nls.h"
+ #include "strutils.h"
+ #include "c.h"
+@@ -66,12 +71,13 @@ static void __attribute__((__noreturn__)) usage(FILE *out)
+ 	fprintf(out,
+ 	      _(" %s [options] <filename>\n"), program_invocation_short_name);
+ 	fputs(USAGE_OPTIONS, out);
+-	fputs(_(" -d, --dig-holes     detect and dig holes\n"), out);
+-	fputs(_(" -l, --length <num>  length of the (de)allocation, in bytes\n"), out);
+-	fputs(_(" -n, --keep-size     don't modify the length of the file\n"), out);
+-	fputs(_(" -o, --offset <num>  offset of the (de)allocation, in bytes\n"), out);
+-	fputs(_(" -p, --punch-hole    punch holes in the file\n"), out);
+-	fputs(_(" -v, --verbose       verbose mode\n"), out);
++	fputs(_(" -c, --collapse-range collapse a hole in the file\n"), out);
++	fputs(_(" -d, --dig-holes      detect and dig holes\n"), out);
++	fputs(_(" -l, --length <num>   length of the (de)allocation, in bytes\n"), out);
++	fputs(_(" -n, --keep-size      don't modify the length of the file\n"), out);
++	fputs(_(" -o, --offset <num>   offset of the (de)allocation, in bytes\n"), out);
++	fputs(_(" -p, --punch-hole     punch holes in the file\n"), out);
++	fputs(_(" -v, --verbose        verbose mode\n"), out);
+ 
+ 	fputs(USAGE_SEPARATOR, out);
+ 	fputs(USAGE_HELP, out);
+@@ -258,15 +264,16 @@ int main(int argc, char **argv)
+ 	loff_t	offset = 0;
+ 
+ 	static const struct option longopts[] = {
+-	    { "help",       0, 0, 'h' },
+-	    { "version",    0, 0, 'V' },
+-	    { "keep-size",  0, 0, 'n' },
+-	    { "punch-hole", 0, 0, 'p' },
+-	    { "dig-holes",  0, 0, 'd' },
+-	    { "offset",     1, 0, 'o' },
+-	    { "length",     1, 0, 'l' },
+-	    { "verbose",    0, 0, 'v' },
+-	    { NULL,         0, 0, 0 }
++	    { "help",           0, 0, 'h' },
++	    { "version",        0, 0, 'V' },
++	    { "keep-size",      0, 0, 'n' },
++	    { "punch-hole",     0, 0, 'p' },
++	    { "collapse-range", 0, 0, 'c' },
++	    { "dig-holes",      0, 0, 'd' },
++	    { "offset",         1, 0, 'o' },
++	    { "length",         1, 0, 'l' },
++	    { "verbose",        0, 0, 'v' },
++	    { NULL,             0, 0, 0 }
+ 	};
+ 
+ 	setlocale(LC_ALL, "");
+@@ -274,7 +281,8 @@ int main(int argc, char **argv)
+ 	textdomain(PACKAGE);
+ 	atexit(close_stdout);
+ 
+-	while ((c = getopt_long(argc, argv, "hvVnpdl:o:", longopts, NULL)) != -1) {
++	while ((c = getopt_long(argc, argv, "hvVncpdl:o:", longopts, NULL))
++			!= -1) {
+ 		switch(c) {
+ 		case 'h':
+ 			usage(stdout);
+@@ -282,6 +290,9 @@ int main(int argc, char **argv)
+ 		case 'V':
+ 			printf(UTIL_LINUX_VERSION);
+ 			return EXIT_SUCCESS;
++		case 'c':
++			mode |= FALLOC_FL_COLLAPSE_RANGE;
++			break;
+ 		case 'p':
+ 			mode |= FALLOC_FL_PUNCH_HOLE;
+ 			/* fall through */
+-- 
+1.8.5.3
+
