@@ -1,76 +1,81 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 3/6 v2] ext4: translate fallocate mode bits to strings
-Date: Tue, 25 Feb 2014 20:14:36 +0100
-Message-ID: <1393355679-11160-4-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 4/6 v2] fs: Introduce FALLOC_FL_ZERO_RANGE flag for fallocate
+Date: Tue, 25 Feb 2014 20:14:37 +0100
+Message-ID: <1393355679-11160-5-git-send-email-lczerner@redhat.com>
 References: <1393355679-11160-1-git-send-email-lczerner@redhat.com>
 Cc: tytso@mit.edu, linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
 	Lukas Czerner <lczerner@redhat.com>
 To: linux-ext4@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:9518 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752949AbaBYTPB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 Feb 2014 14:15:01 -0500
 In-Reply-To: <1393355679-11160-1-git-send-email-lczerner@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
+
+Introduce new FALLOC_FL_ZERO_RANGE flag for fallocate. This has the same
+functionality as xfs ioctl XFS_IOC_ZERO_RANGE.
+
+It can be used to convert a range of file to zeros preferably without
+issuing data IO. Blocks should be preallocated for the regions that span
+holes in the file, and the entire range is preferable converted to
+unwritten extents - even though file system may choose to zero out the
+extent or do whatever which will result in reading zeros from the range
+while the range remains allocated for the file.
+
+This can be also used to preallocate blocks past EOF in the same way as
+with fallocate. Flag FALLOC_FL_KEEP_SIZE which should cause the inode
+size to remain the same.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
- fs/ext4/ext4.h              | 1 +
- fs/ext4/extents.c           | 1 -
- include/trace/events/ext4.h | 9 +++++++--
- 3 files changed, 8 insertions(+), 3 deletions(-)
+ fs/open.c                   |  7 ++++++-
+ include/uapi/linux/falloc.h | 14 ++++++++++++++
+ 2 files changed, 20 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index ece5556..3b9601c 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -31,6 +31,7 @@
- #include <linux/percpu_counter.h>
- #include <linux/ratelimit.h>
- #include <crypto/hash.h>
-+#include <linux/falloc.h>
- #ifdef __KERNEL__
- #include <linux/compat.h>
- #endif
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 0e675bc..e5485eb 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -37,7 +37,6 @@
- #include <linux/quotaops.h>
- #include <linux/string.h>
- #include <linux/slab.h>
--#include <linux/falloc.h>
- #include <asm/uaccess.h>
- #include <linux/fiemap.h>
- #include "ext4_jbd2.h"
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index 197d312..451e020 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -68,6 +68,11 @@ struct extent_status;
- 	{ EXTENT_STATUS_DELAYED,	"D" },			\
- 	{ EXTENT_STATUS_HOLE,		"H" })
+diff --git a/fs/open.c b/fs/open.c
+index 4a923a5..c4465b2 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -232,7 +232,12 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
  
-+#define show_falloc_mode(mode) __print_flags(mode, "|",		\
-+	{ FALLOC_FL_KEEP_SIZE,		"KEEP_SIZE"},		\
-+	{ FALLOC_FL_PUNCH_HOLE,		"PUNCH_HOLE"},		\
-+	{ FALLOC_FL_NO_HIDE_STALE,	"NO_HIDE_STALE"})
+ 	/* Return error if mode is not supported */
+ 	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE |
+-		     FALLOC_FL_COLLAPSE_RANGE))
++		     FALLOC_FL_COLLAPSE_RANGE | FALLOC_FL_ZERO_RANGE))
++		return -EOPNOTSUPP;
 +
++	/* Punch hole and zero range are mutually exclusive */
++	if ((mode & (FALLOC_FL_PUNCH_HOLE | FALLOC_FL_ZERO_RANGE)) ==
++	    (FALLOC_FL_PUNCH_HOLE | FALLOC_FL_ZERO_RANGE))
+ 		return -EOPNOTSUPP;
  
- TRACE_EVENT(ext4_free_inode,
- 	TP_PROTO(struct inode *inode),
-@@ -1349,10 +1354,10 @@ TRACE_EVENT(ext4_fallocate_enter,
- 		__entry->mode	= mode;
- 	),
+ 	/* Punch hole must have keep size set */
+diff --git a/include/uapi/linux/falloc.h b/include/uapi/linux/falloc.h
+index 5ff562d..d1197ae 100644
+--- a/include/uapi/linux/falloc.h
++++ b/include/uapi/linux/falloc.h
+@@ -27,4 +27,18 @@
+  */
+ #define FALLOC_FL_COLLAPSE_RANGE	0x08
  
--	TP_printk("dev %d,%d ino %lu pos %lld len %lld mode %d",
-+	TP_printk("dev %d,%d ino %lu pos %lld len %lld mode %s",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino, __entry->pos,
--		  __entry->len, __entry->mode)
-+		  __entry->len, show_falloc_mode(__entry->mode))
- );
- 
- TRACE_EVENT(ext4_fallocate_exit,
++/*
++ * FALLOC_FL_ZERO_RANGE is used to convert a range of file to zeros preferably
++ * without issuing data IO. Blocks should be preallocated for the regions that
++ * span holes in the file, and the entire range is preferable converted to
++ * unwritten extents - even though file system may choose to zero out the
++ * extent or do whatever which will result in reading zeros from the range
++ * while the range remains allocated for the file.
++ *
++ * This can be also used to preallocate blocks past EOF in the same way as
++ * with fallocate. Flag FALLOC_FL_KEEP_SIZE should cause the inode
++ * size to remain the same.
++ */
++#define FALLOC_FL_ZERO_RANGE		0x10
++
+ #endif /* _UAPI_FALLOC_H_ */
 -- 
 1.8.3.1
 
