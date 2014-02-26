@@ -1,176 +1,251 @@
-From: Dave Chinner <david@fromorbit.com>
+From: Hugh Dickins <hughd@google.com>
 Subject: Re: [PATCH v5 0/10] fs: Introduce new flag(FALLOC_FL_COLLAPSE_RANGE)
  for fallocate
-Date: Wed, 26 Feb 2014 14:42:30 +1100
-Message-ID: <20140226034230.GO13647@dastard>
-References: <1392741436-19995-1-git-send-email-linkinjeon@gmail.com>
- <20140224005710.GH4317@dastard>
- <20140225141601.358f6e3df2660d4af44da876@canb.auug.org.au>
- <20140225041346.GA29907@dastard>
- <alpine.LSU.2.11.1402251217030.2380@eggly.anvils>
- <20140225154128.947a2de83a2d0dc21763ccf9@linux-foundation.org>
- <20140226013426.GM13647@dastard>
- <20140225175216.0f0c10f9.akpm@linux-foundation.org>
+Date: Tue, 25 Feb 2014 20:45:15 -0800 (PST)
+Message-ID: <alpine.LSU.2.11.1402251856060.1114@eggly.anvils>
+References: <1392741436-19995-1-git-send-email-linkinjeon@gmail.com> <20140224005710.GH4317@dastard> <20140225141601.358f6e3df2660d4af44da876@canb.auug.org.au> <20140225041346.GA29907@dastard> <alpine.LSU.2.11.1402251217030.2380@eggly.anvils>
+ <20140226011347.GL13647@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: Hugh Dickins <hughd@google.com>, Namjae Jeon <linkinjeon@gmail.com>,
-	Matthew Wilcox <matthew@wil.cx>, Theodore Ts'o <tytso@mit.edu>,
-	Stephen Rothwell <sfr@canb.auug.org.au>, viro@zeniv.linux.org.uk,
-	bpm@sgi.com, adilger.kernel@dilger.ca, jack@suse.cz,
-	mtk.manpages@gmail.com, lczerner@redhat.com,
-	linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-mm@kvack.org, Namjae Jeon <namjae.jeon@samsung.com>
-To: Andrew Morton <akpm@linux-foundation.org>
+    Andrew Morton <akpm@linux-foundation.org>, Matthew Wilcox <matthew@wil.cx>,
+    Theodore Ts'o <tytso@mit.edu>, Stephen Rothwell <sfr@canb.auug.org.au>,
+    viro@zeniv.linux.org.uk, bpm@sgi.com, adilger.kernel@dilger.ca,
+    jack@suse.cz, mtk.manpages@gmail.com, lczerner@redhat.com,
+    linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
+    linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+    Namjae Jeon <namjae.jeon@samsung.com>
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20140225175216.0f0c10f9.akpm@linux-foundation.org>
+In-Reply-To: <20140226011347.GL13647@dastard>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Feb 25, 2014 at 05:52:16PM -0800, Andrew Morton wrote:
-> On Wed, 26 Feb 2014 12:34:26 +1100 Dave Chinner <david@fromorbit.com> wrote:
-> 
-> > On Tue, Feb 25, 2014 at 03:41:28PM -0800, Andrew Morton wrote:
-> > > On Tue, 25 Feb 2014 15:23:35 -0800 (PST) Hugh Dickins <hughd@google.com> wrote:
-> > > > On Tue, 25 Feb 2014, Dave Chinner wrote:
-> > > > > On Tue, Feb 25, 2014 at 02:16:01PM +1100, Stephen Rothwell wrote:
-> > > > > > On Mon, 24 Feb 2014 11:57:10 +1100 Dave Chinner <david@fromorbit.com> wrote:
-> > > > FALLOC_FL_COLLAPSE_RANGE: I'm a little sad at the name COLLAPSE,
-> > > > but probably seven months too late to object.  It surprises me that
-> > > > you're doing all this work to deflate a part of the file, without
-> > > > the obvious complementary work to inflate it - presumably all those
-> > > > advertisers whose ads you're cutting out, will come back to us soon
-> > > > to ask for inflation, so that they have somewhere to reinsert them ;)
+On Wed, 26 Feb 2014, Dave Chinner wrote:
+> On Tue, Feb 25, 2014 at 03:23:35PM -0800, Hugh Dickins wrote:
+> > On Tue, 25 Feb 2014, Dave Chinner wrote:
+> > > On Tue, Feb 25, 2014 at 02:16:01PM +1100, Stephen Rothwell wrote:
+> > > > On Mon, 24 Feb 2014 11:57:10 +1100 Dave Chinner <david@fromorbit.com> wrote:
+> > > > >
+> > > > > > Namjae Jeon (10):
+> > > > > >   fs: Add new flag(FALLOC_FL_COLLAPSE_RANGE) for fallocate
+> > > > > >   xfs: Add support FALLOC_FL_COLLAPSE_RANGE for fallocate
+> > > > > 
+> > > > > I've pushed these to the following branch:
+> > > > > 
+> > > > > 	git://oss.sgi.com/xfs/xfs.git xfs-collapse-range
+> > > > > 
+> > > > > And so they'll be in tomorrow's linux-next tree.
+> > > > > 
+> > > > > >   ext4: Add support FALLOC_FL_COLLAPSE_RANGE for fallocate
+> > > > > 
+> > > > > I've left this one alone for the ext4 guys to sort out.
+> > > > 
+> > > > So presumably that xfs tree branch is now completely stable and so Ted
+> > > > could just merge that branch into the ext4 tree as well and put the ext4
+> > > > part on top of that in his tree.
 > > > 
-> > > Yes, I was wondering that.  Why not simply "move these blocks from here
-> > > to there".
+> > > Well, for some definition of stable. Right now it's just a topic
+> > > branch that is merged into the for-next branch, so in theory it is
+> > > still just a set of pending changes in a branch in a repo that has
+> > > been pushed to linux-next for testing.
+> > > 
+> > > That said, I don't see that branch changing unless we find bugs in
+> > > the code or a problem with the API needs fixing, at which point I
+> > > would add more commits to it and rebase the for-next branch that you
+> > > are pulling into the linux-next tree.
+> > > 
+> > > Realistically, I'm waiting for Lukas to repost his other pending
+> > > fallocate changes (the zero range changes) so I can pull the VFS and
+> > > XFS bits of that into the XFS tree and I can test them together
+> > > before I'll call the xfs-collapse-range stable and ready to be
+> > > merged into some other tree...
 > > 
-> > And open a completely unnecessary can of worms to do with
-> > behavioural and implementation corner cases?
+> > Thank you, Namjae and Dave, for driving this; and thank you, Ted and
+> > Matthew, for raising appropriate mmap concerns (2013-7-31 and 2014-2-2).
+> > I was aware of this work in progress, but only now found time to look.
+> > 
+> > I've not studied the implementation, knowing too little of ext4 and
+> > xfs; but it sounds like the approach you've taken, writing out dirties
+> > and truncating all pagecache from the critical offset onwards, is the
+> > sensible approach for now - lame, and leaves me wondering whether an
+> > offline tool wouldn't be more appropriate; but a safe place to start
+> > if we suppose it will be extended to handle pagecache better in future.
 > 
-> But it's general.
+> Offline? You mean with the filesystem unmounted, or something else?
 
-Exactly. And because it's general, you can't make arbitrary
-decisions about the behaviour.
+"Something else": which I don't expect you to leap into implementing.
 
-> > Do you allow it to destroy data by default? Or only allow moves into
-> > holes?
 > 
-> Overwrite.
-
-Application dev says: "I don't want it to overwrite data - I only
-want to it succeed if it's moving into a hole that I've already
-prepared".
-
-> > What do you do with range the data is moved out of? Does it just
-> > become a hole? What happens if the range overlaps EOF - does that
-> > change the file size?
+> > Of course I'm interested in the possibility of extending it to tmpfs;
+> > which may not be a worthwhile exercise in itself, except that it would
+> > force us to face and solve any pagecache/radixtree issues, if possible,
+> > thereby enhancing the support for disk-based filesystems.
+> > 
+> > I doubt we should look into that before Jan Kara's range locking mods
+> > arrive, or are rejected.  As I understand it, you're going ahead with
+> > this, knowing that there can be awkward races with concurrent faults -
+> > more likely to cause trinity fuzzer reports, than interfere with daily
+> > usage (trinity seems to be good at faulting into holes being punched).
 > 
-> Truncate.
+> Yes, the caveat is that the applications that use it (TVs, DVRs, NLE
+> applications, etc) typically don't use mmap for accessing the data
+> stream being modified. Further, it's much less generally useful than
+> holepunching, so when these two are combined, the likely exposure to
+> issues resulting from mmap deficiencies are pretty damn low.
 
-A.D. says: "But I need FALLOC_FL_KEEP_SIZE semantics"
+Agreed, but we do want to define how the interaction behaves, we want
+it to be the same across all filesystems supporting COLLAPSE_RANGE,
+and we don't want it to lead to system crashes or corruptions.
 
-> > What if you want to move the range beyond EOF?
 > 
-> Extend.
-
-Filesystem developer says: "Ok, so what happens to the range between
-the old EOF and destintation offset? What do you do with blocks
-beyond EOF that fall within that range? punch, zero, preallocate the
-entire range? Do users need to be able to specify this behaviour?
-Hell, do we even know of an application that requires this
-behaviour?"
-
-> > What if the source and destination ranges overlap?
+> > That's probably the right pragmatic decision; but I'm a little worried
+> > that it's justfied by saying we already have such races in hole-punch.
+> > Collapse is significantly more challenging than either hole-punch or
+> > truncation: the shifting of pages from one offset to another is new,
+> > and might present nastier bugs.
 > 
-> Don't screw it up.
+> Symptoms might be different, but it's exactly the same problem. i.e.
+> mmap_sem locking inversions preventing the filesystem from
+> serialising IO path operations like hole punch, truncate and other
+> extent manipulation operations against concurrent page faults
+> that enter the IO path.
 
-Exactly my point - it's a complex behaviour that is difficult to
-verify that it is correct.
+That may (may) be true of the current kick-everything-out-of-pagecache
+approach.  But in general I stand by "Collapse is significantly more
+challenging".  Forgive me if that amounts to saying "Hey, here's a
+more complicated way to do it.  Ooh, this way is more complicated."
+The concept of moving a page from one file offset to another is new,
+and can be expected to pose new difficulties.
 
-> > What happens when you move the block at EOF into the middle of a
-> > file - do you end up with zeros padding the block and the file size
-> > having to be adjusted accordingly? Or do we have to *copy* all the
-> > data in high blocks down to fill the hole in the block?
 > 
-> I don't understand that.  Move the block(s) and truncate to the new
-> length.
-
-So, you are saying this (move from s to d):
-
-     +-----------------------------------------------------+
-                                             +sssssssssssss+
-              +ddddddddddddd+
-
-should result in:
-
-     +--------+ddddddddddddd+
-
-
-A.D. says: "That's not what I asked for! What happened to all the
-rest of my data in the file between d and s? I didn't ask for them
-to be removed. And I want a hole where the source was!"
-
-> > What behaviour should we expect if the filesystem can't implement
-> > the entire move atomically and we crash in the middle of the move?
+> > Emphasis on "might": I expect it's impossible, given your current
+> > approach, but something to be on guard against is unmap_mapping_range()
+> > failing to find and unmap a pte, because the page is mapped at the
+> > "wrong" place in the vma, resulting in BUG_ON(page_mapped(page))
+> > in __delete_from_page_cache().
 > 
-> What does collapse_range do now?
+> Unmapping occurs before anything is shifted. And even if a fault
+> does occur before the file size changes at the end of a collapse
+> range operation (via the truncate path), the page in the page cache
+> won't be moved about so I don't see how the above problem could
+> occur. All that will happen is that you get the wrong data in the
+> mmap()d page, just like you will with hole_punch issues.
+
+I think you're probably right.  I expect that attempting to fault
+a page back from disk while collapse is shifting down, will hit a
+mutex and wait.  But that's liable to differ from filesystem to
+filesystem, so I'm not certain.
+
 > 
-> If it's a journaled filesystem, it shouldn't screw up.  If it isn't, fsck.
-
-Define "screw up". For journalled filesystems "don't screw up" means
-the filesystem will be consistent after a crash, not that a change
-made in a syscall is completed atomicly.
-
-Indeed, collapse range isn't implemented atomically in XFS, and I
-doubt it is in ext4. Why? Because the extent tree being manipulated
-can be *much* larger than the journal and so the changes can't
-easily be done atomically from a crash recovery perspective. The
-result is that collapse range will end up with a hole somewhere in
-the file the size of the range being collapsed. This was pointed out
-during review some time in the past 6 months and, IIRC, the response
-was "that's fine, just so long as the filesystem is not corrupted".
-I have plans to fix this issue in XFS, but it isn't critical to the
-correct functioning of devices using collapse range.
-
-This just illustrates my point is that behaviour needs to be
-specified so that we can get all filesystems with the same minimum
-crash guarantees....
-
-> > I can keep going, but I'll stop here - you get the idea.
+> > One thing that is slightly wrong in what you have right now, is your
+> > use of truncate_pagecache_range(): you'll need to add an "even_cows"
+> > arg to that (or make it a wrapper to a __truncate_pagecache_range()
+> > taking additional "even_cows" arg).  That arg governs what is done
+> > with anonymous COW'ed pages in a MAP_PRIVATE mmap of the file.
+> > 
+> > Truncation is required by spec to unmap them; hole punching was up
+> > to us to spec, did not unmap them originally (because there was no
+> > preliminary call to unmap_mapping_range(), so it happened to rely
+> > on the inefficient fallback within truncate_inode_page()), and that
+> > seemed fine because, why discard a user's data unnecessarily?
 > 
-> None of this seems like rocket science.
+> I don't see there being a problem here - it's the same case as hole
+> punch. And when we change the file size after shifting extents we
+> are doing a truncate so that will behave as expected w.r.t.
+> anonymous COW'ed pages in a MAP_PRIVATE mmap of the file.
 
-It's not rocket science, but the devil is in the details. There's no
-requirements or specification to work from, let alone an application
-that needs such generic functionality. Until these exist and there's
-someone willing to put the effort into specifying, implementing and
-testing such an interface, it's just not going to happen.
+No, it's only the same case as hole punch, up to a point.
 
-> > In comparison, collapse range as a file data manipulation has very
-> > specific requirements and from that we can define a simple, specific
-> > API that allows filesystems to accelerate that operation by extent
-> > manipulation rather than read/memcpy/write that the applications are
-> > currently doing for this operation....  IOWs, collapse range is a
-> > simple operation, "move arbitrary blocks from here to there" is a
-> > nightmare both from the specification and the implementation points
-> > of view.
 > 
-> collapse_range seems weird, arbitrary and half-assed.  "Why didn't they
-> go all the way and do it properly".
+> > But your case is different: collapse is much closer to truncation,
+> > and if you do not unmap the private COW'ed pages, then pages left
+> > behind beyond the EOF will break the spec that requires SIGBUS when
+> > touching there, and pages within EOF will be confusingly derived
+> > from file data now belonging to another offset or none (move these
+> > pages within the user address space? no, I don't think anon_vmas
+> > would allow that, and there may be no right place to move them).
+> 
+> See above - we never leave pages beyond the new EOF because setting
+> the new EOF is a truncate operation that calls
+> truncate_setsize(inode, newsize).
 
-Yup, I can apply exactly the same argument to FALLOC_FL_PREALLOC and
-FALLOC_FL_PUNCH_HOLE. We should have done them as part of a generic
-block movement API as they are simply degenerate cases of NULL
-source/destination targets for the block movement API....
+Right, thanks, I now see the truncate_setsize() in the xfs case -
+though not in the ext4 case, which looks as if it's just doing an
+i_size_write() afterwards.
 
-Cheers,
+Yes, truncate_setsize() at the end should answer my SIGBUS objection.
+And with that out of the way, although I don't particularly care for
+the weirdness of private COW'ed pages becoming associated with file
+offsets they never originated from, I don't think I could argue with
+you when you tell me "well, that's the weirdness you get from mixing
+COLLAPSE_RANGE with MAP_PRIVATE mmaps".
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+Looks like there's no need for the __truncate_pagecache_range() with
+even_cows arg that I was advocating: we just need ext4 to truncate
+properly at the end, and document the disassociated private pages.
+
+> 
+> > It's clear that the right and easy thing to do is just to unmap
+> > them (all of them, from critical offset to EOF), in the rare case
+> > of there being any such pages.  Whether this detail needs to be
+> > mentioned in the man page (I don't like throwing away a user's
+> > data without warning) I'm not sure, Michael can judge.
+> > 
+> > FALLOC_FL_COLLAPSE_RANGE: I'm a little sad at the name COLLAPSE,
+> > but probably seven months too late to object.  It surprises me that
+> > you're doing all this work to deflate a part of the file, without
+> > the obvious complementary work to inflate it - presumably all those
+> > advertisers whose ads you're cutting out, will come back to us soon
+> > to ask for inflation, so that they have somewhere to reinsert them ;)
+> 
+> The name makes no difference to me - it's a filesystem offload
+> function of a very specific nature. If we require the opposite
+> behaviour - inserting unwritten extents after shifting the data up
+> out of the way - then we can just add a new FALLOC_FL_INSERT_RANGE
+> command to do that.
+> 
+> But in the absence of anyone needing such functionality, the
+> complexity of implementing it is not worth the effort.
+
+Yes, it's not a requirement that it be implemented immediately.
+
+> 
+> > I should mention that when "we" implemented this thirty years ago,
+> > we had a strong conviction that the system call should be idempotent:
+> > that is, the len argument should indicate the final i_size, not the
+> > amount being removed from it.  Now, I don't remember the grounds for
+> > that conviction: maybe it was just an idealistic preference for how
+> > to design a good system call.  I can certainly see that defining it
+> > that way round would surprise many app programmers.  Just mentioning
+> > this in case anyone on these lists sees a practical advantage to
+> > doing it that way instead.
+> 
+> I don't see how specifying the end file size as an improvement. What
+> happens if you are collapse a range in a file that is still being
+> appended to by the application and so you race with a file size
+> update? IOWs, with such an API the range to be collapsed is
+> completely unpredictable, and IMO that's a fundamentally broken API.
+
+That's fine if you don't see the idempotent API as an improvement,
+I just wanted to put it on the table in case someone does see an
+advantage to it.  But I think I'm missing something in your race
+example: I don't see a difference between the two APIs there.
+
+> 
+> > I see you've included xfstests and xfs_io updates, nice.  Did you
+> > realize that util-linux has a /usr/bin/fallocate?  I hope someone
+> > will update that too.
+> 
+> I don't care about /usr/bin/fallocate - I've never used it in my
+> life because xfs_io exists on all my systems and is way more
+> powerful and useful to me than /usr/bin/fallocate. Regardless,
+> I think someone posted patches for it yesterday.
+
+Your scorn is noted: yes, it is pretty simple,
+but I'm glad to hear Dongsu is attending to it.
+
+Hugh
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
