@@ -1,115 +1,68 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH v5 1/10] fs: Add new flag(FALLOC_FL_COLLAPSE_RANGE) for
- fallocate
-Date: Wed, 26 Feb 2014 12:57:47 +1100
-Message-ID: <20140226015747.GN13647@dastard>
-References: <1392741464-20029-1-git-send-email-linkinjeon@gmail.com>
- <20140222140625.GD26637@thunk.org>
- <20140223213606.GE4317@dastard>
- <alpine.LSU.2.11.1402251525370.2380@eggly.anvils>
+From: ZhangZhen <zhenzhang.zhang@huawei.com>
+Subject: [PATCH] ext2/3: use prandom_u32() instead of get_random_bytes()
+Date: Wed, 26 Feb 2014 10:32:41 +0800
+Message-ID: <530D5249.4020005@huawei.com>
+References: <530D4BBB.6090600@huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Theodore Ts'o <tytso@mit.edu>, Namjae Jeon <linkinjeon@gmail.com>,
-	viro@zeniv.linux.org.uk, bpm@sgi.com, adilger.kernel@dilger.ca,
-	jack@suse.cz, mtk.manpages@gmail.com, lczerner@redhat.com,
-	linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-mm@kvack.org, Namjae Jeon <namjae.jeon@samsung.com>,
-	Ashish Sangwan <a.sangwan@samsung.com>
-To: Hugh Dickins <hughd@google.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.LSU.2.11.1402251525370.2380@eggly.anvils>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="ISO-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: <linux-ext4@vger.kernel.org>
+To: <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from szxga01-in.huawei.com ([119.145.14.64]:57301 "EHLO
+	szxga01-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751062AbaBZCcx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Feb 2014 21:32:53 -0500
+In-Reply-To: <530D4BBB.6090600@huawei.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Feb 25, 2014 at 03:41:20PM -0800, Hugh Dickins wrote:
-> On Mon, 24 Feb 2014, Dave Chinner wrote:
-> > On Sat, Feb 22, 2014 at 09:06:25AM -0500, Theodore Ts'o wrote:
-> > > On Wed, Feb 19, 2014 at 01:37:43AM +0900, Namjae Jeon wrote:
-> > > > +	/*
-> > > > +	 * There is no need to overlap collapse range with EOF, in which case
-> > > > +	 * it is effectively a truncate operation
-> > > > +	 */
-> > > > +	if ((mode & FALLOC_FL_COLLAPSE_RANGE) &&
-> > > > +	    (offset + len >= i_size_read(inode)))
-> > > > +		return -EINVAL;
-> > > > +
-> > > 
-> > > I wonder if we should just translate a collapse range that is
-> > > equivalent to a truncate operation to, in fact, be a truncate
-> > > operation?
-> > 
-> > Trying to collapse a range that extends beyond EOF, IMO, is likely
-> > to only happen if the DVR/NLE application is buggy. Hence I think
-> > that telling the application it is doing something that is likely to
-> > be wrong is better than silently truncating the file....
-> 
-> I do agree with Ted on this point.  This is not an xfs ioctl added
-> for one DVR/NLE application, it's a mode of a Linux system call.
-> 
-> We do not usually reject with an error when one system call happens
-> to ask for something which can already be accomplished another way;
-> nor nanny our callers.
-> 
-> It seems natural to me that COLLAPSE_RANGE should support beyond EOF;
-> unless that adds significantly to implementation difficulties?
+Many of the uses of get_random_bytes() do not actually need
+cryptographically secure random numbers.  Replace those uses with a
+call to prandom_u32(), which is faster and which doesn't consume
+entropy from the /dev/random driver.
 
-Yes, it does add to the implementation complexity significantly - it
-adds data security issues that don't exist with the current API.
+The commit dd1f723bf56bd96efc9d90e9e60dc511c79de48f has made that for
+ext4, and i did the same for ext2/3.
 
-That is, Filesystems can have uninitialised blocks beyond EOF so
-if we allow COLLAPSE_RANGE to shift them down within EOF, we now
-have to ensure they are properly zeroed or marked as unwritten.
+Signed-off-by: Zhang Zhen <zhenzhang.zhang@huawei.com>
+---
+ fs/ext2/ialloc.c | 2 +-
+ fs/ext3/ialloc.c | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-It also makes implementations more difficult. For example, XFS can
-also have in-memory delayed allocation extents beyond EOF, and they
-can't be brought into the range < EOF without either:
+diff --git a/fs/ext2/ialloc.c b/fs/ext2/ialloc.c
+index 7cadd82..32f131a 100644
+--- a/fs/ext2/ialloc.c
++++ b/fs/ext2/ialloc.c
+@@ -284,7 +284,7 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent)
+ 		int best_ndir = inodes_per_group;
+ 		int best_group = -1;
 
-	a) inserting zeroed pages with appropriately set up
-	and mapped bufferheads into the page cache for the range
-	that sits within EOF; or
-	b) truncating the delalloc extents beyond EOF before the
-	move
+-		get_random_bytes(&group, sizeof(group));
++		grp = prandom_u32();
+ 		parent_group = (unsigned)group % ngroups;
+ 		for (i = 0; i < ngroups; i++) {
+ 			group = (parent_group + i) % ngroups;
+diff --git a/fs/ext3/ialloc.c b/fs/ext3/ialloc.c
+index 082afd7..60e63e3 100644
+--- a/fs/ext3/ialloc.c
++++ b/fs/ext3/ialloc.c
+@@ -215,7 +215,7 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent)
+ 		int best_ndir = inodes_per_group;
+ 		int best_group = -1;
 
-So, really, the moment you go beyond EOF filesystems have to do
-quite a bit more validation and IO in the context of the system
-call. It no longer becomes a pure extent manipulation offload - it
-becomes a data security problem.
-
-And, indeed, the specification that we are working to is that the
-applications that want to collapse the range of a file are using
-this function instead of read/memcpy/write/truncate, which by
-definition means they cannot shift ranges of the file beyond EOF
-into the new file.
-
-So IMO the API defines the functionality as required by the
-applications that require it and *no more*. If you need some
-different behaviour - we can add it via additional flags in future
-when you have an application that requires it. 
-
-> Actually, is it even correct to fail at EOF?  What if fallocation
-> with FALLOC_FL_KEEP_SIZE was used earlier, to allocate beyond EOF:
-> shouldn't it be possible to shift that allocation down, along with
-> the EOF, rather than leave it behind as a stranded island?
-
-It does get shifted down - it just remains beyond EOF, just like it
-was before the operation. And that is part of the specification of
-COLLAPSE_RANGE - it was done so that preallocation (physical or
-speculative delayed allocation) beyond EOF to avoid fragmentation as
-the DVR continues to write is not screwed up by chopping out earlier
-parts of the file.
-
-Cheers,
-
-Dave.
+-		get_random_bytes(&group, sizeof(group));
++		grp = prandom_u32();
+ 		parent_group = (unsigned)group % ngroups;
+ 		for (i = 0; i < ngroups; i++) {
+ 			group = (parent_group + i) % ngroups;
 -- 
-Dave Chinner
-david@fromorbit.com
+1.8.1.4
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+
+.
+
+
+
+
