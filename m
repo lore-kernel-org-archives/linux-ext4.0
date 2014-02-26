@@ -1,77 +1,79 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext2/3: use prandom_u32() instead of get_random_bytes()
-Date: Wed, 26 Feb 2014 12:08:14 +0100
-Message-ID: <20140226110814.GC6989@quack.suse.cz>
-References: <530D4BBB.6090600@huawei.com>
- <530D5249.4020005@huawei.com>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH 3/6] xfstests: fsstress punch should always have
+	FALLOC_FL_KEEP_SIZE set
+Date: Wed, 26 Feb 2014 14:04:10 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1402261400250.2243@localhost.localdomain>
+References: <1393355728-12056-1-git-send-email-lczerner@redhat.com>
+	<1393355728-12056-3-git-send-email-lczerner@redhat.com>
+	<20140225201854.GA13647@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: jack@suse.cz, linux-ext4@vger.kernel.org
-To: ZhangZhen <zhenzhang.zhang@huawei.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:40995 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752064AbaBZLIR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 26 Feb 2014 06:08:17 -0500
-Content-Disposition: inline
-In-Reply-To: <530D5249.4020005@huawei.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, xfs@oss.sgi.com
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <20140225201854.GA13647@dastard>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed 26-02-14 10:32:41, ZhangZhen wrote:
-> Many of the uses of get_random_bytes() do not actually need
-> cryptographically secure random numbers.  Replace those uses with a
-> call to prandom_u32(), which is faster and which doesn't consume
-> entropy from the /dev/random driver.
-> 
-> The commit dd1f723bf56bd96efc9d90e9e60dc511c79de48f has made that for
-> ext4, and i did the same for ext2/3.
-  Thanks. I've merged the patch to my tree.
+On Wed, 26 Feb 2014, Dave Chinner wrote:
 
-								Honza
+> Date: Wed, 26 Feb 2014 07:18:54 +1100
+> From: Dave Chinner <david@fromorbit.com>
+> To: Lukas Czerner <lczerner@redhat.com>
+> Cc: linux-ext4@vger.kernel.org, xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org
+> Subject: Re: [PATCH 3/6] xfstests: fsstress punch should always have
+>     FALLOC_FL_KEEP_SIZE set
+> 
+> On Tue, Feb 25, 2014 at 08:15:25PM +0100, Lukas Czerner wrote:
+> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> > ---
+> >  ltp/fsstress.c | 2 +-
+> >  1 file changed, 1 insertion(+), 1 deletion(-)
+> > 
+> > diff --git a/ltp/fsstress.c b/ltp/fsstress.c
+> > index 4c3368f..42c8a5a 100644
+> > --- a/ltp/fsstress.c
+> > +++ b/ltp/fsstress.c
+> > @@ -2555,8 +2555,8 @@ punch_f(int opno, long r)
+> >  	off = (off64_t)(lr % MIN(stb.st_size + (1024 * 1024), MAXFSIZE));
+> >  	off %= maxfsize;
+> >  	len = (off64_t)(random() % (1024 * 1024));
+> > -	mode |= FALLOC_FL_KEEP_SIZE & random();
+> >  	e = fallocate(fd, mode, (loff_t)off, (loff_t)len) < 0 ? errno : 0;
+> > +	mode |= FALLOC_FL_KEEP_SIZE;
+> >  	if (v)
+> >  		printf("%d/%d: punch hole(%d) %s %s %lld %lld %d\n",
+> >  		       procid, opno, mode,
+> 
+> NACK. There's nothing wrong with testing a set of parameters that
+> should fail in a stress test.
+
+How is this testing ? We do not actually test whether it fails when
+it should and vice versa. Only thing that it does right now is
+making punch hole testing less efficient.
+
+We do not really test correctness of the arguments in fsstress.
+
+-Lukas
 
 > 
-> Signed-off-by: Zhang Zhen <zhenzhang.zhang@huawei.com>
-> ---
->  fs/ext2/ialloc.c | 2 +-
->  fs/ext3/ialloc.c | 2 +-
->  2 files changed, 2 insertions(+), 2 deletions(-)
+> Regardless, the patch is wrong...
 > 
-> diff --git a/fs/ext2/ialloc.c b/fs/ext2/ialloc.c
-> index 7cadd82..32f131a 100644
-> --- a/fs/ext2/ialloc.c
-> +++ b/fs/ext2/ialloc.c
-> @@ -284,7 +284,7 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent)
->  		int best_ndir = inodes_per_group;
->  		int best_group = -1;
+> Cheers,
 > 
-> -		get_random_bytes(&group, sizeof(group));
-> +		grp = prandom_u32();
->  		parent_group = (unsigned)group % ngroups;
->  		for (i = 0; i < ngroups; i++) {
->  			group = (parent_group + i) % ngroups;
-> diff --git a/fs/ext3/ialloc.c b/fs/ext3/ialloc.c
-> index 082afd7..60e63e3 100644
-> --- a/fs/ext3/ialloc.c
-> +++ b/fs/ext3/ialloc.c
-> @@ -215,7 +215,7 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent)
->  		int best_ndir = inodes_per_group;
->  		int best_group = -1;
+> Dave.
 > 
-> -		get_random_bytes(&group, sizeof(group));
-> +		grp = prandom_u32();
->  		parent_group = (unsigned)group % ngroups;
->  		for (i = 0; i < ngroups; i++) {
->  			group = (parent_group + i) % ngroups;
-> -- 
-> 1.8.1.4
-> 
-> 
-> .
-> 
-> 
-> 
-> 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
