@@ -1,87 +1,68 @@
 From: Phillip Susi <psusi@ubuntu.com>
-Subject: Re: A tool that allows changing inode table sizes
-Date: Thu, 27 Feb 2014 11:35:28 -0500
-Message-ID: <530F6950.2020702@ubuntu.com>
-References: <ea490dfe40d0de3a5c0cb388e749f172@yourcmc.ru>
+Subject: Re: [PATCH 2/2] libext2fs/e2fsck: implement metadata prefetching
+Date: Thu, 27 Feb 2014 12:03:56 -0500
+Message-ID: <530F6FFC.4040903@ubuntu.com>
+References: <20140130235044.31064.38113.stgit@birch.djwong.org> <20140130235058.31064.21096.stgit@birch.djwong.org> <45DEEA58-69FD-42EF-BB51-1A8D80000469@dilger.ca> <20140131135325.GF7118@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-To: vitalif@yourcmc.ru, linux-ext4@vger.kernel.org
+Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:46848 "EHLO
+Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:63689 "EHLO
 	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752880AbaB0Qfa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Feb 2014 11:35:30 -0500
-In-Reply-To: <ea490dfe40d0de3a5c0cb388e749f172@yourcmc.ru>
+	with ESMTP id S1753107AbaB0RD6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Feb 2014 12:03:58 -0500
+In-Reply-To: <20140131135325.GF7118@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 -----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
-Wow!  That is quite a project, and this patch manager sounds very
-nice.  Good work!
+On 1/31/2014 8:53 AM, Theodore Ts'o wrote:
+> Something that we might need to go to in the future is instead of 
+> using mmap(), to maintain our own explicit buffer cache inside 
+> unix_io, and use direct I/O to avoid caching the disk blocks
+> twice. Then when we use a single-threaded disk prefetcher, managed
+> by the unix_io, it will know when a particular I/O request has
+> completed, and more importantly, if there is a synchronous read
+> request coming in from main body of the program, it can stop
+> prefetching and allow the higher priority read to complete.  We can
+> also experiment with how many threads might make sense --- even
+> with an HDD, using multiple threads so that we can take advantage
+> of NCQ might still be a win.
 
-On 1/15/2014 8:28 AM, vitalif@yourcmc.ru wrote:
-> Hi all!
-> 
-> As I understand it was a well-known fact that ext2/3/4 does not
-> allow changing inode table size without recreating the filesystem.
-> And I didn't have any experience in linux filesystem internals
-> until recently, when I've discovered that inode tables take 45 GB
-> on one of my hard drives (3 TB in size) :-):-) that hard drive is,
-> of course, full of movies, not 16Kb files, so the inode tables are
-> almost 100% unused.
-> 
-> So, I've thought it would be good if it it would possible to
-> change inode table sizes. So I've written a tool that in fact
-> allows to do it, and I want to present it to the community! :)
-> 
-> Anyone is welcome to test it of course if it's of any interest for
-> you - the source is here 
-> http://svn.yourcmc.ru/viewvc.py/vitalif/trunk/ext4-realloc-inodes/ 
-> ('download tarball') (maybe it would be better to move it into a 
-> separate git repo, of course)
-> 
-> I didn't test it on a real hard drive yet :-D, only on small fs
-> images with different settings (block, block group, flex_bg size,
-> ext2/3/4, bigalloc and etc). There are even some auto-tests (ran by
-> 'make test'). The tools works without problem on all small test
-> images that I've created, though I didn't try to run it on bigger
-> filesystems (of course I'll do it in the nearest future).
-> 
-> As this is a highly destructive process that involves overwriting
-> ALL inode numbers in ALL directory entries across the whole
-> filesystem, I've also implemented a simple method of safely
-> applying/rolling back changes. First I've tried to use
-> undo_io_manager, but it appears to be very slow because of frequent
-> commits, which are of course needed for it to be safe. My method is
-> called patch_io_manager and does a different thing - it does not
-> overwrite the initial FS image, but writes all modified blocks into
-> a separate sparse file + writes a bitmap of modified blocks in the
-> end when it finishes. I.e. the initial filesystem stays
-> unmodified.
-> 
-> Then, using e2patch utility (it's in the same repository), you can
-> a) backup the blocks that will be modified into another patch file
-> (e2patch backup <fs> <patch> <backup>) and b) apply the patch to
-> real filesystem. If the applying process gets interrupted (for
-> example by the power outage) it can be restarted from the beginning
-> because it does nothing except just overwriting some blocks. And if
-> the FS changes appear to be bad at all, you can restore the backup
-> in a same way. So the process should be safe at least to some
-> extent.
-> 
+Why build your own cache instead of letting the kernel take care of
+it?  I  believe the IO elevator already gives preferential treatment
+to blocking reads so just using readahead() to prefetch and sticking
+with plain old read() should work nicely.
+
+> Finally, if we are managing our own buffer cache, we should
+> consider adding a bforget method to the I/O manager.  That way
+> e2fsck can give hints to the caching layer that a block isn't
+> needed any more.  If it is in the cache, it can be dropped, to free
+> memory, and if it is still on the to-be-prefetched list it should
+> also be dropped.  (Of course, if a block is on the to-be-prefetched
+> list, and a synchronous read request comes in for that block, we
+> should have dropped it from the to-be-prefetched list at that
+> point.)  The main use for having a bforget method is for the most
+> part, once we are done scanning a non-directory extent tree block,
+> we won't be needing it again.
+
+Good idea, but this also could just be translated to posix_fadvise to
+have the kernel drop the pages from the cache.
 
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v2.0.17 (MingW32)
 Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
 
-iQEcBAEBAgAGBQJTD2lQAAoJEI5FoCIzSKrwrigH/jNowCyOlpQSzJZhRr6GH6GS
-2R9o5Y5xyAD45EzuLHGNQVJ0kWo+nK88SDhn1cO4ZmHrpwEEZXo1g4EaPXglTXaw
-LhV3/Nexw83dB6JbfIff7ko4b6IgIBtugRPuvSuWPxpGg8+3QuXKE89DzfPbC0SI
-46KiT94QsJOVdtWYlZ91klJsswMW80VOVUm+EJXz+A+E1/HnSEe/ytwsV7nIaVEq
-Xq/hiQ6sYvYEpOmLXLOL10VnHlvzzEqgFG2Q7AttcyUzUw8igkpXqBu6wO265uO8
-ENgWJrjMKaSKpE4JqZiaXJvuke7hR7luW28mY5qydlLnvcW2IH/cN6eGgZGUhWc=
-=nyEa
+iQEcBAEBAgAGBQJTD2/8AAoJEI5FoCIzSKrwN9QIAKKyOssDAoy6Zab7w+j6aXdH
+f8Lzw/+WWevPpvX1o9SakQXVYejkiZBcEhJ/NrtQoDzQjesrERpKIj7m+Yb2blaQ
+VYu9hj21ReVYngmmOlUHL9LJJtfwGptyO3SGvuSZv3NooMjEu51tCXxHLxONaYAb
+SqvRBVH57E7hY1HckKTbD14YleKn/SD7peNIp1KP39zQw1soR83+oHh2qZ3Zaq7E
+fa/UG7tnIMcOjHghacr83LA7XW+sQYn8pDeAmw38SKe+uiHvcqjzych6lQlKLw19
+pKdzERd8zaPsiS2y4og/RzWZHolohiDp67cWRncYKm3ai2w4KbU9KXlQHa/6Fy0=
+=orjY
 -----END PGP SIGNATURE-----
