@@ -1,135 +1,89 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] ext4: fix NULL pointer dereference in
- ext4_validate_block_bitmap()
-Date: Thu, 27 Feb 2014 10:35:27 -0800
-Message-ID: <20140227183527.GA9876@birch.djwong.org>
-References: <1393495278-11100-1-git-send-email-mlombard@redhat.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 6/6] ext4/242: Add ext4 specific test for fallocate zero
+ range
+Date: Fri, 28 Feb 2014 06:35:33 +1100
+Message-ID: <20140227193533.GB30131@dastard>
+References: <1393355728-12056-1-git-send-email-lczerner@redhat.com>
+ <1393355728-12056-6-git-send-email-lczerner@redhat.com>
+ <20140225205349.GD13647@dastard>
+ <alpine.LFD.2.00.1402252156290.12444@localhost.localdomain>
+ <20140225215011.GF13647@dastard>
+ <alpine.LFD.2.00.1402261520070.2243@localhost.localdomain>
+ <20140226220106.GC29907@dastard>
+ <alpine.LFD.2.00.1402271257590.2247@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	tytso@mit.edu, adilger.kernel@dilger.ca
-To: Maurizio Lombardi <mlombard@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:42544 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751384AbaB0Sfk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Feb 2014 13:35:40 -0500
+	xfs@oss.sgi.com
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1393495278-11100-1-git-send-email-mlombard@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <alpine.LFD.2.00.1402271257590.2247@localhost.localdomain>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Feb 27, 2014 at 11:01:18AM +0100, Maurizio Lombardi wrote:
-> If EXT4FS_DEBUG is defined, ext4_count_clusters() performs some additional
-> checks on the block bitmaps at mount time, ext4_validate_block_bitmap()
-> is called but the superblock doesn't contain a valid s_group_info
-> pointer yet.
-> 
-> This patch fixes the bug by modifying ext4_validate_block_bitmap() so
-> it verifies whether the s_group_info pointer is valid or not before
-> using it.
+On Thu, Feb 27, 2014 at 01:03:09PM +0100, Luk=C3=A1=C5=A1 Czerner wrote=
+:
+> On Thu, 27 Feb 2014, Dave Chinner wrote:
+> > > xfs/242 fails on ppc64 with latest linus tree
+> >=20
+> > OK, that's a different kettle of fish. It's using 64k pages, right?
+>=20
+> 64k pages, yes.
+=2E...
+> > Yeah, ok, the data in all the files is correct - the md5sums all
+> > match. What's different? Just about all unwritten extents are now
+> > written (i.e. data) or contain some portion of written extents.
+> >=20
+> > So, ZERO_RANGE has the following size threshold for converting
+> > blocks to unwritten extents vs just zeroing them:
+> >=20
+> > 	granularity =3D max_t(uint, 1 << mp->m_sb.sb_blocklog, PAGE_CACHE_=
+SIZE);
+> >=20
+> > So if this is a 64k page size machine, it's going to have different
+> > extent layout compared to a 4k page size machine. The file data wil=
+l
+> > still be the same, the difference will be zeroed blocks instead of
+> > unwritten blocks, and that's exactly what we see.
+> >=20
+> > IOWs, the result in terms of data the application sees is correct,
+> > just the extent layout representing that zeroed data is different.
+>=20
+> Ok, so that's yet another difference between xfs and ext4 code which
+> makes having generic test even more complicated.
 
-I have a patch (that I apparently never sent) that does exactly this, so:
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+It actually makes the need for a generic test more important. A
+generic test should handle the differences between block/page size
+behaviours - the issue is that xfs/242 was written and tested on 4k
+page machines, not 64k page machines.
 
-(Sorry about my probably having caused this regression in the first place...)
+We've already got the "multiple" code in _generic_test_punch to
+increase the size of the regions being worked on, so the simple fix
+here is to increase the sizes so that 64k page and 4k page behaviour
+is the same and results in the same extent layout. This is the
+normal way tests evolve as people run them on different hardware and
+configurations....
 
---D
-> 
-> BUG: unable to handle kernel NULL pointer dereference at           (null)
-> [   21.413041] IP: [<ffffffff8127c454>] ext4_validate_block_bitmap+0x54/0x300
-> [   21.413041] PGD 2ef6b067 PUD 2efed067 PMD 0
-> [   21.413041] Oops: 0000 [#1] SMP
-> [   21.413041] Modules linked in: nfsd auth_rpcgss nfs_acl nfs lockd fscache sunrpc loop cirrus ttm drm_kms_helper snd_pcm drm snd_timer snd i2c_piix4 soundcore parport_pc parport i2c_core pcspkr xfs libcrc32c e1000 floppy
-> [   21.413041] CPU: 0 PID: 2490 Comm: mount Not tainted 3.14.0-rc4+ #9
-> [   21.413041] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
-> [   21.413041] task: ffff88002e493600 ti: ffff880033094000 task.ti: ffff880033094000
-> [   21.413041] RIP: 0010:[<ffffffff8127c454>]  [<ffffffff8127c454>] ext4_validate_block_bitmap+0x54/0x300
-> [   21.413041] RSP: 0018:ffff880033095b38  EFLAGS: 00010246
-> [   21.413041] RAX: ffff88002dc47800 RBX: 0000000000000000 RCX: 0000000000000020
-> [   21.413041] RDX: 0000000000000000 RSI: 0000000000000000 RDI: ffff88002dc45000
-> [   21.413041] RBP: ffff880033095b88 R08: 000000000000000a R09: 00000000000003d7
-> [   21.413041] R10: 0000000000000000 R11: 0000000000000000 R12: ffff88003fb7d800
-> [   21.413041] R13: ffff88002dc45000 R14: ffff88003d113820 R15: 0000000000000000
-> [   21.413041] FS:  00007f9e2b4f47e0(0000) GS:ffff88003fc00000(0000) knlGS:0000000000000000
-> [   21.413041] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> [   21.413041] CR2: 0000000000000000 CR3: 000000003d776000 CR4: 00000000000006f0
-> [   21.413041] Stack:
-> [   21.413041]  ffff88002e493600 ffffffff810c76b0 ffff880033095b48 ffff880033095b48
-> [   21.413041]  ffff88003d113820 ffff88003d113820 ffff88002dc45000 0000000000000000
-> [   21.413041]  ffff88003fb7d800 0000000000000000 ffff880033095bb8 ffffffff8127c782
-> [   21.413041] Call Trace:
-> [   21.413041]  [<ffffffff810c76b0>] ? wake_atomic_t_function+0x40/0x40
-> [   21.413041]  [<ffffffff8127c782>] ext4_wait_block_bitmap+0x82/0xf0
-> [   21.413041]  [<ffffffff8127d23a>] ext4_read_block_bitmap+0x3a/0x60
-> [   21.413041]  [<ffffffff8127d340>] ext4_count_free_clusters+0xe0/0x1c0
-> [   21.413041]  [<ffffffff812a8508>] ext4_fill_super+0x1448/0x2ec0
-> [   21.413041]  [<ffffffff811f2168>] ? iput+0x48/0x190
-> [   21.413041]  [<ffffffff811da31c>] mount_bdev+0x19c/0x1e0
-> [   21.413041]  [<ffffffff812a70c0>] ? ext4_calculate_overhead+0x3d0/0x3d0
-> [   21.413041]  [<ffffffff811be755>] ? __kmalloc_track_caller+0x55/0x240
-> [   21.413041]  [<ffffffff81295205>] ext4_mount+0x15/0x20
-> [   21.413041]  [<ffffffff811db193>] mount_fs+0x43/0x1b0
-> [   21.413041]  [<ffffffff81188010>] ? __alloc_percpu+0x10/0x20
-> [   21.413041]  [<ffffffff811f5873>] vfs_kern_mount+0x73/0x110
-> [   21.413041]  [<ffffffff811f7d89>] do_mount+0x259/0xa70
-> [   21.413041]  [<ffffffff811820a6>] ? memdup_user+0x46/0x90
-> [   21.413041]  [<ffffffff8118214b>] ? strndup_user+0x5b/0x80
-> [   21.413041]  [<ffffffff811f887e>] SyS_mount+0x8e/0xe0
-> [   21.413041]  [<ffffffff816ff1e9>] system_call_fastpath+0x16/0x1b
-> [   21.413041] Code: f8 02 00 00 3b 50 40 0f 83 5e 02 00 00 49 89 ce 8b 88 a8 00 00 00 41 89 d7 49 89 f4 89 d6 48 8b 90 78 02 00 00 d3 ee 48 8b 48 38 <48> 8b 14 f2 48 83 e9 01 4c 21 f9 48 8b 14 ca 48 89 55 c0 49 8b
-> [   21.413041] RIP  [<ffffffff8127c454>] ext4_validate_block_bitmap+0x54/0x300
-> [   21.413041]  RSP <ffff880033095b38>
-> [   21.413041] CR2: 0000000000000000
-> [   21.485243] ---[ end trace 768c203492f003e1 ]---
-> ---
->  fs/ext4/balloc.c | 13 ++++++++++---
->  1 file changed, 10 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-> index 6ea7b14..8de0ea8 100644
-> --- a/fs/ext4/balloc.c
-> +++ b/fs/ext4/balloc.c
-> @@ -355,25 +355,32 @@ void ext4_validate_block_bitmap(struct super_block *sb,
->  			       struct buffer_head *bh)
->  {
->  	ext4_fsblk_t	blk;
-> -	struct ext4_group_info *grp = ext4_get_group_info(sb, block_group);
-> +	struct ext4_group_info *grp = NULL;
->  
->  	if (buffer_verified(bh))
->  		return;
->  
-> +	if (EXT4_SB(sb)->s_group_info)
-> +		grp = ext4_get_group_info(sb, block_group);
-> +
->  	ext4_lock_group(sb, block_group);
->  	blk = ext4_valid_block_bitmap(sb, desc, block_group, bh);
->  	if (unlikely(blk != 0)) {
->  		ext4_unlock_group(sb, block_group);
->  		ext4_error(sb, "bg %u: block %llu: invalid block bitmap",
->  			   block_group, blk);
-> -		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
-> +		if (grp)
-> +			set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT,
-> +				&grp->bb_state);
->  		return;
->  	}
->  	if (unlikely(!ext4_block_bitmap_csum_verify(sb, block_group,
->  			desc, bh))) {
->  		ext4_unlock_group(sb, block_group);
->  		ext4_error(sb, "bg %u: bad block bitmap checksum", block_group);
-> -		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
-> +		if (grp)
-> +			set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT,
-> +				&grp->bb_state);
->  		return;
->  	}
->  	set_buffer_verified(bh);
-> -- 
-> Maurizio Lombardi
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> So as I said before
+> I'll make the generic test (using _filter_hole_fiemap) and then ext4
+> specific test as well to really make sure that the extent
+> manipulation is right.
+
+Which ignores the fact that if you turn off zeroout on ext4 then a
+generic test can also determine that the extent manipulation is
+correct. I really don't see the need for an ext4 specific test
+here...
+
+Cheers,
+
+Dave.
+--=20
+Dave Chinner
+david@fromorbit.com
+--
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
+" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
