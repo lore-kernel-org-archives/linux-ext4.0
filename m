@@ -1,38 +1,67 @@
-From: Karel Zak <kzak@redhat.com>
-Subject: Re: [PATCH] util-linux/fallocate: introduce an option -c to support
- FALLOC_FL_COLLAPSE_RANGE
-Date: Thu, 27 Feb 2014 10:00:05 +0100
-Message-ID: <20140227090005.GH32036@x2.net.home>
-References: <alpine.LFD.2.00.1402181001530.2216@localhost.localdomain>
- <1393355305-12009-1-git-send-email-dongsu.park@profitbricks.com>
+From: ZhangZhen <zhenzhang.zhang@huawei.com>
+Subject: [PATCH] ext3/4: remove some unnecessary comments
+Date: Thu, 27 Feb 2014 17:26:09 +0800
+Message-ID: <530F04B1.40105@huawei.com>
+References: <1393521230-3254-1-git-send-email-zhenzhang.zhang@huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Namjae Jeon <linkinjeon@gmail.com>, linux-fsdevel@vger.kernel.org,
-	xfs@oss.sgi.com, linux-ext4@vger.kernel.org, tytso@mit.edu,
-	Lukas Czerner <lczerner@redhat.com>,
-	Namjae Jeon <namjae.jeon@samsung.com>,
-	Ashish Sangwan <a.sangwan@samsung.com>
-To: Dongsu Park <dongsu.park@profitbricks.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1393355305-12009-1-git-send-email-dongsu.park@profitbricks.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="ISO-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: <linux-ext4@vger.kernel.org>
+To: <jack@suse.cz>, <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from szxga01-in.huawei.com ([119.145.14.64]:27696 "EHLO
+	szxga01-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750748AbaB0J0d (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Feb 2014 04:26:33 -0500
+In-Reply-To: <1393521230-3254-1-git-send-email-zhenzhang.zhang@huawei.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Feb 25, 2014 at 08:08:25PM +0100, Dongsu Park wrote:
-> Introduce a new option -c (or --collapse-range) to support a new flag
-> FALLOC_FL_COLLAPSE_RANGE for fallocate(2). It will nullify a particular
-> range [offset, offset+len] by shifting extents beyond the range to the
-> beginning of the hole.
- 
- Thanks!
+The comments in the code are unnecessary, because every generic_file_write()
+is replaced by generic_file_aio_write().
 
-> To test that, it's necessary to apply kernel patches in the patchset
- 
- We (util-linux) always waiting for new stuff in Linus tree :-)
+Signed-off-by: Zhang Zhen <zhenzhang.zhang@huawei.com>
+---
+ fs/ext3/inode.c | 4 ----
+ fs/ext4/inode.c | 4 ----
+ 2 files changed, 8 deletions(-)
 
-    Karel
-
+diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+index 384b6eb..e08c2eb 100644
+--- a/fs/ext3/inode.c
++++ b/fs/ext3/inode.c
+@@ -3212,10 +3212,6 @@ out_brelse:
+  *
+  * We are called from a few places:
+  *
+- * - Within generic_file_write() for O_SYNC files.
+- *   Here, there will be no transaction running. We wait for any running
+- *   transaction to commit.
+- *
+  * - Within sys_sync(), kupdate and such.
+  *   We wait on commit, if tol to.
+  *
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 6e39895..5ef32f0 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4399,10 +4399,6 @@ out_brelse:
+  *
+  * We are called from a few places:
+  *
+- * - Within generic_file_write() for O_SYNC files.
+- *   Here, there will be no transaction running. We wait for any running
+- *   transaction to commit.
+- *
+  * - Within sys_sync(), kupdate and such.
+  *   We wait on commit, if tol to.
+  *
 -- 
- Karel Zak  <kzak@redhat.com>
- http://karelzak.blogspot.com
+1.8.1.4
+
+
+.
+
+
+
+
