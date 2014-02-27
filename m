@@ -1,25 +1,20 @@
-From: Namjae Jeon <linkinjeon@gmail.com>
-Subject: Re: [PATCH v6] ext4: Add support FALLOC_FL_COLLAPSE_RANGE for
+From: jon ernst <jonernst07@gmail.com>
+Subject: Re: [PATCH 5/6 v2] ext4: Introduce FALLOC_FL_ZERO_RANGE flag for
 	fallocate
-Date: Thu, 27 Feb 2014 13:03:53 +0900
-Message-ID: <CAKYAXd_4-BUiRMLfZ97vToSb4xuRj0zz=uvUc-w3cjcs3wM85g@mail.gmail.com>
-References: <1392908861-3563-1-git-send-email-linkinjeon@gmail.com>
-	<20140222170930.GE26637@thunk.org>
-	<CAKYAXd9vTbjTnJOQ1Y=pi4QJSYj41fWsQgRD3Fkufskez2W-YA@mail.gmail.com>
-	<20140226164827.GB11452@thunk.org>
+Date: Wed, 26 Feb 2014 23:41:15 -0500
+Message-ID: <CAGW2f1FcoMJpFv=7xqPB4+R3-yOqmn89CnAZAJKif_3a3ETcPg@mail.gmail.com>
+References: <1393355679-11160-1-git-send-email-lczerner@redhat.com>
+	<1393355679-11160-6-git-send-email-lczerner@redhat.com>
+	<CAGW2f1G_HjhVXc9jyNEAaX8VUaZov7qaRVuj+KvnbbqvtL0k3g@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Namjae Jeon <linkinjeon@gmail.com>, jack@suse.cz,
-	Namjae Jeon <namjae.jeon@samsung.com>,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com, bpm@sgi.com,
-	adilger.kernel@dilger.ca, viro@zeniv.linux.org.uk,
-	Ashish Sangwan <a.sangwan@samsung.com>,
-	linux-fsdevel@vger.kernel.org, lczerner@redhat.com,
-	linux-ext4@vger.kernel.org, mtk.manpages@gmail.com
-To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: linux-fsdevel@vger.kernel.org,
+	"linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>, xfs@oss.sgi.com
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <20140226164827.GB11452@thunk.org>
+In-Reply-To: <CAGW2f1G_HjhVXc9jyNEAaX8VUaZov7qaRVuj+KvnbbqvtL0k3g@mail.gmail.com>
 List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
 	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
 List-Archive: <http://oss.sgi.com/pipermail/xfs>
@@ -31,44 +26,54 @@ Errors-To: xfs-bounces@oss.sgi.com
 Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-2014-02-27 1:48 GMT+09:00, Theodore Ts'o <tytso@mit.edu>:
-> On Mon, Feb 24, 2014 at 10:22:10AM +0900, Namjae Jeon wrote:
->> >> +	ret = ext4_es_remove_extent(inode, punch_start,
->> >> +				    EXT_MAX_BLOCKS - punch_start - 1);
->> >> +	if (ret) {
->> >> +		up_write(&EXT4_I(inode)->i_data_sem);
->> >> +		goto out_stop;
->> >> +	}
->> >
->> > Doing this at first is probably a bad idea; you should do this at the
->> > end, and then completely invalidate the es cache for that inode.  That
->> > way, the right thing happens if you get an error in the middle
->> > releasing the boxes and shifting the extents:
->> Okay, I see.
->
-> Actually, thinking about this some more, we do want to do this first,
-> since if we error out, we do need to make sure the extent cache is
-> flushed.
-Okay.
+On Wed, Feb 26, 2014 at 1:00 AM, jon ernst <jonernst07@gmail.com> wrote:
+> On Tue, Feb 25, 2014 at 2:14 PM, Lukas Czerner <lczerner@redhat.com> wrote:
+>> Introduce new FALLOC_FL_ZERO_RANGE flag for fallocate. This has the same
+>> functionality as xfs ioctl XFS_IOC_ZERO_RANGE.
+>>
+>> It can be used to convert a range of file to zeros preferably without
+>> issuing data IO. Blocks should be preallocated for the regions that span
+>> holes in the file, and the entire range is preferable converted to
+>> unwritten extents
+>>
+>> This can be also used to preallocate blocks past EOF in the same way as
+>> with fallocate. Flag FALLOC_FL_KEEP_SIZE which should cause the inode
+>> size to remain the same.
+>>
+>> Also add appropriate tracepoints.
+>>
+>> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+>> ---
+>>  fs/ext4/ext4.h              |   2 +
+>>  fs/ext4/extents.c           | 270 +++++++++++++++++++++++++++++++++++++++++---
+>>  fs/ext4/inode.c             |  17 ++-
+>>  include/trace/events/ext4.h |  64 +++++------
 
+>>  static int
+>> +ext4_ext_convert_initialized_extent(handle_t *handle, struct inode *inode,
+>> +                       struct ext4_map_blocks *map,
+>> +                       struct ext4_ext_path *path, int flags,
+>> +                       unsigned int allocated, ext4_fsblk_t newblock)
+>> +{
+>> +       int ret = 0;
+>> +       int err = 0;
+>> +
+>> +       /*
+>> +        * Make sure that the extent is no bigger than we support with
+>> +        * uninitialized extent
+>> +        */
+>> +       if (map->m_len > EXT_UNINIT_MAX_LEN)
+>> +               map->m_len = EXT_UNINIT_MAX_LEN / 2;
 >
->> If there is error in the middle of extent shifting, the hole will
->> present between the last shifted extent and the extent at which error
->> happen so this will be consistent state.
->> IMHO even if there is error in between the shift, filesystem will be
->> in consistent state.
->> Am I missing something?
->
-> No, I was wrong about that; you're right.  The file will be in an
-> inconsistent statement, which will probably be highly confusing for
-> the application, but the file system will be fine.
->
-> So I withdraw my complaints.  I'll do a bit more testing, but so far
-> the patch looks fine to me.  Thanks for your reply and your work!
-Thanks for your review! I will fix these include Hugh's review points.
->
-> 					- Ted
->
+ Pardon my possible dumb question. Why do you use
+"EXT_UNINIT_MAX_LEN/ 2;" here instead of "EXT_UNINIT_MAX_LEN"
+ I don't see the reason why we can't use EXT_UNINIT_MAX_LEN here.
+
+
+(resend, Ping on this question, thank you!)
+
+Thanks!
+ Jon
 
 _______________________________________________
 xfs mailing list
