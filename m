@@ -1,89 +1,47 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 6/6] ext4/242: Add ext4 specific test for fallocate zero
- range
-Date: Fri, 28 Feb 2014 06:35:33 +1100
-Message-ID: <20140227193533.GB30131@dastard>
-References: <1393355728-12056-1-git-send-email-lczerner@redhat.com>
- <1393355728-12056-6-git-send-email-lczerner@redhat.com>
- <20140225205349.GD13647@dastard>
- <alpine.LFD.2.00.1402252156290.12444@localhost.localdomain>
- <20140225215011.GF13647@dastard>
- <alpine.LFD.2.00.1402261520070.2243@localhost.localdomain>
- <20140226220106.GC29907@dastard>
- <alpine.LFD.2.00.1402271257590.2247@localhost.localdomain>
+From: "Vitaliy Filippov" <vitalif@yourcmc.ru>
+Subject: Re: A tool that allows changing inode table sizes
+Date: Fri, 28 Feb 2014 01:12:04 +0400
+Message-ID: <op.xbyk6eur0ncgu9@vitalif.vhome>
+References: <ea490dfe40d0de3a5c0cb388e749f172@yourcmc.ru>
+ <530F6950.2020702@ubuntu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	xfs@oss.sgi.com
-To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1402271257590.2247@localhost.localdomain>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII;
+	format=flowed	delsp=yes
+Content-Transfer-Encoding: 7BIT
+To: linux-ext4@vger.kernel.org, "Phillip Susi" <psusi@ubuntu.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from yourcmc.ru ([195.24.71.121]:51200 "EHLO yourcmc.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751072AbaB0VMH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 27 Feb 2014 16:12:07 -0500
+In-Reply-To: <530F6950.2020702@ubuntu.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Feb 27, 2014 at 01:03:09PM +0100, Luk=C3=A1=C5=A1 Czerner wrote=
-:
-> On Thu, 27 Feb 2014, Dave Chinner wrote:
-> > > xfs/242 fails on ppc64 with latest linus tree
-> >=20
-> > OK, that's a different kettle of fish. It's using 64k pages, right?
->=20
-> 64k pages, yes.
-=2E...
-> > Yeah, ok, the data in all the files is correct - the md5sums all
-> > match. What's different? Just about all unwritten extents are now
-> > written (i.e. data) or contain some portion of written extents.
-> >=20
-> > So, ZERO_RANGE has the following size threshold for converting
-> > blocks to unwritten extents vs just zeroing them:
-> >=20
-> > 	granularity =3D max_t(uint, 1 << mp->m_sb.sb_blocklog, PAGE_CACHE_=
-SIZE);
-> >=20
-> > So if this is a 64k page size machine, it's going to have different
-> > extent layout compared to a 4k page size machine. The file data wil=
-l
-> > still be the same, the difference will be zeroed blocks instead of
-> > unwritten blocks, and that's exactly what we see.
-> >=20
-> > IOWs, the result in terms of data the application sees is correct,
-> > just the extent layout representing that zeroed data is different.
->=20
-> Ok, so that's yet another difference between xfs and ext4 code which
-> makes having generic test even more complicated.
+> Wow!  That is quite a project, and this patch manager sounds very
+> nice.  Good work!
 
-It actually makes the need for a generic test more important. A
-generic test should handle the differences between block/page size
-behaviours - the issue is that xfs/242 was written and tested on 4k
-page machines, not 64k page machines.
+Thanks :)
 
-We've already got the "multiple" code in _generic_test_punch to
-increase the size of the regions being worked on, so the simple fix
-here is to increase the sizes so that 64k page and 4k page behaviour
-is the same and results in the same extent layout. This is the
-normal way tests evolve as people run them on different hardware and
-configurations....
+Since that initial post I've also implemented a simple 'patchbd' kernel  
+module - http://svn.yourcmc.ru/viewvc.py/vitalif/trunk/sftl/patchbd.c  
+(don't look at sftl*, it's some old academic try to implement a software  
+FTL); it now has different format of patch files, so patch_io_manager is  
+also rewritten... It's still quite a hack of course: block maps for  
+example are logically stored twice - once explicitly and once in the  
+underlying FS extent tree... But it's working, opposed to an LVM snapshot  
+than made my system hang when being actively written; it's fast since  
+there are no additional kernel threads or work queues (except loop thread  
+of course), it just proxies bio's to other devices... and you can finally  
+mount and test a 'patched' block device... :)
 
-> So as I said before
-> I'll make the generic test (using _filter_hole_fiemap) and then ext4
-> specific test as well to really make sure that the extent
-> manipulation is right.
+Also I've done testing on a real harddrive (that 3TB one) and actually  
+fixed one bug after that testing :) also I've left the patch block device  
+mounted for a ~week, ... and the patch file had grown up to 20GB. Then  
+I've applied it with e2patch. Everything went OK. :)
 
-Which ignores the fact that if you turn off zeroout on ext4 then a
-generic test can also determine that the extent manipulation is
-correct. I really don't see the need for an ext4 specific test
-here...
+What I'll do next is trying to actually port it into resize2fs...
 
-Cheers,
-
-Dave.
---=20
-Dave Chinner
-david@fromorbit.com
---
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+With best regards,
+   Vitaliy Filippov
