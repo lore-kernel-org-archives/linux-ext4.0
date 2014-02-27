@@ -1,71 +1,135 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 2/2] libext2fs/e2fsck: implement metadata prefetching
-Date: Thu, 27 Feb 2014 10:31:02 -0800
-Message-ID: <20140227183102.GA9793@birch.djwong.org>
-References: <20140130235044.31064.38113.stgit@birch.djwong.org>
- <20140130235058.31064.21096.stgit@birch.djwong.org>
- <45DEEA58-69FD-42EF-BB51-1A8D80000469@dilger.ca>
- <20140131135325.GF7118@thunk.org>
- <530F6FFC.4040903@ubuntu.com>
+Subject: Re: [PATCH] ext4: fix NULL pointer dereference in
+ ext4_validate_block_bitmap()
+Date: Thu, 27 Feb 2014 10:35:27 -0800
+Message-ID: <20140227183527.GA9876@birch.djwong.org>
+References: <1393495278-11100-1-git-send-email-mlombard@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger@dilger.ca>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Phillip Susi <psusi@ubuntu.com>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	tytso@mit.edu, adilger.kernel@dilger.ca
+To: Maurizio Lombardi <mlombard@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:32897 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752589AbaB0SbL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Feb 2014 13:31:11 -0500
+Received: from userp1040.oracle.com ([156.151.31.81]:42544 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751384AbaB0Sfk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Feb 2014 13:35:40 -0500
 Content-Disposition: inline
-In-Reply-To: <530F6FFC.4040903@ubuntu.com>
+In-Reply-To: <1393495278-11100-1-git-send-email-mlombard@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Feb 27, 2014 at 12:03:56PM -0500, Phillip Susi wrote:
-> -----BEGIN PGP SIGNED MESSAGE-----
-> Hash: SHA1
+On Thu, Feb 27, 2014 at 11:01:18AM +0100, Maurizio Lombardi wrote:
+> If EXT4FS_DEBUG is defined, ext4_count_clusters() performs some additional
+> checks on the block bitmaps at mount time, ext4_validate_block_bitmap()
+> is called but the superblock doesn't contain a valid s_group_info
+> pointer yet.
 > 
-> On 1/31/2014 8:53 AM, Theodore Ts'o wrote:
-> > Something that we might need to go to in the future is instead of 
-> > using mmap(), to maintain our own explicit buffer cache inside 
-> > unix_io, and use direct I/O to avoid caching the disk blocks
-> > twice. Then when we use a single-threaded disk prefetcher, managed
-> > by the unix_io, it will know when a particular I/O request has
-> > completed, and more importantly, if there is a synchronous read
-> > request coming in from main body of the program, it can stop
-> > prefetching and allow the higher priority read to complete.  We can
-> > also experiment with how many threads might make sense --- even
-> > with an HDD, using multiple threads so that we can take advantage
-> > of NCQ might still be a win.
-> 
-> Why build your own cache instead of letting the kernel take care of
-> it?  I  believe the IO elevator already gives preferential treatment
-> to blocking reads so just using readahead() to prefetch and sticking
-> with plain old read() should work nicely.
-> 
-> > Finally, if we are managing our own buffer cache, we should
-> > consider adding a bforget method to the I/O manager.  That way
-> > e2fsck can give hints to the caching layer that a block isn't
-> > needed any more.  If it is in the cache, it can be dropped, to free
-> > memory, and if it is still on the to-be-prefetched list it should
-> > also be dropped.  (Of course, if a block is on the to-be-prefetched
-> > list, and a synchronous read request comes in for that block, we
-> > should have dropped it from the to-be-prefetched list at that
-> > point.)  The main use for having a bforget method is for the most
-> > part, once we are done scanning a non-directory extent tree block,
-> > we won't be needing it again.
-> 
-> Good idea, but this also could just be translated to posix_fadvise to
-> have the kernel drop the pages from the cache.
+> This patch fixes the bug by modifying ext4_validate_block_bitmap() so
+> it verifies whether the s_group_info pointer is valid or not before
+> using it.
 
-That's more or less what I've done with the e2fsck patchset I'm working on.
-It's not terribly smarter than Val's old thing from ~2007, but nowadays more
-people have the kind of hardware where prefetching is noticeable.
+I have a patch (that I apparently never sent) that does exactly this, so:
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-Well, pass2 tells the kernel to drop the dir block as soon as thinks it's
-finished with the dir block.  I haven't studied the effect of dropping the
-itable during pass1.
+(Sorry about my probably having caused this regression in the first place...)
 
 --D
+> 
+> BUG: unable to handle kernel NULL pointer dereference at           (null)
+> [   21.413041] IP: [<ffffffff8127c454>] ext4_validate_block_bitmap+0x54/0x300
+> [   21.413041] PGD 2ef6b067 PUD 2efed067 PMD 0
+> [   21.413041] Oops: 0000 [#1] SMP
+> [   21.413041] Modules linked in: nfsd auth_rpcgss nfs_acl nfs lockd fscache sunrpc loop cirrus ttm drm_kms_helper snd_pcm drm snd_timer snd i2c_piix4 soundcore parport_pc parport i2c_core pcspkr xfs libcrc32c e1000 floppy
+> [   21.413041] CPU: 0 PID: 2490 Comm: mount Not tainted 3.14.0-rc4+ #9
+> [   21.413041] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+> [   21.413041] task: ffff88002e493600 ti: ffff880033094000 task.ti: ffff880033094000
+> [   21.413041] RIP: 0010:[<ffffffff8127c454>]  [<ffffffff8127c454>] ext4_validate_block_bitmap+0x54/0x300
+> [   21.413041] RSP: 0018:ffff880033095b38  EFLAGS: 00010246
+> [   21.413041] RAX: ffff88002dc47800 RBX: 0000000000000000 RCX: 0000000000000020
+> [   21.413041] RDX: 0000000000000000 RSI: 0000000000000000 RDI: ffff88002dc45000
+> [   21.413041] RBP: ffff880033095b88 R08: 000000000000000a R09: 00000000000003d7
+> [   21.413041] R10: 0000000000000000 R11: 0000000000000000 R12: ffff88003fb7d800
+> [   21.413041] R13: ffff88002dc45000 R14: ffff88003d113820 R15: 0000000000000000
+> [   21.413041] FS:  00007f9e2b4f47e0(0000) GS:ffff88003fc00000(0000) knlGS:0000000000000000
+> [   21.413041] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> [   21.413041] CR2: 0000000000000000 CR3: 000000003d776000 CR4: 00000000000006f0
+> [   21.413041] Stack:
+> [   21.413041]  ffff88002e493600 ffffffff810c76b0 ffff880033095b48 ffff880033095b48
+> [   21.413041]  ffff88003d113820 ffff88003d113820 ffff88002dc45000 0000000000000000
+> [   21.413041]  ffff88003fb7d800 0000000000000000 ffff880033095bb8 ffffffff8127c782
+> [   21.413041] Call Trace:
+> [   21.413041]  [<ffffffff810c76b0>] ? wake_atomic_t_function+0x40/0x40
+> [   21.413041]  [<ffffffff8127c782>] ext4_wait_block_bitmap+0x82/0xf0
+> [   21.413041]  [<ffffffff8127d23a>] ext4_read_block_bitmap+0x3a/0x60
+> [   21.413041]  [<ffffffff8127d340>] ext4_count_free_clusters+0xe0/0x1c0
+> [   21.413041]  [<ffffffff812a8508>] ext4_fill_super+0x1448/0x2ec0
+> [   21.413041]  [<ffffffff811f2168>] ? iput+0x48/0x190
+> [   21.413041]  [<ffffffff811da31c>] mount_bdev+0x19c/0x1e0
+> [   21.413041]  [<ffffffff812a70c0>] ? ext4_calculate_overhead+0x3d0/0x3d0
+> [   21.413041]  [<ffffffff811be755>] ? __kmalloc_track_caller+0x55/0x240
+> [   21.413041]  [<ffffffff81295205>] ext4_mount+0x15/0x20
+> [   21.413041]  [<ffffffff811db193>] mount_fs+0x43/0x1b0
+> [   21.413041]  [<ffffffff81188010>] ? __alloc_percpu+0x10/0x20
+> [   21.413041]  [<ffffffff811f5873>] vfs_kern_mount+0x73/0x110
+> [   21.413041]  [<ffffffff811f7d89>] do_mount+0x259/0xa70
+> [   21.413041]  [<ffffffff811820a6>] ? memdup_user+0x46/0x90
+> [   21.413041]  [<ffffffff8118214b>] ? strndup_user+0x5b/0x80
+> [   21.413041]  [<ffffffff811f887e>] SyS_mount+0x8e/0xe0
+> [   21.413041]  [<ffffffff816ff1e9>] system_call_fastpath+0x16/0x1b
+> [   21.413041] Code: f8 02 00 00 3b 50 40 0f 83 5e 02 00 00 49 89 ce 8b 88 a8 00 00 00 41 89 d7 49 89 f4 89 d6 48 8b 90 78 02 00 00 d3 ee 48 8b 48 38 <48> 8b 14 f2 48 83 e9 01 4c 21 f9 48 8b 14 ca 48 89 55 c0 49 8b
+> [   21.413041] RIP  [<ffffffff8127c454>] ext4_validate_block_bitmap+0x54/0x300
+> [   21.413041]  RSP <ffff880033095b38>
+> [   21.413041] CR2: 0000000000000000
+> [   21.485243] ---[ end trace 768c203492f003e1 ]---
+> ---
+>  fs/ext4/balloc.c | 13 ++++++++++---
+>  1 file changed, 10 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+> index 6ea7b14..8de0ea8 100644
+> --- a/fs/ext4/balloc.c
+> +++ b/fs/ext4/balloc.c
+> @@ -355,25 +355,32 @@ void ext4_validate_block_bitmap(struct super_block *sb,
+>  			       struct buffer_head *bh)
+>  {
+>  	ext4_fsblk_t	blk;
+> -	struct ext4_group_info *grp = ext4_get_group_info(sb, block_group);
+> +	struct ext4_group_info *grp = NULL;
+>  
+>  	if (buffer_verified(bh))
+>  		return;
+>  
+> +	if (EXT4_SB(sb)->s_group_info)
+> +		grp = ext4_get_group_info(sb, block_group);
+> +
+>  	ext4_lock_group(sb, block_group);
+>  	blk = ext4_valid_block_bitmap(sb, desc, block_group, bh);
+>  	if (unlikely(blk != 0)) {
+>  		ext4_unlock_group(sb, block_group);
+>  		ext4_error(sb, "bg %u: block %llu: invalid block bitmap",
+>  			   block_group, blk);
+> -		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
+> +		if (grp)
+> +			set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT,
+> +				&grp->bb_state);
+>  		return;
+>  	}
+>  	if (unlikely(!ext4_block_bitmap_csum_verify(sb, block_group,
+>  			desc, bh))) {
+>  		ext4_unlock_group(sb, block_group);
+>  		ext4_error(sb, "bg %u: bad block bitmap checksum", block_group);
+> -		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
+> +		if (grp)
+> +			set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT,
+> +				&grp->bb_state);
+>  		return;
+>  	}
+>  	set_buffer_verified(bh);
+> -- 
+> Maurizio Lombardi
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
