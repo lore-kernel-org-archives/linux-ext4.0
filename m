@@ -1,162 +1,252 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 4/8] xfstests: Move fallocate include into global.h
-Date: Fri, 28 Feb 2014 17:11:01 +0100
-Message-ID: <1393603865-26198-4-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 7/8] xfstests: Add fallocate zero range operation to fsx
+Date: Fri, 28 Feb 2014 17:11:04 +0100
+Message-ID: <1393603865-26198-7-git-send-email-lczerner@redhat.com>
 References: <1393603865-26198-1-git-send-email-lczerner@redhat.com>
 Cc: xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org,
 	Lukas Czerner <lczerner@redhat.com>
 To: linux-ext4@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:24937 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752935AbaB1QLV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 28 Feb 2014 11:11:21 -0500
 In-Reply-To: <1393603865-26198-1-git-send-email-lczerner@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Move the inclusion of falloc.h with all it's possible defines for the
-fallocate mode into global.h header file so we do not have to include
-and define it manually in every tool using fallocate.
+This commit adds fallocate FALLOC_FL_ZERO_RANGE support for fsx.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
- configure.ac   |  3 ++-
- ltp/fsstress.c | 11 ++---------
- ltp/fsx.c      | 11 ++++-------
- src/global.h   | 25 +++++++++++++++++++++++++
- 4 files changed, 33 insertions(+), 17 deletions(-)
+ ltp/fsx.c | 128 +++++++++++++++++++++++++++++++++++++++++++++++---------------
+ 1 file changed, 98 insertions(+), 30 deletions(-)
 
-diff --git a/configure.ac b/configure.ac
-index 6fba3ad..2f95c4c 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -25,7 +25,8 @@ AC_HEADER_STDC
- 			sys/wait.h		\
- 			sys/types.h		\
- 			strings.h		\
--			err.h
-+			err.h			\
-+			linux/falloc.h
-     ])
-     AC_CHECK_HEADERS([	sys/fs/xfs_fsops.h	\
- 			sys/fs/xfs_itable.h	\
-diff --git a/ltp/fsstress.c b/ltp/fsstress.c
-index c56f168..7dec7c6 100644
---- a/ltp/fsstress.c
-+++ b/ltp/fsstress.c
-@@ -27,13 +27,6 @@
- #ifdef HAVE_LINUX_FIEMAP_H
- #include <linux/fiemap.h>
- #endif
--#ifdef FALLOCATE
--#include <linux/falloc.h>
--#ifndef FALLOC_FL_PUNCH_HOLE
--/* Copy-paste from linux/falloc.h */
--#define FALLOC_FL_PUNCH_HOLE    0x02 /* de-allocates range */
--#endif
--#endif
- #ifndef HAVE_ATTR_LIST
- #define attr_list(path, buf, size, flags, cursor) (errno = -ENOSYS, -1)
- #endif
-@@ -2085,7 +2078,7 @@ dwrite_f(int opno, long r)
- void
- fallocate_f(int opno, long r)
- {
--#ifdef FALLOCATE
-+#ifdef HAVE_LINUX_FALLOC_H
- 	int		e;
- 	pathname_t	f;
- 	int		fd;
-@@ -2507,7 +2500,7 @@ mknod_f(int opno, long r)
- void
- punch_f(int opno, long r)
- {
--#ifdef FALLOCATE
-+#ifdef HAVE_LINUX_FALLOC_H
- 	int		e;
- 	pathname_t	f;
- 	int		fd;
 diff --git a/ltp/fsx.c b/ltp/fsx.c
-index 2f1e3e8..c36a038 100644
+index c36a038..5d6d198 100644
 --- a/ltp/fsx.c
 +++ b/ltp/fsx.c
-@@ -33,9 +33,6 @@
- #ifdef AIO
- #include <libaio.h>
- #endif
--#ifdef FALLOCATE
--#include <linux/falloc.h>
--#endif
+@@ -69,6 +69,7 @@ int			logcount = 0;	/* total ops */
+  * TRUNCATE:	-	4
+  * FALLOCATE:	-	5
+  * PUNCH HOLE:	-	6
++ * ZERO RANGE:	-	7
+  *
+  * When mapped read/writes are disabled, they are simply converted to normal
+  * reads and writes. When fallocate/fpunch calls are disabled, they are
+@@ -92,7 +93,8 @@ int			logcount = 0;	/* total ops */
+ #define OP_TRUNCATE	4
+ #define OP_FALLOCATE	5
+ #define OP_PUNCH_HOLE	6
+-#define OP_MAX_FULL	7
++#define OP_ZERO_RANGE	7
++#define OP_MAX_FULL	8
  
- #ifndef MAP_FILE
- # define MAP_FILE 0
-@@ -882,7 +879,7 @@ do_punch_hole(unsigned offset, unsigned length)
+ /* operation modifiers */
+ #define OP_CLOSEOPEN	100
+@@ -139,6 +141,7 @@ int	seed = 1;			/* -S flag */
+ int     mapped_writes = 1;              /* -W flag disables */
+ int     fallocate_calls = 1;            /* -F flag disables */
+ int     punch_hole_calls = 1;           /* -H flag disables */
++int     zero_range_calls = 1;           /* -z flag disables */
+ int 	mapped_reads = 1;		/* -R flag disables it */
+ int	fsxgoodfd = 0;
+ int	o_direct;			/* -Z */
+@@ -317,6 +320,14 @@ logdump(void)
+ 						     lp->args[0] + lp->args[1])
+ 				prt("\t******PPPP");
+ 			break;
++		case OP_ZERO_RANGE:
++			prt("ZERO    0x%x thru 0x%x\t(0x%x bytes)",
++			    lp->args[0], lp->args[0] + lp->args[1] - 1,
++			    lp->args[1]);
++			if (badoff >= lp->args[0] && badoff <
++						     lp->args[0] + lp->args[1])
++				prt("\t******ZZZZ");
++			break;
+ 		case OP_SKIPPED:
+ 			prt("SKIPPED (no operation)");
+ 			break;
+@@ -879,6 +890,65 @@ do_punch_hole(unsigned offset, unsigned length)
  }
  #endif
  
--#ifdef FALLOCATE
-+#ifdef HAVE_LINUX_FALLOC_H
++#ifdef FALLOC_FL_ZERO_RANGE
++void
++do_zero_range(unsigned offset, unsigned length)
++{
++	unsigned end_offset;
++	int mode = FALLOC_FL_ZERO_RANGE;
++	int keep_size;
++
++	if (length == 0) {
++		if (!quiet && testcalls > simulatedopcount)
++			prt("skipping zero length zero range\n");
++			log4(OP_SKIPPED, OP_ZERO_RANGE, offset, length);
++		return;
++	}
++
++	keep_size = random() % 2;
++
++	end_offset = keep_size ? 0 : offset + length;
++
++	if (end_offset > biggest) {
++		biggest = end_offset;
++		if (!quiet && testcalls > simulatedopcount)
++			prt("zero_range to largest ever: 0x%x\n", end_offset);
++	}
++
++	/*
++	 * last arg matches fallocate string array index in logdump:
++	 * 	0: allocate past EOF
++	 * 	1: extending prealloc
++	 * 	2: interior prealloc
++	 */
++	log4(OP_ZERO_RANGE, offset, length, (end_offset > file_size) ? (keep_size ? 0 : 1) : 2);
++
++	if (testcalls <= simulatedopcount)
++		return;
++
++	if ((progressinterval && testcalls % progressinterval == 0) ||
++	    (debug && (monitorstart == -1 || monitorend == -1 ||
++		      end_offset <= monitorend))) {
++		prt("%lu zero\tfrom 0x%x to 0x%x, (0x%x bytes)\n", testcalls,
++			offset, offset+length, length);
++	}
++	if (fallocate(fd, mode, (loff_t)offset, (loff_t)length) == -1) {
++		prt("%pzero range: %x to %x\n", offset, length);
++		prterr("do_zero_range: fallocate");
++		report_failure(161);
++	}
++
++	memset(good_buf + offset, '\0', length);
++}
++
++#else
++void
++do_zero_range(unsigned offset, unsigned length)
++{
++	return;
++}
++#endif
++
+ #ifdef HAVE_LINUX_FALLOC_H
  /* fallocate is basically a no-op unless extending, then a lot like a truncate */
  void
- do_preallocate(unsigned offset, unsigned length)
-@@ -1139,7 +1136,7 @@ usage(void)
- "	-A: Use the AIO system calls\n"
- #endif
- "	-D startingop: debug output starting at specified operation\n"
--#ifdef FALLOCATE
-+#ifdef HAVE_LINUX_FALLOC_H
+@@ -1047,6 +1117,12 @@ test(void)
+ 			goto out;
+ 		}
+ 		break;
++	case OP_ZERO_RANGE:
++		if (!zero_range_calls) {
++			log4(OP_SKIPPED, OP_ZERO_RANGE, offset, size);
++			goto out;
++		}
++		break;
+ 	}
+ 
+ 	switch (op) {
+@@ -1085,6 +1161,10 @@ test(void)
+ 		TRIM_OFF_LEN(offset, size, file_size);
+ 		do_punch_hole(offset, size);
+ 		break;
++	case OP_ZERO_RANGE:
++		TRIM_OFF_LEN(offset, size, file_size);
++		do_zero_range(offset, size);
++		break;
+ 	default:
+ 		prterr("test: unknown operation");
+ 		report_failure(42);
+@@ -1140,7 +1220,10 @@ usage(void)
  "	-F: Do not use fallocate (preallocation) calls\n"
  #endif
  #ifdef FALLOC_FL_PUNCH_HOLE
-@@ -1296,7 +1293,7 @@ int aio_rw(int rw, int fd, char *buf, unsigned len, unsigned offset)
- void
- test_fallocate()
+-"       -H: Do not use punch hole calls\n"
++"	-H: Do not use punch hole calls\n"
++#endif
++#ifdef FALLOC_FL_ZERO_RANGE
++"	-E: Do not use zero range calls\n"
+ #endif
+ "	-L: fsxLite - no file creations & no file size changes\n\
+ 	-N numops: total # operations to do (default infinity)\n\
+@@ -1290,40 +1373,21 @@ int aio_rw(int rw, int fd, char *buf, unsigned len, unsigned offset)
+ 
+ #endif
+ 
+-void
+-test_fallocate()
++int
++test_fallocate(int mode)
  {
--#ifdef FALLOCATE
-+#ifdef HAVE_LINUX_FALLOC_H
+ #ifdef HAVE_LINUX_FALLOC_H
++	int ret = 0;
  	if (!lite && fallocate_calls) {
- 		if (fallocate(fd, 0, 0, 1) && errno == EOPNOTSUPP) {
+-		if (fallocate(fd, 0, 0, 1) && errno == EOPNOTSUPP) {
++		if (fallocate(fd, mode, 0, 1) && errno == EOPNOTSUPP) {
  			if(!quiet)
-@@ -1306,7 +1303,7 @@ test_fallocate()
+ 				warn("main: filesystem does not support fallocate, disabling\n");
+-			fallocate_calls = 0;
+ 		} else {
++			ret = 1;
  			ftruncate(fd, 0);
  		}
  	}
--#else /* ! FALLOCATE */
-+#else /* ! HAVE_LINUX_FALLOC_H */
- 	fallocate_calls = 0;
+-#else /* ! HAVE_LINUX_FALLOC_H */
+-	fallocate_calls = 0;
+-#endif
+-
+-}
+-
+-void
+-test_punch_hole()
+-{
+-#ifdef FALLOC_FL_PUNCH_HOLE
+-	if (!lite && punch_hole_calls) {
+-		if (fallocate(fd, FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE,
+-				0, 1) && errno == EOPNOTSUPP) {
+-			if(!quiet)
+-				warn("main: filesystem does not support fallocate punch hole, disabling");
+-			punch_hole_calls = 0;
+-		} else
+-			ftruncate(fd, 0);
+-	}
+-#else /* ! PUNCH HOLE */
+-	punch_hole_calls = 0;
++	return ret;
  #endif
+ }
  
-diff --git a/src/global.h b/src/global.h
-index e6a2c2b..8180f66 100644
---- a/src/global.h
-+++ b/src/global.h
-@@ -149,4 +149,29 @@
- #include <sys/param.h>
- #endif
+@@ -1345,7 +1409,7 @@ main(int argc, char **argv)
  
-+#ifdef HAVE_LINUX_FALLOC_H
-+#include <linux/falloc.h>
-+
-+#ifndef FALLOC_FL_KEEP_SIZE
-+#define FALLOC_FL_KEEP_SIZE		0x01
-+#endif
-+
-+#ifndef FALLOC_FL_PUNCH_HOLE
-+#define FALLOC_FL_PUNCH_HOLE		0x02
- #endif
-+
-+#ifndef FALLOC_FL_NO_HIDE_STALE
-+#define FALLOC_FL_NO_HIDE_STALE		0x04
-+#endif
-+
-+#ifndef FALLOC_FL_COLLAPSE_RANGE
-+#define FALLOC_FL_COLLAPSE_RANGE	0x08
-+#endif
-+
-+#ifndef FALLOC_FL_ZERO_RANGE
-+#define FALLOC_FL_ZERO_RANGE		0x10
-+#endif
-+
-+#endif /* HAVE_LINUX_FALLOC_H */
-+
-+#endif /* GLOBAL_H */
+ 	setvbuf(stdout, (char *)0, _IOLBF, 0); /* line buffered stdout */
+ 
+-	while ((ch = getopt(argc, argv, "b:c:dfl:m:no:p:qr:s:t:w:xyAD:FHLN:OP:RS:WZ"))
++	while ((ch = getopt(argc, argv, "b:c:dfl:m:no:p:qr:s:t:w:xyAD:FHzLN:OP:RS:WZ"))
+ 	       != EOF)
+ 		switch (ch) {
+ 		case 'b':
+@@ -1445,6 +1509,9 @@ main(int argc, char **argv)
+ 		case 'H':
+ 			punch_hole_calls = 0;
+ 			break;
++		case 'z':
++			zero_range_calls = 0;
++			break;
+ 		case 'L':
+ 		        lite = 1;
+ 			break;
+@@ -1590,8 +1657,9 @@ main(int argc, char **argv)
+ 	} else 
+ 		check_trunc_hack();
+ 
+-	test_fallocate();
+-	test_punch_hole();
++	fallocate_calls = test_fallocate(0);
++	punch_hole_calls = test_fallocate(FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE);
++	zero_range_calls = test_fallocate(FALLOC_FL_ZERO_RANGE);
+ 
+ 	while (numops == -1 || numops--)
+ 		test();
 -- 
 1.8.3.1
 
