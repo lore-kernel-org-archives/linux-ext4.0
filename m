@@ -1,62 +1,164 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 71301] New: CPU soft lockup
-Date: Fri, 28 Feb 2014 16:28:30 +0000
-Message-ID: <bug-71301-13602@https.bugzilla.kernel.org/>
+From: Eric Sandeen <sandeen@sandeen.net>
+Subject: Re: [PATCH 1/8] xfstests: Create single function for testing xfs_io
+	commands
+Date: Fri, 28 Feb 2014 10:40:59 -0600
+Message-ID: <5310BC1B.4010700@sandeen.net>
+References: <1393603865-26198-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:54406 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752928AbaB1Q2c (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 28 Feb 2014 11:28:32 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id C66D320240
-	for <linux-ext4@vger.kernel.org>; Fri, 28 Feb 2014 16:28:31 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id DF2F42026D
-	for <linux-ext4@vger.kernel.org>; Fri, 28 Feb 2014 16:28:30 +0000 (UTC)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
+To: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <1393603865-26198-1-git-send-email-lczerner@redhat.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=71301
+On 2/28/14, 10:10 AM, Lukas Czerner wrote:
+> Currently there are several function testing various xfs_io commands.
+> This commit creates _require_xfs_io_command() to test any xfs_command.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 
-            Bug ID: 71301
-           Summary: CPU soft lockup
-           Product: File System
-           Version: 2.5
-    Kernel Version: 3.13.5
-          Hardware: x86-64
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-          Assignee: fs_ext4@kernel-bugs.osdl.org
-          Reporter: cyril.adrian@gmail.com
-        Regression: No
+Nice, 
 
-Created attachment 127701
-  --> https://bugzilla.kernel.org/attachment.cgi?id=127701&action=edit
-.config and syslog
+So to be clear, is the difference here that the explicitly listed commands
+also ensure that the running kernel supports it, whereas the default simply
+makes sure that xfs_io accepts it?  I suppose it's self-explanatory.
 
-During a simple and innocent "du" :-)
+Looks good to me,
 
-The process locked in the kernel, I could not kill it, machine froze at
-shutdown (I had to turn it off the hard way).
+Reviewed-by: Eric Sandeen <sandeen@redhat.com>
 
-I join the syslog (only starting from the first bug).
 
-Home-compiled kernel, .config joined too.
 
-For more info please ask.
+> ---
+>  common/rc | 72 +++++++++++++++++++++++++++++++++------------------------------
+>  1 file changed, 38 insertions(+), 34 deletions(-)
+> 
+> diff --git a/common/rc b/common/rc
+> index f2c3c3a..7f530d0 100644
+> --- a/common/rc
+> +++ b/common/rc
+> @@ -1296,12 +1296,43 @@ _user_do()
+>      fi
+>  }
+>  
+> +_require_xfs_io_command()
+> +{
+> +	if [ $# -ne 1 ]
+> +	then
+> +		echo "Usage: _require_xfs_io_command command" 1>&2
+> +		exit 1
+> +	fi
+> +	command=$1
+> +
+> +	testfile=$TEST_DIR/$$.xfs_io
+> +	case $command in
+> +	"falloc" )
+> +		testio=`$XFS_IO_PROG -F -f -c "falloc 0 1m" $testfile 2>&1`
+> +		;;
+> +	"fpunch" | "fcollapse" | "zero" )
+> +		testio=`$XFS_IO_PROG -F -f -c "pwrite 0 20k" -c "fsync" \
+> +			-c "$command 4k 8k" $testfile 2>&1`
+> +		;;
+> +	"fiemap")
+> +		testio=`$XFS_IO_PROG -F -f -c "pwrite 0 20k" -c "fsync" \
+> +			-c "fiemap -v" $testfile 2>&1`
+> +		;;
+> +	*)
+> +		testio=`$XFS_IO_PROG -c "$command help" 2>&1`
+> +	esac
+> +
+> +	rm -f $testfile 2>&1 > /dev/null
+> +	echo $testio | grep -q "not found" && \
+> +		_notrun "xfs_io $command support is missing"
+> +	echo $testio | grep -q "Operation not supported" && \
+> +		_notrun "xfs_io $command failed (old kernel/wrong fs?)"
+> +}
+> +
+>  # check that xfs_io, kernel, and filesystem all support zero
+>  _require_xfs_io_zero()
+>  {
+> -	testio=`$XFS_IO_PROG -c "zero help" 2>&1`
+> -	echo $testio | grep -q 'command "zero" not found' && \
+> -		_notrun "zero command not supported"
+> +	_require_xfs_io_command "zero"
+>  }
 
-Best regards,
+Nice, so now this actually *does* test the 2nd and 3rd items.  :)
 
-Cyril
+>  # check that xfs_io, glibc, kernel, and filesystem all (!) support
+> @@ -1309,54 +1340,27 @@ _require_xfs_io_zero()
+>  #
+>  _require_xfs_io_falloc()
+>  {
+> -	testfile=$TEST_DIR/$$.falloc
+> -	testio=`$XFS_IO_PROG -F -f -c "falloc 0 1m" $testfile 2>&1`
+> -	rm -f $testfile 2>&1 > /dev/null
+> -	echo $testio | grep -q "not found" && \
+> -		_notrun "xfs_io fallocate support is missing"
+> -	echo $testio | grep -q "Operation not supported" && \
+> -		_notrun "xfs_io fallocate command failed (old kernel/wrong fs?)"
+> +	_require_xfs_io_command "falloc"
+>  }
+>  
+>  # check that xfs_io, kernel and filesystem all support fallocate with hole
+>  # punching
+>  _require_xfs_io_falloc_punch()
+>  {
+> -	testfile=$TEST_DIR/$$.falloc
+> -	testio=`$XFS_IO_PROG -F -f -c "pwrite 0 20k" -c "fsync" \
+> -		-c "fpunch 4k 8k" $testfile 2>&1`
+> -	rm -f $testfile 2>&1 > /dev/null
+> -	echo $testio | grep -q "not found" && \
+> -		_notrun "xfs_io fallocate punch support is missing"
+> -	echo $testio | grep -q "Operation not supported" && \
+> -		_notrun "xfs_io fallocate punch command failed (no fs support?)"
+> +	_require_xfs_io_command "fpunch"
+>  }
+>  
+>  # check that xfs_io, kernel and filesystem all support fallocate with collapse
+>  # range
+>  _require_xfs_io_falloc_collapse()
+>  {
+> -	testfile=$TEST_DIR/$$.falloc
+> -	testio=`$XFS_IO_PROG -f -c "pwrite 0 20k" -c "fsync" \
+> -		-c "fcollapse 4k 8k" $testfile 2>&1`
+> -	rm -f $testfile 2>&1 > /dev/null
+> -	echo $testio | grep -q "not found" && \
+> -		_notrun "xfs_io fallocate collapse range support is missing"
+> -	echo $testio | grep -q "Operation not supported" && \
+> -		_notrun "xfs_io fallocate collapse range failed (no fs support?)"
+> +	_require_xfs_io_command "fcollapse"
+>  }
+>  
+>  # check that xfs_io, kernel and filesystem support fiemap
+>  _require_xfs_io_fiemap()
+>  {
+> -	testfile=$TEST_DIR/$$.fiemap
+> -	testio=`$XFS_IO_PROG -F -f -c "pwrite 0 20k" -c "fsync" \
+> -		-c "fiemap -v" $testfile 2>&1`
+> -	rm -f $testfile 2>&1 > /dev/null
+> -	echo $testio | grep -q "not found" && \
+> -		_notrun "xfs_io fiemap support is missing"
+> -	echo $testio | grep -q "Operation not supported" && \
+> -		_notrun "xfs_io fiemap command failed (no fs support?)"
+> +	_require_xfs_io_command "fiemap"
+>  }
+>  
+>  # Check that a fs has enough free space (in 1024b blocks)
+> 
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
