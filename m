@@ -1,460 +1,162 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 8/8] ext4/001: Add ext4 specific test for fallocate zero range
-Date: Fri, 28 Feb 2014 17:11:05 +0100
-Message-ID: <1393603865-26198-8-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 4/8] xfstests: Move fallocate include into global.h
+Date: Fri, 28 Feb 2014 17:11:01 +0100
+Message-ID: <1393603865-26198-4-git-send-email-lczerner@redhat.com>
 References: <1393603865-26198-1-git-send-email-lczerner@redhat.com>
 Cc: xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org,
 	Lukas Czerner <lczerner@redhat.com>
 To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60864 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752450AbaB1QLX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 28 Feb 2014 11:11:23 -0500
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1393603865-26198-1-git-send-email-lczerner@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-This is based on xfs/242. However it's better to make it file system
-specific because the range can be zeroes either directly by writing
-zeroes, or converting to unwritten extent, so the actual result might
-differ from file system to file system. Also xfs results differ
-depending on the page size which is not the case for ext4.
+Move the inclusion of falloc.h with all it's possible defines for the
+fallocate mode into global.h header file so we do not have to include
+and define it manually in every tool using fallocate.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
- tests/ext4/001     |  64 ++++++++++
- tests/ext4/001.out | 337 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/ext4/group   |   1 +
- 3 files changed, 402 insertions(+)
- create mode 100755 tests/ext4/001
- create mode 100644 tests/ext4/001.out
+ configure.ac   |  3 ++-
+ ltp/fsstress.c | 11 ++---------
+ ltp/fsx.c      | 11 ++++-------
+ src/global.h   | 25 +++++++++++++++++++++++++
+ 4 files changed, 33 insertions(+), 17 deletions(-)
 
-diff --git a/tests/ext4/001 b/tests/ext4/001
-new file mode 100755
-index 0000000..d575d9a
---- /dev/null
-+++ b/tests/ext4/001
-@@ -0,0 +1,64 @@
-+#! /bin/bash
-+# FS QA Test No. 001
-+#
-+# Test fallocate FALLOC_FL_ZERO_RANGE
-+#
-+#-----------------------------------------------------------------------
-+# Copyright 2014 (C) Red Hat, Inc., Lukas Czerner <lczerner@redhat.com>
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#
-+#-----------------------------------------------------------------------
-+#
+diff --git a/configure.ac b/configure.ac
+index 6fba3ad..2f95c4c 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -25,7 +25,8 @@ AC_HEADER_STDC
+ 			sys/wait.h		\
+ 			sys/types.h		\
+ 			strings.h		\
+-			err.h
++			err.h			\
++			linux/falloc.h
+     ])
+     AC_CHECK_HEADERS([	sys/fs/xfs_fsops.h	\
+ 			sys/fs/xfs_itable.h	\
+diff --git a/ltp/fsstress.c b/ltp/fsstress.c
+index c56f168..7dec7c6 100644
+--- a/ltp/fsstress.c
++++ b/ltp/fsstress.c
+@@ -27,13 +27,6 @@
+ #ifdef HAVE_LINUX_FIEMAP_H
+ #include <linux/fiemap.h>
+ #endif
+-#ifdef FALLOCATE
+-#include <linux/falloc.h>
+-#ifndef FALLOC_FL_PUNCH_HOLE
+-/* Copy-paste from linux/falloc.h */
+-#define FALLOC_FL_PUNCH_HOLE    0x02 /* de-allocates range */
+-#endif
+-#endif
+ #ifndef HAVE_ATTR_LIST
+ #define attr_list(path, buf, size, flags, cursor) (errno = -ENOSYS, -1)
+ #endif
+@@ -2085,7 +2078,7 @@ dwrite_f(int opno, long r)
+ void
+ fallocate_f(int opno, long r)
+ {
+-#ifdef FALLOCATE
++#ifdef HAVE_LINUX_FALLOC_H
+ 	int		e;
+ 	pathname_t	f;
+ 	int		fd;
+@@ -2507,7 +2500,7 @@ mknod_f(int opno, long r)
+ void
+ punch_f(int opno, long r)
+ {
+-#ifdef FALLOCATE
++#ifdef HAVE_LINUX_FALLOC_H
+ 	int		e;
+ 	pathname_t	f;
+ 	int		fd;
+diff --git a/ltp/fsx.c b/ltp/fsx.c
+index 2f1e3e8..c36a038 100644
+--- a/ltp/fsx.c
++++ b/ltp/fsx.c
+@@ -33,9 +33,6 @@
+ #ifdef AIO
+ #include <libaio.h>
+ #endif
+-#ifdef FALLOCATE
+-#include <linux/falloc.h>
+-#endif
+ 
+ #ifndef MAP_FILE
+ # define MAP_FILE 0
+@@ -882,7 +879,7 @@ do_punch_hole(unsigned offset, unsigned length)
+ }
+ #endif
+ 
+-#ifdef FALLOCATE
++#ifdef HAVE_LINUX_FALLOC_H
+ /* fallocate is basically a no-op unless extending, then a lot like a truncate */
+ void
+ do_preallocate(unsigned offset, unsigned length)
+@@ -1139,7 +1136,7 @@ usage(void)
+ "	-A: Use the AIO system calls\n"
+ #endif
+ "	-D startingop: debug output starting at specified operation\n"
+-#ifdef FALLOCATE
++#ifdef HAVE_LINUX_FALLOC_H
+ "	-F: Do not use fallocate (preallocation) calls\n"
+ #endif
+ #ifdef FALLOC_FL_PUNCH_HOLE
+@@ -1296,7 +1293,7 @@ int aio_rw(int rw, int fd, char *buf, unsigned len, unsigned offset)
+ void
+ test_fallocate()
+ {
+-#ifdef FALLOCATE
++#ifdef HAVE_LINUX_FALLOC_H
+ 	if (!lite && fallocate_calls) {
+ 		if (fallocate(fd, 0, 0, 1) && errno == EOPNOTSUPP) {
+ 			if(!quiet)
+@@ -1306,7 +1303,7 @@ test_fallocate()
+ 			ftruncate(fd, 0);
+ 		}
+ 	}
+-#else /* ! FALLOCATE */
++#else /* ! HAVE_LINUX_FALLOC_H */
+ 	fallocate_calls = 0;
+ #endif
+ 
+diff --git a/src/global.h b/src/global.h
+index e6a2c2b..8180f66 100644
+--- a/src/global.h
++++ b/src/global.h
+@@ -149,4 +149,29 @@
+ #include <sys/param.h>
+ #endif
+ 
++#ifdef HAVE_LINUX_FALLOC_H
++#include <linux/falloc.h>
 +
-+seq=`basename $0`
-+seqres=$RESULT_DIR/$seq
-+echo "QA output created by $seq"
++#ifndef FALLOC_FL_KEEP_SIZE
++#define FALLOC_FL_KEEP_SIZE		0x01
++#endif
 +
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1	# failure is the default!
++#ifndef FALLOC_FL_PUNCH_HOLE
++#define FALLOC_FL_PUNCH_HOLE		0x02
+ #endif
 +
-+_cleanup()
-+{
-+    rm -f $tmp.*
-+}
++#ifndef FALLOC_FL_NO_HIDE_STALE
++#define FALLOC_FL_NO_HIDE_STALE		0x04
++#endif
 +
-+trap "_cleanup ; exit \$status" 0 1 2 3 15
++#ifndef FALLOC_FL_COLLAPSE_RANGE
++#define FALLOC_FL_COLLAPSE_RANGE	0x08
++#endif
 +
-+# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
-+. ./common/punch
++#ifndef FALLOC_FL_ZERO_RANGE
++#define FALLOC_FL_ZERO_RANGE		0x10
++#endif
 +
-+# real QA test starts here
-+_supported_fs ext4
-+_supported_os Linux
-+_require_xfs_io_falloc "fzero"
++#endif /* HAVE_LINUX_FALLOC_H */
 +
-+testfile=$TEST_DIR/001.$$
-+
-+# Standard zero range tests
-+_test_generic_punch falloc fzero fzero fiemap _filter_fiemap $testfile
-+
-+# Delayed allocation zero range tests
-+_test_generic_punch -d falloc fzero fzero fiemap _filter_fiemap $testfile
-+
-+# Multi zero range tests
-+_test_generic_punch -k falloc fzero fzero fiemap _filter_fiemap $testfile
-+
-+# Delayed allocation multi zero range tests
-+_test_generic_punch -d -k falloc fzero fzero fiemap _filter_fiemap $testfile
-+
-+status=0 ; exit
-diff --git a/tests/ext4/001.out b/tests/ext4/001.out
-new file mode 100644
-index 0000000..212c247
---- /dev/null
-+++ b/tests/ext4/001.out
-@@ -0,0 +1,337 @@
-+QA output created by 001
-+	1. into a hole
-+0: [0..7]: hole
-+1: [8..23]: unwritten
-+2: [24..39]: hole
-+daa100df6e6711906b61c9ab5aa16032
-+	2. into allocated space
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	3. into unwritten space
-+0: [0..39]: unwritten
-+daa100df6e6711906b61c9ab5aa16032
-+	4. hole -> data
-+0: [0..7]: hole
-+1: [8..23]: unwritten
-+2: [24..31]: data
-+3: [32..39]: hole
-+cc63069677939f69a6e8f68cae6a6dac
-+	5. hole -> unwritten
-+0: [0..7]: hole
-+1: [8..31]: unwritten
-+2: [32..39]: hole
-+daa100df6e6711906b61c9ab5aa16032
-+	6. data -> hole
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: hole
-+1b3779878366498b28c702ef88c4a773
-+	7. data -> unwritten
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: hole
-+1b3779878366498b28c702ef88c4a773
-+	8. unwritten -> hole
-+0: [0..23]: unwritten
-+1: [24..39]: hole
-+daa100df6e6711906b61c9ab5aa16032
-+	9. unwritten -> data
-+0: [0..23]: unwritten
-+1: [24..31]: data
-+2: [32..39]: hole
-+cc63069677939f69a6e8f68cae6a6dac
-+	10. hole -> data -> hole
-+0: [0..7]: hole
-+1: [8..31]: unwritten
-+2: [32..39]: hole
-+daa100df6e6711906b61c9ab5aa16032
-+	11. data -> hole -> data
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: data
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	12. unwritten -> data -> unwritten
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: data
-+daa100df6e6711906b61c9ab5aa16032
-+	13. data -> unwritten -> data
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: data
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	14. data -> hole @ EOF
-+0: [0..23]: data
-+1: [24..39]: unwritten
-+e1f024eedd27ea6b1c3e9b841c850404
-+	15. data -> hole @ 0
-+0: [0..15]: unwritten
-+1: [16..39]: data
-+eecb7aa303d121835de05028751d301c
-+	16. data -> cache cold ->hole
-+0: [0..15]: unwritten
-+1: [16..39]: data
-+eecb7aa303d121835de05028751d301c
-+	17. data -> hole in single block file
-+0: [0..7]: data
-+0000000 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
-+*
-+0000200 0000 0000 0000 0000 0000 0000 0000 0000
-+*
-+0000400 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
-+*
-+	1. into a hole
-+0: [0..7]: hole
-+1: [8..23]: unwritten
-+2: [24..39]: hole
-+daa100df6e6711906b61c9ab5aa16032
-+	2. into allocated space
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	3. into unwritten space
-+0: [0..39]: unwritten
-+daa100df6e6711906b61c9ab5aa16032
-+	4. hole -> data
-+0: [0..7]: hole
-+1: [8..23]: unwritten
-+2: [24..31]: data
-+3: [32..39]: hole
-+cc63069677939f69a6e8f68cae6a6dac
-+	5. hole -> unwritten
-+0: [0..7]: hole
-+1: [8..31]: unwritten
-+2: [32..39]: hole
-+daa100df6e6711906b61c9ab5aa16032
-+	6. data -> hole
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: hole
-+1b3779878366498b28c702ef88c4a773
-+	7. data -> unwritten
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: hole
-+1b3779878366498b28c702ef88c4a773
-+	8. unwritten -> hole
-+0: [0..23]: unwritten
-+1: [24..39]: hole
-+daa100df6e6711906b61c9ab5aa16032
-+	9. unwritten -> data
-+0: [0..23]: unwritten
-+1: [24..31]: data
-+2: [32..39]: hole
-+cc63069677939f69a6e8f68cae6a6dac
-+	10. hole -> data -> hole
-+0: [0..7]: hole
-+1: [8..31]: unwritten
-+2: [32..39]: hole
-+daa100df6e6711906b61c9ab5aa16032
-+	11. data -> hole -> data
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: data
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	12. unwritten -> data -> unwritten
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: data
-+daa100df6e6711906b61c9ab5aa16032
-+	13. data -> unwritten -> data
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: data
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	14. data -> hole @ EOF
-+0: [0..23]: data
-+1: [24..39]: unwritten
-+e1f024eedd27ea6b1c3e9b841c850404
-+	15. data -> hole @ 0
-+0: [0..15]: unwritten
-+1: [16..39]: data
-+eecb7aa303d121835de05028751d301c
-+	16. data -> cache cold ->hole
-+0: [0..15]: unwritten
-+1: [16..39]: data
-+eecb7aa303d121835de05028751d301c
-+	17. data -> hole in single block file
-+0: [0..7]: data
-+0000000 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
-+*
-+0000200 0000 0000 0000 0000 0000 0000 0000 0000
-+*
-+0000400 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
-+*
-+	1. into a hole
-+0: [0..7]: hole
-+1: [8..23]: unwritten
-+2: [24..39]: hole
-+daa100df6e6711906b61c9ab5aa16032
-+	2. into allocated space
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	3. into unwritten space
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	4. hole -> data
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	5. hole -> unwritten
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	6. data -> hole
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	7. data -> unwritten
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	8. unwritten -> hole
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	9. unwritten -> data
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	10. hole -> data -> hole
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: data
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	11. data -> hole -> data
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: data
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	12. unwritten -> data -> unwritten
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: data
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	13. data -> unwritten -> data
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: data
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	14. data -> hole @ EOF
-+0: [0..23]: data
-+1: [24..39]: unwritten
-+e1f024eedd27ea6b1c3e9b841c850404
-+	15. data -> hole @ 0
-+0: [0..15]: unwritten
-+1: [16..39]: data
-+eecb7aa303d121835de05028751d301c
-+	16. data -> cache cold ->hole
-+0: [0..15]: unwritten
-+1: [16..39]: data
-+eecb7aa303d121835de05028751d301c
-+	17. data -> hole in single block file
-+0: [0..7]: data
-+0000000 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
-+*
-+0000200 0000 0000 0000 0000 0000 0000 0000 0000
-+*
-+0000400 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
-+*
-+	1. into a hole
-+0: [0..7]: hole
-+1: [8..23]: unwritten
-+2: [24..39]: hole
-+daa100df6e6711906b61c9ab5aa16032
-+	2. into allocated space
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	3. into unwritten space
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	4. hole -> data
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	5. hole -> unwritten
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	6. data -> hole
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	7. data -> unwritten
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	8. unwritten -> hole
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	9. unwritten -> data
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	10. hole -> data -> hole
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: data
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	11. data -> hole -> data
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: data
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	12. unwritten -> data -> unwritten
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: data
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	13. data -> unwritten -> data
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: data
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	14. data -> hole @ EOF
-+0: [0..23]: data
-+1: [24..39]: unwritten
-+e1f024eedd27ea6b1c3e9b841c850404
-+	15. data -> hole @ 0
-+0: [0..15]: unwritten
-+1: [16..39]: data
-+eecb7aa303d121835de05028751d301c
-+	16. data -> cache cold ->hole
-+0: [0..15]: unwritten
-+1: [16..39]: data
-+eecb7aa303d121835de05028751d301c
-+	17. data -> hole in single block file
-+0: [0..7]: data
-+0000000 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
-+*
-+0000200 0000 0000 0000 0000 0000 0000 0000 0000
-+*
-+0000400 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
-+*
-diff --git a/tests/ext4/group b/tests/ext4/group
-index 7e1a68b..dd2841e 100644
---- a/tests/ext4/group
-+++ b/tests/ext4/group
-@@ -3,6 +3,7 @@
- # - do not start group names with a digit
- # - comment line before each group is "new" description
- #
-+001 auto prealloc quick
- 271 auto rw quick
- 301 aio dangerous ioctl rw stress
- 302 aio dangerous ioctl rw stress
++#endif /* GLOBAL_H */
 -- 
 1.8.3.1
 
