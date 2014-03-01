@@ -1,114 +1,74 @@
 From: Robert Yang <liezhi.yang@windriver.com>
-Subject: [PATCH V4 03/11] misc/create_inode.c: create special file
-Date: Sat, 1 Mar 2014 03:06:07 -0500
-Message-ID: <1393661175-459-4-git-send-email-liezhi.yang@windriver.com>
+Subject: [PATCH V4 04/11] misc/create_inode.c: create symlink
+Date: Sat, 1 Mar 2014 03:06:08 -0500
+Message-ID: <1393661175-459-5-git-send-email-liezhi.yang@windriver.com>
 References: <1393661175-459-1-git-send-email-liezhi.yang@windriver.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: <linux-ext4@vger.kernel.org>
 To: <tytso@mit.edu>, <dvhart@linux.intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.windriver.com ([147.11.1.11]:61647 "EHLO
-	mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751627AbaCAIG0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 1 Mar 2014 03:06:26 -0500
+Received: from mail1.windriver.com ([147.11.146.13]:38832 "EHLO
+	mail1.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751728AbaCAIG2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 1 Mar 2014 03:06:28 -0500
 In-Reply-To: <1393661175-459-1-git-send-email-liezhi.yang@windriver.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The do_mknod_internal() is used for creating special file which is
-block, character and fifo, most of the code are from debugfs/debugfs.c,
-the debugfs/debugfs.c will be modified to use this function.
+The do_symlink_internal() is used for creating symlinks, most of the
+code are from debugfs/debugfs.c, the debugfs/debugfs.c will be modified
+to use this function.
 
 Signed-off-by: Robert Yang <liezhi.yang@windriver.com>
 Reviewed-by: Darren Hart <dvhart@linux.intel.com>
 ---
- misc/create_inode.c |   72 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 72 insertions(+)
+ misc/create_inode.c |   32 ++++++++++++++++++++++++++++++++
+ 1 file changed, 32 insertions(+)
 
 diff --git a/misc/create_inode.c b/misc/create_inode.c
-index b68b910..4da8aff 100644
+index 4da8aff..f845103 100644
 --- a/misc/create_inode.c
 +++ b/misc/create_inode.c
-@@ -11,6 +11,78 @@
- /* Make a special file which is block, character and fifo */
- errcode_t do_mknod_internal(ext2_ino_t cwd, const char *name, struct stat *st)
+@@ -88,6 +88,38 @@ errcode_t do_mknod_internal(ext2_ino_t cwd, const char *name, struct stat *st)
+ /* Make a symlink name -> target */
+ errcode_t do_symlink_internal(ext2_ino_t cwd, const char *name, char *target)
  {
-+	ext2_ino_t		ino;
-+	errcode_t 		retval;
++	char			*cp;
++	ext2_ino_t		parent_ino;
++	errcode_t		retval;
 +	struct ext2_inode	inode;
-+	unsigned long		major, minor, mode;
-+	int			filetype;
++	struct stat		st;
 +
-+	switch(st->st_mode & S_IFMT) {
-+		case S_IFCHR:
-+			mode = LINUX_S_IFCHR;
-+			filetype = EXT2_FT_CHRDEV;
-+			break;
-+		case S_IFBLK:
-+			mode = LINUX_S_IFBLK;
-+			filetype =  EXT2_FT_BLKDEV;
-+			break;
-+		case S_IFIFO:
-+			mode = LINUX_S_IFIFO;
-+			filetype = EXT2_FT_FIFO;
-+			break;
-+	}
++	cp = strrchr(name, '/');
++	if (cp) {
++		*cp = 0;
++		if ((retval =  ext2fs_namei(current_fs, root, cwd, name, &parent_ino))){
++			com_err(name, retval, 0);
++			return retval;
++		}
++		name = cp+1;
++	} else
++		parent_ino = cwd;
 +
-+	if (!(current_fs->flags & EXT2_FLAG_RW)) {
-+		com_err(__func__, 0, "Filesystem opened read/only");
-+		return -1;
++try_again:
++	retval = ext2fs_symlink(current_fs, parent_ino, 0, name, target);
++	if (retval == EXT2_ET_DIR_NO_SPACE) {
++		retval = ext2fs_expand_dir(current_fs, parent_ino);
++		if (retval) {
++			com_err("do_symlink_internal", retval, "while expanding directory");
++			return retval;
++		}
++		goto try_again;
 +	}
-+	retval = ext2fs_new_inode(current_fs, cwd, 010755, 0, &ino);
 +	if (retval) {
-+		com_err(__func__, retval, 0);
++		com_err("ext2fs_symlink", retval, 0);
 +		return retval;
 +	}
 +
-+#ifdef DEBUGFS
-+	printf("Allocated inode: %u\n", ino);
-+#endif
-+	retval = ext2fs_link(current_fs, cwd, name, ino, filetype);
-+	if (retval == EXT2_ET_DIR_NO_SPACE) {
-+		retval = ext2fs_expand_dir(current_fs, cwd);
-+		if (retval) {
-+			com_err(__func__, retval, "while expanding directory");
-+			return retval;
-+		}
-+		retval = ext2fs_link(current_fs, cwd, name, ino, filetype);
-+	}
-+	if (retval) {
-+		com_err(name, retval, 0);
-+		return -1;
-+	}
-+        if (ext2fs_test_inode_bitmap2(current_fs->inode_map, ino))
-+		com_err(__func__, 0, "Warning: inode already set");
-+	ext2fs_inode_alloc_stats2(current_fs, ino, +1, 0);
-+	memset(&inode, 0, sizeof(inode));
-+	inode.i_mode = mode;
-+	inode.i_atime = inode.i_ctime = inode.i_mtime =
-+		current_fs->now ? current_fs->now : time(0);
-+
-+	major = major(st->st_rdev);
-+	minor = minor(st->st_rdev);
-+
-+	if ((major < 256) && (minor < 256)) {
-+		inode.i_block[0] = major * 256 + minor;
-+		inode.i_block[1] = 0;
-+	} else {
-+		inode.i_block[0] = 0;
-+		inode.i_block[1] = (minor & 0xff) | (major << 8) | ((minor & ~0xff) << 12);
-+	}
-+	inode.i_links_count = 1;
-+
-+	retval = ext2fs_write_new_inode(current_fs, ino, &inode);
-+	if (retval)
-+		com_err(__func__, retval, "while creating inode %u", ino);
-+
-+	return retval;
  }
  
- /* Make a symlink name -> target */
+ /* Make a directory in the fs */
 -- 
 1.7.10.4
 
