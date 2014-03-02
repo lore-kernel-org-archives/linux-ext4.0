@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 06/32] libext2fs: fix parents when modifying extents
-Date: Sat, 01 Mar 2014 23:17:17 -0800
-Message-ID: <20140302071717.28217.26062.stgit@birch.djwong.org>
+Subject: [PATCH 07/32] e2fsck: fix inline_data flag errors in pass1
+Date: Sat, 01 Mar 2014 23:17:23 -0800
+Message-ID: <20140302071723.28217.12676.stgit@birch.djwong.org>
 References: <20140302071639.28217.57302.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,113 +9,117 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:17455 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751284AbaCBHRV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Mar 2014 02:17:21 -0500
+Received: from aserp1040.oracle.com ([141.146.126.69]:44205 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751284AbaCBHR2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Mar 2014 02:17:28 -0500
 In-Reply-To: <20140302071639.28217.57302.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In ext2fs_extent_set_bmap() and ext2fs_punch_extent(), fix the parents
-when altering either end of an extent so that the parent nodes reflect
-the added mapping.
+In pass1, check for a file with inline_data set on a filesystem that
+doesn't support it.
 
-There's a slight complication to using fix_parents: if there are two
-mappings to an lblk in the tree, the value of handle->path->curr can
-point to either extent afterwards), which is documented in a comment.
+If we decide to clear the inline_data flag on the inode and the inode
+doesn't use extents, write the inode out to disk so that
+block_iterate3 doesn't see the inline_data flag when it re-reads the
+inode, thereby aborting e2fsck.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/extent.c |   30 ++++++++++++++++++++++++------
- lib/ext2fs/punch.c  |   14 ++++++++++----
- 2 files changed, 34 insertions(+), 10 deletions(-)
+ e2fsck/pass1.c                          |   14 ++++++++++++++
+ e2fsck/problem.c                        |    4 ++++
+ e2fsck/problem.h                        |    4 ++++
+ tests/f_bad_disconnected_inode/expect.1 |    9 +++++++++
+ 4 files changed, 31 insertions(+)
 
 
-diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
-index f27344e..80ce88f 100644
---- a/lib/ext2fs/extent.c
-+++ b/lib/ext2fs/extent.c
-@@ -720,7 +720,14 @@ errcode_t ext2fs_extent_goto(ext2_extent_handle_t handle,
-  * and so on.
-  *
-  * Safe to call for any position in node; if not at the first entry,
-- * will  simply return.
-+ * it will simply return.
-+ *
-+ * Note a subtlety of this function -- if there happen to be two extents
-+ * mapping the same lblk and someone calls fix_parents on the second of the two
-+ * extents, the position of the extent handle after the call will be the second
-+ * extent if nothing happened, or the first extent if something did.  A caller
-+ * in this situation must use ext2fs_extent_goto() after calling this function.
-+ * Or simply don't map the same lblk with two extents, ever.
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index 7554f4e..cf84db6 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -2163,6 +2163,16 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
+ 		}
+ 	}
+ 
++	if (inode->i_flags & EXT4_INLINE_DATA_FL) {
++		if (!(fs->super->s_feature_incompat &
++		      EXT4_FEATURE_INCOMPAT_INLINE_DATA)) {
++			if (fix_problem(ctx, PR_1_INLINE_DATA_SET, pctx)) {
++				inode->i_flags &= ~EXT4_INLINE_DATA_FL;
++				dirty_inode++;
++			}
++		}
++	}
++
+ 	if (ext2fs_file_acl_block(fs, inode) &&
+ 	    check_ext_attr(ctx, pctx, block_buf)) {
+ 		if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
+@@ -2174,6 +2184,10 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
+ 		if (extent_fs && (inode->i_flags & EXT4_EXTENTS_FL))
+ 			check_blocks_extents(ctx, pctx, &pb);
+ 		else {
++			if (dirty_inode)
++				e2fsck_write_inode(ctx, ino, inode,
++						   "check_blocks");
++			dirty_inode = 0;
+ 			pctx->errcode = ext2fs_block_iterate3(fs, ino,
+ 						pb.is_dir ? BLOCK_FLAG_HOLE : 0,
+ 						block_buf, process_block, &pb);
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index be9d3ec..7d9cfd6 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -1020,6 +1020,10 @@ static struct e2fsck_problem problem_table[] = {
+ 	  N_("@i %i, end of extent exceeds allowed value\n\t(logical @b %c, physical @b %b, len %N)\n"),
+ 	  PROMPT_CLEAR, 0 },
+ 
++	/* Inline data flag set on filesystem without inline data support */
++	{ PR_1_INLINE_DATA_SET,
++	  N_("@i %i has inline data flag set on @f without inline data support.\n"),
++	  PROMPT_CLEAR, 0 },
+ 
+ 	/* Pass 1b errors */
+ 
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index 8999a64..3304caa 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -593,6 +593,10 @@ struct problem_context {
+ #define PR_1_EXTENT_INDEX_START_INVALID	0x01006D
+ 
+ #define PR_1_EXTENT_END_OUT_OF_BOUNDS	0x01006E
++
++/* Inline data flag set on filesystem without inline data support */
++#define PR_1_INLINE_DATA_SET		0x01006F
++
+ /*
+  * Pass 1b errors
   */
- errcode_t ext2fs_extent_fix_parents(ext2_extent_handle_t handle)
- {
-@@ -1379,17 +1386,25 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
- 							       &next_extent);
- 				if (retval)
- 					goto done;
--				retval = ext2fs_extent_fix_parents(handle);
--				if (retval)
--					goto done;
- 			} else
- 				retval = ext2fs_extent_insert(handle,
- 				      EXT2_EXTENT_INSERT_AFTER, &newextent);
- 			if (retval)
- 				goto done;
--			/* Now pointing at inserted extent; move back to prev */
-+			retval = ext2fs_extent_fix_parents(handle);
-+			if (retval)
-+				goto done;
-+			/*
-+			 * Now pointing at inserted extent; move back to prev.
-+			 *
-+			 * We cannot use EXT2_EXTENT_PREV to go back; note the
-+			 * subtlety in the comment for fix_parents().
-+			 */
-+			retval = ext2fs_extent_goto(handle, logical);
-+			if (retval)
-+				goto done;
- 			retval = ext2fs_extent_get(handle,
--						   EXT2_EXTENT_PREV_LEAF,
-+						   EXT2_EXTENT_CURRENT,
- 						   &extent);
- 			if (retval)
- 				goto done;
-@@ -1422,6 +1437,9 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
- 							      0, &newextent);
- 			if (retval)
- 				goto done;
-+			retval = ext2fs_extent_fix_parents(handle);
-+			if (retval)
-+				goto done;
- 			retval = ext2fs_extent_get(handle,
- 						   EXT2_EXTENT_NEXT_LEAF,
- 						   &extent);
-diff --git a/lib/ext2fs/punch.c b/lib/ext2fs/punch.c
-index a3d020e..2a2cf10 100644
---- a/lib/ext2fs/punch.c
-+++ b/lib/ext2fs/punch.c
-@@ -343,10 +343,16 @@ static errcode_t ext2fs_punch_extent(ext2_filsys fs, ext2_ino_t ino,
- 					EXT2_EXTENT_INSERT_AFTER, &newex);
- 			if (retval)
- 				goto errout;
--			/* Now pointing at inserted extent; so go back */
--			retval = ext2fs_extent_get(handle,
--						   EXT2_EXTENT_PREV_LEAF,
--						   &newex);
-+			retval = ext2fs_extent_fix_parents(handle);
-+			if (retval)
-+				goto errout;
-+			/*
-+			 * Now pointing at inserted extent; so go back.
-+			 *
-+			 * We cannot use EXT2_EXTENT_PREV to go back; note the
-+			 * subtlety in the comment for fix_parents().
-+			 */
-+			retval = ext2fs_extent_goto(handle, extent.e_lblk);
- 			if (retval)
- 				goto errout;
- 		} 
+diff --git a/tests/f_bad_disconnected_inode/expect.1 b/tests/f_bad_disconnected_inode/expect.1
+index 11862f6..dec22e1 100644
+--- a/tests/f_bad_disconnected_inode/expect.1
++++ b/tests/f_bad_disconnected_inode/expect.1
+@@ -2,12 +2,21 @@ Pass 1: Checking inodes, blocks, and sizes
+ Inode 1 has EXTENTS_FL flag set on filesystem without extents support.
+ Clear? yes
+ 
++Inode 9 has inline data flag set on filesystem without inline data support.
++Clear? yes
++
++Inode 10 has inline data flag set on filesystem without inline data support.
++Clear? yes
++
+ Inode 15 has EXTENTS_FL flag set on filesystem without extents support.
+ Clear? yes
+ 
+ Inode 16 has EXTENTS_FL flag set on filesystem without extents support.
+ Clear? yes
+ 
++Inode 14 has inline data flag set on filesystem without inline data support.
++Clear? yes
++
+ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ /lost+found not found.  Create? yes
 
