@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 04/32] misc: fix header complaints and resource leaks in
- e2fsprogs
-Date: Sat, 01 Mar 2014 23:17:04 -0800
-Message-ID: <20140302071704.28217.3469.stgit@birch.djwong.org>
+Subject: [PATCH 05/32] libext2fs: fix memory leak when drastically shrinking
+ extent tree depth
+Date: Sat, 01 Mar 2014 23:17:11 -0800
+Message-ID: <20140302071711.28217.49739.stgit@birch.djwong.org>
 References: <20140302071639.28217.57302.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,95 +10,99 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:17433 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:17446 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751284AbaCBHRI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Mar 2014 02:17:08 -0500
+	with ESMTP id S1751284AbaCBHRP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Mar 2014 02:17:15 -0500
 In-Reply-To: <20140302071639.28217.57302.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fix a few minor bugs that cppcheck complained about.
+In ext2fs_extent_free(), h(andle)->max_depth is used as a loop
+conditional variable to free all the h->path[].buf pointers.  However,
+ext2fs_extent_delete() sets max_depth = 0 if we've removed everything
+from the extent tree, which causes a subsequent _free() to leak some
+buf pointers.  max_depth can be re-incremented when splitting extent
+nodes, but there's no guarantee that it'll reach the old value before
+the free.
+
+Therefore, remember the size of h->paths[] separately, and use that
+when freeing the extent handle.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- debugfs/debugfs.c   |    1 +
- debugfs/util.c      |    2 +-
- e2fsck/unix.c       |    1 +
- lib/ext2fs/icount.c |    2 ++
- util/subst.c        |    3 +++
- 5 files changed, 8 insertions(+), 1 deletion(-)
+ lib/ext2fs/extent.c |   23 +++++++++++------------
+ 1 file changed, 11 insertions(+), 12 deletions(-)
 
 
-diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-index bc435b8..f0c5373 100644
---- a/debugfs/debugfs.c
-+++ b/debugfs/debugfs.c
-@@ -669,6 +669,7 @@ static void dump_extents(FILE *f, const char *prefix, ext2_ino_t ino,
- 	}
- 	if (printed)
- 		fprintf(f, "\n");
-+	ext2fs_extent_free(handle);
- }
+diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
+index 3ccae66..f27344e 100644
+--- a/lib/ext2fs/extent.c
++++ b/lib/ext2fs/extent.c
+@@ -58,6 +58,7 @@ struct ext2_extent_handle {
+ 	int			type;
+ 	int			level;
+ 	int			max_depth;
++	int			max_paths;
+ 	struct extent_path	*path;
+ };
  
- void internal_dump_inode(FILE *out, const char *prefix,
-diff --git a/debugfs/util.c b/debugfs/util.c
-index 9ddfe0b..5cc4e22 100644
---- a/debugfs/util.c
-+++ b/debugfs/util.c
-@@ -201,7 +201,7 @@ char *time_to_string(__u32 cl)
- 		tz = ss_safe_getenv("TZ");
- 		if (!tz)
- 			tz = "";
--		do_gmt = !strcmp(tz, "GMT") | !strcmp(tz, "GMT0");
-+		do_gmt = !strcmp(tz, "GMT") || !strcmp(tz, "GMT0");
- 	}
+@@ -168,7 +169,7 @@ void ext2fs_extent_free(ext2_extent_handle_t handle)
+ 		return;
  
- 	return asctime((do_gmt) ? gmtime(&t) : localtime(&t));
-diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-index 429f1cd..f73a252 100644
---- a/e2fsck/unix.c
-+++ b/e2fsck/unix.c
-@@ -1016,6 +1016,7 @@ static errcode_t PRS(int argc, char *argv[], e2fsck_t *ret_ctx)
- 			strcat(newpath, oldpath);
+ 	if (handle->path) {
+-		for (i=1; i <= handle->max_depth; i++) {
++		for (i = 1; i < handle->max_paths; i++) {
+ 			if (handle->path[i].buf)
+ 				ext2fs_free_mem(&handle->path[i].buf);
  		}
- 		putenv(newpath);
-+		free(newpath);
- 	}
- #ifdef CONFIG_JBD_DEBUG
- 	jbd_debug = getenv("E2FSCK_JBD_DEBUG");
-diff --git a/lib/ext2fs/icount.c b/lib/ext2fs/icount.c
-index a3b20f0..7d1b3d5 100644
---- a/lib/ext2fs/icount.c
-+++ b/lib/ext2fs/icount.c
-@@ -198,6 +198,7 @@ errcode_t ext2fs_create_icount_tdb(ext2_filsys fs, char *tdb_dir,
- 	fd = mkstemp(fn);
- 	if (fd < 0) {
- 		retval = errno;
-+		ext2fs_free_mem(&fn);
- 		goto errout;
- 	}
- 	umask(save_umask);
-@@ -216,6 +217,7 @@ errcode_t ext2fs_create_icount_tdb(ext2_filsys fs, char *tdb_dir,
- 	close(fd);
- 	if (icount->tdb == NULL) {
- 		retval = errno;
-+		ext2fs_free_mem(&fn);
- 		goto errout;
- 	}
- 	*ret = icount;
-diff --git a/util/subst.c b/util/subst.c
-index 6a5eab1..602546c 100644
---- a/util/subst.c
-+++ b/util/subst.c
-@@ -17,6 +17,9 @@
- #include <fcntl.h>
- #include <time.h>
- #include <utime.h>
-+#ifdef HAVE_SYS_TIME_H
-+#include <sys/time.h>
-+#endif
+@@ -242,11 +243,10 @@ errcode_t ext2fs_extent_open2(ext2_filsys fs, ext2_ino_t ino,
+ 	handle->max_depth = ext2fs_le16_to_cpu(eh->eh_depth);
+ 	handle->type = ext2fs_le16_to_cpu(eh->eh_magic);
  
- #ifdef HAVE_GETOPT_H
- #include <getopt.h>
+-	retval = ext2fs_get_mem(((handle->max_depth+1) *
+-				 sizeof(struct extent_path)),
+-				&handle->path);
+-	memset(handle->path, 0,
+-	       (handle->max_depth+1) * sizeof(struct extent_path));
++	handle->max_paths = handle->max_depth + 1;
++	retval = ext2fs_get_memzero(handle->max_paths *
++				    sizeof(struct extent_path),
++				    &handle->path);
+ 	handle->path[0].buf = (char *) handle->inode->i_block;
+ 
+ 	handle->path[0].left = handle->path[0].entries =
+@@ -912,13 +912,11 @@ errcode_t ext2fs_extent_node_split(ext2_extent_handle_t handle)
+ 	if (handle->level == 0) {
+ 		new_root = 1;
+ 		tocopy = ext2fs_le16_to_cpu(eh->eh_entries);
+-		retval = ext2fs_get_mem(((handle->max_depth+2) *
+-					 sizeof(struct extent_path)),
+-					&newpath);
++		retval = ext2fs_get_memzero((handle->max_paths + 1) *
++					    sizeof(struct extent_path),
++					    &newpath);
+ 		if (retval)
+ 			goto done;
+-		memset(newpath, 0,
+-		       ((handle->max_depth+2) * sizeof(struct extent_path)));
+ 	} else {
+ 		tocopy = ext2fs_le16_to_cpu(eh->eh_entries) / 2;
+ 	}
+@@ -996,13 +994,14 @@ errcode_t ext2fs_extent_node_split(ext2_extent_handle_t handle)
+ 	/* current path now has fewer active entries, we copied some out */
+ 	if (handle->level == 0) {
+ 		memcpy(newpath, path,
+-		       sizeof(struct extent_path) * (handle->max_depth+1));
++		       sizeof(struct extent_path) * handle->max_paths);
+ 		handle->path = newpath;
+ 		newpath = path;
+ 		path = handle->path;
+ 		path->entries = 1;
+ 		path->left = path->max_entries - 1;
+ 		handle->max_depth++;
++		handle->max_paths++;
+ 		eh->eh_depth = ext2fs_cpu_to_le16(handle->max_depth);
+ 	} else {
+ 		path->entries -= tocopy;
 
