@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 05/32] libext2fs: fix memory leak when drastically shrinking
- extent tree depth
-Date: Sat, 01 Mar 2014 23:17:11 -0800
-Message-ID: <20140302071711.28217.49739.stgit@birch.djwong.org>
+Subject: [PATCH 06/32] libext2fs: fix parents when modifying extents
+Date: Sat, 01 Mar 2014 23:17:17 -0800
+Message-ID: <20140302071717.28217.26062.stgit@birch.djwong.org>
 References: <20140302071639.28217.57302.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,99 +9,113 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:17446 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:17455 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751284AbaCBHRP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Mar 2014 02:17:15 -0500
+	with ESMTP id S1751284AbaCBHRV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Mar 2014 02:17:21 -0500
 In-Reply-To: <20140302071639.28217.57302.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In ext2fs_extent_free(), h(andle)->max_depth is used as a loop
-conditional variable to free all the h->path[].buf pointers.  However,
-ext2fs_extent_delete() sets max_depth = 0 if we've removed everything
-from the extent tree, which causes a subsequent _free() to leak some
-buf pointers.  max_depth can be re-incremented when splitting extent
-nodes, but there's no guarantee that it'll reach the old value before
-the free.
+In ext2fs_extent_set_bmap() and ext2fs_punch_extent(), fix the parents
+when altering either end of an extent so that the parent nodes reflect
+the added mapping.
 
-Therefore, remember the size of h->paths[] separately, and use that
-when freeing the extent handle.
+There's a slight complication to using fix_parents: if there are two
+mappings to an lblk in the tree, the value of handle->path->curr can
+point to either extent afterwards), which is documented in a comment.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/extent.c |   23 +++++++++++------------
- 1 file changed, 11 insertions(+), 12 deletions(-)
+ lib/ext2fs/extent.c |   30 ++++++++++++++++++++++++------
+ lib/ext2fs/punch.c  |   14 ++++++++++----
+ 2 files changed, 34 insertions(+), 10 deletions(-)
 
 
 diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
-index 3ccae66..f27344e 100644
+index f27344e..80ce88f 100644
 --- a/lib/ext2fs/extent.c
 +++ b/lib/ext2fs/extent.c
-@@ -58,6 +58,7 @@ struct ext2_extent_handle {
- 	int			type;
- 	int			level;
- 	int			max_depth;
-+	int			max_paths;
- 	struct extent_path	*path;
- };
- 
-@@ -168,7 +169,7 @@ void ext2fs_extent_free(ext2_extent_handle_t handle)
- 		return;
- 
- 	if (handle->path) {
--		for (i=1; i <= handle->max_depth; i++) {
-+		for (i = 1; i < handle->max_paths; i++) {
- 			if (handle->path[i].buf)
- 				ext2fs_free_mem(&handle->path[i].buf);
- 		}
-@@ -242,11 +243,10 @@ errcode_t ext2fs_extent_open2(ext2_filsys fs, ext2_ino_t ino,
- 	handle->max_depth = ext2fs_le16_to_cpu(eh->eh_depth);
- 	handle->type = ext2fs_le16_to_cpu(eh->eh_magic);
- 
--	retval = ext2fs_get_mem(((handle->max_depth+1) *
--				 sizeof(struct extent_path)),
--				&handle->path);
--	memset(handle->path, 0,
--	       (handle->max_depth+1) * sizeof(struct extent_path));
-+	handle->max_paths = handle->max_depth + 1;
-+	retval = ext2fs_get_memzero(handle->max_paths *
-+				    sizeof(struct extent_path),
-+				    &handle->path);
- 	handle->path[0].buf = (char *) handle->inode->i_block;
- 
- 	handle->path[0].left = handle->path[0].entries =
-@@ -912,13 +912,11 @@ errcode_t ext2fs_extent_node_split(ext2_extent_handle_t handle)
- 	if (handle->level == 0) {
- 		new_root = 1;
- 		tocopy = ext2fs_le16_to_cpu(eh->eh_entries);
--		retval = ext2fs_get_mem(((handle->max_depth+2) *
--					 sizeof(struct extent_path)),
--					&newpath);
-+		retval = ext2fs_get_memzero((handle->max_paths + 1) *
-+					    sizeof(struct extent_path),
-+					    &newpath);
- 		if (retval)
- 			goto done;
--		memset(newpath, 0,
--		       ((handle->max_depth+2) * sizeof(struct extent_path)));
- 	} else {
- 		tocopy = ext2fs_le16_to_cpu(eh->eh_entries) / 2;
- 	}
-@@ -996,13 +994,14 @@ errcode_t ext2fs_extent_node_split(ext2_extent_handle_t handle)
- 	/* current path now has fewer active entries, we copied some out */
- 	if (handle->level == 0) {
- 		memcpy(newpath, path,
--		       sizeof(struct extent_path) * (handle->max_depth+1));
-+		       sizeof(struct extent_path) * handle->max_paths);
- 		handle->path = newpath;
- 		newpath = path;
- 		path = handle->path;
- 		path->entries = 1;
- 		path->left = path->max_entries - 1;
- 		handle->max_depth++;
-+		handle->max_paths++;
- 		eh->eh_depth = ext2fs_cpu_to_le16(handle->max_depth);
- 	} else {
- 		path->entries -= tocopy;
+@@ -720,7 +720,14 @@ errcode_t ext2fs_extent_goto(ext2_extent_handle_t handle,
+  * and so on.
+  *
+  * Safe to call for any position in node; if not at the first entry,
+- * will  simply return.
++ * it will simply return.
++ *
++ * Note a subtlety of this function -- if there happen to be two extents
++ * mapping the same lblk and someone calls fix_parents on the second of the two
++ * extents, the position of the extent handle after the call will be the second
++ * extent if nothing happened, or the first extent if something did.  A caller
++ * in this situation must use ext2fs_extent_goto() after calling this function.
++ * Or simply don't map the same lblk with two extents, ever.
+  */
+ errcode_t ext2fs_extent_fix_parents(ext2_extent_handle_t handle)
+ {
+@@ -1379,17 +1386,25 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
+ 							       &next_extent);
+ 				if (retval)
+ 					goto done;
+-				retval = ext2fs_extent_fix_parents(handle);
+-				if (retval)
+-					goto done;
+ 			} else
+ 				retval = ext2fs_extent_insert(handle,
+ 				      EXT2_EXTENT_INSERT_AFTER, &newextent);
+ 			if (retval)
+ 				goto done;
+-			/* Now pointing at inserted extent; move back to prev */
++			retval = ext2fs_extent_fix_parents(handle);
++			if (retval)
++				goto done;
++			/*
++			 * Now pointing at inserted extent; move back to prev.
++			 *
++			 * We cannot use EXT2_EXTENT_PREV to go back; note the
++			 * subtlety in the comment for fix_parents().
++			 */
++			retval = ext2fs_extent_goto(handle, logical);
++			if (retval)
++				goto done;
+ 			retval = ext2fs_extent_get(handle,
+-						   EXT2_EXTENT_PREV_LEAF,
++						   EXT2_EXTENT_CURRENT,
+ 						   &extent);
+ 			if (retval)
+ 				goto done;
+@@ -1422,6 +1437,9 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
+ 							      0, &newextent);
+ 			if (retval)
+ 				goto done;
++			retval = ext2fs_extent_fix_parents(handle);
++			if (retval)
++				goto done;
+ 			retval = ext2fs_extent_get(handle,
+ 						   EXT2_EXTENT_NEXT_LEAF,
+ 						   &extent);
+diff --git a/lib/ext2fs/punch.c b/lib/ext2fs/punch.c
+index a3d020e..2a2cf10 100644
+--- a/lib/ext2fs/punch.c
++++ b/lib/ext2fs/punch.c
+@@ -343,10 +343,16 @@ static errcode_t ext2fs_punch_extent(ext2_filsys fs, ext2_ino_t ino,
+ 					EXT2_EXTENT_INSERT_AFTER, &newex);
+ 			if (retval)
+ 				goto errout;
+-			/* Now pointing at inserted extent; so go back */
+-			retval = ext2fs_extent_get(handle,
+-						   EXT2_EXTENT_PREV_LEAF,
+-						   &newex);
++			retval = ext2fs_extent_fix_parents(handle);
++			if (retval)
++				goto errout;
++			/*
++			 * Now pointing at inserted extent; so go back.
++			 *
++			 * We cannot use EXT2_EXTENT_PREV to go back; note the
++			 * subtlety in the comment for fix_parents().
++			 */
++			retval = ext2fs_extent_goto(handle, extent.e_lblk);
+ 			if (retval)
+ 				goto errout;
+ 		} 
 
