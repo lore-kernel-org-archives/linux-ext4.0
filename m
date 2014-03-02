@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 16/32] resize2fs: adjust reserved_gdt_blocks when changing
- group descriptor size
-Date: Sat, 01 Mar 2014 23:18:20 -0800
-Message-ID: <20140302071820.28217.80940.stgit@birch.djwong.org>
+Subject: [PATCH 17/32] libext2fs: have UNIX IO manager use pread/pwrite
+Date: Sat, 01 Mar 2014 23:18:27 -0800
+Message-ID: <20140302071827.28217.87713.stgit@birch.djwong.org>
 References: <20140302071639.28217.57302.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,71 +9,113 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:44311 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751570AbaCBHSZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Mar 2014 02:18:25 -0500
+Received: from userp1040.oracle.com ([156.151.31.81]:17578 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751595AbaCBHSc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Mar 2014 02:18:32 -0500
 In-Reply-To: <20140302071639.28217.57302.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Since we're constructing the fantasy that new_fs has always been a
-64bit fs, we need to adjust reserved_gdt_blocks when we start resizing
-the metadata so that the size of the gdt space in the new fs reflects
-the fantasy throughout the resize process.
+If pread/pwrite are present, have the UNIX IO manager use them for
+aligned IOs (instead of the current seek -> read/write), thereby
+saving us a (minor) amount of system call overhead.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- resize/resize2fs.c |   37 ++++++++++++++++++++++++-------------
- 1 file changed, 24 insertions(+), 13 deletions(-)
+ configure            |    2 +-
+ configure.in         |    2 ++
+ lib/config.h.in      |    6 ++++++
+ lib/ext2fs/unix_io.c |   24 ++++++++++++++++++++++++
+ 4 files changed, 33 insertions(+), 1 deletion(-)
 
 
-diff --git a/resize/resize2fs.c b/resize/resize2fs.c
-index 646c65e..54e0053 100644
---- a/resize/resize2fs.c
-+++ b/resize/resize2fs.c
-@@ -251,6 +251,24 @@ errout:
- 	return retval;
- }
+diff --git a/configure b/configure
+index 6449f59..7b0a0d1 100755
+--- a/configure
++++ b/configure
+@@ -11155,7 +11155,7 @@ if test "$ac_res" != no; then :
+ fi
  
-+/* Keep the size of the group descriptor region constant */
-+static void adjust_reserved_gdt_blocks(ext2_filsys old_fs, ext2_filsys fs)
-+{
-+	if ((fs->super->s_feature_compat &
-+	     EXT2_FEATURE_COMPAT_RESIZE_INODE) &&
-+	    (old_fs->desc_blocks != fs->desc_blocks)) {
-+		int new;
+ fi
+-for ac_func in  	__secure_getenv 	backtrace 	blkid_probe_get_topology 	chflags 	fadvise64 	fallocate 	fallocate64 	fchown 	fdatasync 	fstat64 	ftruncate64 	futimes 	getcwd 	getdtablesize 	getmntinfo 	getpwuid_r 	getrlimit 	getrusage 	jrand48 	llseek 	lseek64 	mallinfo 	mbstowcs 	memalign 	mempcpy 	mmap 	msync 	nanosleep 	open64 	pathconf 	posix_fadvise 	posix_fadvise64 	posix_memalign 	prctl 	secure_getenv 	setmntent 	setresgid 	setresuid 	srandom 	stpcpy 	strcasecmp 	strdup 	strnlen 	strptime 	strtoull 	sync_file_range 	sysconf 	usleep 	utime 	valloc
++for ac_func in  	__secure_getenv 	backtrace 	blkid_probe_get_topology 	chflags 	fadvise64 	fallocate 	fallocate64 	fchown 	fdatasync 	fstat64 	ftruncate64 	futimes 	getcwd 	getdtablesize 	getmntinfo 	getpwuid_r 	getrlimit 	getrusage 	jrand48 	llseek 	lseek64 	mallinfo 	mbstowcs 	memalign 	mempcpy 	mmap 	msync 	nanosleep 	open64 	pathconf 	posix_fadvise 	posix_fadvise64 	posix_memalign 	prctl 	pread 	pwrite 	secure_getenv 	setmntent 	setresgid 	setresuid 	srandom 	stpcpy 	strcasecmp 	strdup 	strnlen 	strptime 	strtoull 	sync_file_range 	sysconf 	usleep 	utime 	valloc
+ do :
+   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
+ ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
+diff --git a/configure.in b/configure.in
+index 8a033b0..f28bd46 100644
+--- a/configure.in
++++ b/configure.in
+@@ -1135,6 +1135,8 @@ AC_CHECK_FUNCS(m4_flatten([
+ 	posix_fadvise64
+ 	posix_memalign
+ 	prctl
++	pread
++	pwrite
+ 	secure_getenv
+ 	setmntent
+ 	setresgid
+diff --git a/lib/config.h.in b/lib/config.h.in
+index 12ac1e0..e0384ee 100644
+--- a/lib/config.h.in
++++ b/lib/config.h.in
+@@ -311,9 +311,15 @@
+ /* Define to 1 if you have the `prctl' function. */
+ #undef HAVE_PRCTL
+ 
++/* Define to 1 if you have the `pread' function. */
++#undef HAVE_PREAD
 +
-+		new = ((int) fs->super->s_reserved_gdt_blocks) +
-+			(old_fs->desc_blocks - fs->desc_blocks);
-+		if (new < 0)
-+			new = 0;
-+		if (new > (int) fs->blocksize/4)
-+			new = fs->blocksize/4;
-+		fs->super->s_reserved_gdt_blocks = new;
+ /* Define to 1 if you have the `putenv' function. */
+ #undef HAVE_PUTENV
+ 
++/* Define to 1 if you have the `pwrite' function. */
++#undef HAVE_PWRITE
++
+ /* Define to 1 if dirent has d_reclen */
+ #undef HAVE_RECLEN_DIRENT
+ 
+diff --git a/lib/ext2fs/unix_io.c b/lib/ext2fs/unix_io.c
+index c3185b6..a818c13 100644
+--- a/lib/ext2fs/unix_io.c
++++ b/lib/ext2fs/unix_io.c
+@@ -130,6 +130,18 @@ static errcode_t raw_read_blk(io_channel channel,
+ 	size = (count < 0) ? -count : count * channel->block_size;
+ 	data->io_stats.bytes_read += size;
+ 	location = ((ext2_loff_t) block * channel->block_size) + data->offset;
++
++#ifdef HAVE_PREAD
++	/* Try an aligned pread */
++	if ((channel->align == 0) ||
++	    (IS_ALIGNED(buf, channel->align) &&
++	     IS_ALIGNED(size, channel->align))) {
++		actual = pread(data->dev, buf, size, location);
++		if (actual == size)
++			return 0;
 +	}
-+}
++#endif /* HAVE_PREAD */
 +
- /* Toggle 64bit mode */
- static errcode_t resize_group_descriptors(ext2_resize_t rfs, blk64_t new_size)
- {
-@@ -310,6 +328,8 @@ static errcode_t resize_group_descriptors(ext2_resize_t rfs, blk64_t new_size)
- 	for (i = 0; i < rfs->old_fs->group_desc_count; i++)
- 		ext2fs_group_desc_csum_set(rfs->new_fs, i);
+ 	if (ext2fs_llseek(data->dev, location, SEEK_SET) != location) {
+ 		retval = errno ? errno : EXT2_ET_LLSEEK_FAILED;
+ 		goto error_out;
+@@ -200,6 +212,18 @@ static errcode_t raw_write_blk(io_channel channel,
+ 	data->io_stats.bytes_written += size;
  
-+	adjust_reserved_gdt_blocks(rfs->old_fs, rfs->new_fs);
+ 	location = ((ext2_loff_t) block * channel->block_size) + data->offset;
 +
- 	return 0;
- }
- 
-@@ -787,20 +807,11 @@ retry:
- 	 * number of descriptor blocks, then adjust
- 	 * s_reserved_gdt_blocks if possible to avoid needing to move
- 	 * the inode table either now or in the future.
-+	 *
-+	 * Note: If we're converting to 64bit mode, we did this earlier.
- 	 */
--	if ((fs->super->s_feature_compat &
--	     EXT2_FEATURE_COMPAT_RESIZE_INODE) &&
--	    (old_fs->desc_blocks != fs->desc_blocks)) {
--		int new;
++#ifdef HAVE_PWRITE
++	/* Try an aligned pwrite */
++	if ((channel->align == 0) ||
++	    (IS_ALIGNED(buf, channel->align) &&
++	     IS_ALIGNED(size, channel->align))) {
++		actual = pwrite(data->dev, buf, size, location);
++		if (actual == size)
++			return 0;
++	}
++#endif /* HAVE_PWRITE */
++
+ 	if (ext2fs_llseek(data->dev, location, SEEK_SET) != location) {
+ 		retval = errno ? errno : EXT2_ET_LLSEEK_FAILED;
+ 		goto error_out;
+
