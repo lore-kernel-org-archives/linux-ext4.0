@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 10/32] dumpe2fs: add switch to disable checksum verification
-Date: Sat, 01 Mar 2014 23:17:42 -0800
-Message-ID: <20140302071742.28217.895.stgit@birch.djwong.org>
+Subject: [PATCH 11/32] mke2fs: set block_validity as a default mount option
+Date: Sat, 01 Mar 2014 23:17:49 -0800
+Message-ID: <20140302071749.28217.59415.stgit@birch.djwong.org>
 References: <20140302071639.28217.57302.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,53 +9,47 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:44228 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:44240 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751467AbaCBHRq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Mar 2014 02:17:46 -0500
+	with ESMTP id S1751467AbaCBHRw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Mar 2014 02:17:52 -0500
 In-Reply-To: <20140302071639.28217.57302.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Add a -n switch to turn off checksum verification.
+The block_validity mount option spot-checks block allocations against
+a bitmap of known group metadata blocks.  This helps us to prevent
+self-inflicted catastrophic failures such as trying to "share"
+critical metadata (think bitmaps) with file data, which usually
+results in filesystem destruction.
+
+In order to test the overhead of the mount option, I re-used the speed
+tests in the metadata checksum testing script.  In short, the program
+creates what looks like 15 copies of a kernel source tree, except that
+it uses fallocate to strip out the overhead of writing the file data
+so that we can focus on metadata overhead.  On a 64G RAM disk, the
+overhead was generally about 0.9% and at most 1.6%.  On a 160G USB
+disk, the overhead was about 0.8% and peaked at 1.2%.
+
+When I changed the test to write out files instead of merely
+fallocating space, the overhead was negligible.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- misc/dumpe2fs.c |    8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
+ misc/mke2fs.conf.in |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 
-diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
-index ae54f8a..45eddaf 100644
---- a/misc/dumpe2fs.c
-+++ b/misc/dumpe2fs.c
-@@ -582,7 +582,9 @@ int main (int argc, char ** argv)
- 	if (argc && *argv)
- 		program_name = *argv;
- 
--	while ((c = getopt (argc, argv, "bfhixVo:")) != EOF) {
-+	flags = EXT2_FLAG_JOURNAL_DEV_OK | EXT2_FLAG_SOFTSUPP_FEATURES |
-+		EXT2_FLAG_64BITS;
-+	while ((c = getopt(argc, argv, "bfhixVo:n")) != EOF) {
- 		switch (c) {
- 		case 'b':
- 			print_badblocks++;
-@@ -608,6 +610,9 @@ int main (int argc, char ** argv)
- 		case 'x':
- 			hex_format++;
- 			break;
-+		case 'n':
-+			flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
-+			break;
- 		default:
- 			usage();
- 		}
-@@ -615,7 +620,6 @@ int main (int argc, char ** argv)
- 	if (optind > argc - 1)
- 		usage();
- 	device_name = argv[optind++];
--	flags = EXT2_FLAG_JOURNAL_DEV_OK | EXT2_FLAG_SOFTSUPP_FEATURES | EXT2_FLAG_64BITS;
- 	if (force)
- 		flags |= EXT2_FLAG_FORCE;
- 	if (image_dump)
+diff --git a/misc/mke2fs.conf.in b/misc/mke2fs.conf.in
+index 178733f..3919f3b 100644
+--- a/misc/mke2fs.conf.in
++++ b/misc/mke2fs.conf.in
+@@ -1,6 +1,6 @@
+ [defaults]
+ 	base_features = sparse_super,filetype,resize_inode,dir_index,ext_attr
+-	default_mntopts = acl,user_xattr
++	default_mntopts = acl,user_xattr,block_validity
+ 	enable_periodic_fsck = 0
+ 	blocksize = 4096
+ 	inode_size = 256
 
