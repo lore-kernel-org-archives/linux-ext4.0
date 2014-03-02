@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 07/32] e2fsck: fix inline_data flag errors in pass1
-Date: Sat, 01 Mar 2014 23:17:23 -0800
-Message-ID: <20140302071723.28217.12676.stgit@birch.djwong.org>
+Subject: [PATCH 08/32] e2fsck: print runs of duplicate blocks instead of all
+ of them
+Date: Sat, 01 Mar 2014 23:17:30 -0800
+Message-ID: <20140302071730.28217.49955.stgit@birch.djwong.org>
 References: <20140302071639.28217.57302.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,117 +10,246 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:44205 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751284AbaCBHR2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Mar 2014 02:17:28 -0500
+Received: from userp1040.oracle.com ([156.151.31.81]:17475 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751284AbaCBHRe (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Mar 2014 02:17:34 -0500
 In-Reply-To: <20140302071639.28217.57302.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In pass1, check for a file with inline_data set on a filesystem that
-doesn't support it.
-
-If we decide to clear the inline_data flag on the inode and the inode
-doesn't use extents, write the inode out to disk so that
-block_iterate3 doesn't see the inline_data flag when it re-reads the
-inode, thereby aborting e2fsck.
+When pass1 finds blocks that are mapped to multiple files, it will
+print every duplicated block.  If there are long sequences of
+duplicate blocks (e.g. the e_pblk field is wrong in an extent), this
+can cause a gigantic flood of output when a range could convey the
+same information.  Therefore, teach pass1b to print ranges when
+possible.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- e2fsck/pass1.c                          |   14 ++++++++++++++
- e2fsck/problem.c                        |    4 ++++
- e2fsck/problem.h                        |    4 ++++
- tests/f_bad_disconnected_inode/expect.1 |    9 +++++++++
- 4 files changed, 31 insertions(+)
+ e2fsck/pass1b.c             |   23 +++++++++++++++++++++--
+ e2fsck/problem.c            |    5 +++++
+ e2fsck/problem.h            |    3 +++
+ tests/f_bbfile/expect.1     |    4 ++--
+ tests/f_dup/expect.1        |    4 ++--
+ tests/f_dup2/expect.1       |    6 +++---
+ tests/f_dup_ba/expect.1     |   12 ++++++------
+ tests/f_dup_resize/expect.1 |    4 ++--
+ tests/f_dupfsblks/expect.1  |    4 ++--
+ tests/f_dupsuper/expect.1   |    2 +-
+ 10 files changed, 47 insertions(+), 20 deletions(-)
 
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 7554f4e..cf84db6 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -2163,6 +2163,16 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
- 		}
- 	}
+diff --git a/e2fsck/pass1b.c b/e2fsck/pass1b.c
+index 41a82cf..d7c5e55 100644
+--- a/e2fsck/pass1b.c
++++ b/e2fsck/pass1b.c
+@@ -262,6 +262,7 @@ struct process_block_struct {
+ 	ext2_ino_t	ino;
+ 	int		dup_blocks;
+ 	blk64_t		cur_cluster;
++	blk64_t		last_blk;
+ 	struct ext2_inode *inode;
+ 	struct problem_context *pctx;
+ };
+@@ -274,6 +275,7 @@ static void pass1b(e2fsck_t ctx, char *block_buf)
+ 	ext2_inode_scan	scan;
+ 	struct process_block_struct pb;
+ 	struct problem_context pctx;
++	problem_t op;
  
-+	if (inode->i_flags & EXT4_INLINE_DATA_FL) {
-+		if (!(fs->super->s_feature_incompat &
-+		      EXT4_FEATURE_INCOMPAT_INLINE_DATA)) {
-+			if (fix_problem(ctx, PR_1_INLINE_DATA_SET, pctx)) {
-+				inode->i_flags &= ~EXT4_INLINE_DATA_FL;
-+				dirty_inode++;
+ 	clear_problem_context(&pctx);
+ 
+@@ -314,6 +316,8 @@ static void pass1b(e2fsck_t ctx, char *block_buf)
+ 		pb.dup_blocks = 0;
+ 		pb.inode = &inode;
+ 		pb.cur_cluster = ~0;
++		pb.last_blk = 0;
++		pb.pctx->blk = pb.pctx->blk2 = 0;
+ 
+ 		if (ext2fs_inode_has_valid_blocks2(fs, &inode) ||
+ 		    (ino == EXT2_BAD_INO))
+@@ -329,6 +333,11 @@ static void pass1b(e2fsck_t ctx, char *block_buf)
+ 			ext2fs_file_acl_block_set(fs, &inode, blk);
+ 		}
+ 		if (pb.dup_blocks) {
++			if (ino != EXT2_BAD_INO) {
++				op = pctx.blk == pctx.blk2 ?
++					PR_1B_DUP_BLOCK : PR_1B_DUP_RANGE;
++				fix_problem(ctx, op, pb.pctx);
 +			}
+ 			end_problem_latch(ctx, PR_LATCH_DBLOCK);
+ 			if (ino >= EXT2_FIRST_INODE(fs->super) ||
+ 			    ino == EXT2_ROOT_INO)
+@@ -351,6 +360,7 @@ static int process_pass1b_block(ext2_filsys fs EXT2FS_ATTR((unused)),
+ 	struct process_block_struct *p;
+ 	e2fsck_t ctx;
+ 	blk64_t	lc;
++	problem_t op;
+ 
+ 	if (HOLE_BLKADDR(*block_nr))
+ 		return 0;
+@@ -363,8 +373,17 @@ static int process_pass1b_block(ext2_filsys fs EXT2FS_ATTR((unused)),
+ 
+ 	/* OK, this is a duplicate block */
+ 	if (p->ino != EXT2_BAD_INO) {
+-		p->pctx->blk = *block_nr;
+-		fix_problem(ctx, PR_1B_DUP_BLOCK, p->pctx);
++		if (p->last_blk + 1 != *block_nr) {
++			if (p->last_blk) {
++				op = p->pctx->blk == p->pctx->blk2 ?
++						PR_1B_DUP_BLOCK :
++						PR_1B_DUP_RANGE;
++				fix_problem(ctx, op, p->pctx);
++			}
++			p->pctx->blk = *block_nr;
 +		}
-+	}
-+
- 	if (ext2fs_file_acl_block(fs, inode) &&
- 	    check_ext_attr(ctx, pctx, block_buf)) {
- 		if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
-@@ -2174,6 +2184,10 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
- 		if (extent_fs && (inode->i_flags & EXT4_EXTENTS_FL))
- 			check_blocks_extents(ctx, pctx, &pb);
- 		else {
-+			if (dirty_inode)
-+				e2fsck_write_inode(ctx, ino, inode,
-+						   "check_blocks");
-+			dirty_inode = 0;
- 			pctx->errcode = ext2fs_block_iterate3(fs, ino,
- 						pb.is_dir ? BLOCK_FLAG_HOLE : 0,
- 						block_buf, process_block, &pb);
++		p->pctx->blk2 = *block_nr;
++		p->last_blk = *block_nr;
+ 	}
+ 	p->dup_blocks++;
+ 	ext2fs_mark_inode_bitmap2(inode_dup_map, p->ino);
 diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index be9d3ec..7d9cfd6 100644
+index 7d9cfd6..f4c1363 100644
 --- a/e2fsck/problem.c
 +++ b/e2fsck/problem.c
-@@ -1020,6 +1020,10 @@ static struct e2fsck_problem problem_table[] = {
- 	  N_("@i %i, end of extent exceeds allowed value\n\t(logical @b %c, physical @b %b, len %N)\n"),
- 	  PROMPT_CLEAR, 0 },
+@@ -1068,6 +1068,11 @@ static struct e2fsck_problem problem_table[] = {
+ 	  N_("Error adjusting refcount for @a @b %b (@i %i): %m\n"),
+ 	  PROMPT_NONE, 0 },
  
-+	/* Inline data flag set on filesystem without inline data support */
-+	{ PR_1_INLINE_DATA_SET,
-+	  N_("@i %i has inline data flag set on @f without inline data support.\n"),
-+	  PROMPT_CLEAR, 0 },
- 
- 	/* Pass 1b errors */
- 
++	/* Duplicate/bad block range in inode */
++	{ PR_1B_DUP_RANGE,
++	  " %b--%c",
++	  PROMPT_NONE, PR_LATCH_DBLOCK | PR_PREEN_NOHDR },
++
+ 	/* Pass 1C: Scan directories for inodes with multiply-claimed blocks. */
+ 	{ PR_1C_PASS_HEADER,
+ 	  N_("Pass 1C: Scanning directories for @is with @m @bs\n"),
 diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-index 8999a64..3304caa 100644
+index 3304caa..62f9032 100644
 --- a/e2fsck/problem.h
 +++ b/e2fsck/problem.h
-@@ -593,6 +593,10 @@ struct problem_context {
- #define PR_1_EXTENT_INDEX_START_INVALID	0x01006D
+@@ -625,6 +625,9 @@ struct problem_context {
+ /* Error adjusting EA refcount */
+ #define PR_1B_ADJ_EA_REFCOUNT	0x011007
  
- #define PR_1_EXTENT_END_OUT_OF_BOUNDS	0x01006E
++/* Duplicate/bad block range in inode */
++#define PR_1B_DUP_RANGE		0x011008
 +
-+/* Inline data flag set on filesystem without inline data support */
-+#define PR_1_INLINE_DATA_SET		0x01006F
-+
- /*
-  * Pass 1b errors
-  */
-diff --git a/tests/f_bad_disconnected_inode/expect.1 b/tests/f_bad_disconnected_inode/expect.1
-index 11862f6..dec22e1 100644
---- a/tests/f_bad_disconnected_inode/expect.1
-+++ b/tests/f_bad_disconnected_inode/expect.1
-@@ -2,12 +2,21 @@ Pass 1: Checking inodes, blocks, and sizes
- Inode 1 has EXTENTS_FL flag set on filesystem without extents support.
- Clear? yes
+ /* Pass 1C: Scan directories for inodes with dup blocks. */
+ #define PR_1C_PASS_HEADER	0x012000
  
-+Inode 9 has inline data flag set on filesystem without inline data support.
-+Clear? yes
-+
-+Inode 10 has inline data flag set on filesystem without inline data support.
-+Clear? yes
-+
- Inode 15 has EXTENTS_FL flag set on filesystem without extents support.
- Clear? yes
+diff --git a/tests/f_bbfile/expect.1 b/tests/f_bbfile/expect.1
+index 1d639f6..ec1a36e 100644
+--- a/tests/f_bbfile/expect.1
++++ b/tests/f_bbfile/expect.1
+@@ -8,8 +8,8 @@ Relocating group 0's inode bitmap from 4 to 43...
+ Running additional passes to resolve blocks claimed by more than one inode...
+ Pass 1B: Rescanning for multiply-claimed blocks
+ Multiply-claimed block(s) in inode 2: 21
+-Multiply-claimed block(s) in inode 11: 9 10 11 12 13 14 15 16 17 18 19 20
+-Multiply-claimed block(s) in inode 12: 25 26
++Multiply-claimed block(s) in inode 11: 9--20
++Multiply-claimed block(s) in inode 12: 25--26
+ Pass 1C: Scanning directories for inodes with multiply-claimed blocks
+ Pass 1D: Reconciling multiply-claimed blocks
+ (There are 3 inodes containing multiply-claimed blocks.)
+diff --git a/tests/f_dup/expect.1 b/tests/f_dup/expect.1
+index e7128f3..075e62c 100644
+--- a/tests/f_dup/expect.1
++++ b/tests/f_dup/expect.1
+@@ -4,8 +4,8 @@ Pass 1: Checking inodes, blocks, and sizes
  
- Inode 16 has EXTENTS_FL flag set on filesystem without extents support.
- Clear? yes
+ Running additional passes to resolve blocks claimed by more than one inode...
+ Pass 1B: Rescanning for multiply-claimed blocks
+-Multiply-claimed block(s) in inode 12: 25 26
+-Multiply-claimed block(s) in inode 13: 25 26
++Multiply-claimed block(s) in inode 12: 25--26
++Multiply-claimed block(s) in inode 13: 25--26
+ Pass 1C: Scanning directories for inodes with multiply-claimed blocks
+ Pass 1D: Reconciling multiply-claimed blocks
+ (There are 2 inodes containing multiply-claimed blocks.)
+diff --git a/tests/f_dup2/expect.1 b/tests/f_dup2/expect.1
+index 0476005..69aa21b 100644
+--- a/tests/f_dup2/expect.1
++++ b/tests/f_dup2/expect.1
+@@ -4,9 +4,9 @@ Pass 1: Checking inodes, blocks, and sizes
  
-+Inode 14 has inline data flag set on filesystem without inline data support.
-+Clear? yes
-+
- Pass 2: Checking directory structure
- Pass 3: Checking directory connectivity
- /lost+found not found.  Create? yes
+ Running additional passes to resolve blocks claimed by more than one inode...
+ Pass 1B: Rescanning for multiply-claimed blocks
+-Multiply-claimed block(s) in inode 12: 25 26
+-Multiply-claimed block(s) in inode 13: 25 26 57 58
+-Multiply-claimed block(s) in inode 14: 57 58
++Multiply-claimed block(s) in inode 12: 25--26
++Multiply-claimed block(s) in inode 13: 25--26 57--58
++Multiply-claimed block(s) in inode 14: 57--58
+ Pass 1C: Scanning directories for inodes with multiply-claimed blocks
+ Pass 1D: Reconciling multiply-claimed blocks
+ (There are 3 inodes containing multiply-claimed blocks.)
+diff --git a/tests/f_dup_ba/expect.1 b/tests/f_dup_ba/expect.1
+index f0ad457..f4581c4 100644
+--- a/tests/f_dup_ba/expect.1
++++ b/tests/f_dup_ba/expect.1
+@@ -6,12 +6,12 @@ Inode 16, i_blocks is 128, should be 896.  Fix? yes
+ 
+ Running additional passes to resolve blocks claimed by more than one inode...
+ Pass 1B: Rescanning for multiply-claimed blocks
+-Multiply-claimed block(s) in inode 16: 160 161 162 163 164 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180 181 182 183 184 185 186 187 188 189 190 191 192 193 194 195 196 197 198 199 200 201 202 203 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 222 223 224 225 226 227 228 229 230 231 232 233 234 235 236 237 238 239
+-Multiply-claimed block(s) in inode 17: 160 161
+-Multiply-claimed block(s) in inode 18: 176 177
+-Multiply-claimed block(s) in inode 19: 192 193
+-Multiply-claimed block(s) in inode 20: 208 209
+-Multiply-claimed block(s) in inode 21: 224 225
++Multiply-claimed block(s) in inode 16: 160--239
++Multiply-claimed block(s) in inode 17: 160--161
++Multiply-claimed block(s) in inode 18: 176--177
++Multiply-claimed block(s) in inode 19: 192--193
++Multiply-claimed block(s) in inode 20: 208--209
++Multiply-claimed block(s) in inode 21: 224--225
+ Pass 1C: Scanning directories for inodes with multiply-claimed blocks
+ Pass 1D: Reconciling multiply-claimed blocks
+ (There are 6 inodes containing multiply-claimed blocks.)
+diff --git a/tests/f_dup_resize/expect.1 b/tests/f_dup_resize/expect.1
+index dd8fe05..aaf7769 100644
+--- a/tests/f_dup_resize/expect.1
++++ b/tests/f_dup_resize/expect.1
+@@ -4,8 +4,8 @@ Pass 1: Checking inodes, blocks, and sizes
+ 
+ Running additional passes to resolve blocks claimed by more than one inode...
+ Pass 1B: Rescanning for multiply-claimed blocks
+-Multiply-claimed block(s) in inode 7: 4 5 6 7
+-Multiply-claimed block(s) in inode 12: 4 5 6 7
++Multiply-claimed block(s) in inode 7: 4--7
++Multiply-claimed block(s) in inode 12: 4--7
+ Pass 1C: Scanning directories for inodes with multiply-claimed blocks
+ Pass 1D: Reconciling multiply-claimed blocks
+ (There are 1 inodes containing multiply-claimed blocks.)
+diff --git a/tests/f_dupfsblks/expect.1 b/tests/f_dupfsblks/expect.1
+index 3f70109..6751986 100644
+--- a/tests/f_dupfsblks/expect.1
++++ b/tests/f_dupfsblks/expect.1
+@@ -8,8 +8,8 @@ Inode 13, i_size is 0, should be 2048.  Fix? yes
+ 
+ Running additional passes to resolve blocks claimed by more than one inode...
+ Pass 1B: Rescanning for multiply-claimed blocks
+-Multiply-claimed block(s) in inode 12: 3 4 6 1
+-Multiply-claimed block(s) in inode 13: 2 3
++Multiply-claimed block(s) in inode 12: 3--4 6 1
++Multiply-claimed block(s) in inode 13: 2--3
+ Multiply-claimed block(s) in inode 14: 2
+ Pass 1C: Scanning directories for inodes with multiply-claimed blocks
+ Pass 1D: Reconciling multiply-claimed blocks
+diff --git a/tests/f_dupsuper/expect.1 b/tests/f_dupsuper/expect.1
+index 830370a..2107e2d 100644
+--- a/tests/f_dupsuper/expect.1
++++ b/tests/f_dupsuper/expect.1
+@@ -4,7 +4,7 @@ Pass 1: Checking inodes, blocks, and sizes
+ 
+ Running additional passes to resolve blocks claimed by more than one inode...
+ Pass 1B: Rescanning for multiply-claimed blocks
+-Multiply-claimed block(s) in inode 12: 2 3 1
++Multiply-claimed block(s) in inode 12: 2--3 1
+ Pass 1C: Scanning directories for inodes with multiply-claimed blocks
+ Pass 1D: Reconciling multiply-claimed blocks
+ (There are 1 inodes containing multiply-claimed blocks.)
 
