@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 08/32] e2fsck: print runs of duplicate blocks instead of all
- of them
-Date: Sat, 01 Mar 2014 23:17:30 -0800
-Message-ID: <20140302071730.28217.49955.stgit@birch.djwong.org>
+Subject: [PATCH 09/32] e2fsck: verify checksums after checking everything else
+Date: Sat, 01 Mar 2014 23:17:36 -0800
+Message-ID: <20140302071736.28217.3682.stgit@birch.djwong.org>
 References: <20140302071639.28217.57302.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,246 +9,202 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:17475 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:17482 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751284AbaCBHRe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Mar 2014 02:17:34 -0500
+	with ESMTP id S1751284AbaCBHRk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Mar 2014 02:17:40 -0500
 In-Reply-To: <20140302071639.28217.57302.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When pass1 finds blocks that are mapped to multiple files, it will
-print every duplicated block.  If there are long sequences of
-duplicate blocks (e.g. the e_pblk field is wrong in an extent), this
-can cause a gigantic flood of output when a range could convey the
-same information.  Therefore, teach pass1b to print ranges when
-possible.
+There's a particular problem with e2fsck's user interface where
+checksum errors are concerned:  Fixing the first complaint about
+a checksum problem results in the inode being cleared even if e2fsck
+could otherwise have recovered it.  While this mode is useful for
+cleaning the remaining broken crud off the filesystem, we could at
+least default to checking everything /else/ and only complaining about
+the incorrect checksum if fsck finds nothing else wrong.
+
+So, plumb in a config option.  We default to "verify and checksum"
+unless the user tell us otherwise.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- e2fsck/pass1b.c             |   23 +++++++++++++++++++++--
- e2fsck/problem.c            |    5 +++++
- e2fsck/problem.h            |    3 +++
- tests/f_bbfile/expect.1     |    4 ++--
- tests/f_dup/expect.1        |    4 ++--
- tests/f_dup2/expect.1       |    6 +++---
- tests/f_dup_ba/expect.1     |   12 ++++++------
- tests/f_dup_resize/expect.1 |    4 ++--
- tests/f_dupfsblks/expect.1  |    4 ++--
- tests/f_dupsuper/expect.1   |    2 +-
- 10 files changed, 47 insertions(+), 20 deletions(-)
+ e2fsck/e2fsck.8.in      |   12 ++++++++++++
+ e2fsck/e2fsck.conf.5.in |   20 ++++++++++++++++++++
+ e2fsck/e2fsck.h         |    1 +
+ e2fsck/problem.c        |   18 ++++++++++++++----
+ e2fsck/problemP.h       |    1 +
+ e2fsck/unix.c           |   11 +++++++++++
+ 6 files changed, 59 insertions(+), 4 deletions(-)
 
 
-diff --git a/e2fsck/pass1b.c b/e2fsck/pass1b.c
-index 41a82cf..d7c5e55 100644
---- a/e2fsck/pass1b.c
-+++ b/e2fsck/pass1b.c
-@@ -262,6 +262,7 @@ struct process_block_struct {
- 	ext2_ino_t	ino;
- 	int		dup_blocks;
- 	blk64_t		cur_cluster;
-+	blk64_t		last_blk;
- 	struct ext2_inode *inode;
- 	struct problem_context *pctx;
- };
-@@ -274,6 +275,7 @@ static void pass1b(e2fsck_t ctx, char *block_buf)
- 	ext2_inode_scan	scan;
- 	struct process_block_struct pb;
- 	struct problem_context pctx;
-+	problem_t op;
+diff --git a/e2fsck/e2fsck.8.in b/e2fsck/e2fsck.8.in
+index f5ed758..43ee063 100644
+--- a/e2fsck/e2fsck.8.in
++++ b/e2fsck/e2fsck.8.in
+@@ -207,6 +207,18 @@ option may prevent you from further manual data recovery.
+ .BI nodiscard
+ Do not attempt to discard free blocks and unused inode blocks. This option is
+ exactly the opposite of discard option. This is set as default.
++.TP
++.BI strict_csums
++Verify each metadata object's checksum before checking anything other fields
++in the metadata object.  If the verification fails, offer to clear the item,
++also before checking any of the other fields.  This option causes e2fsck to
++favor throwing away broken objects over trying to salvage them.
++.TP
++.BI no_strict_csums
++Perform all regular checks of a metadata object and only verify the checksum if
++no problems were found.  This option causes e2fsck to try to salvage slightly
++damaged metadata objects, at the cost of spending processing time on recovering
++data.  This is set as the default.
+ .RE
+ .TP
+ .B \-f
+diff --git a/e2fsck/e2fsck.conf.5.in b/e2fsck/e2fsck.conf.5.in
+index 9ebfbbf..a8219a8 100644
+--- a/e2fsck/e2fsck.conf.5.in
++++ b/e2fsck/e2fsck.conf.5.in
+@@ -222,6 +222,26 @@ If this boolean relation is true, e2fsck will run as if the option
+ .B -v
+ is always specified.  This will cause e2fsck to print some additional
+ information at the end of each full file system check.
++.TP
++.I strict_csums
++If this boolean relation is true, e2fsck will run as if
++.B -E strict_csums
++is set.  This causes e2fsck to verify each metadata object's checksum before
++checking anything other fields in the metadata object.  If the verification
++fails, offer to clear the item, also before checking any of the other fields.
++This option causes e2fsck to favor throwing away broken objects over trying to
++salvage them.
++.IP
++If the boolean relation is false, e2fsck will run as if
++.B -E no_strict_csums
++is set.  In this case, e2fsck will perform all regular checks of a metadata
++object and only verify the checksum if no problems were found.  This option
++causes e2fsck to try to salvage slightly damaged metadata objects, at the cost
++of spending processing time on recovering data.
++.IP
++The default is for e2fsck to behave as if
++.B -E no_strict_csums
++is set.
+ .SH THE [problems] STANZA
+ Each tag in the
+ .I [problems] 
+diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
+index dbd6ea8..d7a7be9 100644
+--- a/e2fsck/e2fsck.h
++++ b/e2fsck/e2fsck.h
+@@ -167,6 +167,7 @@ struct resource_track {
+ #define E2F_OPT_FRAGCHECK	0x0800
+ #define E2F_OPT_JOURNAL_ONLY	0x1000 /* only replay the journal */
+ #define E2F_OPT_DISCARD		0x2000
++#define E2F_OPT_CSUM_FIRST	0x4000
  
- 	clear_problem_context(&pctx);
- 
-@@ -314,6 +316,8 @@ static void pass1b(e2fsck_t ctx, char *block_buf)
- 		pb.dup_blocks = 0;
- 		pb.inode = &inode;
- 		pb.cur_cluster = ~0;
-+		pb.last_blk = 0;
-+		pb.pctx->blk = pb.pctx->blk2 = 0;
- 
- 		if (ext2fs_inode_has_valid_blocks2(fs, &inode) ||
- 		    (ino == EXT2_BAD_INO))
-@@ -329,6 +333,11 @@ static void pass1b(e2fsck_t ctx, char *block_buf)
- 			ext2fs_file_acl_block_set(fs, &inode, blk);
- 		}
- 		if (pb.dup_blocks) {
-+			if (ino != EXT2_BAD_INO) {
-+				op = pctx.blk == pctx.blk2 ?
-+					PR_1B_DUP_BLOCK : PR_1B_DUP_RANGE;
-+				fix_problem(ctx, op, pb.pctx);
-+			}
- 			end_problem_latch(ctx, PR_LATCH_DBLOCK);
- 			if (ino >= EXT2_FIRST_INODE(fs->super) ||
- 			    ino == EXT2_ROOT_INO)
-@@ -351,6 +360,7 @@ static int process_pass1b_block(ext2_filsys fs EXT2FS_ATTR((unused)),
- 	struct process_block_struct *p;
- 	e2fsck_t ctx;
- 	blk64_t	lc;
-+	problem_t op;
- 
- 	if (HOLE_BLKADDR(*block_nr))
- 		return 0;
-@@ -363,8 +373,17 @@ static int process_pass1b_block(ext2_filsys fs EXT2FS_ATTR((unused)),
- 
- 	/* OK, this is a duplicate block */
- 	if (p->ino != EXT2_BAD_INO) {
--		p->pctx->blk = *block_nr;
--		fix_problem(ctx, PR_1B_DUP_BLOCK, p->pctx);
-+		if (p->last_blk + 1 != *block_nr) {
-+			if (p->last_blk) {
-+				op = p->pctx->blk == p->pctx->blk2 ?
-+						PR_1B_DUP_BLOCK :
-+						PR_1B_DUP_RANGE;
-+				fix_problem(ctx, op, p->pctx);
-+			}
-+			p->pctx->blk = *block_nr;
-+		}
-+		p->pctx->blk2 = *block_nr;
-+		p->last_blk = *block_nr;
- 	}
- 	p->dup_blocks++;
- 	ext2fs_mark_inode_bitmap2(inode_dup_map, p->ino);
+ /*
+  * E2fsck flags
 diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index 7d9cfd6..f4c1363 100644
+index f4c1363..aa09c91 100644
 --- a/e2fsck/problem.c
 +++ b/e2fsck/problem.c
-@@ -1068,6 +1068,11 @@ static struct e2fsck_problem problem_table[] = {
- 	  N_("Error adjusting refcount for @a @b %b (@i %i): %m\n"),
- 	  PROMPT_NONE, 0 },
+@@ -970,7 +970,7 @@ static struct e2fsck_problem problem_table[] = {
+ 	/* inode checksum does not match inode */
+ 	{ PR_1_INODE_CSUM_INVALID,
+ 	  N_("@i %i checksum does not match @i.  "),
+-	  PROMPT_CLEAR, PR_PREEN_OK },
++	  PROMPT_CLEAR, PR_PREEN_OK | PR_INITIAL_CSUM },
  
-+	/* Duplicate/bad block range in inode */
-+	{ PR_1B_DUP_RANGE,
-+	  " %b--%c",
-+	  PROMPT_NONE, PR_LATCH_DBLOCK | PR_PREEN_NOHDR },
+ 	/* inode passes checks, but checksum does not match inode */
+ 	{ PR_1_INODE_ONLY_CSUM_INVALID,
+@@ -981,7 +981,7 @@ static struct e2fsck_problem problem_table[] = {
+ 	{ PR_1_EXTENT_CSUM_INVALID,
+ 	  N_("@i %i extent block checksum does not match extent\n\t(logical @b "
+ 	     "%c, @n physical @b %b, len %N)\n"),
+-	  PROMPT_CLEAR, 0 },
++	  PROMPT_CLEAR, PR_INITIAL_CSUM },
+ 
+ 	/*
+ 	 * Inode extent block passes checks, but checksum does not match
+@@ -996,7 +996,7 @@ static struct e2fsck_problem problem_table[] = {
+ 	{ PR_1_EA_BLOCK_CSUM_INVALID,
+ 	  N_("Extended attribute @a @b %b checksum for @i %i does not "
+ 	     "match.  "),
+-	  PROMPT_CLEAR, 0 },
++	  PROMPT_CLEAR, PR_INITIAL_CSUM },
+ 
+ 	/*
+ 	 * Extended attribute block passes checks, but checksum for inode does
+@@ -1465,7 +1465,7 @@ static struct e2fsck_problem problem_table[] = {
+ 	/* leaf node fails checksum */
+ 	{ PR_2_LEAF_NODE_CSUM_INVALID,
+ 	  N_("@d @i %i, %B, offset %N: @d fails checksum\n"),
+-	  PROMPT_SALVAGE, PR_PREEN_OK },
++	  PROMPT_SALVAGE, PR_PREEN_OK | PR_INITIAL_CSUM },
+ 
+ 	/* leaf node has no checksum */
+ 	{ PR_2_LEAF_NODE_MISSING_CSUM,
+@@ -1934,6 +1934,16 @@ int fix_problem(e2fsck_t ctx, problem_t code, struct problem_context *pctx)
+ 		printf(_("Unhandled error code (0x%x)!\n"), code);
+ 		return 0;
+ 	}
 +
- 	/* Pass 1C: Scan directories for inodes with multiply-claimed blocks. */
- 	{ PR_1C_PASS_HEADER,
- 	  N_("Pass 1C: Scanning directories for @is with @m @bs\n"),
-diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-index 3304caa..62f9032 100644
---- a/e2fsck/problem.h
-+++ b/e2fsck/problem.h
-@@ -625,6 +625,9 @@ struct problem_context {
- /* Error adjusting EA refcount */
- #define PR_1B_ADJ_EA_REFCOUNT	0x011007
- 
-+/* Duplicate/bad block range in inode */
-+#define PR_1B_DUP_RANGE		0x011008
++	/*
++	 * If there is a problem with the initial csum verification and the
++	 * user told e2fsck to verify csums /after/ checking everything else,
++	 * then don't "fix" anything.
++	 */
++	if ((ptr->flags & PR_INITIAL_CSUM) &&
++	    !(ctx->options & E2F_OPT_CSUM_FIRST))
++		return 0;
 +
- /* Pass 1C: Scan directories for inodes with dup blocks. */
- #define PR_1C_PASS_HEADER	0x012000
+ 	if (!(ptr->flags & PR_CONFIG)) {
+ 		char	key[9], *new_desc = NULL;
  
-diff --git a/tests/f_bbfile/expect.1 b/tests/f_bbfile/expect.1
-index 1d639f6..ec1a36e 100644
---- a/tests/f_bbfile/expect.1
-+++ b/tests/f_bbfile/expect.1
-@@ -8,8 +8,8 @@ Relocating group 0's inode bitmap from 4 to 43...
- Running additional passes to resolve blocks claimed by more than one inode...
- Pass 1B: Rescanning for multiply-claimed blocks
- Multiply-claimed block(s) in inode 2: 21
--Multiply-claimed block(s) in inode 11: 9 10 11 12 13 14 15 16 17 18 19 20
--Multiply-claimed block(s) in inode 12: 25 26
-+Multiply-claimed block(s) in inode 11: 9--20
-+Multiply-claimed block(s) in inode 12: 25--26
- Pass 1C: Scanning directories for inodes with multiply-claimed blocks
- Pass 1D: Reconciling multiply-claimed blocks
- (There are 3 inodes containing multiply-claimed blocks.)
-diff --git a/tests/f_dup/expect.1 b/tests/f_dup/expect.1
-index e7128f3..075e62c 100644
---- a/tests/f_dup/expect.1
-+++ b/tests/f_dup/expect.1
-@@ -4,8 +4,8 @@ Pass 1: Checking inodes, blocks, and sizes
+diff --git a/e2fsck/problemP.h b/e2fsck/problemP.h
+index 7944cd6..a983598 100644
+--- a/e2fsck/problemP.h
++++ b/e2fsck/problemP.h
+@@ -44,3 +44,4 @@ struct latch_descr {
+ #define PR_CONFIG	0x080000 /* This problem has been customized
+ 				    from the config file */
+ #define PR_FORCE_NO	0x100000 /* Force the answer to be no */
++#define PR_INITIAL_CSUM	0x200000 /* User can ignore initial csum check */
+diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+index f73a252..67b3578 100644
+--- a/e2fsck/unix.c
++++ b/e2fsck/unix.c
+@@ -692,6 +692,10 @@ static void parse_extended_opts(e2fsck_t ctx, const char *opts)
+ 			else
+ 				ctx->log_fn = string_copy(ctx, arg, 0);
+ 			continue;
++		} else if (strcmp(token, "strict_csums") == 0) {
++			ctx->options |= E2F_OPT_CSUM_FIRST;
++		} else if (strcmp(token, "no_strict_csums") == 0) {
++			ctx->options &= ~E2F_OPT_CSUM_FIRST;
+ 		} else {
+ 			fprintf(stderr, _("Unknown extended option: %s\n"),
+ 				token);
+@@ -710,6 +714,8 @@ static void parse_extended_opts(e2fsck_t ctx, const char *opts)
+ 		fputs(("\tjournal_only\n"), stderr);
+ 		fputs(("\tdiscard\n"), stderr);
+ 		fputs(("\tnodiscard\n"), stderr);
++		fputs(("\tstrict_csums\n"), stderr);
++		fputs(("\tno_strict_csums\n"), stderr);
+ 		fputc('\n', stderr);
+ 		exit(1);
+ 	}
+@@ -944,6 +950,11 @@ static errcode_t PRS(int argc, char *argv[], e2fsck_t *ret_ctx)
+ 	profile_set_syntax_err_cb(syntax_err_report);
+ 	profile_init(config_fn, &ctx->profile);
  
- Running additional passes to resolve blocks claimed by more than one inode...
- Pass 1B: Rescanning for multiply-claimed blocks
--Multiply-claimed block(s) in inode 12: 25 26
--Multiply-claimed block(s) in inode 13: 25 26
-+Multiply-claimed block(s) in inode 12: 25--26
-+Multiply-claimed block(s) in inode 13: 25--26
- Pass 1C: Scanning directories for inodes with multiply-claimed blocks
- Pass 1D: Reconciling multiply-claimed blocks
- (There are 2 inodes containing multiply-claimed blocks.)
-diff --git a/tests/f_dup2/expect.1 b/tests/f_dup2/expect.1
-index 0476005..69aa21b 100644
---- a/tests/f_dup2/expect.1
-+++ b/tests/f_dup2/expect.1
-@@ -4,9 +4,9 @@ Pass 1: Checking inodes, blocks, and sizes
- 
- Running additional passes to resolve blocks claimed by more than one inode...
- Pass 1B: Rescanning for multiply-claimed blocks
--Multiply-claimed block(s) in inode 12: 25 26
--Multiply-claimed block(s) in inode 13: 25 26 57 58
--Multiply-claimed block(s) in inode 14: 57 58
-+Multiply-claimed block(s) in inode 12: 25--26
-+Multiply-claimed block(s) in inode 13: 25--26 57--58
-+Multiply-claimed block(s) in inode 14: 57--58
- Pass 1C: Scanning directories for inodes with multiply-claimed blocks
- Pass 1D: Reconciling multiply-claimed blocks
- (There are 3 inodes containing multiply-claimed blocks.)
-diff --git a/tests/f_dup_ba/expect.1 b/tests/f_dup_ba/expect.1
-index f0ad457..f4581c4 100644
---- a/tests/f_dup_ba/expect.1
-+++ b/tests/f_dup_ba/expect.1
-@@ -6,12 +6,12 @@ Inode 16, i_blocks is 128, should be 896.  Fix? yes
- 
- Running additional passes to resolve blocks claimed by more than one inode...
- Pass 1B: Rescanning for multiply-claimed blocks
--Multiply-claimed block(s) in inode 16: 160 161 162 163 164 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180 181 182 183 184 185 186 187 188 189 190 191 192 193 194 195 196 197 198 199 200 201 202 203 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 222 223 224 225 226 227 228 229 230 231 232 233 234 235 236 237 238 239
--Multiply-claimed block(s) in inode 17: 160 161
--Multiply-claimed block(s) in inode 18: 176 177
--Multiply-claimed block(s) in inode 19: 192 193
--Multiply-claimed block(s) in inode 20: 208 209
--Multiply-claimed block(s) in inode 21: 224 225
-+Multiply-claimed block(s) in inode 16: 160--239
-+Multiply-claimed block(s) in inode 17: 160--161
-+Multiply-claimed block(s) in inode 18: 176--177
-+Multiply-claimed block(s) in inode 19: 192--193
-+Multiply-claimed block(s) in inode 20: 208--209
-+Multiply-claimed block(s) in inode 21: 224--225
- Pass 1C: Scanning directories for inodes with multiply-claimed blocks
- Pass 1D: Reconciling multiply-claimed blocks
- (There are 6 inodes containing multiply-claimed blocks.)
-diff --git a/tests/f_dup_resize/expect.1 b/tests/f_dup_resize/expect.1
-index dd8fe05..aaf7769 100644
---- a/tests/f_dup_resize/expect.1
-+++ b/tests/f_dup_resize/expect.1
-@@ -4,8 +4,8 @@ Pass 1: Checking inodes, blocks, and sizes
- 
- Running additional passes to resolve blocks claimed by more than one inode...
- Pass 1B: Rescanning for multiply-claimed blocks
--Multiply-claimed block(s) in inode 7: 4 5 6 7
--Multiply-claimed block(s) in inode 12: 4 5 6 7
-+Multiply-claimed block(s) in inode 7: 4--7
-+Multiply-claimed block(s) in inode 12: 4--7
- Pass 1C: Scanning directories for inodes with multiply-claimed blocks
- Pass 1D: Reconciling multiply-claimed blocks
- (There are 1 inodes containing multiply-claimed blocks.)
-diff --git a/tests/f_dupfsblks/expect.1 b/tests/f_dupfsblks/expect.1
-index 3f70109..6751986 100644
---- a/tests/f_dupfsblks/expect.1
-+++ b/tests/f_dupfsblks/expect.1
-@@ -8,8 +8,8 @@ Inode 13, i_size is 0, should be 2048.  Fix? yes
- 
- Running additional passes to resolve blocks claimed by more than one inode...
- Pass 1B: Rescanning for multiply-claimed blocks
--Multiply-claimed block(s) in inode 12: 3 4 6 1
--Multiply-claimed block(s) in inode 13: 2 3
-+Multiply-claimed block(s) in inode 12: 3--4 6 1
-+Multiply-claimed block(s) in inode 13: 2--3
- Multiply-claimed block(s) in inode 14: 2
- Pass 1C: Scanning directories for inodes with multiply-claimed blocks
- Pass 1D: Reconciling multiply-claimed blocks
-diff --git a/tests/f_dupsuper/expect.1 b/tests/f_dupsuper/expect.1
-index 830370a..2107e2d 100644
---- a/tests/f_dupsuper/expect.1
-+++ b/tests/f_dupsuper/expect.1
-@@ -4,7 +4,7 @@ Pass 1: Checking inodes, blocks, and sizes
- 
- Running additional passes to resolve blocks claimed by more than one inode...
- Pass 1B: Rescanning for multiply-claimed blocks
--Multiply-claimed block(s) in inode 12: 2 3 1
-+Multiply-claimed block(s) in inode 12: 2--3 1
- Pass 1C: Scanning directories for inodes with multiply-claimed blocks
- Pass 1D: Reconciling multiply-claimed blocks
- (There are 1 inodes containing multiply-claimed blocks.)
++	profile_get_boolean(ctx->profile, "options", "strict_csums", NULL,
++			    0, &c);
++	if (c)
++		ctx->options |= E2F_OPT_CSUM_FIRST;
++
+ 	profile_get_boolean(ctx->profile, "options", "report_time", 0, 0,
+ 			    &c);
+ 	if (c)
 
