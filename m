@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 19/32] libext2fs: allow clients to read-ahead metadata
-Date: Sat, 01 Mar 2014 23:18:39 -0800
-Message-ID: <20140302071839.28217.2861.stgit@birch.djwong.org>
+Subject: [PATCH 21/32] libext2fs: when appending to a file,
+ don't split an index block in equal halves
+Date: Sat, 01 Mar 2014 23:18:52 -0800
+Message-ID: <20140302071852.28217.96898.stgit@birch.djwong.org>
 References: <20140302071639.28217.57302.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,276 +10,199 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:17604 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:17633 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751635AbaCBHSo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Mar 2014 02:18:44 -0500
+	with ESMTP id S1751653AbaCBHS5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Mar 2014 02:18:57 -0500
 In-Reply-To: <20140302071639.28217.57302.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch adds to libext2fs the ability to pre-fetch metadata
-into the page cache in the hopes of speeding up libext2fs' clients.
-There are two new library functions -- the first allows a client to
-readahead a list of blocks, and the second is a helper function that
-uses that first mechanism to load group data (bitmaps, inode tables).
+When we're appending an extent to the end of a file and the index
+block is full, don't split the index block into two half-full index
+blocks because this leaves us with under utilized index blocks, at
+least in the fallocate case.  Instead, copy the last extent from the
+full block into the new block.  This isn't perfect utilization, but
+there's a lot of work involved in teaching extent.c to be able to goto
+a nonexistent node in a newly allocated (and empty) extent block.
 
-e2fsck will employ both of these methods to speed itself up.
+This patch does not fix the general problem of keeping the extent tree
+balanced.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/Makefile.in |    4 +
- lib/ext2fs/ext2fs.h    |   13 +++
- lib/ext2fs/readahead.c |  188 ++++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 205 insertions(+)
- create mode 100644 lib/ext2fs/readahead.c
+ lib/ext2fs/extent.c |   79 ++++++++++++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 72 insertions(+), 7 deletions(-)
 
 
-diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
-index 88808a3..dde4c6d 100644
---- a/lib/ext2fs/Makefile.in
-+++ b/lib/ext2fs/Makefile.in
-@@ -77,6 +77,7 @@ OBJS= $(DEBUGFS_LIB_OBJS) $(RESIZE_LIB_OBJS) $(E2IMAGE_LIB_OBJS) \
- 	qcow2.o \
- 	read_bb.o \
- 	read_bb_file.o \
-+	readahead.o \
- 	res_gdt.o \
- 	rw_bitmaps.o \
- 	swapfs.o \
-@@ -153,6 +154,7 @@ SRCS= ext2_err.c \
- 	$(srcdir)/qcow2.c \
- 	$(srcdir)/read_bb.c \
- 	$(srcdir)/read_bb_file.c \
-+	$(srcdir)/readahead.c \
- 	$(srcdir)/res_gdt.c \
- 	$(srcdir)/rw_bitmaps.c \
- 	$(srcdir)/swapfs.c \
-@@ -887,6 +889,8 @@ read_bb_file.o: $(srcdir)/read_bb_file.c $(top_builddir)/lib/config.h \
-  $(srcdir)/ext2_fs.h $(srcdir)/ext3_extents.h $(top_srcdir)/lib/et/com_err.h \
-  $(srcdir)/ext2_io.h $(top_builddir)/lib/ext2fs/ext2_err.h \
-  $(srcdir)/ext2_ext_attr.h $(srcdir)/bitops.h
-+readahead.o: $(srcdir)/readahead.c $(top_builddir)/lib/config.h \
-+ $(srcdir)/ext2fs.h $(srcdir)/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_err.h
- res_gdt.o: $(srcdir)/res_gdt.c $(top_builddir)/lib/config.h \
-  $(top_builddir)/lib/dirpaths.h $(srcdir)/ext2_fs.h \
-  $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/ext2fs.h \
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 645285b..8aa0ac9 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -1543,6 +1543,19 @@ extern errcode_t ext2fs_read_bb_FILE(ext2_filsys fs, FILE *f,
- 				     void (*invalid)(ext2_filsys fs,
- 						     blk_t blk));
+diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
+index 80ce88f..cf75a0b 100644
+--- a/lib/ext2fs/extent.c
++++ b/lib/ext2fs/extent.c
+@@ -29,6 +29,8 @@
+ #include "ext2fsP.h"
+ #include "e2image.h"
  
-+/* readahead.c */
-+#define EXT2_READA_SUPER	(0x01)
-+#define EXT2_READA_GDT		(0x02)
-+#define EXT2_READA_BBITMAP	(0x04)
-+#define EXT2_READA_IBITMAP	(0x08)
-+#define EXT2_READA_ITABLE	(0x10)
-+#define EXT2_READA_ALL_FLAGS	(0x1F)
-+errcode_t ext2fs_readahead(ext2_filsys fs, int flags, dgrp_t start,
-+			   dgrp_t ngroups);
-+errcode_t ext2fs_readahead_dblist(ext2_filsys fs, int flags,
-+				  ext2_dblist dblist);
-+int ext2fs_can_readahead(ext2_filsys fs);
-+
- /* res_gdt.c */
- extern errcode_t ext2fs_create_resize_inode(ext2_filsys fs);
- 
-diff --git a/lib/ext2fs/readahead.c b/lib/ext2fs/readahead.c
-new file mode 100644
-index 0000000..ed6e555
---- /dev/null
-+++ b/lib/ext2fs/readahead.c
-@@ -0,0 +1,188 @@
-+/*
-+ * readahead.c -- Try to convince the OS to prefetch metadata.
-+ *
-+ * Copyright (C) 2014 Oracle.
-+ *
-+ * %Begin-Header%
-+ * This file may be redistributed under the terms of the GNU Library
-+ * General Public License, version 2.
-+ * %End-Header%
-+ */
-+
-+#include "config.h"
-+#include <string.h>
-+
-+#include "ext2_fs.h"
-+#include "ext2fs.h"
-+
 +#undef DEBUG
 +
-+#ifdef DEBUG
-+# define dbg_printf(f, a...)  do {printf(f, ## a); fflush(stdout); } while (0)
-+#else
-+# define dbg_printf(f, a...)
-+#endif
-+
-+struct read_dblist {
-+	errcode_t err;
-+	blk64_t run_start;
-+	blk64_t run_len;
-+};
-+
-+static EXT2_QSORT_TYPE readahead_dir_block_cmp(const void *a, const void *b)
+ /*
+  * Definitions to be dropped in lib/ext2fs/ext2fs.h
+  */
+@@ -122,11 +124,39 @@ static void dbg_print_extent(char *desc, struct ext2fs_extent *extent)
+ 
+ }
+ 
++static void dump_path(const char *tag, struct ext2_extent_handle *handle,
++		      struct extent_path *path)
 +{
-+	const struct ext2_db_entry2 *db_a =
-+		(const struct ext2_db_entry2 *) a;
-+	const struct ext2_db_entry2 *db_b =
-+		(const struct ext2_db_entry2 *) b;
++	struct extent_path *ppp = path;
++	printf("%s: level=%d\n", tag, handle->level);
 +
-+	return (int) (db_a->blk - db_b->blk);
-+}
-+
-+static int readahead_dir_block(ext2_filsys fs, struct ext2_db_entry2 *db,
-+			       void *priv_data)
-+{
-+	errcode_t err = 0;
-+	struct read_dblist *pr = priv_data;
-+
-+	if (!pr->run_len || db->blk != pr->run_start + pr->run_len) {
-+		if (pr->run_len) {
-+			pr->err = io_channel_cache_readahead(fs->io,
-+							     pr->run_start,
-+							     pr->run_len);
-+			dbg_printf("readahead start=%llu len=%llu err=%d\n",
-+				   pr->run_start, pr->run_len,
-+				   (int)pr->err);
++	do {
++		printf("%s: path=%ld buf=%p entries=%d max_entries=%d left=%d "
++		       "visit_num=%d flags=0x%x end_blk=%llu curr=%p(%ld)\n",
++		       tag, (ppp - handle->path), ppp->buf, ppp->entries,
++		       ppp->max_entries, ppp->left, ppp->visit_num, ppp->flags,
++		       ppp->end_blk, ppp->curr, ppp->curr - (void *)ppp->buf);
++		printf("  ");
++		dbg_show_header((struct ext3_extent_header *)ppp->buf);
++		if (ppp->curr) {
++			printf("  ");
++			dbg_show_index(ppp->curr);
++			printf("  ");
++			dbg_show_extent(ppp->curr);
 +		}
-+		pr->run_start = db->blk;
-+		pr->run_len = 0;
-+	}
-+	pr->run_len += db->blockcnt;
++		ppp--;
++	} while (ppp >= handle->path);
++	fflush(stdout);
 +
-+	return pr->err ? DBLIST_ABORT : 0;
++	return;
 +}
 +
-+errcode_t ext2fs_readahead_dblist(ext2_filsys fs, int flags,
-+				  ext2_dblist dblist)
+ #else
+ #define dbg_show_header(eh) do { } while (0)
+ #define dbg_show_index(ix) do { } while (0)
+ #define dbg_show_extent(ex) do { } while (0)
+ #define dbg_print_extent(desc, ex) do { } while (0)
++#define dump_path(tag, handle, path) do { } while (0)
+ #endif
+ 
+ /*
+@@ -837,12 +867,31 @@ errcode_t ext2fs_extent_replace(ext2_extent_handle_t handle,
+ 	return 0;
+ }
+ 
++static int splitting_at_eof(struct ext2_extent_handle *handle,
++			    struct extent_path *path)
 +{
-+	errcode_t err;
-+	struct read_dblist pr;
++	struct extent_path *ppp = path;
++	dump_path(__func__, handle, path);
 +
-+	dbg_printf("%s: flags=0x%x\n", __func__, flags);
-+	if (flags)
-+		return EXT2_ET_INVALID_ARGUMENT;
-+
-+	ext2fs_dblist_sort2(dblist, readahead_dir_block_cmp);
-+
-+	memset(&pr, 0, sizeof(pr));
-+	err = ext2fs_dblist_iterate2(dblist, readahead_dir_block, &pr);
-+	if (pr.err)
-+		return pr.err;
-+	if (err)
-+		return err;
-+
-+	if (pr.run_len)
-+		err = io_channel_cache_readahead(fs->io, pr.run_start,
-+						 pr.run_len);
-+
-+	return err;
-+}
-+
-+errcode_t ext2fs_readahead(ext2_filsys fs, int flags, dgrp_t start,
-+			   dgrp_t ngroups)
-+{
-+	blk64_t		super, old_gdt, new_gdt;
-+	blk_t		blocks;
-+	dgrp_t		i;
-+	ext2_dblist	dblist;
-+	dgrp_t		end = start + ngroups;
-+	errcode_t	err = 0;
-+
-+	dbg_printf("%s: flags=0x%x start=%d groups=%d\n", __func__, flags,
-+		   start, ngroups);
-+	if (flags & ~EXT2_READA_ALL_FLAGS)
-+		return EXT2_ET_INVALID_ARGUMENT;
-+
-+	if (end > fs->group_desc_count)
-+		end = fs->group_desc_count;
-+
-+	if (flags == 0)
++	if (handle->level == 0)
 +		return 0;
 +
-+	err = ext2fs_init_dblist(fs, &dblist);
-+	if (err)
-+		return err;
++	do {
++		if (ppp->left)
++			return 0;
++		ppp--;
++	} while (ppp >= handle->path);
 +
-+	for (i = start; i < end; i++) {
-+		err = ext2fs_super_and_bgd_loc2(fs, i, &super, &old_gdt,
-+						&new_gdt, &blocks);
-+		if (err)
-+			break;
-+
-+		if (flags & EXT2_READA_SUPER) {
-+			err = ext2fs_add_dir_block2(dblist, 0, super, 0);
-+			if (err)
-+				break;
-+		}
-+
-+		if (flags & EXT2_READA_GDT) {
-+			if (old_gdt)
-+				err = ext2fs_add_dir_block2(dblist, 0, old_gdt,
-+							    blocks);
-+			else if (new_gdt)
-+				err = ext2fs_add_dir_block2(dblist, 0, new_gdt,
-+							    blocks);
-+			else
-+				err = 0;
-+			if (err)
-+				break;
-+		}
-+
-+		if ((flags & EXT2_READA_BBITMAP) &&
-+		    !ext2fs_bg_flags_test(fs, i, EXT2_BG_BLOCK_UNINIT) &&
-+		    ext2fs_bg_free_blocks_count(fs, i) <
-+				fs->super->s_blocks_per_group) {
-+			super = ext2fs_block_bitmap_loc(fs, i);
-+			err = ext2fs_add_dir_block2(dblist, 0, super, 1);
-+			if (err)
-+				break;
-+		}
-+
-+		if ((flags & EXT2_READA_IBITMAP) &&
-+		    !ext2fs_bg_flags_test(fs, i, EXT2_BG_INODE_UNINIT) &&
-+		    ext2fs_bg_free_inodes_count(fs, i) <
-+				fs->super->s_inodes_per_group) {
-+			super = ext2fs_inode_bitmap_loc(fs, i);
-+			err = ext2fs_add_dir_block2(dblist, 0, super, 1);
-+			if (err)
-+				break;
-+		}
-+
-+		if ((flags & EXT2_READA_ITABLE) &&
-+		    ext2fs_bg_free_inodes_count(fs, i) <
-+				fs->super->s_inodes_per_group) {
-+			super = ext2fs_inode_table_loc(fs, i);
-+			blocks = fs->inode_blocks_per_group -
-+				 (ext2fs_bg_itable_unused(fs, i) *
-+				  EXT2_INODE_SIZE(fs->super) / fs->blocksize);
-+			err = ext2fs_add_dir_block2(dblist, 0, super, blocks);
-+			if (err)
-+				break;
-+		}
-+	}
-+
-+	if (!err)
-+		err = ext2fs_readahead_dblist(fs, 0, dblist);
-+
-+	ext2fs_free_dblist(dblist);
-+	return err;
++	return 1;
 +}
 +
-+int ext2fs_can_readahead(ext2_filsys fs)
+ /*
+  * allocate a new block, move half the current node to it, and update parent
+  *
+  * handle will be left pointing at original record.
+  */
+-errcode_t ext2fs_extent_node_split(ext2_extent_handle_t handle)
++static errcode_t extent_node_split(ext2_extent_handle_t handle,
++				   int expand_allowed)
+ {
+ 	errcode_t			retval = 0;
+ 	blk64_t				new_node_pblk;
+@@ -857,6 +906,7 @@ errcode_t ext2fs_extent_node_split(ext2_extent_handle_t handle)
+ 	int				tocopy;
+ 	int				new_root = 0;
+ 	struct ext2_extent_info		info;
++	int				no_balance;
+ 
+ 	/* basic sanity */
+ 	EXT2_CHECK_MAGIC(handle, EXT2_ET_MAGIC_EXTENT_HANDLE);
+@@ -897,7 +947,7 @@ errcode_t ext2fs_extent_node_split(ext2_extent_handle_t handle)
+ 			goto done;
+ 		goal_blk = extent.e_pblk;
+ 
+-		retval = ext2fs_extent_node_split(handle);
++		retval = extent_node_split(handle, expand_allowed);
+ 		if (retval)
+ 			goto done;
+ 
+@@ -912,6 +962,14 @@ errcode_t ext2fs_extent_node_split(ext2_extent_handle_t handle)
+ 	if (!path->curr)
+ 		return EXT2_ET_NO_CURRENT_NODE;
+ 
++	/*
++	 * Normally, we try to split a full node in half.  This doesn't turn
++	 * out so well if we're tacking extents on the end of the file because
++	 * then we're stuck with a tree of half-full extent blocks.  This of
++	 * course doesn't apply to the root level.
++	 */
++	no_balance = expand_allowed ? splitting_at_eof(handle, path) : 0;
++
+ 	/* extent header of the current node we'll split */
+ 	eh = (struct ext3_extent_header *)path->buf;
+ 
+@@ -925,7 +983,10 @@ errcode_t ext2fs_extent_node_split(ext2_extent_handle_t handle)
+ 		if (retval)
+ 			goto done;
+ 	} else {
+-		tocopy = ext2fs_le16_to_cpu(eh->eh_entries) / 2;
++		if (no_balance)
++			tocopy = 1;
++		else
++			tocopy = ext2fs_le16_to_cpu(eh->eh_entries) / 2;
+ 	}
+ 
+ #ifdef DEBUG
+@@ -934,7 +995,7 @@ errcode_t ext2fs_extent_node_split(ext2_extent_handle_t handle)
+ 				handle->level);
+ #endif
+ 
+-	if (!tocopy) {
++	if (!tocopy && !no_balance) {
+ #ifdef DEBUG
+ 		printf("Nothing to copy to new block!\n");
+ #endif
+@@ -1059,8 +1120,7 @@ errcode_t ext2fs_extent_node_split(ext2_extent_handle_t handle)
+ 		goto done;
+ 
+ 	/* new node hooked in, so update inode block count (do this here?) */
+-	handle->inode->i_blocks += (handle->fs->blocksize *
+-				    EXT2FS_CLUSTER_RATIO(handle->fs)) / 512;
++	ext2fs_iblk_add_blocks(handle->fs, handle->inode, 1);
+ 	retval = ext2fs_write_inode(handle->fs, handle->ino,
+ 				    handle->inode);
+ 	if (retval)
+@@ -1074,6 +1134,11 @@ done:
+ 	return retval;
+ }
+ 
++errcode_t ext2fs_extent_node_split(ext2_extent_handle_t handle)
 +{
-+	errcode_t err;
-+
-+	err = io_channel_cache_readahead(fs->io, 0, 1);
-+	dbg_printf("%s: supp=%d\n", __func__, err != EXT2_ET_OP_NOT_SUPPORTED);
-+	return err != EXT2_ET_OP_NOT_SUPPORTED;
++	return extent_node_split(handle, 0);
 +}
++
+ errcode_t ext2fs_extent_insert(ext2_extent_handle_t handle, int flags,
+ 				      struct ext2fs_extent *extent)
+ {
+@@ -1105,7 +1170,7 @@ errcode_t ext2fs_extent_insert(ext2_extent_handle_t handle, int flags,
+ 			printf("node full (level %d) - splitting\n",
+ 				   handle->level);
+ #endif
+-			retval = ext2fs_extent_node_split(handle);
++			retval = extent_node_split(handle, 1);
+ 			if (retval)
+ 				return retval;
+ 			path = handle->path + handle->level;
 
