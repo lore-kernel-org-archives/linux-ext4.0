@@ -1,103 +1,230 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 00/32] e2fsprogs patchbomb 2/14
-Date: Sat, 01 Mar 2014 23:16:39 -0800
-Message-ID: <20140302071639.28217.57302.stgit@birch.djwong.org>
+Subject: [PATCH 01/32] libext2fs: support modifying arbitrary extended
+ attributes (v5)
+Date: Sat, 01 Mar 2014 23:16:45 -0800
+Message-ID: <20140302071645.28217.98125.stgit@birch.djwong.org>
+References: <20140302071639.28217.57302.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:44148 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751186AbaCBHQo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Mar 2014 02:16:44 -0500
+Received: from userp1040.oracle.com ([156.151.31.81]:17401 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751186AbaCBHQv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Mar 2014 02:16:51 -0500
+In-Reply-To: <20140302071639.28217.57302.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Well it's been a while, but this time there aren't as many patches. :)
+v5: Add magic number checking to the extended attribute editing
+handle; move inline data to the head of the attribute list when
+writing so that inline data ends up in the inode area; and always zero
+the attribute space before writing to ensure that we can delete the
+last xattr.
 
-The first two patches provide some minor tweaks to the extended
-attribute editing code that had been sitting (unreleased :/) in my
-tree when Ted pulled in v4 of the extended attribute patches.  Most
-notable is a fix for the delete method being unable to remove the last
-xattr attached to an inode.
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ debugfs/debugfs.c         |    4 +++-
+ lib/ext2fs/ext2_err.et.in |    3 +++
+ lib/ext2fs/ext2fs.h       |    2 +-
+ lib/ext2fs/ext_attr.c     |   39 ++++++++++++++++++++++++++++++++++++---
+ 4 files changed, 43 insertions(+), 5 deletions(-)
 
-Patches 3-6 implement various minor bug fixes and cleanups, some of
-which are based on complaints from clang and cppcheck.
 
-Patches 7-8 fix some warts I've noticed while running e2fsck with
-regards to inline data and printing runs of duplicate blocks.
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index a3fcbf4..aded072 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -561,6 +561,7 @@ static int dump_attr(char *name, char *value, size_t value_len, void *data)
+ static void dump_inode_attributes(FILE *out, ext2_ino_t ino)
+ {
+ 	struct ext2_xattr_handle *h;
++	size_t sz;
+ 	errcode_t err;
+ 
+ 	err = ext2fs_xattrs_open(current_fs, ino, &h);
+@@ -571,7 +572,8 @@ static void dump_inode_attributes(FILE *out, ext2_ino_t ino)
+ 	if (err)
+ 		goto out;
+ 
+-	if (ext2fs_xattrs_count(h) == 0)
++	err = ext2fs_xattrs_count(h, &sz);
++	if (err || sz == 0)
+ 		goto out;
+ 
+ 	fprintf(out, "Extended attributes:\n");
+diff --git a/lib/ext2fs/ext2_err.et.in b/lib/ext2fs/ext2_err.et.in
+index 0a69aa3..198a56c 100644
+--- a/lib/ext2fs/ext2_err.et.in
++++ b/lib/ext2fs/ext2_err.et.in
+@@ -503,4 +503,7 @@ ec	EXT2_ET_EA_NO_SPACE,
+ ec	EXT2_ET_MISSING_EA_FEATURE,
+ 	"Filesystem is missing ext_attr or inline_data feature"
+ 
++ec	EXT2_ET_MAGIC_EA_HANDLE,
++	"Wrong magic number for extended attribute structure"
++
+ 	end
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index dd6404e..b1b9d3d 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -1180,7 +1180,7 @@ errcode_t ext2fs_xattrs_open(ext2_filsys fs, ext2_ino_t ino,
+ errcode_t ext2fs_xattrs_close(struct ext2_xattr_handle **handle);
+ errcode_t ext2fs_free_ext_attr(ext2_filsys fs, ext2_ino_t ino,
+ 			       struct ext2_inode_large *inode);
+-size_t ext2fs_xattrs_count(struct ext2_xattr_handle *handle);
++errcode_t ext2fs_xattrs_count(struct ext2_xattr_handle *handle, size_t *count);
+ 
+ /* extent.c */
+ extern errcode_t ext2fs_extent_header_verify(void *ptr, int size);
+diff --git a/lib/ext2fs/ext_attr.c b/lib/ext2fs/ext_attr.c
+index e69275e..44d7615 100644
+--- a/lib/ext2fs/ext_attr.c
++++ b/lib/ext2fs/ext_attr.c
+@@ -195,6 +195,7 @@ struct ext2_xattr {
+ };
+ 
+ struct ext2_xattr_handle {
++	errcode_t magic;
+ 	ext2_filsys fs;
+ 	struct ext2_xattr *attrs;
+ 	size_t length, count;
+@@ -238,6 +239,24 @@ static struct ea_name_index ea_names[] = {
+ 	{0, NULL},
+ };
+ 
++static void move_inline_data_to_front(struct ext2_xattr_handle *h)
++{
++	struct ext2_xattr *x;
++	struct ext2_xattr tmp;
++
++	for (x = h->attrs + 1; x < h->attrs + h->length; x++) {
++		if (!x->name)
++			continue;
++
++		if (strcmp(x->name, "system.data") == 0) {
++			memcpy(&tmp, x, sizeof(tmp));
++			memcpy(x, h->attrs, sizeof(tmp));
++			memcpy(h->attrs, &tmp, sizeof(tmp));
++			return;
++		}
++	}
++}
++
+ static const char *find_ea_prefix(int index)
+ {
+ 	struct ea_name_index *e;
+@@ -412,6 +431,7 @@ static errcode_t write_xattrs_to_buffer(struct ext2_xattr_handle *handle,
+ 	unsigned int entry_size, value_size;
+ 	int idx, ret;
+ 
++	memset(entries_start, 0, storage_size);
+ 	/* For all remaining x...  */
+ 	for (; x < handle->attrs + handle->length; x++) {
+ 		if (!x->name)
+@@ -471,6 +491,7 @@ errcode_t ext2fs_xattrs_write(struct ext2_xattr_handle *handle)
+ 	unsigned int i;
+ 	errcode_t err;
+ 
++	EXT2_CHECK_MAGIC(handle, EXT2_ET_MAGIC_EA_HANDLE);
+ 	i = EXT2_INODE_SIZE(handle->fs->super);
+ 	if (i < sizeof(*inode))
+ 		i = sizeof(*inode);
+@@ -484,6 +505,8 @@ errcode_t ext2fs_xattrs_write(struct ext2_xattr_handle *handle)
+ 	if (err)
+ 		goto out;
+ 
++	move_inline_data_to_front(handle);
++
+ 	x = handle->attrs;
+ 	/* Does the inode have size for EA? */
+ 	if (EXT2_INODE_SIZE(handle->fs->super) <= EXT2_GOOD_OLD_INODE_SIZE +
+@@ -511,7 +534,7 @@ errcode_t ext2fs_xattrs_write(struct ext2_xattr_handle *handle)
+ 
+ write_ea_block:
+ 	/* Write the EA block */
+-	err = ext2fs_get_memzero(handle->fs->blocksize, &block_buf);
++	err = ext2fs_get_mem(handle->fs->blocksize, &block_buf);
+ 	if (err)
+ 		goto out;
+ 
+@@ -590,6 +613,7 @@ static errcode_t read_xattrs_from_buffer(struct ext2_xattr_handle *handle,
+ 		x++;
+ 
+ 	entry = entries;
++	remain = storage_size;
+ 	while (!EXT2_EXT_IS_LAST_ENTRY(entry)) {
+ 		__u32 hash;
+ 
+@@ -682,6 +706,7 @@ errcode_t ext2fs_xattrs_read(struct ext2_xattr_handle *handle)
+ 	int i;
+ 	errcode_t err;
+ 
++	EXT2_CHECK_MAGIC(handle, EXT2_ET_MAGIC_EA_HANDLE);
+ 	i = EXT2_INODE_SIZE(handle->fs->super);
+ 	if (i < sizeof(*inode))
+ 		i = sizeof(*inode);
+@@ -781,6 +806,7 @@ errcode_t ext2fs_xattrs_iterate(struct ext2_xattr_handle *h,
+ 	errcode_t err;
+ 	int ret;
+ 
++	EXT2_CHECK_MAGIC(h, EXT2_ET_MAGIC_EA_HANDLE);
+ 	for (x = h->attrs; x < h->attrs + h->length; x++) {
+ 		if (!x->name)
+ 			continue;
+@@ -802,6 +828,7 @@ errcode_t ext2fs_xattr_get(struct ext2_xattr_handle *h, const char *key,
+ 	void *val;
+ 	errcode_t err;
+ 
++	EXT2_CHECK_MAGIC(h, EXT2_ET_MAGIC_EA_HANDLE);
+ 	for (x = h->attrs; x < h->attrs + h->length; x++) {
+ 		if (!x->name)
+ 			continue;
+@@ -829,6 +856,7 @@ errcode_t ext2fs_xattr_set(struct ext2_xattr_handle *handle,
+ 	char *new_value;
+ 	errcode_t err;
+ 
++	EXT2_CHECK_MAGIC(handle, EXT2_ET_MAGIC_EA_HANDLE);
+ 	last_empty = NULL;
+ 	for (x = handle->attrs; x < handle->attrs + handle->length; x++) {
+ 		if (!x->name) {
+@@ -894,6 +922,7 @@ errcode_t ext2fs_xattr_remove(struct ext2_xattr_handle *handle,
+ 	struct ext2_xattr *x;
+ 	errcode_t err;
+ 
++	EXT2_CHECK_MAGIC(handle, EXT2_ET_MAGIC_EA_HANDLE);
+ 	for (x = handle->attrs; x < handle->attrs + handle->length; x++) {
+ 		if (!x->name)
+ 			continue;
+@@ -927,6 +956,7 @@ errcode_t ext2fs_xattrs_open(ext2_filsys fs, ext2_ino_t ino,
+ 	if (err)
+ 		return err;
+ 
++	h->magic = EXT2_ET_MAGIC_EA_HANDLE;
+ 	h->length = 4;
+ 	err = ext2fs_get_arrayzero(h->length, sizeof(struct ext2_xattr),
+ 				   &h->attrs);
+@@ -946,6 +976,7 @@ errcode_t ext2fs_xattrs_close(struct ext2_xattr_handle **handle)
+ 	struct ext2_xattr_handle *h = *handle;
+ 	errcode_t err;
+ 
++	EXT2_CHECK_MAGIC(h, EXT2_ET_MAGIC_EA_HANDLE);
+ 	if (h->dirty) {
+ 		err = ext2fs_xattrs_write(h);
+ 		if (err)
+@@ -958,7 +989,9 @@ errcode_t ext2fs_xattrs_close(struct ext2_xattr_handle **handle)
+ 	return 0;
+ }
+ 
+-size_t ext2fs_xattrs_count(struct ext2_xattr_handle *handle)
++errcode_t ext2fs_xattrs_count(struct ext2_xattr_handle *handle, size_t *count)
+ {
+-	return handle->count;
++	EXT2_CHECK_MAGIC(handle, EXT2_ET_MAGIC_EA_HANDLE);
++	*count = handle->count;
++	return 0;
+ }
 
-Patches 9-10 make some alterations to metadata checksumming support;
-by default, e2fsck will now check the inode before verifying the
-checksum.  There's a command line option to restore the "just scrape
-it off the system" behavior for heavily damaged filesystems.  There's
-also a command line option to dumpe2fs to ignore checksum failures.
-
-Patch 11 enables block_validity for new filesystems.  See patch 30 for
-a performance microbenchmark.
-
-Patches 12-13 enhance ext2fs_bmap2() to allow the creation of
-uninitialized extents.  The functionality is already there; really it
-just adds a flag to indicate uninitialized.  There's also a patch to
-the fileio routines to handle uninitialized extents.  These patches
-are unchanged from December.
-
-Patches 14-16 add to resize2fs the ability to convert a filesystem to
-and from 64bit mode.  These patches are unchanged from December.
-
-Patches 17-20 implement readahead for e2fsck.  The first patch tries
-to reduce system call overhead by using pread/pwrite if available.
-The next two patches plumb in the IO manager and library changes
-necessary to read metadata blocks into the page cache (on Linux).  The
-final patch teaches e2fsck to use the library readahead functions in a
-separate thread.
-
-Crude testing has been done via:
-# echo 3 > /proc/sys/vm/drop_caches
-# e2fsck -Fnfvtt /dev/XXX
-
-So far in my crude testing on a cold system, I've seen about a ~20%
-speedup on a SSD, a ~40% speedup on a 3x RAID1 SATA array, and about
-a 10% speedup on a single-spindle SATA disk.  On a single-queue USB
-HDD, performance doesn't change much.  It looks as though low end
-storage like USB HDDs will not benefit, which doesn't surprise me.
-There's around a 2% regression for USB HDDs, though it doesn't seem
-statistically significant.  The SSD numbers are harder to quantify
-since they're already fast.  Somewhat unexpectedly, the readahead code
-speeds up e2fsck even when the page cache has already been warmed up.
-
-This third version of the readahead patches try to prevent page cache
-thrashing by limiting the amount of (user-configurable) readahead to a
-default of half of physical memory.  It also tries to release some of
-the memory pages if it can conclude that it's totally done with a
-block, and it can now detect very slow readahead and disable it.
-
-Patches 21-25 implement fallocate for e2fsprogs, and modifies Ted's
-mk_hugefiles functionality to use it.  The general fallocate API call
-is (regrettably) much more complex than Ted's, since it must grapple
-with the possibility that the file already has mapped blocks.  There
-were also a lot of bigalloc related subtleties.
-
-Patches 26-29 implement fuse2fs, a FUSE server based on libext2fs.
-Primarily I've been using it to shake out bugs in the library via
-xfstests and the metadata checksumming test program.  It can also be
-used to mount ext4 on any OS supporting FUSE, and it can also mount
-64k-block filesystems on x86, though I'd be wary of using rw mode.
-fuse2fs depends on these new APIs: xattr editing, uninit extent
-handling, and the new fallocate call.
-
-Patches 30-32 provide the metadata checksumming test script.  Its
-primary advantage over 'make check' is that it allows one to specify a 
-variety of different mkfs and mount options.  It's also growing more
-tests as a result of fuse2fs exercise.
-
-I've tested these e2fsprogs changes against the -next branch as of
-3/1.  These days, I use an 8GB ramdisk and a 20T "disk" I constructed
-out of dm-snapshot to test in an x64 VM.  The make check tests should
-pass, and most of the xfstests should pass when run against fuse2fs.
-
-Comments and questions are, as always, welcome.
-
---D
