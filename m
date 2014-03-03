@@ -1,48 +1,82 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v3 24/30] e2fsck: check inline_data in pass1
-Date: Mon, 3 Mar 2014 17:18:40 -0500
-Message-ID: <20140303221840.GB4452@thunk.org>
-References: <1386323897-2354-1-git-send-email-wenqing.lz@taobao.com>
- <1386323897-2354-25-git-send-email-wenqing.lz@taobao.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-	"Darrick J. Wong" <darrick.wong@oracle.com>,
-	Zheng Liu <wenqing.lz@taobao.com>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] ext4: Speedup WB_SYNC_ALL pass
+Date: Mon,  3 Mar 2014 23:53:28 +0100
+Message-ID: <1393887208-19462-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:36552 "EHLO imap.thunk.org"
+Received: from cantor2.suse.de ([195.135.220.15]:56140 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755305AbaCCWSn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Mar 2014 17:18:43 -0500
-Content-Disposition: inline
-In-Reply-To: <1386323897-2354-25-git-send-email-wenqing.lz@taobao.com>
+	id S1755005AbaCCWxd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 3 Mar 2014 17:53:33 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 06, 2013 at 05:58:11PM +0800, Zheng Liu wrote:
-> From: Zheng Liu <wenqing.lz@taobao.com>
-> 
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+When doing filesystem wide sync, there's no need to force transaction
+commit (or synchronously write inode buffer) separately for each inode
+because ext4_sync_fs() takes care of forcing commit at the end (VFS
+takes care of flushing buffer cache, respectively). Most of the time
+this slowness doesn't manifest because previous WB_SYNC_NONE writeback
+doesn't leave much to write but when there are processes aggressively
+creating new files and several filesystems to sync, the sync slowness
+can be noticeable. In the following test script sync(1) takes around 6
+minutes when there are two ext4 filesystems mounted on a standard SATA
+drive. After this patch sync takes a couple of seconds so we have about
+two orders of magnitude improvement.
 
-With my change to patch 11/30, the following change is needed to this
-patch.
+      function run_writers
+      {
+        for (( i = 0; i < 10; i++ )); do
+          mkdir $1/dir$i
+          for (( j = 0; j < 40000; j++ )); do
+            dd if=/dev/zero of=$1/dir$i/$j bs=4k count=4 &>/dev/null
+          done &
+        done
+      }
 
-						- Ted
+      for dir in "$@"; do
+        run_writers $dir
+      done
 
-diff --git a/lib/ext2fs/dblist_dir.c b/lib/ext2fs/dblist_dir.c
-index 1e36584..2fbb772 100644
---- a/lib/ext2fs/dblist_dir.c
-+++ b/lib/ext2fs/dblist_dir.c
-@@ -78,9 +78,7 @@ static int db_dir_proc(ext2_filsys fs, struct ext2_db_entry2 *db_info,
- 		return DBLIST_ABORT;
- 	if (inode.i_flags & EXT4_INLINE_DATA_FL) {
- 		ctx->flags = DIRENT_FLAG_INCLUDE_INLINE_DATA;
--		ext2fs_inline_data_dir_iterate(fs, ctx->dir,
--					       ext2fs_process_dir_block,
--					       ctx);
-+		ret = ext2fs_inline_data_dir_iterate(fs, ctx->dir, ctx);
- 	} else {
- 		ret = ext2fs_process_dir_block(fs, &db_info->blk,
- 					       db_info->blockcnt, 0, 0,
+      sleep 40
+      time sync
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/inode.c | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 6e39895a91b8..7850584b0679 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4443,7 +4443,12 @@ int ext4_write_inode(struct inode *inode, struct writeback_control *wbc)
+ 			return -EIO;
+ 		}
+ 
+-		if (wbc->sync_mode != WB_SYNC_ALL)
++		/*
++		 * No need to force transaction in WB_SYNC_NONE mode. Also
++		 * ext4_sync_fs() will force the commit after everything is
++		 * written.
++		 */
++		if (wbc->sync_mode != WB_SYNC_ALL || wbc->for_sync)
+ 			return 0;
+ 
+ 		err = ext4_force_commit(inode->i_sb);
+@@ -4453,7 +4458,11 @@ int ext4_write_inode(struct inode *inode, struct writeback_control *wbc)
+ 		err = __ext4_get_inode_loc(inode, &iloc, 0);
+ 		if (err)
+ 			return err;
+-		if (wbc->sync_mode == WB_SYNC_ALL)
++		/*
++		 * sync(2) will flush the whole buffer cache. No need to do
++		 * it here separately for each inode.
++		 */
++		if (wbc->sync_mode == WB_SYNC_ALL && !wbc->for_sync)
+ 			sync_dirty_buffer(iloc.bh);
+ 		if (buffer_req(iloc.bh) && !buffer_uptodate(iloc.bh)) {
+ 			EXT4_ERROR_INODE_BLOCK(inode, iloc.bh->b_blocknr,
+-- 
+1.8.1.4
+
