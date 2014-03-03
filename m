@@ -1,54 +1,118 @@
 From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 5/8] xfstests: Add fallocate zero range operation to
- fsstress
-Date: Mon, 3 Mar 2014 13:16:20 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1403031315280.2258@localhost.localdomain>
-References: <1393603865-26198-1-git-send-email-lczerner@redhat.com> <1393603865-26198-5-git-send-email-lczerner@redhat.com> <5310C9F8.20009@sandeen.net>
+Subject: Re: [PATCH 7/8] xfstests: Add fallocate zero range operation to
+ fsx
+Date: Mon, 3 Mar 2014 13:21:03 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1403031317310.2258@localhost.localdomain>
+References: <1393603865-26198-1-git-send-email-lczerner@redhat.com>
+	<1393603865-26198-7-git-send-email-lczerner@redhat.com>
+	<CB2787E8-CE9B-46BE-B649-4E38ABE27C2B@dilger.ca>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	xfs@oss.sgi.com
-To: Eric Sandeen <sandeen@sandeen.net>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54735 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753541AbaCCMQ2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Mar 2014 07:16:28 -0500
-In-Reply-To: <5310C9F8.20009@sandeen.net>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, xfs@oss.sgi.com
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <CB2787E8-CE9B-46BE-B649-4E38ABE27C2B@dilger.ca>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 28 Feb 2014, Eric Sandeen wrote:
+On Fri, 28 Feb 2014, Andreas Dilger wrote:
 
-> Date: Fri, 28 Feb 2014 11:40:08 -0600
-> From: Eric Sandeen <sandeen@sandeen.net>
-> To: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
-> Cc: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
-> Subject: Re: [PATCH 5/8] xfstests: Add fallocate zero range operation to
->     fsstress
+> Date: Fri, 28 Feb 2014 12:08:47 -0700
+> From: Andreas Dilger <adilger@dilger.ca>
+> To: Lukas Czerner <lczerner@redhat.com>
+> Cc: linux-ext4@vger.kernel.org, xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org
+> Subject: Re: [PATCH 7/8] xfstests: Add fallocate zero range operation to fsx
 > 
-> On 2/28/14, 10:11 AM, Lukas Czerner wrote:
-> > This commit adds fzero operation support for fsstress, which is meant to
-> > exercise fallocate FALLOC_FL_ZERO_RANGE support.
-> > 
-> > Also reorganise the common fallocate code into a single do_fallocate()
-> > function and use flags use the right mode.
-> > 
-> > Also in order to make more obvious which fallocate mode fsstress is
-> > testing translate fallocate flags into human readable strings.
+> On Feb 28, 2014, at 9:11 AM, Lukas Czerner <lczerner@redhat.com> wrote:
+> > This commit adds fallocate FALLOC_FL_ZERO_RANGE support for fsx.
 > 
-> Can you enhance that so that if it's passed a flag which isn't
-> in the known array, it prints the leftover values?  Otherwise
-> they are silently dropped, which might be confusing.
+> It looks like this patch breaks the option handling for these
+> fallocate features.
 > 
-> Handling the case where a flag is not in the array would future-proof
-> it, I think.
+> >  int     fallocate_calls = 1;            /* -F flag disables */
+> >  int     punch_hole_calls = 1;           /* -H flag disables */
+> > +int     zero_range_calls = 1;           /* -z flag disables */
 > 
-> -Eric
+> So these fallocate tests are on by default...
+> 
+> > +int
+> > +test_fallocate(int mode)
+> >  {
+> >  #ifdef HAVE_LINUX_FALLOC_H
+> > +	int ret = 0;
+> > 	if (!lite && fallocate_calls) {
+                     ^^^^^^^^^^^^^^^
 
-Yes, I can do that. The only reason I've left this out was to force
-people to actually update it when they update the test with new
-flag.
+Right, I forgot about this.
+
+
+> > +		if (fallocate(fd, mode, 0, 1) && errno == EOPNOTSUPP) {
+> > 			if(!quiet)
+> > 				warn("main: filesystem does not support fallocate, disabling\n");
+> > 		} else {
+> > +			ret = 1;
+> > 			ftruncate(fd, 0);
+> > 		}
+> > 	}
+> > #endif
+> > }
+> 
+> And this returns 1 or 0 depending if they are supported or not...
+> 
+> > +	while ((ch = getopt(argc, argv, "b:c:dfl:m:no:p:qr:s:t:w:xyAD:FHzLN:OP:RS:WZ"))
+> > 	       != EOF)
+> > 		switch (ch) {
+> > 		case 'H':
+> > 			punch_hole_calls = 0;
+> > 			break;
+> > +		case 'z':
+> > +			zero_range_calls = 0;
+> > +			break;
+> 
+> And the option parsing sets the values to zero if they are disabled,
+> so far, so good...
+> 
+> > +	fallocate_calls = test_fallocate(0);
+> > +	punch_hole_calls = test_fallocate(FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE);
+> > +	zero_range_calls = test_fallocate(FALLOC_FL_ZERO_RANGE);
+> 
+> But here, the values set by option parsing are clobbered and the
+> tests are only enabled or disabled depending on whether the kernel
+> supports that feature or not.  I think you need something like:
+
+Right, and the 'fallocate_calls' test needs to disappear from
+test_fallocate().
 
 Thanks!
 -Lukas
+
+> 
+>         if (fallocate_calls)
+>                 fallocate_calls = test_fallocate(0);
+>         if (punch_hole_calls)
+>                 punch_hole_calls = test_fallocate(FALLOC_FL_PUNCH_HOLE |
+>                                                   FALLOC_FL_KEEP_SIZE);
+>         if (zero_range_calls)
+>                 zero_range_calls = test_fallocate(FALLOC_FL_ZERO_RANGE);
+> 
+> Cheers, Andreas
+> 
+> 
+> 
+> 
+> 
+> 
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
