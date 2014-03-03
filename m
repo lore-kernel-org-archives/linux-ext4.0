@@ -1,81 +1,54 @@
-From: ZhangZhen <zhenzhang.zhang@huawei.com>
-Subject: Re: [PATCH] ext3: fix some wrong comments
-Date: Mon, 3 Mar 2014 09:44:02 +0800
-Message-ID: <5313DE62.9050802@huawei.com>
-References: <53100429.3000205@huawei.com> <53103ABB.9030100@huawei.com> <20140228083710.GC28074@quack.suse.cz>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH 5/8] xfstests: Add fallocate zero range operation to
+ fsstress
+Date: Mon, 3 Mar 2014 13:16:20 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1403031315280.2258@localhost.localdomain>
+References: <1393603865-26198-1-git-send-email-lczerner@redhat.com> <1393603865-26198-5-git-send-email-lczerner@redhat.com> <5310C9F8.20009@sandeen.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	xfs@oss.sgi.com
+To: Eric Sandeen <sandeen@sandeen.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from szxga03-in.huawei.com ([119.145.14.66]:37209 "EHLO
-	szxga03-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751452AbaCCBo1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Mar 2014 20:44:27 -0500
-In-Reply-To: <20140228083710.GC28074@quack.suse.cz>
+Received: from mx1.redhat.com ([209.132.183.28]:54735 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753541AbaCCMQ2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 3 Mar 2014 07:16:28 -0500
+In-Reply-To: <5310C9F8.20009@sandeen.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2014/2/28 16:37, Jan Kara wrote:
-> On Fri 28-02-14 15:28:59, ZhangZhen wrote:
->> The comments in the code are wrong, because every generic_file_write=
-()
->> is replaced by generic_file_aio_write().
->>
->> Signed-off-by: Zhang Zhen <zhenzhang.zhang@huawei.com>
->> ---
->>  fs/ext3/inode.c | 4 ++--
->>  1 file changed, 2 insertions(+), 2 deletions(-)
->>
->> diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
->> index 384b6eb..0b94832 100644
->> --- a/fs/ext3/inode.c
->> +++ b/fs/ext3/inode.c
->> @@ -1574,7 +1574,7 @@ static int buffer_unmapped(handle_t *handle, s=
-truct buffer_head *bh)
->>   *
->>   * Similar for:
->>   *
->> - *	ext3_file_write() -> generic_file_write() -> __alloc_pages() -> =
-=2E..
->> + *	ext3_file_write() -> generic_file_aio_write() -> __alloc_pages()=
- -> ...
->   Well, but ext3_file_write() doesn't exist either so the comment obv=
-iously
-> needs further updates.
->=20
->>   *
->>   * Same applies to ext3_get_block().  We will deadlock on various t=
-hings like
->>   * lock_journal and i_truncate_mutex.
->> @@ -3212,7 +3212,7 @@ out_brelse:
->>   *
->>   * We are called from a few places:
->>   *
->> - * - Within generic_file_write() for O_SYNC files.
->> + * - Within generic_file_aio_write() for O_SYNC files.
->>   *   Here, there will be no transaction running. We wait for any ru=
-nning
->>   *   transaction to commit.
->>   *
->   This is correct but as I'm looking through the comment it needs muc=
-h
-> larger update. So something like attached patches looks more appropri=
-ate.
-> Thanks for pointing me to those outdated comments.
->=20
-> 								Honza
->=20
-Hi Honza=EF=BC=8C
-=09
-Your fix is more better than mine. It's a good chance for me to learn, =
-thanks!
+On Fri, 28 Feb 2014, Eric Sandeen wrote:
 
-								Zhen
+> Date: Fri, 28 Feb 2014 11:40:08 -0600
+> From: Eric Sandeen <sandeen@sandeen.net>
+> To: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
+> Cc: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
+> Subject: Re: [PATCH 5/8] xfstests: Add fallocate zero range operation to
+>     fsstress
+> 
+> On 2/28/14, 10:11 AM, Lukas Czerner wrote:
+> > This commit adds fzero operation support for fsstress, which is meant to
+> > exercise fallocate FALLOC_FL_ZERO_RANGE support.
+> > 
+> > Also reorganise the common fallocate code into a single do_fallocate()
+> > function and use flags use the right mode.
+> > 
+> > Also in order to make more obvious which fallocate mode fsstress is
+> > testing translate fallocate flags into human readable strings.
+> 
+> Can you enhance that so that if it's passed a flag which isn't
+> in the known array, it prints the leftover values?  Otherwise
+> they are silently dropped, which might be confusing.
+> 
+> Handling the case where a flag is not in the array would future-proof
+> it, I think.
+> 
+> -Eric
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Yes, I can do that. The only reason I've left this out was to force
+people to actually update it when they update the test with new
+flag.
+
+Thanks!
+-Lukas
