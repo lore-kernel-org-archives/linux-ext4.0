@@ -1,85 +1,62 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v3 11/30] libext2fs: handle inline data in dir iterator
- function
-Date: Tue, 4 Mar 2014 08:56:24 -0500
-Message-ID: <20140304135624.GA18385@thunk.org>
-References: <1386323897-2354-1-git-send-email-wenqing.lz@taobao.com>
- <1386323897-2354-12-git-send-email-wenqing.lz@taobao.com>
- <20140303221653.GA4452@thunk.org>
- <20140303233154.GB9875@birch.djwong.org>
+Subject: Re: [PATCH] mke2fs: disable resize_inode feature if 64bit feature is
+ enabled
+Date: Tue, 4 Mar 2014 10:19:25 -0500
+Message-ID: <20140304151925.GC23106@thunk.org>
+References: <1372928710-10461-1-git-send-email-guaneryu@gmail.com>
+ <20130705012128.GA11793@gmail.com>
+ <20130707154140.GA11993@thunk.org>
+ <alpine.LFD.2.00.1403031640020.2258@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Zheng Liu <gnehzuil.liu@gmail.com>, linux-ext4@vger.kernel.org,
-	Zheng Liu <wenqing.lz@taobao.com>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Eryu Guan <guaneryu@gmail.com>, linux-ext4@vger.kernel.org
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:36833 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:36864 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757292AbaCDN4f (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 4 Mar 2014 08:56:35 -0500
+	id S1757168AbaCDPT3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 4 Mar 2014 10:19:29 -0500
 Content-Disposition: inline
-In-Reply-To: <20140303233154.GB9875@birch.djwong.org>
+In-Reply-To: <alpine.LFD.2.00.1403031640020.2258@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 03, 2014 at 03:31:54PM -0800, Darrick J. Wong wrote:
-> > diff --git a/lib/ext2fs/dir_iterate.c b/lib/ext2fs/dir_iterate.c
-> > index 6bdfae5..8afccbe 100644
-> > --- a/lib/ext2fs/dir_iterate.c
-> > +++ b/lib/ext2fs/dir_iterate.c
-> > @@ -129,9 +129,7 @@ errcode_t ext2fs_dir_iterate2(ext2_filsys fs,
-> >  		ext2fs_free_mem(&ctx.buf);
-> >  	if (retval == EXT2_ET_INLINE_DATA_CANT_ITERATE) {
-> >  		ctx.flags |= DIRENT_FLAG_INCLUDE_INLINE_DATA;
-> > -		retval = ext2fs_inline_data_dir_iterate(fs, dir,
-> > -						ext2fs_process_dir_block,
-> > -						&ctx);
-> > +		(void) ext2fs_inline_data_dir_iterate(fs, dir, &ctx);
-> >  	}
-> >  	if (retval)
-> >  		return retval;
-> 
-> Hmm.  In order to get into ext2fs_inline_data_dir_iterate(), it has to be the
-> case that retval == EXT2_ET_INLINE_DATA_CANT_ITERATE.  But then we immediately
-> return that error code, which means that anything interesting in ctx.errcode
-> will be lost.  I /think/ you want to set retval = 0 in that if clause?
+On Mon, Mar 03, 2014 at 04:40:21PM +0100, Luk=C3=A1=C5=A1 Czerner wrote=
+:
+>=20
+> are you going to take this in ?
+>=20
+> > It's better to use the resize_inode for file systems that are small=
+er
+> > than 16TB, even if the 64-bit flag is enabled, since using the meta=
+_bg
+> > style resizing spreads out the block group descriptors, which
+> > increases the time to mount the file system.  Using the resize_inod=
+e
+> > will defer the need to go to the meta_bg-style resizing until we cr=
+oss
+> > the 16TB boundary.
 
-Yes, I noticed this morning that it caused a regression test failure
-(which is comforting from a code coverage point of view :-).  I've
-made that change.
+See my comments above.
 
-> 
-> Was BLOCK_INLINE_DATA_CHANGED ever cleared from retval?  As written, I /think/
-> that writing either dot or dotdot entries will result in the EA being written
-> too, even if nothing changes there.
+If we create a file system which is say, 1T but with the 64-bit flag,
+we do want the resize_inode feature to be used until we cross over the
+32-bit boundary, because keeping block group descriptors contiguous
+speeds up the mount time.
 
-Yes, good point.  I've added the following change.
+If I were to accept this patch, and/or Red Hat were to ship with it, I
+will predict that you will get angry customer support calls about file
+system mount times getting slow after doing a resize.
 
-diff --git a/lib/ext2fs/inline_data.c b/lib/ext2fs/inline_data.c
-index db1bc03..9bfc8ef 100644
---- a/lib/ext2fs/inline_data.c
-+++ b/lib/ext2fs/inline_data.c
-@@ -133,6 +133,7 @@ int ext2fs_inline_data_dir_iterate(ext2_filsys fs, ext2_ino_t ino,
- 		err = ext2fs_write_inode(fs, ino, &inode);
- 		if (err)
- 			goto out;
-+		ret &= ~BLOCK_INLINE_DATA_CHANGED;
- 	}
- 	if (ret & BLOCK_ABORT)
- 		goto out;
-@@ -159,6 +160,7 @@ int ext2fs_inline_data_dir_iterate(ext2_filsys fs, ext2_ino_t ino,
- 		ctx->errcode = ext2fs_write_inode(fs, ino, &inode);
- 		if (ctx->errcode)
- 			ret |= BLOCK_ABORT;
-+		ret &= ~BLOCK_INLINE_DATA_CHANGED;
- 	}
- 	if (ret & BLOCK_ABORT)
- 		goto out;
-     	  	       
-> Guess I'll have a look at the other patches too.
+At some point what we may want to lazily load the block group
+descriptors at mount time, to mitigate the slow mount time issue when
+using meta_bg.  We have a lot of assumptions in the code that the
+block group descriptors are always available, though.
 
-I've updated the pu branch with the inline data patches, so if you and
-Zheng could take a look at it and sanity check it, I'd really
-appreicate it.  Thanks!!
-
-						- Ted
+      	    		    	   	      - Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
