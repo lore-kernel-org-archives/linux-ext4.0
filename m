@@ -1,302 +1,460 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH v2 2/8] xfstests: create _test_block_boundaries in common/punch
-Date: Wed,  5 Mar 2014 16:51:33 +0100
-Message-ID: <1394034699-21187-3-git-send-email-lczerner@redhat.com>
+Subject: [PATCH v2 8/8] ext4/001: Add ext4 specific test for fallocate zero range
+Date: Wed,  5 Mar 2014 16:51:39 +0100
+Message-ID: <1394034699-21187-9-git-send-email-lczerner@redhat.com>
 References: <1394034699-21187-1-git-send-email-lczerner@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, lczerner@redhat.com, xfs@oss.sgi.com
+Cc: xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org, lczerner@redhat.com
 To: linux-ext4@vger.kernel.org
-Return-path: <xfs-bounces@oss.sgi.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:6692 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755796AbaCEPwO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 5 Mar 2014 10:52:14 -0500
 In-Reply-To: <1394034699-21187-1-git-send-email-lczerner@redhat.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Create new function _test_block_boundaries() which is testing content of
-the blocks after the operation such as zero, or punch hole. The test is
-doing the operation around block boundaries to assure correct behaviour
-of the operation on block unaligned ranges.
-
-This has been based on test xfs/290 which has been changed to use this
-new function. A small change to the output file was required.
+This is based on xfs/242. However it's better to make it file system
+specific because the range can be zeroes either directly by writing
+zeroes, or converting to unwritten extent, so the actual result might
+differ from file system to file system. Also xfs results differ
+depending on the page size which is not the case for ext4.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+Reviewed-by: Eric Sandeen <sandeen@redhat.com>
 ---
- common/punch      | 106 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/xfs/290     |  40 ++-------------------
- tests/xfs/290.out |  13 +++++--
- 3 files changed, 119 insertions(+), 40 deletions(-)
+ tests/ext4/001     |  64 ++++++++++
+ tests/ext4/001.out | 337 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/ext4/group   |   1 +
+ 3 files changed, 402 insertions(+)
+ create mode 100755 tests/ext4/001
+ create mode 100644 tests/ext4/001.out
 
-diff --git a/common/punch b/common/punch
-index 9340d3b..f2d538c 100644
---- a/common/punch
-+++ b/common/punch
-@@ -566,3 +566,109 @@ _test_generic_punch()
- 	[ $? -ne 0 ] && die_now
- 	od -x $testfile | head -n -1
- }
+diff --git a/tests/ext4/001 b/tests/ext4/001
+new file mode 100755
+index 0000000..d575d9a
+--- /dev/null
++++ b/tests/ext4/001
+@@ -0,0 +1,64 @@
++#! /bin/bash
++# FS QA Test No. 001
++#
++# Test fallocate FALLOC_FL_ZERO_RANGE
++#
++#-----------------------------------------------------------------------
++# Copyright 2014 (C) Red Hat, Inc., Lukas Czerner <lczerner@redhat.com>
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License as
++# published by the Free Software Foundation.
++#
++# This program is distributed in the hope that it would be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write the Free Software Foundation,
++# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++#
++#-----------------------------------------------------------------------
++#
 +
-+_test_block_boundaries()
++seq=`basename $0`
++seqres=$RESULT_DIR/$seq
++echo "QA output created by $seq"
++
++here=`pwd`
++tmp=/tmp/$$
++status=1	# failure is the default!
++
++_cleanup()
 +{
-+
-+	remove_testfile=1
-+	sync_cmd="-c fsync"
-+	unwritten_tests=1
-+	OPTIND=1
-+	while getopts 'dk' OPTION
-+	do
-+		case $OPTION in
-+		k)	remove_testfile=
-+		;;
-+		d)	sync_cmd=
-+		;;
-+		?)	echo Invalid flag
-+		exit 1
-+		;;
-+		esac
-+	done
-+	shift $(($OPTIND - 1))
-+
-+	bs=$1
-+	zero_cmd=$2
-+	filter_cmd=$3
-+	testfile=$4
-+
-+	# Block size plus 1
-+	bs_p1=$(($bs + 1))
-+	# Block size plus 2
-+	bs_p2=$(($bs + 2))
-+
-+	# Block size minus 1
-+	bs_m1=$(($bs - 1))
-+
-+	# Block size multiplied by 2
-+	bs_t2=$(($bs * 2))
-+
-+	# Block size divided by 2
-+	bs_d2=$(($bs / 2))
-+
-+	echo "zero 0, 1"
-+	$XFS_IO_PROG -f -t -c "pwrite -S 0x41 0 $bs" \
-+			   -c "pwrite -S 0x42 $bs $bs" \
-+			   -c "$zero_cmd 0 1" \
-+			   -c "pread -v 0 $bs_t2" \
-+			   $testfile | $filter_cmd
-+
-+	echo "zero 0, $bs_m1"
-+	$XFS_IO_PROG -f -t -c "pwrite -S 0x41 0 $bs" \
-+			   -c "pwrite -S 0x42 $bs $bs" \
-+			   -c "$zero_cmd 0 $bs_m1" \
-+			   -c "pread -v 0 $bs_t2" \
-+			   $testfile | $filter_cmd
-+
-+	echo "zero 0, $bs"
-+	$XFS_IO_PROG -f -t -c "pwrite -S 0x41 0 $bs" \
-+			   -c "pwrite -S 0x42 $bs $bs" \
-+			   -c "$zero_cmd 0 $bs" \
-+			   -c "pread -v 0 $bs_t2" \
-+			   $testfile | $filter_cmd
-+
-+	echo "zero 0, $bs_p1"
-+	$XFS_IO_PROG -f -t -c "pwrite -S 0x41 0 $bs" \
-+			   -c "pwrite -S 0x42 $bs $bs" \
-+			   -c "$zero_cmd 0 $bs_p1" \
-+			   -c "pread -v 0 $bs_t2" \
-+			   $testfile | $filter_cmd
-+
-+	echo "zero $bs_m1, $bs"
-+	$XFS_IO_PROG -f -t -c "pwrite -S 0x41 0 $bs" \
-+			   -c "pwrite -S 0x42 $bs $bs" \
-+			   -c "$zero_cmd $bs_m1 $bs" \
-+			   -c "pread -v 0 $bs_t2" \
-+			   $testfile | $filter_cmd
-+
-+	echo "zero $bs_m1, $bs_p1"
-+	$XFS_IO_PROG -f -t -c "pwrite -S 0x41 0 $bs" \
-+			   -c "pwrite -S 0x42 $bs $bs" \
-+			   -c "$zero_cmd $bs_m1 $bs_p1" \
-+			   -c "pread -v 0 $bs_t2" \
-+			   $testfile | $filter_cmd
-+
-+	echo "zero $bs_m1, $bs_p2"
-+	$XFS_IO_PROG -f -t -c "pwrite -S 0x41 0 $bs" \
-+			   -c "pwrite -S 0x42 $bs $bs" \
-+			   -c "$zero_cmd $bs_m1 $bs_p2" \
-+			   -c "pread -v 0 $bs_t2" \
-+			   $testfile | $filter_cmd
-+
-+
-+	echo "zero $bs, $bs"
-+	$XFS_IO_PROG -f -t -c "pwrite -S 0x41 0 $bs" \
-+			   -c "pwrite -S 0x42 $bs $bs" \
-+			   -c "$zero_cmd $bs $bs" \
-+			   -c "pread -v 0 $bs_t2" \
-+			   $testfile | $filter_cmd
-+
-+
-+	echo "zero $bs_d2 , $bs"
-+	$XFS_IO_PROG -f -t -c "pwrite -S 0x41 0 $bs" \
-+			   -c "pwrite -S 0x42 $bs $bs" \
-+			   -c "$zero_cmd $bs_d2 $bs" \
-+			   -c "pread -v 0 $bs_t2" \
-+			   $testfile | $filter_cmd
++    rm -f $tmp.*
 +}
-diff --git a/tests/xfs/290 b/tests/xfs/290
-index 547a0ba..cbe7108 100755
---- a/tests/xfs/290
-+++ b/tests/xfs/290
-@@ -38,6 +38,7 @@ trap "exit \$status" 0 1 2 3 15
- # get standard environment, filters and checks
- . ./common/rc
- . ./common/filter
++
++trap "_cleanup ; exit \$status" 0 1 2 3 15
++
++# get standard environment, filters and checks
++. ./common/rc
++. ./common/filter
 +. ./common/punch
- 
- # real QA test starts here
- 
-@@ -49,44 +50,7 @@ _require_xfs_io_zero
- 
- testfile=$TEST_DIR/290.$$
- 
--test_zero()
--{
--	zero_start=$1
--	zero_len=$2
--
--	$XFS_IO_PROG -f -t -c "pwrite -S 0x41 0 4096" \
--                      -c "pwrite -S 0x42 4096 4096" \
--                      -c "zero $zero_start $zero_len" \
--                      -c "pread -v 0 8192" \
--                      $testfile | _filter_xfs_io_unique
--}
--
--# [0,1] -- Shouldn't toss anything
--test_zero    0    1
--
--#[0,4095] -- Shouldn't toss anything
--test_zero    0 4095
--
--#[0,4096] -- Should toss first page
--test_zero    0 4096
--
--#[0,4097] -- Should toss first page
--test_zero    0 4097
--
--#[4095,8191] -- Should toss last byte of first page
--test_zero 4095 4096
--
--#[4095,8192] -- Should toss second page & last byte of first page
--test_zero 4095 4097
--
--#[4095,8193] -- Should toss second page & last byte of first page
--test_zero 4095 4098
--
--#[4096,8192] -- Should toss second page
--test_zero 4096 4096
--
--#[1024,5120] -- Should toss from 1024 to end of first page
--test_zero 1024 4096
-+_test_block_boundaries 4096 zero _filter_xfs_io_unique $testfile
- 
- # success, all done
- status=0
-diff --git a/tests/xfs/290.out b/tests/xfs/290.out
-index 229c2b3..2487a93 100644
---- a/tests/xfs/290.out
-+++ b/tests/xfs/290.out
-@@ -1,4 +1,5 @@
- QA output created by 290
-+zero 0, 1
- wrote 4096/4096 bytes at offset 0
- XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
- wrote 4096/4096 bytes at offset 4096
-@@ -10,6 +11,7 @@ XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
- *
- read 8192/8192 bytes at offset 0
- XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
-+zero 0, 4095
- wrote 4096/4096 bytes at offset 0
- XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
- wrote 4096/4096 bytes at offset 4096
-@@ -21,6 +23,7 @@ XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
- *
- read 8192/8192 bytes at offset 0
- XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
-+zero 0, 4096
- wrote 4096/4096 bytes at offset 0
- XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
- wrote 4096/4096 bytes at offset 4096
-@@ -31,6 +34,7 @@ XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
- *
- read 8192/8192 bytes at offset 0
- XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
-+zero 0, 4097
- wrote 4096/4096 bytes at offset 0
- XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
- wrote 4096/4096 bytes at offset 4096
-@@ -42,6 +46,7 @@ XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
- *
- read 8192/8192 bytes at offset 0
- XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
-+zero 4095, 4096
- wrote 4096/4096 bytes at offset 0
- XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
- wrote 4096/4096 bytes at offset 4096
-@@ -54,6 +59,7 @@ XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
- 00001ff0:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 42  ...............B
- read 8192/8192 bytes at offset 0
- XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
-+zero 4095, 4097
- wrote 4096/4096 bytes at offset 0
- XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
- wrote 4096/4096 bytes at offset 4096
-@@ -65,6 +71,7 @@ XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
- *
- read 8192/8192 bytes at offset 0
- XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
-+zero 4095, 4098
- wrote 4096/4096 bytes at offset 0
- XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
- wrote 4096/4096 bytes at offset 4096
-@@ -76,6 +83,7 @@ XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
- *
- read 8192/8192 bytes at offset 0
- XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
-+zero 4096, 4096
- wrote 4096/4096 bytes at offset 0
- XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
- wrote 4096/4096 bytes at offset 4096
-@@ -86,15 +94,16 @@ XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
- *
- read 8192/8192 bytes at offset 0
- XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
-+zero 2048 , 4096
- wrote 4096/4096 bytes at offset 0
- XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
- wrote 4096/4096 bytes at offset 4096
- XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
- 00000000:  41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41  AAAAAAAAAAAAAAAA
- *
--00000400:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
-+00000800:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
- *
--00001400:  42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42  BBBBBBBBBBBBBBBB
-+00001800:  42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42  BBBBBBBBBBBBBBBB
- *
- read 8192/8192 bytes at offset 0
- XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
++
++# real QA test starts here
++_supported_fs ext4
++_supported_os Linux
++_require_xfs_io_falloc "fzero"
++
++testfile=$TEST_DIR/001.$$
++
++# Standard zero range tests
++_test_generic_punch falloc fzero fzero fiemap _filter_fiemap $testfile
++
++# Delayed allocation zero range tests
++_test_generic_punch -d falloc fzero fzero fiemap _filter_fiemap $testfile
++
++# Multi zero range tests
++_test_generic_punch -k falloc fzero fzero fiemap _filter_fiemap $testfile
++
++# Delayed allocation multi zero range tests
++_test_generic_punch -d -k falloc fzero fzero fiemap _filter_fiemap $testfile
++
++status=0 ; exit
+diff --git a/tests/ext4/001.out b/tests/ext4/001.out
+new file mode 100644
+index 0000000..212c247
+--- /dev/null
++++ b/tests/ext4/001.out
+@@ -0,0 +1,337 @@
++QA output created by 001
++	1. into a hole
++0: [0..7]: hole
++1: [8..23]: unwritten
++2: [24..39]: hole
++daa100df6e6711906b61c9ab5aa16032
++	2. into allocated space
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	3. into unwritten space
++0: [0..39]: unwritten
++daa100df6e6711906b61c9ab5aa16032
++	4. hole -> data
++0: [0..7]: hole
++1: [8..23]: unwritten
++2: [24..31]: data
++3: [32..39]: hole
++cc63069677939f69a6e8f68cae6a6dac
++	5. hole -> unwritten
++0: [0..7]: hole
++1: [8..31]: unwritten
++2: [32..39]: hole
++daa100df6e6711906b61c9ab5aa16032
++	6. data -> hole
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: hole
++1b3779878366498b28c702ef88c4a773
++	7. data -> unwritten
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: hole
++1b3779878366498b28c702ef88c4a773
++	8. unwritten -> hole
++0: [0..23]: unwritten
++1: [24..39]: hole
++daa100df6e6711906b61c9ab5aa16032
++	9. unwritten -> data
++0: [0..23]: unwritten
++1: [24..31]: data
++2: [32..39]: hole
++cc63069677939f69a6e8f68cae6a6dac
++	10. hole -> data -> hole
++0: [0..7]: hole
++1: [8..31]: unwritten
++2: [32..39]: hole
++daa100df6e6711906b61c9ab5aa16032
++	11. data -> hole -> data
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: data
++f6aeca13ec49e5b266cd1c913cd726e3
++	12. unwritten -> data -> unwritten
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: data
++daa100df6e6711906b61c9ab5aa16032
++	13. data -> unwritten -> data
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: data
++f6aeca13ec49e5b266cd1c913cd726e3
++	14. data -> hole @ EOF
++0: [0..23]: data
++1: [24..39]: unwritten
++e1f024eedd27ea6b1c3e9b841c850404
++	15. data -> hole @ 0
++0: [0..15]: unwritten
++1: [16..39]: data
++eecb7aa303d121835de05028751d301c
++	16. data -> cache cold ->hole
++0: [0..15]: unwritten
++1: [16..39]: data
++eecb7aa303d121835de05028751d301c
++	17. data -> hole in single block file
++0: [0..7]: data
++0000000 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
++*
++0000200 0000 0000 0000 0000 0000 0000 0000 0000
++*
++0000400 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
++*
++	1. into a hole
++0: [0..7]: hole
++1: [8..23]: unwritten
++2: [24..39]: hole
++daa100df6e6711906b61c9ab5aa16032
++	2. into allocated space
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	3. into unwritten space
++0: [0..39]: unwritten
++daa100df6e6711906b61c9ab5aa16032
++	4. hole -> data
++0: [0..7]: hole
++1: [8..23]: unwritten
++2: [24..31]: data
++3: [32..39]: hole
++cc63069677939f69a6e8f68cae6a6dac
++	5. hole -> unwritten
++0: [0..7]: hole
++1: [8..31]: unwritten
++2: [32..39]: hole
++daa100df6e6711906b61c9ab5aa16032
++	6. data -> hole
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: hole
++1b3779878366498b28c702ef88c4a773
++	7. data -> unwritten
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: hole
++1b3779878366498b28c702ef88c4a773
++	8. unwritten -> hole
++0: [0..23]: unwritten
++1: [24..39]: hole
++daa100df6e6711906b61c9ab5aa16032
++	9. unwritten -> data
++0: [0..23]: unwritten
++1: [24..31]: data
++2: [32..39]: hole
++cc63069677939f69a6e8f68cae6a6dac
++	10. hole -> data -> hole
++0: [0..7]: hole
++1: [8..31]: unwritten
++2: [32..39]: hole
++daa100df6e6711906b61c9ab5aa16032
++	11. data -> hole -> data
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: data
++f6aeca13ec49e5b266cd1c913cd726e3
++	12. unwritten -> data -> unwritten
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: data
++daa100df6e6711906b61c9ab5aa16032
++	13. data -> unwritten -> data
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: data
++f6aeca13ec49e5b266cd1c913cd726e3
++	14. data -> hole @ EOF
++0: [0..23]: data
++1: [24..39]: unwritten
++e1f024eedd27ea6b1c3e9b841c850404
++	15. data -> hole @ 0
++0: [0..15]: unwritten
++1: [16..39]: data
++eecb7aa303d121835de05028751d301c
++	16. data -> cache cold ->hole
++0: [0..15]: unwritten
++1: [16..39]: data
++eecb7aa303d121835de05028751d301c
++	17. data -> hole in single block file
++0: [0..7]: data
++0000000 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
++*
++0000200 0000 0000 0000 0000 0000 0000 0000 0000
++*
++0000400 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
++*
++	1. into a hole
++0: [0..7]: hole
++1: [8..23]: unwritten
++2: [24..39]: hole
++daa100df6e6711906b61c9ab5aa16032
++	2. into allocated space
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	3. into unwritten space
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	4. hole -> data
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	5. hole -> unwritten
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	6. data -> hole
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	7. data -> unwritten
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	8. unwritten -> hole
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	9. unwritten -> data
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	10. hole -> data -> hole
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: data
++f6aeca13ec49e5b266cd1c913cd726e3
++	11. data -> hole -> data
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: data
++f6aeca13ec49e5b266cd1c913cd726e3
++	12. unwritten -> data -> unwritten
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: data
++f6aeca13ec49e5b266cd1c913cd726e3
++	13. data -> unwritten -> data
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: data
++f6aeca13ec49e5b266cd1c913cd726e3
++	14. data -> hole @ EOF
++0: [0..23]: data
++1: [24..39]: unwritten
++e1f024eedd27ea6b1c3e9b841c850404
++	15. data -> hole @ 0
++0: [0..15]: unwritten
++1: [16..39]: data
++eecb7aa303d121835de05028751d301c
++	16. data -> cache cold ->hole
++0: [0..15]: unwritten
++1: [16..39]: data
++eecb7aa303d121835de05028751d301c
++	17. data -> hole in single block file
++0: [0..7]: data
++0000000 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
++*
++0000200 0000 0000 0000 0000 0000 0000 0000 0000
++*
++0000400 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
++*
++	1. into a hole
++0: [0..7]: hole
++1: [8..23]: unwritten
++2: [24..39]: hole
++daa100df6e6711906b61c9ab5aa16032
++	2. into allocated space
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	3. into unwritten space
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	4. hole -> data
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	5. hole -> unwritten
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	6. data -> hole
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	7. data -> unwritten
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	8. unwritten -> hole
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	9. unwritten -> data
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	10. hole -> data -> hole
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: data
++f6aeca13ec49e5b266cd1c913cd726e3
++	11. data -> hole -> data
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: data
++f6aeca13ec49e5b266cd1c913cd726e3
++	12. unwritten -> data -> unwritten
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: data
++f6aeca13ec49e5b266cd1c913cd726e3
++	13. data -> unwritten -> data
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: data
++f6aeca13ec49e5b266cd1c913cd726e3
++	14. data -> hole @ EOF
++0: [0..23]: data
++1: [24..39]: unwritten
++e1f024eedd27ea6b1c3e9b841c850404
++	15. data -> hole @ 0
++0: [0..15]: unwritten
++1: [16..39]: data
++eecb7aa303d121835de05028751d301c
++	16. data -> cache cold ->hole
++0: [0..15]: unwritten
++1: [16..39]: data
++eecb7aa303d121835de05028751d301c
++	17. data -> hole in single block file
++0: [0..7]: data
++0000000 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
++*
++0000200 0000 0000 0000 0000 0000 0000 0000 0000
++*
++0000400 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
++*
+diff --git a/tests/ext4/group b/tests/ext4/group
+index 7e1a68b..dd2841e 100644
+--- a/tests/ext4/group
++++ b/tests/ext4/group
+@@ -3,6 +3,7 @@
+ # - do not start group names with a digit
+ # - comment line before each group is "new" description
+ #
++001 auto prealloc quick
+ 271 auto rw quick
+ 301 aio dangerous ioctl rw stress
+ 302 aio dangerous ioctl rw stress
 -- 
 1.8.3.1
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
