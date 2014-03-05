@@ -1,78 +1,47 @@
-From: "Zhang, Hongchao" <hongchao.zhang@intel.com>
-Subject: an issue of ext4
-Date: Wed, 5 Mar 2014 12:33:32 +0000
-Message-ID: <CF3D3A3F.283D%hongchao.zhang@intel.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: an issue of ext4
+Date: Wed, 5 Mar 2014 07:51:05 -0500
+Message-ID: <20140305125105.GA11600@thunk.org>
+References: <CF3D3A3F.283D%hongchao.zhang@intel.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="_002_CF3D3A3F283Dhongchaozhangintelcom_"
+Content-Type: text/plain; charset=us-ascii
 Cc: "Dilger, Andreas" <andreas.dilger@intel.com>,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "tytso@mit.edu" <tytso@mit.edu>
+To: "Zhang, Hongchao" <hongchao.zhang@intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga02.intel.com ([134.134.136.20]:55389 "EHLO mga02.intel.com"
+Received: from imap.thunk.org ([74.207.234.97]:37321 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752100AbaCEMdg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 5 Mar 2014 07:33:36 -0500
-Content-Language: en-US
+	id S1752841AbaCEMvK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 5 Mar 2014 07:51:10 -0500
+Content-Disposition: inline
+In-Reply-To: <CF3D3A3F.283D%hongchao.zhang@intel.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---_002_CF3D3A3F283Dhongchaozhangintelcom_
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <E13C3D67E88C7540A9DD2D88D9991E2B@intel.com>
-Content-Transfer-Encoding: quoted-printable
+On Wed, Mar 05, 2014 at 12:33:32PM +0000, Zhang, Hongchao wrote:
+> 
+> in ext4_fill_super, the variables related to statfs should be
+> initialized after journal recovery is completed.  otherwise, if a
+> large number of blocks were being allocated before the filesystem
+> crashed, then the blocks and inode counters may become negative
+> during use and report incorrect values to statfs call.
 
-Hi,
+The ext4_statfs() doesn't use the free blocks and inodes count from
+the superblock.  For scalability reasons, we no longer update the
+journal values in the superblock while they are in use, but rather
+compute them from the sum of the values from the blockgroup
+descriptors, and then track them via percpu counters.
 
-in ext4_fill_super, the variables related to statfs should be initialized a=
-fter journal recovery is completed.
-otherwise, if a large number of blocks were being allocated before the file=
-system crashed, then the blocks
-and inode counters may become negative during use and report incorrect valu=
-es to statfs call.
+Hence, the problem you described isn't an issue in practice.  What we
+are doing does mean that values in the superblock are not accurate
+while the file system is mounted and if the system crashes before an
+file system can be cleanly unmounted --- we do update these values
+when the file system is unmounted.  However, using tools such as
+dumpe2fs to determine the free blocks/inodes available while the file
+system is mounted or after an unclean shutdown was not considered an
+important use case, especially compared to the scalability concerns of
+supporting high cpu core count systems.
 
-Thanks
-Hongchao
+Cheers,
 
---_002_CF3D3A3F283Dhongchaozhangintelcom_
-Content-Type: application/octet-stream; name="statfs-issue.patch"
-Content-Description: statfs-issue.patch
-Content-Disposition: attachment; filename="statfs-issue.patch"; size=1737;
-	creation-date="Wed, 05 Mar 2014 12:33:32 GMT";
-	modification-date="Wed, 05 Mar 2014 12:33:32 GMT"
-Content-ID: <2543D2D71710D34F88104305C90C0F18@intel.com>
-Content-Transfer-Encoding: base64
-
-ZGlmZiAtcCAtdSBsaW51eC0zLjEzLjUub3JpZy9mcy9leHQ0L3N1cGVyLmMgbGludXgtMy4xMy41
-L2ZzL2V4dDQvc3VwZXIuYwotLS0gbGludXgtMy4xMy41Lm9yaWcvZnMvZXh0NC9zdXBlci5jCisr
-KyBsaW51eC0zLjEzLjUvZnMvZXh0NC9zdXBlci5jCkBAIC0zODcxLDI3ICszODcxLDYgQEAgc3Rh
-dGljIGludCBleHQ0X2ZpbGxfc3VwZXIoc3RydWN0IHN1cGVyXwogCS8qIFJlZ2lzdGVyIGV4dGVu
-dCBzdGF0dXMgdHJlZSBzaHJpbmtlciAqLwogCWV4dDRfZXNfcmVnaXN0ZXJfc2hyaW5rZXIoc2Jp
-KTsKIAotCWVyciA9IHBlcmNwdV9jb3VudGVyX2luaXQoJnNiaS0+c19mcmVlY2x1c3RlcnNfY291
-bnRlciwKLQkJCWV4dDRfY291bnRfZnJlZV9jbHVzdGVycyhzYikpOwotCWlmICghZXJyKSB7Ci0J
-CWVyciA9IHBlcmNwdV9jb3VudGVyX2luaXQoJnNiaS0+c19mcmVlaW5vZGVzX2NvdW50ZXIsCi0J
-CQkJZXh0NF9jb3VudF9mcmVlX2lub2RlcyhzYikpOwotCX0KLQlpZiAoIWVycikgewotCQllcnIg
-PSBwZXJjcHVfY291bnRlcl9pbml0KCZzYmktPnNfZGlyc19jb3VudGVyLAotCQkJCWV4dDRfY291
-bnRfZGlycyhzYikpOwotCX0KLQlpZiAoIWVycikgewotCQllcnIgPSBwZXJjcHVfY291bnRlcl9p
-bml0KCZzYmktPnNfZGlydHljbHVzdGVyc19jb3VudGVyLCAwKTsKLQl9Ci0JaWYgKCFlcnIpIHsK
-LQkJZXJyID0gcGVyY3B1X2NvdW50ZXJfaW5pdCgmc2JpLT5zX2V4dGVudF9jYWNoZV9jbnQsIDAp
-OwotCX0KLQlpZiAoZXJyKSB7Ci0JCWV4dDRfbXNnKHNiLCBLRVJOX0VSUiwgImluc3VmZmljaWVu
-dCBtZW1vcnkiKTsKLQkJZ290byBmYWlsZWRfbW91bnQzOwotCX0KLQogCXNiaS0+c19zdHJpcGUg
-PSBleHQ0X2dldF9zdHJpcGVfc2l6ZShzYmkpOwogCXNiaS0+c19leHRlbnRfbWF4X3plcm9vdXRf
-a2IgPSAzMjsKIApAQCAtMzk0OCw2ICszOTI3LDI3IEBAIHN0YXRpYyBpbnQgZXh0NF9maWxsX3N1
-cGVyKHN0cnVjdCBzdXBlcl8KIAkJZ290byBub19qb3VybmFsOwogCX0KIAorCWVyciA9IHBlcmNw
-dV9jb3VudGVyX2luaXQoJnNiaS0+c19mcmVlY2x1c3RlcnNfY291bnRlciwKKwkJCWV4dDRfY291
-bnRfZnJlZV9jbHVzdGVycyhzYikpOworCWlmICghZXJyKSB7CisJCWVyciA9IHBlcmNwdV9jb3Vu
-dGVyX2luaXQoJnNiaS0+c19mcmVlaW5vZGVzX2NvdW50ZXIsCisJCQkJZXh0NF9jb3VudF9mcmVl
-X2lub2RlcyhzYikpOworCX0KKwlpZiAoIWVycikgeworCQllcnIgPSBwZXJjcHVfY291bnRlcl9p
-bml0KCZzYmktPnNfZGlyc19jb3VudGVyLAorCQkJCWV4dDRfY291bnRfZGlycyhzYikpOworCX0K
-KwlpZiAoIWVycikgeworCQllcnIgPSBwZXJjcHVfY291bnRlcl9pbml0KCZzYmktPnNfZGlydHlj
-bHVzdGVyc19jb3VudGVyLCAwKTsKKwl9CisJaWYgKCFlcnIpIHsKKwkJZXJyID0gcGVyY3B1X2Nv
-dW50ZXJfaW5pdCgmc2JpLT5zX2V4dGVudF9jYWNoZV9jbnQsIDApOworCX0KKwlpZiAoZXJyKSB7
-CisJCWV4dDRfbXNnKHNiLCBLRVJOX0VSUiwgImluc3VmZmljaWVudCBtZW1vcnkiKTsKKwkJZ290
-byBmYWlsZWRfbW91bnQzOworCX0KKwogCWlmIChFWFQ0X0hBU19JTkNPTVBBVF9GRUFUVVJFKHNi
-LCBFWFQ0X0ZFQVRVUkVfSU5DT01QQVRfNjRCSVQpICYmCiAJICAgICFqYmQyX2pvdXJuYWxfc2V0
-X2ZlYXR1cmVzKEVYVDRfU0Ioc2IpLT5zX2pvdXJuYWwsIDAsIDAsCiAJCQkJICAgICAgIEpCRDJf
-RkVBVFVSRV9JTkNPTVBBVF82NEJJVCkpIHsK
-
---_002_CF3D3A3F283Dhongchaozhangintelcom_--
+						- Ted
