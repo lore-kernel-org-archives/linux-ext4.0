@@ -1,7 +1,7 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH v2 4/8] xfstests: Move fallocate include into global.h
-Date: Wed,  5 Mar 2014 16:51:35 +0100
-Message-ID: <1394034699-21187-5-git-send-email-lczerner@redhat.com>
+Subject: [PATCH v2 1/8] xfstests: Create single function for testing xfs_io commands
+Date: Wed,  5 Mar 2014 16:51:32 +0100
+Message-ID: <1394034699-21187-2-git-send-email-lczerner@redhat.com>
 References: <1394034699-21187-1-git-send-email-lczerner@redhat.com>
 Cc: xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org, lczerner@redhat.com
 To: linux-ext4@vger.kernel.org
@@ -10,153 +10,124 @@ In-Reply-To: <1394034699-21187-1-git-send-email-lczerner@redhat.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Move the inclusion of falloc.h with all it's possible defines for the
-fallocate mode into global.h header file so we do not have to include
-and define it manually in every tool using fallocate.
+Currently there are several function testing various xfs_io commands.
+This commit creates _require_xfs_io_command() to test any xfs_command.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-Reviewed-by: Eric Sandeen <sandeen@redhat.com>
 ---
- configure.ac   |  3 ++-
- ltp/fsstress.c | 11 ++---------
- ltp/fsx.c      | 11 ++++-------
- src/global.h   | 25 +++++++++++++++++++++++++
- 4 files changed, 33 insertions(+), 17 deletions(-)
+ common/rc | 72 +++++++++++++++++++++++++++++++++------------------------------
+ 1 file changed, 38 insertions(+), 34 deletions(-)
 
-diff --git a/configure.ac b/configure.ac
-index 6fba3ad..2f95c4c 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -25,7 +25,8 @@ AC_HEADER_STDC
- 			sys/wait.h		\
- 			sys/types.h		\
- 			strings.h		\
--			err.h
-+			err.h			\
-+			linux/falloc.h
-     ])
-     AC_CHECK_HEADERS([	sys/fs/xfs_fsops.h	\
- 			sys/fs/xfs_itable.h	\
-diff --git a/ltp/fsstress.c b/ltp/fsstress.c
-index c56f168..7dec7c6 100644
---- a/ltp/fsstress.c
-+++ b/ltp/fsstress.c
-@@ -27,13 +27,6 @@
- #ifdef HAVE_LINUX_FIEMAP_H
- #include <linux/fiemap.h>
- #endif
--#ifdef FALLOCATE
--#include <linux/falloc.h>
--#ifndef FALLOC_FL_PUNCH_HOLE
--/* Copy-paste from linux/falloc.h */
--#define FALLOC_FL_PUNCH_HOLE    0x02 /* de-allocates range */
--#endif
--#endif
- #ifndef HAVE_ATTR_LIST
- #define attr_list(path, buf, size, flags, cursor) (errno = -ENOSYS, -1)
- #endif
-@@ -2085,7 +2078,7 @@ dwrite_f(int opno, long r)
- void
- fallocate_f(int opno, long r)
- {
--#ifdef FALLOCATE
-+#ifdef HAVE_LINUX_FALLOC_H
- 	int		e;
- 	pathname_t	f;
- 	int		fd;
-@@ -2507,7 +2500,7 @@ mknod_f(int opno, long r)
- void
- punch_f(int opno, long r)
- {
--#ifdef FALLOCATE
-+#ifdef HAVE_LINUX_FALLOC_H
- 	int		e;
- 	pathname_t	f;
- 	int		fd;
-diff --git a/ltp/fsx.c b/ltp/fsx.c
-index 2f1e3e8..c36a038 100644
---- a/ltp/fsx.c
-+++ b/ltp/fsx.c
-@@ -33,9 +33,6 @@
- #ifdef AIO
- #include <libaio.h>
- #endif
--#ifdef FALLOCATE
--#include <linux/falloc.h>
--#endif
- 
- #ifndef MAP_FILE
- # define MAP_FILE 0
-@@ -882,7 +879,7 @@ do_punch_hole(unsigned offset, unsigned length)
+diff --git a/common/rc b/common/rc
+index f2c3c3a..7f530d0 100644
+--- a/common/rc
++++ b/common/rc
+@@ -1296,12 +1296,43 @@ _user_do()
+     fi
  }
- #endif
  
--#ifdef FALLOCATE
-+#ifdef HAVE_LINUX_FALLOC_H
- /* fallocate is basically a no-op unless extending, then a lot like a truncate */
- void
- do_preallocate(unsigned offset, unsigned length)
-@@ -1139,7 +1136,7 @@ usage(void)
- "	-A: Use the AIO system calls\n"
- #endif
- "	-D startingop: debug output starting at specified operation\n"
--#ifdef FALLOCATE
-+#ifdef HAVE_LINUX_FALLOC_H
- "	-F: Do not use fallocate (preallocation) calls\n"
- #endif
- #ifdef FALLOC_FL_PUNCH_HOLE
-@@ -1296,7 +1293,7 @@ int aio_rw(int rw, int fd, char *buf, unsigned len, unsigned offset)
- void
- test_fallocate()
++_require_xfs_io_command()
++{
++	if [ $# -ne 1 ]
++	then
++		echo "Usage: _require_xfs_io_command command" 1>&2
++		exit 1
++	fi
++	command=$1
++
++	testfile=$TEST_DIR/$$.xfs_io
++	case $command in
++	"falloc" )
++		testio=`$XFS_IO_PROG -F -f -c "falloc 0 1m" $testfile 2>&1`
++		;;
++	"fpunch" | "fcollapse" | "zero" )
++		testio=`$XFS_IO_PROG -F -f -c "pwrite 0 20k" -c "fsync" \
++			-c "$command 4k 8k" $testfile 2>&1`
++		;;
++	"fiemap")
++		testio=`$XFS_IO_PROG -F -f -c "pwrite 0 20k" -c "fsync" \
++			-c "fiemap -v" $testfile 2>&1`
++		;;
++	*)
++		testio=`$XFS_IO_PROG -c "$command help" 2>&1`
++	esac
++
++	rm -f $testfile 2>&1 > /dev/null
++	echo $testio | grep -q "not found" && \
++		_notrun "xfs_io $command support is missing"
++	echo $testio | grep -q "Operation not supported" && \
++		_notrun "xfs_io $command failed (old kernel/wrong fs?)"
++}
++
+ # check that xfs_io, kernel, and filesystem all support zero
+ _require_xfs_io_zero()
  {
--#ifdef FALLOCATE
-+#ifdef HAVE_LINUX_FALLOC_H
- 	if (!lite && fallocate_calls) {
- 		if (fallocate(fd, 0, 0, 1) && errno == EOPNOTSUPP) {
- 			if(!quiet)
-@@ -1306,7 +1303,7 @@ test_fallocate()
- 			ftruncate(fd, 0);
- 		}
- 	}
--#else /* ! FALLOCATE */
-+#else /* ! HAVE_LINUX_FALLOC_H */
- 	fallocate_calls = 0;
- #endif
+-	testio=`$XFS_IO_PROG -c "zero help" 2>&1`
+-	echo $testio | grep -q 'command "zero" not found' && \
+-		_notrun "zero command not supported"
++	_require_xfs_io_command "zero"
+ }
  
-diff --git a/src/global.h b/src/global.h
-index e6a2c2b..8180f66 100644
---- a/src/global.h
-+++ b/src/global.h
-@@ -149,4 +149,29 @@
- #include <sys/param.h>
- #endif
+ # check that xfs_io, glibc, kernel, and filesystem all (!) support
+@@ -1309,54 +1340,27 @@ _require_xfs_io_zero()
+ #
+ _require_xfs_io_falloc()
+ {
+-	testfile=$TEST_DIR/$$.falloc
+-	testio=`$XFS_IO_PROG -F -f -c "falloc 0 1m" $testfile 2>&1`
+-	rm -f $testfile 2>&1 > /dev/null
+-	echo $testio | grep -q "not found" && \
+-		_notrun "xfs_io fallocate support is missing"
+-	echo $testio | grep -q "Operation not supported" && \
+-		_notrun "xfs_io fallocate command failed (old kernel/wrong fs?)"
++	_require_xfs_io_command "falloc"
+ }
  
-+#ifdef HAVE_LINUX_FALLOC_H
-+#include <linux/falloc.h>
-+
-+#ifndef FALLOC_FL_KEEP_SIZE
-+#define FALLOC_FL_KEEP_SIZE		0x01
-+#endif
-+
-+#ifndef FALLOC_FL_PUNCH_HOLE
-+#define FALLOC_FL_PUNCH_HOLE		0x02
- #endif
-+
-+#ifndef FALLOC_FL_NO_HIDE_STALE
-+#define FALLOC_FL_NO_HIDE_STALE		0x04
-+#endif
-+
-+#ifndef FALLOC_FL_COLLAPSE_RANGE
-+#define FALLOC_FL_COLLAPSE_RANGE	0x08
-+#endif
-+
-+#ifndef FALLOC_FL_ZERO_RANGE
-+#define FALLOC_FL_ZERO_RANGE		0x10
-+#endif
-+
-+#endif /* HAVE_LINUX_FALLOC_H */
-+
-+#endif /* GLOBAL_H */
+ # check that xfs_io, kernel and filesystem all support fallocate with hole
+ # punching
+ _require_xfs_io_falloc_punch()
+ {
+-	testfile=$TEST_DIR/$$.falloc
+-	testio=`$XFS_IO_PROG -F -f -c "pwrite 0 20k" -c "fsync" \
+-		-c "fpunch 4k 8k" $testfile 2>&1`
+-	rm -f $testfile 2>&1 > /dev/null
+-	echo $testio | grep -q "not found" && \
+-		_notrun "xfs_io fallocate punch support is missing"
+-	echo $testio | grep -q "Operation not supported" && \
+-		_notrun "xfs_io fallocate punch command failed (no fs support?)"
++	_require_xfs_io_command "fpunch"
+ }
+ 
+ # check that xfs_io, kernel and filesystem all support fallocate with collapse
+ # range
+ _require_xfs_io_falloc_collapse()
+ {
+-	testfile=$TEST_DIR/$$.falloc
+-	testio=`$XFS_IO_PROG -f -c "pwrite 0 20k" -c "fsync" \
+-		-c "fcollapse 4k 8k" $testfile 2>&1`
+-	rm -f $testfile 2>&1 > /dev/null
+-	echo $testio | grep -q "not found" && \
+-		_notrun "xfs_io fallocate collapse range support is missing"
+-	echo $testio | grep -q "Operation not supported" && \
+-		_notrun "xfs_io fallocate collapse range failed (no fs support?)"
++	_require_xfs_io_command "fcollapse"
+ }
+ 
+ # check that xfs_io, kernel and filesystem support fiemap
+ _require_xfs_io_fiemap()
+ {
+-	testfile=$TEST_DIR/$$.fiemap
+-	testio=`$XFS_IO_PROG -F -f -c "pwrite 0 20k" -c "fsync" \
+-		-c "fiemap -v" $testfile 2>&1`
+-	rm -f $testfile 2>&1 > /dev/null
+-	echo $testio | grep -q "not found" && \
+-		_notrun "xfs_io fiemap support is missing"
+-	echo $testio | grep -q "Operation not supported" && \
+-		_notrun "xfs_io fiemap command failed (no fs support?)"
++	_require_xfs_io_command "fiemap"
+ }
+ 
+ # Check that a fs has enough free space (in 1024b blocks)
 -- 
 1.8.3.1
 
