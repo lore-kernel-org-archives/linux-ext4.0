@@ -1,60 +1,51 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/2] ext4: fix bug in ext4_mb_normalize_request()
-Date: Thu, 6 Mar 2014 13:32:33 -0500
-Message-ID: <20140306183232.GB30706@thunk.org>
-References: <1393855228-13592-1-git-send-email-mlombard@redhat.com>
- <1393855228-13592-3-git-send-email-mlombard@redhat.com>
- <20140306154407.GA28226@thunk.org>
- <20140306165416.GA2182@dhcp-27-189.brq.redhat.com>
- <alpine.LFD.2.00.1403061842240.2249@localhost.localdomain>
+From: Lucas Nussbaum <lucas.nussbaum@loria.fr>
+Subject: Re: [PATCH, RFC] jbd2: don't write non-commit blocks synchronously
+Date: Thu, 6 Mar 2014 19:37:49 +0100
+Message-ID: <20140306183749.GA15122@xanadu.blop.info>
+References: <20140305141343.GA26225@xanadu.blop.info>
+ <20140306135642.GA22136@thunk.org>
+ <20140306172801.GA12751@xanadu.blop.info>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Maurizio Lombardi <mlombard@redhat.com>, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org,
+	Emmanuel Jeanvoine <emmanuel.jeanvoine@inria.fr>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:38073 "EHLO imap.thunk.org"
+Received: from xanadu.blop.info ([178.79.145.134]:36212 "EHLO xanadu.blop.info"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752368AbaCFSci (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 6 Mar 2014 13:32:38 -0500
+	id S1750829AbaCFSjc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 6 Mar 2014 13:39:32 -0500
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1403061842240.2249@localhost.localdomain>
+In-Reply-To: <20140306172801.GA12751@xanadu.blop.info>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 06, 2014 at 06:54:05PM +0100, Luk=C3=A1=C5=A1 Czerner wrote=
-:
->=20
-> All that said, I was getting to rewrite this mess a long time ago,
-> it's just a reminder that it's something that needs to be done.
-> Especially since the bigger requests are getting split unnecessarily
-> which hurts especially in fallocate case.
+On 06/03/14 at 18:28 +0100, Lucas Nussbaum wrote:
+> On 06/03/14 at 08:56 -0500, Theodore Ts'o wrote:
+> > On Wed, Mar 05, 2014 at 03:13:43PM +0100, Lucas Nussbaum wrote:
+> > > TL;DR: we experience long temporary hangs when doing multiple mount -o
+> > > remount at the same time as other I/O on an ext4 filesystem.
+> > 
+> > Hi Lukas,
+> > 
+> > Thanks for this report.  Are you willing to try a kernel patch?  If
+> > so, could you try and see if this fixes your issue.  From looking at
+> > your block trace, I saw a large number of suspicious 4k writes from
+> > the jbd2 layer.
+> 
+> Hi Ted,
+> 
+> This patch doesn't solve the problem. It seems that on average, it makes
+> the situation worse, but I'm not sure if this is just anecdotical
+> evidence or statistically valid.
+> 
+> Anything else I could try to gather more information?
 
-Hey Lukas,
-
-If you are going to try to do some clean up work in mballoc, that
-would be really really great!  (Although hopefully you can still work
-on writing down some thoughts about the data block checksum feature
-before the ext4 developer's workshop.  :-)
-
-We should try to get input from Andreas about what some of the more
-interesting hueristics in mballoc were trying to accomplish, since
-there's a lot going on that's not obvious, and one of the reasons why
-I've always been worried about trying to do cleanups was because
-something that looks ugly might be papering over some other dark
-corner of mballoc.c ---- and so I was fairly certain that one we
-started opening up mballoc.c, we'd have to do a lot of work on it, and
-a lot of performance measurements to make sure we didn't accidentally
-introduce some performance regression.
-
-Thanks for being willing to look at this!
-
-Cheers,
-
-					- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Two other data points:
+- same problem with a 2.6.29-2-amd64 kernel from Debian
+- with that 2.6.29-2-amd64, disabling the journal on the ext4 filesytem
+  using 'tune2fs -O ^has_journal /dev/sda5' makes the problem go away
+-- 
+| Lucas Nussbaum      Assistant professor @ Univ. de Lorraine |
+| lucas.nussbaum@loria.fr                   LORIA / AlGorille |
+| http://www.loria.fr/~lnussbau/            +33 3 54 95 86 19 |
