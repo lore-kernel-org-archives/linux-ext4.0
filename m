@@ -1,72 +1,34 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH v2 6/8] fsstress: translate flags in fiemap_f
-Date: Thu, 6 Mar 2014 19:02:16 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1403061900300.2249@localhost.localdomain>
-References: <1394034699-21187-1-git-send-email-lczerner@redhat.com>
-	<1394034699-21187-7-git-send-email-lczerner@redhat.com>
-	<20140306174813.GE28297@infradead.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH, RFC] jbd2: don't write non-commit blocks synchronously
+Date: Thu, 6 Mar 2014 13:27:29 -0500
+Message-ID: <20140306182729.GA30706@thunk.org>
+References: <20140305141343.GA26225@xanadu.blop.info>
+ <20140306135642.GA22136@thunk.org>
+ <20140306172801.GA12751@xanadu.blop.info>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, xfs@oss.sgi.com
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <20140306174813.GE28297@infradead.org>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org,
+	Emmanuel Jeanvoine <emmanuel.jeanvoine@inria.fr>
+To: Lucas Nussbaum <lucas.nussbaum@loria.fr>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:38067 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751645AbaCFS1j (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 6 Mar 2014 13:27:39 -0500
+Content-Disposition: inline
+In-Reply-To: <20140306172801.GA12751@xanadu.blop.info>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 6 Mar 2014, Christoph Hellwig wrote:
+Hmm... OK, let me make sure I understand what is going on.  So you
+have a single file system which is mounted read/write, and you are
+doing a huge number of copies into the file system, which is keeping
+it busy.  You are then running a huge number of "mount -o remount" on
+that same file system, which should effectively be no-op's, since the
+remount isn't actually change the read/only or read/write or any other
+mount options.  Is that right?
 
-> Date: Thu, 6 Mar 2014 09:48:13 -0800
-> From: Christoph Hellwig <hch@infradead.org>
-> To: Lukas Czerner <lczerner@redhat.com>
-> Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
-> Subject: Re: [PATCH v2 6/8] fsstress: translate flags in fiemap_f
-> 
-> > +#ifdef HAVE_LINUX_FIEMAP_H
-> > +struct print_flags fiemap_flags[] = {
-> > +	{ FIEMAP_FLAG_SYNC, "SYNC"},
-> > +	{ FIEMAP_FLAG_XATTR, "XATTR"},
-> > +	{ -1, NULL}
-> > +};
-> 
-> Can be static.
+Why were you doing the remount in in your actual production workload,
+anyway?
 
-Right. The same applies to falloc_flags
-
-> 
-> > +
-> > +#define translate_fiemap_flags(mode)	\
-> > +	({translate_flags(mode, "|", fiemap_flags);})
-> > +#endif
-> 
-> Any reason to not have these two inside fiemap_f?
-
-Not really, other than I think it's ugly.
-
-> 
-> Otherwise:
-> 
-> Reviewed-by: Christoph Hellwig <hch@lst.de>
-
-Thanks!
--Lukas
-
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+						- Ted
