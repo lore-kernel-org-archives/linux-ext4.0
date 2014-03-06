@@ -1,105 +1,70 @@
-From: Robert Yang <liezhi.yang@windriver.com>
-Subject: Re: [PATCH V4 00/11] 2fsprogs/mke2fs: add an option: -d root-directory
-Date: Thu, 6 Mar 2014 17:39:56 +0800
-Message-ID: <5318426C.50105@windriver.com>
-References: <1393661175-459-1-git-send-email-liezhi.yang@windriver.com> <CF3D6C67.74AD8%dvhart@linux.intel.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH, RFC] jbd2: don't write non-commit blocks synchronously
+Date: Thu, 6 Mar 2014 08:56:42 -0500
+Message-ID: <20140306135642.GA22136@thunk.org>
+References: <20140305141343.GA26225@xanadu.blop.info>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: <linux-ext4@vger.kernel.org>
-To: Darren Hart <dvhart@linux.intel.com>, <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org,
+	Emmanuel Jeanvoine <emmanuel.jeanvoine@inria.fr>
+To: Lucas Nussbaum <lucas.nussbaum@loria.fr>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.windriver.com ([147.11.1.11]:38191 "EHLO
-	mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751517AbaCFJkB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Mar 2014 04:40:01 -0500
-In-Reply-To: <CF3D6C67.74AD8%dvhart@linux.intel.com>
+Received: from imap.thunk.org ([74.207.234.97]:37922 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751477AbaCFN4r (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 6 Mar 2014 08:56:47 -0500
+Content-Disposition: inline
+In-Reply-To: <20140305141343.GA26225@xanadu.blop.info>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Wed, Mar 05, 2014 at 03:13:43PM +0100, Lucas Nussbaum wrote:
+> TL;DR: we experience long temporary hangs when doing multiple mount -o
+> remount at the same time as other I/O on an ext4 filesystem.
 
+Hi Lukas,
 
-On 03/06/2014 04:21 PM, Darren Hart wrote:
-> On 3/1/14, 0:06, "Robert Yang" <liezhi.yang@windriver.com> wrote:
->
->> * Changes of V4:
->>   - Rebase to the up to date master branch
->>   - Fix the skip of socket file (break -> continue)
->
-> Robert,
->
-> Thanks for taking the time to rebase these again. I don't have anything to
-> add to my existing Reviewed-by's. We'd love to see this merged as we're
-> currently having to work around issues with gen2extfs in the Yocto Project
-> and we'd prefer to use upstream e2fsprogs/mke2fs. I think Robert has
-> addressed all the issues that have been raised.
->
+Thanks for this report.  Are you willing to try a kernel patch?  If
+so, could you try and see if this fixes your issue.  From looking at
+your block trace, I saw a large number of suspicious 4k writes from
+the jbd2 layer.
 
-Yes, I think so, and we have used the "mke2fs -d" option in WR Linux for
-more than half a year, didn't meet any obvious errors.
+					- Ted
 
-// Robert
+commit 137d7cea675fd7d8ff98b7e035fb6516dc4ab220
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Thu Mar 6 08:56:11 2014 -0500
 
-> Are there any additional concerns?
->
-> Thanks everyone for your time in reviewing,
->
-> Darren
->
->>
->> * Changes of V3:
->>   - __FUNCTION__ -> __func__
->>   - Rebase to the up to date master branch
->>
->> * Changes of V2:
->>   - Add the "-d" option when the code is ready rather than add it in the
->>     first commit.
->>   - Remove "name = name"
->>   - func_name -> __FUNCTION__
->>   - The size impact on mke2fs:
->>     a) Not stripped:
->>        1,837,440 -> 1,903,522 (64K increased)
->>     b) Stripped:
->>        329,464 -> 321,272 (8K increased)
->>     No impact on tune2fs
->>
->> * Changes from the RFC patches:
->>   - Move the common code of debugfs and mke2fs to misc/create_inode.c to
->>     avoid bloating the tune2fs binary
->>   - Fix the error of "make check"
->>   - Rebase to the up to date master branch
->>
->> // Robert
->>
->> Robert Yang (11):
->>   mke2fs: add the ability to copy files from a given directory
->>   misc/create_inode.c: copy files recursively
->>   misc/create_inode.c: create special file
->>   misc/create_inode.c: create symlink
->>   misc/create_inode.c: copy regular file
->>   misc/create_inode.c: create directory
->>   misc/create_inode.c: set owner/mode/time for the inode
->>   mke2fs.c: add an option: -d root-directory
->>   misc/create_inode.c: handle hardlinks
->>   debugfs: use the functions in misc/create_inode.c
->>   mke2fs.8.in: update the manual for the -d option
->>
->> debugfs/Makefile.in |   17 +-
->> debugfs/debugfs.c   |  305 ++-------------------------
->> debugfs/debugfs.h   |    1 +
->> misc/Makefile.in    |   13 +-
->> misc/create_inode.c |  574
->> +++++++++++++++++++++++++++++++++++++++++++++++++++
->> misc/create_inode.h |   35 ++++
->> misc/mke2fs.8.in    |    7 +
->> misc/mke2fs.c       |   43 +++-
->> 8 files changed, 690 insertions(+), 305 deletions(-)
->> create mode 100644 misc/create_inode.c
->> create mode 100644 misc/create_inode.h
->>
->> --
->> 1.7.10.4
->>
->>
->
->
+    jbd2: don't write non-commit blocks synchronously
+    
+    We don't need to write the revoke blocks and descriptor blocks using
+    WRITE_SYNC, since when we issue the commit block, thos blocks will get
+    pushed out via REQ_FLUSH.  This will allow the journal blocks to be
+    written in fewer i/o operations (otherwise we end up issuing a whole
+    series of 4k writes unnecessarily).
+    
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index cf2fc05..fb64629 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -554,7 +554,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 
+ 	blk_start_plug(&plug);
+ 	jbd2_journal_write_revoke_records(journal, commit_transaction,
+-					  &log_bufs, WRITE_SYNC);
++					  &log_bufs, WRITE);
+ 	blk_finish_plug(&plug);
+ 
+ 	jbd_debug(3, "JBD2: commit phase 2b\n");
+@@ -739,7 +739,7 @@ start_journal_io:
+ 				clear_buffer_dirty(bh);
+ 				set_buffer_uptodate(bh);
+ 				bh->b_end_io = journal_end_buffer_io_sync;
+-				submit_bh(WRITE_SYNC, bh);
++				submit_bh(WRITE, bh);
+ 			}
+ 			cond_resched();
+ 			stats.run.rs_blocks_logged += bufs;
+
