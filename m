@@ -1,69 +1,42 @@
-From: Maurizio Lombardi <mlombard@redhat.com>
-Subject: Re: [PATCH 2/2] ext4: fix bug in ext4_mb_normalize_request()
-Date: Thu, 6 Mar 2014 17:54:16 +0100
-Message-ID: <20140306165416.GA2182@dhcp-27-189.brq.redhat.com>
-References: <1393855228-13592-1-git-send-email-mlombard@redhat.com>
- <1393855228-13592-3-git-send-email-mlombard@redhat.com>
- <20140306154407.GA28226@thunk.org>
+From: Lucas Nussbaum <lucas.nussbaum@loria.fr>
+Subject: Re: [PATCH, RFC] jbd2: don't write non-commit blocks synchronously
+Date: Thu, 6 Mar 2014 18:28:01 +0100
+Message-ID: <20140306172801.GA12751@xanadu.blop.info>
+References: <20140305141343.GA26225@xanadu.blop.info>
+ <20140306135642.GA22136@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org,
+	Emmanuel Jeanvoine <emmanuel.jeanvoine@inria.fr>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from xanadu.blop.info ([178.79.145.134]:35116 "EHLO xanadu.blop.info"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751673AbaCFR2M (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 6 Mar 2014 12:28:12 -0500
 Content-Disposition: inline
-In-Reply-To: <20140306154407.GA28226@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20140306135642.GA22136@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 06, 2014 at 10:44:07AM -0500, Theodore Ts'o wrote:
-> On Mon, Mar 03, 2014 at 03:00:28PM +0100, Maurizio Lombardi wrote:
-> > diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> > index 08ddfda..546575a 100644
-> > --- a/fs/ext4/mballoc.c
-> > +++ b/fs/ext4/mballoc.c
-> > @@ -3059,6 +3059,21 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
-> >  		size	  = ac->ac_o_ex.fe_len << bsbits;
-> >  	}
-> >  	size = size >> bsbits;
-> > +
-> > +	/* In any case, the size cannot be greater than the number
-> > +	 * of maximum free blocks per group.
-> > +	 */
-> > +	if (size > EXT4_BLOCKS_PER_GROUP(ac->ac_sb)) {
-> > +		int sz_log2;
-> > +
-> > +		size = EXT4_BLOCKS_PER_GROUP(ac->ac_sb);
-> > +
-> > +		/* Recalculate the start offset */
-> > +		sz_log2 = __fls(size << bsbits);
-> > +		start_off = ((loff_t) ac->ac_o_ex.fe_logical >>
-> > +					(sz_log2 - bsbits)) << sz_log2;
-> > +	}
-> > +
-> >  	start = start_off >> bsbits;
-> >  
-> >  	/* don't cover already allocated blocks in selected range */
+On 06/03/14 at 08:56 -0500, Theodore Ts'o wrote:
+> On Wed, Mar 05, 2014 at 03:13:43PM +0100, Lucas Nussbaum wrote:
+> > TL;DR: we experience long temporary hangs when doing multiple mount -o
+> > remount at the same time as other I/O on an ext4 filesystem.
 > 
-> This definitely fixes the bug.  However, there will be some cases
-> where if the blocks per group is sufficiently small, where for smaller
-> files, start_off would have been 0 instead of that complicated
-> expression.
-
-Mmmm... if I correctly understood how ext4_normalize_request() works, everytime
-you truncate the value of "size" you have to recalculate the correct start offset.
-Note that start_off is zero only in those case where size is left untouched or
-increased.
-
+> Hi Lukas,
 > 
-> Looking at ext4_mb_normalize_request(), exactly what this code is
-> trying to do is actually a bit opaque to me, and every time I look at
-> it I get a headache.
+> Thanks for this report.  Are you willing to try a kernel patch?  If
+> so, could you try and see if this fixes your issue.  From looking at
+> your block trace, I saw a large number of suspicious 4k writes from
+> the jbd2 layer.
 
-Yes unfortunately the code is not very easy to understand.
-I may be missing something and it would be nice to have someone who knows it
-better to shed some light on it.
+Hi Ted,
 
-Regards,
-Maurizio Lombardi
+This patch doesn't solve the problem. It seems that on average, it makes
+the situation worse, but I'm not sure if this is just anecdotical
+evidence or statistically valid.
 
+Anything else I could try to gather more information?
+
+Lucas
