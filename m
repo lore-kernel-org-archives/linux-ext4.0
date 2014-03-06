@@ -1,58 +1,79 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH V4 05/11] misc/create_inode.c: copy regular file
-Date: Thu, 6 Mar 2014 17:57:14 -0500
-Message-ID: <20140306225714.GB30214@thunk.org>
-References: <1393661175-459-1-git-send-email-liezhi.yang@windriver.com>
- <1393661175-459-6-git-send-email-liezhi.yang@windriver.com>
- <20140306190622.GE9875@birch.djwong.org>
- <20140306194715.GA30214@thunk.org>
- <20140306201439.GF9875@birch.djwong.org>
+From: "Dilger, Andreas" <andreas.dilger@intel.com>
+Subject: Re: an issue of ext4
+Date: Thu, 6 Mar 2014 23:57:15 +0000
+Message-ID: <CF3CDE77.96870%andreas.dilger@intel.com>
+References: <CF3D3A3F.283D%hongchao.zhang@intel.com>
+ <20140305125105.GA11600@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Robert Yang <liezhi.yang@windriver.com>, dvhart@linux.intel.com,
-	linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>,
+	"Zhang, Hongchao" <hongchao.zhang@intel.com>,
+	Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:38157 "EHLO imap.thunk.org"
+Received: from mga11.intel.com ([192.55.52.93]:44741 "EHLO mga11.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751639AbaCFW5Z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 6 Mar 2014 17:57:25 -0500
-Content-Disposition: inline
-In-Reply-To: <20140306201439.GF9875@birch.djwong.org>
+	id S1750924AbaCFX5Q convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Mar 2014 18:57:16 -0500
+In-Reply-To: <20140305125105.GA11600@thunk.org>
+Content-Language: en-US
+Content-ID: <36E9521C5C4E514FAC3A54EB6439AC7E@intel.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 06, 2014 at 12:14:39PM -0800, Darrick J. Wong wrote:
-> 
-> I'm already queuing up a bunch of (more) fixes... there's more weird things I
-> didn't notice.  Such as, why is current_fs now defined in current_inode.h?
-> That really ought to have stayed in debugfs.c, and current_inode.h should have
-> 'extern ext2_filsys current_fs;', no?
+On 2014/03/05, 5:51 AM, "Theodore Ts'o" <tytso@mit.edu> wrote:
 
-Yes, that would be better --- although in the long term we should
-probably try to get rid of the global variable and pass in an "fs"
-parameter into functions in misc/create_inode.c.
+>On Wed, Mar 05, 2014 at 12:33:32PM +0000, Zhang, Hongchao wrote:
+>> 
+>> in ext4_fill_super, the variables related to statfs should be
+>> initialized after journal recovery is completed.  otherwise, if a
+>> large number of blocks were being allocated before the filesystem
+>> crashed, then the blocks and inode counters may become negative
+>> during use and report incorrect values to statfs call.
+>
+>The ext4_statfs() doesn't use the free blocks and inodes count from
+>the superblock.  For scalability reasons, we no longer update the
+>journal values in the superblock while they are in use, but rather
+>compute them from the sum of the values from the blockgroup
+>descriptors, and then track them via percpu counters.
 
-Since these aren't in a shared library, I wasn't worried that much
-about the details of the abstraction interface, but I'm sure there are
-some ways that we can improve things.
+Ted,
+This doesn't relate to using the summary counters in the superblock.
 
-BTW, one of my plans for 1.43 is to rename libquota.a to libe2int.a,
-and to move things like profile.c, and other files shared between misc
-and e2fsck, etc., into an "internal support" library.  I suspect
-create_inoode.c would be a candidate for moving into this internal
-support library.
+The problem is that the percpu counters are initialized from the
+group descriptors (or block and inode bitmaps if EXT4_DEBUG is on)
+at mount time _before_ the journal has been replayed.  That means
+journal replay can still change the group descriptors (or bitmaps)
+after the counters are initialized, and statfs(), allocators, etc.
+will use the wrong values for the rest of the mount.
 
-Cheers,
+If the journal is large, and there is heavy allocation happening
+before the reboot then the counters can be significantly incorrect.
 
-> ...I'll also respin the patchset I sent out a few days ago.
+However, looking more closely at the upstream kernel, I see that this
+code was changed by Dmitry Monakhov in v2.6.34-rc7-16-g84061e0 to
+move the counters after journal init (almost the same as Hongchao's
+patch does) but then you submitted a patch v2.6.37-rc1-3-gce7e010
+to initialize the percpu counters are both before and after the
+journal is loaded.  It isn't clear from your commit comment why
+the patch to load them both before and after was needed?
 
-Sorry for having you respin the patchset yet again --- although
-hopefully it should be easier this time around.  I'm trying to be fair
-in catching up with th e2fsprogs backlog, and Robert and Zheng's
-patches have been outstanding for a long time.  Don't worry, yours are
-next on the list.  :-)
+It seems we hit this problem in the RHEL6 (which is missing both of
+these changes), and your patch made upstream look like the original
+unpatched code was loading the counters only before the journal is
+replayed, so Hongchao's patch still applied to upstream.
 
-Cheers,
+So I guess upstream is OK, with the exception that it isn't clear
+why commit ce7e010 was made.  Need to ask Eric to backport 84061e0
+and ce7e010 to RHEL6 I guess, and use those patches in place of
+our own in the meantime.
 
-						- Ted
+Cheers, Andreas
+-- 
+Andreas Dilger
+
+Lustre Software Architect
+Intel High Performance Data Division
+
+
