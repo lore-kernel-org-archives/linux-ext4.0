@@ -1,32 +1,30 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH V4 00/11] 2fsprogs/mke2fs: add an option: -d
- root-directory
-Date: Thu, 6 Mar 2014 11:30:53 -0500
-Message-ID: <20140306163052.GA29061@thunk.org>
-References: <1393661175-459-1-git-send-email-liezhi.yang@windriver.com>
- <CF3D6C67.74AD8%dvhart@linux.intel.com>
- <5318426C.50105@windriver.com>
+Subject: Re: [PATCH v3 11/30] libext2fs: handle inline data in dir iterator
+ function
+Date: Thu, 6 Mar 2014 11:31:53 -0500
+Message-ID: <20140306163153.GB29061@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Darren Hart <dvhart@linux.intel.com>, linux-ext4@vger.kernel.org
-To: Robert Yang <liezhi.yang@windriver.com>
+Cc: Zheng Liu <gnehzuil.liu@gmail.com>, linux-ext4@vger.kernel.org,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:38007 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:38014 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751415AbaCFQa7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 6 Mar 2014 11:30:59 -0500
+	id S1751143AbaCFQb7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 6 Mar 2014 11:31:59 -0500
 Content-Disposition: inline
-In-Reply-To: <5318426C.50105@windriver.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I've merged these patches into the e2fsprogs next branch.  I had to
-make a few minor merge fixups so these patches would integrate with
-the also-recently introduced inline data changes.
+> I've updated the pu branch with the inline data patches, so if you and
+> Zheng could take a look at it and sanity check it, I'd really
+> appreicate it.  Thanks!!
 
-Please take a look at the next branch and make sure it looks sane to
-you.
+The inline data patches have now graduated into the "next" branch.
 
-Thanks for your work and the long slog to get this merged!
+If you could do some sanity testing, that would be great.
 
-       	   	     	     	  - Ted
+Thanks!!
+
+						- Ted
