@@ -1,24 +1,32 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [Bug 70121] Increasing efficiency of full data journaling
-Date: Fri, 7 Mar 2014 08:48:37 -0500
-Message-ID: <20140307134837.GA13249@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 70121] Increasing efficiency of full data journaling
+Date: Fri, 07 Mar 2014 13:48:49 +0000
+Message-ID: <bug-70121-13602-6qocIAkhML@https.bugzilla.kernel.org/>
 References: <bug-70121-13602@https.bugzilla.kernel.org/>
- <bug-70121-13602-LhyKKCgh7t@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: bugzilla-daemon@bugzilla.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:38391 "EHLO imap.thunk.org"
+Received: from mail.kernel.org ([198.145.19.201]:40881 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752698AbaCGNsl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 7 Mar 2014 08:48:41 -0500
-Content-Disposition: inline
-In-Reply-To: <bug-70121-13602-LhyKKCgh7t@https.bugzilla.kernel.org/>
+	id S1753315AbaCGNsv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 7 Mar 2014 08:48:51 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id ADE2320306
+	for <linux-ext4@vger.kernel.org>; Fri,  7 Mar 2014 13:48:50 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id A169E202F0
+	for <linux-ext4@vger.kernel.org>; Fri,  7 Mar 2014 13:48:49 +0000 (UTC)
+In-Reply-To: <bug-70121-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Mar 07, 2014 at 07:16:40AM +0000, bugzilla-daemon@bugzilla.kernel.org wrote:
+https://bugzilla.kernel.org/show_bug.cgi?id=70121
+
+--- Comment #7 from Theodore Tso <tytso@mit.edu> ---
+On Fri, Mar 07, 2014 at 07:16:40AM +0000, bugzilla-daemon@bugzilla.kernel.org
+wrote:
 > > How does the file system know that the file has "successfully been
 > > written"?  Secondly, even if we did know, in order to guarantee the
 > > transaction semantics, we *always* update the journal first.  Only
@@ -60,4 +68,8 @@ whether they be xfs, btrfs, etc.  Fsync(2) is the *only* way you can
 guarantee that the contents of a file which has been written is safely
 on stable store.
 
-							- Ted
+                            - Ted
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
