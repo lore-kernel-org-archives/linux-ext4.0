@@ -1,26 +1,34 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [Bug 71641] New: Unreasonable performance degradation in ext4
- with full data journaling
-Date: Fri, 7 Mar 2014 11:20:26 -0500
-Message-ID: <20140307162026.GA18863@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 71641] Unreasonable performance degradation in ext4 with full
+ data journaling
+Date: Fri, 07 Mar 2014 16:20:34 +0000
+Message-ID: <bug-71641-13602-LKpUyiktDe@https.bugzilla.kernel.org/>
 References: <bug-71641-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:38447 "EHLO imap.thunk.org"
+Received: from mail.kernel.org ([198.145.19.201]:47800 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752932AbaCGQUc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 7 Mar 2014 11:20:32 -0500
-Content-Disposition: inline
+	id S1752932AbaCGQUi convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Mar 2014 11:20:38 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id D9683202F8
+	for <linux-ext4@vger.kernel.org>; Fri,  7 Mar 2014 16:20:36 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 0091F202EA
+	for <linux-ext4@vger.kernel.org>; Fri,  7 Mar 2014 16:20:35 +0000 (UTC)
 In-Reply-To: <bug-71641-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+https://bugzilla.kernel.org/show_bug.cgi?id=3D71641
+
+--- Comment #1 from Theodore Tso <tytso@mit.edu> ---
 On Fri, Mar 07, 2014 at 11:39:40AM +0000, bugzilla-daemon@bugzilla.kern=
-el.org wrote:
+el.org
+wrote:
 > JFS provides three modes, journal, ordered and writeback.
 > The first mode is denoted as =E2=80=98journal mode=E2=80=99in the fol=
 lowing context.
@@ -53,8 +61,11 @@ warn you ahead of time this is not necessarily something I view as
 "unreasonable", nor is it something that I would consider a high
 priority thing to fix.
 
-						- Ted
---
+                        - Ted
+
+--=20
+You are receiving this mail because:
+You are watching the assignee of the bug.--
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
 the body of a message to majordomo@vger.kernel.org
