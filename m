@@ -1,62 +1,61 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 70121] Increasing efficiency of full data journaling
-Date: Fri, 07 Mar 2014 15:42:13 +0000
-Message-ID: <bug-70121-13602-v2ZpdxuZ92@https.bugzilla.kernel.org/>
-References: <bug-70121-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [Bug 71641] New: Unreasonable performance degradation in ext4
+ with full data journaling
+Date: Fri, 7 Mar 2014 11:20:26 -0500
+Message-ID: <20140307162026.GA18863@thunk.org>
+References: <bug-71641-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: bugzilla-daemon@bugzilla.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:45609 "EHLO mail.kernel.org"
+Received: from imap.thunk.org ([74.207.234.97]:38447 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751935AbaCGPmR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 7 Mar 2014 10:42:17 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id BF5F120295
-	for <linux-ext4@vger.kernel.org>; Fri,  7 Mar 2014 15:42:16 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 29F14202D1
-	for <linux-ext4@vger.kernel.org>; Fri,  7 Mar 2014 15:42:14 +0000 (UTC)
-In-Reply-To: <bug-70121-13602@https.bugzilla.kernel.org/>
+	id S1752932AbaCGQUc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 7 Mar 2014 11:20:32 -0500
+Content-Disposition: inline
+In-Reply-To: <bug-71641-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=70121
+On Fri, Mar 07, 2014 at 11:39:40AM +0000, bugzilla-daemon@bugzilla.kern=
+el.org wrote:
+> JFS provides three modes, journal, ordered and writeback.
+> The first mode is denoted as =E2=80=98journal mode=E2=80=99in the fol=
+lowing context.
+> In the journal mode, data should be written twice, one for the journa=
+l area and
+> the other for the client file system. If the journal area and the cli=
+ent file
+> system are both located in the disk, it has at least 50% performance
+> degradation compared to ordered mode.
+> But what if we put the journal area in a ramdisk?
 
---- Comment #8 from sworddragon2@aol.com ---
-Thanks for the information :)
+How big was the ramdisk?  Since all of the blocks are going through
+the journal, even if it is on the journal, it requires more commits
+and thus more checkpoint operations, which means more updates to the
+disk.  A bigger journal will help minimize this issue.
 
-In this case full data journaling seems not to make all the things I thought it
-does. Maybe my last tests are just too long ago. But this means also that I
-still can have data loss if the system crashes while writing to the disk. It
-would be really nice if the filesystem would provide such a mechanism in the
-future.
+Would you be willing to grab block traces for both the disk and the
+external journal device?
 
+I will add that the workload of "dd if=3D/dev/zero of=3Dfile" is probab=
+ly
+the worst case for data=3Djournal, and if that's really what you are
+doing, it's a case of "doctor, doctor, it hurts when I do that".  All
+file systems modes will have strengths and weaknesses, and your use
+case one where I would simply tell people, "don't use that mode".
 
-> How does the file system know that the file has "successfully been
-> written"?
+If you want to work on improving it, that's great.  Gather data, and
+if we can figure out an easy way to improve things, great.  But I'll
+warn you ahead of time this is not necessarily something I view as
+"unreasonable", nor is it something that I would consider a high
+priority thing to fix.
 
-Does the filesystem really not know if the file is complete? If this could be
-achieved a transaction safety should be not the problem here.
-
-
-> If you think it can be done, plesae submit patches.  :-)
-
-Sure I would if:
-
-- My experience with C would be a little higher.
-- Or at least if I would have the time to make a deeper look into the
-sourcecode and the coding rules for the kernel.
-
-
-I have posted the last few years many hundred bugs/feature requests in ~100
-different projects and am still doing this many times a week. But don't worry,
-they don't have so many bogus reports as I'm reporting here :)
-The kernel is really a difficult place if you are not directly involved with it
-but want to improve something. But some of my tickets here had already success.
-Also I'm programming on own projects and this all together consumes much time.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+						- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
