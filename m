@@ -1,21 +1,30 @@
-From: Phillip Susi <psusi@ubuntu.com>
-Subject: Re: [Bug 70121] Increasing efficiency of full data journaling
-Date: Fri, 07 Mar 2014 15:41:27 -0500
-Message-ID: <531A2EF7.5010005@ubuntu.com>
-References: <bug-70121-13602@https.bugzilla.kernel.org/> <bug-70121-13602-Vy8eJ3NxWe@https.bugzilla.kernel.org/>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 70121] Increasing efficiency of full data journaling
+Date: Fri, 07 Mar 2014 20:41:31 +0000
+Message-ID: <bug-70121-13602-efgGC3A17O@https.bugzilla.kernel.org/>
+References: <bug-70121-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-To: bugzilla-daemon@bugzilla.kernel.org, linux-ext4@vger.kernel.org
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:40192 "EHLO
-	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751649AbaCGUl2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Mar 2014 15:41:28 -0500
-In-Reply-To: <bug-70121-13602-Vy8eJ3NxWe@https.bugzilla.kernel.org/>
+Received: from mail.kernel.org ([198.145.19.201]:59477 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752411AbaCGUle (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 7 Mar 2014 15:41:34 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 22FC820328
+	for <linux-ext4@vger.kernel.org>; Fri,  7 Mar 2014 20:41:33 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id A92E52034C
+	for <linux-ext4@vger.kernel.org>; Fri,  7 Mar 2014 20:41:31 +0000 (UTC)
+In-Reply-To: <bug-70121-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+https://bugzilla.kernel.org/show_bug.cgi?id=70121
+
+--- Comment #9 from Phillip Susi <psusi@ubuntu.com> ---
 -----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
@@ -47,3 +56,7 @@ p4cwBHkcauQSs126Z0XryiWXrOpBoYRCwFF42DIlAOd5tSnGyhbE75ul83m5lCC4
 BlRrZ6+057RPiYFpmbgTsatatSZBbuGvEwuTICHDJiR8jqmucjarKPg9/wocERA=
 =PKiE
 -----END PGP SIGNATURE-----
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
