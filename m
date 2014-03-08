@@ -1,120 +1,148 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 2/2] ext4: fix bug in ext4_mb_normalize_request()
-Date: Fri, 7 Mar 2014 14:09:10 -0700
-Message-ID: <A0F40696-AABF-4D2D-AA37-3E4D4BC8EBBE@dilger.ca>
-References: <1393855228-13592-1-git-send-email-mlombard@redhat.com> <1393855228-13592-3-git-send-email-mlombard@redhat.com> <20140306154407.GA28226@thunk.org> <20140306165416.GA2182@dhcp-27-189.brq.redhat.com> <alpine.LFD.2.00.1403061842240.2249@localhost.localdomain> <20140306183232.GB30706@thunk.org>
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_B9184F1E-8E39-453A-A8B8-73989595A460"; protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: =?windows-1252?Q?Luk=E1=9A_Czerner?= <lczerner@redhat.com>,
-	Maurizio Lombardi <mlombard@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>,
-	Alexey Zhuravlev <alexey.zhuravlev@intel.com>
+From: Matthew Rahtz <mrahtz@rapitasystems.com>
+Subject: Re: warning in ext4_journal_start_sb on filesystem freeze
+Date: Sat, 8 Mar 2014 09:02:26 +0000 (GMT)
+Message-ID: <1209611984.37735.1394269346788.JavaMail.zimbra@rapitasystems.com>
+References: <217983071.143460.1385453196946.JavaMail.zimbra@rapitasystems.com> <20131126125826.GA4503@quack.suse.cz> <622177618.727.1393062606061.JavaMail.zimbra@rapitasystems.com> <20140224095525.GA20532@quack.suse.cz> <20140224154532.GB11992@fieldses.org> <20140225102126.GB1669@quack.suse.cz> <20140304164306.GC12805@fieldses.org> <20140304190442.GE12805@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f54.google.com ([209.85.160.54]:52791 "EHLO
-	mail-pb0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752480AbaCGVKN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Mar 2014 16:10:13 -0500
-Received: by mail-pb0-f54.google.com with SMTP id ma3so4652885pbc.41
-        for <linux-ext4@vger.kernel.org>; Fri, 07 Mar 2014 13:10:12 -0800 (PST)
-In-Reply-To: <20140306183232.GB30706@thunk.org>
+Received: from mail.rapitasystems.com ([81.149.227.87]:3323 "EHLO
+	mail.rapitasystems.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750925AbaCHJCc convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 8 Mar 2014 04:02:32 -0500
+In-Reply-To: <20140304190442.GE12805@fieldses.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Brilliant :) Thank you for your work!
 
---Apple-Mail=_B9184F1E-8E39-453A-A8B8-73989595A460
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=windows-1252
+----- Original Message -----
+=46rom: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Jan Kara" <jack@suse.cz>
+Cc: "Matthew Rahtz" <mrahtz@rapitasystems.com>, linux-ext4@vger.kernel.=
+org, linux-nfs@vger.kernel.org
+Sent: Tuesday, 4 March, 2014 7:04:42 PM
+Subject: Re: warning in ext4_journal_start_sb on filesystem freeze
 
-On Mar 6, 2014, at 11:32 AM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Thu, Mar 06, 2014 at 06:54:05PM +0100, Luk=E1=9A Czerner wrote:
->>=20
->> All that said, I was getting to rewrite this mess a long time ago,
->> it's just a reminder that it's something that needs to be done.
->> Especially since the bigger requests are getting split unnecessarily
->> which hurts especially in fallocate case.
+On Tue, Mar 04, 2014 at 11:43:06AM -0500, J. Bruce Fields wrote:
+> On Tue, Feb 25, 2014 at 11:21:26AM +0100, Jan Kara wrote:
+> > On Mon 24-02-14 10:45:32, J. Bruce Fields wrote:
+> > > On Mon, Feb 24, 2014 at 10:55:25AM +0100, Jan Kara wrote:
+> > > > On Sat 22-02-14 09:50:06, Matthew Rahtz wrote:
+> > > > > Thanks for your help Jan,
+> > > > >=20
+> > > > > A few months later, we've noticed the issue is actually still=
+ there.
+> > > > > Using 3.11.0-17-generic on Ubuntu 12.04, we=E2=80=99re seeing=
+ this in the kernel
+> > > > > logs:
+> > > > >=20
+> > > > > [29243.606215] WARNING: CPU: 0 PID: 1785 at
+> > > > > /build/buildd/linux-lts-saucy-3.11.0/fs/ext4/ext4_jbd2.c:48
+> > > > > ext4_journal_check_start+0x83/0x90()
+> > > > >=20
+> > > > > Having a look at the Ubuntu source package for that version, =
+it
+> > > > > definitely does include commit 03d95eb2f2578083a3f6286262e1cb=
+5d88a00c02,
+> > > > > and the line generating the warning is still:
+> > > > >=20
+> > > > > WARN_ON(sb->s_writers.frozen =3D=3D SB_FREEZE_COMPLETE);
+> > > > >=20
+> > > > > Are there any other obvious possibilities for what may be cau=
+sing this?
+> > > > > There seem to be some users of Oracle Linux experiencing simi=
+lar problems
+> > > > > at https://community.oracle.com/thread/2617418, which was app=
+arently
+> > > > > fixed in Oracle's kernel version '3.8.13-26.el6uek'. Any word=
+ on when
+> > > > > this might be integrated into the official kernel?
+> > > > >=20
+> > > > > Full call trace included below.
+> > > >   Looking at the trace below, now the problem seems to be in th=
+e NFS server
+> > > > code. NFS should get protection against the filesystem being fr=
+ozen (or
+> > > > remounted read-only for that matter) via mnt_want_write() befor=
+e calling
+> > > > into notify_change() (actually before calling fh_lock() because=
+ of lock
+> > > > ordering).  Similarly to what we do e.g. in fchownat(). Bruce?
+> > >=20
+> > > Like this?
+> >   Yup, that looks right.
 >=20
-> We should try to get input from Andreas about what some of the more
-> interesting hueristics in mballoc were trying to accomplish, since
-> there's a lot going on that's not obvious, and one of the reasons why
-> I've always been worried about trying to do cleanups was because
-> something that looks ugly might be papering over some other dark
-> corner of mballoc.c ---- and so I was fairly certain that one we
-> started opening up mballoc.c, we'd have to do a lot of work on it, and
-> a lot of performance measurements to make sure we didn't accidentally
-> introduce some performance regression.
+> Ugh, actually, I didn't realize we can't do mnt_want_write recursivel=
+y,
+> and there's a confusing mixture of callers that do and don't already
+> take it, so I'll have to do something a little more complicated.
 
-There is actually quite a lengthy description of mballoc at the start
-of the file.  I guess it would make sense to turn anything in this
-thread into comments for ext4_mb_normalize_request() once verified.
+Actually it looks like there's an easy enough way to distinguish when w=
+e
+need mnt_want_write and when we don't; hopefully the following does the
+job.
 
-So, below is hopefully a summary of what ext4_mb_normalize_request()
-is actually doing.  I've CC'd Alex to correct my mistakes.  I think
-the first few cases are commented accurately and self explanatorily:
+--b.
 
-* don't prealloc blocks for non-regular files (!EXT4_MB_HINT_DATA)
-  - should we reconsider this for larger directories?
-* don't use prealloc if caller wants exact (EXT4_MB_HINT_GOAL_ONLY)
-  - currently unused, but would be useful for defrag
-* don't reserve blocks if caller doesn't want it =
-(EXT4_MB_HINT_NOPREALLOC)
-  - used for small files or if requested data fits exactly into extent
-* if write is a small file, use group prealloc =
-(EXT4_MB_HINT_GROUP_ALLOC)
-  - this combines multiple small writes into a single prealloc region
-    and avoids read-modify-write of RAID stripes
+commit b0f5cd115e811a146a6e1a4dd1e7cb85808cca23
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Mon Feb 24 14:59:47 2014 -0500
 
-The rest of the function is about handling large file writes =
-efficiently.
-* round up small writes to a power-of-two value for better alignment
-  - we have a patch that makes the preallocation region sizes tunable,
-    if that is something of interest.  That said, we don't really use =
-it.
-* if the request is large, align it to a power-of-two boundary
-  - the allocation goal is based on the logical file offset, so that if
-    a file is written sparsely by multiple threads, it can coalesce into
-    a densely packed file in the end.  This is common for HPC jobs, or
-    applications like bittorrent.
-* the list_for_each() loops align the prealloc region with other regions
-  - this helps when the file becomes fully allocated that the regions
-    will be contiguous on disk
+    nfsd: notify_change needs elevated write count
+   =20
+    Looks like this bug has been here since these write counts were
+    introduced, not sure why it was just noticed now.
+   =20
+    Thanks also to Jan Kara for pointing out the problem.
+   =20
+    Reported-by: Matthew Rahtz <mrahtz@rapitasystems.com>
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-I'm pretty sure some of this is not 100% accurate, hopefully Alex can
-comment and correct any inconsistencies.
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_B9184F1E-8E39-453A-A8B8-73989595A460
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIVAwUBUxo1dnKl2rkXzB/gAQLnKBAAvP3uBuFdQ/ORHx7Wt2lpfCi6roh97DzS
-mNJpWlZl7fqiJ6UG854bnHEoDmPC9kYspZI4JEUl+82QPVCYRe98OdmSWLbB++4B
-7AExWkZ23KQa9po6nf7+27RjpMWmkxsHPAXdeyApP5n+EF1adsC4p9Yq6a63x3Vj
-INyCmCn6R1Lo2E0SoJKGZN0iQ5EJNFCfVR6AHEhUGQRlfD71+LI4VDqv4OR2Q5ZJ
-wDmCIiAG+Emcl+nvhbcreWc133T+kjuMJSktkHQGb/AZSLvFJxLnKVuIs8+4MB96
-Mp1XNKGbSRj7KgDJeacPjSJ0kSO0Z70VLgfvfVqso60VGCFOTjBw5p3d01jgC6Zr
-PJkhdSFVURAlOrn0xTesoV09reaOsR0ArYRqt5/US8CSGS7P7oInQjB1Y3KiEXuC
-ydFJf6Drly9No2dolhkzpUDohhaNQ/Uz1tVUSXH09GWQTv0q03FU68cFBoRp6gOT
-Xo+dw6jZHPX6hD2tXkyFWEEg3mOfqz1kIdrH6tqLJaDwXQmnJP3bOSCNEmduQns5
-ZgmTNWm5aKd8/304qn3CGohX6jxEGmrRnqzTxKVR0loS0cQ+k6npkX/XmcL/sWfn
-K/kkRqYKkpQo9uvvAN/5v828Y4/XCxIjupOYYdGTFNnq+DAkcyyP90FXh+nxpJ05
-pokcIhDyNfo=
-=RRsP
------END PGP SIGNATURE-----
-
---Apple-Mail=_B9184F1E-8E39-453A-A8B8-73989595A460--
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 6d7be3f..eea5ad1 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -404,6 +404,7 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh =
+*fhp, struct iattr *iap,
+ 	umode_t		ftype =3D 0;
+ 	__be32		err;
+ 	int		host_err;
++	bool		get_write_count;
+ 	int		size_change =3D 0;
+=20
+ 	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME | ATTR_SIZE))
+@@ -411,10 +412,18 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_f=
+h *fhp, struct iattr *iap,
+ 	if (iap->ia_valid & ATTR_SIZE)
+ 		ftype =3D S_IFREG;
+=20
++	/* Callers that do fh_verify should do the fh_want_write: */
++	get_write_count =3D !fhp->fh_dentry;
++
+ 	/* Get inode */
+ 	err =3D fh_verify(rqstp, fhp, ftype, accmode);
+ 	if (err)
+ 		goto out;
++	if (get_write_count) {
++		host_err =3D fh_want_write(fhp);
++		if (host_err)
++			return nfserrno(host_err);
++	}
+=20
+ 	dentry =3D fhp->fh_dentry;
+ 	inode =3D dentry->d_inode;
+Please Note: Rapita Systems has a new address and telephone number.
+Telephone: +44 1904 413945
+Address: Rapita Systems Ltd, Atlas House,
+          Osbaldwick Link Road, YORK, YO10 3JB
+          United Kingdom
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
