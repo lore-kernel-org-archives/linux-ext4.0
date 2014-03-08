@@ -1,62 +1,86 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [e2fsprogs][1.42.9 to lastest]maybe a bug
-Date: Sat, 8 Mar 2014 10:41:06 -0500
-Message-ID: <20140308154106.GB11633@thunk.org>
-References: <CAEazTgcqTQuSUCHJ7T4fYGuCydOGcFfTW2=kjTrpSxWZW61zoA@mail.gmail.com>
+Subject: [PATCH, RFC] fs: only call sync_filesystem() when remounting
+ read-only
+Date: Sat, 8 Mar 2014 11:08:18 -0500
+Message-ID: <20140308160818.GC11633@thunk.org>
+References: <20140305141343.GA26225@xanadu.blop.info>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Sela Selah <selahsolar@gmail.com>
+Cc: linux-ext4@vger.kernel.org,
+	"linux-fsdevel@vger.kernel.org Emmanuel Jeanvoine"
+	<emmanuel.jeanvoine@inria.fr>
+To: Lucas Nussbaum <lucas.nussbaum@loria.fr>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:38760 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:38771 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751429AbaCHPlK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 8 Mar 2014 10:41:10 -0500
+	id S1751555AbaCHQIW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 8 Mar 2014 11:08:22 -0500
 Content-Disposition: inline
-In-Reply-To: <CAEazTgcqTQuSUCHJ7T4fYGuCydOGcFfTW2=kjTrpSxWZW61zoA@mail.gmail.com>
+In-Reply-To: <20140305141343.GA26225@xanadu.blop.info>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Mar 08, 2014 at 10:46:03AM +0800, Sela Selah wrote:
-> appear at version 1.42.9 to the lastest commit
-> the if statements is *NOT* consisted with the comments, results a  compile
-> error on mips64el: the __u64/__s64 should unsigned/signed long but
-> unsigned/signed long long.
+On Wed, Mar 05, 2014 at 03:13:43PM +0100, Lucas Nussbaum wrote:
+> TL;DR: we experience long temporary hangs when doing multiple mount -o
+> remount at the same time as other I/O on an ext4 filesystem.
+> 
+> When starting hundreds of LXC containers simultaneously on a system, the
+> boot of some containers was hanging. We tracked this down to an
+> initscript's use of mount -o remount, which was hanging in D state.
+> 
+> We reproduced the problem outside of LXC, with the script available at
+> [0]. That script initiates 1000 mount -o remount, and performs some
+> writes using a big cp to the same filesystem during the remounts....
 
-What's the compile error which you are seeing with mips64el?
++linux-fsdevel since the patch modifies fs/super.c
 
-The change made to prefer [un]signed long long over [un]signed long
-when both types are 64-bits was deliberate:
+Lukas, can you try this patch?  I'm pretty sure this is what's going
+on.  It turns out each "mount -o remount" is implying an fsync(), so
+your test case is identical to copying a large file while having
+thousand of processes calling syncfs() on the file system, with the
+predictable results.
 
-commit 3a941bef3b9036ca3db9d510c71bcae801ea4dd1
-Author: Andreas Dilger <adilger@dilger.ca>
-Date:   Sun Dec 15 22:09:24 2013 -0500
+Folks on linux-fsdevel, any objections if I carry this patch in the
+ext4 tree?  I don't think it should cause problems for other file
+systems, since any file system that tries to rely on the implied
+syncfs() is going to be subject to races, but it might make such a
+race condition bug much more visible...
 
-    build: use long long for __u64 by default
+					- Ted
+
+commit 8862c3c69acc205b59b00baed67e50446e2fd093
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Sat Mar 8 11:05:35 2014 -0500
+
+    fs: only call sync_filesystem() when remounting read-only
     
-    Don't print a verbose configure error in parse-types.h if
-    <asm/types.h> missing and __[SU]*_TYPEDEF is unset.  This is
-    always the case for non-Linux builds.
+    Currently "mount -o remount" always implies an syncfs() on the file
+    system.  This can cause a problem if a workload calls "mount -o
+    remount" many, many times while concurrent I/O is happening:
     
-    The printf formatting strings all use "%llu" for printing 64-bit
-    values and this it produces a large number of warnings if __u64
-    is defined as "unsigned long".  If __U64_TYPEDEF isn't set use
-    "unsigned long long" for __u64 in ext2-types.h and blkid-types.h
-    by default instead of using "unsigned long".
+       http://article.gmane.org/gmane.comp.file-systems.ext4/42876
     
-    Fix a few places where "%d" or "%u" or "%Lu" were used to print a
-    64-bit value, by converting them to use "%lld" or "%llu" instead.
+    Whether it would ever be sane for a workload to call "mount -o
+    remount" gazillions of times when they are effectively no-ops, it
+    seems stupid for a remount to imply an fsync().
     
-    Fix a few places where "%lu" was used to print .tv_usec, by casting
-    the variable to "(long)" since .tv_usec is "int" on some systems.
+    It's possible that there is some file system which is relying on the
+    implied fsync(), but that's arguably broken, since aside for the
+    remount read-only case, there's nothing that will prevent other writes
+    from sneaking in between the sync_filesystem() and the call to
+    sb->s_op->remount_fs().
     
-    Signed-off-by: Andreas Dilger <adilger@dilger.ca>
     Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-Andreas didn't fix up the comments in the header file, but the change
-made wasn't an accident.
-
-Maybe there's some other way we can address the compile failure on
-mips64el?
-
-						- Ted
+diff --git a/fs/super.c b/fs/super.c
+index 80d5cf2..0fc87ac 100644
+--- a/fs/super.c
++++ b/fs/super.c
+@@ -717,10 +717,9 @@ int do_remount_sb(struct super_block *sb, int flags, void *data, int force)
+ 			if (retval)
+ 				return retval;
+ 		}
++		sync_filesystem(sb);
+ 	}
+ 
+-	sync_filesystem(sb);
