@@ -1,86 +1,86 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH, RFC] fs: only call sync_filesystem() when remounting
- read-only
-Date: Sat, 8 Mar 2014 11:08:18 -0500
-Message-ID: <20140308160818.GC11633@thunk.org>
-References: <20140305141343.GA26225@xanadu.blop.info>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-	"linux-fsdevel@vger.kernel.org Emmanuel Jeanvoine"
-	<emmanuel.jeanvoine@inria.fr>
-To: Lucas Nussbaum <lucas.nussbaum@loria.fr>
+Subject: [PATCH 2/6] jbd2: calculate statistics without holding j_state_lock and j_list_lock
+Date: Sun,  9 Mar 2014 01:05:37 -0500
+Message-ID: <1394345141-3471-2-git-send-email-tytso@mit.edu>
+References: <1394345141-3471-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:38771 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:38892 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751555AbaCHQIW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 8 Mar 2014 11:08:22 -0500
-Content-Disposition: inline
-In-Reply-To: <20140305141343.GA26225@xanadu.blop.info>
+	id S1751327AbaCIGFr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 9 Mar 2014 01:05:47 -0500
+In-Reply-To: <1394345141-3471-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Mar 05, 2014 at 03:13:43PM +0100, Lucas Nussbaum wrote:
-> TL;DR: we experience long temporary hangs when doing multiple mount -o
-> remount at the same time as other I/O on an ext4 filesystem.
-> 
-> When starting hundreds of LXC containers simultaneously on a system, the
-> boot of some containers was hanging. We tracked this down to an
-> initscript's use of mount -o remount, which was hanging in D state.
-> 
-> We reproduced the problem outside of LXC, with the script available at
-> [0]. That script initiates 1000 mount -o remount, and performs some
-> writes using a big cp to the same filesystem during the remounts....
+The two hottest locks, and thus the biggest scalability bottlenecks,
+in the jbd2 layer, are the j_list_lock and j_state_lock.  This has
+inspired some people to do some truly unnatural things[1].
 
-+linux-fsdevel since the patch modifies fs/super.c
+[1] https://www.usenix.org/system/files/conference/fast14/fast14-paper_kang.pdf
 
-Lukas, can you try this patch?  I'm pretty sure this is what's going
-on.  It turns out each "mount -o remount" is implying an fsync(), so
-your test case is identical to copying a large file while having
-thousand of processes calling syncfs() on the file system, with the
-predictable results.
+We don't need to be holding both j_state_lock and j_list_lock while
+calculating the journal statistics, so move those calculations to the
+very end of jbd2_journal_commit_transaction.
 
-Folks on linux-fsdevel, any objections if I carry this patch in the
-ext4 tree?  I don't think it should cause problems for other file
-systems, since any file system that tries to rely on the implied
-syncfs() is going to be subject to races, but it might make such a
-race condition bug much more visible...
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/jbd2/commit.c | 36 ++++++++++++++++++------------------
+ 1 file changed, 18 insertions(+), 18 deletions(-)
 
-					- Ted
-
-commit 8862c3c69acc205b59b00baed67e50446e2fd093
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Sat Mar 8 11:05:35 2014 -0500
-
-    fs: only call sync_filesystem() when remounting read-only
-    
-    Currently "mount -o remount" always implies an syncfs() on the file
-    system.  This can cause a problem if a workload calls "mount -o
-    remount" many, many times while concurrent I/O is happening:
-    
-       http://article.gmane.org/gmane.comp.file-systems.ext4/42876
-    
-    Whether it would ever be sane for a workload to call "mount -o
-    remount" gazillions of times when they are effectively no-ops, it
-    seems stupid for a remount to imply an fsync().
-    
-    It's possible that there is some file system which is relying on the
-    implied fsync(), but that's arguably broken, since aside for the
-    remount read-only case, there's nothing that will prevent other writes
-    from sneaking in between the sync_filesystem() and the call to
-    sb->s_op->remount_fs().
-    
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-
-diff --git a/fs/super.c b/fs/super.c
-index 80d5cf2..0fc87ac 100644
---- a/fs/super.c
-+++ b/fs/super.c
-@@ -717,10 +717,9 @@ int do_remount_sb(struct super_block *sb, int flags, void *data, int force)
- 			if (retval)
- 				return retval;
- 		}
-+		sync_filesystem(sb);
- 	}
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 765b31d..af36252 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -1083,24 +1083,7 @@ restart_loop:
+ 		atomic_read(&commit_transaction->t_handle_count);
+ 	trace_jbd2_run_stats(journal->j_fs_dev->bd_dev,
+ 			     commit_transaction->t_tid, &stats.run);
+-
+-	/*
+-	 * Calculate overall stats
+-	 */
+-	spin_lock(&journal->j_history_lock);
+-	journal->j_stats.ts_tid++;
+-	if (commit_transaction->t_requested)
+-		journal->j_stats.ts_requested++;
+-	journal->j_stats.run.rs_wait += stats.run.rs_wait;
+-	journal->j_stats.run.rs_request_delay += stats.run.rs_request_delay;
+-	journal->j_stats.run.rs_running += stats.run.rs_running;
+-	journal->j_stats.run.rs_locked += stats.run.rs_locked;
+-	journal->j_stats.run.rs_flushing += stats.run.rs_flushing;
+-	journal->j_stats.run.rs_logging += stats.run.rs_logging;
+-	journal->j_stats.run.rs_handle_count += stats.run.rs_handle_count;
+-	journal->j_stats.run.rs_blocks += stats.run.rs_blocks;
+-	journal->j_stats.run.rs_blocks_logged += stats.run.rs_blocks_logged;
+-	spin_unlock(&journal->j_history_lock);
++	stats.ts_requested = (commit_transaction->t_requested) ? 1 : 0;
  
--	sync_filesystem(sb);
+ 	commit_transaction->t_state = T_COMMIT_CALLBACK;
+ 	J_ASSERT(commit_transaction == journal->j_committing_transaction);
+@@ -1157,4 +1140,21 @@ restart_loop:
+ 	spin_unlock(&journal->j_list_lock);
+ 	write_unlock(&journal->j_state_lock);
+ 	wake_up(&journal->j_wait_done_commit);
++
++	/*
++	 * Calculate overall stats
++	 */
++	spin_lock(&journal->j_history_lock);
++	journal->j_stats.ts_tid++;
++	journal->j_stats.ts_requested += stats.ts_requested;
++	journal->j_stats.run.rs_wait += stats.run.rs_wait;
++	journal->j_stats.run.rs_request_delay += stats.run.rs_request_delay;
++	journal->j_stats.run.rs_running += stats.run.rs_running;
++	journal->j_stats.run.rs_locked += stats.run.rs_locked;
++	journal->j_stats.run.rs_flushing += stats.run.rs_flushing;
++	journal->j_stats.run.rs_logging += stats.run.rs_logging;
++	journal->j_stats.run.rs_handle_count += stats.run.rs_handle_count;
++	journal->j_stats.run.rs_blocks += stats.run.rs_blocks;
++	journal->j_stats.run.rs_blocks_logged += stats.run.rs_blocks_logged;
++	spin_unlock(&journal->j_history_lock);
+ }
+-- 
+1.9.0
+
