@@ -1,86 +1,54 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/6] jbd2: calculate statistics without holding j_state_lock and j_list_lock
-Date: Sun,  9 Mar 2014 01:05:37 -0500
-Message-ID: <1394345141-3471-2-git-send-email-tytso@mit.edu>
+Subject: [PATCH 5/6] jbd2: minimize region locked by j_list_lock in journal_get_create_access()
+Date: Sun,  9 Mar 2014 01:05:40 -0500
+Message-ID: <1394345141-3471-5-git-send-email-tytso@mit.edu>
 References: <1394345141-3471-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:38892 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:38895 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751327AbaCIGFr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 9 Mar 2014 01:05:47 -0500
+	id S1751327AbaCIGFt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 9 Mar 2014 01:05:49 -0500
 In-Reply-To: <1394345141-3471-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The two hottest locks, and thus the biggest scalability bottlenecks,
-in the jbd2 layer, are the j_list_lock and j_state_lock.  This has
-inspired some people to do some truly unnatural things[1].
-
-[1] https://www.usenix.org/system/files/conference/fast14/fast14-paper_kang.pdf
-
-We don't need to be holding both j_state_lock and j_list_lock while
-calculating the journal statistics, so move those calculations to the
-very end of jbd2_journal_commit_transaction.
+It's not needed until we start trying to modifying fields in the
+journal_head which are protected by j_list_lock.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/jbd2/commit.c | 36 ++++++++++++++++++------------------
- 1 file changed, 18 insertions(+), 18 deletions(-)
+ fs/jbd2/transaction.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 765b31d..af36252 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -1083,24 +1083,7 @@ restart_loop:
- 		atomic_read(&commit_transaction->t_handle_count);
- 	trace_jbd2_run_stats(journal->j_fs_dev->bd_dev,
- 			     commit_transaction->t_tid, &stats.run);
--
--	/*
--	 * Calculate overall stats
--	 */
--	spin_lock(&journal->j_history_lock);
--	journal->j_stats.ts_tid++;
--	if (commit_transaction->t_requested)
--		journal->j_stats.ts_requested++;
--	journal->j_stats.run.rs_wait += stats.run.rs_wait;
--	journal->j_stats.run.rs_request_delay += stats.run.rs_request_delay;
--	journal->j_stats.run.rs_running += stats.run.rs_running;
--	journal->j_stats.run.rs_locked += stats.run.rs_locked;
--	journal->j_stats.run.rs_flushing += stats.run.rs_flushing;
--	journal->j_stats.run.rs_logging += stats.run.rs_logging;
--	journal->j_stats.run.rs_handle_count += stats.run.rs_handle_count;
--	journal->j_stats.run.rs_blocks += stats.run.rs_blocks;
--	journal->j_stats.run.rs_blocks_logged += stats.run.rs_blocks_logged;
--	spin_unlock(&journal->j_history_lock);
-+	stats.ts_requested = (commit_transaction->t_requested) ? 1 : 0;
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 78900a1..357f3dc 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -1073,7 +1073,6 @@ int jbd2_journal_get_create_access(handle_t *handle, struct buffer_head *bh)
+ 	 * reused here.
+ 	 */
+ 	jbd_lock_bh_state(bh);
+-	spin_lock(&journal->j_list_lock);
+ 	J_ASSERT_JH(jh, (jh->b_transaction == transaction ||
+ 		jh->b_transaction == NULL ||
+ 		(jh->b_transaction == journal->j_committing_transaction &&
+@@ -1096,12 +1095,14 @@ int jbd2_journal_get_create_access(handle_t *handle, struct buffer_head *bh)
+ 		jh->b_modified = 0;
  
- 	commit_transaction->t_state = T_COMMIT_CALLBACK;
- 	J_ASSERT(commit_transaction == journal->j_committing_transaction);
-@@ -1157,4 +1140,21 @@ restart_loop:
+ 		JBUFFER_TRACE(jh, "file as BJ_Reserved");
++		spin_lock(&journal->j_list_lock);
+ 		__jbd2_journal_file_buffer(jh, transaction, BJ_Reserved);
+ 	} else if (jh->b_transaction == journal->j_committing_transaction) {
+ 		/* first access by this transaction */
+ 		jh->b_modified = 0;
+ 
+ 		JBUFFER_TRACE(jh, "set next transaction");
++		spin_lock(&journal->j_list_lock);
+ 		jh->b_next_transaction = transaction;
+ 	}
  	spin_unlock(&journal->j_list_lock);
- 	write_unlock(&journal->j_state_lock);
- 	wake_up(&journal->j_wait_done_commit);
-+
-+	/*
-+	 * Calculate overall stats
-+	 */
-+	spin_lock(&journal->j_history_lock);
-+	journal->j_stats.ts_tid++;
-+	journal->j_stats.ts_requested += stats.ts_requested;
-+	journal->j_stats.run.rs_wait += stats.run.rs_wait;
-+	journal->j_stats.run.rs_request_delay += stats.run.rs_request_delay;
-+	journal->j_stats.run.rs_running += stats.run.rs_running;
-+	journal->j_stats.run.rs_locked += stats.run.rs_locked;
-+	journal->j_stats.run.rs_flushing += stats.run.rs_flushing;
-+	journal->j_stats.run.rs_logging += stats.run.rs_logging;
-+	journal->j_stats.run.rs_handle_count += stats.run.rs_handle_count;
-+	journal->j_stats.run.rs_blocks += stats.run.rs_blocks;
-+	journal->j_stats.run.rs_blocks_logged += stats.run.rs_blocks_logged;
-+	spin_unlock(&journal->j_history_lock);
- }
 -- 
 1.9.0
 
