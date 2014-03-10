@@ -1,108 +1,167 @@
-From: Lucas Nussbaum <lucas.nussbaum@loria.fr>
-Subject: Re: [PATCH, RFC] fs: only call sync_filesystem() when remounting
- read-only
-Date: Mon, 10 Mar 2014 13:15:03 +0100
-Message-ID: <20140310121503.GA31797@xanadu.blop.info>
-References: <20140305141343.GA26225@xanadu.blop.info>
- <20140308160818.GC11633@thunk.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: warning in ext4_journal_start_sb on filesystem freeze
+Date: Mon, 10 Mar 2014 09:26:29 -0400
+Message-ID: <20140310132629.GA28006@fieldses.org>
+References: <217983071.143460.1385453196946.JavaMail.zimbra@rapitasystems.com>
+ <20131126125826.GA4503@quack.suse.cz>
+ <622177618.727.1393062606061.JavaMail.zimbra@rapitasystems.com>
+ <20140224095525.GA20532@quack.suse.cz>
+ <20140224154532.GB11992@fieldses.org>
+ <20140225102126.GB1669@quack.suse.cz>
+ <20140304164306.GC12805@fieldses.org>
+ <20140304190442.GE12805@fieldses.org>
+ <1209611984.37735.1394269346788.JavaMail.zimbra@rapitasystems.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-	"linux-fsdevel@vger.kernel.org Emmanuel Jeanvoine"
-	<emmanuel.jeanvoine@inria.fr>
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	linux-nfs@vger.kernel.org
+To: Matthew Rahtz <mrahtz@rapitasystems.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from xanadu.blop.info ([178.79.145.134]:35931 "EHLO xanadu.blop.info"
+Received: from fieldses.org ([174.143.236.118]:34713 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753208AbaCJMPO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Mar 2014 08:15:14 -0400
+	id S1752193AbaCJN0c (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 10 Mar 2014 09:26:32 -0400
 Content-Disposition: inline
-In-Reply-To: <20140308160818.GC11633@thunk.org>
+In-Reply-To: <1209611984.37735.1394269346788.JavaMail.zimbra@rapitasystems.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+On Sat, Mar 08, 2014 at 09:02:26AM +0000, Matthew Rahtz wrote:
+> Brilliant :) Thank you for your work!
 
-That Cc: line:
-Cc: linux-ext4@vger.kernel.org, "linux-fsdevel@vger.kernel.org Emmanuel Jeanvoine" <emmanuel.jeanvoine@inria.fr>
-sounds wrong. You might want to re-send to linux-fsdevel@.
+Just to make sure, have you been able to confirm yet that this
+eliminates the warning you were seeing?
 
-Thanks
+--b.
 
-Lucas
-
-On 08/03/14 at 11:08 -0500, Theodore Ts'o wrote:
-> On Wed, Mar 05, 2014 at 03:13:43PM +0100, Lucas Nussbaum wrote:
-> > TL;DR: we experience long temporary hangs when doing multiple mount -o
-> > remount at the same time as other I/O on an ext4 filesystem.
-> > 
-> > When starting hundreds of LXC containers simultaneously on a system, the
-> > boot of some containers was hanging. We tracked this down to an
-> > initscript's use of mount -o remount, which was hanging in D state.
-> > 
-> > We reproduced the problem outside of LXC, with the script available at
-> > [0]. That script initiates 1000 mount -o remount, and performs some
-> > writes using a big cp to the same filesystem during the remounts....
-> 
-> +linux-fsdevel since the patch modifies fs/super.c
-> 
-> Lukas, can you try this patch?  I'm pretty sure this is what's going
-> on.  It turns out each "mount -o remount" is implying an fsync(), so
-> your test case is identical to copying a large file while having
-> thousand of processes calling syncfs() on the file system, with the
-> predictable results.
-> 
-> Folks on linux-fsdevel, any objections if I carry this patch in the
-> ext4 tree?  I don't think it should cause problems for other file
-> systems, since any file system that tries to rely on the implied
-> syncfs() is going to be subject to races, but it might make such a
-> race condition bug much more visible...
-> 
-> 					- Ted
-> 
-> commit 8862c3c69acc205b59b00baed67e50446e2fd093
-> Author: Theodore Ts'o <tytso@mit.edu>
-> Date:   Sat Mar 8 11:05:35 2014 -0500
-> 
->     fs: only call sync_filesystem() when remounting read-only
->     
->     Currently "mount -o remount" always implies an syncfs() on the file
->     system.  This can cause a problem if a workload calls "mount -o
->     remount" many, many times while concurrent I/O is happening:
->     
->        http://article.gmane.org/gmane.comp.file-systems.ext4/42876
->     
->     Whether it would ever be sane for a workload to call "mount -o
->     remount" gazillions of times when they are effectively no-ops, it
->     seems stupid for a remount to imply an fsync().
->     
->     It's possible that there is some file system which is relying on the
->     implied fsync(), but that's arguably broken, since aside for the
->     remount read-only case, there's nothing that will prevent other writes
->     from sneaking in between the sync_filesystem() and the call to
->     sb->s_op->remount_fs().
->     
->     Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> 
-> diff --git a/fs/super.c b/fs/super.c
-> index 80d5cf2..0fc87ac 100644
-> --- a/fs/super.c
-> +++ b/fs/super.c
-> @@ -717,10 +717,9 @@ int do_remount_sb(struct super_block *sb, int flags, void *data, int force)
->  			if (retval)
->  				return retval;
->  		}
-> +		sync_filesystem(sb);
->  	}
->  
-> -	sync_filesystem(sb);
-> -
->  	if (sb->s_op->remount_fs) {
->  		retval = sb->s_op->remount_fs(sb, &flags, data);
->  		if (retval) {
-> 
-
--- 
-| Lucas Nussbaum      Assistant professor @ Univ. de Lorraine |
-| lucas.nussbaum@loria.fr                   LORIA / AlGorille |
-| http://www.loria.fr/~lnussbau/            +33 3 54 95 86 19 |
+>=20
+> ----- Original Message -----
+> From: "J. Bruce Fields" <bfields@fieldses.org>
+> To: "Jan Kara" <jack@suse.cz>
+> Cc: "Matthew Rahtz" <mrahtz@rapitasystems.com>, linux-ext4@vger.kerne=
+l.org, linux-nfs@vger.kernel.org
+> Sent: Tuesday, 4 March, 2014 7:04:42 PM
+> Subject: Re: warning in ext4_journal_start_sb on filesystem freeze
+>=20
+> On Tue, Mar 04, 2014 at 11:43:06AM -0500, J. Bruce Fields wrote:
+> > On Tue, Feb 25, 2014 at 11:21:26AM +0100, Jan Kara wrote:
+> > > On Mon 24-02-14 10:45:32, J. Bruce Fields wrote:
+> > > > On Mon, Feb 24, 2014 at 10:55:25AM +0100, Jan Kara wrote:
+> > > > > On Sat 22-02-14 09:50:06, Matthew Rahtz wrote:
+> > > > > > Thanks for your help Jan,
+> > > > > >=20
+> > > > > > A few months later, we've noticed the issue is actually sti=
+ll there.
+> > > > > > Using 3.11.0-17-generic on Ubuntu 12.04, we=E2=80=99re seei=
+ng this in the kernel
+> > > > > > logs:
+> > > > > >=20
+> > > > > > [29243.606215] WARNING: CPU: 0 PID: 1785 at
+> > > > > > /build/buildd/linux-lts-saucy-3.11.0/fs/ext4/ext4_jbd2.c:48
+> > > > > > ext4_journal_check_start+0x83/0x90()
+> > > > > >=20
+> > > > > > Having a look at the Ubuntu source package for that version=
+, it
+> > > > > > definitely does include commit 03d95eb2f2578083a3f6286262e1=
+cb5d88a00c02,
+> > > > > > and the line generating the warning is still:
+> > > > > >=20
+> > > > > > WARN_ON(sb->s_writers.frozen =3D=3D SB_FREEZE_COMPLETE);
+> > > > > >=20
+> > > > > > Are there any other obvious possibilities for what may be c=
+ausing this?
+> > > > > > There seem to be some users of Oracle Linux experiencing si=
+milar problems
+> > > > > > at https://community.oracle.com/thread/2617418, which was a=
+pparently
+> > > > > > fixed in Oracle's kernel version '3.8.13-26.el6uek'. Any wo=
+rd on when
+> > > > > > this might be integrated into the official kernel?
+> > > > > >=20
+> > > > > > Full call trace included below.
+> > > > >   Looking at the trace below, now the problem seems to be in =
+the NFS server
+> > > > > code. NFS should get protection against the filesystem being =
+frozen (or
+> > > > > remounted read-only for that matter) via mnt_want_write() bef=
+ore calling
+> > > > > into notify_change() (actually before calling fh_lock() becau=
+se of lock
+> > > > > ordering).  Similarly to what we do e.g. in fchownat(). Bruce=
+?
+> > > >=20
+> > > > Like this?
+> > >   Yup, that looks right.
+> >=20
+> > Ugh, actually, I didn't realize we can't do mnt_want_write recursiv=
+ely,
+> > and there's a confusing mixture of callers that do and don't alread=
+y
+> > take it, so I'll have to do something a little more complicated.
+>=20
+> Actually it looks like there's an easy enough way to distinguish when=
+ we
+> need mnt_want_write and when we don't; hopefully the following does t=
+he
+> job.
+>=20
+> --b.
+>=20
+> commit b0f5cd115e811a146a6e1a4dd1e7cb85808cca23
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Mon Feb 24 14:59:47 2014 -0500
+>=20
+>     nfsd: notify_change needs elevated write count
+>    =20
+>     Looks like this bug has been here since these write counts were
+>     introduced, not sure why it was just noticed now.
+>    =20
+>     Thanks also to Jan Kara for pointing out the problem.
+>    =20
+>     Reported-by: Matthew Rahtz <mrahtz@rapitasystems.com>
+>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+>=20
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 6d7be3f..eea5ad1 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -404,6 +404,7 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_f=
+h *fhp, struct iattr *iap,
+>  	umode_t		ftype =3D 0;
+>  	__be32		err;
+>  	int		host_err;
+> +	bool		get_write_count;
+>  	int		size_change =3D 0;
+> =20
+>  	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME | ATTR_SIZE))
+> @@ -411,10 +412,18 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc=
+_fh *fhp, struct iattr *iap,
+>  	if (iap->ia_valid & ATTR_SIZE)
+>  		ftype =3D S_IFREG;
+> =20
+> +	/* Callers that do fh_verify should do the fh_want_write: */
+> +	get_write_count =3D !fhp->fh_dentry;
+> +
+>  	/* Get inode */
+>  	err =3D fh_verify(rqstp, fhp, ftype, accmode);
+>  	if (err)
+>  		goto out;
+> +	if (get_write_count) {
+> +		host_err =3D fh_want_write(fhp);
+> +		if (host_err)
+> +			return nfserrno(host_err);
+> +	}
+> =20
+>  	dentry =3D fhp->fh_dentry;
+>  	inode =3D dentry->d_inode;
+> Please Note: Rapita Systems has a new address and telephone number.
+> Telephone: +44 1904 413945
+> Address: Rapita Systems Ltd, Atlas House,
+>           Osbaldwick Link Road, YORK, YO10 3JB
+>           United Kingdom
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
