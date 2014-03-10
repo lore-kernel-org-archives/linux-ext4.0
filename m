@@ -1,130 +1,61 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: delayed block allocation failed with error -28
-Date: Mon, 10 Mar 2014 18:07:36 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1403101805500.8681@localhost.localdomain>
-References: <CAPoEN5nYGBG6VNYuN2bROjvF41=so56uSTwB-=PAyAczD99jeQ@mail.gmail.com>
+From: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
+Subject: Re: warning in ext4_journal_start_sb on filesystem freeze
+Date: Mon, 10 Mar 2014 15:57:09 -0400
+Message-ID: <20140310195709.GH28006@fieldses.org>
+References: <217983071.143460.1385453196946.JavaMail.zimbra@rapitasystems.com>
+ <1697998867.143517.1385454051031.JavaMail.zimbra@rapitasystems.com>
+ <20131126125826.GA4503@quack.suse.cz>
+ <622177618.727.1393062606061.JavaMail.zimbra@rapitasystems.com>
+ <20140224095525.GA20532@quack.suse.cz>
+ <20140224154532.GB11992@fieldses.org>
+ <20140225102126.GB1669@quack.suse.cz>
+ <20140304164306.GC12805@fieldses.org>
+ <20140304190442.GE12805@fieldses.org>
+ <20140310133451.GA17807@infradead.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org
-To: Yan Rui <rui.yan@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49683 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753802AbaCJRHk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Mar 2014 13:07:40 -0400
-In-Reply-To: <CAPoEN5nYGBG6VNYuN2bROjvF41=so56uSTwB-=PAyAczD99jeQ@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Matthew Rahtz <mrahtz-lFL+a/sBLVi/3pe1ocb+swC/G2K4zDHf@public.gmane.org>,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20140310133451.GA17807-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 11 Mar 2014, Yan Rui wrote:
+On Mon, Mar 10, 2014 at 06:34:51AM -0700, Christoph Hellwig wrote:
+> On Tue, Mar 04, 2014 at 02:04:42PM -0500, J. Bruce Fields wrote:
+> > diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> > index 6d7be3f..eea5ad1 100644
+> > --- a/fs/nfsd/vfs.c
+> > +++ b/fs/nfsd/vfs.c
+> > @@ -404,6 +404,7 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+> >  	umode_t		ftype = 0;
+> >  	__be32		err;
+> >  	int		host_err;
+> > +	bool		get_write_count;
+> >  	int		size_change = 0;
+> >  
+> >  	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME | ATTR_SIZE))
+> > @@ -411,10 +412,18 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+> >  	if (iap->ia_valid & ATTR_SIZE)
+> >  		ftype = S_IFREG;
+> >  
+> > +	/* Callers that do fh_verify should do the fh_want_write: */
+> > +	get_write_count = !fhp->fh_dentry;
+> 
+> Eww, this is nasty.  Given that there are only 6 callers of nfsd_setattr
+> in total, and only half of these might cause size changes I'd rather
+> deal with this properly, e.g. by taking both the fh_verify into the
+> callers.
 
-> Date: Tue, 11 Mar 2014 00:09:47 +0800
-> From: Yan Rui <rui.yan@gmail.com>
-> To: linux-ext4@vger.kernel.org
-> Cc: Yan Rui <rui.yan@gmail.com>
-> Subject: delayed block allocation failed with error -28
-> 
-> Hi,
-> 
-> /var/log/message says below and no hardware related issues found.
-> 
-> Mar 10 16:20:56 d02 auditd[4056]: Audit daemon rotating log files
-> Mar 10 16:25:13 d02 kernel: EXT4-fs (sda): delayed block allocation
-> failed for inode 47579238 at logical offset 395 with max blocks 1654
-> with error -28
-> Mar 10 16:25:13 d02 kernel:
-> Mar 10 16:25:13 d02 kernel: This should not happen!!  Data will be lost
-> Mar 10 16:25:13 d02 kernel: Total free blocks count 0
-> Mar 10 16:25:13 d02 kernel: Free/Dirty block details
-> Mar 10 16:25:13 d02 kernel: free_blocks=0
-> Mar 10 16:25:13 d02 kernel: dirty_blocks=-4294772779
-> Mar 10 16:25:13 d02 kernel: Block reservation details
-> Mar 10 16:25:13 d02 kernel: i_reserved_data_blocks=1654
-> Mar 10 16:25:13 d02 kernel: i_reserved_meta_blocks=7
-> Mar 10 16:25:13 d02 kernel: EXT4-fs (sda): delayed block allocation
-> failed for inode 58851678 at logical offset 0 with max blocks 2048
-> with error -28
-> Mar 10 16:25:13 d02 kernel:
-> Mar 10 16:25:13 d02 kernel: This should not happen!!  Data will be lost
-> Mar 10 16:25:13 d02 kernel: Total free blocks count 0
-> Mar 10 16:25:13 d02 kernel: Free/Dirty block details
-> Mar 10 16:25:13 d02 kernel: free_blocks=0
-> Mar 10 16:25:13 d02 kernel: dirty_blocks=-4294772779
-> Mar 10 16:25:13 d02 kernel: Block reservation details
-> Mar 10 16:25:13 d02 kernel: i_reserved_data_blocks=2049
-> Mar 10 16:25:13 d02 kernel: i_reserved_meta_blocks=7
-> 
-> [root@d02 ~]# uname -a
-> Linux d02 2.6.32-358.11.1.el6.x86_64 #1 SMP Wed Jun 12 03:34:52 UTC
-> 2013 x86_64 x86_64 x86_64 GNU/Linux
+Maybe so.
 
-Hi,
+(Size is irrelevant, though, right?  Won't any setattr need an elevated
+write count?)
 
-It seems that you're using RHEL6 kernel. I do not think that anyone
-on this list will be able to help you with this kernel since it is
-very much different from current upstream at this point.
-
-Please contact you Red Hat support so we can deal with this issue.
-
-Thanks!
--Lukas
-
-> 
-> [root@d02 ~]# tune2fs -l /dev/sda
-> tune2fs 1.41.12 (17-May-2010)
-> Filesystem volume name:   <none>
-> Last mounted on:          /data/5aacbdff-697f-4b70-9b55-f912d41f57da
-> Filesystem UUID:          5aacbdff-697f-4b70-9b55-f912d41f57da
-> Filesystem magic number:  0xEF53
-> Filesystem revision #:    1 (dynamic)
-> Filesystem features:      has_journal ext_attr resize_inode dir_index
-> filetype needs_recovery extent flex_bg sparse_super large_file
-> huge_file uninit_bg dir_nlink extra_isize
-> Filesystem flags:         signed_directory_hash
-> Default mount options:    (none)
-> Filesystem state:         clean
-> Errors behavior:          Continue
-> Filesystem OS type:       Linux
-> Inode count:              183148544
-> Block count:              732566646
-> Reserved block count:     0
-> Free blocks:              41810477
-> Free inodes:              182809495
-> First block:              0
-> Block size:               4096
-> Fragment size:            4096
-> Reserved GDT blocks:      849
-> Blocks per group:         32768
-> Fragments per group:      32768
-> Inodes per group:         8192
-> Inode blocks per group:   512
-> Flex block group size:    16
-> Filesystem created:       Fri Jul  5 10:11:15 2013
-> Last mount time:          Mon Jan 27 06:09:43 2014
-> Last write time:          Mon Jan 27 06:09:43 2014
-> Mount count:              18
-> Maximum mount count:      20
-> Last checked:             Fri Jul  5 10:11:15 2013
-> Check interval:           15552000 (6 months)
-> Next check after:         Wed Jan  1 10:11:15 2014
-> Lifetime writes:          6275 GB
-> Reserved blocks uid:      0 (user root)
-> Reserved blocks gid:      0 (group root)
-> First inode:              11
-> Inode size:               256
-> Required extra isize:     28
-> Desired extra isize:      28
-> Journal inode:            8
-> Default directory hash:   half_md4
-> Directory Hash Seed:      e0d65199-15d8-4c39-aeeb-1d6cf3c6aebf
-> Journal backup:           inode blocks
-> 
-> The number of dirty_blocks looks weird,  is it a known bug?
-> 
-> Regards,
-> Rui
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+--b.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
