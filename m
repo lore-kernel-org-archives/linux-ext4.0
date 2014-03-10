@@ -1,53 +1,117 @@
-From: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Subject: Re: warning in ext4_journal_start_sb on filesystem freeze
-Date: Mon, 10 Mar 2014 06:34:51 -0700
-Message-ID: <20140310133451.GA17807@infradead.org>
-References: <217983071.143460.1385453196946.JavaMail.zimbra@rapitasystems.com>
- <1697998867.143517.1385454051031.JavaMail.zimbra@rapitasystems.com>
- <20131126125826.GA4503@quack.suse.cz>
- <622177618.727.1393062606061.JavaMail.zimbra@rapitasystems.com>
- <20140224095525.GA20532@quack.suse.cz>
- <20140224154532.GB11992@fieldses.org>
- <20140225102126.GB1669@quack.suse.cz>
- <20140304164306.GC12805@fieldses.org>
- <20140304190442.GE12805@fieldses.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 71791] New: Unlinking a file that was moved to another folder
+ but still open by other process blocks either process (not always
+ reproducible)
+Date: Mon, 10 Mar 2014 14:01:44 +0000
+Message-ID: <bug-71791-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Matthew Rahtz <mrahtz-lFL+a/sBLVi/3pe1ocb+swC/G2K4zDHf@public.gmane.org>,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20140304190442.GE12805-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.19.201]:47644 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752628AbaCJOBr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 10 Mar 2014 10:01:47 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 99DAF20251
+	for <linux-ext4@vger.kernel.org>; Mon, 10 Mar 2014 14:01:46 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 8106020257
+	for <linux-ext4@vger.kernel.org>; Mon, 10 Mar 2014 14:01:44 +0000 (UTC)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 04, 2014 at 02:04:42PM -0500, J. Bruce Fields wrote:
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index 6d7be3f..eea5ad1 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -404,6 +404,7 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
->  	umode_t		ftype = 0;
->  	__be32		err;
->  	int		host_err;
-> +	bool		get_write_count;
->  	int		size_change = 0;
->  
->  	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME | ATTR_SIZE))
-> @@ -411,10 +412,18 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
->  	if (iap->ia_valid & ATTR_SIZE)
->  		ftype = S_IFREG;
->  
-> +	/* Callers that do fh_verify should do the fh_want_write: */
-> +	get_write_count = !fhp->fh_dentry;
+https://bugzilla.kernel.org/show_bug.cgi?id=71791
 
-Eww, this is nasty.  Given that there are only 6 callers of nfsd_setattr
-in total, and only half of these might cause size changes I'd rather
-deal with this properly, e.g. by taking both the fh_verify into the
-callers.
+            Bug ID: 71791
+           Summary: Unlinking a file that was moved to another folder but
+                    still open by other process blocks either process (not
+                    always reproducible)
+           Product: File System
+           Version: 2.5
+    Kernel Version: 3.12.9
+          Hardware: All
+                OS: Linux
+              Tree: PREEMPT_RT
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: edpeur@gmail.com
+        Regression: No
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Either the rm process or more rarely the process that has the file open will
+block when a file that was moved to other folder is unlinked while still open
+by other process. This is not always reproducible, but like 20% reproducible.
+
+Here is the most common trace:
+
+[27600.716129] INFO: task rm:28925 blocked for more than 120 seconds.
+[27600.716139]       Tainted: G        W    3.12-1-rt-amd64 #1
+[27600.716142] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this
+message.
+[27600.716147] rm              D ffff88007eb8a5f0     0 28925  28924 0x00000004
+[27600.716159]  ffff88007eb8a280 0000000000000086 ffff88004542bfd8
+ffff88004542bfd8
+[27600.716162]  ffff88004542bfd8 ffff88004542bfd8 ffff88007eb8a280
+ffff88007eb8a280
+[27600.716165]  0000000000000002 ffffffff81123410 ffff88004542bd50
+ffff88004542bdb8
+[27600.716172] Call Trace:
+[27600.716185]  [<ffffffff81123410>] ? wait_on_page_read+0x60/0x60
+[27600.716190]  [<ffffffff814aecb1>] ? schedule+0x21/0x90
+[27600.716194]  [<ffffffff814aeda3>] ? io_schedule+0x83/0xd0
+[27600.716197]  [<ffffffff81123415>] ? sleep_on_page+0x5/0x10
+[27600.716201]  [<ffffffff814ad594>] ? __wait_on_bit+0x54/0x80
+[27600.716204]  [<ffffffff8112322f>] ? wait_on_page_bit+0x7f/0x90
+[27600.716209]  [<ffffffff81082050>] ? wake_atomic_t_function+0x30/0x30
+[27600.716213]  [<ffffffff81130795>] ? pagevec_lookup+0x15/0x20
+[27600.716217]  [<ffffffff8113284b>] ? truncate_inode_pages_range+0x26b/0x490
+[27600.716265]  [<ffffffffa02f944d>] ? ext4_evict_inode+0x13d/0x540 [ext4]
+[27600.716270]  [<ffffffff8119e055>] ? evict+0xb5/0x1b0
+[27600.716279]  [<ffffffff8119180b>] ? do_unlinkat+0x19b/0x250
+[27600.716282]  [<ffffffff81090140>] ? migrate_enable+0xa0/0x1e0
+[27600.716286]  [<ffffffff811c3795>] ? fsnotify_find_inode_mark+0x65/0x90
+[27600.716288]  [<ffffffff811c4d64>] ? dnotify_flush+0x34/0x110
+[27600.716291]  [<ffffffff814b7ab9>] ? system_call_fastpath+0x16/0x1b
+
+And this trace has only happened once:
+
+[49440.736350] INFO: task mplayer:30035 blocked for more than 120 seconds.
+[49440.736360]       Tainted: G        W    3.12-1-rt-amd64 #1
+[49440.736362] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this
+message.
+[49440.736365] mplayer         D ffff88001d4dd9b0     0 30035  23580 0x00000000
+[49440.736375]  ffff88001d4dd640 0000000000000086 ffff88003e31bfd8
+ffff88003e31bfd8
+[49440.736377]  ffff88003e31bfd8 ffff88003e31bfd8 ffff88001d4dd640
+ffff88001d4dd640
+[49440.736379]  0000000000000002 ffffffff81123410 ffff88003e31bd40
+ffff88003e31bda0
+[49440.736383] Call Trace:
+[49440.736396]  [<ffffffff81123410>] ? wait_on_page_read+0x60/0x60
+[49440.736400]  [<ffffffff814aecb1>] ? schedule+0x21/0x90
+[49440.736403]  [<ffffffff814aeda3>] ? io_schedule+0x83/0xd0
+[49440.736405]  [<ffffffff81123415>] ? sleep_on_page+0x5/0x10
+[49440.736407]  [<ffffffff814ad594>] ? __wait_on_bit+0x54/0x80
+[49440.736409]  [<ffffffff8112322f>] ? wait_on_page_bit+0x7f/0x90
+[49440.736412]  [<ffffffff81082050>] ? wake_atomic_t_function+0x30/0x30
+[49440.736416]  [<ffffffff81130795>] ? pagevec_lookup+0x15/0x20
+[49440.736419]  [<ffffffff8113284b>] ? truncate_inode_pages_range+0x26b/0x490
+[49440.736491]  [<ffffffffa031944d>] ? ext4_evict_inode+0x13d/0x540 [ext4]
+[49440.736495]  [<ffffffff8119e055>] ? evict+0xb5/0x1b0
+[49440.736497]  [<ffffffff8119a2b8>] ? dentry_kill+0x218/0x270
+[49440.736499]  [<ffffffff8119a374>] ? dput+0x64/0x110
+[49440.736502]  [<ffffffff811857fb>] ? __fput+0x13b/0x200
+[49440.736505]  [<ffffffff8107e077>] ? task_work_run+0x97/0xd0
+[49440.736510]  [<ffffffff810149e1>] ? do_notify_resume+0x81/0xe0
+[49440.736513]  [<ffffffff814b7d76>] ? int_signal+0x12/0x17
+
+This is the kernel used:
+http://ftp.debian.org/debian/pool/main/l/linux/linux-image-3.12-1-rt-amd64_3.12.9-1_amd64.deb
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
