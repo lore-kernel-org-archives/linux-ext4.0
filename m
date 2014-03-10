@@ -1,53 +1,52 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/6] jbd2: don't hold j_state_lock while calling wake_up()
-Date: Sun,  9 Mar 2014 01:05:36 -0500
-Message-ID: <1394345141-3471-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: "=?utf-8?B?57O757uf566h55CG5ZGYwq4=?=" <perioncl@ncl.edu.tw>
+Subject: =?utf-8?B?5oKo55qE55S15a2Q6YKu5Lu25biQ5oi35oCl6L+r?=
+	=?utf-8?B?5ZKM6YeN6KaB5rOo5oSP5LqL6aG5?=
+Date: Mon, 10 Mar 2014 18:48:45 +0800 (CST)
+Message-ID: <1394448516.7294.perioncl__4191.45907876572$1394448692$gmane$org@ncl.edu.tw>
+Reply-To: "=?utf-8?B?57O757uf566h55CG5ZGYwq4=?=" <euroraffle@yahoo.com.hk>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: unlisted-recipients:; (no To-header on input)
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:38903 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751846AbaCIGFw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 9 Mar 2014 01:05:52 -0500
+Received: from msg33.ncl.edu.tw ([192.192.58.33]:49679 "HELO msg.ncl.edu.tw"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
+	id S1752304AbaCJKu7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Mar 2014 06:50:59 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The j_state_lock is one of the hottest locks in the jbd2 layer and
-thus one of its scalability bottlenecks.
+=E4=BA=B2=E7=88=B1=E7=9A=84=E7=94=A8=E6=88=B7=E7=9A=84Webmail=20
 
-We don't need to be holding the j_state_lock while we are calling
-wake_up(&journal->j_wait_commit), so release the lock a little bit
-earlier.
+=E6=84=9F=E8=B0=A2=E6=82=A8=E8=AE=A2=E9=98=85=E6=88=91=E4=BB=AC=E7=9A=84=
+=E4=BC=81=E4=B8=9A=E9=82=AE=E5=B1=80=E6=9C=8D=E5=8A=A1=E3=80=82=E9=9A=8F=
+=E7=9D=80=E6=88=91=E4=BB=AC=E7=9A=84=E4=B8=8D=E6=96=AD=E5=8A=AA=E5=8A=9B=
+=EF=BC=8C=E6=8F=90=E4=BE=9B=E6=9B=B4=E9=AB=98=E7=9A=84=E6=9C=8D=E5=8A=A1=
+=E6=B0=B4=E5=B9=B3=E7=9A=84=E4=B8=80=E9=83=A8=E5=88=86=EF=BC=8C=E6=88=91=
+=E4=BB=AC=E5=BE=88=E9=AB=98=E5=85=B4=E5=9C=B0=E9=80=9A=E7=9F=A5=E4=BD=A0=
+=EF=BC=8C=E6=88=91=E4=BB=AC=E5=B7=B2=E7=BB=8F=E5=8D=87=E7=BA=A7=E4=BA=86=
+=E6=82=A8=E7=9A=84=E7=94=B5=E5=AD=90=E9=82=AE=E4=BB=B6=E5=B8=90=E6=88=B7=
+=EF=BC=8C=E6=82=A8=E9=9C=80=E8=A6=81=E6=BF=80=E6=B4=BB=E6=82=A8=E7=9A=84=
+=E5=B8=90=E5=8F=B7=EF=BC=8C=E4=B8=BA=E4=BA=86=E6=96=B9=E4=BE=BF=E6=82=A8=
+=E7=9A=84=E5=B8=90=E5=8F=B7=E6=BF=80=E6=B4=BB=E4=B8=8E=E6=88=91=E4=BB=AC=
+=E5=90=88=E4=BD=9C=EF=BC=8C=E6=82=A8=E5=8F=AF=E4=BB=A5=E9=80=9A=E8=BF=87=
+=E7=82=B9=E5=87=BBverifiy /=E4=BD=BF=E7=94=A8=E4=B8=8B=E9=9D=A2=E7=9A=84=
+=E9=93=BE=E6=8E=A5=EF=BC=9A=20
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/jbd2/journal.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+=E7=82=B9=E5=87=BB=E8=BF=99=E9=87=8C=EF=BC=9Ahttp://chinnnawebmails.0ad=
+=2Einfo/=20
 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 244b6f6..67b8e30 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -302,8 +302,8 @@ static void journal_kill_thread(journal_t *journal)
- 	journal->j_flags |= JBD2_UNMOUNT;
- 
- 	while (journal->j_task) {
--		wake_up(&journal->j_wait_commit);
- 		write_unlock(&journal->j_state_lock);
-+		wake_up(&journal->j_wait_commit);
- 		wait_event(journal->j_wait_done_commit, journal->j_task == NULL);
- 		write_lock(&journal->j_state_lock);
- 	}
-@@ -710,8 +710,8 @@ int jbd2_log_wait_commit(journal_t *journal, tid_t tid)
- 	while (tid_gt(tid, journal->j_commit_sequence)) {
- 		jbd_debug(1, "JBD2: want %d, j_commit_sequence=%d\n",
- 				  tid, journal->j_commit_sequence);
--		wake_up(&journal->j_wait_commit);
- 		read_unlock(&journal->j_state_lock);
-+		wake_up(&journal->j_wait_commit);
- 		wait_event(journal->j_wait_done_commit,
- 				!tid_gt(tid, journal->j_commit_sequence));
- 		read_lock(&journal->j_state_lock);
--- 
-1.9.0
+=E6=88=91=E4=BB=AC=E7=9C=9F=E8=AF=9A=E5=9C=B0=E9=81=93=E6=AD=89=E8=BF=99=
+=E7=A7=8D=E4=B8=8D=E4=BE=BF=E3=80=82=20
 
+=E7=9C=9F=E8=AF=9A=E7=9A=84=EF=BC=8C=20
+IT=E6=9C=8D=E5=8A=A1=EF=BC=81=20
+=E7=B3=BB=E7=BB=9F=E7=AE=A1=E7=90=86=E5=91=98=C2=AE=20
+=E5=8D=87=E7=BA=A7=E6=82=A8=E7=9A=84=E5=B8=90=E6=88=B7=EF=BC=81=20
+=C2=A9=E7=89=88=E6=9D=83=E6=89=80=E6=9C=892014=E5=B9=B4=E4=BC=81=E4=B8=9A=
+=E9=82=AE=E5=B1=80
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
