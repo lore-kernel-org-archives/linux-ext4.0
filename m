@@ -1,52 +1,57 @@
-From: "=?utf-8?B?57O757uf566h55CG5ZGYwq4=?=" <perioncl@ncl.edu.tw>
-Subject: =?utf-8?B?5oKo55qE55S15a2Q6YKu5Lu25biQ5oi35oCl6L+r?=
-	=?utf-8?B?5ZKM6YeN6KaB5rOo5oSP5LqL6aG5?=
-Date: Mon, 10 Mar 2014 18:48:45 +0800 (CST)
-Message-ID: <1394448516.7294.perioncl__4191.45907876572$1394448692$gmane$org@ncl.edu.tw>
-Reply-To: "=?utf-8?B?57O757uf566h55CG5ZGYwq4=?=" <euroraffle@yahoo.com.hk>
+From: Lucas Nussbaum <lucas.nussbaum@loria.fr>
+Subject: Re: [PATCH, RFC] fs: only call sync_filesystem() when remounting
+ read-only
+Date: Mon, 10 Mar 2014 12:45:08 +0100
+Message-ID: <20140310114508.GA28107@xanadu.blop.info>
+References: <20140305141343.GA26225@xanadu.blop.info>
+ <20140308160818.GC11633@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: unlisted-recipients:; (no To-header on input)
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org,
+	"linux-fsdevel@vger.kernel.org Emmanuel Jeanvoine"
+	<emmanuel.jeanvoine@inria.fr>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from msg33.ncl.edu.tw ([192.192.58.33]:49679 "HELO msg.ncl.edu.tw"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
-	id S1752304AbaCJKu7 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Mar 2014 06:50:59 -0400
+Received: from xanadu.blop.info ([178.79.145.134]:35848 "EHLO xanadu.blop.info"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751975AbaCJMId (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 10 Mar 2014 08:08:33 -0400
+Content-Disposition: inline
+In-Reply-To: <20140308160818.GC11633@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-=E4=BA=B2=E7=88=B1=E7=9A=84=E7=94=A8=E6=88=B7=E7=9A=84Webmail=20
+On 08/03/14 at 11:08 -0500, Theodore Ts'o wrote:
+> On Wed, Mar 05, 2014 at 03:13:43PM +0100, Lucas Nussbaum wrote:
+> > TL;DR: we experience long temporary hangs when doing multiple mount -o
+> > remount at the same time as other I/O on an ext4 filesystem.
+> > 
+> > When starting hundreds of LXC containers simultaneously on a system, the
+> > boot of some containers was hanging. We tracked this down to an
+> > initscript's use of mount -o remount, which was hanging in D state.
+> > 
+> > We reproduced the problem outside of LXC, with the script available at
+> > [0]. That script initiates 1000 mount -o remount, and performs some
+> > writes using a big cp to the same filesystem during the remounts....
+> 
+> +linux-fsdevel since the patch modifies fs/super.c
+> 
+> Lukas, can you try this patch?  I'm pretty sure this is what's going
+> on.  It turns out each "mount -o remount" is implying an fsync(), so
+> your test case is identical to copying a large file while having
+> thousand of processes calling syncfs() on the file system, with the
+> predictable results.
 
-=E6=84=9F=E8=B0=A2=E6=82=A8=E8=AE=A2=E9=98=85=E6=88=91=E4=BB=AC=E7=9A=84=
-=E4=BC=81=E4=B8=9A=E9=82=AE=E5=B1=80=E6=9C=8D=E5=8A=A1=E3=80=82=E9=9A=8F=
-=E7=9D=80=E6=88=91=E4=BB=AC=E7=9A=84=E4=B8=8D=E6=96=AD=E5=8A=AA=E5=8A=9B=
-=EF=BC=8C=E6=8F=90=E4=BE=9B=E6=9B=B4=E9=AB=98=E7=9A=84=E6=9C=8D=E5=8A=A1=
-=E6=B0=B4=E5=B9=B3=E7=9A=84=E4=B8=80=E9=83=A8=E5=88=86=EF=BC=8C=E6=88=91=
-=E4=BB=AC=E5=BE=88=E9=AB=98=E5=85=B4=E5=9C=B0=E9=80=9A=E7=9F=A5=E4=BD=A0=
-=EF=BC=8C=E6=88=91=E4=BB=AC=E5=B7=B2=E7=BB=8F=E5=8D=87=E7=BA=A7=E4=BA=86=
-=E6=82=A8=E7=9A=84=E7=94=B5=E5=AD=90=E9=82=AE=E4=BB=B6=E5=B8=90=E6=88=B7=
-=EF=BC=8C=E6=82=A8=E9=9C=80=E8=A6=81=E6=BF=80=E6=B4=BB=E6=82=A8=E7=9A=84=
-=E5=B8=90=E5=8F=B7=EF=BC=8C=E4=B8=BA=E4=BA=86=E6=96=B9=E4=BE=BF=E6=82=A8=
-=E7=9A=84=E5=B8=90=E5=8F=B7=E6=BF=80=E6=B4=BB=E4=B8=8E=E6=88=91=E4=BB=AC=
-=E5=90=88=E4=BD=9C=EF=BC=8C=E6=82=A8=E5=8F=AF=E4=BB=A5=E9=80=9A=E8=BF=87=
-=E7=82=B9=E5=87=BBverifiy /=E4=BD=BF=E7=94=A8=E4=B8=8B=E9=9D=A2=E7=9A=84=
-=E9=93=BE=E6=8E=A5=EF=BC=9A=20
+Hi Ted,
 
-=E7=82=B9=E5=87=BB=E8=BF=99=E9=87=8C=EF=BC=9Ahttp://chinnnawebmails.0ad=
-=2Einfo/=20
+I can confirm that:
+1) the patch solves my problem
+2) issuing 'sync' instead of 'mount -o remount' indeed exhibits the
+   problem again
 
-=E6=88=91=E4=BB=AC=E7=9C=9F=E8=AF=9A=E5=9C=B0=E9=81=93=E6=AD=89=E8=BF=99=
-=E7=A7=8D=E4=B8=8D=E4=BE=BF=E3=80=82=20
+However, I'm curious: why would such a workload (multiple syncfs()
+initiated during a write) block for several minutes on an ext4
+filesystem? I've just tried again on ext3, and it's not a problem in
+that case.
 
-=E7=9C=9F=E8=AF=9A=E7=9A=84=EF=BC=8C=20
-IT=E6=9C=8D=E5=8A=A1=EF=BC=81=20
-=E7=B3=BB=E7=BB=9F=E7=AE=A1=E7=90=86=E5=91=98=C2=AE=20
-=E5=8D=87=E7=BA=A7=E6=82=A8=E7=9A=84=E5=B8=90=E6=88=B7=EF=BC=81=20
-=C2=A9=E7=89=88=E6=9D=83=E6=89=80=E6=9C=892014=E5=B9=B4=E4=BC=81=E4=B8=9A=
-=E9=82=AE=E5=B1=80
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Lucas
