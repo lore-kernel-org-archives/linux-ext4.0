@@ -1,78 +1,105 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH, RFC] fs: only call sync_filesystem() when remounting
- read-only
-Date: Mon, 10 Mar 2014 10:41:28 -0400
-Message-ID: <20140310144128.GC10562@thunk.org>
-References: <20140305141343.GA26225@xanadu.blop.info>
- <20140308160818.GC11633@thunk.org>
- <20140310114508.GA28107@xanadu.blop.info>
+From: Yan Rui <rui.yan@gmail.com>
+Subject: delayed block allocation failed with error -28
+Date: Tue, 11 Mar 2014 00:09:47 +0800
+Message-ID: <CAPoEN5nYGBG6VNYuN2bROjvF41=so56uSTwB-=PAyAczD99jeQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Emmanuel Jeanvoine <emmanuel.jeanvoine@inria.fr>
-To: Lucas Nussbaum <lucas.nussbaum@loria.fr>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20140310114508.GA28107@xanadu.blop.info>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Yan Rui <rui.yan@gmail.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pa0-f51.google.com ([209.85.220.51]:34855 "EHLO
+	mail-pa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753411AbaCJQJs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Mar 2014 12:09:48 -0400
+Received: by mail-pa0-f51.google.com with SMTP id kq14so7418493pab.24
+        for <linux-ext4@vger.kernel.org>; Mon, 10 Mar 2014 09:09:47 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 10, 2014 at 12:45:08PM +0100, Lucas Nussbaum wrote:
-> > Lukas, can you try this patch?  I'm pretty sure this is what's going
-> > on.  It turns out each "mount -o remount" is implying an fsync(), so
-> > your test case is identical to copying a large file while having
-> > thousand of processes calling syncfs() on the file system, with the
-> > predictable results.
-> 
-> Hi Ted,
-> 
-> I can confirm that:
-> 1) the patch solves my problem
-> 2) issuing 'sync' instead of 'mount -o remount' indeed exhibits the
->    problem again
-> 
-> However, I'm curious: why would such a workload (multiple syncfs()
-> initiated during a write) block for several minutes on an ext4
-> filesystem? I've just tried again on ext3, and it's not a problem in
-> that case.
+Hi,
 
-The reason why is because ext3 is less careful than ext4.
-ext3_sync_fs() simply tries to start a commit, and if there is already
-a commit already started, it does nothing.  So if you issue a
-gazillion syncfs() calls, with ext3, it's a no-op.
+/var/log/message says below and no hardware related issues found.
 
-For ext4, each syncfs() call will result in a SYNC_CACHE flushh being
-sent to the disk:
+Mar 10 16:20:56 d02 auditd[4056]: Audit daemon rotating log files
+Mar 10 16:25:13 d02 kernel: EXT4-fs (sda): delayed block allocation
+failed for inode 47579238 at logical offset 395 with max blocks 1654
+with error -28
+Mar 10 16:25:13 d02 kernel:
+Mar 10 16:25:13 d02 kernel: This should not happen!!  Data will be lost
+Mar 10 16:25:13 d02 kernel: Total free blocks count 0
+Mar 10 16:25:13 d02 kernel: Free/Dirty block details
+Mar 10 16:25:13 d02 kernel: free_blocks=0
+Mar 10 16:25:13 d02 kernel: dirty_blocks=-4294772779
+Mar 10 16:25:13 d02 kernel: Block reservation details
+Mar 10 16:25:13 d02 kernel: i_reserved_data_blocks=1654
+Mar 10 16:25:13 d02 kernel: i_reserved_meta_blocks=7
+Mar 10 16:25:13 d02 kernel: EXT4-fs (sda): delayed block allocation
+failed for inode 58851678 at logical offset 0 with max blocks 2048
+with error -28
+Mar 10 16:25:13 d02 kernel:
+Mar 10 16:25:13 d02 kernel: This should not happen!!  Data will be lost
+Mar 10 16:25:13 d02 kernel: Total free blocks count 0
+Mar 10 16:25:13 d02 kernel: Free/Dirty block details
+Mar 10 16:25:13 d02 kernel: free_blocks=0
+Mar 10 16:25:13 d02 kernel: dirty_blocks=-4294772779
+Mar 10 16:25:13 d02 kernel: Block reservation details
+Mar 10 16:25:13 d02 kernel: i_reserved_data_blocks=2049
+Mar 10 16:25:13 d02 kernel: i_reserved_meta_blocks=7
 
-	/*
-	 * Data writeback is possible w/o journal transaction, so barrier must
-	 * being sent at the end of the function. But we can skip it if
-	 * transaction_commit will do it for us.
-	 */
-	target = jbd2_get_latest_transaction(sbi->s_journal);
-	if (wait && sbi->s_journal->j_flags & JBD2_BARRIER &&
-	    !jbd2_trans_will_send_data_barrier(sbi->s_journal, target))
-		needs_barrier = true;
-		.
-		.
-		.
-	if (needs_barrier) {
-		int err;
-		err = blkdev_issue_flush(sb->s_bdev, GFP_KERNEL, NULL);
-		if (!ret)
-			ret = err;
-	}
+[root@d02 ~]# uname -a
+Linux d02 2.6.32-358.11.1.el6.x86_64 #1 SMP Wed Jun 12 03:34:52 UTC
+2013 x86_64 x86_64 x86_64 GNU/Linux
 
-We can debate whether or not this care is necessary, and since
-syncfs() isn't terribly reliable, we could add hacks so that if an
-syncfs() had been issued in the last 100ms, we could make it be a
-no-op, or some other horrible hack.
+[root@d02 ~]# tune2fs -l /dev/sda
+tune2fs 1.41.12 (17-May-2010)
+Filesystem volume name:   <none>
+Last mounted on:          /data/5aacbdff-697f-4b70-9b55-f912d41f57da
+Filesystem UUID:          5aacbdff-697f-4b70-9b55-f912d41f57da
+Filesystem magic number:  0xEF53
+Filesystem revision #:    1 (dynamic)
+Filesystem features:      has_journal ext_attr resize_inode dir_index
+filetype needs_recovery extent flex_bg sparse_super large_file
+huge_file uninit_bg dir_nlink extra_isize
+Filesystem flags:         signed_directory_hash
+Default mount options:    (none)
+Filesystem state:         clean
+Errors behavior:          Continue
+Filesystem OS type:       Linux
+Inode count:              183148544
+Block count:              732566646
+Reserved block count:     0
+Free blocks:              41810477
+Free inodes:              182809495
+First block:              0
+Block size:               4096
+Fragment size:            4096
+Reserved GDT blocks:      849
+Blocks per group:         32768
+Fragments per group:      32768
+Inodes per group:         8192
+Inode blocks per group:   512
+Flex block group size:    16
+Filesystem created:       Fri Jul  5 10:11:15 2013
+Last mount time:          Mon Jan 27 06:09:43 2014
+Last write time:          Mon Jan 27 06:09:43 2014
+Mount count:              18
+Maximum mount count:      20
+Last checked:             Fri Jul  5 10:11:15 2013
+Check interval:           15552000 (6 months)
+Next check after:         Wed Jan  1 10:11:15 2014
+Lifetime writes:          6275 GB
+Reserved blocks uid:      0 (user root)
+Reserved blocks gid:      0 (group root)
+First inode:              11
+Inode size:               256
+Required extra isize:     28
+Desired extra isize:      28
+Journal inode:            8
+Default directory hash:   half_md4
+Directory Hash Seed:      e0d65199-15d8-4c39-aeeb-1d6cf3c6aebf
+Journal backup:           inode blocks
 
-But given that these hacks are horrible, it's not clear that it's
-worth it to do all of this just to something where userspace is doing
-something really stupid, whether it is issuing thousands of syncfs()
-or "mount -o remount" requests per second.
+The number of dirty_blocks looks weird,  is it a known bug?
 
-Cheers,
-
-						- Ted
+Regards,
+Rui
