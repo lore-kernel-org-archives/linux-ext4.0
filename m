@@ -1,55 +1,33 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: shared/289 failures on metadata_csum, e2fsprogs master branch
-Date: Tue, 11 Mar 2014 13:45:49 -0700
-Message-ID: <20140311204549.GB31864@birch.djwong.org>
-References: <20140311193819.GA2274@wallace>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 01/49] create_inode: clean up return mess in
+ do_write_internal
+Date: Tue, 11 Mar 2014 17:08:53 -0400
+Message-ID: <20140311210853.GK2190@thunk.org>
+References: <20140311065356.30585.47192.stgit@birch.djwong.org>
+ <20140311065404.30585.9687.stgit@birch.djwong.org>
+ <9EBDB4AF-4901-4416-ACC4-6F25233316BD@dilger.ca>
+ <20140311204131.GA31864@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Eric Whitney <enwlinux@gmail.com>
+Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:28582 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753782AbaCKUpx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Mar 2014 16:45:53 -0400
+Received: from imap.thunk.org ([74.207.234.97]:40112 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755379AbaCKVI4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 11 Mar 2014 17:08:56 -0400
 Content-Disposition: inline
-In-Reply-To: <20140311193819.GA2274@wallace>
+In-Reply-To: <20140311204131.GA31864@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 11, 2014 at 03:38:19PM -0400, Eric Whitney wrote:
-> Xfstest shared/289 fails when run on an ext4 test filesystem created with
-> the metadata_csum and 64bit options and using executables from the latest
-> e2fsprogs master branch (46d2a26683).  I've seen the problem on kernel
-> versions from 3.14-rc1 through 3.14-rc6, but I think this is an e2fsprogs
-> regression rather than a kernel problem.
+On Tue, Mar 11, 2014 at 01:41:31PM -0700, Darrick J. Wong wrote:
+> > This seems a bit strange.  It looks like an error return, but it will
+> > actually return "0" since this branch is only entered if retval == 0.
+> > Should this return an explicit error value here?
 > 
-> The failing portion of shared/289 can be boiled down to:
-> 
-> mkfs.ext4 -O metadata_csum,64bit /dev/vdc
-> dumpe2fs -h /dev/vdc 2>/dev/null | awk '/Free blocks:/{print $3}'
-> 
-> The problem (in my test config) is that the reported free block value is
-> 184684916231 (much larger than my test device) where the reported block
-> count is 1382400 (much saner).
-> 
-> The bug appears to have been introduced between two merges of the maint
-> branch: 72958b6670 (good - 10 Jan) and f0996c12d5 (bad - 30 Jan).  Some
-> weeks ago, I thought I'd bisected the problem to a specific patch
-> (8e44eb64bb - libext2fs: mark group data blocks when loading block bitmap),
-> which seemed like a plausible candidate.  However, I find I can't
-> reproduce the bisection now, as e2fsprogs doesn't want to support the
-> metadata_csum, 64bit options during bisection in the master branch (that'll
-> teach me for not mentioning this earlier... :-) ).
+> You're right; maybe we should return EXT2_ET_FILE_EXISTS or something?
 
-This is fixed by patch #17 ("libext2fs: fix 64bit overflow in
-ext2fs_block_alloc_stats_range") in the patchbomb I sent out earlier today.
+EXT2_ET_FILE_EXISTS sounds good to me.
 
---D
-> 
-> Thanks,
-> Eric
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+					- Ted
