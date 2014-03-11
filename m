@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 30/49] libext2fs: file IO routines should handle uninit blocks
-Date: Mon, 10 Mar 2014 23:57:09 -0700
-Message-ID: <20140311065709.30585.72112.stgit@birch.djwong.org>
+Subject: [PATCH 32/49] resize2fs: when toggling 64bit,
+ don't free in-use bg data clusters
+Date: Mon, 10 Mar 2014 23:57:22 -0700
+Message-ID: <20140311065722.30585.96456.stgit@birch.djwong.org>
 References: <20140311065356.30585.47192.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,78 +10,156 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:21968 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:22079 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754678AbaCKG5O (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Mar 2014 02:57:14 -0400
+	with ESMTP id S1753254AbaCKG50 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Mar 2014 02:57:26 -0400
 In-Reply-To: <20140311065356.30585.47192.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The file IO routines do not handle uninit blocks at all.  The read
-method should check for the uninit flag and return a buffer of zeroes,
-and the write routine should convert unwritten extents.
+Currently, move_bg_metadata() assumes that if a block containing a
+superblock or a group descriptor is no longer needed, then it is safe
+to free the whole cluster.  This of course isn't true, for bitmaps and
+inode tables can share these clusters.  Therefore, check a little more
+carefully before freeing clusters.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/fileio.c |   24 ++++++++++++++++++++++--
- 1 file changed, 22 insertions(+), 2 deletions(-)
+ resize/resize2fs.c |   71 ++++++++++++++++++++++++++++++++++++++++------------
+ 1 file changed, 55 insertions(+), 16 deletions(-)
 
 
-diff --git a/lib/ext2fs/fileio.c b/lib/ext2fs/fileio.c
-index 14eaed3..1e386f8 100644
---- a/lib/ext2fs/fileio.c
-+++ b/lib/ext2fs/fileio.c
-@@ -123,6 +123,8 @@ errcode_t ext2fs_file_flush(ext2_file_t file)
+diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+index cf5bef2..d40b058 100644
+--- a/resize/resize2fs.c
++++ b/resize/resize2fs.c
+@@ -317,11 +317,11 @@ static errcode_t resize_group_descriptors(ext2_resize_t rfs, blk64_t new_size)
+ static errcode_t move_bg_metadata(ext2_resize_t rfs)
  {
- 	errcode_t	retval;
- 	ext2_filsys fs;
-+	int		ret_flags;
-+	blk64_t		dontcare;
+ 	dgrp_t i;
+-	blk64_t b, c, d;
++	blk64_t b, c, d, old_desc_blocks, new_desc_blocks, j;
+ 	ext2fs_block_bitmap old_map, new_map;
+ 	int old, new;
+ 	errcode_t retval;
+-	int zero = 0, one = 1;
++	int zero = 0, one = 1, cluster_ratio;
  
- 	EXT2_CHECK_MAGIC(file, EXT2_ET_MAGIC_EXT2_FILE);
- 	fs = file->fs;
-@@ -131,6 +133,22 @@ errcode_t ext2fs_file_flush(ext2_file_t file)
- 	    !(file->flags & EXT2_FILE_BUF_DIRTY))
+ 	if (!(rfs->flags & (RESIZE_DISABLE_64BIT | RESIZE_ENABLE_64BIT)))
  		return 0;
+@@ -334,6 +334,17 @@ static errcode_t move_bg_metadata(ext2_resize_t rfs)
+ 	if (retval)
+ 		goto out;
  
-+	/* Is this an uninit block? */
-+	if (file->physblock && file->inode.i_flags & EXT4_EXTENTS_FL) {
-+		retval = ext2fs_bmap2(fs, file->ino, &file->inode, BMAP_BUFFER,
-+				      0, file->blockno, &ret_flags, &dontcare);
-+		if (retval)
-+			return retval;
-+		if (ret_flags & BMAP_RET_UNINIT) {
-+			retval = ext2fs_bmap2(fs, file->ino, &file->inode,
-+					      BMAP_BUFFER, BMAP_SET,
-+					      file->blockno, 0,
-+					      &file->physblock);
-+			if (retval)
-+				return retval;
-+		}
++	if (EXT2_HAS_INCOMPAT_FEATURE(rfs->old_fs->super,
++				      EXT2_FEATURE_INCOMPAT_META_BG)) {
++		old_desc_blocks = rfs->old_fs->super->s_first_meta_bg;
++		new_desc_blocks = rfs->new_fs->super->s_first_meta_bg;
++	} else {
++		old_desc_blocks = rfs->old_fs->desc_blocks +
++				rfs->old_fs->super->s_reserved_gdt_blocks;
++		new_desc_blocks = rfs->new_fs->desc_blocks +
++				rfs->new_fs->super->s_reserved_gdt_blocks;
 +	}
 +
- 	/*
- 	 * OK, the physical block hasn't been allocated yet.
- 	 * Allocate it.
-@@ -185,15 +203,17 @@ static errcode_t load_buffer(ext2_file_t file, int dontfill)
- {
- 	ext2_filsys	fs = file->fs;
- 	errcode_t	retval;
-+	int		ret_flags;
- 
- 	if (!(file->flags & EXT2_FILE_BUF_VALID)) {
- 		retval = ext2fs_bmap2(fs, file->ino, &file->inode,
--				     BMAP_BUFFER, 0, file->blockno, 0,
-+				     BMAP_BUFFER, 0, file->blockno, &ret_flags,
- 				     &file->physblock);
+ 	/* Construct bitmaps of super/descriptor blocks in old and new fs */
+ 	for (i = 0; i < rfs->old_fs->group_desc_count; i++) {
+ 		retval = ext2fs_super_and_bgd_loc2(rfs->old_fs, i, &b, &c, &d,
+@@ -341,7 +352,8 @@ static errcode_t move_bg_metadata(ext2_resize_t rfs)
  		if (retval)
- 			return retval;
- 		if (!dontfill) {
--			if (file->physblock) {
-+			if (file->physblock &&
-+			    !(ret_flags & BMAP_RET_UNINIT)) {
- 				retval = io_channel_read_blk64(fs->io,
- 							       file->physblock,
- 							       1, file->buf);
+ 			goto out;
+ 		ext2fs_mark_block_bitmap2(old_map, b);
+-		ext2fs_mark_block_bitmap2(old_map, c);
++		for (j = 0; c != 0 && j < old_desc_blocks; j++)
++			ext2fs_mark_block_bitmap2(old_map, c + j);
+ 		ext2fs_mark_block_bitmap2(old_map, d);
+ 
+ 		retval = ext2fs_super_and_bgd_loc2(rfs->new_fs, i, &b, &c, &d,
+@@ -349,45 +361,72 @@ static errcode_t move_bg_metadata(ext2_resize_t rfs)
+ 		if (retval)
+ 			goto out;
+ 		ext2fs_mark_block_bitmap2(new_map, b);
+-		ext2fs_mark_block_bitmap2(new_map, c);
++		for (j = 0; c != 0 && j < new_desc_blocks; j++)
++			ext2fs_mark_block_bitmap2(new_map, c + j);
+ 		ext2fs_mark_block_bitmap2(new_map, d);
+ 	}
+ 
++	cluster_ratio = EXT2FS_CLUSTER_RATIO(rfs->new_fs);
++
+ 	/* Find changes in block allocations for bg metadata */
+ 	for (b = 0;
+ 	     b < ext2fs_blocks_count(rfs->new_fs->super);
+-	     b += EXT2FS_CLUSTER_RATIO(rfs->new_fs)) {
++	     b += cluster_ratio) {
+ 		old = ext2fs_test_block_bitmap2(old_map, b);
+ 		new = ext2fs_test_block_bitmap2(new_map, b);
+ 
+-		if (old && !new)
+-			ext2fs_unmark_block_bitmap2(rfs->new_fs->block_map, b);
+-		else if (!old && new)
+-			; /* empty ext2fs_mark_block_bitmap2(new_map, b); */
+-		else
++		if (old && !new) {
++			/* mark old_map, unmark new_map */
++			if (cluster_ratio == 1)
++				ext2fs_unmark_block_bitmap2(
++						rfs->new_fs->block_map, b);
++		} else if (!old && new)
++			; /* unmark old_map, mark new_map */
++		else {
++			ext2fs_unmark_block_bitmap2(old_map, b);
+ 			ext2fs_unmark_block_bitmap2(new_map, b);
++		}
+ 	}
+-	/* new_map now shows blocks that have been newly allocated. */
+ 
+-	/* Move any conflicting bitmaps and inode tables */
++	/*
++	 * new_map now shows blocks that have been newly allocated.
++	 * old_map now shows blocks that have been newly freed.
++	 */
++
++	/*
++	 * Move any conflicting bitmaps and inode tables.  Ensure that we
++	 * don't try to free clusters associated with bitmaps or tables.
++	 */
+ 	for (i = 0; i < rfs->old_fs->group_desc_count; i++) {
+ 		b = ext2fs_block_bitmap_loc(rfs->new_fs, i);
+ 		if (ext2fs_test_block_bitmap2(new_map, b))
+ 			ext2fs_block_bitmap_loc_set(rfs->new_fs, i, 0);
++		else if (ext2fs_test_block_bitmap2(old_map, b))
++			ext2fs_unmark_block_bitmap2(old_map, b);
+ 
+ 		b = ext2fs_inode_bitmap_loc(rfs->new_fs, i);
+ 		if (ext2fs_test_block_bitmap2(new_map, b))
+ 			ext2fs_inode_bitmap_loc_set(rfs->new_fs, i, 0);
++		else if (ext2fs_test_block_bitmap2(old_map, b))
++			ext2fs_unmark_block_bitmap2(old_map, b);
+ 
+ 		c = ext2fs_inode_table_loc(rfs->new_fs, i);
+-		for (b = 0; b < rfs->new_fs->inode_blocks_per_group; b++) {
+-			if (ext2fs_test_block_bitmap2(new_map, b + c)) {
++		for (b = 0;
++		     b < rfs->new_fs->inode_blocks_per_group;
++		     b++) {
++			if (ext2fs_test_block_bitmap2(new_map, b + c))
+ 				ext2fs_inode_table_loc_set(rfs->new_fs, i, 0);
+-				break;
+-			}
++			else if (ext2fs_test_block_bitmap2(old_map, b + c))
++				ext2fs_unmark_block_bitmap2(old_map, b + c);
+ 		}
+ 	}
+ 
++	/* Free unused clusters */
++	for (b = 0;
++	     cluster_ratio > 1 && b < ext2fs_blocks_count(rfs->new_fs->super);
++	     b += cluster_ratio)
++		if (ext2fs_test_block_bitmap2(old_map, b))
++			ext2fs_unmark_block_bitmap2(rfs->new_fs->block_map, b);
+ out:
+ 	if (old_map)
+ 		ext2fs_free_block_bitmap(old_map);
 
