@@ -1,49 +1,49 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: shared/289 failures on metadata_csum, e2fsprogs master branch
-Date: Tue, 11 Mar 2014 15:38:19 -0400
-Message-ID: <20140311193819.GA2274@wallace>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 71791] Unlinking a file that was moved to another folder but
+ still open by other process blocks either process (not always reproducible)
+Date: Tue, 11 Mar 2014 20:14:17 +0000
+Message-ID: <bug-71791-13602-4LFzENGHK3@https.bugzilla.kernel.org/>
+References: <bug-71791-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qc0-f171.google.com ([209.85.216.171]:43781 "EHLO
-	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753881AbaCKTiX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Mar 2014 15:38:23 -0400
-Received: by mail-qc0-f171.google.com with SMTP id x13so10094179qcv.2
-        for <linux-ext4@vger.kernel.org>; Tue, 11 Mar 2014 12:38:22 -0700 (PDT)
-Received: from wallace (c-75-67-250-69.hsd1.nh.comcast.net. [75.67.250.69])
-        by mx.google.com with ESMTPSA id b30sm33197656qge.21.2014.03.11.12.38.22
-        for <linux-ext4@vger.kernel.org>
-        (version=TLSv1.2 cipher=RC4-SHA bits=128/128);
-        Tue, 11 Mar 2014 12:38:22 -0700 (PDT)
-Content-Disposition: inline
+Received: from mail.kernel.org ([198.145.19.201]:36617 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754341AbaCKUOT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 11 Mar 2014 16:14:19 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 0BB552034E
+	for <linux-ext4@vger.kernel.org>; Tue, 11 Mar 2014 20:14:19 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 756BF20260
+	for <linux-ext4@vger.kernel.org>; Tue, 11 Mar 2014 20:14:17 +0000 (UTC)
+In-Reply-To: <bug-71791-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Xfstest shared/289 fails when run on an ext4 test filesystem created with
-the metadata_csum and 64bit options and using executables from the latest
-e2fsprogs master branch (46d2a26683).  I've seen the problem on kernel
-versions from 3.14-rc1 through 3.14-rc6, but I think this is an e2fsprogs
-regression rather than a kernel problem.
+https://bugzilla.kernel.org/show_bug.cgi?id=71791
 
-The failing portion of shared/289 can be boiled down to:
+Jan Kara <jack@suse.cz> changed:
 
-mkfs.ext4 -O metadata_csum,64bit /dev/vdc
-dumpe2fs -h /dev/vdc 2>/dev/null | awk '/Free blocks:/{print $3}'
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+             Status|NEW                         |NEEDINFO
+                 CC|                            |jack@suse.cz
 
-The problem (in my test config) is that the reported free block value is
-184684916231 (much larger than my test device) where the reported block
-count is 1382400 (much saner).
+--- Comment #1 from Jan Kara <jack@suse.cz> ---
+So one note is that we are likely waiting for writeback on some page in that
+file to finish. Another note is that I don't think another process has the file
+open - the stacktrace clearly shows that we are completely deleting the file
+which means noone can have the file open (if you can really show otherwise, it
+would be a major bug).
 
-The bug appears to have been introduced between two merges of the maint
-branch: 72958b6670 (good - 10 Jan) and f0996c12d5 (bad - 30 Jan).  Some
-weeks ago, I thought I'd bisected the problem to a specific patch
-(8e44eb64bb - libext2fs: mark group data blocks when loading block bitmap),
-which seemed like a plausible candidate.  However, I find I can't
-reproduce the bisection now, as e2fsprogs doesn't want to support the
-metadata_csum, 64bit options during bisection in the master branch (that'll
-teach me for not mentioning this earlier... :-) ).
+I guess the file has been written quite recently and the filesystem is quite
+loaded with the IO, isn't it?
 
-Thanks,
-Eric
+Can you try mounting the filesystem with 'noauto_da_alloc' mount option?
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
