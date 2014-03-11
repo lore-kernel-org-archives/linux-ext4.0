@@ -1,121 +1,55 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 01/49] create_inode: clean up return mess in
- do_write_internal
-Date: Tue, 11 Mar 2014 13:41:31 -0700
-Message-ID: <20140311204131.GA31864@birch.djwong.org>
-References: <20140311065356.30585.47192.stgit@birch.djwong.org>
- <20140311065404.30585.9687.stgit@birch.djwong.org>
- <9EBDB4AF-4901-4416-ACC4-6F25233316BD@dilger.ca>
+Subject: Re: shared/289 failures on metadata_csum, e2fsprogs master branch
+Date: Tue, 11 Mar 2014 13:45:49 -0700
+Message-ID: <20140311204549.GB31864@birch.djwong.org>
+References: <20140311193819.GA2274@wallace>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Cc: linux-ext4@vger.kernel.org
+To: Eric Whitney <enwlinux@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:26598 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:28582 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755336AbaCKUli (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Mar 2014 16:41:38 -0400
+	with ESMTP id S1753782AbaCKUpx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Mar 2014 16:45:53 -0400
 Content-Disposition: inline
-In-Reply-To: <9EBDB4AF-4901-4416-ACC4-6F25233316BD@dilger.ca>
+In-Reply-To: <20140311193819.GA2274@wallace>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 11, 2014 at 02:30:02PM -0600, Andreas Dilger wrote:
-> On Mar 11, 2014, at 12:54 AM, Darrick J. Wong <darrick.wong@oracle.com> wrote:
-> > do_write_internal returns errno when ext2 library calls fail; since
-> > errno only reflects the outcome of the last C library call, this will
-> > result in confused callers.  Eliminate the naked return since
-> > this results in an undefined return value.
-> > 
-> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> > ---
-> > misc/create_inode.c |   17 ++++++++++-------
-> > 1 file changed, 10 insertions(+), 7 deletions(-)
-> > 
-> > 
-> > diff --git a/misc/create_inode.c b/misc/create_inode.c
-> > index cf4a58f..647480c 100644
-> > --- a/misc/create_inode.c
-> > +++ b/misc/create_inode.c
-> > @@ -353,14 +353,14 @@ errcode_t do_write_internal(ext2_ino_t cwd, const char *src, const char *dest)
-> > 	if (retval == 0) {
-> > 		com_err(__func__, 0, "The file '%s' already exists\n", dest);
-> > 		close(fd);
-> > -		return errno;
-> > +		return retval;
-> > 	}
+On Tue, Mar 11, 2014 at 03:38:19PM -0400, Eric Whitney wrote:
+> Xfstest shared/289 fails when run on an ext4 test filesystem created with
+> the metadata_csum and 64bit options and using executables from the latest
+> e2fsprogs master branch (46d2a26683).  I've seen the problem on kernel
+> versions from 3.14-rc1 through 3.14-rc6, but I think this is an e2fsprogs
+> regression rather than a kernel problem.
 > 
-> This seems a bit strange.  It looks like an error return, but it will
-> actually return "0" since this branch is only entered if retval == 0.
-> Should this return an explicit error value here?
+> The failing portion of shared/289 can be boiled down to:
+> 
+> mkfs.ext4 -O metadata_csum,64bit /dev/vdc
+> dumpe2fs -h /dev/vdc 2>/dev/null | awk '/Free blocks:/{print $3}'
+> 
+> The problem (in my test config) is that the reported free block value is
+> 184684916231 (much larger than my test device) where the reported block
+> count is 1382400 (much saner).
+> 
+> The bug appears to have been introduced between two merges of the maint
+> branch: 72958b6670 (good - 10 Jan) and f0996c12d5 (bad - 30 Jan).  Some
+> weeks ago, I thought I'd bisected the problem to a specific patch
+> (8e44eb64bb - libext2fs: mark group data blocks when loading block bitmap),
+> which seemed like a plausible candidate.  However, I find I can't
+> reproduce the bisection now, as e2fsprogs doesn't want to support the
+> metadata_csum, 64bit options during bisection in the master branch (that'll
+> teach me for not mentioning this earlier... :-) ).
 
-You're right; maybe we should return EXT2_ET_FILE_EXISTS or something?
-
-I don't really think feeding zero to the com_err() is a great idea either.
-Zheng, do you have an opinion about which error code to return?
+This is fixed by patch #17 ("libext2fs: fix 64bit overflow in
+ext2fs_block_alloc_stats_range") in the patchbomb I sent out earlier today.
 
 --D
 > 
-> Cheers, Andreas
-> 
-> > 	retval = ext2fs_new_inode(current_fs, cwd, 010755, 0, &newfile);
-> > 	if (retval) {
-> > 		com_err(__func__, retval, 0);
-> > 		close(fd);
-> > -		return errno;
-> > +		return retval;
-> > 	}
-> > #ifdef DEBUGFS
-> > 	printf("Allocated inode: %u\n", newfile);
-> > @@ -372,7 +372,7 @@ errcode_t do_write_internal(ext2_ino_t cwd, const char *src, const char *dest)
-> > 		if (retval) {
-> > 			com_err(__func__, retval, "while expanding directory");
-> > 			close(fd);
-> > -			return errno;
-> > +			return retval;
-> > 		}
-> > 		retval = ext2fs_link(current_fs, cwd, dest, newfile,
-> > 					EXT2_FT_REG_FILE);
-> > @@ -412,12 +412,15 @@ errcode_t do_write_internal(ext2_ino_t cwd, const char *src, const char *dest)
-> > 	if ((retval = ext2fs_write_new_inode(current_fs, newfile, &inode))) {
-> > 		com_err(__func__, retval, "while creating inode %u", newfile);
-> > 		close(fd);
-> > -		return errno;
-> > +		return retval;
-> > 	}
-> > 	if (inode.i_flags & EXT4_INLINE_DATA_FL) {
-> > 		retval = ext2fs_inline_data_init(current_fs, newfile);
-> > -		if (retval)
-> > -			return;
-> > +		if (retval) {
-> > +			com_err("copy_file", retval, 0);
-> > +			close(fd);
-> > +			return retval;
-> > +		}
-> > 	}
-> > 	if (LINUX_S_ISREG(inode.i_mode)) {
-> > 		if (statbuf.st_blocks < statbuf.st_size / S_BLKSIZE) {
-> > @@ -434,7 +437,7 @@ errcode_t do_write_internal(ext2_ino_t cwd, const char *src, const char *dest)
-> > 	}
-> > 	close(fd);
-> > 
-> > -	return 0;
-> > +	return retval;
-> > }
-> > 
-> > /* Copy files from source_dir to fs */
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
-> Cheers, Andreas
-> 
-> 
-> 
-> 
-> 
-
-
+> Thanks,
+> Eric
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
