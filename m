@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 15/49] all: Introduce cppcheck static checking for make C=1
-Date: Mon, 10 Mar 2014 23:55:34 -0700
-Message-ID: <20140311065534.30585.64998.stgit@birch.djwong.org>
+Subject: [PATCH 16/49] misc: cppcheck cleanups
+Date: Mon, 10 Mar 2014 23:55:40 -0700
+Message-ID: <20140311065540.30585.97622.stgit@birch.djwong.org>
 References: <20140311065356.30585.47192.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,267 +9,194 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:32428 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752623AbaCKGzi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Mar 2014 02:55:38 -0400
+Received: from aserp1040.oracle.com ([141.146.126.69]:21442 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752623AbaCKGzo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Mar 2014 02:55:44 -0400
 In-Reply-To: <20140311065356.30585.47192.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Introduce more static checking via cppcheck.
+Fix a number of things that cppcheck complains about.  Most of these
+are minor resource leaks and forgotten declarations.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- MCONFIG.in              |    6 ++++++
- debugfs/Makefile.in     |    1 +
- e2fsck/Makefile.in      |    1 +
- ext2ed/Makefile.in      |    1 +
- intl/Makefile.in        |    7 +++++++
- lib/blkid/Makefile.in   |    1 +
- lib/e2p/Makefile.in     |    1 +
- lib/et/Makefile.in      |    1 +
- lib/ext2fs/Makefile.in  |    1 +
- lib/quota/Makefile.in   |    1 +
- lib/ss/Makefile.in      |    1 +
- lib/uuid/Makefile.in    |    1 +
- misc/Makefile.in        |    1 +
- resize/Makefile.in      |    1 +
- tests/progs/Makefile.in |    1 +
- util/Makefile.in        |    1 +
- 16 files changed, 27 insertions(+)
+ debugfs/debugfs.c      |    2 +-
+ debugfs/debugfs.h      |    4 ++++
+ e2fsck/pass1.c         |    2 +-
+ e2fsck/pass2.c         |    2 +-
+ e2fsck/region.c        |    2 ++
+ lib/ext2fs/expanddir.c |    1 +
+ lib/ext2fs/ext2fs.h    |   11 +++++++++++
+ lib/ext2fs/ext2fsP.h   |    9 ---------
+ lib/ext2fs/mkdir.c     |    1 +
+ lib/ext2fs/punch.c     |    1 +
+ util/subst.c           |    2 ++
+ 11 files changed, 25 insertions(+), 12 deletions(-)
 
 
-diff --git a/MCONFIG.in b/MCONFIG.in
-index 5ed4df0..9b411d6 100644
---- a/MCONFIG.in
-+++ b/MCONFIG.in
-@@ -52,17 +52,23 @@ datadir = @datadir@
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index a5cd007..a10446d 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -666,7 +666,7 @@ static void dump_inline_data(FILE *out, const char *prefix, ext2_ino_t inode_num
  
- @ifGNUmake@ CHECK=sparse
- @ifGNUmake@ CHECK_OPTS=-Wsparse-all -Wno-transparent-union -Wno-return-void -Wno-undef -Wno-non-pointer-null
-+@ifGNUmake@ CPPCHECK=cppcheck
-+@ifGNUmake@ CPPCHECK_OPTS=--force --enable=all
- @ifGNUmake@ ifeq ("$(C)", "2")
- @ifGNUmake@   CHECK_CMD=$(CHECK) $(CHECK_OPTS) -Wbitwise -D__CHECK_ENDIAN__
-+@ifGNUmake@   CPPCHECK_CMD=$(CPPCHECK) $(CPPCHECK_OPTS)
- @ifGNUmake@ else
- @ifGNUmake@   ifeq ("$(C)", "1")
- @ifGNUmake@     CHECK_CMD=$(CHECK) $(CHECK_OPTS)
-+@ifGNUmake@     CPPCHECK_CMD=$(CPPCHECK) $(CPPCHECK_OPTS)
- @ifGNUmake@    else
- @ifGNUmake@     CHECK_CMD=@true
-+@ifGNUmake@     CPPCHECK_CMD=@true
- @ifGNUmake@   endif
- @ifGNUmake@ endif
+ 	retval = ext2fs_inline_data_size(current_fs, inode_num, &size);
+ 	if (!retval)
+-		fprintf(out, "%sSize of inline data: %d", prefix, size);
++		fprintf(out, "%sSize of inline data: %zu", prefix, size);
+ }
  
- @ifNotGNUmake@ CHECK_CMD=@true
-+@ifNotGNUmake@ CPPHECK_CMD=@true
+ void internal_dump_inode(FILE *out, const char *prefix,
+diff --git a/debugfs/debugfs.h b/debugfs/debugfs.h
+index 3c27f82..0164ca5 100644
+--- a/debugfs/debugfs.h
++++ b/debugfs/debugfs.h
+@@ -177,6 +177,10 @@ extern time_t string_to_time(const char *arg);
  
- CC = @CC@
- BUILD_CC = @BUILD_CC@
-diff --git a/debugfs/Makefile.in b/debugfs/Makefile.in
-index 16d6aa7..34cdac1 100644
---- a/debugfs/Makefile.in
-+++ b/debugfs/Makefile.in
-@@ -46,6 +46,7 @@ STATIC_DEPLIBS= $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBSS) \
- 	$(E) "	CC $<"
- 	$(Q) $(CC) -c $(ALL_CFLAGS) $< -o $@
- 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
-+	$(Q) $(CPPCHECK_CMD) $<
+ /* xattrs.c */
+ void dump_inode_attributes(FILE *out, ext2_ino_t ino);
++void do_get_xattr(int argc, char **argv);
++void do_set_xattr(int argc, char **argv);
++void do_rm_xattr(int argc, char **argv);
++void do_list_xattr(int argc, char **argv);
  
- all:: $(PROGS) $(MANPAGES)
+ /* zap.c */
+ extern void do_zap_block(int argc, char **argv);
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index 641b3fb..eb9497c 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -446,7 +446,7 @@ static void check_is_really_dir(e2fsck_t ctx, struct problem_context *pctx,
+ 	inlinedata_fs = (ctx->fs->super->s_feature_incompat &
+ 			 EXT4_FEATURE_INCOMPAT_INLINE_DATA);
+ 	if (inlinedata_fs && (inode->i_flags & EXT4_INLINE_DATA_FL)) {
+-		unsigned int size;
++		size_t size;
  
-diff --git a/e2fsck/Makefile.in b/e2fsck/Makefile.in
-index c23f1cb..5c8ce39 100644
---- a/e2fsck/Makefile.in
-+++ b/e2fsck/Makefile.in
-@@ -40,6 +40,7 @@ COMPILE_ET=$(top_builddir)/lib/et/compile_et --build-tree
- 	$(E) "	CC $<"
- 	$(Q) $(CC) -c $(ALL_CFLAGS) $< -o $@
- 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
-+	$(Q) $(CPPCHECK_CMD) $<
- @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
+ 		if (ext2fs_inline_data_size(ctx->fs, pctx->ino, &size))
+ 			return;
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index 586f3a8..5488c73 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -770,7 +770,7 @@ static int check_dir_block(ext2_filsys fs,
+ 	int	dx_csum_size = 0, de_csum_size = 0;
+ 	int	failed_csum = 0;
+ 	int	is_leaf = 1;
+-	int	inline_data_size = 0;
++	size_t	inline_data_size = 0;
+ 	int	filetype = 0;
  
- #
-diff --git a/ext2ed/Makefile.in b/ext2ed/Makefile.in
-index 5f4cc69..f05a562 100644
---- a/ext2ed/Makefile.in
-+++ b/ext2ed/Makefile.in
-@@ -34,6 +34,7 @@ DOCS=   doc/ext2ed-design.pdf doc/user-guide.pdf doc/ext2fs-overview.pdf \
- .c.o:
- 	$(CC) -c $(ALL_CFLAGS) $< -o $@
- 	$(CHECK_CMD) $(ALL_CFLAGS) $<
-+	$(CPPCHECK_CMD) $<
+ 	cd = (struct check_dir_struct *) priv_data;
+diff --git a/e2fsck/region.c b/e2fsck/region.c
+index 4b669f0..aaaaa19 100644
+--- a/e2fsck/region.c
++++ b/e2fsck/region.c
+@@ -203,6 +203,8 @@ int main(int argc, char **argv)
+ 			break;
+ 		}
+ 	}
++	if (r)
++		region_free(r);
+ }
  
- .SUFFIXES: .sgml .ps .pdf .html
+ #endif /* TEST_PROGRAM */
+diff --git a/lib/ext2fs/expanddir.c b/lib/ext2fs/expanddir.c
+index 7cff343..d0f7287 100644
+--- a/lib/ext2fs/expanddir.c
++++ b/lib/ext2fs/expanddir.c
+@@ -18,6 +18,7 @@
  
-diff --git a/intl/Makefile.in b/intl/Makefile.in
-index 87d081f..07700c8 100644
---- a/intl/Makefile.in
-+++ b/intl/Makefile.in
-@@ -61,17 +61,23 @@ mkinstalldirs = $(SHELL) $(MKINSTALLDIRS)
+ #include "ext2_fs.h"
+ #include "ext2fs.h"
++#include "ext2fsP.h"
  
- @ifGNUmake@ CHECK=sparse
- @ifGNUmake@ CHECK_OPTS=-Wsparse-all -Wno-transparent-union -Wno-return-void -Wno-undef -Wno-non-pointer-null
-+@ifGNUmake@ CPPCHECK=cppcheck
-+@ifGNUmake@ CPPCHECK_OPTS=--force --enable=all
- @ifGNUmake@ ifeq ("$(C)", "2")
- @ifGNUmake@   CHECK_CMD=$(CHECK) $(CHECK_OPTS) -Wbitwise -D__CHECK_ENDIAN__
-+@ifGNUmake@   CPPCHECK_CMD=$(CPPCHECK) $(CPPCHECK_OPTS)
- @ifGNUmake@ else
- @ifGNUmake@   ifeq ("$(C)", "1")
- @ifGNUmake@     CHECK_CMD=$(CHECK) $(CHECK_OPTS)
-+@ifGNUmake@     CPPCHECK_CMD=$(CPPCHECK) $(CPPCHECK_OPTS)
- @ifGNUmake@    else
- @ifGNUmake@     CHECK_CMD=@true
-+@ifGNUmake@     CPPCHECK_CMD=@true
- @ifGNUmake@   endif
- @ifGNUmake@ endif
+ struct expand_dir_struct {
+ 	int		done;
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 3756e8b..599c972 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -1386,6 +1386,17 @@ errcode_t ext2fs_icount_validate(ext2_icount_t icount, FILE *);
+ extern errcode_t ext2fs_get_memalign(unsigned long size,
+ 				     unsigned long align, void *ptr);
  
- @ifNotGNUmake@ CHECK_CMD=@true
-+@ifNotGNUmake@ CPPCHECK_CMD=@true
++/* inline_data.c */
++extern errcode_t ext2fs_inline_data_init(ext2_filsys fs, ext2_ino_t ino);
++extern errcode_t ext2fs_inline_data_size(ext2_filsys fs, ext2_ino_t ino,
++					 size_t *size);
++extern errcode_t ext2fs_inline_data_get(ext2_filsys fs, ext2_ino_t ino,
++					struct ext2_inode *inode,
++					void *buf, size_t *size);
++extern errcode_t ext2fs_inline_data_set(ext2_filsys fs, ext2_ino_t ino,
++					struct ext2_inode *inode,
++					void *buf, size_t size);
++
+ /* inode.c */
+ extern errcode_t ext2fs_create_inode_cache(ext2_filsys fs,
+ 					   unsigned int cache_size);
+diff --git a/lib/ext2fs/ext2fsP.h b/lib/ext2fs/ext2fsP.h
+index 20257e2..f8c61e6 100644
+--- a/lib/ext2fs/ext2fsP.h
++++ b/lib/ext2fs/ext2fsP.h
+@@ -88,20 +88,11 @@ extern int ext2fs_process_dir_block(ext2_filsys  	fs,
+ 				    int			ref_offset,
+ 				    void		*priv_data);
  
- l = @INTL_LIBTOOL_SUFFIX_PREFIX@
+-extern errcode_t ext2fs_inline_data_init(ext2_filsys fs, ext2_ino_t ino);
+-extern errcode_t ext2fs_inline_data_size(ext2_filsys fs, ext2_ino_t ino,
+-					 size_t *size);
+ extern errcode_t ext2fs_inline_data_ea_remove(ext2_filsys fs, ext2_ino_t ino);
+ extern errcode_t ext2fs_inline_data_expand(ext2_filsys fs, ext2_ino_t ino);
+ extern int ext2fs_inline_data_dir_iterate(ext2_filsys fs,
+ 					  ext2_ino_t ino,
+ 					  void *priv_data);
+-extern errcode_t ext2fs_inline_data_get(ext2_filsys fs, ext2_ino_t ino,
+-					struct ext2_inode *inode,
+-					void *buf, size_t *size);
+-extern errcode_t ext2fs_inline_data_set(ext2_filsys fs, ext2_ino_t ino,
+-					struct ext2_inode *inode,
+-					void *buf, size_t size);
  
-@@ -206,6 +212,7 @@ LTV_AGE=4
- 	$(E) "	CC $<"
- 	$(Q) $(COMPILE) $<
- 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
-+	$(Q) $(CPPCHECK_CMD) $<
+ /* Generic numeric progress meter */
  
- .y.c:
- 	$(YACC) $(YFLAGS) --output $@ $<
-diff --git a/lib/blkid/Makefile.in b/lib/blkid/Makefile.in
-index faed6f1..69b5b4c 100644
---- a/lib/blkid/Makefile.in
-+++ b/lib/blkid/Makefile.in
-@@ -56,6 +56,7 @@ DEPLIBS_BLKID=	$(DEPSTATIC_LIBBLKID) $(DEPSTATIC_LIBUUID)
- 	$(E) "	CC $<"
- 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
- 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
-+	$(Q) $(CPPCHECK_CMD) $<
- @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
- @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
- @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
-diff --git a/lib/e2p/Makefile.in b/lib/e2p/Makefile.in
-index d6992fc..761ac48 100644
---- a/lib/e2p/Makefile.in
-+++ b/lib/e2p/Makefile.in
-@@ -56,6 +56,7 @@ BSDLIB_INSTALL_DIR = $(root_libdir)
- 	$(E) "	CC $<"
- 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
- 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
-+	$(Q) $(CPPCHECK_CMD) $<
- @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
- @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
- @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
-diff --git a/lib/et/Makefile.in b/lib/et/Makefile.in
-index ff99f5d..4f2d31f 100644
---- a/lib/et/Makefile.in
-+++ b/lib/et/Makefile.in
-@@ -44,6 +44,7 @@ BSDLIB_INSTALL_DIR = $(root_libdir)
- 	$(E) "	CC $<"
- 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
- 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
-+	$(Q) $(CPPCHECK_CMD) $<
- @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
- @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
- @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
-diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
-index 7777cb1..0c880c7 100644
---- a/lib/ext2fs/Makefile.in
-+++ b/lib/ext2fs/Makefile.in
-@@ -205,6 +205,7 @@ all:: ext2fs.pc
- 	$(E) "	CC $<"
- 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
- 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
-+	$(Q) $(CPPCHECK_CMD) $<
- @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
- @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
- @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
-diff --git a/lib/quota/Makefile.in b/lib/quota/Makefile.in
-index e423356..0344d09 100644
---- a/lib/quota/Makefile.in
-+++ b/lib/quota/Makefile.in
-@@ -48,6 +48,7 @@ LIBDIR= quota
- 	$(E) "	CC $<"
- 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
- 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
-+	$(Q) $(CPPCHECK_CMD) $<
- @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
- @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
- #ELF_CMT#	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
-diff --git a/lib/ss/Makefile.in b/lib/ss/Makefile.in
-index 28bcfd5..4c1ef8f 100644
---- a/lib/ss/Makefile.in
-+++ b/lib/ss/Makefile.in
-@@ -35,6 +35,7 @@ MK_CMDS=_SS_DIR_OVERRIDE=. ./mk_cmds
- 	$(E) "	CC $<"
- 	$(Q) $(CC) $(ALL_CFLAGS) -c $<
- 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
-+	$(Q) $(CPPCHECK_CMD) $<
- @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
- @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
- @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -DSHARED_ELF_LIB -fPIC -o elfshared/$*.o -c $<
-diff --git a/lib/uuid/Makefile.in b/lib/uuid/Makefile.in
-index 14d08c1..f5b767e 100644
---- a/lib/uuid/Makefile.in
-+++ b/lib/uuid/Makefile.in
-@@ -63,6 +63,7 @@ BSDLIB_INSTALL_DIR = $(root_libdir)
- 	$(E) "	CC $<"
- 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
- 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
-+	$(Q) $(CPPCHECK_CMD) $<
- @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
- @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
- @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
-diff --git a/misc/Makefile.in b/misc/Makefile.in
-index e061867..18a8a2f 100644
---- a/misc/Makefile.in
-+++ b/misc/Makefile.in
-@@ -103,6 +103,7 @@ COMPILE_ET=$(top_builddir)/lib/et/compile_et --build-tree
- 	$(E) "	CC $<"
- 	$(Q) $(CC) -c $(ALL_CFLAGS) $< -o $@
- 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
-+	$(Q) $(CPPCHECK_CMD) $<
- @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
+diff --git a/lib/ext2fs/mkdir.c b/lib/ext2fs/mkdir.c
+index 06c2c7e..c4c7967 100644
+--- a/lib/ext2fs/mkdir.c
++++ b/lib/ext2fs/mkdir.c
+@@ -26,6 +26,7 @@
  
- all:: profiled $(SPROGS) $(UPROGS) $(USPROGS) $(SMANPAGES) $(UMANPAGES) \
-diff --git a/resize/Makefile.in b/resize/Makefile.in
-index f7b80ef..16f2a95 100644
---- a/resize/Makefile.in
-+++ b/resize/Makefile.in
-@@ -39,6 +39,7 @@ DEPSTATIC_LIBS= $(STATIC_LIBE2P) $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR)
- 	$(E) "	CC $<"
- 	$(Q) $(CC) -c $(ALL_CFLAGS) $< -o $@
- 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
-+	$(Q) $(CPPCHECK_CMD) $<
+ #include "ext2_fs.h"
+ #include "ext2fs.h"
++#include "ext2fsP.h"
  
- all:: $(PROGS) $(TEST_PROGS) $(MANPAGES) 
+ #ifndef EXT2_FT_DIR
+ #define EXT2_FT_DIR		2
+diff --git a/lib/ext2fs/punch.c b/lib/ext2fs/punch.c
+index 95e19d9..532c4b8 100644
+--- a/lib/ext2fs/punch.c
++++ b/lib/ext2fs/punch.c
+@@ -19,6 +19,7 @@
  
-diff --git a/tests/progs/Makefile.in b/tests/progs/Makefile.in
-index 44d04b5..6c986e4 100644
---- a/tests/progs/Makefile.in
-+++ b/tests/progs/Makefile.in
-@@ -28,6 +28,7 @@ DEPLIBS= $(LIBEXT2FS) $(DEPLIBSS) $(DEPLIBCOM_ERR)
- 	$(E) "	CC $<"
- 	$(Q) $(CC) -c $(ALL_CFLAGS) $< -o $@
- 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
-+	$(Q) $(CPPCHECK_CMD) $<
+ #include "ext2_fs.h"
+ #include "ext2fs.h"
++#include "ext2fsP.h"
  
- all:: $(PROGS)
+ #undef PUNCH_DEBUG
  
-diff --git a/util/Makefile.in b/util/Makefile.in
-index d235fff..2375e17 100644
---- a/util/Makefile.in
-+++ b/util/Makefile.in
-@@ -17,6 +17,7 @@ SRCS = $(srcdir)/subst.c
- 	$(E) "	CC $<"
- 	$(Q) $(BUILD_CC) -c $(BUILD_CFLAGS) $< -o $@
- 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
-+	$(Q) $(CPPCHECK_CMD) $<
- 
- PROGS=		subst symlinks
+diff --git a/util/subst.c b/util/subst.c
+index 6a5eab1..2ea16d9 100644
+--- a/util/subst.c
++++ b/util/subst.c
+@@ -426,6 +426,8 @@ int main(int argc, char **argv)
+ 	}
+ 	if (old)
+ 		fclose(old);
++	if (newfn)
++		free(newfn);
+ 	return (0);
+ }
  
 
