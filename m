@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 38/49] libext2fs: when appending to a file,
- don't split an index block in equal halves
-Date: Mon, 10 Mar 2014 23:58:03 -0700
-Message-ID: <20140311065803.30585.14919.stgit@birch.djwong.org>
+Subject: [PATCH 39/49] libext2fs: find inode goal when allocating blocks
+Date: Mon, 10 Mar 2014 23:58:10 -0700
+Message-ID: <20140311065809.30585.62564.stgit@birch.djwong.org>
 References: <20140311065356.30585.47192.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,199 +9,172 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:33348 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:33423 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753254AbaCKG6H (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Mar 2014 02:58:07 -0400
+	with ESMTP id S1753242AbaCKG6P (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Mar 2014 02:58:15 -0400
 In-Reply-To: <20140311065356.30585.47192.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When we're appending an extent to the end of a file and the index
-block is full, don't split the index block into two half-full index
-blocks because this leaves us with under utilized index blocks, at
-least in the fallocate case.  Instead, copy the last extent from the
-full block into the new block.  This isn't perfect utilization, but
-there's a lot of work involved in teaching extent.c to be able to goto
-a nonexistent node in a newly allocated (and empty) extent block.
-
-This patch does not fix the general problem of keeping the extent tree
-balanced.
+Try to be a little smarter about where we go to allocate blocks for a
+inode.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/extent.c |   79 ++++++++++++++++++++++++++++++++++++++++++++++-----
- 1 file changed, 72 insertions(+), 7 deletions(-)
+ e2fsck/pass2.c         |    3 ++-
+ lib/ext2fs/alloc.c     |   10 ++++++++++
+ lib/ext2fs/bmap.c      |    5 +++--
+ lib/ext2fs/expanddir.c |    2 +-
+ lib/ext2fs/ext2fs.h    |    1 +
+ lib/ext2fs/ext_attr.c  |    3 +--
+ lib/ext2fs/extent.c    |   10 ++--------
+ lib/ext2fs/mkdir.c     |    3 ++-
+ lib/ext2fs/symlink.c   |    3 ++-
+ 9 files changed, 24 insertions(+), 16 deletions(-)
 
 
-diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
-index 80ce88f..cf75a0b 100644
---- a/lib/ext2fs/extent.c
-+++ b/lib/ext2fs/extent.c
-@@ -29,6 +29,8 @@
- #include "ext2fsP.h"
- #include "e2image.h"
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index 292db82..5b84947 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -1729,7 +1729,8 @@ static int allocate_dir_block(e2fsck_t ctx,
+ 	/*
+ 	 * First, find a free block
+ 	 */
+-	pctx->errcode = ext2fs_new_block2(fs, 0, ctx->block_found_map, &blk);
++	blk = ext2fs_find_inode_goal(fs, db->ino);
++	pctx->errcode = ext2fs_new_block2(fs, blk, ctx->block_found_map, &blk);
+ 	if (pctx->errcode) {
+ 		pctx->str = "ext2fs_new_block";
+ 		fix_problem(ctx, PR_2_ALLOC_DIRBOCK, pctx);
+diff --git a/lib/ext2fs/alloc.c b/lib/ext2fs/alloc.c
+index 1be4ecc..aa084ac 100644
+--- a/lib/ext2fs/alloc.c
++++ b/lib/ext2fs/alloc.c
+@@ -293,3 +293,13 @@ void ext2fs_set_alloc_block_callback(ext2_filsys fs,
  
-+#undef DEBUG
-+
- /*
-  * Definitions to be dropped in lib/ext2fs/ext2fs.h
-  */
-@@ -122,11 +124,39 @@ static void dbg_print_extent(char *desc, struct ext2fs_extent *extent)
- 
+ 	fs->get_alloc_block = func;
  }
- 
-+static void dump_path(const char *tag, struct ext2_extent_handle *handle,
-+		      struct extent_path *path)
++
++blk64_t ext2fs_find_inode_goal(ext2_filsys fs, ext2_ino_t ino)
 +{
-+	struct extent_path *ppp = path;
-+	printf("%s: level=%d\n", tag, handle->level);
++	dgrp_t	group = ext2fs_group_of_ino(fs, ino);
++	__u8	log_flex = fs->super->s_log_groups_per_flex;
 +
-+	do {
-+		printf("%s: path=%ld buf=%p entries=%d max_entries=%d left=%d "
-+		       "visit_num=%d flags=0x%x end_blk=%llu curr=%p(%ld)\n",
-+		       tag, (ppp - handle->path), ppp->buf, ppp->entries,
-+		       ppp->max_entries, ppp->left, ppp->visit_num, ppp->flags,
-+		       ppp->end_blk, ppp->curr, ppp->curr - (void *)ppp->buf);
-+		printf("  ");
-+		dbg_show_header((struct ext3_extent_header *)ppp->buf);
-+		if (ppp->curr) {
-+			printf("  ");
-+			dbg_show_index(ppp->curr);
-+			printf("  ");
-+			dbg_show_extent(ppp->curr);
-+		}
-+		ppp--;
-+	} while (ppp >= handle->path);
-+	fflush(stdout);
-+
-+	return;
++	if (log_flex)
++		group = group & ~((1 << (log_flex)) - 1);
++	return ext2fs_group_first_block2(fs, group);
 +}
-+
- #else
- #define dbg_show_header(eh) do { } while (0)
- #define dbg_show_index(ix) do { } while (0)
- #define dbg_show_extent(ex) do { } while (0)
- #define dbg_print_extent(desc, ex) do { } while (0)
-+#define dump_path(tag, handle, path) do { } while (0)
- #endif
- 
- /*
-@@ -837,12 +867,31 @@ errcode_t ext2fs_extent_replace(ext2_extent_handle_t handle,
- 	return 0;
- }
- 
-+static int splitting_at_eof(struct ext2_extent_handle *handle,
-+			    struct extent_path *path)
-+{
-+	struct extent_path *ppp = path;
-+	dump_path(__func__, handle, path);
-+
-+	if (handle->level == 0)
-+		return 0;
-+
-+	do {
-+		if (ppp->left)
-+			return 0;
-+		ppp--;
-+	} while (ppp >= handle->path);
-+
-+	return 1;
-+}
-+
- /*
-  * allocate a new block, move half the current node to it, and update parent
-  *
-  * handle will be left pointing at original record.
-  */
--errcode_t ext2fs_extent_node_split(ext2_extent_handle_t handle)
-+static errcode_t extent_node_split(ext2_extent_handle_t handle,
-+				   int expand_allowed)
- {
- 	errcode_t			retval = 0;
- 	blk64_t				new_node_pblk;
-@@ -857,6 +906,7 @@ errcode_t ext2fs_extent_node_split(ext2_extent_handle_t handle)
- 	int				tocopy;
- 	int				new_root = 0;
- 	struct ext2_extent_info		info;
-+	int				no_balance;
- 
- 	/* basic sanity */
- 	EXT2_CHECK_MAGIC(handle, EXT2_ET_MAGIC_EXTENT_HANDLE);
-@@ -897,7 +947,7 @@ errcode_t ext2fs_extent_node_split(ext2_extent_handle_t handle)
- 			goto done;
- 		goal_blk = extent.e_pblk;
- 
--		retval = ext2fs_extent_node_split(handle);
-+		retval = extent_node_split(handle, expand_allowed);
+diff --git a/lib/ext2fs/bmap.c b/lib/ext2fs/bmap.c
+index a4dc8ef..7623052 100644
+--- a/lib/ext2fs/bmap.c
++++ b/lib/ext2fs/bmap.c
+@@ -252,7 +252,7 @@ got_block:
+ 		retval = extent_bmap(fs, ino, inode, handle, block_buf,
+ 				     0, block-1, 0, blocks_alloc, &blk64);
  		if (retval)
- 			goto done;
- 
-@@ -912,6 +962,14 @@ errcode_t ext2fs_extent_node_split(ext2_extent_handle_t handle)
- 	if (!path->curr)
- 		return EXT2_ET_NO_CURRENT_NODE;
- 
-+	/*
-+	 * Normally, we try to split a full node in half.  This doesn't turn
-+	 * out so well if we're tacking extents on the end of the file because
-+	 * then we're stuck with a tree of half-full extent blocks.  This of
-+	 * course doesn't apply to the root level.
-+	 */
-+	no_balance = expand_allowed ? splitting_at_eof(handle, path) : 0;
-+
- 	/* extent header of the current node we'll split */
- 	eh = (struct ext3_extent_header *)path->buf;
- 
-@@ -925,7 +983,10 @@ errcode_t ext2fs_extent_node_split(ext2_extent_handle_t handle)
+-			blk64 = 0;
++			blk64 = ext2fs_find_inode_goal(fs, ino);
+ 		retval = ext2fs_alloc_block2(fs, blk64, block_buf,
+ 					     &blk64);
  		if (retval)
- 			goto done;
- 	} else {
--		tocopy = ext2fs_le16_to_cpu(eh->eh_entries) / 2;
-+		if (no_balance)
-+			tocopy = 1;
-+		else
-+			tocopy = ext2fs_le16_to_cpu(eh->eh_entries) / 2;
+@@ -368,7 +368,8 @@ errcode_t ext2fs_bmap2(ext2_filsys fs, ext2_ino_t ino, struct ext2_inode *inode,
+ 		}
+ 
+ 		*phys_blk = inode_bmap(inode, block);
+-		b = block ? inode_bmap(inode, block-1) : 0;
++		b = block ? inode_bmap(inode, block-1) :
++			    ext2fs_find_inode_goal(fs, ino);
+ 
+ 		if ((*phys_blk == 0) && (bmap_flags & BMAP_ALLOC)) {
+ 			retval = ext2fs_alloc_block(fs, b, block_buf, &b);
+diff --git a/lib/ext2fs/expanddir.c b/lib/ext2fs/expanddir.c
+index d0f7287..2df49ce 100644
+--- a/lib/ext2fs/expanddir.c
++++ b/lib/ext2fs/expanddir.c
+@@ -111,7 +111,7 @@ errcode_t ext2fs_expand_dir(ext2_filsys fs, ext2_ino_t dir)
+ 
+ 	es.done = 0;
+ 	es.err = 0;
+-	es.goal = 0;
++	es.goal = ext2fs_find_inode_goal(fs, dir);
+ 	es.newblocks = 0;
+ 	es.dir = dir;
+ 
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 933a14d..d3a7f04 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -690,6 +690,7 @@ extern void ext2fs_set_alloc_block_callback(ext2_filsys fs,
+ 					    errcode_t (**old)(ext2_filsys fs,
+ 							      blk64_t goal,
+ 							      blk64_t *ret));
++blk64_t ext2fs_find_inode_goal(ext2_filsys fs, ext2_ino_t ino);
+ 
+ /* alloc_sb.c */
+ extern int ext2fs_reserve_super_and_bgd(ext2_filsys fs,
+diff --git a/lib/ext2fs/ext_attr.c b/lib/ext2fs/ext_attr.c
+index 308d21d..a756b7b 100644
+--- a/lib/ext2fs/ext_attr.c
++++ b/lib/ext2fs/ext_attr.c
+@@ -404,8 +404,7 @@ static errcode_t prep_ea_block_for_write(ext2_filsys fs, ext2_ino_t ino,
  	}
  
- #ifdef DEBUG
-@@ -934,7 +995,7 @@ errcode_t ext2fs_extent_node_split(ext2_extent_handle_t handle)
- 				handle->level);
- #endif
- 
--	if (!tocopy) {
-+	if (!tocopy && !no_balance) {
- #ifdef DEBUG
- 		printf("Nothing to copy to new block!\n");
- #endif
-@@ -1059,8 +1120,7 @@ errcode_t ext2fs_extent_node_split(ext2_extent_handle_t handle)
+ 	/* Allocate a block */
+-	grp = ext2fs_group_of_ino(fs, ino);
+-	goal = ext2fs_inode_table_loc(fs, grp);
++	goal = ext2fs_find_inode_goal(fs, ino);
+ 	err = ext2fs_alloc_block2(fs, goal, NULL, &blk);
+ 	if (err)
+ 		goto out2;
+diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
+index cf75a0b..5a6c5b5 100644
+--- a/lib/ext2fs/extent.c
++++ b/lib/ext2fs/extent.c
+@@ -1010,14 +1010,8 @@ static errcode_t extent_node_split(ext2_extent_handle_t handle,
  		goto done;
+ 	}
  
- 	/* new node hooked in, so update inode block count (do this here?) */
--	handle->inode->i_blocks += (handle->fs->blocksize *
--				    EXT2FS_CLUSTER_RATIO(handle->fs)) / 512;
-+	ext2fs_iblk_add_blocks(handle->fs, handle->inode, 1);
- 	retval = ext2fs_write_inode(handle->fs, handle->ino,
- 				    handle->inode);
+-	if (!goal_blk) {
+-		dgrp_t	group = ext2fs_group_of_ino(handle->fs, handle->ino);
+-		__u8	log_flex = handle->fs->super->s_log_groups_per_flex;
+-
+-		if (log_flex)
+-			group = group & ~((1 << (log_flex)) - 1);
+-		goal_blk = ext2fs_group_first_block2(handle->fs, group);
+-	}
++	if (!goal_blk)
++		goal_blk = ext2fs_find_inode_goal(handle->fs, handle->ino);
+ 	retval = ext2fs_alloc_block2(handle->fs, goal_blk, block_buf,
+ 				    &new_node_pblk);
  	if (retval)
-@@ -1074,6 +1134,11 @@ done:
- 	return retval;
- }
- 
-+errcode_t ext2fs_extent_node_split(ext2_extent_handle_t handle)
-+{
-+	return extent_node_split(handle, 0);
-+}
-+
- errcode_t ext2fs_extent_insert(ext2_extent_handle_t handle, int flags,
- 				      struct ext2fs_extent *extent)
- {
-@@ -1105,7 +1170,7 @@ errcode_t ext2fs_extent_insert(ext2_extent_handle_t handle, int flags,
- 			printf("node full (level %d) - splitting\n",
- 				   handle->level);
- #endif
--			retval = ext2fs_extent_node_split(handle);
-+			retval = extent_node_split(handle, 1);
- 			if (retval)
- 				return retval;
- 			path = handle->path + handle->level;
+diff --git a/lib/ext2fs/mkdir.c b/lib/ext2fs/mkdir.c
+index c4c7967..36b1810 100644
+--- a/lib/ext2fs/mkdir.c
++++ b/lib/ext2fs/mkdir.c
+@@ -69,7 +69,8 @@ errcode_t ext2fs_mkdir(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t inum,
+ 	 * Allocate a data block for the directory
+ 	 */
+ 	if (!inline_data) {
+-		retval = ext2fs_new_block2(fs, 0, 0, &blk);
++		retval = ext2fs_new_block2(fs, ext2fs_find_inode_goal(fs, ino),
++					   0, &blk);
+ 		if (retval)
+ 			goto cleanup;
+ 	}
+diff --git a/lib/ext2fs/symlink.c b/lib/ext2fs/symlink.c
+index b2ef66c..cb3a2e7 100644
+--- a/lib/ext2fs/symlink.c
++++ b/lib/ext2fs/symlink.c
+@@ -53,7 +53,8 @@ errcode_t ext2fs_symlink(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t ino,
+ 	 */
+ 	fastlink = (target_len < sizeof(inode.i_block));
+ 	if (!fastlink) {
+-		retval = ext2fs_new_block2(fs, 0, 0, &blk);
++		retval = ext2fs_new_block2(fs, ext2fs_find_inode_goal(fs, ino),
++					   0, &blk);
+ 		if (retval)
+ 			goto cleanup;
+ 		retval = ext2fs_get_mem(fs->blocksize, &block_buf);
 
