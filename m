@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 32/49] resize2fs: when toggling 64bit,
- don't free in-use bg data clusters
-Date: Mon, 10 Mar 2014 23:57:22 -0700
-Message-ID: <20140311065722.30585.96456.stgit@birch.djwong.org>
+Subject: [PATCH 33/49] resize2fs: adjust reserved_gdt_blocks when changing
+ group descriptor size
+Date: Mon, 10 Mar 2014 23:57:29 -0700
+Message-ID: <20140311065729.30585.17796.stgit@birch.djwong.org>
 References: <20140311065356.30585.47192.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,156 +10,71 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:22079 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753254AbaCKG50 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Mar 2014 02:57:26 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:33032 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753254AbaCKG5d (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Mar 2014 02:57:33 -0400
 In-Reply-To: <20140311065356.30585.47192.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently, move_bg_metadata() assumes that if a block containing a
-superblock or a group descriptor is no longer needed, then it is safe
-to free the whole cluster.  This of course isn't true, for bitmaps and
-inode tables can share these clusters.  Therefore, check a little more
-carefully before freeing clusters.
+Since we're constructing the fantasy that new_fs has always been a
+64bit fs, we need to adjust reserved_gdt_blocks when we start resizing
+the metadata so that the size of the gdt space in the new fs reflects
+the fantasy throughout the resize process.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- resize/resize2fs.c |   71 ++++++++++++++++++++++++++++++++++++++++------------
- 1 file changed, 55 insertions(+), 16 deletions(-)
+ resize/resize2fs.c |   37 ++++++++++++++++++++++++-------------
+ 1 file changed, 24 insertions(+), 13 deletions(-)
 
 
 diff --git a/resize/resize2fs.c b/resize/resize2fs.c
-index cf5bef2..d40b058 100644
+index d40b058..3b3a329 100644
 --- a/resize/resize2fs.c
 +++ b/resize/resize2fs.c
-@@ -317,11 +317,11 @@ static errcode_t resize_group_descriptors(ext2_resize_t rfs, blk64_t new_size)
- static errcode_t move_bg_metadata(ext2_resize_t rfs)
- {
- 	dgrp_t i;
--	blk64_t b, c, d;
-+	blk64_t b, c, d, old_desc_blocks, new_desc_blocks, j;
- 	ext2fs_block_bitmap old_map, new_map;
- 	int old, new;
- 	errcode_t retval;
--	int zero = 0, one = 1;
-+	int zero = 0, one = 1, cluster_ratio;
+@@ -251,6 +251,24 @@ errout:
+ 	return retval;
+ }
  
- 	if (!(rfs->flags & (RESIZE_DISABLE_64BIT | RESIZE_ENABLE_64BIT)))
- 		return 0;
-@@ -334,6 +334,17 @@ static errcode_t move_bg_metadata(ext2_resize_t rfs)
- 	if (retval)
- 		goto out;
- 
-+	if (EXT2_HAS_INCOMPAT_FEATURE(rfs->old_fs->super,
-+				      EXT2_FEATURE_INCOMPAT_META_BG)) {
-+		old_desc_blocks = rfs->old_fs->super->s_first_meta_bg;
-+		new_desc_blocks = rfs->new_fs->super->s_first_meta_bg;
-+	} else {
-+		old_desc_blocks = rfs->old_fs->desc_blocks +
-+				rfs->old_fs->super->s_reserved_gdt_blocks;
-+		new_desc_blocks = rfs->new_fs->desc_blocks +
-+				rfs->new_fs->super->s_reserved_gdt_blocks;
++/* Keep the size of the group descriptor region constant */
++static void adjust_reserved_gdt_blocks(ext2_filsys old_fs, ext2_filsys fs)
++{
++	if ((fs->super->s_feature_compat &
++	     EXT2_FEATURE_COMPAT_RESIZE_INODE) &&
++	    (old_fs->desc_blocks != fs->desc_blocks)) {
++		int new;
++
++		new = ((int) fs->super->s_reserved_gdt_blocks) +
++			(old_fs->desc_blocks - fs->desc_blocks);
++		if (new < 0)
++			new = 0;
++		if (new > (int) fs->blocksize/4)
++			new = fs->blocksize/4;
++		fs->super->s_reserved_gdt_blocks = new;
 +	}
++}
 +
- 	/* Construct bitmaps of super/descriptor blocks in old and new fs */
- 	for (i = 0; i < rfs->old_fs->group_desc_count; i++) {
- 		retval = ext2fs_super_and_bgd_loc2(rfs->old_fs, i, &b, &c, &d,
-@@ -341,7 +352,8 @@ static errcode_t move_bg_metadata(ext2_resize_t rfs)
- 		if (retval)
- 			goto out;
- 		ext2fs_mark_block_bitmap2(old_map, b);
--		ext2fs_mark_block_bitmap2(old_map, c);
-+		for (j = 0; c != 0 && j < old_desc_blocks; j++)
-+			ext2fs_mark_block_bitmap2(old_map, c + j);
- 		ext2fs_mark_block_bitmap2(old_map, d);
+ /* Toggle 64bit mode */
+ static errcode_t resize_group_descriptors(ext2_resize_t rfs, blk64_t new_size)
+ {
+@@ -310,6 +328,8 @@ static errcode_t resize_group_descriptors(ext2_resize_t rfs, blk64_t new_size)
+ 	for (i = 0; i < rfs->old_fs->group_desc_count; i++)
+ 		ext2fs_group_desc_csum_set(rfs->new_fs, i);
  
- 		retval = ext2fs_super_and_bgd_loc2(rfs->new_fs, i, &b, &c, &d,
-@@ -349,45 +361,72 @@ static errcode_t move_bg_metadata(ext2_resize_t rfs)
- 		if (retval)
- 			goto out;
- 		ext2fs_mark_block_bitmap2(new_map, b);
--		ext2fs_mark_block_bitmap2(new_map, c);
-+		for (j = 0; c != 0 && j < new_desc_blocks; j++)
-+			ext2fs_mark_block_bitmap2(new_map, c + j);
- 		ext2fs_mark_block_bitmap2(new_map, d);
- 	}
- 
-+	cluster_ratio = EXT2FS_CLUSTER_RATIO(rfs->new_fs);
++	adjust_reserved_gdt_blocks(rfs->old_fs, rfs->new_fs);
 +
- 	/* Find changes in block allocations for bg metadata */
- 	for (b = 0;
- 	     b < ext2fs_blocks_count(rfs->new_fs->super);
--	     b += EXT2FS_CLUSTER_RATIO(rfs->new_fs)) {
-+	     b += cluster_ratio) {
- 		old = ext2fs_test_block_bitmap2(old_map, b);
- 		new = ext2fs_test_block_bitmap2(new_map, b);
+ 	return 0;
+ }
  
--		if (old && !new)
--			ext2fs_unmark_block_bitmap2(rfs->new_fs->block_map, b);
--		else if (!old && new)
--			; /* empty ext2fs_mark_block_bitmap2(new_map, b); */
--		else
-+		if (old && !new) {
-+			/* mark old_map, unmark new_map */
-+			if (cluster_ratio == 1)
-+				ext2fs_unmark_block_bitmap2(
-+						rfs->new_fs->block_map, b);
-+		} else if (!old && new)
-+			; /* unmark old_map, mark new_map */
-+		else {
-+			ext2fs_unmark_block_bitmap2(old_map, b);
- 			ext2fs_unmark_block_bitmap2(new_map, b);
-+		}
- 	}
--	/* new_map now shows blocks that have been newly allocated. */
- 
--	/* Move any conflicting bitmaps and inode tables */
-+	/*
-+	 * new_map now shows blocks that have been newly allocated.
-+	 * old_map now shows blocks that have been newly freed.
-+	 */
-+
-+	/*
-+	 * Move any conflicting bitmaps and inode tables.  Ensure that we
-+	 * don't try to free clusters associated with bitmaps or tables.
-+	 */
- 	for (i = 0; i < rfs->old_fs->group_desc_count; i++) {
- 		b = ext2fs_block_bitmap_loc(rfs->new_fs, i);
- 		if (ext2fs_test_block_bitmap2(new_map, b))
- 			ext2fs_block_bitmap_loc_set(rfs->new_fs, i, 0);
-+		else if (ext2fs_test_block_bitmap2(old_map, b))
-+			ext2fs_unmark_block_bitmap2(old_map, b);
- 
- 		b = ext2fs_inode_bitmap_loc(rfs->new_fs, i);
- 		if (ext2fs_test_block_bitmap2(new_map, b))
- 			ext2fs_inode_bitmap_loc_set(rfs->new_fs, i, 0);
-+		else if (ext2fs_test_block_bitmap2(old_map, b))
-+			ext2fs_unmark_block_bitmap2(old_map, b);
- 
- 		c = ext2fs_inode_table_loc(rfs->new_fs, i);
--		for (b = 0; b < rfs->new_fs->inode_blocks_per_group; b++) {
--			if (ext2fs_test_block_bitmap2(new_map, b + c)) {
-+		for (b = 0;
-+		     b < rfs->new_fs->inode_blocks_per_group;
-+		     b++) {
-+			if (ext2fs_test_block_bitmap2(new_map, b + c))
- 				ext2fs_inode_table_loc_set(rfs->new_fs, i, 0);
--				break;
--			}
-+			else if (ext2fs_test_block_bitmap2(old_map, b + c))
-+				ext2fs_unmark_block_bitmap2(old_map, b + c);
- 		}
- 	}
- 
-+	/* Free unused clusters */
-+	for (b = 0;
-+	     cluster_ratio > 1 && b < ext2fs_blocks_count(rfs->new_fs->super);
-+	     b += cluster_ratio)
-+		if (ext2fs_test_block_bitmap2(old_map, b))
-+			ext2fs_unmark_block_bitmap2(rfs->new_fs->block_map, b);
- out:
- 	if (old_map)
- 		ext2fs_free_block_bitmap(old_map);
-
+@@ -787,20 +807,11 @@ retry:
+ 	 * number of descriptor blocks, then adjust
+ 	 * s_reserved_gdt_blocks if possible to avoid needing to move
+ 	 * the inode table either now or in the future.
++	 *
++	 * Note: If we're converting to 64bit mode, we did this earlier.
+ 	 */
+-	if ((fs->super->s_feature_compat &
+-	     EXT2_FEATURE_COMPAT_RESIZE_INODE) &&
+-	    (old_fs->desc_blocks != fs->desc_blocks)) {
+-		int new;
