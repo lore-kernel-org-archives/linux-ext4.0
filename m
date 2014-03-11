@@ -1,53 +1,75 @@
-From: "Richard W.M. Jones" <rjones@redhat.com>
-Subject: fstrim has no effect on a just-mounted filesystem
-Date: Tue, 11 Mar 2014 21:39:32 +0000
-Message-ID: <20140311213932.GA19176@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: fstrim has no effect on a just-mounted filesystem
+Date: Tue, 11 Mar 2014 16:47:02 -0500
+Message-ID: <531F8456.2020404@redhat.com>
+References: <20140311213932.GA19176@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: "Richard W.M. Jones" <rjones@redhat.com>,
+	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:23691 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:54411 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752697AbaCKVjg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 11 Mar 2014 17:39:36 -0400
+	id S1755729AbaCKVrE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 11 Mar 2014 17:47:04 -0400
 Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s2BLdYn5030956
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s2BLl334007710
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Tue, 11 Mar 2014 17:39:35 -0400
-Received: from localhost (vpn1-7-62.ams2.redhat.com [10.36.7.62])
-	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id s2BLdXsw007382
-	for <linux-ext4@vger.kernel.org>; Tue, 11 Mar 2014 17:39:33 -0400
-Content-Disposition: inline
+	for <linux-ext4@vger.kernel.org>; Tue, 11 Mar 2014 17:47:04 -0400
+In-Reply-To: <20140311213932.GA19176@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On 3/11/14, 4:39 PM, Richard W.M. Jones wrote:
+> 
+> Here's a problem I can't work out:
+> 
+> I have a filesystem (in a VM) that I know has at least 100MB of
+> deleted files on it.
 
-Here's a problem I can't work out:
+Was it mounted with -o discard at the time the files were deleted?
+If so, then the trim is already done during the unlink process,
+and there's no more work to do.
 
-I have a filesystem (in a VM) that I know has at least 100MB of
-deleted files on it.  Doing this in a script:
+So that's my first thought, but ...
 
-  mount -o discard /dev/sda1 /mnt
-  fstrim /mnt
+>  Doing this in a script:
+> 
+>   mount -o discard /dev/sda1 /mnt
+>   fstrim /mnt
+> 
+> ... does nothing.  Also the fstrim is almost instantaneous -- there's
+> no way it could be scanning the disk.
 
-... does nothing.  Also the fstrim is almost instantaneous -- there's
-no way it could be scanning the disk.
+blktrace would be a better tool to find out whether or not discards
+are actually getting issued to storage...
 
-However, if I start with the same filesystem, mounted with -o discard,
-and create and rm large files, while observing the size of the
-underlying virtual disk, then discard is obviously working fine.  'rm'
-of large files makes the underlying disk shrink.
+And if you strace it what does the ioctl return?
 
-Any ideas here?
+Enabling the trace_ext4_trim_all_free tracepoint might be interesting too.
 
-Rich.
+> However, if I start with the same filesystem, mounted with -o discard,
+> and create and rm large files, while observing the size of the
+> underlying virtual disk, then discard is obviously working fine.  'rm'
+> of large files makes the underlying disk shrink.
+> 
+> Any ideas here?
 
-kernel: 3.12.5-302.fc20.x86_64
-qemu: 1.7.0
-virtio-scsi with discard=unmap
+first of all, I should point out that "-o discard" is not necessary for
+fstrim / FITRIM ioctl to work.  The former tries to trim as soon
+as files are unlinked; FITRIM goes looking for free blocks to trim.
 
--- 
-Richard Jones, Virtualization Group, Red Hat http://people.redhat.com/~rjones
-virt-p2v converts physical machines to virtual machines.  Boot with a
-live CD or over the network (PXE) and turn machines into KVM guests.
-http://libguestfs.org/virt-v2v
+If you're mounting with -o discard, then fstrim should never find any
+workd to do.
+
+-Eric
+
+
+> Rich.
+> 
+> kernel: 3.12.5-302.fc20.x86_64
+> qemu: 1.7.0
+> virtio-scsi with discard=unmap
+> 
+
