@@ -1,81 +1,98 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 10/49] libext2fs: fix iblocks correctly when expanding an
- inline_data file
-Date: Wed, 12 Mar 2014 10:01:33 -0700
-Message-ID: <20140312170133.GA9070@birch.djwong.org>
-References: <20140311065356.30585.47192.stgit@birch.djwong.org>
- <20140311065502.30585.81788.stgit@birch.djwong.org>
- <5091761D-1733-4150-9999-C63CF142795B@dilger.ca>
+Subject: Re: [PATCH] create_inode: fix gcc -Wall complaints
+Date: Wed, 12 Mar 2014 10:59:43 -0700
+Message-ID: <20140312175943.GB9070@birch.djwong.org>
+References: <1394595670-11193-1-git-send-email-tytso@mit.edu>
+ <20140312034539.GC26898@thunk.org>
+ <20140312034841.GC31864@birch.djwong.org>
+ <20140312143215.GA15334@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "tytso@mit.edu" <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	liezhi.yang@windriver.com
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:24419 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751276AbaCLRBj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Mar 2014 13:01:39 -0400
+Received: from aserp1040.oracle.com ([141.146.126.69]:51248 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752411AbaCLR7u (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Mar 2014 13:59:50 -0400
 Content-Disposition: inline
-In-Reply-To: <5091761D-1733-4150-9999-C63CF142795B@dilger.ca>
+In-Reply-To: <20140312143215.GA15334@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Mar 12, 2014 at 10:38:57AM -0600, Andreas Dilger wrote:
-> I thought it wasn't possible to have inline data and an external xattr block?
-> It doesn't make sense to do it that way compared to the normal inline xattr
-> and external data block. 
+On Wed, Mar 12, 2014 at 10:32:15AM -0400, Theodore Ts'o wrote:
+> On Tue, Mar 11, 2014 at 08:48:41PM -0700, Darrick J. Wong wrote:
+> > 
+> > I fixed that up in the cppcheck cleanups patch by moving those declarations to
+> > ext2fs.h.  Maybe I should have shoved the patch closer to the head.
+> 
+> I was going to ask about cppcheck, since I'm not as familiar with it.
+> We have multiple static code checkers that we are available to
+> e2fsprogs developers:
 
-I don't know if you're /supposed/ to be able to do that, but the kernel permits
-me to create an inline data dir and then set a huge xattr on it that forces the
-allocation of an EA block.
+I've been using cppcheck (http://cppcheck.sourceforge.net/) as a poor man's
+Coverity to find resource leaks, since I don't have the ability to upload code
+and run checks myself.  Later I would like to use cppcheck's custom rule
+feature to catch incorrect use of library functions, e.g. modifying an extent
+without calling ext2fs_extent_fix_parents(), or setting i_blocks directly.
+
+Excerpting from https://packages.debian.org/sid/cppcheck, it can catch:
+
+ * pointers to out-of-scope auto variables;
+ * assignment of auto variables to an effective parameter of a function;
+ * use of deprecated functions (mktemp, gets, scanf);
+ * memory leaks in class or function variables;
+ * C-style pointer cast in C++ code;
+ * redundant if;
+ * misuse of the strtol or sprintf functions;
+ * unsigned division or division by zero;
+ * unused functions and struct members;
+ * passing parameters by value;
+ * misuse of signed char variables;
+ * unusual pointer arithmetic (such as "abc" + 'd');
+ * dereferenced null pointers;
+ * incomplete statements;
+
+It also seems to catch fd leaks.
+
+> sparse, via "make C=1"
+> 
+> gcc -Wall, via "make gcc-wall" and "make gcc-wall-new"
+> 
+
+I didn't even realize these existed.  I rather like the idea of a make target
+that builds with as much static analysis as we can muster and spits out a
+report.
+
+> clang, via "CC=clang ./configure ; make"
+> 
+> converity, via Eric or Ted uploading to scan.coverity.com
+> 
+> ... and for dynamic testing, we also have:
+> 
+> valgrind, via "cd build/tests ; make test_script ; ./test_script --valgrind"
+> 	  or "... ; ./test_scripte --valgrind-leakcheck"
+> 
+> At this point, the problem is not that we don't have enough testing
+> tools --- but that we're not using them regularly.
+
+Agreed.
+
+> I'm not opposed to adding cppcheck, but I'm not familiar with it ---
+> are there things that it catches that we might not catch via other
+> means?
+>
+> The other thing is that if we can figure out ways to automate running
+> some of these tests, and perhaps detecting when there are new warnings
+> that have popped up, that would probably be really useful.
+> 
+> Also, if anyone feels moved to document ways that e2fsprogs developers
+> can improve their code submissions, and go hunting for bugs if they so
+> feel moved, that would probably be a great thing to add to the ext4
+> wiki.
+
+Yes.  I'll start writing a page.
+https://ext4.wiki.kernel.org/index.php?title=Ext4_Contributing
 
 --D
-> 
-> Cheers, Andreas
-> 
-> > On Mar 11, 2014, at 0:55, "Darrick J. Wong" <darrick.wong@oracle.com> wrote:
-> > 
-> > i_blocks covers the number of blocks allocated to an inode for data,
-> > extents, and ACL blocks.  Since it's possible for a file to have a
-> > separate ACL block and inline data, we must be careful when expanding
-> > an inline data file to adjust, not set, the value of i_blocks.
-> > 
-> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> > ---
-> > lib/ext2fs/inline_data.c |    5 +++--
-> > 1 file changed, 3 insertions(+), 2 deletions(-)
-> > 
-> > 
-> > diff --git a/lib/ext2fs/inline_data.c b/lib/ext2fs/inline_data.c
-> > index 72e8fa3..a9ec923 100644
-> > --- a/lib/ext2fs/inline_data.c
-> > +++ b/lib/ext2fs/inline_data.c
-> > @@ -372,7 +372,9 @@ ext2fs_inline_data_dir_expand(ext2_filsys fs, ext2_ino_t ino,
-> >    if (EXT2_HAS_INCOMPAT_FEATURE(fs->super, EXT3_FEATURE_INCOMPAT_EXTENTS))
-> >        inode->i_flags |= EXT4_EXTENTS_FL;
-> >    inode->i_flags &= ~EXT4_INLINE_DATA_FL;
-> > -    ext2fs_iblk_set(fs, inode, 1);
-> > +    retval = ext2fs_iblk_add_blocks(fs, inode, 1);
-> > +    if (retval)
-> > +        goto errout;
-> >    inode->i_size = fs->blocksize;
-> >    retval = ext2fs_bmap2(fs, ino, inode, 0, BMAP_SET, 0, 0, &blk);
-> >    if (retval)
-> > @@ -410,7 +412,6 @@ ext2fs_inline_data_file_expand(ext2_filsys fs, ext2_ino_t ino,
-> >        inode->i_flags |= EXT4_EXTENTS_FL;
-> >    }
-> >    inode->i_flags &= ~EXT4_INLINE_DATA_FL;
-> > -    ext2fs_iblk_set(fs, inode, 0);
-> >    inode->i_size = 0;
-> >    retval = ext2fs_write_inode(fs, ino, inode);
-> >    if (retval)
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
