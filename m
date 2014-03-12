@@ -1,106 +1,42 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] jbd2: improve error messages for inconsistent journal heads
-Date: Wed, 12 Mar 2014 16:44:49 -0400
-Message-ID: <1394657089-29456-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH] create_inode: fix gcc -Wall complaints
+Date: Wed, 12 Mar 2014 16:51:10 -0400
+Message-ID: <20140312205110.GF15334@thunk.org>
+References: <1394595670-11193-1-git-send-email-tytso@mit.edu>
+ <20140312034539.GC26898@thunk.org>
+ <20140312034841.GC31864@birch.djwong.org>
+ <20140312143215.GA15334@thunk.org>
+ <20140312200219.GC9070@birch.djwong.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	liezhi.yang@windriver.com
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:40593 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:40597 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751573AbaCLUoy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 12 Mar 2014 16:44:54 -0400
+	id S1751283AbaCLUvN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 12 Mar 2014 16:51:13 -0400
+Content-Disposition: inline
+In-Reply-To: <20140312200219.GC9070@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fix up error messages printed when the transaction pointers in a
-journal head are inconsistent.  This improves the error messages which
-are printed when running xfstests generic/068 in data=journal mode.
-See the bug report at: https://bugzilla.kernel.org/show_bug.cgi?id=60786
+On Wed, Mar 12, 2014 at 01:02:19PM -0700, Darrick J. Wong wrote:
+> > 
+> > gcc -Wall, via "make gcc-wall" and "make gcc-wall-new"
+> 
+> Annoyingly, I ran make gcc-wall on Ubuntu 12.04 (gcc 4.6, glibc 2.15) and got
+> this splat:
+> 
+> /usr/include/x86_64-linux-gnu/sys/stat.h:456: multiple definition of `stat'
+> ../lib/libquota.a(quotaio_v2.o):/usr/include/x86_64-linux-gnu/sys/stat.h:456: first defined here
+> 
+> Not sure how to fix this, other than changing WFLAGS to start with -std=gnu99.
+> gcc 4.8/glibc 2.19 on Ubuntu 14 are no better.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/ext4_jbd2.c   | 10 ++++++++++
- fs/jbd2/transaction.c | 33 ++++++++++++++-------------------
- 2 files changed, 24 insertions(+), 19 deletions(-)
+Hmm, I'm using Debian testing, with gcc 4.8 and eglibc 2.18, and it's
+working fine.  I'm curious, are people noticing problems with gcc-wall
+on Fedora?
 
-diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index 3fe29de..c3fb607 100644
---- a/fs/ext4/ext4_jbd2.c
-+++ b/fs/ext4/ext4_jbd2.c
-@@ -259,6 +259,16 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
- 		if (WARN_ON_ONCE(err)) {
- 			ext4_journal_abort_handle(where, line, __func__, bh,
- 						  handle, err);
-+			if (inode == NULL) {
-+				pr_err("EXT4: jbd2_journal_dirty_metadata "
-+				       "failed: handle type %u started at "
-+				       "line %u, credits %u/%u, errcode %d",
-+				       handle->h_type,
-+				       handle->h_line_no,
-+				       handle->h_requested_credits,
-+				       handle->h_buffer_credits, err);
-+				return err;
-+			}
- 			ext4_error_inode(inode, where, line,
- 					 bh->b_blocknr,
- 					 "journal_dirty_metadata failed: "
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index d999b1f..38cfcf5 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -1313,7 +1313,7 @@ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
- 			     journal->j_running_transaction)) {
- 			printk(KERN_ERR "JBD2: %s: "
- 			       "jh->b_transaction (%llu, %p, %u) != "
--			       "journal->j_running_transaction (%p, %u)",
-+			       "journal->j_running_transaction (%p, %u)\n",
- 			       journal->j_devname,
- 			       (unsigned long long) bh->b_blocknr,
- 			       jh->b_transaction,
-@@ -1336,30 +1336,25 @@ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
- 	 */
- 	if (jh->b_transaction != transaction) {
- 		JBUFFER_TRACE(jh, "already on other transaction");
--		if (unlikely(jh->b_transaction !=
--			     journal->j_committing_transaction)) {
--			printk(KERN_ERR "JBD2: %s: "
--			       "jh->b_transaction (%llu, %p, %u) != "
--			       "journal->j_committing_transaction (%p, %u)",
-+		if (unlikely(((jh->b_transaction !=
-+			       journal->j_committing_transaction)) ||
-+			     (jh->b_next_transaction != transaction))) {
-+			printk(KERN_ERR "jbd2_journal_dirty_metadata: %s: "
-+			       "bad jh for block %llu: "
-+			       "transaction (%p, %u), "
-+			       "jh->b_transaction (%p, %u), "
-+			       "jh->b_next_transaction (%p, %u), jlist %u\n",
- 			       journal->j_devname,
- 			       (unsigned long long) bh->b_blocknr,
-+			       transaction, transaction->t_tid,
- 			       jh->b_transaction,
--			       jh->b_transaction ? jh->b_transaction->t_tid : 0,
--			       journal->j_committing_transaction,
--			       journal->j_committing_transaction ?
--			       journal->j_committing_transaction->t_tid : 0);
--			ret = -EINVAL;
--		}
--		if (unlikely(jh->b_next_transaction != transaction)) {
--			printk(KERN_ERR "JBD2: %s: "
--			       "jh->b_next_transaction (%llu, %p, %u) != "
--			       "transaction (%p, %u)",
--			       journal->j_devname,
--			       (unsigned long long) bh->b_blocknr,
-+			       jh->b_transaction ?
-+			       jh->b_transaction->t_tid : 0,
- 			       jh->b_next_transaction,
- 			       jh->b_next_transaction ?
- 			       jh->b_next_transaction->t_tid : 0,
--			       transaction, transaction->t_tid);
-+			       jh->b_jlist);
-+			WARN_ON(1);
- 			ret = -EINVAL;
- 		}
- 		/* And this case is illegal: we can't reuse another
--- 
-1.9.0
-
+					- Ted
