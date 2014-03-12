@@ -1,43 +1,36 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] create_inode: fix gcc -Wall complaints
-Date: Tue, 11 Mar 2014 23:45:39 -0400
-Message-ID: <20140312034539.GC26898@thunk.org>
-References: <1394595670-11193-1-git-send-email-tytso@mit.edu>
+Subject: Re: [PATCH 05/49] create_inode: handle hard link inum mappings per
+ populate_fs invocation
+Date: Tue, 11 Mar 2014 23:46:11 -0400
+Message-ID: <20140312034611.GD26898@thunk.org>
+References: <20140311065356.30585.47192.stgit@birch.djwong.org>
+ <20140311065430.30585.46364.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: darrick.wong@oracle.com, liezhi.yang@windriver.com
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:40224 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:40231 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754145AbaCLDpm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 11 Mar 2014 23:45:42 -0400
+	id S1754145AbaCLDqV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 11 Mar 2014 23:46:21 -0400
 Content-Disposition: inline
-In-Reply-To: <1394595670-11193-1-git-send-email-tytso@mit.edu>
+In-Reply-To: <20140311065430.30585.46364.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 11, 2014 at 11:41:10PM -0400, Theodore Ts'o wrote:
-> We had several functions that were not returning zero on success.  Fix
-> this.
+On Mon, Mar 10, 2014 at 11:54:30PM -0700, Darrick J. Wong wrote:
+> When calling populate_fs, the map for hardlink detection is not
+> cleaned up between populate_fs invocations, which could lead to
+> unexpected results if anyone calls populate_fs twice in the same
+> client program).  This doesn't happen right now, but we might as well
+> clean it up.
 > 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> The detctor fails if the external directory crosses mountpoints,
+> so fix that too.
+> 
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-One additional gcc -Wall nit which I have not yet fixed:
+Thanks, applied.
 
-create_inode.c is using ext2fs_inline_data_init() which is currently a
-private function defined in ext2fsP.h.
-
-We either need to make this a publically exported interface (in which
-case we have to guarantee that it is stable), or we need to find
-another way to make the right thing happen here.
-
-Darrick, Robert, do you have any thoughts or suggestions?
-
-	       	    	      	    	   - Ted
-
-P.S.  My bad for not doing a gcc -Wall run on the patches before
-accepting them.  And in the future, I'd appreciate it if people who
-are preparing patches do a "make gcc-wall" and make sure you're not
-making things worse.  There are plenty of bugs that can be turned up
-this way.
+						- Ted
