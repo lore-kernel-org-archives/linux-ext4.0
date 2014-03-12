@@ -1,33 +1,28 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 02/49] create_inode: minor cleanups
-Date: Tue, 11 Mar 2014 23:27:29 -0400
-Message-ID: <20140312032729.GB23182@thunk.org>
+Subject: Re: [PATCH 03/49] create_inode: whitespace fixes
+Date: Tue, 11 Mar 2014 23:27:57 -0400
+Message-ID: <20140312032757.GC23182@thunk.org>
 References: <20140311065356.30585.47192.stgit@birch.djwong.org>
- <20140311065410.30585.93415.stgit@birch.djwong.org>
- <18BBBB53-C4B5-4724-BB26-199FE065278C@dilger.ca>
+ <20140311065417.30585.15673.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-	linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Cc: linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:40203 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:40207 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752582AbaCLD1f (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 11 Mar 2014 23:27:35 -0400
+	id S1753295AbaCLD2A (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 11 Mar 2014 23:28:00 -0400
 Content-Disposition: inline
-In-Reply-To: <18BBBB53-C4B5-4724-BB26-199FE065278C@dilger.ca>
+In-Reply-To: <20140311065417.30585.15673.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 11, 2014 at 02:31:27PM -0600, Andreas Dilger wrote:
-> On Mar 11, 2014, at 12:54 AM, Darrick J. Wong <darrick.wong@oracle.com> wrote:
+On Mon, Mar 10, 2014 at 11:54:17PM -0700, Darrick J. Wong wrote:
+> Fix a ton of whitespace issues.
 > 
-> > Fix a couple of small style issues in the create_inode files.
-> > 
-> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> 
-> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+
 
 Thanks, applied.
 
