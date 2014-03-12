@@ -1,7 +1,7 @@
 From: T Makphaibulchoke <tmac@hp.com>
-Subject: [PATCH v5 RESEND 3/3] ext4: each filesystem creates and uses its own mb_cache
-Date: Wed, 12 Mar 2014 10:19:54 -0600
-Message-ID: <1394641194-65713-4-git-send-email-tmac@hp.com>
+Subject: [PATCH v5 RESEND 1/3] fs/mbcache.c change block and index hash chain to hlist_bl_node
+Date: Wed, 12 Mar 2014 10:19:52 -0600
+Message-ID: <1394641194-65713-2-git-send-email-tmac@hp.com>
 References: <1374108934-50550-1-git-send-email-tmac@hp.com>
  <1394641194-65713-1-git-send-email-tmac@hp.com>
 Cc: aswin@hp.com, T Makphaibulchoke <tmac@hp.com>
@@ -13,348 +13,304 @@ In-Reply-To: <1394641194-65713-1-git-send-email-tmac@hp.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This patch adds new interfaces to create and destory cache,
-ext4_xattr_create_cache() and ext4_xattr_destroy_cache(), and remove the cache
-creation and destory calls from ex4_init_xattr() and ext4_exitxattr() in
-fs/ext4/xattr.c.
-
-fs/ext4/super.c has been changed so that when a filesystem is mounted a
-cache is allocated and attched to its ext4_sb_info structure.
-
-fs/mbcache.c has been changed so that only one slab allocator is allocated
-and used by all mbcache structures.
+This patch changes each mb_cache's both block and index hash chains from
+regular linked list to hlist_bl_node, which contains a built-in lock.  This is
+the first step in decoupling of locks serializing accesses to mb_cache global
+data and each mb_cache_entry local data.
 
 Signed-off-by: T. Makphaibulchoke <tmac@hp.com>
 ---
- fs/ext4/ext4.h  |  1 +
- fs/ext4/super.c | 24 ++++++++++++++++--------
- fs/ext4/xattr.c | 51 ++++++++++++++++++++++++++++-----------------------
- fs/ext4/xattr.h |  6 +++---
- fs/mbcache.c    | 18 +++++++++++++-----
- 5 files changed, 61 insertions(+), 39 deletions(-)
+ fs/mbcache.c            | 117 ++++++++++++++++++++++++++++++++----------------
+ include/linux/mbcache.h |  12 ++---
+ 2 files changed, 85 insertions(+), 44 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index e618503..fa20aab 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1314,6 +1314,7 @@ struct ext4_sb_info {
- 	struct list_head s_es_lru;
- 	unsigned long s_es_last_sorted;
- 	struct percpu_counter s_extent_cache_cnt;
-+	struct mb_cache *s_mb_cache;
- 	spinlock_t s_es_lru_lock ____cacheline_aligned_in_smp;
- 
- 	/* Ratelimit ext4 messages. */
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index c977f4e..176048e 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -59,6 +59,7 @@ static struct kset *ext4_kset;
- static struct ext4_lazy_init *ext4_li_info;
- static struct mutex ext4_li_mtx;
- static struct ext4_features *ext4_feat;
-+static int ext4_mballoc_ready;
- 
- static int ext4_load_journal(struct super_block *, struct ext4_super_block *,
- 			     unsigned long journal_devnum);
-@@ -845,6 +846,10 @@ static void ext4_put_super(struct super_block *sb)
- 		invalidate_bdev(sbi->journal_bdev);
- 		ext4_blkdev_remove(sbi);
- 	}
-+	if (sbi->s_mb_cache) {
-+		ext4_xattr_destroy_cache(sbi->s_mb_cache);
-+		sbi->s_mb_cache = NULL;
-+	}
- 	if (sbi->s_mmp_tsk)
- 		kthread_stop(sbi->s_mmp_tsk);
- 	sb->s_fs_info = NULL;
-@@ -3981,6 +3986,13 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	set_task_ioprio(sbi->s_journal->j_task, journal_ioprio);
- 
- 	sbi->s_journal->j_commit_callback = ext4_journal_commit_callback;
-+	if (ext4_mballoc_ready) {
-+		sbi->s_mb_cache = ext4_xattr_create_cache(sb->s_id);
-+		if (!sbi->s_mb_cache) {
-+			ext4_msg(sb, KERN_ERR, "Failed to create an mb_cache");
-+			goto failed_mount_wq;
-+		}
-+	}
- 
- 	/*
- 	 * The journal may have updated the bg summary counts, so we
-@@ -5501,11 +5513,9 @@ static int __init ext4_init_fs(void)
- 
- 	err = ext4_init_mballoc();
- 	if (err)
--		goto out3;
--
--	err = ext4_init_xattr();
--	if (err)
- 		goto out2;
-+	else
-+		ext4_mballoc_ready = 1;
- 	err = init_inodecache();
- 	if (err)
- 		goto out1;
-@@ -5521,10 +5531,9 @@ out:
- 	unregister_as_ext3();
- 	destroy_inodecache();
- out1:
--	ext4_exit_xattr();
--out2:
-+	ext4_mballoc_ready = 0;
- 	ext4_exit_mballoc();
--out3:
-+out2:
- 	ext4_exit_feat_adverts();
- out4:
- 	if (ext4_proc_root)
-@@ -5547,7 +5556,6 @@ static void __exit ext4_exit_fs(void)
- 	unregister_as_ext3();
- 	unregister_filesystem(&ext4_fs_type);
- 	destroy_inodecache();
--	ext4_exit_xattr();
- 	ext4_exit_mballoc();
- 	ext4_exit_feat_adverts();
- 	remove_proc_entry("fs/ext4", NULL);
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 1423c48..6e2788f 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -81,7 +81,7 @@
- # define ea_bdebug(bh, fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
- #endif
- 
--static void ext4_xattr_cache_insert(struct buffer_head *);
-+static void ext4_xattr_cache_insert(struct mb_cache *, struct buffer_head *);
- static struct buffer_head *ext4_xattr_cache_find(struct inode *,
- 						 struct ext4_xattr_header *,
- 						 struct mb_cache_entry **);
-@@ -90,8 +90,6 @@ static void ext4_xattr_rehash(struct ext4_xattr_header *,
- static int ext4_xattr_list(struct dentry *dentry, char *buffer,
- 			   size_t buffer_size);
- 
--static struct mb_cache *ext4_xattr_cache;
--
- static const struct xattr_handler *ext4_xattr_handler_map[] = {
- 	[EXT4_XATTR_INDEX_USER]		     = &ext4_xattr_user_handler,
- #ifdef CONFIG_EXT4_FS_POSIX_ACL
-@@ -117,6 +115,9 @@ const struct xattr_handler *ext4_xattr_handlers[] = {
- 	NULL
- };
- 
-+#define EXT4_GET_MB_CACHE(inode)	(((struct ext4_sb_info *) \
-+				inode->i_sb->s_fs_info)->s_mb_cache)
-+
- static __le32 ext4_xattr_block_csum(struct inode *inode,
- 				    sector_t block_nr,
- 				    struct ext4_xattr_header *hdr)
-@@ -265,6 +266,7 @@ ext4_xattr_block_get(struct inode *inode, int name_index, const char *name,
- 	struct ext4_xattr_entry *entry;
- 	size_t size;
- 	int error;
-+	struct mb_cache *ext4_mb_cache = EXT4_GET_MB_CACHE(inode);
- 
- 	ea_idebug(inode, "name=%d.%s, buffer=%p, buffer_size=%ld",
- 		  name_index, name, buffer, (long)buffer_size);
-@@ -286,7 +288,7 @@ bad_block:
- 		error = -EIO;
- 		goto cleanup;
- 	}
--	ext4_xattr_cache_insert(bh);
-+	ext4_xattr_cache_insert(ext4_mb_cache, bh);
- 	entry = BFIRST(bh);
- 	error = ext4_xattr_find_entry(&entry, name_index, name, bh->b_size, 1);
- 	if (error == -EIO)
-@@ -409,6 +411,7 @@ ext4_xattr_block_list(struct dentry *dentry, char *buffer, size_t buffer_size)
- 	struct inode *inode = dentry->d_inode;
- 	struct buffer_head *bh = NULL;
- 	int error;
-+	struct mb_cache *ext4_mb_cache = EXT4_GET_MB_CACHE(inode);
- 
- 	ea_idebug(inode, "buffer=%p, buffer_size=%ld",
- 		  buffer, (long)buffer_size);
-@@ -430,7 +433,7 @@ ext4_xattr_block_list(struct dentry *dentry, char *buffer, size_t buffer_size)
- 		error = -EIO;
- 		goto cleanup;
- 	}
--	ext4_xattr_cache_insert(bh);
-+	ext4_xattr_cache_insert(ext4_mb_cache, bh);
- 	error = ext4_xattr_list_entries(dentry, BFIRST(bh), buffer, buffer_size);
- 
- cleanup:
-@@ -526,8 +529,9 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
- {
- 	struct mb_cache_entry *ce = NULL;
- 	int error = 0;
-+	struct mb_cache *ext4_mb_cache = EXT4_GET_MB_CACHE(inode);
- 
--	ce = mb_cache_entry_get(ext4_xattr_cache, bh->b_bdev, bh->b_blocknr);
-+	ce = mb_cache_entry_get(ext4_mb_cache, bh->b_bdev, bh->b_blocknr);
- 	error = ext4_journal_get_write_access(handle, bh);
- 	if (error)
- 		goto out;
-@@ -745,13 +749,14 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
- 	struct ext4_xattr_search *s = &bs->s;
- 	struct mb_cache_entry *ce = NULL;
- 	int error = 0;
-+	struct mb_cache *ext4_mb_cache = EXT4_GET_MB_CACHE(inode);
- 
- #define header(x) ((struct ext4_xattr_header *)(x))
- 
- 	if (i->value && i->value_len > sb->s_blocksize)
- 		return -ENOSPC;
- 	if (s->base) {
--		ce = mb_cache_entry_get(ext4_xattr_cache, bs->bh->b_bdev,
-+		ce = mb_cache_entry_get(ext4_mb_cache, bs->bh->b_bdev,
- 					bs->bh->b_blocknr);
- 		error = ext4_journal_get_write_access(handle, bs->bh);
- 		if (error)
-@@ -769,7 +774,8 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
- 				if (!IS_LAST_ENTRY(s->first))
- 					ext4_xattr_rehash(header(s->base),
- 							  s->here);
--				ext4_xattr_cache_insert(bs->bh);
-+				ext4_xattr_cache_insert(ext4_mb_cache,
-+					bs->bh);
- 			}
- 			unlock_buffer(bs->bh);
- 			if (error == -EIO)
-@@ -905,7 +911,7 @@ getblk_failed:
- 			memcpy(new_bh->b_data, s->base, new_bh->b_size);
- 			set_buffer_uptodate(new_bh);
- 			unlock_buffer(new_bh);
--			ext4_xattr_cache_insert(new_bh);
-+			ext4_xattr_cache_insert(ext4_mb_cache, new_bh);
- 			error = ext4_handle_dirty_xattr_block(handle,
- 							      inode, new_bh);
- 			if (error)
-@@ -1495,13 +1501,13 @@ ext4_xattr_put_super(struct super_block *sb)
-  * Returns 0, or a negative error number on failure.
-  */
- static void
--ext4_xattr_cache_insert(struct buffer_head *bh)
-+ext4_xattr_cache_insert(struct mb_cache *ext4_mb_cache, struct buffer_head *bh)
- {
- 	__u32 hash = le32_to_cpu(BHDR(bh)->h_hash);
- 	struct mb_cache_entry *ce;
- 	int error;
- 
--	ce = mb_cache_entry_alloc(ext4_xattr_cache, GFP_NOFS);
-+	ce = mb_cache_entry_alloc(ext4_mb_cache, GFP_NOFS);
- 	if (!ce) {
- 		ea_bdebug(bh, "out of memory");
- 		return;
-@@ -1573,12 +1579,13 @@ ext4_xattr_cache_find(struct inode *inode, struct ext4_xattr_header *header,
- {
- 	__u32 hash = le32_to_cpu(header->h_hash);
- 	struct mb_cache_entry *ce;
-+	struct mb_cache *ext4_mb_cache = EXT4_GET_MB_CACHE(inode);
- 
- 	if (!header->h_hash)
- 		return NULL;  /* never share */
- 	ea_idebug(inode, "looking for cached blocks [%x]", (int)hash);
- again:
--	ce = mb_cache_entry_find_first(ext4_xattr_cache, inode->i_sb->s_bdev,
-+	ce = mb_cache_entry_find_first(ext4_mb_cache, inode->i_sb->s_bdev,
- 				       hash);
- 	while (ce) {
- 		struct buffer_head *bh;
-@@ -1676,19 +1683,17 @@ static void ext4_xattr_rehash(struct ext4_xattr_header *header,
- 
- #undef BLOCK_HASH_SHIFT
- 
--int __init
--ext4_init_xattr(void)
-+#define	HASH_BUCKET_BITS	10
-+
-+struct mb_cache *
-+ext4_xattr_create_cache(char *name)
- {
--	ext4_xattr_cache = mb_cache_create("ext4_xattr", 6);
--	if (!ext4_xattr_cache)
--		return -ENOMEM;
--	return 0;
-+	return mb_cache_create(name, HASH_BUCKET_BITS);
- }
- 
--void
--ext4_exit_xattr(void)
-+void ext4_xattr_destroy_cache(struct mb_cache *cache)
- {
--	if (ext4_xattr_cache)
--		mb_cache_destroy(ext4_xattr_cache);
--	ext4_xattr_cache = NULL;
-+	if (cache)
-+		mb_cache_destroy(cache);
- }
-+
-diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index c767dbd..b930320 100644
---- a/fs/ext4/xattr.h
-+++ b/fs/ext4/xattr.h
-@@ -112,9 +112,6 @@ extern void ext4_xattr_put_super(struct super_block *);
- extern int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
- 			    struct ext4_inode *raw_inode, handle_t *handle);
- 
--extern int __init ext4_init_xattr(void);
--extern void ext4_exit_xattr(void);
--
- extern const struct xattr_handler *ext4_xattr_handlers[];
- 
- extern int ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
-@@ -126,6 +123,9 @@ extern int ext4_xattr_ibody_inline_set(handle_t *handle, struct inode *inode,
- 				       struct ext4_xattr_info *i,
- 				       struct ext4_xattr_ibody_find *is);
- 
-+extern struct mb_cache *ext4_xattr_create_cache(char *name);
-+extern void ext4_xattr_destroy_cache(struct mb_cache *);
-+
- #ifdef CONFIG_EXT4_FS_SECURITY
- extern int ext4_init_security(handle_t *handle, struct inode *inode,
- 			      struct inode *dir, const struct qstr *qstr);
 diff --git a/fs/mbcache.c b/fs/mbcache.c
-index 786ecab..bf166e3 100644
+index e519e45..55db0da 100644
 --- a/fs/mbcache.c
 +++ b/fs/mbcache.c
-@@ -99,6 +99,7 @@
+@@ -34,9 +34,9 @@
+ #include <linux/mm.h>
+ #include <linux/slab.h>
+ #include <linux/sched.h>
+-#include <linux/init.h>
++#include <linux/list_bl.h>
+ #include <linux/mbcache.h>
+-
++#include <linux/init.h>
  
- static DECLARE_WAIT_QUEUE_HEAD(mb_cache_queue);
- static struct blockgroup_lock *mb_cache_bg_lock;
-+static struct kmem_cache *mb_cache_kmem_cache;
+ #ifdef MB_CACHE_DEBUG
+ # define mb_debug(f...) do { \
+@@ -87,21 +87,38 @@ static LIST_HEAD(mb_cache_lru_list);
+ static DEFINE_SPINLOCK(mb_cache_spinlock);
  
- MODULE_AUTHOR("Andreas Gruenbacher <a.gruenbacher@computer.org>");
- MODULE_DESCRIPTION("Meta block cache (for extended attributes)");
-@@ -351,11 +352,14 @@ mb_cache_create(const char *name, int bucket_bits)
+ static inline int
+-__mb_cache_entry_is_hashed(struct mb_cache_entry *ce)
++__mb_cache_entry_is_block_hashed(struct mb_cache_entry *ce)
+ {
+-	return !list_empty(&ce->e_block_list);
++	return !hlist_bl_unhashed(&ce->e_block_list);
+ }
+ 
+ 
+-static void
+-__mb_cache_entry_unhash(struct mb_cache_entry *ce)
++static inline void
++__mb_cache_entry_unhash_block(struct mb_cache_entry *ce)
+ {
+-	if (__mb_cache_entry_is_hashed(ce)) {
+-		list_del_init(&ce->e_block_list);
+-		list_del(&ce->e_index.o_list);
+-	}
++	if (__mb_cache_entry_is_block_hashed(ce))
++		hlist_bl_del_init(&ce->e_block_list);
++}
++
++static inline int
++__mb_cache_entry_is_index_hashed(struct mb_cache_entry *ce)
++{
++	return !hlist_bl_unhashed(&ce->e_index.o_list);
+ }
+ 
++static inline void
++__mb_cache_entry_unhash_index(struct mb_cache_entry *ce)
++{
++	if (__mb_cache_entry_is_index_hashed(ce))
++		hlist_bl_del_init(&ce->e_index.o_list);
++}
++
++static inline void
++__mb_cache_entry_unhash(struct mb_cache_entry *ce)
++{
++	__mb_cache_entry_unhash_index(ce);
++	__mb_cache_entry_unhash_block(ce);
++}
+ 
+ static void
+ __mb_cache_entry_forget(struct mb_cache_entry *ce, gfp_t gfp_mask)
+@@ -125,7 +142,7 @@ __mb_cache_entry_release_unlock(struct mb_cache_entry *ce)
+ 		ce->e_used -= MB_CACHE_WRITER;
+ 	ce->e_used--;
+ 	if (!(ce->e_used || ce->e_queued)) {
+-		if (!__mb_cache_entry_is_hashed(ce))
++		if (!__mb_cache_entry_is_block_hashed(ce))
+ 			goto forget;
+ 		mb_assert(list_empty(&ce->e_lru_list));
+ 		list_add_tail(&ce->e_lru_list, &mb_cache_lru_list);
+@@ -221,18 +238,18 @@ mb_cache_create(const char *name, int bucket_bits)
+ 	cache->c_name = name;
+ 	atomic_set(&cache->c_entry_count, 0);
+ 	cache->c_bucket_bits = bucket_bits;
+-	cache->c_block_hash = kmalloc(bucket_count * sizeof(struct list_head),
+-	                              GFP_KERNEL);
++	cache->c_block_hash = kmalloc(bucket_count *
++		sizeof(struct hlist_bl_head), GFP_KERNEL);
+ 	if (!cache->c_block_hash)
  		goto fail;
  	for (n=0; n<bucket_count; n++)
- 		INIT_HLIST_BL_HEAD(&cache->c_index_hash[n]);
--	cache->c_entry_cache = kmem_cache_create(name,
--		sizeof(struct mb_cache_entry), 0,
--		SLAB_RECLAIM_ACCOUNT|SLAB_MEM_SPREAD, NULL);
--	if (!cache->c_entry_cache)
--		goto fail2;
-+	if (!mb_cache_kmem_cache) {
-+		mb_cache_kmem_cache = kmem_cache_create(name,
-+			sizeof(struct mb_cache_entry), 0,
-+			SLAB_RECLAIM_ACCOUNT|SLAB_MEM_SPREAD, NULL);
-+		if (!mb_cache_kmem_cache)
-+			goto fail2;
-+	}
-+	cache->c_entry_cache = mb_cache_kmem_cache;
- 
- 	/*
- 	 * Set an upper limit on the number of cache entries so that the hash
-@@ -476,6 +480,10 @@ mb_cache_destroy(struct mb_cache *cache)
- 			  atomic_read(&cache->c_entry_count));
+-		INIT_LIST_HEAD(&cache->c_block_hash[n]);
+-	cache->c_index_hash = kmalloc(bucket_count * sizeof(struct list_head),
+-				      GFP_KERNEL);
++		INIT_HLIST_BL_HEAD(&cache->c_block_hash[n]);
++	cache->c_index_hash = kmalloc(bucket_count *
++		sizeof(struct hlist_bl_head), GFP_KERNEL);
+ 	if (!cache->c_index_hash)
+ 		goto fail;
+ 	for (n=0; n<bucket_count; n++)
+-		INIT_LIST_HEAD(&cache->c_index_hash[n]);
++		INIT_HLIST_BL_HEAD(&cache->c_index_hash[n]);
+ 	cache->c_entry_cache = kmem_cache_create(name,
+ 		sizeof(struct mb_cache_entry), 0,
+ 		SLAB_RECLAIM_ACCOUNT|SLAB_MEM_SPREAD, NULL);
+@@ -364,10 +381,13 @@ mb_cache_entry_alloc(struct mb_cache *cache, gfp_t gfp_flags)
+ 			return NULL;
+ 		atomic_inc(&cache->c_entry_count);
+ 		INIT_LIST_HEAD(&ce->e_lru_list);
+-		INIT_LIST_HEAD(&ce->e_block_list);
++		INIT_HLIST_BL_NODE(&ce->e_block_list);
++		INIT_HLIST_BL_NODE(&ce->e_index.o_list);
+ 		ce->e_cache = cache;
+ 		ce->e_queued = 0;
  	}
++	ce->e_block_hash_p = &cache->c_block_hash[0];
++	ce->e_index_hash_p = &cache->c_index_hash[0];
+ 	ce->e_used = 1 + MB_CACHE_WRITER;
+ 	return ce;
+ }
+@@ -393,25 +413,32 @@ mb_cache_entry_insert(struct mb_cache_entry *ce, struct block_device *bdev,
+ {
+ 	struct mb_cache *cache = ce->e_cache;
+ 	unsigned int bucket;
+-	struct list_head *l;
++	struct hlist_bl_node *l;
+ 	int error = -EBUSY;
++	struct hlist_bl_head *block_hash_p;
++	struct hlist_bl_head *index_hash_p;
++	struct mb_cache_entry *lce;
  
-+	if (list_empty(&mb_cache_list)) {
-+		kmem_cache_destroy(mb_cache_kmem_cache);
-+		mb_cache_kmem_cache = NULL;
++	mb_assert(ce);
+ 	bucket = hash_long((unsigned long)bdev + (block & 0xffffffff), 
+ 			   cache->c_bucket_bits);
++	block_hash_p = &cache->c_block_hash[bucket];
+ 	spin_lock(&mb_cache_spinlock);
+-	list_for_each_prev(l, &cache->c_block_hash[bucket]) {
+-		struct mb_cache_entry *ce =
+-			list_entry(l, struct mb_cache_entry, e_block_list);
+-		if (ce->e_bdev == bdev && ce->e_block == block)
++	hlist_bl_for_each_entry(lce, l, block_hash_p, e_block_list) {
++		if (lce->e_bdev == bdev && lce->e_block == block)
+ 			goto out;
+ 	}
++	mb_assert(!__mb_cache_entry_is_block_hashed(ce));
+ 	__mb_cache_entry_unhash(ce);
+ 	ce->e_bdev = bdev;
+ 	ce->e_block = block;
+-	list_add(&ce->e_block_list, &cache->c_block_hash[bucket]);
++	ce->e_block_hash_p = block_hash_p;
+ 	ce->e_index.o_key = key;
+ 	bucket = hash_long(key, cache->c_bucket_bits);
+-	list_add(&ce->e_index.o_list, &cache->c_index_hash[bucket]);
++	index_hash_p = &cache->c_index_hash[bucket];
++	ce->e_index_hash_p = index_hash_p;
++	hlist_bl_add_head(&ce->e_index.o_list, index_hash_p);
++	hlist_bl_add_head(&ce->e_block_list, block_hash_p);
+ 	error = 0;
+ out:
+ 	spin_unlock(&mb_cache_spinlock);
+@@ -463,14 +490,16 @@ mb_cache_entry_get(struct mb_cache *cache, struct block_device *bdev,
+ 		   sector_t block)
+ {
+ 	unsigned int bucket;
+-	struct list_head *l;
++	struct hlist_bl_node *l;
+ 	struct mb_cache_entry *ce;
++	struct hlist_bl_head *block_hash_p;
+ 
+ 	bucket = hash_long((unsigned long)bdev + (block & 0xffffffff),
+ 			   cache->c_bucket_bits);
++	block_hash_p = &cache->c_block_hash[bucket];
+ 	spin_lock(&mb_cache_spinlock);
+-	list_for_each(l, &cache->c_block_hash[bucket]) {
+-		ce = list_entry(l, struct mb_cache_entry, e_block_list);
++	hlist_bl_for_each_entry(ce, l, block_hash_p, e_block_list) {
++		mb_assert(ce->e_block_hash_p == block_hash_p);
+ 		if (ce->e_bdev == bdev && ce->e_block == block) {
+ 			DEFINE_WAIT(wait);
+ 
+@@ -489,7 +518,7 @@ mb_cache_entry_get(struct mb_cache *cache, struct block_device *bdev,
+ 			finish_wait(&mb_cache_queue, &wait);
+ 			ce->e_used += 1 + MB_CACHE_WRITER;
+ 
+-			if (!__mb_cache_entry_is_hashed(ce)) {
++			if (!__mb_cache_entry_is_block_hashed(ce)) {
+ 				__mb_cache_entry_release_unlock(ce);
+ 				return NULL;
+ 			}
+@@ -506,12 +535,14 @@ cleanup:
+ #if !defined(MB_CACHE_INDEXES_COUNT) || (MB_CACHE_INDEXES_COUNT > 0)
+ 
+ static struct mb_cache_entry *
+-__mb_cache_entry_find(struct list_head *l, struct list_head *head,
++__mb_cache_entry_find(struct hlist_bl_node *l, struct hlist_bl_head *head,
+ 		      struct block_device *bdev, unsigned int key)
+ {
+-	while (l != head) {
++	while (l != NULL) {
+ 		struct mb_cache_entry *ce =
+-			list_entry(l, struct mb_cache_entry, e_index.o_list);
++			hlist_bl_entry(l, struct mb_cache_entry,
++				e_index.o_list);
++		mb_assert(ce->e_index_hash_p == head);
+ 		if (ce->e_bdev == bdev && ce->e_index.o_key == key) {
+ 			DEFINE_WAIT(wait);
+ 
+@@ -532,7 +563,7 @@ __mb_cache_entry_find(struct list_head *l, struct list_head *head,
+ 			}
+ 			finish_wait(&mb_cache_queue, &wait);
+ 
+-			if (!__mb_cache_entry_is_hashed(ce)) {
++			if (!__mb_cache_entry_is_block_hashed(ce)) {
+ 				__mb_cache_entry_release_unlock(ce);
+ 				spin_lock(&mb_cache_spinlock);
+ 				return ERR_PTR(-EAGAIN);
+@@ -562,12 +593,16 @@ mb_cache_entry_find_first(struct mb_cache *cache, struct block_device *bdev,
+ 			  unsigned int key)
+ {
+ 	unsigned int bucket = hash_long(key, cache->c_bucket_bits);
+-	struct list_head *l;
+-	struct mb_cache_entry *ce;
++	struct hlist_bl_node *l;
++	struct mb_cache_entry *ce = NULL;
++	struct hlist_bl_head *index_hash_p;
+ 
++	index_hash_p = &cache->c_index_hash[bucket];
+ 	spin_lock(&mb_cache_spinlock);
+-	l = cache->c_index_hash[bucket].next;
+-	ce = __mb_cache_entry_find(l, &cache->c_index_hash[bucket], bdev, key);
++	if (!hlist_bl_empty(index_hash_p)) {
++		l = hlist_bl_first(index_hash_p);
++		ce = __mb_cache_entry_find(l, index_hash_p, bdev, key);
 +	}
- 	kfree(cache->c_index_hash);
- 	kfree(cache->c_block_hash);
- 	kfree(cache);
+ 	spin_unlock(&mb_cache_spinlock);
+ 	return ce;
+ }
+@@ -597,12 +632,16 @@ mb_cache_entry_find_next(struct mb_cache_entry *prev,
+ {
+ 	struct mb_cache *cache = prev->e_cache;
+ 	unsigned int bucket = hash_long(key, cache->c_bucket_bits);
+-	struct list_head *l;
++	struct hlist_bl_node *l;
+ 	struct mb_cache_entry *ce;
++	struct hlist_bl_head *index_hash_p;
+ 
++	index_hash_p = &cache->c_index_hash[bucket];
++	mb_assert(prev->e_index_hash_p == index_hash_p);
+ 	spin_lock(&mb_cache_spinlock);
++	mb_assert(!hlist_bl_empty(index_hash_p));
+ 	l = prev->e_index.o_list.next;
+-	ce = __mb_cache_entry_find(l, &cache->c_index_hash[bucket], bdev, key);
++	ce = __mb_cache_entry_find(l, index_hash_p, bdev, key);
+ 	__mb_cache_entry_release_unlock(prev);
+ 	return ce;
+ }
+diff --git a/include/linux/mbcache.h b/include/linux/mbcache.h
+index 5525d37..6a392e7 100644
+--- a/include/linux/mbcache.h
++++ b/include/linux/mbcache.h
+@@ -3,19 +3,21 @@
+ 
+   (C) 2001 by Andreas Gruenbacher, <a.gruenbacher@computer.org>
+ */
+-
+ struct mb_cache_entry {
+ 	struct list_head		e_lru_list;
+ 	struct mb_cache			*e_cache;
+ 	unsigned short			e_used;
+ 	unsigned short			e_queued;
++	atomic_t			e_refcnt;
+ 	struct block_device		*e_bdev;
+ 	sector_t			e_block;
+-	struct list_head		e_block_list;
++	struct hlist_bl_node		e_block_list;
+ 	struct {
+-		struct list_head	o_list;
++		struct hlist_bl_node	o_list;
+ 		unsigned int		o_key;
+ 	} e_index;
++	struct hlist_bl_head		*e_block_hash_p;
++	struct hlist_bl_head		*e_index_hash_p;
+ };
+ 
+ struct mb_cache {
+@@ -25,8 +27,8 @@ struct mb_cache {
+ 	int				c_max_entries;
+ 	int				c_bucket_bits;
+ 	struct kmem_cache		*c_entry_cache;
+-	struct list_head		*c_block_hash;
+-	struct list_head		*c_index_hash;
++	struct hlist_bl_head		*c_block_hash;
++	struct hlist_bl_head		*c_index_hash;
+ };
+ 
+ /* Functions on caches */
 -- 
 1.7.11.3
