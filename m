@@ -1,223 +1,81 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: ext4 extent issue when page size > block size
-Date: Thu, 13 Mar 2014 22:24:28 +0100
-Message-ID: <20140313212428.GE504@quack.suse.cz>
-References: <5321F226.80505@fr.ibm.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [Cluster-devel] [PATCH] fs: push
+ sync_filesystem() down to the file system's remount_fs()
+Date: Thu, 13 Mar 2014 19:15:06 -0400
+Message-ID: <20140313231506.GB16785@thunk.org>
+References: <20140313073936.GA14663@infradead.org>
+	<1394720456-16629-1-git-send-email-tytso@mit.edu>
+	<20140313162319.GA504@quack.suse.cz>
+	<1394728103.2767.32.camel@menhir>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	anton@samba.org
-To: Cedric Le Goater <clg@fr.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:48613 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753228AbaCMVYa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 13 Mar 2014 17:24:30 -0400
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: jfs-discussion@lists.sourceforge.net, Jan Kara <jack@suse.cz>,
+	Anders Larsen <al@alarsen.net>, linux-mtd@lists.infradead.org,
+	Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>,
+	Petr Vandrovec <petr@vandrovec.name>, linux-cifs@vger.kernel.org,
+	linux-fsdevel@thunk.org, cluster-devel@redhat.com,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Evgeniy Dushistov <dushistov@mail.ru>, Kees Cook <keescook@chromium.org>,
+	fuse-devel@lists.sourceforge.net, reiserfs-devel@vger.kernel.org,
+	xfs@oss.sgi.com, linux-nilfs@vger.kernel.org,
+	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+	codalist@TELEMANN.coda.cs.cmu.edu, linux-nfs@vger.kernel.org,
+	Artem Bityutskiy <dedekind1@gmail.com>,
+	linux-ntfs-dev@lists.sourceforge.net, samba-technical@lists.samba.org,
+	Adrian Hunter <adrian.hunter@intel.com>,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-btrfs@vger.kernel.org, linux-fsdevel@vger.k
+To: Steven Whitehouse <swhiteho@redhat.com>
+Return-path: <jfs-discussion-bounces@lists.sourceforge.net>
 Content-Disposition: inline
-In-Reply-To: <5321F226.80505@fr.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1394728103.2767.32.camel@menhir>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
+	<mailto:jfs-discussion-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=jfs-discussion>
+List-Post: <mailto:jfs-discussion@lists.sourceforge.net>
+List-Help: <mailto:jfs-discussion-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
+	<mailto:jfs-discussion-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: jfs-discussion-bounces@lists.sourceforge.net
+List-Id: linux-ext4.vger.kernel.org
 
-  Hello,
+On Thu, Mar 13, 2014 at 04:28:23PM +0000, Steven Whitehouse wrote:
+> 
+> I guess the same is true for other file systems which are mounted ro
+> too. So maybe a check for MS_RDONLY before doing the sync in those
+> cases?
 
-On Thu 13-03-14 19:00:06, Cedric Le Goater wrote:
-> While running openldap unit tests on a ppc64 system, we have had 
-> issues with the cp command. cp uses the FS_IOC_FIEMAP ioctl to
-> optimize the copy and it appeared that the ext4 extent list of 
-> the file did not match all the data which was 'written' on disk. 
-> 
-> The system we use has a 64kB page size but the page size being 
-> greater than the filesystem block seems to be the top level reason 
-> of the problem. One can use a 1kB block size filesystem to reproduce 
-> the issue on a 4kB page size system.
-> 
-> Attached is a simple test case from Anton, which creates extents
-> as follow :
-> 
-> 	lseek(48K -1)		-> creates [11/1)
-> 	p = mmap(128K)
-> 	*(p) = 1		-> creates [0/1) with a fault
-> 	lseek(128K)		-> creates [31/1) 
-> 	*(p + 49K) = 1		-> creates [12/1) and then merges in [11/2) 
-> 	munmap(128K)
-> 	
-> 
-> On a 4kB page size system, the extent list returned by FS_IOC_FIEMAP 
-> looks correct :
-> 
-> 	Extent 0: logical: 0 physical: 0 length: 4096 flags 0x006
-> 	Extent 1: logical: 45056 physical: 0 length: 8192 flags 0x006
-> 	Extent 2: logical: 126976 physical: 0 length: 4096 flags 0x007
-> 
-> 
-> But, with a 64kB page size, we miss the in-the-middle extent (no page
-> fault but the data is on disk) :
-> 
-> 	Extent 0: logical: 0 physical: 0 length: 49152 flags 0x006
-> 	Extent 1: logical: 126976 physical: 0 length: 4096 flags 0x007
-> 
-> 
-> This looks wrong. Right ? Or are we doing something wrong ? I have been 
-> digging in the ext4 page writeback code. There are some caveats when 
-> blocksize < pagesize but I am not sure my understanding is correct. 
-  So you are completely right with the observation that in case like you
-describe we don't create delayed allocation extent for the block just
-beyond EOF. This is a problem which exists since day one when delayed
-allocation was introduced for ext4 (but also xfs and I dare to say any
-other fs doing delayed allocation). The culprit really is that we create
-delayed allocation extents on page fault - at that time file is only 48KB
-so we naturally don't allocate blocks for blocks beyond those 48KB. However
-after extending the file, the part of the page at offsets beyond 48KB
-suddently becomes part of the file and if you write some data there (no
-page fault happens because the page is already marked writeable in the page
-tables), we won't have any delayed allocation extent backing that data.
+My original patch moved the sync_filesystem into the check for
+MS_RDONLY in the core VFS code.  The objection was raised that there
+might be some file system out there that might depend on this
+behaviour.  I can't imagine why, but I suppose it's at least
+theoretically possible.
 
-One thing to note here is that posix specifically says that extending file
-while it is mmaped has undefined consequences for the mmap so technically
-speaking if we would just throw away the data, we would still adhere to it.
-I don't think we should be so harsh but I mention this to explain why some
-weirdness may be acceptable.
+So the idea is that this particular patch is *guaranteed* not to make
+any difference.  That way there can be no question about the patch'es
+correctness.
 
-Anyway, fixing this isn't completely easy. I was looking into that some
-years ago and the best solution I've found back then was to writeprotect
-the last partial page whenever blocksize < pagesize, we are extending the
-file and creating hole in the last partial page beyond original EOF. This
-actually requires tweaking not only truncate path but also write path and
-the locking was somewhat hairy there because we need to writeprotect the
-tail page before updating i_size and make sure noone can fault it in again
-before the i_size is updated.
+I'm going to follow up with a patch for ext4 that does exactly that,
+but the idea is to allow each file system maintainer to do that for
+their own file system.
 
-								Honza
-> /*
->  * mmap vs extent issue
->  *
->  * Copyright (C) 2014 Anton Blanchard <anton@au.ibm.com>, IBM
->  *
->  * This program is free software; you can redistribute it and/or
->  * modify it under the terms of the GNU General Public License
->  * as published by the Free Software Foundation; either version
->  * 2 of the License, or (at your option) any later version.
->  */
-> 
-> #include <stdio.h>
-> #include <string.h>
-> #include <stdlib.h>
-> #include <unistd.h>
-> #include <sys/types.h>
-> #include <sys/mman.h>
-> #include <sys/ioctl.h>
-> #include <linux/fs.h>
-> #include <linux/fiemap.h>
-> 
-> static void check_fiemap(int fd)
-> {
-> 	struct fiemap *fiemap;
-> 	unsigned long i, ex_size;
-> 
-> 	fiemap = malloc(sizeof(struct fiemap));
-> 	if (!fiemap) {
-> 		perror("malloc");
-> 		exit(1);
-> 	}
-> 
-> 	memset(fiemap, 0, sizeof(struct fiemap));
-> 	fiemap->fm_length = ~0;
-> 
-> 	if (ioctl(fd, FS_IOC_FIEMAP, fiemap) == -1) {
-> 		perror("ioctl(FIEMAP)");
-> 		exit(1);
-> 	}
-> 
-> 	ex_size = sizeof(struct fiemap_extent) * fiemap->fm_mapped_extents;
-> 
-> 	fiemap = realloc(fiemap, sizeof(struct fiemap) + ex_size);
-> 	if (!fiemap) {
-> 		perror("realloc");
-> 		exit(1);
-> 	}
-> 
-> 	memset(fiemap->fm_extents, 0, ex_size);
-> 	fiemap->fm_extent_count = fiemap->fm_mapped_extents;
-> 	fiemap->fm_mapped_extents = 0;
-> 
-> 	if (ioctl(fd, FS_IOC_FIEMAP, fiemap) < 0) {
-> 		perror("ioctl(FIEMAP)");
-> 		exit(1);
-> 	}
-> 
-> 	for (i = 0; i < fiemap->fm_mapped_extents; i++) {
-> 		unsigned long start = fiemap->fm_extents[i].fe_logical;
-> 		unsigned long end = fiemap->fm_extents[i].fe_logical +
-> 					fiemap->fm_extents[i].fe_length;
-> 
-> 		if (start <= 48*1024 && end > 48*1024) {
-> 			printf("GOOD\n");
-> 			exit(0);
-> 		}
-> 	}
-> 
-> 	printf("BAD:\n");
-> 	for (i = 0; i < fiemap->fm_mapped_extents; i++) {
-> 		printf("%ld:\t%016llx %016llx\n", i,
-> 			fiemap->fm_extents[i].fe_logical,
-> 			fiemap->fm_extents[i].fe_length);
-> 	}
-> 
-> 	exit(1);
-> }
-> 
-> int main(int argc, char *argv[])
-> {
-> 	char name[] = "mmap-lseek-XXXXXX";
-> 	int fd;
-> 	char *p;
-> 
-> 	fd = mkstemp(name);
-> 	if (fd == -1) {
-> 		perror("mkstemp");
-> 		exit(1);
-> 	}
-> 
-> 	/* Create a 48 kB file */
-> 	lseek(fd, 48 * 1024 - 1, SEEK_SET);
-> 	if (write(fd, "\0", 1) != 1) {
-> 		perror("write");
-> 		exit(1);
-> 	}
-> 
-> 	/* Map it, allowing space for it to grow */
-> 	p = mmap(NULL, 128 * 1024, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
-> 	if (p == MAP_FAILED) {
-> 		perror("mmap");
-> 		exit(1);
-> 	}
-> 
-> 	/* Write to the start of the file */
-> 	*(p) = 1;
-> 
-> 	/* Extend the file */
-> 	lseek(fd, 128 * 1024 - 1, SEEK_SET);
-> 	if (write(fd, "\0", 1) != 1) {
-> 		perror("write");
-> 		exit(1);
-> 	}
-> 
-> 	/* write to the new space in the first page */
-> 	*(p + 49 * 1024) = 1;
-> 
-> 	munmap(p, 128 * 1024);
-> 
-> 	check_fiemap(fd);
-> 
-> 	close(fd);
-> 
-> 	return 0;
-> }
-> 
-> 
+I could do that as well for file systems that are "obviously"
+read-only, but then I'll find out that there's some wierd case where
+the file system can be used in a read-write fashion.  (Example: UDF is
+normally used for DVD's, but at least in theory it can be used
+read/write --- I'm told that Windows supports read-write UDF file
+systems on USB sticks, and at least in theory it could be used as a
+inter-OS exchange format in situations where VFAT and exFAT might not
+be appropriate for various reasons.)
 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Cheers,
+
+						- Ted
+
+------------------------------------------------------------------------------
+Learn Graph Databases - Download FREE O'Reilly Book
+"Graph Databases" is the definitive new guide to graph databases and their
+applications. Written by three acclaimed leaders in the field,
+this first edition is now available. Download your free book today!
+http://p.sf.net/sfu/13534_NeoTech
