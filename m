@@ -1,74 +1,57 @@
-From: Steven Whitehouse <swhiteho@redhat.com>
-Subject: Re: [PATCH] fs: push sync_filesystem() down to the
- file system's remount_fs()
-Date: Thu, 13 Mar 2014 16:28:23 +0000
-Message-ID: <1394728103.2767.32.camel@menhir>
-References: <20140313073936.GA14663@infradead.org>
-	<1394720456-16629-1-git-send-email-tytso@mit.edu>
-	<20140313162319.GA504@quack.suse.cz>
+From: jon ernst <jonernst07@gmail.com>
+Subject: Re: [PATCH v3 10/30] libext2fs: define new dirent_swab interfaces for inline data
+Date: Thu, 13 Mar 2014 12:32:34 -0400
+Message-ID: <392DED5B-9D1A-4989-A891-D844705DCA2D@gmail.com>
+References: <1386323897-2354-1-git-send-email-wenqing.lz@taobao.com> <1386323897-2354-11-git-send-email-wenqing.lz@taobao.com> <20140303154950.GB9620@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain;
+	charset=us-ascii
 Content-Transfer-Encoding: 7bit
-Cc: jfs-discussion@lists.sourceforge.net, Anders Larsen <al@alarsen.net>,
-        linux-mtd@lists.infradead.org,
-        Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>,
-        Petr Vandrovec <petr@vandrovec.name>,
-        codalist@TELEMANN.coda.cs.cmu.edu, linux-cifs@vger.kernel.org,
-        linux-fsdevel@thunk.org, cluster-devel@redhat.com,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Evgeniy Dushistov <dushistov@mail.ru>,
-        Kees Cook <keescook@chromium.org>, fuse-devel@lists.sourceforge.net,
-        reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
-        linux-nilfs@vger.kernel.org,
-        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-        linux-nfs@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
-        Artem Bityutskiy <dedekind1@gmail.com>,
-        linux-ntfs-dev@lists.sourceforge.net, samba-technical@lists.samba.org,
-        Adrian Hunter <ad
-To: Jan Kara <jack@suse.cz>
-Return-path: <cluster-devel-bounces@redhat.com>
-In-Reply-To: <20140313162319.GA504@quack.suse.cz>
-List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
-List-Id: linux-ext4.vger.kernel.org
+Cc: "linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qc0-f176.google.com ([209.85.216.176]:60295 "EHLO
+	mail-qc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753245AbaCMQcj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Mar 2014 12:32:39 -0400
+Received: by mail-qc0-f176.google.com with SMTP id m20so1416909qcx.21
+        for <linux-ext4@vger.kernel.org>; Thu, 13 Mar 2014 09:32:39 -0700 (PDT)
+In-Reply-To: <20140303154950.GB9620@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+errcode_t ext2fs_dirent_swab_in(ext2_filsys fs, char *buf, int flags)
+{
++       return ext2fs_dirent_swab_in(fs, buf, fs->blocksize, flags);
++}
 
-On Thu, 2014-03-13 at 17:23 +0100, Jan Kara wrote:
-> On Thu 13-03-14 10:20:56, Ted Tso wrote:
-> > Previously, the no-op "mount -o mount /dev/xxx" operation when the
->                                   ^^remount
+I guess it misses "2" for function name.
+Should be:
+
+errcode_t ext2fs_dirent_swab_in(ext2_filsys fs, char *buf, int flags)
+{
++       return ext2fs_dirent_swab_in2(fs, buf, fs->blocksize, flags);
++}
+
+Thanks,
+Jon
+
+> On Mon, Mar 3, 2014 at 10:49 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+>> On Fri, Dec 06, 2013 at 05:57:57PM +0800, Zheng Liu wrote:
+>> From: Zheng Liu <wenqing.lz@taobao.com>
+>> 
+>> Later we will use ext2fs_dirent_swab_in/out to handle big-endian problem
+>> for inline data.  Now interfaces assume that it handles a block, but it
+>> is not true after adding inline data.  So this commit defines a new
+>> interface for inline data.
+>> 
+>> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 > 
-> > file system is already mounted read-write causes an implied,
-> > unconditional syncfs().  This seems pretty stupid, and it's certainly
-> > documented or guaraunteed to do this, nor is it particularly useful,
-> > except in the case where the file system was mounted rw and is getting
-> > remounted read-only.
-> > 
-> > However, it's possible that there might be some file systems that are
-> > actually depending on this behavior.  In most file systems, it's
-> > probably fine to only call sync_filesystem() when transitioning from
-> > read-write to read-only, and there are some file systems where this is
-> > not needed at all (for example, for a pseudo-filesystem or something
-> > like romfs).
->   Hum, I'd avoid this excercise at least for filesystem where
-> sync_filesystem() is obviously useless - proc, debugfs, pstore, devpts,
-> also always read-only filesystems such as isofs, qnx4, qnx6, befs, cramfs,
-> efs, freevxfs, romfs, squashfs. I think you can find a couple more which
-> clearly don't care about sync_filesystem() if you look a bit closer.
+> Thanks, applied.
 > 
->
-> 								Honza
+>                                        - Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-I guess the same is true for other file systems which are mounted ro
-too. So maybe a check for MS_RDONLY before doing the sync in those
-cases?
-
-Steve.
