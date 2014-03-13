@@ -1,45 +1,68 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH, RFC] fs: only call sync_filesystem() when remounting
- read-only
-Date: Thu, 13 Mar 2014 00:39:36 -0700
-Message-ID: <20140313073936.GA14663@infradead.org>
-References: <20140305141343.GA26225@xanadu.blop.info>
- <20140308160818.GC11633@thunk.org>
- <20140313003635.GA4263@dastard>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 0/6 v2] Introduce FALLOC_FL_ZERO_RANGE flag for fallocate
+Date: Thu, 13 Mar 2014 19:49:36 +1100
+Message-ID: <20140313084936.GF4263@dastard>
+References: <1393355679-11160-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Lucas Nussbaum <lucas.nussbaum@loria.fr>,
-	linux-ext4@vger.kernel.org,
-	"linux-fsdevel@vger.kernel.org Emmanuel Jeanvoine"
-	<emmanuel.jeanvoine@inria.fr>
-To: Dave Chinner <david@fromorbit.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu,
+	linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:36073 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751499AbaCMHjk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Mar 2014 03:39:40 -0400
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:51035 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751286AbaCMItj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 13 Mar 2014 04:49:39 -0400
 Content-Disposition: inline
-In-Reply-To: <20140313003635.GA4263@dastard>
+In-Reply-To: <1393355679-11160-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 13, 2014 at 11:36:35AM +1100, Dave Chinner wrote:
-> IMO, I think that you should be looking to fix ext4 syncfs issues,
-> not changing the VFS behaviour that might cause subtle and unnoticed
-> problems for other filesystems. We should not be moving data
-> inegrity operations without first auditing of all the filesystem
-> remount operations for issues.
+On Tue, Feb 25, 2014 at 08:14:33PM +0100, Lukas Czerner wrote:
+> Introduce new FALLOC_FL_ZERO_RANGE flag for fallocate. This has the same
+> functionality as xfs ioctl XFS_IOC_ZERO_RANGE.
+> 
+> It can be used to convert a range of file to zeros preferably without
+> issuing data IO. Blocks should be preallocated for the regions that span
+> holes in the file, and the entire range is preferable converted to
+> unwritten extents - even though file system may choose to zero out the
+> extent or do whatever which will result in reading zeros from the range
+> while the range remains allocated for the file.
+> 
+> This can be also used to preallocate blocks past EOF in the same way as
+> with fallocate. Flag FALLOC_FL_KEEP_SIZE which should cause the inode
+> size to remain the same.
+> 
+> You can test this feature yourself using xfstests, of fallocate(1) however
+> you'll need patches for util_linux, xfsprogs and xfstests which are going to
+> follow soon.
+> 
+> I tested this mostly with a subset of xfstests using fsx and fsstress and
+> even with new generic/290 which is just a copy of xfs/290 using fzero
+> command for xfs_io instead of zero (which uses ioctl). I was testing on
+> x86_64 and ppc64 with block sizes of 1024, 2048 and 4096.
+> 
+> ./check generic/076 generic/232 generic/013 generic/070 generic/269 generic/083
+> generic/117 generic/068 generic/231 generic/127 generic/091 generic/075
+> generic/112 generic/263 generic/091 generic/075 generic/256 generic/255
+> generic/316 generic/300 generic/290 ext4/242;
+> 
+> Note that there is a work in progress on FALLOC_FL_COLLAPSE_RANGE which
+> touches the same area as this pach set does, so we should figure out
+> which one should go first and modify the other on top of it.
+> 
+> This has been based on top of xfs-collapse-range so it does not contain ext4
+> collapse range changes.
 
-Requiring a sync on every remount that doesn't go read-only seems odd
-to me, so removing it doesn't sound bad.  However I agree that a proper
-audit of filesystems should be done, e.g.:
+Lukas, I have merged patches 4 and 6 into the xfs-collapse-branch.
+That branch should now remain stable, so you can rebase all the ext4
+collapse range and zero range bits on top of tha branch and Ted can
+pull it into the ext4 tree if he wants to pull it in.
 
-  patch 1:
-  	move calls into the filesystems, explaining why filesystems not
-	implementing ->remount_fs should be safe
-  patch 2:
-  	remove call from ext4, safe because of $FOO
-  patch b:
-	remove call from $fs, safe because of $BAR
+Cheers,
 
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
