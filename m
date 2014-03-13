@@ -1,70 +1,98 @@
-From: Chen Qi <Qi.Chen@windriver.com>
-Subject: e2fsprogs: fix cross compilation problem
-Date: Thu, 13 Mar 2014 10:01:27 +0800
-Message-ID: <1394676087-2624-1-git-send-email-Qi.Chen@windriver.com>
+From: Robert Yang <liezhi.yang@windriver.com>
+Subject: Re: [PATCH] create_inode: fix gcc -Wall complaints
+Date: Thu, 13 Mar 2014 10:21:28 +0800
+Message-ID: <53211628.9090505@windriver.com>
+References: <1394595670-11193-1-git-send-email-tytso@mit.edu> <20140312034539.GC26898@thunk.org> <20140312034841.GC31864@birch.djwong.org> <20140312143215.GA15334@thunk.org> <20140312200219.GC9070@birch.djwong.org> <20140312205110.GF15334@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-To: <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=windows-1252;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail1.windriver.com ([147.11.146.13]:55767 "EHLO
-	mail1.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752651AbaCMCBZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Mar 2014 22:01:25 -0400
-Received: from ALA-HCB.corp.ad.wrs.com (ala-hcb.corp.ad.wrs.com [147.11.189.41])
-	by mail1.windriver.com (8.14.5/8.14.5) with ESMTP id s2D21OtH001711
-	(version=TLSv1/SSLv3 cipher=AES128-SHA bits=128 verify=FAIL)
-	for <linux-ext4@vger.kernel.org>; Wed, 12 Mar 2014 19:01:24 -0700 (PDT)
+Received: from mail.windriver.com ([147.11.1.11]:58853 "EHLO
+	mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752568AbaCMCVg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Mar 2014 22:21:36 -0400
+In-Reply-To: <20140312205110.GF15334@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The checking of types in parse-types.sh doesn't make much sense in a
-cross-compilation environment, because the generated binary is executed
-on build machine.
 
-So even if asm_types.h has got correct statements for types, it's possible
-that the generated binary will report an error. Because these types are for
-the target machine.
 
-Signed-off-by: Chen Qi <Qi.Chen@windriver.com>
----
- config/parse-types.sh |    6 ++++--
- configure.in          |    6 +++++-
- 2 files changed, 9 insertions(+), 3 deletions(-)
+On 03/13/2014 04:51 AM, Theodore Ts'o wrote:
+> On Wed, Mar 12, 2014 at 01:02:19PM -0700, Darrick J. Wong wrote:
+>>>
+>>> gcc -Wall, via "make gcc-wall" and "make gcc-wall-new"
+>>
+>> Annoyingly, I ran make gcc-wall on Ubuntu 12.04 (gcc 4.6, glibc 2.15=
+) and got
+>> this splat:
+>>
+>> /usr/include/x86_64-linux-gnu/sys/stat.h:456: multiple definition of=
+ `stat'
+>> ../lib/libquota.a(quotaio_v2.o):/usr/include/x86_64-linux-gnu/sys/st=
+at.h:456: first defined here
+>>
+>> Not sure how to fix this, other than changing WFLAGS to start with -=
+std=3Dgnu99.
+>> gcc 4.8/glibc 2.19 on Ubuntu 14 are no better.
+>
+> Hmm, I'm using Debian testing, with gcc 4.8 and eglibc 2.18, and it's
+> working fine.  I'm curious, are people noticing problems with gcc-wal=
+l
+> on Fedora?
+>
 
-diff --git a/config/parse-types.sh b/config/parse-types.sh
-index 5076f6c..24d2a99 100755
---- a/config/parse-types.sh
-+++ b/config/parse-types.sh
-@@ -118,8 +118,10 @@ if ./asm_types
- then
-     true
- else
--    echo "Problem detected with asm_types.h"
--    echo "" > asm_types.h
-+    if [ "${CROSS_COMPILE}" != "1" ]; then
-+	echo "Problem detected with asm_types.h"
-+	echo "" > asm_types.h
-+    fi
- fi
- rm asm_types.c asm_types
- 
-diff --git a/configure.in b/configure.in
-index 68adf0d..ed1697b 100644
---- a/configure.in
-+++ b/configure.in
-@@ -953,7 +953,11 @@ AC_SUBST(SIZEOF_LONG)
- AC_SUBST(SIZEOF_LONG_LONG)
- AC_SUBST(SIZEOF_OFF_T)
- AC_C_BIGENDIAN
--BUILD_CC="$BUILD_CC" CPP="$CPP" /bin/sh $ac_aux_dir/parse-types.sh
-+if test $cross_compiling = no; then
-+  BUILD_CC="$BUILD_CC" CPP="$CPP" /bin/sh $ac_aux_dir/parse-types.sh
-+else
-+  CROSS_COMPILE="1" BUILD_CC="$BUILD_CC" CPP="$CPP" /bin/sh $ac_aux_dir/parse-types.sh
-+fi
- ASM_TYPES_HEADER=./asm_types.h
- AC_SUBST_FILE(ASM_TYPES_HEADER)
- dnl
--- 
-1.7.9.5
+I got the similar error as Darrick on Fedora 19 x86_64:
 
+$ make gcc-wall
+
+[snip]
+rehash.c:504:10: warning: nested extern declaration of =91ext2fs_dirent=
+_file_type=92=20
+[-Wnested-externs]
+/usr/include/sys/stat.h:455: multiple definition of `stat'
+=2E./lib/libquota.a(quotaio_v2.o):/usr/include/sys/stat.h:455: first de=
+fined here
+/usr/include/sys/stat.h:462: multiple definition of `lstat'
+=2E./lib/libquota.a(quotaio_v2.o):/usr/include/sys/stat.h:462: first de=
+fined here
+/usr/include/sys/stat.h:469: multiple definition of `fstat'
+=2E./lib/libquota.a(quotaio_v2.o):/usr/include/sys/stat.h:469: first de=
+fined here
+/usr/include/sys/stat.h:477: multiple definition of `fstatat'
+=2E./lib/libquota.a(quotaio_v2.o):/usr/include/sys/stat.h:477: first de=
+fined here
+/usr/include/sys/stat.h:485: multiple definition of `mknod'
+=2E./lib/libquota.a(quotaio_v2.o):/usr/include/sys/stat.h:485: first de=
+fined here
+/usr/include/sys/stat.h:494: multiple definition of `mknodat'
+=2E./lib/libquota.a(quotaio_v2.o):/usr/include/sys/stat.h:494: first de=
+fined here
+/usr/include/sys/stat.h:504: multiple definition of `stat64'
+=2E./lib/libquota.a(quotaio_v2.o):/usr/include/sys/stat.h:504: first de=
+fined here
+/usr/include/sys/stat.h:511: multiple definition of `lstat64'
+=2E./lib/libquota.a(quotaio_v2.o):/usr/include/sys/stat.h:511: first de=
+fined here
+/usr/include/sys/stat.h:518: multiple definition of `fstat64'
+=2E./lib/libquota.a(quotaio_v2.o):/usr/include/sys/stat.h:518: first de=
+fined here
+/usr/include/sys/stat.h:526: multiple definition of `fstatat64'
+=2E./lib/libquota.a(quotaio_v2.o):/usr/include/sys/stat.h:526: first de=
+fined here
+collect2: error: ld returned 1 exit status
+[snip]
+
+// Robert
+
+> 					- Ted
+>
+>
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
