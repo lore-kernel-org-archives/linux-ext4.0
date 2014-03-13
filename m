@@ -1,94 +1,95 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 0/6 v2] Introduce FALLOC_FL_ZERO_RANGE flag for fallocate
-Date: Thu, 13 Mar 2014 11:14:59 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1403131113090.2114@localhost.localdomain>
-References: <1393355679-11160-1-git-send-email-lczerner@redhat.com>
-	<20140313084936.GF4263@dastard>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH, RFC] fs: only call sync_filesystem() when remounting
+ read-only
+Date: Thu, 13 Mar 2014 08:55:35 -0400
+Message-ID: <20140313125535.GB11752@thunk.org>
+References: <20140305141343.GA26225@xanadu.blop.info>
+ <20140308160818.GC11633@thunk.org>
+ <20140313003635.GA4263@dastard>
+ <20140313011629.GA2796@thunk.org>
+ <20140313031440.GA13367@thunk.org>
+ <20140313060444.GH6851@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, tytso@mit.edu,
-	xfs@oss.sgi.com
+Content-Type: text/plain; charset=us-ascii
+Cc: Lucas Nussbaum <lucas.nussbaum@loria.fr>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Emmanuel Jeanvoine <emmanuel.jeanvoine@inria.fr>,
+	Dmitry Monakhov <dmonakhov@openvz.org>
 To: Dave Chinner <david@fromorbit.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <20140313084936.GF4263@dastard>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:40956 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753563AbaCMOHo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 13 Mar 2014 10:07:44 -0400
+Content-Disposition: inline
+In-Reply-To: <20140313060444.GH6851@dastard>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 13 Mar 2014, Dave Chinner wrote:
-
-> Date: Thu, 13 Mar 2014 19:49:36 +1100
-> From: Dave Chinner <david@fromorbit.com>
-> To: Lukas Czerner <lczerner@redhat.com>
-> Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, linux-fsdevel@vger.kernel.org,
->     xfs@oss.sgi.com
-> Subject: Re: [PATCH 0/6 v2] Introduce FALLOC_FL_ZERO_RANGE flag for fallocate
+On Thu, Mar 13, 2014 at 05:04:44PM +1100, Dave Chinner wrote:
+> XFS most definitely considered sync_filesystem(sb) to be a data
+> integrity operation. xfs_fs_sync_fs() calls this:
 > 
-> On Tue, Feb 25, 2014 at 08:14:33PM +0100, Lukas Czerner wrote:
-> > Introduce new FALLOC_FL_ZERO_RANGE flag for fallocate. This has the same
-> > functionality as xfs ioctl XFS_IOC_ZERO_RANGE.
-> > 
-> > It can be used to convert a range of file to zeros preferably without
-> > issuing data IO. Blocks should be preallocated for the regions that span
-> > holes in the file, and the entire range is preferable converted to
-> > unwritten extents - even though file system may choose to zero out the
-> > extent or do whatever which will result in reading zeros from the range
-> > while the range remains allocated for the file.
-> > 
-> > This can be also used to preallocate blocks past EOF in the same way as
-> > with fallocate. Flag FALLOC_FL_KEEP_SIZE which should cause the inode
-> > size to remain the same.
-> > 
-> > You can test this feature yourself using xfstests, of fallocate(1) however
-> > you'll need patches for util_linux, xfsprogs and xfstests which are going to
-> > follow soon.
-> > 
-> > I tested this mostly with a subset of xfstests using fsx and fsstress and
-> > even with new generic/290 which is just a copy of xfs/290 using fzero
-> > command for xfs_io instead of zero (which uses ioctl). I was testing on
-> > x86_64 and ppc64 with block sizes of 1024, 2048 and 4096.
-> > 
-> > ./check generic/076 generic/232 generic/013 generic/070 generic/269 generic/083
-> > generic/117 generic/068 generic/231 generic/127 generic/091 generic/075
-> > generic/112 generic/263 generic/091 generic/075 generic/256 generic/255
-> > generic/316 generic/300 generic/290 ext4/242;
-> > 
-> > Note that there is a work in progress on FALLOC_FL_COLLAPSE_RANGE which
-> > touches the same area as this pach set does, so we should figure out
-> > which one should go first and modify the other on top of it.
-> > 
-> > This has been based on top of xfs-collapse-range so it does not contain ext4
-> > collapse range changes.
+> 	xfs_log_force(mp, XFS_LOG_SYNC);
 > 
-> Lukas, I have merged patches 4 and 6 into the xfs-collapse-branch.
-> That branch should now remain stable, so you can rebase all the ext4
-> collapse range and zero range bits on top of tha branch and Ted can
-> pull it into the ext4 tree if he wants to pull it in.
+> Which will issue a blocking journal commit which will uses
+> REQ_FLUSH|REQ_FUA for the journal writes. Hence if there was
+> anything dirty in the filesystem that sync_filesystem wrote to disk,
+> it will issue a cache flush just like ext4 does.
+
+Sorry, I didn't quite do my experimets right, apparetly.
+
+So I did the following test:
+
+dd if=/etc/motd of=/mnt/test conv=notrunc ; mount -o remount /mnt ; mount -o remount /mnt ; mount -o remount /mnt
+
+This is what XFS does:
+
+252,2    0        1     0.000000000 15453  Q   W 88 + 8 [kworker/u16:1]
+252,2    0        2     0.000230348 15453  C   W 88 + 8 [0]
+252,2    7        1     0.000334892 15544  Q FWFSM 5243112 + 8 [mount]
+252,2    0        3     0.251131828     0  C WFSM 5243112 + 8 [0]
+252,2    0        4     0.251495890 15087  Q  WM 96 + 16 [xfsaild/dm-2]
+252,2    0        5     0.251729470     0  C  WM 96 + 16 [0]
+252,2    4        1     0.263317936 11070  Q FWFSM 5243120 + 8 [kworker/4:2]
+252,2    0        6     0.273394400     0  C WFSM 5243120 + 8 [0]
+252,2    0        7     0.273678692 15087  Q  WM 0 + 8 [xfsaild/dm-2]
+252,2    0        8     0.273902550     0  C  WM 0 + 8 [0]
+252,2    0        9     0.295673237     0  C WFSM 5243128 + 8 [0]
+252,2    0       10     0.296035803 15087  Q  WM 0 + 8 [xfsaild/dm-2]
+252,2    0       11     0.296266732     0  C  WM 0 + 8 [0]
+252,2    7        2     0.286271844 24012  Q FWFSM 5243128 + 8 [kworker/7:0]
+
+... and this is what ext4 does:
+
+252,4    7        8    10.973326622 15512  Q  WM 78 + 2 [mount]
+252,4    7        9    10.973576941 15512  Q FWS [mount]
+252,4    2        1    10.973141488 15271  Q   W 108 + 2 [kworker/u16:3]
+252,4    0       24    10.973390538     0  C   W 108 + 2 [0]
+252,4    0       25    10.973548736     0  C  WM 78 + 2 [0]
+252,4    7       10    11.244052462 15513  Q FWS [mount]
+252,4    0       26    11.231292967     0  C FWS 0 [0]
+252,4    0       27    11.231452643 15512  Q  WS 2 + 2 [mount]
+252,4    0       28    11.231686794     0  C  WS 2 + 2 [0]
+252,4    7       11    11.266337812 15514  Q FWS [mount]
+252,4    0       29    11.253022650     0  C FWS 0 [0]
+252,4    0       30    11.253135113 15513  Q  WS 2 + 2 [mount]
+252,4    0       31    11.253376707     0  C  WS 2 + 2 [0]
+252,4    0       32    11.266640135     0  C FWS 0 [0]
+252,4    0       33    11.266727461 15514  Q  WS 2 + 2 [mount]
+252,4    0       34    11.266954710     0  C  WS 2 + 2 [0]
+
+> > 1)  Nowhere in the remount system call is it stated that it has
+> >     ***any*** data integrity implications.   If you are making the rw->ro
+> >     transition, sure, you'll need to flush out any pending changes.  But there
+> >     doesn't seem to be any justification for requiring this this if the
+> >     remount is a no-op.   So I think changing the remount code path as I
+> >     suggested is a valid option.
 > 
-> Cheers,
-> 
-> Dave.
+> What the man page says doesn't change the fact we need to audit all
+> the existing filesystems before such a change is made.
 
-Hi Dave,
+Fair enough, I'll do what Christoph suggested and move the
+sync_filesystems() call into all of the existing file systems.
 
-that's great thanks! Btw you probably meant branch
-xfs-collapse-range and those patches are already based on that
-branch so it should apply cleanly. Now we have to figure out the
-order in which we're going to take zero-range and collapse-range
-into ext4.
-
-Thanks!
--Lukas
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+		   	     	    - Ted
