@@ -1,33 +1,56 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH v2 0/8] Add tests for zero range into xfstests
-Date: Thu, 13 Mar 2014 14:22:42 +1100
-Message-ID: <20140313032242.GD4263@dastard>
-References: <1394034699-21187-1-git-send-email-lczerner@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 08/49] e2fsck: don't rehash inline directories
+Date: Wed, 12 Mar 2014 23:52:48 -0400
+Message-ID: <20140313035248.GC13367@thunk.org>
+References: <20140311065356.30585.47192.stgit@birch.djwong.org>
+ <20140311065449.30585.54020.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
-	linux-fsdevel@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:40690 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752766AbaCMDww (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 12 Mar 2014 23:52:52 -0400
 Content-Disposition: inline
-In-Reply-To: <1394034699-21187-1-git-send-email-lczerner@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20140311065449.30585.54020.stgit@birch.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Mar 05, 2014 at 04:51:31PM +0100, Lukas Czerner wrote:
-> Hi,
-> 
-> this patch set adds two new test for zero range into xfstests - generic/008
-> and ext4/001. It also adds zero range support for fsstress and fsx.
+On Mon, Mar 10, 2014 at 11:54:49PM -0700, Darrick J. Wong wrote:
+> If a directory's contents are stored entirely inside the inode,
+> there's no index to rebuild and no dirblock checksum to recompute.
+> As far as I know these are the only two reasons to call dir rehash.
 
-Lukas, I don't see a generic test equivalent of ext4/001 in this
-series? Can you please write one so that we have the same coverage
-on all other supported filesystems?  The rest of the patch series is
-fine, but I'd really like you to finish the job off properly...
+Well, actually, there is a third reason to rehash directories, and
+that is to reorganize a directory to optimize out deleted entries that
+are scattered in the middle of the directory.
+
+That being said, it's more critical for inline directories, since we
+very much want to keep them from spilling over to an external block,
+this process of compressing out deleted space is something that should
+be done in real time as we operate on the directory, by the kernel,
+and not just at fsck time.
+
+The only reason why we don't do this today is because if the directory
+is open for scanning using opendir/readdir, if we reorganize a
+directory block, it could end up corrupting the readdir --- and for
+non-inline directories, it's much less important.
+
+What I think would might make sense is to have the kernel track
+whether the directory has been opened for reading, and if it hasn't,
+then it would be safe to try compressing all of the directory entries
+in the block so that the free space is in a single unused directory
+entry at the end of the block.  We could try doing this "dynamic
+compression" of directory free space both at unlink(2) time, and also
+when we try inserting a directory entry into the block and there is
+apparently no space in the directory block.
+
+So I'm fine with skipping the rehashing of inline directories now, but
+this is a future, relatively small, kernel project we might want to
+think about for ext4.
 
 Cheers,
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+							- Ted
