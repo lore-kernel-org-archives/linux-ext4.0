@@ -1,48 +1,75 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 20/49] libext2fs: fix parents when modifying extents
-Date: Fri, 14 Mar 2014 10:01:58 -0400
-Message-ID: <20140314140158.GP8282@thunk.org>
-References: <20140311065356.30585.47192.stgit@birch.djwong.org>
- <20140311065605.30585.47791.stgit@birch.djwong.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:41385 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754393AbaCNOCB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 14 Mar 2014 10:02:01 -0400
-Content-Disposition: inline
-In-Reply-To: <20140311065605.30585.47791.stgit@birch.djwong.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Phillip Susi <psusi@ubuntu.com>
+Subject: [PATCH] readahead.2: don't claim the call blocks until all data has been read
+Date: Fri, 14 Mar 2014 11:54:31 -0400
+Message-ID: <1394812471-9693-1-git-send-email-psusi@ubuntu.com>
+Cc: linux-man@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-ext4@vger.kernel.org
+To: mtk.manpages@gmail.com
+Return-path: <owner-linux-mm@kvack.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Mar 10, 2014 at 11:56:05PM -0700, Darrick J. Wong wrote:
-> In ext2fs_extent_set_bmap() and ext2fs_punch_extent(), fix the parents
-> when altering either end of an extent so that the parent nodes reflect
-> the added mapping.
+The readahead(2) man page was claiming that the call blocks until all
+data has been read into the cache.  This is incorrect.
 
-Can you say more about what bug/symptom this fixes?
+Signed-off-by: Phillip Susi <psusi@ubuntu.com>
+---
+ man2/readahead.2 | 15 ++++++++++-----
+ 1 file changed, 10 insertions(+), 5 deletions(-)
 
-> There's a slight complication to using fix_parents: if there are two
-> mappings to an lblk in the tree, the value of handle->path->curr can
-> point to either extent afterwards), which is documented in a comment.
+diff --git a/man2/readahead.2 b/man2/readahead.2
+index 605fa5e..1b0376e 100644
+--- a/man2/readahead.2
++++ b/man2/readahead.2
+@@ -27,7 +27,7 @@
+ .\"
+ .TH READAHEAD 2 2013-04-01 "Linux" "Linux Programmer's Manual"
+ .SH NAME
+-readahead \- perform file readahead into page cache
++readahead \- initiate file readahead into page cache
+ .SH SYNOPSIS
+ .nf
+ .BR "#define _GNU_SOURCE" "             /* See feature_test_macros(7) */"
+@@ -37,8 +37,8 @@ readahead \- perform file readahead into page cache
+ .fi
+ .SH DESCRIPTION
+ .BR readahead ()
+-populates the page cache with data from a file so that subsequent
+-reads from that file will not block on disk I/O.
++initates readahead on a file so that subsequent reads from that file will
++hopefully be satisfied from the cache, and not block on disk I/O.
+ The
+ .I fd
+ argument is a file descriptor identifying the file which is
+@@ -57,8 +57,6 @@ equal to
+ .IR "(offset+count)" .
+ .BR readahead ()
+ does not read beyond the end of the file.
+-.BR readahead ()
+-blocks until the specified data has been read.
+ The current file offset of the open file referred to by
+ .I fd
+ is left unchanged.
+@@ -94,6 +92,13 @@ On some 32-bit architectures,
+ the calling signature for this system call differs,
+ for the reasons described in
+ .BR syscall (2).
++
++The call attempts to schedule the reads in the background and return
++immediately, however it may block while reading filesystem metadata
++in order to locate where the blocks requested are.  This occurs frequently
++with ext[234] on large files using indirect blocks instead of extents,
++giving the appearence that the call blocks until the requested data has
++been read.
+ .SH SEE ALSO
+ .BR lseek (2),
+ .BR madvise (2),
+-- 
+1.8.3.2
 
-It's horribly wrong to map an lblk with two extents.  So the question
-is at what places should we complain if we notice this.  In the ideal
-world we would never allow an extent tree to be mutated in such a way
-that it is invalid like this, but I am worried about the overhead
-costs of always checking.  But if there are places where it wouldn't
-take much effort to check, we should probably do so and return an
-error.  (If the extent tree is already invalid, I suppose we should
-allow error out the operation, since this would affect e2fsck and
-debugfs.  I'm talking about checks to make sure that libext2fs or its
-callers don't accidentally make things worse.)
-
-	    	  	       	  - Ted
-
-P.S.  I suppose the one possible valid use case for making an invalid
-extent tree is a developer making an invalid extent tree for
-regression testing, so maybe there should be an exemption for debugfs.
-
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
