@@ -1,34 +1,35 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 21/49] e2fsck: print runs of duplicate blocks instead of
- all of them
-Date: Sat, 15 Mar 2014 12:19:17 -0400
-Message-ID: <20140315161917.GD17270@thunk.org>
-References: <20140311065356.30585.47192.stgit@birch.djwong.org>
- <20140311065612.30585.47051.stgit@birch.djwong.org>
+From: Phillip Susi <psusi-GeWIH/nMZzLQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [PATCH] readahead.2: don't claim the call blocks until all data
+ has been read
+Date: Sat, 15 Mar 2014 12:22:09 -0400
+Message-ID: <53247E31.7060002@ubuntu.com>
+References: <1394812471-9693-1-git-send-email-psusi@ubuntu.com> <532417CA.1040300@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:41808 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755658AbaCOQTT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 15 Mar 2014 12:19:19 -0400
-Content-Disposition: inline
-In-Reply-To: <20140311065612.30585.47051.stgit@birch.djwong.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-man-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Corrado Zoccolo <czoccolo-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
+	"Gregory P. Smith" <gps-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>,
+	Zhu Yanhai <zhu.yanhai-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+To: "Michael Kerrisk (man-pages)" <mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-man-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <532417CA.1040300-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Sender: linux-man-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Mar 10, 2014 at 11:56:12PM -0700, Darrick J. Wong wrote:
-> When pass1 finds blocks that are mapped to multiple files, it will
-> print every duplicated block.  If there are long sequences of
-> duplicate blocks (e.g. the e_pblk field is wrong in an extent), this
-> can cause a gigantic flood of output when a range could convey the
-> same information.  Therefore, teach pass1b to print ranges when
-> possible.
-> 
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+On 03/15/2014 05:05 AM, Michael Kerrisk (man-pages) wrote:
+> I've tweaked your text a bit to make some details clearer (I hope):
+>
+>         readahead()  initiates  readahead  on a file so that subsequent
+>         reads from that file will, be satisfied from the cache, and not
+>         block  on  disk I/O (assuming the readahead was initiated early
+>         enough and that other activity on the system  did  not  in  the
+>         meantime flush pages from the cache).
 
-Thanks, applied.
+Slight grammatical error there: there's an extra comma in "file will, be".
 
-					- Ted
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-man" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
