@@ -1,51 +1,60 @@
-From: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
-Subject: Re: [PATCH] readahead.2: don't claim the call blocks until all data
- has been read
-Date: Sat, 15 Mar 2014 13:31:02 +0100
-Message-ID: <CAKgNAkgGZ-3U8PLKrZZ5KUWMmopd1B777_6ekva5ZpeXecEZ1g@mail.gmail.com>
-References: <1394812471-9693-1-git-send-email-psusi@ubuntu.com>
- <532417CA.1040300@gmail.com> <20140315092455.GA6018@infradead.org>
-Reply-To: mtk.manpages@gmail.com
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 20/49] libext2fs: fix parents when modifying extents
+Date: Sat, 15 Mar 2014 11:46:26 -0400
+Message-ID: <20140315154626.GB17270@thunk.org>
+References: <20140311065356.30585.47192.stgit@birch.djwong.org>
+ <20140311065605.30585.47791.stgit@birch.djwong.org>
+ <20140314140158.GP8282@thunk.org>
+ <20140314201319.GF9070@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Phillip Susi <psusi@ubuntu.com>,
-	linux-man <linux-man@vger.kernel.org>,
-	"linux-mm@kvack.org" <linux-mm@kvack.org>,
-	linux-ext4@vger.kernel.org, Corrado Zoccolo <czoccolo@gmail.com>,
-	"Gregory P. Smith" <gps@google.com>,
-	Zhu Yanhai <zhu.yanhai@gmail.com>
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f177.google.com ([209.85.192.177]:39376 "EHLO
-	mail-pd0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755336AbaCOMbX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 15 Mar 2014 08:31:23 -0400
-In-Reply-To: <20140315092455.GA6018@infradead.org>
+Received: from imap.thunk.org ([74.207.234.97]:41791 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754887AbaCOPqf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 15 Mar 2014 11:46:35 -0400
+Content-Disposition: inline
+In-Reply-To: <20140314201319.GF9070@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Mar 15, 2014 at 10:24 AM, Christoph Hellwig <hch@infradead.org> wrote:
-> On Sat, Mar 15, 2014 at 10:05:14AM +0100, Michael Kerrisk (man-pages) wrote:
->>        However, it may block while  it  reads
->>        the  filesystem metadata needed to locate the requested blocks.
->>        This occurs frequently with ext[234] on large files using indi???
->>        rect  blocks instead of extents, giving the appearence that the
->>        call blocks until the requested data has been read.
->>
->> Okay?
->
-> The part above is something that should be in the BUGS section.
+On Fri, Mar 14, 2014 at 01:13:19PM -0700, Darrick J. Wong wrote:
+> Both cases above cause the (temporary) use of two extents to map the same lblk.
+> _set_bmap() first adjusts next_extent.e_lblk to cover the lblk, then decrements
+> extent.e_len so that "extent" no longer covers the lblk.  _punch_extent()
+> splits an extent by first inserting the second part of the extent and then
+> shortening the original extent to reflect the punchout.
+> 
+> These two cases seemed slightly suspect to me, but since e2fsprogs doesn't
+> journal, changing the code to reduce one extent and enlarge the other opens the
+> possibility that we could lose the lblk mapping entirely if something happens
+> in between the two operations.  I prefer "block still mapped but fsck is
+> unhappy about redundant bookeepping" to "the block is gone", so I added the two
+> fixes and let it go.
 
-Good call. Done. Thanks, Christoph.
+OK, fair enough, I'll merge in this patch since it's fixing a real
+bug, and I can't think of a good way to fix this issue without making
+pretty massive changes.
 
-Cheers,
+I'll note though that at the moment e2fsck doesn't have sophisticated
+extent tree recovery support; so if the extent tree is corrupt, it
+offers to zap the entire extent tree, instead of trying to fix up the
+extent tree.  That wasn't an issue because it was likely that if
+absent bugs, the most likely case if the extent tree is corrupted,
+there's not much you can do, so it wasn't worth it to add some code to
+handle these cases.
 
-Michael
+However, if a large number of users start using your FUSE server in
+production, then making sure the right thing happens when they suffer
+power failures start becoming more important --- but it may not be
+trivial since libext2fs wasn't originally intended for that use case.
+I am glad that you implemented it, since it's a great way to get
+better testing for various corner cases.  But that's different from
+advertising that the FUSE server should be used in production use
+cases; in particular, we might need to figure out some kind of
+journalling system for FUSE, either using the ext4's internal journal,
+or some user-space journalling system.
 
-
-
-
--- 
-Michael Kerrisk
-Linux man-pages maintainer; http://www.kernel.org/doc/man-pages/
-Linux/UNIX System Programming Training: http://man7.org/training/
+					- Ted
