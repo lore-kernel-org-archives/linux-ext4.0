@@ -1,42 +1,43 @@
-From: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
-Subject: Re: [PATCH] readahead.2: don't claim the call blocks until all data
- has been read
-Date: Sat, 15 Mar 2014 17:25:35 +0100
-Message-ID: <CAKgNAkjyXq0JVcJr4E+yie+r+2qbuFqm3=N589YNNVUvJOz6QQ@mail.gmail.com>
-References: <1394812471-9693-1-git-send-email-psusi@ubuntu.com>
- <532417CA.1040300@gmail.com> <53247E31.7060002@ubuntu.com>
-Reply-To: mtk.manpages@gmail.com
+From: "Lewis Smith" <roots@hiz.cz>
+Subject: =?utf-8?q?Bitte_antworten_Sie_so_bald_wie_m=C3=B6glich?=
+Date: Sat, 15 Mar 2014 16:22:25 +0000
+Message-ID: <B0152940291@mail.usavingsadvantage.com>
+Reply-To: lewsm653@aol.co.uk
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-man <linux-man@vger.kernel.org>, "linux-mm@kvack.org" <linux-mm@kvack.org>,
-	linux-ext4@vger.kernel.org, Corrado Zoccolo <czoccolo@gmail.com>,
-	"Gregory P. Smith" <gps@google.com>, Zhu Yanhai <zhu.yanhai@gmail.com>
-To: Phillip Susi <psusi@ubuntu.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <53247E31.7060002@ubuntu.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: Recipients <roots@hiz.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ndiweb.networkdirect.com ([216.23.73.12]:1585 "EHLO
+	mail.usavingsadvantage.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1756102AbaCORp7 convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 15 Mar 2014 13:45:59 -0400
+Content-Description: Mail message body
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Mar 15, 2014 at 5:22 PM, Phillip Susi <psusi@ubuntu.com> wrote:
-> On 03/15/2014 05:05 AM, Michael Kerrisk (man-pages) wrote:
->>
->> I've tweaked your text a bit to make some details clearer (I hope):
->>
->>         readahead()  initiates  readahead  on a file so that subsequent
->>         reads from that file will, be satisfied from the cache, and not
->>         block  on  disk I/O (assuming the readahead was initiated early
->>         enough and that other activity on the system  did  not  in  the
->>         meantime flush pages from the cache).
->
->
-> Slight grammatical error there: there's an extra comma in "file will, be".
+Lieber geliebter,
 
-Thanks. Fixed.
+Dieses Schreiben kann Ihnen als =DCberraschung auf die Tatsache, dass w=
+ir noch nicht erf=FCllt sind gekommen, und ich werde Ihnen sagen, dass =
+ich nicht die Absicht, Sie Schmerzen verursachen. Mein Name ist Lewis S=
+mith, ein europ=E4ischer H=E4ndler, habe ich mit Prostata-und Speiser=F6=
+hrenkrebs, die sehr sp=E4t wegen des Mangels an Pflege f=FCr meine Gesu=
+ndheit wurde entdeckt, diagnostiziert worden. Es hat alle Form der Medi=
+zin verunreinigt und jetzt so habe ich nur noch =FCber ein paar Monate,=
+ um nach medizinischen Experten leben.
 
-Otherwise okay, I assume?
+Ich glaube, der Herr gibt mir eine zweite Chance, so m=F6chte ich denje=
+nigen helfen, da kann ich meine Familie l=E4sst mich nicht das Richtige=
+ zu tun wegen ihrer Gier. Ich brauche deine Hilfe / Spende, um etwas (U=
+S $ 8.200.000,00) in Ihrem Land zu machen. Bitte antworten Sie auf mein=
+e private E-Mail-Adresse (lewsm653@aol.co.uk)
 
+Seid gesegnet meine Lieben,
+Lewis Smith
 --
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
