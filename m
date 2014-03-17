@@ -1,8 +1,8 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
+From: a3at.mail@gmail.com
 Subject: Re: [PATCH] ext4: initialize multi-block allocator before checking
  block descriptors
-Date: Mon, 17 Mar 2014 10:23:57 -0700
-Message-ID: <20140317172357.GH9070@birch.djwong.org>
+Date: Mon, 17 Mar 2014 21:53:02 +0400
+Message-ID: <20140317175302.GD19885@azat>
 References: <20140315214029.GA18873@thunk.org>
  <CAG5DWoj0pYD8O17qw_-MK+JX_hsFj04ReUPztShmKWzz45gRbQ@mail.gmail.com>
  <20140316023841.GA902@thunk.org>
@@ -11,81 +11,104 @@ References: <20140315214029.GA18873@thunk.org>
  <20140316184634.GA14162@thunk.org>
  <20140316205659.GC19885@azat>
  <20140317020029.GC14162@thunk.org>
+ <CAG5DWogdTPBOfccVa3xGciLaRedPC1memAmjxnG2uEwSVV64DA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: a3at.mail@gmail.com,
-	"open list:EXT4 FILE SYSTEM" <linux-ext4@vger.kernel.org>
-To: tytso@mit.edu
+Cc: "open list:EXT4 FILE SYSTEM" <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:25497 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752083AbaCQRYC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Mar 2014 13:24:02 -0400
+Received: from mail-lb0-f178.google.com ([209.85.217.178]:48534 "EHLO
+	mail-lb0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754891AbaCQRxZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Mar 2014 13:53:25 -0400
+Received: by mail-lb0-f178.google.com with SMTP id s7so3987997lbd.9
+        for <linux-ext4@vger.kernel.org>; Mon, 17 Mar 2014 10:53:24 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <20140317020029.GC14162@thunk.org>
+In-Reply-To: <CAG5DWogdTPBOfccVa3xGciLaRedPC1memAmjxnG2uEwSVV64DA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Mar 16, 2014 at 10:00:30PM -0400, tytso@mit.edu wrote:
-> On Mon, Mar 17, 2014 at 12:56:59AM +0400, a3at.mail@gmail.com wrote:
-> > After I tested ext4 dev branch (eb3e7abb161ad5), without any xfs-tests complaints,
-> > I understand what goes wrong, you have not last version of
-> > this patch, the latest is v3.
-> > (Actually you have description from last patch, but not the latest changes.)
+On Mon, Mar 17, 2014 at 08:19:47PM +0400, Azat Khuzhin wrote:
+> On Mon, Mar 17, 2014 at 6:00 AM,  <tytso@mit.edu> wrote:
+> > On Mon, Mar 17, 2014 at 12:56:59AM +0400, a3at.mail@gmail.com wrote:
+> >> After I tested ext4 dev branch (eb3e7abb161ad5), without any xfs-tests complaints,
+> >> I understand what goes wrong, you have not last version of
+> >> this patch, the latest is v3.
+> >> (Actually you have description from last patch, but not the latest changes.)
+> >
+> > What I did was to take your v3 version of the patch, and then since
+> > that patch removed the label failed_mount5, I changed instances of
+> > failed_mount4a to failed_mount5, just for aesthetic reasons.
+> >
+> > So there is no substantive difference between what is in the ext4
+> > patch queue and your v3 patch.   All I did was this:
 > 
-> What I did was to take your v3 version of the patch, and then since
-> that patch removed the label failed_mount5, I changed instances of
-> failed_mount4a to failed_mount5, just for aesthetic reasons.
+> Sorry I didn't look good at diff of two patches, my mistake.
+> 
+> >
+> > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> > index d73f1d9..01c5088 100644
+> > --- a/fs/ext4/super.c
+> > +++ b/fs/ext4/super.c
+> > @@ -4100,14 +4100,14 @@ no_journal:
+> >         if (err) {
+> >                 ext4_msg(sb, KERN_ERR, "failed to reserve %llu clusters for "
+> >                          "reserved pool", ext4_calculate_resv_clusters(sb));
+> > -               goto failed_mount4a;
+> > +               goto failed_mount5;
+> >         }
+> >
+> >         err = ext4_setup_system_zone(sb);
+> >         if (err) {
+> >                 ext4_msg(sb, KERN_ERR, "failed to initialize system "
+> >                          "zone (%d)", err);
+> > -               goto failed_mount4a;
+> > +               goto failed_mount5;
+> >         }
+> >
+> >         err = ext4_register_li_request(sb, first_not_zeroed);
+> > @@ -4184,7 +4184,7 @@ failed_mount7:
+> >         ext4_unregister_li_request(sb);
+> >  failed_mount6:
+> >         ext4_release_system_zone(sb);
+> > -failed_mount4a:
+> > +failed_mount5:
+> >         dput(sb->s_root);
+> >         sb->s_root = NULL;
+> >  failed_mount4:
+> >
+> >
+> > Did you actually test your v3 patch on top of the dev branch?  Or did
+> > you just note that the patch in the ext4 patch queue was different,
+> > and assumed it was the v2 version of your patch?
+> 
+> Yes, I actually test v3 patch, but not on the top of dev branch,
+> instead the dev branch was on the top of v3 patch.
+> (but it changes nothing), with "-O bigalloc" and  "-o block_validity"
+> 
+> Also today I recheck this using kvm/qemu, with v3 patch on the top of
+> ext4 dev branch, and still nothing, here is last commits:
+> 62f5f55 ext4: initialize multi-block allocator before checking block descriptors
+> eb3e7ab ext4: fix partial cluster handling for bigalloc file systems
+> 97d3979 ext4: delete path dealloc code in ext4_ext_handle_uninitialized_extents
+> 
+> The only difference between your tests and my, is that you have i386,
+> while i have x86_64. But I really doubt that this is significantly.
 
-/me wonders if it would be easier just to do something like this:
+I was wrong, I've just tested on i386, and got the same errors as you.
 
-ext4: don't crash when validating block bitmap
+> 
+> >
+> > Regards,
+> >
+> >                                                 - Ted
+> 
+> 
+> 
+> -- 
+> Respectfully
+> Azat Khuzhin
 
-If EXT4FS_DEBUG is defined, ext4_validate_block_bitmap is called via
-ext4_count_free_clusters before sb->s_group_info is set up.  When this
-happens, the kernel crashes because group info hasn't been loaded.
-Forego marking the group corrupt for now; not setting BH_Verified
-means we'll revisit the bitmap if something went wrong.
-
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
----
- fs/ext4/balloc.c |   13 ++++++++++---
- 1 file changed, 10 insertions(+), 3 deletions(-)
-
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 2f35689..b375768 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -355,7 +355,10 @@ void ext4_validate_block_bitmap(struct super_block *sb,
- 			       struct buffer_head *bh)
- {
- 	ext4_fsblk_t	blk;
--	struct ext4_group_info *grp = ext4_get_group_info(sb, block_group);
-+	struct ext4_group_info *grp = NULL;
-+
-+	if (EXT4_SB(sb)->s_group_info)
-+		grp = ext4_get_group_info(sb, block_group);
- 
- 	if (buffer_verified(bh))
- 		return;
-@@ -366,14 +369,18 @@ void ext4_validate_block_bitmap(struct super_block *sb,
- 		ext4_unlock_group(sb, block_group);
- 		ext4_error(sb, "bg %u: block %llu: invalid block bitmap",
- 			   block_group, blk);
--		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
-+		if (grp)
-+			set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT,
-+				&grp->bb_state);
- 		return;
- 	}
- 	if (unlikely(!ext4_block_bitmap_csum_verify(sb, block_group,
- 			desc, bh))) {
- 		ext4_unlock_group(sb, block_group);
- 		ext4_error(sb, "bg %u: bad block bitmap checksum", block_group);
--		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
-+		if (grp)
-+			set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT,
-+				&grp->bb_state);
- 		return;
- 	}
- 	set_buffer_verified(bh);
+-- 
+Respectfully
+Azat Khuzhin
