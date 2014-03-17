@@ -1,41 +1,46 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 72181] ext4_mb_generate_buddy:free block calculation seems to
- overflow
-Date: Mon, 17 Mar 2014 02:08:42 +0000
-Message-ID: <bug-72181-13602-peq0OKLQhX@https.bugzilla.kernel.org/>
-References: <bug-72181-13602@https.bugzilla.kernel.org/>
+From: tytso@mit.edu
+Subject: Re: [PATCH 0/6 v2] Introduce FALLOC_FL_ZERO_RANGE flag for fallocate
+Date: Sun, 16 Mar 2014 22:19:09 -0400
+Message-ID: <20140317021909.GD14162@thunk.org>
+References: <1393355679-11160-1-git-send-email-lczerner@redhat.com>
+ <20140316190820.GB14162@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:36600 "EHLO mail.kernel.org"
+Received: from imap.thunk.org ([74.207.234.97]:42310 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932129AbaCQCIo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 16 Mar 2014 22:08:44 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id E66B5201F5
-	for <linux-ext4@vger.kernel.org>; Mon, 17 Mar 2014 02:08:43 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 8ABEA201DD
-	for <linux-ext4@vger.kernel.org>; Mon, 17 Mar 2014 02:08:42 +0000 (UTC)
-In-Reply-To: <bug-72181-13602@https.bugzilla.kernel.org/>
+	id S932137AbaCQCTO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 16 Mar 2014 22:19:14 -0400
+Content-Disposition: inline
+In-Reply-To: <20140316190820.GB14162@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=72181
+On Sun, Mar 16, 2014 at 03:08:20PM -0400, tytso@MIT.EDU wrote:
+> If I try running the "dev2" branch, without the xfstests collapse
+> range branch pulled in, things are much better (so there's clearly a
+> bug in the ZERO_RANGE code path), but there was still a few more
+> errors than the baseline.  I'm rerunning those tests so I can be sure
+> that the results are repeatable.
 
---- Comment #2 from WeiZhang <zweiustc@gmail.com> ---
-(In reply to WeiZhang from comment #1)
-> usually, we just get a wrong number of "free" from bitmap while bitmap is
-> corrupted. but it should not larger than "max = EXT4_CLUSTERS_PER_GROUP(sb)"
-> right?
+Running the tests with the dev2 branch, which includes all of the
+ext4-specific ZERO_RANGE patches, we see a regression with shared/243
+with 4k and 1k block sizes (as well as 4k in no-journal mode):
 
-i add some printk and confirmed there is some wrong in ext4_grp_locked_error.
-the "free" is in the right range. Seems that the bitmap is still corrupted with
-the patch(ext4: fix the free blocks calculation for ext3 file systems w/
-uninit_bg). I will look into it right now. Thx
+shared/243 3s ...	[15:09:34] [15:09:35] [failed, exit status 1] - output mismatch (see /results/results-4k/shared/243.out.bad)
+    --- tests/shared/243.out	2014-03-15 13:45:11.000000000 -0400
+    +++ /results/results-4k/shared/243.out.bad	2014-03-16 15:09:35.470862837 -0400
+    @@ -1,13 +1,3 @@
+     QA output created by 243
+     wrote 4096/4096 bytes at offset 0
+     XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
+    -wrote 4096/4096 bytes at offset 0
+    -XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
+    -wrote 40960/40960 bytes at offset 0
+    -XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
+    ...
+    (Run 'diff -u tests/shared/243.out /results/results-4k/shared/243.out.bad'  to see the entire diff)
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+					- Ted
