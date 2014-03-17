@@ -1,26 +1,39 @@
-From: Adrian Gillian Bayford <wiltsi@morrisville.edu>
-Subject: Re Grant Donation!!!
-Date: Tue, 18 Mar 2014 00:00:11 +0530
-Message-ID: <1b42fe93-2907-404a-bb38-605f444e0f98__41213.9691100039$1395081092$gmane$org@system38.csntprod.morrisville.edu>
-Reply-To: <adriangillian_b04@qq.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] ext3: explicitly remove inode from orphan list after failed
+ direct io
+Date: Mon, 17 Mar 2014 14:13:00 -0500
+Message-ID: <5327493C.7060801@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="Windows-1251"
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-To: Undisclosed recipients:;
+Cc: Jan Kara <jack@suse.cz>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bn1un0246.outbound.protection.outlook.com ([157.56.110.246]:38333
-	"EHLO na01-bn1-obe.outbound.protection.outlook.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S932706AbaCQSbJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 17 Mar 2014 14:31:09 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:56409 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751221AbaCQTNH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 17 Mar 2014 15:13:07 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We are donating 800,000 pounds to you, Send Name, Country, Mobile Number, Sex, Age, Occupation for more details so that we can send your details to our verification department. You can verify this by visiting the web pages below.
+Otherwise non-empty orphan list will be triggered on umount.
 
-http://www.bbc.co.uk/news/uk-england-19254228
+This is just an application of commit da1daf by Dmitry Monakhov
+to the same code in ext3.
 
-We anticipate your earliest response.
-God bless you.
-Best of luck,
-Adrian and Gillian Bayford.
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+index 384b6eb..caf4c4a 100644
+--- a/fs/ext3/inode.c
++++ b/fs/ext3/inode.c
+@@ -1925,6 +1925,8 @@ retry:
+ 			 * and pretend the write failed... */
+ 			ext3_truncate_failed_direct_write(inode);
+ 			ret = PTR_ERR(handle);
++			if (inode->i_nlink)
++				ext3_orphan_del(NULL, inode);
+ 			goto out;
+ 		}
+ 		if (inode->i_nlink)
