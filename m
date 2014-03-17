@@ -1,49 +1,63 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext3: explicitly remove inode from orphan list after
- failed direct io
-Date: Mon, 17 Mar 2014 20:22:51 +0100
-Message-ID: <20140317192251.GB11233@quack.suse.cz>
-References: <5327493C.7060801@redhat.com>
+From: tytso@mit.edu
+Subject: Re: [PATCH 0/6 v2] Introduce FALLOC_FL_ZERO_RANGE flag for fallocate
+Date: Mon, 17 Mar 2014 16:57:41 -0400
+Message-ID: <20140317205741.GA15218@thunk.org>
+References: <1393355679-11160-1-git-send-email-lczerner@redhat.com>
+ <20140316190820.GB14162@thunk.org>
+ <20140317021909.GD14162@thunk.org>
+ <alpine.LFD.2.00.1403171346280.30625@localhost.localdomain>
+ <20140317132901.GA2773@thunk.org>
+ <alpine.LFD.2.00.1403171603390.30625@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
+	=?utf-8?B?THVrw6HFoSBDemVybmVyIDxsY3plcm5lckByZWRoYXQuY29tPkB0aHVuay5v?=@thunk.org,
+	=?utf-8?Q?rg?=@thunk.org, linux-ext4@vger.kernel.org
+To: =?utf-8?B?THVrw6HFoSBDemVybmVyIDxsY3plcm5lckByZWRoYXQuY29tPg==?=@thunk.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:47515 "EHLO mx2.suse.de"
+Received: from imap.thunk.org ([74.207.234.97]:42688 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751152AbaCQTWz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 17 Mar 2014 15:22:55 -0400
+	id S1752042AbaCQU5q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 17 Mar 2014 16:57:46 -0400
 Content-Disposition: inline
-In-Reply-To: <5327493C.7060801@redhat.com>
+In-Reply-To: <alpine.LFD.2.00.1403171603390.30625@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 17-03-14 14:13:00, Eric Sandeen wrote:
-> Otherwise non-empty orphan list will be triggered on umount.
-> 
-> This is just an application of commit da1daf by Dmitry Monakhov
-> to the same code in ext3.
-  Thanks, I've merged the patch.
+On Mon, Mar 17, 2014 at 04:10:52PM +0100, Luk=C3=A1=C5=A1 Czerner wrote=
+:
+> Yes, shared/243 is actually looking at the file system using debugfs
+> trying to figure out whether this flag is set or not. And that is
+> what is failing.
+>=20
+> See the 243.full output:
+>=20
+> Test 1: Fallocate 40960 bytes and write 4096 bytes (buffered io).
+> EOFBLOCK_FL bit is not set.
+> Error: Current bit state incorrect.
+>=20
+> However I am not really sure why is this in shared since this is
+> only useful for ext4.
 
-							Honza
-> 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> ---
-> 
-> diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-> index 384b6eb..caf4c4a 100644
-> --- a/fs/ext3/inode.c
-> +++ b/fs/ext3/inode.c
-> @@ -1925,6 +1925,8 @@ retry:
->  			 * and pretend the write failed... */
->  			ext3_truncate_failed_direct_write(inode);
->  			ret = PTR_ERR(handle);
-> +			if (inode->i_nlink)
-> +				ext3_orphan_del(NULL, inode);
->  			goto out;
->  		}
->  		if (inode->i_nlink)
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Ah, I agree, it's confusing/wrong for this test to be in shared/243;
+we should probably rename it to ext4/243 for now.
+
+> I believe that we're not very consistent with that anyway. That was
+> part of the reason why we got rid of it in e2fsck. However I agree
+> that this might cause additional problems. So it might be better to
+> just keep this in kernel for now...
+
+Yeah, there are some really otherwise hard to solve races were we
+might not set EOFBLOCK_FL.  We kept tripping over them when running
+xfstests, but it was otherwise pretty hard to hit.
+
+Perhaps we should set a date, say in another two years, when we make
+this go away.
+
+					- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
