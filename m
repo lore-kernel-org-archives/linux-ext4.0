@@ -1,72 +1,91 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 20/49] libext2fs: fix parents when modifying extents
-Date: Mon, 17 Mar 2014 09:59:20 -0700
-Message-ID: <20140317165920.GG9070@birch.djwong.org>
-References: <20140311065356.30585.47192.stgit@birch.djwong.org>
- <20140311065605.30585.47791.stgit@birch.djwong.org>
- <20140314140158.GP8282@thunk.org>
- <20140314201319.GF9070@birch.djwong.org>
- <20140315154626.GB17270@thunk.org>
+Subject: Re: [PATCH] ext4: initialize multi-block allocator before checking
+ block descriptors
+Date: Mon, 17 Mar 2014 10:23:57 -0700
+Message-ID: <20140317172357.GH9070@birch.djwong.org>
+References: <20140315214029.GA18873@thunk.org>
+ <CAG5DWoj0pYD8O17qw_-MK+JX_hsFj04ReUPztShmKWzz45gRbQ@mail.gmail.com>
+ <20140316023841.GA902@thunk.org>
+ <CAG5DWog0BDHTh1edtQ+457SmJeL_0MacgZ1gYeNL4sY4yEqZWw@mail.gmail.com>
+ <20140316161637.GA19885@azat>
+ <20140316184634.GA14162@thunk.org>
+ <20140316205659.GC19885@azat>
+ <20140317020029.GC14162@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: a3at.mail@gmail.com,
+	"open list:EXT4 FILE SYSTEM" <linux-ext4@vger.kernel.org>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:46343 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:25497 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754600AbaCQQ7Y (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Mar 2014 12:59:24 -0400
+	with ESMTP id S1752083AbaCQRYC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Mar 2014 13:24:02 -0400
 Content-Disposition: inline
-In-Reply-To: <20140315154626.GB17270@thunk.org>
+In-Reply-To: <20140317020029.GC14162@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Mar 15, 2014 at 11:46:26AM -0400, Theodore Ts'o wrote:
-> On Fri, Mar 14, 2014 at 01:13:19PM -0700, Darrick J. Wong wrote:
-> > Both cases above cause the (temporary) use of two extents to map the same lblk.
-> > _set_bmap() first adjusts next_extent.e_lblk to cover the lblk, then decrements
-> > extent.e_len so that "extent" no longer covers the lblk.  _punch_extent()
-> > splits an extent by first inserting the second part of the extent and then
-> > shortening the original extent to reflect the punchout.
-> > 
-> > These two cases seemed slightly suspect to me, but since e2fsprogs doesn't
-> > journal, changing the code to reduce one extent and enlarge the other opens the
-> > possibility that we could lose the lblk mapping entirely if something happens
-> > in between the two operations.  I prefer "block still mapped but fsck is
-> > unhappy about redundant bookeepping" to "the block is gone", so I added the two
-> > fixes and let it go.
+On Sun, Mar 16, 2014 at 10:00:30PM -0400, tytso@mit.edu wrote:
+> On Mon, Mar 17, 2014 at 12:56:59AM +0400, a3at.mail@gmail.com wrote:
+> > After I tested ext4 dev branch (eb3e7abb161ad5), without any xfs-tests complaints,
+> > I understand what goes wrong, you have not last version of
+> > this patch, the latest is v3.
+> > (Actually you have description from last patch, but not the latest changes.)
 > 
-> OK, fair enough, I'll merge in this patch since it's fixing a real
-> bug, and I can't think of a good way to fix this issue without making
-> pretty massive changes.
-> 
-> I'll note though that at the moment e2fsck doesn't have sophisticated
-> extent tree recovery support; so if the extent tree is corrupt, it
-> offers to zap the entire extent tree, instead of trying to fix up the
-> extent tree.  That wasn't an issue because it was likely that if
-> absent bugs, the most likely case if the extent tree is corrupted,
-> there's not much you can do, so it wasn't worth it to add some code to
-> handle these cases.
-> 
-> However, if a large number of users start using your FUSE server in
-> production, then making sure the right thing happens when they suffer
-> power failures start becoming more important --- but it may not be
-> trivial since libext2fs wasn't originally intended for that use case.
-> I am glad that you implemented it, since it's a great way to get
-> better testing for various corner cases.  But that's different from
-> advertising that the FUSE server should be used in production use
-> cases; in particular, we might need to figure out some kind of
-> journalling system for FUSE, either using the ext4's internal journal,
-> or some user-space journalling system.
+> What I did was to take your v3 version of the patch, and then since
+> that patch removed the label failed_mount5, I changed instances of
+> failed_mount4a to failed_mount5, just for aesthetic reasons.
 
-I wasn't planning to advertise fuse2fs for production use.  But perhaps it
-could cough out a few more warnings if you're not mounting ro, and/or default
-to ro?
+/me wonders if it would be easier just to do something like this:
 
---D
-> 
-> 					- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+ext4: don't crash when validating block bitmap
+
+If EXT4FS_DEBUG is defined, ext4_validate_block_bitmap is called via
+ext4_count_free_clusters before sb->s_group_info is set up.  When this
+happens, the kernel crashes because group info hasn't been loaded.
+Forego marking the group corrupt for now; not setting BH_Verified
+means we'll revisit the bitmap if something went wrong.
+
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ fs/ext4/balloc.c |   13 ++++++++++---
+ 1 file changed, 10 insertions(+), 3 deletions(-)
+
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 2f35689..b375768 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -355,7 +355,10 @@ void ext4_validate_block_bitmap(struct super_block *sb,
+ 			       struct buffer_head *bh)
+ {
+ 	ext4_fsblk_t	blk;
+-	struct ext4_group_info *grp = ext4_get_group_info(sb, block_group);
++	struct ext4_group_info *grp = NULL;
++
++	if (EXT4_SB(sb)->s_group_info)
++		grp = ext4_get_group_info(sb, block_group);
+ 
+ 	if (buffer_verified(bh))
+ 		return;
+@@ -366,14 +369,18 @@ void ext4_validate_block_bitmap(struct super_block *sb,
+ 		ext4_unlock_group(sb, block_group);
+ 		ext4_error(sb, "bg %u: block %llu: invalid block bitmap",
+ 			   block_group, blk);
+-		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
++		if (grp)
++			set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT,
++				&grp->bb_state);
+ 		return;
+ 	}
+ 	if (unlikely(!ext4_block_bitmap_csum_verify(sb, block_group,
+ 			desc, bh))) {
+ 		ext4_unlock_group(sb, block_group);
+ 		ext4_error(sb, "bg %u: bad block bitmap checksum", block_group);
+-		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
++		if (grp)
++			set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT,
++				&grp->bb_state);
+ 		return;
+ 	}
+ 	set_buffer_verified(bh);
