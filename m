@@ -1,104 +1,72 @@
-From: Azat Khuzhin <a3at.mail@gmail.com>
-Subject: Re: [PATCH] ext4: initialize multi-block allocator before checking
- block descriptors
-Date: Mon, 17 Mar 2014 20:19:47 +0400
-Message-ID: <CAG5DWogdTPBOfccVa3xGciLaRedPC1memAmjxnG2uEwSVV64DA@mail.gmail.com>
-References: <20140315214029.GA18873@thunk.org>
-	<CAG5DWoj0pYD8O17qw_-MK+JX_hsFj04ReUPztShmKWzz45gRbQ@mail.gmail.com>
-	<20140316023841.GA902@thunk.org>
-	<CAG5DWog0BDHTh1edtQ+457SmJeL_0MacgZ1gYeNL4sY4yEqZWw@mail.gmail.com>
-	<20140316161637.GA19885@azat>
-	<20140316184634.GA14162@thunk.org>
-	<20140316205659.GC19885@azat>
-	<20140317020029.GC14162@thunk.org>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 20/49] libext2fs: fix parents when modifying extents
+Date: Mon, 17 Mar 2014 09:59:20 -0700
+Message-ID: <20140317165920.GG9070@birch.djwong.org>
+References: <20140311065356.30585.47192.stgit@birch.djwong.org>
+ <20140311065605.30585.47791.stgit@birch.djwong.org>
+ <20140314140158.GP8282@thunk.org>
+ <20140314201319.GF9070@birch.djwong.org>
+ <20140315154626.GB17270@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "open list:EXT4 FILE SYSTEM" <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qg0-f44.google.com ([209.85.192.44]:49230 "EHLO
-	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754844AbaCQQTs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Mar 2014 12:19:48 -0400
-Received: by mail-qg0-f44.google.com with SMTP id a108so17273898qge.3
-        for <linux-ext4@vger.kernel.org>; Mon, 17 Mar 2014 09:19:48 -0700 (PDT)
-In-Reply-To: <20140317020029.GC14162@thunk.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:46343 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754600AbaCQQ7Y (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Mar 2014 12:59:24 -0400
+Content-Disposition: inline
+In-Reply-To: <20140315154626.GB17270@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 17, 2014 at 6:00 AM,  <tytso@mit.edu> wrote:
-> On Mon, Mar 17, 2014 at 12:56:59AM +0400, a3at.mail@gmail.com wrote:
->> After I tested ext4 dev branch (eb3e7abb161ad5), without any xfs-tests complaints,
->> I understand what goes wrong, you have not last version of
->> this patch, the latest is v3.
->> (Actually you have description from last patch, but not the latest changes.)
->
-> What I did was to take your v3 version of the patch, and then since
-> that patch removed the label failed_mount5, I changed instances of
-> failed_mount4a to failed_mount5, just for aesthetic reasons.
->
-> So there is no substantive difference between what is in the ext4
-> patch queue and your v3 patch.   All I did was this:
+On Sat, Mar 15, 2014 at 11:46:26AM -0400, Theodore Ts'o wrote:
+> On Fri, Mar 14, 2014 at 01:13:19PM -0700, Darrick J. Wong wrote:
+> > Both cases above cause the (temporary) use of two extents to map the same lblk.
+> > _set_bmap() first adjusts next_extent.e_lblk to cover the lblk, then decrements
+> > extent.e_len so that "extent" no longer covers the lblk.  _punch_extent()
+> > splits an extent by first inserting the second part of the extent and then
+> > shortening the original extent to reflect the punchout.
+> > 
+> > These two cases seemed slightly suspect to me, but since e2fsprogs doesn't
+> > journal, changing the code to reduce one extent and enlarge the other opens the
+> > possibility that we could lose the lblk mapping entirely if something happens
+> > in between the two operations.  I prefer "block still mapped but fsck is
+> > unhappy about redundant bookeepping" to "the block is gone", so I added the two
+> > fixes and let it go.
+> 
+> OK, fair enough, I'll merge in this patch since it's fixing a real
+> bug, and I can't think of a good way to fix this issue without making
+> pretty massive changes.
+> 
+> I'll note though that at the moment e2fsck doesn't have sophisticated
+> extent tree recovery support; so if the extent tree is corrupt, it
+> offers to zap the entire extent tree, instead of trying to fix up the
+> extent tree.  That wasn't an issue because it was likely that if
+> absent bugs, the most likely case if the extent tree is corrupted,
+> there's not much you can do, so it wasn't worth it to add some code to
+> handle these cases.
+> 
+> However, if a large number of users start using your FUSE server in
+> production, then making sure the right thing happens when they suffer
+> power failures start becoming more important --- but it may not be
+> trivial since libext2fs wasn't originally intended for that use case.
+> I am glad that you implemented it, since it's a great way to get
+> better testing for various corner cases.  But that's different from
+> advertising that the FUSE server should be used in production use
+> cases; in particular, we might need to figure out some kind of
+> journalling system for FUSE, either using the ext4's internal journal,
+> or some user-space journalling system.
 
-Sorry I didn't look good at diff of two patches, my mistake.
+I wasn't planning to advertise fuse2fs for production use.  But perhaps it
+could cough out a few more warnings if you're not mounting ro, and/or default
+to ro?
 
->
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index d73f1d9..01c5088 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -4100,14 +4100,14 @@ no_journal:
->         if (err) {
->                 ext4_msg(sb, KERN_ERR, "failed to reserve %llu clusters for "
->                          "reserved pool", ext4_calculate_resv_clusters(sb));
-> -               goto failed_mount4a;
-> +               goto failed_mount5;
->         }
->
->         err = ext4_setup_system_zone(sb);
->         if (err) {
->                 ext4_msg(sb, KERN_ERR, "failed to initialize system "
->                          "zone (%d)", err);
-> -               goto failed_mount4a;
-> +               goto failed_mount5;
->         }
->
->         err = ext4_register_li_request(sb, first_not_zeroed);
-> @@ -4184,7 +4184,7 @@ failed_mount7:
->         ext4_unregister_li_request(sb);
->  failed_mount6:
->         ext4_release_system_zone(sb);
-> -failed_mount4a:
-> +failed_mount5:
->         dput(sb->s_root);
->         sb->s_root = NULL;
->  failed_mount4:
->
->
-> Did you actually test your v3 patch on top of the dev branch?  Or did
-> you just note that the patch in the ext4 patch queue was different,
-> and assumed it was the v2 version of your patch?
-
-Yes, I actually test v3 patch, but not on the top of dev branch,
-instead the dev branch was on the top of v3 patch.
-(but it changes nothing), with "-O bigalloc" and  "-o block_validity"
-
-Also today I recheck this using kvm/qemu, with v3 patch on the top of
-ext4 dev branch, and still nothing, here is last commits:
-62f5f55 ext4: initialize multi-block allocator before checking block descriptors
-eb3e7ab ext4: fix partial cluster handling for bigalloc file systems
-97d3979 ext4: delete path dealloc code in ext4_ext_handle_uninitialized_extents
-
-The only difference between your tests and my, is that you have i386,
-while i have x86_64. But I really doubt that this is significantly.
-
->
-> Regards,
->
->                                                 - Ted
-
-
-
--- 
-Respectfully
-Azat Khuzhin
+--D
+> 
+> 					- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
