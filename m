@@ -1,40 +1,60 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 72181] ext4_mb_generate_buddy:free block calculation seems to
- overflow
-Date: Mon, 17 Mar 2014 07:01:12 +0000
-Message-ID: <bug-72181-13602-rdqADeaKth@https.bugzilla.kernel.org/>
-References: <bug-72181-13602@https.bugzilla.kernel.org/>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH 1/6 v2] ext4: Update inode i_size after the
+ preallocation
+Date: Mon, 17 Mar 2014 11:48:30 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1403171148130.30625@localhost.localdomain>
+References: <1393355679-11160-1-git-send-email-lczerner@redhat.com> <1393355679-11160-2-git-send-email-lczerner@redhat.com> <20140317030201.GE14162@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:42560 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751258AbaCQHBP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 17 Mar 2014 03:01:15 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id C566D201C0
-	for <linux-ext4@vger.kernel.org>; Mon, 17 Mar 2014 07:01:14 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 719D42018A
-	for <linux-ext4@vger.kernel.org>; Mon, 17 Mar 2014 07:01:12 +0000 (UTC)
-In-Reply-To: <bug-72181-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	xfs@oss.sgi.com
+To: tytso@mit.edu
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20140317030201.GE14162@thunk.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=72181
+On Sun, 16 Mar 2014, tytso@mit.edu wrote:
 
---- Comment #3 from WeiZhang <zweiustc@gmail.com> ---
-(In reply to WeiZhang from comment #1)
-> usually, we just get a wrong number of "free" from bitmap while bitmap is
-> corrupted. but it should not larger than "max = EXT4_CLUSTERS_PER_GROUP(sb)"
-> right?
+> Date: Sun, 16 Mar 2014 23:02:01 -0400
+> From: tytso@mit.edu
+> To: Lukas Czerner <lczerner@redhat.com>
+> Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
+> Subject: Re: [PATCH 1/6 v2] ext4: Update inode i_size after the preallocation
+> 
+> On Tue, Feb 25, 2014 at 08:14:34PM +0100, Lukas Czerner wrote:
+> > Currently in ext4_fallocate we would update inode size, c_time and sync
+> > the file with every partial allocation which is entirely unnecessary. It
+> > is true that if the crash happens in the middle of truncate we might end
+> > up with unchanged i size, or c_time which I do not think is really a
+> > problem - it does not mean file system corruption in any way. Note that
+> > xfs is doing things the same way e.g. update all of the mentioned after
+> > the allocation is done.
+> > 
+> > This commit moves all the updates after the allocation is done. In
+> > addition we also need to change m_time as not only inode has been change
+> > bot also data regions might have changed (unwritten extents). However
+> > m_time will be only updated when i_size changed.
+> > 
+> > Also we do not need to be paranoid about changing the c_time only if the
+> > actual allocation have happened, we can change it even if we try to
+> > allocate only to find out that there are already block allocated. It's
+> > not really a big deal and it will save us some additional complexity.
+> > 
+> > Also use ext4_debug, instead of ext4_warning in #ifdef EXT4FS_DEBUG
+> > section.
+> > 
+> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> 
+> Further testing has shown that this patch (applied on top of the ext4
+> dev branch) is causing a regression failure of xfstests shared/243.
+> 
+> Could you take a look?
+> 
+> 						- Ted
 
-sorry, "EXT4-fs error (device sdc1): ext4_mb_generate_buddy:727: group
-313828953 clusters in bitmap, 28952 in gd   " group 313828953 clusters = group
-3138 28953 clusters". I make a mistake here..
+Hi Ted,
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+I am looking into this. Thanks!
+
+-Lukas
