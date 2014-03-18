@@ -1,204 +1,65 @@
 From: Lubos Uhliarik <uhliarik@seznam.cz>
-Subject: [RFC][PATCH 1/1] ext4: Undelete Feature for Ext4
-Date: Tue, 18 Mar 2014 16:09:44 +0100
-Message-ID: <1395155384.15587.10.camel@zerobox.home>
+Subject: [RFC][PATCH 0/1] ext4: Undelete Feature for Ext4
+Date: Tue, 18 Mar 2014 16:09:30 +0100
+Message-ID: <1395155370.15587.9.camel@zerobox.home>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: vojnar@fit.vutbr.cz, lczerner@redhat.com
+Cc: lczerner@redhat.com, vojnar@fit.vutbr.cz
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.seznam.cz ([77.75.76.43]:51461 "EHLO smtp2.seznam.cz"
+Received: from smtp2.seznam.cz ([77.75.76.43]:51835 "EHLO smtp2.seznam.cz"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754926AbaCRPVe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 18 Mar 2014 11:21:34 -0400
+	id S1754050AbaCRPXH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 18 Mar 2014 11:23:07 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
-This patch should make undelete process for deleted files under ext4 fs easier.
+Hi all,
 
-Signed-off-by: Lubos Uhliarik <uhliarik@seznam.cz>
----
- fs/ext4/ext4_extents.h | 14 +++++++++++
- fs/ext4/extents.c      | 67 +++++++++++++++++++++++++++++++++++++++++++++-----
- 2 files changed, 75 insertions(+), 6 deletions(-)
+I'm sending you a patch (see the 1/1 patch) which should make
+undelete process for deleted files on ext4 easier. I do this 
+patch as a part of my Barchelor's thesis with support of Red Hat
+company. 
 
-diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
-index 5074fe2..22cf2cd 100644
---- a/fs/ext4/ext4_extents.h
-+++ b/fs/ext4/ext4_extents.h
-@@ -251,6 +251,20 @@ static inline void ext4_ext_store_pblock(struct ext4_extent *ex,
- 				      0xffff);
- }
- 
-+static inline void ext4_ext_store_entries(struct ext4_extent_header *eh,
-+					  __u16 eh_entries){
-+	eh->eh_generation &= cpu_to_le32((unsigned long) 0x0000ffff);
-+	eh->eh_generation |= cpu_to_le32(((unsigned long) (eh_entries) << 16)
-+				& 0xffff0000);
-+}
-+
-+static inline void ext4_ext_store_depth(struct ext4_extent_header *eh,
-+					 __u16 eh_depth){
-+	eh->eh_generation &= cpu_to_le32((unsigned long) 0xffff0000);
-+	eh->eh_generation |= cpu_to_le32(((unsigned long) (eh_depth))
-+				& 0x0000ffff);
-+}
-+
- /*
-  * ext4_idx_store_pblock:
-  * stores a large physical block number into an index struct,
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 74bc2d5..f0f3615 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2565,6 +2565,7 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
- 	ext4_lblk_t ex_ee_block;
- 	unsigned short ex_ee_len;
- 	unsigned uninitialized = 0;
-+	unsigned short ex_ee_entries;
- 	struct ext4_extent *ex;
- 	ext4_fsblk_t pblk;
- 
-@@ -2584,6 +2585,7 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
- 
- 	ex_ee_block = le32_to_cpu(ex->ee_block);
- 	ex_ee_len = ext4_ext_get_actual_len(ex);
-+	ex_ee_entries = le16_to_cpu(eh->eh_entries);
- 
- 	trace_ext4_ext_rm_leaf(inode, start, ex, *partial_cluster);
- 
-@@ -2662,11 +2664,9 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
- 		if (err)
- 			goto out;
- 
--		if (num == 0)
--			/* this extent is removed; mark slot entirely unused */
--			ext4_ext_store_pblock(ex, 0);
-+		if (num != 0)
-+			ex->ee_len = cpu_to_le16(num);
- 
--		ex->ee_len = cpu_to_le16(num);
- 		/*
- 		 * Do not mark uninitialized if all the blocks in the
- 		 * extent have been removed.
-@@ -2726,8 +2726,19 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
- 
- 	/* if this leaf is free, then we should
- 	 * remove it from index block above */
--	if (err == 0 && eh->eh_entries == 0 && path[depth].p_bh != NULL)
-+	if (err == 0 && eh->eh_entries == 0 && path[depth].p_bh != NULL) {
-+		err = ext4_ext_get_access(handle, inode, path + depth);
-+		if (err)
-+			goto out;
-+
-+		ext4_ext_store_entries(path[depth].p_hdr, ex_ee_entries);
-+
-+		err = ext4_ext_dirty(handle, inode, path + depth);
-+		if (err)
-+			goto out;
-+
- 		err = ext4_ext_rm_idx(handle, inode, path, depth);
-+	}
- 
- out:
- 	return err;
-@@ -2760,6 +2771,7 @@ int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
- 	struct super_block *sb = inode->i_sb;
- 	int depth = ext_depth(inode);
- 	struct ext4_ext_path *path = NULL;
-+	unsigned short *entries_path = NULL;
- 	long long partial_cluster = 0;
- 	handle_t *handle;
- 	int i = 0, err = 0;
-@@ -2864,6 +2876,18 @@ again:
- 	}
- 	err = 0;
- 
-+	if (!inode->i_nlink) {
-+		entries_path = kzalloc(sizeof(short) * (depth + 1),
-+				       GFP_NOFS);
-+		if (entries_path == NULL) {
-+			kfree(path);
-+			ext4_journal_stop(handle);
-+			return -ENOMEM;
-+		}
-+
-+		entries_path[0] = le16_to_cpu(ext_inode_hdr(inode)->eh_entries);
-+	}
-+
- 	while (i >= 0 && err == 0) {
- 		if (i == depth) {
- 			/* this is leaf block */
-@@ -2890,6 +2914,10 @@ again:
- 			ext_debug("init index ptr: hdr 0x%p, num %d\n",
- 				  path[i].p_hdr,
- 				  le16_to_cpu(path[i].p_hdr->eh_entries));
-+			if (entries_path != NULL) {
-+				entries_path[i] = le16_to_cpu(
-+					path[i].p_hdr->eh_entries);
-+			}
- 		} else {
- 			/* we were already here, see at next index */
- 			path[i].p_idx--;
-@@ -2928,10 +2956,24 @@ again:
- 		} else {
- 			/* we finished processing this index, go up */
- 			if (path[i].p_hdr->eh_entries == 0 && i > 0) {
-+				if (entries_path != NULL) {
-+					err = ext4_ext_get_access(handle,
-+						inode, path);
-+					if (err == 0) {
-+						ext4_ext_store_entries(
-+							path[i].p_hdr,
-+							(entries_path[i]));
-+						err = ext4_ext_dirty(handle,
-+							inode, path);
-+					}
-+				}
-+
- 				/* index is empty, remove it;
- 				 * handle must be already prepared by the
- 				 * truncatei_leaf() */
--				err = ext4_ext_rm_idx(handle, inode, path, i);
-+				if (err == 0)
-+					err = ext4_ext_rm_idx(handle, inode,
-+						path, i);
- 			}
- 			/* root level has p_bh == NULL, brelse() eats this */
- 			brelse(path[i].p_bh);
-@@ -2964,6 +3006,17 @@ again:
- 		 */
- 		err = ext4_ext_get_access(handle, inode, path);
- 		if (err == 0) {
-+			/* Store depth and entries to eh_generation to make
-+			 * recovering deleted files easier. */
-+			if (entries_path != NULL) {
-+				ext4_ext_store_entries(ext_inode_hdr(inode),
-+					(entries_path[0]));
-+
-+				ext4_ext_store_depth(ext_inode_hdr(inode),
-+					le16_to_cpu(
-+					ext_inode_hdr(inode)->eh_depth));
-+			}
-+
- 			ext_inode_hdr(inode)->eh_depth = 0;
- 			ext_inode_hdr(inode)->eh_max =
- 				cpu_to_le16(ext4_ext_space_root(inode, 0));
-@@ -2973,6 +3026,8 @@ again:
- out:
- 	ext4_ext_drop_refs(path);
- 	kfree(path);
-+	kfree(entries_path);
-+
- 	if (err == -EAGAIN) {
- 		path = NULL;
- 		goto again;
--- 
-1.8.3.2
+The main changes in patch are following:
+
+a) commented out zeroing ex->ee_len, ee->start_hi and ee->start_lo,
+because these entries are essential for undelete process
+
+b) only in inode structure, storing original value of eh->depth and
+eh->entries. These values are stored to unused entry eh_generation in
+struct ext4_extent_header after all extents have been definitely
+removed. eh->entries is 16 bits value and is stored in first half of 32
+bits of eh->generation. eh->depth is also 16 bits value and is stored in
+second half of eh->generation. For storing these valued, I wrote macros
+to ext4_extents.h. It's should NOT cause problems to store values in 
+eh->generation, because eh->generation is used only, when file is NOT
+deleted. After delete process, eh->generation can have any value.
+
+c) if deletion process removes extents from block, which is not inode
+(eh->depth > 0), then I'm storing only eh->entries original value to
+eh->generation, because eh->depth will stay untouched. 
+
+d) if delete process removes all extent_idx structures from block, which
+is not in inode (eh->depth > 0), then I'm storing also only eh->entries
+original value. But in this case, I need to store original eh->entries
+value for each level separately, because delete process is changing
+eh->entries value during walking through extent tree. This problem is
+solved by allocating array, where I will store original values
 
 
+This patch shouldn't break ext4, I tested it with xfs_tests and tests 
+were successfull.
+
+I also successfully created undelete application, based on e2fslibs,
+which demonstrates undelete process. (link:
+https://github.com/uhliarik/ext4-undelete )
+
+
+Thanks! 
+Lubos Uhliarik
 
 
 
