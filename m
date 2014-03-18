@@ -1,270 +1,61 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 37/49] e2fsck: read-ahead metadata during passes 1, 2,
- and 4
-Date: Mon, 17 Mar 2014 23:50:01 -0700
-Message-ID: <20140318065001.GI9070@birch.djwong.org>
-References: <20140311065356.30585.47192.stgit@birch.djwong.org>
- <20140311065757.30585.46729.stgit@birch.djwong.org>
- <8715537A-D22B-4CDC-B76B-75B62FDBC1D7@dilger.ca>
- <20140318044231.GA20038@birch.djwong.org>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH 0/6 v2] Introduce FALLOC_FL_ZERO_RANGE flag for
+ fallocate
+Date: Tue, 18 Mar 2014 10:06:32 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1403181006240.24748@localhost.localdomain>
+References: <1393355679-11160-1-git-send-email-lczerner@redhat.com> <20140316190820.GB14162@thunk.org> <alpine.LFD.2.00.1403171358580.30625@localhost.localdomain> <20140317210030.GB15218@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-208922536-1395133595=:24748"
+Cc: =?utf-8?B?THVrw6HFoSBDemVybmVyIDxsY3plcm5lckByZWRoYXQuY29tPg==?=@thunk.org,
+	linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:19341 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753297AbaCRGuI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 18 Mar 2014 02:50:08 -0400
-Content-Disposition: inline
-In-Reply-To: <20140318044231.GA20038@birch.djwong.org>
+Received: from mx1.redhat.com ([209.132.183.28]:51463 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753735AbaCRJiH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 18 Mar 2014 05:38:07 -0400
+In-Reply-To: <20140317210030.GB15218@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 17, 2014 at 09:42:31PM -0700, Darrick J. Wong wrote:
-> On Mon, Mar 17, 2014 at 05:10:22PM -0600, Andreas Dilger wrote:
-> > 
-> > On Mar 11, 2014, at 12:57 AM, Darrick J. Wong <darrick.wong@oracle.com> wrote:
-> > 
-> > > e2fsck pass1 is modified to use the block group data prefetch function
-> > > to try to fetch the inode tables into the pagecache before it is
-> > > needed.  In order to avoid cache thrashing, we limit ourselves to
-> > > prefetching at most half the available memory.
-> > 
-> > It looks like the prefetching is done in huge chunks, and not incrementally?
-> > It makes more sense to have a steady amount of prefetch happening instead
-> > of waiting for it to all be consumed before starting a new batch.  See in
-> > e2fsck_pass1() below.
-> 
-> I agree that prefetch ought not to wait until the entire inode table is
-> consumed.
-> 
-> > > pass2 is modified to use the dirblock prefetching function to prefetch
-> > > the list of directory blocks that are assembled in pass1.  So long as
-> > > we don't anticipate rehashing the dirs (pass 3a), we can release the
-> > > dirblocks as soon as we're done checking them.
-> > > 
-> > > pass4 is modified to prefetch the block and inode bitmaps in
-> > > anticipation of pass 5, because pass4 is entirely CPU bound.
-> > > 
-> > > In general, these mechanisms can halve fsck time, if the host system
-> > > has sufficient memory and the storage system can provide a lot of
-> > > IOPs.  SSDs and multi-spindle RAIDs see the most speedup; single disks
-> > > experience a modest speedup, and single-spindle USB mass storage
-> > > devices see hardly any benefit.
-> > > 
-> > > By default, readahead will try to fill half the physical memory in the
-> > > system.  The -R option can be given to specify the amount of memory to
-> > > use for readahead, or zero to disable it entirely; or an option can be
-> > > given in e2fsck.conf.
-> > > 
-> > > 
-> > > +static void *pass1_readahead(void *p)
-> > > +{
-> > > +	struct pass1ra_ctx *c = p;
-> > > +	errcode_t err;
-> > > +
-> > > +	ext2fs_readahead(c->fs, EXT2_READA_ITABLE, c->group, c->ngroups);
-> > > +	return NULL;
-> > > +}
-> > > +
-> > > +static errcode_t initiate_readahead(e2fsck_t ctx, dgrp_t group, dgrp_t ngroups)
-> > > +{
-> > > +	struct pass1ra_ctx *ractx;
-> > > +	errcode_t err;
-> > > +
-> > > +	err = ext2fs_get_mem(sizeof(*ractx), &ractx);
-> > > +	if (err)
-> > > +		return err;
-> > > +
-> > > +	ractx->fs = ctx->fs;
-> > > +	ractx->group = group;
-> > > +	ractx->ngroups = ngroups;
-> > > +
-> > > +	err = e2fsck_run_thread(&ctx->ra_thread, pass1_readahead,
-> > > +				pass1_readahead_cleanup, ractx);
-> > > +	if (err)
-> > > +		ext2fs_free_mem(&ractx);
-> > > +
-> > > +	return err;
-> > > +}
-> > > +
-> > >  void e2fsck_pass1(e2fsck_t ctx)
-> > >  {
-> > > 	int	i;
-> > > @@ -611,10 +654,37 @@ void e2fsck_pass1(e2fsck_t ctx)
-> > > 	int		busted_fs_time = 0;
-> > > 	int		inode_size;
-> > > 	int		failed_csum = 0;
-> > > +	dgrp_t		grp;
-> > > +	ext2_ino_t	ra_threshold = 0;
-> > > +	dgrp_t		ra_groups = 0;
-> > > +	errcode_t	err;
-> > > 
-> > > 	init_resource_track(&rtrack, ctx->fs->io);
-> > > 	clear_problem_context(&pctx);
-> > > 
-> > > +	/* If we can do readahead, figure out how many groups to pull in. */
-> > > +	if (!ext2fs_can_readahead(ctx->fs))
-> > > +		ctx->readahead_mem_kb = 0;
-> > > +	if (ctx->readahead_mem_kb) {
-> > > +		ra_groups = ctx->readahead_mem_kb /
-> > > +			    (fs->inode_blocks_per_group * fs->blocksize /
-> > > +			     1024);
-> > > +		if (ra_groups < 16)
-> > > +			ra_groups = 0;
-> > 
-> > It probably always makes sense to prefetch one group if possible?
-> 
-> I was intending to skip pass1 RA if there wasn't a lot of memory around.  Not
-> that I did a lot of work to figure out if < 16 groups really was a "lowmem"
-> situation.
-> 
-> > > +		else if (ra_groups > fs->group_desc_count)
-> > > +			ra_groups = fs->group_desc_count;
-> > > +		if (ra_groups) {
-> > > +			err = initiate_readahead(ctx, grp, ra_groups);
-> > 
-> > Looks like "grp" is used uninitialized here.  Should be "grp = 0" to start.
-> 
-> Oops, good catch.
-> 
-> > > +			if (err) {
-> > > +				com_err(ctx->program_name, err, "%s",
-> > > +					_("while starting pass1 readahead"));
-> > > +				ra_groups = 0;
-> > > +			}
-> > > +			ra_threshold = ra_groups *
-> > > +				       fs->super->s_inodes_per_group;
-> > 
-> > This is the threshold of the last inode to be prefetched.
-> 
-> Yes.
-> 
-> > > +		}
-> > > +	}
-> > > +
-> > > 	if (!(ctx->options & E2F_OPT_PREEN))
-> > > 		fix_problem(ctx, PR_1_PASS_HEADER, &pctx);
-> > > 
-> > > @@ -778,6 +848,19 @@ void e2fsck_pass1(e2fsck_t ctx)
-> > > 			if (e2fsck_mmp_update(fs))
-> > > 				fatal_error(ctx, 0);
-> > > 		}
-> > > +		if (ra_groups && ino > ra_threshold) {
-> > 
-> > This doesn't start prefetching again until the last inode is checked.
-> > It probably makes sense to have a sliding window to start readahead
-> > again once half of the memory has been consumed or so.  Otherwise,
-> > the scanning will block here until the next inode table is read from
-> > disk, instead of the readahead being started earlier and it is in RAM.
-> 
-> You're right, it would be even faster if ra_threshold were to start RA a couple
-> of block groups *before* we run out of prefetched data.
-> 
-> > > +			grp = (ino - 1) / fs->super->s_inodes_per_group;
-> > > +			ra_threshold = (grp + ra_groups) *
-> > > +				       fs->super->s_inodes_per_group;
-> > 
-> > > +			err = initiate_readahead(ctx, grp, ra_groups);
-> > > +			if (err == EAGAIN) {
-> > > +				printf("Disabling slow readahead.\n");
-> > > +				ra_groups = 0;
-> > 
-> > I see that EAGAIN comes from e2fsck_run_thread(), if there is still a
-> > readahead thread running.  Does it make sense to stop readahead in
-> > that case?  It would seem to me that if readahead is taking a long
-> > time and the inode processing is catching up to it (i.e. IO bound)
-> > then it is even more important to do readahead in that case.
-> 
-> This is tricky -- POSIX_FADV_WILLNEED starts a non-blocking readahead, so there
-> really isn't any good way to tell if the inode checker has caught up to RA.
-> Here I'm interpreting "RA thread still running" as a warning that soon the
-> inode checker will be ahead of the RA, so we might as well stop the RA.
-> However, there still isn't really much good way to find out exactly where RA
-> is.
-> 
-> > Something like the following to readahead half of the inode tables once
-> > half of them have been processed, and shrink the readahead window if the
-> > readahead is being called too often:
-> 
-> Hmm.  I will give this a shot and report back; this seems like it ought to
-> produce a better result than "two before" as I suggested above.
-> 
-> > 	if (ra_groups != 0 && ino > ra_threshold - (ra_groups + 1) / 2 *
-> > 					fs->super->s_inodes_per_group) {
-> >		if (ra_threshold < ino)
-> > 			ra_threshold = ino;
-> > 		grp = (ra_threshold -1) / fs->super->s_inodes_per_group;
-> > 		err = initiate_readahead(ctx, grp, (ra_groups + 1) / 2);
-> > 		if (err == EAGAIN)
-> > 			ra_groups = (ra_groups + 1) / 2;
-> > 		else if (err)
-> > 			com_err(ctx->program_name, err, "%s",
-> > 				_("while starting pass1 readahead"));
-> > 		else
-> > 			ra_threshold += (ra_groups + 1) / 2 *
-> > 				fs->super->s_inodes_per_group;
-> > 	}
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-Now that I've thought about this a little harder, even this isn't quite
-sufficient -- since the inode scan skips inode_uninit blockgroups, we have to
-figure out which group our new ra_threshold inode is in and scan backwards
-through the groups until we find a bg that isn't inode_uninit.  If we don't do
-this, the scan will skip right past our ra_threshold, which means that RA
-starts late or possibly even after we've started scanning inodes from the group
-we're RAing.
+--8323328-208922536-1395133595=:24748
+Content-Type: TEXT/PLAIN; charset=utf-8
+Content-Transfer-Encoding: 8BIT
 
-That said, even doing that I don't see much more of a speed up.
+On Mon, 17 Mar 2014, tytso@mit.edu wrote:
 
---D
-
-> > 
-> > > +			} else if (err) {
-> > > +				com_err(ctx->program_name, err, "%s",
-> > > +					_("while starting pass1 readahead"));
-> > > +			}
-> > > +		}
-> > > 		old_op = ehandler_operation(_("getting next inode from scan"));
-> > > 		pctx.errcode = ext2fs_get_next_inode_full(scan, &ino,
-> > > 							  inode, inode_size);
-> > > diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-> > > index 80ebdb1..d6ef8c5 100644
-> > > --- a/e2fsck/unix.c
-> > > +++ b/e2fsck/unix.c
-> > > @@ -74,7 +74,7 @@ static void usage(e2fsck_t ctx)
-> > > 		_("Usage: %s [-panyrcdfvtDFV] [-b superblock] [-B blocksize]\n"
-> > > 		"\t\t[-I inode_buffer_blocks] [-P process_inode_size]\n"
-> > > 		"\t\t[-l|-L bad_blocks_file] [-C fd] [-j external_journal]\n"
-> > > -		"\t\t[-E extended-options] device\n"),
-> > > +		"\t\t[-E extended-options] [-R readahead_kb] device\n"),
-> > 
-> > Note that "-R" is only recently deprecated for raid options, why not make
-> > this an option under "-E"?
+> Date: Mon, 17 Mar 2014 17:00:30 -0400
+> From: tytso@mit.edu
+> To: =?utf-8?B?THVrw6HFoSBDemVybmVyIDxsY3plcm5lckByZWRoYXQuY29tPg==?=@thunk.org
+> Cc: linux-ext4@vger.kernel.org
+> Subject: Re: [PATCH 0/6 v2] Introduce FALLOC_FL_ZERO_RANGE flag for fallocate
 > 
-> Ok.
-> 
-> --D
-> > 
-> > > 		ctx->program_name);
+> On Mon, Mar 17, 2014 at 01:59:35PM +0100, Lukáš Czerner wrote:
+> > > The "dev2" branch in the ext4 git tree has all the patches in this
+> > > series (1, 2, and 5) --- 3 was included earlier applied on top of the
+> > > "dev" branch.  The "test" branch is the dev2 branch with the
+> > > xfs-collapse-range branch pulled in, which actually enables the
+> > > ZERO_RANGE flags (as well as the collapse range patches).
 > > > 
-> > > 	fprintf(stderr, "%s", _("\nEmergency help:\n"
-> > > @@ -90,6 +90,7 @@ static void usage(e2fsck_t ctx)
-> > > 		" -j external_journal  Set location of the external journal\n"
-> > > 		" -l bad_blocks_file   Add to badblocks list\n"
-> > > 		" -L bad_blocks_file   Set badblocks list\n"
-> > > +		" -R readahead_kb      Allow this much readahead.\n"
-> > 
-> > 
-> > Cheers, Andreas
-> > 
-> > 
-> > 
-> > 
-> > 
+> > > When I tried testing with the "test" branch, things failed pretty
+> > > quickly.  I've attached two of these in this patch set.  I'm guessing
+> > > it's some kind of memory corruption problem.  These failures are
+> > > pretty repeatable, and it fails fast.
 > 
+> Can you let me know when you've had a chance to take a look at this
+> failure?  Once we put back the EOFBLOCK_FL code, I suspect we should
+> be fine with the first two patches in this patch series, but patch #5
+> plus the xfs-collapse-range branch appears to still have issues.
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Thanks!!
+> 
+> 						- Ted
+
+Yes, I am looking into this since yesterday, but unfortunately I
+have not found a problem yet. I am still trying to figure it out.
+
+-Lukas
+--8323328-208922536-1395133595=:24748--
