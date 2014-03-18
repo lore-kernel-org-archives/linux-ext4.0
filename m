@@ -1,75 +1,469 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [RFC][PATCH 0/1] ext4: Undelete Feature for Ext4
-Date: Tue, 18 Mar 2014 18:28:34 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1403181820220.2121@localhost.localdomain>
-References: <1395155370.15587.9.camel@zerobox.home> <20140318171425.GC8506@thunk.org>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lubos Uhliarik <uhliarik@seznam.cz>, linux-ext4@vger.kernel.org,
-	vojnar@fit.vutbr.cz
-To: tytso@mit.edu
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH] [PATCH] generic/009: add generic test for fallocate zero range
+Date: Tue, 18 Mar 2014 18:46:27 +0100
+Message-ID: <1395164788-19779-1-git-send-email-lczerner@redhat.com>
+Cc: linux-ext4@vger.kernel.org, Lukas Czerner <lczerner@redhat.com>
+To: xfs@oss.sgi.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:61494 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:10826 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752038AbaCRR2u (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 18 Mar 2014 13:28:50 -0400
-In-Reply-To: <20140318171425.GC8506@thunk.org>
+	id S1756623AbaCRRqi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 18 Mar 2014 13:46:38 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 18 Mar 2014, tytso@mit.edu wrote:
+This is based on xfs/242. This is very similar to ext4/001 however this
+test has some tweaks to make it work test zero range on generic file
+system. This includes turning off ext4 extents zeroout and disabling
+the test for xfs on systems where PAGE_SIZE > 4096.
 
-> Date: Tue, 18 Mar 2014 13:14:26 -0400
-> From: tytso@mit.edu
-> To: Lubos Uhliarik <uhliarik@seznam.cz>
-> Cc: linux-ext4@vger.kernel.org, lczerner@redhat.com, vojnar@fit.vutbr.cz
-> Subject: Re: [RFC][PATCH 0/1] ext4: Undelete Feature for Ext4
-> 
-> On Tue, Mar 18, 2014 at 04:09:30PM +0100, Lubos Uhliarik wrote:
-> > The main changes in patch are following:
-> > 
-> > a) commented out zeroing ex->ee_len, ee->start_hi and ee->start_lo,
-> > because these entries are essential for undelete process
-> 
-> The reason why we have to zero out ex->ee_len, etc. is because the
-> truncate operation can sometimes span multiple journal transactions.
-> So as a result, we need to keep the file system consistent if we are
-> interrupted (i.e., via a power fail event) while in the middle of a
-> truncate operation.
-> 
-> It's a rare case, but it can happen if the journal is almost full at
-> the time when the truncate eoperation has started, such that there is
-> no room for to exntend the transaction handle, and so we are forced to
-> start a new transaction (and possibly wait for a journal checkpoint
-> operation).
-> 
-> In theory, it would be possible to figure out in advance whether or
-> not we could fit the truncate in a single transaction, but it would
-> require making the truncate operation be a two-pass operation --- once
-> to determine how many blocks needs to be modified, and once to
-> actually do the truncate operation.
+It is testing extent tree manipulation with fallocate zero range
+operation.
 
-Hi Lubos,
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ tests/generic/009     |  78 ++++++++++++
+ tests/generic/009.out | 333 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/group   |   1 +
+ 3 files changed, 412 insertions(+)
+ create mode 100644 tests/generic/009
+ create mode 100644 tests/generic/009.out
 
-that's what we've been discussing including the power failure
-testing. Have you managed to make a power failure test for this ? I
-kind of forgot to ask you about that today.
+diff --git a/tests/generic/009 b/tests/generic/009
+new file mode 100644
+index 0000000..b7b0b3f
+--- /dev/null
++++ b/tests/generic/009
+@@ -0,0 +1,78 @@
++#! /bin/bash
++# FS QA Test No. 009
++#
++# Test fallocate FALLOC_FL_ZERO_RANGE
++#
++#-----------------------------------------------------------------------
++# Copyright 2014 (C) Red Hat, Inc., Lukas Czerner <lczerner@redhat.com>
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License as
++# published by the Free Software Foundation.
++#
++# This program is distributed in the hope that it would be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write the Free Software Foundation,
++# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++#
++#-----------------------------------------------------------------------
++#
++
++seq=`basename $0`
++seqres=$RESULT_DIR/$seq
++echo "QA output created by $seq"
++
++here=`pwd`
++tmp=/tmp/$$
++status=1	# failure is the default!
++
++_cleanup()
++{
++    rm -f $tmp.*
++}
++
++trap "_cleanup ; exit \$status" 0 1 2 3 15
++
++# get standard environment, filters and checks
++. ./common/rc
++. ./common/filter
++. ./common/punch
++
++# real QA test starts here
++_supported_os Linux
++_require_xfs_io_falloc "fzero"
++
++testfile=$TEST_DIR/009.$$
++
++# Disable extent zeroing for ext4 as that change where holes are created
++if [ "$FSTYP" = "ext4" ]; then
++	DEV=`basename $TEST_DEV`
++	echo 0 >/sys/fs/ext4/$DEV/extent_max_zeroout_kb
++fi
++
++# When PAGE_SIZE > 4096 xfs extent layout is different so it would not match
++# the output.
++if [ "$FSTYP" = "xfs" ]; then
++	PAGE_SIZE=`getconf PAGE_SIZE`
++	if [ $PAGE_SIZE -gt 4096 ]; then
++		_notrun "Not supported on xfs with page size > 4096"
++	fi
++fi
++
++# Standard zero range tests
++_test_generic_punch falloc fzero fzero fiemap _filter_fiemap $testfile
++
++# Delayed allocation zero range tests
++_test_generic_punch -d falloc fzero fzero fiemap _filter_fiemap $testfile
++
++# Multi zero range tests
++_test_generic_punch -k falloc fzero fzero fiemap _filter_fiemap $testfile
++
++# Delayed allocation multi zero range tests
++_test_generic_punch -d -k falloc fzero fzero fiemap _filter_fiemap $testfile
++
++status=0 ; exit
+diff --git a/tests/generic/009.out b/tests/generic/009.out
+new file mode 100644
+index 0000000..4b451ba
+--- /dev/null
++++ b/tests/generic/009.out
+@@ -0,0 +1,333 @@
++QA output created by 009
++	1. into a hole
++0: [0..7]: hole
++1: [8..23]: unwritten
++2: [24..39]: hole
++daa100df6e6711906b61c9ab5aa16032
++	2. into allocated space
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	3. into unwritten space
++0: [0..39]: unwritten
++daa100df6e6711906b61c9ab5aa16032
++	4. hole -> data
++0: [0..7]: hole
++1: [8..23]: unwritten
++2: [24..31]: data
++3: [32..39]: hole
++cc63069677939f69a6e8f68cae6a6dac
++	5. hole -> unwritten
++0: [0..7]: hole
++1: [8..31]: unwritten
++2: [32..39]: hole
++daa100df6e6711906b61c9ab5aa16032
++	6. data -> hole
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: hole
++1b3779878366498b28c702ef88c4a773
++	7. data -> unwritten
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: hole
++1b3779878366498b28c702ef88c4a773
++	8. unwritten -> hole
++0: [0..23]: unwritten
++1: [24..39]: hole
++daa100df6e6711906b61c9ab5aa16032
++	9. unwritten -> data
++0: [0..23]: unwritten
++1: [24..31]: data
++2: [32..39]: hole
++cc63069677939f69a6e8f68cae6a6dac
++	10. hole -> data -> hole
++0: [0..7]: hole
++1: [8..31]: unwritten
++2: [32..39]: hole
++daa100df6e6711906b61c9ab5aa16032
++	11. data -> hole -> data
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: data
++f6aeca13ec49e5b266cd1c913cd726e3
++	12. unwritten -> data -> unwritten
++0: [0..39]: unwritten
++daa100df6e6711906b61c9ab5aa16032
++	13. data -> unwritten -> data
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: data
++f6aeca13ec49e5b266cd1c913cd726e3
++	14. data -> hole @ EOF
++0: [0..23]: data
++1: [24..39]: unwritten
++e1f024eedd27ea6b1c3e9b841c850404
++	15. data -> hole @ 0
++0: [0..15]: unwritten
++1: [16..39]: data
++eecb7aa303d121835de05028751d301c
++	16. data -> cache cold ->hole
++0: [0..15]: unwritten
++1: [16..39]: data
++eecb7aa303d121835de05028751d301c
++	17. data -> hole in single block file
++0: [0..7]: data
++0000000 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
++*
++0000200 0000 0000 0000 0000 0000 0000 0000 0000
++*
++0000400 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
++*
++	1. into a hole
++0: [0..7]: hole
++1: [8..23]: unwritten
++2: [24..39]: hole
++daa100df6e6711906b61c9ab5aa16032
++	2. into allocated space
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	3. into unwritten space
++0: [0..39]: unwritten
++daa100df6e6711906b61c9ab5aa16032
++	4. hole -> data
++0: [0..7]: hole
++1: [8..23]: unwritten
++2: [24..31]: data
++3: [32..39]: hole
++cc63069677939f69a6e8f68cae6a6dac
++	5. hole -> unwritten
++0: [0..7]: hole
++1: [8..31]: unwritten
++2: [32..39]: hole
++daa100df6e6711906b61c9ab5aa16032
++	6. data -> hole
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: hole
++1b3779878366498b28c702ef88c4a773
++	7. data -> unwritten
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: hole
++1b3779878366498b28c702ef88c4a773
++	8. unwritten -> hole
++0: [0..23]: unwritten
++1: [24..39]: hole
++daa100df6e6711906b61c9ab5aa16032
++	9. unwritten -> data
++0: [0..23]: unwritten
++1: [24..31]: data
++2: [32..39]: hole
++cc63069677939f69a6e8f68cae6a6dac
++	10. hole -> data -> hole
++0: [0..7]: hole
++1: [8..31]: unwritten
++2: [32..39]: hole
++daa100df6e6711906b61c9ab5aa16032
++	11. data -> hole -> data
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: data
++f6aeca13ec49e5b266cd1c913cd726e3
++	12. unwritten -> data -> unwritten
++0: [0..39]: unwritten
++daa100df6e6711906b61c9ab5aa16032
++	13. data -> unwritten -> data
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: data
++f6aeca13ec49e5b266cd1c913cd726e3
++	14. data -> hole @ EOF
++0: [0..23]: data
++1: [24..39]: unwritten
++e1f024eedd27ea6b1c3e9b841c850404
++	15. data -> hole @ 0
++0: [0..15]: unwritten
++1: [16..39]: data
++eecb7aa303d121835de05028751d301c
++	16. data -> cache cold ->hole
++0: [0..15]: unwritten
++1: [16..39]: data
++eecb7aa303d121835de05028751d301c
++	17. data -> hole in single block file
++0: [0..7]: data
++0000000 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
++*
++0000200 0000 0000 0000 0000 0000 0000 0000 0000
++*
++0000400 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
++*
++	1. into a hole
++0: [0..7]: hole
++1: [8..23]: unwritten
++2: [24..39]: hole
++daa100df6e6711906b61c9ab5aa16032
++	2. into allocated space
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	3. into unwritten space
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	4. hole -> data
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	5. hole -> unwritten
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	6. data -> hole
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	7. data -> unwritten
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	8. unwritten -> hole
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	9. unwritten -> data
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	10. hole -> data -> hole
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: data
++f6aeca13ec49e5b266cd1c913cd726e3
++	11. data -> hole -> data
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: data
++f6aeca13ec49e5b266cd1c913cd726e3
++	12. unwritten -> data -> unwritten
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: data
++f6aeca13ec49e5b266cd1c913cd726e3
++	13. data -> unwritten -> data
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: data
++f6aeca13ec49e5b266cd1c913cd726e3
++	14. data -> hole @ EOF
++0: [0..23]: data
++1: [24..39]: unwritten
++e1f024eedd27ea6b1c3e9b841c850404
++	15. data -> hole @ 0
++0: [0..15]: unwritten
++1: [16..39]: data
++eecb7aa303d121835de05028751d301c
++	16. data -> cache cold ->hole
++0: [0..15]: unwritten
++1: [16..39]: data
++eecb7aa303d121835de05028751d301c
++	17. data -> hole in single block file
++0: [0..7]: data
++0000000 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
++*
++0000200 0000 0000 0000 0000 0000 0000 0000 0000
++*
++0000400 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
++*
++	1. into a hole
++0: [0..7]: hole
++1: [8..23]: unwritten
++2: [24..39]: hole
++daa100df6e6711906b61c9ab5aa16032
++	2. into allocated space
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	3. into unwritten space
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	4. hole -> data
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	5. hole -> unwritten
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	6. data -> hole
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	7. data -> unwritten
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	8. unwritten -> hole
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	9. unwritten -> data
++0: [0..7]: data
++1: [8..23]: unwritten
++2: [24..39]: data
++cc58a7417c2d7763adc45b6fcd3fa024
++	10. hole -> data -> hole
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: data
++f6aeca13ec49e5b266cd1c913cd726e3
++	11. data -> hole -> data
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: data
++f6aeca13ec49e5b266cd1c913cd726e3
++	12. unwritten -> data -> unwritten
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: data
++f6aeca13ec49e5b266cd1c913cd726e3
++	13. data -> unwritten -> data
++0: [0..7]: data
++1: [8..31]: unwritten
++2: [32..39]: data
++f6aeca13ec49e5b266cd1c913cd726e3
++	14. data -> hole @ EOF
++0: [0..23]: data
++1: [24..39]: unwritten
++e1f024eedd27ea6b1c3e9b841c850404
++	15. data -> hole @ 0
++0: [0..15]: unwritten
++1: [16..39]: data
++eecb7aa303d121835de05028751d301c
++	16. data -> cache cold ->hole
++0: [0..15]: unwritten
++1: [16..39]: data
++eecb7aa303d121835de05028751d301c
++	17. data -> hole in single block file
++0: [0..7]: data
++0000000 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
++*
++0000200 0000 0000 0000 0000 0000 0000 0000 0000
++*
++0000400 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
++*
+diff --git a/tests/generic/group b/tests/generic/group
+index a99b6a1..71bde41 100644
+--- a/tests/generic/group
++++ b/tests/generic/group
+@@ -10,6 +10,7 @@
+ 006 dir udf auto quick
+ 007 dir udf auto quick
+ 008 auto quick prealloc
++009 auto quick prealloc
+ 010 other udf auto
+ 011 dir udf auto quick
+ 013 other ioctl udf auto quick
+-- 
+1.8.3.1
 
-Also, if I recall correctly you mentioned that we should be ok with
-the respect of power failure in the middle of truncate, but I do not
-recall the details, can you try to look into that again ?
-
-Thanks!
--Lukas
-
-> 
-> > This patch shouldn't break ext4, I tested it with xfs_tests and tests 
-> > were successfull.
-> 
-> I'm guessing you didn't do power fail testing --- and this is very
-> important when messing with the design truncate/unlink code path.
-> 
-> Regards,
-> 
-> 						- Ted
-> 
