@@ -1,76 +1,131 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 0/6 v2] Introduce FALLOC_FL_ZERO_RANGE flag for
- fallocate
-Date: Tue, 18 Mar 2014 13:52:55 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1403181350590.2121@localhost.localdomain>
-References: <1393355679-11160-1-git-send-email-lczerner@redhat.com> <20140316190820.GB14162@thunk.org> <alpine.LFD.2.00.1403171358580.30625@localhost.localdomain> <20140317210030.GB15218@thunk.org> <alpine.LFD.2.00.1403181230270.2121@localhost.localdomain>
- <20140318123919.GA25897@thunk.org>
+From: "GOOGLE Gewinnbenachrichtigung!!!" <gogle.promuk@live.com>
+Subject: GOOGLE Gewinnbenachrichtigung!!!
+Date: Tue, 18 Mar 2014 12:47:59 -0000
+Message-ID: <16805e39f71fda956e3e1395d47bbafc.squirrel__7714.75140140883$1395147848$gmane$org@23.96.39.92>
+Reply-To: gogle.eurolotto@gmail.com
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-84230380-1395147183=:2121"
-Cc: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>,
-	linux-ext4@vger.kernel.org
-To: tytso@mit.edu
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: undisclosed-recipients:;
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32718 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755259AbaCRMxa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 18 Mar 2014 08:53:30 -0400
-In-Reply-To: <20140318123919.GA25897@thunk.org>
+Received: from [23.96.39.92] ([23.96.39.92]:1160 "EHLO mail.kopa.com"
+	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1755379AbaCRNDb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 18 Mar 2014 09:03:31 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+GOOGLE INTERNATIONALE F=F6rderung-GEWINNZUTEILUNG
+           GOOGLE  F=F6rderung
 
---8323328-84230380-1395147183=:2121
-Content-Type: TEXT/PLAIN; charset=utf-8
-Content-Transfer-Encoding: 8BIT
+GOOGLE Einarbeitung=A9
+UROPA INTERLOTTO/EUROMILLINEN LOTTO BONUS-PROGRAMM
+BEL-GRAVE HOUSE, 76 BUCKINGHAM PALACE ROAD,
+LONDON SW1W 9TQ, UNITED KINGDOM.OFFICE;
+VOM SCHREIBTISCH VON VICE PRESIDENT INTERNATIONAL
+PROMOTION/PREISVERLEIHUNG AKTENZEICHEN: ANA/BCL654560010/ESP.
+OFFIZIELLE GEWINNBENACHRITIGUNG.
+DATUM: 18/03/2014.
 
-On Tue, 18 Mar 2014, tytso@mit.edu wrote:
+ACHTUNG! DER BEG=DCNSTIGTE,
 
-> Date: Tue, 18 Mar 2014 08:39:19 -0400
-> From: tytso@mit.edu
-> To: =?utf-8?B?THVrw6HFoSBDemVybmVyIDxsY3plcm5lckByZWRoYXQuY29tPg==?=@thunk.org
-> Cc: linux-ext4@vger.kernel.org
-> Subject: Re: [PATCH 0/6 v2] Introduce FALLOC_FL_ZERO_RANGE flag for fallocate
-> 
-> On Tue, Mar 18, 2014 at 12:37:47PM +0100, Lukáš Czerner wrote:
-> > Ok, finally I got it. The problem is that we now have commit 
-> > 
-> > 97d39798f77aef626130db8590cc79195300227b ext4: delete path dealloc
-> > code in ext4_ext_handle_uninitialized_extents
-> > 
-> > which I was not aware of before. And when merging you have used the
-> > same out2 label out of the function. However when creating my new
-> > function ext4_ext_convert_initialized_exten() so I've done the same
-> > thing as with ext4_ext_handle_uninitialized_extents() and freed the
-> > path. And since we do not set path to NULL in ext4_ext_map_blocks
-> > after calling ext4_ext_convert_initialized_extent() when we hit the
-> > condition at the out2:
-> > 
-> > 	if (path) {
-> > 		ext4_ext_drop_refs(path);
-> > 		kfree(path);
-> > 	}
-> > 
-> > we will double-free possibly destroying data from someone else. That
-> > is why we've seen what looked like a random memory corruption.
-> 
-> My bad!  I remember noticing that particular semantic conflict, and I
-> *thought* I had fixed it up.  The fixup must have gotten lost when I
-> was doing some patch wrangling (I was moving aronud some patch hunks
-> around to be the most logical with respect to the COLLAPSE RANGE, and
-> I must have dropped the fixup somewhere along the way).
-> 
-> Thanks for finding it!
-> 
-> 						- Ted
-> 
+GOOGLE Gewinnbenachrichtigung!!!
 
-No problem. I am running some tests right now to make sure that
-everything is in order and will send out patches 1, 2, and 5 once
-again in a separate patch set based on ext4/dev branch.
+Wir freuen uns,Ihnen noch einmal gratulieren zu dieser Notiz, die Teil
+unserer gl=FCcklichen Gewinner ausgew=E4hlt diesem Jahr. Diese Aktion w=
+urde im
+Anschluss an die aktive Nutzung des Google-Suchmaschine und im
+Google-Hilfsdienste anzukurbeln. Daher machen wir mit Ihren Preis zu
+gewinnen glauben, werden Sie weiterhin aktiv zu sein und Schirmherrscha=
+ft
+f=FCr dieses Unternehmen. Google ist heute der weltweit f=FChrende
+Suchmaschine weltweit und in dem Bestreben, sicherzustellen, dass sie d=
+ie
+am weitesten verbreitete Suchmaschinen bleibt, ein Online-E-Mail
+Stimmabgabe aus wurde am 13/03/2014 ohne Ihr Wissen ausgef=FChrt wurde
+offiziell freigegeben am 18/03/2014. Wir m=F6chten Ihnen f=F6rmlich mit=
+teilen,
+dass Ihre E-Mail-Adresse zu einem Pauschalbetrag von:(=80450,000,00)(VI=
+ER
+HUNDERT UND F=DCNFZIG TAUSEND Euro.)Die summe ergibt sich einer
+gewinnausschuttung von.(=8018,000,000:00)(ACHTZEHN MILLIONEN EURO.)Die =
+summe
+wurde durch 40 gewinnern aus der gleichen kategorie geteilt.HERZLICHEN
+GLUCKWUNSCH!!! befestigt war
 
-Thanks!
--Lukas
---8323328-84230380-1395147183=:2121--
+Wir m=F6chten Ihnen mitteilen, dass Sie erfolgreich den Anforderungen, =
+den
+gesetzlichen Auflagen, =DCberpr=FCfungen und unsere zufriedenstellenden
+Bericht Test f=FCr alle unsere Online-Gewinner durchgef=FChrt weitergeg=
+eben.
+Eine gewinnende Scheck wird in Ihrem Namen von Google F=F6rderpreis Tea=
+m
+erteilt werden, und auch eine Bescheinigung =FCber die Auszeichnung
+Anspr=FCche werden an der Seite Ihrer gewinnenden Scheck zugesandt.
+
+Dies sind Ihre Auszeichnung Details.
+Security Code Nummer: GU/N/3642375G
+Ticket Nr.: GU/K/699/33/2014
+Gewinnzahlen: UK/877/798/2014
+
+Erforderliche Angaben von Ihnen Teil unserer vorsorglich  zu verdoppeln
+behaupten und ungerechtfertigten Missbrauch von diesem  Programm  zu
+vermeiden. Um Ihren Preis gewonnen, bitte, sind die Mittel unserer
+ausl=E4ndischen  Transfer Manager Mr. Audrew C. Nielsen korrekt, Pr=FCf=
+ung und
+Genehmigung  gef=FCllt
+
+        Bitte vollst=E4ndige =DCberpr=FCfung und Mittel freizugeben For=
+m
+
+(1) Ihr vollst=E4ndiger Name ...............................
+(2) Kontakt-Adresse ........................................
+(3) Tel. Zahlen ...............................................
+(4) Mobile ......................................................
+(5) Nationalit=E4t / Land .....................................
+(6) Beruf .......................................................
+(7) Sex /Geschlecht........................................
+(8) Alter ........................................................
+(9) jemals gewonnen eine Online-Lotterie? .............
+(10) Mode von Preisgeld nach Hause: Courier Lieferung oder Bank=FCberwe=
+isung
+=2E.........
+Die oben genannten Anforderungen sind erforderlich.
+
+Gl=FCckw=FCnsche noch einmal.
+
+    Mode des Geldpreises Transfer
+(1) =DCberweisung / Courier Lieferung Ihrer Certified Winning Scheck Na=
+me
+und andere Dokumente, um sicherzustellen, Sie gewinnen. Wir empfehlen,
+dass Ihr ausw=E4rtige Transfer Manager, Mr. Audrew C. Nielsen mit seine=
+r
+privaten E-Mail unten, um unn=F6tige Verz=F6gerungen und Komplikationen=
+:
+***********************************************
+AUSLANDSFORDERUNGEN MANAGER
+Dr. Mrs. ROSALINE CHARLES
+GOOGLE Sicherheitsabteilung [London]
+
+Kontakt E-Mail: gogle.eurolotto@gmail.com
+                Google-Verwaltung@linuxmail.org
+                Google-Verwaltung@planetmail.net
+***********************************************
+Security Code Nummer: GU/N/3642375G
+Ticket Nr.: GU/K/699/33/2014
+Gewinnzahlen: UK/877/798/2014
+***********************************************
+Herzlichen Gl=FCckwunsch noch einmal von Mitgliedern und Personal der
+Lotterie Bord.
+
+Herzlichst,
+Mr. larry Page.
+Chief Executive Officer (C.E.O)
+GOOGLE zonale Koordinator
+LONDON, UNITED KINGDOM.
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
