@@ -1,280 +1,251 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 36/49] libext2fs: allow clients to read-ahead metadata
-Date: Mon, 17 Mar 2014 17:11:09 -0600
-Message-ID: <609A6301-38DD-4794-B707-A4E5A7A84B5F@dilger.ca>
-References: <20140311065356.30585.47192.stgit@birch.djwong.org> <20140311065750.30585.71404.stgit@birch.djwong.org>
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_72EBF968-282B-4164-9892-1F0308B67038"; protocol="application/pgp-signature"; micalg=pgp-sha1
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 37/49] e2fsck: read-ahead metadata during passes 1, 2,
+ and 4
+Date: Mon, 17 Mar 2014 21:42:31 -0700
+Message-ID: <20140318044231.GA20038@birch.djwong.org>
+References: <20140311065356.30585.47192.stgit@birch.djwong.org>
+ <20140311065757.30585.46729.stgit@birch.djwong.org>
+ <8715537A-D22B-4CDC-B76B-75B62FDBC1D7@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f180.google.com ([209.85.192.180]:39206 "EHLO
-	mail-pd0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751343AbaCQXMR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Mar 2014 19:12:17 -0400
-Received: by mail-pd0-f180.google.com with SMTP id v10so6221582pde.39
-        for <linux-ext4@vger.kernel.org>; Mon, 17 Mar 2014 16:12:17 -0700 (PDT)
-In-Reply-To: <20140311065750.30585.71404.stgit@birch.djwong.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:46108 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750907AbaCREmi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 18 Mar 2014 00:42:38 -0400
+Content-Disposition: inline
+In-Reply-To: <8715537A-D22B-4CDC-B76B-75B62FDBC1D7@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Mon, Mar 17, 2014 at 05:10:22PM -0600, Andreas Dilger wrote:
+> 
+> On Mar 11, 2014, at 12:57 AM, Darrick J. Wong <darrick.wong@oracle.com> wrote:
+> 
+> > e2fsck pass1 is modified to use the block group data prefetch function
+> > to try to fetch the inode tables into the pagecache before it is
+> > needed.  In order to avoid cache thrashing, we limit ourselves to
+> > prefetching at most half the available memory.
+> 
+> It looks like the prefetching is done in huge chunks, and not incrementally?
+> It makes more sense to have a steady amount of prefetch happening instead
+> of waiting for it to all be consumed before starting a new batch.  See in
+> e2fsck_pass1() below.
 
---Apple-Mail=_72EBF968-282B-4164-9892-1F0308B67038
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+I agree that prefetch ought not to wait until the entire inode table is
+consumed.
 
+> > pass2 is modified to use the dirblock prefetching function to prefetch
+> > the list of directory blocks that are assembled in pass1.  So long as
+> > we don't anticipate rehashing the dirs (pass 3a), we can release the
+> > dirblocks as soon as we're done checking them.
+> > 
+> > pass4 is modified to prefetch the block and inode bitmaps in
+> > anticipation of pass 5, because pass4 is entirely CPU bound.
+> > 
+> > In general, these mechanisms can halve fsck time, if the host system
+> > has sufficient memory and the storage system can provide a lot of
+> > IOPs.  SSDs and multi-spindle RAIDs see the most speedup; single disks
+> > experience a modest speedup, and single-spindle USB mass storage
+> > devices see hardly any benefit.
+> > 
+> > By default, readahead will try to fill half the physical memory in the
+> > system.  The -R option can be given to specify the amount of memory to
+> > use for readahead, or zero to disable it entirely; or an option can be
+> > given in e2fsck.conf.
+> > 
+> > 
+> > +static void *pass1_readahead(void *p)
+> > +{
+> > +	struct pass1ra_ctx *c = p;
+> > +	errcode_t err;
+> > +
+> > +	ext2fs_readahead(c->fs, EXT2_READA_ITABLE, c->group, c->ngroups);
+> > +	return NULL;
+> > +}
+> > +
+> > +static errcode_t initiate_readahead(e2fsck_t ctx, dgrp_t group, dgrp_t ngroups)
+> > +{
+> > +	struct pass1ra_ctx *ractx;
+> > +	errcode_t err;
+> > +
+> > +	err = ext2fs_get_mem(sizeof(*ractx), &ractx);
+> > +	if (err)
+> > +		return err;
+> > +
+> > +	ractx->fs = ctx->fs;
+> > +	ractx->group = group;
+> > +	ractx->ngroups = ngroups;
+> > +
+> > +	err = e2fsck_run_thread(&ctx->ra_thread, pass1_readahead,
+> > +				pass1_readahead_cleanup, ractx);
+> > +	if (err)
+> > +		ext2fs_free_mem(&ractx);
+> > +
+> > +	return err;
+> > +}
+> > +
+> >  void e2fsck_pass1(e2fsck_t ctx)
+> >  {
+> > 	int	i;
+> > @@ -611,10 +654,37 @@ void e2fsck_pass1(e2fsck_t ctx)
+> > 	int		busted_fs_time = 0;
+> > 	int		inode_size;
+> > 	int		failed_csum = 0;
+> > +	dgrp_t		grp;
+> > +	ext2_ino_t	ra_threshold = 0;
+> > +	dgrp_t		ra_groups = 0;
+> > +	errcode_t	err;
+> > 
+> > 	init_resource_track(&rtrack, ctx->fs->io);
+> > 	clear_problem_context(&pctx);
+> > 
+> > +	/* If we can do readahead, figure out how many groups to pull in. */
+> > +	if (!ext2fs_can_readahead(ctx->fs))
+> > +		ctx->readahead_mem_kb = 0;
+> > +	if (ctx->readahead_mem_kb) {
+> > +		ra_groups = ctx->readahead_mem_kb /
+> > +			    (fs->inode_blocks_per_group * fs->blocksize /
+> > +			     1024);
+> > +		if (ra_groups < 16)
+> > +			ra_groups = 0;
+> 
+> It probably always makes sense to prefetch one group if possible?
 
-On Mar 11, 2014, at 12:57 AM, Darrick J. Wong <darrick.wong@oracle.com> =
-wrote:
-> This patch adds to libext2fs the ability to pre-fetch metadata
-> into the page cache in the hopes of speeding up libext2fs' clients.
-> There are two new library functions -- the first allows a client to
-> readahead a list of blocks, and the second is a helper function that
-> uses that first mechanism to load group data (bitmaps, inode tables).
->=20
-> e2fsck will employ both of these methods to speed itself up.
+I was intending to skip pass1 RA if there wasn't a lot of memory around.  Not
+that I did a lot of work to figure out if < 16 groups really was a "lowmem"
+situation.
 
-You can also add a Reviewed-by: Andreas Dilger <adilger@dilger.ca> on =
-this.
+> > +		else if (ra_groups > fs->group_desc_count)
+> > +			ra_groups = fs->group_desc_count;
+> > +		if (ra_groups) {
+> > +			err = initiate_readahead(ctx, grp, ra_groups);
+> 
+> Looks like "grp" is used uninitialized here.  Should be "grp = 0" to start.
 
-> diff --git a/lib/ext2fs/readahead.c b/lib/ext2fs/readahead.c
-> new file mode 100644
-> index 0000000..ed6e555
-> --- /dev/null
-> +++ b/lib/ext2fs/readahead.c
-> @@ -0,0 +1,188 @@
-> +struct read_dblist {
-> +	errcode_t err;
-> +	blk64_t run_start;
-> +	blk64_t run_len;
-> +};
-> +
-> +static EXT2_QSORT_TYPE readahead_dir_block_cmp(const void *a, const =
-void *b)
-> +{
-> +	const struct ext2_db_entry2 *db_a =3D
-> +		(const struct ext2_db_entry2 *) a;
-> +	const struct ext2_db_entry2 *db_b =3D
-> +		(const struct ext2_db_entry2 *) b;
+Oops, good catch.
 
-> +
-> +	return (int) (db_a->blk - db_b->blk);
-> +}
-> +
-> +static int readahead_dir_block(ext2_filsys fs, struct ext2_db_entry2 =
-*db,
-> +			       void *priv_data)
-> +{
-> +	errcode_t err =3D 0;
-> +	struct read_dblist *pr =3D priv_data;
-> +
-> +	if (!pr->run_len || db->blk !=3D pr->run_start + pr->run_len) {
+> > +			if (err) {
+> > +				com_err(ctx->program_name, err, "%s",
+> > +					_("while starting pass1 readahead"));
+> > +				ra_groups = 0;
+> > +			}
+> > +			ra_threshold = ra_groups *
+> > +				       fs->super->s_inodes_per_group;
+> 
+> This is the threshold of the last inode to be prefetched.
 
+Yes.
 
-It probably isn't necessary to check "!pr->run_len", since the only
-case where this isn't entered on a new look is db->blk =3D=3D 0, which =
-is
-always loaded when the filesystem is mounted anyway.
+> > +		}
+> > +	}
+> > +
+> > 	if (!(ctx->options & E2F_OPT_PREEN))
+> > 		fix_problem(ctx, PR_1_PASS_HEADER, &pctx);
+> > 
+> > @@ -778,6 +848,19 @@ void e2fsck_pass1(e2fsck_t ctx)
+> > 			if (e2fsck_mmp_update(fs))
+> > 				fatal_error(ctx, 0);
+> > 		}
+> > +		if (ra_groups && ino > ra_threshold) {
+> 
+> This doesn't start prefetching again until the last inode is checked.
+> It probably makes sense to have a sliding window to start readahead
+> again once half of the memory has been consumed or so.  Otherwise,
+> the scanning will block here until the next inode table is read from
+> disk, instead of the readahead being started earlier and it is in RAM.
 
-Cheers, Andreas
+You're right, it would be even faster if ra_threshold were to start RA a couple
+of block groups *before* we run out of prefetched data.
 
-> +		if (pr->run_len) {
-> +			pr->err =3D io_channel_cache_readahead(fs->io,
-> +							     =
-pr->run_start,
-> +							     =
-pr->run_len);
-> +			dbg_printf("readahead start=3D%llu len=3D%llu =
-err=3D%d\n",
-> +				   pr->run_start, pr->run_len,
-> +				   (int)pr->err);
-> +		}
-> +		pr->run_start =3D db->blk;
-> +		pr->run_len =3D 0;
+> > +			grp = (ino - 1) / fs->super->s_inodes_per_group;
+> > +			ra_threshold = (grp + ra_groups) *
+> > +				       fs->super->s_inodes_per_group;
+> 
+> > +			err = initiate_readahead(ctx, grp, ra_groups);
+> > +			if (err == EAGAIN) {
+> > +				printf("Disabling slow readahead.\n");
+> > +				ra_groups = 0;
+> 
+> I see that EAGAIN comes from e2fsck_run_thread(), if there is still a
+> readahead thread running.  Does it make sense to stop readahead in
+> that case?  It would seem to me that if readahead is taking a long
+> time and the inode processing is catching up to it (i.e. IO bound)
+> then it is even more important to do readahead in that case.
 
-> +	}
-> +	pr->run_len +=3D db->blockcnt;
-> +
-> +	return pr->err ? DBLIST_ABORT : 0;
-> +}
-> +
-> +errcode_t ext2fs_readahead_dblist(ext2_filsys fs, int flags,
-> +				  ext2_dblist dblist)
-> +{
-> +	errcode_t err;
-> +	struct read_dblist pr;
-> +
-> +	dbg_printf("%s: flags=3D0x%x\n", __func__, flags);
-> +	if (flags)
-> +		return EXT2_ET_INVALID_ARGUMENT;
-> +
-> +	ext2fs_dblist_sort2(dblist, readahead_dir_block_cmp);
-> +
-> +	memset(&pr, 0, sizeof(pr));
-> +	err =3D ext2fs_dblist_iterate2(dblist, readahead_dir_block, =
-&pr);
-> +	if (pr.err)
-> +		return pr.err;
-> +	if (err)
-> +		return err;
-> +
-> +	if (pr.run_len)
-> +		err =3D io_channel_cache_readahead(fs->io, pr.run_start,
-> +						 pr.run_len);
-> +
-> +	return err;
-> +}
-> +
-> +errcode_t ext2fs_readahead(ext2_filsys fs, int flags, dgrp_t start,
-> +			   dgrp_t ngroups)
-> +{
-> +	blk64_t		super, old_gdt, new_gdt;
-> +	blk_t		blocks;
-> +	dgrp_t		i;
-> +	ext2_dblist	dblist;
-> +	dgrp_t		end =3D start + ngroups;
-> +	errcode_t	err =3D 0;
-> +
-> +	dbg_printf("%s: flags=3D0x%x start=3D%d groups=3D%d\n", =
-__func__, flags,
-> +		   start, ngroups);
-> +	if (flags & ~EXT2_READA_ALL_FLAGS)
-> +		return EXT2_ET_INVALID_ARGUMENT;
-> +
-> +	if (end > fs->group_desc_count)
-> +		end =3D fs->group_desc_count;
-> +
-> +	if (flags =3D=3D 0)
-> +		return 0;
-> +
-> +	err =3D ext2fs_init_dblist(fs, &dblist);
-> +	if (err)
-> +		return err;
-> +
-> +	for (i =3D start; i < end; i++) {
-> +		err =3D ext2fs_super_and_bgd_loc2(fs, i, &super, =
-&old_gdt,
-> +						&new_gdt, &blocks);
-> +		if (err)
-> +			break;
-> +
-> +		if (flags & EXT2_READA_SUPER) {
-> +			err =3D ext2fs_add_dir_block2(dblist, 0, super, =
-0);
-> +			if (err)
-> +				break;
-> +		}
-> +
-> +		if (flags & EXT2_READA_GDT) {
-> +			if (old_gdt)
-> +				err =3D ext2fs_add_dir_block2(dblist, 0, =
-old_gdt,
-> +							    blocks);
-> +			else if (new_gdt)
-> +				err =3D ext2fs_add_dir_block2(dblist, 0, =
-new_gdt,
-> +							    blocks);
-> +			else
-> +				err =3D 0;
-> +			if (err)
-> +				break;
-> +		}
-> +
-> +		if ((flags & EXT2_READA_BBITMAP) &&
-> +		    !ext2fs_bg_flags_test(fs, i, EXT2_BG_BLOCK_UNINIT) =
-&&
-> +		    ext2fs_bg_free_blocks_count(fs, i) <
-> +				fs->super->s_blocks_per_group) {
-> +			super =3D ext2fs_block_bitmap_loc(fs, i);
-> +			err =3D ext2fs_add_dir_block2(dblist, 0, super, =
-1);
-> +			if (err)
-> +				break;
-> +		}
-> +
-> +		if ((flags & EXT2_READA_IBITMAP) &&
-> +		    !ext2fs_bg_flags_test(fs, i, EXT2_BG_INODE_UNINIT) =
-&&
-> +		    ext2fs_bg_free_inodes_count(fs, i) <
-> +				fs->super->s_inodes_per_group) {
-> +			super =3D ext2fs_inode_bitmap_loc(fs, i);
-> +			err =3D ext2fs_add_dir_block2(dblist, 0, super, =
-1);
-> +			if (err)
-> +				break;
-> +		}
-> +
-> +		if ((flags & EXT2_READA_ITABLE) &&
-> +		    ext2fs_bg_free_inodes_count(fs, i) <
-> +				fs->super->s_inodes_per_group) {
-> +			super =3D ext2fs_inode_table_loc(fs, i);
-> +			blocks =3D fs->inode_blocks_per_group -
-> +				 (ext2fs_bg_itable_unused(fs, i) *
-> +				  EXT2_INODE_SIZE(fs->super) / =
-fs->blocksize);
-> +			err =3D ext2fs_add_dir_block2(dblist, 0, super, =
-blocks);
-> +			if (err)
-> +				break;
-> +		}
-> +	}
-> +
-> +	if (!err)
-> +		err =3D ext2fs_readahead_dblist(fs, 0, dblist);
-> +
-> +	ext2fs_free_dblist(dblist);
-> +	return err;
-> +}
-> +
-> +int ext2fs_can_readahead(ext2_filsys fs)
-> +{
-> +	errcode_t err;
-> +
-> +	err =3D io_channel_cache_readahead(fs->io, 0, 1);
-> +	dbg_printf("%s: supp=3D%d\n", __func__, err !=3D =
-EXT2_ET_OP_NOT_SUPPORTED);
-> +	return err !=3D EXT2_ET_OP_NOT_SUPPORTED;
-> +}
->=20
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+This is tricky -- POSIX_FADV_WILLNEED starts a non-blocking readahead, so there
+really isn't any good way to tell if the inode checker has caught up to RA.
+Here I'm interpreting "RA thread still running" as a warning that soon the
+inode checker will be ahead of the RA, so we might as well stop the RA.
+However, there still isn't really much good way to find out exactly where RA
+is.
 
+> Something like the following to readahead half of the inode tables once
+> half of them have been processed, and shrink the readahead window if the
+> readahead is being called too often:
 
-Cheers, Andreas
+Hmm.  I will give this a shot and report back; this seems like it ought to
+produce a better result than "two before" as I suggested above.
 
+> 	if (ra_groups != 0 && ino > ra_threshold - (ra_groups + 1) / 2 *
+> 					fs->super->s_inodes_per_group) {
+>		if (ra_threshold < ino)
+> 			ra_threshold = ino;
+> 		grp = (ra_threshold -1) / fs->super->s_inodes_per_group;
+> 		err = initiate_readahead(ctx, grp, (ra_groups + 1) / 2);
+> 		if (err == EAGAIN)
+> 			ra_groups = (ra_groups + 1) / 2;
+> 		else if (err)
+> 			com_err(ctx->program_name, err, "%s",
+> 				_("while starting pass1 readahead"));
+> 		else
+> 			ra_threshold += (ra_groups + 1) / 2 *
+> 				fs->super->s_inodes_per_group;
+> 	}
+> 
+> > +			} else if (err) {
+> > +				com_err(ctx->program_name, err, "%s",
+> > +					_("while starting pass1 readahead"));
+> > +			}
+> > +		}
+> > 		old_op = ehandler_operation(_("getting next inode from scan"));
+> > 		pctx.errcode = ext2fs_get_next_inode_full(scan, &ino,
+> > 							  inode, inode_size);
+> > diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+> > index 80ebdb1..d6ef8c5 100644
+> > --- a/e2fsck/unix.c
+> > +++ b/e2fsck/unix.c
+> > @@ -74,7 +74,7 @@ static void usage(e2fsck_t ctx)
+> > 		_("Usage: %s [-panyrcdfvtDFV] [-b superblock] [-B blocksize]\n"
+> > 		"\t\t[-I inode_buffer_blocks] [-P process_inode_size]\n"
+> > 		"\t\t[-l|-L bad_blocks_file] [-C fd] [-j external_journal]\n"
+> > -		"\t\t[-E extended-options] device\n"),
+> > +		"\t\t[-E extended-options] [-R readahead_kb] device\n"),
+> 
+> Note that "-R" is only recently deprecated for raid options, why not make
+> this an option under "-E"?
 
+Ok.
+
+--D
+> 
+> > 		ctx->program_name);
+> > 
+> > 	fprintf(stderr, "%s", _("\nEmergency help:\n"
+> > @@ -90,6 +90,7 @@ static void usage(e2fsck_t ctx)
+> > 		" -j external_journal  Set location of the external journal\n"
+> > 		" -l bad_blocks_file   Add to badblocks list\n"
+> > 		" -L bad_blocks_file   Set badblocks list\n"
+> > +		" -R readahead_kb      Allow this much readahead.\n"
+> 
+> 
+> Cheers, Andreas
+> 
+> 
+> 
+> 
+> 
 
 
-
-
---Apple-Mail=_72EBF968-282B-4164-9892-1F0308B67038
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIVAwUBUyeBDnKl2rkXzB/gAQKeOw//QgjNbQe0HOz+QOavjVXTxyDzalbcR8T5
-qhmKYQ7Ngcp3gDZa2oIxV1Kxv8qFpS78jzPrF5on1nl0GBO62AysjzdmR88o2g2O
-xrhhfaOxixnPH4ArGWT882fkTZeDn1KDPHkqIdWKB2UiYh/2XCmZG2yHa7VAhY00
-hzdb/NJ/a2jt4p30FzdYps0jhLq9uCq6GoA9JfBqYD2q0TvYaCe4yHtfWLBzEAX1
-EccKaBAY94cJSiY8HLaBICon9FiCDiy0O/AMhu9SpEd3TU0R8J9SnLZME4Js23Sz
-7PyU2DrUkIlVgs4Y0Z3Fz0sSNOH0xg1wQqWm3WjctuNLw1X0nWjvNrFrr8oVXRJe
-9kB1sZ6GYtBfEkexDTL7rXwo3QgPMiIswFCMCxXxpQbyQXwrE5dzn1c/NM+Fu/ay
-AmWt9CtEyAvM4mMLZU86nRVunv8YUyYQC0rDkS+o2nwtZm+kCafCcXbAAnuu79QA
-ou+/Rg4N0pDO3bmnJTtGM3iYx7/jjtMOCMuZQfFQ2+cjyyGQibkT7weLCv67d3o+
-lW6xZqfwngGFNSL8jbjeiRb1nrzvEqCFKoPqXSZy8M2BNxLMQe8m04RwseEF8Wpa
-jMYr+m4HIckUapt2NuoPqRSBZWlFLZFimXCIJZWmPOoe5RupTnu9fGb+BikeLb9R
-F4HCHZDbe3I=
-=lcc8
------END PGP SIGNATURE-----
-
---Apple-Mail=_72EBF968-282B-4164-9892-1F0308B67038--
