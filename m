@@ -1,471 +1,305 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] [PATCH] generic/009: add generic test for fallocate zero range
-Date: Tue, 18 Mar 2014 18:46:28 +0100
-Message-ID: <1395164788-19779-2-git-send-email-lczerner@redhat.com>
-References: <1395164788-19779-1-git-send-email-lczerner@redhat.com>
-Cc: linux-ext4@vger.kernel.org, Lukas Czerner <lczerner@redhat.com>
-To: xfs@oss.sgi.com
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [RFC][PATCH 1/1] ext4: Undelete Feature for Ext4
+Date: Tue, 18 Mar 2014 12:23:11 -0600
+Message-ID: <2C2D46FC-AB12-41F2-BF92-427FD5965C26@dilger.ca>
+References: <1395155384.15587.10.camel@zerobox.home>
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Content-Type: multipart/signed; boundary="Apple-Mail=_BA7758CF-44BD-4090-980D-F4E4CB3F6095"; protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: linux-ext4@vger.kernel.org, vojnar@fit.vutbr.cz,
+	lczerner@redhat.com
+To: Lubos Uhliarik <uhliarik@seznam.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37383 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756991AbaCRRqp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 18 Mar 2014 13:46:45 -0400
-In-Reply-To: <1395164788-19779-1-git-send-email-lczerner@redhat.com>
+Received: from mail-pa0-f49.google.com ([209.85.220.49]:49939 "EHLO
+	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756715AbaCRSYT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 18 Mar 2014 14:24:19 -0400
+Received: by mail-pa0-f49.google.com with SMTP id lj1so7612847pab.8
+        for <linux-ext4@vger.kernel.org>; Tue, 18 Mar 2014 11:24:18 -0700 (PDT)
+In-Reply-To: <1395155384.15587.10.camel@zerobox.home>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is based on xfs/242. This is very similar to ext4/001 however this
-test has some tweaks to make it work test zero range on generic file
-system. This includes turning off ext4 extents zeroout and disabling
-the test for xfs on systems where PAGE_SIZE > 4096.
 
-It is testing extent tree manipulation with fallocate zero range
-operation.
+--Apple-Mail=_BA7758CF-44BD-4090-980D-F4E4CB3F6095
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- tests/generic/009     |  78 ++++++++++++
- tests/generic/009.out | 333 ++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/group   |   1 +
- 3 files changed, 412 insertions(+)
- create mode 100644 tests/generic/009
- create mode 100644 tests/generic/009.out
+On Mar 18, 2014, at 9:09 AM, Lubos Uhliarik <uhliarik@seznam.cz> wrote:
+> This patch should make undelete process for deleted files under ext4 =
+fs easier.
 
-diff --git a/tests/generic/009 b/tests/generic/009
-new file mode 100644
-index 0000000..b7b0b3f
---- /dev/null
-+++ b/tests/generic/009
-@@ -0,0 +1,78 @@
-+#! /bin/bash
-+# FS QA Test No. 009
-+#
-+# Test fallocate FALLOC_FL_ZERO_RANGE
-+#
-+#-----------------------------------------------------------------------
-+# Copyright 2014 (C) Red Hat, Inc., Lukas Czerner <lczerner@redhat.com>
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#
-+#-----------------------------------------------------------------------
-+#
-+
-+seq=`basename $0`
-+seqres=$RESULT_DIR/$seq
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1	# failure is the default!
-+
-+_cleanup()
-+{
-+    rm -f $tmp.*
-+}
-+
-+trap "_cleanup ; exit \$status" 0 1 2 3 15
-+
-+# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
-+. ./common/punch
-+
-+# real QA test starts here
-+_supported_os Linux
-+_require_xfs_io_falloc "fzero"
-+
-+testfile=$TEST_DIR/009.$$
-+
-+# Disable extent zeroing for ext4 as that change where holes are created
-+if [ "$FSTYP" = "ext4" ]; then
-+	DEV=`basename $TEST_DEV`
-+	echo 0 >/sys/fs/ext4/$DEV/extent_max_zeroout_kb
-+fi
-+
-+# When PAGE_SIZE > 4096 xfs extent layout is different so it would not match
-+# the output.
-+if [ "$FSTYP" = "xfs" ]; then
-+	PAGE_SIZE=`getconf PAGE_SIZE`
-+	if [ $PAGE_SIZE -gt 4096 ]; then
-+		_notrun "Not supported on xfs with page size > 4096"
-+	fi
-+fi
-+
-+# Standard zero range tests
-+_test_generic_punch falloc fzero fzero fiemap _filter_fiemap $testfile
-+
-+# Delayed allocation zero range tests
-+_test_generic_punch -d falloc fzero fzero fiemap _filter_fiemap $testfile
-+
-+# Multi zero range tests
-+_test_generic_punch -k falloc fzero fzero fiemap _filter_fiemap $testfile
-+
-+# Delayed allocation multi zero range tests
-+_test_generic_punch -d -k falloc fzero fzero fiemap _filter_fiemap $testfile
-+
-+status=0 ; exit
-diff --git a/tests/generic/009.out b/tests/generic/009.out
-new file mode 100644
-index 0000000..4b451ba
---- /dev/null
-+++ b/tests/generic/009.out
-@@ -0,0 +1,333 @@
-+QA output created by 009
-+	1. into a hole
-+0: [0..7]: hole
-+1: [8..23]: unwritten
-+2: [24..39]: hole
-+daa100df6e6711906b61c9ab5aa16032
-+	2. into allocated space
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	3. into unwritten space
-+0: [0..39]: unwritten
-+daa100df6e6711906b61c9ab5aa16032
-+	4. hole -> data
-+0: [0..7]: hole
-+1: [8..23]: unwritten
-+2: [24..31]: data
-+3: [32..39]: hole
-+cc63069677939f69a6e8f68cae6a6dac
-+	5. hole -> unwritten
-+0: [0..7]: hole
-+1: [8..31]: unwritten
-+2: [32..39]: hole
-+daa100df6e6711906b61c9ab5aa16032
-+	6. data -> hole
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: hole
-+1b3779878366498b28c702ef88c4a773
-+	7. data -> unwritten
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: hole
-+1b3779878366498b28c702ef88c4a773
-+	8. unwritten -> hole
-+0: [0..23]: unwritten
-+1: [24..39]: hole
-+daa100df6e6711906b61c9ab5aa16032
-+	9. unwritten -> data
-+0: [0..23]: unwritten
-+1: [24..31]: data
-+2: [32..39]: hole
-+cc63069677939f69a6e8f68cae6a6dac
-+	10. hole -> data -> hole
-+0: [0..7]: hole
-+1: [8..31]: unwritten
-+2: [32..39]: hole
-+daa100df6e6711906b61c9ab5aa16032
-+	11. data -> hole -> data
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: data
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	12. unwritten -> data -> unwritten
-+0: [0..39]: unwritten
-+daa100df6e6711906b61c9ab5aa16032
-+	13. data -> unwritten -> data
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: data
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	14. data -> hole @ EOF
-+0: [0..23]: data
-+1: [24..39]: unwritten
-+e1f024eedd27ea6b1c3e9b841c850404
-+	15. data -> hole @ 0
-+0: [0..15]: unwritten
-+1: [16..39]: data
-+eecb7aa303d121835de05028751d301c
-+	16. data -> cache cold ->hole
-+0: [0..15]: unwritten
-+1: [16..39]: data
-+eecb7aa303d121835de05028751d301c
-+	17. data -> hole in single block file
-+0: [0..7]: data
-+0000000 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
-+*
-+0000200 0000 0000 0000 0000 0000 0000 0000 0000
-+*
-+0000400 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
-+*
-+	1. into a hole
-+0: [0..7]: hole
-+1: [8..23]: unwritten
-+2: [24..39]: hole
-+daa100df6e6711906b61c9ab5aa16032
-+	2. into allocated space
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	3. into unwritten space
-+0: [0..39]: unwritten
-+daa100df6e6711906b61c9ab5aa16032
-+	4. hole -> data
-+0: [0..7]: hole
-+1: [8..23]: unwritten
-+2: [24..31]: data
-+3: [32..39]: hole
-+cc63069677939f69a6e8f68cae6a6dac
-+	5. hole -> unwritten
-+0: [0..7]: hole
-+1: [8..31]: unwritten
-+2: [32..39]: hole
-+daa100df6e6711906b61c9ab5aa16032
-+	6. data -> hole
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: hole
-+1b3779878366498b28c702ef88c4a773
-+	7. data -> unwritten
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: hole
-+1b3779878366498b28c702ef88c4a773
-+	8. unwritten -> hole
-+0: [0..23]: unwritten
-+1: [24..39]: hole
-+daa100df6e6711906b61c9ab5aa16032
-+	9. unwritten -> data
-+0: [0..23]: unwritten
-+1: [24..31]: data
-+2: [32..39]: hole
-+cc63069677939f69a6e8f68cae6a6dac
-+	10. hole -> data -> hole
-+0: [0..7]: hole
-+1: [8..31]: unwritten
-+2: [32..39]: hole
-+daa100df6e6711906b61c9ab5aa16032
-+	11. data -> hole -> data
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: data
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	12. unwritten -> data -> unwritten
-+0: [0..39]: unwritten
-+daa100df6e6711906b61c9ab5aa16032
-+	13. data -> unwritten -> data
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: data
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	14. data -> hole @ EOF
-+0: [0..23]: data
-+1: [24..39]: unwritten
-+e1f024eedd27ea6b1c3e9b841c850404
-+	15. data -> hole @ 0
-+0: [0..15]: unwritten
-+1: [16..39]: data
-+eecb7aa303d121835de05028751d301c
-+	16. data -> cache cold ->hole
-+0: [0..15]: unwritten
-+1: [16..39]: data
-+eecb7aa303d121835de05028751d301c
-+	17. data -> hole in single block file
-+0: [0..7]: data
-+0000000 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
-+*
-+0000200 0000 0000 0000 0000 0000 0000 0000 0000
-+*
-+0000400 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
-+*
-+	1. into a hole
-+0: [0..7]: hole
-+1: [8..23]: unwritten
-+2: [24..39]: hole
-+daa100df6e6711906b61c9ab5aa16032
-+	2. into allocated space
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	3. into unwritten space
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	4. hole -> data
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	5. hole -> unwritten
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	6. data -> hole
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	7. data -> unwritten
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	8. unwritten -> hole
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	9. unwritten -> data
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	10. hole -> data -> hole
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: data
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	11. data -> hole -> data
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: data
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	12. unwritten -> data -> unwritten
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: data
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	13. data -> unwritten -> data
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: data
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	14. data -> hole @ EOF
-+0: [0..23]: data
-+1: [24..39]: unwritten
-+e1f024eedd27ea6b1c3e9b841c850404
-+	15. data -> hole @ 0
-+0: [0..15]: unwritten
-+1: [16..39]: data
-+eecb7aa303d121835de05028751d301c
-+	16. data -> cache cold ->hole
-+0: [0..15]: unwritten
-+1: [16..39]: data
-+eecb7aa303d121835de05028751d301c
-+	17. data -> hole in single block file
-+0: [0..7]: data
-+0000000 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
-+*
-+0000200 0000 0000 0000 0000 0000 0000 0000 0000
-+*
-+0000400 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
-+*
-+	1. into a hole
-+0: [0..7]: hole
-+1: [8..23]: unwritten
-+2: [24..39]: hole
-+daa100df6e6711906b61c9ab5aa16032
-+	2. into allocated space
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	3. into unwritten space
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	4. hole -> data
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	5. hole -> unwritten
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	6. data -> hole
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	7. data -> unwritten
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	8. unwritten -> hole
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	9. unwritten -> data
-+0: [0..7]: data
-+1: [8..23]: unwritten
-+2: [24..39]: data
-+cc58a7417c2d7763adc45b6fcd3fa024
-+	10. hole -> data -> hole
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: data
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	11. data -> hole -> data
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: data
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	12. unwritten -> data -> unwritten
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: data
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	13. data -> unwritten -> data
-+0: [0..7]: data
-+1: [8..31]: unwritten
-+2: [32..39]: data
-+f6aeca13ec49e5b266cd1c913cd726e3
-+	14. data -> hole @ EOF
-+0: [0..23]: data
-+1: [24..39]: unwritten
-+e1f024eedd27ea6b1c3e9b841c850404
-+	15. data -> hole @ 0
-+0: [0..15]: unwritten
-+1: [16..39]: data
-+eecb7aa303d121835de05028751d301c
-+	16. data -> cache cold ->hole
-+0: [0..15]: unwritten
-+1: [16..39]: data
-+eecb7aa303d121835de05028751d301c
-+	17. data -> hole in single block file
-+0: [0..7]: data
-+0000000 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
-+*
-+0000200 0000 0000 0000 0000 0000 0000 0000 0000
-+*
-+0000400 cdcd cdcd cdcd cdcd cdcd cdcd cdcd cdcd
-+*
-diff --git a/tests/generic/group b/tests/generic/group
-index a99b6a1..71bde41 100644
---- a/tests/generic/group
-+++ b/tests/generic/group
-@@ -10,6 +10,7 @@
- 006 dir udf auto quick
- 007 dir udf auto quick
- 008 auto quick prealloc
-+009 auto quick prealloc
- 010 other udf auto
- 011 dir udf auto quick
- 013 other ioctl udf auto quick
--- 
-1.8.3.1
+Hi Lubos,
+thanks for the interesting patch.  This does seem like an improvement.
+It would be good to add more description to your commit comment, since
+it should explain what is actually being done in your patch (e.g. store
+the extent count and depth in the ext4_extent_header eh_generation =
+field,
+...).
 
+It would also be good to include a matching patch for e2fsprogs debugfs
+in the "undelete" command.  I think one obstacle is the fact that inodes
+have their blocks zeroed out by the kernel during truncation.  It would
+be necessary to change the kernel slightly to avoid writing out i_blocks
+with zero if the inode is being deleted.  Otherwise, this change is not
+as useful as it could be.
+
+Cheers, Andreas
+
+> Signed-off-by: Lubos Uhliarik <uhliarik@seznam.cz>
+> ---
+> fs/ext4/ext4_extents.h | 14 +++++++++++
+> fs/ext4/extents.c      | 67 =
++++++++++++++++++++++++++++++++++++++++++++++-----
+> 2 files changed, 75 insertions(+), 6 deletions(-)
+>=20
+> diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
+> index 5074fe2..22cf2cd 100644
+> --- a/fs/ext4/ext4_extents.h
+> +++ b/fs/ext4/ext4_extents.h
+> @@ -251,6 +251,20 @@ static inline void ext4_ext_store_pblock(struct =
+ext4_extent *ex,
+> 				      0xffff);
+> }
+>=20
+> +static inline void ext4_ext_store_entries(struct ext4_extent_header =
+*eh,
+> +					  __u16 eh_entries){
+> +	eh->eh_generation &=3D cpu_to_le32((unsigned long) 0x0000ffff);
+> +	eh->eh_generation |=3D cpu_to_le32(((unsigned long) (eh_entries) =
+<< 16)
+> +				& 0xffff0000);
+> +}
+> +
+> +static inline void ext4_ext_store_depth(struct ext4_extent_header =
+*eh,
+> +					 __u16 eh_depth){
+> +	eh->eh_generation &=3D cpu_to_le32((unsigned long) 0xffff0000);
+> +	eh->eh_generation |=3D cpu_to_le32(((unsigned long) (eh_depth))
+> +				& 0x0000ffff);
+> +}
+> +
+> /*
+>  * ext4_idx_store_pblock:
+>  * stores a large physical block number into an index struct,
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 74bc2d5..f0f3615 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -2565,6 +2565,7 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode =
+*inode,
+> 	ext4_lblk_t ex_ee_block;
+> 	unsigned short ex_ee_len;
+> 	unsigned uninitialized =3D 0;
+> +	unsigned short ex_ee_entries;
+> 	struct ext4_extent *ex;
+> 	ext4_fsblk_t pblk;
+>=20
+> @@ -2584,6 +2585,7 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode =
+*inode,
+>=20
+> 	ex_ee_block =3D le32_to_cpu(ex->ee_block);
+> 	ex_ee_len =3D ext4_ext_get_actual_len(ex);
+> +	ex_ee_entries =3D le16_to_cpu(eh->eh_entries);
+>=20
+> 	trace_ext4_ext_rm_leaf(inode, start, ex, *partial_cluster);
+>=20
+> @@ -2662,11 +2664,9 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode =
+*inode,
+> 		if (err)
+> 			goto out;
+>=20
+> -		if (num =3D=3D 0)
+> -			/* this extent is removed; mark slot entirely =
+unused */
+> -			ext4_ext_store_pblock(ex, 0);
+> +		if (num !=3D 0)
+> +			ex->ee_len =3D cpu_to_le16(num);
+>=20
+> -		ex->ee_len =3D cpu_to_le16(num);
+> 		/*
+> 		 * Do not mark uninitialized if all the blocks in the
+> 		 * extent have been removed.
+> @@ -2726,8 +2726,19 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode =
+*inode,
+>=20
+> 	/* if this leaf is free, then we should
+> 	 * remove it from index block above */
+> -	if (err =3D=3D 0 && eh->eh_entries =3D=3D 0 && path[depth].p_bh =
+!=3D NULL)
+> +	if (err =3D=3D 0 && eh->eh_entries =3D=3D 0 && path[depth].p_bh =
+!=3D NULL) {
+> +		err =3D ext4_ext_get_access(handle, inode, path + =
+depth);
+> +		if (err)
+> +			goto out;
+> +
+> +		ext4_ext_store_entries(path[depth].p_hdr, =
+ex_ee_entries);
+> +
+> +		err =3D ext4_ext_dirty(handle, inode, path + depth);
+> +		if (err)
+> +			goto out;
+> +
+> 		err =3D ext4_ext_rm_idx(handle, inode, path, depth);
+> +	}
+>=20
+> out:
+> 	return err;
+> @@ -2760,6 +2771,7 @@ int ext4_ext_remove_space(struct inode *inode, =
+ext4_lblk_t start,
+> 	struct super_block *sb =3D inode->i_sb;
+> 	int depth =3D ext_depth(inode);
+> 	struct ext4_ext_path *path =3D NULL;
+> +	unsigned short *entries_path =3D NULL;
+> 	long long partial_cluster =3D 0;
+> 	handle_t *handle;
+> 	int i =3D 0, err =3D 0;
+> @@ -2864,6 +2876,18 @@ again:
+> 	}
+> 	err =3D 0;
+>=20
+> +	if (!inode->i_nlink) {
+> +		entries_path =3D kzalloc(sizeof(short) * (depth + 1),
+> +				       GFP_NOFS);
+> +		if (entries_path =3D=3D NULL) {
+> +			kfree(path);
+> +			ext4_journal_stop(handle);
+> +			return -ENOMEM;
+> +		}
+> +
+> +		entries_path[0] =3D =
+le16_to_cpu(ext_inode_hdr(inode)->eh_entries);
+> +	}
+> +
+> 	while (i >=3D 0 && err =3D=3D 0) {
+> 		if (i =3D=3D depth) {
+> 			/* this is leaf block */
+> @@ -2890,6 +2914,10 @@ again:
+> 			ext_debug("init index ptr: hdr 0x%p, num %d\n",
+> 				  path[i].p_hdr,
+> 				  =
+le16_to_cpu(path[i].p_hdr->eh_entries));
+> +			if (entries_path !=3D NULL) {
+> +				entries_path[i] =3D le16_to_cpu(
+> +					path[i].p_hdr->eh_entries);
+> +			}
+> 		} else {
+> 			/* we were already here, see at next index */
+> 			path[i].p_idx--;
+> @@ -2928,10 +2956,24 @@ again:
+> 		} else {
+> 			/* we finished processing this index, go up */
+> 			if (path[i].p_hdr->eh_entries =3D=3D 0 && i > 0) =
+{
+> +				if (entries_path !=3D NULL) {
+> +					err =3D =
+ext4_ext_get_access(handle,
+> +						inode, path);
+> +					if (err =3D=3D 0) {
+> +						ext4_ext_store_entries(
+> +							path[i].p_hdr,
+> +							=
+(entries_path[i]));
+> +						err =3D =
+ext4_ext_dirty(handle,
+> +							inode, path);
+> +					}
+> +				}
+> +
+> 				/* index is empty, remove it;
+> 				 * handle must be already prepared by =
+the
+> 				 * truncatei_leaf() */
+> -				err =3D ext4_ext_rm_idx(handle, inode, =
+path, i);
+> +				if (err =3D=3D 0)
+> +					err =3D ext4_ext_rm_idx(handle, =
+inode,
+> +						path, i);
+> 			}
+> 			/* root level has p_bh =3D=3D NULL, brelse() =
+eats this */
+> 			brelse(path[i].p_bh);
+> @@ -2964,6 +3006,17 @@ again:
+> 		 */
+> 		err =3D ext4_ext_get_access(handle, inode, path);
+> 		if (err =3D=3D 0) {
+> +			/* Store depth and entries to eh_generation to =
+make
+> +			 * recovering deleted files easier. */
+> +			if (entries_path !=3D NULL) {
+> +				=
+ext4_ext_store_entries(ext_inode_hdr(inode),
+> +					(entries_path[0]));
+> +
+> +				=
+ext4_ext_store_depth(ext_inode_hdr(inode),
+> +					le16_to_cpu(
+> +					=
+ext_inode_hdr(inode)->eh_depth));
+> +			}
+> +
+> 			ext_inode_hdr(inode)->eh_depth =3D 0;
+> 			ext_inode_hdr(inode)->eh_max =3D
+> 				cpu_to_le16(ext4_ext_space_root(inode, =
+0));
+> @@ -2973,6 +3026,8 @@ again:
+> out:
+> 	ext4_ext_drop_refs(path);
+> 	kfree(path);
+> +	kfree(entries_path);
+> +
+> 	if (err =3D=3D -EAGAIN) {
+> 		path =3D NULL;
+> 		goto again;
+> --=20
+> 1.8.3.2
+>=20
+>=20
+>=20
+>=20
+>=20
+>=20
+>=20
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_BA7758CF-44BD-4090-980D-F4E4CB3F6095
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIVAwUBUyiPD3Kl2rkXzB/gAQKXIw/+MR0Q5M10a/ayAAkfijnyvhva4FpR3lPT
+D2yIA7dx/W0d7bRXGuHGXEUL4/svenTj1lb0FnVxgtC9CVEQ/m2zbJFIuQy6Rl52
+F2f+JzvfqGnn2lDNw4Czlvd0Pntub3hpSGok3FUIKE3VFVwmvC4ETEFhQ+95ye3d
+lGC90cpYJiwmAOfMIseZC2tVXFoYxORaiC4J/BzyIU7+3tfhzjY9+TwhF7mU6hx2
+U4/f80wZwBGZMmJjsYKStTZciQ7jr1HG9gmS497B/0PssynLcIS/CfVfhhvPtWzH
+No+66r0Yhr9vb8AldXTpVyh9TZafUXQG/qRydvgXeGYPwByriRJMWi22uCpB/lgm
+Fx2cJscvlb6e1XM6Nr4WI9DwgmciIyHzvcHE9EW86GfOvpyn6+8mgbwcOtOY1yVB
++MkutudGQFWMAY4Vv7rbIpllcN36FUrERBojiFATyLdNKIfEXDzxcuwbuUiTzbcV
+I9kFN3nJKX3A57vaazjEnGRj3HMy7REcYABCZa+NWyP1q6AlD6MVCRqQF+iu4X8k
+e01YQKwLbumKGm5/CCeTN+85NpXtwpHeSwEB+ZIjVCTh9n1fRcgr58eRF02eA3BN
+7ypMQIJT8r8m36iMpVqtImifWj8Co8XZdshOby1lF8joEoXqBLWaNsFFP0DFhnDV
+p91rr+kY3a4=
+=hlfF
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_BA7758CF-44BD-4090-980D-F4E4CB3F6095--
