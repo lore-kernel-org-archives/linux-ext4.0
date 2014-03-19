@@ -1,87 +1,81 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+From: Phillip Susi <psusi@ubuntu.com>
 Subject: Re: [PATCH] mke2fs: don't interact with a non tty
-Date: Wed, 19 Mar 2014 18:05:20 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1403191758160.14658@localhost.localdomain>
-References: <1395162718-22586-1-git-send-email-psusi@ubuntu.com> <A5AC507A-847C-496C-99FF-DE48BE224D80@dilger.ca> <532894D9.4030409@ubuntu.com> <alpine.LFD.2.00.1403191217001.2119@localhost.localdomain> <53299D1F.6020307@ubuntu.com>
- <alpine.LFD.2.00.1403191604150.5960@localhost.localdomain> <5329BFFA.1030308@ubuntu.com>
+Date: Wed, 19 Mar 2014 13:37:42 -0400
+Message-ID: <5329D5E6.3090009@ubuntu.com>
+References: <1395162718-22586-1-git-send-email-psusi@ubuntu.com> <A5AC507A-847C-496C-99FF-DE48BE224D80@dilger.ca> <532894D9.4030409@ubuntu.com> <alpine.LFD.2.00.1403191217001.2119@localhost.localdomain> <53299D1F.6020307@ubuntu.com> <alpine.LFD.2.00.1403191604150.5960@localhost.localdomain> <5329BFFA.1030308@ubuntu.com> <alpine.LFD.2.00.1403191758160.14658@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-2096914964-1395248723=:14658"
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org
-To: Phillip Susi <psusi@ubuntu.com>
+To: =?windows-1252?Q?Luk=E1=9A_Czerner?= <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:27887 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933574AbaCSRF2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 19 Mar 2014 13:05:28 -0400
-In-Reply-To: <5329BFFA.1030308@ubuntu.com>
+Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:46193 "EHLO
+	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750740AbaCSRho (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Mar 2014 13:37:44 -0400
+In-Reply-To: <alpine.LFD.2.00.1403191758160.14658@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
---8323328-2096914964-1395248723=:14658
-Content-Type: TEXT/PLAIN; charset=windows-1252
-Content-Transfer-Encoding: 8BIT
+On 3/19/2014 1:05 PM, Luk=E1=9A Czerner wrote:
+> You're wrong. It does matter, because the usage habits of those
+> two groups are entirely different and certainly mke2fs is not a
+> tool designed for developers.
 
-On Wed, 19 Mar 2014, Phillip Susi wrote:
+It is designed for system administrators who are used to tools doing
+what they ask, and not second guessing them, even if that means doing
+something harmful.  Unix lets you shoot yourself in the foot.  There
+are hundreds of other similar "mistakes" an admin could make that
+would cause similar harm, and none of them stop and say are you really
+sure?  Neither should mkfs.
 
-> Date: Wed, 19 Mar 2014 12:04:10 -0400
-> From: Phillip Susi <psusi@ubuntu.com>
-> To: Lukáš Czerner <lczerner@redhat.com>
-> Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org
-> Subject: Re: [PATCH] mke2fs: don't interact with a non tty
-> 
-> -----BEGIN PGP SIGNED MESSAGE-----
-> Hash: SHA1
-> 
-> On 3/19/2014 11:16 AM, Lukáš Czerner wrote:
-> > There was a discussion between me and Dave Chinner a while ago
-> > about exactly this topic and he made some very good points. You as
-> > a guy working with file system, or file system utilities, testing
-> > them and so on will probably see a ton of the warning like that.
-> > But like it, or not you're *not* the typical user - you're a
-> > developer and there is a huge difference.
-> 
-> Whether I'm a typical user or a developer does not matter.  This is
-> unix, and commands are expected to do what they are told.  If you must
-> do such silly things, at the very least you need to not break scripts
-> when doing it, which means if stdin is not a tty, don't assume you are
-> being run by an idiot who needs hand holding and do what you've been
-> told to.
-> 
-> Scripts and other tools like say, gparted, should not have to figure
-> out every silly thing you might complain about and add a stupid
-> - --yes-i-really-meant-it flag to every invocation.
+> It is a safety net for already overwhelmed sysadmins. And I do not=20
+> understand how this is breaking scripts - it has been like that
+> for a long time.
 
-You're wrong. It does matter, because the usage habits of those two
-groups are entirely different and certainly mke2fs is not a tool
-designed for developers.
+It breaks scripts because the tool fails when it shouldn't, and the
+script now has to work around it with silly, fragile logic like "I'm
+being asked to make an ext[234] filesystem on a regular file, so I
+need to add this silly --i-meant-it flag." and "I'm, being asked to
+make a btrfs filesystem on this disk, so I better add this other silly
+flag to make sure it doesn't fail because there's already another fs
+there" and "filesystem x needs this third silly flag" and so on.
 
-It is a safety net for already overwhelmed sysadmins. And I do not
-understand how this is breaking scripts - it has been like that for
-a long time.
+> I agree that it is a bug that we're still asking question even
+> though there is not a tty attached, but as I said the right thing
+> to do in that case is to fail rather than blindly continue despite
+> the checks. If you want the latter, you can use the 'force' Luke
+> :)
 
-I agree that it is a bug that we're still asking question even though
-there is not a tty attached, but as I said the right thing to do in
-that case is to fail rather than blindly continue despite the checks.
-If you want the latter, you can use the 'force' Luke :)
+Scripts should not have to keep adding different
+- --yes-stupid-i-really-meant-it flags for special cased different
+filesystems to get what they already said they wanted.  This is not
+the unix way.  If you want hand holding, do it the way rm did: add a
+flag that turns the hand holding on, and set up an alias so you don't
+forget it when running it interactively.  Or better yet, use an
+interactive gui tool that is designed to hold your hand and not be
+scripted.
 
-Thanks!
--Lukas
+At the very least, don't assume the script is wrong because you can't
+ask "are you sure, dummy?".
 
-> 
-> -----BEGIN PGP SIGNATURE-----
-> Version: GnuPG v2.0.17 (MingW32)
-> Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
-> 
-> iQEcBAEBAgAGBQJTKb/6AAoJEI5FoCIzSKrwefcIAIHJtyiquS/Zrs4LbCSW1Zoe
-> 5QoLx1ROxqP/Y5CP9mMCcRfsOTXMtZWqf116/Hg5SgIbJ76FGn7peChfPAKw477W
-> HFPWsUmWgdkdVRFJdqny/5MVaOHGd/bD9mt7/8suEwSXX3eAp/gDegKR9Srm+etY
-> n7V/G/uHWQgUQDbs8GAAcpIMA4Y1zcARB19fdNMr1evhDORdN7PAFqxqbixz3gU6
-> //ZnztB7mkDB+cDq9aEYIFR0NnUT8d1SlPR0K/S42Ygy/byP96PjFV+Fkcs7kUA3
-> DlWUgJxC7hr5VnF/PxU11ydiU90NT6NmhRSz/0++tlgGQzNXnHuGMyTtvvHJj30=
-> =BX1H
-> -----END PGP SIGNATURE-----
-> 
---8323328-2096914964-1395248723=:14658--
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.17 (MingW32)
+Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
+
+iQEcBAEBAgAGBQJTKdXmAAoJEI5FoCIzSKrw0R4H/R47g6bDEf749OH/BiRiNgLr
+k5n+4e0ep68DRkAAWLuXdAjr29LCZiFLAWd2XV69aQ/Ls3Nj+R8fKZ6v3IharRHg
+xDOFgrmv5QF7m3FgQVPS6qQEgCtGIprJdurQbcjwhQ26MwEF37hLRzJk4GRBLy7E
+zydUpZrVvzzsWPX4/k8bI3ESFZoMiuX9zEEd9Fl3hjHMByeZ+zqnLSJgSBt+y3eU
+fSpFY/F4pdzWKhEe0SOat1lGy6qFu92DVbRdJYTAGuDHiKqT7SHkpvt503+GHEAJ
+uo+jN4JU1FFSn5+3+fCsJb3XSmrIbbsXaIWBi8/VsujhCaHXnxG48gblNf9KCWg=3D
+=3DWhUQ
+-----END PGP SIGNATURE-----
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
