@@ -1,105 +1,83 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+From: Phillip Susi <psusi@ubuntu.com>
 Subject: Re: [PATCH] mke2fs: don't interact with a non tty
-Date: Wed, 19 Mar 2014 12:26:38 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1403191217001.2119@localhost.localdomain>
-References: <1395162718-22586-1-git-send-email-psusi@ubuntu.com> <A5AC507A-847C-496C-99FF-DE48BE224D80@dilger.ca> <532894D9.4030409@ubuntu.com>
+Date: Wed, 19 Mar 2014 09:35:27 -0400
+Message-ID: <53299D1F.6020307@ubuntu.com>
+References: <1395162718-22586-1-git-send-email-psusi@ubuntu.com> <A5AC507A-847C-496C-99FF-DE48BE224D80@dilger.ca> <532894D9.4030409@ubuntu.com> <alpine.LFD.2.00.1403191217001.2119@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org
-To: Phillip Susi <psusi@ubuntu.com>
+To: =?windows-1252?Q?Luk=E1=9A_Czerner?= <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:21615 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932602AbaCSL0o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 19 Mar 2014 07:26:44 -0400
-In-Reply-To: <532894D9.4030409@ubuntu.com>
+Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:61193 "EHLO
+	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932996AbaCSNf3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Mar 2014 09:35:29 -0400
+In-Reply-To: <alpine.LFD.2.00.1403191217001.2119@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 18 Mar 2014, Phillip Susi wrote:
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-> Date: Tue, 18 Mar 2014 14:47:53 -0400
-> From: Phillip Susi <psusi@ubuntu.com>
-> To: Andreas Dilger <adilger@dilger.ca>
-> Cc: linux-ext4@vger.kernel.org
-> Subject: Re: [PATCH] mke2fs: don't interact with a non tty
-> 
-> -----BEGIN PGP SIGNED MESSAGE-----
-> Hash: SHA1
-> 
-> On 3/18/2014 2:31 PM, Andreas Dilger wrote:
-> > This means that mke2fs will silently continue to format whatever
-> > accidental device was specified on the command line, instead of
-> > stopping and asking the user for confirmation.  Instead, it should
-> > exit with an error in this case.
-> 
-> There *is* no user to ask when stdin is connected to /dev/null.  This
-> second guessing of the user really goes against the unix way and
-> shouldn't be there in the first place.  Mean what you say, and say
-> what you mean.
-> 
-> If you must second guess the user and give an interactive prompt just
-> in case they made a mistake, then at least only do so when it looks
-> like there is a user there.  There is no reason to fail when called
-> from a script.
-> 
-> > There is already the "-f" (force) option to override the cases
-> > where this prompt is used, so if the user wants to do something
-> > unusual they should use that as part of the script driving mke2fs.
-> 
-> - --yes-i-meant-what-i-said flags are silly, and make for useless
-> inconsistencies between the different mkfs.* utilities that makes
-> writing scripts calling them annoyingly difficult.
+On 3/19/2014 7:26 AM, Luk=E1=9A Czerner wrote:
+> Yes, it is inconsistent especially in the way that mke2fs is=20
+> proceeding without any problem on the device which already
+> contains a valid file system (or any other) signature. Which I
+> think we should really change. The problem is that this will break
+> scripts for everybody which is bad.
+>=20
+> So my idea was to implement the signature check and then skip it
+> if we do not have a tty attached. Just to avoid the breakage.
+>=20
+> However I do not think that we can just blindly ignore the checks
+> we already have in place in the case that there is no user. But I
+> agree that current behaviour is wrong and it should be changed,
+> however I think that we need to change it the other way, the
+> default should be no - do not proceed and exit. Because believe it
+> or not, people make mistakes.
 
-Yes, it is inconsistent especially in the way that mke2fs is
-proceeding without any problem on the device which already contains
-a valid file system (or any other) signature. Which I think we
-should really change. The problem is that this will break scripts
-for everybody which is bad.
+Then you are right back to breaking scripts.  And yes, people make
+mistakes... and unix *lets* them.  You don't see rm stopping every
+time you try to delete a file and saying really?  *That* file?  Are
+you sure?  You don't see dd or shell redirection stopping to ask you
+if you really meant to overwrite that disk or file.  There is a
+*reason* why you are supposed to double check commands you are running
+as root.
 
-So my idea was to implement the signature check and then skip it if
-we do not have a tty attached. Just to avoid the breakage.
+And putting a filesystem in an image file is one of the *least*
+dangerous things you could do.  Of all of the things to second guess,
+and especially to default to "HALT! ERROR!" behavior, this has to be
+the silliest.
 
-However I do not think that we can just blindly ignore the checks we
-already have in place in the case that there is no user. But I agree
-that current behaviour is wrong and it should be changed, however I
-think that we need to change it the other way, the default should be
-no - do not proceed and exit. Because believe it or not, people make
-mistakes.
+If you can't assume that an interactive user knows what they are doing
+and meant what they said, then at least you should assume that a
+script writer knows wtf they are doing without asking them to add lots
+of silly --yes-i-know-what-im-doing-stop-annoying-me flags.
 
-> 
-> > The only time when I think "force" is required when it shouldn't be
-> > is in case of full-device formatting.  I don't think this should be
-> > considered a problem unless there is already a partition table on
-> > the device.  Formatting the whole device is desirable to avoid
-> > alignment issues on RAID devices, so I would be happy if that
-> > restriction was lifted.
+> Agreed, but it should not be lifted, but rather changes to check
+> for signatures on the device. The same way as it is done for
+> example in xfs, or btrfs.
 
-Agreed, but it should not be lifted, but rather changes to check for
-signatures on the device. The same way as it is done for example in
-xfs, or btrfs.
+*NO*!  Those tools annoy the hell out of me because they do that.  I
+*know* there is another filesystem there already ( as there are on
+most disks not fresh from the factory ), why do you think I'm telling
+you to change it?  Do what I asked and stop treating me like a child.
 
-Thanks!
--Lukas
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.17 (MingW32)
+Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
 
-> 
-> The same goes for being run on an image file instead of a device node.
-> 
-> 
-> -----BEGIN PGP SIGNATURE-----
-> Version: GnuPG v2.0.17 (MingW32)
-> Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
-> 
-> iQEcBAEBAgAGBQJTKJTZAAoJEI5FoCIzSKrwqVcH+wYQkv7lP0Sm2Y52XWbfotAN
-> 5yyO3K0w9FFTscHo2YEZ2JE+QdkYadsyuENM41IChNcduJpZjAh6LbVNdlEU9sUq
-> v97a+TJq1ahyshl4rxakm5kdXJo1cSZc8cWZoDk3O4ChDhRZdY0fv/uu+sfw0etr
-> wYkRNgXB6eNmRSUeIj6rPg3sSKDpNcbcDW3x8cP6Ww+KfLzDtMzEMRkhQpQ13I2P
-> eJLebfSQBmiU7hj5xd+TQHORpvk3VxXk4JG1zsytRPekAtNkTFzqi1Uoo75fcTwh
-> Nmn2SR2rq1ls81xBTlNQ5gZQ5mUz3ZIuthXWuF3mpP1SW/om3SCM+ay3S0/NNxw=
-> =iqNm
-> -----END PGP SIGNATURE-----
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+iQEcBAEBAgAGBQJTKZ0fAAoJEI5FoCIzSKrwaFQH/RO0NPl2mPAlpaK2YQysegub
+u80nYpSlpHjiIOLU7RCECakfELIFp1skg7lRsFdL1zLNkor4JkwW8UbOuy75WbS3
++XPAQ/1wxPzsn0J4+QM3PE3X/IZ4NWRMepl0pozpoLine87mL6u6+em2n1r1vsQK
+HE/1Ma/8jqPPMXPNFDw0LMiYGyAHITfQA4c/FRwlWCbhMt2lG8dsGA7bKl7VCB5D
+gmkzUF/KbgmY8xnDiIbmSHQbaF+xrIbZl8FGgi4r3CuiGZ2yZBBbs2sTCk6pvIq7
+rrTQGwxBuzxaas2h+ZpLfTeFulBlIH2B+ueStinc2Br+TmBeqIKKOQ1+HjO3v6g=3D
+=3D6eGY
+-----END PGP SIGNATURE-----
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
