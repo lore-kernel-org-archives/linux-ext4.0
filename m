@@ -1,58 +1,91 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 71641] Unreasonable performance degradation in ext4 with full
- data journaling
-Date: Thu, 20 Mar 2014 04:09:50 +0000
-Message-ID: <bug-71641-13602-XwG9byeCbK@https.bugzilla.kernel.org/>
-References: <bug-71641-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: kill i_version support for Hurd-castrated file systems
+Date: Thu, 20 Mar 2014 00:34:11 -0400
+Message-ID: <1395290051-25682-1-git-send-email-tytso@mit.edu>
+References: <20140319202009.GA21361@jessie01>
+Cc: 1o5g4r8o@gmail.com, 738758@bugs.debian.org,
+	Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:44890 "EHLO mail.kernel.org"
+Received: from imap.thunk.org ([74.207.234.97]:43810 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750807AbaCTEJz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 20 Mar 2014 00:09:55 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 0282D201C8
-	for <linux-ext4@vger.kernel.org>; Thu, 20 Mar 2014 04:09:54 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 22416201C0
-	for <linux-ext4@vger.kernel.org>; Thu, 20 Mar 2014 04:09:51 +0000 (UTC)
-In-Reply-To: <bug-71641-13602@https.bugzilla.kernel.org/>
+	id S1750854AbaCTEeZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 20 Mar 2014 00:34:25 -0400
+In-Reply-To: <20140319202009.GA21361@jessie01>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=71641
+The Hurd file system uses uses the inode field which is now used for
+i_version for its translator block.  This means that ext2 file systems
+that are formatted for GNU Hurd can't be used to support NFSv4.  Given
+that Hurd file systems don't support extents, and a huge number of
+modern file system features, this is no great loss.
 
-Theodore Tso <tytso@mit.edu> changed:
+If we don't do this, the attempt to update the i_version field will
+stomp over the translator block field, which will cause file system
+corruption for Hurd file systems.  This can be replicated via:
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
+mke2fs -t ext2 -o hurd /dev/vdc
+mount -t ext4 /dev/vdc /vdc
+touch /vdc/bug0000
+umount /dev/vdc
+e2fsck -f /dev/vdc
 
---- Comment #4 from Theodore Tso <tytso@mit.edu> ---
-Could you retry your measurements using the latest kernel?  At least 3.11, and
-preferably 3.13.
+Addresses-Debian-Bug: #738758
 
-We significantly optimized the write path for the nodelalloc case in 3.11. 
-That should fix the average size being so small for the nodelalloc case:
+Reported-By: Gabriele Giacone <1o5g4r8o@gmail.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/inode.c | 29 ++++++++++++++++++-----------
+ 1 file changed, 18 insertions(+), 11 deletions(-)
 
-
-commit 20970ba65d5a22f2e4efbfa100377722fde56935
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Thu Jun 6 14:00:46 2013 -0400
-
-    ext4: use ext4_da_writepages() for all modes
-
-    Rename ext4_da_writepages() to ext4_writepages() and use it for all
-    modes.  We still need to iterate over all the pages in the case of
-    data=journalling, but in the case of nodelalloc/data=ordered (which is
-    what file systems mounted using ext3 backwards compatibility will use)
-    this will allow us to use a much more efficient I/O submission path.
-
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 7cc2455..ed2c13a 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4168,11 +4168,14 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+ 	EXT4_INODE_GET_XTIME(i_atime, inode, raw_inode);
+ 	EXT4_EINODE_GET_XTIME(i_crtime, ei, raw_inode);
+ 
+-	inode->i_version = le32_to_cpu(raw_inode->i_disk_version);
+-	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE) {
+-		if (EXT4_FITS_IN_INODE(raw_inode, ei, i_version_hi))
+-			inode->i_version |=
+-			(__u64)(le32_to_cpu(raw_inode->i_version_hi)) << 32;
++	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
++	    cpu_to_le32(EXT4_OS_HURD)) {
++		inode->i_version = le32_to_cpu(raw_inode->i_disk_version);
++		if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE) {
++			if (EXT4_FITS_IN_INODE(raw_inode, ei, i_version_hi))
++				inode->i_version |=
++		    (__u64)(le32_to_cpu(raw_inode->i_version_hi)) << 32;
++		}
+ 	}
+ 
+ 	ret = 0;
+@@ -4388,12 +4391,16 @@ static int ext4_do_update_inode(handle_t *handle,
+ 			raw_inode->i_block[block] = ei->i_data[block];
+ 	}
+ 
+-	raw_inode->i_disk_version = cpu_to_le32(inode->i_version);
+-	if (ei->i_extra_isize) {
+-		if (EXT4_FITS_IN_INODE(raw_inode, ei, i_version_hi))
+-			raw_inode->i_version_hi =
+-			cpu_to_le32(inode->i_version >> 32);
+-		raw_inode->i_extra_isize = cpu_to_le16(ei->i_extra_isize);
++	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
++	    cpu_to_le32(EXT4_OS_HURD)) {
++		raw_inode->i_disk_version = cpu_to_le32(inode->i_version);
++		if (ei->i_extra_isize) {
++			if (EXT4_FITS_IN_INODE(raw_inode, ei, i_version_hi))
++				raw_inode->i_version_hi =
++					cpu_to_le32(inode->i_version >> 32);
++			raw_inode->i_extra_isize =
++				cpu_to_le16(ei->i_extra_isize);
++		}
+ 	}
+ 
+ 	ext4_inode_csum_set(inode, raw_inode, ei);
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+1.9.0
+
