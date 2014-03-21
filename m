@@ -1,162 +1,46 @@
-From: Andreas Dilger <andreas.dilger@intel.com>
-Subject: [PATCH] tests: fix resize test tmpfs max-file-size checking
-Date: Fri, 21 Mar 2014 03:51:54 -0600
-Message-ID: <1395395514-5548-1-git-send-email-andreas.dilger@intel.com>
-Cc: linux-ext4@vger.kernel.org,
-	Andreas Dilger <andreas.dilger@intel.com>
-To: tytso@mit.edu
+From: tytso@mit.edu
+Subject: Re: Bug#738758: [PATCH] ext4: kill i_version support for
+ Hurd-castrated file systems
+Date: Fri, 21 Mar 2014 10:39:27 -0400
+Message-ID: <20140321143927.GA31179@thunk.org>
+References: <20140319202009.GA21361@jessie01>
+ <1395290051-25682-1-git-send-email-tytso@mit.edu>
+ <3DF297F8-04E0-4EE6-8CD5-127997293D5A@dilger.ca>
+ <20140320081048.GA21164@infradead.org>
+ <20140320144456.GA20618@thunk.org>
+ <1395336632.2770.13.camel@deadeye.wl.decadent.org.uk>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: 738758@bugs.debian.org, Christoph Hellwig <hch@infradead.org>,
+	Andreas Dilger <adilger@dilger.ca>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	"1o5g4r8o@gmail.com" <1o5g4r8o@gmail.com>
+To: Ben Hutchings <ben@decadent.org.uk>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out-04.shaw.ca ([64.59.134.12]:63489 "EHLO
-	smtp-out-04.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759875AbaCUJv4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Mar 2014 05:51:56 -0400
+Received: from imap.thunk.org ([74.207.234.97]:44450 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751634AbaCUOjo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 21 Mar 2014 10:39:44 -0400
+Content-Disposition: inline
+In-Reply-To: <1395336632.2770.13.camel@deadeye.wl.decadent.org.uk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Old distros may not have the "truncate" tool, so use "dd" instead.
+On Thu, Mar 20, 2014 at 05:30:32PM +0000, Ben Hutchings wrote:
+> 
+> It looks like ext2 and ext3 would always initialise i_version to 1 in
+> memory; does it matter that you're changing that to 0 for Hurd
+> filesystems?
 
-If tmpfs cannot handle a 2GB temp file (e.g. old RHEL5 and SLES 11
-kernels) then skip the test instead of failing it.  If this fails,
-try to report better error messages instead of failing silently.
+No, NFS only cares that the i_version number has changed, and it's
+mainly important if you have two clients trying to simultaneously
+access the same file, so they get a signal that they need to
+invalidate their locally cached metadata (or data, in the case of
+NFSv4).  But Hurd only supports NFSv2, and the performance is such
+that I doubt anyone would be all that interested in using a Hurd
+server as a NFS server for even a small workgroup, let alone a
+department, so this is unlikely to be a big deal.
 
-Signed-off-by: Andreas Dilger <andreas.dilger@intel.com>
----
- tests/r_1024_small_bg/script       |    9 +++++++--
- tests/r_64bit_big_expand/script    |    1 +
- tests/r_bigalloc_big_expand/script |    1 +
- tests/r_ext4_big_expand/script     |    1 +
- tests/r_ext4_small_bg/script       |    9 +++++++--
- tests/scripts/resize_test          |   17 ++++++++++++++---
- 6 files changed, 31 insertions(+), 7 deletions(-)
+Cheers,
 
-diff --git a/tests/r_1024_small_bg/script b/tests/r_1024_small_bg/script
-index fafcf91..f86537e 100644
---- a/tests/r_1024_small_bg/script
-+++ b/tests/r_1024_small_bg/script
-@@ -10,12 +10,17 @@ E2FSCK=../e2fsck/e2fsck
- 
- . $cmd_dir/scripts/resize_test
- 
--if resize_test
--then
-+resize_test
-+RC=$?
-+if [ $RC -eq 0 ]; then
- 	echo "$test_name: $test_description: ok"
- 	touch $test_name.ok
-+elif [ $RC -eq 111 ]; then
-+	echo "$test_name: $test_description: skipped"
-+	touch $test_name.ok
- else
- 	echo "$test_name: $test_description: failed"
-+ 	ln $LOG $test_name.failed
- 	touch $test_name.failed
- fi
- 
-diff --git a/tests/r_64bit_big_expand/script b/tests/r_64bit_big_expand/script
-index 51f36e9..2a8fef0 100644
---- a/tests/r_64bit_big_expand/script
-+++ b/tests/r_64bit_big_expand/script
-@@ -20,6 +20,7 @@ elif [ $RC -eq 111 ]; then
- 	touch $test_name.ok
- else
- 	echo "$test_name: $test_description: failed"
-+	ln $LOG $test_name.failed
- 	touch $test_name.failed
- fi
- 
-diff --git a/tests/r_bigalloc_big_expand/script b/tests/r_bigalloc_big_expand/script
-index 56c8c15..2f28c67 100644
---- a/tests/r_bigalloc_big_expand/script
-+++ b/tests/r_bigalloc_big_expand/script
-@@ -20,6 +20,7 @@ elif [ $RC -eq 111 ]; then
- 	touch $test_name.ok
- else
- 	echo "$test_name: $test_description: failed"
-+	ln $LOG $test_name.failed
- 	touch $test_name.failed
- fi
- 
-diff --git a/tests/r_ext4_big_expand/script b/tests/r_ext4_big_expand/script
-index a4f8fe6..3b969d2 100644
---- a/tests/r_ext4_big_expand/script
-+++ b/tests/r_ext4_big_expand/script
-@@ -20,6 +20,7 @@ elif [ $RC -eq 111 ]; then
- 	touch $test_name.ok
- else
- 	echo "$test_name: $test_description: failed"
-+	ln $LOG $test_name.failed
- 	touch $test_name.failed
- fi
- 
-diff --git a/tests/r_ext4_small_bg/script b/tests/r_ext4_small_bg/script
-index 553cbd8..dafb008 100644
---- a/tests/r_ext4_small_bg/script
-+++ b/tests/r_ext4_small_bg/script
-@@ -10,12 +10,17 @@ E2FSCK=../e2fsck/e2fsck
- 
- . $cmd_dir/scripts/resize_test
- 
--if resize_test
--then
-+resize_test
-+RC=$?
-+if [ $RC -eq 0 ]; then
- 	echo "$test_name: $test_description: ok"
- 	touch $test_name.ok
-+elif [ $RC -eq 111 ]; then
-+	echo "$test_name: $test_description: skipped"
-+	touch $test_name.ok
- else
- 	echo "$test_name: $test_description: failed"
-+	ln $LOG $test_name.failed
- 	touch $test_name.failed
- fi
- 
-diff --git a/tests/scripts/resize_test b/tests/scripts/resize_test
-index 6a8b0e9..b09731c 100755
---- a/tests/scripts/resize_test
-+++ b/tests/scripts/resize_test
-@@ -1,25 +1,36 @@
- #!/bin/sh
- 
-+# old distros are missing "truncate", emulate it with "dd"
-+truncate()
-+{
-+	[ "$1" = "-s" ] && size=$2 && shift 2
-+
-+	dd if=/dev/zero of=$1 bs=1 count=0 seek=$size >> $LOG 2>&1
-+}
-+
- resize_test () {
- 
-+echo $test_description starting > $LOG
- rm -f $TMPFILE
- touch $TMPFILE
- 
- # Verify that the $TMP filesystem handles $SIZE_2 sparse files.
- # If that fails, try the local filesystem instead.
- if truncate -s $SIZE_2 $TMPFILE 2> /dev/null; then
--        > $TMPFILE
-+	echo "using $TMPFILE" >> $LOG
- else
- 	rm $TMPFILE
- 	export TMPFILE=$(TMPDIR=. mktemp -t $test_name.XXXXXX.tmp)
- 	touch $TMPFILE
--	if ! truncate -s $SIZE_2 $TMPFILE 2> /dev/null; then
-+	echo "using $TMPFILE" >> $LOG
-+	if ! truncate -s $SIZE_2 $TMPFILE >> $LOG 2>&1; then
- 		rm $TMPFILE
- 		return 111
- 	fi
- fi
-+> $TMPFILE
- 
--echo $MKE2FS $FEATURES -qF $TMPFILE $SIZE_1 > $LOG
-+echo $MKE2FS $FEATURES -qF $TMPFILE $SIZE_1 >> $LOG
- $MKE2FS $FEATURES -qF $TMPFILE $SIZE_1 >> $LOG
- 
- OUT_TMP=$(mktemp -t csum-tmp.XXXXXX)
--- 
-1.7.3.4
-
+					- Ted
