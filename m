@@ -1,105 +1,45 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: optimize Hurd tests when reading/writing inodes
-Date: Fri, 21 Mar 2014 12:48:53 -0400
-Message-ID: <1395420533-20103-1-git-send-email-tytso@mit.edu>
+From: Samuel Thibault <sthibault@debian.org>
+Subject: Bug#738758: [PATCH] ext4: optimize Hurd tests when reading/writing inodes
+Date: Fri, 21 Mar 2014 18:11:14 +0100
+Message-ID: <20140321171114.GA5601@type.youpi.perso.aquilenet.fr>
 References: <20140321143927.GA31179@thunk.org>
-Cc: 1o5g4r8o@gmail.com, 738758@bugs.debian.org, ben@decadent.org.uk,
-	Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:44493 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753512AbaCUQtG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 21 Mar 2014 12:49:06 -0400
-In-Reply-To: <20140321143927.GA31179@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+ <1395420533-20103-1-git-send-email-tytso@mit.edu>
+Reply-To: Samuel Thibault <sthibault@debian.org>, 738758@bugs.debian.org
+Mime-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: quoted-printable
+To: 738758@bugs.debian.org,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <bounce-debian-bugs-dist=glddb-debian-bugs-dist=m.gmane.org@lists.debian.org>
+Resent-Message-ID: <handler.738758.B738758.139542188531899@bugs.debian.org>
+Content-Disposition: inline
+In-Reply-To: <1395420533-20103-1-git-send-email-tytso@mit.edu>
+List-URL: <http://lists.debian.org/debian-bugs-dist/>
+List-Post: <mailto:debian-bugs-dist@lists.debian.org>
+List-Help: <mailto:debian-bugs-dist-request@lists.debian.org?subject=help>
+List-Subscribe: <mailto:debian-bugs-dist-request@lists.debian.org?subject=subscribe>
+List-Unsubscribe: <mailto:debian-bugs-dist-request@lists.debian.org?subject=unsubscribe>
+List-Id: linux-ext4.vger.kernel.org
 
-Set a in-memory superblock flag to indicate whether the file system is
-designed to support the Hurd.
+Theodore Ts'o, le Fri 21 Mar 2014 12:48:53 -0400, a =E9crit :
+> Also, add a sanity check to make sure the 64-bit feature is not set
+> for Hurd file systems, since i_file_acl_high conflicts with a
+> Hurd-specific field. This is not a big deal, since Hurd doesn't
+> support file systems larger than 1GB[1] anyway.
 
-Also, add a sanity check to make sure the 64-bit feature is not set
-for Hurd file systems, since i_file_acl_high conflicts with a
-Hurd-specific field.  This is not a big deal, since Hurd doesn't
-support file systems larger than 1GB[1] anyway.
+Err, it does. We regularly use volumes with dozens of GiB.
 
-[1] http://walfield.org/pub/people/neal/papers/hurd-faq/FAQ.en.html#q2-6
+> [1] http://walfield.org/pub/people/neal/papers/hurd-faq/FAQ.en.html#q2-=
+6
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/ext4.h  |  2 ++
- fs/ext4/inode.c |  9 +++------
- fs/ext4/super.c | 10 ++++++++++
- 3 files changed, 15 insertions(+), 6 deletions(-)
+That faq is very largely outdated.  See the official faq on=20
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index f4f889e..e01135d 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1001,6 +1001,8 @@ struct ext4_inode_info {
- #define EXT4_MOUNT2_STD_GROUP_SIZE	0x00000002 /* We have standard group
- 						      size of blocksize * 8
- 						      blocks */
-+#define EXT4_MOUNT2_HURD_COMPAT		0x00000004 /* Support HURD-castrated
-+						      file systems */
- 
- #define clear_opt(sb, opt)		EXT4_SB(sb)->s_mount_opt &= \
- 						~EXT4_MOUNT_##opt
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index ed2c13a..a3a5eb3 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4168,8 +4168,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 	EXT4_INODE_GET_XTIME(i_atime, inode, raw_inode);
- 	EXT4_EINODE_GET_XTIME(i_crtime, ei, raw_inode);
- 
--	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
--	    cpu_to_le32(EXT4_OS_HURD)) {
-+	if (!test_opt2(inode->i_sb, HURD_COMPAT)) {
- 		inode->i_version = le32_to_cpu(raw_inode->i_disk_version);
- 		if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE) {
- 			if (EXT4_FITS_IN_INODE(raw_inode, ei, i_version_hi))
-@@ -4345,8 +4344,7 @@ static int ext4_do_update_inode(handle_t *handle,
- 		goto out_brelse;
- 	raw_inode->i_dtime = cpu_to_le32(ei->i_dtime);
- 	raw_inode->i_flags = cpu_to_le32(ei->i_flags & 0xFFFFFFFF);
--	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
--	    cpu_to_le32(EXT4_OS_HURD))
-+	if (!test_opt2(inode->i_sb, HURD_COMPAT))
- 		raw_inode->i_file_acl_high =
- 			cpu_to_le16(ei->i_file_acl >> 32);
- 	raw_inode->i_file_acl_lo = cpu_to_le32(ei->i_file_acl);
-@@ -4391,8 +4389,7 @@ static int ext4_do_update_inode(handle_t *handle,
- 			raw_inode->i_block[block] = ei->i_data[block];
- 	}
- 
--	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
--	    cpu_to_le32(EXT4_OS_HURD)) {
-+	if (!test_opt2(inode->i_sb, HURD_COMPAT)) {
- 		raw_inode->i_disk_version = cpu_to_le32(inode->i_version);
- 		if (ei->i_extra_isize) {
- 			if (EXT4_FITS_IN_INODE(raw_inode, ei, i_version_hi))
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 3c9eadf..6adee9a 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3580,6 +3580,16 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		       "feature flags set on rev 0 fs, "
- 		       "running e2fsck is recommended");
- 
-+	if (es->s_creator_os == cpu_to_le32(EXT4_OS_HURD)) {
-+		set_opt2(sb, HURD_COMPAT);
-+		if (EXT4_HAS_INCOMPAT_FEATURE(sb,
-+					      EXT4_FEATURE_INCOMPAT_64BIT)) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "The Hurd can't support 64-bit file systems");
-+			goto failed_mount;
-+		}
-+	}
-+
- 	if (IS_EXT2_SB(sb)) {
- 		if (ext2_feature_set_ok(sb))
- 			ext4_msg(sb, KERN_INFO, "mounting ext2 file system "
--- 
-1.9.0
+http://www.gnu.org/software/hurd/faq.html
 
+Samuel
+
+
+--=20
+To UNSUBSCRIBE, email to debian-bugs-dist-REQUEST@lists.debian.org
+with a subject of "unsubscribe". Trouble? Contact listmaster@lists.debian=
+.org
