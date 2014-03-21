@@ -1,309 +1,221 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: Proposal draft for data checksumming for ext4
-Date: Thu, 20 Mar 2014 10:59:50 -0700
-Message-ID: <20140320175950.GJ9070@birch.djwong.org>
-References: <alpine.LFD.2.00.1403201736280.8407@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
-To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+From: Andreas Dilger <andreas.dilger@intel.com>
+Subject: [PATCH] build: fix miscellaneous build warnings
+Date: Fri, 21 Mar 2014 00:47:42 -0600
+Message-ID: <1395384462-30244-1-git-send-email-andreas.dilger@intel.com>
+Cc: linux-ext4@vger.kernel.org,
+	Andreas Dilger <andreas.dilger@intel.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:22603 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933251AbaCTSAE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Mar 2014 14:00:04 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1403201736280.8407@localhost.localdomain>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:9416 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752498AbaCUG5K (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Mar 2014 02:57:10 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 20, 2014 at 05:40:06PM +0100, Luk=C3=A1=C5=A1 Czerner wrote=
-:
-> Hi all,
->=20
-> I've started thinking about implementing data checksumming for ext4 f=
-ile
-> system. This is not meant to be a formal proposal or a definitive des=
-ign
-> description since I am not that far yet, but just a few ideas to star=
-t
-> the discussion and trying to figure out what the best design for data
-> checksumming in ext4 might be.
->=20
->=20
->=20
-> 			   Data checksumming for ext4
-> 				  Version 0.1
-> 				 March 20, 2014
->=20
->=20
-> Goal
-> =3D=3D=3D=3D
->=20
-> The goal is to implement data checksumming for ext4 file system in or=
-der
-> to improve data integrity and increase protection against silent data
-> corruption while maintaining reasonable performance and usability of =
-the
-> file system.
->=20
-> While data checksums can be certainly used in different ways, for exa=
-mple
-> data deduplication this proposal is very much focused on data integri=
-ty.
->=20
->=20
-> Checksum function
-> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
->=20
-> By default I plan to use crc32c checksum, but I do not see a reason w=
-hy not
-> not to be able to support different checksum function. Also by defaul=
-t the
-> checksum size should be 32 bits, but the plan is to make the format
-> flexible enough to be able to support different checksum sizes.
+Fix various unused variable and use-uninitialized warnings.
 
-<nod> Were you thinking of allowing the use of different functions for =
-data and
-metadata checksums?
+Add generated files into .gitignore.
 
-> Checksumming and Validating
-> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D
->=20
-> On write checksums on the data blocks need to be computed right befor=
-e its
-> bio is submitted and written out as metadata to its position (see bel=
-low)
-> after the bio completes (similarly as we do unwritten extent conversi=
-on
-> today).
->=20
-> Similarly on read checksums needs to be computed after the bio comple=
-tes
-> and compared with the stored values to verify that the data is intact=
-=2E
->=20
-> All of this should be done using workqueues (Concurrency Managed
-> Workqueues) so we do not block the other operations and to spread the
-> checksum computation and comparison across CPUs. One wq for reads and=
- one
-> for writes. Specific setup of the wq such as priority, or concurrency=
- limits
-> should be decided later based on the performance evaluation.
->=20
-> While we already have ext4 infrastructure to submit bios in
-> fs/ext4/page-io.c where the entry point is ext4_bio_write_page() we w=
-ould
-> need the same for reads to be able to provide ext4 specific hooks for
-> io completion.
->=20
->=20
-> Where to store the checksums
-> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D
->=20
-> While the problems above are pretty straightforward when it comes to =
-the
-> design, actually storing and retrieving the data checksums from to/fr=
-om
-> the ext4 format requires much more thought to be efficient enough and=
- play
-> nicely with the overall ext4 design while trying not to be too intrus=
-ive.
->=20
-> I came up with several ideas about where to store and how to access d=
-ata
-> checksums. While some of the ideas might not be the most viable optio=
-ns,
-> it's still interesting to think about the advantages and disadvantage=
-s of
-> each particular solution.
->=20
-> a) Static layout
-> ----------------
->=20
-> This scheme fits perfectly into the ext4 design. Checksum blocks
-> would be preallocated the same way as we do with inode tables for exa=
-mple.
-> Each block group should have it's own contiguous region of checksum b=
-locks
-> to be able to store checksums for bocks from entire block group it be=
-longs
-> to. Each checksum block would contain header including checksum of th=
-e
-> checksum block.
->=20
-> We still have unused 4 Bytes in the ext4_group_desc structure, so sto=
-ring
-> a block number for the checksum table should not be a problem.
+Signed-off-by: Andreas Dilger <andreas.dilger@intel.com>
+---
+ .gitignore                |    8 ++++++++
+ lib/blkid/save.c          |    2 +-
+ lib/ext2fs/alloc.c        |    2 +-
+ lib/ext2fs/blkmap64_rb.c  |    5 +----
+ lib/ext2fs/csum.c         |    1 -
+ lib/ext2fs/gen_bitmap64.c |    2 --
+ misc/mk_hugefiles.c       |    2 +-
+ misc/mke2fs.c             |    3 +--
+ misc/tune2fs.c            |    2 +-
+ 9 files changed, 14 insertions(+), 13 deletions(-)
 
-What if you have a 64bit filesystem?  Do you have some strategy in mind=
- to work
-around that?  What about the snapshot exclusion bitmap field?  Afaict t=
-hat
-never went in, so perhaps that field could be reused?
+diff --git a/.gitignore b/.gitignore
+index b243fc2..1024cc3 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -8,9 +8,11 @@ FILES
+ patches
+ Makefile
+ *.bak
++*.diff
+ *.dSYM
+ *.o
+ *.orig
++*.patch
+ *.pc
+ *.rej
+ *.swp
+@@ -22,6 +24,7 @@ config.status
+ debugfs/debug_cmds.c
+ debugfs/debugfs
+ debugfs/debugfs.8
++debugfs/extent_cmds.c
+ doc/libext2fs.aux
+ doc/libext2fs.cp
+ doc/libext2fs.dvi
+@@ -159,9 +162,11 @@ misc/e2undo
+ misc/e2undo.8
+ misc/e4defrag
+ misc/e4defrag.8
++misc/ext4.5
+ misc/filefrag
+ misc/filefrag.8
+ misc/findfs.8
++misc/findsuper
+ misc/fsck
+ misc/fsck.8
+ misc/logsave
+@@ -195,6 +200,7 @@ tags
+ TAGS
+ tests/progs/test_icount
+ tests/progs/test_icount_cmds.c
++tests/progs/crcsum
+ tests/*.ok
+ tests/*.failed
+ tests/*.log
+@@ -202,7 +208,9 @@ tests/*.tmp
+ tests/mke2fs.conf
+ tests/test_script
+ tests/test_one
++util/dirpaths.h
+ util/gen-tarball
++util/install-symlink
+ util/subst
+ util/subst.conf
+ Meta
+diff --git a/lib/blkid/save.c b/lib/blkid/save.c
+index a6538db..762ffef 100644
+--- a/lib/blkid/save.c
++++ b/lib/blkid/save.c
+@@ -146,7 +146,7 @@ int blkid_flush_cache(blkid_cache cache)
+ 			if (backup) {
+ 				sprintf(backup, "%s.old", filename);
+ 				unlink(backup);
+-				link(filename, backup);
++				(void) link(filename, backup);
+ 				free(backup);
+ 			}
+ 			if (rename(opened, filename) < 0)
+diff --git a/lib/ext2fs/alloc.c b/lib/ext2fs/alloc.c
+index 7dcfd3c..0acbc4e 100644
+--- a/lib/ext2fs/alloc.c
++++ b/lib/ext2fs/alloc.c
+@@ -138,7 +138,7 @@ errcode_t ext2fs_new_block2(ext2_filsys fs, blk64_t goal,
+ 			   ext2fs_block_bitmap map, blk64_t *ret)
+ {
+ 	errcode_t retval;
+-	blk64_t	b;
++	blk64_t	b = 0;
+ 
+ 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
+ 
+diff --git a/lib/ext2fs/blkmap64_rb.c b/lib/ext2fs/blkmap64_rb.c
+index a484751..4dcb03f 100644
+--- a/lib/ext2fs/blkmap64_rb.c
++++ b/lib/ext2fs/blkmap64_rb.c
+@@ -813,10 +813,8 @@ static errcode_t rb_find_first_zero(ext2fs_generic_bitmap bitmap,
+ 				   __u64 start, __u64 end, __u64 *out)
+ {
+ 	struct rb_node *parent = NULL, **n;
+-	struct rb_node *node, *next;
+ 	struct ext2fs_rb_private *bp;
+ 	struct bmap_rb_extent *ext;
+-	int retval = 1;
+ 
+ 	bp = (struct ext2fs_rb_private *) bitmap->private;
+ 	n = &bp->root.rb_node;
+@@ -851,10 +849,9 @@ static errcode_t rb_find_first_set(ext2fs_generic_bitmap bitmap,
+ 				   __u64 start, __u64 end, __u64 *out)
+ {
+ 	struct rb_node *parent = NULL, **n;
+-	struct rb_node *node, *next;
++	struct rb_node *node;
+ 	struct ext2fs_rb_private *bp;
+ 	struct bmap_rb_extent *ext;
+-	int retval = 1;
+ 
+ 	bp = (struct ext2fs_rb_private *) bitmap->private;
+ 	n = &bp->root.rb_node;
+diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
+index 6989880..669f806 100644
+--- a/lib/ext2fs/csum.c
++++ b/lib/ext2fs/csum.c
+@@ -35,7 +35,6 @@ __u16 ext2fs_group_desc_csum(ext2_filsys fs, dgrp_t group)
+ 	struct ext2_group_desc *desc = ext2fs_group_desc(fs, fs->group_desc,
+ 							 group);
+ 	size_t size = EXT2_DESC_SIZE(fs->super);
+-	size_t offset;
+ 	__u16 crc = 0;
+ 
+ 	if (fs->super->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_GDT_CSUM) {
+diff --git a/lib/ext2fs/gen_bitmap64.c b/lib/ext2fs/gen_bitmap64.c
+index 9615f1e..af55097 100644
+--- a/lib/ext2fs/gen_bitmap64.c
++++ b/lib/ext2fs/gen_bitmap64.c
+@@ -800,7 +800,6 @@ errcode_t ext2fs_convert_subcluster_bitmap(ext2_filsys fs,
+ errcode_t ext2fs_find_first_zero_generic_bmap(ext2fs_generic_bitmap bitmap,
+ 					      __u64 start, __u64 end, __u64 *out)
+ {
+-	int b;
+ 	__u64 cstart, cend, cout;
+ 	errcode_t retval;
+ 
+@@ -855,7 +854,6 @@ errcode_t ext2fs_find_first_zero_generic_bmap(ext2fs_generic_bitmap bitmap,
+ errcode_t ext2fs_find_first_set_generic_bmap(ext2fs_generic_bitmap bitmap,
+ 					     __u64 start, __u64 end, __u64 *out)
+ {
+-	int b;
+ 	__u64 cstart, cend, cout;
+ 	errcode_t retval;
+ 
+diff --git a/misc/mk_hugefiles.c b/misc/mk_hugefiles.c
+index d4dadc4..b7a9840 100644
+--- a/misc/mk_hugefiles.c
++++ b/misc/mk_hugefiles.c
+@@ -119,7 +119,7 @@ static errcode_t mk_hugefile(ext2_filsys fs, blk64_t num,
+ 
+ {
+ 	errcode_t		retval;
+-	blk64_t			lblk, bend;
++	blk64_t			lblk, bend = 0;
+ 	__u64			size;
+ 	blk64_t			left;
+ 	blk64_t			count = 0;
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index abc8bd0..176dc40 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -115,7 +115,6 @@ char **fs_types;
+ static profile_t	profile;
+ 
+ static int sys_page_size = 4096;
+-static int linux_version_code = 0;
+ 
+ static void usage(void)
+ {
+@@ -2489,7 +2488,7 @@ int main (int argc, char *argv[])
+ 	errcode_t	retval = 0;
+ 	ext2_filsys	fs;
+ 	badblocks_list	bb_list = 0;
+-	unsigned int	journal_blocks;
++	unsigned int	journal_blocks = 0;
+ 	unsigned int	i, checkinterval;
+ 	int		max_mnt_count;
+ 	int		val, hash_alg;
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index d35d54b..3359c4a 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -2052,7 +2052,7 @@ retry_open:
+ 		printf(_("Setting reserved blocks gid to %lu\n"), resgid);
+ 	}
+ 	if (i_flag) {
+-		if (interval >= (1ULL << 32)) {
++		if ((unsigned long long)interval >= (1ULL << 32)) {
+ 			com_err(program_name, 0,
+ 				_("interval between checks is too big (%lu)"),
+ 				interval);
+-- 
+1.7.3.4
 
-> Finding a checksum location of each block in the block group should b=
-e done
-> in O(1) time, which is very good. Other advantage is a locality with =
-the
-> data blocks in question since both resides in the same block group.
->=20
-> Big disadvantage is the fact that this solution is not very flexibile=
- which
-> comes from the fact that the location of "checksum table" is statical=
-ly
-> located at a precise position in the file system at mkfs time.
-
-Having a big dumb block of checksums would be easier to prefetch from d=
-isk for
-fsck and kernel driver, rather than having to dig through some tree str=
-ucture.
-(More on that below)
-
-> There are also other problems we should be concerned with. Ext4 file =
-system
-> does have support for metadata checksumming so all the metadata does =
-have
-> its own checksum. While we can avoid unnecessarily checksuming inodes=
-, group
-> descriptors and basicall all statically positioned metadata, we still=
- have
-> dynamically allocated metadata blocks such as extent blocks. These bl=
-ock
-> do not have to be checksummed but we would still have space reserved =
-in the
-> checksum table.
-
-Don't forget directory blocks--they (should) have checksums too, so you=
- can
-skip those.
-
-I wonder, could we use this table to store backrefs too?  It would make=
- the
-table considerably larger, but then we could (potentially) reconstruct =
-broken
-extent trees.
-
-> I think that we should be able to make this feature without introduci=
-ng any
-> incompatibility, but it would make more sense to make it RO compatibl=
-e only
-> so we can preserve the checksums. But that's up to the implementation=
-=2E
-
-I think you'd have to have it be rocompat, otherwise you could write da=
-ta with
-an old kernel and a new kernel would freak out.
-
-> b) Special inode
-> ----------------
->=20
-> This is very "lazy" solution and should not be difficult to implement=
-=2E The
-> idea is to have a special inode which would store the checksum blocks=
- in
-> it's own data blocks.
->=20
-> The big disadvantage is that we would have to walk the extent tree tw=
-ice for
-> each read, or write. There is not much to say about this solution oth=
-er than
-> again we can make this feature without introducing any incompatibilit=
-y, but
-> it would probably make more sense to make it RO compatible to preserv=
-e the
-> checksums.
->=20
-> c) Per inode checksum b-tree
-> ----------------------------
->=20
-> See d)
->=20
-> d) Per block group checksum b-tree
-> ----------------------------------
->=20
-> Those two schemes are very similar in that both would store checksum =
-in a
-> b-tree with a block number (we could use logical block number in per =
-inode
-> tree) as a key. Obviously finding a checksum would be in logarithmic =
-time,
-> while the size of the tree would be possibly much bigger in the per-i=
-node
-> case. In per block group case we will have much smaller boundary of
-> number of checksum blocks stored.
->=20
-> This and the fact that we would have to have at least one checksum bl=
-ock
-> per inode (which would be wasteful in the case of small files) is mak=
-ing per
-> block group solution much more viable. However the major disadvantage=
- of
-> per block group solution is that the checksum tree would create a sou=
-rce of
-> contention when reading/writing from/to a different inodes in the sam=
-e block
-> group. This might be mitigated by having a worker thread per a range =
-of block
-> groups - but it might still be a bottleneck.
->=20
-> Again we still have 4 Bytes in ext4_group_desc to store the pointer t=
-o the
-> root of the tree. While the ext4_inode structure have 4Bytes of
-> i_obso_faddr but that's not enough. So we would have to figure out wh=
-ere to
-> store it - we could possibly abuse i_block to store it along with the=
- extent
-> nodes.
-
-I think(?) your purpose in using either a special inode or a btree to s=
-tore the
-checksums is to avoid wasting checksum blocks on things that are alread=
-y
-checksummed?  I'm not sure that we'd save enough space to justify the e=
-xtra
-processing.
-
---D
-
-> File system scrub
-> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
->=20
-> While this is certainly a feature which we want to have in both users=
-pace
-> e2fsprogs and kernel I do not have any design notes at this stage.
->=20
->=20
->=20
->=20
-> I am sure that there are other possibilities and variants of those de=
-sign
-> ideas, but I think that this should be enough to have a discussion st=
-arted.
-> As I is not I think that the most viable option is d) that is, per bl=
-ock
-> group checksum tree, which gives us enough flexibility while not bein=
-g too
-> complex solution.
->=20
-> I'll try to update this description as it will be getting more concre=
-te
-> structure and I hope that we will have some productive discussion abo=
-ut
-> this at LSF.
->=20
-> Thanks!
-> -Lukas
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
