@@ -1,82 +1,162 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 71641] Unreasonable performance degradation in ext4 with full
- data journaling
-Date: Fri, 21 Mar 2014 08:48:34 +0000
-Message-ID: <bug-71641-13602-WpDXOgp3Ot@https.bugzilla.kernel.org/>
-References: <bug-71641-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+From: Andreas Dilger <andreas.dilger@intel.com>
+Subject: [PATCH] tests: fix resize test tmpfs max-file-size checking
+Date: Fri, 21 Mar 2014 03:51:54 -0600
+Message-ID: <1395395514-5548-1-git-send-email-andreas.dilger@intel.com>
+Cc: linux-ext4@vger.kernel.org,
+	Andreas Dilger <andreas.dilger@intel.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:50114 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754089AbaCUIsi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 21 Mar 2014 04:48:38 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 05E1B202B8
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Mar 2014 08:48:37 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 12863202A1
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Mar 2014 08:48:36 +0000 (UTC)
-In-Reply-To: <bug-71641-13602@https.bugzilla.kernel.org/>
+Received: from smtp-out-04.shaw.ca ([64.59.134.12]:63489 "EHLO
+	smtp-out-04.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759875AbaCUJv4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Mar 2014 05:51:56 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=71641
+Old distros may not have the "truncate" tool, so use "dd" instead.
 
-Chia-Hung Chang <fredchang.tc@gmail.com> changed:
+If tmpfs cannot handle a 2GB temp file (e.g. old RHEL5 and SLES 11
+kernels) then skip the test instead of failing it.  If this fails,
+try to report better error messages instead of failing silently.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-     Kernel Version|3.4.6                       |3.11
+Signed-off-by: Andreas Dilger <andreas.dilger@intel.com>
+---
+ tests/r_1024_small_bg/script       |    9 +++++++--
+ tests/r_64bit_big_expand/script    |    1 +
+ tests/r_bigalloc_big_expand/script |    1 +
+ tests/r_ext4_big_expand/script     |    1 +
+ tests/r_ext4_small_bg/script       |    9 +++++++--
+ tests/scripts/resize_test          |   17 ++++++++++++++---
+ 6 files changed, 31 insertions(+), 7 deletions(-)
 
---- Comment #5 from Chia-Hung Chang <fredchang.tc@gmail.com> ---
-(In reply to Theodore Tso from comment #4)
-> Could you retry your measurements using the latest kernel?  At least 3.11,
-> and preferably 3.13.
-> 
-> We significantly optimized the write path for the nodelalloc case in 3.11. 
-> That should fix the average size being so small for the nodelalloc case:
-> 
-> 
-
-Thanks for your advice. The kernel version is changed from 3.4 to 3.11.  The
-write throughput of data=journal is still only 40% of data=order. Do you think
-what may be wrong in this mode ?
----------------------
-
-Test environment--  
-CPU: Intel(R) Xeon(R) CPU E3-1225 v3 @ 3.20GHz
-RAM:8GB
-Filesystem:Ext4
-Linux version: ubuntu-saucy with kernel 3.11
-
-128MB ramdisk is used as journaling area
-
-RAID0 are composed of 6 x 1TB HD
-Command: time dd if=/dev/zero of= Write_File bs=1M count=5120
-
-
-data=journal               -> 398MB/s
-data=ordered               ->1.1GB/s
-data=ordered ,nodelalloc   -> 1G/s
-
-blktrace results can be downloaded in
-https://dl.dropboxusercontent.com/u/32959539/blktrace_with_3_11.7z
-
-btt results can be downloaded in
-https://dl.dropboxusercontent.com/u/32959539/BTT_with_3_11.7z
-
-
-For linux 3.4, the write throughputs are  
-
-data=journal               -> 397MB/s
-data=ordered               -> 937MB/s
-data=ordered ,nodelalloc   -> 863MB/s*
-
-*PS. the previous data is mistaken, please use this version.
-
+diff --git a/tests/r_1024_small_bg/script b/tests/r_1024_small_bg/script
+index fafcf91..f86537e 100644
+--- a/tests/r_1024_small_bg/script
++++ b/tests/r_1024_small_bg/script
+@@ -10,12 +10,17 @@ E2FSCK=../e2fsck/e2fsck
+ 
+ . $cmd_dir/scripts/resize_test
+ 
+-if resize_test
+-then
++resize_test
++RC=$?
++if [ $RC -eq 0 ]; then
+ 	echo "$test_name: $test_description: ok"
+ 	touch $test_name.ok
++elif [ $RC -eq 111 ]; then
++	echo "$test_name: $test_description: skipped"
++	touch $test_name.ok
+ else
+ 	echo "$test_name: $test_description: failed"
++ 	ln $LOG $test_name.failed
+ 	touch $test_name.failed
+ fi
+ 
+diff --git a/tests/r_64bit_big_expand/script b/tests/r_64bit_big_expand/script
+index 51f36e9..2a8fef0 100644
+--- a/tests/r_64bit_big_expand/script
++++ b/tests/r_64bit_big_expand/script
+@@ -20,6 +20,7 @@ elif [ $RC -eq 111 ]; then
+ 	touch $test_name.ok
+ else
+ 	echo "$test_name: $test_description: failed"
++	ln $LOG $test_name.failed
+ 	touch $test_name.failed
+ fi
+ 
+diff --git a/tests/r_bigalloc_big_expand/script b/tests/r_bigalloc_big_expand/script
+index 56c8c15..2f28c67 100644
+--- a/tests/r_bigalloc_big_expand/script
++++ b/tests/r_bigalloc_big_expand/script
+@@ -20,6 +20,7 @@ elif [ $RC -eq 111 ]; then
+ 	touch $test_name.ok
+ else
+ 	echo "$test_name: $test_description: failed"
++	ln $LOG $test_name.failed
+ 	touch $test_name.failed
+ fi
+ 
+diff --git a/tests/r_ext4_big_expand/script b/tests/r_ext4_big_expand/script
+index a4f8fe6..3b969d2 100644
+--- a/tests/r_ext4_big_expand/script
++++ b/tests/r_ext4_big_expand/script
+@@ -20,6 +20,7 @@ elif [ $RC -eq 111 ]; then
+ 	touch $test_name.ok
+ else
+ 	echo "$test_name: $test_description: failed"
++	ln $LOG $test_name.failed
+ 	touch $test_name.failed
+ fi
+ 
+diff --git a/tests/r_ext4_small_bg/script b/tests/r_ext4_small_bg/script
+index 553cbd8..dafb008 100644
+--- a/tests/r_ext4_small_bg/script
++++ b/tests/r_ext4_small_bg/script
+@@ -10,12 +10,17 @@ E2FSCK=../e2fsck/e2fsck
+ 
+ . $cmd_dir/scripts/resize_test
+ 
+-if resize_test
+-then
++resize_test
++RC=$?
++if [ $RC -eq 0 ]; then
+ 	echo "$test_name: $test_description: ok"
+ 	touch $test_name.ok
++elif [ $RC -eq 111 ]; then
++	echo "$test_name: $test_description: skipped"
++	touch $test_name.ok
+ else
+ 	echo "$test_name: $test_description: failed"
++	ln $LOG $test_name.failed
+ 	touch $test_name.failed
+ fi
+ 
+diff --git a/tests/scripts/resize_test b/tests/scripts/resize_test
+index 6a8b0e9..b09731c 100755
+--- a/tests/scripts/resize_test
++++ b/tests/scripts/resize_test
+@@ -1,25 +1,36 @@
+ #!/bin/sh
+ 
++# old distros are missing "truncate", emulate it with "dd"
++truncate()
++{
++	[ "$1" = "-s" ] && size=$2 && shift 2
++
++	dd if=/dev/zero of=$1 bs=1 count=0 seek=$size >> $LOG 2>&1
++}
++
+ resize_test () {
+ 
++echo $test_description starting > $LOG
+ rm -f $TMPFILE
+ touch $TMPFILE
+ 
+ # Verify that the $TMP filesystem handles $SIZE_2 sparse files.
+ # If that fails, try the local filesystem instead.
+ if truncate -s $SIZE_2 $TMPFILE 2> /dev/null; then
+-        > $TMPFILE
++	echo "using $TMPFILE" >> $LOG
+ else
+ 	rm $TMPFILE
+ 	export TMPFILE=$(TMPDIR=. mktemp -t $test_name.XXXXXX.tmp)
+ 	touch $TMPFILE
+-	if ! truncate -s $SIZE_2 $TMPFILE 2> /dev/null; then
++	echo "using $TMPFILE" >> $LOG
++	if ! truncate -s $SIZE_2 $TMPFILE >> $LOG 2>&1; then
+ 		rm $TMPFILE
+ 		return 111
+ 	fi
+ fi
++> $TMPFILE
+ 
+-echo $MKE2FS $FEATURES -qF $TMPFILE $SIZE_1 > $LOG
++echo $MKE2FS $FEATURES -qF $TMPFILE $SIZE_1 >> $LOG
+ $MKE2FS $FEATURES -qF $TMPFILE $SIZE_1 >> $LOG
+ 
+ OUT_TMP=$(mktemp -t csum-tmp.XXXXXX)
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+1.7.3.4
+
