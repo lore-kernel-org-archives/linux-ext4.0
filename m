@@ -1,45 +1,68 @@
-From: Samuel Thibault <sthibault@debian.org>
-Subject: Bug#738758: [PATCH] ext4: optimize Hurd tests when reading/writing inodes
-Date: Fri, 21 Mar 2014 18:11:14 +0100
-Message-ID: <20140321171114.GA5601@type.youpi.perso.aquilenet.fr>
-References: <20140321143927.GA31179@thunk.org>
- <1395420533-20103-1-git-send-email-tytso@mit.edu>
-Reply-To: Samuel Thibault <sthibault@debian.org>, 738758@bugs.debian.org
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH] e2fsprogs: misc/mke2fs.c: return error when failed to
+ populate fs
+Date: Sat, 22 Mar 2014 12:11:21 +0800
+Message-ID: <20140322041121.GA22353@gmail.com>
+References: <1395295766-10637-1-git-send-email-liezhi.yang@windriver.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: quoted-printable
-To: 738758@bugs.debian.org,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <bounce-debian-bugs-dist=glddb-debian-bugs-dist=m.gmane.org@lists.debian.org>
-Resent-Message-ID: <handler.738758.B738758.139542188531899@bugs.debian.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Robert Yang <liezhi.yang@windriver.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pb0-f51.google.com ([209.85.160.51]:36797 "EHLO
+	mail-pb0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750757AbaCVEFL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 22 Mar 2014 00:05:11 -0400
+Received: by mail-pb0-f51.google.com with SMTP id uo5so3202912pbc.38
+        for <linux-ext4@vger.kernel.org>; Fri, 21 Mar 2014 21:05:11 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <1395420533-20103-1-git-send-email-tytso@mit.edu>
-List-URL: <http://lists.debian.org/debian-bugs-dist/>
-List-Post: <mailto:debian-bugs-dist@lists.debian.org>
-List-Help: <mailto:debian-bugs-dist-request@lists.debian.org?subject=help>
-List-Subscribe: <mailto:debian-bugs-dist-request@lists.debian.org?subject=subscribe>
-List-Unsubscribe: <mailto:debian-bugs-dist-request@lists.debian.org?subject=unsubscribe>
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1395295766-10637-1-git-send-email-liezhi.yang@windriver.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Ts'o, le Fri 21 Mar 2014 12:48:53 -0400, a =E9crit :
-> Also, add a sanity check to make sure the 64-bit feature is not set
-> for Hurd file systems, since i_file_acl_high conflicts with a
-> Hurd-specific field. This is not a big deal, since Hurd doesn't
-> support file systems larger than 1GB[1] anyway.
+On Thu, Mar 20, 2014 at 02:09:26PM +0800, Robert Yang wrote:
+> We need return retval when "mke2fs -d" failed, otherwise the "$?" would
+> be 0 which is misleading.
+> 
+> Signed-off-by: Robert Yang <liezhi.yang@windriver.com>
+> ---
+>  misc/mke2fs.c | 7 ++++---
+>  1 file changed, 4 insertions(+), 3 deletions(-)
+> 
+> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+> index aecd5d5..f659e6f 100644
+> --- a/misc/mke2fs.c
+> +++ b/misc/mke2fs.c
+> @@ -2990,10 +2990,11 @@ no_journal:
+>  
+>  		retval = populate_fs(fs, EXT2_ROOT_INO, root_dir,
+>  				     EXT2_ROOT_INO);
+> -		if (retval)
+> +		if (retval) {
+>  			fprintf(stderr, "%s",
+> -				_("\nError while populating file system"));
+                        ^^^
+Using com_err() is sane.  After we get an error, the user can know which
+error has occured.
+> -		else if (!quiet)
+> +				_("\nError while populating file system\n"));
+> +			return retval;
+                        ^^^^
+Maybe exit(1) is better.  We just need to notify the user that an error
+has occured.  An internal error of libext2fs should not be returned
+to user.
 
-Err, it does. We regularly use volumes with dozens of GiB.
+Regards,
+                                                - Zheng
 
-> [1] http://walfield.org/pub/people/neal/papers/hurd-faq/FAQ.en.html#q2-=
-6
-
-That faq is very largely outdated.  See the official faq on=20
-
-http://www.gnu.org/software/hurd/faq.html
-
-Samuel
-
-
---=20
-To UNSUBSCRIBE, email to debian-bugs-dist-REQUEST@lists.debian.org
-with a subject of "unsubscribe". Trouble? Contact listmaster@lists.debian=
-.org
+> +		} else if (!quiet)
+>  			printf("%s", _("done\n"));
+>  	}
+>  
+> -- 
+> 1.8.3.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
