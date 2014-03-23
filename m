@@ -1,145 +1,117 @@
-From: Thomas Gleixner <tglx@linutronix.de>
-Subject: Re: Consistent kernel oops with 3.11.10 & 3.12.9 on Haswell
- CPUs...
-Date: Sat, 22 Mar 2014 14:18:39 +0100 (CET)
-Message-ID: <alpine.DEB.2.02.1403221415380.18573@ionos.tec.linutronix.de>
-References: <20140318184909.GA26255@ofan> <Pine.LNX.4.64.1403192239560.5202@axis700.grange> <20140322123706.GE12444@ofan>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 60788] xfstest generic/068 failure - kernel BUG at
+ fs/buffer.c:3005!
+Date: Sun, 23 Mar 2014 11:39:47 +0000
+Message-ID: <bug-60788-13602-qXz9HbPb4d@https.bugzilla.kernel.org/>
+References: <bug-60788-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323329-202610374-1395494320=:18573"
-Cc: Guennadi Liakhovetski <g.liakhovetski@gmx.de>,
-	LKML <linux-kernel@vger.kernel.org>,
-	Ingo Molnar <mingo@redhat.com>,
-	"H. Peter Anvin" <hpa@zytor.com>, Theodore Ts'o <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org, Jens Axboe <axboe@kernel.dk>
-To: dafreedm@gmail.com
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.linutronix.de ([62.245.132.108]:55170 "EHLO
-	Galois.linutronix.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750782AbaCVNSh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 22 Mar 2014 09:18:37 -0400
-In-Reply-To: <20140322123706.GE12444@ofan>
+Received: from mail.kernel.org ([198.145.19.201]:55168 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750763AbaCWLjv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 23 Mar 2014 07:39:51 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 7B1CD20303
+	for <linux-ext4@vger.kernel.org>; Sun, 23 Mar 2014 11:39:50 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id BF8E9202F0
+	for <linux-ext4@vger.kernel.org>; Sun, 23 Mar 2014 11:39:47 +0000 (UTC)
+In-Reply-To: <bug-60788-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+https://bugzilla.kernel.org/show_bug.cgi?id=60788
 
---8323329-202610374-1395494320=:18573
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Content-Transfer-Encoding: 8BIT
+Ognian Tenchev <drJeckyll@Jeckyll.net> changed:
 
-On Sat, 22 Mar 2014, dafreedm@gmail.com wrote:
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |drJeckyll@Jeckyll.net
 
-> Ahh.  Good call.  I wasn't sophisticated enough with these things to
-> ascertain the difference.  I knew to avoid reporting oops/panics with
-> kernels tainted with out-of-tree (non-free) modules, but I guess I
-> grabbed the wrong lines from the dmesg (namely, subsequent oops after
-> the initial one).  Here's a more recent kernel oops (from this
-> morning) --- it's the first oops after a fresh reboot:
+--- Comment #1 from Ognian Tenchev <drJeckyll@Jeckyll.net> ---
+uname -a
+Linux storage 3.13.6-gentoo-dr #3 SMP Thu Mar 13 19:19:40 EET 2014 x86_64 AMD
+Phenom(tm) II X6 1090T Processor AuthenticAMD GNU/Linux
 
-Cc'ing ext4 and block folks.
- 
-> 
-> [33488.170415] general protection fault: 0000 [#1] SMP 
-> [33488.171351] Modules linked in: dm_crypt dm_mod parport_pc ppdev lp parport bnep rfcomm bluetooth rfkill cpufreq_stats cpufreq_userspace cpufreq_conservative cpufreq_powersave nfsd auth_rpcgss oid_registry nfs_acl nfs lockd fscache sunrpc netconsole configfs loop raid1 md_mod snd_hda_codec_realtek snd_hda_codec_hdmi hid_kensington x86_pkg_temp_thermal coretemp joydev kvm_intel hid_generic kvm crct10dif_pclmul snd_hda_intel crc32_pclmul crc32c_intel snd_hda_codec usbhid snd_hwdep hid ghash_clmulni_intel snd_pcm iTCO_wdt iTCO_vendor_support snd_page_alloc aesni_intel i915 snd_seq aes_x86_64 snd_seq_device snd_timer lrw evdev gf128mul glue_helper drm_kms_helper ablk_helper snd psmouse cryptd drm i2c_i801 pcspkr soundcore serio_raw lpc_ich mei_me mei mfd_core video button processor ext4 cr
- c16 mbcache jbd2 sg sd_mod crc_t10dif crct10dif_common ahci libahci xhci_hcd ehci_pci ehci_hcd e1000e libata igb scsi_mod i2c_algo_bit i2c_core dca ptp pps_core fan usbcore usb_common thermal thermal_sys
-> [33488.177102] CPU: 0 PID: 340 Comm: jbd2/sdd2-8 Not tainted 3.12-0.bpo.1-amd64 #1 Debian 3.12.9-1~bpo70+1
-> [33488.178100] Hardware name: Supermicro X10SLQ/X10SLQ, BIOS 1.00 05/09/2013
-> [33488.179095] task: ffff88081b179080 ti: ffff88081b3ee000 task.ti: ffff88081b3ee000
-> [33488.180102] RIP: 0010:[<ffffffff811b6b22>]  [<ffffffff811b6b22>] __getblk+0x52/0x2c0
-> [33488.181117] RSP: 0018:ffff88081b3efb78  EFLAGS: 00010282
-> [33488.182127] RAX: f7ff880037267140 RBX: 0000000000001000 RCX: 0000000000000000
-> [33488.183142] RDX: 00000000000001ff RSI: 000000000148b2ac RDI: 0000000000000000
-> [33488.184152] RBP: ffff88081b2a4800 R08: 0000000000000000 R09: ffff8807eccca628
-> [33488.185168] R10: 00000000000032ad R11: 0000000000000001 R12: 0000000000000000
-> [33488.186182] R13: ffff88081bcf67c0 R14: 00000000532d22fd R15: 000000000148b2ac
-> [33488.187194] FS:  0000000000000000(0000) GS:ffff88083fa00000(0000) knlGS:0000000000000000
-> [33488.188212] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> [33488.189228] CR2: ffffffffff600400 CR3: 000000000180c000 CR4: 00000000001407f0
-> [33488.190245] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> [33488.191268] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
-> [33488.192279] Stack:
-> [33488.193273]  0000000000000000 ffffffffa01ec1ba ffff88081b179080 ffff88081b2a4800
-> [33488.194276]  00000000000032ac 0000000000000000 ffff88081b2a4800 ffff88081b2a4800
-> [33488.195265]  ffff8807f36b4688 00000000532d22fd 00000000ffffffff ffffffffa01737d0
-> [33488.196246] Call Trace:
-> [33488.197222]  [<ffffffffa01ec1ba>] ? ext4_bmap+0x5a/0x110 [ext4]
-> [33488.198210]  [<ffffffffa01737d0>] ? jbd2_journal_get_descriptor_buffer+0x30/0x80 [jbd2]
-> [33488.199203]  [<ffffffff811b5100>] ? __wait_on_buffer+0x30/0x30
-> [33488.200196]  [<ffffffffa016aedd>] ? journal_submit_commit_record.isra.12+0x9d/0x200 [jbd2]
-> [33488.201193]  [<ffffffff811b5100>] ? __wait_on_buffer+0x30/0x30
-> [33488.202198]  [<ffffffffa016c1f4>] ? jbd2_journal_commit_transaction+0x11b4/0x18c0 [jbd2]
-> [33488.203211]  [<ffffffffa01706cc>] ? kjournald2+0xac/0x240 [jbd2]
-> [33488.204219]  [<ffffffff81082d20>] ? add_wait_queue+0x60/0x60
-> [33488.205226]  [<ffffffffa0170620>] ? commit_timeout+0x10/0x10 [jbd2]
-> [33488.206230]  [<ffffffff81082333>] ? kthread+0xb3/0xc0
-> [33488.207230]  [<ffffffff81082280>] ? flush_kthread_worker+0xa0/0xa0
-> [33488.208231]  [<ffffffff814cb70c>] ? ret_from_fork+0x7c/0xb0
-> [33488.209224]  [<ffffffff81082280>] ? flush_kthread_worker+0xa0/0xa0
-> [33488.210205] Code: 12 48 83 c4 28 4c 89 e0 5b 5d 41 5c 41 5d 41 5e 41 5f c3 49 8b 85 98 00 00 00 ba ff 01 00 00 48 8b 80 58 03 00 00 48 85 c0 74 10 <0f> b7 80 ac 05 00 00 66 85 c0 0f 85 cd 01 00 00 85 da 0f 85 d2 
-> [33488.212277] RIP  [<ffffffff811b6b22>] __getblk+0x52/0x2c0
-> [33488.213276]  RSP <ffff88081b3efb78>
-> [33488.370823] ---[ end trace cf90c18d45ff9570 ]---
-> 
-> 
-> Thoughts?
-> 
-> Ingo, Peter, Thomas, any further ideas, please?
-> 
-> 
-> > > Though at times the oops occur even when the system is largely idle,
-> > > they seem to be exacerbated by md5sum'ing all files on a large
-> > > partition as part of archive verification --- say 1 million files
-> > > corresponding to 1 TByte of storage.  If I perform this repeatedly,
-> > > the machines seem to lock up about once a week.  Strangely, other
-> > > typical high-load/high-stress scenarios don't seem to provoke the oops
-> > > nearly so much (see below).
-> > > 
-> > > Naturally, such md5sum usage is putting heavy load on the processor,
-> > > memory, and even power supply, and my initial inclination is generally
-> > > that I must have some faulty components.  Even after otherwise
-> > > ambiguous diagnostics (described below), I'm highly skeptical that
-> > > there's anything here inherent to the md5sum codebase, in particular.
-> > > However, I have started to wonder whether this might be a kernel
-> > > regression...
-> > > 
-> > > For reference, here's my setup:
-> > > 
-> > >   Mainboard:  Supermicro X10SLQ
-> > >   Processor:  (Single-Socket) Intel Haswell i7-4770S (65W max TDP)
-> > >   Memory:     32GB Kingston DDR3 RAM (4x KVR16N11/8)
-> > >   PSU:        SeaSonic SS-400FL2 400W PSU
-> > >   O/S:        Debian v7.4 Wheezy (amd64)
-> > >   Filesystem: Ext4 (with default settings upon creation) over LUKS
-> > >   Kernel:     Using both:
-> > >                 Linux 3.11.10 ('3.11-0.bpo.2-amd64' via wheezy-backports)
-> > >                 Linux 3.12.9 ('3.12-0.bpo.2-amd64' via wheezy-backports)
-> > > 
-> > > To summarize where I am now: I've been very extensively testing all of
-> > > the likely culprits among hardware components on both of my servers
-> > > --- running memtest86 upon boot for 3+ days, memtester in userspace
-> > > for 24 hours, repeated kernel compiles with various '-j' values, and
-> > > the 'stress' and 'stressapptest' load generators (see [2] for full
-> > > details) --- and I have never seen even a hiccup in server operation
-> > > under such "artificial" environments --- however, it consistently
-> > > occurs with heavy md5sum operation, and randomly at other times.
-> > > 
-> > > At least from my past experiences (with scientific HPC clusters), such
-> > > diagnostic results would normally seem to largely rule out most
-> > > problems with the processor, memory, mainboard subsystems.  The PSU is
-> > > often a little harder to rule out, but the 400W Seasonic PSUs are
-> > > rated at 2--3 times the wattage I should really need, even under peak
-> > > load (given each server's single-socket CPU is 65W at max TDP, there
-> > > are only a few HDs and one SSD, and no discrete graphics at all, of
-> > > course).
-> > > 
-> > > I'm further surprised to see the exact same kernel-crash behavior on
-> > > two separate, but identical, servers, which leads me to wonder if
-> > > there's possibly some regression between the hardware (given that it's
-> > > relatively new Haswell microcode / silicon) and the (kernel?)
-> > > software.
-> > > 
-> > > Any thoughts on what might be occurring here?  Or what I should focus
-> > > on?  Thanks in advance.
-> 
---8323329-202610374-1395494320=:18573--
+[Wed Mar 19 01:50:22 2014] ------------[ cut here ]------------
+[Wed Mar 19 01:50:22 2014] kernel BUG at fs/buffer.c:3350!
+[Wed Mar 19 01:50:22 2014] invalid opcode: 0000 [#1] SMP 
+[Wed Mar 19 01:50:22 2014] Modules linked in: nfsd auth_rpcgss oid_registry
+exportfs nfs_acl lockd sunrpc fuse bridge stp llc iptable_filter xt_mark
+iptable_mangle ipt_MASQUERADE xt_nat xt_tcpudp ipv6 iptable_nat
+nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack ip_tables
+x_tables snd_pcm_oss snd_mixer_oss saa7134_alsa tda827x tda8290 tuner saa7134
+tveeprom videobuf_dma_sg videobuf_core v4l2_common videodev igb ptp pps_core
+i2c_algo_bit virtio_balloon virtio_pci virtio_ring vhost_net vhost virtio
+thermal fan cpufreq_userspace cpufreq_powersave cpufreq_ondemand
+cpufreq_conservative cpufreq_stats it87 hwmon_vid hwmon tun usbhid kvm_amd kvm
+sr_mod cdrom snd_hda_intel snd_ctxfi snd_hda_codec snd_pcm e100 microcode
+snd_page_alloc snd_timer ohci_pci ehci_pci ohci_hcd ehci_hcd acpi_cpufreq snd
+usbcore r8169
+[Wed Mar 19 01:50:22 2014]  soundcore processor mii usb_common
+[Wed Mar 19 01:50:22 2014] CPU: 0 PID: 443 Comm: kswapd0 Not tainted
+3.13.6-gentoo-dr #3
+[Wed Mar 19 01:50:22 2014] Hardware name: Gigabyte Technology Co., Ltd.
+GA-880GA-UD3H/GA-880GA-UD3H, BIOS F7 11/24/2010
+[Wed Mar 19 01:50:22 2014] task: ffff88031194b700 ti: ffff8803117e0000 task.ti:
+ffff8803117e0000
+[Wed Mar 19 01:50:22 2014] RIP: 0010:[<ffffffff8110e3dc>]  [<ffffffff8110e3dc>]
+free_buffer_head+0xd/0x29
+[Wed Mar 19 01:50:22 2014] RSP: 0018:ffff8803117e1aa8  EFLAGS: 00010287
+[Wed Mar 19 01:50:22 2014] RAX: ffff880168843800 RBX: ffff8801688437b8 RCX:
+0000000000000000
+[Wed Mar 19 01:50:22 2014] RDX: 0000000000000000 RSI: ffff8801688437b8 RDI:
+ffff8801688437b8
+[Wed Mar 19 01:50:22 2014] RBP: ffff8803132788b8 R08: 0000000000000030 R09:
+000000020bb750c0
+[Wed Mar 19 01:50:22 2014] R10: ffffea000bb750c0 R11: ffff88031fffb078 R12:
+0000000000000001
+[Wed Mar 19 01:50:22 2014] R13: ffffea000b1f1c60 R14: 0000000000000001 R15:
+0000000000000001
+[Wed Mar 19 01:50:22 2014] FS:  00007f0a03c61700(0000)
+GS:ffff88031fc00000(0000) knlGS:0000000000000000
+[Wed Mar 19 01:50:22 2014] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+[Wed Mar 19 01:50:22 2014] CR2: 0000000000442d40 CR3: 000000031130a000 CR4:
+00000000000007b0
+[Wed Mar 19 01:50:22 2014] Stack:
+[Wed Mar 19 01:50:22 2014]  ffffffff8110e695 ffff8801688437b8 ffffea000b1f1c40
+ffff8803132788b8
+[Wed Mar 19 01:50:22 2014]  ffff8803117e1dd0 ffffffff810b8204 ffff8803117e1c50
+000000000000000e
+[Wed Mar 19 01:50:22 2014]  0000000000000000 0000000000000000 0000000000000000
+0000000000000000
+[Wed Mar 19 01:50:22 2014] Call Trace:
+[Wed Mar 19 01:50:22 2014]  [<ffffffff8110e695>] ?
+try_to_free_buffers+0x7e/0x92
+[Wed Mar 19 01:50:22 2014]  [<ffffffff810b8204>] ? shrink_page_list+0x646/0x879
+[Wed Mar 19 01:50:22 2014]  [<ffffffff810b8985>] ?
+shrink_inactive_list+0x24d/0x3e1
+[Wed Mar 19 01:50:22 2014]  [<ffffffff810b9115>] ? shrink_lruvec+0x34a/0x4b2
+[Wed Mar 19 01:50:22 2014]  [<ffffffff810eb8c1>] ? super_cache_count+0xa2/0xae
+[Wed Mar 19 01:50:22 2014]  [<ffffffff810b764d>] ? shrink_slab+0x2d2/0x2e6
+[Wed Mar 19 01:50:22 2014]  [<ffffffff810b764d>] ? shrink_slab+0x2d2/0x2e6
+[Wed Mar 19 01:50:22 2014]  [<ffffffff810b9b70>] ? balance_pgdat+0x28e/0x3cd
+[Wed Mar 19 01:50:22 2014]  [<ffffffff810b9f41>] ? kswapd+0x292/0x316
+[Wed Mar 19 01:50:22 2014]  [<ffffffff810598bf>] ? __wake_up_sync+0x7/0x7
+[Wed Mar 19 01:50:22 2014]  [<ffffffff810b9caf>] ? balance_pgdat+0x3cd/0x3cd
+[Wed Mar 19 01:50:22 2014]  [<ffffffff81046d51>] ? kthread+0xca/0xd2
+[Wed Mar 19 01:50:22 2014]  [<ffffffff81046c87>] ?
+kthread_create_on_node+0x160/0x160
+[Wed Mar 19 01:50:22 2014]  [<ffffffff8138e17c>] ? ret_from_fork+0x7c/0xb0
+[Wed Mar 19 01:50:22 2014]  [<ffffffff81046c87>] ?
+kthread_create_on_node+0x160/0x160
+[Wed Mar 19 01:50:22 2014] Code: 31 ff 48 89 da 48 89 ee 48 89 04 24 e8 ec c4
+f9 ff 85 c0 7e 02 0f 0b 48 83 c4 18 5b 5d c3 48 8d 47 48 48 39 47 48 48 89 fe
+74 02 <0f> 0b 48 8b 3d 3b 50 57 00 e8 e3 50 fd ff 65 ff 0c 25 50 ed 00 
+[Wed Mar 19 01:50:22 2014] RIP  [<ffffffff8110e3dc>] free_buffer_head+0xd/0x29
+[Wed Mar 19 01:50:22 2014]  RSP <ffff8803117e1aa8>
+[Wed Mar 19 01:50:22 2014] ---[ end trace d6d840c2b7dcee1a ]---
+
+Occurred when making backup with rsync
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
