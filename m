@@ -1,21 +1,100 @@
-From: Jakub Sitnicki <jsitnicki@gmail.com>
-Subject: Re: [PATCH 2/2] ext4: acl: remove unneeded include of linux/capability.h
-Date: Mon, 24 Mar 2014 13:20:52 +0100
-Message-ID: <87a9cfdbyz.fsf@frog.home>
-References: <1395645732-26569-1-git-send-email-jsitnicki@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: tytso@mit.edu, adilger.kernel@dilger.ca
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-reply-to: <1395645732-26569-1-git-send-email-jsitnicki@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: optimize Hurd tests when reading/writing inodes
+Date: Mon, 24 Mar 2014 14:11:04 -0400
+Message-ID: <1395684664-592-1-git-send-email-tytso@mit.edu>
+Cc: sthibault@debian.org, 738758@bugs.debian.org, ben@decadent.org.uk,
+	1o5g4r8o@gmail.com, Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:45366 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752754AbaCXSLT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 24 Mar 2014 14:11:19 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Please ignore the patch sequence number. It is a single patch, not a
-part of a series.
+Set a in-memory superblock flag to indicate whether the file system is
+designed to support the Hurd.
 
-Newbie mistake. Please let me know if I should resend the patch.
+Also, add a sanity check to make sure the 64-bit feature is not set
+for Hurd file systems, since i_file_acl_high conflicts with a
+Hurd-specific field.
 
-Thanks,
-Jakub
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/ext4.h  |  2 ++
+ fs/ext4/inode.c |  9 +++------
+ fs/ext4/super.c | 10 ++++++++++
+ 3 files changed, 15 insertions(+), 6 deletions(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index f4f889e..e01135d 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1001,6 +1001,8 @@ struct ext4_inode_info {
+ #define EXT4_MOUNT2_STD_GROUP_SIZE	0x00000002 /* We have standard group
+ 						      size of blocksize * 8
+ 						      blocks */
++#define EXT4_MOUNT2_HURD_COMPAT		0x00000004 /* Support HURD-castrated
++						      file systems */
+ 
+ #define clear_opt(sb, opt)		EXT4_SB(sb)->s_mount_opt &= \
+ 						~EXT4_MOUNT_##opt
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index ed2c13a..b5e182a 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4168,8 +4168,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+ 	EXT4_INODE_GET_XTIME(i_atime, inode, raw_inode);
+ 	EXT4_EINODE_GET_XTIME(i_crtime, ei, raw_inode);
+ 
+-	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
+-	    cpu_to_le32(EXT4_OS_HURD)) {
++	if (likely(!test_opt2(inode->i_sb, HURD_COMPAT))) {
+ 		inode->i_version = le32_to_cpu(raw_inode->i_disk_version);
+ 		if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE) {
+ 			if (EXT4_FITS_IN_INODE(raw_inode, ei, i_version_hi))
+@@ -4345,8 +4344,7 @@ static int ext4_do_update_inode(handle_t *handle,
+ 		goto out_brelse;
+ 	raw_inode->i_dtime = cpu_to_le32(ei->i_dtime);
+ 	raw_inode->i_flags = cpu_to_le32(ei->i_flags & 0xFFFFFFFF);
+-	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
+-	    cpu_to_le32(EXT4_OS_HURD))
++	if (likely(!test_opt2(inode->i_sb, HURD_COMPAT)))
+ 		raw_inode->i_file_acl_high =
+ 			cpu_to_le16(ei->i_file_acl >> 32);
+ 	raw_inode->i_file_acl_lo = cpu_to_le32(ei->i_file_acl);
+@@ -4391,8 +4389,7 @@ static int ext4_do_update_inode(handle_t *handle,
+ 			raw_inode->i_block[block] = ei->i_data[block];
+ 	}
+ 
+-	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
+-	    cpu_to_le32(EXT4_OS_HURD)) {
++	if (likely(!test_opt2(inode->i_sb, HURD_COMPAT))) {
+ 		raw_inode->i_disk_version = cpu_to_le32(inode->i_version);
+ 		if (ei->i_extra_isize) {
+ 			if (EXT4_FITS_IN_INODE(raw_inode, ei, i_version_hi))
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 3c9eadf..6adee9a 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3580,6 +3580,16 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		       "feature flags set on rev 0 fs, "
+ 		       "running e2fsck is recommended");
+ 
++	if (es->s_creator_os == cpu_to_le32(EXT4_OS_HURD)) {
++		set_opt2(sb, HURD_COMPAT);
++		if (EXT4_HAS_INCOMPAT_FEATURE(sb,
++					      EXT4_FEATURE_INCOMPAT_64BIT)) {
++			ext4_msg(sb, KERN_ERR,
++				 "The Hurd can't support 64-bit file systems");
++			goto failed_mount;
++		}
++	}
++
+ 	if (IS_EXT2_SB(sb)) {
+ 		if (ext2_feature_set_ok(sb))
+ 			ext4_msg(sb, KERN_INFO, "mounting ext2 file system "
+-- 
+1.9.0
+
