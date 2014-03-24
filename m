@@ -1,74 +1,34 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: atomically set inode->i_flags in ext4_set_inode_flags()
-Date: Mon, 24 Mar 2014 14:43:59 -0400
-Message-ID: <1395686639-1853-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>, stable@kernel.org
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:45384 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753434AbaCXSoE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 24 Mar 2014 14:44:04 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: tytso@mit.edu
+Subject: Re: [PATCH v7 19/22] ext4: Make ext4_block_zero_page_range static
+Date: Mon, 24 Mar 2014 15:11:59 -0400
+Message-ID: <20140324191158.GC6896@thunk.org>
+References: <cover.1395591795.git.matthew.r.wilcox@intel.com>
+ <6ae0bcd05c2e114d3c4a7803415b6c2c8a8dadd7.1395591795.git.matthew.r.wilcox@intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+	linux-kernel@vger.kernel.org, willy@linux.intel.com,
+	linux-ext4@vger.kernel.org
+To: Matthew Wilcox <matthew.r.wilcox@intel.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <6ae0bcd05c2e114d3c4a7803415b6c2c8a8dadd7.1395591795.git.matthew.r.wilcox@intel.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Use cmpxchg() to atomically set i_flags instead of clearing out the
-S_IMMUTABLE, S_APPEND, etc. flags and then setting them from the
-EXT4_IMMUTABLE_FL, EXT4_APPEND_FL flags, since this opens up a race
-where an immutable file has the immutable flag cleared for a brief
-window of time.
+On Sun, Mar 23, 2014 at 03:08:45PM -0400, Matthew Wilcox wrote:
+> It's only called within inode.c, so make it static, remove its prototype
+> from ext4.h and move it above all of its callers so it doesn't need a
+> prototype within inode.c.
+> 
+> Signed-off-by: Matthew Wilcox <matthew.r.wilcox@intel.com>
 
-Reported-by: Petr Matousek <pmatouse@redhat.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: stable@kernel.org
----
- fs/ext4/inode.c | 33 ++++++++++++++++++++-------------
- 1 file changed, 20 insertions(+), 13 deletions(-)
+Thanks, applied to the ext4 tree.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index b5e182a..169fff3 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3937,19 +3937,26 @@ int ext4_get_inode_loc(struct inode *inode, struct ext4_iloc *iloc)
- 
- void ext4_set_inode_flags(struct inode *inode)
- {
--	unsigned int flags = EXT4_I(inode)->i_flags;
--
--	inode->i_flags &= ~(S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC);
--	if (flags & EXT4_SYNC_FL)
--		inode->i_flags |= S_SYNC;
--	if (flags & EXT4_APPEND_FL)
--		inode->i_flags |= S_APPEND;
--	if (flags & EXT4_IMMUTABLE_FL)
--		inode->i_flags |= S_IMMUTABLE;
--	if (flags & EXT4_NOATIME_FL)
--		inode->i_flags |= S_NOATIME;
--	if (flags & EXT4_DIRSYNC_FL)
--		inode->i_flags |= S_DIRSYNC;
-+	unsigned int flags;
-+	unsigned int old_fl, new_fl;
-+
-+	do {
-+		flags = EXT4_I(inode)->i_flags;
-+		old_fl = inode->i_flags;
-+		new_fl = old_fl &
-+			~(S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC);
-+
-+		if (flags & EXT4_SYNC_FL)
-+			new_fl |= S_SYNC;
-+		if (flags & EXT4_APPEND_FL)
-+			new_fl |= S_APPEND;
-+		if (flags & EXT4_IMMUTABLE_FL)
-+			new_fl |= S_IMMUTABLE;
-+		if (flags & EXT4_NOATIME_FL)
-+			new_fl |= S_NOATIME;
-+		if (flags & EXT4_DIRSYNC_FL)
-+			new_fl |= S_DIRSYNC;
-+	} while (cmpxchg(&inode->i_flags, old_fl, new_fl) != old_fl);
- }
- 
- /* Propagate flags from i_flags to EXT4_I(inode)->i_flags */
--- 
-1.9.0
+					- Ted
 
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
