@@ -1,100 +1,74 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: optimize Hurd tests when reading/writing inodes
-Date: Mon, 24 Mar 2014 14:11:04 -0400
-Message-ID: <1395684664-592-1-git-send-email-tytso@mit.edu>
-Cc: sthibault@debian.org, 738758@bugs.debian.org, ben@decadent.org.uk,
-	1o5g4r8o@gmail.com, Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: atomically set inode->i_flags in ext4_set_inode_flags()
+Date: Mon, 24 Mar 2014 14:43:59 -0400
+Message-ID: <1395686639-1853-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>, stable@kernel.org
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:45366 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:45384 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752754AbaCXSLT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 24 Mar 2014 14:11:19 -0400
+	id S1753434AbaCXSoE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 24 Mar 2014 14:44:04 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Set a in-memory superblock flag to indicate whether the file system is
-designed to support the Hurd.
+Use cmpxchg() to atomically set i_flags instead of clearing out the
+S_IMMUTABLE, S_APPEND, etc. flags and then setting them from the
+EXT4_IMMUTABLE_FL, EXT4_APPEND_FL flags, since this opens up a race
+where an immutable file has the immutable flag cleared for a brief
+window of time.
 
-Also, add a sanity check to make sure the 64-bit feature is not set
-for Hurd file systems, since i_file_acl_high conflicts with a
-Hurd-specific field.
-
+Reported-by: Petr Matousek <pmatouse@redhat.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: stable@kernel.org
 ---
- fs/ext4/ext4.h  |  2 ++
- fs/ext4/inode.c |  9 +++------
- fs/ext4/super.c | 10 ++++++++++
- 3 files changed, 15 insertions(+), 6 deletions(-)
+ fs/ext4/inode.c | 33 ++++++++++++++++++++-------------
+ 1 file changed, 20 insertions(+), 13 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index f4f889e..e01135d 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1001,6 +1001,8 @@ struct ext4_inode_info {
- #define EXT4_MOUNT2_STD_GROUP_SIZE	0x00000002 /* We have standard group
- 						      size of blocksize * 8
- 						      blocks */
-+#define EXT4_MOUNT2_HURD_COMPAT		0x00000004 /* Support HURD-castrated
-+						      file systems */
- 
- #define clear_opt(sb, opt)		EXT4_SB(sb)->s_mount_opt &= \
- 						~EXT4_MOUNT_##opt
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index ed2c13a..b5e182a 100644
+index b5e182a..169fff3 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -4168,8 +4168,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 	EXT4_INODE_GET_XTIME(i_atime, inode, raw_inode);
- 	EXT4_EINODE_GET_XTIME(i_crtime, ei, raw_inode);
+@@ -3937,19 +3937,26 @@ int ext4_get_inode_loc(struct inode *inode, struct ext4_iloc *iloc)
  
--	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
--	    cpu_to_le32(EXT4_OS_HURD)) {
-+	if (likely(!test_opt2(inode->i_sb, HURD_COMPAT))) {
- 		inode->i_version = le32_to_cpu(raw_inode->i_disk_version);
- 		if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE) {
- 			if (EXT4_FITS_IN_INODE(raw_inode, ei, i_version_hi))
-@@ -4345,8 +4344,7 @@ static int ext4_do_update_inode(handle_t *handle,
- 		goto out_brelse;
- 	raw_inode->i_dtime = cpu_to_le32(ei->i_dtime);
- 	raw_inode->i_flags = cpu_to_le32(ei->i_flags & 0xFFFFFFFF);
--	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
--	    cpu_to_le32(EXT4_OS_HURD))
-+	if (likely(!test_opt2(inode->i_sb, HURD_COMPAT)))
- 		raw_inode->i_file_acl_high =
- 			cpu_to_le16(ei->i_file_acl >> 32);
- 	raw_inode->i_file_acl_lo = cpu_to_le32(ei->i_file_acl);
-@@ -4391,8 +4389,7 @@ static int ext4_do_update_inode(handle_t *handle,
- 			raw_inode->i_block[block] = ei->i_data[block];
- 	}
- 
--	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
--	    cpu_to_le32(EXT4_OS_HURD)) {
-+	if (likely(!test_opt2(inode->i_sb, HURD_COMPAT))) {
- 		raw_inode->i_disk_version = cpu_to_le32(inode->i_version);
- 		if (ei->i_extra_isize) {
- 			if (EXT4_FITS_IN_INODE(raw_inode, ei, i_version_hi))
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 3c9eadf..6adee9a 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3580,6 +3580,16 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		       "feature flags set on rev 0 fs, "
- 		       "running e2fsck is recommended");
- 
-+	if (es->s_creator_os == cpu_to_le32(EXT4_OS_HURD)) {
-+		set_opt2(sb, HURD_COMPAT);
-+		if (EXT4_HAS_INCOMPAT_FEATURE(sb,
-+					      EXT4_FEATURE_INCOMPAT_64BIT)) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "The Hurd can't support 64-bit file systems");
-+			goto failed_mount;
-+		}
-+	}
+ void ext4_set_inode_flags(struct inode *inode)
+ {
+-	unsigned int flags = EXT4_I(inode)->i_flags;
+-
+-	inode->i_flags &= ~(S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC);
+-	if (flags & EXT4_SYNC_FL)
+-		inode->i_flags |= S_SYNC;
+-	if (flags & EXT4_APPEND_FL)
+-		inode->i_flags |= S_APPEND;
+-	if (flags & EXT4_IMMUTABLE_FL)
+-		inode->i_flags |= S_IMMUTABLE;
+-	if (flags & EXT4_NOATIME_FL)
+-		inode->i_flags |= S_NOATIME;
+-	if (flags & EXT4_DIRSYNC_FL)
+-		inode->i_flags |= S_DIRSYNC;
++	unsigned int flags;
++	unsigned int old_fl, new_fl;
 +
- 	if (IS_EXT2_SB(sb)) {
- 		if (ext2_feature_set_ok(sb))
- 			ext4_msg(sb, KERN_INFO, "mounting ext2 file system "
++	do {
++		flags = EXT4_I(inode)->i_flags;
++		old_fl = inode->i_flags;
++		new_fl = old_fl &
++			~(S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC);
++
++		if (flags & EXT4_SYNC_FL)
++			new_fl |= S_SYNC;
++		if (flags & EXT4_APPEND_FL)
++			new_fl |= S_APPEND;
++		if (flags & EXT4_IMMUTABLE_FL)
++			new_fl |= S_IMMUTABLE;
++		if (flags & EXT4_NOATIME_FL)
++			new_fl |= S_NOATIME;
++		if (flags & EXT4_DIRSYNC_FL)
++			new_fl |= S_DIRSYNC;
++	} while (cmpxchg(&inode->i_flags, old_fl, new_fl) != old_fl);
+ }
+ 
+ /* Propagate flags from i_flags to EXT4_I(inode)->i_flags */
 -- 
 1.9.0
 
