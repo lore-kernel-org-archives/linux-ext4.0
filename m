@@ -1,35 +1,25 @@
 From: Jakub Sitnicki <jsitnicki@gmail.com>
-Subject: [PATCH 2/2] ext4: acl: remove unneeded include of linux/capability.h
-Date: Mon, 24 Mar 2014 08:22:12 +0100
-Message-ID: <1395645732-26569-1-git-send-email-jsitnicki@gmail.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Jakub Sitnicki <jsitnicki@gmail.com>
-To: tytso@mit.edu, adilger.kernel@dilger.ca
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Subject: Re: [PATCH 1/2] ext2: acl: remove unneeded include of linux/capability.h
+Date: Mon, 24 Mar 2014 13:20:04 +0100
+Message-ID: <87bnwvdc0b.fsf@frog.home>
+References: <1395645684-26512-1-git-send-email-jsitnicki@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: jack@suse.cz
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-wi0-f177.google.com ([209.85.212.177]:45882 "EHLO
+	mail-wi0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752708AbaCXMUJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Mar 2014 08:20:09 -0400
+In-reply-to: <1395645684-26512-1-git-send-email-jsitnicki@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-acl.c has not been (directly) using the interface defined by
-linux/capability.h header since commit 3bd858ab1c451725c07a
-("Introduce is_owner_or_cap() to wrap CAP_FOWNER use with fsuid
-check"). Remove it.
+Please ignore the patch sequence number. It is a single patch, not a
+part of a series.
 
-Signed-off-by: Jakub Sitnicki <jsitnicki@gmail.com>
----
- fs/ext4/acl.c | 1 -
- 1 file changed, 1 deletion(-)
+Newbie mistake. Please let me know if I should resend the patch.
 
-diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
-index d40c8db..26e880e 100644
---- a/fs/ext4/acl.c
-+++ b/fs/ext4/acl.c
-@@ -7,7 +7,6 @@
- #include <linux/init.h>
- #include <linux/sched.h>
- #include <linux/slab.h>
--#include <linux/capability.h>
- #include <linux/fs.h>
- #include "ext4_jbd2.h"
- #include "ext4.h"
--- 
-1.8.5.3
+Thanks,
+Jakub
