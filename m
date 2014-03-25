@@ -1,49 +1,76 @@
-From: a3at.mail@gmail.com
-Subject: Re: [PATCH] ext4: initialize multi-block allocator before checking
- block descriptors
-Date: Tue, 25 Mar 2014 10:24:10 +0400
-Message-ID: <20140325062405.GA25115@azat>
-References: <CAG5DWoj0pYD8O17qw_-MK+JX_hsFj04ReUPztShmKWzz45gRbQ@mail.gmail.com>
- <20140316023841.GA902@thunk.org>
- <CAG5DWog0BDHTh1edtQ+457SmJeL_0MacgZ1gYeNL4sY4yEqZWw@mail.gmail.com>
- <20140316161637.GA19885@azat>
- <20140316184634.GA14162@thunk.org>
- <20140316205659.GC19885@azat>
- <20140317020029.GC14162@thunk.org>
- <CAG5DWogdTPBOfccVa3xGciLaRedPC1memAmjxnG2uEwSVV64DA@mail.gmail.com>
- <20140317175302.GD19885@azat>
- <20140325001700.GC13535@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 40822] EXT4-fs error (device dm-4): ext4_lookup:1044: inode
+ #3308277: comm rm: deleted inode referenced: 3058008
+Date: Tue, 25 Mar 2014 10:11:23 +0000
+Message-ID: <bug-40822-13602-FFHvKEfvQV@https.bugzilla.kernel.org/>
+References: <bug-40822-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "open list:EXT4 FILE SYSTEM" <linux-ext4@vger.kernel.org>
-To: tytso@mit.edu
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f171.google.com ([209.85.217.171]:47246 "EHLO
-	mail-lb0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750845AbaCYGYP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Mar 2014 02:24:15 -0400
-Received: by mail-lb0-f171.google.com with SMTP id w7so11906lbi.2
-        for <linux-ext4@vger.kernel.org>; Mon, 24 Mar 2014 23:24:13 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <20140325001700.GC13535@thunk.org>
+Received: from mail.kernel.org ([198.145.19.201]:59134 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751074AbaCYKL3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 Mar 2014 06:11:29 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 674A1202DD
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Mar 2014 10:11:28 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id F05B1202EB
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Mar 2014 10:11:24 +0000 (UTC)
+In-Reply-To: <bug-40822-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 24, 2014 at 08:17:00PM -0400, tytso@mit.edu wrote:
-> On Mon, Mar 17, 2014 at 09:53:02PM +0400, a3at.mail@gmail.com wrote:
-> > I was wrong, I've just tested on i386, and got the same errors as you.
-> 
-> I assume you will resubmit this patch once you figure out how to avoid
-> the error on 32-bit x86 systems?
+https://bugzilla.kernel.org/show_bug.cgi?id=40822
 
-Yes, sure, thanks.
-(I just don't have enough free time right now for this.)
+Sebastien Koechlin <seb.kernel@koocotte.org> changed:
 
-BTW now I have this errors on x86_64 too.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |seb.kernel@koocotte.org
 
-> 
-> 						- Ted
+--- Comment #4 from Sebastien Koechlin <seb.kernel@koocotte.org> ---
+Sorry, I did not see that I had an answer on bugzilla. I will monitor it from
+now.
+
+Here is the situation:
+
+- The problem came back every few month during this time. I run many fsck, it
+usually correct things, but maybe not this particular deleted inode problem
+(fsck bug?).
+
+- I updated on 2014-02-10 to kernel 3.13.2 and e2fsck.static to 1.42.9-3
+(e2fsck-static_1.42.9-2_i386.deb), and the problem happened today.
+
+- About hardware error: this server is running continuously since this initial
+bug report without problem (no other filesystem corrupted, no segfaults, no
+kernel ooops...)
+
+- About Host: Debian Linux 32bits, kernel is 64bits, RAID1+LVM2, many-many
+hardlinks (an inode has 29542 links), filesystem resized (to grow it) may
+times. It's always between 85 and 95% full.
+
+I have in dmesg:
+[3654666.866636] EXT4-fs error (device dm-4): ext4_lookup:1437: inode #300243:
+comm rsync: deleted inode referenced: 2748375
+[3654666.911302] Aborting journal on device dm-4-8.
+[3654666.970296] EXT4-fs (dm-4): Remounting filesystem read-only
+[3654667.104392] EXT4-fs error (device dm-4): ext4_lookup:1437: inode #300243:
+comm rsync: deleted inode referenced: 2748375
+
+Previous was using kernel 3.12.6:
+[ 3226.048137] EXT4-fs (dm-4): mounted filesystem with ordered data mode. Opts:
+errors=remount-ro,user_xattr
+[ 3526.870020] EXT4-fs (dm-4): error count: 21
+[ 3526.870108] EXT4-fs (dm-4): initial error at 1372893876: ext4_lookup:1428:
+inode 915940
+[ 3526.870271] EXT4-fs (dm-4): last error at 1372930167: ext4_put_super:762:
+inode 1676891
+
+e2fsck just recover the journal and with -f does not find anything wrong.
 
 -- 
-Respectfully
-Azat Khuzhin
+You are receiving this mail because:
+You are watching the assignee of the bug.
