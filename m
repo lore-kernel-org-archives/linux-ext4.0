@@ -1,38 +1,52 @@
-From: Vidhya Amin <vidhya.amin@bmw-navnitmotors.in>
-Subject: Re: Same Last Name
-Date: Wed, 26 Mar 2014 07:21:54 +0530 (IST)
-Message-ID: <1823888291.519428.1395798714660.JavaMail.root__31332.5035888285$1395801457$gmane$org@bmw-navnitmotors.in>
-References: <601784440.519382.1395798669078.JavaMail.root@bmw-navnitmotors.in>
-Reply-To: "PHILIP GEORGE DUNMORE(QC)" <mrphilipgeorge_euro2014@aol.co.uk>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: bdi has dirty inode after umount of ext4 fs in 3.4.83
+Date: Wed, 26 Mar 2014 06:32:46 +0100
+Message-ID: <20140326053246.GA1292@quack.suse.cz>
+References: <20140321152541.GA23173@kvack.org>
+ <20140323131416.GD2813@quack.suse.cz>
+ <20140325220938.GX4173@kvack.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: unlisted-recipients:; (no To-header on input)
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Alexander Viro <viro@zeniv.linux.org.uk>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Benjamin LaHaise <bcrl@kvack.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail1.soft-techinfosystems.com ([182.72.15.162]:52570 "EHLO
-	soft-techinfosystems.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1754449AbaCZChC convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 25 Mar 2014 22:37:02 -0400
-In-Reply-To: <601784440.519382.1395798669078.JavaMail.root@bmw-navnitmotors.in>
+Received: from cantor2.suse.de ([195.135.220.15]:36171 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752183AbaCZFcw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 26 Mar 2014 01:32:52 -0400
+Content-Disposition: inline
+In-Reply-To: <20140325220938.GX4173@kvack.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Tue 25-03-14 18:09:38, Benjamin LaHaise wrote:
+> On Sun, Mar 23, 2014 at 02:14:16PM +0100, Jan Kara wrote:
+> >   So the dirty inode is almost certainly a block device inode. Another clue
+> > is that fsync(2) actually doesn't clean inode dirty state (especially not
+> > for block device inodes since that inode is a special one and fs usually
+> > doesn't get to inspecting it). sync(2) does in general clear inode dirty
+> > state because that's handled by flusher thread. However if ->sync_fs()
+> > dirties the block device inode, subsequent sync_blockdev() call only writes
+> > the data but doesn't clean the inode state. So even with sync(2) it can
+> > happen the block device inode remains dirty.
+> 
+> > In general inode dirty state isn't reliable. I_DIRTY_DATA can be set when
+> > inode is in fact clean. You have to use mapping_tagged(inode->i_mapping,
+> > PAGECACHE_TAG_DIRTY) to determine whether the inode has actually any dirty
+> > data.
+> 
+> That is indeed the case.  I checked the contents of the inode, and none of 
+> the buffers attached to that inode were dirty.
+> 
+> Is there any desire to fix this?  Seeing an inode on the b_dirty list that 
+> isn't really an inode that contains any data doesn't make a whole lot of 
+> sense.
+  It doesn't make a lot of sense but this kind of lazy b_dirty management
+allows us to avoid synchronization issues with flusher working in the inode
+at the same time. So I'm not convinced we want to fix that...
 
-
-Re: Same Last Name
-Dear Friend,
-I am indeed sorry for infringing your privacy, I am aware that this is =
-certainly not a conventional way of approach to communicate with a stra=
-nger but you will understand the need for my action. A deceased custome=
-r of mine that shares the same LAST NAME as yours died without a Next o=
-f Kin & left the sum of $16 Million in my Bank. Please if interested ki=
-ndly call my personal mobile on: +447587913065 or reply with your priva=
-te email to: draymondd@hotmail.com
-Best Regards,
-DR. CH=E2=80=99IEN.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
