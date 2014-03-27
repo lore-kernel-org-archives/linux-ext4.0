@@ -1,51 +1,76 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 71641] Unreasonable performance degradation in ext4 with full
- data journaling
-Date: Wed, 26 Mar 2014 13:40:42 +0000
-Message-ID: <bug-71641-13602-LfCF31tFUe@https.bugzilla.kernel.org/>
-References: <bug-71641-13602@https.bugzilla.kernel.org/>
+From: Robert Yang <liezhi.yang@windriver.com>
+Subject: Re: [PATCH] e2fsprogs: misc/mke2fs.c: return error when failed to
+ populate fs
+Date: Thu, 27 Mar 2014 09:55:06 +0800
+Message-ID: <533384FA.10807@windriver.com>
+References: <1395295766-10637-1-git-send-email-liezhi.yang@windriver.com> <20140322041121.GA22353@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Cc: <tytso@mit.edu>
+To: <linux-ext4@vger.kernel.org>, Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:50489 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753526AbaCZNkp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 26 Mar 2014 09:40:45 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 7F62120221
-	for <linux-ext4@vger.kernel.org>; Wed, 26 Mar 2014 13:40:44 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 4718E201BC
-	for <linux-ext4@vger.kernel.org>; Wed, 26 Mar 2014 13:40:43 +0000 (UTC)
-In-Reply-To: <bug-71641-13602@https.bugzilla.kernel.org/>
+Received: from mail1.windriver.com ([147.11.146.13]:62030 "EHLO
+	mail1.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751567AbaC0BzN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Mar 2014 21:55:13 -0400
+In-Reply-To: <20140322041121.GA22353@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=71641
 
---- Comment #8 from Theodore Tso <tytso@mit.edu> ---
-it's clear this isn't going to get performance up to 1.1 GB/s, but I'm curious
-how much setting JBD2_NR_BATCH changes things at 512 and 1024 and possibly even
-2048.   Once it no longer maters a difference, if you could do another
-blktrace, and also gather lock_stat information, that would be useful.
+Hello Zheng,
 
-To gather lock_stat information, enable CONFIG_LOCK_STAT, and then "echo 0  >
-/proc/lock_stat" before you start the workload, and then capture the output of
-/proc/lock_stat after you finish running your workload/benchmark.
+Thanks for your comments, V2 is comming.
 
-If you also regather numbers with lock_stat enabled on a stock 3.11 kernel (and
-also get a /proc/lock_stat report from a stock 3.11 kernel, with and without
-data=journal), that would be useful.
+// Robert
 
-If it turns out that there is some lock contention going on with some of the
-jbd2 spinlocks, there are some patches queued for 3.15 that I may have to ask
-you to try (which will mean going to something like 3.14-rc7 plus some
-additional patches from the ext4 git tree).
-
-Thanks for your benchmarking!
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+On 03/22/2014 12:11 PM, Zheng Liu wrote:
+> On Thu, Mar 20, 2014 at 02:09:26PM +0800, Robert Yang wrote:
+>> We need return retval when "mke2fs -d" failed, otherwise the "$?" would
+>> be 0 which is misleading.
+>>
+>> Signed-off-by: Robert Yang <liezhi.yang@windriver.com>
+>> ---
+>>   misc/mke2fs.c | 7 ++++---
+>>   1 file changed, 4 insertions(+), 3 deletions(-)
+>>
+>> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+>> index aecd5d5..f659e6f 100644
+>> --- a/misc/mke2fs.c
+>> +++ b/misc/mke2fs.c
+>> @@ -2990,10 +2990,11 @@ no_journal:
+>>
+>>   		retval = populate_fs(fs, EXT2_ROOT_INO, root_dir,
+>>   				     EXT2_ROOT_INO);
+>> -		if (retval)
+>> +		if (retval) {
+>>   			fprintf(stderr, "%s",
+>> -				_("\nError while populating file system"));
+>                          ^^^
+> Using com_err() is sane.  After we get an error, the user can know which
+> error has occured.
+>> -		else if (!quiet)
+>> +				_("\nError while populating file system\n"));
+>> +			return retval;
+>                          ^^^^
+> Maybe exit(1) is better.  We just need to notify the user that an error
+> has occured.  An internal error of libext2fs should not be returned
+> to user.
+>
+> Regards,
+>                                                  - Zheng
+>
+>> +		} else if (!quiet)
+>>   			printf("%s", _("done\n"));
+>>   	}
+>>
+>> --
+>> 1.8.3.1
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
