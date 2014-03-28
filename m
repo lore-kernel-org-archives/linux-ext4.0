@@ -1,37 +1,50 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 71641] Unreasonable performance degradation in ext4 with full
- data journaling
-Date: Fri, 28 Mar 2014 10:55:10 +0000
-Message-ID: <bug-71641-13602-gpFTFnckuy@https.bugzilla.kernel.org/>
-References: <bug-71641-13602@https.bugzilla.kernel.org/>
+From: tytso@mit.edu
+Subject: Re: [PATCH] xfstests-bld: Simplify determination of number of CPUs
+ in build-all
+Date: Fri, 28 Mar 2014 12:18:06 -0400
+Message-ID: <20140328161806.GA31772@thunk.org>
+References: <1395997399-3000-1-git-send-email-sedat.dilek@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: lsf@lists.linux-foundation.org, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Sedat Dilek <sedat.dilek@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:34209 "EHLO mail.kernel.org"
+Received: from imap.thunk.org ([74.207.234.97]:46885 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752044AbaC1KzO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 28 Mar 2014 06:55:14 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 7143320123
-	for <linux-ext4@vger.kernel.org>; Fri, 28 Mar 2014 10:55:13 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 27EFE202A7
-	for <linux-ext4@vger.kernel.org>; Fri, 28 Mar 2014 10:55:11 +0000 (UTC)
-In-Reply-To: <bug-71641-13602@https.bugzilla.kernel.org/>
+	id S1751404AbaC1QSL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 28 Mar 2014 12:18:11 -0400
+Content-Disposition: inline
+In-Reply-To: <1395997399-3000-1-git-send-email-sedat.dilek@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=71641
+On Fri, Mar 28, 2014 at 10:03:19AM +0100, Sedat Dilek wrote:
+> Use 'getconf _NPROCESSORS_ONLN' to determine the total number
+> of available ("online") CPUs.
+> 
+> I have seen this 1st in some build-scripts of Grml project and
+> had some discussions with Thorsten Glaser on this topic.
+> 
+> Signed-off-by: Sedat Dilek <sedat.dilek@gmail.com>
 
---- Comment #10 from Chia-Hung Chang <fredchang.tc@gmail.com> ---
-BTW, if we use 1G ramdisk as journal area, the performance with JBD2_NR_batch
-=2048 can be 571MB/s
+Thanks, applied.
 
-Please download the result of blktrace as following,
-https://dl.dropboxusercontent.com/u/32959539/JBD2_NR_batch_2048_1M.7z
+In the future, it would be great at least cc patches to
+linux-ext4@vger.kernel.org, since I rely on patchwork to make sure
+patches don't end up falling through the cracks.
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+If we start getting a huge number of patches to xfstests-bld, and
+people start getting confused/annoyed about how xfstests-bld issues
+get discussed on linux-ext4@vger.kernel.org, while xfstests patches
+and discussion happen on xfs@oss.sgi.com, we could consider creating a
+new mailing list --- especially given that based on a challenge which
+Greg K-H gave us at the kernel pannel at Collab Summit, we'll at least
+be looking at cleaning up and then trying to get into the linux kernel
+mainline sources some combination of xfstests plus some infrastructure
+automation (perhaps strongly based on what I've been working here in
+the xfstests-bld tree) to run xfstests.
+
+Cheers,
+
+						- Ted
