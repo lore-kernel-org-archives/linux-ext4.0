@@ -1,58 +1,118 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 70091] mutex_unlock is missed in function
- (swap_inode_boot_loader) in file (linux-3.13/fs/ext4/ioctl.c)
-Date: Sun, 30 Mar 2014 19:51:52 +0000
-Message-ID: <bug-70091-13602-SujqfMuJLm@https.bugzilla.kernel.org/>
-References: <bug-70091-13602@https.bugzilla.kernel.org/>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [Lsf] [PATCH] xfstests-bld: Simplify determination of number of
+	CPUs in build-all
+Date: Mon, 31 Mar 2014 13:51:48 +1100
+Message-ID: <20140331025148.GF16336@dastard>
+References: <1395997399-3000-1-git-send-email-sedat.dilek@gmail.com>
+	<20140328161806.GA31772@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:35474 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751620AbaC3Tv6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 30 Mar 2014 15:51:58 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id EEA9420364
-	for <linux-ext4@vger.kernel.org>; Sun, 30 Mar 2014 19:51:57 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 61B8B20377
-	for <linux-ext4@vger.kernel.org>; Sun, 30 Mar 2014 19:51:52 +0000 (UTC)
-In-Reply-To: <bug-70091-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Sedat Dilek <sedat.dilek@gmail.com>, lsf@lists.linux-foundation.org,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
+To: tytso@mit.edu
+Return-path: <xfs-bounces@oss.sgi.com>
+Content-Disposition: inline
+In-Reply-To: <20140328161806.GA31772@thunk.org>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=70091
+[cc'ing the xfstests list: xfs@oss.sgi.com]
 
-Conrad Meyer <cse.cem@gmail.com> changed:
+On Fri, Mar 28, 2014 at 12:18:06PM -0400, tytso@mit.edu wrote:
+> If we start getting a huge number of patches to xfstests-bld, and
+> people start getting confused/annoyed about how xfstests-bld issues
+> get discussed on linux-ext4@vger.kernel.org, while xfstests patches
+> and discussion happen on xfs@oss.sgi.com, we could consider creating a
+> new mailing list ---
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |cse.cem@gmail.com
+/me puts on his xfstests Maintainer Hat
 
---- Comment #1 from Conrad Meyer <cse.cem@gmail.com> ---
-This was fixed in 30d29b119ef01776e0a301444ab24defe8d8bef3
+That's a problem of your own making, Ted: please don't speak on
+behalf of what the upstream xfstests developers might or might not
+do just because of what you do with it as a user. The existance of
+many different environments people have built up around it is one of
+the strengths of xfstests. Hence the very act of considering
+enforcing One True Way of running xfstests is, IMO, harmful
+to the wider filesystem and xfstests community.
 
-Author: Zheng Liu <wenqing.lz@taobao.com>
-Date:   Wed Feb 12 11:48:31 2014 -0500
+You're also being rather presumptive that the existence of
+xfstests-bld requires us to change anything about the way xfstests
+is run.  Your xfstests environment - while interesting and
+potentially useful to others - is not unique and is not the only way
+of doing in-place testing.
 
-    ext4: fix error paths in swap_inode_boot_loader()
+> especially given that based on a challenge which
+> Greg K-H gave us at the kernel pannel at Collab Summit,
+               ^^^^
 
-    In swap_inode_boot_loader() we forgot to release ->i_mutex and resume
-    unlocked dio for inode and inode_bl if there is an error starting the
-    journal handle.  This commit fixes this issue.
+Hmmmm. Not the way I remember it. Perhaps I should go look at the
+video and check that Greg was addressing me directly as the xfstests
+maintainer with those comments. After all, those lights on stage can
+be blinding.....
 
-In merge commit 805937cf45f9a9933e6b8e5c6660406e977a9a23
+> we'll at least
+> be looking at cleaning up and then trying to get into the linux kernel
+> mainline sources some combination of xfstests plus some infrastructure
+> automation (perhaps strongly based on what I've been working here in
+> the xfstests-bld tree) to run xfstests.
 
-Author: Linus Torvalds <torvalds@linux-foundation.org>
-Date:   Tue Feb 18 10:04:09 2014 -0800
+Now you're pre-empting the discussions we need to have about
+xfstests and what best serves it's user community. xfstests is
+consumed by many end-users that are not kernel developers (e.g.
+distro QA departments, storage product vendors, etc), so anything we
+decide needs to work not only for kernel developers but also benefit
+the wider community of xfstests users.
 
-    Merge tag 'ext4_for_linus_stable' of
-git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4
+There are many advantages even to filesystem developers to
+staying outside the kernel tree. Think about this for a moment: to
+update xfstests to pick up a new regression test to test a
+regression, you need to update the kernel tree. That will also pull
+in the fix for the regression. To revert the kernel tree to before
+the fix came in so that you can run before/after fix comfirmation,
+it also removes the new regression test from xfstests harness and so
+you can't run the regression test in place.
 
-    ...
+IOWs, bisects based on regression tests become rather difficult
+because of this - bisects require the test not to change from
+bisection point to bisection point, and running xfstests directly out
+of the kernel tree that you are building kernels from during the
+bisect is going to have this exact problem.
 
+Therefore, *if* we move xfstests to the kernel tree we will still
+need to maintain that flexibility and configurability of the current
+code so that developers and external users can continue to package
+the tests up into their own QA environment. That implies we need to
+work out packaging and distribution issues that we don't currently
+care about, as well as some method of in-place test execution for
+people like Greg doing -stable kernel testing.
+
+So, rather than going off half-cocked about some random build
+environment for xfstests defining the future of filesystem testing,
+we need to step back and think about what Greg actually wants. That
+is, "make tests" in the kernel tests/ tree to be able to run
+xfstests. That's the problem Greg wanted solved, and that does not
+necessarily mean wholesale changes to xfstests or it's development
+model. And one possible solution to this is simply making the kernel
+tests/ directory just another downstream consumer of the upstream
+xfstests project....
+
+Cheers,
+
+Dave.
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Dave Chinner
+david@fromorbit.com
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
