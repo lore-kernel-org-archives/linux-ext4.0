@@ -1,66 +1,67 @@
-From: Dan Carpenter <dan.carpenter@oracle.com>
-Subject: Re: [PATCH 1/2] ext4: Fix flag handling in
- ext4_split_convert_extents()
-Date: Mon, 31 Mar 2014 17:19:35 +0300
-Message-ID: <20140331141935.GC18506@mwanda>
-References: <1396257094-10386-1-git-send-email-lczerner@redhat.com>
- <874n2emp7s.fsf@openvz.org>
+From: Namjae Jeon <linkinjeon@gmail.com>
+Subject: [PATCH 0/3] fs: Introduce FALLOC_FL_INSERT_RANGE for fallocate
+Date: Mon, 31 Mar 2014 23:53:31 +0900
+Message-ID: <1396277611-10759-1-git-send-email-linkinjeon@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:37487 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751710AbaCaOTp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Mar 2014 10:19:45 -0400
-Content-Disposition: inline
-In-Reply-To: <874n2emp7s.fsf@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Namjae Jeon <linkinjeon@gmail.com>, Namjae Jeon <namjae.jeon@samsung.com>,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: viro@zeniv.linux.org.uk, david@fromorbit.com, hch@infradead.org,
+	tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz, lczerner@redhat.com
+Return-path: <xfs-bounces@oss.sgi.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Mar 31, 2014 at 06:12:39PM +0400, Dmitry Monakhov wrote:
-> On Mon, 31 Mar 2014 11:11:33 +0200, Lukas Czerner <lczerner@redhat.com> wrote:
-> > In commit 1f0e51771281 "ext4: Introduce FALLOC_FL_ZERO_RANGE flag
-> > for fallocate" we've introduced wrong flag handling. Fix it.
-> > 
-> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> > ---
-> >  fs/ext4/extents.c | 6 +++---
-> >  1 file changed, 3 insertions(+), 3 deletions(-)
-> > 
-> > diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> > index 243a02e..491208c 100644
-> > --- a/fs/ext4/extents.c
-> > +++ b/fs/ext4/extents.c
-> > @@ -3644,13 +3644,13 @@ static int ext4_split_convert_extents(handle_t *handle,
-> >  	ee_len = ext4_ext_get_actual_len(ex);
-> >  
-> >  	/* Convert to unwritten */
-> > -	if (flags | EXT4_GET_BLOCKS_CONVERT_UNWRITTEN) {
-> > +	if (flags & EXT4_GET_BLOCKS_CONVERT_UNWRITTEN) {
-> :).  But how did you found this? 
-> I think that this type of bugs should be caught by some semantics
-> analyzer? I've done simple test and sparse(1) owerlooked this,
-> Also I cant find specific rule for Coccinelle ( if (var | CONST)).
+From: Namjae Jeon <namjae.jeon@samsung.com>
 
-This one was found with a Smatch warning:
+FALLOC_FL_INSERT_RANGE was mentioned as the opposite command of collapse
+range from discussion between Hugh Dickins and Dave Chinner.
 
-fs/ext4/extents.c:3647 ext4_split_convert_extents() warn: suspicious bitop condition
+In continuation of the work of making the process of non linear editing of
+media files faster, we introduce here the new flag FALLOC_FL_INSERT_RANGE
+for fallocate.
 
-> 
-> >  		split_flag |= EXT4_EXT_DATA_VALID1;
-> >  	/* Convert to initialized */
-> > -	} else if (flags | EXT4_GET_BLOCKS_CONVERT) {
-> > +	} else if (flags & EXT4_GET_BLOCKS_CONVERT) {
-> >  		split_flag |= ee_block + ee_len <= eof_block ?
-> >  			      EXT4_EXT_MAY_ZEROOUT : 0;
-> > -		split_flag |= (EXT4_EXT_MARK_UNINIT2 & EXT4_EXT_DATA_VALID2);
-> > +		split_flag |= (EXT4_EXT_MARK_UNINIT2 | EXT4_EXT_DATA_VALID2);
+This flag will work opposite to the newly added FALLOC_FL_COLLAPSE_RANGE flag.
+As such, specifying FALLOC_FL_INSERT_RANGE flag will insert zeroed-out space
+in between the file within the range specified by offset and len. User can
+write new data in this space. e.g. ads.
+Like collapse range, currently we have the limitation that offset and len
+should be block size aligned for both XFS and Ext4.
 
-I would like to push the Smatch warning for this one as well, but there
-are too many places where these kinds of AND operations are valid.
+The semantics of the flag are :
+1) It allocates new zeroed out on disk space of len bytes starting
+   at offset byte without overwriting any existing data. All the data blocks
+   from offset to EOF are shifted towards right to make space for inserting
+   new blocks
+2) It should be used exclusively. No other fallocate flag in combination.
+3) Offset and length supplied to fallocate should be fs block size aligned
+   in case of xfs and ext4.
+4) Insert range does not work for the case when offset is overlapping/beyond
+   i_size. If the user wants to allocate space at the end of file they are
+   advised to use either ftruncate(2) or fallocate(2) with mode 0.
+5) It increses the size of file by len bytes.
 
-regards,
-dan carpenter
+Namjae Jeon (3):
+ fs: Add FALLOC_FL_INSERT_RANGE flags for fallocate
+ xfs: Add support FALLOC_FL_INSERT_RANGE for fallocate
+ ext4: Add support FALLOC_FL_INSERT_RANGE for fallocate
+ TODO : xfsprog: xfsio: Add support FALLOC_FL_INSERT_RANGE for fallocate
+ TODO : xfstests: Add insert range testcase
 
+-- 
+1.7.11-rc0
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
