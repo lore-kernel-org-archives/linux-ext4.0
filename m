@@ -1,82 +1,46 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: re: ext4: refactor ext4_fallocate code
-Date: Mon, 31 Mar 2014 10:43:13 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1403311042100.4996@localhost.localdomain>
-References: <20140328080432.GC25192@mwanda>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org
-To: Dan Carpenter <dan.carpenter@oracle.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH 1/2] ext4: Fix flag handling in ext4_split_convert_extents()
+Date: Mon, 31 Mar 2014 11:11:33 +0200
+Message-ID: <1396257094-10386-1-git-send-email-lczerner@redhat.com>
+Cc: dan.carpenter@oracle.com, Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:2496 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:62084 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751555AbaCaInS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 31 Mar 2014 04:43:18 -0400
-In-Reply-To: <20140328080432.GC25192@mwanda>
+	id S1753425AbaCaJLj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 31 Mar 2014 05:11:39 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 28 Mar 2014, Dan Carpenter wrote:
+In commit 1f0e51771281 "ext4: Introduce FALLOC_FL_ZERO_RANGE flag
+for fallocate" we've introduced wrong flag handling. Fix it.
 
-> Date: Fri, 28 Mar 2014 11:04:32 +0300
-> From: Dan Carpenter <dan.carpenter@oracle.com>
-> To: lczerner@redhat.com
-> Cc: linux-ext4@vger.kernel.org
-> Subject: re: ext4: refactor ext4_fallocate code
-> 
-> Hello Lukas Czerner,
-> 
-> The patch f6a7718e9581: "ext4: refactor ext4_fallocate code" from Mar
-> 18, 2014, leads to the following static checker warning:
-> 
-> 	fs/ext4/extents.c:4926 ext4_fallocate()
-> 	warn: we tested 'ret' before and it was 'false'
-> 
-> fs/ext4/extents.c
->   4916          ret = ext4_alloc_file_blocks(file, lblk, max_blocks, flags, mode);
->   4917          if (ret)
->                     ^^^
-> Checked.
-> 
->   4918                  goto out;
->   4919  
->   4920          handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
->   4921          if (IS_ERR(handle))
->   4922                  goto out;
->   4923  
->   4924          tv = inode->i_ctime = ext4_current_time(inode);
->   4925  
->   4926          if (!ret && new_size) {
->                     ^^^^
-> Known.
-> 
->   4927                  if (new_size > i_size_read(inode)) {
->   4928                          i_size_write(inode, new_size);
->   4929                          inode->i_mtime = tv;
->   4930                  }
->   4931                  if (new_size > EXT4_I(inode)->i_disksize)
->   4932                          ext4_update_i_disksize(inode, new_size);
->   4933          } else if (!ret && !new_size) {
->                            ^^^^
-> Known.
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/extents.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-Right,
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 243a02e..491208c 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3644,13 +3644,13 @@ static int ext4_split_convert_extents(handle_t *handle,
+ 	ee_len = ext4_ext_get_actual_len(ex);
+ 
+ 	/* Convert to unwritten */
+-	if (flags | EXT4_GET_BLOCKS_CONVERT_UNWRITTEN) {
++	if (flags & EXT4_GET_BLOCKS_CONVERT_UNWRITTEN) {
+ 		split_flag |= EXT4_EXT_DATA_VALID1;
+ 	/* Convert to initialized */
+-	} else if (flags | EXT4_GET_BLOCKS_CONVERT) {
++	} else if (flags & EXT4_GET_BLOCKS_CONVERT) {
+ 		split_flag |= ee_block + ee_len <= eof_block ?
+ 			      EXT4_EXT_MAY_ZEROOUT : 0;
+-		split_flag |= (EXT4_EXT_MARK_UNINIT2 & EXT4_EXT_DATA_VALID2);
++		split_flag |= (EXT4_EXT_MARK_UNINIT2 | EXT4_EXT_DATA_VALID2);
+ 	}
+ 	flags |= EXT4_GET_BLOCKS_PRE_IO;
+ 	return ext4_split_extent(handle, inode, path, map, split_flag, flags);
+-- 
+1.8.3.1
 
-and this is true for the other function we;re using
-ext4_alloc_file_blocks().
-
-Thanks!
--Lukas
-
-> 
->   4934                  /*
->   4935                  * Mark that we allocate beyond EOF so the subsequent truncate
->   4936                  * can proceed even if the new size is the same as i_size.
->   4937                  */
->   4938                  if ((offset + len) > i_size_read(inode))
->   4939                          ext4_set_inode_flag(inode, EXT4_INODE_EOFBLOCKS);
->   4940          }
-> 
-> regards,
-> dan carpenter
-> 
