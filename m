@@ -1,82 +1,63 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: [RFC PATCH 1/1] ext4: Try to better reuse recently freed space
-Date: Tue, 01 Apr 2014 15:44:53 +0400
-Message-ID: <87ioqtuvd6.fsf@openvz.org>
-References: <alpine.LFD.2.00.1312021727150.2284@localhost.localdomain> <20140401053018.GP4911@thunk.org>
+Date: Tue, 1 Apr 2014 10:47:08 -0400
+Message-ID: <20140401144708.GT4911@thunk.org>
+References: <alpine.LFD.2.00.1312021727150.2284@localhost.localdomain>
+ <20140401053018.GP4911@thunk.org>
+ <87ioqtuvd6.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	=?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
 	linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-la0-f53.google.com ([209.85.215.53]:60238 "EHLO
-	mail-la0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751453AbaDALo6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Apr 2014 07:44:58 -0400
-Received: by mail-la0-f53.google.com with SMTP id b8so6958695lan.12
-        for <linux-ext4@vger.kernel.org>; Tue, 01 Apr 2014 04:44:56 -0700 (PDT)
-In-Reply-To: <20140401053018.GP4911@thunk.org>
+Received: from imap.thunk.org ([74.207.234.97]:48386 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751275AbaDAOr3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Apr 2014 10:47:29 -0400
+Content-Disposition: inline
+In-Reply-To: <87ioqtuvd6.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 1 Apr 2014 01:30:18 -0400, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Mon, Dec 02, 2013 at 05:32:06PM +0100, Luk=C3=A1=C5=A1 Czerner wro=
-te:
-> > Hi all,
-> >=20
-> > this is the patch I send a while ago to fix the issue I've seen wit=
-h
-> > a global allocation goal. This might no longer apply to the current
-> > kernel and it might not be the best approach, but I use this exampl=
-e
-> > just to start a discussion about those allocation goals and how to
-> > use, or change them.
-> >=20
-> > I think that we agree that the long term fix would be to have free
-> > extent map. But we might be able to do something quickly, unless
-> > someone commits to make the free extent map reality :)
->=20
-> Hi Andreas,
->=20
-> We discussed possibly applying this patch last week at the ext4
-> workshop, possibly as early as for the 3.15 merge window:
->=20
-> 	http://patchwork.ozlabs.org/patch/295956/
->=20
-> However, I'm guessing that Lustre has the workload which is most
-> likely to regress if we were to simply apply this patch.  But, it's
-> likely it will improve things for many/most other ext4 workloads.
->=20
-> We did talk about trying to assemble some block allocation performanc=
-e
-> tests so we can better measure proposed changes to the block
-> allocator, but that's not something we have yet.  However, this globa=
-l
-BTW where this can I find this discussion? I would like to cooperate
-this that activity. Please CC me next time you will disscuss allocation
-performance mesurments. At Parallels we run https://oss.oracle.com/~mas=
-on/compilebench/
-as load simulator.
-> goal is definitely causing problems for a number of use cases,
-> including thinp and being flash friendly.
->=20
-> Would you be willing to apply this patch and then run some benchmarks
-> to see if Lustre would be impacted negatively if we were to apply thi=
-s
-> patch for the next development cycle (i.e., not for 3.15, but for the
-> next merge window)?
->=20
-> Thanks,
->=20
-> 							- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+On Tue, Apr 01, 2014 at 03:44:53PM +0400, Dmitry Monakhov wrote:
+> BTW where this can I find this discussion? I would like to cooperate
+> this that activity. Please CC me next time you will disscuss allocation
+> performance mesurments. At Parallels we run https://oss.oracle.com/~mason/compilebench/
+> as load simulator.
+
+The discussion happened at the Ext4 developer's get together in Napa,
+California, colocated with the LSF/MM and the Collaboration Summit.
+You should go next year; it was a huge amount of fun, and there were a
+bunch of other Parallels people there who can tell you about the
+reception at the Jacuzzi Family Winery, etc.  :-)
+
+I suspect there will be some future conversations at our weekly
+conference calls.  Typically design stuff will happen there, but
+technical low-level details about things like patches will happen on
+the mailing list, so you'll be alerted when we start having specific
+patches to evaluate and as we start putting together a set of
+allocation benchmarks.
+
+If you are interested in participating on the conference calls,
+contact me off-line.  If the current time (8AM US/Pacific ; 11 AM
+US/Eastern) isn't good for you, we can try to see if another time
+works for everyone.
+
+One of the discussion points that came up last week is that it would
+be good if we can come up with allocation tests that are fast to run.
+That might mean (for example) taking a workload such as compilebench,
+and changing it to use fallocate() or having a mount option which
+causes the actual data path writes to be skipped for files.  We would
+then need to have some kind of metric to evaluate how "good" a
+particular file system layout ends up being at the end of the
+workload.  Not just for a specific file, but for all of the files in
+some kind of holistic measurement of "goodness", as well as looking at
+how fragmented the free space ended up being.  Exactly how we do this
+is still something that we need to figure out; if you have any
+suggestions, they would be most welcome!
+
+Cheers,
+
+					- Ted
