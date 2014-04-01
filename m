@@ -1,34 +1,42 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 23732] ext4 timestamp range contains 68-year gaps
-Date: Tue, 01 Apr 2014 03:32:57 +0000
-Message-ID: <bug-23732-13602-ZCwHQ1MO7r@https.bugzilla.kernel.org/>
-References: <bug-23732-13602@https.bugzilla.kernel.org/>
+From: Namjae Jeon <linkinjeon@gmail.com>
+Subject: Re: [PATCH 0/3] fs: Introduce FALLOC_FL_INSERT_RANGE for fallocate
+Date: Tue, 1 Apr 2014 09:19:12 +0900
+Message-ID: <CAKYAXd8adbqepWeDADDtbzk7bTrhXK0CccgewNDsqu0u+HnC4g@mail.gmail.com>
+References: <1396277611-10759-1-git-send-email-linkinjeon@gmail.com>
+	<20140331145625.GA10791@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:59780 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750966AbaDADdD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 31 Mar 2014 23:33:03 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id E2286203B4
-	for <linux-ext4@vger.kernel.org>; Tue,  1 Apr 2014 03:33:01 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 6F24620380
-	for <linux-ext4@vger.kernel.org>; Tue,  1 Apr 2014 03:32:59 +0000 (UTC)
-In-Reply-To: <bug-23732-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
+	Dave Chinner <david@fromorbit.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	"adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
+	Jan Kara <jack@suse.cz>,
+	=?UTF-8?B?THVrw6HFoSBDemVybmVy?= <lczerner@redhat.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>, xfs@oss.sgi.com,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	Namjae Jeon <namjae.jeon@samsung.com>
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20140331145625.GA10791@infradead.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=23732
+2014-03-31 23:56 GMT+09:00 Christoph Hellwig <hch@infradead.org>:
+> On Mon, Mar 31, 2014 at 11:53:31PM +0900, Namjae Jeon wrote:
+>> This flag will work opposite to the newly added FALLOC_FL_COLLAPSE_RANGE flag.
+>> As such, specifying FALLOC_FL_INSERT_RANGE flag will insert zeroed-out space
+>> in between the file within the range specified by offset and len. User can
+>> write new data in this space. e.g. ads.
+>> Like collapse range, currently we have the limitation that offset and len
+>> should be block size aligned for both XFS and Ext4.
+>
+> Btw, I remember Samsung also had an ioctl for XFS to split a file into
+> two without moving the data, do you plan to submit that one as well?
+>
+Hi Christoph.
+Sure, I'm planning to introduce FS_IOC_MOVE_DATA ioctl that can split
+file as well as merging for xfs and ext4.
+I already started to implement it. and will post it soon.
 
---- Comment #5 from Conrad Meyer <cse.cem@gmail.com> ---
-Hm, ignore my patch I guess. Some historical context:
-
-http://thread.gmane.org/gmane.comp.file-systems.ext4/40978
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Thanks.
