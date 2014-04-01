@@ -1,67 +1,67 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [RFC PATCH 1/1] ext4: Try to better reuse recently freed space
-Date: Tue, 01 Apr 2014 20:35:39 +0400
-Message-ID: <87fvlxuhwk.fsf@openvz.org>
-References: <alpine.LFD.2.00.1312021727150.2284@localhost.localdomain> <20140401053018.GP4911@thunk.org> <87ioqtuvd6.fsf@openvz.org> <20140401144708.GT4911@thunk.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: warning in ext4_journal_start_sb on filesystem freeze
+Date: Tue, 1 Apr 2014 14:40:03 -0400
+Message-ID: <20140401184003.GA20903@fieldses.org>
+References: <1697998867.143517.1385454051031.JavaMail.zimbra@rapitasystems.com>
+ <20131126125826.GA4503@quack.suse.cz>
+ <622177618.727.1393062606061.JavaMail.zimbra@rapitasystems.com>
+ <20140224095525.GA20532@quack.suse.cz>
+ <20140224154532.GB11992@fieldses.org>
+ <20140225102126.GB1669@quack.suse.cz>
+ <20140304164306.GC12805@fieldses.org>
+ <20140304190442.GE12805@fieldses.org>
+ <20140310133451.GA17807@infradead.org>
+ <20140310195709.GH28006@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@dilger.ca>,
-	=?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
-	linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: Jan Kara <jack@suse.cz>, Matthew Rahtz <mrahtz@rapitasystems.com>,
+	linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f169.google.com ([209.85.217.169]:51286 "EHLO
-	mail-lb0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753021AbaDAQfo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Apr 2014 12:35:44 -0400
-Received: by mail-lb0-f169.google.com with SMTP id q8so7367230lbi.28
-        for <linux-ext4@vger.kernel.org>; Tue, 01 Apr 2014 09:35:42 -0700 (PDT)
-In-Reply-To: <20140401144708.GT4911@thunk.org>
+Received: from fieldses.org ([174.143.236.118]:37888 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751254AbaDASkL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Apr 2014 14:40:11 -0400
+Content-Disposition: inline
+In-Reply-To: <20140310195709.GH28006@fieldses.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 1 Apr 2014 10:47:08 -0400, "Theodore Ts'o" <tytso@mit.edu> wrote:
-> On Tue, Apr 01, 2014 at 03:44:53PM +0400, Dmitry Monakhov wrote:
-> > BTW where this can I find this discussion? I would like to cooperate
-> > this that activity. Please CC me next time you will disscuss allocation
-> > performance mesurments. At Parallels we run https://oss.oracle.com/~mason/compilebench/
-> > as load simulator.
+On Mon, Mar 10, 2014 at 03:57:09PM -0400, J. Bruce Fields wrote:
+> On Mon, Mar 10, 2014 at 06:34:51AM -0700, Christoph Hellwig wrote:
+> > On Tue, Mar 04, 2014 at 02:04:42PM -0500, J. Bruce Fields wrote:
+> > > diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> > > index 6d7be3f..eea5ad1 100644
+> > > --- a/fs/nfsd/vfs.c
+> > > +++ b/fs/nfsd/vfs.c
+> > > @@ -404,6 +404,7 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+> > >  	umode_t		ftype = 0;
+> > >  	__be32		err;
+> > >  	int		host_err;
+> > > +	bool		get_write_count;
+> > >  	int		size_change = 0;
+> > >  
+> > >  	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME | ATTR_SIZE))
+> > > @@ -411,10 +412,18 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+> > >  	if (iap->ia_valid & ATTR_SIZE)
+> > >  		ftype = S_IFREG;
+> > >  
+> > > +	/* Callers that do fh_verify should do the fh_want_write: */
+> > > +	get_write_count = !fhp->fh_dentry;
+> > 
+> > Eww, this is nasty.  Given that there are only 6 callers of nfsd_setattr
+> > in total, and only half of these might cause size changes I'd rather
+> > deal with this properly, e.g. by taking both the fh_verify into the
+> > callers.
 > 
-> The discussion happened at the Ext4 developer's get together in Napa,
-> California, colocated with the LSF/MM and the Collaboration Summit.
-> You should go next year; it was a huge amount of fun, and there were a
-> bunch of other Parallels people there who can tell you about the
-> reception at the Jacuzzi Family Winery, etc.  :-)
-Hm... the truth is that I was there. I am the man which asked your
-opinion about mfsync(multy-file-fsync) remember :)
-But probably I've simply missed an allocation topic.
-> 
-> I suspect there will be some future conversations at our weekly
-> conference calls.  Typically design stuff will happen there, but
-> technical low-level details about things like patches will happen on
-> the mailing list, so you'll be alerted when we start having specific
-> patches to evaluate and as we start putting together a set of
-> allocation benchmarks.
-> 
-> If you are interested in participating on the conference calls,
-> contact me off-line.  If the current time (8AM US/Pacific ; 11 AM
-> US/Eastern) isn't good for you, we can try to see if another time
-> works for everyone.
-Yes. it would be nice. Please invite be to the next call.
-> 
-> One of the discussion points that came up last week is that it would
-> be good if we can come up with allocation tests that are fast to run.
-> That might mean (for example) taking a workload such as compilebench,
-> and changing it to use fallocate() or having a mount option which
-> causes the actual data path writes to be skipped for files.  We would
-> then need to have some kind of metric to evaluate how "good" a
-> particular file system layout ends up being at the end of the
-> workload.  Not just for a specific file, but for all of the files in
-> some kind of holistic measurement of "goodness", as well as looking at
-> how fragmented the free space ended up being.  Exactly how we do this
-> is still something that we need to figure out; if you have any
-> suggestions, they would be most welcome!
-> 
-> Cheers,
-> 
-> 					- Ted
+> Maybe so.
+
+Gah, I found clearing out my invoice that a) I'd forgotten this, b) I'd
+already committed and pushed out the patch.
+
+And I'd rather leave the fix as is and the cleanup to be done later.
+
+But it's not OK to just drop review like that and if you think it
+warrants reverting or rebasing I can do that.
+
+--b.
