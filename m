@@ -1,67 +1,79 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: warning in ext4_journal_start_sb on filesystem freeze
-Date: Tue, 1 Apr 2014 14:40:03 -0400
-Message-ID: <20140401184003.GA20903@fieldses.org>
-References: <1697998867.143517.1385454051031.JavaMail.zimbra@rapitasystems.com>
- <20131126125826.GA4503@quack.suse.cz>
- <622177618.727.1393062606061.JavaMail.zimbra@rapitasystems.com>
- <20140224095525.GA20532@quack.suse.cz>
- <20140224154532.GB11992@fieldses.org>
- <20140225102126.GB1669@quack.suse.cz>
- <20140304164306.GC12805@fieldses.org>
- <20140304190442.GE12805@fieldses.org>
- <20140310133451.GA17807@infradead.org>
- <20140310195709.GH28006@fieldses.org>
+From: Justin Brown <justin.brown@fandingo.org>
+Subject: Re: Fsck.ext4: Memory Allocation Failed
+Date: Tue, 1 Apr 2014 15:15:54 -0500
+Message-ID: <CAKZK7uwC=M0F6dtYZXjo6dd9yh=0PObsg5BYvP=UjyN0Pr5H-A@mail.gmail.com>
+References: <CAKZK7uwTp2cMoWLiWZSa5UfZ2dCxRaB7KLZ0PtVVSqimp=tLJA@mail.gmail.com>
+	<20140401022231.GC4911@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Matthew Rahtz <mrahtz@rapitasystems.com>,
-	linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:37888 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751254AbaDASkL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 1 Apr 2014 14:40:11 -0400
-Content-Disposition: inline
-In-Reply-To: <20140310195709.GH28006@fieldses.org>
+Received: from mail-ig0-f174.google.com ([209.85.213.174]:43552 "EHLO
+	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751839AbaDAUPz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Apr 2014 16:15:55 -0400
+Received: by mail-ig0-f174.google.com with SMTP id h18so5334579igc.7
+        for <linux-ext4@vger.kernel.org>; Tue, 01 Apr 2014 13:15:54 -0700 (PDT)
+In-Reply-To: <20140401022231.GC4911@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 10, 2014 at 03:57:09PM -0400, J. Bruce Fields wrote:
-> On Mon, Mar 10, 2014 at 06:34:51AM -0700, Christoph Hellwig wrote:
-> > On Tue, Mar 04, 2014 at 02:04:42PM -0500, J. Bruce Fields wrote:
-> > > diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> > > index 6d7be3f..eea5ad1 100644
-> > > --- a/fs/nfsd/vfs.c
-> > > +++ b/fs/nfsd/vfs.c
-> > > @@ -404,6 +404,7 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
-> > >  	umode_t		ftype = 0;
-> > >  	__be32		err;
-> > >  	int		host_err;
-> > > +	bool		get_write_count;
-> > >  	int		size_change = 0;
-> > >  
-> > >  	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME | ATTR_SIZE))
-> > > @@ -411,10 +412,18 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
-> > >  	if (iap->ia_valid & ATTR_SIZE)
-> > >  		ftype = S_IFREG;
-> > >  
-> > > +	/* Callers that do fh_verify should do the fh_want_write: */
-> > > +	get_write_count = !fhp->fh_dentry;
-> > 
-> > Eww, this is nasty.  Given that there are only 6 callers of nfsd_setattr
-> > in total, and only half of these might cause size changes I'd rather
-> > deal with this properly, e.g. by taking both the fh_verify into the
-> > callers.
-> 
-> Maybe so.
+Hi Ted,
 
-Gah, I found clearing out my invoice that a) I'd forgotten this, b) I'd
-already committed and pushed out the patch.
+Thanks for the reply. I had to repeat that on a couple other blocks,
+but it seems to work.
 
-And I'd rather leave the fix as is and the cleanup to be done later.
+I do have one other question. The fsck has been running for several
+hours now, and while it was fixing lots of errors at the beginning,
+there hasn't been any output from fsck in ~2 hours. I assume that it's
+still on stage 1 block and inode check. There are two interesting
+things. First, memory utilization is 9GiB (not including cache) and
+has been stable for a long time now, which seems quite odd that memory
+utilization has remained so high. Second, I attached strace to the
+fsck process. It's not particularly easy for me to tell what's
+happening, but it seems like fsck is going through every inode doing a
+4096 write, lseek -4096, read 4096, and then lseek off to some other
+place. I'm surprised that fsck would be doing such a large number of
+writes, especially given that there's no new messages on
+stdout/stderr. It's more like behavior that I would expect from
+defragmentation. Does this seem normal?
 
-But it's not OK to just drop review like that and if you think it
-warrants reverting or rebasing I can do that.
+Cheers,
+Justin
 
---b.
+On Mon, Mar 31, 2014 at 9:22 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+> On Mon, Mar 31, 2014 at 03:49:29PM -0500, Justin Brown wrote:
+>> Pass 1: Checking inodes, blocks, and sizes
+>> Inode 14109880 has illegal block(s).  Clear? yes
+>>
+>> Illegal block #0 (3925875673) in inode 14109880.  CLEARED.
+>> Illegal block #2 (85326080) in inode 14109880.  CLEARED.
+>> Illegal block #3 (2516589529) in inode 14109880.  CLEARED.
+>> Illegal block #5 (3641317099) in inode 14109880.  CLEARED.
+>> Illegal block #6 (394723355) in inode 14109880.  CLEARED.
+>> Illegal block #7 (2986344453) in inode 14109880.  CLEARED.
+>> Illegal block #8 (3640903191) in inode 14109880.  CLEARED.
+>> Illegal block #9 (463536155) in inode 14109880.  CLEARED.
+>> Illegal block #11 (1275199487) in inode 14109880.  CLEARED.
+>> Illegal double indirect block (2181366192) in inode 14109880.  CLEARED.
+>> Illegal block #563086348 (4294967295) in inode 14109880.  CLEARED.
+>> Error storing directory block information (inode=14109880, block=0,
+>> num=471166008): Memory allocation failed
+>
+> Sorry, this is a bug in e2fsck; we should handle this kind of
+> corrupted inode better.
+>
+> The quick workaround is this:
+>
+> debugfs -w -R "clri <14109880>" /dev/vg/root
+>
+> This will zap the contents of the offending inode, since it's been
+> overwritten with garbage; unfortunately, it was garbage which was
+> causing e2fsck to try to allocate too much memory, and then fail.
+>
+>                                       - Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
