@@ -1,92 +1,50 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [Lsf] [PATCH] xfstests-bld: Simplify determination of number of
- CPUs in build-all
-Date: Wed, 2 Apr 2014 09:28:23 +1100
-Message-ID: <20140401222823.GJ17603@dastard>
-References: <1395997399-3000-1-git-send-email-sedat.dilek@gmail.com>
- <20140328161806.GA31772@thunk.org>
- <20140331025148.GF16336@dastard>
- <20140401023711.GE4911@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: fix premature freeing of partial clusters split
+ across
+Date: Tue, 1 Apr 2014 19:51:47 -0400
+Message-ID: <20140401235147.GB21410@thunk.org>
+References: <20140401233646.GA6549@wallace>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Sedat Dilek <sedat.dilek@gmail.com>,
-	lsf@lists.linux-foundation.org, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: Eric Whitney <enwlinux@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:48742 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754141AbaDAXwR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Apr 2014 19:52:17 -0400
 Content-Disposition: inline
-In-Reply-To: <20140401023711.GE4911@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20140401233646.GA6549@wallace>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 31, 2014 at 10:37:11PM -0400, Theodore Ts'o wrote:
-> On Mon, Mar 31, 2014 at 01:51:48PM +1100, Dave Chinner wrote:
-> > > especially given that based on a challenge which
-> > > Greg K-H gave us at the kernel pannel at Collab Summit,
-> >                ^^^^
-> > 
-> > Hmmmm. Not the way I remember it. Perhaps I should go look at the
-> > video and check that Greg was addressing me directly as the xfstests
-> > maintainer with those comments. After all, those lights on stage can
-> > be blinding.....
+On Tue, Apr 01, 2014 at 07:36:46PM -0400, Eric Whitney wrote:
+> Xfstests generic/311 and shared/298 fail when run on a bigalloc file
+> system.  Kernel error messages produced during the tests report that
+> blocks to be freed are already on the to-be-freed list.  When e2fsck
+> is run at the end of the tests, it typically reports bad i_blocks and
+> bad free blocks counts.
 > 
-> Sorry, I thought in the discussions we had afterwards you agreed with
-> me that *some* way of running xfststs easily was going to be a
-> requirement, as it is somewhat doubtful that most non-file system
-> developers will have the patience to deal with the "some assembly
-> required" in order to actually run xfstests, and actually putting
-> xfstests into the kernel sources wasn't going to be particularly
-> useful unless we have some way of making it possible to run the tests
-> in a semi-automated fashion.
+> The bug that causes these failures is located in ext4_ext_rm_leaf().
+> Code at the end of the function frees a partial cluster if it's not
+> shared with an extent remaining in the leaf.  However, if all the
+> extents in the leaf have been removed, the code dereferences an
+> invalid extent pointer (off the front of the leaf) when the check for
+> sharing is made.  This generally has the effect of unconditionally
+> freeing the partial cluster, which leads to the observed failures
+> when the partial cluster is shared with the last extent in the next
+> leaf.
+> 
+> Fix this by attempting to free the cluster only if extents remain in
+> the leaf.  Any remaining partial cluster will be freed if possible
+> when the next leaf is processed or when leaf removal is complete.
+> 
+> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
 
-Right, there was follup discussion about how we could potentially
-acheive what Greg wanted, but it was more of a "we've got pieces
-that we might be able to leverage" discussion than anything else.
+Thanks, applied.
 
-> Whether that method is based on what I have in xfstests-bld, or some
-> other way is I agree certainly up for discussion.  At the moment the
-> system I have is only set up for ext4, although I will happily accept
-> patches and work with other file system developers to enhance it so it
-> can work with other file systems.
-
-Right, that's pretty much where we finished the discussion at
-the collab summit ;)
-
-But that this is why I responded to your previous email - while you
-likely had the best of intentions, you gave the impression that
-xfstests-bld type of solution was fait accompli, when in fact we
-haven't even really started defining the problem space and gathering
-requirements yet...
-
-> And of course, whether changes in the mainline kernel tree are
-> manually propagated changes from the xfstests.git tree, or whether
-> primary development happens in the kernel tree, is ultimately going to
-> be up to you and the XFS developers who have stewardship of xfstests.
-> I'm not sure I would be that excited about manual propagation of
-> changes from one git tree to another, but that is of course, up to
-> you.
-
-And this is exactly my point, Ted. Again, you are presuming that the
-implementation is going to require syncing commits across disparate
-git trees and other such games will be needed to maintain separate
-packages. Nothing could be further from the truth: we already have
-this problem with the shared XFS kernel/userspace code and it's a
-royal PITA keeping them in sync. Hence introducing the same
-maintenance problem with new code and infrastructure is highly
-undesirable and something we'll try to avoid at all costs.
-
-Basically, we need to start with a proposal that outlines what we
-need in the kernel tree for testing filesystems in place and go from
-there. Once we've agreed on the big picture stuff and solved the
-maintenance, packaging and "how do we run in place" architectural
-issues, then we can start working on the implementation. I'm hoping
-to write something up in the next week or two to being the process
-and discussions, because I'm sure the -stable folk will have some
-input on what they would like to be able to do.... :)
+I added a "Cc: stable@vger.kernel.org" for this patch.
 
 Cheers,
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+	    	    	 			 - Ted
