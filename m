@@ -1,49 +1,85 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Fsck.ext4: Memory Allocation Failed
-Date: Mon, 31 Mar 2014 22:22:31 -0400
-Message-ID: <20140401022231.GC4911@thunk.org>
-References: <CAKZK7uwTp2cMoWLiWZSa5UfZ2dCxRaB7KLZ0PtVVSqimp=tLJA@mail.gmail.com>
+Subject: Re: [Lsf] [PATCH] xfstests-bld: Simplify determination of number of
+ CPUs in build-all
+Date: Mon, 31 Mar 2014 22:37:11 -0400
+Message-ID: <20140401023711.GE4911@thunk.org>
+References: <1395997399-3000-1-git-send-email-sedat.dilek@gmail.com>
+ <20140328161806.GA31772@thunk.org>
+ <20140331025148.GF16336@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Justin Brown <justin.brown@fandingo.org>
+Cc: Sedat Dilek <sedat.dilek@gmail.com>,
+	lsf@lists.linux-foundation.org, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:48063 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:48076 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750996AbaDACWe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 31 Mar 2014 22:22:34 -0400
+	id S1751000AbaDAChU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 31 Mar 2014 22:37:20 -0400
 Content-Disposition: inline
-In-Reply-To: <CAKZK7uwTp2cMoWLiWZSa5UfZ2dCxRaB7KLZ0PtVVSqimp=tLJA@mail.gmail.com>
+In-Reply-To: <20140331025148.GF16336@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 31, 2014 at 03:49:29PM -0500, Justin Brown wrote:
-> Pass 1: Checking inodes, blocks, and sizes
-> Inode 14109880 has illegal block(s).  Clear? yes
+On Mon, Mar 31, 2014 at 01:51:48PM +1100, Dave Chinner wrote:
+> /me puts on his xfstests Maintainer Hat
 > 
-> Illegal block #0 (3925875673) in inode 14109880.  CLEARED.
-> Illegal block #2 (85326080) in inode 14109880.  CLEARED.
-> Illegal block #3 (2516589529) in inode 14109880.  CLEARED.
-> Illegal block #5 (3641317099) in inode 14109880.  CLEARED.
-> Illegal block #6 (394723355) in inode 14109880.  CLEARED.
-> Illegal block #7 (2986344453) in inode 14109880.  CLEARED.
-> Illegal block #8 (3640903191) in inode 14109880.  CLEARED.
-> Illegal block #9 (463536155) in inode 14109880.  CLEARED.
-> Illegal block #11 (1275199487) in inode 14109880.  CLEARED.
-> Illegal double indirect block (2181366192) in inode 14109880.  CLEARED.
-> Illegal block #563086348 (4294967295) in inode 14109880.  CLEARED.
-> Error storing directory block information (inode=14109880, block=0,
-> num=471166008): Memory allocation failed
+> That's a problem of your own making, Ted: please don't speak on
+> behalf of what the upstream xfstests developers might or might not
+> do just because of what you do with it as a user. The existance of
+> many different environments people have built up around it is one of
+> the strengths of xfstests. Hence the very act of considering
+> enforcing One True Way of running xfstests is, IMO, harmful
+> to the wider filesystem and xfstests community.
 
-Sorry, this is a bug in e2fsck; we should handle this kind of
-corrupted inode better.
+I wasn't presuming to do so.
 
-The quick workaround is this:
+I am merely pushing xfstests-bld because it's better that more people
+run tests.  And if it makes it easier for people to run tests because
+there is a turn-key way to run them, so much the better.  Having a
+diversity of ways of running xfstests is good.  Having lots of people
+run xfstests, even if many of them run it the same way, is better.
 
-debugfs -w -R "clri <14109880>" /dev/vg/root 
+> You're also being rather presumptive that the existence of
+> xfstests-bld requires us to change anything about the way xfstests
+> is run.
 
-This will zap the contents of the offending inode, since it's been
-overwritten with garbage; unfortunately, it was garbage which was
-causing e2fsck to try to allocate too much memory, and then fail.
+I never said that any changes was needed to xfstests repository, or
+how anyone else might choose to run xfstests.
 
-	       	      	 	      - Ted
+> > especially given that based on a challenge which
+> > Greg K-H gave us at the kernel pannel at Collab Summit,
+>                ^^^^
+> 
+> Hmmmm. Not the way I remember it. Perhaps I should go look at the
+> video and check that Greg was addressing me directly as the xfstests
+> maintainer with those comments. After all, those lights on stage can
+> be blinding.....
+
+Sorry, I thought in the discussions we had afterwards you agreed with
+me that *some* way of running xfststs easily was going to be a
+requirement, as it is somewhat doubtful that most non-file system
+developers will have the patience to deal with the "some assembly
+required" in order to actually run xfstests, and actually putting
+xfstests into the kernel sources wasn't going to be particularly
+useful unless we have some way of making it possible to run the tests
+in a semi-automated fashion.
+
+Whether that method is based on what I have in xfstests-bld, or some
+other way is I agree certainly up for discussion.  At the moment the
+system I have is only set up for ext4, although I will happily accept
+patches and work with other file system developers to enhance it so it
+can work with other file systems.
+
+And of course, whether changes in the mainline kernel tree are
+manually propagated changes from the xfstests.git tree, or whether
+primary development happens in the kernel tree, is ultimately going to
+be up to you and the XFS developers who have stewardship of xfstests.
+I'm not sure I would be that excited about manual propagation of
+changes from one git tree to another, but that is of course, up to
+you.
+
+Cheers,
+
+						- Ted
