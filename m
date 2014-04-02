@@ -1,51 +1,90 @@
-From: Matthew Wilcox <willy@linux.intel.com>
-Subject: [PATCH] ext4: Note the error in ext4_end_bio()
-Date: Wed, 2 Apr 2014 10:35:07 -0400
-Message-ID: <20140402143507.GA27299@linux.intel.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga09.intel.com ([134.134.136.24]:4958 "EHLO mga09.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758641AbaDBOfe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 2 Apr 2014 10:35:34 -0400
-Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH 2/2] fsstress: Add fallocate collapse range operation
+Date: Wed,  2 Apr 2014 17:33:20 +0200
+Message-ID: <1396452800-25775-2-git-send-email-lczerner@redhat.com>
+References: <1396452800-25775-1-git-send-email-lczerner@redhat.com>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Lukas Czerner <lczerner@redhat.com>
+To: xfs@oss.sgi.com
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1396452800-25775-1-git-send-email-lczerner@redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+This commit adds collapse operation support for fsstress, which is
+meant to exercise fallocate FALLOC_FL_COLLAPSE_RANGE support.
 
-ext4_end_bio() currently throws away the error that it receives.  Chances
-are this is part of a spate of errors, one of which will end up getting
-the error returned to userspace somehow, but we shouldn't take that risk.
-Also print out the errno to aid in debug.
-
-Signed-off-by: Matthew Wilcox <matthew.r.wilcox@intel.com>
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
- fs/ext4/page-io.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ ltp/fsstress.c | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
 
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index ab95508..c18d95b 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -308,13 +308,14 @@ static void ext4_end_bio(struct bio *bio, int error)
- 	if (error) {
- 		struct inode *inode = io_end->inode;
+diff --git a/ltp/fsstress.c b/ltp/fsstress.c
+index fd258bf..1eec11a 100644
+--- a/ltp/fsstress.c
++++ b/ltp/fsstress.c
+@@ -71,6 +71,7 @@ typedef enum {
+ 	OP_MKNOD,
+ 	OP_PUNCH,
+ 	OP_ZERO,
++	OP_COLLAPSE,
+ 	OP_READ,
+ 	OP_READLINK,
+ 	OP_RENAME,
+@@ -168,6 +169,7 @@ void	mkdir_f(int, long);
+ void	mknod_f(int, long);
+ void	punch_f(int, long);
+ void	zero_f(int, long);
++void	collapse_f(int, long);
+ void	read_f(int, long);
+ void	readlink_f(int, long);
+ void	rename_f(int, long);
+@@ -206,6 +208,7 @@ opdesc_t	ops[] = {
+ 	{ OP_MKNOD, "mknod", mknod_f, 2, 1 },
+ 	{ OP_PUNCH, "punch", punch_f, 1, 1 },
+ 	{ OP_ZERO, "zero", zero_f, 1, 1 },
++	{ OP_COLLAPSE, "collapse", collapse_f, 1, 1 },
+ 	{ OP_READ, "read", read_f, 1, 0 },
+ 	{ OP_READLINK, "readlink", readlink_f, 1, 0 },
+ 	{ OP_RENAME, "rename", rename_f, 2, 1 },
+@@ -2173,6 +2176,7 @@ struct print_flags falloc_flags [] = {
+ 	{ FALLOC_FL_NO_HIDE_STALE, "NO_HIDE_STALE"},
+ 	{ FALLOC_FL_COLLAPSE_RANGE, "COLLAPSE_RANGE"},
+ 	{ FALLOC_FL_ZERO_RANGE, "ZERO_RANGE"},
++	{ FALLOC_FL_COLLAPSE_RANGE, "COLLAPSE_RANGE"},
+ 	{ -1, NULL}
+ };
  
--		ext4_warning(inode->i_sb, "I/O error writing to inode %lu "
-+		ext4_warning(inode->i_sb, "I/O error %d writing to inode %lu "
- 			     "(offset %llu size %ld starting block %llu)",
--			     inode->i_ino,
-+			     error, inode->i_ino,
- 			     (unsigned long long) io_end->offset,
- 			     (long) io_end->size,
- 			     (unsigned long long)
- 			     bi_sector >> (inode->i_blkbits - 9));
-+		mapping_set_error(inode->i_mapping, error);
- 	}
+@@ -2223,6 +2227,14 @@ do_fallocate(int opno, long r, int mode)
+ 	off = (off64_t)(lr % MIN(stb.st_size + (1024 * 1024), MAXFSIZE));
+ 	off %= maxfsize;
+ 	len = (off64_t)(random() % (1024 * 1024));
++	/*
++	 * Collapse range requires off and len to be block aligned, make it
++	 * more likely to be the case.
++	 */
++	if (FALLOC_FL_COLLAPSE_RANGE && (opno % 2)) {
++		off = ((off + stb.st_blksize - 1) & ~(stb.st_blksize - 1));
++		len = ((len + stb.st_blksize - 1) & ~(stb.st_blksize - 1));
++	}
+ 	mode |= FALLOC_FL_KEEP_SIZE & random();
+ 	e = fallocate(fd, mode, (loff_t)off, (loff_t)len) < 0 ? errno : 0;
+ 	if (v)
+@@ -2637,6 +2649,14 @@ zero_f(int opno, long r)
+ }
  
- 	if (io_end->flag & EXT4_IO_END_UNWRITTEN) {
+ void
++collapse_f(int opno, long r)
++{
++#ifdef HAVE_LINUX_FALLOC_H
++	do_fallocate(opno, r, FALLOC_FL_COLLAPSE_RANGE);
++#endif
++}
++
++void
+ read_f(int opno, long r)
+ {
+ 	char		*buf;
 -- 
-1.9.0
+1.8.3.1
 
