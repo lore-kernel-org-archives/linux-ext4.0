@@ -1,244 +1,73 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 1/2] fsx: Add fallocate collapse range operation
-Date: Wed,  2 Apr 2014 17:33:19 +0200
-Message-ID: <1396452800-25775-1-git-send-email-lczerner@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: xfstest generic/127 rcu_sched self-detected stall
+Date: Wed, 2 Apr 2014 16:52:11 -0400
+Message-ID: <20140402205211.GO6901@thunk.org>
+References: <nsxzjk3omxh.fsf@closure.thunk.org>
+ <20140402154909.GA2182@wallace>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, Lukas Czerner <lczerner@redhat.com>,
-	linux-ext4@vger.kernel.org
-To: xfs@oss.sgi.com
-Return-path: <xfs-bounces@oss.sgi.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org,
+	=?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+To: Eric Whitney <enwlinux@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:49288 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933024AbaDBUwW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 2 Apr 2014 16:52:22 -0400
+Content-Disposition: inline
+In-Reply-To: <20140402154909.GA2182@wallace>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This commit adds fallocate FALLOC_FL_COLLAPSE_RANGE support for fsx.
+On Wed, Apr 02, 2014 at 11:49:10AM -0400, Eric Whitney wrote:
+> Unrelated note - I'm seeing a failure in spot testing of the patch you
+> picked up from me yesterday on yesterday's dev branch (commit 9f0e2722e9,
+> ext4: remove unneeded test of ret variable) - shared/298 on bigalloc
+> fails:
+> 
+>     --- tests/shared/298.out	2014-02-05 11:20:44.834219953 -0500
+>     +++ /root/xfstests/results//shared/298.out.bad	2014-04-02 11:20:44.618348029 -0400
+>     @@ -2,4 +2,4 @@
+>      Generating garbage on loop...done.
+>      Running fstrim...done.
+>      Detecting interesting holes in image...done.
+>     -Comparing holes to the reported space from FS...done.
+>     +Comparing holes to the reported space from FS...Sectors 614368-614399 are not marked as free!
+> 
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- ltp/fsx.c | 107 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----
- 1 file changed, 100 insertions(+), 7 deletions(-)
+OK, I've figured out what was going on.  A buggy version of the Zero
+Range patch masked this problem.  If you go back to commit 92e3b40,
+which is the last version of ext4 that has been merged into mainline,
+shared/298 fails there as well.  The original version of the
+zero_range patch masked this problem, but that was due to a bug in
+that patch which recently got fixed up:
 
-diff --git a/ltp/fsx.c b/ltp/fsx.c
-index bd1ed76..47d3ee8 100644
---- a/ltp/fsx.c
-+++ b/ltp/fsx.c
-@@ -90,11 +90,12 @@ int			logcount = 0;	/* total ops */
- #define OP_MAX_LITE	4
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 243a02e..464e95d 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3644,13 +3644,13 @@ static int ext4_split_convert_extents(handle_t *handle,
+ 	ee_len = ext4_ext_get_actual_len(ex);
  
- /* !lite operations */
--#define OP_TRUNCATE	4
--#define OP_FALLOCATE	5
--#define OP_PUNCH_HOLE	6
--#define OP_ZERO_RANGE	7
--#define OP_MAX_FULL	8
-+#define OP_TRUNCATE		4
-+#define OP_FALLOCATE		5
-+#define OP_PUNCH_HOLE		6
-+#define OP_ZERO_RANGE		7
-+#define OP_COLLAPSE_RANGE	8
-+#define OP_MAX_FULL		9
- 
- /* operation modifiers */
- #define OP_CLOSEOPEN	100
-@@ -111,6 +112,7 @@ char	*temp_buf;			/* a pointer to the current data */
- char	*fname;				/* name of our test file */
- int	fd;				/* fd for our test file */
- 
-+blksize_t	block_size = 0;
- off_t		file_size = 0;
- off_t		biggest = 0;
- char		state[256];
-@@ -142,6 +144,7 @@ int     mapped_writes = 1;              /* -W flag disables */
- int     fallocate_calls = 1;            /* -F flag disables */
- int     punch_hole_calls = 1;           /* -H flag disables */
- int     zero_range_calls = 1;           /* -z flag disables */
-+int	collapse_range_calls = 1;	/* -C flag disables */
- int 	mapped_reads = 1;		/* -R flag disables it */
- int	fsxgoodfd = 0;
- int	o_direct;			/* -Z */
-@@ -321,13 +324,21 @@ logdump(void)
- 				prt("\t******PPPP");
- 			break;
- 		case OP_ZERO_RANGE:
--			prt("ZERO    0x%x thru 0x%x\t(0x%x bytes)",
-+			prt("ZERO     0x%x thru 0x%x\t(0x%x bytes)",
- 			    lp->args[0], lp->args[0] + lp->args[1] - 1,
- 			    lp->args[1]);
- 			if (badoff >= lp->args[0] && badoff <
- 						     lp->args[0] + lp->args[1])
- 				prt("\t******ZZZZ");
- 			break;
-+		case OP_COLLAPSE_RANGE:
-+			prt("COLLAPSE 0x%x thru 0x%x\t(0x%x bytes)",
-+			    lp->args[0], lp->args[0] + lp->args[1] - 1,
-+			    lp->args[1]);
-+			if (badoff >= lp->args[0] && badoff <
-+						     lp->args[0] + lp->args[1])
-+				prt("\t******CCCC");
-+			break;
- 		case OP_SKIPPED:
- 			prt("SKIPPED (no operation)");
- 			break;
-@@ -949,6 +960,58 @@ do_zero_range(unsigned offset, unsigned length)
- }
- #endif
- 
-+#ifdef FALLOC_FL_COLLAPSE_RANGE
-+void
-+do_collapse_range(unsigned offset, unsigned length)
-+{
-+	unsigned end_offset;
-+	int mode = FALLOC_FL_COLLAPSE_RANGE;
-+
-+	if (length == 0) {
-+		if (!quiet && testcalls > simulatedopcount)
-+			prt("skipping zero length collapse range\n");
-+		log4(OP_SKIPPED, OP_COLLAPSE_RANGE, offset, length);
-+		return;
-+	}
-+
-+	end_offset = offset + length;
-+	if ((loff_t)end_offset >= file_size) {
-+		if (!quiet && testcalls > simulatedopcount)
-+			prt("skipping collapse range behind EOF\n");
-+		log4(OP_SKIPPED, OP_COLLAPSE_RANGE, offset, length);
-+		return;
-+	}
-+
-+	log4(OP_COLLAPSE_RANGE, offset, length, 0);
-+
-+	if (testcalls <= simulatedopcount)
-+		return;
-+
-+	if ((progressinterval && testcalls % progressinterval == 0) ||
-+	    (debug && (monitorstart == -1 || monitorend == -1 ||
-+		      end_offset <= monitorend))) {
-+		prt("%lu collapse\tfrom 0x%x to 0x%x, (0x%x bytes)\n", testcalls,
-+			offset, offset+length, length);
-+	}
-+	if (fallocate(fd, mode, (loff_t)offset, (loff_t)length) == -1) {
-+		prt("collapse range: %x to %x\n", offset, length);
-+		prterr("do_collapse_range: fallocate");
-+		report_failure(161);
-+	}
-+
-+	memmove(good_buf + offset, good_buf + end_offset,
-+		file_size - end_offset);
-+	file_size -= length;
-+}
-+
-+#else
-+void
-+do_collapse_range(unsigned offset, unsigned length)
-+{
-+	return;
-+}
-+#endif
-+
- #ifdef HAVE_LINUX_FALLOC_H
- /* fallocate is basically a no-op unless extending, then a lot like a truncate */
- void
-@@ -1123,6 +1186,12 @@ test(void)
- 			goto out;
- 		}
- 		break;
-+	case OP_COLLAPSE_RANGE:
-+		if (!collapse_range_calls) {
-+			log4(OP_SKIPPED, OP_COLLAPSE_RANGE, offset, size);
-+			goto out;
-+		}
-+		break;
+ 	/* Convert to unwritten */
+-	if (flags | EXT4_GET_BLOCKS_CONVERT_UNWRITTEN) {
++	if (flags & EXT4_GET_BLOCKS_CONVERT_UNWRITTEN) {
+ 		split_flag |= EXT4_EXT_DATA_VALID1;
+ 	/* Convert to initialized */
+-	} else if (flags | EXT4_GET_BLOCKS_CONVERT) {
++	} else if (flags & EXT4_GET_BLOCKS_CONVERT) {
+ 		split_flag |= ee_block + ee_len <= eof_block ?
+ 			      EXT4_EXT_MAY_ZEROOUT : 0;
+-		split_flag |= (EXT4_EXT_MARK_UNINIT2 & EXT4_EXT_DATA_VALID2);
++		split_flag |= (EXT4_EXT_MARK_UNINIT2 | EXT4_EXT_DATA_VALID2);
  	}
- 
- 	switch (op) {
-@@ -1165,6 +1234,16 @@ test(void)
- 		TRIM_OFF_LEN(offset, size, file_size);
- 		do_zero_range(offset, size);
- 		break;
-+	case OP_COLLAPSE_RANGE:
-+		TRIM_OFF_LEN(offset, size, file_size - 1);
-+		offset = offset & ~(block_size - 1);
-+		size = size & ~(block_size - 1);
-+		if (size == 0) {
-+			log4(OP_SKIPPED, OP_COLLAPSE_RANGE, offset, size);
-+			goto out;
-+		}
-+		do_collapse_range(offset, size);
-+		break;
- 	default:
- 		prterr("test: unknown operation");
- 		report_failure(42);
-@@ -1225,6 +1304,9 @@ usage(void)
- #ifdef FALLOC_FL_ZERO_RANGE
- "	-z: Do not use zero range calls\n"
- #endif
-+#ifdef FALLOC_FL_COLLAPSE_RANGE
-+"	-C: Do not use collapse range calls\n"
-+#endif
- "	-L: fsxLite - no file creations & no file size changes\n\
- 	-N numops: total # operations to do (default infinity)\n\
- 	-O: use oplen (see -o flag) for every op (default random)\n\
-@@ -1399,6 +1481,7 @@ main(int argc, char **argv)
- 	char	*endp;
- 	char goodfile[1024];
- 	char logfile[1024];
-+	struct stat statbuf;
- 
- 	goodfile[0] = 0;
- 	logfile[0] = 0;
-@@ -1410,7 +1493,7 @@ main(int argc, char **argv)
- 
- 	setvbuf(stdout, (char *)0, _IOLBF, 0); /* line buffered stdout */
- 
--	while ((ch = getopt(argc, argv, "b:c:dfl:m:no:p:qr:s:t:w:xyAD:FHzLN:OP:RS:WZ"))
-+	while ((ch = getopt(argc, argv, "b:c:dfl:m:no:p:qr:s:t:w:xyAD:FHzCLN:OP:RS:WZ"))
- 	       != EOF)
- 		switch (ch) {
- 		case 'b':
-@@ -1513,6 +1596,9 @@ main(int argc, char **argv)
- 		case 'z':
- 			zero_range_calls = 0;
- 			break;
-+		case 'C':
-+			collapse_range_calls = 0;
-+			break;
- 		case 'L':
- 		        lite = 1;
- 			break;
-@@ -1579,6 +1665,11 @@ main(int argc, char **argv)
- 		prterr(fname);
- 		exit(91);
- 	}
-+	if (fstat(fd, &statbuf)) {
-+		prterr("check_size: fstat");
-+		exit(91);
-+	}
-+	block_size = statbuf.st_blksize;
- #ifdef XFS
- 	if (prealloc) {
- 		xfs_flock64_t	resv = { 0 };
-@@ -1665,6 +1756,8 @@ main(int argc, char **argv)
- 						  FALLOC_FL_KEEP_SIZE);
- 	if (zero_range_calls)
- 		zero_range_calls = test_fallocate(FALLOC_FL_ZERO_RANGE);
-+	if (collapse_range_calls)
-+		collapse_range_calls = test_fallocate(FALLOC_FL_COLLAPSE_RANGE);
- 
- 	while (numops == -1 || numops--)
- 		test();
--- 
-1.8.3.1
+ 	flags |= EXT4_GET_BLOCKS_PRE_IO;
+ 	return ext4_split_extent(handle, inode, path, map, split_flag, flags);
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+So it's a bug for bigalloc that we'll need to look at, but it's not a
+regression in that if you try testing the what we had last pushed to
+linus (ext4_for_linus_stable) or v3.14, shared/298 is failing with
+bigalloc.  And once we fixed up the ZERO RANGE patch, it's still
+failing.  :-/
+
+						- Ted
