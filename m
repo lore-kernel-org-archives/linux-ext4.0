@@ -1,65 +1,68 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [Lsf] [PATCH] xfstests-bld: Simplify determination of number of
-	CPUs in build-all
-Date: Wed, 2 Apr 2014 10:26:20 -0400
-Message-ID: <20140402142620.GA6901@thunk.org>
-References: <1395997399-3000-1-git-send-email-sedat.dilek@gmail.com>
-	<20140328161806.GA31772@thunk.org> <20140331025148.GF16336@dastard>
-	<20140401023711.GE4911@thunk.org> <20140401222823.GJ17603@dastard>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: Ensure that inode is non-NULL before calling
+ ext4_error_inode
+Date: Wed, 2 Apr 2014 18:47:35 +0200
+Message-ID: <20140402164735.GC8657@quack.suse.cz>
+References: <20140402143630.GB27299@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Sedat Dilek <sedat.dilek@gmail.com>, lsf@lists.linux-foundation.org,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <xfs-bounces@oss.sgi.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Matthew Wilcox <willy@linux.intel.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:46289 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932353AbaDBQrh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 2 Apr 2014 12:47:37 -0400
 Content-Disposition: inline
-In-Reply-To: <20140401222823.GJ17603@dastard>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20140402143630.GB27299@linux.intel.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Apr 02, 2014 at 09:28:23AM +1100, Dave Chinner wrote:
-> > And of course, whether changes in the mainline kernel tree are
-> > manually propagated changes from the xfstests.git tree, or whether
-> > primary development happens in the kernel tree, is ultimately going to
-> > be up to you and the XFS developers who have stewardship of xfstests.
-> > I'm not sure I would be that excited about manual propagation of
-> > changes from one git tree to another, but that is of course, up to
-> > you.
+On Wed 02-04-14 10:36:30, Matthew Wilcox wrote:
 > 
-> And this is exactly my point, Ted. Again, you are presuming that the
-> implementation is going to require syncing commits across disparate
-> git trees and other such games will be needed to maintain separate
-> packages. Nothing could be further from the truth: we already have
-> this problem with the shared XFS kernel/userspace code and it's a
-> royal PITA keeping them in sync. Hence introducing the same
-> maintenance problem with new code and infrastructure is highly
-> undesirable and something we'll try to avoid at all costs.
+> __ext4_handle_dirty_metadata can be called with a NULL inode, but
+> ext4_error_inode can't.  This is supposed to be a "can't happen" path,
+> so we need to find out whether it can legitimately happen or whether
+  It can legitimately happen - there is metadata (like bitmaps, inode
+table, group descriptor) which doesn't belong to any inode. Thus we leave
+inode argument as NULL for these.
 
-Actually, I was presuming that the thing that makes the most sense was
-to move all or most of the tests in xfstests into the kernel tests
-tree.  And then you complained that I was making a presumption that
-this was the only sane thing to do.  That's why I said, "if you want
-to do something insane, be my guest".
+> there's some other bug that is causing this to happen.  This prevents
+> a NULL pointer reference, so it should be included regardless of what
+> the underlying error is.
+  I'd prefer wrapping that several-line error into braces. But whatever.
+Feel free to add:
 
-I have nothing against doing a formal requirements process, that's
-fine, but I think there are certain things about what the final
-solution of "test in the kernel git tree" will look like that are
-pretty obvious.
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-Cheers,
-
-						- Ted
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+								Honza
+> 
+> Signed-off-by: Matthew Wilcox <matthew.r.wilcox@intel.com>
+> ---
+>  fs/ext4/ext4_jbd2.c | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+> index 3fe29de..383d586 100644
+> --- a/fs/ext4/ext4_jbd2.c
+> +++ b/fs/ext4/ext4_jbd2.c
+> @@ -259,7 +259,8 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
+>  		if (WARN_ON_ONCE(err)) {
+>  			ext4_journal_abort_handle(where, line, __func__, bh,
+>  						  handle, err);
+> -			ext4_error_inode(inode, where, line,
+> +			if (inode)
+> +				ext4_error_inode(inode, where, line,
+>  					 bh->b_blocknr,
+>  					 "journal_dirty_metadata failed: "
+>  					 "handle type %u started at line %u, "
+> -- 
+> 1.9.0
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
