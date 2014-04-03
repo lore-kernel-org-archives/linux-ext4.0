@@ -1,65 +1,42 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [Lsf] [PATCH] xfstests-bld: Simplify determination of number of
-	CPUs in build-all
-Date: Thu, 3 Apr 2014 15:30:40 -0400
-Message-ID: <20140403193039.GD32323@thunk.org>
-References: <20140328161806.GA31772@thunk.org> <20140331025148.GF16336@dastard>
-	<20140401023711.GE4911@thunk.org> <20140401222823.GJ17603@dastard>
-	<20140402142620.GA6901@thunk.org> <20140403011411.GL16336@dastard>
-	<alpine.LFD.2.00.1404031102310.2124@localhost.localdomain>
-	<CALCETrU=JWigDSv6ymepS2tjL+EkO98VDC03-RSPuhQVk3yvZA@mail.gmail.com>
-	<20140403173504.GB23737@thunk.org> <533DB140.8010103@redhat.com>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [GIT PULL] ext4 changes for 3.15
+Date: Thu, 3 Apr 2014 12:39:42 -0700
+Message-ID: <CA+55aFxoA-iDdmbbgmJiYVvskrtca5aGgUAW=3CR47rM9NEMLA@mail.gmail.com>
+References: <20140403191558.GA8745@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com,
-	lsf@lists.linux-foundation.org, Sedat Dilek <sedat.dilek@gmail.com>,
-	Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-	=?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
-	Andy Lutomirski <luto@amacapital.net>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-In-Reply-To: <533DB140.8010103@redhat.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: Al Viro <viro@zeniv.linux.org.uk>
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Miklos Szeredi <miklos@szeredi.hu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-vc0-f170.google.com ([209.85.220.170]:33778 "EHLO
+	mail-vc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753292AbaDCTjo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Apr 2014 15:39:44 -0400
+In-Reply-To: <20140403191558.GA8745@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Apr 03, 2014 at 01:06:40PM -0600, Eric Sandeen wrote:
-> On 4/3/14, 11:35 AM, Theodore Ts'o wrote:
-> 
-> >>  - There's an undocumented way to write results outside the source
-> >> tree called RESULT_BASE.  It would be great if it were documented and
-> >> spelled consistently.
-> 
-> I'm not actually certain that it was intended to be used this way.
-> See 1686f9ab "xfstests: Introduce a results directory" 
-> which explains just where this variable came from and what it's
-> for...
+Btw, since I'm planning on getting to the filesystem pulls later today
+(or perhaps tomorrow), I wanted to check: are you ok with the ext4
+parts of the cross-rename patches from Miklos?
 
-The last paragraph states of the git description states:
+They are currently at
 
-    This is the first (small) step in being able to store test results
-    in an external location for archival/data mining purposes.
+  git://git.kernel.org/pub/scm/linux/kernel/git/mszeredi/vfs.git cross-rename
 
-The question I suppose is whether storing the results in an external
-location is something that should be xfstests' responsibility, or of
-the test harnesses that call xfstests.  I suspect that since there are
-so many different ways people might want to archive the results, it
-does make sense for the test harnesses to handle this job, but I
-wouldn't want to "presume" on anything that the xfstests developers
-might choose to do....
+in case you want to refresh your memory.
 
-						- Ted
+I have this memory of having seen an acked-by from you last time they
+flew past, but looking at Miklos branch that isn't in the commit logs
+at least, so maybe my memory is crap. It wouldn't be the first time.
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+I think the concerns about renameat2() got all sorted out, and I'm
+planning on pulling them, but I want to make sure that there aren't
+any objections to them.
+
+Al added to the cc for the same reason.
+
+              Linus
