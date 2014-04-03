@@ -1,110 +1,65 @@
-From: Mel Gorman <mgorman@suse.de>
-Subject: Re: [Lsf] [PATCH] xfstests-bld: Simplify determination of number of
-	CPUs in build-all
-Date: Thu, 3 Apr 2014 14:16:10 +0100
-Message-ID: <20140403131610.GB7292@suse.de>
-References: <1395997399-3000-1-git-send-email-sedat.dilek@gmail.com>
-	<20140328161806.GA31772@thunk.org> <20140331025148.GF16336@dastard>
-	<20140401023711.GE4911@thunk.org> <20140401222823.GJ17603@dastard>
-	<20140402142620.GA6901@thunk.org>
+From: Namjae Jeon <linkinjeon@gmail.com>
+Subject: Re: [v7] ext4: Add support FALLOC_FL_COLLAPSE_RANGE for fallocate
+Date: Thu, 3 Apr 2014 22:29:47 +0900
+Message-ID: <CAKYAXd-VA2ERmJnDviZ+5DmGSNtjk_WSsi=Yna_keqe8fpYrFw@mail.gmail.com>
+References: <1393769538-3784-1-git-send-email-linkinjeon@gmail.com>
+	<20140316031745.GA9916@thunk.org>
+	<CAKYAXd-EO0pp=wz_Tg+2NEw9Nyu23sKXc-3n-fZUieES3+xt7w@mail.gmail.com>
+	<20140402164258.GH6901@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: xfs@oss.sgi.com, lsf@lists.linux-foundation.org,
-	linux-fsdevel@vger.kernel.org,
-	Sedat Dilek <sedat.dilek@gmail.com>, linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-In-Reply-To: <20140402142620.GA6901@thunk.org>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qc0-f179.google.com ([209.85.216.179]:58737 "EHLO
+	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751600AbaDCN3t (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Apr 2014 09:29:49 -0400
+Received: by mail-qc0-f179.google.com with SMTP id m20so1818675qcx.24
+        for <linux-ext4@vger.kernel.org>; Thu, 03 Apr 2014 06:29:48 -0700 (PDT)
+In-Reply-To: <20140402164258.GH6901@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Apr 02, 2014 at 10:26:20AM -0400, Theodore Ts'o wrote:
-> On Wed, Apr 02, 2014 at 09:28:23AM +1100, Dave Chinner wrote:
-> > > And of course, whether changes in the mainline kernel tree are
-> > > manually propagated changes from the xfstests.git tree, or whether
-> > > primary development happens in the kernel tree, is ultimately going to
-> > > be up to you and the XFS developers who have stewardship of xfstests.
-> > > I'm not sure I would be that excited about manual propagation of
-> > > changes from one git tree to another, but that is of course, up to
-> > > you.
-> > 
-> > And this is exactly my point, Ted. Again, you are presuming that the
-> > implementation is going to require syncing commits across disparate
-> > git trees and other such games will be needed to maintain separate
-> > packages. Nothing could be further from the truth: we already have
-> > this problem with the shared XFS kernel/userspace code and it's a
-> > royal PITA keeping them in sync. Hence introducing the same
-> > maintenance problem with new code and infrastructure is highly
-> > undesirable and something we'll try to avoid at all costs.
-> 
-> Actually, I was presuming that the thing that makes the most sense was
-> to move all or most of the tests in xfstests into the kernel tests
-> tree.  And then you complained that I was making a presumption that
-> this was the only sane thing to do.  That's why I said, "if you want
-> to do something insane, be my guest".
-> 
+Hi Ted.
+2014-04-03 1:42 GMT+09:00 Theodore Ts'o <tytso@mit.edu>:
+> Some final testing luckily caught a bug in your patch.  I'll fix it
+> up, but for future reference, it's important to check to see if the
+> handle is valid (i.e., we are not in no-journal mode) before using any
+> of the journalling functions.  Otherwise, you will crash if you try
+> using the code path when the file system does not have a journal.
+Thanks for finding bug. I missed no journal case..
+>
+> BTW, I would strongly recommend using the automated regression test
+> system found at:
+>
+>         git://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git
+>
+> It finds these sorts of problems very quickly.  After you build a
+> kernel, running "kvm-xfstests -g quick" would have found the problem
+> very quickly.  The fastest reproducer for the bug that I found is:
+> "kvm-xfstests -c nojournal shared/001".
+Okay, I will do the way you guided next time.
 
-FWIW, I also don't think that xfstests or a framework should go into the
-kernel tree for the following reasons
-
-1. Tests can be created during the release cycle and it does not make
-   sense to tie the availabilty of tests to the availability of a kernel.
-   If someone is running tests against historical tests, they must first
-   checkout the most recent kernel tree, build xfstests and then checkout
-   the old tree. Yes, users can be given a patch against the kernel tree
-   to add a new test but they still have this awkward switching back and
-   forth between the branch that has the test and the kernel they are
-   running the test against.
-
-   Recent example -- trinity 1.3 does not trigger MM bugs. Until recently,
-   the latest git version of trinity caused massive damage.  If trinity had
-   been in the tree someone might have accidentally concluded that 3.13 was
-   "fine"
-
-2. It would be relatively easy for someone to mistakenly bisect xfstests
-   instead of bisecting the kernel although my understanding is that tests
-   do not change per-se, only new ones are added. There may be
-   exceptions to this rule
-
-3. With testing automation, it's not that hard to download the
-   requirements for it. mmtests prefers to use a local mirror but falls
-   back to downloading tarballs, checking out git trees or mercurcial
-   trees as appropriate. It's just a few lines of code (most of which is
-   auto-generated from a template).
-
-4. Testing monoculture. Sometimes the value of a benchmark is because
-   different people run it differently for whatever reason. My IO tests for
-   example all tune the benchmark to at least 2*RAM but that misses the cases
-   where there are regressions in IO to a file that fits in memory. xfstests
-   might have similar problems but minimally it would be a shame if the
-   framework always used the same mount options for example. FWIW I've
-   had bugs reported that were real bugs and only revealed because the
-   benchmark parameters made no sense but still found a bug by accident.
-
-Overall I have little motivation to having all the tests in the kernel
-tree. That said, I already have an automated framework I can use so I
-would not feel as strongly about the problem.
-
-The point is that putting tests in tree or out of tree is neither sane nor
-insane. It's simply different approaches so people on the thread should
-be wary of trying to label the other person as being mental just because
-of where they want to stick a test.
-
--- 
-Mel Gorman
-SUSE Labs
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+Thanks!
+>
+> Cheers,
+>
+>                                                 - Ted
+>
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 7015917..bbba1ef 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -4902,6 +4902,9 @@ ext4_access_path(handle_t *handle, struct inode *inode,
+>  {
+>         int credits, err;
+>
+> +       if (!ext4_handle_valid(handle))
+> +               return 0;
+> +
+>         /*
+>          * Check if need to extend journal credits
+>          * 3 for leaf, sb, and inode plus 2 (bmap and group
+>
+>
