@@ -1,63 +1,125 @@
-From: Al Viro <viro@ZenIV.linux.org.uk>
-Subject: [heads-up][RFC] ext4_file_write() breakage
-Date: Thu, 3 Apr 2014 17:37:39 +0100
-Message-ID: <20140403163739.GR18016@ZenIV.linux.org.uk>
+From: Andy Lutomirski <luto@amacapital.net>
+Subject: Re: [Lsf] [PATCH] xfstests-bld: Simplify determination of number of
+	CPUs in build-all
+Date: Thu, 3 Apr 2014 10:05:26 -0700
+Message-ID: <CALCETrU=JWigDSv6ymepS2tjL+EkO98VDC03-RSPuhQVk3yvZA@mail.gmail.com>
+References: <1395997399-3000-1-git-send-email-sedat.dilek@gmail.com>
+	<20140328161806.GA31772@thunk.org> <20140331025148.GF16336@dastard>
+	<20140401023711.GE4911@thunk.org> <20140401222823.GJ17603@dastard>
+	<20140402142620.GA6901@thunk.org> <20140403011411.GL16336@dastard>
+	<alpine.LFD.2.00.1404031102310.2124@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
-	linux-fsdevel@vger.kernel.org
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: Theodore Ts'o <tytso@mit.edu>, xfs@oss.sgi.com,
+	lsf@lists.linux-foundation.org,
+	Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+	Sedat Dilek <sedat.dilek@gmail.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: =?ISO-8859-2?Q?Luk=E1=B9_Czerner?= <lczerner@redhat.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <alpine.LFD.2.00.1404031102310.2124@localhost.localdomain>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-	There's a bunch of fun problems with ext4_file_write():
-
-1) check for non-extent file trying to grow past the old size limit is
-looking at position we say we'll be writing to.  generic_file_aio_write()
-might have a different idea, though - just open with O_APPEND and watch
-the sucker grow the file across the limit.
-
-2) simply looking at file size in O_APPEND case instead of pos would not
-close that one - file size is unstable at that point (we don't have any
-locks held here).
-
-3) ext4_unaligned_aio() suffers the same problem, but that's *not* the
-only issue with it.  It checks that (O_DIRECT) aio write tries to hit
-something aligned only to hw sector and not to block size.  Fine, but...
-think what rlimit will do to us.  generic_write_checks() contains this:
-
-	unsigned long limit = rlimit(RLIMIT_FSIZE);
-	....
-		if (limit != RLIM_INFINITY) {
-			if (*pos >= limit) {
-				send_sig(SIGXFSZ, current, 0);
-				return -EFBIG;
-			}
-			if (*count > limit - (typeof(limit))*pos) {
-				*count = limit - (typeof(limit))*pos;
-			}
-		}
-
-and it's done only after we'd called ext4_unaligned_aio().  So it doesn't
-predict whether the iovec seen by ->direct_IO() will be unaligned - there
-are false negatives.  Even worse, consider an iovec that consists of
-8 segments, 512 bytes each.  Starting offset in file is a multiple of block
-size.  Everything's fine from ext4_unaligned_aio() POV, right?  And from
-fs/direct-io.c one it's only sector-aligned sucker.  For a good reason,
-since a segment in the middle of that thing might very well point to unmapped
-memory, which will mean short write, with all zeroing issues ext4 is trying
-to avoid here.
-
-TBH, I'm seriously tempted to have ext4 ->direct_IO() to bail out on any
-iovec that isn't block-aligned, and scratch the whole ext4_unaligned_aio()
-logics.  It still leaves (1) and (2), but then we'll be able to lambda-expand
-the call of generic_file_aio_write() and shift taking i_mutex up to the point
-prior to checking for non-extent files trying to grow too much.
-
-There might be kinder ways to deal with that mess, but I don't know the code
-in ext4 dealing with unwritten extents anywhere near well enough to tell what's
-feasible in that area.
-
-Comments?
+T24gVGh1LCBBcHIgMywgMjAxNCBhdCAzOjI2IEFNLCBMdWvDocWhIEN6ZXJuZXIgPGxjemVybmVy
+QHJlZGhhdC5jb20+IHdyb3RlOgo+IE9uIFRodSwgMyBBcHIgMjAxNCwgRGF2ZSBDaGlubmVyIHdy
+b3RlOgo+Cj4+IERhdGU6IFRodSwgMyBBcHIgMjAxNCAxMjoxNDoxMSArMTEwMAo+PiBGcm9tOiBE
+YXZlIENoaW5uZXIgPGRhdmlkQGZyb21vcmJpdC5jb20+Cj4+IFRvOiBUaGVvZG9yZSBUcydvIDx0
+eXRzb0BtaXQuZWR1Pgo+PiBDYzogU2VkYXQgRGlsZWsgPHNlZGF0LmRpbGVrQGdtYWlsLmNvbT4s
+IGxzZkBsaXN0cy5saW51eC1mb3VuZGF0aW9uLm9yZywKPj4gICAgIGxpbnV4LWV4dDRAdmdlci5r
+ZXJuZWwub3JnLCBsaW51eC1mc2RldmVsQHZnZXIua2VybmVsLm9yZywgeGZzQG9zcy5zZ2kuY29t
+Cj4+IFN1YmplY3Q6IFJlOiBbTHNmXSBbUEFUQ0hdIHhmc3Rlc3RzLWJsZDogU2ltcGxpZnkgZGV0
+ZXJtaW5hdGlvbiBvZiBudW1iZXIgb2YKPj4gICAgIENQVXMgaW4gYnVpbGQtYWxsCj4+Cj4+IE9u
+IFdlZCwgQXByIDAyLCAyMDE0IGF0IDEwOjI2OjIwQU0gLTA0MDAsIFRoZW9kb3JlIFRzJ28gd3Jv
+dGU6Cj4+ID4gT24gV2VkLCBBcHIgMDIsIDIwMTQgYXQgMDk6Mjg6MjNBTSArMTEwMCwgRGF2ZSBD
+aGlubmVyIHdyb3RlOgo+PiA+ID4gPiBBbmQgb2YgY291cnNlLCB3aGV0aGVyIGNoYW5nZXMgaW4g
+dGhlIG1haW5saW5lIGtlcm5lbCB0cmVlIGFyZQo+PiA+ID4gPiBtYW51YWxseSBwcm9wYWdhdGVk
+IGNoYW5nZXMgZnJvbSB0aGUgeGZzdGVzdHMuZ2l0IHRyZWUsIG9yIHdoZXRoZXIKPj4gPiA+ID4g
+cHJpbWFyeSBkZXZlbG9wbWVudCBoYXBwZW5zIGluIHRoZSBrZXJuZWwgdHJlZSwgaXMgdWx0aW1h
+dGVseSBnb2luZyB0bwo+PiA+ID4gPiBiZSB1cCB0byB5b3UgYW5kIHRoZSBYRlMgZGV2ZWxvcGVy
+cyB3aG8gaGF2ZSBzdGV3YXJkc2hpcCBvZiB4ZnN0ZXN0cy4KPj4gPiA+ID4gSSdtIG5vdCBzdXJl
+IEkgd291bGQgYmUgdGhhdCBleGNpdGVkIGFib3V0IG1hbnVhbCBwcm9wYWdhdGlvbiBvZgo+PiA+
+ID4gPiBjaGFuZ2VzIGZyb20gb25lIGdpdCB0cmVlIHRvIGFub3RoZXIsIGJ1dCB0aGF0IGlzIG9m
+IGNvdXJzZSwgdXAgdG8KPj4gPiA+ID4geW91Lgo+PiA+ID4KPj4gPiA+IEFuZCB0aGlzIGlzIGV4
+YWN0bHkgbXkgcG9pbnQsIFRlZC4gQWdhaW4sIHlvdSBhcmUgcHJlc3VtaW5nIHRoYXQgdGhlCj4+
+ID4gPiBpbXBsZW1lbnRhdGlvbiBpcyBnb2luZyB0byByZXF1aXJlIHN5bmNpbmcgY29tbWl0cyBh
+Y3Jvc3MgZGlzcGFyYXRlCj4+ID4gPiBnaXQgdHJlZXMgYW5kIG90aGVyIHN1Y2ggZ2FtZXMgd2ls
+bCBiZSBuZWVkZWQgdG8gbWFpbnRhaW4gc2VwYXJhdGUKPj4gPiA+IHBhY2thZ2VzLiBOb3RoaW5n
+IGNvdWxkIGJlIGZ1cnRoZXIgZnJvbSB0aGUgdHJ1dGg6IHdlIGFscmVhZHkgaGF2ZQo+PiA+ID4g
+dGhpcyBwcm9ibGVtIHdpdGggdGhlIHNoYXJlZCBYRlMga2VybmVsL3VzZXJzcGFjZSBjb2RlIGFu
+ZCBpdCdzIGEKPj4gPiA+IHJveWFsIFBJVEEga2VlcGluZyB0aGVtIGluIHN5bmMuIEhlbmNlIGlu
+dHJvZHVjaW5nIHRoZSBzYW1lCj4+ID4gPiBtYWludGVuYW5jZSBwcm9ibGVtIHdpdGggbmV3IGNv
+ZGUgYW5kIGluZnJhc3RydWN0dXJlIGlzIGhpZ2hseQo+PiA+ID4gdW5kZXNpcmFibGUgYW5kIHNv
+bWV0aGluZyB3ZSdsbCB0cnkgdG8gYXZvaWQgYXQgYWxsIGNvc3RzLgo+PiA+Cj4+ID4gQWN0dWFs
+bHksIEkgd2FzIHByZXN1bWluZyB0aGF0IHRoZSB0aGluZyB0aGF0IG1ha2VzIHRoZSBtb3N0IHNl
+bnNlIHdhcwo+PiA+IHRvIG1vdmUgYWxsIG9yIG1vc3Qgb2YgdGhlIHRlc3RzIGluIHhmc3Rlc3Rz
+IGludG8gdGhlIGtlcm5lbCB0ZXN0cwo+PiA+IHRyZWUuICBBbmQgdGhlbiB5b3UgY29tcGxhaW5l
+ZCB0aGF0IEkgd2FzIG1ha2luZyBhIHByZXN1bXB0aW9uIHRoYXQKPj4gPiB0aGlzIHdhcyB0aGUg
+b25seSBzYW5lIHRoaW5nIHRvIGRvLiAgVGhhdCdzIHdoeSBJIHNhaWQsICJpZiB5b3Ugd2FudAo+
+PiA+IHRvIGRvIHNvbWV0aGluZyBpbnNhbmUsIGJlIG15IGd1ZXN0Ii4KPj4KPj4gU28sIHlvdSB0
+aGluayB0aGVyZSdzIG9ubHkgb25lICJzYW5lIiBzb2x1dGlvbi4gVGhhdCdzIGEgbWFzc2l2ZQo+
+PiBhc3N1bXB0aW9uLCBhbmQgdGhhdCdzIHdoYXQgSSdtIHBvaW50aW5nIG91dC4KPj4KPj4gSXQn
+cyBwZXJmZWN0bHkgc2FuZSB0byB0cmVhdCB0aGUga2VybmVsIHRyZWUgYXMganVzdCBhbm90aGVy
+Cj4+IGRvd25zdHJlYW0gY29uc3VtZXIgb2YgeGZzdGVzdHMsIGFuZCBzaW1wbGUgYWRkIGluZnJh
+c3RydWN0dXJlIHRvCj4+IHRoZSBrZXJuZWwgdHJlZSB0byBzb3VyY2UgYW5kIGJ1aWxkIHhmc3Rl
+c3RzIGZyb20gdGhlIHVwc3RyZWFtIHJlcG8uCj4KPiBUaGF0J3Mgd2hhdCBJIHRoaW5rIGlzIHRo
+ZSBiZXN0IGFwcHJvYWNoIGFzIHdlbGwuIFdlJ2xsIHN0aWxsIGhhdmUKPiBzZXBhcmF0ZSB0cmVl
+IGZvciB0aGUgeGZzdGVzdHMgd2hpY2ggd29ya3MgZm9yIGV2ZXJ5b25lIGFuZAo+IGluZnJhc3Ry
+dWN0dXJlIGluIGtlcm5lbCB0cmVlIHdoaWNoIHdpbGwgc2ltcGx5IHVzZSBpdC4KPgo+IExvb2tp
+bmcgYXQgcmN1dG9ydHVyZSB0ZXN0cyBpbiBrZXJuZWwgdHJlZSwgdGhleSBhcmUgaW5kZWVkIHVz
+aW5nCj4gcWVtdSBhbmQgaXQgbG9va3MgbGlrZSB0aGF0IHRoZXkgYXJlIHJ1bm5pbmcgdGhvc2Ug
+dGVzdHMgZGlyZWN0bHkKPiBmcm9tIGluaXQgc2NyaXB0IC0gd2UgcmVhbGx5IG5lZWQgYW4gaW1h
+Z2UgdG8gYm9vdCBmcm9tLgo+Cj4gV2UgY291bGQgdXNlIHZpcnRtZQo+Cj4gaHR0cHM6Ly9naXQu
+a2VybmVsLm9yZy9jZ2l0L3V0aWxzL2tlcm5lbC92aXJ0bWUvdmlydG1lLmdpdC8KCnZpcnRtZSB3
+aWxsIGV2ZW50dWFsbHkgYmUgYWJsZSB0byB1c2UgYSBzZXBhcmF0ZSBPUyBpbWFnZSwgcHJvYmFi
+bHkgaW4KdGhlIGZvcm0gb2YgYSBkaXJlY3Rvcnkgd2l0aCBhcHByb3ByaWF0ZSB4YXR0cnMgc2V0
+LiAgSSBjb3VsZCBzdXBwb3J0CmltYWdlcyBvbiBhIGJsb2NrIGRldmljZSB0b28sIGJ1dCB0aGF0
+J3MgYm9yaW5nIDopCgo+Cj4gd2hpY2ggc2VlbXMgbGlrZSBhIGJlc3Qgb3B0aW9uLiBBbHRlcm5h
+dGl2ZWx5IHdlIGNvdWxkIGFsbG93IHVzZXJzCj4gcGFzc2luZyB0aGVpciBvd24gaW1hZ2UgYXMg
+d2VsbC4KPgo+IFRoZW4gd2Ugd291bGQgbmVlZCBpbml0IHNjcmlwdCB3aGljaCB3b3VsZCBkb3du
+bG9hZCBhbmQgYnVpbGQKPiB4ZnN0ZXN0cywgeGZzcHJvZ3MgYW5kIHBvc3NpYmxlIG90aGVyIGRl
+cGVuZGVuY2llcyAoc3VjaCBhcyBmaW8pCj4gYW5kIGZpbmFsbHkgcnVuIHhmc3Rlc3RzIGl0c2Vs
+Zi4gQ29sbnNvbGUgb3V0cHV0IGZyb20gdGhlIHFlbXUgY2FuCj4gYmUgcmVkaXJlY3RlZCB0byB0
+aGUgZmlsZSBpbiB0aGUgaG9zdCwgc28gdGhhdCdzIG9rLCBidXQgd2Ugc3RpbGwKPiBuZWVkIGEg
+d2F5IHRvIHJldHJpZXZlICdyZXR1bHRzJyBkaXJlY3RvcnkgZnJvbSB0aGUgdGVzdC4KPgo+IFdl
+J2QgYWxzbyBuZWVkIGEgZGV2aWNlcyB0byB0ZXN0IG9uIChhdCBsZWFzdCBURVNUX0RFViBhbmQK
+PiBTQ1JBVENIX0RFVikuIFRob3NlIGNvdWxkIGJlIGZpbGVzIGEgb2Ygc2V0IHNpemUgZXhwb3J0
+ZWQgdG8gcWVtdSBhcwo+IGJsb2NrIGRldmljZXMuCgpJIGp1c3QgcHVzaGVkIGEgcGFpciBvZiBz
+YW1wbGUgc2NyaXB0cyB0aGF0IGludm9rZXMgeGZzdGVzdHMgaW5zaWRlCnZpcnRtZS4gIFRoZXkn
+cmUgYSB0b3RhbCBvZiA0MiBsaW5lcywgaW5jbHVkaW5nIGNvbW1lbnRzIGFuZAppbnN0cnVjdGlv
+bnMuICBZb3UgY2FuIG5vdyBkbzoKClBBVEg9LjokUEFUSCBzYW1wbGVzL3hmc3Rlc3RzIHRlc3Qu
+aW1nIHNjcmF0Y2guaW1nIH4vYXBwcy94ZnN0ZXN0cy8KCmZyb20gaW5zaWRlIGEgdmlydG1lIGNo
+ZWNrb3V0LiAgWW91J2xsIGhhdmUgdG8gY29tcGlsZSB4ZnN0ZXN0cyBmaXJzdCwgdGhvdWdoLgoK
+VGhleSB3aWxsIGJlIGNvbnNpZGVyYWJseSBtb3JlIHVzZWZ1bCBvbmNlIEkgYWRkIHJlYWQtd3Jp
+dGUgaG9zdAp3aW5kb3dzIHRvIHZpcnRtZS4KCklmIGFueW9uZSB3YW50cyB0byB1c2UgdmlydG1l
+IGZvciBzb21ldGhpbmcgb3RoZXIgdGhhbgpleHBlcmltZW50YXRpb24sIGxldCBtZSBrbm93IGFu
+ZCB3ZSBjYW4gdGFsayBhYm91dCBpbnRlcmZhY2UKc3RhYmlsaXR5LgoKU29tZSB4ZnN0ZXN0cyB0
+aG91Z2h0czoKCiAtIFRoZXJlJ3MgYW4gdW5kb2N1bWVudGVkIHdheSB0byB3cml0ZSByZXN1bHRz
+IG91dHNpZGUgdGhlIHNvdXJjZQp0cmVlIGNhbGxlZCBSRVNVTFRfQkFTRS4gIEl0IHdvdWxkIGJl
+IGdyZWF0IGlmIGl0IHdlcmUgZG9jdW1lbnRlZCBhbmQKc3BlbGxlZCBjb25zaXN0ZW50bHkuCgog
+LSB4ZnN0ZXN0cyBkb2VzIG5vdCBhcHByZWNpYXRlIHVzaW5nIHN5bWxpbmtzIHRvIGRldmljZSBu
+b2Rlcy4KCiAtIFNDUkFUQ0hfTU5UIG5lZWRzIHRvIGJlIGluIC9ldGMvZnN0YWIuICBJIHRoaW5r
+IHRoYXQgdGhpcyBzaG91bGQgYmUKY2hhbmdlZCBvciBkb2N1bWVudGVkLiAgSWYgdGhlIGxhdHRl
+ciwgdGhlbiBTQ1JBVENIX0RFViBzZWVtcwpyZWR1bmRhbnQuCgpTb21lIHZpcnRtZSB0aG91Z2h0
+czoKCi0gLS1zY3JpcHQtc2ggaXMgYXdrd2FyZC4gIFN1Z2dlc3Rpb25zIGZvciBhIGJldHRlciBp
+bnRlcmZhY2UgYXJlIHdlbGNvbWUuCgogLSAgSXQgd291bGQgYmUgZ3JlYXQgaWYgdGhlIHZpcnRj
+b25zb2xlIGRyaXZlciB3ZXJlIGxlc3MgYnVnZ3kuICBFdmVuCnRoZSB2aXJ0dWFsaXplZCB0dHlT
+MCBpcyBzbG93IGVub3VnaCB0byBhY2NvdW50IGZvciBhIHNpZ25pZmljYW50CmZyYWN0aW9uIG9m
+IGJvb3QgdGltZS4gIEl0IHdvdWxkIGFsc28gYmUgZ3JlYXQgaWYgdGhlIGNvbm5lY3Rpb24KYmV0
+d2VlbiB2aXJ0aW8gcG9ydHMgYW5kIGh2YyBkZXZpY2VzIHdlcmUgZXhwb3NlZCBpbiBzeXNmcyBh
+bmQgdGhyb3VnaAovZGV2IHN5bWxpbmtzLgoKIC0gZWFybHlwcmludGs9dmlydGNvbnNvbGUgd291
+bGQgYmUgYXdlc29tZS4gIFRoaXMgbWlnaHQgbmVlZCBoZWxwCmZyb20gcWVtdSwgdGhvdWdoLiAg
+T3IgbWF5YmUgdGhlcmUncyBhIHdheSB0byBnZXQgdGhlIGRlYnVnIHBvcnQgdG8Kd29yayBmb3Ig
+dGhhdC4KCiAtIEkgc2hvdWxkIHByb2JhYmx5IGFkZCBzaW1wbGUgd2F5IHRvIHVzZSBmb3JjaWJs
+eSBjYWNoZWQgZGlza3MuCgotLUFuZHkKCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fCnhmcyBtYWlsaW5nIGxpc3QKeGZzQG9zcy5zZ2kuY29tCmh0dHA6Ly9v
+c3Muc2dpLmNvbS9tYWlsbWFuL2xpc3RpbmZvL3hmcwo=
