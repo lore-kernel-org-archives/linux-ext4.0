@@ -1,58 +1,69 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 1/2] fsx: Add fallocate collapse range operation
-Date: Fri, 4 Apr 2014 08:26:37 +1100
-Message-ID: <20140403212637.GP17603@dastard>
-References: <1396452800-25775-1-git-send-email-lczerner@redhat.com>
- <alpine.LFD.2.00.1404021752340.2169@localhost.localdomain>
+From: Eric Sandeen <sandeen@sandeen.net>
+Subject: Re: [Lsf] [PATCH] xfstests-bld: Simplify determination of number
+	of CPUs in build-all
+Date: Thu, 03 Apr 2014 15:46:24 -0600
+Message-ID: <533DD6B0.6010102@sandeen.net>
+References: <1395997399-3000-1-git-send-email-sedat.dilek@gmail.com>	<20140328161806.GA31772@thunk.org>
+	<20140331025148.GF16336@dastard>	<20140401023711.GE4911@thunk.org>
+	<20140401222823.GJ17603@dastard>	<20140402142620.GA6901@thunk.org>
+	<20140403011411.GL16336@dastard>	<alpine.LFD.2.00.1404031102310.2124@localhost.localdomain>	<CALCETrU=JWigDSv6ymepS2tjL+EkO98VDC03-RSPuhQVk3yvZA@mail.gmail.com>	<20140403173504.GB23737@thunk.org>
+	<533DB140.8010103@redhat.com>
+	<CALCETrVq1DfpyhThajc9FYA7NLWYt9oX4vadCDcqn+d26aALGA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:44742 "EHLO
-	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752550AbaDCV0k (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Apr 2014 17:26:40 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1404021752340.2169@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso@mit.edu>, xfs@oss.sgi.com,
+	lsf@lists.linux-foundation.org,
+	Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+	Sedat Dilek <sedat.dilek@gmail.com>,
+	=?windows-1252?Q?Luk=E1=9A_Czerner?= <lczerner@redhat.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Andy Lutomirski <luto@amacapital.net>, Eric Sandeen <sandeen@redhat.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <CALCETrVq1DfpyhThajc9FYA7NLWYt9oX4vadCDcqn+d26aALGA@mail.gmail.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Apr 02, 2014 at 05:55:07PM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
-:
-> On Wed, 2 Apr 2014, Lukas Czerner wrote:
->=20
-> > Date: Wed,  2 Apr 2014 17:33:19 +0200
-> > From: Lukas Czerner <lczerner@redhat.com>
-> > To: xfs@oss.sgi.com
-> > Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-> >     Lukas Czerner <lczerner@redhat.com>
-> > Subject: [PATCH 1/2] fsx: Add fallocate collapse range operation
-> >=20
-> > This commit adds fallocate FALLOC_FL_COLLAPSE_RANGE support for fsx=
-=2E
->=20
-> Btw, this actually makes the fsx fail on ext4 and xfs after a while.
-> I was trying to find a problem in fsx itself but I think it is
-> actually ok. That means that we could possibly have bugs in ext4 and
-> xfs collapse range implementation. More eyes are needed on this!
+On 4/3/14, 1:21 PM, Andy Lutomirski wrote:
+> On Thu, Apr 3, 2014 at 12:06 PM, Eric Sandeen <sandeen@redhat.com> wrote:
 
-No surprise, really. As it is, your previous ZERO_RANGE additions
-caused problems for XFS, and those are mostly fixed in the 6 patch
-series I sent before LSFMM.  Hence I wouldn't be surprised if that's
-what you are seeing (on XFs, at least) and it's not actually
-COLLAPSE_RANGE that is causing problems...
+...
 
-Cheers,
+>>> The various test scripts do need to be able to find the device where
+>>> the file system lives, and parsing /etc/fstab would be awkward.  So if
+>>> your comment is that either the /etc/fstab entry shouldn't be
+>>> required, or the xfstests runtime environment should be able to derive
+>>> $SCRATCH_DEV automatically from $SCRATCH_MNT, or vice versa, instead
+>>
+>> I guess I don't know why you'd expect to derive one from the other...
+> 
+> Sigh.
+> 
+> If $SCRATCH_MNT is specified, then the line in /etc/fstab is
+> unnecessary.  If $SCRATCH_MNT is not specified, then /etc/fstab will
+> do the trick.
+> 
+> What does not work is specifying $SCRATCH_DIR [sic] but not adding an
+> fstab entry.  Oops.
 
-Dave.
---=20
-Dave Chinner
-david@fromorbit.com
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Oh, I see.
+
+I'd never really thought about xfstests devices as "part of the system" -
+since they're constantly scribbled on, re-made, etc, and managed wholly
+by xfstests (at least the scratch device) - so the notion of using fstab
+was just outside my realm of expected behaviors.  :)
+
+-Eric
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
