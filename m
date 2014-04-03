@@ -1,65 +1,63 @@
-From: Namjae Jeon <linkinjeon@gmail.com>
-Subject: Re: [v7] ext4: Add support FALLOC_FL_COLLAPSE_RANGE for fallocate
-Date: Thu, 3 Apr 2014 22:29:47 +0900
-Message-ID: <CAKYAXd-VA2ERmJnDviZ+5DmGSNtjk_WSsi=Yna_keqe8fpYrFw@mail.gmail.com>
-References: <1393769538-3784-1-git-send-email-linkinjeon@gmail.com>
-	<20140316031745.GA9916@thunk.org>
-	<CAKYAXd-EO0pp=wz_Tg+2NEw9Nyu23sKXc-3n-fZUieES3+xt7w@mail.gmail.com>
-	<20140402164258.GH6901@thunk.org>
+From: Al Viro <viro@ZenIV.linux.org.uk>
+Subject: [heads-up][RFC] ext4_file_write() breakage
+Date: Thu, 3 Apr 2014 17:37:39 +0100
+Message-ID: <20140403163739.GR18016@ZenIV.linux.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qc0-f179.google.com ([209.85.216.179]:58737 "EHLO
-	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751600AbaDCN3t (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Apr 2014 09:29:49 -0400
-Received: by mail-qc0-f179.google.com with SMTP id m20so1818675qcx.24
-        for <linux-ext4@vger.kernel.org>; Thu, 03 Apr 2014 06:29:48 -0700 (PDT)
-In-Reply-To: <20140402164258.GH6901@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
+	linux-fsdevel@vger.kernel.org
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Ted.
-2014-04-03 1:42 GMT+09:00 Theodore Ts'o <tytso@mit.edu>:
-> Some final testing luckily caught a bug in your patch.  I'll fix it
-> up, but for future reference, it's important to check to see if the
-> handle is valid (i.e., we are not in no-journal mode) before using any
-> of the journalling functions.  Otherwise, you will crash if you try
-> using the code path when the file system does not have a journal.
-Thanks for finding bug. I missed no journal case..
->
-> BTW, I would strongly recommend using the automated regression test
-> system found at:
->
->         git://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git
->
-> It finds these sorts of problems very quickly.  After you build a
-> kernel, running "kvm-xfstests -g quick" would have found the problem
-> very quickly.  The fastest reproducer for the bug that I found is:
-> "kvm-xfstests -c nojournal shared/001".
-Okay, I will do the way you guided next time.
+	There's a bunch of fun problems with ext4_file_write():
 
-Thanks!
->
-> Cheers,
->
->                                                 - Ted
->
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 7015917..bbba1ef 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4902,6 +4902,9 @@ ext4_access_path(handle_t *handle, struct inode *inode,
->  {
->         int credits, err;
->
-> +       if (!ext4_handle_valid(handle))
-> +               return 0;
-> +
->         /*
->          * Check if need to extend journal credits
->          * 3 for leaf, sb, and inode plus 2 (bmap and group
->
->
+1) check for non-extent file trying to grow past the old size limit is
+looking at position we say we'll be writing to.  generic_file_aio_write()
+might have a different idea, though - just open with O_APPEND and watch
+the sucker grow the file across the limit.
+
+2) simply looking at file size in O_APPEND case instead of pos would not
+close that one - file size is unstable at that point (we don't have any
+locks held here).
+
+3) ext4_unaligned_aio() suffers the same problem, but that's *not* the
+only issue with it.  It checks that (O_DIRECT) aio write tries to hit
+something aligned only to hw sector and not to block size.  Fine, but...
+think what rlimit will do to us.  generic_write_checks() contains this:
+
+	unsigned long limit = rlimit(RLIMIT_FSIZE);
+	....
+		if (limit != RLIM_INFINITY) {
+			if (*pos >= limit) {
+				send_sig(SIGXFSZ, current, 0);
+				return -EFBIG;
+			}
+			if (*count > limit - (typeof(limit))*pos) {
+				*count = limit - (typeof(limit))*pos;
+			}
+		}
+
+and it's done only after we'd called ext4_unaligned_aio().  So it doesn't
+predict whether the iovec seen by ->direct_IO() will be unaligned - there
+are false negatives.  Even worse, consider an iovec that consists of
+8 segments, 512 bytes each.  Starting offset in file is a multiple of block
+size.  Everything's fine from ext4_unaligned_aio() POV, right?  And from
+fs/direct-io.c one it's only sector-aligned sucker.  For a good reason,
+since a segment in the middle of that thing might very well point to unmapped
+memory, which will mean short write, with all zeroing issues ext4 is trying
+to avoid here.
+
+TBH, I'm seriously tempted to have ext4 ->direct_IO() to bail out on any
+iovec that isn't block-aligned, and scratch the whole ext4_unaligned_aio()
+logics.  It still leaves (1) and (2), but then we'll be able to lambda-expand
+the call of generic_file_aio_write() and shift taking i_mutex up to the point
+prior to checking for non-extent files trying to grow too much.
+
+There might be kinder ways to deal with that mess, but I don't know the code
+in ext4 dealing with unwritten extents anywhere near well enough to tell what's
+feasible in that area.
+
+Comments?
