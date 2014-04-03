@@ -1,88 +1,58 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [Lsf] [PATCH] xfstests-bld: Simplify determination of number of
-	CPUs in build-all
-Date: Fri, 4 Apr 2014 08:20:02 +1100
-Message-ID: <20140403212001.GN17603@dastard>
-References: <20140331025148.GF16336@dastard> <20140401023711.GE4911@thunk.org>
-	<20140401222823.GJ17603@dastard> <20140402142620.GA6901@thunk.org>
-	<20140403011411.GL16336@dastard>
-	<alpine.LFD.2.00.1404031102310.2124@localhost.localdomain>
-	<CALCETrU=JWigDSv6ymepS2tjL+EkO98VDC03-RSPuhQVk3yvZA@mail.gmail.com>
-	<20140403173504.GB23737@thunk.org> <533DB140.8010103@redhat.com>
-	<20140403193039.GD32323@thunk.org>
+Subject: Re: [PATCH 1/2] fsx: Add fallocate collapse range operation
+Date: Fri, 4 Apr 2014 08:26:37 +1100
+Message-ID: <20140403212637.GP17603@dastard>
+References: <1396452800-25775-1-git-send-email-lczerner@redhat.com>
+ <alpine.LFD.2.00.1404021752340.2169@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	xfs@oss.sgi.com, lsf@lists.linux-foundation.org,
-	Sedat Dilek <sedat.dilek@gmail.com>,
-	Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-	=?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
-	Andy Lutomirski <luto@amacapital.net>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <xfs-bounces@oss.sgi.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:44742 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752550AbaDCV0k (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Apr 2014 17:26:40 -0400
 Content-Disposition: inline
-In-Reply-To: <20140403193039.GD32323@thunk.org>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <alpine.LFD.2.00.1404021752340.2169@localhost.localdomain>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Apr 03, 2014 at 03:30:40PM -0400, Theodore Ts'o wrote:
-> On Thu, Apr 03, 2014 at 01:06:40PM -0600, Eric Sandeen wrote:
-> > On 4/3/14, 11:35 AM, Theodore Ts'o wrote:
-> > 
-> > >>  - There's an undocumented way to write results outside the source
-> > >> tree called RESULT_BASE.  It would be great if it were documented and
-> > >> spelled consistently.
-> > 
-> > I'm not actually certain that it was intended to be used this way.
-> > See 1686f9ab "xfstests: Introduce a results directory" 
-> > which explains just where this variable came from and what it's
-> > for...
-> 
-> The last paragraph states of the git description states:
-> 
->     This is the first (small) step in being able to store test results
->     in an external location for archival/data mining purposes.
-> 
-> The question I suppose is whether storing the results in an external
-> location is something that should be xfstests' responsibility, or of
-> the test harnesses that call xfstests.
+On Wed, Apr 02, 2014 at 05:55:07PM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
+:
+> On Wed, 2 Apr 2014, Lukas Czerner wrote:
+>=20
+> > Date: Wed,  2 Apr 2014 17:33:19 +0200
+> > From: Lukas Czerner <lczerner@redhat.com>
+> > To: xfs@oss.sgi.com
+> > Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+> >     Lukas Czerner <lczerner@redhat.com>
+> > Subject: [PATCH 1/2] fsx: Add fallocate collapse range operation
+> >=20
+> > This commit adds fallocate FALLOC_FL_COLLAPSE_RANGE support for fsx=
+=2E
+>=20
+> Btw, this actually makes the fsx fail on ext4 and xfs after a while.
+> I was trying to find a problem in fsx itself but I think it is
+> actually ok. That means that we could possibly have bugs in ext4 and
+> xfs collapse range implementation. More eyes are needed on this!
 
-The idea is that the external test harnesses can set up a
-destination directory for the results (i.e. RESULT_BASE) and
-xfstests will write all results into that directory.  i.e. setting
-up a results store and managing it is something that is currently
-done external to xfstests.
-
-Managing a results store is complex and nobody has sent patches to
-do this in a generic way, so all we currently have is a mechanism to
-enable such functionality. Patches welcome!
-
-> I suspect that since there are
-> so many different ways people might want to archive the results, it
-> does make sense for the test harnesses to handle this job, but I
-> wouldn't want to "presume" on anything that the xfstests developers
-> might choose to do....
-
-ROWR! :)
+No surprise, really. As it is, your previous ZERO_RANGE additions
+caused problems for XFS, and those are mostly fixed in the 6 patch
+series I sent before LSFMM.  Hence I wouldn't be surprised if that's
+what you are seeing (on XFs, at least) and it's not actually
+COLLAPSE_RANGE that is causing problems...
 
 Cheers,
 
 Dave.
--- 
+--=20
 Dave Chinner
 david@fromorbit.com
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
