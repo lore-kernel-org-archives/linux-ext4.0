@@ -1,66 +1,44 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: Dirty ext4 blocks system startup
-Date: Fri, 4 Apr 2014 11:20:20 -0700
-Message-ID: <20140404182020.GA8888@birch.djwong.org>
-References: <1459400.cqhC1n3S74@f209>
- <4785109.JJCKTTZWOe@f209>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [GIT PULL] ext4 changes for 3.15
+Date: Fri, 4 Apr 2014 16:23:23 -0400
+Message-ID: <20140404202323.GB10275@thunk.org>
+References: <20140403191558.GA8745@thunk.org>
+ <CA+55aFxoA-iDdmbbgmJiYVvskrtca5aGgUAW=3CR47rM9NEMLA@mail.gmail.com>
+ <20140404035308.GC2525@thunk.org>
+ <20140404134429.GB26806@quack.suse.cz>
+ <CAJfpegsJd9d8NTmwozJ+u_ZS-SnUwAQFwAne6P1KqG=VZeZSTA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Markus <M4rkusXXL@web.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:48332 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753556AbaDDSUY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Apr 2014 14:20:24 -0400
+Cc: Jan Kara <jack@suse.cz>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Al Viro <viro@zeniv.linux.org.uk>
+To: Miklos Szeredi <miklos@szeredi.hu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <4785109.JJCKTTZWOe@f209>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <CAJfpegsJd9d8NTmwozJ+u_ZS-SnUwAQFwAne6P1KqG=VZeZSTA@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Apr 04, 2014 at 12:35:45PM +0200, Markus wrote:
-> Hi!
-> 
-> I have a dirty ext4 volume. The system just hangs at startup. After removing that volume from fstab the system starts.
-> 
-> Mount and e2fsck just flood with "Invalid checksum recovering block 1152 in log" messages.
-> 
-> (Mounting with ro,noload let me access most files.)
-> 
-> I also tried the e2fsck from current git.
-> 
-> debugfs just fails with "Block bitmap checksum does not match bitmap while reading block bitmap". (catastrophic mode does work)
-> 
-> Three points:
-> - e2fsck should not get into an endless loop, blocking the system.
-> - mount should not get into an endless loop, blocking the system and flooding the system log.
-> - At least e2fsck should fix the filesystem.
-> 
-> 
-> Any help or hints?
+Ah yes, I had forgotten that you had sent those patches, thanks.
 
-Hmm, that's probably a bug in the journal replay code. :(
+It looks like that since you worded it as "just RFC for now since they
+aren't in 3.15 yet", the xfstests folks never actually accepted your
+changes into xfstests, and so I never picked it up.
 
-Can you send me the output of "e2image -r /dev/sdXX - | bzip2 > hd.e2i.bz2" if
-it's not too huge?  The exact error messages (if you can capture/photograph
-them) would also be useful.
+For future reference, the tests for COLLAPSE_RANGE and ZERO_RANGE were
+accepted into xfstests well before the merge window opened, and that
+was awfully convenience since we could pull the latest from the
+xfstests.git tree and do automated testing while those patches were in
+the ext4 and xfs trees.
 
-I'm guessing you have metadata_csum enabled...
+So feel free to be a bit more insistent about asking for your xfstests
+to be merged upstream; you don't have to wait until the changes reach
+mainline.  If it's clear that the patches are going to be accepted,
+and they are in the subsystem trees, that's a fine time to push to get
+the changes into xfstests.
 
-PS: lkml.org is dead; I'm assuming the URL referenced the discussion "Ext4
-Recovery: Invalid checksum recovering block # in log" but it's hard to tell
-since there was no subject line provided with that URL.
+Cheers,
 
---D
-> 
-> 
-> Thanks,
-> Markus
-> 
-> 
-> PS: Original lkml-mail:
-> https://lkml.org/lkml/2014/4/1/467
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+						- Ted
