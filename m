@@ -1,70 +1,66 @@
-From: Miklos Szeredi <miklos@szeredi.hu>
-Subject: Re: [GIT PULL] ext4 changes for 3.15
-Date: Fri, 4 Apr 2014 19:16:25 +0200
-Message-ID: <CAJfpegsJd9d8NTmwozJ+u_ZS-SnUwAQFwAne6P1KqG=VZeZSTA@mail.gmail.com>
-References: <20140403191558.GA8745@thunk.org>
-	<CA+55aFxoA-iDdmbbgmJiYVvskrtca5aGgUAW=3CR47rM9NEMLA@mail.gmail.com>
-	<20140404035308.GC2525@thunk.org>
-	<20140404134429.GB26806@quack.suse.cz>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: Dirty ext4 blocks system startup
+Date: Fri, 4 Apr 2014 11:20:20 -0700
+Message-ID: <20140404182020.GA8888@birch.djwong.org>
+References: <1459400.cqhC1n3S74@f209>
+ <4785109.JJCKTTZWOe@f209>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Al Viro <viro@zeniv.linux.org.uk>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20140404134429.GB26806@quack.suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: Markus <M4rkusXXL@web.de>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:48332 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753556AbaDDSUY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Apr 2014 14:20:24 -0400
+Content-Disposition: inline
+In-Reply-To: <4785109.JJCKTTZWOe@f209>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Apr 4, 2014 at 3:44 PM, Jan Kara <jack@suse.cz> wrote:
-> On Thu 03-04-14 23:53:08, Ted Tso wrote:
->> On Thu, Apr 03, 2014 at 12:39:42PM -0700, Linus Torvalds wrote:
->> > Btw, since I'm planning on getting to the filesystem pulls later today
->> > (or perhaps tomorrow), I wanted to check: are you ok with the ext4
->> > parts of the cross-rename patches from Miklos?
->> >
->> > They are currently at
->> >
->> >   git://git.kernel.org/pub/scm/linux/kernel/git/mszeredi/vfs.git cross-rename
->> >
->> > in case you want to refresh your memory.
->>
->> I've pulled in the cross-rename branch to my test branch and run a set
->> of tests, and it passes.  Unfortunately I don't believe Miklos
->> contributed tests for renameat(2) to xfstests, so we don't have any
->> on-point testing of renameat() and cross-rename, but it's at least not
->> triggering any failures on the existing tests.
->   Actually Miklos has contributed xfstests tests. I'm not sure if they were
-> merged but I've seen them flying by.
+On Fri, Apr 04, 2014 at 12:35:45PM +0200, Markus wrote:
+> Hi!
+> 
+> I have a dirty ext4 volume. The system just hangs at startup. After removing that volume from fstab the system starts.
+> 
+> Mount and e2fsck just flood with "Invalid checksum recovering block 1152 in log" messages.
+> 
+> (Mounting with ro,noload let me access most files.)
+> 
+> I also tried the e2fsck from current git.
+> 
+> debugfs just fails with "Block bitmap checksum does not match bitmap while reading block bitmap". (catastrophic mode does work)
+> 
+> Three points:
+> - e2fsck should not get into an endless loop, blocking the system.
+> - mount should not get into an endless loop, blocking the system and flooding the system log.
+> - At least e2fsck should fix the filesystem.
+> 
+> 
+> Any help or hints?
 
-Yes:
+Hmm, that's probably a bug in the journal replay code. :(
 
-http://marc.info/?l=linux-kernel&m=139523745403081&w=2
+Can you send me the output of "e2image -r /dev/sdXX - | bzip2 > hd.e2i.bz2" if
+it's not too huge?  The exact error messages (if you can capture/photograph
+them) would also be useful.
 
-The following cases are tested:
+I'm guessing you have metadata_csum enabled...
 
-1) plain rename (flags = 0)
-2) cross rename
-3) noreplace rename
+PS: lkml.org is dead; I'm assuming the URL referenced the discussion "Ext4
+Recovery: Invalid checksum recovering block # in log" but it's hard to tell
+since there was no subject line provided with that URL.
 
-For each the following are tested:
-
-a) same directory rename
-b) cross directory rename
-
-And all combinations of source and dest being:
-
-- negative
-- regular file
-- symlink
-- empty dir
-- nonempty dir
-
-After the operation the file type of both source and dest are checked
-(or the error value returned).
-
-Thanks,
-Miklos
+--D
+> 
+> 
+> Thanks,
+> Markus
+> 
+> 
+> PS: Original lkml-mail:
+> https://lkml.org/lkml/2014/4/1/467
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
