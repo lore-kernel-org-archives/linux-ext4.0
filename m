@@ -1,175 +1,69 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: [ANNOUNCE] xfstests: updated to cf1ed54
-Date: Fri, 4 Apr 2014 20:03:57 +1100
-Message-ID: <20140404090357.GW17603@dastard>
+From: Chen Gang <gang.chen.5i5j@gmail.com>
+Subject: Re: [PATCH] fs/ext4/extents_status.c: fix 64-bit number truncation
+ bug
+Date: Fri, 04 Apr 2014 17:18:50 +0800
+Message-ID: <533E78FA.60204@gmail.com>
+References: <53396AC1.10108@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org
-To: xfs@oss.sgi.com
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	gxt@mprc.pku.edu.cn
+To: tytso@mit.edu, adilger.kernel@dilger.ca
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pd0-f178.google.com ([209.85.192.178]:38961 "EHLO
+	mail-pd0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752234AbaDDJS6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Apr 2014 05:18:58 -0400
+In-Reply-To: <53396AC1.10108@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi folks,
+Hello Maintains:
 
-The xfstests repository at git://oss.sgi.com/xfs/cmds/xfstests has
-just been updated. Patches often get missed, so please check if your
-outstanding patches were in this update. If they have not been in
-this update, please resubmit them to xfs@oss.sgi.com so they can be
-picked up in the next update.
-
-The new head of the master branch is commit:
-
-cf1ed54 check: fix RESULT_BASE typo in check script
-
-The major new functionality worth mentioning in this update is the
-new config file format from Lukas. The existing format config files
-should continue to work without change, but the new format is much
-richer and allows specification of multiple different configurations
-to run test under. Hence testing multiple mount an dmkfs
-configurations becomes as simple as iterating the configurations
-in the config file.
-
-New Commits:
-
-Christoph Hellwig (2):
-      [feb7da1] common: add flink support to _require_xfs_io_command
-      [3bbbc25] generic: add a basic O_TMPFILE test
-
-Eric Sandeen (1):
-      [cf1ed54] check: fix RESULT_BASE typo in check script
-
-Eryu Guan (1):
-      [dadfd3c] shared: new test to use up free inodes
-
-Filipe David Borba Manana (3):
-      [bb2499e] btrfs: add test for btrfs send issuing premature rmdir operations
-      [c99c847] btrfs: add test for btrfs incremental send
-      [e0ff31a] btrfs: add test for btrfs incremental send data corruption
-
-Filipe Manana (1):
-      [1a87439] btrfs: add test for btrfs send directory moves/renames
-
-Hannes Frederic Sowa (1):
-      [947ee8b] fs: add directories hash collision test
-
-Lukas Czerner (10):
-      [4d18f5a] generic: add generic test for fallocate zero range
-      [bf44459] check: Prepare for config section
-      [667308d] check: Add support for sections in config file
-      [f8e4f53] check: Allow to recreate TEST_DEV
-      [b1ffb05] check: Remount file system if MOUNT_OPTIONS changed
-      [7baa3e2] check: unmount TEST_DEV and SCRATCH_DEV after test run
-      [21723cd] generic: Make some shared tests generic
-      [259d680] ext4: Make shared/243 ext4 specific
-      [5f8c711] fsx: Add fallocate collapse range operation
-      [f98d930] fsstress: Add fallocate collapse range operation
+Please help check this patch, when you have time, thanks.
 
 
-Code Diffstat:
+On 03/31/2014 09:16 PM, Chen Gang wrote:
+> '0x7FDEADBEEF' will be truncated to 32-bit number under unicore32. Ne=
+ed
+> append 'ULL' for it.
+>=20
+> The related warning (with allmodconfig under unicore32):
+>=20
+>     CC [M]  fs/ext4/extents_status.o
+>   fs/ext4/extents_status.c: In function =91__es_remove_extent=92:
+>   fs/ext4/extents_status.c:813: warning: integer constant is too larg=
+e for =91long=92 type
+>=20
+>=20
+> Signed-off-by: Chen Gang <gang.chen.5i5j@gmail.com>
+> ---
+>  fs/ext4/extents_status.c |    2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+>=20
+> diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+> index 0a014a7..0ebc212 100644
+> --- a/fs/ext4/extents_status.c
+> +++ b/fs/ext4/extents_status.c
+> @@ -810,7 +810,7 @@ retry:
+> =20
+>  			newes.es_lblk =3D end + 1;
+>  			newes.es_len =3D len2;
+> -			block =3D 0x7FDEADBEEF;
+> +			block =3D 0x7FDEADBEEFULL;
+>  			if (ext4_es_is_written(&orig_es) ||
+>  			    ext4_es_is_unwritten(&orig_es))
+>  				block =3D ext4_es_pblock(&orig_es) +
+>=20
 
- .gitignore                                |   1 +
- README.config-sections                    |  87 +++++++
- check                                     | 404 ++++++++++++++++++------------
- common/config                             | 155 +++++++++++-
- common/rc                                 |  30 ++-
- ltp/fsstress.c                            |  20 ++
- ltp/fsx.c                                 | 107 +++++++-
- src/Makefile                              |   2 +-
- src/dirhash_collide.c                     | 223 +++++++++++++++++
- tests/btrfs/043                           | 149 +++++++++++
- tests/btrfs/043.out                       |   1 +
- tests/btrfs/044                           | 129 ++++++++++
- tests/btrfs/044.out                       |   1 +
- tests/btrfs/045                           | 376 +++++++++++++++++++++++++++
- tests/btrfs/045.out                       |   1 +
- tests/btrfs/046                           | 304 ++++++++++++++++++++++
- tests/btrfs/046.out                       | 213 ++++++++++++++++
- tests/btrfs/group                         |   4 +
- tests/{shared/243 => ext4/002}            |   4 +-
- tests/{shared/243.out => ext4/002.out}    |   2 +-
- tests/ext4/group                          |   1 +
- tests/generic/004                         |  65 +++++
- tests/generic/004.out                     |   6 +
- tests/generic/009                         |  78 ++++++
- tests/generic/009.out                     | 333 ++++++++++++++++++++++++
- tests/{shared/003 => generic/012}         |   6 +-
- tests/{shared/003.out => generic/012.out} |   2 +-
- tests/{shared/004 => generic/016}         |   6 +-
- tests/{shared/004.out => generic/016.out} |   2 +-
- tests/{shared/005 => generic/017}         |   4 +-
- tests/generic/017.out                     |   4 +
- tests/{shared/218 => generic/018}         |   4 +-
- tests/{shared/218.out => generic/018.out} |   2 +-
- tests/{shared/305 => generic/019}         |   4 +-
- tests/{shared/305.out => generic/019.out} |   2 +-
- tests/{shared/001 => generic/021}         |   6 +-
- tests/{shared/001.out => generic/021.out} |   2 +-
- tests/{shared/002 => generic/022}         |   6 +-
- tests/{shared/002.out => generic/022.out} |   2 +-
- tests/generic/group                       |   9 +
- tests/shared/005.out                      |   4 -
- tests/shared/006                          |  97 +++++++
- tests/shared/006.out                      |   2 +
- tests/shared/group                        |  10 +-
- tests/xfs/006                             |  63 +++++
- tests/xfs/006.out                         |  28 +++
- tests/xfs/group                           |   1 +
- 47 files changed, 2746 insertions(+), 216 deletions(-)
- create mode 100644 README.config-sections
- create mode 100644 src/dirhash_collide.c
- create mode 100644 tests/btrfs/043
- create mode 100644 tests/btrfs/043.out
- create mode 100644 tests/btrfs/044
- create mode 100644 tests/btrfs/044.out
- create mode 100755 tests/btrfs/045
- create mode 100644 tests/btrfs/045.out
- create mode 100644 tests/btrfs/046
- create mode 100644 tests/btrfs/046.out
- rename tests/{shared/243 => ext4/002} (99%)
- rename tests/{shared/243.out => ext4/002.out} (95%)
- create mode 100755 tests/generic/004
- create mode 100644 tests/generic/004.out
- create mode 100644 tests/generic/009
- create mode 100644 tests/generic/009.out
- rename tests/{shared/003 => generic/012} (93%)
- mode change 100644 => 100755
- rename tests/{shared/003.out => generic/012.out} (97%)
- rename tests/{shared/004 => generic/016} (93%)
- mode change 100644 => 100755
- rename tests/{shared/004.out => generic/016.out} (97%)
- rename tests/{shared/005 => generic/017} (97%)
- mode change 100644 => 100755
- create mode 100644 tests/generic/017.out
- rename tests/{shared/218 => generic/018} (98%)
- rename tests/{shared/218.out => generic/018.out} (93%)
- rename tests/{shared/305 => generic/019} (98%)
- rename tests/{shared/305.out => generic/019.out} (88%)
- rename tests/{shared/001 => generic/021} (93%)
- rename tests/{shared/001.out => generic/021.out} (97%)
- rename tests/{shared/002 => generic/022} (93%)
- mode change 100644 => 100755
- rename tests/{shared/002.out => generic/022.out} (97%)
- delete mode 100644 tests/shared/005.out
- create mode 100755 tests/shared/006
- create mode 100644 tests/shared/006.out
- create mode 100755 tests/xfs/006
- create mode 100644 tests/xfs/006.out
--- 
-Dave Chinner
-david@fromorbit.com
+--=20
+Chen Gang
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+Open, share, and attitude like air, water, and life which God blessed
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
