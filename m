@@ -1,91 +1,70 @@
-From: Daniel J Blueman <daniel@numascale.com>
-Subject: ext4 performance falloff
-Date: Sat, 05 Apr 2014 01:00:55 +0800
-Message-ID: <533EE547.3030504@numascale.com>
+From: Miklos Szeredi <miklos@szeredi.hu>
+Subject: Re: [GIT PULL] ext4 changes for 3.15
+Date: Fri, 4 Apr 2014 19:16:25 +0200
+Message-ID: <CAJfpegsJd9d8NTmwozJ+u_ZS-SnUwAQFwAne6P1KqG=VZeZSTA@mail.gmail.com>
+References: <20140403191558.GA8745@thunk.org>
+	<CA+55aFxoA-iDdmbbgmJiYVvskrtca5aGgUAW=3CR47rM9NEMLA@mail.gmail.com>
+	<20140404035308.GC2525@thunk.org>
+	<20140404134429.GB26806@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Steffen Persvold <sp@numascale.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>
-To: linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Al Viro <viro@zeniv.linux.org.uk>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20140404134429.GB26806@quack.suse.cz>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On a larger system 1728 cores/4.5TB memory and 3.13.9, I'm seeing very 
-low 600KB/s cached write performance to a local ext4 filesystem:
+On Fri, Apr 4, 2014 at 3:44 PM, Jan Kara <jack@suse.cz> wrote:
+> On Thu 03-04-14 23:53:08, Ted Tso wrote:
+>> On Thu, Apr 03, 2014 at 12:39:42PM -0700, Linus Torvalds wrote:
+>> > Btw, since I'm planning on getting to the filesystem pulls later today
+>> > (or perhaps tomorrow), I wanted to check: are you ok with the ext4
+>> > parts of the cross-rename patches from Miklos?
+>> >
+>> > They are currently at
+>> >
+>> >   git://git.kernel.org/pub/scm/linux/kernel/git/mszeredi/vfs.git cross-rename
+>> >
+>> > in case you want to refresh your memory.
+>>
+>> I've pulled in the cross-rename branch to my test branch and run a set
+>> of tests, and it passes.  Unfortunately I don't believe Miklos
+>> contributed tests for renameat(2) to xfstests, so we don't have any
+>> on-point testing of renameat() and cross-rename, but it's at least not
+>> triggering any failures on the existing tests.
+>   Actually Miklos has contributed xfstests tests. I'm not sure if they were
+> merged but I've seen them flying by.
 
-# mkfs.ext4 /dev/sda5
-# mount /dev/sda5 /mnt
-# dd if=/dev/zero of=/mnt/test bs=1M count=10
-10+0 records in
-10+0 records out
-10485760 bytes (10 MB) copied, 17.4307 s, 602 kB/s
+Yes:
 
-Whereas eg on XFS, performance is much more reasonable:
+http://marc.info/?l=linux-kernel&m=139523745403081&w=2
 
-# mkfs.xfs /dev/sda5
-# mount /dev/sda5 /mnt
-# dd if=/dev/zero of=/mnt/test bs=1M count=100
-100+0 records in
-100+0 records out
-104857600 bytes (105 MB) copied, 2.39329 s, 43.8 MB/s
+The following cases are tested:
 
-Perf shows the time spent in bitmask iteration:
+1) plain rename (flags = 0)
+2) cross rename
+3) noreplace rename
 
-     98.77%       dd  [kernel.kallsyms]  [k] find_next_bit 
+For each the following are tested:
 
-                  |
-                  --- find_next_bit
-                     |
-                     |--99.92%-- __percpu_counter_sum
-                     |          ext4_has_free_clusters
-                     |          ext4_claim_free_clusters
-                     |          ext4_mb_new_blocks
-                     |          ext4_ext_map_blocks
-                     |          ext4_map_blocks
-                     |          _ext4_get_block
-                     |          ext4_get_block
-                     |          __block_write_begin
-                     |          ext4_write_begin
-                     |          ext4_da_write_begin
-                     |          generic_file_buffered_write
-                     |          __generic_file_aio_write
-                     |          generic_file_aio_write
-                     |          ext4_file_write
-                     |          do_sync_write
-                     |          vfs_write
-                     |          sys_write
-                     |          system_call_fastpath
-                     |          __write_nocancel
-                     |          0x0
-                      --0.08%-- [...]
+a) same directory rename
+b) cross directory rename
 
-Analysis shows that ext4 is reading from all cores' cpu-local data (thus 
-expensive off-NUMA-node access) for each block written:
+And all combinations of source and dest being:
 
-if (free_clusters - (nclusters + rsv + dirty_clusters) <
-				EXT4_FREECLUSTERS_WATERMARK) {
-	free_clusters  = percpu_counter_sum_positive(fcc);
-	dirty_clusters = percpu_counter_sum_positive(dcc);
-}
+- negative
+- regular file
+- symlink
+- empty dir
+- nonempty dir
 
-This threshold is defined as:
-
-#define EXT4_FREECLUSTERS_WATERMARK (4 * (percpu_counter_batch * 
-nr_cpu_ids))
-
-I can see why this may get overlooked for systems with commensurate 
-local storage, but some filesystems reasonably don't need to scale with 
-core count. The filesystem I'm testing on and the rootfs (as it has 
-/tmp) are 50GB.
-
-There must be a good rationale for this being dependent on the number of 
-cores rather than just the ratio of used space, right?
+After the operation the file type of both source and dest are checked
+(or the error value returned).
 
 Thanks,
-   Daniel
--- 
-Daniel J Blueman
-Principal Software Engineer, Numascale
+Miklos
