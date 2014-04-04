@@ -1,82 +1,64 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: ext4 performance falloff
-Date: Fri, 4 Apr 2014 16:56:04 -0400
-Message-ID: <20140404205604.GC10275@thunk.org>
-References: <533EE547.3030504@numascale.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [ANNOUNCE] xfstests: updated to cf1ed54
+Date: Sat, 5 Apr 2014 08:12:25 +1100
+Message-ID: <20140404211224.GX17603@dastard>
+References: <20140404090357.GW17603@dastard>
+ <CAL3q7H6q7M-hrvniaVkAm_L6aSHANmnfdTKGEHHLFqXUhWfY5w@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	Steffen Persvold <sp@numascale.com>,
-	Andreas Dilger <adilger.kernel@dilger.ca>
-To: Daniel J Blueman <daniel@numascale.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: "xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+	"linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, lczerner@redhat.com
+To: Filipe David Manana <fdmanana@gmail.com>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <533EE547.3030504@numascale.com>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <CAL3q7H6q7M-hrvniaVkAm_L6aSHANmnfdTKGEHHLFqXUhWfY5w@mail.gmail.com>
+Sender: linux-btrfs-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sat, Apr 05, 2014 at 01:00:55AM +0800, Daniel J Blueman wrote:
-> On a larger system 1728 cores/4.5TB memory and 3.13.9, I'm seeing very low
-> 600KB/s cached write performance to a local ext4 filesystem:
-
-Hi Daniel,
-
-Thanks for the heads up.  Most (all?) of the ext4 don't have systems
-with thousands of cores, so these issues generally don't come up for
-us, and so we're not likely (hell, very unlikely!) to notice potential
-problems cause by these sorts of uber-large systems.
-
-> Analysis shows that ext4 is reading from all cores' cpu-local data (thus
-> expensive off-NUMA-node access) for each block written:
+On Fri, Apr 04, 2014 at 02:07:16PM +0100, Filipe David Manana wrote:
+> On Fri, Apr 4, 2014 at 10:03 AM, Dave Chinner <david@fromorbit.com> wrote:
+> > Hi folks,
+> >
+> > The xfstests repository at git://oss.sgi.com/xfs/cmds/xfstests has
+> > just been updated. Patches often get missed, so please check if your
+> > outstanding patches were in this update. If they have not been in
+> > this update, please resubmit them to xfs@oss.sgi.com so they can be
+> > picked up in the next update.
+> >
+> > The new head of the master branch is commit:
+> >
+> > cf1ed54 check: fix RESULT_BASE typo in check script
+> >
+> > The major new functionality worth mentioning in this update is the
+> > new config file format from Lukas. The existing format config files
+> > should continue to work without change, but the new format is much
+> > richer and allows specification of multiple different configurations
+> > to run test under. Hence testing multiple mount an dmkfs
+> > configurations becomes as simple as iterating the configurations
+> > in the config file.
 > 
-> if (free_clusters - (nclusters + rsv + dirty_clusters) <
-> 				EXT4_FREECLUSTERS_WATERMARK) {
-> 	free_clusters  = percpu_counter_sum_positive(fcc);
-> 	dirty_clusters = percpu_counter_sum_positive(dcc);
-> }
+> Hi,
 > 
-> This threshold is defined as:
+> I might be missing something, but after checking out these changes, I
+> am no longer able to run btrfs tests. Example:
 > 
-> #define EXT4_FREECLUSTERS_WATERMARK (4 * (percpu_counter_batch *
-> nr_cpu_ids))
+> $ ./check btrfs/041
+> common/config: Error: $SCRATCH_DEV should be unset when $SCRATCH_DEV_POOL is set
+> Passed all 0 tests
 > 
-> I can see why this may get overlooked for systems with commensurate local
-> storage, but some filesystems reasonably don't need to scale with core
-> count. The filesystem I'm testing on and the rootfs (as it has /tmp) are
-> 50GB.
+> $ cat local.config
+> export TEST_DEV=/dev/sdb
+> export TEST_DIR=/home/fdmanana/btrfs-tests/dev
+> export SCRATCH_MNT="/home/fdmanana/btrfs-tests/scratch_1"
+> export SCRATCH_DEV_POOL="/dev/sdc /dev/sdd"
 
-The problem we are trying to solve here is that when we do delayed
-allocation, we're making an implicit promise that there will be space
-available, even though we haven't allocated the space yet.  The reason
-why we are using percpu counters is precisely so that we don't have to
-take a global lock in order to protect the free space counter for the
-file system.
+OK, that'll be a bug in the new config file parsing code. Lukas,
+can you have a look at this?
 
-The problem is that when we start getting close to full, there is the
-possibility that all of the cpus might simultaneously try allocate
-space at exactly the same time (and while that might sound unlikely,
-Murphy's law will dictate that if the downside is that the user will
-lose data, and curse the day the file system developers were born, it
-*will* happen :-).  So when the free space, minus the space we have
-already promised, drops below EXT4_FREE_CLUSTERS_WATERMARK, we start
-being super careful.
+Cheers,
 
-I've done the calculations, and 4 * 32 * 1728 cores = 221184 blocks,
-or 864 megabytes.  That would mean that the file system is over 98%
-full, so that's actually pretty reasonable; most of the time there's
-more free space than that.
-
-It looks like the real problem is that we're using nr_cpu_ids, which
-is the maximum possible number of cpu's that the system can support,
-which is different from the number of cpu's that you currently have.
-For normal kernels nr_cpu_ids is small, so that has never been a
-problem, but I bet you have nr_cpu_ids set to something really large,
-right?
-
-If you change nr_cpu_ids to total_cpus in the definition of
-EXT4_FREECLUSTERS_WATERMARK, does that make things better for your
-system?
-
-Thanks,
-
-					- Ted
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
