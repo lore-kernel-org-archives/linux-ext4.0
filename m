@@ -1,69 +1,68 @@
-From: Eric Sandeen <sandeen@sandeen.net>
-Subject: Re: [Lsf] [PATCH] xfstests-bld: Simplify determination of number
-	of CPUs in build-all
-Date: Thu, 03 Apr 2014 15:46:24 -0600
-Message-ID: <533DD6B0.6010102@sandeen.net>
-References: <1395997399-3000-1-git-send-email-sedat.dilek@gmail.com>	<20140328161806.GA31772@thunk.org>
-	<20140331025148.GF16336@dastard>	<20140401023711.GE4911@thunk.org>
-	<20140401222823.GJ17603@dastard>	<20140402142620.GA6901@thunk.org>
-	<20140403011411.GL16336@dastard>	<alpine.LFD.2.00.1404031102310.2124@localhost.localdomain>	<CALCETrU=JWigDSv6ymepS2tjL+EkO98VDC03-RSPuhQVk3yvZA@mail.gmail.com>	<20140403173504.GB23737@thunk.org>
-	<533DB140.8010103@redhat.com>
-	<CALCETrVq1DfpyhThajc9FYA7NLWYt9oX4vadCDcqn+d26aALGA@mail.gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [heads-up][RFC] ext4_file_write() breakage
+Date: Thu, 3 Apr 2014 22:55:59 -0400
+Message-ID: <20140404025558.GB2525@thunk.org>
+References: <20140403163739.GR18016@ZenIV.linux.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>, xfs@oss.sgi.com,
-	lsf@lists.linux-foundation.org,
-	Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-	Sedat Dilek <sedat.dilek@gmail.com>,
-	=?windows-1252?Q?Luk=E1=9A_Czerner?= <lczerner@redhat.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andy Lutomirski <luto@amacapital.net>, Eric Sandeen <sandeen@redhat.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <CALCETrVq1DfpyhThajc9FYA7NLWYt9oX4vadCDcqn+d26aALGA@mail.gmail.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>,
+	linux-fsdevel@vger.kernel.org
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20140403163739.GR18016@ZenIV.linux.org.uk>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 4/3/14, 1:21 PM, Andy Lutomirski wrote:
-> On Thu, Apr 3, 2014 at 12:06 PM, Eric Sandeen <sandeen@redhat.com> wrote:
-
-...
-
->>> The various test scripts do need to be able to find the device where
->>> the file system lives, and parsing /etc/fstab would be awkward.  So if
->>> your comment is that either the /etc/fstab entry shouldn't be
->>> required, or the xfstests runtime environment should be able to derive
->>> $SCRATCH_DEV automatically from $SCRATCH_MNT, or vice versa, instead
->>
->> I guess I don't know why you'd expect to derive one from the other...
+On Thu, Apr 03, 2014 at 05:37:39PM +0100, Al Viro wrote:
+> 2) simply looking at file size in O_APPEND case instead of pos would not
+> close that one - file size is unstable at that point (we don't have any
+> locks held here).
 > 
-> Sigh.
+> 3) ext4_unaligned_aio() suffers the same problem, but that's *not* the
+> only issue with it.
+
+So basically, we'll have to take i_mutex in order to check the file
+size, which means there's no point with the ext4_unaligned_aio()
+logics.  We can just take the i_mutex and then do the tests based on
+i_size in ext4_file_dio_write()
+
+>  It checks that (O_DIRECT) aio write tries to hit
+> something aligned only to hw sector and not to block size.  Fine, but...
+> think what rlimit will do to us.  generic_write_checks() contains this:
 > 
-> If $SCRATCH_MNT is specified, then the line in /etc/fstab is
-> unnecessary.  If $SCRATCH_MNT is not specified, then /etc/fstab will
-> do the trick.
+> 	unsigned long limit = rlimit(RLIMIT_FSIZE);
+> 	....
+> 		if (limit != RLIM_INFINITY) {
+> 			if (*pos >= limit) {
+> 				send_sig(SIGXFSZ, current, 0);
+> 				return -EFBIG;
+> 			}
+> 			if (*count > limit - (typeof(limit))*pos) {
+> 				*count = limit - (typeof(limit))*pos;
+> 			}
+> 		}
 > 
-> What does not work is specifying $SCRATCH_DIR [sic] but not adding an
-> fstab entry.  Oops.
+> and it's done only after we'd called ext4_unaligned_aio().  
 
-Oh, I see.
+Can we solve these problem by simply doing these tests in
+ext4_file_dio_write(), so we modify pos/couint before we do the
+ext4_unaligned_aio() checks?  We don't need i_mutex to do these
+particular tests, right?
 
-I'd never really thought about xfstests devices as "part of the system" -
-since they're constantly scribbled on, re-made, etc, and managed wholly
-by xfstests (at least the scratch device) - so the notion of using fstab
-was just outside my realm of expected behaviors.  :)
+> So it doesn't
+> predict whether the iovec seen by ->direct_IO() will be unaligned - there
+> are false negatives.  Even worse, consider an iovec that consists of
+> 8 segments, 512 bytes each.  Starting offset in file is a multiple of block
+> size.  Everything's fine from ext4_unaligned_aio() POV, right?  And from
+> fs/direct-io.c one it's only sector-aligned sucker.  For a good reason,
+> since a segment in the middle of that thing might very well point to unmapped
+> memory, which will mean short write, with all zeroing issues ext4 is trying
+> to avoid here.
 
--Eric
+I'm not sure I understand the concern here.  The zeroing issues we're
+concerned about is when two threads need to work on the same unwritten
+block.  So if the pos and size are block aligned, this can't heppen.
+What am I missing?
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+					- Ted
