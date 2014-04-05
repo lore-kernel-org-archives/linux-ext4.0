@@ -1,120 +1,176 @@
-From: Markus <M4rkusXXL@web.de>
-Subject: Re: Dirty ext4 blocks system startup
-Date: Sat, 05 Apr 2014 15:10:07 +0200
-Message-ID: <5060780.kj9pBZIMgD@web.de>
-References: <1459400.cqhC1n3S74@f209> <4785109.JJCKTTZWOe@f209> <20140404182020.GA8888@birch.djwong.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mout.web.de ([212.227.17.11]:61969 "EHLO mout.web.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752889AbaDENKJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Apr 2014 09:10:09 -0400
-In-Reply-To: <20140404182020.GA8888@birch.djwong.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Azat Khuzhin <a3at.mail@gmail.com>
+Subject: [PATCH v4] ext4: initialize multi-block allocator before checking block descriptors
+Date: Sat,  5 Apr 2014 19:48:36 +0400
+Message-ID: <1396712916-6296-1-git-send-email-a3at.mail@gmail.com>
+Cc: Azat Khuzhin <a3at.mail@gmail.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-kernel@vger.kernel.org (open list)
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi!
+With EXT4FS_DEBUG ext4_count_free_clusters() will call
+ext4_read_block_bitmap() without s_group_info initialized, so we need to
+initialize multi-block allocator before.
 
-Its a md-raid6 of about 10 TiB.
-The disks have no bad sectors, long smart-test completetd without error=
-s and=20
-raid check does not have any mismatched blocks.
+And dependencies that must be solved, to allow this:
+- multi-block allocator needs in group descriptors
+- need to install s_op before initializing multi-block allocator,
+  because in ext4_mb_init_backend() new inode is created.
+- initialize number of group desc blocks (s_gdb_count) otherwise
+  number of clusters returned by ext4_free_clusters_after_init() is not correct.
+  (see ext4_bg_num_gdb_nometa())
 
-The e2image is still running. Dont know how it big it will grow.
+Here is bt:
+(gdb) bt
+ #0  ext4_get_group_info (group=0, sb=0xffff880079a10000) at ext4.h:2430
+ #1  ext4_validate_block_bitmap (sb=sb@entry=0xffff880079a10000, desc=desc@entry=0xffff880056510000, block_group=block_group@entry=0,
+     bh=bh@entry=0xffff88007bf2b2d8) at balloc.c:358
+ #2  0xffffffff81232202 in ext4_wait_block_bitmap (sb=sb@entry=0xffff880079a10000, block_group=block_group@entry=0,
+     bh=bh@entry=0xffff88007bf2b2d8) at balloc.c:476
+ #3  0xffffffff81232eaf in ext4_read_block_bitmap (sb=sb@entry=0xffff880079a10000, block_group=block_group@entry=0) at balloc.c:489
+ #4  0xffffffff81232fc0 in ext4_count_free_clusters (sb=sb@entry=0xffff880079a10000) at balloc.c:665
+ #5  0xffffffff81259ffa in ext4_check_descriptors (first_not_zeroed=<synthetic pointer>, sb=0xffff880079a10000) at super.c:2143
+ #6  ext4_fill_super (sb=sb@entry=0xffff880079a10000, data=<optimized out>, data@entry=0x0 <irq_stack_union>, silent=silent@entry=0)
+     at super.c:3851
+ #7  0xffffffff811b8340 in mount_bdev (fs_type=<optimized out>, flags=0, dev_name=<optimized out>, data=0x0 <irq_stack_union>,
+     fill_super=fill_super@entry=0xffffffff812589c0 <ext4_fill_super>) at super.c:987
+ #8  0xffffffff8124ec35 in ext4_mount (fs_type=<optimized out>, flags=<optimized out>, dev_name=<optimized out>, data=<optimized out>)
+     at super.c:5365
+ #9  0xffffffff811b8cf9 in mount_fs (type=type@entry=0xffffffff81c71840 <ext4_fs_type>, flags=flags@entry=0,
+     name=name@entry=0xffff880077a80c70 "/dev/loop4", data=data@entry=0x0 <irq_stack_union>) at super.c:1090
+ #10 0xffffffff811d2ff3 in vfs_kern_mount (type=type@entry=0xffffffff81c71840 <ext4_fs_type>, flags=0,
+     name=name@entry=0xffff880077a80c70 "/dev/loop4", data=data@entry=0x0 <irq_stack_union>) at namespace.c:813
+ #11 0xffffffff811d55de in do_new_mount (data=0x0 <irq_stack_union>, name=0xffff880077a80c70 "/dev/loop4", mnt_flags=32,
+     flags=<optimized out>, fstype=0xffff880077a80ca0 "ext4-insane", path=0xffff88007a5b1ed0) at namespace.c:2068
+ #12 do_mount (dev_name=0xffff880077a80c70 "/dev/loop4", dir_name=<optimized out>, type_page=0xffff880077a80ca0 "ext4-insane",
+     flags=<optimized out>, flags@entry=3236757504, data_page=0x0 <irq_stack_union>) at namespace.c:2392
+ #13 0xffffffff811d6183 in SYSC_mount (data=0x0 <irq_stack_union>, flags=3236757504, type=<optimized out>, dir_name=<optimized out>,
+     dev_name=0x7ffad9649c20 "/dev/loop4") at namespace.c:2586
+ #14 SyS_mount (dev_name=140715365800992, dir_name=<optimized out>, type=<optimized out>, flags=3236757504, data=0) at namespace.c:2559
 
-The e2fsck messages:
-> e2fsck 1.43-WIP (4-Feb-2014)
-> /dev/md5: recovering journal
-> JBD: Invalid checksum recovering block 1152 in log
-> JBD: Invalid checksum recovering block 1152 in log
-> =E2=80=A6
-> JBD: Invalid checksum recovering block 1152 in log
-> Killed
+Signed-off-by: Azat Khuzhin <a3at.mail@gmail.com>
+---
+Link: http://marc.info/?l=linux-ext4&m=139493754530149&w=2
+v5: initialize number of group desc blocks (s_gdb_count) otherwise
+    number of clusters returned by ext4_free_clusters_after_init() is not correct.
 
-(needed to kill -9 the process)
-=3D> e2fsck/recovery.c:594
+ fs/ext4/super.c | 51 +++++++++++++++++++++++++++------------------------
+ 1 file changed, 27 insertions(+), 24 deletions(-)
 
-> debugfs 1.43-WIP (4-Feb-2014)
-> /dev/md5: Block bitmap checksum does not match bitmap while reading b=
-lock
-> bitmap
-
-The filesystem was not loaded. Catastrophic mode does work.
-
-Or what "exact error messages" do you mean?
-
-metadata_csum is enabled, correct.
-
-
-Thanks,
-Markus
-
-
-PS: Yes that is the correct lkml message.
-
-
-Darrick J. Wong wroteat 04.04.2014:
-> On Fri, Apr 04, 2014 at 12:35:45PM +0200, Markus wrote:
-> > Hi!
-> >=20
-> > I have a dirty ext4 volume. The system just hangs at startup. After=
-=20
-removing that volume from fstab the system starts.
-> >=20
-> > Mount and e2fsck just flood with "Invalid checksum recovering block=
- 1152=20
-in log" messages.
-> >=20
-> > (Mounting with ro,noload let me access most files.)
-> >=20
-> > I also tried the e2fsck from current git.
-> >=20
-> > debugfs just fails with "Block bitmap checksum does not match bitma=
-p while=20
-reading block bitmap". (catastrophic mode does work)
-> >=20
-> > Three points:
-> > - e2fsck should not get into an endless loop, blocking the system.
-> > - mount should not get into an endless loop, blocking the system an=
-d=20
-flooding the system log.
-> > - At least e2fsck should fix the filesystem.
-> >=20
-> >=20
-> > Any help or hints?
->=20
-> Hmm, that's probably a bug in the journal replay code. :(
->=20
-> Can you send me the output of "e2image -r /dev/sdXX - | bzip2 > hd.e2=
-i.bz2"=20
-if
-> it's not too huge?  The exact error messages (if you can capture/phot=
-ograph
-> them) would also be useful.
->=20
-> I'm guessing you have metadata_csum enabled...
->=20
-> PS: lkml.org is dead; I'm assuming the URL referenced the discussion =
-"Ext4
-> Recovery: Invalid checksum recovering block # in log" but it's hard t=
-o tell
-> since there was no subject line provided with that URL.
->=20
-> --D
-> >=20
-> >=20
-> > Thanks,
-> > Markus
-> >=20
-> >=20
-> > PS: Original lkml-mail:
-> > https://lkml.org/lkml/2014/4/1/467
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index f3c6670..6f9e6fa 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3869,19 +3869,38 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 			goto failed_mount2;
+ 		}
+ 	}
++
++	/*
++	 * set up enough so that it can read an inode,
++	 * and create new inode for buddy allocator
++	 */
++	sbi->s_gdb_count = db_count;
++	if (!test_opt(sb, NOLOAD) &&
++	    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL))
++		sb->s_op = &ext4_sops;
++	else
++		sb->s_op = &ext4_nojournal_sops;
++
++	ext4_ext_init(sb);
++	err = ext4_mb_init(sb);
++	if (err) {
++		ext4_msg(sb, KERN_ERR, "failed to initialize mballoc (%d)",
++			 err);
++		goto failed_mount2;
++	}
++
+ 	if (!ext4_check_descriptors(sb, &first_not_zeroed)) {
+ 		ext4_msg(sb, KERN_ERR, "group descriptors corrupted!");
+-		goto failed_mount2;
++		goto failed_mount2a;
+ 	}
+ 	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG))
+ 		if (!ext4_fill_flex_info(sb)) {
+ 			ext4_msg(sb, KERN_ERR,
+ 			       "unable to initialize "
+ 			       "flex_bg meta info!");
+-			goto failed_mount2;
++			goto failed_mount2a;
+ 		}
+ 
+-	sbi->s_gdb_count = db_count;
+ 	get_random_bytes(&sbi->s_next_generation, sizeof(u32));
+ 	spin_lock_init(&sbi->s_next_gen_lock);
+ 
+@@ -3916,14 +3935,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	sbi->s_stripe = ext4_get_stripe_size(sbi);
+ 	sbi->s_extent_max_zeroout_kb = 32;
+ 
+-	/*
+-	 * set up enough so that it can read an inode
+-	 */
+-	if (!test_opt(sb, NOLOAD) &&
+-	    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL))
+-		sb->s_op = &ext4_sops;
+-	else
+-		sb->s_op = &ext4_nojournal_sops;
+ 	sb->s_export_op = &ext4_export_ops;
+ 	sb->s_xattr = ext4_xattr_handlers;
+ #ifdef CONFIG_QUOTA
+@@ -4113,21 +4124,13 @@ no_journal:
+ 	if (err) {
+ 		ext4_msg(sb, KERN_ERR, "failed to reserve %llu clusters for "
+ 			 "reserved pool", ext4_calculate_resv_clusters(sb));
+-		goto failed_mount4a;
++		goto failed_mount5;
+ 	}
+ 
+ 	err = ext4_setup_system_zone(sb);
+ 	if (err) {
+ 		ext4_msg(sb, KERN_ERR, "failed to initialize system "
+ 			 "zone (%d)", err);
+-		goto failed_mount4a;
+-	}
+-
+-	ext4_ext_init(sb);
+-	err = ext4_mb_init(sb);
+-	if (err) {
+-		ext4_msg(sb, KERN_ERR, "failed to initialize mballoc (%d)",
+-			 err);
+ 		goto failed_mount5;
+ 	}
+ 
+@@ -4204,11 +4207,8 @@ failed_mount8:
+ failed_mount7:
+ 	ext4_unregister_li_request(sb);
+ failed_mount6:
+-	ext4_mb_release(sb);
+-failed_mount5:
+-	ext4_ext_release(sb);
+ 	ext4_release_system_zone(sb);
+-failed_mount4a:
++failed_mount5:
+ 	dput(sb->s_root);
+ 	sb->s_root = NULL;
+ failed_mount4:
+@@ -4232,11 +4232,14 @@ failed_mount3:
+ 	percpu_counter_destroy(&sbi->s_extent_cache_cnt);
+ 	if (sbi->s_mmp_tsk)
+ 		kthread_stop(sbi->s_mmp_tsk);
++failed_mount2a:
++	ext4_mb_release(sb);
+ failed_mount2:
+ 	for (i = 0; i < db_count; i++)
+ 		brelse(sbi->s_group_desc[i]);
+ 	ext4_kvfree(sbi->s_group_desc);
+ failed_mount:
++	ext4_ext_release(sb);
+ 	if (sbi->s_chksum_driver)
+ 		crypto_free_shash(sbi->s_chksum_driver);
+ 	if (sbi->s_proc) {
+-- 
+1.9.1
