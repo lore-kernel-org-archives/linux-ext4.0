@@ -1,76 +1,84 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [heads-up][RFC] ext4_file_write() breakage
-Date: Fri, 4 Apr 2014 23:15:07 -0400
-Message-ID: <20140405031507.GA18456@thunk.org>
-References: <20140403163739.GR18016@ZenIV.linux.org.uk>
- <20140404025558.GB2525@thunk.org>
- <20140404061107.GS18016@ZenIV.linux.org.uk>
+From: Daniel J Blueman <daniel@numascale.com>
+Subject: Re: ext4 performance falloff
+Date: Sat, 05 Apr 2014 11:28:17 +0800
+Message-ID: <533F7851.30803@numascale.com>
+References: <533EE547.3030504@numascale.com> <20140404205604.GC10275@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>,
-	linux-fsdevel@vger.kernel.org
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:50248 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751926AbaDEDPM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 4 Apr 2014 23:15:12 -0400
-Content-Disposition: inline
-In-Reply-To: <20140404061107.GS18016@ZenIV.linux.org.uk>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+	Steffen Persvold <sp@numascale.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20140404205604.GC10275@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Apr 04, 2014 at 07:11:07AM +0100, Al Viro wrote:
-> > So basically, we'll have to take i_mutex in order to check the file
-> > size, which means there's no point with the ext4_unaligned_aio()
-> > logics.  We can just take the i_mutex and then do the tests based on
-> > i_size in ext4_file_dio_write()
-> 
-> Can you hold it across ext4_unwritten_wait(), though?
+On 04/05/2014 04:56 AM, Theodore Ts'o wrote:
+> On Sat, Apr 05, 2014 at 01:00:55AM +0800, Daniel J Blueman wrote:
+>> On a larger system 1728 cores/4.5TB memory and 3.13.9, I'm seeing very low
+>> 600KB/s cached write performance to a local ext4 filesystem:
 
-Gah....  I'm not sure.  But ultimately, all of this is really about
-O_APPEND being something horrible, right?
+ > Thanks for the heads up.  Most (all?) of the ext4 don't have systems
+ > with thousands of cores, so these issues generally don't come up for
+ > us, and so we're not likely (hell, very unlikely!) to notice potential
+ > problems cause by these sorts of uber-large systems.
 
-If we have to create a new mutex which is just used to serialized
-O_APPEND writes, I'm OK with that.  The main thing that I really want
-to preserve is to able to do parallel O_DIRECT writes in the the
-non-O_APPEND case.
+Hehe. It's not every day we get access to these systems also.
 
-> Thread A: write at offset 40M+512.  Unaligned as far as ext4_unaligned_aio()
-> is concerned, so it takes that mutex.
-> 
-> Thread B: write at offset 40M, with 8 512-byte segments in iovec.  The second
-> segment points to munmapped memory.  Same as 512-byte write at the same offset,
-> but not from the ext4_unaligned_aio() point of view.  It does *not* wait
-> for unwritten blocks resulting from A to be dealt with.
+>> Analysis shows that ext4 is reading from all cores' cpu-local data (thus
+>> expensive off-NUMA-node access) for each block written:
+>>
+>> if (free_clusters - (nclusters + rsv + dirty_clusters) <
+>> 				EXT4_FREECLUSTERS_WATERMARK) {
+>> 	free_clusters  = percpu_counter_sum_positive(fcc);
+>> 	dirty_clusters = percpu_counter_sum_positive(dcc);
+>> }
+>>
+>> This threshold is defined as:
+>>
+>> #define EXT4_FREECLUSTERS_WATERMARK (4 * (percpu_counter_batch *
+>> nr_cpu_ids))
+...
+> The problem we are trying to solve here is that when we do delayed
+> allocation, we're making an implicit promise that there will be space
+> available
+>
+> I've done the calculations, and 4 * 32 * 1728 cores = 221184 blocks,
+> or 864 megabytes.  That would mean that the file system is over 98%
+> full, so that's actually pretty reasonable; most of the time there's
+> more free space than that.
 
-Hang on a second.  What are you assuming the block size to be in this
-example?  If the block size is 4k, then this doesn't make any sense,
-because unmapped memory will be in units of the block size, so we
-couldn't have the second 512 byte segment be unmapped.  Blocks are
-unmaped, not individual 512 byte sectors.
+The filesystem is empty after the mkfs; the approach here may make sense 
+if we want to allow all cores to write to this FS, but here we have one.
 
-If you are assuming the block size is 512 bytes, then it's not a
-problem, since the entire block is unmapped, and dio_zero_block() can
-operatate on the whole block.
+Instrumenting shows that free_clusters=16464621 nclusters=1 rsv=842790 
+dirty_clusters=0 percpu_counter_batch=3456 nr_cpu_ids=1728; below 91GB 
+space, we'd hit this issue. It feels more sensible to start this 
+behaviour when the FS is say 98% full, irrespective of the number of 
+cores, but that's not why the behaviour is there.
 
-(actually, ext4 doesn't support 512 byte blocks, but it does support
-1024 block sizes.  but the same argument applies)
+Since these block devices are attached to a single NUMA node's IO link, 
+there is a scaling limitation there anyway, so there may be rationale in 
+limiting this to use min(256,nr_cpu_ids) maybe?
 
-> Area around 40M is still unwritten.  Apply Eric's scenario from the commit
-> that has introduced the whole "we need exclusion on unaligned aio" thing...
+> It looks like the real problem is that we're using nr_cpu_ids, which
+> is the maximum possible number of cpu's that the system can support,
+> which is different from the number of cpu's that you currently have.
+> For normal kernels nr_cpu_ids is small, so that has never been a
+> problem, but I bet you have nr_cpu_ids set to something really large,
+> right?
+>
+> If you change nr_cpu_ids to total_cpus in the definition of
+> EXT4_FREECLUSTERS_WATERMARK, does that make things better for your
+> system?
 
-Right, but Eric's scneario was talking about unaligned *blocks* not
-*pages*.
+I have reproduced this with CPU hotplug disabled, so nr_cpu_ids is 
+nicely at 1728.
 
-So his scenario was one where the block size was 4k, and the write was
-unaligned with respect to the 4k block size.  For example, if with a
-4k block size, we had one write starting at offset 0 with a size 512,
-and at the same time another write starting at offset 2048 with a size
-1024 bytes.  The problem is that we were doing two writes inside the
-same *block*, and so if dio_zero_block() tried to operate on the same
-block at the same time, bad things would happen.
-
-Does that make sense?
-
-							- Ted
+Thanks,
+   Daniel
+-- 
+Daniel J Blueman
+Principal Software Engineer, Numascale
