@@ -1,70 +1,68 @@
-From: Geert Uytterhoeven <geert@linux-m68k.org>
-Subject: Re: [PATCH] fs/ext4/extents_status.c: fix 64-bit number truncation bug
-Date: Sun, 6 Apr 2014 15:39:09 +0200
-Message-ID: <CAMuHMdVT9O8C0fhMbaqS2nB1jfLAZtanp6YGPU6Q-T5b7=n20Q@mail.gmail.com>
-References: <53396AC1.10108@gmail.com>
+From: Chen Gang <gang.chen.5i5j@gmail.com>
+Subject: Re: [PATCH] fs/ext4/extents_status.c: fix 64-bit number truncation
+ bug
+Date: Mon, 07 Apr 2014 07:58:14 +0800
+Message-ID: <5341EA16.6030705@gmail.com>
+References: <53396AC1.10108@gmail.com> <CAMuHMdVT9O8C0fhMbaqS2nB1jfLAZtanp6YGPU6Q-T5b7=n20Q@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
+Cc: Theodore Ts'o <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	linux-ext4@vger.kernel.org,
 	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
 	Guan Xuetao <gxt@mprc.pku.edu.cn>
-To: Chen Gang <gang.chen.5i5j@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <53396AC1.10108@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: Geert Uytterhoeven <geert@linux-m68k.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pd0-f178.google.com ([209.85.192.178]:47248 "EHLO
+	mail-pd0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754608AbaDFX6X (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 6 Apr 2014 19:58:23 -0400
+In-Reply-To: <CAMuHMdVT9O8C0fhMbaqS2nB1jfLAZtanp6YGPU6Q-T5b7=n20Q@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 31, 2014 at 3:16 PM, Chen Gang <gang.chen.5i5j@gmail.com> w=
-rote:
-> '0x7FDEADBEEF' will be truncated to 32-bit number under unicore32. Ne=
-ed
-> append 'ULL' for it.
->
-> The related warning (with allmodconfig under unicore32):
->
->     CC [M]  fs/ext4/extents_status.o
->   fs/ext4/extents_status.c: In function =E2=80=98__es_remove_extent=E2=
+
+On 04/06/2014 09:39 PM, Geert Uytterhoeven wrote:
+> On Mon, Mar 31, 2014 at 3:16 PM, Chen Gang <gang.chen.5i5j@gmail.com>=
+ wrote:
+>> '0x7FDEADBEEF' will be truncated to 32-bit number under unicore32. N=
+eed
+>> append 'ULL' for it.
+>>
+>> The related warning (with allmodconfig under unicore32):
+>>
+>>     CC [M]  fs/ext4/extents_status.o
+>>   fs/ext4/extents_status.c: In function =E2=80=98__es_remove_extent=E2=
 =80=99:
->   fs/ext4/extents_status.c:813: warning: integer constant is too larg=
-e for =E2=80=98long=E2=80=99 type
+>>   fs/ext4/extents_status.c:813: warning: integer constant is too lar=
+ge for =E2=80=98long=E2=80=99 type
+>=20
+> Thanks! This is failing on all 32-bit architectures.
+>=20
 
-Thanks! This is failing on all 32-bit architectures.
+Yeah.
 
-> Signed-off-by: Chen Gang <gang.chen.5i5j@gmail.com>
-
-Acked-by: Geert Uytterhoeven <geert@linux-m68k.org>
-
-> ---
->  fs/ext4/extents_status.c |    2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+>> Signed-off-by: Chen Gang <gang.chen.5i5j@gmail.com>
+>=20
+> Acked-by: Geert Uytterhoeven <geert@linux-m68k.org>
 >
-> diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-> index 0a014a7..0ebc212 100644
-> --- a/fs/ext4/extents_status.c
-> +++ b/fs/ext4/extents_status.c
-> @@ -810,7 +810,7 @@ retry:
->
->                         newes.es_lblk =3D end + 1;
->                         newes.es_len =3D len2;
-> -                       block =3D 0x7FDEADBEEF;
-> +                       block =3D 0x7FDEADBEEFULL;
->                         if (ext4_es_is_written(&orig_es) ||
->                             ext4_es_is_unwritten(&orig_es))
->                                 block =3D ext4_es_pblock(&orig_es) +
+[...]
 
-Gr{oetje,eeting}s,
+Thank you very much!
 
-                        Geert
+I will/should continue, and try to finish unicore32 within this month
+(although, excuse me, in this week and next week, I will have no much
+free time on open source).
 
+
+Thanks.
+--=20
+Chen Gang
+
+Open, share, and attitude like air, water, and life which God blessed
 --
-Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-=
-m68k.org
-
-In personal conversations with technical people, I call myself a hacker=
-=2E But
-when I'm talking to journalists I just say "programmer" or something li=
-ke that.
-                                -- Linus Torvalds
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
