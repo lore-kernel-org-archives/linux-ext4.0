@@ -1,88 +1,66 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Dirty ext4 blocks system startup
-Date: Mon, 7 Apr 2014 08:48:20 -0400
-Message-ID: <20140407124820.GB8468@thunk.org>
-References: <1459400.cqhC1n3S74@f209>
- <20140404182020.GA8888@birch.djwong.org>
- <5060780.kj9pBZIMgD@web.de>
- <7488414.mDGKOZ8cSK@web.de>
+From: Miklos Szeredi <miklos@szeredi.hu>
+Subject: Re: [GIT PULL] ext4 changes for 3.15
+Date: Mon, 7 Apr 2014 15:15:36 +0200
+Message-ID: <CAJfpegv_Ng1cXbpCqicG4e3UdGK3uiDtVB4KzfRQOhDq_uhZOw@mail.gmail.com>
+References: <20140403191558.GA8745@thunk.org>
+	<CA+55aFxoA-iDdmbbgmJiYVvskrtca5aGgUAW=3CR47rM9NEMLA@mail.gmail.com>
+	<20140404035308.GC2525@thunk.org>
+	<20140404134429.GB26806@quack.suse.cz>
+	<CAJfpegsJd9d8NTmwozJ+u_ZS-SnUwAQFwAne6P1KqG=VZeZSTA@mail.gmail.com>
+	<20140404234358.GE10275@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Markus <M4rkusXXL@web.de>
+Content-Type: text/plain; charset=UTF-8
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	Miklos Szeredi <miklos@szeredi.hu>, Jan Kara <jack@suse.cz>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Al Viro <viro@zeniv.linux.org.uk>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:51062 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754945AbaDGMsZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 7 Apr 2014 08:48:25 -0400
-Content-Disposition: inline
-In-Reply-To: <7488414.mDGKOZ8cSK@web.de>
+Received: from mail-qa0-f53.google.com ([209.85.216.53]:42356 "EHLO
+	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754821AbaDGNPh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Apr 2014 09:15:37 -0400
+Received: by mail-qa0-f53.google.com with SMTP id w8so5773665qac.26
+        for <linux-ext4@vger.kernel.org>; Mon, 07 Apr 2014 06:15:36 -0700 (PDT)
+In-Reply-To: <20140404234358.GE10275@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 07, 2014 at 12:58:40PM +0200, Markus wrote:
-> 
-> Finally e2image finished successfully. But the produced file is way too big for a mail.
-> 
-> Any other possibility?
-> (e2image does dump everything except file data and free space. But the problem seems to be just in the bitmap and/or journal.)
-> 
-> Actually, when I look at the code around e2fsck/recovery.c:594
-> The error is detected and continue is called.
-> But tagp/tag is never changed, but the checksum is always compared to the one from tag. Intended?
+On Sat, Apr 5, 2014 at 1:43 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+> On Fri, Apr 04, 2014 at 07:16:25PM +0200, Miklos Szeredi wrote:
+>>
+>> http://marc.info/?l=linux-kernel&m=139523745403081&w=2
+>
+> I tried applying this patch on top of xfstests commit 3948694eb1, but
+> running on ext4.git's test branch, which has the your cross-rename
+> patches applied:
+>
+> http://git.kernel.org/cgit/linux/kernel/git/tytso/ext4.git/commit/?h=test&id=b7bcc46d4f80139930c2e6bd04ff8ebbff121bc9
+>
+> I see the following:
+>
+> BEGIN TEST: Ext4 4k block Fri Apr  4 23:21:50 UTC 2014
+> Device: /dev/vdb
+> mk2fs options: -q
+> mount options: -o block_validity
+> FSTYP         -- ext4
+> PLATFORM      -- Linux/i686 candygram 3.14.0-00061-gb7bcc46
+> MKFS_OPTIONS  -- -q /dev/vdc
+> MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity /dev/vdc /vdc
+>
+> generic/323             [23:22:03] [23:22:04] [not run]
+>         generic/323 -- kernel doesn't support renameat2 syscall
+> generic/324             [23:22:04] [23:22:05] [not run]
+>         generic/324 -- kernel doesn't support renameat2 syscall
+> generic/325             [23:22:05] [23:22:06] [not run]
+>         generic/325 -- kernel doesn't support renameat2 syscall
+> Not run: generic/323 generic/324 generic/325
+>
+> Is there anything obvious that I might be doing wrong?
 
-What mount options are you using?  It appears that you have journal
-checksums enabled, which isn't on by default, and unfortunately,
-there's a good reason for that.  The original code assumed that the
-most common case for journal corruption would be caused by an
-incomplete journal transaction getting written out if one were using
-journal_async_commit.  This feature has not been enabled by default
-because the qeustion of what to do when the journal gets corrupted in
-other cases is not an easy one.
+I only wired up the syscall for x86_64.   Who's responsible for adding
+all the syscall tables for the various architectures?
 
-If some part of a transaction which is not the very last transaction
-in the journal gets corrupted, replaying it could do severe damage to
-the file system.  Unfortunately, simply deleting the journal and then
-recreating it could also do more damage as well.  Most of the time, a
-bad checksum happens because the last transaction hasn't fully made it
-out to disk (especially if you use the journal_async_commit option,
-which is a bit of a misnomer and has its own caveats[1]).  But if the
-checksum violation happens in a journal transaction that is not the
-last transaction in the journal, right now the recovery code aborts,
-because we don't have good automated logic to handle this case.
-
-I suspect if you need to get your file system back on its feet, the
-best thing to do is to create a patched e2fsck that doesn't abort when
-it finds a checksum error, but instead continues.  Then run it to
-replay the journal, and then force a full file system check and hope
-for the best.
-
-What has been on my todo list to implement, but has been relatively
-low priority because this is not a feature that we've documented or
-encouraged peple to use, is to have e2fsck skip the transaction has a
-bad checksum (i.e., not replay it at all), and then force a full file
-system check.  This is a bit safer, but if you make e2fsck ignore the
-checksum, it's no worse than if journal checksums weren't enabled in
-the first place.
-
-The long term thing that we need to add before we can really support
-journal checksums is to checksum each individual data block, instead
-of just each transaction.  Then when we have a bad checksum, we can
-skip just the one bad data block, and then force a full fsck.
-
-I'm sorry you ran into this.  What I should do is to disable these
-mount options for now, since users who stumble across them, as
-apparently you have, might be tempted to use them, and then get into
-trouble.
-
-     	      	      	   	      	   	 - Ted
-
-[1] The issue with journal_async_commit is that it's possible (fairly
-unlikely, but still possible) that the guarantees of data=ordered will
-be violated.  If the data blocks that were written out while we are
-resolving a delayed allocation writeback haven't made it all the way
-down to the platter, it's possible for all of the journal writes and
-the commit block to be reordered ahead of the data blocks.  In that
-case, the checksum for the commit block would be valid, but some of
-the data blocks might not have been written back to disk.
+Thanks,
+Miklos
