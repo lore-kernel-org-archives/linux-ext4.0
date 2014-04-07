@@ -1,83 +1,46 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [GIT PULL] ext3 improvements, cleanups, reiserfs fix
-Date: Mon, 7 Apr 2014 23:49:30 +0200
-Message-ID: <20140407214930.GA31152@quack.suse.cz>
+From: Namjae Jeon <linkinjeon@gmail.com>
+Subject: Re: [PATCH] ext4: fix shared/002 and 004 fail issue in xfstests
+Date: Tue, 8 Apr 2014 08:12:35 +0900
+Message-ID: <CAKYAXd9_qZ0s8VMgzhhOH7F8VT5LmasCFO49CXo_bk3qSgK26g@mail.gmail.com>
+References: <1396881675-7272-1-git-send-email-linkinjeon@gmail.com>
+	<20140407162513.GA9242@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: LKML <linux-kernel@vger.kernel.org>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-ext4@vger.kernel.org, Namjae Jeon <namjae.jeon@samsung.com>,
+	Ashish Sangwan <a.sangwan@samsung.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qg0-f48.google.com ([209.85.192.48]:50951 "EHLO
+	mail-qg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753771AbaDGXMg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Apr 2014 19:12:36 -0400
+Received: by mail-qg0-f48.google.com with SMTP id i50so138434qgf.35
+        for <linux-ext4@vger.kernel.org>; Mon, 07 Apr 2014 16:12:35 -0700 (PDT)
+In-Reply-To: <20140407162513.GA9242@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello Linus,
-
-  could you please pull from
-
-git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git for_linus
-
-to get various cleanups for ext2, ext3, udf, isofs, a documentation update
-for quota, and a fix of a race in reiserfs readdir implementation.
-
-Top of the tree is 01d8885785a6. The full shortlog is:
-
-Dan Carpenter (2):
-      ext3: remove unneeded check in ext3_ordered_writepage()
-      ext3: remove an unneeded check in ext3_new_blocks()
-
-Eric Sandeen (1):
-      ext3: explicitly remove inode from orphan list after failed direct io
-
-Fabian Frederick (6):
-      fs: udf: parse_options: blocksize check
-      udf: Add __init macro to init_inodecache
-      ext2: Add __init macro to init_inodecache
-      ext3: Add __init macro to init_inodecache
-      fs/quota/Kconfig: Update filesystems
-      fs/isofs/inode.c add __init to init_inodecache()
-
-Jakub Sitnicki (1):
-      ext2: acl: remove unneeded include of linux/capability.h
-
-Jan Kara (3):
-      ext3: Update PF_MEMALLOC handling in ext3_write_inode()
-      ext3: Update outdated comment before ext3_ordered_writepage()
-      ext3: Speedup WB_SYNC_ALL pass
-
-Jeff Mahoney (1):
-      reiserfs: fix race in readdir
-
-Rashika Kheria (3):
-      fs: Mark function as static in ext2/xattr_security.c
-      fs: Mark function as static in ext3/dir.c
-      fs: Mark function as static in ext3/xattr_security.c
-
-ZhangZhen (1):
-      ext2/3: use prandom_u32() instead of get_random_bytes()
-
-The diffstat is
-
- fs/ext2/acl.c            |  1 -
- fs/ext2/ialloc.c         |  2 +-
- fs/ext2/super.c          |  2 +-
- fs/ext2/xattr_security.c |  4 +--
- fs/ext3/balloc.c         |  5 +--
- fs/ext3/dir.c            |  2 +-
- fs/ext3/ialloc.c         |  2 +-
- fs/ext3/inode.c          | 86 ++++++++++++++----------------------------------
- fs/ext3/super.c          |  2 +-
- fs/ext3/xattr_security.c |  5 +--
- fs/isofs/inode.c         |  2 +-
- fs/quota/Kconfig         |  7 ++--
- fs/reiserfs/dir.c        |  6 ++--
- fs/udf/super.c           |  8 +++--
- 14 files changed, 51 insertions(+), 83 deletions(-)
-
-							Thanks
-								Honza
-
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+2014-04-08 1:25 GMT+09:00, Theodore Ts'o <tytso@mit.edu>:
+> On Mon, Apr 07, 2014 at 11:41:15PM +0900, Namjae Jeon wrote:
+>> From: Namjae Jeon <namjae.jeon@samsung.com>
+>>
+>> When mounting ext4 with data=journal option, shared/002 and 004 are
+>> failed on xfstests. Calling ext4_force_commit before
+>> filemap_write_and_wait_range is needed to flush all data into journal
+>> on this case.
+>
+> Hi Namjae,
+>
+> Thanks for working for this!
+>
+> Could you include in your commit description of why adding a call to
+> ext4_force_commit() is necessary to avoid the problem, and what wa
+> going wrong in the data=journal case?
+Hi Ted.
+Yes Sure. I will post the patch with detail description again.
+Thanks!
+>
+> Thanks,
+>
+> 					- Ted
+>
