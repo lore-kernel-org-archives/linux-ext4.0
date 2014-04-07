@@ -1,42 +1,39 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 61601] rootflags=noatime causes kernel panic when booting
- without initrd.
-Date: Mon, 07 Apr 2014 15:27:25 +0000
-Message-ID: <bug-61601-13602-aJWRwCllQB@https.bugzilla.kernel.org/>
-References: <bug-61601-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: fix shared/002 and 004 fail issue in xfstests
+Date: Mon, 7 Apr 2014 12:25:13 -0400
+Message-ID: <20140407162513.GA9242@thunk.org>
+References: <1396881675-7272-1-git-send-email-linkinjeon@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Namjae Jeon <namjae.jeon@samsung.com>,
+	Ashish Sangwan <a.sangwan@samsung.com>
+To: Namjae Jeon <linkinjeon@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:43931 "EHLO mail.kernel.org"
+Received: from imap.thunk.org ([74.207.234.97]:51172 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751938AbaDGP12 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 7 Apr 2014 11:27:28 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 2B4312039D
-	for <linux-ext4@vger.kernel.org>; Mon,  7 Apr 2014 15:27:27 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 8E0812037D
-	for <linux-ext4@vger.kernel.org>; Mon,  7 Apr 2014 15:27:25 +0000 (UTC)
-In-Reply-To: <bug-61601-13602@https.bugzilla.kernel.org/>
+	id S1753057AbaDGQZY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 7 Apr 2014 12:25:24 -0400
+Content-Disposition: inline
+In-Reply-To: <1396881675-7272-1-git-send-email-linkinjeon@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=61601
+On Mon, Apr 07, 2014 at 11:41:15PM +0900, Namjae Jeon wrote:
+> From: Namjae Jeon <namjae.jeon@samsung.com>
+> 
+> When mounting ext4 with data=journal option, shared/002 and 004 are
+> failed on xfstests. Calling ext4_force_commit before
+> filemap_write_and_wait_range is needed to flush all data into journal
+> on this case.
 
-Johannes Hirte <johannes.hirte@datenkhaos.de> changed:
+Hi Namjae,
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |johannes.hirte@datenkhaos.d
-                   |                            |e
+Thanks for working for this!
 
---- Comment #4 from Johannes Hirte <johannes.hirte@datenkhaos.de> ---
-This isn't ext4 specific, I have the same problem with btrfs. And from a short
-search, this problem isn't new at all:
-http://forums.gentoo.org/viewtopic-p-7238926.html?sid=6e8180da852b6b71dea57abf4bf58bce#6894398
+Could you include in your commit description of why adding a call to
+ext4_force_commit() is necessary to avoid the problem, and what wa
+going wrong in the data=journal case?
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Thanks,
+
+					- Ted
