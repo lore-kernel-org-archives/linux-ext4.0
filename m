@@ -1,38 +1,31 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v4] ext4: initialize multi-block allocator before
- checking block descriptors
-Date: Mon, 7 Apr 2014 10:37:15 -0400
-Message-ID: <20140407143715.GB25478@thunk.org>
-References: <1396712916-6296-1-git-send-email-a3at.mail@gmail.com>
+Subject: Re: [PATCH] ext4: Note the error in ext4_end_bio()
+Date: Mon, 7 Apr 2014 10:41:11 -0400
+Message-ID: <20140407144111.GB8855@thunk.org>
+References: <20140402143507.GA27299@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	open list <linux-kernel@vger.kernel.org>
-To: Azat Khuzhin <a3at.mail@gmail.com>
+Cc: linux-ext4@vger.kernel.org
+To: Matthew Wilcox <willy@linux.intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:51104 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:51109 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754650AbaDGOhS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 7 Apr 2014 10:37:18 -0400
+	id S1754945AbaDGOlP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 7 Apr 2014 10:41:15 -0400
 Content-Disposition: inline
-In-Reply-To: <1396712916-6296-1-git-send-email-a3at.mail@gmail.com>
+In-Reply-To: <20140402143507.GA27299@linux.intel.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Apr 05, 2014 at 07:48:36PM +0400, Azat Khuzhin wrote:
-> With EXT4FS_DEBUG ext4_count_free_clusters() will call
-> ext4_read_block_bitmap() without s_group_info initialized, so we need to
-> initialize multi-block allocator before.
+On Wed, Apr 02, 2014 at 10:35:07AM -0400, Matthew Wilcox wrote:
 > 
-> And dependencies that must be solved, to allow this:
-> - multi-block allocator needs in group descriptors
-> - need to install s_op before initializing multi-block allocator,
->   because in ext4_mb_init_backend() new inode is created.
-> - initialize number of group desc blocks (s_gdb_count) otherwise
->   number of clusters returned by ext4_free_clusters_after_init() is not correct.
->   (see ext4_bg_num_gdb_nometa())
+> ext4_end_bio() currently throws away the error that it receives.  Chances
+> are this is part of a spate of errors, one of which will end up getting
+> the error returned to userspace somehow, but we shouldn't take that risk.
+> Also print out the errno to aid in debug.
+> 
+> Signed-off-by: Matthew Wilcox <matthew.r.wilcox@intel.com>
 
 Thanks, applied.
 
-					- Ted
+						- Ted
