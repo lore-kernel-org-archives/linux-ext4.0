@@ -1,26 +1,26 @@
 From: Andreas Dilger <adilger@dilger.ca>
 Subject: Re: [RFC PATCH 1/1] ext4: Try to better reuse recently freed space
-Date: Mon, 7 Apr 2014 12:22:30 -0600
-Message-ID: <45C1863F-9E04-4927-BA00-C96E2C4FE6A3@dilger.ca>
+Date: Mon, 7 Apr 2014 14:01:23 -0600
+Message-ID: <A876B6E7-58CA-4825-B1BC-1B8A266FE9E6@dilger.ca>
 References: <alpine.LFD.2.00.1312021727150.2284@localhost.localdomain> <20140401053018.GP4911@thunk.org>
 Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_E3EBC430-897F-485B-A7AA-B625A6EABFD4"; protocol="application/pgp-signature"; micalg=pgp-sha1
+Content-Type: multipart/signed; boundary="Apple-Mail=_5CD55C49-EECD-4601-8669-C2688DD60BAB"; protocol="application/pgp-signature"; micalg=pgp-sha1
 Cc: =?windows-1252?Q?Luk=E1=9A_Czerner?= <lczerner@redhat.com>,
-	linux-ext4@vger.kernel.org
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-oa0-f43.google.com ([209.85.219.43]:58657 "EHLO
-	mail-oa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754687AbaDGTxQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Apr 2014 15:53:16 -0400
-Received: by mail-oa0-f43.google.com with SMTP id eb12so7197026oac.30
-        for <linux-ext4@vger.kernel.org>; Mon, 07 Apr 2014 12:53:16 -0700 (PDT)
+Received: from mail-ig0-f171.google.com ([209.85.213.171]:59992 "EHLO
+	mail-ig0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755330AbaDGUBb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Apr 2014 16:01:31 -0400
+Received: by mail-ig0-f171.google.com with SMTP id c1so4182918igq.10
+        for <linux-ext4@vger.kernel.org>; Mon, 07 Apr 2014 13:01:31 -0700 (PDT)
 In-Reply-To: <20140401053018.GP4911@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
---Apple-Mail=_E3EBC430-897F-485B-A7AA-B625A6EABFD4
+--Apple-Mail=_5CD55C49-EECD-4601-8669-C2688DD60BAB
 Content-Transfer-Encoding: quoted-printable
 Content-Type: text/plain;
 	charset=windows-1252
@@ -107,26 +107,23 @@ to a kernel that the Lustre server is currently running on.
 
 Some minor notes about the patch itself:
 - if there is a desire to land this patch quickly, it would be great to
-  have this behaviour at least selectable via mount option and/or =
-/sys/fs
-  tuneable that turns this off and on.  That would allow the patch to =
-land
-  and simplify testing, and disable it if it later shows regressions.
+have this behaviour at least selectable via mount option and/or /sys/fs
+tuneable that turns this off and on.  That would allow the patch to land
+and simplify testing, and disable it if it later shows regressions.
 - the i_last_group and i_last_start are unsigned long, but only need to =
 be
-  unsigned int like fe_group (ext4_group_t) and fe_start =
-(ext4_grpblk_t).
-  That saves 8 bytes per inode that didn't matter in the superblock.
+unsigned int like fe_group (ext4_group_t) and fe_start (ext4_grpblk_t).
+That saves 8 bytes per inode that didn't matter in the superblock.
 - there is no locking for the update of i_last_{group,start} if there =
 are
-  parallel writers on the same inode
+parallel writers on the same inode
 - rather than dropping the global goal entirely, it would be better to =
 have
-  a list of groups that have relatively free space.  I know we also =
+a list of groups that have relatively free space.  I know we also =
 discussed
-  using an rbtree to locate free extents instead of per-group buddy =
+using an rbtree to locate free extents instead of per-group buddy =
 bitmaps.
-  That would probably avoid the need for the global goal.
+That would probably avoid the need for the global goal.
 
 Cheers, Andreas
 
@@ -135,7 +132,7 @@ Cheers, Andreas
 
 
 
---Apple-Mail=_E3EBC430-897F-485B-A7AA-B625A6EABFD4
+--Apple-Mail=_5CD55C49-EECD-4601-8669-C2688DD60BAB
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
 	filename=signature.asc
@@ -146,19 +143,19 @@ Content-Description: Message signed with OpenPGP using GPGMail
 -----BEGIN PGP SIGNATURE-----
 Comment: GPGTools - http://gpgtools.org
 
-iQIVAwUBU0Ls53Kl2rkXzB/gAQLgIA//ZrXmaV+HgU03HqEi0Z1/ps3mTz7Hyjvk
-CTWugaCg+za8DbfjHX9qCIyquQpSgjyFjlxzzjhgqoomEAA2DhmlZjI87Z6PRZAb
-i/D5lEWCeEKFmVs7Z2ge3otgKdbsN3IQ5T/3DaKhcEwZjCI6LKJ8EWfnTGwRCzXG
-R2hU7L8C6GbRerz5CYAHzDnW4iIGLhC4tYp2lqIA+/BJE2mmF2cLXfPMW3xbisH+
-7GW2e50Svc1YEvVQ5UD8EpyIWQ+QRluVKYWlTSWmGMynokMk3fXWl07E/CXlzuEW
-82F1MV9SpGXBiwl2sN1kTukL4KaSHPj/Iwij2PNOh0C8gvfAteGBi/+EpY+xiPGE
-XoQP3WQkTj1HgQ+iMhWEA5IaMTNIjOLI0tg43xjvsLxs/2b/QLgzL5m3DVeaCeut
-/IHaAcnRsQhaWMslGJNX45fb6qMrMRqC2C6YMBHcx4OjvyeKBhPcIEuam80wtBor
-+fXOhQCb7FAM59D4E71sIVYeGCIWTnJw8xxbr34xHYbCw7+qw0zdFcJ2S8UXuHLj
-wfnGVRUcLL/DFvQCbxQb+NMTN29TjfCVZaXEpPMDlLvuYQ7FO6maPpB1qaH26eLy
-my12F6ZoK6d/NPPCdR0XdIeNwuXYFvNBbiuNjEcpRuyJt19cFgPYfTFsTOcXiwYh
-O7TyB2H9KpA=
-=5Rgh
+iQIVAwUBU0MEE3Kl2rkXzB/gAQJs2g//WaQC8KOdy0ckQqPYoK98W6EKYLS+qbwl
+2Wts/HjhdKymPAXCtXxMGi8xvcV/zYpM7dpLGxddfWeyVroN1O8+qPIk1Y4EStCp
+/xNq7XDzTa0BqxUKIfpHotX9l4R/KIEEKD2Vm6DPR5m5aq35I0+ihr+JQDx2Qcze
+g8+6D1JuUcfOxQogMHp1W7xhr0sGxlhijinQnrJ9di6eo9xf5bFEn02tbGdpu7FC
+Z47LlTqE1Bm8F7ponYM38I09t1ROpm084YtM+Xmbl3wMMg+BT8b9Rh5IbF6sMSNa
+nvJlVpqOt9+gJ2lEZt676+sSl8rkvvgZANtYo1kCd9yKmv3nlU3Rh+sW3JaBT+l8
+w38Uh2cLFAcQFDEnmN/KatIoOm0zh0O8U4tHewu0Bl41l7oJqKwEKz40hsU8F/Ii
+oQieSrUf0oim5DyC5ngWXZPg18H044A1DbtlHg0zlX5KN0dgTFboNJo8PlF7nfkT
+76RA5oEyHQpepLxK4Cj6r2pOi9G6OE3rAaSdrvCfSRVLo6wXnDxKH+svLmeAu/9E
+TJmK+9QYAb9PiGCjbN2ccvoAIor+rHwnvNkhr92ecCoIYZv+1tHkbf0EhLGclfl7
+vGunjRQ/lAPeTUdIHfc53EMTrDCcbQkW1wA71e16EBfbO6cCgwCEg3MNvOwpTIdH
+xOer+Yv9pIA=
+=MJbs
 -----END PGP SIGNATURE-----
 
---Apple-Mail=_E3EBC430-897F-485B-A7AA-B625A6EABFD4--
+--Apple-Mail=_5CD55C49-EECD-4601-8669-C2688DD60BAB--
