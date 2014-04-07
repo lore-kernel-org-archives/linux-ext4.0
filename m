@@ -1,65 +1,83 @@
-From: Geert Uytterhoeven <geert@linux-m68k.org>
-Subject: Re: [GIT PULL] ext4 changes for 3.15
-Date: Mon, 7 Apr 2014 22:25:30 +0200
-Message-ID: <CAMuHMdVHyAJwJv5nh+nQUOQJk6=2+Rr+pEqAZPgJUsA7A9A3hQ@mail.gmail.com>
-References: <20140403191558.GA8745@thunk.org>
-	<CA+55aFxoA-iDdmbbgmJiYVvskrtca5aGgUAW=3CR47rM9NEMLA@mail.gmail.com>
-	<20140404035308.GC2525@thunk.org>
-	<20140404134429.GB26806@quack.suse.cz>
-	<CAJfpegsJd9d8NTmwozJ+u_ZS-SnUwAQFwAne6P1KqG=VZeZSTA@mail.gmail.com>
-	<20140404234358.GE10275@thunk.org>
-	<CAJfpegv_Ng1cXbpCqicG4e3UdGK3uiDtVB4KzfRQOhDq_uhZOw@mail.gmail.com>
-	<20140407140745.GA8855@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: [GIT PULL] ext3 improvements, cleanups, reiserfs fix
+Date: Mon, 7 Apr 2014 23:49:30 +0200
+Message-ID: <20140407214930.GA31152@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Miklos Szeredi <miklos@szeredi.hu>, Jan Kara <jack@suse.cz>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Al Viro <viro@zeniv.linux.org.uk>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f43.google.com ([209.85.220.43]:42005 "EHLO
-	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754335AbaDGUZb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Apr 2014 16:25:31 -0400
-In-Reply-To: <20140407140745.GA8855@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: LKML <linux-kernel@vger.kernel.org>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Apr 7, 2014 at 4:07 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Mon, Apr 07, 2014 at 03:15:36PM +0200, Miklos Szeredi wrote:
->> >
->> > Is there anything obvious that I might be doing wrong?
->>
->> I only wired up the syscall for x86_64.   Who's responsible for adding
->> all the syscall tables for the various architectures?
->
-> Ah, and I was testing with i386, not x86_64, so that it explains that.
->
-> It's been quite a while since I've worked to add a new system call,
-> but my impressure is that in general the person who creates the new
-> system call needs to reach out to the architecture maintainers
-> (preferably with a patch :-), since otherwise the architecture
+  Hello Linus,
 
-Preferably the creator of the new system call emails linux-arch.
-Patches are always nice to have, but they may cause conflicts w.r.t.
-syscall numbering.
+  could you please pull from
 
-> maintainers would have no idea that a new syscall has been added.
+git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git for_linus
 
-If i386 has the new syscall, scripts/checksyscalls.sh will catch it and
-inform us about it during our next kernel build.
+to get various cleanups for ext2, ext3, udf, isofs, a documentation update
+for quota, and a fix of a race in reiserfs readdir implementation.
 
-If you add it to x86_64 only, bad luck for anyone else ;-)
+Top of the tree is 01d8885785a6. The full shortlog is:
 
-Gr{oetje,eeting}s,
+Dan Carpenter (2):
+      ext3: remove unneeded check in ext3_ordered_writepage()
+      ext3: remove an unneeded check in ext3_new_blocks()
 
-                        Geert
+Eric Sandeen (1):
+      ext3: explicitly remove inode from orphan list after failed direct io
 
---
-Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
+Fabian Frederick (6):
+      fs: udf: parse_options: blocksize check
+      udf: Add __init macro to init_inodecache
+      ext2: Add __init macro to init_inodecache
+      ext3: Add __init macro to init_inodecache
+      fs/quota/Kconfig: Update filesystems
+      fs/isofs/inode.c add __init to init_inodecache()
 
-In personal conversations with technical people, I call myself a hacker. But
-when I'm talking to journalists I just say "programmer" or something like that.
-                                -- Linus Torvalds
+Jakub Sitnicki (1):
+      ext2: acl: remove unneeded include of linux/capability.h
+
+Jan Kara (3):
+      ext3: Update PF_MEMALLOC handling in ext3_write_inode()
+      ext3: Update outdated comment before ext3_ordered_writepage()
+      ext3: Speedup WB_SYNC_ALL pass
+
+Jeff Mahoney (1):
+      reiserfs: fix race in readdir
+
+Rashika Kheria (3):
+      fs: Mark function as static in ext2/xattr_security.c
+      fs: Mark function as static in ext3/dir.c
+      fs: Mark function as static in ext3/xattr_security.c
+
+ZhangZhen (1):
+      ext2/3: use prandom_u32() instead of get_random_bytes()
+
+The diffstat is
+
+ fs/ext2/acl.c            |  1 -
+ fs/ext2/ialloc.c         |  2 +-
+ fs/ext2/super.c          |  2 +-
+ fs/ext2/xattr_security.c |  4 +--
+ fs/ext3/balloc.c         |  5 +--
+ fs/ext3/dir.c            |  2 +-
+ fs/ext3/ialloc.c         |  2 +-
+ fs/ext3/inode.c          | 86 ++++++++++++++----------------------------------
+ fs/ext3/super.c          |  2 +-
+ fs/ext3/xattr_security.c |  5 +--
+ fs/isofs/inode.c         |  2 +-
+ fs/quota/Kconfig         |  7 ++--
+ fs/reiserfs/dir.c        |  6 ++--
+ fs/udf/super.c           |  8 +++--
+ 14 files changed, 51 insertions(+), 83 deletions(-)
+
+							Thanks
+								Honza
+
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
