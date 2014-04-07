@@ -1,52 +1,29 @@
-From: Namjae Jeon <linkinjeon@gmail.com>
-Subject: [PATCH] ext4: fix shared/002 and 004 fail issue in xfstests
-Date: Mon,  7 Apr 2014 23:41:15 +0900
-Message-ID: <1396881675-7272-1-git-send-email-linkinjeon@gmail.com>
-Cc: linux-ext4@vger.kernel.org, Namjae Jeon <linkinjeon@gmail.com>,
-	Namjae Jeon <namjae.jeon@samsung.com>,
-	Ashish Sangwan <a.sangwan@samsung.com>
-To: tytso@mit.edu
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Fix jbd2 warning under heavy xattr load
+Date: Mon, 7 Apr 2014 10:55:12 -0400
+Message-ID: <20140407145512.GC8855@thunk.org>
+References: <1396863519-16895-1-git-send-email-jack@suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Sage Weil <sage@inktank.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f49.google.com ([209.85.220.49]:43485 "EHLO
-	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754945AbaDGOlh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Apr 2014 10:41:37 -0400
-Received: by mail-pa0-f49.google.com with SMTP id lj1so6800776pab.22
-        for <linux-ext4@vger.kernel.org>; Mon, 07 Apr 2014 07:41:37 -0700 (PDT)
+Received: from imap.thunk.org ([74.207.234.97]:51118 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755213AbaDGOzT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 7 Apr 2014 10:55:19 -0400
+Content-Disposition: inline
+In-Reply-To: <1396863519-16895-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Namjae Jeon <namjae.jeon@samsung.com>
+On Mon, Apr 07, 2014 at 11:38:39AM +0200, Jan Kara wrote:
+> When heavily exercising xattr code the assertion that
+> jbd2_journal_dirty_metadata() shouldn't return error was triggered:
+> 
+> WARNING: at /srv/autobuild-ceph/gitbuilder.git/build/fs/jbd2/transaction.c:1237
+> jbd2_journal_dirty_metadata+0x1ba/0x260()
 
-When mounting ext4 with data=journal option, shared/002 and 004 are
-failed on xfstests. Calling ext4_force_commit before
-filemap_write_and_wait_range is needed to flush all data into journal
-on this case.
+Thanks, I've applied this patch and marked it for the stable tree.
 
-Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
----
- fs/ext4/extents.c |    7 +++++++
- 1 file changed, 7 insertions(+)
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 243a02e..dc9333f 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -5375,6 +5375,13 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
- 	punch_start = offset >> EXT4_BLOCK_SIZE_BITS(sb);
- 	punch_stop = (offset + len) >> EXT4_BLOCK_SIZE_BITS(sb);
- 
-+	/* Call ext4_force_commit to flush all data in case of data=journal. */
-+	if (ext4_should_journal_data(inode)) {
-+		ret = ext4_force_commit(inode->i_sb);
-+		if (ret)
-+			return ret;
-+	}
-+
- 	/* Write out all dirty pages */
- 	ret = filemap_write_and_wait_range(inode->i_mapping, offset, -1);
- 	if (ret)
--- 
-1.7.9.5
-
+	     	     	  	    - Ted
