@@ -1,45 +1,45 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: A couple of ext4 crashes with inlinedata/bigalloc
-Date: Tue, 8 Apr 2014 19:54:25 +0800
-Message-ID: <20140408115425.GA23781@gmail.com>
-References: <20140311030604.GK9875@birch.djwong.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [v7] ext4: Add support FALLOC_FL_COLLAPSE_RANGE for fallocate
+Date: Tue, 8 Apr 2014 09:40:34 -0400
+Message-ID: <20140408134034.GA28822@thunk.org>
+References: <1393769538-3784-1-git-send-email-linkinjeon@gmail.com>
+ <20140316031745.GA9916@thunk.org>
+ <CAKYAXd-EO0pp=wz_Tg+2NEw9Nyu23sKXc-3n-fZUieES3+xt7w@mail.gmail.com>
+ <20140402164258.GH6901@thunk.org>
+ <20140408105504.GE22917@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc: Namjae Jeon <linkinjeon@gmail.com>, linux-ext4@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f44.google.com ([209.85.220.44]:60041 "EHLO
-	mail-pa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756372AbaDHLsd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Apr 2014 07:48:33 -0400
-Received: by mail-pa0-f44.google.com with SMTP id bj1so929586pad.3
-        for <linux-ext4@vger.kernel.org>; Tue, 08 Apr 2014 04:48:32 -0700 (PDT)
+Received: from imap.thunk.org ([74.207.234.97]:51604 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756227AbaDHNkl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 8 Apr 2014 09:40:41 -0400
 Content-Disposition: inline
-In-Reply-To: <20140311030604.GK9875@birch.djwong.org>
+In-Reply-To: <20140408105504.GE22917@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 10, 2014 at 08:06:04PM -0700, Darrick J. Wong wrote:
-> Hi all,
+On Tue, Apr 08, 2014 at 08:55:04PM +1000, Dave Chinner wrote:
 > 
-> A couple of errors to complain about before I send out the e2fsprogs patchbomb.
-> :)
+> If you check the xfstests commit history, I think you'll find that
+> Namjae wrote the xfstests that triggered the failure you are
+> seeing.
 > 
-> Zheng: I've been running the metadata checksum test with inline_data set.
-> flat_dir_test is a stress test which copies /usr/share/doc into a filesystem
-> and then "enlarges" the directories by recursively renaming "$foo" to
-> "$foo.longer", with the results below.  e2fsck complained that the directories
-> involved (4156, 4251) have multiple links to the subdir inode.  I'm not sure
-> what this is all about; the only (circumstantial) evidence I have is that it
-> goes away if I don't turn on inline_data.
+> You're just testing more esoteric configurations than most people do
+> - same as I do for XFS. We can't expect every developer to test
+> their code on every possible configuration before they submit
+> it.... ;)
 
-Hi Darrick,
+"kvm-xfstests -g smoke" takes about 4-5 hours to run[1], and allows
+all of the ext4 developers to run a much wider set of configurations.
+The more work they can do, the more I scale.  This is one of the
+reasons why I'm pushing the testing automation so heavily.  :-)
 
-I guess that you were talking about this bug at LSF/MM submmit this
-year, right?  Thanks for reporting this bug.  I am trying to take a
-closer look at it.  It would be great if you could tell me where I can
-find the your test program ('flat_dir_test').
+	       	      	  	 	    	- Ted
 
-Regards,
-                                                - Zheng
+[1] It's even faster if you run kvm-xfstests on a sacrificial ssd, or
+if you have a big enough machine to run using a series of 5g ramdisks.
+"kvm-xfstests -g auto" takes about 14 hours to run with spinning
+platters, so it's much more of a commitment.
