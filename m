@@ -1,84 +1,108 @@
-From: Heiko Carstens <heiko.carstens@de.ibm.com>
-Subject: Re: [GIT PULL] ext4 changes for 3.15
-Date: Tue, 8 Apr 2014 13:25:33 +0200
-Message-ID: <20140408112533.GB4504@osiris>
-References: <20140403191558.GA8745@thunk.org>
- <CA+55aFxoA-iDdmbbgmJiYVvskrtca5aGgUAW=3CR47rM9NEMLA@mail.gmail.com>
- <20140404035308.GC2525@thunk.org>
- <20140404134429.GB26806@quack.suse.cz>
- <CAJfpegsJd9d8NTmwozJ+u_ZS-SnUwAQFwAne6P1KqG=VZeZSTA@mail.gmail.com>
- <20140404234358.GE10275@thunk.org>
- <CAJfpegv_Ng1cXbpCqicG4e3UdGK3uiDtVB4KzfRQOhDq_uhZOw@mail.gmail.com>
- <20140407140745.GA8855@thunk.org>
- <CAMuHMdVHyAJwJv5nh+nQUOQJk6=2+Rr+pEqAZPgJUsA7A9A3hQ@mail.gmail.com>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH] libext2fs: fix build errors on bigendian hosts
+Date: Tue, 8 Apr 2014 19:36:25 +0800
+Message-ID: <20140408113625.GB23533@gmail.com>
+References: <1395915444-2225-1-git-send-email-guaneryu@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Miklos Szeredi <miklos@szeredi.hu>, Jan Kara <jack@suse.cz>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Geert Uytterhoeven <geert@linux-m68k.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
+To: Eryu Guan <guaneryu@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pb0-f52.google.com ([209.85.160.52]:38248 "EHLO
+	mail-pb0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755935AbaDHLaU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Apr 2014 07:30:20 -0400
+Received: by mail-pb0-f52.google.com with SMTP id rr13so891394pbb.25
+        for <linux-ext4@vger.kernel.org>; Tue, 08 Apr 2014 04:30:19 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <CAMuHMdVHyAJwJv5nh+nQUOQJk6=2+Rr+pEqAZPgJUsA7A9A3hQ@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1395915444-2225-1-git-send-email-guaneryu@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 07, 2014 at 10:25:30PM +0200, Geert Uytterhoeven wrote:
-> On Mon, Apr 7, 2014 at 4:07 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> > On Mon, Apr 07, 2014 at 03:15:36PM +0200, Miklos Szeredi wrote:
-> >> >
-> >> > Is there anything obvious that I might be doing wrong?
-> >>
-> >> I only wired up the syscall for x86_64.   Who's responsible for adding
-> >> all the syscall tables for the various architectures?
-> >
-> > Ah, and I was testing with i386, not x86_64, so that it explains that.
-> >
-> > It's been quite a while since I've worked to add a new system call,
-> > but my impressure is that in general the person who creates the new
-> > system call needs to reach out to the architecture maintainers
-> > (preferably with a patch :-), since otherwise the architecture
-> 
-> Preferably the creator of the new system call emails linux-arch.
-> Patches are always nice to have, but they may cause conflicts w.r.t.
-> syscall numbering.
-> 
-> > maintainers would have no idea that a new syscall has been added.
-> 
-> If i386 has the new syscall, scripts/checksyscalls.sh will catch it and
-> inform us about it during our next kernel build.
-> 
-> If you add it to x86_64 only, bad luck for anyone else ;-)
+On Thu, Mar 27, 2014 at 06:17:24PM +0800, Eryu Guan wrote:
+> Fix the following build errors on bigendian hosts.
+>=20
+> - ctx is a pointer, use '->' not '.'
+> - add missing argument to ext2fs_dirent_swab_in2
+>=20
+> make[2]: Entering directory `/root/e2fsprogs/lib/ext2fs'
+>         CC inline_data.c
+> inline_data.c: In function =E2=80=98ext2fs_inline_data_dir_iterate=E2=
+=80=99:
+> inline_data.c:221:5: error: request for member =E2=80=98errcode=E2=80=
+=99 in something not a structure or union
+>   ctx.errcode =3D ext2fs_dirent_swab_in2(fs, ctx->buf, ctx->buflen, 0=
+);
+>      ^
+> inline_data.c:222:9: error: request for member =E2=80=98errcode=E2=80=
+=99 in something not a structure or union
+>   if (ctx.errcode) {
+>          ^
+> inline_data.c: In function =E2=80=98ext2fs_inline_data_dir_expand=E2=80=
+=99:
+> inline_data.c:364:2: error: too few arguments to function =E2=80=98ex=
+t2fs_dirent_swab_in2=E2=80=99
+>   retval =3D ext2fs_dirent_swab_in2(fs, buf, size);
+>   ^
+> In file included from inline_data.c:19:0:
+> ext2fs.h:1569:18: note: declared here
+>  extern errcode_t ext2fs_dirent_swab_in2(ext2_filsys fs, char *buf, s=
+ize_t size,
+>                   ^
+> make[2]: *** [inline_data.o] Error 1
+>=20
+> Cc: Theodore Ts'o <tytso@mit.edu>
+> Signed-off-by: Eryu Guan <guaneryu@gmail.com>
 
-Also it would be nice if somebody would pick up the patch below as well :)
+Sorry for the late reply, and thanks for fixing this.
 
->From 97cdc756ca508f2200ae0cebf1cf1f1b8daa711b Mon Sep 17 00:00:00 2001
-From: Heiko Carstens <heiko.carstens@de.ibm.com>
-Date: Tue, 8 Apr 2014 12:55:46 +0200
-Subject: [PATCH] include/linux/syscalls.h: add sys_renameat2() prototype
+Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
 
-Signed-off-by: Heiko Carstens <heiko.carstens@de.ibm.com>
----
- include/linux/syscalls.h | 3 +++
- 1 file changed, 3 insertions(+)
+                                                - Zheng
 
-diff --git a/include/linux/syscalls.h b/include/linux/syscalls.h
-index 2aa8b749f13d..697ceb70a9a9 100644
---- a/include/linux/syscalls.h
-+++ b/include/linux/syscalls.h
-@@ -748,6 +748,9 @@ asmlinkage long sys_linkat(int olddfd, const char __user *oldname,
- 			   int newdfd, const char __user *newname, int flags);
- asmlinkage long sys_renameat(int olddfd, const char __user * oldname,
- 			     int newdfd, const char __user * newname);
-+asmlinkage long sys_renameat2(int olddfd, const char __user *oldname,
-+			      int newdfd, const char __user *newname,
-+			      unsigned int flags);
- asmlinkage long sys_futimesat(int dfd, const char __user *filename,
- 			      struct timeval __user *utimes);
- asmlinkage long sys_faccessat(int dfd, const char __user *filename, int mode);
--- 
-1.8.5.5
+> ---
+>  lib/ext2fs/inline_data.c | 6 +++---
+>  1 file changed, 3 insertions(+), 3 deletions(-)
+>=20
+> diff --git a/lib/ext2fs/inline_data.c b/lib/ext2fs/inline_data.c
+> index 7be0f96..7a81da0 100644
+> --- a/lib/ext2fs/inline_data.c
+> +++ b/lib/ext2fs/inline_data.c
+> @@ -218,8 +218,8 @@ int ext2fs_inline_data_dir_iterate(ext2_filsys fs=
+, ext2_ino_t ino,
+>  	ctx->buf =3D data.ea_data;
+>  	ctx->buflen =3D data.ea_size;
+>  #ifdef WORDS_BIGENDIAN
+> -	ctx.errcode =3D ext2fs_dirent_swab_in2(fs, ctx->buf, ctx->buflen, 0=
+);
+> -	if (ctx.errcode) {
+> +	ctx->errcode =3D ext2fs_dirent_swab_in2(fs, ctx->buf, ctx->buflen, =
+0);
+> +	if (ctx->errcode) {
+>  		ret |=3D BLOCK_ABORT;
+>  		goto out;
+>  	}
+> @@ -361,7 +361,7 @@ ext2fs_inline_data_dir_expand(ext2_filsys fs, ext=
+2_ino_t ino,
+>  		return retval;
+> =20
+>  #ifdef WORDS_BIGENDIAN
+> -	retval =3D ext2fs_dirent_swab_in2(fs, buf, size);
+> +	retval =3D ext2fs_dirent_swab_in2(fs, buf, size, 0);
+>  	if (retval)
+>  		goto errout;
+>  #endif
+> --=20
+> 1.9.0
+>=20
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
