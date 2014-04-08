@@ -1,94 +1,185 @@
-From: Namjae Jeon <linkinjeon@gmail.com>
-Subject: Re: [PATCH 0/3] fs: Introduce FALLOC_FL_INSERT_RANGE for fallocate
-Date: Tue, 8 Apr 2014 23:42:47 +0900
-Message-ID: <CAKYAXd_egdR5997MPgd5eRuYRsYFFbMvYEaYsD6Dsnp=YLVHPw@mail.gmail.com>
-References: <1396277611-10759-1-git-send-email-linkinjeon@gmail.com>
-	<20140408005417.GI27017@dastard>
+From: Filipe David Manana <fdmanana@gmail.com>
+Subject: Re: [ANNOUNCE] xfstests: updated to cf1ed54
+Date: Tue, 8 Apr 2014 16:16:18 +0100
+Message-ID: <CAL3q7H7Uo3d4b+KjPmVMftrVaMu5Ta12B7-BK9498HL_bKfAPg@mail.gmail.com>
+References: <20140404090357.GW17603@dastard>
+	<CAL3q7H6q7M-hrvniaVkAm_L6aSHANmnfdTKGEHHLFqXUhWfY5w@mail.gmail.com>
+	<20140408001443.GG27017@dastard>
+Reply-To: fdmanana@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: jack@suse.cz, Namjae Jeon <namjae.jeon@samsung.com>,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com, hch@infradead.org,
-	adilger.kernel@dilger.ca, viro@zeniv.linux.org.uk,
-	lczerner@redhat.com, linux-fsdevel@vger.kernel.org,
-	tytso@mit.edu, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: "xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+	"linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, lczerner@redhat.com
 To: Dave Chinner <david@fromorbit.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <20140408005417.GI27017@dastard>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-bk0-f47.google.com ([209.85.214.47]:40499 "EHLO
+	mail-bk0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756533AbaDHPQU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Apr 2014 11:16:20 -0400
+In-Reply-To: <20140408001443.GG27017@dastard>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-2014-04-08 9:54 GMT+09:00, Dave Chinner <david@fromorbit.com>:
-> On Mon, Mar 31, 2014 at 11:53:31PM +0900, Namjae Jeon wrote:
->> From: Namjae Jeon <namjae.jeon@samsung.com>
+On Tue, Apr 8, 2014 at 1:14 AM, Dave Chinner <david@fromorbit.com> wrote:
+> On Fri, Apr 04, 2014 at 02:07:16PM +0100, Filipe David Manana wrote:
+>> On Fri, Apr 4, 2014 at 10:03 AM, Dave Chinner <david@fromorbit.com> wrote:
+>> > Hi folks,
+>> >
+>> > The xfstests repository at git://oss.sgi.com/xfs/cmds/xfstests has
+>> > just been updated. Patches often get missed, so please check if your
+>> > outstanding patches were in this update. If they have not been in
+>> > this update, please resubmit them to xfs@oss.sgi.com so they can be
+>> > picked up in the next update.
+>> >
+>> > The new head of the master branch is commit:
+>> >
+>> > cf1ed54 check: fix RESULT_BASE typo in check script
+>> >
+>> > The major new functionality worth mentioning in this update is the
+>> > new config file format from Lukas. The existing format config files
+>> > should continue to work without change, but the new format is much
+>> > richer and allows specification of multiple different configurations
+>> > to run test under. Hence testing multiple mount an dmkfs
+>> > configurations becomes as simple as iterating the configurations
+>> > in the config file.
 >>
->> FALLOC_FL_INSERT_RANGE was mentioned as the opposite command of collapse
->> range from discussion between Hugh Dickins and Dave Chinner.
+>> Hi,
 >>
->> In continuation of the work of making the process of non linear editing
->> of
->> media files faster, we introduce here the new flag FALLOC_FL_INSERT_RANGE
->> for fallocate.
+>> I might be missing something, but after checking out these changes, I
+>> am no longer able to run btrfs tests. Example:
 >>
->> This flag will work opposite to the newly added FALLOC_FL_COLLAPSE_RANGE
->> flag.
->> As such, specifying FALLOC_FL_INSERT_RANGE flag will insert zeroed-out
->> space
->> in between the file within the range specified by offset and len. User
->> can
->> write new data in this space. e.g. ads.
->> Like collapse range, currently we have the limitation that offset and len
->> should be block size aligned for both XFS and Ext4.
+>> $ ./check btrfs/041
+>> common/config: Error: $SCRATCH_DEV should be unset when $SCRATCH_DEV_POOL is set
+>> Passed all 0 tests
 >>
->> The semantics of the flag are :
->> 1) It allocates new zeroed out on disk space of len bytes starting
->>    at offset byte without overwriting any existing data. All the data
->> blocks
->>    from offset to EOF are shifted towards right to make space for
->> inserting
->>    new blocks
->> 2) It should be used exclusively. No other fallocate flag in combination.
->> 3) Offset and length supplied to fallocate should be fs block size
->> aligned
->>    in case of xfs and ext4.
->> 4) Insert range does not work for the case when offset is
->> overlapping/beyond
->>    i_size. If the user wants to allocate space at the end of file they
->> are
->>    advised to use either ftruncate(2) or fallocate(2) with mode 0.
->> 5) It increses the size of file by len bytes.
->>
->> Namjae Jeon (3):
->>  fs: Add FALLOC_FL_INSERT_RANGE flags for fallocate
->>  xfs: Add support FALLOC_FL_INSERT_RANGE for fallocate
->>  ext4: Add support FALLOC_FL_INSERT_RANGE for fallocate
->>  TODO : xfsprog: xfsio: Add support FALLOC_FL_INSERT_RANGE for fallocate
->>  TODO : xfstests: Add insert range testcase
+>> $ cat local.config
+>> export TEST_DEV=/dev/sdb
+>> export TEST_DIR=/home/fdmanana/btrfs-tests/dev
+>> export SCRATCH_MNT="/home/fdmanana/btrfs-tests/scratch_1"
+>> export SCRATCH_DEV_POOL="/dev/sdc /dev/sdd"
 >
-> Namjae, what's your proposed timeframe on getting the xfs_io and tes
-> cases sorted out? I'm just trying to plan ahead for the next couple
-> of months (i.e. the 3.16 merge cycle), so some indication of whether
-> I can expect this to be complete and ready for merge within that
-> timeframe would be helpful to me.
-Hi. Dave.
-I will post the next version's patch-set with xfs_io and xfstests next week.
-Yes, I think that it can be complete before opening 3.6 merge window.
-And sorry for late response and work... Currently I can not do it full time.
-But will do the best for the aim that insert range would be merged in 3.6.
+> Are you sure that's the config file that is being picked up? I can't
+> test btrfs at the moment because it appears to be completely screwed
+> in a TOT kernel right now - it doesn't even show up in
+> /proc/filesystems and doesn't emit anything on dmesg to indicate
+> that initialisation of the built in btrfs code has failed or even
+> been attempted. It's simply MIA....
 >
-> FWIW, it would be really nice if you could add support for fsx and
-> fsstress for this as well as adding corner case tests. :)
-I can, I will include these jobs on next version. :)
+> However, using that same SCRATCH_DEV_POOL config for xfs or ext4
+> works just fine on my test machines with the current TOT xfstests
+> and kernel code.
+>
+> $ cat configs/test2.config
+> TEST_DIR=/mnt/test
+> SCRATCH_MNT=/mnt/scratch
+> TEST_DEV=/dev/vda
+> SCRATCH_DEV_POOL="/dev/vdc /dev/vdd"
+> $ sudo MKFS_OPTIONS="-m crc=1" ./check generic/001
+> FSTYP         -- xfs (debug)
+> PLATFORM      -- Linux/x86_64 test2 3.14.0-rc1-dgc+
+> MKFS_OPTIONS  -- -f -m crc=1 /dev/vdc
+> MOUNT_OPTIONS -- /dev/vdc /mnt/scratch
+>
+> generic/001 4s ... 3s
+> Ran: generic/001
+> Passed all 1 tests
+> $
+>
+> So, as you can see I can't reproduce your problem myself right now.
+> Could you add a "set -x" line to the start of check and post the
+> output?
 
-Thanks!
+Ok, here's some more tests:
+
+# On origin/master:
+
+root 16:56:42 /home/fdmanana/git/hub/xfstests ((cf1ed54...))> cat local.config
+export TEST_DEV=/dev/sdb
+export TEST_DIR=/home/fdmanana/btrfs-tests/dev
+export SCRATCH_MNT="/home/fdmanana/btrfs-tests/scratch_1"
+export SCRATCH_DEV_POOL="/dev/sdc /dev/sdd"
+export FSTYP=btrfs
+
+root 16:56:49 /home/fdmanana/git/hub/xfstests ((cf1ed54...))> ./check
+generic/001
+common/config: Error: $SCRATCH_DEV should be unset when $SCRATCH_DEV_POOL is set
+Passed all 0 tests
+
+# Now going back to an older revision, it works as I showed before:
+
+root 16:56:56 /home/fdmanana/git/hub/xfstests ((cf1ed54...))> git
+checkout 3948694eb12e9699f558fab5e8169a8b090780d1
+Previous HEAD position was cf1ed54... check: fix RESULT_BASE typo in
+check script
+HEAD is now at 3948694... xfs/300: fix golden output
+
+root 16:57:11 /home/fdmanana/git/hub/xfstests ((3948694...))> ./check
+generic/001
+FSTYP         -- btrfs
+PLATFORM      -- Linux/x86_64 debian-vm3 3.13.0-fdm-btrfs-next-24+
+MKFS_OPTIONS  -- /dev/sdc
+MOUNT_OPTIONS -- /dev/sdc /home/fdmanana/btrfs-tests/scratch_1
+
+generic/001 23s ... 23s
+Ran: generic/001
+Passed all 1 tests
+
+# Now if I change my config and remove the definition of FSTYP, it
+still works with the old revision:
+
+root 16:59:19 /home/fdmanana/git/hub/xfstests ((3948694...))> cat local.config
+# Ideally define at least these 4 to match your environment
+# The first 2 are required.
+# See README for other variables which can be set.
+#
+# Note: SCRATCH_DEV >will< get overwritten!
+
+export TEST_DEV=/dev/sdb
+export TEST_DIR=/home/fdmanana/btrfs-tests/dev
+export SCRATCH_MNT="/home/fdmanana/btrfs-tests/scratch_1"
+export SCRATCH_DEV_POOL="/dev/sdc /dev/sdd"
+# export FSTYP=btrfs
+
+root 16:59:22 /home/fdmanana/git/hub/xfstests ((3948694...))> ./check
+generic/001
+FSTYP         -- btrfs
+PLATFORM      -- Linux/x86_64 debian-vm3 3.13.0-fdm-btrfs-next-24+
+MKFS_OPTIONS  -- /dev/sdc
+MOUNT_OPTIONS -- /dev/sdc /home/fdmanana/btrfs-tests/scratch_1
+
+generic/001 23s ... 23s
+Ran: generic/001
+Passed all 1 tests
+
+# Now going back to master, without FSTYP set, it doesn't work too:
+
+root 16:59:50 /home/fdmanana/git/hub/xfstests ((3948694...))> git
+checkout origin/master
+Previous HEAD position was 3948694... xfs/300: fix golden output
+HEAD is now at cf1ed54... check: fix RESULT_BASE typo in check script
+
+root 16:59:57 /home/fdmanana/git/hub/xfstests ((cf1ed54...))> ./check
+generic/001
+common/rc: Error: $TEST_DEV (/dev/sdb) is not a MOUNTED xfs filesystem
+Filesystem     Type  1024-blocks  Used Available Capacity Mounted on
+/dev/sdb       btrfs    20971520   768  18845184       1%
+/home/fdmanana/btrfs-tests/dev
+root 17:00:00 /home/fdmanana/git/hub/xfstests ((cf1ed54...))>
+
+
+After adding set -x to the top of the 'check' script, here's the
+output when running current master:
+
+https://friendpaste.com/6x8Hzq3wJxe2KXZypomCiY
+
+And for the revision that works:  https://friendpaste.com/6x8Hzq3wJxe2KXZyppKkwB
+
+Hope it helps.
+Thanks
+
+
+
 >
 > Cheers,
 >
@@ -96,9 +187,12 @@ Thanks!
 > --
 > Dave Chinner
 > david@fromorbit.com
->
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+
+
+-- 
+Filipe David Manana,
+
+"Reasonable men adapt themselves to the world.
+ Unreasonable men adapt the world to themselves.
+ That's why all progress depends on unreasonable men."
