@@ -1,82 +1,71 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [ANNOUNCE] xfstests: updated to cf1ed54
-Date: Tue, 8 Apr 2014 12:07:39 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1404081206190.2152@localhost.localdomain>
-References: <20140404090357.GW17603@dastard> <CAL3q7H6q7M-hrvniaVkAm_L6aSHANmnfdTKGEHHLFqXUhWfY5w@mail.gmail.com> <20140404211224.GX17603@dastard>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: ext4 performance falloff
+Date: Tue, 8 Apr 2014 20:30:27 +1000
+Message-ID: <20140408103027.GC22917@dastard>
+References: <533EE547.3030504@numascale.com>
+ <20140404205604.GC10275@thunk.org>
+ <533F7851.30803@numascale.com>
+ <20140407141935.GA22171@quack.suse.cz>
+ <87bnwdjdoj.fsf@tassilo.jf.intel.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Filipe David Manana <fdmanana@gmail.com>,
-	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:61609 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755169AbaDHKHx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 8 Apr 2014 06:07:53 -0400
-In-Reply-To: <20140404211224.GX17603@dastard>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Daniel J Blueman <daniel@numascale.com>,
+	Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	LKML <linux-kernel@vger.kernel.org>,
+	Steffen Persvold <sp@numascale.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+To: Andi Kleen <andi@firstfloor.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <87bnwdjdoj.fsf@tassilo.jf.intel.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sat, 5 Apr 2014, Dave Chinner wrote:
+On Mon, Apr 07, 2014 at 09:40:28AM -0700, Andi Kleen wrote:
+> Jan Kara <jack@suse.cz> writes:
+> >
+> > What we really need is a counter where we can better estimate counts
+> > accumulated in the percpu part of it. As the counter approaches zero, it's
+> > CPU overhead will have to become that of a single locked variable but when
+> > the value of counter is relatively high, we want it to be fast as the
+> > percpu one.  Possibly, each CPU could "reserve" part of the value in the
+> > counter (by just decrementing the total value; how large that part should
+> > be really needs to depend to the total value of the counter and number of
+> > CPUs - in this regard we really differ from classical percpu couters) and
+> > allocate/free using that part. If CPU cannot reserve what it is asked for
+> > anymore, it would go and steal from parts other CPUs have accumulated,
+> > returning them to global pool until it can satisfy the allocation.
 
-> Date: Sat, 5 Apr 2014 08:12:25 +1100
-> From: Dave Chinner <david@fromorbit.com>
-> To: Filipe David Manana <fdmanana@gmail.com>
-> Cc: "xfs@oss.sgi.com" <xfs@oss.sgi.com>,
->     "linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
->     linux-ext4@vger.kernel.org, lczerner@redhat.com
-> Subject: Re: [ANNOUNCE] xfstests: updated to cf1ed54
-> 
-> On Fri, Apr 04, 2014 at 02:07:16PM +0100, Filipe David Manana wrote:
-> > On Fri, Apr 4, 2014 at 10:03 AM, Dave Chinner <david@fromorbit.com> wrote:
-> > > Hi folks,
-> > >
-> > > The xfstests repository at git://oss.sgi.com/xfs/cmds/xfstests has
-> > > just been updated. Patches often get missed, so please check if your
-> > > outstanding patches were in this update. If they have not been in
-> > > this update, please resubmit them to xfs@oss.sgi.com so they can be
-> > > picked up in the next update.
-> > >
-> > > The new head of the master branch is commit:
-> > >
-> > > cf1ed54 check: fix RESULT_BASE typo in check script
-> > >
-> > > The major new functionality worth mentioning in this update is the
-> > > new config file format from Lukas. The existing format config files
-> > > should continue to work without change, but the new format is much
-> > > richer and allows specification of multiple different configurations
-> > > to run test under. Hence testing multiple mount an dmkfs
-> > > configurations becomes as simple as iterating the configurations
-> > > in the config file.
-> > 
-> > Hi,
-> > 
-> > I might be missing something, but after checking out these changes, I
-> > am no longer able to run btrfs tests. Example:
-> > 
-> > $ ./check btrfs/041
-> > common/config: Error: $SCRATCH_DEV should be unset when $SCRATCH_DEV_POOL is set
-> > Passed all 0 tests
-> > 
-> > $ cat local.config
-> > export TEST_DEV=/dev/sdb
-> > export TEST_DIR=/home/fdmanana/btrfs-tests/dev
-> > export SCRATCH_MNT="/home/fdmanana/btrfs-tests/scratch_1"
-> > export SCRATCH_DEV_POOL="/dev/sdc /dev/sdd"
-> 
-> OK, that'll be a bug in the new config file parsing code. Lukas,
-> can you have a look at this?
+Yup, that's pretty much what the slow path/fast path breakdown of
+the xfs_icsb_* (XFS In-Core Super Block) code in fs/xfs/xfs_mount.c
+does. :)
 
-Oh, yes. I'll take a look at this. Honestly I was not aware of
-SCRATCH_DEV_POOL.
+It distributes free space across all the CPUs and
+rebalances them when a per-CPu counter runs out. And to avoid lots
+of rebalances when ENOSPC approaches (512 blocks per CPU, IIRC),
+it disables the per-CPU counters completely and falls back to a
+global counter protected by a mutex to avoid wasting hundreds of
+CPUs spinning on a contended global lock. When the free space goes
+back above that threshold, it returns to per-cpu mode (the fast
+path code).
 
-Thanks!
--Lukas
+> That's a percpu_counter() isn't it? (or cookie jar)
 
-> 
-> Cheers,
-> 
-> Dave.
-> 
+No. percpu_counters do not guarantee accuracy nor can the counters
+be externally serialised for things like concurrent ENOSPC detection
+that require a guarantee that the counter never, ever goes below
+zero.
+
+> The MM uses similar techniques.
+
+I haven't seen anything else that uses similar techniques to the XFS
+code - I wrote it back in 2005 before there was generic per-cpu
+counter infrastructure, and I've been keeping an eye out as
+to whether it could be replaced with generic code ever since....
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
