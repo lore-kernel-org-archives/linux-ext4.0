@@ -1,159 +1,65 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [RFC PATCH 1/1] ext4: Try to better reuse recently freed space
-Date: Mon, 7 Apr 2014 19:14:58 -0600
-Message-ID: <26F9A14A-2514-4883-96BC-F7F94C600109@dilger.ca>
-References: <alpine.LFD.2.00.1312021727150.2284@localhost.localdomain> <20140401053018.GP4911@thunk.org>
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_5C510A22-F960-40F9-9B8F-173D10F36900"; protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: =?windows-1252?Q?Luk=E1=9A_Czerner?= <lczerner@redhat.com>,
-	linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [heads-up][RFC] ext4_file_write() breakage
+Date: Mon, 7 Apr 2014 22:01:12 -0400
+Message-ID: <20140408020112.GA19462@thunk.org>
+References: <20140403163739.GR18016@ZenIV.linux.org.uk>
+ <20140404025558.GB2525@thunk.org>
+ <20140404061107.GS18016@ZenIV.linux.org.uk>
+ <20140405031507.GA18456@thunk.org>
+ <20140405043243.GT18016@ZenIV.linux.org.uk>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>,
+	linux-fsdevel@vger.kernel.org
+To: Al Viro <viro@ZenIV.linux.org.uk>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yk0-f172.google.com ([209.85.160.172]:56161 "EHLO
-	mail-yk0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754690AbaDHBPG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Apr 2014 21:15:06 -0400
-Received: by mail-yk0-f172.google.com with SMTP id 200so224527ykr.17
-        for <linux-ext4@vger.kernel.org>; Mon, 07 Apr 2014 18:15:04 -0700 (PDT)
-In-Reply-To: <20140401053018.GP4911@thunk.org>
+Received: from imap.thunk.org ([74.207.234.97]:51357 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755384AbaDHCBQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 7 Apr 2014 22:01:16 -0400
+Content-Disposition: inline
+In-Reply-To: <20140405043243.GT18016@ZenIV.linux.org.uk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Sat, Apr 05, 2014 at 05:32:43AM +0100, Al Viro wrote:
+> 
+> char *p = (char *)mmap(NULL, 8192, PROT_READ | PROT_WRITE, MAP_ANON, -1, 0);
+> struct iovec v[8];
+> memset(p, 'a', 4096);
+> munmap(p + 4096, 4096);
+> for (int i = 0; i < 8; i++)
+> 	v[i] = (struct iovec){p + i * 512, 512};
+> v[1].iov_base = p + 4096;	/* unmapped */
+> 
+> The rest of feeding v to aio (with AIO_PWRITEV) is left as an exercise.
+> 
+> v[0] points to 512 bytes of RAM, all present (and filled with 'a').
+> v[1] points to the memory we'd just munmapped; trying to dereference it
+> would segfault, passing it to write() would give -EFAULT and passing the
+> entire array to writev(2) will result in short write - 512 bytes (all 'a')
+> written to file, return value is 512.
 
---Apple-Mail=_5C510A22-F960-40F9-9B8F-173D10F36900
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=windows-1252
+It's hard for me to stare the direct I/O code without my eyes
+bleeding, but I'm not sure that we're not causing corruption for
+another reason, without even needing to race.
 
-On Mar 31, 2014, at 11:30 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Mon, Dec 02, 2013 at 05:32:06PM +0100, Luk=E1=9A Czerner wrote:
->> Hi all,
->>=20
->> this is the patch I send a while ago to fix the issue I've seen with
->> a global allocation goal. This might no longer apply to the current
->> kernel and it might not be the best approach, but I use this example
->> just to start a discussion about those allocation goals and how to
->> use, or change them.
->>=20
->> I think that we agree that the long term fix would be to have free
->> extent map. But we might be able to do something quickly, unless
->> someone commits to make the free extent map reality :)
->=20
-> Hi Andreas,
->=20
-> We discussed possibly applying this patch last week at the ext4
-> workshop, possibly as early as for the 3.15 merge window:
->=20
-> 	http://patchwork.ozlabs.org/patch/295956/
+If we have an error leading to a short write, after we bail out, we
+don't zero the the rest of the block, but it looks like we also won't
+clear the uninitialized bit, which means even though we would have
+written out the short write, an attempt to read back of the file
+should lead to all zeros.  I'll need to write some test cases to make
+sure whether we're doing the right thing or not, but I'm worried we're
+screwing up there.
 
-Sorry for the delay in replying, I was away the past couple of weeks
-on vacation, and am heading this week to the Lustre conference.
-
-> However, I'm guessing that Lustre has the workload which is most
-> likely to regress if we were to simply apply this patch.  But, it's
-> likely it will improve things for many/most other ext4 workloads.
-
-I definitely agree that this will help with SSD storage, and thinp
-workloads that end up doing random IO to the underlying storage.
-The main reason for using the global goal is to maximize the chance
-of getting large contiguous allocations, since it does a round-robin
-traversal of the groups and maximizes the time that other blocks can
-be freed in each group.  It also minimizes the churn of allocating
-large files in groups that may not have large contiguous extents (e.g.
-if small files/extents have just been freed in a group, but not all
-of the blocks in that group are freed).
-
-The global goal avoids not only the higher chance of finding free small
-chunks for the file, but also the CPU overhead of re-scanning groups
-that are partially full to find large free extents.
-
-> We did talk about trying to assemble some block allocation performance
-> tests so we can better measure proposed changes to the block
-> allocator, but that's not something we have yet.  However, this global
-> goal is definitely causing problems for a number of use cases,
-> including thinp and being flash friendly.
-
-An important question is whether thinp and flash are the main uses for =
-ext4?
-I could imagine ignoring the global goal if rotational =3D=3D 0, or if =
-some
-large fraction of the filesystem was just deleted, but this change means
-that each inode will have to re-scan the free groups to find large =
-extents
-and I think this will have a long-term negative impact on file extent =
-size.
-
-Note that the global goal is only used if the per-inode goal is already
-full (i.e. ext4_mb_regular_allocator->ext4_mb_find_by_goal() fails), so
-it will need to find a new allocation every time.
-
-I think typical benchmarks that allocate and then free all space in a =
-new
-filesystem will not exercise this code properly.  Something that =
-allocates
-space but then only frees some of it, preferably multi-threaded.
-
-> Would you be willing to apply this patch and then run some benchmarks
-> to see if Lustre would be impacted negatively if we were to apply this
-> patch for the next development cycle (i.e., not for 3.15, but for the
-> next merge window)?
-
-Since most of the Lustre developers are travelling this week, it will be
-hard to get this patch suitably tested quickly.  Also, Lustre servers =
-are
-not running on 3.14 kernels yet, so the patch would need to be =
-backported
-to a kernel that the Lustre server is currently running on.
-
-Some minor notes about the patch itself:
-- if there is a desire to land this patch quickly, it would be great to
- have this behaviour at least selectable via mount option and/or /sys/fs
- tuneable that turns this off and on.  That would allow the patch to =
-land
- even if we haven't finished testing, or it later shows regressions.
-- the i_last_group and i_last_start are unsigned long, but only need to =
-be
- unsigned int like fe_group (ext4_group_t) and fe_start (ext4_grpblk_t).
- That saves 8 bytes per inode that didn't matter in the superblock.
-- there is no locking for the update of i_last_{group,start}
-- rather than dropping the global goal entirely, it would be better to =
-have
- a list of groups that have relatively free space.  I know we also =
-discussed
- using an rbtree to locate the free extents.
+Fortunately most DIO users tend to page align their buffers out of
+paranoia, and they're not deliberately trying to induce failures and
+check to make sure the failures are correct.
 
 
-Cheers, Andreas
+I do think we should force the use of the ext4_aio_mutex() if the file
+is opened O_APPEND.  That way we force serialization if the DIO is
+unaligned or in the O_APPEND case, which should fix a number of
+problems.
 
-
-
-
-
-
---Apple-Mail=_5C510A22-F960-40F9-9B8F-173D10F36900
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIVAwUBU0NNk3Kl2rkXzB/gAQLu9BAAlpni0sPtKxCVYdgCpeU3vPJ5wSHfKXEi
-Nb/jB6dwgIiYV7jS2bWyrgqrrsJ98TTfvlNDDILeDO1p59UudWIs/aMIn9d7efSw
-9BrLGOzcmlok/fhFl1RRTEWTm99p2coKG4HHmEl3uLw7FrqHKYvkqpXNH9T9eh7I
-jNFi5mK0IlYoKHa0bzIThZtmOBwVXnc3+LDpEOCYOBsn4ZX5MYZGAf8kmwlKPNhP
-3tQYji2EblEBWBVQs3qDL8M9Muk+S7iX1E9GquFHKK79INhtlo4oRQ+FUscQkPkl
-odX8x8ygc+LACT4z0yke9iNd7fFyOSjS1v1yYyRfs7kqeM4ZFxHEMWEnc5fmafMY
-j0XhAaF0qJMzybSAVYGZNSEFeWt2gPgqWb1WkctUSDeO4pHDiiIrxV/HGA8jU+RD
-RBLkBWQe5hmdduNGXI48FzZNBQhTgDFNtOskDpXaPOKZJfq3On7hrBzQt6+3mhaN
-eUOXZq8hmN6gfYDu1s68PMdaKDv2t/U6dbmplTc+MLhK3x0SLd7LM+i0D9y1l1FD
-X8fq7Z8t802QEYvZHKfpFuxa+d4JWq1pb6ZAdCv6xx3bnsqYXLBdbXofQmVVz1oo
-a0tXFR1CkvbQYWHQkm8KkCOWea/q8q7Lhvpj368w2XGzZPG5jcEPT/XIovQbUYja
-i/Ugf1D3Mpc=
-=Hhdx
------END PGP SIGNATURE-----
-
---Apple-Mail=_5C510A22-F960-40F9-9B8F-173D10F36900--
+						- Ted
