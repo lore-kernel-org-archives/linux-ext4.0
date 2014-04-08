@@ -1,45 +1,50 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [v7] ext4: Add support FALLOC_FL_COLLAPSE_RANGE for fallocate
-Date: Tue, 8 Apr 2014 09:40:34 -0400
-Message-ID: <20140408134034.GA28822@thunk.org>
-References: <1393769538-3784-1-git-send-email-linkinjeon@gmail.com>
- <20140316031745.GA9916@thunk.org>
- <CAKYAXd-EO0pp=wz_Tg+2NEw9Nyu23sKXc-3n-fZUieES3+xt7w@mail.gmail.com>
- <20140402164258.GH6901@thunk.org>
- <20140408105504.GE22917@dastard>
+Subject: Re: [GIT PULL] ext4 changes for 3.15
+Date: Tue, 8 Apr 2014 09:47:40 -0400
+Message-ID: <20140408134740.GB28822@thunk.org>
+References: <20140403191558.GA8745@thunk.org>
+ <CA+55aFxoA-iDdmbbgmJiYVvskrtca5aGgUAW=3CR47rM9NEMLA@mail.gmail.com>
+ <20140404035308.GC2525@thunk.org>
+ <20140404134429.GB26806@quack.suse.cz>
+ <CAJfpegsJd9d8NTmwozJ+u_ZS-SnUwAQFwAne6P1KqG=VZeZSTA@mail.gmail.com>
+ <20140404234358.GE10275@thunk.org>
+ <CAJfpegv_Ng1cXbpCqicG4e3UdGK3uiDtVB4KzfRQOhDq_uhZOw@mail.gmail.com>
+ <20140407140745.GA8855@thunk.org>
+ <CAMuHMdVHyAJwJv5nh+nQUOQJk6=2+Rr+pEqAZPgJUsA7A9A3hQ@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Namjae Jeon <linkinjeon@gmail.com>, linux-ext4@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:51604 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756227AbaDHNkl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 8 Apr 2014 09:40:41 -0400
+Cc: Miklos Szeredi <miklos@szeredi.hu>, Jan Kara <jack@suse.cz>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Al Viro <viro@zeniv.linux.org.uk>
+To: Geert Uytterhoeven <geert@linux-m68k.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20140408105504.GE22917@dastard>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <CAMuHMdVHyAJwJv5nh+nQUOQJk6=2+Rr+pEqAZPgJUsA7A9A3hQ@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Apr 08, 2014 at 08:55:04PM +1000, Dave Chinner wrote:
+On Mon, Apr 07, 2014 at 10:25:30PM +0200, Geert Uytterhoeven wrote:
+> > maintainers would have no idea that a new syscall has been added.
 > 
-> If you check the xfstests commit history, I think you'll find that
-> Namjae wrote the xfstests that triggered the failure you are
-> seeing.
+> If i386 has the new syscall, scripts/checksyscalls.sh will catch it and
+> inform us about it during our next kernel build.
 > 
-> You're just testing more esoteric configurations than most people do
-> - same as I do for XFS. We can't expect every developer to test
-> their code on every possible configuration before they submit
-> it.... ;)
+> If you add it to x86_64 only, bad luck for anyone else ;-)
 
-"kvm-xfstests -g smoke" takes about 4-5 hours to run[1], and allows
-all of the ext4 developers to run a much wider set of configurations.
-The more work they can do, the more I scale.  This is one of the
-reasons why I'm pushing the testing automation so heavily.  :-)
+Maybe we should change scripts/checksyscalls.sh to check the x86_64
+list of syscalls, and not i386?
 
-	       	      	  	 	    	- Ted
+It's been a long time since "all the world's an i386" --- these days,
+it's "all the world's an x86_64".  :-)
 
-[1] It's even faster if you run kvm-xfstests on a sacrificial ssd, or
-if you have a big enough machine to run using a series of 5g ramdisks.
-"kvm-xfstests -g auto" takes about 14 hours to run with spinning
-platters, so it's much more of a commitment.
+						- Ted
+
+"Thou shalt foreswear, renounce, and abjure the vile heresy which
+claimeth that ``All the world's a VAX'', and have no commerce with the
+benighted heathens who cling to this barbarous belief, that the days
+of thy program may be long even though the days of thy current machine
+be short."  -- The Ten Commandments for C Programmers
+
+- http://www.lysator.liu.se/c/ten-commandments.html
