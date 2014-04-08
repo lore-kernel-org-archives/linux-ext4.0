@@ -1,69 +1,52 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [GIT PULL] ext4 changes for 3.15
-Date: Tue, 8 Apr 2014 20:47:38 +1000
-Message-ID: <20140408104738.GD22917@dastard>
-References: <20140403191558.GA8745@thunk.org>
- <CA+55aFxoA-iDdmbbgmJiYVvskrtca5aGgUAW=3CR47rM9NEMLA@mail.gmail.com>
- <20140404035308.GC2525@thunk.org>
- <20140404134429.GB26806@quack.suse.cz>
- <CAJfpegsJd9d8NTmwozJ+u_ZS-SnUwAQFwAne6P1KqG=VZeZSTA@mail.gmail.com>
- <20140404202323.GB10275@thunk.org>
+Subject: Re: [v7] ext4: Add support FALLOC_FL_COLLAPSE_RANGE for fallocate
+Date: Tue, 8 Apr 2014 20:55:04 +1000
+Message-ID: <20140408105504.GE22917@dastard>
+References: <1393769538-3784-1-git-send-email-linkinjeon@gmail.com>
+ <20140316031745.GA9916@thunk.org>
+ <CAKYAXd-EO0pp=wz_Tg+2NEw9Nyu23sKXc-3n-fZUieES3+xt7w@mail.gmail.com>
+ <20140402164258.GH6901@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Theodore Ts'o <tytso@mit.edu>, Miklos Szeredi <miklos@szeredi.hu>,
-	Jan Kara <jack@suse.cz>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Al Viro <viro@zeniv.linux.org.uk>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Namjae Jeon <linkinjeon@gmail.com>, linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:37007 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756477AbaDHKzG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Apr 2014 06:55:06 -0400
 Content-Disposition: inline
-In-Reply-To: <20140404202323.GB10275@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20140402164258.GH6901@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Apr 04, 2014 at 04:23:23PM -0400, Theodore Ts'o wrote:
-> Ah yes, I had forgotten that you had sent those patches, thanks.
+On Wed, Apr 02, 2014 at 12:42:58PM -0400, Theodore Ts'o wrote:
+> Some final testing luckily caught a bug in your patch.  I'll fix it
+> up, but for future reference, it's important to check to see if the
+> handle is valid (i.e., we are not in no-journal mode) before using any
+> of the journalling functions.  Otherwise, you will crash if you try
+> using the code path when the file system does not have a journal.
 > 
-> It looks like that since you worded it as "just RFC for now since they
-> aren't in 3.15 yet", the xfstests folks never actually accepted your
-> changes into xfstests, and so I never picked it up.
+> BTW, I would strongly recommend using the automated regression test
+> system found at:
 > 
-> For future reference, the tests for COLLAPSE_RANGE and ZERO_RANGE were
-> accepted into xfstests well before the merge window opened, and that
-> was awfully convenience since we could pull the latest from the
-> xfstests.git tree and do automated testing while those patches were in
-> the ext4 and xfs trees.
+> 	git://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git
+> 
+> It finds these sorts of problems very quickly.  After you build a
+> kernel, running "kvm-xfstests -g quick" would have found the problem
+> very quickly.  The fastest reproducer for the bug that I found is:
+> "kvm-xfstests -c nojournal shared/001".
 
-The xfstests for those features were merged into xfstests at the
-same time the the kernel code was pulled into the XFS tree. i.e.
-once the kernel code had been merged into a maintainer's tree. That's
-why they were there for the testing you needed to do with ext4.
+Hi Ted,
 
-There hasn't been any XFS patches written for renameat2 and the
-patches that were posted as "here's some tests, maybe we'll get
-renameat2 into 3.15" so there hasn't been any urgency indicated to
-the xfstests folks that they were needed. We've been pretty much out
-of the loop here....
+If you check the xfstests commit history, I think you'll find that
+Namjae wrote the xfstests that triggered the failure you are
+seeing.
 
-> So feel free to be a bit more insistent about asking for your xfstests
-> to be merged upstream; you don't have to wait until the changes reach
-> mainline.
-
-Actually, we don't add tests to xfstests until the patches that they
-test are committed to an upstream repository somewhere. i.e. we need
-some guarantee that the code is actually accepted by a maintainer
-and is on it's way to mainline before we'll include the tests. We
-don't want to have to waste time on reviewing and committing tests
-for functionality that never goes into the mainline tree....
-
-> If it's clear that the patches are going to be accepted,
-> and they are in the subsystem trees, that's a fine time to push to get
-> the changes into xfstests.
-
-I asked whether this patchset is going to make 3.15 and reviewed the
-xfstests patches that had been posted earlier today. About 12 hours
-before I read this thread.... ;)
+You're just testing more esoteric configurations than most people do
+- same as I do for XFS. We can't expect every developer to test
+their code on every possible configuration before they submit
+it.... ;)
 
 Cheers,
 
