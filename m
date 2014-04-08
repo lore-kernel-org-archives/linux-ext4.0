@@ -1,92 +1,76 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [ANNOUNCE] xfstests: updated to cf1ed54
-Date: Tue, 8 Apr 2014 10:14:43 +1000
-Message-ID: <20140408001443.GG27017@dastard>
-References: <20140404090357.GW17603@dastard>
- <CAL3q7H6q7M-hrvniaVkAm_L6aSHANmnfdTKGEHHLFqXUhWfY5w@mail.gmail.com>
+Subject: Re: [PATCH 0/3] fs: Introduce FALLOC_FL_INSERT_RANGE for fallocate
+Date: Tue, 8 Apr 2014 10:54:17 +1000
+Message-ID: <20140408005417.GI27017@dastard>
+References: <1396277611-10759-1-git-send-email-linkinjeon@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Filipe David Manana <fdmanana@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:64090 "EHLO
-	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754665AbaDHAPC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Apr 2014 20:15:02 -0400
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: jack@suse.cz, Namjae Jeon <namjae.jeon@samsung.com>,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com, hch@infradead.org,
+	adilger.kernel@dilger.ca, viro@zeniv.linux.org.uk,
+	lczerner@redhat.com, linux-fsdevel@vger.kernel.org,
+	tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Namjae Jeon <linkinjeon@gmail.com>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <CAL3q7H6q7M-hrvniaVkAm_L6aSHANmnfdTKGEHHLFqXUhWfY5w@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1396277611-10759-1-git-send-email-linkinjeon@gmail.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Apr 04, 2014 at 02:07:16PM +0100, Filipe David Manana wrote:
-> On Fri, Apr 4, 2014 at 10:03 AM, Dave Chinner <david@fromorbit.com> wrote:
-> > Hi folks,
-> >
-> > The xfstests repository at git://oss.sgi.com/xfs/cmds/xfstests has
-> > just been updated. Patches often get missed, so please check if your
-> > outstanding patches were in this update. If they have not been in
-> > this update, please resubmit them to xfs@oss.sgi.com so they can be
-> > picked up in the next update.
-> >
-> > The new head of the master branch is commit:
-> >
-> > cf1ed54 check: fix RESULT_BASE typo in check script
-> >
-> > The major new functionality worth mentioning in this update is the
-> > new config file format from Lukas. The existing format config files
-> > should continue to work without change, but the new format is much
-> > richer and allows specification of multiple different configurations
-> > to run test under. Hence testing multiple mount an dmkfs
-> > configurations becomes as simple as iterating the configurations
-> > in the config file.
+On Mon, Mar 31, 2014 at 11:53:31PM +0900, Namjae Jeon wrote:
+> From: Namjae Jeon <namjae.jeon@samsung.com>
 > 
-> Hi,
+> FALLOC_FL_INSERT_RANGE was mentioned as the opposite command of collapse
+> range from discussion between Hugh Dickins and Dave Chinner.
 > 
-> I might be missing something, but after checking out these changes, I
-> am no longer able to run btrfs tests. Example:
+> In continuation of the work of making the process of non linear editing of
+> media files faster, we introduce here the new flag FALLOC_FL_INSERT_RANGE
+> for fallocate.
 > 
-> $ ./check btrfs/041
-> common/config: Error: $SCRATCH_DEV should be unset when $SCRATCH_DEV_POOL is set
-> Passed all 0 tests
+> This flag will work opposite to the newly added FALLOC_FL_COLLAPSE_RANGE flag.
+> As such, specifying FALLOC_FL_INSERT_RANGE flag will insert zeroed-out space
+> in between the file within the range specified by offset and len. User can
+> write new data in this space. e.g. ads.
+> Like collapse range, currently we have the limitation that offset and len
+> should be block size aligned for both XFS and Ext4.
 > 
-> $ cat local.config
-> export TEST_DEV=/dev/sdb
-> export TEST_DIR=/home/fdmanana/btrfs-tests/dev
-> export SCRATCH_MNT="/home/fdmanana/btrfs-tests/scratch_1"
-> export SCRATCH_DEV_POOL="/dev/sdc /dev/sdd"
+> The semantics of the flag are :
+> 1) It allocates new zeroed out on disk space of len bytes starting
+>    at offset byte without overwriting any existing data. All the data blocks
+>    from offset to EOF are shifted towards right to make space for inserting
+>    new blocks
+> 2) It should be used exclusively. No other fallocate flag in combination.
+> 3) Offset and length supplied to fallocate should be fs block size aligned
+>    in case of xfs and ext4.
+> 4) Insert range does not work for the case when offset is overlapping/beyond
+>    i_size. If the user wants to allocate space at the end of file they are
+>    advised to use either ftruncate(2) or fallocate(2) with mode 0.
+> 5) It increses the size of file by len bytes.
+> 
+> Namjae Jeon (3):
+>  fs: Add FALLOC_FL_INSERT_RANGE flags for fallocate
+>  xfs: Add support FALLOC_FL_INSERT_RANGE for fallocate
+>  ext4: Add support FALLOC_FL_INSERT_RANGE for fallocate
+>  TODO : xfsprog: xfsio: Add support FALLOC_FL_INSERT_RANGE for fallocate
+>  TODO : xfstests: Add insert range testcase
 
-Are you sure that's the config file that is being picked up? I can't
-test btrfs at the moment because it appears to be completely screwed
-in a TOT kernel right now - it doesn't even show up in
-/proc/filesystems and doesn't emit anything on dmesg to indicate
-that initialisation of the built in btrfs code has failed or even
-been attempted. It's simply MIA....
+Namjae, what's your proposed timeframe on getting the xfs_io and tes
+cases sorted out? I'm just trying to plan ahead for the next couple
+of months (i.e. the 3.16 merge cycle), so some indication of whether
+I can expect this to be complete and ready for merge within that
+timeframe would be helpful to me.
 
-However, using that same SCRATCH_DEV_POOL config for xfs or ext4
-works just fine on my test machines with the current TOT xfstests
-and kernel code.
-
-$ cat configs/test2.config 
-TEST_DIR=/mnt/test
-SCRATCH_MNT=/mnt/scratch
-TEST_DEV=/dev/vda
-SCRATCH_DEV_POOL="/dev/vdc /dev/vdd"
-$ sudo MKFS_OPTIONS="-m crc=1" ./check generic/001
-FSTYP         -- xfs (debug)
-PLATFORM      -- Linux/x86_64 test2 3.14.0-rc1-dgc+
-MKFS_OPTIONS  -- -f -m crc=1 /dev/vdc
-MOUNT_OPTIONS -- /dev/vdc /mnt/scratch
-
-generic/001 4s ... 3s
-Ran: generic/001
-Passed all 1 tests
-$
-
-So, as you can see I can't reproduce your problem myself right now.
-Could you add a "set -x" line to the start of check and post the
-output?
+FWIW, it would be really nice if you could add support for fsx and
+fsstress for this as well as adding corner case tests. :)
 
 Cheers,
 
@@ -94,3 +78,8 @@ Dave.
 -- 
 Dave Chinner
 david@fromorbit.com
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
