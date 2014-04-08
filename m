@@ -1,153 +1,104 @@
-From: Markus <M4rkusXXL@web.de>
-Subject: Re: Dirty ext4 blocks system startup
-Date: Tue, 08 Apr 2014 16:25:08 +0200
-Message-ID: <1452787.GTL29L0o32@web.de>
-References: <1459400.cqhC1n3S74@f209> <20140407124820.GB8468@thunk.org> <2164274.jmlex94sWc@web.de>
+From: Namjae Jeon <linkinjeon@gmail.com>
+Subject: Re: [PATCH 0/3] fs: Introduce FALLOC_FL_INSERT_RANGE for fallocate
+Date: Tue, 8 Apr 2014 23:42:47 +0900
+Message-ID: <CAKYAXd_egdR5997MPgd5eRuYRsYFFbMvYEaYsD6Dsnp=YLVHPw@mail.gmail.com>
+References: <1396277611-10759-1-git-send-email-linkinjeon@gmail.com>
+	<20140408005417.GI27017@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7Bit
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mout.web.de ([212.227.17.12]:64376 "EHLO mout.web.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757131AbaDHOZK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 8 Apr 2014 10:25:10 -0400
-In-Reply-To: <2164274.jmlex94sWc@web.de>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Transfer-Encoding: 7bit
+Cc: jack@suse.cz, Namjae Jeon <namjae.jeon@samsung.com>,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com, hch@infradead.org,
+	adilger.kernel@dilger.ca, viro@zeniv.linux.org.uk,
+	lczerner@redhat.com, linux-fsdevel@vger.kernel.org,
+	tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <20140408005417.GI27017@dastard>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-I patched e2fsck as mentionied below.
-./e2fsck /dev/md5
-e2fsck 1.43-WIP (4-Feb-2014)
-/dev/md5: recovering journal
-JBD: Invalid checksum recovering block 1152 in log
-JBD: Invalid checksum recovering block 1156 in log
-Setting free inodes count to 366227296 (was 366241761)
-Setting free blocks count to 652527218 (was 730998757)
-/dev/md5: clean, 41120/366268416 files, 2277606286/2930133504 blocks
+2014-04-08 9:54 GMT+09:00, Dave Chinner <david@fromorbit.com>:
+> On Mon, Mar 31, 2014 at 11:53:31PM +0900, Namjae Jeon wrote:
+>> From: Namjae Jeon <namjae.jeon@samsung.com>
+>>
+>> FALLOC_FL_INSERT_RANGE was mentioned as the opposite command of collapse
+>> range from discussion between Hugh Dickins and Dave Chinner.
+>>
+>> In continuation of the work of making the process of non linear editing
+>> of
+>> media files faster, we introduce here the new flag FALLOC_FL_INSERT_RANGE
+>> for fallocate.
+>>
+>> This flag will work opposite to the newly added FALLOC_FL_COLLAPSE_RANGE
+>> flag.
+>> As such, specifying FALLOC_FL_INSERT_RANGE flag will insert zeroed-out
+>> space
+>> in between the file within the range specified by offset and len. User
+>> can
+>> write new data in this space. e.g. ads.
+>> Like collapse range, currently we have the limitation that offset and len
+>> should be block size aligned for both XFS and Ext4.
+>>
+>> The semantics of the flag are :
+>> 1) It allocates new zeroed out on disk space of len bytes starting
+>>    at offset byte without overwriting any existing data. All the data
+>> blocks
+>>    from offset to EOF are shifted towards right to make space for
+>> inserting
+>>    new blocks
+>> 2) It should be used exclusively. No other fallocate flag in combination.
+>> 3) Offset and length supplied to fallocate should be fs block size
+>> aligned
+>>    in case of xfs and ext4.
+>> 4) Insert range does not work for the case when offset is
+>> overlapping/beyond
+>>    i_size. If the user wants to allocate space at the end of file they
+>> are
+>>    advised to use either ftruncate(2) or fallocate(2) with mode 0.
+>> 5) It increses the size of file by len bytes.
+>>
+>> Namjae Jeon (3):
+>>  fs: Add FALLOC_FL_INSERT_RANGE flags for fallocate
+>>  xfs: Add support FALLOC_FL_INSERT_RANGE for fallocate
+>>  ext4: Add support FALLOC_FL_INSERT_RANGE for fallocate
+>>  TODO : xfsprog: xfsio: Add support FALLOC_FL_INSERT_RANGE for fallocate
+>>  TODO : xfstests: Add insert range testcase
+>
+> Namjae, what's your proposed timeframe on getting the xfs_io and tes
+> cases sorted out? I'm just trying to plan ahead for the next couple
+> of months (i.e. the 3.16 merge cycle), so some indication of whether
+> I can expect this to be complete and ready for merge within that
+> timeframe would be helpful to me.
+Hi. Dave.
+I will post the next version's patch-set with xfs_io and xfstests next week.
+Yes, I think that it can be complete before opening 3.6 merge window.
+And sorry for late response and work... Currently I can not do it full time.
+But will do the best for the aim that insert range would be merged in 3.6.
+>
+> FWIW, it would be really nice if you could add support for fsx and
+> fsstress for this as well as adding corner case tests. :)
+I can, I will include these jobs on next version. :)
 
-So two blocks were bad. But the the recovery worked and the last few files all were intact.
+Thanks!
+>
+> Cheers,
+>
+> Dave.
+> --
+> Dave Chinner
+> david@fromorbit.com
+>
 
-A full check did not find any errors:
-./e2fsck -f -n /dev/md5
-e2fsck 1.43-WIP (4-Feb-2014)
-Pass 1: Checking inodes, blocks, and sizes
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-/dev/md5: 41120/366268416 files (4.5% non-contiguous), 2277606286/2930133504 blocks
-
-So I think that fs is now fine again.
-
-
-But still, e2fsck should not be trapped in an endless loop.
-
-
-Thanks,
-Markus
-
-
-Markus wrote on 07.04.2014:
-> Theodore Ts'o wrote on 07.04.2014:
-> > On Mon, Apr 07, 2014 at 12:58:40PM +0200, Markus wrote:
-> > > 
-> > > Finally e2image finished successfully. But the produced file is way too 
-> big for a mail.
-> > > 
-> > > Any other possibility?
-> > > (e2image does dump everything except file data and free space. But the 
-> problem seems to be just in the bitmap and/or journal.)
-> > > 
-> > > Actually, when I look at the code around e2fsck/recovery.c:594
-> > > The error is detected and continue is called.
-> > > But tagp/tag is never changed, but the checksum is always compared to the 
-> one from tag. Intended?
-> > 
-> > What mount options are you using?  It appears that you have journal
-> > checksums enabled, which isn't on by default, and unfortunately,
-> > there's a good reason for that.  The original code assumed that the
-> > most common case for journal corruption would be caused by an
-> > incomplete journal transaction getting written out if one were using
-> > journal_async_commit.  This feature has not been enabled by default
-> > because the qeustion of what to do when the journal gets corrupted in
-> > other cases is not an easy one.
-> 
-> Normally just "noatime,journal_checksum", but with the corrupted journal I use 
-> "ro,noload".
-> 
-> The "man mount" reads well about that "journal_checksum" option ;)
-> 
-> 
-> > If some part of a transaction which is not the very last transaction
-> > in the journal gets corrupted, replaying it could do severe damage to
-> > the file system.  Unfortunately, simply deleting the journal and then
-> > recreating it could also do more damage as well.  Most of the time, a
-> > bad checksum happens because the last transaction hasn't fully made it
-> > out to disk (especially if you use the journal_async_commit option,
-> > which is a bit of a misnomer and has its own caveats[1]).  But if the
-> > checksum violation happens in a journal transaction that is not the
-> > last transaction in the journal, right now the recovery code aborts,
-> > because we don't have good automated logic to handle this case.
-> 
-> The recovery does not seem to abort. It calles continue and is caught in an 
-> endless loop.
-> 
-> 
-> > I suspect if you need to get your file system back on its feet, the
-> > best thing to do is to create a patched e2fsck that doesn't abort when
-> > it finds a checksum error, but instead continues.  Then run it to
-> > replay the journal, and then force a full file system check and hope
-> > for the best.
-> 
-> The code calls "continue". ;)
-> So I just remove the whole if clause:
->   /* Look for block corruption */
->   if (!jbd2_block_tag_csum_verify(
->   		journal, tag, obh->b_data,
->   		be32_to_cpu(tmp->h_sequence))) {
-> - 	brelse(obh);
-> - 	success = -EIO;
->   	printk(KERN_ERR "JBD: Invalid "
->   			"checksum recovering "
->   			"block %lld in log\n",
->   			blocknr);
-> - 	continue;
->   }
-> 
-> It would then ignore the checksum and just issue a message. Right?
-> 
-> 
-> > What has been on my todo list to implement, but has been relatively
-> > low priority because this is not a feature that we've documented or
-> > encouraged peple to use, is to have e2fsck skip the transaction has a
-> > bad checksum (i.e., not replay it at all), and then force a full file
-> > system check.  This is a bit safer, but if you make e2fsck ignore the
-> > checksum, it's no worse than if journal checksums weren't enabled in
-> > the first place.
-> > 
-> > The long term thing that we need to add before we can really support
-> > journal checksums is to checksum each individual data block, instead
-> > of just each transaction.  Then when we have a bad checksum, we can
-> > skip just the one bad data block, and then force a full fsck.
-> > 
-> > I'm sorry you ran into this.  What I should do is to disable these
-> > mount options for now, since users who stumble across them, as
-> > apparently you have, might be tempted to use them, and then get into
-> > trouble.
-> > 
-> >      	      	      	   	      	   	 - Ted
-> > 
-> > [1] The issue with journal_async_commit is that it's possible (fairly
-> > unlikely, but still possible) that the guarantees of data=ordered will
-> > be violated.  If the data blocks that were written out while we are
-> > resolving a delayed allocation writeback haven't made it all the way
-> > down to the platter, it's possible for all of the journal writes and
-> > the commit block to be reordered ahead of the data blocks.  In that
-> > case, the checksum for the commit block would be valid, but some of
-> > the data blocks might not have been written back to disk.
-> 
-> Thanks so far,
-> Markus
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
