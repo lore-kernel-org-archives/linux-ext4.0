@@ -1,56 +1,154 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: A couple of ext4 crashes with inlinedata/bigalloc
-Date: Tue, 8 Apr 2014 11:40:03 -0700
-Message-ID: <20140408184003.GB8888@birch.djwong.org>
-References: <20140311030604.GK9875@birch.djwong.org>
- <20140408115425.GA23781@gmail.com>
+Subject: Re: Dirty ext4 blocks system startup
+Date: Tue, 8 Apr 2014 12:18:34 -0700
+Message-ID: <20140408191834.GA12092@birch.djwong.org>
+References: <1459400.cqhC1n3S74@f209>
+ <7488414.mDGKOZ8cSK@web.de>
+ <20140407124820.GB8468@thunk.org>
+ <2164274.jmlex94sWc@web.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	Zheng Liu <gnehzuil.liu@gmail.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Markus <M4rkusXXL@web.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:32149 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757482AbaDHSkL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Apr 2014 14:40:11 -0400
+Received: from aserp1040.oracle.com ([141.146.126.69]:23169 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756222AbaDHTSl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Apr 2014 15:18:41 -0400
 Content-Disposition: inline
-In-Reply-To: <20140408115425.GA23781@gmail.com>
+In-Reply-To: <2164274.jmlex94sWc@web.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Apr 08, 2014 at 07:54:25PM +0800, Zheng Liu wrote:
-> On Mon, Mar 10, 2014 at 08:06:04PM -0700, Darrick J. Wong wrote:
-> > Hi all,
-> > 
-> > A couple of errors to complain about before I send out the e2fsprogs patchbomb.
-> > :)
-> > 
-> > Zheng: I've been running the metadata checksum test with inline_data set.
-> > flat_dir_test is a stress test which copies /usr/share/doc into a filesystem
-> > and then "enlarges" the directories by recursively renaming "$foo" to
-> > "$foo.longer", with the results below.  e2fsck complained that the directories
-> > involved (4156, 4251) have multiple links to the subdir inode.  I'm not sure
-> > what this is all about; the only (circumstantial) evidence I have is that it
-> > goes away if I don't turn on inline_data.
-> 
-> Hi Darrick,
-> 
-> I guess that you were talking about this bug at LSF/MM submmit this
-> year, right?  Thanks for reporting this bug.  I am trying to take a
-> closer look at it.  It would be great if you could tell me where I can
-> find the your test program ('flat_dir_test').
+On Mon, Apr 07, 2014 at 04:06:50PM +0200, Markus wrote:
+> Theodore Ts'o wrote on 07.04.2014:
+> > On Mon, Apr 07, 2014 at 12:58:40PM +0200, Markus wrote:
+> > > 
+> > > Finally e2image finished successfully. But the produced file is way too 
+> big for a mail.
 
-It's buried in the metadata checksum test suite, alas.  The test copies an
-arbitrary directory (/usr/share/doc) to the filesystem, then does a depth-first
-traversal of the copied tree, renaming everything it finds from "oldname" to
-"oldname.longer" to force the kernel to shuffle directory entries all over the
-place, and likely causing spill-out from formerly inlinedata directories.
+:(
+
+> > > 
+> > > Any other possibility?
+> > > (e2image does dump everything except file data and free space. But the 
+> problem seems to be just in the bitmap and/or journal.)
+
+Yes, it might be less work if I just turn on data=journal + metadata_csum +
+journal_checksum and see if I can easily reproduce it myself.  Or, I suppose it
+wouldn't be too hard just to format a fresh FS and tweak the journal to
+"replay" into arbitrary empty blocks, and then corrupt the journal checksums to
+see what happens.
+
+> > > 
+> > > Actually, when I look at the code around e2fsck/recovery.c:594
+> > > The error is detected and continue is called.
+> > > But tagp/tag is never changed, but the checksum is always compared to the 
+> one from tag. Intended?
+
+I think you're right, but that function makes my eyes bleed. :(
+
+> > What mount options are you using?  It appears that you have journal
+> > checksums enabled, which isn't on by default, and unfortunately,
+> > there's a good reason for that.  The original code assumed that the
+> > most common case for journal corruption would be caused by an
+> > incomplete journal transaction getting written out if one were using
+> > journal_async_commit.  This feature has not been enabled by default
+> > because the qeustion of what to do when the journal gets corrupted in
+> > other cases is not an easy one.
+> 
+> Normally just "noatime,journal_checksum", but with the corrupted journal I use 
+> "ro,noload".
+> 
+> The "man mount" reads well about that "journal_checksum" option ;)
+> 
+> 
+> > If some part of a transaction which is not the very last transaction
+> > in the journal gets corrupted, replaying it could do severe damage to
+> > the file system.  Unfortunately, simply deleting the journal and then
+> > recreating it could also do more damage as well.  Most of the time, a
+> > bad checksum happens because the last transaction hasn't fully made it
+> > out to disk (especially if you use the journal_async_commit option,
+> > which is a bit of a misnomer and has its own caveats[1]).  But if the
+> > checksum violation happens in a journal transaction that is not the
+> > last transaction in the journal, right now the recovery code aborts,
+> > because we don't have good automated logic to handle this case.
+> 
+> The recovery does not seem to abort. It calles continue and is caught in an 
+> endless loop.
+> 
+> 
+> > I suspect if you need to get your file system back on its feet, the
+> > best thing to do is to create a patched e2fsck that doesn't abort when
+> > it finds a checksum error, but instead continues.  Then run it to
+> > replay the journal, and then force a full file system check and hope
+> > for the best.
+> 
+> The code calls "continue". ;)
+> So I just remove the whole if clause:
+>   /* Look for block corruption */
+>   if (!jbd2_block_tag_csum_verify(
+>   		journal, tag, obh->b_data,
+>   		be32_to_cpu(tmp->h_sequence))) {
+> - 	brelse(obh);
+> - 	success = -EIO;
+>   	printk(KERN_ERR "JBD: Invalid "
+>   			"checksum recovering "
+>   			"block %lld in log\n",
+>   			blocknr);
+> - 	continue;
+>   }
+> 
+> It would then ignore the checksum and just issue a message. Right?
+
+Umm... I think you just made it replay the corrupt block too.  Granted, it
+looks as though fsck made everything right anyway, so in this case nothing bad
+happened.
+
+> > What has been on my todo list to implement, but has been relatively
+> > low priority because this is not a feature that we've documented or
+> > encouraged peple to use, is to have e2fsck skip the transaction has a
+> > bad checksum (i.e., not replay it at all), and then force a full file
+> > system check.  This is a bit safer, but if you make e2fsck ignore the
+> > checksum, it's no worse than if journal checksums weren't enabled in
+> > the first place.
+> > 
+> > The long term thing that we need to add before we can really support
+> > journal checksums is to checksum each individual data block, instead
+> > of just each transaction.  Then when we have a bad checksum, we can
+> > skip just the one bad data block, and then force a full fsck.
+
+I think the metadata-csum patchset added per-block checksums, but now that
+we've brought it up, I think (IBM) pulled me off ext4 before I could get to
+implementing a more sane strategy for replaying with bad checksums.  I can git
+blame that particular hunk on myself. :/
+
+Ugh, not documented in the on disk format wiki page either.  Well, I guess I'll
+go update the wiki while I reread the code to figure out just what's going on
+here.  Sorry about that.  Apparently the poweroff testing I did didn't catch
+it. <groan>
 
 --D
+
+> > I'm sorry you ran into this.  What I should do is to disable these
+> > mount options for now, since users who stumble across them, as
+> > apparently you have, might be tempted to use them, and then get into
+> > trouble.
+> > 
+> >      	      	      	   	      	   	 - Ted
+> > 
+> > [1] The issue with journal_async_commit is that it's possible (fairly
+> > unlikely, but still possible) that the guarantees of data=ordered will
+> > be violated.  If the data blocks that were written out while we are
+> > resolving a delayed allocation writeback haven't made it all the way
+> > down to the platter, it's possible for all of the journal writes and
+> > the commit block to be reordered ahead of the data blocks.  In that
+> > case, the checksum for the commit block would be valid, but some of
+> > the data blocks might not have been written back to disk.
 > 
-> Regards,
->                                                 - Zheng
+> Thanks so far,
+> Markus
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
