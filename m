@@ -1,46 +1,96 @@
-From: Namjae Jeon <linkinjeon@gmail.com>
-Subject: Re: [PATCH] ext4: fix shared/002 and 004 fail issue in xfstests
-Date: Tue, 8 Apr 2014 08:12:35 +0900
-Message-ID: <CAKYAXd9_qZ0s8VMgzhhOH7F8VT5LmasCFO49CXo_bk3qSgK26g@mail.gmail.com>
-References: <1396881675-7272-1-git-send-email-linkinjeon@gmail.com>
-	<20140407162513.GA9242@thunk.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [ANNOUNCE] xfstests: updated to cf1ed54
+Date: Tue, 8 Apr 2014 10:14:43 +1000
+Message-ID: <20140408001443.GG27017@dastard>
+References: <20140404090357.GW17603@dastard>
+ <CAL3q7H6q7M-hrvniaVkAm_L6aSHANmnfdTKGEHHLFqXUhWfY5w@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-ext4@vger.kernel.org, Namjae Jeon <namjae.jeon@samsung.com>,
-	Ashish Sangwan <a.sangwan@samsung.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: "xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+	"linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
+	linux-ext4@vger.kernel.org
+To: Filipe David Manana <fdmanana@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qg0-f48.google.com ([209.85.192.48]:50951 "EHLO
-	mail-qg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753771AbaDGXMg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Apr 2014 19:12:36 -0400
-Received: by mail-qg0-f48.google.com with SMTP id i50so138434qgf.35
-        for <linux-ext4@vger.kernel.org>; Mon, 07 Apr 2014 16:12:35 -0700 (PDT)
-In-Reply-To: <20140407162513.GA9242@thunk.org>
+Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:64090 "EHLO
+	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754665AbaDHAPC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Apr 2014 20:15:02 -0400
+Content-Disposition: inline
+In-Reply-To: <CAL3q7H6q7M-hrvniaVkAm_L6aSHANmnfdTKGEHHLFqXUhWfY5w@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2014-04-08 1:25 GMT+09:00, Theodore Ts'o <tytso@mit.edu>:
-> On Mon, Apr 07, 2014 at 11:41:15PM +0900, Namjae Jeon wrote:
->> From: Namjae Jeon <namjae.jeon@samsung.com>
->>
->> When mounting ext4 with data=journal option, shared/002 and 004 are
->> failed on xfstests. Calling ext4_force_commit before
->> filemap_write_and_wait_range is needed to flush all data into journal
->> on this case.
->
-> Hi Namjae,
->
-> Thanks for working for this!
->
-> Could you include in your commit description of why adding a call to
-> ext4_force_commit() is necessary to avoid the problem, and what wa
-> going wrong in the data=journal case?
-Hi Ted.
-Yes Sure. I will post the patch with detail description again.
-Thanks!
->
-> Thanks,
->
-> 					- Ted
->
+On Fri, Apr 04, 2014 at 02:07:16PM +0100, Filipe David Manana wrote:
+> On Fri, Apr 4, 2014 at 10:03 AM, Dave Chinner <david@fromorbit.com> wrote:
+> > Hi folks,
+> >
+> > The xfstests repository at git://oss.sgi.com/xfs/cmds/xfstests has
+> > just been updated. Patches often get missed, so please check if your
+> > outstanding patches were in this update. If they have not been in
+> > this update, please resubmit them to xfs@oss.sgi.com so they can be
+> > picked up in the next update.
+> >
+> > The new head of the master branch is commit:
+> >
+> > cf1ed54 check: fix RESULT_BASE typo in check script
+> >
+> > The major new functionality worth mentioning in this update is the
+> > new config file format from Lukas. The existing format config files
+> > should continue to work without change, but the new format is much
+> > richer and allows specification of multiple different configurations
+> > to run test under. Hence testing multiple mount an dmkfs
+> > configurations becomes as simple as iterating the configurations
+> > in the config file.
+> 
+> Hi,
+> 
+> I might be missing something, but after checking out these changes, I
+> am no longer able to run btrfs tests. Example:
+> 
+> $ ./check btrfs/041
+> common/config: Error: $SCRATCH_DEV should be unset when $SCRATCH_DEV_POOL is set
+> Passed all 0 tests
+> 
+> $ cat local.config
+> export TEST_DEV=/dev/sdb
+> export TEST_DIR=/home/fdmanana/btrfs-tests/dev
+> export SCRATCH_MNT="/home/fdmanana/btrfs-tests/scratch_1"
+> export SCRATCH_DEV_POOL="/dev/sdc /dev/sdd"
+
+Are you sure that's the config file that is being picked up? I can't
+test btrfs at the moment because it appears to be completely screwed
+in a TOT kernel right now - it doesn't even show up in
+/proc/filesystems and doesn't emit anything on dmesg to indicate
+that initialisation of the built in btrfs code has failed or even
+been attempted. It's simply MIA....
+
+However, using that same SCRATCH_DEV_POOL config for xfs or ext4
+works just fine on my test machines with the current TOT xfstests
+and kernel code.
+
+$ cat configs/test2.config 
+TEST_DIR=/mnt/test
+SCRATCH_MNT=/mnt/scratch
+TEST_DEV=/dev/vda
+SCRATCH_DEV_POOL="/dev/vdc /dev/vdd"
+$ sudo MKFS_OPTIONS="-m crc=1" ./check generic/001
+FSTYP         -- xfs (debug)
+PLATFORM      -- Linux/x86_64 test2 3.14.0-rc1-dgc+
+MKFS_OPTIONS  -- -f -m crc=1 /dev/vdc
+MOUNT_OPTIONS -- /dev/vdc /mnt/scratch
+
+generic/001 4s ... 3s
+Ran: generic/001
+Passed all 1 tests
+$
+
+So, as you can see I can't reproduce your problem myself right now.
+Could you add a "set -x" line to the start of check and post the
+output?
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
