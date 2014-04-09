@@ -1,85 +1,85 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Question about slow buffered io
-Date: Wed, 9 Apr 2014 11:38:55 +0200
-Message-ID: <20140409093855.GC32103@quack.suse.cz>
-References: <CADu=CFqjr_DovzRbPiA1KoBL1AHtZ+7bkXAQJum2SOvdWi_JQw@mail.gmail.com>
+From: Younger Liu <younger.liucn@gmail.com>
+Subject: [PATCH] ext4: return ENOMEM rather than EIO when find_###_page()
+ fails
+Date: Wed, 09 Apr 2014 17:46:00 +0800
+Message-ID: <534516D8.9010803@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: liang xie <xieliang007@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:50653 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750784AbaDIJi6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 9 Apr 2014 05:38:58 -0400
-Content-Disposition: inline
-In-Reply-To: <CADu=CFqjr_DovzRbPiA1KoBL1AHtZ+7bkXAQJum2SOvdWi_JQw@mail.gmail.com>
+Received: from mail-pd0-f174.google.com ([209.85.192.174]:52740 "EHLO
+	mail-pd0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758340AbaDIJqH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Apr 2014 05:46:07 -0400
+Received: by mail-pd0-f174.google.com with SMTP id y13so2231162pdi.19
+        for <linux-ext4@vger.kernel.org>; Wed, 09 Apr 2014 02:46:06 -0700 (PDT)
+Received: from [192.168.1.103] ([219.146.73.4])
+        by mx.google.com with ESMTPSA id pr4sm1296425pbb.53.2014.04.09.02.46.04
+        for <linux-ext4@vger.kernel.org>
+        (version=TLSv1 cipher=ECDHE-RSA-RC4-SHA bits=128/128);
+        Wed, 09 Apr 2014 02:46:05 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello,
 
-On Wed 09-04-14 17:14:37, liang xie wrote:
-> I am an Apache HDFS/HBase developer and debugging the slow buffered io
-> issue on ext4. I saw some slow sys_write caused by:
-> (mount -o noatime)
-> 0xffffffff814ed1c3 : io_schedule+0x73/0xc0 [kernel]
-> 0xffffffff81110b4d : sync_page+0x3d/0x50 [kernel]
-> 0xffffffff814eda2a : __wait_on_bit_lock+0x5a/0xc0 [kernel]
-> 0xffffffff81110ae7 : __lock_page+0x67/0x70 [kernel]
-> 0xffffffff81111abc : find_lock_page+0x4c/0x80 [kernel]
-> 0xffffffff81111b3a : grab_cache_page_write_begin+0x4a/0xc0 [kernel]
-> 0xffffffffa00d05d4 : ext4_da_write_begin+0xb4/0x200 [ext4]
-> 
-> seems caused by delay allocation, right?  so i reran with "mount -o
-> noatime,,nodiratime,data=writeback,nodelalloc", unfortunately, i saw
-> another stack trace contributing high latency:
->  0xffffffff811a9416 : __wait_on_buffer+0x26/0x30 [kernel]
->  0xffffffffa0123564 : ext4_mb_init_cache+0x234/0x9f0 [ext4]
->  0xffffffffa0123e3e : ext4_mb_init_group+0x11e/0x210 [ext4]
->  0xffffffffa0123ffd : ext4_mb_good_group+0xcd/0x110 [ext4]
->  0xffffffffa01276eb : ext4_mb_regular_allocator+0x19b/0x410 [ext4]
->  0xffffffffa0127ced : ext4_mb_new_blocks+0x38d/0x560 [ext4]
->  0xffffffffa011dfc3 : ext4_ext_get_blocks+0x1113/0x1a10 [ext4]
->  0xffffffffa00fb335 : ext4_get_blocks+0xf5/0x2a0 [ext4]
->  0xffffffffa00fbdad : ext4_get_block+0xbd/0x120 [ext4]
->  0xffffffff811ab27b : __block_prepare_write+0x1db/0x570 [kernel]
->  0xffffffff811ab8cc : block_write_begin_newtrunc+0x5c/0xd0 [kernel]
->  0xffffffff811abcd3 : block_write_begin+0x43/0x90 [kernel]
->  0xffffffffa00fe408 : ext4_write_begin+0x1b8/0x2d0 [ext4]
-> and from HDFS/HBASE side, also no obvious improvement be found.
-> 
-> and inside both two scenarios, the following stack trace was hit as well:
->  0xffffffffa00dc09d : do_get_write_access+0x29d/0x520 [jbd2]
->  0xffffffffa00dc471 : jbd2_journal_get_write_access+0x31/0x50 [jbd2]
->  0xffffffffa011eb78 : __ext4_journal_get_write_access+0x38/0x80 [ext4]
->  0xffffffffa01209ba : ext4_mb_mark_diskspace_used+0x7a/0x300 [ext4]
->  0xffffffffa0127c09 : ext4_mb_new_blocks+0x2a9/0x560 [ext4]
->  0xffffffffa011dfc3 : ext4_ext_get_blocks+0x1113/0x1a10 [ext4]
->  0xffffffffa00fb335 : ext4_get_blocks+0xf5/0x2a0 [ext4]
->  0xffffffffa00fbdad : ext4_get_block+0xbd/0x120 [ext4]
-> 
-> My question is:
-> 1)what's the ext4 best practice for low latency append-only workload
-> like HBase application? Is there any recommended option i could try,
-> flex_bg size? nomballoc?
-> 2)for the last strace trace, does
-> 9f203507ed277ee86e3f76a15e09db1c92e40b94 help a lot, or no big win? (i
-> haven't run on 3.10+ so far and it's inconvenient to bump kernel
-> version on my cluster currently, so forgive my this stupid question if
-> it's...)
-> 
-> PS; My current kernel is 2.6.32-220
-  This kernel is way too old and ext4 at that time was a lot different to
-what it is now. Also I'm not sure what the -220 suffix means, it suggests
-that you carry additional patches on top of stock 2.6.32 which makes any
-suggestions even harder. So I'm afraid we cannot help you much.
+  Return ENOMEM rather than EIO when find_get_page() fails in 
+ext4_mb_get_buddy_page_lock() and find_or_create_page() fails in
+ext4_mb_load_buddy().
 
->From the traces it seems to me that the processes are waiting for IO to
-complete. You might want to try finding out why the IO takes so long to
-complete. Maybe it's an IO scheduler issue?
+Signed-off-by: Younger Liu <younger.liucn@gmail.com>
+---
+ fs/ext4/mballoc.c |   16 ++++++++++++----
+ 1 file changed, 12 insertions(+), 4 deletions(-)
 
-								Honza
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index a888cac..73ccbb3 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -989,7 +989,7 @@ static int ext4_mb_get_buddy_page_lock(struct super_block *sb,
+ 	poff = block % blocks_per_page;
+ 	page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
+ 	if (!page)
+-		return -EIO;
++		return -ENOMEM;
+ 	BUG_ON(page->mapping != inode->i_mapping);
+ 	e4b->bd_bitmap_page = page;
+ 	e4b->bd_bitmap = page_address(page) + (poff * sb->s_blocksize);
+@@ -1003,7 +1003,7 @@ static int ext4_mb_get_buddy_page_lock(struct super_block *sb,
+ 	pnum = block / blocks_per_page;
+ 	page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
+ 	if (!page)
+-		return -EIO;
++		return -ENOMEM;
+ 	BUG_ON(page->mapping != inode->i_mapping);
+ 	e4b->bd_buddy_page = page;
+ 	return 0;
+@@ -1168,7 +1168,11 @@ ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
+ 			unlock_page(page);
+ 		}
+ 	}
+-	if (page == NULL || !PageUptodate(page)) {
++	if (page == NULL) {
++		ret = -ENOMEM;
++		goto err;
++	}
++	if (!PageUptodate(page)) {
+ 		ret = -EIO;
+ 		goto err;
+ 	}
+@@ -1197,7 +1201,11 @@ ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
+ 			unlock_page(page);
+ 		}
+ 	}
+-	if (page == NULL || !PageUptodate(page)) {
++	if (page == NULL) {
++		ret = -ENOMEM;
++		goto err;
++	}
++	if (!PageUptodate(page)) {
+ 		ret = -EIO;
+ 		goto err;
+ 	}
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.7.9.5
+
