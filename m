@@ -1,61 +1,58 @@
-From: Namjae Jeon <linkinjeon@gmail.com>
-Subject: [PATCH v2] ext4: fix shared/002 and 004 fail issue in xfstests
-Date: Wed,  9 Apr 2014 22:54:29 +0900
-Message-ID: <1397051669-2645-1-git-send-email-linkinjeon@gmail.com>
-Cc: linux-ext4@vger.kernel.org, Namjae Jeon <linkinjeon@gmail.com>,
-	Namjae Jeon <namjae.jeon@samsung.com>,
-	Ashish Sangwan <a.sangwan@samsung.com>
-To: tytso@mit.edu
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f177.google.com ([209.85.192.177]:39922 "EHLO
-	mail-pd0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932847AbaDINzE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Apr 2014 09:55:04 -0400
-Received: by mail-pd0-f177.google.com with SMTP id y10so2470569pdj.22
-        for <linux-ext4@vger.kernel.org>; Wed, 09 Apr 2014 06:55:04 -0700 (PDT)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Geert Uytterhoeven <geert@linux-m68k.org>
+Subject: Re: [GIT PULL] ext4 changes for 3.15
+Date: Wed, 9 Apr 2014 18:40:57 +0200
+Message-ID: <CAMuHMdW8xkBFJ5-E04rVhDk+CSubHut+kx3P6cYCn0dMhQdb-Q@mail.gmail.com>
+References: <20140403191558.GA8745@thunk.org>
+	<CA+55aFxoA-iDdmbbgmJiYVvskrtca5aGgUAW=3CR47rM9NEMLA@mail.gmail.com>
+	<20140404035308.GC2525@thunk.org>
+	<20140404134429.GB26806@quack.suse.cz>
+	<CAJfpegsJd9d8NTmwozJ+u_ZS-SnUwAQFwAne6P1KqG=VZeZSTA@mail.gmail.com>
+	<20140404234358.GE10275@thunk.org>
+	<CAJfpegv_Ng1cXbpCqicG4e3UdGK3uiDtVB4KzfRQOhDq_uhZOw@mail.gmail.com>
+	<20140407140745.GA8855@thunk.org>
+	<CAMuHMdVHyAJwJv5nh+nQUOQJk6=2+Rr+pEqAZPgJUsA7A9A3hQ@mail.gmail.com>
+	<20140408134740.GB28822@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Cc: Geert Uytterhoeven <geert@linux-m68k.org>,
+	Miklos Szeredi <miklos@szeredi.hu>, Jan Kara <jack@suse.cz>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Al Viro <viro@zeniv.linux.org.uk>
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	"H. Peter Anvin" <hpa@linux.intel.com>,
+	Arnd Bergmann <arnd@arndb.de>, Sam Ravnborg <sam@ravnborg.org>,
+	linux-kbuild <linux-kbuild@vger.kernel.org>
+Return-path: <linux-kbuild-owner@vger.kernel.org>
+In-Reply-To: <20140408134740.GB28822@thunk.org>
+Sender: linux-kbuild-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Namjae Jeon <namjae.jeon@samsung.com>
+On Tue, Apr 8, 2014 at 3:47 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+> On Mon, Apr 07, 2014 at 10:25:30PM +0200, Geert Uytterhoeven wrote:
+>> > maintainers would have no idea that a new syscall has been added.
+>>
+>> If i386 has the new syscall, scripts/checksyscalls.sh will catch it and
+>> inform us about it during our next kernel build.
+>>
+>> If you add it to x86_64 only, bad luck for anyone else ;-)
+>
+> Maybe we should change scripts/checksyscalls.sh to check the x86_64
+> list of syscalls, and not i386?
+>
+> It's been a long time since "all the world's an i386" --- these days,
+> it's "all the world's an x86_64".  :-)
 
-When mounting ext4 with data=journal option, xfstest shared/002 and
-shared/004 are currently failing as checksum computed for testfile
-does not match with the checksum computed in other journal modes.
-In case of data=journal mode, a call to filemap_write_and_wait_range
-will not flush anything to disk as buffers are not marked dirty in
-write_end. In collapse range this call is followed by a call to
-truncate_pagecache_range. Due to this, when checksum is computed,
-a portion of file is re-read from disk which replace valid data with
-NULL bytes and hence the reason for the difference in checksum.
+Let the kbuild people (and their employers) fight over it...
 
-Calling ext4_force_commit before filemap_write_and_wait_range solves
-the issue as it will mark the buffers dirty during commit transaction
-which can be later synced by a call to filemap_write_and_wait_range.
+Gr{oetje,eeting}s,
 
-Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
----
- fs/ext4/extents.c |    7 +++++++
- 1 file changed, 7 insertions(+)
+                        Geert
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 243a02e..dc9333f 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -5375,6 +5375,13 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
- 	punch_start = offset >> EXT4_BLOCK_SIZE_BITS(sb);
- 	punch_stop = (offset + len) >> EXT4_BLOCK_SIZE_BITS(sb);
- 
-+	/* Call ext4_force_commit to flush all data in case of data=journal. */
-+	if (ext4_should_journal_data(inode)) {
-+		ret = ext4_force_commit(inode->i_sb);
-+		if (ret)
-+			return ret;
-+	}
-+
- 	/* Write out all dirty pages */
- 	ret = filemap_write_and_wait_range(inode->i_mapping, offset, -1);
- 	if (ret)
--- 
-1.7.9.5
+--
+Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
 
+In personal conversations with technical people, I call myself a hacker. But
+when I'm talking to journalists I just say "programmer" or something like that.
+                                -- Linus Torvalds
