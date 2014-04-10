@@ -1,109 +1,113 @@
-From: Pedro Fonseca <pfonseca@mpi-sws.org>
-Subject: Re: Data races in ext4
-Date: Thu, 10 Apr 2014 17:40:54 +0200
-Message-ID: <5346BB86.50001@mpi-sws.org>
-References: <53446306.7020005@mpi-sws.org> <20140409213340.GB15303@thunk.org>
+From: Nathaniel W Filardo <nwf@cs.jhu.edu>
+Subject: Re: ext4 metadata corruption bug?
+Date: Thu, 10 Apr 2014 12:33:51 -0400
+Message-ID: <20140410163350.GW10985@gradx.cs.jhu.edu>
+References: <20140409223820.GU10985@gradx.cs.jhu.edu>
+ <CAGagf4eEzY4+3cfNWSEENTo1PKe40nq1Ne6ZzOLGm-O78W7RcA@mail.gmail.com>
+ <20140410050428.GV10985@gradx.cs.jhu.edu>
+ <20140410140316.GD15925@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="Qesg98+uAFykT7J8"
+Cc: Mike Rubin <mrubin@google.com>, Frank Mayhar <fmayhar@google.com>,
+	admins@acm.jhu.edu, linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from hera.mpi-klsb.mpg.de ([139.19.1.49]:56720 "EHLO
-	hera.mpi-klsb.mpg.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753114AbaDJPlA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Apr 2014 11:41:00 -0400
-In-Reply-To: <20140409213340.GB15303@thunk.org>
+Received: from [128.220.13.50] ([128.220.13.50]:42153 "EHLO blaze.cs.jhu.edu"
+	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S934885AbaDJQeZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 10 Apr 2014 12:34:25 -0400
+Content-Disposition: inline
+In-Reply-To: <20140410140316.GD15925@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 04/09/2014 11:33 PM, Theodore Ts'o wrote:
-> The ones relating to ext4_do_update_inode() and generic_fillattr()
-> look fine to me.  Basically the first may happen if there are two
-> CPU's simultaneously trying to update the on-disk data structure for
-> an inode from the in-memory data structure, and that's not a problem
-> since the in-memory data structure is always authoratative.  The
-> second happens if someone tries to stat(2) an inode while some inode
-> field is getting updated.  Most of the inode field updates will be for
-> things like mtime and atime updates, or a chown or chmod, where a
-> single field is getting updated, and that's not a problem since there
-> is no guarantee which version of the inode information you'll get when
-> you call stat(2) while the inode is getting modified out from under
-> you.  It is possible that the userspace might see the i_blocks and
-> i_size be out of sync, but I really can't bring myself to care about
-> that.
 
-Regarding the generic_fillattr() function, apart from the inconsistency 
-between i_blocks/i_size, it looks like it can also cause wrong values to 
-be returned because several of those fields are 64 bits. This means that 
-each assignment gets converted into multiple instructions (in 32-bit 
-architectures), allowing other instructions to interleave in between. 
-For example, this is the assembly code I get when compiling 
-generic_fillattr():
->     stat->atime = inode->i_atime;
-> c10aa017:   8b 48 3c                mov    0x3c(%eax),%ecx
-> c10aa01a:   8b 58 40                mov    0x40(%eax),%ebx
-> c10aa01d:   89 4a 28                mov    %ecx,0x28(%edx)
-> c10aa020:   89 5a 2c                mov    %ebx,0x2c(%edx)
->     stat->mtime = inode->i_mtime;
-> c10aa023:   8b 48 44                mov    0x44(%eax),%ecx
-> c10aa026:   8b 58 48                mov    0x48(%eax),%ebx
-> c10aa029:   89 4a 30                mov    %ecx,0x30(%edx)
-> c10aa02c:   89 5a 34                mov    %ebx,0x34(%edx)
->     stat->ctime = inode->i_ctime;
-> c10aa02f:   8b 48 4c                mov    0x4c(%eax),%ecx
-> c10aa032:   8b 58 50                mov    0x50(%eax),%ebx
-> c10aa035:   89 4a 38                mov    %ecx,0x38(%edx)
-> c10aa038:   89 5a 3c                mov    %ebx,0x3c(%edx)
-...
->     stat->blocks = inode->i_blocks;
-> c10aa048:   8b 58 60                mov    0x60(%eax),%ebx
-> c10aa04b:   8b 48 5c                mov    0x5c(%eax),%ecx
-> c10aa04e:   89 5a 48                mov    %ebx,0x48(%edx)
-> c10aa051:   89 4a 44                mov    %ecx,0x44(%edx)
+--Qesg98+uAFykT7J8
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
+On Thu, Apr 10, 2014 at 10:03:16AM -0400, Theodore Ts'o wrote:
+> On Thu, Apr 10, 2014 at 01:04:28AM -0400, Nathaniel W Filardo wrote:
+> >[snip]
+> What is your workload?  Can you reproduce this easily?  And can you
+> try using a local disk to see if the problem goes away, so we can
+> start to bisect which software components might be at fault?
 
-I still don't understand why the races in ext4_do_update_inode() won't 
-cause problems. Similarly to generic_fillattr(), in 
-ext4_do_update_inode() wrong values can end up being written to the 
-inode fields. Is there some mechanism to recover/ignore these values 
-that I'm missing?
+We're running an OpenAFS fileserver; the partition that most often causes us
+trouble is that which contains our mirrors (Debian, Fedora, etc.) which has
+~5T of its 10T capacity filled.  Every few days, at least, we trip over one
+of these.
 
+I will see what I can do about getting some local storage hooked up to the
+VM, but my fear is that this is related to the size of the volume and the
+amount of data therein.  If that's true, any amount of local storage I could
+muster will not shake this out.
 
-> As for the rest, some are obviously false positives.  For example, if
-> you take a look at:
->
-> Variable: journal->j_running_transaction	Addresses: c1138ca1 c1136b02 c1136ca9
-> c1136ca9 jbd2_get_transaction /linux-3.13.5/fs/jbd2/transaction.c:103
-> c1138ca1 jbd2_journal_commit_transaction /linux-3.13.5/fs/jbd2/commit.c:539
-> c1136b02 start_this_handle /linux-3.13.5/fs/jbd2/transaction.c:280
->
-> It's obvious from the code path that start_this_handle() is extremely
-> careful to always revalidate j_running_transaction after either (a)
-> taking a read lock on the j_state_lock for the first time, or (b)
-> after dropping the read_lock and grabbing a write_lock on
-> j_state_lock, and if things have changed, it loops and tries again.
-You're right, start_this_handle() revalidates the value read so I also 
-don't see harm in this race.
+> I'm not aware of any corruption problem with a 3.13 based kernel which
+> matches your signature, and the ext4 errors that you are showing
+> (minor accounting discrepancies in the number free blocks and number
+> of free inodes between the allocation bitmap and the summary
+> statistics in the block group descriptors) is very closely matches the
+> signature of some part of the storage stack not honoring FLUSH CACHE
+> ("barrier") operations, either by ignoring them completely, or
+> reordring writes across a barrier / flush cache request.
 
+Shouldn't cache reordering or fail to flush correctly only matter if the
+machine is crashing or otherwise losing power?  I suppose it's possible
+there's a bug that would cause the cache to fail to write a block at all,
+rather than simply "too late".  But as I said before, we've not had any
+crashes or otherwise lost uptime anywhere: host, guest, storage providers,
+etc.
 
-> There are a couple that require some closer examination; for some of
-> them, for example the two reported cases of ext4_isize_set() vs
-> ext4_isize(), having the stack trace would be really helpful.
+That said, we do occasionally, though much less often than we get reports of
+corrupted metadata, get messages that I don't know how to decode from the
+ATA stack (though naively they all seemed to be successfully resolved
+transients)?  One of our VMs, nearly identically configured, though not the
+one that's been reporting corruption on its filesystem, spat this out the
+other day, for example:
 
-Those two pairs of functions were actually also called from the 
-ext4_do_update_inode() function:
-> 4338     if (ei->i_disksize != ext4_isize(raw_inode)) {
-> 4339         ext4_isize_set(raw_inode, ei->i_disksize);
-> 4340         need_datasync = 1;
-> 4341     }
+[532625.888251] ata1.00: exception Emask 0x0 SAct 0x0 SErr 0x0 action 0x6 frozen
+[532625.888762] ata1.00: failed command: FLUSH CACHE
+[532625.889128] ata1.00: cmd e7/00:00:00:00:00/00:00:00:00:00/a0 tag 0
+[532625.889128]          res 40/00:01:00:00:00/00:00:00:00:00/a0 Emask 0x4 (time out)
+[532625.889945] ata1.00: status: { DRDY }
+[532630.928064] ata1: link is slow to respond, please be patient (ready=0)
+[532635.912178] ata1: device not ready (errno=-16), forcing hardreset
+[532635.912220] ata1: soft resetting link
+[532636.070087] ata1.00: configured for MWDMA2
+[532636.070701] ata1.01: configured for MWDMA2
+[532636.070705] ata1.00: retrying FLUSH 0xe7 Emask 0x4
+[532651.068208] ata1.00: qc timeout (cmd 0xe7)
+[532651.068216] ata1.00: FLUSH failed Emask 0x4
+[532651.236146] ata1: soft resetting link
+[532651.393918] ata1.00: configured for MWDMA2
+[532651.394533] ata1.01: configured for MWDMA2
+[532651.394537] ata1.00: retrying FLUSH 0xe7 Emask 0x4
+[532651.395550] ata1.00: device reported invalid CHS sector 0
+[532651.395564] ata1: EH complete
 
-So the top part of the stack trace is:
-   ext4_mark_inode_dirty() -> ext4_mark_iloc_dirty() -> 
-ext4_do_update_inode() -> ext4_isize()
-   ext4_mark_inode_dirty() -> ext4_mark_iloc_dirty() -> 
-ext4_do_update_inode() -> ext4_isize_set()
+This appears to have been during a stall in Ceph's ability to write data to
+the OSDs.  I don't know what caused that, and the machine has been happy
+ever since (though maybe it's all about to go south?).  I'll keep my eyes
+open, especially for any reports of problems between fscking and the
+blockmap corruption being detected.
 
+Would I be better off attaching the RBDs via virtio than achi?  Do I need to
+do anything specially on the guest to make that work?
 
+Thanks very much, again,
+--nwf;
 
+--Qesg98+uAFykT7J8
+Content-Type: application/pgp-signature
 
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
+
+iEYEARECAAYFAlNGx+4ACgkQTeQabvr9Tc+thQCeM0IOi6tzDpoAG1TxxfBOlYUw
+Vz8An0cwNleX+YYaAmdCcXuJcMTpMTuD
+=lv5+
+-----END PGP SIGNATURE-----
+
+--Qesg98+uAFykT7J8--
