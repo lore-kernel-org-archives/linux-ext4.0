@@ -1,113 +1,140 @@
-From: Nathaniel W Filardo <nwf@cs.jhu.edu>
-Subject: Re: ext4 metadata corruption bug?
-Date: Thu, 10 Apr 2014 12:33:51 -0400
-Message-ID: <20140410163350.GW10985@gradx.cs.jhu.edu>
-References: <20140409223820.GU10985@gradx.cs.jhu.edu>
- <CAGagf4eEzY4+3cfNWSEENTo1PKe40nq1Ne6ZzOLGm-O78W7RcA@mail.gmail.com>
- <20140410050428.GV10985@gradx.cs.jhu.edu>
- <20140410140316.GD15925@thunk.org>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="Qesg98+uAFykT7J8"
-Cc: Mike Rubin <mrubin@google.com>, Frank Mayhar <fmayhar@google.com>,
-	admins@acm.jhu.edu, linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH 1/2] ext4: Get rid of EXT4_MAP_UNINIT flag
+Date: Thu, 10 Apr 2014 19:14:22 +0200
+Message-ID: <1397150063-5939-1-git-send-email-lczerner@redhat.com>
+Cc: Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [128.220.13.50] ([128.220.13.50]:42153 "EHLO blaze.cs.jhu.edu"
-	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S934885AbaDJQeZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 10 Apr 2014 12:34:25 -0400
-Content-Disposition: inline
-In-Reply-To: <20140410140316.GD15925@thunk.org>
+Received: from mx1.redhat.com ([209.132.183.28]:14602 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751235AbaDJRO3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 10 Apr 2014 13:14:29 -0400
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s3AHER1A025989
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Apr 2014 13:14:28 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Currently EXT4_MAP_UNINIT is used in dioread_nolock case to mark the
+cases where we're using dioread_nolock and we're writing into either
+unallocated, or unwritten extent, because we need to make sure that
+any DIO write into that inode will wait for the extent conversion.
 
---Qesg98+uAFykT7J8
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+However EXT4_MAP_UNINIT is not only entirely misleading name but also
+unnecessary because we can check for EXT4_MAP_UNWRITTEN in the
+dioread_nolock case instead.
 
-On Thu, Apr 10, 2014 at 10:03:16AM -0400, Theodore Ts'o wrote:
-> On Thu, Apr 10, 2014 at 01:04:28AM -0400, Nathaniel W Filardo wrote:
-> >[snip]
-> What is your workload?  Can you reproduce this easily?  And can you
-> try using a local disk to see if the problem goes away, so we can
-> start to bisect which software components might be at fault?
+This commit removes EXT4_MAP_UNINIT flag.
 
-We're running an OpenAFS fileserver; the partition that most often causes us
-trouble is that which contains our mirrors (Debian, Fedora, etc.) which has
-~5T of its 10T capacity filled.  Every few days, at least, we trip over one
-of these.
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/ext4.h              | 8 +++-----
+ fs/ext4/extents.c           | 4 ----
+ fs/ext4/inode.c             | 7 ++++---
+ include/trace/events/ext4.h | 1 -
+ 4 files changed, 7 insertions(+), 13 deletions(-)
 
-I will see what I can do about getting some local storage hooked up to the
-VM, but my fear is that this is related to the size of the volume and the
-amount of data therein.  If that's true, any amount of local storage I could
-muster will not shake this out.
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index f1c65dc..b731538 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -158,7 +158,6 @@ struct ext4_allocation_request {
+ #define EXT4_MAP_MAPPED		(1 << BH_Mapped)
+ #define EXT4_MAP_UNWRITTEN	(1 << BH_Unwritten)
+ #define EXT4_MAP_BOUNDARY	(1 << BH_Boundary)
+-#define EXT4_MAP_UNINIT		(1 << BH_Uninit)
+ /* Sometimes (in the bigalloc case, from ext4_da_get_block_prep) the caller of
+  * ext4_map_blocks wants to know whether or not the underlying cluster has
+  * already been accounted for. EXT4_MAP_FROM_CLUSTER conveys to the caller that
+@@ -169,7 +168,7 @@ struct ext4_allocation_request {
+ #define EXT4_MAP_FROM_CLUSTER	(1 << BH_AllocFromCluster)
+ #define EXT4_MAP_FLAGS		(EXT4_MAP_NEW | EXT4_MAP_MAPPED |\
+ 				 EXT4_MAP_UNWRITTEN | EXT4_MAP_BOUNDARY |\
+-				 EXT4_MAP_UNINIT | EXT4_MAP_FROM_CLUSTER)
++				 EXT4_MAP_FROM_CLUSTER)
+ 
+ struct ext4_map_blocks {
+ 	ext4_fsblk_t m_pblk;
+@@ -2801,10 +2800,9 @@ extern int ext4_mmp_csum_verify(struct super_block *sb,
+  * See EXT4_MAP_... to see where this is used.
+  */
+ enum ext4_state_bits {
+-	BH_Uninit	/* blocks are allocated but uninitialized on disk */
+-	 = BH_JBDPrivateStart,
+-	BH_AllocFromCluster,	/* allocated blocks were part of already
++	BH_AllocFromCluster	/* allocated blocks were part of already
+ 				 * allocated cluster. */
++	= BH_JBDPrivateStart
+ };
+ 
+ /*
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 82df3ce..299eb72 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4022,8 +4022,6 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
+ 		else
+ 			ext4_set_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN);
+ 		map->m_flags |= EXT4_MAP_UNWRITTEN;
+-		if (ext4_should_dioread_nolock(inode))
+-			map->m_flags |= EXT4_MAP_UNINIT;
+ 		goto out;
+ 	}
+ 	/* IO end_io complete, convert the filled extent to written */
+@@ -4468,8 +4466,6 @@ got_allocated_blocks:
+ 		 */
+ 		if ((flags & EXT4_GET_BLOCKS_PRE_IO))
+ 			set_unwritten = 1;
+-		if (ext4_should_dioread_nolock(inode))
+-			map->m_flags |= EXT4_MAP_UNINIT;
+ 	}
+ 
+ 	err = 0;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 5b0d2c7..0432c07 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2122,7 +2122,7 @@ static int mpage_map_one_extent(handle_t *handle, struct mpage_da_data *mpd)
+ 	struct inode *inode = mpd->inode;
+ 	struct ext4_map_blocks *map = &mpd->map;
+ 	int get_blocks_flags;
+-	int err;
++	int err, dioread_nolock;
+ 
+ 	trace_ext4_da_write_pages_extent(inode, map);
+ 	/*
+@@ -2144,7 +2144,8 @@ static int mpage_map_one_extent(handle_t *handle, struct mpage_da_data *mpd)
+ 	 */
+ 	get_blocks_flags = EXT4_GET_BLOCKS_CREATE |
+ 			   EXT4_GET_BLOCKS_METADATA_NOFAIL;
+-	if (ext4_should_dioread_nolock(inode))
++	dioread_nolock = ext4_should_dioread_nolock(inode);
++	if (dioread_nolock)
+ 		get_blocks_flags |= EXT4_GET_BLOCKS_IO_CREATE_EXT;
+ 	if (map->m_flags & (1 << BH_Delay))
+ 		get_blocks_flags |= EXT4_GET_BLOCKS_DELALLOC_RESERVE;
+@@ -2152,7 +2153,7 @@ static int mpage_map_one_extent(handle_t *handle, struct mpage_da_data *mpd)
+ 	err = ext4_map_blocks(handle, inode, map, get_blocks_flags);
+ 	if (err < 0)
+ 		return err;
+-	if (map->m_flags & EXT4_MAP_UNINIT) {
++	if (dioread_nolock && (map->m_flags & EXT4_MAP_UNWRITTEN)) {
+ 		if (!mpd->io_submit.io_end->handle &&
+ 		    ext4_handle_valid(handle)) {
+ 			mpd->io_submit.io_end->handle = handle->h_rsv_handle;
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index 010ea89..be1c889 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -60,7 +60,6 @@ struct extent_status;
+ 	{ EXT4_MAP_MAPPED,	"M" },			\
+ 	{ EXT4_MAP_UNWRITTEN,	"U" },			\
+ 	{ EXT4_MAP_BOUNDARY,	"B" },			\
+-	{ EXT4_MAP_UNINIT,	"u" },			\
+ 	{ EXT4_MAP_FROM_CLUSTER, "C" })
+ 
+ #define show_free_flags(flags) __print_flags(flags, "|",	\
+-- 
+1.8.3.1
 
-> I'm not aware of any corruption problem with a 3.13 based kernel which
-> matches your signature, and the ext4 errors that you are showing
-> (minor accounting discrepancies in the number free blocks and number
-> of free inodes between the allocation bitmap and the summary
-> statistics in the block group descriptors) is very closely matches the
-> signature of some part of the storage stack not honoring FLUSH CACHE
-> ("barrier") operations, either by ignoring them completely, or
-> reordring writes across a barrier / flush cache request.
-
-Shouldn't cache reordering or fail to flush correctly only matter if the
-machine is crashing or otherwise losing power?  I suppose it's possible
-there's a bug that would cause the cache to fail to write a block at all,
-rather than simply "too late".  But as I said before, we've not had any
-crashes or otherwise lost uptime anywhere: host, guest, storage providers,
-etc.
-
-That said, we do occasionally, though much less often than we get reports of
-corrupted metadata, get messages that I don't know how to decode from the
-ATA stack (though naively they all seemed to be successfully resolved
-transients)?  One of our VMs, nearly identically configured, though not the
-one that's been reporting corruption on its filesystem, spat this out the
-other day, for example:
-
-[532625.888251] ata1.00: exception Emask 0x0 SAct 0x0 SErr 0x0 action 0x6 frozen
-[532625.888762] ata1.00: failed command: FLUSH CACHE
-[532625.889128] ata1.00: cmd e7/00:00:00:00:00/00:00:00:00:00/a0 tag 0
-[532625.889128]          res 40/00:01:00:00:00/00:00:00:00:00/a0 Emask 0x4 (time out)
-[532625.889945] ata1.00: status: { DRDY }
-[532630.928064] ata1: link is slow to respond, please be patient (ready=0)
-[532635.912178] ata1: device not ready (errno=-16), forcing hardreset
-[532635.912220] ata1: soft resetting link
-[532636.070087] ata1.00: configured for MWDMA2
-[532636.070701] ata1.01: configured for MWDMA2
-[532636.070705] ata1.00: retrying FLUSH 0xe7 Emask 0x4
-[532651.068208] ata1.00: qc timeout (cmd 0xe7)
-[532651.068216] ata1.00: FLUSH failed Emask 0x4
-[532651.236146] ata1: soft resetting link
-[532651.393918] ata1.00: configured for MWDMA2
-[532651.394533] ata1.01: configured for MWDMA2
-[532651.394537] ata1.00: retrying FLUSH 0xe7 Emask 0x4
-[532651.395550] ata1.00: device reported invalid CHS sector 0
-[532651.395564] ata1: EH complete
-
-This appears to have been during a stall in Ceph's ability to write data to
-the OSDs.  I don't know what caused that, and the machine has been happy
-ever since (though maybe it's all about to go south?).  I'll keep my eyes
-open, especially for any reports of problems between fscking and the
-blockmap corruption being detected.
-
-Would I be better off attaching the RBDs via virtio than achi?  Do I need to
-do anything specially on the guest to make that work?
-
-Thanks very much, again,
---nwf;
-
---Qesg98+uAFykT7J8
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iEYEARECAAYFAlNGx+4ACgkQTeQabvr9Tc+thQCeM0IOi6tzDpoAG1TxxfBOlYUw
-Vz8An0cwNleX+YYaAmdCcXuJcMTpMTuD
-=lv5+
------END PGP SIGNATURE-----
-
---Qesg98+uAFykT7J8--
