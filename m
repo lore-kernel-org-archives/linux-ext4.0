@@ -1,92 +1,67 @@
-From: Nathaniel W Filardo <nwf@cs.jhu.edu>
-Subject: Re: ext4 metadata corruption bug?
-Date: Thu, 10 Apr 2014 01:04:28 -0400
-Message-ID: <20140410050428.GV10985@gradx.cs.jhu.edu>
-References: <20140409223820.GU10985@gradx.cs.jhu.edu>
- <CAGagf4eEzY4+3cfNWSEENTo1PKe40nq1Ne6ZzOLGm-O78W7RcA@mail.gmail.com>
+From: Jelle de Jong <jelledejong@powercraft.nl>
+Subject: How to resize to an bigger then 16TB ext4 filesysteem on Debian
+Date: Thu, 10 Apr 2014 13:28:21 +0200
+Message-ID: <53468055.4070700@powercraft.nl>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="lBR2yNlwcY132B3M"
-Cc: Mike Rubin <mrubin@google.com>, Frank Mayhar <fmayhar@google.com>,
-	admins@acm.jhu.edu, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@google.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from blaze.cs.jhu.edu ([128.220.13.50]:43859 "EHLO blaze.cs.jhu.edu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750849AbaDJFhw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 10 Apr 2014 01:37:52 -0400
-Content-Disposition: inline
-In-Reply-To: <CAGagf4eEzY4+3cfNWSEENTo1PKe40nq1Ne6ZzOLGm-O78W7RcA@mail.gmail.com>
+Received: from relay02.cambriumhosting.nl ([217.19.16.174]:52358 "EHLO
+	relay02.cambriumhosting.nl" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S935480AbaDJLhz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 10 Apr 2014 07:37:55 -0400
+Received: from relay02.cambriumhosting.nl (localhost [127.0.0.1])
+	by relay02.cambriumhosting.nl (Postfix) with ESMTP id 35D8A6000100
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Apr 2014 13:28:25 +0200 (CEST)
+Received: from yessica.powercraft.nl (ebony.powercraft.nl [84.245.20.130])
+	by relay02.cambriumhosting.nl (Postfix) with ESMTP id 2872760000BA
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Apr 2014 13:28:25 +0200 (CEST)
+Received: from [IPv6:2a02:58:5:2e00:a9e:1ff:fe32:7cf4] (unknown [IPv6:2a02:58:5:2e00:a9e:1ff:fe32:7cf4])
+	by yessica.powercraft.nl (Postfix) with ESMTPSA id EF2A720259
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Apr 2014 13:28:24 +0200 (CEST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
---lBR2yNlwcY132B3M
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Hello everyone,
 
-On Wed, Apr 09, 2014 at 10:55:48PM -0400, Theodore Tso wrote:
-> Hi Nathaniel,
->=20
-> In general, it's best if you send these sorts of requests for help to the
-> linux-ext4@vger.kernel.org mailing list.
+https://packages.debian.org/wheezy/e2fsprogs
 
-Added to CC.
+# resize2fs /dev/lvm0-vol/storage
+resize2fs 1.42.5 (29-Jul-2012)
+resize2fs: New size too large to be expressed in 32 bits
 
-> The fact that we see the "error count" line early in the boot message
-> suggests to me that your VM is not running fsck to fix up the errors befo=
-re
-> mounting the file system.  (Well, either that or you're using a really
-> ancient version of e2fsck, but given that you're using a bleeding edge
-> kernel, but I'm guessing you're using a reasonably recent version of
-> e2fsck.  But that would be good for you to check.)
+(will the command work with e2fsprogs 1.42.9-3?)
 
-e2fsck version is 1.42.9 using the same library version.
-=20
-> The ext4 error message is due to the file system getting corrupted.  How
-> the file system got corrupted isn't 100% clear, but one potential cause is
-> how the disk is configured with qemu.
->[snip]
+# tune2fs -l /dev/lvm0-vol/storage
+http://paste.debian.net/92889/
 
-We use QEMU directives like
+Suggestions has to be stable enough for production systems.
 
-        -drive format=3Draw,file=3Drbd:rbdafs-mirror/mirror-0,id=3Ddrive5,i=
-f=3Dnone,cache=3Dwriteback \
-        -device driver=3Dide-hd,drive=3Ddrive5,discard_granularity=3D512,bu=
-s=3Dahci0.3
+I now did a lvreduce -L 16TB /dev/lvm0-vol/storage and resize2fs
+/dev/lvm0-vol/storage (its running now)
 
-We've never had, so far as I know, an unexpected shutdown of the QEMU
-process, so I don't think that unexpected loss of cache contents is to
-blame.
+# resize2fs /dev/lvm0-vol/storage
+resize2fs 1.42.5 (29-Jul-2012)
+Filesystem at /dev/lvm0-vol/storage is mounted on /srv/storage;
+on-line resizing required
+old_desc_blocks = 464, new_desc_blocks = 1024
+Performing an on-line resize of /dev/lvm0-vol/storage to 4294967295
+(4k) blocks.
 
-Perhaps the dmesg I sent was not representative; some days ago, we saw, only
-(comparatively!) late in the machine's uptime:
+Kind regards,
 
-[309894.428685] EXT4-fs (sdd): pa ffff88000d9f9440: logic 832, phys.  95745=
-8972, len 192
-[309894.430023] EXT4-fs error (device sdd): ext4_mb_release_inode_pa:3729: =
-group 29219, free 192, pa_free 191
-[309894.431822] Aborting journal on device sdd-8.
-[309894.442913] EXT4-fs (sdd): Remounting filesystem read-only
-
-with Debian kernel 3.13.5-1; sdd here is the same filesystem as in the
-earlier dmesg.
-
-I'll capture any subsequent crashes and follow up.
-
-Thanks much!
---nwf;
-
---lBR2yNlwcY132B3M
-Content-Type: application/pgp-signature
-
+Jelle de Jong
 -----BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
+Version: GnuPG v1.4.12 (GNU/Linux)
 
-iEYEARECAAYFAlNGJlwACgkQTeQabvr9Tc/m0gCfV8i4mYUgEGbKP4o5toN/Oq9j
-tbQAn24yMZ85ezu95SLjBO6CU9JrZoor
-=NLyi
+iJwEAQECAAYFAlNGgFAACgkQ1WclBW9j5HnDbQP/YRQvZq0HPJ4brpBas+95xeP3
+lOnN0OzEOEpjC9pY7J9ppWfkvOkBx7ayjt8MqmJgluwVBNQIRUU3ctftaI7cUPTH
+abgj0JHLICCjSIs3nVzQo9pq8URnhTbDXDcXLBemglT5wa+Potlz4YYFA+9Cd/ty
+G2jfKBiaNCN17Nmikjo=
+=bwbX
 -----END PGP SIGNATURE-----
-
---lBR2yNlwcY132B3M--
