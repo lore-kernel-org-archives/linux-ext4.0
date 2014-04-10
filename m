@@ -1,104 +1,122 @@
-From: jon ernst <jonernst07@gmail.com>
-Subject: Re: xfstest-bld generic/018 fails due to e4defrag issue
-Date: Thu, 10 Apr 2014 00:13:49 -0400
-Message-ID: <CAGW2f1Fn2caBtQPjZnXyMdVf9H6wGvS_0YrLReggwujKZXL8CQ@mail.gmail.com>
-References: <CAGW2f1F1sL+if9zejgB92j0YDRjswvB3LG_dBR+pK3Yj4aQfHQ@mail.gmail.com>
-	<20140409220320.GC15303@thunk.org>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: Question about slow buffered io
+Date: Thu, 10 Apr 2014 12:45:28 +0800
+Message-ID: <20140410044527.GA11129@gmail.com>
+References: <CADu=CFqjr_DovzRbPiA1KoBL1AHtZ+7bkXAQJum2SOvdWi_JQw@mail.gmail.com>
+ <20140409105112.GB2854@gmail.com>
+ <CADu=CFr8KdAZKNeQjAKqZdv=NZf_FdsBV0WBXTJM6v+ZgM4gaA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: liang xie <xieliang007@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qg0-f43.google.com ([209.85.192.43]:40826 "EHLO
-	mail-qg0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934602AbaDJENt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Apr 2014 00:13:49 -0400
-Received: by mail-qg0-f43.google.com with SMTP id f51so3332835qge.2
-        for <linux-ext4@vger.kernel.org>; Wed, 09 Apr 2014 21:13:49 -0700 (PDT)
-In-Reply-To: <20140409220320.GC15303@thunk.org>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:38017 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750817AbaDJEjU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Apr 2014 00:39:20 -0400
+Received: by mail-pb0-f46.google.com with SMTP id rq2so3434409pbb.19
+        for <linux-ext4@vger.kernel.org>; Wed, 09 Apr 2014 21:39:19 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <CADu=CFr8KdAZKNeQjAKqZdv=NZf_FdsBV0WBXTJM6v+ZgM4gaA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Apr 9, 2014 at 6:03 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Wed, Apr 09, 2014 at 01:37:04AM -0400, jon ernst wrote:
->> running latest xfstest-bld with latest ext4 kernel "dev"
->> branch(ad6599ab3a).I always get generic/018 failed.
->> Then I took closer look and found out this issue.
->
-> That's a renamed tested; it was previously shared/218.  It's a test
-> which is known to fail for ext4, since its idea of how a defrag
-> program should work is slightly different from how e4defrag works:
->
-> shared/218 7s ...   [20:48:32] [20:48:39] - output mismatch (see /results/results-4k/shared/218.out.bad)
->     --- tests/shared/218.out   2014-04-01 18:46:39.000000000 +0000
->     +++ /results/results-4k/shared/218.out.bad               2014-04-03 20:48:39.795694518 +0000
->     @@ -10,7 +10,7 @@
->      After: 1
->      Write backwards sync, but contiguous - should defrag to 1 extent
->      Before: 10
->     -After: 1
->     +After: 10
->      Write backwards sync leaving holes - defrag should do nothing
->      Before: 16
->     ...
->     (Run 'diff -u tests/shared/218.out /results/results-4k/shared/218.out.bad'  to see the entire diff)
->
-> What you are seeing is something very different, though.
->
->> Even though the file does exist. e4defrag complains about:
->>
->> (this output comes from kvm guest machine)
->> > e4defrag -v /vdf/testfile
->> Can't get super block info: Success
->> "/vdf/testfile"
->>
->> Is this a known issue or something I did wrong.
->
-> Unfortunately, e4defrag has horrible error handling, so we can't see
-> the error code properly, so we can't see why it's failing, but this is
-> from an attempt to open the file system to get some low-level
-> information.
->
-> How is /etc/mtab set up on your test machine?  It looks like it failed
-> to find block device for the file system in question.
->
->                                          - Ted
+On Thu, Apr 10, 2014 at 10:58:11AM +0800, liang xie wrote:
+> On Wed, Apr 9, 2014 at 6:51 PM, Zheng Liu <gnehzuil.liu@gmail.com> wrote:
+> > On Wed, Apr 09, 2014 at 05:14:37PM +0800, liang xie wrote:
+> >> Hi,
+> >>
+> >> I am an Apache HDFS/HBase developer and debugging the slow buffered io
+> >> issue on ext4. I saw some slow sys_write caused by:
+> >> (mount -o noatime)
+> >> 0xffffffff814ed1c3 : io_schedule+0x73/0xc0 [kernel]
+> >> 0xffffffff81110b4d : sync_page+0x3d/0x50 [kernel]
+> >> 0xffffffff814eda2a : __wait_on_bit_lock+0x5a/0xc0 [kernel]
+> >> 0xffffffff81110ae7 : __lock_page+0x67/0x70 [kernel]
+> >> 0xffffffff81111abc : find_lock_page+0x4c/0x80 [kernel]
+> >> 0xffffffff81111b3a : grab_cache_page_write_begin+0x4a/0xc0 [kernel]
+> >> 0xffffffffa00d05d4 : ext4_da_write_begin+0xb4/0x200 [ext4]
+> >
+> > Delalloc obviously could cause a latency spike because of i_data_sem.
+> > When flusher thread tries to write out some dirty pages, it will grab
+> > i_data_sem locking and allocate some blocks for these dirty pages.  At
+> > that time if an application tries to do some buffered writes, i_data_sem
+> > also need to be taken.  So the application needs to wait on writeback.
+> >
+> Cool, got it :)
+> 
+> >>
+> >> seems caused by delay allocation, right?  so i reran with "mount -o
+> >> noatime,,nodiratime,data=writeback,nodelalloc", unfortunately, i saw
+> >> another stack trace contributing high latency:
+> >>  0xffffffff811a9416 : __wait_on_buffer+0x26/0x30 [kernel]
+> >>  0xffffffffa0123564 : ext4_mb_init_cache+0x234/0x9f0 [ext4]
+> >>  0xffffffffa0123e3e : ext4_mb_init_group+0x11e/0x210 [ext4]
+> >>  0xffffffffa0123ffd : ext4_mb_good_group+0xcd/0x110 [ext4]
+> >>  0xffffffffa01276eb : ext4_mb_regular_allocator+0x19b/0x410 [ext4]
+> >>  0xffffffffa0127ced : ext4_mb_new_blocks+0x38d/0x560 [ext4]
+> >>  0xffffffffa011dfc3 : ext4_ext_get_blocks+0x1113/0x1a10 [ext4]
+> >>  0xffffffffa00fb335 : ext4_get_blocks+0xf5/0x2a0 [ext4]
+> >>  0xffffffffa00fbdad : ext4_get_block+0xbd/0x120 [ext4]
+> >>  0xffffffff811ab27b : __block_prepare_write+0x1db/0x570 [kernel]
+> >>  0xffffffff811ab8cc : block_write_begin_newtrunc+0x5c/0xd0 [kernel]
+> >>  0xffffffff811abcd3 : block_write_begin+0x43/0x90 [kernel]
+> >>  0xffffffffa00fe408 : ext4_write_begin+0x1b8/0x2d0 [ext4]
+> >> and from HDFS/HBASE side, also no obvious improvement be found.
+> >
+> > From the output of calltrace, it seems that we wait on reading some meta
+> > data for block allocation.
+> Any ideas on relieving the write stall caused by it?
 
-I found the root cause of this failure.
+This commit (9f203507ed277ee86e3f76a15e09db1c92e40b94) might be useful.
 
-The failure case happens on "bigalloc" testing option.
-ext2fs_open failed due to EXT2_FLAG_64BITS is not being set in testing
-rootfs image. So ext2fs_open in e4defrag.c returns err: 2133571465.
+> 
+> >
+> >>
+> >> and inside both two scenarios, the following stack trace was hit as well:
+> >>  0xffffffffa00dc09d : do_get_write_access+0x29d/0x520 [jbd2]
+> >>  0xffffffffa00dc471 : jbd2_journal_get_write_access+0x31/0x50 [jbd2]
+> >>  0xffffffffa011eb78 : __ext4_journal_get_write_access+0x38/0x80 [ext4]
+> >>  0xffffffffa01209ba : ext4_mb_mark_diskspace_used+0x7a/0x300 [ext4]
+> >>  0xffffffffa0127c09 : ext4_mb_new_blocks+0x2a9/0x560 [ext4]
+> >>  0xffffffffa011dfc3 : ext4_ext_get_blocks+0x1113/0x1a10 [ext4]
+> >>  0xffffffffa00fb335 : ext4_get_blocks+0xf5/0x2a0 [ext4]
+> >>  0xffffffffa00fbdad : ext4_get_block+0xbd/0x120 [ext4]
+> >>
+> >> My question is:
+> >> 1)what's the ext4 best practice for low latency append-only workload
+> >> like HBase application? Is there any recommended option i could try,
+> >> flex_bg size? nomballoc?
+> >
+> > We do the following things in our product system in order to avoid
+> > latency spike:
+> > 1. -o nodelalloc
+> > 2. -o data=writeback
+> > 3. disable stable page write
+> 
+> ok
+> 
+> >> 2)for the last strace trace, does
+> >> 9f203507ed277ee86e3f76a15e09db1c92e40b94 help a lot, or no big win? (i
+> >> haven't run on 3.10+ so far and it's inconvenient to bump kernel
+> >> version on my cluster currently, so forgive my this stupid question if
+> >> it's...)
+> >
+> > TBH, I don't know.  But it is not very hard to backport this patch into
+> > your kernel.
+> >
+> > BTW, as far as I understand, Hadoop just does some parallel append buffer
+> > writes, right?
+> 
+> not exactly, per my current understanding, the hdfs data files are always append
+> only write, but the meta files are not the same story, it possible has a minor
+> overwrite request under special conditions.
+> 
+> > Could you please write a simple program to reproduce this problem?
+> np, will do once get chance
 
-Because bigalloc requires cluster-aware bitfield operations, which
-means we need EXT2_FLAG_64BITS.
-I see e2image.c creates image always with EXT2_FLAG_64BITS flag. It is
-safe to do same thing for e4defrag in my opinion. Please correct me if
-I am wrong.
+That would be great if you can provide a simple program to reproduce the
+problem because most developers don't have a cluster to run Hadoop.
 
-
-
-
-[PATCH] e4defrag: open fs with EXT2_FLAG_64BITS flag
-
-Signed-off-by: Jon Ernst <jonernst07@gmail.com>
----
- misc/e4defrag.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/misc/e4defrag.c b/misc/e4defrag.c
-index 620f4e7..c5a2754 100644
---- a/misc/e4defrag.c
-+++ b/misc/e4defrag.c
-@@ -1794,7 +1794,7 @@ int main(int argc, char *argv[])
-
-                if (current_uid == ROOT_UID) {
-                        /* Get super block info */
--                       ret = ext2fs_open(dev_name, 0, 0, block_size,
-+                       ret = ext2fs_open(dev_name,EXT2_FLAG_64BITS,
-0, block_size,
-                                        unix_io_manager, &fs);
-                        if (ret) {
-                                if (mode_flag & DETAIL) {
--- 
-1.8.1.2
+Regards,
+                                                - Zheng
