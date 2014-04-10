@@ -1,81 +1,84 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Data races in ext4
-Date: Thu, 10 Apr 2014 18:09:37 -0400
-Message-ID: <20140410220937.GC31614@thunk.org>
-References: <53446306.7020005@mpi-sws.org>
- <20140409213340.GB15303@thunk.org>
- <5346BB86.50001@mpi-sws.org>
+Subject: Re: ext4 metadata corruption bug?
+Date: Thu, 10 Apr 2014 18:17:02 -0400
+Message-ID: <20140410221702.GD31614@thunk.org>
+References: <20140409223820.GU10985@gradx.cs.jhu.edu>
+ <CAGagf4eEzY4+3cfNWSEENTo1PKe40nq1Ne6ZzOLGm-O78W7RcA@mail.gmail.com>
+ <20140410050428.GV10985@gradx.cs.jhu.edu>
+ <20140410140316.GD15925@thunk.org>
+ <20140410163350.GW10985@gradx.cs.jhu.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca
-To: Pedro Fonseca <pfonseca@mpi-sws.org>
+Cc: Mike Rubin <mrubin@google.com>, Frank Mayhar <fmayhar@google.com>,
+	admins@acm.jhu.edu, linux-ext4@vger.kernel.org
+To: Nathaniel W Filardo <nwf@cs.jhu.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:52663 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:52669 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753706AbaDJWLS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 10 Apr 2014 18:11:18 -0400
+	id S1753800AbaDJWRH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 10 Apr 2014 18:17:07 -0400
 Content-Disposition: inline
-In-Reply-To: <5346BB86.50001@mpi-sws.org>
+In-Reply-To: <20140410163350.GW10985@gradx.cs.jhu.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Thinking about this some more, you're right.  We should probably use a
-spinlock to regulate access to the raw inode in
-ext4_do_update_inode().  The main reason why we haven't noticed that
-most of these fields don't change very often, and so in practice it's
-not really problem.  The one that _is_ critical is i_disksize /
-raw_inode->i_size, and that's supposed to be protected by i_data_sem.
-(The reason why that one showed up in your analysis is because we did
-screw up the locking in mpage_map_and_submit_extent.)
-
-> Regarding the generic_fillattr() function, apart from the inconsistency
-> between i_blocks/i_size, it looks like it can also cause wrong values to be
-> returned because several of those fields are 64 bits. 
-
-Well, it's actually a 32-bit seconds and 32-bit nanoseconds field.  So
-we could theoretically get a torn value, but if the ns field is from a
-previous update, the worst that could happen under those circumstances
-is that two quick successive stat() commands could potentially result
-in end up with an apparent "time moving backwards" in the nanoseconds
-field.  If someone was constantly calling utimes(2) to modify the
-mtime/atime at high rate, that might cause a more serious wrong value,
-but that's an argument you should take up with the generic VFS folks
-as to whether it's important enough that they would want to care about
-it.
-
-> >As for the rest, some are obviously false positives.  For example, if
-> >you take a look at:
-> >
-> >Variable: journal->j_running_transaction	Addresses: c1138ca1 c1136b02 c1136ca9
-> >c1136ca9 jbd2_get_transaction /linux-3.13.5/fs/jbd2/transaction.c:103
-> >c1138ca1 jbd2_journal_commit_transaction /linux-3.13.5/fs/jbd2/commit.c:539
-> >c1136b02 start_this_handle /linux-3.13.5/fs/jbd2/transaction.c:280
-> >
-> >It's obvious from the code path that start_this_handle() is extremely
-> >careful to always revalidate j_running_transaction after either (a)
-> >taking a read lock on the j_state_lock for the first time, or (b)
-> >after dropping the read_lock and grabbing a write_lock on
-> >j_state_lock, and if things have changed, it loops and tries again.
-> You're right, start_this_handle() revalidates the value read so I also don't
-> see harm in this race.
-
-Well, I suppose technically it's a race, but in it was quite
-deliberate, because the goal was to minimize pressure on the
-j_state_lock.
-
-> >There are a couple that require some closer examination; for some of
-> >them, for example the two reported cases of ext4_isize_set() vs
-> >ext4_isize(), having the stack trace would be really helpful.
+On Thu, Apr 10, 2014 at 12:33:51PM -0400, Nathaniel W Filardo wrote:
 > 
-> Those two pairs of functions were actually also called from the
-> ext4_do_update_inode() function:
+> Shouldn't cache reordering or fail to flush correctly only matter if the
+> machine is crashing or otherwise losing power?  I suppose it's possible
+> there's a bug that would cause the cache to fail to write a block at all,
+> rather than simply "too late".  But as I said before, we've not had any
+> crashes or otherwise lost uptime anywhere: host, guest, storage providers,
+> etc.
 
-OK, and I think this is ultimately caused by a screwup in how
-mpage_map_and_submit_extent() which I mentioned earlier.
+If it's a cache flush problem, yes, it would only matter if there had
+been a crash.  Knowing that what you are doing is a AFS mirror, this
+seems even stranger, since writes would be very rare, and it's not
+like you there would be a whole lot of opportunities for races ---
+when you mirror an FTP site, you write a new file sequentially, and
+it's not like there multiple CPU's trying to modify the file at the
+same time, etc.
 
-Thanks for your work,
+And if you are just seeing the results of random bit flips, one would
+expect other types of corruption getting reported.  So I don't know.
+This is a mystery so far...
 
-					- Ted
+> That said, we do occasionally, though much less often than we get reports of
+> corrupted metadata, get messages that I don't know how to decode from the
+> ATA stack (though naively they all seemed to be successfully resolved
+> transients)?  One of our VMs, nearly identically configured, though not the
+> one that's been reporting corruption on its filesystem, spat this out the
+> other day, for example:
+> 
+> [532625.888251] ata1.00: exception Emask 0x0 SAct 0x0 SErr 0x0 action 0x6 frozen
+> [532625.888762] ata1.00: failed command: FLUSH CACHE
+> [532625.889128] ata1.00: cmd e7/00:00:00:00:00/00:00:00:00:00/a0 tag 0
+> [532625.889128]          res 40/00:01:00:00:00/00:00:00:00:00/a0 Emask 0x4 (time out)
+> [532625.889945] ata1.00: status: { DRDY }
+> [532630.928064] ata1: link is slow to respond, please be patient (ready=0)
+> [532635.912178] ata1: device not ready (errno=-16), forcing hardreset
+> [532635.912220] ata1: soft resetting link
+> [532636.070087] ata1.00: configured for MWDMA2
+> [532636.070701] ata1.01: configured for MWDMA2
+> [532636.070705] ata1.00: retrying FLUSH 0xe7 Emask 0x4
+> [532651.068208] ata1.00: qc timeout (cmd 0xe7)
+> [532651.068216] ata1.00: FLUSH failed Emask 0x4
+> [532651.236146] ata1: soft resetting link
+> [532651.393918] ata1.00: configured for MWDMA2
+> [532651.394533] ata1.01: configured for MWDMA2
+> [532651.394537] ata1.00: retrying FLUSH 0xe7 Emask 0x4
+> [532651.395550] ata1.00: device reported invalid CHS sector 0
+> [532651.395564] ata1: EH complete
 
-P.S.  What did you use to generate these reports?  Is it something
-that can be easily replicated by others?
+Yeah, that doesn't look good, but you're using some kind of remote
+block device here, right?  I'm not sure how qemu is translating that
+into pseudo ATA commands.  Maybe that corresponds with a broken
+network connection which required creating a new TCP connection or
+some such?  I'm not really that familiar with the remote block device
+code.  So I also can't really give you any advice about whhether it
+would be better to use virtio versus achi.  I would expect that virtio
+will probably be faster, but it might not matter for your application.
+
+Cheers,
+
+						- Ted
