@@ -1,98 +1,109 @@
-From: Jelle de Jong <jelledejong@powercraft.nl>
-Subject: Re: How to resize to an bigger then 16TB ext4 filesysteem on Debian
-Date: Thu, 10 Apr 2014 17:07:34 +0200
-Message-ID: <5346B3B6.7020806@powercraft.nl>
-References: <53468055.4070700@powercraft.nl> <20140410140937.GE15925@thunk.org>
+From: Pedro Fonseca <pfonseca@mpi-sws.org>
+Subject: Re: Data races in ext4
+Date: Thu, 10 Apr 2014 17:40:54 +0200
+Message-ID: <5346BB86.50001@mpi-sws.org>
+References: <53446306.7020005@mpi-sws.org> <20140409213340.GB15303@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from relay02.cambriumhosting.nl ([217.19.16.174]:34657 "EHLO
-	relay02.cambriumhosting.nl" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751225AbaDJPHm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 10 Apr 2014 11:07:42 -0400
-In-Reply-To: <20140410140937.GE15925@thunk.org>
+Received: from hera.mpi-klsb.mpg.de ([139.19.1.49]:56720 "EHLO
+	hera.mpi-klsb.mpg.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753114AbaDJPlA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Apr 2014 11:41:00 -0400
+In-Reply-To: <20140409213340.GB15303@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
------BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA1
+On 04/09/2014 11:33 PM, Theodore Ts'o wrote:
+> The ones relating to ext4_do_update_inode() and generic_fillattr()
+> look fine to me.  Basically the first may happen if there are two
+> CPU's simultaneously trying to update the on-disk data structure for
+> an inode from the in-memory data structure, and that's not a problem
+> since the in-memory data structure is always authoratative.  The
+> second happens if someone tries to stat(2) an inode while some inode
+> field is getting updated.  Most of the inode field updates will be for
+> things like mtime and atime updates, or a chown or chmod, where a
+> single field is getting updated, and that's not a problem since there
+> is no guarantee which version of the inode information you'll get when
+> you call stat(2) while the inode is getting modified out from under
+> you.  It is possible that the userspace might see the i_blocks and
+> i_size be out of sync, but I really can't bring myself to care about
+> that.
 
-On 10/04/14 16:09, Theodore Ts'o wrote:
-> On Thu, Apr 10, 2014 at 01:28:21PM +0200, Jelle de Jong wrote:
->> 
->> Hello everyone,
->> 
->> https://packages.debian.org/wheezy/e2fsprogs
->> 
->> # resize2fs /dev/lvm0-vol/storage resize2fs 1.42.5 (29-Jul-2012) 
->> resize2fs: New size too large to be expressed in 32 bits
->> 
->> (will the command work with e2fsprogs 1.42.9-3?)
->> 
->> # tune2fs -l /dev/lvm0-vol/storage 
->> http://paste.debian.net/92889/
->> 
->> Suggestions has to be stable enough for production systems.
-> 
-> I'm going to assume the file system was created without having the 
-> 64-bit file system feature set.  (Running dumpe2fs -h 
-> /dev/lvm0-vol/storage can verify this).
-> 
-> If that's true, and you require a production-stable way of doing
-> this, there's really only one thing I can suggest:
-> 
-> 1)  Backup your file system completely 2)  Get the development
-> version of e2fsprogs, and apply a set of in-development patches
-> that haven't yet been merged 3)  Use this in-development resize2fs
-> to convert to a 64-bit file system, realizing that it will have
-> completely rewrite your inode tables. Cross your fingers. 4)  If it
-> works, you're done.  If not, you can restore from backups.  :-)
-> 
-> So basically steps 2 and 3 are ways of optimizing needing to do a
-> full restore of your file system.....
+Regarding the generic_fillattr() function, apart from the inconsistency 
+between i_blocks/i_size, it looks like it can also cause wrong values to 
+be returned because several of those fields are 64 bits. This means that 
+each assignment gets converted into multiple instructions (in 32-bit 
+architectures), allowing other instructions to interleave in between. 
+For example, this is the assembly code I get when compiling 
+generic_fillattr():
+>     stat->atime = inode->i_atime;
+> c10aa017:   8b 48 3c                mov    0x3c(%eax),%ecx
+> c10aa01a:   8b 58 40                mov    0x40(%eax),%ebx
+> c10aa01d:   89 4a 28                mov    %ecx,0x28(%edx)
+> c10aa020:   89 5a 2c                mov    %ebx,0x2c(%edx)
+>     stat->mtime = inode->i_mtime;
+> c10aa023:   8b 48 44                mov    0x44(%eax),%ecx
+> c10aa026:   8b 58 48                mov    0x48(%eax),%ebx
+> c10aa029:   89 4a 30                mov    %ecx,0x30(%edx)
+> c10aa02c:   89 5a 34                mov    %ebx,0x34(%edx)
+>     stat->ctime = inode->i_ctime;
+> c10aa02f:   8b 48 4c                mov    0x4c(%eax),%ecx
+> c10aa032:   8b 58 50                mov    0x50(%eax),%ebx
+> c10aa035:   89 4a 38                mov    %ecx,0x38(%edx)
+> c10aa038:   89 5a 3c                mov    %ebx,0x3c(%edx)
+...
+>     stat->blocks = inode->i_blocks;
+> c10aa048:   8b 58 60                mov    0x60(%eax),%ebx
+> c10aa04b:   8b 48 5c                mov    0x5c(%eax),%ecx
+> c10aa04e:   89 5a 48                mov    %ebx,0x48(%edx)
+> c10aa051:   89 4a 44                mov    %ecx,0x44(%edx)
 
-Thank you Ted for your quick reply.
 
-In october 2012 I created the ext4 file system with the command:
-mkfs.ext4 -m 1 /dev/lvm0-vol/storage
+I still don't understand why the races in ext4_do_update_inode() won't 
+cause problems. Similarly to generic_fillattr(), in 
+ext4_do_update_inode() wrong values can end up being written to the 
+inode fields. Is there some mechanism to recover/ignore these values 
+that I'm missing?
 
-I assumed by using ext4 with lvm2 I would have had a solid basis for
-some future storage expeditions. Apparently I made a mistake somewhere
-but I don't know where yet or did I hit a bug?
 
-# tune2fs -l /dev/lvm0-vol/storage
-# dumpe2fs -h /dev/lvm0-vol/storage
-http://paste.debian.net/plain/92953
+> As for the rest, some are obviously false positives.  For example, if
+> you take a look at:
+>
+> Variable: journal->j_running_transaction	Addresses: c1138ca1 c1136b02 c1136ca9
+> c1136ca9 jbd2_get_transaction /linux-3.13.5/fs/jbd2/transaction.c:103
+> c1138ca1 jbd2_journal_commit_transaction /linux-3.13.5/fs/jbd2/commit.c:539
+> c1136b02 start_this_handle /linux-3.13.5/fs/jbd2/transaction.c:280
+>
+> It's obvious from the code path that start_this_handle() is extremely
+> careful to always revalidate j_running_transaction after either (a)
+> taking a read lock on the j_state_lock for the first time, or (b)
+> after dropping the read_lock and grabbing a write_lock on
+> j_state_lock, and if things have changed, it loops and tries again.
+You're right, start_this_handle() revalidates the value read so I also 
+don't see harm in this race.
 
-Where can I see that my ext4 file system is limed to 16TB?
 
-Your suggestion to use a development version of e2fsprogs doesn't
-really suit my needs for a stable solution that is maintainable.
+> There are a couple that require some closer examination; for some of
+> them, for example the two reported cases of ext4_isize_set() vs
+> ext4_isize(), having the stack trace would be really helpful.
 
-1. I can temporary transfer all the data to an other system and
-recreate the ext4 file system, but will this be stable with version
-1.42.5 and how much TB can the file-system handle?
+Those two pairs of functions were actually also called from the 
+ext4_do_update_inode() function:
+> 4338     if (ei->i_disksize != ext4_isize(raw_inode)) {
+> 4339         ext4_isize_set(raw_inode, ei->i_disksize);
+> 4340         need_datasync = 1;
+> 4341     }
 
-2. I can put current the 16TB ext4 file system in production and wait
-for e2fsprogs support in Debian stable or backports to arrive and
-resize the to 22TB later. When do you expect this functionality to
-arrive in as stable release of e2fsprogs?
+So the top part of the stack trace is:
+   ext4_mark_inode_dirty() -> ext4_mark_iloc_dirty() -> 
+ext4_do_update_inode() -> ext4_isize()
+   ext4_mark_inode_dirty() -> ext4_mark_iloc_dirty() -> 
+ext4_do_update_inode() -> ext4_isize_set()
 
-Thank you for your help.
 
-Kind regards,
 
-Jelle de Jong
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
 
-iJwEAQECAAYFAlNGs7IACgkQ1WclBW9j5Hl5NgQAjwMLRPu3KQuBesD7BSHkUrf3
-JcaFMD90vvAYmbKMbMumGhR86BA1NXVBfeEA6DnrZUrPzly1VBglCOwCJzw52GCc
-TZHp3h5RD/Ce1c8/T+VD4DrVxhjIMUAyUT+/eGN008mHtrOfRppnFlcutNxZ5RZJ
-oGksAsJ5i7hWmeilqcc=
-=ECQP
------END PGP SIGNATURE-----
