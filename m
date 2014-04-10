@@ -1,125 +1,50 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] xfstests: Add -s option to run only specified sections
-Date: Thu, 10 Apr 2014 19:35:52 +0200
-Message-ID: <1397151352-6614-1-git-send-email-lczerner@redhat.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: xfstest-bld generic/018 fails due to e4defrag issue
+Date: Thu, 10 Apr 2014 11:42:15 -0700
+Message-ID: <20140410184215.GA9171@birch.djwong.org>
+References: <CAGW2f1F1sL+if9zejgB92j0YDRjswvB3LG_dBR+pK3Yj4aQfHQ@mail.gmail.com>
+ <20140409220320.GC15303@thunk.org>
+ <CAGW2f1Fn2caBtQPjZnXyMdVf9H6wGvS_0YrLReggwujKZXL8CQ@mail.gmail.com>
+ <20140410135637.GC15925@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
-To: xfs@oss.sgi.com
-Return-path: <xfs-bounces@oss.sgi.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: jon ernst <jonernst07@gmail.com>,
+	"linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:43808 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752918AbaDJSmW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Apr 2014 14:42:22 -0400
+Content-Disposition: inline
+In-Reply-To: <20140410135637.GC15925@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This commit adds -s option which allows you to specify only certain
-sections from the config file to be run. The '-s' argument can be
-specified multiple times to allow multiple sections to be run.
+On Thu, Apr 10, 2014 at 09:56:37AM -0400, Theodore Ts'o wrote:
+> On Thu, Apr 10, 2014 at 12:13:49AM -0400, jon ernst wrote:
+> > 
+> > Because bigalloc requires cluster-aware bitfield operations, which
+> > means we need EXT2_FLAG_64BITS.
+> > I see e2image.c creates image always with EXT2_FLAG_64BITS flag. It is
+> > safe to do same thing for e4defrag in my opinion. Please correct me if
+> > I am wrong.
+> 
+> Um.... I *think* so.  e4defrag is one of the less well
+> tested/maintained parts of e2fsprogs, as well as the kernel-side code
+> which supports e4defrag.  I can't think of any reason why there would
+> be any 32-bit dependencies in the kernel side code, although someone
+> should probably do a quick audit of the e4defrag code to make sure
+> it's not using blk_t where it should be using blk64_t, or have other
+> 32-bit dependencies.
 
-The options are still carried between section, that includes the
-sections which are not going to be run.
+>From a quick visual inspection and a sparse bitwise check, e4defrag looks 64bit
+clean.
 
-Update README.config-sections as well.
-
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- README.config-sections | 30 ++++++++++++++++++++++++++++++
- check                  | 16 +++++++++++++++-
- 2 files changed, 45 insertions(+), 1 deletion(-)
-
-diff --git a/README.config-sections b/README.config-sections
-index 2849fd5..865ca93 100644
---- a/README.config-sections
-+++ b/README.config-sections
-@@ -57,6 +57,36 @@ system.
- 
- You can also force the file system recreation by specifying RECREATE_TEST_DEV.
- 
-+Run specified section only
-+--------------------------
-+
-+Specifying '-s' argument with section name will run only the section
-+specified. The '-s' argument can be specified multiple times to allow multiple
-+sections to be run.
-+
-+The options are still carried between section, that includes the sections
-+which are not going to be run. So you can do something like
-+
-+[ext4]
-+TEST_DEV=/dev/sda1
-+TEST_DIR=/mnt/test
-+SCRATCH_DEV=/dev/sdb1
-+SCRATCH_MNT=/mnt/test1
-+FSTYP=ext4
-+
-+[xfs]
-+FSTYP=xfs
-+
-+[btrfs]
-+FSTYP=btrfs
-+
-+
-+and run
-+
-+./check -s xfs -s btrfs
-+
-+to check xfs and btrfs only. All the devices and mounts are still going to
-+be parsed from the section [ext4].
- 
- Example
- -------
-diff --git a/check b/check
-index 09d753b..e7ace63 100755
---- a/check
-+++ b/check
-@@ -75,6 +75,7 @@ check options
-     -T			output timestamps
-     -r			randomize test order
-     --large-fs		optimise scratch device for large filesystems
-+    -s section		run only specified section from config file
- 
- testlist options
-     -g group[,group...]	include tests from these groups
-@@ -221,7 +222,7 @@ while [ $# -gt 0 ]; do
- 			done
- 		done
- 		;;
--
-+	-s)	RUN_SECTION="$RUN_SECTION $2"; shift ;;
- 	-l)	diff="diff" ;;
- 	-udiff)	diff="$diff -u" ;;
- 
-@@ -389,6 +390,19 @@ for section in $HOST_OPTIONS_SECTIONS; do
- 	OLD_MOUNT_OPTIONS=$MOUNT_OPTIONS
- 	get_next_config $section
- 
-+	# Do we need to run only some sections ?
-+	if [ ! -z "$RUN_SECTION" ]; then
-+		skip=true
-+		for s in $RUN_SECTION; do
-+			if [ $section == $s ]; then
-+				skip=false
-+			fi
-+		done
-+		if $skip; then
-+			continue
-+		fi
-+	fi
-+
- 	mkdir -p $RESULT_BASE
- 	if [ ! -d $RESULT_BASE ]; then
- 		echo "failed to create results directory $RESULT_BASE"
--- 
-1.8.3.1
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+--D
+> 
+> 					- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
