@@ -1,44 +1,93 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 2/4] fs: Prevent doing FALLOC_FL_ZERO_RANGE on append only file
-Date: Fri, 11 Apr 2014 20:57:43 +0200
-Message-ID: <1397242665-2183-2-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 4/4] fs: Disallow all fallocate operation on active swapfile
+Date: Fri, 11 Apr 2014 20:57:45 +0200
+Message-ID: <1397242665-2183-4-git-send-email-lczerner@redhat.com>
 References: <1397242665-2183-1-git-send-email-lczerner@redhat.com>
 Cc: linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
 	ceph-devel@vger.kernel.org, Lukas Czerner <lczerner@redhat.com>
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <ceph-devel-owner@vger.kernel.org>
 In-Reply-To: <1397242665-2183-1-git-send-email-lczerner@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Sender: ceph-devel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Currently punch hole and collapse range fallocate operation are not
-allowed on append only file. This should be case for zero range as well.
-Fix it.
+Currently some file system have IS_SWAPFILE check in their fallocate
+implementations and some does not. However we should really prevent any
+fallocate operation on swapfile so move the check to vfs and remove the
+redundant checks from the file systems fallocate implementations.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
- fs/open.c | 7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
+ fs/ceph/file.c    | 3 ---
+ fs/ext4/extents.c | 5 -----
+ fs/ext4/inode.c   | 5 -----
+ fs/open.c         | 7 +++++++
+ 4 files changed, 7 insertions(+), 13 deletions(-)
 
+diff --git a/fs/ceph/file.c b/fs/ceph/file.c
+index 66075a4..3a69d80 100644
+--- a/fs/ceph/file.c
++++ b/fs/ceph/file.c
+@@ -1219,9 +1219,6 @@ static long ceph_fallocate(struct file *file, int mode,
+ 	if (!S_ISREG(inode->i_mode))
+ 		return -EOPNOTSUPP;
+ 
+-	if (IS_SWAPFILE(inode))
+-		return -ETXTBSY;
+-
+ 	mutex_lock(&inode->i_mutex);
+ 
+ 	if (ceph_snap(inode) != CEPH_NOSNAP) {
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index ff823b7..517b376 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -5394,11 +5394,6 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
+ 		goto out_mutex;
+ 	}
+ 
+-	if (IS_SWAPFILE(inode)) {
+-		ret = -ETXTBSY;
+-		goto out_mutex;
+-	}
+-
+ 	/* Currently just for extent based files */
+ 	if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
+ 		ret = -EOPNOTSUPP;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 56f1ff4..d8a270d 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3529,11 +3529,6 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
+ 
+ 	mutex_lock(&inode->i_mutex);
+ 
+-	if (IS_SWAPFILE(inode)) {
+-		ret = -ETXTBSY;
+-		goto out_mutex;
+-	}
+-
+ 	/* No need to punch hole beyond i_size */
+ 	if (offset >= inode->i_size)
+ 		goto out_mutex;
 diff --git a/fs/open.c b/fs/open.c
-index 631aea81..7882ff5 100644
+index 14af6be..48e3fd0 100644
 --- a/fs/open.c
 +++ b/fs/open.c
-@@ -254,10 +254,11 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
- 		return -EBADF;
- 
- 	/*
--	 * It's not possible to punch hole or perform collapse range
--	 * on append only file
-+	 * It's not possible to punch hole, perform collapse range
-+	 * or zero range on append only file
- 	 */
--	if (mode & (FALLOC_FL_PUNCH_HOLE | FALLOC_FL_COLLAPSE_RANGE)
-+	if (mode & (FALLOC_FL_PUNCH_HOLE | FALLOC_FL_COLLAPSE_RANGE |
-+		    FALLOC_FL_ZERO_RANGE)
- 	    && IS_APPEND(inode))
+@@ -266,6 +266,13 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
  		return -EPERM;
  
+ 	/*
++	 * We can not allow to do any fallocate operation on an active
++	 * swapfile
++	 */
++	if (IS_SWAPFILE(inode))
++		ret = -ETXTBSY;
++
++	/*
+ 	 * Revalidate the write permissions, in case security policy has
+ 	 * changed since the files were opened.
+ 	 */
 -- 
 1.8.3.1
 
