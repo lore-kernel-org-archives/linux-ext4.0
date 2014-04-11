@@ -1,93 +1,36 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 4/4] fs: Disallow all fallocate operation on active swapfile
-Date: Fri, 11 Apr 2014 20:57:45 +0200
-Message-ID: <1397242665-2183-4-git-send-email-lczerner@redhat.com>
-References: <1397242665-2183-1-git-send-email-lczerner@redhat.com>
-Cc: linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
-	ceph-devel@vger.kernel.org, Lukas Czerner <lczerner@redhat.com>
-To: linux-fsdevel@vger.kernel.org
-Return-path: <ceph-devel-owner@vger.kernel.org>
-In-Reply-To: <1397242665-2183-1-git-send-email-lczerner@redhat.com>
-Sender: ceph-devel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 61601] rootflags=noatime causes kernel panic when booting
+ without initrd.
+Date: Fri, 11 Apr 2014 21:25:08 +0000
+Message-ID: <bug-61601-13602-C2Tb8b4BjO@https.bugzilla.kernel.org/>
+References: <bug-61601-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.19.201]:49805 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754549AbaDKVZM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 11 Apr 2014 17:25:12 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id E392C2035C
+	for <linux-ext4@vger.kernel.org>; Fri, 11 Apr 2014 21:25:10 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id CA3912034C
+	for <linux-ext4@vger.kernel.org>; Fri, 11 Apr 2014 21:25:08 +0000 (UTC)
+In-Reply-To: <bug-61601-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Currently some file system have IS_SWAPFILE check in their fallocate
-implementations and some does not. However we should really prevent any
-fallocate operation on swapfile so move the check to vfs and remove the
-redundant checks from the file systems fallocate implementations.
+https://bugzilla.kernel.org/show_bug.cgi?id=61601
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- fs/ceph/file.c    | 3 ---
- fs/ext4/extents.c | 5 -----
- fs/ext4/inode.c   | 5 -----
- fs/open.c         | 7 +++++++
- 4 files changed, 7 insertions(+), 13 deletions(-)
+--- Comment #5 from Mateusz <dragonn@op.pl> ---
+Conrad Meyer but did you boot without initrd? With initrd it boots fine because
+the root fs is mounted by a busybox script but without it the kernel mounts the
+root fs with relatime with conflicts with noatime. Johannes Hirte so it looks
+like all file system are affected, with category should I set now?
 
-diff --git a/fs/ceph/file.c b/fs/ceph/file.c
-index 66075a4..3a69d80 100644
---- a/fs/ceph/file.c
-+++ b/fs/ceph/file.c
-@@ -1219,9 +1219,6 @@ static long ceph_fallocate(struct file *file, int mode,
- 	if (!S_ISREG(inode->i_mode))
- 		return -EOPNOTSUPP;
- 
--	if (IS_SWAPFILE(inode))
--		return -ETXTBSY;
--
- 	mutex_lock(&inode->i_mutex);
- 
- 	if (ceph_snap(inode) != CEPH_NOSNAP) {
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index ff823b7..517b376 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -5394,11 +5394,6 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
- 		goto out_mutex;
- 	}
- 
--	if (IS_SWAPFILE(inode)) {
--		ret = -ETXTBSY;
--		goto out_mutex;
--	}
--
- 	/* Currently just for extent based files */
- 	if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
- 		ret = -EOPNOTSUPP;
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 56f1ff4..d8a270d 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3529,11 +3529,6 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
- 
- 	mutex_lock(&inode->i_mutex);
- 
--	if (IS_SWAPFILE(inode)) {
--		ret = -ETXTBSY;
--		goto out_mutex;
--	}
--
- 	/* No need to punch hole beyond i_size */
- 	if (offset >= inode->i_size)
- 		goto out_mutex;
-diff --git a/fs/open.c b/fs/open.c
-index 14af6be..48e3fd0 100644
---- a/fs/open.c
-+++ b/fs/open.c
-@@ -266,6 +266,13 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
- 		return -EPERM;
- 
- 	/*
-+	 * We can not allow to do any fallocate operation on an active
-+	 * swapfile
-+	 */
-+	if (IS_SWAPFILE(inode))
-+		ret = -ETXTBSY;
-+
-+	/*
- 	 * Revalidate the write permissions, in case security policy has
- 	 * changed since the files were opened.
- 	 */
 -- 
-1.8.3.1
-
+You are receiving this mail because:
+You are watching the assignee of the bug.
