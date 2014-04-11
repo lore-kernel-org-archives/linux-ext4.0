@@ -1,44 +1,51 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 40822] EXT4-fs error (device dm-4): ext4_lookup:1044: inode
- #3308277: comm rm: deleted inode referenced: 3058008
-Date: Fri, 11 Apr 2014 12:33:49 +0000
-Message-ID: <bug-40822-13602-8Dm06dSrQg@https.bugzilla.kernel.org/>
-References: <bug-40822-13602@https.bugzilla.kernel.org/>
+From: Pedro Fonseca <pfonseca@mpi-sws.org>
+Subject: Re: Data races in ext4
+Date: Fri, 11 Apr 2014 15:08:00 +0200
+Message-ID: <5347E930.1040601@mpi-sws.org>
+References: <53446306.7020005@mpi-sws.org> <20140409213340.GB15303@thunk.org> <5346BB86.50001@mpi-sws.org> <20140410220937.GC31614@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:52141 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754211AbaDKMdw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 11 Apr 2014 08:33:52 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 1DDC120824
-	for <linux-ext4@vger.kernel.org>; Fri, 11 Apr 2014 12:33:51 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 20E8B2080D
-	for <linux-ext4@vger.kernel.org>; Fri, 11 Apr 2014 12:33:50 +0000 (UTC)
-In-Reply-To: <bug-40822-13602@https.bugzilla.kernel.org/>
+Received: from infao0809.mpi-klsb.mpg.de ([139.19.1.49]:42111 "EHLO
+	hera.mpi-klsb.mpg.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755840AbaDKNIG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Apr 2014 09:08:06 -0400
+In-Reply-To: <20140410220937.GC31614@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=40822
 
---- Comment #6 from Theodore Tso <tytso@mit.edu> ---
-The fact that the first fsck had just summary accounting errors in pass 1, and
-then a subsequent, back-to-back fsck showed errors in pass2, screams either (a)
-some kind of hardware error, (b) the two mirrored copies of the RAID1 are out
-of sync, or (c) someone or something else was modifying the filesytem at the
-same time (i.e., the file system was mounted, and for some reason e2fsck's
-safety checks didn't trigger, or it some other fsck or userspace program was
-running at the same time, etc.)
+>> Regarding the generic_fillattr() function, apart from the inconsistency
+>> between i_blocks/i_size, it looks like it can also cause wrong values to be
+>> returned because several of those fields are 64 bits.
+> Well, it's actually a 32-bit seconds and 32-bit nanoseconds field.  So
+> we could theoretically get a torn value, but if the ns field is from a
+> previous update, the worst that could happen under those circumstances
+> is that two quick successive stat() commands could potentially result
+> in end up with an apparent "time moving backwards" in the nanoseconds
+> field.  If someone was constantly calling utimes(2) to modify the
+> mtime/atime at high rate, that might cause a more serious wrong value,
+> but that's an argument you should take up with the generic VFS folks
+> as to whether it's important enough that they would want to care about
+> it.
 
-I'm going to guess that (b) is the most likely, since this is a local
-filesystem (i.e., you're not using fibre channel, or a remote block device, or
-a dual-hosted SCSI arrangement or anything else exotic).   Could you try to
-force a resync of the RAID mirrors, and then run another e2fsck -f check?
+Note that the races in stat() also involve the "inode->i_blocks" field, 
+which is also 64-bits. So, as far as I understand, this field too can 
+get wrapped, although it should only affect very large files. (On the 
+other hand, the field inode->i_size seems to be protected.)
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+I'll follow your suggestion and let the VFS developers know about this.
+
+
+> P.S.  What did you use to generate these reports?  Is it something
+> that can be easily replicated by others?
+
+We're currently developing an experimental tool to test the kernel for 
+concurrency bugs. It's not yet publicly available, but we hope it will 
+become available at some point in the future.
+
+Thanks,
+Pedro
