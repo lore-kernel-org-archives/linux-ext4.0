@@ -1,86 +1,43 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: How to resize to an bigger then 16TB ext4 filesysteem on Debian
-Date: Thu, 10 Apr 2014 20:22:45 -0400
-Message-ID: <20140411002245.GE31614@thunk.org>
-References: <53468055.4070700@powercraft.nl>
- <20140410140937.GE15925@thunk.org>
- <5346B3B6.7020806@powercraft.nl>
+Subject: Re: [PATCH v2] ext4: fix shared/002 and 004 fail issue in xfstests
+Date: Thu, 10 Apr 2014 22:59:37 -0400
+Message-ID: <20140411025937.GB23620@thunk.org>
+References: <1397051669-2645-1-git-send-email-linkinjeon@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Jelle de Jong <jelledejong@powercraft.nl>
+Cc: linux-ext4@vger.kernel.org, Namjae Jeon <namjae.jeon@samsung.com>,
+	Ashish Sangwan <a.sangwan@samsung.com>
+To: Namjae Jeon <linkinjeon@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:52693 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:52730 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759303AbaDKAWu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 10 Apr 2014 20:22:50 -0400
+	id S1750892AbaDKC7m (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 10 Apr 2014 22:59:42 -0400
 Content-Disposition: inline
-In-Reply-To: <5346B3B6.7020806@powercraft.nl>
+In-Reply-To: <1397051669-2645-1-git-send-email-linkinjeon@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Apr 10, 2014 at 05:07:34PM +0200, Jelle de Jong wrote:
+On Wed, Apr 09, 2014 at 10:54:29PM +0900, Namjae Jeon wrote:
+> From: Namjae Jeon <namjae.jeon@samsung.com>
 > 
-> In october 2012 I created the ext4 file system with the command:
-> mkfs.ext4 -m 1 /dev/lvm0-vol/storage
+> When mounting ext4 with data=journal option, xfstest shared/002 and
+> shared/004 are currently failing as checksum computed for testfile
+> does not match with the checksum computed in other journal modes.
+> In case of data=journal mode, a call to filemap_write_and_wait_range
+> will not flush anything to disk as buffers are not marked dirty in
+> write_end. In collapse range this call is followed by a call to
+> truncate_pagecache_range. Due to this, when checksum is computed,
+> a portion of file is re-read from disk which replace valid data with
+> NULL bytes and hence the reason for the difference in checksum.
 > 
-> I assumed by using ext4 with lvm2 I would have had a solid basis for
-> some future storage expeditions. Apparently I made a mistake somewhere
-> but I don't know where yet or did I hit a bug?
+> Calling ext4_force_commit before filemap_write_and_wait_range solves
+> the issue as it will mark the buffers dirty during commit transaction
+> which can be later synced by a call to filemap_write_and_wait_range.
 > 
-> # tune2fs -l /dev/lvm0-vol/storage
-> # dumpe2fs -h /dev/lvm0-vol/storage
-> http://paste.debian.net/plain/92953
-> 
-> Where can I see that my ext4 file system is limed to 16TB?
+> Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
+> Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
 
-So here's the problem.  The original ext2/3 block group descriptors
-only had room for 32-bit block numbers.  So in order to resize the
-file system past 16TB, it was necessary to change the layout of the
-block group descriptors, and change them from needing 32 bytes to 64
-bytes per block group.
+Thanks, applied.
 
-So in order to make this change there was a new "64-bit" feature flag
-that changes the size of the block group descriptors.  We didn't
-enable this feature at first, because we wanted to make sure the
-64-bit support was well shaken down and "production ready" before it
-was enabled.
-
-(In particular there were some online resizing bugs relating to 64-bit
-file systems that wasn't ironed out until relatively recently, so you
-should be glad we didn't enable this feature by default.  :-)
-
-> Your suggestion to use a development version of e2fsprogs doesn't
-> really suit my needs for a stable solution that is maintainable.
-
-Well, unfortunately, there is no way to do what you request using the
-stable version of e2fsprogs.  Sorry.
-
-> 1. I can temporary transfer all the data to an other system and
-> recreate the ext4 file system, but will this be stable with version
-> 1.42.5 and how much TB can the file-system handle?
-
-You should definitely go to the 1.42.9 version of e2fsprogs to make
-sure you have the latest fixes.
-
-As far as the kernel is concerned, are you still using the Debian
-stable 3.2 kernel?  The problem is that not all of the bug fixes get
-backported to a stable kernel which is that old.  One of the value
-adds that a company like Red Hat provides is that they have someone
-paid to try to support ext4 on older kernels.  But there have been
-some online resize fixes on the kernel side since 3.2, and I don't
-think all of them have been backported because they are fairly complex
-and involved patches.
-
-If you're not willing to use the kernel from Debian testing, it may
-very well be that you will be better off waiting for Debian testing to
-ship before you even try to use ext4 file systems > that 16TB.  I
-really can't guarantee that all of the necessary fixes have been
-backported to the 3.2 stable kernel.
-
-Is there some way you could live with two large file systems instead
-of trying to create one very large file system?
-
-Regards,
-
-						- Ted
+					- Ted
