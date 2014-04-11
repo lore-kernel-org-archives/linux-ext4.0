@@ -1,36 +1,54 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 61601] rootflags=noatime causes kernel panic when booting
- without initrd.
-Date: Fri, 11 Apr 2014 21:25:08 +0000
-Message-ID: <bug-61601-13602-C2Tb8b4BjO@https.bugzilla.kernel.org/>
-References: <bug-61601-13602@https.bugzilla.kernel.org/>
+From: Eric Whitney <enwlinux@gmail.com>
+Subject: [PATCH] generic: add fallocate() checks to generic/300
+Date: Fri, 11 Apr 2014 17:43:07 -0400
+Message-ID: <20140411214307.GC10174@wallace>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: xfs@oss.sgi.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:49805 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754549AbaDKVZM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 11 Apr 2014 17:25:12 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id E392C2035C
-	for <linux-ext4@vger.kernel.org>; Fri, 11 Apr 2014 21:25:10 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id CA3912034C
-	for <linux-ext4@vger.kernel.org>; Fri, 11 Apr 2014 21:25:08 +0000 (UTC)
-In-Reply-To: <bug-61601-13602@https.bugzilla.kernel.org/>
+Received: from mail-qa0-f54.google.com ([209.85.216.54]:64617 "EHLO
+	mail-qa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754747AbaDKVnM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Apr 2014 17:43:12 -0400
+Received: by mail-qa0-f54.google.com with SMTP id w8so5783489qac.41
+        for <linux-ext4@vger.kernel.org>; Fri, 11 Apr 2014 14:43:11 -0700 (PDT)
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=61601
+Generic/300 fails when run on a test filesystem that does not support
+fallocate(). It uses fio's falloc ioengine to generate part of its I/O
+load and both allocates blocks and punches holes.  This causes EOPNOTSUPP
+failures when the test is run on indirect block-mapped ext4 filesystems
+or pre-3.14 ext4 filesystems created with bigalloc.
 
---- Comment #5 from Mateusz <dragonn@op.pl> ---
-Conrad Meyer but did you boot without initrd? With initrd it boots fine because
-the root fs is mounted by a busybox script but without it the kernel mounts the
-root fs with relatime with conflicts with noatime. Johannes Hirte so it looks
-like all file system are affected, with category should I set now?
+Verify that the test filesystem supports fallocate() before proceeding
+with the test, checking for both block allocation and hole punching
+capabilities.  Also, delete any pre-existing test output.
 
+Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+---
+ tests/generic/300 | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/tests/generic/300 b/tests/generic/300
+index 7c60728..4e07f8a 100755
+--- a/tests/generic/300
++++ b/tests/generic/300
+@@ -44,6 +44,13 @@ _supported_os Linux
+ _need_to_be_root
+ _require_scratch
+ 
++# xfs_io is not required for this test, but it's the best way to verify
++# the test system supports fallocate() for allocation and hole punching
++_require_xfs_io_falloc
++_require_xfs_io_falloc_punch
++
++rm -f $seqres.full
++
+ NUM_JOBS=$((4*LOAD_FACTOR))
+ BLK_DEV_SIZE=`blockdev --getsz $SCRATCH_DEV`
+ if [ $((BLK_DEV_SIZE)) -gt 1048576 ]
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+1.8.3.2
