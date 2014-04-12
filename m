@@ -1,40 +1,29 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/3] generic/022: update expected output after the test was renamed
-Date: Sat, 12 Apr 2014 18:55:16 -0400
-Message-ID: <1397343317-14669-3-git-send-email-tytso@mit.edu>
+Subject: Re: [PATCH] ext4: add a new spinlock i_raw_lock to protect the
+ ext4's raw inode
+Date: Sat, 12 Apr 2014 19:03:01 -0400
+Message-ID: <20140412230301.GB14599@thunk.org>
 References: <1397343317-14669-1-git-send-email-tytso@mit.edu>
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Lukas Czerner <lczerner@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: xfs@oss.sgi.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:53315 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:53326 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756631AbaDLWza (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 12 Apr 2014 18:55:30 -0400
+	id S1756547AbaDLXDD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 12 Apr 2014 19:03:03 -0400
+Content-Disposition: inline
 In-Reply-To: <1397343317-14669-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-After generic/022 was renamed by commit 21723cdb, the wrong test
-number was put into generic/022.out.  Fix this.
+On Sat, Apr 12, 2014 at 06:55:14PM -0400, Theodore Ts'o wrote:
+> To avoid potential data races, use a spinlock which protects the raw
+> (on-disk) inode.
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Lukas Czerner <lczerner@redhat.com>
----
- tests/generic/022.out | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Sigh, sorry, left over patch in the /tmp/p directory.  Please ignore....
 
-diff --git a/tests/generic/022.out b/tests/generic/022.out
-index 96c2d33..fbffa59 100644
---- a/tests/generic/022.out
-+++ b/tests/generic/022.out
-@@ -1,4 +1,4 @@
--QA output created by 009
-+QA output created by 022
- 	1. into a hole
- f4f35d60b3cc18aaa6d8d92f0cd3708a
- 	2. into allocated space
--- 
-1.9.0
-
+      	     	       	     	    - Ted
