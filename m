@@ -1,197 +1,125 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/5] ext4: move ext4_file_dio_write() into ext4_file_write()
-Date: Sat, 12 Apr 2014 13:02:38 -0400
-Message-ID: <1397322161-32148-3-git-send-email-tytso@mit.edu>
+Subject: [PATCH 5/5] ext4: add locking for O_APPEND writes
+Date: Sat, 12 Apr 2014 13:02:41 -0400
+Message-ID: <1397322161-32148-6-git-send-email-tytso@mit.edu>
 References: <1397322161-32148-1-git-send-email-tytso@mit.edu>
 Cc: viro@ZenIV.linux.org.uk, Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:53231 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:53233 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754527AbaDLRCw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1754561AbaDLRCw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sat, 12 Apr 2014 13:02:52 -0400
 In-Reply-To: <1397322161-32148-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This commit doesn't actually change anything; it just moves code
-around in preparation for some code simplification work.
+Al Viro pointed out that we need to make sure we only allow one
+O_APPEND write to proceed at a time so that the the s_bitmap_maxbytes
+check can be properly checked.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/file.c | 139 +++++++++++++++++++++++++++------------------------------
- 1 file changed, 65 insertions(+), 74 deletions(-)
+ fs/ext4/file.c | 46 +++++++++++++++++++++++++++++-----------------
+ 1 file changed, 29 insertions(+), 17 deletions(-)
 
 diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 8b22556..3ec0c09 100644
+index 7c8f483..c3824dd 100644
 --- a/fs/ext4/file.c
 +++ b/fs/ext4/file.c
-@@ -92,82 +92,15 @@ ext4_unaligned_aio(struct inode *inode, const struct iovec *iov,
- }
- 
- static ssize_t
--ext4_file_dio_write(struct kiocb *iocb, const struct iovec *iov,
--		    unsigned long nr_segs, loff_t pos)
-+ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
-+		unsigned long nr_segs, loff_t pos)
- {
+@@ -98,24 +98,32 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
  	struct file *file = iocb->ki_filp;
--	struct inode *inode = file->f_mapping->host;
-+	struct inode *inode = file_inode(iocb->ki_filp);
+ 	struct inode *inode = file_inode(iocb->ki_filp);
  	struct blk_plug plug;
- 	int unaligned_aio = 0;
--	ssize_t ret;
- 	int overwrite = 0;
++	struct mutex *aio_mutex = NULL;
+ 	int o_direct = file->f_flags & O_DIRECT;
+-	int overwrite = 0;
++	int overwrite = 0, i_mutex_grabbed = 0;
  	size_t length = iov_length(iov, nr_segs);
--
--	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) &&
--	    !is_sync_kiocb(iocb))
--		unaligned_aio = ext4_unaligned_aio(inode, iov, nr_segs, pos);
--
--	/* Unaligned direct AIO must be serialized; see comment above */
--	if (unaligned_aio) {
--		mutex_lock(ext4_aio_mutex(inode));
--		ext4_unwritten_wait(inode);
--	}
--
--	mutex_lock(&inode->i_mutex);
--	blk_start_plug(&plug);
--
--	iocb->private = &overwrite;
--
--	/* check whether we do a DIO overwrite or not */
--	if (ext4_should_dioread_nolock(inode) && !unaligned_aio &&
--	    !file->f_mapping->nrpages && pos + length <= i_size_read(inode)) {
--		struct ext4_map_blocks map;
--		unsigned int blkbits = inode->i_blkbits;
--		int err, len;
--
--		map.m_lblk = pos >> blkbits;
--		map.m_len = (EXT4_BLOCK_ALIGN(pos + length, blkbits) >> blkbits)
--			- map.m_lblk;
--		len = map.m_len;
--
--		err = ext4_map_blocks(NULL, inode, &map, 0);
--		/*
--		 * 'err==len' means that all of blocks has been preallocated no
--		 * matter they are initialized or not.  For excluding
--		 * unwritten extents, we need to check m_flags.  There are
--		 * two conditions that indicate for initialized extents.
--		 * 1) If we hit extent cache, EXT4_MAP_MAPPED flag is returned;
--		 * 2) If we do a real lookup, non-flags are returned.
--		 * So we should check these two conditions.
--		 */
--		if (err == len && (map.m_flags & EXT4_MAP_MAPPED))
--			overwrite = 1;
--	}
--
--	ret = __generic_file_aio_write(iocb, iov, nr_segs, &iocb->ki_pos);
--	mutex_unlock(&inode->i_mutex);
--
--	if (ret > 0) {
--		ssize_t err;
--
--		err = generic_write_sync(file, iocb->ki_pos - ret, ret);
--		if (err < 0)
--			ret = err;
--	}
--	blk_finish_plug(&plug);
--
--	if (unaligned_aio)
--		mutex_unlock(ext4_aio_mutex(inode));
--
--	return ret;
--}
--
--static ssize_t
--ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
--		unsigned long nr_segs, loff_t pos)
--{
--	struct file *file = iocb->ki_filp;
--	struct inode *inode = file_inode(iocb->ki_filp);
  	ssize_t ret;
  
  	BUG_ON(iocb->ki_pos != pos);
-@@ -179,7 +112,6 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
  
++	if (file->f_flags & O_APPEND) {
++		mutex_lock(&inode->i_mutex);
++		i_mutex_grabbed = 1;
++		iocb->ki_pos = pos = i_size_read(inode);
++	}
++
+ 	/*
+ 	 * If we have encountered a bitmap-format file, the size limit
+ 	 * is smaller than s_maxbytes, which is for extent-mapped files.
+ 	 */
+-
  	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))) {
  		struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
--		size_t length = iov_length(iov, nr_segs);
  
  		if ((pos > sbi->s_bitmap_maxbytes ||
- 		    (pos == sbi->s_bitmap_maxbytes && length > 0)))
-@@ -191,9 +123,68 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+-		    (pos == sbi->s_bitmap_maxbytes && length > 0)))
+-			return -EFBIG;
++		     (pos == sbi->s_bitmap_maxbytes && length > 0))) {
++			ret = -EFBIG;
++			goto errout;
++		}
+ 
+ 		if (pos + length > sbi->s_bitmap_maxbytes) {
+ 			nr_segs = iov_shorten((struct iovec *)iov, nr_segs,
+@@ -123,19 +131,20 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
  		}
  	}
  
--	if (unlikely(iocb->ki_filp->f_flags & O_DIRECT))
--		ret = ext4_file_dio_write(iocb, iov, nr_segs, pos);
--	else {
-+	if (unlikely(iocb->ki_filp->f_flags & O_DIRECT)) {
-+		if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) &&
-+		    !is_sync_kiocb(iocb))
-+			unaligned_aio = ext4_unaligned_aio(inode, iov,
-+							   nr_segs, pos);
-+
-+		/* Unaligned direct AIO must be serialized; see comment above */
-+		if (unaligned_aio) {
-+			mutex_lock(ext4_aio_mutex(inode));
-+			ext4_unwritten_wait(inode);
-+		}
-+
-+		mutex_lock(&inode->i_mutex);
-+		blk_start_plug(&plug);
-+
-+		iocb->private = &overwrite;
-+
-+		/* check whether we do a DIO overwrite or not */
-+		if (ext4_should_dioread_nolock(inode) && !unaligned_aio &&
-+		    !file->f_mapping->nrpages && pos + length <= i_size_read(inode)) {
-+			struct ext4_map_blocks map;
-+			unsigned int blkbits = inode->i_blkbits;
-+			int err, len;
-+
-+			map.m_lblk = pos >> blkbits;
-+			map.m_len = (EXT4_BLOCK_ALIGN(pos + length, blkbits) >> blkbits)
-+				- map.m_lblk;
-+			len = map.m_len;
-+
-+			err = ext4_map_blocks(NULL, inode, &map, 0);
-+			/*
-+			 * 'err==len' means that all of blocks has
-+			 * been preallocated no matter they are
-+			 * initialized or not.  For excluding
-+			 * unwritten extents, we need to check
-+			 * m_flags.  There are two conditions that
-+			 * indicate for initialized extents.  1) If we
-+			 * hit extent cache, EXT4_MAP_MAPPED flag is
-+			 * returned; 2) If we do a real lookup,
-+			 * non-flags are returned.  So we should check
-+			 * these two conditions.
-+			 */
-+			if (err == len && (map.m_flags & EXT4_MAP_MAPPED))
-+				overwrite = 1;
-+		}
-+
-+		ret = __generic_file_aio_write(iocb, iov, nr_segs,
-+					       &iocb->ki_pos);
-+		mutex_unlock(&inode->i_mutex);
-+
-+		if (ret > 0) {
-+			ssize_t err;
-+
-+			err = generic_write_sync(file, iocb->ki_pos - ret, ret);
-+			if (err < 0)
-+				ret = err;
-+		}
-+		blk_finish_plug(&plug);
-+
-+		if (unaligned_aio)
-+			mutex_unlock(ext4_aio_mutex(inode));
-+	} else {
+-	if (o_direct) {
+-		struct mutex *aio_mutex = NULL;
+-
+-		/* Unaligned direct AIO must be serialized; see comment above */
+-		if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) &&
+-		    !is_sync_kiocb(iocb) &&
+-		    ext4_unaligned_aio(inode, iov, nr_segs, pos)) {
+-			aio_mutex = ext4_aio_mutex(inode);
+-			mutex_lock(aio_mutex);
+-			ext4_unwritten_wait(inode);
+-		}
++	/* Unaligned direct AIO must be serialized; see comment above */
++	if (o_direct && ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) &&
++	    !is_sync_kiocb(iocb) &&
++	    ext4_unaligned_aio(inode, iov, nr_segs, pos)) {
++		aio_mutex = ext4_aio_mutex(inode);
++		mutex_lock(aio_mutex);
++		ext4_unwritten_wait(inode);
++	}
+ 
++	if (!i_mutex_grabbed)
  		mutex_lock(&inode->i_mutex);
- 		ret = __generic_file_aio_write(iocb, iov, nr_segs,
- 					       &iocb->ki_pos);
++	i_mutex_grabbed = 1;
++
++	if (o_direct) {
+ 		if (aio_mutex)
+ 			mutex_unlock(aio_mutex);
+ 		blk_start_plug(&plug);
+@@ -170,11 +179,11 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+ 			if (err == len && (map.m_flags & EXT4_MAP_MAPPED))
+ 				overwrite = 1;
+ 		}
+-	} else
+-		mutex_lock(&inode->i_mutex);
++	}
+ 
+ 	ret = __generic_file_aio_write(iocb, iov, nr_segs, &iocb->ki_pos);
+ 	mutex_unlock(&inode->i_mutex);
++	i_mutex_grabbed = 0;
+ 
+ 	if (ret > 0) {
+ 		ssize_t err;
+@@ -186,6 +195,9 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+ 	if (o_direct)
+ 		blk_finish_plug(&plug);
+ 
++errout:
++	if (i_mutex_grabbed)
++		mutex_unlock(&inode->i_mutex);
+ 	return ret;
+ }
+ 
 -- 
 1.9.0
 
