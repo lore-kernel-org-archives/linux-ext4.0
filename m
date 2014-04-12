@@ -1,51 +1,36 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 4/4] fs: Disallow all fallocate operation on active
-	swapfile
-Date: Sat, 12 Apr 2014 10:06:33 -0400
-Message-ID: <20140412140633.GD13837@thunk.org>
-References: <1397242665-2183-1-git-send-email-lczerner@redhat.com>
-	<1397242665-2183-4-git-send-email-lczerner@redhat.com>
+Subject: Re: [PATCH 1/2] ext4: Get rid of EXT4_MAP_UNINIT flag
+Date: Sat, 12 Apr 2014 10:26:36 -0400
+Message-ID: <20140412142636.GE13837@thunk.org>
+References: <1397150063-5939-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, ceph-devel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
 To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <xfs-bounces@oss.sgi.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:53186 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751769AbaDLO0l (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 12 Apr 2014 10:26:41 -0400
 Content-Disposition: inline
-In-Reply-To: <1397242665-2183-4-git-send-email-lczerner@redhat.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1397150063-5939-1-git-send-email-lczerner@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Apr 11, 2014 at 08:57:45PM +0200, Lukas Czerner wrote:
-> Currently some file system have IS_SWAPFILE check in their fallocate
-> implementations and some does not. However we should really prevent any
-> fallocate operation on swapfile so move the check to vfs and remove the
-> redundant checks from the file systems fallocate implementations.
+On Thu, Apr 10, 2014 at 07:14:22PM +0200, Lukas Czerner wrote:
+> Currently EXT4_MAP_UNINIT is used in dioread_nolock case to mark the
+> cases where we're using dioread_nolock and we're writing into either
+> unallocated, or unwritten extent, because we need to make sure that
+> any DIO write into that inode will wait for the extent conversion.
+> 
+> However EXT4_MAP_UNINIT is not only entirely misleading name but also
+> unnecessary because we can check for EXT4_MAP_UNWRITTEN in the
+> dioread_nolock case instead.
+> 
+> This commit removes EXT4_MAP_UNINIT flag.
 > 
 > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> ---
->  fs/ceph/file.c    | 3 ---
->  fs/ext4/extents.c | 5 -----
->  fs/ext4/inode.c   | 5 -----
->  fs/open.c         | 7 +++++++
->  4 files changed, 7 insertions(+), 13 deletions(-)
 
-Thanks, applied.  Again, if anyone has an objections with my carrying
-these patches in the ext4 tree and pushing them to Linus shortly after
--rc1, please let me know.
+Thanks, this patch has been queued for 3.16
 
-					- Ted
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+				   - Ted
