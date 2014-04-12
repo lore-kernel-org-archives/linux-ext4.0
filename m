@@ -1,75 +1,51 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: add a new spinlock i_raw_lock to protect the ext4's raw inode
-Date: Sat, 12 Apr 2014 13:14:34 -0400
-Message-ID: <1397322874-7005-1-git-send-email-tytso@mit.edu>
-Cc: pfonseca@mpi-sws.org, Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH] ext4: fix some warnings from sparse check introduced by
+ COLLAPSE_RANGE patches
+Date: Sat, 12 Apr 2014 13:23:52 -0400
+Message-ID: <20140412172352.GH13837@thunk.org>
+References: <1397294178-20383-1-git-send-email-wenqing.lz@taobao.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Namjae Jeon <namjae.jeon@samsung.com>,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:53248 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:53256 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751830AbaDLROn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 12 Apr 2014 13:14:43 -0400
+	id S1752800AbaDLRYB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 12 Apr 2014 13:24:01 -0400
+Content-Disposition: inline
+In-Reply-To: <1397294178-20383-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-To avoid potential data races, use a spinlock which protects the raw
-(on-disk) inode.
+On Sat, Apr 12, 2014 at 05:16:18PM +0800, Zheng Liu wrote:
+> From: Zheng Liu <wenqing.lz@taobao.com>
+> 
+> This commit tries to fix some byte order issues that is found by sparse
+> check.
+> 
+> $ make M=fs/ext4 C=2 CF=-D__CHECK_ENDIAN__
+> ...
+>   CHECK   fs/ext4/extents.c
+> fs/ext4/extents.c:5232:41: warning: restricted __le32 degrades to integer
+> fs/ext4/extents.c:5236:52: warning: bad assignment (-=) to restricted __le32
+> fs/ext4/extents.c:5258:45: warning: bad assignment (-=) to restricted __le32
+> fs/ext4/extents.c:5303:28: warning: restricted __le32 degrades to integer
+> fs/ext4/extents.c:5318:18: warning: incorrect type in assignment (different base types)
+> fs/ext4/extents.c:5318:18:    expected unsigned int [unsigned] [usertype] ex_start
+> fs/ext4/extents.c:5318:18:    got restricted __le32 [usertype] ee_block
+> fs/ext4/extents.c:5319:24: warning: restricted __le32 degrades to integer
+> fs/ext4/extents.c:5334:31: warning: incorrect type in assignment (different base types)
+> ...
+> 
+> Cc: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+> Cc: Namjae Jeon <namjae.jeon@samsung.com>
+> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/ext4.h  | 2 ++
- fs/ext4/inode.c | 5 ++++-
- fs/ext4/super.c | 1 +
- 3 files changed, 7 insertions(+), 1 deletion(-)
+Thanks, queued for the 3.15 bugfix push.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 86c2cda..1d08a1b 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -875,6 +875,8 @@ struct ext4_inode_info {
- 	struct inode vfs_inode;
- 	struct jbd2_inode *jinode;
- 
-+	spinlock_t i_raw_lock;	/* protects updates to the raw inode */
-+
- 	/*
- 	 * File creation time. Its function is same as that of
- 	 * struct timespec i_{a,c,m}time in the generic inode.
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 2eb5fad..1ee8ff6 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4311,7 +4311,9 @@ static int ext4_do_update_inode(handle_t *handle,
- 	uid_t i_uid;
- 	gid_t i_gid;
- 
--	/* For fields not not tracking in the in-memory inode,
-+	spin_lock(&ei->i_raw_lock);
-+
-+	/* For fields not tracked in the in-memory inode,
- 	 * initialise them to zero for new inodes. */
- 	if (ext4_test_inode_state(inode, EXT4_STATE_NEW))
- 		memset(raw_inode, 0, EXT4_SB(inode->i_sb)->s_inode_size);
-@@ -4419,6 +4421,7 @@ static int ext4_do_update_inode(handle_t *handle,
- 
- 	ext4_update_inode_fsync_trans(handle, inode, need_datasync);
- out_brelse:
-+	spin_unlock(&ei->i_raw_lock);
- 	brelse(bh);
- 	ext4_std_error(inode->i_sb, err);
- 	return err;
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index c4895c1..1f8cb18 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -879,6 +879,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
- 		return NULL;
- 
- 	ei->vfs_inode.i_version = 1;
-+	spin_lock_init(&ei->i_raw_lock);
- 	INIT_LIST_HEAD(&ei->i_prealloc_list);
- 	spin_lock_init(&ei->i_prealloc_lock);
- 	ext4_es_init_tree(&ei->i_es_tree);
--- 
-1.9.0
-
+						- Ted
