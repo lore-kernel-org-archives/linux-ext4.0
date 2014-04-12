@@ -1,107 +1,35 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH] ext4: fix some warnings from sparse check introduced by COLLAPSE_RANGE patches
-Date: Sat, 12 Apr 2014 17:16:18 +0800
-Message-ID: <1397294178-20383-1-git-send-email-wenqing.lz@taobao.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Namjae Jeon <namjae.jeon@samsung.com>,
-	Zheng Liu <wenqing.lz@taobao.com>
-To: linux-ext4@vger.kernel.org
+From: Azat Khuzhin <a3at.mail@gmail.com>
+Subject: [PATCH 1/2] xfstests-bld: get-results: add -a option for grep, to process binary files as text
+Date: Sat, 12 Apr 2014 14:07:22 +0400
+Message-ID: <1397297243-12130-1-git-send-email-a3at.mail@gmail.com>
+Cc: Azat Khuzhin <a3at.mail@gmail.com>
+To: linux-ext4@vger.kernel.org, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f178.google.com ([209.85.192.178]:59486 "EHLO
-	mail-pd0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752134AbaDLJKV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Apr 2014 05:10:21 -0400
-Received: by mail-pd0-f178.google.com with SMTP id x10so6201845pdj.23
-        for <linux-ext4@vger.kernel.org>; Sat, 12 Apr 2014 02:10:21 -0700 (PDT)
+Received: from mail-lb0-f171.google.com ([209.85.217.171]:63882 "EHLO
+	mail-lb0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754024AbaDLKH5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Apr 2014 06:07:57 -0400
+Received: by mail-lb0-f171.google.com with SMTP id w7so4288868lbi.16
+        for <linux-ext4@vger.kernel.org>; Sat, 12 Apr 2014 03:07:56 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+Since logs can have some _non ASCII_ symbols and grep think that this is
+a binary file.
 
-This commit tries to fix some byte order issues that is found by sparse
-check.
-
-$ make M=fs/ext4 C=2 CF=-D__CHECK_ENDIAN__
-...
-  CHECK   fs/ext4/extents.c
-fs/ext4/extents.c:5232:41: warning: restricted __le32 degrades to integer
-fs/ext4/extents.c:5236:52: warning: bad assignment (-=) to restricted __le32
-fs/ext4/extents.c:5258:45: warning: bad assignment (-=) to restricted __le32
-fs/ext4/extents.c:5303:28: warning: restricted __le32 degrades to integer
-fs/ext4/extents.c:5318:18: warning: incorrect type in assignment (different base types)
-fs/ext4/extents.c:5318:18:    expected unsigned int [unsigned] [usertype] ex_start
-fs/ext4/extents.c:5318:18:    got restricted __le32 [usertype] ee_block
-fs/ext4/extents.c:5319:24: warning: restricted __le32 degrades to integer
-fs/ext4/extents.c:5334:31: warning: incorrect type in assignment (different base types)
-...
-
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: Namjae Jeon <namjae.jeon@samsung.com>
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+Signed-off-by: Azat Khuzhin <a3at.mail@gmail.com>
 ---
- fs/ext4/extents.c |   16 +++++++++-------
- 1 file changed, 9 insertions(+), 7 deletions(-)
+ kvm-xfstests/get-results | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 82df3ce..1867af6 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -5229,11 +5229,11 @@ ext4_ext_shift_path_extents(struct ext4_ext_path *path, ext4_lblk_t shift,
- 			if (ex_start == EXT_FIRST_EXTENT(path[depth].p_hdr))
- 				update = 1;
- 
--			*start = ex_last->ee_block +
-+			*start = le32_to_cpu(ex_last->ee_block) +
- 				ext4_ext_get_actual_len(ex_last);
- 
- 			while (ex_start <= ex_last) {
--				ex_start->ee_block -= shift;
-+				le32_add_cpu(&ex_start->ee_block, -shift);
- 				if (ex_start >
- 					EXT_FIRST_EXTENT(path[depth].p_hdr)) {
- 					if (ext4_ext_try_to_merge_right(inode,
-@@ -5255,7 +5255,7 @@ ext4_ext_shift_path_extents(struct ext4_ext_path *path, ext4_lblk_t shift,
- 		if (err)
- 			goto out;
- 
--		path[depth].p_idx->ei_block -= shift;
-+		le32_add_cpu(&path[depth].p_idx->ei_block, -shift);
- 		err = ext4_ext_dirty(handle, inode, path + depth);
- 		if (err)
- 			goto out;
-@@ -5300,7 +5300,8 @@ ext4_ext_shift_extents(struct inode *inode, handle_t *handle,
- 		return ret;
- 	}
- 
--	stop_block = extent->ee_block + ext4_ext_get_actual_len(extent);
-+	stop_block = le32_to_cpu(extent->ee_block) +
-+			ext4_ext_get_actual_len(extent);
- 	ext4_ext_drop_refs(path);
- 	kfree(path);
- 
-@@ -5315,8 +5316,9 @@ ext4_ext_shift_extents(struct inode *inode, handle_t *handle,
- 	path = ext4_ext_find_extent(inode, start - 1, NULL, 0);
- 	depth = path->p_depth;
- 	extent =  path[depth].p_ext;
--	ex_start = extent->ee_block;
--	ex_end = extent->ee_block + ext4_ext_get_actual_len(extent);
-+	ex_start = le32_to_cpu(extent->ee_block);
-+	ex_end = le32_to_cpu(extent->ee_block) +
-+			ext4_ext_get_actual_len(extent);
- 	ext4_ext_drop_refs(path);
- 	kfree(path);
- 
-@@ -5331,7 +5333,7 @@ ext4_ext_shift_extents(struct inode *inode, handle_t *handle,
- 			return PTR_ERR(path);
- 		depth = path->p_depth;
- 		extent = path[depth].p_ext;
--		current_block = extent->ee_block;
-+		current_block = le32_to_cpu(extent->ee_block);
- 		if (start > current_block) {
- 			/* Hole, move to the next extent */
- 			ret = mext_next_extent(inode, path, &extent);
+diff --git a/kvm-xfstests/get-results b/kvm-xfstests/get-results
+index be4a729..4151e36 100755
+--- a/kvm-xfstests/get-results
++++ b/kvm-xfstests/get-results
+@@ -1,2 +1,2 @@
+ #!/bin/sh
+-egrep "(^BEGIN)|(^END)|(^Ran: )|(^Failures: )|(^Passed)|(inconsistent)" $*
++egrep -a "(^BEGIN)|(^END)|(^Ran: )|(^Failures: )|(^Passed)|(inconsistent)" $*
 -- 
-1.7.9.7
+1.9.0
 
