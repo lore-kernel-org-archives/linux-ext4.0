@@ -1,78 +1,30 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH -v2] ext4: move ext4_update_i_disksize() into mpage_map_and_submit_extent()
-Date: Sat, 12 Apr 2014 09:45:27 -0400
-Message-ID: <1397310327-18147-1-git-send-email-tytso@mit.edu>
-References: <1397226957-9581-1-git-send-email-tytso@mit.edu>
-Cc: pfonseca@mpi-sws.org, Theodore Ts'o <tytso@mit.edu>,
-	stable@vger.kernel.org
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH 1/4] ext4: Remove unnecessary check for APPEND and
+ IMMUTABLE
+Date: Sat, 12 Apr 2014 09:48:15 -0400
+Message-ID: <20140412134815.GA13837@thunk.org>
+References: <1397242665-2183-1-git-send-email-lczerner@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	xfs@oss.sgi.com, ceph-devel@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:53157 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:53162 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751176AbaDLNpd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 12 Apr 2014 09:45:33 -0400
-In-Reply-To: <1397226957-9581-1-git-send-email-tytso@mit.edu>
+	id S1751176AbaDLNsU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 12 Apr 2014 09:48:20 -0400
+Content-Disposition: inline
+In-Reply-To: <1397242665-2183-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The function ext4_update_i_disksize() is used in only one place, in
-the function mpage_map_and_submit_extent().  Move there to simplify
-the code paths, and also move the call to ext4_mark_inode_dirty() into
-the i_data_sem's critical region, to be consistent with all of the
-other places where we update i_disksize.  That way, we also keep the
-raw_inode's i_disksize protected.
+On Fri, Apr 11, 2014 at 08:57:42PM +0200, Lukas Czerner wrote:
+> All the checks IS_APPEND and IS_IMMUTABLE for the fallocate operation on
+> the inode are done in vfs. No need to do this again in ext4. Remove it.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: stable@vger.kernel.org
----
+Thanks, applied.
 
-Oops, the first version was missing the commit description
-
- fs/ext4/ext4.h  | 17 -----------------
- fs/ext4/inode.c | 16 +++++++++++++---
- 2 files changed, 13 insertions(+), 20 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index f1c65dc..66946aa 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2466,23 +2466,6 @@ static inline void ext4_update_i_disksize(struct inode *inode, loff_t newsize)
- 	up_write(&EXT4_I(inode)->i_data_sem);
- }
- 
--/*
-- * Update i_disksize after writeback has been started. Races with truncate
-- * are avoided by checking i_size under i_data_sem.
-- */
--static inline void ext4_wb_update_i_disksize(struct inode *inode, loff_t newsize)
--{
--	loff_t i_size;
--
--	down_write(&EXT4_I(inode)->i_data_sem);
--	i_size = i_size_read(inode);
--	if (newsize > i_size)
--		newsize = i_size;
--	if (newsize > EXT4_I(inode)->i_disksize)
--		EXT4_I(inode)->i_disksize = newsize;
--	up_write(&EXT4_I(inode)->i_data_sem);
--}
--
- struct ext4_group_info {
- 	unsigned long   bb_state;
- 	struct rb_root  bb_free_root;
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 7b93df9..f023f0c 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2247,13 +2247,23 @@ static int mpage_map_and_submit_extent(handle_t *handle,
- 			return err;
- 	} while (map->m_len);
- 
--	/* Update on-disk size after IO is submitted */
-+	/*
-+	 * Update on-disk size after IO is submitted.  Races with
-+	 * truncate are avoided by checking i_size under i_data_sem.
-+	 */
- 	disksize = ((loff_t)mpd->first_page) << PAGE_CACHE_SHIFT;
- 	if (disksize > EXT4_I(inode)->i_disksize) {
- 		int err2;
+					- Ted
