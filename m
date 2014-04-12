@@ -1,125 +1,75 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 5/5] ext4: add locking for O_APPEND writes
-Date: Sat, 12 Apr 2014 13:02:41 -0400
-Message-ID: <1397322161-32148-6-git-send-email-tytso@mit.edu>
-References: <1397322161-32148-1-git-send-email-tytso@mit.edu>
-Cc: viro@ZenIV.linux.org.uk, Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: add a new spinlock i_raw_lock to protect the ext4's raw inode
+Date: Sat, 12 Apr 2014 13:14:34 -0400
+Message-ID: <1397322874-7005-1-git-send-email-tytso@mit.edu>
+Cc: pfonseca@mpi-sws.org, Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:53233 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:53248 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754561AbaDLRCw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 12 Apr 2014 13:02:52 -0400
-In-Reply-To: <1397322161-32148-1-git-send-email-tytso@mit.edu>
+	id S1751830AbaDLROn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 12 Apr 2014 13:14:43 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Al Viro pointed out that we need to make sure we only allow one
-O_APPEND write to proceed at a time so that the the s_bitmap_maxbytes
-check can be properly checked.
+To avoid potential data races, use a spinlock which protects the raw
+(on-disk) inode.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/file.c | 46 +++++++++++++++++++++++++++++-----------------
- 1 file changed, 29 insertions(+), 17 deletions(-)
+ fs/ext4/ext4.h  | 2 ++
+ fs/ext4/inode.c | 5 ++++-
+ fs/ext4/super.c | 1 +
+ 3 files changed, 7 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 7c8f483..c3824dd 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -98,24 +98,32 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
- 	struct file *file = iocb->ki_filp;
- 	struct inode *inode = file_inode(iocb->ki_filp);
- 	struct blk_plug plug;
-+	struct mutex *aio_mutex = NULL;
- 	int o_direct = file->f_flags & O_DIRECT;
--	int overwrite = 0;
-+	int overwrite = 0, i_mutex_grabbed = 0;
- 	size_t length = iov_length(iov, nr_segs);
- 	ssize_t ret;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 86c2cda..1d08a1b 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -875,6 +875,8 @@ struct ext4_inode_info {
+ 	struct inode vfs_inode;
+ 	struct jbd2_inode *jinode;
  
- 	BUG_ON(iocb->ki_pos != pos);
- 
-+	if (file->f_flags & O_APPEND) {
-+		mutex_lock(&inode->i_mutex);
-+		i_mutex_grabbed = 1;
-+		iocb->ki_pos = pos = i_size_read(inode);
-+	}
++	spinlock_t i_raw_lock;	/* protects updates to the raw inode */
 +
  	/*
- 	 * If we have encountered a bitmap-format file, the size limit
- 	 * is smaller than s_maxbytes, which is for extent-mapped files.
- 	 */
--
- 	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))) {
- 		struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+ 	 * File creation time. Its function is same as that of
+ 	 * struct timespec i_{a,c,m}time in the generic inode.
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 2eb5fad..1ee8ff6 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4311,7 +4311,9 @@ static int ext4_do_update_inode(handle_t *handle,
+ 	uid_t i_uid;
+ 	gid_t i_gid;
  
- 		if ((pos > sbi->s_bitmap_maxbytes ||
--		    (pos == sbi->s_bitmap_maxbytes && length > 0)))
--			return -EFBIG;
-+		     (pos == sbi->s_bitmap_maxbytes && length > 0))) {
-+			ret = -EFBIG;
-+			goto errout;
-+		}
- 
- 		if (pos + length > sbi->s_bitmap_maxbytes) {
- 			nr_segs = iov_shorten((struct iovec *)iov, nr_segs,
-@@ -123,19 +131,20 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
- 		}
- 	}
- 
--	if (o_direct) {
--		struct mutex *aio_mutex = NULL;
--
--		/* Unaligned direct AIO must be serialized; see comment above */
--		if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) &&
--		    !is_sync_kiocb(iocb) &&
--		    ext4_unaligned_aio(inode, iov, nr_segs, pos)) {
--			aio_mutex = ext4_aio_mutex(inode);
--			mutex_lock(aio_mutex);
--			ext4_unwritten_wait(inode);
--		}
-+	/* Unaligned direct AIO must be serialized; see comment above */
-+	if (o_direct && ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) &&
-+	    !is_sync_kiocb(iocb) &&
-+	    ext4_unaligned_aio(inode, iov, nr_segs, pos)) {
-+		aio_mutex = ext4_aio_mutex(inode);
-+		mutex_lock(aio_mutex);
-+		ext4_unwritten_wait(inode);
-+	}
- 
-+	if (!i_mutex_grabbed)
- 		mutex_lock(&inode->i_mutex);
-+	i_mutex_grabbed = 1;
+-	/* For fields not not tracking in the in-memory inode,
++	spin_lock(&ei->i_raw_lock);
 +
-+	if (o_direct) {
- 		if (aio_mutex)
- 			mutex_unlock(aio_mutex);
- 		blk_start_plug(&plug);
-@@ -170,11 +179,11 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
- 			if (err == len && (map.m_flags & EXT4_MAP_MAPPED))
- 				overwrite = 1;
- 		}
--	} else
--		mutex_lock(&inode->i_mutex);
-+	}
++	/* For fields not tracked in the in-memory inode,
+ 	 * initialise them to zero for new inodes. */
+ 	if (ext4_test_inode_state(inode, EXT4_STATE_NEW))
+ 		memset(raw_inode, 0, EXT4_SB(inode->i_sb)->s_inode_size);
+@@ -4419,6 +4421,7 @@ static int ext4_do_update_inode(handle_t *handle,
  
- 	ret = __generic_file_aio_write(iocb, iov, nr_segs, &iocb->ki_pos);
- 	mutex_unlock(&inode->i_mutex);
-+	i_mutex_grabbed = 0;
+ 	ext4_update_inode_fsync_trans(handle, inode, need_datasync);
+ out_brelse:
++	spin_unlock(&ei->i_raw_lock);
+ 	brelse(bh);
+ 	ext4_std_error(inode->i_sb, err);
+ 	return err;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index c4895c1..1f8cb18 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -879,6 +879,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
+ 		return NULL;
  
- 	if (ret > 0) {
- 		ssize_t err;
-@@ -186,6 +195,9 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
- 	if (o_direct)
- 		blk_finish_plug(&plug);
- 
-+errout:
-+	if (i_mutex_grabbed)
-+		mutex_unlock(&inode->i_mutex);
- 	return ret;
- }
- 
+ 	ei->vfs_inode.i_version = 1;
++	spin_lock_init(&ei->i_raw_lock);
+ 	INIT_LIST_HEAD(&ei->i_prealloc_list);
+ 	spin_lock_init(&ei->i_prealloc_lock);
+ 	ext4_es_init_tree(&ei->i_es_tree);
 -- 
 1.9.0
 
