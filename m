@@ -1,36 +1,78 @@
-From: Azat Khuzhin <a3at.mail@gmail.com>
-Subject: [RFC PATCH 2/2] xfstests-bld: fstab: drop usbfs (we don't need them for fs tests)
-Date: Sat, 12 Apr 2014 14:08:53 +0400
-Message-ID: <1397297333-12620-1-git-send-email-a3at.mail@gmail.com>
-Cc: Azat Khuzhin <a3at.mail@gmail.com>
-To: linux-ext4@vger.kernel.org, tytso@mit.edu
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH -v2] ext4: move ext4_update_i_disksize() into mpage_map_and_submit_extent()
+Date: Sat, 12 Apr 2014 09:45:27 -0400
+Message-ID: <1397310327-18147-1-git-send-email-tytso@mit.edu>
+References: <1397226957-9581-1-git-send-email-tytso@mit.edu>
+Cc: pfonseca@mpi-sws.org, Theodore Ts'o <tytso@mit.edu>,
+	stable@vger.kernel.org
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f175.google.com ([209.85.217.175]:55241 "EHLO
-	mail-lb0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754024AbaDLKI6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Apr 2014 06:08:58 -0400
-Received: by mail-lb0-f175.google.com with SMTP id w7so4226679lbi.6
-        for <linux-ext4@vger.kernel.org>; Sat, 12 Apr 2014 03:08:56 -0700 (PDT)
+Received: from imap.thunk.org ([74.207.234.97]:53157 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751176AbaDLNpd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 12 Apr 2014 09:45:33 -0400
+In-Reply-To: <1397226957-9581-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Signed-off-by: Azat Khuzhin <a3at.mail@gmail.com>
+The function ext4_update_i_disksize() is used in only one place, in
+the function mpage_map_and_submit_extent().  Move there to simplify
+the code paths, and also move the call to ext4_mark_inode_dirty() into
+the i_data_sem's critical region, to be consistent with all of the
+other places where we update i_disksize.  That way, we also keep the
+raw_inode's i_disksize protected.
+
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: stable@vger.kernel.org
 ---
- kvm-xfstests/test-appliance/files/etc/fstab | 1 -
- 1 file changed, 1 deletion(-)
 
-diff --git a/kvm-xfstests/test-appliance/files/etc/fstab b/kvm-xfstests/test-appliance/files/etc/fstab
-index e4a169f..20859fc 100644
---- a/kvm-xfstests/test-appliance/files/etc/fstab
-+++ b/kvm-xfstests/test-appliance/files/etc/fstab
-@@ -4,7 +4,6 @@
- proc            /proc           proc    defaults        0       0
- tmpfs		/tmp		tmpfs	mode=1777	0	0
- debugfs		/sys/kernel/debug debugfs defaults	0	0
--usbfs		/proc/bus/usb	  usbfs defaults	0	0
- /dev/rootfs	/	ext4    noatime 0 1
- /dev/vdb	/vdb	ext4	defaults,noauto	0	0
- /dev/vdc	/vdc ext4	defaults,noauto,usrquota,grpquota	0	0
--- 
-1.9.0
+Oops, the first version was missing the commit description
 
+ fs/ext4/ext4.h  | 17 -----------------
+ fs/ext4/inode.c | 16 +++++++++++++---
+ 2 files changed, 13 insertions(+), 20 deletions(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index f1c65dc..66946aa 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2466,23 +2466,6 @@ static inline void ext4_update_i_disksize(struct inode *inode, loff_t newsize)
+ 	up_write(&EXT4_I(inode)->i_data_sem);
+ }
+ 
+-/*
+- * Update i_disksize after writeback has been started. Races with truncate
+- * are avoided by checking i_size under i_data_sem.
+- */
+-static inline void ext4_wb_update_i_disksize(struct inode *inode, loff_t newsize)
+-{
+-	loff_t i_size;
+-
+-	down_write(&EXT4_I(inode)->i_data_sem);
+-	i_size = i_size_read(inode);
+-	if (newsize > i_size)
+-		newsize = i_size;
+-	if (newsize > EXT4_I(inode)->i_disksize)
+-		EXT4_I(inode)->i_disksize = newsize;
+-	up_write(&EXT4_I(inode)->i_data_sem);
+-}
+-
+ struct ext4_group_info {
+ 	unsigned long   bb_state;
+ 	struct rb_root  bb_free_root;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 7b93df9..f023f0c 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2247,13 +2247,23 @@ static int mpage_map_and_submit_extent(handle_t *handle,
+ 			return err;
+ 	} while (map->m_len);
+ 
+-	/* Update on-disk size after IO is submitted */
++	/*
++	 * Update on-disk size after IO is submitted.  Races with
++	 * truncate are avoided by checking i_size under i_data_sem.
++	 */
+ 	disksize = ((loff_t)mpd->first_page) << PAGE_CACHE_SHIFT;
+ 	if (disksize > EXT4_I(inode)->i_disksize) {
+ 		int err2;
