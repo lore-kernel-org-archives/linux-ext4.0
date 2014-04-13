@@ -1,26 +1,69 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/3] ext4: Fix error handling in ext4_ext_shift_extents
-Date: Sun, 13 Apr 2014 15:10:09 -0400
-Message-ID: <20140413191008.GB8122@thunk.org>
-References: <1397403361-20459-1-git-send-email-dmonakhov@openvz.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH] ext4: add fallocate mode blocking for debugging purposes
+Date: Sun, 13 Apr 2014 16:21:58 -0400
+Message-ID: <1397420518-29218-1-git-send-email-tytso@mit.edu>
+Cc: Namjae Jeon <linkinjeon@gmail.com>, Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:53641 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:53657 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755217AbaDMTKL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 13 Apr 2014 15:10:11 -0400
-Content-Disposition: inline
-In-Reply-To: <1397403361-20459-1-git-send-email-dmonakhov@openvz.org>
+	id S1754874AbaDMUWJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 13 Apr 2014 16:22:09 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Apr 13, 2014 at 07:35:59PM +0400, Dmitry Monakhov wrote:
-> 
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+If a particular fallocate mode is causing test failures, give the
+tester the ability to block a particular fallocate mode so that the
+use of a particular fallocate mode will be reported as not supported.
 
-Thanks, applied (and will be pushed as part of bug fixes for 3.15).
+For example, if the COLLAPSE_RANGE fallocate mode is causing test
+failures, this allows us to suppress it so we can more easily test the
+rest of the file system code.
 
-		     	     	    - Ted
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/extents.c | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 64b4003..1bb3e4b 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -29,6 +29,7 @@
+  *   - smart tree reduction
+  */
+ 
++#include <linux/module.h>
+ #include <linux/fs.h>
+ #include <linux/time.h>
+ #include <linux/jbd2.h>
+@@ -4862,6 +4863,12 @@ out_mutex:
+ 	return ret;
+ }
+ 
++int ext4_fallocate_mode_block __read_mostly;
++
++module_param_named(fallocate_mode_block, ext4_fallocate_mode_block, int, 0644);
++MODULE_PARM_DESC(fallocate_mode_block,
++		 "Fallocate modes which are blocked for debugging purposes");
++
+ /*
+  * preallocate space for a file. This implements ext4's fallocate file
+  * operation, which gets called from sys_fallocate system call.
+@@ -4881,6 +4888,13 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+ 	struct timespec tv;
+ 	unsigned int blkbits = inode->i_blkbits;
+ 
++	/*
++	 * for debugging purposes, allow certain fallocate operations
++	 * to be disabled
++	 */
++	if (unlikely(mode & ext4_fallocate_mode_block))
++		return -EOPNOTSUPP;
++
+ 	/* Return error if mode is not supported */
+ 	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE |
+ 		     FALLOC_FL_COLLAPSE_RANGE | FALLOC_FL_ZERO_RANGE))
+-- 
+1.9.0
+
