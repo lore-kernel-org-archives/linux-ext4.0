@@ -1,48 +1,54 @@
-From: Eric Sandeen <sandeen@sandeen.net>
-Subject: Re: [PATCH 2/3] generic/022: update expected output after the test
- was renamed
-Date: Sat, 12 Apr 2014 23:07:14 -0500
-Message-ID: <534A0D72.10304@sandeen.net>
-References: <1397343317-14669-1-git-send-email-tytso@mit.edu> <1397343317-14669-3-git-send-email-tytso@mit.edu>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH] ext4: use i_size_read in ext4_unaligned_aio()
+Date: Sun, 13 Apr 2014 16:10:06 +0800
+Message-ID: <20140413081005.GA3041@gmail.com>
+References: <1397321174-7605-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Lukas Czerner <lczerner@redhat.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>, xfs@oss.sgi.com
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	stable@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sandeen.net ([63.231.237.45]:35373 "EHLO sandeen.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750851AbaDMEHO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 13 Apr 2014 00:07:14 -0400
-In-Reply-To: <1397343317-14669-3-git-send-email-tytso@mit.edu>
+Received: from mail-pb0-f53.google.com ([209.85.160.53]:55302 "EHLO
+	mail-pb0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752451AbaDMIDy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 13 Apr 2014 04:03:54 -0400
+Content-Disposition: inline
+In-Reply-To: <1397321174-7605-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 4/12/14, 5:55 PM, Theodore Ts'o wrote:
-> After generic/022 was renamed by commit 21723cdb, the wrong test
-> number was put into generic/022.out.  Fix this.
+On Sat, Apr 12, 2014 at 12:46:14PM -0400, Theodore Ts'o wrote:
+> We haven't taken i_mutex yet, so we need to use i_size_read().
 > 
 > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Lukas Czerner <lczerner@redhat.com>
+> Cc: stable@vger.kernel.org
 
-Lukas sent this a couple days ago as well.
+Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
 
-In any case, again, Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+                                                - Zheng
 
 > ---
->  tests/generic/022.out | 2 +-
+>  fs/ext4/file.c | 2 +-
 >  1 file changed, 1 insertion(+), 1 deletion(-)
 > 
-> diff --git a/tests/generic/022.out b/tests/generic/022.out
-> index 96c2d33..fbffa59 100644
-> --- a/tests/generic/022.out
-> +++ b/tests/generic/022.out
-> @@ -1,4 +1,4 @@
-> -QA output created by 009
-> +QA output created by 022
->  	1. into a hole
->  f4f35d60b3cc18aaa6d8d92f0cd3708a
->  	2. into allocated space
+> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> index 6db7f7d..bc76559 100644
+> --- a/fs/ext4/file.c
+> +++ b/fs/ext4/file.c
+> @@ -82,7 +82,7 @@ ext4_unaligned_aio(struct inode *inode, const struct iovec *iov,
+>  	size_t count = iov_length(iov, nr_segs);
+>  	loff_t final_size = pos + count;
+>  
+> -	if (pos >= inode->i_size)
+> +	if (pos >= i_size_read(inode))
+>  		return 0;
+>  
+>  	if ((pos & blockmask) || (final_size & blockmask))
+> -- 
+> 1.9.0
 > 
-
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
