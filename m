@@ -1,70 +1,48 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 2/3] ext4: always check ext4_ext_find_extent result
-Date: Sun, 13 Apr 2014 19:36:00 +0400
-Message-ID: <1397403361-20459-2-git-send-email-dmonakhov@openvz.org>
-References: <1397403361-20459-1-git-send-email-dmonakhov@openvz.org>
-Cc: tytso@mit.edu, Dmitry Monakhov <dmonakhov@openvz.org>
+From: Sebastian Biedermann
+	<biedermann@seceng.informatik.tu-darmstadt.de>
+Subject: Writing one file, observing two writes
+Date: Sun, 13 Apr 2014 11:49:07 -0400
+Message-ID: <534AB1F3.2060700@seceng.informatik.tu-darmstadt.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-15
+Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:18948 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754587AbaDMPgU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 13 Apr 2014 11:36:20 -0400
-In-Reply-To: <1397403361-20459-1-git-send-email-dmonakhov@openvz.org>
+Received: from lnx141.hrz.tu-darmstadt.de ([130.83.156.236]:41562 "EHLO
+	lnx141.hrz.tu-darmstadt.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751686AbaDMPzb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 13 Apr 2014 11:55:31 -0400
+Received: from lnx500.hrz.tu-darmstadt.de (lnx500.hrz.tu-darmstadt.de [130.83.156.225])
+	by lnx141.hrz.tu-darmstadt.de (8.14.4/8.13.8) with ESMTP id s3DFoPYP006988
+	for <linux-ext4@vger.kernel.org>; Sun, 13 Apr 2014 17:50:25 +0200
+	(envelope-from biedermann@seceng.informatik.tu-darmstadt.de)
+Received: from mail.cdc.informatik.tu-darmstadt.de (cdc-info.cdc.informatik.tu-darmstadt.de [130.83.167.6])
+	by lnx500.hrz.tu-darmstadt.de (8.14.4/8.14.4/HRZ/PMX) with ESMTP id s3DFnAqW019775
+	for <linux-ext4@vger.kernel.org>; Sun, 13 Apr 2014 17:49:10 +0200
+	(envelope-from biedermann@seceng.informatik.tu-darmstadt.de)
+Received: from [172.28.143.127] (nat-130-132-173-205.central.yale.edu [130.132.173.205])
+	(using TLSv1 with cipher ECDHE-RSA-AES128-SHA (128/128 bits))
+	(Client did not present a certificate)
+	by mail.cdc.informatik.tu-darmstadt.de (Postfix) with ESMTPSA id 6D0B023A56
+	for <linux-ext4@vger.kernel.org>; Sun, 13 Apr 2014 17:49:10 +0200 (CEST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Where are some places where logic guaranties us that extent we are
-searching exits, but this may not be true due to on-disk data
-corruption. If such corruption happens we must prevent possible
-null pointer dereferences.
+Dear ext4 developers,
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ext4/extents.c |   16 ++++++++++++++++
- 1 files changed, 16 insertions(+), 0 deletions(-)
+I'm working on a research project about side channel attacks to hard drives.
+My testbed runs Ubuntu Linux 12.04 with ext4 file system.
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 38be063..f20effb 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3313,6 +3313,10 @@ static int ext4_split_extent(handle_t *handle,
- 		return PTR_ERR(path);
- 	depth = ext_depth(inode);
- 	ex = path[depth].p_ext;
-+	if (!ex) {
-+		EXT4_ERROR_INODE(inode, "unexpected hole at %lu", map->m_lblk);
-+		return -EIO;
-+	}
- 	uninitialized = ext4_ext_is_uninitialized(ex);
- 	split_flag1 = 0;
- 
-@@ -3694,6 +3698,12 @@ static int ext4_convert_initialized_extents(handle_t *handle,
- 		}
- 		depth = ext_depth(inode);
- 		ex = path[depth].p_ext;
-+		if (!ex) {
-+			EXT4_ERROR_INODE(inode, "unexpected hole at %lu",
-+					 map->m_lblk);
-+			err = -EIO;
-+			goto out;
-+		}
- 	}
- 
- 	err = ext4_ext_get_access(handle, inode, path + depth);
-@@ -5340,6 +5350,12 @@ ext4_ext_shift_extents(struct inode *inode, handle_t *handle,
- 			return PTR_ERR(path);
- 		depth = path->p_depth;
- 		extent = path[depth].p_ext;
-+		if (!extent) {
-+			EXT4_ERROR_INODE(inode, "unexpected hole at %lu",
-+					 start);
-+			return -EIO;
-+		}
-+
- 		current_block = le32_to_cpu(extent->ee_block);
- 		if (start > current_block) {
- 			/* Hole, move to the next extent */
--- 
-1.7.1
+When writing a random file with dd command to my hard drive, I could see
+the process jbd2/sda1
+writing two times while it seems to wait a fixed period of time between
+these two writes.
 
+I actually think that the process is first writing the data to the
+sectors and then updating the ext4 data base in a second step.
+Is that true or am I wrong? Why is it waiting some seconds between these
+two steps and on what is that delay depending?
+
+Thank you!
+Sebastian
