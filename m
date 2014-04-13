@@ -1,34 +1,34 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: COLLAPSE_RANGE only works on extent-based files
-Date: Sat, 12 Apr 2014 22:54:05 -0400
-Message-ID: <1397357645-31511-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Namjae Jeon <namjae.jeon@samsung.com>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH] ext4: silence sparse check warning for function
+ ext4_trim_extent.
+Date: Sat, 12 Apr 2014 23:06:33 -0400
+Message-ID: <20140413030633.GC14599@thunk.org>
+References: <CAGW2f1GZ3ns=Fr9Dkp3ixh7uQhiFg0xJmPxY60TmGEUk9E8SBg@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: "linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>
+To: jon ernst <jonernst07@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:53387 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:53392 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751105AbaDMCyO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 12 Apr 2014 22:54:14 -0400
+	id S1751158AbaDMDGf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 12 Apr 2014 23:06:35 -0400
+Content-Disposition: inline
+In-Reply-To: <CAGW2f1GZ3ns=Fr9Dkp3ixh7uQhiFg0xJmPxY60TmGEUk9E8SBg@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Unfortunately, we weren't checking to make sure of this the inode was
-extent-based before attempt operate on it.  Hilarity ensues.
+On Sat, Apr 12, 2014 at 10:25:45PM -0400, jon ernst wrote:
+> By doing "make  M=fs/ext4 C=2"
+> on commit ad6599ab3ac98a4474544086e048ce86ec15a4d1
+> 
+> sparse reports this warning:
+>   CHECK   fs/ext4/mballoc.c
+> fs/ext4/mballoc.c:5019:9: warning: context imbalance in
+> 'ext4_trim_extent' - unexpected unlock
+> 
+> Signed-off-by: "Jon Ernst" <jonernst07@gmail.com>
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Namjae Jeon <namjae.jeon@samsung.com>
----
- fs/ext4/extents.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+Thanks, applied.
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index f24ef86..96e0a4b 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4878,9 +4878,6 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
- 	if (mode & FALLOC_FL_PUNCH_HOLE)
- 		return ext4_punch_hole(inode, offset, len);
- 
--	if (mode & FALLOC_FL_COLLAPSE_RANGE)
--		return ext4_collapse_range(inode, offset, len);
+					- Ted
