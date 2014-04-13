@@ -1,60 +1,48 @@
 From: Eric Sandeen <sandeen@sandeen.net>
-Subject: Re: [PATCH 1/3] generic/004: fix filtering of expected error message
-Date: Sat, 12 Apr 2014 23:06:04 -0500
-Message-ID: <534A0D2C.409@sandeen.net>
-References: <1397343317-14669-1-git-send-email-tytso@mit.edu> <1397343317-14669-2-git-send-email-tytso@mit.edu>
+Subject: Re: [PATCH 2/3] generic/022: update expected output after the test
+ was renamed
+Date: Sat, 12 Apr 2014 23:07:14 -0500
+Message-ID: <534A0D72.10304@sandeen.net>
+References: <1397343317-14669-1-git-send-email-tytso@mit.edu> <1397343317-14669-3-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Christoph Hellwig <hch@infradead.org>,
+Cc: Lukas Czerner <lczerner@redhat.com>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: Theodore Ts'o <tytso@mit.edu>, xfs@oss.sgi.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sandeen.net ([63.231.237.45]:35357 "EHLO sandeen.net"
+Received: from sandeen.net ([63.231.237.45]:35373 "EHLO sandeen.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750851AbaDMEGH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 13 Apr 2014 00:06:07 -0400
-In-Reply-To: <1397343317-14669-2-git-send-email-tytso@mit.edu>
+	id S1750851AbaDMEHO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 13 Apr 2014 00:07:14 -0400
+In-Reply-To: <1397343317-14669-3-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 On 4/12/14, 5:55 PM, Theodore Ts'o wrote:
-> The failure message goes to stderr, so we need to redirect stderr to
-> stdout before running sed.
-
-Heh, whoops.
-
-Reviewed-by: Eric Sandeen <sandeen@redhat.com>
-
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Christoph Hellwig <hch@infradead.org>
-> ---
->  tests/generic/004     | 2 +-
->  tests/generic/004.out | 2 +-
->  2 files changed, 2 insertions(+), 2 deletions(-)
+> After generic/022 was renamed by commit 21723cdb, the wrong test
+> number was put into generic/022.out.  Fix this.
 > 
-> diff --git a/tests/generic/004 b/tests/generic/004
-> index 406c29e..23ca349 100755
-> --- a/tests/generic/004
-> +++ b/tests/generic/004
-> @@ -58,7 +58,7 @@ $XFS_IO_PROG -T \
->  rm ${testfile}
->  
->  # test creating a r/o tmpfile.  Should fail
-> -$XFS_IO_PROG -Tr ${TEST_DIR} -c "close" | _filter_test_dir
-> +$XFS_IO_PROG -Tr ${TEST_DIR} -c "close" 2>&1 | _filter_test_dir
->  
->  # success, all done
->  status=0
-> diff --git a/tests/generic/004.out b/tests/generic/004.out
-> index b85c11c..527b2c2 100644
-> --- a/tests/generic/004.out
-> +++ b/tests/generic/004.out
-> @@ -3,4 +3,4 @@ wrote 4096/4096 bytes at offset 0
->  XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
->  read 4096/4096 bytes at offset 0
->  XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
-> -/mnt/test: Invalid argument
-> +TEST_DIR: Invalid argument
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: Lukas Czerner <lczerner@redhat.com>
+
+Lukas sent this a couple days ago as well.
+
+In any case, again, Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+
+> ---
+>  tests/generic/022.out | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/tests/generic/022.out b/tests/generic/022.out
+> index 96c2d33..fbffa59 100644
+> --- a/tests/generic/022.out
+> +++ b/tests/generic/022.out
+> @@ -1,4 +1,4 @@
+> -QA output created by 009
+> +QA output created by 022
+>  	1. into a hole
+>  f4f35d60b3cc18aaa6d8d92f0cd3708a
+>  	2. into allocated space
 > 
 
