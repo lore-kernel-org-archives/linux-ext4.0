@@ -1,140 +1,70 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH -v2] ext4: add a new spinlock i_raw_lock to protect the ext4's raw inode
-Date: Sat, 12 Apr 2014 19:20:14 -0400
-Message-ID: <1397344814-12334-1-git-send-email-tytso@mit.edu>
-References: <1397322874-7005-1-git-send-email-tytso@mit.edu>
-Cc: pfonseca@mpi-sws.org, Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: jon ernst <jonernst07@gmail.com>
+Subject: [PATCH] ext4: silence sparse check warning for function ext4_trim_extent.
+Date: Sat, 12 Apr 2014 22:25:45 -0400
+Message-ID: <CAGW2f1GZ3ns=Fr9Dkp3ixh7uQhiFg0xJmPxY60TmGEUk9E8SBg@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+To: "linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>,
+	"Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:53335 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750833AbaDLXUT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 12 Apr 2014 19:20:19 -0400
-In-Reply-To: <1397322874-7005-1-git-send-email-tytso@mit.edu>
+Received: from mail-qa0-f46.google.com ([209.85.216.46]:55485 "EHLO
+	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750876AbaDMCcE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Apr 2014 22:32:04 -0400
+Received: by mail-qa0-f46.google.com with SMTP id i13so6724286qae.19
+        for <linux-ext4@vger.kernel.org>; Sat, 12 Apr 2014 19:32:02 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-To avoid potential data races, use a spinlock which protects the raw
-(on-disk) inode.
+By doing "make  M=fs/ext4 C=2"
+on commit ad6599ab3ac98a4474544086e048ce86ec15a4d1
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+sparse reports this warning:
+  CHECK   fs/ext4/mballoc.c
+fs/ext4/mballoc.c:5019:9: warning: context imbalance in
+'ext4_trim_extent' - unexpected unlock
+
+
+>From Documentation/sparse.txt:
+
+Using sparse for lock checking
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The following macros are undefined for gcc and defined during a sparse
+run to use the "context" tracking feature of sparse, applied to
+locking.  These annotations tell sparse when a lock is held, with
+regard to the annotated function's entry and exit.
+
+__must_hold - The specified lock is held on function entry and exit.
+
+__acquires - The specified lock is held on function exit, but not entry.
+
+__releases - The specified lock is held on function entry, but not exit.
+
+If the function enters and exits without the lock held, acquiring and
+releasing the lock inside the function in a balanced way, no
+annotation is needed.  The tree annotations above are for cases where
+sparse would otherwise report a context imbalance.
+
+
+
+Signed-off-by: "Jon Ernst" <jonernst07@gmail.com>
 ---
- fs/ext4/ext4.h  |  2 ++
- fs/ext4/inode.c | 41 ++++++++++++++++++++++-------------------
- fs/ext4/super.c |  1 +
- 3 files changed, 25 insertions(+), 19 deletions(-)
+ fs/ext4/mballoc.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 86c2cda..1d08a1b 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -875,6 +875,8 @@ struct ext4_inode_info {
- 	struct inode vfs_inode;
- 	struct jbd2_inode *jinode;
- 
-+	spinlock_t i_raw_lock;	/* protects updates to the raw inode */
-+
- 	/*
- 	 * File creation time. Its function is same as that of
- 	 * struct timespec i_{a,c,m}time in the generic inode.
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 2eb5fad..7ae10f0 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4306,12 +4306,15 @@ static int ext4_do_update_inode(handle_t *handle,
- 	struct ext4_inode *raw_inode = ext4_raw_inode(iloc);
- 	struct ext4_inode_info *ei = EXT4_I(inode);
- 	struct buffer_head *bh = iloc->bh;
-+	struct super_block *sb = inode->i_sb;
- 	int err = 0, rc, block;
--	int need_datasync = 0;
-+	int need_datasync = 0, set_large_file = 0;
- 	uid_t i_uid;
- 	gid_t i_gid;
- 
--	/* For fields not not tracking in the in-memory inode,
-+	spin_lock(&ei->i_raw_lock);
-+
-+	/* For fields not tracked in the in-memory inode,
- 	 * initialise them to zero for new inodes. */
- 	if (ext4_test_inode_state(inode, EXT4_STATE_NEW))
- 		memset(raw_inode, 0, EXT4_SB(inode->i_sb)->s_inode_size);
-@@ -4349,8 +4352,10 @@ static int ext4_do_update_inode(handle_t *handle,
- 	EXT4_INODE_SET_XTIME(i_atime, inode, raw_inode);
- 	EXT4_EINODE_SET_XTIME(i_crtime, ei, raw_inode);
- 
--	if (ext4_inode_blocks_set(handle, raw_inode, ei))
-+	if (ext4_inode_blocks_set(handle, raw_inode, ei)) {
-+		spin_unlock(&ei->i_raw_lock);
- 		goto out_brelse;
-+	}
- 	raw_inode->i_dtime = cpu_to_le32(ei->i_dtime);
- 	raw_inode->i_flags = cpu_to_le32(ei->i_flags & 0xFFFFFFFF);
- 	if (likely(!test_opt2(inode->i_sb, HURD_COMPAT)))
-@@ -4362,24 +4367,11 @@ static int ext4_do_update_inode(handle_t *handle,
- 		need_datasync = 1;
- 	}
- 	if (ei->i_disksize > 0x7fffffffULL) {
--		struct super_block *sb = inode->i_sb;
- 		if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
- 				EXT4_FEATURE_RO_COMPAT_LARGE_FILE) ||
- 				EXT4_SB(sb)->s_es->s_rev_level ==
--				cpu_to_le32(EXT4_GOOD_OLD_REV)) {
--			/* If this is the first large file
--			 * created, add a flag to the superblock.
--			 */
--			err = ext4_journal_get_write_access(handle,
--					EXT4_SB(sb)->s_sbh);
--			if (err)
--				goto out_brelse;
--			ext4_update_dynamic_rev(sb);
--			EXT4_SET_RO_COMPAT_FEATURE(sb,
--					EXT4_FEATURE_RO_COMPAT_LARGE_FILE);
--			ext4_handle_sync(handle);
--			err = ext4_handle_dirty_super(handle, sb);
--		}
-+		    cpu_to_le32(EXT4_GOOD_OLD_REV))
-+			set_large_file = 1;
- 	}
- 	raw_inode->i_generation = cpu_to_le32(inode->i_generation);
- 	if (S_ISCHR(inode->i_mode) || S_ISBLK(inode->i_mode)) {
-@@ -4411,12 +4403,23 @@ static int ext4_do_update_inode(handle_t *handle,
- 
- 	ext4_inode_csum_set(inode, raw_inode, ei);
- 
-+	spin_unlock(&ei->i_raw_lock);
-+
- 	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
- 	rc = ext4_handle_dirty_metadata(handle, NULL, bh);
- 	if (!err)
- 		err = rc;
- 	ext4_clear_inode_state(inode, EXT4_STATE_NEW);
--
-+	if (set_large_file) {
-+		err = ext4_journal_get_write_access(handle, EXT4_SB(sb)->s_sbh);
-+		if (err)
-+			goto out_brelse;
-+		ext4_update_dynamic_rev(sb);
-+		EXT4_SET_RO_COMPAT_FEATURE(sb,
-+					   EXT4_FEATURE_RO_COMPAT_LARGE_FILE);
-+		ext4_handle_sync(handle);
-+		err = ext4_handle_dirty_super(handle, sb);
-+	}
- 	ext4_update_inode_fsync_trans(handle, inode, need_datasync);
- out_brelse:
- 	brelse(bh);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index c4895c1..1f8cb18 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -879,6 +879,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
- 		return NULL;
- 
- 	ei->vfs_inode.i_version = 1;
-+	spin_lock_init(&ei->i_raw_lock);
- 	INIT_LIST_HEAD(&ei->i_prealloc_list);
- 	spin_lock_init(&ei->i_prealloc_lock);
- 	ext4_es_init_tree(&ei->i_es_tree);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 73ccbb3..c8238a2 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -5016,6 +5016,8 @@ error_return:
+  */
+ static int ext4_trim_extent(struct super_block *sb, int start, int count,
+                 ext4_group_t group, struct ext4_buddy *e4b)
++__releases(bitlock)
++__acquires(bitlock)
+ {
+    struct ext4_free_extent ex;
+    int ret = 0;
 -- 
-1.9.0
-
+1.8.1.2
