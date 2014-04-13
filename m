@@ -1,70 +1,34 @@
-From: jon ernst <jonernst07@gmail.com>
-Subject: [PATCH] ext4: silence sparse check warning for function ext4_trim_extent.
-Date: Sat, 12 Apr 2014 22:25:45 -0400
-Message-ID: <CAGW2f1GZ3ns=Fr9Dkp3ixh7uQhiFg0xJmPxY60TmGEUk9E8SBg@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: "linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>,
-	"Theodore Ts'o" <tytso@mit.edu>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: COLLAPSE_RANGE only works on extent-based files
+Date: Sat, 12 Apr 2014 22:54:05 -0400
+Message-ID: <1397357645-31511-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Namjae Jeon <namjae.jeon@samsung.com>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qa0-f46.google.com ([209.85.216.46]:55485 "EHLO
-	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750876AbaDMCcE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Apr 2014 22:32:04 -0400
-Received: by mail-qa0-f46.google.com with SMTP id i13so6724286qae.19
-        for <linux-ext4@vger.kernel.org>; Sat, 12 Apr 2014 19:32:02 -0700 (PDT)
+Received: from imap.thunk.org ([74.207.234.97]:53387 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751105AbaDMCyO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 12 Apr 2014 22:54:14 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-By doing "make  M=fs/ext4 C=2"
-on commit ad6599ab3ac98a4474544086e048ce86ec15a4d1
+Unfortunately, we weren't checking to make sure of this the inode was
+extent-based before attempt operate on it.  Hilarity ensues.
 
-sparse reports this warning:
-  CHECK   fs/ext4/mballoc.c
-fs/ext4/mballoc.c:5019:9: warning: context imbalance in
-'ext4_trim_extent' - unexpected unlock
-
-
->From Documentation/sparse.txt:
-
-Using sparse for lock checking
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The following macros are undefined for gcc and defined during a sparse
-run to use the "context" tracking feature of sparse, applied to
-locking.  These annotations tell sparse when a lock is held, with
-regard to the annotated function's entry and exit.
-
-__must_hold - The specified lock is held on function entry and exit.
-
-__acquires - The specified lock is held on function exit, but not entry.
-
-__releases - The specified lock is held on function entry, but not exit.
-
-If the function enters and exits without the lock held, acquiring and
-releasing the lock inside the function in a balanced way, no
-annotation is needed.  The tree annotations above are for cases where
-sparse would otherwise report a context imbalance.
-
-
-
-Signed-off-by: "Jon Ernst" <jonernst07@gmail.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Namjae Jeon <namjae.jeon@samsung.com>
 ---
- fs/ext4/mballoc.c | 2 ++
- 1 file changed, 2 insertions(+)
+ fs/ext4/extents.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 73ccbb3..c8238a2 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -5016,6 +5016,8 @@ error_return:
-  */
- static int ext4_trim_extent(struct super_block *sb, int start, int count,
-                 ext4_group_t group, struct ext4_buddy *e4b)
-+__releases(bitlock)
-+__acquires(bitlock)
- {
-    struct ext4_free_extent ex;
-    int ret = 0;
--- 
-1.8.1.2
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index f24ef86..96e0a4b 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4878,9 +4878,6 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+ 	if (mode & FALLOC_FL_PUNCH_HOLE)
+ 		return ext4_punch_hole(inode, offset, len);
+ 
+-	if (mode & FALLOC_FL_COLLAPSE_RANGE)
+-		return ext4_collapse_range(inode, offset, len);
