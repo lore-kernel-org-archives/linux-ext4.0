@@ -1,67 +1,41 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 3/3] generic/237: fix filtering for expected failure
-	message
-Date: Sun, 13 Apr 2014 08:43:53 -0400
-Message-ID: <20140413124353.GD14599@thunk.org>
-References: <1397343317-14669-1-git-send-email-tytso@mit.edu>
-	<1397343317-14669-4-git-send-email-tytso@mit.edu>
-	<20140413081738.GA5331@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-In-Reply-To: <20140413081738.GA5331@infradead.org>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH 3/3] ext4: remove obsoleted check
+Date: Sun, 13 Apr 2014 19:36:01 +0400
+Message-ID: <1397403361-20459-3-git-send-email-dmonakhov@openvz.org>
+References: <1397403361-20459-1-git-send-email-dmonakhov@openvz.org>
+Cc: tytso@mit.edu, Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mailhub.sw.ru ([195.214.232.25]:21216 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754593AbaDMPgU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 13 Apr 2014 11:36:20 -0400
+In-Reply-To: <1397403361-20459-1-git-send-email-dmonakhov@openvz.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Apr 13, 2014 at 01:17:38AM -0700, Christoph Hellwig wrote:
-> On Sat, Apr 12, 2014 at 06:55:17PM -0400, Theodore Ts'o wrote:
-> > Newer kernels return EACCES instead of EPERM when modifying an acl
-> > fails.  Update the filtering to handle this.
-> > 
-> > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> 
-> I've not seen this yet.  What exact configuration do you use to get the
-> error?
+BH can not be NULL at this point, ext4_read_dirblock() always return
+non null value, and we already have done all necessery checks.
 
-I was using a 32-bit kernel, using a recent Linus upstream.  The bug
-was showing up for both ext4 and xfs, and xfstests-bld is using a very
-recent version of the acl package?
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ fs/ext4/namei.c |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
 
-If you're not seeing it, perhaps the most likely cause would be the
-fact that I was using an i386 kernel, and/or the version of the acl
-userspace package found in kvm-xfstests?
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 1cb84f7..a683f95 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2510,8 +2510,7 @@ static int empty_dir(struct inode *inode)
+ 		 ext4_rec_len_from_disk(de1->rec_len, sb->s_blocksize);
+ 	de = ext4_next_entry(de1, sb->s_blocksize);
+ 	while (offset < inode->i_size) {
+-		if (!bh ||
+-		    (void *) de >= (void *) (bh->b_data+sb->s_blocksize)) {
++		if ((void *) de >= (void *) (bh->b_data+sb->s_blocksize)) {
+ 			unsigned int lblock;
+ 			err = 0;
+ 			brelse(bh);
+-- 
+1.7.1
 
-If you want a repro, you could grab:
-
-	git://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git
-
-and then building the per the README.
-
-If you don't have a Debian testing system conviently to hand, you
-could pull down:
-
-https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/root_fs.img.i386
-
-... and then update the image to have the xfstests upstream version of
-/root/xfstests/tests/generic/237*.
-
-Cheers,
-
-						- Ted
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
