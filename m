@@ -1,63 +1,40 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 3/3] generic/237: fix filtering for expected failure
-	message
-Date: Mon, 14 Apr 2014 10:14:08 +1000
-Message-ID: <20140414001408.GC27694@dastard>
-References: <1397343317-14669-1-git-send-email-tytso@mit.edu>
-	<1397343317-14669-4-git-send-email-tytso@mit.edu>
+Subject: Re: [PATCH] generic: add fallocate() checks to generic/300
+Date: Mon, 14 Apr 2014 10:29:43 +1000
+Message-ID: <20140414002942.GD27694@dastard>
+References: <20140411214307.GC10174@wallace>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <xfs-bounces@oss.sgi.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: xfs@oss.sgi.com, linux-ext4@vger.kernel.org
+To: Eric Whitney <enwlinux@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:50025 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750770AbaDNA3q (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 13 Apr 2014 20:29:46 -0400
 Content-Disposition: inline
-In-Reply-To: <1397343317-14669-4-git-send-email-tytso@mit.edu>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20140411214307.GC10174@wallace>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Apr 12, 2014 at 06:55:17PM -0400, Theodore Ts'o wrote:
-> Newer kernels return EACCES instead of EPERM when modifying an acl
-> fails.  Update the filtering to handle this.
+On Fri, Apr 11, 2014 at 05:43:07PM -0400, Eric Whitney wrote:
+> Generic/300 fails when run on a test filesystem that does not support
+> fallocate(). It uses fio's falloc ioengine to generate part of its I/O
+> load and both allocates blocks and punches holes.  This causes EOPNOTSUPP
+> failures when the test is run on indirect block-mapped ext4 filesystems
+> or pre-3.14 ext4 filesystems created with bigalloc.
 > 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  tests/generic/237     | 2 +-
->  tests/generic/237.out | 2 +-
->  2 files changed, 2 insertions(+), 2 deletions(-)
+> Verify that the test filesystem supports fallocate() before proceeding
+> with the test, checking for both block allocation and hole punching
+> capabilities.  Also, delete any pre-existing test output.
 > 
-> diff --git a/tests/generic/237 b/tests/generic/237
-> index 6a61ec8..b068150 100755
-> --- a/tests/generic/237
-> +++ b/tests/generic/237
-> @@ -68,7 +68,7 @@ touch file1
->  chown $acl1.$acl1 file1
->  
->  echo "Expect to FAIL"
-> -$runas -u $acl2 -g $acl2 -- `which setfacl` -m u::rwx file1 2>&1 | sed 's/^setfacl: \/.*file1: Operation not permitted$/setfacl: file1: Operation not permitted/'
-> +$runas -u $acl2 -g $acl2 -- `which setfacl` -m u::rwx file1 2>&1 | sed -e 's/Permission denied/Operation not permitted/' -e 's/file1: //' -e 's,[/a-zA-Z]*setfacl: ,setfacl: ,'
+> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
 
-This is getting unweildy. Can you factor this into a local
-_filter_setfacl_error function of some kind? It would also help if
-you put a comment iterating all the different output formats it's
-now trying to filter out, too.
+Makes sense. Same for the second patch, too.
 
-Cheers,
+Reviewed-by: Dave Chinner <dchinner@redhat.com>
 
-Dave.
 -- 
 Dave Chinner
 david@fromorbit.com
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
