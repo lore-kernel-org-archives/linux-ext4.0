@@ -1,37 +1,158 @@
-From: Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>
-Subject: Re: [PATCH v2] fs/ext4: increase parallelism in updating ext4 orphan
- list
-Date: Tue, 15 Apr 2014 10:27:46 -0600
-Message-ID: <534D5E02.6030500@hp.com>
-References: <1380728283-61038-1-git-send-email-tmac@hp.com> <1396456148-20455-1-git-send-email-tmac@hp.com> <20140402174109.GD8657@quack.suse.cz> <534C135A.9010803@hp.com> <20140414174024.GC13860@quack.suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH -v2] ext4: add a new spinlock i_raw_lock to protect the
+ ext4's raw inode
+Date: Tue, 15 Apr 2014 18:36:54 +0200
+Message-ID: <20140415163654.GB10144@quack.suse.cz>
+References: <1397322874-7005-1-git-send-email-tytso@mit.edu>
+ <1397344814-12334-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: T Makphaibulchoke <tmac@hp.com>, tytso@mit.edu,
-	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, aswin@hp.com
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20140414174024.GC13860@quack.suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	pfonseca@mpi-sws.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:59144 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750829AbaDOQg6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Apr 2014 12:36:58 -0400
+Content-Disposition: inline
+In-Reply-To: <1397344814-12334-1-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 04/14/2014 11:40 AM, Jan Kara wrote:
->   Thanks for trying that out! Can you please send me a patch you have been
-> testing? Because it doesn't quite make sense to me why using i_mutex should
-> be worse than using hashed locks...
->
-
-Thanks again for the comments.
-
-Since i_mutex is also used for serialization in other operations on an inode, in the case that the i_mutex is not held  using it for serialization could cause contention with other operations on the inode.  As the number shows substantial instances of orphan add or delete calls without holding the i_mutex, I presume the performance degradation is due to the contention.
-
-As for the patch, could you please let me know if you need the patch using i_mutex or the patch I'm planning to submit.  If it's the latter, I'm thinking of go ahead and resubmit it.
-
-Thanks,
-Mak.
-
->   OK, at least that makes sense.
+On Sat 12-04-14 19:20:14, Ted Tso wrote:
+> To avoid potential data races, use a spinlock which protects the raw
+> (on-disk) inode.
 > 
-> 								Honza
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+  The patch looks good. You can add:
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+								Honza
+> ---
+>  fs/ext4/ext4.h  |  2 ++
+>  fs/ext4/inode.c | 41 ++++++++++++++++++++++-------------------
+>  fs/ext4/super.c |  1 +
+>  3 files changed, 25 insertions(+), 19 deletions(-)
 > 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 86c2cda..1d08a1b 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -875,6 +875,8 @@ struct ext4_inode_info {
+>  	struct inode vfs_inode;
+>  	struct jbd2_inode *jinode;
+>  
+> +	spinlock_t i_raw_lock;	/* protects updates to the raw inode */
+> +
+>  	/*
+>  	 * File creation time. Its function is same as that of
+>  	 * struct timespec i_{a,c,m}time in the generic inode.
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 2eb5fad..7ae10f0 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -4306,12 +4306,15 @@ static int ext4_do_update_inode(handle_t *handle,
+>  	struct ext4_inode *raw_inode = ext4_raw_inode(iloc);
+>  	struct ext4_inode_info *ei = EXT4_I(inode);
+>  	struct buffer_head *bh = iloc->bh;
+> +	struct super_block *sb = inode->i_sb;
+>  	int err = 0, rc, block;
+> -	int need_datasync = 0;
+> +	int need_datasync = 0, set_large_file = 0;
+>  	uid_t i_uid;
+>  	gid_t i_gid;
+>  
+> -	/* For fields not not tracking in the in-memory inode,
+> +	spin_lock(&ei->i_raw_lock);
+> +
+> +	/* For fields not tracked in the in-memory inode,
+>  	 * initialise them to zero for new inodes. */
+>  	if (ext4_test_inode_state(inode, EXT4_STATE_NEW))
+>  		memset(raw_inode, 0, EXT4_SB(inode->i_sb)->s_inode_size);
+> @@ -4349,8 +4352,10 @@ static int ext4_do_update_inode(handle_t *handle,
+>  	EXT4_INODE_SET_XTIME(i_atime, inode, raw_inode);
+>  	EXT4_EINODE_SET_XTIME(i_crtime, ei, raw_inode);
+>  
+> -	if (ext4_inode_blocks_set(handle, raw_inode, ei))
+> +	if (ext4_inode_blocks_set(handle, raw_inode, ei)) {
+> +		spin_unlock(&ei->i_raw_lock);
+>  		goto out_brelse;
+> +	}
+>  	raw_inode->i_dtime = cpu_to_le32(ei->i_dtime);
+>  	raw_inode->i_flags = cpu_to_le32(ei->i_flags & 0xFFFFFFFF);
+>  	if (likely(!test_opt2(inode->i_sb, HURD_COMPAT)))
+> @@ -4362,24 +4367,11 @@ static int ext4_do_update_inode(handle_t *handle,
+>  		need_datasync = 1;
+>  	}
+>  	if (ei->i_disksize > 0x7fffffffULL) {
+> -		struct super_block *sb = inode->i_sb;
+>  		if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
+>  				EXT4_FEATURE_RO_COMPAT_LARGE_FILE) ||
+>  				EXT4_SB(sb)->s_es->s_rev_level ==
+> -				cpu_to_le32(EXT4_GOOD_OLD_REV)) {
+> -			/* If this is the first large file
+> -			 * created, add a flag to the superblock.
+> -			 */
+> -			err = ext4_journal_get_write_access(handle,
+> -					EXT4_SB(sb)->s_sbh);
+> -			if (err)
+> -				goto out_brelse;
+> -			ext4_update_dynamic_rev(sb);
+> -			EXT4_SET_RO_COMPAT_FEATURE(sb,
+> -					EXT4_FEATURE_RO_COMPAT_LARGE_FILE);
+> -			ext4_handle_sync(handle);
+> -			err = ext4_handle_dirty_super(handle, sb);
+> -		}
+> +		    cpu_to_le32(EXT4_GOOD_OLD_REV))
+> +			set_large_file = 1;
+>  	}
+>  	raw_inode->i_generation = cpu_to_le32(inode->i_generation);
+>  	if (S_ISCHR(inode->i_mode) || S_ISBLK(inode->i_mode)) {
+> @@ -4411,12 +4403,23 @@ static int ext4_do_update_inode(handle_t *handle,
+>  
+>  	ext4_inode_csum_set(inode, raw_inode, ei);
+>  
+> +	spin_unlock(&ei->i_raw_lock);
+> +
+>  	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
+>  	rc = ext4_handle_dirty_metadata(handle, NULL, bh);
+>  	if (!err)
+>  		err = rc;
+>  	ext4_clear_inode_state(inode, EXT4_STATE_NEW);
+> -
+> +	if (set_large_file) {
+> +		err = ext4_journal_get_write_access(handle, EXT4_SB(sb)->s_sbh);
+> +		if (err)
+> +			goto out_brelse;
+> +		ext4_update_dynamic_rev(sb);
+> +		EXT4_SET_RO_COMPAT_FEATURE(sb,
+> +					   EXT4_FEATURE_RO_COMPAT_LARGE_FILE);
+> +		ext4_handle_sync(handle);
+> +		err = ext4_handle_dirty_super(handle, sb);
+> +	}
+>  	ext4_update_inode_fsync_trans(handle, inode, need_datasync);
+>  out_brelse:
+>  	brelse(bh);
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index c4895c1..1f8cb18 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -879,6 +879,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
+>  		return NULL;
+>  
+>  	ei->vfs_inode.i_version = 1;
+> +	spin_lock_init(&ei->i_raw_lock);
+>  	INIT_LIST_HEAD(&ei->i_prealloc_list);
+>  	spin_lock_init(&ei->i_prealloc_lock);
+>  	ext4_es_init_tree(&ei->i_es_tree);
+> -- 
+> 1.9.0
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
