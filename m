@@ -1,71 +1,64 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 2/4] fs: Prevent doing FALLOC_FL_ZERO_RANGE on append
+Subject: Re: [PATCH 2/3 v2] fs: Prevent doing FALLOC_FL_ZERO_RANGE on append
  only file
-Date: Wed, 16 Apr 2014 07:36:35 +1000
-Message-ID: <20140415213635.GM15995@dastard>
-References: <1397242665-2183-1-git-send-email-lczerner@redhat.com>
- <1397242665-2183-2-git-send-email-lczerner@redhat.com>
- <20140412151935.GA18047@infradead.org>
- <alpine.LFD.2.00.1404151457550.2146@localhost.localdomain>
+Date: Wed, 16 Apr 2014 08:02:20 +1000
+Message-ID: <20140415220220.GR15995@dastard>
+References: <1397580076-19826-1-git-send-email-lczerner@redhat.com>
+ <1397580076-19826-2-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, ceph-devel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com
-To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	xfs@oss.sgi.com
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:17533 "EHLO
+	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751099AbaDOWCe (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Apr 2014 18:02:34 -0400
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1404151457550.2146@localhost.localdomain>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1397580076-19826-2-git-send-email-lczerner@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Apr 15, 2014 at 03:09:42PM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
-:
-> On Sat, 12 Apr 2014, Christoph Hellwig wrote:
->=20
-> > Date: Sat, 12 Apr 2014 08:19:35 -0700
-> > From: Christoph Hellwig <hch@infradead.org>
-> > To: Lukas Czerner <lczerner@redhat.com>
-> > Cc: linux-fsdevel@vger.kernel.org, ceph-devel@vger.kernel.org,
-> >     linux-ext4@vger.kernel.org, xfs@oss.sgi.com
-> > Subject: Re: [PATCH 2/4] fs: Prevent doing FALLOC_FL_ZERO_RANGE on =
-append only
-> >      file
-> >=20
-> > On Fri, Apr 11, 2014 at 08:57:43PM +0200, Lukas Czerner wrote:
-> > >  	/*
-> > > -	 * It's not possible to punch hole or perform collapse range
-> > > -	 * on append only file
-> > > +	 * It's not possible to punch hole, perform collapse range
-> > > +	 * or zero range on append only file
-> > >  	 */
-> > > -	if (mode & (FALLOC_FL_PUNCH_HOLE | FALLOC_FL_COLLAPSE_RANGE)
-> > > +	if (mode & (FALLOC_FL_PUNCH_HOLE | FALLOC_FL_COLLAPSE_RANGE |
-> > > +		    FALLOC_FL_ZERO_RANGE)
-> >=20
-> > Might be better to make this a negative test fo the operation that =
-is
-> > allowed on an appen only file.  That's also much better future proo=
-f.
-> >=20
->=20
-> True, it might be better to do it this way:
->=20
-> if (mode & ~FALLOC_FL_KEEP_SIZE && IS_APPEND(inode))
+On Tue, Apr 15, 2014 at 06:41:15PM +0200, Lukas Czerner wrote:
+> Currently punch hole and collapse range fallocate operation are not
+> allowed on append only file. This should be case for zero range as well.
+> Fix it by allowing only pure fallocate (possibly with keep size set).
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> ---
+> v2: Change the condition to be future proof as suggested by hch
+> 
+>  fs/open.c | 6 ++----
+>  1 file changed, 2 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/open.c b/fs/open.c
+> index 631aea81..fe48b2f 100644
+> --- a/fs/open.c
+> +++ b/fs/open.c
+> @@ -254,11 +254,9 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+>  		return -EBADF;
+>  
+>  	/*
+> -	 * It's not possible to punch hole or perform collapse range
+> -	 * on append only file
+> +	 * We can only allow pure fallocate on append only files
+>  	 */
+> -	if (mode & (FALLOC_FL_PUNCH_HOLE | FALLOC_FL_COLLAPSE_RANGE)
+> -	    && IS_APPEND(inode))
+> +	if (mode & ~FALLOC_FL_KEEP_SIZE && IS_APPEND(inode))
 
-if ((mode & ~FALLOC_FL_KEEP_SIZE) && IS_APPEND(inode))
+	if ((mode & ~FALLOC_FL_KEEP_SIZE) && IS_APPEND(inode))
 
-:)
+gcc normally complains when you mix & and && in the same logic
+statement without () to separate the logic. I agree with gcc here,
+because the () indicate the intent of the logic and make it easy to
+determine that the & and && haven't been mixed up or fat-fingered...
 
 Cheers,
 
 Dave.
---=20
+-- 
 Dave Chinner
 david@fromorbit.com
---
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
