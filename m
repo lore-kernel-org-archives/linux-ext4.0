@@ -1,54 +1,59 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 2/2] ext4: Use EXT_MAX_BLOCKS in ext4_es_can_be_merged()
-Date: Tue, 15 Apr 2014 20:08:22 +0200
-Message-ID: <1397585302-27175-2-git-send-email-lczerner@redhat.com>
-References: <1397585302-27175-1-git-send-email-lczerner@redhat.com>
-Cc: Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: add fallocate mode blocking for debugging purposes
+Date: Tue, 15 Apr 2014 14:44:42 -0400
+Message-ID: <20140415184442.GC4456@thunk.org>
+References: <1397420518-29218-1-git-send-email-tytso@mit.edu>
+ <20140413220016.GD8122@thunk.org>
+ <alpine.LFD.2.00.1404151749490.2146@localhost.localdomain>
+ <534D5B2D.70408@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Namjae Jeon <linkinjeon@gmail.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34917 "EHLO mx1.redhat.com"
+Received: from imap.thunk.org ([74.207.234.97]:54702 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753360AbaDOSIe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Apr 2014 14:08:34 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s3FI8Xcf017067
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Apr 2014 14:08:34 -0400
-In-Reply-To: <1397585302-27175-1-git-send-email-lczerner@redhat.com>
+	id S1754551AbaDOSor (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Apr 2014 14:44:47 -0400
+Content-Disposition: inline
+In-Reply-To: <534D5B2D.70408@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In ext4_es_can_be_merged() when checking whether we can merge two
-extents we should use EXT_MAX_BLOCKS instead of defining it manually.
-Also if it is really the case we should notify userspace because clearly
-there is a bug in extent status tree implementation since this should
-never happen.
+On Tue, Apr 15, 2014 at 11:15:41AM -0500, Eric Sandeen wrote:
+> 
+> I tend to agree, better to fix the kernel than to add a knob to turn it
+> off.  And fsx changes can happen a lot quicker than kernel changes.  [1]
+> 
+> And if it's really unsafe, and you really want to add a knob, I'd at least
+> default it to off until it's non-corrupting, and add a message that
+> this tunable will go away as soon as it's stable, so you'll have no
+> qualms about quickly deprecating it...
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- fs/ext4/extents_status.c | 8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
+Yeah, I went back and forth on this.  One of there reasons why I added
+a kernel knob is that *I* can make the kernel change a lot faster than
+it would be to tweak all of the various xfstests program to globally
+disable certain operations in fsx, fstress, etc.
 
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 3c47b4e..b38d71a 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -344,8 +344,14 @@ static int ext4_es_can_be_merged(struct extent_status *es1,
- 	if (ext4_es_status(es1) != ext4_es_status(es2))
- 		return 0;
- 
--	if (((__u64) es1->es_len) + es2->es_len > 0xFFFFFFFFULL)
-+	if (((__u64) es1->es_len) + es2->es_len > EXT_MAX_BLOCKS) {
-+		pr_warn("ES assertion failed when merging extents. "
-+			"The sum of lengths of es1 (%d) and es2 (%d) "
-+			"is bigger than allowed file size (%d)\n",
-+			es1->es_len, es2->es_len, EXT_MAX_BLOCKS);
-+		WARN_ON(1);
- 		return 0;
-+	}
- 
- 	if (((__u64) es1->es_lblk) + es1->es_len != es2->es_lblk)
- 		return 0;
--- 
-1.8.3.1
+I also had a sneaking suspicion that we might have a similar issue
+with the INSERT RANGE patches which are coming down the pike, and so
+having a general way of also being able INSERT RANGE if to be able to
+quickly determine whether a potential bug was caused by INSERT RANGE
+or some other pending changes might also be useful.
+
+I freely admit it is a bit of a hack, though.  Does the hack smell
+less bad if we wrap it in CONFIG_EXT4FS_DEBUG?
+
+> [1] it'd be nifty to make an env. var in xfstests which can globally
+> disable certain fsx operations across all tests which run fsx...
+
+Yes, although as I mentioned above, it would be really nice if it
+worked across all of the various tests, and not just be limited to
+fsx, or even just fsx and fstress.
+
+					- Ted
+
+
 
