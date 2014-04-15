@@ -1,7 +1,9 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 1/3 v2] ext4: Remove unnecessary check for APPEND and IMMUTABLE
-Date: Tue, 15 Apr 2014 18:41:14 +0200
-Message-ID: <1397580076-19826-1-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 2/3 v2] fs: Prevent doing FALLOC_FL_ZERO_RANGE on append only
+	file
+Date: Tue, 15 Apr 2014 18:41:15 +0200
+Message-ID: <1397580076-19826-2-git-send-email-lczerner@redhat.com>
+References: <1397580076-19826-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -9,6 +11,7 @@ Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
 	xfs@oss.sgi.com
 To: linux-fsdevel@vger.kernel.org
 Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <1397580076-19826-1-git-send-email-lczerner@redhat.com>
 List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
 	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
 List-Archive: <http://oss.sgi.com/pipermail/xfs>
@@ -20,51 +23,35 @@ Errors-To: xfs-bounces@oss.sgi.com
 Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-All the checks IS_APPEND and IS_IMMUTABLE for the fallocate operation on
-the inode are done in vfs. No need to do this again in ext4. Remove it.
+Currently punch hole and collapse range fallocate operation are not
+allowed on append only file. This should be case for zero range as well.
+Fix it by allowing only pure fallocate (possibly with keep size set).
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
-v2: Nothing changed
+v2: Change the condition to be future proof as suggested by hch
 
- fs/ext4/extents.c | 6 ------
- fs/ext4/inode.c   | 6 +-----
- 2 files changed, 1 insertion(+), 11 deletions(-)
+ fs/open.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 89f2227..0177150 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -5387,12 +5387,6 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
- 	/* Take mutex lock */
- 	mutex_lock(&inode->i_mutex);
+diff --git a/fs/open.c b/fs/open.c
+index 631aea81..fe48b2f 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -254,11 +254,9 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+ 		return -EBADF;
  
--	/* It's not possible punch hole on append only file */
--	if (IS_APPEND(inode) || IS_IMMUTABLE(inode)) {
--		ret = -EPERM;
--		goto out_mutex;
--	}
--
- 	if (IS_SWAPFILE(inode)) {
- 		ret = -ETXTBSY;
- 		goto out_mutex;
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 1922f48..56f1ff4 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3528,11 +3528,7 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
- 	}
+ 	/*
+-	 * It's not possible to punch hole or perform collapse range
+-	 * on append only file
++	 * We can only allow pure fallocate on append only files
+ 	 */
+-	if (mode & (FALLOC_FL_PUNCH_HOLE | FALLOC_FL_COLLAPSE_RANGE)
+-	    && IS_APPEND(inode))
++	if (mode & ~FALLOC_FL_KEEP_SIZE && IS_APPEND(inode))
+ 		return -EPERM;
  
- 	mutex_lock(&inode->i_mutex);
--	/* It's not possible punch hole on append only file */
--	if (IS_APPEND(inode) || IS_IMMUTABLE(inode)) {
--		ret = -EPERM;
--		goto out_mutex;
--	}
-+
- 	if (IS_SWAPFILE(inode)) {
- 		ret = -ETXTBSY;
- 		goto out_mutex;
+ 	if (IS_IMMUTABLE(inode))
 -- 
 1.8.3.1
 
