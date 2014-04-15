@@ -1,40 +1,39 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 5/5] ext4: add locking for O_APPEND writes
-Date: Tue, 15 Apr 2014 15:36:41 -0400
-Message-ID: <20140415193641.GF4456@thunk.org>
-References: <1397322161-32148-1-git-send-email-tytso@mit.edu>
- <1397322161-32148-6-git-send-email-tytso@mit.edu>
- <20140415170540.GC10144@quack.suse.cz>
+Subject: Re: [PATCH 3/4] fs: Remove i_size check from do_fallocate
+Date: Tue, 15 Apr 2014 15:40:04 -0400
+Message-ID: <20140415194004.GG4456@thunk.org>
+References: <1397242665-2183-1-git-send-email-lczerner@redhat.com>
+	<1397242665-2183-3-git-send-email-lczerner@redhat.com>
+	<20140412152117.GB18047@infradead.org>
+	<alpine.LFD.2.00.1404151510150.2146@localhost.localdomain>
+	<20140415153643.GB4456@thunk.org>
+	<alpine.LFD.2.00.1404151808440.2146@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	viro@ZenIV.linux.org.uk
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:54723 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750998AbaDOTgn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Apr 2014 15:36:43 -0400
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: Christoph Hellwig <hch@infradead.org>, linux-fsdevel@vger.kernel.org,
+	ceph-devel@vger.kernel.org, linux-ext4@vger.kernel.org, xfs@oss.sgi.com
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <20140415170540.GC10144@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <alpine.LFD.2.00.1404151808440.2146@localhost.localdomain>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Apr 15, 2014 at 07:05:40PM +0200, Jan Kara wrote:
-> On Sat 12-04-14 13:02:41, Ted Tso wrote:
-> > Al Viro pointed out that we need to make sure we only allow one
-> > O_APPEND write to proceed at a time so that the the s_bitmap_maxbytes
-> > check can be properly checked.
->   But this introduces lock inversion between aio_mutex and i_mutex, doesn't
-> it?
-
-Doh!  Thanks for pointing that out.  Fortunately, we don't need to
-care about optimizing the AIO/DIO O_APPEND write case, so probably the
-best thing to do is to unconditionally take aio_mutex and call
-ext4_unwritten_wait() early, before we grab i_mutex.  So in effect
-we'll treat all O_APPEND writes as being unaligned in and in need of
-serialization.
-
-I'll send out a revised version for this last patch.
-
-     	      			    	      - Ted
+T24gVHVlLCBBcHIgMTUsIDIwMTQgYXQgMDY6MDk6MzRQTSArMDIwMCwgTHVrw6HFoSBDemVybmVy
+IHdyb3RlOgo+IAo+IE9rLCBJJ2xsIHJ1biBzb21lIHRlc3RzIGFuZCByZXNlbmQgaXQgcmlnaHQg
+YXdheSB3aXRob3V0IHRoZSBwYXRjaAo+ICM0LgoKVGhhbmtzISAgU28gc2hvdWxkIEkgZHJvcCBw
+YXRjaCAjNCBmb3Igbm93PyAgSSBkb24ndCB0aGluayBpdCBkb2VzIGFueQpoYXJtLCBhbmQgaXQg
+ZG9lcyBwbHVnIHRoZSBob2xlIHNvbWV3aGF0LCBidXQgQ3Jpc3RvcGggaXMgcmlnaHQgdGhhdAp3
+ZSBzdGlsbCBjb3VsZCBoYXZlIHN3YXBvbiByYWNpbmcgd2l0aCB0aGUgZmFsbG9jYXRlLgoKICAg
+CSAgICAgICAJICAgIAkgICAJICAgICAgIAkgICAtIFRlZAoKX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX18KeGZzIG1haWxpbmcgbGlzdAp4ZnNAb3NzLnNnaS5j
+b20KaHR0cDovL29zcy5zZ2kuY29tL21haWxtYW4vbGlzdGluZm8veGZzCg==
