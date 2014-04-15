@@ -1,97 +1,103 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 3/5] ext4: drop aio_mutex after grabbing i_mutex in
- ext4_file_write()
-Date: Tue, 15 Apr 2014 19:06:48 +0200
-Message-ID: <20140415170648.GF10144@quack.suse.cz>
+Subject: Re: [PATCH 4/5] ext4: factor out common code in ext4_file_write()
+Date: Tue, 15 Apr 2014 19:07:10 +0200
+Message-ID: <20140415170710.GG10144@quack.suse.cz>
 References: <1397322161-32148-1-git-send-email-tytso@mit.edu>
- <1397322161-32148-4-git-send-email-tytso@mit.edu>
+ <1397322161-32148-5-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	viro@ZenIV.linux.org.uk
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:59562 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:59570 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753121AbaDORGv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Apr 2014 13:06:51 -0400
+	id S1751239AbaDORHN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Apr 2014 13:07:13 -0400
 Content-Disposition: inline
-In-Reply-To: <1397322161-32148-4-git-send-email-tytso@mit.edu>
+In-Reply-To: <1397322161-32148-5-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat 12-04-14 13:02:39, Ted Tso wrote:
-> Once we have grabbed i_mutex, this will prevent any other writes from
-> proceeding, so we don't need to worry about any writes to unwritten
-> regions from taking place.  So drop the aio_mutex so that if there are
-> any other parallel writes happen to some other inode that happens to
-> hash to the same hash table entry, we won't end up blocking that work.
+On Sat 12-04-14 13:02:40, Ted Tso wrote:
+> This shouldn't change any logic flow; just delete duplicated code.
 > 
 > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
   Looks good. You can add:
 Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
+
 > ---
->  fs/ext4/file.c | 20 +++++++++-----------
->  1 file changed, 9 insertions(+), 11 deletions(-)
+>  fs/ext4/file.c | 37 +++++++++++++------------------------
+>  1 file changed, 13 insertions(+), 24 deletions(-)
 > 
 > diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-> index 3ec0c09..5e428d58 100644
+> index 5e428d58..7c8f483 100644
 > --- a/fs/ext4/file.c
 > +++ b/fs/ext4/file.c
-> @@ -98,7 +98,6 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+> @@ -98,6 +98,7 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
 >  	struct file *file = iocb->ki_filp;
 >  	struct inode *inode = file_inode(iocb->ki_filp);
 >  	struct blk_plug plug;
-> -	int unaligned_aio = 0;
+> +	int o_direct = file->f_flags & O_DIRECT;
 >  	int overwrite = 0;
 >  	size_t length = iov_length(iov, nr_segs);
 >  	ssize_t ret;
-> @@ -124,24 +123,26 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+> @@ -122,7 +123,7 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+>  		}
 >  	}
 >  
->  	if (unlikely(iocb->ki_filp->f_flags & O_DIRECT)) {
-> -		if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) &&
-> -		    !is_sync_kiocb(iocb))
-> -			unaligned_aio = ext4_unaligned_aio(inode, iov,
-> -							   nr_segs, pos);
-> +		struct mutex *aio_mutex = NULL;
+> -	if (unlikely(iocb->ki_filp->f_flags & O_DIRECT)) {
+> +	if (o_direct) {
+>  		struct mutex *aio_mutex = NULL;
 >  
 >  		/* Unaligned direct AIO must be serialized; see comment above */
-> -		if (unaligned_aio) {
-> -			mutex_lock(ext4_aio_mutex(inode));
-> +		if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) &&
-> +		    !is_sync_kiocb(iocb) &&
-> +		    ext4_unaligned_aio(inode, iov, nr_segs, pos)) {
-> +			aio_mutex = ext4_aio_mutex(inode);
-> +			mutex_lock(aio_mutex);
->  			ext4_unwritten_wait(inode);
+> @@ -169,33 +170,21 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+>  			if (err == len && (map.m_flags & EXT4_MAP_MAPPED))
+>  				overwrite = 1;
 >  		}
->  
->  		mutex_lock(&inode->i_mutex);
-> +		if (aio_mutex)
-> +			mutex_unlock(aio_mutex);
->  		blk_start_plug(&plug);
->  
->  		iocb->private = &overwrite;
->  
->  		/* check whether we do a DIO overwrite or not */
-> -		if (ext4_should_dioread_nolock(inode) && !unaligned_aio &&
-> +		if (ext4_should_dioread_nolock(inode) && !aio_mutex &&
->  		    !file->f_mapping->nrpages && pos + length <= i_size_read(inode)) {
->  			struct ext4_map_blocks map;
->  			unsigned int blkbits = inode->i_blkbits;
-> @@ -181,9 +182,6 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
->  				ret = err;
->  		}
->  		blk_finish_plug(&plug);
 > -
-> -		if (unaligned_aio)
-> -			mutex_unlock(ext4_aio_mutex(inode));
->  	} else {
+> -		ret = __generic_file_aio_write(iocb, iov, nr_segs,
+> -					       &iocb->ki_pos);
+> -		mutex_unlock(&inode->i_mutex);
+> -
+> -		if (ret > 0) {
+> -			ssize_t err;
+> -
+> -			err = generic_write_sync(file, iocb->ki_pos - ret, ret);
+> -			if (err < 0)
+> -				ret = err;
+> -		}
+> -		blk_finish_plug(&plug);
+> -	} else {
+> +	} else
 >  		mutex_lock(&inode->i_mutex);
->  		ret = __generic_file_aio_write(iocb, iov, nr_segs,
+> -		ret = __generic_file_aio_write(iocb, iov, nr_segs,
+> -					       &iocb->ki_pos);
+> -		mutex_unlock(&inode->i_mutex);
+>  
+> -		if (ret > 0) {
+> -			ssize_t err;
+> +	ret = __generic_file_aio_write(iocb, iov, nr_segs, &iocb->ki_pos);
+> +	mutex_unlock(&inode->i_mutex);
+>  
+> -			err = generic_write_sync(file, iocb->ki_pos - ret, ret);
+> -			if (err < 0)
+> -				ret = err;
+> -		}
+> +	if (ret > 0) {
+> +		ssize_t err;
+> +
+> +		err = generic_write_sync(file, iocb->ki_pos - ret, ret);
+> +		if (err < 0)
+> +			ret = err;
+>  	}
+> +	if (o_direct)
+> +		blk_finish_plug(&plug);
+>  
+>  	return ret;
+>  }
 > -- 
 > 1.9.0
 > 
