@@ -1,78 +1,55 @@
-From: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Subject: Re: [PATCH v2 1/2] xfs: fix tmpfile/selinux deadlock and initialize
- security/acl
-Date: Tue, 15 Apr 2014 10:52:28 -0700
-Message-ID: <20140415175228.GE26404@infradead.org>
-References: <1397071311-28371-1-git-send-email-bfoster@redhat.com>
- <1397071311-28371-2-git-send-email-bfoster@redhat.com>
- <20140410102421.GA17641@infradead.org>
- <20140410121947.GA14124@bfoster.bfoster>
- <20140410122944.GA6579@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-man-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andreas Gruenbacher <agruen-63ez5xqkn6DQT0dZR+AlfA@public.gmane.org>,
-	xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org, linux-security-module-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	Al Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Brian Foster <bfoster-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Return-path: <linux-man-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20140410122944.GA6579-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Sender: linux-man-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH 1/2] ext4: Remove arbitrary block value in __es_remove_extent()
+Date: Tue, 15 Apr 2014 20:08:21 +0200
+Message-ID: <1397585302-27175-1-git-send-email-lczerner@redhat.com>
+Cc: Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:41491 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751369AbaDOSIc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Apr 2014 14:08:32 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s3FI8WRo009841
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Apr 2014 14:08:32 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-So any opinions from other fs / security people on how O_TMPFILE files
-should behave for ACL inheritance / labeling?
+In __es_remove_extent() we're storing seemingly arbitrary value
+0x7FDEADBEEF into block variable. I assume that the reason is just to
+initialize the variable before the use because the actual value does not
+matter at this point.
 
-On Thu, Apr 10, 2014 at 05:29:44AM -0700, Christoph Hellwig wrote:
-> On Thu, Apr 10, 2014 at 08:19:48AM -0400, Brian Foster wrote:
-> > Are you saying it doesn't have to initialize security or the default
-> > acl, or both?
-> 
-> The ACLs for sure.  LSM do run-time access decisions, so they will
-> probably rely on the security data being initialized.  Given that
-> O_TMPFILE files aren't publicly available I'm not sure there's a point
-> in them doing that, though.
-> 
-> LSMs are also affected by the lack of a proper parent I'll discuss for
-> ACLs below.
-> 
-> > The intent here was to have the case covered where the inode happens to
-> > be linked back into the namespace since we don't do this work in the
-> > link path.
-> 
-> That's an interesting one.  O_TMFILE files don't have a real parent
-> to inherit ACLs from, the pathname passed in just needs to point to
-> a directory to find the filesystem to create the tmpfile in.  On
-> the other hand it seem like the extN implementations do inherity the
-> ACL in this case.
-> 
-> The link into the namespace is irrelavant here as ACL inheritance only
-> happens on initial create, not at link time.
-> 
-> I also think we'll absolutely need a test case for ACLs+tmpfile to
-> make sure all filesystems handle it the same way.
-> 
-> > The bulk of the refactoring was with the idea that the inode setup for
-> > the tmpfile case is generally equivalent for the traditional create
-> > case. The original version was posted here:
-> > 
-> > http://oss.sgi.com/archives/xfs/2014-04/msg00149.html
-> > 
-> > ... and it just fixes the deadlock and adds the security initialization.
-> > I suppose I could still break that out into multiple patches, but that
-> > aside, is that behavior preferred?
-> 
-> I think just fixing the deadlock and initializing the security is enough
-> for the first pass.  If you want to do the refactoring on top send it as
-> a second series on top of the actual fixes.
-> 
-> _______________________________________________
-> xfs mailing list
-> xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org
-> http://oss.sgi.com/mailman/listinfo/xfs
----end quoted text---
---
-To unsubscribe from this list: send the line "unsubscribe linux-man" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Just remove the arbitrary value and initialized block variable to zero
+which is much less suspicious.
+
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/extents_status.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index 33682aa..3c47b4e 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -782,7 +782,7 @@ static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ 	struct extent_status *es;
+ 	struct extent_status orig_es;
+ 	ext4_lblk_t len1, len2;
+-	ext4_fsblk_t block;
++	ext4_fsblk_t block = 0;
+ 	int err;
+ 
+ retry:
+@@ -810,7 +810,6 @@ retry:
+ 
+ 			newes.es_lblk = end + 1;
+ 			newes.es_len = len2;
+-			block = 0x7FDEADBEEF;
+ 			if (ext4_es_is_written(&orig_es) ||
+ 			    ext4_es_is_unwritten(&orig_es))
+ 				block = ext4_es_pblock(&orig_es) +
+-- 
+1.8.3.1
+
