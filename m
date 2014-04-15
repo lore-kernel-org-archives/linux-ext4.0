@@ -1,23 +1,26 @@
-From: Becki Goodwin <Becki.Goodwin@cherokee.k12.ga.us>
-Subject: (unknown)
-Date: Tue, 15 Apr 2014 00:35:11 +0000
-Message-ID: <EB959B420FC098489E76DE4622671D7FF22A905A__6170.23358722708$1397523754$gmane$org@CCSDEMS2.cherokee.k12.ga.us>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 3/3] generic/237: fix filtering for expected failure
+ message
+Date: Mon, 14 Apr 2014 22:08:36 -0400
+Message-ID: <20140415020836.GB21827@thunk.org>
+References: <1397343317-14669-1-git-send-email-tytso@mit.edu>
+ <1397343317-14669-4-git-send-email-tytso@mit.edu>
+ <20140414001408.GC27694@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-To: Undisclosed recipients:;
+Content-Type: text/plain; charset=us-ascii
+Cc: xfs@oss.sgi.com, Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from out21.sjc.mx.trendmicro.com ([216.99.131.78]:49332 "EHLO
-	out21.sjc.mx.trendmicro.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750968AbaDOBCD convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 14 Apr 2014 21:02:03 -0400
-Subject: 
-Content-Language: en-US
+Received: from imap.thunk.org ([74.207.234.97]:54380 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750877AbaDOCIl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 14 Apr 2014 22:08:41 -0400
+Content-Disposition: inline
+In-Reply-To: <20140414001408.GC27694@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Although, I am not comfortable discussing the content of my mail on the Internet owing to lots of unsolicited/Spam
-mails on the net nowadays.  The fact is I have made up my mind to will my late Husband's funds  to you so you can use it for charity  duties and good work to humanity in your country. please get back to me on my secured email  address ( beckigoodwin@outlook.com<mailto:beckigoodwin@outlook.com> ) for further information.
-God bless you.
-Mrs.  Becki Goodwin.
+After looking at this more closely, this patch isn't needed.  It was a
+configuration screw up on my end.
+
+					- Ted
