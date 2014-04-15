@@ -1,127 +1,142 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 3/3 v2] fs: move falloc collapse range check into the
-	filesystem methods
-Date: Tue, 15 Apr 2014 18:41:16 +0200
-Message-ID: <1397580076-19826-3-git-send-email-lczerner@redhat.com>
-References: <1397580076-19826-1-git-send-email-lczerner@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 5/5] ext4: add locking for O_APPEND writes
+Date: Tue, 15 Apr 2014 19:05:40 +0200
+Message-ID: <20140415170540.GC10144@quack.suse.cz>
+References: <1397322161-32148-1-git-send-email-tytso@mit.edu>
+ <1397322161-32148-6-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com
-To: linux-fsdevel@vger.kernel.org
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <1397580076-19826-1-git-send-email-lczerner@redhat.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	viro@ZenIV.linux.org.uk
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:59546 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751169AbaDORFn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Apr 2014 13:05:43 -0400
+Content-Disposition: inline
+In-Reply-To: <1397322161-32148-6-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Currently in do_fallocate in collapse range case we're checking whether
-offset + len is not bigger than i_size. However there is nothing which
-would prevent i_size from changing so the check is pointless. It should
-be done in the file system itself and the file system needs to make sure
-that i_size is not going to change. The i_size check for the other
-fallocate modes are also done in the filesystems.
+On Sat 12-04-14 13:02:41, Ted Tso wrote:
+> Al Viro pointed out that we need to make sure we only allow one
+> O_APPEND write to proceed at a time so that the the s_bitmap_maxbytes
+> check can be properly checked.
+  But this introduces lock inversion between aio_mutex and i_mutex, doesn't
+it?
 
-As it is now we can easily crash kernel by having two processes doing
-truncate and fallocate collapse range at the same time. This can be
-reproduced on ext4 and it is theoretically possible on xfs even though I
-was not able to trigger it with this simple test.
+								Honza
 
-This commit removes the check from do_fallocate and adds it to the file
-system.
-
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-Acked-by: Dave Chinner <david@fromorbit.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
----
-v2: Update description and change subject as suggested by hch
-
- fs/ext4/extents.c | 11 +++++++++--
- fs/open.c         |  8 --------
- fs/xfs/xfs_file.c | 10 +++++++++-
- 3 files changed, 18 insertions(+), 11 deletions(-)
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 0177150..ff823b7 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -5364,8 +5364,6 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
- 	loff_t new_size;
- 	int ret;
- 
--	BUG_ON(offset + len > i_size_read(inode));
--
- 	/* Collapse range works only on fs block size aligned offsets. */
- 	if (offset & (EXT4_BLOCK_SIZE(sb) - 1) ||
- 	    len & (EXT4_BLOCK_SIZE(sb) - 1))
-@@ -5387,6 +5385,15 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
- 	/* Take mutex lock */
- 	mutex_lock(&inode->i_mutex);
- 
-+	/*
-+	 * There is no need to overlap collapse range with EOF, in which case
-+	 * it is effectively a truncate operation
-+	 */
-+	if (offset + len >= i_size_read(inode)) {
-+		ret = -EINVAL;
-+		goto out_mutex;
-+	}
-+
- 	if (IS_SWAPFILE(inode)) {
- 		ret = -ETXTBSY;
- 		goto out_mutex;
-diff --git a/fs/open.c b/fs/open.c
-index fe48b2f..bd42341 100644
---- a/fs/open.c
-+++ b/fs/open.c
-@@ -284,14 +284,6 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
- 	if (((offset + len) > inode->i_sb->s_maxbytes) || ((offset + len) < 0))
- 		return -EFBIG;
- 
--	/*
--	 * There is no need to overlap collapse range with EOF, in which case
--	 * it is effectively a truncate operation
--	 */
--	if ((mode & FALLOC_FL_COLLAPSE_RANGE) &&
--	    (offset + len >= i_size_read(inode)))
--		return -EINVAL;
--
- 	if (!file->f_op->fallocate)
- 		return -EOPNOTSUPP;
- 
-diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-index 003c005..4ba0ae9 100644
---- a/fs/xfs/xfs_file.c
-+++ b/fs/xfs/xfs_file.c
-@@ -840,7 +840,15 @@ xfs_file_fallocate(
- 			goto out_unlock;
- 		}
- 
--		ASSERT(offset + len < i_size_read(inode));
-+		/*
-+		 * There is no need to overlap collapse range with EOF,
-+		 * in which case it is effectively a truncate operation
-+		 */
-+		if (offset + len >= i_size_read(inode)) {
-+			error = -EINVAL;
-+			goto out_unlock;
-+		}
-+
- 		new_size = i_size_read(inode) - len;
- 
- 		error = xfs_collapse_file_space(ip, offset, len);
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> ---
+>  fs/ext4/file.c | 46 +++++++++++++++++++++++++++++-----------------
+>  1 file changed, 29 insertions(+), 17 deletions(-)
+> 
+> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> index 7c8f483..c3824dd 100644
+> --- a/fs/ext4/file.c
+> +++ b/fs/ext4/file.c
+> @@ -98,24 +98,32 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+>  	struct file *file = iocb->ki_filp;
+>  	struct inode *inode = file_inode(iocb->ki_filp);
+>  	struct blk_plug plug;
+> +	struct mutex *aio_mutex = NULL;
+>  	int o_direct = file->f_flags & O_DIRECT;
+> -	int overwrite = 0;
+> +	int overwrite = 0, i_mutex_grabbed = 0;
+>  	size_t length = iov_length(iov, nr_segs);
+>  	ssize_t ret;
+>  
+>  	BUG_ON(iocb->ki_pos != pos);
+>  
+> +	if (file->f_flags & O_APPEND) {
+> +		mutex_lock(&inode->i_mutex);
+> +		i_mutex_grabbed = 1;
+> +		iocb->ki_pos = pos = i_size_read(inode);
+> +	}
+> +
+>  	/*
+>  	 * If we have encountered a bitmap-format file, the size limit
+>  	 * is smaller than s_maxbytes, which is for extent-mapped files.
+>  	 */
+> -
+>  	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))) {
+>  		struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+>  
+>  		if ((pos > sbi->s_bitmap_maxbytes ||
+> -		    (pos == sbi->s_bitmap_maxbytes && length > 0)))
+> -			return -EFBIG;
+> +		     (pos == sbi->s_bitmap_maxbytes && length > 0))) {
+> +			ret = -EFBIG;
+> +			goto errout;
+> +		}
+>  
+>  		if (pos + length > sbi->s_bitmap_maxbytes) {
+>  			nr_segs = iov_shorten((struct iovec *)iov, nr_segs,
+> @@ -123,19 +131,20 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+>  		}
+>  	}
+>  
+> -	if (o_direct) {
+> -		struct mutex *aio_mutex = NULL;
+> -
+> -		/* Unaligned direct AIO must be serialized; see comment above */
+> -		if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) &&
+> -		    !is_sync_kiocb(iocb) &&
+> -		    ext4_unaligned_aio(inode, iov, nr_segs, pos)) {
+> -			aio_mutex = ext4_aio_mutex(inode);
+> -			mutex_lock(aio_mutex);
+> -			ext4_unwritten_wait(inode);
+> -		}
+> +	/* Unaligned direct AIO must be serialized; see comment above */
+> +	if (o_direct && ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) &&
+> +	    !is_sync_kiocb(iocb) &&
+> +	    ext4_unaligned_aio(inode, iov, nr_segs, pos)) {
+> +		aio_mutex = ext4_aio_mutex(inode);
+> +		mutex_lock(aio_mutex);
+> +		ext4_unwritten_wait(inode);
+> +	}
+>  
+> +	if (!i_mutex_grabbed)
+>  		mutex_lock(&inode->i_mutex);
+> +	i_mutex_grabbed = 1;
+> +
+> +	if (o_direct) {
+>  		if (aio_mutex)
+>  			mutex_unlock(aio_mutex);
+>  		blk_start_plug(&plug);
+> @@ -170,11 +179,11 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+>  			if (err == len && (map.m_flags & EXT4_MAP_MAPPED))
+>  				overwrite = 1;
+>  		}
+> -	} else
+> -		mutex_lock(&inode->i_mutex);
+> +	}
+>  
+>  	ret = __generic_file_aio_write(iocb, iov, nr_segs, &iocb->ki_pos);
+>  	mutex_unlock(&inode->i_mutex);
+> +	i_mutex_grabbed = 0;
+>  
+>  	if (ret > 0) {
+>  		ssize_t err;
+> @@ -186,6 +195,9 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+>  	if (o_direct)
+>  		blk_finish_plug(&plug);
+>  
+> +errout:
+> +	if (i_mutex_grabbed)
+> +		mutex_unlock(&inode->i_mutex);
+>  	return ret;
+>  }
+>  
+> -- 
+> 1.9.0
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 -- 
-1.8.3.1
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
