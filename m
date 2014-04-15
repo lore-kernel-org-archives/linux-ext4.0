@@ -1,62 +1,40 @@
-From: Andreas Gruenbacher <andreas.gruenbacher@linbit.com>
-Subject: Re: [PATCH v2 1/2] xfs: fix tmpfile/selinux deadlock and initialize
-	security/acl
-Date: Tue, 15 Apr 2014 21:31:02 +0200 (CEST)
-Message-ID: <1188577823.463241.1397590262478.JavaMail.zimbra@linbit.com>
-References: <1397071311-28371-1-git-send-email-bfoster@redhat.com>
-	<1397071311-28371-2-git-send-email-bfoster@redhat.com>
-	<20140410102421.GA17641@infradead.org>
-	<20140410121947.GA14124@bfoster.bfoster>
-	<20140410122944.GA6579@infradead.org>
-	<20140415175228.GE26404@infradead.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 5/5] ext4: add locking for O_APPEND writes
+Date: Tue, 15 Apr 2014 15:36:41 -0400
+Message-ID: <20140415193641.GF4456@thunk.org>
+References: <1397322161-32148-1-git-send-email-tytso@mit.edu>
+ <1397322161-32148-6-git-send-email-tytso@mit.edu>
+ <20140415170540.GC10144@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-man@vger.kernel.org, Brian Foster <bfoster@redhat.com>,
-	xfs@oss.sgi.com, linux-security-module@vger.kernel.org,
-	Al Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <20140415175228.GE26404@infradead.org>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	viro@ZenIV.linux.org.uk
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:54723 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750998AbaDOTgn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Apr 2014 15:36:43 -0400
+Content-Disposition: inline
+In-Reply-To: <20140415170540.GC10144@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Christoph,
+On Tue, Apr 15, 2014 at 07:05:40PM +0200, Jan Kara wrote:
+> On Sat 12-04-14 13:02:41, Ted Tso wrote:
+> > Al Viro pointed out that we need to make sure we only allow one
+> > O_APPEND write to proceed at a time so that the the s_bitmap_maxbytes
+> > check can be properly checked.
+>   But this introduces lock inversion between aio_mutex and i_mutex, doesn't
+> it?
 
-On Tue, Apr 15, 2014 at 10:52:28AM -0700, Christoph Hellwig wrote:
-> So any opinions from other fs / security people on how O_TMPFILE files
-> should behave for ACL inheritance / labeling?
+Doh!  Thanks for pointing that out.  Fortunately, we don't need to
+care about optimizing the AIO/DIO O_APPEND write case, so probably the
+best thing to do is to unconditionally take aio_mutex and call
+ext4_unwritten_wait() early, before we grab i_mutex.  So in effect
+we'll treat all O_APPEND writes as being unaligned in and in need of
+serialization.
 
-from how O_TMPFILE is documented right now [*], creating such a file and
-then linking it into the namespace is one of the obvious use cases.  The
-intent seems to be to make it seem like the file was created and populated
-atomically, possibly with inherited permissions and all.  I think this
-behavior require that the O_TMPFILE file inherits from the directory it
-was "created" in.
+I'll send out a revised version for this last patch.
 
-Adding code to achieve the effect of create-time inheritance at link
-time, only for O_TMPFILE files or files without any links, doesn't seem 
-reasonable to me: it would duplicate create code in the link code path,
-and it would make it harder to override inherited permissions or labels.
-
-(Trying to fake inheritance by reimplementing it in user space seems like
-a much worse idea still.)
-
-[*] http://man7.org/linux/man-pages/man2/open.2.html
-
-Thanks,
-Andreas
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+     	      			    	      - Ted
