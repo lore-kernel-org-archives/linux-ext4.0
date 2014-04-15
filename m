@@ -1,69 +1,55 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: add fallocate mode blocking for debugging purposes
-Date: Tue, 15 Apr 2014 14:13:59 -0500
-Message-ID: <534D84F7.30003@redhat.com>
-References: <1397420518-29218-1-git-send-email-tytso@mit.edu> <20140413220016.GD8122@thunk.org> <alpine.LFD.2.00.1404151749490.2146@localhost.localdomain> <534D5B2D.70408@redhat.com> <20140415184442.GC4456@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH -v2] ext4: move ext4_update_i_disksize() into
+ mpage_map_and_submit_extent()
+Date: Tue, 15 Apr 2014 15:26:42 -0400
+Message-ID: <20140415192642.GE4456@thunk.org>
+References: <1397226957-9581-1-git-send-email-tytso@mit.edu>
+ <1397310327-18147-1-git-send-email-tytso@mit.edu>
+ <20140415162627.GA10144@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
-Cc: =?windows-1252?Q?Luk=E1=9A_Czerner?= <lczerner@redhat.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Namjae Jeon <linkinjeon@gmail.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:25969 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751012AbaDOTOD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Apr 2014 15:14:03 -0400
-In-Reply-To: <20140415184442.GC4456@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	pfonseca@mpi-sws.org, stable@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <stable-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20140415162627.GA10144@quack.suse.cz>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 4/15/14, 1:44 PM, Theodore Ts'o wrote:
-> On Tue, Apr 15, 2014 at 11:15:41AM -0500, Eric Sandeen wrote:
->>
->> I tend to agree, better to fix the kernel than to add a knob to turn it
->> off.  And fsx changes can happen a lot quicker than kernel changes.  [1]
->>
->> And if it's really unsafe, and you really want to add a knob, I'd at least
->> default it to off until it's non-corrupting, and add a message that
->> this tunable will go away as soon as it's stable, so you'll have no
->> qualms about quickly deprecating it...
-> 
-> Yeah, I went back and forth on this.  One of there reasons why I added
-> a kernel knob is that *I* can make the kernel change a lot faster than
-> it would be to tweak all of the various xfstests program to globally
-> disable certain operations in fsx, fstress, etc.
-> 
-> I also had a sneaking suspicion that we might have a similar issue
-> with the INSERT RANGE patches which are coming down the pike, and so
-> having a general way of also being able INSERT RANGE if to be able to
-> quickly determine whether a potential bug was caused by INSERT RANGE
-> or some other pending changes might also be useful.
-> 
-> I freely admit it is a bit of a hack, though.  Does the hack smell
-> less bad if we wrap it in CONFIG_EXT4FS_DEBUG?
-> 
->> [1] it'd be nifty to make an env. var in xfstests which can globally
->> disable certain fsx operations across all tests which run fsx...
-> 
-> Yes, although as I mentioned above, it would be really nice if it
-> worked across all of the various tests, and not just be limited to
-> fsx, or even just fsx and fstress.
+On Tue, Apr 15, 2014 at 06:26:27PM +0200, Jan Kara wrote:
+> On Sat 12-04-14 09:45:27, Ted Tso wrote:
+> > The function ext4_update_i_disksize() is used in only one place, in
+> > the function mpage_map_and_submit_extent().  Move there to simplify
+> > the code paths, and also move the call to ext4_mark_inode_dirty() into
+> > the i_data_sem's critical region, to be consistent with all of the
+> > other places where we update i_disksize.  That way, we also keep the
+> > raw_inode's i_disksize protected.
+> > 
+> > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> > Cc: stable@vger.kernel.org
+>   I agree that it makes sense to have all the places consistent and protect
+> raw disk inode i_disksize with i_data_sem. OTOH I don't see a way how this
+> can cause any real harm (but I guess you expect there might be something as
+> you CCed stable), so can you explain it please?
 
-Well, for tests which are specific to collapse range, it'd be trivial
-to add a "collapse" group, and exclude it.
+This was the case I was worried about:
 
-For generic stress tests which happen to do collapse range, it'd take
-a bit more.  But that'd probably still be the generic solution.
+        CPU #1                                 CPU #2
 
-XFS got bitten too, there were collapse range problems.  But the fixes
-are already in the pipe AFAIK.
+1.      down_write(&i_data_sem)
+2.      Modify i_disk_size
+4.      up_write(&i_data_sem)
+5.                                           down_write(&i_data_sem)
+6.                                           Modify i_disk_size
+7.                                           Copy i_disk_size to on-disk inode
+8.                                           up_write(&i_data_sem)
+9.      Copy i_disk_size to on-disk inode
 
--Eric
 
-> 					- Ted
-> 
-> 
-> 
+It's the standard data race; it might not be a problem on Intel CPU's,
+but in general, cpu #1 might still have a stale copy of i_disk_size in
+its cache, and hence it might copying the old, outdated value into the
+on-disk inode.
 
+							- Ted
