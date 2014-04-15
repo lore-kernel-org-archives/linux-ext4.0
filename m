@@ -1,50 +1,65 @@
-From: =?utf-8?b?THVrw6HFoQ==?= Czerner <lukas@loguj.cz>
-Subject: Re: [PATCH 3/4] fs: Remove i_size check from do_fallocate
-Date: Tue, 15 Apr 2014 21:57:41 +0200
-Message-ID: <20140415215741.Horde.d8xeUy2MbgZTTY81Gl8nkMA@mail.loguj.cz>
-References: <1397242665-2183-1-git-send-email-lczerner@redhat.com>
-	<1397242665-2183-3-git-send-email-lczerner@redhat.com>
-	<20140412152117.GB18047@infradead.org>
-	<alpine.LFD.2.00.1404151510150.2146@localhost.localdomain>
-	<20140415153643.GB4456@thunk.org>
-	<alpine.LFD.2.00.1404151808440.2146@localhost.localdomain>
-	<20140415194004.GG4456@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH -v2] ext4: move ext4_update_i_disksize() into
+ mpage_map_and_submit_extent()
+Date: Tue, 15 Apr 2014 22:18:25 +0200
+Message-ID: <20140415201825.GC13276@quack.suse.cz>
+References: <1397226957-9581-1-git-send-email-tytso@mit.edu>
+ <1397310327-18147-1-git-send-email-tytso@mit.edu>
+ <20140415162627.GA10144@quack.suse.cz>
+ <20140415192642.GE4456@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"; Format="flowed"; DelSp="Yes"
-Content-Transfer-Encoding: base64
-Cc: xfs@oss.sgi.com, Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org,
-	=?utf-8?b?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
-	ceph-devel@vger.kernel.org, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	pfonseca@mpi-sws.org, stable@vger.kernel.org
 To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <20140415194004.GG4456@thunk.org>
+Return-path: <stable-owner@vger.kernel.org>
 Content-Disposition: inline
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+In-Reply-To: <20140415192642.GE4456@thunk.org>
+Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-WWVzLCBwbGVhc2UgZHJvcCB0aGUgcGF0Y2ggIzQgc2luY2UgaXQgcmVxdWlyZXMgZGlmZmVyZW50
-IHNvbHV0aW9uLCBJICAKZG8gbm90IHRoaW5rIGl0J3MgY3JpdGljYWwgZW5vdWdoIHRvIGhhdmUg
-cGFydGlhbCBzb2x1dGlvbiBhbmQgaXQgaGFzICAKYmVlbiB0aGF0IHdheSBmb3IgYSBsb25nIHRp
-bWUuIFdlIGNhbiBmaXggaXQgbGF0ZXIuCgpUaGFua3MhCi1MdWthcwoKClRoZW9kb3JlIFRzJ28g
-PHR5dHNvQG1pdC5lZHU+IHdyb3RlOgoKPiBPbiBUdWUsIEFwciAxNSwgMjAxNCBhdCAwNjowOToz
-NFBNICswMjAwLCBMdWvDocWhIEN6ZXJuZXIgd3JvdGU6Cj4+Cj4+IE9rLCBJJ2xsIHJ1biBzb21l
-IHRlc3RzIGFuZCByZXNlbmQgaXQgcmlnaHQgYXdheSB3aXRob3V0IHRoZSBwYXRjaAo+PiAjNC4K
-Pgo+IFRoYW5rcyEgIFNvIHNob3VsZCBJIGRyb3AgcGF0Y2ggIzQgZm9yIG5vdz8gIEkgZG9uJ3Qg
-dGhpbmsgaXQgZG9lcyBhbnkKPiBoYXJtLCBhbmQgaXQgZG9lcyBwbHVnIHRoZSBob2xlIHNvbWV3
-aGF0LCBidXQgQ3Jpc3RvcGggaXMgcmlnaHQgdGhhdAo+IHdlIHN0aWxsIGNvdWxkIGhhdmUgc3dh
-cG9uIHJhY2luZyB3aXRoIHRoZSBmYWxsb2NhdGUuCj4KPiAgICAJICAgICAgIAkgICAgCSAgIAkg
-ICAgICAgCSAgIC0gVGVkCj4gLS0KPiBUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2Vu
-ZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtZXh0NCIgaW4KPiB0aGUgYm9keSBvZiBhIG1l
-c3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZwo+IE1vcmUgbWFqb3Jkb21vIGluZm8g
-YXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbAoKCl9fX19fX19f
-X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fCnhmcyBtYWlsaW5nIGxpc3QK
-eGZzQG9zcy5zZ2kuY29tCmh0dHA6Ly9vc3Muc2dpLmNvbS9tYWlsbWFuL2xpc3RpbmZvL3hmcwo=
+On Tue 15-04-14 15:26:42, Ted Tso wrote:
+> On Tue, Apr 15, 2014 at 06:26:27PM +0200, Jan Kara wrote:
+> > On Sat 12-04-14 09:45:27, Ted Tso wrote:
+> > > The function ext4_update_i_disksize() is used in only one place, in
+> > > the function mpage_map_and_submit_extent().  Move there to simplify
+> > > the code paths, and also move the call to ext4_mark_inode_dirty() into
+> > > the i_data_sem's critical region, to be consistent with all of the
+> > > other places where we update i_disksize.  That way, we also keep the
+> > > raw_inode's i_disksize protected.
+> > > 
+> > > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> > > Cc: stable@vger.kernel.org
+> >   I agree that it makes sense to have all the places consistent and protect
+> > raw disk inode i_disksize with i_data_sem. OTOH I don't see a way how this
+> > can cause any real harm (but I guess you expect there might be something as
+> > you CCed stable), so can you explain it please?
+> 
+> This was the case I was worried about:
+> 
+>         CPU #1                                 CPU #2
+> 
+> 1.      down_write(&i_data_sem)
+> 2.      Modify i_disk_size
+> 4.      up_write(&i_data_sem)
+> 5.                                           down_write(&i_data_sem)
+> 6.                                           Modify i_disk_size
+> 7.                                           Copy i_disk_size to on-disk inode
+> 8.                                           up_write(&i_data_sem)
+> 9.      Copy i_disk_size to on-disk inode
+> 
+> 
+> It's the standard data race; it might not be a problem on Intel CPU's,
+> but in general, cpu #1 might still have a stale copy of i_disk_size in
+> its cache, and hence it might copying the old, outdated value into the
+> on-disk inode.
+  Yes, that could be a problem even on Intel CPU - not because of cache
+coherency but because old i_disk_size value might be speculatively
+preloaded before CPU#2 updates its value. So feel free to add:
+  Reviewed-by: Jan Kara <jack@suse.cz>
+
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
