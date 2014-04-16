@@ -1,54 +1,67 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 74171] New: Attempting to build recent version of e2fsprogs
- from git repo gives config.h missing
-Date: Wed, 16 Apr 2014 10:27:44 +0000
-Message-ID: <bug-74171-13602@https.bugzilla.kernel.org/>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [PATCH 0/6][RFC] Introduce FALLOC_FL_ZERO_RANGE flag for
+ fallocate
+Date: Wed, 16 Apr 2014 12:43:09 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1404161242480.2586@localhost.localdomain>
+References: <1392649703-10772-1-git-send-email-lczerner@redhat.com> <20140416063618.GA12498@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:44105 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755360AbaDPK1s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 16 Apr 2014 06:27:48 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 8BD7720200
-	for <linux-ext4@vger.kernel.org>; Wed, 16 Apr 2014 10:27:47 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id A778D2026C
-	for <linux-ext4@vger.kernel.org>; Wed, 16 Apr 2014 10:27:44 +0000 (UTC)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Michael Kerrisk <mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
+	linux-man-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	tytso-3s7WtUTddSA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org
+To: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Return-path: <linux-man-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <20140416063618.GA12498-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Sender: linux-man-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=74171
+On Tue, 15 Apr 2014, Christoph Hellwig wrote:
 
-            Bug ID: 74171
-           Summary: Attempting to build recent version of e2fsprogs from
-                    git repo gives config.h missing
-           Product: File System
-           Version: 2.5
-    Kernel Version: 3.13.9-100.fc19.x86_64
-          Hardware: x86-64
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: high
-          Priority: P1
-         Component: ext4
-          Assignee: fs_ext4@kernel-bugs.osdl.org
-          Reporter: grgoffe@yahoo.com
-        Regression: No
+> Date: Tue, 15 Apr 2014 23:36:18 -0700
+> From: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+> To: Lukas Czerner <lczerner-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+> Cc: Michael Kerrisk <mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, linux-man-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+>     linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+>     xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org
+> Subject: Re: [PATCH 0/6][RFC] Introduce FALLOC_FL_ZERO_RANGE flag for
+>     fallocate
+> 
+> On Mon, Feb 17, 2014 at 04:08:17PM +0100, Lukas Czerner wrote:
+> > Introduce new FALLOC_FL_ZERO_RANGE flag for fallocate. This has the same
+> > functionality as xfs ioctl XFS_IOC_ZERO_RANGE.
+> 
+> Lukas, can you please also send a man page update for
+> FALLOC_FL_ZERO_RANGE now that is has been merged?
 
-This is my first time attempting to build e2fsprogs from the git repo. I'm
-getting a failure with config.h missing. Here's a sample of the error message.
-I have a complete build log available if needed.
+Right, I'll do that.
 
-../../../lib/uuid/unparse.c:35:20: fatal error: config.h: No such file or
-directory
+Thanks!
+-Lukas
 
-This is a fedora 19 x86_64 system.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+> 
+> > 
+> > It can be used to convert a range of file to zeros preferably without
+> > issuing data IO. Blocks should be preallocated for the regions that span
+> > holes in the file, and the entire range is preferable converted to
+> > unwritten extents - even though file system may choose to zero out the
+> > extent or do whatever which will result in reading zeros from the range
+> > while the range remains allocated for the file.
+> > 
+> > This can be also used to preallocate blocks past EOF in the same way as
+> > with fallocate. Flag FALLOC_FL_KEEP_SIZE which should cause the inode
+> > size to remain the same.
+> > 
+> > You can test this feature yourself using xfstests, of fallocate(1) however
+> > you'll need patches for util_linux, xfsprogs and xfstests which you
+> > can find here:
+> > 
+> > http://people.redhat.com/lczerner/zero_range/
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+--
+To unsubscribe from this list: send the line "unsubscribe linux-man" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
