@@ -1,70 +1,73 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 4/5] ext4: Discard preallocations after removing space
-Date: Wed, 16 Apr 2014 20:33:01 +0200
-Message-ID: <1397673182-5326-4-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 5/5] ext4: Fix extent merging in ext4_ext_shift_path_extents()
+Date: Wed, 16 Apr 2014 20:33:02 +0200
+Message-ID: <1397673182-5326-5-git-send-email-lczerner@redhat.com>
 References: <1397673182-5326-1-git-send-email-lczerner@redhat.com>
 Cc: linkinjeon@gmail.com, Lukas Czerner <lczerner@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:64884 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:19642 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755536AbaDPSdm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 16 Apr 2014 14:33:42 -0400
+	id S1755650AbaDPSdo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 16 Apr 2014 14:33:44 -0400
 In-Reply-To: <1397673182-5326-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently in ext4_collapse_range() and ext4_punch_hole() we're
-discarding preallocation twice. Once before we attempt to do any changes
-and second time after we're done with the changes.
+There is a bug in ext4_ext_shift_path_extents() where if we actually
+manage to merge a extent we would skip shifting the next extent. This
+will result in in one extent in the extent tree not being properly
+shifted.
 
-While the second call to ext4_discard_preallocations() in
-ext4_punch_hole() case is not needed, we need to discard preallocation
-right after ext4_ext_remove_space() in collapse range case because in
-the case we had to restart a transaction in the middle of removing space
-we might have new preallocations created.
+This is causing failure in various xfstests tests using fsx or fsstress
+with collapse range support. It will also cause file system corruption
+which looks something like:
 
-Remove unneeded ext4_discard_preallocations() ext4_punch_hole() and move
-it to the better place in ext4_collapse_range()
+ e2fsck 1.42.9 (4-Feb-2014)
+ Pass 1: Checking inodes, blocks, and sizes
+ Inode 20 has out of order extents
+        (invalid logical block 3, physical block 492938, len 2)
+ Clear? yes
+ ...
+
+when running e2fsck.
+
+It's also very easily reproducible just by running fsx without any
+parameters. I can usually hit the problem within a minute.
+
+Fix it by increasing ex_start only if we're not merging the extent.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
- fs/ext4/extents.c | 2 +-
- fs/ext4/inode.c   | 1 -
- 2 files changed, 1 insertion(+), 2 deletions(-)
+ fs/ext4/extents.c | 15 ++++++++-------
+ 1 file changed, 8 insertions(+), 7 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 9cd762c..84bb668 100644
+index 84bb668..5fa31cb 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -5433,6 +5433,7 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
- 		up_write(&EXT4_I(inode)->i_data_sem);
- 		goto out_stop;
- 	}
-+	ext4_discard_preallocations(inode);
+@@ -5230,13 +5230,14 @@ ext4_ext_shift_path_extents(struct ext4_ext_path *path, ext4_lblk_t shift,
  
- 	ret = ext4_ext_shift_extents(inode, handle, punch_stop,
- 				     punch_stop - punch_start);
-@@ -5445,7 +5446,6 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
- 	i_size_write(inode, new_size);
- 	EXT4_I(inode)->i_disksize = new_size;
- 
--	ext4_discard_preallocations(inode);
- 	up_write(&EXT4_I(inode)->i_data_sem);
- 	if (IS_SYNC(inode))
- 		ext4_handle_sync(handle);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 56f1ff4..8765d49 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3613,7 +3613,6 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
- 		ret = ext4_free_hole_blocks(handle, inode, first_block,
- 					    stop_block);
- 
--	ext4_discard_preallocations(inode);
- 	up_write(&EXT4_I(inode)->i_data_sem);
- 	if (IS_SYNC(inode))
- 		ext4_handle_sync(handle);
+ 			while (ex_start <= ex_last) {
+ 				ex_start->ee_block -= shift;
+-				if (ex_start >
+-					EXT_FIRST_EXTENT(path[depth].p_hdr)) {
+-					if (ext4_ext_try_to_merge_right(inode,
+-						path, ex_start - 1))
+-						ex_last--;
+-				}
+-				ex_start++;
++				/* Try to merge to the left. */
++				if ((ex_start >
++				     EXT_FIRST_EXTENT(path[depth].p_hdr)) &&
++				    ext4_ext_try_to_merge_right(inode,
++							path, ex_start - 1))
++					ex_last--;
++				else
++					ex_start++;
+ 			}
+ 			err = ext4_ext_dirty(handle, inode, path + depth);
+ 			if (err)
 -- 
 1.8.3.1
 
