@@ -1,34 +1,41 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/3 v2] fs: Prevent doing FALLOC_FL_ZERO_RANGE on append
- only file
-Date: Tue, 15 Apr 2014 22:51:34 -0400
-Message-ID: <20140416025134.GB21807@thunk.org>
+Subject: Re: [PATCH 3/3 v2] fs: move falloc collapse range check into the
+ filesystem methods
+Date: Tue, 15 Apr 2014 22:55:21 -0400
+Message-ID: <20140416025521.GC21807@thunk.org>
 References: <1397580076-19826-1-git-send-email-lczerner@redhat.com>
- <1397580076-19826-2-git-send-email-lczerner@redhat.com>
- <20140415220220.GR15995@dastard>
+ <1397580076-19826-3-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:54904 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751099AbaDPCvn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Apr 2014 22:51:43 -0400
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	xfs@oss.sgi.com
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20140415220220.GR15995@dastard>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1397580076-19826-3-git-send-email-lczerner@redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Apr 16, 2014 at 08:02:20AM +1000, Dave Chinner wrote:
-> On Tue, Apr 15, 2014 at 06:41:15PM +0200, Lukas Czerner wrote:
-> > Currently punch hole and collapse range fallocate operation are not
-> > allowed on append only file. This should be case for zero range as well.
-> > Fix it by allowing only pure fallocate (possibly with keep size set).
-> > 
-> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+On Tue, Apr 15, 2014 at 06:41:16PM +0200, Lukas Czerner wrote:
+> Currently in do_fallocate in collapse range case we're checking whether
+> offset + len is not bigger than i_size. However there is nothing which
+> would prevent i_size from changing so the check is pointless. It should
+> be done in the file system itself and the file system needs to make sure
+> that i_size is not going to change. The i_size check for the other
+> fallocate modes are also done in the filesystems.
+> 
+> As it is now we can easily crash kernel by having two processes doing
+> truncate and fallocate collapse range at the same time. This can be
+> reproduced on ext4 and it is theoretically possible on xfs even though I
+> was not able to trigger it with this simple test.
+> 
+> This commit removes the check from do_fallocate and adds it to the file
+> system.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> Acked-by: Dave Chinner <david@fromorbit.com>
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
 
-Thanks, updated with Dave's suggested added parenthesis.
+Thanks, updated.
 
 						- Ted
