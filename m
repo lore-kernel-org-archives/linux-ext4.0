@@ -1,62 +1,48 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 1/5] ext4: Use filemap_write_and_wait_range() correctly
- in collapse range
-Date: Wed, 16 Apr 2014 22:20:05 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1404162217350.2368@localhost.localdomain>
-References: <1397673182-5326-1-git-send-email-lczerner@redhat.com>
+From: Namjae Jeon <namjae.jeon@samsung.com>
+Subject: [PATCH 0/3] ext4: fix several failure issues in xfstests.
+Date: Thu, 17 Apr 2014 07:27:32 +0900
+Message-ID: <002801cf59c3$0f0515c0$2d0f4140$@samsung.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linkinjeon@gmail.com
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=iso-8859-2
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+	=?iso-8859-2?Q?'Luk=E1=B9_Czerner'?= <lczerner@redhat.com>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57901 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756459AbaDPUoW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 16 Apr 2014 16:44:22 -0400
-In-Reply-To: <1397673182-5326-1-git-send-email-lczerner@redhat.com>
+Received: from mailout1.samsung.com ([203.254.224.24]:33763 "EHLO
+	mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750919AbaDPW1g (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Apr 2014 18:27:36 -0400
+Received: from epcpsbgr1.samsung.com
+ (u141.gpu120.samsung.co.kr [203.254.230.141])
+ by mailout1.samsung.com (Oracle Communications Messaging Server 7u4-24.01
+ (7.0.4.24.0) 64bit (built Nov 17 2011))
+ with ESMTP id <0N4500LJSADWYI20@mailout1.samsung.com> for
+ linux-ext4@vger.kernel.org; Thu, 17 Apr 2014 07:27:32 +0900 (KST)
+Content-language: ko
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-So unfortunately this does not fix all the problems. Even though
-this fixes all the problems with collapse rage when page size ==
-block size it still fails some tests when page size > block size so
-I guess we still have some work to do.
+There are several failures while running xfstests-bld(generic/075 and 091).
+(reported by Ted)
+COLLAPSE RANGE issue are mixed with ZERO RANGE issue as per format and mount
+options.
 
-Thanks!
--Lukas
+First, list up issues like the following.
+1. format with 1KB or 2KB block size.(075, 091 are failed, COLLAPSE RANGE issue).
+2. mount -o dioread_nolock. (091 is failed, ZERO RANGE issue.)
+   - As I know, Lukas is checking this issue.
+3. mount -o data=journal. (091 is failed, ZERO RANGE issue.)
+4. format with bigalloc. (075 and 091 are failed, COLLAPSE RANGE issue).
+   - Once I would like to be disable COLLAPSE RANGE on ext4 with bigalloc feature
+     till finding the root-cause. first, I need the time to understand bigalloc feature..
+5. testing more.
 
-On Wed, 16 Apr 2014, Lukas Czerner wrote:
+Namjae Jeon(3)
+ ext4: fix COLLAPSE_RANGE failure issue on ext4 with 1KB block size.
+ ext4: fix ZERO_RANGE test failure in data journalling mode.
+ ext4: disable COLLAPSE_RANGE for bigalloc.
 
-> Date: Wed, 16 Apr 2014 20:32:58 +0200
-> From: Lukas Czerner <lczerner@redhat.com>
-> To: linux-ext4@vger.kernel.org
-> Cc: linkinjeon@gmail.com, Lukas Czerner <lczerner@redhat.com>
-> Subject: [PATCH 1/5] ext4: Use filemap_write_and_wait_range() correctly in
->     collapse range
-> 
-> Currently we're passing -1 as lend argumnet for
-> filemap_write_and_wait_range() which is wrong since lend is signed type
-> so it would cause some confusion and we might not write_and_wait for the
-> entire range we're expecting to write.
-> 
-> Fix it by using LLONG_MAX instead.
-> 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> ---
->  fs/ext4/extents.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index ff823b7..821c1d4 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -5378,7 +5378,7 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
->  	punch_stop = (offset + len) >> EXT4_BLOCK_SIZE_BITS(sb);
->  
->  	/* Write out all dirty pages */
-> -	ret = filemap_write_and_wait_range(inode->i_mapping, offset, -1);
-> +	ret = filemap_write_and_wait_range(inode->i_mapping, offset, LLONG_MAX);
->  	if (ret)
->  		return ret;
->  
-> 
+-- 
+1.7.9.5
+
