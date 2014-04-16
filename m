@@ -1,83 +1,59 @@
 From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: [PATCH 1/3] ext4: fix COLLAPSE_RANGE failure issue on ext4 with 1KB
- block size
-Date: Thu, 17 Apr 2014 07:27:45 +0900
-Message-ID: <002901cf59c3$16b21ca0$441655e0$@samsung.com>
+Subject: [PATCH 2/3] ext4: fix ZERO_RANGE test failure in data journalling mode
+Date: Thu, 17 Apr 2014 07:29:18 +0900
+Message-ID: <002a01cf59c3$4eaf7490$ec0e5db0$@samsung.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=iso-8859-2
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	=?iso-8859-2?Q?'Luk=E1=B9_Czerner'?= <lczerner@redhat.com>
+	=?iso-8859-2?Q?Luk=E1=B9_Czerner?= <lczerner@redhat.com>
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout1.samsung.com ([203.254.224.24]:33786 "EHLO
+Received: from mailout1.samsung.com ([203.254.224.24]:33933 "EHLO
 	mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750919AbaDPW1q (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Apr 2014 18:27:46 -0400
-Received: from epcpsbgr4.samsung.com
- (u144.gpu120.samsung.co.kr [203.254.230.144])
+	with ESMTP id S1750919AbaDPW3V (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Apr 2014 18:29:21 -0400
+Received: from epcpsbgr1.samsung.com
+ (u141.gpu120.samsung.co.kr [203.254.230.141])
  by mailout1.samsung.com (Oracle Communications Messaging Server 7u4-24.01
  (7.0.4.24.0) 64bit (built Nov 17 2011))
- with ESMTP id <0N4500E9HAE9WW40@mailout1.samsung.com> for
- linux-ext4@vger.kernel.org; Thu, 17 Apr 2014 07:27:45 +0900 (KST)
+ with ESMTP id <0N45001Q7AGVXC10@mailout1.samsung.com> for
+ linux-ext4@vger.kernel.org; Thu, 17 Apr 2014 07:29:19 +0900 (KST)
 Content-language: ko
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Namjae Jeon <namjae.jeon@samsung.com>
 
-When formatting with 1KB or 2KB(not aligned with PAGE SIZE) block size,
-xfstests generic/075 and 091 are failing. The offset supplied to function
-truncate_pagecache_range is block size aligned. In this function start offset
-is re-aligned to PAGE_SIZE by rounding_up to the next page boundary.
-Due to this rounding up, old data remains in the page cache when blocksize is
-less than page size and start offset is not aligned with page size.
-In case of collapse range, we need to align start offset to page size boundary
-by doing a round down operation instead of round up.
+xfstests generic/091 is failing when mounting ext4 with data=journal.
+I think that this regression is same problem that occurred prior to collapse
+range issue. So ZERO RANGE also need to call ext4_force_commit as
+collapse range.
 
 Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
 Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
 ---
- fs/ext4/extents.c | 11 +++++++----
- 1 file changed, 7 insertions(+), 4 deletions(-)
+ fs/ext4/extents.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 1bb3e4b..f386dd6 100644
+index f386dd6..a64242f 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -5404,8 +5404,8 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
- 	struct super_block *sb = inode->i_sb;
- 	ext4_lblk_t punch_start, punch_stop;
- 	handle_t *handle;
--	unsigned int credits;
--	loff_t new_size;
-+	unsigned int credits, rounding;
-+	loff_t new_size, ioffset;
- 	int ret;
+@@ -4742,6 +4742,13 @@ static long ext4_zero_range(struct file *file, loff_t offset,
  
- 	/* Collapse range works only on fs block size aligned offsets. */
-@@ -5428,8 +5428,11 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
- 			return ret;
- 	}
+ 	trace_ext4_zero_range(inode, offset, len, mode);
  
-+	rounding = max_t(uint, 1 << EXT4_BLOCK_SIZE_BITS(sb), PAGE_CACHE_SIZE);
-+	ioffset = offset & ~(rounding - 1);
++	/* Call ext4_force_commit to flush all data in case of data=journal. */
++	if (ext4_should_journal_data(inode)) {
++		ret = ext4_force_commit(inode->i_sb);
++		if (ret)
++			return ret;
++	}
 +
- 	/* Write out all dirty pages */
--	ret = filemap_write_and_wait_range(inode->i_mapping, offset, -1);
-+	ret = filemap_write_and_wait_range(inode->i_mapping, ioffset, -1);
- 	if (ret)
- 		return ret;
- 
-@@ -5451,7 +5454,7 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
- 		goto out_mutex;
- 	}
- 
--	truncate_pagecache_range(inode, offset, -1);
-+	truncate_pagecache_range(inode, ioffset, -1);
- 
- 	/* Wait for existing dio to complete */
- 	ext4_inode_block_unlocked_dio(inode);
+ 	/*
+ 	 * Write out all dirty pages to avoid race conditions
+ 	 * Then release them.
 -- 
 1.7.11-rc0
 
