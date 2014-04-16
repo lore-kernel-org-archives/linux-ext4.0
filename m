@@ -1,23 +1,26 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 1/5] ext4: Use filemap_write_and_wait_range() correctly in collapse range
-Date: Wed, 16 Apr 2014 20:32:58 +0200
-Message-ID: <1397673182-5326-1-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 2/5] ext4: fix removing status extents in ext4_collapse_range()
+Date: Wed, 16 Apr 2014 20:32:59 +0200
+Message-ID: <1397673182-5326-2-git-send-email-lczerner@redhat.com>
+References: <1397673182-5326-1-git-send-email-lczerner@redhat.com>
 Cc: linkinjeon@gmail.com, Lukas Czerner <lczerner@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47817 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:20541 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754666AbaDPSdi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 16 Apr 2014 14:33:38 -0400
+	id S1754666AbaDPSdk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 16 Apr 2014 14:33:40 -0400
+In-Reply-To: <1397673182-5326-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently we're passing -1 as lend argumnet for
-filemap_write_and_wait_range() which is wrong since lend is signed type
-so it would cause some confusion and we might not write_and_wait for the
-entire range we're expecting to write.
+Currently in ext4_collapse_range() when calling ext4_es_remove_extent() to
+remove status extents we're passing (EXT_MAX_BLOCKS - punch_start - 1)
+in order to remove all extents from start of the collapse range to the
+end of the file. However this is wrong because we might miss the
+possible extent covering the last block of the file.
 
-Fix it by using LLONG_MAX instead.
+Fix it by removing the -1.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
@@ -25,18 +28,18 @@ Signed-off-by: Lukas Czerner <lczerner@redhat.com>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index ff823b7..821c1d4 100644
+index 821c1d4..25ed60f 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -5378,7 +5378,7 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
- 	punch_stop = (offset + len) >> EXT4_BLOCK_SIZE_BITS(sb);
+@@ -5422,7 +5422,7 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
+ 	ext4_discard_preallocations(inode);
  
- 	/* Write out all dirty pages */
--	ret = filemap_write_and_wait_range(inode->i_mapping, offset, -1);
-+	ret = filemap_write_and_wait_range(inode->i_mapping, offset, LLONG_MAX);
- 	if (ret)
- 		return ret;
- 
+ 	ret = ext4_es_remove_extent(inode, punch_start,
+-				    EXT_MAX_BLOCKS - punch_start - 1);
++				    EXT_MAX_BLOCKS - punch_start);
+ 	if (ret) {
+ 		up_write(&EXT4_I(inode)->i_data_sem);
+ 		goto out_stop;
 -- 
 1.8.3.1
 
