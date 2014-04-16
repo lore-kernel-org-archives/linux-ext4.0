@@ -1,115 +1,85 @@
-From: Amit Sahrawat <amit.sahrawat83@gmail.com>
-Subject: Re: Ext4: deadlock occurs when running fsstress and ENOSPC errors are seen.
-Date: Wed, 16 Apr 2014 13:21:34 +0530
-Message-ID: <CADDb1s3CnQJyY4f1xS6a=+ceE3cr0ZmkE1EQZ95fLDBw7DHfNg@mail.gmail.com>
-References: <CADDb1s2RvN_S+abFXCe4ZhZPKZgP_PiocJdpiLzRC_Se5sgVVg@mail.gmail.com>
-	<20140415124743.GD3403@thunk.org>
-	<CADDb1s3HYDvb51Ngrwk82gkpbUWg1bRo7kaUmbGRmb0g_9JKgw@mail.gmail.com>
-	<20140416050729.GD21807@thunk.org>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH 2/3 v2] fs: Prevent doing FALLOC_FL_ZERO_RANGE on append
+	only file
+Date: Wed, 16 Apr 2014 10:29:43 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1404161028210.5916@localhost.localdomain>
+References: <1397580076-19826-1-git-send-email-lczerner@redhat.com>
+	<1397580076-19826-2-git-send-email-lczerner@redhat.com>
+	<20140415220220.GR15995@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Amit Sahrawat <amit.sahrawat83@gmail.com>,
-	Jan Kara <jack@suse.cz>, darrick.wong@oracle.com,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	LKML <linux-kernel@vger.kernel.org>,
-	Namjae Jeon <linkinjeon@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20140416050729.GD21807@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, xfs@oss.sgi.com
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <20140415220220.GR15995@dastard>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-Sorry Ted, if it caused the confusion.
+On Wed, 16 Apr 2014, Dave Chinner wrote:
 
-There were actually 2 parts to the problem, the logs in the first mail
-were from the original situation =E2=80=93 where in there were many blo=
-ck
-groups and error prints also showed that.
+> Date: Wed, 16 Apr 2014 08:02:20 +1000
+> From: Dave Chinner <david@fromorbit.com>
+> To: Lukas Czerner <lczerner@redhat.com>
+> Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, xfs@oss.sgi.com
+> Subject: Re: [PATCH 2/3 v2] fs: Prevent doing FALLOC_FL_ZERO_RANGE on append
+>     only file
+> 
+> On Tue, Apr 15, 2014 at 06:41:15PM +0200, Lukas Czerner wrote:
+> > Currently punch hole and collapse range fallocate operation are not
+> > allowed on append only file. This should be case for zero range as well.
+> > Fix it by allowing only pure fallocate (possibly with keep size set).
+> > 
+> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> > ---
+> > v2: Change the condition to be future proof as suggested by hch
+> > 
+> >  fs/open.c | 6 ++----
+> >  1 file changed, 2 insertions(+), 4 deletions(-)
+> > 
+> > diff --git a/fs/open.c b/fs/open.c
+> > index 631aea81..fe48b2f 100644
+> > --- a/fs/open.c
+> > +++ b/fs/open.c
+> > @@ -254,11 +254,9 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+> >  		return -EBADF;
+> >  
+> >  	/*
+> > -	 * It's not possible to punch hole or perform collapse range
+> > -	 * on append only file
+> > +	 * We can only allow pure fallocate on append only files
+> >  	 */
+> > -	if (mode & (FALLOC_FL_PUNCH_HOLE | FALLOC_FL_COLLAPSE_RANGE)
+> > -	    && IS_APPEND(inode))
+> > +	if (mode & ~FALLOC_FL_KEEP_SIZE && IS_APPEND(inode))
+> 
+> 	if ((mode & ~FALLOC_FL_KEEP_SIZE) && IS_APPEND(inode))
+> 
+> gcc normally complains when you mix & and && in the same logic
+> statement without () to separate the logic. I agree with gcc here,
+> because the () indicate the intent of the logic and make it easy to
+> determine that the & and && haven't been mixed up or fat-fingered...
 
-EXT4-fs error (device sda1): ext4_mb_generate_buddy:742: group 1493, 0
-clusters in bitmap, 58339 in gd
-EXT4-fs error (device sda1): ext4_mb_generate_buddy:742: group 1000, 0
-clusters in bitmap, 3 in gd
-EXT4-fs error (device sda1): ext4_mb_generate_buddy:742: group 1425, 0
-clusters in bitmap, 1 in gd
-JBD2: Spotted dirty metadata buffer (dev =3D sda1, blocknr =3D 0). Ther=
-e's
-a risk of filesystem corruption in case of system crash.
-JBD2: Spotted dirty metadata buffer (dev =3D sda1, blocknr =3D 0). Ther=
-e's
-a risk of filesystem corruption in case of system crash.
+Yeah, I was thinking about this and then left it to operator
+precedence. But having () in there is fine as well.
 
-1)	Original case =E2=80=93 when the disk got corrupted and we only had =
-the
-logs and the hung task messages. But not the HDD on which issue was
-observed.
-2)	In order to reproduce the problem as was coming through the logs
-(which highlighted the problem in the bitmap corruption). To minimize
-the environment and make a proper case, we created a smaller partition
-size and with only 2 groups. And intentionally corrupted the group 1
-(our intention was just to replicate the error scenario).
-3)	After corruption we used =E2=80=98fsstress=E2=80=99  - we got the si=
-milar problem
-as was coming the original logs. =E2=80=93 We shared our analysis after=
- this
-point for looping in the writepages part the free blocks mismatch.
-4)	We came across =E2=80=98Darrick=E2=80=99 patches(in which it also me=
-ntioned about
-how to corrupt to reproduce the problem) and applied on our
-environment. It solved the initial problem about the looping in
-writepages, but now we got hangs at other places.
+-Lukas
 
-Using =E2=80=98tune2fs=E2=80=99 is not a viable solution in our case, w=
-e can only
-provide the solution via. the kernel changes. So, we made the changes
-as shared earlier.
+> 
+> Cheers,
+> 
+> Dave.
+> 
 
-So the question isn't how the file system got corrupted, but that
-you'd prefer that the system recovers without hanging after this
-corruption.
->> Yes,  our priority is to keep the system running.
-
-Again, Sorry for the confusion. But the intention was just to show the
-original problem and what we did in order to replicate the problem.
-
-Thanks & Regards,
-Amit Sahrawat
-
-
-On Wed, Apr 16, 2014 at 10:37 AM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Wed, Apr 16, 2014 at 10:30:10AM +0530, Amit Sahrawat wrote:
->> 4)    Corrupt the block group =E2=80=981=E2=80=99  by writing all =E2=
-=80=981=E2=80=99, we had one file
->> with all 1=E2=80=99s, so using =E2=80=98dd=E2=80=99 =E2=80=93
->> dd if=3Di_file of=3D/dev/sdb1 bs=3D4096 seek=3D17 count=3D1
->> After this mount the partition =E2=80=93 create few random size file=
-s and then
->> ran =E2=80=98fsstress,
->
-> Um, sigh.  You didn't say that you were deliberately corrupting the
-> file system.  That wasn't in the subject line, or anywhere else in th=
-e
-> original message.
->
-> So the question isn't how the file system got corrupted, but that
-> you'd prefer that the system recovers without hanging after this
-> corruption.
->
-> I wish you had *said* that.  It would have saved me a lot of time,
-> since I was trying to figure out how the system had gotten so
-> corrupted (not realizing you had deliberately corrupted the file
-> system).
->
-> So I think if you run "tune2fs -e remount-ro /dev/sdb1" before you
-> started the fsstress, the file system would have remounted the
-> filesystem read-only at the first EXT4-fs error message.  This would
-> avoid the hang that you saw, since the file system would hopefully
-> "failed fast", before th euser had the opportunity to put data into
-> the page cache that would be lost when the system discovered there wa=
-s
-> no place to put the data.
->
-> Regards,
->
->                                                 - Ted
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
