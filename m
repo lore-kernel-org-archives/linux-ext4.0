@@ -1,66 +1,131 @@
-From: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Subject: Re: [PATCH v2 1/2] xfs: fix tmpfile/selinux deadlock and initialize
- security/acl
-Date: Wed, 16 Apr 2014 04:14:02 -0700
-Message-ID: <20140416111402.GA32350@infradead.org>
-References: <1397071311-28371-1-git-send-email-bfoster@redhat.com>
- <1397071311-28371-2-git-send-email-bfoster@redhat.com>
- <20140410102421.GA17641@infradead.org>
- <20140410121947.GA14124@bfoster.bfoster>
- <20140410122944.GA6579@infradead.org>
- <20140415175228.GE26404@infradead.org>
- <1188577823.463241.1397590262478.JavaMail.zimbra@linbit.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Brian Foster <bfoster-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-man-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org, linux-security-module-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	Al Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Andreas Gruenbacher <andreas.gruenbacher-63ez5xqkn6DQT0dZR+AlfA@public.gmane.org>
-Return-path: <linux-man-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <1188577823.463241.1397590262478.JavaMail.zimbra-63ez5xqkn6DQT0dZR+AlfA@public.gmane.org>
-Sender: linux-man-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: [RFC PATCH v2 1/4] ext4: improve extents status tree trace point
+Date: Wed, 16 Apr 2014 19:30:27 +0800
+Message-ID: <1397647830-24444-2-git-send-email-wenqing.lz@taobao.com>
+References: <1397647830-24444-1-git-send-email-wenqing.lz@taobao.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Jan Kara <jack@suse.cz>, Zheng Liu <wenqing.lz@taobao.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pa0-f52.google.com ([209.85.220.52]:33964 "EHLO
+	mail-pa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755807AbaDPLYU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Apr 2014 07:24:20 -0400
+Received: by mail-pa0-f52.google.com with SMTP id rd3so10815762pab.39
+        for <linux-ext4@vger.kernel.org>; Wed, 16 Apr 2014 04:24:19 -0700 (PDT)
+In-Reply-To: <1397647830-24444-1-git-send-email-wenqing.lz@taobao.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Apr 15, 2014 at 09:31:02PM +0200, Andreas Gruenbacher wrote:
-> from how O_TMPFILE is documented right now [*], creating such a file and
-> then linking it into the namespace is one of the obvious use cases.
+From: Zheng Liu <wenqing.lz@taobao.com>
 
-Btw, I think the man page is wrong - given that the tmpfile is not
-visible in the namespace it is obviously not created in the directory.
-The directory passed in is just a handle for the filesystem it should be
-created in.
+This commit improves the trace point of extents status tree.  We rename
+trace_ext4_es_shrink_enter in ext4_es_count() because it is also used
+in ext4_es_scan() and we can not identify them from the result.
 
-Michael, should I send you an update for this, or do you want to do it
-yourself as you can probably come up with better language anyway?
+Further this commit fixes a variable name in trace point in order to
+keep consistency with others.
 
-> The
-> intent seems to be to make it seem like the file was created and populated
-> atomically, possibly with inherited permissions and all.
-> I think this
-> behavior require that the O_TMPFILE file inherits from the directory it
-> was "created" in.
-> 
-> Adding code to achieve the effect of create-time inheritance at link
-> time, only for O_TMPFILE files or files without any links, doesn't seem 
-> reasonable to me: it would duplicate create code in the link code path,
-> and it would make it harder to override inherited permissions or labels.
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: Jan Kara <jack@suse.cz>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+---
+ fs/ext4/extents_status.c    |    6 +++---
+ include/trace/events/ext4.h |   28 ++++++++++++++++++++--------
+ 2 files changed, 23 insertions(+), 11 deletions(-)
 
-Inheriting any ACL on creating an anonymous file seems utterly wrong.
-Inheriting on link seems somewhat more sensible and not too bad in terms
-of code, but very confusing in terms of semantics.  I think the best
-method is to make sure it simply does not inherit any ACL and document
-that clearly.
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index 0a014a7..090e69a 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -1015,7 +1015,7 @@ static unsigned long ext4_es_count(struct shrinker *shrink,
+ 
+ 	sbi = container_of(shrink, struct ext4_sb_info, s_es_shrinker);
+ 	nr = percpu_counter_read_positive(&sbi->s_extent_cache_cnt);
+-	trace_ext4_es_shrink_enter(sbi->s_sb, sc->nr_to_scan, nr);
++	trace_ext4_es_shrink_count(sbi->s_sb, sc->nr_to_scan, nr);
+ 	return nr;
+ }
+ 
+@@ -1028,14 +1028,14 @@ static unsigned long ext4_es_scan(struct shrinker *shrink,
+ 	int ret, nr_shrunk;
+ 
+ 	ret = percpu_counter_read_positive(&sbi->s_extent_cache_cnt);
+-	trace_ext4_es_shrink_enter(sbi->s_sb, nr_to_scan, ret);
++	trace_ext4_es_shrink_scan_enter(sbi->s_sb, nr_to_scan, ret);
+ 
+ 	if (!nr_to_scan)
+ 		return ret;
+ 
+ 	nr_shrunk = __ext4_es_shrink(sbi, nr_to_scan, NULL);
+ 
+-	trace_ext4_es_shrink_exit(sbi->s_sb, nr_shrunk, ret);
++	trace_ext4_es_shrink_scan_exit(sbi->s_sb, nr_shrunk, ret);
+ 	return nr_shrunk;
+ }
+ 
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index 010ea89..c1d7a7c 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -2379,7 +2379,7 @@ TRACE_EVENT(ext4_es_lookup_extent_exit,
+ 		  show_extent_status(__entry->found ? __entry->status : 0))
+ );
+ 
+-TRACE_EVENT(ext4_es_shrink_enter,
++DECLARE_EVENT_CLASS(ext4__es_shrink_enter,
+ 	TP_PROTO(struct super_block *sb, int nr_to_scan, int cache_cnt),
+ 
+ 	TP_ARGS(sb, nr_to_scan, cache_cnt),
+@@ -2401,26 +2401,38 @@ TRACE_EVENT(ext4_es_shrink_enter,
+ 		  __entry->nr_to_scan, __entry->cache_cnt)
+ );
+ 
+-TRACE_EVENT(ext4_es_shrink_exit,
+-	TP_PROTO(struct super_block *sb, int shrunk_nr, int cache_cnt),
++DEFINE_EVENT(ext4__es_shrink_enter, ext4_es_shrink_count,
++	TP_PROTO(struct super_block *sb, int nr_to_scan, int cache_cnt),
++
++	TP_ARGS(sb, nr_to_scan, cache_cnt)
++);
++
++DEFINE_EVENT(ext4__es_shrink_enter, ext4_es_shrink_scan_enter,
++	TP_PROTO(struct super_block *sb, int nr_to_scan, int cache_cnt),
++
++	TP_ARGS(sb, nr_to_scan, cache_cnt)
++);
++
++TRACE_EVENT(ext4_es_shrink_scan_exit,
++	TP_PROTO(struct super_block *sb, int nr_shrunk, int cache_cnt),
+ 
+-	TP_ARGS(sb, shrunk_nr, cache_cnt),
++	TP_ARGS(sb, nr_shrunk, cache_cnt),
+ 
+ 	TP_STRUCT__entry(
+ 		__field(	dev_t,	dev			)
+-		__field(	int,	shrunk_nr		)
++		__field(	int,	nr_shrunk		)
+ 		__field(	int,	cache_cnt		)
+ 	),
+ 
+ 	TP_fast_assign(
+ 		__entry->dev		= sb->s_dev;
+-		__entry->shrunk_nr	= shrunk_nr;
++		__entry->nr_shrunk	= nr_shrunk;
+ 		__entry->cache_cnt	= cache_cnt;
+ 	),
+ 
+-	TP_printk("dev %d,%d shrunk_nr %d cache_cnt %d",
++	TP_printk("dev %d,%d nr_shrunk %d cache_cnt %d",
+ 		  MAJOR(__entry->dev), MINOR(__entry->dev),
+-		  __entry->shrunk_nr, __entry->cache_cnt)
++		  __entry->nr_shrunk, __entry->cache_cnt)
+ );
+ 
+ TRACE_EVENT(ext4_collapse_range,
+-- 
+1.7.9.7
 
-> (Trying to fake inheritance by reimplementing it in user space seems like
-> a much worse idea still.)
-
-We don't fake inheritance when linking any other file either.  And
-creating a file in a /tmp without any ACL and then linking it into the
-filesystem already is very common today.
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-man" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
