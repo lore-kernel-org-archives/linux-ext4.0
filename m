@@ -1,60 +1,43 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH] renameat2: add system call number for i386
-Date: Wed, 16 Apr 2014 10:32:02 +1000
-Message-ID: <20140416003202.GY15995@dastard>
-References: <1397344384-15302-1-git-send-email-tytso@mit.edu>
+Subject: Re: [PATCH] check: add support for an external test expunging file
+Date: Wed, 16 Apr 2014 10:34:17 +1000
+Message-ID: <20140416003417.GZ15995@dastard>
+References: <1397530320-20579-1-git-send-email-tytso@mit.edu>
+ <20140416001530.GU15995@dastard>
+ <20140416002550.GB12078@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Miklos Szeredi <mszeredi@suse.cz>, xfs@oss.sgi.com
+Content-Type: text/plain; charset=us-ascii
+Cc: xfs@oss.sgi.com, Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <xfs-bounces@oss.sgi.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:57327 "EHLO
+	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750838AbaDPAec (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Apr 2014 20:34:32 -0400
 Content-Disposition: inline
-In-Reply-To: <1397344384-15302-1-git-send-email-tytso@mit.edu>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20140416002550.GB12078@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Apr 12, 2014 at 07:13:04PM -0400, Theodore Ts'o wrote:
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Miklos Szeredi <mszeredi@suse.cz>
-> ---
->  src/renameat2.c | 4 ++++
->  1 file changed, 4 insertions(+)
+On Tue, Apr 15, 2014 at 08:25:50PM -0400, Theodore Ts'o wrote:
+> On Wed, Apr 16, 2014 at 10:15:30AM +1000, Dave Chinner wrote:
+> > > If the argument to the -X option is a pathname (that is, includes a
+> > > '/' character), treat it as the latter case.  If it the argument to
+> > > the -X option is just a bare filename (that is, does not include '/'
+> > > character), treat it as the former.
+> > 
+> > Can you add a new option rather than overloading the existing one
+> > with new meanings and semantics?
 > 
-> diff --git a/src/renameat2.c b/src/renameat2.c
-> index 5145959..8613aa9 100644
-> --- a/src/renameat2.c
-> +++ b/src/renameat2.c
-> @@ -14,6 +14,10 @@
->  #define SYS_renameat2 316
->  #endif
->  
-> +#if !defined(SYS_renameat2) && defined(__i386__)
-> +#define SYS_renameat2 353
-> +#endif
-> +
->  static int renameat2(int dfd1, const char *path1,
->  		     int dfd2, const char *path2,
->  		     unsigned int flags)
+> If that's your preference, sure.  How does --expunge-list-file strike
+> you?  Or would you prefer something else?  I'm easy.  :-)
 
-Yup, matches the kernel code.  Looks good.
+-E/--expunge-file is fine by me.
 
-Reviewed-by: Dave Chinner <dchinner@redhat.com>
+Cheers,
 
+Dave.
 -- 
 Dave Chinner
 david@fromorbit.com
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
