@@ -1,53 +1,57 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH] check: add support for an external test expunging file
-Date: Wed, 16 Apr 2014 10:15:30 +1000
-Message-ID: <20140416001530.GU15995@dastard>
-References: <1397530320-20579-1-git-send-email-tytso@mit.edu>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: add fallocate mode blocking for debugging purposes
+Date: Tue, 15 Apr 2014 20:23:46 -0400
+Message-ID: <20140416002346.GA12078@thunk.org>
+References: <1397420518-29218-1-git-send-email-tytso@mit.edu>
+ <20140413220016.GD8122@thunk.org>
+ <alpine.LFD.2.00.1404151749490.2146@localhost.localdomain>
+ <534D5B2D.70408@redhat.com>
+ <20140415184442.GC4456@thunk.org>
+ <20140415232556.GS15995@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: xfs@oss.sgi.com, Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	=?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Namjae Jeon <linkinjeon@gmail.com>
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:16127 "EHLO
-	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750893AbaDPAPq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Apr 2014 20:15:46 -0400
+Received: from imap.thunk.org ([74.207.234.97]:54836 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751232AbaDPAXx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Apr 2014 20:23:53 -0400
 Content-Disposition: inline
-In-Reply-To: <1397530320-20579-1-git-send-email-tytso@mit.edu>
+In-Reply-To: <20140415232556.GS15995@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 14, 2014 at 10:52:00PM -0400, Theodore Ts'o wrote:
-> Currently the -X option is intended to specify a set of expunging
-> files which are stored in each test/* subdirectory.  As described in
-> the commit description for 0b1e8abd4, in order to exclude the test
-> generic/280, the -X option is used as follows:
-> 
->     $ cat tests/generic/3.0-stable-avoid
->     280
->     $ sudo ./check -X 3.0-stable-avoid generic/280
-> 
-> However, it is sometimes useful to store the set of expunged tests in
-> a single file, outside of tests/* subdirectories.  This commit allows
-> the following:
-> 
->     $ cat /root/conf/data_journal.exclude
->     generic/068
->     ext4/301
->     $ sudo ./check -X /root/conf/data_journal.exclude -g auto
-> 
-> If the argument to the -X option is a pathname (that is, includes a
-> '/' character), treat it as the latter case.  If it the argument to
-> the -X option is just a bare filename (that is, does not include '/'
-> character), treat it as the former.
+On Wed, Apr 16, 2014 at 09:25:56AM +1000, Dave Chinner wrote:
+> Actually, we shouldn't be changing xfstests or adding workarounds in
+> the kernel to avoid certain operations. We should be fixing the damn
+> bugs that are being exposed.
 
-Can you add a new option rather than overloading the existing one
-with new meanings and semantics?
+Well, I'm waiting for Namjae to look into the test failures.
+Unfortunately I don't have time right now to fix it myself.
 
-Cheers,
+In the meantime, I wanted to do a full baseline test run to make sure
+we didn't have any other regressions or failures post -rc1, and so
+being able to filter out collapse range allowed me to kick off a test
+of the rest of the patches I was hoping to push to Linus for -rc2.
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+> i.e. that we have to add the FALLOC_FL_INSERT_RANGE to fsx and
+> fsstress as well as having corner case tests and it needs to pass
+> those tests before XFS support is ready for upstream inclusion. At
+> least, that's the lesson I learnt from as the xfstests and XFS
+> Maintainer - we didn't put the QA bar for inclusion high enough, and
+> so problems slipped through.
+> 
+> If you want to add more strict testing requirements for ext4
+> inclusion, then you're welcome to request them for the ext4
+> implementation of that functionality. You don't have to accept the
+> code until you're happy with it....
+
+No arguments here; I plan to do the same.
+
+Regards,
+
+						- Ted
