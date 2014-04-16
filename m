@@ -1,116 +1,114 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: ext4_orphan_cleanup errors during mount a LVM snapshot
-Date: Wed, 16 Apr 2014 10:33:22 -0600
-Message-ID: <1804D95E-CD91-41A3-8177-E3E585C9E1E6@dilger.ca>
-References: <CAGj=0YK3GGuis-jCYT-Rr9LCCg3_xjsYWi-20syTPy7Q8NX3LQ@mail.gmail.com>
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_003204B4-2CF6-408B-A61A-E909F5858EAD"; protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: linux-ext4@vger.kernel.org
-To: Wayne Chou <gmmark12@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f175.google.com ([209.85.192.175]:62638 "EHLO
-	mail-pd0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750983AbaDPQdd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Apr 2014 12:33:33 -0400
-Received: by mail-pd0-f175.google.com with SMTP id x10so10922792pdj.20
-        for <linux-ext4@vger.kernel.org>; Wed, 16 Apr 2014 09:33:33 -0700 (PDT)
-In-Reply-To: <CAGj=0YK3GGuis-jCYT-Rr9LCCg3_xjsYWi-20syTPy7Q8NX3LQ@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
-
-
---Apple-Mail=_003204B4-2CF6-408B-A61A-E909F5858EAD
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
-
-On Apr 16, 2014, at 2:46 AM, Wayne Chou <gmmark12@gmail.com> wrote:
-> I create a LVM snapshot from a mounted ext4 file system by:
-> "lvcreate -kn --snapshot --name snap1 /dev/mapper/vg1/lv1"
->=20
-> And after I mount this snapshot to another folder like:
-> "mount -t ext4 /dev/mapper/vg1-snap1 /mnt/test"
-> the following messages prompted in dmesg:
->=20
-> [ 2445.480908] EXT4-fs (dm-6): orphan cleanup on readonly fs
-> [ 2445.502317] EXT4-fs (dm-6): ext4_orphan_cleanup: deleting
-> unreferenced inode 131180
-> [ 2445.502355] EXT4-fs (dm-6): ext4_orphan_cleanup: deleting
-> unreferenced inode 131176
-> [ 2445.502360] EXT4-fs (dm-6): ext4_orphan_cleanup: deleting
-> unreferenced inode 131175
-> [ 2445.502366] EXT4-fs (dm-6): ext4_orphan_cleanup: deleting
-> unreferenced inode 131174
-> [ 2445.502372] EXT4-fs (dm-6): ext4_orphan_cleanup: deleting
-> unreferenced inode 131173
-> [ 2445.502376] EXT4-fs (dm-6): 5 orphan inodes deleted
-
-The first question is whether you are experiencing any actual problems
-as a result of the orphan inode cleanup?  This is normal behaviour if
-there are applications with open-unlinked files when the snapshot is =
-taken,
-or if the system crashes at this point.  The orphan cleanup will free up
-these open-unlinked inodes and their blocks at mount time, keeping the
-filesystem consistent.
-
-> To find out what the reason is, I use 'lsof' on lv1's mount point =
-before I take
-> the snapshot.  Then I got some MySQL services that opened these =
-temporary files
-> which causes the orphan inodes in LVM snapshots:
-> mysqld    26257 admin    7u   REG  253,5        0 131173
-> /LV1/.system/tmp/ibTidhzb (deleted)
-> mysqld    26257 admin    8u   REG  253,5        0 131174
-> /LV1/.system/tmp/ibgWhCYc (deleted)
-> mysqld    26257 admin    9u   REG  253,5        0 131175
-> /LV1/.system/tmp/ibJE5pne (deleted)
-> mysqld    26257 admin   10u   REG  253,5        0 131176
-> /LV1/.system/tmp/ibsvL9hg (deleted)
-> mysqld    26257 admin   14u   REG  253,5        0 131180
-> /LV1/.system/tmp/ibcz1qOM (deleted)
->=20
->=20
-> =46rom the above investigation, the problem gets solved if I
-> disable the MySQL service before taking the LVM snapshot.
->=20
-> However, I wonder if there's any other way to solve this issue.
-> For example, can I just blindly remove these orphan inodes when
-> ext4_freeze() is called?  Thank you.
-
-What problem needs to be solved?  Is it just the printing of these
-error messages that is confusing, or something else?
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_003204B4-2CF6-408B-A61A-E909F5858EAD
+From: Andreas Gruenbacher <andreas.gruenbacher@linbit.com>
+Subject: Re: [PATCH v2 1/2] xfs: fix tmpfile/selinux deadlock and initialize
+	security/acl
+Date: Wed, 16 Apr 2014 19:29:29 +0200 (CEST)
+Message-ID: <359356562.473582.1397669369258.JavaMail.zimbra@linbit.com>
+References: <1397071311-28371-1-git-send-email-bfoster@redhat.com>
+	<1397071311-28371-2-git-send-email-bfoster@redhat.com>
+	<20140410102421.GA17641@infradead.org>
+	<20140410121947.GA14124@bfoster.bfoster>
+	<20140410122944.GA6579@infradead.org>
+	<20140415175228.GE26404@infradead.org>
+	<1188577823.463241.1397590262478.JavaMail.zimbra@linbit.com>
+	<20140416111402.GA32350@infradead.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
+Cc: linux-man@vger.kernel.org, Brian Foster <bfoster@redhat.com>,
+	xfs@oss.sgi.com, linux-security-module@vger.kernel.org,
+	Al Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <20140416111402.GA32350@infradead.org>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
+On Wed, Apr 16, 2014 at 04:14:02AM -0700, Christoph Hellwig wrote:
+> On Tue, Apr 15, 2014 at 09:31:02PM +0200, Andreas Gruenbacher wrote:
+> > from how O_TMPFILE is documented right now [*], creating such a file and
+> > then linking it into the namespace is one of the obvious use cases.
+> 
+> Btw, I think the man page is wrong - given that the tmpfile is not
+> visible in the namespace it is obviously not created in the directory.
+> The directory passed in is just a handle for the filesystem it should be
+> created in.
 
-iQIVAwUBU06w0nKl2rkXzB/gAQJdjxAArrDc7kIJD6hyowN/Hb85YdK1+NAnIWz0
-C1FoK7WIV6pQxoqBjMcTQnDFS605KpDVDky2wdzCbHk6Z6b6UqNZo35v3TCXTd9u
-y1N1A418sEV20Wi8OS9vGVqXauTv579DhwF5oAZW49/jJv3f7rEqNNmDaoImadtM
-0t3+PbOZGDKmAq/Q2drOVAus/fwCDb6Ch1RvQyVaKvgUf1LnEU/ImAkz4nmH73pl
-Je7KBkiXtyWFxGLUckT0mQJn5elpqU7wqmE9EOvWhP8V3QwzmE1ieM7NseIb+FOb
-ckFmrxD6/Wmu8Z2qQDvHoWkIHIj57kNeeJrB7+2JY9Xdv668132F5UkoteLLXtbc
-T6yHpXPfrKnfeQTbWoOjqUCZJ0f46atkOXmRGkCtStAPRuJ1r1zlwaUyKqeiHhgJ
-kng1v1TBJmdsP1Gas/BHJ+roGH2rC+9n18oMJF8QzBeCYsT61iyxbcQ9dHJw8A1l
-Cf2gr3uXiGy88kqZo2RRytRZwrQRLC1vSdAZD4JoBA0FnIddzqwzpBqQm2NXrYaf
-asJILY/KU/0qAannyUN08IGH19VoFOZBHdCcHn4uYsjhhcmsfQInaiSh7QS74GYc
-rK1BNKA6RRKmBBcXnKRyAf/CzggMJPTAPCu3Dy3FbWCNmcSx5ZI6eYKaDTuiGPXb
-0keacI7tjFo=
-=pWQO
------END PGP SIGNATURE-----
+I don't agree.  If the file is created with O_TMPFILE | O_EXCL, it is clear
+that the file will never be linked into the namespace.  Even then, there are
+operations which are affected by the inode permissions and label of the
+anonymous file, and those should still behave reasonably.  In this context,
+I would expect them to behave as if the file was actually created in the
+specified directory, not in the file system root or "nowhere" with no clearly
+defined permissions and security label.
 
---Apple-Mail=_003204B4-2CF6-408B-A61A-E909F5858EAD--
+If the file is created without O_EXCL, then it is clear that the file can
+later become part of the namespace.  In that case, I would also expect the
+file to be initialized in the context of the specified directory.  The file
+can then be filled with data, permissions and other attributes can be changed
+if desired, and then the anonymous file can be linked into that directory.
+
+> Michael, should I send you an update for this, or do you want to do it
+> yourself as you can probably come up with better language anyway?
+> 
+> > The
+> > intent seems to be to make it seem like the file was created and populated
+> > atomically, possibly with inherited permissions and all.
+> > I think this
+> > behavior require that the O_TMPFILE file inherits from the directory it
+> > was "created" in.
+> > 
+> > Adding code to achieve the effect of create-time inheritance at link
+> > time, only for O_TMPFILE files or files without any links, doesn't seem 
+> > reasonable to me: it would duplicate create code in the link code path,
+> > and it would make it harder to override inherited permissions or labels.
+> 
+> Inheriting any ACL on creating an anonymous file seems utterly wrong.
+
+Why?
+
+> Inheriting on link seems somewhat more sensible and not too bad in terms
+> of code, but very confusing in terms of semantics.  I think the best
+> method is to make sure it simply does not inherit any ACL and document
+> that clearly.
+
+Again, this approach would make it almost impossible to use O_TMPFILE as a
+way to atomically create and initialize a file with permission and security
+label inheritance.  This would severely limit the usefulness of O_TMPFILE.
+
+> > (Trying to fake inheritance by reimplementing it in user space seems like
+> > a much worse idea still.)
+> 
+> We don't fake inheritance when linking any other file either.  And
+> creating a file in a /tmp without any ACL and then linking it into the
+> filesystem already is very common today.
+
+Well, creating a file in /tmp and moving it somewhere else often doesn't even
+work because of file system boundaries, and sometimes it simply is the wrong
+thing to do:
+
+When the intent is to "create a new file in a directory", such as when saving to
+a new file in an editor, the result should be as if the file was actually
+created in that directory.  Creating the file in /tmp and then moving it to
+where it should end up is simply wrong.
+
+When the intent is to "move a file from here to there", the file should keep
+all its attributes, including permissions and security label. It should make no
+difference in result whether the file could actually be moved or if it had to
+be copied across file system boundaries.
+
+Thanks,
+Andreas
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
