@@ -1,32 +1,26 @@
 From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
 Subject: Re: [PATCH 1/5] ext4: Use filemap_write_and_wait_range() correctly
  in collapse range
-Date: Wed, 16 Apr 2014 20:38:01 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1404162035010.2368@localhost.localdomain>
+Date: Wed, 16 Apr 2014 22:20:05 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1404162217350.2368@localhost.localdomain>
 References: <1397673182-5326-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: linkinjeon@gmail.com
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:64270 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:57901 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754646AbaDPSiF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 16 Apr 2014 14:38:05 -0400
+	id S1756459AbaDPUoW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 16 Apr 2014 16:44:22 -0400
 In-Reply-To: <1397673182-5326-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ted,
-
-there are still endianness problems with collapse range, I kind of
-remember seeing some patches to fix that but I can not find those
-anywhere. So let me know if you have those, otherwise I'll send
-some.
-
-Also since this patch set (or rather the patch #5) fixes the
-collapse range so that it does not fail on fsx and fsstress we can
-drop the fallocate mode block patches I think :)
+So unfortunately this does not fix all the problems. Even though
+this fixes all the problems with collapse rage when page size ==
+block size it still fails some tests when page size > block size so
+I guess we still have some work to do.
 
 Thanks!
 -Lukas
