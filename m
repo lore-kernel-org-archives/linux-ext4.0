@@ -1,85 +1,62 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 2/3 v2] fs: Prevent doing FALLOC_FL_ZERO_RANGE on append
-	only file
-Date: Wed, 16 Apr 2014 10:29:43 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1404161028210.5916@localhost.localdomain>
-References: <1397580076-19826-1-git-send-email-lczerner@redhat.com>
-	<1397580076-19826-2-git-send-email-lczerner@redhat.com>
-	<20140415220220.GR15995@dastard>
+From: Wayne Chou <gmmark12@gmail.com>
+Subject: ext4_orphan_cleanup errors during mount a LVM snapshot
+Date: Wed, 16 Apr 2014 16:46:42 +0800
+Message-ID: <CAGj=0YK3GGuis-jCYT-Rr9LCCg3_xjsYWi-20syTPy7Q8NX3LQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, xfs@oss.sgi.com
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <20140415220220.GR15995@dastard>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qa0-f46.google.com ([209.85.216.46]:57928 "EHLO
+	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751209AbaDPIqn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Apr 2014 04:46:43 -0400
+Received: by mail-qa0-f46.google.com with SMTP id i13so10430332qae.33
+        for <linux-ext4@vger.kernel.org>; Wed, 16 Apr 2014 01:46:42 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 16 Apr 2014, Dave Chinner wrote:
+Dear all,
 
-> Date: Wed, 16 Apr 2014 08:02:20 +1000
-> From: Dave Chinner <david@fromorbit.com>
-> To: Lukas Czerner <lczerner@redhat.com>
-> Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, xfs@oss.sgi.com
-> Subject: Re: [PATCH 2/3 v2] fs: Prevent doing FALLOC_FL_ZERO_RANGE on append
->     only file
-> 
-> On Tue, Apr 15, 2014 at 06:41:15PM +0200, Lukas Czerner wrote:
-> > Currently punch hole and collapse range fallocate operation are not
-> > allowed on append only file. This should be case for zero range as well.
-> > Fix it by allowing only pure fallocate (possibly with keep size set).
-> > 
-> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> > ---
-> > v2: Change the condition to be future proof as suggested by hch
-> > 
-> >  fs/open.c | 6 ++----
-> >  1 file changed, 2 insertions(+), 4 deletions(-)
-> > 
-> > diff --git a/fs/open.c b/fs/open.c
-> > index 631aea81..fe48b2f 100644
-> > --- a/fs/open.c
-> > +++ b/fs/open.c
-> > @@ -254,11 +254,9 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
-> >  		return -EBADF;
-> >  
-> >  	/*
-> > -	 * It's not possible to punch hole or perform collapse range
-> > -	 * on append only file
-> > +	 * We can only allow pure fallocate on append only files
-> >  	 */
-> > -	if (mode & (FALLOC_FL_PUNCH_HOLE | FALLOC_FL_COLLAPSE_RANGE)
-> > -	    && IS_APPEND(inode))
-> > +	if (mode & ~FALLOC_FL_KEEP_SIZE && IS_APPEND(inode))
-> 
-> 	if ((mode & ~FALLOC_FL_KEEP_SIZE) && IS_APPEND(inode))
-> 
-> gcc normally complains when you mix & and && in the same logic
-> statement without () to separate the logic. I agree with gcc here,
-> because the () indicate the intent of the logic and make it easy to
-> determine that the & and && haven't been mixed up or fat-fingered...
+I create a LVM snapshot from a mounted ext4 file system by:
+"lvcreate -kn --snapshot --name snap1 /dev/mapper/vg1/lv1"
 
-Yeah, I was thinking about this and then left it to operator
-precedence. But having () in there is fine as well.
+And after I mount this snapshot to another folder like:
+"mount -t ext4 /dev/mapper/vg1-snap1 /mnt/test"
+the following messages prompted in dmesg:
 
--Lukas
+[ 2445.480908] EXT4-fs (dm-6): orphan cleanup on readonly fs
+[ 2445.502317] EXT4-fs (dm-6): ext4_orphan_cleanup: deleting
+unreferenced inode 131180
+[ 2445.502355] EXT4-fs (dm-6): ext4_orphan_cleanup: deleting
+unreferenced inode 131176
+[ 2445.502360] EXT4-fs (dm-6): ext4_orphan_cleanup: deleting
+unreferenced inode 131175
+[ 2445.502366] EXT4-fs (dm-6): ext4_orphan_cleanup: deleting
+unreferenced inode 131174
+[ 2445.502372] EXT4-fs (dm-6): ext4_orphan_cleanup: deleting
+unreferenced inode 131173
+[ 2445.502376] EXT4-fs (dm-6): 5 orphan inodes deleted
 
-> 
-> Cheers,
-> 
-> Dave.
-> 
+To find out what the reason is, I use 'lsof' on lv1's mount point before I take
+the snapshot.  Then I got some MySQL services that opened these temporary files
+which causes the orphan inodes in LVM snapshots:
+mysqld    26257 admin    7u   REG  253,5        0 131173
+/LV1/.system/tmp/ibTidhzb (deleted)
+mysqld    26257 admin    8u   REG  253,5        0 131174
+/LV1/.system/tmp/ibgWhCYc (deleted)
+mysqld    26257 admin    9u   REG  253,5        0 131175
+/LV1/.system/tmp/ibJE5pne (deleted)
+mysqld    26257 admin   10u   REG  253,5        0 131176
+/LV1/.system/tmp/ibsvL9hg (deleted)
+mysqld    26257 admin   14u   REG  253,5        0 131180
+/LV1/.system/tmp/ibcz1qOM (deleted)
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+
+>From the above investigation, the problem gets solved if I
+disable the MySQL service before taking the LVM snapshot.
+
+However, I wonder if there's any other way to solve this issue.
+For example, can I just blindly remove these orphan inodes when
+ext4_freeze() is called?  Thank you.
+
+- Wayne
