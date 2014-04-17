@@ -1,42 +1,73 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: an infinite loop in ext4 in 3.14
-Date: Thu, 17 Apr 2014 17:16:27 -0400
-Message-ID: <20140417211627.GC4979@thunk.org>
-References: <alpine.LRH.2.02.1404171510330.22570@file01.intranet.prod.int.rdu2.redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 74171] Attempting to build recent version of e2fsprogs from git
+ repo gives config.h missing
+Date: Thu, 17 Apr 2014 21:31:04 +0000
+Message-ID: <bug-74171-13602-MhTvgGy52V@https.bugzilla.kernel.org/>
+References: <bug-74171-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Mikulas Patocka <mpatocka@redhat.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:55968 "EHLO imap.thunk.org"
+Received: from mail.kernel.org ([198.145.19.201]:40113 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750983AbaDQVQa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 17 Apr 2014 17:16:30 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.LRH.2.02.1404171510330.22570@file01.intranet.prod.int.rdu2.redhat.com>
+	id S1750874AbaDQVbH convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Apr 2014 17:31:07 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 7AC3B20306
+	for <linux-ext4@vger.kernel.org>; Thu, 17 Apr 2014 21:31:06 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id AC904202EC
+	for <linux-ext4@vger.kernel.org>; Thu, 17 Apr 2014 21:31:04 +0000 (UTC)
+In-Reply-To: <bug-74171-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Apr 17, 2014 at 03:23:13PM -0400, Mikulas Patocka wrote:
-> 
-> I hit a bug in ext4 - jbd2 was stuck in an infinite loop when remounting 
-> the root filesystem read-only during shutdown.
+https://bugzilla.kernel.org/show_bug.cgi?id=3D74171
 
-Is this at all repeatable?  I suspect what happened is that we're not
-checking the error return from jbd2_log_do_checkpoint(), and if it ran
-into an error doing the jbd2_log_do_checkpoint --- for example, if it
-wasn't able to write to the journal --- say, because __wait_cp_io()
-returned -EIO, we might be spinning in the while loop in jbd2_journal_flush:
+--- Comment #4 from Theodore Tso <tytso@mit.edu> ---
 
-> while (!err && journal->j_checkpoint_transactions != NULL) {
+> gcc: error: unrecognized command line option =E2=80=98-checker=E2=80=99
 
+See: http://www.gnu.org/software/checker/   for an explanation.  It's s=
+omething
+the gcc folks stopped supporting, and I never got around to getting rid=
+ of the
+configure option.
 
-(as you suspected).
+As far as the missing "crc32c_table.h", that looks like "make depend" i=
+s not
+working on your setup.   I'd recommend getting the original Makefile.in=
+ files
+from upstream, and not trying to run "make depend".   I run it before I=
+ do a
+release, but it's never something I've tried to make to be fully portab=
+le and
+bulletproof for every single possible VPATH setting, etc.   It's intend=
+ed for
+use by developers, and not for random users who are trying to build e2f=
+sprogs.
 
-I can add some error checking, but it would be interesting to know if
-you can easily reproduce the problem so we can confirm if that's what
-was really going on.
+=46or similar reasons, that's why I also ship a generated configure scr=
+ipt ---
+because I got tired of random breakages caused by people happening to u=
+se a
+different version of autoconf than what I happened to be developing aga=
+inst.=20
+autoconf, automake, etc., are inherently fragile solutions.  You really=
+ should
+be using the version of configure and the Makefile.in files that I ship=
+ped.  If
+you try to regenerate them, you're just asking for trouble.
 
-Regards,
+Why don't you follow the INSTALL directions exactly.  That will work.  =
+Other
+things, well, feel free to send me patches.  :-)
 
-						- Ted
+--=20
+You are receiving this mail because:
+You are watching the assignee of the bug.--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
