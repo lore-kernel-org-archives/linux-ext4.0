@@ -1,42 +1,58 @@
 From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: RE: [PATCH 2/5] ext4: fix removing status extents in
- ext4_collapse_range()
-Date: Thu, 17 Apr 2014 14:54:18 +0900
-Message-ID: <005e01cf5a01$78bc0990$6a341cb0$@samsung.com>
-References: <004401cf59ff$ff136f30$fd3a4d90$@samsung.com>
+Subject: RE: [PATCH 5/5] ext4: Fix extent merging in
+ ext4_ext_shift_path_extents()
+Date: Thu, 17 Apr 2014 14:55:41 +0900
+Message-ID: <005f01cf5a01$aa187370$fe495a50$@samsung.com>
+References: <004501cf5a00$18bec8d0$4a3c5a70$@samsung.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=iso-8859-2
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: 'Lukas Czerner' <lczerner@redhat.com>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: =?iso-8859-2?Q?Luk=E1=B9_Czerner?= <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout4.samsung.com ([203.254.224.34]:55315 "EHLO
-	mailout4.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751852AbaDQFyT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Apr 2014 01:54:19 -0400
-Received: from epcpsbgr1.samsung.com
- (u141.gpu120.samsung.co.kr [203.254.230.141])
- by mailout4.samsung.com (Oracle Communications Messaging Server 7u4-24.01
+Received: from mailout3.samsung.com ([203.254.224.33]:19756 "EHLO
+	mailout3.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751852AbaDQFzp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Apr 2014 01:55:45 -0400
+Received: from epcpsbgr3.samsung.com
+ (u143.gpu120.samsung.co.kr [203.254.230.143])
+ by mailout3.samsung.com (Oracle Communications Messaging Server 7u4-24.01
  (7.0.4.24.0) 64bit (built Nov 17 2011))
- with ESMTP id <0N45005IUV2IN3B0@mailout4.samsung.com> for
- linux-ext4@vger.kernel.org; Thu, 17 Apr 2014 14:54:18 +0900 (KST)
-In-reply-to: <004401cf59ff$ff136f30$fd3a4d90$@samsung.com>
+ with ESMTP id <0N4500HY3V4TTR00@mailout3.samsung.com> for
+ linux-ext4@vger.kernel.org; Thu, 17 Apr 2014 14:55:41 +0900 (KST)
+In-reply-to: <004501cf5a00$18bec8d0$4a3c5a70$@samsung.com>
 Content-language: ko
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> Currently in ext4_collapse_range() when calling ext4_es_remove_extent() to
-> remove status extents we're passing (EXT_MAX_BLOCKS - punch_start - 1)
-> in order to remove all extents from start of the collapse range to the
-> end of the file. However this is wrong because we might miss the
-> possible extent covering the last block of the file.
+> There is a bug in ext4_ext_shift_path_extents() where if we actually
+> manage to merge a extent we would skip shifting the next extent. This
+> will result in in one extent in the extent tree not being properly
+> shifted.
 > 
-> Fix it by removing the -1.
+> This is causing failure in various xfstests tests using fsx or fsstress
+> with collapse range support. It will also cause file system corruption
+> which looks something like:
+> 
+>  e2fsck 1.42.9 (4-Feb-2014)
+>  Pass 1: Checking inodes, blocks, and sizes
+>  Inode 20 has out of order extents
+>         (invalid logical block 3, physical block 492938, len 2)
+>  Clear? yes
+>  ...
+> 
+> when running e2fsck.
+> 
+> It's also very easily reproducible just by running fsx without any
+> parameters. I can usually hit the problem within a minute.
+> 
+> Fix it by increasing ex_start only if we're not merging the extent.
 > 
 > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-Looks good to me! 
+You can add : Reviewed-by: Namjae Jeon <namjae.jeon@samsung.com>
 
-Reviewed-by: Namjae Jeon <namjae.jeon@samsung.com>
+Thanks!
 
-Thanks Lukas.
+
+
 
