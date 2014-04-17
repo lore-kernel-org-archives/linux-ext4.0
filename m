@@ -1,73 +1,55 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 74171] Attempting to build recent version of e2fsprogs from git
- repo gives config.h missing
-Date: Thu, 17 Apr 2014 21:31:04 +0000
-Message-ID: <bug-74171-13602-MhTvgGy52V@https.bugzilla.kernel.org/>
-References: <bug-74171-13602@https.bugzilla.kernel.org/>
+From: Mark Fasheh <mfasheh@suse.de>
+Subject: [PATCH] e2fsprogs/filefrag: print shared extent flag
+Date: Thu, 17 Apr 2014 14:41:46 -0700
+Message-ID: <20140417214146.GD27178@wotan.suse.de>
+Reply-To: Mark Fasheh <mfasheh@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:40113 "EHLO mail.kernel.org"
+Received: from cantor2.suse.de ([195.135.220.15]:39279 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750874AbaDQVbH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Apr 2014 17:31:07 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 7AC3B20306
-	for <linux-ext4@vger.kernel.org>; Thu, 17 Apr 2014 21:31:06 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id AC904202EC
-	for <linux-ext4@vger.kernel.org>; Thu, 17 Apr 2014 21:31:04 +0000 (UTC)
-In-Reply-To: <bug-74171-13602@https.bugzilla.kernel.org/>
+	id S1751403AbaDQVls (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 17 Apr 2014 17:41:48 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=3D74171
+Filefrag doesn't catch and print the shared extent flag. Add this for
+users of filefrag on file systems with shared extents (such as btrfs).
 
---- Comment #4 from Theodore Tso <tytso@mit.edu> ---
+Signed-off-by: Mark Fasheh <mfasheh@suse.de>
+---
+ lib/ext2fs/fiemap.h | 2 ++
+ misc/filefrag.c     | 2 ++
+ 2 files changed, 4 insertions(+)
 
-> gcc: error: unrecognized command line option =E2=80=98-checker=E2=80=99
+diff --git a/lib/ext2fs/fiemap.h b/lib/ext2fs/fiemap.h
+index 30bf555..895cd0b 100644
+--- a/lib/ext2fs/fiemap.h
++++ b/lib/ext2fs/fiemap.h
+@@ -64,5 +64,7 @@ struct fiemap {
+ #define FIEMAP_EXTENT_MERGED		0x00001000 /* File does not natively
+ 						    * support extents. Result
+ 						    * merged for efficiency. */
++#define FIEMAP_EXTENT_SHARED		0x00002000 /* Space shared with other
++						    * files. */
+ 
+ #endif /* _LINUX_FIEMAP_H */
+diff --git a/misc/filefrag.c b/misc/filefrag.c
+index a050a22..929a33b 100644
+--- a/misc/filefrag.c
++++ b/misc/filefrag.c
+@@ -165,6 +165,8 @@ static void print_extent_info(struct fiemap_extent *fm_extent, int cur_ex,
+ 		strcat(flags, "unwritten,");
+ 	if (fm_extent->fe_flags & FIEMAP_EXTENT_MERGED)
+ 		strcat(flags, "merged,");
++	if (fm_extent->fe_flags & FIEMAP_EXTENT_SHARED)
++		strcat(flags, "shared,");
+ 
+ 	if (fm_extent->fe_logical + fm_extent->fe_length >= (__u64) st->st_size)
+ 		strcat(flags, "eof,");
+-- 
+1.8.4
 
-See: http://www.gnu.org/software/checker/   for an explanation.  It's s=
-omething
-the gcc folks stopped supporting, and I never got around to getting rid=
- of the
-configure option.
-
-As far as the missing "crc32c_table.h", that looks like "make depend" i=
-s not
-working on your setup.   I'd recommend getting the original Makefile.in=
- files
-from upstream, and not trying to run "make depend".   I run it before I=
- do a
-release, but it's never something I've tried to make to be fully portab=
-le and
-bulletproof for every single possible VPATH setting, etc.   It's intend=
-ed for
-use by developers, and not for random users who are trying to build e2f=
-sprogs.
-
-=46or similar reasons, that's why I also ship a generated configure scr=
-ipt ---
-because I got tired of random breakages caused by people happening to u=
-se a
-different version of autoconf than what I happened to be developing aga=
-inst.=20
-autoconf, automake, etc., are inherently fragile solutions.  You really=
- should
-be using the version of configure and the Makefile.in files that I ship=
-ped.  If
-you try to regenerate them, you're just asking for trouble.
-
-Why don't you follow the INSTALL directions exactly.  That will work.  =
-Other
-things, well, feel free to send me patches.  :-)
-
---=20
-You are receiving this mail because:
-You are watching the assignee of the bug.--
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
