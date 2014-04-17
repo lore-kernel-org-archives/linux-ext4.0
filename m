@@ -1,64 +1,113 @@
-From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: RE: [PATCH 3/5] ext4: No need to truncate pagecache twice in collapse
- range
-Date: Thu, 17 Apr 2014 09:41:45 +0900
-Message-ID: <003101cf59d5$cf1798d0$6d46ca70$@samsung.com>
-References: <002d01cf59d4$c9a07a30$5ce16e90$@samsung.com>
+From: Contact <neitsab@ovh.fr>
+Subject: Make huge files strictly contiguous (fallocate, bigalloc, e4defrag...)
+Date: Thu, 17 Apr 2014 04:18:30 +0200
+Message-ID: <534F39F6.2000208@ovh.fr>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-2
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: =?iso-8859-2?Q?Luk=E1=B9_Czerner?= <lczerner@redhat.com>
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout4.samsung.com ([203.254.224.34]:37997 "EHLO
-	mailout4.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754496AbaDQAl4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Apr 2014 20:41:56 -0400
-Received: from epcpsbgr3.samsung.com
- (u143.gpu120.samsung.co.kr [203.254.230.143])
- by mailout4.samsung.com (Oracle Communications Messaging Server 7u4-24.01
- (7.0.4.24.0) 64bit (built Nov 17 2011))
- with ESMTP id <0N45000ZSGLQA670@mailout4.samsung.com> for
- linux-ext4@vger.kernel.org; Thu, 17 Apr 2014 09:41:50 +0900 (KST)
-In-reply-to: <002d01cf59d4$c9a07a30$5ce16e90$@samsung.com>
-Content-language: ko
+Received: from mo29.mail-out.ovh.net ([178.32.228.29]:34689 "EHLO
+	mo29.mail-out.ovh.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751249AbaDQCZZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Apr 2014 22:25:25 -0400
+Received: from he23.mail.ovh.net (he23.mail.ovh.net [5.135.56.55])
+	by mo29.mail-out.ovh.net (Postfix) with ESMTP id 53FF2FF807B
+	for <linux-ext4@vger.kernel.org>; Thu, 17 Apr 2014 04:18:31 +0200 (CEST)
+Received: from [192.168.1.73] (unknown [109.190.83.66])
+	by he23.mail.ovh.net (Postfix) with ESMTPSA id 3721F7F35
+	for <linux-ext4@vger.kernel.org>; Thu, 17 Apr 2014 04:18:31 +0200 (CEST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> 
-> We're already calling truncate_pagecache_range() before we attempt to
-> do any actual job so there is not need to truncate pagecache once more
-> using truncate_setsize() after we're finished.
-> 
-> Remove truncate_setsize() and replace it just with i_size_write() note
-> that we're holding appropriate locks.
-> 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+Hi everybody,
 
-Hi Lukas.
+I'm trying to create a multiboot medium using Easy2Boot on a 64 GB USB
+key. Easy2Boot [1] is a "software" (well a collection of files really)
+that relies on grub4dos [2] to work and thus requires payload files to
+be strictly contiguous to do its trick. It's supposed to be set up once
+and then one just has to add files to boot from to a folder to modify
+the multiboot setup.
 
-I added this code by getting rewiew from Hugh.
-Plz see the disscusion beween Hugh and Dave.
+The ISO files I have are between 230 MB and 2 GB each. I divided my USB
+drive into two partitions : first one, 16 GB ntfs formatted so that
+grub4dos actually works (for some reasons it doesn't with ext4, plus I
+want to be able to use it with other OS); second one 48 GB formatted as
+ext4 with e2fsprogs version 1.42.9 from Archlinux. However when I try
+to boot from those files I systematically get the "file not contiguous"
+error in Easy2Boot.
 
-Hugh: But your case is different: collapse is much closer to truncation,
- and if you do not unmap the private COW'ed pages, then pages left
- behind beyond the EOF will break the spec that requires SIGBUS when
- touching there, and pages within EOF will be confusingly derived
- from file data now belonging to another offset or none (move these
- pages within the user address space? no, I don't think anon_vmas
- would allow that, and there may be no right place to move them).
- 
-Dave: See above - we never leave pages beyond the new EOF because setting
- the new EOF is a truncate operation that calls
- truncate_setsize(inode, newsize).
- 
-Hugh: Right, thanks, I now see the truncate_setsize() in the xfs case -
- though not in the ext4 case, which looks as if it's just doing an
- i_size_write() afterwards.
+Question is: is it possible to make huge files strictly contiguous on
+ex4, and if yes how?
 
-Dave: So that's a bug in the ext4 code ;)
 
-truncate_setsize is not needed in case Hugh pointed out ?
+*******
+Details
+*******
 
-Thanks!
+I tried different mkfs.ext4 options so as to cater to my use case, but
+to no avail. I tried pushing the inode_ratio to its maximum value (64
+MB) and using fallocate besides regular copy:
+# mkfs.ext4 -m 0 -L iso -i 67108864 -E root_owner=1000:100 /dev/sdc2
+# fallocate -l 1235451904
+/path/to/mounted/usb/folder/debian-live-7.2-amd64-gnome-desktop_fal.iso
+# cp debian-live-7.2-amd64-gnome-desktop.iso
+/path/to/folder/debian-live-7.2-amd64-gnome-desktop_fal.iso
 
+But files aren't contiguous. e4defrag seems to confirm it:
+# e4defrag -c '/run/media/neitsab/iso/_ISO'
+<Fragmented files>                             now/best       size/ext
+1. /run/media/neitsab/iso/_ISO/manjaro-gnome-0.8.9-x86_64.iso
+                                                13/1         119378 KB
+2. /run/media/neitsab/iso/_ISO/manjaro-gnome-0.8.9-x86_64_fal.iso
+                                                13/1         119378 KB
+
+Total/best extents                26/2
+Average size per extent            119378 KB
+Fragmentation score                0
+[0-30 no problem: 31-55 a little bit fragmented: 56- needs defrag]
+This directory (/run/media/neitsab/iso/_ISO) does not need defragmentation.
+Done.
+
+Then I tried to use bigalloc and clusters:
+# mkfs.ext4 -m 0 -L iso -i 67108864 -O bigalloc -C 256M -E
+root_owner=1000:100 /dev/sdc2
+mke2fs 1.42.9 (28-Dec-2013)
+
+Warning: the bigalloc feature is still under development
+See https://ext4.wiki.kernel.org/index.php/Bigalloc for more information
+
+warning: 53248 blocks unused.
+
+Filesystem label=iso
+OS type: Linux
+Block size=4096 (log=2)
+Cluster size=268435456 (log=18)
+Stride=0 blocks, Stripe width=0 blocks
+720 inodes, 11665408 blocks
+0 blocks (0.00%) reserved for the super user
+First data block=0
+Root directory owner=1000:100
+1 block group
+2146959360 blocks per group, 32760 clusters per group
+720 inodes per group
+
+Allocating group tables: done
+Writing inode tables: done
+Creating journal (32768 blocks): done
+Writing superblocks and filesystem accounting information: done
+
+It took it some lengthy time to allocate the group tables, then regular
+copy worked but fallocate hanged (process uninterruptible) and I had to
+reboot the machine, which led me to a kernel panic mentionning
+fallocate. The file copied via Nautilus still wasn't contiguous enough
+for Easy2Boot.
+
+So what's left? Is it at all possible to make completely contiguous
+files on ext4? Not even on a fresh FS with plenty of free space?
+
+Thanks for your comments!
+
+
+[1] http://www.easy2boot.com/introduction/
+[2] https://code.google.com/p/grub4dos-chenall/
