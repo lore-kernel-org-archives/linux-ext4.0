@@ -1,37 +1,56 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: e2fsprogs: mke2fs -d: copy the Extended Attributes
-Date: Thu, 17 Apr 2014 12:27:07 -0400
-Message-ID: <20140417162707.GK18591@thunk.org>
-References: <534F7F5A.3070805@windriver.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 74171] Attempting to build recent version of e2fsprogs from git
+ repo gives config.h missing
+Date: Thu, 17 Apr 2014 17:22:27 +0000
+Message-ID: <bug-74171-13602-KRlv1xQcV5@https.bugzilla.kernel.org/>
+References: <bug-74171-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-	Zheng Liu <gnehzuil.liu@gmail.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Robert Yang <liezhi.yang@windriver.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:56703 "EHLO imap.thunk.org"
+Received: from mail.kernel.org ([198.145.19.201]:58992 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751110AbaDQQ1K (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 17 Apr 2014 12:27:10 -0400
-Content-Disposition: inline
-In-Reply-To: <534F7F5A.3070805@windriver.com>
+	id S1750971AbaDQRWa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 17 Apr 2014 13:22:30 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 725EB2035D
+	for <linux-ext4@vger.kernel.org>; Thu, 17 Apr 2014 17:22:29 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 0FBE020320
+	for <linux-ext4@vger.kernel.org>; Thu, 17 Apr 2014 17:22:28 +0000 (UTC)
+In-Reply-To: <bug-74171-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Apr 17, 2014 at 03:14:34PM +0800, Robert Yang wrote:
-> 
-> The "mke2fs -d" doesn't copy the file's extended attributes into the
-> device currently, I'd like to make it work and submit a patch for it
-> if it is acceptable by e2fsprogs. Maybe we can add a "[-x xattr]"
-> option for "mke2fs -d" to make it copy the extended attributes.
+https://bugzilla.kernel.org/show_bug.cgi?id=74171
 
-Any reason not to always copy the xattrs if they exist?
+--- Comment #2 from George R. Goffe <grgoffe@yahoo.com> ---
+Theodore,
 
-If we want to add a new option for a feature like this which is fairly
-exotic, my preference would be to either use the -E mechanism and make
-it be an extended option, or to put it in /etc/mke2fs.conf.
+Thanks for your response and the time you spent formulating it.
+
+I have found the problem.
+
+By the way, I did read INSTALL and followed it's directives.
+
+The problem is that when I build software I run make distclean then configure
+then make clean depend then make then make install.
+
+The make clean in this case removes the config.h file, hence the failures. My
+thoughts about make clean are that this removes build products, object files,
+etc.
+
+I've seen other software that has this problem as well and have no-oped the
+make clean in my build scripts.
+
+My question to you is, "Should the config.h file and whatever configure
+generates be part of the clean target or should it be part of make distclean"?
 
 Regards,
 
-						- Ted
+George...
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
