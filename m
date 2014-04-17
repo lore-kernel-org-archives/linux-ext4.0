@@ -1,40 +1,42 @@
-From: jon ernst <jonernst07@gmail.com>
-Subject: [PATCH] ext4: fallocate_zero_range, check if is regular file
-Date: Thu, 17 Apr 2014 00:22:04 -0400
-Message-ID: <CAGW2f1GoMPwcO3o4Q=As-DkiT2WPN7BiEkq1=RYfX6rnpExipA@mail.gmail.com>
+From: Namjae Jeon <namjae.jeon@samsung.com>
+Subject: RE: [PATCH 2/5] ext4: fix removing status extents in
+ ext4_collapse_range()
+Date: Thu, 17 Apr 2014 14:54:18 +0900
+Message-ID: <005e01cf5a01$78bc0990$6a341cb0$@samsung.com>
+References: <004401cf59ff$ff136f30$fd3a4d90$@samsung.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: "linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: 'Lukas Czerner' <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qc0-f170.google.com ([209.85.216.170]:46983 "EHLO
-	mail-qc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750736AbaDQEWF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Apr 2014 00:22:05 -0400
-Received: by mail-qc0-f170.google.com with SMTP id x13so13262656qcv.29
-        for <linux-ext4@vger.kernel.org>; Wed, 16 Apr 2014 21:22:04 -0700 (PDT)
+Received: from mailout4.samsung.com ([203.254.224.34]:55315 "EHLO
+	mailout4.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751852AbaDQFyT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Apr 2014 01:54:19 -0400
+Received: from epcpsbgr1.samsung.com
+ (u141.gpu120.samsung.co.kr [203.254.230.141])
+ by mailout4.samsung.com (Oracle Communications Messaging Server 7u4-24.01
+ (7.0.4.24.0) 64bit (built Nov 17 2011))
+ with ESMTP id <0N45005IUV2IN3B0@mailout4.samsung.com> for
+ linux-ext4@vger.kernel.org; Thu, 17 Apr 2014 14:54:18 +0900 (KST)
+In-reply-to: <004401cf59ff$ff136f30$fd3a4d90$@samsung.com>
+Content-language: ko
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-fallocate_zero_range, check if inode is regular file.
+> Currently in ext4_collapse_range() when calling ext4_es_remove_extent() to
+> remove status extents we're passing (EXT_MAX_BLOCKS - punch_start - 1)
+> in order to remove all extents from start of the collapse range to the
+> end of the file. However this is wrong because we might miss the
+> possible extent covering the last block of the file.
+> 
+> Fix it by removing the -1.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+Looks good to me! 
 
-Signed-off-by: Jon Ernst <jonernst07@gmail.com>
----
- fs/ext4/extents.c | 2 ++
- 1 file changed, 2 insertions(+)
+Reviewed-by: Namjae Jeon <namjae.jeon@samsung.com>
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 1bb3e4b..756a3b9 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4742,6 +4742,8 @@ static long ext4_zero_range(struct file *file,
-loff_t offset,
+Thanks Lukas.
 
-    trace_ext4_zero_range(inode, offset, len, mode);
-
-+   if (!S_ISREG(inode->i_mode))
-+       return -EOPNOTSUPP;
-    /*
-     * Write out all dirty pages to avoid race conditions
-     * Then release them.
--- 
-1.8.1.2
