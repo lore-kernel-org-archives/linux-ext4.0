@@ -1,174 +1,106 @@
 From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: RE: [PATCH 2/3] ext4: fix ZERO_RANGE test failure in data journalling
- mode
-Date: Fri, 18 Apr 2014 10:41:15 +0900
-Message-ID: <001101cf5aa7$49718b50$dc54a1f0$@samsung.com>
-References: <002a01cf59c3$4eaf7490$ec0e5db0$@samsung.com>
- <alpine.LFD.2.00.1404171051040.2143@localhost.localdomain>
- <008501cf5a2b$14b6c690$3e2453b0$@samsung.com>
- <alpine.LFD.2.00.1404171259130.2143@localhost.localdomain>
- <009001cf5a34$c1b68fc0$4523af40$@samsung.com>
- <alpine.LFD.2.00.1404171412090.2143@localhost.localdomain>
+Subject: RE: [PATCH 3/5] ext4: No need to truncate pagecache twice in collapse
+ range
+Date: Fri, 18 Apr 2014 14:31:35 +0900
+Message-ID: <002101cf5ac7$76d97bf0$648c73d0$@samsung.com>
+References: <002d01cf59d4$c9a07a30$5ce16e90$@samsung.com>
+ <003101cf59d5$cf1798d0$6d46ca70$@samsung.com>
+ <alpine.LFD.2.00.1404171004250.2143@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=iso-8859-2
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: 'Theodore Ts'o' <tytso@mit.edu>,
-	'linux-ext4' <linux-ext4@vger.kernel.org>
-To: =?iso-8859-2?Q?'Luk=E1=B9_Czerner'?= <lczerner@redhat.com>,
-	'Jan Kara' <jack@suse.cz>
+Cc: 'linux-ext4' <linux-ext4@vger.kernel.org>
+To: =?iso-8859-2?Q?'Luk=E1=B9_Czerner'?= <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout4.samsung.com ([203.254.224.34]:48884 "EHLO
-	mailout4.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750893AbaDRBlR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Apr 2014 21:41:17 -0400
-Received: from epcpsbgr1.samsung.com
- (u141.gpu120.samsung.co.kr [203.254.230.141])
- by mailout4.samsung.com (Oracle Communications Messaging Server 7u4-24.01
+Received: from mailout3.samsung.com ([203.254.224.33]:57583 "EHLO
+	mailout3.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750893AbaDRFbh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Apr 2014 01:31:37 -0400
+Received: from epcpsbgr4.samsung.com
+ (u144.gpu120.samsung.co.kr [203.254.230.144])
+ by mailout3.samsung.com (Oracle Communications Messaging Server 7u4-24.01
  (7.0.4.24.0) 64bit (built Nov 17 2011))
- with ESMTP id <0N47008MVE0R4960@mailout4.samsung.com> for
- linux-ext4@vger.kernel.org; Fri, 18 Apr 2014 10:41:15 +0900 (KST)
-In-reply-to: <alpine.LFD.2.00.1404171412090.2143@localhost.localdomain>
+ with ESMTP id <0N4700LYLOON5MD0@mailout3.samsung.com> for
+ linux-ext4@vger.kernel.org; Fri, 18 Apr 2014 14:31:35 +0900 (KST)
+In-reply-to: <alpine.LFD.2.00.1404171004250.2143@localhost.localdomain>
 Content-language: ko
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
-
-> -----Original Message-----
-> From: Luk=E1=B9 Czerner [mailto:lczerner@redhat.com]
-> Sent: Thursday, April 17, 2014 9:16 PM
-> To: Namjae Jeon
-> Cc: 'Theodore Ts'o'; 'linux-ext4'
-> Subject: RE: [PATCH 2/3] ext4: fix ZERO_RANGE test failure in data jo=
-urnalling mode
->=20
 > On Thu, 17 Apr 2014, Namjae Jeon wrote:
 >=20
-> > Date: Thu, 17 Apr 2014 21:01:25 +0900
+> > Date: Thu, 17 Apr 2014 09:41:45 +0900
 > > From: Namjae Jeon <namjae.jeon@samsung.com>
-> > To: 'Luk=E1=B9 Czerner' <lczerner@redhat.com>
-> > Cc: 'Theodore Ts'o' <tytso@mit.edu>, 'linux-ext4' <linux-ext4@vger.=
-kernel.org>
-> > Subject: RE: [PATCH 2/3] ext4: fix ZERO_RANGE test failure in data =
-journalling
-> >      mode
+> > To: Luk=E1=B9 Czerner <lczerner@redhat.com>
+> > Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+> > Subject: RE: [PATCH 3/5] ext4: No need to truncate pagecache twice =
+in collapse
+> >      range
 > >
 > > >
-> > > On Thu, 17 Apr 2014, Namjae Jeon wrote:
+> > > We're already calling truncate_pagecache_range() before we attemp=
+t to
+> > > do any actual job so there is not need to truncate pagecache once=
+ more
+> > > using truncate_setsize() after we're finished.
 > > >
-> > > > Date: Thu, 17 Apr 2014 19:52:09 +0900
-> > > > From: Namjae Jeon <namjae.jeon@samsung.com>
-> > > > To: 'Luk=E1=B9 Czerner' <lczerner@redhat.com>
-> > > > Cc: 'Theodore Ts'o' <tytso@mit.edu>, 'linux-ext4' <linux-ext4@v=
-ger.kernel.org>
-> > > > Subject: RE: [PATCH 2/3] ext4: fix ZERO_RANGE test failure in d=
-ata journalling
-> > > >      mode
-> > > >
-> > > > >
-> > > > > On Thu, 17 Apr 2014, Namjae Jeon wrote:
-> > > > >
-> > > > > > Date: Thu, 17 Apr 2014 07:29:18 +0900
-> > > > > > From: Namjae Jeon <namjae.jeon@samsung.com>
-> > > > > > To: Theodore Ts'o <tytso@mit.edu>
-> > > > > > Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-> > > > > >     Luk=E1=B9 Czerner <lczerner@redhat.com>
-> > > > > > Subject: [PATCH 2/3] ext4: fix ZERO_RANGE test failure in d=
-ata journalling
-> > > > > >     mode
-> > > > > >
-> > > > > > From: Namjae Jeon <namjae.jeon@samsung.com>
-> > > > > >
-> > > > > > xfstests generic/091 is failing when mounting ext4 with dat=
-a=3Djournal.
-> > > > > > I think that this regression is same problem that occurred =
-prior to collapse
-> > > > > > range issue. So ZERO RANGE also need to call ext4_force_com=
-mit as
-> > > > > > collapse range.
-> > > > > >
-> > > > > > Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-> > > > > > Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
-> > > > > > ---
-> > > > > >  fs/ext4/extents.c | 7 +++++++
-> > > > > >  1 file changed, 7 insertions(+)
-> > > > > >
-> > > > > > diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> > > > > > index f386dd6..a64242f 100644
-> > > > > > --- a/fs/ext4/extents.c
-> > > > > > +++ b/fs/ext4/extents.c
-> > > > > > @@ -4742,6 +4742,13 @@ static long ext4_zero_range(struct f=
-ile *file, loff_t offset,
-> > > > > >
-> > > > > >  	trace_ext4_zero_range(inode, offset, len, mode);
-> > > > > >
-> > > > > > +	/* Call ext4_force_commit to flush all data in case of da=
-ta=3Djournal. */
-> > > > > > +	if (ext4_should_journal_data(inode)) {
-> > > > > > +		ret =3D ext4_force_commit(inode->i_sb);
-> > > > > > +		if (ret)
-> > > > > > +			return ret;
-> > > > > > +	}
-> > > > >
-> > > > > Hi,
-> > > > Hi Lukas.
-> > > > >
-> > > > > it makes sense. But I have a question, maybe I do not underst=
-and it
-> > > > > correctly but what protect us from other writes coming in aft=
-er we
-> > > > > force the commit ?
-> > > > Yes, Currently new write can come between ext4_force_commit and=
- till
-> > > > we acquire mutex_lock. But this window is already present even
-> > > > without patch. Its just that in case of data=3Djournal mode, th=
-is
-> > > > window will become slightly bigger. one possible solution comin=
-g to
-> > > > my mind is one more time calling ext4_force_commit followed by =
-a call
-> > > > to filemap_write_and_wait_range inside mutex_lock which would s=
-ync
-> > > > data that has dirtied after 1st call.
+> > > Remove truncate_setsize() and replace it just with i_size_write()=
+ note
+> > > that we're holding appropriate locks.
 > > >
-> > > Can we really call ext4_force_commit() inside mutex_lock ?
-> > Yes, I can see ext4_force_commit inside mutex_lock in ext4_sync_fil=
-e().
+> > > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> >
+> > Hi Lukas.
+> >
+> > I added this code by getting rewiew from Hugh.
+> > Plz see the disscusion beween Hugh and Dave.
+> >
+> > Hugh: But your case is different: collapse is much closer to trunca=
+tion,
+> >  and if you do not unmap the private COW'ed pages, then pages left
+> >  behind beyond the EOF will break the spec that requires SIGBUS whe=
+n
+> >  touching there, and pages within EOF will be confusingly derived
+> >  from file data now belonging to another offset or none (move these
+> >  pages within the user address space? no, I don't think anon_vmas
+> >  would allow that, and there may be no right place to move them).
+> >
+> > Dave: See above - we never leave pages beyond the new EOF because s=
+etting
+> >  the new EOF is a truncate operation that calls
+> >  truncate_setsize(inode, newsize).
+> >
+> > Hugh: Right, thanks, I now see the truncate_setsize() in the xfs ca=
+se -
+> >  though not in the ext4 case, which looks as if it's just doing an
+> >  i_size_write() afterwards.
+> >
+> > Dave: So that's a bug in the ext4 code ;)
+> >
+> > truncate_setsize is not needed in case Hugh pointed out ?
+> >
+> > Thanks!
 >=20
-> There might be some misunderstanding, are we talking about
-> inode->i_mutex because that is certainly not held in
-> ext4_sync_file() or am I missing something ?
-Ah. Sorry, I checked old kernel source(v3.10)
-i_mutex was removed from ext4_sync_file by Jan.
-But that does not mean we can't call ext4_force_commit from within i_mu=
-tex.
+> That is true, we need to make sure that the page cache is coherent
+> with what's on disk. But we've already done that before releasing
+> the blocks. As I mention in the comment we're doing
+> truncate_pagecache_range() before removing any space. That's exactly
+> how it's supposed to be used. See comment in
+> truncate_pagecache_range().
+>=20
+> However as I noticed we do not actually need to use
+> truncate_pagecache_range(), but rather truncate_pagecache() so I can
+> change that in my patch.
+Hi Lukas.
 
-Hi Jan.
-Am I missing something ?
-
+Will you change that in your patch ?
+Actually, I am waiting for this one..
 Thanks.
-
 >=20
+> Does that make sense to everyone ?
+>=20
+> Thanks!
 > -Lukas
->=20
-> >
-> > >
-> > > -Lukas
-> > >
-> > > >
-> > > > Thanks!
-> > > > >
-> > > > > -Lukas
-> > > > >
-> > > > > > +
-> > > > > >  	/*
-> > > > > >  	 * Write out all dirty pages to avoid race conditions
-> > > > > >  	 * Then release them.
-> > > > > >
-> > > >
-> > > >
-> >
-> >
 
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
