@@ -1,85 +1,70 @@
-From: Lubos Uhliarik <uhliarik@seznam.cz>
-Subject: Re: [RFC][PATCH 0/1] ext4: Undelete Feature for Ext4
-Date: Fri, 18 Apr 2014 18:01:38 +0200
-Message-ID: <1397836898.21164.13.camel@zerobox.home>
-References: <1395155370.15587.9.camel@zerobox.home>
-	 <20140318171425.GC8506@thunk.org>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH 2/3] ext4: fix ZERO_RANGE test failure in data journalling
+ mode
+Date: Fri, 18 Apr 2014 18:25:49 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1404181824060.2128@localhost.localdomain>
+References: <002a01cf59c3$4eaf7490$ec0e5db0$@samsung.com> <alpine.LFD.2.00.1404171051040.2143@localhost.localdomain> <008501cf5a2b$14b6c690$3e2453b0$@samsung.com> <alpine.LFD.2.00.1404171259130.2143@localhost.localdomain> <009001cf5a34$c1b68fc0$4523af40$@samsung.com>
+ <alpine.LFD.2.00.1404171412090.2143@localhost.localdomain> <001101cf5aa7$49718b50$dc54a1f0$@samsung.com> <20140418143711.GA19131@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org, lczerner@redhat.com,
-	vojnar@fit.vutbr.cz
-To: tytso@mit.edu
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1554576816-1397838352=:2128"
+Cc: Namjae Jeon <namjae.jeon@samsung.com>, "'Jan Kara'" <jack@suse.cz>,
+	"'linux-ext4'" <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.seznam.cz ([77.75.72.43]:35501 "EHLO smtp1.seznam.cz"
+Received: from mx1.redhat.com ([209.132.183.28]:46928 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751139AbaDRQBx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 18 Apr 2014 12:01:53 -0400
-In-Reply-To: <20140318171425.GC8506@thunk.org>
+	id S1751710AbaDRQZ6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 18 Apr 2014 12:25:58 -0400
+In-Reply-To: <20140418143711.GA19131@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Tytso,
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-I tried to do some power failure tests, but I was unable to simulate an
-error, as you described.
+--8323328-1554576816-1397838352=:2128
+Content-Type: TEXT/PLAIN; charset=ISO-8859-15
+Content-Transfer-Encoding: 8BIT
 
-I analysed code by myself, but I don't see any problem with starting a
-new transaction in function ext4_ext_rm_leaf. If in this function new
-transaction is created and system will crash in the middle of deleting
-the file, eh_entries in extent_header will have correct value, so it
-shouldn't cause any problem (eh_entries is decremented in the same
-transaction, as zeroing out ex->len etc.).=20
+On Fri, 18 Apr 2014, Theodore Ts'o wrote:
 
-I hope, you will understand, what I want to say.=20
+> Date: Fri, 18 Apr 2014 10:37:11 -0400
+> From: Theodore Ts'o <tytso@mit.edu>
+> To: Namjae Jeon <namjae.jeon@samsung.com>
+> Cc: 'Luká¨ Czerner' <lczerner@redhat.com>, 'Jan Kara' <jack@suse.cz>,
+>     'linux-ext4' <linux-ext4@vger.kernel.org>
+> Subject: Re: [PATCH 2/3] ext4: fix ZERO_RANGE test failure in data journalling
+>      mode
+> 
+> So a couple of things.  First of all, ext4_force_commit() is a very
+> expensive call, so calling it twice is really not a good idea.
+> 
+> Secondly, in the ext4_collapse_range() you are calling
+> ext4_force_commit() before filemap_write_and_wait_range().
+> 
+> 	/* Call ext4_force_commit to flush all data in case of data=journal. */
+> 	if (ext4_should_journal_data(inode)) {
+> 		ret = ext4_force_commit(inode->i_sb);
+> 		if (ret)
+> 			return ret;
+> 	}
+> 
+> 	/* Write out all dirty pages */
+> 	ret = filemap_write_and_wait_range(inode->i_mapping, offset, -1);
+> 	if (ret)
+> 		return ret;
+> 
+> Shouldn't we reverse these two calls?
+> 
+> Finally, I'm wondering if we would be better off creating a new
+> explicit EXT4_I(inode)->i_write_mutex which is used to block new
+> writes from starting.  This could also be used to subsume the
+> ext4_aio_mutex.
 
-If I'm wrong, please let me know.
+We can maybe use something similar xfs has with their XFS_IOLOCK
 
-Regards,
+-Lukas
 
-Lubos
-
-tytso@mit.edu p=C3=AD=C5=A1e v =C3=9At 18. 03. 2014 v 13:14 -0400:
-> On Tue, Mar 18, 2014 at 04:09:30PM +0100, Lubos Uhliarik wrote:
-> > The main changes in patch are following:
-> >=20
-> > a) commented out zeroing ex->ee_len, ee->start_hi and ee->start_lo,
-> > because these entries are essential for undelete process
->=20
-> The reason why we have to zero out ex->ee_len, etc. is because the
-> truncate operation can sometimes span multiple journal transactions.
-> So as a result, we need to keep the file system consistent if we are
-> interrupted (i.e., via a power fail event) while in the middle of a
-> truncate operation.
->=20
-> It's a rare case, but it can happen if the journal is almost full at
-> the time when the truncate eoperation has started, such that there is
-> no room for to exntend the transaction handle, and so we are forced t=
-o
-> start a new transaction (and possibly wait for a journal checkpoint
-> operation).
->=20
-> In theory, it would be possible to figure out in advance whether or
-> not we could fit the truncate in a single transaction, but it would
-> require making the truncate operation be a two-pass operation --- onc=
-e
-> to determine how many blocks needs to be modified, and once to
-> actually do the truncate operation.
->=20
-> > This patch shouldn't break ext4, I tested it with xfs_tests and tes=
-ts=20
-> > were successfull.
->=20
-> I'm guessing you didn't do power fail testing --- and this is very
-> important when messing with the design truncate/unlink code path.
->=20
-> Regards,
->=20
+> 
 > 						- Ted
-
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--8323328-1554576816-1397838352=:2128--
