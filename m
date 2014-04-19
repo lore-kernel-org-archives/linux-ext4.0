@@ -1,46 +1,52 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: [PATCH] ext4: fix check for zero range support in ext4/001
-Date: Sat, 19 Apr 2014 15:08:15 -0400
-Message-ID: <20140419190815.GB2116@wallace>
+From: Mikulas Patocka <mpatocka@redhat.com>
+Subject: Re: an infinite loop in ext4 in 3.14
+Date: Sat, 19 Apr 2014 16:33:36 -0400 (EDT)
+Message-ID: <alpine.LRH.2.02.1404191438120.22143@file01.intranet.prod.int.rdu2.redhat.com>
+References: <alpine.LRH.2.02.1404171510330.22570@file01.intranet.prod.int.rdu2.redhat.com> <20140417211627.GC4979@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: xfs@oss.sgi.com
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qa0-f42.google.com ([209.85.216.42]:45945 "EHLO
-	mail-qa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1161109AbaDSTIT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Apr 2014 15:08:19 -0400
-Received: by mail-qa0-f42.google.com with SMTP id k15so2634938qaq.29
-        for <linux-ext4@vger.kernel.org>; Sat, 19 Apr 2014 12:08:18 -0700 (PDT)
-Content-Disposition: inline
+Received: from mx1.redhat.com ([209.132.183.28]:13744 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751204AbaDSUdj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 19 Apr 2014 16:33:39 -0400
+In-Reply-To: <20140417211627.GC4979@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ext4/001 fails when run on a file system that does not support byte range
-zeroing.  For example, an EOPNOTSUPP failure occurs when the test is run
-on a pre-3.15 extent-mapped file system.  The code in the test intended
-to prevent this contains an apparent typo that results in a check for
-fallocate() rather than zero range support.
 
-Signed-off-by: Eric Whitney <enwlinux@gmail.com>
----
- tests/ext4/001 | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/tests/ext4/001 b/tests/ext4/001
-index d575d9a..827d806 100755
---- a/tests/ext4/001
-+++ b/tests/ext4/001
-@@ -45,7 +45,7 @@ trap "_cleanup ; exit \$status" 0 1 2 3 15
- # real QA test starts here
- _supported_fs ext4
- _supported_os Linux
--_require_xfs_io_falloc "fzero"
-+_require_xfs_io_command "fzero"
- 
- testfile=$TEST_DIR/001.$$
- 
--- 
-1.8.3.2
+On Thu, 17 Apr 2014, Theodore Ts'o wrote:
 
+> On Thu, Apr 17, 2014 at 03:23:13PM -0400, Mikulas Patocka wrote:
+> > 
+> > I hit a bug in ext4 - jbd2 was stuck in an infinite loop when remounting 
+> > the root filesystem read-only during shutdown.
+> 
+> Is this at all repeatable?  I suspect what happened is that we're not
+> checking the error return from jbd2_log_do_checkpoint(), and if it ran
+> into an error doing the jbd2_log_do_checkpoint --- for example, if it
+> wasn't able to write to the journal --- say, because __wait_cp_io()
+> returned -EIO, we might be spinning in the while loop in jbd2_journal_flush:
+> 
+> > while (!err && journal->j_checkpoint_transactions != NULL) {
+> 
+> 
+> (as you suspected).
+> 
+> I can add some error checking, but it would be interesting to know if
+> you can easily reproduce the problem so we can confirm if that's what
+> was really going on.
+> 
+> Regards,
+> 
+> 						- Ted
+
+Hi
+
+It turned out that the computer had bad memory, there were other stability 
+issues - so you can ignore this bug report.
+
+Mikulas
