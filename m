@@ -1,82 +1,46 @@
-From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: [PATCH] ext4: use EINVAL if not a regular file in ext4_fallocate()
-Date: Sat, 19 Apr 2014 14:11:07 +0900
-Message-ID: <000e01cf5b8d$c57e9f80$507bde80$@samsung.com>
+From: Eric Whitney <enwlinux@gmail.com>
+Subject: [PATCH] generic: fix check for zero range support in generic/009
+Date: Sat, 19 Apr 2014 15:05:24 -0400
+Message-ID: <20140419190524.GA2116@wallace>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-2
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	=?iso-8859-2?Q?Luk=E1=B9_Czerner?= <lczerner@redhat.com>
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: xfs@oss.sgi.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout1.samsung.com ([203.254.224.24]:14833 "EHLO
-	mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750946AbaDSFLJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Apr 2014 01:11:09 -0400
-Received: from epcpsbgr3.samsung.com
- (u143.gpu120.samsung.co.kr [203.254.230.143])
- by mailout1.samsung.com (Oracle Communications Messaging Server 7u4-24.01
- (7.0.4.24.0) 64bit (built Nov 17 2011))
- with ESMTP id <0N4900J44IEKIA20@mailout1.samsung.com> for
- linux-ext4@vger.kernel.org; Sat, 19 Apr 2014 14:11:08 +0900 (KST)
-Content-language: ko
+Received: from mail-qc0-f179.google.com ([209.85.216.179]:46535 "EHLO
+	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755065AbaDSTF2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Apr 2014 15:05:28 -0400
+Received: by mail-qc0-f179.google.com with SMTP id m20so2803498qcx.10
+        for <linux-ext4@vger.kernel.org>; Sat, 19 Apr 2014 12:05:27 -0700 (PDT)
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Namjae Jeon <namjae.jeon@samsung.com>
+Generic/001 fails when run on a file system that does not support byte range
+zeroing.  For example, an EOPNOTSUPP failure occurs when the test is run
+on a pre-3.15 extent-mapped file system.  The code in the test intended
+to prevent this contains an apparent typo that results in a check for
+fallocate() rather than zero range support.
 
-Punch hole return EOPNOTSUPP about a non-REGULAR file also. So change EINVAL
-to be consistent with xfs. And move this check to the start of
-ext4_fallocate().
-
-Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
+Signed-off-by: Eric Whitney <enwlinux@gmail.com>
 ---
- fs/ext4/extents.c | 9 +++------
- fs/ext4/inode.c   | 3 ---
- 2 files changed, 3 insertions(+), 9 deletions(-)
+ tests/generic/009 | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 3276865..b38f487 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4741,9 +4741,6 @@ static long ext4_zero_range(struct file *file, loff_t offset,
+diff --git a/tests/generic/009 b/tests/generic/009
+index b7b0b3f..65abe3c 100644
+--- a/tests/generic/009
++++ b/tests/generic/009
+@@ -44,7 +44,7 @@ trap "_cleanup ; exit \$status" 0 1 2 3 15
  
- 	trace_ext4_zero_range(inode, offset, len, mode);
+ # real QA test starts here
+ _supported_os Linux
+-_require_xfs_io_falloc "fzero"
++_require_xfs_io_command "fzero"
  
--	if (!S_ISREG(inode->i_mode))
--		return -EINVAL;
--
- 	/*
- 	 * Write out all dirty pages to avoid race conditions
- 	 * Then release them.
-@@ -4888,6 +4885,9 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
- 	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE |
- 		     FALLOC_FL_COLLAPSE_RANGE | FALLOC_FL_ZERO_RANGE))
- 		return -EOPNOTSUPP;
-+	
-+	if (!S_ISREG(inode->i_mode))
-+		return -EINVAL;
+ testfile=$TEST_DIR/009.$$
  
- 	if (mode & FALLOC_FL_PUNCH_HOLE)
- 		return ext4_punch_hole(inode, offset, len);
-@@ -5403,9 +5403,6 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
- 	    len & (EXT4_BLOCK_SIZE(sb) - 1))
- 		return -EINVAL;
- 
--	if (!S_ISREG(inode->i_mode))
--		return -EINVAL;
--
- 	if (EXT4_SB(inode->i_sb)->s_cluster_ratio > 1)
- 		return -EOPNOTSUPP;
- 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index d7b7462..d6cbbe3 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3524,9 +3524,6 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
- 	unsigned int credits;
- 	int ret = 0;
- 
--	if (!S_ISREG(inode->i_mode))
--		return -EOPNOTSUPP;
+-- 
+1.8.3.2
+
