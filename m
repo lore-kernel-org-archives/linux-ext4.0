@@ -1,41 +1,37 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix check for zero range support in ext4/001
-Date: Sat, 19 Apr 2014 17:42:03 -0400
-Message-ID: <20140419214203.GB11494@thunk.org>
-References: <20140419190815.GB2116@wallace>
+Subject: Re: [PATCH v2 2/2] ext4: disable COLLAPSE_RANGE for bigalloc
+Date: Sat, 19 Apr 2014 18:12:21 -0400
+Message-ID: <20140419221221.GD13492@thunk.org>
+References: <000d01cf5b8b$5b149110$113db330$@samsung.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, xfs@oss.sgi.com
-To: Eric Whitney <enwlinux@gmail.com>
-Return-path: <xfs-bounces@oss.sgi.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+	=?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+To: Namjae Jeon <namjae.jeon@samsung.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:50158 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751294AbaDSWMZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 19 Apr 2014 18:12:25 -0400
 Content-Disposition: inline
-In-Reply-To: <20140419190815.GB2116@wallace>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <000d01cf5b8b$5b149110$113db330$@samsung.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Apr 19, 2014 at 03:08:15PM -0400, Eric Whitney wrote:
-> Ext4/001 fails when run on a file system that does not support byte range
-> zeroing.  For example, an EOPNOTSUPP failure occurs when the test is run
-> on a pre-3.15 extent-mapped file system.  The code in the test intended
-> to prevent this contains an apparent typo that results in a check for
-> fallocate() rather than zero range support.
+On Sat, Apr 19, 2014 at 01:53:50PM +0900, Namjae Jeon wrote:
+> From: Namjae Jeon <namjae.jeon@samsung.com>
 > 
-> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+> Once COLLAPSE RANGE is be disable for ext4 with bigalloc feature till finding
+> root-cause of problem. It will be enable with fixing that regression of
+> xfstest(generic 075 and 091) again.
+> 
+> Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
+> Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
+> Reviewed-by: Lukas Czerner <lczerner@redhat.com>
 
-LGTM
+Thanks, applied.
 
-Reviewed-by: "Theodore Ts'o" <tytso@mit.edu>
+What's the status of the "[2/3] ext4: fix ZERO_RANGE test failure in
+data journalling mode" patch.  Is it no longer needed?
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+     		       	       	     - Ted
