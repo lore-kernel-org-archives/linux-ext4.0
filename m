@@ -1,70 +1,85 @@
 From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: RE: [PATCH 2/3] ext4: fix ZERO_RANGE test failure in data journalling
- mode
-Date: Sat, 19 Apr 2014 11:40:35 +0900
-Message-ID: <000b01cf5b78$bde469e0$39ad3da0$@samsung.com>
-References: <002a01cf59c3$4eaf7490$ec0e5db0$@samsung.com>
- <alpine.LFD.2.00.1404171051040.2143@localhost.localdomain>
- <008501cf5a2b$14b6c690$3e2453b0$@samsung.com>
- <alpine.LFD.2.00.1404171259130.2143@localhost.localdomain>
- <009001cf5a34$c1b68fc0$4523af40$@samsung.com>
- <alpine.LFD.2.00.1404171412090.2143@localhost.localdomain>
- <001101cf5aa7$49718b50$dc54a1f0$@samsung.com>
- <20140418143711.GA19131@thunk.org>
+Subject: [PATCH v2 1/2] ext4: fix COLLAPSE_RANGE failure issue on ext4 with 1KB
+ block size
+Date: Sat, 19 Apr 2014 13:50:37 +0900
+Message-ID: <000c01cf5b8a$e7dd2cc0$b7978640$@samsung.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=iso-8859-2
 Content-Transfer-Encoding: 7bit
-Cc: =?iso-8859-2?Q?'Luk=E1=B9_Czerner'?= <lczerner@redhat.com>,
-	'Jan Kara' <jack@suse.cz>,
-	'linux-ext4' <linux-ext4@vger.kernel.org>
-To: 'Theodore Ts'o' <tytso@mit.edu>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+	=?iso-8859-2?Q?Luk=E1=B9_Czerner?= <lczerner@redhat.com>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout2.samsung.com ([203.254.224.25]:50111 "EHLO
-	mailout2.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751550AbaDSCkh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Apr 2014 22:40:37 -0400
+Received: from mailout4.samsung.com ([203.254.224.34]:9251 "EHLO
+	mailout4.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750739AbaDSEuj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Apr 2014 00:50:39 -0400
 Received: from epcpsbgr2.samsung.com
  (u142.gpu120.samsung.co.kr [203.254.230.142])
- by mailout2.samsung.com (Oracle Communications Messaging Server 7u4-24.01
+ by mailout4.samsung.com (Oracle Communications Messaging Server 7u4-24.01
  (7.0.4.24.0) 64bit (built Nov 17 2011))
- with ESMTP id <0N4900JO9BFOPCB0@mailout2.samsung.com> for
- linux-ext4@vger.kernel.org; Sat, 19 Apr 2014 11:40:36 +0900 (KST)
-In-reply-to: <20140418143711.GA19131@thunk.org>
+ with ESMTP id <0N4900313HGDJVA0@mailout4.samsung.com> for
+ linux-ext4@vger.kernel.org; Sat, 19 Apr 2014 13:50:37 +0900 (KST)
 Content-language: ko
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> So a couple of things.  First of all, ext4_force_commit() is a very
-> expensive call, so calling it twice is really not a good idea.
-Yes, Right.
-> 
-> Secondly, in the ext4_collapse_range() you are calling
-> ext4_force_commit() before filemap_write_and_wait_range().
-> 
-> 	/* Call ext4_force_commit to flush all data in case of data=journal. */
-> 	if (ext4_should_journal_data(inode)) {
-> 		ret = ext4_force_commit(inode->i_sb);
-> 		if (ret)
-> 			return ret;
-> 	}
-> 
-> 	/* Write out all dirty pages */
-> 	ret = filemap_write_and_wait_range(inode->i_mapping, offset, -1);
-> 	if (ret)
-> 		return ret;
-> 
-> Shouldn't we reverse these two calls?
-Yes, The original problem will occur again if we reverse these calls.
-ext4_force_commit will mark the buffers as dirty during commit transcation.
-So we should sync it using filemap_write_and_wait_range later.
-> 
-> Finally, I'm wondering if we would be better off creating a new
-> explicit EXT4_I(inode)->i_write_mutex which is used to block new
-> writes from starting.  This could also be used to subsume the
-> ext4_aio_mutex.
-Right. It is better method. I will check your point. :)
+From: Namjae Jeon <namjae.jeon@samsung.com>
 
-Thanks Ted!!
-> 
-> 						- Ted
+When formatting with 1KB or 2KB(not aligned with PAGE SIZE) block size,
+xfstests generic/075 and 091 are failing. The offset supplied to function
+truncate_pagecache_range is block size aligned. In this function start offset
+is re-aligned to PAGE_SIZE by rounding_up to the next page boundary.
+Due to this rounding up, old data remains in the page cache when blocksize is
+less than page size and start offset is not aligned with page size.
+In case of collapse range, we need to align start offset to page size boundary
+by doing a round down operation instead of round up.
+
+Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
+Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
+---
+ fs/ext4/extents.c | 13 ++++++++++---
+ 1 file changed, 10 insertions(+), 3 deletions(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 9b9251a..4cf8c5b 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -5395,7 +5395,7 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
+ 	ext4_lblk_t punch_start, punch_stop;
+ 	handle_t *handle;
+ 	unsigned int credits;
+-	loff_t new_size;
++	loff_t new_size, ioffset;
+ 	int ret;
+ 
+ 	/* Collapse range works only on fs block size aligned offsets. */
+@@ -5418,8 +5418,15 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
+ 			return ret;
+ 	}
+ 
++	/*
++	 * Need to round down offset to be aligned with page size boundary
++	 * for page size > block size.
++	 */
++	ioffset = round_down(offset, PAGE_SIZE);
++
+ 	/* Write out all dirty pages */
+-	ret = filemap_write_and_wait_range(inode->i_mapping, offset, LLONG_MAX);
++	ret = filemap_write_and_wait_range(inode->i_mapping, ioffset,
++					   LLONG_MAX);
+ 	if (ret)
+ 		return ret;
+ 
+@@ -5441,7 +5448,7 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
+ 		goto out_mutex;
+ 	}
+ 
+-	truncate_pagecache(inode, offset);
++	truncate_pagecache(inode, ioffset);
+ 
+ 	/* Wait for existing dio to complete */
+ 	ext4_inode_block_unlocked_dio(inode);
+-- 
+1.7.11-rc0
 
