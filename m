@@ -1,37 +1,63 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v2 2/2] ext4: disable COLLAPSE_RANGE for bigalloc
-Date: Sat, 19 Apr 2014 18:12:21 -0400
-Message-ID: <20140419221221.GD13492@thunk.org>
-References: <000d01cf5b8b$5b149110$113db330$@samsung.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH] generic: fix check for zero range support in generic/009
+Date: Sun, 20 Apr 2014 10:56:46 +1000
+Message-ID: <20140420005645.GB15995@dastard>
+References: <20140419190524.GA2116@wallace>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	=?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
-To: Namjae Jeon <namjae.jeon@samsung.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:50158 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751294AbaDSWMZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 19 Apr 2014 18:12:25 -0400
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, xfs@oss.sgi.com
+To: Eric Whitney <enwlinux@gmail.com>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <000d01cf5b8b$5b149110$113db330$@samsung.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20140419190524.GA2116@wallace>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Sat, Apr 19, 2014 at 01:53:50PM +0900, Namjae Jeon wrote:
-> From: Namjae Jeon <namjae.jeon@samsung.com>
+On Sat, Apr 19, 2014 at 03:05:24PM -0400, Eric Whitney wrote:
+> Generic/001 fails when run on a file system that does not support byte range
+> zeroing.  For example, an EOPNOTSUPP failure occurs when the test is run
+> on a pre-3.15 extent-mapped file system.  The code in the test intended
+> to prevent this contains an apparent typo that results in a check for
+> fallocate() rather than zero range support.
 > 
-> Once COLLAPSE RANGE is be disable for ext4 with bigalloc feature till finding
-> root-cause of problem. It will be enable with fixing that regression of
-> xfstest(generic 075 and 091) again.
+> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+> ---
+>  tests/generic/009 | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
 > 
-> Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-> Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
-> Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+> diff --git a/tests/generic/009 b/tests/generic/009
+> index b7b0b3f..65abe3c 100644
+> --- a/tests/generic/009
+> +++ b/tests/generic/009
+> @@ -44,7 +44,7 @@ trap "_cleanup ; exit \$status" 0 1 2 3 15
+>  
+>  # real QA test starts here
+>  _supported_os Linux
+> -_require_xfs_io_falloc "fzero"
+> +_require_xfs_io_command "fzero"
 
-Thanks, applied.
+There should be a helper in common/rc for this. i.e.
+_require_xfs_io_fzero. There's helpers for everything else. Can you
+add the helper and wire the tests up to it properly?
 
-What's the status of the "[2/3] ext4: fix ZERO_RANGE test failure in
-data journalling mode" patch.  Is it no longer needed?
+Cheers,
 
-     		       	       	     - Ted
+Dave.
+
+-- 
+Dave Chinner
+david@fromorbit.com
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
