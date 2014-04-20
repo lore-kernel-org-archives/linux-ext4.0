@@ -1,63 +1,52 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH] generic: fix check for zero range support in generic/009
-Date: Sun, 20 Apr 2014 10:56:46 +1000
-Message-ID: <20140420005645.GB15995@dastard>
-References: <20140419190524.GA2116@wallace>
+From: Contact <neitsab@ovh.fr>
+Subject: Re: Make huge files strictly contiguous (fallocate, bigalloc, e4defrag...)
+Date: Sun, 20 Apr 2014 16:37:54 +0200
+Message-ID: <5353DBC2.5080708@ovh.fr>
+References: <534F39F6.2000208@ovh.fr> <20140417152457.GE18591@thunk.org> <5350205E.3030403@ovh.fr> <alpine.LFD.2.00.1404181042200.2128@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, xfs@oss.sgi.com
-To: Eric Whitney <enwlinux@gmail.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-In-Reply-To: <20140419190524.GA2116@wallace>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: =?UTF-8?B?THVrw6HFoSBDemVybmVy?= <lczerner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mo29.mail-out.ovh.net ([178.32.228.29]:58620 "EHLO
+	mo29.mail-out.ovh.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755201AbaDTOh7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Apr 2014 10:37:59 -0400
+In-Reply-To: <alpine.LFD.2.00.1404181042200.2128@localhost.localdomain>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Apr 19, 2014 at 03:05:24PM -0400, Eric Whitney wrote:
-> Generic/001 fails when run on a file system that does not support byte range
-> zeroing.  For example, an EOPNOTSUPP failure occurs when the test is run
-> on a pre-3.15 extent-mapped file system.  The code in the test intended
-> to prevent this contains an apparent typo that results in a check for
-> fallocate() rather than zero range support.
-> 
-> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
-> ---
->  tests/generic/009 | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/tests/generic/009 b/tests/generic/009
-> index b7b0b3f..65abe3c 100644
-> --- a/tests/generic/009
-> +++ b/tests/generic/009
-> @@ -44,7 +44,7 @@ trap "_cleanup ; exit \$status" 0 1 2 3 15
->  
->  # real QA test starts here
->  _supported_os Linux
-> -_require_xfs_io_falloc "fzero"
-> +_require_xfs_io_command "fzero"
+Le ven. 18 avril 2014 10:45:03 CEST, Luk=C3=A1=C5=A1 Czerner a =C3=A9cr=
+it :
+>
+> The way you're using dd for this purpose is wrong. I
+> said that dd can write to the file without truncating it first, but
+> it's not doing it by default. You have to use 'notrunc' see man
+> page. But I think that it would not have made a difference anyway.
+>
+Thansk, I stand corrected. I'll try it to see whether I can get better=20
+results with it.
 
-There should be a helper in common/rc for this. i.e.
-_require_xfs_io_fzero. There's helpers for everything else. Can you
-add the helper and wire the tests up to it properly?
+> And even though you can turn off backup superblock you
+> can not turn off writing group descriptors.
+>
+While we're at it, how can I do this? I searched the=20
+mkfs.ext4/mke2fs.conf/ext4/tune2fs man pages for the option to turn off=
+=20
+writing backup superblock you mentioned, however the closest I found is=
+=20
+tune2fs -O ^sparse_super which is part of the defaults mke2fs.conf=20
+options... Could you point me at it so that I can try to get this=20
+source of non-contiguity away?
 
-Cheers,
+Thanks,
+-Bastien
 
-Dave.
 
--- 
-Dave Chinner
-david@fromorbit.com
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
