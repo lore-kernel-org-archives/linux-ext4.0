@@ -1,49 +1,52 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: [PATCH v3 3/3] generic: fix check for zero range support in
- generic/009
-Date: Mon, 21 Apr 2014 16:44:54 -0400
-Message-ID: <20140421204454.GD960@wallace>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [RFC PATCH v2 0/4] ext4: extents status tree shrinker improvement
+Date: Tue, 22 Apr 2014 09:10:02 +1000
+Message-ID: <20140421231002.GC15995@dastard>
+References: <1397647830-24444-1-git-send-email-wenqing.lz@taobao.com>
+ <20140416151938.GA17208@thunk.org>
+ <20140416154209.GB17208@thunk.org>
+ <20140417153526.GF18591@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: xfs@oss.sgi.com
+Cc: Zheng Liu <gnehzuil.liu@gmail.com>, linux-ext4@vger.kernel.org,
+	Zheng Liu <wenqing.lz@taobao.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Jan Kara <jack@suse.cz>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yh0-f54.google.com ([209.85.213.54]:34476 "EHLO
-	mail-yh0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753542AbaDUUo6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Apr 2014 16:44:58 -0400
-Received: by mail-yh0-f54.google.com with SMTP id f73so4022108yha.27
-        for <linux-ext4@vger.kernel.org>; Mon, 21 Apr 2014 13:44:57 -0700 (PDT)
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:25147 "EHLO
+	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754569AbaDUXKH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 21 Apr 2014 19:10:07 -0400
 Content-Disposition: inline
+In-Reply-To: <20140417153526.GF18591@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Generic/001 fails when run on a file system that does not support byte range
-zeroing.  For example, an EOPNOTSUPP failure occurs when the test is run
-on a pre-3.15 extent-mapped file system.  The code in the test intended
-to prevent this contains an apparent typo that results in a check for
-fallocate() rather than zero range support.
+On Thu, Apr 17, 2014 at 11:35:26AM -0400, Theodore Ts'o wrote:
+> So I've been thinking about this some more, and it seems to me is
+> actually, what we need is *both* an LRU and a RR scheme.
 
-v2: Use new helper function for the check.
+We already have shrinker implementations that do this. It would
+probably take 10-15 lines of code to add it to any existing LRU
+list based shrinker.....
 
-Signed-off-by: Eric Whitney <enwlinux@gmail.com>
----
- tests/generic/009 | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+> The real problem here is that we have workloads that are generating a
+> large number of "low value" extent cache entries.  That is, they are
+> extremely unlikely to be used again, because they are small, and being
+> generated when you have a highly fragmented extent status cache, and
+> very often, the workload is a random read/write workload, so there is
+> no way the full "working set" of extent cache entries could be kept in
+> memory at the same time anyway.  These less valuable cache entries are
+> being generated at a very high rate, and we want to make sure we don't
+> penalize the "valuable" cache entries.
 
-diff --git a/tests/generic/009 b/tests/generic/009
-index b7b0b3f..b4d3e4b 100644
---- a/tests/generic/009
-+++ b/tests/generic/009
-@@ -44,7 +44,7 @@ trap "_cleanup ; exit \$status" 0 1 2 3 15
- 
- # real QA test starts here
- _supported_os Linux
--_require_xfs_io_falloc "fzero"
-+_require_xfs_io_falloc_zero
- 
- testfile=$TEST_DIR/009.$$
- 
+Yup, an "object referenced" bit that gets set on a cache lookup hit.
+
+Cheers,
+
+Dave.
 -- 
-1.8.3.2
-
+Dave Chinner
+david@fromorbit.com
