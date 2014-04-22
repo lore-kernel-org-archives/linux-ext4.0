@@ -1,81 +1,77 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] e2fsck: Don't skip time based checks if
- broken_system_clock=1 unnecessarily
-Date: Tue, 22 Apr 2014 17:47:02 +0200
-Message-ID: <20140422154702.GH366@quack.suse.cz>
-References: <1395976531-7447-1-git-send-email-jack@suse.cz>
- <20140421003956.GB5754@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] e2fsck: skip low dtime check if the number of inodes > s_mkfs_time
+Date: Tue, 22 Apr 2014 14:19:12 -0400
+Message-ID: <1398190752-12964-1-git-send-email-tytso@mit.edu>
+References: <CAAOsTSktc2faYp5x_-3OcT3_DU81mHSQaeXTn1EoixmOLNX98A@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: patrik@hornik.sk, Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:42930 "EHLO mx2.suse.de"
+Received: from imap.thunk.org ([74.207.234.97]:54401 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750993AbaDVPrG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 22 Apr 2014 11:47:06 -0400
-Content-Disposition: inline
-In-Reply-To: <20140421003956.GB5754@thunk.org>
+	id S1750837AbaDVSTW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 22 Apr 2014 14:19:22 -0400
+In-Reply-To: <CAAOsTSktc2faYp5x_-3OcT3_DU81mHSQaeXTn1EoixmOLNX98A@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun 20-04-14 20:39:56, Ted Tso wrote:
-> On Fri, Mar 28, 2014 at 04:15:31AM +0100, Jan Kara wrote:
-> > When option broken_system_clock is set, we unconditionally skip checks
-> > whether e2fsck should check the fs because the fs was last checked too
-> > long ago. Distributions however set broken_system_clock by default as
-> > some of the systems simply have the clocks broken and e2fsck stops the
-> > boot because of that which is harsh given how minor issue that is (at
-> > least for the fs). Thus checking every X days doesn't work with these
-> > distributions.
-> 
-> There are a couple of different ways in which the time can be
-> considered "broken":
-> >
-> 1) The system has no battery-backed block and so the time is always
-> January 1, 1970 on boot.  These systems are taken care of by the
-> TIME_INSANE checks.
-> 
-> 2) The distribution the timezone is incorrect when e2fsck is run, so
-> depending on whether you are east or west of GMT, the clock could
-> appear to be up to 24 hours in the future, which would falsely trigger
-> the e2fsck check.  That is now taken care of by the accept_time_fudge
-> hack, which is enabled by default.
-> 
-> 3) The clock is totally insane, which means that it could be any
-> value; it could have a time in 2037; it could have a time in the
-> 1970's.  This is what broken_system_clock means now.
-> 
-> If the system clock is completely untrustworthy, you really do want to
-> skip all time based checks, because there is no way to tell whether
-> the times look "sensible" or not.  If the clock warps forward by N
-> years, it's still going to look sensible, and it can force a time
-> based check when one shouldn't be needed.
->
-> I think the issue is that there may be some distributions that set
-> broken_system_lock way back in the past, before we added the
-> accept_time_fudge (which was added in 2009).  So if the concern is
-> dealing with people who have systems in Western Europe whose RTC ticks
-> localtime (as opposed to UTC), that problem was fixed by
-> accept_time_fudge.  And if the concern is systems in state #1, that
-> was dealt with by the TIME_INSANE checks in 2010.
-> 
-> So if those are the main concerns, you can simply get rid of setting
-> broken_system_clock, since those problems are now solved by default.
-  So looking into our bugzilla we added broken_system_clock=1 to
-e2fsck.conf because of a report of a machine where the time went few days
-backward after a reboot (the most likely explanation to me seems that the
-system time wasn't getting properly written to the hw clock for some
-reason).
+We already skip the low dtime check if the number of inods is greater
+than the last mount or last written time.  However, if a very large
+file system is resized sufficiently large that the number of inodes is
+greater than when the file system was original created, we can end up
+running afoul of the low dtime check.  This results in a large number
+of false positives which e2fsck can fix up without causing any
+problems, but it can induce a large amount of anxiety for the system
+administrator.
 
-Anyway, thinking about this again maybe my point should have been: Isn't it
-too harsh to declare mount time in future as requiring manual intervention?
-Why don't we just reset it (or just leave it alone) in preen mode without
-requiring user interaction? I understand it may indicate some corruption
-problem but we don't really care about corruption in this particular field
-much...
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Reported-by: Patrik Horn=C3=ADk <patrik@hornik.sk>
+---
+ e2fsck/pass1.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index 38b221c..9ef724a 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -559,7 +559,7 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 	const char	*old_op;
+ 	unsigned int	save_type;
+ 	int		imagic_fs, extent_fs;
+-	int		busted_fs_time =3D 0;
++	int		low_dtime_check =3D 1;
+ 	int		inode_size;
+=20
+ 	init_resource_track(&rtrack, ctx->fs->io);
+@@ -708,8 +708,10 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 					      ctx->fs->group_desc_count)))
+ 		goto endit;
+ 	if ((fs->super->s_wtime < fs->super->s_inodes_count) ||
+-	    (fs->super->s_mtime < fs->super->s_inodes_count))
+-		busted_fs_time =3D 1;
++	    (fs->super->s_mtime < fs->super->s_inodes_count) ||
++	    (fs->super->s_mkfs_time &&
++	     fs->super->s_mkfs_time < fs->super->s_inodes_count))
++		low_dtime_check =3D 0;
+=20
+ 	if ((fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_MMP) &&
+ 	    fs->super->s_mmp_block > fs->super->s_first_data_block &&
+@@ -988,7 +990,7 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 		 * than nothing.  The right answer is that there
+ 		 * shouldn't be any bugs in the orphan list handling.  :-)
+ 		 */
+-		if (inode->i_dtime && !busted_fs_time &&
++		if (inode->i_dtime && low_dtime_check &&
+ 		    inode->i_dtime < ctx->fs->super->s_inodes_count) {
+ 			if (fix_problem(ctx, PR_1_LOW_DTIME, &pctx)) {
+ 				inode->i_dtime =3D inode->i_links_count ?
+--=20
+1.9.0
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
