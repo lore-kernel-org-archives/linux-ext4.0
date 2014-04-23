@@ -1,59 +1,59 @@
-From: Sander Smeenk <ssmeenk@freshdot.net>
-Subject: Re: ext4 metadata corruption bug?
-Date: Wed, 23 Apr 2014 09:23:11 +0200
-Message-ID: <20140423072311.GD10163@dot.freshdot.net>
-References: <20140420163211.GT10985@gradx.cs.jhu.edu>
+From: Namjae Jeon <namjae.jeon@samsung.com>
+Subject: RE: [PATCH] ext4: use EINVAL if not a regular file in ext4_fallocate()
+Date: Wed, 23 Apr 2014 17:35:35 +0900
+Message-ID: <004b01cf5ece$ff6fe1b0$fe4fa510$@samsung.com>
+References: <000e01cf5b8d$c57e9f80$507bde80$@samsung.com>
+ <20140423060823.GA9262@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=iso-8859-2
+Content-Transfer-Encoding: 7bit
+Cc: 'Theodore Ts'o' <tytso@mit.edu>,
+	'linux-ext4' <linux-ext4@vger.kernel.org>,
+	=?iso-8859-2?Q?'Luk=E1=B9_Czerner'?= <lczerner@redhat.com>
+To: 'Zheng Liu' <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from dot.freshdot.net ([213.154.236.176]:51606 "EHLO
-	dot.freshdot.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752435AbaDWH7x (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Apr 2014 03:59:53 -0400
-Content-Disposition: inline
-In-Reply-To: <20140420163211.GT10985@gradx.cs.jhu.edu>
+Received: from mailout2.samsung.com ([203.254.224.25]:63115 "EHLO
+	mailout2.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750719AbaDWIfw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Apr 2014 04:35:52 -0400
+Received: from epcpsbgr4.samsung.com
+ (u144.gpu120.samsung.co.kr [203.254.230.144])
+ by mailout2.samsung.com (Oracle Communications Messaging Server 7u4-24.01
+ (7.0.4.24.0) 64bit (built Nov 17 2011))
+ with ESMTP id <0N4H00KJ06JC8CA0@mailout2.samsung.com> for
+ linux-ext4@vger.kernel.org; Wed, 23 Apr 2014 17:35:36 +0900 (KST)
+In-reply-to: <20140423060823.GA9262@gmail.com>
+Content-language: ko
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Apr 20, 2014 at 12:32:12PM -0400, Nathaniel W Filardo wrote:
+> On Sat, Apr 19, 2014 at 02:11:07PM +0900, Namjae Jeon wrote:
+> > From: Namjae Jeon <namjae.jeon@samsung.com>
+> >
+> > Punch hole return EOPNOTSUPP about a non-REGULAR file also. So change EINVAL
+> > to be consistent with xfs. And move this check to the start of
+> > ext4_fallocate().
+> 
+> IMHO, EOPNOTSUPP makes sense to me.  From the man page of fallocate(2):
+Hi Zheng.
+IMHO, EOPNOTSUPP should be used where the operation is not yet implemented but
+there is some chance that it could be implemented in future.
+for example, it is ok for FS which has not yet implemented punch hole to
+return EOPNOTSUPP as they could implement it in future. but for the cases where
+it does not make sense to implement the operation, for example punching hole
+for non regular files does not make any sense, it is better to use EINVAL.
+On these lines, I agree that returning EOPNOTSUPP for collapse range in case of
+non-extent based file is ok, as it is plausible to implemet collapse range for
+non extent files in future.
 
-> We just got
-> > [817576.492013] EXT4-fs (vdd): pa ffff88000dea9b90: logic 0, phys. 1934464544, len 32
-> > [817576.492468] EXT4-fs error (device vdd):
-> > ext4_mb_release_inode_pa:3729: group 59035, free 14, pa_free 12
+Thanks for your opinion!
+> 
+> EOPNOTSUPP
+>       The filesystem containing the file referred to by fd does not
+>       support this operation; or the mode is not supported by the
+>       filesystem containing the file referred to by fd.
+> 
+> Regards,
+>                                                 - Zheng
 
-I'm jumping in on this thread as a co-worker pointed me to it after i
-reported somewhere else about a similar ext4 metadata corruption issue
-i'm running into.
 
-Quite similar situation to the OP in this thread:
-Linux QEMU 2.0.0~rc1+dfsg-0ubuntu3 running on 3.13.0, guest and host
-both run Linux 3.13.0, guest has one 'big' volume (10T, 5.5T in use) as
-/dev/vdb which in it's entirety is used as an ext4 filesystem. No
-partitioning.
-
-The trouble starts with:
-
-| EXT4-fs (vdb): pa ffff880078754c30: logic 274378, phys. 1617823779, len 54
-| EXT4-fs error (device vdb): ext4_mb_release_inode_pa:3729: group 49372, free 52, pa_free 50
-| Aborting journal on device vdb-8.
-
-After which the system remounts the disk read-only and logs some more
-ext4 trouble which i've pasted here: https://8n1.org/9763/4928
-
-The system doesn't crash as this isn't the "OS disk". Running fsck on
-the disk reports bitmap corruption and some incorrect free block/inode
-counts after which the FS seems to work again.
-
-It only happens to the guest with the large disk. All the other guests
-on the same hypervisor and the same backend storage have no issues at
-all. No IO errors are logged other than the ext4 errors from the guest.
-The workload on this guest is not at all spectacular. A bit of random IO
-on a set of files, the rest is mostly archive and rarely touched.
-
-HTH,
--Sander.
--- 
-| You dig around for a while but you fail to find any treasure.
-| 4096R/20CC6CD2 - 6D40 1A20 B9AA 87D4 84C7  FBD6 F3A9 9442 20CC 6CD2
