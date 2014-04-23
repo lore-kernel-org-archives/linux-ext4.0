@@ -1,61 +1,67 @@
-From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: RE: [PATCH] ext4: use EINVAL if not a regular file in ext4_fallocate()
-Date: Wed, 23 Apr 2014 15:36:01 +0900
-Message-ID: <004a01cf5ebe$4b701eb0$e2505c10$@samsung.com>
-References: <000e01cf5b8d$c57e9f80$507bde80$@samsung.com>
- <20140423060823.GA9262@gmail.com>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH 2/2] ext4: Use EXT_MAX_BLOCKS in ext4_es_can_be_merged()
+Date: Wed, 23 Apr 2014 15:27:36 +0800
+Message-ID: <20140423072735.GA3602@gmail.com>
+References: <1397585302-27175-1-git-send-email-lczerner@redhat.com>
+ <1397585302-27175-2-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-2
-Content-Transfer-Encoding: 7bit
-Cc: 'Theodore Ts'o' <tytso@mit.edu>,
-	'linux-ext4' <linux-ext4@vger.kernel.org>,
-	=?iso-8859-2?Q?'Luk=E1=B9_Czerner'?= <lczerner@redhat.com>
-To: 'Zheng Liu' <gnehzuil.liu@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout2.samsung.com ([203.254.224.25]:32234 "EHLO
-	mailout2.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753379AbaDWGgF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Apr 2014 02:36:05 -0400
-Received: from epcpsbgr2.samsung.com
- (u142.gpu120.samsung.co.kr [203.254.230.142])
- by mailout2.samsung.com (Oracle Communications Messaging Server 7u4-24.01
- (7.0.4.24.0) 64bit (built Nov 17 2011))
- with ESMTP id <0N4H0087V1023PA0@mailout2.samsung.com> for
- linux-ext4@vger.kernel.org; Wed, 23 Apr 2014 15:36:02 +0900 (KST)
-In-reply-to: <20140423060823.GA9262@gmail.com>
-Content-language: ko
+Received: from mail-pb0-f49.google.com ([209.85.160.49]:51597 "EHLO
+	mail-pb0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756675AbaDWHVI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Apr 2014 03:21:08 -0400
+Received: by mail-pb0-f49.google.com with SMTP id rr13so495708pbb.22
+        for <linux-ext4@vger.kernel.org>; Wed, 23 Apr 2014 00:21:07 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <1397585302-27175-2-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> On Sat, Apr 19, 2014 at 02:11:07PM +0900, Namjae Jeon wrote:
-> > From: Namjae Jeon <namjae.jeon@samsung.com>
-> >
-> > Punch hole return EOPNOTSUPP about a non-REGULAR file also. So change EINVAL
-> > to be consistent with xfs. And move this check to the start of
-> > ext4_fallocate().
+On Tue, Apr 15, 2014 at 08:08:22PM +0200, Lukas Czerner wrote:
+> In ext4_es_can_be_merged() when checking whether we can merge two
+> extents we should use EXT_MAX_BLOCKS instead of defining it manually.
+> Also if it is really the case we should notify userspace because clearly
+> there is a bug in extent status tree implementation since this should
+> never happen.
 > 
-> IMHO, EOPNOTSUPP makes sense to me.  From the man page of fallocate(2):
-Hi Zheng.
-IMHO, EOPNOTSUPP should be used where the operation is not yet implemented but
-there is some chance that it could be implemented in future.
-for example, it is ok for FS which has not yet implemented punch hole to
-return EOPNOTSUPP as they could implement it in future. but for the cases where
-it does not make sense to implement the operation, for example punching hole
-for non regular files does not make any sense, it is better to use EINVAL.
-On these lines, I agree that returning EOPNOTSUPP for collapse range in case of
-non-extent based file is ok, as it is plausible to implemet collapse range for
-non extent files in future.
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 
-Thanks for your opinion!
+Thanks for fixing this.  It looks good to me.
+Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
 
-> 
-> EOPNOTSUPP
->       The filesystem containing the file referred to by fd does not
->       support this operation; or the mode is not supported by the
->       filesystem containing the file referred to by fd.
-> 
-> Regards,
->                                                 - Zheng
-> 
-> >
+                                                - Zheng
 
+> ---
+>  fs/ext4/extents_status.c | 8 +++++++-
+>  1 file changed, 7 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+> index 3c47b4e..b38d71a 100644
+> --- a/fs/ext4/extents_status.c
+> +++ b/fs/ext4/extents_status.c
+> @@ -344,8 +344,14 @@ static int ext4_es_can_be_merged(struct extent_status *es1,
+>  	if (ext4_es_status(es1) != ext4_es_status(es2))
+>  		return 0;
+>  
+> -	if (((__u64) es1->es_len) + es2->es_len > 0xFFFFFFFFULL)
+> +	if (((__u64) es1->es_len) + es2->es_len > EXT_MAX_BLOCKS) {
+> +		pr_warn("ES assertion failed when merging extents. "
+> +			"The sum of lengths of es1 (%d) and es2 (%d) "
+> +			"is bigger than allowed file size (%d)\n",
+> +			es1->es_len, es2->es_len, EXT_MAX_BLOCKS);
+> +		WARN_ON(1);
+>  		return 0;
+> +	}
+>  
+>  	if (((__u64) es1->es_lblk) + es1->es_len != es2->es_lblk)
+>  		return 0;
+> -- 
+> 1.8.3.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
