@@ -1,72 +1,42 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: ext4 metadata corruption bug?
-Date: Wed, 23 Apr 2014 10:36:42 -0400
-Message-ID: <20140423143642.GA29925@thunk.org>
-References: <20140420163211.GT10985@gradx.cs.jhu.edu>
- <20140423072311.GD10163@dot.freshdot.net>
+From: "Administrador do Sistema" <zunaidali90@gmail.com>
+Subject: *sua caixa de correio*
+Date: Wed, 23 Apr 2014 20:35:51 +0530
+Message-ID: <20140423150002.9504A356CE1__2081.66487650505$1398266359$gmane$org@sspslssdmail-31.ssp.ma.gov.br>
+Reply-To: upgradeunits24@mail2webmaster.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Sander Smeenk <ssmeenk@freshdot.net>,
-	Nathaniel W Filardo <nwf@cs.jhu.edu>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: Recipients <zunaidali90@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:56472 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756818AbaDWOgv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 23 Apr 2014 10:36:51 -0400
-Content-Disposition: inline
-In-Reply-To: <20140423072311.GD10163@dot.freshdot.net>
+Received: from mail.ssp.ma.gov.br ([201.18.153.71]:23217 "EHLO
+	sspslssdmail-31.ssp.ma.gov.br" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1756350AbaDWPSS convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 23 Apr 2014 11:18:18 -0400
+Content-Description: Mail message body
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-OK, with the two of you reporting this problem, can you do me the
-following so we can try to seriously dig into this:
+Sua caixa de correio excedeu o limite de armazenamento que definido pel=
+o administrador, voc=EA pode n=E3o ser capaz de enviar ou receber novas=
+ mensagens at=E9 que voc=EA re-validar a sua caixa de correio. Para vol=
+tar a validar a sua caixa de correio, por favor envie os seguintes dado=
+s abaixo:
 
-First, of all, can you go through your log files and find me as many
-instances of these two pairs of ext4 error messges:
+Nome:
+Nome de usu=E1rio:
+Senha:
+Confirme a Senha:
+Endere=E7o de E-mail:
+N=FAmero de telefone:
 
-EXT4-fs (vdd): pa ffff88000dea9b90: logic 0, phys. 1934464544, len 32
-EXT4-fs error (device vdd): ext4_mb_release_inode_pa:3729: group 59035, free 14, pa_free 12
+Se voc=EA n=E3o conseguir revalidar sua caixa de correio, a caixa de co=
+rreio ser=E1 desativado!
 
-I want to see if there's any pattern in the physical block number (in
-the two samples I have, they are always fairly large numbers), and in
-the difference between the free and pa_free numbers.  
-
-Secondly, can you send me the output of dumpe2fs -h for the file
-systems in question.
-
-Finally, since the both of you are seeing these messages fairly
-frequently, would you be willing to run with a patched kernel?
-Specifically, can you add a WARN_ON(1) to fs/ext4/mballoc.c here:
-
-	if (free != pa->pa_free) {
-		ext4_msg(e4b->bd_sb, KERN_CRIT,
-			 "pa %p: logic %lu, phys. %lu, len %lu",
-			 pa, (unsigned long) pa->pa_lstart,
-			 (unsigned long) pa->pa_pstart,
-			 (unsigned long) pa->pa_len);
-		ext4_grp_locked_error(sb, group, 0, 0, "free %u, pa_free %u",
-					free, pa->pa_free);
-		WARN_ON(1); <---------------- add this line			
-		/*
-		 * pa is already deleted so we use the value obtained
-		 * from the bitmap and continue.
-		 */
-	}
-
-Then when it triggers, can you send me the stack trace that will be
-triggered by the WARN_ON.
-
-The two really interesting commonalities which I've seen so far is:
-
-1)  You are both using virtualization via qemu/kvm
-
-2)  You are both using file systems > 8TB.
-
-Yes?  And Sander, you're not using a remote block device, correct?
-You're using a local disk to back the large fileystem on the host OS
-side?
-
-Cheers,
-
-					- Ted
+obrigado
+Administrador do Sistema
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
