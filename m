@@ -1,131 +1,104 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/7] mke2fs: don't ask the proceed question using a regular file
-Date: Sat, 26 Apr 2014 20:00:28 -0400
-Message-ID: <1398556834-31913-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 6/7] mke2fs: check for pre-existing file system
+Date: Sat, 26 Apr 2014 20:00:33 -0400
+Message-ID: <1398556834-31913-6-git-send-email-tytso@mit.edu>
+References: <1398556834-31913-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:34698 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:34700 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751716AbaD0AAm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1750781AbaD0AAm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sat, 26 Apr 2014 20:00:42 -0400
+In-Reply-To: <1398556834-31913-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Very often people are creating file systems using regular files, so we
-shouldn't ask the user to confirm using the proceed question.
-Otherwise it encourages users to use the -F flag, which is a bad
-thing.
-
-We do need to continue to check if the external journal device is a
-block device.
+Warn the system administrator if there is an existing file system on
+the block device, and give the administrator an opportunity to abort
+the mkfs operation.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- misc/mke2fs.c  |  5 +++--
- misc/tune2fs.c |  2 +-
- misc/util.c    | 16 ++++++++++------
- misc/util.h    |  8 +++++++-
- 4 files changed, 21 insertions(+), 10 deletions(-)
+ misc/mke2fs.c |  4 +++-
+ misc/util.c   | 29 +++++++++++++++++++++++++++++
+ misc/util.h   |  1 +
+ 3 files changed, 33 insertions(+), 1 deletion(-)
 
 diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 176dc40..637ace2 100644
+index 799132a..3694ce5 100644
 --- a/misc/mke2fs.c
 +++ b/misc/mke2fs.c
-@@ -1750,7 +1750,7 @@ profile_error:
- 		usage();
+@@ -1753,7 +1753,9 @@ profile_error:
+ 	profile_get_integer(profile, "options", "proceed_delay", 0, 5,
+ 			    &proceed_delay);
  
- 	if (!force)
--		check_plausibility(device_name);
-+		check_plausibility(device_name, 0, NULL);
- 	check_mount(device_name, force, _("filesystem"));
+-	if (!check_plausibility(device_name, CREATE_FILE,
++	/* The isatty() test is so we don't break existing scripts */
++	if (!check_plausibility(device_name, CREATE_FILE |
++				(isatty(0) ? CHECK_FS_EXIST : 0),
+ 				&is_device) && !force)
+ 		proceed_question(proceed_delay);
  
- 	/* Determine the size of the device (if possible) */
-@@ -2782,7 +2782,8 @@ int main (int argc, char *argv[])
- 		ext2_filsys	jfs;
- 
- 		if (!force)
--			check_plausibility(journal_device);
-+			check_plausibility(journal_device, CHECK_BLOCK_DEV,
-+					   NULL);
- 		check_mount(journal_device, force, _("journal"));
- 
- 		retval = ext2fs_open(journal_device, EXT2_FLAG_RW|
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 3359c4a..d61dbfb 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -673,7 +673,7 @@ static int add_journal(ext2_filsys fs)
- 		goto err;
- 	}
- 	if (journal_device) {
--		check_plausibility(journal_device);
-+		check_plausibility(journal_device, CHECK_BLOCK_DEV, NULL);
- 		check_mount(journal_device, 0, _("journal"));
- #ifdef CONFIG_TESTIO_DEBUG
- 		if (getenv("TEST_IO_FLAGS") || getenv("TEST_IO_BLOCK")) {
 diff --git a/misc/util.c b/misc/util.c
-index 92ab79f..0c3787c 100644
+index afb0058..be16ebe 100644
 --- a/misc/util.c
 +++ b/misc/util.c
-@@ -80,9 +80,9 @@ void proceed_question(void)
- 		exit(1);
- }
- 
--void check_plausibility(const char *device)
-+void check_plausibility(const char *device, int flags, int *ret_is_dev)
- {
--	int val;
-+	int val, is_dev = 0;
+@@ -113,6 +113,9 @@ int check_plausibility(const char *device, int flags, int *ret_is_dev)
+ 	int fd, is_dev = 0;
  	ext2fs_struct_stat s;
+ 	int fl = O_RDONLY;
++	blkid_cache cache = NULL;
++	char *fs_type = NULL;
++	char *fs_label = NULL;
  
- 	val = ext2fs_stat(device, &s);
-@@ -95,13 +95,17 @@ void check_plausibility(const char *device)
- 				"did you specify it correctly?\n"), stderr);
- 		exit(1);
+ 	if (flags & CREATE_FILE)
+ 		fl |= O_CREAT;
+@@ -148,6 +151,32 @@ int check_plausibility(const char *device, int flags, int *ret_is_dev)
+ 		return 0;
  	}
-+	if (S_ISBLK(s.st_mode))
-+		is_dev = 1;
- #if defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
- 	/* On FreeBSD, all disk devices are character specials */
--	if (!S_ISBLK(s.st_mode) && !S_ISCHR(s.st_mode))
--#else
--	if (!S_ISBLK(s.st_mode))
-+	if (S_ISCHR(s.st_mode))
-+		is_dev = 1;
- #endif
--	{
-+	if (ret_is_dev)
-+		*ret_is_dev = is_dev;
+ 
++	if ((flags & CHECK_FS_EXIST) && blkid_get_cache(&cache, NULL) >= 0) {
++		fs_type = blkid_get_tag_value(cache, "TYPE", device);
++		if (fs_type)
++			fs_label = blkid_get_tag_value(cache, "LABEL", device);
++		blkid_put_cache(cache);
++	}
 +
-+	if ((flags & CHECK_BLOCK_DEV) && !is_dev) {
- 		printf(_("%s is not a block special device.\n"), device);
- 		proceed_question();
- 		return;
++	if (fs_type) {
++		if (fs_label)
++			printf(_("%s contains a %s file system "
++				 "labelled '%s'\n"), device, fs_type, fs_label);
++		else
++			printf(_("%s contains a %s file system\n"), device,
++			       fs_type);
++		free(fs_type);
++		free(fs_label);
++		return 0;
++	}
++
++	/*
++	 * We should eventually replace this with a test for the
++	 * presence of a partition table.  Unfortunately the blkid
++	 * library doesn't test for partition tabels, and checking for
++	 * valid GPT and MBR and possibly others isn't quite trivial.
++	 */
++
+ #ifdef HAVE_LINUX_MAJOR_H
+ #ifndef MAJOR
+ #define MAJOR(dev)	((dev)>>8)
 diff --git a/misc/util.h b/misc/util.h
-index 11604d0..470556a 100644
+index 9de3fbf..745568e 100644
 --- a/misc/util.h
 +++ b/misc/util.h
-@@ -15,12 +15,18 @@ extern int	 journal_flags;
- extern char	*journal_device;
- extern char	*journal_location_string;
+@@ -20,6 +20,7 @@ extern char	*journal_location_string;
+  */
+ #define CHECK_BLOCK_DEV	0x0001
+ #define CREATE_FILE	0x0002
++#define CHECK_FS_EXIST	0x0004
  
-+/*
-+ * Flags for check_plausibility()
-+ */
-+#define CHECK_BLOCK_DEV	0x0001
-+
  #ifndef HAVE_STRCASECMP
  extern int strcasecmp (char *s1, char *s2);
- #endif
- extern char *get_progname(char *argv_zero);
- extern void proceed_question(void);
--extern void check_plausibility(const char *device);
-+extern void check_plausibility(const char *device, int flags,
-+			       int *ret_is_dev);
- extern void parse_journal_opts(const char *opts);
- extern void check_mount(const char *device, int force, const char *type);
- extern unsigned int figure_journal_size(int size, ext2_filsys fs);
 -- 
 1.9.0
 
