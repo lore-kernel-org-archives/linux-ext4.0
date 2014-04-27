@@ -1,104 +1,168 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 6/7] mke2fs: check for pre-existing file system
-Date: Sat, 26 Apr 2014 20:00:33 -0400
-Message-ID: <1398556834-31913-6-git-send-email-tytso@mit.edu>
+Subject: [PATCH 5/7] mke2fs: proceed if the user doesn't type anything after 5 seconds
+Date: Sat, 26 Apr 2014 20:00:32 -0400
+Message-ID: <1398556834-31913-5-git-send-email-tytso@mit.edu>
 References: <1398556834-31913-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:34700 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:34711 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750781AbaD0AAm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 26 Apr 2014 20:00:42 -0400
+	id S1752606AbaD0AAv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 26 Apr 2014 20:00:51 -0400
 In-Reply-To: <1398556834-31913-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Warn the system administrator if there is an existing file system on
-the block device, and give the administrator an opportunity to abort
-the mkfs operation.
+If mke2fs needs to ask the user for permission, and the user doesn't
+type anything for five seconds, proceed as if the user had said yes.
+
+This will allow us to add more stringent checks without breaking
+existing scripts (much).
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- misc/mke2fs.c |  4 +++-
- misc/util.c   | 29 +++++++++++++++++++++++++++++
- misc/util.h   |  1 +
- 3 files changed, 33 insertions(+), 1 deletion(-)
+ misc/mke2fs.c  | 12 ++++++++----
+ misc/tune2fs.c |  2 +-
+ misc/util.c    | 29 ++++++++++++++++++++++++++---
+ misc/util.h    |  2 +-
+ 4 files changed, 36 insertions(+), 9 deletions(-)
 
 diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 799132a..3694ce5 100644
+index a2b1f65..799132a 100644
 --- a/misc/mke2fs.c
 +++ b/misc/mke2fs.c
-@@ -1753,7 +1753,9 @@ profile_error:
- 	profile_get_integer(profile, "options", "proceed_delay", 0, 5,
- 			    &proceed_delay);
+@@ -102,6 +102,7 @@ static __u32	fs_stride;
+ static int	quotatype = -1;  /* Initialize both user and group quotas by default */
+ static __u64	offset;
+ static blk64_t journal_location = ~0LL;
++static int	proceed_delay = -1;
  
--	if (!check_plausibility(device_name, CREATE_FILE,
-+	/* The isatty() test is so we don't break existing scripts */
-+	if (!check_plausibility(device_name, CREATE_FILE |
-+				(isatty(0) ? CHECK_FS_EXIST : 0),
+ static struct ext2_super_block fs_param;
+ static char *fs_uuid = NULL;
+@@ -1749,9 +1750,12 @@ profile_error:
+ 	if (optind < argc)
+ 		usage();
+ 
++	profile_get_integer(profile, "options", "proceed_delay", 0, 5,
++			    &proceed_delay);
++
+ 	if (!check_plausibility(device_name, CREATE_FILE,
  				&is_device) && !force)
- 		proceed_question(proceed_delay);
+-		proceed_question();
++		proceed_question(proceed_delay);
  
-diff --git a/misc/util.c b/misc/util.c
-index afb0058..be16ebe 100644
---- a/misc/util.c
-+++ b/misc/util.c
-@@ -113,6 +113,9 @@ int check_plausibility(const char *device, int flags, int *ret_is_dev)
- 	int fd, is_dev = 0;
- 	ext2fs_struct_stat s;
- 	int fl = O_RDONLY;
-+	blkid_cache cache = NULL;
-+	char *fs_type = NULL;
-+	char *fs_label = NULL;
+ 	check_mount(device_name, force, _("filesystem"));
  
- 	if (flags & CREATE_FILE)
- 		fl |= O_CREAT;
-@@ -148,6 +151,32 @@ int check_plausibility(const char *device, int flags, int *ret_is_dev)
- 		return 0;
+@@ -1797,7 +1801,7 @@ profile_error:
+ 	} else if (!force && is_device && (fs_blocks_count > dev_size)) {
+ 		com_err(program_name, 0, "%s",
+ 			_("Filesystem larger than apparent device size."));
+-		proceed_question();
++		proceed_question(proceed_delay);
  	}
  
-+	if ((flags & CHECK_FS_EXIST) && blkid_get_cache(&cache, NULL) >= 0) {
-+		fs_type = blkid_get_tag_value(cache, "TYPE", device);
-+		if (fs_type)
-+			fs_label = blkid_get_tag_value(cache, "LABEL", device);
-+		blkid_put_cache(cache);
+ 	if (!fs_type)
+@@ -2071,7 +2075,7 @@ profile_error:
+ 			com_err(program_name, 0,
+ 				_("%d-byte blocks too big for system (max %d)"),
+ 				blocksize, sys_page_size);
+-			proceed_question();
++			proceed_question(proceed_delay);
+ 		}
+ 		fprintf(stderr, _("Warning: %d-byte blocks too big for system "
+ 				  "(max %d), forced to continue\n"),
+@@ -2785,7 +2789,7 @@ int main (int argc, char *argv[])
+ 
+ 		if (!check_plausibility(journal_device, CHECK_BLOCK_DEV,
+ 					NULL) && !force)
+-			proceed_question();
++			proceed_question(proceed_delay);
+ 		check_mount(journal_device, force, _("journal"));
+ 
+ 		retval = ext2fs_open(journal_device, EXT2_FLAG_RW|
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index fbf5f52..7b3723b 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -675,7 +675,7 @@ static int add_journal(ext2_filsys fs)
+ 	if (journal_device) {
+ 		if (!check_plausibility(journal_device, CHECK_BLOCK_DEV,
+ 					NULL))
+-			proceed_question();
++			proceed_question(-1);
+ 		check_mount(journal_device, 0, _("journal"));
+ #ifdef CONFIG_TESTIO_DEBUG
+ 		if (getenv("TEST_IO_FLAGS") || getenv("TEST_IO_BLOCK")) {
+diff --git a/misc/util.c b/misc/util.c
+index f85942e..afb0058 100644
+--- a/misc/util.c
++++ b/misc/util.c
+@@ -14,6 +14,8 @@
+ 
+ #include "config.h"
+ #include <fcntl.h>
++#include <setjmp.h>
++#include <signal.h>
+ #include <stdio.h>
+ #include <string.h>
+ #ifdef HAVE_ERRNO_H
+@@ -68,18 +70,39 @@ char *get_progname(char *argv_zero)
+ 		return cp+1;
+ }
+ 
+-void proceed_question(void)
++static jmp_buf alarm_env;
++
++static void alarm_signal(int signal)
++{
++	longjmp(alarm_env, 1);
++}
++
++void proceed_question(int delay)
+ {
+ 	char buf[256];
+ 	const char *short_yes = _("yY");
+ 
+ 	fflush(stdout);
+ 	fflush(stderr);
+-	fputs(_("Proceed anyway? (y,n) "), stdout);
++	if (delay > 0) {
++		if (setjmp(alarm_env)) {
++			signal(SIGALRM, SIG_IGN);
++			printf(_("<proceeding>\n"));
++			return;
++		}
++		signal(SIGALRM, alarm_signal);
++		printf(_("Proceed anyway (or wait %d seconds) ? (y,n) "),
++		       delay);
++		alarm(delay);
++	} else
++		fputs(_("Proceed anyway? (y,n) "), stdout);
+ 	buf[0] = 0;
+ 	if (!fgets(buf, sizeof(buf), stdin) ||
+-	    strchr(short_yes, buf[0]) == 0)
++	    strchr(short_yes, buf[0]) == 0) {
++		putc('\n', stdout);
+ 		exit(1);
 +	}
-+
-+	if (fs_type) {
-+		if (fs_label)
-+			printf(_("%s contains a %s file system "
-+				 "labelled '%s'\n"), device, fs_type, fs_label);
-+		else
-+			printf(_("%s contains a %s file system\n"), device,
-+			       fs_type);
-+		free(fs_type);
-+		free(fs_label);
-+		return 0;
-+	}
-+
-+	/*
-+	 * We should eventually replace this with a test for the
-+	 * presence of a partition table.  Unfortunately the blkid
-+	 * library doesn't test for partition tabels, and checking for
-+	 * valid GPT and MBR and possibly others isn't quite trivial.
-+	 */
-+
- #ifdef HAVE_LINUX_MAJOR_H
- #ifndef MAJOR
- #define MAJOR(dev)	((dev)>>8)
++	signal(SIGALRM, SIG_IGN);
+ }
+ 
+ /*
 diff --git a/misc/util.h b/misc/util.h
-index 9de3fbf..745568e 100644
+index b80d489..9de3fbf 100644
 --- a/misc/util.h
 +++ b/misc/util.h
-@@ -20,6 +20,7 @@ extern char	*journal_location_string;
-  */
- #define CHECK_BLOCK_DEV	0x0001
- #define CREATE_FILE	0x0002
-+#define CHECK_FS_EXIST	0x0004
- 
- #ifndef HAVE_STRCASECMP
+@@ -25,7 +25,7 @@ extern char	*journal_location_string;
  extern int strcasecmp (char *s1, char *s2);
+ #endif
+ extern char *get_progname(char *argv_zero);
+-extern void proceed_question(void);
++extern void proceed_question(int delay);
+ extern int check_plausibility(const char *device, int flags,
+ 			      int *ret_is_dev);
+ extern void parse_journal_opts(const char *opts);
 -- 
 1.9.0
 
