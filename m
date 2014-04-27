@@ -1,28 +1,116 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] e2fsprogs/filefrag: print shared extent flag
-Date: Sat, 26 Apr 2014 20:24:03 -0400
-Message-ID: <20140427002403.GB25172@thunk.org>
-References: <20140417214146.GD27178@wotan.suse.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca
-To: Mark Fasheh <mfasheh@suse.de>
+Subject: [PATCH] resize2fs: fix overly-pessimistic calculation of minimum size required
+Date: Sat, 26 Apr 2014 22:48:14 -0400
+Message-ID: <1398566894-14576-1-git-send-email-tytso@mit.edu>
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
+	Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:34756 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:34846 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752607AbaD0AYF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 26 Apr 2014 20:24:05 -0400
-Content-Disposition: inline
-In-Reply-To: <20140417214146.GD27178@wotan.suse.de>
+	id S1751293AbaD0Csa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 26 Apr 2014 22:48:30 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Apr 17, 2014 at 02:41:46PM -0700, Mark Fasheh wrote:
-> Filefrag doesn't catch and print the shared extent flag. Add this for
-> users of filefrag on file systems with shared extents (such as btrfs).
-> 
-> Signed-off-by: Mark Fasheh <mfasheh@suse.de>
+For extent-mapped file systems, we need to reserve some extra space in
+case we need to grow the extent tree.  Calculate the safety margin
+more intelligently, so we don't overestimate the amount of space
+required.
 
-Thanks, applied.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Reported-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ resize/resize2fs.c | 36 ++++++++++++++++++++++++++----------
+ 1 file changed, 26 insertions(+), 10 deletions(-)
 
-					- Ted
+diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+index 6b9ca09..38a2fb4 100644
+--- a/resize/resize2fs.c
++++ b/resize/resize2fs.c
+@@ -2351,9 +2351,10 @@ blk64_t calculate_minimum_resize_size(ext2_filsys fs, int flags)
+ 	 * inode tables of slack space so the resize operation can be
+ 	 * guaranteed to finish.
+ 	 */
++	blks_needed = data_needed;
+ 	if (fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_FLEX_BG) {
+ 		extra_groups = flexbg_size - (groups & (flexbg_size - 1));
+-		data_needed += fs->inode_blocks_per_group * extra_groups;
++		blks_needed += fs->inode_blocks_per_group * extra_groups;
+ 		extra_groups = groups % flexbg_size;
+ 	}
+ 
+@@ -2387,8 +2388,8 @@ blk64_t calculate_minimum_resize_size(ext2_filsys fs, int flags)
+ 	 * if we need more group descriptors in order to accomodate our data
+ 	 * then we need to add them here
+ 	 */
+-	while (data_needed > data_blocks) {
+-		blk64_t remainder = data_needed - data_blocks;
++	while (blks_needed > data_blocks) {
++		blk64_t remainder = blks_needed - data_blocks;
+ 		dgrp_t extra_grps;
+ 
+ 		/* figure out how many more groups we need for the data */
+@@ -2428,17 +2429,16 @@ blk64_t calculate_minimum_resize_size(ext2_filsys fs, int flags)
+ 			 */
+ 			extra_groups = flexbg_size -
+ 						(groups & (flexbg_size - 1));
+-			data_needed += (fs->inode_blocks_per_group *
++			blks_needed += (fs->inode_blocks_per_group *
+ 					extra_groups);
+ 			extra_groups = groups % flexbg_size;
+ 		}
+ #ifdef RESIZE2FS_DEBUG
+ 		if (flags & RESIZE_DEBUG_MIN_CALC)
+ 			printf("Added %d extra group(s), "
+-			       "data_needed %llu, data_blocks %llu, "
+-			       "last_start %llu\n",
+-			       extra_grps, data_needed, data_blocks,
+-			       last_start);
++			       "blks_needed %llu, data_blocks %llu, "
++			       "last_start %llu\n", extra_grps, blks_needed,
++			       data_blocks, last_start);
+ #endif
+ 	}
+ 
+@@ -2453,8 +2453,8 @@ blk64_t calculate_minimum_resize_size(ext2_filsys fs, int flags)
+ 	 * if this is the case then the last group is going to have data in it
+ 	 * so we need to adjust the size of the last group accordingly
+ 	 */
+-	if (last_start < data_needed) {
+-		blk64_t remainder = data_needed - last_start;
++	if (last_start < blks_needed) {
++		blk64_t remainder = blks_needed - last_start;
+ 
+ #ifdef RESIZE2FS_DEBUG
+ 		if (flags & RESIZE_DEBUG_MIN_CALC)
+@@ -2512,10 +2512,26 @@ blk64_t calculate_minimum_resize_size(ext2_filsys fs, int flags)
+ 	 * We need to reserve a few extra blocks if extents are
+ 	 * enabled, in case we need to grow the extent tree.  The more
+ 	 * we shrink the file system, the more space we need.
++	 *
++	 * The absolute worst case is every single data block is in
++	 * the part of the file system that needs to be evacuated,
++	 * with each data block needs to be in its own extent, and
++	 * with each inode needing at least one extent block.
+ 	 */
+ 	if (fs->super->s_feature_incompat & EXT3_FEATURE_INCOMPAT_EXTENTS) {
+ 		blk64_t safe_margin = (ext2fs_blocks_count(fs->super) -
+ 				       blks_needed)/500;
++		unsigned int exts_per_blk = (fs->blocksize /
++					     sizeof(struct ext3_extent)) - 1;
++		blk64_t worst_case = ((data_needed + exts_per_blk - 1) /
++				      exts_per_blk);
++
++		if (worst_case < inode_count)
++			data_needed = worst_case;
++
++		if (safe_margin > worst_case)
++			safe_margin = worst_case;
++
+ #ifdef RESIZE2FS_DEBUG
+ 		if (flags & RESIZE_DEBUG_MIN_CALC)
+ 			printf("Extents safety margin: %llu\n", safe_margin);
+-- 
+1.9.0
+
