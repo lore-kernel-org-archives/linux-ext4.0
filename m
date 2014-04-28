@@ -1,145 +1,53 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: [ANNOUNCE] xfstests: master branch updated to ce0aa2b
-Date: Mon, 28 Apr 2014 11:00:15 +1000
-Message-ID: <20140428010015.GL15995@dastard>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH] resize2fs: fix overly-pessimistic calculation of minimum size required
+Date: Mon, 28 Apr 2014 11:34:54 +0400
+Message-ID: <87sioxdi01.fsf@openvz.org>
+References: <1398566894-14576-1-git-send-email-tytso@mit.edu> <20140427043537.GC25172@thunk.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============8046966459538027536=="
-Cc: linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org
-To: xfs@oss.sgi.com
-Return-path: <xfs-bounces@oss.sgi.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
-
-
---===============8046966459538027536==
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="WBsA/oQW3eTA3LlM"
-Content-Disposition: inline
-
-
---WBsA/oQW3eTA3LlM
 Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+To: Theodore Ts'o <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-la0-f41.google.com ([209.85.215.41]:64944 "EHLO
+	mail-la0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751922AbaD1He6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Apr 2014 03:34:58 -0400
+Received: by mail-la0-f41.google.com with SMTP id el20so2335251lab.14
+        for <linux-ext4@vger.kernel.org>; Mon, 28 Apr 2014 00:34:57 -0700 (PDT)
+In-Reply-To: <20140427043537.GC25172@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi folks,
-
-The xfstests repository at git://oss.sgi.com/xfs/cmds/xfstests has
-just been updated. Patches often get missed, so please check if your
-outstanding patches were in this update. If they have not been in
-this update, please resubmit them to xfs@oss.sgi.com so they can be
-picked up in the next update.
-
-The new head of the master branch is commit:
-
-ce0aa2b common: Use _require_xfs_io_command() instead of helpers
-
-New Commits:
-
-Dave Chinner (6):
-      [31a50c7] generic/204: tweak reserve pool size
-      [ca93123] generic: cleanup space after test in TESTDIR
-      [9d7807d] xfs: remove dmapi tests from the auto group
-      [03227f9] filter: xfs_repair emits new corruption messagse
-      [a12a56f] shared/051: remove ACL count subtest
-      [a841a6d] generic: introduce new large ACL test
-
-Lukas Czerner (1):
-      [ce0aa2b] common: Use _require_xfs_io_command() instead of helpers
-
-
-Code Diffstat:
-
- common/attr           |  31 ++++++++++++
- common/defrag         |   2 +-
- common/rc             |  41 ---------------
- common/repair         |   3 ++
- tests/btrfs/026       |   2 +-
- tests/btrfs/027       |   2 +-
- tests/btrfs/028       |   2 +-
- tests/btrfs/047       |   2 +-
- tests/ext4/001        |   2 +-
- tests/ext4/002        |   2 +-
- tests/generic/009     |   2 +-
- tests/generic/012     |   8 +--
- tests/generic/016     |   8 +--
- tests/generic/017     |   4 +-
- tests/generic/021     |   8 +--
- tests/generic/022     |   8 +--
- tests/generic/026     | 132 ++++++++++++++++++++++++++++++++++++++++++++++=
-++
- tests/generic/026.out |   9 ++++
- tests/generic/070     |   1 +
- tests/generic/204     |   2 -
- tests/generic/213     |   2 +-
- tests/generic/214     |   2 +-
- tests/generic/223     |   2 +-
- tests/generic/228     |   2 +-
- tests/generic/255     |   6 +--
- tests/generic/256     |   2 +-
- tests/generic/274     |   2 +-
- tests/generic/300     |   4 +-
- tests/generic/311     |   2 +-
- tests/generic/312     |   2 +-
- tests/generic/316     |   4 +-
- tests/generic/group   |   1 +
- tests/shared/051      |  45 -----------------
- tests/shared/051.out  | 135 ----------------------------------------------=
-----
- tests/shared/298      |   2 +-
- tests/xfs/252         |   4 +-
- tests/xfs/290         |   2 +-
- tests/xfs/292         |   2 +
- tests/xfs/group       |  50 +++++++++----------
- 39 files changed, 249 insertions(+), 293 deletions(-)
- create mode 100644 tests/generic/026
- create mode 100644 tests/generic/026.out
---=20
-Dave Chinner
-david@fromorbit.com
-
---WBsA/oQW3eTA3LlM
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
-
-iQIcBAEBAgAGBQJTXagfAAoJEK3oKUf0dfodi9AP/iWS0robDYMnjkzFaSfYadSa
-pQUL0K1j1Pq9lZXLwpVOSHVQp863QWCU6LefPN4u0e8sMVKuqmRgdKNb8aMIGdNr
-oxTPPsWIZdoUQCGMUTG3rtre9uATtSJwtJMp43JeSCVzuU3D1D2UHC1MOZvfE3aH
-B2JG2qF6j9q5IIxzJbAJqz/miAhOk8YrGYpHxkNNJ/w7OdZMBPxfxkmpub9xzYwo
-e3c+okmEcBOkNW6COy008gZcmaBFhmptlNBsu67rXCS9S7K19Nh9gyygTgI3iwbW
-9JaBEm8pjd9GzroP/Vbw4SKyOmeYqrztzWCwVXZc2i5SvONau1QcI0i21eHY2DbT
-ATsCbAD88ASjr9HhM3ZdG9VjniHOIDPdwkDBk9thc9Aqnj8UPVLIdssKf9LLDPFk
-hc0Sb8EucSk2yTILcW6W2FKE5NAz47twkr0xDRU+wc6hlqa4yXqRIcn/u24cwEek
-Lti0mZ6jR+Yjou2hdIk+8yO5mNM13ZWJpuDsbPhc0kHqgul9RwmF9Nf/IhCfIXMP
-E2yOuA990MBUY7bXFgLs7DWimxGJ/EC4kKSnlH610u6FbjD278FNt79gmR9jTghT
-/jRSV4pARvKCGcLl76tPqDgzJSzeBW4SWgduHufUIqIZPbKfncNfDVubBdXQz1cu
-OVtkKF8F4zAlVWqAB6DV
-=rKnH
------END PGP SIGNATURE-----
-
---WBsA/oQW3eTA3LlM--
-
-
---===============8046966459538027536==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
-
---===============8046966459538027536==--
+On Sun, 27 Apr 2014 00:35:37 -0400, "Theodore Ts'o" <tytso@mit.edu> wrote:
+> On Sat, Apr 26, 2014 at 10:48:14PM -0400, Theodore Ts'o wrote:
+> > For extent-mapped file systems, we need to reserve some extra space in
+> > case we need to grow the extent tree.  Calculate the safety margin
+> > more intelligently, so we don't overestimate the amount of space
+> > required.
+> > 
+> > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> > Reported-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> 
+> I'm going to have to self-NACK this.  This patch causes the resize2fs
+> regression tests to fail.  (In fact, Dmitry's original patch also
+> causes the resize2fs regression tests to fail.)
+Agree, regressions are not acceptable. Can you please spacify
+which tests are failed. As far as i know xfstetsts has no tests
+for resize2fs.
+> The problem is kind of messy; when the file system starts at some
+> insanely large size, and we shrink it very small, we end up releasing
+> a lot of inode tables in the first block group (many for other block
+> groups).  But until we're 100% sure the resize will be successful, we
+> don't want to start overwriting those inode table blocks.
+> 
+> For this reason, if we try to constrain resize the file system down
+> from 2TB to 512MB in one shot, we need to do this in multiple steps.
+> I.e. by calling "resize2fs -M /dev/sdXX" multiple times.
+> 
+> There really isn't a good way around this, and in fact, if people are
+> going to be doing silly things like take a file system from 16T down
+> to 750MB, if they need to run resize2fs multiple times, that's fine.
+> It would be nice if you could shrink the file system down in a single
+> shot, but it's not high priority.
+> 
+> 					- Ted
