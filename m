@@ -1,56 +1,31 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/2] libext2fs: fix alloc_allocate_group_table() if the flexbg_offset wraps
-Date: Mon, 28 Apr 2014 10:09:38 -0400
-Message-ID: <1398694179-18027-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 1/7] mke2fs: don't ask the proceed question using a regular
+ file
+Date: Mon, 28 Apr 2014 10:24:32 -0500
+Message-ID: <535E72B0.6030002@redhat.com>
+References: <1398556834-31913-1-git-send-email-tytso@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:37225 "EHLO imap.thunk.org"
+Received: from mx1.redhat.com ([209.132.183.28]:48642 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932392AbaD1OJt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Apr 2014 10:09:49 -0400
+	id S1756658AbaD1PYh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Apr 2014 11:24:37 -0400
+In-Reply-To: <1398556834-31913-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If the previous block group's inode table ends at the very end of file
-system, wrap around to the beginning of the flex_bg.
+On 4/26/14, 7:00 PM, Theodore Ts'o wrote:
+> Very often people are creating file systems using regular files, so we
+> shouldn't ask the user to confirm using the proceed question.
+> Otherwise it encourages users to use the -F flag, which is a bad
+> thing.
 
-This fixes a bug was tickled by:
+Yup, agreed - that'll be nice.
 
-mke2fs.conf:
-	frontload = {
-		features = extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize,^resize_inode,sparse_super2
-		hash_alg = half_md4
-		num_backup_sb = 0
-		packed_meta_blocks = 1
-		inode_ratio = 4194304
-		flex_bg_size = 262144
-	}
+Acked-by: Eric Sandeen <sandeen@redhat.com>
 
-mke2fs -T frontload /tmp/foo.img 2T
-resize2fs -M /tmp/foo.img
-resize2fs -M /tmp/foo.img
-
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- lib/ext2fs/alloc_tables.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/lib/ext2fs/alloc_tables.c b/lib/ext2fs/alloc_tables.c
-index fec9003..bc99943 100644
---- a/lib/ext2fs/alloc_tables.c
-+++ b/lib/ext2fs/alloc_tables.c
-@@ -54,8 +54,8 @@ static blk64_t flexbg_offset(ext2_filsys fs, dgrp_t group, blk64_t start_blk,
- 	 * Don't do a long search if the previous block
- 	 * search is still valid.
- 	 */
--	if (start_blk && ext2fs_test_block_bitmap_range2(bmap, start_blk,
--							 elem_size))
-+	if (start_blk && start_blk < ext2fs_blocks_count(fs->super) &&
-+	    ext2fs_test_block_bitmap_range2(bmap, start_blk, elem_size))
- 		return start_blk;
- 
- 	start_blk = ext2fs_group_first_block2(fs, flexbg_size * flexbg);
--- 
-1.9.0
 
