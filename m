@@ -1,41 +1,44 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] resize2fs: fix overly-pessimistic calculation of minimum
- size required
-Date: Mon, 28 Apr 2014 07:47:55 -0400
-Message-ID: <20140428114755.GC15379@thunk.org>
-References: <1398566894-14576-1-git-send-email-tytso@mit.edu>
- <20140427043537.GC25172@thunk.org>
- <87sioxdi01.fsf@openvz.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH 2/2] resize2fs: fix inode table move for the backwards move case
+Date: Mon, 28 Apr 2014 10:09:39 -0400
+Message-ID: <1398694179-18027-2-git-send-email-tytso@mit.edu>
+References: <1398694179-18027-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:36958 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:37223 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751916AbaD1Lr5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Apr 2014 07:47:57 -0400
-Content-Disposition: inline
-In-Reply-To: <87sioxdi01.fsf@openvz.org>
+	id S932392AbaD1OJp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Apr 2014 10:09:45 -0400
+In-Reply-To: <1398694179-18027-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 28, 2014 at 11:34:54AM +0400, Dmitry Monakhov wrote:
-> > I'm going to have to self-NACK this.  This patch causes the resize2fs
-> > regression tests to fail.  (In fact, Dmitry's original patch also
-> > causes the resize2fs regression tests to fail.)
->
-> Agree, regressions are not acceptable. Can you please spacify
-> which tests are failed. As far as i know xfstetsts has no tests
-> for resize2fs.
+In the case where the new location of the inode table is before the
+old inode table, the optimization which tries to optimize zero block
+moves breaks.  Fix it.
 
-It was 2 of the tests from e2fsprogs's "make check", where off-one
-resize2fs regression tests belong.  The xfstests suite is a good place
-to test on-line resize functionality, where the bulk of the code that
-has to function correctly is in the kernel,, but for testing
-functionality which is specific to e2fsprogs, it's better to test it
-within the context of e2fsprogs's regression tests.
+This fixes a bug that was tickled by the reproduction described in the
+previous commit.
 
-Anyway, the patch set I sent out fixes up the problem.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ resize/resize2fs.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-	    	      	     	       	  - Ted
+diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+index 0d968fa..c672cdb 100644
+--- a/resize/resize2fs.c
++++ b/resize/resize2fs.c
+@@ -1869,6 +1869,8 @@ static errcode_t move_itables(ext2_resize_t rfs)
+ 
+ 		if (!diff)
+ 			continue;
++		if (diff < 0)
++			diff = 0;
+ 
+ 		retval = io_channel_read_blk64(fs->io, old_blk,
+ 					       fs->inode_blocks_per_group,
+-- 
+1.9.0
+
