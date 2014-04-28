@@ -1,353 +1,348 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
+From: Andreas Dilger <adilger@dilger.ca>
 Subject: Re: Proposal draft for data checksumming for ext4
-Date: Mon, 28 Apr 2014 12:36:10 -0700
-Message-ID: <20140428193610.GE8434@birch.djwong.org>
-References: <alpine.LFD.2.00.1403201736280.8407@localhost.localdomain>
- <20140320175950.GJ9070@birch.djwong.org>
- <87a9b5ctls.fsf@openvz.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
-	linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
+Date: Mon, 28 Apr 2014 14:16:27 -0600
+Message-ID: <05B7E436-A365-41C5-91F6-07E3B3B59B53@dilger.ca>
+References: <alpine.LFD.2.00.1403201736280.8407@localhost.localdomain> <20140320175950.GJ9070@birch.djwong.org> <87a9b5ctls.fsf@openvz.org>
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Content-Type: multipart/signed; boundary="Apple-Mail=_01CD7AC3-7C56-4120-9BE3-493960936E8B"; protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
+	=?windows-1252?Q?Luk=E1=9A_Czerner?= <lczerner@redhat.com>,
+	linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
 To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:24018 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755207AbaD1TgZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Apr 2014 15:36:25 -0400
-Content-Disposition: inline
+Received: from mail-pd0-f169.google.com ([209.85.192.169]:57760 "EHLO
+	mail-pd0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753360AbaD1UQy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Apr 2014 16:16:54 -0400
+Received: by mail-pd0-f169.google.com with SMTP id y13so5222024pdi.0
+        for <linux-ext4@vger.kernel.org>; Mon, 28 Apr 2014 13:16:53 -0700 (PDT)
 In-Reply-To: <87a9b5ctls.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 28, 2014 at 08:21:51PM +0400, Dmitry Monakhov wrote:
-> On Thu, 20 Mar 2014 10:59:50 -0700, "Darrick J. Wong" <darrick.wong@o=
-racle.com> wrote:
-> > On Thu, Mar 20, 2014 at 05:40:06PM +0100, Luk=C3=A1=C5=A1 Czerner w=
-rote:
-> > > Hi all,
-> > >=20
-> > > I've started thinking about implementing data checksumming for ex=
-t4 file
-> > > system. This is not meant to be a formal proposal or a definitive=
- design
-> > > description since I am not that far yet, but just a few ideas to =
-start
-> > > the discussion and trying to figure out what the best design for =
-data
-> > > checksumming in ext4 might be.
-> > >=20
-> > >=20
-> > >=20
-> > > 			   Data checksumming for ext4
-> > > 				  Version 0.1
-> > > 				 March 20, 2014
-> > >=20
-> > >=20
-> > > Goal
-> > > =3D=3D=3D=3D
-> > >=20
-> > > The goal is to implement data checksumming for ext4 file system i=
-n order
-> > > to improve data integrity and increase protection against silent =
-data
-> > > corruption while maintaining reasonable performance and usability=
- of the
-> > > file system.
-> > >=20
-> > > While data checksums can be certainly used in different ways, for=
- example
-> > > data deduplication this proposal is very much focused on data int=
-egrity.
-> > >=20
-> > >=20
-> > > Checksum function
-> > > =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> > >=20
-> > > By default I plan to use crc32c checksum, but I do not see a reas=
-on why not
-> > > not to be able to support different checksum function. Also by de=
-fault the
-> > > checksum size should be 32 bits, but the plan is to make the form=
-at
-> > > flexible enough to be able to support different checksum sizes.
-> >=20
-> > <nod> Were you thinking of allowing the use of different functions =
-for data and
-> > metadata checksums?
-> >=20
-> > > Checksumming and Validating
-> > > =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D
-> > >=20
-> > > On write checksums on the data blocks need to be computed right b=
-efore its
-> > > bio is submitted and written out as metadata to its position (see=
- bellow)
-> > > after the bio completes (similarly as we do unwritten extent conv=
-ersion
-> > > today).
-> > >=20
-> > > Similarly on read checksums needs to be computed after the bio co=
-mpletes
-> > > and compared with the stored values to verify that the data is in=
-tact.
-> > >=20
-> > > All of this should be done using workqueues (Concurrency Managed
-> > > Workqueues) so we do not block the other operations and to spread=
- the
-> > > checksum computation and comparison across CPUs. One wq for reads=
- and one
-> > > for writes. Specific setup of the wq such as priority, or concurr=
-ency limits
-> > > should be decided later based on the performance evaluation.
-> > >=20
-> > > While we already have ext4 infrastructure to submit bios in
-> > > fs/ext4/page-io.c where the entry point is ext4_bio_write_page() =
-we would
-> > > need the same for reads to be able to provide ext4 specific hooks=
- for
-> > > io completion.
-> > >=20
-> > >=20
-> > > Where to store the checksums
-> > > =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D
-> > >=20
-> > > While the problems above are pretty straightforward when it comes=
- to the
-> > > design, actually storing and retrieving the data checksums from t=
-o/from
-> > > the ext4 format requires much more thought to be efficient enough=
- and play
-> > > nicely with the overall ext4 design while trying not to be too in=
-trusive.
-> > >=20
-> > > I came up with several ideas about where to store and how to acce=
-ss data
-> > > checksums. While some of the ideas might not be the most viable o=
-ptions,
-> > > it's still interesting to think about the advantages and disadvan=
-tages of
-> > > each particular solution.
-> > >=20
-> > > a) Static layout
-> > > ----------------
-> > >=20
-> > > This scheme fits perfectly into the ext4 design. Checksum blocks
-> > > would be preallocated the same way as we do with inode tables for=
- example.
-> > > Each block group should have it's own contiguous region of checks=
-um blocks
-> > > to be able to store checksums for bocks from entire block group i=
-t belongs
-> > > to. Each checksum block would contain header including checksum o=
-f the
-> > > checksum block.
-> Oh. The most thing that bother me about that feature is possible
-> performance degradation. number seeks increase dramatically because=20
-> csumblock is not continuous with datablock. Off course journal should
-> absorb that and real io will happen during journal checkpoint.
-> But I assumes that mail server which does a lot of
-> create()/write()/fsync() will complain about bad performance.
+
+--Apple-Mail=_01CD7AC3-7C56-4120-9BE3-493960936E8B
+Content-Type: multipart/mixed;
+	boundary="Apple-Mail=_0F9FC055-1247-4184-8868-7D77501316AD"
+
+
+--Apple-Mail=_0F9FC055-1247-4184-8868-7D77501316AD
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=windows-1252
+
+
+On Apr 28, 2014, at 10:21 AM, Dmitry Monakhov <dmonakhov@openvz.org> =
+wrote:
+>> On Thu, Mar 20, 2014 at 05:40:06PM +0100, Luk=E1=9A Czerner wrote:
+>>> There are also other problems we should be concerned with. Ext4 file =
+system
+>>> does have support for metadata checksumming so all the metadata does =
+have
+>>> its own checksum. While we can avoid unnecessarily checksuming =
+inodes, group
+>>> descriptors and basicall all statically positioned metadata, we =
+still have
+>>> dynamically allocated metadata blocks such as extent blocks. These =
+block
+>>> do not have to be checksummed but we would still have space reserved =
+in the
+>>> checksum table.
+>>=20
+>> Don't forget directory blocks--they (should) have checksums too, so =
+you can
+>> skip those.
 >=20
-> BTW: it looks like we do not try to optimize io pattern inside
-> jbd2_log_do_checkpoint(). For example __flush_batch() can submit
-> buffer in sorted order(according to block numbers).
-> =20
-> =20
-> > >=20
-> > > We still have unused 4 Bytes in the ext4_group_desc structure, so=
- storing
-> > > a block number for the checksum table should not be a problem.
-> >=20
-> > What if you have a 64bit filesystem?  Do you have some strategy in =
-mind to work
-> > around that?  What about the snapshot exclusion bitmap field?  Afai=
-ct that
-> > never went in, so perhaps that field could be reused?
-> >=20
-> > > Finding a checksum location of each block in the block group shou=
-ld be done
-> > > in O(1) time, which is very good. Other advantage is a locality w=
-ith the
-> > > data blocks in question since both resides in the same block grou=
-p.
-> > >=20
-> > > Big disadvantage is the fact that this solution is not very flexi=
-bile which
-> > > comes from the fact that the location of "checksum table" is stat=
-ically
-> > > located at a precise position in the file system at mkfs time.
-> >=20
-> > Having a big dumb block of checksums would be easier to prefetch fr=
-om disk for
-> > fsck and kernel driver, rather than having to dig through some tree=
- structure.
-> > (More on that below)
-> >=20
-> > > There are also other problems we should be concerned with. Ext4 f=
-ile system
-> > > does have support for metadata checksumming so all the metadata d=
-oes have
-> > > its own checksum. While we can avoid unnecessarily checksuming in=
-odes, group
-> > > descriptors and basicall all statically positioned metadata, we s=
-till have
-> > > dynamically allocated metadata blocks such as extent blocks. Thes=
-e block
-> > > do not have to be checksummed but we would still have space reser=
-ved in the
-> > > checksum table.
-> >=20
-> > Don't forget directory blocks--they (should) have checksums too, so=
- you can
-> > skip those.
 > Just quick note: We can hide checksum for directory inside
-> ext4_dir_entry_2 for a special dirs '.' or '..' simply be increasing
+> ext4_dir_entry_2 for a special dirs '.' or '..' simply by increasing
 > ->rec_len which make this feature compatible with older FS
 
-metadata_csum already does this.
+First note - the htree index information for each directory is already
+stored after the ".." entry in block 0 of the directory.
 
---D
-> >=20
-> > I wonder, could we use this table to store backrefs too?  It would =
-make the
-> > table considerably larger, but then we could (potentially) reconstr=
-uct broken
-> > extent trees.
-> >=20
-> > > I think that we should be able to make this feature without intro=
-ducing any
-> > > incompatibility, but it would make more sense to make it RO compa=
-tible only
-> > > so we can preserve the checksums. But that's up to the implementa=
-tion.
-> >=20
-> > I think you'd have to have it be rocompat, otherwise you could writ=
-e data with
-> > an old kernel and a new kernel would freak out.
-> >=20
-> > > b) Special inode
-> > > ----------------
-> > >=20
-> > > This is very "lazy" solution and should not be difficult to imple=
-ment. The
-> > > idea is to have a special inode which would store the checksum bl=
-ocks in
-> > > it's own data blocks.
-> > >=20
-> > > The big disadvantage is that we would have to walk the extent tre=
-e twice for
-> > > each read, or write. There is not much to say about this solution=
- other than
-> > > again we can make this feature without introducing any incompatib=
-ility, but
-> > > it would probably make more sense to make it RO compatible to pre=
-serve the
-> > > checksums.
-> > >=20
-> > > c) Per inode checksum b-tree
-> > > ----------------------------
-> > >=20
-> > > See d)
-> > >=20
-> > > d) Per block group checksum b-tree
-> > > ----------------------------------
-> > >=20
-> > > Those two schemes are very similar in that both would store check=
-sum in a
-> > > b-tree with a block number (we could use logical block number in =
-per inode
-> > > tree) as a key. Obviously finding a checksum would be in logarith=
-mic time,
-> > > while the size of the tree would be possibly much bigger in the p=
-er-inode
-> > > case. In per block group case we will have much smaller boundary =
-of
-> > > number of checksum blocks stored.
-> > >=20
-> > > This and the fact that we would have to have at least one checksu=
-m block
-> > > per inode (which would be wasteful in the case of small files) is=
- making per
-> > > block group solution much more viable. However the major disadvan=
-tage of
-> > > per block group solution is that the checksum tree would create a=
- source of
-> > > contention when reading/writing from/to a different inodes in the=
- same block
-> > > group. This might be mitigated by having a worker thread per a ra=
-nge of block
-> > > groups - but it might still be a bottleneck.
-> > >=20
-> > > Again we still have 4 Bytes in ext4_group_desc to store the point=
-er to the
-> > > root of the tree. While the ext4_inode structure have 4Bytes of
-> > > i_obso_faddr but that's not enough. So we would have to figure ou=
-t where to
-> > > store it - we could possibly abuse i_block to store it along with=
- the extent
-> > > nodes.
-> >=20
-> > I think(?) your purpose in using either a special inode or a btree =
-to store the
-> > checksums is to avoid wasting checksum blocks on things that are al=
-ready
-> > checksummed?  I'm not sure that we'd save enough space to justify t=
-he extra
-> > processing.
-> >=20
-> > --D
-> >=20
-> > > File system scrub
-> > > =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> > >=20
-> > > While this is certainly a feature which we want to have in both u=
-serspace
-> > > e2fsprogs and kernel I do not have any design notes at this stage=
-=2E
-> > >=20
-> > >=20
-> > >=20
-> > >=20
-> > > I am sure that there are other possibilities and variants of thos=
-e design
-> > > ideas, but I think that this should be enough to have a discussio=
-n started.
-> > > As I is not I think that the most viable option is d) that is, pe=
-r block
-> > > group checksum tree, which gives us enough flexibility while not =
-being too
-> > > complex solution.
-> > >=20
-> > > I'll try to update this description as it will be getting more co=
-ncrete
-> > > structure and I hope that we will have some productive discussion=
- about
-> > > this at LSF.
-> > >=20
-> > > Thanks!
-> > > -Lukas
-> > > --
-> > > To unsubscribe from this list: send the line "unsubscribe linux-e=
-xt4" in
-> > > the body of a message to majordomo@vger.kernel.org
-> > > More majordomo info at  http://vger.kernel.org/majordomo-info.htm=
-l
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext=
-4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Also note that there is also a feature we developed for Lustre named
+"dirdata" (EXT4_FEATURE_INCOMPAT_DIRDATA is already reserved) that
+allows storing more information with each directory entry[*].  We
+use this to store a 128-bit identifier with each object so that it is
+unique across the cluster, so it is available efficiently for readdir.
+
+We've needed to modify the handling of the htree index data so that
+it properly skips the extended directory entry (patch attached), and
+this also cleans up this code a bit to conform to modern coding style.
+Without this patch, the htree code assumes that the dx_info struct is
+immediately following hard-coded "." and ".." entries and does not
+actually check the de->rec_len for these entries to determine the right
+amount of data to skip.
+
+The patch is based on an older kernel and may not apply directly to
+mainline, but is required for any similar changes in this area.
+
+That said, I think that Darrick's metadata checksum patches already
+store per-directory-block checksums at the end of the directory in
+a dummy entry, so I'm not sure what else is needed here?
+
+Cheers, Andreas
+
+[*] for reference the dirdata patch is at =
+http://git.hpdd.intel.com/?p=3Dfs/lustre-release.git;a=3Dblob;f=3Dldiskfs/=
+kernel_patches/patches/sles11sp2/ext4-data-in-dirent.patch
+
+
+--Apple-Mail=_0F9FC055-1247-4184-8868-7D77501316AD
+Content-Disposition: attachment;
+	filename=ext4-kill-dx_root.patch
+Content-Type: application/octet-stream;
+	name="ext4-kill-dx_root.patch"
+Content-Transfer-Encoding: 7bit
+
+diff -r -u linux-stage.orig/fs/ext4/namei.c linux-stage/fs/ext4/namei.c
+--- linux-stage.orig/fs/ext4/namei.c	2012-12-31 15:03:28.000000000 -0500
++++ linux-stage/fs/ext4/namei.c	2012-12-31 15:06:16.000000000 -0500
+@@ -115,22 +115,13 @@
+  * hash version mod 4 should never be 0.  Sincerely, the paranoia department.
+  */
+ 
+-struct dx_root
++struct dx_root_info
+ {
+-	struct fake_dirent dot;
+-	char dot_name[4];
+-	struct fake_dirent dotdot;
+-	char dotdot_name[4];
+-	struct dx_root_info
+-	{
+-		__le32 reserved_zero;
+-		u8 hash_version;
+-		u8 info_length; /* 8 */
+-		u8 indirect_levels;
+-		u8 unused_flags;
+-	}
+-	info;
+-	struct dx_entry	entries[0];
++	__le32 reserved_zero;
++	u8 hash_version;
++	u8 info_length; /* 8 */
++	u8 indirect_levels;
++	u8 unused_flags;
+ };
+ 
+ struct dx_node
+@@ -220,6 +211,17 @@
+ 	ext3_rec_len_from_disk(p->rec_len));
+ }
+  
++struct dx_root_info *dx_get_dx_info(char *buf)
++{
++	struct ext4_dir_entry_2 *de = buf;
++
++	/* get dotdot first, then dx_info is right after dotdot entry */
++	de = (struct ext4_dir_entry_2 *)((char *)de + EXT4_DIR_REC_LEN(1));
++	de = (struct ext4_dir_entry_2 *)((char *)de + EXT4_DIR_REC_LEN(2));
++
++	return (struct dx_root_info *)de;
++}
++
+ /*
+  * Future: use high four bits of block for coalesce-on-delete flags
+  * Mask them off for now.
+@@ -374,7 +375,7 @@
+ {
+ 	unsigned count, indirect;
+ 	struct dx_entry *at, *entries, *p, *q, *m;
+-	struct dx_root *root;
++	struct dx_root_info *dx_info;
+ 	struct buffer_head *bh;
+ 	struct dx_frame *frame = frame_in;
+ 	u32 hash;
+@@ -382,17 +383,18 @@
+ 	frame->bh = NULL;
+ 	if (!(bh = ext4_bread (NULL,dir, 0, 0, err)))
+ 		goto fail;
+-	root = (struct dx_root *) bh->b_data;
+-	if (root->info.hash_version != DX_HASH_TEA &&
+-	    root->info.hash_version != DX_HASH_HALF_MD4 &&
+-	    root->info.hash_version != DX_HASH_LEGACY) {
+-		ext4_warning(dir->i_sb, "Unrecognised inode hash code %d for directory "
+-                             "#%lu", root->info.hash_version, dir->i_ino);
++
++	dx_info = dx_get_dx_info(bh->b_data);
++	if (dx_info->hash_version != DX_HASH_TEA &&
++	    dx_info->hash_version != DX_HASH_HALF_MD4 &&
++	    dx_info->hash_version != DX_HASH_LEGACY) {
++		ext4_warning(dir->i_sb, "Unknown inode hash code %u for "
++			    "directory %lu", dx_info->hash_version, dir->i_ino);
+ 		brelse(bh);
+ 		*err = ERR_BAD_DX_DIR;
+ 		goto fail;
+ 	}
+-	hinfo->hash_version = root->info.hash_version;
++	hinfo->hash_version = dx_info->hash_version;
+ 	if (hinfo->hash_version <= DX_HASH_TEA)
+ 		hinfo->hash_version += EXT4_SB(dir->i_sb)->s_hash_unsigned;
+ 	hinfo->seed = EXT4_SB(dir->i_sb)->s_hash_seed;
+@@ -400,27 +402,25 @@
+ 		ext4fs_dirhash(d_name->name, d_name->len, hinfo);
+ 	hash = hinfo->hash;
+ 
+-	if (root->info.unused_flags & 1) {
++	if (dx_info->unused_flags & 1) {
+ 		ext4_warning(dir->i_sb, "Unimplemented inode hash flags: %#06x",
+-			     root->info.unused_flags);
++			     dx_info->unused_flags);
+ 		brelse(bh);
+ 		*err = ERR_BAD_DX_DIR;
+ 		goto fail;
+ 	}
+ 
+-	if ((indirect = root->info.indirect_levels) > 1) {
++	indirect = dx_info->indirect_levels;
++	if (indirect > 1) {
+ 		ext4_warning(dir->i_sb, "Unimplemented inode hash depth: %#06x",
+-			     root->info.indirect_levels);
++			     dx_info->indirect_levels);
+ 		brelse(bh);
+ 		*err = ERR_BAD_DX_DIR;
+ 		goto fail;
+ 	}
+ 
+-	entries = (struct dx_entry *) (((char *)&root->info) +
+-				       root->info.info_length);
+-
+-	if (dx_get_limit(entries) != dx_root_limit(dir,
+-						   root->info.info_length)) {
++	entries = (struct dx_entry *)((char *)dx_info + dx_info->info_length);
++	if (dx_get_limit(entries) != dx_root_limit(dir, dx_info->info_length)) {
+ 		ext4_warning(dir->i_sb, "dx entry: limit != root limit");
+ 		brelse(bh);
+ 		*err = ERR_BAD_DX_DIR;
+@@ -504,7 +505,7 @@
+ 	if (frames[0].bh == NULL)
+ 		return;
+ 
+-	if (((struct dx_root *) frames[0].bh->b_data)->info.indirect_levels)
++	if (dx_get_dx_info(frames[0].bh->b_data)->indirect_levels)
+ 		brelse(frames[1].bh);
+ 	brelse(frames[0].bh);
+ }
+@@ -1400,17 +1403,16 @@
+ 	const char	*name = dentry->d_name.name;
+ 	int		namelen = dentry->d_name.len;
+ 	struct buffer_head *bh2;
+-	struct dx_root	*root;
++	struct dx_root_info *dx_info;
+ 	struct dx_frame	frames[2], *frame;
+ 	struct dx_entry *entries;
+-	struct ext4_dir_entry_2	*de, *de2;
++	struct ext4_dir_entry_2 *de, *de2, *dot_de, *dotdot_de;
+ 	char		*data1, *top;
+ 	unsigned	len;
+ 	int		retval;
+ 	unsigned	blocksize;
+ 	struct dx_hash_info hinfo;
+ 	ext4_lblk_t  block;
+-	struct fake_dirent *fde;
+ 
+ 	blocksize =  dir->i_sb->s_blocksize;
+ 	dxtrace(printk(KERN_DEBUG "Creating index: inode %lu\n", dir->i_ino));
+@@ -1420,18 +1422,18 @@
+ 		brelse(bh);
+ 		return retval;
+ 	}
+-	root = (struct dx_root *) bh->b_data;
++
++	dot_de = (struct ext4_dir_entry_2 *)bh->b_data;
++	dotdot_de = ext4_next_entry(dot_de, blocksize);
+ 
+ 	/* The 0th block becomes the root, move the dirents out */
+-	fde = &root->dotdot;
+-	de = (struct ext4_dir_entry_2 *)((char *)fde +
+-		ext4_rec_len_from_disk(fde->rec_len, blocksize));
+-	if ((char *) de >= (((char *) root) + blocksize)) {
++	de = ext4_next_entry(dotdot_de, blocksize);
++	if ((char *)de >= bh->b_data + blocksize) {
+ 		EXT4_ERROR_INODE(dir, "invalid rec_len for '..'");
+ 		brelse(bh);
+ 		return -EIO;
+ 	}
+-	len = ((char *) root) + blocksize - (char *) de;
++	len = (char *)dot_de + blocksize - (char *)de;
+ 
+ 	/* Allocate new block for the 0th block's dirents */
+ 	bh2 = ext4_append(handle, dir, &block, &retval);
+@@ -1450,19 +1453,21 @@
+ 	de->rec_len = ext4_rec_len_to_disk(data1 + blocksize - (char *) de,
+ 					   blocksize);
+ 	/* Initialize the root; the dot dirents already exist */
+-	de = (struct ext4_dir_entry_2 *) (&root->dotdot);
+-	de->rec_len = ext4_rec_len_to_disk(blocksize - EXT4_DIR_REC_LEN(2),
+-					   blocksize);
+-	memset (&root->info, 0, sizeof(root->info));
+-	root->info.info_length = sizeof(root->info);
+-	root->info.hash_version = EXT4_SB(dir->i_sb)->s_def_hash_version;
+-	entries = root->entries;
++	dotdot_de->rec_len = ext4_rec_len_to_disk(blocksize -
++			le16_to_cpu(dot_de->rec_len), blocksize);
++
++	/* initialize hashing dx_info */
++	dx_info = dx_get_dx_info(bh->b_data);
++	memset(dx_info, 0, sizeof(*dx_info));
++	dx_info->info_length = sizeof(*dx_info);
++	dx_info->hash_version = EXT4_SB(dir->i_sb)->s_def_hash_version;
++	entries = (void *)dx_info + sizeof(*dx_info);
+ 	dx_set_block(entries, 1);
+ 	dx_set_count(entries, 1);
+-	dx_set_limit(entries, dx_root_limit(dir, sizeof(root->info)));
++	dx_set_limit(entries, dx_root_limit(dir, sizeof(*dx_info)));
+ 
+ 	/* Initialize as for dx_probe */
+-	hinfo.hash_version = root->info.hash_version;
++	hinfo.hash_version = dx_info->hash_version;
+ 	if (hinfo.hash_version <= DX_HASH_TEA)
+ 		hinfo.hash_version += EXT4_SB(dir->i_sb)->s_hash_unsigned;
+ 	hinfo.seed = EXT4_SB(dir->i_sb)->s_hash_seed;
+@@ -1732,7 +1740,7 @@
+ 			/* Set up root */
+ 			dx_set_count(entries, 1);
+ 			dx_set_block(entries + 0, newblock);
+-			((struct dx_root *) frames[0].bh->b_data)->info.indirect_levels = 1;
++			dx_get_dx_info(frames->bh->b_data)->indirect_levels = 1;
+ 
+ 			/* Add new access path frame */
+ 			frame = frames + 1;
+
+--Apple-Mail=_0F9FC055-1247-4184-8868-7D77501316AD
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain;
+	charset=us-ascii
+
+
+
+--Apple-Mail=_0F9FC055-1247-4184-8868-7D77501316AD--
+
+--Apple-Mail=_01CD7AC3-7C56-4120-9BE3-493960936E8B
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIVAwUBU163G3Kl2rkXzB/gAQIAqxAArLYhG67cSadV6BU3/iAqyjjsQlNUII8D
+ZrXCn0YfC1XCPeK0cyDcwdCn0cpj3MhRslVX55cFZeKQ2b4CUVfF7C7S+Yfr2R5u
+qATmqFcWLHNDFqMekmcHSLVJn9XFQeBOPT+pI2Hj91x+9Qui+4P7Dwdz2uXgNCFn
+SJcSHd0+vPi/CkwWg2WJHt3bNTxFAQ3j0eRhMXqYWAWPWRgNFe6sEygdBINAxBvq
+Z9afscA/WH8kTor0kKary8oiSWT1zFsCiJVGDl1rL4mio4zF9rxSL+QHN234RPQW
+uHsGD6VNHO69MOo22KcAn4kh55joHuXxUVOY874hEkZjw3N0DNFwpytKHhPCu0dx
+SCzr2KRZNltpYc5cN3seLq3pJO3F06sh5ynTlOLgQf85/L+i4yxyl42FCAJMaVaV
+TI0T7H9vjTnF+GxhbZvJ5CPpPcErA7x0y8uvJFtZH+a8RXWci7fBjXdR36mWIE6s
+c7rxMUObuJglkN/yf2ppyEmMPRDBhPP6m9O0CgZNWIrMeakuwMt1hOb3sfLbCXfv
+Nzny0ZTcme/INIZXfF8463f81ZZFzOn6rLrAWVf/yTj8S6Y0m1k4qvRk3VODoe5r
+Jxc2vMgSJnqbIG5D/gvjK2Cakj+6e6jdEiFjqECHNxUtKeGZrU3LNYxHCWREpCCN
+gRwI0hjbrGw=
+=WUsx
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_01CD7AC3-7C56-4120-9BE3-493960936E8B--
