@@ -1,72 +1,74 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 5/7] mke2fs: proceed if the user doesn't type anything
- after 5 seconds
-Date: Mon, 28 Apr 2014 19:32:23 -0500
-Message-ID: <535EF317.7050102@redhat.com>
-References: <1398556834-31913-1-git-send-email-tytso@mit.edu> <1398556834-31913-5-git-send-email-tytso@mit.edu> <535E74D4.4050805@redhat.com> <20140428232634.GD7857@thunk.org>
+From: ChenQi <Qi.Chen@windriver.com>
+Subject: Re: e2fsprogs: fix cross compilation problem
+Date: Tue, 29 Apr 2014 15:14:46 +0800
+Message-ID: <535F5166.1000601@windriver.com>
+References: <1394676087-2624-1-git-send-email-Qi.Chen@windriver.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:2461 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754434AbaD2AcZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Apr 2014 20:32:25 -0400
-In-Reply-To: <20140428232634.GD7857@thunk.org>
+Received: from mail1.windriver.com ([147.11.146.13]:43184 "EHLO
+	mail1.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755747AbaD2HOs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Apr 2014 03:14:48 -0400
+Received: from ALA-HCA.corp.ad.wrs.com (ala-hca.corp.ad.wrs.com [147.11.189.40])
+	by mail1.windriver.com (8.14.5/8.14.5) with ESMTP id s3T7EmO3024825
+	(version=TLSv1/SSLv3 cipher=AES128-SHA bits=128 verify=FAIL)
+	for <linux-ext4@vger.kernel.org>; Tue, 29 Apr 2014 00:14:48 -0700 (PDT)
+In-Reply-To: <1394676087-2624-1-git-send-email-Qi.Chen@windriver.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 4/28/14, 6:26 PM, Theodore Ts'o wrote:
-> On Mon, Apr 28, 2014 at 10:33:40AM -0500, Eric Sandeen wrote:
->> On 4/26/14, 7:00 PM, Theodore Ts'o wrote:
->>> If mke2fs needs to ask the user for permission, and the user doesn't
->>> type anything for five seconds, proceed as if the user had said yes.
->>>
->>> This will allow us to add more stringent checks without breaking
->>> existing scripts (much).
->>
->> Hm, this sounds a little dangerous - "-F" overrides a lot.
-> 
-> Actually, if you take a look at what we use proceed_question() for, it
-> doesn't actually override anything (up until now) that might lead to
-> data loss.  It's for things like trying to create an file system with
-> a block size greater than 4k on an x86 platform, creating a file
-> system larger than the apparent block size, etc.  The main goal was to
-> make sure the user actually *sees* the darned message.
-> 
-> Perhaps the only case where proceed_question() can prevent data loss
-> is the one where the user typo's /dev/sda3 as /dev/sda.  Everything
-> else is in the category of "we want to make sure the user sees the
-> warning".
-> 
-> The motivation behind this is adding this safety check:
-> 
-> % ./misc/mke2fs -t ext4 -L test-filesystem /dev/sdc3 8M
-> mke2fs 1.42.9 (4-Feb-2014)
-> /dev/sdc3 contains a ext4 file system labelled 'test-filesystem'
-> Proceed anyway (or wait 5 seconds) ? (y,n) 
-> 
-> Previously, we would blithely blow away /dev/sdc3 without even giving
-> a warning.  So if stdin (fd 0) is not a tty, we skip this test
-> entirely --- otherwise existing scripts would fail.  However, if a
-> script is attached to a tty, we would end up stalling the script
-> waiting for the user to answer yes/no where previously no question
-> would be asked at all.  This is the case where it's important that
-> proceed_question() will now pause five seconds, and then continue.
+ping
 
-I guess it's up to you, but it gives me the heebie-jeebies.  xfs
-and btrfs already stop on an existing fs (or a partition table) unless
-the script adds the force option.  Stopping to make sure about an
-irreversible action - but proceeding after 5s anyway - seems to me
-like the worst of both worlds.  If it doesn't matter, don't ask.
-If it matters, wait for a response, however long it might take.
-
-At least that's my take on it.  :)
-
--Eric
-
-> 		   		   	    	       - Ted
-> 
+On 03/13/2014 10:01 AM, Chen Qi wrote:
+> The checking of types in parse-types.sh doesn't make much sense in a
+> cross-compilation environment, because the generated binary is executed
+> on build machine.
+>
+> So even if asm_types.h has got correct statements for types, it's possible
+> that the generated binary will report an error. Because these types are for
+> the target machine.
+>
+> Signed-off-by: Chen Qi <Qi.Chen@windriver.com>
+> ---
+>   config/parse-types.sh |    6 ++++--
+>   configure.in          |    6 +++++-
+>   2 files changed, 9 insertions(+), 3 deletions(-)
+>
+> diff --git a/config/parse-types.sh b/config/parse-types.sh
+> index 5076f6c..24d2a99 100755
+> --- a/config/parse-types.sh
+> +++ b/config/parse-types.sh
+> @@ -118,8 +118,10 @@ if ./asm_types
+>   then
+>       true
+>   else
+> -    echo "Problem detected with asm_types.h"
+> -    echo "" > asm_types.h
+> +    if [ "${CROSS_COMPILE}" != "1" ]; then
+> +	echo "Problem detected with asm_types.h"
+> +	echo "" > asm_types.h
+> +    fi
+>   fi
+>   rm asm_types.c asm_types
+>   
+> diff --git a/configure.in b/configure.in
+> index 68adf0d..ed1697b 100644
+> --- a/configure.in
+> +++ b/configure.in
+> @@ -953,7 +953,11 @@ AC_SUBST(SIZEOF_LONG)
+>   AC_SUBST(SIZEOF_LONG_LONG)
+>   AC_SUBST(SIZEOF_OFF_T)
+>   AC_C_BIGENDIAN
+> -BUILD_CC="$BUILD_CC" CPP="$CPP" /bin/sh $ac_aux_dir/parse-types.sh
+> +if test $cross_compiling = no; then
+> +  BUILD_CC="$BUILD_CC" CPP="$CPP" /bin/sh $ac_aux_dir/parse-types.sh
+> +else
+> +  CROSS_COMPILE="1" BUILD_CC="$BUILD_CC" CPP="$CPP" /bin/sh $ac_aux_dir/parse-types.sh
+> +fi
+>   ASM_TYPES_HEADER=./asm_types.h
+>   AC_SUBST_FILE(ASM_TYPES_HEADER)
+>   dnl
 
