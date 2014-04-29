@@ -1,74 +1,33 @@
-From: ChenQi <Qi.Chen@windriver.com>
-Subject: Re: e2fsprogs: fix cross compilation problem
-Date: Tue, 29 Apr 2014 15:14:46 +0800
-Message-ID: <535F5166.1000601@windriver.com>
-References: <1394676087-2624-1-git-send-email-Qi.Chen@windriver.com>
+From: Philipp Thomas <pth@suse.de>
+Subject: Re: [PATCH] e2fsprogs: small .de translation fix
+Date: Tue, 29 Apr 2014 12:19:39 +0200
+Message-ID: <20140429101939.GA5744@paradies.suse.de>
+References: <52C704EC.8000501@redhat.com>
+ <5306D3D9.4040303@redhat.com>
+ <20140221081228.GE31047@thunk.org>
+ <20140221120133.GC6304@paradies.suse.de>
+ <20140221152531.GF31047@thunk.org>
+ <535E9CA0.8020305@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
-Content-Transfer-Encoding: 7bit
-To: <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail1.windriver.com ([147.11.146.13]:43184 "EHLO
-	mail1.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755747AbaD2HOs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Apr 2014 03:14:48 -0400
-Received: from ALA-HCA.corp.ad.wrs.com (ala-hca.corp.ad.wrs.com [147.11.189.40])
-	by mail1.windriver.com (8.14.5/8.14.5) with ESMTP id s3T7EmO3024825
-	(version=TLSv1/SSLv3 cipher=AES128-SHA bits=128 verify=FAIL)
-	for <linux-ext4@vger.kernel.org>; Tue, 29 Apr 2014 00:14:48 -0700 (PDT)
-In-Reply-To: <1394676087-2624-1-git-send-email-Qi.Chen@windriver.com>
+Received: from cantor2.suse.de ([195.135.220.15]:49389 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756419AbaD2KTk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 29 Apr 2014 06:19:40 -0400
+Content-Disposition: inline
+In-Reply-To: <535E9CA0.8020305@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ping
+* Eric Sandeen (sandeen@redhat.com) [20140428 20:23]:
 
-On 03/13/2014 10:01 AM, Chen Qi wrote:
-> The checking of types in parse-types.sh doesn't make much sense in a
-> cross-compilation environment, because the generated binary is executed
-> on build machine.
->
-> So even if asm_types.h has got correct statements for types, it's possible
-> that the generated binary will report an error. Because these types are for
-> the target machine.
->
-> Signed-off-by: Chen Qi <Qi.Chen@windriver.com>
-> ---
->   config/parse-types.sh |    6 ++++--
->   configure.in          |    6 +++++-
->   2 files changed, 9 insertions(+), 3 deletions(-)
->
-> diff --git a/config/parse-types.sh b/config/parse-types.sh
-> index 5076f6c..24d2a99 100755
-> --- a/config/parse-types.sh
-> +++ b/config/parse-types.sh
-> @@ -118,8 +118,10 @@ if ./asm_types
->   then
->       true
->   else
-> -    echo "Problem detected with asm_types.h"
-> -    echo "" > asm_types.h
-> +    if [ "${CROSS_COMPILE}" != "1" ]; then
-> +	echo "Problem detected with asm_types.h"
-> +	echo "" > asm_types.h
-> +    fi
->   fi
->   rm asm_types.c asm_types
->   
-> diff --git a/configure.in b/configure.in
-> index 68adf0d..ed1697b 100644
-> --- a/configure.in
-> +++ b/configure.in
-> @@ -953,7 +953,11 @@ AC_SUBST(SIZEOF_LONG)
->   AC_SUBST(SIZEOF_LONG_LONG)
->   AC_SUBST(SIZEOF_OFF_T)
->   AC_C_BIGENDIAN
-> -BUILD_CC="$BUILD_CC" CPP="$CPP" /bin/sh $ac_aux_dir/parse-types.sh
-> +if test $cross_compiling = no; then
-> +  BUILD_CC="$BUILD_CC" CPP="$CPP" /bin/sh $ac_aux_dir/parse-types.sh
-> +else
-> +  CROSS_COMPILE="1" BUILD_CC="$BUILD_CC" CPP="$CPP" /bin/sh $ac_aux_dir/parse-types.sh
-> +fi
->   ASM_TYPES_HEADER=./asm_types.h
->   AC_SUBST_FILE(ASM_TYPES_HEADER)
->   dnl
+> Any progress on this?  AFAICT we still have goats.  ;)
 
+Oh sorry, with work on SLES 12 and a very nasty cold this totally
+sliped throught the cracks. I'll finish it today.
+
+Philipp
