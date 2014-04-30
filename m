@@ -1,25 +1,24 @@
 From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: [PATCH] ext4: fix data integrity sync in ordered mode
-Date: Wed, 30 Apr 2014 19:02:14 +0900
-Message-ID: <004201cf645b$430004f0$c9000ed0$@samsung.com>
+Subject: [PATCH v2] ext4: fix data integrity sync in ordered mode
+Date: Wed, 30 Apr 2014 19:04:41 +0900
+Message-ID: <004301cf645b$9a960c00$cfc22400$@samsung.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	Ashish Sangwan <a.sangwan@samsung.com>,
-	'Jan kara' <jack@suse.de>
+	Ashish Sangwan <a.sangwan@samsung.com>, Jan kara <jack@suse.de>
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout1.samsung.com ([203.254.224.24]:26995 "EHLO
-	mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757977AbaD3KCQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Apr 2014 06:02:16 -0400
-Received: from epcpsbgr5.samsung.com
- (u145.gpu120.samsung.co.kr [203.254.230.145])
- by mailout1.samsung.com (Oracle Communications Messaging Server 7u4-24.01
+Received: from mailout2.samsung.com ([203.254.224.25]:10588 "EHLO
+	mailout2.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751576AbaD3KEv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Apr 2014 06:04:51 -0400
+Received: from epcpsbgr2.samsung.com
+ (u142.gpu120.samsung.co.kr [203.254.230.142])
+ by mailout2.samsung.com (Oracle Communications Messaging Server 7u4-24.01
  (7.0.4.24.0) 64bit (built Nov 17 2011))
- with ESMTP id <0N4U00ENQ97QWX30@mailout1.samsung.com> for
- linux-ext4@vger.kernel.org; Wed, 30 Apr 2014 19:02:15 +0900 (KST)
+ with ESMTP id <0N4U0015U9BU1P10@mailout2.samsung.com> for
+ linux-ext4@vger.kernel.org; Wed, 30 Apr 2014 19:04:42 +0900 (KST)
 Content-language: ko
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -59,7 +58,7 @@ index b1dc334..bd85712 100644
  				   ext4_bh_delay_or_unwritten)) {
  		redirty_page_for_writepage(wbc, page);
 -		if (current->flags & PF_MEMALLOC) {
-+		if ((current->flags & PF_MEMALLOC) || 
++		if ((current->flags & PF_MEMALLOC) ||
 +		     radix_tree_tag_get(&page->mapping->page_tree,
 +					page->index, PAGECACHE_TAG_TOWRITE)) {
  			/*
@@ -69,10 +68,10 @@ index b1dc334..bd85712 100644
 -			 */
 +			 * We should also bail out when a journal commit happen
 +			 * during an integrity sync operation because calling
-+			 * ext4_bio_write_page in this case will clear 
-+			 * PAGECACHE_TAG_TOWRITE and we could end up with 
++			 * ext4_bio_write_page in this case will clear
++			 * PAGECACHE_TAG_TOWRITE and we could end up with
 +			 * dirty pages even after completion of a sync call.
-+			 */ 
++			 */
  			WARN_ON_ONCE((current->flags & (PF_MEMALLOC|PF_KSWAPD))
  							== PF_MEMALLOC);
  			unlock_page(page);
