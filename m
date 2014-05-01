@@ -1,61 +1,113 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH V3] mke2fs: prevent creation of filesystem with unsupported
- revision
-Date: Thu, 01 May 2014 17:35:00 -0500
-Message-ID: <5362CC14.2070902@redhat.com>
-References: <5362A6A2.7040504@redhat.com> <5362B105.9080702@redhat.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [PATCH 00/37] e2fsprogs patchbomb 5/14
+Date: Thu, 01 May 2014 16:12:23 -0700
+Message-ID: <20140501231222.31890.82860.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>,
-	Frank Sorenson <fsorenso@redhat.com>
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:21861 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752603AbaEAWe6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 1 May 2014 18:34:58 -0400
-Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s41MYvCh029659
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Thu, 1 May 2014 18:34:57 -0400
-In-Reply-To: <5362B105.9080702@redhat.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:38497 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750782AbaEAXM3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 May 2014 19:12:29 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Frank Sorenson <fsorenso@redhat.com>
+Welp, time for another patchbomb!  As usual, the patchbomb starts with
+8 minor bug fixes.  The first two add some extra reporting and fix
+Coverity bugs.  Patch 3 adds the ability to create sockets when
+performing mke2fs -D.  Patch 4 changes mke2fs to always complain when
+formatting inline_data with 128-byte inodes.  Patch 5-6 fix some
+problems when dumping journals in debugfs.  Patch 7 fixes a bug in
+resize2fs when sparse_super2.  Patch 8 fixes a bug in mke2fs where
+block group checksums weren't being set when the user specifies packed
+metadata blocks.  Patch 9 adds an extended option to mke2fs so that
+users can set the error behavior at format time.
 
-It's a bit strange to accept revision levels higher than
-the code creating the filesystem can understand, so don't
-allow it.
+Patches 10-14 make some alterations to metadata checksumming support;
+by default, e2fsck will now check the inode before verifying the
+checksum.  There's a command line option to restore the "just scrape
+it off the system" behavior for heavily damaged filesystems.  There
+are a couple of patches to fix erroneous behavior and crashes when
+e2fsck has to rebuild the root directory.  The final patch in this
+clump adds a command line option to dumpe2fs to ignore checksum
+failures.
 
-At least the kernel will mount the fs readonly if it's too
-high, but no other utility will touch it, so you can't
-fix the error.
+Patch 15 enables block_validity for new filesystems.  As noted here
+previously, the overhead of enabling this option seems to be at most a
+1% performance hit when performing a lot of small allocations, and
+negligible otherwise.  On the plus side, the filesystem is smarter
+about noticing erroneous allocations out of metadata areas (i.e. block
+bitmap corruption) and shutting itself down to prevent damage.
 
-Just reject anything > EXT2_MAX_SUPP_REV at mkfs time.
+Patches 16-17 enhance ext2fs_bmap2() to allow the creation of
+uninitialized extents.  The functionality is already there; really it
+just adds a flag to indicate uninitialized.  There's also a patch to
+the fileio routines to handle uninitialized extents.  These patches
+are unchanged from December.
 
-Signed-off-by: Frank Sorenson <fsorenso@redhat.com>
-[sandeen@redhat.com: Add more verbose commit log]
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+Patches 18-20 add to resize2fs the ability to convert a filesystem to
+and from 64bit mode.  These patches are unchanged from December.
 
-V2: Frank did this independently, and it's better.  I forgot about
-using com_err here.
+Patches 21-24 implement readahead for e2fsck.  The first patch tries
+to reduce system call overhead by using pread/pwrite if available.
+The next two patches plumb in the IO manager and library changes
+necessary to read metadata blocks into the page cache (on Linux).  The
+final patch teaches e2fsck to use the library readahead functions in a
+separate thread.
 
-V3: go back to V1's commit log for Andreas :)
+Crude testing has been done via:
+# echo 3 > /proc/sys/vm/drop_caches
+# e2fsck -Fnfvtt /dev/XXX
 
---- a/misc/mke2fs.c	
-+++ a/misc/mke2fs.c	
-@@ -1684,6 +1684,11 @@ profile_error:
- 					_("bad revision level - %s"), optarg);
- 				exit(1);
- 			}
-+			if (r_opt > EXT2_MAX_SUPP_REV) {
-+				com_err(program_name, EXT2_ET_REV_TOO_HIGH,
-+					_("while trying to create revision %d"), r_opt);
-+				exit(1);
-+			}
- 			fs_param.s_rev_level = r_opt;
- 			break;
- 		case 's':	/* deprecated */
+So far in my crude testing on a cold system, I've seen about a ~20%
+speedup on a SSD, a ~40% speedup on a 3x RAID1 SATA array, and about
+a 10% speedup on a single-spindle SATA disk.  On a single-queue USB
+HDD, performance doesn't change much.  It looks as though low end
+storage like USB HDDs will not benefit, which doesn't surprise me.
+There's around a 2% regression for USB HDDs, though it doesn't seem
+statistically significant.  The SSD numbers are harder to quantify
+since they're already fast.  Somewhat unexpectedly, the readahead code
+speeds up e2fsck even when the page cache has already been warmed up.
 
+This third version of the readahead patches try to prevent page cache
+thrashing by limiting the amount of (user-configurable) readahead to a
+default of half of physical memory.  It also tries to release some of
+the memory pages if it can conclude that it's totally done with a
+block, and it can now detect very slow readahead and disable it.
+
+Patches 25-29 implement fallocate for e2fsprogs, and modifies Ted's
+mk_hugefiles functionality to use it.  The general fallocate API call
+is (regrettably) much more complex than Ted's, since it must grapple
+with the possibility that the file already has mapped blocks.  There
+were also a lot of bigalloc related subtleties.
+
+Patches 30-33 implement fuse2fs, a FUSE server based on libext2fs.
+Primarily I've been using it to shake out bugs in the library via
+xfstests and the metadata checksumming test program.  It can also be
+used to mount ext4 on any OS supporting FUSE, and it can also mount
+64k-block filesystems on x86, though I'd be wary of using rw mode.
+fuse2fs depends on these new APIs: xattr editing, uninit extent
+handling, and the new fallocate call.
+
+Patches 34-36 provide the metadata checksumming test script.  Its
+primary advantage over 'make check' is that it allows one to specify a 
+variety of different mkfs and mount options.  It's also growing more
+tests as a result of fuse2fs exercise.
+
+Patch 37 introduces ext5, which reduces our testing matrix by
+requiring a fairly large set of features and eliminating most mount
+options.  True, not all the features are stable or ready for
+production yet, but six years after ext4 we have a bunch of new
+features ready for wider testing.
+
+I've tested these e2fsprogs changes against the -next branch as of
+4/17.  These days, I use several VMs, each with 8GB ramdisks to test
+with; the test process is checkpatch > make C=1 > make check >
+metadata checksum tests > fuse + xfstests.
+
+Comments and questions are, as always, welcome.
+
+--D
