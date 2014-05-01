@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 10/37] e2fsck: verify checksums after checking everything
- else
-Date: Thu, 01 May 2014 16:13:28 -0700
-Message-ID: <20140501231328.31890.34436.stgit@birch.djwong.org>
+Subject: [PATCH 12/37] e2fsck: insert a missing dirent tail for checksums if
+ possible
+Date: Thu, 01 May 2014 16:13:41 -0700
+Message-ID: <20140501231341.31890.18777.stgit@birch.djwong.org>
 References: <20140501231222.31890.82860.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,202 +10,84 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:38977 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:39029 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751353AbaEAXNd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 May 2014 19:13:33 -0400
+	with ESMTP id S1751359AbaEAXNp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 May 2014 19:13:45 -0400
 In-Reply-To: <20140501231222.31890.82860.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-There's a particular problem with e2fsck's user interface where
-checksum errors are concerned:  Fixing the first complaint about
-a checksum problem results in the inode being cleared even if e2fsck
-could otherwise have recovered it.  While this mode is useful for
-cleaning the remaining broken crud off the filesystem, we could at
-least default to checking everything /else/ and only complaining about
-the incorrect checksum if fsck finds nothing else wrong.
-
-So, plumb in a config option.  We default to "verify and checksum"
-unless the user tell us otherwise.
+If e2fsck is writing a block of directory entries to disk, it should
+adjust the dirents to add the dirent tail if one is missing.  It's not
+a big deal if there's no space to do this since rehash (pass 3A) will
+reconstruct directories for us.  However, we may as well avoid
+unnecessary work.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- e2fsck/e2fsck.8.in      |   12 ++++++++++++
- e2fsck/e2fsck.conf.5.in |   20 ++++++++++++++++++++
- e2fsck/e2fsck.h         |    1 +
- e2fsck/problem.c        |   18 ++++++++++++++----
- e2fsck/problemP.h       |    1 +
- e2fsck/unix.c           |   11 +++++++++++
- 6 files changed, 59 insertions(+), 4 deletions(-)
+ e2fsck/pass2.c |   40 ++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 40 insertions(+)
 
 
-diff --git a/e2fsck/e2fsck.8.in b/e2fsck/e2fsck.8.in
-index f5ed758..43ee063 100644
---- a/e2fsck/e2fsck.8.in
-+++ b/e2fsck/e2fsck.8.in
-@@ -207,6 +207,18 @@ option may prevent you from further manual data recovery.
- .BI nodiscard
- Do not attempt to discard free blocks and unused inode blocks. This option is
- exactly the opposite of discard option. This is set as default.
-+.TP
-+.BI strict_csums
-+Verify each metadata object's checksum before checking anything other fields
-+in the metadata object.  If the verification fails, offer to clear the item,
-+also before checking any of the other fields.  This option causes e2fsck to
-+favor throwing away broken objects over trying to salvage them.
-+.TP
-+.BI no_strict_csums
-+Perform all regular checks of a metadata object and only verify the checksum if
-+no problems were found.  This option causes e2fsck to try to salvage slightly
-+damaged metadata objects, at the cost of spending processing time on recovering
-+data.  This is set as the default.
- .RE
- .TP
- .B \-f
-diff --git a/e2fsck/e2fsck.conf.5.in b/e2fsck/e2fsck.conf.5.in
-index 9ebfbbf..a8219a8 100644
---- a/e2fsck/e2fsck.conf.5.in
-+++ b/e2fsck/e2fsck.conf.5.in
-@@ -222,6 +222,26 @@ If this boolean relation is true, e2fsck will run as if the option
- .B -v
- is always specified.  This will cause e2fsck to print some additional
- information at the end of each full file system check.
-+.TP
-+.I strict_csums
-+If this boolean relation is true, e2fsck will run as if
-+.B -E strict_csums
-+is set.  This causes e2fsck to verify each metadata object's checksum before
-+checking anything other fields in the metadata object.  If the verification
-+fails, offer to clear the item, also before checking any of the other fields.
-+This option causes e2fsck to favor throwing away broken objects over trying to
-+salvage them.
-+.IP
-+If the boolean relation is false, e2fsck will run as if
-+.B -E no_strict_csums
-+is set.  In this case, e2fsck will perform all regular checks of a metadata
-+object and only verify the checksum if no problems were found.  This option
-+causes e2fsck to try to salvage slightly damaged metadata objects, at the cost
-+of spending processing time on recovering data.
-+.IP
-+The default is for e2fsck to behave as if
-+.B -E no_strict_csums
-+is set.
- .SH THE [problems] STANZA
- Each tag in the
- .I [problems] 
-diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
-index dbd6ea8..d7a7be9 100644
---- a/e2fsck/e2fsck.h
-+++ b/e2fsck/e2fsck.h
-@@ -167,6 +167,7 @@ struct resource_track {
- #define E2F_OPT_FRAGCHECK	0x0800
- #define E2F_OPT_JOURNAL_ONLY	0x1000 /* only replay the journal */
- #define E2F_OPT_DISCARD		0x2000
-+#define E2F_OPT_CSUM_FIRST	0x4000
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index 5488c73..95f51b7 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -739,6 +739,41 @@ static int is_last_entry(ext2_filsys fs, int inline_data_size,
+ 		return (offset < fs->blocksize - csum_size);
+ }
  
- /*
-  * E2fsck flags
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index 7f0ad6c..0999399 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -970,7 +970,7 @@ static struct e2fsck_problem problem_table[] = {
- 	/* inode checksum does not match inode */
- 	{ PR_1_INODE_CSUM_INVALID,
- 	  N_("@i %i checksum does not match @i.  "),
--	  PROMPT_CLEAR, PR_PREEN_OK },
-+	  PROMPT_CLEAR, PR_PREEN_OK | PR_INITIAL_CSUM },
- 
- 	/* inode passes checks, but checksum does not match inode */
- 	{ PR_1_INODE_ONLY_CSUM_INVALID,
-@@ -981,7 +981,7 @@ static struct e2fsck_problem problem_table[] = {
- 	{ PR_1_EXTENT_CSUM_INVALID,
- 	  N_("@i %i extent block checksum does not match extent\n\t(logical @b "
- 	     "%c, @n physical @b %b, len %N)\n"),
--	  PROMPT_CLEAR, 0 },
-+	  PROMPT_CLEAR, PR_INITIAL_CSUM },
- 
- 	/*
- 	 * Inode extent block passes checks, but checksum does not match
-@@ -996,7 +996,7 @@ static struct e2fsck_problem problem_table[] = {
- 	{ PR_1_EA_BLOCK_CSUM_INVALID,
- 	  N_("Extended attribute @a @b %b checksum for @i %i does not "
- 	     "match.  "),
--	  PROMPT_CLEAR, 0 },
-+	  PROMPT_CLEAR, PR_INITIAL_CSUM },
- 
- 	/*
- 	 * Extended attribute block passes checks, but checksum for inode does
-@@ -1470,7 +1470,7 @@ static struct e2fsck_problem problem_table[] = {
- 	/* leaf node fails checksum */
- 	{ PR_2_LEAF_NODE_CSUM_INVALID,
- 	  N_("@d @i %i, %B, offset %N: @d fails checksum\n"),
--	  PROMPT_SALVAGE, PR_PREEN_OK },
-+	  PROMPT_SALVAGE, PR_PREEN_OK | PR_INITIAL_CSUM },
- 
- 	/* leaf node has no checksum */
- 	{ PR_2_LEAF_NODE_MISSING_CSUM,
-@@ -1944,6 +1944,16 @@ int fix_problem(e2fsck_t ctx, problem_t code, struct problem_context *pctx)
- 		printf(_("Unhandled error code (0x%x)!\n"), code);
- 		return 0;
- 	}
++static errcode_t insert_dirent_tail(ext2_filsys fs, void *dirbuf)
++{
++	struct ext2_dir_entry *d;
++	void *top;
++	struct ext2_dir_entry_tail *t;
++	unsigned int rec_len;
 +
-+	/*
-+	 * If there is a problem with the initial csum verification and the
-+	 * user told e2fsck to verify csums /after/ checking everything else,
-+	 * then don't "fix" anything.
-+	 */
-+	if ((ptr->flags & PR_INITIAL_CSUM) &&
-+	    !(ctx->options & E2F_OPT_CSUM_FIRST))
-+		return 0;
++	d = dirbuf;
++	top = EXT2_DIRENT_TAIL(dirbuf, fs->blocksize);
 +
- 	if (!(ptr->flags & PR_CONFIG)) {
- 		char	key[9], *new_desc = NULL;
- 
-diff --git a/e2fsck/problemP.h b/e2fsck/problemP.h
-index 7944cd6..a983598 100644
---- a/e2fsck/problemP.h
-+++ b/e2fsck/problemP.h
-@@ -44,3 +44,4 @@ struct latch_descr {
- #define PR_CONFIG	0x080000 /* This problem has been customized
- 				    from the config file */
- #define PR_FORCE_NO	0x100000 /* Force the answer to be no */
-+#define PR_INITIAL_CSUM	0x200000 /* User can ignore initial csum check */
-diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-index b39383d..c6cdb49 100644
---- a/e2fsck/unix.c
-+++ b/e2fsck/unix.c
-@@ -692,6 +692,10 @@ static void parse_extended_opts(e2fsck_t ctx, const char *opts)
- 			else
- 				ctx->log_fn = string_copy(ctx, arg, 0);
- 			continue;
-+		} else if (strcmp(token, "strict_csums") == 0) {
-+			ctx->options |= E2F_OPT_CSUM_FIRST;
-+		} else if (strcmp(token, "no_strict_csums") == 0) {
-+			ctx->options &= ~E2F_OPT_CSUM_FIRST;
- 		} else {
- 			fprintf(stderr, _("Unknown extended option: %s\n"),
- 				token);
-@@ -710,6 +714,8 @@ static void parse_extended_opts(e2fsck_t ctx, const char *opts)
- 		fputs(("\tjournal_only\n"), stderr);
- 		fputs(("\tdiscard\n"), stderr);
- 		fputs(("\tnodiscard\n"), stderr);
-+		fputs(("\tstrict_csums\n"), stderr);
-+		fputs(("\tno_strict_csums\n"), stderr);
- 		fputc('\n', stderr);
- 		exit(1);
- 	}
-@@ -945,6 +951,11 @@ static errcode_t PRS(int argc, char *argv[], e2fsck_t *ret_ctx)
- 	profile_set_syntax_err_cb(syntax_err_report);
- 	profile_init(config_fn, &ctx->profile);
- 
-+	profile_get_boolean(ctx->profile, "options", "strict_csums", NULL,
-+			    0, &c);
-+	if (c)
-+		ctx->options |= E2F_OPT_CSUM_FIRST;
++	rec_len = d->rec_len;
++	while (rec_len && !(rec_len & 0x3)) {
++		d = (struct ext2_dir_entry *)(((char *)d) + rec_len);
++		if (((void *)d) + d->rec_len >= top)
++			break;
++		rec_len = d->rec_len;
++	}
 +
- 	profile_get_boolean(ctx->profile, "options", "report_time", 0, 0,
- 			    &c);
- 	if (c)
++	if (d != top) {
++		size_t min_size = EXT2_DIR_REC_LEN(
++				ext2fs_dirent_name_len(dirbuf));
++		if (min_size > d->rec_len - sizeof(struct ext2_dir_entry_tail))
++			return EXT2_ET_DIR_NO_SPACE_FOR_CSUM;
++		d->rec_len -= sizeof(struct ext2_dir_entry_tail);
++	}
++
++	t = (struct ext2_dir_entry_tail *)top;
++	if (t->det_reserved_zero1 ||
++	    t->det_rec_len != sizeof(struct ext2_dir_entry_tail) ||
++	    t->det_reserved_name_len != EXT2_DIR_NAME_LEN_CSUM)
++		ext2fs_initialize_dirent_tail(fs, t);
++
++	return 0;
++}
++
+ static int check_dir_block(ext2_filsys fs,
+ 			   struct ext2_db_entry2 *db,
+ 			   void *priv_data)
+@@ -1275,8 +1310,13 @@ skip_checksum:
+ 		if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+ 				EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) &&
+ 		    is_leaf &&
++		    !inline_data_size &&
+ 		    !ext2fs_dirent_has_tail(fs, (struct ext2_dir_entry *)buf))
++		{
++			if (insert_dirent_tail(fs, buf) == 0)
++				goto write_and_fix;
+ 			e2fsck_rehash_dir_later(ctx, ino);
++		}
+ 
+ write_and_fix:
+ 		if (e2fsck_dir_will_be_rehashed(ctx, ino))
 
