@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 2/5] ext4: fix block bitmap initialization under
- sparse_super2
-Date: Thu, 01 May 2014 16:17:34 -0700
-Message-ID: <20140501231734.892.13049.stgit@birch.djwong.org>
+Subject: [PATCH 3/5] ext4: fix block bitmap validation when bigalloc,
+ ^flex_bg
+Date: Thu, 01 May 2014 16:17:40 -0700
+Message-ID: <20140501231740.892.50993.stgit@birch.djwong.org>
 References: <20140501231720.892.58712.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,101 +10,68 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:29525 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:29551 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751014AbaEAXRj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 May 2014 19:17:39 -0400
+	with ESMTP id S1751014AbaEAXRp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 May 2014 19:17:45 -0400
 In-Reply-To: <20140501231720.892.58712.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The ext4_bg_has_super() function doesn't know about the new rules for
-where backup superblocks go on a sparse_super2 filesystem.  Therefore,
-block bitmap initialization doesn't know that it shouldn't reserve
-space for backups in groups that are never going to contain backups.
-The result of this is e2fsck complaining about the block bitmap being
-incorrect (fortunately not in a way that results in cross-linked
-files), so fix the whole thing.
+On a bigalloc,^flex_bg filesystem, the ext4_valid_block_bitmap
+function fails to convert from blocks to clusters when spot-checking
+the validity of the bitmap block that we've just read from disk.  This
+causes ext4 to think that the bitmap is garbage, which results in the
+block group being taken offline when it's not necessary.  Add in the
+necessary EXT4_B2C() calls to perform the conversions.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- fs/ext4/balloc.c |   33 +++++++++++++++++++--------------
- fs/ext4/ext4.h   |    4 +++-
- 2 files changed, 22 insertions(+), 15 deletions(-)
+ fs/ext4/balloc.c |   12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
 
 
 diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 5c56785..a4950e9 100644
+index a4950e9..59c3ba8 100644
 --- a/fs/ext4/balloc.c
 +++ b/fs/ext4/balloc.c
-@@ -708,16 +708,6 @@ static inline int test_root(ext4_group_t a, int b)
- 	}
- }
- 
--static int ext4_group_sparse(ext4_group_t group)
--{
--	if (group <= 1)
--		return 1;
--	if (!(group & 1))
--		return 0;
--	return (test_root(group, 7) || test_root(group, 5) ||
--		test_root(group, 3));
--}
--
- /**
-  *	ext4_bg_has_super - number of blocks used by the superblock in group
-  *	@sb: superblock for filesystem
-@@ -728,11 +718,26 @@ static int ext4_group_sparse(ext4_group_t group)
-  */
- int ext4_bg_has_super(struct super_block *sb, ext4_group_t group)
+@@ -307,6 +307,7 @@ static ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *sb,
+ 					    ext4_group_t block_group,
+ 					    struct buffer_head *bh)
  {
--	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
--				EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER) &&
--			!ext4_group_sparse(group))
-+	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
-+
-+	if (group == 0)
-+		return 1;
-+	if (EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_SPARSE_SUPER2)) {
-+		if (group == le32_to_cpu(es->s_backup_bgs[0]) ||
-+		    group == le32_to_cpu(es->s_backup_bgs[1]))
-+			return 1;
-+		return 0;
-+	}
-+	if ((group <= 1) || !EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+					EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER))
-+		return 1;
-+	if (!(group & 1))
- 		return 0;
--	return 1;
-+	if (test_root(group, 3) || (test_root(group, 5)) ||
-+	    test_root(group, 7))
-+		return 1;
-+
-+	return 0;
- }
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	ext4_grpblk_t offset;
+ 	ext4_grpblk_t next_zero_bit;
+ 	ext4_fsblk_t blk;
+@@ -326,14 +327,14 @@ static ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *sb,
+ 	/* check whether block bitmap block number is set */
+ 	blk = ext4_block_bitmap(sb, desc);
+ 	offset = blk - group_first_block;
+-	if (!ext4_test_bit(offset, bh->b_data))
++	if (!ext4_test_bit(EXT4_B2C(sbi, offset), bh->b_data))
+ 		/* bad block bitmap */
+ 		return blk;
  
- static unsigned long ext4_bg_num_gdb_meta(struct super_block *sb,
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 66946aa..fde4a27 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1159,7 +1159,8 @@ struct ext4_super_block {
- 	__le32	s_usr_quota_inum;	/* inode for tracking user quota */
- 	__le32	s_grp_quota_inum;	/* inode for tracking group quota */
- 	__le32	s_overhead_clusters;	/* overhead blocks/clusters in fs */
--	__le32	s_reserved[108];	/* Padding to the end of the block */
-+	__le32	s_backup_bgs[2];	/* groups with sparse_super2 SBs */
-+	__le32	s_reserved[106];	/* Padding to the end of the block */
- 	__le32	s_checksum;		/* crc32c(superblock) */
- };
+ 	/* check whether the inode bitmap block number is set */
+ 	blk = ext4_inode_bitmap(sb, desc);
+ 	offset = blk - group_first_block;
+-	if (!ext4_test_bit(offset, bh->b_data))
++	if (!ext4_test_bit(EXT4_B2C(sbi, offset), bh->b_data))
+ 		/* bad block bitmap */
+ 		return blk;
  
-@@ -1505,6 +1506,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
- #define EXT4_FEATURE_COMPAT_EXT_ATTR		0x0008
- #define EXT4_FEATURE_COMPAT_RESIZE_INODE	0x0010
- #define EXT4_FEATURE_COMPAT_DIR_INDEX		0x0020
-+#define EXT4_FEATURE_COMPAT_SPARSE_SUPER2	0x0200
- 
- #define EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
- #define EXT4_FEATURE_RO_COMPAT_LARGE_FILE	0x0002
+@@ -341,9 +342,10 @@ static ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *sb,
+ 	blk = ext4_inode_table(sb, desc);
+ 	offset = blk - group_first_block;
+ 	next_zero_bit = ext4_find_next_zero_bit(bh->b_data,
+-				offset + EXT4_SB(sb)->s_itb_per_group,
+-				offset);
+-	if (next_zero_bit < offset + EXT4_SB(sb)->s_itb_per_group)
++			EXT4_B2C(sbi, offset + EXT4_SB(sb)->s_itb_per_group),
++			EXT4_B2C(sbi, offset));
++	if (next_zero_bit <
++	    EXT4_B2C(sbi, offset + EXT4_SB(sb)->s_itb_per_group))
+ 		/* bad bitmap for inode tables */
+ 		return blk;
+ 	return 0;
 
