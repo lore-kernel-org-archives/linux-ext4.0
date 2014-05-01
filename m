@@ -1,113 +1,320 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 00/37] e2fsprogs patchbomb 5/14
-Date: Thu, 01 May 2014 16:12:23 -0700
-Message-ID: <20140501231222.31890.82860.stgit@birch.djwong.org>
+Subject: [PATCH 01/37] misc: create better-packaged static analysis reports
+Date: Thu, 01 May 2014 16:12:29 -0700
+Message-ID: <20140501231229.31890.25646.stgit@birch.djwong.org>
+References: <20140501231222.31890.82860.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:38497 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750782AbaEAXM3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 May 2014 19:12:29 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:28022 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750782AbaEAXMf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 May 2014 19:12:35 -0400
+In-Reply-To: <20140501231222.31890.82860.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Welp, time for another patchbomb!  As usual, the patchbomb starts with
-8 minor bug fixes.  The first two add some extra reporting and fix
-Coverity bugs.  Patch 3 adds the ability to create sockets when
-performing mke2fs -D.  Patch 4 changes mke2fs to always complain when
-formatting inline_data with 128-byte inodes.  Patch 5-6 fix some
-problems when dumping journals in debugfs.  Patch 7 fixes a bug in
-resize2fs when sparse_super2.  Patch 8 fixes a bug in mke2fs where
-block group checksums weren't being set when the user specifies packed
-metadata blocks.  Patch 9 adds an extended option to mke2fs so that
-users can set the error behavior at format time.
+Fix some minor bugs relating to passing CFLAGS to cppcheck, and
+package the cppcheck output into nicer looking reports.
 
-Patches 10-14 make some alterations to metadata checksumming support;
-by default, e2fsck will now check the inode before verifying the
-checksum.  There's a command line option to restore the "just scrape
-it off the system" behavior for heavily damaged filesystems.  There
-are a couple of patches to fix erroneous behavior and crashes when
-e2fsck has to rebuild the root directory.  The final patch in this
-clump adds a command line option to dumpe2fs to ignore checksum
-failures.
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ MCONFIG.in                   |   17 ++++++++++++-----
+ debugfs/Makefile.in          |    2 +-
+ e2fsck/Makefile.in           |    2 +-
+ ext2ed/Makefile.in           |    2 +-
+ intl/Makefile.in             |    4 ++--
+ lib/blkid/Makefile.in        |    2 +-
+ lib/e2p/Makefile.in          |    2 +-
+ lib/et/Makefile.in           |    2 +-
+ lib/ext2fs/Makefile.in       |    2 +-
+ lib/quota/Makefile.in        |    2 +-
+ lib/ss/Makefile.in           |    2 +-
+ lib/uuid/Makefile.in         |    2 +-
+ misc/Makefile.in             |    2 +-
+ resize/Makefile.in           |    2 +-
+ tests/progs/Makefile.in      |    2 +-
+ util/Makefile.in             |    2 +-
+ util/static-analysis-cleanup |   20 ++++++++++++++++++++
+ 17 files changed, 48 insertions(+), 21 deletions(-)
+ create mode 100644 util/static-analysis-cleanup
 
-Patch 15 enables block_validity for new filesystems.  As noted here
-previously, the overhead of enabling this option seems to be at most a
-1% performance hit when performing a lot of small allocations, and
-negligible otherwise.  On the plus side, the filesystem is smarter
-about noticing erroneous allocations out of metadata areas (i.e. block
-bitmap corruption) and shutting itself down to prevent damage.
 
-Patches 16-17 enhance ext2fs_bmap2() to allow the creation of
-uninitialized extents.  The functionality is already there; really it
-just adds a flag to indicate uninitialized.  There's also a patch to
-the fileio routines to handle uninitialized extents.  These patches
-are unchanged from December.
+diff --git a/MCONFIG.in b/MCONFIG.in
+index 9b411d6..7e520be 100644
+--- a/MCONFIG.in
++++ b/MCONFIG.in
+@@ -53,7 +53,7 @@ datadir = @datadir@
+ @ifGNUmake@ CHECK=sparse
+ @ifGNUmake@ CHECK_OPTS=-Wsparse-all -Wno-transparent-union -Wno-return-void -Wno-undef -Wno-non-pointer-null
+ @ifGNUmake@ CPPCHECK=cppcheck
+-@ifGNUmake@ CPPCHECK_OPTS=--force --enable=all
++@ifGNUmake@ CPPCHECK_OPTS=--force --enable=all --quiet
+ @ifGNUmake@ ifeq ("$(C)", "2")
+ @ifGNUmake@   CHECK_CMD=$(CHECK) $(CHECK_OPTS) -Wbitwise -D__CHECK_ENDIAN__
+ @ifGNUmake@   CPPCHECK_CMD=$(CPPCHECK) $(CPPCHECK_OPTS)
+@@ -183,7 +183,7 @@ DEP_INSTALL_SYMLINK = $(top_builddir)/util/install-symlink \
+ # Run make gcc-wall to do a build with warning messages.
+ #
+ #
+-WFLAGS=		-std=c99 -D_XOPEN_SOURCE=600 -D_GNU_SOURCE \
++WFLAGS=		-std=gnu99 -D_XOPEN_SOURCE=600 -D_GNU_SOURCE \
+ 			-pedantic $(WFLAGS_EXTRA) \
+ 			-Wall -W -Wwrite-strings -Wpointer-arith \
+ 			-Wcast-qual -Wcast-align -Wno-variadic-macros \
+@@ -194,11 +194,18 @@ WFLAGS=		-std=c99 -D_XOPEN_SOURCE=600 -D_GNU_SOURCE \
+ 			-UENABLE_NLS
+ 
+ gcc-wall-new:
+-	(make CFLAGS="@CFLAGS@ $(WFLAGS)" > /dev/null) 2>&1 | sed -f $(top_srcdir)/util/gcc-wall-cleanup 
++	($(MAKE) CFLAGS="@CFLAGS@ $(WFLAGS)" > /dev/null) 2>&1 | sed -f $(top_srcdir)/util/gcc-wall-cleanup
+ 
+ gcc-wall:
+-	make clean > /dev/null
+-	make gcc-wall-new
++	$(MAKE) clean > /dev/null
++	$(MAKE) gcc-wall-new
++
++static-check:
++	($(MAKE) C=1 V=1 CFLAGS="@CFLAGS@ $(WFLAGS)") 2>&1 | sed -f $(top_srcdir)/util/static-analysis-cleanup
++
++static-check-all:
++	$(MAKE) clean > /dev/null
++	$(MAKE) static-check
+ 
+ #
+ # Installation user and groups
+diff --git a/debugfs/Makefile.in b/debugfs/Makefile.in
+index 34cdac1..5097749 100644
+--- a/debugfs/Makefile.in
++++ b/debugfs/Makefile.in
+@@ -46,7 +46,7 @@ STATIC_DEPLIBS= $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBSS) \
+ 	$(E) "	CC $<"
+ 	$(Q) $(CC) -c $(ALL_CFLAGS) $< -o $@
+ 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
+-	$(Q) $(CPPCHECK_CMD) $<
++	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
+ 
+ all:: $(PROGS) $(MANPAGES)
+ 
+diff --git a/e2fsck/Makefile.in b/e2fsck/Makefile.in
+index 5c8ce39..5a6883a 100644
+--- a/e2fsck/Makefile.in
++++ b/e2fsck/Makefile.in
+@@ -40,7 +40,7 @@ COMPILE_ET=$(top_builddir)/lib/et/compile_et --build-tree
+ 	$(E) "	CC $<"
+ 	$(Q) $(CC) -c $(ALL_CFLAGS) $< -o $@
+ 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
+-	$(Q) $(CPPCHECK_CMD) $<
++	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
+ @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
+ 
+ #
+diff --git a/ext2ed/Makefile.in b/ext2ed/Makefile.in
+index f05a562..0697431 100644
+--- a/ext2ed/Makefile.in
++++ b/ext2ed/Makefile.in
+@@ -34,7 +34,7 @@ DOCS=   doc/ext2ed-design.pdf doc/user-guide.pdf doc/ext2fs-overview.pdf \
+ .c.o:
+ 	$(CC) -c $(ALL_CFLAGS) $< -o $@
+ 	$(CHECK_CMD) $(ALL_CFLAGS) $<
+-	$(CPPCHECK_CMD) $<
++	$(CPPCHECK_CMD) $(CPPFLAGS) $<
+ 
+ .SUFFIXES: .sgml .ps .pdf .html
+ 
+diff --git a/intl/Makefile.in b/intl/Makefile.in
+index 07700c8..db6d7d7 100644
+--- a/intl/Makefile.in
++++ b/intl/Makefile.in
+@@ -62,7 +62,7 @@ mkinstalldirs = $(SHELL) $(MKINSTALLDIRS)
+ @ifGNUmake@ CHECK=sparse
+ @ifGNUmake@ CHECK_OPTS=-Wsparse-all -Wno-transparent-union -Wno-return-void -Wno-undef -Wno-non-pointer-null
+ @ifGNUmake@ CPPCHECK=cppcheck
+-@ifGNUmake@ CPPCHECK_OPTS=--force --enable=all
++@ifGNUmake@ CPPCHECK_OPTS=--force --enable=all --quiet --check-config
+ @ifGNUmake@ ifeq ("$(C)", "2")
+ @ifGNUmake@   CHECK_CMD=$(CHECK) $(CHECK_OPTS) -Wbitwise -D__CHECK_ENDIAN__
+ @ifGNUmake@   CPPCHECK_CMD=$(CPPCHECK) $(CPPCHECK_OPTS)
+@@ -212,7 +212,7 @@ LTV_AGE=4
+ 	$(E) "	CC $<"
+ 	$(Q) $(COMPILE) $<
+ 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
+-	$(Q) $(CPPCHECK_CMD) $<
++	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
+ 
+ .y.c:
+ 	$(YACC) $(YFLAGS) --output $@ $<
+diff --git a/lib/blkid/Makefile.in b/lib/blkid/Makefile.in
+index 69b5b4c..ecd0e8f 100644
+--- a/lib/blkid/Makefile.in
++++ b/lib/blkid/Makefile.in
+@@ -56,7 +56,7 @@ DEPLIBS_BLKID=	$(DEPSTATIC_LIBBLKID) $(DEPSTATIC_LIBUUID)
+ 	$(E) "	CC $<"
+ 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
+ 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
+-	$(Q) $(CPPCHECK_CMD) $<
++	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
+ @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
+ @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
+ @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
+diff --git a/lib/e2p/Makefile.in b/lib/e2p/Makefile.in
+index 761ac48..60920dd 100644
+--- a/lib/e2p/Makefile.in
++++ b/lib/e2p/Makefile.in
+@@ -56,7 +56,7 @@ BSDLIB_INSTALL_DIR = $(root_libdir)
+ 	$(E) "	CC $<"
+ 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
+ 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
+-	$(Q) $(CPPCHECK_CMD) $<
++	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
+ @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
+ @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
+ @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
+diff --git a/lib/et/Makefile.in b/lib/et/Makefile.in
+index 4f2d31f..db2e056 100644
+--- a/lib/et/Makefile.in
++++ b/lib/et/Makefile.in
+@@ -44,7 +44,7 @@ BSDLIB_INSTALL_DIR = $(root_libdir)
+ 	$(E) "	CC $<"
+ 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
+ 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
+-	$(Q) $(CPPCHECK_CMD) $<
++	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
+ @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
+ @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
+ @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
+diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
+index 0c880c7..f287a57 100644
+--- a/lib/ext2fs/Makefile.in
++++ b/lib/ext2fs/Makefile.in
+@@ -205,7 +205,7 @@ all:: ext2fs.pc
+ 	$(E) "	CC $<"
+ 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
+ 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
+-	$(Q) $(CPPCHECK_CMD) $<
++	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
+ @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
+ @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
+ @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
+diff --git a/lib/quota/Makefile.in b/lib/quota/Makefile.in
+index 0344d09..aa513a0 100644
+--- a/lib/quota/Makefile.in
++++ b/lib/quota/Makefile.in
+@@ -48,7 +48,7 @@ LIBDIR= quota
+ 	$(E) "	CC $<"
+ 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
+ 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
+-	$(Q) $(CPPCHECK_CMD) $<
++	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
+ @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
+ @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
+ #ELF_CMT#	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
+diff --git a/lib/ss/Makefile.in b/lib/ss/Makefile.in
+index 4c1ef8f..a94de79 100644
+--- a/lib/ss/Makefile.in
++++ b/lib/ss/Makefile.in
+@@ -35,7 +35,7 @@ MK_CMDS=_SS_DIR_OVERRIDE=. ./mk_cmds
+ 	$(E) "	CC $<"
+ 	$(Q) $(CC) $(ALL_CFLAGS) -c $<
+ 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
+-	$(Q) $(CPPCHECK_CMD) $<
++	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
+ @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
+ @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
+ @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -DSHARED_ELF_LIB -fPIC -o elfshared/$*.o -c $<
+diff --git a/lib/uuid/Makefile.in b/lib/uuid/Makefile.in
+index f5b767e..f436b36 100644
+--- a/lib/uuid/Makefile.in
++++ b/lib/uuid/Makefile.in
+@@ -63,7 +63,7 @@ BSDLIB_INSTALL_DIR = $(root_libdir)
+ 	$(E) "	CC $<"
+ 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
+ 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
+-	$(Q) $(CPPCHECK_CMD) $<
++	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
+ @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
+ @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
+ @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
+diff --git a/misc/Makefile.in b/misc/Makefile.in
+index 18a8a2f..7bd9b5f 100644
+--- a/misc/Makefile.in
++++ b/misc/Makefile.in
+@@ -103,7 +103,7 @@ COMPILE_ET=$(top_builddir)/lib/et/compile_et --build-tree
+ 	$(E) "	CC $<"
+ 	$(Q) $(CC) -c $(ALL_CFLAGS) $< -o $@
+ 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
+-	$(Q) $(CPPCHECK_CMD) $<
++	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
+ @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
+ 
+ all:: profiled $(SPROGS) $(UPROGS) $(USPROGS) $(SMANPAGES) $(UMANPAGES) \
+diff --git a/resize/Makefile.in b/resize/Makefile.in
+index 16f2a95..201e268 100644
+--- a/resize/Makefile.in
++++ b/resize/Makefile.in
+@@ -39,7 +39,7 @@ DEPSTATIC_LIBS= $(STATIC_LIBE2P) $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR)
+ 	$(E) "	CC $<"
+ 	$(Q) $(CC) -c $(ALL_CFLAGS) $< -o $@
+ 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
+-	$(Q) $(CPPCHECK_CMD) $<
++	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
+ 
+ all:: $(PROGS) $(TEST_PROGS) $(MANPAGES) 
+ 
+diff --git a/tests/progs/Makefile.in b/tests/progs/Makefile.in
+index 6c986e4..22d9417 100644
+--- a/tests/progs/Makefile.in
++++ b/tests/progs/Makefile.in
+@@ -28,7 +28,7 @@ DEPLIBS= $(LIBEXT2FS) $(DEPLIBSS) $(DEPLIBCOM_ERR)
+ 	$(E) "	CC $<"
+ 	$(Q) $(CC) -c $(ALL_CFLAGS) $< -o $@
+ 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
+-	$(Q) $(CPPCHECK_CMD) $<
++	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
+ 
+ all:: $(PROGS)
+ 
+diff --git a/util/Makefile.in b/util/Makefile.in
+index 2375e17..5171c1c 100644
+--- a/util/Makefile.in
++++ b/util/Makefile.in
+@@ -17,7 +17,7 @@ SRCS = $(srcdir)/subst.c
+ 	$(E) "	CC $<"
+ 	$(Q) $(BUILD_CC) -c $(BUILD_CFLAGS) $< -o $@
+ 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
+-	$(Q) $(CPPCHECK_CMD) $<
++	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
+ 
+ PROGS=		subst symlinks
+ 
+diff --git a/util/static-analysis-cleanup b/util/static-analysis-cleanup
+new file mode 100644
+index 0000000..6749259
+--- /dev/null
++++ b/util/static-analysis-cleanup
+@@ -0,0 +1,20 @@
++#!/bin/sed -f
++#
++# This script filters out gcc-wall crud that we're not interested in seeing.
++#
++/^cc /d
++/^kcc /d
++/^gcc /d
++/does not support `long long'/d
++/forbids long long integer constants/d
++/does not support the `ll' length modifier/d
++/does not support the `ll' printf length modifier/d
++/ANSI C forbids long long integer constants/d
++/traditional C rejects string concatenation/d
++/integer constant is unsigned in ANSI C, signed with -traditional/d
++/warning: missing initializer/d
++/warning: (near initialization for/d
++/^[ 	]*from/d
++/unused parameter/d
++/e2_types.h" not found.$/d
++/e2_bitops.h" not found.$/d
 
-Patches 18-20 add to resize2fs the ability to convert a filesystem to
-and from 64bit mode.  These patches are unchanged from December.
-
-Patches 21-24 implement readahead for e2fsck.  The first patch tries
-to reduce system call overhead by using pread/pwrite if available.
-The next two patches plumb in the IO manager and library changes
-necessary to read metadata blocks into the page cache (on Linux).  The
-final patch teaches e2fsck to use the library readahead functions in a
-separate thread.
-
-Crude testing has been done via:
-# echo 3 > /proc/sys/vm/drop_caches
-# e2fsck -Fnfvtt /dev/XXX
-
-So far in my crude testing on a cold system, I've seen about a ~20%
-speedup on a SSD, a ~40% speedup on a 3x RAID1 SATA array, and about
-a 10% speedup on a single-spindle SATA disk.  On a single-queue USB
-HDD, performance doesn't change much.  It looks as though low end
-storage like USB HDDs will not benefit, which doesn't surprise me.
-There's around a 2% regression for USB HDDs, though it doesn't seem
-statistically significant.  The SSD numbers are harder to quantify
-since they're already fast.  Somewhat unexpectedly, the readahead code
-speeds up e2fsck even when the page cache has already been warmed up.
-
-This third version of the readahead patches try to prevent page cache
-thrashing by limiting the amount of (user-configurable) readahead to a
-default of half of physical memory.  It also tries to release some of
-the memory pages if it can conclude that it's totally done with a
-block, and it can now detect very slow readahead and disable it.
-
-Patches 25-29 implement fallocate for e2fsprogs, and modifies Ted's
-mk_hugefiles functionality to use it.  The general fallocate API call
-is (regrettably) much more complex than Ted's, since it must grapple
-with the possibility that the file already has mapped blocks.  There
-were also a lot of bigalloc related subtleties.
-
-Patches 30-33 implement fuse2fs, a FUSE server based on libext2fs.
-Primarily I've been using it to shake out bugs in the library via
-xfstests and the metadata checksumming test program.  It can also be
-used to mount ext4 on any OS supporting FUSE, and it can also mount
-64k-block filesystems on x86, though I'd be wary of using rw mode.
-fuse2fs depends on these new APIs: xattr editing, uninit extent
-handling, and the new fallocate call.
-
-Patches 34-36 provide the metadata checksumming test script.  Its
-primary advantage over 'make check' is that it allows one to specify a 
-variety of different mkfs and mount options.  It's also growing more
-tests as a result of fuse2fs exercise.
-
-Patch 37 introduces ext5, which reduces our testing matrix by
-requiring a fairly large set of features and eliminating most mount
-options.  True, not all the features are stable or ready for
-production yet, but six years after ext4 we have a bunch of new
-features ready for wider testing.
-
-I've tested these e2fsprogs changes against the -next branch as of
-4/17.  These days, I use several VMs, each with 8GB ramdisks to test
-with; the test process is checkpatch > make C=1 > make check >
-metadata checksum tests > fuse + xfstests.
-
-Comments and questions are, as always, welcome.
-
---D
