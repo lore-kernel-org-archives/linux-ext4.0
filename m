@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 01/37] misc: create better-packaged static analysis reports
-Date: Thu, 01 May 2014 16:12:29 -0700
-Message-ID: <20140501231229.31890.25646.stgit@birch.djwong.org>
+Subject: [PATCH 02/37] misc: coverity fixes
+Date: Thu, 01 May 2014 16:12:36 -0700
+Message-ID: <20140501231236.31890.46904.stgit@birch.djwong.org>
 References: <20140501231222.31890.82860.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,312 +9,317 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:28022 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750782AbaEAXMf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 May 2014 19:12:35 -0400
+Received: from aserp1040.oracle.com ([141.146.126.69]:38578 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751187AbaEAXMl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 May 2014 19:12:41 -0400
 In-Reply-To: <20140501231222.31890.82860.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fix some minor bugs relating to passing CFLAGS to cppcheck, and
-package the cppcheck output into nicer looking reports.
+Fix various small resource leaks and error code handling issues that
+Coverity pointed out.
 
+Fixes-Coverity-Bugs: 11919{39-45}, 1174118, 1049160, 1049144
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- MCONFIG.in                   |   17 ++++++++++++-----
- debugfs/Makefile.in          |    2 +-
- e2fsck/Makefile.in           |    2 +-
- ext2ed/Makefile.in           |    2 +-
- intl/Makefile.in             |    4 ++--
- lib/blkid/Makefile.in        |    2 +-
- lib/e2p/Makefile.in          |    2 +-
- lib/et/Makefile.in           |    2 +-
- lib/ext2fs/Makefile.in       |    2 +-
- lib/quota/Makefile.in        |    2 +-
- lib/ss/Makefile.in           |    2 +-
- lib/uuid/Makefile.in         |    2 +-
- misc/Makefile.in             |    2 +-
- resize/Makefile.in           |    2 +-
- tests/progs/Makefile.in      |    2 +-
- util/Makefile.in             |    2 +-
- util/static-analysis-cleanup |   20 ++++++++++++++++++++
- 17 files changed, 48 insertions(+), 21 deletions(-)
- create mode 100644 util/static-analysis-cleanup
+ debugfs/xattrs.c    |   38 ++++++++++++++++++++------------------
+ lib/ext2fs/extent.c |    7 ++++---
+ lib/ext2fs/punch.c  |    2 +-
+ misc/create_inode.c |   34 ++++++++++++++++++++--------------
+ 4 files changed, 45 insertions(+), 36 deletions(-)
 
 
-diff --git a/MCONFIG.in b/MCONFIG.in
-index 9b411d6..7e520be 100644
---- a/MCONFIG.in
-+++ b/MCONFIG.in
-@@ -53,7 +53,7 @@ datadir = @datadir@
- @ifGNUmake@ CHECK=sparse
- @ifGNUmake@ CHECK_OPTS=-Wsparse-all -Wno-transparent-union -Wno-return-void -Wno-undef -Wno-non-pointer-null
- @ifGNUmake@ CPPCHECK=cppcheck
--@ifGNUmake@ CPPCHECK_OPTS=--force --enable=all
-+@ifGNUmake@ CPPCHECK_OPTS=--force --enable=all --quiet
- @ifGNUmake@ ifeq ("$(C)", "2")
- @ifGNUmake@   CHECK_CMD=$(CHECK) $(CHECK_OPTS) -Wbitwise -D__CHECK_ENDIAN__
- @ifGNUmake@   CPPCHECK_CMD=$(CPPCHECK) $(CPPCHECK_OPTS)
-@@ -183,7 +183,7 @@ DEP_INSTALL_SYMLINK = $(top_builddir)/util/install-symlink \
- # Run make gcc-wall to do a build with warning messages.
- #
- #
--WFLAGS=		-std=c99 -D_XOPEN_SOURCE=600 -D_GNU_SOURCE \
-+WFLAGS=		-std=gnu99 -D_XOPEN_SOURCE=600 -D_GNU_SOURCE \
- 			-pedantic $(WFLAGS_EXTRA) \
- 			-Wall -W -Wwrite-strings -Wpointer-arith \
- 			-Wcast-qual -Wcast-align -Wno-variadic-macros \
-@@ -194,11 +194,18 @@ WFLAGS=		-std=c99 -D_XOPEN_SOURCE=600 -D_GNU_SOURCE \
- 			-UENABLE_NLS
+diff --git a/debugfs/xattrs.c b/debugfs/xattrs.c
+index 0a29521..7109719 100644
+--- a/debugfs/xattrs.c
++++ b/debugfs/xattrs.c
+@@ -122,26 +122,26 @@ void do_get_xattr(int argc, char **argv)
+ 		default:
+ 			printf("%s: Usage: %s <file> <attr> [-f outfile]\n",
+ 			       argv[0], argv[0]);
+-			return;
++			goto out2;
+ 		}
+ 	}
  
- gcc-wall-new:
--	(make CFLAGS="@CFLAGS@ $(WFLAGS)" > /dev/null) 2>&1 | sed -f $(top_srcdir)/util/gcc-wall-cleanup 
-+	($(MAKE) CFLAGS="@CFLAGS@ $(WFLAGS)" > /dev/null) 2>&1 | sed -f $(top_srcdir)/util/gcc-wall-cleanup
+ 	if (optind != argc - 2) {
+ 		printf("%s: Usage: %s <file> <attr> [-f outfile]\n", argv[0],
+ 		       argv[0]);
+-		return;
++		goto out2;
+ 	}
  
- gcc-wall:
--	make clean > /dev/null
--	make gcc-wall-new
-+	$(MAKE) clean > /dev/null
-+	$(MAKE) gcc-wall-new
+ 	if (check_fs_open(argv[0]))
+-		return;
++		goto out2;
+ 
+ 	ino = string_to_inode(argv[optind]);
+ 	if (!ino)
+-		return;
++		goto out2;
+ 
+ 	err = ext2fs_xattrs_open(current_fs, ino, &h);
+ 	if (err)
+-		return;
++		goto out2;
+ 
+ 	err = ext2fs_xattrs_read(h);
+ 	if (err)
+@@ -153,18 +153,19 @@ void do_get_xattr(int argc, char **argv)
+ 
+ 	if (fp) {
+ 		fwrite(buf, buflen, 1, fp);
+-		fclose(fp);
+ 	} else {
+ 		dump_xattr_string(stdout, buf, buflen);
+ 		printf("\n");
+ 	}
+ 
+-	if (buf)
+-		ext2fs_free_mem(&buf);
++	ext2fs_free_mem(&buf);
+ out:
+ 	ext2fs_xattrs_close(&h);
+ 	if (err)
+ 		com_err(argv[0], err, "while getting extended attribute");
++out2:
++	if (fp)
++		fclose(fp);
+ }
+ 
+ void do_set_xattr(int argc, char **argv)
+@@ -190,30 +191,30 @@ void do_set_xattr(int argc, char **argv)
+ 		default:
+ 			printf("%s: Usage: %s <file> <attr> [-f infile | "
+ 			       "value]\n", argv[0], argv[0]);
+-			return;
++			goto out2;
+ 		}
+ 	}
+ 
+ 	if (optind != argc - 2 && optind != argc - 3) {
+ 		printf("%s: Usage: %s <file> <attr> [-f infile | value>]\n",
+ 		       argv[0], argv[0]);
+-		return;
++		goto out2;
+ 	}
+ 
+ 	if (check_fs_open(argv[0]))
+-		return;
++		goto out2;
+ 	if (check_fs_read_write(argv[0]))
+-		return;
++		goto out2;
+ 	if (check_fs_bitmaps(argv[0]))
+-		return;
++		goto out2;
+ 
+ 	ino = string_to_inode(argv[optind]);
+ 	if (!ino)
+-		return;
++		goto out2;
+ 
+ 	err = ext2fs_xattrs_open(current_fs, ino, &h);
+ 	if (err)
+-		return;
++		goto out2;
+ 
+ 	err = ext2fs_xattrs_read(h);
+ 	if (err)
+@@ -238,13 +239,14 @@ void do_set_xattr(int argc, char **argv)
+ 		goto out;
+ 
+ out:
++	ext2fs_xattrs_close(&h);
++	if (err)
++		com_err(argv[0], err, "while setting extended attribute");
++out2:
+ 	if (fp) {
+ 		fclose(fp);
+ 		ext2fs_free_mem(&buf);
+ 	}
+-	ext2fs_xattrs_close(&h);
+-	if (err)
+-		com_err(argv[0], err, "while setting extended attribute");
+ }
+ 
+ void do_rm_xattr(int argc, char **argv)
+diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
+index 80ce88f..30673b5 100644
+--- a/lib/ext2fs/extent.c
++++ b/lib/ext2fs/extent.c
+@@ -1482,7 +1482,7 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
+ 			if (retval) {
+ 				r2 = ext2fs_extent_goto(handle, orig_lblk);
+ 				if (r2 == 0)
+-					ext2fs_extent_replace(handle, 0,
++					(void)ext2fs_extent_replace(handle, 0,
+ 							      &orig_extent);
+ 				goto done;
+ 			}
+@@ -1498,11 +1498,12 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
+ 				r2 = ext2fs_extent_goto(handle,
+ 							newextent.e_lblk);
+ 				if (r2 == 0)
+-					ext2fs_extent_delete(handle, 0);
++					(void)ext2fs_extent_delete(handle, 0);
+ 			}
+ 			r2 = ext2fs_extent_goto(handle, orig_lblk);
+ 			if (r2 == 0)
+-				ext2fs_extent_replace(handle, 0, &orig_extent);
++				(void)ext2fs_extent_replace(handle, 0,
++							    &orig_extent);
+ 			goto done;
+ 		}
+ 	}
+diff --git a/lib/ext2fs/punch.c b/lib/ext2fs/punch.c
+index 60cd2a3..c9250cd 100644
+--- a/lib/ext2fs/punch.c
++++ b/lib/ext2fs/punch.c
+@@ -403,7 +403,7 @@ static errcode_t ext2fs_punch_extent(ext2_filsys fs, ext2_ino_t ino,
+ 			retval = 0;
+ 
+ 			/* Jump forward to the next extent. */
+-			ext2fs_extent_goto(handle, next_lblk);
++			(void)ext2fs_extent_goto(handle, next_lblk);
+ 			op = EXT2_EXTENT_CURRENT;
+ 		}
+ 		if (retval)
+diff --git a/misc/create_inode.c b/misc/create_inode.c
+index 964c66a..4bb5e5b 100644
+--- a/misc/create_inode.c
++++ b/misc/create_inode.c
+@@ -465,7 +465,7 @@ static errcode_t __populate_fs(ext2_filsys fs, ext2_ino_t parent_ino,
+ 	char		ln_target[PATH_MAX];
+ 	unsigned int	save_inode;
+ 	ext2_ino_t	ino;
+-	errcode_t	retval;
++	errcode_t	retval = 0;
+ 	int		read_cnt;
+ 	int		hdlink;
+ 
+@@ -486,7 +486,11 @@ static errcode_t __populate_fs(ext2_filsys fs, ext2_ino_t parent_ino,
+ 		if ((!strcmp(dent->d_name, ".")) ||
+ 		    (!strcmp(dent->d_name, "..")))
+ 			continue;
+-		lstat(dent->d_name, &st);
++		if (lstat(dent->d_name, &st)) {
++			com_err(__func__, errno, _("while lstat \"%s\""),
++				dent->d_name);
++			goto out;
++		}
+ 		name = dent->d_name;
+ 
+ 		/* Check for hardlinks */
+@@ -501,7 +505,7 @@ static errcode_t __populate_fs(ext2_filsys fs, ext2_ino_t parent_ino,
+ 				if (retval) {
+ 					com_err(__func__, retval,
+ 						"while linking %s", name);
+-					return retval;
++					goto out;
+ 				}
+ 				continue;
+ 			} else
+@@ -517,7 +521,7 @@ static errcode_t __populate_fs(ext2_filsys fs, ext2_ino_t parent_ino,
+ 				com_err(__func__, retval,
+ 					_("while creating special file "
+ 					  "\"%s\""), name);
+-				return retval;
++				goto out;
+ 			}
+ 			break;
+ 		case S_IFSOCK:
+@@ -527,7 +531,7 @@ static errcode_t __populate_fs(ext2_filsys fs, ext2_ino_t parent_ino,
+ 			continue;
+ 		case S_IFLNK:
+ 			read_cnt = readlink(name, ln_target,
+-					    sizeof(ln_target));
++					    sizeof(ln_target) - 1);
+ 			if (read_cnt == -1) {
+ 				com_err(__func__, errno,
+ 					_("while trying to readlink \"%s\""),
+@@ -541,7 +545,7 @@ static errcode_t __populate_fs(ext2_filsys fs, ext2_ino_t parent_ino,
+ 				com_err(__func__, retval,
+ 					_("while writing symlink\"%s\""),
+ 					name);
+-				return retval;
++				goto out;
+ 			}
+ 			break;
+ 		case S_IFREG:
+@@ -550,7 +554,7 @@ static errcode_t __populate_fs(ext2_filsys fs, ext2_ino_t parent_ino,
+ 			if (retval) {
+ 				com_err(__func__, retval,
+ 					_("while writing file \"%s\""), name);
+-				return retval;
++				goto out;
+ 			}
+ 			break;
+ 		case S_IFDIR:
+@@ -559,25 +563,25 @@ static errcode_t __populate_fs(ext2_filsys fs, ext2_ino_t parent_ino,
+ 			if (retval) {
+ 				com_err(__func__, retval,
+ 					_("while making dir \"%s\""), name);
+-				return retval;
++				goto out;
+ 			}
+ 			retval = ext2fs_namei(fs, root, parent_ino,
+ 					      name, &ino);
+ 			if (retval) {
+ 				com_err(name, retval, 0);
+-					return retval;
++					goto out;
+ 			}
+ 			/* Populate the dir recursively*/
+ 			retval = __populate_fs(fs, ino, name, root, hdlinks);
+ 			if (retval) {
+ 				com_err(__func__, retval,
+ 					_("while adding dir \"%s\""), name);
+-				return retval;
++				goto out;
+ 			}
+ 			if (chdir("..")) {
+ 				com_err(__func__, errno,
+ 					_("during cd .."));
+-				return errno;
++				goto out;
+ 			}
+ 			break;
+ 		default:
+@@ -588,14 +592,14 @@ static errcode_t __populate_fs(ext2_filsys fs, ext2_ino_t parent_ino,
+ 		retval =  ext2fs_namei(fs, root, parent_ino, name, &ino);
+ 		if (retval) {
+ 			com_err(name, retval, 0);
+-			return retval;
++			goto out;
+ 		}
+ 
+ 		retval = set_inode_extra(fs, parent_ino, ino, &st);
+ 		if (retval) {
+ 			com_err(__func__, retval,
+ 				_("while setting inode for \"%s\""), name);
+-			return retval;
++			goto out;
+ 		}
+ 
+ 		/* Save the hardlink ino */
+@@ -612,7 +616,7 @@ static errcode_t __populate_fs(ext2_filsys fs, ext2_ino_t parent_ino,
+ 				if (p == NULL) {
+ 					com_err(name, errno,
+ 						_("Not enough memory"));
+-					return errno;
++					goto out;
+ 				}
+ 				hdlinks->hdl = p;
+ 				hdlinks->size += HDLINK_CNT;
+@@ -623,6 +627,8 @@ static errcode_t __populate_fs(ext2_filsys fs, ext2_ino_t parent_ino,
+ 			hdlinks->count++;
+ 		}
+ 	}
 +
-+static-check:
-+	($(MAKE) C=1 V=1 CFLAGS="@CFLAGS@ $(WFLAGS)") 2>&1 | sed -f $(top_srcdir)/util/static-analysis-cleanup
-+
-+static-check-all:
-+	$(MAKE) clean > /dev/null
-+	$(MAKE) static-check
- 
- #
- # Installation user and groups
-diff --git a/debugfs/Makefile.in b/debugfs/Makefile.in
-index 34cdac1..5097749 100644
---- a/debugfs/Makefile.in
-+++ b/debugfs/Makefile.in
-@@ -46,7 +46,7 @@ STATIC_DEPLIBS= $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBSS) \
- 	$(E) "	CC $<"
- 	$(Q) $(CC) -c $(ALL_CFLAGS) $< -o $@
- 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
--	$(Q) $(CPPCHECK_CMD) $<
-+	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
- 
- all:: $(PROGS) $(MANPAGES)
- 
-diff --git a/e2fsck/Makefile.in b/e2fsck/Makefile.in
-index 5c8ce39..5a6883a 100644
---- a/e2fsck/Makefile.in
-+++ b/e2fsck/Makefile.in
-@@ -40,7 +40,7 @@ COMPILE_ET=$(top_builddir)/lib/et/compile_et --build-tree
- 	$(E) "	CC $<"
- 	$(Q) $(CC) -c $(ALL_CFLAGS) $< -o $@
- 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
--	$(Q) $(CPPCHECK_CMD) $<
-+	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
- @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
- 
- #
-diff --git a/ext2ed/Makefile.in b/ext2ed/Makefile.in
-index f05a562..0697431 100644
---- a/ext2ed/Makefile.in
-+++ b/ext2ed/Makefile.in
-@@ -34,7 +34,7 @@ DOCS=   doc/ext2ed-design.pdf doc/user-guide.pdf doc/ext2fs-overview.pdf \
- .c.o:
- 	$(CC) -c $(ALL_CFLAGS) $< -o $@
- 	$(CHECK_CMD) $(ALL_CFLAGS) $<
--	$(CPPCHECK_CMD) $<
-+	$(CPPCHECK_CMD) $(CPPFLAGS) $<
- 
- .SUFFIXES: .sgml .ps .pdf .html
- 
-diff --git a/intl/Makefile.in b/intl/Makefile.in
-index 07700c8..db6d7d7 100644
---- a/intl/Makefile.in
-+++ b/intl/Makefile.in
-@@ -62,7 +62,7 @@ mkinstalldirs = $(SHELL) $(MKINSTALLDIRS)
- @ifGNUmake@ CHECK=sparse
- @ifGNUmake@ CHECK_OPTS=-Wsparse-all -Wno-transparent-union -Wno-return-void -Wno-undef -Wno-non-pointer-null
- @ifGNUmake@ CPPCHECK=cppcheck
--@ifGNUmake@ CPPCHECK_OPTS=--force --enable=all
-+@ifGNUmake@ CPPCHECK_OPTS=--force --enable=all --quiet --check-config
- @ifGNUmake@ ifeq ("$(C)", "2")
- @ifGNUmake@   CHECK_CMD=$(CHECK) $(CHECK_OPTS) -Wbitwise -D__CHECK_ENDIAN__
- @ifGNUmake@   CPPCHECK_CMD=$(CPPCHECK) $(CPPCHECK_OPTS)
-@@ -212,7 +212,7 @@ LTV_AGE=4
- 	$(E) "	CC $<"
- 	$(Q) $(COMPILE) $<
- 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
--	$(Q) $(CPPCHECK_CMD) $<
-+	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
- 
- .y.c:
- 	$(YACC) $(YFLAGS) --output $@ $<
-diff --git a/lib/blkid/Makefile.in b/lib/blkid/Makefile.in
-index 69b5b4c..ecd0e8f 100644
---- a/lib/blkid/Makefile.in
-+++ b/lib/blkid/Makefile.in
-@@ -56,7 +56,7 @@ DEPLIBS_BLKID=	$(DEPSTATIC_LIBBLKID) $(DEPSTATIC_LIBUUID)
- 	$(E) "	CC $<"
- 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
- 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
--	$(Q) $(CPPCHECK_CMD) $<
-+	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
- @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
- @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
- @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
-diff --git a/lib/e2p/Makefile.in b/lib/e2p/Makefile.in
-index 761ac48..60920dd 100644
---- a/lib/e2p/Makefile.in
-+++ b/lib/e2p/Makefile.in
-@@ -56,7 +56,7 @@ BSDLIB_INSTALL_DIR = $(root_libdir)
- 	$(E) "	CC $<"
- 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
- 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
--	$(Q) $(CPPCHECK_CMD) $<
-+	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
- @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
- @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
- @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
-diff --git a/lib/et/Makefile.in b/lib/et/Makefile.in
-index 4f2d31f..db2e056 100644
---- a/lib/et/Makefile.in
-+++ b/lib/et/Makefile.in
-@@ -44,7 +44,7 @@ BSDLIB_INSTALL_DIR = $(root_libdir)
- 	$(E) "	CC $<"
- 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
- 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
--	$(Q) $(CPPCHECK_CMD) $<
-+	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
- @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
- @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
- @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
-diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
-index 0c880c7..f287a57 100644
---- a/lib/ext2fs/Makefile.in
-+++ b/lib/ext2fs/Makefile.in
-@@ -205,7 +205,7 @@ all:: ext2fs.pc
- 	$(E) "	CC $<"
- 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
- 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
--	$(Q) $(CPPCHECK_CMD) $<
-+	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
- @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
- @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
- @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
-diff --git a/lib/quota/Makefile.in b/lib/quota/Makefile.in
-index 0344d09..aa513a0 100644
---- a/lib/quota/Makefile.in
-+++ b/lib/quota/Makefile.in
-@@ -48,7 +48,7 @@ LIBDIR= quota
- 	$(E) "	CC $<"
- 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
- 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
--	$(Q) $(CPPCHECK_CMD) $<
-+	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
- @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
- @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
- #ELF_CMT#	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
-diff --git a/lib/ss/Makefile.in b/lib/ss/Makefile.in
-index 4c1ef8f..a94de79 100644
---- a/lib/ss/Makefile.in
-+++ b/lib/ss/Makefile.in
-@@ -35,7 +35,7 @@ MK_CMDS=_SS_DIR_OVERRIDE=. ./mk_cmds
- 	$(E) "	CC $<"
- 	$(Q) $(CC) $(ALL_CFLAGS) -c $<
- 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
--	$(Q) $(CPPCHECK_CMD) $<
-+	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
- @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
- @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
- @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -DSHARED_ELF_LIB -fPIC -o elfshared/$*.o -c $<
-diff --git a/lib/uuid/Makefile.in b/lib/uuid/Makefile.in
-index f5b767e..f436b36 100644
---- a/lib/uuid/Makefile.in
-+++ b/lib/uuid/Makefile.in
-@@ -63,7 +63,7 @@ BSDLIB_INSTALL_DIR = $(root_libdir)
- 	$(E) "	CC $<"
- 	$(Q) $(CC) $(ALL_CFLAGS) -c $< -o $@
- 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
--	$(Q) $(CPPCHECK_CMD) $<
-+	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
- @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
- @CHECKER_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -checker -g -o checker/$*.o -c $<
- @ELF_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
-diff --git a/misc/Makefile.in b/misc/Makefile.in
-index 18a8a2f..7bd9b5f 100644
---- a/misc/Makefile.in
-+++ b/misc/Makefile.in
-@@ -103,7 +103,7 @@ COMPILE_ET=$(top_builddir)/lib/et/compile_et --build-tree
- 	$(E) "	CC $<"
- 	$(Q) $(CC) -c $(ALL_CFLAGS) $< -o $@
- 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
--	$(Q) $(CPPCHECK_CMD) $<
-+	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
- @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
- 
- all:: profiled $(SPROGS) $(UPROGS) $(USPROGS) $(SMANPAGES) $(UMANPAGES) \
-diff --git a/resize/Makefile.in b/resize/Makefile.in
-index 16f2a95..201e268 100644
---- a/resize/Makefile.in
-+++ b/resize/Makefile.in
-@@ -39,7 +39,7 @@ DEPSTATIC_LIBS= $(STATIC_LIBE2P) $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR)
- 	$(E) "	CC $<"
- 	$(Q) $(CC) -c $(ALL_CFLAGS) $< -o $@
- 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
--	$(Q) $(CPPCHECK_CMD) $<
-+	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
- 
- all:: $(PROGS) $(TEST_PROGS) $(MANPAGES) 
- 
-diff --git a/tests/progs/Makefile.in b/tests/progs/Makefile.in
-index 6c986e4..22d9417 100644
---- a/tests/progs/Makefile.in
-+++ b/tests/progs/Makefile.in
-@@ -28,7 +28,7 @@ DEPLIBS= $(LIBEXT2FS) $(DEPLIBSS) $(DEPLIBCOM_ERR)
- 	$(E) "	CC $<"
- 	$(Q) $(CC) -c $(ALL_CFLAGS) $< -o $@
- 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
--	$(Q) $(CPPCHECK_CMD) $<
-+	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
- 
- all:: $(PROGS)
- 
-diff --git a/util/Makefile.in b/util/Makefile.in
-index 2375e17..5171c1c 100644
---- a/util/Makefile.in
-+++ b/util/Makefile.in
-@@ -17,7 +17,7 @@ SRCS = $(srcdir)/subst.c
- 	$(E) "	CC $<"
- 	$(Q) $(BUILD_CC) -c $(BUILD_CFLAGS) $< -o $@
- 	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
--	$(Q) $(CPPCHECK_CMD) $<
-+	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
- 
- PROGS=		subst symlinks
- 
-diff --git a/util/static-analysis-cleanup b/util/static-analysis-cleanup
-new file mode 100644
-index 0000000..6749259
---- /dev/null
-+++ b/util/static-analysis-cleanup
-@@ -0,0 +1,20 @@
-+#!/bin/sed -f
-+#
-+# This script filters out gcc-wall crud that we're not interested in seeing.
-+#
-+/^cc /d
-+/^kcc /d
-+/^gcc /d
-+/does not support `long long'/d
-+/forbids long long integer constants/d
-+/does not support the `ll' length modifier/d
-+/does not support the `ll' printf length modifier/d
-+/ANSI C forbids long long integer constants/d
-+/traditional C rejects string concatenation/d
-+/integer constant is unsigned in ANSI C, signed with -traditional/d
-+/warning: missing initializer/d
-+/warning: (near initialization for/d
-+/^[ 	]*from/d
-+/unused parameter/d
-+/e2_types.h" not found.$/d
-+/e2_bitops.h" not found.$/d
++out:
+ 	closedir(dh);
+ 	return retval;
+ }
 
