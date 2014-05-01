@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 33/37] fuse2fs: implement fallocate
-Date: Thu, 01 May 2014 16:16:00 -0700
-Message-ID: <20140501231600.31890.94443.stgit@birch.djwong.org>
+Subject: [PATCH 35/37] tests: enable using fuse2fs with metadata checksum
+ test
+Date: Thu, 01 May 2014 16:16:16 -0700
+Message-ID: <20140501231616.31890.76143.stgit@birch.djwong.org>
 References: <20140501231222.31890.82860.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,90 +10,85 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:39566 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752280AbaEAXQF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 May 2014 19:16:05 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:29180 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750904AbaEAXQV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 May 2014 19:16:21 -0400
 In-Reply-To: <20140501231222.31890.82860.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Use the (new) ext2fs_fallocate() to fallocate file space.
+Create custom mount/umount commands so that we can run the metadata
+checksumming tests against fuse2fs.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- misc/fuse2fs.c |   59 +++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 58 insertions(+), 1 deletion(-)
+ tests/fuse2fs/mount  |   28 ++++++++++++++++++++++++++++
+ tests/fuse2fs/umount |   21 +++++++++++++++++++++
+ 2 files changed, 49 insertions(+)
+ create mode 100755 tests/fuse2fs/mount
+ create mode 100755 tests/fuse2fs/umount
 
 
-diff --git a/misc/fuse2fs.c b/misc/fuse2fs.c
-index 5306c4f..b161720 100644
---- a/misc/fuse2fs.c
-+++ b/misc/fuse2fs.c
-@@ -3276,7 +3276,64 @@ out:
- static int fallocate_helper(struct fuse_file_info *fp, int mode, off_t offset,
- 			    off_t len)
- {
--	return -EOPNOTSUPP;
-+	struct fuse_context *ctxt = fuse_get_context();
-+	struct fuse2fs *ff = (struct fuse2fs *)ctxt->private_data;
-+	struct fuse2fs_file_handle *fh = (struct fuse2fs_file_handle *)fp->fh;
-+	ext2_filsys fs;
-+	struct ext2_inode_large inode;
-+	blk64_t start, end, x;
-+	__u64 fsize;
-+	errcode_t err;
-+	int flags;
-+	int ret = 0;
+diff --git a/tests/fuse2fs/mount b/tests/fuse2fs/mount
+new file mode 100755
+index 0000000..321b1f5
+--- /dev/null
++++ b/tests/fuse2fs/mount
+@@ -0,0 +1,28 @@
++#!/bin/bash
 +
-+	FUSE2FS_CHECK_CONTEXT(ff);
-+	fs = ff->fs;
-+	FUSE2FS_CHECK_MAGIC(fs, fh, FUSE2FS_FILE_MAGIC);
-+	start = offset / fs->blocksize;
-+	end = (offset + len - 1) / fs->blocksize;
-+	dbg_printf("%s: ino=%d mode=0x%x start=%jd end=%llu\n", __func__,
-+		   fh->ino, mode, offset / fs->blocksize, end);
-+	if (!fs_can_allocate(ff, len / fs->blocksize))
-+		return -ENOSPC;
++# Mount ext4 via fuse.  Put tests/fuse2fs/ at the start of PATH if you want
++# to run the metadata checksumming tests with fuse2fs.
 +
-+	memset(&inode, 0, sizeof(inode));
-+	err = ext2fs_read_inode_full(fs, fh->ino, (struct ext2_inode *)&inode,
-+				     sizeof(inode));
-+	if (err)
-+		return err;
-+	fsize = EXT2_I_SIZE(&inode);
++for arg in "$@"; do
++	if [ -b "${arg}" ]; then
++		DEV="${arg}"
++	elif [ -d "${arg}" ]; then
++		MNT="${arg}"
++	fi
++done
 +
-+	/* Allocate a bunch of blocks */
-+	flags = (mode & FL_KEEP_SIZE_FLAG ? 0 :
-+			EXT2_FALLOCATE_INIT_BEYOND_EOF);
-+	err = ext2fs_fallocate(fs, flags, fh->ino,
-+			       (struct ext2_inode *)&inode,
-+			       start, end - start + 1);
-+	if (err && err != EXT2_ET_BLOCK_ALLOC_FAIL)
-+		return translate_error(fs, fh->ino, err);
++if [ -z "${DEV}" -o -z "${MNT}" ]; then
++	echo "Please specify a device and a mountpoint."
++fi
 +
-+	/* Update i_size */
-+	if (!(mode & FL_KEEP_SIZE_FLAG)) {
-+		if (offset + len > fsize) {
-+			err = ext2fs_inode_set_size(fs,
-+						(struct ext2_inode *)&inode,
-+						offset + len);
-+			if (err)
-+				return translate_error(fs, fh->ino, err);
-+		}
-+	}
++DIR="$(readlink -f "$(dirname "$0")")"
++if [ -n "${FUSE2FS_DEBUG}" ]; then
++	"${DIR}/../../misc/fuse2fs" "${DEV}" "${MNT}" -d >> "${FUSE2FS_DEBUG}" 2>&1 &
++	sleep 1
++	exit 0
++else
++	"${DIR}/../../misc/fuse2fs" "${DEV}" "${MNT}"
++	ERR=$?
++	sleep 1
++	exit "${ERR}"
++fi
+diff --git a/tests/fuse2fs/umount b/tests/fuse2fs/umount
+new file mode 100755
+index 0000000..b21ee5a
+--- /dev/null
++++ b/tests/fuse2fs/umount
+@@ -0,0 +1,21 @@
++#!/bin/bash
 +
-+	err = update_mtime(fs, fh->ino, &inode);
-+	if (err)
-+		return err;
++# unmount a filesystem
++sync
++sync
++sync
 +
-+	err = ext2fs_write_inode_full(fs, fh->ino, (struct ext2_inode *)&inode,
-+				      sizeof(inode));
-+	if (err)
-+		return translate_error(fs, fh->ino, err);
++sleep 2
++if [ -x /bin/umount ]; then
++	/bin/umount "$@"
++	ERR=$?
++elif [ -x /sbin/umount ]; then
++	/sbin/umount "$@"
++	ERR=$?
++else
++	echo "Where is umount?"
++	exit 5
++fi
++sleep 1
 +
-+	return err;
- }
- 
- static errcode_t clean_block_middle(ext2_filsys fs, ext2_ino_t ino,
++exit "${ERR}"
 
