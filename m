@@ -1,79 +1,56 @@
 From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 06/37] debugfs: force logdump to display (old) journal
- contents
-Date: Fri, 2 May 2014 13:49:37 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1405021346570.2154@localhost.localdomain>
-References: <20140501231222.31890.82860.stgit@birch.djwong.org> <20140501231302.31890.45397.stgit@birch.djwong.org>
+Subject: Re: [PATCH 08/37] mke2fs: set gdt csum when creating packed fs
+Date: Fri, 2 May 2014 13:55:59 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1405021355380.2154@localhost.localdomain>
+References: <20140501231222.31890.82860.stgit@birch.djwong.org> <20140501231315.31890.10293.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28808 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:60293 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751733AbaEBLtn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 2 May 2014 07:49:43 -0400
-In-Reply-To: <20140501231302.31890.45397.stgit@birch.djwong.org>
+	id S1751733AbaEBL4E (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 2 May 2014 07:56:04 -0400
+In-Reply-To: <20140501231315.31890.10293.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 On Thu, 1 May 2014, Darrick J. Wong wrote:
 
-> Date: Thu, 01 May 2014 16:13:02 -0700
+> Date: Thu, 01 May 2014 16:13:15 -0700
 > From: Darrick J. Wong <darrick.wong@oracle.com>
 > To: tytso@mit.edu, darrick.wong@oracle.com
 > Cc: linux-ext4@vger.kernel.org
-> Subject: [PATCH 06/37] debugfs: force logdump to display (old) journal
->     contents
+> Subject: [PATCH 08/37] mke2fs: set gdt csum when creating packed fs
 > 
-> If the user passes -a more than once to logdump, try to dump old log
-> contents.  This can be used to try to track down journal problems even
-> after recovery.
+> When we're creating a fs with metadata blocks packed at the beginning
+> (packed_meta_blocks=1 in mke2fs.conf), set the group descriptor
+> checksum or else we create DOA filesystems with checksum errors.
 
-You need to update man page as well for this. Also I wonder what's
-the behaviour if '-a' and '-b' or '-c' are specified simultaneously
-and '-a' is specified multiple times ?
+Makes sense. Thanks!
 
-Thanks!
--Lukas
+Reviewed-by: Lukas Czerner <lczerner@redhat.com>
 
 > 
 > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 > ---
->  debugfs/logdump.c |   11 ++++++++---
->  1 file changed, 8 insertions(+), 3 deletions(-)
+>  misc/mke2fs.c |    1 +
+>  1 file changed, 1 insertion(+)
 > 
 > 
-> diff --git a/debugfs/logdump.c b/debugfs/logdump.c
-> index 8b9dc5b..bf4bef5 100644
-> --- a/debugfs/logdump.c
-> +++ b/debugfs/logdump.c
-> @@ -393,9 +393,13 @@ static void dump_journal(char *cmdname, FILE *out_file,
->  	fprintf(out_file, "Journal starts at block %u, transaction %u\n",
->  		blocknr, transaction);
->  
-> -	if (!blocknr)
-> +	if (!blocknr) {
->  		/* Empty journal, nothing to do. */
-> -		return;
-> +		if (dump_all < 2)
-> +			return;
-> +		else
-> +			blocknr = 1;
-> +	}
->  
->  	while (1) {
->  		retval = read_journal_block(cmdname, source,
-> @@ -420,7 +424,8 @@ static void dump_journal(char *cmdname, FILE *out_file,
->  			fprintf (out_file, "Found sequence %u (not %u) at "
->  				 "block %u: end of journal.\n",
->  				 sequence, transaction, blocknr);
-> -			return;
-> +			if (dump_all < 2)
-> +				return;
->  		}
->  
->  		if (dump_descriptors) {
+> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+> index 6507d0d..fd6259d 100644
+> --- a/misc/mke2fs.c
+> +++ b/misc/mke2fs.c
+> @@ -383,6 +383,7 @@ static errcode_t packed_allocate_tables(ext2_filsys fs)
+>  		ext2fs_block_alloc_stats_range(fs, goal,
+>  					       fs->inode_blocks_per_group, +1);
+>  		ext2fs_inode_table_loc_set(fs, i, goal);
+> +		ext2fs_group_desc_csum_set(fs, i);
+>  	}
+>  	return 0;
+>  }
 > 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
