@@ -1,98 +1,59 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 2/3] mke2fs: print extra information about existing
- ext2/3/4 file systems
-Date: Mon, 5 May 2014 16:51:25 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1405051649050.2223@localhost.localdomain>
-References: <1399295044-24489-1-git-send-email-tytso@mit.edu> <1399295044-24489-2-git-send-email-tytso@mit.edu> <alpine.LFD.2.00.1405051541080.2223@localhost.localdomain> <20140505140401.GD22287@thunk.org> <20140505142808.GF22287@thunk.org>
- <alpine.LFD.2.00.1405051629270.2223@localhost.localdomain> <20140505144423.GG22287@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 3/3] mke2fs: check for a partition table and warn if
+ present
+Date: Mon, 5 May 2014 09:58:04 -0400
+Message-ID: <20140505135804.GC22287@thunk.org>
+References: <1399295044-24489-1-git-send-email-tytso@mit.edu>
+ <1399295044-24489-3-git-send-email-tytso@mit.edu>
+ <alpine.LFD.2.00.1405051549310.2223@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-507638579-1399301491=:2223"
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>, kzak@redhat.com,
-	linux-fsdevel@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20140505144423.GG22287@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:49771 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932739AbaEEN6H (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 May 2014 09:58:07 -0400
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1405051549310.2223@localhost.localdomain>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+On Mon, May 05, 2014 at 03:52:05PM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
+:
+> > +	ret =3D check_partition_table(device);
+>=20
+> This can be actually used to check more than just partitions. So we
+> can use this approach to check for all rather than having separate
+> checks for file system signatures and partitions.
 
---8323328-507638579-1399301491=:2223
-Content-Type: TEXT/PLAIN; charset=utf-8
-Content-Transfer-Encoding: 8BIT
+The issue is that e2fsprogs gets compiled for systems other than just
+Linux.  I don't want to be like the assholes who work on systemd and
+GNOME that simply screw over *BSD systems.  This is why I keep our
+internal version of blkid in e2fsprogs, even if I do plan to use the
+system blkid by default for 1.43.
 
-On Mon, 5 May 2014, Theodore Ts'o wrote:
+If I had infinite amounts of free time, I'd backport the the new
+blkid_probe interfaces to our internal version of blkid, but since I
+don't, I prefer use the old interfaces for blkid as much as possible,
+since that's the path of least resistance in terms of continuing to
+support non-Linux users of e2fsprogs.
 
-> Date: Mon, 5 May 2014 10:44:23 -0400
-> From: Theodore Ts'o <tytso@mit.edu>
-> To: Lukáš Czerner <lczerner@redhat.com>
-> Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>, kzak@redhat.com,
->     linux-fsdevel@vger.kernel.org
-> Subject: Re: [PATCH 2/3] mke2fs: print extra information about existing
->     ext2/3/4 file systems
-> 
-> On Mon, May 05, 2014 at 04:38:37PM +0200, Lukáš Czerner wrote:
-> > > % ./misc/mke2fs -t ext4 /dev/sdc3
-> > > mke2fs 1.42.9 (4-Feb-2014)
-> > > /dev/sdc3 contains a ext4 file system
-> > > 	last mounted on /SOX-backups on Mon May  5 08:59:53 2014
-> > > Proceed anyway? (y,n) 
-> > > 
-> > > ... where this becomes a last-ditch saving through against the
-> > > accidental wiping of the enterprise's Sarbanes-Oxley records.  :-)
-> > > 
-> > 
-> > Yep, it's really useful. I just was not sure what is this all about since
-> > there was not description and I was missing context from the other patches.
-> > 
-> > But this makes me think that it would be very useful if blkid could
-> > gather this information for other file system if possible :). This
-> > might be very useful if we can get some overlap with other file
-> > system with the information provided in superblock.
-> 
-> Unfortunately, as far as I know, none of the other file systems
-> currently save the location where the file system was last mounted.
-> And to be honest, the way we do it in ext4 is a horrible hack (get out
-> your barf bags!):
-> 
-> static int ext4_file_open(struct inode * inode, struct file * filp)
-> {
-> 	struct super_block *sb = inode->i_sb;
-> 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-> 	struct vfsmount *mnt = filp->f_path.mnt;
-> 	struct path path;
-> 	char buf[64], *cp;
-> 
-> 	if (unlikely(!(sbi->s_mount_flags & EXT4_MF_MNTDIR_SAMPLED) &&
-> 		     !(sb->s_flags & MS_RDONLY))) {
-> 		sbi->s_mount_flags |= EXT4_MF_MNTDIR_SAMPLED;
-> 		/*
-> 		 * Sample where the filesystem has been mounted and
-> 		 * store it in the superblock for sysadmin convenience
-> 		 * when trying to sort through large numbers of block
-> 		 * devices or filesystem images.
-> 		 */
-> 		memset(buf, 0, sizeof(buf));
-> 		path.mnt = mnt;
-> 		path.dentry = mnt->mnt_root;
-> 		cp = d_path(&path, buf, sizeof(buf));
-> 		...
-> 
-> What we would need to do is file a feature request in the other file
-> systems to save this information, and then add proper support for to
-> pass this information from the VFS layer into the struct
-> super_operations's mount function, which would be the proper, sane way
-> to provide this functionality.
-> 
-> 						- Ted
+> Also in your check_partition_table() you do not disable probing for
+> supeblocks even though you do not look to them afterwards so it's
+> not a big deal. But again I think that we can use it to check for
+> all signatures.
 
-Which would be reasonable if there was a consumer of such
-information and it seemed to be useful. So I wonder what other
-people think about that.
+How do you disable probing for superblocks with the new blkid interface=
+?
 
-Karel, you had some suggestions about how to utilize that aside from
-the mkfs...
+Cheers,
 
--Lukas
---8323328-507638579-1399301491=:2223--
+					- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
