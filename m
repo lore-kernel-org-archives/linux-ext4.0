@@ -1,131 +1,104 @@
 From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 1/3] mke2fs: print a message when creating a regular
- file
-Date: Mon, 5 May 2014 15:41:01 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1405051532280.2223@localhost.localdomain>
-References: <1399295044-24489-1-git-send-email-tytso@mit.edu>
+Subject: Re: [PATCH 14/37] dumpe2fs: add switch to disable checksum
+ verification
+Date: Mon, 5 May 2014 19:20:09 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1405051919330.31228@localhost.localdomain>
+References: <20140501231222.31890.82860.stgit@birch.djwong.org> <20140501231354.31890.36717.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:21925 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:37793 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932382AbaEENlG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 May 2014 09:41:06 -0400
-In-Reply-To: <1399295044-24489-1-git-send-email-tytso@mit.edu>
+	id S1754944AbaEERUj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 May 2014 13:20:39 -0400
+In-Reply-To: <20140501231354.31890.36717.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 5 May 2014, Theodore Ts'o wrote:
+On Thu, 1 May 2014, Darrick J. Wong wrote:
 
-> Date: Mon,  5 May 2014 09:04:02 -0400
-> From: Theodore Ts'o <tytso@mit.edu>
-> To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-> Cc: Theodore Ts'o <tytso@mit.edu>
-> Subject: [PATCH 1/3] mke2fs: print a message when creating a regular file
+> Date: Thu, 01 May 2014 16:13:54 -0700
+> From: Darrick J. Wong <darrick.wong@oracle.com>
+> To: tytso@mit.edu, darrick.wong@oracle.com
+> Cc: linux-ext4@vger.kernel.org
+> Subject: [PATCH 14/37] dumpe2fs: add switch to disable checksum verification
+> 
+> Add a -n switch to turn off checksum verification.
 
-Description is missing.
+Looks good. Thanks!
+
+Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+
 
 > 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 > ---
->  misc/mke2fs.c |  6 ++++--
->  misc/util.c   | 11 +++++++----
->  misc/util.h   |  1 +
->  3 files changed, 12 insertions(+), 6 deletions(-)
+>  misc/dumpe2fs.8.in |    3 +++
+>  misc/dumpe2fs.c    |   10 +++++++---
+>  2 files changed, 10 insertions(+), 3 deletions(-)
 > 
-> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> index 2c51999..51532ef 100644
-> --- a/misc/mke2fs.c
-> +++ b/misc/mke2fs.c
-> @@ -103,6 +103,7 @@ static int	quotatype = -1;  /* Initialize both user and group quotas by default
->  static __u64	offset;
->  static blk64_t journal_location = ~0LL;
->  static int	proceed_delay = -1;
-> +static blk64_t	dev_size;
+> 
+> diff --git a/misc/dumpe2fs.8.in b/misc/dumpe2fs.8.in
+> index befaf94..51614db 100644
+> --- a/misc/dumpe2fs.8.in
+> +++ b/misc/dumpe2fs.8.in
+> @@ -61,6 +61,9 @@ using
+>  .I device
+>  as the pathname to the image file.
+>  .TP
+> +.B \-n
+> +Don't verify checksums when dumping the filesystem.
+> +.TP
+>  .B \-x
+>  print the detailed group information block numbers in hexadecimal format
+>  .TP
+> diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
+> index ae54f8a..3a3684b 100644
+> --- a/misc/dumpe2fs.c
+> +++ b/misc/dumpe2fs.c
+> @@ -52,7 +52,7 @@ static int blocks64 = 0;
 >  
->  static struct ext2_super_block fs_param;
->  static char *fs_uuid = NULL;
-> @@ -1402,7 +1403,6 @@ static void PRS(int argc, char *argv[])
->  	char *		extended_opts = 0;
->  	char *		fs_type = 0;
->  	char *		usage_types = 0;
-> -	blk64_t		dev_size;
->  	/*
->  	 * NOTE: A few words about fs_blocks_count and blocksize:
->  	 *
-> @@ -1768,6 +1768,8 @@ profile_error:
->  	flags = CREATE_FILE;
->  	if (isatty(0) && isatty(1))
->  		flags |= CHECK_FS_EXIST;
-> +	if (!quiet)
-> +		flags |= VERBOSE_CREATE;
->  	if (!check_plausibility(device_name, flags, &is_device) && !force)
->  		proceed_question(proceed_delay);
->  
-> @@ -2573,7 +2575,7 @@ int main (int argc, char *argv[])
->  		journal_blocks = figure_journal_size(journal_size, fs);
->  
->  	/* Can't undo discard ... */
-> -	if (!noaction && discard && (io_ptr != undo_io_manager)) {
-> +	if (!noaction && discard && dev_size && (io_ptr != undo_io_manager)) {
-
-I wonder whether it's possible not to have dev_size set at this point ?
-
->  		retval = mke2fs_discard_device(fs);
->  		if (!retval && io_channel_discard_zeroes_data(fs->io)) {
->  			if (verbose)
-> diff --git a/misc/util.c b/misc/util.c
-> index be16ebe..15b4ce5 100644
-> --- a/misc/util.c
-> +++ b/misc/util.c
-> @@ -106,7 +106,7 @@ void proceed_question(int delay)
->  }
->  
->  /*
-> - * return 1 if the device looks plausible
-> + * return 1 if the device looks plausible, creating the file if necessary
->   */
->  int check_plausibility(const char *device, int flags, int *ret_is_dev)
+>  static void usage(void)
 >  {
-> @@ -117,10 +117,13 @@ int check_plausibility(const char *device, int flags, int *ret_is_dev)
->  	char *fs_type = NULL;
->  	char *fs_label = NULL;
+> -	fprintf (stderr, _("Usage: %s [-bfhixV] [-o superblock=<num>] "
+> +	fprintf(stderr, _("Usage: %s [-bfhinxV] [-o superblock=<num>] "
+>  		 "[-o blocksize=<num>] device\n"), program_name);
+>  	exit (1);
+>  }
+> @@ -582,7 +582,9 @@ int main (int argc, char ** argv)
+>  	if (argc && *argv)
+>  		program_name = *argv;
 >  
-> -	if (flags & CREATE_FILE)
-> -		fl |= O_CREAT;
-> -
->  	fd = open(device, fl, 0666);
-
-Ah, so you're building on a previous patches. It's a bit confusing.
-
-> +	if ((fd < 0) && (errno == ENOENT) && (flags & CREATE_FILE)) {
-> +		fl |= O_CREAT;
-> +		fd = open(device, fl, 0666);
-> +		if (fd >= 0 && (flags & VERBOSE_CREATE))
-
-Do we have to use VERBOSE_CREATE ? quiet is global variable so we
-can as well just test that here, or am I missing something ?
-
-Thanks!
--Lukas
-
-> +			printf(_("Creating regular file %s\n"), device);
-> +	}
->  	if (fd < 0) {
->  		fprintf(stderr, _("Could not open %s: %s\n"),
->  			device, error_message(errno));
-> diff --git a/misc/util.h b/misc/util.h
-> index 745568e..476164b 100644
-> --- a/misc/util.h
-> +++ b/misc/util.h
-> @@ -21,6 +21,7 @@ extern char	*journal_location_string;
->  #define CHECK_BLOCK_DEV	0x0001
->  #define CREATE_FILE	0x0002
->  #define CHECK_FS_EXIST	0x0004
-> +#define VERBOSE_CREATE	0x0008
->  
->  #ifndef HAVE_STRCASECMP
->  extern int strcasecmp (char *s1, char *s2);
+> -	while ((c = getopt (argc, argv, "bfhixVo:")) != EOF) {
+> +	flags = EXT2_FLAG_JOURNAL_DEV_OK | EXT2_FLAG_SOFTSUPP_FEATURES |
+> +		EXT2_FLAG_64BITS;
+> +	while ((c = getopt(argc, argv, "bfhixVo:n")) != EOF) {
+>  		switch (c) {
+>  		case 'b':
+>  			print_badblocks++;
+> @@ -608,6 +610,9 @@ int main (int argc, char ** argv)
+>  		case 'x':
+>  			hex_format++;
+>  			break;
+> +		case 'n':
+> +			flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
+> +			break;
+>  		default:
+>  			usage();
+>  		}
+> @@ -615,7 +620,6 @@ int main (int argc, char ** argv)
+>  	if (optind > argc - 1)
+>  		usage();
+>  	device_name = argv[optind++];
+> -	flags = EXT2_FLAG_JOURNAL_DEV_OK | EXT2_FLAG_SOFTSUPP_FEATURES | EXT2_FLAG_64BITS;
+>  	if (force)
+>  		flags |= EXT2_FLAG_FORCE;
+>  	if (image_dump)
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
