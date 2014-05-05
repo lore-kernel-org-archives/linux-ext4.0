@@ -1,85 +1,105 @@
 From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 15/37] mke2fs: set block_validity as a default mount
- option
-Date: Mon, 5 May 2014 19:24:14 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1405051921290.31228@localhost.localdomain>
-References: <20140501231222.31890.82860.stgit@birch.djwong.org> <20140501231400.31890.27469.stgit@birch.djwong.org>
+Subject: Re: [PATCH 1/3] mke2fs: print a message when creating a regular
+ file
+Date: Mon, 5 May 2014 16:04:58 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1405051558040.2223@localhost.localdomain>
+References: <1399295044-24489-1-git-send-email-tytso@mit.edu> <alpine.LFD.2.00.1405051532280.2223@localhost.localdomain> <20140505135239.GB22287@thunk.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1613508857-1399298701=:2223"
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43778 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:57642 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752583AbaEERYU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 May 2014 13:24:20 -0400
-In-Reply-To: <20140501231400.31890.27469.stgit@birch.djwong.org>
+	id S932438AbaEEOFD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 May 2014 10:05:03 -0400
+In-Reply-To: <20140505135239.GB22287@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 1 May 2014, Darrick J. Wong wrote:
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-> Date: Thu, 01 May 2014 16:14:00 -0700
-> From: Darrick J. Wong <darrick.wong@oracle.com>
-> To: tytso@mit.edu, darrick.wong@oracle.com
-> Cc: linux-ext4@vger.kernel.org
-> Subject: [PATCH 15/37] mke2fs: set block_validity as a default mount option
+--8323328-1613508857-1399298701=:2223
+Content-Type: TEXT/PLAIN; charset=utf-8
+Content-Transfer-Encoding: 8BIT
+
+On Mon, 5 May 2014, Theodore Ts'o wrote:
+
+> Date: Mon, 5 May 2014 09:52:39 -0400
+> From: Theodore Ts'o <tytso@mit.edu>
+> To: Lukáš Czerner <lczerner@redhat.com>
+> Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+> Subject: Re: [PATCH 1/3] mke2fs: print a message when creating a regular file
 > 
-> The block_validity mount option spot-checks block allocations against
-> a bitmap of known group metadata blocks.  This helps us to prevent
-> self-inflicted catastrophic failures such as trying to "share"
-> critical metadata (think bitmaps) with file data, which usually
-> results in filesystem destruction.
+> On Mon, May 05, 2014 at 03:41:01PM +0200, Lukáš Czerner wrote:
+> > On Mon, 5 May 2014, Theodore Ts'o wrote:
+> > 
+> > > Date: Mon,  5 May 2014 09:04:02 -0400
+> > > From: Theodore Ts'o <tytso@mit.edu>
+> > > To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+> > > Cc: Theodore Ts'o <tytso@mit.edu>
+> > > Subject: [PATCH 1/3] mke2fs: print a message when creating a regular file
+> > 
+> > Description is missing.
 > 
-> In order to test the overhead of the mount option, I re-used the speed
-> tests in the metadata checksum testing script.  In short, the program
-> creates what looks like 15 copies of a kernel source tree, except that
-> it uses fallocate to strip out the overhead of writing the file data
-> so that we can focus on metadata overhead.  On a 64G RAM disk, the
-> overhead was generally about 0.9% and at most 1.6%.  On a 160G USB
-> disk, the overhead was about 0.8% and peaked at 1.2%.
+> I didn't think more of a description was needed; can you suggest one?
+
+something along those lines ?
+
+In the previous patch "..." we've added an ability to automatically
+create file if it does not exist prior creating the file system. We
+should at least notify the user that that's the case to avoid surprises
+in the case of misspelled device/file names.
+
 > 
-> When I changed the test to write out files instead of merely
-> fallocating space, the overhead was negligible.
+> > >  	/* Can't undo discard ... */
+> > > -	if (!noaction && discard && (io_ptr != undo_io_manager)) {
+> > > +	if (!noaction && discard && dev_size && (io_ptr != undo_io_manager)) {
+> > 
+> > I wonder whether it's possible not to have dev_size set at this point ?
+> 
+> I checked, and I don't believe so.  ext2fs_get_device_size2() never
+> returns EXT2_ET_UNIMPLEMENTED any more; and it hasn't for quite some
+> time, since it will use st_size for a regular file or do a binary
+> search trying to figure out the device size in the worst case.  So in
+> fact, there are some code paths we can eliminate in misc/mke2fs.c
+> which will simplify this analysis.
+> 
+> Even if there is some case in the future where dev_size could be left
+> unset, it will be initialized to zero, at which point we will fail
+> safe by skipping the mke2fs_discard_device() call.
 
-I like that, but I think we need to run more performance testing on
-that to make sure that it really does not break something.
+ok.
 
-Eric, will you be able to run your performance tests with
-block_validity option and compare it with baseline to see whether it
-really does not change anything ?
+> 
+> > 
+> > > +	if ((fd < 0) && (errno == ENOENT) && (flags & CREATE_FILE)) {
+> > > +		fl |= O_CREAT;
+> > > +		fd = open(device, fl, 0666);
+> > > +		if (fd >= 0 && (flags & VERBOSE_CREATE))
+> > 
+> > Do we have to use VERBOSE_CREATE ? quiet is global variable so we
+> > can as well just test that here, or am I missing something ?
+> 
+> The problem is that util.c gets used by both mke2fs.c and tune2fs.c,
+> and it's only a global variable for mke2fs.c.
+> 
+> My long-term plans is to rename libquota to libsupport, which would
+> never be built as a shared library, and move some of our various
+> internal shared utility functions (i.e., e2fsck/profile.c,
+> misc/util.c, etc.) into that internal e2fsprogs insternal support
+> library.  So in general I'd prefer to minimize the number of global
+> functions which misc/util.c relies upon.
 
-I'll try to run my tests as well.
-
-We really need generic performance test suite, I hope that Dave will
-send his performance addition to xfstests soon so we can start
-adding tests.
+Ah, it's in a different file, right. Agreed.
 
 Thanks!
 -Lukas
 
 > 
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> ---
->  misc/mke2fs.conf.in |    2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+> Cheers,
 > 
+> 					- Ted
 > 
-> diff --git a/misc/mke2fs.conf.in b/misc/mke2fs.conf.in
-> index 4c5dba7..de0250d 100644
-> --- a/misc/mke2fs.conf.in
-> +++ b/misc/mke2fs.conf.in
-> @@ -1,6 +1,6 @@
->  [defaults]
->  	base_features = sparse_super,filetype,resize_inode,dir_index,ext_attr
-> -	default_mntopts = acl,user_xattr
-> +	default_mntopts = acl,user_xattr,block_validity
->  	enable_periodic_fsck = 0
->  	blocksize = 4096
->  	inode_size = 256
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+--8323328-1613508857-1399298701=:2223--
