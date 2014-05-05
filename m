@@ -1,494 +1,55 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 05/37] debugfs: teach logdump to deal with 64bit revoke
- tables
-Date: Mon, 5 May 2014 15:23:33 -0700
-Message-ID: <20140505222333.GI8434@birch.djwong.org>
-References: <20140501231222.31890.82860.stgit@birch.djwong.org>
- <20140501231255.31890.67291.stgit@birch.djwong.org>
- <alpine.LFD.2.00.1405021330460.2154@localhost.localdomain>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: info about filesystem errors in /sys/fs/ext4/... ?
+Date: Mon, 05 May 2014 09:53:25 -0500
+Message-ID: <5367A5E5.10809@redhat.com>
+References: <20140505070823.GM3017@pcnci.linuxbox.cz> <alpine.LFD.2.00.1405051253400.2223@localhost.localdomain> <20140505115919.GB18305@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+Cc: Nikola Ciprich <nikola.ciprich@linuxbox.cz>,
+	linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	=?UTF-8?B?THVrw6HFoSBDemVybmVy?= <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:50292 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756341AbaEEWXl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 May 2014 18:23:41 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1405021330460.2154@localhost.localdomain>
+Received: from mx1.redhat.com ([209.132.183.28]:32533 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932448AbaEEOxx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 May 2014 10:53:53 -0400
+In-Reply-To: <20140505115919.GB18305@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, May 02, 2014 at 01:38:04PM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
-:
-> On Thu, 1 May 2014, Darrick J. Wong wrote:
+On 5/5/14, 6:59 AM, Theodore Ts'o wrote:
+> On Mon, May 05, 2014 at 01:03:17PM +0200, Luk=C3=A1=C5=A1 Czerner wro=
+te:
+>>
+>> However we might to go a step further, because I do not
+>> really like the idea of allowing to mount the file system with
+>> errors by default. It does not really make sense to me and I wonder
+>> whether someone actually intend to do it this way.
 >=20
-> > Date: Thu, 01 May 2014 16:12:55 -0700
-> > From: Darrick J. Wong <darrick.wong@oracle.com>
-> > To: tytso@mit.edu, darrick.wong@oracle.com
-> > Cc: linux-ext4@vger.kernel.org
-> > Subject: [PATCH 05/37] debugfs: teach logdump to deal with 64bit re=
-voke tables
-> >=20
-> > The logdump command doesn't know how to deal with revoke tables in
-> > 64bit journals, so teach it to do this.
-> >=20
-> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> > ---
-> >  debugfs/logdump.c          |   20 ++++-
-> >  tests/f_jnl_64bit/expect.0 |  171 --------------------------------=
-------------
-> >  2 files changed, 15 insertions(+), 176 deletions(-)
-> >=20
-> >=20
-> > diff --git a/debugfs/logdump.c b/debugfs/logdump.c
-> > index 2d0efaf..8b9dc5b 100644
-> > --- a/debugfs/logdump.c
-> > +++ b/debugfs/logdump.c
-> > @@ -526,28 +526,38 @@ static void dump_revoke_block(FILE *out_file,=
- char *buf,
-> >  {
-> >  	int			offset, max;
-> >  	journal_revoke_header_t *header;
-> > -	unsigned int		*entry, rblock;
-> > +	unsigned int		*entry;
-> > +	unsigned long long	*bentry, rblock;
-> > +	int			tag_size =3D sizeof(*entry);
-> > =20
-> >  	if (dump_all)
-> >  		fprintf(out_file, "Dumping revoke block, sequence %u, at "
-> >  			"block %u:\n", transaction, blocknr);
-> > =20
-> > +	if (be32_to_cpu(jsb->s_feature_incompat) & JFS_FEATURE_INCOMPAT_6=
-4BIT)
-> > +		tag_size =3D sizeof(*bentry);
-> > +
-> >  	header =3D (journal_revoke_header_t *) buf;
-> >  	offset =3D sizeof(journal_revoke_header_t);
-> >  	max =3D be32_to_cpu(header->r_count);
-> > =20
-> >  	while (offset < max) {
-> > -		entry =3D (unsigned int *) (buf + offset);
-> > -		rblock =3D be32_to_cpu(*entry);
-> > +		if (tag_size =3D=3D sizeof(*entry)) {
-> > +			entry =3D (unsigned int *) (buf + offset);
-> > +			rblock =3D be32_to_cpu(*entry);
-> > +		} else {
-> > +			bentry =3D (unsigned long long *)(buf + offset);
-> > +			rblock =3D ext2fs_be64_to_cpu(*bentry);
-> > +		}
->=20
-> I wonder whether we really need to have bentry and entry since those
-> are just pointers and should be of the same size regardless of what
-> they are pointing at.
->=20
-> Would not it be better from the readability pov ? Otherwise it looks
-> good.
+> We would need to make an exception for the root file system, of
+> course.  And I've been receiving patches from folks who want to allow
+> e2fsck to be able to fix a mounted, read-only /usr partition, since
+> systemd is forcing folks to have to mount /usr read-only before it
+> will start, which means /usr needs to be mounted before e2fsck gets
+> started by systemd.
 
-One could eliminate the local variables by writing it as such:
+I hope these patches make it to the list, if you're considering them.
 
-if (...)
-	rblock =3D be32_to_cpu(*((__u32 *)(buf + offset)));
-else
-	rblock =3D ext2fs_be64_to_cpu(*((__u64 *)(buf + offset)));
+I don't really know why fsck would need to treat filesystems differentl=
+y
+based on where they are mounted; either we can repair a readonly fs
+or not, right?  And if it's done, then the filesystem needs to be immed=
+iately
+unmounted & remounted[1], or the system rebooted...
 
-The parentheses are a little harder to figure out in the second version=
-, but I
-don't have a strong opinion either way.
+-Eric
 
---D
->=20
-> Thanks!
-> -Lukas
->=20
-> >  		if (dump_all || rblock =3D=3D block_to_dump) {
-> > -			fprintf(out_file, "  Revoke FS block %u", rblock);
-> > +			fprintf(out_file, "  Revoke FS block %llu", rblock);
-> >  			if (dump_all)
-> >  				fprintf(out_file, "\n");
-> >  			else
-> >  				fprintf(out_file," at block %u, sequence %u\n",
-> >  					blocknr, transaction);
-> >  		}
-> > -		offset +=3D 4;
-> > +		offset +=3D tag_size;
-> >  	}
-> >  }
-> > =20
-> > diff --git a/tests/f_jnl_64bit/expect.0 b/tests/f_jnl_64bit/expect.=
-0
-> > index 2007f03..5cef2d8 100644
-> > --- a/tests/f_jnl_64bit/expect.0
-> > +++ b/tests/f_jnl_64bit/expect.0
-> > @@ -1,189 +1,97 @@
-> >  Journal starts at block 67, transaction 32
-> >  Found expected sequence 32, type 5 (revoke table) at block 67
-> >  Dumping revoke block, sequence 32, at block 67:
-> > -  Revoke FS block 0
-> >    Revoke FS block 1536
-> > -  Revoke FS block 0
-> >    Revoke FS block 1472
-> > -  Revoke FS block 0
-> >    Revoke FS block 1473
-> > -  Revoke FS block 0
-> >    Revoke FS block 1474
-> > -  Revoke FS block 0
-> >    Revoke FS block 1475
-> > -  Revoke FS block 0
-> >    Revoke FS block 1476
-> > -  Revoke FS block 0
-> >    Revoke FS block 1541
-> > -  Revoke FS block 0
-> >    Revoke FS block 1477
-> > -  Revoke FS block 0
-> >    Revoke FS block 1478
-> > -  Revoke FS block 0
-> >    Revoke FS block 1479
-> > -  Revoke FS block 0
-> >    Revoke FS block 1480
-> > -  Revoke FS block 0
-> >    Revoke FS block 1481
-> > -  Revoke FS block 0
-> >    Revoke FS block 1482
-> > -  Revoke FS block 0
-> >    Revoke FS block 1483
-> > -  Revoke FS block 0
-> >    Revoke FS block 1484
-> > -  Revoke FS block 0
-> >    Revoke FS block 1485
-> > -  Revoke FS block 0
-> >    Revoke FS block 1486
-> > -  Revoke FS block 0
-> >    Revoke FS block 1487
-> > -  Revoke FS block 0
-> >    Revoke FS block 1488
-> > -  Revoke FS block 0
-> >    Revoke FS block 1489
-> > -  Revoke FS block 0
-> >    Revoke FS block 1490
-> > -  Revoke FS block 0
-> >    Revoke FS block 1491
-> > -  Revoke FS block 0
-> >    Revoke FS block 1556
-> > -  Revoke FS block 0
-> >    Revoke FS block 1492
-> > -  Revoke FS block 0
-> >    Revoke FS block 1493
-> > -  Revoke FS block 0
-> >    Revoke FS block 1429
-> > -  Revoke FS block 0
-> >    Revoke FS block 1494
-> > -  Revoke FS block 0
-> >    Revoke FS block 1495
-> > -  Revoke FS block 0
-> >    Revoke FS block 1496
-> > -  Revoke FS block 0
-> >    Revoke FS block 1432
-> > -  Revoke FS block 0
-> >    Revoke FS block 1497
-> > -  Revoke FS block 0
-> >    Revoke FS block 1498
-> > -  Revoke FS block 0
-> >    Revoke FS block 1434
-> > -  Revoke FS block 0
-> >    Revoke FS block 1499
-> > -  Revoke FS block 0
-> >    Revoke FS block 1435
-> > -  Revoke FS block 0
-> >    Revoke FS block 1500
-> > -  Revoke FS block 0
-> >    Revoke FS block 1501
-> > -  Revoke FS block 0
-> >    Revoke FS block 1502
-> > -  Revoke FS block 0
-> >    Revoke FS block 1503
-> > -  Revoke FS block 0
-> >    Revoke FS block 1504
-> > -  Revoke FS block 0
-> >    Revoke FS block 1505
-> > -  Revoke FS block 0
-> >    Revoke FS block 1506
-> > -  Revoke FS block 0
-> >    Revoke FS block 1442
-> > -  Revoke FS block 0
-> >    Revoke FS block 1507
-> > -  Revoke FS block 0
-> >    Revoke FS block 1508
-> > -  Revoke FS block 0
-> >    Revoke FS block 1444
-> > -  Revoke FS block 0
-> >    Revoke FS block 1509
-> > -  Revoke FS block 0
-> >    Revoke FS block 1445
-> > -  Revoke FS block 0
-> >    Revoke FS block 1510
-> > -  Revoke FS block 0
-> >    Revoke FS block 1511
-> > -  Revoke FS block 0
-> >    Revoke FS block 1512
-> > -  Revoke FS block 0
-> >    Revoke FS block 1513
-> > -  Revoke FS block 0
-> >    Revoke FS block 1449
-> > -  Revoke FS block 0
-> >    Revoke FS block 1514
-> > -  Revoke FS block 0
-> >    Revoke FS block 1515
-> > -  Revoke FS block 0
-> >    Revoke FS block 1516
-> > -  Revoke FS block 0
-> >    Revoke FS block 1517
-> > -  Revoke FS block 0
-> >    Revoke FS block 1453
-> > -  Revoke FS block 0
-> >    Revoke FS block 1518
-> > -  Revoke FS block 0
-> >    Revoke FS block 1519
-> > -  Revoke FS block 0
-> >    Revoke FS block 1520
-> > -  Revoke FS block 0
-> >    Revoke FS block 1456
-> > -  Revoke FS block 0
-> >    Revoke FS block 1521
-> > -  Revoke FS block 0
-> >    Revoke FS block 1457
-> > -  Revoke FS block 0
-> >    Revoke FS block 1522
-> > -  Revoke FS block 0
-> >    Revoke FS block 1458
-> > -  Revoke FS block 0
-> >    Revoke FS block 1523
-> > -  Revoke FS block 0
-> >    Revoke FS block 1459
-> > -  Revoke FS block 0
-> >    Revoke FS block 1524
-> > -  Revoke FS block 0
-> >    Revoke FS block 1460
-> > -  Revoke FS block 0
-> >    Revoke FS block 1525
-> > -  Revoke FS block 0
-> >    Revoke FS block 1461
-> > -  Revoke FS block 0
-> >    Revoke FS block 1526
-> > -  Revoke FS block 0
-> >    Revoke FS block 1462
-> > -  Revoke FS block 0
-> >    Revoke FS block 1527
-> > -  Revoke FS block 0
-> >    Revoke FS block 1463
-> > -  Revoke FS block 0
-> >    Revoke FS block 1528
-> > -  Revoke FS block 0
-> >    Revoke FS block 1464
-> > -  Revoke FS block 0
-> >    Revoke FS block 1529
-> > -  Revoke FS block 0
-> >    Revoke FS block 1465
-> > -  Revoke FS block 0
-> >    Revoke FS block 1530
-> > -  Revoke FS block 0
-> >    Revoke FS block 1466
-> > -  Revoke FS block 0
-> >    Revoke FS block 1531
-> > -  Revoke FS block 0
-> >    Revoke FS block 1467
-> > -  Revoke FS block 0
-> >    Revoke FS block 1532
-> > -  Revoke FS block 0
-> >    Revoke FS block 1468
-> > -  Revoke FS block 0
-> >    Revoke FS block 1533
-> > -  Revoke FS block 0
-> >    Revoke FS block 1469
-> > -  Revoke FS block 0
-> >    Revoke FS block 1534
-> > -  Revoke FS block 0
-> >    Revoke FS block 1470
-> > -  Revoke FS block 0
-> >    Revoke FS block 1535
-> > -  Revoke FS block 0
-> >    Revoke FS block 1471
-> >  Found expected sequence 32, type 1 (descriptor block) at block 68
-> >  Dumping descriptor block, sequence 32, at block 68:
-> > @@ -323,163 +231,84 @@ Dumping descriptor block, sequence 32, at bl=
-ock 150:
-> >  Found expected sequence 32, type 2 (commit block) at block 201
-> >  Found expected sequence 33, type 5 (revoke table) at block 202
-> >  Dumping revoke block, sequence 33, at block 202:
-> > -  Revoke FS block 0
-> >    Revoke FS block 1600
-> > -  Revoke FS block 0
-> >    Revoke FS block 1601
-> > -  Revoke FS block 0
-> >    Revoke FS block 1537
-> > -  Revoke FS block 0
-> >    Revoke FS block 1602
-> > -  Revoke FS block 0
-> >    Revoke FS block 1538
-> > -  Revoke FS block 0
-> >    Revoke FS block 1603
-> > -  Revoke FS block 0
-> >    Revoke FS block 1539
-> > -  Revoke FS block 0
-> >    Revoke FS block 1604
-> > -  Revoke FS block 0
-> >    Revoke FS block 1540
-> > -  Revoke FS block 0
-> >    Revoke FS block 1605
-> > -  Revoke FS block 0
-> >    Revoke FS block 1606
-> > -  Revoke FS block 0
-> >    Revoke FS block 1542
-> > -  Revoke FS block 0
-> >    Revoke FS block 1607
-> > -  Revoke FS block 0
-> >    Revoke FS block 1543
-> > -  Revoke FS block 0
-> >    Revoke FS block 1608
-> > -  Revoke FS block 0
-> >    Revoke FS block 1544
-> > -  Revoke FS block 0
-> >    Revoke FS block 1609
-> > -  Revoke FS block 0
-> >    Revoke FS block 1545
-> > -  Revoke FS block 0
-> >    Revoke FS block 1610
-> > -  Revoke FS block 0
-> >    Revoke FS block 1546
-> > -  Revoke FS block 0
-> >    Revoke FS block 1611
-> > -  Revoke FS block 0
-> >    Revoke FS block 1547
-> > -  Revoke FS block 0
-> >    Revoke FS block 1612
-> > -  Revoke FS block 0
-> >    Revoke FS block 1548
-> > -  Revoke FS block 0
-> >    Revoke FS block 1613
-> > -  Revoke FS block 0
-> >    Revoke FS block 1549
-> > -  Revoke FS block 0
-> >    Revoke FS block 1614
-> > -  Revoke FS block 0
-> >    Revoke FS block 1550
-> > -  Revoke FS block 0
-> >    Revoke FS block 1615
-> > -  Revoke FS block 0
-> >    Revoke FS block 1551
-> > -  Revoke FS block 0
-> >    Revoke FS block 1616
-> > -  Revoke FS block 0
-> >    Revoke FS block 1552
-> > -  Revoke FS block 0
-> >    Revoke FS block 1617
-> > -  Revoke FS block 0
-> >    Revoke FS block 1553
-> > -  Revoke FS block 0
-> >    Revoke FS block 1554
-> > -  Revoke FS block 0
-> >    Revoke FS block 1555
-> > -  Revoke FS block 0
-> >    Revoke FS block 1557
-> > -  Revoke FS block 0
-> >    Revoke FS block 1558
-> > -  Revoke FS block 0
-> >    Revoke FS block 1559
-> > -  Revoke FS block 0
-> >    Revoke FS block 1560
-> > -  Revoke FS block 0
-> >    Revoke FS block 1561
-> > -  Revoke FS block 0
-> >    Revoke FS block 1562
-> > -  Revoke FS block 0
-> >    Revoke FS block 1563
-> > -  Revoke FS block 0
-> >    Revoke FS block 1564
-> > -  Revoke FS block 0
-> >    Revoke FS block 1565
-> > -  Revoke FS block 0
-> >    Revoke FS block 1566
-> > -  Revoke FS block 0
-> >    Revoke FS block 1567
-> > -  Revoke FS block 0
-> >    Revoke FS block 1568
-> > -  Revoke FS block 0
-> >    Revoke FS block 1569
-> > -  Revoke FS block 0
-> >    Revoke FS block 1570
-> > -  Revoke FS block 0
-> >    Revoke FS block 1571
-> > -  Revoke FS block 0
-> >    Revoke FS block 1572
-> > -  Revoke FS block 0
-> >    Revoke FS block 1573
-> > -  Revoke FS block 0
-> >    Revoke FS block 1574
-> > -  Revoke FS block 0
-> >    Revoke FS block 1575
-> > -  Revoke FS block 0
-> >    Revoke FS block 1576
-> > -  Revoke FS block 0
-> >    Revoke FS block 1577
-> > -  Revoke FS block 0
-> >    Revoke FS block 1578
-> > -  Revoke FS block 0
-> >    Revoke FS block 1579
-> > -  Revoke FS block 0
-> >    Revoke FS block 1580
-> > -  Revoke FS block 0
-> >    Revoke FS block 1581
-> > -  Revoke FS block 0
-> >    Revoke FS block 1582
-> > -  Revoke FS block 0
-> >    Revoke FS block 1583
-> > -  Revoke FS block 0
-> >    Revoke FS block 1584
-> > -  Revoke FS block 0
-> >    Revoke FS block 1585
-> > -  Revoke FS block 0
-> >    Revoke FS block 1586
-> > -  Revoke FS block 0
-> >    Revoke FS block 1587
-> > -  Revoke FS block 0
-> >    Revoke FS block 1588
-> > -  Revoke FS block 0
-> >    Revoke FS block 1589
-> > -  Revoke FS block 0
-> >    Revoke FS block 1590
-> > -  Revoke FS block 0
-> >    Revoke FS block 1591
-> > -  Revoke FS block 0
-> >    Revoke FS block 1592
-> > -  Revoke FS block 0
-> >    Revoke FS block 1593
-> > -  Revoke FS block 0
-> >    Revoke FS block 1594
-> > -  Revoke FS block 0
-> >    Revoke FS block 1595
-> > -  Revoke FS block 0
-> >    Revoke FS block 1596
-> > -  Revoke FS block 0
-> >    Revoke FS block 1597
-> > -  Revoke FS block 0
-> >    Revoke FS block 1598
-> > -  Revoke FS block 0
-> >    Revoke FS block 1599
-> >  Found expected sequence 33, type 1 (descriptor block) at block 203
-> >  Dumping descriptor block, sequence 33, at block 203:
-> >=20
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext=
-4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >=20
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+[1] and I suppose if it can be unmounted & mounted then there was no
+good reason to repair it while mounted RO...
+
+
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
