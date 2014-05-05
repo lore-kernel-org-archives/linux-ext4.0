@@ -1,101 +1,127 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 2/3] mke2fs: print extra information about existing ext2/3/4 file systems
-Date: Mon, 5 May 2014 10:30:29 -0600
-Message-ID: <DA1F1E74-0E30-4CB8-826B-768A86AF2D48@dilger.ca>
-References: <1399295044-24489-1-git-send-email-tytso@mit.edu> <1399295044-24489-2-git-send-email-tytso@mit.edu> <alpine.LFD.2.00.1405051541080.2223@localhost.localdomain> <20140505140401.GD22287@thunk.org> <20140505142808.GF22287@thunk.org> <alpine.LFD.2.00.1405051629270.2223@localhost.localdomain> <20140505144423.GG22287@thunk.org>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: =?utf-8?Q?Luk=C3=A1=C5=A1_Czerner?= <lczerner@redhat.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	"kzak@redhat.com" <kzak@redhat.com>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20140505144423.GG22287@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 4/7] mke2fs: create a regular file if necessary
+Date: Mon, 05 May 2014 10:17:30 -0500
+Message-ID: <5367AB8A.8000408@redhat.com>
+References: <1398556834-31913-1-git-send-email-tytso@mit.edu> <1398556834-31913-4-git-send-email-tytso@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:63344 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751775AbaEEPRd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 May 2014 11:17:33 -0400
+In-Reply-To: <1398556834-31913-4-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-The last time I asked to have the VFS add mountpoint info to the superb=
-lock, it got a strong NACK from Al Viro because of the possibility of m=
-ultiple mountpoints due to bind mounts or namespaces.
+On 4/26/14, 7:00 PM, Theodore Ts'o wrote:
+> This is useful when creating a filesystem for use with a VM, for
+> example.
 
-I think the current hack is as good as it gets.=20
+Ok, backing up to here from the "print if we're creating a file" thread.
 
-Cheers, Andreas
+Considering the questions about typos in /dev/$FOO etc, why is it desirable
+to create the file within mke2fs?  If you're making it for a VM, wouldn't
+you want to control the creation (i.e. fallocated vs. sparse, for example,
+as well as permissions) and not just have things magically happen?
 
-> On May 5, 2014, at 8:44, Theodore Ts'o <tytso@mit.edu> wrote:
->=20
-> On Mon, May 05, 2014 at 04:38:37PM +0200, Luk=C3=A1=C5=A1 Czerner wro=
-te:
->>> % ./misc/mke2fs -t ext4 /dev/sdc3
->>> mke2fs 1.42.9 (4-Feb-2014)
->>> /dev/sdc3 contains a ext4 file system
->>>    last mounted on /SOX-backups on Mon May  5 08:59:53 2014
->>> Proceed anyway? (y,n)=20
->>>=20
->>> ... where this becomes a last-ditch saving through against the
->>> accidental wiping of the enterprise's Sarbanes-Oxley records.  :-)
->>>=20
->>=20
->> Yep, it's really useful. I just was not sure what is this all about =
-since
->> there was not description and I was missing context from the other p=
-atches.
->>=20
->> But this makes me think that it would be very useful if blkid could
->> gather this information for other file system if possible :). This
->> might be very useful if we can get some overlap with other file
->> system with the information provided in superblock.
->=20
-> Unfortunately, as far as I know, none of the other file systems
-> currently save the location where the file system was last mounted.
-> And to be honest, the way we do it in ext4 is a horrible hack (get ou=
-t
-> your barf bags!):
->=20
-> static int ext4_file_open(struct inode * inode, struct file * filp)
-> {
->    struct super_block *sb =3D inode->i_sb;
->    struct ext4_sb_info *sbi =3D EXT4_SB(inode->i_sb);
->    struct vfsmount *mnt =3D filp->f_path.mnt;
->    struct path path;
->    char buf[64], *cp;
->=20
->    if (unlikely(!(sbi->s_mount_flags & EXT4_MF_MNTDIR_SAMPLED) &&
->             !(sb->s_flags & MS_RDONLY))) {
->        sbi->s_mount_flags |=3D EXT4_MF_MNTDIR_SAMPLED;
->        /*
->         * Sample where the filesystem has been mounted and
->         * store it in the superblock for sysadmin convenience
->         * when trying to sort through large numbers of block
->         * devices or filesystem images.
->         */
->        memset(buf, 0, sizeof(buf));
->        path.mnt =3D mnt;
->        path.dentry =3D mnt->mnt_root;
->        cp =3D d_path(&path, buf, sizeof(buf));
->        ...
->=20
-> What we would need to do is file a feature request in the other file
-> systems to save this information, and then add proper support for to
-> pass this information from the VFS layer into the struct
-> super_operations's mount function, which would be the proper, sane wa=
-y
-> to provide this functionality.
->=20
->                        - Ted
->=20
->=20
->=20
->=20
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
---
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+fallocate -l 8g myfile; mkfs.ext4 myfile
+or
+truncate -s 8589934592 myfile; mkfs.ext4 myfile
+
+doesn't seem all that onerous.
+
+-Eric
+
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> ---
+>  misc/mke2fs.c |  3 ++-
+>  misc/util.c   | 20 ++++++++++++++++----
+>  misc/util.h   |  1 +
+>  3 files changed, 19 insertions(+), 5 deletions(-)
+> 
+> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+> index fa61e7b..a2b1f65 100644
+> --- a/misc/mke2fs.c
+> +++ b/misc/mke2fs.c
+> @@ -1749,7 +1749,8 @@ profile_error:
+>  	if (optind < argc)
+>  		usage();
+>  
+> -	if (!check_plausibility(device_name, 0, &is_device) && !force)
+> +	if (!check_plausibility(device_name, CREATE_FILE,
+> +				&is_device) && !force)
+>  		proceed_question();
+>  
+>  	check_mount(device_name, force, _("filesystem"));
+> diff --git a/misc/util.c b/misc/util.c
+> index 08ec761..f85942e 100644
+> --- a/misc/util.c
+> +++ b/misc/util.c
+> @@ -13,6 +13,7 @@
+>  #define _LARGEFILE64_SOURCE
+>  
+>  #include "config.h"
+> +#include <fcntl.h>
+>  #include <stdio.h>
+>  #include <string.h>
+>  #ifdef HAVE_ERRNO_H
+> @@ -21,6 +22,7 @@
+>  #ifdef HAVE_LINUX_MAJOR_H
+>  #include <linux/major.h>
+>  #endif
+> +#include <sys/types.h>
+>  #ifdef HAVE_SYS_STAT_H
+>  #include <sys/stat.h>
+>  #endif
+> @@ -85,19 +87,29 @@ void proceed_question(void)
+>   */
+>  int check_plausibility(const char *device, int flags, int *ret_is_dev)
+>  {
+> -	int val, is_dev = 0;
+> +	int fd, is_dev = 0;
+>  	ext2fs_struct_stat s;
+> +	int fl = O_RDONLY;
+>  
+> -	val = ext2fs_stat(device, &s);
+> +	if (flags & CREATE_FILE)
+> +		fl |= O_CREAT;
+>  
+> -	if(val == -1) {
+> -		fprintf(stderr, _("Could not stat %s --- %s\n"),
+> +	fd = open(device, fl, 0666);
+> +	if (fd < 0) {
+> +		fprintf(stderr, _("Could not open %s: %s\n"),
+>  			device, error_message(errno));
+>  		if (errno == ENOENT)
+>  			fputs(_("\nThe device apparently does not exist; "
+>  				"did you specify it correctly?\n"), stderr);
+>  		exit(1);
+>  	}
+> +
+> +	if (ext2fs_fstat(fd, &s) < 0) {
+> +		perror("stat");
+> +		exit(1);
+> +	}
+> +	close(fd);
+> +
+>  	if (S_ISBLK(s.st_mode))
+>  		is_dev = 1;
+>  #if defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
+> diff --git a/misc/util.h b/misc/util.h
+> index 867f4b0..b80d489 100644
+> --- a/misc/util.h
+> +++ b/misc/util.h
+> @@ -19,6 +19,7 @@ extern char	*journal_location_string;
+>   * Flags for check_plausibility()
+>   */
+>  #define CHECK_BLOCK_DEV	0x0001
+> +#define CREATE_FILE	0x0002
+>  
+>  #ifndef HAVE_STRCASECMP
+>  extern int strcasecmp (char *s1, char *s2);
+> 
+
