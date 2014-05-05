@@ -1,81 +1,100 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 3/3] mke2fs: check for a partition table and warn if
- present
-Date: Mon, 5 May 2014 16:11:41 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1405051606480.2223@localhost.localdomain>
-References: <1399295044-24489-1-git-send-email-tytso@mit.edu> <1399295044-24489-3-git-send-email-tytso@mit.edu> <alpine.LFD.2.00.1405051549310.2223@localhost.localdomain> <20140505135804.GC22287@thunk.org>
+From: Nikola Ciprich <nikola.ciprich@linuxbox.cz>
+Subject: Re: info about filesystem errors in /sys/fs/ext4/... ?
+Date: Mon, 5 May 2014 13:14:20 +0200
+Message-ID: <20140505111420.GJ11499@pcnci.linuxbox.cz>
+References: <20140505070823.GM3017@pcnci.linuxbox.cz>
+ <alpine.LFD.2.00.1405051253400.2223@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-475970867-1399299035=:2223"
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="SCOJXUq1iwCn05li"
+Cc: linux-ext4@vger.kernel.org
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:6952 "EHLO mx1.redhat.com"
+Received: from gwu.lbox.cz ([62.245.111.132]:59163 "EHLO gwu.lbox.cz"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932542AbaEEOLr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 May 2014 10:11:47 -0400
-In-Reply-To: <20140505135804.GC22287@thunk.org>
-Content-ID: <alpine.LFD.2.00.1405051611340.2223@localhost.localdomain>
+	id S1753222AbaEELO1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 May 2014 07:14:27 -0400
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1405051253400.2223@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
 
---8323328-475970867-1399299035=:2223
-Content-Type: TEXT/PLAIN; CHARSET=ISO-8859-15
-Content-Transfer-Encoding: 8BIT
-Content-ID: <alpine.LFD.2.00.1405051611341.2223@localhost.localdomain>
+--SCOJXUq1iwCn05li
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-On Mon, 5 May 2014, Theodore Ts'o wrote:
+Hello Luk=C3=A1=C5=A1,
 
-> Date: Mon, 5 May 2014 09:58:04 -0400
-> From: Theodore Ts'o <tytso@mit.edu>
-> To: Luká¨ Czerner <lczerner@redhat.com>
-> Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-> Subject: Re: [PATCH 3/3] mke2fs: check for a partition table and warn if
->     present
-> 
-> On Mon, May 05, 2014 at 03:52:05PM +0200, Luká¨ Czerner wrote:
-> > > +	ret = check_partition_table(device);
-> > 
-> > This can be actually used to check more than just partitions. So we
-> > can use this approach to check for all rather than having separate
-> > checks for file system signatures and partitions.
-> 
-> The issue is that e2fsprogs gets compiled for systems other than just
-> Linux.  I don't want to be like the assholes who work on systemd and
-> GNOME that simply screw over *BSD systems.  This is why I keep our
-> internal version of blkid in e2fsprogs, even if I do plan to use the
-> system blkid by default for 1.43.
-> 
-> If I had infinite amounts of free time, I'd backport the the new
-> blkid_probe interfaces to our internal version of blkid, but since I
-> don't, I prefer use the old interfaces for blkid as much as possible,
-> since that's the path of least resistance in terms of continuing to
-> support non-Linux users of e2fsprogs.
+> Currently I do not think there is a way to check whether mounted
+> file system contains errors (EXT2_ERROR_FS flag is set in super
+> block).
+>=20
+> You either have to check the logs, or run fsck before mounting the
+> file system.
+>=20
+> It really seems like a optimal thing to provide a way to inform user
+> space about this without the need to parse the log. I think that
+> sysfs is a perfect place for this.
+>=20
+> However we might to go a step further, because I do not
+> really like the idea of allowing to mount the file system with
+> errors by default. It does not really make sense to me and I wonder
+> whether someone actually intend to do it this way.
+>=20
+> What about having this scenario respect "errors=3D" setting ? Of
+> course it might not make sense to panic when mounting file system
+> with errors with "errors=3Dpanic" option, we can just fail the mount.
+>=20
+> Will that help your case ?
 
-Fair enough. But we should still make the use of system libblkid by
-default if you do not have any objections.
+Yes for some cases, no for others :)  For example I do not want server to
+fail booting if it could otherwise start (even though it might need some
+intervention, at least running fsck). Giving simple way (like mentioned sys=
+fs
+access) would make monitoring such issues much simpler.
 
-Also it'll be great to mention that in the commit description that
-this is the reason why we still try to use the old approach.
+Of course for some cases, it's for sure safer to disallow mounting rather
+then risking further data corruption...
 
-> 
-> > Also in your check_partition_table() you do not disable probing for
-> > supeblocks even though you do not look to them afterwards so it's
-> > not a big deal. But again I think that we can use it to check for
-> > all signatures.
-> 
-> How do you disable probing for superblocks with the new blkid interface?
+I'm not sure how big is chance that mounting filesystem with errors can
+cause more errors, I guess it depends on the nature of the problem..
 
-blkid_probe_enable_superblocks(pr, 0);
+cheers!
 
-Thanks!
--Lukas
+nik
 
-> 
-> Cheers,
-> 
-> 					- Ted
-> 
---8323328-475970867-1399299035=:2223--
+
+>=20
+> Thanks!
+> -Lukas
+>=20
+
+--=20
+-------------------------------------
+Ing. Nikola CIPRICH
+LinuxBox.cz, s.r.o.
+28.rijna 168, 709 00 Ostrava
+
+tel.:   +420 591 166 214
+fax:    +420 596 621 273
+mobil:  +420 777 093 799
+www.linuxbox.cz
+
+mobil servis: +420 737 238 656
+email servis: servis@linuxbox.cz
+-------------------------------------
+
+--SCOJXUq1iwCn05li
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.14 (GNU/Linux)
+
+iEYEARECAAYFAlNncowACgkQ3xdJJrLygV5guACbBvow9k88MvoLTJCqwHYEKW9F
+MBkAoLVcULmmpfRSVc4LRgmFoqxKiMu/
+=A0Nq
+-----END PGP SIGNATURE-----
+
+--SCOJXUq1iwCn05li--
