@@ -1,65 +1,62 @@
 From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: info about filesystem errors in /sys/fs/ext4/... ?
-Date: Mon, 5 May 2014 07:59:19 -0400
-Message-ID: <20140505115919.GB18305@thunk.org>
+Date: Mon, 5 May 2014 15:15:57 -0400
+Message-ID: <20140505191557.GM22287@thunk.org>
 References: <20140505070823.GM3017@pcnci.linuxbox.cz>
  <alpine.LFD.2.00.1405051253400.2223@localhost.localdomain>
+ <20140505115919.GB18305@thunk.org>
+ <5367A5E5.10809@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Nikola Ciprich <nikola.ciprich@linuxbox.cz>,
+Content-Type: text/plain; charset=us-ascii
+Cc: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
+	Nikola Ciprich <nikola.ciprich@linuxbox.cz>,
 	linux-ext4@vger.kernel.org
-To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:49495 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:50407 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756431AbaEEL70 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 May 2014 07:59:26 -0400
+	id S1751611AbaEETQI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 May 2014 15:16:08 -0400
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1405051253400.2223@localhost.localdomain>
+In-Reply-To: <5367A5E5.10809@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 05, 2014 at 01:03:17PM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
-:
->=20
-> However we might to go a step further, because I do not
-> really like the idea of allowing to mount the file system with
-> errors by default. It does not really make sense to me and I wonder
-> whether someone actually intend to do it this way.
+For the record, since this was discussed on the ext4 weekly
+teleconference...
 
-We would need to make an exception for the root file system, of
-course.  And I've been receiving patches from folks who want to allow
-e2fsck to be able to fix a mounted, read-only /usr partition, since
-systemd is forcing folks to have to mount /usr read-only before it
-will start, which means /usr needs to be mounted before e2fsck gets
-started by systemd.
+The reason why I've been hesitant about allowing any file system to be
+checked by e2fsck while being mounted read-only is because of the
+following failure scenario:
 
-So that implies that we may need to have an exception for certain
-non-root file systems as well, if we want to disallow mounting file
-systems that have errors by default.  Or perhaps we should only
-disallow read/write mounts of file systems that have errors without
-some kind of override mount option.  Although I'm not sure we could
-just start doing that by default without breaking some set of systems
-and their current set of init scripts.
+1) The kernel discovers that a file system has been corrupted, so it
+marks the file system as being inconsistent and it remounts the file
+system read-only.
+
+2) The user runs e2fsck on the file system, while it is still mounted
+read-only, and fixes it.
+
+3) The kernel still has cached data structures with incorrect inode
+reference counts, etc.  So when the user then remounts the file system
+read/write, the file system gets corrupted again, and the user suffers
+data loss.
 
 
-As far as determining whether or not a file system has errors, having
-a /sys entry makes sense; although userspace could just read this out
-of the ext2/3/4 superblock directly.
+This could happen with the root file system as well, of course, but
+there is a big, large, scary message making it clear that you *MUST*
+reboot after repairing a corrupted root file system.  The real issue
+is encouraging users from checking mounted file systems at all.  One
+approach would be do to require a command-line option of the form
+--i-know-this-is-dangerous-and-I-could-lose-data, or some such.
+Apparently xfs does something like this, with a xfs_repair -d ('D' is
+for Dangerous).
 
-I'll note that internally inside Google, we've used multiple
-mechanisms over time and for different use cases.  In some cases we've
-scraped the system log files; in some cases we've used a hack that
-redirected ext4_error() information into a custom semi-structured data
-stream delivered via a netlink socket; and in some cases we've had a
-userspace daemon parse the output of "dumpe2fs -h /dev/XXX".
+Another approach which Andreas Dilger suggested, and which we will
+likely use, is one where we snapshot the last fsck time from the
+superblock when the file system is mounted or remounted read-only.
+Then when the user tries to remount the file system read-write, if the
+last fsck time has been changed, we reject the r/w remount request.
 
-Cheers,
+Regards,
 
-					- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+						- Ted
