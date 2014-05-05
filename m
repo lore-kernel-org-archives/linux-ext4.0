@@ -1,61 +1,48 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: info about filesystem errors in /sys/fs/ext4/... ?
-Date: Mon, 5 May 2014 13:03:17 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1405051253400.2223@localhost.localdomain>
-References: <20140505070823.GM3017@pcnci.linuxbox.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/3] mke2fs: print a message when creating a regular file
+Date: Mon, 5 May 2014 10:49:38 -0400
+Message-ID: <20140505144938.GH22287@thunk.org>
+References: <1399295044-24489-1-git-send-email-tytso@mit.edu>
+ <alpine.LFD.2.00.1405051532280.2223@localhost.localdomain>
+ <20140505135239.GB22287@thunk.org>
+ <5367A445.9070209@redhat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org
-To: Nikola Ciprich <nikola.ciprich@linuxbox.cz>
+Content-Type: text/plain; charset=us-ascii
+Cc: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55867 "EHLO mx1.redhat.com"
+Received: from imap.thunk.org ([74.207.234.97]:49911 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751085AbaEELDl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 May 2014 07:03:41 -0400
-In-Reply-To: <20140505070823.GM3017@pcnci.linuxbox.cz>
+	id S932448AbaEEOtp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 May 2014 10:49:45 -0400
+Content-Disposition: inline
+In-Reply-To: <5367A445.9070209@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 5 May 2014, Nikola Ciprich wrote:
-
-> Date: Mon, 5 May 2014 09:08:23 +0200
-> From: Nikola Ciprich <nikola.ciprich@linuxbox.cz>
-> To: linux-ext4@vger.kernel.org
-> Subject: info about filesystem errors in /sys/fs/ext4/... ?
+On Mon, May 05, 2014 at 09:46:29AM -0500, Eric Sandeen wrote:
+> > Even if there is some case in the future where dev_size could be left
+> > unset, it will be initialized to zero, at which point we will fail
+> > safe by skipping the mke2fs_discard_device() call.
 > 
-> Hello,
+> I kind of lost the thread here; if it is impossible to be unset, why
+> add the check?
 > 
-> I was wondering, is it possible to find out whether some filesystem with
-> errors in mounted apart from parsing kernel log?
-> 
-> Would it be too complicated to add such info to /sys/fs/ext4/.../ or to
-> some other location? Would such change make sense to you?
-> 
-> with regards
-> 
-> nik
+> And if (!dev_size) what would happen on this path?  I guess I need to get
+> all the pending patches applied to see what's changed in this area.
 
-Currently I do not think there is a way to check whether mounted
-file system contains errors (EXT2_ERROR_FS flag is set in super
-block).
+It's mostly cosmetic, to be honest.  It avoids this confusing line:
 
-You either have to check the logs, or run fsck before mounting the
-file system.
+5% ./misc/mke2fs -t ext4 /tmp/foo.img 16M
+mke2fs 1.42.9 (4-Feb-2014)
+Creating regular file /tmp/foo.img
+Discarding device: done         <========== this nonsense line
+Creating filesystem with 16384 1k blocks and 4096 inodes
+Filesystem UUID: 515a4e52-79f1-4317-ad61-a87c492c1371
+Superblock backups stored on blocks: 
+	   8193
+   ...
 
-It really seems like a optimal thing to provide a way to inform user
-space about this without the need to parse the log. I think that
-sysfs is a perfect place for this.
+				- Ted
 
-However we might to go a step further, because I do not
-really like the idea of allowing to mount the file system with
-errors by default. It does not really make sense to me and I wonder
-whether someone actually intend to do it this way.
-
-What about having this scenario respect "errors=" setting ? Of
-course it might not make sense to panic when mounting file system
-with errors with "errors=panic" option, we can just fail the mount.
-
-Will that help your case ?
-
-Thanks!
--Lukas
