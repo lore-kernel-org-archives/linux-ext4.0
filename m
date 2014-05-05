@@ -1,79 +1,142 @@
-From: Karel Zak <kzak@redhat.com>
-Subject: Re: [PATCH 2/3] mke2fs: print extra information about existing
- ext2/3/4 file systems
-Date: Mon, 5 May 2014 19:50:49 +0200
-Message-ID: <20140505175049.GA29151@x2.net.home>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 3/3] mke2fs: check for a partition table and warn if present
+Date: Mon,  5 May 2014 09:04:04 -0400
+Message-ID: <1399295044-24489-3-git-send-email-tytso@mit.edu>
 References: <1399295044-24489-1-git-send-email-tytso@mit.edu>
- <1399295044-24489-2-git-send-email-tytso@mit.edu>
- <alpine.LFD.2.00.1405051541080.2223@localhost.localdomain>
- <20140505140401.GD22287@thunk.org>
- <20140505142808.GF22287@thunk.org>
- <alpine.LFD.2.00.1405051629270.2223@localhost.localdomain>
- <20140505144423.GG22287@thunk.org>
- <alpine.LFD.2.00.1405051649050.2223@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	linux-fsdevel@vger.kernel.org
-To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1405051649050.2223@localhost.localdomain>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:49655 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932187AbaEENEN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 May 2014 09:04:13 -0400
+In-Reply-To: <1399295044-24489-1-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 05, 2014 at 04:51:25PM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
-:
-> On Mon, 5 May 2014, Theodore Ts'o wrote:
-> > What we would need to do is file a feature request in the other fil=
-e
-> > systems to save this information, and then add proper support for t=
-o
-> > pass this information from the VFS layer into the struct
-> > super_operations's mount function, which would be the proper, sane =
-way
-> > to provide this functionality.
-> >=20
-> > 						- Ted
->=20
-> Which would be reasonable if there was a consumer of such
-> information and it seemed to be useful. So I wonder what other
-> people think about that.
->=20
-> Karel, you had some suggestions about how to utilize that aside from
-> the mkfs...
+This supercedes the "whole disk" check, since it does a better job and
+there are times when it is quite legitimate to want to use the whole
+disk.
 
- It's really simple to add another NAME=3Dvalue to the low-level part o=
-f
- the libblkid (used to feed udev db). The question is how usable will
- that, I can imagine:
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ configure       |  2 +-
+ configure.in    |  1 +
+ lib/config.h.in |  3 +++
+ misc/util.c     | 48 +++++++++++++++++++++++++++++++++++++++++-------
+ 4 files changed, 46 insertions(+), 8 deletions(-)
 
-   1) audit / logging purpose
-   2) mount <device> --last-target
-   3) automount (for example udisks and removable media)
+diff --git a/configure b/configure
+index 44664c3..6fe33f5 100755
+--- a/configure
++++ b/configure
+@@ -11078,7 +11078,7 @@ if test "$ac_res" != no; then :
+ fi
+ 
+ fi
+-for ac_func in  	__secure_getenv 	backtrace 	blkid_probe_get_topology 	chflags 	fadvise64 	fallocate 	fallocate64 	fchown 	fdatasync 	fstat64 	ftruncate64 	futimes 	getcwd 	getdtablesize 	getmntinfo 	getpwuid_r 	getrlimit 	getrusage 	jrand48 	llseek 	lseek64 	mallinfo 	mbstowcs 	memalign 	mempcpy 	mmap 	msync 	nanosleep 	open64 	pathconf 	posix_fadvise 	posix_fadvise64 	posix_memalign 	prctl 	secure_getenv 	setmntent 	setresgid 	setresuid 	srandom 	stpcpy 	strcasecmp 	strdup 	strnlen 	strptime 	strtoull 	sync_file_range 	sysconf 	usleep 	utime 	valloc
++for ac_func in  	__secure_getenv 	backtrace 	blkid_probe_get_topology 	blkid_probe_enable_partitions 	chflags 	fadvise64 	fallocate 	fallocate64 	fchown 	fdatasync 	fstat64 	ftruncate64 	futimes 	getcwd 	getdtablesize 	getmntinfo 	getpwuid_r 	getrlimit 	getrusage 	jrand48 	llseek 	lseek64 	mallinfo 	mbstowcs 	memalign 	mempcpy 	mmap 	msync 	nanosleep 	open64 	pathconf 	posix_fadvise 	posix_fadvise64 	posix_memalign 	prctl 	secure_getenv 	setmntent 	setresgid 	setresuid 	srandom 	stpcpy 	strcasecmp 	strdup 	strnlen 	strptime 	strtoull 	sync_file_range 	sysconf 	usleep 	utime 	valloc
+ do :
+   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
+ ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
+diff --git a/configure.in b/configure.in
+index e0e6d48..781b6f5 100644
+--- a/configure.in
++++ b/configure.in
+@@ -1050,6 +1050,7 @@ AC_CHECK_FUNCS(m4_flatten([
+ 	__secure_getenv
+ 	backtrace
+ 	blkid_probe_get_topology
++	blkid_probe_enable_partitions
+ 	chflags
+ 	fadvise64
+ 	fallocate
+diff --git a/lib/config.h.in b/lib/config.h.in
+index b575a5c..92b3c49 100644
+--- a/lib/config.h.in
++++ b/lib/config.h.in
+@@ -55,6 +55,9 @@
+ /* Define to 1 if you have the `backtrace' function. */
+ #undef HAVE_BACKTRACE
+ 
++/* Define to 1 if you have the `blkid_probe_enable_partitions' function. */
++#undef HAVE_BLKID_PROBE_ENABLE_PARTITIONS
++
+ /* Define to 1 if you have the `blkid_probe_get_topology' function. */
+ #undef HAVE_BLKID_PROBE_GET_TOPOLOGY
+ 
+diff --git a/misc/util.c b/misc/util.c
+index d63e21b..d0e4c7e 100644
+--- a/misc/util.c
++++ b/misc/util.c
+@@ -139,13 +139,50 @@ static void print_ext2_info(const char *device)
+ 	ext2fs_close(fs);
+ }
+ 
++/*
++ * return 1 if there is no partition table, 0 if a partition table is
++ * detected, and -1 on an error.
++ */
++static int check_partition_table(const char *device)
++{
++#ifdef HAVE_BLKID_PROBE_ENABLE_PARTITIONS
++	blkid_probe pr;
++	const char *value;
++	int ret;
++
++	pr = blkid_new_probe_from_filename(device);
++	if (!pr)
++		return -1;
++
++        ret = blkid_probe_enable_partitions(pr, 1);
++        if (ret < 0)
++		goto errout;
++
++	ret = blkid_do_fullprobe(pr);
++	if (ret < 0)
++		goto errout;
++
++	ret = blkid_probe_lookup_value(pr, "PTTYPE", &value, NULL);
++	if (ret == 0)
++		fprintf(stderr, _("Found a %s partition table in %s\n"),
++			value, device);
++	else
++		ret = 1;
++
++errout:
++	blkid_free_probe(pr);
++	return ret;
++#else
++	return -1;
++#endif
++}
+ 
+ /*
+  * return 1 if the device looks plausible, creating the file if necessary
+  */
+ int check_plausibility(const char *device, int flags, int *ret_is_dev)
+ {
+-	int fd, is_dev = 0;
++	int fd, ret, is_dev = 0;
+ 	ext2fs_struct_stat s;
+ 	int fl = O_RDONLY;
+ 	blkid_cache cache = NULL;
+@@ -210,12 +247,9 @@ int check_plausibility(const char *device, int flags, int *ret_is_dev)
+ 		return 0;
+ 	}
+ 
+-	/*
+-	 * We should eventually replace this with a test for the
+-	 * presence of a partition table.  Unfortunately the blkid
+-	 * library doesn't test for partition tabels, and checking for
+-	 * valid GPT and MBR and possibly others isn't quite trivial.
+-	 */
++	ret = check_partition_table(device);
++	if (ret >= 0)
++		return ret;
+ 
+ #ifdef HAVE_LINUX_MAJOR_H
+ #ifndef MAJOR
+-- 
+1.9.0
 
- unfortunately 2) and 3) seem fragile as the filesystem superblocks
- have no clue about namespaces and the same filesystem is possible to
- mount in the same time to more places, etc.
-=20
- BTW, the current trend is to use GPT partition types to identify
- purpose of the partition filesystem (for example extra GUID for
- /home). It's FS independent solution and it allows use the right
- filesystems for the right mountpoints. It's very attractive for
- example for virtual images where you don't have to setup fstab and
- identify FS, but you still have (for example) /home on the right
- place.
-
-     Karel
-
-
---=20
- Karel Zak  <kzak@redhat.com>
- http://karelzak.blogspot.com
---
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
