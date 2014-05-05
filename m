@@ -1,69 +1,115 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 2/3] mke2fs: print extra information about existing
- ext2/3/4 file systems
-Date: Mon, 5 May 2014 16:38:37 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1405051629270.2223@localhost.localdomain>
-References: <1399295044-24489-1-git-send-email-tytso@mit.edu> <1399295044-24489-2-git-send-email-tytso@mit.edu> <alpine.LFD.2.00.1405051541080.2223@localhost.localdomain> <20140505140401.GD22287@thunk.org> <20140505142808.GF22287@thunk.org>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 04/37] mke2fs: always warn if 128-byte inode and
+ inline_data
+Date: Mon, 5 May 2014 13:10:00 -0700
+Message-ID: <20140505201000.GH8434@birch.djwong.org>
+References: <20140501231222.31890.82860.stgit@birch.djwong.org>
+ <20140501231249.31890.43562.stgit@birch.djwong.org>
+ <alpine.LFD.2.00.1405021325170.2154@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1048189599-1399300720=:2223"
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>, kzak@redhat.com,
-	linux-fsdevel@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20140505142808.GF22287@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:27018 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754355AbaEEUKR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 May 2014 16:10:17 -0400
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1405021325170.2154@localhost.localdomain>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+On Fri, May 02, 2014 at 01:27:01PM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
+:
+> On Thu, 1 May 2014, Darrick J. Wong wrote:
+>=20
+> > Date: Thu, 01 May 2014 16:12:49 -0700
+> > From: Darrick J. Wong <darrick.wong@oracle.com>
+> > To: tytso@mit.edu, darrick.wong@oracle.com
+> > Cc: linux-ext4@vger.kernel.org
+> > Subject: [PATCH 04/37] mke2fs: always warn if 128-byte inode and in=
+line_data
+> >=20
+> > The combination of 128-byte inodes and inline_data is silly, since
+> > there's no room in the inode table.  Unfortunately, if neither
+> > mke2fs.conf nor the mkfs command line options specify an inode size=
+,
+> > the default inode size is set to 128 bytes (by libext2fs) and the
+> > warning isn't printed.  Therefore, always do the check-and-warning.
+> >=20
+> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> > ---
+> >  misc/mke2fs.c |   25 +++++++++++++------------
+> >  1 file changed, 13 insertions(+), 12 deletions(-)
+> >=20
+> >=20
+> > diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+> > index aecd5d5..6507d0d 100644
+> > --- a/misc/mke2fs.c
+> > +++ b/misc/mke2fs.c
+> > @@ -2282,21 +2282,22 @@ profile_error:
+> >  				blocksize);
+> >  			exit(1);
+> >  		}
+> > -		/*
+> > -		 * If inode size is 128 and inline data is enabled, we need
+> > -		 * to notify users that inline data will never be useful.
+> > -		 */
+> > -		if ((fs_param.s_feature_incompat &
+> > -		     EXT4_FEATURE_INCOMPAT_INLINE_DATA) &&
+> > -		    inode_size =3D=3D EXT2_GOOD_OLD_INODE_SIZE) {
+> > -			com_err(program_name, 0,
+> > -				_("inode size is %d, inline data is useless"),
+> > -				inode_size);
+> > -			exit(1);
+> > -		}
+> >  		fs_param.s_inode_size =3D inode_size;
+> >  	}
+> > =20
+> > +	/*
+> > +	 * If inode size is 128 and inline data is enabled, we need
+> > +	 * to notify users that inline data will never be useful.
+> > +	 */
+> > +	if ((fs_param.s_feature_incompat &
+> > +	     EXT4_FEATURE_INCOMPAT_INLINE_DATA) &&
+> > +	    fs_param.s_inode_size =3D=3D EXT2_GOOD_OLD_INODE_SIZE) {
+> > +		com_err(program_name, 0,
+> > +			_("inode size is %d, inline data is useless"),
+> > +			inode_size);
+>=20
+> Oops :) copy-paste is tricky. You need to use fs_param.s_inode_size
+> rather than inode_size here. Otherwise it looks good.
 
---8323328-1048189599-1399300720=:2223
-Content-Type: TEXT/PLAIN; charset=ISO-8859-15
-Content-Transfer-Encoding: 8BIT
+Will fix, thanks.
 
-On Mon, 5 May 2014, Theodore Ts'o wrote:
-
-> Date: Mon, 5 May 2014 10:28:08 -0400
-> From: Theodore Ts'o <tytso@mit.edu>
-> To: Luká¨ Czerner <lczerner@redhat.com>
-> Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-> Subject: Re: [PATCH 2/3] mke2fs: print extra information about existing
->     ext2/3/4 file systems
-> 
-> On Mon, May 05, 2014 at 10:04:01AM -0400, Theodore Ts'o wrote:
-> > The basic idea behinid these patches is that we now get a bit more
-> > context with the warning message for ext2/3/4 file systems:
-> > 
-> > % ./misc/mke2fs -t ext4 /dev/heap/media
-> > mke2fs 1.42.9 (4-Feb-2014)
-> > /dev/heap/media contains a ext4 file system labelled 'media'
-> > 		  last mounted on /media on Mon May  5 08:59:53 2014
-> > Proceed anyway? (y,n) 
-> 
-> And actually, the place where this context is critically important is
-> in this case (where let's say, the user typo's sdc3 when they meant to
-> type sdd3):
-> 
-> % ./misc/mke2fs -t ext4 /dev/sdc3
-> mke2fs 1.42.9 (4-Feb-2014)
-> /dev/sdc3 contains a ext4 file system
-> 	last mounted on /SOX-backups on Mon May  5 08:59:53 2014
-> Proceed anyway? (y,n) 
-> 
-> ... where this becomes a last-ditch saving through against the
-> accidental wiping of the enterprise's Sarbanes-Oxley records.  :-)
-> 
-> 						- Ted
-
-Yep, it's really useful. I just was not sure what is this all about since
-there was not description and I was missing context from the other patches.
-
-But this makes me think that it would be very useful if blkid could
-gather this information for other file system if possible :). This
-might be very useful if we can get some overlap with other file
-system with the information provided in superblock.
-
-Karel, what do you think ?
-
--Lukas
---8323328-1048189599-1399300720=:2223--
+--D
+>=20
+> Thanks!
+> -Lukas
+>=20
+>=20
+> > +		exit(1);
+> > +	}
+> > +
+> >  	/* Make sure number of inodes specified will fit in 32 bits */
+> >  	if (num_inodes =3D=3D 0) {
+> >  		unsigned long long n;
+> >=20
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext=
+4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >=20
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
