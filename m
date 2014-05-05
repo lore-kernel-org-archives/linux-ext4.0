@@ -1,79 +1,79 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/3] mke2fs: print extra information about existing ext2/3/4 file systems
-Date: Mon,  5 May 2014 09:04:03 -0400
-Message-ID: <1399295044-24489-2-git-send-email-tytso@mit.edu>
+From: Karel Zak <kzak@redhat.com>
+Subject: Re: [PATCH 2/3] mke2fs: print extra information about existing
+ ext2/3/4 file systems
+Date: Mon, 5 May 2014 19:50:49 +0200
+Message-ID: <20140505175049.GA29151@x2.net.home>
 References: <1399295044-24489-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:49660 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932187AbaEENES (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 May 2014 09:04:18 -0400
-In-Reply-To: <1399295044-24489-1-git-send-email-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+ <1399295044-24489-2-git-send-email-tytso@mit.edu>
+ <alpine.LFD.2.00.1405051541080.2223@localhost.localdomain>
+ <20140505140401.GD22287@thunk.org>
+ <20140505142808.GF22287@thunk.org>
+ <alpine.LFD.2.00.1405051629270.2223@localhost.localdomain>
+ <20140505144423.GG22287@thunk.org>
+ <alpine.LFD.2.00.1405051649050.2223@localhost.localdomain>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1405051649050.2223@localhost.localdomain>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- misc/util.c | 37 +++++++++++++++++++++++++++++++++++++
- 1 file changed, 37 insertions(+)
+On Mon, May 05, 2014 at 04:51:25PM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
+:
+> On Mon, 5 May 2014, Theodore Ts'o wrote:
+> > What we would need to do is file a feature request in the other fil=
+e
+> > systems to save this information, and then add proper support for t=
+o
+> > pass this information from the VFS layer into the struct
+> > super_operations's mount function, which would be the proper, sane =
+way
+> > to provide this functionality.
+> >=20
+> > 						- Ted
+>=20
+> Which would be reasonable if there was a consumer of such
+> information and it seemed to be useful. So I wonder what other
+> people think about that.
+>=20
+> Karel, you had some suggestions about how to utilize that aside from
+> the mkfs...
 
-diff --git a/misc/util.c b/misc/util.c
-index 15b4ce5..d63e21b 100644
---- a/misc/util.c
-+++ b/misc/util.c
-@@ -105,6 +105,41 @@ void proceed_question(int delay)
- 	signal(SIGALRM, SIG_IGN);
- }
- 
-+static void print_ext2_info(const char *device)
-+
-+{
-+	struct ext2_super_block	*sb;
-+	ext2_filsys		fs;
-+	errcode_t		retval;
-+	time_t 			tm;
-+	char			buf[80];
-+
-+	retval = ext2fs_open2(device, 0, 0, 0, 0, unix_io_manager, &fs);
-+	if (retval)
-+		return;
-+	sb = fs->super;
-+
-+	if (sb->s_mtime) {
-+		tm = sb->s_mtime;
-+		if (sb->s_last_mounted[0]) {
-+			memset(buf, 0, sizeof(buf));
-+			strncpy(buf, sb->s_last_mounted,
-+				sizeof(sb->s_last_mounted));
-+			printf(_("\tlast mounted on %s on %s"), buf,
-+			       ctime(&tm));
-+		} else
-+			printf(_("\tlast mounted on %s"), ctime(&tm));
-+	} else if (sb->s_mkfs_time) {
-+		tm = sb->s_mkfs_time;
-+		printf(_("\tcreated on %s"), ctime(&tm));
-+	} else if (sb->s_mkfs_time) {
-+		tm = sb->s_mtime;
-+		printf(_("\tlast modified on %s"), ctime(&tm));
-+	}
-+	ext2fs_close(fs);
-+}
-+
-+
- /*
-  * return 1 if the device looks plausible, creating the file if necessary
-  */
-@@ -168,6 +203,8 @@ int check_plausibility(const char *device, int flags, int *ret_is_dev)
- 		else
- 			printf(_("%s contains a %s file system\n"), device,
- 			       fs_type);
-+		if (strncmp(fs_type, "ext", 3) == 0)
-+			print_ext2_info(device);
- 		free(fs_type);
- 		free(fs_label);
- 		return 0;
--- 
-1.9.0
+ It's really simple to add another NAME=3Dvalue to the low-level part o=
+f
+ the libblkid (used to feed udev db). The question is how usable will
+ that, I can imagine:
 
+   1) audit / logging purpose
+   2) mount <device> --last-target
+   3) automount (for example udisks and removable media)
+
+ unfortunately 2) and 3) seem fragile as the filesystem superblocks
+ have no clue about namespaces and the same filesystem is possible to
+ mount in the same time to more places, etc.
+=20
+ BTW, the current trend is to use GPT partition types to identify
+ purpose of the partition filesystem (for example extra GUID for
+ /home). It's FS independent solution and it allows use the right
+ filesystems for the right mountpoints. It's very attractive for
+ example for virtual images where you don't have to setup fstab and
+ identify FS, but you still have (for example) /home on the right
+ place.
+
+     Karel
+
+
+--=20
+ Karel Zak  <kzak@redhat.com>
+ http://karelzak.blogspot.com
+--
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
+" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
