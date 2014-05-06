@@ -1,45 +1,94 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: ext4 metadata corruption bug?
-Date: Tue, 6 May 2014 11:42:39 -0400
-Message-ID: <20140506154239.GA5012@thunk.org>
-References: <20140420163211.GT10985@gradx.cs.jhu.edu>
- <20140423072311.GD10163@dot.freshdot.net>
- <20140423143642.GA29925@thunk.org>
- <20140501162503.GL5136@gradx.cs.jhu.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, admins@acm.jhu.edu
-To: Nathaniel W Filardo <nwf@cs.jhu.edu>
+Subject: [PATCH -v2 2/3] mke2fs: print extra information about existing ext2/3/4 file systems
+Date: Mon,  5 May 2014 21:02:12 -0400
+Message-ID: <1399338133-21373-2-git-send-email-tytso@mit.edu>
+References: <1399338133-21373-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:52300 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:50977 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932434AbaEFPmn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 May 2014 11:42:43 -0400
-Content-Disposition: inline
-In-Reply-To: <20140501162503.GL5136@gradx.cs.jhu.edu>
+	id S933119AbaEFBCQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 May 2014 21:02:16 -0400
+In-Reply-To: <1399338133-21373-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, May 01, 2014 at 12:25:03PM -0400, Nathaniel W Filardo wrote:
-> Here's another kernel report, this time from /dev/sda1, which is a QEMU-IDE
-> view of a local LVM volume and is only 4060864 blocks big, so it falls into
-> neither the "Ceph's fault" nor "8TB is special" bins:
-> 
-> [922646.672586] EXT4-fs error (device sda1): ext4_mb_generate_buddy:756: group 17, 24652 clusters in bitmap, 24651 in gd; block bitmap corrupt.
+The basic idea is to provide a bit more context in this situation:
 
-So this is a different report from the ones where we see this error:
+% ./misc/mke2fs -t ext4 /dev/sdc3
+mke2fs 1.42.9 (4-Feb-2014)
+/dev/sdc3 contains a ext4 file system
+Proceed anyway? (y,n)
 
-[817576.492468] EXT4-fs error (device vdd): ext4_mb_release_inode_pa:3729: group 59035, free 14, pa_free 12
+... by adding this bit of context:
 
-Have you seen any more of these errors?
+% ./misc/mke2fs -t ext4 /dev/sdc3
+mke2fs 1.42.9 (4-Feb-2014)
+/dev/sdc3 contains a ext4 file system
+	last mounted on /SOX-backups on Mon May  5 08:59:53 2014
+Proceed anyway? (y,n)
 
-> [922646.712017] BUG: unable to handle kernel NULL pointer dereference at 0000000000000028
-> [922646.712017] IP: [<ffffffffa014a7cc>] __ext4_error_inode+0x2c/0x150 [ext4]
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ misc/util.c | 37 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 37 insertions(+)
 
-FYI, this BUG (which can happens after certain jbd2 errors, which in
-your case happened after the journal was aborted) is fixed with commit
-66a4cb187b9 which will be in v3.15.
-
-	    	  				- Ted
-
+diff --git a/misc/util.c b/misc/util.c
+index 15b4ce5..d63e21b 100644
+--- a/misc/util.c
++++ b/misc/util.c
+@@ -105,6 +105,41 @@ void proceed_question(int delay)
+ 	signal(SIGALRM, SIG_IGN);
+ }
+ 
++static void print_ext2_info(const char *device)
++
++{
++	struct ext2_super_block	*sb;
++	ext2_filsys		fs;
++	errcode_t		retval;
++	time_t 			tm;
++	char			buf[80];
++
++	retval = ext2fs_open2(device, 0, 0, 0, 0, unix_io_manager, &fs);
++	if (retval)
++		return;
++	sb = fs->super;
++
++	if (sb->s_mtime) {
++		tm = sb->s_mtime;
++		if (sb->s_last_mounted[0]) {
++			memset(buf, 0, sizeof(buf));
++			strncpy(buf, sb->s_last_mounted,
++				sizeof(sb->s_last_mounted));
++			printf(_("\tlast mounted on %s on %s"), buf,
++			       ctime(&tm));
++		} else
++			printf(_("\tlast mounted on %s"), ctime(&tm));
++	} else if (sb->s_mkfs_time) {
++		tm = sb->s_mkfs_time;
++		printf(_("\tcreated on %s"), ctime(&tm));
++	} else if (sb->s_mkfs_time) {
++		tm = sb->s_mtime;
++		printf(_("\tlast modified on %s"), ctime(&tm));
++	}
++	ext2fs_close(fs);
++}
++
++
+ /*
+  * return 1 if the device looks plausible, creating the file if necessary
+  */
+@@ -168,6 +203,8 @@ int check_plausibility(const char *device, int flags, int *ret_is_dev)
+ 		else
+ 			printf(_("%s contains a %s file system\n"), device,
+ 			       fs_type);
++		if (strncmp(fs_type, "ext", 3) == 0)
++			print_ext2_info(device);
+ 		free(fs_type);
+ 		free(fs_label);
+ 		return 0;
+-- 
+1.9.0
 
