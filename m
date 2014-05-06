@@ -1,37 +1,71 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: add sysfs entry showing whether the fs contains
- errors
-Date: Tue, 6 May 2014 15:23:26 -0400
-Message-ID: <20140506192325.GB5012@thunk.org>
-References: <1399382357-12703-1-git-send-email-lczerner@redhat.com>
- <20140506174301.GQ8434@birch.djwong.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 75621] New: Permission denied trying to touch a file; happens
+ randomly; both ext3 and GPFS
+Date: Tue, 06 May 2014 18:45:11 +0000
+Message-ID: <bug-75621-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	nikola.ciprich@linuxbox.cz
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:52755 "EHLO imap.thunk.org"
+Received: from mail.kernel.org ([198.145.19.201]:49881 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751989AbaEFTXd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 May 2014 15:23:33 -0400
-Content-Disposition: inline
-In-Reply-To: <20140506174301.GQ8434@birch.djwong.org>
+	id S1751242AbaEFSpP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 May 2014 14:45:15 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 0535E20268
+	for <linux-ext4@vger.kernel.org>; Tue,  6 May 2014 18:45:14 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 3B93E20260
+	for <linux-ext4@vger.kernel.org>; Tue,  6 May 2014 18:45:12 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 06, 2014 at 10:43:01AM -0700, Darrick J. Wong wrote:
-> 
-> Minor complaint: "contains" makes me think that cat'ing that file will return
-> either 0 or 1, not a string of error text.  Perhaps we could shorten it to
-> /sys/fs/ext4/sda/errors ?
+https://bugzilla.kernel.org/show_bug.cgi?id=75621
 
-What I'd suggest doing is simply calling it errors_count, and
-returning s_error_count.  While we're at it, we could also return
-s_first_error_time and s_last_error_time as well, since I imagine
-those would could be quite useful for someone trying to create a
-system health monitoring daemon.
+            Bug ID: 75621
+           Summary: Permission denied trying to touch a file; happens
+                    randomly; both ext3 and GPFS
+           Product: File System
+           Version: 2.5
+    Kernel Version: 3.0.13-0.27
+          Hardware: x86-64
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext3
+          Assignee: fs_ext3@kernel-bugs.osdl.org
+          Reporter: phillip.l.viana@gmail.com
+        Regression: No
 
-Cheers,
+Hi,
 
-						- Ted
+I am running a benchmark against DB2 in my cluster with several ext3 (SSD) and
+GPFS file systems. After running the benchmark for around two days I noticed
+that one of the nodes rebooted and that was due to an error touching a file.
+The file was being touched by one of the HA monitors of Tivoli System
+Automation.
+
+I immediately tried to reproduce the error by touching the file again manually.
+I touched the file a few times successfully, then out of the blue I got a
+"Permission denied" error. Right after that I kept touching the file and got no
+error message.
+
+CPU utilization and I/O utilization were NOT at their peaks. 
+
+This error keeps happening randomly and therefore it is difficult to reproduce.
+It has happened both on a GPFS file system and an ext3 file system. Also I
+don't have much information on the internals of this problem.
+
+Do you have suggestions on how to instrument/debug/monitor the error so that I
+can move on with the investigation and bring more info to this bug report?
+
+Thanks
+
+Phil
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
