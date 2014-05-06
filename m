@@ -1,99 +1,211 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: Why does not freeblocks number change after deleting a big
- file?
-Date: Tue, 6 May 2014 12:35:32 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1405061229410.2255@localhost.localdomain>
-References: <536857BC.3010002@gmail.com> <20140506095748.GD23108@azat>
+From: Namjae Jeon <namjae.jeon@samsung.com>
+Subject: [PATCH v2] ext4: fix data integrity sync in ordered mode
+Date: Tue, 06 May 2014 15:49:29 +0900
+Message-ID: <000f01cf68f7$54205690$fc6103b0$@samsung.com>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1246622429-1399372534=:2255"
-Cc: Younger Liu <younger.liucn@gmail.com>, linux-ext4@vger.kernel.org
-To: Azat Khuzhin <a3at.mail@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:52793 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752325AbaEFKfg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 May 2014 06:35:36 -0400
-In-Reply-To: <20140506095748.GD23108@azat>
+Received: from mailout1.samsung.com ([203.254.224.24]:63644 "EHLO
+	mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933838AbaEFGtb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 May 2014 02:49:31 -0400
+Received: from epcpsbgr1.samsung.com
+ (u141.gpu120.samsung.co.kr [203.254.230.141])
+ by mailout1.samsung.com (Oracle Communications Messaging Server 7u4-24.01
+ (7.0.4.24.0) 64bit (built Nov 17 2011))
+ with ESMTP id <0N5500C0O4AIZFE0@mailout1.samsung.com> for
+ linux-ext4@vger.kernel.org; Tue, 06 May 2014 15:49:30 +0900 (KST)
+Content-language: ko
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+When we perform a data integrity sync we tag all the dirty pages with
+PAGECACHE_TAG_TOWRITE at start of ext4_da_writepages.
+Later we check for this tag in write_cache_pages_da and creates a
+struct mpage_da_data containing contiguously indexed pages tagged with this
+tag and sync these pages with a call to mpage_da_map_and_submit.
+This process is done in while loop until all the PAGECACHE_TAG_TOWRITE pages
+are synced. We also do journal start and stop in each iteration.
+journal_stop could initiate journal commit which would call ext4_writepage
+which in turn will call ext4_bio_write_page even for delayed OR unwritten
+buffers. When ext4_bio_write_page is called for such buffers, even though it
+does not sync them but it clears the PAGECACHE_TAG_TOWRITE of the corresponding
+page and hence these pages are also not synced by the currently running data
+integrity sync. We will end up with dirty pages although sync is completed.
 
---8323328-1246622429-1399372534=:2255
-Content-Type: TEXT/PLAIN; charset=utf-8
-Content-Transfer-Encoding: 8BIT
+This could cause a potential data loss when the sync call is followed by a
+truncate_pagecache call, which is exactly the case in collapse_range.
+(It will cause generic/127 failure in xfstests)
 
-On Tue, 6 May 2014, Azat Khuzhin wrote:
+Cc: Jan Kara <jack@suse.cz>
+Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
+Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
+---
 
-> Date: Tue, 6 May 2014 13:57:48 +0400
-> From: Azat Khuzhin <a3at.mail@gmail.com>
-> To: Younger Liu <younger.liucn@gmail.com>
-> Cc: linux-ext4@vger.kernel.org
-> Subject: Re: Why does not freeblocks number change after deleting a big file?
-> 
-> On Tue, May 06, 2014 at 11:32:12AM +0800, Younger Liu wrote:
-> > Hi:
-> >   Analyze ext4 filesystem with "debugfs -R "stats" <device>",
-> > Why does not free blocks number change after deleting a big file?
-> > 
-> > The big file:
-> > # stat test
-> >   file："test"
-> >   size：290554084       blocks：567496     IO block：4096
-> > 
-> > before deleting the file "test":
-> > # debugfs -R "stats" /dev/sdb
-> > ...
-> > Inode count:              243593216
-> > Block count:              1948728320
-> > Reserved block count:     97436416
-> > Free blocks:              406830314
-> > Free inodes:              151667854
-> > ...
-> > 
-> > deleting the file "test"
-> > # debugfs -R "stats" /dev/sdb
-> > ...
-> > Inode count:              243593216
-> > Block count:              1948728320
-> > Reserved block count:     97436416
-> > Free blocks:              406830314
-> > Free inodes:              151667854
-> 
-> Hi,
-> 
-> Seems that you are trying to do this on a mounted partition, and the
-> super block are not dumped to disk after every write/flush.
-> 
-> You could use statfs(2) instead of debugfs/stats command, or "mount -o
-> remount /dev/sdb_X_" and after debugfs, this _must_ work only in case
-> you don't have journal.
-> 
-> For more information you could look into ext4_commit_super().
+Changelog
+v2:
+ - As Jan Kara suggested, Create set_page_writeback_keepwrite which doesn't
+   clear TOWRITE tag.
 
-Yes, it really looks like you're doing this on mounted file system.
-However we do not update the superblock for some of the summary
-statistics such as number of free blocks, inodes and so on.
+ fs/ext4/ext4.h             |  3 ++-
+ fs/ext4/inode.c            |  6 ++++--
+ fs/ext4/page-io.c          |  8 ++++++--
+ include/linux/page-flags.h |  6 ++++++
+ mm/page-writeback.c        | 37 +++++++++++++++++++++++++++++++++++++
+ 5 files changed, 55 insertions(+), 5 deletions(-)
 
-This is because it is recalculated from per block group
-descriptors when the file system is mounted, or unmounted. So when
-the file system is mounted debugfs is not going to give you an
-accurate information. You have to use something else like 'stat -f'
-for example.
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 6b45afa..78fed7b 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2771,7 +2771,8 @@ extern void ext4_io_submit(struct ext4_io_submit *io);
+ extern int ext4_bio_write_page(struct ext4_io_submit *io,
+ 			       struct page *page,
+ 			       int len,
+-			       struct writeback_control *wbc);
++			       struct writeback_control *wbc,
++			       bool keep_towrite);
+ 
+ /* mmp.c */
+ extern int ext4_multi_mount_protect(struct super_block *, ext4_fsblk_t);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index b1dc334..8d9cb26 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1846,6 +1846,7 @@ static int ext4_writepage(struct page *page,
+ 	struct buffer_head *page_bufs = NULL;
+ 	struct inode *inode = page->mapping->host;
+ 	struct ext4_io_submit io_submit;
++	bool keep_towrite = false;
+ 
+ 	trace_ext4_writepage(page);
+ 	size = i_size_read(inode);
+@@ -1876,6 +1877,7 @@ static int ext4_writepage(struct page *page,
+ 			unlock_page(page);
+ 			return 0;
+ 		}
++		keep_towrite = true;
+ 	}
+ 
+ 	if (PageChecked(page) && ext4_should_journal_data(inode))
+@@ -1892,7 +1894,7 @@ static int ext4_writepage(struct page *page,
+ 		unlock_page(page);
+ 		return -ENOMEM;
+ 	}
+-	ret = ext4_bio_write_page(&io_submit, page, len, wbc);
++	ret = ext4_bio_write_page(&io_submit, page, len, wbc, keep_towrite);
+ 	ext4_io_submit(&io_submit);
+ 	/* Drop io_end reference we got from init */
+ 	ext4_put_io_end_defer(io_submit.io_end);
+@@ -1911,7 +1913,7 @@ static int mpage_submit_page(struct mpage_da_data *mpd, struct page *page)
+ 	else
+ 		len = PAGE_CACHE_SIZE;
+ 	clear_page_dirty_for_io(page);
+-	err = ext4_bio_write_page(&mpd->io_submit, page, len, mpd->wbc);
++	err = ext4_bio_write_page(&mpd->io_submit, page, len, mpd->wbc, false);
+ 	if (!err)
+ 		mpd->wbc->nr_to_write--;
+ 	mpd->first_page++;
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 1a64e7a..4a2dd07 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -401,7 +401,8 @@ submit_and_retry:
+ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 			struct page *page,
+ 			int len,
+-			struct writeback_control *wbc)
++			struct writeback_control *wbc,
++			bool keep_towrite)
+ {
+ 	struct inode *inode = page->mapping->host;
+ 	unsigned block_start, blocksize;
+@@ -414,7 +415,10 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 	BUG_ON(!PageLocked(page));
+ 	BUG_ON(PageWriteback(page));
+ 
+-	set_page_writeback(page);
++	if (keep_towrite)
++		set_page_writeback_keepwrite(page);
++	else
++		set_page_writeback(page);
+ 	ClearPageError(page);
+ 
+ 	/*
+diff --git a/include/linux/page-flags.h b/include/linux/page-flags.h
+index bc2007e..df1a8a4 100644
+--- a/include/linux/page-flags.h
++++ b/include/linux/page-flags.h
+@@ -318,12 +318,18 @@ extern void cancel_dirty_page(struct page *page, unsigned int account_size);
+ 
+ int test_clear_page_writeback(struct page *page);
+ int test_set_page_writeback(struct page *page);
++int test_set_page_writeback_keepwrite(struct page *page);
+ 
+ static inline void set_page_writeback(struct page *page)
+ {
+ 	test_set_page_writeback(page);
+ }
+ 
++static inline void set_page_writeback_keepwrite(struct page *page)
++{
++	test_set_page_writeback_keepwrite(page);
++}
++
+ #ifdef CONFIG_PAGEFLAGS_EXTENDED
+ /*
+  * System with lots of page flags available. This allows separate
+diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+index 023cf08..f7358c5 100644
+--- a/mm/page-writeback.c
++++ b/mm/page-writeback.c
+@@ -2438,6 +2438,43 @@ int test_set_page_writeback(struct page *page)
+ }
+ EXPORT_SYMBOL(test_set_page_writeback);
+ 
++int test_set_page_writeback_keepwrite(struct page *page)
++{
++	struct address_space *mapping = page_mapping(page);
++	int ret;
++	bool locked;
++	unsigned long memcg_flags;
++
++	mem_cgroup_begin_update_page_stat(page, &locked, &memcg_flags);
++	if (mapping) {
++		struct backing_dev_info *bdi = mapping->backing_dev_info;
++		unsigned long flags;
++
++		spin_lock_irqsave(&mapping->tree_lock, flags);
++		ret = TestSetPageWriteback(page);
++		if (!ret) {
++			radix_tree_tag_set(&mapping->page_tree,
++						page_index(page),
++						PAGECACHE_TAG_WRITEBACK);
++			if (bdi_cap_account_writeback(bdi))
++				__inc_bdi_stat(bdi, BDI_WRITEBACK);
++		}
++		if (!PageDirty(page))
++			radix_tree_tag_clear(&mapping->page_tree,
++						page_index(page),
++						PAGECACHE_TAG_DIRTY);
++		spin_unlock_irqrestore(&mapping->tree_lock, flags);
++	} else {
++		ret = TestSetPageWriteback(page);
++	}
++	if (!ret)
++		account_page_writeback(page);
++	mem_cgroup_end_update_page_stat(page, &locked, &memcg_flags);
++	return ret;
++
++}
++EXPORT_SYMBOL(test_set_page_writeback_keepwrite);
++
+ /*
+  * Return true if any of the pages in the mapping are marked with the
+  * passed tag.
+-- 
+1.7.11-rc0
 
-Thanks!
--Lukas
-
-> 
-> > ...
-> > 
-> >      Younger
-> >      thx.
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
---8323328-1246622429-1399372534=:2255--
