@@ -1,82 +1,125 @@
-From: Nathaniel W Filardo <nwf@cs.jhu.edu>
-Subject: Re: ext4 metadata corruption bug?
-Date: Tue, 6 May 2014 11:51:59 -0400
-Message-ID: <20140506155159.GY5136@gradx.cs.jhu.edu>
-References: <20140420163211.GT10985@gradx.cs.jhu.edu>
- <20140423072311.GD10163@dot.freshdot.net>
- <20140423143642.GA29925@thunk.org>
- <20140501162503.GL5136@gradx.cs.jhu.edu>
- <20140506154239.GA5012@thunk.org>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH 11/37] e2fsck: fix the extended attribute checksum error
+ message
+Date: Tue, 6 May 2014 12:12:18 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1405061212030.2255@localhost.localdomain>
+References: <20140501231222.31890.82860.stgit@birch.djwong.org> <20140501231334.31890.49878.stgit@birch.djwong.org> <alpine.LFD.2.00.1405021445200.2154@localhost.localdomain> <20140505230829.GK8434@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="GcSOTaE82DYSpZPK"
-Cc: linux-ext4@vger.kernel.org, admins@acm.jhu.edu
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1040641587-1399371141=:2255"
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from blaze.cs.jhu.edu ([128.220.13.50]:52183 "EHLO blaze.cs.jhu.edu"
+Received: from mx1.redhat.com ([209.132.183.28]:21185 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755237AbaEFPwC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 May 2014 11:52:02 -0400
-Content-Disposition: inline
-In-Reply-To: <20140506154239.GA5012@thunk.org>
+	id S934609AbaEFKMX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 May 2014 06:12:23 -0400
+In-Reply-To: <20140505230829.GK8434@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
---GcSOTaE82DYSpZPK
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+--8323328-1040641587-1399371141=:2255
+Content-Type: TEXT/PLAIN; charset=utf-8
+Content-Transfer-Encoding: 8BIT
 
-On Tue, May 06, 2014 at 11:42:39AM -0400, Theodore Ts'o wrote:
-> On Thu, May 01, 2014 at 12:25:03PM -0400, Nathaniel W Filardo wrote:
-> > Here's another kernel report, this time from /dev/sda1, which is a QEMU=
--IDE
-> > view of a local LVM volume and is only 4060864 blocks big, so it falls =
-into
-> > neither the "Ceph's fault" nor "8TB is special" bins:
+On Mon, 5 May 2014, Darrick J. Wong wrote:
 
-Ack, oops; my bad.  So I just checked the configuration and realized that,
-while /dev/sda1 was in fact once upon a time a local view of LVM, it is now
-in Ceph.  So it does eliminate the "8TB is special" bin but "Ceph's fault"
-is still in play.
+> Date: Mon, 5 May 2014 16:08:29 -0700
+> From: Darrick J. Wong <darrick.wong@oracle.com>
+> To: Lukáš Czerner <lczerner@redhat.com>
+> Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+> Subject: Re: [PATCH 11/37] e2fsck: fix the extended attribute checksum error
+>     message
+> 
+> On Fri, May 02, 2014 at 02:46:56PM +0200, Lukáš Czerner wrote:
+> > On Thu, 1 May 2014, Darrick J. Wong wrote:
+> > 
+> > > Date: Thu, 01 May 2014 16:13:34 -0700
+> > > From: Darrick J. Wong <darrick.wong@oracle.com>
+> > > To: tytso@mit.edu, darrick.wong@oracle.com
+> > > Cc: linux-ext4@vger.kernel.org
+> > > Subject: [PATCH 11/37] e2fsck: fix the extended attribute checksum error
+> > >     message
+> > > 
+> > > Make the "EA block passes checks but fails checksum" message less
+> > > strange.
+> > > 
+> > > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> > > ---
+> > >  e2fsck/problem.c |   12 +++++-------
+> > >  1 file changed, 5 insertions(+), 7 deletions(-)
+> > > 
+> > > 
+> > > diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+> > > index 0999399..ec20bd1 100644
+> > > --- a/e2fsck/problem.c
+> > > +++ b/e2fsck/problem.c
+> > > @@ -992,19 +992,17 @@ static struct e2fsck_problem problem_table[] = {
+> > >  	     "extent\n\t(logical @b %c, @n physical @b %b, len %N)\n"),
+> > >  	  PROMPT_FIX, 0 },
+> > >  
+> > > -	/* Extended attribute block checksum for inode does not match. */
+> > > +	/* Extended attribute block checksum does not match. */
+> > 
+> > The "for inode" is still there in the message, so I do not think
+> > there is a reason to remove it from the comment.
+> 
+> Oops.
+> 
+> > >  	{ PR_1_EA_BLOCK_CSUM_INVALID,
+> > > -	  N_("Extended attribute @a @b %b checksum for @i %i does not "
+> > > -	     "match.  "),
+> > > +	  N_("@a @b %b checksum for @i %i does not match.  "),
+> > >  	  PROMPT_CLEAR, PR_INITIAL_CSUM },
+> > >  
+> > >  	/*
+> > > -	 * Extended attribute block passes checks, but checksum for inode does
+> > > -	 * not match.
+> > > +	 * Extended attribute block passes checks, but checksum does not
+> > > +	 * match.
+> > >  	 */
+> > >  	{ PR_1_EA_BLOCK_ONLY_CSUM_INVALID,
+> > > -	  N_("Extended attribute @a @b %b passes checks, but checksum for "
+> > > -	     "@i %i does not match.  "),
+> > > +	  N_("@a @b %b passes checks, but checksum does not match.  "),
+> > 
+> > Is there a reason to remove the inode number from the message ?
+> 
+> For whatever reason, I was confused by this message and thought it was
+> referring to a checksum failure in the inode itself.  On the other hand, it's
+> helpful to map an EA block back to an inode, so perhaps the message should be
+> changed to:
+> 
+> "Inode XXX's extended attribute block YYY passes checks, but checksum does not
+> match."
 
-> > [922646.672586] EXT4-fs error (device sda1): ext4_mb_generate_buddy:756=
-: group 17, 24652 clusters in bitmap, 24651 in gd; block bitmap corrupt.
->=20
-> So this is a different report from the ones where we see this error:
->=20
-> [817576.492468] EXT4-fs error (device vdd): ext4_mb_release_inode_pa:3729=
-: group 59035, free 14, pa_free 12
->=20
-> Have you seen any more of these errors?
+That sounds better, thanks!
+-Lukas
 
-I think so, yes; I recall seeing bugs in both the allocation and the free
-side of things, but I will keep an eye out.
-
-> > [922646.712017] BUG: unable to handle kernel NULL pointer dereference a=
-t 0000000000000028
-> > [922646.712017] IP: [<ffffffffa014a7cc>] __ext4_error_inode+0x2c/0x150 =
-[ext4]
->=20
-> FYI, this BUG (which can happens after certain jbd2 errors, which in
-> your case happened after the journal was aborted) is fixed with commit
-> 66a4cb187b9 which will be in v3.15.
-
-Excellent; I look forward to the new release and will stop nagging you with
-these. :)
-
---nwf;
-
---GcSOTaE82DYSpZPK
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iEYEARECAAYFAlNpBR4ACgkQTeQabvr9Tc8O1ACfazabnE7GFhQa2pJ0hTiVjSqh
-G/UAnjitOWQhk8etMVV7NsUw0CmFNCVr
-=9hY2
------END PGP SIGNATURE-----
-
---GcSOTaE82DYSpZPK--
+> 
+> Now that I look at the other metadata_csum checks, the failure message starts
+> with "@i %i..." so these two might as well follow the convention.  Sorry that I
+> seem to have strayed from it.
+> 
+> --D
+> > 
+> > Thanks!
+> > -Lukas
+> > 
+> > >  	  PROMPT_FIX, 0 },
+> > >  
+> > >  	/*
+> > > 
+> > > --
+> > > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > > the body of a message to majordomo@vger.kernel.org
+> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+--8323328-1040641587-1399371141=:2255--
