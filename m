@@ -1,125 +1,56 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 11/37] e2fsck: fix the extended attribute checksum error
- message
-Date: Tue, 6 May 2014 12:12:18 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1405061212030.2255@localhost.localdomain>
-References: <20140501231222.31890.82860.stgit@birch.djwong.org> <20140501231334.31890.49878.stgit@birch.djwong.org> <alpine.LFD.2.00.1405021445200.2154@localhost.localdomain> <20140505230829.GK8434@birch.djwong.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 37/37] ext5: define new subtype to add features and
+ reduce testing complexity
+Date: Tue, 6 May 2014 11:21:29 -0400
+Message-ID: <20140506152129.GA31730@thunk.org>
+References: <20140501231222.31890.82860.stgit@birch.djwong.org>
+ <20140501231629.31890.34812.stgit@birch.djwong.org>
+ <alpine.LFD.2.00.1405021133520.2154@localhost.localdomain>
+ <20140506013317.GO8434@birch.djwong.org>
+ <alpine.LFD.2.00.1405061339470.2255@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1040641587-1399371141=:2255"
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
+	linux-ext4@vger.kernel.org
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:21185 "EHLO mx1.redhat.com"
+Received: from imap.thunk.org ([74.207.234.97]:52251 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934609AbaEFKMX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 May 2014 06:12:23 -0400
-In-Reply-To: <20140505230829.GK8434@birch.djwong.org>
+	id S1757573AbaEFPVd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 May 2014 11:21:33 -0400
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1405061339470.2255@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+On Tue, May 06, 2014 at 02:50:39PM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
+:
+> meta_bg - Just makes group descriptors to be spread across the file
+> 	system. It has been around for some time and I am not sure
+> 	why this is not a default already. It should also increase
+> 	the limit of the file system size but I am not sure whether
+> 	this is still true with flex_bg ?
 
---8323328-1040641587-1399371141=:2255
-Content-Type: TEXT/PLAIN; charset=utf-8
-Content-Transfer-Encoding: 8BIT
+meta_bg signiicantly slows down mount operations (and in general, any
+operation where we need to read in the block group descriptors ---
+i.e., dumpe2fs, e2fsck, etc.)
 
-On Mon, 5 May 2014, Darrick J. Wong wrote:
+The strategy for meta_bg is that it's something that we enable as we
+need it, as part of an online or off-line resize.  That way, we keep
+the block groups contiguous for as long as possible.  Once the resize
+inode has been exhausted (which _will_ happen when the file system
+size grows beyond 16T), the resize operation will turn off the
+resize_inode feature and then enable the meta_bg feature.
 
-> Date: Mon, 5 May 2014 16:08:29 -0700
-> From: Darrick J. Wong <darrick.wong@oracle.com>
-> To: Lukáš Czerner <lczerner@redhat.com>
-> Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-> Subject: Re: [PATCH 11/37] e2fsck: fix the extended attribute checksum error
->     message
-> 
-> On Fri, May 02, 2014 at 02:46:56PM +0200, Lukáš Czerner wrote:
-> > On Thu, 1 May 2014, Darrick J. Wong wrote:
-> > 
-> > > Date: Thu, 01 May 2014 16:13:34 -0700
-> > > From: Darrick J. Wong <darrick.wong@oracle.com>
-> > > To: tytso@mit.edu, darrick.wong@oracle.com
-> > > Cc: linux-ext4@vger.kernel.org
-> > > Subject: [PATCH 11/37] e2fsck: fix the extended attribute checksum error
-> > >     message
-> > > 
-> > > Make the "EA block passes checks but fails checksum" message less
-> > > strange.
-> > > 
-> > > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> > > ---
-> > >  e2fsck/problem.c |   12 +++++-------
-> > >  1 file changed, 5 insertions(+), 7 deletions(-)
-> > > 
-> > > 
-> > > diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-> > > index 0999399..ec20bd1 100644
-> > > --- a/e2fsck/problem.c
-> > > +++ b/e2fsck/problem.c
-> > > @@ -992,19 +992,17 @@ static struct e2fsck_problem problem_table[] = {
-> > >  	     "extent\n\t(logical @b %c, @n physical @b %b, len %N)\n"),
-> > >  	  PROMPT_FIX, 0 },
-> > >  
-> > > -	/* Extended attribute block checksum for inode does not match. */
-> > > +	/* Extended attribute block checksum does not match. */
-> > 
-> > The "for inode" is still there in the message, so I do not think
-> > there is a reason to remove it from the comment.
-> 
-> Oops.
-> 
-> > >  	{ PR_1_EA_BLOCK_CSUM_INVALID,
-> > > -	  N_("Extended attribute @a @b %b checksum for @i %i does not "
-> > > -	     "match.  "),
-> > > +	  N_("@a @b %b checksum for @i %i does not match.  "),
-> > >  	  PROMPT_CLEAR, PR_INITIAL_CSUM },
-> > >  
-> > >  	/*
-> > > -	 * Extended attribute block passes checks, but checksum for inode does
-> > > -	 * not match.
-> > > +	 * Extended attribute block passes checks, but checksum does not
-> > > +	 * match.
-> > >  	 */
-> > >  	{ PR_1_EA_BLOCK_ONLY_CSUM_INVALID,
-> > > -	  N_("Extended attribute @a @b %b passes checks, but checksum for "
-> > > -	     "@i %i does not match.  "),
-> > > +	  N_("@a @b %b passes checks, but checksum does not match.  "),
-> > 
-> > Is there a reason to remove the inode number from the message ?
-> 
-> For whatever reason, I was confused by this message and thought it was
-> referring to a checksum failure in the inode itself.  On the other hand, it's
-> helpful to map an EA block back to an inode, so perhaps the message should be
-> changed to:
-> 
-> "Inode XXX's extended attribute block YYY passes checks, but checksum does not
-> match."
+And this is all working today, with the latest kernel and e2fsprogs;
+so there's no reason to enable meta_bg as part of mke2fs operation,
+and a good reason not to enable it by default, but to let resize2fs
+turn it on when it makes sense to do so.
 
-That sounds better, thanks!
--Lukas
-
-> 
-> Now that I look at the other metadata_csum checks, the failure message starts
-> with "@i %i..." so these two might as well follow the convention.  Sorry that I
-> seem to have strayed from it.
-> 
-> --D
-> > 
-> > Thanks!
-> > -Lukas
-> > 
-> > >  	  PROMPT_FIX, 0 },
-> > >  
-> > >  	/*
-> > > 
-> > > --
-> > > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > > the body of a message to majordomo@vger.kernel.org
-> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
---8323328-1040641587-1399371141=:2255--
+        	    		       - Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
