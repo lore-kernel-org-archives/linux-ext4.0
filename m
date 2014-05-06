@@ -1,220 +1,61 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 16/37] libext2fs: support allocating uninit blocks in
- bmap2()
-Date: Tue, 6 May 2014 12:59:38 -0700
-Message-ID: <20140506195938.GD25745@birch.djwong.org>
-References: <20140501231222.31890.82860.stgit@birch.djwong.org>
- <20140501231407.31890.3876.stgit@birch.djwong.org>
- <alpine.LFD.2.00.1405061736390.2255@localhost.localdomain>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: ext4 filesystem corruption across partitions
+Date: Tue, 6 May 2014 15:40:06 -0400
+Message-ID: <20140506194006.GC5012@thunk.org>
+References: <1397747123.6833.24.camel@luigi>
+ <20140417161249.GH18591@thunk.org>
+ <20140505220130.1a256f9d@luigi>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Devrin Talen <dct23@cornell.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:20013 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754460AbaEFT7q (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 May 2014 15:59:46 -0400
+Received: from imap.thunk.org ([74.207.234.97]:52783 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751239AbaEFTkJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 May 2014 15:40:09 -0400
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1405061736390.2255@localhost.localdomain>
+In-Reply-To: <20140505220130.1a256f9d@luigi>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 06, 2014 at 05:45:01PM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
-:
-> On Thu, 1 May 2014, Darrick J. Wong wrote:
->=20
-> > Date: Thu, 01 May 2014 16:14:07 -0700
-> > From: Darrick J. Wong <darrick.wong@oracle.com>
-> > To: tytso@mit.edu, darrick.wong@oracle.com
-> > Cc: linux-ext4@vger.kernel.org
-> > Subject: [PATCH 16/37] libext2fs: support allocating uninit blocks =
-in bmap2()
-> >=20
-> > In order to support fallocate, we need to be able to have
-> > ext2fs_bmap2() allocate blocks and put them into uninitialized
-> > extents.  There's a flag to do this in the extent code, but it's no=
-t
-> > exposed to the bmap2 interface, so plumb that in.  Eventually fuse2=
-fs
-> > or somebody will use it.
-> >=20
-> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> > ---
-> >  lib/ext2fs/bmap.c      |   24 ++++++++++++++++++++++--
-> >  lib/ext2fs/ext2fs.h    |    1 +
-> >  lib/ext2fs/mkjournal.c |   17 +++++++++++++++++
-> >  3 files changed, 40 insertions(+), 2 deletions(-)
-> >=20
-> >=20
-> > diff --git a/lib/ext2fs/bmap.c b/lib/ext2fs/bmap.c
-> > index c1d0e6f..a4dc8ef 100644
-> > --- a/lib/ext2fs/bmap.c
-> > +++ b/lib/ext2fs/bmap.c
-> > @@ -72,6 +72,11 @@ static _BMAP_INLINE_ errcode_t block_ind_bmap(ex=
-t2_filsys fs, int flags,
-> >  					    block_buf + fs->blocksize, &b);
-> >  		if (retval)
-> >  			return retval;
-> > +		if (flags & BMAP_UNINIT) {
-> > +			retval =3D ext2fs_zero_blocks2(fs, b, 1, NULL, NULL);
-> > +			if (retval)
-> > +				return retval;
-> > +		}
-> > =20
-> >  #ifdef WORDS_BIGENDIAN
-> >  		((blk_t *) block_buf)[nr] =3D ext2fs_swab32(b);
-> > @@ -214,10 +219,13 @@ static errcode_t extent_bmap(ext2_filsys fs, =
-ext2_ino_t ino,
-> >  	errcode_t		retval =3D 0;
-> >  	blk64_t			blk64 =3D 0;
-> >  	int			alloc =3D 0;
-> > +	int			set_flags;
-> > +
-> > +	set_flags =3D bmap_flags & BMAP_UNINIT ? EXT2_EXTENT_SET_BMAP_UNI=
-NIT : 0;
-> > =20
-> >  	if (bmap_flags & BMAP_SET) {
-> >  		retval =3D ext2fs_extent_set_bmap(handle, block,
-> > -						*phys_blk, 0);
-> > +						*phys_blk, set_flags);
-> >  		return retval;
-> >  	}
-> >  	retval =3D ext2fs_extent_goto(handle, block);
-> > @@ -254,7 +262,7 @@ got_block:
-> >  		alloc++;
-> >  	set_extent:
-> >  		retval =3D ext2fs_extent_set_bmap(handle, block,
-> > -						blk64, 0);
-> > +						blk64, set_flags);
-> >  		if (retval) {
-> >  			ext2fs_block_alloc_stats2(fs, blk64, -1);
-> >  			return retval;
-> > @@ -345,6 +353,12 @@ errcode_t ext2fs_bmap2(ext2_filsys fs, ext2_in=
-o_t ino, struct ext2_inode *inode,
-> >  		goto done;
-> >  	}
-> > =20
-> > +	if ((bmap_flags & BMAP_SET) && (bmap_flags & BMAP_UNINIT)) {
-> > +		retval =3D ext2fs_zero_blocks2(fs, *phys_blk, 1, NULL, NULL);
-> > +		if (retval)
-> > +			goto done;
-> > +	}
-> > +
-> >  	if (block < EXT2_NDIR_BLOCKS) {
-> >  		if (bmap_flags & BMAP_SET) {
-> >  			b =3D *phys_blk;
-> > @@ -360,6 +374,12 @@ errcode_t ext2fs_bmap2(ext2_filsys fs, ext2_in=
-o_t ino, struct ext2_inode *inode,
-> >  			retval =3D ext2fs_alloc_block(fs, b, block_buf, &b);
-> >  			if (retval)
-> >  				goto done;
-> > +			if (bmap_flags & BMAP_UNINIT) {
-> > +				retval =3D ext2fs_zero_blocks2(fs, b, 1, NULL,
-> > +							     NULL);
-> > +				if (retval)
-> > +					goto done;
-> > +			}
-> >  			inode_bmap(inode, block) =3D b;
-> >  			blocks_alloc++;
-> >  			*phys_blk =3D b;
-> > diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-> > index 599c972..819a14a 100644
-> > --- a/lib/ext2fs/ext2fs.h
-> > +++ b/lib/ext2fs/ext2fs.h
-> > @@ -527,6 +527,7 @@ typedef struct ext2_icount *ext2_icount_t;
-> >   */
-> >  #define BMAP_ALLOC	0x0001
-> >  #define BMAP_SET	0x0002
-> > +#define BMAP_UNINIT	0x0004
-> > =20
-> >  /*
-> >   * Returned flags from ext2fs_bmap
-> > diff --git a/lib/ext2fs/mkjournal.c b/lib/ext2fs/mkjournal.c
-> > index 884d9c0..ecc3912 100644
-> > --- a/lib/ext2fs/mkjournal.c
-> > +++ b/lib/ext2fs/mkjournal.c
-> > @@ -174,6 +174,23 @@ errcode_t ext2fs_zero_blocks2(ext2_filsys fs, =
-blk64_t blk, int num,
-> >  			return ENOMEM;
-> >  		memset(buf, 0, fs->blocksize * STRIDE_LENGTH);
-> >  	}
-> > +
-> > +	/* Try discard, if it zeroes data... */
-> > +	if (io_channel_discard_zeroes_data(fs->io)) {
-> > +		memset(buf + fs->blocksize, 0, fs->blocksize);
-> > +		retval =3D io_channel_discard(fs->io, blk, num);
-> > +		if (retval)
-> > +			goto skip_discard;
-> > +		retval =3D io_channel_read_blk64(fs->io, blk, 1, buf);
-> > +		if (retval)
-> > +			goto skip_discard;
-> > +		if (memcmp(buf, buf + fs->blocksize, fs->blocksize) =3D=3D 0)
-> > +			return 0;
-> > +		/* Hah!  Discard doesn't zero! */
-> > +		fs->io->flags &=3D ~CHANNEL_FLAGS_DISCARD_ZEROES;
-> > +	}
-> > +skip_discard:
->=20
-> You did not mention that in the description, but this is actually a
-> problem. The reason is that discard might not be reliable on some
-> devices. This has been discussed several times and I am not the only
-> one who've seen that even if the device itself says that it will
-> return zeroes from discarded regions sometimes it might return data.
+On Mon, May 05, 2014 at 10:01:30PM -0400, Devrin Talen wrote:
+> 
+> 1. Run `ls -R *` in a loop from the root directory.  The root is
+> mounted from partition 11 (system) on the eMMC and the ls will read
+> the /cache (partition 12) and /data (partition 13) filesystems as well.
 
-I agree that the storage not living up to the interface it advertises i=
-s a
-problem, hence the verification step that will unset the io channel fla=
-g if it
-finds that the device is lying.
+Try mounting /data read-only.  That should pretty much guarantee that
+nothing should be able to write to it.  You can also use blktrace to
+capture block I/O traces to the device, and use that to make sure
+nothing was actually writing to it.
 
-On the other hand, I wonder if this ought to be abstracted away in an
-io_channel_zero() call that takes care of figuring out if it can do a z=
-eroing
-discard or if it has to write a block of zeroes.
+> 2. Write data to partition 12 via ADB (using `adb push ... /cache/`)
 
-Or, are you worried that a discard and immediate re-read will appear to=
- work,
-but that a later re-read will return non-zero data?
+Instead of using ADB, I would suggest writing a test program which
+writes a series of 512 byte sectors to a single large file in /cache.
+At the beginning of each 512 byte sector include a 4 byte serial
+number (which is incremented by one for each sector), a 4 byte testID
+which is different for each run of your test program, a time stamp, a
+CRC of these fields, and then fill the rest of the sector with some
+text string to make it easy to recognize this pattern.  It can be
+anything from 0xDEADBEEF, to a string such as "DEBUGGING RANDOM HW
+BUGS REALLY SUCKS".  :-)
 
-> I would rather avoid this kind of optimization. However if the
-> underlying "device" is a loop device then it will be reliable if
-> it's supported. Also if then underlying "device" is a image then we
-> can just simply use punch hole.
+Now try to reproduce the problem with this write load.  If you can
+reproduce the problem, check and see if the corrupted file system
+block in the shows evidence of the string that was supposed to be
+written into /cache, showing up in /data.  You can also check the
+large file being written in the /cache has the expended serial number
+and checksum.
 
-But static whitelisting is also problematic -- what if the storage devi=
-ce is an
-AHCI (or virtio-scsi) disk in QEMU that's ultimately backed by a file t=
-hat we
-can punch_hole?  How do we distinguish that from an SSD hooked up to SA=
-TA
-hardware?
+This will allow you to see if a the block writes are just going to the
+wrong place on the SSD, or something else more strange might be going
+on.  Depending on the pattern of what blocks are ending up where they
+shouldn't, it might point towards different possible causes (i.e., a
+flaky solder joint, a buggy flash translation layer in the eMMC chip,
+etc.)
 
-In the qemu emulated AHCI case we ought to be able to zeroing discard, =
-if
-advertised.  I thought it was a reasonable compromise to trust that it =
-works
-and verify the results afterward.
+Cheers,
 
---D
->=20
-> Thanks!
-> -Lukas
->=20
-> > +
-> >  	/* OK, do the write loop */
-> >  	j=3D0;
-> >  	while (j < num) {
-> >=20
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext=
-4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >=20
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+					- Ted
