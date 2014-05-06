@@ -1,63 +1,110 @@
-From: Karel Zak <kzak@redhat.com>
-Subject: Re: [PATCH 2/3] mke2fs: print extra information about existing
- ext2/3/4 file systems
-Date: Tue, 6 May 2014 09:44:55 +0200
-Message-ID: <20140506074455.GB29151@x2.net.home>
-References: <1399295044-24489-1-git-send-email-tytso@mit.edu>
- <1399295044-24489-2-git-send-email-tytso@mit.edu>
- <alpine.LFD.2.00.1405051541080.2223@localhost.localdomain>
- <20140505140401.GD22287@thunk.org>
- <20140505142808.GF22287@thunk.org>
- <alpine.LFD.2.00.1405051629270.2223@localhost.localdomain>
- <20140505144423.GG22287@thunk.org>
- <alpine.LFD.2.00.1405051649050.2223@localhost.localdomain>
- <20140505175049.GA29151@x2.net.home>
- <20140505183253.GL22287@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	linux-fsdevel@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20140505183253.GL22287@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH -v2 1/3] mke2fs: print a message when creating a regular file
+Date: Mon,  5 May 2014 21:02:11 -0400
+Message-ID: <1399338133-21373-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:50984 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933395AbaEFBCV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 May 2014 21:02:21 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 05, 2014 at 02:32:53PM -0400, Theodore Ts'o wrote:
-> >  BTW, the current trend is to use GPT partition types to identify
-> >  purpose of the partition filesystem (for example extra GUID for
-> >  /home). It's FS independent solution and it allows use the right
-> >  filesystems for the right mountpoints. It's very attractive for
-> >  example for virtual images where you don't have to setup fstab and
-> >  identify FS, but you still have (for example) /home on the right
-> >  place.
-> 
-> But a partition only gets one GUUID and one partition type.  So are
-> you saying that the GUUID partition type would be used to indicate the
-> concept of "this is the file system for /home", *instead* of "this is
-> an btrfs file system" or "this is an ext4 file system"?
+We've added the ability to automatically recreate a file if it doesn't
+exist prior to creating the file system, since this is often used (for
+example) when managing file system images for use in virtual machines.
+We should at least notify the user that this is going on to avoid
+surprises in the case of misspelled device/file names.
 
- Yes, GPT partition has two UUIDs, 
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ misc/mke2fs.c |  6 ++++--
+ misc/util.c   | 11 +++++++----
+ misc/util.h   |  1 +
+ 3 files changed, 12 insertions(+), 6 deletions(-)
+
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index 2c51999..51532ef 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -103,6 +103,7 @@ static int	quotatype = -1;  /* Initialize both user and group quotas by default
+ static __u64	offset;
+ static blk64_t journal_location = ~0LL;
+ static int	proceed_delay = -1;
++static blk64_t	dev_size;
  
-   - UUID = an unique partition identifier
-   - GUID = partition type identifier
-
- I talked about the type (GUID). Note that this concept is just
- another point of view how to mount partitions, I don't think it will
- be a mainstream solution for standard machines. Now it's supported by
- systemd. More details:
-
-  http://www.freedesktop.org/wiki/Specifications/DiscoverablePartitionsSpec/
+ static struct ext2_super_block fs_param;
+ static char *fs_uuid = NULL;
+@@ -1402,7 +1403,6 @@ static void PRS(int argc, char *argv[])
+ 	char *		extended_opts = 0;
+ 	char *		fs_type = 0;
+ 	char *		usage_types = 0;
+-	blk64_t		dev_size;
+ 	/*
+ 	 * NOTE: A few words about fs_blocks_count and blocksize:
+ 	 *
+@@ -1768,6 +1768,8 @@ profile_error:
+ 	flags = CREATE_FILE;
+ 	if (isatty(0) && isatty(1))
+ 		flags |= CHECK_FS_EXIST;
++	if (!quiet)
++		flags |= VERBOSE_CREATE;
+ 	if (!check_plausibility(device_name, flags, &is_device) && !force)
+ 		proceed_question(proceed_delay);
  
-
- For old good fstab you can use PARTUUID= to identify partitions and
- to bypass filesystem specific identifiers. In this case it's unique 
- partition identifier, no partition type.
-
-    Karel
-
+@@ -2573,7 +2575,7 @@ int main (int argc, char *argv[])
+ 		journal_blocks = figure_journal_size(journal_size, fs);
+ 
+ 	/* Can't undo discard ... */
+-	if (!noaction && discard && (io_ptr != undo_io_manager)) {
++	if (!noaction && discard && dev_size && (io_ptr != undo_io_manager)) {
+ 		retval = mke2fs_discard_device(fs);
+ 		if (!retval && io_channel_discard_zeroes_data(fs->io)) {
+ 			if (verbose)
+diff --git a/misc/util.c b/misc/util.c
+index be16ebe..15b4ce5 100644
+--- a/misc/util.c
++++ b/misc/util.c
+@@ -106,7 +106,7 @@ void proceed_question(int delay)
+ }
+ 
+ /*
+- * return 1 if the device looks plausible
++ * return 1 if the device looks plausible, creating the file if necessary
+  */
+ int check_plausibility(const char *device, int flags, int *ret_is_dev)
+ {
+@@ -117,10 +117,13 @@ int check_plausibility(const char *device, int flags, int *ret_is_dev)
+ 	char *fs_type = NULL;
+ 	char *fs_label = NULL;
+ 
+-	if (flags & CREATE_FILE)
+-		fl |= O_CREAT;
+-
+ 	fd = open(device, fl, 0666);
++	if ((fd < 0) && (errno == ENOENT) && (flags & CREATE_FILE)) {
++		fl |= O_CREAT;
++		fd = open(device, fl, 0666);
++		if (fd >= 0 && (flags & VERBOSE_CREATE))
++			printf(_("Creating regular file %s\n"), device);
++	}
+ 	if (fd < 0) {
+ 		fprintf(stderr, _("Could not open %s: %s\n"),
+ 			device, error_message(errno));
+diff --git a/misc/util.h b/misc/util.h
+index 745568e..476164b 100644
+--- a/misc/util.h
++++ b/misc/util.h
+@@ -21,6 +21,7 @@ extern char	*journal_location_string;
+ #define CHECK_BLOCK_DEV	0x0001
+ #define CREATE_FILE	0x0002
+ #define CHECK_FS_EXIST	0x0004
++#define VERBOSE_CREATE	0x0008
+ 
+ #ifndef HAVE_STRCASECMP
+ extern int strcasecmp (char *s1, char *s2);
 -- 
- Karel Zak  <kzak@redhat.com>
- http://karelzak.blogspot.com
+1.9.0
+
