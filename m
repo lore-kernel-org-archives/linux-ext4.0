@@ -1,175 +1,68 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] ext4: add sysfs entry showing whether the fs contains errors
-Date: Tue,  6 May 2014 15:19:17 +0200
-Message-ID: <1399382357-12703-1-git-send-email-lczerner@redhat.com>
-Cc: nikola.ciprich@linuxbox.cz, Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH 37/37] ext5: define new subtype to add features and reduce
+ testing complexity
+Date: Tue, 6 May 2014 17:30:23 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1405061729340.2255@localhost.localdomain>
+References: <20140501231222.31890.82860.stgit@birch.djwong.org> <20140501231629.31890.34812.stgit@birch.djwong.org> <alpine.LFD.2.00.1405021133520.2154@localhost.localdomain> <20140506013317.GO8434@birch.djwong.org> <alpine.LFD.2.00.1405061339470.2255@localhost.localdomain>
+ <20140506152129.GA31730@thunk.org>
+Mime-Version: 1.0
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-45909237-1399390226=:2255"
+Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
+	linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:31522 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:53624 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750782AbaEFNT2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 May 2014 09:19:28 -0400
+	id S1753270AbaEFQEf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 May 2014 12:04:35 -0400
+In-Reply-To: <20140506152129.GA31730@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently there is no easy way to tell that the mounted file system
-contains errors other than checking for log messages, or reading the
-information directly from superblock.
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-This patch adds new sysfs entry "contains_errors" for each ext4 file
-system so user can simply check
+--8323328-45909237-1399390226=:2255
+Content-Type: TEXT/PLAIN; charset=utf-8
+Content-Transfer-Encoding: 8BIT
 
-cat /sys/fs/ext4/sda/contains_errors
+On Tue, 6 May 2014, Theodore Ts'o wrote:
 
-If the file system is not marked as containing errors then the file is
-empty. Otherwise it would print the same information that could be found
-in the log. For example:
+> Date: Tue, 6 May 2014 11:21:29 -0400
+> From: Theodore Ts'o <tytso@mit.edu>
+> To: Lukáš Czerner <lczerner@redhat.com>
+> Cc: Darrick J. Wong <darrick.wong@oracle.com>, linux-ext4@vger.kernel.org
+> Subject: Re: [PATCH 37/37] ext5: define new subtype to add features and reduce
+>      testing complexity
+> 
+> On Tue, May 06, 2014 at 02:50:39PM +0200, Lukáš Czerner wrote:
+> > meta_bg - Just makes group descriptors to be spread across the file
+> > 	system. It has been around for some time and I am not sure
+> > 	why this is not a default already. It should also increase
+> > 	the limit of the file system size but I am not sure whether
+> > 	this is still true with flex_bg ?
+> 
+> meta_bg signiicantly slows down mount operations (and in general, any
+> operation where we need to read in the block group descriptors ---
+> i.e., dumpe2fs, e2fsck, etc.)
+> 
+> The strategy for meta_bg is that it's something that we enable as we
+> need it, as part of an online or off-line resize.  That way, we keep
+> the block groups contiguous for as long as possible.  Once the resize
+> inode has been exhausted (which _will_ happen when the file system
+> size grows beyond 16T), the resize operation will turn off the
+> resize_inode feature and then enable the meta_bg feature.
+> 
+> And this is all working today, with the latest kernel and e2fsprogs;
+> so there's no reason to enable meta_bg as part of mke2fs operation,
+> and a good reason not to enable it by default, but to let resize2fs
+> turn it on when it makes sense to do so.
+> 
+>         	    		       - Ted
 
-error count: 1
-EXT4-fs (sda): initial error at 1399305407: trigger_test_error:2630
-EXT4-fs (sda): last error at 1399305407: trigger_test_error:2630
+Perfect, thanks for explanation. I was not very sure about meta_bg
+myself.
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- fs/ext4/super.c | 100 ++++++++++++++++++++++++++++++++++++++------------------
- 1 file changed, 68 insertions(+), 32 deletions(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 6f9e6fa..61dc3d6 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2502,6 +2502,59 @@ static ssize_t lifetime_write_kbytes_show(struct ext4_attr *a,
- 			  EXT4_SB(sb)->s_sectors_written_start) >> 1)));
- }
- 
-+static ssize_t get_fs_errors(struct ext4_sb_info *sbi, char *buf, ssize_t size)
-+{
-+	struct super_block *sb = sbi->s_buddy_cache->i_sb;
-+	struct ext4_super_block *es = sbi->s_es;
-+	int len = 0;
-+
-+	if (es->s_error_count)
-+		len = snprintf(buf + len, size - len,
-+			       "error count: %u\n",
-+			       le32_to_cpu(es->s_error_count));
-+	if (es->s_first_error_time) {
-+		len += snprintf(buf + len, size - len,
-+				"EXT4-fs (%s): initial error at %u: %.*s:%d",
-+				sb->s_id, le32_to_cpu(es->s_first_error_time),
-+				(int) sizeof(es->s_first_error_func),
-+				es->s_first_error_func,
-+				le32_to_cpu(es->s_first_error_line));
-+		if (es->s_first_error_ino)
-+			len += snprintf(buf + len, size - len,
-+					": inode %u",
-+					le32_to_cpu(es->s_first_error_ino));
-+		if (es->s_first_error_block)
-+			len += snprintf(buf + len, size - len,
-+					": block %llu", (unsigned long long)
-+					le64_to_cpu(es->s_first_error_block));
-+		len += snprintf(buf + len, size - len, "\n");
-+	}
-+	if (es->s_last_error_time) {
-+		len += snprintf(buf + len, size - len,
-+				"EXT4-fs (%s): last error at %u: %.*s:%d",
-+				sb->s_id, le32_to_cpu(es->s_last_error_time),
-+				(int) sizeof(es->s_last_error_func),
-+				es->s_last_error_func,
-+				le32_to_cpu(es->s_last_error_line));
-+		if (es->s_last_error_ino)
-+			len += snprintf(buf + len, size - len,
-+					": inode %u",
-+					le32_to_cpu(es->s_last_error_ino));
-+		if (es->s_last_error_block)
-+			len += snprintf(buf + len, size - len,
-+					": block %llu", (unsigned long long)
-+					le64_to_cpu(es->s_last_error_block));
-+		len += snprintf(buf + len, size - len, "\n");
-+	}
-+	return len;
-+}
-+
-+static ssize_t contains_errors_show(struct ext4_attr *a,
-+				    struct ext4_sb_info *sbi, char *buf)
-+{
-+	return get_fs_errors(sbi, buf, PAGE_SIZE);
-+}
-+
- static ssize_t inode_readahead_blks_store(struct ext4_attr *a,
- 					  struct ext4_sb_info *sbi,
- 					  const char *buf, size_t count)
-@@ -2617,6 +2670,7 @@ static struct ext4_attr ext4_attr_##_name = {			\
- EXT4_RO_ATTR(delayed_allocation_blocks);
- EXT4_RO_ATTR(session_write_kbytes);
- EXT4_RO_ATTR(lifetime_write_kbytes);
-+EXT4_RO_ATTR(contains_errors);
- EXT4_RW_ATTR(reserved_clusters);
- EXT4_ATTR_OFFSET(inode_readahead_blks, 0644, sbi_ui_show,
- 		 inode_readahead_blks_store, s_inode_readahead_blks);
-@@ -2659,6 +2713,7 @@ static struct attribute *ext4_attrs[] = {
- 	ATTR_LIST(warning_ratelimit_burst),
- 	ATTR_LIST(msg_ratelimit_interval_ms),
- 	ATTR_LIST(msg_ratelimit_burst),
-+	ATTR_LIST(contains_errors),
- 	NULL,
- };
- 
-@@ -2792,42 +2847,23 @@ static void print_daily_error_info(unsigned long arg)
- {
- 	struct super_block *sb = (struct super_block *) arg;
- 	struct ext4_sb_info *sbi;
--	struct ext4_super_block *es;
-+	ssize_t size;
-+	char *buf = NULL;
- 
- 	sbi = EXT4_SB(sb);
--	es = sbi->s_es;
- 
--	if (es->s_error_count)
--		ext4_msg(sb, KERN_NOTICE, "error count: %u",
--			 le32_to_cpu(es->s_error_count));
--	if (es->s_first_error_time) {
--		printk(KERN_NOTICE "EXT4-fs (%s): initial error at %u: %.*s:%d",
--		       sb->s_id, le32_to_cpu(es->s_first_error_time),
--		       (int) sizeof(es->s_first_error_func),
--		       es->s_first_error_func,
--		       le32_to_cpu(es->s_first_error_line));
--		if (es->s_first_error_ino)
--			printk(": inode %u",
--			       le32_to_cpu(es->s_first_error_ino));
--		if (es->s_first_error_block)
--			printk(": block %llu", (unsigned long long)
--			       le64_to_cpu(es->s_first_error_block));
--		printk("\n");
--	}
--	if (es->s_last_error_time) {
--		printk(KERN_NOTICE "EXT4-fs (%s): last error at %u: %.*s:%d",
--		       sb->s_id, le32_to_cpu(es->s_last_error_time),
--		       (int) sizeof(es->s_last_error_func),
--		       es->s_last_error_func,
--		       le32_to_cpu(es->s_last_error_line));
--		if (es->s_last_error_ino)
--			printk(": inode %u",
--			       le32_to_cpu(es->s_last_error_ino));
--		if (es->s_last_error_block)
--			printk(": block %llu", (unsigned long long)
--			       le64_to_cpu(es->s_last_error_block));
--		printk("\n");
-+	buf = kmalloc(255, GFP_NOFS);
-+	if (!buf) {
-+		ext4_msg(sb, KERN_NOTICE, "File system contains errors, "
-+					  "running e2fsck is recommended");
-+		return;
- 	}
-+
-+	size = get_fs_errors(sbi, buf, 255);
-+	if (size)
-+		ext4_msg(sb, KERN_NOTICE, "%s", buf);
-+	kfree(buf);
-+
- 	mod_timer(&sbi->s_err_report, jiffies + 24*60*60*HZ);  /* Once a day */
- }
- 
--- 
-1.8.3.1
-
+Thanks!
+-Lukas
+--8323328-45909237-1399390226=:2255--
