@@ -1,129 +1,112 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: ext4 filesystem corruption across partitions
-Date: Tue, 6 May 2014 16:38:36 -0600
-Message-ID: <151D812A-0304-470C-AC67-B7A198408459@dilger.ca>
-References: <1397747123.6833.24.camel@luigi> <20140417161249.GH18591@thunk.org> <20140505220130.1a256f9d@luigi> <20140506194006.GC5012@thunk.org>
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_2490A602-69A7-4B56-BE95-DD622F3A7A08"; protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Devrin Talen <dct23@cornell.edu>
+From: Namjae Jeon <namjae.jeon@samsung.com>
+Subject: RE: [PATCH v2] ext4: fix data integrity sync in ordered mode
+Date: Wed, 07 May 2014 08:10:14 +0900
+Message-ID: <000801cf6980$56da9650$048fc2f0$@samsung.com>
+References: <000f01cf68f7$54205690$fc6103b0$@samsung.com>
+ <20140506100106.GB9291@quack.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: 'Theodore Ts'o' <tytso@mit.edu>,
+	'linux-ext4' <linux-ext4@vger.kernel.org>
+To: 'Jan Kara' <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pd0-f169.google.com ([209.85.192.169]:40668 "EHLO
-	mail-pd0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750859AbaEFWit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 May 2014 18:38:49 -0400
-Received: by mail-pd0-f169.google.com with SMTP id z10so139530pdj.0
-        for <linux-ext4@vger.kernel.org>; Tue, 06 May 2014 15:38:49 -0700 (PDT)
-In-Reply-To: <20140506194006.GC5012@thunk.org>
+Received: from mailout3.samsung.com ([203.254.224.33]:43132 "EHLO
+	mailout3.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753855AbaEFXKR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 May 2014 19:10:17 -0400
+Received: from epcpsbgr5.samsung.com
+ (u145.gpu120.samsung.co.kr [203.254.230.145])
+ by mailout3.samsung.com (Oracle Communications Messaging Server 7u4-24.01
+ (7.0.4.24.0) 64bit (built Nov 17 2011))
+ with ESMTP id <0N5600AL4DP32AA0@mailout3.samsung.com> for
+ linux-ext4@vger.kernel.org; Wed, 07 May 2014 08:10:15 +0900 (KST)
+In-reply-to: <20140506100106.GB9291@quack.suse.cz>
+Content-language: ko
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
---Apple-Mail=_2490A602-69A7-4B56-BE95-DD622F3A7A08
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
-
-On May 6, 2014, at 1:40 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Mon, May 05, 2014 at 10:01:30PM -0400, Devrin Talen wrote:
->> 2. Write data to partition 12 via ADB (using `adb push ... /cache/`)
->=20
-> Instead of using ADB, I would suggest writing a test program which
-> writes a series of 512 byte sectors to a single large file in /cache.
-> At the beginning of each 512 byte sector include a 4 byte serial
-> number (which is incremented by one for each sector), a 4 byte testID
-> which is different for each run of your test program, a time stamp, a
-> CRC of these fields, and then fill the rest of the sector with some
-> text string to make it easy to recognize this pattern.  It can be
-> anything from 0xDEADBEEF, to a string such as "DEBUGGING RANDOM HW
-> BUGS REALLY SUCKS".  :-)
-
-We wrote a tool "llverfs" to do this years ago, for debugging problems
-with >16TB LUN sizes and other 64/32-bit address truncation problems:
-
-=
-http://git.hpdd.intel.com/?p=3Dfs/lustre-release.git;a=3Dblob;f=3Dlustre/u=
-tils/llverfs.c
-
-It either partially fills the filesystem (write all files then read all
-files, with one write per MB) to do a fast test of the system or can
-optionally completely fill the filesystem and writes to every 4kB block
-and then reads it back and verifies the data.
-
-Each block contains the inode number, block offset, and a timestamp
-(to distinguish between separate runs) so that it can detect where
-badly written data is coming from.
-
-There is a companion tool for doing block-device testing
-
-=
-http://git.hpdd.intel.com/?p=3Dfs/lustre-release.git;a=3Dblob;f=3Dlustre/u=
-tils/llverdev.c
-
-Caveat - we only ever use the llverfs on disposable filesystems, and
-while I don't _think_ it will clobber the other files that already
-exist, I've never tested it in such a manner.  Obviously, llverdev is
-overwriting the whole block device, so it will erase all data in the
-device it is pointed at.
-
-Cheers, Andreas
-
-> Now try to reproduce the problem with this write load.  If you can
-> reproduce the problem, check and see if the corrupted file system
-> block in the shows evidence of the string that was supposed to be
-> written into /cache, showing up in /data.  You can also check the
-> large file being written in the /cache has the expended serial number
-> and checksum.
->=20
-> This will allow you to see if a the block writes are just going to the
-> wrong place on the SSD, or something else more strange might be going
-> on.  Depending on the pattern of what blocks are ending up where they
-> shouldn't, it might point towards different possible causes (i.e., a
-> flaky solder joint, a buggy flash translation layer in the eMMC chip,
-> etc.)
->=20
-> Cheers,
->=20
-> 					- Ted
+> 
+> On Tue 06-05-14 15:49:29, Namjae Jeon wrote:
+> > When we perform a data integrity sync we tag all the dirty pages with
+> > PAGECACHE_TAG_TOWRITE at start of ext4_da_writepages.
+> > Later we check for this tag in write_cache_pages_da and creates a
+> > struct mpage_da_data containing contiguously indexed pages tagged with this
+> > tag and sync these pages with a call to mpage_da_map_and_submit.
+> > This process is done in while loop until all the PAGECACHE_TAG_TOWRITE pages
+> > are synced. We also do journal start and stop in each iteration.
+> > journal_stop could initiate journal commit which would call ext4_writepage
+> > which in turn will call ext4_bio_write_page even for delayed OR unwritten
+> > buffers. When ext4_bio_write_page is called for such buffers, even though it
+> > does not sync them but it clears the PAGECACHE_TAG_TOWRITE of the corresponding
+> > page and hence these pages are also not synced by the currently running data
+> > integrity sync. We will end up with dirty pages although sync is completed.
+> >
+> > This could cause a potential data loss when the sync call is followed by a
+> > truncate_pagecache call, which is exactly the case in collapse_range.
+> > (It will cause generic/127 failure in xfstests)
+> >
+> > Cc: Jan Kara <jack@suse.cz>
+> > Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
+> > Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
+>   Just one comment below:
+> 
+> ...
+> > diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+> > index 023cf08..f7358c5 100644
+> > --- a/mm/page-writeback.c
+> > +++ b/mm/page-writeback.c
+> > @@ -2438,6 +2438,43 @@ int test_set_page_writeback(struct page *page)
+> >  }
+> >  EXPORT_SYMBOL(test_set_page_writeback);
+> >
+> > +int test_set_page_writeback_keepwrite(struct page *page)
+> > +{
+> > +	struct address_space *mapping = page_mapping(page);
+> > +	int ret;
+> > +	bool locked;
+> > +	unsigned long memcg_flags;
+> > +
+> > +	mem_cgroup_begin_update_page_stat(page, &locked, &memcg_flags);
+> > +	if (mapping) {
+> > +		struct backing_dev_info *bdi = mapping->backing_dev_info;
+> > +		unsigned long flags;
+> > +
+> > +		spin_lock_irqsave(&mapping->tree_lock, flags);
+> > +		ret = TestSetPageWriteback(page);
+> > +		if (!ret) {
+> > +			radix_tree_tag_set(&mapping->page_tree,
+> > +						page_index(page),
+> > +						PAGECACHE_TAG_WRITEBACK);
+> > +			if (bdi_cap_account_writeback(bdi))
+> > +				__inc_bdi_stat(bdi, BDI_WRITEBACK);
+> > +		}
+> > +		if (!PageDirty(page))
+> > +			radix_tree_tag_clear(&mapping->page_tree,
+> > +						page_index(page),
+> > +						PAGECACHE_TAG_DIRTY);
+> > +		spin_unlock_irqrestore(&mapping->tree_lock, flags);
+> > +	} else {
+> > +		ret = TestSetPageWriteback(page);
+> > +	}
+> > +	if (!ret)
+> > +		account_page_writeback(page);
+> > +	mem_cgroup_end_update_page_stat(page, &locked, &memcg_flags);
+> > +	return ret;
+> > +
+> > +}
+> > +EXPORT_SYMBOL(test_set_page_writeback_keepwrite);
+> > +
+>   Since the two variants of test_set_page_writeback() differ only a little
+> I'd rather have __test_set_page_writeback(page, keep_write) and then define
+> test_set_page_writeback() and test_set_page_writeback_keepwrite() as calls
+> to that function. Other than that the patch is OK. Thanks!
+Hi Jan.
+Okay, I will change it.
+Thanks for review!
+> 
+> 								Honza
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
 
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_2490A602-69A7-4B56-BE95-DD622F3A7A08
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIVAwUBU2lkbHKl2rkXzB/gAQLa9Q/9HNrhsWOUN+Zzb+4cORNorniJgaetnvV8
-j58AL33Db0+2Zh5aMs5QYfz3t2IfJU2AEsjicz3/VLzUVreqlFS5VygLWEVBst9r
-Ul3GQwFS3//IWN7MSswBclwp1r80Zf0FFe5wME8+XTLvumF9AFd+Q1IyzzfeGhsR
-rBa4qvDgfyNORuT1YvlrxlU8W/uydgSANI9A9g+Q+Q2ayWZSwOu2BqovR++MJfr9
-MuabyKRMos7Y18yAgN0c7InDQ6j9Aa9yCzfuD9bMcyfGk9cnKZNyunh/r8rsDcvN
-org1uZoQaLfro7s/1wQZNi21z3xSK2axxphQ9tmQxXdE1lCoKsS+gZovOlQY93Af
-hswjDzJhphfZB3oEVkzujnKVeWyICHZvII6clgxoHNRAK2LyLlR9CZd1g/Ekesrg
-v/3WE/UslL9s+638jg9KkIDlmevqvytX8QOOqx/YJVM/6BZV9h1wXze9fyuHKwAr
-e/axLJuQFmaDbRZCiJahoTkmner7Zhzy58bQ74t+hxVvxIn1WHf1UH0XI6x/HrNK
-kAwkgnSeVvKZcHodqMXXgOa8l44UM7DOaJ4+LVX5MABL+UJfiTIXlP8T9PveqqBi
-HJr7T/IVwunjyg4Fbl6GyQudJQheKuwhTp/6kx5jwlevKXCbkr7Umly3FVYgy/nU
-b6xvZJUIOr8=
-=w5UO
------END PGP SIGNATURE-----
-
---Apple-Mail=_2490A602-69A7-4B56-BE95-DD622F3A7A08--
