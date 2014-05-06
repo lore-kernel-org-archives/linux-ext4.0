@@ -1,99 +1,168 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v2] ext4: fix data integrity sync in ordered mode
-Date: Tue, 6 May 2014 12:01:06 +0200
-Message-ID: <20140506100106.GB9291@quack.suse.cz>
-References: <000f01cf68f7$54205690$fc6103b0$@samsung.com>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH 16/37] libext2fs: support allocating uninit blocks in
+ bmap2()
+Date: Tue, 6 May 2014 17:45:01 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1405061736390.2255@localhost.localdomain>
+References: <20140501231222.31890.82860.stgit@birch.djwong.org> <20140501231407.31890.3876.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Namjae Jeon <namjae.jeon@samsung.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:60151 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:39212 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934558AbaEFKBK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 May 2014 06:01:10 -0400
-Content-Disposition: inline
-In-Reply-To: <000f01cf68f7$54205690$fc6103b0$@samsung.com>
+	id S1757519AbaEFPpG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 May 2014 11:45:06 -0400
+In-Reply-To: <20140501231407.31890.3876.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 06-05-14 15:49:29, Namjae Jeon wrote:
-> When we perform a data integrity sync we tag all the dirty pages with
-> PAGECACHE_TAG_TOWRITE at start of ext4_da_writepages.
-> Later we check for this tag in write_cache_pages_da and creates a
-> struct mpage_da_data containing contiguously indexed pages tagged with this
-> tag and sync these pages with a call to mpage_da_map_and_submit.
-> This process is done in while loop until all the PAGECACHE_TAG_TOWRITE pages
-> are synced. We also do journal start and stop in each iteration.
-> journal_stop could initiate journal commit which would call ext4_writepage
-> which in turn will call ext4_bio_write_page even for delayed OR unwritten
-> buffers. When ext4_bio_write_page is called for such buffers, even though it
-> does not sync them but it clears the PAGECACHE_TAG_TOWRITE of the corresponding
-> page and hence these pages are also not synced by the currently running data
-> integrity sync. We will end up with dirty pages although sync is completed.
-> 
-> This could cause a potential data loss when the sync call is followed by a
-> truncate_pagecache call, which is exactly the case in collapse_range.
-> (It will cause generic/127 failure in xfstests)
-> 
-> Cc: Jan Kara <jack@suse.cz>
-> Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-> Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
-  Just one comment below:
+On Thu, 1 May 2014, Darrick J. Wong wrote:
 
-...
-> diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-> index 023cf08..f7358c5 100644
-> --- a/mm/page-writeback.c
-> +++ b/mm/page-writeback.c
-> @@ -2438,6 +2438,43 @@ int test_set_page_writeback(struct page *page)
->  }
->  EXPORT_SYMBOL(test_set_page_writeback);
->  
-> +int test_set_page_writeback_keepwrite(struct page *page)
-> +{
-> +	struct address_space *mapping = page_mapping(page);
-> +	int ret;
-> +	bool locked;
-> +	unsigned long memcg_flags;
-> +
-> +	mem_cgroup_begin_update_page_stat(page, &locked, &memcg_flags);
-> +	if (mapping) {
-> +		struct backing_dev_info *bdi = mapping->backing_dev_info;
-> +		unsigned long flags;
-> +
-> +		spin_lock_irqsave(&mapping->tree_lock, flags);
-> +		ret = TestSetPageWriteback(page);
-> +		if (!ret) {
-> +			radix_tree_tag_set(&mapping->page_tree,
-> +						page_index(page),
-> +						PAGECACHE_TAG_WRITEBACK);
-> +			if (bdi_cap_account_writeback(bdi))
-> +				__inc_bdi_stat(bdi, BDI_WRITEBACK);
+> Date: Thu, 01 May 2014 16:14:07 -0700
+> From: Darrick J. Wong <darrick.wong@oracle.com>
+> To: tytso@mit.edu, darrick.wong@oracle.com
+> Cc: linux-ext4@vger.kernel.org
+> Subject: [PATCH 16/37] libext2fs: support allocating uninit blocks in bmap2()
+> 
+> In order to support fallocate, we need to be able to have
+> ext2fs_bmap2() allocate blocks and put them into uninitialized
+> extents.  There's a flag to do this in the extent code, but it's not
+> exposed to the bmap2 interface, so plumb that in.  Eventually fuse2fs
+> or somebody will use it.
+> 
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> ---
+>  lib/ext2fs/bmap.c      |   24 ++++++++++++++++++++++--
+>  lib/ext2fs/ext2fs.h    |    1 +
+>  lib/ext2fs/mkjournal.c |   17 +++++++++++++++++
+>  3 files changed, 40 insertions(+), 2 deletions(-)
+> 
+> 
+> diff --git a/lib/ext2fs/bmap.c b/lib/ext2fs/bmap.c
+> index c1d0e6f..a4dc8ef 100644
+> --- a/lib/ext2fs/bmap.c
+> +++ b/lib/ext2fs/bmap.c
+> @@ -72,6 +72,11 @@ static _BMAP_INLINE_ errcode_t block_ind_bmap(ext2_filsys fs, int flags,
+>  					    block_buf + fs->blocksize, &b);
+>  		if (retval)
+>  			return retval;
+> +		if (flags & BMAP_UNINIT) {
+> +			retval = ext2fs_zero_blocks2(fs, b, 1, NULL, NULL);
+> +			if (retval)
+> +				return retval;
 > +		}
-> +		if (!PageDirty(page))
-> +			radix_tree_tag_clear(&mapping->page_tree,
-> +						page_index(page),
-> +						PAGECACHE_TAG_DIRTY);
-> +		spin_unlock_irqrestore(&mapping->tree_lock, flags);
-> +	} else {
-> +		ret = TestSetPageWriteback(page);
+>  
+>  #ifdef WORDS_BIGENDIAN
+>  		((blk_t *) block_buf)[nr] = ext2fs_swab32(b);
+> @@ -214,10 +219,13 @@ static errcode_t extent_bmap(ext2_filsys fs, ext2_ino_t ino,
+>  	errcode_t		retval = 0;
+>  	blk64_t			blk64 = 0;
+>  	int			alloc = 0;
+> +	int			set_flags;
+> +
+> +	set_flags = bmap_flags & BMAP_UNINIT ? EXT2_EXTENT_SET_BMAP_UNINIT : 0;
+>  
+>  	if (bmap_flags & BMAP_SET) {
+>  		retval = ext2fs_extent_set_bmap(handle, block,
+> -						*phys_blk, 0);
+> +						*phys_blk, set_flags);
+>  		return retval;
+>  	}
+>  	retval = ext2fs_extent_goto(handle, block);
+> @@ -254,7 +262,7 @@ got_block:
+>  		alloc++;
+>  	set_extent:
+>  		retval = ext2fs_extent_set_bmap(handle, block,
+> -						blk64, 0);
+> +						blk64, set_flags);
+>  		if (retval) {
+>  			ext2fs_block_alloc_stats2(fs, blk64, -1);
+>  			return retval;
+> @@ -345,6 +353,12 @@ errcode_t ext2fs_bmap2(ext2_filsys fs, ext2_ino_t ino, struct ext2_inode *inode,
+>  		goto done;
+>  	}
+>  
+> +	if ((bmap_flags & BMAP_SET) && (bmap_flags & BMAP_UNINIT)) {
+> +		retval = ext2fs_zero_blocks2(fs, *phys_blk, 1, NULL, NULL);
+> +		if (retval)
+> +			goto done;
 > +	}
-> +	if (!ret)
-> +		account_page_writeback(page);
-> +	mem_cgroup_end_update_page_stat(page, &locked, &memcg_flags);
-> +	return ret;
 > +
-> +}
-> +EXPORT_SYMBOL(test_set_page_writeback_keepwrite);
+>  	if (block < EXT2_NDIR_BLOCKS) {
+>  		if (bmap_flags & BMAP_SET) {
+>  			b = *phys_blk;
+> @@ -360,6 +374,12 @@ errcode_t ext2fs_bmap2(ext2_filsys fs, ext2_ino_t ino, struct ext2_inode *inode,
+>  			retval = ext2fs_alloc_block(fs, b, block_buf, &b);
+>  			if (retval)
+>  				goto done;
+> +			if (bmap_flags & BMAP_UNINIT) {
+> +				retval = ext2fs_zero_blocks2(fs, b, 1, NULL,
+> +							     NULL);
+> +				if (retval)
+> +					goto done;
+> +			}
+>  			inode_bmap(inode, block) = b;
+>  			blocks_alloc++;
+>  			*phys_blk = b;
+> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+> index 599c972..819a14a 100644
+> --- a/lib/ext2fs/ext2fs.h
+> +++ b/lib/ext2fs/ext2fs.h
+> @@ -527,6 +527,7 @@ typedef struct ext2_icount *ext2_icount_t;
+>   */
+>  #define BMAP_ALLOC	0x0001
+>  #define BMAP_SET	0x0002
+> +#define BMAP_UNINIT	0x0004
+>  
+>  /*
+>   * Returned flags from ext2fs_bmap
+> diff --git a/lib/ext2fs/mkjournal.c b/lib/ext2fs/mkjournal.c
+> index 884d9c0..ecc3912 100644
+> --- a/lib/ext2fs/mkjournal.c
+> +++ b/lib/ext2fs/mkjournal.c
+> @@ -174,6 +174,23 @@ errcode_t ext2fs_zero_blocks2(ext2_filsys fs, blk64_t blk, int num,
+>  			return ENOMEM;
+>  		memset(buf, 0, fs->blocksize * STRIDE_LENGTH);
+>  	}
 > +
-  Since the two variants of test_set_page_writeback() differ only a little
-I'd rather have __test_set_page_writeback(page, keep_write) and then define
-test_set_page_writeback() and test_set_page_writeback_keepwrite() as calls
-to that function. Other than that the patch is OK. Thanks!
+> +	/* Try discard, if it zeroes data... */
+> +	if (io_channel_discard_zeroes_data(fs->io)) {
+> +		memset(buf + fs->blocksize, 0, fs->blocksize);
+> +		retval = io_channel_discard(fs->io, blk, num);
+> +		if (retval)
+> +			goto skip_discard;
+> +		retval = io_channel_read_blk64(fs->io, blk, 1, buf);
+> +		if (retval)
+> +			goto skip_discard;
+> +		if (memcmp(buf, buf + fs->blocksize, fs->blocksize) == 0)
+> +			return 0;
+> +		/* Hah!  Discard doesn't zero! */
+> +		fs->io->flags &= ~CHANNEL_FLAGS_DISCARD_ZEROES;
+> +	}
+> +skip_discard:
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+You did not mention that in the description, but this is actually a
+problem. The reason is that discard might not be reliable on some
+devices. This has been discussed several times and I am not the only
+one who've seen that even if the device itself says that it will
+return zeroes from discarded regions sometimes it might return data.
+
+I would rather avoid this kind of optimization. However if the
+underlying "device" is a loop device then it will be reliable if
+it's supported. Also if then underlying "device" is a image then we
+can just simply use punch hole.
+
+Thanks!
+-Lukas
+
+> +
+>  	/* OK, do the write loop */
+>  	j=0;
+>  	while (j < num) {
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
