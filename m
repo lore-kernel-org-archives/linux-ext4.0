@@ -1,94 +1,91 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH -v2 2/3] mke2fs: print extra information about existing ext2/3/4 file systems
-Date: Mon,  5 May 2014 21:02:12 -0400
-Message-ID: <1399338133-21373-2-git-send-email-tytso@mit.edu>
-References: <1399338133-21373-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 0/2] ext4: Reduce contention on s_orphan_lock
+Date: Tue, 6 May 2014 13:49:00 +0200
+Message-ID: <20140506114900.GF9291@quack.suse.cz>
+References: <1398814353-11904-1-git-send-email-jack@suse.cz>
+ <536414A8.2040506@hp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, T Makphaibulchoke <tmac@hp.com>,
+	linux-ext4@vger.kernel.org
+To: Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:50977 "EHLO imap.thunk.org"
+Received: from cantor2.suse.de ([195.135.220.15]:34351 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933119AbaEFBCQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 May 2014 21:02:16 -0400
-In-Reply-To: <1399338133-21373-1-git-send-email-tytso@mit.edu>
+	id S1754465AbaEFLtD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 May 2014 07:49:03 -0400
+Content-Disposition: inline
+In-Reply-To: <536414A8.2040506@hp.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The basic idea is to provide a bit more context in this situation:
+On Fri 02-05-14 15:56:56, Thavatchai Makphaibulchoke wrote:
+> On 04/29/2014 05:32 PM, Jan Kara wrote:
+> > 
+> >   Hello,
+> > 
+> >   so I finally got to looking into your patches for reducing contention
+> > on s_orphan_lock. AFAICT these two patches (the first one is just a
+> > small cleanup) should have the same speed gain as the patches you wrote
+> > and they are simpler. Can you give them a try please? Thanks!
+> 
+> I applied your patch and ran aim7 on both the 80 and 120 core count
+> machines.  There are aim7 workloads that your patch does show some
+> performance improvement.  Unfortunately in general, it does not have the
+> same performance level as my original patch, especially with high user
+> count, 500 or more.
+  Thanks for running the benchmarks!
 
-% ./misc/mke2fs -t ext4 /dev/sdc3
-mke2fs 1.42.9 (4-Feb-2014)
-/dev/sdc3 contains a ext4 file system
-Proceed anyway? (y,n)
+> As for the hashed mutex used in my patch to serialize orphan operation
+> within a single node, even if I agree with you that with existing code it
+> is not required, I don't believe that you can count on that in the
+> future.  I believe that is also your concern, as you also added comment
+> indicating the requirement of the i_mutex in your patch.
+  So I believe it is reasonable to require i_mutex to be held when orphan
+operations are called. Adding / removing inode from orphan list is needed
+when extending or truncating inode and these operations generally require
+i_mutex in ext4. I've added the assertion so that we can catch a situation
+when we either by mistake or intentionally grow a call site which won't
+hold i_mutex. If such situation happens and we have good reasons why
+i_mutex shouldn't be used there, then we can think about some dedicated
+locks (either hashed or per inode ones).
 
-... by adding this bit of context:
+> In terms of maintainability, I do not believe simply relying on warning
+> in a comment is sufficient.  On top of that with this new requirement, we
+> are unnecessarily coupling the orphan operations to i_mutex, adding more
+> contention to it.  This would likely to cause performance regression, as
+  We aren't adding *any* contention. I didn't have to add a single
+additional locking of i_mutex because in all the necessary cases we are
+holding i_mutex over the orphan operations anyway (or the inode isn't
+reachable by other processes). So regarding per-inode locking, we are doing
+strictly less work with my patch than with your patch. However you are
+correct in your comments to my patch 2/2 that in your patch you handle
+operations under the global s_orphan_lock better and that's probably what
+causes the difference. I need to improve that for sure.
 
-% ./misc/mke2fs -t ext4 /dev/sdc3
-mke2fs 1.42.9 (4-Feb-2014)
-/dev/sdc3 contains a ext4 file system
-	last mounted on /SOX-backups on Mon May  5 08:59:53 2014
-Proceed anyway? (y,n)
+> my experiment in responding to your earlier comment on my patch did show
+> some regression when using i_mutex for serialization of orphan operations
+> within a single node (adding code to lock the if it is not already
+> locked).
+> 
+> I still believe having a different mutex for orphan operation
+> serialization is a better and safer alternative.
+  Frankly I don't see why they would be better. They are marginally safer
+by keeping the locking inside the orphan functions but the WARN_ON I have
+added pretty much mitigates this concern and as I wrote above I actually
+think using i_mutex not only works but also makes logical sense.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- misc/util.c | 37 +++++++++++++++++++++++++++++++++++++
- 1 file changed, 37 insertions(+)
+> From my experiment so
+> far (I'm still verifying this), it may even help improving the
+> performance by spreading out the contention on the s_orphan_mutex.
+  So orphan operations on a single inode are serialized by i_mutex both
+with your and with my patch. You add additional serialization by hashed
+mutexes so now orphan operations for independent inodes get serialized as
+well. It may in theory improve the performance by effectively making the
+access to global s_orphan_lock less fair but for now I believe that other
+differences in our patches is what makes a difference.
 
-diff --git a/misc/util.c b/misc/util.c
-index 15b4ce5..d63e21b 100644
---- a/misc/util.c
-+++ b/misc/util.c
-@@ -105,6 +105,41 @@ void proceed_question(int delay)
- 	signal(SIGALRM, SIG_IGN);
- }
- 
-+static void print_ext2_info(const char *device)
-+
-+{
-+	struct ext2_super_block	*sb;
-+	ext2_filsys		fs;
-+	errcode_t		retval;
-+	time_t 			tm;
-+	char			buf[80];
-+
-+	retval = ext2fs_open2(device, 0, 0, 0, 0, unix_io_manager, &fs);
-+	if (retval)
-+		return;
-+	sb = fs->super;
-+
-+	if (sb->s_mtime) {
-+		tm = sb->s_mtime;
-+		if (sb->s_last_mounted[0]) {
-+			memset(buf, 0, sizeof(buf));
-+			strncpy(buf, sb->s_last_mounted,
-+				sizeof(sb->s_last_mounted));
-+			printf(_("\tlast mounted on %s on %s"), buf,
-+			       ctime(&tm));
-+		} else
-+			printf(_("\tlast mounted on %s"), ctime(&tm));
-+	} else if (sb->s_mkfs_time) {
-+		tm = sb->s_mkfs_time;
-+		printf(_("\tcreated on %s"), ctime(&tm));
-+	} else if (sb->s_mkfs_time) {
-+		tm = sb->s_mtime;
-+		printf(_("\tlast modified on %s"), ctime(&tm));
-+	}
-+	ext2fs_close(fs);
-+}
-+
-+
- /*
-  * return 1 if the device looks plausible, creating the file if necessary
-  */
-@@ -168,6 +203,8 @@ int check_plausibility(const char *device, int flags, int *ret_is_dev)
- 		else
- 			printf(_("%s contains a %s file system\n"), device,
- 			       fs_type);
-+		if (strncmp(fs_type, "ext", 3) == 0)
-+			print_ext2_info(device);
- 		free(fs_type);
- 		free(fs_label);
- 		return 0;
+								Honza
 -- 
-1.9.0
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
