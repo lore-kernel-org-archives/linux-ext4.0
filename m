@@ -1,93 +1,65 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: [PATCH v2] ext4: add sysfs entry showing whether the fs contains
  errors
-Date: Wed, 7 May 2014 17:35:54 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1405071714470.2128@localhost.localdomain>
-References: <1399464274-16310-1-git-send-email-lczerner@redhat.com> <20140507143646.GB28814@thunk.org>
+Date: Wed, 7 May 2014 12:01:52 -0400
+Message-ID: <20140507160152.GA6408@thunk.org>
+References: <1399464274-16310-1-git-send-email-lczerner@redhat.com>
+ <20140507143646.GB28814@thunk.org>
+ <alpine.LFD.2.00.1405071714470.2128@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:16618 "EHLO mx1.redhat.com"
+Received: from imap.thunk.org ([74.207.234.97]:54698 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755443AbaEGPf7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 7 May 2014 11:35:59 -0400
-In-Reply-To: <20140507143646.GB28814@thunk.org>
+	id S933723AbaEGQBz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 7 May 2014 12:01:55 -0400
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1405071714470.2128@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 7 May 2014, Theodore Ts'o wrote:
+On Wed, May 07, 2014 at 05:35:54PM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
+:
+>=20
+> I tried to find sysfs guidelines but I can not see any in
+> Documentation speaking about the contents of the files.
+>=20
+> What are the guidelines then ?
 
-> Date: Wed, 7 May 2014 10:36:46 -0400
-> From: Theodore Ts'o <tytso@mit.edu>
-> To: Lukas Czerner <lczerner@redhat.com>
-> Cc: linux-ext4@vger.kernel.org
-> Subject: Re: [PATCH v2] ext4: add sysfs entry showing whether the fs contains
->     errors
-> 
-> On Wed, May 07, 2014 at 02:04:34PM +0200, Lukas Czerner wrote:
-> > 
-> > cat /sys/fs/ext4/sda/errors
-> > 
-> > If the file system is not marked as containing errors then the file
-> > returns just 0. Otherwise it would print out the following information:
-> > 
-> > <error count> first <first_error_time> <first_error_func>:<first_error_line> \
-> > last <last_error_time> <last_error_func>:<last_error_line>
-> 
-> This goes against the typical way in which information is returned in
-> sysfs.  Personally, I've always preferred the scheme used by, for
-> example /proc/acpi/battery/BAT0/info, versus needing to read N
-> different files in /sys/class/power_supply/BAT0/*, but the argument is
-> that it's easier for programs to parse information if they are in
-> separate files.
+Documentation/filesystems/sysfs.txt:
 
-What about /sys/class/power_supply/BAT0/uevent ? It it is easily
-parsable and has all the information in
-/sys/class/power_supply/BAT0/*
+   Attributes can be exported for kobjects in the form of regular
+   files in the filesystem. Sysfs forwards file I/O operations to
+   methods defined for the attributes, providing a means to read and
+   write kernel attributes.
 
-Also something like /sys/block/sda/stat seems to differ from the
-rest.
+   Attributes should be ASCII text files, preferably with only one valu=
+e
+   per file. It is noted that it may not be efficient to contain only o=
+ne
+   value per file, so it is socially acceptable to express an array of
+   values of the same type.=20
 
-> 
-> It's one of the reasons why I've kept /proc/fs/ext4/sda3/mb_groups,
-> since trying to convert that file over to the Church of Sysfs's style
-> guidelines was far more work than it was worth.
+I don't remember that last sentence; it was apparently added since the
+last time I've looked at it.  Originally, the requirement that each
+sysfs file (which was supposed to be an kobject attribute) was
+required to be a single value.  Now there's an escape hatch for
+"efficiency", which is nice....
 
-I tried to find sysfs guidelines but I can not see any in
-Documentation speaking about the contents of the files.
+> So you're suggesting to have three sysfs files ?
+>=20
+> errors_count
+> first_error_time
+> last_error_time
 
-What are the guidelines then ?
+Yes, that's what I was suggesting.
 
-> 
-> I'm not actually sure it's that important to be able to expose the
-> error function and error line number via sysfs or procfs.  If a
-> process wants a complete record of all of the various errors, then
-> dmesg or maybe some netlink socket is really the best interface for
-> getting this information.
-
-Maybe not important, but it seems useful enough. However we might
-want to restrict read permissions to owner only, since it does not
-seem like a good idea to expose this information to the world.
-
-> 
-> For sysfs, I suspect the primary use will be answering the questions:
-> "is this file system healthy or not", and "when did it first become
-> unhealthy".  And for questoins like this, the errors_count and
-> first_error_time and last_error_time is probably the most useful bits
-> of information to expose.
-
-So you're suggesting to have three sysfs files ?
-
-errors_count
-first_error_time
-last_error_time
-
--Lukas
-
-> 
-> Cheers,
-> 
-> 					- Ted
-> 
+						- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
