@@ -1,125 +1,219 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH -v2 2/3] mke2fs: print extra information about existing
- ext2/3/4 file systemsGjj
-Date: Wed, 7 May 2014 15:43:09 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1405071534070.2128@localhost.localdomain>
-References: <1399338133-21373-1-git-send-email-tytso@mit.edu> <1399338133-21373-2-git-send-email-tytso@mit.edu> <alpine.LFD.2.00.1405061528470.2255@localhost.localdomain> <20140507024621.GB6461@thunk.org> <alpine.LFD.2.00.1405071014350.2128@localhost.localdomain>
- <20140507123913.GA28814@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v3] ext4: fix data integrity sync in ordered mode
+Date: Wed, 7 May 2014 15:55:56 +0200
+Message-ID: <20140507135556.GA12433@quack.suse.cz>
+References: <001c01cf69b3$59c09710$0d41c530$@samsung.com>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1996339212-1399469881=:2128"
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Namjae Jeon <namjae.jeon@samsung.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58888 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:35244 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933037AbaEGNnO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 7 May 2014 09:43:14 -0400
-In-Reply-To: <20140507123913.GA28814@thunk.org>
-Content-ID: <alpine.LFD.2.00.1405071538410.2128@localhost.localdomain>
+	id S1755400AbaEGNz7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 7 May 2014 09:55:59 -0400
+Content-Disposition: inline
+In-Reply-To: <001c01cf69b3$59c09710$0d41c530$@samsung.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
-
---8323328-1996339212-1399469881=:2128
-Content-Type: TEXT/PLAIN; CHARSET=ISO-8859-15
-Content-Transfer-Encoding: 8BIT
-Content-ID: <alpine.LFD.2.00.1405071538411.2128@localhost.localdomain>
-
-On Wed, 7 May 2014, Theodore Ts'o wrote:
-
-> Date: Wed, 7 May 2014 08:39:13 -0400
-> From: Theodore Ts'o <tytso@mit.edu>
-> To: Luká¨ Czerner <lczerner@redhat.com>
-> Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-> Subject: Re: [PATCH -v2 2/3] mke2fs: print extra information about existing
->     ext2/3/4 file systemsG
+On Wed 07-05-14 14:15:24, Namjae Jeon wrote:
+> When we perform a data integrity sync we tag all the dirty pages with
+> PAGECACHE_TAG_TOWRITE at start of ext4_da_writepages.
+> Later we check for this tag in write_cache_pages_da and creates a
+> struct mpage_da_data containing contiguously indexed pages tagged with this
+> tag and sync these pages with a call to mpage_da_map_and_submit.
+> This process is done in while loop until all the PAGECACHE_TAG_TOWRITE pages
+> are synced. We also do journal start and stop in each iteration.
+> journal_stop could initiate journal commit which would call ext4_writepage
+> which in turn will call ext4_bio_write_page even for delayed OR unwritten
+> buffers. When ext4_bio_write_page is called for such buffers, even though it
+> does not sync them but it clears the PAGECACHE_TAG_TOWRITE of the corresponding
+> page and hence these pages are also not synced by the currently running data
+> integrity sync. We will end up with dirty pages although sync is completed.
 > 
-> On Wed, May 07, 2014 at 10:15:56AM +0200, Luká¨ Czerner wrote:
-> > > Yes, that's a cut and paste typo, thanks for spotting it.  It should
-> > > have been:
-> > > 
-> > > 	} else if (sb->s_mkfs_time) {
-> > > 		tm = sb->s_mkfs_time;
-> > > 		printf(_("\tcreated on %s"), ctime(&tm));
-> > > 	} else if (sb->s_mtime) {  <========
-> > 
-> > But you're already checking for sb->s_mtime in the first condition,
-> > am I missing something ?
+> This could cause a potential data loss when the sync call is followed by a
+> truncate_pagecache call, which is exactly the case in collapse_range.
+> (It will cause generic/127 failure in xfstests)
 > 
-> The basic idea is to give one bit of context, and whatever would be
-> the most useful.  In order of preference, it's:
+> To avoid this issue, we can use set_page_writeback_keepwrite instead of
+> set_page_writeback, which doesn't clear TOWRITE tag.
 > 
-> 1)  Last mount directory (if available) and last mount time
-> 2)  Time file system was created
-> 3)  Time file system was written
+> Cc: Jan Kara <jack@suse.cz>
+> Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
+> Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
+  The patch looks good. You can add:
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+BTW you should also cc linux-mm@kvack.org with this patch since it touches
+the mm code.
+
+									Honza
+> ---
 > 
-> #2 or #3 is only needed if the file system was never mounted.
+> Changelog
+> v3:
+>  - define test_set_page_writeback() and test_set_page_writeback_keepwrite()
+>    as calls to __test_set_page_writeback(page, keep_write)
 > 
-> #3 is only needed for those file systems that (a) were never mounted,
-> (b) was modified/filled via e2tools or debugfs.  (Or Windows FS SDK
-> based hacks, etc.)
+> v2:
+>  - As Jan Kara suggested, Create set_page_writeback_keepwrite which doesn't
+>    clear TOWRITE tag.
 > 
-> 					- Ted
+>  fs/ext4/ext4.h             |  3 ++-
+>  fs/ext4/inode.c            |  6 ++++--
+>  fs/ext4/page-io.c          |  8 ++++++--
+>  include/linux/page-flags.h | 12 +++++++++++-
+>  mm/page-writeback.c        | 11 ++++++-----
+>  5 files changed, 29 insertions(+), 11 deletions(-)
 > 
-
-I understand that, but here is what is in your patch:
-
-
- +      if (sb->s_mtime) {
- +              tm = sb->s_mtime;
- +              if (sb->s_last_mounted[0]) {
- +                      memset(buf, 0, sizeof(buf));
- +                      strncpy(buf, sb->s_last_mounted,
- +                              sizeof(sb->s_last_mounted));
- +                      printf(_("\tlast mounted on %s on %s"), buf,
- +                             ctime(&tm));
- +              } else
- +                      printf(_("\tlast mounted on %s"), ctime(&tm));
- +      } else if (sb->s_mkfs_time) {
- +              tm = sb->s_mkfs_time;
- +              printf(_("\tcreated on %s"), ctime(&tm));
- +      } else if (sb->s_mkfs_time) {
- +              tm = sb->s_mtime;
- +              printf(_("\tlast modified on %s"), ctime(&tm));
- +      }
-
-Now you're saying that the last condition should really be
-
-	} else if (sb->s_mtime) {  <========
-
-But that does not make sense because it's the same as the first
-condition, so it would either never get there, or never be true.
-
-So it really should be
-
-	} else if (sb->s_wtime) {
-
-
-so the whole thing should look like:
-
- +      if (sb->s_mtime) {
- +              tm = sb->s_mtime;
- +              if (sb->s_last_mounted[0]) {
- +                      memset(buf, 0, sizeof(buf));
- +                      strncpy(buf, sb->s_last_mounted,
- +                              sizeof(sb->s_last_mounted));
- +                      printf(_("\tlast mounted on %s on %s"), buf,
- +                             ctime(&tm));
- +              } else
- +                      printf(_("\tlast mounted on %s"), ctime(&tm));
- +      } else if (sb->s_mkfs_time) {
- +              tm = sb->s_mkfs_time;
- +              printf(_("\tcreated on %s"), ctime(&tm));
- +      } else if (sb->s_wtime) {
- +              tm = sb->s_wtime;
- +              printf(_("\tlast modified on %s"), ctime(&tm));
- +      }
-
-Also I wonder whether we need to use 'tm' variable, can't we use the
-sb->s_*time directly ? But that's nitpicking.
-
-Thanks!
--Lukas
---8323328-1996339212-1399469881=:2128--
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 6b45afa..78fed7b 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -2771,7 +2771,8 @@ extern void ext4_io_submit(struct ext4_io_submit *io);
+>  extern int ext4_bio_write_page(struct ext4_io_submit *io,
+>  			       struct page *page,
+>  			       int len,
+> -			       struct writeback_control *wbc);
+> +			       struct writeback_control *wbc,
+> +			       bool keep_towrite);
+>  
+>  /* mmp.c */
+>  extern int ext4_multi_mount_protect(struct super_block *, ext4_fsblk_t);
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index b1dc334..8d9cb26 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -1846,6 +1846,7 @@ static int ext4_writepage(struct page *page,
+>  	struct buffer_head *page_bufs = NULL;
+>  	struct inode *inode = page->mapping->host;
+>  	struct ext4_io_submit io_submit;
+> +	bool keep_towrite = false;
+>  
+>  	trace_ext4_writepage(page);
+>  	size = i_size_read(inode);
+> @@ -1876,6 +1877,7 @@ static int ext4_writepage(struct page *page,
+>  			unlock_page(page);
+>  			return 0;
+>  		}
+> +		keep_towrite = true;
+>  	}
+>  
+>  	if (PageChecked(page) && ext4_should_journal_data(inode))
+> @@ -1892,7 +1894,7 @@ static int ext4_writepage(struct page *page,
+>  		unlock_page(page);
+>  		return -ENOMEM;
+>  	}
+> -	ret = ext4_bio_write_page(&io_submit, page, len, wbc);
+> +	ret = ext4_bio_write_page(&io_submit, page, len, wbc, keep_towrite);
+>  	ext4_io_submit(&io_submit);
+>  	/* Drop io_end reference we got from init */
+>  	ext4_put_io_end_defer(io_submit.io_end);
+> @@ -1911,7 +1913,7 @@ static int mpage_submit_page(struct mpage_da_data *mpd, struct page *page)
+>  	else
+>  		len = PAGE_CACHE_SIZE;
+>  	clear_page_dirty_for_io(page);
+> -	err = ext4_bio_write_page(&mpd->io_submit, page, len, mpd->wbc);
+> +	err = ext4_bio_write_page(&mpd->io_submit, page, len, mpd->wbc, false);
+>  	if (!err)
+>  		mpd->wbc->nr_to_write--;
+>  	mpd->first_page++;
+> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+> index 1a64e7a..4a2dd07 100644
+> --- a/fs/ext4/page-io.c
+> +++ b/fs/ext4/page-io.c
+> @@ -401,7 +401,8 @@ submit_and_retry:
+>  int ext4_bio_write_page(struct ext4_io_submit *io,
+>  			struct page *page,
+>  			int len,
+> -			struct writeback_control *wbc)
+> +			struct writeback_control *wbc,
+> +			bool keep_towrite)
+>  {
+>  	struct inode *inode = page->mapping->host;
+>  	unsigned block_start, blocksize;
+> @@ -414,7 +415,10 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+>  	BUG_ON(!PageLocked(page));
+>  	BUG_ON(PageWriteback(page));
+>  
+> -	set_page_writeback(page);
+> +	if (keep_towrite)
+> +		set_page_writeback_keepwrite(page);
+> +	else
+> +		set_page_writeback(page);
+>  	ClearPageError(page);
+>  
+>  	/*
+> diff --git a/include/linux/page-flags.h b/include/linux/page-flags.h
+> index bc2007e..9b68718 100644
+> --- a/include/linux/page-flags.h
+> +++ b/include/linux/page-flags.h
+> @@ -317,13 +317,23 @@ CLEARPAGEFLAG(Uptodate, uptodate)
+>  extern void cancel_dirty_page(struct page *page, unsigned int account_size);
+>  
+>  int test_clear_page_writeback(struct page *page);
+> -int test_set_page_writeback(struct page *page);
+> +int __test_set_page_writeback(struct page *page, bool keep_write);
+> +
+> +#define test_set_page_writeback(page)			\
+> +	__test_set_page_writeback(page, false)
+> +#define test_set_page_writeback_keepwrite(page)	\
+> +	__test_set_page_writeback(page, true)
+>  
+>  static inline void set_page_writeback(struct page *page)
+>  {
+>  	test_set_page_writeback(page);
+>  }
+>  
+> +static inline void set_page_writeback_keepwrite(struct page *page)
+> +{
+> +	test_set_page_writeback_keepwrite(page);
+> +}
+> +
+>  #ifdef CONFIG_PAGEFLAGS_EXTENDED
+>  /*
+>   * System with lots of page flags available. This allows separate
+> diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+> index 310d329..ba037e3 100644
+> --- a/mm/page-writeback.c
+> +++ b/mm/page-writeback.c
+> @@ -2398,7 +2398,7 @@ int test_clear_page_writeback(struct page *page)
+>  	return ret;
+>  }
+>  
+> -int test_set_page_writeback(struct page *page)
+> +int __test_set_page_writeback(struct page *page, bool keep_write)
+>  {
+>  	struct address_space *mapping = page_mapping(page);
+>  	int ret;
+> @@ -2423,9 +2423,10 @@ int test_set_page_writeback(struct page *page)
+>  			radix_tree_tag_clear(&mapping->page_tree,
+>  						page_index(page),
+>  						PAGECACHE_TAG_DIRTY);
+> -		radix_tree_tag_clear(&mapping->page_tree,
+> -				     page_index(page),
+> -				     PAGECACHE_TAG_TOWRITE);
+> +		if (!keep_write)
+> +			radix_tree_tag_clear(&mapping->page_tree,
+> +						page_index(page),
+> +						PAGECACHE_TAG_TOWRITE);
+>  		spin_unlock_irqrestore(&mapping->tree_lock, flags);
+>  	} else {
+>  		ret = TestSetPageWriteback(page);
+> @@ -2436,7 +2437,7 @@ int test_set_page_writeback(struct page *page)
+>  	return ret;
+>  
+>  }
+> -EXPORT_SYMBOL(test_set_page_writeback);
+> +EXPORT_SYMBOL(__test_set_page_writeback);
+>  
+>  /*
+>   * Return true if any of the pages in the mapping are marked with the
+> -- 
+> 1.7.11-rc0
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
