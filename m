@@ -1,212 +1,86 @@
-From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: [PATCH v3] ext4: fix data integrity sync in ordered mode
-Date: Wed, 07 May 2014 14:15:24 +0900
-Message-ID: <001c01cf69b3$59c09710$0d41c530$@samsung.com>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH -v2 2/3] mke2fs: print extra information about existing
+ ext2/3/4 file systems
+Date: Wed, 7 May 2014 10:15:56 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1405071014350.2128@localhost.localdomain>
+References: <1399338133-21373-1-git-send-email-tytso@mit.edu> <1399338133-21373-2-git-send-email-tytso@mit.edu> <alpine.LFD.2.00.1405061528470.2255@localhost.localdomain> <20140507024621.GB6461@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1051330677-1399450559=:2128"
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout2.samsung.com ([203.254.224.25]:61482 "EHLO
-	mailout2.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752632AbaEGFPb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 May 2014 01:15:31 -0400
-Received: from epcpsbgr2.samsung.com
- (u142.gpu120.samsung.co.kr [203.254.230.142])
- by mailout2.samsung.com (Oracle Communications Messaging Server 7u4-24.01
- (7.0.4.24.0) 64bit (built Nov 17 2011))
- with ESMTP id <0N56002QMULPW690@mailout2.samsung.com> for
- linux-ext4@vger.kernel.org; Wed, 07 May 2014 14:15:26 +0900 (KST)
-Content-language: ko
+Received: from mx1.redhat.com ([209.132.183.28]:15888 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754544AbaEGIQB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 7 May 2014 04:16:01 -0400
+In-Reply-To: <20140507024621.GB6461@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When we perform a data integrity sync we tag all the dirty pages with
-PAGECACHE_TAG_TOWRITE at start of ext4_da_writepages.
-Later we check for this tag in write_cache_pages_da and creates a
-struct mpage_da_data containing contiguously indexed pages tagged with this
-tag and sync these pages with a call to mpage_da_map_and_submit.
-This process is done in while loop until all the PAGECACHE_TAG_TOWRITE pages
-are synced. We also do journal start and stop in each iteration.
-journal_stop could initiate journal commit which would call ext4_writepage
-which in turn will call ext4_bio_write_page even for delayed OR unwritten
-buffers. When ext4_bio_write_page is called for such buffers, even though it
-does not sync them but it clears the PAGECACHE_TAG_TOWRITE of the corresponding
-page and hence these pages are also not synced by the currently running data
-integrity sync. We will end up with dirty pages although sync is completed.
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-This could cause a potential data loss when the sync call is followed by a
-truncate_pagecache call, which is exactly the case in collapse_range.
-(It will cause generic/127 failure in xfstests)
+--8323328-1051330677-1399450559=:2128
+Content-Type: TEXT/PLAIN; charset=utf-8
+Content-Transfer-Encoding: 8BIT
 
-To avoid this issue, we can use set_page_writeback_keepwrite instead of
-set_page_writeback, which doesn't clear TOWRITE tag.
+On Tue, 6 May 2014, Theodore Ts'o wrote:
 
-Cc: Jan Kara <jack@suse.cz>
-Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
----
+> Date: Tue, 6 May 2014 22:46:21 -0400
+> From: Theodore Ts'o <tytso@mit.edu>
+> To: Lukáš Czerner <lczerner@redhat.com>
+> Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+> Subject: Re: [PATCH -v2 2/3] mke2fs: print extra information about existing
+>     ext2/3/4 file systems
+> 
+> On Tue, May 06, 2014 at 03:42:37PM +0200, Lukáš Czerner wrote:
+> > > +	retval = ext2fs_open2(device, 0, 0, 0, 0, unix_io_manager, &fs);
+> > 
+> > Sorry for not noticing this earlier, but we might want to pass
+> > EXT2_FLAG_64BITS.
+> 
+> Done.
+> 
+> > > +	} else if (sb->s_mkfs_time) {
+> > > +		tm = sb->s_mkfs_time;
+> > > +		printf(_("\tcreated on %s"), ctime(&tm));
+> > > +	} else if (sb->s_mkfs_time) {
+> > 
+> > This does not seem right, you've already checked for s_mkfs_time and
+> > if was not set if you got here. I guess, it should be something else
+> > ? s_wtime perhaps ? But, can this be set when the fs was not mounted
+> > (like using ext2fs library ?)
+> > 
+> > > +		tm = sb->s_mtime;
+> > 
+> > If you got here, then again this is not set.
+> 
+> 
+> Yes, that's a cut and paste typo, thanks for spotting it.  It should
+> have been:
+> 
+> 	} else if (sb->s_mkfs_time) {
+> 		tm = sb->s_mkfs_time;
+> 		printf(_("\tcreated on %s"), ctime(&tm));
+> 	} else if (sb->s_mtime) {  <========
 
-Changelog
-v3:
- - define test_set_page_writeback() and test_set_page_writeback_keepwrite()
-   as calls to __test_set_page_writeback(page, keep_write)
+But you're already checking for sb->s_mtime in the first condition,
+am I missing something ?
 
-v2:
- - As Jan Kara suggested, Create set_page_writeback_keepwrite which doesn't
-   clear TOWRITE tag.
+Thanks!
+-Lukas
 
- fs/ext4/ext4.h             |  3 ++-
- fs/ext4/inode.c            |  6 ++++--
- fs/ext4/page-io.c          |  8 ++++++--
- include/linux/page-flags.h | 12 +++++++++++-
- mm/page-writeback.c        | 11 ++++++-----
- 5 files changed, 29 insertions(+), 11 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 6b45afa..78fed7b 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2771,7 +2771,8 @@ extern void ext4_io_submit(struct ext4_io_submit *io);
- extern int ext4_bio_write_page(struct ext4_io_submit *io,
- 			       struct page *page,
- 			       int len,
--			       struct writeback_control *wbc);
-+			       struct writeback_control *wbc,
-+			       bool keep_towrite);
- 
- /* mmp.c */
- extern int ext4_multi_mount_protect(struct super_block *, ext4_fsblk_t);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index b1dc334..8d9cb26 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1846,6 +1846,7 @@ static int ext4_writepage(struct page *page,
- 	struct buffer_head *page_bufs = NULL;
- 	struct inode *inode = page->mapping->host;
- 	struct ext4_io_submit io_submit;
-+	bool keep_towrite = false;
- 
- 	trace_ext4_writepage(page);
- 	size = i_size_read(inode);
-@@ -1876,6 +1877,7 @@ static int ext4_writepage(struct page *page,
- 			unlock_page(page);
- 			return 0;
- 		}
-+		keep_towrite = true;
- 	}
- 
- 	if (PageChecked(page) && ext4_should_journal_data(inode))
-@@ -1892,7 +1894,7 @@ static int ext4_writepage(struct page *page,
- 		unlock_page(page);
- 		return -ENOMEM;
- 	}
--	ret = ext4_bio_write_page(&io_submit, page, len, wbc);
-+	ret = ext4_bio_write_page(&io_submit, page, len, wbc, keep_towrite);
- 	ext4_io_submit(&io_submit);
- 	/* Drop io_end reference we got from init */
- 	ext4_put_io_end_defer(io_submit.io_end);
-@@ -1911,7 +1913,7 @@ static int mpage_submit_page(struct mpage_da_data *mpd, struct page *page)
- 	else
- 		len = PAGE_CACHE_SIZE;
- 	clear_page_dirty_for_io(page);
--	err = ext4_bio_write_page(&mpd->io_submit, page, len, mpd->wbc);
-+	err = ext4_bio_write_page(&mpd->io_submit, page, len, mpd->wbc, false);
- 	if (!err)
- 		mpd->wbc->nr_to_write--;
- 	mpd->first_page++;
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index 1a64e7a..4a2dd07 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -401,7 +401,8 @@ submit_and_retry:
- int ext4_bio_write_page(struct ext4_io_submit *io,
- 			struct page *page,
- 			int len,
--			struct writeback_control *wbc)
-+			struct writeback_control *wbc,
-+			bool keep_towrite)
- {
- 	struct inode *inode = page->mapping->host;
- 	unsigned block_start, blocksize;
-@@ -414,7 +415,10 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
- 	BUG_ON(!PageLocked(page));
- 	BUG_ON(PageWriteback(page));
- 
--	set_page_writeback(page);
-+	if (keep_towrite)
-+		set_page_writeback_keepwrite(page);
-+	else
-+		set_page_writeback(page);
- 	ClearPageError(page);
- 
- 	/*
-diff --git a/include/linux/page-flags.h b/include/linux/page-flags.h
-index bc2007e..9b68718 100644
---- a/include/linux/page-flags.h
-+++ b/include/linux/page-flags.h
-@@ -317,13 +317,23 @@ CLEARPAGEFLAG(Uptodate, uptodate)
- extern void cancel_dirty_page(struct page *page, unsigned int account_size);
- 
- int test_clear_page_writeback(struct page *page);
--int test_set_page_writeback(struct page *page);
-+int __test_set_page_writeback(struct page *page, bool keep_write);
-+
-+#define test_set_page_writeback(page)			\
-+	__test_set_page_writeback(page, false)
-+#define test_set_page_writeback_keepwrite(page)	\
-+	__test_set_page_writeback(page, true)
- 
- static inline void set_page_writeback(struct page *page)
- {
- 	test_set_page_writeback(page);
- }
- 
-+static inline void set_page_writeback_keepwrite(struct page *page)
-+{
-+	test_set_page_writeback_keepwrite(page);
-+}
-+
- #ifdef CONFIG_PAGEFLAGS_EXTENDED
- /*
-  * System with lots of page flags available. This allows separate
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index 310d329..ba037e3 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -2398,7 +2398,7 @@ int test_clear_page_writeback(struct page *page)
- 	return ret;
- }
- 
--int test_set_page_writeback(struct page *page)
-+int __test_set_page_writeback(struct page *page, bool keep_write)
- {
- 	struct address_space *mapping = page_mapping(page);
- 	int ret;
-@@ -2423,9 +2423,10 @@ int test_set_page_writeback(struct page *page)
- 			radix_tree_tag_clear(&mapping->page_tree,
- 						page_index(page),
- 						PAGECACHE_TAG_DIRTY);
--		radix_tree_tag_clear(&mapping->page_tree,
--				     page_index(page),
--				     PAGECACHE_TAG_TOWRITE);
-+		if (!keep_write)
-+			radix_tree_tag_clear(&mapping->page_tree,
-+						page_index(page),
-+						PAGECACHE_TAG_TOWRITE);
- 		spin_unlock_irqrestore(&mapping->tree_lock, flags);
- 	} else {
- 		ret = TestSetPageWriteback(page);
-@@ -2436,7 +2437,7 @@ int test_set_page_writeback(struct page *page)
- 	return ret;
- 
- }
--EXPORT_SYMBOL(test_set_page_writeback);
-+EXPORT_SYMBOL(__test_set_page_writeback);
- 
- /*
-  * Return true if any of the pages in the mapping are marked with the
--- 
-1.7.11-rc0
-
+> 		tm = sb->s_mtime;
+> 		printf(_("\tlast modified on %s"), ctime(&tm));
+> 	}
+> 
+> 
+> Cheers,
+> 
+> 					- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+--8323328-1051330677-1399450559=:2128--
