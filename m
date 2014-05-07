@@ -1,112 +1,68 @@
-From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: RE: [PATCH v2] ext4: fix data integrity sync in ordered mode
-Date: Wed, 07 May 2014 08:10:14 +0900
-Message-ID: <000801cf6980$56da9650$048fc2f0$@samsung.com>
-References: <000f01cf68f7$54205690$fc6103b0$@samsung.com>
- <20140506100106.GB9291@quack.suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH -v2 2/3] mke2fs: print extra information about existing
+ ext2/3/4 file systems
+Date: Tue, 6 May 2014 22:46:21 -0400
+Message-ID: <20140507024621.GB6461@thunk.org>
+References: <1399338133-21373-1-git-send-email-tytso@mit.edu>
+ <1399338133-21373-2-git-send-email-tytso@mit.edu>
+ <alpine.LFD.2.00.1405061528470.2255@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: 'Theodore Ts'o' <tytso@mit.edu>,
-	'linux-ext4' <linux-ext4@vger.kernel.org>
-To: 'Jan Kara' <jack@suse.cz>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout3.samsung.com ([203.254.224.33]:43132 "EHLO
-	mailout3.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753855AbaEFXKR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 May 2014 19:10:17 -0400
-Received: from epcpsbgr5.samsung.com
- (u145.gpu120.samsung.co.kr [203.254.230.145])
- by mailout3.samsung.com (Oracle Communications Messaging Server 7u4-24.01
- (7.0.4.24.0) 64bit (built Nov 17 2011))
- with ESMTP id <0N5600AL4DP32AA0@mailout3.samsung.com> for
- linux-ext4@vger.kernel.org; Wed, 07 May 2014 08:10:15 +0900 (KST)
-In-reply-to: <20140506100106.GB9291@quack.suse.cz>
-Content-language: ko
+Received: from imap.thunk.org ([74.207.234.97]:53364 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752239AbaEGCqZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 May 2014 22:46:25 -0400
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1405061528470.2255@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> 
-> On Tue 06-05-14 15:49:29, Namjae Jeon wrote:
-> > When we perform a data integrity sync we tag all the dirty pages with
-> > PAGECACHE_TAG_TOWRITE at start of ext4_da_writepages.
-> > Later we check for this tag in write_cache_pages_da and creates a
-> > struct mpage_da_data containing contiguously indexed pages tagged with this
-> > tag and sync these pages with a call to mpage_da_map_and_submit.
-> > This process is done in while loop until all the PAGECACHE_TAG_TOWRITE pages
-> > are synced. We also do journal start and stop in each iteration.
-> > journal_stop could initiate journal commit which would call ext4_writepage
-> > which in turn will call ext4_bio_write_page even for delayed OR unwritten
-> > buffers. When ext4_bio_write_page is called for such buffers, even though it
-> > does not sync them but it clears the PAGECACHE_TAG_TOWRITE of the corresponding
-> > page and hence these pages are also not synced by the currently running data
-> > integrity sync. We will end up with dirty pages although sync is completed.
-> >
-> > This could cause a potential data loss when the sync call is followed by a
-> > truncate_pagecache call, which is exactly the case in collapse_range.
-> > (It will cause generic/127 failure in xfstests)
-> >
-> > Cc: Jan Kara <jack@suse.cz>
-> > Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-> > Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
->   Just one comment below:
-> 
-> ...
-> > diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-> > index 023cf08..f7358c5 100644
-> > --- a/mm/page-writeback.c
-> > +++ b/mm/page-writeback.c
-> > @@ -2438,6 +2438,43 @@ int test_set_page_writeback(struct page *page)
-> >  }
-> >  EXPORT_SYMBOL(test_set_page_writeback);
-> >
-> > +int test_set_page_writeback_keepwrite(struct page *page)
-> > +{
-> > +	struct address_space *mapping = page_mapping(page);
-> > +	int ret;
-> > +	bool locked;
-> > +	unsigned long memcg_flags;
-> > +
-> > +	mem_cgroup_begin_update_page_stat(page, &locked, &memcg_flags);
-> > +	if (mapping) {
-> > +		struct backing_dev_info *bdi = mapping->backing_dev_info;
-> > +		unsigned long flags;
-> > +
-> > +		spin_lock_irqsave(&mapping->tree_lock, flags);
-> > +		ret = TestSetPageWriteback(page);
-> > +		if (!ret) {
-> > +			radix_tree_tag_set(&mapping->page_tree,
-> > +						page_index(page),
-> > +						PAGECACHE_TAG_WRITEBACK);
-> > +			if (bdi_cap_account_writeback(bdi))
-> > +				__inc_bdi_stat(bdi, BDI_WRITEBACK);
-> > +		}
-> > +		if (!PageDirty(page))
-> > +			radix_tree_tag_clear(&mapping->page_tree,
-> > +						page_index(page),
-> > +						PAGECACHE_TAG_DIRTY);
-> > +		spin_unlock_irqrestore(&mapping->tree_lock, flags);
-> > +	} else {
-> > +		ret = TestSetPageWriteback(page);
-> > +	}
-> > +	if (!ret)
-> > +		account_page_writeback(page);
-> > +	mem_cgroup_end_update_page_stat(page, &locked, &memcg_flags);
-> > +	return ret;
-> > +
-> > +}
-> > +EXPORT_SYMBOL(test_set_page_writeback_keepwrite);
-> > +
->   Since the two variants of test_set_page_writeback() differ only a little
-> I'd rather have __test_set_page_writeback(page, keep_write) and then define
-> test_set_page_writeback() and test_set_page_writeback_keepwrite() as calls
-> to that function. Other than that the patch is OK. Thanks!
-Hi Jan.
-Okay, I will change it.
-Thanks for review!
-> 
-> 								Honza
-> --
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
+On Tue, May 06, 2014 at 03:42:37PM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
+:
+> > +	retval =3D ext2fs_open2(device, 0, 0, 0, 0, unix_io_manager, &fs)=
+;
+>=20
+> Sorry for not noticing this earlier, but we might want to pass
+> EXT2_FLAG_64BITS.
 
+Done.
+
+> > +	} else if (sb->s_mkfs_time) {
+> > +		tm =3D sb->s_mkfs_time;
+> > +		printf(_("\tcreated on %s"), ctime(&tm));
+> > +	} else if (sb->s_mkfs_time) {
+>=20
+> This does not seem right, you've already checked for s_mkfs_time and
+> if was not set if you got here. I guess, it should be something else
+> ? s_wtime perhaps ? But, can this be set when the fs was not mounted
+> (like using ext2fs library ?)
+>=20
+> > +		tm =3D sb->s_mtime;
+>=20
+> If you got here, then again this is not set.
+
+
+Yes, that's a cut and paste typo, thanks for spotting it.  It should
+have been:
+
+	} else if (sb->s_mkfs_time) {
+		tm =3D sb->s_mkfs_time;
+		printf(_("\tcreated on %s"), ctime(&tm));
+	} else if (sb->s_mtime) {  <=3D=3D=3D=3D=3D=3D=3D=3D
+		tm =3D sb->s_mtime;
+		printf(_("\tlast modified on %s"), ctime(&tm));
+	}
+
+
+Cheers,
+
+					- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
