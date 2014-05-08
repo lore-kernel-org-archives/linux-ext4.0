@@ -1,111 +1,306 @@
-From: Lubos Uhliarik <uhliarik@seznam.cz>
-Subject: Re: [RFC][PATCH 0/1] ext4: Undelete Feature for Ext4
-Date: Thu, 08 May 2014 23:11:26 +0200
-Message-ID: <1399583486.8729.42.camel@zerobox.home>
-References: <1395155370.15587.9.camel@zerobox.home>
-	 <20140318171425.GC8506@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, lczerner@redhat.com,
-	vojnar@fit.vutbr.cz
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: [PATCH] blkid,ext2fs: avoid name clash with __u{8,16,32,64}
+Date: Thu,  8 May 2014 15:23:56 -0600
+Message-ID: <1399584236-17686-1-git-send-email-adilger@dilger.ca>
+Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.seznam.cz ([77.75.72.43]:52661 "EHLO smtp1.seznam.cz"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754583AbaEHTLo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 8 May 2014 15:11:44 -0400
-In-Reply-To: <20140318171425.GC8506@thunk.org>
+Received: from smtp-out-05.shaw.ca ([64.59.134.13]:36390 "EHLO
+	smtp-out-05.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755378AbaEHVde (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 May 2014 17:33:34 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Tytso
+Try to avoid name clashes with definitions of __u8, __u16, __u32,
+and __u64 in userspace, in case other headers also define these
+types.  Define HAVE___{S,U}{8,16,32,64} preprocessor macros to
+show that these types are already defined.
 
-I'm trying to respond on your email ones again - more in detail.
+This would avoid the need to check for _BLKID_TYPES_H in ext2_types.h
+and _EXT2_TYPES_H in blkid_types.h, but since older versions of these
+headers did not use HAVE___U8 et.al. keep these checks around for now.
 
-tytso@mit.edu wrote:
-> On Tue, Mar 18, 2014 at 04:09:30PM +0100, Lubos Uhliarik wrote:
-> > The main changes in patch are following:
-> > 
-> > a) commented out zeroing ex->ee_len, ee->start_hi and ee->start_lo,
-> > because these entries are essential for undelete process
-> 
-> The reason why we have to zero out ex->ee_len, etc. is because the
-> truncate operation can sometimes span multiple journal transactions.
-> So as a result, we need to keep the file system consistent if we are
-> interrupted (i.e., via a power fail event) while in the middle of a
-> truncate operation.
-> 
-> It's a rare case, but it can happen if the journal is almost full at
-> the time when the truncate eoperation has started, such that there is
-> no room for to exntend the transaction handle, and so we are forced to
-> start a new transaction (and possibly wait for a journal checkpoint
-> operation).
+Report an error if there are no 64-bit types available.  The code
+will not compile if these are not available.
 
-Yes, as I noticed in the function ext4_ext_rm_leaf in /fs/ext4/extents.c
-file, there is a call of the function ext4_ext_truncate_extend_restart,
-which can cause, that unlink operation will be devided into multiple
-journal operations.
+Signed-off-by: Andreas Dilger <adilger@dilger.ca>
+---
+ lib/blkid/blkid_types.h.in |   39 ++++++++++++++++++++++++++++++++++++---
+ lib/ext2fs/ext2_types.h.in |   35 ++++++++++++++++++++++++++++++++++-
+ 2 files changed, 70 insertions(+), 4 deletions(-)
 
-But, there should NOT be any problem with file system consistency in my
-opinion, because decremention value of eh->eh_entries is in the same
-transaction, as the block of code which will keep ex->ee_len, etc.
-entries. 
-
-So, if a new transaction is started, in eh->eh_entries will be correct
-value of extents, which are in a block. 
-
-New value of eh->eh_entries after decreasing after one iteration (one
-extent removal) is written to the disk together with change of block
-bitmap.
-
-Between lines 2698
-if (num == 0)
-	/* this extent is removed; mark slot entirely unused */
-	ext4_ext_store_pblock(ex, 0);
-
-and 2727 
-
-le16_add_cpu(&eh->eh_entries, -1);
-
-in file fs/ext4/extents.c is no function call, which can mark block
-dirty. That kind of function (ext4_ext_dirty) is called at line 2731. 
-
-> 
-> In theory, it would be possible to figure out in advance whether or
-> not we could fit the truncate in a single transaction, but it would
-> require making the truncate operation be a two-pass operation --- once
-> to determine how many blocks needs to be modified, and once to
-> actually do the truncate operation.
-
-
-
-
-> 
-> > This patch shouldn't break ext4, I tested it with xfs_tests and tests 
-> > were successfull.
-> 
-> I'm guessing you didn't do power fail testing --- and this is very
-> important when messing with the design truncate/unlink code path.
-
-I did power failure testing, but I was unable to divide undelete process
-into more transactions. I created the ext4 with the smallest possible
-journal, but it didn't help, even I was creating and deleting 20 very
-fragmented files at one moment. I didn't get any file system error,
-which couldn't be repaired by replaying the journal. Anyway, as I wrote
-before, I checked the code and I didn't see any problem, why it should
-cause file system inconsistency.
-
-If you have any questions, please ask me and I will try to respond
-immediately, because my profesor needs to know, if this patch can be
-considered as a part of next kernel version. Thank you. 
-
-> 
-> Regards,
-> 
-> 						- Ted
-
-Kind regards,
-Lubos
-
+diff --git a/lib/blkid/blkid_types.h.in b/lib/blkid/blkid_types.h.in
+index 2edc0da..d4c81d0 100644
+--- a/lib/blkid/blkid_types.h.in
++++ b/lib/blkid/blkid_types.h.in
+@@ -9,18 +9,26 @@
+ 
+ @ASM_TYPES_HEADER@
+ 
++#ifndef HAVE___U8
++#define HAVE___U8
+ #ifdef __U8_TYPEDEF
+ typedef __U8_TYPEDEF __u8;
+ #else
+ typedef unsigned char __u8;
+ #endif
++#endif /* HAVE___U8 */
+ 
++#ifndef HAVE___S8
++#define HAVE___S8
+ #ifdef __S8_TYPEDEF
+ typedef __S8_TYPEDEF __s8;
+ #else
+ typedef signed char __s8;
+ #endif
++#endif /* HAVE___S8 */
+ 
++#ifndef HAVE___U16
++#define HAVE___U16
+ #ifdef __U16_TYPEDEF
+ typedef __U16_TYPEDEF __u16;
+ #else
+@@ -30,11 +38,15 @@ typedef	unsigned int	__u16;
+ #if (@SIZEOF_SHORT@ == 2)
+ typedef	unsigned short	__u16;
+ #else
++#undef HAVE___U16
+   ?==error: undefined 16 bit type
+ #endif /* SIZEOF_SHORT == 2 */
+ #endif /* SIZEOF_INT == 2 */
+ #endif /* __U16_TYPEDEF */
++#endif /* HAVE___U16 */
+ 
++#ifndef HAVE___S16
++#define HAVE___S16
+ #ifdef __S16_TYPEDEF
+ typedef __S16_TYPEDEF __s16;
+ #else
+@@ -44,12 +56,15 @@ typedef	int		__s16;
+ #if (@SIZEOF_SHORT@ == 2)
+ typedef	short		__s16;
+ #else
++#undef HAVE___S16
+   ?==error: undefined 16 bit type
+ #endif /* SIZEOF_SHORT == 2 */
+ #endif /* SIZEOF_INT == 2 */
+ #endif /* __S16_TYPEDEF */
++#endif /* HAVE___S16 */
+ 
+-
++#ifndef HAVE___U32
++#define HAVE___U32
+ #ifdef __U32_TYPEDEF
+ typedef __U32_TYPEDEF __u32;
+ #else
+@@ -62,12 +77,16 @@ typedef	unsigned long	__u32;
+ #if (@SIZEOF_SHORT@ == 4)
+ typedef	unsigned short	__u32;
+ #else
++#undef HAVE___U32
+  ?== error: undefined 32 bit type
+ #endif /* SIZEOF_SHORT == 4 */
+ #endif /* SIZEOF_LONG == 4 */
+ #endif /* SIZEOF_INT == 4 */
+ #endif /* __U32_TYPEDEF */
++#endif /* HAVE___U32 */
+ 
++#ifndef HAVE___S32
++#define HAVE___S32
+ #ifdef __S32_TYPEDEF
+ typedef __S32_TYPEDEF __s32;
+ #else
+@@ -80,12 +99,16 @@ typedef	long		__s32;
+ #if (@SIZEOF_SHORT@ == 4)
+ typedef	short		__s32;
+ #else
++#undef HAVE___S32
+  ?== error: undefined 32 bit type
+ #endif /* SIZEOF_SHORT == 4 */
+ #endif /* SIZEOF_LONG == 4 */
+ #endif /* SIZEOF_INT == 4 */
+ #endif /* __S32_TYPEDEF */
++#endif /* HAVE___S32 */
+ 
++#ifndef HAVE___U64
++#define HAVE___U64
+ #ifdef __U64_TYPEDEF
+ typedef __U64_TYPEDEF __u64;
+ #else
+@@ -97,11 +120,17 @@ typedef unsigned long long	__u64;
+ #else
+ #if (@SIZEOF_LONG@ == 8)
+ typedef unsigned long	__u64;
++#else
++#undef HAVE___U64
++ ?== error: undefined 64 bit type
+ #endif /* SIZEOF_LONG == 8 */
+ #endif /* SIZEOF_LONG_LONG == 8 */
+ #endif /* SIZEOF_INT == 8 */
+ #endif /* __U64_TYPEDEF */
++#endif /* HAVE___U64 */
+ 
++#ifndef HAVE___S64
++#define HAVE___S64
+ #ifdef __S64_TYPEDEF
+ typedef __S64_TYPEDEF __s64;
+ #else
+@@ -110,17 +139,21 @@ typedef int		__s64;
+ #else
+ #if (@SIZEOF_LONG_LONG@ == 8)
+ #if defined(__GNUC__)
+-typedef __signed__ long long 	__s64;
++typedef __signed__ long long	__s64;
+ #else
+-typedef signed long long 	__s64;
++typedef signed long long	__s64;
+ #endif /* __GNUC__ */
+ #else
+ #if (@SIZEOF_LONG@ == 8)
+ typedef long		__s64;
++#else
++#undef HAVE___S64
++ ?== error: undefined 64 bit type
+ #endif /* SIZEOF_LONG == 8 */
+ #endif /* SIZEOF_LONG_LONG == 8 */
+ #endif /* SIZEOF_INT == 8 */
+ #endif /* __S64_TYPEDEF */
++#endif /* HAVE___S64 */
+ 
+ #undef __S8_TYPEDEF
+ #undef __U8_TYPEDEF
+diff --git a/lib/ext2fs/ext2_types.h.in b/lib/ext2fs/ext2_types.h.in
+index 5b98f71..1320431 100644
+--- a/lib/ext2fs/ext2_types.h.in
++++ b/lib/ext2fs/ext2_types.h.in
+@@ -9,18 +9,26 @@
+ 
+ @ASM_TYPES_HEADER@
+ 
++#ifndef HAVE___U8
++#define HAVE___U8
+ #ifdef __U8_TYPEDEF
+ typedef __U8_TYPEDEF __u8;
+ #else
+ typedef unsigned char __u8;
+ #endif
++#endif /* HAVE___U8 */
+ 
++#ifndef HAVE___S8
++#define HAVE___S8
+ #ifdef __S8_TYPEDEF
+ typedef __S8_TYPEDEF __s8;
+ #else
+ typedef signed char __s8;
+ #endif
++#endif /* HAVE___S8 */
+ 
++#ifndef HAVE___U16
++#define HAVE___U16
+ #ifdef __U16_TYPEDEF
+ typedef __U16_TYPEDEF __u16;
+ #else
+@@ -30,11 +38,15 @@ typedef	unsigned int	__u16;
+ #if (@SIZEOF_SHORT@ == 2)
+ typedef	unsigned short	__u16;
+ #else
++#undef HAVE___U16
+   ?==error: undefined 16 bit type
+ #endif /* SIZEOF_SHORT == 2 */
+ #endif /* SIZEOF_INT == 2 */
+ #endif /* __U16_TYPEDEF */
++#endif /* HAVE___U16 */
+ 
++#ifndef HAVE___S16
++#define HAVE___S16
+ #ifdef __S16_TYPEDEF
+ typedef __S16_TYPEDEF __s16;
+ #else
+@@ -44,12 +56,15 @@ typedef	int		__s16;
+ #if (@SIZEOF_SHORT@ == 2)
+ typedef	short		__s16;
+ #else
++#undef HAVE___S16
+   ?==error: undefined 16 bit type
+ #endif /* SIZEOF_SHORT == 2 */
+ #endif /* SIZEOF_INT == 2 */
+ #endif /* __S16_TYPEDEF */
++#endif /* HAVE___S16 */
+ 
+-
++#ifndef HAVE___U32
++#define HAVE___U32
+ #ifdef __U32_TYPEDEF
+ typedef __U32_TYPEDEF __u32;
+ #else
+@@ -62,12 +77,16 @@ typedef	unsigned long	__u32;
+ #if (@SIZEOF_SHORT@ == 4)
+ typedef	unsigned short	__u32;
+ #else
++#undef HAVE___U32
+  ?== error: undefined 32 bit type
+ #endif /* SIZEOF_SHORT == 4 */
+ #endif /* SIZEOF_LONG == 4 */
+ #endif /* SIZEOF_INT == 4 */
+ #endif /* __U32_TYPEDEF */
++#endif /* HAVE___U32 */
+ 
++#ifndef HAVE___S32
++#define HAVE___S32
+ #ifdef __S32_TYPEDEF
+ typedef __S32_TYPEDEF __s32;
+ #else
+@@ -80,12 +99,16 @@ typedef	long		__s32;
+ #if (@SIZEOF_SHORT@ == 4)
+ typedef	short		__s32;
+ #else
++#undef HAVE___S32
+  ?== error: undefined 32 bit type
+ #endif /* SIZEOF_SHORT == 4 */
+ #endif /* SIZEOF_LONG == 4 */
+ #endif /* SIZEOF_INT == 4 */
+ #endif /* __S32_TYPEDEF */
++#endif /* HAVE___S32 */
+ 
++#ifndef HAVE___U64
++#define HAVE___U64
+ #ifdef __U64_TYPEDEF
+ typedef __U64_TYPEDEF __u64;
+ #else
+@@ -97,11 +120,17 @@ typedef unsigned long long	__u64;
+ #else
+ #if (@SIZEOF_LONG@ == 8)
+ typedef unsigned long	__u64;
++#else
++#undef HAVE___U64
++ ?== error: undefined 64 bit type
+ #endif /* SIZEOF_LONG_LONG == 8 */
+ #endif /* SIZEOF_LONG == 8 */
+ #endif /* SIZEOF_INT == 8 */
+ #endif /* __U64_TYPEDEF */
++#endif /* HAVE___U64 */
+ 
++#ifndef HAVE___S64
++#define HAVE___S64
+ #ifdef __S64_TYPEDEF
+ typedef __S64_TYPEDEF __s64;
+ #else
+@@ -117,10 +146,14 @@ typedef signed long long	__s64;
+ #else
+ #if (@SIZEOF_LONG@ == 8)
+ typedef long		__s64;
++#else
++#undef HAVE___S64
++ ?== error: undefined 64 bit type
+ #endif /* SIZEOF_LONG_LONG == 8 */
+ #endif /* SIZEOF_LONG == 8 */
+ #endif /* SIZEOF_INT == 8 */
+ #endif /* __S64_TYPEDEF */
++#endif /* HAVE___S64 */
+ 
+ #undef __S8_TYPEDEF
+ #undef __U8_TYPEDEF
+-- 
+1.7.3.4
 
