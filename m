@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 1/2] libext2fs: support BLKZEROOUT/FALLOC_FL_ZERO_RANGE in
- ext2fs_zero_blocks
-Date: Wed, 7 May 2014 17:13:37 -0700
-Message-ID: <20140508001337.GC8923@birch.djwong.org>
+Subject: [PATCH 2/2] libext2fs: support allocating uninit blocks in bmap2()
+Date: Wed, 7 May 2014 17:14:47 -0700
+Message-ID: <20140508001447.GD8923@birch.djwong.org>
 References: <20140501231222.31890.82860.stgit@birch.djwong.org>
  <20140501231407.31890.3876.stgit@birch.djwong.org>
  <alpine.LFD.2.00.1405061736390.2255@localhost.localdomain>
@@ -14,165 +13,107 @@ Content-Type: text/plain; charset=us-ascii
 Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
 To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:51691 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:51950 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751597AbaEHANo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 May 2014 20:13:44 -0400
+	with ESMTP id S1751318AbaEHAOz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 May 2014 20:14:55 -0400
 Content-Disposition: inline
 In-Reply-To: <20140507213704.GA8923@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Here's the first part, which teaches the IO manager how to connect with the
-zero out ioctls.
+Here's the second part, which for the most part is the old patch, but wired up
+to use the bits in the other patch.
 
 --D
 ---
-Plumb a new call into the IO manager to support translating
-ext2fs_zero_blocks calls into the equivalent kernel-level BLKZEROOUT
-ioctl or FALLOC_FL_ZERO_RANGE fallocate flag primitives.
+In order to support fallocate, we need to be able to have
+ext2fs_bmap2() allocate blocks and put them into uninitialized
+extents.  There's a flag to do this in the extent code, but it's not
+exposed to the bmap2 interface, so plumb that in.  Eventually fuse2fs
+or somebody will use it.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/ext2_io.h    |    7 +++++-
- lib/ext2fs/io_manager.c |   11 ++++++++++
- lib/ext2fs/mkjournal.c  |    6 +++++
- lib/ext2fs/unix_io.c    |   54 +++++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 77 insertions(+), 1 deletion(-)
+ lib/ext2fs/bmap.c   |   24 ++++++++++++++++++++++--
+ lib/ext2fs/ext2fs.h |    1 +
+ 2 files changed, 23 insertions(+), 2 deletions(-)
 
-diff --git a/lib/ext2fs/ext2_io.h b/lib/ext2fs/ext2_io.h
-index 1894fb8..98d56aa 100644
---- a/lib/ext2fs/ext2_io.h
-+++ b/lib/ext2fs/ext2_io.h
-@@ -90,7 +90,9 @@ struct struct_io_manager {
- 					int count, const void *data);
- 	errcode_t (*discard)(io_channel channel, unsigned long long block,
- 			     unsigned long long count);
--	long	reserved[16];
-+	errcode_t (*zeroout)(io_channel channel, unsigned long long block,
-+			     unsigned long long count);
-+	long	reserved[15];
- };
+diff --git a/lib/ext2fs/bmap.c b/lib/ext2fs/bmap.c
+index c1d0e6f..a4dc8ef 100644
+--- a/lib/ext2fs/bmap.c
++++ b/lib/ext2fs/bmap.c
+@@ -72,6 +72,11 @@ static _BMAP_INLINE_ errcode_t block_ind_bmap(ext2_filsys fs, int flags,
+ 					    block_buf + fs->blocksize, &b);
+ 		if (retval)
+ 			return retval;
++		if (flags & BMAP_UNINIT) {
++			retval = ext2fs_zero_blocks2(fs, b, 1, NULL, NULL);
++			if (retval)
++				return retval;
++		}
  
- #define IO_FLAG_RW		0x0001
-@@ -122,6 +124,9 @@ extern errcode_t io_channel_write_blk64(io_channel channel,
- extern errcode_t io_channel_discard(io_channel channel,
- 				    unsigned long long block,
- 				    unsigned long long count);
-+extern errcode_t io_channel_zeroout(io_channel channel,
-+				    unsigned long long block,
-+				    unsigned long long count);
- extern errcode_t io_channel_alloc_buf(io_channel channel,
- 				      int count, void *ptr);
+ #ifdef WORDS_BIGENDIAN
+ 		((blk_t *) block_buf)[nr] = ext2fs_swab32(b);
+@@ -214,10 +219,13 @@ static errcode_t extent_bmap(ext2_filsys fs, ext2_ino_t ino,
+ 	errcode_t		retval = 0;
+ 	blk64_t			blk64 = 0;
+ 	int			alloc = 0;
++	int			set_flags;
++
++	set_flags = bmap_flags & BMAP_UNINIT ? EXT2_EXTENT_SET_BMAP_UNINIT : 0;
  
-diff --git a/lib/ext2fs/io_manager.c b/lib/ext2fs/io_manager.c
-index 34e4859..569d16a 100644
---- a/lib/ext2fs/io_manager.c
-+++ b/lib/ext2fs/io_manager.c
-@@ -112,6 +112,17 @@ errcode_t io_channel_discard(io_channel channel, unsigned long long block,
- 	return EXT2_ET_UNIMPLEMENTED;
- }
- 
-+errcode_t io_channel_zeroout(io_channel channel, unsigned long long block,
-+			     unsigned long long count)
-+{
-+	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
-+
-+	if (channel->manager->zeroout)
-+		return (channel->manager->zeroout)(channel, block, count);
-+
-+	return EXT2_ET_UNIMPLEMENTED;
-+}
-+
- errcode_t io_channel_alloc_buf(io_channel io, int count, void *ptr)
- {
- 	size_t	size;
-diff --git a/lib/ext2fs/mkjournal.c b/lib/ext2fs/mkjournal.c
-index 884d9c0..339c7e1 100644
---- a/lib/ext2fs/mkjournal.c
-+++ b/lib/ext2fs/mkjournal.c
-@@ -167,6 +167,12 @@ errcode_t ext2fs_zero_blocks2(ext2_filsys fs, blk64_t blk, int num,
- 		}
- 		return 0;
+ 	if (bmap_flags & BMAP_SET) {
+ 		retval = ext2fs_extent_set_bmap(handle, block,
+-						*phys_blk, 0);
++						*phys_blk, set_flags);
+ 		return retval;
  	}
-+
-+	/* Try a zero out command, if supported */
-+	retval = io_channel_zeroout(fs->io, blk, num);
-+	if (retval == 0)
-+		return 0;
-+
- 	/* Allocate the zeroizing buffer if necessary */
- 	if (!buf) {
- 		buf = malloc(fs->blocksize * STRIDE_LENGTH);
-diff --git a/lib/ext2fs/unix_io.c b/lib/ext2fs/unix_io.c
-index c3185b6..d070cb0 100644
---- a/lib/ext2fs/unix_io.c
-+++ b/lib/ext2fs/unix_io.c
-@@ -922,6 +922,59 @@ unimplemented:
- 	return EXT2_ET_UNIMPLEMENTED;
- }
+ 	retval = ext2fs_extent_goto(handle, block);
+@@ -254,7 +262,7 @@ got_block:
+ 		alloc++;
+ 	set_extent:
+ 		retval = ext2fs_extent_set_bmap(handle, block,
+-						blk64, 0);
++						blk64, set_flags);
+ 		if (retval) {
+ 			ext2fs_block_alloc_stats2(fs, blk64, -1);
+ 			return retval;
+@@ -345,6 +353,12 @@ errcode_t ext2fs_bmap2(ext2_filsys fs, ext2_ino_t ino, struct ext2_inode *inode,
+ 		goto done;
+ 	}
  
-+#if defined(__linux__) && !defined(BLKZEROOUT)
-+#define BLKZEROOUT		_IO(0x12,127)
-+#endif
-+
-+#if defined(__linux__) && !defined(FALLOC_FL_ZERO_RANGE)
-+#define FALLOC_FL_ZERO_RANGE    0x10
-+#endif
-+
-+static errcode_t unix_zeroout(io_channel channel, unsigned long long block,
-+			      unsigned long long count)
-+{
-+	struct unix_private_data *data;
-+	int		ret;
-+
-+	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
-+	data = (struct unix_private_data *) channel->private_data;
-+	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_UNIX_IO_CHANNEL);
-+
-+	if (channel->flags & CHANNEL_FLAGS_BLOCK_DEVICE) {
-+#ifdef BLKZEROOUT
-+		__u64 range[2];
-+
-+		range[0] = (__u64)(block) * channel->block_size;
-+		range[1] = (__u64)(count) * channel->block_size;
-+
-+		ret = ioctl(data->dev, BLKZEROOUT, &range);
-+#else
-+		goto unimplemented;
-+#endif
-+	} else {
-+#if defined(HAVE_FALLOCATE) && defined(FALLOC_FL_ZERO_RANGE)
-+		/*
-+		 * If we are not on block device, try to use the zero out
-+		 * primitive.
-+		 */
-+		ret = fallocate(data->dev,
-+				FALLOC_FL_ZERO_RANGE | FALLOC_FL_KEEP_SIZE,
-+				(off_t)(block) * channel->block_size,
-+				(off_t)(count) * channel->block_size);
-+#else
-+		goto unimplemented;
-+#endif
++	if ((bmap_flags & BMAP_SET) && (bmap_flags & BMAP_UNINIT)) {
++		retval = ext2fs_zero_blocks2(fs, *phys_blk, 1, NULL, NULL);
++		if (retval)
++			goto done;
 +	}
-+	if (ret < 0) {
-+		if (errno == EOPNOTSUPP)
-+			goto unimplemented;
-+		return errno;
-+	}
-+	return 0;
-+unimplemented:
-+	return EXT2_ET_UNIMPLEMENTED;
-+}
 +
- static struct struct_io_manager struct_unix_manager = {
- 	EXT2_ET_MAGIC_IO_MANAGER,
- 	"Unix I/O Manager",
-@@ -937,6 +990,7 @@ static struct struct_io_manager struct_unix_manager = {
- 	unix_read_blk64,
- 	unix_write_blk64,
- 	unix_discard,
-+	unix_zeroout,
- };
+ 	if (block < EXT2_NDIR_BLOCKS) {
+ 		if (bmap_flags & BMAP_SET) {
+ 			b = *phys_blk;
+@@ -360,6 +374,12 @@ errcode_t ext2fs_bmap2(ext2_filsys fs, ext2_ino_t ino, struct ext2_inode *inode,
+ 			retval = ext2fs_alloc_block(fs, b, block_buf, &b);
+ 			if (retval)
+ 				goto done;
++			if (bmap_flags & BMAP_UNINIT) {
++				retval = ext2fs_zero_blocks2(fs, b, 1, NULL,
++							     NULL);
++				if (retval)
++					goto done;
++			}
+ 			inode_bmap(inode, block) = b;
+ 			blocks_alloc++;
+ 			*phys_blk = b;
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 599c972..819a14a 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -527,6 +527,7 @@ typedef struct ext2_icount *ext2_icount_t;
+  */
+ #define BMAP_ALLOC	0x0001
+ #define BMAP_SET	0x0002
++#define BMAP_UNINIT	0x0004
  
- io_manager unix_io_manager = &struct_unix_manager;
+ /*
+  * Returned flags from ext2fs_bmap
