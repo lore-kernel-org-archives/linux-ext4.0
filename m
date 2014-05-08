@@ -1,7 +1,7 @@
 From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: [PATCH v2 5/10] xfstests: generic/027: Standard insert range tests
-Date: Thu, 08 May 2014 19:32:20 +0900
-Message-ID: <003b01cf6aa8$cab3e170$601ba450$@samsung.com>
+Subject: [PATCH v2 6/10] xfstests: generic/028: Delayed allocation insert range
+Date: Thu, 08 May 2014 19:33:13 +0900
+Message-ID: <003c01cf6aa8$ea9c5e40$bfd51ac0$@samsung.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -22,60 +22,29 @@ Errors-To: xfs-bounces@oss.sgi.com
 Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-This testcase(027) tries to test various corner cases for finsert range
-functionality over different type of extents.
+This testcase(028) tries to test various corner cases with delayed extents
+for finsert range functionality over different type of extents.
 
 Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
 Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
 ---
- common/punch          |  5 ++++
- common/rc             |  2 +-
- tests/generic/027     | 65 ++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/027.out | 66 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/028     | 65 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/028.out | 66 +++++++++++++++++++++++++++++++++++++++++++++++++++
  tests/generic/group   |  1 +
- 5 files changed, 138 insertions(+), 1 deletion(-)
- create mode 100755 tests/generic/027
- create mode 100644 tests/generic/027.out
+ 3 files changed, 132 insertions(+)
+ create mode 100755 tests/generic/028
+ create mode 100644 tests/generic/028.out
 
-diff --git a/common/punch b/common/punch
-index f2d538c..4cc50d5 100644
---- a/common/punch
-+++ b/common/punch
-@@ -527,6 +527,11 @@ _test_generic_punch()
- 		return
- 	fi
- 
-+	# If zero_cmd is finsert, don't check unaligned offsets
-+	if [ "$zero_cmd" == "finsert" ]; then
-+		return
-+	fi
-+
- 	echo "	16. data -> cache cold ->hole"
- 	if [ "$remove_testfile" ]; then
- 		rm -f $testfile
-diff --git a/common/rc b/common/rc
-index 5c13db5..3af3a20 100644
---- a/common/rc
-+++ b/common/rc
-@@ -1237,7 +1237,7 @@ _require_xfs_io_command()
- 	"falloc" )
- 		testio=`$XFS_IO_PROG -F -f -c "falloc 0 1m" $testfile 2>&1`
- 		;;
--	"fpunch" | "fcollapse" | "zero" | "fzero" )
-+	"fpunch" | "fcollapse" | "zero" | "fzero" | "finsert" )
- 		testio=`$XFS_IO_PROG -F -f -c "pwrite 0 20k" -c "fsync" \
- 			-c "$command 4k 8k" $testfile 2>&1`
- 		;;
-diff --git a/tests/generic/027 b/tests/generic/027
+diff --git a/tests/generic/028 b/tests/generic/028
 new file mode 100755
-index 0000000..f2f7642
+index 0000000..bc6f9a6
 --- /dev/null
-+++ b/tests/generic/027
++++ b/tests/generic/028
 @@ -0,0 +1,65 @@
 +#! /bin/bash
-+# FS QA Test No. generic/027
++# FS QA Test No. generic/028
 +#
-+# Standard insert range tests
++# Delayed allocation insert range tests
 +# This testcase is one of the 4 testcases which tries to
 +# test various corner cases for finsert range functionality over different
 +# type of extents. These tests are based on generic/255 test case.
@@ -132,18 +101,18 @@ index 0000000..f2f7642
 +
 +testfile=$TEST_DIR/$seq.$$
 +
-+_test_generic_punch falloc fpunch finsert fiemap _filter_hole_fiemap $testfile
++_test_generic_punch -d falloc fpunch finsert fiemap _filter_hole_fiemap $testfile
 +_check_test_fs
 +
 +status=0
 +exit
-diff --git a/tests/generic/027.out b/tests/generic/027.out
+diff --git a/tests/generic/028.out b/tests/generic/028.out
 new file mode 100644
-index 0000000..9b5ec15
+index 0000000..30af9a7
 --- /dev/null
-+++ b/tests/generic/027.out
++++ b/tests/generic/028.out
 @@ -0,0 +1,66 @@
-+QA output created by 027
++QA output created by 028
 +	1. into a hole
 +0: [0..7]: hole
 +1: [8..23]: extent
@@ -210,14 +179,14 @@ index 0000000..9b5ec15
 +0: [0..55]: extent
 +86c9d033be2761385c9cfa203c426bb2
 diff --git a/tests/generic/group b/tests/generic/group
-index 961f4e5..6ab5618 100644
+index 6ab5618..0ef13be 100644
 --- a/tests/generic/group
 +++ b/tests/generic/group
-@@ -29,6 +29,7 @@
- 024 auto quick
+@@ -30,6 +30,7 @@
  025 auto quick
  026 acl quick auto
-+027 auto quick prealloc
+ 027 auto quick prealloc
++028 auto quick prealloc
  053 acl repair auto quick
  062 attr udf auto quick
  068 other auto freeze dangerous stress
