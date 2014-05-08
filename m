@@ -1,43 +1,51 @@
 From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: [PATCH v2 7/10] xfstests: generic/029: Multi insert range tests
-Date: Thu, 08 May 2014 19:34:24 +0900
-Message-ID: <003d01cf6aa9$14808ce0$3d81a6a0$@samsung.com>
+Subject: [PATCH v2 8/10] xfstests: generic/030: Delayed allocation multi insert
+Date: Thu, 08 May 2014 19:35:21 +0900
+Message-ID: <003e01cf6aa9$36b14c00$a413e400$@samsung.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: 'linux-ext4' <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	'Ashish Sangwan' <a.sangwan@samsung.com>
-To: 'Dave Chinner' <david@fromorbit.com>,
-	'Theodore Ts'o' <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, 'linux-ext4' <linux-ext4@vger.kernel.org>,
+	linux-kernel@vger.kernel.org,
+	'Ashish Sangwan' <a.sangwan@samsung.com>, xfs@oss.sgi.com
+To: 'Dave Chinner' <david@fromorbit.com>, 'Theodore Ts'o' <tytso@mit.edu>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-language: ko
-Sender: linux-kernel-owner@vger.kernel.org
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-This testcase(029) tries to test various corner cases with pre-existing holes
-for finsert range functionality over different type of extents.
+This testcase(030) tries to test various corner cases with delayed extents and
+pre-existing holes for finsert range functionality over different type of
+extents.
 
 Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
 Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
 ---
- tests/generic/029     | 65 +++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/029.out | 50 +++++++++++++++++++++++++++++++++++++++
+ tests/generic/030     | 65 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/030.out | 50 +++++++++++++++++++++++++++++++++++++++
  tests/generic/group   |  1 +
  3 files changed, 116 insertions(+)
- create mode 100755 tests/generic/029
- create mode 100644 tests/generic/029.out
+ create mode 100755 tests/generic/030
+ create mode 100644 tests/generic/030.out
 
-diff --git a/tests/generic/029 b/tests/generic/029
+diff --git a/tests/generic/030 b/tests/generic/030
 new file mode 100755
-index 0000000..13d7164
+index 0000000..02680b7
 --- /dev/null
-+++ b/tests/generic/029
++++ b/tests/generic/030
 @@ -0,0 +1,65 @@
 +#! /bin/bash
-+# FS QA Test No. generic/029
++# FS QA Test No. generic/030
 +#
-+# Multi insert range tests
++# Delayed allocation multi insert range tests
 +# This testcase is one of the 4 testcases which tries to
 +# test various corner cases for finsert range functionality over different
 +# type of extents. These tests are based on generic/255 test case.
@@ -94,18 +102,18 @@ index 0000000..13d7164
 +
 +testfile=$TEST_DIR/$seq.$$
 +
-+_test_generic_punch -k falloc fpunch finsert fiemap _filter_hole_fiemap $testfile
++_test_generic_punch -d -k falloc fpunch finsert fiemap _filter_hole_fiemap $testfile
 +_check_test_fs
 +
 +status=0
 +exit
-diff --git a/tests/generic/029.out b/tests/generic/029.out
+diff --git a/tests/generic/030.out b/tests/generic/030.out
 new file mode 100644
-index 0000000..0a2b659
+index 0000000..eed3303
 --- /dev/null
-+++ b/tests/generic/029.out
++++ b/tests/generic/030.out
 @@ -0,0 +1,50 @@
-+QA output created by 029
++QA output created by 030
 +	1. into a hole
 +0: [0..7]: hole
 +1: [8..23]: extent
@@ -156,16 +164,21 @@ index 0000000..0a2b659
 +0: [0..55]: extent
 +86c9d033be2761385c9cfa203c426bb2
 diff --git a/tests/generic/group b/tests/generic/group
-index 0ef13be..f5fe53c 100644
+index f5fe53c..9187d9e 100644
 --- a/tests/generic/group
 +++ b/tests/generic/group
-@@ -31,6 +31,7 @@
- 026 acl quick auto
+@@ -32,6 +32,7 @@
  027 auto quick prealloc
  028 auto quick prealloc
-+029 auto quick prealloc
+ 029 auto quick prealloc
++030 auto quick prealloc
  053 acl repair auto quick
  062 attr udf auto quick
  068 other auto freeze dangerous stress
 -- 
 1.7.11-rc0
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
