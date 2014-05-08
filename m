@@ -1,213 +1,363 @@
-From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: [PATCH v3] ext4: fix data integrity sync in ordered mode
-Date: Thu, 08 May 2014 08:16:24 +0900
-Message-ID: <000801cf6a4a$5d5c2dc0$18148940$@samsung.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 10/37] e2fsck: verify checksums after checking everything
+ else
+Date: Wed, 7 May 2014 17:05:41 -0700
+Message-ID: <20140508000541.GB8923@birch.djwong.org>
+References: <20140501231222.31890.82860.stgit@birch.djwong.org>
+ <20140501231328.31890.34436.stgit@birch.djwong.org>
+ <alpine.LFD.2.00.1405021422080.2154@localhost.localdomain>
+ <20140505225647.GJ8434@birch.djwong.org>
+ <alpine.LFD.2.00.1405061327560.2255@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>, linux-mm@kvack.org,
-	Jan Kara <jack@suse.cz>
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout2.samsung.com ([203.254.224.25]:21297 "EHLO
-	mailout2.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751729AbaEGXQ0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 May 2014 19:16:26 -0400
-Received: from epcpsbgr2.samsung.com
- (u142.gpu120.samsung.co.kr [203.254.230.142])
- by mailout2.samsung.com (Oracle Communications Messaging Server 7u4-24.01
- (7.0.4.24.0) 64bit (built Nov 17 2011))
- with ESMTP id <0N5800NEE8NC3480@mailout2.samsung.com> for
- linux-ext4@vger.kernel.org; Thu, 08 May 2014 08:16:24 +0900 (KST)
-Content-language: ko
+Received: from userp1040.oracle.com ([156.151.31.81]:49296 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751054AbaEHAFw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 May 2014 20:05:52 -0400
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1405061327560.2255@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When we perform a data integrity sync we tag all the dirty pages with
-PAGECACHE_TAG_TOWRITE at start of ext4_da_writepages.
-Later we check for this tag in write_cache_pages_da and creates a
-struct mpage_da_data containing contiguously indexed pages tagged with this
-tag and sync these pages with a call to mpage_da_map_and_submit.
-This process is done in while loop until all the PAGECACHE_TAG_TOWRITE pages
-are synced. We also do journal start and stop in each iteration.
-journal_stop could initiate journal commit which would call ext4_writepage
-which in turn will call ext4_bio_write_page even for delayed OR unwritten
-buffers. When ext4_bio_write_page is called for such buffers, even though it
-does not sync them but it clears the PAGECACHE_TAG_TOWRITE of the corresponding
-page and hence these pages are also not synced by the currently running data
-integrity sync. We will end up with dirty pages although sync is completed.
+On Tue, May 06, 2014 at 01:32:32PM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
+:
+> On Mon, 5 May 2014, Darrick J. Wong wrote:
+>=20
+> > Date: Mon, 5 May 2014 15:56:47 -0700
+> > From: Darrick J. Wong <darrick.wong@oracle.com>
+> > To: Luk=C3=A1=C5=A1 Czerner <lczerner@redhat.com>
+> > Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+> > Subject: Re: [PATCH 10/37] e2fsck: verify checksums after checking =
+everything
+> >     else
+> >=20
+> > On Fri, May 02, 2014 at 02:32:11PM +0200, Luk=C3=A1=C5=A1 Czerner w=
+rote:
+> > > On Thu, 1 May 2014, Darrick J. Wong wrote:
+> > >=20
+> > > > Date: Thu, 01 May 2014 16:13:28 -0700
+> > > > From: Darrick J. Wong <darrick.wong@oracle.com>
+> > > > To: tytso@mit.edu, darrick.wong@oracle.com
+> > > > Cc: linux-ext4@vger.kernel.org
+> > > > Subject: [PATCH 10/37] e2fsck: verify checksums after checking =
+everything else
+> > > >=20
+> > > > There's a particular problem with e2fsck's user interface where
+> > > > checksum errors are concerned:  Fixing the first complaint abou=
+t
+> > > > a checksum problem results in the inode being cleared even if e=
+2fsck
+> > > > could otherwise have recovered it.  While this mode is useful f=
+or
+> > > > cleaning the remaining broken crud off the filesystem, we could=
+ at
+> > > > least default to checking everything /else/ and only complainin=
+g about
+> > > > the incorrect checksum if fsck finds nothing else wrong.
+> > > >=20
+> > > > So, plumb in a config option.  We default to "verify and checks=
+um"
+> > > > unless the user tell us otherwise.
+> > >=20
+> > > I wonder whether it would not be better to always check the check=
+sum
+> > > of an object because it might yield additional information.
+> > >=20
+> > > If the checksum is good and the object is somewhat broken that it=
+'s
+> > > highly likely that we have a problem within a kernel (or possibly
+> > > e2fsprogs if some other operations were performed)
+> > >=20
+> > > If the checksum is bad and the object is bad, then it's likely th=
+at
+> > > the corruption happened outside of the file system code, in memor=
+y,
+> > > on disk or in transfer.
+> > >=20
+> > > If checksum is bad and the object is good then it's trickier sinc=
+e it
+> > > can be kernel metadata csum bug, unlucky silent corruption, or
+> > > intentional change of the metadata.
+> > >=20
+> > > It's not huge amount of information we can get from it, but I thi=
+nk
+> > > that it might be useful when dealing with corrupted file system.
+> >=20
+> > Hm.  So right now, the object verification code works roughly like =
+this:
+> >=20
+> > A) Verify checksum, offer to zero object if strict_csums and csum f=
+ailure.
+> > B) Check everything else and offer to fix broken things.
+> > C) Verify checksum again; if !strict_csums and csum failure, offer =
+to zero the
+> >    object.
+> >=20
+> > Do you think that it would be helpful to users if e2fsck warned of =
+checksum
+> > verification failures during step (A) if strict_csums is set?  I th=
+ink that
+> > would help users (or us developers) to distinguish those three scen=
+arios.
+> > It wouldn't be difficult to make fix_problem() spit out the message=
+=2E
+>=20
+> Yes, I think that this is going to be helpful to both, users and
+> developers. I am not sure how easy or hard it would be but having
+> e2sfck specifically say that:
+>=20
+> "Object checksum is corrupted, but the object seems fine"
+>=20
+> or
+>=20
+> "Object checksum is ok, but the object itself seems corrupted"
+>=20
+> or
+>=20
+> "object checksum is corrupted and the object itself is corrupted"
+>=20
+> after the checksum verification and object check.
+>=20
+> But your solution would be useful as well.
 
-This could cause a potential data loss when the sync call is followed by a
-truncate_pagecache call, which is exactly the case in collapse_range.
-(It will cause generic/127 failure in xfstests)
+Ok, I've changed the patch to spit out this, what do you think:
 
-To avoid this issue, we can use set_page_writeback_keepwrite instead of
-set_page_writeback, which doesn't clear TOWRITE tag.
+Pass 1: Checking inodes, blocks, and sizes
+Inode 12 checksum does not match inode.  Running sanity checks.
+Inode 12 passes checks, but checksum does not match inode.  Fix? yes
 
-Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
+--D
 ---
+=46rom: Darrick J. Wong <darrick.wong@oracle.com>
+Subject: [PATCH] e2fsck: verify checksums after checking everything els=
+e
 
-Changelog
-v3:
- - define test_set_page_writeback() and test_set_page_writeback_keepwrite()
-   as calls to __test_set_page_writeback(page, keep_write)
+There's a particular problem with e2fsck's user interface where
+checksum errors are concerned:  Fixing the first complaint about
+a checksum problem results in the inode being cleared even if e2fsck
+could otherwise have recovered it.  While this mode is useful for
+cleaning the remaining broken crud off the filesystem, we could at
+least default to checking everything /else/ and only complaining about
+the incorrect checksum if fsck finds nothing else wrong.
 
-v2:
- - As Jan Kara suggested, Create set_page_writeback_keepwrite which doesn't
-   clear TOWRITE tag.
+So, plumb in a config option.  We default to "verify and checksum"
+unless the user tell us otherwise.
 
- fs/ext4/ext4.h             |  3 ++-
- fs/ext4/inode.c            |  6 ++++--
- fs/ext4/page-io.c          |  8 ++++++--
- include/linux/page-flags.h | 12 +++++++++++-
- mm/page-writeback.c        | 11 ++++++-----
- 5 files changed, 29 insertions(+), 11 deletions(-)
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ e2fsck/e2fsck.8.in      |   12 ++++++++++++
+ e2fsck/e2fsck.conf.5.in |   20 ++++++++++++++++++++
+ e2fsck/e2fsck.h         |    1 +
+ e2fsck/problem.c        |   25 +++++++++++++++++++++----
+ e2fsck/problemP.h       |    1 +
+ e2fsck/unix.c           |   11 +++++++++++
+ 6 files changed, 66 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 6b45afa..78fed7b 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2771,7 +2771,8 @@ extern void ext4_io_submit(struct ext4_io_submit *io);
- extern int ext4_bio_write_page(struct ext4_io_submit *io,
- 			       struct page *page,
- 			       int len,
--			       struct writeback_control *wbc);
-+			       struct writeback_control *wbc,
-+			       bool keep_towrite);
- 
- /* mmp.c */
- extern int ext4_multi_mount_protect(struct super_block *, ext4_fsblk_t);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index b1dc334..8d9cb26 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1846,6 +1846,7 @@ static int ext4_writepage(struct page *page,
- 	struct buffer_head *page_bufs = NULL;
- 	struct inode *inode = page->mapping->host;
- 	struct ext4_io_submit io_submit;
-+	bool keep_towrite = false;
- 
- 	trace_ext4_writepage(page);
- 	size = i_size_read(inode);
-@@ -1876,6 +1877,7 @@ static int ext4_writepage(struct page *page,
- 			unlock_page(page);
- 			return 0;
- 		}
-+		keep_towrite = true;
- 	}
- 
- 	if (PageChecked(page) && ext4_should_journal_data(inode))
-@@ -1892,7 +1894,7 @@ static int ext4_writepage(struct page *page,
- 		unlock_page(page);
- 		return -ENOMEM;
- 	}
--	ret = ext4_bio_write_page(&io_submit, page, len, wbc);
-+	ret = ext4_bio_write_page(&io_submit, page, len, wbc, keep_towrite);
- 	ext4_io_submit(&io_submit);
- 	/* Drop io_end reference we got from init */
- 	ext4_put_io_end_defer(io_submit.io_end);
-@@ -1911,7 +1913,7 @@ static int mpage_submit_page(struct mpage_da_data *mpd, struct page *page)
- 	else
- 		len = PAGE_CACHE_SIZE;
- 	clear_page_dirty_for_io(page);
--	err = ext4_bio_write_page(&mpd->io_submit, page, len, mpd->wbc);
-+	err = ext4_bio_write_page(&mpd->io_submit, page, len, mpd->wbc, false);
- 	if (!err)
- 		mpd->wbc->nr_to_write--;
- 	mpd->first_page++;
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index 1a64e7a..4a2dd07 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -401,7 +401,8 @@ submit_and_retry:
- int ext4_bio_write_page(struct ext4_io_submit *io,
- 			struct page *page,
- 			int len,
--			struct writeback_control *wbc)
-+			struct writeback_control *wbc,
-+			bool keep_towrite)
- {
- 	struct inode *inode = page->mapping->host;
- 	unsigned block_start, blocksize;
-@@ -414,7 +415,10 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
- 	BUG_ON(!PageLocked(page));
- 	BUG_ON(PageWriteback(page));
- 
--	set_page_writeback(page);
-+	if (keep_towrite)
-+		set_page_writeback_keepwrite(page);
-+	else
-+		set_page_writeback(page);
- 	ClearPageError(page);
- 
+diff --git a/e2fsck/e2fsck.8.in b/e2fsck/e2fsck.8.in
+index f5ed758..43ee063 100644
+--- a/e2fsck/e2fsck.8.in
++++ b/e2fsck/e2fsck.8.in
+@@ -207,6 +207,18 @@ option may prevent you from further manual data re=
+covery.
+ .BI nodiscard
+ Do not attempt to discard free blocks and unused inode blocks. This op=
+tion is
+ exactly the opposite of discard option. This is set as default.
++.TP
++.BI strict_csums
++Verify each metadata object's checksum before checking anything other =
+fields
++in the metadata object.  If the verification fails, offer to clear the=
+ item,
++also before checking any of the other fields.  This option causes e2fs=
+ck to
++favor throwing away broken objects over trying to salvage them.
++.TP
++.BI no_strict_csums
++Perform all regular checks of a metadata object and only verify the ch=
+ecksum if
++no problems were found.  This option causes e2fsck to try to salvage s=
+lightly
++damaged metadata objects, at the cost of spending processing time on r=
+ecovering
++data.  This is set as the default.
+ .RE
+ .TP
+ .B \-f
+diff --git a/e2fsck/e2fsck.conf.5.in b/e2fsck/e2fsck.conf.5.in
+index 9ebfbbf..a8219a8 100644
+--- a/e2fsck/e2fsck.conf.5.in
++++ b/e2fsck/e2fsck.conf.5.in
+@@ -222,6 +222,26 @@ If this boolean relation is true, e2fsck will run =
+as if the option
+ .B -v
+ is always specified.  This will cause e2fsck to print some additional
+ information at the end of each full file system check.
++.TP
++.I strict_csums
++If this boolean relation is true, e2fsck will run as if
++.B -E strict_csums
++is set.  This causes e2fsck to verify each metadata object's checksum =
+before
++checking anything other fields in the metadata object.  If the verific=
+ation
++fails, offer to clear the item, also before checking any of the other =
+fields.
++This option causes e2fsck to favor throwing away broken objects over t=
+rying to
++salvage them.
++.IP
++If the boolean relation is false, e2fsck will run as if
++.B -E no_strict_csums
++is set.  In this case, e2fsck will perform all regular checks of a met=
+adata
++object and only verify the checksum if no problems were found.  This o=
+ption
++causes e2fsck to try to salvage slightly damaged metadata objects, at =
+the cost
++of spending processing time on recovering data.
++.IP
++The default is for e2fsck to behave as if
++.B -E no_strict_csums
++is set.
+ .SH THE [problems] STANZA
+ Each tag in the
+ .I [problems]=20
+diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
+index dbd6ea8..d7a7be9 100644
+--- a/e2fsck/e2fsck.h
++++ b/e2fsck/e2fsck.h
+@@ -167,6 +167,7 @@ struct resource_track {
+ #define E2F_OPT_FRAGCHECK	0x0800
+ #define E2F_OPT_JOURNAL_ONLY	0x1000 /* only replay the journal */
+ #define E2F_OPT_DISCARD		0x2000
++#define E2F_OPT_CSUM_FIRST	0x4000
+=20
+ /*
+  * E2fsck flags
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index 7f0ad6c..3683dd4 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -970,7 +970,7 @@ static struct e2fsck_problem problem_table[] =3D {
+ 	/* inode checksum does not match inode */
+ 	{ PR_1_INODE_CSUM_INVALID,
+ 	  N_("@i %i checksum does not match @i.  "),
+-	  PROMPT_CLEAR, PR_PREEN_OK },
++	  PROMPT_CLEAR, PR_PREEN_OK | PR_INITIAL_CSUM },
+=20
+ 	/* inode passes checks, but checksum does not match inode */
+ 	{ PR_1_INODE_ONLY_CSUM_INVALID,
+@@ -981,7 +981,7 @@ static struct e2fsck_problem problem_table[] =3D {
+ 	{ PR_1_EXTENT_CSUM_INVALID,
+ 	  N_("@i %i extent block checksum does not match extent\n\t(logical @=
+b "
+ 	     "%c, @n physical @b %b, len %N)\n"),
+-	  PROMPT_CLEAR, 0 },
++	  PROMPT_CLEAR, PR_INITIAL_CSUM },
+=20
  	/*
-diff --git a/include/linux/page-flags.h b/include/linux/page-flags.h
-index bc2007e..9b68718 100644
---- a/include/linux/page-flags.h
-+++ b/include/linux/page-flags.h
-@@ -317,13 +317,23 @@ CLEARPAGEFLAG(Uptodate, uptodate)
- extern void cancel_dirty_page(struct page *page, unsigned int account_size);
- 
- int test_clear_page_writeback(struct page *page);
--int test_set_page_writeback(struct page *page);
-+int __test_set_page_writeback(struct page *page, bool keep_write);
+ 	 * Inode extent block passes checks, but checksum does not match
+@@ -996,7 +996,7 @@ static struct e2fsck_problem problem_table[] =3D {
+ 	{ PR_1_EA_BLOCK_CSUM_INVALID,
+ 	  N_("Extended attribute @a @b %b checksum for @i %i does not "
+ 	     "match.  "),
+-	  PROMPT_CLEAR, 0 },
++	  PROMPT_CLEAR, PR_INITIAL_CSUM },
+=20
+ 	/*
+ 	 * Extended attribute block passes checks, but checksum for inode doe=
+s
+@@ -1470,7 +1470,7 @@ static struct e2fsck_problem problem_table[] =3D =
+{
+ 	/* leaf node fails checksum */
+ 	{ PR_2_LEAF_NODE_CSUM_INVALID,
+ 	  N_("@d @i %i, %B, offset %N: @d fails checksum\n"),
+-	  PROMPT_SALVAGE, PR_PREEN_OK },
++	  PROMPT_SALVAGE, PR_PREEN_OK | PR_INITIAL_CSUM },
+=20
+ 	/* leaf node has no checksum */
+ 	{ PR_2_LEAF_NODE_MISSING_CSUM,
+@@ -2030,6 +2030,23 @@ int fix_problem(e2fsck_t ctx, problem_t code, st=
+ruct problem_context *pctx)
+ 	}
+ 	if (ctx->logf && message)
+ 		print_e2fsck_message(ctx->logf, ctx, message, pctx, 1, 0);
++	/*
++	 * If there is a problem with the initial csum verification and the
++	 * user told e2fsck to verify csums /after/ checking everything else,
++	 * then don't "fix" anything, just warn the user that the csum failed
++	 * and that sanity checks are about to be run.
++	 */
++	if ((ptr->flags & PR_INITIAL_CSUM) &&
++	    !(ctx->options & E2F_OPT_CSUM_FIRST)) {
++		if (*message) {
++			print_e2fsck_message(stdout, ctx,
++				"Running sanity checks.\n", pctx, 1, 0);
++			if (ctx->logf)
++				print_e2fsck_message(ctx->logf, ctx,
++					"Running sanity checks.\n", pctx, 1, 0);
++		}
++		return 0;
++	}
+ 	if (!(ptr->flags & PR_PREEN_OK) && (ptr->prompt !=3D PROMPT_NONE))
+ 		preenhalt(ctx);
+=20
+diff --git a/e2fsck/problemP.h b/e2fsck/problemP.h
+index 7944cd6..a983598 100644
+--- a/e2fsck/problemP.h
++++ b/e2fsck/problemP.h
+@@ -44,3 +44,4 @@ struct latch_descr {
+ #define PR_CONFIG	0x080000 /* This problem has been customized
+ 				    from the config file */
+ #define PR_FORCE_NO	0x100000 /* Force the answer to be no */
++#define PR_INITIAL_CSUM	0x200000 /* User can ignore initial csum check=
+ */
+diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+index b39383d..c6cdb49 100644
+--- a/e2fsck/unix.c
++++ b/e2fsck/unix.c
+@@ -692,6 +692,10 @@ static void parse_extended_opts(e2fsck_t ctx, cons=
+t char *opts)
+ 			else
+ 				ctx->log_fn =3D string_copy(ctx, arg, 0);
+ 			continue;
++		} else if (strcmp(token, "strict_csums") =3D=3D 0) {
++			ctx->options |=3D E2F_OPT_CSUM_FIRST;
++		} else if (strcmp(token, "no_strict_csums") =3D=3D 0) {
++			ctx->options &=3D ~E2F_OPT_CSUM_FIRST;
+ 		} else {
+ 			fprintf(stderr, _("Unknown extended option: %s\n"),
+ 				token);
+@@ -710,6 +714,8 @@ static void parse_extended_opts(e2fsck_t ctx, const=
+ char *opts)
+ 		fputs(("\tjournal_only\n"), stderr);
+ 		fputs(("\tdiscard\n"), stderr);
+ 		fputs(("\tnodiscard\n"), stderr);
++		fputs(("\tstrict_csums\n"), stderr);
++		fputs(("\tno_strict_csums\n"), stderr);
+ 		fputc('\n', stderr);
+ 		exit(1);
+ 	}
+@@ -945,6 +951,11 @@ static errcode_t PRS(int argc, char *argv[], e2fsc=
+k_t *ret_ctx)
+ 	profile_set_syntax_err_cb(syntax_err_report);
+ 	profile_init(config_fn, &ctx->profile);
+=20
++	profile_get_boolean(ctx->profile, "options", "strict_csums", NULL,
++			    0, &c);
++	if (c)
++		ctx->options |=3D E2F_OPT_CSUM_FIRST;
 +
-+#define test_set_page_writeback(page)			\
-+	__test_set_page_writeback(page, false)
-+#define test_set_page_writeback_keepwrite(page)	\
-+	__test_set_page_writeback(page, true)
- 
- static inline void set_page_writeback(struct page *page)
- {
- 	test_set_page_writeback(page);
- }
- 
-+static inline void set_page_writeback_keepwrite(struct page *page)
-+{
-+	test_set_page_writeback_keepwrite(page);
-+}
-+
- #ifdef CONFIG_PAGEFLAGS_EXTENDED
- /*
-  * System with lots of page flags available. This allows separate
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index 310d329..ba037e3 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -2398,7 +2398,7 @@ int test_clear_page_writeback(struct page *page)
- 	return ret;
- }
- 
--int test_set_page_writeback(struct page *page)
-+int __test_set_page_writeback(struct page *page, bool keep_write)
- {
- 	struct address_space *mapping = page_mapping(page);
- 	int ret;
-@@ -2423,9 +2423,10 @@ int test_set_page_writeback(struct page *page)
- 			radix_tree_tag_clear(&mapping->page_tree,
- 						page_index(page),
- 						PAGECACHE_TAG_DIRTY);
--		radix_tree_tag_clear(&mapping->page_tree,
--				     page_index(page),
--				     PAGECACHE_TAG_TOWRITE);
-+		if (!keep_write)
-+			radix_tree_tag_clear(&mapping->page_tree,
-+						page_index(page),
-+						PAGECACHE_TAG_TOWRITE);
- 		spin_unlock_irqrestore(&mapping->tree_lock, flags);
- 	} else {
- 		ret = TestSetPageWriteback(page);
-@@ -2436,7 +2437,7 @@ int test_set_page_writeback(struct page *page)
- 	return ret;
- 
- }
--EXPORT_SYMBOL(test_set_page_writeback);
-+EXPORT_SYMBOL(__test_set_page_writeback);
- 
- /*
-  * Return true if any of the pages in the mapping are marked with the
--- 
-1.7.11-rc0
-
+ 	profile_get_boolean(ctx->profile, "options", "report_time", 0, 0,
+ 			    &c);
+ 	if (c)
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
