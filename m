@@ -1,209 +1,111 @@
-From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: [PATCH v2 10/10] xfstests: fsx: Add fallocate insert range operation
-Date: Thu, 08 May 2014 19:38:12 +0900
-Message-ID: <004001cf6aa9$9c6dc2d0$d5494870$@samsung.com>
+From: Lubos Uhliarik <uhliarik@seznam.cz>
+Subject: Re: [RFC][PATCH 0/1] ext4: Undelete Feature for Ext4
+Date: Thu, 08 May 2014 23:11:26 +0200
+Message-ID: <1399583486.8729.42.camel@zerobox.home>
+References: <1395155370.15587.9.camel@zerobox.home>
+	 <20140318171425.GC8506@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, 'linux-ext4' <linux-ext4@vger.kernel.org>,
-	linux-kernel@vger.kernel.org,
-	'Ashish Sangwan' <a.sangwan@samsung.com>, xfs@oss.sgi.com
-To: 'Dave Chinner' <david@fromorbit.com>, 'Theodore Ts'o' <tytso@mit.edu>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-language: ko
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, lczerner@redhat.com,
+	vojnar@fit.vutbr.cz
+To: tytso@mit.edu
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp1.seznam.cz ([77.75.72.43]:52661 "EHLO smtp1.seznam.cz"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754583AbaEHTLo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 8 May 2014 15:11:44 -0400
+In-Reply-To: <20140318171425.GC8506@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This commit adds fallocate FALLOC_FL_INSERT_RANGE support for fsx.
+Hi Tytso
 
-Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
----
- ltp/fsx.c | 96 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 94 insertions(+), 2 deletions(-)
+I'm trying to respond on your email ones again - more in detail.
 
-diff --git a/ltp/fsx.c b/ltp/fsx.c
-index 47d3ee8..875460e 100644
---- a/ltp/fsx.c
-+++ b/ltp/fsx.c
-@@ -95,7 +95,8 @@ int			logcount = 0;	/* total ops */
- #define OP_PUNCH_HOLE		6
- #define OP_ZERO_RANGE		7
- #define OP_COLLAPSE_RANGE	8
--#define OP_MAX_FULL		9
-+#define OP_INSERT_RANGE	9
-+#define OP_MAX_FULL		10
- 
- /* operation modifiers */
- #define OP_CLOSEOPEN	100
-@@ -145,6 +146,7 @@ int     fallocate_calls = 1;            /* -F flag disables */
- int     punch_hole_calls = 1;           /* -H flag disables */
- int     zero_range_calls = 1;           /* -z flag disables */
- int	collapse_range_calls = 1;	/* -C flag disables */
-+int	insert_range_calls = 1;		/* -i flag disables */
- int 	mapped_reads = 1;		/* -R flag disables it */
- int	fsxgoodfd = 0;
- int	o_direct;			/* -Z */
-@@ -339,6 +341,14 @@ logdump(void)
- 						     lp->args[0] + lp->args[1])
- 				prt("\t******CCCC");
- 			break;
-+		case OP_INSERT_RANGE:
-+			prt("INSERT 0x%x thru 0x%x\t(0x%x bytes)",
-+			    lp->args[0], lp->args[0] + lp->args[1] - 1,
-+			    lp->args[1]);
-+			if (badoff >= lp->args[0] && badoff <
-+						     lp->args[0] + lp->args[1])
-+				prt("\t******CCCC");
-+			break;
- 		case OP_SKIPPED:
- 			prt("SKIPPED (no operation)");
- 			break;
-@@ -1012,6 +1022,59 @@ do_collapse_range(unsigned offset, unsigned length)
- }
- #endif
- 
-+#ifdef FALLOC_FL_INSERT_RANGE
-+void
-+do_insert_range(unsigned offset, unsigned length)
-+{
-+	unsigned end_offset;
-+	int mode = FALLOC_FL_INSERT_RANGE;
-+
-+	if (length == 0) {
-+		if (!quiet && testcalls > simulatedopcount)
-+			prt("skipping zero length insert range\n");
-+		log4(OP_SKIPPED, OP_INSERT_RANGE, offset, length);
-+		return;
-+	}
-+
-+	if ((loff_t)offset >= file_size) {
-+		if (!quiet && testcalls > simulatedopcount)
-+			prt("skipping insert range behind EOF\n");
-+		log4(OP_SKIPPED, OP_INSERT_RANGE, offset, length);
-+		return;
-+	}
-+
-+	log4(OP_INSERT_RANGE, offset, length, 0);
-+
-+	if (testcalls <= simulatedopcount)
-+		return;
-+
-+	end_offset = offset + length;
-+	if ((progressinterval && testcalls % progressinterval == 0) ||
-+	    (debug && (monitorstart == -1 || monitorend == -1 ||
-+		      end_offset <= monitorend))) {
-+		prt("%lu insert\tfrom 0x%x to 0x%x, (0x%x bytes)\n", testcalls,
-+			offset, offset+length, length);
-+	}
-+	if (fallocate(fd, mode, (loff_t)offset, (loff_t)length) == -1) {
-+		prt("insert range: %x to %x\n", offset, length);
-+		prterr("do_insert_range: fallocate");
-+		report_failure(161);
-+	}
-+
-+	memmove(good_buf + end_offset, good_buf + offset,
-+		file_size - offset);
-+	memset(good_buf + offset, '\0', length);
-+	file_size += length;
-+}
-+
-+#else
-+void
-+do_insert_range(unsigned offset, unsigned length)
-+{
-+	return;
-+}
-+#endif
-+
- #ifdef HAVE_LINUX_FALLOC_H
- /* fallocate is basically a no-op unless extending, then a lot like a truncate */
- void
-@@ -1192,6 +1255,12 @@ test(void)
- 			goto out;
- 		}
- 		break;
-+	case OP_INSERT_RANGE:
-+		if (!insert_range_calls) {
-+			log4(OP_SKIPPED, OP_INSERT_RANGE, offset, size);
-+			goto out;
-+		}
-+		break;
- 	}
- 
- 	switch (op) {
-@@ -1244,6 +1313,21 @@ test(void)
- 		}
- 		do_collapse_range(offset, size);
- 		break;
-+	case OP_INSERT_RANGE:
-+		TRIM_OFF_LEN(offset, size, (maxfilelen - 1) - file_size);
-+		offset = offset & ~(block_size - 1);
-+		size = size & ~(block_size - 1);
-+		if (size == 0) {
-+			log4(OP_SKIPPED, OP_INSERT_RANGE, offset, size);
-+			goto out;
-+		}
-+		if (file_size + size > maxfilelen) {
-+			log4(OP_SKIPPED, OP_INSERT_RANGE, offset, size);
-+			goto out;
-+		}
-+
-+		do_insert_range(offset, size);
-+		break;
- 	default:
- 		prterr("test: unknown operation");
- 		report_failure(42);
-@@ -1307,6 +1391,9 @@ usage(void)
- #ifdef FALLOC_FL_COLLAPSE_RANGE
- "	-C: Do not use collapse range calls\n"
- #endif
-+#ifdef FALLOC_FL_INSERT_RANGE
-+"	-i: Do not use insert range calls\n"
-+#endif
- "	-L: fsxLite - no file creations & no file size changes\n\
- 	-N numops: total # operations to do (default infinity)\n\
- 	-O: use oplen (see -o flag) for every op (default random)\n\
-@@ -1493,7 +1580,7 @@ main(int argc, char **argv)
- 
- 	setvbuf(stdout, (char *)0, _IOLBF, 0); /* line buffered stdout */
- 
--	while ((ch = getopt(argc, argv, "b:c:dfl:m:no:p:qr:s:t:w:xyAD:FHzCLN:OP:RS:WZ"))
-+	while ((ch = getopt(argc, argv, "b:c:dfl:m:no:p:qr:s:t:w:xyAD:FHzCiLN:OP:RS:WZ"))
- 	       != EOF)
- 		switch (ch) {
- 		case 'b':
-@@ -1599,6 +1686,9 @@ main(int argc, char **argv)
- 		case 'C':
- 			collapse_range_calls = 0;
- 			break;
-+		case 'i':
-+			insert_range_calls = 0;
-+			break;
- 		case 'L':
- 		        lite = 1;
- 			break;
-@@ -1758,6 +1848,8 @@ main(int argc, char **argv)
- 		zero_range_calls = test_fallocate(FALLOC_FL_ZERO_RANGE);
- 	if (collapse_range_calls)
- 		collapse_range_calls = test_fallocate(FALLOC_FL_COLLAPSE_RANGE);
-+	if (insert_range_calls)
-+		insert_range_calls = test_fallocate(FALLOC_FL_INSERT_RANGE);
- 
- 	while (numops == -1 || numops--)
- 		test();
--- 
-1.7.11-rc0
+tytso@mit.edu wrote:
+> On Tue, Mar 18, 2014 at 04:09:30PM +0100, Lubos Uhliarik wrote:
+> > The main changes in patch are following:
+> > 
+> > a) commented out zeroing ex->ee_len, ee->start_hi and ee->start_lo,
+> > because these entries are essential for undelete process
+> 
+> The reason why we have to zero out ex->ee_len, etc. is because the
+> truncate operation can sometimes span multiple journal transactions.
+> So as a result, we need to keep the file system consistent if we are
+> interrupted (i.e., via a power fail event) while in the middle of a
+> truncate operation.
+> 
+> It's a rare case, but it can happen if the journal is almost full at
+> the time when the truncate eoperation has started, such that there is
+> no room for to exntend the transaction handle, and so we are forced to
+> start a new transaction (and possibly wait for a journal checkpoint
+> operation).
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+Yes, as I noticed in the function ext4_ext_rm_leaf in /fs/ext4/extents.c
+file, there is a call of the function ext4_ext_truncate_extend_restart,
+which can cause, that unlink operation will be devided into multiple
+journal operations.
+
+But, there should NOT be any problem with file system consistency in my
+opinion, because decremention value of eh->eh_entries is in the same
+transaction, as the block of code which will keep ex->ee_len, etc.
+entries. 
+
+So, if a new transaction is started, in eh->eh_entries will be correct
+value of extents, which are in a block. 
+
+New value of eh->eh_entries after decreasing after one iteration (one
+extent removal) is written to the disk together with change of block
+bitmap.
+
+Between lines 2698
+if (num == 0)
+	/* this extent is removed; mark slot entirely unused */
+	ext4_ext_store_pblock(ex, 0);
+
+and 2727 
+
+le16_add_cpu(&eh->eh_entries, -1);
+
+in file fs/ext4/extents.c is no function call, which can mark block
+dirty. That kind of function (ext4_ext_dirty) is called at line 2731. 
+
+> 
+> In theory, it would be possible to figure out in advance whether or
+> not we could fit the truncate in a single transaction, but it would
+> require making the truncate operation be a two-pass operation --- once
+> to determine how many blocks needs to be modified, and once to
+> actually do the truncate operation.
+
+
+
+
+> 
+> > This patch shouldn't break ext4, I tested it with xfs_tests and tests 
+> > were successfull.
+> 
+> I'm guessing you didn't do power fail testing --- and this is very
+> important when messing with the design truncate/unlink code path.
+
+I did power failure testing, but I was unable to divide undelete process
+into more transactions. I created the ext4 with the smallest possible
+journal, but it didn't help, even I was creating and deleting 20 very
+fragmented files at one moment. I didn't get any file system error,
+which couldn't be repaired by replaying the journal. Anyway, as I wrote
+before, I checked the code and I didn't see any problem, why it should
+cause file system inconsistency.
+
+If you have any questions, please ask me and I will try to respond
+immediately, because my profesor needs to know, if this patch can be
+considered as a part of next kernel version. Thank you. 
+
+> 
+> Regards,
+> 
+> 						- Ted
+
+Kind regards,
+Lubos
+
+
