@@ -1,14 +1,14 @@
 From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: [PATCH v2 0/10] fs: Introduce FALLOC_FL_INSERT_RANGE for fallocate
-Date: Thu, 08 May 2014 19:23:19 +0900
-Message-ID: <003601cf6aa7$883103b0$98930b10$@samsung.com>
+Subject: [PATCH v2 1/10] fs: Add support FALLOC_FL_INSERT_RANGE for fallocate
+Date: Thu, 08 May 2014 19:24:42 +0900
+Message-ID: <003701cf6aa7$ba00c8d0$2e025a70$@samsung.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4 <linux-ext4@vger.kernel.org>,
+Cc: linux-fsdevel@vger.kernel.org, 'linux-ext4' <linux-ext4@vger.kernel.org>,
 	linux-kernel@vger.kernel.org,
-	Ashish Sangwan <a.sangwan@samsung.com>, xfs@oss.sgi.com
-To: Dave Chinner <david@fromorbit.com>, Theodore Ts'o <tytso@mit.edu>
+	'Ashish Sangwan' <a.sangwan@samsung.com>, xfs@oss.sgi.com
+To: 'Dave Chinner' <david@fromorbit.com>, 'Theodore Ts'o' <tytso@mit.edu>
 Return-path: <xfs-bounces@oss.sgi.com>
 Content-language: ko
 List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
@@ -22,43 +22,72 @@ Errors-To: xfs-bounces@oss.sgi.com
 Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-In continuation of the work of making the process of non linear editing of
-media files faster, we introduce here the new flag FALLOC_FL_INSERT_RANGE
-for fallocate.
+FALLOC_FL_INSERT_RANGE command is the opposite command of
+FALLOC_FL_COLLAPSE_RANGE that is needed for advertisers or someone who want to
+add some data in the middle of file. FALLOC_FL_INSERT_RANGE will insert a range
+of a file after shifting extents to right as given length.
+and this command also has same limitation as FALLOC_FL_COLLAPSE_RANGE,
+block boundary and use ftruncate(2) for crosses EOF.
 
-This flag will work opposite to the newly added FALLOC_FL_COLLAPSE_RANGE flag.
-As such, specifying FALLOC_FL_INSERT_RANGE flag will insert zeroed-out space
-in between the file within the range specified by offset and len. User can
-write new data in this space. e.g. ads.
-Like collapse range, currently we have the limitation that offset and len should
-be block size aligned for both XFS and Ext4.
+Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
+Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
+---
+ fs/open.c                   |  8 +++++++-
+ include/uapi/linux/falloc.h | 17 +++++++++++++++++
+ 2 files changed, 24 insertions(+), 1 deletion(-)
 
-The semantics of the flag are :
-1) It allocates new zeroed out on disk space of len bytes starting
-   at offset byte without overwriting any existing data. All the data blocks
-   from offset to EOF are shifted towards right to make space for inserting
-   new blocks
-2) It should be used exclusively. No other fallocate flag in combination.
-3) Offset and length supplied to fallocate should be fs block size aligned
-   in case of xfs and ext4.
-4) Insert range does not work for the case when offset is overlapping/beyond
-   i_size. If the user wants to allocate space at the end of file they are
-   advised to use either ftruncate(2) or fallocate(2) with mode 0.
-5) It increses the size of file by len bytes.
-
-
-Namjae Jeon (10):
- fs: Add support FALLOC_FL_INSERT_RANGE for fallocate
- xfs: Add support FALLOC_FL_INSERT_RANGE for fallocate
- ext4: Add support FALLOC_FL_INSERT_RANGE for fallocate
- xfsprogs: xfs_io: add finsert command for insert range via fallocate
- xfstests: generic/027: Standard insert range tests
- xfstests: generic/028: Delayed allocation insert range
- xfstests: generic/029: Multi insert range tests
- xfstests: generic/030: Delayed allocation multi insert
- xfstests: fsstress: Add fallocate insert range operation
- xfstests: fsx: Add fallocate insert range operation
-
+diff --git a/fs/open.c b/fs/open.c
+index 36662d0..74ed498 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -232,7 +232,8 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+ 
+ 	/* Return error if mode is not supported */
+ 	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE |
+-		     FALLOC_FL_COLLAPSE_RANGE | FALLOC_FL_ZERO_RANGE))
++		     FALLOC_FL_COLLAPSE_RANGE | FALLOC_FL_ZERO_RANGE |
++		     FALLOC_FL_INSERT_RANGE))
+ 		return -EOPNOTSUPP;
+ 
+ 	/* Punch hole and zero range are mutually exclusive */
+@@ -250,6 +251,11 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+ 	    (mode & ~FALLOC_FL_COLLAPSE_RANGE))
+ 		return -EINVAL;
+ 
++	/* Insert range should only be used exclusively. */
++	if ((mode & FALLOC_FL_INSERT_RANGE) &&
++	    (mode & ~FALLOC_FL_INSERT_RANGE))
++		return -EINVAL;
++
+ 	if (!(file->f_mode & FMODE_WRITE))
+ 		return -EBADF;
+ 
+diff --git a/include/uapi/linux/falloc.h b/include/uapi/linux/falloc.h
+index d1197ae..f4d12eb 100644
+--- a/include/uapi/linux/falloc.h
++++ b/include/uapi/linux/falloc.h
+@@ -41,4 +41,21 @@
+  */
+ #define FALLOC_FL_ZERO_RANGE		0x10
+ 
++/*
++ * FALLOC_FL_INSERT_RANGE is use to allocate disk space within the file size
++ * without overwriting any existing data. The contents of the file beyond offset
++ * are shifted towards right by len bytes to create space for inserting
++ * new disk blocks and in this space new zeroed out disk blocks are inserted.
++ * As such, this operation will increase the size of the file by len bytes.
++ * Different filesystems may implement different limitations on the granularity
++ * of the operation. Most will limit operations to filesystem block size
++ * boundaries, but this boundary may be larger or smaller depending on
++ * the filesystem and/or the configuration of the filesystem or file.
++ *
++ * Attempting to allocate new blocks using this flag at OR beyond the end of
++ * the file is considered an illegal operation - just use ftruncate(2) or
++ * fallocate(2) with mode 0 for such type of operations.
++ */
++#define FALLOC_FL_INSERT_RANGE		0x20
++
+ #endif /* _UAPI_FALLOC_H_ */
 -- 
 1.7.11-rc0
 
