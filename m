@@ -1,306 +1,77 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH] blkid,ext2fs: avoid name clash with __u{8,16,32,64}
-Date: Thu,  8 May 2014 15:23:56 -0600
-Message-ID: <1399584236-17686-1-git-send-email-adilger@dilger.ca>
-Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
-To: tytso@mit.edu
+From: Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>
+Subject: Re: [PATCH 0/2] ext4: Reduce contention on s_orphan_lock
+Date: Fri, 09 May 2014 00:24:50 -0600
+Message-ID: <536C74B2.5010107@hp.com>
+References: <1398814353-11904-1-git-send-email-jack@suse.cz> <536414A8.2040506@hp.com> <20140506114900.GF9291@quack.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: T Makphaibulchoke <tmac@hp.com>, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out-05.shaw.ca ([64.59.134.13]:36390 "EHLO
-	smtp-out-05.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755378AbaEHVde (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 May 2014 17:33:34 -0400
+Received: from g2t2352.austin.hp.com ([15.217.128.51]:12698 "EHLO
+	g2t2352.austin.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751221AbaEIG01 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 May 2014 02:26:27 -0400
+In-Reply-To: <20140506114900.GF9291@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Try to avoid name clashes with definitions of __u8, __u16, __u32,
-and __u64 in userspace, in case other headers also define these
-types.  Define HAVE___{S,U}{8,16,32,64} preprocessor macros to
-show that these types are already defined.
+On 05/06/2014 05:49 AM, Jan Kara wrote:
+> On Fri 02-05-14 15:56:56, Thavatchai Makphaibulchoke wrote:
+>   So I believe it is reasonable to require i_mutex to be held when orphan
+> operations are called. Adding / removing inode from orphan list is needed
+> when extending or truncating inode and these operations generally require
+> i_mutex in ext4. I've added the assertion so that we can catch a situation
+> when we either by mistake or intentionally grow a call site which won't
+> hold i_mutex. If such situation happens and we have good reasons why
+> i_mutex shouldn't be used there, then we can think about some dedicated
+> locks (either hashed or per inode ones).
+> 
 
-This would avoid the need to check for _BLKID_TYPES_H in ext2_types.h
-and _EXT2_TYPES_H in blkid_types.h, but since older versions of these
-headers did not use HAVE___U8 et.al. keep these checks around for now.
+In earlier version of the patch, it is suggested that per inode mutex is too much of an overhead.  In addition, adding a mutex to the ext4_inode struct would increase its size above the cache size.
 
-Report an error if there are no 64-bit types available.  The code
-will not compile if these are not available.
+>   We aren't adding *any* contention. I didn't have to add a single
+> additional locking of i_mutex because in all the necessary cases we are
+> holding i_mutex over the orphan operations anyway (or the inode isn't
+> reachable by other processes). So regarding per-inode locking, we are doing
+> strictly less work with my patch than with your patch. However you are
+> correct in your comments to my patch 2/2 that in your patch you handle
+> operations under the global s_orphan_lock better and that's probably what
+> causes the difference. I need to improve that for sure.
+> 
 
-Signed-off-by: Andreas Dilger <adilger@dilger.ca>
----
- lib/blkid/blkid_types.h.in |   39 ++++++++++++++++++++++++++++++++++++---
- lib/ext2fs/ext2_types.h.in |   35 ++++++++++++++++++++++++++++++++++-
- 2 files changed, 70 insertions(+), 4 deletions(-)
+Sorry for not being clear.  Yes, I agree, with existing code, you are not adding any contention.  What I'm trying to say is that with your patch making i_mutex an implicit requirement of an orphan operation, any future ext4 operation  requiring an orphan add/delete will also have to acquire i_mutex regardless of whether it needs i_mutex.  Though this may not likely to happen, it could potentially add unnecessary contention to i_mutex.
 
-diff --git a/lib/blkid/blkid_types.h.in b/lib/blkid/blkid_types.h.in
-index 2edc0da..d4c81d0 100644
---- a/lib/blkid/blkid_types.h.in
-+++ b/lib/blkid/blkid_types.h.in
-@@ -9,18 +9,26 @@
- 
- @ASM_TYPES_HEADER@
- 
-+#ifndef HAVE___U8
-+#define HAVE___U8
- #ifdef __U8_TYPEDEF
- typedef __U8_TYPEDEF __u8;
- #else
- typedef unsigned char __u8;
- #endif
-+#endif /* HAVE___U8 */
- 
-+#ifndef HAVE___S8
-+#define HAVE___S8
- #ifdef __S8_TYPEDEF
- typedef __S8_TYPEDEF __s8;
- #else
- typedef signed char __s8;
- #endif
-+#endif /* HAVE___S8 */
- 
-+#ifndef HAVE___U16
-+#define HAVE___U16
- #ifdef __U16_TYPEDEF
- typedef __U16_TYPEDEF __u16;
- #else
-@@ -30,11 +38,15 @@ typedef	unsigned int	__u16;
- #if (@SIZEOF_SHORT@ == 2)
- typedef	unsigned short	__u16;
- #else
-+#undef HAVE___U16
-   ?==error: undefined 16 bit type
- #endif /* SIZEOF_SHORT == 2 */
- #endif /* SIZEOF_INT == 2 */
- #endif /* __U16_TYPEDEF */
-+#endif /* HAVE___U16 */
- 
-+#ifndef HAVE___S16
-+#define HAVE___S16
- #ifdef __S16_TYPEDEF
- typedef __S16_TYPEDEF __s16;
- #else
-@@ -44,12 +56,15 @@ typedef	int		__s16;
- #if (@SIZEOF_SHORT@ == 2)
- typedef	short		__s16;
- #else
-+#undef HAVE___S16
-   ?==error: undefined 16 bit type
- #endif /* SIZEOF_SHORT == 2 */
- #endif /* SIZEOF_INT == 2 */
- #endif /* __S16_TYPEDEF */
-+#endif /* HAVE___S16 */
- 
--
-+#ifndef HAVE___U32
-+#define HAVE___U32
- #ifdef __U32_TYPEDEF
- typedef __U32_TYPEDEF __u32;
- #else
-@@ -62,12 +77,16 @@ typedef	unsigned long	__u32;
- #if (@SIZEOF_SHORT@ == 4)
- typedef	unsigned short	__u32;
- #else
-+#undef HAVE___U32
-  ?== error: undefined 32 bit type
- #endif /* SIZEOF_SHORT == 4 */
- #endif /* SIZEOF_LONG == 4 */
- #endif /* SIZEOF_INT == 4 */
- #endif /* __U32_TYPEDEF */
-+#endif /* HAVE___U32 */
- 
-+#ifndef HAVE___S32
-+#define HAVE___S32
- #ifdef __S32_TYPEDEF
- typedef __S32_TYPEDEF __s32;
- #else
-@@ -80,12 +99,16 @@ typedef	long		__s32;
- #if (@SIZEOF_SHORT@ == 4)
- typedef	short		__s32;
- #else
-+#undef HAVE___S32
-  ?== error: undefined 32 bit type
- #endif /* SIZEOF_SHORT == 4 */
- #endif /* SIZEOF_LONG == 4 */
- #endif /* SIZEOF_INT == 4 */
- #endif /* __S32_TYPEDEF */
-+#endif /* HAVE___S32 */
- 
-+#ifndef HAVE___U64
-+#define HAVE___U64
- #ifdef __U64_TYPEDEF
- typedef __U64_TYPEDEF __u64;
- #else
-@@ -97,11 +120,17 @@ typedef unsigned long long	__u64;
- #else
- #if (@SIZEOF_LONG@ == 8)
- typedef unsigned long	__u64;
-+#else
-+#undef HAVE___U64
-+ ?== error: undefined 64 bit type
- #endif /* SIZEOF_LONG == 8 */
- #endif /* SIZEOF_LONG_LONG == 8 */
- #endif /* SIZEOF_INT == 8 */
- #endif /* __U64_TYPEDEF */
-+#endif /* HAVE___U64 */
- 
-+#ifndef HAVE___S64
-+#define HAVE___S64
- #ifdef __S64_TYPEDEF
- typedef __S64_TYPEDEF __s64;
- #else
-@@ -110,17 +139,21 @@ typedef int		__s64;
- #else
- #if (@SIZEOF_LONG_LONG@ == 8)
- #if defined(__GNUC__)
--typedef __signed__ long long 	__s64;
-+typedef __signed__ long long	__s64;
- #else
--typedef signed long long 	__s64;
-+typedef signed long long	__s64;
- #endif /* __GNUC__ */
- #else
- #if (@SIZEOF_LONG@ == 8)
- typedef long		__s64;
-+#else
-+#undef HAVE___S64
-+ ?== error: undefined 64 bit type
- #endif /* SIZEOF_LONG == 8 */
- #endif /* SIZEOF_LONG_LONG == 8 */
- #endif /* SIZEOF_INT == 8 */
- #endif /* __S64_TYPEDEF */
-+#endif /* HAVE___S64 */
- 
- #undef __S8_TYPEDEF
- #undef __U8_TYPEDEF
-diff --git a/lib/ext2fs/ext2_types.h.in b/lib/ext2fs/ext2_types.h.in
-index 5b98f71..1320431 100644
---- a/lib/ext2fs/ext2_types.h.in
-+++ b/lib/ext2fs/ext2_types.h.in
-@@ -9,18 +9,26 @@
- 
- @ASM_TYPES_HEADER@
- 
-+#ifndef HAVE___U8
-+#define HAVE___U8
- #ifdef __U8_TYPEDEF
- typedef __U8_TYPEDEF __u8;
- #else
- typedef unsigned char __u8;
- #endif
-+#endif /* HAVE___U8 */
- 
-+#ifndef HAVE___S8
-+#define HAVE___S8
- #ifdef __S8_TYPEDEF
- typedef __S8_TYPEDEF __s8;
- #else
- typedef signed char __s8;
- #endif
-+#endif /* HAVE___S8 */
- 
-+#ifndef HAVE___U16
-+#define HAVE___U16
- #ifdef __U16_TYPEDEF
- typedef __U16_TYPEDEF __u16;
- #else
-@@ -30,11 +38,15 @@ typedef	unsigned int	__u16;
- #if (@SIZEOF_SHORT@ == 2)
- typedef	unsigned short	__u16;
- #else
-+#undef HAVE___U16
-   ?==error: undefined 16 bit type
- #endif /* SIZEOF_SHORT == 2 */
- #endif /* SIZEOF_INT == 2 */
- #endif /* __U16_TYPEDEF */
-+#endif /* HAVE___U16 */
- 
-+#ifndef HAVE___S16
-+#define HAVE___S16
- #ifdef __S16_TYPEDEF
- typedef __S16_TYPEDEF __s16;
- #else
-@@ -44,12 +56,15 @@ typedef	int		__s16;
- #if (@SIZEOF_SHORT@ == 2)
- typedef	short		__s16;
- #else
-+#undef HAVE___S16
-   ?==error: undefined 16 bit type
- #endif /* SIZEOF_SHORT == 2 */
- #endif /* SIZEOF_INT == 2 */
- #endif /* __S16_TYPEDEF */
-+#endif /* HAVE___S16 */
- 
--
-+#ifndef HAVE___U32
-+#define HAVE___U32
- #ifdef __U32_TYPEDEF
- typedef __U32_TYPEDEF __u32;
- #else
-@@ -62,12 +77,16 @@ typedef	unsigned long	__u32;
- #if (@SIZEOF_SHORT@ == 4)
- typedef	unsigned short	__u32;
- #else
-+#undef HAVE___U32
-  ?== error: undefined 32 bit type
- #endif /* SIZEOF_SHORT == 4 */
- #endif /* SIZEOF_LONG == 4 */
- #endif /* SIZEOF_INT == 4 */
- #endif /* __U32_TYPEDEF */
-+#endif /* HAVE___U32 */
- 
-+#ifndef HAVE___S32
-+#define HAVE___S32
- #ifdef __S32_TYPEDEF
- typedef __S32_TYPEDEF __s32;
- #else
-@@ -80,12 +99,16 @@ typedef	long		__s32;
- #if (@SIZEOF_SHORT@ == 4)
- typedef	short		__s32;
- #else
-+#undef HAVE___S32
-  ?== error: undefined 32 bit type
- #endif /* SIZEOF_SHORT == 4 */
- #endif /* SIZEOF_LONG == 4 */
- #endif /* SIZEOF_INT == 4 */
- #endif /* __S32_TYPEDEF */
-+#endif /* HAVE___S32 */
- 
-+#ifndef HAVE___U64
-+#define HAVE___U64
- #ifdef __U64_TYPEDEF
- typedef __U64_TYPEDEF __u64;
- #else
-@@ -97,11 +120,17 @@ typedef unsigned long long	__u64;
- #else
- #if (@SIZEOF_LONG@ == 8)
- typedef unsigned long	__u64;
-+#else
-+#undef HAVE___U64
-+ ?== error: undefined 64 bit type
- #endif /* SIZEOF_LONG_LONG == 8 */
- #endif /* SIZEOF_LONG == 8 */
- #endif /* SIZEOF_INT == 8 */
- #endif /* __U64_TYPEDEF */
-+#endif /* HAVE___U64 */
- 
-+#ifndef HAVE___S64
-+#define HAVE___S64
- #ifdef __S64_TYPEDEF
- typedef __S64_TYPEDEF __s64;
- #else
-@@ -117,10 +146,14 @@ typedef signed long long	__s64;
- #else
- #if (@SIZEOF_LONG@ == 8)
- typedef long		__s64;
-+#else
-+#undef HAVE___S64
-+ ?== error: undefined 64 bit type
- #endif /* SIZEOF_LONG_LONG == 8 */
- #endif /* SIZEOF_LONG == 8 */
- #endif /* SIZEOF_INT == 8 */
- #endif /* __S64_TYPEDEF */
-+#endif /* HAVE___S64 */
- 
- #undef __S8_TYPEDEF
- #undef __U8_TYPEDEF
--- 
-1.7.3.4
+Again, this may not likely to happen, but any change in i_mutex usages in the caller could have direct impact on your change.
+
+>   Frankly I don't see why they would be better. They are marginally safer
+> by keeping the locking inside the orphan functions but the WARN_ON I have
+> added pretty much mitigates this concern and as I wrote above I actually
+> think using i_mutex not only works but also makes logical sense.
+> 
+
+Yes, the WARN_ON is good safe gaurd against any i_mutex violation.  Personally I would prefer a BUG_ON.  But as mentioned above, any change in the caller or some future usage of orphan operations may require a revisit of the WARN_ON.
+
+Though my patch is doing more work and is only marginal safer with existing code, it would be safer with regards to any further change.  In addition, since i_mutex is not required, there may be a chance (sorry I did not have chance to verify with the source yet)for the caller to drop the i_mutex earlier for possible further improvement.
+
+Despite what I've said, I would agree it would make sense to take advantage of the fact either the caller already held i_mutex or it is safe due to no other accesses possible to the inode for the performance reason. Unfotunately (it may be coincidental) from the aim7 results from my patch with the hashed mutex acquire/release removed, not only no performance improvement is detected, there is significant regression in several workloads on two of my higher thread count platforms tested.
+
+With all the performance numbers I'm getting, plus the fact that at least it is marginal safer, I'm still believe the hashed mutex is the way to go.
+
+
+Thanks,
+Mak.
+
+
+>   So orphan operations on a single inode are serialized by i_mutex both
+> with your and with my patch. You add additional serialization by hashed
+> mutexes so now orphan operations for independent inodes get serialized as
+> well. It may in theory improve the performance by effectively making the
+> access to global s_orphan_lock less fair but for now I believe that other
+> differences in our patches is what makes a difference.
+> 
+> 								Honza
+> 
+
 
