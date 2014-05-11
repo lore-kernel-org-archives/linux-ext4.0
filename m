@@ -1,93 +1,157 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/9] quota: fix e2fsck to notice missing quota entries
-Date: Sun, 11 May 2014 00:32:47 -0400
-Message-ID: <1399782773-20029-4-git-send-email-tytso@mit.edu>
+Subject: [PATCH 8/9] tests: add basic e2fsck regression test for fixing the quota inode
+Date: Sun, 11 May 2014 00:32:52 -0400
+Message-ID: <1399782773-20029-9-git-send-email-tytso@mit.edu>
 References: <1399782773-20029-1-git-send-email-tytso@mit.edu>
 Cc: adityakali@google.com, Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:60783 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:60784 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753200AbaEKEdG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1753109AbaEKEdG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sun, 11 May 2014 00:33:06 -0400
 In-Reply-To: <1399782773-20029-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Previously if there was a missing quota entry --- i.e., if there were
-files owned by group "eng", but there was no quota record for group
-"eng", e2fsck would not notice the missing entry.  This means that the
-usage informtion would not be properly repaired.  This is unfortunate.
-Fix this by marking each quota record in quota_dict that has a
-corresponding record on disk, and then check to see if there are any
-records in quota_dict that have not been marked as having been seen.
-In that case, we know we need to update the relevant quota inode.
-
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Cc: adityakali@google.com
 ---
- lib/quota/mkquota.c | 17 ++++++++++++++++-
- lib/quota/quotaio.h |  2 ++
- 2 files changed, 18 insertions(+), 1 deletion(-)
+ tests/f_quota/debugfs-cmds |   7 +++++++
+ tests/f_quota/expect.0     |  21 +++++++++++++++++++++
+ tests/f_quota/expect.1     |  13 +++++++++++++
+ tests/f_quota/expect.2     |   7 +++++++
+ tests/f_quota/image.gz     | Bin 0 -> 1046 bytes
+ tests/f_quota/name         |   1 +
+ tests/f_quota/script       |   4 ++++
+ 7 files changed, 53 insertions(+)
+ create mode 100644 tests/f_quota/debugfs-cmds
+ create mode 100644 tests/f_quota/expect.0
+ create mode 100644 tests/f_quota/expect.1
+ create mode 100644 tests/f_quota/expect.2
+ create mode 100644 tests/f_quota/image.gz
+ create mode 100644 tests/f_quota/name
+ create mode 100644 tests/f_quota/script
 
-diff --git a/lib/quota/mkquota.c b/lib/quota/mkquota.c
-index f77e072..f5ae0e0 100644
---- a/lib/quota/mkquota.c
-+++ b/lib/quota/mkquota.c
-@@ -458,6 +458,7 @@ static int scan_dquots_callback(struct dquot *dquot, void *cb_data)
- 
- 	dq = get_dq(quota_dict, dquot->dq_id);
- 	dq->dq_id = dquot->dq_id;
-+	dq->dq_flags |= DQF_SEEN;
- 
- 	print_dquot("mem", dq);
- 	print_dquot("dsk", dquot);
-@@ -572,10 +573,13 @@ errcode_t quota_compare_and_update(quota_ctx_t qctx, int qtype,
- 	ext2_filsys fs = qctx->fs;
- 	struct quota_handle qh;
- 	struct scan_dquots_data scan_data;
-+	struct dquot *dq;
-+	dnode_t *n;
-+	dict_t *dict = qctx->quota_dict[qtype];
- 	ext2_ino_t qf_ino;
- 	errcode_t err = 0;
- 
--	if (!qctx->quota_dict[qtype])
-+	if (!dict)
- 		goto out;
- 
- 	qf_ino = qtype == USRQUOTA ? fs->super->s_usr_quota_inum :
-@@ -595,6 +599,17 @@ errcode_t quota_compare_and_update(quota_ctx_t qctx, int qtype,
- 		log_err("Error scanning dquots");
- 		goto out;
- 	}
+diff --git a/tests/f_quota/debugfs-cmds b/tests/f_quota/debugfs-cmds
+new file mode 100644
+index 0000000..112a3ff
+--- /dev/null
++++ b/tests/f_quota/debugfs-cmds
+@@ -0,0 +1,7 @@
++list_quota user
++list_quota group
++get_quota user 0
++get_quota user 100
++get_quota user 34
++get_quota group 0
 +
-+	for (n = dict_first(dict); n; n = dict_next(dict, n)) {
-+		dq = dnode_get(n);
-+		if (!dq)
-+			continue;
-+		if ((dq->dq_flags & DQF_SEEN) == 0) {
-+			fprintf(stderr, "[QUOTA WARNING] "
-+				"Missing quota entry ID %d\n", dq->dq_id);
-+			scan_data.usage_is_inconsistent = 1;
-+		}
-+	}
- 	*usage_inconsistent = scan_data.usage_is_inconsistent;
- 
- out:
-diff --git a/lib/quota/quotaio.h b/lib/quota/quotaio.h
-index 1c062f1..55e6eb0 100644
---- a/lib/quota/quotaio.h
-+++ b/lib/quota/quotaio.h
-@@ -104,6 +104,8 @@ struct dquot {
- 	struct util_dqblk dq_dqb;	/* Parsed data of dquot */
- };
- 
-+#define DQF_SEEN	0x0001
+diff --git a/tests/f_quota/expect.0 b/tests/f_quota/expect.0
+new file mode 100644
+index 0000000..c0ad63d
+--- /dev/null
++++ b/tests/f_quota/expect.0
+@@ -0,0 +1,21 @@
++debugfs: list_quota user
++ user id     blocks    quota    limit      inodes    quota    limit
++       0      13312        0        0           2        0        0
++      34       1024        0        0           1        0        0
++     100       2048       32       50           2       20       30
++debugfs: list_quota group
++group id     blocks    quota    limit      inodes    quota    limit
++       0      16384        0        0           5        0        0
++debugfs: get_quota user 0
++ user id     blocks    quota    limit      inodes    quota    limit
++       0      13312        0        0           2        0        0
++debugfs: get_quota user 100
++ user id     blocks    quota    limit      inodes    quota    limit
++     100       2048       32       50           2       20       30
++debugfs: get_quota user 34
++ user id     blocks    quota    limit      inodes    quota    limit
++      34       1024        0        0           1        0        0
++debugfs: get_quota group 0
++group id     blocks    quota    limit      inodes    quota    limit
++       0      16384        0        0           5        0        0
++debugfs: 
+diff --git a/tests/f_quota/expect.1 b/tests/f_quota/expect.1
+new file mode 100644
+index 0000000..0b3b4cf
+--- /dev/null
++++ b/tests/f_quota/expect.1
+@@ -0,0 +1,13 @@
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++[QUOTA WARNING] Usage inconsistent for ID 0:actual (13312, 2) != expected (14336, 3)
++[QUOTA WARNING] Usage inconsistent for ID 100:actual (2048, 2) != expected (1024, 1)
++Update quota info for quota type 0? yes
 +
- /* Structure of quotafile operations */
- struct quotafile_ops {
- 	/* Check whether quotafile is in our format */
++
++test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
++test_filesys: 14/16 files (14.3% non-contiguous), 36/100 blocks
++Exit status is 1
+diff --git a/tests/f_quota/expect.2 b/tests/f_quota/expect.2
+new file mode 100644
+index 0000000..bfc558d
+--- /dev/null
++++ b/tests/f_quota/expect.2
+@@ -0,0 +1,7 @@
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 14/16 files (14.3% non-contiguous), 36/100 blocks
++Exit status is 0
+diff --git a/tests/f_quota/image.gz b/tests/f_quota/image.gz
+new file mode 100644
+index 0000000000000000000000000000000000000000..9cea6556e941fb0e3fb2bf09a29895ca246cad50
+GIT binary patch
+literal 1046
+zc-o!F{WF^f0KoBdZspF1-D*lrSk+5+=nz^>MD?0oJL0vO3C%`l6v@;wr3l-3tD%~?
+zzGRWMMx?1^&PXhr%sb7Cmj-$B49Sp)h}T6l&vyG0_PzW3@`csfKw9?*32#~HRWX@3
+zk}G7(Gj~kbmczDY#KKO6Eue#tb%hIIj*ow|o40q~c;Lm+%?A5U)Z)IZ(z}mu`9vY_
+z%(UEzKYq`?uX<Tj`=`q8T`0!k(sBS<D~Bu2Qq!};>D&73?b1R3|1Veohm+-H_0EfE
+zk4X=7q^nJ%ZDXq3U5n<c)?m_!hDdc_$DEod!|)5(SZ^n)e>mZCb-u@b<@u8#JO^xX
+zaTWlG==RYiCMkYIf+uTgPMPB#vD(0c{1WpN)zA;BhBeR`nlTiAv!UC}@8l8=nskyC
+z!sLE0k%#opz6m;OkuW#qJn_?NJ?&6Z!O?Lt{CAG#(Kd5zEUO#LF|49+0{010eR)@}
+zaj_E|jq(o-Uqn{IMC$ye<kKp6LN@l5DqU0ecxfZW&kv<6G@N@7?NXQFT3YHk-1>~9
+zQb-<swsh&&rOLyBkk=jLFCxyDTWMjjVA-MdYt&QAu{~%zIpWQK3nD1V-Jv`r=aA7O
+zy(Li6^W0RTs(Ps$-q8&J5kpU10^j~Vfh-U>PeVD@Rz#V(jGNqnW8-fTLB4|S`?IaW
+zS*LQ-`#GVY2eQS$-$mu)J=9%qUD@%?B(Z})An%kKKtUerTxMTt<sX`pu%x1Jq++$$
+z9KBj&HEQpcC<d({5Qsp|HD4p${&@4NMZ9+)t=3_*l!+m%Unvm98kFioG5ned=z7Jz
+zKAy2D?zUYOR}mZb?pkDG@FH+x`|B`M6;@6DjVt^vbb6i07p);D2S`^foo7ri?nRJm
+z1cDGs;*nuj`FF<9U4XA_ChzaE22vPpLEs#)ZDOQS3s&ScP|3rf^k-!Om3=@JkCz7G
+z0H&dI2S{KEjT2mh<r~(KVrY9%s#T}G3;}0Z!U5feBmh8wJs8V=AIy&m66xfzvpa^P
+zjX}o#u4Ox+D=!$&p}lZgb%~4jyZ%JObERQsWIlGR8`TU-8oX$I+&H-OiyZMD{C$@!
+zgp;E#FF2uLr9F;%HKqzD(I`YKK_l@lO%!x;OdB;To`udzf#RB((iUFQlT@Kp7IA^_
+zQzZX>0JEn{L%DUK@U(AeZBwQfb69VGr6Qx{My9ZGzv6aB;=<=X(!ZRv6HM8+2s(bc
+zKR(wV@pAS}%@34MpfGxoajRx+e0oh<lRoBEA4OaEptZYQAq{4?nM_mtp3#?KZBEaZ
+zkBZOuIx;@WOZ07alPFM03harg?7Wu7;R<woJqFuCY3lnBvIm9y{{-%b)+I!f5pw?+
+F<R3nT9HRgL
+
+literal 0
+Hc-jL100001
+
+diff --git a/tests/f_quota/name b/tests/f_quota/name
+new file mode 100644
+index 0000000..27ea8ba
+--- /dev/null
++++ b/tests/f_quota/name
+@@ -0,0 +1 @@
++fix incorrect usage stats in quota
+diff --git a/tests/f_quota/script b/tests/f_quota/script
+new file mode 100644
+index 0000000..bf25e07
+--- /dev/null
++++ b/tests/f_quota/script
+@@ -0,0 +1,4 @@
++AFTER_CMD='$DEBUGFS -f $test_dir/debugfs-cmds $TMPFILE 2>&1 | sed -f $cmd_dir/filter.sed > $test_name.0.log'
++PASS_ZERO=true
++
++. $cmd_dir/run_e2fsck
 -- 
 1.9.0
 
