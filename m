@@ -1,48 +1,30 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 75881] lazyinit failure on new mdadm raid5 & encrypted array
-Date: Sun, 11 May 2014 19:05:54 +0000
-Message-ID: <bug-75881-13602-IjaLGhcsR3@https.bugzilla.kernel.org/>
-References: <bug-75881-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 01/37] misc: create better-packaged static analysis
+ reports
+Date: Sun, 11 May 2014 18:33:28 -0400
+Message-ID: <20140511223328.GC5480@thunk.org>
+References: <20140501231222.31890.82860.stgit@birch.djwong.org>
+ <20140501231229.31890.25646.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:33964 "EHLO mail.kernel.org"
+Received: from imap.thunk.org ([74.207.234.97]:33417 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755234AbaEKTF5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 11 May 2014 15:05:57 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 064B22020F
-	for <linux-ext4@vger.kernel.org>; Sun, 11 May 2014 19:05:56 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 96C02201F2
-	for <linux-ext4@vger.kernel.org>; Sun, 11 May 2014 19:05:54 +0000 (UTC)
-In-Reply-To: <bug-75881-13602@https.bugzilla.kernel.org/>
+	id S1755777AbaEKWdb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 11 May 2014 18:33:31 -0400
+Content-Disposition: inline
+In-Reply-To: <20140501231229.31890.25646.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=75881
+On Thu, May 01, 2014 at 04:12:29PM -0700, Darrick J. Wong wrote:
+> Fix some minor bugs relating to passing CFLAGS to cppcheck, and
+> package the cppcheck output into nicer looking reports.
+> 
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-Theodore Tso <tytso@mit.edu> changed:
+Applied, thanks.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
-
---- Comment #1 from Theodore Tso <tytso@mit.edu> ---
-Is this something you can reliably reproduce?  The log doesn't tell us anything
-useful, and it's not clear whether the problem is with the dm-crypt (i.e.,
-LUKS) layer, or with the ext4 layer.   All the log tells us is that we are
-waiting forever for a block I/O operation to finish in the jbd2 commit thread,
-and this is causing the lazyinit thread to give a soft lockup warning (meaning
-that two minutes has gone by without any forward progress taking place).
-
-I suspect the problem is in an interaction between the dm-crypt and md raid5
-code, which is being tickled by the I/O patterns that you've described.  But
-before we kick this over to the the device mapper developers, the first
-question is whether you can reliably reproduce the problem.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+					- Ted
