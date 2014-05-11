@@ -1,295 +1,90 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 6/9] quota: support storing the quota file handles in the quota context
-Date: Sun, 11 May 2014 00:32:50 -0400
-Message-ID: <1399782773-20029-7-git-send-email-tytso@mit.edu>
+Subject: [PATCH 9/9] quota: remove warning message that we have fixed the nasty quota bugs
+Date: Sun, 11 May 2014 00:32:53 -0400
+Message-ID: <1399782773-20029-10-git-send-email-tytso@mit.edu>
 References: <1399782773-20029-1-git-send-email-tytso@mit.edu>
 Cc: adityakali@google.com, Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:60785 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:60803 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753434AbaEKEdG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 11 May 2014 00:33:06 -0400
+	id S1753109AbaEKEdK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 11 May 2014 00:33:10 -0400
 In-Reply-To: <1399782773-20029-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This makes memory management easier because when the quota context is
-released, all of the quota file handles get released automatically.
+We no longer need to reference https://ext4.wiki.kernel.org/index.php/Quota
+since we've fixed the nasty bugs associated with e2fsck and the quota
+feature.  The wiki page will be updated once we've done a release that
+includes these fixes indicated the verison which these problems have
+been fixed.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Cc: adityakali@google.com
 ---
- lib/quota/mkquota.c | 26 ++++++++++++++++---------
- lib/quota/quotaio.c | 55 +++++++++++++++++++++++++++++++++++++++++++----------
- lib/quota/quotaio.h |  6 ++++--
- 3 files changed, 66 insertions(+), 21 deletions(-)
+ misc/ext4.5.in         | 7 -------
+ misc/mke2fs.c          | 7 -------
+ misc/tune2fs.c         | 4 ----
+ tests/m_quota/expect.1 | 4 ----
+ 4 files changed, 22 deletions(-)
 
-diff --git a/lib/quota/mkquota.c b/lib/quota/mkquota.c
-index bb8482b..58803d0 100644
---- a/lib/quota/mkquota.c
-+++ b/lib/quota/mkquota.c
-@@ -183,7 +183,7 @@ errcode_t quota_write_inode(quota_ctx_t qctx, int qtype)
- 		}
+diff --git a/misc/ext4.5.in b/misc/ext4.5.in
+index 5ec39f5..134c19f 100644
+--- a/misc/ext4.5.in
++++ b/misc/ext4.5.in
+@@ -210,13 +210,6 @@ shared storage environments.
+ @QUOTA_MAN_COMMENT@Causes the quota files (i.e., user.quota and
+ @QUOTA_MAN_COMMENT@group.quota which existed
+ @QUOTA_MAN_COMMENT@in the older quota design) to be hidden inodes.
+-@QUOTA_MAN_COMMENT@.IP
+-@QUOTA_MAN_COMMENT@.B Warning:
+-@QUOTA_MAN_COMMENT@The quota feature is still under development,
+-@QUOTA_MAN_COMMENT@and may not be fully supported with your kernel
+-@QUOTA_MAN_COMMENT@or may have various bugs.  Please
+-@QUOTA_MAN_COMMENT@see https://ext4.wiki.kernel.org/index.php/Quota
+-@QUOTA_MAN_COMMENT@for more details.
+ .TP
+ .B resize_inode
+ .br
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index e1fd40e..9c4b0b2 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -2162,13 +2162,6 @@ profile_error:
+ 				  "See https://ext4.wiki.kernel.org/"
+ 				  "index.php/Bigalloc for more information\n\n"));
  
- 		write_dquots(dict, h);
--		retval = quota_file_close(h);
-+		retval = quota_file_close(qctx, h);
- 		if (retval < 0) {
- 			log_err("Cannot finish IO on new quotafile: %s",
- 				strerror(errno));
-@@ -251,9 +251,10 @@ static void quota_dnode_free(dnode_t *node,
-  */
- errcode_t quota_init_context(quota_ctx_t *qctx, ext2_filsys fs, int qtype)
- {
--	int	i, err = 0;
-+	errcode_t err;
- 	dict_t	*dict;
- 	quota_ctx_t ctx;
-+	int	i;
- 
- 	err = ext2fs_get_mem(sizeof(struct quota_ctx), &ctx);
- 	if (err) {
-@@ -263,6 +264,7 @@ errcode_t quota_init_context(quota_ctx_t *qctx, ext2_filsys fs, int qtype)
- 
- 	memset(ctx, 0, sizeof(struct quota_ctx));
- 	for (i = 0; i < MAXQUOTAS; i++) {
-+		ctx->quota_file[i] = NULL;
- 		if ((qtype != -1) && (i != qtype))
- 			continue;
- 		err = ext2fs_get_mem(sizeof(dict_t), &dict);
-@@ -283,6 +285,7 @@ errcode_t quota_init_context(quota_ctx_t *qctx, ext2_filsys fs, int qtype)
- 
- void quota_release_context(quota_ctx_t *qctx)
- {
-+	errcode_t err;
- 	dict_t	*dict;
- 	int	i;
- 	quota_ctx_t ctx;
-@@ -298,6 +301,14 @@ void quota_release_context(quota_ctx_t *qctx)
- 			dict_free_nodes(dict);
- 			free(dict);
- 		}
-+		if (ctx->quota_file[i]) {
-+			err = quota_file_close(ctx, ctx->quota_file[i]);
-+			if (err) {
-+				log_err("Cannot close quotafile: %s",
-+					strerror(errno));
-+				ext2fs_free_mem(&ctx->quota_file[i]);
-+			}
-+		}
- 	}
- 	*qctx = NULL;
- 	free(ctx);
-@@ -541,7 +552,7 @@ errcode_t quota_update_limits(quota_ctx_t qctx, ext2_ino_t qf_ino, int type)
- 		return err;
- 	}
- 
--	err = quota_file_open(qh, qctx->fs, qf_ino, type, -1, 0);
-+	err = quota_file_open(qctx, qh, qf_ino, type, -1, 0);
- 	if (err) {
- 		log_err("Open quota file failed");
- 		goto out;
-@@ -549,7 +560,7 @@ errcode_t quota_update_limits(quota_ctx_t qctx, ext2_ino_t qf_ino, int type)
- 
- 	quota_read_all_dquots(qh, qctx, 1);
- 
--	err = quota_file_close(qh);
-+	err = quota_file_close(qctx, qh);
- 	if (err) {
- 		log_err("Cannot finish IO on new quotafile: %s",
- 			strerror(errno));
-@@ -575,15 +586,12 @@ errcode_t quota_compare_and_update(quota_ctx_t qctx, int qtype,
- 	struct dquot *dq;
- 	dnode_t *n;
- 	dict_t *dict = qctx->quota_dict[qtype];
--	ext2_ino_t qf_ino;
- 	errcode_t err = 0;
- 
- 	if (!dict)
- 		goto out;
- 
--	qf_ino = qtype == USRQUOTA ? fs->super->s_usr_quota_inum :
--				     fs->super->s_grp_quota_inum;
--	err = quota_file_open(&qh, fs, qf_ino, qtype, -1, 0);
-+	err = quota_file_open(qctx, &qh, 0, qtype, -1, 0);
- 	if (err) {
- 		log_err("Open quota file failed");
- 		goto out;
-@@ -612,7 +620,7 @@ errcode_t quota_compare_and_update(quota_ctx_t qctx, int qtype,
- 	*usage_inconsistent = scan_data.usage_is_inconsistent;
- 
- out_close_qh:
--	err = quota_file_close(&qh);
-+	err = quota_file_close(qctx, &qh);
- 	if (err) {
- 		log_err("Cannot close quotafile: %s", error_message(errno));
- 		if (qh.qh_qf.e2_file)
-diff --git a/lib/quota/quotaio.c b/lib/quota/quotaio.c
-index a95a1f9..65fccaa 100644
---- a/lib/quota/quotaio.c
-+++ b/lib/quota/quotaio.c
-@@ -197,11 +197,16 @@ static unsigned int quota_read_nomount(struct quota_file *qf,
- /*
-  * Detect quota format and initialize quota IO
-  */
--errcode_t quota_file_open(struct quota_handle *h, ext2_filsys fs,
-+errcode_t quota_file_open(quota_ctx_t qctx, struct quota_handle *h,
- 			  ext2_ino_t qf_ino, int type, int fmt, int flags)
- {
-+	ext2_filsys fs = qctx->fs;
- 	ext2_file_t e2_file;
- 	errcode_t err;
-+	int allocated_handle = 0;
-+
-+	if (type >= MAXQUOTAS)
-+		return EINVAL;
- 
- 	if (fmt == -1)
- 		fmt = QFMT_VFS_V1;
-@@ -210,18 +215,42 @@ errcode_t quota_file_open(struct quota_handle *h, ext2_filsys fs,
- 	if (err)
- 		return err;
- 
-+	if (qf_ino == 0) {
-+		if (type == USRQUOTA)
-+			qf_ino = fs->super->s_usr_quota_inum;
-+		else
-+			qf_ino = fs->super->s_grp_quota_inum;
-+	}
-+
- 	log_debug("Opening quota ino=%lu, type=%d", qf_ino, type);
- 	err = ext2fs_file_open(fs, qf_ino, flags, &e2_file);
- 	if (err) {
- 		log_err("ext2fs_file_open failed: %s", error_message(err));
- 		return err;
- 	}
--	h->qh_qf.e2_file = e2_file;
- 
-+	if (!h) {
-+		if (qctx->quota_file[type]) {
-+			h = qctx->quota_file[type];
-+			if (((flags & EXT2_FILE_WRITE) == 0) ||
-+			    (h->qh_file_flags & EXT2_FILE_WRITE))
-+				return 0;
-+			(void) quota_file_close(qctx, h);
-+		}
-+		err = ext2fs_get_mem(sizeof(struct quota_handle), &h);
-+		if (err) {
-+			log_err("Unable to allocate quota handle");
-+			return err;
-+		}
-+		allocated_handle = 1;
-+	}
-+
-+	h->qh_qf.e2_file = e2_file;
- 	h->qh_qf.fs = fs;
- 	h->qh_qf.ino = qf_ino;
- 	h->e2fs_write = quota_write_nomount;
- 	h->e2fs_read = quota_read_nomount;
-+	h->qh_file_flags = flags;
- 	h->qh_io_flags = 0;
- 	h->qh_type = type;
- 	h->qh_fmt = fmt;
-@@ -231,17 +260,22 @@ errcode_t quota_file_open(struct quota_handle *h, ext2_filsys fs,
- 	if (h->qh_ops->check_file &&
- 	    (h->qh_ops->check_file(h, type, fmt) == 0)) {
- 		log_err("qh_ops->check_file failed");
--		ext2fs_file_close(e2_file);
--		return -1;
-+		goto errout;
- 	}
- 
- 	if (h->qh_ops->init_io && (h->qh_ops->init_io(h) < 0)) {
- 		log_err("qh_ops->init_io failed");
--		ext2fs_file_close(e2_file);
--		return -1;
-+		goto errout;
- 	}
-+	if (allocated_handle)
-+		qctx->quota_file[type] = h;
- 
- 	return 0;
-+errout:
-+	ext2fs_file_close(e2_file);
-+	if (allocated_handle)
-+		ext2fs_free_mem(&h);
-+	return -1;
- }
- 
- static errcode_t quota_inode_init_new(ext2_filsys fs, ext2_ino_t ino)
-@@ -307,12 +341,12 @@ errcode_t quota_file_create(struct quota_handle *h, ext2_filsys fs, int type, in
- 		goto out_err;
- 	}
- 	h->qh_qf.ino = qf_inum;
-+	h->qh_file_flags = EXT2_FILE_WRITE | EXT2_FILE_CREATE;
- 	h->e2fs_write = quota_write_nomount;
- 	h->e2fs_read = quota_read_nomount;
- 
- 	log_debug("Creating quota ino=%lu, type=%d", qf_inum, type);
--	err = ext2fs_file_open(fs, qf_inum,
--			EXT2_FILE_WRITE | EXT2_FILE_CREATE, &e2_file);
-+	err = ext2fs_file_open(fs, qf_inum, h->qh_file_flags, &e2_file);
- 	if (err) {
- 		log_err("ext2fs_file_open failed: %d", err);
- 		goto out_err;
-@@ -345,7 +379,7 @@ out_err:
- /*
-  * Close quotafile and release handle
-  */
--errcode_t quota_file_close(struct quota_handle *h)
-+errcode_t quota_file_close(quota_ctx_t qctx, struct quota_handle *h)
- {
- 	if (h->qh_io_flags & IOFL_INFODIRTY) {
- 		if (h->qh_ops->write_info && h->qh_ops->write_info(h) < 0)
-@@ -366,7 +400,8 @@ errcode_t quota_file_close(struct quota_handle *h)
- 			ext2fs_file_set_size2(h->qh_qf.e2_file, new_size);
- 		ext2fs_file_close(h->qh_qf.e2_file);
- 	}
+-	if (!quiet &&
+-	    (fs_param.s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_QUOTA))
+-		fprintf(stderr, "%s", _("\nWarning: the quota feature is "
+-				  "still under development\n"
+-				  "See https://ext4.wiki.kernel.org/"
+-				  "index.php/Quota for more information\n\n"));
 -
-+	if (qctx->quota_file[h->qh_type] == h)
-+		ext2fs_free_mem(&qctx->quota_file[h->qh_type]);
- 	return 0;
- }
+ 	/* Since sparse_super is the default, we would only have a problem
+ 	 * here if it was explicitly disabled.
+ 	 */
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 37f0b56..9ba32a1 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -776,10 +776,6 @@ static void handle_quota_options(ext2_filsys fs)
+ 	quota_release_context(&qctx);
  
-diff --git a/lib/quota/quotaio.h b/lib/quota/quotaio.h
-index d3820a4..7ca7830 100644
---- a/lib/quota/quotaio.h
-+++ b/lib/quota/quotaio.h
-@@ -53,6 +53,7 @@ typedef struct quota_ctx *quota_ctx_t;
- struct quota_ctx {
- 	ext2_filsys	fs;
- 	dict_t		*quota_dict[MAXQUOTAS];
-+	struct quota_handle *quota_file[MAXQUOTAS];
- };
- 
- /*
-@@ -105,6 +106,7 @@ struct quota_file {
- struct quota_handle {
- 	int qh_type;		/* Type of quotafile */
- 	int qh_fmt;		/* Quotafile format */
-+	int qh_file_flags;
- 	int qh_io_flags;	/* IO flags for file */
- 	struct quota_file qh_qf;
- 	unsigned int (*e2fs_read)(struct quota_file *qf, ext2_loff_t offset,
-@@ -171,7 +173,7 @@ extern struct quotafile_ops quotafile_ops_meta;
- 
- /* Open existing quotafile of given type (and verify its format) on given
-  * filesystem. */
--errcode_t quota_file_open(struct quota_handle *h, ext2_filsys fs,
-+errcode_t quota_file_open(quota_ctx_t qctx, struct quota_handle *h,
- 			  ext2_ino_t qf_ino, int type, int fmt, int flags);
- 
- 
-@@ -180,7 +182,7 @@ errcode_t quota_file_create(struct quota_handle *h, ext2_filsys fs,
- 			    int type, int fmt);
- 
- /* Close quotafile */
--errcode_t quota_file_close(struct quota_handle *h);
-+errcode_t quota_file_close(quota_ctx_t qctx, struct quota_handle *h);
- 
- /* Get empty quota structure */
- struct dquot *get_empty_dquot(void);
--- 
-1.9.0
-
+ 	if ((usrquota == QOPT_ENABLE) || (grpquota == QOPT_ENABLE)) {
+-		fprintf(stderr, "%s", _("\nWarning: the quota feature is still "
+-				  "under development\n"
+-				  "See https://ext4.wiki.kernel.org/"
+-				  "index.php/Quota for more information\n\n"));
+ 		fs->super->s_feature_ro_compat |= EXT4_FEATURE_RO_COMPAT_QUOTA;
+ 		ext2fs_mark_super_dirty(fs);
+ 	} else if (!fs->super->s_usr_quota_inum &&
+diff --git a/tests/m_quota/expect.1 b/tests/m_quota/expect.1
+index a0f6501..787871c 100644
+--- a/tests/m_quota/expect.1
++++ b/tests/m_quota/expect.1
+@@ -1,7 +1,3 @@
+-
+-Warning: the quota feature is still under development
+-See https://ext4.wiki.kernel.org/index.php/Quota for more information
