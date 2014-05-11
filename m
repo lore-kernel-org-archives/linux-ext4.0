@@ -1,26 +1,48 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 9/9] quota: remove warning message that we have fixed the
- nasty quota bugs
-Date: Sun, 11 May 2014 00:42:53 -0400
-Message-ID: <20140511044253.GB7181@thunk.org>
-References: <1399782773-20029-1-git-send-email-tytso@mit.edu>
- <1399782773-20029-10-git-send-email-tytso@mit.edu>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 75881] lazyinit failure on new mdadm raid5 & encrypted array
+Date: Sun, 11 May 2014 19:05:54 +0000
+Message-ID: <bug-75881-13602-IjaLGhcsR3@https.bugzilla.kernel.org/>
+References: <bug-75881-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: adityakali@google.com
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:60838 "EHLO imap.thunk.org"
+Received: from mail.kernel.org ([198.145.19.201]:33964 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751302AbaEKEmy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 11 May 2014 00:42:54 -0400
-Content-Disposition: inline
-In-Reply-To: <1399782773-20029-10-git-send-email-tytso@mit.edu>
+	id S1755234AbaEKTF5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 11 May 2014 15:05:57 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 064B22020F
+	for <linux-ext4@vger.kernel.org>; Sun, 11 May 2014 19:05:56 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 96C02201F2
+	for <linux-ext4@vger.kernel.org>; Sun, 11 May 2014 19:05:54 +0000 (UTC)
+In-Reply-To: <bug-75881-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I've fixed the summary line of this commit to read:
+https://bugzilla.kernel.org/show_bug.cgi?id=75881
 
-quota: remove mke2fs's and tune2fs's warning messages regarding quota
+Theodore Tso <tytso@mit.edu> changed:
 
-       	      	       	   	     	     	      - Ted
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
+
+--- Comment #1 from Theodore Tso <tytso@mit.edu> ---
+Is this something you can reliably reproduce?  The log doesn't tell us anything
+useful, and it's not clear whether the problem is with the dm-crypt (i.e.,
+LUKS) layer, or with the ext4 layer.   All the log tells us is that we are
+waiting forever for a block I/O operation to finish in the jbd2 commit thread,
+and this is causing the lazyinit thread to give a soft lockup warning (meaning
+that two minutes has gone by without any forward progress taking place).
+
+I suspect the problem is in an interaction between the dm-crypt and md raid5
+code, which is being tickled by the I/O patterns that you've described.  But
+before we kick this over to the the device mapper developers, the first
+question is whether you can reliably reproduce the problem.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
