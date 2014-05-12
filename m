@@ -1,54 +1,86 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH -v2] check: add support for an external file containing
- tests to exclude
-Date: Mon, 12 May 2014 08:42:32 -0400
-Message-ID: <20140512124232.GB31376@thunk.org>
-References: <20140416001530.GU15995@dastard>
- <1397624302-9577-1-git-send-email-tytso@mit.edu>
- <20140416064018.GJ15995@dastard>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH] ext2: super: remove unnecessary goto statement
+Date: Mon, 12 May 2014 14:56:32 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1405121449001.8008@localhost.localdomain>
+References: <1399478883-2897-1-git-send-email-waydi1@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: xfs@oss.sgi.com, Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:34506 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752781AbaELMmj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 May 2014 08:42:39 -0400
-Content-Disposition: inline
-In-Reply-To: <20140416064018.GJ15995@dastard>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: jack@suse.cz, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Seunghun Lee <waydi1@gmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1399478883-2897-1-git-send-email-waydi1@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Apr 16, 2014 at 04:40:18PM +1000, Dave Chinner wrote:
-> On Wed, Apr 16, 2014 at 12:58:22AM -0400, Theodore Ts'o wrote:
-> > Currently the -X option is intended to specify a set of expunging
-> > files which are stored in each test/* subdirectory.  As described in
-> > the commit description for 0b1e8abd4, in order to exclude the test
-> > generic/280, the -X option is used as follows:
-> > 
-> >     $ cat tests/generic/3.0-stable-avoid
-> >     280
-> >     $ sudo ./check -X 3.0-stable-avoid generic/280
-> > 
-> > However, it is sometimes useful to store the set of expunged tests in
-> > a single file, outside of tests/* subdirectories.  This commit enables
-> > the following:
-> > 
-> >     $ cat /root/conf/data_journal.exclude
-> >     generic/068
-> >     ext4/301
-> >     $ sudo ./check -E /root/conf/data_journal.exclude -g auto
-> > 
-> > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+On Thu, 8 May 2014, Seunghun Lee wrote:
+
+> Date: Thu,  8 May 2014 01:08:03 +0900
+> From: Seunghun Lee <waydi1@gmail.com>
+> To: jack@suse.cz
+> Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+>     Seunghun Lee <waydi1@gmail.com>
+> Subject: [PATCH] ext2: super: remove unnecessary goto statement
 > 
-> Looks good.
+> This patch removes unnecessary goto failed,
+> and moves kfree to failed.
 > 
-> Reviewed-by: Dave Chinner <dchinner@redhat.com>
+> Signed-off-by: Seunghun Lee <waydi1@gmail.com>
+> ---
+>  fs/ext2/super.c |   10 ++++------
+>  1 file changed, 4 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+> index 3750031..7d20a50 100644
+> --- a/fs/ext2/super.c
+> +++ b/fs/ext2/super.c
+> @@ -777,17 +777,15 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+>  	__le32 features;
+>  	int err;
+>  
+> -	err = -ENOMEM;
 
-This patch has apparently not hit the xfstests repository.  Would you
-like me to resend it?
+The problem here is actually that we return -EINVAL while we should
+actually return -ENOMEM, which is fixed only partially by your
+patch.
 
-Thanks,
+Also there are number other problems in error handling here mainly
+because we're using err variable but not setting ret variable which
+is the one that we return eventually.
 
-						- Ted
+Also ret is defined as long (not sure if that's needed) but the
+function is supposed to return int.
+
+So if you're changing the code around it would be good to actually
+fix some problems as well :)
+
+Thanks!
+-Lukas
+
+>  	sbi = kzalloc(sizeof(*sbi), GFP_KERNEL);
+>  	if (!sbi)
+> -		goto failed;
+> +		return -ENOMEM;
+>  
+>  	sbi->s_blockgroup_lock =
+>  		kzalloc(sizeof(struct blockgroup_lock), GFP_KERNEL);
+> -	if (!sbi->s_blockgroup_lock) {
+> -		kfree(sbi);
+> +	if (!sbi->s_blockgroup_lock)
+>  		goto failed;
+> -	}
+> +
+>  	sb->s_fs_info = sbi;
+>  	sbi->s_sb_block = sb_block;
+>  
+> @@ -1138,8 +1136,8 @@ failed_mount:
+>  failed_sbi:
+>  	sb->s_fs_info = NULL;
+>  	kfree(sbi->s_blockgroup_lock);
+> -	kfree(sbi);
+>  failed:
+> +	kfree(sbi);
+>  	return ret;
+>  }
+>  
+> 
