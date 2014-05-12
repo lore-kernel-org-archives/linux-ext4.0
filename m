@@ -1,68 +1,54 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: Do not destroy ext4_groupinfo_caches if ext4_mb_init()
- fails
-Date: Mon, 12 May 2014 17:08:41 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1405121707120.8008@localhost.localdomain>
-References: <1399883039-2978-1-git-send-email-tsyvarev@ispras.ru>
+From: United Nations <maj@junin.gob.ar>
+Subject: =?utf-8?Q?Felicit=C4=83ri?=
+Date: Mon, 12 May 2014 12:22:58 -0300 (ART)
+Message-ID: <132381478.422760.1399908178095.JavaMail.zimbra__45824.1586493843$1399908979$gmane$org@junin.gob.ar>
+Reply-To: United Nations <unitednationsgrants@admin.in.th>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Alexey Khoroshilov <khoroshilov@ispras.ru>
-To: Andrey Tsyvarev <tsyvarev@ispras.ru>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1399883039-2978-1-git-send-email-tsyvarev@ispras.ru>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: unlisted-recipients:; (no To-header on input)
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from junin.gov.ar ([201.234.19.13]:52720 "EHLO mail.junin.gob.ar"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751692AbaELPfe convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 May 2014 11:35:34 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 12 May 2014, Andrey Tsyvarev wrote:
 
-> Date: Mon, 12 May 2014 12:23:59 +0400
-> From: Andrey Tsyvarev <tsyvarev@ispras.ru>
-> To: Theodore Ts'o <tytso@mit.edu>
-> Cc: Andrey Tsyvarev <tsyvarev@ispras.ru>,
->     Andreas Dilger <adilger.kernel@dilger.ca>, linux-ext4@vger.kernel.org,
->     linux-kernel@vger.kernel.org, Alexey Khoroshilov <khoroshilov@ispras.ru>
-> Subject: [PATCH] ext4: Do not destroy ext4_groupinfo_caches if ext4_mb_init()
->     fails
-> 
-> Caches from 'ext4_groupinfo_caches' may be in use by other mounts, which have already existed.
-> So, it is incorrect to destroy them when newly requested mount fails.
-> 
-> Found by Linux File System Verification project (linuxtesting.org).
 
-Makes sense, thanks! Can you please share the test case which
-triggered this ? It might be worth including in xfstests.
+=46elicit=C4=83ri=20
 
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+Sunte=C8=9Bi unul dintre beneficiarii de pe ordinea de zi a Na=C8=9Biun=
+ilor Unite 2014/2015 Grant Award. Informa=C8=9Biile dvs. au fost verifi=
+cate =C8=99i suma de =C8=99ase milioane de euro (6.000.000,00) a fost a=
+cordat pentru a v=C4=83 =C3=AEn programul de granturi al Na=C8=9Biunilo=
+r Unite ca Date tale au fost listate pe lista c=C3=A2=C8=99tig=C4=83toa=
+re.=20
 
-> 
-> Signed-off-by: Andrey Tsyvarev <tsyvarev@ispras.ru>
-> ---
->  fs/ext4/mballoc.c | 4 +---
->  1 file changed, 1 insertion(+), 3 deletions(-)
-> 
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index 04a5c75..becea1d 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -2607,7 +2607,7 @@ int ext4_mb_init(struct super_block *sb)
->  	sbi->s_locality_groups = alloc_percpu(struct ext4_locality_group);
->  	if (sbi->s_locality_groups == NULL) {
->  		ret = -ENOMEM;
-> -		goto out_free_groupinfo_slab;
-> +		goto out;
->  	}
->  	for_each_possible_cpu(i) {
->  		struct ext4_locality_group *lg;
-> @@ -2632,8 +2632,6 @@ int ext4_mb_init(struct super_block *sb)
->  out_free_locality_groups:
->  	free_percpu(sbi->s_locality_groups);
->  	sbi->s_locality_groups = NULL;
-> -out_free_groupinfo_slab:
-> -	ext4_groupinfo_destroy_slabs();
->  out:
->  	kfree(sbi->s_mb_offsets);
->  	sbi->s_mb_offsets = NULL;
-> 
+Aceast=C4=83 sum=C4=83 urmeaz=C4=83 a fi utilizate de dumneavoastr=C4=83=
+ pentru orice scop, de care vor beneficia foloseste comunitatea ta.=20
+
+Informa=C8=9Biile de care avem nevoie pentru verificare sunt:=20
+
+Numele complet:=20
+adresa:=20
+Urm=C4=83tor de Kin:=20
+
+Va oferi, de asemenea, un cont bancar care premiile de finan=C8=9Bare a=
+r trebui s=C4=83 fie depus =C3=AEn. Ve=C8=9Bi avea nevoie, de asemenea,=
+ s=C4=83 pl=C4=83teasc=C4=83 doar o tax=C4=83 administrativ=C4=83 de 72=
+1 de euro (=C8=99apte sute dou=C4=83zeci =C8=99i unu de euro).=20
+
+Ajunge =C3=AEnapoi la noi c=C3=A2t mai cur=C3=A2nd posibil, astfel =C3=AE=
+nc=C3=A2t s=C4=83 pute=C8=9Bi trimite certificatul c=C3=A2=C8=99tig=C4=83=
+toare.=20
+
+Biroul Organiza=C8=9Biei Na=C8=9Biunilor Unite.=20
+2014/2015
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
