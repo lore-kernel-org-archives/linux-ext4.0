@@ -1,44 +1,27 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 4/5] ext4: don't crash when validating block bitmap
-Date: Mon, 12 May 2014 10:24:57 -0400
-Message-ID: <20140512142457.GG31376@thunk.org>
-References: <20140501231720.892.58712.stgit@birch.djwong.org>
- <20140501231747.892.95073.stgit@birch.djwong.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] jbd2: prefix printks with JBD2: not JBD:
+Date: Mon, 12 May 2014 09:28:52 -0500
+Message-ID: <5370DAA4.7040401@redhat.com>
+References: <536A652C.7080509@redhat.com> <20140512001726.GF5480@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:34678 "EHLO imap.thunk.org"
+Received: from mx1.redhat.com ([209.132.183.28]:17085 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751894AbaELOY7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 May 2014 10:24:59 -0400
-Content-Disposition: inline
-In-Reply-To: <20140501231747.892.95073.stgit@birch.djwong.org>
+	id S1758288AbaELO2x (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 12 May 2014 10:28:53 -0400
+In-Reply-To: <20140512001726.GF5480@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, May 01, 2014 at 04:17:47PM -0700, Darrick J. Wong wrote:
-> If EXT4FS_DEBUG is defined, ext4_validate_block_bitmap is called via
-> ext4_count_free_clusters before sb->s_group_info is set up.  When this
-> happens, the kernel crashes because group info hasn't been loaded.
-> Forego marking the group corrupt for now; not setting BH_Verified
-> means we'll revisit the bitmap if something went wrong.
-> 
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+On 5/11/14, 7:17 PM, Theodore Ts'o wrote:
+> What kernel version is this against?  This has been fixed since 3.13:
 
-This shouldn't be necessary that we have this in the ext4 tree, right?
+Oh, I'm sorry.  It was against "upstream" but on a box where I had
+inexplicably not done a git pull for a long while, an just assumed
+I was up to date.  :(  Sorry for the noise.
 
-commit 007649375f6af242d5b1df2c15996949714303ba
-Author: Azat Khuzhin <a3at.mail@gmail.com>
-Date:   Mon Apr 7 10:54:20 2014 -0400
-
-    ext4: initialize multi-block allocator before checking block descriptors
-    
-    With EXT4FS_DEBUG ext4_count_free_clusters() will call
-    ext4_read_block_bitmap() without s_group_info initialized, so we need to
-    initialize multi-block allocator before.
-    
-    ...
-
-						- Ted
+-Eric
