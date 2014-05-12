@@ -1,34 +1,68 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: make local functions static
-Date: Mon, 12 May 2014 10:51:06 -0400
-Message-ID: <20140512145106.GH31376@thunk.org>
-References: <20131230212501.409767a0@nehalam.linuxnetplumber.net>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: Do not destroy ext4_groupinfo_caches if ext4_mb_init()
+ fails
+Date: Mon, 12 May 2014 17:08:41 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1405121707120.8008@localhost.localdomain>
+References: <1399883039-2978-1-git-send-email-tsyvarev@ispras.ru>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org
-To: Stephen Hemminger <stephen@networkplumber.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:34725 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756162AbaELOvJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 May 2014 10:51:09 -0400
-Content-Disposition: inline
-In-Reply-To: <20131230212501.409767a0@nehalam.linuxnetplumber.net>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Alexey Khoroshilov <khoroshilov@ispras.ru>
+To: Andrey Tsyvarev <tsyvarev@ispras.ru>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1399883039-2978-1-git-send-email-tsyvarev@ispras.ru>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Dec 30, 2013 at 09:25:01PM -0800, Stephen Hemminger wrote:
-> I have been running make namespacecheck to look for unneeded globals, and
-> found these in ext4.
+On Mon, 12 May 2014, Andrey Tsyvarev wrote:
+
+> Date: Mon, 12 May 2014 12:23:59 +0400
+> From: Andrey Tsyvarev <tsyvarev@ispras.ru>
+> To: Theodore Ts'o <tytso@mit.edu>
+> Cc: Andrey Tsyvarev <tsyvarev@ispras.ru>,
+>     Andreas Dilger <adilger.kernel@dilger.ca>, linux-ext4@vger.kernel.org,
+>     linux-kernel@vger.kernel.org, Alexey Khoroshilov <khoroshilov@ispras.ru>
+> Subject: [PATCH] ext4: Do not destroy ext4_groupinfo_caches if ext4_mb_init()
+>     fails
 > 
-> In one case, the function order was swapped to avoid having to put
-> in a forward declaration.
+> Caches from 'ext4_groupinfo_caches' may be in use by other mounts, which have already existed.
+> So, it is incorrect to destroy them when newly requested mount fails.
 > 
-> Signed-off-by: Stephen Hemminger <stephen@networkplumber.org>
+> Found by Linux File System Verification project (linuxtesting.org).
 
-Thanks, applied (with a few minor adjustments since the code changed a
-little since this patch was posted).  Thanks for sending the patch,
-and my apologies for the delay in getting to it!
+Makes sense, thanks! Can you please share the test case which
+triggered this ? It might be worth including in xfstests.
 
-       		     	       	  	  - Ted
+Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+
+> 
+> Signed-off-by: Andrey Tsyvarev <tsyvarev@ispras.ru>
+> ---
+>  fs/ext4/mballoc.c | 4 +---
+>  1 file changed, 1 insertion(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index 04a5c75..becea1d 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -2607,7 +2607,7 @@ int ext4_mb_init(struct super_block *sb)
+>  	sbi->s_locality_groups = alloc_percpu(struct ext4_locality_group);
+>  	if (sbi->s_locality_groups == NULL) {
+>  		ret = -ENOMEM;
+> -		goto out_free_groupinfo_slab;
+> +		goto out;
+>  	}
+>  	for_each_possible_cpu(i) {
+>  		struct ext4_locality_group *lg;
+> @@ -2632,8 +2632,6 @@ int ext4_mb_init(struct super_block *sb)
+>  out_free_locality_groups:
+>  	free_percpu(sbi->s_locality_groups);
+>  	sbi->s_locality_groups = NULL;
+> -out_free_groupinfo_slab:
+> -	ext4_groupinfo_destroy_slabs();
+>  out:
+>  	kfree(sbi->s_mb_offsets);
+>  	sbi->s_mb_offsets = NULL;
+> 
