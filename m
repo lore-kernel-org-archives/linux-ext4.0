@@ -1,119 +1,200 @@
 From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: Do not destroy ext4_groupinfo_caches if ext4_mb_init()
- fails
-Date: Tue, 13 May 2014 12:25:23 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1405131223410.2070@localhost.localdomain>
-References: <1399883039-2978-1-git-send-email-tsyvarev@ispras.ru> <alpine.LFD.2.00.1405121707120.8008@localhost.localdomain> <5371F135.7040409@ispras.ru>
+Subject: Re: [PATCH 1/2] libext2fs: support BLKZEROOUT/FALLOC_FL_ZERO_RANGE
+ in ext2fs_zero_blocks
+Date: Tue, 13 May 2014 13:11:26 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1405131310470.2070@localhost.localdomain>
+References: <20140501231222.31890.82860.stgit@birch.djwong.org> <20140501231407.31890.3876.stgit@birch.djwong.org> <alpine.LFD.2.00.1405061736390.2255@localhost.localdomain> <20140506195938.GD25745@birch.djwong.org> <alpine.LFD.2.00.1405071045090.2128@localhost.localdomain>
+ <20140507213704.GA8923@birch.djwong.org> <20140508001337.GC8923@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1568388389-1399976726=:2070"
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Alexey Khoroshilov <khoroshilov@ispras.ru>
-To: Andrey Tsyvarev <tsyvarev@ispras.ru>
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1329019339-1399979489=:2070"
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58240 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:10697 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932564AbaEMKZl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 13 May 2014 06:25:41 -0400
-In-Reply-To: <5371F135.7040409@ispras.ru>
+	id S1758855AbaEMLLc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 13 May 2014 07:11:32 -0400
+In-Reply-To: <20140508001337.GC8923@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
   This message is in MIME format.  The first part should be readable text,
   while the remaining parts are likely unreadable without MIME-aware tools.
 
---8323328-1568388389-1399976726=:2070
-Content-Type: TEXT/PLAIN; charset=UTF-8
+--8323328-1329019339-1399979489=:2070
+Content-Type: TEXT/PLAIN; charset=ISO-8859-15
 Content-Transfer-Encoding: 8BIT
 
-On Tue, 13 May 2014, Andrey Tsyvarev wrote:
+On Wed, 7 May 2014, Darrick J. Wong wrote:
 
-> Date: Tue, 13 May 2014 14:17:25 +0400
-> From: Andrey Tsyvarev <tsyvarev@ispras.ru>
-> To: Lukáš Czerner <lczerner@redhat.com>
-> Cc: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
->     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
->     Alexey Khoroshilov <khoroshilov@ispras.ru>
-> Subject: Re: [PATCH] ext4: Do not destroy ext4_groupinfo_caches if
->     ext4_mb_init() fails
+> Date: Wed, 7 May 2014 17:13:37 -0700
+> From: Darrick J. Wong <darrick.wong@oracle.com>
+> To: Luk� Czerner <lczerner@redhat.com>
+> Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+> Subject: [PATCH 1/2] libext2fs: support BLKZEROOUT/FALLOC_FL_ZERO_RANGE in
+>     ext2fs_zero_blocks
 > 
+> Here's the first part, which teaches the IO manager how to connect with the
+> zero out ioctls.
 > 
-> 12.05.2014 19:08, Lukáš Czerner пишет:
-> > On Mon, 12 May 2014, Andrey Tsyvarev wrote:
-> > 
-> > > Date: Mon, 12 May 2014 12:23:59 +0400
-> > > From: Andrey Tsyvarev<tsyvarev@ispras.ru>
-> > > To: Theodore Ts'o<tytso@mit.edu>
-> > > Cc: Andrey Tsyvarev<tsyvarev@ispras.ru>,
-> > >      Andreas Dilger<adilger.kernel@dilger.ca>,linux-ext4@vger.kernel.org,
-> > >      linux-kernel@vger.kernel.org, Alexey
-> > > Khoroshilov<khoroshilov@ispras.ru>
-> > > Subject: [PATCH] ext4: Do not destroy ext4_groupinfo_caches if
-> > > ext4_mb_init()
-> > >      fails
-> > > 
-> > > Caches from 'ext4_groupinfo_caches' may be in use by other mounts, which
-> > > have already existed.
-> > > So, it is incorrect to destroy them when newly requested mount fails.
-> > > 
-> > > Found by Linux File System Verification project (linuxtesting.org).
-> > Makes sense, thanks! Can you please share the test case which
-> > triggered this ? It might be worth including in xfstests.
+> --D
+> ---
+> Plumb a new call into the IO manager to support translating
+> ext2fs_zero_blocks calls into the equivalent kernel-level BLKZEROOUT
+> ioctl or FALLOC_FL_ZERO_RANGE fallocate flag primitives.
 > 
-> Actually it was triggered by xfstests themselves but run with fault
-> simulation.
-> The method of fault simulation is under development/evaluation now, we expect
-> to publish a paper describing it in the near future.
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> ---
+>  lib/ext2fs/ext2_io.h    |    7 +++++-
+>  lib/ext2fs/io_manager.c |   11 ++++++++++
+>  lib/ext2fs/mkjournal.c  |    6 +++++
+>  lib/ext2fs/unix_io.c    |   54 +++++++++++++++++++++++++++++++++++++++++++++++
+>  4 files changed, 77 insertions(+), 1 deletion(-)
 > 
-> BUG_ON() in get_groupinfo_cache() was firstly triggered by test generic/003,
-> but actually it could be any other test, which uses a scratch device: xftests
-> itself requires test device(TEST_DEV) mounted, so a fault simulated while
-> mount scratch device causes the problem described.
+> diff --git a/lib/ext2fs/ext2_io.h b/lib/ext2fs/ext2_io.h
+> index 1894fb8..98d56aa 100644
+> --- a/lib/ext2fs/ext2_io.h
+> +++ b/lib/ext2fs/ext2_io.h
+> @@ -90,7 +90,9 @@ struct struct_io_manager {
+>  					int count, const void *data);
+>  	errcode_t (*discard)(io_channel channel, unsigned long long block,
+>  			     unsigned long long count);
+> -	long	reserved[16];
+> +	errcode_t (*zeroout)(io_channel channel, unsigned long long block,
+> +			     unsigned long long count);
+> +	long	reserved[15];
+>  };
+>  
+>  #define IO_FLAG_RW		0x0001
+> @@ -122,6 +124,9 @@ extern errcode_t io_channel_write_blk64(io_channel channel,
+>  extern errcode_t io_channel_discard(io_channel channel,
+>  				    unsigned long long block,
+>  				    unsigned long long count);
+> +extern errcode_t io_channel_zeroout(io_channel channel,
+> +				    unsigned long long block,
+> +				    unsigned long long count);
+>  extern errcode_t io_channel_alloc_buf(io_channel channel,
+>  				      int count, void *ptr);
+>  
+> diff --git a/lib/ext2fs/io_manager.c b/lib/ext2fs/io_manager.c
+> index 34e4859..569d16a 100644
+> --- a/lib/ext2fs/io_manager.c
+> +++ b/lib/ext2fs/io_manager.c
+> @@ -112,6 +112,17 @@ errcode_t io_channel_discard(io_channel channel, unsigned long long block,
+>  	return EXT2_ET_UNIMPLEMENTED;
+>  }
+>  
+> +errcode_t io_channel_zeroout(io_channel channel, unsigned long long block,
+> +			     unsigned long long count)
+> +{
+> +	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
+> +
+> +	if (channel->manager->zeroout)
+> +		return (channel->manager->zeroout)(channel, block, count);
+> +
+> +	return EXT2_ET_UNIMPLEMENTED;
+> +}
+> +
+>  errcode_t io_channel_alloc_buf(io_channel io, int count, void *ptr)
+>  {
+>  	size_t	size;
+> diff --git a/lib/ext2fs/mkjournal.c b/lib/ext2fs/mkjournal.c
+> index 884d9c0..339c7e1 100644
+> --- a/lib/ext2fs/mkjournal.c
+> +++ b/lib/ext2fs/mkjournal.c
+> @@ -167,6 +167,12 @@ errcode_t ext2fs_zero_blocks2(ext2_filsys fs, blk64_t blk, int num,
+>  		}
+>  		return 0;
+>  	}
+> +
+> +	/* Try a zero out command, if supported */
+> +	retval = io_channel_zeroout(fs->io, blk, num);
+> +	if (retval == 0)
+> +		return 0;
 
-It sounds interesting. I hope that you'll send the information out
-to the fsdevel list when your paper is finished, It looks like it
-might be quite useful.
+I guess that this should have been in the second patch ? But it's
+not a big deal. It looks good.
+
+Reviewed-by: Lukas Czerner <lczerner@redhat.com>
 
 Thanks!
 -Lukas
 
+> +
+>  	/* Allocate the zeroizing buffer if necessary */
+>  	if (!buf) {
+>  		buf = malloc(fs->blocksize * STRIDE_LENGTH);
+> diff --git a/lib/ext2fs/unix_io.c b/lib/ext2fs/unix_io.c
+> index c3185b6..d070cb0 100644
+> --- a/lib/ext2fs/unix_io.c
+> +++ b/lib/ext2fs/unix_io.c
+> @@ -922,6 +922,59 @@ unimplemented:
+>  	return EXT2_ET_UNIMPLEMENTED;
+>  }
+>  
+> +#if defined(__linux__) && !defined(BLKZEROOUT)
+> +#define BLKZEROOUT		_IO(0x12,127)
+> +#endif
+> +
+> +#if defined(__linux__) && !defined(FALLOC_FL_ZERO_RANGE)
+> +#define FALLOC_FL_ZERO_RANGE    0x10
+> +#endif
+> +
+> +static errcode_t unix_zeroout(io_channel channel, unsigned long long block,
+> +			      unsigned long long count)
+> +{
+> +	struct unix_private_data *data;
+> +	int		ret;
+> +
+> +	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
+> +	data = (struct unix_private_data *) channel->private_data;
+> +	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_UNIX_IO_CHANNEL);
+> +
+> +	if (channel->flags & CHANNEL_FLAGS_BLOCK_DEVICE) {
+> +#ifdef BLKZEROOUT
+> +		__u64 range[2];
+> +
+> +		range[0] = (__u64)(block) * channel->block_size;
+> +		range[1] = (__u64)(count) * channel->block_size;
+> +
+> +		ret = ioctl(data->dev, BLKZEROOUT, &range);
+> +#else
+> +		goto unimplemented;
+> +#endif
+> +	} else {
+> +#if defined(HAVE_FALLOCATE) && defined(FALLOC_FL_ZERO_RANGE)
+> +		/*
+> +		 * If we are not on block device, try to use the zero out
+> +		 * primitive.
+> +		 */
+> +		ret = fallocate(data->dev,
+> +				FALLOC_FL_ZERO_RANGE | FALLOC_FL_KEEP_SIZE,
+> +				(off_t)(block) * channel->block_size,
+> +				(off_t)(count) * channel->block_size);
+> +#else
+> +		goto unimplemented;
+> +#endif
+> +	}
+> +	if (ret < 0) {
+> +		if (errno == EOPNOTSUPP)
+> +			goto unimplemented;
+> +		return errno;
+> +	}
+> +	return 0;
+> +unimplemented:
+> +	return EXT2_ET_UNIMPLEMENTED;
+> +}
+> +
+>  static struct struct_io_manager struct_unix_manager = {
+>  	EXT2_ET_MAGIC_IO_MANAGER,
+>  	"Unix I/O Manager",
+> @@ -937,6 +990,7 @@ static struct struct_io_manager struct_unix_manager = {
+>  	unix_read_blk64,
+>  	unix_write_blk64,
+>  	unix_discard,
+> +	unix_zeroout,
+>  };
+>  
+>  io_manager unix_io_manager = &struct_unix_manager;
 > 
-> 
-> > Reviewed-by: Lukas Czerner<lczerner@redhat.com>
-> > 
-> > > Signed-off-by: Andrey Tsyvarev<tsyvarev@ispras.ru>
-> > > ---
-> > >   fs/ext4/mballoc.c | 4 +---
-> > >   1 file changed, 1 insertion(+), 3 deletions(-)
-> > > 
-> > > diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> > > index 04a5c75..becea1d 100644
-> > > --- a/fs/ext4/mballoc.c
-> > > +++ b/fs/ext4/mballoc.c
-> > > @@ -2607,7 +2607,7 @@ int ext4_mb_init(struct super_block *sb)
-> > >   	sbi->s_locality_groups = alloc_percpu(struct ext4_locality_group);
-> > >   	if (sbi->s_locality_groups == NULL) {
-> > >   		ret = -ENOMEM;
-> > > -		goto out_free_groupinfo_slab;
-> > > +		goto out;
-> > >   	}
-> > >   	for_each_possible_cpu(i) {
-> > >   		struct ext4_locality_group *lg;
-> > > @@ -2632,8 +2632,6 @@ int ext4_mb_init(struct super_block *sb)
-> > >   out_free_locality_groups:
-> > >   	free_percpu(sbi->s_locality_groups);
-> > >   	sbi->s_locality_groups = NULL;
-> > > -out_free_groupinfo_slab:
-> > > -	ext4_groupinfo_destroy_slabs();
-> > >   out:
-> > >   	kfree(sbi->s_mb_offsets);
-> > >   	sbi->s_mb_offsets = NULL;
-> > > 
-> 
-> --
-> Andrey Tsyvarev
-> Linux Verification Center, ISPRAS
-> 
-> 
---8323328-1568388389-1399976726=:2070--
+--8323328-1329019339-1399979489=:2070--
