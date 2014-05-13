@@ -1,36 +1,27 @@
 From: Aditya Kali <adityakali@google.com>
-Subject: Re: [PATCH 5/9] quota: integrate mkquota.h into quotaio.h
-Date: Mon, 12 May 2014 23:53:08 -0700
-Message-ID: <CAGr1F2HL9Ln=pXA0+O4skxiiqp+_GoeE=XH3XGPrSVs6DD-f-A@mail.gmail.com>
-References: <1399782773-20029-1-git-send-email-tytso@mit.edu> <1399782773-20029-6-git-send-email-tytso@mit.edu>
+Subject: Re: [PATCH 6/9] quota: support storing the quota file handles in the
+ quota context
+Date: Tue, 13 May 2014 00:10:37 -0700
+Message-ID: <CAGr1F2FZRL9Vuaem1cb+o4R4yBDurt7hUTUaf1k-sifw+y=XQw@mail.gmail.com>
+References: <1399782773-20029-1-git-send-email-tytso@mit.edu> <1399782773-20029-7-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ob0-f171.google.com ([209.85.214.171]:54016 "EHLO
-	mail-ob0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758289AbaEMGx3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 May 2014 02:53:29 -0400
-Received: by mail-ob0-f171.google.com with SMTP id wn1so9407222obc.30
-        for <linux-ext4@vger.kernel.org>; Mon, 12 May 2014 23:53:28 -0700 (PDT)
-In-Reply-To: <1399782773-20029-6-git-send-email-tytso@mit.edu>
+Received: from mail-oa0-f48.google.com ([209.85.219.48]:43428 "EHLO
+	mail-oa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750743AbaEMHK6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 May 2014 03:10:58 -0400
+Received: by mail-oa0-f48.google.com with SMTP id i4so9455571oah.21
+        for <linux-ext4@vger.kernel.org>; Tue, 13 May 2014 00:10:57 -0700 (PDT)
+In-Reply-To: <1399782773-20029-7-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 On Sat, May 10, 2014 at 9:32 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> There are interfaces that are used by mke2fs.c and tune2fs.c which are
-> in quotaio.h, and some future changes will be much simpler if we can
-> combine the two header files together.  Also the guard #ifdef for
-> mkquota.h was incorrect, which caused problems when both header files
-> needed to be included.
->
-> Also remove quota.pc and installation rules for libquota, since this
-> library is never going to be something that we can export externally
-> anyway.  Eventually we'll want to clean up the interfaces and move the
-> external publishable interfaces to the libext2fs library, and then
-> rename what's left from libquota.a to libsupport.a for internal use
-> only.
+> This makes memory management easier because when the quota context is
+> released, all of the quota file handles get released automatically.
 >
 > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 > Cc: adityakali@google.com
@@ -40,787 +31,276 @@ Reviewed-by: Aditya Kali <adityakali@google.com>
 Thanks!
 
 > ---
->  debian/rules          |   4 --
->  e2fsck/Makefile.in    | 186 ++++++++++++++++++++++----------------------------
->  e2fsck/e2fsck.h       |   2 +-
->  e2fsck/quota.c        |   1 -
->  lib/quota/Makefile.in |  59 ++++------------
->  lib/quota/mkquota.c   |   1 -
->  lib/quota/mkquota.h   |  64 -----------------
->  lib/quota/quota.pc.in |  11 ---
->  lib/quota/quotaio.h   |  56 +++++++++++++++
->  misc/Makefile.in      |  14 ++--
->  misc/mke2fs.c         |   2 +-
->  misc/tune2fs.c        |   2 +-
->  12 files changed, 160 insertions(+), 242 deletions(-)
->  delete mode 100644 lib/quota/mkquota.h
->  delete mode 100644 lib/quota/quota.pc.in
+>  lib/quota/mkquota.c | 26 ++++++++++++++++---------
+>  lib/quota/quotaio.c | 55 +++++++++++++++++++++++++++++++++++++++++++----------
+>  lib/quota/quotaio.h |  6 ++++--
+>  3 files changed, 66 insertions(+), 21 deletions(-)
 >
-> diff --git a/debian/rules b/debian/rules
-> index 2f722aa..7e8d01d 100755
-> --- a/debian/rules
-> +++ b/debian/rules
-> @@ -425,10 +425,6 @@ ifneq ($(BUILD_E2FSCK_STATIC),no)
->         cp ${mandir}/man8/e2fsck.8 ${mandir}/man8/e2fsck.static.8
->  endif
->
-> -  # remove static quota library for now
-> -       rm ${tmpdir}/usr/include/quota/mkquota.h
-> -       find ${tmpdir} -name quota.pc -o -name libquota.a | xargs rm
-> -
->  ifeq ($(DEB_BUILD_GNU_SYSTEM), gnu)
->         ${INSTALL} -m 0644 misc/mke2fs-hurd.conf ${tmpdir}/etc/mke2fs.conf
->  endif
-> diff --git a/e2fsck/Makefile.in b/e2fsck/Makefile.in
-> index 77017ef..4b10f6f 100644
-> --- a/e2fsck/Makefile.in
-> +++ b/e2fsck/Makefile.in
-> @@ -297,10 +297,9 @@ e2fsck.o: $(srcdir)/e2fsck.c $(top_builddir)/lib/config.h \
->   $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
->   $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/mkquota.h \
-> - $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-> - $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h \
-> - $(srcdir)/problem.h
-> + $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
-> + $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-> + $(top_srcdir)/lib/../e2fsck/dict.h $(srcdir)/problem.h
->  crc32.o: $(srcdir)/crc32.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(srcdir)/e2fsck.h \
->   $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-> @@ -308,10 +307,9 @@ crc32.o: $(srcdir)/crc32.c $(top_builddir)/lib/config.h \
->   $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
->   $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/mkquota.h \
-> - $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-> - $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h \
-> - $(srcdir)/crc32defs.h crc32table.h
-> + $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
-> + $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-> + $(top_srcdir)/lib/../e2fsck/dict.h $(srcdir)/crc32defs.h crc32table.h
->  gen_crc32table.o: $(srcdir)/gen_crc32table.c $(srcdir)/crc32defs.h
->  dict.o: $(srcdir)/dict.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(srcdir)/dict.h
-> @@ -322,10 +320,9 @@ super.o: $(srcdir)/super.c $(top_builddir)/lib/config.h \
->   $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
->   $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/mkquota.h \
-> - $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-> - $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h \
-> - $(srcdir)/problem.h
-> + $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
-> + $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-> + $(top_srcdir)/lib/../e2fsck/dict.h $(srcdir)/problem.h
->  pass1.o: $(srcdir)/pass1.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(srcdir)/e2fsck.h \
->   $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-> @@ -333,10 +330,9 @@ pass1.o: $(srcdir)/pass1.c $(top_builddir)/lib/config.h \
->   $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
->   $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/mkquota.h \
-> - $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-> - $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h \
-> - $(srcdir)/problem.h
-> + $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
-> + $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-> + $(top_srcdir)/lib/../e2fsck/dict.h $(srcdir)/problem.h
->  pass1b.o: $(srcdir)/pass1b.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(top_srcdir)/lib/et/com_err.h \
->   $(srcdir)/e2fsck.h $(top_srcdir)/lib/ext2fs/ext2_fs.h \
-> @@ -344,10 +340,9 @@ pass1b.o: $(srcdir)/pass1b.c $(top_builddir)/lib/config.h \
->   $(top_srcdir)/lib/ext2fs/ext3_extents.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
->   $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/mkquota.h \
-> - $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-> - $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h \
-> - $(srcdir)/problem.h $(srcdir)/dict.h
-> + $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
-> + $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-> + $(top_srcdir)/lib/../e2fsck/dict.h $(srcdir)/problem.h $(srcdir)/dict.h
->  pass2.o: $(srcdir)/pass2.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(srcdir)/e2fsck.h \
->   $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-> @@ -355,10 +350,9 @@ pass2.o: $(srcdir)/pass2.c $(top_builddir)/lib/config.h \
->   $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
->   $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/mkquota.h \
-> - $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-> - $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h \
-> - $(srcdir)/problem.h $(srcdir)/dict.h
-> + $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
-> + $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-> + $(top_srcdir)/lib/../e2fsck/dict.h $(srcdir)/problem.h $(srcdir)/dict.h
->  pass3.o: $(srcdir)/pass3.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(srcdir)/e2fsck.h \
->   $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-> @@ -366,10 +360,9 @@ pass3.o: $(srcdir)/pass3.c $(top_builddir)/lib/config.h \
->   $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
->   $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/mkquota.h \
-> - $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-> - $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h \
-> - $(srcdir)/problem.h
-> + $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
-> + $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-> + $(top_srcdir)/lib/../e2fsck/dict.h $(srcdir)/problem.h
->  pass4.o: $(srcdir)/pass4.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(srcdir)/e2fsck.h \
->   $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-> @@ -377,10 +370,9 @@ pass4.o: $(srcdir)/pass4.c $(top_builddir)/lib/config.h \
->   $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
->   $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/mkquota.h \
-> - $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-> - $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h \
-> - $(srcdir)/problem.h
-> + $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
-> + $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-> + $(top_srcdir)/lib/../e2fsck/dict.h $(srcdir)/problem.h
->  pass5.o: $(srcdir)/pass5.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(srcdir)/e2fsck.h \
->   $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-> @@ -388,10 +380,9 @@ pass5.o: $(srcdir)/pass5.c $(top_builddir)/lib/config.h \
->   $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
->   $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/mkquota.h \
-> - $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-> - $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h \
-> - $(srcdir)/problem.h
-> + $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
-> + $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-> + $(top_srcdir)/lib/../e2fsck/dict.h $(srcdir)/problem.h
->  journal.o: $(srcdir)/journal.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(srcdir)/jfs_user.h $(srcdir)/e2fsck.h \
->   $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-> @@ -399,11 +390,11 @@ journal.o: $(srcdir)/journal.c $(top_builddir)/lib/config.h \
->   $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
->   $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/mkquota.h \
-> - $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-> - $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h \
-> - $(top_srcdir)/lib/ext2fs/kernel-jbd.h $(top_srcdir)/lib/ext2fs/jfs_compat.h \
-> - $(top_srcdir)/lib/ext2fs/kernel-list.h $(srcdir)/problem.h
-> + $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
-> + $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-> + $(top_srcdir)/lib/../e2fsck/dict.h $(top_srcdir)/lib/ext2fs/kernel-jbd.h \
-> + $(top_srcdir)/lib/ext2fs/jfs_compat.h $(top_srcdir)/lib/ext2fs/kernel-list.h \
-> + $(srcdir)/problem.h
->  recovery.o: $(srcdir)/recovery.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(srcdir)/jfs_user.h $(srcdir)/e2fsck.h \
->   $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-> @@ -411,11 +402,10 @@ recovery.o: $(srcdir)/recovery.c $(top_builddir)/lib/config.h \
->   $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
->   $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/mkquota.h \
-> - $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-> - $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h \
-> - $(top_srcdir)/lib/ext2fs/kernel-jbd.h $(top_srcdir)/lib/ext2fs/jfs_compat.h \
-> - $(top_srcdir)/lib/ext2fs/kernel-list.h
-> + $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
-> + $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-> + $(top_srcdir)/lib/../e2fsck/dict.h $(top_srcdir)/lib/ext2fs/kernel-jbd.h \
-> + $(top_srcdir)/lib/ext2fs/jfs_compat.h $(top_srcdir)/lib/ext2fs/kernel-list.h
->  revoke.o: $(srcdir)/revoke.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(srcdir)/jfs_user.h $(srcdir)/e2fsck.h \
->   $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-> @@ -423,11 +413,10 @@ revoke.o: $(srcdir)/revoke.c $(top_builddir)/lib/config.h \
->   $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
->   $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/mkquota.h \
-> - $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-> - $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h \
-> - $(top_srcdir)/lib/ext2fs/kernel-jbd.h $(top_srcdir)/lib/ext2fs/jfs_compat.h \
-> - $(top_srcdir)/lib/ext2fs/kernel-list.h
-> + $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
-> + $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-> + $(top_srcdir)/lib/../e2fsck/dict.h $(top_srcdir)/lib/ext2fs/kernel-jbd.h \
-> + $(top_srcdir)/lib/ext2fs/jfs_compat.h $(top_srcdir)/lib/ext2fs/kernel-list.h
->  badblocks.o: $(srcdir)/badblocks.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(top_srcdir)/lib/et/com_err.h \
->   $(srcdir)/e2fsck.h $(top_srcdir)/lib/ext2fs/ext2_fs.h \
-> @@ -435,9 +424,9 @@ badblocks.o: $(srcdir)/badblocks.c $(top_builddir)/lib/config.h \
->   $(top_srcdir)/lib/ext2fs/ext3_extents.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
->   $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/mkquota.h \
-> - $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-> - $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h
-> + $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
-> + $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-> + $(top_srcdir)/lib/../e2fsck/dict.h
->  util.o: $(srcdir)/util.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(srcdir)/e2fsck.h \
->   $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-> @@ -445,9 +434,9 @@ util.o: $(srcdir)/util.c $(top_builddir)/lib/config.h \
->   $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
->   $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/mkquota.h \
-> - $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-> - $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h
-> + $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
-> + $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-> + $(top_srcdir)/lib/../e2fsck/dict.h
->  unix.o: $(srcdir)/unix.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(top_srcdir)/lib/e2p/e2p.h \
->   $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-> @@ -455,10 +444,10 @@ unix.o: $(srcdir)/unix.c $(top_builddir)/lib/config.h \
->   $(top_srcdir)/lib/ext2fs/ext2fs.h $(top_srcdir)/lib/ext2fs/ext3_extents.h \
->   $(top_srcdir)/lib/ext2fs/ext2_io.h $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/mkquota.h \
-> - $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-> - $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h \
-> - $(srcdir)/problem.h $(top_srcdir)/version.h
-> + $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
-> + $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-> + $(top_srcdir)/lib/../e2fsck/dict.h $(srcdir)/problem.h \
-> + $(top_srcdir)/version.h
->  dirinfo.o: $(srcdir)/dirinfo.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(srcdir)/e2fsck.h \
->   $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-> @@ -466,10 +455,9 @@ dirinfo.o: $(srcdir)/dirinfo.c $(top_builddir)/lib/config.h \
->   $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
->   $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/mkquota.h \
-> - $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-> - $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h \
-> - $(top_srcdir)/lib/ext2fs/tdb.h
-> + $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
-> + $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-> + $(top_srcdir)/lib/../e2fsck/dict.h $(top_srcdir)/lib/ext2fs/tdb.h
->  dx_dirinfo.o: $(srcdir)/dx_dirinfo.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(srcdir)/e2fsck.h \
->   $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-> @@ -477,9 +465,9 @@ dx_dirinfo.o: $(srcdir)/dx_dirinfo.c $(top_builddir)/lib/config.h \
->   $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
->   $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/mkquota.h \
-> - $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-> - $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h
-> + $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
-> + $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-> + $(top_srcdir)/lib/../e2fsck/dict.h
->  ehandler.o: $(srcdir)/ehandler.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(srcdir)/e2fsck.h \
->   $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-> @@ -487,9 +475,9 @@ ehandler.o: $(srcdir)/ehandler.c $(top_builddir)/lib/config.h \
->   $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
->   $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/mkquota.h \
-> - $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-> - $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h
-> + $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
-> + $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-> + $(top_srcdir)/lib/../e2fsck/dict.h
->  problem.o: $(srcdir)/problem.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(srcdir)/e2fsck.h \
->   $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-> @@ -497,10 +485,9 @@ problem.o: $(srcdir)/problem.c $(top_builddir)/lib/config.h \
->   $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
->   $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/mkquota.h \
-> - $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-> - $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h \
-> - $(srcdir)/problem.h $(srcdir)/problemP.h
-> + $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
-> + $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-> + $(top_srcdir)/lib/../e2fsck/dict.h $(srcdir)/problem.h $(srcdir)/problemP.h
->  message.o: $(srcdir)/message.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(srcdir)/e2fsck.h \
->   $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-> @@ -508,10 +495,9 @@ message.o: $(srcdir)/message.c $(top_builddir)/lib/config.h \
->   $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
->   $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/mkquota.h \
-> - $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-> - $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h \
-> - $(srcdir)/problem.h
-> + $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
-> + $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-> + $(top_srcdir)/lib/../e2fsck/dict.h $(srcdir)/problem.h
->  ea_refcount.o: $(srcdir)/ea_refcount.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(srcdir)/e2fsck.h \
->   $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-> @@ -519,9 +505,9 @@ ea_refcount.o: $(srcdir)/ea_refcount.c $(top_builddir)/lib/config.h \
->   $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
->   $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/mkquota.h \
-> - $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-> - $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h
-> + $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
-> + $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-> + $(top_srcdir)/lib/../e2fsck/dict.h
->  rehash.o: $(srcdir)/rehash.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(srcdir)/e2fsck.h \
->   $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-> @@ -529,10 +515,9 @@ rehash.o: $(srcdir)/rehash.c $(top_builddir)/lib/config.h \
->   $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
->   $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/mkquota.h \
-> - $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-> - $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h \
-> - $(srcdir)/problem.h
-> + $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
-> + $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-> + $(top_srcdir)/lib/../e2fsck/dict.h $(srcdir)/problem.h
->  region.o: $(srcdir)/region.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(srcdir)/e2fsck.h \
->   $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-> @@ -540,9 +525,9 @@ region.o: $(srcdir)/region.c $(top_builddir)/lib/config.h \
->   $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
->   $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/mkquota.h \
-> - $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-> - $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h
-> + $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
-> + $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-> + $(top_srcdir)/lib/../e2fsck/dict.h
->  profile.o: $(srcdir)/profile.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(top_srcdir)/lib/et/com_err.h \
->   $(srcdir)/profile.h prof_err.h
-> @@ -553,9 +538,9 @@ sigcatcher.o: $(srcdir)/sigcatcher.c $(top_builddir)/lib/config.h \
->   $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
->   $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/mkquota.h \
-> - $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-> - $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h
-> + $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
-> + $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-> + $(top_srcdir)/lib/../e2fsck/dict.h
->  logfile.o: $(srcdir)/logfile.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(srcdir)/e2fsck.h \
->   $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-> @@ -563,18 +548,7 @@ logfile.o: $(srcdir)/logfile.c $(top_builddir)/lib/config.h \
->   $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
->   $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/mkquota.h \
-> - $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-> - $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h
-> + $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/quotaio.h \
-> + $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-> + $(top_srcdir)/lib/../e2fsck/dict.h
->  prof_err.o: prof_err.c
-> -quota.o: $(srcdir)/quota.c $(top_builddir)/lib/config.h \
-> - $(top_builddir)/lib/dirpaths.h $(srcdir)/e2fsck.h \
-> - $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-> - $(top_srcdir)/lib/ext2fs/ext2fs.h $(top_srcdir)/lib/ext2fs/ext3_extents.h \
-> - $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
-> - $(top_builddir)/lib/ext2fs/ext2_err.h \
-> - $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/profile.h prof_err.h $(top_srcdir)/lib/quota/mkquota.h \
-> - $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-> - $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h \
-> - $(srcdir)/problem.h $(top_srcdir)/lib/quota/quotaio.h
-> diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
-> index 8fc9993..c71a0a5 100644
-> --- a/e2fsck/e2fsck.h
-> +++ b/e2fsck/e2fsck.h
-> @@ -67,7 +67,7 @@
->  #define E2FSCK_ATTR(x)
->  #endif
->
-> -#include "quota/mkquota.h"
-> +#include "quota/quotaio.h"
->
->  /*
->   * Exit codes used by fsck-type programs
-> diff --git a/e2fsck/quota.c b/e2fsck/quota.c
-> index 42569bb..c6bbb9a 100644
-> --- a/e2fsck/quota.c
-> +++ b/e2fsck/quota.c
-> @@ -15,7 +15,6 @@
->
->  #include "e2fsck.h"
->  #include "problem.h"
-> -#include "quota/mkquota.h"
->  #include "quota/quotaio.h"
->
->  static void move_quota_inode(ext2_filsys fs, ext2_ino_t from_ino,
-> diff --git a/lib/quota/Makefile.in b/lib/quota/Makefile.in
-> index dc3eae0..92df268 100644
-> --- a/lib/quota/Makefile.in
-> +++ b/lib/quota/Makefile.in
-> @@ -12,9 +12,6 @@ INSTALL = @INSTALL@
->
->  all::
->
-> -SMANPAGES=
-> -
-> -
->  OBJS=          mkquota.o quotaio.o quotaio_v2.o quotaio_tree.o dict.o
->
->  SRCS=          $(srcdir)/mkquota.c \
-> @@ -53,12 +50,6 @@ LIBDIR= quota
->  #ELF_CMT#      $(Q) $(CC) $(ALL_CFLAGS) -fPIC -o elfshared/$*.o -c $<
->  #BSDLIB_CMT#   $(Q) $(CC) $(ALL_CFLAGS) $(BSDLIB_PIC_FLAG) -o pic/$*.o -c $<
->
-> -all:: $(SMANPAGES) quota.pc
-> -
-> -quota.pc: $(srcdir)/quota.pc.in $(top_builddir)/config.status
-> -       $(E) "  CONFIG.STATUS $@"
-> -       $(Q) cd $(top_builddir); CONFIG_FILES=lib/quota/quota.pc ./config.status
-> -
->  dict.o:
->         $(E) "  CC $<"
->         $(Q) $(CC) -c $(ALL_CFLAGS) $(top_srcdir)/e2fsck/dict.c -o $@
-> @@ -72,32 +63,10 @@ dict.o:
->  #BSDLIB_CMT#   $(top_srcdir)/e2fsck/dict.c
->
->  installdirs::
-> -       $(E) "  MKINSTALLDIRS $(libdir) $(includedir)/quota $(man3dir)"
-> -       $(Q) $(MKINSTALLDIRS) $(DESTDIR)$(libdir)  \
-> -               $(DESTDIR)$(includedir)/quota $(DESTDIR)$(man3dir) \
-> -               $(DESTDIR)$(pkgconfigdir)
-> -
-> -install:: all installdirs
-> -       $(E) "  INSTALL_DATA $(libdir)/libquota.a"
-> -       $(Q) $(INSTALL_DATA) libquota.a $(DESTDIR)$(libdir)/libquota.a
-> -       -$(Q) $(RANLIB) $(DESTDIR)$(libdir)/libquota.a
-> -       $(Q) $(CHMOD) $(LIBMODE) $(DESTDIR)$(libdir)/libquota.a
-> -       $(E) "  INSTALL_DATA $(includedir)/quota/mkquota.h"
-> -       $(Q) $(INSTALL_DATA) $(srcdir)/mkquota.h $(DESTDIR)$(includedir)/quota/mkquota.h
-> -       $(Q) for i in $(SMANPAGES); do \
-> -               $(RM) -f $(DESTDIR)$(man3dir)/$$i.gz; \
-> -               echo "  INSTALL_DATA $(man3dir)/$$i"; \
-> -               $(INSTALL_DATA) $$i $(DESTDIR)$(man3dir)/$$i; \
-> -       done
-> -       $(E) "  INSTALL_DATA $(pkgconfigdir)/quota.pc"
-> -       $(Q) $(INSTALL_DATA) quota.pc $(DESTDIR)$(pkgconfigdir)/quota.pc
-> +
-> +install:: all
->
->  uninstall::
-> -       $(RM) -f $(DESTDIR)$(libdir)/libquota.a \
-> -               $(DESTDIR)$(pkgconfigdir)/quota.pc
-> -       for i in $(SMANPAGES); do \
-> -               $(RM) -f $(DESTDIR)$(man3dir)/$$i; \
-> -       done
->
->  clean::
->         $(RM) -f \#* *.s *.o *.a *~ *.bak core profiled/* checker/*
-> @@ -108,7 +77,7 @@ clean::
->
->  mostlyclean:: clean
->  distclean:: clean
-> -       $(RM) -f .depend Makefile quota.pc \
-> +       $(RM) -f .depend Makefile \
->                 $(srcdir)/TAGS $(srcdir)/Makefile.in.old
->
->  #
-> @@ -132,33 +101,35 @@ mkquota.o: $(srcdir)/mkquota.c $(top_builddir)/lib/config.h \
->   $(top_srcdir)/lib/ext2fs/ext2_io.h $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
->   $(top_srcdir)/lib/e2p/e2p.h $(srcdir)/quotaio.h $(srcdir)/dqblk_v2.h \
-> - $(srcdir)/quotaio_tree.h $(srcdir)/quotaio_v2.h $(srcdir)/mkquota.h \
-> - $(top_srcdir)/lib/../e2fsck/dict.h $(srcdir)/common.h
-> + $(srcdir)/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h \
-> + $(srcdir)/quotaio_v2.h $(srcdir)/common.h
->  quotaio.o: $(srcdir)/quotaio.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(srcdir)/common.h \
->   $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/quotaio.h \
-> - $(top_srcdir)/lib/ext2fs/ext2fs.h $(top_srcdir)/lib/ext2fs/ext2_fs.h \
-> + $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_srcdir)/lib/ext2fs/ext2fs.h \
->   $(top_srcdir)/lib/ext2fs/ext3_extents.h $(top_srcdir)/lib/et/com_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_io.h $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/dqblk_v2.h $(srcdir)/quotaio_tree.h
-> + $(srcdir)/dqblk_v2.h $(srcdir)/quotaio_tree.h \
-> + $(top_srcdir)/lib/../e2fsck/dict.h
->  quotaio_tree.o: $(srcdir)/quotaio_tree.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(srcdir)/common.h \
->   $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/quotaio_tree.h \
-> - $(srcdir)/quotaio.h $(top_srcdir)/lib/ext2fs/ext2fs.h \
-> - $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_srcdir)/lib/ext2fs/ext3_extents.h \
-> + $(srcdir)/quotaio.h $(top_srcdir)/lib/ext2fs/ext2_fs.h \
-> + $(top_srcdir)/lib/ext2fs/ext2fs.h $(top_srcdir)/lib/ext2fs/ext3_extents.h \
->   $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
->   $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/dqblk_v2.h
-> + $(srcdir)/dqblk_v2.h $(top_srcdir)/lib/../e2fsck/dict.h
->  quotaio_v2.o: $(srcdir)/quotaio_v2.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(srcdir)/common.h \
->   $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/quotaio_v2.h \
-> - $(srcdir)/quotaio.h $(top_srcdir)/lib/ext2fs/ext2fs.h \
-> - $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_srcdir)/lib/ext2fs/ext3_extents.h \
-> + $(srcdir)/quotaio.h $(top_srcdir)/lib/ext2fs/ext2_fs.h \
-> + $(top_srcdir)/lib/ext2fs/ext2fs.h $(top_srcdir)/lib/ext2fs/ext3_extents.h \
->   $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
->   $(top_builddir)/lib/ext2fs/ext2_err.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-> - $(srcdir)/dqblk_v2.h $(srcdir)/quotaio_tree.h
-> + $(srcdir)/dqblk_v2.h $(srcdir)/quotaio_tree.h \
-> + $(top_srcdir)/lib/../e2fsck/dict.h
->  dict.o: $(srcdir)/../../e2fsck/dict.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(srcdir)/../../e2fsck/dict.h
 > diff --git a/lib/quota/mkquota.c b/lib/quota/mkquota.c
-> index ed10890..bb8482b 100644
+> index bb8482b..58803d0 100644
 > --- a/lib/quota/mkquota.c
 > +++ b/lib/quota/mkquota.c
-> @@ -18,7 +18,6 @@
->  #include "quotaio.h"
->  #include "quotaio_v2.h"
->  #include "quotaio_tree.h"
-> -#include "mkquota.h"
->  #include "common.h"
+> @@ -183,7 +183,7 @@ errcode_t quota_write_inode(quota_ctx_t qctx, int qtype)
+>                 }
 >
->  /* Needed for architectures where sizeof(int) != sizeof(void *) */
-> diff --git a/lib/quota/mkquota.h b/lib/quota/mkquota.h
-> deleted file mode 100644
-> index ee15071..0000000
-> --- a/lib/quota/mkquota.h
-> +++ /dev/null
-> @@ -1,64 +0,0 @@
-> -/** mkquota.h
-> - *
-> - * Interface to the quota library.
-> - *
-> - * The quota library provides interface for creating and updating the quota
-> - * files and the ext4 superblock fields. It supports the new VFS_V1 quota
-> - * format. The quota library also provides support for keeping track of quotas
-> - * in memory.
-> - * The typical way to use the quota library is as follows:
-> - * {
-> - *     quota_ctx_t qctx;
-> - *
-> - *     quota_init_context(&qctx, fs, -1);
-> - *     {
-> - *             quota_compute_usage(qctx, -1);
-> - *             AND/OR
-> - *             quota_data_add/quota_data_sub/quota_data_inodes();
-> - *     }
-> - *     quota_write_inode(qctx, USRQUOTA);
-> - *     quota_write_inode(qctx, GRPQUOTA);
-> - *     quota_release_context(&qctx);
-> - * }
-> - *
-> - * This initial version does not support reading the quota files. This support
-> - * will be added in near future.
-> - *
-> - * Aditya Kali <adityakali@google.com>
-> - */
+>                 write_dquots(dict, h);
+> -               retval = quota_file_close(h);
+> +               retval = quota_file_close(qctx, h);
+>                 if (retval < 0) {
+>                         log_err("Cannot finish IO on new quotafile: %s",
+>                                 strerror(errno));
+> @@ -251,9 +251,10 @@ static void quota_dnode_free(dnode_t *node,
+>   */
+>  errcode_t quota_init_context(quota_ctx_t *qctx, ext2_filsys fs, int qtype)
+>  {
+> -       int     i, err = 0;
+> +       errcode_t err;
+>         dict_t  *dict;
+>         quota_ctx_t ctx;
+> +       int     i;
+>
+>         err = ext2fs_get_mem(sizeof(struct quota_ctx), &ctx);
+>         if (err) {
+> @@ -263,6 +264,7 @@ errcode_t quota_init_context(quota_ctx_t *qctx, ext2_filsys fs, int qtype)
+>
+>         memset(ctx, 0, sizeof(struct quota_ctx));
+>         for (i = 0; i < MAXQUOTAS; i++) {
+> +               ctx->quota_file[i] = NULL;
+>                 if ((qtype != -1) && (i != qtype))
+>                         continue;
+>                 err = ext2fs_get_mem(sizeof(dict_t), &dict);
+> @@ -283,6 +285,7 @@ errcode_t quota_init_context(quota_ctx_t *qctx, ext2_filsys fs, int qtype)
+>
+>  void quota_release_context(quota_ctx_t *qctx)
+>  {
+> +       errcode_t err;
+>         dict_t  *dict;
+>         int     i;
+>         quota_ctx_t ctx;
+> @@ -298,6 +301,14 @@ void quota_release_context(quota_ctx_t *qctx)
+>                         dict_free_nodes(dict);
+>                         free(dict);
+>                 }
+> +               if (ctx->quota_file[i]) {
+> +                       err = quota_file_close(ctx, ctx->quota_file[i]);
+> +                       if (err) {
+> +                               log_err("Cannot close quotafile: %s",
+> +                                       strerror(errno));
+> +                               ext2fs_free_mem(&ctx->quota_file[i]);
+> +                       }
+> +               }
+>         }
+>         *qctx = NULL;
+>         free(ctx);
+> @@ -541,7 +552,7 @@ errcode_t quota_update_limits(quota_ctx_t qctx, ext2_ino_t qf_ino, int type)
+>                 return err;
+>         }
+>
+> -       err = quota_file_open(qh, qctx->fs, qf_ino, type, -1, 0);
+> +       err = quota_file_open(qctx, qh, qf_ino, type, -1, 0);
+>         if (err) {
+>                 log_err("Open quota file failed");
+>                 goto out;
+> @@ -549,7 +560,7 @@ errcode_t quota_update_limits(quota_ctx_t qctx, ext2_ino_t qf_ino, int type)
+>
+>         quota_read_all_dquots(qh, qctx, 1);
+>
+> -       err = quota_file_close(qh);
+> +       err = quota_file_close(qctx, qh);
+>         if (err) {
+>                 log_err("Cannot finish IO on new quotafile: %s",
+>                         strerror(errno));
+> @@ -575,15 +586,12 @@ errcode_t quota_compare_and_update(quota_ctx_t qctx, int qtype,
+>         struct dquot *dq;
+>         dnode_t *n;
+>         dict_t *dict = qctx->quota_dict[qtype];
+> -       ext2_ino_t qf_ino;
+>         errcode_t err = 0;
+>
+>         if (!dict)
+>                 goto out;
+>
+> -       qf_ino = qtype == USRQUOTA ? fs->super->s_usr_quota_inum :
+> -                                    fs->super->s_grp_quota_inum;
+> -       err = quota_file_open(&qh, fs, qf_ino, qtype, -1, 0);
+> +       err = quota_file_open(qctx, &qh, 0, qtype, -1, 0);
+>         if (err) {
+>                 log_err("Open quota file failed");
+>                 goto out;
+> @@ -612,7 +620,7 @@ errcode_t quota_compare_and_update(quota_ctx_t qctx, int qtype,
+>         *usage_inconsistent = scan_data.usage_is_inconsistent;
+>
+>  out_close_qh:
+> -       err = quota_file_close(&qh);
+> +       err = quota_file_close(qctx, &qh);
+>         if (err) {
+>                 log_err("Cannot close quotafile: %s", error_message(errno));
+>                 if (qh.qh_qf.e2_file)
+> diff --git a/lib/quota/quotaio.c b/lib/quota/quotaio.c
+> index a95a1f9..65fccaa 100644
+> --- a/lib/quota/quotaio.c
+> +++ b/lib/quota/quotaio.c
+> @@ -197,11 +197,16 @@ static unsigned int quota_read_nomount(struct quota_file *qf,
+>  /*
+>   * Detect quota format and initialize quota IO
+>   */
+> -errcode_t quota_file_open(struct quota_handle *h, ext2_filsys fs,
+> +errcode_t quota_file_open(quota_ctx_t qctx, struct quota_handle *h,
+>                           ext2_ino_t qf_ino, int type, int fmt, int flags)
+>  {
+> +       ext2_filsys fs = qctx->fs;
+>         ext2_file_t e2_file;
+>         errcode_t err;
+> +       int allocated_handle = 0;
+> +
+> +       if (type >= MAXQUOTAS)
+> +               return EINVAL;
+>
+>         if (fmt == -1)
+>                 fmt = QFMT_VFS_V1;
+> @@ -210,18 +215,42 @@ errcode_t quota_file_open(struct quota_handle *h, ext2_filsys fs,
+>         if (err)
+>                 return err;
+>
+> +       if (qf_ino == 0) {
+> +               if (type == USRQUOTA)
+> +                       qf_ino = fs->super->s_usr_quota_inum;
+> +               else
+> +                       qf_ino = fs->super->s_grp_quota_inum;
+> +       }
+> +
+>         log_debug("Opening quota ino=%lu, type=%d", qf_ino, type);
+>         err = ext2fs_file_open(fs, qf_ino, flags, &e2_file);
+>         if (err) {
+>                 log_err("ext2fs_file_open failed: %s", error_message(err));
+>                 return err;
+>         }
+> -       h->qh_qf.e2_file = e2_file;
+>
+> +       if (!h) {
+> +               if (qctx->quota_file[type]) {
+> +                       h = qctx->quota_file[type];
+> +                       if (((flags & EXT2_FILE_WRITE) == 0) ||
+> +                           (h->qh_file_flags & EXT2_FILE_WRITE))
+> +                               return 0;
+> +                       (void) quota_file_close(qctx, h);
+> +               }
+> +               err = ext2fs_get_mem(sizeof(struct quota_handle), &h);
+> +               if (err) {
+> +                       log_err("Unable to allocate quota handle");
+> +                       return err;
+> +               }
+> +               allocated_handle = 1;
+> +       }
+> +
+> +       h->qh_qf.e2_file = e2_file;
+>         h->qh_qf.fs = fs;
+>         h->qh_qf.ino = qf_ino;
+>         h->e2fs_write = quota_write_nomount;
+>         h->e2fs_read = quota_read_nomount;
+> +       h->qh_file_flags = flags;
+>         h->qh_io_flags = 0;
+>         h->qh_type = type;
+>         h->qh_fmt = fmt;
+> @@ -231,17 +260,22 @@ errcode_t quota_file_open(struct quota_handle *h, ext2_filsys fs,
+>         if (h->qh_ops->check_file &&
+>             (h->qh_ops->check_file(h, type, fmt) == 0)) {
+>                 log_err("qh_ops->check_file failed");
+> -               ext2fs_file_close(e2_file);
+> -               return -1;
+> +               goto errout;
+>         }
+>
+>         if (h->qh_ops->init_io && (h->qh_ops->init_io(h) < 0)) {
+>                 log_err("qh_ops->init_io failed");
+> -               ext2fs_file_close(e2_file);
+> -               return -1;
+> +               goto errout;
+>         }
+> +       if (allocated_handle)
+> +               qctx->quota_file[type] = h;
+>
+>         return 0;
+> +errout:
+> +       ext2fs_file_close(e2_file);
+> +       if (allocated_handle)
+> +               ext2fs_free_mem(&h);
+> +       return -1;
+>  }
+>
+>  static errcode_t quota_inode_init_new(ext2_filsys fs, ext2_ino_t ino)
+> @@ -307,12 +341,12 @@ errcode_t quota_file_create(struct quota_handle *h, ext2_filsys fs, int type, in
+>                 goto out_err;
+>         }
+>         h->qh_qf.ino = qf_inum;
+> +       h->qh_file_flags = EXT2_FILE_WRITE | EXT2_FILE_CREATE;
+>         h->e2fs_write = quota_write_nomount;
+>         h->e2fs_read = quota_read_nomount;
+>
+>         log_debug("Creating quota ino=%lu, type=%d", qf_inum, type);
+> -       err = ext2fs_file_open(fs, qf_inum,
+> -                       EXT2_FILE_WRITE | EXT2_FILE_CREATE, &e2_file);
+> +       err = ext2fs_file_open(fs, qf_inum, h->qh_file_flags, &e2_file);
+>         if (err) {
+>                 log_err("ext2fs_file_open failed: %d", err);
+>                 goto out_err;
+> @@ -345,7 +379,7 @@ out_err:
+>  /*
+>   * Close quotafile and release handle
+>   */
+> -errcode_t quota_file_close(struct quota_handle *h)
+> +errcode_t quota_file_close(quota_ctx_t qctx, struct quota_handle *h)
+>  {
+>         if (h->qh_io_flags & IOFL_INFODIRTY) {
+>                 if (h->qh_ops->write_info && h->qh_ops->write_info(h) < 0)
+> @@ -366,7 +400,8 @@ errcode_t quota_file_close(struct quota_handle *h)
+>                         ext2fs_file_set_size2(h->qh_qf.e2_file, new_size);
+>                 ext2fs_file_close(h->qh_qf.e2_file);
+>         }
 > -
-> -#ifndef __QUOTA_QUOTAIO_H__
-> -#define __QUOTA_QUOTAIO_H__
-> -
-> -#include "ext2fs/ext2_fs.h"
-> -#include "ext2fs/ext2fs.h"
-> -#include "quotaio.h"
-> -#include "../e2fsck/dict.h"
-> -
-> -typedef struct quota_ctx *quota_ctx_t;
-> -
-> -struct quota_ctx {
-> -       ext2_filsys     fs;
-> -       dict_t          *quota_dict[MAXQUOTAS];
-> -};
-> -
-> -/* In mkquota.c */
-> -errcode_t quota_init_context(quota_ctx_t *qctx, ext2_filsys fs, int qtype);
-> -void quota_data_inodes(quota_ctx_t qctx, struct ext2_inode *inode, ext2_ino_t ino,
-> -               int adjust);
-> -void quota_data_add(quota_ctx_t qctx, struct ext2_inode *inode, ext2_ino_t ino,
-> -               qsize_t space);
-> -void quota_data_sub(quota_ctx_t qctx, struct ext2_inode *inode, ext2_ino_t ino,
-> -               qsize_t space);
-> -errcode_t quota_write_inode(quota_ctx_t qctx, int qtype);
-> -errcode_t quota_update_limits(quota_ctx_t qctx, ext2_ino_t qf_ino, int type);
-> -errcode_t quota_compute_usage(quota_ctx_t qctx);
-> -void quota_release_context(quota_ctx_t *qctx);
-> -
-> -errcode_t quota_remove_inode(ext2_filsys fs, int qtype);
-> -int quota_file_exists(ext2_filsys fs, int qtype, int fmt);
-> -void quota_set_sb_inum(ext2_filsys fs, ext2_ino_t ino, int qtype);
-> -errcode_t quota_compare_and_update(quota_ctx_t qctx, int qtype,
-> -                                  int *usage_inconsistent);
-> -
-> -#endif  /* __QUOTA_QUOTAIO_H__ */
-> diff --git a/lib/quota/quota.pc.in b/lib/quota/quota.pc.in
-> deleted file mode 100644
-> index 1e4b887..0000000
-> --- a/lib/quota/quota.pc.in
-> +++ /dev/null
-> @@ -1,11 +0,0 @@
-> -prefix=@prefix@
-> -exec_prefix=@exec_prefix@
-> -libdir=@libdir@
-> -includedir=@includedir@
-> -
-> -Name: quota
-> -Description: Quota management library
-> -Version: @E2FSPROGS_VERSION@
-> -Requires:
-> -Cflags: -I${includedir}/quota -I${includedir}
-> -Libs: -L${libdir} -lquota
+> +       if (qctx->quota_file[h->qh_type] == h)
+> +               ext2fs_free_mem(&qctx->quota_file[h->qh_type]);
+>         return 0;
+>  }
+>
 > diff --git a/lib/quota/quotaio.h b/lib/quota/quotaio.h
-> index 55e6eb0..d3820a4 100644
+> index d3820a4..7ca7830 100644
 > --- a/lib/quota/quotaio.h
 > +++ b/lib/quota/quotaio.h
-> @@ -1,6 +1,32 @@
->  /** quotaio.h
->   *
-> + * Interface to the quota library.
-> + *
-> + * The quota library provides interface for creating and updating the quota
-> + * files and the ext4 superblock fields. It supports the new VFS_V1 quota
-> + * format. The quota library also provides support for keeping track of quotas
-> + * in memory.
-> + * The typical way to use the quota library is as follows:
-> + * {
-> + *     quota_ctx_t qctx;
-> + *
-> + *     quota_init_context(&qctx, fs, -1);
-> + *     {
-> + *             quota_compute_usage(qctx, -1);
-> + *             AND/OR
-> + *             quota_data_add/quota_data_sub/quota_data_inodes();
-> + *     }
-> + *     quota_write_inode(qctx, USRQUOTA);
-> + *     quota_write_inode(qctx, GRPQUOTA);
-> + *     quota_release_context(&qctx);
-> + * }
-> + *
-> + * This initial version does not support reading the quota files. This support
-> + * will be added in near future.
-> + *
-> + * Aditya Kali <adityakali@google.com>
->   * Header of IO operations for quota utilities
-> + *
->   * Jan Kara <jack@suse.cz>
->   */
+> @@ -53,6 +53,7 @@ typedef struct quota_ctx *quota_ctx_t;
+>  struct quota_ctx {
+>         ext2_filsys     fs;
+>         dict_t          *quota_dict[MAXQUOTAS];
+> +       struct quota_handle *quota_file[MAXQUOTAS];
+>  };
 >
-> @@ -11,8 +37,10 @@
->  #include <sys/types.h>
->  #include <sys/stat.h>
->
-> +#include "ext2fs/ext2_fs.h"
->  #include "ext2fs/ext2fs.h"
->  #include "dqblk_v2.h"
-> +#include "../e2fsck/dict.h"
->
->  typedef int64_t qsize_t;       /* Type in which we store size limitations */
->
-> @@ -20,6 +48,13 @@ typedef int64_t qsize_t;     /* Type in which we store size limitations */
->  #define USRQUOTA 0
->  #define GRPQUOTA 1
->
-> +typedef struct quota_ctx *quota_ctx_t;
-> +
-> +struct quota_ctx {
-> +       ext2_filsys     fs;
-> +       dict_t          *quota_dict[MAXQUOTAS];
-> +};
-> +
 >  /*
->   * Definitions of magics and versions of current quota files
->   */
-> @@ -164,4 +199,25 @@ const char *quota_get_qf_name(int type, int fmt, char *buf);
->  const char *quota_get_qf_path(const char *mntpt, int qtype, int fmt,
->                               char *path_buf, size_t path_buf_size);
+> @@ -105,6 +106,7 @@ struct quota_file {
+>  struct quota_handle {
+>         int qh_type;            /* Type of quotafile */
+>         int qh_fmt;             /* Quotafile format */
+> +       int qh_file_flags;
+>         int qh_io_flags;        /* IO flags for file */
+>         struct quota_file qh_qf;
+>         unsigned int (*e2fs_read)(struct quota_file *qf, ext2_loff_t offset,
+> @@ -171,7 +173,7 @@ extern struct quotafile_ops quotafile_ops_meta;
 >
-> +/* In mkquota.c */
-> +errcode_t quota_init_context(quota_ctx_t *qctx, ext2_filsys fs, int qtype);
-> +void quota_data_inodes(quota_ctx_t qctx, struct ext2_inode *inode, ext2_ino_t ino,
-> +               int adjust);
-> +void quota_data_add(quota_ctx_t qctx, struct ext2_inode *inode, ext2_ino_t ino,
-> +               qsize_t space);
-> +void quota_data_sub(quota_ctx_t qctx, struct ext2_inode *inode, ext2_ino_t ino,
-> +               qsize_t space);
-> +errcode_t quota_write_inode(quota_ctx_t qctx, int qtype);
-> +errcode_t quota_update_limits(quota_ctx_t qctx, ext2_ino_t qf_ino, int type);
-> +errcode_t quota_compute_usage(quota_ctx_t qctx);
-> +void quota_release_context(quota_ctx_t *qctx);
-> +
-> +errcode_t quota_remove_inode(ext2_filsys fs, int qtype);
-> +int quota_file_exists(ext2_filsys fs, int qtype, int fmt);
-> +void quota_set_sb_inum(ext2_filsys fs, ext2_ino_t ino, int qtype);
-> +errcode_t quota_compare_and_update(quota_ctx_t qctx, int qtype,
-> +                                  int *usage_inconsistent);
-> +
-> +
-> +
->  #endif /* GUARD_QUOTAIO_H */
-> diff --git a/misc/Makefile.in b/misc/Makefile.in
-> index 29b6aab..8d3318b 100644
-> --- a/misc/Makefile.in
-> +++ b/misc/Makefile.in
-> @@ -629,10 +629,9 @@ tune2fs.o: $(srcdir)/tune2fs.c $(top_builddir)/lib/config.h \
->   $(top_srcdir)/lib/e2p/e2p.h $(srcdir)/jfs_user.h \
->   $(top_srcdir)/lib/ext2fs/kernel-jbd.h $(top_srcdir)/lib/ext2fs/jfs_compat.h \
->   $(top_srcdir)/lib/ext2fs/kernel-list.h $(srcdir)/util.h \
-> - $(top_srcdir)/lib/quota/mkquota.h $(top_srcdir)/lib/quota/quotaio.h \
-> - $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-> - $(top_srcdir)/lib/../e2fsck/dict.h $(top_srcdir)/version.h \
-> - $(srcdir)/nls-enable.h
-> + $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-> + $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h \
-> + $(top_srcdir)/version.h $(srcdir)/nls-enable.h
->  mklost+found.o: $(srcdir)/mklost+found.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(top_srcdir)/lib/ext2fs/ext2_fs.h \
->   $(top_builddir)/lib/ext2fs/ext2_types.h $(top_srcdir)/version.h \
-> @@ -646,10 +645,9 @@ mke2fs.o: $(srcdir)/mke2fs.c $(top_builddir)/lib/config.h \
->   $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
->   $(top_srcdir)/lib/e2p/e2p.h $(top_srcdir)/lib/ext2fs/ext2fs.h \
->   $(srcdir)/util.h profile.h prof_err.h $(top_srcdir)/version.h \
-> - $(srcdir)/nls-enable.h $(top_srcdir)/lib/quota/mkquota.h \
-> - $(top_srcdir)/lib/quota/quotaio.h $(top_srcdir)/lib/quota/dqblk_v2.h \
-> - $(top_srcdir)/lib/quota/quotaio_tree.h $(top_srcdir)/lib/../e2fsck/dict.h \
-> - $(srcdir)/mke2fs.h
-> + $(srcdir)/nls-enable.h $(top_srcdir)/lib/quota/quotaio.h \
-> + $(top_srcdir)/lib/quota/dqblk_v2.h $(top_srcdir)/lib/quota/quotaio_tree.h \
-> + $(top_srcdir)/lib/../e2fsck/dict.h $(srcdir)/mke2fs.h
->  mk_hugefiles.o: $(srcdir)/mk_hugefiles.c $(top_builddir)/lib/config.h \
->   $(top_builddir)/lib/dirpaths.h $(top_srcdir)/lib/ext2fs/ext2_fs.h \
->   $(top_builddir)/lib/ext2fs/ext2_types.h $(top_srcdir)/lib/ext2fs/ext2fsP.h \
-> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> index 51532ef..e1fd40e 100644
-> --- a/misc/mke2fs.c
-> +++ b/misc/mke2fs.c
-> @@ -62,7 +62,7 @@ extern int optind;
->  #include "prof_err.h"
->  #include "../version.h"
->  #include "nls-enable.h"
-> -#include "quota/mkquota.h"
-> +#include "quota/quotaio.h"
->  #include "mke2fs.h"
+>  /* Open existing quotafile of given type (and verify its format) on given
+>   * filesystem. */
+> -errcode_t quota_file_open(struct quota_handle *h, ext2_filsys fs,
+> +errcode_t quota_file_open(quota_ctx_t qctx, struct quota_handle *h,
+>                           ext2_ino_t qf_ino, int type, int fmt, int flags);
 >
->  #define STRIDE_LENGTH 8
-> diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-> index 7b3723b..37f0b56 100644
-> --- a/misc/tune2fs.c
-> +++ b/misc/tune2fs.c
-> @@ -60,7 +60,7 @@ extern int optind;
->  #include "jfs_user.h"
->  #include "util.h"
->  #include "blkid/blkid.h"
-> -#include "quota/mkquota.h"
-> +#include "quota/quotaio.h"
 >
->  #include "../version.h"
->  #include "nls-enable.h"
+> @@ -180,7 +182,7 @@ errcode_t quota_file_create(struct quota_handle *h, ext2_filsys fs,
+>                             int type, int fmt);
+>
+>  /* Close quotafile */
+> -errcode_t quota_file_close(struct quota_handle *h);
+> +errcode_t quota_file_close(quota_ctx_t qctx, struct quota_handle *h);
+>
+>  /* Get empty quota structure */
+>  struct dquot *get_empty_dquot(void);
 > --
 > 1.9.0
 >
