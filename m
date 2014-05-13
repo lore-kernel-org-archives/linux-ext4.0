@@ -1,24 +1,42 @@
 From: Aditya Kali <adityakali@google.com>
-Subject: Re: [PATCH 1/9] quota: add debugging code to print the dquot structure
-Date: Mon, 12 May 2014 23:30:34 -0700
-Message-ID: <CAGr1F2ES3QEYOtOk4xCeVR2BvOatwy0XLJ9V6U14KAJ_=NPEeg@mail.gmail.com>
-References: <1399782773-20029-1-git-send-email-tytso@mit.edu> <1399782773-20029-2-git-send-email-tytso@mit.edu>
+Subject: Re: [PATCH 2/9] quota: fix e2fsck so we update the quota file correctly
+Date: Mon, 12 May 2014 23:35:20 -0700
+Message-ID: <CAGr1F2EKEP0Jq_dUaTbvvy7Zvz6AwEvyP0_0wXbg_xfBfkjsLA@mail.gmail.com>
+References: <1399782773-20029-1-git-send-email-tytso@mit.edu> <1399782773-20029-3-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-oa0-f48.google.com ([209.85.219.48]:34219 "EHLO
-	mail-oa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752542AbaEMGay (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 May 2014 02:30:54 -0400
-Received: by mail-oa0-f48.google.com with SMTP id i4so9342841oah.7
-        for <linux-ext4@vger.kernel.org>; Mon, 12 May 2014 23:30:54 -0700 (PDT)
-In-Reply-To: <1399782773-20029-2-git-send-email-tytso@mit.edu>
+Received: from mail-oa0-f47.google.com ([209.85.219.47]:36707 "EHLO
+	mail-oa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753164AbaEMGfl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 May 2014 02:35:41 -0400
+Received: by mail-oa0-f47.google.com with SMTP id i7so9476523oag.6
+        for <linux-ext4@vger.kernel.org>; Mon, 12 May 2014 23:35:40 -0700 (PDT)
+In-Reply-To: <1399782773-20029-3-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Looks good.
+
 On Sat, May 10, 2014 at 9:32 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+> In scan_dquota_callback() we were copying dqb_off from the on-disk
+> dquot structure to the dqot structure that we have constructed in
+> memory.  This is a bad idea, because if we detect that the quota inode
+> is corrupted and needs to be replaced, when we later write out the
+> inode, the fact that we have a non-zero dqb_off value means that quota
+> routines will not bother updating the quota tree index, since
+> presumably the quota tree index already has an entry for this dqot.
+>
+> The problem is that e2fsck, the only user of these functions, has
+> zapped the quota inode so it can be written from scratch.  So this
+> means the index for the quota records are not written out, so the
+> kernel can not find any of the records in the quota inodes.  Oops.
+>
+> The fix is simple; there is no reason to copy the dqb_off field into
+> the quota_dict copy of struct dquot.
+>
 > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 > Cc: adityakali@google.com
 
@@ -27,69 +45,26 @@ Reviewed-by: Aditya Kali <adityakali@google.com>
 Thanks!
 
 > ---
->  lib/quota/common.h  |  1 +
->  lib/quota/mkquota.c | 19 +++++++++++++++++++
->  2 files changed, 20 insertions(+)
+>  lib/quota/mkquota.c | 1 -
+>  1 file changed, 1 deletion(-)
 >
-> diff --git a/lib/quota/common.h b/lib/quota/common.h
-> index 7d324bf..f1ad79f 100644
-> --- a/lib/quota/common.h
-> +++ b/lib/quota/common.h
-> @@ -13,6 +13,7 @@
->  #include <ext2fs/ext2_types.h>
->  #endif /* EXT2_FLAT_INCLUDES */
->
-> +/* #define DEBUG_QUOTA 1 */
->
->  #ifndef __attribute__
->  # if !defined __GNUC__ || __GNUC__ < 2 || (__GNUC__ == 2 && __GNUC_MINOR__ < 8) || __STRICT_ANSI__
 > diff --git a/lib/quota/mkquota.c b/lib/quota/mkquota.c
-> index ba8c2da..3849ae1 100644
+> index 3849ae1..f77e072 100644
 > --- a/lib/quota/mkquota.c
 > +++ b/lib/quota/mkquota.c
-> @@ -45,6 +45,21 @@ static void print_inode(struct ext2_inode *inode)
+> @@ -458,7 +458,6 @@ static int scan_dquots_callback(struct dquot *dquot, void *cb_data)
 >
->         return;
->  }
-> +
-> +static void print_dquot(const char *desc, struct dquot *dq)
-> +{
-> +       if (desc)
-> +               fprintf(stderr, "%s: ", desc);
-> +       fprintf(stderr, "%u %lld:%lld:%lld %lld:%lld:%lld\n",
-> +               dq->dq_id, dq->dq_dqb.dqb_curspace,
-> +               dq->dq_dqb.dqb_bsoftlimit, dq->dq_dqb.dqb_bhardlimit,
-> +               dq->dq_dqb.dqb_curinodes,
-> +               dq->dq_dqb.dqb_isoftlimit, dq->dq_dqb.dqb_ihardlimit);
-> +}
-> +#else
-> +static void print_dquot(const char *desc, struct dquot *dq)
-> +{
-> +}
->  #endif
->
->  /*
-> @@ -121,6 +136,7 @@ static void write_dquots(dict_t *dict, struct quota_handle *qh)
->         for (n = dict_first(dict); n; n = dict_next(dict, n)) {
->                 dq = dnode_get(n);
->                 if (dq) {
-> +                       print_dquot("write", dq);
->                         dq->dq_h = qh;
->                         update_grace_times(dq);
->                         qh->qh_ops->commit_dquot(dq);
-> @@ -444,6 +460,9 @@ static int scan_dquots_callback(struct dquot *dquot, void *cb_data)
+>         dq = get_dq(quota_dict, dquot->dq_id);
 >         dq->dq_id = dquot->dq_id;
->         dq->dq_dqb.u.v2_mdqb.dqb_off = dquot->dq_dqb.u.v2_mdqb.dqb_off;
+> -       dq->dq_dqb.u.v2_mdqb.dqb_off = dquot->dq_dqb.u.v2_mdqb.dqb_off;
 >
-> +       print_dquot("mem", dq);
-> +       print_dquot("dsk", dquot);
-> +
->         /* Check if there is inconsistancy. */
->         if (dq->dq_dqb.dqb_curspace != dquot->dq_dqb.dqb_curspace ||
->             dq->dq_dqb.dqb_curinodes != dquot->dq_dqb.dqb_curinodes) {
+>         print_dquot("mem", dq);
+>         print_dquot("dsk", dquot);
 > --
 > 1.9.0
 >
+
+
 
 -- 
 Aditya
