@@ -1,92 +1,95 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: [ANNOUNCE] xfstests: master branch updated to 10fd79a
-Date: Tue, 13 May 2014 16:30:18 +1000
-Message-ID: <20140513063018.GB5421@dastard>
+From: Aditya Kali <adityakali@google.com>
+Subject: Re: [PATCH 1/9] quota: add debugging code to print the dquot structure
+Date: Mon, 12 May 2014 23:30:34 -0700
+Message-ID: <CAGr1F2ES3QEYOtOk4xCeVR2BvOatwy0XLJ9V6U14KAJ_=NPEeg@mail.gmail.com>
+References: <1399782773-20029-1-git-send-email-tytso@mit.edu> <1399782773-20029-2-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org
-To: xfs@oss.sgi.com
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-Content-Disposition: inline
-Sender: linux-btrfs-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-oa0-f48.google.com ([209.85.219.48]:34219 "EHLO
+	mail-oa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752542AbaEMGay (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 May 2014 02:30:54 -0400
+Received: by mail-oa0-f48.google.com with SMTP id i4so9342841oah.7
+        for <linux-ext4@vger.kernel.org>; Mon, 12 May 2014 23:30:54 -0700 (PDT)
+In-Reply-To: <1399782773-20029-2-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi folks,
+On Sat, May 10, 2014 at 9:32 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: adityakali@google.com
 
-The xfstests repository at git://oss.sgi.com/xfs/cmds/xfstests has
-just been updated. Patches often get missed, so please check if your
-outstanding patches were in this update. If they have not been in
-this update, please resubmit them to xfs@oss.sgi.com so they can be
-picked up in the next update.
+Reviewed-by: Aditya Kali <adityakali@google.com>
 
-The new head of the master branch is commit:
+Thanks!
 
-10fd79a locktest: add a F_GETLK vs. openmode test
+> ---
+>  lib/quota/common.h  |  1 +
+>  lib/quota/mkquota.c | 19 +++++++++++++++++++
+>  2 files changed, 20 insertions(+)
+>
+> diff --git a/lib/quota/common.h b/lib/quota/common.h
+> index 7d324bf..f1ad79f 100644
+> --- a/lib/quota/common.h
+> +++ b/lib/quota/common.h
+> @@ -13,6 +13,7 @@
+>  #include <ext2fs/ext2_types.h>
+>  #endif /* EXT2_FLAT_INCLUDES */
+>
+> +/* #define DEBUG_QUOTA 1 */
+>
+>  #ifndef __attribute__
+>  # if !defined __GNUC__ || __GNUC__ < 2 || (__GNUC__ == 2 && __GNUC_MINOR__ < 8) || __STRICT_ANSI__
+> diff --git a/lib/quota/mkquota.c b/lib/quota/mkquota.c
+> index ba8c2da..3849ae1 100644
+> --- a/lib/quota/mkquota.c
+> +++ b/lib/quota/mkquota.c
+> @@ -45,6 +45,21 @@ static void print_inode(struct ext2_inode *inode)
+>
+>         return;
+>  }
+> +
+> +static void print_dquot(const char *desc, struct dquot *dq)
+> +{
+> +       if (desc)
+> +               fprintf(stderr, "%s: ", desc);
+> +       fprintf(stderr, "%u %lld:%lld:%lld %lld:%lld:%lld\n",
+> +               dq->dq_id, dq->dq_dqb.dqb_curspace,
+> +               dq->dq_dqb.dqb_bsoftlimit, dq->dq_dqb.dqb_bhardlimit,
+> +               dq->dq_dqb.dqb_curinodes,
+> +               dq->dq_dqb.dqb_isoftlimit, dq->dq_dqb.dqb_ihardlimit);
+> +}
+> +#else
+> +static void print_dquot(const char *desc, struct dquot *dq)
+> +{
+> +}
+>  #endif
+>
+>  /*
+> @@ -121,6 +136,7 @@ static void write_dquots(dict_t *dict, struct quota_handle *qh)
+>         for (n = dict_first(dict); n; n = dict_next(dict, n)) {
+>                 dq = dnode_get(n);
+>                 if (dq) {
+> +                       print_dquot("write", dq);
+>                         dq->dq_h = qh;
+>                         update_grace_times(dq);
+>                         qh->qh_ops->commit_dquot(dq);
+> @@ -444,6 +460,9 @@ static int scan_dquots_callback(struct dquot *dquot, void *cb_data)
+>         dq->dq_id = dquot->dq_id;
+>         dq->dq_dqb.u.v2_mdqb.dqb_off = dquot->dq_dqb.u.v2_mdqb.dqb_off;
+>
+> +       print_dquot("mem", dq);
+> +       print_dquot("dsk", dquot);
+> +
+>         /* Check if there is inconsistancy. */
+>         if (dq->dq_dqb.dqb_curspace != dquot->dq_dqb.dqb_curspace ||
+>             dq->dq_dqb.dqb_curinodes != dquot->dq_dqb.dqb_curinodes) {
+> --
+> 1.9.0
+>
 
-New Commits:
-
-Brian Foster (5):
-      [2a52b8f] xfs/030: filter out extra repair noise for finobt enabled fs'
-      [9d5cb63] common: add _require_xfs_[mkfs_]finobt() checks for finobt tests
-      [01fbf44] repair: filter agno/ino repair output for finobt
-      [d95ecb0] xfs/010: test repair for finobt corruption
-      [c141570] xfs/013: stress the free inode btree
-
-Eryu Guan (1):
-      [ec08236] common: new function to get real device path name and basename
-
-Jeff Layton (4):
-      [2baab36] locktest: don't assume that F_OPEN should use O_RDWR
-      [ece564a] locktest: set f_fd to INVALID_HANDLE on close
-      [fe7056d] locktest: consolidate do_lock and do_unlock, and add ability to F_GETLK
-      [10fd79a] locktest: add a F_GETLK vs. openmode test
-
-Josef Bacik (2):
-      [0fd4705] common: fix flink check
-      [b6689ad] config: fix selinux context handling
-
-Namjae Jeon (1):
-      [995a459] fsstress: fix incorrect if condition check for collapse range mode
-
-Theodore Ts'o (1):
-      [9f35155] check: add support for an external file containing tests to exclude
-
-Wang Shilong (1):
-      [49398f8] btrfs: add regression test for inode cache vs tree log
-
-hch@infradead.org (1):
-      [7f82a5f] common: use a relative path to fsstress
-
-
-Code Diffstat:
-
- check               |   6 ++
- common/config       |  18 +++---
- common/rc           |  36 ++++++++++++
- common/repair       |   2 +
- ltp/fsstress.c      |   2 +-
- src/locktest.c      | 125 +++++++++++++++++++-----------------------
- tests/btrfs/049     | 109 ++++++++++++++++++++++++++++++++++++
- tests/btrfs/049.out |   1 +
- tests/btrfs/group   |   1 +
- tests/ext4/305      |   2 +-
- tests/generic/009   |   2 +-
- tests/generic/019   |   4 +-
- tests/generic/285   |   2 +-
- tests/generic/312   |   2 +-
- tests/xfs/010       | 133 ++++++++++++++++++++++++++++++++++++++++++++
- tests/xfs/010.out   |  57 +++++++++++++++++++
- tests/xfs/013       | 155 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/xfs/013.out   |   7 +++
- tests/xfs/030       |   3 +-
- tests/xfs/group     |   2 +
- 20 files changed, 582 insertions(+), 87 deletions(-)
- create mode 100644 tests/btrfs/049
- create mode 100644 tests/btrfs/049.out
- create mode 100755 tests/xfs/010
- create mode 100644 tests/xfs/010.out
- create mode 100755 tests/xfs/013
- create mode 100644 tests/xfs/013.out
 -- 
-Dave Chinner
-david@fromorbit.com
+Aditya
