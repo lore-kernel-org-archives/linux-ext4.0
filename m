@@ -1,28 +1,32 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: add missing BUFFER_TRACE before
- ext4_journal_get_write_access
-Date: Mon, 12 May 2014 22:09:18 -0400
-Message-ID: <20140513020918.GA29620@thunk.org>
-References: <CADu=CFqLi_L77conWoZDuiF91r+O=NNbotGG_W4JtmD9YD3NHw@mail.gmail.com>
+Subject: Re: [2/2] ext4: Use EXT_MAX_BLOCKS in ext4_es_can_be_merged()
+Date: Mon, 12 May 2014 22:25:43 -0400
+Message-ID: <20140513022543.GA28803@thunk.org>
+References: <1397585302-27175-2-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca
-To: liang xie <xieliang007@gmail.com>
+Cc: linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:35823 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:35844 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752153AbaEMCJV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 May 2014 22:09:21 -0400
+	id S1752496AbaEMCZq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 12 May 2014 22:25:46 -0400
 Content-Disposition: inline
-In-Reply-To: <CADu=CFqLi_L77conWoZDuiF91r+O=NNbotGG_W4JtmD9YD3NHw@mail.gmail.com>
+In-Reply-To: <1397585302-27175-2-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Apr 16, 2014 at 05:17:43PM +0800, liang xie wrote:
-> make them more consistently
+On Tue, Apr 15, 2014 at 08:08:22PM +0200, Lukas Czerner wrote:
+> In ext4_es_can_be_merged() when checking whether we can merge two
+> extents we should use EXT_MAX_BLOCKS instead of defining it manually.
+> Also if it is really the case we should notify userspace because clearly
+> there is a bug in extent status tree implementation since this should
+> never happen.
 > 
-> Signed-off-by: xieliang <xieliang@xiaomi.com>
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
 
-Thanks, applied.
+Applied, thanks.
 
 					- Ted
