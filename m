@@ -1,62 +1,40 @@
-From: Chris Mason <clm@fb.com>
+From: tytso@mit.edu
 Subject: Re: Separate mailing list for xfstests
-Date: Wed, 14 May 2014 11:02:47 -0400
-Message-ID: <53738597.70305@fb.com>
+Date: Wed, 14 May 2014 16:04:47 +0000
+Message-ID: <20140514160447.GA3974@thunk.org>
 References: <alpine.LFD.2.00.1405141508150.9727@localhost.localdomain>
-	<53738316.20601@redhat.com>
+ <53738316.20601@redhat.com>
+ <53738597.70305@fb.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="windows-1252"
-Content-Transfer-Encoding: quoted-printable
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, xfs@oss.sgi.com
-To: Eric Sandeen <sandeen@redhat.com>, =?windows-1252?Q?Luk=E1=9A_Czern?=
-	=?windows-1252?Q?er?= <lczerner@redhat.com>, <dchinner@redhat.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <53738316.20601@redhat.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	=?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
+	dchinner@redhat.com, xfs@oss.sgi.com,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Chris Mason <clm@fb.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:39649 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752606AbaENQEx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 14 May 2014 12:04:53 -0400
+Content-Disposition: inline
+In-Reply-To: <53738597.70305@fb.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On Wed, May 14, 2014 at 11:02:47AM -0400, Chris Mason wrote:
+> >> linux-fsdevel might seem as a good candidate for it, but still I
+> >> think that it deserves a separate ML to point people to.
 
+I'm personally in favor of using linux-fsdevel since it might
+encourage more fs developers who aren't using xfstests yet to start
+using it.
 
-On 05/14/2014 10:52 AM, Eric Sandeen wrote:
-> On 5/14/14, 8:20 AM, Luk=E1=9A Czerner wrote:
->> Hi Dave,
->>
->> I am wondering whether you're open to the idea of creating separate
->> mailing list for xfstests. It is no longer xfs specific project and
->> even though you're still a maintainer of the project, other fs folks
->> are definitely interested in the development process, but not
->> everyone might be interested in receiving everything from the
->> xfs@oss.sgi.com list.
->>
->> To speak for myself I would like to help with review of xfstests
->> patches as well, but I rarely go through my xfs folder
->> unfortunately.
->>
->> linux-fsdevel might seem as a good candidate for it, but still I
->> think that it deserves a separate ML to point people to.
->>
->> What do you think ?
-> =
+For example, we started investigating using xfstests to test unionfs,
+and pretty quickly found problems.  (I suspect the same problem exists
+in AUFS, BTW, but I've been focusing on unionfs because it's simpler
+and less scary.)  The patches to enable the use of xfstests to test
+unionfs are still pretty rough, but hopefully we'll get those sent to
+Dave once they are cleaned up a bit.
 
-> That sounds pretty reasonable to me.  We've always encouraged submissions
-> to cc: the other relevant lists (i.e. linux-ext4 if it's an ext4-specific
-> patch) and would probably still encourage that, but even from the other
-> angle (keeping i.e. ext4-specific and btrfs-specific patches off the
-> xfs list) this sounds like a good idea.
-
-+1 here.
-
--chris
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+					- Ted
