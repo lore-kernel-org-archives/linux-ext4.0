@@ -1,51 +1,110 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 4/5] ext4: don't crash when validating block bitmap
-Date: Tue, 13 May 2014 15:33:47 -0700
-Message-ID: <20140513223347.GA17417@birch.djwong.org>
-References: <20140501231720.892.58712.stgit@birch.djwong.org>
- <20140501231747.892.95073.stgit@birch.djwong.org>
- <20140512142457.GG31376@thunk.org>
+Subject: Re: [PATCH 06/37] debugfs: force logdump to display (old) journal
+ contents
+Date: Tue, 13 May 2014 17:05:47 -0700
+Message-ID: <20140514000547.GB17417@birch.djwong.org>
+References: <20140501231222.31890.82860.stgit@birch.djwong.org>
+ <20140501231302.31890.45397.stgit@birch.djwong.org>
+ <alpine.LFD.2.00.1405021346570.2154@localhost.localdomain>
+ <20140506002453.GN8434@birch.djwong.org>
+ <20140512014119.GI5480@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
+Cc: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
+	linux-ext4@vger.kernel.org
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:46997 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753192AbaEMWdw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 May 2014 18:33:52 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:32593 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750764AbaENAF4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 May 2014 20:05:56 -0400
 Content-Disposition: inline
-In-Reply-To: <20140512142457.GG31376@thunk.org>
+In-Reply-To: <20140512014119.GI5480@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 12, 2014 at 10:24:57AM -0400, Theodore Ts'o wrote:
-> On Thu, May 01, 2014 at 04:17:47PM -0700, Darrick J. Wong wrote:
-> > If EXT4FS_DEBUG is defined, ext4_validate_block_bitmap is called via
-> > ext4_count_free_clusters before sb->s_group_info is set up.  When this
-> > happens, the kernel crashes because group info hasn't been loaded.
-> > Forego marking the group corrupt for now; not setting BH_Verified
-> > means we'll revisit the bitmap if something went wrong.
-> > 
-> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+On Sun, May 11, 2014 at 09:41:19PM -0400, Theodore Ts'o wrote:
+> On Mon, May 05, 2014 at 05:24:53PM -0700, Darrick J. Wong wrote:
+> > I'll update the manpage.  -c seems to hexdump the contents of any block that we
+> > find while iterating the journal.  -b would seem to allow you to dump an
+> > arbitrary block #, but I could never get it to do that.
 > 
-> This shouldn't be necessary that we have this in the ext4 tree, right?
+> It's used to dump information _about_ an arbitrary block.  Here's an
+> example of some of the cool things you can do with logdump:
 
-Err... right, you can drop this patch of mine.
+Oh, -b is for FS physical blocks, not for logical blocks in the journal itself,
+I get it!  Thanks for pointing that out! :)
+
+The patch (in the other email) looks fine.
 
 --D
-
 > 
-> commit 007649375f6af242d5b1df2c15996949714303ba
-> Author: Azat Khuzhin <a3at.mail@gmail.com>
-> Date:   Mon Apr 7 10:54:20 2014 -0400
+> <tytso@closure> {/usr/projects/e2fsprogs/e2fsprogs}   (next)
+> 1742% gunzip <  tests/f_jnl_32bit/image.gz  > /tmp/image
+> <tytso@closure> {/usr/projects/e2fsprogs/e2fsprogs}   (next)
+> 1743% debugfs /tmp/image
+> debugfs 1.42.9 (4-Feb-2014)
+> debugfs:  logdump -b 680
+> Journal starts at block 1, transaction 2
+>   FS block 66 logged at sequence 3, journal block 8 (flags 0x2)
+>     (block bitmap for block 680: block is SET)
+>   FS block 680 logged at sequence 3, journal block 205 (flags 0x2)
+>   FS block 66 logged at sequence 4, journal block 231 (flags 0x2)
+>     (block bitmap for block 680: block is SET)
+>   FS block 680 logged at sequence 4, journal block 234 (flags 0x2)
+>   FS block 66 logged at sequence 5, journal block 339 (flags 0x2)
+>     (block bitmap for block 680: block is SET)
+>   FS block 680 logged at sequence 5, journal block 450 (flags 0x2)
+> No magic number at block 464: end of journal.
+> debugfs: icheck 680
+> Block	 Inode number
+> 680	 2132
+> debugfs:  logdump -i <2132>
+> Inode 2132 is at group 1, block 364, offset 384
+> Journal starts at block 1, transaction 2
+>   FS block 364 logged at sequence 3, journal block 197 (flags 0x2)
+>     (inode block for inode 2132):
+>     Inode: 2132   Type: directory        Mode:  0755   Flags: 0x80000
+>     Generation: 3167953082    Version: 0x00000008
+>     User:     0   Group:     0   Size: 1024
+>     File ACL: 0    Directory ACL: 0
+>     Links: 9   Blockcount: 2
+>     Fragment:  Address: 0    Number: 0    Size: 0
+>     ctime: 0x4fa1639e -- Wed May  2 12:41:02 2012
+>     atime: 0x4fa1639e -- Wed May  2 12:41:02 2012
+>     mtime: 0x4fa1639e -- Wed May  2 12:41:02 2012
+>     Blocks:  (0+1): 127754 (1+1): 4 (5+1): 680 
+>   FS block 364 logged at sequence 4, journal block 233 (flags 0x2)
+>     (inode block for inode 2132):
+>     Inode: 2132   Type: directory        Mode:  0755   Flags: 0x80000
+>     Generation: 3167953082    Version: 0x0000000c
+>     User:     0   Group:     0   Size: 1024
+>     File ACL: 0    Directory ACL: 0
+>     Links: 13   Blockcount: 2
+>     Fragment:  Address: 0    Number: 0    Size: 0
+>     ctime: 0x4fa1639e -- Wed May  2 12:41:02 2012
+>     atime: 0x4fa1639e -- Wed May  2 12:41:02 2012
+>     mtime: 0x4fa1639e -- Wed May  2 12:41:02 2012
+>     Blocks:  (0+1): 127754 (1+1): 4 (5+1): 680 
+>   FS block 364 logged at sequence 5, journal block 434 (flags 0x2)
+>     (inode block for inode 2132):
+>     Inode: 2132   Type: directory        Mode:  0755   Flags: 0x80000
+>     Generation: 3167953082    Version: 0x00000015
+>     User:     0   Group:     0   Size: 1024
+>     File ACL: 0    Directory ACL: 0
+>     Links: 4   Blockcount: 2
+>     Fragment:  Address: 0    Number: 0    Size: 0
+>     ctime: 0x4fa163a7 -- Wed May  2 12:41:11 2012
+>     atime: 0x4fa163a7 -- Wed May  2 12:41:11 2012
+>     mtime: 0x4fa163a7 -- Wed May  2 12:41:11 2012
+>     Blocks:  (0+1): 127754 (1+1): 4 (5+1): 680 
+> No magic number at block 464: end of journal.
+> debugfs: quit
 > 
->     ext4: initialize multi-block allocator before checking block descriptors
->     
->     With EXT4FS_DEBUG ext4_count_free_clusters() will call
->     ext4_read_block_bitmap() without s_group_info initialized, so we need to
->     initialize multi-block allocator before.
->     
->     ...
+> The idea is that this can be useful when debugging a potentially
+> corrupted journal, or for advanced file system recovery.
 > 
-> 						- Ted
+> Note that logdump -c is most useful in combination with -b, for
+> example: "logdump -b 680 -c".
+> 
+> 	  	      	  	   	- Ted
