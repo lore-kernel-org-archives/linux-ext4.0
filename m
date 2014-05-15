@@ -1,71 +1,55 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 76261] ext4_da_writepages err -30 after remount ro during
- shutdown
-Date: Thu, 15 May 2014 15:11:11 +0000
-Message-ID: <bug-76261-13602-kqZZ2JBay9@https.bugzilla.kernel.org/>
-References: <bug-76261-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 0/2 v2] Improve orphan list scaling
+Date: Thu, 15 May 2014 22:17:04 +0200
+Message-ID: <1400185026-3972-1-git-send-email-jack@suse.cz>
+Cc: Ted Tso <tytso@mit.edu>,
+	Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:53846 "EHLO mail.kernel.org"
+Received: from cantor2.suse.de ([195.135.220.15]:56278 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752179AbaEOPLO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 15 May 2014 11:11:14 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 5FC1820380
-	for <linux-ext4@vger.kernel.org>; Thu, 15 May 2014 15:11:13 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id CFBE92034B
-	for <linux-ext4@vger.kernel.org>; Thu, 15 May 2014 15:11:11 +0000 (UTC)
-In-Reply-To: <bug-76261-13602@https.bugzilla.kernel.org/>
+	id S1751191AbaEOURP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 May 2014 16:17:15 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=76261
 
-Theodore Tso <tytso@mit.edu> changed:
+  Hello,
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
+  this is my version of patches to improve orphan list scaling by
+reducing amount of work done under global s_orphan_mutex. We are
+in disagreement with Thavatchai whose patches are better (see thread
+http://www.spinics.net/lists/linux-ext4/msg43220.html) so I guess it's
+up to Ted or other people on this list to decide.
 
---- Comment #1 from Theodore Tso <tytso@mit.edu> ---
-Does upstream android really handle a shutdown using "echo u >
-/proc/sysrq-trigger", or is that something you added locally?   If it's
-upstream, I need to have some words with the Google Android team....
+When running code stressing orphan list operations [1] with these
+patches, I see s_orphan_lock to move from number 1 in lock_stat report
+to unmeasurable. So with the patches there are other much more
+problematic locks (superblock buffer lock and bh_state lock,
+j_list_lock, buffer locks for inode buffers when several inodes share a
+block...). The average times for 10 runs for the test program to run on my
+48-way box with ext4 on ramdisk are:
+	Vanilla				Patched
+Procs	Avg		Stddev		Avg		Stddev
+ 1	  2.769200	0.056194	2.890700	0.061727
+ 2	  5.756500	0.313268	4.383500	0.161629
+ 4	 11.852500	0.130221	6.542900	0.160039
+10	 33.590900	0.394888	27.749500	0.615517
+20	 71.035400	0.320914	76.368700	3.734557
+40	236.671100	2.856885	228.236800	2.361391
 
-sysrq-u is documented to be "Emergency Remount R/O".  It's not something that
-is designed to be used under normal circumstances.  So if upstream android is
-doing this, it's arguably a bug.
+So we can see the biggest speedup was for 2, 4, and 10 threads. For
+higher thread counts the contention and cache bouncing prevented any
+significant speedup (we can even see a barely-out-of-noise performance
+drop for 20 threads). 
 
-sysrq-u is implemented using do_emergency_remount() in fs/super.c, and it calls
-do_remount_sb with force set to 1 (the last argument is "force").
+Changes since v2:
+* Fixed up various bugs in error handling pointed out by Thavatchai and
+  some others as well
+* Somewhat reduced critical sections under s_orphan_lock
 
-            do_remount_sb(sb, MS_RDONLY, NULL, 1);
+[1] The test program runs given number of processes, each process is
+truncating a 4k file by 1 byte until it reaches 1 byte size and then the
+file is extended to 4k again.
 
-The "force" option omits the call to sb_prepare_remount_readonly(), which is
-what forces the writeback to happen.  The reason why it is omitted is that
-sysrq-u is designed to be used when the system is unstable, and so the
-writeback for one of the superblocks might block forever, and this would
-prevent the subsequent superblocks from getting remounted read-only.
-
-So people who use sysrq-u are usually advised to do an sysrq-s, which is an
-"emergency sync".   (This is avoids doing a data integrity writeback, since
-again it's designed for emergencies, when part of the system may be partially
-deadlocked, and so the goal is to save what you can, not to try to save
-everything.  Perfection, if it causes the sync to stop and never complete, and
-hence not sync out some buffers that could be saved, is the enemy of the good
-here.)
-
-The real issue here is that sysrq-u and sysrq-u is designed for emergency war
-room triage, what Dr. Hawkeye Pierce in M*A*S*H referred to as "meatball
-surgery".  It is battlefield surgery, and it is *not* what you would expect in
-a hospital surgery room located thousands of miles from a war zone.  So if
-android is using this under normal situations, it's an abuse of what these
-interfaces are intended to be used for.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+								Honza
