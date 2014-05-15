@@ -1,77 +1,71 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/2] ext2: fix error handling in ext2_fill_super()
-Date: Thu, 15 May 2014 15:42:04 +0200
-Message-ID: <20140515134204.GA660@quack.suse.cz>
-References: <1400156776-3412-1-git-send-email-waydi1@gmail.com>
- <1400156776-3412-2-git-send-email-waydi1@gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 76261] ext4_da_writepages err -30 after remount ro during
+ shutdown
+Date: Thu, 15 May 2014 15:11:11 +0000
+Message-ID: <bug-76261-13602-kqZZ2JBay9@https.bugzilla.kernel.org/>
+References: <bug-76261-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: jack@suse.cz, lczerner@redhat.com, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Seunghun Lee <waydi1@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1400156776-3412-2-git-send-email-waydi1@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.19.201]:53846 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752179AbaEOPLO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 May 2014 11:11:14 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 5FC1820380
+	for <linux-ext4@vger.kernel.org>; Thu, 15 May 2014 15:11:13 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id CFBE92034B
+	for <linux-ext4@vger.kernel.org>; Thu, 15 May 2014 15:11:11 +0000 (UTC)
+In-Reply-To: <bug-76261-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 15-05-14 21:26:16, Seunghun Lee wrote:
-> ext2_fill_super is using err variable, but it is not applied to return value.
-> 
-> This patch fixes it.
-  I see no point why we should have 'err' and 'ret' variables. Just use
-'ret' where 'err' is used and be done with it...
+https://bugzilla.kernel.org/show_bug.cgi?id=76261
 
-								Honza
-> 
-> Signed-off-by: Seunghun Lee <waydi1@gmail.com>
-> ---
->  fs/ext2/super.c |   10 ++++++----
->  1 file changed, 6 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-> index e3fc51e..7e36536 100644
-> --- a/fs/ext2/super.c
-> +++ b/fs/ext2/super.c
-> @@ -770,14 +770,13 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
->  	unsigned long logic_sb_block;
->  	unsigned long offset = 0;
->  	unsigned long def_mount_opts;
-> -	int ret = -EINVAL;
-> +	int ret = -ENOMEM;
->  	int blocksize = BLOCK_SIZE;
->  	int db_count;
->  	int i, j;
->  	__le32 features;
-> -	int err;
-> +	int err = 0;
->  
-> -	err = -ENOMEM;
->  	sbi = kzalloc(sizeof(*sbi), GFP_KERNEL);
->  	if (!sbi)
->  		goto failed;
-> @@ -793,6 +792,9 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
->  
->  	spin_lock_init(&sbi->s_lock);
->  
-> +	/* -EINVAL is default */
-> +	ret = -EINVAL;
-> +
->  	/*
->  	 * See what the current blocksize for the device is, and
->  	 * use that as the blocksize.  Otherwise (or if the blocksize
-> @@ -1140,7 +1142,7 @@ failed_sbi:
->  	kfree(sbi->s_blockgroup_lock);
->  	kfree(sbi);
->  failed:
-> -	return ret;
-> +	return err ? err : ret;
->  }
->  
->  static void ext2_clear_super_error(struct super_block *sb)
-> -- 
-> 1.7.9.5
-> 
+Theodore Tso <tytso@mit.edu> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
+
+--- Comment #1 from Theodore Tso <tytso@mit.edu> ---
+Does upstream android really handle a shutdown using "echo u >
+/proc/sysrq-trigger", or is that something you added locally?   If it's
+upstream, I need to have some words with the Google Android team....
+
+sysrq-u is documented to be "Emergency Remount R/O".  It's not something that
+is designed to be used under normal circumstances.  So if upstream android is
+doing this, it's arguably a bug.
+
+sysrq-u is implemented using do_emergency_remount() in fs/super.c, and it calls
+do_remount_sb with force set to 1 (the last argument is "force").
+
+            do_remount_sb(sb, MS_RDONLY, NULL, 1);
+
+The "force" option omits the call to sb_prepare_remount_readonly(), which is
+what forces the writeback to happen.  The reason why it is omitted is that
+sysrq-u is designed to be used when the system is unstable, and so the
+writeback for one of the superblocks might block forever, and this would
+prevent the subsequent superblocks from getting remounted read-only.
+
+So people who use sysrq-u are usually advised to do an sysrq-s, which is an
+"emergency sync".   (This is avoids doing a data integrity writeback, since
+again it's designed for emergencies, when part of the system may be partially
+deadlocked, and so the goal is to save what you can, not to try to save
+everything.  Perfection, if it causes the sync to stop and never complete, and
+hence not sync out some buffers that could be saved, is the enemy of the good
+here.)
+
+The real issue here is that sysrq-u and sysrq-u is designed for emergency war
+room triage, what Dr. Hawkeye Pierce in M*A*S*H referred to as "meatball
+surgery".  It is battlefield surgery, and it is *not* what you would expect in
+a hospital surgery room located thousands of miles from a war zone.  So if
+android is using this under normal situations, it's an abuse of what these
+interfaces are intended to be used for.
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+You are receiving this mail because:
+You are watching the assignee of the bug.
