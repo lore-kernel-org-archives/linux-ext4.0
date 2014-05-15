@@ -1,81 +1,71 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 76261] New: ext4_da_writepages err -30 after remount ro during
- shutdown
-Date: Thu, 15 May 2014 05:01:50 +0000
-Message-ID: <bug-76261-13602@https.bugzilla.kernel.org/>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: Separate mailing list for xfstests
+Date: Thu, 15 May 2014 12:08:10 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1405151207150.2112@localhost.localdomain>
+References: <alpine.LFD.2.00.1405141508150.9727@localhost.localdomain> <53738316.20601@redhat.com> <53738597.70305@fb.com> <20140514160447.GA3974@thunk.org> <20140514213529.GT26353@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-994174893-1400148494=:2112"
+Cc: tytso@mit.edu, Chris Mason <clm@fb.com>,
+	Eric Sandeen <sandeen@redhat.com>, dchinner@redhat.com,
+	xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:53465 "EHLO mail.kernel.org"
+Received: from mx1.redhat.com ([209.132.183.28]:24570 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750935AbaEOFBx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 15 May 2014 01:01:53 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id EC5CC2034B
-	for <linux-ext4@vger.kernel.org>; Thu, 15 May 2014 05:01:51 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 02F3F2015E
-	for <linux-ext4@vger.kernel.org>; Thu, 15 May 2014 05:01:51 +0000 (UTC)
+	id S1751039AbaEOKIV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 May 2014 06:08:21 -0400
+In-Reply-To: <20140514213529.GT26353@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=76261
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-            Bug ID: 76261
-           Summary: ext4_da_writepages err -30 after remount ro during
-                    shutdown
-           Product: File System
-           Version: 2.5
-    Kernel Version: 3.10.20
-          Hardware: ARM
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: blocking
-          Priority: P1
-         Component: ext4
-          Assignee: fs_ext4@kernel-bugs.osdl.org
-          Reporter: kun.chen@mediatek.com
-        Regression: No
+--8323328-994174893-1400148494=:2112
+Content-Type: TEXT/PLAIN; charset=ISO-8859-15
+Content-Transfer-Encoding: 8BIT
 
-Our android 4.4.2 based on linux 3.10.20
+On Thu, 15 May 2014, Dave Chinner wrote:
 
-when shutdown, it will call sync, echo "u" > /proc/sysrq-trigger. But I find a
-problem that sometime shutdown will hang and sometimes shutdown need long
-times.
+> Date: Thu, 15 May 2014 07:35:29 +1000
+> From: Dave Chinner <david@fromorbit.com>
+> To: tytso@mit.edu
+> Cc: Chris Mason <clm@fb.com>, Eric Sandeen <sandeen@redhat.com>,
+>     Luká¨ Czerner <lczerner@redhat.com>, dchinner@redhat.com, xfs@oss.sgi.com,
+>     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+> Subject: Re: Separate mailing list for xfstests
+> 
+> On Wed, May 14, 2014 at 04:04:47PM +0000, tytso@mit.edu wrote:
+> > On Wed, May 14, 2014 at 11:02:47AM -0400, Chris Mason wrote:
+> > > >> linux-fsdevel might seem as a good candidate for it, but still I
+> > > >> think that it deserves a separate ML to point people to.
+> > 
+> > I'm personally in favor of using linux-fsdevel since it might
+> > encourage more fs developers who aren't using xfstests yet to start
+> > using it.
+> 
+> I'd prefer a separate mailing list - I don't really like the idea of
+> burying general lists in large amounts of specific topic-related
+> traffic. That way lies lkml - a dumping ground for everything that
+> has no stopic-related lists and that results in a very low signal to
+> noise ratio. Comparitively speaking, -fsdevel has a high SNR, so we
+> should try to keep it that way. ;)
+> 
+> That said, I can see the value in sending update/release
+> announcements to -fsdevel, but I'd prefer to keep all the xfstests
+> traffic separate.  A separate list makes things like archive
+> searching and patch tracking much simpler....
 
-Check the kmsg log there are ext4 error occur, such as:
+I agree, having a separate list and sending out update/release
+announcements to fsdevel sounds like the best solution to me.
 
-[76.209728]-(3)[1:init]SysRq: -(3)[1:init]Emergency Remount R/O
-[76.282979] (3)[21:kworker/3:0]Emergency Remount Complete
-[77.188953] (0)[84:kworker/u8:1]EXT4-fs (mmcblk0p15): ext4_da_writepages:
-jbd2_start: 8192 pages, ino 131067; err -30
-[77.205402] (0)[84:kworker/u8:1]EXT4-fs (mmcblk0p15): ext4_da_writepages:
-jbd2_start: 8192 pages, ino 131067; err -30
-[78.220353] (3)[3075:kworker/u8:5]EXT4-fs (mmcblk0p15): ext4_da_writepages:
-jbd2_start: 8192 pages, ino 131067; err -30
-[79.246658] (1)[3075:kworker/u8:5]EXT4-fs (mmcblk0p15): ext4_da_writepages:
-jbd2_start: 8192 pages, ino 131067; err -30
-[80.261003] (3)[3075:kworker/u8:5]EXT4-fs (mmcblk0p15): ext4_da_writepages:
-jbd2_start: 8192 pages, ino 131067; err -30
-[80.272068] (3)[3075:kworker/u8:5]EXT4-fs (mmcblk0p15): ext4_da_writepages:
-jbd2_start: 1024 pages, ino 131067; err -30
-[81.300966] (1)[3075:kworker/u8:5]EXT4-fs (mmcblk0p15): ext4_da_writepages:
-jbd2_start: 8192 pages, ino 131067; err -30
-[81.688616] (0)[3075:kworker/u8:5]EXT4-fs (mmcblk0p15): ext4_da_writepages:
-jbd2_start: 8192 pages, ino 131067; err -30
-......
-[90.601634] (0)[3075:kworker/u8:5]EXT4-fs (mmcblk0p15): ext4_da_writepages:
-jbd2_start: 1024 pages, ino 131067; err -30
-[91.642286] (0)[3075:kworker/u8:5]EXT4-fs (mmcblk0p15): ext4_da_writepages:
-jbd2_start: 8192 pages, ino 131067; err -30
+Thanks!
+-Lukas
 
-err 30 is -EROFS, error due to writeback to read-only filesystem.
-As part of remount, I think linux will writeback all drity datas. Should no
-writeback occur after remount R/O. Not sure why I see these errors.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+> 
+> Cheers,
+> 
+> Dave.
+> 
+--8323328-994174893-1400148494=:2112--
