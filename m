@@ -1,43 +1,62 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 76261] ext4_da_writepages err -30 after remount ro during
- shutdown
-Date: Fri, 16 May 2014 13:44:36 +0000
-Message-ID: <bug-76261-13602-AQO6iw4Kin@https.bugzilla.kernel.org/>
-References: <bug-76261-13602@https.bugzilla.kernel.org/>
+From: Calvin Walton <calvin.walton@kepstin.ca>
+Subject: Re: [ANNOUNCE] xfstests: new mailing list
+Date: Fri, 16 May 2014 10:02:07 -0400
+Message-ID: <1400248927.979.2.camel@sasami.ottawa.blindsidenetworks.com>
+References: <20140516044611.GA8206@dastard>
+	 <20140516054009.GA17647@infradead.org>
+	 <alpine.LFD.2.00.1405161047010.2099@localhost.localdomain>
+	 <20140516085320.GA29279@infradead.org>
+	 <alpine.LFD.2.00.1405161054280.2099@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:50550 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932423AbaEPNoi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 16 May 2014 09:44:38 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 6BB0F2038D
-	for <linux-ext4@vger.kernel.org>; Fri, 16 May 2014 13:44:37 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 5EE5520379
-	for <linux-ext4@vger.kernel.org>; Fri, 16 May 2014 13:44:36 +0000 (UTC)
-In-Reply-To: <bug-76261-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Dave Chinner <david@fromorbit.com>, fstests@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, xfs@oss.sgi.com
+To: =?UTF-8?Q?Luk=C3=A1=C5=A1?= Czerner <lczerner@redhat.com>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
+In-Reply-To: <alpine.LFD.2.00.1405161054280.2099@localhost.localdomain>
+Sender: linux-btrfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=76261
+On Fri, 2014-05-16 at 10:55 +0200, Luk=C3=A1=C5=A1 Czerner wrote:
+> On Fri, 16 May 2014, Christoph Hellwig wrote:
+> > On Fri, May 16, 2014 at 10:48:42AM +0200, Luk?? Czerner wrote:
+> > > > > As requested I've created a new mailing list for xfstests
+> > > > > development and discussion. Reflecting the fact that the test
+> > > > > harness is not really XFS specific anymore, the list is:
+> > > > >=20
+> > > > > 	fstests@vger.kernel.org
+> > > >=20
+> > > > Isn't there an "x" missing somewhere?
+> > >=20
+> > > It's intentional and it is "Reflecting the fact that the test
+> > > harness is not really XFS specific anymore", even though the test
+> > > suite itself keep the name xfstests.
+> > >=20
+> > > This way it's more obvious to people that this is in fact not xfs
+> > > specific.
+> >=20
+> > Having the name different from the project it is for is stupid.  Ei=
+ther
+> > rename the test suite, or use the same name for the mailing list.
+>=20
+> Renaming the test suite is a good option if we can agree on this.
 
---- Comment #11 from Theodore Tso <tytso@mit.edu> ---
-Hi Ken, commit 807612db2f9940 is not going to help you, since
-emergency_remount() is calling do_remount_sb with force == 0.
+Instead of renaming the test suite, why not just "backronym" it to mean
+something different? The letter x is used to mean "cross" in many
+contexts, so "xfstests" could easily mean "cross-filesystem tests" - a
+name that fits perfectly!
 
-Note that if applications are still writing to the file system at the time of
-the shutdown, the application files are at risk of getting corrupted.   It
-doesn't actually really matter if sb_prepare_readonly_remount() causes those
-writes to return EROFS as opposed to returning success and then having the
-writes fail.  It might quiet the the error messages in the system log, but it's
-not going to allow the applications to shutdown cleanly --- because if this
-patch was going to make a difference, it implies that applications are not
-getting shut down cleanly before android triggers the emergency_remount.
+Only kind of joking,
+Calvin.
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+--=20
+Calvin Walton <calvin.walton@kepstin.ca>
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-btrfs" =
+in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
