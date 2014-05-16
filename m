@@ -1,92 +1,37 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: [ANNOUNCE] xfstests: new mailing list
-Date: Fri, 16 May 2014 14:46:11 +1000
-Message-ID: <20140516044611.GA8206@dastard>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 76261] ext4_da_writepages err -30 after remount ro during
+ shutdown
+Date: Fri, 16 May 2014 05:10:47 +0000
+Message-ID: <bug-76261-13602-WftKmREryh@https.bugzilla.kernel.org/>
+References: <bug-76261-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============7520810893291321165=="
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, xfs@oss.sgi.com
-To: fstests@vger.kernel.org
-Return-path: <xfs-bounces@oss.sgi.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
-
-
---===============7520810893291321165==
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="fdj2RfSjLxBAspz7"
-Content-Disposition: inline
-
-
---fdj2RfSjLxBAspz7
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
-
-Hi folks,
-
-As requested I've created a new mailing list for xfstests
-development and discussion. Reflecting the fact that the test
-harness is not really XFS specific anymore, the list is:
-
-	fstests@vger.kernel.org
-
-I have not confirmed an archiving location yet (in the process of
-doing so through marc.info), but that should be set up real soon.
-
-I'll still be listening in on the XFS list for xfstests patches, bug
-reports and questions, so don't worry if you forget this new list
-exists... :)
-
-Cheers,
-
-Dave.
---=20
-Dave Chinner
-david@fromorbit.com
-
---fdj2RfSjLxBAspz7
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
-
-iQIcBAEBAgAGBQJTdZgSAAoJEK3oKUf0dfod1cgP/juW/Xi58anr5nRB7H9IDPGm
-2jcBlQdx5sDxEZ2BGcDb3D1Q1hB4Wdni4riS6QerSX/2o+Zge9aMUzsQUcdY1R8S
-ujaAH+IvFCdMBZEa45ZnwsJk11B2erIffWIsNaOzKEFpBVNA55d3A6oqDQV2bK7C
-4Y58jxPjykzZvndA8qIc6ZdZEohQvUMGsGGdvl8D8QEIC2n961sosv3RM48GXhX1
-saU06gA79GeVuEaXsCt8NJzq7VPiq6Ym/TEVhSXphL0wczCweJEqNypbufZrAqIn
-I+iUcp4lCVO4SjHHXy/1hOQsYbYnv/cxwQ2Z3xapoV3uL+KrvdndZA4nZtWcIyPq
-+8Dni44xKrA4JqT2QKyfglV02LgO6aN7Bqw/jd+iw11OyuFhGbOdTyLWZ6cMhJ4/
-YpZSJPaw7zEXjj0/cC7Wjg6vwYumqOvnLn9jUXNfTky+PTrKjvYHXKEOQnI52c2c
-D/HsrFIQivwuXEJ6fMTHtzKQTeYlk60il3bY0Xq87EVcpbPaRbHtqgcVn5PXFHdq
-AfRbTMUuEytAlCRp5TS0KD5BTfifpTifeQpu69iDiiib76zNfI2J5vd7RM84R5XH
-npgn8MgkCtbQQBTXov63i/xzET2x0H01CsDMuU2tu7pPGJNlkTW6NVgiaEbynAsU
-x0x7h9Bl2KyfROp236Pp
-=myJY
------END PGP SIGNATURE-----
-
---fdj2RfSjLxBAspz7--
-
-
---===============7520810893291321165==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.19.201]:56627 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752719AbaEPFKv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 16 May 2014 01:10:51 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 59A3120295
+	for <linux-ext4@vger.kernel.org>; Fri, 16 May 2014 05:10:50 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id D1A19201F9
+	for <linux-ext4@vger.kernel.org>; Fri, 16 May 2014 05:10:47 +0000 (UTC)
+In-Reply-To: <bug-76261-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+https://bugzilla.kernel.org/show_bug.cgi?id=76261
 
---===============7520810893291321165==--
+--- Comment #9 from kun.chen <kun.chen@mediatek.com> ---
+Also refer to this
+patch:http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/fs/super.c?id=807612db2f9940b9fa6deaef054eb16d51bd3e00
+
+Just fix writeback dirty data after remount complete. So I think maybe the sync
+flow can be improved on 3.10.20 even if used emergency_remount().
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
