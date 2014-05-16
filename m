@@ -1,131 +1,40 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 1/2] ext4: Use sbi in ext4_orphan_{add|del}()
-Date: Thu, 15 May 2014 22:17:05 +0200
-Message-ID: <1400185026-3972-2-git-send-email-jack@suse.cz>
-References: <1400185026-3972-1-git-send-email-jack@suse.cz>
-Cc: Ted Tso <tytso@mit.edu>,
-	Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>,
-	Jan Kara <jack@suse.cz>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 76261] ext4_da_writepages err -30 after remount ro during
+ shutdown
+Date: Fri, 16 May 2014 01:50:01 +0000
+Message-ID: <bug-76261-13602-sUVTjLewx2@https.bugzilla.kernel.org/>
+References: <bug-76261-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:56277 "EHLO mx2.suse.de"
+Received: from mail.kernel.org ([198.145.19.201]:53151 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751591AbaEOURQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 15 May 2014 16:17:16 -0400
-In-Reply-To: <1400185026-3972-1-git-send-email-jack@suse.cz>
+	id S1751579AbaEPBuF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 May 2014 21:50:05 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id C036A2039C
+	for <linux-ext4@vger.kernel.org>; Fri, 16 May 2014 01:50:03 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 188D92038D
+	for <linux-ext4@vger.kernel.org>; Fri, 16 May 2014 01:50:02 +0000 (UTC)
+In-Reply-To: <bug-76261-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Use sbi pointer consistently in ext4_orphan_del() instead of opencoding
-it sometimes. Also ext4_orphan_add() uses EXT4_SB(sb) often so create
-sbi variable for it as well and use it.
+https://bugzilla.kernel.org/show_bug.cgi?id=76261
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/namei.c | 31 +++++++++++++++----------------
- 1 file changed, 15 insertions(+), 16 deletions(-)
+--- Comment #2 from kun.chen <kun.chen@mediatek.com> ---
+You can refer this:
+https://android.googlesource.com/platform/system/core/+/master/libcutils/android_reboot.c
+During shutdown in android, it realy will goto emergency_remount() flow. 
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 1cb84f78909e..5fcaa85b6dc5 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -2550,13 +2550,14 @@ static int empty_dir(struct inode *inode)
- int ext4_orphan_add(handle_t *handle, struct inode *inode)
- {
- 	struct super_block *sb = inode->i_sb;
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	struct ext4_iloc iloc;
- 	int err = 0, rc;
- 
--	if (!EXT4_SB(sb)->s_journal)
-+	if (!sbi->s_journal)
- 		return 0;
- 
--	mutex_lock(&EXT4_SB(sb)->s_orphan_lock);
-+	mutex_lock(&sbi->s_orphan_lock);
- 	if (!list_empty(&EXT4_I(inode)->i_orphan))
- 		goto out_unlock;
- 
-@@ -2569,8 +2570,8 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
- 	J_ASSERT((S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
- 		  S_ISLNK(inode->i_mode)) || inode->i_nlink == 0);
- 
--	BUFFER_TRACE(EXT4_SB(sb)->s_sbh, "get_write_access");
--	err = ext4_journal_get_write_access(handle, EXT4_SB(sb)->s_sbh);
-+	BUFFER_TRACE(sbi->s_sbh, "get_write_access");
-+	err = ext4_journal_get_write_access(handle, sbi->s_sbh);
- 	if (err)
- 		goto out_unlock;
- 
-@@ -2582,12 +2583,12 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
- 	 * orphan list. If so skip on-disk list modification.
- 	 */
- 	if (NEXT_ORPHAN(inode) && NEXT_ORPHAN(inode) <=
--		(le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count)))
-+		(le32_to_cpu(sbi->s_es->s_inodes_count)))
- 			goto mem_insert;
- 
- 	/* Insert this inode at the head of the on-disk orphan list... */
--	NEXT_ORPHAN(inode) = le32_to_cpu(EXT4_SB(sb)->s_es->s_last_orphan);
--	EXT4_SB(sb)->s_es->s_last_orphan = cpu_to_le32(inode->i_ino);
-+	NEXT_ORPHAN(inode) = le32_to_cpu(sbi->s_es->s_last_orphan);
-+	sbi->s_es->s_last_orphan = cpu_to_le32(inode->i_ino);
- 	err = ext4_handle_dirty_super(handle, sb);
- 	rc = ext4_mark_iloc_dirty(handle, inode, &iloc);
- 	if (!err)
-@@ -2603,14 +2604,14 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
- 	 * anyway on the next recovery. */
- mem_insert:
- 	if (!err)
--		list_add(&EXT4_I(inode)->i_orphan, &EXT4_SB(sb)->s_orphan);
-+		list_add(&EXT4_I(inode)->i_orphan, &sbi->s_orphan);
- 
- 	jbd_debug(4, "superblock will point to %lu\n", inode->i_ino);
- 	jbd_debug(4, "orphan inode %lu will point to %d\n",
- 			inode->i_ino, NEXT_ORPHAN(inode));
- out_unlock:
--	mutex_unlock(&EXT4_SB(sb)->s_orphan_lock);
--	ext4_std_error(inode->i_sb, err);
-+	mutex_unlock(&sbi->s_orphan_lock);
-+	ext4_std_error(sb, err);
- 	return err;
- }
- 
-@@ -2622,22 +2623,20 @@ int ext4_orphan_del(handle_t *handle, struct inode *inode)
- {
- 	struct list_head *prev;
- 	struct ext4_inode_info *ei = EXT4_I(inode);
--	struct ext4_sb_info *sbi;
-+	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	__u32 ino_next;
- 	struct ext4_iloc iloc;
- 	int err = 0;
- 
--	if ((!EXT4_SB(inode->i_sb)->s_journal) &&
--	    !(EXT4_SB(inode->i_sb)->s_mount_state & EXT4_ORPHAN_FS))
-+	if (!sbi->s_journal && !(sbi->s_mount_state & EXT4_ORPHAN_FS))
- 		return 0;
- 
--	mutex_lock(&EXT4_SB(inode->i_sb)->s_orphan_lock);
-+	mutex_lock(&sbi->s_orphan_lock);
- 	if (list_empty(&ei->i_orphan))
- 		goto out;
- 
- 	ino_next = NEXT_ORPHAN(inode);
- 	prev = ei->i_orphan.prev;
--	sbi = EXT4_SB(inode->i_sb);
- 
- 	jbd_debug(4, "remove inode %lu from orphan list\n", inode->i_ino);
- 
-@@ -2683,7 +2682,7 @@ int ext4_orphan_del(handle_t *handle, struct inode *inode)
- out_err:
- 	ext4_std_error(inode->i_sb, err);
- out:
--	mutex_unlock(&EXT4_SB(inode->i_sb)->s_orphan_lock);
-+	mutex_unlock(&sbi->s_orphan_lock);
- 	return err;
- 
- out_brelse:
+And from the ksmg log, it seems ext4 writeback continued almost 15 seconds
+after emergency_remount() completed. Not sure why still has so many writeback
+occurs, even it used emergency_remount(), still has so many writeback occurs,
+and takes so long time, this will lead to shutdown hang or delay
+
 -- 
-1.8.1.4
-
+You are receiving this mail because:
+You are watching the assignee of the bug.
