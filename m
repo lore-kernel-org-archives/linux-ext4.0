@@ -1,51 +1,57 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [ANNOUNCE] xfstests: new mailing list
-Date: Sat, 17 May 2014 08:19:30 +1000
-Message-ID: <20140516221930.GA8554@dastard>
-References: <20140516044611.GA8206@dastard>
- <20140516054009.GA17647@infradead.org>
- <alpine.LFD.2.00.1405161047010.2099@localhost.localdomain>
- <20140516085320.GA29279@infradead.org>
+From: Andre Reinke <andre.reinke@gmail.com>
+Subject: content of file lost after fs went 100% full
+Date: Sat, 17 May 2014 12:21:42 +0200
+Message-ID: <53773836.9000907@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Luk?? Czerner <lczerner@redhat.com>, fstests@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, xfs@oss.sgi.com
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20140516085320.GA29279@infradead.org>
-Sender: linux-btrfs-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-ee0-f42.google.com ([74.125.83.42]:44804 "EHLO
+	mail-ee0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932114AbaEQKVp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 17 May 2014 06:21:45 -0400
+Received: by mail-ee0-f42.google.com with SMTP id d49so2148729eek.15
+        for <linux-ext4@vger.kernel.org>; Sat, 17 May 2014 03:21:44 -0700 (PDT)
+Received: from [192.168.1.2] (port-ip-88-150-7-252.reverse.mdcc-fun.de. [88.150.7.252])
+        by mx.google.com with ESMTPSA id p9sm26475971eeg.32.2014.05.17.03.21.43
+        for <linux-ext4@vger.kernel.org>
+        (version=TLSv1 cipher=ECDHE-RSA-RC4-SHA bits=128/128);
+        Sat, 17 May 2014 03:21:43 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, May 16, 2014 at 01:53:20AM -0700, Christoph Hellwig wrote:
-> On Fri, May 16, 2014 at 10:48:42AM +0200, Luk?? Czerner wrote:
-> > > > As requested I've created a new mailing list for xfstests
-> > > > development and discussion. Reflecting the fact that the test
-> > > > harness is not really XFS specific anymore, the list is:
-> > > > 
-> > > > 	fstests@vger.kernel.org
-> > > 
-> > > Isn't there an "x" missing somewhere?
-> > 
-> > It's intentional and it is "Reflecting the fact that the test
-> > harness is not really XFS specific anymore", even though the test
-> > suite itself keep the name xfstests.
-> > 
-> > This way it's more obvious to people that this is in fact not xfs
-> > specific.
-> 
-> Having the name different from the project it is for is stupid.  Either
-> rename the test suite, or use the same name for the mailing list.
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-Renaming the test suite take a lot more work - .e.g renaming/moving
-source trees and a fixing all the documentation that points to it...
+I may have run into some kind of a bug and looking for help.
 
-So, small steps.
+I shutdown my machine and fired up a live usb, done some backups. I did
+'dd if=/dev/windows_partition of=/dev/ext4_fs' and while this file had
+been written the filesystem got filled 100%. Because this step took so
+long I told my machine to shutdown automatically in about 2 hours and
+went to bed.
 
-Cheers,
+Next morning I fired up my machine (Gentoo btw.) and opened irssi. All
+was as usual, except of some weir behavior, because there was no space
+left. I didn't recognize this from the beginning and so closed irrsi again.
+I started irssi again and my config was lost. I found the config file in
+the irssi dir with 0 bytes. :(
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+So, fill the drive, open a file, close the file and open it again leads
+to loosing the file?
+
+This is reproducable on this machine. Any help would be appreciated.
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
+
+iQEcBAEBAgAGBQJTdzg2AAoJEH3Z8Qq5aI95O2kH/1ANTajziJSFJRO5Q0j52eY+
+rR4/iE/g9sWaBl+/LCsuIQSTkpw02Ghml7VALxSwCgcBJB/yf5vRkdzeGKvJvgUI
+qzQJgrCmUxpXNynmCcYSOUXKm1qJZMZOYLdRovSLnwqDYHOfmLjJcB9SCjGzAksh
+qt/50FrhUjbcFk+rGAbrEb45F36N8ehML88A54ojYYKerVl4YlZrQMzHVYYjbdwk
+j3QsFhrFenkKd4ugdYwlBt9W4RfVyHJ9xxZQc3eHkEC5myFzBTiniicTzpAFvulc
+iiXZfrY0q3uCq0n+dFEmzDxZJJtaJSr6+ybobM/32iyS2ay4kEnYsxPb+GORLeY=
+=Sgjz
+-----END PGP SIGNATURE-----
