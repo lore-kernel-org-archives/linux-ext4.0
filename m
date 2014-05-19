@@ -1,46 +1,34 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 0/2 v2] Improve orphan list scaling
-Date: Mon, 19 May 2014 10:50:32 -0400
-Message-ID: <20140519145032.GA4012@thunk.org>
-References: <1400185026-3972-1-git-send-email-jack@suse.cz>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [ANNOUNCE] xfstests: new mailing list
+Date: Mon, 19 May 2014 07:55:41 -0700
+Message-ID: <20140519145541.GA32055@infradead.org>
+References: <20140516044611.GA8206@dastard>
+ <20140516054009.GA17647@infradead.org>
+ <alpine.LFD.2.00.1405161047010.2099@localhost.localdomain>
+ <20140516085320.GA29279@infradead.org>
+ <20140516221930.GA8554@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-	Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>
-To: Jan Kara <jack@suse.cz>
+Cc: Luk?? Czerner <lczerner@redhat.com>, fstests@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, xfs@oss.sgi.com
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:49251 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932394AbaESOuh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 19 May 2014 10:50:37 -0400
+Received: from bombadil.infradead.org ([198.137.202.9]:36181 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751544AbaESOzq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 May 2014 10:55:46 -0400
 Content-Disposition: inline
-In-Reply-To: <1400185026-3972-1-git-send-email-jack@suse.cz>
+In-Reply-To: <20140516221930.GA8554@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, May 15, 2014 at 10:17:04PM +0200, Jan Kara wrote:
->   this is my version of patches to improve orphan list scaling by
-> reducing amount of work done under global s_orphan_mutex. We are
-> in disagreement with Thavatchai whose patches are better (see thread
-> http://www.spinics.net/lists/linux-ext4/msg43220.html) so I guess it's
-> up to Ted or other people on this list to decide.
+On Sat, May 17, 2014 at 08:19:30AM +1000, Dave Chinner wrote:
+> Renaming the test suite take a lot more work - .e.g renaming/moving
+> source trees and a fixing all the documentation that points to it...
 
-I've started testing Jan's patches, mainly because of the simplicity
-issue, and becase I agree with him that it's not clear that the hashed
-mutexes is worth the extra complexity, even though it's a vanishingly
-small number of systems that would show any benefit for them, and even
-then it's not clear the changes are that much greater.
+In that case please call the list xfstests - a name different by a
+single character is utterly confusing.  And I defintively see some merit
+to the suggestion that we'll just keep the x and allow people to come up
+with a nice backronym for it if they care enough.
 
-For the purposes of doing further optimizations, I'd prefer to start
-with Jan's changes as a starting point and as a performance baseline
-for further improvements.
-
-If adding more mutexes or spinlocks, even 128 more mutexes per
-filesystem, can be justified by a really huge improvement, it's
-something that I won't completely rule out at this stage.  But I'd
-rather avoid that unless the comparative benchmarks and lock_stat
-reports make for an extremely convincing case.
-
-Cheers,
-
-					- Ted
