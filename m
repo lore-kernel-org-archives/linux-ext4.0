@@ -1,50 +1,46 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 76261] ext4_da_writepages err -30 after remount ro during
- shutdown
-Date: Mon, 19 May 2014 13:41:15 +0000
-Message-ID: <bug-76261-13602-x3RXnFWoyl@https.bugzilla.kernel.org/>
-References: <bug-76261-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 0/2 v2] Improve orphan list scaling
+Date: Mon, 19 May 2014 10:50:32 -0400
+Message-ID: <20140519145032.GA4012@thunk.org>
+References: <1400185026-3972-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org,
+	Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:35254 "EHLO mail.kernel.org"
+Received: from imap.thunk.org ([74.207.234.97]:49251 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754499AbaESNlS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 19 May 2014 09:41:18 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 62915202A7
-	for <linux-ext4@vger.kernel.org>; Mon, 19 May 2014 13:41:17 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 0C02A201F4
-	for <linux-ext4@vger.kernel.org>; Mon, 19 May 2014 13:41:16 +0000 (UTC)
-In-Reply-To: <bug-76261-13602@https.bugzilla.kernel.org/>
+	id S932394AbaESOuh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 19 May 2014 10:50:37 -0400
+Content-Disposition: inline
+In-Reply-To: <1400185026-3972-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=76261
+On Thu, May 15, 2014 at 10:17:04PM +0200, Jan Kara wrote:
+>   this is my version of patches to improve orphan list scaling by
+> reducing amount of work done under global s_orphan_mutex. We are
+> in disagreement with Thavatchai whose patches are better (see thread
+> http://www.spinics.net/lists/linux-ext4/msg43220.html) so I guess it's
+> up to Ted or other people on this list to decide.
 
---- Comment #14 from Theodore Tso <tytso@mit.edu> ---
-On Mon, May 19, 2014 at 03:41:21AM +0000, bugzilla-daemon@bugzilla.kernel.org
-wrote:
-> [80.272068] (3)[3075:kworker/u8:5]EXT4-fs (mmcblk0p15): ext4_da_writepages:
-> jbd2_start: 1024 pages, ino 131067; err -30
+I've started testing Jan's patches, mainly because of the simplicity
+issue, and becase I agree with him that it's not clear that the hashed
+mutexes is worth the extra complexity, even though it's a vanishingly
+small number of systems that would show any benefit for them, and even
+then it's not clear the changes are that much greater.
 
-Oh, and since we now have a file system an inode number, you can
-investigate what this inode might actually be.  Suggested commands:
+For the purposes of doing further optimizations, I'd prefer to start
+with Jan's changes as a starting point and as a performance baseline
+for further improvements.
 
-debugfs /dev/mmcblk0p15
-debugfs: ncheck 131067
-
-and
-
-debugfs: stat <131067>
+If adding more mutexes or spinlocks, even 128 more mutexes per
+filesystem, can be justified by a really huge improvement, it's
+something that I won't completely rule out at this stage.  But I'd
+rather avoid that unless the comparative benchmarks and lock_stat
+reports make for an extremely convincing case.
 
 Cheers,
 
-                    - Ted
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+					- Ted
