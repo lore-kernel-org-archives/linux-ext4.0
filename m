@@ -1,34 +1,50 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [ANNOUNCE] xfstests: new mailing list
-Date: Mon, 19 May 2014 07:55:41 -0700
-Message-ID: <20140519145541.GA32055@infradead.org>
-References: <20140516044611.GA8206@dastard>
- <20140516054009.GA17647@infradead.org>
- <alpine.LFD.2.00.1405161047010.2099@localhost.localdomain>
- <20140516085320.GA29279@infradead.org>
- <20140516221930.GA8554@dastard>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] e2fsprogs: don't run quota test if quota is not enabled
+Date: Mon, 19 May 2014 15:26:49 -0500
+Message-ID: <537A6909.6060700@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Luk?? Czerner <lczerner@redhat.com>, fstests@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, xfs@oss.sgi.com
-To: Dave Chinner <david@fromorbit.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:36181 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751544AbaESOzq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 May 2014 10:55:46 -0400
-Content-Disposition: inline
-In-Reply-To: <20140516221930.GA8554@dastard>
+Received: from mx1.redhat.com ([209.132.183.28]:41735 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751046AbaESU0s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 19 May 2014 16:26:48 -0400
+Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s4JKQlju005946
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Mon, 19 May 2014 16:26:48 -0400
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s4JKQkAx005326
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 19 May 2014 16:26:47 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, May 17, 2014 at 08:19:30AM +1000, Dave Chinner wrote:
-> Renaming the test suite take a lot more work - .e.g renaming/moving
-> source trees and a fixing all the documentation that points to it...
+The default configuration still has quota disabled, but
+runs the f_quota test unconditionally, so we fail by
+default.
 
-In that case please call the list xfstests - a name different by a
-single character is utterly confusing.  And I defintively see some merit
-to the suggestion that we'll just keep the x and allow people to come up
-with a nice backronym for it if they care enough.
+Fix that...
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+diff --git a/tests/f_quota/script b/tests/f_quota/script
+index bf25e07..d1c4b9e 100644
+--- a/tests/f_quota/script
++++ b/tests/f_quota/script
+@@ -1,4 +1,11 @@
+ AFTER_CMD='$DEBUGFS -f $test_dir/debugfs-cmds $TMPFILE 2>&1 | sed -f $cmd_dir/filter.sed > $test_name.0.log'
+ PASS_ZERO=true
+ 
++$TUNE2FS -h 2>&1 | grep -q quota_options
++if [ $? != 0 ] ; then
++        rm -f $TMPFILE
++        echo "$test_name: $test_description: skipped (quota not enabled)"
++        return 0
++fi
++
+ . $cmd_dir/run_e2fsck
 
