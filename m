@@ -1,82 +1,259 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH] debugfs: fix string_to_time for MacOS strptime()
-Date: Tue, 20 May 2014 16:31:10 -0600
-Message-ID: <1400625070-61813-1-git-send-email-adilger@dilger.ca>
+Subject: [PATCH] misc: fix compile warnings on master branch
+Date: Tue, 20 May 2014 17:04:22 -0600
+Message-ID: <1400627062-74327-1-git-send-email-adilger@dilger.ca>
 Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga11.intel.com ([192.55.52.93]:44128 "EHLO mga11.intel.com"
+Received: from mga09.intel.com ([134.134.136.24]:45912 "EHLO mga09.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750987AbaETWbE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 20 May 2014 18:31:04 -0400
+	id S1750737AbaETXEV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 20 May 2014 19:04:21 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The strptime() function does not update fields in struct tm that are
-not specified in the input format.  The glibc implementation sets the
-tm_yday field (%j) when any of the year (%Y), month (%m), or day (%d)
-fields are changed, but the MacOS strptime() does not set tm_yday in
-this case.  This caused string_to_time() to calculate the wrong Unix
-epoch on MacOS. If tm_yday is unset, compute it in string_to_time().
+Fix compile warnings found on the master branch when using LLVM.
+
+- Add missing format string when using the libintl _() macro
+- include <limits.h> header to get PATH_MAX definition
+- fix format vs. variable mismatches
+- add header block for create_inode.c file
+- remove use of bzero(), use ext2fs_get_memzero() instead
 
 Signed-off-by: Andreas Dilger <adilger@dilger.ca>
 ---
- debugfs/util.c                    | 14 ++++++++++++++
- tests/f_dup_resize/script         |  2 +-
- tests/f_uninit_last_uninit/script |  2 +-
- 3 files changed, 16 insertions(+), 2 deletions(-)
+ e2fsck/pass5.c           |  4 ++--
+ lib/ext2fs/inline_data.c | 14 ++++++++------
+ misc/create_inode.c      | 12 ++++++++++++
+ misc/dumpe2fs.c          |  4 ++--
+ misc/mke2fs.c            | 32 ++++++++++++++++----------------
+ misc/tune2fs.c           |  2 +-
+ 6 files changed, 41 insertions(+), 27 deletions(-)
 
-diff --git a/debugfs/util.c b/debugfs/util.c
-index 9ddfe0b..20c6c61 100644
---- a/debugfs/util.c
-+++ b/debugfs/util.c
-@@ -245,6 +245,20 @@ time_t string_to_time(const char *arg)
- 		ts.tm_mday = 0;
- #endif
- 	ts.tm_isdst = -1;
-+	/* strptime() may only update the specified fields, which does not
-+	 * necessarily include ts.tm_yday (%j).  Calculate this if unset:
-+	 *
-+	 * Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec
-+	 * 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
-+	 *
-+	 * Start with 31 days per month.  Even months have only 30 days, but
-+	 * reverse in August, subtract one day for those months. February has
-+	 * only 28 days, not 30, subtract two days. Add day of month, minus
-+	 * one, since day is not finished yet.  Leap years handled afterward. */
-+	if (ts.tm_yday == 0)
-+		ts.tm_yday = (ts.tm_mon * 31) -
-+			((ts.tm_mon - (ts.tm_mon > 7)) / 2) -
-+			2 * (ts.tm_mon > 1) + ts.tm_mday - 1;
- 	ret = ts.tm_sec + ts.tm_min*60 + ts.tm_hour*3600 + ts.tm_yday*86400 +
- 		(ts.tm_year-70)*31536000 + ((ts.tm_year-69)/4)*86400 -
- 		((ts.tm_year-1)/100)*86400 + ((ts.tm_year+299)/400)*86400;
-diff --git a/tests/f_dup_resize/script b/tests/f_dup_resize/script
-index 659c92e..19fa120 100644
---- a/tests/f_dup_resize/script
-+++ b/tests/f_dup_resize/script
-@@ -12,7 +12,7 @@ freeb 4 4
- freeb 8195 4
- write $TEST_DATA debugfs
- set_current_time 20050411000000
--set_inode_field debugfs mtime 2005041100000000
-+set_inode_field debugfs mtime 20050411000000
- q
- EOF
+diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
+index 04d8843..e23680a 100644
+--- a/e2fsck/pass5.c
++++ b/e2fsck/pass5.c
+@@ -100,7 +100,7 @@ static void check_inode_bitmap_checksum(e2fsck_t ctx)
+ 	retval = ext2fs_get_memalign(ctx->fs->blocksize, ctx->fs->blocksize,
+ 				     &buf);
+ 	if (retval) {
+-		com_err(ctx->program_name, 0,
++		com_err(ctx->program_name, 0, "%s",
+ 		    _("check_inode_bitmap_checksum: Memory allocation error"));
+ 		fatal_error(ctx, 0);
+ 	}
+@@ -156,7 +156,7 @@ static void check_block_bitmap_checksum(e2fsck_t ctx)
+ 	retval = ext2fs_get_memalign(ctx->fs->blocksize, ctx->fs->blocksize,
+ 				     &buf);
+ 	if (retval) {
+-		com_err(ctx->program_name, 0,
++		com_err(ctx->program_name, 0, "%s",
+ 		    _("check_block_bitmap_checksum: Memory allocation error"));
+ 		fatal_error(ctx, 0);
+ 	}
+diff --git a/lib/ext2fs/inline_data.c b/lib/ext2fs/inline_data.c
+index 7be0f96..fb6a02e 100644
+--- a/lib/ext2fs/inline_data.c
++++ b/lib/ext2fs/inline_data.c
+@@ -12,6 +12,7 @@
+ #include "config.h"
+ #include <stdio.h>
+ #include <time.h>
++#include <limits.h> /* for PATH_MAX */
  
-diff --git a/tests/f_uninit_last_uninit/script b/tests/f_uninit_last_uninit/script
-index 2fe4f3a..376c978 100644
---- a/tests/f_uninit_last_uninit/script
-+++ b/tests/f_uninit_last_uninit/script
-@@ -5,7 +5,7 @@ SKIP_GUNZIP="true"
- touch $TMPFILE
- $MKE2FS -N 32 -F -o Linux -O uninit_bg -b 1024 $TMPFILE 10000 > /dev/null 2>&1 
- $DEBUGFS -w $TMPFILE << EOF > /dev/null 2>&1
--set_current_time 200704102100
-+set_current_time 20070410210000
- set_super_value lastcheck 0
- set_super_value hash_seed null
- set_super_value mkfs_time 0
+ #include "ext2_fs.h"
+ #include "ext2_ext_attr.h"
+@@ -283,7 +284,7 @@ static errcode_t ext2fs_inline_data_convert_dir(ext2_filsys fs, ext2_ino_t ino,
+ 	unsigned int offset;
+ 	int csum_size = 0;
+ 	int filetype = 0;
+-	int rec_len;
++	unsigned rec_len;
+ 
+ 	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+ 				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
+@@ -657,7 +658,7 @@ static errcode_t file_test(ext2_filsys fs)
+ 
+ 	if (size != BUFF_SIZE) {
+ 		fprintf(stderr,
+-			"tst_inline_data: size %lu != buflen %lu\n",
++			"tst_inline_data: size %lu != buflen %u\n",
+ 			size, BUFF_SIZE);
+ 		retval = 1;
+ 		goto err;
+@@ -730,14 +731,14 @@ static errcode_t dir_test(ext2_filsys fs)
+ 	}
+ 
+ 	if (parent != tmp) {
+-		fprintf(stderr, "tst_inline_data: parent (%lu) != tmp (%lu)\n",
++		fprintf(stderr, "tst_inline_data: parent (%u) != tmp (%u)\n",
+ 			parent, tmp);
+ 		return 1;
+ 	}
+ 
+ 	for (i = 0, dir = 13; i < 4; i++, dir++) {
+ 		tmp = 0;
+-		snprintf(dirname, PATH_MAX, "%d", i);
++		snprintf(dirname, sizeof(dirname), "%d", i);
+ 		retval = ext2fs_mkdir(fs, parent, 0, dirname);
+ 		if (retval) {
+ 			com_err("dir_test", retval,
+@@ -754,13 +755,14 @@ static errcode_t dir_test(ext2_filsys fs)
+ 		}
+ 
+ 		if (dir != tmp) {
+-			fprintf(stderr, "tst_inline_data: dir (%lu) != tmp (%lu)\n",
++			fprintf(stderr,
++				"tst_inline_data: dir (%u) != tmp (%u)\n",
+ 				dir, tmp);
+ 			return 1;
+ 		}
+ 	}
+ 
+-	snprintf(dirname, PATH_MAX, "%d", i);
++	snprintf(dirname, sizeof(dirname), "%d", i);
+ 	retval = ext2fs_mkdir(fs, parent, 0, dirname);
+ 	if (retval && retval != EXT2_ET_DIR_NO_SPACE) {
+ 		com_err("dir_test", retval, "while creating %s dir", dirname);
+diff --git a/misc/create_inode.c b/misc/create_inode.c
+index 964c66a..4e901b2 100644
+--- a/misc/create_inode.c
++++ b/misc/create_inode.c
+@@ -1,5 +1,17 @@
++/*
++ * create_inode.c --- create an inode
++ *
++ * Copyright (C) 2014 Robert Yang <liezhi.yang@windriver.com>
++ *
++ * %Begin-Header%
++ * This file may be redistributed under the terms of the GNU library
++ * General Public License, version 2.
++ * %End-Header%
++ */
++
+ #include <time.h>
+ #include <unistd.h>
++#include <limits.h> /* for PATH_MAX */
+ 
+ #include "create_inode.h"
+ 
+diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
+index ae54f8a..3a14e3c 100644
+--- a/misc/dumpe2fs.c
++++ b/misc/dumpe2fs.c
+@@ -414,7 +414,7 @@ static void print_inline_journal_information(ext2_filsys fs)
+ 	       (unsigned int)ntohl(jsb->s_start));
+ 	if (jsb->s_feature_compat &
+ 	    ext2fs_cpu_to_be32(JFS_FEATURE_COMPAT_CHECKSUM))
+-		printf(_("Journal checksum type:    crc32\n"));
++		printf("%s", _("Journal checksum type:    crc32\n"));
+ 	if (jsb->s_feature_incompat &
+ 	    ext2fs_cpu_to_be32(JFS_FEATURE_INCOMPAT_CSUM_V2))
+ 		printf(_("Journal checksum type:    %s\n"
+@@ -453,7 +453,7 @@ static void print_journal_information(ext2_filsys fs)
+ 
+ 	if (jsb->s_feature_compat &
+ 	    ext2fs_cpu_to_be32(JFS_FEATURE_COMPAT_CHECKSUM))
+-		printf(_("Journal checksum type:    crc32\n"));
++		printf("%s", _("Journal checksum type:    crc32\n"));
+ 	if (jsb->s_feature_incompat &
+ 	    ext2fs_cpu_to_be32(JFS_FEATURE_INCOMPAT_CSUM_V2))
+ 		printf(_("Journal checksum type:    %s\n"
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index aecd5d5..1a48dd8 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -16,7 +16,7 @@
+  * enforced (but it's not much fun on a character device :-).
+  */
+ 
+-#define _XOPEN_SOURCE 600 /* for inclusion of PATH_MAX in Solaris */
++#define _XOPEN_SOURCE 600 /* for inclusion of PATH_MAX */
+ 
+ #include "config.h"
+ #include <stdio.h>
+@@ -338,13 +338,11 @@ static void write_reserved_inodes(ext2_filsys fs)
+ 	ext2_ino_t	ino;
+ 	struct ext2_inode *inode;
+ 
+-	retval = ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode);
++	retval = ext2fs_get_memzero(EXT2_INODE_SIZE(fs->super), &inode);
+ 	if (retval) {
+-		com_err("inode_init", retval,
+-			"while allocating memory");
++		com_err("inode_init", retval, "while allocating memory");
+ 		exit(1);
+ 	}
+-	bzero(inode, EXT2_INODE_SIZE(fs->super));
+ 
+ 	for (ino = 1; ino < EXT2_FIRST_INO(fs->super); ino++)
+ 		ext2fs_write_inode_full(fs, ino, inode,
+@@ -1904,20 +1902,20 @@ profile_error:
+ 	if (for_hurd(creator_os)) {
+ 		if (fs_param.s_feature_incompat &
+ 		    EXT2_FEATURE_INCOMPAT_FILETYPE) {
+-			fprintf(stderr, _("The HURD does not support the "
+-					  "filetype feature.\n"));
++			fprintf(stderr, "%s", _("The HURD does not support the "
++						"filetype feature.\n"));
+ 			exit(1);
+ 		}
+ 		if (fs_param.s_feature_ro_compat &
+ 		    EXT4_FEATURE_RO_COMPAT_HUGE_FILE) {
+-			fprintf(stderr, _("The HURD does not support the "
+-					  "huge_file feature.\n"));
++			fprintf(stderr, "%s", _("The HURD does not support the "
++						"huge_file feature.\n"));
+ 			exit(1);
+ 		}
+ 		if (fs_param.s_feature_ro_compat &
+ 		    EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) {
+-			fprintf(stderr, _("The HURD does not support the "
+-					  "metadata_csum feature.\n"));
++			fprintf(stderr, "%s", _("The HURD does not support the "
++						"metadata_csum feature.\n"));
+ 			exit(1);
+ 		}
+ 	}
+@@ -2645,17 +2643,19 @@ int main (int argc, char *argv[])
+ 				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
+ 		if (!EXT2_HAS_INCOMPAT_FEATURE(fs->super,
+ 				EXT3_FEATURE_INCOMPAT_EXTENTS))
+-			printf(_("Extents are not enabled.  The file extent "
++			printf("%s",
++			       _("Extents are not enabled.  The file extent "
+ 				 "tree can be checksummed, whereas block maps "
+ 				 "cannot.  Not enabling extents reduces the "
+ 				 "coverage of metadata checksumming.  "
+ 				 "Pass -O extents to rectify.\n"));
+ 		if (!EXT2_HAS_INCOMPAT_FEATURE(fs->super,
+ 				EXT4_FEATURE_INCOMPAT_64BIT))
+-			printf(_("64-bit filesystem support is not "
+-				 "enabled.  The larger fields afforded by "
+-				 "this feature enable full-strength "
+-				 "checksumming.  Pass -O 64bit to rectify.\n"));
++			printf("%s",
++			       _("64-bit filesystem support is not enabled.  "
++				 "The larger fields afforded by this feature "
++				 "enable full-strength checksumming.  "
++				 "Pass -O 64bit to rectify.\n"));
+ 	}
+ 
+ 	/* Calculate journal blocks */
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 6571764..147c270 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -387,7 +387,7 @@ static void request_dir_fsck_afterwards(ext2_filsys fs)
+ 	fs->super->s_state &= ~EXT2_VALID_FS;
+ 	printf("\n%s\n", _(please_dir_fsck));
+ 	if (mount_flags & EXT2_MF_READONLY)
+-		printf(_("(and reboot afterwards!)\n"));
++		printf("%s", _("(and reboot afterwards!)\n"));
+ }
+ 
+ static void request_fsck_afterwards(ext2_filsys fs)
 -- 
 1.9.3
 
