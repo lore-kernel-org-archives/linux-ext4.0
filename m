@@ -1,131 +1,46 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 1/2] ext4: Use sbi in ext4_orphan_{add|del}()
-Date: Tue, 20 May 2014 14:45:48 +0200
-Message-ID: <1400589949-25595-2-git-send-email-jack@suse.cz>
-References: <1400589949-25595-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org,
-	Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>,
-	Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 2/2] ext4: Reduce contention on s_orphan_lock
+Date: Tue, 20 May 2014 09:57:23 -0400
+Message-ID: <20140520135723.GB15177@thunk.org>
+References: <1400185026-3972-1-git-send-email-jack@suse.cz>
+ <1400185026-3972-3-git-send-email-jack@suse.cz>
+ <537B1353.8060704@hp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:51998 "EHLO mx2.suse.de"
+Received: from imap.thunk.org ([74.207.234.97]:51364 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750808AbaETMp4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 20 May 2014 08:45:56 -0400
-In-Reply-To: <1400589949-25595-1-git-send-email-jack@suse.cz>
+	id S1753231AbaETN5d (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 20 May 2014 09:57:33 -0400
+Content-Disposition: inline
+In-Reply-To: <537B1353.8060704@hp.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Use sbi pointer consistently in ext4_orphan_del() instead of opencoding
-it sometimes. Also ext4_orphan_add() uses EXT4_SB(sb) often so create
-sbi variable for it as well and use it.
+On Tue, May 20, 2014 at 02:33:23AM -0600, Thavatchai Makphaibulchoke wrote:
+> Please see my one comment below.
+> 
+> BTW, I've run aim7 on your before I notice what I commented below.  There are workloads that my patch outperform yours and vice versa.  I will have to redo it over again.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/namei.c | 31 +++++++++++++++----------------
- 1 file changed, 15 insertions(+), 16 deletions(-)
+Thavatchai, it would be really great if you could do lock_stat runs
+with both Jan's latest patches as well as yours.  We need to
+understand where the differences are coming from.
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 1cb84f78909e..5fcaa85b6dc5 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -2550,13 +2550,14 @@ static int empty_dir(struct inode *inode)
- int ext4_orphan_add(handle_t *handle, struct inode *inode)
- {
- 	struct super_block *sb = inode->i_sb;
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	struct ext4_iloc iloc;
- 	int err = 0, rc;
- 
--	if (!EXT4_SB(sb)->s_journal)
-+	if (!sbi->s_journal)
- 		return 0;
- 
--	mutex_lock(&EXT4_SB(sb)->s_orphan_lock);
-+	mutex_lock(&sbi->s_orphan_lock);
- 	if (!list_empty(&EXT4_I(inode)->i_orphan))
- 		goto out_unlock;
- 
-@@ -2569,8 +2570,8 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
- 	J_ASSERT((S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
- 		  S_ISLNK(inode->i_mode)) || inode->i_nlink == 0);
- 
--	BUFFER_TRACE(EXT4_SB(sb)->s_sbh, "get_write_access");
--	err = ext4_journal_get_write_access(handle, EXT4_SB(sb)->s_sbh);
-+	BUFFER_TRACE(sbi->s_sbh, "get_write_access");
-+	err = ext4_journal_get_write_access(handle, sbi->s_sbh);
- 	if (err)
- 		goto out_unlock;
- 
-@@ -2582,12 +2583,12 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
- 	 * orphan list. If so skip on-disk list modification.
- 	 */
- 	if (NEXT_ORPHAN(inode) && NEXT_ORPHAN(inode) <=
--		(le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count)))
-+		(le32_to_cpu(sbi->s_es->s_inodes_count)))
- 			goto mem_insert;
- 
- 	/* Insert this inode at the head of the on-disk orphan list... */
--	NEXT_ORPHAN(inode) = le32_to_cpu(EXT4_SB(sb)->s_es->s_last_orphan);
--	EXT4_SB(sb)->s_es->s_last_orphan = cpu_to_le32(inode->i_ino);
-+	NEXT_ORPHAN(inode) = le32_to_cpu(sbi->s_es->s_last_orphan);
-+	sbi->s_es->s_last_orphan = cpu_to_le32(inode->i_ino);
- 	err = ext4_handle_dirty_super(handle, sb);
- 	rc = ext4_mark_iloc_dirty(handle, inode, &iloc);
- 	if (!err)
-@@ -2603,14 +2604,14 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
- 	 * anyway on the next recovery. */
- mem_insert:
- 	if (!err)
--		list_add(&EXT4_I(inode)->i_orphan, &EXT4_SB(sb)->s_orphan);
-+		list_add(&EXT4_I(inode)->i_orphan, &sbi->s_orphan);
- 
- 	jbd_debug(4, "superblock will point to %lu\n", inode->i_ino);
- 	jbd_debug(4, "orphan inode %lu will point to %d\n",
- 			inode->i_ino, NEXT_ORPHAN(inode));
- out_unlock:
--	mutex_unlock(&EXT4_SB(sb)->s_orphan_lock);
--	ext4_std_error(inode->i_sb, err);
-+	mutex_unlock(&sbi->s_orphan_lock);
-+	ext4_std_error(sb, err);
- 	return err;
- }
- 
-@@ -2622,22 +2623,20 @@ int ext4_orphan_del(handle_t *handle, struct inode *inode)
- {
- 	struct list_head *prev;
- 	struct ext4_inode_info *ei = EXT4_I(inode);
--	struct ext4_sb_info *sbi;
-+	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	__u32 ino_next;
- 	struct ext4_iloc iloc;
- 	int err = 0;
- 
--	if ((!EXT4_SB(inode->i_sb)->s_journal) &&
--	    !(EXT4_SB(inode->i_sb)->s_mount_state & EXT4_ORPHAN_FS))
-+	if (!sbi->s_journal && !(sbi->s_mount_state & EXT4_ORPHAN_FS))
- 		return 0;
- 
--	mutex_lock(&EXT4_SB(inode->i_sb)->s_orphan_lock);
-+	mutex_lock(&sbi->s_orphan_lock);
- 	if (list_empty(&ei->i_orphan))
- 		goto out;
- 
- 	ino_next = NEXT_ORPHAN(inode);
- 	prev = ei->i_orphan.prev;
--	sbi = EXT4_SB(inode->i_sb);
- 
- 	jbd_debug(4, "remove inode %lu from orphan list\n", inode->i_ino);
- 
-@@ -2683,7 +2682,7 @@ int ext4_orphan_del(handle_t *handle, struct inode *inode)
- out_err:
- 	ext4_std_error(inode->i_sb, err);
- out:
--	mutex_unlock(&EXT4_SB(inode->i_sb)->s_orphan_lock);
-+	mutex_unlock(&sbi->s_orphan_lock);
- 	return err;
- 
- out_brelse:
--- 
-1.8.1.4
+As I understand things, there are two differences between Jan and your
+approaches.  The first is that Jan is using the implicit locking of
+i_mutex to avoid needing to keep a hashed array of mutexes to
+synchronize an individual inode's being added or removed to the orphan
+list.
 
+The second is that you've split the orphan mutex into an on-disk mutex
+and a in-memory spinlock.
+
+Is it possible to split up your patch so we can measure the benefits
+of each of these two changes?  More interestingly, is there a way we
+can use the your second change in concert with Jan's changes?
+
+Regards,
+
+						- Ted
