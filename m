@@ -1,76 +1,218 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 0/2 v3] Improve orphan list scaling
-Date: Tue, 20 May 2014 14:45:47 +0200
-Message-ID: <1400589949-25595-1-git-send-email-jack@suse.cz>
+Subject: [PATCH 2/2] ext4: Reduce contention on s_orphan_lock
+Date: Tue, 20 May 2014 14:45:49 +0200
+Message-ID: <1400589949-25595-3-git-send-email-jack@suse.cz>
+References: <1400589949-25595-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org,
 	Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>,
 	Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:52000 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:51999 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751291AbaETMp4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751363AbaETMp4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 20 May 2014 08:45:56 -0400
+In-Reply-To: <1400589949-25595-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello,
+Shuffle code around in ext4_orphan_add() and ext4_orphan_del() so that
+we avoid taking global s_orphan_lock in some cases and hold it for
+shorter time in other cases.
 
-  here is another version of my patches to improve orphan list scaling by
-reducing amount of work done under global s_orphan_mutex. Since previous
-version I've fixed some bugs (thanks Thavatchai!), retested with updated
-xfstests to verify the problem Ted has spotted is fixed, and rerun the
-performance tests because the bugs had a non-trivial impact on the
-functionality.
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/namei.c | 109 +++++++++++++++++++++++++++++++++-----------------------
+ 1 file changed, 65 insertions(+), 44 deletions(-)
 
-To stress orphan list operations I run my artifical test program.  The test
-program runs given number of processes, each process is truncating a 4k file
-by 1 byte until it reaches 1 byte size and then the file is extended to 4k
-again.
-
-The average times for 10 runs for the test program to run on my 48-way box
-with ext4 on ramdisk are:
-	Vanilla				Patched
-Procs	Avg		Stddev		Avg			Stddev
- 1	  2.769200	0.056194	2.750000 (-0.6%)	0.054772
- 2	  5.756500	0.313268	5.669000 (-1.5%)	0.587528
- 4	 11.852500	0.130221	8.311000 (-29.9%)	0.257544
-10	 33.590900	0.394888	20.162000 (-40%)	0.189832
-20	 71.035400	0.320914	55.854000 (-21.4%)	0.478815
-40	236.671100	2.856885	174.543000 (-26.3%)	0.974547
-
-In the lockstat reports, s_orphan_mutex has been #1 in both cases however
-the patches significanly reduced the contention. For 10 threads the numbers
-look like:
-
-         con-bounces contentions waittime-min waittime-max waittime-total
-Orig         7089335     7089335         9.07   3504220.69  1473754546.28
-Patched      2547868     2547868         9.18      8218.64   547550185.12
-
-         waittime-avg acq-bounces acquisitions holdtime-min holdtime-max
-Orig           207.88    14487647     16381236         0.16       211.62
-Patched        214.91     7994533      8191236         0.16       203.81
-
-         holdtime-total holdtime-avg
-Orig        79738146.84         4.87
-Patched     30660307.81         3.74
-
-We can see the number of acquisitions dropped to a half (we now check
-whether inode already is / is not part of the orphan list before acquiring
-s_orphan_mutex). The average hold time is somewhat smaller as well and given
-that the patched kernel doesn't have those 50% of short lived aquisitions
-just for checking whether the inode is part of the orphan list, we can see
-that the patched kernel really does significanly less work with s_orphan_lock
-held.
-
-Changes since v2:
-* Fixed bug in ext4_orphan_del() leading to orphan list corruption - thanks
-  to Thavatchai for pointing that out.
-* Fixed bug in ext4_orphan_del() that could lead to using freed inodes
-
-Changes since v1:
-* Fixed up various bugs in error handling pointed out by Thavatchai and
-  some others as well
-* Somewhat reduced critical sections under s_orphan_lock
-
-								Honza
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 5fcaa85b6dc5..d0b1776efd92 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2539,13 +2539,17 @@ static int empty_dir(struct inode *inode)
+ 	return 1;
+ }
+ 
+-/* ext4_orphan_add() links an unlinked or truncated inode into a list of
++/*
++ * ext4_orphan_add() links an unlinked or truncated inode into a list of
+  * such inodes, starting at the superblock, in case we crash before the
+  * file is closed/deleted, or in case the inode truncate spans multiple
+  * transactions and the last transaction is not recovered after a crash.
+  *
+  * At filesystem recovery time, we walk this list deleting unlinked
+  * inodes and truncating linked inodes in ext4_orphan_cleanup().
++ *
++ * Orphan list manipulation functions must be called under i_mutex unless
++ * we are just creating the inode or deleting it.
+  */
+ int ext4_orphan_add(handle_t *handle, struct inode *inode)
+ {
+@@ -2553,13 +2557,19 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct ext4_iloc iloc;
+ 	int err = 0, rc;
++	bool dirty = false;
+ 
+ 	if (!sbi->s_journal)
+ 		return 0;
+ 
+-	mutex_lock(&sbi->s_orphan_lock);
++	WARN_ON_ONCE(!(inode->i_state & (I_NEW | I_FREEING)) &&
++		     !mutex_is_locked(&inode->i_mutex));
++	/*
++	 * Exit early if inode already is on orphan list. This is a big speedup
++	 * since we don't have to contend on the global s_orphan_lock.
++	 */
+ 	if (!list_empty(&EXT4_I(inode)->i_orphan))
+-		goto out_unlock;
++		return 0;
+ 
+ 	/*
+ 	 * Orphan handling is only valid for files with data blocks
+@@ -2573,44 +2583,47 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
+ 	BUFFER_TRACE(sbi->s_sbh, "get_write_access");
+ 	err = ext4_journal_get_write_access(handle, sbi->s_sbh);
+ 	if (err)
+-		goto out_unlock;
++		goto out;
+ 
+ 	err = ext4_reserve_inode_write(handle, inode, &iloc);
+ 	if (err)
+-		goto out_unlock;
++		goto out;
++
++	mutex_lock(&sbi->s_orphan_lock);
+ 	/*
+ 	 * Due to previous errors inode may be already a part of on-disk
+ 	 * orphan list. If so skip on-disk list modification.
+ 	 */
+-	if (NEXT_ORPHAN(inode) && NEXT_ORPHAN(inode) <=
+-		(le32_to_cpu(sbi->s_es->s_inodes_count)))
+-			goto mem_insert;
+-
+-	/* Insert this inode at the head of the on-disk orphan list... */
+-	NEXT_ORPHAN(inode) = le32_to_cpu(sbi->s_es->s_last_orphan);
+-	sbi->s_es->s_last_orphan = cpu_to_le32(inode->i_ino);
+-	err = ext4_handle_dirty_super(handle, sb);
+-	rc = ext4_mark_iloc_dirty(handle, inode, &iloc);
+-	if (!err)
+-		err = rc;
+-
+-	/* Only add to the head of the in-memory list if all the
+-	 * previous operations succeeded.  If the orphan_add is going to
+-	 * fail (possibly taking the journal offline), we can't risk
+-	 * leaving the inode on the orphan list: stray orphan-list
+-	 * entries can cause panics at unmount time.
+-	 *
+-	 * This is safe: on error we're going to ignore the orphan list
+-	 * anyway on the next recovery. */
+-mem_insert:
+-	if (!err)
+-		list_add(&EXT4_I(inode)->i_orphan, &sbi->s_orphan);
++	if (!NEXT_ORPHAN(inode) || NEXT_ORPHAN(inode) >
++	    (le32_to_cpu(sbi->s_es->s_inodes_count))) {
++		/* Insert this inode at the head of the on-disk orphan list */
++		NEXT_ORPHAN(inode) = le32_to_cpu(sbi->s_es->s_last_orphan);
++		sbi->s_es->s_last_orphan = cpu_to_le32(inode->i_ino);
++		dirty = true;
++	}
++	list_add(&EXT4_I(inode)->i_orphan, &sbi->s_orphan);
++	mutex_unlock(&sbi->s_orphan_lock);
+ 
++	if (dirty) {
++		err = ext4_handle_dirty_super(handle, sb);
++		rc = ext4_mark_iloc_dirty(handle, inode, &iloc);
++		if (!err)
++			err = rc;
++		if (err) {
++			/*
++			 * We have to remove inode from in-memory list if
++ 			 * addition to on disk orphan list failed. Stray orphan
++			 * list entries can cause panics at unmount time.
++			 */
++			mutex_lock(&sbi->s_orphan_lock);
++			list_del(&EXT4_I(inode)->i_orphan);
++			mutex_unlock(&sbi->s_orphan_lock);
++		}
++	}
+ 	jbd_debug(4, "superblock will point to %lu\n", inode->i_ino);
+ 	jbd_debug(4, "orphan inode %lu will point to %d\n",
+ 			inode->i_ino, NEXT_ORPHAN(inode));
+-out_unlock:
+-	mutex_unlock(&sbi->s_orphan_lock);
++out:
+ 	ext4_std_error(sb, err);
+ 	return err;
+ }
+@@ -2631,35 +2644,43 @@ int ext4_orphan_del(handle_t *handle, struct inode *inode)
+ 	if (!sbi->s_journal && !(sbi->s_mount_state & EXT4_ORPHAN_FS))
+ 		return 0;
+ 
+-	mutex_lock(&sbi->s_orphan_lock);
++	WARN_ON_ONCE(!(inode->i_state & (I_NEW | I_FREEING)) &&
++		     !mutex_is_locked(&inode->i_mutex));
++	/* Do this quick check before taking global s_orphan_lock. */
+ 	if (list_empty(&ei->i_orphan))
+-		goto out;
++		return 0;
+ 
+-	ino_next = NEXT_ORPHAN(inode);
+-	prev = ei->i_orphan.prev;
++	if (handle) {
++		/* Grab inode buffer early before taking global s_orphan_lock */
++		err = ext4_reserve_inode_write(handle, inode, &iloc);
++	}
+ 
++	mutex_lock(&sbi->s_orphan_lock);
+ 	jbd_debug(4, "remove inode %lu from orphan list\n", inode->i_ino);
+ 
++	prev = ei->i_orphan.prev;
+ 	list_del_init(&ei->i_orphan);
+ 
+ 	/* If we're on an error path, we may not have a valid
+ 	 * transaction handle with which to update the orphan list on
+ 	 * disk, but we still need to remove the inode from the linked
+ 	 * list in memory. */
+-	if (!handle)
+-		goto out;
+-
+-	err = ext4_reserve_inode_write(handle, inode, &iloc);
+-	if (err)
++	if (!handle || err) {
++		mutex_unlock(&sbi->s_orphan_lock);
+ 		goto out_err;
++	}
+ 
++	ino_next = NEXT_ORPHAN(inode);
+ 	if (prev == &sbi->s_orphan) {
+ 		jbd_debug(4, "superblock will point to %u\n", ino_next);
+ 		BUFFER_TRACE(sbi->s_sbh, "get_write_access");
+ 		err = ext4_journal_get_write_access(handle, sbi->s_sbh);
+-		if (err)
++		if (err) {
++			mutex_unlock(&sbi->s_orphan_lock);
+ 			goto out_brelse;
++		}
+ 		sbi->s_es->s_last_orphan = cpu_to_le32(ino_next);
++		mutex_unlock(&sbi->s_orphan_lock);
+ 		err = ext4_handle_dirty_super(handle, inode->i_sb);
+ 	} else {
+ 		struct ext4_iloc iloc2;
+@@ -2669,20 +2690,20 @@ int ext4_orphan_del(handle_t *handle, struct inode *inode)
+ 		jbd_debug(4, "orphan inode %lu will point to %u\n",
+ 			  i_prev->i_ino, ino_next);
+ 		err = ext4_reserve_inode_write(handle, i_prev, &iloc2);
+-		if (err)
++		if (err) {
++			mutex_unlock(&sbi->s_orphan_lock);
+ 			goto out_brelse;
++		}
+ 		NEXT_ORPHAN(i_prev) = ino_next;
+ 		err = ext4_mark_iloc_dirty(handle, i_prev, &iloc2);
++		mutex_unlock(&sbi->s_orphan_lock);
+ 	}
+ 	if (err)
+ 		goto out_brelse;
+ 	NEXT_ORPHAN(inode) = 0;
+ 	err = ext4_mark_iloc_dirty(handle, inode, &iloc);
