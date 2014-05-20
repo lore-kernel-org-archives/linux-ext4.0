@@ -1,52 +1,48 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] e2fsck: Fix last mount time and last write time in preen mode
-Date: Tue, 20 May 2014 16:29:46 +0200
-Message-ID: <1400596186-4228-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:55157 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753219AbaETO3x (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 20 May 2014 10:29:53 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Giedrius Rekasius <giedrius.rekasius@gmail.com>
+Subject: [PATCH] ext4: remove unused local variable "store" from
+ ext4_readdir(...)
+Date: Tue, 20 May 2014 15:41:13 +0100
+Message-ID: <20140520144113.GB13333@vaio>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	kernel-janitors@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Fixing last mount time and last write time is safe - there's no risk of
-loosing any important information or making corruption significantly
-worse even if we get it wrong. So let's just fix these times in preen
-mode. This allows initrd to automatically check and mount root
-filesystem in case system clock is wrong without having to manually set
-broken_system_clock variable (openSUSE uses broken_system_clock by default
-to avoid these problems during boot but this disables time-based checks
-even on systems where clock is fine so that's not ideal either).
+From: Giedrius Rekasius <giedrius.rekasius@gmail.com>
 
-Signed-off-by: Jan Kara <jack@suse.cz>
+Remove unused local variable "store" from ext4_readdir(...)
+
+Local variable "stored" is initialized however never used inside the function.
+
+Signed-off-by: Giedrius Rekasius <giedrius.rekasius@gmail.com>
 ---
- e2fsck/problem.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/ext4/dir.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-Ted, what do you think about this change?
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index d638c57..ef1bed6 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -105,7 +105,7 @@ int __ext4_check_dir_entry(const char *function, u
+ static int ext4_readdir(struct file *file, struct dir_context *ctx)
+ {
+        unsigned int offset;
+-       int i, stored;
++       int i;
+        struct ext4_dir_entry_2 *de;
+        int err;
+        struct inode *inode = file_inode(file);
+@@ -133,7 +133,6 @@ static int ext4_readdir(struct file *file, struct
+                        return ret;
+        }
 
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index 2b564a83c801..a347f1905e44 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -338,12 +338,12 @@ static struct e2fsck_problem problem_table[] = {
- 	/* Last mount time is in the future */
- 	{ PR_0_FUTURE_SB_LAST_MOUNT,
- 	  N_("@S last mount time (%t,\n\tnow = %T) is in the future.\n"),
--	  PROMPT_FIX, PR_NO_OK },
-+	  PROMPT_FIX, PR_PREEN_OK | PR_NO_OK },
- 
- 	/* Last write time is in the future */
- 	{ PR_0_FUTURE_SB_LAST_WRITE,
- 	  N_("@S last write time (%t,\n\tnow = %T) is in the future.\n"),
--	  PROMPT_FIX, PR_NO_OK },
-+	  PROMPT_FIX, PR_PREEN_OK | PR_NO_OK },
- 
- 	{ PR_0_EXTERNAL_JOURNAL_HINT,
- 	  N_("@S hint for external superblock @s %X.  "),
--- 
-1.8.1.4
+-       stored = 0;
+        offset = ctx->pos & (sb->s_blocksize - 1);
 
+        while (ctx->pos < inode->i_size) {
