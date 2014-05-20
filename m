@@ -1,97 +1,82 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH] debugfs: fix filehandle leak in copy_file()
-Date: Tue, 20 May 2014 16:30:35 -0600
-Message-ID: <1400625035-61772-1-git-send-email-adilger@dilger.ca>
+Subject: [PATCH] debugfs: fix string_to_time for MacOS strptime()
+Date: Tue, 20 May 2014 16:31:10 -0600
+Message-ID: <1400625070-61813-1-git-send-email-adilger@dilger.ca>
 Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga11.intel.com ([192.55.52.93]:48759 "EHLO mga11.intel.com"
+Received: from mga11.intel.com ([192.55.52.93]:44128 "EHLO mga11.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750835AbaETWak (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 20 May 2014 18:30:40 -0400
+	id S1750987AbaETWbE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 20 May 2014 18:31:04 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fix a file handle leak for the target file in copy_file() when error
-handlers return without closing the file.  Instead, clean up at the
-end of the function to handle cleanup in normal and error cases.
-
-Minor other code style cleanups.
+The strptime() function does not update fields in struct tm that are
+not specified in the input format.  The glibc implementation sets the
+tm_yday field (%j) when any of the year (%Y), month (%m), or day (%d)
+fields are changed, but the MacOS strptime() does not set tm_yday in
+this case.  This caused string_to_time() to calculate the wrong Unix
+epoch on MacOS. If tm_yday is unset, compute it in string_to_time().
 
 Signed-off-by: Andreas Dilger <adilger@dilger.ca>
 ---
- debugfs/debugfs.c | 27 ++++++++++++++-------------
- 1 file changed, 14 insertions(+), 13 deletions(-)
+ debugfs/util.c                    | 14 ++++++++++++++
+ tests/f_dup_resize/script         |  2 +-
+ tests/f_uninit_last_uninit/script |  2 +-
+ 3 files changed, 16 insertions(+), 2 deletions(-)
 
-diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-index 326f41e..e53e0b9 100644
---- a/debugfs/debugfs.c
-+++ b/debugfs/debugfs.c
-@@ -1578,10 +1578,11 @@ void do_find_free_inode(int argc, char *argv[])
- }
+diff --git a/debugfs/util.c b/debugfs/util.c
+index 9ddfe0b..20c6c61 100644
+--- a/debugfs/util.c
++++ b/debugfs/util.c
+@@ -245,6 +245,20 @@ time_t string_to_time(const char *arg)
+ 		ts.tm_mday = 0;
+ #endif
+ 	ts.tm_isdst = -1;
++	/* strptime() may only update the specified fields, which does not
++	 * necessarily include ts.tm_yday (%j).  Calculate this if unset:
++	 *
++	 * Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec
++	 * 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
++	 *
++	 * Start with 31 days per month.  Even months have only 30 days, but
++	 * reverse in August, subtract one day for those months. February has
++	 * only 28 days, not 30, subtract two days. Add day of month, minus
++	 * one, since day is not finished yet.  Leap years handled afterward. */
++	if (ts.tm_yday == 0)
++		ts.tm_yday = (ts.tm_mon * 31) -
++			((ts.tm_mon - (ts.tm_mon > 7)) / 2) -
++			2 * (ts.tm_mon > 1) + ts.tm_mday - 1;
+ 	ret = ts.tm_sec + ts.tm_min*60 + ts.tm_hour*3600 + ts.tm_yday*86400 +
+ 		(ts.tm_year-70)*31536000 + ((ts.tm_year-69)/4)*86400 -
+ 		((ts.tm_year-1)/100)*86400 + ((ts.tm_year+299)/400)*86400;
+diff --git a/tests/f_dup_resize/script b/tests/f_dup_resize/script
+index 659c92e..19fa120 100644
+--- a/tests/f_dup_resize/script
++++ b/tests/f_dup_resize/script
+@@ -12,7 +12,7 @@ freeb 4 4
+ freeb 8195 4
+ write $TEST_DATA debugfs
+ set_current_time 20050411000000
+-set_inode_field debugfs mtime 2005041100000000
++set_inode_field debugfs mtime 20050411000000
+ q
+ EOF
  
- #ifndef READ_ONLY
--static errcode_t copy_file(int fd, ext2_ino_t newfile, int bufsize, int make_holes)
-+static errcode_t copy_file(int fd, ext2_ino_t newfile, int bufsize,
-+			   int make_holes)
- {
- 	ext2_file_t	e2_file;
--	errcode_t	retval;
-+	errcode_t	retval, close_ret;
- 	int		got;
- 	unsigned int	written;
- 	char		*buf;
-@@ -1597,15 +1598,14 @@ static errcode_t copy_file(int fd, ext2_ino_t newfile, int bufsize, int make_hol
- 	retval = ext2fs_get_mem(bufsize, &buf);
- 	if (retval) {
- 		com_err("copy_file", retval, "can't allocate buffer\n");
--		return retval;
-+		goto out_close;
- 	}
- 
- 	/* This is used for checking whether the whole block is zero */
- 	retval = ext2fs_get_memzero(bufsize, &zero_buf);
- 	if (retval) {
--		com_err("copy_file", retval, "can't allocate buffer\n");
--		ext2fs_free_mem(&buf);
--		return retval;
-+		com_err("copy_file", retval, "can't allocate zero buffer\n");
-+		goto out_free_buf;
- 	}
- 
- 	while (1) {
-@@ -1624,7 +1624,8 @@ static errcode_t copy_file(int fd, ext2_ino_t newfile, int bufsize, int make_hol
- 			cmp = memcmp(ptr, zero_buf, got);
- 			if (cmp == 0) {
- 				 /* The whole block is zero, make a hole */
--				retval = ext2fs_file_lseek(e2_file, got, EXT2_SEEK_CUR, NULL);
-+				retval = ext2fs_file_lseek(e2_file, got,
-+							   EXT2_SEEK_CUR, NULL);
- 				if (retval)
- 					goto fail;
- 				got = 0;
-@@ -1642,15 +1643,15 @@ static errcode_t copy_file(int fd, ext2_ino_t newfile, int bufsize, int make_hol
- 			ptr += written;
- 		}
- 	}
--	ext2fs_free_mem(&buf);
--	ext2fs_free_mem(&zero_buf);
--	retval = ext2fs_file_close(e2_file);
--	return retval;
- 
- fail:
--	ext2fs_free_mem(&buf);
- 	ext2fs_free_mem(&zero_buf);
--	(void) ext2fs_file_close(e2_file);
-+out_free_buf:
-+	ext2fs_free_mem(&buf);
-+out_close:
-+	close_ret = ext2fs_file_close(e2_file);
-+	if (retval == 0)
-+		retval = close_ret;
- 	return retval;
- }
- 
+diff --git a/tests/f_uninit_last_uninit/script b/tests/f_uninit_last_uninit/script
+index 2fe4f3a..376c978 100644
+--- a/tests/f_uninit_last_uninit/script
++++ b/tests/f_uninit_last_uninit/script
+@@ -5,7 +5,7 @@ SKIP_GUNZIP="true"
+ touch $TMPFILE
+ $MKE2FS -N 32 -F -o Linux -O uninit_bg -b 1024 $TMPFILE 10000 > /dev/null 2>&1 
+ $DEBUGFS -w $TMPFILE << EOF > /dev/null 2>&1
+-set_current_time 200704102100
++set_current_time 20070410210000
+ set_super_value lastcheck 0
+ set_super_value hash_seed null
+ set_super_value mkfs_time 0
 -- 
 1.9.3
 
