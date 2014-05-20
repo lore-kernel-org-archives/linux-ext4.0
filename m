@@ -1,62 +1,97 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/2] ext4: Reduce contention on s_orphan_lock
-Date: Tue, 20 May 2014 23:03:54 +0200
-Message-ID: <20140520210354.GB5686@quack.suse.cz>
-References: <1400589949-25595-1-git-send-email-jack@suse.cz>
- <1400589949-25595-3-git-send-email-jack@suse.cz>
- <537B8693.4000904@hp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org
-To: Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: [PATCH] debugfs: fix filehandle leak in copy_file()
+Date: Tue, 20 May 2014 16:30:35 -0600
+Message-ID: <1400625035-61772-1-git-send-email-adilger@dilger.ca>
+Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:33124 "EHLO mx2.suse.de"
+Received: from mga11.intel.com ([192.55.52.93]:48759 "EHLO mga11.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750948AbaETVD5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 20 May 2014 17:03:57 -0400
-Content-Disposition: inline
-In-Reply-To: <537B8693.4000904@hp.com>
+	id S1750835AbaETWak (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 20 May 2014 18:30:40 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 20-05-14 10:45:07, Thavatchai Makphaibulchoke wrote:
-> On 05/20/2014 06:45 AM, Jan Kara wrote:
-> > +	if (dirty) {
-> > +		err = ext4_handle_dirty_super(handle, sb);
-> > +		rc = ext4_mark_iloc_dirty(handle, inode, &iloc);
-> > +		if (!err)
-> > +			err = rc;
-> > +		if (err) {
-> > +			/*
-> > +			 * We have to remove inode from in-memory list if
-> > + 			 * addition to on disk orphan list failed. Stray orphan
-> > +			 * list entries can cause panics at unmount time.
-> > +			 */
-> > +			mutex_lock(&sbi->s_orphan_lock);
-> > +			list_del(&EXT4_I(inode)->i_orphan);
-> > +			mutex_unlock(&sbi->s_orphan_lock);
-> > +		}
-> > +	}
-> 
-> Sorry Jan, I just noticed this.
-> 
-> I don't believe you could this optimization either.  Since you drop the
-> s_oprhan_lock in between, you essentially have an interval where there is
-> a stray in-memory orphan and could cause a panic as the comment above
-> mentioned.
-  No, I think we are fine in this case. I'm not sure what race you are
-exactly thinking of but unmount cannot certainly happen since we have a
-reference to active inode in the filesystem.
- 
-> As for comments regarding ext4_mark_iloc() optimization, in your case
-> since you are holding the i_mutex, should not that prevent the inode from
-> being reclaimed?
-  Yes, that prevents the inode from being reclaimed but it doesn't prevent
-the previous inode in the list from being reclaimed and we need to update
-also that one...
+Fix a file handle leak for the target file in copy_file() when error
+handlers return without closing the file.  Instead, clean up at the
+end of the function to handle cleanup in normal and error cases.
 
-								Honza
+Minor other code style cleanups.
+
+Signed-off-by: Andreas Dilger <adilger@dilger.ca>
+---
+ debugfs/debugfs.c | 27 ++++++++++++++-------------
+ 1 file changed, 14 insertions(+), 13 deletions(-)
+
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index 326f41e..e53e0b9 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -1578,10 +1578,11 @@ void do_find_free_inode(int argc, char *argv[])
+ }
+ 
+ #ifndef READ_ONLY
+-static errcode_t copy_file(int fd, ext2_ino_t newfile, int bufsize, int make_holes)
++static errcode_t copy_file(int fd, ext2_ino_t newfile, int bufsize,
++			   int make_holes)
+ {
+ 	ext2_file_t	e2_file;
+-	errcode_t	retval;
++	errcode_t	retval, close_ret;
+ 	int		got;
+ 	unsigned int	written;
+ 	char		*buf;
+@@ -1597,15 +1598,14 @@ static errcode_t copy_file(int fd, ext2_ino_t newfile, int bufsize, int make_hol
+ 	retval = ext2fs_get_mem(bufsize, &buf);
+ 	if (retval) {
+ 		com_err("copy_file", retval, "can't allocate buffer\n");
+-		return retval;
++		goto out_close;
+ 	}
+ 
+ 	/* This is used for checking whether the whole block is zero */
+ 	retval = ext2fs_get_memzero(bufsize, &zero_buf);
+ 	if (retval) {
+-		com_err("copy_file", retval, "can't allocate buffer\n");
+-		ext2fs_free_mem(&buf);
+-		return retval;
++		com_err("copy_file", retval, "can't allocate zero buffer\n");
++		goto out_free_buf;
+ 	}
+ 
+ 	while (1) {
+@@ -1624,7 +1624,8 @@ static errcode_t copy_file(int fd, ext2_ino_t newfile, int bufsize, int make_hol
+ 			cmp = memcmp(ptr, zero_buf, got);
+ 			if (cmp == 0) {
+ 				 /* The whole block is zero, make a hole */
+-				retval = ext2fs_file_lseek(e2_file, got, EXT2_SEEK_CUR, NULL);
++				retval = ext2fs_file_lseek(e2_file, got,
++							   EXT2_SEEK_CUR, NULL);
+ 				if (retval)
+ 					goto fail;
+ 				got = 0;
+@@ -1642,15 +1643,15 @@ static errcode_t copy_file(int fd, ext2_ino_t newfile, int bufsize, int make_hol
+ 			ptr += written;
+ 		}
+ 	}
+-	ext2fs_free_mem(&buf);
+-	ext2fs_free_mem(&zero_buf);
+-	retval = ext2fs_file_close(e2_file);
+-	return retval;
+ 
+ fail:
+-	ext2fs_free_mem(&buf);
+ 	ext2fs_free_mem(&zero_buf);
+-	(void) ext2fs_file_close(e2_file);
++out_free_buf:
++	ext2fs_free_mem(&buf);
++out_close:
++	close_ret = ext2fs_file_close(e2_file);
++	if (retval == 0)
++		retval = close_ret;
+ 	return retval;
+ }
+ 
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.9.3
+
