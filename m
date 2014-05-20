@@ -1,102 +1,79 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext3: Fix deadlock in data=journal mode when fs is frozen
-Date: Thu, 22 May 2014 17:25:39 +0200
-Message-ID: <1400772339-24781-1-git-send-email-jack@suse.cz>
-Cc: Jan Kara <jack@suse.cz>
-To: linux-ext4@vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: compile warning on master
+Date: Tue, 20 May 2014 17:14:34 -0600
+Message-ID: <65EABAA6-4117-4059-B04D-0E0D77D698CE@dilger.ca>
+References: <CFA1367A.A6C68%andreas.dilger@intel.com>
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Content-Type: multipart/signed; boundary="Apple-Mail=_AA159B8E-C514-4D98-BD9B-1A5FCBC6FA92"; protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Zheng Liu <wenqing.lz@taobao.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:43544 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751852AbaEVPZq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 22 May 2014 11:25:46 -0400
-Received: from relay1.suse.de (charybdis-ext.suse.de [195.135.220.254])
-	by mx2.suse.de (Postfix) with ESMTP id 1F0BCAC6E
-	for <linux-ext4@vger.kernel.org>; Thu, 22 May 2014 15:25:45 +0000 (UTC)
+Received: from mail-pb0-f48.google.com ([209.85.160.48]:59088 "EHLO
+	mail-pb0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753091AbaEVQ5P (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 22 May 2014 12:57:15 -0400
+Received: by mail-pb0-f48.google.com with SMTP id rr13so2764172pbb.35
+        for <linux-ext4@vger.kernel.org>; Thu, 22 May 2014 09:57:15 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When ext3 is used in data=journal mode, syncing filesystem makes sure
-all the data is committed in the journal but the data doesn't have to be
-checkpointed. ext3_freeze() then takes care of checkpointing all the
-data so all buffer heads are clean but pages can still have dangling
-dirty bits. So when flusher thread comes later when filesystem is
-frozen, it tries to write back dirty pages, ext3_journalled_writepage()
-tries to start a transaction and hangs waiting for frozen fs causing a
-deadlock because a holder of s_umount semaphore may be waiting for
-flusher thread to complete.
 
-The fix is luckily relatively easy. We don't have to start a transaction
-in ext3_journalled_writepage() when a page is just dirty (and doesn't
-have PageChecked set) because in that case all buffers should be already
-mapped (mapping must happen before writing a buffer to the journal) and
-it is enough to write them out. This optimization also solves the deadlock
-because block_write_full_page() will just find out there's no buffer to
-write and do nothing.
+--Apple-Mail=_AA159B8E-C514-4D98-BD9B-1A5FCBC6FA92
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain;
+	charset=us-ascii
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext3/inode.c | 33 +++++++++++++++++----------------
- 1 file changed, 17 insertions(+), 16 deletions(-)
 
-  JFYI: I've added this patch to my tree.
+When compiling with LLVM, it generates the following warning in
+debugfs::do_lsdel():
 
-diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-index f5157d0d1b43..695abe738a24 100644
---- a/fs/ext3/inode.c
-+++ b/fs/ext3/inode.c
-@@ -1716,17 +1716,17 @@ static int ext3_journalled_writepage(struct page *page,
- 	WARN_ON_ONCE(IS_RDONLY(inode) &&
- 		     !(EXT3_SB(inode->i_sb)->s_mount_state & EXT3_ERROR_FS));
- 
--	if (ext3_journal_current_handle())
--		goto no_write;
--
- 	trace_ext3_journalled_writepage(page);
--	handle = ext3_journal_start(inode, ext3_writepage_trans_blocks(inode));
--	if (IS_ERR(handle)) {
--		ret = PTR_ERR(handle);
--		goto no_write;
--	}
--
- 	if (!page_has_buffers(page) || PageChecked(page)) {
-+		if (ext3_journal_current_handle())
-+			goto no_write;
-+
-+		handle = ext3_journal_start(inode,
-+					    ext3_writepage_trans_blocks(inode));
-+		if (IS_ERR(handle)) {
-+			ret = PTR_ERR(handle);
-+			goto no_write;
-+		}
- 		/*
- 		 * It's mmapped pagecache.  Add buffers and journal it.  There
- 		 * doesn't seem much point in redirtying the page here.
-@@ -1749,17 +1749,18 @@ static int ext3_journalled_writepage(struct page *page,
- 		atomic_set(&EXT3_I(inode)->i_datasync_tid,
- 			   handle->h_transaction->t_tid);
- 		unlock_page(page);
-+		err = ext3_journal_stop(handle);
-+		if (!ret)
-+			ret = err;
- 	} else {
- 		/*
--		 * It may be a page full of checkpoint-mode buffers.  We don't
--		 * really know unless we go poke around in the buffer_heads.
--		 * But block_write_full_page will do the right thing.
-+		 * It is a page full of checkpoint-mode buffers. Go and write
-+		 * them. They should have been already mapped when they went
-+		 * to the journal so provide NULL get_block function to catch
-+		 * errors.
- 		 */
--		ret = block_write_full_page(page, ext3_get_block, wbc);
-+		ret = block_write_full_page(page, NULL, wbc);
- 	}
--	err = ext3_journal_stop(handle);
--	if (!ret)
--		ret = err;
- out:
- 	return ret;
- 
--- 
-1.8.1.4
+367 debugfs/lsdel.c:155 col 23: warning: '&&' within '||'
+[-Wlogical-op-parentheses]
+368:                if (lsd.free_blocks && !lsd.bad_blocks ||
+369:                    ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~ ~~
+370 debugfs/lsdel.c:155 col 23: note: place parentheses around the '&&'
+expression to silence this warning
+371:                if (lsd.free_blocks && !lsd.bad_blocks ||
+372:                                    ^
+373:                    (                                 )
 
+
+Unfortunately, even looking at this code and the patch that changed it,
+I can't figure out what the correct parenthesis is for it.
+
+Zheng, could you please send a patch to fix this?
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_AA159B8E-C514-4D98-BD9B-1A5FCBC6FA92
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIVAwUBU301X3Kl2rkXzB/gAQLfxw//bweSS3l5dVcxpd20qQk5evBksa5aMQKI
+4Y+SJvVdUad1TQXC5LTTSWvfANpEqlEnWnWsMrdYh9O9dTlvbrXGf8vKWhzSTmAw
+RZ+h3asLOJO7KK+golxuP87vfx4WYmKPQSSSCQpboOLNfBFN5c8UXIifn//8Q9bN
+kbaMxdMog234sIAXf+me8dsSfL9CNR6hO1P17ktfgKt7NCbO1rkBW7gKtQnLWntr
+dQd20MddR1avqTQMC3J7tI1NKdOS00s4pjWsdOjtIKwZ4FlXSlkSPQzPjnEj34L+
+ptb5Wr8Wnl/AH5vNAOgD7bQYuCN3cQySIdmU1wOB3kgtO7lG1UVAvP/wqe+axFRG
++iG14L6BnGvMvPh9a3ClS3NtMl/uJLtFDqzHx0omirwXziktq8VsMNtTZoA7O74y
+0M0yWYU5FXSsZns3Ga3fS1/Icths7k/wiBiAR9G9/+U3t1J1/yv9wnt8/HME8x32
+TDwfiymXBOqrDy6LEmHMpy/5Gs3Ra27vC++T64a6vL5TWwY69mSeuBH/slTwhBX2
+/1TePQaaOV2VjGhTF/cgpdPwl3ULRcyUafiVCYrxNf9rPKXTPgRPKaDBBOAkv1cv
+abh6ZrzTph4jek5SiVswRGZhQgJqx7orLTp3azf5Go+sXsq04qGb0Xxv7kgueDCj
+fgFgwxn/ll8=
+=V+r2
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_AA159B8E-C514-4D98-BD9B-1A5FCBC6FA92--
