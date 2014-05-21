@@ -1,163 +1,197 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: OOPs in ext4
-Date: Wed, 21 May 2014 15:20:20 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1405211506190.2114@localhost.localdomain>
-References: <CAOkSjBgTFq_LnYnctOj2zR_to47joQDDbft3-kjEGzd2=ooswg@mail.gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: OpenPosix test case mmap_11-4 fails in ext4 filesystem
+Date: Wed, 21 May 2014 10:12:03 -0400
+Message-ID: <20140521141203.GB1501@thunk.org>
+References: <537C4A2F.8040402@cn.fujitsu.com>
+ <alpine.LFD.2.00.1405211413370.2114@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org
-To: Arturo Borrero Gonzalez <arturo.borrero.glez@gmail.com>
+Content-Type: multipart/mixed; boundary="Q68bSM7Ycu6FN28Q"
+Content-Transfer-Encoding: 8bit
+Cc: Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>,
+	linux-ext4@vger.kernel.org, chrubis@suse.cz
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54781 "EHLO mx1.redhat.com"
+Received: from imap.thunk.org ([74.207.234.97]:53464 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751033AbaEUOMK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 21 May 2014 10:12:10 -0400
-In-Reply-To: <CAOkSjBgTFq_LnYnctOj2zR_to47joQDDbft3-kjEGzd2=ooswg@mail.gmail.com>
+	id S1751673AbaEUOMQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 21 May 2014 10:12:16 -0400
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1405211413370.2114@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 21 May 2014, Arturo Borrero Gonzalez wrote:
 
-> Date: Wed, 21 May 2014 12:29:04 +0200
-> From: Arturo Borrero Gonzalez <arturo.borrero.glez@gmail.com>
-> To: linux-ext4@vger.kernel.org
-> Subject: OOPs in ext4
-> 
-> Hi there!
-> 
-> I have an oops in a virtual machine using ext4 as fs.
+--Q68bSM7Ycu6FN28Q
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
 
-Hi,
+On Wed, May 21, 2014 at 02:55:12PM +0200, Lukáš Czerner wrote:
+> > 
+> > Recently I met the mmap_11-4 fails when running LTP in RHEL7.0RC. Attached is a
+> > test program to reproduce this problem, which is written by Cyril.  Uncommenting the
+> > msync() makes the test succeed in old linux distribution, such as RHEL6.5GA, but
+> > fails in RHEL7.0RC.
+> 
+> please contact you Red Hat support to triage the issue within Red
+> Hat.
 
-yes there is definitely a bug in the error handling code because we
-really should not hit that BUG_ON() later.
+This is a valid bug report which applies to upstream ext4.  It also
+applies to tmpfs, by the way.
 
-However I am curious how we got this state in the first place. Can
-you provide the logs before the first oops ? Are there any more
-warnings ?
+It would be good to get this test case (thank you very much for
+writing it!) imported into xfstests, since the lack of this test is
+why we didn't notice the bug when we added the fs/ext4/page_io.c code
+paths.
 
-What is your storage setup ? Any particular workload you've been
-running at the time ? Can you reproduce it ?
+BTW, there is one interesting thing about that changed when we moved
+to page based I/O (years and years ago).  The requirement in mmap is
+as Xiaoguang stated:
 
-Thanks!
--Lukas
+       A file is mapped in multiples of the page size.  For a file
+       that is not a multi‐ ple of the page size, the remaining memory
+       is zeroed when mapped, and writes to that region are not
+       written out to the file.  The effect of changing the size of
+       the underlying file of a mapping on the pages that correspond
+       to added or removed regions of the file is unspecified.
 
-> 
-> The kernel is 3.14
-> 
-> [153468.339345] EXT4-fs error (device vda1):
-> ext4_mb_generate_buddy:756: group 50, 26334 clusters in bitmap, 26332
-> in gd; block bitmap corrupt.
-> [153468.340172] Aborting journal on device vda1-8.
-> [153468.340983] EXT4-fs (vda1): Remounting filesystem read-only
-> [153468.341304] ------------[ cut here ]------------
-> [153468.341369] WARNING: CPU: 4 PID: 16902 at fs/ext4/ext4_jbd2.c:259
-> __ext4_handle_dirty_metadata+0x5c/0x17f [ext4]()
-> [153468.341372] Modules linked in: loop snd_pcm snd_timer snd
-> parport_pc parport soundcore i2c_piix4 i2c_core psmouse pcspkr
-> microcode serio_raw virtio_balloon evdev processor thermal_sys button
-> ext4 crc16 jbd2 mbcache sg sr_mod cdrom ata_generic virtio_blk
-> virtio_net floppy ata_piix libata uhci_hcd virtio_pci virtio_ring
-> ehci_hcd virtio scsi_mod usbcore usb_common
-> [153468.341412] CPU: 4 PID: 16902 Comm: collect2 Not tainted 3.14.0-rc8+ #61
-> [153468.341414] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2007
-> [153468.341417]  0000000000000000 0000000000000009 ffffffff813a5d47
-> 0000000000000000
-> [153468.341422]  ffffffff810396af ffff880022f49498 ffffffffa0133e65
-> ffff880022cdde68
-> [153468.341426]  ffff880022cdde68 00000000ffffffe2 ffff880022f49498
-> 0000000000000000
-> [153468.341430] Call Trace:
-> [153468.341488]  [<ffffffff813a5d47>] ? dump_stack+0x41/0x51
-> [153468.341523]  [<ffffffff810396af>] ? warn_slowpath_common+0x78/0x90
-> [153468.341536]  [<ffffffffa0133e65>] ?
-> __ext4_handle_dirty_metadata+0x5c/0x17f [ext4]
-> [153468.341549]  [<ffffffffa0133e65>] ?
-> __ext4_handle_dirty_metadata+0x5c/0x17f [ext4]
-> [153468.341559]  [<ffffffffa0114f1a>] ? ext4_dirty_inode+0x21/0x52 [ext4]
-> [153468.341569]  [<ffffffffa0114ef9>] ? ext4_evict_inode+0x2d8/0x2d8 [ext4]
-> [153468.341585]  [<ffffffffa013a37b>] ? ext4_free_blocks+0x757/0x809 [ext4]
-> [153468.341612]  [<ffffffff81132c66>] ? __find_get_block+0x154/0x162
-> [153468.341625]  [<ffffffffa01317cb>] ? ext4_ext_remove_space+0x621/0xbbc [ext4]
-> [153468.341639]  [<ffffffffa013fca2>] ? ext4_es_remove_extent+0x70/0x93 [ext4]
-> [153468.341651]  [<ffffffffa0132df4>] ? ext4_ext_truncate+0x7a/0x9e [ext4]
-> [153468.341661]  [<ffffffffa0112efb>] ? ext4_truncate+0x1b5/0x29f [ext4]
-> [153468.341672]  [<ffffffffa0114de9>] ? ext4_evict_inode+0x1c8/0x2d8 [ext4]
-> [153468.341678]  [<ffffffff811218e0>] ? evict+0xa3/0x153
-> [153468.341689]  [<ffffffff81118d37>] ? do_unlinkat+0x120/0x1c2
-> [153468.341696]  [<ffffffff810ec668>] ? vm_munmap+0x46/0x55
-> [153468.341705]  [<ffffffff813af022>] ? system_call_fastpath+0x16/0x1b
-> [153468.341708] ---[ end trace 7fd0a6c0fb901b79 ]---
-> [153468.341742] BUG: unable to handle kernel NULL pointer dereference
-> at 0000000000000028
-> [153468.342173] IP: [<ffffffffa0127318>] __ext4_error_inode+0x25/0x13c [ext4]
-> [153468.342547] PGD 37307067 PUD 36f57067 PMD 0
-> [153468.342854] Oops: 0000 [#1] SMP
-> [153468.343055] Modules linked in: loop snd_pcm snd_timer snd
-> parport_pc parport soundcore i2c_piix4 i2c_core psmouse pcspkr
-> microcode serio_raw virtio_balloon evdev processor thermal_sys button
-> ext4 crc16 jbd2 mbcache sg sr_mod cdrom ata_generic virtio_blk
-> virtio_net floppy ata_piix libata uhci_hcd virtio_pci virtio_ring
-> ehci_hcd virtio scsi_mod usbcore usb_common
-> [153468.344916] CPU: 4 PID: 16902 Comm: collect2 Tainted: G        W
->  3.14.0-rc8+ #61
-> [153468.344916] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2007
-> [153468.344916] task: ffff880036d74750 ti: ffff88003a9b0000 task.ti:
-> ffff88003a9b0000
-> [153468.344916] RIP: 0010:[<ffffffffa0127318>]  [<ffffffffa0127318>]
-> __ext4_error_inode+0x25/0x13c [ext4]
-> [153468.344916] RSP: 0018:ffff88003a9b1b18  EFLAGS: 00010296
-> [153468.344916] RAX: 0000000000000000 RBX: 0000000000000000 RCX:
-> 0000000000180002
-> [153468.344916] RDX: 00000000000012ea RSI: ffffffffa0151023 RDI:
-> 0000000000000000
-> [153468.344916] RBP: ffffffffa014d9d0 R08: ffffffffa015406a R09:
-> 0000000000000005
-> [153468.344916] R10: 0000000000000000 R11: ffffffff814e7700 R12:
-> 00000000000012ea
-> [153468.344916] R13: 0000000000180002 R14: ffffffffa014d9d0 R15:
-> 00000000000012ea
-> [153468.344916] FS:  00002b5afef92e40(0000) GS:ffff88003cf00000(0000)
-> knlGS:0000000000000000
-> [153468.344916] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> [153468.344916] CR2: 0000000000000028 CR3: 0000000036bf4000 CR4:
-> 00000000000006e0
-> [153468.344916] Stack:
-> [153468.344916]  00000000000012ea ffffffff813a3ceb 0000000000000009
-> ffffffff00000010
-> [153468.344916]  ffff88003a9b1b88 ffff88003a9b1b48 00000000000012ea
-> 7fd0a6c0fb901b79
-> [153468.344916]  0000000000000000 0000000000001173 0000000000000002
-> ffffffffa0133b17
-> [153468.344916] Call Trace:
-> [153468.344916]  [<ffffffff813a3ceb>] ? printk+0x4f/0x54
-> [153468.344916]  [<ffffffffa0133b17>] ?
-> ext4_journal_abort_handle+0x2a/0x89 [ext4]
-> [153468.344916]  [<ffffffffa0133f77>] ?
-> __ext4_handle_dirty_metadata+0x16e/0x17f [ext4]
-> [153468.344916]  [<ffffffffa013a37b>] ? ext4_free_blocks+0x757/0x809 [ext4]
-> [153468.344916]  [<ffffffff81132c66>] ? __find_get_block+0x154/0x162
-> [153468.344916]  [<ffffffffa01317cb>] ? ext4_ext_remove_space+0x621/0xbbc [ext4]
-> [153468.344916]  [<ffffffffa013fca2>] ? ext4_es_remove_extent+0x70/0x93 [ext4]
-> [153468.344916]  [<ffffffffa0132df4>] ? ext4_ext_truncate+0x7a/0x9e [ext4]
-> [153468.344916]  [<ffffffffa0112efb>] ? ext4_truncate+0x1b5/0x29f [ext4]
-> [153468.344916]  [<ffffffffa0114de9>] ? ext4_evict_inode+0x1c8/0x2d8 [ext4]
-> [153468.344916]  [<ffffffff811218e0>] ? evict+0xa3/0x153
-> [153468.344916]  [<ffffffff81118d37>] ? do_unlinkat+0x120/0x1c2
-> [153468.344916]  [<ffffffff810ec668>] ? vm_munmap+0x46/0x55
-> [153468.344916]  [<ffffffff813af022>] ? system_call_fastpath+0x16/0x1b
-> [153468.344916] Code: 5d 41 5e 41 5f c3 41 55 49 89 cd 41 54 41 89 d4
-> 55 48 89 f5 48 c7 c6 23 10 15 a0 53 48 89 fb 48 81 ec 88 00 00 00 4c
-> 89 4c 24 78 <48> 8b 47 28 48 8b 57 40 48 8b 80 f8 02 00 00 48 8b 40 68
-> 89 90
-> [153468.344916] RIP  [<ffffffffa0127318>] __ext4_error_inode+0x25/0x13c [ext4]
-> [153468.344916]  RSP <ffff88003a9b1b18>
-> [153468.344916] CR2: 0000000000000028
-> [153468.373561] ---[ end trace 7fd0a6c0fb901b7a ]---
-> 
-> Please, if you need additional info keep me in CC as i'm not
-> subscribed to the list.
-> 
-> Regards.
-> 
-> 
+Previously in Linux 2.2 (or was it 2.0; my memory is a bit fuzzy about
+when we unified the buffer and page caches), when we copied the data
+from the page cache to the buffer cache, we stopped at EOF.  This
+implies that if the program modified the portion of the page mapped
+beyond EOF, it would remain modified until the page was released and
+the page was dropped from the page cache.
+
+Now, when we call writepage() --- assuming the file system wasn't
+buggy --- the bytes after EOF will get cleared.  If the user doesn't
+call msync(), when this happens is unpredictable to the userspace
+program, since it happens when writeback daemons decide to write back
+the data.
+
+See my modified test program to demonstrate this issue.  For ext3 and
+xfs, you will see message:
+
+nb: byte modified beyond EOF cleared after mysync
+
+I think this is valid, or at least, not prohibited by the mmap()
+interface specification, but it's not explicitly documented, and it
+might be a little surprising.  Given that ext3 users have been seeing
+this behavior for years and years, it's probably fine, so I'm
+proposing that we change this; but we might want to make a note of it
+in the man page.
+
+Regards,
+
+						- Ted
+
+--Q68bSM7Ycu6FN28Q
+Content-Type: text/x-csrc; charset=us-ascii
+Content-Disposition: attachment; filename="mmap-test.c"
+
+#define _XOPEN_SOURCE 600
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <fcntl.h>
+#include <string.h>
+#include <errno.h>
+
+int main(void)
+{
+	char tmpfname[256];
+	long page_size;
+
+	void *pa;
+	size_t len;
+	int fd;
+
+	pid_t child;
+	char *ch;
+	int exit_val;
+
+	page_size = sysconf(_SC_PAGE_SIZE);
+
+	len = page_size / 2;
+
+	snprintf(tmpfname, sizeof(tmpfname), "testfile");
+	child = fork();
+	switch (child) {
+	case 0:
+		/* Create shared object */
+		unlink(tmpfname);
+		fd = open(tmpfname, O_CREAT | O_RDWR | O_EXCL,
+			  S_IRUSR | S_IWUSR);
+		if (fd == -1) {
+			printf("Error at open(): %s\n", strerror(errno));
+			return 1;
+		}
+		if (ftruncate(fd, len) == -1) {
+			printf("Error at ftruncate(): %s\n", strerror(errno));
+			return 1;
+		}
+
+		pa = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+		if (pa == MAP_FAILED) {
+			printf("Error at mmap(): %s\n", strerror(errno));
+			return 1;
+		}
+		
+		/* Check the patial page is ZERO filled */
+		ch = pa + len + 1;
+		if (*ch != 0) {
+			printf("Test FAILED: "
+			       "The partial page at the end of an object "
+			       "is not zero-filled\n");
+			return 1;
+		}
+
+		/* Write the partial page */
+		*ch = 'b';
+		msync(pa, len, MS_SYNC);
+		if (*ch != 'b')
+			printf("nb: byte modified beyond EOF cleared after mysync\n");
+		munmap(pa, len);
+		close(fd);
+		return 0;
+	case -1:
+		printf("Error at fork(): %s\n", strerror(errno));
+		return 1;
+	default:
+	break;
+	}
+
+	wait(&exit_val);
+	if (!(WIFEXITED(exit_val) && (WEXITSTATUS(exit_val) == 0))) {
+		unlink(tmpfname);
+		printf("Child exited abnormally\n");
+		return 1;
+	}
+
+	fd = open(tmpfname, O_RDWR, 0);
+//	unlink(tmpfname);
+
+	pa = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	if (pa == MAP_FAILED) {
+		printf("Error at 2nd mmap(): %s\n", strerror(errno));
+		return 1;
+	}
+
+	ch = pa + len + 1;
+	if (*ch == 'b') {
+		printf("Test FAILED: Modification of the partial page "
+		       "at the end of an object is written out\n");
+		return 1;
+	}
+	close(fd);
+	munmap(pa, len);
+
+	printf("Test PASSED\n");
+	return 0;
+}
+
+--Q68bSM7Ycu6FN28Q--
