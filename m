@@ -1,74 +1,38 @@
-From: Arturo Borrero Gonzalez <arturo.borrero.glez@gmail.com>
-Subject: Re: OOPs in ext4
-Date: Wed, 21 May 2014 17:14:23 +0200
-Message-ID: <CAOkSjBhRk3KOWXJeApi9TvgQVSP0eudZYkTdakDrC8uzUS-4Lg@mail.gmail.com>
-References: <CAOkSjBgTFq_LnYnctOj2zR_to47joQDDbft3-kjEGzd2=ooswg@mail.gmail.com>
- <alpine.LFD.2.00.1405211506190.2114@localhost.localdomain>
- <20140521145315.GA8868@thunk.org> <CAOkSjBgXt-Ju3q+yNM13jx2UccDspJCAPZgd=vDyYYMo_kO_BQ@mail.gmail.com>
- <alpine.LFD.2.00.1405211711470.2114@localhost.localdomain>
+From: Giedrius Rekasius <giedrius.rekasius@gmail.com>
+Subject: Re: [PATCH] ext4: remove unused local variable "store" from
+ ext4_readdir(...)
+Date: Wed, 21 May 2014 16:16:30 +0100
+Message-ID: <20140521151630.GC8826@vaio>
+References: <20140520144113.GB13333@vaio>
+ <20140520200827.GM15585@mwanda>
+ <20140521134158.GB4719@vaio>
+ <20140521135130.GK17724@mwanda>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: =?UTF-8?B?THVrw6HFoSBDemVybmVy?= <lczerner@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f177.google.com ([209.85.217.177]:42981 "EHLO
-	mail-lb0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751962AbaEUPOp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 May 2014 11:14:45 -0400
-Received: by mail-lb0-f177.google.com with SMTP id s7so1641829lbd.8
-        for <linux-ext4@vger.kernel.org>; Wed, 21 May 2014 08:14:44 -0700 (PDT)
-In-Reply-To: <alpine.LFD.2.00.1405211711470.2114@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	kernel-janitors@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Dan Carpenter <dan.carpenter@oracle.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20140521135130.GK17724@mwanda>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 21 May 2014 17:12, Luk=C3=A1=C5=A1 Czerner <lczerner@redhat.com> wro=
-te:
-> On Wed, 21 May 2014, Arturo Borrero Gonzalez wrote:
->
->> Date: Wed, 21 May 2014 17:06:56 +0200
->> From: Arturo Borrero Gonzalez <arturo.borrero.glez@gmail.com>
->> To: Theodore Ts'o <tytso@mit.edu>
->> Cc: Luk=C3=A1=C5=A1 Czerner <lczerner@redhat.com>, linux-ext4@vger.k=
-ernel.org
->> Subject: Re: OOPs in ext4
->>
->> On 21 May 2014 16:53, Theodore Ts'o <tytso@mit.edu> wrote:
->> > Also, after the system rebooted, what messages if any did e2fsck
->> > report?
->> >
->>
->> Unfortunately, my e2fsck is translated to spanish. I will do my best
->> to translate the report to english.
->
-> you can run:
->
-> LANG=3DC e2fsck -nf /dev/vda1
+On Wed, May 21, 2014 at 04:51:30PM +0300, Dan Carpenter wrote:
+> Better, but still not quite right.  Read paragraph 2 from
+> https://git.kernel.org/cgit/linux/kernel/git/next/linux-next.git/tree/Documentation/email-clients.txt
+> 
+> Try applying this patch with `git am`, then review the log.  It has our
+> entire conversation preserved for ever in the git history.
+> 
+> https://www.google.com/search?q=how+to+send+a+v2+patch
 
-well, thanks.
+Thank you for explanation Dan, I think I got it this time. 
 
-e2fsck 1.42.5 (29-Jul-2012)
-Warning!  /dev/vda1 is mounted.
-Warning: skipping journal recovery because doing a read-only filesystem=
- check.
-Pass 1: Checking inodes, blocks, and sizes
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-=46ree blocks count wrong (5721853, counted=3D5579605).
-=46ix? no
+I'm going to resubmit this patch in a new thread because there is a typo 
+in the subject.
 
-=46ree inodes count wrong (2348360, counted=3D2348351).
-=46ix? no
-
-/dev/vda1: 273080/2621440 files (0.8% non-contiguous), 4763651/10485504=
- blocks
-
---=20
-Arturo Borrero Gonz=C3=A1lez
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Regards,
+Giedrius
