@@ -1,133 +1,84 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 76731] New: WARNING: CPU: 2 PID: 1620 at fs/sysfs/group.c:216
- when mounting an external disk
-Date: Thu, 22 May 2014 14:18:26 +0000
-Message-ID: <bug-76731-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: OpenPosix test case mmap_11-4 fails in ext4 filesystem
+Date: Thu, 22 May 2014 10:38:57 -0400
+Message-ID: <20140522143857.GA23056@thunk.org>
+References: <537C4A2F.8040402@cn.fujitsu.com>
+ <alpine.LFD.2.00.1405211413370.2114@localhost.localdomain>
+ <20140521141203.GB1501@thunk.org>
+ <20140521150619.GA5459@rei.suse.cz>
+ <20140521185824.GB8868@thunk.org>
+ <20140521212003.GA7493@rei.suse.cz>
+ <20140522024527.GA22059@thunk.org>
+ <20140522104505.GA10150@rei.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Luk???? Czerner <lczerner@redhat.com>,
+	Xiaoguang Wang <wangxg.fnst@cn.fujitsu.com>,
+	linux-ext4@vger.kernel.org
+To: chrubis@suse.cz
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:39682 "EHLO mail.kernel.org"
+Received: from imap.thunk.org ([74.207.234.97]:55661 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750899AbaEVOSa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 22 May 2014 10:18:30 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 4029B20172
-	for <linux-ext4@vger.kernel.org>; Thu, 22 May 2014 14:18:29 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 2993C20179
-	for <linux-ext4@vger.kernel.org>; Thu, 22 May 2014 14:18:27 +0000 (UTC)
+	id S1751271AbaEVOjM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 22 May 2014 10:39:12 -0400
+Content-Disposition: inline
+In-Reply-To: <20140522104505.GA10150@rei.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=76731
+On Thu, May 22, 2014 at 12:45:05PM +0200, chrubis@suse.cz wrote:
+> Right, sorting out right testcases is not easy task. But given that the
+> runtime is not that long we can do rough selection and end up with
+> something that runs in about 10 or 20 minutes and covers all possibly
+> relevant testcases.
 
-            Bug ID: 76731
-           Summary: WARNING: CPU: 2 PID: 1620 at fs/sysfs/group.c:216 when
-                    mounting an external disk
-           Product: File System
-           Version: 2.5
-    Kernel Version: 3.14
-          Hardware: i386
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-          Assignee: fs_ext4@kernel-bugs.osdl.org
-          Reporter: m.s.tsirkin@gmail.com
-        Regression: No
+Something to keep in mind is that for at least some file system
+developers, such as myself, we end up running certain tests multiple
+times, so we can get test coverage for different file system mount
+options, block sizes, file system features, etc.  Currently, I have
+ten or so different configurations for my full test run.
 
-I have a disk that I attach through USB.
-Whenever I attach and kde tries to mount it,
-I get this warning in dmesg and mount seems to fail.
+So if the bulk of the 20 minutes are tests for which there is
+duplicate coverage with xfstests, or which is stuff that is only
+testing behaviour implemented in the VFS, that's actually 3-4 extra
+hours of testing as far as I'm concerned.  Hence, the longer and the
+longer the tests take, the less often I will run them --- and the
+effect is not linear.
 
-afterwards if I mount from command line,
-it appears to work fine.
+So failing to eliminate tests which are not relevant is not cost-free.
+In some cases, the costs of winnowing out non-relevant tests may not
+be worth the effort.  If it's only an extra 5 seconds, I probably
+wouldn't care.  Although if you multiply the time saved by the number
+of file system developers, and the number of full test runs that they
+likely will be running during the development cycle, spending a few
+minutes to disable a non-relevant test starts becoming net-positive.
 
-the error is probably down to device still spinning up
-or something, but it does not seem to be
-handled properly in kernel.
+> To be frank the reputation is one thing I would really like to fix.
+> Nothing is more frustrating than spending years fixing code and still
+> being ignored because of the past you haven't been even involved in.
 
-[1797303.008198] Buffer I/O error on device sdb6, logical block 360448
-[1797303.008202] lost page write due to I/O error on sdb6
-[1797303.008214] JBD2: Error -5 detected when updating journal superblock for
-sdb6-8.
-[1797303.008528] ------------[ cut here ]------------
-[1797303.008534] WARNING: CPU: 2 PID: 1620 at fs/sysfs/group.c:216
-sysfs_remove_group+0x93/0xa0()
-[1797303.008535] sysfs group ffffffff81ca52a0 not found for kobject
-'target31:0:0'
-[1797303.008536] Modules linked in: cdc_acm xfs libcrc32c btrfs xor raid6_pq
-vfat fat usb_storage ccm arc4 iwldvm mac80211 fuse ipt_MASQUERADE xt_CHECKSUM
-ip6t_rpfilter ip6t_REJECT tun xt_conntrack ebtable_nat ebtable_broute bridge
-stp llc ebtable_filter ebtables ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6
-nf_nat_ipv6 ip6table_mangle ip6table_security ip6table_raw ip6table_filter
-ip6_tables iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 nf_nat
-nf_conntrack iptable_mangle iptable_security iptable_raw rfcomm bnep
-snd_hda_codec_hdmi snd_hda_codec_conexant snd_hda_codec_generic iwlwifi
-x86_pkg_temp_thermal coretemp kvm_intel cfg80211 kvm iTCO_wdt
-iTCO_vendor_support snd_hda_intel snd_hda_codec btusb snd_hwdep snd_seq
-uvcvideo bluetooth sdhci_pci crc32c_intel e1000e snd_seq_device sdhci
-ghash_clmulni_intel
-[1797303.008566]  mmc_core snd_pcm videobuf2_vmalloc videobuf2_memops microcode
-videobuf2_core videodev thinkpad_acpi serio_raw i2c_i801 pcspkr snd_timer snd
-6lowpan_iphc lpc_ich ptp mfd_core shpchp pps_core soundcore wmi tpm_tis rfkill
-tpm binfmt_misc uinput i915 i2c_algo_bit drm_kms_helper drm i2c_core
-firewire_ohci firewire_core crc_itu_t video
-[1797303.008582] CPU: 2 PID: 1620 Comm: kio_http Tainted: G        W   
-3.14.0-mst #298
-[1797303.008583] Hardware name: LENOVO 4243BQ9/4243BQ9, BIOS 8AET57WW (1.37 )
-04/05/2012
-[1797303.008584]  0000000000000009 ffff880062d91a68 ffffffff8168b085
-ffff880062d91ab0
-[1797303.008586]  ffff880062d91aa0 ffffffff8107038d 0000000000000000
-ffffffff81ca52a0
-[1797303.008587]  ffff88000ca6bc38 ffff88012116b190 ffff8800d0b16000
-ffff880062d91b00
-[1797303.008589] Call Trace:
-[1797303.008593]  [<ffffffff8168b085>] dump_stack+0x45/0x56
-[1797303.008597]  [<ffffffff8107038d>] warn_slowpath_common+0x7d/0xa0
-[1797303.008599]  [<ffffffff810703fc>] warn_slowpath_fmt+0x4c/0x50
-[1797303.008601]  [<ffffffff8122cce8>] ? kernfs_find_and_get_ns+0x48/0x60
-[1797303.008603]  [<ffffffff8122b953>] sysfs_remove_group+0x93/0xa0
-[1797303.008606]  [<ffffffff8141d523>] dpm_sysfs_remove+0x43/0x50
-[1797303.008609]  [<ffffffff81413115>] device_del+0x45/0x1c0
-[1797303.008612]  [<ffffffff814430a7>] scsi_target_reap_usercontext+0x27/0x40
-[1797303.008614]  [<ffffffff810899b7>] execute_in_process_context+0x67/0x70
-[1797303.008616]  [<ffffffff81444504>] scsi_target_reap+0xc4/0xf0
-[1797303.008619]  [<ffffffff81446578>]
-scsi_device_dev_release_usercontext+0x188/0x1c0
-[1797303.008621]  [<ffffffff810899b7>] execute_in_process_context+0x67/0x70
-[1797303.008622]  [<ffffffff814463ec>] scsi_device_dev_release+0x1c/0x20
-[1797303.008624]  [<ffffffff814127b2>] device_release+0x32/0xa0
-[1797303.008627]  [<ffffffff81312cc7>] kobject_cleanup+0x77/0x1b0
-[1797303.008629]  [<ffffffff81312b80>] kobject_put+0x30/0x60
-[1797303.008631]  [<ffffffff81412aa7>] put_device+0x17/0x20
-[1797303.008633]  [<ffffffff81437a7b>] scsi_device_put+0x3b/0x50
-[1797303.008635]  [<ffffffff8144af20>] scsi_disk_put+0x30/0x50
-[1797303.008637]  [<ffffffff8144b262>] sd_release+0x42/0xd0
-[1797303.008639]  [<ffffffff811ee7dc>] __blkdev_put+0x17c/0x1b0
-[1797303.008641]  [<ffffffff811ee772>] __blkdev_put+0x112/0x1b0
-[1797303.008643]  [<ffffffff811ef11c>] blkdev_put+0x4c/0x120
-[1797303.008645]  [<ffffffff811b7c04>] kill_block_super+0x44/0x70
-[1797303.008647]  [<ffffffff811b7ecd>] deactivate_locked_super+0x3d/0x60
-[1797303.008648]  [<ffffffff811b8476>] deactivate_super+0x46/0x60
-[1797303.008650]  [<ffffffff811d3fe1>] mntput_no_expire+0xd1/0x160
-[1797303.008652]  [<ffffffff811d4096>] mntput+0x26/0x40
-[1797303.008654]  [<ffffffff811b732a>] __fput+0x16a/0x230
-[1797303.008655]  [<ffffffff811b743e>] ____fput+0xe/0x10
-[1797303.008657]  [<ffffffff8108f5ac>] task_work_run+0xbc/0xe0
-[1797303.008659]  [<ffffffff810717b6>] do_exit+0x2a6/0xa40
-[1797303.008661]  [<ffffffff81072d5f>] do_group_exit+0x3f/0xa0
-[1797303.008663]  [<ffffffff81072dd4>] SyS_exit_group+0x14/0x20
-[1797303.008665]  [<ffffffff8169c65c>] sysenter_dispatch+0x7/0x21
-[1797303.008666] ---[ end trace 1c50160f2659195a ]---
-[1797306.280983] SELinux: initialized (dev sdc2, type fuseblk), uses
-genfs_contexts
+Well, to the extent that many years ago, I was employed by one of the
+companies had a well-meaning, but ultimately counterproductive
+contribution to LTP, by putting relatively junior test engineers that
+didn't understand the kernel code all that deeply, and was given the
+mandate to increase the code coverage percentages as the only figure
+of merit, I was actually somewhat involved, if only indirectly.
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Unfortunately, I wasn't able to effect change by advocating strongly
+enough for a more productive approach (which would have required
+putting in far more senior, and thus more expensive and harder to
+allocate engineering talent), although I did help eventually help by
+arguing that ceasing support for what I considered to be a deeply
+dysfunctional effort as the best thing that particular company could
+have done at that point.  :-(
+
+So I really have to commend Xiaoguang Wang for having done a large
+amount of analysis when submitting the report about the LTP test
+failure.  That's significantly different from my previous experience
+interacting with previous people working on the LTP project, and it's
+precisely that sort of work and analysis which I'm sure will help turn
+around LTP's reputation.
+
+Cheers,
+
+						- Ted
