@@ -1,80 +1,108 @@
-From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: RE: [PATCH 1/2] ext4: introduce new i_write_mutex to protect fallocate
-Date: Tue, 27 May 2014 11:12:57 +0900
-Message-ID: <001201cf7951$2d6f6260$884e2720$@samsung.com>
-References: <001701cf6e40$fab98be0$f02ca3a0$@samsung.com>
- <20140526162900.GI22284@thunk.org> <20140527015959.GO22284@thunk.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: [ANNOUNCE] xfstests: master branch updated to 45d1fac
+Date: Tue, 27 May 2014 12:44:37 +1000
+Message-ID: <20140527024437.GC8554@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-2
-Content-Transfer-Encoding: 7bit
-Cc: 'linux-ext4' <linux-ext4@vger.kernel.org>,
-	=?iso-8859-2?Q?'Luk=E1=B9_Czerner'?= <lczerner@redhat.com>,
-	'Ashish Sangwan' <a.sangwan@samsung.com>
-To: 'Theodore Ts'o' <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout2.samsung.com ([203.254.224.25]:26281 "EHLO
-	mailout2.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751923AbaE0CM7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 May 2014 22:12:59 -0400
-Received: from epcpsbgr1.samsung.com
- (u141.gpu120.samsung.co.kr [203.254.230.141])
- by mailout2.samsung.com (Oracle Communications Messaging Server 7u4-24.01
- (7.0.4.24.0) 64bit (built Nov 17 2011))
- with ESMTP id <0N6700A3VNHMLM60@mailout2.samsung.com> for
- linux-ext4@vger.kernel.org; Tue, 27 May 2014 11:12:58 +0900 (KST)
-In-reply-to: <20140527015959.GO22284@thunk.org>
-Content-language: ko
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="AkbCVLjbJ9qUtAXD"
+Cc: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org
+To: fstests@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-> On Mon, May 26, 2014 at 12:29:00PM -0400, Theodore Ts'o wrote:
-> > On Tue, May 13, 2014 at 09:19:17AM +0900, Namjae Jeon wrote:
-> > > Introduce new i_write_mutex to protect new writes from coming while doing
-> > > fallocate operations. Also, get rid of aio_mutex as it is covered by
-> > > i_write_mutex.
-> > >
-> > Thanks, applied.
-> >
-> 
-> I had to apply the following fix up patch, or else running generic/308
-> using the ext3 config would end up returning to userspace with
-> i_write_mutex still locked.
-> 
-> For all ext4 developers: please consider running at least
-> "kvm-xfstests -g quick" (which would have shown this issue), or better
-> yet, "kvm-xfstests -g auto" before sending patches.  It finds problems
-> like this.  :-)
-Hi Ted.
 
-Sorry for my mistake... I will carefully test it next time. :)
+--AkbCVLjbJ9qUtAXD
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Thanks a lot!!
-> 
-> Cheers,
-> 
-> 					- Ted
-> 
-> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-> index 8c39305..e5cd87f 100644
-> --- a/fs/ext4/file.c
-> +++ b/fs/ext4/file.c
-> @@ -135,8 +135,8 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
->  		if ((pos > sbi->s_bitmap_maxbytes) ||
->  		    (pos == sbi->s_bitmap_maxbytes && length > 0)) {
->  			mutex_unlock(&inode->i_mutex);
-> -			ret = -EFBIG;
-> -			goto errout;
-> +			mutex_unlock(&EXT4_I(inode)->i_write_mutex);
-> +			return -EFBIG;
->  		}
-> 
->  		if (pos + length > sbi->s_bitmap_maxbytes) {
-> @@ -196,7 +196,6 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
->  	if (o_direct)
->  		blk_finish_plug(&plug);
-> 
-> -errout:
->  	if (unaligned_direct_aio)
->  		mutex_unlock(&EXT4_I(inode)->i_write_mutex);
->  	return ret;
+Hi folks,
 
+The xfstests repository at git://oss.sgi.com/xfs/cmds/xfstests has
+just been updated. Patches often get missed, so please check if your
+outstanding patches were in this update. If they have not been in
+this update, please resubmit them to fstests@vger.kernel.org so they
+can be picked up in the next update.
+
+I've sent this announcement to fstests, linux-fsdevel and the XFS,
+ext4 and btrfs lists. Future fstests announcements will only be
+directed to the fstests and linux-fsdevel lists.
+
+The new head of the master branch is commit:
+
+45d1fac btrfs: test for btrfs send when nested subvols/snapshots exist
+
+New Commits:
+
+Eryu Guan (2):
+      [82afae2] generic: new ENOSPC regression test
+      [caca581] xfs/005: filter _scratch_mount output to match golden image
+
+Filipe David Borba Manana (5):
+      [e7dd9f1] btrfs: add test for btrfs send with long paths
+      [86da66c] common: add helper require function _require_btrfs_cloner
+      [d140277] btrfs: add test for clone operation
+      [3318629] btrfs: add test for btrfs send with large xattrs
+      [45d1fac] btrfs: test for btrfs send when nested subvols/snapshots ex=
+ist
+
+
+Code Diffstat:
+
+ common/rc             |   7 +
+ tests/btrfs/035       |   4 +-
+ tests/btrfs/051       |  85 +++++++++
+ tests/btrfs/051.out   |   1 +
+ tests/btrfs/052       | 171 +++++++++++++++++
+ tests/btrfs/052.out   | 499 ++++++++++++++++++++++++++++++++++++++++++++++=
+++++
+ tests/btrfs/053       | 109 +++++++++++
+ tests/btrfs/053.out   |   1 +
+ tests/btrfs/054       | 109 +++++++++++
+ tests/btrfs/054.out   |   1 +
+ tests/btrfs/group     |   4 +
+ tests/generic/027     | 107 +++++++++++
+ tests/generic/027.out |   2 +
+ tests/generic/group   |   1 +
+ tests/xfs/005         |   7 +-
+ 15 files changed, 1104 insertions(+), 4 deletions(-)
+ create mode 100755 tests/btrfs/051
+ create mode 100644 tests/btrfs/051.out
+ create mode 100755 tests/btrfs/052
+ create mode 100644 tests/btrfs/052.out
+ create mode 100755 tests/btrfs/053
+ create mode 100644 tests/btrfs/053.out
+ create mode 100755 tests/btrfs/054
+ create mode 100644 tests/btrfs/054.out
+ create mode 100755 tests/generic/027
+ create mode 100644 tests/generic/027.out
+--=20
+Dave Chinner
+david@fromorbit.com
+
+--AkbCVLjbJ9qUtAXD
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.12 (GNU/Linux)
+
+iQIcBAEBAgAGBQJTg/wUAAoJEK3oKUf0dfodUUgP/2Q2n/WpbhrwHtWRQkQgsQMO
+LNvYOMACzn9ayFqVZ0AZW+CmTprEim8tPSmO6F2Zfg8bHbJxl6dS1IU2Ff/ksT8b
+y52HNh4Co9rX6+0d9aat7+YmP1X8ZBbSc0uIbWeeGuWpZ1BPSiCCS///Th342qNm
+tg+cIhavASweeU/cXTk8711sTyfS2GZkrfOW6cPru96vlwg/g61nqLI7seLdfN5F
+qXY825WbQ1azI473JnvTXJ7aHY7iTO+O7lX2oMhRnHDhWVpaRmZLAKL1r398sAXV
+5hTUEw79KrfRlsFN371nK2eMzdHJ4XcUwtAOtz0g8CXhGEGEkP9CDPjXghHnBs3J
+mS3/uxQcm6BwD0iYJheW0r5kBHmIs0Rm36QrHVSSKPX/zekKYm2zjhxdUNXXWgIA
+FLAhhFijMv9Dz11xfV5EZmK1musjovBchtP8MX+ObUudVeiWmplhkkISVFH9DE0X
+2GqOxYCHMSuj1UuFe2/9vtZn22tBR/O09VRhLCB2iTYz0dgeaz4FJcil6lbrOROV
+ADlqbzX83B8jOJBEfCGw/anKCL4pIhe67NBxuj5Kl3o77GubXS6JN91E1VhXduR8
+AyzpB0QWkq/ymFMc+nKn+8rxA85SiFldaigRX7Y3X/Ob62xbpDzCN75KTpMzgFuA
+rWbLcEnPvkB+7C8Tslm8
+=yWMA
+-----END PGP SIGNATURE-----
+
+--AkbCVLjbJ9qUtAXD--
