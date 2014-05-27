@@ -1,51 +1,29 @@
-From: Niu Yawei <yawei.niu@gmail.com>
-Subject: [PATCH 1/3] quota: protect Q_GETFMT by dqonoff_mutex
-Date: Tue, 27 May 2014 18:10:53 +0800
-Message-ID: <538464AD.6050407@gmail.com>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 1/3] quota: protect Q_GETFMT by dqonoff_mutex
+Date: Tue, 27 May 2014 03:12:19 -0700
+Message-ID: <20140527101219.GA28035@infradead.org>
 References: <537DD5BA.1050105@gmail.com>
+ <538464AD.6050407@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=GB2312
-Content-Transfer-Encoding: 7bit
-Cc: yawei.niu@intel.com, andreas.dilger@intel.com, jack@suse.cz,
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	yawei.niu@intel.com, andreas.dilger@intel.com, jack@suse.cz,
 	lai.siyao@intel.com
-To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <537DD5BA.1050105@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: Niu Yawei <yawei.niu@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from bombadil.infradead.org ([198.137.202.9]:42463 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751128AbaE0KMT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 May 2014 06:12:19 -0400
+Content-Disposition: inline
+In-Reply-To: <538464AD.6050407@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Remove dqptr_sem to make quota code scalable (but kept in struct
-quota_info to keep kernel ABI unchanged): Protect the Q_GETFMT by
-dqonoff_mutex instead of dqptr_sem.
+On Tue, May 27, 2014 at 06:10:53PM +0800, Niu Yawei wrote:
+> Remove dqptr_sem to make quota code scalable (but kept in struct
+> quota_info to keep kernel ABI unchanged):
 
-Signed-off-by: Lai Siyao <lai.siyao@intel.com>
-Signed-off-by: Niu Yawei <yawei.niu@intel.com>
----
- fs/quota/quota.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
-
-diff --git a/fs/quota/quota.c b/fs/quota/quota.c
-index 2b363e2..e4851cb 100644
---- a/fs/quota/quota.c
-+++ b/fs/quota/quota.c
-@@ -79,13 +79,13 @@ static int quota_getfmt(struct super_block *sb, int type, void __user *addr)
- {
- 	__u32 fmt;
- 
--	down_read(&sb_dqopt(sb)->dqptr_sem);
-+	mutex_lock(&sb_dqopt(sb)->dqonoff_mutex);
- 	if (!sb_has_quota_active(sb, type)) {
--		up_read(&sb_dqopt(sb)->dqptr_sem);
-+		mutex_unlock(&sb_dqopt(sb)->dqonoff_mutex);
- 		return -ESRCH;
- 	}
- 	fmt = sb_dqopt(sb)->info[type].dqi_format->qf_fmt_id;
--	up_read(&sb_dqopt(sb)->dqptr_sem);
-+	mutex_unlock(&sb_dqopt(sb)->dqonoff_mutex);
- 	if (copy_to_user(addr, &fmt, sizeof(fmt)))
- 		return -EFAULT;
- 	return 0;
--- 
-1.7.1
-
+There is not stable kernel ABI to be kept, please adjust your patch for
+that.
 
