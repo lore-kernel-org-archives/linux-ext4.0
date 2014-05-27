@@ -1,108 +1,51 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: [ANNOUNCE] xfstests: master branch updated to 45d1fac
-Date: Tue, 27 May 2014 12:44:37 +1000
-Message-ID: <20140527024437.GC8554@dastard>
+From: Niu Yawei <yawei.niu@gmail.com>
+Subject: [PATCH 1/3] quota: protect Q_GETFMT by dqonoff_mutex
+Date: Tue, 27 May 2014 18:10:53 +0800
+Message-ID: <538464AD.6050407@gmail.com>
+References: <537DD5BA.1050105@gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="AkbCVLjbJ9qUtAXD"
-Cc: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
-	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org
-To: fstests@vger.kernel.org
+Content-Type: text/plain; charset=GB2312
+Content-Transfer-Encoding: 7bit
+Cc: yawei.niu@intel.com, andreas.dilger@intel.com, jack@suse.cz,
+	lai.siyao@intel.com
+To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
+In-Reply-To: <537DD5BA.1050105@gmail.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+Remove dqptr_sem to make quota code scalable (but kept in struct
+quota_info to keep kernel ABI unchanged): Protect the Q_GETFMT by
+dqonoff_mutex instead of dqptr_sem.
 
---AkbCVLjbJ9qUtAXD
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Signed-off-by: Lai Siyao <lai.siyao@intel.com>
+Signed-off-by: Niu Yawei <yawei.niu@intel.com>
+---
+ fs/quota/quota.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
-Hi folks,
-
-The xfstests repository at git://oss.sgi.com/xfs/cmds/xfstests has
-just been updated. Patches often get missed, so please check if your
-outstanding patches were in this update. If they have not been in
-this update, please resubmit them to fstests@vger.kernel.org so they
-can be picked up in the next update.
-
-I've sent this announcement to fstests, linux-fsdevel and the XFS,
-ext4 and btrfs lists. Future fstests announcements will only be
-directed to the fstests and linux-fsdevel lists.
-
-The new head of the master branch is commit:
-
-45d1fac btrfs: test for btrfs send when nested subvols/snapshots exist
-
-New Commits:
-
-Eryu Guan (2):
-      [82afae2] generic: new ENOSPC regression test
-      [caca581] xfs/005: filter _scratch_mount output to match golden image
-
-Filipe David Borba Manana (5):
-      [e7dd9f1] btrfs: add test for btrfs send with long paths
-      [86da66c] common: add helper require function _require_btrfs_cloner
-      [d140277] btrfs: add test for clone operation
-      [3318629] btrfs: add test for btrfs send with large xattrs
-      [45d1fac] btrfs: test for btrfs send when nested subvols/snapshots ex=
-ist
+diff --git a/fs/quota/quota.c b/fs/quota/quota.c
+index 2b363e2..e4851cb 100644
+--- a/fs/quota/quota.c
++++ b/fs/quota/quota.c
+@@ -79,13 +79,13 @@ static int quota_getfmt(struct super_block *sb, int type, void __user *addr)
+ {
+ 	__u32 fmt;
+ 
+-	down_read(&sb_dqopt(sb)->dqptr_sem);
++	mutex_lock(&sb_dqopt(sb)->dqonoff_mutex);
+ 	if (!sb_has_quota_active(sb, type)) {
+-		up_read(&sb_dqopt(sb)->dqptr_sem);
++		mutex_unlock(&sb_dqopt(sb)->dqonoff_mutex);
+ 		return -ESRCH;
+ 	}
+ 	fmt = sb_dqopt(sb)->info[type].dqi_format->qf_fmt_id;
+-	up_read(&sb_dqopt(sb)->dqptr_sem);
++	mutex_unlock(&sb_dqopt(sb)->dqonoff_mutex);
+ 	if (copy_to_user(addr, &fmt, sizeof(fmt)))
+ 		return -EFAULT;
+ 	return 0;
+-- 
+1.7.1
 
 
-Code Diffstat:
-
- common/rc             |   7 +
- tests/btrfs/035       |   4 +-
- tests/btrfs/051       |  85 +++++++++
- tests/btrfs/051.out   |   1 +
- tests/btrfs/052       | 171 +++++++++++++++++
- tests/btrfs/052.out   | 499 ++++++++++++++++++++++++++++++++++++++++++++++=
-++++
- tests/btrfs/053       | 109 +++++++++++
- tests/btrfs/053.out   |   1 +
- tests/btrfs/054       | 109 +++++++++++
- tests/btrfs/054.out   |   1 +
- tests/btrfs/group     |   4 +
- tests/generic/027     | 107 +++++++++++
- tests/generic/027.out |   2 +
- tests/generic/group   |   1 +
- tests/xfs/005         |   7 +-
- 15 files changed, 1104 insertions(+), 4 deletions(-)
- create mode 100755 tests/btrfs/051
- create mode 100644 tests/btrfs/051.out
- create mode 100755 tests/btrfs/052
- create mode 100644 tests/btrfs/052.out
- create mode 100755 tests/btrfs/053
- create mode 100644 tests/btrfs/053.out
- create mode 100755 tests/btrfs/054
- create mode 100644 tests/btrfs/054.out
- create mode 100755 tests/generic/027
- create mode 100644 tests/generic/027.out
---=20
-Dave Chinner
-david@fromorbit.com
-
---AkbCVLjbJ9qUtAXD
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
-
-iQIcBAEBAgAGBQJTg/wUAAoJEK3oKUf0dfodUUgP/2Q2n/WpbhrwHtWRQkQgsQMO
-LNvYOMACzn9ayFqVZ0AZW+CmTprEim8tPSmO6F2Zfg8bHbJxl6dS1IU2Ff/ksT8b
-y52HNh4Co9rX6+0d9aat7+YmP1X8ZBbSc0uIbWeeGuWpZ1BPSiCCS///Th342qNm
-tg+cIhavASweeU/cXTk8711sTyfS2GZkrfOW6cPru96vlwg/g61nqLI7seLdfN5F
-qXY825WbQ1azI473JnvTXJ7aHY7iTO+O7lX2oMhRnHDhWVpaRmZLAKL1r398sAXV
-5hTUEw79KrfRlsFN371nK2eMzdHJ4XcUwtAOtz0g8CXhGEGEkP9CDPjXghHnBs3J
-mS3/uxQcm6BwD0iYJheW0r5kBHmIs0Rm36QrHVSSKPX/zekKYm2zjhxdUNXXWgIA
-FLAhhFijMv9Dz11xfV5EZmK1musjovBchtP8MX+ObUudVeiWmplhkkISVFH9DE0X
-2GqOxYCHMSuj1UuFe2/9vtZn22tBR/O09VRhLCB2iTYz0dgeaz4FJcil6lbrOROV
-ADlqbzX83B8jOJBEfCGw/anKCL4pIhe67NBxuj5Kl3o77GubXS6JN91E1VhXduR8
-AyzpB0QWkq/ymFMc+nKn+8rxA85SiFldaigRX7Y3X/Ob62xbpDzCN75KTpMzgFuA
-rWbLcEnPvkB+7C8Tslm8
-=yWMA
------END PGP SIGNATURE-----
-
---AkbCVLjbJ9qUtAXD--
