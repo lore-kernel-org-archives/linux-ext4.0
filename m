@@ -1,88 +1,58 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] misc: fix create_inode warnings with LLVM
-Date: Tue, 27 May 2014 18:34:52 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1405271834430.2055@localhost.localdomain>
-References: <1400627542-75060-1-git-send-email-adilger@dilger.ca>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: jbd2 batch time tuning behavior question
+Date: Tue, 27 May 2014 11:47:06 -0500
+Message-ID: <5384C18A.7040501@redhat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:24906 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:52764 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752017AbaE0QfB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 27 May 2014 12:35:01 -0400
-In-Reply-To: <1400627542-75060-1-git-send-email-adilger@dilger.ca>
+	id S1751594AbaE0QrH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 27 May 2014 12:47:07 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s4RGl7U9028221
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Tue, 27 May 2014 12:47:07 -0400
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id s4RGl6kd027150
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 27 May 2014 12:47:07 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 20 May 2014, Andreas Dilger wrote:
-
-> Date: Tue, 20 May 2014 17:12:22 -0600
-> From: Andreas Dilger <adilger@dilger.ca>
-> To: tytso@mit.edu
-> Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
-> Subject: [PATCH] misc: fix create_inode warnings with LLVM
-> 
-> Fix name clash in do_mknod_internal() due to local variables named
-> "major" and "minor" shadowing identical macro names.
-> 
-> Also, no need to set the major and minor device for a FIFO inode.
-> 
-> Signed-off-by: Andreas Dilger <adilger@dilger.ca>
-
-Looks good, thanks!
-
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+Question for Ted:  With this commit, you introduced some documentation and some code which are not consistent AFAICT:
 
 
-> ---
->  misc/create_inode.c | 26 ++++++++++++++------------
->  1 file changed, 14 insertions(+), 12 deletions(-)
-> 
-> diff --git a/misc/create_inode.c b/misc/create_inode.c
-> index 964c66a..1d666c7 100644
-> --- a/misc/create_inode.c
-> +++ b/misc/create_inode.c
-> @@ -96,9 +96,9 @@ errcode_t do_mknod_internal(ext2_filsys fs, ext2_ino_t cwd, const char *name,
->  			    struct stat *st)
->  {
->  	ext2_ino_t		ino;
-> -	errcode_t 		retval;
-> +	errcode_t		retval;
->  	struct ext2_inode	inode;
-> -	unsigned long		major, minor, mode;
-> +	unsigned long		devmajor, devminor, mode;
->  	int			filetype;
->  
->  	switch(st->st_mode & S_IFMT) {
-> @@ -153,16 +153,18 @@ errcode_t do_mknod_internal(ext2_filsys fs, ext2_ino_t cwd, const char *name,
->  	inode.i_atime = inode.i_ctime = inode.i_mtime =
->  		fs->now ? fs->now : time(0);
->  
-> -	major = major(st->st_rdev);
-> -	minor = minor(st->st_rdev);
-> -
-> -	if ((major < 256) && (minor < 256)) {
-> -		inode.i_block[0] = major * 256 + minor;
-> -		inode.i_block[1] = 0;
-> -	} else {
-> -		inode.i_block[0] = 0;
-> -		inode.i_block[1] = (minor & 0xff) | (major << 8) |
-> -				   ((minor & ~0xff) << 12);
-> +	if (filetype != S_IFIFO) {
-> +		devmajor = major(st->st_rdev);
-> +		devminor = minor(st->st_rdev);
-> +
-> +		if ((devmajor < 256) && (devminor < 256)) {
-> +			inode.i_block[0] = devmajor * 256 + devminor;
-> +			inode.i_block[1] = 0;
-> +		} else {
-> +			inode.i_block[0] = 0;
-> +			inode.i_block[1] = (devminor & 0xff) | (devmajor << 8) |
-> +					   ((devminor & ~0xff) << 12);
-> +		}
->  	}
->  	inode.i_links_count = 1;
->  
-> 
+commit 30773840c19cea60dcef39545960d541b1ac1cf8
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Sat Jan 3 20:27:38 2009 -0500
+
+    ext4: add fsync batch tuning knobs
+
+<snip>
+
++                       the transaction.   The commit time is capped by
++                       the max_batch_time, which defaults to 15000us
++                       (15ms).   This optimization can be turned off
++                       entirely by setting max_batch_time to 0.
+
+<snip>
+
++               case Opt_max_batch_time:
++                       if (match_int(&args[0], &option))
++                               return 0;
++                       if (option < 0)
++                               return 0;
++                       if (option == 0)
++                               option = EXT4_DEF_MAX_BATCH_TIME;
++                       sbi->s_max_batch_time = option;
++                       break;
+
+Docs say "0" turns it off, but option handling turns "0" into 
+EXT4_DEF_MAX_BATCH_TIME.  What was the real intent here; should the
+docs or the behavior be changed?
+
+Thanks,
+-Eric
