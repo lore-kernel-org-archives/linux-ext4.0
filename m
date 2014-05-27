@@ -1,53 +1,54 @@
-From: HUSAM AL SAYED <Husamalsayed@asia.com>
-Subject: Your Urgent reply.
-Date: Mon, 26 May 2014 21:58:35 +0400
-Message-ID: <CAKFyHyoTHpnn32KNpU9anhth5_Zt333Zbz3DBz6p7q86tfyVgA__45821.687198668$1401127141$gmane$org@mail.gmail.com>
-Reply-To: Husamalsayed@asia.com
+From: Namjae Jeon <namjae.jeon@samsung.com>
+Subject: [PATCH] ext4: fix missing unlock on error in collapse range
+Date: Tue, 27 May 2014 09:09:15 +0900
+Message-ID: <000601cf793f$e5377070$afa65150$@samsung.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: undisclosed-recipients:;
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: 'Dan Carpenter' <dan.carpenter@oracle.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	Ashish Sangwan <a.sangwan@samsung.com>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-we0-f196.google.com ([74.125.82.196]:56203 "EHLO
-	mail-we0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751900AbaEZR6h (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 May 2014 13:58:37 -0400
-Received: by mail-we0-f196.google.com with SMTP id k48so2681697wev.11
-        for <linux-ext4@vger.kernel.org>; Mon, 26 May 2014 10:58:36 -0700 (PDT)
+Received: from mailout2.samsung.com ([203.254.224.25]:53612 "EHLO
+	mailout2.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751679AbaE0AJR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 May 2014 20:09:17 -0400
+Received: from epcpsbgr3.samsung.com
+ (u143.gpu120.samsung.co.kr [203.254.230.143])
+ by mailout2.samsung.com (Oracle Communications Messaging Server 7u4-24.01
+ (7.0.4.24.0) 64bit (built Nov 17 2011))
+ with ESMTP id <0N67009E4HRFFU70@mailout2.samsung.com> for
+ linux-ext4@vger.kernel.org; Tue, 27 May 2014 09:09:15 +0900 (KST)
+Content-language: ko
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Dear Friend,
+Add i_write_mutex unlock on the error handling path in collapse_range().
 
+Cc: Dan Carpenter <dan.carpenter@oracle.com>
+Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
+Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
+---
+ fs/ext4/extents.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-Compliments of the day.This mail May be a surprise to you Because you
-did not give me the permission to do so and Neither do you know me but
-before I tell you about myself I want you to please forgive me for
-sending this mail without your permission I have been in search of
-someone with this last name so when I saw you online, I was pushed to
-contact you and see how best we can assist each other. I am Mr. Husam
-Al Sayed, a Bank Officer here in U.A.E. I believe it is the wish of
-God for me to come across you now. I am having an important business
-discussion I wish to share with you which I  believe will interest
-you, because it is in connection with your last name and you are going
-to benefit from it.
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index ee14768..0c93423 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -5447,8 +5447,10 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
+ 	/* Write out all dirty pages */
+ 	ret = filemap_write_and_wait_range(inode->i_mapping, ioffset,
+ 					   LLONG_MAX);
+-	if (ret)
++	if (ret) {
++		mutex_unlock(&EXT4_I(inode)->i_write_mutex);
+ 		return ret;
++	}
+ 
+ 	/* Take mutex lock */
+ 	mutex_lock(&inode->i_mutex);
+-- 
+1.7.11-rc0
 
-One Late peter who was among the death victims in the May 27 2006
-Earthquake disaster in Java, Indonesia that killed over 5,000 people.
-He was in Indonesia on a business trip and that was how he met his
-end. My bank management is yet to know about his death, I knew about
-it because he was my friend and I am his account officer.he did not
-mention any Next of Kin/ Heir when the account was opened, and he was
-not married and no children. Last week my Bank Management requested
-that he should give instructions on what to do about his funds,I know
-this will happen and that is why I have been looking for a means to
-handle the situation,
-
-If you are interested send me your private Email Address so that i can
-send you more details of the transaction,
-Thanks for your understanding
-
-I am waiting for your reply.
-
-Best regards,
-
-Mr. Husam Al Sayed
