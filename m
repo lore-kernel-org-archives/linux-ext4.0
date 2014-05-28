@@ -1,419 +1,166 @@
-From: Niu Yawei <yawei.niu@gmail.com>
-Subject: Re: [PATCH 3/3 v2] quota: remove dqptr_sem
-Date: Wed, 28 May 2014 10:01:12 +0800
-Message-ID: <53854368.6050306@gmail.com>
-References: <537DD5BA.1050105@gmail.com> <538464AD.6050407@gmail.com> <20140527101219.GA28035@infradead.org> <538541FE.3070203@gmail.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 2/2] libext2fs: support allocating uninit blocks in
+ bmap2()
+Date: Wed, 28 May 2014 12:48:06 -0700
+Message-ID: <20140528194806.GA27499@birch.djwong.org>
+References: <20140501231222.31890.82860.stgit@birch.djwong.org>
+ <20140501231407.31890.3876.stgit@birch.djwong.org>
+ <alpine.LFD.2.00.1405061736390.2255@localhost.localdomain>
+ <20140506195938.GD25745@birch.djwong.org>
+ <alpine.LFD.2.00.1405071045090.2128@localhost.localdomain>
+ <20140507213704.GA8923@birch.djwong.org>
+ <20140508001447.GD8923@birch.djwong.org>
+ <alpine.LFD.2.00.1405271827290.2055@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	yawei.niu@intel.com, andreas.dilger@intel.com, lai.siyao@intel.com
-To: Christoph Hellwig <hch@infradead.org>, jack@suse.cz
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f54.google.com ([209.85.220.54]:59305 "EHLO
-	mail-pa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751911AbaE1CBG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 May 2014 22:01:06 -0400
-In-Reply-To: <538541FE.3070203@gmail.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:47241 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751625AbaE1TsN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 28 May 2014 15:48:13 -0400
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1405271827290.2055@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The v2 patchset just removed dqptr_sem totally (not like v1 keeping it
-in quota_info), and I measured
-performance of both v1 & v2 patches,  the improvements are same as the
-first big-one patch I sent.
-> Remove dqptr_sem to make quota code scalable: Remove the dqptr_sem,
-> accessing inode->i_dquot now protected by dquot_srcu, and changing
-> inode->i_dquot is now serialized by dq_data_lock.
->
-> Signed-off-by: Lai Siyao <lai.siyao@intel.com>
-> Signed-off-by: Niu Yawei <yawei.niu@intel.com>
-> ---
->  fs/quota/dquot.c      |  105 +++++++++++++++++++------------------------------
->  fs/super.c            |    1 -
->  include/linux/quota.h |    1 -
->  3 files changed, 41 insertions(+), 66 deletions(-)
->
-> diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
-> index dc6f711..b86c88b 100644
-> --- a/fs/quota/dquot.c
-> +++ b/fs/quota/dquot.c
-> @@ -96,13 +96,15 @@
->   * Note that some things (eg. sb pointer, type, id) doesn't change during
->   * the life of the dquot structure and so needn't to be protected by a lock
->   *
-> - * Any operation working on dquots via inode pointers must hold dqptr_sem.  If
-> - * operation is just reading pointers from inode (or not using them at all) the
-> - * read lock is enough. If pointers are altered function must hold write lock.
-> + * Operation accessing dquots via inode pointers are protected by dquot_srcu.
-> + * Operation of reading pointer needs srcu_read_lock(&dquot_srcu), and
-> + * synchronize_srcu(&dquot_srcu) is called before clear pointers to avoid
-> + * use after free. dq_data_lock is used to serialize the pointer setting and
-> + * clearing operations.
->   * Special care needs to be taken about S_NOQUOTA inode flag (marking that
->   * inode is a quota file). Functions adding pointers from inode to dquots have
-> - * to check this flag under dqptr_sem and then (if S_NOQUOTA is not set) they
-> - * have to do all pointer modifications before dropping dqptr_sem. This makes
-> + * to check this flag under dq_data_lock and then (if S_NOQUOTA is not set) they
-> + * have to do all pointer modifications before dropping dq_data_lock. This makes
->   * sure they cannot race with quotaon which first sets S_NOQUOTA flag and
->   * then drops all pointers to dquots from an inode.
->   *
-> @@ -116,21 +118,15 @@
->   * spinlock to internal buffers before writing.
->   *
->   * Lock ordering (including related VFS locks) is the following:
-> - *   dqonoff_mutex > i_mutex > journal_lock > dqptr_sem > dquot->dq_lock >
-> - *   dqio_mutex
-> + *   dqonoff_mutex > i_mutex > journal_lock > dquot->dq_lock > dqio_mutex
->   * dqonoff_mutex > i_mutex comes from dquot_quota_sync, dquot_enable, etc.
-> - * The lock ordering of dqptr_sem imposed by quota code is only dqonoff_sem >
-> - * dqptr_sem. But filesystem has to count with the fact that functions such as
-> - * dquot_alloc_space() acquire dqptr_sem and they usually have to be called
-> - * from inside a transaction to keep filesystem consistency after a crash. Also
-> - * filesystems usually want to do some IO on dquot from ->mark_dirty which is
-> - * called with dqptr_sem held.
->   */
->  
->  static __cacheline_aligned_in_smp DEFINE_SPINLOCK(dq_list_lock);
->  static __cacheline_aligned_in_smp DEFINE_SPINLOCK(dq_state_lock);
->  __cacheline_aligned_in_smp DEFINE_SPINLOCK(dq_data_lock);
->  EXPORT_SYMBOL(dq_data_lock);
-> +DEFINE_STATIC_SRCU(dquot_srcu);
->  
->  void __quota_error(struct super_block *sb, const char *func,
->  		   const char *fmt, ...)
-> @@ -974,7 +970,6 @@ static inline int dqput_blocks(struct dquot *dquot)
->  /*
->   * Remove references to dquots from inode and add dquot to list for freeing
->   * if we have the last reference to dquot
-> - * We can't race with anybody because we hold dqptr_sem for writing...
->   */
->  static int remove_inode_dquot_ref(struct inode *inode, int type,
->  				  struct list_head *tofree_head)
-> @@ -1035,13 +1030,15 @@ static void remove_dquot_ref(struct super_block *sb, int type,
->  		 *  We have to scan also I_NEW inodes because they can already
->  		 *  have quota pointer initialized. Luckily, we need to touch
->  		 *  only quota pointers and these have separate locking
-> -		 *  (dqptr_sem).
-> +		 *  (dq_data_lock).
->  		 */
-> +		spin_lock(&dq_data_lock);
->  		if (!IS_NOQUOTA(inode)) {
->  			if (unlikely(inode_get_rsv_space(inode) > 0))
->  				reserved = 1;
->  			remove_inode_dquot_ref(inode, type, tofree_head);
->  		}
-> +		spin_unlock(&dq_data_lock);
->  	}
->  	spin_unlock(&inode_sb_list_lock);
->  #ifdef CONFIG_QUOTA_DEBUG
-> @@ -1059,9 +1056,8 @@ static void drop_dquot_ref(struct super_block *sb, int type)
->  	LIST_HEAD(tofree_head);
->  
->  	if (sb->dq_op) {
-> -		down_write(&sb_dqopt(sb)->dqptr_sem);
->  		remove_dquot_ref(sb, type, &tofree_head);
-> -		up_write(&sb_dqopt(sb)->dqptr_sem);
-> +		synchronize_srcu(&dquot_srcu);
->  		put_dquot_list(&tofree_head);
->  	}
->  }
-> @@ -1392,9 +1388,6 @@ static int dquot_active(const struct inode *inode)
->  /*
->   * Initialize quota pointers in inode
->   *
-> - * We do things in a bit complicated way but by that we avoid calling
-> - * dqget() and thus filesystem callbacks under dqptr_sem.
-> - *
->   * It is better to call this function outside of any transaction as it
->   * might need a lot of space in journal for dquot structure allocation.
->   */
-> @@ -1405,8 +1398,6 @@ static void __dquot_initialize(struct inode *inode, int type)
->  	struct super_block *sb = inode->i_sb;
->  	qsize_t rsv;
->  
-> -	/* First test before acquiring mutex - solves deadlocks when we
-> -         * re-enter the quota code and are already holding the mutex */
->  	if (!dquot_active(inode))
->  		return;
->  
-> @@ -1438,7 +1429,7 @@ static void __dquot_initialize(struct inode *inode, int type)
->  	if (!dq_get)
->  		return;
->  
-> -	down_write(&sb_dqopt(sb)->dqptr_sem);
-> +	spin_lock(&dq_data_lock);
->  	if (IS_NOQUOTA(inode))
->  		goto out_err;
->  	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
-> @@ -1458,15 +1449,12 @@ static void __dquot_initialize(struct inode *inode, int type)
->  			 * did a write before quota was turned on
->  			 */
->  			rsv = inode_get_rsv_space(inode);
-> -			if (unlikely(rsv)) {
-> -				spin_lock(&dq_data_lock);
-> +			if (unlikely(rsv))
->  				dquot_resv_space(inode->i_dquot[cnt], rsv);
-> -				spin_unlock(&dq_data_lock);
-> -			}
->  		}
->  	}
->  out_err:
-> -	up_write(&sb_dqopt(sb)->dqptr_sem);
-> +	spin_unlock(&dq_data_lock);
->  	/* Drop unused references */
->  	dqput_all(got);
->  }
-> @@ -1485,12 +1473,13 @@ static void __dquot_drop(struct inode *inode)
->  	int cnt;
->  	struct dquot *put[MAXQUOTAS];
->  
-> -	down_write(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> +	spin_lock(&dq_data_lock);
->  	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
->  		put[cnt] = inode->i_dquot[cnt];
->  		inode->i_dquot[cnt] = NULL;
->  	}
-> -	up_write(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> +	spin_unlock(&dq_data_lock);
-> +	synchronize_srcu(&dquot_srcu);
->  	dqput_all(put);
->  }
->  
-> @@ -1608,15 +1597,11 @@ static void inode_decr_space(struct inode *inode, qsize_t number, int reserve)
->   */
->  int __dquot_alloc_space(struct inode *inode, qsize_t number, int flags)
->  {
-> -	int cnt, ret = 0;
-> +	int cnt, ret = 0, index;
->  	struct dquot_warn warn[MAXQUOTAS];
->  	struct dquot **dquots = inode->i_dquot;
->  	int reserve = flags & DQUOT_SPACE_RESERVE;
->  
-> -	/*
-> -	 * First test before acquiring mutex - solves deadlocks when we
-> -	 * re-enter the quota code and are already holding the mutex
-> -	 */
->  	if (!dquot_active(inode)) {
->  		inode_incr_space(inode, number, reserve);
->  		goto out;
-> @@ -1625,7 +1610,7 @@ int __dquot_alloc_space(struct inode *inode, qsize_t number, int flags)
->  	for (cnt = 0; cnt < MAXQUOTAS; cnt++)
->  		warn[cnt].w_type = QUOTA_NL_NOWARN;
->  
-> -	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> +	index = srcu_read_lock(&dquot_srcu);
->  	spin_lock(&dq_data_lock);
->  	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
->  		if (!dquots[cnt])
-> @@ -1652,7 +1637,7 @@ int __dquot_alloc_space(struct inode *inode, qsize_t number, int flags)
->  		goto out_flush_warn;
->  	mark_all_dquot_dirty(dquots);
->  out_flush_warn:
-> -	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> +	srcu_read_unlock(&dquot_srcu, index);
->  	flush_warnings(warn);
->  out:
->  	return ret;
-> @@ -1664,17 +1649,16 @@ EXPORT_SYMBOL(__dquot_alloc_space);
->   */
->  int dquot_alloc_inode(const struct inode *inode)
->  {
-> -	int cnt, ret = 0;
-> +	int cnt, ret = 0, index;
->  	struct dquot_warn warn[MAXQUOTAS];
->  	struct dquot * const *dquots = inode->i_dquot;
->  
-> -	/* First test before acquiring mutex - solves deadlocks when we
-> -         * re-enter the quota code and are already holding the mutex */
->  	if (!dquot_active(inode))
->  		return 0;
->  	for (cnt = 0; cnt < MAXQUOTAS; cnt++)
->  		warn[cnt].w_type = QUOTA_NL_NOWARN;
-> -	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> +
-> +	index = srcu_read_lock(&dquot_srcu);
->  	spin_lock(&dq_data_lock);
->  	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
->  		if (!dquots[cnt])
-> @@ -1694,7 +1678,7 @@ warn_put_all:
->  	spin_unlock(&dq_data_lock);
->  	if (ret == 0)
->  		mark_all_dquot_dirty(dquots);
-> -	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> +	srcu_read_unlock(&dquot_srcu, index);
->  	flush_warnings(warn);
->  	return ret;
->  }
-> @@ -1705,14 +1689,14 @@ EXPORT_SYMBOL(dquot_alloc_inode);
->   */
->  int dquot_claim_space_nodirty(struct inode *inode, qsize_t number)
->  {
-> -	int cnt;
-> +	int cnt, index;
->  
->  	if (!dquot_active(inode)) {
->  		inode_claim_rsv_space(inode, number);
->  		return 0;
->  	}
->  
-> -	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> +	index = srcu_read_lock(&dquot_srcu);
->  	spin_lock(&dq_data_lock);
->  	/* Claim reserved quotas to allocated quotas */
->  	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
-> @@ -1724,7 +1708,7 @@ int dquot_claim_space_nodirty(struct inode *inode, qsize_t number)
->  	inode_claim_rsv_space(inode, number);
->  	spin_unlock(&dq_data_lock);
->  	mark_all_dquot_dirty(inode->i_dquot);
-> -	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> +	srcu_read_unlock(&dquot_srcu, index);
->  	return 0;
->  }
->  EXPORT_SYMBOL(dquot_claim_space_nodirty);
-> @@ -1734,14 +1718,14 @@ EXPORT_SYMBOL(dquot_claim_space_nodirty);
->   */
->  void dquot_reclaim_space_nodirty(struct inode *inode, qsize_t number)
->  {
-> -	int cnt;
-> +	int cnt, index;
->  
->  	if (!dquot_active(inode)) {
->  		inode_reclaim_rsv_space(inode, number);
->  		return;
->  	}
->  
-> -	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> +	index = srcu_read_lock(&dquot_srcu);
->  	spin_lock(&dq_data_lock);
->  	/* Claim reserved quotas to allocated quotas */
->  	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
-> @@ -1753,7 +1737,7 @@ void dquot_reclaim_space_nodirty(struct inode *inode, qsize_t number)
->  	inode_reclaim_rsv_space(inode, number);
->  	spin_unlock(&dq_data_lock);
->  	mark_all_dquot_dirty(inode->i_dquot);
-> -	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> +	srcu_read_unlock(&dquot_srcu, index);
->  	return;
->  }
->  EXPORT_SYMBOL(dquot_reclaim_space_nodirty);
-> @@ -1766,16 +1750,14 @@ void __dquot_free_space(struct inode *inode, qsize_t number, int flags)
->  	unsigned int cnt;
->  	struct dquot_warn warn[MAXQUOTAS];
->  	struct dquot **dquots = inode->i_dquot;
-> -	int reserve = flags & DQUOT_SPACE_RESERVE;
-> +	int reserve = flags & DQUOT_SPACE_RESERVE, index;
->  
-> -	/* First test before acquiring mutex - solves deadlocks when we
-> -         * re-enter the quota code and are already holding the mutex */
->  	if (!dquot_active(inode)) {
->  		inode_decr_space(inode, number, reserve);
->  		return;
->  	}
->  
-> -	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> +	index = srcu_read_lock(&dquot_srcu);
->  	spin_lock(&dq_data_lock);
->  	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
->  		int wtype;
-> @@ -1798,7 +1780,7 @@ void __dquot_free_space(struct inode *inode, qsize_t number, int flags)
->  		goto out_unlock;
->  	mark_all_dquot_dirty(dquots);
->  out_unlock:
-> -	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> +	srcu_read_unlock(&dquot_srcu, index);
->  	flush_warnings(warn);
->  }
->  EXPORT_SYMBOL(__dquot_free_space);
-> @@ -1811,13 +1793,12 @@ void dquot_free_inode(const struct inode *inode)
->  	unsigned int cnt;
->  	struct dquot_warn warn[MAXQUOTAS];
->  	struct dquot * const *dquots = inode->i_dquot;
-> +	int index;
->  
-> -	/* First test before acquiring mutex - solves deadlocks when we
-> -         * re-enter the quota code and are already holding the mutex */
->  	if (!dquot_active(inode))
->  		return;
->  
-> -	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> +	index = srcu_read_lock(&dquot_srcu);
->  	spin_lock(&dq_data_lock);
->  	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
->  		int wtype;
-> @@ -1832,7 +1813,7 @@ void dquot_free_inode(const struct inode *inode)
->  	}
->  	spin_unlock(&dq_data_lock);
->  	mark_all_dquot_dirty(dquots);
-> -	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> +	srcu_read_unlock(&dquot_srcu, index);
->  	flush_warnings(warn);
->  }
->  EXPORT_SYMBOL(dquot_free_inode);
-> @@ -1858,8 +1839,6 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
->  	struct dquot_warn warn_from_inodes[MAXQUOTAS];
->  	struct dquot_warn warn_from_space[MAXQUOTAS];
->  
-> -	/* First test before acquiring mutex - solves deadlocks when we
-> -         * re-enter the quota code and are already holding the mutex */
->  	if (IS_NOQUOTA(inode))
->  		return 0;
->  	/* Initialize the arrays */
-> @@ -1868,12 +1847,12 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
->  		warn_from_inodes[cnt].w_type = QUOTA_NL_NOWARN;
->  		warn_from_space[cnt].w_type = QUOTA_NL_NOWARN;
->  	}
-> -	down_write(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> +
-> +	spin_lock(&dq_data_lock);
->  	if (IS_NOQUOTA(inode)) {	/* File without quota accounting? */
-> -		up_write(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> +		spin_unlock(&dq_data_lock);
->  		return 0;
->  	}
-> -	spin_lock(&dq_data_lock);
->  	cur_space = inode_get_bytes(inode);
->  	rsv_space = inode_get_rsv_space(inode);
->  	space = cur_space + rsv_space;
-> @@ -1927,7 +1906,6 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
->  		inode->i_dquot[cnt] = transfer_to[cnt];
->  	}
->  	spin_unlock(&dq_data_lock);
-> -	up_write(&sb_dqopt(inode->i_sb)->dqptr_sem);
->  
->  	mark_all_dquot_dirty(transfer_from);
->  	mark_all_dquot_dirty(transfer_to);
-> @@ -1941,7 +1919,6 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
->  	return 0;
->  over_quota:
->  	spin_unlock(&dq_data_lock);
-> -	up_write(&sb_dqopt(inode->i_sb)->dqptr_sem);
->  	flush_warnings(warn_to);
->  	return ret;
->  }
-> diff --git a/fs/super.c b/fs/super.c
-> index 48377f7..a97aecf 100644
-> --- a/fs/super.c
-> +++ b/fs/super.c
-> @@ -214,7 +214,6 @@ static struct super_block *alloc_super(struct file_system_type *type, int flags)
->  	lockdep_set_class(&s->s_vfs_rename_mutex, &type->s_vfs_rename_key);
->  	mutex_init(&s->s_dquot.dqio_mutex);
->  	mutex_init(&s->s_dquot.dqonoff_mutex);
-> -	init_rwsem(&s->s_dquot.dqptr_sem);
->  	s->s_maxbytes = MAX_NON_LFS;
->  	s->s_op = &default_op;
->  	s->s_time_gran = 1000000000;
-> diff --git a/include/linux/quota.h b/include/linux/quota.h
-> index cc7494a..a1358ce 100644
-> --- a/include/linux/quota.h
-> +++ b/include/linux/quota.h
-> @@ -389,7 +389,6 @@ struct quota_info {
->  	unsigned int flags;			/* Flags for diskquotas on this device */
->  	struct mutex dqio_mutex;		/* lock device while I/O in progress */
->  	struct mutex dqonoff_mutex;		/* Serialize quotaon & quotaoff */
-> -	struct rw_semaphore dqptr_sem;		/* serialize ops using quota_info struct, pointers from inode to dquots */
->  	struct inode *files[MAXQUOTAS];		/* inodes of quotafiles */
->  	struct mem_dqinfo info[MAXQUOTAS];	/* Information for each quota type */
->  	const struct quota_format_ops *ops[MAXQUOTAS];	/* Operations for each type */
+On Tue, May 27, 2014 at 06:28:22PM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
+:
+> On Wed, 7 May 2014, Darrick J. Wong wrote:
+>=20
+> > Date: Wed, 7 May 2014 17:14:47 -0700
+> > From: Darrick J. Wong <darrick.wong@oracle.com>
+> > To: Luk=C3=A1=C5=A1 Czerner <lczerner@redhat.com>
+> > Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+> > Subject: [PATCH 2/2] libext2fs: support allocating uninit blocks in=
+ bmap2()
+> >=20
+> > Here's the second part, which for the most part is the old patch, b=
+ut wired up
+> > to use the bits in the other patch.
+>=20
+> Looks good
+>=20
+> Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+>=20
+> but I wonder how effective will this be with zero range when we're
+> doing this on block at the time.
 
+Not a lot, but hopefully you used ext2fs_fallocate() (and extents) if y=
+ou
+wanted more than one block.
+
+--D
+>=20
+> Thanks!
+> -Lukas
+>=20
+> >=20
+> > --D
+> > ---
+> > In order to support fallocate, we need to be able to have
+> > ext2fs_bmap2() allocate blocks and put them into uninitialized
+> > extents.  There's a flag to do this in the extent code, but it's no=
+t
+> > exposed to the bmap2 interface, so plumb that in.  Eventually fuse2=
+fs
+> > or somebody will use it.
+> >=20
+> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> > ---
+> >  lib/ext2fs/bmap.c   |   24 ++++++++++++++++++++++--
+> >  lib/ext2fs/ext2fs.h |    1 +
+> >  2 files changed, 23 insertions(+), 2 deletions(-)
+> >=20
+> > diff --git a/lib/ext2fs/bmap.c b/lib/ext2fs/bmap.c
+> > index c1d0e6f..a4dc8ef 100644
+> > --- a/lib/ext2fs/bmap.c
+> > +++ b/lib/ext2fs/bmap.c
+> > @@ -72,6 +72,11 @@ static _BMAP_INLINE_ errcode_t block_ind_bmap(ex=
+t2_filsys fs, int flags,
+> >  					    block_buf + fs->blocksize, &b);
+> >  		if (retval)
+> >  			return retval;
+> > +		if (flags & BMAP_UNINIT) {
+> > +			retval =3D ext2fs_zero_blocks2(fs, b, 1, NULL, NULL);
+> > +			if (retval)
+> > +				return retval;
+> > +		}
+> > =20
+> >  #ifdef WORDS_BIGENDIAN
+> >  		((blk_t *) block_buf)[nr] =3D ext2fs_swab32(b);
+> > @@ -214,10 +219,13 @@ static errcode_t extent_bmap(ext2_filsys fs, =
+ext2_ino_t ino,
+> >  	errcode_t		retval =3D 0;
+> >  	blk64_t			blk64 =3D 0;
+> >  	int			alloc =3D 0;
+> > +	int			set_flags;
+> > +
+> > +	set_flags =3D bmap_flags & BMAP_UNINIT ? EXT2_EXTENT_SET_BMAP_UNI=
+NIT : 0;
+> > =20
+> >  	if (bmap_flags & BMAP_SET) {
+> >  		retval =3D ext2fs_extent_set_bmap(handle, block,
+> > -						*phys_blk, 0);
+> > +						*phys_blk, set_flags);
+> >  		return retval;
+> >  	}
+> >  	retval =3D ext2fs_extent_goto(handle, block);
+> > @@ -254,7 +262,7 @@ got_block:
+> >  		alloc++;
+> >  	set_extent:
+> >  		retval =3D ext2fs_extent_set_bmap(handle, block,
+> > -						blk64, 0);
+> > +						blk64, set_flags);
+> >  		if (retval) {
+> >  			ext2fs_block_alloc_stats2(fs, blk64, -1);
+> >  			return retval;
+> > @@ -345,6 +353,12 @@ errcode_t ext2fs_bmap2(ext2_filsys fs, ext2_in=
+o_t ino, struct ext2_inode *inode,
+> >  		goto done;
+> >  	}
+> > =20
+> > +	if ((bmap_flags & BMAP_SET) && (bmap_flags & BMAP_UNINIT)) {
+> > +		retval =3D ext2fs_zero_blocks2(fs, *phys_blk, 1, NULL, NULL);
+> > +		if (retval)
+> > +			goto done;
+> > +	}
+> > +
+> >  	if (block < EXT2_NDIR_BLOCKS) {
+> >  		if (bmap_flags & BMAP_SET) {
+> >  			b =3D *phys_blk;
+> > @@ -360,6 +374,12 @@ errcode_t ext2fs_bmap2(ext2_filsys fs, ext2_in=
+o_t ino, struct ext2_inode *inode,
+> >  			retval =3D ext2fs_alloc_block(fs, b, block_buf, &b);
+> >  			if (retval)
+> >  				goto done;
+> > +			if (bmap_flags & BMAP_UNINIT) {
+> > +				retval =3D ext2fs_zero_blocks2(fs, b, 1, NULL,
+> > +							     NULL);
+> > +				if (retval)
+> > +					goto done;
+> > +			}
+> >  			inode_bmap(inode, block) =3D b;
+> >  			blocks_alloc++;
+> >  			*phys_blk =3D b;
+> > diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+> > index 599c972..819a14a 100644
+> > --- a/lib/ext2fs/ext2fs.h
+> > +++ b/lib/ext2fs/ext2fs.h
+> > @@ -527,6 +527,7 @@ typedef struct ext2_icount *ext2_icount_t;
+> >   */
+> >  #define BMAP_ALLOC	0x0001
+> >  #define BMAP_SET	0x0002
+> > +#define BMAP_UNINIT	0x0004
+> > =20
+> >  /*
+> >   * Returned flags from ext2fs_bmap
+> >=20
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
