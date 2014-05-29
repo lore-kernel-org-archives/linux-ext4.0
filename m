@@ -1,42 +1,55 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/2] ext4: introduce new i_write_mutex to protect
- fallocate
-Date: Thu, 29 May 2014 12:28:10 -0400
-Message-ID: <20140529162810.GG25041@thunk.org>
-References: <001701cf6e40$fab98be0$f02ca3a0$@samsung.com>
- <alpine.LFD.2.00.1405291439340.18491@localhost.localdomain>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] filefrag: fix minor issues with 29758d2
+Date: Thu, 29 May 2014 12:25:17 -0500
+Message-ID: <53876D7D.8050108@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Namjae Jeon <namjae.jeon@samsung.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	Ashish Sangwan <a.sangwan@samsung.com>
-To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@dilger.ca>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:39858 "EHLO imap.thunk.org"
+Received: from mx1.redhat.com ([209.132.183.28]:19297 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756336AbaE2Q2Q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 29 May 2014 12:28:16 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1405291439340.18491@localhost.localdomain>
+	id S932432AbaE2R0a (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 29 May 2014 13:26:30 -0400
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s4THPsJB016333
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Thu, 29 May 2014 13:25:54 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, May 29, 2014 at 02:42:04PM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
-:
->=20
-> I wonder what is the performance impact of this change ? Especially
-> since we're not longer taking the lock only in unaligned aio/dio
-> case but in all cases ?
+29758d2 filefrag: exit with error code if an error is hit
 
-Thinking about this some more, this is also going to break parallel
-writes, which would be unfortunate.  We might want to change this to
-using a rw mutex, where writes take a shared lock, and require
-fallocate to take an exclusive lock....
+introduced a couple errors; in one case it missed returning
+a value, and in the other used a test where it needed an
+assignment.
 
-				- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+diff --git a/misc/filefrag.c b/misc/filefrag.c
+index 37c4416..b2826ad 100644
+--- a/misc/filefrag.c
++++ b/misc/filefrag.c
+@@ -387,8 +387,9 @@ static int frag_report(const char *filename)
+ 	if (last_device != st.st_dev) {
+ 		if (fstatfs(fd, &fsinfo) < 0) {
+ 			close(fd);
++			rc = -errno;
+ 			perror("fstatfs");
+-			return;
++			return rc;
+ 		}
+ 		if (verbose)
+ 			printf("Filesystem type is: %lx\n",
+@@ -556,7 +557,7 @@ int main(int argc, char**argv)
+ 		int rc2 = frag_report(*cpp);
+ 
+ 		if (rc2 < 0 && rc == 0)
+-			rc == rc2;
++			rc = rc2;
+ 	}
+ 
+ 	return rc;
+
