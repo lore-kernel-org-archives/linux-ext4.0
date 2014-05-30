@@ -1,139 +1,94 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH V3] filefrag: filefrag: fix issues with 29758d2
-Date: Fri, 30 May 2014 15:03:51 -0600
-Message-ID: <7862495B-2A0E-400B-9AEF-CF4B2C603B91@dilger.ca>
-References: <53876D7D.8050108@redhat.com> <5388C989.8050100@redhat.com>
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_AD4C073D-40F0-4610-8DB9-2960F779A41F"; protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [RFC][PATCH] ext4: handle fast symlink properly with inline_data
+Date: Fri, 30 May 2014 16:26:33 -0700
+Message-ID: <20140530232633.GE17413@birch.djwong.org>
+References: <1392275237-6998-1-git-send-email-wenqing.lz@taobao.com>
+ <20140218015231.GF26580@thunk.org>
+ <292627A0-B8C3-4B49-9795-E5DA18462A4B@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Zheng Liu <gnehzuil.liu@gmail.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Ian Nartowicz <claws@nartowicz.co.uk>, Tao Ma <tm@tao.ma>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f50.google.com ([209.85.220.50]:47774 "EHLO
-	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753955AbaE3VDw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 May 2014 17:03:52 -0400
-Received: by mail-pa0-f50.google.com with SMTP id fb1so2121094pad.9
-        for <linux-ext4@vger.kernel.org>; Fri, 30 May 2014 14:03:51 -0700 (PDT)
-In-Reply-To: <5388C989.8050100@redhat.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:46052 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751491AbaE3X0w (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 May 2014 19:26:52 -0400
+Content-Disposition: inline
+In-Reply-To: <292627A0-B8C3-4B49-9795-E5DA18462A4B@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Tue, Feb 18, 2014 at 11:07:24AM -0800, Andreas Dilger wrote:
+> I suspect that the stats for symlinks > 60 but < ~150 chars is only a very
+> small fraction of files. If the code complexity of handling this is very
+> small (i.e. it is just handled as a natural consequence of writing "data" 
+> of this size) then I would be OK with it. 
+> 
+> Otherwise, I expect the code and maintenance overhead of supporting
+> the 0.01% (?) of symlinks that are this size is probably lot worth it. 
+> 
+> People could check what the actual usage is via the "fsstats" tool at:
+> 
+> http://www.pdsi-scidac.org/fsstats/
+> 
+> There is also data there already that reports stats on symlink length, but
+> it is mostly HPC filesystems and it might be better to redo this with a
+> desktop-type workload. 
 
---Apple-Mail=_AD4C073D-40F0-4610-8DB9-2960F779A41F
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=iso-8859-1
+I think we should either put in this kernel patch so that we can read inline
+data fast symlinks, or remove the ability to write inline data fast symlinks.
+It's a bit surprising that I can do:
 
+# mke2fs -t ext4 -O inline_data /dev/sdb         
+# mount /dev/sdb /mnt/
+# ln -s "Fuzzy Wuzzy was a bear. Fuzzy Wuzzy had no hair. I guess he wasn't fuzzy, was he?" /mnt/biglink
+# readlink /mnt/biglink
+Fuzzy Wuzzy was a bear. Fuzzy Wuzzy had no hair. I guess he wasn't fuzzy, was he?
+# umount /mnt
+# mount /dev/sdb /mnt/
+# readlink /mnt/biglink
+Fuzzy Wuzzy was a bear. Fuzzy Wuzzy had no hair. I guess he
 
-On May 30, 2014, at 12:10 PM, Eric Sandeen <sandeen@redhat.com> wrote:
+What happened to the punchline of the limerick? ------------^^^^^^^ ???? :)
 
-> 29758d2 filefrag: exit with error code if an error is hit
->=20
-> introduced a couple errors; in one case it missed returning
-> a value, and possibly picked up errno from (unchecked) close(),
-> and in the other used a test where it needed an
-> assignment.  So capture the error, move perror() directly
-> after the failed call in both cases, and fix the assignment.
->=20
-> Also fix a precedence problem with:
->=20
-> 	if (fe_flags & mask =3D=3D 0)
->=20
-> which is equivalent to:
->=20
-> 	if (fe_flags & (mask =3D=3D 0))
->=20
-> but we need:
->=20
-> 	if ((fe_flags & mask) =3D=3D 0)
->=20
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+e2fsck still seems to think that you can't have inline_data fast symlinks.  I
+don't see a downside to continuing to allow them.
 
-Looks good:
+--D
 
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-
-> ---
->=20
-> diff --git a/misc/filefrag.c b/misc/filefrag.c
-> index 37c4416..820821b 100644
-> --- a/misc/filefrag.c
-> +++ b/misc/filefrag.c
-> @@ -175,7 +175,7 @@ static void print_extent_info(struct fiemap_extent =
-*fm_extent, int cur_ex,
-> 	for (mask =3D 1; fe_flags !=3D 0 && mask !=3D 0; mask <<=3D 1) {
-> 		char hex[6];
->=20
-> -		if (fe_flags & mask =3D=3D 0)
-> +		if ((fe_flags & mask) =3D=3D 0)
-> 			continue;
-> 		sprintf(hex, "%#04x,", mask);
-> 		print_flag(&fe_flags, mask, flags, hex);
-> @@ -378,17 +378,18 @@ static int frag_report(const char *filename)
-> #else
-> 	if (fstat(fd, &st) < 0) {
-> #endif
-> -		close(fd);
-> 		rc =3D -errno;
-> 		perror("stat");
-> +		close(fd);
-> 		return rc;
-> 	}
->=20
-> 	if (last_device !=3D st.st_dev) {
-> 		if (fstatfs(fd, &fsinfo) < 0) {
-> -			close(fd);
-> +			rc =3D -errno;
-> 			perror("fstatfs");
-> -			return;
-> +			close(fd);
-> +			return rc;
-> 		}
-> 		if (verbose)
-> 			printf("Filesystem type is: %lx\n",
-> @@ -556,7 +557,7 @@ int main(int argc, char**argv)
-> 		int rc2 =3D frag_report(*cpp);
->=20
-> 		if (rc2 < 0 && rc =3D=3D 0)
-> -			rc =3D=3D rc2;
-> +			rc =3D rc2;
-> 	}
->=20
-> 	return rc;
->=20
-
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_AD4C073D-40F0-4610-8DB9-2960F779A41F
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIVAwUBU4jyN3Kl2rkXzB/gAQJMFBAAulmiKqavcUhxTMd+mBSEevR0cdzAXKWE
-3u7GtielohAauw5PCPDU46o7AbdrRFoAiOjyZKNOLBLP/xGk30CEUE8XTRmpMb4N
-DhsgND1wcYgwIgiknC8hhDZQI+lnlIy/+kYKoMmrfZgRg3nDZSPANsCJvN3iUq7k
-Jh5jjT6kZ49Y3KBx6MR21vALZTibUYoTjmW+pqJH6yKwid/hxaS9Ne8X1Sqp3BJr
-MjwBCcgpHj6Jy4LLcaLwG9w12Y8hIVkTchAjU01hnGIBK7rtd3J91XhcvsahAhJS
-Kh/k8FnOoGRjovWBVc+zCfg5xEZcfQKmzHPFNZ0D1NARmtqaIUdkkW+AtU2FFi5o
-zP2UpPoAjN3hbauIGi5P1i67MlwSVlLU2Nj6TXnDWlc4Rtp9Zia7XLZYynnbmyGb
-4T718q7HKVRL+vxMZtmgVMF+NM2s/wVvYQ7xrMAuaqwehBy2DQEuEn10Y8R1T5EI
-W7EqqCX49IyVGf/k5S8rqFqpIR3Hi2zD9b6d7mZiRWvHraFoAF282qhLM8LcbLcz
-rNJ9X3DJNkIHJzzbWdSWkmIx0uTdsO/eZslilXW1YM3lsoIMP6/HQ6gNVL3Y2OwE
-iaMjox/v3rjdvXFNPoESvefuQoIGD++SC9i7G/xlpvZDCTsdqatQexHVG9Koryi0
-jwAZVzoe4ck=
-=fFd/
------END PGP SIGNATURE-----
-
---Apple-Mail=_AD4C073D-40F0-4610-8DB9-2960F779A41F--
+> 
+> Cheers, Andreas
+> 
+> >> On Feb 17, 2014, at 17:52, Theodore Ts'o <tytso@mit.edu> wrote:
+> >> 
+> >> On Thu, Feb 13, 2014 at 03:07:17PM +0800, Zheng Liu wrote:
+> >> 
+> >> I am not sure whether or not we need to enable inline_data for a fast
+> >> symlink inode.  Obviously, it brings a benefit that after enabling
+> >> inline_data feature for a fast symlink we can get more space to store
+> >> the path.  But it seems that the original patch doesn't want to do this
+> >> Another solution for fixing this bug is to disable inline_data for a
+> >> fast symlink.  Any comment?
+> > 
+> > Well, if we are using inline data, and we have a symlink which is
+> > longer than 60 bytes, but less than extra space available for an
+> > inline data, it seems like a good thing to support.
+> > 
+> > The downside is that it is a bit more complication to add the kernel's
+> > code in both the kernel as well as e2fsprogs, but it doesn't seem that
+> > bad.
+> > 
+> > So I don't have any objections to adding this functionality.  What do
+> > other folks think?
+> > 
+> >                       - Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
