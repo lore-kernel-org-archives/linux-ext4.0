@@ -1,131 +1,113 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH V2] filefrag: fix issues with 29758d2
-Date: Fri, 30 May 2014 00:45:41 -0600
-Message-ID: <B05C2B5E-199C-4177-993C-9C4F095F7C1B@dilger.ca>
-References: <53876D7D.8050108@redhat.com> <5387712B.1060009@redhat.com>
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_20A38679-E781-4060-91B6-D5B2FDAEF573"; protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:45913 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751968AbaE3Gpf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 May 2014 02:45:35 -0400
-Received: by mail-pb0-f46.google.com with SMTP id rq2so1389995pbb.19
-        for <linux-ext4@vger.kernel.org>; Thu, 29 May 2014 23:45:34 -0700 (PDT)
-In-Reply-To: <5387712B.1060009@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
-
-
---Apple-Mail=_20A38679-E781-4060-91B6-D5B2FDAEF573
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=iso-8859-1
-
-On May 29, 2014, at 11:40 AM, Eric Sandeen <sandeen@redhat.com> wrote:
-> 29758d2 filefrag: exit with error code if an error is hit
->=20
-> introduced a couple errors; in one case it missed returning
-> a value, and in the other used a test where it needed an
-> assignment.
->=20
-> Also fix a precedence problem with:
->=20
-> 	if (fe_flags & mask =3D=3D 0)
->=20
-> which is equivalent to:
->=20
-> 	if (fe_flags & (mask =3D=3D 0))
->=20
-> but we need:
->=20
-> 	if ((fe_flags & mask) =3D=3D 0)
-
-Strange.  I'm pretty sure I fixed this, because it was causing every
-flag to be printed, but I guess I sent the wrong version or something.
-Thanks for fixing this.
-
-> diff --git a/misc/filefrag.c b/misc/filefrag.c
-> index 37c4416..1d05f47 100644
-> --- a/misc/filefrag.c
-> +++ b/misc/filefrag.c
-> @@ -175,7 +175,7 @@ static void print_extent_info(struct fiemap_extent =
-*fm_extent, int cur_ex,
-> 	for (mask =3D 1; fe_flags !=3D 0 && mask !=3D 0; mask <<=3D 1) {
-> 		char hex[6];
->=20
-> -		if (fe_flags & mask =3D=3D 0)
-> +		if ((fe_flags & mask) =3D=3D 0)
-> 			continue;
-> 		sprintf(hex, "%#04x,", mask);
-> 		print_flag(&fe_flags, mask, flags, hex);
-> @@ -387,8 +387,9 @@ static int frag_report(const char *filename)
-> 	if (last_device !=3D st.st_dev) {
-> 		if (fstatfs(fd, &fsinfo) < 0) {
-> 			close(fd);
-> +			rc =3D -errno;
-
-Would be better to move this above close(), instead of introducing
-another case of the potential error you mentioned.
-
-Cheers, Andreas
-
-> 			perror("fstatfs");
-> -			return;
-> +			return rc;
-> 		}
-> 		if (verbose)
-> 			printf("Filesystem type is: %lx\n",
-> @@ -556,7 +557,7 @@ int main(int argc, char**argv)
-> 		int rc2 =3D frag_report(*cpp);
->=20
-> 		if (rc2 < 0 && rc =3D=3D 0)
-> -			rc =3D=3D rc2;
-> +			rc =3D rc2;
-> 	}
->=20
-> 	return rc;
->=20
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_20A38679-E781-4060-91B6-D5B2FDAEF573
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH v2 0/10] fs: Introduce FALLOC_FL_INSERT_RANGE for fallocate
+Date: Fri, 30 May 2014 12:54:48 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1405301238190.2009@localhost.localdomain>
+References: <003601cf6aa7$883103b0$98930b10$@samsung.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+	xfs@oss.sgi.com, Ashish Sangwan <a.sangwan@samsung.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4 <linux-ext4@vger.kernel.org>
+To: Namjae Jeon <namjae.jeon@samsung.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <003601cf6aa7$883103b0$98930b10$@samsung.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
+On Thu, 8 May 2014, Namjae Jeon wrote:
 
-iQIVAwUBU4gpFXKl2rkXzB/gAQLR/hAAmKE6oSbzI6yljuG0VtQiayPPsM1F0jtt
-pCbAaZY+q3eEIG0PTzLvQnlDDY206Jk1Kz8tiWgqGaz948xtWJk6QkXBWYTfcdzN
-6bD09a/PAnqAwrSX7FYJEevltPvpvDPfidxxZ6QajqdUQuj5fxwgMciSXGd7QT9J
-nv1sVcMp7+x1I/oxHR+3yCkkPtAJDh2dLCW7YfwGW7XgJutJWxbq2vDZRXFO2t+s
-7LYQU24utGsgZKKCUtkDi63L4M/2mPLs39s0iELdovceOCBtk4IiV6CYdLKukwfI
-N4QNafTEbJbr+YaRo6Xda85/mL8iZm7wnVWRTeRp7kZErqwZmoVL1HUczYtpWQcF
-b+NQBgLeQx3+p66XXA4C2CXyF4oEhHFYhRIZMKMs9+UUKE+RRZK5P6e2e1y3n4MI
-MqTOBvGNZZ56rNSQRl347/vOdc+SmNR5ON3z60Acvtp3qWFryIJ17ys8nk80cQak
-CctCi4GV4yV+WdNKHTgy2SIim0hCHBIabBFcwZsXKSWuFCAxWmTeyngL2lsbOf89
-aZHpOL+jnKCXlgKTVHvgDWk5APFucjhkx+bZM1y751JnJYpPtK1I4vTN+NWaDNPQ
-W0U8uBa9wHVlk41StX5dG2KTDjeaWFO5EuNox8jAIhQ+G8TP8+7OaHOIXYY/CWUQ
-8XNyV32hcyw=
-=bCaL
------END PGP SIGNATURE-----
+> Date: Thu, 08 May 2014 19:23:19 +0900
+> From: Namjae Jeon <namjae.jeon@samsung.com>
+> To: Dave Chinner <david@fromorbit.com>, Theodore Ts'o <tytso@mit.edu>
+> Cc: linux-ext4 <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com,
+>     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+>     Ashish Sangwan <a.sangwan@samsung.com>
+> Subject: [PATCH v2 0/10] fs: Introduce FALLOC_FL_INSERT_RANGE for fallocate
+> 
+> In continuation of the work of making the process of non linear editing of
+> media files faster, we introduce here the new flag FALLOC_FL_INSERT_RANGE
+> for fallocate.
+> 
+> This flag will work opposite to the newly added FALLOC_FL_COLLAPSE_RANGE flag.
+> As such, specifying FALLOC_FL_INSERT_RANGE flag will insert zeroed-out space
+> in between the file within the range specified by offset and len. User can
+> write new data in this space. e.g. ads.
+> Like collapse range, currently we have the limitation that offset and len should
+> be block size aligned for both XFS and Ext4.
+> 
+> The semantics of the flag are :
+> 1) It allocates new zeroed out on disk space of len bytes starting
+>    at offset byte without overwriting any existing data. All the data blocks
+>    from offset to EOF are shifted towards right to make space for inserting
+>    new blocks
 
---Apple-Mail=_20A38679-E781-4060-91B6-D5B2FDAEF573--
+Hi,
+
+this sounds a little bit weird to me. I understand the reason for
+this, but this is effectively two operations masking as one. We
+shift the existing data and then we allocate unwritten extents for
+the hole we've created.
+
+What would make more sense to me is to implement only the first
+operation - the shift. And then let the user to allocate unwritten
+extents for the hole using simple fallocate.
+
+The reason is that if you succeed the first part and then fail the
+second due to ENOSPC or any other reason the file will end up in
+undefined state unnecessarily. Yes in your current implementation
+it seems that you'll always end up with the hole in the file and the
+rest is properly shifted, but that may vary from file system to file
+system. Some might choose to roll back the shift, some might not.
+
+If FALLOC_FL_INSERT_RANGE (or any name you wish to choose) would
+just simply shift the extents then you'll get rid of this and the
+only thing that user needs to do (if he chooses to) is to use
+fallocate for the hole created by the shift. If it fails, then
+well, he can try again without any consequences. As a bonus you get
+the possibility to leave the hole in the file which might be useful
+as well.
+
+With current behaviour this might get very confusing very quickly.
+
+What do you and others think ?
+
+Thanks!
+-LUkas
+
+
+> 2) It should be used exclusively. No other fallocate flag in combination.
+> 3) Offset and length supplied to fallocate should be fs block size aligned
+>    in case of xfs and ext4.
+> 4) Insert range does not work for the case when offset is overlapping/beyond
+>    i_size. If the user wants to allocate space at the end of file they are
+>    advised to use either ftruncate(2) or fallocate(2) with mode 0.
+> 5) It increses the size of file by len bytes.
+> 
+> 
+> Namjae Jeon (10):
+>  fs: Add support FALLOC_FL_INSERT_RANGE for fallocate
+>  xfs: Add support FALLOC_FL_INSERT_RANGE for fallocate
+>  ext4: Add support FALLOC_FL_INSERT_RANGE for fallocate
+>  xfsprogs: xfs_io: add finsert command for insert range via fallocate
+>  xfstests: generic/027: Standard insert range tests
+>  xfstests: generic/028: Delayed allocation insert range
+>  xfstests: generic/029: Multi insert range tests
+>  xfstests: generic/030: Delayed allocation multi insert
+>  xfstests: fsstress: Add fallocate insert range operation
+>  xfstests: fsx: Add fallocate insert range operation
+> 
+> 
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
