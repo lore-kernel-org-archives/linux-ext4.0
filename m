@@ -1,87 +1,91 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH V3] filefrag: filefrag: fix issues with 29758d2
-Date: Fri, 30 May 2014 13:10:17 -0500
-Message-ID: <5388C989.8050100@redhat.com>
-References: <53876D7D.8050108@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@dilger.ca>
-To: ext4 development <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:61362 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754385AbaE3SKU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 30 May 2014 14:10:20 -0400
-In-Reply-To: <53876D7D.8050108@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Arnd Bergmann <arnd@arndb.de>
+Subject: [RFC 14/32] ext4: convert to struct inode_time
+Date: Fri, 30 May 2014 22:01:38 +0200
+Message-ID: <1401480116-1973111-15-git-send-email-arnd@arndb.de>
+References: <1401480116-1973111-1-git-send-email-arnd@arndb.de>
+Cc: linux-arch@vger.kernel.org, joseph@codesourcery.com,
+	john.stultz@linaro.org, hch@infradead.org, tglx@linutronix.de,
+	geert@linux-m68k.org, lftan@altera.com, hpa@zytor.com,
+	linux-fsdevel@vger.kernel.org, Arnd Bergmann <arnd@arndb.de>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org
+To: linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1401480116-1973111-1-git-send-email-arnd@arndb.de>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-29758d2 filefrag: exit with error code if an error is hit
+ext4fs uses unsigned 34-bit seconds for inode timestamps, which will work
+for the next 500 years, but the VFS uses struct timespec for timestamps,
+which is only good until 2038 on 32-bit CPUs.
 
-introduced a couple errors; in one case it missed returning
-a value, and possibly picked up errno from (unchecked) close(),
-and in the other used a test where it needed an
-assignment.  So capture the error, move perror() directly
-after the failed call in both cases, and fix the assignment.
+This gets us one small step closer to lifting the VFS limit by using
+struct inode_time in ext4.
 
-Also fix a precedence problem with:
-
-	if (fe_flags & mask == 0)
-
-which is equivalent to:
-
-	if (fe_flags & (mask == 0))
-
-but we need:
-
-	if ((fe_flags & mask) == 0)
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: linux-ext4@vger.kernel.org
 ---
+ fs/ext4/ext4.h    | 10 +++++-----
+ fs/ext4/extents.c |  2 +-
+ 2 files changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/misc/filefrag.c b/misc/filefrag.c
-index 37c4416..820821b 100644
---- a/misc/filefrag.c
-+++ b/misc/filefrag.c
-@@ -175,7 +175,7 @@ static void print_extent_info(struct fiemap_extent *fm_extent, int cur_ex,
- 	for (mask = 1; fe_flags != 0 && mask != 0; mask <<= 1) {
- 		char hex[6];
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 92d9f1a..b60adc9 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -726,14 +726,14 @@ struct move_extent {
+ 	<= (EXT4_GOOD_OLD_INODE_SIZE +			\
+ 	    (einode)->i_extra_isize))			\
  
--		if (fe_flags & mask == 0)
-+		if ((fe_flags & mask) == 0)
- 			continue;
- 		sprintf(hex, "%#04x,", mask);
- 		print_flag(&fe_flags, mask, flags, hex);
-@@ -378,17 +378,18 @@ static int frag_report(const char *filename)
- #else
- 	if (fstat(fd, &st) < 0) {
- #endif
--		close(fd);
- 		rc = -errno;
- 		perror("stat");
-+		close(fd);
- 		return rc;
- 	}
+-static inline __le32 ext4_encode_extra_time(struct timespec *time)
++static inline __le32 ext4_encode_extra_time(struct inode_time *time)
+ {
+        return cpu_to_le32((sizeof(time->tv_sec) > 4 ?
+ 			   (time->tv_sec >> 32) & EXT4_EPOCH_MASK : 0) |
+                           ((time->tv_nsec << EXT4_EPOCH_BITS) & EXT4_NSEC_MASK));
+ }
  
- 	if (last_device != st.st_dev) {
- 		if (fstatfs(fd, &fsinfo) < 0) {
--			close(fd);
-+			rc = -errno;
- 			perror("fstatfs");
--			return;
-+			close(fd);
-+			return rc;
- 		}
- 		if (verbose)
- 			printf("Filesystem type is: %lx\n",
-@@ -556,7 +557,7 @@ int main(int argc, char**argv)
- 		int rc2 = frag_report(*cpp);
+-static inline void ext4_decode_extra_time(struct timespec *time, __le32 extra)
++static inline void ext4_decode_extra_time(struct inode_time *time, __le32 extra)
+ {
+        if (sizeof(time->tv_sec) > 4)
+ 	       time->tv_sec |= (__u64)(le32_to_cpu(extra) & EXT4_EPOCH_MASK)
+@@ -879,9 +879,9 @@ struct ext4_inode_info {
  
- 		if (rc2 < 0 && rc == 0)
--			rc == rc2;
-+			rc = rc2;
- 	}
+ 	/*
+ 	 * File creation time. Its function is same as that of
+-	 * struct timespec i_{a,c,m}time in the generic inode.
++	 * struct inode_time i_{a,c,m}time in the generic inode.
+ 	 */
+-	struct timespec i_crtime;
++	struct inode_time i_crtime;
  
- 	return rc;
-
+ 	/* mballoc */
+ 	struct list_head i_prealloc_list;
+@@ -1354,7 +1354,7 @@ static inline struct ext4_inode_info *EXT4_I(struct inode *inode)
+ 	return container_of(inode, struct ext4_inode_info, vfs_inode);
+ }
+ 
+-static inline struct timespec ext4_current_time(struct inode *inode)
++static inline struct inode_time ext4_current_time(struct inode *inode)
+ {
+ 	return (inode->i_sb->s_time_gran < NSEC_PER_SEC) ?
+ 		current_fs_time(inode->i_sb) : CURRENT_TIME_SEC;
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index ee14768..ed11d79 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4894,7 +4894,7 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+ 	int ret = 0;
+ 	int flags;
+ 	ext4_lblk_t lblk;
+-	struct timespec tv;
++	struct inode_time tv;
+ 	unsigned int blkbits = inode->i_blkbits;
+ 
+ 	/* Return error if mode is not supported */
+-- 
+1.8.3.2
