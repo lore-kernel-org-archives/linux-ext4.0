@@ -1,102 +1,129 @@
 From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: RE: [PATCH 1/2] ext4: introduce new i_write_mutex to protect fallocate
-Date: Sat, 31 May 2014 15:45:36 +0900
-Message-ID: <000c01cf7c9b$edaf2f90$c90d8eb0$@samsung.com>
-References: <001701cf6e40$fab98be0$f02ca3a0$@samsung.com>
- <alpine.LFD.2.00.1405291439340.18491@localhost.localdomain>
- <20140529162810.GG25041@thunk.org>
+Subject: RE: [PATCH v2 0/10] fs: Introduce FALLOC_FL_INSERT_RANGE for fallocate
+Date: Sat, 31 May 2014 16:40:29 +0900
+Message-ID: <000d01cf7ca3$98335c50$c89a14f0$@samsung.com>
+References: <003601cf6aa7$883103b0$98930b10$@samsung.com>
+	<alpine.LFD.2.00.1405301238190.2009@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: 'linux-ext4' <linux-ext4@vger.kernel.org>,
-	'Ashish Sangwan' <a.sangwan@samsung.com>
-To: 'Theodore Ts'o' <tytso@mit.edu>,
-	=?UTF-8?Q?'Luk=C3=A1=C5=A1_Czerner'?= <lczerner@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout3.samsung.com ([203.254.224.33]:52950 "EHLO
-	mailout3.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751371AbaEaGpj convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 31 May 2014 02:45:39 -0400
-Received: from epcpsbgr5.samsung.com
- (u145.gpu120.samsung.co.kr [203.254.230.145])
- by mailout3.samsung.com (Oracle Communications Messaging Server 7u4-24.01
- (7.0.4.24.0) 64bit (built Nov 17 2011))
- with ESMTP id <0N6F00536ES0WR70@mailout3.samsung.com> for
- linux-ext4@vger.kernel.org; Sat, 31 May 2014 15:45:37 +0900 (KST)
-In-reply-to: <20140529162810.GG25041@thunk.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: 'Theodore Ts'o' <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+	xfs@oss.sgi.com, 'Ashish Sangwan' <a.sangwan@samsung.com>,
+	linux-fsdevel@vger.kernel.org, 'linux-ext4' <linux-ext4@vger.kernel.org>
+To: =?iso-8859-2?Q?'Luk=E1=B9_Czerner'?= <lczerner@redhat.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-reply-to: <alpine.LFD.2.00.1405301238190.2009@localhost.localdomain>
 Content-language: ko
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
->=20
-> On Thu, May 29, 2014 at 02:42:04PM +0200, Luk=C3=A1=C5=A1 Czerner wro=
-te:
+ 
+> > Date: Thu, 08 May 2014 19:23:19 +0900
+> > From: Namjae Jeon <namjae.jeon@samsung.com>
+> > To: Dave Chinner <david@fromorbit.com>, Theodore Ts'o <tytso@mit.edu>
+> > Cc: linux-ext4 <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com,
+> >     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+> >     Ashish Sangwan <a.sangwan@samsung.com>
+> > Subject: [PATCH v2 0/10] fs: Introduce FALLOC_FL_INSERT_RANGE for fallocate
 > >
-> > I wonder what is the performance impact of this change ? Especially
-> > since we're not longer taking the lock only in unaligned aio/dio
-> > case but in all cases ?
->=20
-> Thinking about this some more, this is also going to break parallel
-> writes, which would be unfortunate.  We might want to change this to
-> using a rw mutex, where writes take a shared lock, and require
-> fallocate to take an exclusive lock....
-ext4 file write is already serialized with inode mutex.
-So I think the impact of adding another lock will be very very less..
-When I run parallel write test of fio to prove it, I can not see the di=
-fference on w/wo i_write_mutex.
+> > In continuation of the work of making the process of non linear editing of
+> > media files faster, we introduce here the new flag FALLOC_FL_INSERT_RANGE
+> > for fallocate.
+> >
+> > This flag will work opposite to the newly added FALLOC_FL_COLLAPSE_RANGE flag.
+> > As such, specifying FALLOC_FL_INSERT_RANGE flag will insert zeroed-out space
+> > in between the file within the range specified by offset and len. User can
+> > write new data in this space. e.g. ads.
+> > Like collapse range, currently we have the limitation that offset and len should
+> > be block size aligned for both XFS and Ext4.
+> >
+> > The semantics of the flag are :
+> > 1) It allocates new zeroed out on disk space of len bytes starting
+> >    at offset byte without overwriting any existing data. All the data blocks
+> >    from offset to EOF are shifted towards right to make space for inserting
+> >    new blocks
+> 
+> Hi,
+> 
+> this sounds a little bit weird to me. I understand the reason for
+> this, but this is effectively two operations masking as one. We
+> shift the existing data and then we allocate unwritten extents for
+> the hole we've created.
+> 
+> What would make more sense to me is to implement only the first
+> operation - the shift. And then let the user to allocate unwritten
+> extents for the hole using simple fallocate.
+> 
+> The reason is that if you succeed the first part and then fail the
+> second due to ENOSPC or any other reason the file will end up in
+> undefined state unnecessarily. Yes in your current implementation
+> it seems that you'll always end up with the hole in the file and the
+> rest is properly shifted, but that may vary from file system to file
+> system. Some might choose to roll back the shift, some might not.
+> 
+> If FALLOC_FL_INSERT_RANGE (or any name you wish to choose) would
+> just simply shift the extents then you'll get rid of this and the
+> only thing that user needs to do (if he chooses to) is to use
+> fallocate for the hole created by the shift. If it fails, then
+> well, he can try again without any consequences. As a bonus you get
+> the possibility to leave the hole in the file which might be useful
+> as well.
+> 
+> With current behaviour this might get very confusing very quickly.
+> 
+> What do you and others think ?
+Hi Lukas.
+Insert range inherently means inserting a real range of space into
+the file to provide guaranteed space with user in the inserted area
+so that further writes should not fail with an -ENOSPC at least.
+If insert range cannot gurantees the above semantics, It should
+return error to user space.
 
-[job1]
-ioengine=3Dsync
-buffered=3D1
-rw=3Dwrite
-numjobs=3D100
-filename=3Dfile1
-rw_sequencer=3Dsequential
-size=3D10485760000
-filesize=3D104857600
-nrfiles=3D1
-openfiles=3D100
-
-Without i_write_mutex =3D>
-Run status group 0 (all jobs):
-  WRITE: io=3D10000MB, aggrb=3D276869KB/s, minb=3D2768KB/s, maxb=3D3530=
-KB/s, mint=3D29007msec, maxt=3D36985msec
-Run status group 0 (all jobs):
-  WRITE: io=3D10000MB, aggrb=3D273862KB/s, minb=3D2738KB/s, maxb=3D3584=
-KB/s, mint=3D28566msec, maxt=3D37391msec
-Run status group 0 (all jobs):
-  WRITE: io=3D10000MB, aggrb=3D271373KB/s, minb=3D2713KB/s, maxb=3D3650=
-KB/s, mint=3D28048msec, maxt=3D37734msec
-Run status group 0 (all jobs):
-  WRITE: io=3D10000MB, aggrb=3D274906KB/s, minb=3D2749KB/s, maxb=3D3554=
-KB/s, mint=3D28808msec, maxt=3D37249msec
-
-With i_write_mutex patch applied =3D>
-Run status group 0 (all jobs):
-  WRITE: io=3D10000MB, aggrb=3D273672KB/s, minb=3D2736KB/s, maxb=3D3498=
-KB/s, mint=3D29269msec, maxt=3D37417msec
-Run status group 0 (all jobs):
-  WRITE: io=3D10000MB, aggrb=3D271877KB/s, minb=3D2718KB/s, maxb=3D3401=
-KB/s, mint=3D30101msec, maxt=3D37664msec
-Run status group 0 (all jobs):
-  WRITE: io=3D10000MB, aggrb=3D272753KB/s, minb=3D2727KB/s, maxb=3D3412=
-KB/s, mint=3D30008msec, maxt=3D37543msec
-Run status group 0 (all jobs):
-  WRITE: io=3D10000MB, aggrb=3D274508KB/s, minb=3D2745KB/s, maxb=3D3267=
-KB/s, mint=3D31335msec, maxt=3D37303msec
-
-Yes, Right. We can use shared lock to remove a little bit lock contenti=
-on in ext4 file write.
-I will share rwsem lock patch.. Could you please revert i_write_mutex p=
-atch ?
+If insert range has been performed on a file, It will reserve space
+that write never fail in the inserted area,
+In case of full partition or small available size than the range
+user want, It seems odd just only left inserting a hole in the middle
+of file and return success to user when no one can really write to
+this hole.
 
 Thanks!
+> 
+> Thanks!
+> -LUkas
+> 
+> 
+> > 2) It should be used exclusively. No other fallocate flag in combination.
+> > 3) Offset and length supplied to fallocate should be fs block size aligned
+> >    in case of xfs and ext4.
+> > 4) Insert range does not work for the case when offset is overlapping/beyond
+> >    i_size. If the user wants to allocate space at the end of file they are
+> >    advised to use either ftruncate(2) or fallocate(2) with mode 0.
+> > 5) It increses the size of file by len bytes.
+> >
+> >
+> > Namjae Jeon (10):
+> >  fs: Add support FALLOC_FL_INSERT_RANGE for fallocate
+> >  xfs: Add support FALLOC_FL_INSERT_RANGE for fallocate
+> >  ext4: Add support FALLOC_FL_INSERT_RANGE for fallocate
+> >  xfsprogs: xfs_io: add finsert command for insert range via fallocate
+> >  xfstests: generic/027: Standard insert range tests
+> >  xfstests: generic/028: Delayed allocation insert range
+> >  xfstests: generic/029: Multi insert range tests
+> >  xfstests: generic/030: Delayed allocation multi insert
+> >  xfstests: fsstress: Add fallocate insert range operation
+> >  xfstests: fsx: Add fallocate insert range operation
+> >
+> >
 
->=20
-> 				- Ted
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
