@@ -1,10 +1,11 @@
-From: Richard Cochran <richardcochran@gmail.com>
+From: Arnd Bergmann <arnd@arndb.de>
 Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
-Date: Sat, 31 May 2014 16:51:15 +0200
-Message-ID: <20140531145114.GA3721@localhost.localdomain>
-References: <1401480116-1973111-1-git-send-email-arnd@arndb.de>
+Date: Sat, 31 May 2014 17:23:02 +0200
+Message-ID: <6347520.8jMPlVsFjM@wuerfel>
+References: <1401480116-1973111-1-git-send-email-arnd@arndb.de> <20140531145114.GA3721@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7Bit
 Cc: linux-kernel@vger.kernel.org, hch@infradead.org,
 	linux-mtd@lists.infradead.org, hpa@zytor.com, logfs@logfs.org,
 	linux-afs@lists.infradead.org, joseph@codesourcery.com,
@@ -19,21 +20,27 @@ Cc: linux-kernel@vger.kernel.org, hch@infradead.org,
 	linux-f2fs-devel@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
 	linux-fsdevel@vger.kernel.org, lftan@altera.com,
 	linux-btrfs@vger.kernel.org
-To: Arnd Bergmann <arnd@arndb.de>
+To: Richard Cochran <richardcochran@gmail.com>
 Return-path: <linux-arch-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1401480116-1973111-1-git-send-email-arnd@arndb.de>
+In-Reply-To: <20140531145114.GA3721@localhost.localdomain>
 Sender: linux-arch-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, May 30, 2014 at 10:01:24PM +0200, Arnd Bergmann wrote:
+On Saturday 31 May 2014 16:51:15 Richard Cochran wrote:
+> On Fri, May 30, 2014 at 10:01:24PM +0200, Arnd Bergmann wrote:
+> > 
+> > I picked this because it is a fairly isolated problem, as the
+> > inode time stamps are rarely assigned to any other time values.
+> > As a byproduct of this work, I documented for each of the file
+> > systems we support how long the on-disk format can work[1].
 > 
-> I picked this because it is a fairly isolated problem, as the
-> inode time stamps are rarely assigned to any other time values.
-> As a byproduct of this work, I documented for each of the file
-> systems we support how long the on-disk format can work[1].
+> Why are some of the time stamp expiration dates marked as "never"?
 
-Why are some of the time stamp expiration dates marked as "never"?
+It's an approximation:
+with 64-bit timestamps, you can represent close to 300 billion
+years, which is way past the time that our planet can sustain
+life of any form[1].
 
-Thanks,
-Richard
+	Arnd
+
+[1] http://en.wikipedia.org/wiki/Timeline_of_the_far_future
