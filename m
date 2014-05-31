@@ -1,94 +1,102 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [RFC][PATCH] ext4: handle fast symlink properly with inline_data
-Date: Fri, 30 May 2014 16:26:33 -0700
-Message-ID: <20140530232633.GE17413@birch.djwong.org>
-References: <1392275237-6998-1-git-send-email-wenqing.lz@taobao.com>
- <20140218015231.GF26580@thunk.org>
- <292627A0-B8C3-4B49-9795-E5DA18462A4B@dilger.ca>
+From: Namjae Jeon <namjae.jeon@samsung.com>
+Subject: RE: [PATCH 1/2] ext4: introduce new i_write_mutex to protect fallocate
+Date: Sat, 31 May 2014 15:45:36 +0900
+Message-ID: <000c01cf7c9b$edaf2f90$c90d8eb0$@samsung.com>
+References: <001701cf6e40$fab98be0$f02ca3a0$@samsung.com>
+ <alpine.LFD.2.00.1405291439340.18491@localhost.localdomain>
+ <20140529162810.GG25041@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Zheng Liu <gnehzuil.liu@gmail.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Ian Nartowicz <claws@nartowicz.co.uk>, Tao Ma <tm@tao.ma>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Zheng Liu <wenqing.lz@taobao.com>
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: 'linux-ext4' <linux-ext4@vger.kernel.org>,
+	'Ashish Sangwan' <a.sangwan@samsung.com>
+To: 'Theodore Ts'o' <tytso@mit.edu>,
+	=?UTF-8?Q?'Luk=C3=A1=C5=A1_Czerner'?= <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:46052 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751491AbaE3X0w (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 May 2014 19:26:52 -0400
-Content-Disposition: inline
-In-Reply-To: <292627A0-B8C3-4B49-9795-E5DA18462A4B@dilger.ca>
+Received: from mailout3.samsung.com ([203.254.224.33]:52950 "EHLO
+	mailout3.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751371AbaEaGpj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 31 May 2014 02:45:39 -0400
+Received: from epcpsbgr5.samsung.com
+ (u145.gpu120.samsung.co.kr [203.254.230.145])
+ by mailout3.samsung.com (Oracle Communications Messaging Server 7u4-24.01
+ (7.0.4.24.0) 64bit (built Nov 17 2011))
+ with ESMTP id <0N6F00536ES0WR70@mailout3.samsung.com> for
+ linux-ext4@vger.kernel.org; Sat, 31 May 2014 15:45:37 +0900 (KST)
+In-reply-to: <20140529162810.GG25041@thunk.org>
+Content-language: ko
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Feb 18, 2014 at 11:07:24AM -0800, Andreas Dilger wrote:
-> I suspect that the stats for symlinks > 60 but < ~150 chars is only a very
-> small fraction of files. If the code complexity of handling this is very
-> small (i.e. it is just handled as a natural consequence of writing "data" 
-> of this size) then I would be OK with it. 
-> 
-> Otherwise, I expect the code and maintenance overhead of supporting
-> the 0.01% (?) of symlinks that are this size is probably lot worth it. 
-> 
-> People could check what the actual usage is via the "fsstats" tool at:
-> 
-> http://www.pdsi-scidac.org/fsstats/
-> 
-> There is also data there already that reports stats on symlink length, but
-> it is mostly HPC filesystems and it might be better to redo this with a
-> desktop-type workload. 
+>=20
+> On Thu, May 29, 2014 at 02:42:04PM +0200, Luk=C3=A1=C5=A1 Czerner wro=
+te:
+> >
+> > I wonder what is the performance impact of this change ? Especially
+> > since we're not longer taking the lock only in unaligned aio/dio
+> > case but in all cases ?
+>=20
+> Thinking about this some more, this is also going to break parallel
+> writes, which would be unfortunate.  We might want to change this to
+> using a rw mutex, where writes take a shared lock, and require
+> fallocate to take an exclusive lock....
+ext4 file write is already serialized with inode mutex.
+So I think the impact of adding another lock will be very very less..
+When I run parallel write test of fio to prove it, I can not see the di=
+fference on w/wo i_write_mutex.
 
-I think we should either put in this kernel patch so that we can read inline
-data fast symlinks, or remove the ability to write inline data fast symlinks.
-It's a bit surprising that I can do:
+[job1]
+ioengine=3Dsync
+buffered=3D1
+rw=3Dwrite
+numjobs=3D100
+filename=3Dfile1
+rw_sequencer=3Dsequential
+size=3D10485760000
+filesize=3D104857600
+nrfiles=3D1
+openfiles=3D100
 
-# mke2fs -t ext4 -O inline_data /dev/sdb         
-# mount /dev/sdb /mnt/
-# ln -s "Fuzzy Wuzzy was a bear. Fuzzy Wuzzy had no hair. I guess he wasn't fuzzy, was he?" /mnt/biglink
-# readlink /mnt/biglink
-Fuzzy Wuzzy was a bear. Fuzzy Wuzzy had no hair. I guess he wasn't fuzzy, was he?
-# umount /mnt
-# mount /dev/sdb /mnt/
-# readlink /mnt/biglink
-Fuzzy Wuzzy was a bear. Fuzzy Wuzzy had no hair. I guess he
+Without i_write_mutex =3D>
+Run status group 0 (all jobs):
+  WRITE: io=3D10000MB, aggrb=3D276869KB/s, minb=3D2768KB/s, maxb=3D3530=
+KB/s, mint=3D29007msec, maxt=3D36985msec
+Run status group 0 (all jobs):
+  WRITE: io=3D10000MB, aggrb=3D273862KB/s, minb=3D2738KB/s, maxb=3D3584=
+KB/s, mint=3D28566msec, maxt=3D37391msec
+Run status group 0 (all jobs):
+  WRITE: io=3D10000MB, aggrb=3D271373KB/s, minb=3D2713KB/s, maxb=3D3650=
+KB/s, mint=3D28048msec, maxt=3D37734msec
+Run status group 0 (all jobs):
+  WRITE: io=3D10000MB, aggrb=3D274906KB/s, minb=3D2749KB/s, maxb=3D3554=
+KB/s, mint=3D28808msec, maxt=3D37249msec
 
-What happened to the punchline of the limerick? ------------^^^^^^^ ???? :)
+With i_write_mutex patch applied =3D>
+Run status group 0 (all jobs):
+  WRITE: io=3D10000MB, aggrb=3D273672KB/s, minb=3D2736KB/s, maxb=3D3498=
+KB/s, mint=3D29269msec, maxt=3D37417msec
+Run status group 0 (all jobs):
+  WRITE: io=3D10000MB, aggrb=3D271877KB/s, minb=3D2718KB/s, maxb=3D3401=
+KB/s, mint=3D30101msec, maxt=3D37664msec
+Run status group 0 (all jobs):
+  WRITE: io=3D10000MB, aggrb=3D272753KB/s, minb=3D2727KB/s, maxb=3D3412=
+KB/s, mint=3D30008msec, maxt=3D37543msec
+Run status group 0 (all jobs):
+  WRITE: io=3D10000MB, aggrb=3D274508KB/s, minb=3D2745KB/s, maxb=3D3267=
+KB/s, mint=3D31335msec, maxt=3D37303msec
 
-e2fsck still seems to think that you can't have inline_data fast symlinks.  I
-don't see a downside to continuing to allow them.
+Yes, Right. We can use shared lock to remove a little bit lock contenti=
+on in ext4 file write.
+I will share rwsem lock patch.. Could you please revert i_write_mutex p=
+atch ?
 
---D
+Thanks!
 
-> 
-> Cheers, Andreas
-> 
-> >> On Feb 17, 2014, at 17:52, Theodore Ts'o <tytso@mit.edu> wrote:
-> >> 
-> >> On Thu, Feb 13, 2014 at 03:07:17PM +0800, Zheng Liu wrote:
-> >> 
-> >> I am not sure whether or not we need to enable inline_data for a fast
-> >> symlink inode.  Obviously, it brings a benefit that after enabling
-> >> inline_data feature for a fast symlink we can get more space to store
-> >> the path.  But it seems that the original patch doesn't want to do this
-> >> Another solution for fixing this bug is to disable inline_data for a
-> >> fast symlink.  Any comment?
-> > 
-> > Well, if we are using inline data, and we have a symlink which is
-> > longer than 60 bytes, but less than extra space available for an
-> > inline data, it seems like a good thing to support.
-> > 
-> > The downside is that it is a bit more complication to add the kernel's
-> > code in both the kernel as well as e2fsprogs, but it doesn't seem that
-> > bad.
-> > 
-> > So I don't have any objections to adding this functionality.  What do
-> > other folks think?
-> > 
-> >                       - Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>=20
+> 				- Ted
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
