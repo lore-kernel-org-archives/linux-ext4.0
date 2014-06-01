@@ -1,39 +1,68 @@
-From: Richard Cochran <richardcochran@gmail.com>
-Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
-Date: Sun, 1 Jun 2014 06:46:09 +0200
-Message-ID: <20140601044609.GD3722@localhost.localdomain>
-References: <1401480116-1973111-1-git-send-email-arnd@arndb.de>
- <20140531145114.GA3721@localhost.localdomain>
- <6347520.8jMPlVsFjM@wuerfel>
- <20140531182237.GA5382@localhost.localdomain>
- <57071155-5a08-4579-9189-92d442cd65e7@email.android.com>
+From: Benno Schulenberg <bensberg@justemail.net>
+Subject: [patch] fix typo in mke2fs error message
+Date: Sun, 01 Jun 2014 23:22:58 +0200
+Message-ID: <1401657778.31770.123943377.423CAE78@webmail.messagingengine.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Arnd Bergmann <arnd@arndb.de>, linux-kernel@vger.kernel.org,
-	hch@infradead.org, linux-mtd@lists.infradead.org, logfs@logfs.org,
-	linux-afs@lists.infradead.org, joseph@codesourcery.com,
-	linux-arch@vger.kernel.org, linux-cifs@vger.kernel.org,
-	linux-scsi@vger.kernel.org, ceph-devel@vger.kernel.org,
-	codalist@TELEMANN.coda.cs.cmu.edu, cluster-devel@redhat.com,
-	coda@cs.cmu.edu, geert@linux-m68k.org, linux-ext4@vger.kernel.org,
-	fuse-devel@lists.sourceforge.net, reiserfs-devel@vger.kernel.org,
-	xfs@oss.sgi.com, john.stultz@linaro.org, tglx@linutronix.de,
-	linux-nfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
-	samba-technical@lists.samba.org,
-	linux-f2fs-devel@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
-	linux-fsdevel@vger.kernel.org, lftan@altera.com,
-	linux-btrfs@vger.kernel.org
-To: "H. Peter Anvin" <hpa@zytor.com>
-Return-path: <linux-arch-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <57071155-5a08-4579-9189-92d442cd65e7@email.android.com>
-Sender: linux-arch-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: multipart/mixed; boundary="_----------=_1401657778317703";
+ charset="utf-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from out1-smtp.messagingengine.com ([66.111.4.25]:53836 "EHLO
+	out1-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751607AbaFAVW7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Jun 2014 17:22:59 -0400
+Received: from compute5.internal (compute5.nyi.mail.srv.osa [10.202.2.45])
+	by gateway1.nyi.mail.srv.osa (Postfix) with ESMTP id 1AABD20939
+	for <linux-ext4@vger.kernel.org>; Sun,  1 Jun 2014 17:22:59 -0400 (EDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, May 31, 2014 at 12:34:12PM -0700, H. Peter Anvin wrote:
-> Typically they are using 64-bit signed seconds.
+This is a multi-part message in MIME format.
 
-Okay, that is what I wanted to know.
+--_----------=_1401657778317703
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain
 
-Thanks,
-Richard
+
+Hi,
+
+Attached is a tiny patch to fix a minimal typo in a mke2fs message.
+
+Three more small patches will follow, to see if they make it into
+git.  If so, there will be more.
+
+Regards,
+
+Benno
+
+-- 
+http://www.fastmail.fm - mmm... Fastmail...
+
+
+--_----------=_1401657778317703
+Content-Disposition: attachment; filename="0009-mke2fs-fix-a-typo-in-an-error-message.patch"
+Content-Id: <1401657746.31825.a418b34edf80ae7306bda5317ad578fde38265f7.2BE8541F@content.messagingengine.com>
+Content-Transfer-Encoding: base64
+Content-Type: text/x-diff; name="0009-mke2fs-fix-a-typo-in-an-error-message.patch"
+
+RnJvbSA1ZTczOTg2OTAyYjMwNGVkMzFlMDM3NjE5NDdjY2E2YzlhMjc2MThk
+IE1vbiBTZXAgMTcgMDA6MDA6MDAgMjAwMQpGcm9tOiBCZW5ubyBTY2h1bGVu
+YmVyZyA8YmVuc2JlcmdAanVzdGVtYWlsLm5ldD4KRGF0ZTogU3VuLCAxIEp1
+biAyMDE0IDE3OjI1OjM2ICswMjAwClN1YmplY3Q6IFtQQVRDSCAwOS8xNF0g
+bWtlMmZzOiBmaXggYSB0eXBvIGluIGFuIGVycm9yIG1lc3NhZ2UKClNpZ25l
+ZC1vZmYtYnk6IEJlbm5vIFNjaHVsZW5iZXJnIDxiZW5zYmVyZ0BqdXN0ZW1h
+aWwubmV0PgotLS0KIG1pc2MvbWtlMmZzLmMgfCAgICAyICstCiAxIGZpbGVz
+IGNoYW5nZWQsIDEgaW5zZXJ0aW9ucygrKSwgMSBkZWxldGlvbnMoLSkKCmRp
+ZmYgLS1naXQgYS9taXNjL21rZTJmcy5jIGIvbWlzYy9ta2UyZnMuYwppbmRl
+eCBkZDRkMjEzLi41NWJiZTllIDEwMDY0NAotLS0gYS9taXNjL21rZTJmcy5j
+CisrKyBiL21pc2MvbWtlMmZzLmMKQEAgLTg2MCw3ICs4NjAsNyBAQCBzdGF0
+aWMgdm9pZCBwYXJzZV9leHRlbmRlZF9vcHRzKHN0cnVjdCBleHQyX3N1cGVy
+X2Jsb2NrICpwYXJhbSwKIAkJCWlmICgqcCB8fCBudW1fYmFja3VwcyA+IDIp
+IHsKIAkJCQlmcHJpbnRmKHN0ZGVyciwKIAkJCQkJXygiSW52YWxpZCAjIG9m
+IGJhY2t1cCAiCi0JCQkJCSAgInN1cGVyYm9ja3M6ICVzXG4iKSwKKwkJCQkJ
+ICAic3VwZXJibG9ja3M6ICVzXG4iKSwKIAkJCQkJYXJnKTsKIAkJCQlyX3Vz
+YWdlKys7CiAJCQkJY29udGludWU7Ci0tIAoxLjcuMC40Cgo=
+
+--_----------=_1401657778317703--
+
