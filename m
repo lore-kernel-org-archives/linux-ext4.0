@@ -1,197 +1,98 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: RE: [PATCH v2 0/10] fs: Introduce FALLOC_FL_INSERT_RANGE for fallocate
-Date: Mon, 2 Jun 2014 12:13:31 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1406021204540.2231@localhost.localdomain>
-References: <003601cf6aa7$883103b0$98930b10$@samsung.com>
-	<alpine.LFD.2.00.1405301238190.2009@localhost.localdomain>
-	<000d01cf7ca3$98335c50$c89a14f0$@samsung.com>
+From: Ian Nartowicz <ian@nartowicz.co.uk>
+Subject: Re: [RFC][PATCH] ext4: handle fast symlink properly with
+ inline_data
+Date: Mon, 2 Jun 2014 12:06:35 +0100
+Message-ID: <20140602120635.6d49ba12@crunchbang>
+References: <1392275237-6998-1-git-send-email-wenqing.lz@taobao.com>
+	<20140218015231.GF26580@thunk.org>
+	<292627A0-B8C3-4B49-9795-E5DA18462A4B@dilger.ca>
+	<20140530232633.GE17413@birch.djwong.org>
+	<20140602064251.GA17061@gmail.com>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-2027863592-1401704015=:2231"
-Cc: 'Theodore Ts'o' <tytso@mit.edu>, linux-kernel@vger.kernel.org,
-	xfs@oss.sgi.com, 'Ashish Sangwan' <a.sangwan@samsung.com>,
-	linux-fsdevel@vger.kernel.org, 'linux-ext4' <linux-ext4@vger.kernel.org>
-To: Namjae Jeon <namjae.jeon@samsung.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <000d01cf7ca3$98335c50$c89a14f0$@samsung.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
-
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
-
---8323328-2027863592-1401704015=:2231
-Content-Type: TEXT/PLAIN; charset=iso-8859-2
-Content-Transfer-Encoding: quoted-printable
-
-On Sat, 31 May 2014, Namjae Jeon wrote:
-
-> Date: Sat, 31 May 2014 16:40:29 +0900
-> From: Namjae Jeon <namjae.jeon@samsung.com>
-> To: 'Luk=E1=B9 Czerner' <lczerner@redhat.com>
-> Cc: 'Dave Chinner' <david@fromorbit.com>, 'Theodore Ts'o' <tytso@mit.ed=
-u>,
->     'linux-ext4' <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com,
->     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
->     'Ashish Sangwan' <a.sangwan@samsung.com>
-> Subject: RE: [PATCH v2 0/10] fs: Introduce FALLOC_FL_INSERT_RANGE for
->     fallocate
->=20
-> =20
-> > > Date: Thu, 08 May 2014 19:23:19 +0900
-> > > From: Namjae Jeon <namjae.jeon@samsung.com>
-> > > To: Dave Chinner <david@fromorbit.com>, Theodore Ts'o <tytso@mit.ed=
-u>
-> > > Cc: linux-ext4 <linux-ext4@vger.kernel.org>, xfs@oss.sgi.com,
-> > >     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-> > >     Ashish Sangwan <a.sangwan@samsung.com>
-> > > Subject: [PATCH v2 0/10] fs: Introduce FALLOC_FL_INSERT_RANGE for f=
-allocate
-> > >
-> > > In continuation of the work of making the process of non linear edi=
-ting of
-> > > media files faster, we introduce here the new flag FALLOC_FL_INSERT=
-_RANGE
-> > > for fallocate.
-> > >
-> > > This flag will work opposite to the newly added FALLOC_FL_COLLAPSE_=
-RANGE flag.
-> > > As such, specifying FALLOC_FL_INSERT_RANGE flag will insert zeroed-=
-out space
-> > > in between the file within the range specified by offset and len. U=
-ser can
-> > > write new data in this space. e.g. ads.
-> > > Like collapse range, currently we have the limitation that offset a=
-nd len should
-> > > be block size aligned for both XFS and Ext4.
-> > >
-> > > The semantics of the flag are :
-> > > 1) It allocates new zeroed out on disk space of len bytes starting
-> > >    at offset byte without overwriting any existing data. All the da=
-ta blocks
-> > >    from offset to EOF are shifted towards right to make space for i=
-nserting
-> > >    new blocks
-> >=20
-> > Hi,
-> >=20
-> > this sounds a little bit weird to me. I understand the reason for
-> > this, but this is effectively two operations masking as one. We
-> > shift the existing data and then we allocate unwritten extents for
-> > the hole we've created.
-> >=20
-> > What would make more sense to me is to implement only the first
-> > operation - the shift. And then let the user to allocate unwritten
-> > extents for the hole using simple fallocate.
-> >=20
-> > The reason is that if you succeed the first part and then fail the
-> > second due to ENOSPC or any other reason the file will end up in
-> > undefined state unnecessarily. Yes in your current implementation
-> > it seems that you'll always end up with the hole in the file and the
-> > rest is properly shifted, but that may vary from file system to file
-> > system. Some might choose to roll back the shift, some might not.
-> >=20
-> > If FALLOC_FL_INSERT_RANGE (or any name you wish to choose) would
-> > just simply shift the extents then you'll get rid of this and the
-> > only thing that user needs to do (if he chooses to) is to use
-> > fallocate for the hole created by the shift. If it fails, then
-> > well, he can try again without any consequences. As a bonus you get
-> > the possibility to leave the hole in the file which might be useful
-> > as well.
-> >=20
-> > With current behaviour this might get very confusing very quickly.
-> >=20
-> > What do you and others think ?
-> Hi Lukas.
-> Insert range inherently means inserting a real range of space into
-> the file to provide guaranteed space with user in the inserted area
-> so that further writes should not fail with an -ENOSPC at least.
-> If insert range cannot gurantees the above semantics, It should
-> return error to user space.
-
-So what will happen when there is not enough space when "inserting a
-range" ? And how should user proceed from there ?
-
->=20
-> If insert range has been performed on a file, It will reserve space
-> that write never fail in the inserted area,
-> In case of full partition or small available size than the range
-> user want, It seems odd just only left inserting a hole in the middle
-> of file and return success to user when no one can really write to
-> this hole.
-
-There is a fallocate for allocation, so as I already said you can
-shift the extents to make a hole in the file and then use fallocate
-to allocate space for it and you'll get the same result. You are
-basically doing that now as well, but when the allocation fails the
-whole "insert range" ioct fails, however the extents are already
-shifter and there is already a holi in the file so freeing some
-space and running this ioctl again will not help you at all. While
-if you fail a fallocate, you can free some space and run it again
-without any problems. The result will be as expected.
-
-What I am arguing about is basically that your insert range ioct is
-masking two operations as one. Why not to make it transparent and
-split it into "shift extents" and fallocate ? Then there is a
-question about the name because it's no longer "insert range" but
-rather "insert hole" which I think is better and arguably more
-useful semantic.
-
-Thanks!
--Lukas
-
->=20
-> Thanks!
-> >=20
-> > Thanks!
-> > -LUkas
-> >=20
-> >=20
-> > > 2) It should be used exclusively. No other fallocate flag in combin=
-ation.
-> > > 3) Offset and length supplied to fallocate should be fs block size =
-aligned
-> > >    in case of xfs and ext4.
-> > > 4) Insert range does not work for the case when offset is overlappi=
-ng/beyond
-> > >    i_size. If the user wants to allocate space at the end of file t=
-hey are
-> > >    advised to use either ftruncate(2) or fallocate(2) with mode 0.
-> > > 5) It increses the size of file by len bytes.
-> > >
-> > >
-> > > Namjae Jeon (10):
-> > >  fs: Add support FALLOC_FL_INSERT_RANGE for fallocate
-> > >  xfs: Add support FALLOC_FL_INSERT_RANGE for fallocate
-> > >  ext4: Add support FALLOC_FL_INSERT_RANGE for fallocate
-> > >  xfsprogs: xfs_io: add finsert command for insert range via falloca=
-te
-> > >  xfstests: generic/027: Standard insert range tests
-> > >  xfstests: generic/028: Delayed allocation insert range
-> > >  xfstests: generic/029: Multi insert range tests
-> > >  xfstests: generic/030: Delayed allocation multi insert
-> > >  xfstests: fsstress: Add fallocate insert range operation
-> > >  xfstests: fsx: Add fallocate insert range operation
-> > >
-> > >
->=20
->=20
---8323328-2027863592-1401704015=:2231
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
+	Andreas Dilger <adilger@dilger.ca>,
+	Theodore Ts'o <tytso@mit.edu>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Ian Nartowicz <claws@nartowicz.co.uk>, Tao Ma <tm@tao.ma>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from know-smtprelay-omc-8.server.virginmedia.net ([80.0.253.72]:43422
+	"EHLO know-smtprelay-omc-8.server.virginmedia.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753007AbaFBLMY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 Jun 2014 07:12:24 -0400
+In-Reply-To: <20140602064251.GA17061@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+On Mon, 2 Jun 2014 14:42:51 +0800
+Zheng Liu <gnehzuil.liu@gmail.com> wrote:
 
---8323328-2027863592-1401704015=:2231--
+>Hi all,
+>
+>On Fri, May 30, 2014 at 04:26:33PM -0700, Darrick J. Wong wrote:
+>> On Tue, Feb 18, 2014 at 11:07:24AM -0800, Andreas Dilger wrote:
+>> > I suspect that the stats for symlinks > 60 but < ~150 chars is only a very
+>> > small fraction of files. If the code complexity of handling this is very
+>> > small (i.e. it is just handled as a natural consequence of writing "data" 
+>> > of this size) then I would be OK with it. 
+>> > 
+>> > Otherwise, I expect the code and maintenance overhead of supporting
+>> > the 0.01% (?) of symlinks that are this size is probably lot worth it. 
+>> > 
+>> > People could check what the actual usage is via the "fsstats" tool at:
+>> > 
+>> > http://www.pdsi-scidac.org/fsstats/
+>> > 
+>> > There is also data there already that reports stats on symlink length, but
+>> > it is mostly HPC filesystems and it might be better to redo this with a
+>> > desktop-type workload. 
+>> 
+>> I think we should either put in this kernel patch so that we can read inline
+>> data fast symlinks, or remove the ability to write inline data fast symlinks.
+>> It's a bit surprising that I can do:
+>> 
+>> # mke2fs -t ext4 -O inline_data /dev/sdb         
+>> # mount /dev/sdb /mnt/
+>> # ln -s "Fuzzy Wuzzy was a bear. Fuzzy Wuzzy had no hair. I guess he wasn't
+>> fuzzy, was he?" /mnt/biglink # readlink /mnt/biglink
+>> Fuzzy Wuzzy was a bear. Fuzzy Wuzzy had no hair. I guess he wasn't fuzzy,
+>> was he? # umount /mnt
+>> # mount /dev/sdb /mnt/
+>> # readlink /mnt/biglink
+>> Fuzzy Wuzzy was a bear. Fuzzy Wuzzy had no hair. I guess he
+>> 
+>> What happened to the punchline of the limerick? ------------^^^^^^^ ???? :)
+>
+>Do *not* apply this patch, please.  I revise this patch and I think it
+>is not right solution, although it can fix the bug.
+>
+>The root cause is in ext4_inode_is_fast_symlink() function that it
+>doesn't check whether or not an inode has inline data.  After creating
+>a normal symlink, the symlink will be stored in ->i_block and extra
+>space if the length of symlink is greater than 60 bytes and less than
+>extra space in inline data.  In the mean time, this inode has inline
+>data flag.  If the file system is remounted, ext4_inode_is_fast_symlink
+>thinks this inode is a fast symlink, and the data in ->i_block is copied
+>to user.  I will send a new patch to fix this bug.
+>
+>> 
+>> e2fsck still seems to think that you can't have inline_data fast symlinks.  I
+>> don't see a downside to continuing to allow them.
+>
+>Meanwhile another patch for e2fsck also will be sent out soon in order
+>to handle symlink properly with inline data in e2fsck.
+>
+>Regards,
+>                                                - Zheng
+
+fsstats on root on my desktop, percentage of symlink targets 64 - 150
+characters long is 22%, almost all in the 64-71 char bucket.  Lots of them are
+theme icons and python packages, some shared library objects, nothing that
+many people won't have.
+
+--ian
