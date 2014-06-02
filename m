@@ -1,159 +1,59 @@
-From: Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>
-Subject: Re: [PATCH 2/2] ext4: Reduce contention on s_orphan_lock
-Date: Mon, 02 Jun 2014 11:45:32 -0600
-Message-ID: <538CB83C.9080409@hp.com>
-References: <1400185026-3972-1-git-send-email-jack@suse.cz> <1400185026-3972-3-git-send-email-jack@suse.cz> <537B1353.8060704@hp.com> <20140520135723.GB15177@thunk.org>
+From: Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org>
+Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
+Date: Mon, 02 Jun 2014 21:19:55 +0200
+Message-ID: <4233989.Saca0ocOUr@wuerfel>
+References: <1401480116-1973111-1-git-send-email-arnd@arndb.de> <Pine.LNX.4.64.1406021350030.19591@digraph.polyomino.org.uk>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------040307020408010906030209"
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from g4t3425.houston.hp.com ([15.201.208.53]:38795 "EHLO
-	g4t3425.houston.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750767AbaFBRsJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Jun 2014 13:48:09 -0400
-In-Reply-To: <20140520135723.GB15177@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7Bit
+Cc: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-arch-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	john.stultz-QSEj5FYQhm4dnm+yROfE0A@public.gmane.org, hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, tglx-hfZtesqFncYOwBW4kG4KsQ@public.gmane.org,
+	geert-Td1EMuHUCqxL1ZNQvxDV9g@public.gmane.org, lftan-EIB2kfCEclfQT0dZR+AlfA@public.gmane.org, hpa-YMNOUZJC4hwAvxtiuMwx3w@public.gmane.org,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, coda-ETDLCGt7PQU3uPMLIKxrzw@public.gmane.org,
+	codalist-/uMB558Y47wP4a1z8dhFYw@public.gmane.org, fuse-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
+	linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-f2fs-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
+	linux-mtd-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-ntfs-dev-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, linux-scsi-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	logfs-PCqxUs/MD9bYtjvyW6yDsg@public.gmane.org, ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org,
+	reiserfs-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org,
+	xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org
+To: "Joseph S. Myers" <joseph-qD8j1LwMmJjtCj0u4l0SBw@public.gmane.org>
+Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <Pine.LNX.4.64.1406021350030.19591-9YEB1lltEqivcGRMvF24k2I39yigxGEX@public.gmane.org>
+Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-This is a multi-part message in MIME format.
---------------040307020408010906030209
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-
-On 05/20/2014 07:57 AM, Theodore Ts'o wrote:
-> On Tue, May 20, 2014 at 02:33:23AM -0600, Thavatchai Makphaibulchoke wrote:
+On Monday 02 June 2014 13:52:19 Joseph S. Myers wrote:
+> On Fri, 30 May 2014, Arnd Bergmann wrote:
 > 
-> Thavatchai, it would be really great if you could do lock_stat runs
-> with both Jan's latest patches as well as yours.  We need to
-> understand where the differences are coming from.
+> > a) is this the right approach in general? The previous discussion
+> >    pointed this way, but there may be other opinions.
 > 
-> As I understand things, there are two differences between Jan and your
-> approaches.  The first is that Jan is using the implicit locking of
-> i_mutex to avoid needing to keep a hashed array of mutexes to
-> synchronize an individual inode's being added or removed to the orphan
-> list.
-> 
-> The second is that you've split the orphan mutex into an on-disk mutex
-> and a in-memory spinlock.
-> 
-> Is it possible to split up your patch so we can measure the benefits
-> of each of these two changes?  More interestingly, is there a way we
-> can use the your second change in concert with Jan's changes?
-> 
-> Regards,
-> 
-> 						- Ted
-> 
+> The syscall changes seem like the sort of thing I'd expect, although 
+> patches adding new syscalls or otherwise affecting the kernel/userspace 
+> interface (as opposed to those relating to an individual filesystem) 
+> should go to linux-api as well as other relevant lists.
 
-Thanks to Jan, as she pointed out one optimization in orphan_addr() that I've missed.
+Ok. Sorry about missing linux-api, I confused it with linux-arch, which
+may not be as relevant here, except for the one question whether we
+actually want to have the new ABI on all 32-bit architectures or only
+as an opt-in for those that expect to stay around for another 24 years.
 
-After integrated that into my patch, I've rerun the following aim7 workloads; alltests, custom, dbase, disk, fserver, new_fserver, shared and short.  Here are the results.
+Two more questions for you:
 
-On an 8 core (16 thread) machine, both my revised patch (with additional optimization from Jan's oprhan_add()) and version 3 of Jan's patch give about the same results, for most of the workloads, except fserver and new_fserver, which Jan's outperforms about 9% and 16%, respectively.
+- are you (and others) happy with adding this type of stat syscall
+  (fstatat64/fstat64) as opposed to the more generic xstat that has
+  been discussed in the past and that never made it through the bike-
+  shedding discussion?
 
-Here are the lock_stat output for disk,
-Jan's patch,
-lock_stat version 0.4
------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-                              class name    con-bounces    contentions   waittime-min   waittime-max waittime-total   waittime-avg    acq-bounces   acquisitions   holdtime-min   holdtime-max holdtime-total   holdtime-avg
------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-                     &sbi->s_orphan_lock:         80189          80246           3.94      464489.22    77219615.47         962.29         503289         809004           0.10      476537.44     3424587.77           4.23
-Mine,
-                     &sbi->s_orphan_lock:         82215          82259           3.61      640876.19    15098561.09         183.55         541422         794254           0.10      640368.86     4425140.61           5.57
-              &sbi->s_orphan_op_mutex[n]:        102507         104880           4.21     1335087.21  1392773487.19       13279.69         398328         840120           0.11     1334711.17   397596137.90         473.26
+- once we have enough buy-in from reviewers to merge this initial
+  series, should we proceed to define rest of the syscall ABI
+  (minus driver ioctls) so glibc and kernel can do the conversion
+  on top of that, or should we better try to do things one syscall
+  family at a time and actually get the kernel to handle them
+  correctly internally?
 
-For new_fserver,
-Jan's patch,
-                     &sbi->s_orphan_lock:       1063059        1063369           5.57     1073325.95 59535205188.94       55987.34        4525570        8446052           0.10       75625.72    10700844.58         1.27
-Mine,
-                     &sbi->s_orphan_lock:       1171433        1172220           3.02      349678.21   553168029.92         471.90        5517262        8446052           0.09      254108.75    16504015.29           1.95
-              &sbi->s_orphan_op_mutex[n]:       2176760        2202674           3.44      633129.10 55206091750.06       25063.21        3259467        8452918           0.10      349687.82   605683982.34        71.65
-
-
-On an 80 core (160 thread) machine, mine outpeforms Jan's in alltests, custom, fserver, new_fserver and shared about the same margin it did over the baseline, around 20%   For all these workloads, Jan's patch does not seem to show any noticeable improvement over baseline kernel.  I'm getting about the same performance with the rest of the workloads.
-
-Here are the lock_stat output for alltests,
-Jan;'s,
-                     &sbi->s_orphan_lock:       2762871        2763355           4.46       49043.39  1763499587.40         638.17        5878253        6475844           0.15       20508.98    70827300.79          10.94
-Mine,
-                       &sbi->s_orphan_lock:       1171433        1172220           3.02      349678.21   553168029.92         471.90        5517262        8446052           0.09      254108.75    16504015.29           1.95
-              &sbi->s_orphan_op_mutex[n]:        783176         785840           4.95       30358.58   432279688.66         550.09        2899889        6505883           0.16       30254.12  1668330140.08         256.43
-
-For custom,
-Jan's,
-                     &sbi->s_orphan_lock:       5706466        5707069           4.54       44063.38  3312864313.18         580.48       11942088       13175060           0.15       15944.34   142660367.51          10.83
-Mine,
-                     &sbi->s_orphan_lock:       5518186        5518558           4.84       32040.05  2436898419.22         441.58       12290996       13175234           0.17       23160.65   141234888.88          10.72
-              &sbi->s_orphan_op_mutex[n]:       1565216        1569333           4.50       32527.02   788215876.94         502.26        5894074       13196979           0.16       71073.57  3128766227.92         237.08
-
-For dbase,
-Jan's,
-                     &sbi->s_orphan_lock:         14453          14489           5.84       39442.57     8678179.21         598.95         119847         153686           0.17        4390.25     1406816.03           9.15
-Mine,
-                     &sbi->s_orphan_lock:         13847          13868           6.23       31314.03     7982386.22         575.60         120332         153542           0.17        9354.86     1458061.28           9.50
-              &sbi->s_orphan_op_mutex[n]:          1700           1717          22.00       50566.24     1225749.82         713.89          85062         189435           0.16       31374.44    14476217.56          76.42
-
-In case the line-wrap making it hard to read, I've also attached the results as a text file.
-
-The lock_stat seems to show that with my patch the s_orphan_lock performs better across the board.  But on a smaller machine, the hashed mutex seems to offset out the performance gain in the s_oprhan_lock and increase the hashed mutex size likely to make it perform better.
-
-Jan, if you could send me your orphan stress test, I could run lock_stat for more performance comparison.
-
-Ted, please let me know if there is anything else you like me to experiment with.  If you'd like I could also resubmit my revised patch for you to take a look. 
-
-
-
-Thanks,
-Mak.
-
-
-
-
-
---------------040307020408010906030209
-Content-Type: text/plain; charset=UTF-8;
- name="lock_stat.txt"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="lock_stat.txt"
-
-On an 8 core (16 thread) machine,
-lock_stat version 0.4
------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-                              class name    con-bounces    contentions   waittime-min   waittime-max waittime-total   waittime-avg    acq-bounces   acquisitions   holdtime-min   holdtime-max holdtime-total   holdtime-avg
------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-Jan's disk,
-                     &sbi->s_orphan_lock:         80189          80246           3.94      464489.22    77219615.47         962.29         503289         809004           0.10      476537.44     3424587.77           4.23
-Mine's disk,
-                     &sbi->s_orphan_lock:         82215          82259           3.61      640876.19    15098561.09         183.55         541422         794254           0.10      640368.86     4425140.61           5.57
-              &sbi->s_orphan_op_mutex[n]:        102507         104880           4.21     1335087.21  1392773487.19       13279.69         398328         840120           0.11     1334711.17   397596137.90         473.26
-Jan's new_fserver,
-                     &sbi->s_orphan_lock:       1063059        1063369           5.57     1073325.95 59535205188.94       55987.34        4525570        8446052           0.10       75625.72    10700844.58           1.27
-Mine's new_fserver,
-                     &sbi->s_orphan_lock:       1171433        1172220           3.02      349678.21   553168029.92         471.90        5517262        8446052           0.09      254108.75    16504015.29           1.95
-              &sbi->s_orphan_op_mutex[n]:       2176760        2202674           3.44      633129.10 55206091750.06       25063.21        3259467        8452918           0.10      349687.82   605683982.34          71.65
-
-On an 80 core (160 thread) machine,
-ock_stat version 0.4
------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-                              class name    con-bounces    contentions   waittime-min   waittime-max waittime-total   waittime-avg    acq-bounces   acquisitions   holdtime-min   holdtime-max holdtime-total   holdtime-avg
------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-Jan's alltests,
-                     &sbi->s_orphan_lock:       2762871        2763355           4.46       49043.39  1763499587.40         638.17        5878253        6475844           0.15       20508.98    70827300.79          10.94
-Mine's alltests,
-                     &sbi->s_orphan_lock:       2690362        2690612           5.08       24977.33  1286260951.01         478.06        6031175        6475694           0.17       12247.20    70182042.72          10.84
-              &sbi->s_orphan_op_mutex[n]:        783176         785840           4.95       30358.58   432279688.66         550.09        2899889        6505883           0.16       30254.12  1668330140.08         256.43
-Jan's custom,
-                     &sbi->s_orphan_lock:       5706466        5707069           4.54       44063.38  3312864313.18         580.48       11942088       13175060           0.15       15944.34   142660367.51          10.83
-Mine's custom,
-                     &sbi->s_orphan_lock:       5518186        5518558           4.84       32040.05  2436898419.22         441.58       12290996       13175234           0.17       23160.65   141234888.88          10.72
-              &sbi->s_orphan_op_mutex[n]:       1565216        1569333           4.50       32527.02   788215876.94         502.26        5894074       13196979           0.16       71073.57  3128766227.92         237.08
-Jan's dbase,
-                     &sbi->s_orphan_lock:         14453          14489           5.84       39442.57     8678179.21         598.95         119847         153686           0.17        4390.25     1406816.03           9.15
-Mine's dbase,
-                     &sbi->s_orphan_lock:         13847          13868           6.23       31314.03     7982386.22         575.60         120332         153542           0.17        9354.86     1458061.28           9.50
-              &sbi->s_orphan_op_mutex[n]:          1700           1717          22.00       50566.24     1225749.82         713.89          85062         189435           0.16       31374.44    14476217.56          76.42
-
---------------040307020408010906030209--
+	Arnd
