@@ -1,85 +1,66 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [RFC][PATCH] ext4: handle fast symlink properly with inline_data
-Date: Mon, 2 Jun 2014 14:42:51 +0800
-Message-ID: <20140602064251.GA17061@gmail.com>
-References: <1392275237-6998-1-git-send-email-wenqing.lz@taobao.com>
- <20140218015231.GF26580@thunk.org>
- <292627A0-B8C3-4B49-9795-E5DA18462A4B@dilger.ca>
- <20140530232633.GE17413@birch.djwong.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/3 v2] quota: protect Q_GETFMT by dqonoff_mutex
+Date: Mon, 2 Jun 2014 09:32:45 +0200
+Message-ID: <20140602073245.GA3224@quack.suse.cz>
+References: <537DD5BA.1050105@gmail.com>
+ <538464AD.6050407@gmail.com>
+ <20140527101219.GA28035@infradead.org>
+ <53854153.40601@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@dilger.ca>, Theodore Ts'o <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Ian Nartowicz <claws@nartowicz.co.uk>, Tao Ma <tm@tao.ma>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Zheng Liu <wenqing.lz@taobao.com>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f52.google.com ([209.85.160.52]:38291 "EHLO
-	mail-pb0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751431AbaFBGff (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Jun 2014 02:35:35 -0400
-Received: by mail-pb0-f52.google.com with SMTP id rr13so3898137pbb.39
-        for <linux-ext4@vger.kernel.org>; Sun, 01 Jun 2014 23:35:35 -0700 (PDT)
+Cc: Christoph Hellwig <hch@infradead.org>, jack@suse.cz,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	yawei.niu@intel.com, andreas.dilger@intel.com, lai.siyao@intel.com
+To: Niu Yawei <yawei.niu@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20140530232633.GE17413@birch.djwong.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <53854153.40601@gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi all,
+On Wed 28-05-14 09:52:19, Niu Yawei wrote:
+> Remove dqptr_sem to make quota code scalable: Protect the
+> Q_GETFMT by dqonoff_mutex instead of dqptr_sem.
+  I'd make the changelog more verbose. Otherwise the patch looks good to
+me. Something like:
 
-On Fri, May 30, 2014 at 04:26:33PM -0700, Darrick J. Wong wrote:
-> On Tue, Feb 18, 2014 at 11:07:24AM -0800, Andreas Dilger wrote:
-> > I suspect that the stats for symlinks > 60 but < ~150 chars is only a very
-> > small fraction of files. If the code complexity of handling this is very
-> > small (i.e. it is just handled as a natural consequence of writing "data" 
-> > of this size) then I would be OK with it. 
-> > 
-> > Otherwise, I expect the code and maintenance overhead of supporting
-> > the 0.01% (?) of symlinks that are this size is probably lot worth it. 
-> > 
-> > People could check what the actual usage is via the "fsstats" tool at:
-> > 
-> > http://www.pdsi-scidac.org/fsstats/
-> > 
-> > There is also data there already that reports stats on symlink length, but
-> > it is mostly HPC filesystems and it might be better to redo this with a
-> > desktop-type workload. 
+dqptr_sem will go away. Protect Q_GETFMT quotactl by dqonoff_mutex instead.
+This is also enough to make sure quota info will not go away while we are
+looking at it.
+
+								Honza
 > 
-> I think we should either put in this kernel patch so that we can read inline
-> data fast symlinks, or remove the ability to write inline data fast symlinks.
-> It's a bit surprising that I can do:
+> Signed-off-by: Lai Siyao <lai.siyao@intel.com>
+> Signed-off-by: Niu Yawei <yawei.niu@intel.com>
+> ---
+>  fs/quota/quota.c |    6 +++---
+>  1 files changed, 3 insertions(+), 3 deletions(-)
 > 
-> # mke2fs -t ext4 -O inline_data /dev/sdb         
-> # mount /dev/sdb /mnt/
-> # ln -s "Fuzzy Wuzzy was a bear. Fuzzy Wuzzy had no hair. I guess he wasn't fuzzy, was he?" /mnt/biglink
-> # readlink /mnt/biglink
-> Fuzzy Wuzzy was a bear. Fuzzy Wuzzy had no hair. I guess he wasn't fuzzy, was he?
-> # umount /mnt
-> # mount /dev/sdb /mnt/
-> # readlink /mnt/biglink
-> Fuzzy Wuzzy was a bear. Fuzzy Wuzzy had no hair. I guess he
+> diff --git a/fs/quota/quota.c b/fs/quota/quota.c
+> index 2b363e2..e4851cb 100644
+> --- a/fs/quota/quota.c
+> +++ b/fs/quota/quota.c
+> @@ -79,13 +79,13 @@ static int quota_getfmt(struct super_block *sb, int type, void __user *addr)
+>  {
+>  	__u32 fmt;
+>  
+> -	down_read(&sb_dqopt(sb)->dqptr_sem);
+> +	mutex_lock(&sb_dqopt(sb)->dqonoff_mutex);
+>  	if (!sb_has_quota_active(sb, type)) {
+> -		up_read(&sb_dqopt(sb)->dqptr_sem);
+> +		mutex_unlock(&sb_dqopt(sb)->dqonoff_mutex);
+>  		return -ESRCH;
+>  	}
+>  	fmt = sb_dqopt(sb)->info[type].dqi_format->qf_fmt_id;
+> -	up_read(&sb_dqopt(sb)->dqptr_sem);
+> +	mutex_unlock(&sb_dqopt(sb)->dqonoff_mutex);
+>  	if (copy_to_user(addr, &fmt, sizeof(fmt)))
+>  		return -EFAULT;
+>  	return 0;
+> -- 
+> 1.7.1
 > 
-> What happened to the punchline of the limerick? ------------^^^^^^^ ???? :)
-
-Do *not* apply this patch, please.  I revise this patch and I think it
-is not right solution, although it can fix the bug.
-
-The root cause is in ext4_inode_is_fast_symlink() function that it
-doesn't check whether or not an inode has inline data.  After creating
-a normal symlink, the symlink will be stored in ->i_block and extra
-space if the length of symlink is greater than 60 bytes and less than
-extra space in inline data.  In the mean time, this inode has inline
-data flag.  If the file system is remounted, ext4_inode_is_fast_symlink
-thinks this inode is a fast symlink, and the data in ->i_block is copied
-to user.  I will send a new patch to fix this bug.
-
 > 
-> e2fsck still seems to think that you can't have inline_data fast symlinks.  I
-> don't see a downside to continuing to allow them.
-
-Meanwhile another patch for e2fsck also will be sent out soon in order
-to handle symlink properly with inline data in e2fsck.
-
-Regards,
-                                                - Zheng
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
