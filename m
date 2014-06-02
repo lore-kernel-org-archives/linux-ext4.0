@@ -1,41 +1,64 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: jbd2 batch time tuning behavior question
-Date: Mon, 02 Jun 2014 10:00:05 -0500
-Message-ID: <538C9175.7010003@redhat.com>
-References: <5384C18A.7040501@redhat.com> <20140602144210.GC30598@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v2 0/10] fs: Introduce FALLOC_FL_INSERT_RANGE for fallocate
+Date: Mon, 2 Jun 2014 11:02:58 -0400
+Message-ID: <20140602150258.GG30598@thunk.org>
+References: <003601cf6aa7$883103b0$98930b10$@samsung.com>
+	<alpine.LFD.2.00.1405301238190.2009@localhost.localdomain>
+	<000d01cf7ca3$98335c50$c89a14f0$@samsung.com>
+	<alpine.LFD.2.00.1406021204540.2231@localhost.localdomain>
+	<002201cf7e59$2e684c10$8b38e430$@samsung.com>
+	<alpine.LFD.2.00.1406021450541.2231@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:23238 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752904AbaFBPAH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 Jun 2014 11:00:07 -0400
-In-Reply-To: <20140602144210.GC30598@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: Namjae Jeon <namjae.jeon@samsung.com>, linux-kernel@vger.kernel.org,
+	xfs@oss.sgi.com, 'Ashish Sangwan' <a.sangwan@samsung.com>,
+	linux-fsdevel@vger.kernel.org, 'linux-ext4' <linux-ext4@vger.kernel.org>
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1406021450541.2231@localhost.localdomain>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On 6/2/14, 9:42 AM, Theodore Ts'o wrote:
-> On Tue, May 27, 2014 at 11:47:06AM -0500, Eric Sandeen wrote:
->>
->> Docs say "0" turns it off, but option handling turns "0" into 
->> EXT4_DEF_MAX_BATCH_TIME.  What was the real intent here; should the
->> docs or the behavior be changed?
-> 
-> Nice catch!  I would think it's probably better if we make the
-> behavior change to match the docs.
-> 
-> Want to send a patch, since you found the problem, or shall I create a
-> patch myself to fix things up?
-> 
-> Thanks,
-> 
->      	       	      	       	      	  - Ted
-> 
-
-I can send the patch, I just wondered what the intent was.
-
-Thanks,
--Eric
+T24gTW9uLCBKdW4gMDIsIDIwMTQgYXQgMDM6MDY6MTNQTSArMDIwMCwgTHVrw6HFoSBDemVybmVy
+IHdyb3RlOgo+ID4gPiBTbyB3aGF0IHdpbGwgaGFwcGVuIHdoZW4gdGhlcmUgaXMgbm90IGVub3Vn
+aCBzcGFjZSB3aGVuICJpbnNlcnRpbmcgYQo+ID4gPiByYW5nZSIgPyBBbmQgaG93IHNob3VsZCB1
+c2VyIHByb2NlZWQgZnJvbSB0aGVyZSA/Cj4gPiBJZiBpbnNlcnQgcmFuZ2UgZmFpbHMgd2l0aCBh
+biBFTk9TUEMgZXJyb3IsIHVzZXIgY291bGQgdXNlIGNvbGxhcHNlCj4gPiByYW5nZSBvbiB0aGUg
+c2FtZSByYW5nZSB0byByZW1vdmUgdGhlIGhvbGUuCj4gPiBBbmQgYWZ0ZXIgZnJlZWluZyBtb3Jl
+IHNwYWNlLCBoZSBjYW4gYWdhaW4gdHJ5IGluc2VydGluZyByYW5nZS4KPiA+IE9mY291cnNlLCB0
+aGlzIHR5cGUgb2YgZ3VpZGFuY2Ugc2hvdWxkIGJlIHByb3Blcmx5IGRvY3VtZW50ZWQgaW4KPiA+
+IG1hbnBhZ2UuIFdoZW4gdXBkYXRpbmcgZmFsbG9jYXRlKDIpIG1hbnBhZ2UsIEkgd2lsbCBrZWVw
+ICBpbiBtaW5kIHRvCj4gPiBkZXNjcmliZSBFTk9TUEMgaGFuZGxpbmcuCj4gCj4gV2h5IGNvbGxh
+cHNlID8gVGhlIGhvbGUgaXMgYWxyZWFkeSB0aGVyZSByaWdodCA/IFdoeSBub3QganVzdCB1c2UK
+PiBmYWxsb2NhdGUgdG8gYWxsb2NhdGUgdGhlIHNwYWNlIGZvciB0aGUgaG9sZS4gQW5kIHRoYXQn
+cyBteSBwb2ludAo+IGFjdHVhbGx5LiBXaHkgbm90IGRvIGl0IHRoaXMgd2F5IGluIHRoZSBmaXJz
+dCBwbGFjZSwgYmVjYXVzZSB0aGlzIGlzCj4gcmVhbGx5IGNvdW50ZXJpbnR1aXRpdmUuCgpJdCdz
+IHdvcnNlIHRoYW4gdGhhdC4gIEl0J3MgcG9zc2libGUgdGhhdCB0aGUgcmVhc29uIHdoeSB5b3Ug
+Z290IHRoZQpFTk9TUEMgd2FybmluZyB3YXMgYmVjYXVzZSB0aGUgb3BlcmF0aW9uIHRvIG1vdmUg
+dGhlIGV4dGVudHMgZG93bgpyZXF1aXJlZCBhbGxvY2F0aW5nIGEgYmxvY2ssIGFuZCBpdCB3YXMg
+KnRoYXQqIGJsb2NrIGFsbG9jYXRpb24gd2hpY2gKZmFpbGVkLiAgU28gaXQncyBub3QgZGV0ZXJt
+aW5pc3RpYyB3aGV0aGVyIG9yIG5vdCB0aGUgZmlsZSdzIGV4dGVudAptYXBwaW5ncyB3ZXJlIG1v
+ZGlmaWVkIGFmdGVyIGEgRU5PU1BDIGVycm9yLCBhbmQgc28gaXQncyBub3QgY2xlYXIKd2hldGhl
+ciBvciBub3QgYSBjb2xsYXBzZV9yYW5nZSBmdW5jdGlvbiB3aWxsIHVuZG8gdGhlIHJhbmdlIHRo
+YXQgaGFkCmJlZW4gaW5zZXJ0ZWQgLS0tIG9yIHdoZXRoZXIgaXQgZW5kcyB1cCBkZWxldGluZyBl
+eGlzdGluZyBkYXRhIGJsb2Nrcy4KCkluIGdlbmVyYWxseSwgeW91IHJlYWxseSB3YW50IHN5c3Rl
+bSBjYWxscyB0byBoYXZlIGFsbC1vci1ub3RoaW5nCmVmZmVjdHMsIHdoZXJlIGlmIHRoZSBzeXN0
+ZW0gY2FsbCByZXR1cm5zIGFuIGVycm9yLCB0aGUgc3RhdGUgb2YgdGhlCmZpbGUgaGFzIG5vdCBi
+ZWVuIGNoYW5nZWQuICBBbmQgZm9yIHRoYXQgcmVhc29uLCBJIGFncmVlIHdpdGggTHVrw6HFoQp0
+aGF0IGl0IGlzIHJlYWxseSBhIGdvb2QgaWRlYSB0byBkZWNvdXBsZSBtb3ZpbmcgdGhlIGJsb2Nr
+cyBkb3duLCBhbmQKYWxsb2NhdGluZyBzcGFjZSAtLS0gYW5kIHRvIG1ha2Ugc3VyZSB0aGF0IGlm
+IHRoZXJlIGlzIGFueSBmYWlsdXJlCndoaWxlIGluc2VydGluZyB0aGUgcmFuZ2UsIHRoZSBzdGF0
+ZSBvZiB0aGUgZmlsZSBpcyBub3QgbW9kaWZpZWQgYXQgYWxsLgoKQ2hlZXJzLAoKCQkJCQktIFRl
+ZAoKX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18KeGZzIG1h
+aWxpbmcgbGlzdAp4ZnNAb3NzLnNnaS5jb20KaHR0cDovL29zcy5zZ2kuY29tL21haWxtYW4vbGlz
+dGluZm8veGZzCg==
