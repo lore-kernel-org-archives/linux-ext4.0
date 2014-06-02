@@ -1,64 +1,159 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v2 0/10] fs: Introduce FALLOC_FL_INSERT_RANGE for fallocate
-Date: Mon, 2 Jun 2014 11:02:58 -0400
-Message-ID: <20140602150258.GG30598@thunk.org>
-References: <003601cf6aa7$883103b0$98930b10$@samsung.com>
-	<alpine.LFD.2.00.1405301238190.2009@localhost.localdomain>
-	<000d01cf7ca3$98335c50$c89a14f0$@samsung.com>
-	<alpine.LFD.2.00.1406021204540.2231@localhost.localdomain>
-	<002201cf7e59$2e684c10$8b38e430$@samsung.com>
-	<alpine.LFD.2.00.1406021450541.2231@localhost.localdomain>
+From: Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>
+Subject: Re: [PATCH 2/2] ext4: Reduce contention on s_orphan_lock
+Date: Mon, 02 Jun 2014 11:45:32 -0600
+Message-ID: <538CB83C.9080409@hp.com>
+References: <1400185026-3972-1-git-send-email-jack@suse.cz> <1400185026-3972-3-git-send-email-jack@suse.cz> <537B1353.8060704@hp.com> <20140520135723.GB15177@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: Namjae Jeon <namjae.jeon@samsung.com>, linux-kernel@vger.kernel.org,
-	xfs@oss.sgi.com, 'Ashish Sangwan' <a.sangwan@samsung.com>,
-	linux-fsdevel@vger.kernel.org, 'linux-ext4' <linux-ext4@vger.kernel.org>
-To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1406021450541.2231@localhost.localdomain>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: multipart/mixed;
+ boundary="------------040307020408010906030209"
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from g4t3425.houston.hp.com ([15.201.208.53]:38795 "EHLO
+	g4t3425.houston.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750767AbaFBRsJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Jun 2014 13:48:09 -0400
+In-Reply-To: <20140520135723.GB15177@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-T24gTW9uLCBKdW4gMDIsIDIwMTQgYXQgMDM6MDY6MTNQTSArMDIwMCwgTHVrw6HFoSBDemVybmVy
-IHdyb3RlOgo+ID4gPiBTbyB3aGF0IHdpbGwgaGFwcGVuIHdoZW4gdGhlcmUgaXMgbm90IGVub3Vn
-aCBzcGFjZSB3aGVuICJpbnNlcnRpbmcgYQo+ID4gPiByYW5nZSIgPyBBbmQgaG93IHNob3VsZCB1
-c2VyIHByb2NlZWQgZnJvbSB0aGVyZSA/Cj4gPiBJZiBpbnNlcnQgcmFuZ2UgZmFpbHMgd2l0aCBh
-biBFTk9TUEMgZXJyb3IsIHVzZXIgY291bGQgdXNlIGNvbGxhcHNlCj4gPiByYW5nZSBvbiB0aGUg
-c2FtZSByYW5nZSB0byByZW1vdmUgdGhlIGhvbGUuCj4gPiBBbmQgYWZ0ZXIgZnJlZWluZyBtb3Jl
-IHNwYWNlLCBoZSBjYW4gYWdhaW4gdHJ5IGluc2VydGluZyByYW5nZS4KPiA+IE9mY291cnNlLCB0
-aGlzIHR5cGUgb2YgZ3VpZGFuY2Ugc2hvdWxkIGJlIHByb3Blcmx5IGRvY3VtZW50ZWQgaW4KPiA+
-IG1hbnBhZ2UuIFdoZW4gdXBkYXRpbmcgZmFsbG9jYXRlKDIpIG1hbnBhZ2UsIEkgd2lsbCBrZWVw
-ICBpbiBtaW5kIHRvCj4gPiBkZXNjcmliZSBFTk9TUEMgaGFuZGxpbmcuCj4gCj4gV2h5IGNvbGxh
-cHNlID8gVGhlIGhvbGUgaXMgYWxyZWFkeSB0aGVyZSByaWdodCA/IFdoeSBub3QganVzdCB1c2UK
-PiBmYWxsb2NhdGUgdG8gYWxsb2NhdGUgdGhlIHNwYWNlIGZvciB0aGUgaG9sZS4gQW5kIHRoYXQn
-cyBteSBwb2ludAo+IGFjdHVhbGx5LiBXaHkgbm90IGRvIGl0IHRoaXMgd2F5IGluIHRoZSBmaXJz
-dCBwbGFjZSwgYmVjYXVzZSB0aGlzIGlzCj4gcmVhbGx5IGNvdW50ZXJpbnR1aXRpdmUuCgpJdCdz
-IHdvcnNlIHRoYW4gdGhhdC4gIEl0J3MgcG9zc2libGUgdGhhdCB0aGUgcmVhc29uIHdoeSB5b3Ug
-Z290IHRoZQpFTk9TUEMgd2FybmluZyB3YXMgYmVjYXVzZSB0aGUgb3BlcmF0aW9uIHRvIG1vdmUg
-dGhlIGV4dGVudHMgZG93bgpyZXF1aXJlZCBhbGxvY2F0aW5nIGEgYmxvY2ssIGFuZCBpdCB3YXMg
-KnRoYXQqIGJsb2NrIGFsbG9jYXRpb24gd2hpY2gKZmFpbGVkLiAgU28gaXQncyBub3QgZGV0ZXJt
-aW5pc3RpYyB3aGV0aGVyIG9yIG5vdCB0aGUgZmlsZSdzIGV4dGVudAptYXBwaW5ncyB3ZXJlIG1v
-ZGlmaWVkIGFmdGVyIGEgRU5PU1BDIGVycm9yLCBhbmQgc28gaXQncyBub3QgY2xlYXIKd2hldGhl
-ciBvciBub3QgYSBjb2xsYXBzZV9yYW5nZSBmdW5jdGlvbiB3aWxsIHVuZG8gdGhlIHJhbmdlIHRo
-YXQgaGFkCmJlZW4gaW5zZXJ0ZWQgLS0tIG9yIHdoZXRoZXIgaXQgZW5kcyB1cCBkZWxldGluZyBl
-eGlzdGluZyBkYXRhIGJsb2Nrcy4KCkluIGdlbmVyYWxseSwgeW91IHJlYWxseSB3YW50IHN5c3Rl
-bSBjYWxscyB0byBoYXZlIGFsbC1vci1ub3RoaW5nCmVmZmVjdHMsIHdoZXJlIGlmIHRoZSBzeXN0
-ZW0gY2FsbCByZXR1cm5zIGFuIGVycm9yLCB0aGUgc3RhdGUgb2YgdGhlCmZpbGUgaGFzIG5vdCBi
-ZWVuIGNoYW5nZWQuICBBbmQgZm9yIHRoYXQgcmVhc29uLCBJIGFncmVlIHdpdGggTHVrw6HFoQp0
-aGF0IGl0IGlzIHJlYWxseSBhIGdvb2QgaWRlYSB0byBkZWNvdXBsZSBtb3ZpbmcgdGhlIGJsb2Nr
-cyBkb3duLCBhbmQKYWxsb2NhdGluZyBzcGFjZSAtLS0gYW5kIHRvIG1ha2Ugc3VyZSB0aGF0IGlm
-IHRoZXJlIGlzIGFueSBmYWlsdXJlCndoaWxlIGluc2VydGluZyB0aGUgcmFuZ2UsIHRoZSBzdGF0
-ZSBvZiB0aGUgZmlsZSBpcyBub3QgbW9kaWZpZWQgYXQgYWxsLgoKQ2hlZXJzLAoKCQkJCQktIFRl
-ZAoKX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18KeGZzIG1h
-aWxpbmcgbGlzdAp4ZnNAb3NzLnNnaS5jb20KaHR0cDovL29zcy5zZ2kuY29tL21haWxtYW4vbGlz
-dGluZm8veGZzCg==
+This is a multi-part message in MIME format.
+--------------040307020408010906030209
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+
+On 05/20/2014 07:57 AM, Theodore Ts'o wrote:
+> On Tue, May 20, 2014 at 02:33:23AM -0600, Thavatchai Makphaibulchoke wrote:
+> 
+> Thavatchai, it would be really great if you could do lock_stat runs
+> with both Jan's latest patches as well as yours.  We need to
+> understand where the differences are coming from.
+> 
+> As I understand things, there are two differences between Jan and your
+> approaches.  The first is that Jan is using the implicit locking of
+> i_mutex to avoid needing to keep a hashed array of mutexes to
+> synchronize an individual inode's being added or removed to the orphan
+> list.
+> 
+> The second is that you've split the orphan mutex into an on-disk mutex
+> and a in-memory spinlock.
+> 
+> Is it possible to split up your patch so we can measure the benefits
+> of each of these two changes?  More interestingly, is there a way we
+> can use the your second change in concert with Jan's changes?
+> 
+> Regards,
+> 
+> 						- Ted
+> 
+
+Thanks to Jan, as she pointed out one optimization in orphan_addr() that I've missed.
+
+After integrated that into my patch, I've rerun the following aim7 workloads; alltests, custom, dbase, disk, fserver, new_fserver, shared and short.  Here are the results.
+
+On an 8 core (16 thread) machine, both my revised patch (with additional optimization from Jan's oprhan_add()) and version 3 of Jan's patch give about the same results, for most of the workloads, except fserver and new_fserver, which Jan's outperforms about 9% and 16%, respectively.
+
+Here are the lock_stat output for disk,
+Jan's patch,
+lock_stat version 0.4
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                              class name    con-bounces    contentions   waittime-min   waittime-max waittime-total   waittime-avg    acq-bounces   acquisitions   holdtime-min   holdtime-max holdtime-total   holdtime-avg
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                     &sbi->s_orphan_lock:         80189          80246           3.94      464489.22    77219615.47         962.29         503289         809004           0.10      476537.44     3424587.77           4.23
+Mine,
+                     &sbi->s_orphan_lock:         82215          82259           3.61      640876.19    15098561.09         183.55         541422         794254           0.10      640368.86     4425140.61           5.57
+              &sbi->s_orphan_op_mutex[n]:        102507         104880           4.21     1335087.21  1392773487.19       13279.69         398328         840120           0.11     1334711.17   397596137.90         473.26
+
+For new_fserver,
+Jan's patch,
+                     &sbi->s_orphan_lock:       1063059        1063369           5.57     1073325.95 59535205188.94       55987.34        4525570        8446052           0.10       75625.72    10700844.58         1.27
+Mine,
+                     &sbi->s_orphan_lock:       1171433        1172220           3.02      349678.21   553168029.92         471.90        5517262        8446052           0.09      254108.75    16504015.29           1.95
+              &sbi->s_orphan_op_mutex[n]:       2176760        2202674           3.44      633129.10 55206091750.06       25063.21        3259467        8452918           0.10      349687.82   605683982.34        71.65
+
+
+On an 80 core (160 thread) machine, mine outpeforms Jan's in alltests, custom, fserver, new_fserver and shared about the same margin it did over the baseline, around 20%   For all these workloads, Jan's patch does not seem to show any noticeable improvement over baseline kernel.  I'm getting about the same performance with the rest of the workloads.
+
+Here are the lock_stat output for alltests,
+Jan;'s,
+                     &sbi->s_orphan_lock:       2762871        2763355           4.46       49043.39  1763499587.40         638.17        5878253        6475844           0.15       20508.98    70827300.79          10.94
+Mine,
+                       &sbi->s_orphan_lock:       1171433        1172220           3.02      349678.21   553168029.92         471.90        5517262        8446052           0.09      254108.75    16504015.29           1.95
+              &sbi->s_orphan_op_mutex[n]:        783176         785840           4.95       30358.58   432279688.66         550.09        2899889        6505883           0.16       30254.12  1668330140.08         256.43
+
+For custom,
+Jan's,
+                     &sbi->s_orphan_lock:       5706466        5707069           4.54       44063.38  3312864313.18         580.48       11942088       13175060           0.15       15944.34   142660367.51          10.83
+Mine,
+                     &sbi->s_orphan_lock:       5518186        5518558           4.84       32040.05  2436898419.22         441.58       12290996       13175234           0.17       23160.65   141234888.88          10.72
+              &sbi->s_orphan_op_mutex[n]:       1565216        1569333           4.50       32527.02   788215876.94         502.26        5894074       13196979           0.16       71073.57  3128766227.92         237.08
+
+For dbase,
+Jan's,
+                     &sbi->s_orphan_lock:         14453          14489           5.84       39442.57     8678179.21         598.95         119847         153686           0.17        4390.25     1406816.03           9.15
+Mine,
+                     &sbi->s_orphan_lock:         13847          13868           6.23       31314.03     7982386.22         575.60         120332         153542           0.17        9354.86     1458061.28           9.50
+              &sbi->s_orphan_op_mutex[n]:          1700           1717          22.00       50566.24     1225749.82         713.89          85062         189435           0.16       31374.44    14476217.56          76.42
+
+In case the line-wrap making it hard to read, I've also attached the results as a text file.
+
+The lock_stat seems to show that with my patch the s_orphan_lock performs better across the board.  But on a smaller machine, the hashed mutex seems to offset out the performance gain in the s_oprhan_lock and increase the hashed mutex size likely to make it perform better.
+
+Jan, if you could send me your orphan stress test, I could run lock_stat for more performance comparison.
+
+Ted, please let me know if there is anything else you like me to experiment with.  If you'd like I could also resubmit my revised patch for you to take a look. 
+
+
+
+Thanks,
+Mak.
+
+
+
+
+
+--------------040307020408010906030209
+Content-Type: text/plain; charset=UTF-8;
+ name="lock_stat.txt"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="lock_stat.txt"
+
+On an 8 core (16 thread) machine,
+lock_stat version 0.4
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                              class name    con-bounces    contentions   waittime-min   waittime-max waittime-total   waittime-avg    acq-bounces   acquisitions   holdtime-min   holdtime-max holdtime-total   holdtime-avg
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Jan's disk,
+                     &sbi->s_orphan_lock:         80189          80246           3.94      464489.22    77219615.47         962.29         503289         809004           0.10      476537.44     3424587.77           4.23
+Mine's disk,
+                     &sbi->s_orphan_lock:         82215          82259           3.61      640876.19    15098561.09         183.55         541422         794254           0.10      640368.86     4425140.61           5.57
+              &sbi->s_orphan_op_mutex[n]:        102507         104880           4.21     1335087.21  1392773487.19       13279.69         398328         840120           0.11     1334711.17   397596137.90         473.26
+Jan's new_fserver,
+                     &sbi->s_orphan_lock:       1063059        1063369           5.57     1073325.95 59535205188.94       55987.34        4525570        8446052           0.10       75625.72    10700844.58           1.27
+Mine's new_fserver,
+                     &sbi->s_orphan_lock:       1171433        1172220           3.02      349678.21   553168029.92         471.90        5517262        8446052           0.09      254108.75    16504015.29           1.95
+              &sbi->s_orphan_op_mutex[n]:       2176760        2202674           3.44      633129.10 55206091750.06       25063.21        3259467        8452918           0.10      349687.82   605683982.34          71.65
+
+On an 80 core (160 thread) machine,
+ock_stat version 0.4
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                              class name    con-bounces    contentions   waittime-min   waittime-max waittime-total   waittime-avg    acq-bounces   acquisitions   holdtime-min   holdtime-max holdtime-total   holdtime-avg
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Jan's alltests,
+                     &sbi->s_orphan_lock:       2762871        2763355           4.46       49043.39  1763499587.40         638.17        5878253        6475844           0.15       20508.98    70827300.79          10.94
+Mine's alltests,
+                     &sbi->s_orphan_lock:       2690362        2690612           5.08       24977.33  1286260951.01         478.06        6031175        6475694           0.17       12247.20    70182042.72          10.84
+              &sbi->s_orphan_op_mutex[n]:        783176         785840           4.95       30358.58   432279688.66         550.09        2899889        6505883           0.16       30254.12  1668330140.08         256.43
+Jan's custom,
+                     &sbi->s_orphan_lock:       5706466        5707069           4.54       44063.38  3312864313.18         580.48       11942088       13175060           0.15       15944.34   142660367.51          10.83
+Mine's custom,
+                     &sbi->s_orphan_lock:       5518186        5518558           4.84       32040.05  2436898419.22         441.58       12290996       13175234           0.17       23160.65   141234888.88          10.72
+              &sbi->s_orphan_op_mutex[n]:       1565216        1569333           4.50       32527.02   788215876.94         502.26        5894074       13196979           0.16       71073.57  3128766227.92         237.08
+Jan's dbase,
+                     &sbi->s_orphan_lock:         14453          14489           5.84       39442.57     8678179.21         598.95         119847         153686           0.17        4390.25     1406816.03           9.15
+Mine's dbase,
+                     &sbi->s_orphan_lock:         13847          13868           6.23       31314.03     7982386.22         575.60         120332         153542           0.17        9354.86     1458061.28           9.50
+              &sbi->s_orphan_op_mutex[n]:          1700           1717          22.00       50566.24     1225749.82         713.89          85062         189435           0.16       31374.44    14476217.56          76.42
+
+--------------040307020408010906030209--
