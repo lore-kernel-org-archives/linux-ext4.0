@@ -1,54 +1,107 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 2/2] debugfs: do not display fast symlink with inline data
-Date: Mon,  2 Jun 2014 19:40:41 +0800
-Message-ID: <1401709241-27521-2-git-send-email-wenqing.lz@taobao.com>
-References: <1401709241-27521-1-git-send-email-wenqing.lz@taobao.com>
-Cc: Ian Nartowicz <claws@nartowicz.co.uk>, Tao Ma <tm@tao.ma>,
-	"Darrick J. Wong" <darrick.wong@oracle.com>,
+Subject: Re: [RFC][PATCH] ext4: handle fast symlink properly with inline_data
+Date: Mon, 2 Jun 2014 19:54:44 +0800
+Message-ID: <20140602115444.GA27610@gmail.com>
+References: <1392275237-6998-1-git-send-email-wenqing.lz@taobao.com>
+ <20140218015231.GF26580@thunk.org>
+ <292627A0-B8C3-4B49-9795-E5DA18462A4B@dilger.ca>
+ <20140530232633.GE17413@birch.djwong.org>
+ <20140602064251.GA17061@gmail.com>
+ <20140602120635.6d49ba12@crunchbang>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
+	Andreas Dilger <adilger@dilger.ca>,
+	Theodore Ts'o <tytso@mit.edu>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Ian Nartowicz <claws@nartowicz.co.uk>, Tao Ma <tm@tao.ma>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
-	"Theodore Ts'o" <tytso@mit.edu>, Zheng Liu <wenqing.lz@taobao.com>
-To: linux-ext4@vger.kernel.org
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Ian Nartowicz <ian@nartowicz.co.uk>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f51.google.com ([209.85.220.51]:47491 "EHLO
-	mail-pa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752784AbaFBLde (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Jun 2014 07:33:34 -0400
-Received: by mail-pa0-f51.google.com with SMTP id kx10so1834826pab.10
-        for <linux-ext4@vger.kernel.org>; Mon, 02 Jun 2014 04:33:34 -0700 (PDT)
-In-Reply-To: <1401709241-27521-1-git-send-email-wenqing.lz@taobao.com>
+Received: from mail-pa0-f50.google.com ([209.85.220.50]:38982 "EHLO
+	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754482AbaFBLr3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Jun 2014 07:47:29 -0400
+Received: by mail-pa0-f50.google.com with SMTP id kq14so1088163pab.23
+        for <linux-ext4@vger.kernel.org>; Mon, 02 Jun 2014 04:47:29 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <20140602120635.6d49ba12@crunchbang>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+On Mon, Jun 02, 2014 at 12:06:35PM +0100, Ian Nartowicz wrote:
+> On Mon, 2 Jun 2014 14:42:51 +0800
+> Zheng Liu <gnehzuil.liu@gmail.com> wrote:
+> 
+> >Hi all,
+> >
+> >On Fri, May 30, 2014 at 04:26:33PM -0700, Darrick J. Wong wrote:
+> >> On Tue, Feb 18, 2014 at 11:07:24AM -0800, Andreas Dilger wrote:
+> >> > I suspect that the stats for symlinks > 60 but < ~150 chars is only a very
+> >> > small fraction of files. If the code complexity of handling this is very
+> >> > small (i.e. it is just handled as a natural consequence of writing "data" 
+> >> > of this size) then I would be OK with it. 
+> >> > 
+> >> > Otherwise, I expect the code and maintenance overhead of supporting
+> >> > the 0.01% (?) of symlinks that are this size is probably lot worth it. 
+> >> > 
+> >> > People could check what the actual usage is via the "fsstats" tool at:
+> >> > 
+> >> > http://www.pdsi-scidac.org/fsstats/
+> >> > 
+> >> > There is also data there already that reports stats on symlink length, but
+> >> > it is mostly HPC filesystems and it might be better to redo this with a
+> >> > desktop-type workload. 
+> >> 
+> >> I think we should either put in this kernel patch so that we can read inline
+> >> data fast symlinks, or remove the ability to write inline data fast symlinks.
+> >> It's a bit surprising that I can do:
+> >> 
+> >> # mke2fs -t ext4 -O inline_data /dev/sdb         
+> >> # mount /dev/sdb /mnt/
+> >> # ln -s "Fuzzy Wuzzy was a bear. Fuzzy Wuzzy had no hair. I guess he wasn't
+> >> fuzzy, was he?" /mnt/biglink # readlink /mnt/biglink
+> >> Fuzzy Wuzzy was a bear. Fuzzy Wuzzy had no hair. I guess he wasn't fuzzy,
+> >> was he? # umount /mnt
+> >> # mount /dev/sdb /mnt/
+> >> # readlink /mnt/biglink
+> >> Fuzzy Wuzzy was a bear. Fuzzy Wuzzy had no hair. I guess he
+> >> 
+> >> What happened to the punchline of the limerick? ------------^^^^^^^ ???? :)
+> >
+> >Do *not* apply this patch, please.  I revise this patch and I think it
+> >is not right solution, although it can fix the bug.
+> >
+> >The root cause is in ext4_inode_is_fast_symlink() function that it
+> >doesn't check whether or not an inode has inline data.  After creating
+> >a normal symlink, the symlink will be stored in ->i_block and extra
+> >space if the length of symlink is greater than 60 bytes and less than
+> >extra space in inline data.  In the mean time, this inode has inline
+> >data flag.  If the file system is remounted, ext4_inode_is_fast_symlink
+> >thinks this inode is a fast symlink, and the data in ->i_block is copied
+> >to user.  I will send a new patch to fix this bug.
+> >
+> >> 
+> >> e2fsck still seems to think that you can't have inline_data fast symlinks.  I
+> >> don't see a downside to continuing to allow them.
+> >
+> >Meanwhile another patch for e2fsck also will be sent out soon in order
+> >to handle symlink properly with inline data in e2fsck.
+> >
+> >Regards,
+> >                                                - Zheng
+> 
+> fsstats on root on my desktop, percentage of symlink targets 64 - 150
+> characters long is 22%, almost all in the 64-71 char bucket.  Lots of them are
+> theme icons and python packages, some shared library objects, nothing that
+> many people won't have.
 
-After enabling symlink with inline data, stat command in debugfs will
-think an inode is a fast symlink.  This patch fixes this issue.
+Hi Ian,
 
-Cc: Ian Nartowicz <claws@nartowicz.co.uk>
-Cc: Tao Ma <tm@tao.ma>
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
----
- debugfs/debugfs.c |    4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+Thanks for sharing this with us.  It is useful for us to determine
+whether or not we should support symlink with inline data feature, and
+according to your report, we'd better support it. :-)
 
-diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-index 23a7ca3..2147ffa 100644
---- a/debugfs/debugfs.c
-+++ b/debugfs/debugfs.c
-@@ -784,7 +784,9 @@ void internal_dump_inode(FILE *out, const char *prefix,
- 		fprintf(out, "Inode checksum: 0x%08x\n", crc);
- 	}
- 
--	if (LINUX_S_ISLNK(inode->i_mode) && ext2fs_inode_data_blocks(current_fs,inode) == 0)
-+	if (LINUX_S_ISLNK(inode->i_mode) &&
-+	    ext2fs_inode_data_blocks(current_fs,inode) == 0 &&
-+	    !(inode->i_flags & EXT4_INLINE_DATA_FL))
- 		fprintf(out, "%sFast_link_dest: %.*s\n", prefix,
- 			(int) inode->i_size, (char *)inode->i_block);
- 	else if (LINUX_S_ISBLK(inode->i_mode) || LINUX_S_ISCHR(inode->i_mode)) {
--- 
-1.7.9.7
-
+Regards,
+                                                - Zheng
