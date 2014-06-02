@@ -1,11 +1,11 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/3 v2] quota: avoid unnecessary dqget()/dqput() calls
-Date: Mon, 2 Jun 2014 09:42:45 +0200
-Message-ID: <20140602074245.GB3224@quack.suse.cz>
+Subject: Re: [PATCH 3/3 v2] quota: remove dqptr_sem
+Date: Mon, 2 Jun 2014 10:34:36 +0200
+Message-ID: <20140602083436.GC3224@quack.suse.cz>
 References: <537DD5BA.1050105@gmail.com>
  <538464AD.6050407@gmail.com>
  <20140527101219.GA28035@infradead.org>
- <538541A3.2060102@gmail.com>
+ <538541FE.3070203@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Christoph Hellwig <hch@infradead.org>, jack@suse.cz,
@@ -13,75 +13,142 @@ Cc: Christoph Hellwig <hch@infradead.org>, jack@suse.cz,
 	yawei.niu@intel.com, andreas.dilger@intel.com, lai.siyao@intel.com
 To: Niu Yawei <yawei.niu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:38193 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:38830 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751948AbaFBHmr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 Jun 2014 03:42:47 -0400
+	id S1751806AbaFBIem (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 Jun 2014 04:34:42 -0400
 Content-Disposition: inline
-In-Reply-To: <538541A3.2060102@gmail.com>
+In-Reply-To: <538541FE.3070203@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 28-05-14 09:53:39, Niu Yawei wrote:
-> Avoid unnecessary dqget()/dqput() calls in __dquot_initialize(),
-> that will introduce global lock contention otherwise.
-  The patch looks good. Just two minor nits below.
+On Wed 28-05-14 09:55:10, Niu Yawei wrote:
+> Remove dqptr_sem to make quota code scalable: Remove the dqptr_sem,
+> accessing inode->i_dquot now protected by dquot_srcu, and changing
+> inode->i_dquot is now serialized by dq_data_lock.
+  The patch is mostly fine. Just some minor comments below.
 
 								Honza
  
 > Signed-off-by: Lai Siyao <lai.siyao@intel.com>
 > Signed-off-by: Niu Yawei <yawei.niu@intel.com>
 > ---
->  fs/quota/dquot.c |   13 ++++++++++++-
->  1 files changed, 12 insertions(+), 1 deletions(-)
+>  fs/quota/dquot.c      |  105 +++++++++++++++++++------------------------------
+>  fs/super.c            |    1 -
+>  include/linux/quota.h |    1 -
+>  3 files changed, 41 insertions(+), 66 deletions(-)
 > 
 > diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
-> index 9cd5f63..dc6f711 100644
+> index dc6f711..b86c88b 100644
 > --- a/fs/quota/dquot.c
 > +++ b/fs/quota/dquot.c
-> @@ -1400,7 +1400,7 @@ static int dquot_active(const struct inode *inode)
->   */
->  static void __dquot_initialize(struct inode *inode, int type)
->  {
-> -	int cnt;
-> +	int cnt, dq_get = 0;
->  	struct dquot *got[MAXQUOTAS];
->  	struct super_block *sb = inode->i_sb;
->  	qsize_t rsv;
-> @@ -1416,6 +1416,13 @@ static void __dquot_initialize(struct inode *inode, int type)
->  		got[cnt] = NULL;
->  		if (type != -1 && cnt != type)
->  			continue;
-> +		/* the i_dquot should have been initialized in most case,
-							      cases ^^^
-> +		 * we check it without locking here to avoid unnecessary
-> +		 * dqget()/dqput() calls. */
-  Please fix the comment style - scripts/checkpatch.pl is your friend.
+> @@ -96,13 +96,15 @@
+>   * Note that some things (eg. sb pointer, type, id) doesn't change during
+>   * the life of the dquot structure and so needn't to be protected by a lock
+>   *
+> - * Any operation working on dquots via inode pointers must hold dqptr_sem.  If
+> - * operation is just reading pointers from inode (or not using them at all) the
+> - * read lock is enough. If pointers are altered function must hold write lock.
+> + * Operation accessing dquots via inode pointers are protected by dquot_srcu.
+> + * Operation of reading pointer needs srcu_read_lock(&dquot_srcu), and
+> + * synchronize_srcu(&dquot_srcu) is called before clear pointers to avoid
+  This is not actually precise. It should be:
+and synchronize_srcu(&dquot_srcu) is called after clearing pointers from
+inode and before dropping dquot references to avoid use of dquots after
+they are freed.
 
-> +		if (inode->i_dquot[cnt])
-> +			continue;
-> +		dq_get = 1;
-  init_needed or something like that would be a better name I think.
+Now that we have the rule spelled out exactly, I think we should update
+what remove_inode_dquot_ref() does. It should do something like:
 
-> +
->  		switch (cnt) {
->  		case USRQUOTA:
->  			qid = make_kqid_uid(inode->i_uid);
-> @@ -1427,6 +1434,10 @@ static void __dquot_initialize(struct inode *inode, int type)
->  		got[cnt] = dqget(sb, qid);
->  	}
+if (list_empty(&dquot->dq_free)) {
+	spin_lock(&dq_list_lock);
+	/*
+	 * The inode still has reference to dquot so it can't be in the
+	 * free list
+	 */
+	list_add(&dquot->dq_free, tofree_head);
+	spin_unlock(&dq_list_lock);
+} else {
+	/*
+	 * Dquot is already in a list to put so we won't drop the last
+	 * reference here.
+	 */
+	dqput(dquot);
+}
+
+Although in practice this should be mostly the same as the current code
+this makes it more obvious we keep one reference to each dquot from inodes
+until after we call synchronize_srcu(). And you can make this change as a
+separate patch before the dqptr_sem removal.
+
+> + * use after free. dq_data_lock is used to serialize the pointer setting and
+> + * clearing operations.
+>   * Special care needs to be taken about S_NOQUOTA inode flag (marking that
+>   * inode is a quota file). Functions adding pointers from inode to dquots have
+> - * to check this flag under dqptr_sem and then (if S_NOQUOTA is not set) they
+> - * have to do all pointer modifications before dropping dqptr_sem. This makes
+> + * to check this flag under dq_data_lock and then (if S_NOQUOTA is not set) they
+> + * have to do all pointer modifications before dropping dq_data_lock. This makes
+>   * sure they cannot race with quotaon which first sets S_NOQUOTA flag and
+>   * then drops all pointers to dquots from an inode.
+>   *
+...
+> @@ -1485,12 +1473,13 @@ static void __dquot_drop(struct inode *inode)
+>  	int cnt;
+>  	struct dquot *put[MAXQUOTAS];
 >  
-> +	/* all required i_dquot has been initialized */
-> +	if (!dq_get)
-> +		return;
+> -	down_write(&sb_dqopt(inode->i_sb)->dqptr_sem);
+> +	spin_lock(&dq_data_lock);
+>  	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
+>  		put[cnt] = inode->i_dquot[cnt];
+>  		inode->i_dquot[cnt] = NULL;
+>  	}
+> -	up_write(&sb_dqopt(inode->i_sb)->dqptr_sem);
+> +	spin_unlock(&dq_data_lock);
+> +	synchronize_srcu(&dquot_srcu);
+>  	dqput_all(put);
+>  }
+  You don't have to call sychronize_srcu() here. There can be no other
+users of the inode when __dquot_drop() is called. So noone should be using
+inode dquot pointers as well. Probably we should document this assumption
+before dquot_drop().
+  
+> @@ -1868,12 +1847,12 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
+>  		warn_from_inodes[cnt].w_type = QUOTA_NL_NOWARN;
+>  		warn_from_space[cnt].w_type = QUOTA_NL_NOWARN;
+>  	}
+> -	down_write(&sb_dqopt(inode->i_sb)->dqptr_sem);
 > +
->  	down_write(&sb_dqopt(sb)->dqptr_sem);
->  	if (IS_NOQUOTA(inode))
->  		goto out_err;
-> -- 
-> 1.7.1
-> 
-> 
+> +	spin_lock(&dq_data_lock);
+>  	if (IS_NOQUOTA(inode)) {	/* File without quota accounting? */
+> -		up_write(&sb_dqopt(inode->i_sb)->dqptr_sem);
+> +		spin_unlock(&dq_data_lock);
+>  		return 0;
+>  	}
+> -	spin_lock(&dq_data_lock);
+>  	cur_space = inode_get_bytes(inode);
+>  	rsv_space = inode_get_rsv_space(inode);
+>  	space = cur_space + rsv_space;
+> @@ -1927,7 +1906,6 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
+>  		inode->i_dquot[cnt] = transfer_to[cnt];
+>  	}
+>  	spin_unlock(&dq_data_lock);
+> -	up_write(&sb_dqopt(inode->i_sb)->dqptr_sem);
+>  
+>  	mark_all_dquot_dirty(transfer_from);
+>  	mark_all_dquot_dirty(transfer_to);
+> @@ -1941,7 +1919,6 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
+>  	return 0;
+>  over_quota:
+>  	spin_unlock(&dq_data_lock);
+> -	up_write(&sb_dqopt(inode->i_sb)->dqptr_sem);
+>  	flush_warnings(warn_to);
+>  	return ret;
+  Hum, you are missing srcu protection in __dquot_transfer()... Now we are
+holding extra dquot references here so we are fine but it really deserves a
+comment somewhere in the header before the function.
+
+								Honza
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
