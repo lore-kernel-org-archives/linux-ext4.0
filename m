@@ -1,54 +1,42 @@
-From: Arnd Bergmann <arnd@arndb.de>
-Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
-Date: Tue, 03 Jun 2014 16:37:46 +0200
-Message-ID: <18158267.ZX0ZMPkVDT@wuerfel>
-References: <1401480116-1973111-1-git-send-email-arnd@arndb.de>
-	<5011138.W0gbOc20Qp@wuerfel>
-	<Pine.LNX.4.64.1406031427130.12421@digraph.polyomino.org.uk>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/2] ext4: introduce new i_write_mutex to protect
+ fallocate
+Date: Tue, 3 Jun 2014 11:19:58 -0400
+Message-ID: <20140603151958.GD12890@thunk.org>
+References: <001701cf6e40$fab98be0$f02ca3a0$@samsung.com>
+ <alpine.LFD.2.00.1405291439340.18491@localhost.localdomain>
+ <20140529162810.GG25041@thunk.org>
+ <000c01cf7c9b$edaf2f90$c90d8eb0$@samsung.com>
+ <20140602143807.GB30598@thunk.org>
+ <001801cf7ef1$b01a85a0$104f90e0$@samsung.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7Bit
-Cc: linux-mtd@lists.infradead.org, "H. Peter Anvin" <hpa@zytor.com>,
-        logfs@logfs.org, linux-afs@lists.infradead.org,
-        linux-arch@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-scsi@vger.kernel.org, ceph-devel@vger.kernel.org,
-        cluster-devel@redhat.com, coda@cs.cmu.edu, geert@linux-m68k.org,
-        linux-ext4@vger.kernel.org, codalist@telemann.coda.cs.cmu.edu,
-        fuse-devel@lists.sourceforge.net, reiserfs-devel@vger.kernel.org,
-        xfs@oss.sgi.com, john.stultz@linaro.org, tglx@linutronix.de,
-        linux-nfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
-        samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
-        linux-fsdevel@vger.kernel.org, lftan@altera.com,
-        linux-btrfs@vger.kernel.org
-To: "Joseph S. Myers" <joseph@codesourcery.com>
-Return-path: <cluster-devel-bounces@redhat.com>
-In-Reply-To: <Pine.LNX.4.64.1406031427130.12421@digraph.polyomino.org.uk>
-List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: =?utf-8?B?J0x1a8OhxaE=?= Czerner' <lczerner@redhat.com>,
+	'linux-ext4' <linux-ext4@vger.kernel.org>,
+	'Ashish Sangwan' <a.sangwan@samsung.com>
+To: Namjae Jeon <namjae.jeon@samsung.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:48079 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754313AbaFCPUD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 3 Jun 2014 11:20:03 -0400
+Content-Disposition: inline
+In-Reply-To: <001801cf7ef1$b01a85a0$104f90e0$@samsung.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tuesday 03 June 2014 14:33:10 Joseph S. Myers wrote:
-> On Tue, 3 Jun 2014, Arnd Bergmann wrote:
-> 
-> > I think John Stultz and Thomas Gleixner have already started looking
-> > at how the timekeeping code can be updated. Once that is done, we should
-> > be able to add a functional 64-bit gettimeofday/settimeofday syscall
-> > pair. While I definitely agree this is one of the most basic things to
-> > have, it's also not an area of the kernel that is easy to change.
-> 
-> 64-bit clock_gettime / clock_settime instead of gettimeofday / 
-> settimeofday should avoid the need for the kernel to have a 64-bit version 
-> of struct timeval.  (Userspace 64-bit gettimeofday / settimeofday would 
-> need to use a combination of the syscalls if the tz pointer is non-NULL.)
+On Tue, Jun 03, 2014 at 03:04:32PM +0900, Namjae Jeon wrote:
+> IMHO, If our goal is to solve the problem of xfstests, we can use only
+> "ext4: fix ZERO_RANGE test failure in data journalling" patch without
+> i_write_mutex patch. And we can add lock for fallocate on next kernel
+> after checking with sufficient time.
 
-Yes, that's what I meant.
+I thought this patch required i_write_mutex to avoid a race where
+another thread modifies an inode while filemap_write_and_wait_range()
+is running?
 
-	Arnd
+I agree that we could drop the i_write_mutex and add a call to
+ext4_force_commit() which should make the xfstest failure rarer, but
+the race would still be there, yes?
+
+						- Ted
