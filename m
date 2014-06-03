@@ -1,59 +1,83 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/4] e2fsck: make a prompt message translatable by not
- using fill-in words
-Date: Mon, 2 Jun 2014 19:40:01 -0400
-Message-ID: <20140602234001.GJ30598@thunk.org>
-References: <1401738524-11455-1-git-send-email-bensberg@justemail.net>
- <1401738524-11455-2-git-send-email-bensberg@justemail.net>
+From: Namjae Jeon <namjae.jeon@samsung.com>
+Subject: RE: [PATCH 1/2] ext4: introduce new i_write_mutex to protect fallocate
+Date: Tue, 03 Jun 2014 15:04:32 +0900
+Message-ID: <001801cf7ef1$b01a85a0$104f90e0$@samsung.com>
+References: <001701cf6e40$fab98be0$f02ca3a0$@samsung.com>
+ <alpine.LFD.2.00.1405291439340.18491@localhost.localdomain>
+ <20140529162810.GG25041@thunk.org>
+ <000c01cf7c9b$edaf2f90$c90d8eb0$@samsung.com>
+ <20140602143807.GB30598@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Benno Schulenberg <bensberg@justemail.net>
+Content-Type: text/plain; charset=iso-8859-2
+Content-Transfer-Encoding: 7bit
+Cc: =?iso-8859-2?Q?'Luk=E1=B9_Czerner'?= <lczerner@redhat.com>,
+	'linux-ext4' <linux-ext4@vger.kernel.org>,
+	'Ashish Sangwan' <a.sangwan@samsung.com>
+To: 'Theodore Ts'o' <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:46706 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752169AbaFBXkD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 Jun 2014 19:40:03 -0400
-Content-Disposition: inline
-In-Reply-To: <1401738524-11455-2-git-send-email-bensberg@justemail.net>
+Received: from mailout1.samsung.com ([203.254.224.24]:34542 "EHLO
+	mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751732AbaFCGEf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Jun 2014 02:04:35 -0400
+Received: from epcpsbgr2.samsung.com
+ (u142.gpu120.samsung.co.kr [203.254.230.142])
+ by mailout1.samsung.com (Oracle Communications Messaging Server 7u4-24.01
+ (7.0.4.24.0) 64bit (built Nov 17 2011))
+ with ESMTP id <0N6K00A6GWVK5LC0@mailout1.samsung.com> for
+ linux-ext4@vger.kernel.org; Tue, 03 Jun 2014 15:04:32 +0900 (KST)
+In-reply-to: <20140602143807.GB30598@thunk.org>
+Content-language: ko
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jun 02, 2014 at 09:48:42PM +0200, Benno Schulenberg wrote:
-> Signed-off-by: Benno Schulenberg <bensberg@justemail.net>
-> ---
->  e2fsck/journal.c |    1 -
->  e2fsck/problem.c |    2 +-
->  2 files changed, 1 insertions(+), 2 deletions(-)
 > 
-> diff --git a/e2fsck/journal.c b/e2fsck/journal.c
-> index a7b1150..a3b3967 100644
-> --- a/e2fsck/journal.c
-> +++ b/e2fsck/journal.c
-> @@ -820,7 +820,6 @@ errcode_t e2fsck_check_ext3_journal(e2fsck_t ctx)
->  no_has_journal:
->  	if (!(sb->s_feature_compat & EXT3_FEATURE_COMPAT_HAS_JOURNAL)) {
->  		recover = sb->s_feature_incompat & EXT3_FEATURE_INCOMPAT_RECOVER;
-> -		pctx.str = "inode";
->  		if (fix_problem(ctx, PR_0_JOURNAL_HAS_JOURNAL, &pctx)) {
->  			if (recover &&
->  			    !fix_problem(ctx, PR_0_JOURNAL_RECOVER_SET, &pctx))
-> diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-> index 2b564a8..e393417 100644
-> --- a/e2fsck/problem.c
-> +++ b/e2fsck/problem.c
-> @@ -225,7 +225,7 @@ static struct e2fsck_problem problem_table[] = {
->  
->  	/* Superblock has_journal flag is clear but has a journal */
->  	{ PR_0_JOURNAL_HAS_JOURNAL,
-> -	  N_("@S has_@j flag is clear, but a @j %s is present.\n"),
-> +	  N_("@S has_@j flag is clear, but a @j @i is present.\n"),
+> On Sat, May 31, 2014 at 03:45:36PM +0900, Namjae Jeon wrote:
+> > ext4 file write is already serialized with inode mutex.
+> 
+> Right, I had forgotten about that.  The case where we really care
+> about parallel writes is in the direct I/O case, and eventually I'd
+> like for us to be able to support non-overwriting/non-isize-extending
+> writes in parallel but we're not there yet.
+Okay.
+> 
+> > So I think the impact of adding another lock will be very very less..
+> > When I run parallel write test of fio to prove it, I can not see the difference on w/wo
+> i_write_mutex.
+> 
+> If there is an impact, it won't show up there.  Where it will show up
+> will be in high scalability workloads.  For people who don't have the
+> half-million dollars (and up) expensive RAID arrays, a fairly good
+> facsimile is to use a > 16 core system, preferably a system at least 4
+> sockets, and say 32 or 64 gigs of memory, of which you can dedicate
+> half to a ramdisk.  Then run the fio scalability benchmark in that
+> scenario.  That way, things like cache line bounces and lock
+> contentions will be much more visible when the system is no longer
+> bottleneck by the HDD.
+Yes, Right. I agree that result should be measured on high-end server
+as you pointed again. Unfortunately I don't have such equipment yet..
+> 
+> > Yes, Right. We can use shared lock to remove a little bit lock contention in ext4 file write.
+> > I will share rwsem lock patch.. Could you please revert i_write_mutex patch ?
+> 
+> So the shared lock will help somewhat (since writes will be far more
+> common than fallocate calls) but I suspect, not all that much.  And if
+> I revert the i_write_mutex call, now, we won't have time to replace it
+> with a different patch since the merge window is already open.
+> 
+> And since this patch is needed to fix a xfstests failure (although
+> it's for collapse range in data journalling mode, so not a common
+> case), if we can't really see a performance loss in the much more
+> common server configurations, I'm inclined to leave it in for now, and
+> we can try to improve performance in the next kernel revision.
+IMHO, If our goal is to solve the problem of xfstests, we can use only
+"ext4: fix ZERO_RANGE test failure in data journalling" patch without
+i_write_mutex patch. And we can add lock for fallocate on next kernel
+after checking with sufficient time.
 
-It's probably better to just make this read "but a journal is
-present".  The reason why we were doing the fill-in word was because
-the intent was to be able to make the distinction between a journal
-inode and an external journal device.  The intent was never realied,
-and at this point it's better to just take out the specifity of
-whether we are using a journal inode or a journal device.
+Thanks!
 
-	       	       	       	     - Ted
+> 
+> What do other people think?
+> 
+> 						- Ted
+
