@@ -1,219 +1,164 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/2] ext4: Reduce contention on s_orphan_lock
-Date: Tue, 3 Jun 2014 10:52:05 +0200
-Message-ID: <20140603085205.GA29219@quack.suse.cz>
-References: <1400185026-3972-1-git-send-email-jack@suse.cz>
- <1400185026-3972-3-git-send-email-jack@suse.cz>
- <537B1353.8060704@hp.com>
- <20140520135723.GB15177@thunk.org>
- <538CB83C.9080409@hp.com>
+From: Niu Yawei <yawei.niu@gmail.com>
+Subject: Re: [PATCH 3/3 v2] quota: remove dqptr_sem
+Date: Tue, 03 Jun 2014 17:51:44 +0800
+Message-ID: <538D9AB0.9090607@gmail.com>
+References: <537DD5BA.1050105@gmail.com> <538464AD.6050407@gmail.com> <20140527101219.GA28035@infradead.org> <538541FE.3070203@gmail.com> <20140602083436.GC3224@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="DocE+STaALJfprDB"
-Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-	linux-ext4@vger.kernel.org
-To: Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:35508 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751000AbaFCIwK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 3 Jun 2014 04:52:10 -0400
-Content-Disposition: inline
-In-Reply-To: <538CB83C.9080409@hp.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Christoph Hellwig <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	yawei.niu@intel.com, andreas.dilger@intel.com, lai.siyao@intel.com
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20140602083436.GC3224@quack.suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+Thanks for the review, Honza.
+> On Wed 28-05-14 09:55:10, Niu Yawei wrote:
+>> Remove dqptr_sem to make quota code scalable: Remove the dqptr_sem,
+>> accessing inode->i_dquot now protected by dquot_srcu, and changing
+>> inode->i_dquot is now serialized by dq_data_lock.
+>   The patch is mostly fine. Just some minor comments below.
+>
+> 								Honza
+>  
+>> Signed-off-by: Lai Siyao <lai.siyao@intel.com>
+>> Signed-off-by: Niu Yawei <yawei.niu@intel.com>
+>> ---
+>>  fs/quota/dquot.c      |  105 +++++++++++++++++++------------------------------
+>>  fs/super.c            |    1 -
+>>  include/linux/quota.h |    1 -
+>>  3 files changed, 41 insertions(+), 66 deletions(-)
+>>
+>> diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
+>> index dc6f711..b86c88b 100644
+>> --- a/fs/quota/dquot.c
+>> +++ b/fs/quota/dquot.c
+>> @@ -96,13 +96,15 @@
+>>   * Note that some things (eg. sb pointer, type, id) doesn't change during
+>>   * the life of the dquot structure and so needn't to be protected by a lock
+>>   *
+>> - * Any operation working on dquots via inode pointers must hold dqptr_sem.  If
+>> - * operation is just reading pointers from inode (or not using them at all) the
+>> - * read lock is enough. If pointers are altered function must hold write lock.
+>> + * Operation accessing dquots via inode pointers are protected by dquot_srcu.
+>> + * Operation of reading pointer needs srcu_read_lock(&dquot_srcu), and
+>> + * synchronize_srcu(&dquot_srcu) is called before clear pointers to avoid
+>   This is not actually precise. It should be:
+> and synchronize_srcu(&dquot_srcu) is called after clearing pointers from
+> inode and before dropping dquot references to avoid use of dquots after
+> they are freed.
+>
+> Now that we have the rule spelled out exactly, I think we should update
+> what remove_inode_dquot_ref() does. It should do something like:
+>
+> if (list_empty(&dquot->dq_free)) {
+> 	spin_lock(&dq_list_lock);
+> 	/*
+> 	 * The inode still has reference to dquot so it can't be in the
+> 	 * free list
+> 	 */
+> 	list_add(&dquot->dq_free, tofree_head);
+> 	spin_unlock(&dq_list_lock);
+> } else {
+> 	/*
+> 	 * Dquot is already in a list to put so we won't drop the last
+> 	 * reference here.
+> 	 */
+> 	dqput(dquot);
+> }
+>
+> Although in practice this should be mostly the same as the current code
+> this makes it more obvious we keep one reference to each dquot from inodes
+> until after we call synchronize_srcu(). And you can make this change as a
+> separate patch before the dqptr_sem removal.
+I don't quite follow this: in which condition the dq_free is not empty?
+I think it could
+be that dquot has been put in tofree_head before, and it was found by
+dqget() and become
+inuse again, right? Then won't this race with drop_dquot_ref() ->
+put_dquot_list()? Actually,
+it looks to me that the old version of remove_inode_dquot_ref() has the
+same race. Did I
+miss anyting?
 
---DocE+STaALJfprDB
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+My another concern is: in dqcache_shrink_scan(), we scan free_dquots
+list without holding
+the dq_list_lock, won't this race with dqget()/dqput()?
+>> + * use after free. dq_data_lock is used to serialize the pointer setting and
+>> + * clearing operations.
+>>   * Special care needs to be taken about S_NOQUOTA inode flag (marking that
+>>   * inode is a quota file). Functions adding pointers from inode to dquots have
+>> - * to check this flag under dqptr_sem and then (if S_NOQUOTA is not set) they
+>> - * have to do all pointer modifications before dropping dqptr_sem. This makes
+>> + * to check this flag under dq_data_lock and then (if S_NOQUOTA is not set) they
+>> + * have to do all pointer modifications before dropping dq_data_lock. This makes
+>>   * sure they cannot race with quotaon which first sets S_NOQUOTA flag and
+>>   * then drops all pointers to dquots from an inode.
+>>   *
+> ...
+>> @@ -1485,12 +1473,13 @@ static void __dquot_drop(struct inode *inode)
+>>  	int cnt;
+>>  	struct dquot *put[MAXQUOTAS];
+>>  
+>> -	down_write(&sb_dqopt(inode->i_sb)->dqptr_sem);
+>> +	spin_lock(&dq_data_lock);
+>>  	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
+>>  		put[cnt] = inode->i_dquot[cnt];
+>>  		inode->i_dquot[cnt] = NULL;
+>>  	}
+>> -	up_write(&sb_dqopt(inode->i_sb)->dqptr_sem);
+>> +	spin_unlock(&dq_data_lock);
+>> +	synchronize_srcu(&dquot_srcu);
+>>  	dqput_all(put);
+>>  }
+>   You don't have to call sychronize_srcu() here. There can be no other
+> users of the inode when __dquot_drop() is called. So noone should be using
+> inode dquot pointers as well. Probably we should document this assumption
+> before dquot_drop().
+>   
+I'm fine to remove this and add comments before this fucntion, but I'm
+wondering that
+if it's safer to call an additional synchronize_srcu() here? (In case
+of  someone use this
+function for other purpose in the future.)
+>> @@ -1868,12 +1847,12 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
+>>  		warn_from_inodes[cnt].w_type = QUOTA_NL_NOWARN;
+>>  		warn_from_space[cnt].w_type = QUOTA_NL_NOWARN;
+>>  	}
+>> -	down_write(&sb_dqopt(inode->i_sb)->dqptr_sem);
+>> +
+>> +	spin_lock(&dq_data_lock);
+>>  	if (IS_NOQUOTA(inode)) {	/* File without quota accounting? */
+>> -		up_write(&sb_dqopt(inode->i_sb)->dqptr_sem);
+>> +		spin_unlock(&dq_data_lock);
+>>  		return 0;
+>>  	}
+>> -	spin_lock(&dq_data_lock);
+>>  	cur_space = inode_get_bytes(inode);
+>>  	rsv_space = inode_get_rsv_space(inode);
+>>  	space = cur_space + rsv_space;
+>> @@ -1927,7 +1906,6 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
+>>  		inode->i_dquot[cnt] = transfer_to[cnt];
+>>  	}
+>>  	spin_unlock(&dq_data_lock);
+>> -	up_write(&sb_dqopt(inode->i_sb)->dqptr_sem);
+>>  
+>>  	mark_all_dquot_dirty(transfer_from);
+>>  	mark_all_dquot_dirty(transfer_to);
+>> @@ -1941,7 +1919,6 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
+>>  	return 0;
+>>  over_quota:
+>>  	spin_unlock(&dq_data_lock);
+>> -	up_write(&sb_dqopt(inode->i_sb)->dqptr_sem);
+>>  	flush_warnings(warn_to);
+>>  	return ret;
+>   Hum, you are missing srcu protection in __dquot_transfer()... Now we are
+> holding extra dquot references here so we are fine but it really deserves a
+> comment somewhere in the header before the function.
+Yes, we are holding reference. I'll add comments to explain it. Thanks.
+>
+> 								Honza
 
-On Mon 02-06-14 11:45:32, Thavatchai Makphaibulchoke wrote:
-> On 05/20/2014 07:57 AM, Theodore Ts'o wrote:
-> > On Tue, May 20, 2014 at 02:33:23AM -0600, Thavatchai Makphaibulchoke wrote:
-> > 
-> > Thavatchai, it would be really great if you could do lock_stat runs
-> > with both Jan's latest patches as well as yours.  We need to
-> > understand where the differences are coming from.
-> > 
-> > As I understand things, there are two differences between Jan and your
-> > approaches.  The first is that Jan is using the implicit locking of
-> > i_mutex to avoid needing to keep a hashed array of mutexes to
-> > synchronize an individual inode's being added or removed to the orphan
-> > list.
-> > 
-> > The second is that you've split the orphan mutex into an on-disk mutex
-> > and a in-memory spinlock.
-> > 
-> > Is it possible to split up your patch so we can measure the benefits
-> > of each of these two changes?  More interestingly, is there a way we
-> > can use the your second change in concert with Jan's changes?
-> > 
-> > Regards,
-> > 
-> > 						- Ted
-> > 
-> 
-> Thanks to Jan, as she pointed out one optimization in orphan_addr() that
-> I've missed.
-> 
-> After integrated that into my patch, I've rerun the following aim7
-> workloads; alltests, custom, dbase, disk, fserver, new_fserver, shared
-> and short.  Here are the results.
-> 
-> On an 8 core (16 thread) machine, both my revised patch (with additional
-> optimization from Jan's oprhan_add()) and version 3 of Jan's patch give
-> about the same results, for most of the workloads, except fserver and
-> new_fserver, which Jan's outperforms about 9% and 16%, respectively.
-> 
-> Here are the lock_stat output for disk,
-> Jan's patch,
-> lock_stat version 0.4
-> -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
->                               class name    con-bounces    contentions   waittime-min   waittime-max waittime-total   waittime-avg    acq-bounces   acquisitions   holdtime-min   holdtime-max holdtime-total   holdtime-avg
-> -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
->                      &sbi->s_orphan_lock:         80189          80246           3.94      464489.22    77219615.47         962.29         503289         809004           0.10      476537.44     3424587.77           4.23
-> Mine,
->                      &sbi->s_orphan_lock:         82215          82259           3.61      640876.19    15098561.09         183.55         541422         794254           0.10      640368.86     4425140.61           5.57
->               &sbi->s_orphan_op_mutex[n]:        102507         104880           4.21     1335087.21  1392773487.19       13279.69         398328         840120           0.11     1334711.17   397596137.90         473.26
-> 
-> For new_fserver,
-> Jan's patch,
->                      &sbi->s_orphan_lock:       1063059        1063369           5.57     1073325.95 59535205188.94       55987.34        4525570        8446052           0.10       75625.72    10700844.58         1.27
-> Mine,
->                      &sbi->s_orphan_lock:       1171433        1172220           3.02      349678.21   553168029.92         471.90        5517262        8446052           0.09      254108.75    16504015.29           1.95
->               &sbi->s_orphan_op_mutex[n]:       2176760        2202674           3.44      633129.10 55206091750.06       25063.21        3259467        8452918           0.10      349687.82   605683982.34        71.65
-> 
-> 
-> On an 80 core (160 thread) machine, mine outpeforms Jan's in alltests,
-> custom, fserver, new_fserver and shared about the same margin it did over
-> the baseline, around 20%   For all these workloads, Jan's patch does not
-> seem to show any noticeable improvement over baseline kernel.  I'm
-> getting about the same performance with the rest of the workloads.
-> 
-> Here are the lock_stat output for alltests,
-> Jan;'s,
->                      &sbi->s_orphan_lock:       2762871        2763355           4.46       49043.39  1763499587.40         638.17        5878253        6475844           0.15       20508.98    70827300.79          10.94
-> Mine,
->                        &sbi->s_orphan_lock:       1171433        1172220           3.02      349678.21   553168029.92         471.90        5517262        8446052           0.09      254108.75    16504015.29           1.95
->               &sbi->s_orphan_op_mutex[n]:        783176         785840           4.95       30358.58   432279688.66         550.09        2899889        6505883           0.16       30254.12  1668330140.08         256.43
-> 
-> For custom,
-> Jan's,
->                      &sbi->s_orphan_lock:       5706466        5707069           4.54       44063.38  3312864313.18         580.48       11942088       13175060           0.15       15944.34   142660367.51          10.83
-> Mine,
->                      &sbi->s_orphan_lock:       5518186        5518558           4.84       32040.05  2436898419.22         441.58       12290996       13175234           0.17       23160.65   141234888.88          10.72
->               &sbi->s_orphan_op_mutex[n]:       1565216        1569333           4.50       32527.02   788215876.94         502.26        5894074       13196979           0.16       71073.57  3128766227.92         237.08
-> 
-> For dbase,
-> Jan's,
->                      &sbi->s_orphan_lock:         14453          14489           5.84       39442.57     8678179.21         598.95         119847         153686           0.17        4390.25     1406816.03           9.15
-> Mine,
->                      &sbi->s_orphan_lock:         13847          13868           6.23       31314.03     7982386.22         575.60         120332         153542           0.17        9354.86     1458061.28           9.50
->               &sbi->s_orphan_op_mutex[n]:          1700           1717          22.00       50566.24     1225749.82         713.89          85062         189435           0.16       31374.44    14476217.56          76.42
-> 
-> In case the line-wrap making it hard to read, I've also attached the
-> results as a text file.
-> 
-> The lock_stat seems to show that with my patch the s_orphan_lock performs
-> better across the board.  But on a smaller machine, the hashed mutex
-> seems to offset out the performance gain in the s_oprhan_lock and
-> increase the hashed mutex size likely to make it perform better.
-  I'd interpret the data a bit differently :) With your patch the
-contention for resource - access to orphan list - is split between
-s_orphan_lock and s_orphan_op_mutex. For the smaller machine contending
-directly on s_orphan_lock is a win and we spend less time waiting in total.
-For the large machine it seems beneficial to contend on the hashed mutex
-first and only after that on global lock. Likely that reduces amount of
-cacheline bouncing, or maybe the mutex is more often acquired during the
-spinning phase which reduces the acquisition latency.
-
-> Jan, if you could send me your orphan stress test, I could run lock_stat
-> for more performance comparison.
-  Sure, it is attached.
-
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
-
---DocE+STaALJfprDB
-Content-Type: text/x-c; charset=us-ascii
-Content-Disposition: attachment; filename="stress-orphan.c"
-
-#include <stdio.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <string.h>
-#include <signal.h>
-#include <unistd.h>
-#include <sys/wait.h>
-
-#define COUNT 100
-#define MAX_PROCS 1024
-
-char wbuf[4096];
-
-void run_test(char *base, int count)
-{
-	char pbuf[1024];
-	int fd, i, j;
-
-	sprintf(pbuf, "%s/file-%d", base, count);
-	fd = open(pbuf, O_CREAT | O_TRUNC | O_WRONLY, 0644);
-	if (fd < 0) {
-		perror("open");
-		exit(1);
-	}
-	
-	for (i = 0; i < COUNT; i++) {
-		if (pwrite(fd, wbuf, 4096, 0) != 4096) {
-			perror("pwrite");
-			exit(1);
-		}
-
-		for (j = 4095; j >= 1; j--) {
-			if (ftruncate(fd, j) < 0) {
-				perror("ftruncate");
-				exit(1);
-			}
-		}
-	}
-}
-
-int main(int argc, char **argv)
-{
-	int procs, i, j;
-	pid_t pids[MAX_PROCS];
-
-	if (argc != 3) {
-		fprintf(stderr, "Usage: stress-orphan <processes> <dir>\n");
-		return 1;
-	}
-	procs = strtol(argv[1], NULL, 10);
-	if (procs > MAX_PROCS) {
-		fprintf(stderr, "Too many processes!\n");
-		return 1;
-	}
-
-	for (i = 0; i < procs; i++) {
-		pids[i] = fork();
-		if (pids[i] < 0) {
-			perror("fork");
-			for (j = 0; j < i; j++)
-				kill(pids[j], SIGKILL);
-			return 1;
-		}
-		if (pids[i] == 0) {
-			run_test(argv[2], i);
-			exit(0);
-		}
-	}
-
-	printf("Processes started.\n");
-	for (i = 0; i < procs; i++)
-		waitpid(pids[i], NULL, 0);
-	return 0;
-}
-
---DocE+STaALJfprDB--
