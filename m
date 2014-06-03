@@ -1,90 +1,62 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/2] ext4: fix bug in ext4_mb_normalize_request()
-Date: Tue, 3 Jun 2014 16:36:39 -0400
-Message-ID: <20140603203639.GB25483@thunk.org>
-References: <1393855228-13592-1-git-send-email-mlombard@redhat.com>
- <1393855228-13592-3-git-send-email-mlombard@redhat.com>
- <20140306154407.GA28226@thunk.org>
- <20140306165416.GA2182@dhcp-27-189.brq.redhat.com>
- <alpine.LFD.2.00.1403061842240.2249@localhost.localdomain>
- <20140526165010.GN22284@thunk.org>
- <alpine.LFD.2.00.1406032040210.2095@localhost.localdomain>
+From: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
+Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
+Date: Wed, 4 Jun 2014 07:38:02 +1000
+Message-ID: <20140603213802.GH14410@dastard>
+References: <1401480116-1973111-1-git-send-email-arnd@arndb.de>
+ <7175692.dpgYFMbTaP@wuerfel>
+ <538CF346.2070504@zytor.com>
+ <5011138.W0gbOc20Qp@wuerfel>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Maurizio Lombardi <mlombard@redhat.com>, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "H. Peter Anvin" <hpa-YMNOUZJC4hwAvxtiuMwx3w@public.gmane.org>,
+	"Joseph S. Myers" <joseph-qD8j1LwMmJjtCj0u4l0SBw@public.gmane.org>,
+	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-arch-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	john.stultz-QSEj5FYQhm4dnm+yROfE0A@public.gmane.org, hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, tglx-hfZtesqFncYOwBW4kG4KsQ@public.gmane.org,
+	geert-Td1EMuHUCqxL1ZNQvxDV9g@public.gmane.org, lftan-EIB2kfCEclfQT0dZR+AlfA@public.gmane.org,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, coda-ETDLCGt7PQU3uPMLIKxrzw@public.gmane.org,
+	codalist-ySnCqBnJi5yMVn35/9/JlcWGCVk0P7UB@public.gmane.org,
+	fuse-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org,
+	linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-f2fs-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
+	linux-mtd-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-ntfs-dev-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, linux-scsi-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	logfs-PCqxUs/MD9bYtjvyW6yDsg@public.gmane.org, ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org,
+	reiserfs-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org,
+	xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org
+To: Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org>
+Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1406032040210.2095@localhost.localdomain>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <5011138.W0gbOc20Qp@wuerfel>
+Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jun 03, 2014 at 08:43:40PM +0200, Luk=C3=A1=C5=A1 Czerner wrote=
-:
->=20
-> I think that leaving the alignment of the start offset for the small
-> files/allocation is not good idea. We might end up with suboptimal
-> file layout for smaller files. While this is not a big deal for
-> bigger files, with smaller ones it might cause some troubles.
+On Tue, Jun 03, 2014 at 04:22:19PM +0200, Arnd Bergmann wrote:
+> On Monday 02 June 2014 14:57:26 H. Peter Anvin wrote:
+> > On 06/02/2014 12:55 PM, Arnd Bergmann wrote:
+> The possible uses I can see for non-ktime_t types in the kernel are:
+> * inodes need 96 bit timestamps to represent the full range of values
+>   that can be stored in a file system, you made a convincing argument
+>   for that. Almost everything else can fit into 64 bit on a 32-bit
+>   kernel, in theory also on a 64-bit kernel if we want that.
 
-I thought we were only aligning the start offset for files > 2MB?
+Just ot be pedantic, inodes don't *need* 96 bit timestamps - some
+filesystems can *support up to* 96 bit timestamps. If the kernel
+only supports 64 bit timestamps and that's all the kernel can
+represent, then the upper bits of the 96 bit on-disk inode
+timestamps simply remain zero.
 
-> Also I started looking into normalize_request and hopefully I'll
-> have a patch soon. Ted, do you have any suggestion for a test to
-> make sure that I do not make things worse ? You mentioned something
-> simple on LSF, but I do not remember what it was.
-
-The two mechanisms which we have currently are:
-
-1) e2freefrag to measure free space fragmentation
-
-2) e2fsck -fE fragcheck /dev/sdXX
-
-The latter will give you a reports such as this:
-
-142618(f): expecting 950605 actual extent phys 950800 log 89 len 26
-142618(f): expecting 950826 actual extent phys 950550 log 282 len 10
-
-Which would correspond to the following:
-
-debugfs:  stat <142618>
-Inode: 142618   Type: regular    Mode:  0666   Flags: 0x80000
-Generation: 2697220261    Version: 0x00000000:00000001
-User:     0   Group:     0   Size: 1194112
-=46ile ACL: 0    Directory ACL: 0
-Links: 1   Blockcount: 360
-=46ragment:  Address: 0    Number: 0    Size: 0
- ctime: 0x53495656:aa328a78 -- Sat Apr 12 11:05:58 2014
- atime: 0x53495643:c20a0ea4 -- Sat Apr 12 11:05:39 2014
- mtime: 0x53495653:43ad6c78 -- Sat Apr 12 11:05:55 2014
-crtime: 0x53495641:1332f128 -- Sat Apr 12 11:05:37 2014
-Size of extra inode fields: 28
-EXTENTS:
-(68-76):950596-950604, (89-114):950800-950825, (282-291):950550-950559
-
-This is admittedly imperfect.  First of all, it gives false positives
-when the file has holes (as in the above case).  And even if it didn't
-what we should do is to print the previous extent before the
-contiunity, since what's interesting is how big was the previous
-extent before we had a discontinuity, and because the length of the
-current extent isn't all that interesting in the case of last extent
-(the "tail") of the file.
-
-Hmm... if I have time I might look into patching e2fsck so that e2fsck
--E fragcheck is more useful.
-
-What's also missing is some way of taking all of this fine-grained
-information is turning it into one to three figures of merit that
-could be used to compare different tweaks to the block allocation
-algorithm.
+If you move the filesystem between kernels with different time
+ranges, then the filesystem needs to be able to tell the kernel what
+it's supported range is.  This is where having the VFS limit the
+range of supported timestamps is important: the limit is the
+min(kernel range, filesystem range). This allows the filesystems
+to be indepenent of the kernel time representation, and the kernel
+to be independent of the physical filesystem time encoding....
 
 Cheers,
 
-					- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Dave.
+-- 
+Dave Chinner
+david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org
