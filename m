@@ -1,157 +1,94 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 3/3 v2] quota: remove dqptr_sem
-Date: Tue, 3 Jun 2014 17:43:01 +0200
-Message-ID: <20140603154301.GE30706@quack.suse.cz>
-References: <537DD5BA.1050105@gmail.com>
- <538464AD.6050407@gmail.com>
- <20140527101219.GA28035@infradead.org>
- <538541FE.3070203@gmail.com>
- <20140602083436.GC3224@quack.suse.cz>
- <538D9AB0.9090607@gmail.com>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH 2/2] ext4: fix bug in ext4_mb_normalize_request()
+Date: Tue, 3 Jun 2014 20:43:40 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1406032040210.2095@localhost.localdomain>
+References: <1393855228-13592-1-git-send-email-mlombard@redhat.com> <1393855228-13592-3-git-send-email-mlombard@redhat.com> <20140306154407.GA28226@thunk.org> <20140306165416.GA2182@dhcp-27-189.brq.redhat.com> <alpine.LFD.2.00.1403061842240.2249@localhost.localdomain>
+ <20140526165010.GN22284@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	yawei.niu@intel.com, andreas.dilger@intel.com, lai.siyao@intel.com
-To: Niu Yawei <yawei.niu@gmail.com>
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1182484741-1401821024=:2095"
+Cc: Maurizio Lombardi <mlombard@redhat.com>, adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:43924 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:29217 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932172AbaFCPnI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 3 Jun 2014 11:43:08 -0400
-Content-Disposition: inline
-In-Reply-To: <538D9AB0.9090607@gmail.com>
+	id S1751362AbaFCSnu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 3 Jun 2014 14:43:50 -0400
+In-Reply-To: <20140526165010.GN22284@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 03-06-14 17:51:44, Niu Yawei wrote:
-> Thanks for the review, Honza.
-> > On Wed 28-05-14 09:55:10, Niu Yawei wrote:
-> >> Remove dqptr_sem to make quota code scalable: Remove the dqptr_sem,
-> >> accessing inode->i_dquot now protected by dquot_srcu, and changing
-> >> inode->i_dquot is now serialized by dq_data_lock.
-> >   The patch is mostly fine. Just some minor comments below.
-> >
-> > 								Honza
-> >  
-> >> Signed-off-by: Lai Siyao <lai.siyao@intel.com>
-> >> Signed-off-by: Niu Yawei <yawei.niu@intel.com>
-> >> ---
-> >>  fs/quota/dquot.c      |  105 +++++++++++++++++++------------------------------
-> >>  fs/super.c            |    1 -
-> >>  include/linux/quota.h |    1 -
-> >>  3 files changed, 41 insertions(+), 66 deletions(-)
-> >>
-> >> diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
-> >> index dc6f711..b86c88b 100644
-> >> --- a/fs/quota/dquot.c
-> >> +++ b/fs/quota/dquot.c
-> >> @@ -96,13 +96,15 @@
-> >>   * Note that some things (eg. sb pointer, type, id) doesn't change during
-> >>   * the life of the dquot structure and so needn't to be protected by a lock
-> >>   *
-> >> - * Any operation working on dquots via inode pointers must hold dqptr_sem.  If
-> >> - * operation is just reading pointers from inode (or not using them at all) the
-> >> - * read lock is enough. If pointers are altered function must hold write lock.
-> >> + * Operation accessing dquots via inode pointers are protected by dquot_srcu.
-> >> + * Operation of reading pointer needs srcu_read_lock(&dquot_srcu), and
-> >> + * synchronize_srcu(&dquot_srcu) is called before clear pointers to avoid
-> >   This is not actually precise. It should be:
-> > and synchronize_srcu(&dquot_srcu) is called after clearing pointers from
-> > inode and before dropping dquot references to avoid use of dquots after
-> > they are freed.
-> >
-> > Now that we have the rule spelled out exactly, I think we should update
-> > what remove_inode_dquot_ref() does. It should do something like:
-> >
-> > if (list_empty(&dquot->dq_free)) {
-> > 	spin_lock(&dq_list_lock);
-> > 	/*
-> > 	 * The inode still has reference to dquot so it can't be in the
-> > 	 * free list
-> > 	 */
-> > 	list_add(&dquot->dq_free, tofree_head);
-> > 	spin_unlock(&dq_list_lock);
-> > } else {
-> > 	/*
-> > 	 * Dquot is already in a list to put so we won't drop the last
-> > 	 * reference here.
-> > 	 */
-> > 	dqput(dquot);
-> > }
-> >
-> > Although in practice this should be mostly the same as the current code
-> > this makes it more obvious we keep one reference to each dquot from inodes
-> > until after we call synchronize_srcu(). And you can make this change as a
-> > separate patch before the dqptr_sem removal.
-> I don't quite follow this: in which condition the dq_free is not empty?
-  If we already added the dquot to tofree_head. Don't forget that there are
-likely many references to one dquot from different inodes. And we want to
-add dquot to the list just once.
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-> I think it could be that dquot has been put in tofree_head before, and it
-> was found by dqget() and become inuse again, right?
-  This cannot really happen - by the time remove_inode_dquot_ref() runs we
-have quota type marked as inactive and so dqget() will refuse to return any
-references to dquots of that type.
+--8323328-1182484741-1401821024=:2095
+Content-Type: TEXT/PLAIN; charset=utf-8
+Content-Transfer-Encoding: 8BIT
 
-> Then won't this race
-> with drop_dquot_ref() -> put_dquot_list()? Actually, it looks to me that
-> the old version of remove_inode_dquot_ref() has the same race. Did I miss
-> anyting?
+On Mon, 26 May 2014, Theodore Ts'o wrote:
+
+> Date: Mon, 26 May 2014 12:50:10 -0400
+> From: Theodore Ts'o <tytso@mit.edu>
+> To: Lukáš Czerner <lczerner@redhat.com>
+> Cc: Maurizio Lombardi <mlombard@redhat.com>, adilger.kernel@dilger.ca,
+>     linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+> Subject: Re: [PATCH 2/2] ext4: fix bug in ext4_mb_normalize_request()
 > 
-> My another concern is: in dqcache_shrink_scan(), we scan free_dquots
-> list without holding
-> the dq_list_lock, won't this race with dqget()/dqput()?
-  Yes, that's a bug introduced by commit
-1ab6c4997e04a00c50c6d786c2f046adc0d1f5de. Good spotting!
-dqcache_shrink_scan() should hold dq_list_lock all the time it runs. Will
-you add a fix to your series so that you get credit?
+> On Thu, Mar 06, 2014 at 06:54:05PM +0100, Lukáš Czerner wrote:
+> > Yes it tries to align down the start_off of the bigger requests to the 512,
+> > 1024, 2048, or 4096 respectively. What the reason for it is really I have
+> > no idea. The fact is however that this will only affect file systems
+> > with bs smaller than 4k since the start_off will be always aligned to
+> > block size afterwards (obviously).
+> > 
+> > That said this alignment is only done when the request is "big
+> > enough". With your change we also do it when the block group is
+> > "small enough" which is the change in behaviour which I think was
+> > not really intended.
+> > 
+> > Honestly I do not think this really matters a lot but this alignment
+> > you've added is not necessary.
+> > 
+> > All that said, I was getting to rewrite this mess a long time ago,
+> > it's just a reminder that it's something that needs to be done.
+> > Especially since the bigger requests are getting split unnecessarily
+> > which hurts especially in fallocate case.
+> 
+> Hey Lukas, where are we with respect to your plans to fix up this
+> code?
+> 
+> I'm trying to figure out what we should do with Maurizio's bug fix.
+> Should we apply it even though it's making some changes to the
+> existing behavior.
+> 
+> As far as to why the existing code is trying to align the starting
+> offset to a power of two, I believe the idea is to avoid
+> fragmentation, since the normalize_request function will tend to round
+> up allocaiton requests to the same power of two.
 
-> >> + * use after free. dq_data_lock is used to serialize the pointer setting and
-> >> + * clearing operations.
-> >>   * Special care needs to be taken about S_NOQUOTA inode flag (marking that
-> >>   * inode is a quota file). Functions adding pointers from inode to dquots have
-> >> - * to check this flag under dqptr_sem and then (if S_NOQUOTA is not set) they
-> >> - * have to do all pointer modifications before dropping dqptr_sem. This makes
-> >> + * to check this flag under dq_data_lock and then (if S_NOQUOTA is not set) they
-> >> + * have to do all pointer modifications before dropping dq_data_lock. This makes
-> >>   * sure they cannot race with quotaon which first sets S_NOQUOTA flag and
-> >>   * then drops all pointers to dquots from an inode.
-> >>   *
-> > ...
-> >> @@ -1485,12 +1473,13 @@ static void __dquot_drop(struct inode *inode)
-> >>  	int cnt;
-> >>  	struct dquot *put[MAXQUOTAS];
-> >>  
-> >> -	down_write(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> >> +	spin_lock(&dq_data_lock);
-> >>  	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
-> >>  		put[cnt] = inode->i_dquot[cnt];
-> >>  		inode->i_dquot[cnt] = NULL;
-> >>  	}
-> >> -	up_write(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> >> +	spin_unlock(&dq_data_lock);
-> >> +	synchronize_srcu(&dquot_srcu);
-> >>  	dqput_all(put);
-> >>  }
-> >   You don't have to call sychronize_srcu() here. There can be no other
-> > users of the inode when __dquot_drop() is called. So noone should be using
-> > inode dquot pointers as well. Probably we should document this assumption
-> > before dquot_drop().
-> >   
-> I'm fine to remove this and add comments before this fucntion, but I'm
-> wondering that
-> if it's safer to call an additional synchronize_srcu() here? (In case
-> of  someone use this
-> function for other purpose in the future.)
-  Well, but synchronize_srcu() is quite expensive and would get called when
-evicting each inode with quota initialized. So I think that would be too
-expensive safety... You can probably add there:
-	WARN_ON(!(inode->i_flags & (I_NEW | I_FREEING)));
-to catch unexpected users.
+Hi Ted,
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+I think that leaving the alignment of the start offset for the small
+files/allocation is not good idea. We might end up with suboptimal
+file layout for smaller files. While this is not a big deal for
+bigger files, with smaller ones it might cause some troubles.
+
+Maurizio, can you resend the patch without the alignment ?
+
+Also I started looking into normalize_request and hopefully I'll
+have a patch soon. Ted, do you have any suggestion for a test to
+make sure that I do not make things worse ? You mentioned something
+simple on LSF, but I do not remember what it was.
+
+Thanks!
+-Lukas
+
+
+> 
+>    	      	       	      	   	    - Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+--8323328-1182484741-1401821024=:2095--
