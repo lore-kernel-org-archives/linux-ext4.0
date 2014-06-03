@@ -1,101 +1,105 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: kernel BUG at fs/jbd2/journal.c:1951!
-Date: Tue, 3 Jun 2014 11:58:55 +0200
-Message-ID: <20140603095855.GA30706@quack.suse.cz>
-References: <alpine.SOC.1.00.1405252240110.16480@math.ut.ee>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: RE: [PATCH 1/2] ext4: introduce new i_write_mutex to protect
+ fallocate
+Date: Tue, 3 Jun 2014 12:49:35 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1406031246390.2112@localhost.localdomain>
+References: <001701cf6e40$fab98be0$f02ca3a0$@samsung.com> <alpine.LFD.2.00.1405291439340.18491@localhost.localdomain> <20140529162810.GG25041@thunk.org> <000c01cf7c9b$edaf2f90$c90d8eb0$@samsung.com> <20140602143807.GB30598@thunk.org>
+ <001801cf7ef1$b01a85a0$104f90e0$@samsung.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux Kernel list <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, sparclinux@vger.kernel.org
-To: Meelis Roos <mroos@linux.ee>
-Return-path: <sparclinux-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.SOC.1.00.1405252240110.16480@math.ut.ee>
-Sender: sparclinux-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-455720586-1401792579=:2112"
+Cc: "'Theodore Ts'o'" <tytso@mit.edu>,
+	"'linux-ext4'" <linux-ext4@vger.kernel.org>,
+	"'Ashish Sangwan'" <a.sangwan@samsung.com>
+To: Namjae Jeon <namjae.jeon@samsung.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:51160 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751189AbaFCKtn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 3 Jun 2014 06:49:43 -0400
+In-Reply-To: <001801cf7ef1$b01a85a0$104f90e0$@samsung.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun 25-05-14 22:50:53, Meelis Roos wrote:
-> Tried yesterdays git v3.15-rc6-190-g1ee1cea on Sun Fire T2000 (32-thread 
-> sparc64) and got reproducibly stuck on boot with ext journal replay like 
-> below. Booting Debian 3.14.2-1 replayed the log and mounted FS fine. 
-> After that, my test kernel works fine too. SO I can not reproduce it any 
-> more but it seems like I hit a bug.
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
+
+--8323328-455720586-1401792579=:2112
+Content-Type: TEXT/PLAIN; charset=iso-8859-2
+Content-Transfer-Encoding: 8BIT
+
+On Tue, 3 Jun 2014, Namjae Jeon wrote:
+
+> Date: Tue, 03 Jun 2014 15:04:32 +0900
+> From: Namjae Jeon <namjae.jeon@samsung.com>
+> To: 'Theodore Ts'o' <tytso@mit.edu>
+> Cc: 'Luká¹ Czerner' <lczerner@redhat.com>,
+>     'linux-ext4' <linux-ext4@vger.kernel.org>,
+>     'Ashish Sangwan' <a.sangwan@samsung.com>
+> Subject: RE: [PATCH 1/2] ext4: introduce new i_write_mutex to protect
+>     fallocate
 > 
-> [   62.064329] EXT4-fs (sda1): INFO: recovery required on readonly filesystem
-> [   62.064395] EXT4-fs (sda1): write access will be enabled during recovery
-> [   62.077043] EXT4-fs (sda1): orphan cleanup on readonly fs
-> [   62.156585] EXT4-fs (sda1): 14 orphan inodes deleted
-> [   62.156645] EXT4-fs (sda1): recovery complete
-> [   62.156702] kernel BUG at fs/jbd2/journal.c:1951!
-  So if I'm right this is assertion:
-	J_ASSERT(!journal->j_running_transaction);
+> > 
+> > On Sat, May 31, 2014 at 03:45:36PM +0900, Namjae Jeon wrote:
+> > > ext4 file write is already serialized with inode mutex.
+> > 
+> > Right, I had forgotten about that.  The case where we really care
+> > about parallel writes is in the direct I/O case, and eventually I'd
+> > like for us to be able to support non-overwriting/non-isize-extending
+> > writes in parallel but we're not there yet.
+> Okay.
+> > 
+> > > So I think the impact of adding another lock will be very very less..
+> > > When I run parallel write test of fio to prove it, I can not see the difference on w/wo
+> > i_write_mutex.
+> > 
+> > If there is an impact, it won't show up there.  Where it will show up
+> > will be in high scalability workloads.  For people who don't have the
+> > half-million dollars (and up) expensive RAID arrays, a fairly good
+> > facsimile is to use a > 16 core system, preferably a system at least 4
+> > sockets, and say 32 or 64 gigs of memory, of which you can dedicate
+> > half to a ramdisk.  Then run the fio scalability benchmark in that
+> > scenario.  That way, things like cache line bounces and lock
+> > contentions will be much more visible when the system is no longer
+> > bottleneck by the HDD.
+> Yes, Right. I agree that result should be measured on high-end server
+> as you pointed again. Unfortunately I don't have such equipment yet..
+> > 
+> > > Yes, Right. We can use shared lock to remove a little bit lock contention in ext4 file write.
+> > > I will share rwsem lock patch.. Could you please revert i_write_mutex patch ?
+> > 
+> > So the shared lock will help somewhat (since writes will be far more
+> > common than fallocate calls) but I suspect, not all that much.  And if
+> > I revert the i_write_mutex call, now, we won't have time to replace it
+> > with a different patch since the merge window is already open.
+> > 
+> > And since this patch is needed to fix a xfstests failure (although
+> > it's for collapse range in data journalling mode, so not a common
+> > case), if we can't really see a performance loss in the much more
+> > common server configurations, I'm inclined to leave it in for now, and
+> > we can try to improve performance in the next kernel revision.
+> IMHO, If our goal is to solve the problem of xfstests, we can use only
+> "ext4: fix ZERO_RANGE test failure in data journalling" patch without
+> i_write_mutex patch. And we can add lock for fallocate on next kernel
+> after checking with sufficient time.
 
-  But I don't really see how that could happen especially during mount when
-there are really just two processes operating in the filesystem - mount and
-jbd2 process. Hum, after some more thought, maybe this is some strange
-interaction between writeback completion starting a reserved handle and
-journal_flush()... There is some potential for problems. Let me think about
-it for some time.
+I would rather go with this solution. The race is not terribly
+critical and this way we would have more time to come up with a
+proper locking also with proper locking for AIO/DIO because from my
+measurement I can see only about 50% of performance that xfs can
+achieve. I believe that the reason is that we're actually using the
+stock VFS locking, but we should be able to do something smarter
+than that.
 
-									Honza
+Thanks!
+-Lukas
 
-> [   62.156752]               \|/ ____ \|/
-> [   62.156752]               "@'/ .. \`@"
-> [   62.156752]               /_| \__/ |_\
-> [   62.156752]                  \__U_/
-> [   62.156893] swapper/0(1): Kernel bad sw trap 5 [#1]
-> [   62.156943] CPU: 8 PID: 1 Comm: swapper/0 Not tainted 3.15.0-rc6+ #6
-> [   62.157004] task: ffffff8008677640 ti: ffffff800870c000 task.ti: ffffff800870c000
-> [   62.157079] TSTATE: 0000004480001605 TPC: 00000000005f3c00 TNPC: 00000000005f3c04 Y: 00000000    Not tainted
-> [   62.157180] TPC: <jbd2_journal_flush+0x11c/0x190>
-> [   62.157225] g0: 00000000009528c8 g1: 0000000000000000 g2: 0000000000a17f88 g3: 0000000000a17f80
-> [   62.157301] g4: ffffff8008677640 g5: ffffff83f6a4a000 g6: ffffff800870c000 g7: ffffff8008633fa0
-> [   62.157375] o0: 0000000000000025 o1: 0000000000961ed8 o2: 000000000000079f o3: ffffff83f3aab888
-> [   62.157451] o4: ffffff83ffb72000 o5: 0000000000961ed8 sp: ffffff800870ed11 ret_pc: 00000000005f3bf8
-> [   62.157530] RPC: <jbd2_journal_flush+0x114/0x190>
-> [   62.157575] l0: 0000000000000000 l1: 000000000000000e l2: 0000000010018001 l3: 000000000088e438
-> [   62.157650] l4: 00000000009528c8 l5: 000000000000ff00 l6: 0000000000ff0000 l7: 000000000095ee30
-> [   62.157726] i0: ffffff83f3aab800 i1: ffffff83f3aab824 i2: ffffff83f3aabb98 i3: ffffff83f3aab8e8
-> [   62.157801] i4: ffffff83f3aab824 i5: ffffff83f3aab8e8 i6: ffffff800870edc1 i7: 00000000005bd640
-> [   62.157887] I7: <ext4_mark_recovery_complete.isra.232+0x4c/0xb0>
-> [   62.157942] Call Trace:
-> [   62.157990]  [00000000005bd640] ext4_mark_recovery_complete.isra.232+0x4c/0xb0
-> [   62.158068]  [00000000005c3860] ext4_fill_super+0x303c/0x33e8
-> [   62.158132]  [0000000000538fc4] mount_bdev+0x124/0x18c
-> [   62.158192]  [0000000000539a4c] mount_fs+0x60/0x17c
-> [   62.158246]  [000000000055087c] vfs_kern_mount+0x48/0xe4
-> [   62.158309]  [0000000000552e24] do_mount+0x808/0x974
-> [   62.158370]  [00000000005531b0] SyS_mount+0x6c/0xa4
-> [   62.158427]  [0000000000a74cb8] mount_block_root+0x108/0x2ac
-> [   62.158490]  [0000000000a75180] prepare_namespace+0x180/0x1bc
-> [   62.158552]  [0000000000a74a80] kernel_init_freeable+0x208/0x218
-> [   62.158619]  [0000000000864724] kernel_init+0x4/0xf4
-> [   62.158684]  [0000000000406084] ret_from_fork+0x1c/0x2c
-> [   62.158738]  [0000000000000000]           (null)
-> [   62.158780] Disabling lock debugging due to kernel taint
-> [   62.158847] Caller[00000000005bd640]: ext4_mark_recovery_complete.isra.232+0x4c/0xb0
-> [   62.158926] Caller[00000000005c3860]: ext4_fill_super+0x303c/0x33e8
-> [   62.158990] Caller[0000000000538fc4]: mount_bdev+0x124/0x18c
-> [   62.159051] Caller[0000000000539a4c]: mount_fs+0x60/0x17c
-> [   62.159143] Caller[000000000055087c]: vfs_kern_mount+0x48/0xe4
-> [   62.159215] Caller[0000000000552e24]: do_mount+0x808/0x974
-> [   62.159279] Caller[00000000005531b0]: SyS_mount+0x6c/0xa4
-> [   62.159345] Caller[0000000000a74cb8]: mount_block_root+0x108/0x2ac
-> [   62.159411] Caller[0000000000a75180]: prepare_namespace+0x180/0x1bc
-> [   62.159475] Caller[0000000000a74a80]: kernel_init_freeable+0x208/0x218
-> [   62.159540] Caller[0000000000864724]: kernel_init+0x4/0xf4
-> [   62.159604] Caller[0000000000406084]: ret_from_fork+0x1c/0x2c
-> [   62.159660] Caller[0000000000000000]:           (null)
-> [   62.166652] Instruction DUMP: 901222d8  7ff8d20a  01000000 <91d02005> 11002587  921027a1  0af07ffb  901222d8  c45e2310
-> [   62.207443] Kernel panic - not syncing: Attempted to kill init! exitcode=0x00000009
+> 
+> Thanks!
+> 
+> > 
+> > What do other people think?
+> > 
+> > 						- Ted
 > 
 > 
-> -- 
-> Meelis Roos (mroos@linux.ee)
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+--8323328-455720586-1401792579=:2112--
