@@ -1,83 +1,219 @@
-From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: RE: [PATCH 1/2] ext4: introduce new i_write_mutex to protect fallocate
-Date: Tue, 03 Jun 2014 15:04:32 +0900
-Message-ID: <001801cf7ef1$b01a85a0$104f90e0$@samsung.com>
-References: <001701cf6e40$fab98be0$f02ca3a0$@samsung.com>
- <alpine.LFD.2.00.1405291439340.18491@localhost.localdomain>
- <20140529162810.GG25041@thunk.org>
- <000c01cf7c9b$edaf2f90$c90d8eb0$@samsung.com>
- <20140602143807.GB30598@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 2/2] ext4: Reduce contention on s_orphan_lock
+Date: Tue, 3 Jun 2014 10:52:05 +0200
+Message-ID: <20140603085205.GA29219@quack.suse.cz>
+References: <1400185026-3972-1-git-send-email-jack@suse.cz>
+ <1400185026-3972-3-git-send-email-jack@suse.cz>
+ <537B1353.8060704@hp.com>
+ <20140520135723.GB15177@thunk.org>
+ <538CB83C.9080409@hp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-2
-Content-Transfer-Encoding: 7bit
-Cc: =?iso-8859-2?Q?'Luk=E1=B9_Czerner'?= <lczerner@redhat.com>,
-	'linux-ext4' <linux-ext4@vger.kernel.org>,
-	'Ashish Sangwan' <a.sangwan@samsung.com>
-To: 'Theodore Ts'o' <tytso@mit.edu>
+Content-Type: multipart/mixed; boundary="DocE+STaALJfprDB"
+Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org
+To: Thavatchai Makphaibulchoke <thavatchai.makpahibulchoke@hp.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout1.samsung.com ([203.254.224.24]:34542 "EHLO
-	mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751732AbaFCGEf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Jun 2014 02:04:35 -0400
-Received: from epcpsbgr2.samsung.com
- (u142.gpu120.samsung.co.kr [203.254.230.142])
- by mailout1.samsung.com (Oracle Communications Messaging Server 7u4-24.01
- (7.0.4.24.0) 64bit (built Nov 17 2011))
- with ESMTP id <0N6K00A6GWVK5LC0@mailout1.samsung.com> for
- linux-ext4@vger.kernel.org; Tue, 03 Jun 2014 15:04:32 +0900 (KST)
-In-reply-to: <20140602143807.GB30598@thunk.org>
-Content-language: ko
+Received: from cantor2.suse.de ([195.135.220.15]:35508 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751000AbaFCIwK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 3 Jun 2014 04:52:10 -0400
+Content-Disposition: inline
+In-Reply-To: <538CB83C.9080409@hp.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> 
-> On Sat, May 31, 2014 at 03:45:36PM +0900, Namjae Jeon wrote:
-> > ext4 file write is already serialized with inode mutex.
-> 
-> Right, I had forgotten about that.  The case where we really care
-> about parallel writes is in the direct I/O case, and eventually I'd
-> like for us to be able to support non-overwriting/non-isize-extending
-> writes in parallel but we're not there yet.
-Okay.
-> 
-> > So I think the impact of adding another lock will be very very less..
-> > When I run parallel write test of fio to prove it, I can not see the difference on w/wo
-> i_write_mutex.
-> 
-> If there is an impact, it won't show up there.  Where it will show up
-> will be in high scalability workloads.  For people who don't have the
-> half-million dollars (and up) expensive RAID arrays, a fairly good
-> facsimile is to use a > 16 core system, preferably a system at least 4
-> sockets, and say 32 or 64 gigs of memory, of which you can dedicate
-> half to a ramdisk.  Then run the fio scalability benchmark in that
-> scenario.  That way, things like cache line bounces and lock
-> contentions will be much more visible when the system is no longer
-> bottleneck by the HDD.
-Yes, Right. I agree that result should be measured on high-end server
-as you pointed again. Unfortunately I don't have such equipment yet..
-> 
-> > Yes, Right. We can use shared lock to remove a little bit lock contention in ext4 file write.
-> > I will share rwsem lock patch.. Could you please revert i_write_mutex patch ?
-> 
-> So the shared lock will help somewhat (since writes will be far more
-> common than fallocate calls) but I suspect, not all that much.  And if
-> I revert the i_write_mutex call, now, we won't have time to replace it
-> with a different patch since the merge window is already open.
-> 
-> And since this patch is needed to fix a xfstests failure (although
-> it's for collapse range in data journalling mode, so not a common
-> case), if we can't really see a performance loss in the much more
-> common server configurations, I'm inclined to leave it in for now, and
-> we can try to improve performance in the next kernel revision.
-IMHO, If our goal is to solve the problem of xfstests, we can use only
-"ext4: fix ZERO_RANGE test failure in data journalling" patch without
-i_write_mutex patch. And we can add lock for fallocate on next kernel
-after checking with sufficient time.
 
-Thanks!
+--DocE+STaALJfprDB
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
+On Mon 02-06-14 11:45:32, Thavatchai Makphaibulchoke wrote:
+> On 05/20/2014 07:57 AM, Theodore Ts'o wrote:
+> > On Tue, May 20, 2014 at 02:33:23AM -0600, Thavatchai Makphaibulchoke wrote:
+> > 
+> > Thavatchai, it would be really great if you could do lock_stat runs
+> > with both Jan's latest patches as well as yours.  We need to
+> > understand where the differences are coming from.
+> > 
+> > As I understand things, there are two differences between Jan and your
+> > approaches.  The first is that Jan is using the implicit locking of
+> > i_mutex to avoid needing to keep a hashed array of mutexes to
+> > synchronize an individual inode's being added or removed to the orphan
+> > list.
+> > 
+> > The second is that you've split the orphan mutex into an on-disk mutex
+> > and a in-memory spinlock.
+> > 
+> > Is it possible to split up your patch so we can measure the benefits
+> > of each of these two changes?  More interestingly, is there a way we
+> > can use the your second change in concert with Jan's changes?
+> > 
+> > Regards,
+> > 
+> > 						- Ted
+> > 
 > 
-> What do other people think?
+> Thanks to Jan, as she pointed out one optimization in orphan_addr() that
+> I've missed.
 > 
-> 						- Ted
+> After integrated that into my patch, I've rerun the following aim7
+> workloads; alltests, custom, dbase, disk, fserver, new_fserver, shared
+> and short.  Here are the results.
+> 
+> On an 8 core (16 thread) machine, both my revised patch (with additional
+> optimization from Jan's oprhan_add()) and version 3 of Jan's patch give
+> about the same results, for most of the workloads, except fserver and
+> new_fserver, which Jan's outperforms about 9% and 16%, respectively.
+> 
+> Here are the lock_stat output for disk,
+> Jan's patch,
+> lock_stat version 0.4
+> -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+>                               class name    con-bounces    contentions   waittime-min   waittime-max waittime-total   waittime-avg    acq-bounces   acquisitions   holdtime-min   holdtime-max holdtime-total   holdtime-avg
+> -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+>                      &sbi->s_orphan_lock:         80189          80246           3.94      464489.22    77219615.47         962.29         503289         809004           0.10      476537.44     3424587.77           4.23
+> Mine,
+>                      &sbi->s_orphan_lock:         82215          82259           3.61      640876.19    15098561.09         183.55         541422         794254           0.10      640368.86     4425140.61           5.57
+>               &sbi->s_orphan_op_mutex[n]:        102507         104880           4.21     1335087.21  1392773487.19       13279.69         398328         840120           0.11     1334711.17   397596137.90         473.26
+> 
+> For new_fserver,
+> Jan's patch,
+>                      &sbi->s_orphan_lock:       1063059        1063369           5.57     1073325.95 59535205188.94       55987.34        4525570        8446052           0.10       75625.72    10700844.58         1.27
+> Mine,
+>                      &sbi->s_orphan_lock:       1171433        1172220           3.02      349678.21   553168029.92         471.90        5517262        8446052           0.09      254108.75    16504015.29           1.95
+>               &sbi->s_orphan_op_mutex[n]:       2176760        2202674           3.44      633129.10 55206091750.06       25063.21        3259467        8452918           0.10      349687.82   605683982.34        71.65
+> 
+> 
+> On an 80 core (160 thread) machine, mine outpeforms Jan's in alltests,
+> custom, fserver, new_fserver and shared about the same margin it did over
+> the baseline, around 20%   For all these workloads, Jan's patch does not
+> seem to show any noticeable improvement over baseline kernel.  I'm
+> getting about the same performance with the rest of the workloads.
+> 
+> Here are the lock_stat output for alltests,
+> Jan;'s,
+>                      &sbi->s_orphan_lock:       2762871        2763355           4.46       49043.39  1763499587.40         638.17        5878253        6475844           0.15       20508.98    70827300.79          10.94
+> Mine,
+>                        &sbi->s_orphan_lock:       1171433        1172220           3.02      349678.21   553168029.92         471.90        5517262        8446052           0.09      254108.75    16504015.29           1.95
+>               &sbi->s_orphan_op_mutex[n]:        783176         785840           4.95       30358.58   432279688.66         550.09        2899889        6505883           0.16       30254.12  1668330140.08         256.43
+> 
+> For custom,
+> Jan's,
+>                      &sbi->s_orphan_lock:       5706466        5707069           4.54       44063.38  3312864313.18         580.48       11942088       13175060           0.15       15944.34   142660367.51          10.83
+> Mine,
+>                      &sbi->s_orphan_lock:       5518186        5518558           4.84       32040.05  2436898419.22         441.58       12290996       13175234           0.17       23160.65   141234888.88          10.72
+>               &sbi->s_orphan_op_mutex[n]:       1565216        1569333           4.50       32527.02   788215876.94         502.26        5894074       13196979           0.16       71073.57  3128766227.92         237.08
+> 
+> For dbase,
+> Jan's,
+>                      &sbi->s_orphan_lock:         14453          14489           5.84       39442.57     8678179.21         598.95         119847         153686           0.17        4390.25     1406816.03           9.15
+> Mine,
+>                      &sbi->s_orphan_lock:         13847          13868           6.23       31314.03     7982386.22         575.60         120332         153542           0.17        9354.86     1458061.28           9.50
+>               &sbi->s_orphan_op_mutex[n]:          1700           1717          22.00       50566.24     1225749.82         713.89          85062         189435           0.16       31374.44    14476217.56          76.42
+> 
+> In case the line-wrap making it hard to read, I've also attached the
+> results as a text file.
+> 
+> The lock_stat seems to show that with my patch the s_orphan_lock performs
+> better across the board.  But on a smaller machine, the hashed mutex
+> seems to offset out the performance gain in the s_oprhan_lock and
+> increase the hashed mutex size likely to make it perform better.
+  I'd interpret the data a bit differently :) With your patch the
+contention for resource - access to orphan list - is split between
+s_orphan_lock and s_orphan_op_mutex. For the smaller machine contending
+directly on s_orphan_lock is a win and we spend less time waiting in total.
+For the large machine it seems beneficial to contend on the hashed mutex
+first and only after that on global lock. Likely that reduces amount of
+cacheline bouncing, or maybe the mutex is more often acquired during the
+spinning phase which reduces the acquisition latency.
 
+> Jan, if you could send me your orphan stress test, I could run lock_stat
+> for more performance comparison.
+  Sure, it is attached.
+
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
+
+--DocE+STaALJfprDB
+Content-Type: text/x-c; charset=us-ascii
+Content-Disposition: attachment; filename="stress-orphan.c"
+
+#include <stdio.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <string.h>
+#include <signal.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
+#define COUNT 100
+#define MAX_PROCS 1024
+
+char wbuf[4096];
+
+void run_test(char *base, int count)
+{
+	char pbuf[1024];
+	int fd, i, j;
+
+	sprintf(pbuf, "%s/file-%d", base, count);
+	fd = open(pbuf, O_CREAT | O_TRUNC | O_WRONLY, 0644);
+	if (fd < 0) {
+		perror("open");
+		exit(1);
+	}
+	
+	for (i = 0; i < COUNT; i++) {
+		if (pwrite(fd, wbuf, 4096, 0) != 4096) {
+			perror("pwrite");
+			exit(1);
+		}
+
+		for (j = 4095; j >= 1; j--) {
+			if (ftruncate(fd, j) < 0) {
+				perror("ftruncate");
+				exit(1);
+			}
+		}
+	}
+}
+
+int main(int argc, char **argv)
+{
+	int procs, i, j;
+	pid_t pids[MAX_PROCS];
+
+	if (argc != 3) {
+		fprintf(stderr, "Usage: stress-orphan <processes> <dir>\n");
+		return 1;
+	}
+	procs = strtol(argv[1], NULL, 10);
+	if (procs > MAX_PROCS) {
+		fprintf(stderr, "Too many processes!\n");
+		return 1;
+	}
+
+	for (i = 0; i < procs; i++) {
+		pids[i] = fork();
+		if (pids[i] < 0) {
+			perror("fork");
+			for (j = 0; j < i; j++)
+				kill(pids[j], SIGKILL);
+			return 1;
+		}
+		if (pids[i] == 0) {
+			run_test(argv[2], i);
+			exit(0);
+		}
+	}
+
+	printf("Processes started.\n");
+	for (i = 0; i < procs; i++)
+		waitpid(pids[i], NULL, 0);
+	return 0;
+}
+
+--DocE+STaALJfprDB--
