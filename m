@@ -1,97 +1,90 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] resize2fs: Don't attempt to calculate minimum size on fs
- with errors
-Date: Wed, 04 Jun 2014 16:12:47 -0500
-Message-ID: <538F8BCF.7090405@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>,
-	Jes Sorensen <Jes.Sorensen@redhat.com>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] tests: for mktemp the exes must be the final characters of the name
+Date: Wed, 4 Jun 2014 16:31:21 -0600
+Message-ID: <850D72EC-599B-458C-BBE1-22E6A0F74E92@dilger.ca>
+References: <1401884926-31722-1-git-send-email-bensberg@justemail.net>
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
+Content-Type: multipart/signed; boundary="Apple-Mail=_6971F38F-3C47-4184-A39A-0BF06CF5B257"; protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: linux-ext4@vger.kernel.org
+To: Benno Schulenberg <bensberg@justemail.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58067 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751760AbaFDVMt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 Jun 2014 17:12:49 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s54LCnvR003583
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Wed, 4 Jun 2014 17:12:49 -0400
+Received: from mail-pd0-f177.google.com ([209.85.192.177]:58335 "EHLO
+	mail-pd0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751554AbaFDWb1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jun 2014 18:31:27 -0400
+Received: by mail-pd0-f177.google.com with SMTP id g10so140903pdj.8
+        for <linux-ext4@vger.kernel.org>; Wed, 04 Jun 2014 15:31:26 -0700 (PDT)
+In-Reply-To: <1401884926-31722-1-git-send-email-bensberg@justemail.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-My old patch:
 
-	resize2fs: don't print minimum size if fs is not clean
+--Apple-Mail=_6971F38F-3C47-4184-A39A-0BF06CF5B257
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain;
+	charset=us-ascii
 
-almost did this, but it still calculated the size; it just didn't print
-it.  Which is a bit silly.
+On Jun 4, 2014, at 6:28 AM, Benno Schulenberg <bensberg@justemail.net> wrote:
+> Signed-off-by: Benno Schulenberg <bensberg@justemail.net>
+> ---
+> tests/scripts/resize_test |    2 +-
+> 1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/tests/scripts/resize_test b/tests/scripts/resize_test
+> index c9a7a1c..1e5756c 100755
+> --- a/tests/scripts/resize_test
+> +++ b/tests/scripts/resize_test
+> @@ -21,7 +21,7 @@ if truncate -s $SIZE_2 $TMPFILE 2> /dev/null; then
+> 	echo "using $TMPFILE" >> $LOG
+> else
+> 	rm $TMPFILE
+> -	export TMPFILE=$(TMPDIR=. mktemp -t $test_name.XXXXXX.tmp)
+> +	export TMPFILE=$(TMPDIR=. mktemp -t $test_name.tmp.XXXXXX)
 
-Jes had a pretty badly corrupted image which made the minimum size
-calculation go off into the weeds.  It was corrupted, and also marked
-as having an error.
+The goal was that the temporary file ended with ".tmp" so that it would
+be removed by "make clean" in case the test fails or is interrupted, so
+it would be good to update the "make clean" rules to find these files.
 
-We'll eventually bail out for an unmounted filesystem if it's marked
-as being in an error state anyway; just move that test & bail-out
-to a much earlier point, and remove the now-duplicate one under the
-print_min_size block.
+I also notice that there are occasional e2fsprogs-tmp.XXXXXX files left
+behind in /tmp after testing, and it would be nice if they contained the
+test name so they can be found if there is a problem.
 
-This will catch & block all resize operations on an offline filesystem
-with errors, in one central place.
+It looks like the same could be done in tests/test_one.in:
 
-Reported-by: Jes Sorensen <Jes.Sorensen@redhat.com>
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+TMPFILE=$(mktemp -t e2fsprogs-$test_name.tmp.XXXXXX)
 
-diff --git a/resize/main.c b/resize/main.c
-index 2b7abff..e65c8e4 100644
---- a/resize/main.c
-+++ b/resize/main.c
-@@ -319,6 +319,17 @@ int main (int argc, char ** argv)
- 		exit (1);
- 	}
- 
-+	if (!(mount_flags & EXT2_MF_MOUNTED)) {
-+		if (!force && ((fs->super->s_lastcheck < fs->super->s_mtime) ||
-+			       (fs->super->s_state & EXT2_ERROR_FS) ||
-+			       ((fs->super->s_state & EXT2_VALID_FS) == 0))) {
-+			fprintf(stderr,
-+				_("Please run 'e2fsck -f %s' first.\n\n"),
-+				device_name);
-+			exit(1);
-+		}
-+	}
-+
- 	/*
- 	 * Check for compatibility with the feature sets.  We need to
- 	 * be more stringent than ext2fs_open().
-@@ -332,13 +343,6 @@ int main (int argc, char ** argv)
- 	min_size = calculate_minimum_resize_size(fs, flags);
- 
- 	if (print_min_size) {
--		if (!force && ((fs->super->s_state & EXT2_ERROR_FS) ||
--			       ((fs->super->s_state & EXT2_VALID_FS) == 0))) {
--			fprintf(stderr,
--				_("Please run 'e2fsck -f %s' first.\n\n"),
--				device_name);
--			exit(1);
--		}
- 		printf(_("Estimated minimum size of the filesystem: %llu\n"),
- 		       min_size);
- 		exit(0);
-@@ -444,14 +448,6 @@ int main (int argc, char ** argv)
- 		bigalloc_check(fs, force);
- 		retval = online_resize_fs(fs, mtpt, &new_size, flags);
- 	} else {
--		if (!force && ((fs->super->s_lastcheck < fs->super->s_mtime) ||
--			       (fs->super->s_state & EXT2_ERROR_FS) ||
--			       ((fs->super->s_state & EXT2_VALID_FS) == 0))) {
--			fprintf(stderr,
--				_("Please run 'e2fsck -f %s' first.\n\n"),
--				device_name);
--			exit(1);
--		}
- 		bigalloc_check(fs, force);
- 		printf(_("Resizing the filesystem on "
- 			 "%s to %llu (%dk) blocks.\n"),
 
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_6971F38F-3C47-4184-A39A-0BF06CF5B257
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIVAwUBU4+eOXKl2rkXzB/gAQIbEQ//b36V9bekNNsv4gLyk71VQ1lx3GUe7oxZ
+Y3k4GQA4b5kNs5cVswZgEQuLF/OR06/nf1qIxf8OSrAUOelEu2RX97vQ8bqd6cX8
+4cl4c2fU3EQXMp6ylaKs2QFUrZfq9yIcu6iamP9XZUkBVfEMFmIs273cylXVEk2C
+3d59WCuSHw3nz/fZ0f2dIJIW6GZHRLbsKzrpRr35GLswMIZ+lijeOmNRyOT7KgyJ
+UwGnzvooG6FW1fAEyGRP+HCAIQNYz23ogUkHDtsSN5Fos/hY5G8oZJhDKhqNo5b9
+qF/11qm/uSrBW4hhGoM4pq8rCZYhaL2fLFbvvzvJEIcJ8xk/DsXQehErzQvT7gDl
+MRCDmWVP/eOB1YBrgJYzp2EbH8yVTp4M/JFeqTiSeVTBSTgTLKAJqtt15YpcpPT3
+Ae05zo0g0C38/6i54EffLN5Ebl19piTbWsLlueoZ9ZAA6yLx6V/vEwf4biWk8dlL
++LLcDuPg48hVpDY4Il36WiDQj3OFV4LSwP827LkWsUqfcmurGWXCat6gJoyGGI3h
+3K9ltqXc/n5Uwr6Dys3YKKmmrglMUneuWJglrJPxYHvS88PMwP0MTupi1NLTOckf
+Lk1ilnmoxNV+Ea7fz7LWzzVj85OJhH4nxiiSVlp01prrHJRgZ0ey9sycAyNyd+tt
+kwsITVN4kUM=
+=cF62
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_6971F38F-3C47-4184-A39A-0BF06CF5B257--
