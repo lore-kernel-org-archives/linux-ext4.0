@@ -1,94 +1,80 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [2/4 v2] e2fsck: make a prompt message simpler and thus
- translatable
-Date: Wed, 4 Jun 2014 10:42:39 -0400
-Message-ID: <20140604144239.GI27426@thunk.org>
-References: <20140602234001.GJ30598@thunk.org>
- <1401827722-13286-1-git-send-email-bensberg@justemail.net>
- <20140604020719.GC27426@thunk.org>
- <1401884601.6870.125052445.0CA47507@webmail.messagingengine.com>
- <20140604125650.GF27426@thunk.org>
- <1401888336.22807.125078021.186DE367@webmail.messagingengine.com>
+From: Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org>
+Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
+Date: Wed, 4 Jun 2014 17:03:47 +0200
+Message-ID: <201406041703.47592.arnd@arndb.de>
+References: <1401480116-1973111-1-git-send-email-arnd@arndb.de>
+	<5011138.W0gbOc20Qp@wuerfel> <20140603213802.GH14410@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Benno Schulenberg <bensberg@justemail.net>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:50056 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751563AbaFDOmm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 Jun 2014 10:42:42 -0400
-Content-Disposition: inline
-In-Reply-To: <1401888336.22807.125078021.186DE367@webmail.messagingengine.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, linux-mtd-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org,
+	"H. Peter Anvin" <hpa-YMNOUZJC4hwAvxtiuMwx3w@public.gmane.org>, logfs-PCqxUs/MD9bYtjvyW6yDsg@public.gmane.org,
+	linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, "Joseph S. Myers" <joseph-qD8j1LwMmJjtCj0u4l0SBw@public.gmane.org>,
+	linux-arch-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-scsi-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, coda-ETDLCGt7PQU3uPMLIKxrzw@public.gmane.org, geert-Td1EMuHUCqxL1ZNQvxDV9g@public.gmane.org,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, codalist-ySnCqBnJi5yMVn35/9/JlcWGCVk0P7UB@public.gmane.org,
+	fuse-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, reiserfs-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org, john.stultz-QSEj5FYQhm4dnm+yROfE0A@public.gmane.org, tglx-hfZtesqFncYOwBW4kG4KsQ@public.gmane.org,
+	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ntfs-dev-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
+	samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-f2fs-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
+	ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	lftan-EIB2kfCEclfQT0dZR+AlfA@public.gmane.org, linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
+Return-path: <fuse-devel-bounces-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org>
+In-Reply-To: <20140603213802.GH14410@dastard>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/fuse-devel>,
+	<mailto:fuse-devel-request-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=fuse-devel>
+List-Post: <mailto:fuse-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org>
+List-Help: <mailto:fuse-devel-request-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/fuse-devel>,
+	<mailto:fuse-devel-request-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org?subject=subscribe>
+Errors-To: fuse-devel-bounces-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jun 04, 2014 at 03:25:36PM +0200, Benno Schulenberg wrote:
+On Tuesday 03 June 2014, Dave Chinner wrote:
+> On Tue, Jun 03, 2014 at 04:22:19PM +0200, Arnd Bergmann wrote:
+> > On Monday 02 June 2014 14:57:26 H. Peter Anvin wrote:
+> > > On 06/02/2014 12:55 PM, Arnd Bergmann wrote:
+> > The possible uses I can see for non-ktime_t types in the kernel are:
+> > * inodes need 96 bit timestamps to represent the full range of values
+> >   that can be stored in a file system, you made a convincing argument
+> >   for that. Almost everything else can fit into 64 bit on a 32-bit
+> >   kernel, in theory also on a 64-bit kernel if we want that.
 > 
-> On Wed, Jun 4, 2014, at 14:56, Theodore Ts'o wrote:
-> > On Wed, Jun 04, 2014 at 02:23:21PM +0200, Benno Schulenberg wrote:
-> > > 
-> > > Running 'make check' now, I see these messages along the way:
-> > > 
-> > > mktemp: too few X's in template `r_64bit_big_expand.XXXXXX.tmp'
-> 
-> This "too few X's" is misleading -- what it intends to say is that it
-> sees zero X's in the final component of the name, "tmp".
+> Just ot be pedantic, inodes don't need 96 bit timestamps - some
+> filesystems can *support up to* 96 bit timestamps. If the kernel
+> only supports 64 bit timestamps and that's all the kernel can
+> represent, then the upper bits of the 96 bit on-disk inode
+> timestamps simply remain zero.
 
-In the posix specification, "component" has a specific meaning, and it
-means the last part of a pathname.  For example the "basename" command
-is described as removing all of the leading directory components.
-NAME_LEN is defined to be the maximum length of a pathname component,
-etc.
+I meant the reverse: since we have file systems that can store
+96-bit timestamps when using 64-bit kernels, we need to extend
+32-bit kernels to have the same internal representation so we
+can actually read those file systems correctly.
 
-I don't think your reading of the word "component" is correct.
+> If you move the filesystem between kernels with different time
+> ranges, then the filesystem needs to be able to tell the kernel what
+> it's supported range is.  This is where having the VFS limit the
+> range of supported timestamps is important: the limit is the
+> min(kernel range, filesystem range). This allows the filesystems
+> to be indepenent of the kernel time representation, and the kernel
+> to be independent of the physical filesystem time encoding....
 
-> > Hmm... what OS and if Linux, version of coreutils are you using?
-> 
-> Ubuntu Lucid, 2010.04, mktemp --version | head -1
-> mktemp (GNU coreutils) 8.13
+I agree it makes sense to let the kernel know about the limits
+of the file system it accesses, but for the reverse, we're probably
+better off just making the kernel representation large enough (i.e.
+96 bits) so it can work with any known file system. We need another
+check at the user space boundary to turn that into a value that the
+user can understand, but that's another problem.
 
-OK, interesting.  It seems to work just fine using coreutils 8.21
-(Debian Testing).  And I just checked on one of my Debian Stable
-machines, which is using coreutils 8.13-3.5, and it's working there.
+	Arnd
 
-% mktemp /tmp/r_64bit_big_expand.XXXXXX.tmp
-/tmp/r_64bit_big_expand.QAOy36.tmp
-
-... and I just tried it on a Ubuntu 12.04 machine, and it accepts it
-too:
-
-8% cat /etc/lsb-release 
-DISTRIB_ID=Ubuntu
-DISTRIB_RELEASE=12.04
-DISTRIB_CODENAME=precise
-DISTRIB_DESCRIPTION="Ubuntu 12.04.4 LTS"
-% mktemp -V
-mktemp (GNU coreutils) 8.13
-Copyright (C) 2011 Free Software Foundation, Inc.
-License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.
-This is free software: you are free to change and redistribute it.
-There is NO WARRANTY, to the extent permitted by law.
-
-Written by Jim Meyering and Eric Blake.
-% mktemp /tmp/r_64bit_big_expand.XXXXXX.tmp     
-/tmp/r_64bit_big_expand.6yNF5W.tmp
-
-
-Hmm... I just checked on a Mac OSX machine, which is using a FreeBSD
-userspace iirc, and its man page explicitly states that six X's must
-be at the end of the pathname.  And while "mktemp /tmp/foo.XXXXXX.bar"
-doesn't fail, it returns "/tmp/foo.XXXXXX.bar", and if
-/tmp/foo.XXXXXX.bar already exists, only then will it fail with a
-"File exists" error message.
-
-So it looks like allowing the placement of the XXX characters in the
-middle of the filename is a GNU coreutils extension, and it must have
-been introduced very shortly after Ubuntu 10.04 snapshotted its
-coreutils package from Debian.  And since most of our developers
-aren't using something quite as antique as Ubuntu 10.04, and while we
-do have someone doing test compiles on Mac OSX, the fact that mktemp
-generally works there means that Andreas never saw any problems with
-it.
-
-					- Ted
+------------------------------------------------------------------------------
+Learn Graph Databases - Download FREE O'Reilly Book
+"Graph Databases" is the definitive new guide to graph databases and their 
+applications. Written by three acclaimed leaders in the field, 
+this first edition is now available. Download your free book today!
+http://p.sf.net/sfu/NeoTech
