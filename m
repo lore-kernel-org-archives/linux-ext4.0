@@ -1,81 +1,94 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: fix COLLAPSE RANGE test failure when bigalloc is
- enable
-Date: Wed, 4 Jun 2014 15:27:50 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1406041456210.2927@localhost.localdomain>
-References: <001001cf7fcc$34f3c2c0$9edb4840$@samsung.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [2/4 v2] e2fsck: make a prompt message simpler and thus
+ translatable
+Date: Wed, 4 Jun 2014 10:42:39 -0400
+Message-ID: <20140604144239.GI27426@thunk.org>
+References: <20140602234001.GJ30598@thunk.org>
+ <1401827722-13286-1-git-send-email-bensberg@justemail.net>
+ <20140604020719.GC27426@thunk.org>
+ <1401884601.6870.125052445.0CA47507@webmail.messagingengine.com>
+ <20140604125650.GF27426@thunk.org>
+ <1401888336.22807.125078021.186DE367@webmail.messagingengine.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	Ashish Sangwan <a.sangwan@samsung.com>
-To: Namjae Jeon <namjae.jeon@samsung.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Benno Schulenberg <bensberg@justemail.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55732 "EHLO mx1.redhat.com"
+Received: from imap.thunk.org ([74.207.234.97]:50056 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752977AbaFDN16 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 Jun 2014 09:27:58 -0400
-In-Reply-To: <001001cf7fcc$34f3c2c0$9edb4840$@samsung.com>
+	id S1751563AbaFDOmm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 Jun 2014 10:42:42 -0400
+Content-Disposition: inline
+In-Reply-To: <1401888336.22807.125078021.186DE367@webmail.messagingengine.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 4 Jun 2014, Namjae Jeon wrote:
-
-> Date: Wed, 04 Jun 2014 17:08:45 +0900
-> From: Namjae Jeon <namjae.jeon@samsung.com>
-> To: Theodore Ts'o <tytso@mit.edu>
-> Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
->     Ashish Sangwan <a.sangwan@samsung.com>
-> Subject: [PATCH] ext4: fix COLLAPSE RANGE test failure when bigalloc is enable
+On Wed, Jun 04, 2014 at 03:25:36PM +0200, Benno Schulenberg wrote:
 > 
-> Blocks in collapse range should be collapsed per cluster unit when bigalloc
-> is enable. If bigalloc is not enable, EXT4_CLUSTER_SIZE will be same with
-> EXT4_BLOCK_SIZE.
-
-I wonder why it is so ? Bigalloc only affects the way we allocate
-and free blocks, it does not affect extent tree at all and so
-freeing and allocating extents at the block boundary on bigalloc
-file system should be just fine - underlying code should be able to
-handle it.
-
-It might be that there is some complication in shift_extent code
-which is not obvious to me. Could you please describe the problem
-and why this is needed little bit more ?
-
-Have you done some testing with bigalloc enabled file system with
-respect to collapse range ?
-
-Thanks!
--Lukas
-
+> On Wed, Jun 4, 2014, at 14:56, Theodore Ts'o wrote:
+> > On Wed, Jun 04, 2014 at 02:23:21PM +0200, Benno Schulenberg wrote:
+> > > 
+> > > Running 'make check' now, I see these messages along the way:
+> > > 
+> > > mktemp: too few X's in template `r_64bit_big_expand.XXXXXX.tmp'
 > 
-> Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-> Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
-> ---
->  fs/ext4/extents.c | 7 ++-----
->  1 file changed, 2 insertions(+), 5 deletions(-)
+> This "too few X's" is misleading -- what it intends to say is that it
+> sees zero X's in the final component of the name, "tmp".
+
+In the posix specification, "component" has a specific meaning, and it
+means the last part of a pathname.  For example the "basename" command
+is described as removing all of the leading directory components.
+NAME_LEN is defined to be the maximum length of a pathname component,
+etc.
+
+I don't think your reading of the word "component" is correct.
+
+> > Hmm... what OS and if Linux, version of coreutils are you using?
 > 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 4da228a..2b9f5f3 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -5403,16 +5403,13 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
->  	int ret;
->  
->  	/* Collapse range works only on fs block size aligned offsets. */
-> -	if (offset & (EXT4_BLOCK_SIZE(sb) - 1) ||
-> -	    len & (EXT4_BLOCK_SIZE(sb) - 1))
-> +	if (offset & (EXT4_CLUSTER_SIZE(sb) - 1) ||
-> +	    len & (EXT4_CLUSTER_SIZE(sb) - 1))
->  		return -EINVAL;
->  
->  	if (!S_ISREG(inode->i_mode))
->  		return -EINVAL;
->  
-> -	if (EXT4_SB(inode->i_sb)->s_cluster_ratio > 1)
-> -		return -EOPNOTSUPP;
-> -
->  	trace_ext4_collapse_range(inode, offset, len);
->  
->  	punch_start = offset >> EXT4_BLOCK_SIZE_BITS(sb);
-> 
+> Ubuntu Lucid, 2010.04, mktemp --version | head -1
+> mktemp (GNU coreutils) 8.13
+
+OK, interesting.  It seems to work just fine using coreutils 8.21
+(Debian Testing).  And I just checked on one of my Debian Stable
+machines, which is using coreutils 8.13-3.5, and it's working there.
+
+% mktemp /tmp/r_64bit_big_expand.XXXXXX.tmp
+/tmp/r_64bit_big_expand.QAOy36.tmp
+
+... and I just tried it on a Ubuntu 12.04 machine, and it accepts it
+too:
+
+8% cat /etc/lsb-release 
+DISTRIB_ID=Ubuntu
+DISTRIB_RELEASE=12.04
+DISTRIB_CODENAME=precise
+DISTRIB_DESCRIPTION="Ubuntu 12.04.4 LTS"
+% mktemp -V
+mktemp (GNU coreutils) 8.13
+Copyright (C) 2011 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
+Written by Jim Meyering and Eric Blake.
+% mktemp /tmp/r_64bit_big_expand.XXXXXX.tmp     
+/tmp/r_64bit_big_expand.6yNF5W.tmp
+
+
+Hmm... I just checked on a Mac OSX machine, which is using a FreeBSD
+userspace iirc, and its man page explicitly states that six X's must
+be at the end of the pathname.  And while "mktemp /tmp/foo.XXXXXX.bar"
+doesn't fail, it returns "/tmp/foo.XXXXXX.bar", and if
+/tmp/foo.XXXXXX.bar already exists, only then will it fail with a
+"File exists" error message.
+
+So it looks like allowing the placement of the XXX characters in the
+middle of the filename is a GNU coreutils extension, and it must have
+been introduced very shortly after Ubuntu 10.04 snapshotted its
+coreutils package from Debian.  And since most of our developers
+aren't using something quite as antique as Ubuntu 10.04, and while we
+do have someone doing test compiles on Mac OSX, the fact that mktemp
+generally works there means that Andreas never saw any problems with
+it.
+
+					- Ted
