@@ -1,7 +1,7 @@
 From: Niu Yawei <yawei.niu@gmail.com>
-Subject: [PATCH 2/5] quota: avoid unnecessary dqget()/dqput() calls
-Date: Wed, 04 Jun 2014 12:20:30 +0800
-Message-ID: <538E9E8E.4060903@gmail.com>
+Subject: [PATCH 3/5] quota: simplify remove_inode_dquot_ref()
+Date: Wed, 04 Jun 2014 12:21:30 +0800
+Message-ID: <538E9ECA.3010205@gmail.com>
 References: <537DD5BA.1050105@gmail.com> <538464AD.6050407@gmail.com> <20140527101219.GA28035@infradead.org> <538541FE.3070203@gmail.com> <20140602083436.GC3224@quack.suse.cz> <538D9AB0.9090607@gmail.com> <20140603154301.GE30706@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
@@ -15,53 +15,93 @@ In-Reply-To: <20140603154301.GE30706@quack.suse.cz>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Avoid unnecessary dqget()/dqput() calls in __dquot_initialize(),
-that will introduce global lock contention otherwise.
+Simplify the remove_inode_dquot_ref() to make it more obvious
+that now we keep one reference for each dquot from inodes.
 
-Signed-off-by: Lai Siyao <lai.siyao@intel.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Niu Yawei <yawei.niu@intel.com>
 ---
- fs/quota/dquot.c |   13 ++++++++++++-
- 1 files changed, 12 insertions(+), 1 deletions(-)
+ fs/quota/dquot.c |   51 +++++++++++++++++++--------------------------------
+ 1 files changed, 19 insertions(+), 32 deletions(-)
 
 diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
-index 9cd5f63..a00201d 100644
+index a00201d..51b5763 100644
 --- a/fs/quota/dquot.c
 +++ b/fs/quota/dquot.c
-@@ -1400,7 +1400,7 @@ static int dquot_active(const struct inode *inode)
-  */
- static void __dquot_initialize(struct inode *inode, int type)
- {
--	int cnt;
-+	int cnt, init_needed = 0;
- 	struct dquot *got[MAXQUOTAS];
- 	struct super_block *sb = inode->i_sb;
- 	qsize_t rsv;
-@@ -1416,6 +1416,13 @@ static void __dquot_initialize(struct inode *inode, int type)
- 		got[cnt] = NULL;
- 		if (type != -1 && cnt != type)
- 			continue;
-+		/* The i_dquot should have been initialized in most cases,
-+		 * we check it without locking here to avoid unnecessary
-+		 * dqget()/dqput() calls. */
-+		if (inode->i_dquot[cnt])
-+			continue;
-+		init_needed = 1;
-+
- 		switch (cnt) {
- 		case USRQUOTA:
- 			qid = make_kqid_uid(inode->i_uid);
-@@ -1427,6 +1434,10 @@ static void __dquot_initialize(struct inode *inode, int type)
- 		got[cnt] = dqget(sb, qid);
- 	}
+@@ -731,7 +731,6 @@ static struct shrinker dqcache_shrinker = {
  
-+	/* All required i_dquot has been initialized */
-+	if (!init_needed)
+ /*
+  * Put reference to dquot
+- * NOTE: If you change this function please check whether dqput_blocks() works right...
+  */
+ void dqput(struct dquot *dquot)
+ {
+@@ -961,46 +960,34 @@ static void add_dquot_ref(struct super_block *sb, int type)
+ }
+ 
+ /*
+- * Return 0 if dqput() won't block.
+- * (note that 1 doesn't necessarily mean blocking)
+- */
+-static inline int dqput_blocks(struct dquot *dquot)
+-{
+-	if (atomic_read(&dquot->dq_count) <= 1)
+-		return 1;
+-	return 0;
+-}
+-
+-/*
+  * Remove references to dquots from inode and add dquot to list for freeing
+  * if we have the last reference to dquot
+  * We can't race with anybody because we hold dqptr_sem for writing...
+  */
+-static int remove_inode_dquot_ref(struct inode *inode, int type,
+-				  struct list_head *tofree_head)
++static void remove_inode_dquot_ref(struct inode *inode, int type,
++				   struct list_head *tofree_head)
+ {
+ 	struct dquot *dquot = inode->i_dquot[type];
+ 
+ 	inode->i_dquot[type] = NULL;
+-	if (dquot) {
+-		if (dqput_blocks(dquot)) {
+-#ifdef CONFIG_QUOTA_DEBUG
+-			if (atomic_read(&dquot->dq_count) != 1)
+-				quota_error(inode->i_sb, "Adding dquot with "
+-					    "dq_count %d to dispose list",
+-					    atomic_read(&dquot->dq_count));
+-#endif
+-			spin_lock(&dq_list_lock);
+-			/* As dquot must have currently users it can't be on
+-			 * the free list... */
+-			list_add(&dquot->dq_free, tofree_head);
+-			spin_unlock(&dq_list_lock);
+-			return 1;
+-		}
+-		else
+-			dqput(dquot);   /* We have guaranteed we won't block */
++	if (!dquot)
 +		return;
 +
- 	down_write(&sb_dqopt(sb)->dqptr_sem);
- 	if (IS_NOQUOTA(inode))
- 		goto out_err;
++	if (list_empty(&dquot->dq_free)) {
++		/*
++		 * The inode still has reference to dquot so it can't be in the
++		 * free list
++		 */
++		spin_lock(&dq_list_lock);
++		list_add(&dquot->dq_free, tofree_head);
++		spin_unlock(&dq_list_lock);
++	} else {
++		/*
++		 * Dquot is already in a list to put so we won't drop the last
++		 * reference here.
++		 */
++		dqput(dquot);
+ 	}
+-	return 0;
+ }
+ 
+ /*
 -- 
 1.7.1
 
