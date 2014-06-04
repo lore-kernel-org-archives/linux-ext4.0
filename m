@@ -1,81 +1,134 @@
-From: Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org>
-Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
-Date: Wed, 04 Jun 2014 21:24:42 +0200
-Message-ID: <8770583.6XeZxCxOY8@wuerfel>
-References: <1401480116-1973111-1-git-send-email-arnd@arndb.de> <201406041703.47592.arnd@arndb.de> <alpine.LFD.2.11.1406041308300.17310@knanqh.ubzr>
+From: Andres Freund <andres@anarazel.de>
+Subject: Re: [Lsf] Postgresql performance problems with IO latency,
+ especially during fsync()
+Date: Wed, 4 Jun 2014 22:06:30 +0200
+Message-ID: <20140604200630.GD785@awork2.anarazel.de>
+References: <20140326191113.GF9066@alap3.anarazel.de>
+ <20140409092009.GA27519@dastard>
+ <20140428234756.GM15995@dastard>
+ <20140428235714.GA16070@awork2.anarazel.de>
+ <20140523064247.GN8554@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7Bit
-Cc: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org,
-	linux-mtd-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, "H. Peter Anvin" <hpa-YMNOUZJC4hwAvxtiuMwx3w@public.gmane.org>,
-	logfs-PCqxUs/MD9bYtjvyW6yDsg@public.gmane.org, linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org,
-	"Joseph S. Myers" <joseph-qD8j1LwMmJjtCj0u4l0SBw@public.gmane.org>,
-	linux-arch-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-scsi-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, coda-ETDLCGt7PQU3uPMLIKxrzw@public.gmane.org, geert-Td1EMuHUCqxL1ZNQvxDV9g@public.gmane.org,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, codalist-ySnCqBnJi5yMVn35/9/JlcWGCVk0P7UB@public.gmane.org,
-	fuse-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, reiserfs-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org, john.stultz-QSEj5FYQhm4dnm+yROfE0A@public.gmane.org, tglx-hfZtesqFncYOwBW4kG4KsQ@public.gmane.org,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ntfs-dev-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
-	samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-f2fs-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, lftan-EIB2kfCEclfQT0dZR+AlfA@public.gmane.org,
-	linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Nicolas Pitre <nicolas.pitre-QSEj5FYQhm4dnm+yROfE0A@public.gmane.org>
-Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <alpine.LFD.2.11.1406041308300.17310-fMhRO7WWcppj+hNMo8g0rg@public.gmane.org>
-Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, lsf@lists.linux-foundation.org,
+	linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+	Wu Fengguang <fengguang.wu@intel.com>, linux-ext4@vger.kernel.org,
+	Theodore Ts'o <tytso@mit.edu>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20140523064247.GN8554@dastard>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wednesday 04 June 2014 13:30:32 Nicolas Pitre wrote:
-> On Wed, 4 Jun 2014, Arnd Bergmann wrote:
-> 
-> > On Tuesday 03 June 2014, Dave Chinner wrote:
-> > > Just ot be pedantic, inodes don't need 96 bit timestamps - some
-> > > filesystems can *support up to* 96 bit timestamps. If the kernel
-> > > only supports 64 bit timestamps and that's all the kernel can
-> > > represent, then the upper bits of the 96 bit on-disk inode
-> > > timestamps simply remain zero.
-> > 
-> > I meant the reverse: since we have file systems that can store
-> > 96-bit timestamps when using 64-bit kernels, we need to extend
-> > 32-bit kernels to have the same internal representation so we
-> > can actually read those file systems correctly.
-> > 
-> > > If you move the filesystem between kernels with different time
-> > > ranges, then the filesystem needs to be able to tell the kernel what
-> > > it's supported range is.  This is where having the VFS limit the
-> > > range of supported timestamps is important: the limit is the
-> > > min(kernel range, filesystem range). This allows the filesystems
-> > > to be indepenent of the kernel time representation, and the kernel
-> > > to be independent of the physical filesystem time encoding....
-> > 
-> > I agree it makes sense to let the kernel know about the limits
-> > of the file system it accesses, but for the reverse, we're probably
-> > better off just making the kernel representation large enough (i.e.
-> > 96 bits) so it can work with any known file system.
-> 
-> Depends...  96 bit handling may get prohibitive on 32-bit archs.
-> 
-> The important point here is for the kernel to be able to represent the 
-> time _range_ used by any known filesystem, not necessarily the time 
-> _precision_.
-> 
-> For example, a 64 bit representation can be made of 40 bits for seconds 
-> spanning 34865 years, and 24 bits for fractional seconds providing 
-> precision down to 60 nanosecs.  That ought to be plenty good on 32 bit 
-> systems while still being cheap to handle.
+Hi Dave, Ted, All,
 
-I have checked earlier that we don't do any computation on inode
-time stamps in common code, we just pass them around, so there is
-very little runtime overhead. There is a small bit of space overhead
-(12 byte) per inode, but that structure is already on the order of
-500 bytes.
+On 2014-05-23 16:42:47 +1000, Dave Chinner wrote:
+> On Tue, Apr 29, 2014 at 01:57:14AM +0200, Andres Freund wrote:
+> > Hi Dave,
+> > 
+> > On 2014-04-29 09:47:56 +1000, Dave Chinner wrote:
+> > > ping?
+> > 
+> > I'd replied at http://marc.info/?l=linux-mm&m=139730910307321&w=2
+> 
+> I missed it, sorry.
 
-For other timekeeping stuff in the kernel, I agree that using some
-64-bit representation (nanoseconds, 32/32 unsigned seconds/nanoseconds,
-...) has advantages, that's exactly the point I was making earlier
-against simply extending the internal time_t/timespec to 64-bit
-seconds for everything.
+No worries. As you can see, I'm not quick answering either :/
 
-	Arnd
+> I've had a bit more time to look at this behaviour now and tweaked
+> it as you suggested, but I simply can't get XFS to misbehave in the
+> manner you demonstrated. However, I can reproduce major read latency
+> changes and writeback flush storms with ext4.  I originally only
+> tested on XFS.
+
+That's interesting. I know that the problem was reproducable on xfs at
+some point, but that was on 2.6.18 or so...
+
+I'll try whether I can make it perform badly on the measly hardware I
+have available.
+
+> I'm using the no-op IO scheduler everywhere, too.
+
+And will check whether it's potentially related to that.
+
+> ext4, OTOH, generated a much, much higher periodic write IO load and
+> it's regularly causing read IO latencies in the hundreds of
+> milliseconds. Every so often this occurred on ext4 (5s sample rate)
+> 
+> Device:         rrqm/s   wrqm/s     r/s     w/s    rMB/s    wMB/s avgrq-sz avgqu-sz   await r_await w_await  svctm  %util
+> vdc               0.00     3.00 3142.20  219.20    34.11    19.10    32.42     1.11    0.33    0.33    0.31   0.27  91.92
+> vdc               0.00     0.80 3311.60  216.20    35.86    18.90    31.79     1.17    0.33    0.33    0.39   0.26  92.56
+> vdc               0.00     0.80 2919.80 2750.60    31.67    48.36    28.90    20.05    3.50    0.36    6.83   0.16  92.96
+> vdc               0.00     0.80  435.00 15689.80     4.96   198.10    25.79   113.21    7.03    2.32    7.16   0.06  99.20
+> vdc               0.00     0.80 2683.80  216.20    29.72    18.98    34.39     1.13    0.39    0.39    0.40   0.32  91.92
+> vdc               0.00     0.80 2853.00  218.20    31.29    19.06    33.57     1.14    0.37    0.37    0.36   0.30  92.56
+> 
+> Which is, i think, signs of what you'd been trying to demonstrate -
+> a major dip in read performance when writeback is flushing.
+
+I've seen *much* worse cases than this, but it's what we're seing in
+production.
+
+> What is interesting here is the difference in IO patterns. ext4 is
+> doing much larger IOs than XFS - it's average IO size is 16k, while
+> XFS's is a bit over 8k. So while the read and background write IOPS
+> rates are similar, ext4 is moving a lot more data to/from disk in
+> larger chunks.
+> 
+> This seems also to translate to much larger writeback IO peaks in
+> ext4.  I have no idea what this means in terms of actual application
+> throughput, but it looks very much to me like the nasty read
+> latencies are much more pronounced on ext4 because of the higher
+> read bandwidths and write IOPS being seen.
+
+I'll try starting a benchmark of actual postgres showing the differnt
+peak/average throughput and latencies.
+
+> So, seeing the differences in behvaiour just by changing
+> filesystems, I just ran the workload on btrfs. Ouch - it was
+> even worse than ext4 in terms of read latencies - they were highly
+> unpredictable, and massively variable even within a read group:
+
+I've essentially given up on btrfs for the forseeable future :(.
+
+> That means it isn't clear that there's any generic infrastructure
+> problem here, and it certainly isn't clear that each filesystem has
+> the same problem or the issues can be solved by a generic mechanism.
+> I think you probably need to engage the ext4 developers drectly to
+> understand what ext4 is doing in detail, or work out how to prod XFS
+> into displaying that extremely bad read latency behaviour....
+
+I've CCed the ext4 list and Ted. Maybe that'll bring some insigh...
+
+> > > On Wed, Apr 09, 2014 at 07:20:09PM +1000, Dave Chinner wrote:
+> > > > I'm not sure how you were generating the behaviour you reported, but
+> > > > the test program as it stands does not appear to be causing any
+> > > > problems at all on the sort of storage I'd expect large databases to
+> > > > be hosted on....
+> > 
+> > A really really large number of database aren't stored on big enterprise
+> > rigs...
+> 
+> I'm not using a big enterprise rig. I've reproduced these results on
+> a low end Dell server with the internal H710 SAS RAID and a pair of
+> consumer SSDs in RAID0, as well as via a 4 year old Perc/6e SAS RAID
+> HBA with 12 2T nearline SAS drives in RAID0.
+
+There's a *lot* of busy postgres installations out there running on a
+single disk of spinning rust. Hopefully replicating to another piece of
+spinning rust... In comparison to that that's enterprise hardware ;)
+
+Greetings,
+
+Andres Freund
+
+-- 
+ Andres Freund	                   http://www.2ndQuadrant.com/
+ PostgreSQL Development, 24x7 Support, Training & Services
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
