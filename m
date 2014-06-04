@@ -1,38 +1,25 @@
-From: Gustavo Zacarias <gustavo@zacarias.com.ar>
-Subject: [PATCH] e2fsprogs: Add INCLUDES to BUILD_CFLAGS when cross-compiling
-Date: Tue,  3 Jun 2014 18:51:59 -0300
-Message-ID: <1401832319-2247-1-git-send-email-gustavo@zacarias.com.ar>
-Cc: Gustavo Zacarias <gustavo@zacarias.com.ar>
-To: linux-ext4@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/4] po: describe more precisely the %B expansion
+Date: Tue, 3 Jun 2014 22:05:41 -0400
+Message-ID: <20140604020541.GB27426@thunk.org>
+References: <1401738524-11455-1-git-send-email-bensberg@justemail.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Benno Schulenberg <bensberg@justemail.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from loknar.toptech.com.ar ([78.46.79.162]:39932 "EHLO
-	loknar.toptech.com.ar" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751032AbaFCWEF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Jun 2014 18:04:05 -0400
+Received: from imap.thunk.org ([74.207.234.97]:49131 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751319AbaFDCFp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 3 Jun 2014 22:05:45 -0400
+Content-Disposition: inline
+In-Reply-To: <1401738524-11455-1-git-send-email-bensberg@justemail.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We need $INCLUDES in BUILD_CFLAGS otherwise cross-compilation is broken
-now that util/subst.c uses config.h (from commit 2873927d15).
+On Mon, Jun 02, 2014 at 09:48:41PM +0200, Benno Schulenberg wrote:
+> Signed-off-by: Benno Schulenberg <bensberg@justemail.net>
 
-Signed-off-by: Gustavo Zacarias <gustavo@zacarias.com.ar>
----
- configure.in | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Thanks, applied.
 
-diff --git a/configure.in b/configure.in
-index 448a292..8bac870 100644
---- a/configure.in
-+++ b/configure.in
-@@ -1382,7 +1382,7 @@ if test $cross_compiling = no; then
-    BUILD_CFLAGS="$CFLAGS $CPPFLAGS $INCLUDES -DHAVE_CONFIG_H"
-    BUILD_LDFLAGS="$LDFLAGS"
- else
--   BUILD_CFLAGS=
-+   BUILD_CFLAGS="$INCLUDES -DHAVE_CONFIG_H"
-    BUILD_LDFLAGS=
- fi
- AC_SUBST(BUILD_CFLAGS)
--- 
-1.8.5.5
-
+					- Ted
