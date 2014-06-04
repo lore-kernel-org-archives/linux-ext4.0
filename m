@@ -1,54 +1,198 @@
 From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: [PATCH] ext4: fix COLLAPSE RANGE test failure when bigalloc is enable
-Date: Wed, 04 Jun 2014 17:08:45 +0900
-Message-ID: <001001cf7fcc$34f3c2c0$9edb4840$@samsung.com>
+Subject: [PATCH] ext4: decrement s_freeclusters_counter and
+ s_freeinodes_counter on bitmap error
+Date: Wed, 04 Jun 2014 17:08:47 +0900
+Message-ID: <001101cf7fcc$365d8bf0$a318a3d0$@samsung.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
 	Ashish Sangwan <a.sangwan@samsung.com>
-To: Theodore Ts'o <tytso@mit.edu>
+To: Theodore Ts'o <tytso@mit.edu>,
+	"'Darrick J. Wong'" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout3.samsung.com ([203.254.224.33]:38369 "EHLO
-	mailout3.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754458AbaFDIIs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jun 2014 04:08:48 -0400
+Received: from mailout1.samsung.com ([203.254.224.24]:65223 "EHLO
+	mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754466AbaFDIIu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jun 2014 04:08:50 -0400
 Received: from epcpsbgr2.samsung.com
  (u142.gpu120.samsung.co.kr [203.254.230.142])
- by mailout3.samsung.com (Oracle Communications Messaging Server 7u4-24.01
+ by mailout1.samsung.com (Oracle Communications Messaging Server 7u4-24.01
  (7.0.4.24.0) 64bit (built Nov 17 2011))
- with ESMTP id <0N6M00I15XAMQIA0@mailout3.samsung.com> for
- linux-ext4@vger.kernel.org; Wed, 04 Jun 2014 17:08:46 +0900 (KST)
+ with ESMTP id <0N6M00F7EXAOR810@mailout1.samsung.com> for
+ linux-ext4@vger.kernel.org; Wed, 04 Jun 2014 17:08:48 +0900 (KST)
 Content-language: ko
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Blocks in collapse range should be collapsed per cluster unit when bigalloc
-is enable. If bigalloc is not enable, EXT4_CLUSTER_SIZE will be same with
-EXT4_BLOCK_SIZE.
+We should decrement free clusters counter when block bitmap is marked
+as corrupt and free inodes counter when inode bitmap is marked as corrupt
+to avoid misunderstanding due to incorrect available size in statfs result.
+User can get immediately ENOSPC error from write begin without reaching
+for the writepages.
 
+Cc: Darrick J. Wong<darrick.wong@oracle.com>
+Reported-by: Amit Sahrawat <amit.sahrawat83@gmail.com>
 Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
 Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
 ---
- fs/ext4/extents.c | 7 ++-----
- 1 file changed, 2 insertions(+), 5 deletions(-)
+ fs/ext4/balloc.c  | 16 ++++++++++++++++
+ fs/ext4/ialloc.c  | 23 +++++++++++++++++++++++
+ fs/ext4/mballoc.c |  8 ++++++++
+ 3 files changed, 47 insertions(+)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 4da228a..2b9f5f3 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -5403,16 +5403,13 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
- 	int ret;
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 0762d14..fca3820 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -194,7 +194,16 @@ static void ext4_init_block_bitmap(struct super_block *sb,
+ 	if (!ext4_group_desc_csum_verify(sb, block_group, gdp)) {
+ 		ext4_error(sb, "Checksum bad for group %u", block_group);
+ 		grp = ext4_get_group_info(sb, block_group);
++		if (!EXT4_MB_GRP_BBITMAP_CORRUPT(grp))
++			percpu_counter_sub(&sbi->s_freeclusters_counter,
++					   grp->bb_free);
+ 		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
++		if (!EXT4_MB_GRP_IBITMAP_CORRUPT(grp)) {
++			int count;
++			count = ext4_free_inodes_count(sb, gdp);
++			percpu_counter_sub(&sbi->s_freeinodes_counter,
++					   count);
++		}
+ 		set_bit(EXT4_GROUP_INFO_IBITMAP_CORRUPT_BIT, &grp->bb_state);
+ 		return;
+ 	}
+@@ -359,6 +368,7 @@ static void ext4_validate_block_bitmap(struct super_block *sb,
+ {
+ 	ext4_fsblk_t	blk;
+ 	struct ext4_group_info *grp = ext4_get_group_info(sb, block_group);
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
  
- 	/* Collapse range works only on fs block size aligned offsets. */
--	if (offset & (EXT4_BLOCK_SIZE(sb) - 1) ||
--	    len & (EXT4_BLOCK_SIZE(sb) - 1))
-+	if (offset & (EXT4_CLUSTER_SIZE(sb) - 1) ||
-+	    len & (EXT4_CLUSTER_SIZE(sb) - 1))
- 		return -EINVAL;
+ 	if (buffer_verified(bh))
+ 		return;
+@@ -369,6 +379,9 @@ static void ext4_validate_block_bitmap(struct super_block *sb,
+ 		ext4_unlock_group(sb, block_group);
+ 		ext4_error(sb, "bg %u: block %llu: invalid block bitmap",
+ 			   block_group, blk);
++		if (!EXT4_MB_GRP_BBITMAP_CORRUPT(grp))
++			percpu_counter_sub(&sbi->s_freeclusters_counter,
++					   grp->bb_free);
+ 		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
+ 		return;
+ 	}
+@@ -376,6 +389,9 @@ static void ext4_validate_block_bitmap(struct super_block *sb,
+ 			desc, bh))) {
+ 		ext4_unlock_group(sb, block_group);
+ 		ext4_error(sb, "bg %u: bad block bitmap checksum", block_group);
++		if (!EXT4_MB_GRP_BBITMAP_CORRUPT(grp))
++			percpu_counter_sub(&sbi->s_freeclusters_counter,
++					   grp->bb_free);
+ 		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
+ 		return;
+ 	}
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 0ee59a6..a87455d 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -71,6 +71,7 @@ static unsigned ext4_init_inode_bitmap(struct super_block *sb,
+ 				       struct ext4_group_desc *gdp)
+ {
+ 	struct ext4_group_info *grp;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	J_ASSERT_BH(bh, buffer_locked(bh));
  
- 	if (!S_ISREG(inode->i_mode))
- 		return -EINVAL;
+ 	/* If checksum is bad mark all blocks and inodes use to prevent
+@@ -78,7 +79,16 @@ static unsigned ext4_init_inode_bitmap(struct super_block *sb,
+ 	if (!ext4_group_desc_csum_verify(sb, block_group, gdp)) {
+ 		ext4_error(sb, "Checksum bad for group %u", block_group);
+ 		grp = ext4_get_group_info(sb, block_group);
++		if (!EXT4_MB_GRP_BBITMAP_CORRUPT(grp))
++			percpu_counter_sub(&sbi->s_freeclusters_counter,
++					   grp->bb_free);
+ 		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
++		if (!EXT4_MB_GRP_IBITMAP_CORRUPT(grp)) {
++			int count;
++			count = ext4_free_inodes_count(sb, gdp);
++			percpu_counter_sub(&sbi->s_freeinodes_counter,
++					   count);
++		}
+ 		set_bit(EXT4_GROUP_INFO_IBITMAP_CORRUPT_BIT, &grp->bb_state);
+ 		return 0;
+ 	}
+@@ -116,6 +126,7 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
+ 	struct buffer_head *bh = NULL;
+ 	ext4_fsblk_t bitmap_blk;
+ 	struct ext4_group_info *grp;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
  
--	if (EXT4_SB(inode->i_sb)->s_cluster_ratio > 1)
--		return -EOPNOTSUPP;
+ 	desc = ext4_get_group_desc(sb, block_group, NULL);
+ 	if (!desc)
+@@ -185,6 +196,12 @@ verify:
+ 		ext4_error(sb, "Corrupt inode bitmap - block_group = %u, "
+ 			   "inode_bitmap = %llu", block_group, bitmap_blk);
+ 		grp = ext4_get_group_info(sb, block_group);
++		if (!EXT4_MB_GRP_IBITMAP_CORRUPT(grp)) {
++			int count;
++			count = ext4_free_inodes_count(sb, desc);
++			percpu_counter_sub(&sbi->s_freeinodes_counter,
++					   count);
++		}
+ 		set_bit(EXT4_GROUP_INFO_IBITMAP_CORRUPT_BIT, &grp->bb_state);
+ 		return NULL;
+ 	}
+@@ -321,6 +338,12 @@ out:
+ 			fatal = err;
+ 	} else {
+ 		ext4_error(sb, "bit already cleared for inode %lu", ino);
++		if (!EXT4_MB_GRP_IBITMAP_CORRUPT(grp)) {
++			int count;
++			count = ext4_free_inodes_count(sb, gdp);
++			percpu_counter_sub(&sbi->s_freeinodes_counter,
++					   count);
++		}
+ 		set_bit(EXT4_GROUP_INFO_IBITMAP_CORRUPT_BIT, &grp->bb_state);
+ 	}
+ 
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 11dc4e0..59004a1 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -722,6 +722,7 @@ void ext4_mb_generate_buddy(struct super_block *sb,
+ 				void *buddy, void *bitmap, ext4_group_t group)
+ {
+ 	struct ext4_group_info *grp = ext4_get_group_info(sb, group);
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	ext4_grpblk_t max = EXT4_CLUSTERS_PER_GROUP(sb);
+ 	ext4_grpblk_t i = 0;
+ 	ext4_grpblk_t first;
+@@ -759,6 +760,9 @@ void ext4_mb_generate_buddy(struct super_block *sb,
+ 		 * corrupt and update bb_free using bitmap value
+ 		 */
+ 		grp->bb_free = free;
++		if (!EXT4_MB_GRP_BBITMAP_CORRUPT(grp))
++			percpu_counter_sub(&sbi->s_freeclusters_counter,
++					   grp->bb_free);
+ 		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
+ 	}
+ 	mb_set_largest_free_order(sb, grp);
+@@ -1429,6 +1433,7 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
+ 		right_is_free = !mb_test_bit(last + 1, e4b->bd_bitmap);
+ 
+ 	if (unlikely(block != -1)) {
++		struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 		ext4_fsblk_t blocknr;
+ 
+ 		blocknr = ext4_group_first_block_no(sb, e4b->bd_group);
+@@ -1439,6 +1444,9 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
+ 				      "freeing already freed block "
+ 				      "(bit %u); block bitmap corrupt.",
+ 				      block);
++		if (!EXT4_MB_GRP_BBITMAP_CORRUPT(e4b->bd_info))
++			percpu_counter_sub(&sbi->s_freeclusters_counter,
++					   e4b->bd_info->bb_free);
+ 		/* Mark the block group as corrupt. */
+ 		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT,
+ 			&e4b->bd_info->bb_state);
+-- 
+1.7.11-rc0
+
