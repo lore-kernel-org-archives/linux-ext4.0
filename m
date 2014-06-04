@@ -1,198 +1,79 @@
-From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: [PATCH] ext4: decrement s_freeclusters_counter and
- s_freeinodes_counter on bitmap error
-Date: Wed, 04 Jun 2014 17:08:47 +0900
-Message-ID: <001101cf7fcc$365d8bf0$a318a3d0$@samsung.com>
+From: Benno Schulenberg <bensberg@justemail.net>
+Subject: Re: [2/4 v2] e2fsck: make a prompt message simpler and thus translatable
+Date: Wed, 04 Jun 2014 14:23:21 +0200
+Message-ID: <1401884601.6870.125052445.0CA47507@webmail.messagingengine.com>
+References: <20140602234001.GJ30598@thunk.org>
+ <1401827722-13286-1-git-send-email-bensberg@justemail.net>
+ <20140604020719.GC27426@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	Ashish Sangwan <a.sangwan@samsung.com>
-To: Theodore Ts'o <tytso@mit.edu>,
-	"'Darrick J. Wong'" <darrick.wong@oracle.com>
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout1.samsung.com ([203.254.224.24]:65223 "EHLO
-	mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754466AbaFDIIu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jun 2014 04:08:50 -0400
-Received: from epcpsbgr2.samsung.com
- (u142.gpu120.samsung.co.kr [203.254.230.142])
- by mailout1.samsung.com (Oracle Communications Messaging Server 7u4-24.01
- (7.0.4.24.0) 64bit (built Nov 17 2011))
- with ESMTP id <0N6M00F7EXAOR810@mailout1.samsung.com> for
- linux-ext4@vger.kernel.org; Wed, 04 Jun 2014 17:08:48 +0900 (KST)
-Content-language: ko
+Received: from out1-smtp.messagingengine.com ([66.111.4.25]:42244 "EHLO
+	out1-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752932AbaFDMX1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jun 2014 08:23:27 -0400
+In-Reply-To: <20140604020719.GC27426@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We should decrement free clusters counter when block bitmap is marked
-as corrupt and free inodes counter when inode bitmap is marked as corrupt
-to avoid misunderstanding due to incorrect available size in statfs result.
-User can get immediately ENOSPC error from write begin without reaching
-for the writepages.
 
-Cc: Darrick J. Wong<darrick.wong@oracle.com>
-Reported-by: Amit Sahrawat <amit.sahrawat83@gmail.com>
-Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
----
- fs/ext4/balloc.c  | 16 ++++++++++++++++
- fs/ext4/ialloc.c  | 23 +++++++++++++++++++++++
- fs/ext4/mballoc.c |  8 ++++++++
- 3 files changed, 47 insertions(+)
+On Wed, Jun 4, 2014, at 4:07, Theodore Ts'o wrote:
+> You forgot to fix up the regression test suite f_extra_journal so
+> "make check" doesn't fail.
+> 
+> I've taken care of it,
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 0762d14..fca3820 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -194,7 +194,16 @@ static void ext4_init_block_bitmap(struct super_block *sb,
- 	if (!ext4_group_desc_csum_verify(sb, block_group, gdp)) {
- 		ext4_error(sb, "Checksum bad for group %u", block_group);
- 		grp = ext4_get_group_info(sb, block_group);
-+		if (!EXT4_MB_GRP_BBITMAP_CORRUPT(grp))
-+			percpu_counter_sub(&sbi->s_freeclusters_counter,
-+					   grp->bb_free);
- 		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
-+		if (!EXT4_MB_GRP_IBITMAP_CORRUPT(grp)) {
-+			int count;
-+			count = ext4_free_inodes_count(sb, gdp);
-+			percpu_counter_sub(&sbi->s_freeinodes_counter,
-+					   count);
-+		}
- 		set_bit(EXT4_GROUP_INFO_IBITMAP_CORRUPT_BIT, &grp->bb_state);
- 		return;
- 	}
-@@ -359,6 +368,7 @@ static void ext4_validate_block_bitmap(struct super_block *sb,
- {
- 	ext4_fsblk_t	blk;
- 	struct ext4_group_info *grp = ext4_get_group_info(sb, block_group);
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 
- 	if (buffer_verified(bh))
- 		return;
-@@ -369,6 +379,9 @@ static void ext4_validate_block_bitmap(struct super_block *sb,
- 		ext4_unlock_group(sb, block_group);
- 		ext4_error(sb, "bg %u: block %llu: invalid block bitmap",
- 			   block_group, blk);
-+		if (!EXT4_MB_GRP_BBITMAP_CORRUPT(grp))
-+			percpu_counter_sub(&sbi->s_freeclusters_counter,
-+					   grp->bb_free);
- 		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
- 		return;
- 	}
-@@ -376,6 +389,9 @@ static void ext4_validate_block_bitmap(struct super_block *sb,
- 			desc, bh))) {
- 		ext4_unlock_group(sb, block_group);
- 		ext4_error(sb, "bg %u: bad block bitmap checksum", block_group);
-+		if (!EXT4_MB_GRP_BBITMAP_CORRUPT(grp))
-+			percpu_counter_sub(&sbi->s_freeclusters_counter,
-+					   grp->bb_free);
- 		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
- 		return;
- 	}
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 0ee59a6..a87455d 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -71,6 +71,7 @@ static unsigned ext4_init_inode_bitmap(struct super_block *sb,
- 				       struct ext4_group_desc *gdp)
- {
- 	struct ext4_group_info *grp;
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	J_ASSERT_BH(bh, buffer_locked(bh));
- 
- 	/* If checksum is bad mark all blocks and inodes use to prevent
-@@ -78,7 +79,16 @@ static unsigned ext4_init_inode_bitmap(struct super_block *sb,
- 	if (!ext4_group_desc_csum_verify(sb, block_group, gdp)) {
- 		ext4_error(sb, "Checksum bad for group %u", block_group);
- 		grp = ext4_get_group_info(sb, block_group);
-+		if (!EXT4_MB_GRP_BBITMAP_CORRUPT(grp))
-+			percpu_counter_sub(&sbi->s_freeclusters_counter,
-+					   grp->bb_free);
- 		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
-+		if (!EXT4_MB_GRP_IBITMAP_CORRUPT(grp)) {
-+			int count;
-+			count = ext4_free_inodes_count(sb, gdp);
-+			percpu_counter_sub(&sbi->s_freeinodes_counter,
-+					   count);
-+		}
- 		set_bit(EXT4_GROUP_INFO_IBITMAP_CORRUPT_BIT, &grp->bb_state);
- 		return 0;
- 	}
-@@ -116,6 +126,7 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
- 	struct buffer_head *bh = NULL;
- 	ext4_fsblk_t bitmap_blk;
- 	struct ext4_group_info *grp;
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 
- 	desc = ext4_get_group_desc(sb, block_group, NULL);
- 	if (!desc)
-@@ -185,6 +196,12 @@ verify:
- 		ext4_error(sb, "Corrupt inode bitmap - block_group = %u, "
- 			   "inode_bitmap = %llu", block_group, bitmap_blk);
- 		grp = ext4_get_group_info(sb, block_group);
-+		if (!EXT4_MB_GRP_IBITMAP_CORRUPT(grp)) {
-+			int count;
-+			count = ext4_free_inodes_count(sb, desc);
-+			percpu_counter_sub(&sbi->s_freeinodes_counter,
-+					   count);
-+		}
- 		set_bit(EXT4_GROUP_INFO_IBITMAP_CORRUPT_BIT, &grp->bb_state);
- 		return NULL;
- 	}
-@@ -321,6 +338,12 @@ out:
- 			fatal = err;
- 	} else {
- 		ext4_error(sb, "bit already cleared for inode %lu", ino);
-+		if (!EXT4_MB_GRP_IBITMAP_CORRUPT(grp)) {
-+			int count;
-+			count = ext4_free_inodes_count(sb, gdp);
-+			percpu_counter_sub(&sbi->s_freeinodes_counter,
-+					   count);
-+		}
- 		set_bit(EXT4_GROUP_INFO_IBITMAP_CORRUPT_BIT, &grp->bb_state);
- 	}
- 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 11dc4e0..59004a1 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -722,6 +722,7 @@ void ext4_mb_generate_buddy(struct super_block *sb,
- 				void *buddy, void *bitmap, ext4_group_t group)
- {
- 	struct ext4_group_info *grp = ext4_get_group_info(sb, group);
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	ext4_grpblk_t max = EXT4_CLUSTERS_PER_GROUP(sb);
- 	ext4_grpblk_t i = 0;
- 	ext4_grpblk_t first;
-@@ -759,6 +760,9 @@ void ext4_mb_generate_buddy(struct super_block *sb,
- 		 * corrupt and update bb_free using bitmap value
- 		 */
- 		grp->bb_free = free;
-+		if (!EXT4_MB_GRP_BBITMAP_CORRUPT(grp))
-+			percpu_counter_sub(&sbi->s_freeclusters_counter,
-+					   grp->bb_free);
- 		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
- 	}
- 	mb_set_largest_free_order(sb, grp);
-@@ -1429,6 +1433,7 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
- 		right_is_free = !mb_test_bit(last + 1, e4b->bd_bitmap);
- 
- 	if (unlikely(block != -1)) {
-+		struct ext4_sb_info *sbi = EXT4_SB(sb);
- 		ext4_fsblk_t blocknr;
- 
- 		blocknr = ext4_group_first_block_no(sb, e4b->bd_group);
-@@ -1439,6 +1444,9 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
- 				      "freeing already freed block "
- 				      "(bit %u); block bitmap corrupt.",
- 				      block);
-+		if (!EXT4_MB_GRP_BBITMAP_CORRUPT(e4b->bd_info))
-+			percpu_counter_sub(&sbi->s_freeclusters_counter,
-+					   e4b->bd_info->bb_free);
- 		/* Mark the block group as corrupt. */
- 		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT,
- 			&e4b->bd_info->bb_state);
+Thanks.
+
+> but in general before sending patches, I'd
+> appreicate a quick run of "make -j8 check"
+
+Okay.
+
+Running 'make check' now, I see these messages along the way:
+
+mktemp: too few X's in template `r_64bit_big_expand.XXXXXX.tmp'
+touch: missing file operand
+Try `touch --help' for more information.
+rm: missing operand
+Try `rm --help' for more information.
+r_64bit_big_expand: very large fs growth using ext4 w/64bit: skipped
+mktemp: too few X's in template `r_bigalloc_big_expand.XXXXXX.tmp'
+touch: missing file operand
+Try `touch --help' for more information.
+rm: missing operand
+Try `rm --help' for more information.
+r_bigalloc_big_expand: ext4 with bigalloc: skipped
+mktemp: too few X's in template `r_ext4_big_expand.XXXXXX.tmp'
+touch: missing file operand
+Try `touch --help' for more information.
+rm: missing operand
+Try `rm --help' for more information.
+r_ext4_big_expand: very large fs growth using ext4: skipped
+
+
+That doesn't look intentional.
+The contents of r_ext4_big_expand.log are:
+
+very large fs growth using ext4 starting
+dd: truncating at 2199023255552 bytes in output file `/tmp/e2fsprogs-tmp.I08Z35': File too large
+using 
+dd: opening `': No such file or directory
+
+
+On this system, 'info mktemp' says:
+"The last six characters of this string must be `XXXXXX'."
+
+So by doing a 's/XXXXXX.tmp/tmp.XXXXXX/' in tests/scripts/resize_test
+those messages disappear and 144 tests succeeded     0 tests failed.
+
+Patch is coming up in a minute.
+
+Benno
+
 -- 
-1.7.11-rc0
+http://www.fastmail.fm - IMAP accessible web-mail
 
