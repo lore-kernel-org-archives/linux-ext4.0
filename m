@@ -1,7 +1,7 @@
 From: Niu Yawei <yawei.niu@gmail.com>
-Subject: [PATCH 1/5] quota: protect Q_GETFMT by dqonoff_mutex
-Date: Wed, 04 Jun 2014 12:19:12 +0800
-Message-ID: <538E9E40.8090202@gmail.com>
+Subject: [PATCH 2/5] quota: avoid unnecessary dqget()/dqput() calls
+Date: Wed, 04 Jun 2014 12:20:30 +0800
+Message-ID: <538E9E8E.4060903@gmail.com>
 References: <537DD5BA.1050105@gmail.com> <538464AD.6050407@gmail.com> <20140527101219.GA28035@infradead.org> <538541FE.3070203@gmail.com> <20140602083436.GC3224@quack.suse.cz> <538D9AB0.9090607@gmail.com> <20140603154301.GE30706@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
@@ -10,48 +10,58 @@ Cc: Christoph Hellwig <hch@infradead.org>,
 	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	yawei.niu@intel.com, andreas.dilger@intel.com, lai.siyao@intel.com
 To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yh0-f53.google.com ([209.85.213.53]:38503 "EHLO
-	mail-yh0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750805AbaFDETQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jun 2014 00:19:16 -0400
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <20140603154301.GE30706@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Subject: [PATCH 1/5] quota: protect Q_GETFMT by dqonoff_mutex
-
-dqptr_sem will go away. Protect Q_GETFMT quotactl by
-dqonoff_mutex instead. This is also enough to make sure
-quota info will not go away while we are looking at it.
+Avoid unnecessary dqget()/dqput() calls in __dquot_initialize(),
+that will introduce global lock contention otherwise.
 
 Signed-off-by: Lai Siyao <lai.siyao@intel.com>
 Signed-off-by: Niu Yawei <yawei.niu@intel.com>
 ---
- fs/quota/quota.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
+ fs/quota/dquot.c |   13 ++++++++++++-
+ 1 files changed, 12 insertions(+), 1 deletions(-)
 
-diff --git a/fs/quota/quota.c b/fs/quota/quota.c
-index 2b363e2..e4851cb 100644
---- a/fs/quota/quota.c
-+++ b/fs/quota/quota.c
-@@ -79,13 +79,13 @@ static int quota_getfmt(struct super_block *sb, int type, void __user *addr)
+diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
+index 9cd5f63..a00201d 100644
+--- a/fs/quota/dquot.c
++++ b/fs/quota/dquot.c
+@@ -1400,7 +1400,7 @@ static int dquot_active(const struct inode *inode)
+  */
+ static void __dquot_initialize(struct inode *inode, int type)
  {
- 	__u32 fmt;
- 
--	down_read(&sb_dqopt(sb)->dqptr_sem);
-+	mutex_lock(&sb_dqopt(sb)->dqonoff_mutex);
- 	if (!sb_has_quota_active(sb, type)) {
--		up_read(&sb_dqopt(sb)->dqptr_sem);
-+		mutex_unlock(&sb_dqopt(sb)->dqonoff_mutex);
- 		return -ESRCH;
+-	int cnt;
++	int cnt, init_needed = 0;
+ 	struct dquot *got[MAXQUOTAS];
+ 	struct super_block *sb = inode->i_sb;
+ 	qsize_t rsv;
+@@ -1416,6 +1416,13 @@ static void __dquot_initialize(struct inode *inode, int type)
+ 		got[cnt] = NULL;
+ 		if (type != -1 && cnt != type)
+ 			continue;
++		/* The i_dquot should have been initialized in most cases,
++		 * we check it without locking here to avoid unnecessary
++		 * dqget()/dqput() calls. */
++		if (inode->i_dquot[cnt])
++			continue;
++		init_needed = 1;
++
+ 		switch (cnt) {
+ 		case USRQUOTA:
+ 			qid = make_kqid_uid(inode->i_uid);
+@@ -1427,6 +1434,10 @@ static void __dquot_initialize(struct inode *inode, int type)
+ 		got[cnt] = dqget(sb, qid);
  	}
- 	fmt = sb_dqopt(sb)->info[type].dqi_format->qf_fmt_id;
--	up_read(&sb_dqopt(sb)->dqptr_sem);
-+	mutex_unlock(&sb_dqopt(sb)->dqonoff_mutex);
- 	if (copy_to_user(addr, &fmt, sizeof(fmt)))
- 		return -EFAULT;
- 	return 0;
+ 
++	/* All required i_dquot has been initialized */
++	if (!init_needed)
++		return;
++
+ 	down_write(&sb_dqopt(sb)->dqptr_sem);
+ 	if (IS_NOQUOTA(inode))
+ 		goto out_err;
 -- 
 1.7.1
 
