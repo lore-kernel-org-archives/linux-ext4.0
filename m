@@ -1,74 +1,50 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/5] quota: protect Q_GETFMT by dqonoff_mutex
-Date: Wed, 4 Jun 2014 17:36:08 +0200
-Message-ID: <20140604153608.GA22927@quack.suse.cz>
-References: <537DD5BA.1050105@gmail.com>
- <538464AD.6050407@gmail.com>
- <20140527101219.GA28035@infradead.org>
- <538541FE.3070203@gmail.com>
- <20140602083436.GC3224@quack.suse.cz>
- <538D9AB0.9090607@gmail.com>
- <20140603154301.GE30706@quack.suse.cz>
- <538E9E40.8090202@gmail.com>
+From: Benno Schulenberg <bensberg@justemail.net>
+Subject: Re: [2/4 v2] e2fsck: make a prompt message simpler and thus translatable
+Date: Wed, 04 Jun 2014 17:38:12 +0200
+Message-ID: <1401896292.29436.125136989.78578825@webmail.messagingengine.com>
+References: <20140602234001.GJ30598@thunk.org>
+ <1401827722-13286-1-git-send-email-bensberg@justemail.net>
+ <20140604020719.GC27426@thunk.org>
+ <1401884601.6870.125052445.0CA47507@webmail.messagingengine.com>
+ <20140604125650.GF27426@thunk.org>
+ <1401888336.22807.125078021.186DE367@webmail.messagingengine.com>
+ <20140604144239.GI27426@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	yawei.niu@intel.com, andreas.dilger@intel.com, lai.siyao@intel.com
-To: Niu Yawei <yawei.niu@gmail.com>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:36789 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752257AbaFDPgM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 Jun 2014 11:36:12 -0400
-Content-Disposition: inline
-In-Reply-To: <538E9E40.8090202@gmail.com>
+Received: from out1-smtp.messagingengine.com ([66.111.4.25]:38071 "EHLO
+	out1-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751627AbaFDPiN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jun 2014 11:38:13 -0400
+In-Reply-To: <20140604144239.GI27426@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 04-06-14 12:19:12, Niu Yawei wrote:
-> Subject: [PATCH 1/5] quota: protect Q_GETFMT by dqonoff_mutex
-> 
-> dqptr_sem will go away. Protect Q_GETFMT quotactl by
-> dqonoff_mutex instead. This is also enough to make sure
-> quota info will not go away while we are looking at it.
-> 
-> Signed-off-by: Lai Siyao <lai.siyao@intel.com>
-> Signed-off-by: Niu Yawei <yawei.niu@intel.com>
-  Thanks! I've merged all the five patches to my tree. I will give them
-some testing. I won't push them in this merge window but it should go in in
-the next one.
 
-								Honza
-> ---
->  fs/quota/quota.c |    6 +++---
->  1 files changed, 3 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/quota/quota.c b/fs/quota/quota.c
-> index 2b363e2..e4851cb 100644
-> --- a/fs/quota/quota.c
-> +++ b/fs/quota/quota.c
-> @@ -79,13 +79,13 @@ static int quota_getfmt(struct super_block *sb, int type, void __user *addr)
->  {
->  	__u32 fmt;
->  
-> -	down_read(&sb_dqopt(sb)->dqptr_sem);
-> +	mutex_lock(&sb_dqopt(sb)->dqonoff_mutex);
->  	if (!sb_has_quota_active(sb, type)) {
-> -		up_read(&sb_dqopt(sb)->dqptr_sem);
-> +		mutex_unlock(&sb_dqopt(sb)->dqonoff_mutex);
->  		return -ESRCH;
->  	}
->  	fmt = sb_dqopt(sb)->info[type].dqi_format->qf_fmt_id;
-> -	up_read(&sb_dqopt(sb)->dqptr_sem);
-> +	mutex_unlock(&sb_dqopt(sb)->dqonoff_mutex);
->  	if (copy_to_user(addr, &fmt, sizeof(fmt)))
->  		return -EFAULT;
->  	return 0;
-> -- 
-> 1.7.1
-> 
-> 
+On Wed, Jun 4, 2014, at 16:42, Theodore Ts'o wrote:
+> So it looks like allowing the placement of the XXX characters in the
+> middle of the filename is a GNU coreutils extension, and it must have
+> been introduced very shortly after Ubuntu 10.04 snapshotted its
+> coreutils package from Debian.
+
+You are right.  On Wed Nov 4 2009 there is this in coreutils' git:
+
+-TEMPLATE must end in at least 3 consecutive `X's.\n\
++TEMPLATE must contain at least 3 consecutive `X's in last component.\n\
+
+and:
+
+-count_trailing_X_s (const char *s)
++count_consecutive_X_s (const char *s, size_t len)
+
+So, you can probably drop the patch.
+
+Benno
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+http://www.fastmail.fm - One of many happy users:
+  http://www.fastmail.fm/help/overview_quotes.html
+
