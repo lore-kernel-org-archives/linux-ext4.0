@@ -1,99 +1,97 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [GIT PULL] Reiserfs & ext3 changes for 3.16-rc1
-Date: Wed, 4 Jun 2014 22:27:58 +0200
-Message-ID: <20140604202758.GC22927@quack.suse.cz>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] resize2fs: Don't attempt to calculate minimum size on fs
+ with errors
+Date: Wed, 04 Jun 2014 16:12:47 -0500
+Message-ID: <538F8BCF.7090405@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	LKML <linux-kernel@vger.kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>,
+	Jes Sorensen <Jes.Sorensen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:58067 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751760AbaFDVMt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 Jun 2014 17:12:49 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s54LCnvR003583
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Wed, 4 Jun 2014 17:12:49 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello Linus,
+My old patch:
 
-  could you please pull from
+	resize2fs: don't print minimum size if fs is not clean
 
-git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git for_linus
+almost did this, but it still calculated the size; it just didn't print
+it.  Which is a bit silly.
 
-to get big reiserfs cleanup from Jeff, an ext3 deadlock fix, and some small
-cleanups.
+Jes had a pretty badly corrupted image which made the minimum size
+calculation go off into the weeds.  It was corrupted, and also marked
+as having an error.
 
-Top of the tree is 166418ccefc3. The full shortlog is:
+We'll eventually bail out for an unmounted filesystem if it's marked
+as being in an error state anyway; just move that test & bail-out
+to a much earlier point, and remove the now-duplicate one under the
+print_min_size block.
 
-Fabian Frederick (2):
-      reiserfs: remove obsolete __constant_cpu_to_le32
-      fs/jbd/revoke.c: replace shift loop by ilog2
+This will catch & block all resize operations on an offline filesystem
+with errors, in one central place.
 
-Jan Kara (1):
-      ext3: Fix deadlock in data=journal mode when fs is frozen
+Reported-by: Jes Sorensen <Jes.Sorensen@redhat.com>
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-Jeff Mahoney (30):
-      reiserfs: use per-fs commit workqueues
-      reiserfs: cleanup, rename key and item accessors to more friendly names
-      reiserfs: cleanup, reformat comments to normal kernel style
-      reiserfs: cleanup, remove nblocks argument from journal_end
-      reiserfs: cleanup, remove sb argument from journal_end
-      reiserfs: cleanup, remove sb argument from journal_mark_dirty
-      reiserfs: cleanup, remove blocks arg from journal_join
-      reiserfs: cleanup, remove unnecessary parens in dirent creation
-      reiserfs: cleanup, remove leading whitespace from labels
-      reiserfs: cleanup, remove unnecessary parens
-      reiserfs: cleanup, make hash detection saner
-      reiserfs: balance_leaf refactor, reformat balance_leaf comments
-      reiserfs: balance_leaf refactor, move state variables into tree_balance
-      reiserfs: balance_leaf refactor, pull out balance_leaf_insert_left
-      reiserfs: balance_leaf refactor, pull out balance_leaf_paste_left
-      reiserfs: balance_leaf refactor, pull out balance_leaf_insert_right
-      reiserfs: balance_leaf refactor, pull out balance_leaf_paste_right
-      reiserfs: balance_leaf refactor, pull out balance_leaf_new_nodes_insert
-      reiserfs: balance_leaf refactor, pull out balance_leaf_new_nodes_paste
-      reiserfs: balance_leaf refactor pull out balance_leaf_finish_node_insert
-      reiserfs: balance_leaf refactor, pull out balance_leaf_finish_node_paste
-      reiserfs: balance_leaf refactor, pull out balance_leaf{left, right, new_nodes, finish_node}
-      reiserfs: balance_leaf refactor, format balance_leaf_insert_left
-      reiserfs: balance_leaf refactor, format balance_leaf_paste_left
-      reiserfs: balance_leaf refactor, format balance_leaf_insert_right
-      reiserfs: balance_leaf refactor, format balance_leaf_paste_right
-      reiserfs: balance_leaf refactor, format balance_leaf_new_nodes_paste
-      reiserfs: balance_leaf refactor, format balance_leaf_finish_node
-      reiserfs: balance_leaf refactor, split up balance_leaf_when_delete
-      reiserfs: call truncate_setsize under tailpack mutex
+diff --git a/resize/main.c b/resize/main.c
+index 2b7abff..e65c8e4 100644
+--- a/resize/main.c
++++ b/resize/main.c
+@@ -319,6 +319,17 @@ int main (int argc, char ** argv)
+ 		exit (1);
+ 	}
+ 
++	if (!(mount_flags & EXT2_MF_MOUNTED)) {
++		if (!force && ((fs->super->s_lastcheck < fs->super->s_mtime) ||
++			       (fs->super->s_state & EXT2_ERROR_FS) ||
++			       ((fs->super->s_state & EXT2_VALID_FS) == 0))) {
++			fprintf(stderr,
++				_("Please run 'e2fsck -f %s' first.\n\n"),
++				device_name);
++			exit(1);
++		}
++	}
++
+ 	/*
+ 	 * Check for compatibility with the feature sets.  We need to
+ 	 * be more stringent than ext2fs_open().
+@@ -332,13 +343,6 @@ int main (int argc, char ** argv)
+ 	min_size = calculate_minimum_resize_size(fs, flags);
+ 
+ 	if (print_min_size) {
+-		if (!force && ((fs->super->s_state & EXT2_ERROR_FS) ||
+-			       ((fs->super->s_state & EXT2_VALID_FS) == 0))) {
+-			fprintf(stderr,
+-				_("Please run 'e2fsck -f %s' first.\n\n"),
+-				device_name);
+-			exit(1);
+-		}
+ 		printf(_("Estimated minimum size of the filesystem: %llu\n"),
+ 		       min_size);
+ 		exit(0);
+@@ -444,14 +448,6 @@ int main (int argc, char ** argv)
+ 		bigalloc_check(fs, force);
+ 		retval = online_resize_fs(fs, mtpt, &new_size, flags);
+ 	} else {
+-		if (!force && ((fs->super->s_lastcheck < fs->super->s_mtime) ||
+-			       (fs->super->s_state & EXT2_ERROR_FS) ||
+-			       ((fs->super->s_state & EXT2_VALID_FS) == 0))) {
+-			fprintf(stderr,
+-				_("Please run 'e2fsck -f %s' first.\n\n"),
+-				device_name);
+-			exit(1);
+-		}
+ 		bigalloc_check(fs, force);
+ 		printf(_("Resizing the filesystem on "
+ 			 "%s to %llu (%dk) blocks.\n"),
 
-The diffstat is
-
- fs/ext3/inode.c               |   33 +-
- fs/jbd/revoke.c               |   12 +-
- fs/reiserfs/bitmap.c          |  259 +++--
- fs/reiserfs/dir.c             |  156 +--
- fs/reiserfs/do_balan.c        | 2449 +++++++++++++++++++++++------------------
- fs/reiserfs/file.c            |   90 +-
- fs/reiserfs/fix_node.c        | 1008 ++++++++++-------
- fs/reiserfs/hashes.c          |   15 +-
- fs/reiserfs/ibalance.c        |  271 +++--
- fs/reiserfs/inode.c           | 1206 +++++++++++---------
- fs/reiserfs/ioctl.c           |   27 +-
- fs/reiserfs/item_ops.c        |  108 +-
- fs/reiserfs/journal.c         | 1339 ++++++++++++----------
- fs/reiserfs/lbalance.c        |  501 +++++----
- fs/reiserfs/namei.c           |  513 +++++----
- fs/reiserfs/objectid.c        |  101 +-
- fs/reiserfs/prints.c          |  176 +--
- fs/reiserfs/reiserfs.h        | 1921 ++++++++++++++++++++------------
- fs/reiserfs/resize.c          |   75 +-
- fs/reiserfs/stree.c           |  892 ++++++++-------
- fs/reiserfs/super.c           |  552 ++++++----
- fs/reiserfs/tail_conversion.c |  161 +--
- fs/reiserfs/xattr.c           |   70 +-
- fs/reiserfs/xattr.h           |    3 +-
- fs/reiserfs/xattr_acl.c       |   38 +-
- 25 files changed, 7056 insertions(+), 4920 deletions(-)
-
-							Thanks
-								Honza
-
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
