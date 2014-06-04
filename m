@@ -1,54 +1,81 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [2/4 v2] e2fsck: make a prompt message simpler and thus
- translatable
-Date: Wed, 4 Jun 2014 12:03:21 -0400
-Message-ID: <20140604160321.GC30424@thunk.org>
-References: <20140602234001.GJ30598@thunk.org>
- <1401827722-13286-1-git-send-email-bensberg@justemail.net>
- <20140604020719.GC27426@thunk.org>
- <1401884601.6870.125052445.0CA47507@webmail.messagingengine.com>
- <20140604125650.GF27426@thunk.org>
- <1401888336.22807.125078021.186DE367@webmail.messagingengine.com>
- <20140604144239.GI27426@thunk.org>
- <1401896292.29436.125136989.78578825@webmail.messagingengine.com>
+From: Nicolas Pitre <nicolas.pitre@linaro.org>
+Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
+Date: Wed, 4 Jun 2014 13:30:32 -0400 (EDT)
+Message-ID: <alpine.LFD.2.11.1406041308300.17310@knanqh.ubzr>
+References: <1401480116-1973111-1-git-send-email-arnd@arndb.de>
+ <5011138.W0gbOc20Qp@wuerfel> <20140603213802.GH14410@dastard>
+ <201406041703.47592.arnd@arndb.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Benno Schulenberg <bensberg@justemail.net>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:50279 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751202AbaFDQDZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 Jun 2014 12:03:25 -0400
-Content-Disposition: inline
-In-Reply-To: <1401896292.29436.125136989.78578825@webmail.messagingengine.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: hch@infradead.org, Dave Chinner <david@fromorbit.com>,
+ linux-mtd@lists.infradead.org, "H. Peter Anvin" <hpa@zytor.com>,
+ linux-f2fs-devel@lists.sourceforge.net, ceph-devel@vger.kernel.org,
+ "Joseph S. Myers" <joseph@codesourcery.com>, linux-arch@vger.kernel.org,
+ linux-cifs@vger.kernel.org, linux-scsi@vger.kernel.org,
+ linux-afs@lists.infradead.org, cluster-devel@redhat.com, coda@cs.cmu.edu,
+ geert@linux-m68k.org, linux-ext4@vger.kernel.org,
+ codalist@telemann.coda.cs.cmu.edu, fuse-devel@lists.sourceforge.net,
+ reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com, john.stultz@linaro.org,
+ tglx@linutronix.de, linux-nfs@vger.kernel.org,
+ linux-ntfs-dev@lists.sourceforge.net, samba-technical@lists.samba.org,
+ linux-kernel@vger.kernel.org, logfs@logfs.org, linux-btrfs@vger.kernel.org,
+ linux-fsdevel@vger.kernel.org, lftan@altera.com, ocfs2-devel@oss.oracle.com
+To: Arnd Bergmann <arnd@arndb.de>
+Return-path: <linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org>
+In-Reply-To: <201406041703.47592.arnd@arndb.de>
+List-Unsubscribe: <http://lists.infradead.org/mailman/options/linux-mtd>,
+ <mailto:linux-mtd-request@lists.infradead.org?subject=unsubscribe>
+List-Archive: <http://lists.infradead.org/pipermail/linux-mtd/>
+List-Post: <mailto:linux-mtd@lists.infradead.org>
+List-Help: <mailto:linux-mtd-request@lists.infradead.org?subject=help>
+List-Subscribe: <http://lists.infradead.org/mailman/listinfo/linux-mtd>,
+ <mailto:linux-mtd-request@lists.infradead.org?subject=subscribe>
+Sender: "linux-mtd" <linux-mtd-bounces@lists.infradead.org>
+Errors-To: linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jun 04, 2014 at 05:38:12PM +0200, Benno Schulenberg wrote:
-> On Wed, Jun 4, 2014, at 16:42, Theodore Ts'o wrote:
-> > So it looks like allowing the placement of the XXX characters in the
-> > middle of the filename is a GNU coreutils extension, and it must have
-> > been introduced very shortly after Ubuntu 10.04 snapshotted its
-> > coreutils package from Debian.
-> 
-> You are right.  On Wed Nov 4 2009 there is this in coreutils' git:
-> 
-> -TEMPLATE must end in at least 3 consecutive `X's.\n\
-> +TEMPLATE must contain at least 3 consecutive `X's in last component.\n\
-> 
-> and:
-> 
-> -count_trailing_X_s (const char *s)
-> +count_consecutive_X_s (const char *s, size_t len)
-> 
-> So, you can probably drop the patch.
+On Wed, 4 Jun 2014, Arnd Bergmann wrote:
 
-Well, I actually care about portability to *BSD and other legacy Unix
-systems :-), so I plan to the change to push the XXXXXX to the end of
-the template.
+> On Tuesday 03 June 2014, Dave Chinner wrote:
+> > Just ot be pedantic, inodes don't need 96 bit timestamps - some
+> > filesystems can *support up to* 96 bit timestamps. If the kernel
+> > only supports 64 bit timestamps and that's all the kernel can
+> > represent, then the upper bits of the 96 bit on-disk inode
+> > timestamps simply remain zero.
+> 
+> I meant the reverse: since we have file systems that can store
+> 96-bit timestamps when using 64-bit kernels, we need to extend
+> 32-bit kernels to have the same internal representation so we
+> can actually read those file systems correctly.
+> 
+> > If you move the filesystem between kernels with different time
+> > ranges, then the filesystem needs to be able to tell the kernel what
+> > it's supported range is.  This is where having the VFS limit the
+> > range of supported timestamps is important: the limit is the
+> > min(kernel range, filesystem range). This allows the filesystems
+> > to be indepenent of the kernel time representation, and the kernel
+> > to be independent of the physical filesystem time encoding....
+> 
+> I agree it makes sense to let the kernel know about the limits
+> of the file system it accesses, but for the reverse, we're probably
+> better off just making the kernel representation large enough (i.e.
+> 96 bits) so it can work with any known file system.
 
-Thanks for pointing this out,
+Depends...  96 bit handling may get prohibitive on 32-bit archs.
 
-							- Ted
+The important point here is for the kernel to be able to represent the 
+time _range_ used by any known filesystem, not necessarily the time 
+_precision_.
 
+For example, a 64 bit representation can be made of 40 bits for seconds 
+spanning 34865 years, and 24 bits for fractional seconds providing 
+precision down to 60 nanosecs.  That ought to be plenty good on 32 bit 
+systems while still being cheap to handle.
+
+
+Nicolas
+
+______________________________________________________
+Linux MTD discussion mailing list
+http://lists.infradead.org/mailman/listinfo/linux-mtd/
