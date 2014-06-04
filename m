@@ -1,73 +1,58 @@
 From: Namjae Jeon <namjae.jeon@samsung.com>
-Subject: RE: [PATCH v2 0/10] fs: Introduce FALLOC_FL_INSERT_RANGE for fallocate
-Date: Wed, 04 Jun 2014 13:57:37 +0900
-Message-ID: <000e01cf7fb1$814ab6d0$83e02470$@samsung.com>
-References: <003601cf6aa7$883103b0$98930b10$@samsung.com>
-	<alpine.LFD.2.00.1405301238190.2009@localhost.localdomain>
-	<000d01cf7ca3$98335c50$c89a14f0$@samsung.com>
-	<alpine.LFD.2.00.1406021204540.2231@localhost.localdomain>
-	<002201cf7e59$2e684c10$8b38e430$@samsung.com>
-	<alpine.LFD.2.00.1406021450541.2231@localhost.localdomain>
-	<20140602150258.GG30598@thunk.org>
+Subject: RE: [PATCH 1/2] ext4: introduce new i_write_mutex to protect fallocate
+Date: Wed, 04 Jun 2014 14:58:06 +0900
+Message-ID: <000f01cf7fb9$f4c4cfd0$de4e6f70$@samsung.com>
+References: <001701cf6e40$fab98be0$f02ca3a0$@samsung.com>
+ <alpine.LFD.2.00.1405291439340.18491@localhost.localdomain>
+ <20140529162810.GG25041@thunk.org>
+ <000c01cf7c9b$edaf2f90$c90d8eb0$@samsung.com>
+ <20140602143807.GB30598@thunk.org>
+ <001801cf7ef1$b01a85a0$104f90e0$@samsung.com>
+ <20140603151958.GD12890@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
-	'Ashish Sangwan' <a.sangwan@samsung.com>, linux-fsdevel@vger.kernel.org,
-	=?UTF-8?Q?'Luk=C3=A1=C5=A1_Czerner'?= <lczerner@redhat.com>,
-	'linux-ext4' <linux-ext4@vger.kernel.org>
-To: 'Theodore Ts'o' <tytso@mit.edu>, 'Dave Chinner' <david@fromorbit.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-reply-to: <20140602150258.GG30598@thunk.org>
+Content-Type: text/plain; charset=iso-8859-2
+Content-Transfer-Encoding: 7bit
+Cc: =?iso-8859-2?Q?'Luk=E1=B9_Czerner'?= <lczerner@redhat.com>,
+	'linux-ext4' <linux-ext4@vger.kernel.org>,
+	'Ashish Sangwan' <a.sangwan@samsung.com>
+To: 'Theodore Ts'o' <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mailout1.samsung.com ([203.254.224.24]:42725 "EHLO
+	mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751963AbaFDF6J (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jun 2014 01:58:09 -0400
+Received: from epcpsbgr1.samsung.com
+ (u141.gpu120.samsung.co.kr [203.254.230.141])
+ by mailout1.samsung.com (Oracle Communications Messaging Server 7u4-24.01
+ (7.0.4.24.0) 64bit (built Nov 17 2011))
+ with ESMTP id <0N6M004YPR8VDK20@mailout1.samsung.com> for
+ linux-ext4@vger.kernel.org; Wed, 04 Jun 2014 14:58:07 +0900 (KST)
+In-reply-to: <20140603151958.GD12890@thunk.org>
 Content-language: ko
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-PiBPbiBNb24sIEp1biAwMiwgMjAxNCBhdCAwMzowNjoxM1BNICswMjAwLCBMdWvDocWhIEN6ZXJu
-ZXIgd3JvdGU6Cj4gPiA+ID4gU28gd2hhdCB3aWxsIGhhcHBlbiB3aGVuIHRoZXJlIGlzIG5vdCBl
-bm91Z2ggc3BhY2Ugd2hlbiAiaW5zZXJ0aW5nIGEKPiA+ID4gPiByYW5nZSIgPyBBbmQgaG93IHNo
-b3VsZCB1c2VyIHByb2NlZWQgZnJvbSB0aGVyZSA/Cj4gPiA+IElmIGluc2VydCByYW5nZSBmYWls
-cyB3aXRoIGFuIEVOT1NQQyBlcnJvciwgdXNlciBjb3VsZCB1c2UgY29sbGFwc2UKPiA+ID4gcmFu
-Z2Ugb24gdGhlIHNhbWUgcmFuZ2UgdG8gcmVtb3ZlIHRoZSBob2xlLgo+ID4gPiBBbmQgYWZ0ZXIg
-ZnJlZWluZyBtb3JlIHNwYWNlLCBoZSBjYW4gYWdhaW4gdHJ5IGluc2VydGluZyByYW5nZS4KPiA+
-ID4gT2Zjb3Vyc2UsIHRoaXMgdHlwZSBvZiBndWlkYW5jZSBzaG91bGQgYmUgcHJvcGVybHkgZG9j
-dW1lbnRlZCBpbgo+ID4gPiBtYW5wYWdlLiBXaGVuIHVwZGF0aW5nIGZhbGxvY2F0ZSgyKSBtYW5w
-YWdlLCBJIHdpbGwga2VlcCAgaW4gbWluZCB0bwo+ID4gPiBkZXNjcmliZSBFTk9TUEMgaGFuZGxp
-bmcuCj4gPgo+ID4gV2h5IGNvbGxhcHNlID8gVGhlIGhvbGUgaXMgYWxyZWFkeSB0aGVyZSByaWdo
-dCA/IFdoeSBub3QganVzdCB1c2UKPiA+IGZhbGxvY2F0ZSB0byBhbGxvY2F0ZSB0aGUgc3BhY2Ug
-Zm9yIHRoZSBob2xlLiBBbmQgdGhhdCdzIG15IHBvaW50Cj4gPiBhY3R1YWxseS4gV2h5IG5vdCBk
-byBpdCB0aGlzIHdheSBpbiB0aGUgZmlyc3QgcGxhY2UsIGJlY2F1c2UgdGhpcyBpcwo+ID4gcmVh
-bGx5IGNvdW50ZXJpbnR1aXRpdmUuCj4gCj4gSXQncyB3b3JzZSB0aGFuIHRoYXQuICBJdCdzIHBv
-c3NpYmxlIHRoYXQgdGhlIHJlYXNvbiB3aHkgeW91IGdvdCB0aGUKPiBFTk9TUEMgd2FybmluZyB3
-YXMgYmVjYXVzZSB0aGUgb3BlcmF0aW9uIHRvIG1vdmUgdGhlIGV4dGVudHMgZG93bgo+IHJlcXVp
-cmVkIGFsbG9jYXRpbmcgYSBibG9jaywgYW5kIGl0IHdhcyAqdGhhdCogYmxvY2sgYWxsb2NhdGlv
-biB3aGljaAo+IGZhaWxlZC4gIFNvIGl0J3Mgbm90IGRldGVybWluaXN0aWMgd2hldGhlciBvciBu
-b3QgdGhlIGZpbGUncyBleHRlbnQKPiBtYXBwaW5ncyB3ZXJlIG1vZGlmaWVkIGFmdGVyIGEgRU5P
-U1BDIGVycm9yLCBhbmQgc28gaXQncyBub3QgY2xlYXIKPiB3aGV0aGVyIG9yIG5vdCBhIGNvbGxh
-cHNlX3JhbmdlIGZ1bmN0aW9uIHdpbGwgdW5kbyB0aGUgcmFuZ2UgdGhhdCBoYWQKPiBiZWVuIGlu
-c2VydGVkIC0tLSBvciB3aGV0aGVyIGl0IGVuZHMgdXAgZGVsZXRpbmcgZXhpc3RpbmcgZGF0YSBi
-bG9ja3MuCj4gCj4gSW4gZ2VuZXJhbGx5LCB5b3UgcmVhbGx5IHdhbnQgc3lzdGVtIGNhbGxzIHRv
-IGhhdmUgYWxsLW9yLW5vdGhpbmcKPiBlZmZlY3RzLCB3aGVyZSBpZiB0aGUgc3lzdGVtIGNhbGwg
-cmV0dXJucyBhbiBlcnJvciwgdGhlIHN0YXRlIG9mIHRoZQo+IGZpbGUgaGFzIG5vdCBiZWVuIGNo
-YW5nZWQuICBBbmQgZm9yIHRoYXQgcmVhc29uLCBJIGFncmVlIHdpdGggTHVrw6HFoQo+IHRoYXQg
-aXQgaXMgcmVhbGx5IGEgZ29vZCBpZGVhIHRvIGRlY291cGxlIG1vdmluZyB0aGUgYmxvY2tzIGRv
-d24sIGFuZAo+IGFsbG9jYXRpbmcgc3BhY2UgLS0tIGFuZCB0byBtYWtlIHN1cmUgdGhhdCBpZiB0
-aGVyZSBpcyBhbnkgZmFpbHVyZQo+IHdoaWxlIGluc2VydGluZyB0aGUgcmFuZ2UsIHRoZSBzdGF0
-ZSBvZiB0aGUgZmlsZSBpcyBub3QgbW9kaWZpZWQgYXQgYWxsLgpPa2F5LCBJIHdpbGwgcmVtb3Zl
-IGFsbG9jYXRpbmcgc3BhY2UgcGFydCBpbiBpbnNlcnQgcmFuZ2UgcGF0Y2guCkJ1dCByZW5hbWlu
-ZyBmbGFncyBhcyBGQUxMT0NfRkxfSU5TRVJUX0hPTEUgaXMgbmVlZGVkIHRvIGNvbmNlbnQgd2l0
-aApYRlMgcGVvcGxlLiBCZWNhdXNlIERhdmUgcHJlZmVyZWQgdG8gY2FsbCBpdCBGQUxMT0NfRkxf
-SU5TRVJUX1JBTkdFCnNvIHRoYXQgaXQgbG9va3MgbGlrZSBpdCBpcyByZWxhdGVkIHRvIGNvbGxh
-cHNlIHJhbmdlLgoKSGkgRGF2ZS4KRG8geW91IGhhdmUgYW55IG9iamVjdGlvbiBhYm91dCByZW5h
-bWluZyBhcyBpbnNlcnQgaG9sZSA/CgpUaGFua3MgZm9yIG9waW5pb25zIQoKPiAKPiBDaGVlcnMs
-Cj4gCj4gCQkJCQktIFRlZAoKX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fX18KeGZzIG1haWxpbmcgbGlzdAp4ZnNAb3NzLnNnaS5jb20KaHR0cDovL29zcy5zZ2ku
-Y29tL21haWxtYW4vbGlzdGluZm8veGZzCg==
+> 
+> On Tue, Jun 03, 2014 at 03:04:32PM +0900, Namjae Jeon wrote:
+> > IMHO, If our goal is to solve the problem of xfstests, we can use only
+> > "ext4: fix ZERO_RANGE test failure in data journalling" patch without
+> > i_write_mutex patch. And we can add lock for fallocate on next kernel
+> > after checking with sufficient time.
+> 
+> I thought this patch required i_write_mutex to avoid a race where
+> another thread modifies an inode while filemap_write_and_wait_range()
+> is running?
+Yes, Right.
+> 
+> I agree that we could drop the i_write_mutex and add a call to
+> ext4_force_commit() which should make the xfstest failure rarer, but
+> the race would still be there, yes?
+Yes, It is there but as Lukas said it is not critical than a possible
+locking overhead. So, IMHO this is not something which needs urgent
+attention and can be tackled properly after checking unclear
+performance measurement on high-end server.
+
+Thanks.
+> 
+> 						- Ted
+
