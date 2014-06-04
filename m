@@ -1,56 +1,81 @@
-From: Benno Schulenberg <bensberg@justemail.net>
-Subject: Re: [2/4 v2] e2fsck: make a prompt message simpler and thus translatable
-Date: Wed, 04 Jun 2014 15:25:36 +0200
-Message-ID: <1401888336.22807.125078021.186DE367@webmail.messagingengine.com>
-References: <20140602234001.GJ30598@thunk.org>
- <1401827722-13286-1-git-send-email-bensberg@justemail.net>
- <20140604020719.GC27426@thunk.org>
- <1401884601.6870.125052445.0CA47507@webmail.messagingengine.com>
- <20140604125650.GF27426@thunk.org>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: fix COLLAPSE RANGE test failure when bigalloc is
+ enable
+Date: Wed, 4 Jun 2014 15:27:50 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1406041456210.2927@localhost.localdomain>
+References: <001001cf7fcc$34f3c2c0$9edb4840$@samsung.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	Ashish Sangwan <a.sangwan@samsung.com>
+To: Namjae Jeon <namjae.jeon@samsung.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from out1-smtp.messagingengine.com ([66.111.4.25]:51373 "EHLO
-	out1-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753112AbaFDNZj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jun 2014 09:25:39 -0400
-In-Reply-To: <20140604125650.GF27426@thunk.org>
+Received: from mx1.redhat.com ([209.132.183.28]:55732 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752977AbaFDN16 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 Jun 2014 09:27:58 -0400
+In-Reply-To: <001001cf7fcc$34f3c2c0$9edb4840$@samsung.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Wed, 4 Jun 2014, Namjae Jeon wrote:
 
-On Wed, Jun 4, 2014, at 14:56, Theodore Ts'o wrote:
-> On Wed, Jun 04, 2014 at 02:23:21PM +0200, Benno Schulenberg wrote:
-> > 
-> > Running 'make check' now, I see these messages along the way:
-> > 
-> > mktemp: too few X's in template `r_64bit_big_expand.XXXXXX.tmp'
-
-This "too few X's" is misleading -- what it intends to say is that it
-sees zero X's in the final component of the name, "tmp".
-
-> Hmm... what OS and if Linux, version of coreutils are you using?
-
-Ubuntu Lucid, 2010.04, mktemp --version | head -1
-mktemp (GNU coreutils) 8.13
-
-> On my system, from "man mktemp":
+> Date: Wed, 04 Jun 2014 17:08:45 +0900
+> From: Namjae Jeon <namjae.jeon@samsung.com>
+> To: Theodore Ts'o <tytso@mit.edu>
+> Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+>     Ashish Sangwan <a.sangwan@samsung.com>
+> Subject: [PATCH] ext4: fix COLLAPSE RANGE test failure when bigalloc is enable
 > 
->        Create a temporary file or directory, safely, and print its
->        name.  TEMPLATE must contain at least 3 consecutive 'X's in
->               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
->        last component.
->        ^^^^^^^^^^^^^^^
+> Blocks in collapse range should be collapsed per cluster unit when bigalloc
+> is enable. If bigalloc is not enable, EXT4_CLUSTER_SIZE will be same with
+> EXT4_BLOCK_SIZE.
 
-Same here.  It still says "*last* component".
+I wonder why it is so ? Bigalloc only affects the way we allocate
+and free blocks, it does not affect extent tree at all and so
+freeing and allocating extents at the block boundary on bigalloc
+file system should be just fine - underlying code should be able to
+handle it.
 
-Regards,
+It might be that there is some complication in shift_extent code
+which is not obvious to me. Could you please describe the problem
+and why this is needed little bit more ?
 
-Benno
+Have you done some testing with bigalloc enabled file system with
+respect to collapse range ?
 
--- 
-http://www.fastmail.fm - The professional email service
+Thanks!
+-Lukas
 
+> 
+> Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
+> Signed-off-by: Ashish Sangwan <a.sangwan@samsung.com>
+> ---
+>  fs/ext4/extents.c | 7 ++-----
+>  1 file changed, 2 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 4da228a..2b9f5f3 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -5403,16 +5403,13 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
+>  	int ret;
+>  
+>  	/* Collapse range works only on fs block size aligned offsets. */
+> -	if (offset & (EXT4_BLOCK_SIZE(sb) - 1) ||
+> -	    len & (EXT4_BLOCK_SIZE(sb) - 1))
+> +	if (offset & (EXT4_CLUSTER_SIZE(sb) - 1) ||
+> +	    len & (EXT4_CLUSTER_SIZE(sb) - 1))
+>  		return -EINVAL;
+>  
+>  	if (!S_ISREG(inode->i_mode))
+>  		return -EINVAL;
+>  
+> -	if (EXT4_SB(inode->i_sb)->s_cluster_ratio > 1)
+> -		return -EOPNOTSUPP;
+> -
+>  	trace_ext4_collapse_range(inode, offset, len);
+>  
+>  	punch_start = offset >> EXT4_BLOCK_SIZE_BITS(sb);
+> 
