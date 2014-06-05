@@ -1,59 +1,62 @@
-From: "H. Peter Anvin" <hpa-YMNOUZJC4hwAvxtiuMwx3w@public.gmane.org>
-Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
-Date: Wed, 04 Jun 2014 17:10:24 -0700
-Message-ID: <538FB570.8000502@zytor.com>
-References: <1401480116-1973111-1-git-send-email-arnd@arndb.de>
-	<201406041703.47592.arnd@arndb.de>
-	<alpine.LFD.2.11.1406041308300.17310@knanqh.ubzr>
-	<8770583.6XeZxCxOY8@wuerfel>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] tests: for mktemp the exes must be the final characters
+ of the name
+Date: Wed, 4 Jun 2014 23:28:11 -0400
+Message-ID: <20140605032811.GC21061@thunk.org>
+References: <1401884926-31722-1-git-send-email-bensberg@justemail.net>
+ <850D72EC-599B-458C-BBE1-22E6A0F74E92@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
-	linux-mtd-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, linux-f2fs-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
-	ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, "Joseph S. Myers" <joseph-qD8j1LwMmJjtCj0u4l0SBw@public.gmane.org>,
-	linux-arch-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-scsi-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org,
-	cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, coda-ETDLCGt7PQU3uPMLIKxrzw@public.gmane.org, geert-Td1EMuHUCqxL1ZNQvxDV9g@public.gmane.org,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, codalist-ySnCqBnJi5yMVn35/9/JlcWGCVk0P7UB@public.gmane.org,
-	fuse-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, reiserfs-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org, john.stultz-QSEj5FYQhm4dnm+yROfE0A@public.gmane.org, tglx-hfZtesqFncYOwBW4kG4KsQ@public.gmane.org,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ntfs-dev-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
-	samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	logfs-PCqxUs/MD9bYtjvyW6yDsg@public.gmane.org, linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, lftan-EIB2kfCEclfQT0dZR+AlfA@public.gmane.org, ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org
-To: Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org>, Nicolas Pitre <nicolas.pitre-QSEj5FYQhm4dnm+yROfE0A@public.gmane.org>
-Return-path: <fuse-devel-bounces-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org>
-In-Reply-To: <8770583.6XeZxCxOY8@wuerfel>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/fuse-devel>,
-	<mailto:fuse-devel-request-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=fuse-devel>
-List-Post: <mailto:fuse-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org>
-List-Help: <mailto:fuse-devel-request-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/fuse-devel>,
-	<mailto:fuse-devel-request-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org?subject=subscribe>
-Errors-To: fuse-devel-bounces-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Benno Schulenberg <bensberg@justemail.net>,
+	linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:51507 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751508AbaFED2O (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 Jun 2014 23:28:14 -0400
+Content-Disposition: inline
+In-Reply-To: <850D72EC-599B-458C-BBE1-22E6A0F74E92@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 06/04/2014 12:24 PM, Arnd Bergmann wrote:
+On Wed, Jun 04, 2014 at 04:31:21PM -0600, Andreas Dilger wrote:
+> On Jun 4, 2014, at 6:28 AM, Benno Schulenberg <bensberg@justemail.net> wrote:
+> > Signed-off-by: Benno Schulenberg <bensberg@justemail.net>
+> > ---
+> > tests/scripts/resize_test |    2 +-
+> > 1 files changed, 1 insertions(+), 1 deletions(-)
+> > 
+> > diff --git a/tests/scripts/resize_test b/tests/scripts/resize_test
+> > index c9a7a1c..1e5756c 100755
+> > --- a/tests/scripts/resize_test
+> > +++ b/tests/scripts/resize_test
+> > @@ -21,7 +21,7 @@ if truncate -s $SIZE_2 $TMPFILE 2> /dev/null; then
+> > 	echo "using $TMPFILE" >> $LOG
+> > else
+> > 	rm $TMPFILE
+> > -	export TMPFILE=$(TMPDIR=. mktemp -t $test_name.XXXXXX.tmp)
+> > +	export TMPFILE=$(TMPDIR=. mktemp -t $test_name.tmp.XXXXXX)
 > 
-> For other timekeeping stuff in the kernel, I agree that using some
-> 64-bit representation (nanoseconds, 32/32 unsigned seconds/nanoseconds,
-> ...) has advantages, that's exactly the point I was making earlier
-> against simply extending the internal time_t/timespec to 64-bit
-> seconds for everything.
-> 
+> The goal was that the temporary file ended with ".tmp" so that it would
+> be removed by "make clean" in case the test fails or is interrupted, so
+> it would be good to update the "make clean" rules to find these files.
 
-How much of a performance issue is it to make time_t 64 bits, and for
-the bits there are, how hard are they to fix?
+The problem is that using a template where the XXXXXX is in the middle
+of the file name is a GNU coreutils extension.  It's not supported by
+Mac OSX, *BSD's, and Ubuntu 10.04 and before (and presumably similar
+vintage enterprise distros).
 
-	-hpa
+With older coreutils, "mktemp /tmp/foo.XXXXXX.bar" will out and out
+fail.  That's what Benno noticed.  On OSX, "mktemp
+/tmp/foo.XXXXXX.bar" will return /tmp/foo.XXXXXX.bar, unless that file
+already exists, in which case it will bomb out.
 
+If the goal is to make sure we remove temporary files, what we can do
+is to use a template of "/tmp/e2fs-$test_name-tmp.XXXXXX", and then
+include "rm /tmp/e2fs-*-tmp.???????" in the "make clean" rule.
 
+Cheers,
 
-------------------------------------------------------------------------------
-Learn Graph Databases - Download FREE O'Reilly Book
-"Graph Databases" is the definitive new guide to graph databases and their 
-applications. Written by three acclaimed leaders in the field, 
-this first edition is now available. Download your free book today!
-http://p.sf.net/sfu/NeoTech
+						- Ted
+
