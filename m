@@ -1,38 +1,37 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] tests: for mktemp the exes must be the final characters
- of the name
-Date: Mon, 9 Jun 2014 10:49:01 -0400
-Message-ID: <20140609144901.GE8418@thunk.org>
-References: <1401884926-31722-1-git-send-email-bensberg@justemail.net>
- <850D72EC-599B-458C-BBE1-22E6A0F74E92@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Benno Schulenberg <bensberg@justemail.net>,
-	linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Subject: [PATCH 2/2] tests: clean up the temp file if test_one is interrupted
+Date: Mon,  9 Jun 2014 10:50:51 -0400
+Message-ID: <1402325451-5275-2-git-send-email-tytso@mit.edu>
+References: <20140609144901.GE8418@thunk.org>
+ <1402325451-5275-1-git-send-email-tytso@mit.edu>
+Cc: bensberg@justemail.net, Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:57570 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:57579 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932348AbaFIOtF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 Jun 2014 10:49:05 -0400
-Content-Disposition: inline
-In-Reply-To: <850D72EC-599B-458C-BBE1-22E6A0F74E92@dilger.ca>
+	id S933495AbaFIOvC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 Jun 2014 10:51:02 -0400
+In-Reply-To: <1402325451-5275-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 04, 2014 at 04:31:21PM -0600, Andreas Dilger wrote:
-> 
-> I also notice that there are occasional e2fsprogs-tmp.XXXXXX files left
-> behind in /tmp after testing, and it would be nice if they contained the
-> test name so they can be found if there is a problem.
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ tests/test_one.in | 1 +
+ 1 file changed, 1 insertion(+)
 
-I looked into this and it was caused by bugs in the mmp tests.  They
-were setting TMPFILE without using mktemp, and overriding the TMPFILE
-already set up by the test infrastructure.
-
-The other reason why we have left-over temp files is caused by someone
-interrupting the "make check" run.
-
-						- Ted
-
+diff --git a/tests/test_one.in b/tests/test_one.in
+index 01a9260..eb28313 100644
+--- a/tests/test_one.in
++++ b/tests/test_one.in
+@@ -31,6 +31,7 @@ fi
+ test_name=`echo $test_dir | sed -e 's;.*/;;'`
+ 
+ TMPFILE=$(mktemp -t e2fsprogs-tmp-$test_name.XXXXXX)
++trap 'rm -f $TMPFILE ; exit' 1 2 15
+ 
+ if [ -f $test_dir ] ; then
+ 	exit 0;
+-- 
+2.0.0
 
