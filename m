@@ -1,25 +1,54 @@
-From: Birgit Kruse <bojono@arcor.de>
-Subject: P/s Get back to me on this email: mrs.florenceevans3@gmail.com
-Date: Tue, 10 Jun 2014 13:10:13 +0200 (CEST)
-Message-ID: <1634700411.132626.1402398613629.JavaMail.ngmail__33819.8566613302$1402398637$gmane$org@webmail20.arcor-online.net>
+From: Himangi Saraogi <himangi774@gmail.com>
+Subject: [PATCH] fs/ext2/super.c: Drop memory allocation cast
+Date: Tue, 10 Jun 2014 20:11:18 +0530
+Message-ID: <20140610144118.GA3255@himangi-Dell>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: florenceevans@safrica.com
+Content-Type: text/plain; charset=us-ascii
+Cc: julia.lawall@lip6.fr
+To: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-in-10.arcor-online.net ([151.189.21.50]:41725 "EHLO
-	mail-in-10.arcor-online.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750886AbaFJLKQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Jun 2014 07:10:16 -0400
+Received: from mail-pa0-f44.google.com ([209.85.220.44]:40463 "EHLO
+	mail-pa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751003AbaFJOlY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Jun 2014 10:41:24 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello my beloved in the Lord.
+Drop cast on the result of kmem_cache_alloc.
 
-I am MRS. FLORENCE EVANS, from republic of Ireland, I am legally married to MR. JOHN EVANS, a South Africa citizen born brought up in Switzerland, I live in Switzerland with my husband for 32 years before we move down to south Africa in 1985 after my husband retirement in 1974, I am 71 years old by the grace of god, I am a new Christian convert, suffering from long time cancer of the breast. All indication from my doctor that my condition is really deteriorating and it is quite obvious that i wouldn't live more than two months. My dear husband was involved with the January 2000 Kenya airways plane crashed as you can see on the news line web site.
-http://news.bbc.co.uk/2/hi/africa/6627485.stm
-I have confident in you because i have prayed. I am willing to donate the sum of $20.5m U.S dollars, to the less privileged. May the grace of our lord be with you, P/s Get back to me on this email: mrs.florenceevans3@gmail.com
+The semantic patch that makes this change is as follows:
 
-Remain blessed,
-MRS. FLORENCE EVANS
+// <smpl>
+@@
+type T;
+@@
+
+- (T *)
+  (\(kmalloc\|kzalloc\|kcalloc\|kmem_cache_alloc\|kmem_cache_zalloc\|
+   kmem_cache_alloc_node\|kmalloc_node\|kzalloc_node\)(...))
+// </smpl>
+
+Signed-off-by: Himangi Saraogi <himangi774@gmail.com>
+Acked-by: Julia Lawall <julia.lawall@lip6.fr>
+---
+ fs/ext2/super.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index 3750031..b88edc0 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -161,7 +161,7 @@ static struct kmem_cache * ext2_inode_cachep;
+ static struct inode *ext2_alloc_inode(struct super_block *sb)
+ {
+ 	struct ext2_inode_info *ei;
+-	ei = (struct ext2_inode_info *)kmem_cache_alloc(ext2_inode_cachep, GFP_KERNEL);
++	ei = kmem_cache_alloc(ext2_inode_cachep, GFP_KERNEL);
+ 	if (!ei)
+ 		return NULL;
+ 	ei->i_block_alloc_info = NULL;
+-- 
+1.9.1
+
