@@ -1,38 +1,75 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/2] tests: fix left-over e2fsprogs-tmp files not getting
- clean up
-Date: Mon, 9 Jun 2014 21:41:34 -0400
-Message-ID: <20140610014134.GC8092@thunk.org>
-References: <20140609144901.GE8418@thunk.org>
- <1402325451-5275-1-git-send-email-tytso@mit.edu>
- <3C6E678A-D052-40A1-BDEE-84A386CEB887@dilger.ca>
- <20140609234550.GD8993@thunk.org>
- <3A214723-2502-4839-A68F-2566DE6AD6CE@dilger.ca>
+From: Arnd Bergmann <arnd@arndb.de>
+Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
+Date: Tue, 10 Jun 2014 11:54:14 +0200
+Message-ID: <10173877.4plnjUiyX8@wuerfel>
+References: <1401480116-1973111-1-git-send-email-arnd@arndb.de>
+	<8770583.6XeZxCxOY8@wuerfel> <538FB570.8000502@zytor.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	"bensberg@justemail.net" <bensberg@justemail.net>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:58636 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932145AbaFJBnq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 Jun 2014 21:43:46 -0400
-Content-Disposition: inline
-In-Reply-To: <3A214723-2502-4839-A68F-2566DE6AD6CE@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7Bit
+Cc: Nicolas Pitre <nicolas.pitre@linaro.org>,
+        Dave Chinner <david@fromorbit.com>, linux-mtd@lists.infradead.org,
+        linux-f2fs-devel@lists.sourceforge.net, ceph-devel@vger.kernel.org,
+        "Joseph S. Myers" <joseph@codesourcery.com>,
+        linux-arch@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-scsi@vger.kernel.org, linux-afs@lists.infradead.org,
+        cluster-devel@redhat.com, coda@cs.cmu.edu, geert@linux-m68k.org,
+        linux-ext4@vger.kernel.org, codalist@telemann.coda.cs.cmu.edu,
+        fuse-devel@lists.sourceforge.net, reiserfs-devel@vger.kernel.org,
+        xfs@oss.sgi.com, john.stultz@linaro.org, tglx@linutronix.de,
+        linux-nfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
+        samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
+        logfs@logfs.org, linux-btrfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.
+To: "H. Peter Anvin" <hpa@zytor.com>
+Return-path: <cluster-devel-bounces@redhat.com>
+In-Reply-To: <538FB570.8000502@zytor.com>
+List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/cluster-devel>
+List-Post: <mailto:cluster-devel@redhat.com>
+List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
+Sender: cluster-devel-bounces@redhat.com
+Errors-To: cluster-devel-bounces@redhat.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jun 09, 2014 at 06:47:51PM -0600, Andreas Dilger wrote:
+On Wednesday 04 June 2014 17:10:24 H. Peter Anvin wrote:
+> On 06/04/2014 12:24 PM, Arnd Bergmann wrote:
+> > 
+> > For other timekeeping stuff in the kernel, I agree that using some
+> > 64-bit representation (nanoseconds, 32/32 unsigned seconds/nanoseconds,
+> > ...) has advantages, that's exactly the point I was making earlier
+> > against simply extending the internal time_t/timespec to 64-bit
+> > seconds for everything.
+> > 
 > 
-> It would also be good to fix the "make clean" rule to clean up
-> these temp files. 
+> How much of a performance issue is it to make time_t 64 bits, and for
+> the bits there are, how hard are they to fix?
 
-The second patch should take care of nuking them the temp file when
-the user types control-C.  I wouldn't be against deleting tmp files in
-the build directory, but I wouldn't want to delete files in /tmp as
-part of a make clean rule --- consider what might happen if the the
-user types "make clean" in one build tree while running "make check"
-in another.
+Probably very little overhead for most uses, it's more the regression
+potential in the less common parts of the kernel I'm worried about.
 
-					- Ted
+There is a significant but not overwhelming number of uses of the
+main problematic types in the kernel:
+
+arnd@wuerfel:~/arm-soc$ git grep -wl time_t | wc
+    188     188    5566
+arnd@wuerfel:~/arm-soc$ git grep -wl timeval | wc
+    320     320   10353
+arnd@wuerfel:~/arm-soc$ git grep -wl timespec | wc
+    406     406   10886
+
+I believe we have to audit all of them anyway if we want to change
+the kernel to less problematic types and introduce new user
+interfaces.
+
+IMHO this work is helped if we change the uses to a new type
+as we find the problems. This lets us do the work one subsystem
+at a time and avoid accidental ABI changes. I don't care much what
+type that will be, and having a 96-bit type will certainly work
+well in a lot of cases, but I don't see a strong reason to use
+that over other types, especially when they can be more efficient.
+
+	Arnd
