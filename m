@@ -1,75 +1,25 @@
-From: Arnd Bergmann <arnd@arndb.de>
-Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
-Date: Tue, 10 Jun 2014 11:54:14 +0200
-Message-ID: <10173877.4plnjUiyX8@wuerfel>
-References: <1401480116-1973111-1-git-send-email-arnd@arndb.de>
-	<8770583.6XeZxCxOY8@wuerfel> <538FB570.8000502@zytor.com>
+From: Birgit Kruse <bojono@arcor.de>
+Subject: P/s Get back to me on this email: mrs.florenceevans3@gmail.com
+Date: Tue, 10 Jun 2014 13:10:13 +0200 (CEST)
+Message-ID: <1634700411.132626.1402398613629.JavaMail.ngmail__33819.8566613302$1402398637$gmane$org@webmail20.arcor-online.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7Bit
-Cc: Nicolas Pitre <nicolas.pitre@linaro.org>,
-        Dave Chinner <david@fromorbit.com>, linux-mtd@lists.infradead.org,
-        linux-f2fs-devel@lists.sourceforge.net, ceph-devel@vger.kernel.org,
-        "Joseph S. Myers" <joseph@codesourcery.com>,
-        linux-arch@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-scsi@vger.kernel.org, linux-afs@lists.infradead.org,
-        cluster-devel@redhat.com, coda@cs.cmu.edu, geert@linux-m68k.org,
-        linux-ext4@vger.kernel.org, codalist@telemann.coda.cs.cmu.edu,
-        fuse-devel@lists.sourceforge.net, reiserfs-devel@vger.kernel.org,
-        xfs@oss.sgi.com, john.stultz@linaro.org, tglx@linutronix.de,
-        linux-nfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
-        samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
-        logfs@logfs.org, linux-btrfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.
-To: "H. Peter Anvin" <hpa@zytor.com>
-Return-path: <cluster-devel-bounces@redhat.com>
-In-Reply-To: <538FB570.8000502@zytor.com>
-List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: florenceevans@safrica.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-in-10.arcor-online.net ([151.189.21.50]:41725 "EHLO
+	mail-in-10.arcor-online.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750886AbaFJLKQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Jun 2014 07:10:16 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wednesday 04 June 2014 17:10:24 H. Peter Anvin wrote:
-> On 06/04/2014 12:24 PM, Arnd Bergmann wrote:
-> > 
-> > For other timekeeping stuff in the kernel, I agree that using some
-> > 64-bit representation (nanoseconds, 32/32 unsigned seconds/nanoseconds,
-> > ...) has advantages, that's exactly the point I was making earlier
-> > against simply extending the internal time_t/timespec to 64-bit
-> > seconds for everything.
-> > 
-> 
-> How much of a performance issue is it to make time_t 64 bits, and for
-> the bits there are, how hard are they to fix?
+Hello my beloved in the Lord.
 
-Probably very little overhead for most uses, it's more the regression
-potential in the less common parts of the kernel I'm worried about.
+I am MRS. FLORENCE EVANS, from republic of Ireland, I am legally married to MR. JOHN EVANS, a South Africa citizen born brought up in Switzerland, I live in Switzerland with my husband for 32 years before we move down to south Africa in 1985 after my husband retirement in 1974, I am 71 years old by the grace of god, I am a new Christian convert, suffering from long time cancer of the breast. All indication from my doctor that my condition is really deteriorating and it is quite obvious that i wouldn't live more than two months. My dear husband was involved with the January 2000 Kenya airways plane crashed as you can see on the news line web site.
+http://news.bbc.co.uk/2/hi/africa/6627485.stm
+I have confident in you because i have prayed. I am willing to donate the sum of $20.5m U.S dollars, to the less privileged. May the grace of our lord be with you, P/s Get back to me on this email: mrs.florenceevans3@gmail.com
 
-There is a significant but not overwhelming number of uses of the
-main problematic types in the kernel:
-
-arnd@wuerfel:~/arm-soc$ git grep -wl time_t | wc
-    188     188    5566
-arnd@wuerfel:~/arm-soc$ git grep -wl timeval | wc
-    320     320   10353
-arnd@wuerfel:~/arm-soc$ git grep -wl timespec | wc
-    406     406   10886
-
-I believe we have to audit all of them anyway if we want to change
-the kernel to less problematic types and introduce new user
-interfaces.
-
-IMHO this work is helped if we change the uses to a new type
-as we find the problems. This lets us do the work one subsystem
-at a time and avoid accidental ABI changes. I don't care much what
-type that will be, and having a 96-bit type will certainly work
-well in a lot of cases, but I don't see a strong reason to use
-that over other types, especially when they can be more efficient.
-
-	Arnd
+Remain blessed,
+MRS. FLORENCE EVANS
