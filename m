@@ -1,138 +1,72 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/2] tests: fix left-over e2fsprogs-tmp files not getting
- clean up
-Date: Mon, 9 Jun 2014 19:45:50 -0400
-Message-ID: <20140609234550.GD8993@thunk.org>
-References: <20140609144901.GE8418@thunk.org>
- <1402325451-5275-1-git-send-email-tytso@mit.edu>
- <3C6E678A-D052-40A1-BDEE-84A386CEB887@dilger.ca>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] ext4: disable synchronous transaction batching if max_batch_time==0
+Date: Mon, 09 Jun 2014 19:10:45 -0500
+Message-ID: <53964D05.6000009@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	bensberg@justemail.net
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:58404 "EHLO imap.thunk.org"
+Received: from mx1.redhat.com ([209.132.183.28]:62838 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932990AbaFIXpy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 Jun 2014 19:45:54 -0400
-Content-Disposition: inline
-In-Reply-To: <3C6E678A-D052-40A1-BDEE-84A386CEB887@dilger.ca>
+	id S933311AbaFJAKq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 Jun 2014 20:10:46 -0400
+Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s5A0AkFH018895
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Mon, 9 Jun 2014 20:10:46 -0400
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx13.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s5A0AjMJ020599
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 9 Jun 2014 20:10:46 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jun 09, 2014 at 02:34:45PM -0600, Andreas Dilger wrote:
-> The reason I created these temp files on the local filesystem instead of
-> on /tmp where $TMPFILE normally is normally located is because tmpfs does
-> not support O_DIRECT.  With the current patch all of these tests would be
-> skipped in the default test configuration.
+The mount manpage says of the max_batch_time option,
 
-Ah, ok.  How about this then?
+	This optimization can be turned off entirely
+	by setting max_batch_time to 0.
 
-						- Ted
+But the code doesn't do that.  So fix the code to do
+that.
 
->From c34e6a131f049f008945967f2272b7c8efc1b282 Mon Sep 17 00:00:00 2001
-From: Theodore Ts'o <tytso@mit.edu>
-Date: Mon, 9 Jun 2014 10:34:17 -0400
-Subject: [PATCH] tests: fix left-over e2fsprogs-tmp files not getting clean up
-
-In addition, incorporate the test name into the e2fsprogs-tmp to make
-it easier to debug left-over temp files in the future.
-
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
- tests/f_mmp/script         | 5 +++--
- tests/f_mmp_garbage/script | 5 +++--
- tests/m_mmp/script         | 7 +++++--
- tests/t_mmp_1on/script     | 5 +++--
- tests/t_mmp_2off/script    | 5 +++--
- tests/test_one.in          | 5 +++--
- 6 files changed, 20 insertions(+), 12 deletions(-)
 
-diff --git a/tests/f_mmp/script b/tests/f_mmp/script
-index d921672..664f74f 100644
---- a/tests/f_mmp/script
-+++ b/tests/f_mmp/script
-@@ -1,7 +1,8 @@
- FSCK_OPT=-yf
+Lightly tested: it mounts, accepts the mount option == 0,
+shows "0" in /proc/mounts, and does basic IO & unmounts
+without crashing.  ;)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 6f9e6fa..ab5a791 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1524,8 +1524,6 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
+ 			arg = JBD2_DEFAULT_MAX_COMMIT_AGE;
+ 		sbi->s_commit_interval = HZ * arg;
+ 	} else if (token == Opt_max_batch_time) {
+-		if (arg == 0)
+-			arg = EXT4_DEF_MAX_BATCH_TIME;
+ 		sbi->s_max_batch_time = arg;
+ 	} else if (token == Opt_min_batch_time) {
+ 		sbi->s_min_batch_time = arg;
+
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 38cfcf5..6f0f590 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -1588,9 +1588,12 @@ int jbd2_journal_stop(handle_t *handle)
+ 	 * to perform a synchronous write.  We do this to detect the
+ 	 * case where a single process is doing a stream of sync
+ 	 * writes.  No point in waiting for joiners in that case.
++	 *
++	 * Setting max_batch_time to 0 disables this completely.
+ 	 */
+ 	pid = current->pid;
+-	if (handle->h_sync && journal->j_last_sync_writer != pid) {
++	if (handle->h_sync && journal->j_last_sync_writer != pid &&
++	    journal->j_max_batch_time) {
+ 		u64 commit_time, trans_time;
  
--TMPFILE=$test_name.tmp
--> $TMPFILE
-+# use current directory instead of /tmp becase tmpfs doesn't support DIO
-+rm -f $TMPFILE
-+TMPFILE=$(mktemp ./tmp-$test_name.XXXXXX)
- 
- stat -f $TMPFILE | grep -q "Type: tmpfs"
- if [ $? = 0 ]; then
-diff --git a/tests/f_mmp_garbage/script b/tests/f_mmp_garbage/script
-index 02cc12a..6d451a6 100644
---- a/tests/f_mmp_garbage/script
-+++ b/tests/f_mmp_garbage/script
-@@ -1,7 +1,8 @@
- FSCK_OPT=-yf
- 
--TMPFILE=$test_name.tmp
--> $TMPFILE
-+# use current directory instead of /tmp becase tmpfs doesn't support DIO
-+rm -f $TMPFILE
-+TMPFILE=$(mktemp ./tmp-$test_name.XXXXXX)
- 
- stat -f $TMPFILE | grep -q "Type: tmpfs"
- if [ $? = 0 ] ; then
-diff --git a/tests/m_mmp/script b/tests/m_mmp/script
-index 02b0b4b..6a9394d 100644
---- a/tests/m_mmp/script
-+++ b/tests/m_mmp/script
-@@ -2,8 +2,11 @@ DESCRIPTION="enable MMP during mke2fs"
- FS_SIZE=65536
- MKE2FS_DEVICE_SECTSIZE=2048
- export MKE2FS_DEVICE_SECTSIZE
--TMPFILE=$test_name.tmp
--> $TMPFILE
-+
-+# use current directory instead of /tmp becase tmpfs doesn't support DIO
-+rm -f $TMPFILE
-+TMPFILE=$(mktemp ./tmp-$test_name.XXXXXX)
-+
- stat -f $TMPFILE | grep -q "Type: tmpfs"
- if [ $? = 0 ]; then
- 	rm -f $TMPFILE
-diff --git a/tests/t_mmp_1on/script b/tests/t_mmp_1on/script
-index 8fc8158..cfed2ca 100644
---- a/tests/t_mmp_1on/script
-+++ b/tests/t_mmp_1on/script
-@@ -1,7 +1,8 @@
- FSCK_OPT=-yf
- 
--TMPFILE=$test_name.tmp
--> $TMPFILE
-+# use current directory instead of /tmp becase tmpfs doesn't support DIO
-+rm -f $TMPFILE
-+TMPFILE=$(mktemp ./tmp-$test_name.XXXXXX)
- 
- stat -f $TMPFILE | grep -q "Type: tmpfs"
- if [ $? = 0 ] ; then
-diff --git a/tests/t_mmp_2off/script b/tests/t_mmp_2off/script
-index 1dee14e..6556201 100644
---- a/tests/t_mmp_2off/script
-+++ b/tests/t_mmp_2off/script
-@@ -1,7 +1,8 @@
- FSCK_OPT=-yf
- 
--TMPFILE=$test_name.tmp
--> $TMPFILE
-+# use current directory instead of /tmp becase tmpfs doesn't support DIO
-+rm -f $TMPFILE
-+TMPFILE=$(mktemp ./tmp-$test_name.XXXXXX)
- 
- stat -f $TMPFILE | grep -q "Type: tmpfs"
- if [ $? = 0 ]; then
-diff --git a/tests/test_one.in b/tests/test_one.in
-index d053fd7..01a9260 100644
---- a/tests/test_one.in
-+++ b/tests/test_one.in
-@@ -28,9 +28,10 @@ fi
- 
- . $TEST_CONFIG
- 
--TMPFILE=$(mktemp -t e2fsprogs-tmp.XXXXXX)
+ 		journal->j_last_sync_writer = pid;
+
