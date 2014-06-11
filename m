@@ -1,148 +1,203 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH] blkid: [v2] remove unnecessary header and comment
-Date: Wed, 11 Jun 2014 12:59:05 -0600
-Message-ID: <1402513145-33627-1-git-send-email-adilger@dilger.ca>
+Subject: Re: [PATCH 3/3] mke2fs: prevent creation of unmountable ext4 with large flex_bg count
+Date: Wed, 11 Jun 2014 13:01:29 -0600
+Message-ID: <6A410081-0492-4378-BA66-07AFA7C0DEAF@dilger.ca>
+References: <28989C0C9F1C0A428470D967B5FCED372A7EA3@BPXM22GP.gisp.nec.co.jp>
 Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
-To: tytso@mit.edu
+Content-Type: multipart/signed; boundary="Apple-Mail=_377DC749-8689-4B3E-AC29-3D8165459AB1"; protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: Theodore Tso <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Akira Fujita <a-fujita@rs.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f44.google.com ([209.85.220.44]:46839 "EHLO
-	mail-pa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752572AbaFKTAf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jun 2014 15:00:35 -0400
-Received: by mail-pa0-f44.google.com with SMTP id bj1so114511pad.31
-        for <linux-ext4@vger.kernel.org>; Wed, 11 Jun 2014 12:00:35 -0700 (PDT)
-Received: from cabot-wlan.adilger.int (S0106002191d9348b.cg.shawcable.net. [96.51.76.157])
-        by mx.google.com with ESMTPSA id fe2sm76293661pbc.68.2014.06.11.12.00.33
-        for <linux-ext4@vger.kernel.org>
-        (version=TLSv1 cipher=ECDHE-RSA-RC4-SHA bits=128/128);
-        Wed, 11 Jun 2014 12:00:34 -0700 (PDT)
+Received: from mail-pa0-f54.google.com ([209.85.220.54]:52321 "EHLO
+	mail-pa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752572AbaFKTBU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jun 2014 15:01:20 -0400
+Received: by mail-pa0-f54.google.com with SMTP id et14so94904pad.41
+        for <linux-ext4@vger.kernel.org>; Wed, 11 Jun 2014 12:01:20 -0700 (PDT)
+In-Reply-To: <28989C0C9F1C0A428470D967B5FCED372A7EA3@BPXM22GP.gisp.nec.co.jp>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The LIST_HEAD macro is not directly used in getsize.c, so
-<sys/queue.h> is not needed at all, and could cause confusion at
-some later point if the Linux-style list macros are ever used.
 
-Build was verified on MacOS which defined HAVE_SYS_DISK_H true.
-I manually inspected the sources for recent *BSD headers to check
-if this was needed there or not.  MacOS and FreeBSD <sys/disk.h>
-do not use lists at all.  NetBSD and OpenBSD <sys/disk.h> and all
-of the <sys/mount.h> headers include <sys/queue.h> internally.
+--Apple-Mail=_377DC749-8689-4B3E-AC29-3D8165459AB1
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-I used http://fxr.watson.org/fxr/source/sys/mount.h?v={OSTYPE}
-as a reference, checking both old and new *BSD versions.
 
-Signed-off-by: Andreas Dilger <adilger@dilger.ca>
----
-configure            | 20 +-------------------
-configure.in         |  9 ++-------
-lib/blkid/getsize.c  |  4 ----
-lib/config.h.in      |  3 ---
-lib/ext2fs/getsize.c |  3 ---
-5 files changed, 3 insertions(+), 36 deletions(-)
+On Jun 11, 2014, at 2:38 AM, Akira Fujita <a-fujita@rs.jp.nec.com> =
+wrote:
 
-diff --git a/configure b/configure
-index 1b0ee62..5b6e5d8 100755
---- a/configure
-+++ b/configure
-@@ -10397,7 +10397,7 @@ fi
-done
+> In mke2fs command, if flex_bg count is too large to filesystem blocks =
+count,
+> unmountable ext4 which has the out of filesystem block offset is =
+created (Case1).
+> Moreover this large flex_bg count causes an unintentional metadata =
+layout
+> (bmap-imap-itable-bmap-imap-itable .. in block group) (Case2).
+>=20
+> To fix these issues and keep healthy flex_bg layout, disallow creating =
+ext4
+> with obviously large flex_bg count to filesystem blocks count.
 
-fi
--for ac_header in  	dirent.h 	errno.h 	execinfo.h 	getopt.h 	malloc.h 	mntent.h 	paths.h 	semaphore.h 	setjmp.h 	signal.h 	stdarg.h 	stdint.h 	stdlib.h 	termios.h 	termio.h 	unistd.h 	utime.h 	linux/falloc.h 	linux/fd.h 	linux/major.h 	linux/loop.h 	net/if_dl.h 	netinet/in.h 	sys/disklabel.h 	sys/file.h 	sys/ioctl.h 	sys/mkdev.h 	sys/mman.h 	sys/prctl.h 	sys/queue.h 	sys/resource.h 	sys/select.h 	sys/socket.h 	sys/sockio.h 	sys/stat.h 	sys/syscall.h 	sys/sysmacros.h 	sys/time.h 	sys/types.h 	sys/un.h 	sys/wait.h
-+for ac_header in  	dirent.h 	errno.h 	execinfo.h 	getopt.h 	malloc.h 	mntent.h 	paths.h 	semaphore.h 	setjmp.h 	signal.h 	stdarg.h 	stdint.h 	stdlib.h 	termios.h 	termio.h 	unistd.h 	utime.h 	linux/falloc.h 	linux/fd.h 	linux/major.h 	linux/loop.h 	net/if_dl.h 	netinet/in.h 	sys/disk.h	sys/disklabel.h 	sys/file.h 	sys/ioctl.h 	sys/mkdev.h 	sys/mman.h 	sys/mount.h	sys/prctl.h 	sys/resource.h 	sys/select.h 	sys/socket.h 	sys/sockio.h 	sys/stat.h 	sys/syscall.h 	sys/sysmacros.h 	sys/time.h 	sys/types.h 	sys/un.h 	sys/wait.h
-do :
-  as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
-ac_fn_c_check_header_mongrel "$LINENO" "$ac_header" "$as_ac_Header" "$ac_includes_default"
-@@ -10410,24 +10410,6 @@ fi
+Patch looks good to me.
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 
-done
+This also reminds me of my previous flex_bg patch:
+[PATCH][RFC] mke2fs: handle flex_bg collision with backup descriptors
+http://permalink.gmane.org/gmane.comp.file-systems.ext4/42298
 
--for ac_header in sys/disk.h sys/mount.h
--do :
--  as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
--ac_fn_c_check_header_compile "$LINENO" "$ac_header" "$as_ac_Header" "
--#if HAVE_SYS_QUEUE_H
--#include <sys/queue.h>
--#endif
--
--"
--if eval test \"x\$"$as_ac_Header"\" = x"yes"; then :
--  cat >>confdefs.h <<_ACEOF
--#define `$as_echo "HAVE_$ac_header" | $as_tr_cpp` 1
--_ACEOF
--
--fi
--
--done
--
-for ac_header in net/if.h
-do :
-  ac_fn_c_check_header_compile "$LINENO" "net/if.h" "ac_cv_header_net_if_h" "
-diff --git a/configure.in b/configure.in
-index 6592e70..45e1b61 100644
---- a/configure.in
-+++ b/configure.in
-@@ -895,12 +895,13 @@ AC_CHECK_HEADERS(m4_flatten([
- 	net/if_dl.h
- 	netinet/in.h
- 	sys/disklabel.h
-+	sys/disk.h
- 	sys/file.h
- 	sys/ioctl.h
- 	sys/mkdev.h
- 	sys/mman.h
-+	sys/mount.h
- 	sys/prctl.h
--	sys/queue.h
- 	sys/resource.h
- 	sys/select.h
- 	sys/socket.h
-@@ -913,12 +914,6 @@ AC_CHECK_HEADERS(m4_flatten([
- 	sys/un.h
- 	sys/wait.h
-]))
--AC_CHECK_HEADERS(sys/disk.h sys/mount.h,,,
--[[
--#if HAVE_SYS_QUEUE_H
--#include <sys/queue.h>
--#endif
--]])
-AC_CHECK_HEADERS(net/if.h,,,
-[[
-#if HAVE_SYS_TYPES_H
-diff --git a/lib/blkid/getsize.c b/lib/blkid/getsize.c
-index c2a8f72..a5c40aa 100644
---- a/lib/blkid/getsize.c
-+++ b/lib/blkid/getsize.c
-@@ -12,7 +12,6 @@
-#define _LARGEFILE_SOURCE
-#define _LARGEFILE64_SOURCE
+which fixes the "bmap-imap-itable-bmap-imap-itable" problem when a large
+flex_bg size is used.  Sadly, there were no comments on that patch.
 
--/* include this before sys/queues.h! */
-#include "config.h"
-#include "blkidP.h"
+Cheers, Andreas
 
-@@ -34,9 +33,6 @@
-#include <sys/disklabel.h>
-#endif
-#ifdef HAVE_SYS_DISK_H
--#ifdef HAVE_SYS_QUEUE_H
--#include <sys/queue.h> /* for LIST_HEAD */
--#endif
-#include <sys/disk.h>
-#endif
-#ifdef __linux__
-diff --git a/lib/config.h.in b/lib/config.h.in
-index 92b3c49..f1d032d 100644
---- a/lib/config.h.in
-+++ b/lib/config.h.in
-@@ -432,9 +432,6 @@
-/* Define to 1 if you have the <sys/prctl.h> header file. */
-#undef HAVE_SYS_PRCTL_H
+> Steps to reproduce:
+> (Case1)
+> 1.
+> # mke2fs -t ext4 -b 4096 -O ^resize_inode -G $((2**20)) DEV 2130483
+>=20
+> 2.
+> # mount -t ext4 DEV MP
+> mount: wrong fs type, bad option, bad superblock on /dev/sdb4,
+>       missing codepage or helper program, or other error
+>       In some cases useful info is found in syslog - try
+>       dmesg | tail  or so
+>=20
+> 3.
+> # dumpe2fs DEV
+> <snip>
+> Block count:              2130483
+> <snip>
+> Flex block group size:    1048576=20
+> <snip>
+> Group 65: (Blocks 2129920-2130482) [INODE_UNINIT]
+>  Checksum 0x4cb3, unused inodes 8080
+>  Block bitmap at 67 (bg #0 + 67), Inode bitmap at 1048643 (bg #32 + =
+67)
+>  Inode table at 2129979-2130483 (+59)              <---- 2130483 is =
+out of FS!
+>  65535 free blocks, 8080 free inodes, 0 directories, 8080 unused =
+inodes
+>  Free blocks:=20
+>  Free inodes: 525201-533280
+>=20
+> (Case2)
+> 1.
+> # mke2fs -t ext4 -G 2147483648 DEV 3145728
+>=20
+> 2.
+> # debugfs -R stats DEV
+> <snip>
+> Block count:              786432
+> <snip>
+> Flex block group size:    2147483648
+> <snip>
+> Group  0: block bitmap at 193, inode bitmap at 194, inode table at 195 =
+   <--=20
+>           20233 free blocks, 8181 free inodes, 2 used directories, =
+8181 unused inodes
+>           [Checksum 0xa597]
+> Group  1: block bitmap at 707, inode bitmap at 708, inode table at 709 =
+   <--
+>           32575 free blocks, 8192 free inodes, 0 used directories, =
+8192 unused inodes
+>           [Inode not init, Block not init, Checksum 0x196f]
+> Group  2: block bitmap at 1221, inode bitmap at 1222, inode table at =
+1223 <--
+>           32768 free blocks, 8192 free inodes, 0 used directories, =
+8192 unused inodes
+>           [Inode not init, Block not init, Checksum 0x856f]
+> <snip>
+>=20
+> Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
+> ---
+> lib/ext2fs/initialize.c |   24 ++++++++++++++++++++++++
+> 1 file changed, 24 insertions(+)
+> diff --git a/lib/ext2fs/initialize.c b/lib/ext2fs/initialize.c
+> index 75fbf8e..34753d0 100644
+> --- a/lib/ext2fs/initialize.c
+> +++ b/lib/ext2fs/initialize.c
+> @@ -91,8 +91,10 @@ errcode_t ext2fs_initialize(const char *name, int =
+flags,
+> 	unsigned int	rem;
+> 	unsigned int	overhead =3D 0;
+> 	unsigned int	ipg;
+> +	unsigned int	flexbg_size;
+> 	dgrp_t		i;
+> 	blk64_t		free_blocks;
+> +	blk64_t		flexbg_overhead;
+> 	blk_t		numblocks;
+> 	int		rsv_gdt;
+> 	int		csum_flag;
+> @@ -419,6 +421,28 @@ ipg_retry:
+> 	}
+>=20
+> 	/*
+> +	 * Calculate the flex_bg related metadata blocks count.
+> +	 * It includes the boot block, the super block,
+> +	 * the block group descriptors, the reserved gdt blocks,
+> +	 * the block bitmaps, the inode bitmaps and the inode tables.
+> +	 * This is a simple check, so that the backup superblock and
+> +	 * other feature related blocks are not considered.
+> +	 */
+> +	flexbg_size =3D 1 << fs->super->s_log_groups_per_flex;
+> +	flexbg_overhead =3D super->s_first_data_block + 1 +
+> +		fs->desc_blocks + super->s_reserved_gdt_blocks +
+> +		(__u64)flexbg_size * (2 + fs->inode_blocks_per_group);
+> +
+> +	/*
+> +	 * Disallow creating ext4 which breaks flex_bg metadata layout
+> +	 * obviously.
+> +	 */
+> +	if (flexbg_overhead > ext2fs_blocks_count(fs->super)) {
+> +		retval =3D EXT2_ET_INVALID_ARGUMENT;
+> +		goto cleanup;
+> +	}
+> +
+> +	/*
+> 	 * At this point we know how big the filesystem will be.  So
+> 	 * we can do any and all allocations that depend on the block
+> 	 * count.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
--/* Define to 1 if you have the <sys/queue.h> header file. */
--#undef HAVE_SYS_QUEUE_H
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_377DC749-8689-4B3E-AC29-3D8165459AB1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIVAwUBU5ininKl2rkXzB/gAQI4xxAAp/NJjaeEyr4+r31lKg9io1a7xyxp82b2
+RPYKCv4Dkc3/qMeIV0EsWCuAlx24pxVZd6LqVR3iizeM/9MYeViTAyYaSdaVekow
+6LKgm1qnFXc0XjdvNKt3Q0UJ4hBk23+EXY/Tx8V/E0AtzsTXmrTlBgZO2CYDKkmI
+Zx1AnIL14fFwW1TNVj/2M7n3mAk8zNYF4ne2NrWQOwKs2srvdKBf9ErKWHb2NOGG
+9mv8k5E0G1NmscgZSuW0/JSamkGenTJc0Iq9SdVcQFZbldlxp/GjeN9qbYrFVcPA
+62kOIRY9rbnIiXnvvA4ox5H5QyQjl7p+tH1t9iVsk6R1md5MSayLVNneFtKOZ7qV
+eC1U5z5zABhI8Vszryljmu+EIMYe0x4vFWIZm2H/NKYVLeC23iT7viTtzapGjRl8
+OIepSz54HxpdFm9gJlF1JLgH7sypTERsw3VOB5jRJqdSGf6ImaFN3biIy5bYlfxp
+wfo6BiYvDzAOnCllrzVTqvHxm+K4m0sCh05sB9FJ2ENDgqu19L0Y4+MD1cwEcR+x
+kEYG1VijmKzVT9Ka0UfMwXWX2dpCcE+duN4bgYy7bBvPtiUGKvAHtKkhGfKXGQUr
+CmbJpnSNvym0gKCi0x91AaW6dOOfIRhBszTvOg+vIrmD/2ExUNH4Rmf4K1ExfOnv
+I0LFmxq6gv0=
+=Vyt8
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_377DC749-8689-4B3E-AC29-3D8165459AB1--
