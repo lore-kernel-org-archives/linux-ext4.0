@@ -1,59 +1,60 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] fs/ext2/super.c: Drop memory allocation cast
-Date: Wed, 11 Jun 2014 14:14:54 +0200
-Message-ID: <20140611121454.GE3661@quack.suse.cz>
-References: <20140610144118.GA3255@himangi-Dell>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: EXT4 data block allocation alignment
+Date: Wed, 11 Jun 2014 15:03:59 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1406111456110.2310@localhost.localdomain>
+References: <CAKTMprNG5GzBQ1wmPhvCWzr3OKcsj8HCQ4f-mez_bSvw5D9f4A@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, julia.lawall@lip6.fr
-To: Himangi Saraogi <himangi774@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20140610144118.GA3255@himangi-Dell>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org
+To: Teng-Feng Yang <shinrairis@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:36848 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751965AbaFKNED (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Jun 2014 09:04:03 -0400
+In-Reply-To: <CAKTMprNG5GzBQ1wmPhvCWzr3OKcsj8HCQ4f-mez_bSvw5D9f4A@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 10-06-14 20:11:18, Himangi Saraogi wrote:
-> Drop cast on the result of kmem_cache_alloc.
-> 
-> The semantic patch that makes this change is as follows:
-> 
-> // <smpl>
-> @@
-> type T;
-> @@
-> 
-> - (T *)
->   (\(kmalloc\|kzalloc\|kcalloc\|kmem_cache_alloc\|kmem_cache_zalloc\|
->    kmem_cache_alloc_node\|kmalloc_node\|kzalloc_node\)(...))
-> // </smpl>
-> 
-> Signed-off-by: Himangi Saraogi <himangi774@gmail.com>
-> Acked-by: Julia Lawall <julia.lawall@lip6.fr>
-  Merged to my tree. Thanks!
+On Wed, 11 Jun 2014, Teng-Feng Yang wrote:
 
-								Honza
-> ---
->  fs/ext2/super.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+> Date: Wed, 11 Jun 2014 19:44:49 +0800
+> From: Teng-Feng Yang <shinrairis@gmail.com>
+> To: linux-ext4@vger.kernel.org
+> Subject: EXT4 data block allocation alignment
 > 
-> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-> index 3750031..b88edc0 100644
-> --- a/fs/ext2/super.c
-> +++ b/fs/ext2/super.c
-> @@ -161,7 +161,7 @@ static struct kmem_cache * ext2_inode_cachep;
->  static struct inode *ext2_alloc_inode(struct super_block *sb)
->  {
->  	struct ext2_inode_info *ei;
-> -	ei = (struct ext2_inode_info *)kmem_cache_alloc(ext2_inode_cachep, GFP_KERNEL);
-> +	ei = kmem_cache_alloc(ext2_inode_cachep, GFP_KERNEL);
->  	if (!ei)
->  		return NULL;
->  	ei->i_block_alloc_info = NULL;
-> -- 
-> 1.9.1
+> Hi, folks,
 > 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> Recently I have been working on a small project which requires data
+> blocks of each file to be aligned to 512KB/1MB boundary for
+> performance reason. As far as I know, this can be accomplished by
+> setting the stripe unit on XFS or enabling the "bigalloc" feature on
+> EXT4. However, the "bigalloc" feature has not yet been stated to be
+> stable in the latest release. So, this makes me wondering if I can
+> achieve this block allocation alignment by setting the stride-size on
+> EXT4. The document of mke2fs only says that this value may be used by
+> the block allocator, so I am not quite sure what it can offer for me
+> in this case.
+
+Even though bigalloc will work like that it's just nice side effect
+of that feature. But, yes it should work.
+
+However please see mke2fs manual page. Ext4 also have options to
+make allocations aligned (stride, stripe_width).
+
+There is also "stripe" mount option, but you should not need to set
+that it you set it on mkfs time.
+
+Thanks!
+-Lukas
+
+> 
+> Any help would be appreciated.
+> Thanks,
+> 
+> Dennis
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
