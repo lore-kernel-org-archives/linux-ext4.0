@@ -1,100 +1,83 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [GIT PULL v2] Reiserfs & ext3 changes for 3.16-rc1
-Date: Wed, 11 Jun 2014 19:41:56 +0200
-Message-ID: <20140611174156.GB9511@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	LKML <linux-kernel@vger.kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: EXT4 data block allocation alignment
+Date: Wed, 11 Jun 2014 11:58:17 -0600
+Message-ID: <4B4CADE4-6780-439B-AD5E-4DDCA9EB4EA5@dilger.ca>
+References: <CAKTMprNG5GzBQ1wmPhvCWzr3OKcsj8HCQ4f-mez_bSvw5D9f4A@mail.gmail.com>
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
+Content-Type: multipart/signed; boundary="Apple-Mail=_4005BB95-2D58-4F80-9010-3B8E3287F398"; protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: linux-ext4@vger.kernel.org
+To: Teng-Feng Yang <shinrairis@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pb0-f44.google.com ([209.85.160.44]:60479 "EHLO
+	mail-pb0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753152AbaFKR6L (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jun 2014 13:58:11 -0400
+Received: by mail-pb0-f44.google.com with SMTP id rq2so60320pbb.31
+        for <linux-ext4@vger.kernel.org>; Wed, 11 Jun 2014 10:58:10 -0700 (PDT)
+In-Reply-To: <CAKTMprNG5GzBQ1wmPhvCWzr3OKcsj8HCQ4f-mez_bSvw5D9f4A@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello Linus,
 
-  could you please pull from
+--Apple-Mail=_4005BB95-2D58-4F80-9010-3B8E3287F398
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain;
+	charset=us-ascii
 
-git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git for_linus
 
-to get big reiserfs cleanup from Jeff, an ext3 deadlock fix, and some small
-cleanups.
+On Jun 11, 2014, at 5:44 AM, Teng-Feng Yang <shinrairis@gmail.com> wrote:
+> Recently I have been working on a small project which requires data
+> blocks of each file to be aligned to 512KB/1MB boundary for
+> performance reason. As far as I know, this can be accomplished by
+> setting the stripe unit on XFS or enabling the "bigalloc" feature on
+> EXT4. However, the "bigalloc" feature has not yet been stated to be
+> stable in the latest release. So, this makes me wondering if I can
+> achieve this block allocation alignment by setting the stride-size on
+> EXT4. The document of mke2fs only says that this value may be used by
+> the block allocator, so I am not quite sure what it can offer for me
+> in this case.
 
-Top of the tree is 19ef1229bc2e. The full shortlog is:
+In fact, 1MB alignment is already the default behaviour for ext4
+extent-mapped allocations, though it isn't enforced for small files.
+It is possible to specify the alignment with "-E stripe_width={blocks}"
+(blocks=256 for 1MB and =128 for 512KB, assuming 4KB blocksize).
 
-Fabian Frederick (2):
-      reiserfs: remove obsolete __constant_cpu_to_le32
-      fs/jbd/revoke.c: replace shift loop by ilog2
+It might be possible to implement this alignment as required instead
+of optional for data blocks, but that would need a change to the code.
+It would still be more space efficient than bigalloc, since bigalloc
+will allocate a full 512KB for each metadata block or directory.
 
-Jan Kara (2):
-      ext3: Fix deadlock in data=journal mode when fs is frozen
-      reiserfs: Fix compilation breakage with CONFIG_REISERFS_CHECK
+Cheers, Andreas
 
-Jeff Mahoney (30):
-      reiserfs: use per-fs commit workqueues
-      reiserfs: cleanup, rename key and item accessors to more friendly names
-      reiserfs: cleanup, reformat comments to normal kernel style
-      reiserfs: cleanup, remove nblocks argument from journal_end
-      reiserfs: cleanup, remove sb argument from journal_end
-      reiserfs: cleanup, remove sb argument from journal_mark_dirty
-      reiserfs: cleanup, remove blocks arg from journal_join
-      reiserfs: cleanup, remove unnecessary parens in dirent creation
-      reiserfs: cleanup, remove leading whitespace from labels
-      reiserfs: cleanup, remove unnecessary parens
-      reiserfs: cleanup, make hash detection saner
-      reiserfs: balance_leaf refactor, reformat balance_leaf comments
-      reiserfs: balance_leaf refactor, move state variables into tree_balance
-      reiserfs: balance_leaf refactor, pull out balance_leaf_insert_left
-      reiserfs: balance_leaf refactor, pull out balance_leaf_paste_left
-      reiserfs: balance_leaf refactor, pull out balance_leaf_insert_right
-      reiserfs: balance_leaf refactor, pull out balance_leaf_paste_right
-      reiserfs: balance_leaf refactor, pull out balance_leaf_new_nodes_insert
-      reiserfs: balance_leaf refactor, pull out balance_leaf_new_nodes_paste
-      reiserfs: balance_leaf refactor pull out balance_leaf_finish_node_insert
-      reiserfs: balance_leaf refactor, pull out balance_leaf_finish_node_paste
-      reiserfs: balance_leaf refactor, pull out balance_leaf{left, right, new_nodes, finish_node}
-      reiserfs: balance_leaf refactor, format balance_leaf_insert_left
-      reiserfs: balance_leaf refactor, format balance_leaf_paste_left
-      reiserfs: balance_leaf refactor, format balance_leaf_insert_right
-      reiserfs: balance_leaf refactor, format balance_leaf_paste_right
-      reiserfs: balance_leaf refactor, format balance_leaf_new_nodes_paste
-      reiserfs: balance_leaf refactor, format balance_leaf_finish_node
-      reiserfs: balance_leaf refactor, split up balance_leaf_when_delete
-      reiserfs: call truncate_setsize under tailpack mutex
 
-The diffstat is
 
- fs/ext3/inode.c               |   33 +-
- fs/jbd/revoke.c               |   12 +-
- fs/reiserfs/bitmap.c          |  259 +++--
- fs/reiserfs/dir.c             |  156 +--
- fs/reiserfs/do_balan.c        | 2449 +++++++++++++++++++++++------------------
- fs/reiserfs/file.c            |   90 +-
- fs/reiserfs/fix_node.c        | 1008 ++++++++++-------
- fs/reiserfs/hashes.c          |   15 +-
- fs/reiserfs/ibalance.c        |  271 +++--
- fs/reiserfs/inode.c           | 1206 +++++++++++---------
- fs/reiserfs/ioctl.c           |   27 +-
- fs/reiserfs/item_ops.c        |  108 +-
- fs/reiserfs/journal.c         | 1339 ++++++++++++----------
- fs/reiserfs/lbalance.c        |  501 +++++----
- fs/reiserfs/namei.c           |  513 +++++----
- fs/reiserfs/objectid.c        |  101 +-
- fs/reiserfs/prints.c          |  176 +--
- fs/reiserfs/reiserfs.h        | 1921 ++++++++++++++++++++------------
- fs/reiserfs/resize.c          |   75 +-
- fs/reiserfs/stree.c           |  892 ++++++++-------
- fs/reiserfs/super.c           |  552 ++++++----
- fs/reiserfs/tail_conversion.c |  161 +--
- fs/reiserfs/xattr.c           |   70 +-
- fs/reiserfs/xattr.h           |    3 +-
- fs/reiserfs/xattr_acl.c       |   38 +-
- 25 files changed, 7056 insertions(+), 4920 deletions(-)
 
-							Thanks
-								Honza
 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+
+--Apple-Mail=_4005BB95-2D58-4F80-9010-3B8E3287F398
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIVAwUBU5iYuXKl2rkXzB/gAQLaOA//SHkQHuQkjXpxQnnA0zmytNJznbISlejp
+ymi9R5+uS+NtmgXob0fFQTiAY6xv4lfhnLMbfKPGQzTtAF5NX7WCC9ZtpZTa3kRO
+chx0kcFaNmjaZ6VoPcn3OH4BBSNT6tef6WIFTeEK4NtNx1kpISrDv13SFFvUN//Y
+LGHOqScYpCwHnD7hQiC18wkds4xBLcVT13lKFm8P7Rch7VT+tjg6eKQliEe26TZY
+TpzT6mlTMUKbAt62ENn7QMgDQLUs8NzjFzVGe32R985z2kU5jttdTNBDFE+f26ur
+dzOlxWvV/wCVKJ27SdCkE045NUXBAgj6S6CkeQv8MRAEsqW4BzjwfH7c+GBvWXzC
+55G/BFTHgojWwGa8hJmvSvPBM7TnKES3xUnm2HGnd/rrLfimIwHVruorThvALNI/
+GhN9fctVuBjH0euWUsR/sodj5qHIOp+41Vnn7J0QcPGDu1N3okxOx+Ep7lvdARzH
+N3thq5iUfkHR4mTcoABo4w/cqUMwuxBXhUKMaVM2Ox3PvmfMTgkkxmdBKu3X94Yq
+/g5RrtPAlBMvcPQ26nNMHPklqZTi8hq4IbHsiVPQAmgkJ3qD6QCTe8kjc0SPLuk7
+CExhXfPTocCaglfdA/3VijSP0j5YDigoSrAtdeRq7FygY9vw00Q3Kpe4HEjdOjVo
+yDovI+lYxyQ=
+=uDeV
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_4005BB95-2D58-4F80-9010-3B8E3287F398--
