@@ -1,57 +1,42 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext4: Fix buffer double free in ext4_alloc_branch()
-Date: Wed, 11 Jun 2014 15:37:06 +0200
-Message-ID: <1402493826-13776-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:55696 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754394AbaFKNhN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Jun 2014 09:37:13 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Fix buffer double free in ext4_alloc_branch()
+Date: Wed, 11 Jun 2014 09:57:17 -0400
+Message-ID: <20140611135717.GA27151@thunk.org>
+References: <1402493826-13776-1-git-send-email-jack@suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, stable@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <stable-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1402493826-13776-1-git-send-email-jack@suse.cz>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Error recovery in ext4_alloc_branch() calls ext4_forget() even for
-buffer corresponding to indirect block it did not allocate. This leads
-to brelse() being called twice for that buffer (once from ext4_forget()
-and once from cleanup in ext4_ind_map_blocks()) leading to buffer use
-count misaccounting. Eventually (but often much later because there
-are other users of the buffer) we will see messages like:
-VFS: brelse: Trying to free free buffer
+On Wed, Jun 11, 2014 at 03:37:06PM +0200, Jan Kara wrote:
+> Error recovery in ext4_alloc_branch() calls ext4_forget() even for
+> buffer corresponding to indirect block it did not allocate. This leads
+> to brelse() being called twice for that buffer (once from ext4_forget()
+> and once from cleanup in ext4_ind_map_blocks()) leading to buffer use
+> count misaccounting. Eventually (but often much later because there
+> are other users of the buffer) we will see messages like:
+> VFS: brelse: Trying to free free buffer
+> 
+> Another manifestation of this problem is an error:
+> JBD2 unexpected failure: jbd2_journal_revoke: !buffer_revoked(bh);
+> inconsistent data on disk
+> 
+> The fix is easy - don't forget buffer we did not allocate. Also add an
+> explanatory comment because the indexing at ext4_alloc_branch() is
+> somewhat subtle.
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
-Another manifestation of this problem is an error:
-JBD2 unexpected failure: jbd2_journal_revoke: !buffer_revoked(bh);
-inconsistent data on disk
+Nice catch!
 
-The fix is easy - don't forget buffer we did not allocate. Also add an
-explanatory comment because the indexing at ext4_alloc_branch() is
-somewhat subtle.
+I've added a cc: stable@vger.kernel.org tag, and will queue this for
+the post-merge window bugfix push.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/indirect.c | 8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
+Thanks,
 
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index 594009f5f523..3b91d240da4d 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -389,7 +389,13 @@ static int ext4_alloc_branch(handle_t *handle, struct inode *inode,
- 	return 0;
- failed:
- 	for (; i >= 0; i--) {
--		if (i != indirect_blks && branch[i].bh)
-+		/*
-+		 * We want to ext4_forget() only freshly allocated indirect
-+		 * blocks.  Buffer for new_blocks[i-1] is at branch[i].bh and
-+		 * buffer at branch[0].bh is indirect block / inode already
-+		 * existing before ext4_alloc_branch() was called.
-+		 */
-+		if (i > 0 && i != indirect_blks && branch[i].bh)
- 			ext4_forget(handle, 1, inode, branch[i].bh,
- 				    branch[i].bh->b_blocknr);
- 		ext4_free_blocks(handle, inode, NULL, new_blocks[i],
--- 
-1.8.1.4
-
+							- Ted
