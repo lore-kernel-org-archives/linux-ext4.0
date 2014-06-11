@@ -1,55 +1,34 @@
-From: Baruch Siach <baruch@tkos.co.il>
-Subject: Re: [PATCH] configure.in: fix external libblkid test for static link
-Date: Wed, 11 Jun 2014 13:14:22 +0300
-Message-ID: <20140611101422.GW4074@tarshish>
-References: <b52e76432fe23490b891884f3a66504101c2a5bd.1402481313.git.baruch@tkos.co.il>
+From: Teng-Feng Yang <shinrairis@gmail.com>
+Subject: EXT4 data block allocation alignment
+Date: Wed, 11 Jun 2014 19:44:49 +0800
+Message-ID: <CAKTMprNG5GzBQ1wmPhvCWzr3OKcsj8HCQ4f-mez_bSvw5D9f4A@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=UTF-8
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from guitar.tcltek.co.il ([192.115.133.116]:53845 "EHLO
-	mx.tkos.co.il" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755294AbaFKKO0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Jun 2014 06:14:26 -0400
-Content-Disposition: inline
-In-Reply-To: <b52e76432fe23490b891884f3a66504101c2a5bd.1402481313.git.baruch@tkos.co.il>
+Received: from mail-ig0-f180.google.com ([209.85.213.180]:64772 "EHLO
+	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751049AbaFKLpK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jun 2014 07:45:10 -0400
+Received: by mail-ig0-f180.google.com with SMTP id h18so638186igc.1
+        for <linux-ext4@vger.kernel.org>; Wed, 11 Jun 2014 04:45:09 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+Hi, folks,
 
-On Wed, Jun 11, 2014 at 01:08:33PM +0300, Baruch Siach wrote:
-> External libblkid needs -luuid when linking statically. Use pkg-config to
-> determine it correctly. Adding --static doesn't heart even for dynamic
+Recently I have been working on a small project which requires data
+blocks of each file to be aligned to 512KB/1MB boundary for
+performance reason. As far as I know, this can be accomplished by
+setting the stripe unit on XFS or enabling the "bigalloc" feature on
+EXT4. However, the "bigalloc" feature has not yet been stated to be
+stable in the latest release. So, this makes me wondering if I can
+achieve this block allocation alignment by setting the stride-size on
+EXT4. The document of mke2fs only says that this value may be used by
+the block allocator, so I am not quite sure what it can offer for me
+in this case.
 
-s/heart/hurt/
+Any help would be appreciated.
+Thanks,
 
-baruch
-
-> linking.
-> 
-> Signed-off-by: Baruch Siach <baruch@tkos.co.il>
-> ---
->  configure.in | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/configure.in b/configure.in
-> index 448a2926776a..ec6068320878 100644
-> --- a/configure.in
-> +++ b/configure.in
-> @@ -551,7 +551,7 @@ then
->  		[LIBBLKID=`$PKG_CONFIG --libs blkid`;
->  		 STATIC_LIBBLKID=`$PKG_CONFIG --static --libs blkid`],
->  		[AC_MSG_ERROR([external blkid library not found])],
-> -		[$LIBBLKID])
-> +		[`$PKG_CONFIG --static --libs blkid`])
->  	BLKID_CMT=#
->  	AC_MSG_RESULT([Disabling private blkid library])
->  else
-> -- 
-
--- 
-     http://baruch.siach.name/blog/                  ~. .~   Tk Open Systems
-=}------------------------------------------------ooO--U--Ooo------------{=
-   - baruch@tkos.co.il - tel: +972.2.679.5364, http://www.tkos.co.il -
+Dennis
