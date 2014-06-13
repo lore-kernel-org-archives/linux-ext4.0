@@ -1,46 +1,55 @@
 From: JP Abgrall <jpa@google.com>
 Subject: Re: [PATCH] ext4: Add support for SFITRIM, an ioctl for secure FITRIM.
-Date: Thu, 12 Jun 2014 21:37:52 -0700
-Message-ID: <CAKP4w2QzAJWX0_TchDsseKwrW_QeYJcqAk5+JFJoSpRmdJa_TQ@mail.gmail.com>
+Date: Thu, 12 Jun 2014 21:37:58 -0700
+Message-ID: <CAKP4w2QvVUNp18jnX69eP0hjA-T6zn2sT3TQ-P6zpu-EhXZPAQ@mail.gmail.com>
 References: <1402625647-31439-1-git-send-email-jpa@google.com>
- <539A63C1.8010809@redhat.com> <CAKP4w2Tux8nuWW-uOfY+t+B84=PMmt3sFZ8cA6UMg42dSTo0-A@mail.gmail.com>
- <539A6C07.5090904@redhat.com> <CAKP4w2RPvGNq+qOrNCU_VH=apmesFUEFyfD4YBRdrOBvhef7fQ@mail.gmail.com>
- <539A6EDB.8000409@sandeen.net>
+ <539A63C1.8010809@redhat.com> <20140613031538.GR4453@dastard> <20140613033029.GS4453@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
 	Geremy Condra <gcondra@google.com>,
 	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-To: Eric Sandeen <sandeen@sandeen.net>
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-oa0-f43.google.com ([209.85.219.43]:59431 "EHLO
-	mail-oa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751478AbaFMEiN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Jun 2014 00:38:13 -0400
-Received: by mail-oa0-f43.google.com with SMTP id o6so2308888oag.2
-        for <linux-ext4@vger.kernel.org>; Thu, 12 Jun 2014 21:38:12 -0700 (PDT)
-In-Reply-To: <539A6EDB.8000409@sandeen.net>
+Received: from mail-ob0-f177.google.com ([209.85.214.177]:34299 "EHLO
+	mail-ob0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751509AbaFMEiT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Jun 2014 00:38:19 -0400
+Received: by mail-ob0-f177.google.com with SMTP id uy5so2286420obc.36
+        for <linux-ext4@vger.kernel.org>; Thu, 12 Jun 2014 21:38:19 -0700 (PDT)
+In-Reply-To: <20140613033029.GS4453@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 12, 2014 at 8:24 PM, Eric Sandeen <sandeen@sandeen.net> wrote:
-> - I'm talking about whether or not it's a good idea at all;
-> see for example Dave's reply.
+On Thu, Jun 12, 2014 at 8:30 PM, Dave Chinner <david@fromorbit.com> wrote:
+> On Fri, Jun 13, 2014 at 01:15:38PM +1000, Dave Chinner wrote:
+>> Indeed, mixing -o discard and SFITRIM is a recipe for
+>> confusion and leakage - "but I used secure trim on the device!" -
+>> and so all discards either have to be secure or not.
 
-I see. I'll reply to in his comments.
+The idea was to keep on not using -o discard. And move from FITRIM to SFITRIM.
 
-> This gets back to the "why" - what do you want to accomplish?
-> When would a user use this?
-> What if they have mounted -o discard,
-> or already issued an FITRIM?
+> Oh, and while I think of it secure discard at the filesystem level
+> isn't even a guarantee that you'll get rid of all stale references
+> to a sector - if the filesystem has freed and then re-allocated a
+> block without having gone through a discard cycle on that block,
+> then the underlying device may have old copies of the block that it
+> hasn't garbage collected and SFITRIM won't clean those up because it
+> won't ask to trim in-use blocks....
 
-Android. No -o discard. A user should not be able to FITRIM.
-The system would do the SFITRIM.
+Arg. So, if understand this correctly, if the eMMC chip won't get a
+secure discard/trim of a block that gets reassigned to the FS, then
+data duplicates within the eMMC related to that block are not cleared,
+and the next SFITRIM won't even reach that block or the duplicates as
+the FS says they are in use.
 
-> What's the ultimate goal, here?
-It was to make sure that data was not left behind after some steps were taken.
-And one of the steps seemed to be to replace the FITRIM used in
-Android with something better knowing that their was no -o discard
-(see my reply to Dave Chinner).
 
+> So, really, secure trim from a filesystem perspective can leak stale
+> data at multiple layers....
+
+.. back to the drawing board to evaluate how much leakage we can live
+with or maybe go down a path of fibmap + some secure form of erase
+(eMMC level secure trim).
+
+Thanks for now.
 --
