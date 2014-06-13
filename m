@@ -1,72 +1,95 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH] ext4: Add support for SFITRIM, an ioctl for secure
- FITRIM.
-Date: Fri, 13 Jun 2014 15:07:03 +1000
-Message-ID: <20140613050703.GT4453@dastard>
-References: <1402625647-31439-1-git-send-email-jpa@google.com>
- <539A63C1.8010809@redhat.com>
- <20140613031538.GR4453@dastard>
- <20140613033029.GS4453@dastard>
- <CAKP4w2QvVUNp18jnX69eP0hjA-T6zn2sT3TQ-P6zpu-EhXZPAQ@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
-	Geremy Condra <gcondra@google.com>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-To: JP Abgrall <jpa@google.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [RFC][PATCH 0/1] ext4: Fix ext4_mb_normalize_request
+Date: Fri, 13 Jun 2014 15:55:35 +0200
+Message-ID: <1402667736-7843-1-git-send-email-lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:48637 "EHLO
-	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751509AbaFMFHU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 13 Jun 2014 01:07:20 -0400
-Content-Disposition: inline
-In-Reply-To: <CAKP4w2QvVUNp18jnX69eP0hjA-T6zn2sT3TQ-P6zpu-EhXZPAQ@mail.gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:48223 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751321AbaFMNzs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 13 Jun 2014 09:55:48 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s5DDtm9t014356
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Fri, 13 Jun 2014 09:55:48 -0400
+Received: from localhost.localdomain.com (vpn1-7-238.ams2.redhat.com [10.36.7.238])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s5DDtkIW025371
+	for <linux-ext4@vger.kernel.org>; Fri, 13 Jun 2014 09:55:47 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 12, 2014 at 09:37:58PM -0700, JP Abgrall wrote:
-> On Thu, Jun 12, 2014 at 8:30 PM, Dave Chinner <david@fromorbit.com> wrote:
-> > On Fri, Jun 13, 2014 at 01:15:38PM +1000, Dave Chinner wrote:
-> >> Indeed, mixing -o discard and SFITRIM is a recipe for
-> >> confusion and leakage - "but I used secure trim on the device!" -
-> >> and so all discards either have to be secure or not.
-> 
-> The idea was to keep on not using -o discard. And move from FITRIM to SFITRIM.
+This is my first attempt to fix the ext4_mb_normalize_request() function in
+in ext4 which deals with file preallocations.
 
-IOWs, you want either normal discard or secure discard, and not a
-mix of both. IOWs, you don't need SFITRIM, you need a "block device
-does secure discard only" configuration flag...
+This is not yet a final version as it needs more testing, however I'd like
+to see some suggestions.
 
-> > Oh, and while I think of it secure discard at the filesystem level
-> > isn't even a guarantee that you'll get rid of all stale references
-> > to a sector - if the filesystem has freed and then re-allocated a
-> > block without having gone through a discard cycle on that block,
-> > then the underlying device may have old copies of the block that it
-> > hasn't garbage collected and SFITRIM won't clean those up because it
-> > won't ask to trim in-use blocks....
-> 
-> Arg. So, if understand this correctly, if the eMMC chip won't get a
-> secure discard/trim of a block that gets reassigned to the FS, then
-						      ^^ within
 
-> data duplicates within the eMMC related to that block are not cleared,
-> and the next SFITRIM won't even reach that block or the duplicates as
-> the FS says they are in use.
+Currently there are couple of problems with ext4_mb_normalize_request().
 
-Pretty much.
+- We're trying to normalize unwritten extents allocation which is
+  entirely unnecessary, because user exactly knows what how much space
+  he is going to need - no need for file system to do preallocations.
 
-And even using -o discard is no guarantee that the filesystem will
-issue a discard between freeing and re-using a block e.g.  XFS
-explicitly avoids issuing discards for blocks it re-uses immediately
-because they are always considered "in-use" from a transactional
-POV. Hence there is no place where the block is considered free, and
-hence there isn't a point in time where a discard can be safely
-issued on that block.
+- ext4_mb_normalize_request() unnecessarily divides bigger allocation
+  requests to small ones (8MB). I believe that this is a bug rather than
+  design.
 
-Cheers,
+- For smaller allocations (or smaller files) we do not even respect the
+  fe_logical. Although we do respect it for bigger files.
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+- Overall the logic within ext4_mb_normalize_request() is weird and
+  no-one really understand why it is the way it is.
+
+Fix all of this by:
+
+- Disabling preallocation for unwritten extent allocation. However
+  because the maximum size of the unwritten extent is one block smaller
+  than written, in order to avoid unnecessary fragmentation we limit the
+  request to EXT_INIT_MAX_LEN / 2
+
+- Get rid of the "if table" in ext4_mb_normalize_request() and replace
+  it with simply aligning the assumed end of the file up to power of
+  two. But we still limit the allocation size to EXT4_BLOCKS_PER_GROUP.
+  Also do this on file system block units to take into account different
+  block sized file systems.
+
+
+It passes xfstests cleanly in default configuration, I've not tried any
+non-default options yet.
+
+I've tried to test how much it changes allocation. The test and some results
+can be found at
+
+http://people.redhat.com/lczerner/mballoc/
+
+normalize.sh is the simple script I run and output.normalize_orig[34]
+contains result from the vanila  3.15.0 while output.normalize_patch[56]
+contains results with this patch.
+
+>From the performance stand point I do not see any major differences except
+that untar seems to always generate better results (which might be because
+of bigger continuous extents).
+
+Free space fragmentation seems to be about the same, however with the patch
+there seems to be less smaller free space extents and more bigger ones which
+is expected due to bigger preallocations (and I think it's a good thing).
+
+The biggest difference which is obvious from the results is that extent tree
+is much smaller (sometimes five times smaller) with the patch. Except of the
+fallocate case because we now limit the requests to (EXT_INIT_MAX_LEN / 2)
+so we can not merge them - it might be worth experimenting with something
+smaller which is a factor of unwritten extent size.
+
+But as I said the extent tree is much smaller which means that the extents
+overall are bigger which again is a good thing. This becomes very obvious
+when we look at the extent tree of the image file (the last steps in the
+test).
+
+What do you think ?
+
+Thanks!
+-Lukas
+
+
+
