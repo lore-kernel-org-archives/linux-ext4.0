@@ -1,30 +1,41 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] ext4: Add support for SFITRIM, an ioctl for secure
- FITRIM.
-Date: Thu, 12 Jun 2014 19:36:05 -0700
-Message-ID: <20140613023605.GC9743@birch.djwong.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] ext4: Add support for SFITRIM, an ioctl for secure FITRIM.
+Date: Thu, 12 Jun 2014 21:36:49 -0500
+Message-ID: <539A63C1.8010809@redhat.com>
 References: <1402625647-31439-1-git-send-email-jpa@google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, gcondra@google.com
-To: JP Abgrall <jpa@google.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: gcondra@google.com,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+To: JP Abgrall <jpa@google.com>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:41634 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750862AbaFMCgL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jun 2014 22:36:11 -0400
-Content-Disposition: inline
+Received: from mx1.redhat.com ([209.132.183.28]:5530 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751057AbaFMCgr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 Jun 2014 22:36:47 -0400
 In-Reply-To: <1402625647-31439-1-git-send-email-jpa@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 12, 2014 at 07:14:07PM -0700, JP Abgrall wrote:
+On 6/12/14, 9:14 PM, JP Abgrall wrote:
 > This provides an interface for issuing secure trims to parallel
 > the existing interface for non-secure trim.
 
-What is 'secure discard'?  How does it differ from regular discard?
+Which does what?  A bit of digging through git history tells
+me, but an idiot reader like myself doesn't know what a
+"secure trim" is.  ;)  Would be nice to have that info,
+and the reason for elevating it from a block-level ioctl
+to an fs-level ioctl in the commit log.
 
-I guess it means 'really make this go away physical media'?
+IOWS: your commit log says what, but not why.
+
+Also:
+
+You're adding a new high-level IOCTL, so let's get a bit more
+visibility than just linux-ext4; linux-fsdevel cc'd.
+
+one other ext4-specific note below.
 
 > Signed-off-by: Geremy Condra <gcondra@google.com>
 > Signed-off-by: JP Abgrall <jpa@google.com>
@@ -80,14 +91,15 @@ I guess it means 'really make this go away physical media'?
 > +				 "FITRIM not supported with bigalloc");
 > +			return -EOPNOTSUPP;
 > +		}
-
-Huh?  I don't think this belongs in this patch.
-
-Also, any plans to bring SFITRIM to the other FSes?
-
---D
-
 > +
+
+This last conditional is unrelated to the patch; if BIGALLOC has another
+incomplete part of its implementation, please send it as a standalone patch,
+not buried in this one.
+
+Thanks,
+-Eric
+
 >  		if (copy_from_user(&range, (struct fstrim_range __user *)arg,
 >  		    sizeof(range)))
 >  			return -EFAULT;
@@ -235,10 +247,5 @@ Also, any plans to bring SFITRIM to the other FSes?
 >  
 >  #define	FS_IOC_GETFLAGS			_IOR('f', 1, long)
 >  #define	FS_IOC_SETFLAGS			_IOW('f', 2, long)
-> -- 
-> 2.0.0.526.g5318336
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
