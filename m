@@ -1,164 +1,224 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 3/3] mke2fs: prevent creation of unmountable ext4 with
- large flex_bg count
-Date: Thu, 12 Jun 2014 16:50:19 -0700
-Message-ID: <20140612235019.GB9743@birch.djwong.org>
-References: <28989C0C9F1C0A428470D967B5FCED372A7EA3@BPXM22GP.gisp.nec.co.jp>
- <6A410081-0492-4378-BA66-07AFA7C0DEAF@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Akira Fujita <a-fujita@rs.jp.nec.com>,
-	Theodore Tso <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+From: JP Abgrall <jpa@google.com>
+Subject: [PATCH] ext4: Add support for SFITRIM, an ioctl for secure FITRIM.
+Date: Thu, 12 Jun 2014 19:14:07 -0700
+Message-ID: <1402625647-31439-1-git-send-email-jpa@google.com>
+Cc: jpa@google.com, gcondra@google.com
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:33327 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750907AbaFLXu3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jun 2014 19:50:29 -0400
-Content-Disposition: inline
-In-Reply-To: <6A410081-0492-4378-BA66-07AFA7C0DEAF@dilger.ca>
+Received: from mail-ob0-f202.google.com ([209.85.214.202]:46121 "EHLO
+	mail-ob0-f202.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750862AbaFMCOc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jun 2014 22:14:32 -0400
+Received: by mail-ob0-f202.google.com with SMTP id va2so440920obc.5
+        for <linux-ext4@vger.kernel.org>; Thu, 12 Jun 2014 19:14:31 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 11, 2014 at 01:01:29PM -0600, Andreas Dilger wrote:
-> 
-> On Jun 11, 2014, at 2:38 AM, Akira Fujita <a-fujita@rs.jp.nec.com> wrote:
-> 
-> > In mke2fs command, if flex_bg count is too large to filesystem blocks count,
-> > unmountable ext4 which has the out of filesystem block offset is created (Case1).
-> > Moreover this large flex_bg count causes an unintentional metadata layout
-> > (bmap-imap-itable-bmap-imap-itable .. in block group) (Case2).
-> > 
-> > To fix these issues and keep healthy flex_bg layout, disallow creating ext4
-> > with obviously large flex_bg count to filesystem blocks count.
-> 
-> Patch looks good to me.
-> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-> 
-> This also reminds me of my previous flex_bg patch:
-> [PATCH][RFC] mke2fs: handle flex_bg collision with backup descriptors
-> http://permalink.gmane.org/gmane.comp.file-systems.ext4/42298
-> 
-> which fixes the "bmap-imap-itable-bmap-imap-itable" problem when a large
-> flex_bg size is used.  Sadly, there were no comments on that patch.
+This provides an interface for issuing secure trims to parallel
+the existing interface for non-secure trim.
 
-I had wondered if you were planning to address the FIXMEs in the patch, but
-then forgot to ever follow up... :/
+Signed-off-by: Geremy Condra <gcondra@google.com>
+Signed-off-by: JP Abgrall <jpa@google.com>
+---
+ fs/ext4/ext4.h          |  3 ++-
+ fs/ext4/ioctl.c         | 14 +++++++++++++-
+ fs/ext4/mballoc.c       | 29 +++++++++++++++++++----------
+ include/uapi/linux/fs.h |  1 +
+ 4 files changed, 35 insertions(+), 12 deletions(-)
 
---D
-
-> 
-> Cheers, Andreas
-> 
-> > Steps to reproduce:
-> > (Case1)
-> > 1.
-> > # mke2fs -t ext4 -b 4096 -O ^resize_inode -G $((2**20)) DEV 2130483
-> > 
-> > 2.
-> > # mount -t ext4 DEV MP
-> > mount: wrong fs type, bad option, bad superblock on /dev/sdb4,
-> >       missing codepage or helper program, or other error
-> >       In some cases useful info is found in syslog - try
-> >       dmesg | tail  or so
-> > 
-> > 3.
-> > # dumpe2fs DEV
-> > <snip>
-> > Block count:              2130483
-> > <snip>
-> > Flex block group size:    1048576 
-> > <snip>
-> > Group 65: (Blocks 2129920-2130482) [INODE_UNINIT]
-> >  Checksum 0x4cb3, unused inodes 8080
-> >  Block bitmap at 67 (bg #0 + 67), Inode bitmap at 1048643 (bg #32 + 67)
-> >  Inode table at 2129979-2130483 (+59)              <---- 2130483 is out of FS!
-> >  65535 free blocks, 8080 free inodes, 0 directories, 8080 unused inodes
-> >  Free blocks: 
-> >  Free inodes: 525201-533280
-> > 
-> > (Case2)
-> > 1.
-> > # mke2fs -t ext4 -G 2147483648 DEV 3145728
-> > 
-> > 2.
-> > # debugfs -R stats DEV
-> > <snip>
-> > Block count:              786432
-> > <snip>
-> > Flex block group size:    2147483648
-> > <snip>
-> > Group  0: block bitmap at 193, inode bitmap at 194, inode table at 195    <-- 
-> >           20233 free blocks, 8181 free inodes, 2 used directories, 8181 unused inodes
-> >           [Checksum 0xa597]
-> > Group  1: block bitmap at 707, inode bitmap at 708, inode table at 709    <--
-> >           32575 free blocks, 8192 free inodes, 0 used directories, 8192 unused inodes
-> >           [Inode not init, Block not init, Checksum 0x196f]
-> > Group  2: block bitmap at 1221, inode bitmap at 1222, inode table at 1223 <--
-> >           32768 free blocks, 8192 free inodes, 0 used directories, 8192 unused inodes
-> >           [Inode not init, Block not init, Checksum 0x856f]
-> > <snip>
-> > 
-> > Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
-> > ---
-> > lib/ext2fs/initialize.c |   24 ++++++++++++++++++++++++
-> > 1 file changed, 24 insertions(+)
-> > diff --git a/lib/ext2fs/initialize.c b/lib/ext2fs/initialize.c
-> > index 75fbf8e..34753d0 100644
-> > --- a/lib/ext2fs/initialize.c
-> > +++ b/lib/ext2fs/initialize.c
-> > @@ -91,8 +91,10 @@ errcode_t ext2fs_initialize(const char *name, int flags,
-> > 	unsigned int	rem;
-> > 	unsigned int	overhead = 0;
-> > 	unsigned int	ipg;
-> > +	unsigned int	flexbg_size;
-> > 	dgrp_t		i;
-> > 	blk64_t		free_blocks;
-> > +	blk64_t		flexbg_overhead;
-> > 	blk_t		numblocks;
-> > 	int		rsv_gdt;
-> > 	int		csum_flag;
-> > @@ -419,6 +421,28 @@ ipg_retry:
-> > 	}
-> > 
-> > 	/*
-> > +	 * Calculate the flex_bg related metadata blocks count.
-> > +	 * It includes the boot block, the super block,
-> > +	 * the block group descriptors, the reserved gdt blocks,
-> > +	 * the block bitmaps, the inode bitmaps and the inode tables.
-> > +	 * This is a simple check, so that the backup superblock and
-> > +	 * other feature related blocks are not considered.
-> > +	 */
-> > +	flexbg_size = 1 << fs->super->s_log_groups_per_flex;
-> > +	flexbg_overhead = super->s_first_data_block + 1 +
-> > +		fs->desc_blocks + super->s_reserved_gdt_blocks +
-> > +		(__u64)flexbg_size * (2 + fs->inode_blocks_per_group);
-> > +
-> > +	/*
-> > +	 * Disallow creating ext4 which breaks flex_bg metadata layout
-> > +	 * obviously.
-> > +	 */
-> > +	if (flexbg_overhead > ext2fs_blocks_count(fs->super)) {
-> > +		retval = EXT2_ET_INVALID_ARGUMENT;
-> > +		goto cleanup;
-> > +	}
-> > +
-> > +	/*
-> > 	 * At this point we know how big the filesystem will be.  So
-> > 	 * we can do any and all allocations that depend on the block
-> > 	 * count.
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
-> Cheers, Andreas
-> 
-> 
-> 
-> 
-> 
-
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 7cc5a0e..cf2ddad 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2082,7 +2082,8 @@ extern int ext4_mb_add_groupinfo(struct super_block *sb,
+ 		ext4_group_t i, struct ext4_group_desc *desc);
+ extern int ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
+ 				ext4_fsblk_t block, unsigned long count);
+-extern int ext4_trim_fs(struct super_block *, struct fstrim_range *);
++extern int ext4_trim_fs(struct super_block *, struct fstrim_range *,
++				bool secure);
+ 
+ /* inode.c */
+ struct buffer_head *ext4_getblk(handle_t *, struct inode *,
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 0f2252e..0a0b483 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -580,11 +580,13 @@ resizefs_out:
+ 		return err;
+ 	}
+ 
++	case SFITRIM:
+ 	case FITRIM:
+ 	{
+ 		struct request_queue *q = bdev_get_queue(sb->s_bdev);
+ 		struct fstrim_range range;
+ 		int ret = 0;
++		bool secure_trim = cmd == SFITRIM;
+ 
+ 		if (!capable(CAP_SYS_ADMIN))
+ 			return -EPERM;
+@@ -592,13 +594,23 @@ resizefs_out:
+ 		if (!blk_queue_discard(q))
+ 			return -EOPNOTSUPP;
+ 
++		if (secure_trim && !blk_queue_secdiscard(q))
++			return -EOPNOTSUPP;
++
++		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
++			       EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
++			ext4_msg(sb, KERN_ERR,
++				 "FITRIM not supported with bigalloc");
++			return -EOPNOTSUPP;
++		}
++
+ 		if (copy_from_user(&range, (struct fstrim_range __user *)arg,
+ 		    sizeof(range)))
+ 			return -EFAULT;
+ 
+ 		range.minlen = max((unsigned int)range.minlen,
+ 				   q->limits.discard_granularity);
+-		ret = ext4_trim_fs(sb, &range);
++		ret = ext4_trim_fs(sb, &range, secure_trim);
+ 		if (ret < 0)
+ 			return ret;
+ 
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 59e3162..b470efe 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2734,16 +2734,18 @@ int ext4_mb_release(struct super_block *sb)
+ }
+ 
+ static inline int ext4_issue_discard(struct super_block *sb,
+-		ext4_group_t block_group, ext4_grpblk_t cluster, int count)
++		ext4_group_t block_group, ext4_grpblk_t cluster, int count,
++		bool secure)
+ {
+ 	ext4_fsblk_t discard_block;
++	unsigned long flags = secure ? BLKDEV_DISCARD_SECURE : 0;
+ 
+ 	discard_block = (EXT4_C2B(EXT4_SB(sb), cluster) +
+ 			 ext4_group_first_block_no(sb, block_group));
+ 	count = EXT4_C2B(EXT4_SB(sb), count);
+ 	trace_ext4_discard_blocks(sb,
+ 			(unsigned long long) discard_block, count);
+-	return sb_issue_discard(sb, discard_block, count, GFP_NOFS, 0);
++	return sb_issue_discard(sb, discard_block, count, GFP_NOFS, flags);
+ }
+ 
+ /*
+@@ -2765,7 +2767,7 @@ static void ext4_free_data_callback(struct super_block *sb,
+ 	if (test_opt(sb, DISCARD)) {
+ 		err = ext4_issue_discard(sb, entry->efd_group,
+ 					 entry->efd_start_cluster,
+-					 entry->efd_count);
++					 entry->efd_count, 0);
+ 		if (err && err != -EOPNOTSUPP)
+ 			ext4_msg(sb, KERN_WARNING, "discard request in"
+ 				 " group:%d block:%d count:%d failed"
+@@ -4804,7 +4806,8 @@ do_more:
+ 		 * them with group lock_held
+ 		 */
+ 		if (test_opt(sb, DISCARD)) {
+-			err = ext4_issue_discard(sb, block_group, bit, count);
++			err = ext4_issue_discard(sb, block_group, bit, count,
++						 0);
+ 			if (err && err != -EOPNOTSUPP)
+ 				ext4_msg(sb, KERN_WARNING, "discard request in"
+ 					 " group:%d block:%d count:%lu failed"
+@@ -5011,13 +5014,15 @@ error_return:
+  * @count:	number of blocks to TRIM
+  * @group:	alloc. group we are working with
+  * @e4b:	ext4 buddy for the group
++ * @secure:	false to issue a standard discard, true for secure discard
+  *
+  * Trim "count" blocks starting at "start" in the "group". To assure that no
+  * one will allocate those blocks, mark it as used in buddy bitmap. This must
+  * be called with under the group lock.
+  */
+ static int ext4_trim_extent(struct super_block *sb, int start, int count,
+-			     ext4_group_t group, struct ext4_buddy *e4b)
++			    ext4_group_t group, struct ext4_buddy *e4b,
++			    bool secure)
+ __releases(bitlock)
+ __acquires(bitlock)
+ {
+@@ -5038,7 +5043,7 @@ __acquires(bitlock)
+ 	 */
+ 	mb_mark_used(e4b, &ex);
+ 	ext4_unlock_group(sb, group);
+-	ret = ext4_issue_discard(sb, group, start, count);
++	ret = ext4_issue_discard(sb, group, start, count, secure);
+ 	ext4_lock_group(sb, group);
+ 	mb_free_blocks(NULL, e4b, start, ex.fe_len);
+ 	return ret;
+@@ -5051,6 +5056,7 @@ __acquires(bitlock)
+  * @start:		first group block to examine
+  * @max:		last group block to examine
+  * @minblocks:		minimum extent block count
++ * @secure:		false for standard discard, true for secure discard
+  *
+  * ext4_trim_all_free walks through group's buddy bitmap searching for free
+  * extents. When the free block is found, ext4_trim_extent is called to TRIM
+@@ -5065,7 +5071,7 @@ __acquires(bitlock)
+ static ext4_grpblk_t
+ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
+ 		   ext4_grpblk_t start, ext4_grpblk_t max,
+-		   ext4_grpblk_t minblocks)
++		   ext4_grpblk_t minblocks, bool secure)
+ {
+ 	void *bitmap;
+ 	ext4_grpblk_t next, count = 0, free_count = 0;
+@@ -5098,7 +5104,8 @@ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
+ 
+ 		if ((next - start) >= minblocks) {
+ 			ret = ext4_trim_extent(sb, start,
+-					       next - start, group, &e4b);
++					       next - start, group, &e4b,
++					       secure);
+ 			if (ret && ret != -EOPNOTSUPP)
+ 				break;
+ 			ret = 0;
+@@ -5140,6 +5147,7 @@ out:
+  * ext4_trim_fs() -- trim ioctl handle function
+  * @sb:			superblock for filesystem
+  * @range:		fstrim_range structure
++ * @secure:		false for standard discard, true for secure discard
+  *
+  * start:	First Byte to trim
+  * len:		number of Bytes to trim from start
+@@ -5148,7 +5156,8 @@ out:
+  * start to start+len. For each such a group ext4_trim_all_free function
+  * is invoked to trim all free space.
+  */
+-int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
++int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range,
++			bool secure)
+ {
+ 	struct ext4_group_info *grp;
+ 	ext4_group_t group, first_group, last_group;
+@@ -5204,7 +5213,7 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+ 
+ 		if (grp->bb_free >= minlen) {
+ 			cnt = ext4_trim_all_free(sb, group, first_cluster,
+-						end, minlen);
++						end, minlen, secure);
+ 			if (cnt < 0) {
+ 				ret = cnt;
+ 				break;
+diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
+index ca1a11b..efbd8f8 100644
+--- a/include/uapi/linux/fs.h
++++ b/include/uapi/linux/fs.h
+@@ -156,6 +156,7 @@ struct inodes_stat_t {
+ #define FIFREEZE	_IOWR('X', 119, int)	/* Freeze */
+ #define FITHAW		_IOWR('X', 120, int)	/* Thaw */
+ #define FITRIM		_IOWR('X', 121, struct fstrim_range)	/* Trim */
++#define SFITRIM	_IOWR('X', 122, struct fstrim_range)	/* Secure trim */
+ 
+ #define	FS_IOC_GETFLAGS			_IOR('f', 1, long)
+ #define	FS_IOC_SETFLAGS			_IOW('f', 2, long)
+-- 
+2.0.0.526.g5318336
 
