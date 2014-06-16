@@ -1,61 +1,90 @@
-From: "Joseph D. Wagner" <joe@josephdwagner.info>
-Subject: dump ext4 performance degrades linearly as disk fills
-Date: Sun, 15 Jun 2014 22:43:29 -0700
-Message-ID: <539E8401.5000607@josephdwagner.info>
+From: Tanya Brokhman <tlinder@codeaurora.org>
+Subject: Quadrant write performance degradation - kernel3.10 vs kernel3.4
+Date: Mon, 16 Jun 2014 09:02:08 +0300
+Message-ID: <539E8860.3010602@codeaurora.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from josephdwagner.info ([72.4.161.242]:44353 "EHLO
-	josephdwagner.info" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753653AbaFPFnm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Jun 2014 01:43:42 -0400
-Received: from localhost.localdomain (c-67-168-236-90.hsd1.wa.comcast.net [67.168.236.90])
-	(authenticated bits=0)
-	by josephdwagner.info (8.14.4/8.14.4) with ESMTP id s5G5kLDD032231
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Jun 2014 01:46:22 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=windows-1252;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: kdorfman@codeaurora.org, merez@codeaurora.org,
+	Dolev Raviv <draviv@codeaurora.org>, tlinder@codeaurora.org
+To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Background:
-- I use lvm snapshots on ext4 for backup.  I use dump to backup the 
-snapshots.  The backup goes to an external hard drive over usb 3.0. The 
-external hard drive has 1 partition formatted with ext4.
+Hello,
+Recently we encountered a performance degradation on 3.10kernel based=20
+build, compared to 3.4 based one, when running the fs_write Quadrant=20
+benchmark.
+We profiled the test and came to the conclusion that the root cause of=20
+the degradation is in the vfs_write call stack (overhead of 2611.2us is=
+=20
+observed in 3.10 kernel compared to 3.4):
 
-Problem:
-- I've noticed the performance of dump to my ext4 backup degrades 
-linearly as the disk fills.  In the output, the kbps in the status line 
-keeps getting lower as the percent complete keeps getting higher.
+ret_fast_syscall
+SyS_write
+vfs_write (total time spent: 3.10kernel-21295us, 3.4kernel-18683.79us)
+do_sync_write
+ext4_file_write
+generic_file_aio_write (total time spent: 3.10kernel-19124.4us,=20
+3.4kernel-16815us)
+__generic_file_aio_write
+generic_file_buffered_write
+ext4_da_write_begin (total time spent: 3.10kernel-10935.2us,=20
+3.4kernel-8444.6us)
+__block_write_begin
+ext4_da_get_block_prep (total time spent: 3.10kernel-5402.6us,=20
+3.4kernel-3576.8us)
+ext4_es_lookup_extent  (total time spent: 3.10kernel-2219.7us,=20
+3.4kernel-0us)
 
-My Thoughts So Far:
-- I suspect that either 1) dump is doing something which lowers 
-performance as the backup progresses, or 2) the ext4 algorithm for 
-finding and allocating free blocks is vulnerable to performance 
-degradation as the volume fills.
 
-- I haven't tested this thoroughly.  However, performance appears to 
-improve when I clear out the external drive and do a fresh, full dump 
-(-0), and performance appears to remain degraded on incremental backups 
-on a nearly full volume.  This leads me to suspect #2.
+We tried to revert just the ext4 code back to 3.4 (on a 3.10 kernel)=20
+build and got an improvement of 50% in the test result.
+When looking deeper into the changes made to the ext4 FS between 3.4 an=
+d=20
+3.10 versions we stumbled across two major features making an explicit=20
+tradeoff in favor of robustness and good design over performance in som=
+e=20
+use cases:
 
-Help from you:
-- What steps can I take to isolate the cause of the problem?  If there's 
-any information I can provide, please let me know.
+1) Metadata Checksums=20
+http://kernelnewbies.org/Linux_3.5#head-e8ea0d70436ea63590eac3dc25a7b41=
+7333147f8
+=93As far as performance impact goes, it shouldn't be noticeable for=20
+common desktop and server workloads. A mail server ffsb simulation show=
+=20
+nearly no change. On a test doing only file creation and deletion and=20
+extent tree modifications, a performance drop of about 20 percent was=20
+measured. However, it's a workload very heavily oriented towards=20
+metadata, in most real-world workloads metadata is usually a small=20
+fraction of total IO, so unless your workload is metadata-oriented, the=
+=20
+cost of enabling this feature should be negligible.=94
 
-What I've Done:
-- I've run both the short and long SMART tests on the external drive, 
-which came back clean.  They also told me the relocated sector count was 
-zero.
+2) Extents status tracking:=20
+https://git.kernel.org/cgit/linux/kernel/git/stable/linux-stable.git/tr=
+ee/fs/ext4/extents_status.c?id=3Drefs/tags/v3.10.42#n20
+=93There is a cache extent for write access, so if writes are not very=20
+random, adding space operations are in O(1) time.=94
 
-- I also made sure the disk was connecting in usb 3.0 mode.
+We tried pick up several performance-enhancement patches from the=20
+community, released between 3.10 and 3.14 kernel versions. The=20
+performance was almost the same.
 
-- I changed the external drive ext4 mount from journal=ordered to 
-journal=writeback.  The performance difference was nominal.
+I was wondering what performance tests were performed on these features=
+?=20
+Has anyone encountered same issue?
 
-Any insight would be appreciated.
-
-Thanks.
-
-Joseph D. Wagner
+Best Regards
+Tanya Brokhman
+--=20
+QUALCOMM ISRAEL, on behalf of Qualcomm Innovation Center, Inc. is a mem=
+ber
+of Code Aurora Forum, hosted by The Linux Foundation
+--
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
+" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
